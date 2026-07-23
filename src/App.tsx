@@ -914,24 +914,37 @@ export default function App() {
       // so skip the phase auto-switch and the offset auto-fill for this load.
       phaseAutoSkip.current = true;
       offsetAutoSkip.current = true;
+      let applied = '';
       if (twDrv && wfDrv) {
-        // App offset is "tweeter mm, + = recessed/later". VituixCAD Z: higher =
-        // closer = earlier, so tweeter-vs-woofer offset = wooferZ − tweeterZ.
-        // ResponseDelay is ms; +delay = later = recessed (+mm), c = 343 m/s.
-        const MM_PER_MS = 343;
+        // The inter-driver offset lives on the driver PART per crossover
+        // variant (VituixCAD: tweeter Z = −65 mm), NOT the <DRIVER> block. App
+        // offset is "tweeter mm, + = recessed/later"; VituixCAD Z is negative
+        // for a recessed/later driver (its "tweeter Z = −48 mm" ⟺ +140 µs), so
+        // offset = wooferZ − tweeterZ. ResponseDelay is ms (+delay = +mm, c=343).
+        const dparts = vxp.crossovers[0]?.parts.filter((pt) => pt.type === 'Driver') ?? [];
+        const partZ = (model: string) =>
+          dparts.find((pt) => pt.model === model)?.params.find((pr) => pr.name === 'Z')?.value ?? 0;
         const offMm =
-          (wfDrv.z - twDrv.z) + (twDrv.responseDelay - wfDrv.responseDelay) * MM_PER_MS;
-        setPhaseMode(twDrv.minimumPhase || wfDrv.minimumPhase ? 'minimum' : 'measured');
-        setOffsetMm(String(Math.round(offMm * 10) / 10));
-        setInverted(!!twDrv.inverted !== !!wfDrv.inverted);
+          Math.round(
+            (partZ(wfDrv.model) - partZ(twDrv.model) +
+              (twDrv.responseDelay - wfDrv.responseDelay) * 343) *
+              10,
+          ) / 10;
+        const mode = twDrv.minimumPhase || wfDrv.minimumPhase ? 'minimum' : 'measured';
+        const inv = !!twDrv.inverted !== !!wfDrv.inverted;
+        setPhaseMode(mode);
+        setOffsetMm(String(offMm));
+        setInverted(inv);
+        applied = ` · applied from vxp: ${mode} phase, tweeter offset ${offMm} mm${
+          inv ? ', tweeter inverted' : ''
+        }`;
       } else {
         setPhaseMode('minimum');
       }
       setVxpNote(
         `${vxpFile.name} — ${vxp.crossovers.length} crossover variant(s) · ` +
           status.join(' · ') +
-          ' · phase convention: Minimum (VituixCAD-style) for comparison, ' +
-          'auto-switches to Measured when the timing check is plausible',
+          applied,
       );
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
