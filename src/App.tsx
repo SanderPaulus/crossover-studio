@@ -2481,8 +2481,45 @@ export default function App() {
                   Both drivers are needed to continue. <strong>Impedances (.ZMA)</strong> unlock the
                   passive build &amp; component tune; <strong>angle files</strong> unlock the
                   amplitude target &amp; in-room weight in the Goals step. The full importer (VituixCAD
-                  projects, catalogs, save/load) lives in the Import tab.
+                  projects, save/load) lives in the Import tab.
                 </p>
+                <div
+                  style={{
+                    marginTop: '0.6rem',
+                    paddingTop: '0.5rem',
+                    borderTop: '1px solid rgba(128,128,128,0.25)',
+                  }}
+                >
+                  <p style={{ margin: '0 0 0.2rem' }}>
+                    <strong>Component catalog</strong>{' '}
+                    <span className="sub">
+                      — powers Snap to catalog &amp; the BOM. It lives OUTSIDE the project, so it
+                      persists across a Reset (that's why the optimizer can still use one).
+                    </span>
+                  </p>
+                  <p className="sub" style={{ margin: '0 0 0.3rem' }}>
+                    {hasImportedCatalog()
+                      ? `✓ An imported catalog is still loaded — ${allSeries().length} series` +
+                        (customCatalogParts().length
+                          ? ` · ${customCatalogParts().length} exact parts`
+                          : '') +
+                        (allSeries().some((sr) => sr.basePrice !== undefined) ||
+                        customCatalogParts().some((pp) => pp.priceEur !== undefined)
+                          ? ' · prices'
+                          : '') +
+                        '. Snap-to-catalog is available.'
+                      : `No imported catalog — only the built-in library (${allSeries().length} series) for BOM matching & inspector suggestions. Import one to unlock Snap to catalog + real prices.`}
+                  </p>
+                  <label className="file-button" style={{ display: 'inline-block' }}>
+                    {hasImportedCatalog() ? 'Replace catalog' : 'Import catalog (optional)'}
+                    <input
+                      type="file"
+                      accept=".json,.adscatalog"
+                      onChange={importCatalogFromFile}
+                      style={{ display: 'none' }}
+                    />
+                  </label>
+                </div>
               </>
             )}
 
