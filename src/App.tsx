@@ -293,6 +293,11 @@ export default function App() {
   const [woofer, setWoofer] = useState<Loaded | null>(null);
   const [tweeter, setTweeter] = useState<Loaded | null>(null);
   const [project, setProject] = useState<ProjectData | null>(null);
+  /** VituixCAD phase reference: its FILTERED woofer + tweeter responses, so we
+   *  can draw its relative phase (tweeter − woofer) in OUR convention. */
+  const [refResp, setRefResp] = useState<{ woofer: Parsed; tweeter: Parsed; names: string } | null>(
+    null,
+  );
   /** Standalone per-model impedances (ZMA in the driver file dialogs) — the
    *  vxp project is NOT required for solving/synthesis/editor. */
   const [zStandalone, setZStandalone] = useState<Record<string, { file: StoredFile; zma: ParsedZma }>>({});
@@ -949,6 +954,29 @@ export default function App() {
           status.join(' · ') +
           applied,
       );
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
+    }
+  }
+
+  /** Load VituixCAD's FILTERED woofer + tweeter responses (2 .frd/.txt files)
+   *  as a phase reference — the app then draws their relative phase in our
+   *  convention next to the live curve. Tweeter picked by filename. */
+  async function loadReference(e: React.ChangeEvent<HTMLInputElement>) {
+    const files = [...(e.target.files ?? [])];
+    e.target.value = '';
+    if (files.length < 2) {
+      setError("Pick VituixCAD's FILTERED woofer AND tweeter response (2 files) to compare phase.");
+      return;
+    }
+    setError(null);
+    try {
+      const parsed = await Promise.all(
+        files.slice(0, 2).map(async (f) => ({ name: f.name, frd: parseFrd(await f.text()) })),
+      );
+      const tw = parsed.find((p) => isTweeterModel(p.name)) ?? parsed[1];
+      const wf = parsed.find((p) => p !== tw) ?? parsed[0];
+      setRefResp({ woofer: wf.frd, tweeter: tw.frd, names: `${wf.name} + ${tw.name}` });
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
     }
@@ -2420,8 +2448,25 @@ export default function App() {
       pointColors: alignColors,
       width: 2.5,
     });
+    // VituixCAD reference: its filtered tweeter − woofer, computed the SAME way
+    // (unwrap-resample onto our grid, then wrapped difference) so it's a true
+    // peer of the curve above. Its export already carries VituixCAD's own Z, so
+    // no app offset is re-applied.
+    if (refResp) {
+      const rw = resample(refResp.woofer.freq, refResp.woofer.spl, refResp.woofer.phase, result.freq);
+      const rt = resample(refResp.tweeter.freq, refResp.tweeter.spl, refResp.tweeter.phase, result.freq);
+      out.push({
+        id: 'refphase',
+        label: 'VituixCAD reference (relative phase)',
+        color: 'var(--viz-tick)',
+        x: result.freq,
+        y: breakWraps(rt.phaseDeg.map((p, i) => wrapDeg(p - rw.phaseDeg[i]))),
+        dash: '8 4',
+        width: 1.8,
+      });
+    }
     return out;
-  }, [result, integration, sim, offsetMm, trimDb, inverted, showPanels.phase]);
+  }, [result, integration, sim, offsetMm, trimDb, inverted, showPanels.phase, refResp]);
 
   /** "How far off is the phase" zones behind the relative-phase curve. */
   const phaseBands = useMemo(
@@ -3477,6 +3522,11 @@ export default function App() {
               multiple
               onChange={loadVituixFiles}
             />
+          </label>
+          <label title="Phase peer-comparison: in VituixCAD export the FILTERED woofer and tweeter responses (crossover applied), select BOTH here. The Phase chart then draws VituixCAD's relative phase (tweeter − woofer) in our convention as a dashed reference.">
+            VituixCAD phase reference (filtered woofer + tweeter — select both)
+            <input type="file" accept=".frd,.txt" multiple onChange={loadReference} />
+            {refResp && <span className="derived"> ✓ {refResp.names}</span>}
           </label>
           <button
             type="button"
