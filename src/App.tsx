@@ -7,6 +7,7 @@ import { logspace, resample, combine, offsetMmToDelayS, applyTransfer } from './
 import { computeIntegration } from './lib/integration.ts';
 import { crossoverToNetlist } from './lib/vxpNetwork.ts';
 import { solveNetwork } from './lib/network.ts';
+import { isTweeterModel, pickSlots } from './lib/driverSlots.ts';
 import { estimateCoilDcr, validateNetlist } from './lib/netlistEdit.ts';
 import {
   mergeSynthesizedSchematics,
@@ -212,6 +213,20 @@ function useTheme(): [Theme, (t: Theme) => void] {
     }
   }, [theme]);
   return [theme, setTheme];
+}
+
+/** Map a solved network's drivers to the woofer/tweeter voltage transfers by
+ *  SLOT (not hard-coded model name), so an imported vxp with freely-named
+ *  drivers still gets its crossover applied. */
+function slotTransfers(sol: {
+  drivers: { id: string; model: string }[];
+  transfers: Record<string, Complex[]>;
+}): { hW: Complex[] | null; hT: Complex[] | null } {
+  const { woofer, tweeter } = pickSlots(sol.drivers);
+  return {
+    hW: woofer ? sol.transfers[woofer.id] ?? null : null,
+    hT: tweeter ? sol.transfers[tweeter.id] ?? null : null,
+  };
 }
 
 /** Parse a numeric field, falling back when blank/invalid (module-level twin
@@ -832,7 +847,6 @@ export default function App() {
       const impedances: Record<string, ParsedZma> = {};
       const impedanceFiles: Record<string, StoredFile> = {};
       const status: string[] = [];
-      const isTweeterModel = (m: string) => /tweet|hoch|\bht\b/i.test(m);
 
       let twDrv: (typeof vxp.drivers)[number] | undefined;
       let wfDrv: (typeof vxp.drivers)[number] | undefined;
@@ -1012,13 +1026,11 @@ export default function App() {
           }),
         );
         const sol = solveNetwork(netlist, grid, zOnGrid);
-        const hFor = (model: string) => {
-          const d = sol.drivers.find((dr) => dr.model === model);
-          return d ? sol.transfers[d.id] : null;
-        };
-        // Convention: the crossover's "mid" driver is our woofer slot.
-        const hW = hFor('mid');
-        const hT = hFor('tweeter');
+        // Map by SLOT, not a hard-coded model name — an imported vxp names its
+        // drivers freely (e.g. "Woofer 12w8524" / "Tweeter r2604"), so matching
+        // literal "mid"/"tweeter" silently applied NO filter and summed the raw
+        // drivers (crossover looked like it landed way too high).
+        const { hW, hT } = slotTransfers(sol);
         if (hW) w = applyTransfer(w, hW);
         if (hT) t = applyTransfer(t, hT);
         transfers = { woofer: hW, tweeter: hT };
@@ -2156,14 +2168,9 @@ export default function App() {
         try {
           const { netlist } = crossoverToNetlist({ name: d.name, parts: d.parts });
           const sol = solveNetwork(netlist, grid, zOnGrid);
-          const hFor = (model: string) => {
-            const drv = sol.drivers.find((x) => x.model === model);
-            return drv ? sol.transfers[drv.id] : null;
-          };
           let w = sim.base.w;
           let t = sim.base.t;
-          const hW = hFor('mid');
-          const hT = hFor('tweeter');
+          const { hW, hT } = slotTransfers(sol);
           if (hW) w = applyTransfer(w, hW);
           if (hT) t = applyTransfer(t, hT);
           const combined = combine(w, t, {
