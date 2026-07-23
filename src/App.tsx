@@ -906,7 +906,10 @@ export default function App() {
       }
 
       setProject({ vxp, vxpFile, impedances, impedanceFiles });
-      setXoName('none');
+      // Auto-select the first crossover variant so the import immediately shows
+      // the actual crossover (not the raw drivers summed) — otherwise the SPL
+      // reads as "no filter" until you pick a variant in Setup.
+      setXoName(vxp.crossovers[0]?.name ?? 'none');
       // 1:1 with the import: honour the vxp's OWN per-driver acoustic settings
       // (phase convention, inter-driver Z-offset + response delay, relative
       // polarity) so the app reproduces VituixCAD exactly. These EXPLICIT
