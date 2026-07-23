@@ -924,26 +924,25 @@ export default function App() {
       offsetAutoSkip.current = true;
       let applied = '';
       if (twDrv && wfDrv) {
-        // The inter-driver offset lives on the driver PART per crossover
-        // variant (VituixCAD: tweeter Z = −65 mm), NOT the <DRIVER> block. App
-        // offset is "tweeter mm, + = recessed/later"; VituixCAD Z is negative
-        // for a recessed/later driver (its "tweeter Z = −48 mm" ⟺ +140 µs), so
-        // offset = wooferZ − tweeterZ. ResponseDelay is ms (+delay = +mm, c=343).
-        const dparts = vxp.crossovers[0]?.parts.filter((pt) => pt.type === 'Driver') ?? [];
-        const partZ = (model: string) =>
-          dparts.find((pt) => pt.model === model)?.params.find((pr) => pr.name === 'Z')?.value ?? 0;
-        const offMm =
-          Math.round(
-            (partZ(wfDrv.model) - partZ(twDrv.model) +
-              (twDrv.responseDelay - wfDrv.responseDelay) * 343) *
-              10,
-          ) / 10;
+        // Phase convention + polarity come from the project; the offset does NOT.
+        //
+        // Hard-learned (Robbert vxp, jul 2026): the driver PART carries a Z
+        // (tweeter Z = −65 mm), but VituixCAD does NOT turn that Z into an
+        // inter-driver TIME offset on the axial result — its own exported
+        // filtered responses show ~0 mm (5 µs) inter-driver delay, not 65 mm.
+        // Meanwhile our measured FRDs ALREADY carry the real inter-driver
+        // timing (Robbert: 141 µs ≈ 48 mm, R²=0.985, shared reference). So
+        // deriving an offset from Z double-counts — verified against the real
+        // measured acoustic sum: +65 mm was the WORST fit (7 dB), and the
+        // integration jump it produced was the overlap metric being gamed by a
+        // wrapped delay, not a real improvement. Keep offset 0 and let the
+        // measured phase speak; the Z stays a geometry hint, not a delay.
         const mode = twDrv.minimumPhase || wfDrv.minimumPhase ? 'minimum' : 'measured';
         const inv = !!twDrv.inverted !== !!wfDrv.inverted;
         setPhaseMode(mode);
-        setOffsetMm(String(offMm));
+        setOffsetMm('0');
         setInverted(inv);
-        applied = ` · applied from vxp: ${mode} phase, tweeter offset ${offMm} mm${
+        applied = ` · applied from vxp: ${mode} phase, tweeter offset 0 mm (Z not applied as delay — measured phase already carries the timing)${
           inv ? ', tweeter inverted' : ''
         }`;
       } else {
@@ -2450,14 +2449,15 @@ export default function App() {
     });
     // VituixCAD reference: its filtered tweeter − woofer, computed the SAME way
     // (unwrap-resample onto our grid, then wrapped difference) so it's a true
-    // peer of the curve above. Its export already carries VituixCAD's own Z, so
-    // no app offset is re-applied.
+    // peer of the curve above. NB: VituixCAD's export has the inter-driver
+    // timing removed (drivers time-aligned to ~0 mm), which is exactly why it
+    // diverges from our measured-phase curve — hence the label.
     if (refResp) {
       const rw = resample(refResp.woofer.freq, refResp.woofer.spl, refResp.woofer.phase, result.freq);
       const rt = resample(refResp.tweeter.freq, refResp.tweeter.spl, refResp.tweeter.phase, result.freq);
       out.push({
         id: 'refphase',
-        label: 'VituixCAD reference (relative phase)',
+        label: 'VituixCAD (timing removed)',
         color: 'var(--viz-tick)',
         x: result.freq,
         y: breakWraps(rt.phaseDeg.map((p, i) => wrapDeg(p - rw.phaseDeg[i]))),
