@@ -1,0 +1,4969 @@
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { parseFrd } from './lib/parsers/frd.ts';
+import { parseZma } from './lib/parsers/zma.ts';
+import { parseVxp, type VxpCrossover, type VxpPart, type VxpProject } from './lib/parsers/vxp.ts';
+import { estimateBulkDelay, assessSharedReference } from './lib/timing.ts';
+import { logspace, resample, combine, offsetMmToDelayS, applyTransfer } from './lib/dsp.ts';
+import { computeIntegration } from './lib/integration.ts';
+import { crossoverToNetlist } from './lib/vxpNetwork.ts';
+import { solveNetwork } from './lib/network.ts';
+import { estimateCoilDcr, validateNetlist } from './lib/netlistEdit.ts';
+import {
+  mergeSynthesizedSchematics,
+  nextPartId,
+  normalizeOrigin,
+  templateSchematic,
+} from './lib/schematicEdit.ts';
+import SchematicEditor from './components/SchematicEditor.tsx';
+import { deserializeFilter, serializeFilter } from './lib/filterFile.ts';
+import { tidySchematic } from './lib/tidyLayout.ts';
+import {
+  allSeries,
+  bomFor,
+  catalogSeries,
+  customCatalogParts,
+  formatCatalogPart,
+  hasImportedCatalog,
+  setCustomSeries,
+  type SnapPrefs,
+} from './lib/catalog.ts';
+import { optimizeNetworkValues } from './lib/netOptimizer.ts';
+import {
+  crossoverVariants,
+  followupVariantsFor,
+  rankChainResults,
+  runDesignChain,
+  type ChainResult,
+  type ChainSettings,
+} from './lib/designChain.ts';
+import { deserializeCatalog, serializeCatalog } from './lib/catalogFile.ts';
+import { fromPolar, abs as cAbs, mul as cMul, type Complex } from './lib/complex.ts';
+import {
+  evalDriverFilter,
+  isActive,
+  defaultHpLp,
+  defaultEq,
+  type DriverFilterSpec,
+  type FilterKind,
+} from './lib/filters.ts';
+import { synthesize, formatComponent, type SynthesisResult, type SynthesizedComponent } from './lib/synthesis.ts';
+import { computePhaseStats } from './lib/phaseStats.ts';
+import {
+  optimizeVfCluster,
+  optimizeVirtualFilters,
+  structureOf,
+  type VfOptimizeResult,
+  type StructChoice,
+} from './lib/vfOptimizer.ts';
+import { toTimeDomain, excessGroupDelay } from './lib/timeDomain.ts';
+import {
+  serializeProject,
+  deserializeProject,
+  type NetworkDesign,
+  type ProjectState,
+  type StoredFile,
+} from './lib/project.ts';
+import { minimumPhaseDeg } from './lib/minphase.ts';
+import Chart, { type ChartHandle, type Series } from './components/Chart.tsx';
+import DriverFilterControls from './components/FilterControls.tsx';
+import demoMid from './lib/parsers/fixtures/mid_hor0_mettape.txt?raw';
+import demoTweet from './lib/parsers/fixtures/tweet_hor0_mettape.txt?raw';
+import { computeDirectivity, type AngleResponse } from './lib/directivity.ts';
+import { beamwidth6dBHalfAngle, buildSonogram, type SonogramMode } from './lib/sonogram.ts';
+import Sonogram from './components/Sonogram.tsx';
+import { angleFromFilename } from './lib/angles.ts';
+import demoMidZma from './lib/parsers/fixtures/mid_Backwavecone_sheep75gram.ZMA?raw';
+import demoTweetZma from './lib/parsers/fixtures/tweeter.ZMA?raw';
+import demoVxp from './lib/parsers/fixtures/KOAN 2951 Prototype 140826.vxp?raw';
+import demoMid15 from './lib/parsers/fixtures/mid_hor15_mettape.txt?raw';
+import demoMid30 from './lib/parsers/fixtures/mid_hor30_mettape.txt?raw';
+import demoMid45 from './lib/parsers/fixtures/mid_hor45_mettape.txt?raw';
+import demoMid60 from './lib/parsers/fixtures/mid_hor60_mettape.txt?raw';
+import demoMid75 from './lib/parsers/fixtures/mid_hor75_mettape.txt?raw';
+import demoTweet15 from './lib/parsers/fixtures/tweet_hor15_mettape.txt?raw';
+import demoTweet30 from './lib/parsers/fixtures/tweet_hor30_mettape.txt?raw';
+import demoTweet45 from './lib/parsers/fixtures/tweet_hor45_mettape.txt?raw';
+import demoTweet60 from './lib/parsers/fixtures/tweet_hor60_mettape.txt?raw';
+import demoTweet75 from './lib/parsers/fixtures/tweet_hor75_mettape.txt?raw';
+
+type Parsed = ReturnType<typeof parseFrd>;
+type ParsedZma = ReturnType<typeof parseZma>;
+
+const ordinal = (n: number): string =>
+  n === 1 ? '1st' : n === 2 ? '2nd' : n === 3 ? '3rd' : `${n}th`;
+
+/** 'LR4' → {kind:'LR', order:4}; 'auto' (or anything unparsable) → undefined. */
+function parseHpLpPref(pref: string): StructChoice | undefined {
+  const m = /^(LR|BW|BS)([1-4])$/.exec(pref);
+  if (!m) return undefined;
+  return { kind: m[1] as FilterKind, order: Number(m[2]) as 1 | 2 | 3 | 4 };
+}
+interface Loaded {
+  name: string;
+  raw: string;
+  frd: Parsed;
+}
+interface AngleEntry {
+  hor: number;
+  name: string;
+  raw: string;
+  frd: Parsed;
+}
+interface AngleSets {
+  woofer: AngleEntry[];
+  tweeter: AngleEntry[];
+}
+interface ProjectData {
+  vxp: VxpProject;
+  vxpFile: StoredFile;
+  /** Measured impedance per driver model name used in the crossover. */
+  impedances: Record<string, ParsedZma>;
+  impedanceFiles: Record<string, StoredFile>;
+}
+
+const GRID_N = 600;
+
+/**
+ * Display-only phase-error tiers for line coloring and zones. Finer than the
+ * physical 45/90/120° anchors in integration.ts (which keep driving the
+ * score): green is reserved for ≤15° so a "really tight" crossover looks
+ * different from a merely acceptable one. Status colors from the dataviz
+ * status palette — fixed, never themed. Meaning is never color-alone: the
+ * alignment legend pairs each color with its ° range.
+ */
+type PhaseTier = 'tight' | 'good' | 'ok' | 'marginal' | 'destructive';
+
+const TIER_ORDER: PhaseTier[] = ['tight', 'good', 'ok', 'marginal', 'destructive'];
+
+const TIER_BOUNDS: Record<Exclude<PhaseTier, 'destructive'>, number> = {
+  tight: 15,
+  good: 45,
+  ok: 90,
+  marginal: 120,
+};
+
+function phaseTier(errorDeg: number): PhaseTier {
+  const e = Math.abs(errorDeg);
+  if (e <= TIER_BOUNDS.tight) return 'tight';
+  if (e <= TIER_BOUNDS.good) return 'good';
+  if (e <= TIER_BOUNDS.ok) return 'ok';
+  if (e <= TIER_BOUNDS.marginal) return 'marginal';
+  return 'destructive';
+}
+
+const TIER_COLOR: Record<PhaseTier, string> = {
+  tight: '#0ca30c',
+  good: '#84a80b',
+  ok: '#fab219',
+  marginal: '#ec835a',
+  destructive: '#d03b3b',
+};
+
+const TIER_LABEL: Record<PhaseTier, string> = {
+  tight: '≤15° — tight',
+  good: '≤45° — full summing',
+  ok: '≤90° — ≥3 dB gain',
+  marginal: '≤120° — no gain',
+  destructive: '>120° — cancelling',
+};
+
+/** Toggleable analysis panels (any combination visible; OFF = not computed). */
+type PanelKey = 'directivity' | 'sonogram' | 'transfer' | 'phase' | 'time';
+
+const PANEL_KEYS: PanelKey[] = ['directivity', 'sonogram', 'transfer', 'phase', 'time'];
+
+const PANEL_LABEL: Record<PanelKey, string> = {
+  directivity: 'Directivity',
+  sonogram: 'Sonogram',
+  transfer: 'Filter transfer',
+  phase: 'Phase',
+  time: 'Time domain',
+};
+
+/** Value that trails `value` by `ms`, and FREEZES entirely while `hold` is
+ *  true — the inputs feel instant, the heavy simulation only sees committed
+ *  values: nothing propagates while the field has focus, and after blur the
+ *  final value lands once. No half-typed "1" of "19500" ever reaches it. */
+function useDebounced<T>(value: T, ms: number, hold = false): T {
+  const [debounced, setDebounced] = useState(value);
+  useEffect(() => {
+    if (hold) return;
+    const t = setTimeout(() => setDebounced(value), ms);
+    return () => clearTimeout(t);
+  }, [value, ms, hold]);
+  return debounced;
+}
+
+type Theme = 'system' | 'light' | 'dark';
+const THEME_KEY = 'ads-theme';
+
+function useTheme(): [Theme, (t: Theme) => void] {
+  const [theme, setTheme] = useState<Theme>(() => {
+    const stored = localStorage.getItem(THEME_KEY);
+    return stored === 'light' || stored === 'dark' ? stored : 'system';
+  });
+  useEffect(() => {
+    if (theme === 'system') {
+      delete document.documentElement.dataset.theme;
+      localStorage.removeItem(THEME_KEY);
+    } else {
+      document.documentElement.dataset.theme = theme;
+      localStorage.setItem(THEME_KEY, theme);
+    }
+  }, [theme]);
+  return [theme, setTheme];
+}
+
+/** Parse a numeric field, falling back when blank/invalid (module-level twin
+ *  of the component's `num`, usable before that const is initialised). */
+function numOf(s: string, fallback: number): number {
+  const v = Number(s);
+  return s.trim() !== '' && Number.isFinite(v) ? v : fallback;
+}
+
+/** Linear interpolation of ys at x over a sorted xs (edges clamped). */
+function interpAt(xs: readonly number[], ys: readonly number[], x: number): number | null {
+  if (xs.length === 0) return null;
+  if (x <= xs[0]) return ys[0];
+  if (x >= xs[xs.length - 1]) return ys[ys.length - 1];
+  for (let i = 1; i < xs.length; i++)
+    if (xs[i] >= x) {
+      const t = (x - xs[i - 1]) / (xs[i] - xs[i - 1]);
+      return ys[i - 1] + t * (ys[i] - ys[i - 1]);
+    }
+  return ys[ys.length - 1];
+}
+
+/** A driver's HOT terminal — the one NOT on the ground net — via union-find
+ *  over coincident points plus wire fusion. Used to hang an LCR trap on it. */
+function driverHotPoint(
+  parts: readonly VxpPart[],
+  model: string,
+): { x: number; y: number } | null {
+  const key = (p: { x: number; y: number }) => `${p.x},${p.y}`;
+  const parent = new Map<string, string>();
+  const add = (k: string) => {
+    if (!parent.has(k)) parent.set(k, k);
+  };
+  const find = (k: string): string => {
+    while (parent.get(k) !== k) k = parent.get(k)!;
+    return k;
+  };
+  const union = (a: string, b: string) => {
+    add(a);
+    add(b);
+    parent.set(find(a), find(b));
+  };
+  // Coincident points share a key, so they are already one node.
+  for (const p of parts) for (const w of p.wires) add(key(w));
+  // A wire fuses all of its own points into one net.
+  for (const p of parts)
+    if (p.type === 'Wire')
+      for (let i = 1; i < p.wires.length; i++) union(key(p.wires[0]), key(p.wires[i]));
+  const groundRoots = new Set<string>();
+  for (const p of parts)
+    if (p.type === 'Ground' && p.wires[0]) groundRoots.add(find(key(p.wires[0])));
+  const drv = parts.find(
+    (p) => p.type === 'Driver' && (p as { model?: string }).model === model,
+  );
+  if (!drv || drv.wires.length < 2) return null;
+  const [t0, t1] = drv.wires;
+  if (!groundRoots.has(find(key(t0)))) return t0;
+  if (!groundRoots.has(find(key(t1)))) return t1;
+  return t0;
+}
+
+export default function App() {
+  const [theme, setTheme] = useTheme();
+  const [woofer, setWoofer] = useState<Loaded | null>(null);
+  const [tweeter, setTweeter] = useState<Loaded | null>(null);
+  const [project, setProject] = useState<ProjectData | null>(null);
+  /** Standalone per-model impedances (ZMA in the driver file dialogs) — the
+   *  vxp project is NOT required for solving/synthesis/editor. */
+  const [zStandalone, setZStandalone] = useState<Record<string, { file: StoredFile; zma: ParsedZma }>>({});
+
+  /** All measured impedances by model: vxp-project ones + standalone ZMAs
+   *  (standalone wins on collision — the file you just picked is the truth). */
+  const impedances = useMemo(() => {
+    const out: Record<string, ParsedZma> = { ...(project?.impedances ?? {}) };
+    for (const [model, v] of Object.entries(zStandalone)) out[model] = v.zma;
+    return out;
+  }, [project, zStandalone]);
+
+  /** The ≥2×Fs rule from the measured tweeter impedance: a hard floor for
+   *  the optimizer's HP knee. Null without a pronounced resonance peak; an
+   *  explicit crossover range overrides it (the designer's own call). */
+  const tweeterHpFloor = useMemo(() => {
+    const z = impedances['tweeter'];
+    if (!z) return null;
+    let fPk = 0;
+    let zPk = 0;
+    for (let i = 0; i < z.freq.length; i++) {
+      if (z.freq[i] < 300 || z.freq[i] > 3000) continue;
+      if (z.magnitude[i] > zPk) {
+        zPk = z.magnitude[i];
+        fPk = z.freq[i];
+      }
+    }
+    if (!fPk) return null;
+    let ref = 0;
+    let n = 0;
+    for (let i = 0; i < z.freq.length; i++) {
+      if (z.freq[i] >= fPk * 2.5 && z.freq[i] <= fPk * 4) {
+        ref += z.magnitude[i];
+        n++;
+      }
+    }
+    if (!n || zPk < 1.4 * (ref / n)) return null;
+    return Math.round(2 * fPk);
+  }, [impedances]);
+  const [angleSets, setAngleSets] = useState<AngleSets | null>(null);
+  const [xoName, setXoName] = useState<string>('none');
+  const [error, setError] = useState<string | null>(null);
+  /** Free-text notes per imported file ("group:filename"), saved with the project. */
+  const [fileNotes, setFileNotes] = useState<Record<string, string>>({});
+
+  // Virtual filters, pre-seeded with Sander's proposed target design:
+  // tweeter LR2 HP @ 2.9 kHz + notch 6.5 kHz −10 dB Q 0.5; mid LR4 LP @ 2 kHz.
+  // Factory so a reset hands out FRESH objects, never shared references.
+  const defaultVFilters = () => ({
+    woofer: {
+      gainDb: 0,
+      hp: defaultHpLp(200),
+      lp: { ...defaultHpLp(2000), kind: 'LR' as const, order: 4 as const },
+      eq: [defaultEq(1000, 0, 1), defaultEq(4000, 0, 1)],
+    },
+    tweeter: {
+      gainDb: 0,
+      hp: { ...defaultHpLp(2900), kind: 'LR' as const, order: 2 as const },
+      lp: defaultHpLp(20000),
+      eq: [defaultEq(6500, -10, 0.5), defaultEq(10000, 0, 1)],
+    },
+  });
+  const [vFilters, setVFilters] = useState<{ woofer: DriverFilterSpec; tweeter: DriverFilterSpec }>(
+    defaultVFilters,
+  );
+
+  // View controls. The inputs update instantly; the simulation follows the
+  // DEBOUNCED values so half-typed numbers never reach it.
+  const [fMin, setFMin] = useState('200');
+  const [fMax, setFMax] = useState('20000');
+  // While a range field has focus the simulation freezes on the last
+  // committed values; blur (or Enter) releases the new ones.
+  const [rangeEditing, setRangeEditing] = useState(false);
+  const fMinDeb = useDebounced(fMin, 150, rangeEditing);
+  const fMaxDeb = useDebounced(fMax, 150, rangeEditing);
+  const [splMin, setSplMin] = useState(''); // empty = auto
+  const [splMax, setSplMax] = useState('');
+
+  /** Chart "use as view range": promote a zoomed X-window to the committed
+   *  range (which is also the optimizer/metrics evaluation band). */
+  const commitViewRange = (lo: number, hi: number) => {
+    setFMin(String(Math.round(lo)));
+    setFMax(String(Math.round(hi)));
+  };
+
+  /**
+   * Layout mode: 'auto' follows window width (split ≥760 px), 'split' and
+   * 'stacked' force the two-pane / classic single-column layout. Persisted.
+   */
+  const [layoutMode, setLayoutMode] = useState<'auto' | 'split' | 'stacked'>(() => {
+    const m = localStorage.getItem('ads-ui-layout');
+    return m === 'split' || m === 'stacked' ? m : 'auto';
+  });
+  useEffect(() => {
+    localStorage.setItem('ads-ui-layout', layoutMode);
+  }, [layoutMode]);
+
+  /** Active tab of the left design pane (persisted: reopen where you left off). */
+  const [designTab, setDesignTab] = useState<'import' | 'data' | 'filters' | 'network'>(() => {
+    const t = localStorage.getItem('ads-ui-tab');
+    return t === 'data' || t === 'filters' || t === 'network' ? t : 'import';
+  });
+  useEffect(() => {
+    localStorage.setItem('ads-ui-tab', designTab);
+  }, [designTab]);
+
+  /** Pin the SPL chart to the top of the analysis pane while the rest scrolls. */
+  const [splPinned, setSplPinned] = useState<boolean>(
+    () => localStorage.getItem('ads-ui-splpin') !== 'off',
+  );
+  useEffect(() => {
+    localStorage.setItem('ads-ui-splpin', splPinned ? 'on' : 'off');
+  }, [splPinned]);
+
+  /**
+   * À-la-carte analysis panels: any combination can be visible at once, and
+   * whatever is OFF is not computed either (the heavy memos below gate on
+   * these). SPL and the integration score always stay on. Persisted.
+   */
+  const [showPanels, setShowPanels] = useState<Record<PanelKey, boolean>>(() => {
+    try {
+      const raw = JSON.parse(localStorage.getItem('ads-ui-panels') ?? '{}') as Partial<
+        Record<PanelKey, boolean>
+      >;
+      return Object.fromEntries(
+        PANEL_KEYS.map((k) => [k, raw[k] ?? true]),
+      ) as Record<PanelKey, boolean>;
+    } catch {
+      return Object.fromEntries(PANEL_KEYS.map((k) => [k, true])) as Record<PanelKey, boolean>;
+    }
+  });
+  useEffect(() => {
+    localStorage.setItem('ads-ui-panels', JSON.stringify(showPanels));
+  }, [showPanels]);
+
+  // Tweeter adjustment
+  const [offsetMm, setOffsetMm] = useState('0');
+  const [trimDb, setTrimDb] = useState('0');
+  const [inverted, setInverted] = useState(false);
+
+  /**
+   * Driver phase convention. 'measured' (default) uses the real measured
+   * phase incl. acoustic-centre offsets — the whole point of this tool.
+   * 'minimum' reconstructs phase from magnitude, VituixCAD-style
+   * (MinimumPhase=True, offsets 0) — for apples-to-apples comparison.
+   */
+  const [phaseMode, setPhaseMode] = useState<'measured' | 'minimum'>('measured');
+
+  /** Bypass the virtual filters in the sim. Auto-on when a synthesised
+   *  passive network is imported into the editor (it replaces them — leaving
+   *  them on would filter twice); also handy for A/B: target vs. passive. */
+  const [vfBypass, setVfBypass] = useState(false);
+  /** Optimizer settings collapsed by default — the button is the workflow. */
+  const [showOptSettings, setShowOptSettings] = useState(false);
+  /** Passive-honest optimizer: EQ cut-only, so the virtual design is exactly
+   *  what the passive network can build. Default OFF (Sander): the synthesis
+   *  normalizes any boost to relative attenuation anyway, so leaving boosts
+   *  free gives the virtual optimizer more room; the passive build still can't
+   *  boost. Toggle on to keep the virtual target itself literally passive. */
+  const [vfCutOnly, setVfCutOnly] = useState(false);
+  /** Snap the passive build to purchasable catalog parts (real DCR/ESR).
+   *  Default on: with a catalog imported you clearly intend to build with real
+   *  parts. Only ever effective when a catalog is imported — the engine calls
+   *  guard with hasImportedCatalog(), so without one the design stays at
+   *  theoretically ideal (continuous) values. */
+  const [catalogSnap, setCatalogSnap] = useState(true);
+  /** Breakup guard: stopband leakage beside the crossover must stay ≥20 dB
+   *  down — resonance phase can't be filtered, only made irrelevant. */
+  const [breakupGuard, setBreakupGuard] = useState(true);
+  /** Optional crossover-range constraint for the optimizer (Hz). */
+  const [xoRangeOn, setXoRangeOn] = useState(false);
+  /** Crossover point the designer picks: centre frequency ± margin (Hz).
+   *  Margin 0 = "exactly there" (a minimal ±2% keeps the search alive). */
+  const [xoFreqHz, setXoFreqHz] = useState('2200');
+  const [xoMarginHz, setXoMarginHz] = useState('400');
+  /** Preferred HP/LP alignment (strong prior for the structure search);
+   *  'auto' = free enumeration over the alignment library. */
+  const [hpLpPref, setHpLpPref] = useState('auto');
+  /** Staged design ("trapmethode"): HP/LP first, every next layer (EQ,
+   *  Zobel/LCR, bypass-C) only while the targets are unmet — fewest
+   *  components that reach the goal. */
+  const [stagedOn, setStagedOn] = useState(true);
+  /** Phase metric for both optimizers: 'band' = the panel's avg + P95 over
+   *  the overlap window (what the user reads); 'overlap' = classic weighted
+   *  mean, kept as an easy fallback. */
+  const [phaseMetricMode, setPhaseMetricMode] = useState<'band' | 'overlap'>('band');
+  /** Target ACOUSTIC slopes beside the crossing (dB/oct, 'auto' = free) —
+   *  the "akoestisch 4e orde bij de tweeter"-knop. */
+  const [acSlopeMid, setAcSlopeMid] = useState('24');
+  const [acSlopeTweeter, setAcSlopeTweeter] = useState('12');
+  /** Mid nominal size (inch) — sets the crossover CEILING via cone beaming
+   *  (f ≈ c/π·d_eff; a MID property, per Gemini's window rules). '' = unknown
+   *  → the free band falls back to the tweeter-anchored ceiling. */
+  const [midSizeInch, setMidSizeInch] = useState('');
+  /** Beaming-limited crossover ceiling (Hz): the UPPER bound of the sensible
+   *  crossover window. Effective radiating diameter ≈ 0.82× nominal; beaming
+   *  onsets at c/π·d, and a cone is practically usable to ~3× that (a 5" ⇒
+   *  ~3200 Hz, matching the ~3000–3500 rule of thumb). null when size unknown. */
+  const midXoCeiling = useMemo(() => {
+    const inch = Number(midSizeInch);
+    if (!(inch > 0)) return null;
+    const dEff = inch * 0.0254 * 0.82;
+    return Math.round((3 * 343) / (Math.PI * dEff));
+  }, [midSizeInch]);
+  /** Wizard "think-along": suggested tuning range = the optimizer's evaluation
+   *  band. The USABLE span where both drivers have data — floored at 200 Hz (a
+   *  mid/tweeter tuning floor; raw FRDs often carry an unreliable sub-100 Hz
+   *  tail) and capped at 20 kHz. */
+  const suggestedBand = useMemo((): [number, number] | null => {
+    if (!woofer || !tweeter) return null;
+    const wf = woofer.frd.freq;
+    const tf = tweeter.frd.freq;
+    const lo = Math.max(200, Math.round(Math.max(wf[0], tf[0])));
+    const hi = Math.round(Math.min(wf[wf.length - 1], tf[tf.length - 1], 20000));
+    return hi > lo ? [lo, hi] : null;
+  }, [woofer, tweeter]);
+  /** Wizard "think-along": the passive SYSTEM level. Passive can't boost, so
+   *  the level is set by the LEAST sensitive (limiting) driver — the louder one
+   *  is padded down to match. Mean passband SPL per driver, take the min. */
+  const systemLevelDb = useMemo((): { level: number; limiter: string } | null => {
+    if (!woofer || !tweeter) return null;
+    const meanIn = (l: Loaded, lo: number, hi: number): number | null => {
+      const f = l.frd.freq;
+      const y = l.frd.spl;
+      let s = 0;
+      let n = 0;
+      for (let i = 0; i < f.length; i++)
+        if (f[i] >= lo && f[i] <= hi) {
+          s += y[i];
+          n++;
+        }
+      return n ? s / n : null;
+    };
+    const wl = meanIn(woofer, 300, 1500);
+    const tl = meanIn(tweeter, 3000, 10000);
+    if (wl == null || tl == null) return null;
+    return { level: Math.round(Math.min(wl, tl) * 10) / 10, limiter: wl <= tl ? 'woofer' : 'tweeter' };
+  }, [woofer, tweeter]);
+  /** Component wizard: tier profile + binding series per kind for the snap. */
+  const [wizardOpen, setWizardOpen] = useState(false);
+  const [wizardStep, setWizardStep] = useState(1);
+  const [snapProfile, setSnapProfile] = useState('auto');
+  const [snapSeriesL, setSnapSeriesL] = useState('auto');
+  const [snapSeriesC, setSnapSeriesC] = useState('auto');
+  const [snapSeriesR, setSnapSeriesR] = useState('auto');
+  const [snapStacks, setSnapStacks] = useState(true);
+  /** Value window: a bound series also HARD-bounds the continuous fit of
+   *  series-path slots of that kind to the series' value range. */
+  const [snapBoundToSeries, setSnapBoundToSeries] = useState(false);
+  const [targetRipple, setTargetRipple] = useState('1.5');
+  const [targetPhase, setTargetPhase] = useState('10');
+
+  /** Editable schematic networks (step 6), as TABS: every design lives in its
+   *  own tab (imports and passive builds open a new one), the active tab is
+   *  what the editor shows and the sim runs. The schematic IS the network —
+   *  parts connect where grid points coincide; the netlist is derived. When
+   *  active it replaces the vxp variant; virtual filters still stack. */
+  const [designs, setDesigns] = useState<NetworkDesign[]>([]);
+  const [activeDesignId, setActiveDesignId] = useState<string | null>(null);
+  const [networkActive, setNetworkActive] = useState(false);
+  const [schHistory, setSchHistory] = useState<VxpPart[][]>([]); // per active tab
+  const [compareTabs, setCompareTabs] = useState(true);
+
+  const activeDesign = useMemo(
+    () => designs.find((d) => d.id === activeDesignId) ?? null,
+    [designs, activeDesignId],
+  );
+  const schematic: VxpCrossover | null = useMemo(
+    () => (activeDesign ? { name: activeDesign.name, parts: activeDesign.parts } : null),
+    [activeDesign],
+  );
+
+  function commitSchematic(parts: VxpPart[]) {
+    if (!activeDesign) return;
+    setSchHistory((h) => [...h.slice(-49), activeDesign.parts]);
+    setDesigns((ds) => ds.map((d) => (d.id === activeDesign.id ? { ...d, parts } : d)));
+  }
+
+  function undoSchematic() {
+    if (schHistory.length === 0 || !activeDesignId) return;
+    const prev = schHistory[schHistory.length - 1];
+    setDesigns((ds) => ds.map((d) => (d.id === activeDesignId ? { ...d, parts: prev } : d)));
+    setSchHistory(schHistory.slice(0, -1));
+  }
+
+  /* ---- Add LCR notch (series trap across a driver) — popup on the Network
+   *  tab. Depth → R, Q → L/C ratio, values from the measured impedance at f0
+   *  (same design as the synthesis notch). Inserts live + undoable. ---- */
+  const [trapOpen, setTrapOpen] = useState(false);
+  const [trapModel, setTrapModel] = useState('mid');
+  const [trapFreq, setTrapFreq] = useState('5500');
+  const [trapDepth, setTrapDepth] = useState('-6');
+  const [trapQ, setTrapQ] = useState('3');
+  const trapCompute = useMemo(() => {
+    const f0 = numOf(trapFreq, 0);
+    const q = Math.max(numOf(trapQ, 3), 0.2);
+    const depth = numOf(trapDepth, -6);
+    const z = impedances[trapModel];
+    if (!z || !(f0 > 0) || depth >= -0.1) return null;
+    const zmag = interpAt(z.freq, z.magnitude, f0);
+    if (zmag == null || !(zmag > 0)) return null;
+    const w0 = 2 * Math.PI * f0;
+    const a = 10 ** (depth / 20); // depth < 0 → a < 1 (a cut)
+    const Rn = Math.max((a / (1 - a)) * zmag, 0.2);
+    const X = Rn * q; // characteristic impedance √(L/C)
+    const Lh = X / w0;
+    const Cf = 1 / (X * w0);
+    return {
+      Lh,
+      Lmh: Math.round(Lh * 1e3 * 1000) / 1000,
+      Cuf: Math.round(Cf * 1e6 * 100) / 100,
+      R: Math.round(Rn * 100) / 100,
+      zmag: Math.round(zmag * 100) / 100,
+    };
+  }, [trapModel, trapFreq, trapDepth, trapQ, impedances]);
+
+  function addNotchTrap() {
+    if (!activeDesign || !trapCompute) return;
+    const hot = driverHotPoint(activeDesign.parts, trapModel);
+    if (!hot) {
+      setNetOptNote(`Could not locate the ${trapModel} driver in this network.`);
+      setTrapOpen(false);
+      return;
+    }
+    const tx = hot.x + 7; // hang the trap just right of the driver
+    const y = hot.y;
+    const { Lmh, Cuf, R, Lh } = trapCompute;
+    const ps: VxpPart[] = [...activeDesign.parts];
+    const idL = nextPartId(ps, 'Inductor');
+    ps.push({
+      type: 'Inductor',
+      partId: idL,
+      params: [
+        { name: 'L', value: Lmh, unit: 'mH' },
+        { name: 'DCR', value: Math.round(estimateCoilDcr(Lh) * 1000) / 1000, unit: 'Ω' },
+      ],
+      wires: [{ x: tx, y }, { x: tx, y: y + 5 }],
+    });
+    const idC = nextPartId(ps, 'Capacitor');
+    ps.push({
+      type: 'Capacitor',
+      partId: idC,
+      params: [
+        { name: 'C', value: Cuf, unit: 'uF' },
+        { name: 'ESR', value: 0, unit: 'Ω' },
+      ],
+      wires: [{ x: tx, y: y + 5 }, { x: tx, y: y + 10 }],
+    });
+    const idR = nextPartId(ps, 'Resistor');
+    ps.push({
+      type: 'Resistor',
+      partId: idR,
+      params: [{ name: 'R', value: R, unit: 'Ω' }],
+      wires: [{ x: tx, y: y + 10 }, { x: tx, y: y + 15 }],
+    });
+    ps.push({ type: 'Ground', params: [], wires: [{ x: tx, y: y + 15 }] });
+    ps.push({ type: 'Wire', params: [], wires: [{ x: hot.x, y }, { x: tx, y }] });
+    commitSchematic(ps);
+    setTrapOpen(false);
+    setNetOptNote(
+      `Added LCR trap @ ${Math.round(numOf(trapFreq, 0))} Hz on ${trapModel}: ${Lmh} mH · ${Cuf} µF · ${R} Ω. ` +
+        `Fine-tune with ⚙ Optimize components; "Tidy layout" redraws it.`,
+    );
+  }
+
+  /** The scratch tab that Optimize / Build always writes into. Saving a
+   *  filter snapshots it into a normal tab; Working keeps being overwritten. */
+  const WORKING_ID = 'working';
+
+  function setWorkingDesign(parts: VxpPart[]) {
+    const existing = designs.find((d) => d.id === WORKING_ID);
+    if (existing && activeDesignId === WORKING_ID) {
+      setSchHistory((h) => [...h.slice(-49), existing.parts]);
+    } else {
+      setSchHistory([]);
+    }
+    setDesigns((ds) =>
+      ds.some((d) => d.id === WORKING_ID)
+        ? ds.map((d) => (d.id === WORKING_ID ? { ...d, parts } : d))
+        : [...ds, { id: WORKING_ID, name: 'Working', parts }],
+    );
+    setActiveDesignId(WORKING_ID);
+    setNetworkActive(true);
+  }
+
+  /** Snapshot the active tab into memory under a chosen name — stays where
+   *  you are, the snapshot shows up as a ghost in the compare overlay. */
+  const [saveNameDraft, setSaveNameDraft] = useState<string | null>(null);
+
+  function saveActiveDesign(name: string) {
+    if (!activeDesign) return;
+    const id = `d${Date.now().toString(36)}${Math.floor(Math.random() * 1e4)}`;
+    setDesigns((ds) => [
+      ...ds,
+      {
+        id,
+        name: uniqueDesignName(name.trim() || 'Filter', ds),
+        parts: structuredClone(activeDesign.parts),
+      },
+    ]);
+    setSaveNameDraft(null);
+  }
+
+  /** New tab (auto-unique name), activated, driving the sim. */
+  function addDesign(name: string, parts: VxpPart[]) {
+    const id = `d${Date.now().toString(36)}${Math.floor(Math.random() * 1e4)}`;
+    setDesigns((ds) => [...ds, { id, name: uniqueDesignName(name, ds), parts }]);
+    setActiveDesignId(id);
+    setSchHistory([]);
+    setNetworkActive(true);
+  }
+
+  function selectDesign(id: string) {
+    if (id === activeDesignId) return;
+    setActiveDesignId(id);
+    setSchHistory([]);
+  }
+
+  function renameDesign(id: string, name: string) {
+    const clean = name.trim();
+    if (clean === '') return;
+    setDesigns((ds) => ds.map((d) => (d.id === id ? { ...d, name: clean } : d)));
+  }
+
+  function deleteDesign(id: string) {
+    const rest = designs.filter((d) => d.id !== id);
+    setDesigns(rest);
+    if (activeDesignId === id) {
+      setActiveDesignId(rest.length > 0 ? rest[rest.length - 1].id : null);
+      setSchHistory([]);
+      if (rest.length === 0) setNetworkActive(false);
+    }
+  }
+
+  /**
+   * Per-driver response loader. Multi-select all horizontal angle files at
+   * once: the angle is read from the filename (hor15 / 15deg / deg15); the 0°
+   * (or unmarked) file becomes the main response, the full set feeds the
+   * directivity view. A fresh selection replaces that driver's previous set.
+   */
+  function loadDriverFiles(side: 'woofer' | 'tweeter') {
+    return async (e: React.ChangeEvent<HTMLInputElement>) => {
+      const files = [...(e.target.files ?? [])];
+      e.target.value = '';
+      if (files.length === 0) return;
+      setError(null);
+      try {
+        // ZMA files in the same selection become this driver's impedance —
+        // no vxp project needed for solving/synthesis.
+        const model = side === 'woofer' ? 'mid' : 'tweeter';
+        const zmaFiles = files.filter((f) => f.name.toLowerCase().endsWith('.zma'));
+        for (const f of zmaFiles) {
+          const raw = await f.text();
+          const zma = parseZma(raw);
+          setZStandalone((prev) => ({ ...prev, [model]: { file: { name: f.name, raw }, zma } }));
+        }
+        const frdOnly = files.filter((f) => !f.name.toLowerCase().endsWith('.zma'));
+        if (frdOnly.length === 0) return;
+        const byHor = new Map<number, AngleEntry>();
+        for (const f of frdOnly) {
+          const raw = await f.text();
+          const hor = angleFromFilename(f.name) ?? 0;
+          byHor.set(hor, { hor, name: f.name, raw, frd: parseFrd(raw) });
+        }
+        const entries = [...byHor.values()].sort((a, b) => a.hor - b.hor);
+        const axis = entries.find((a) => a.hor === 0) ?? entries[0];
+        const loaded: Loaded = { name: axis.name, raw: axis.raw, frd: axis.frd };
+        if (side === 'woofer') setWoofer(loaded);
+        else setTweeter(loaded);
+        setAngleSets((prev) => {
+          const next = {
+            woofer: side === 'woofer' ? entries : prev?.woofer ?? [],
+            tweeter: side === 'tweeter' ? entries : prev?.tweeter ?? [],
+          };
+          return next.woofer.length + next.tweeter.length > 0 ? next : null;
+        });
+      } catch (err) {
+        setError(err instanceof Error ? err.message : String(err));
+      }
+    };
+  }
+
+  function loadDemo() {
+    setError(null);
+    setWoofer({ name: 'mid_hor0_mettape.txt (demo)', raw: demoMid, frd: parseFrd(demoMid) });
+    setTweeter({ name: 'tweet_hor0_mettape.txt (demo)', raw: demoTweet, frd: parseFrd(demoTweet) });
+    const entry = (hor: number, raw: string): AngleEntry => ({
+      hor,
+      name: `hor${hor} (demo)`,
+      raw,
+      frd: parseFrd(raw),
+    });
+    setAngleSets({
+      woofer: [
+        entry(0, demoMid), entry(15, demoMid15), entry(30, demoMid30),
+        entry(45, demoMid45), entry(60, demoMid60), entry(75, demoMid75),
+      ],
+      tweeter: [
+        entry(0, demoTweet), entry(15, demoTweet15), entry(30, demoTweet30),
+        entry(45, demoTweet45), entry(60, demoTweet60), entry(75, demoTweet75),
+      ],
+    });
+    setProject({
+      vxp: parseVxp(demoVxp),
+      vxpFile: { name: 'KOAN 2951 Prototype 140826.vxp', raw: demoVxp },
+      impedances: { mid: parseZma(demoMidZma), tweeter: parseZma(demoTweetZma) },
+      impedanceFiles: {
+        mid: { name: 'mid_Backwavecone_sheep75gram.ZMA', raw: demoMidZma },
+        tweeter: { name: 'tweeter.ZMA', raw: demoTweetZma },
+      },
+    });
+  }
+
+  /**
+   * Load a VituixCAD .vxp together with its .ZMA impedance files (multi-select
+   * — the vxp only REFERENCES the ZMAs by filename, it does not contain
+   * them). ZMAs are matched to driver models via the basename in the vxp;
+   * already-loaded impedances are kept as fallback for models not re-supplied.
+   */
+  const [vxpNote, setVxpNote] = useState<string | null>(null);
+
+  async function loadVituixFiles(e: React.ChangeEvent<HTMLInputElement>) {
+    const files = [...(e.target.files ?? [])];
+    e.target.value = '';
+    if (files.length === 0) {
+      // A change event with zero files: either a cancel, or the browser
+      // failed to hand over the selection (seen on network/virtual volumes).
+      setVxpNote(
+        'File dialog returned no files. If you did select files, copy them to a local folder ' +
+          '(e.g. Downloads) and try again.',
+      );
+      return;
+    }
+    setError(null);
+    setVxpNote(`Reading ${files.length} file(s): ${files.map((f) => f.name).join(', ')}…`);
+    try {
+      let vxpFile: StoredFile | null = project?.vxpFile ?? null;
+      const zmaFiles: StoredFile[] = [];
+      const frdFiles: StoredFile[] = [];
+      for (const f of files) {
+        const raw = await f.text();
+        const lower = f.name.toLowerCase();
+        if (lower.endsWith('.vxp')) vxpFile = { name: f.name, raw };
+        else if (lower.endsWith('.zma')) zmaFiles.push({ name: f.name, raw });
+        else frdFiles.push({ name: f.name, raw });
+      }
+      if (!vxpFile) {
+        throw new Error('No .vxp file in the selection — pick the project file plus its ZMA files.');
+      }
+      const vxp = parseVxp(vxpFile.raw);
+
+      const impedances: Record<string, ParsedZma> = {};
+      const impedanceFiles: Record<string, StoredFile> = {};
+      const status: string[] = [];
+      const isTweeterModel = (m: string) => /tweet|hoch|\bht\b/i.test(m);
+
+      for (const d of vxp.drivers) {
+        const parts: string[] = [];
+
+        // Impedance: from this selection, else keep what was already loaded.
+        const wanted = d.impedanceFileName?.toLowerCase();
+        const supplied = zmaFiles.find((z) => z.name.toLowerCase() === wanted);
+        const chosen = supplied ?? project?.impedanceFiles[d.model];
+        if (chosen) {
+          impedances[d.model] = parseZma(chosen.raw);
+          impedanceFiles[d.model] = chosen;
+          parts.push('Z ✓');
+        } else {
+          parts.push(`Z MISSING (expects ${d.impedanceFileName ?? '?'})`);
+        }
+
+        // Responses: the vxp names its measurement files — auto-assign the
+        // on-axis one to the right driver slot, and collect ALL horizontal
+        // angles that are in the selection for the directivity view.
+        const angleEntries: AngleEntry[] = [];
+        for (const r of d.responses) {
+          if (r.ver !== 0) continue;
+          const af = frdFiles.find((f) => f.name.toLowerCase() === r.fileName.toLowerCase());
+          if (af) angleEntries.push({ hor: r.hor, name: af.name, raw: af.raw, frd: parseFrd(af.raw) });
+        }
+        if (angleEntries.length >= 2 && angleEntries.some((a) => a.hor === 0)) {
+          const side = isTweeterModel(d.model) ? 'tweeter' : 'woofer';
+          setAngleSets((prev) => ({
+            woofer: side === 'woofer' ? angleEntries : prev?.woofer ?? [],
+            tweeter: side === 'tweeter' ? angleEntries : prev?.tweeter ?? [],
+          }));
+          parts.push(`${angleEntries.length} angles ✓`);
+        }
+        const resp = d.responses.find((r) => r.hor === 0 && r.ver === 0) ?? d.responses[0];
+        const frd = frdFiles.find((f) => f.name.toLowerCase() === resp?.fileName.toLowerCase());
+        if (frd) {
+          const loaded: Loaded = { name: frd.name, raw: frd.raw, frd: parseFrd(frd.raw) };
+          if (isTweeterModel(d.model)) setTweeter(loaded);
+          else setWoofer(loaded);
+          parts.push(`FRD ✓ (${resp!.fileName}, ${resp!.hor}°)`);
+        } else {
+          parts.push(
+            (isTweeterModel(d.model) ? tweeter : woofer)
+              ? 'FRD kept'
+              : `FRD missing (add ${resp?.fileName ?? '?'} to the selection or load it manually)`,
+          );
+        }
+
+        status.push(`${d.model}: ${parts.join(', ')}`);
+      }
+
+      setProject({ vxp, vxpFile, impedances, impedanceFiles });
+      setXoName('none');
+      // Match the source tool's convention so the first comparison lines up —
+      // unless the timing check finds a plausible shared reference, then the
+      // auto-switch effect flips to Measured (real timing beats comparison).
+      setPhaseMode('minimum');
+      setVxpNote(
+        `${vxpFile.name} — ${vxp.crossovers.length} crossover variant(s) · ` +
+          status.join(' · ') +
+          ' · phase convention: Minimum (VituixCAD-style) for comparison, ' +
+          'auto-switches to Measured when the timing check is plausible',
+      );
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
+    }
+  }
+
+  const num = (s: string, fallback: number) => {
+    const v = Number(s);
+    return s.trim() !== '' && Number.isFinite(v) ? v : fallback;
+  };
+
+  /** Component-wizard snap prefs; undefined when everything is on Auto. */
+  const snapPrefsValue = (): SnapPrefs | undefined => {
+    const seriesByKind: SnapPrefs['seriesByKind'] = {};
+    if (snapSeriesL !== 'auto') seriesByKind.L = snapSeriesL;
+    if (snapSeriesC !== 'auto') seriesByKind.C = snapSeriesC;
+    if (snapSeriesR !== 'auto') seriesByKind.R = snapSeriesR;
+    const hasSeries = Object.keys(seriesByKind).length > 0;
+    // The value window only bites when a series is actually bound.
+    const bound = snapBoundToSeries && hasSeries;
+    if (snapProfile === 'auto' && !hasSeries && snapStacks) return undefined;
+    return {
+      profile: snapProfile as SnapPrefs['profile'],
+      ...(hasSeries ? { seriesByKind } : {}),
+      ...(snapStacks ? {} : { allowStacks: false }),
+      ...(bound ? { boundToSeries: true } : {}),
+    };
+  };
+
+  /** Target acoustic slopes for both optimizers ('auto' selections drop out). */
+  const acousticSlopesValue = (): { mid?: number; tweeter?: number } | undefined => {
+    const mid = acSlopeMid === 'auto' ? undefined : Number(acSlopeMid);
+    const tweeter = acSlopeTweeter === 'auto' ? undefined : Number(acSlopeTweeter);
+    return mid || tweeter ? { mid, tweeter } : undefined;
+  };
+
+  /** Designer's crossover point as [lo, hi] for the optimizers: centre ±
+   *  margin; a (near-)zero margin still leaves ±2% so the search stays
+   *  non-degenerate ("exactly there"). Pins the ACOUSTIC crossing. */
+  const xoRangeValue = (): [number, number] | undefined => {
+    if (!xoRangeOn) return undefined;
+    const f = num(xoFreqHz, 2200);
+    const m = Math.max(num(xoMarginHz, 400), f * 0.02);
+    return [f - m, f + m];
+  };
+
+
+  const sim = useMemo(() => {
+    if (!woofer || !tweeter) return null;
+    const lo = Math.max(num(fMinDeb, 200), woofer.frd.freq[0], tweeter.frd.freq[0]);
+    const hi = Math.min(
+      num(fMaxDeb, 20000),
+      woofer.frd.freq[woofer.frd.freq.length - 1],
+      tweeter.frd.freq[tweeter.frd.freq.length - 1],
+    );
+    if (!(hi > lo)) return null;
+    const grid = logspace(lo, hi, GRID_N);
+    let w = resample(woofer.frd.freq, woofer.frd.spl, woofer.frd.phase, grid);
+    let t = resample(tweeter.frd.freq, tweeter.frd.spl, tweeter.frd.phase, grid);
+
+    // VituixCAD-style comparison mode: throw away the measured phase and
+    // reconstruct minimum phase from magnitude (drivers then sum with zero
+    // inter-driver time offset — exactly what MinimumPhase=True does).
+    if (phaseMode === 'minimum') {
+      w = { ...w, phaseDeg: minimumPhaseDeg(grid, w.spl) };
+      t = { ...t, phaseDeg: minimumPhaseDeg(grid, t.spl) };
+    }
+    // Raw gridded responses (phase convention applied, nothing else) — the
+    // starting point for the compare-overlay of other design tabs.
+    const base = { w, t };
+
+    // Apply the selected passive crossover: solve the network on the measured
+    // impedances, then fold each driver's voltage transfer into its response.
+    let transfers: { woofer: Complex[] | null; tweeter: Complex[] | null } | null = null;
+    let xoError: string | null = null;
+    const xo =
+      project && xoName !== 'none'
+        ? project.vxp.crossovers.find((c) => c.name === xoName)
+        : undefined;
+    // The editable schematic (when switched on) replaces the vxp variant.
+    const useEditor = networkActive && schematic !== null;
+    if (useEditor && Object.keys(impedances).length === 0) {
+      xoError = 'Network editor needs measured impedances — add a .ZMA per driver (or load the demo).';
+    }
+    if ((useEditor || xo) && Object.keys(impedances).length > 0) {
+      try {
+        const netlist = crossoverToNetlist(useEditor ? schematic! : xo!).netlist;
+        const zOnGrid = Object.fromEntries(
+          Object.entries(impedances).map(([model, z]) => {
+            const g = resample(z.freq, z.magnitude, z.phase, grid, { clampEdges: true });
+            return [model, g.spl.map((mag, i) => fromPolar(mag, (g.phaseDeg[i] * Math.PI) / 180))];
+          }),
+        );
+        const sol = solveNetwork(netlist, grid, zOnGrid);
+        const hFor = (model: string) => {
+          const d = sol.drivers.find((dr) => dr.model === model);
+          return d ? sol.transfers[d.id] : null;
+        };
+        // Convention: the crossover's "mid" driver is our woofer slot.
+        const hW = hFor('mid');
+        const hT = hFor('tweeter');
+        if (hW) w = applyTransfer(w, hW);
+        if (hT) t = applyTransfer(t, hT);
+        transfers = { woofer: hW, tweeter: hT };
+      } catch (e) {
+        xoError = e instanceof Error ? e.message : String(e);
+      }
+    }
+
+    // Virtual (target) filters stack on top of whatever passive network runs —
+    // unless bypassed (auto-on when a synthesised passive replaces them, else
+    // that same filtering would apply twice).
+    const stack = (prev: Complex[] | null, extra: Complex[]): Complex[] =>
+      prev ? prev.map((c, i) => cMul(c, extra[i])) : extra;
+    if (!vfBypass && isActive(vFilters.woofer)) {
+      const h = evalDriverFilter(vFilters.woofer, grid);
+      w = applyTransfer(w, h);
+      transfers = { woofer: stack(transfers?.woofer ?? null, h), tweeter: transfers?.tweeter ?? null };
+    }
+    if (!vfBypass && isActive(vFilters.tweeter)) {
+      const h = evalDriverFilter(vFilters.tweeter, grid);
+      t = applyTransfer(t, h);
+      transfers = { woofer: transfers?.woofer ?? null, tweeter: stack(transfers?.tweeter ?? null, h) };
+    }
+
+    return {
+      combined: combine(w, t, {
+        offsetMm: num(offsetMm, 0),
+        trimDb: num(trimDb, 0),
+        inverted,
+      }),
+      transfers,
+      xoError,
+      base,
+    };
+  }, [woofer, tweeter, project, impedances, xoName, vFilters, vfBypass, phaseMode, fMinDeb, fMaxDeb, offsetMm, trimDb, inverted, schematic, networkActive]);
+
+  const result = sim?.combined ?? null;
+
+  const timing = useMemo(() => {
+    if (!woofer || !tweeter) return null;
+    const band = (frd: Parsed): [number, number] => [
+      Math.max(500, frd.freq[0]),
+      Math.min(5000, frd.freq[frd.freq.length - 1]),
+    ];
+    try {
+      const w = estimateBulkDelay(woofer.frd.freq, woofer.frd.phase, band(woofer.frd));
+      const t = estimateBulkDelay(tweeter.frd.freq, tweeter.frd.phase, band(tweeter.frd));
+      return { w, t, ref: assessSharedReference(w, t) };
+    } catch {
+      return null;
+    }
+  }, [woofer, tweeter]);
+
+  /**
+   * Auto phase convention: freshly loaded measurements that pass the shared-
+   * time-reference check carry real inter-driver timing — design on it.
+   * Runs on every new measurement pair (manual load, demo, vxp), so a
+   * plausible verdict overrides the vxp loader's Minimum default; Minimum
+   * stays only where measured timing can't be trusted (or by manual choice).
+   * Skipped once after a project/autosave restore: the saved choice wins.
+   */
+  const phaseAutoSkip = useRef(false);
+  useEffect(() => {
+    const skip = phaseAutoSkip.current;
+    phaseAutoSkip.current = false;
+    if (skip || !timing) return;
+    if (timing.ref.verdict === 'plausible') setPhaseMode('measured');
+  }, [timing]);
+
+  /**
+   * Auto-fill the tweeter offset per phase convention (stays editable — the
+   * fill happens only when the convention or the measurements change):
+   * measured phase carries the real timing IN the phase, so the knob belongs
+   * at 0; minimum phase throws that timing away, so the knob must carry the
+   * measured Δ (bulk-delay fit) instead. Skipped on project restore.
+   */
+  const offsetAutoSkip = useRef(false);
+  useEffect(() => {
+    const skip = offsetAutoSkip.current;
+    offsetAutoSkip.current = false;
+    if (skip || !timing || timing.ref.verdict !== 'plausible') return;
+    setOffsetMm(phaseMode === 'minimum' ? timing.ref.deltaMm.toFixed(1) : '0');
+  }, [phaseMode, timing]);
+
+  const integration = useMemo(() => (result ? computeIntegration(result) : null), [result]);
+
+  /** The SPL chart's live visible x-range (Hz), zoom/pan included — mirrored
+   *  up from the chart so the ±dB read-out tracks exactly what you see. */
+  const [splViewX, setSplViewX] = useState<[number, number] | null>(null);
+  const onSplVisibleX = useCallback((lo: number, hi: number) => {
+    setSplViewX((prev) => (prev && prev[0] === lo && prev[1] === hi ? prev : [lo, hi]));
+  }, []);
+
+  /** Amplitude counterpart to the summing score: how flat the COMBINED SPL
+   *  actually comes out across the VISIBLE SPL range (tracks the chart zoom),
+   *  as ± half the peak-to-peak. A perfect summing score still leaves this
+   *  visible when the drivers' own responses ripple. */
+  const combinedRippleDb = useMemo(() => {
+    if (!result) return null;
+    const lo = splViewX ? splViewX[0] : result.freq[0];
+    const hi = splViewX ? splViewX[1] : result.freq[result.freq.length - 1];
+    let min = Infinity;
+    let max = -Infinity;
+    for (let i = 0; i < result.freq.length; i++) {
+      if (result.freq[i] < lo || result.freq[i] > hi) continue;
+      if (result.combinedSpl[i] < min) min = result.combinedSpl[i];
+      if (result.combinedSpl[i] > max) max = result.combinedSpl[i];
+    }
+    return Number.isFinite(min) && max > min ? (max - min) / 2 : null;
+  }, [result, splViewX]);
+
+  /** Measured ACOUSTIC slopes beside the crossing (dB/oct, least squares over
+   *  ~1 octave). The electrical parts don't reveal the acoustic order — the
+   *  driver's own rolloff stacks on top of the filter; this is the number
+   *  the "acoustic 4th order at the tweeter" rule of thumb is about. */
+  const acousticSlopes = useMemo(() => {
+    if (!result || integration?.overlapCentreHz == null) return null;
+    const xo = integration.overlapCentreHz;
+    const slope = (spl: readonly number[], lo: number, hi: number): number | null => {
+      let n = 0;
+      let sx = 0;
+      let sy = 0;
+      let sxx = 0;
+      let sxy = 0;
+      for (let i = 0; i < result.freq.length; i++) {
+        const f = result.freq[i];
+        if (f < lo || f > hi) continue;
+        const x = Math.log2(f);
+        n++;
+        sx += x;
+        sy += spl[i];
+        sxx += x * x;
+        sxy += x * spl[i];
+      }
+      if (n < 4) return null;
+      return (n * sxy - sx * sy) / (n * sxx - sx * sx);
+    };
+    return {
+      xo,
+      tweeterDbPerOct: slope(result.tweeter.spl, xo / 2.2, xo / 1.15),
+      wooferDbPerOct: slope(result.woofer.spl, xo * 1.15, xo * 2.2),
+    };
+  }, [result, integration]);
+  /** Design-targets popup (Network toolbar). */
+  const [showTargets, setShowTargets] = useState(false);
+
+  /** Angle responses resampled onto a grid, phase convention applied. */
+  function angleResponsesOn(grid: readonly number[]) {
+    if (!angleSets) return null;
+    const toGrid = (frd: Parsed) => {
+      const g = resample(frd.freq, frd.spl, frd.phase, [...grid]);
+      return phaseMode === 'minimum'
+        ? { ...g, phaseDeg: minimumPhaseDeg(grid, g.spl, { sampleRate: 192000, fftSize: 32768 }) }
+        : g;
+    };
+    try {
+      return {
+        woofer: angleSets.woofer.map((a): AngleResponse => ({ hor: a.hor, response: toGrid(a.frd) })),
+        tweeter: angleSets.tweeter.map((a): AngleResponse => ({ hor: a.hor, response: toGrid(a.frd) })),
+      };
+    } catch {
+      return null;
+    }
+  }
+
+  const directivity = useMemo(() => {
+    // À-la-carte: skip the per-angle solve entirely when neither consumer shows.
+    if (!showPanels.directivity && !showPanels.sonogram) return null;
+    if (!angleSets || !result || !sim) return null;
+    const sets = angleResponsesOn(result.freq);
+    if (!sets) return null;
+    return computeDirectivity(
+      sets.woofer,
+      sets.tweeter,
+      sim.transfers?.woofer ?? null,
+      sim.transfers?.tweeter ?? null,
+      { offsetMm: num(offsetMm, 0), trimDb: num(trimDb, 0), inverted },
+    );
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [angleSets, result, sim, phaseMode, offsetMm, trimDb, inverted, showPanels.directivity, showPanels.sonogram]);
+
+  const [sonogramMode, setSonogramMode] = useState<SonogramMode>('normalized');
+  const sonogram = useMemo(
+    () =>
+      showPanels.sonogram && directivity
+        ? {
+            data: buildSonogram(directivity, sonogramMode),
+            beamwidth: beamwidth6dBHalfAngle(directivity),
+          }
+        : null,
+    [directivity, sonogramMode, showPanels.sonogram],
+  );
+
+  const timeDomain = useMemo(() => {
+    if (!showPanels.time || !result) return null;
+    try {
+      const td = toTimeDomain(result.freq, result.combinedSpl, result.combinedPhaseDeg);
+      const egd = excessGroupDelay(result.freq, result.combinedPhaseDeg);
+      return { td, egd };
+    } catch {
+      return null;
+    }
+  }, [result, showPanels.time]);
+
+  const phaseStats = useMemo(
+    () => (result && integration ? computePhaseStats(result.relativePhaseDeg, integration.points) : null),
+    [result, integration],
+  );
+
+  interface SynthState {
+    woofer?: SynthesisResult;
+    tweeter?: SynthesisResult;
+    mode: 'filter' | 'acoustic';
+    error?: string;
+  }
+  const [synth, setSynth] = useState<SynthState | null>(null);
+  const [synthMode, setSynthMode] = useState<'filter' | 'acoustic'>('acoustic');
+  const [phasePriority, setPhasePriority] = useState(50); // % of budget to phase
+  // Results describe a specific target — invalidate when the knobs move.
+  // Exception: the optimizer flow sets new vFilters AND builds for them in
+  // one go; that build is fresh, not stale (the ref skips one invalidation).
+  const synthFresh = useRef(false);
+  useEffect(() => {
+    if (synthFresh.current) {
+      synthFresh.current = false;
+      return;
+    }
+    setSynth(null);
+  }, [vFilters, synthMode, phasePriority]);
+
+  const [vfOpt, setVfOpt] = useState<VfOptimizeResult | null>(null);
+  const [vfBusy, setVfBusy] = useState(false);
+  const [vfError, setVfError] = useState<string | null>(null);
+  /** Live multi-round progress: proof of work while the solver grinds. */
+  const [vfProgress, setVfProgress] = useState<{
+    round: number;
+    evals: number;
+    rippleDb: number;
+    phaseDeg: number;
+    /** Crossover-scan phase label, e.g. "xo 1900 Hz (1/3)". */
+    label?: string;
+  } | null>(null);
+  /** Completed-run stats: the LAST round's progress update gets batched away
+   *  with finish()'s cleanup, so without this the user only ever sees
+   *  "round N−1" ("ik zie maar 1 ronde"). */
+  const [vfRunStats, setVfRunStats] = useState<{ rounds: number; evals: number } | null>(null);
+  const [vfEqBands, setVfEqBands] = useState(2); // EQ bands the optimizer may use per driver
+  const [dirWeight, setDirWeight] = useState(25); // % of amplitude budget on the energy average
+  const [ampTarget, setAmpTarget] = useState<'onAxis' | 'listeningWindow'>('onAxis');
+
+  /* ---- Project persistence (step 8) ---- */
+
+  const AUTOSAVE_KEY = 'ads-autosave';
+  const [persistNote, setPersistNote] = useState<string | null>(null);
+
+  function snapshot(): ProjectState {
+    return {
+      woofer: woofer ? { name: woofer.name, raw: woofer.raw } : undefined,
+      tweeter: tweeter ? { name: tweeter.name, raw: tweeter.raw } : undefined,
+      impedances:
+        project || Object.keys(zStandalone).length > 0
+          ? {
+              ...(project?.impedanceFiles ?? {}),
+              ...Object.fromEntries(Object.entries(zStandalone).map(([m, v]) => [m, v.file])),
+            }
+          : undefined,
+      vxp: project ? project.vxpFile : undefined,
+      angleFiles: angleSets
+        ? {
+            woofer: angleSets.woofer.map((a) => ({ hor: a.hor, name: a.name, raw: a.raw })),
+            tweeter: angleSets.tweeter.map((a) => ({ hor: a.hor, name: a.name, raw: a.raw })),
+          }
+        : undefined,
+      fileNotes: Object.keys(fileNotes).length > 0 ? fileNotes : undefined,
+      design: {
+        vFilters,
+        xoName,
+        offsetMm,
+        trimDb,
+        inverted,
+        fMin,
+        fMax,
+        splMin,
+        splMax,
+        phasePriority,
+        vfEqBands,
+        phaseMode,
+        dirWeight,
+        ampTarget,
+        sonogramMode,
+        networkDesigns: designs.length > 0 ? designs : undefined,
+        activeDesignId: activeDesignId ?? undefined,
+        networkActive,
+        vfBypass,
+        vfCutOnly,
+        catalogSnap,
+        breakupGuard,
+        xoRangeOn,
+        xoFreqHz,
+        xoMarginHz,
+        hpLpPref,
+        phaseMetric: phaseMetricMode,
+        acSlopeMid,
+        acSlopeTweeter,
+        midSizeInch,
+        snapProfile,
+        snapSeriesL,
+        snapSeriesC,
+        snapSeriesR,
+        snapStacks,
+        snapBoundToSeries,
+        stagedOn,
+        targetRipple,
+        targetPhase,
+      },
+    };
+  }
+
+  function applyProject(state: ProjectState) {
+    phaseAutoSkip.current = true; // restored phaseMode wins over the auto-switch
+    offsetAutoSkip.current = true; // restored offset wins over the auto-fill
+    const toLoaded = (f?: StoredFile): Loaded | null =>
+      f ? { name: f.name, raw: f.raw, frd: parseFrd(f.raw) } : null;
+    setWoofer(toLoaded(state.woofer));
+    setTweeter(toLoaded(state.tweeter));
+    if (state.vxp && state.impedances) {
+      const impedances: Record<string, ParsedZma> = {};
+      for (const [model, f] of Object.entries(state.impedances)) {
+        impedances[model] = parseZma(f.raw);
+      }
+      setProject({
+        vxp: parseVxp(state.vxp.raw),
+        vxpFile: state.vxp,
+        impedances,
+        impedanceFiles: state.impedances,
+      });
+      setZStandalone({});
+    } else {
+      setProject(null);
+      // Impedances without a vxp: the standalone per-driver ZMAs.
+      setZStandalone(
+        state.impedances
+          ? Object.fromEntries(
+              Object.entries(state.impedances).map(([m, f]) => [m, { file: f, zma: parseZma(f.raw) }]),
+            )
+          : {},
+      );
+    }
+    if (state.angleFiles) {
+      const toEntries = (files: { hor: number; name: string; raw: string }[]): AngleEntry[] =>
+        files.map((f) => ({ ...f, frd: parseFrd(f.raw) }));
+      setAngleSets({
+        woofer: toEntries(state.angleFiles.woofer ?? []),
+        tweeter: toEntries(state.angleFiles.tweeter ?? []),
+      });
+    } else {
+      setAngleSets(null);
+    }
+    setFileNotes(state.fileNotes ?? {});
+    const d = state.design;
+    setVFilters(d.vFilters);
+    setXoName(d.xoName);
+    setOffsetMm(d.offsetMm);
+    setTrimDb(d.trimDb);
+    setInverted(d.inverted);
+    setFMin(d.fMin);
+    setFMax(d.fMax);
+    setSplMin(d.splMin);
+    setSplMax(d.splMax);
+    setPhasePriority(d.phasePriority);
+    setVfEqBands(d.vfEqBands);
+    setPhaseMode(d.phaseMode ?? 'measured');
+    setDirWeight(d.dirWeight ?? 25);
+    setAmpTarget(d.ampTarget ?? 'onAxis');
+    setSonogramMode(d.sonogramMode ?? 'normalized');
+    // Tabs; a legacy single-schematic file becomes one tab.
+    const restored: NetworkDesign[] =
+      d.networkDesigns ??
+      (d.schematic ? [{ id: 'legacy', name: 'Network', parts: d.schematic.parts }] : []);
+    setDesigns(restored);
+    setActiveDesignId(
+      restored.some((x) => x.id === d.activeDesignId)
+        ? d.activeDesignId!
+        : restored.length > 0
+          ? restored[restored.length - 1].id
+          : null,
+    );
+    setSchHistory([]);
+    setNetworkActive((d.networkActive ?? false) && restored.length > 0);
+    setVfBypass(d.vfBypass ?? false);
+    setVfCutOnly(d.vfCutOnly ?? false);
+    setCatalogSnap(d.catalogSnap ?? true);
+    setBreakupGuard(d.breakupGuard ?? true);
+    setXoRangeOn(d.xoRangeOn ?? false);
+    // Legacy lo/hi range migrates to centre ± margin.
+    if (d.xoFreqHz !== undefined) {
+      setXoFreqHz(d.xoFreqHz);
+      setXoMarginHz(d.xoMarginHz ?? '400');
+    } else if (d.xoRangeLo !== undefined || d.xoRangeHi !== undefined) {
+      const lo = Number(d.xoRangeLo) || 1800;
+      const hi = Number(d.xoRangeHi) || 3500;
+      setXoFreqHz(String(Math.round((lo + hi) / 2)));
+      setXoMarginHz(String(Math.round(Math.abs(hi - lo) / 2)));
+    } else {
+      setXoFreqHz('2200');
+      setXoMarginHz('400');
+    }
+    setHpLpPref(d.hpLpPref ?? 'auto');
+    setPhaseMetricMode(d.phaseMetric ?? 'band');
+    setAcSlopeMid(d.acSlopeMid ?? '24');
+    setAcSlopeTweeter(d.acSlopeTweeter ?? '12');
+    setMidSizeInch(d.midSizeInch ?? '');
+    setSnapProfile(d.snapProfile ?? 'auto');
+    setSnapSeriesL(d.snapSeriesL ?? 'auto');
+    setSnapSeriesC(d.snapSeriesC ?? 'auto');
+    setSnapSeriesR(d.snapSeriesR ?? 'auto');
+    setSnapStacks(d.snapStacks ?? true);
+    setSnapBoundToSeries(d.snapBoundToSeries ?? false);
+    setStagedOn(d.stagedOn ?? true);
+    setTargetRipple(d.targetRipple ?? '1.5');
+    setTargetPhase(d.targetPhase ?? '10');
+  }
+
+  function saveProject() {
+    const blob = new Blob([serializeProject(snapshot())], { type: 'application/json' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = `${new Date().toISOString().slice(0, 10)}-acoustic-design.adsproj.json`;
+    a.click();
+    URL.revokeObjectURL(a.href);
+  }
+
+  async function loadProjectFromFile(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setError(null);
+    try {
+      applyProject(deserializeProject(await file.text()));
+      setPersistNote(`Loaded ${file.name}`);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
+    }
+    e.target.value = '';
+  }
+
+  // Restore autosave once on mount. A blob that fails to restore is moved
+  // aside, NEVER deleted — a transient code bug must not destroy data.
+  useEffect(() => {
+    // Blank slate (fresh visit or after Reset) — guide the user in: auto-open
+    // the wizard on its import step so the first thing they see is "load your
+    // measurements", not an empty canvas. Cancel dismisses it.
+    const openWizardForEmpty = () => {
+      setWizardStep(0);
+      setWizardOpen(true);
+    };
+    const stored = localStorage.getItem(AUTOSAVE_KEY);
+    if (!stored) {
+      openWizardForEmpty();
+      return;
+    }
+    try {
+      applyProject(deserializeProject(stored));
+      setPersistNote('Restored from autosave');
+    } catch {
+      try {
+        localStorage.setItem(`${AUTOSAVE_KEY}-unreadable`, stored);
+      } catch {
+        // No room to keep it aside; leave the original in place instead.
+        return;
+      }
+      localStorage.removeItem(AUTOSAVE_KEY);
+      setPersistNote('Autosave could not be restored — kept aside as backup');
+      openWizardForEmpty();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Debounced autosave on every meaningful change.
+  useEffect(() => {
+    const t = setTimeout(() => {
+      // Never overwrite a real autosave with an EMPTY session (e.g. a mount
+      // where restore failed): only save once something is actually loaded.
+      const s = snapshot();
+      if (!s.woofer && !s.tweeter && !s.vxp && !s.impedances && (s.design.networkDesigns?.length ?? 0) === 0) return;
+      try {
+        localStorage.setItem(AUTOSAVE_KEY, serializeProject(s));
+      } catch {
+        // Quota exceeded — autosave silently unavailable; explicit save still works.
+      }
+    }, 800);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [woofer, tweeter, project, zStandalone, angleSets, fileNotes, vFilters, xoName, offsetMm, trimDb, inverted, fMin, fMax, splMin, splMax, phasePriority, vfEqBands, phaseMode, dirWeight, ampTarget, sonogramMode, designs, activeDesignId, networkActive, vfBypass, vfCutOnly, catalogSnap, breakupGuard, xoRangeOn, xoFreqHz, xoMarginHz, hpLpPref, phaseMetricMode, acSlopeMid, acSlopeTweeter, midSizeInch, snapProfile, snapSeriesL, snapSeriesC, snapSeriesR, snapStacks, snapBoundToSeries, stagedOn, targetRipple, targetPhase]);
+
+  function resetProject() {
+    localStorage.removeItem(AUTOSAVE_KEY);
+    window.location.reload();
+  }
+
+  /** Back to the clean starting point: filters off, optimizer state cleared.
+   *  Measurements, crossover selection and physical offsets stay untouched. */
+  function resetVirtualFilters() {
+    setVFilters(defaultVFilters());
+    setInverted(false);
+    setVfOpt(null);
+    setVfRunStats(null);
+    setVfError(null);
+  }
+
+  /**
+   * One click, the real best: run the optimizer in ROUNDS, each seeded with
+   * the best result so far (what repeated manual clicks used to do), until a
+   * round no longer improves ≥1%, with a round/time cap. Between rounds the
+   * UI paints a live counter (round + total network simulations), so a long
+   * run reads as work, not a hang.
+   */
+  function runVfOptimize() {
+    if (!woofer || !tweeter || !result) return;
+    setVfBusy(true);
+    setVfError(null);
+    setVfProgress(null);
+
+    const grid = result.freq;
+    const w = resample(woofer.frd.freq, woofer.frd.spl, woofer.frd.phase, grid);
+    const t = resample(tweeter.frd.freq, tweeter.frd.spl, tweeter.frd.phase, grid);
+    const angleData = angleResponsesOn(grid) ?? undefined;
+    // The optimizer targets what you look at: the view range is the
+    // evaluation band (top edge backed off 2.5% from the grid edge).
+    const opts = {
+      phasePriority: phasePriority / 100,
+      eqBandsPerDriver: vfEqBands,
+      angleData,
+      directivityWeight: dirWeight / 100,
+      ampTarget,
+      cutOnly: vfCutOnly,
+      breakupGuard,
+      structurePreference: parseHpLpPref(hpLpPref),
+      targets: stagedOn
+        ? { rippleDb: num(targetRipple, 1.5), phaseDeg: num(targetPhase, 10) }
+        : undefined,
+      hpFloorHz: tweeterHpFloor ?? undefined,
+      phaseMetric: phaseMetricMode,
+      acousticSlopes: acousticSlopesValue(),
+      xoRange: xoRangeValue(),
+      band: [
+        Math.max(300, grid[0]),
+        Math.min(grid[grid.length - 1] * 0.975, num(fMax, 20000)),
+      ] as [number, number],
+    };
+
+    /* ---- FULL-CHAIN CROSSOVER SCAN (with measured impedances) ----
+     * The vf-stage ranking does NOT predict the built-and-tuned ranking
+     * (measured on KOAN: xo 1900±200 looked worst at the vf stage, became
+     * the best assembled result 0.33 dB/3.5°, while the 2100 pin ended
+     * 0.94 dB/12.5°). So each crossover-point candidate runs the WHOLE
+     * chain — design rounds → synthesis → assembled tune — and the final
+     * results compete. Deterministic: same input → same output. ---- */
+    if (Object.keys(impedances).length > 0) {
+      const zOnGrid = Object.fromEntries(
+        Object.entries(impedances).map(([model, z]) => {
+          const g = resample(z.freq, z.magnitude, z.phase, [...grid], { clampEdges: true });
+          return [model, g.spl.map((mag, i) => fromPolar(mag, (g.phaseDeg[i] * Math.PI) / 180))];
+        }),
+      );
+      const safety = (() => {
+        const lo = Math.max(200, woofer.frd.freq[0], tweeter.frd.freq[0]);
+        const hi = Math.min(
+          20000,
+          woofer.frd.freq[woofer.frd.freq.length - 1],
+          tweeter.frd.freq[tweeter.frd.freq.length - 1],
+        );
+        if (!(hi > lo * 1.5)) return undefined;
+        const sGrid = logspace(lo, hi, 240);
+        return {
+          freqs: sGrid,
+          w: resample(woofer.frd.freq, woofer.frd.spl, woofer.frd.phase, sGrid),
+          t: resample(tweeter.frd.freq, tweeter.frd.spl, tweeter.frd.phase, sGrid),
+          z: Object.fromEntries(
+            Object.entries(impedances).map(([model, zz]) => {
+              const g = resample(zz.freq, zz.magnitude, zz.phase, sGrid, { clampEdges: true });
+              return [
+                model,
+                g.spl.map((mag, i) => fromPolar(mag, (g.phaseDeg[i] * Math.PI) / 180)),
+              ];
+            }),
+          ),
+        };
+      })();
+      const targets = stagedOn
+        ? { rippleDb: num(targetRipple, 1.5), phaseDeg: num(targetPhase, 10) }
+        : undefined;
+      const settings: ChainSettings = {
+        phasePriority: phasePriority / 100,
+        eqBandsPerDriver: vfEqBands,
+        angleData,
+        directivityWeight: dirWeight / 100,
+        ampTarget,
+        cutOnly: vfCutOnly,
+        breakupGuard,
+        structurePreference: parseHpLpPref(hpLpPref),
+        targets,
+        hpFloorHz: tweeterHpFloor ?? undefined,
+        phaseMetric: phaseMetricMode,
+        acousticSlopes: acousticSlopesValue() ?? undefined,
+        band: opts.band,
+        synthMode,
+        catalogSnap: catalogSnap && hasImportedCatalog(),
+        snapPrefs: snapPrefsValue(),
+        safety,
+      };
+      // Mutable on purpose: an unpinned run starts as one free chain and, once
+      // its crossing is known, appends two pinned follow-ups around it — a
+      // single chain has no competition and one bad basin then simply wins
+      // (measured: Positie-run, phase 3.4° → 11.7° with nothing to beat it).
+      // Free run: BOUND the crossover to a sensible band [2×Fs, ~1.5×] so it
+      // can't roam to extremes — measured on KOAN, the flatness objective is
+      // flat across a wide xo range and lands arbitrarily (1644 too low,
+      // 3172/3251/3723 too high, from tiny settings changes). The xoRange
+      // penalty is ZERO inside the band (vfOptimizer.xoPenalty) and quadratic
+      // outside — so a LOW ceiling both narrows the band AND makes an extreme
+      // overshoot expensive (at 1.7× the soft penalty let 3172 slip past 3053;
+      // at 1.5× the ceiling is ~2700 and 3172 costs a real penalty). Free
+      // within a sane band, not a hard pin — one chain, not a slow spread. A
+      // user pin overrides it; no Fs floor (no impedance) → truly free.
+      const userXo = xoRangeValue();
+      const saneFree: [number, number] | undefined = (() => {
+        if (tweeterHpFloor === null) return undefined;
+        const floor = tweeterHpFloor; // tweeter: ≥2×Fs
+        // Mid beaming ceiling when the mid size is known (the physically-right
+        // upper bound); else fall back to a tweeter-anchored estimate.
+        const ceil = Math.max(midXoCeiling ?? floor * 1.7, floor * 1.2);
+        // Aim at the CENTRE of the driver window (its geometric mean — for KOAN
+        // + 5" that is ~2400 Hz, exactly the sweet spot), with ±~0.28 oct room
+        // so the metric can fine-tune without drifting to an extreme edge.
+        const centre = Math.sqrt(floor * ceil);
+        return [centre / 1.22, centre * 1.22];
+      })();
+      const variants: { label: string; xoRange?: [number, number] }[] = userXo
+        ? crossoverVariants(userXo)
+        : [{ label: 'free', xoRange: saneFree }];
+      const chainResults: ChainResult[] = [];
+      let idx = 0;
+      let totalRounds = 0;
+      let totalSims = 0;
+      const adjust = { offsetMm: num(offsetMm, 0), trimDb: num(trimDb, 0), inverted };
+      const stepChain = () => {
+        try {
+          const v = variants[idx];
+          const r = runDesignChain(
+            { grid: [...grid], w, t, driverZ: zOnGrid, adjust, seed: defaultVFilters(), settings, xoRange: v.xoRange },
+            v.label,
+          );
+          chainResults.push(r);
+          totalRounds += r.rounds;
+          totalSims += r.evaluations;
+          // TRULY-free run (no Fs floor to bound it, `!v.xoRange`): a single
+          // chain in a bad basin has nothing to beat it, so rescue with
+          // follow-ups when it misses the staged targets. The sane-band-bounded
+          // free run (v.xoRange = saneFree) needs none of this — the band
+          // constraint already keeps its crossover sensible.
+          if (idx === 0 && !v.xoRange && r.net.after.xoHz && targets) {
+            const met =
+              r.net.after.rippleDb <= targets.rippleDb &&
+              r.net.after.phaseDeg <= targets.phaseDeg;
+            if (!met) variants.push(...followupVariantsFor(r.net.after.xoHz));
+          }
+          setVfProgress({
+            round: idx + 1,
+            evals: totalSims,
+            rippleDb: r.net.after.rippleDb,
+            phaseDeg: r.net.after.phaseDeg,
+            label: `xo ${v.label} (${idx + 1}/${variants.length})`,
+          });
+          idx++;
+          if (idx < variants.length) {
+            setTimeout(stepChain, 40); // let the counter paint
+            return;
+          }
+          // Winner: targets met first, then blended score at the priority.
+          const ranked = rankChainResults(
+            chainResults,
+            targets,
+            phasePriority / 100,
+            tweeterHpFloor ?? undefined,
+          );
+          const win = ranked[0];
+          setVFilters(win.vf.specs);
+          setInverted(win.vf.inverted);
+          setVfOpt(win.vf);
+          setVfRunStats({ rounds: totalRounds, evals: totalSims });
+          synthFresh.current = true;
+          setSynth({ mode: synthMode, woofer: win.synthWoofer, tweeter: win.synthTweeter });
+          setWorkingDesign(win.parts);
+          setVfBypass(true); // the BUILT network is the result on screen
+          setNetOptNote(
+            (variants.length > 1
+              ? `crossover scan — winner xo ${win.label}: ` +
+                ranked
+                  .map(
+                    (rr) =>
+                      `${rr.label} ${rr.net.after.rippleDb.toFixed(2)} dB/${rr.net.after.phaseDeg.toFixed(1)}°` +
+                      (rr.bomTotalEur !== null ? ` €${Math.round(rr.bomTotalEur)}` : ''),
+                  )
+                  .join(' · ')
+              : `${win.net.after.rippleDb.toFixed(2)} dB / ${win.net.after.phaseDeg.toFixed(1)}°` +
+                (win.bomTotalEur !== null ? ` · BOM €${Math.round(win.bomTotalEur)}` : '')) +
+              (win.net.snapNote ? ` · ${win.net.snapNote}` : '') +
+              (win.net.valueWindowNote ? ` · ${win.net.valueWindowNote}` : '') +
+              (win.net.safetyNote ? ` · ⚠ ${win.net.safetyNote}` : ''),
+          );
+          setVfProgress(null);
+          setVfBusy(false);
+        } catch (e) {
+          setVfError(e instanceof Error ? e.message : String(e));
+          setVfProgress(null);
+          setVfBusy(false);
+        }
+      };
+      setTimeout(stepChain, 30);
+      return;
+    }
+
+    /* ---- No measured impedances: virtual-filter rounds only (no build). ----
+     * Quality beats speed here (Sander): the real stop is "a round no longer
+     * pays", with a hard ROUND cap as the bound. Deliberately NO wall-clock
+     * budget — deterministic across machines. ---- */
+    const MAX_ROUNDS = 12;
+    let best: VfOptimizeResult | null = null;
+    let round = 0;
+    let totalEvals = 0;
+
+    // Two starting points, no manual "Reset filters" needed: the user's
+    // current design (respected as seed, guarded against regression) AND a
+    // clean slate (fresh exploration — an already-optimized seed converges
+    // instantly and would otherwise just confirm itself). Best one wins.
+    // The clean-slate exploration seed runs as a PRIORITY CLUSTER (setpoint
+    // ±5%): a 5% priority nudge kicks the search into a different, often better
+    // basin (Sander's 50→55% flip), and ranking the cluster on the setpoint
+    // yardstick lets the optimizer land there itself instead of the user
+    // hunting with the slider. Only the fresh explorer clusters (+2 runs); the
+    // current-design seed and the re-seed rounds stay single runs.
+    const clean = defaultVFilters();
+    const currentIsClean = !isActive(vFilters.woofer) && !isActive(vFilters.tweeter);
+    const seedQueue: { specs: typeof vFilters; inv: boolean; cluster?: boolean }[] = currentIsClean
+      ? [{ specs: vFilters, inv: inverted, cluster: true }]
+      : [
+          { specs: vFilters, inv: inverted },
+          { specs: clean, inv: false, cluster: true },
+        ];
+    let seedSpecs = seedQueue[0].specs;
+    let seedInverted = seedQueue[0].inv;
+    let seedCluster = seedQueue[0].cluster ?? false;
+    // Re-seed rounds fix the structure to the best so far (speed): the queue
+    // seeds still enumerate, only the deep refinement rounds skip it.
+    let seedFixed = false;
+    let queueIdx = 1;
+
+    const finish = () => {
+      if (!best) return;
+      setVFilters(best.specs);
+      setInverted(best.inverted);
+      setVfOpt(best);
+      setVfRunStats({ rounds: round, evals: totalEvals });
+      // Optimizer results must be visible: lift a bypass that would hide them.
+      setVfBypass(false);
+      // One click does it all: build the passive filter from the best result
+      // and simulate it (lands in the Working tab, bypass back on) — then the
+      // component tuner polishes the ASSEMBLED network (next render, when the
+      // sim reflects the fresh build).
+      runSynthesis(best.specs);
+      setPendingNetTune(true);
+      setVfProgress(null);
+      setVfBusy(false);
+    };
+
+    const step = () => {
+      try {
+        const adj = { offsetMm: num(offsetMm, 0), trimDb: num(trimDb, 0), inverted: seedInverted };
+        let r: VfOptimizeResult;
+        if (seedCluster) {
+          const cl = optimizeVfCluster(grid, w, t, seedSpecs, adj, opts);
+          r = cl.best;
+          totalEvals += cl.evaluations;
+        } else {
+          const stepOpts =
+            seedFixed && best ? { ...opts, fixedStructure: structureOf(best) } : opts;
+          r = optimizeVirtualFilters(grid, w, t, seedSpecs, adj, stepOpts);
+          totalEvals += r.evaluations;
+        }
+        round++;
+        const improved = !best || r.objective < best.objective * 0.99;
+        if (!best || r.objective < best.objective) best = r;
+        setVfProgress({
+          round,
+          evals: totalEvals,
+          rippleDb: best.after.responseStdDb,
+          phaseDeg: best.after.avgPhaseErrDeg,
+        });
+        // Queued starting points always get their turn; after that, rounds
+        // continue from the best so far while they keep paying ≥1%.
+        if (round < MAX_ROUNDS && (queueIdx < seedQueue.length || improved)) {
+          if (queueIdx < seedQueue.length) {
+            seedSpecs = seedQueue[queueIdx].specs;
+            seedInverted = seedQueue[queueIdx].inv;
+            seedCluster = seedQueue[queueIdx].cluster ?? false;
+            seedFixed = false;
+            queueIdx++;
+          } else {
+            // Seed from the BEST so far — a regressed round must not drag
+            // the search along with it.
+            seedSpecs = best.specs;
+            seedInverted = best.inverted;
+            seedCluster = false;
+            seedFixed = true;
+          }
+          setTimeout(step, 40); // let the counter paint before the next round
+          return;
+        }
+        finish();
+      } catch (e) {
+        setVfError(e instanceof Error ? e.message : String(e));
+        setVfProgress(null);
+        setVfBusy(false);
+      }
+    };
+    // Yield a frame so the busy state paints before the solver blocks.
+    setTimeout(step, 30);
+  }
+
+  /**
+   * Synthesise a passive network from virtual-filter specs (defaults to the
+   * live ones; the optimizer passes its fresh result) and drop it in the
+   * WORKING tab, driving the sim. The virtual filters it replaces are
+   * bypassed — leaving them on would filter twice.
+   */
+  function runSynthesis(specsIn?: { woofer: DriverFilterSpec; tweeter: DriverFilterSpec }) {
+    if (!result || !woofer || !tweeter || Object.keys(impedances).length === 0) return;
+    const specs = specsIn ?? vFilters;
+    // Optimizer flow: vFilters are being replaced in the same batch — this
+    // build belongs to the NEW filters, don't let the invalidation wipe it.
+    if (specsIn) synthFresh.current = true;
+    try {
+      const grid = result.freq;
+      const zFor = (model: string) => {
+        const z = impedances[model];
+        if (!z) throw new Error(`No measured impedance for "${model}".`);
+        const g = resample(z.freq, z.magnitude, z.phase, grid, { clampEdges: true });
+        return g.spl.map((m, i) => fromPolar(m, (g.phaseDeg[i] * Math.PI) / 180));
+      };
+      // RAW driver responses (no filters applied) for acoustic-mode targets.
+      const rawSpl = (l: Loaded) => resample(l.frd.freq, l.frd.spl, l.frd.phase, grid).spl;
+      const opts = (l: Loaded) => ({
+        mode: synthMode,
+        phasePriority: phasePriority / 100,
+        catalogSnap: catalogSnap && hasImportedCatalog(),
+        // Staged design: Zobel/LCR/top-octave hold only when the bare HP/LP
+        // ladder demonstrably falls short (trede 2 van de trapmethode).
+        corrections: (stagedOn ? 'lean' : 'auto') as 'lean' | 'auto',
+        // Per-branch FIT rms (dB), a different metric from the combined-response
+        // ±dB target — kept decoupled at its calibrated value so switching the
+        // user target to peak-±dB doesn't silently loosen the lean gate.
+        leanTargetDb: 0.5,
+        snapPrefs: snapPrefsValue(),
+        ...(synthMode === 'acoustic' ? { driverSplDb: rawSpl(l) } : {}),
+      });
+      // Passives cannot boost: shift both driver gains down by the highest
+      // one, preserving the RELATIVE balance with only attenuation.
+      const gShift = Math.max(specs.woofer.gainDb, specs.tweeter.gainDb, 0);
+      const shifted = (specIn: DriverFilterSpec): DriverFilterSpec => ({
+        ...specIn,
+        gainDb: Math.round((specIn.gainDb - gShift) * 10) / 10,
+      });
+      const out: SynthState = { mode: synthMode };
+      if (isActive(specs.woofer))
+        out.woofer = synthesize(shifted(specs.woofer), grid, zFor('mid'), opts(woofer));
+      if (isActive(specs.tweeter))
+        out.tweeter = synthesize(shifted(specs.tweeter), grid, zFor('tweeter'), opts(tweeter));
+      if (!out.woofer && !out.tweeter) out.error = 'No active virtual filter blocks to synthesise.';
+      setSynth(out);
+      if (!out.error) {
+        const branches: { components: SynthesizedComponent[]; model: string }[] = [];
+        if (out.woofer) branches.push({ components: out.woofer.components, model: 'mid' });
+        if (out.tweeter) branches.push({ components: out.tweeter.components, model: 'tweeter' });
+        setWorkingDesign(mergeSynthesizedSchematics(branches).parts);
+        setVfBypass(true);
+      }
+    } catch (e) {
+      setSynth({ mode: synthMode, error: e instanceof Error ? e.message : String(e) });
+    }
+  }
+
+  /** Driver models with measured impedance available for the network editor. */
+  const zModels = useMemo(() => Object.keys(impedances), [impedances]);
+
+  const networkIssues = useMemo(() => {
+    if (!schematic) return null;
+    try {
+      return validateNetlist(crossoverToNetlist(schematic).netlist, zModels);
+    } catch (e) {
+      return { errors: [e instanceof Error ? e.message : String(e)], warnings: [] };
+    }
+  }, [schematic, zModels]);
+
+  // Imports open a NEW tab — peeking at a variant never costs you work.
+  function importNetworkFromVariant() {
+    const xo = project && xoName !== 'none' ? project.vxp.crossovers.find((c) => c.name === xoName) : undefined;
+    if (!xo) return;
+    addDesign(xoName, normalizeOrigin(xo.parts));
+  }
+
+  function startNetworkFromTemplate() {
+    addDesign('New network', templateSchematic(zModels.length > 0 ? zModels : ['mid', 'tweeter']).parts);
+  }
+
+  /** Manual "Build passive filter" runs the synchronous synthesis — the
+   *  flag paints the busy overlay before the solver blocks the thread. */
+  const [synthBusy, setSynthBusy] = useState(false);
+  /** Passive-in-the-loop: re-fit the ACTIVE tab's unlocked component values
+   *  against the measured combined response. 🔒 parts keep their value. */
+  const [netOptBusy, setNetOptBusy] = useState(false);
+  const [netOptNote, setNetOptNote] = useState<string | null>(null);
+  /** One-click chain: after Optimize→Build lands in Working, auto-run the
+   *  component tuner ON THE ASSEMBLY — branch syntheses are judged per
+   *  branch, only the tuner judges the built SUM (phase included). */
+  const [pendingNetTune, setPendingNetTune] = useState(false);
+  useEffect(() => {
+    if (!pendingNetTune || netOptBusy) return;
+    if (!activeDesign || !sim) return;
+    setPendingNetTune(false);
+    runNetOptimize();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pendingNetTune, sim, activeDesign, netOptBusy]);
+
+  function runNetOptimize() {
+    if (!activeDesign || !sim || Object.keys(impedances).length === 0) return;
+    setNetOptBusy(true);
+    setNetOptNote(null);
+    setTimeout(() => {
+      try {
+        const grid = sim.combined.freq;
+        const zOnGrid = Object.fromEntries(
+          Object.entries(impedances).map(([model, z]) => {
+            const g = resample(z.freq, z.magnitude, z.phase, [...grid], { clampEdges: true });
+            return [model, g.spl.map((mag, i) => fromPolar(mag, (g.phaseDeg[i] * Math.PI) / 180))];
+          }),
+        );
+        // Full-measurement-band safety data: the view range is the design
+        // scope, but the tuner's fundamentals (crossing, valley, protection)
+        // must hold on the WHOLE measurement — a zoomed view must not let a
+        // branch die out of sight.
+        const safety = (() => {
+          if (!woofer || !tweeter) return undefined;
+          const lo = Math.max(200, woofer.frd.freq[0], tweeter.frd.freq[0]);
+          const hi = Math.min(
+            20000,
+            woofer.frd.freq[woofer.frd.freq.length - 1],
+            tweeter.frd.freq[tweeter.frd.freq.length - 1],
+          );
+          if (!(hi > lo * 1.5)) return undefined;
+          const sGrid = logspace(lo, hi, 240);
+          return {
+            freqs: sGrid,
+            w: resample(woofer.frd.freq, woofer.frd.spl, woofer.frd.phase, sGrid),
+            t: resample(tweeter.frd.freq, tweeter.frd.spl, tweeter.frd.phase, sGrid),
+            z: Object.fromEntries(
+              Object.entries(impedances).map(([model, zz]) => {
+                const g = resample(zz.freq, zz.magnitude, zz.phase, sGrid, { clampEdges: true });
+                return [
+                  model,
+                  g.spl.map((mag, i) => fromPolar(mag, (g.phaseDeg[i] * Math.PI) / 180)),
+                ];
+              }),
+            ),
+          };
+        })();
+        const r = optimizeNetworkValues(
+          activeDesign.parts,
+          grid,
+          sim.base.w,
+          sim.base.t,
+          zOnGrid,
+          { offsetMm: num(offsetMm, 0), trimDb: num(trimDb, 0), inverted },
+          {
+            phasePriority: phasePriority / 100,
+            angleData: angleResponsesOn(grid) ?? undefined,
+            directivityWeight: dirWeight / 100,
+            ampTarget,
+            breakupGuard,
+            staged: stagedOn
+              ? { rippleDb: num(targetRipple, 1.5), phaseDeg: num(targetPhase, 10) }
+              : undefined,
+            xoRange: xoRangeValue(),
+            phaseMetric: phaseMetricMode,
+            acousticSlopes: acousticSlopesValue(),
+            catalogSnap: catalogSnap && hasImportedCatalog(),
+            snapPrefs: snapPrefsValue(),
+            band: [Math.max(300, grid[0]), Math.min(grid[grid.length - 1] * 0.975, num(fMax, 20000))],
+            safety,
+          },
+        );
+        if (!r.safetyNote) {
+          commitSchematic(r.parts); // undo-able, sim follows live
+          setNetworkActive(true);
+        }
+        setNetOptNote(
+          r.safetyNote
+            ? `⚠ ${r.safetyNote}`
+            : `${r.tuned} components tuned (${r.evaluations.toLocaleString('nl-NL')} sims) — ` +
+                `ripple ${r.before.rippleDb.toFixed(2)} → ${r.after.rippleDb.toFixed(2)} dB · ` +
+                `phase ${r.before.phaseDeg.toFixed(1)}° → ${r.after.phaseDeg.toFixed(1)}°` +
+                (r.removed.length > 0 ? ` · pruned: ${r.removed.join(', ')}` : '') +
+                (r.added.length > 0 ? ` · bypass-C added: ${r.added.join(', ')}` : '') +
+                (r.snapNote ? ` · ${r.snapNote}` : '') +
+                (r.valueWindowNote ? ` · ${r.valueWindowNote}` : ''),
+        );
+      } catch (e) {
+        setError(e instanceof Error ? e.message : String(e));
+      } finally {
+        setNetOptBusy(false);
+      }
+    }, 30);
+  }
+
+  /** User-imported catalog series survive across sessions and projects. */
+  const CUSTOM_CATALOG_KEY = 'ads-custom-catalog';
+  useEffect(() => {
+    const stored = localStorage.getItem(CUSTOM_CATALOG_KEY);
+    if (!stored) return;
+    try {
+      const imp = deserializeCatalog(stored);
+      setCustomSeries(imp.series, imp.parts);
+    } catch {
+      // Unreadable custom catalog: leave it in place, run with built-ins.
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  function exportCatalog() {
+    const blob = new Blob([serializeCatalog(allSeries(), customCatalogParts())], {
+      type: 'application/json',
+    });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'components.adscatalog.json';
+    a.click();
+    URL.revokeObjectURL(a.href);
+  }
+
+  async function importCatalogFromFile(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setError(null);
+    try {
+      const imp = deserializeCatalog(await file.text());
+      setCustomSeries(imp.series, imp.parts);
+      localStorage.setItem(CUSTOM_CATALOG_KEY, serializeCatalog(imp.series, imp.parts));
+      setPersistNote(`Imported catalog ${file.name} — series available in the editor inspector`);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
+    }
+    e.target.value = '';
+  }
+
+  function exportActiveFilter() {
+    if (!activeDesign) return;
+    const blob = new Blob([serializeFilter(activeDesign)], { type: 'application/json' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    const safe = activeDesign.name.replace(/[^\w\- ]+/g, '').trim() || 'filter';
+    a.download = `${safe}.adsfilter.json`;
+    a.click();
+    URL.revokeObjectURL(a.href);
+  }
+
+  async function importFilterFromFile(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setError(null);
+    try {
+      const f = deserializeFilter(await file.text());
+      // Layout travels with the file — a filter exported under an older
+      // layout may carry cramped coordinates. Re-place it from the netlist
+      // (electrically identical); exotic topologies keep their own drawing.
+      const tidied = tidySchematic(f.parts);
+      addDesign(f.name, tidied ?? f.parts); // new tab — imports never cost work
+      setPersistNote(`Imported filter ${file.name}${tidied ? ' (layout tidied)' : ''}`);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
+    }
+    e.target.value = '';
+  }
+
+  // SPL y-domain: auto from visible traces (null trace excluded — its dips
+  // would blow up the range), 5 dB rounding, manual override wins.
+  const splDomain: [number, number] = useMemo(() => {
+    let lo = 60;
+    let hi = 110;
+    if (result) {
+      const vals = [...result.woofer.spl, ...result.tweeter.spl, ...result.combinedSpl];
+      lo = Math.floor((Math.min(...vals) - 3) / 5) * 5;
+      hi = Math.ceil((Math.max(...vals) + 3) / 5) * 5;
+    }
+    return [num(splMin, lo), num(splMax, hi)];
+  }, [result, splMin, splMax]);
+
+  const xDomain: [number, number] = result
+    ? [result.freq[0], result.freq[result.freq.length - 1]]
+    : [num(fMinDeb, 200), num(fMaxDeb, 20000)];
+
+  /** Compare-overlay: combined SPL of every non-active design tab, computed
+   *  through the same pipeline (network solve on measured Z, same tweeter
+   *  adjustments). Muted dashed "ghosts" behind the live curves. */
+  const GHOST_DASHES = ['7 4', '2 3', '10 3 2 3', '4 4'];
+  const ghostSeries: Series[] = useMemo(() => {
+    if (!compareTabs || !networkActive || !sim || designs.length < 2) return [];
+    if (Object.keys(impedances).length === 0) return [];
+    const grid = sim.combined.freq;
+    const zOnGrid = Object.fromEntries(
+      Object.entries(impedances).map(([model, z]) => {
+        const g = resample(z.freq, z.magnitude, z.phase, [...grid], { clampEdges: true });
+        return [model, g.spl.map((mag, i) => fromPolar(mag, (g.phaseDeg[i] * Math.PI) / 180))];
+      }),
+    );
+    const out: Series[] = [];
+    designs
+      .filter((d) => d.id !== activeDesignId)
+      .forEach((d, i) => {
+        try {
+          const { netlist } = crossoverToNetlist({ name: d.name, parts: d.parts });
+          const sol = solveNetwork(netlist, grid, zOnGrid);
+          const hFor = (model: string) => {
+            const drv = sol.drivers.find((x) => x.model === model);
+            return drv ? sol.transfers[drv.id] : null;
+          };
+          let w = sim.base.w;
+          let t = sim.base.t;
+          const hW = hFor('mid');
+          const hT = hFor('tweeter');
+          if (hW) w = applyTransfer(w, hW);
+          if (hT) t = applyTransfer(t, hT);
+          const combined = combine(w, t, {
+            offsetMm: num(offsetMm, 0),
+            trimDb: num(trimDb, 0),
+            inverted,
+          });
+          out.push({
+            id: `ghost:${d.id}`,
+            label: d.name,
+            color: 'var(--viz-tick)',
+            dash: GHOST_DASHES[i % GHOST_DASHES.length],
+            width: 1.4,
+            x: grid,
+            y: combined.combinedSpl,
+          });
+        } catch {
+          // Unsolvable tab (work in progress) — simply no ghost for it.
+        }
+      });
+    return out;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [compareTabs, networkActive, sim, impedances, designs, activeDesignId, offsetMm, trimDb, inverted]);
+
+  const splSeries: Series[] = useMemo(() => {
+    if (!result) return [];
+    // Color the combined curve by phase-alignment tier inside the overlap
+    // region; outside it the phase is irrelevant and the base color remains.
+    const alignColors = integration
+      ? integration.points.map((p) => (p.cls ? TIER_COLOR[phaseTier(p.phaseErrorDeg)] : null))
+      : undefined;
+    return [
+      ...ghostSeries,
+      { id: 'w', label: 'Woofer/mid', color: 'var(--viz-woofer)', x: result.freq, y: result.woofer.spl },
+      { id: 't', label: 'Tweeter', color: 'var(--viz-tweeter)', x: result.freq, y: result.tweeter.spl },
+      {
+        id: 'c',
+        // The active tab IS the live combined curve (never a ghost) — name it
+        // so the count in the legend adds up against the design tabs.
+        label:
+          networkActive && activeDesign ? `Combined — ${activeDesign.name}` : 'Combined',
+        color: 'var(--viz-combined)',
+        x: result.freq,
+        y: result.combinedSpl,
+        pointColors: alignColors,
+        width: 2.5,
+      },
+      {
+        id: 'n',
+        label: 'Combined, tweeter inverted (null check)',
+        color: 'var(--viz-null)',
+        x: result.freq,
+        y: result.invertedSpl,
+        dash: '5 4',
+      },
+    ];
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [result, integration, ghostSeries, networkActive, activeDesign]);
+
+  /**
+   * Design handles ON the SPL chart (UI-fase D): drag the crossover knees and
+   * EQ dots right where you look. Only for the virtual filters — with vfBypass
+   * (passive network active) they disappear, because they would edit filters
+   * that are not in the simulation.
+   */
+  const splHandles: ChartHandle[] | undefined = useMemo(() => {
+    if (!result || vfBypass) return undefined;
+    const yAt = (curve: readonly number[], f: number): number => {
+      let best = 0;
+      let bestD = Infinity;
+      for (let i = 0; i < result.freq.length; i++) {
+        const d = Math.abs(Math.log10(result.freq[i]) - Math.log10(f));
+        if (d < bestD) {
+          bestD = d;
+          best = i;
+        }
+      }
+      return curve[best];
+    };
+    const out: ChartHandle[] = [];
+    for (const slot of ['woofer', 'tweeter'] as const) {
+      const spec = vFilters[slot];
+      const curve = slot === 'woofer' ? result.woofer.spl : result.tweeter.spl;
+      const color = `var(--viz-${slot})`;
+      const name = slot === 'woofer' ? 'Woofer/mid' : 'Tweeter';
+      if (spec.hp.enabled) {
+        out.push({
+          id: `${slot}:hp`,
+          x: spec.hp.freq,
+          y: yAt(curve, spec.hp.freq),
+          color,
+          kind: 'x',
+          label: `${name} high-pass · ${Math.round(spec.hp.freq)} Hz — drag to move the knee`,
+        });
+      }
+      if (spec.lp.enabled) {
+        out.push({
+          id: `${slot}:lp`,
+          x: spec.lp.freq,
+          y: yAt(curve, spec.lp.freq),
+          color,
+          kind: 'x',
+          label: `${name} low-pass · ${Math.round(spec.lp.freq)} Hz — drag to move the knee`,
+        });
+      }
+      spec.eq.forEach((band, i) => {
+        if (!band.enabled) return;
+        out.push({
+          id: `${slot}:eq${i}`,
+          x: band.freq,
+          y: yAt(curve, band.freq),
+          color,
+          kind: 'xy',
+          label: `${name} EQ ${band.type ?? 'peak'} · ${Math.round(band.freq)} Hz · ${band.gainDb.toFixed(1)} dB · Q ${band.q} — drag = freq/gain, scroll = Q`,
+        });
+      });
+    }
+    return out.length > 0 ? out : undefined;
+  }, [result, vFilters, vfBypass]);
+
+  const moveSplHandle = (id: string, x: number, dyUnits: number) => {
+    const [slot, part] = id.split(':') as ['woofer' | 'tweeter', string];
+    const f = Math.round(Math.min(20000, Math.max(20, x)));
+    setVFilters((p) => {
+      const spec = { ...p[slot] };
+      if (part === 'hp') spec.hp = { ...spec.hp, freq: f };
+      else if (part === 'lp') spec.lp = { ...spec.lp, freq: f };
+      else if (part.startsWith('eq')) {
+        const i = Number(part.slice(2));
+        const band = spec.eq[i];
+        if (!band) return p;
+        const gain = Math.min(12, Math.max(-30, band.gainDb + dyUnits));
+        const eq = spec.eq.slice();
+        eq[i] = { ...band, freq: f, gainDb: Math.round(gain * 10) / 10 };
+        spec.eq = eq;
+      }
+      return { ...p, [slot]: spec };
+    });
+  };
+
+  const wheelSplHandle = (id: string, factor: number) => {
+    const [slot, part] = id.split(':') as ['woofer' | 'tweeter', string];
+    if (!part.startsWith('eq')) return;
+    const i = Number(part.slice(2));
+    setVFilters((p) => {
+      const spec = { ...p[slot] };
+      const band = spec.eq[i];
+      if (!band) return p;
+      const q = Math.min(12, Math.max(0.2, band.q * factor));
+      const eq = spec.eq.slice();
+      eq[i] = { ...band, q: Math.round(q * 100) / 100 };
+      spec.eq = eq;
+      return { ...p, [slot]: spec };
+    });
+  };
+
+  const phaseSeries: Series[] = useMemo(() => {
+    if (!showPanels.phase || !result) return [];
+    // Break lines at ±180° wrap seams instead of drawing vertical jumps.
+    const breakWraps = (arr: number[]): number[] => {
+      for (let i = 1; i < arr.length; i++) {
+        if (Math.abs(arr[i] - arr[i - 1]) > 180) arr[i - 1] = NaN;
+      }
+      return arr;
+    };
+    const wrapDeg = (d: number) => {
+      let v = d % 360;
+      if (v > 180) v -= 360;
+      if (v < -180) v += 360;
+      return v;
+    };
+    const out: Series[] = [];
+    // The phase each active filter chain ADDS per driver (arg of the total
+    // transfer: passive network × virtual filters) — "the selected filters".
+    const transfers = sim?.transfers;
+    const filterPhase = (h: Complex[] | null | undefined): number[] | null =>
+      h ? h.map((c) => (Math.atan2(c.im, c.re) * 180) / Math.PI) : null;
+    const fw = filterPhase(transfers?.woofer);
+    const ft = filterPhase(transfers?.tweeter);
+    if (fw) {
+      out.push({
+        id: 'fw',
+        label: 'Woofer filter phase',
+        color: 'var(--viz-woofer)',
+        x: result.freq,
+        y: breakWraps(fw),
+        dash: '5 3',
+        width: 1.6,
+      });
+    }
+    if (ft) {
+      out.push({
+        id: 'ft',
+        label: 'Tweeter filter phase',
+        color: 'var(--viz-tweeter)',
+        x: result.freq,
+        y: breakWraps(ft),
+        dash: '5 3',
+        width: 1.6,
+      });
+    }
+    // Raw-driver reference (same offset/trim/polarity, no filters): the
+    // distance to the main curve is exactly what the filters contribute.
+    if (sim && (fw || ft)) {
+      const raw = combine(sim.base.w, sim.base.t, {
+        offsetMm: num(offsetMm, 0),
+        trimDb: num(trimDb, 0),
+        inverted,
+      });
+      out.push({
+        id: 'raw',
+        label: 'Relative phase — raw drivers',
+        color: 'var(--viz-tick)',
+        x: result.freq,
+        y: breakWraps(raw.relativePhaseDeg.map(wrapDeg)),
+        dash: '2 3',
+        width: 1.4,
+      });
+    }
+    // Same alignment coloring as the SPL combined curve: the phase line itself
+    // shows how far off it is — but only in the overlap region where it counts.
+    const alignColors = integration
+      ? integration.points.map((p) => (p.cls ? TIER_COLOR[phaseTier(p.phaseErrorDeg)] : null))
+      : undefined;
+    out.push({
+      id: 'rel',
+      label: 'Tweeter phase relative to woofer',
+      color: 'var(--viz-tweeter)',
+      x: result.freq,
+      y: breakWraps(result.relativePhaseDeg.slice()),
+      pointColors: alignColors,
+      width: 2.5,
+    });
+    return out;
+  }, [result, integration, sim, offsetMm, trimDb, inverted, showPanels.phase]);
+
+  /** "How far off is the phase" zones behind the relative-phase curve. */
+  const phaseBands = useMemo(
+    () => [
+      { from: -15, to: 15, color: TIER_COLOR.tight, opacity: 0.11 },
+      { from: 15, to: 45, color: TIER_COLOR.good, opacity: 0.08 },
+      { from: -45, to: -15, color: TIER_COLOR.good, opacity: 0.08 },
+      { from: 45, to: 90, color: TIER_COLOR.ok, opacity: 0.07 },
+      { from: -90, to: -45, color: TIER_COLOR.ok, opacity: 0.07 },
+      { from: 90, to: 120, color: TIER_COLOR.marginal, opacity: 0.06 },
+      { from: -120, to: -90, color: TIER_COLOR.marginal, opacity: 0.06 },
+      { from: 120, to: 180, color: TIER_COLOR.destructive, opacity: 0.05 },
+      { from: -180, to: -120, color: TIER_COLOR.destructive, opacity: 0.05 },
+    ],
+    [],
+  );
+
+  const delayUs = offsetMmToDelayS(num(offsetMm, 0)) * 1e6;
+
+  return (
+    <div className={`app-shell layout-${layoutMode}`}>
+      {(vfBusy || netOptBusy || synthBusy) && (
+        <div className="busy-overlay" role="status" aria-live="polite">
+          <div className="busy-card">
+            <div className="busy-spinner" />
+            <div className="busy-title">
+              {vfBusy
+                ? 'Optimizing crossover…'
+                : netOptBusy
+                  ? 'Tuning components on the assembled network…'
+                  : 'Building passive network…'}
+            </div>
+            <div className="busy-detail">
+              {vfBusy && vfProgress
+                ? `${vfProgress.label ?? `round ${vfProgress.round}`} · ${vfProgress.evals.toLocaleString('nl-NL')} network sims · ${vfProgress.rippleDb.toFixed(2)} dB / ${vfProgress.phaseDeg.toFixed(1)}°`
+                : vfBusy
+                  ? 'searching structures and EQ stages — the app is unresponsive while the solver runs'
+                  : netOptBusy
+                    ? 'value fit, prune/escalate, debris sweep — a staged run can take ~20–30 s'
+                    : 'fitting real component values on the measured impedances'}
+            </div>
+          </div>
+        </div>
+      )}
+      {wizardOpen && (
+        <div className="busy-overlay" onClick={() => setWizardOpen(false)}>
+          <div className="busy-card targets-card wizard-card" onClick={(e) => e.stopPropagation()}>
+            <div className="busy-title">🧙 Design wizard</div>
+            <div className="wizard-steps">
+              {[1, 2, 3, 4].map((n) => (
+                <span key={n} className={wizardStep >= 1 && n <= wizardStep ? 'done' : ''} />
+              ))}
+            </div>
+            <p className="sub" style={{ width: '100%', margin: 0 }}>
+              {wizardStep === 0
+                ? 'First — load your measurements'
+                : `Step ${wizardStep} of 4 · ${
+                    ['Goals', 'Crossover', 'Components', 'Review & run'][wizardStep - 1]
+                  }`}
+            </p>
+
+            <div className="wizard-body">
+            {wizardStep === 0 && (
+              <>
+                <p>
+                  <strong>Measurements</strong> — the wizard designs from your driver data, so we
+                  need that first. Load a 0° FRD per driver to start; include the .ZMA impedance
+                  and any angle files in the SAME pick to unlock more (they're recognised by
+                  extension and filename).
+                </p>
+                <button
+                  type="button"
+                  className="primary"
+                  onClick={loadDemo}
+                  title="Load the bundled KOAN measurements (all angles + impedances + vxp variants) — instant playground"
+                >
+                  🎧 Load KOAN demo data
+                </button>
+                <p className="sub" style={{ marginBottom: '0.2rem' }}>
+                  …or load your own:
+                </p>
+                <label className="file-button" style={{ display: 'block', marginBottom: '0.3rem' }}>
+                  {woofer ? `✓ Woofer / mid — ${woofer.name}` : 'Woofer / mid — FRD (+ ZMA, + angle files)'}
+                  <input
+                    type="file"
+                    accept=".frd,.txt,.zma,.ZMA"
+                    multiple
+                    onChange={loadDriverFiles('woofer')}
+                    style={{ display: 'none' }}
+                  />
+                </label>
+                <label className="file-button" style={{ display: 'block' }}>
+                  {tweeter ? `✓ Tweeter — ${tweeter.name}` : 'Tweeter — FRD (+ ZMA, + angle files)'}
+                  <input
+                    type="file"
+                    accept=".frd,.txt,.zma,.ZMA"
+                    multiple
+                    onChange={loadDriverFiles('tweeter')}
+                    style={{ display: 'none' }}
+                  />
+                </label>
+                <p className="sub">
+                  Both drivers are needed to continue. <strong>Impedances (.ZMA)</strong> unlock the
+                  passive build &amp; component tune; <strong>angle files</strong> unlock the
+                  amplitude target &amp; in-room weight in the Goals step. The full importer (VituixCAD
+                  projects, catalogs, save/load) lives in the Import tab.
+                </p>
+              </>
+            )}
+
+            {wizardStep === 1 && (
+              <>
+                <p>
+                  <strong>Goals</strong> — start with what "done" means. How simple should the
+                  filter be, and how do you weigh a flat response against tight phase? (Shared
+                  with ⚙ Settings — this is just the guided path.)
+                </p>
+                <label style={{ display: 'block' }}>
+                  <input
+                    type="checkbox"
+                    checked={stagedOn}
+                    onChange={(e) => setStagedOn(e.target.checked)}
+                  />{' '}
+                  Staged design — stop escalating once the targets are met (fewest components)
+                </label>
+                {stagedOn && (
+                  <p>
+                    Targets: ripple ≤{' '}
+                    <input
+                      type="number"
+                      min={0.1}
+                      max={3}
+                      step={0.1}
+                      value={targetRipple}
+                      onChange={(e) => setTargetRipple(e.target.value)}
+                      style={{ width: '4.5rem' }}
+                    />{' '}
+                    ±dB peak (as in the SPL strip) · phase ≤{' '}
+                    <input
+                      type="number"
+                      min={1}
+                      max={90}
+                      step={1}
+                      value={targetPhase}
+                      onChange={(e) => setTargetPhase(e.target.value)}
+                      style={{ width: '4.5rem' }}
+                    />{' '}
+                    °
+                  </p>
+                )}
+                <p style={{ marginBottom: '0.1rem' }}>What should the optimizer favour?</p>
+                {(
+                  [
+                    ['flat', 25, 'Flattest on-axis response', 'the tightest ±dB straight ahead'],
+                    ['bal', 50, 'Balanced', 'equal weight — a good default'],
+                    [
+                      'phase',
+                      75,
+                      'Tightest phase & off-axis',
+                      'best driver phase-tracking / vertical spread (often near-free)',
+                    ],
+                  ] as const
+                ).map(([key, val, label, hint]) => {
+                  const bucket =
+                    phasePriority < 40 ? 'flat' : phasePriority > 60 ? 'phase' : 'bal';
+                  return (
+                    <label key={key} style={{ display: 'block' }}>
+                      <input
+                        type="radio"
+                        name="wiz-priority"
+                        checked={bucket === key}
+                        onChange={() => setPhasePriority(val)}
+                      />{' '}
+                      {label} <span className="sub">— {hint}</span>
+                    </label>
+                  );
+                })}
+                <p className="sub">
+                  On real measurements a smooth response already buys most of the phase, so
+                  these differ less than you'd expect — fine control (any %) lives in ⚙ Settings.
+                </p>
+                {angleSets ? (
+                  <>
+                    {/* --- Amplitude target: its own section, with a live illustration --- */}
+                    <div
+                      style={{
+                        marginTop: '0.7rem',
+                        paddingTop: '0.5rem',
+                        borderTop: '1px solid rgba(128,128,128,0.25)',
+                      }}
+                    >
+                      <p style={{ margin: '0 0 0.3rem' }}>
+                        <strong>Amplitude target</strong>{' '}
+                        <span className="sub">— which curve the optimizer flattens</span>
+                      </p>
+                      <div style={{ display: 'flex', gap: '0.9rem', alignItems: 'center', flexWrap: 'wrap' }}>
+                        <div style={{ flex: '0 0 auto', textAlign: 'center' }}>
+                          {(() => {
+                            const win = ampTarget === 'listeningWindow';
+                            const rays = [
+                              { deg: 0, x: 136, y: 96 },
+                              { deg: 15, x: 132.3, y: 67.5 },
+                              { deg: 30, x: 121.3, y: 41 },
+                              { deg: 45, x: 103.8, y: 18.2 },
+                              { deg: 60, x: 81, y: 0.7 },
+                            ];
+                            return (
+                              <svg viewBox="0 0 150 116" width="150" height="116" aria-hidden="true">
+                                {win && (
+                                  <polygon
+                                    points="26,96 136,96 132.3,67.5 121.3,41"
+                                    fill="var(--accent)"
+                                    opacity="0.18"
+                                  />
+                                )}
+                                {rays.map((r) => {
+                                  const hot = win ? r.deg <= 30 : r.deg === 0;
+                                  return (
+                                    <line
+                                      key={r.deg}
+                                      x1={26}
+                                      y1={96}
+                                      x2={r.x}
+                                      y2={r.y}
+                                      stroke={hot ? 'var(--accent)' : 'currentColor'}
+                                      strokeOpacity={hot ? 1 : 0.25}
+                                      strokeWidth={hot ? 2 : 1}
+                                    />
+                                  );
+                                })}
+                                <rect x="11" y="82" width="18" height="28" rx="3" fill="currentColor" opacity="0.3" />
+                                <circle cx="21" cy="96" r="6.5" fill="currentColor" opacity="0.55" />
+                                <text x="138" y="99" fontSize="8" fill="currentColor" opacity="0.55">0°</text>
+                                <text x="123" y="38" fontSize="8" fill="currentColor" opacity="0.55">30°</text>
+                                <text x="70" y="8" fontSize="8" fill="currentColor" opacity="0.55">60°</text>
+                              </svg>
+                            );
+                          })()}
+                          <p className="sub" style={{ margin: '0.1rem 0 0' }}>
+                            {ampTarget === 'listeningWindow'
+                              ? 'flattening the 0–30° average'
+                              : 'flattening the 0° axis'}
+                          </p>
+                        </div>
+                        <div style={{ flex: '1 1 12rem' }}>
+                          <label style={{ display: 'block' }}>
+                            <input
+                              type="radio"
+                              name="wiz-amptarget"
+                              checked={ampTarget === 'onAxis'}
+                              onChange={() => setAmpTarget('onAxis')}
+                            />{' '}
+                            On-axis (0°){' '}
+                            <span className="sub">
+                              — flattest response dead ahead; off-axis falls where it falls. Best
+                              for near-field or a fixed seat.
+                            </span>
+                          </label>
+                          <label style={{ display: 'block', marginTop: '0.3rem' }}>
+                            <input
+                              type="radio"
+                              name="wiz-amptarget"
+                              checked={ampTarget === 'listeningWindow'}
+                              onChange={() => setAmpTarget('listeningWindow')}
+                            />{' '}
+                            Listening window (0–30°){' '}
+                            <span className="sub">
+                              — averages the front arc, so a hair of on-axis flatness buys a
+                              smoother tone across a normal seating spread.
+                            </span>
+                          </label>
+                        </div>
+                      </div>
+                    </div>
+                    {/* --- In-room weight: its own section --- */}
+                    <div
+                      style={{
+                        marginTop: '0.6rem',
+                        paddingTop: '0.5rem',
+                        borderTop: '1px solid rgba(128,128,128,0.25)',
+                      }}
+                    >
+                      <p style={{ margin: '0 0 0.2rem' }}>
+                        <strong>In-room weight: {dirWeight}%</strong>{' '}
+                        <span className="sub">(energy average)</span>
+                      </p>
+                      <input
+                        type="range"
+                        min={0}
+                        max={100}
+                        step={5}
+                        value={dirWeight}
+                        onChange={(e) => setDirWeight(Number(e.target.value))}
+                        style={{ width: '11rem', accentColor: 'var(--accent)', verticalAlign: 'middle' }}
+                      />
+                      <p className="sub" style={{ margin: '0.2rem 0 0' }}>
+                        How much it ALSO smooths the energy average (the power response: every angle
+                        summed ≈ the room's tonal balance). Higher = more even directivity /
+                        smoother in-room sound, trading a little on-axis flatness. 0% = on-axis
+                        only.
+                      </p>
+                    </div>
+                  </>
+                ) : (
+                  <p className="sub" style={{ marginTop: '0.7rem' }}>
+                    <strong>Amplitude target &amp; in-room weight</strong> unlock once you load
+                    angle measurements (Import → per-driver angle FRDs). With only a 0° measurement
+                    there is nothing off-axis to optimise, so these stay inert.
+                  </p>
+                )}
+              </>
+            )}
+
+            {wizardStep === 2 && (
+              <>
+                <p>
+                  <strong>Crossover</strong> — where the drivers hand over, and how steep the
+                  ACOUSTIC slopes are. On real measurements Auto usually wins; force a slope only
+                  when you have a reason — a placeholder driver, or a house alignment.
+                </p>
+                {suggestedBand && (
+                  <div
+                    style={{
+                      marginBottom: '0.5rem',
+                      paddingBottom: '0.5rem',
+                      borderBottom: '1px solid rgba(128,128,128,0.25)',
+                    }}
+                  >
+                    <p style={{ margin: '0 0 0.2rem' }}>
+                      <strong>Tuning range</strong>{' '}
+                      <span className="sub">
+                        — the band the optimizer flattens &amp; scores over (the design scope)
+                      </span>
+                    </p>
+                    <p style={{ margin: 0 }}>
+                      Now {fMin}–{fMax} Hz.{' '}
+                      {fMin !== String(suggestedBand[0]) || fMax !== String(suggestedBand[1]) ? (
+                        <>
+                          Suggested{' '}
+                          <strong>
+                            {suggestedBand[0]}–{suggestedBand[1]} Hz
+                          </strong>{' '}
+                          (your usable measured range).{' '}
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setFMin(String(suggestedBand[0]));
+                              setFMax(String(suggestedBand[1]));
+                            }}
+                          >
+                            Use suggested
+                          </button>
+                        </>
+                      ) : (
+                        <span className="sub">✓ matches your usable measured range.</span>
+                      )}
+                    </p>
+                    <p className="sub" style={{ margin: '0.1rem 0 0' }}>
+                      Wider = the whole speaker is judged; narrower = focus the tuning on the
+                      crossover (a full-band safety check still guards the rest).
+                    </p>
+                    {systemLevelDb && (
+                      <p style={{ margin: '0.3rem 0 0' }}>
+                        <strong>Target level ≈ {systemLevelDb.level} dB</strong>{' '}
+                        <span className="sub">
+                          — the passive system level, set by the {systemLevelDb.limiter} (the louder
+                          driver is padded down to match; passive can't boost above this).
+                        </span>
+                      </p>
+                    )}
+                  </div>
+                )}
+                <label style={{ display: 'block' }}>
+                  <input
+                    type="checkbox"
+                    checked={xoRangeOn}
+                    onChange={(e) => setXoRangeOn(e.target.checked)}
+                  />{' '}
+                  Pin the acoustic crossover point
+                </label>
+                {xoRangeOn && (
+                  <p>
+                    <input
+                      type="number"
+                      min={300}
+                      max={12000}
+                      step={100}
+                      value={xoFreqHz}
+                      onChange={(e) => setXoFreqHz(e.target.value)}
+                      style={{ width: '5.5rem' }}
+                    />{' '}
+                    Hz ±{' '}
+                    <input
+                      type="number"
+                      min={0}
+                      max={5000}
+                      step={50}
+                      value={xoMarginHz}
+                      onChange={(e) => setXoMarginHz(e.target.value)}
+                      style={{ width: '5rem' }}
+                    />{' '}
+                    Hz
+                  </p>
+                )}
+                <p className="sub">
+                  {xoRangeOn
+                    ? 'Pinned: the optimizer aims for this acoustic crossover (± margin) and picks the best design there.'
+                    : tweeterHpFloor !== null && midXoCeiling !== null
+                      ? `Free: the optimizer aims for the CENTRE of your driver window — ≈${Math.round(
+                          Math.sqrt(tweeterHpFloor * Math.max(midXoCeiling, tweeterHpFloor * 1.2)),
+                        )} Hz, the geometric mean of the 2×Fs tweeter floor (${tweeterHpFloor} Hz) and the ${midXoCeiling} Hz mid beaming ceiling. Pin only to override.`
+                      : 'Free: the optimizer stays within a sensible band (≈2×Fs up to the mid beaming limit) and picks the best crossover there. Set the mid size below for a physically-exact window; pin only for a specific point.'}
+                </p>
+                {tweeterHpFloor !== null && (
+                  <p className="sub">HP floor {tweeterHpFloor} Hz (2×Fs) is applied automatically.</p>
+                )}
+                <p>
+                  Mid size (sets the beaming ceiling){' '}
+                  <select value={midSizeInch} onChange={(e) => setMidSizeInch(e.target.value)}>
+                    <option value="">unknown</option>
+                    {['3', '4', '5', '5.25', '6.5', '8'].map((v) => (
+                      <option key={v} value={v}>
+                        {v}"
+                      </option>
+                    ))}
+                  </select>
+                  {midXoCeiling !== null && (
+                    <span className="sub"> · beaming ceiling ≈ {midXoCeiling} Hz</span>
+                  )}
+                </p>
+                <p className="sub" style={{ marginBottom: '0.15rem' }}>
+                  The next two look alike but are NOT the same thing — one is how you build it,
+                  the other is what comes out:
+                </p>
+                <p style={{ margin: '0 0 0.1rem' }}>
+                  <strong>HP/LP alignment</strong>{' '}
+                  <span className="sub">— the ELECTRICAL filter you build (topology &amp; part count; binding)</span>{' '}
+                  <select value={hpLpPref} onChange={(e) => setHpLpPref(e.target.value)}>
+                    <option value="auto">Auto (library)</option>
+                    {['LR2', 'LR4', 'BW2', 'BW3', 'BW4', 'BS2', 'BS3', 'BS4'].map((v) => (
+                      <option key={v} value={v}>
+                        {v}
+                      </option>
+                    ))}
+                  </select>
+                </p>
+                <p style={{ margin: '0 0 0.1rem' }}>
+                  <strong>Acoustic slopes</strong>{' '}
+                  <span className="sub">— the MEASURED roll-off of driver + filter together (the result)</span>
+                  <br />
+                  mid{' '}
+                  <select value={acSlopeMid} onChange={(e) => setAcSlopeMid(e.target.value)}>
+                    <option value="auto">Auto</option>
+                    {['12', '18', '24', '30', '36'].map((v) => (
+                      <option key={v} value={v}>
+                        {v} dB/oct
+                      </option>
+                    ))}
+                  </select>{' '}
+                  · tweeter{' '}
+                  <select value={acSlopeTweeter} onChange={(e) => setAcSlopeTweeter(e.target.value)}>
+                    <option value="auto">Auto</option>
+                    {['12', '18', '24', '30', '36'].map((v) => (
+                      <option key={v} value={v}>
+                        {v} dB/oct
+                      </option>
+                    ))}
+                  </select>
+                </p>
+                <p className="sub">
+                  Electrical order ≠ acoustic order: the driver already rolls off, so an electrical
+                  LR2 can MEASURE as an acoustic 4th order. Set the alignment when you care about the
+                  build (part count / a house alignment); set the acoustic slopes when you care about
+                  the summation result; leave either on Auto to let the measurement decide (often a
+                  touch better). Pinning both can over-constrain.
+                </p>
+              </>
+            )}
+
+            {wizardStep === 3 && (
+              <>
+                <p>
+                  <strong>Components</strong> — now turn the ideal design into parts you can buy:
+                  snap to your catalog, then choose quality tiers and brands.
+                </p>
+                <label
+                  style={{ display: 'block', opacity: hasImportedCatalog() ? 1 : 0.5 }}
+                  title={
+                    hasImportedCatalog()
+                      ? 'Snap the build + tuner to purchasable catalog values'
+                      : 'Import a catalog first — without one there are no real parts to snap to, so the design keeps theoretically ideal (continuous) values'
+                  }
+                >
+                  <input
+                    type="checkbox"
+                    checked={catalogSnap && hasImportedCatalog()}
+                    disabled={!hasImportedCatalog()}
+                    onChange={(e) => setCatalogSnap(e.target.checked)}
+                  />{' '}
+                  Snap to catalog (build + tuner end on purchasable values)
+                  {!hasImportedCatalog() && ' — import a catalog first'}
+                </label>
+                <p className="sub">
+                  Catalog: {allSeries().length} series
+                  {customCatalogParts().length > 0 && ` · ${customCatalogParts().length} exact parts`}
+                  {allSeries().some((sr) => sr.basePrice !== undefined) ||
+                  customCatalogParts().some((pp) => pp.priceEur !== undefined)
+                    ? ' · prices loaded'
+                    : ' · no prices yet'}
+                </p>
+                {(
+                  [
+                    ['auto', 'Auto — no tier preference'],
+                    ['position', 'Position (doctrine): series-path premium · shunt/notch budget'],
+                    ['budget', 'Budget — cheapest tiers everywhere'],
+                    ['balanced', 'Balanced — standard tier everywhere'],
+                    ['premium', 'Premium — best tiers everywhere'],
+                  ] as const
+                ).map(([v, label]) => (
+                  <label key={v} style={{ display: 'block' }}>
+                    <input
+                      type="radio"
+                      name="snap-profile"
+                      checked={snapProfile === v}
+                      onChange={() => setSnapProfile(v)}
+                    />{' '}
+                    {label}
+                  </label>
+                ))}
+                {(
+                  [
+                    ['L', 'Coils', snapSeriesL, setSnapSeriesL],
+                    ['C', 'Capacitors', snapSeriesC, setSnapSeriesC],
+                    ['R', 'Resistors', snapSeriesR, setSnapSeriesR],
+                  ] as const
+                ).map(([kind, label, value, set]) => (
+                  <label key={kind} style={{ display: 'block' }}>
+                    {label}{' '}
+                    <select value={value} onChange={(e) => set(e.target.value)}>
+                      <option value="auto">Auto (all series)</option>
+                      {catalogSeries(kind).map((sr) => (
+                        <option key={sr.id} value={sr.id}>
+                          {sr.brand} {sr.series}
+                          {sr.tier ? ` · ${sr.tier}` : ''}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                ))}
+                {(() => {
+                  const anySeries =
+                    snapSeriesL !== 'auto' || snapSeriesC !== 'auto' || snapSeriesR !== 'auto';
+                  return (
+                    <label
+                      style={{ display: 'block', opacity: anySeries ? 1 : 0.5 }}
+                      title={
+                        anySeries
+                          ? "Bound series also HARD-limit the fit to their value range (series-path slots only), so the optimizer works within e.g. Alumen 1–10 µF and the rest of the network adapts. The result reports what the constraint cost vs an unconstrained fit."
+                          : 'Pick a specific series above first — this constrains the fit to that series’ values.'
+                      }
+                    >
+                      <input
+                        type="checkbox"
+                        checked={snapBoundToSeries && anySeries}
+                        disabled={!anySeries}
+                        onChange={(e) => setSnapBoundToSeries(e.target.checked)}
+                      />{' '}
+                      Constrain the fit to the chosen series’ values (series-path only) — e.g.
+                      dead-set on Alumen ⇒ the tweeter cap stays 1–10 µF and the network adapts
+                    </label>
+                  );
+                })()}
+                <label style={{ display: 'block' }}>
+                  <input
+                    type="checkbox"
+                    checked={snapStacks}
+                    onChange={(e) => setSnapStacks(e.target.checked)}
+                  />{' '}
+                  Allow 2-part stacks — a preferred tier/series stacks WITHIN itself before
+                  falling back; the result reports what stacking bought (fit % / €)
+                </label>
+                <p className="sub">
+                  Series choices are binding per type; a series that cannot cover a value falls
+                  back rather than breaking the fit.
+                </p>
+              </>
+            )}
+
+            {wizardStep === 4 && (
+              <>
+                <p>
+                  <strong>Review &amp; run</strong> — here's the plan. Optimize designs, builds and
+                  tunes the whole chain in one go.
+                </p>
+                <p>
+                  {stagedOn
+                    ? `Staged: targets ≤ ${targetRipple} dB / ${targetPhase}°`
+                    : 'Classic full-budget run'}{' '}
+                  · priority {100 - phasePriority}/{phasePriority}
+                  <br />
+                  {xoRangeOn ? `Crossover pinned at ${xoFreqHz} ± ${xoMarginHz} Hz` : 'Crossover free'}
+                  {tweeterHpFloor !== null && ` · HP floor ${tweeterHpFloor} Hz`}
+                  <br />
+                  Alignment {hpLpPref === 'auto' ? 'Auto' : hpLpPref} · slopes mid{' '}
+                  {acSlopeMid === 'auto' ? 'Auto' : `${acSlopeMid} dB/oct`} / tweeter{' '}
+                  {acSlopeTweeter === 'auto' ? 'Auto' : `${acSlopeTweeter} dB/oct`}
+                  <br />
+                  {catalogSnap && hasImportedCatalog()
+                    ? `Snap to catalog · profile ${snapProfile}`
+                    : 'Theoretically ideal (continuous) component values — no snap'}
+                </p>
+                <p className="sub">
+                  Optimize runs the full chain: design → passive build → component tune
+                  {catalogSnap && hasImportedCatalog() ? ' → catalog snap' : ''}.
+                </p>
+              </>
+            )}
+
+            </div>
+
+            <div className="wizard-foot">
+              <div className="row">
+                {wizardStep > 1 ? (
+                  <button type="button" onClick={() => setWizardStep((st) => st - 1)}>
+                    ← Back
+                  </button>
+                ) : (
+                  <button type="button" onClick={() => setWizardOpen(false)}>
+                    Cancel
+                  </button>
+                )}
+              </div>
+              <div className="row">
+                {wizardStep < 4 ? (
+                  <button
+                    type="button"
+                    className="primary"
+                    onClick={() => setWizardStep((st) => st + 1)}
+                    disabled={wizardStep === 0 && (!woofer || !tweeter)}
+                    title={
+                      wizardStep === 0 && (!woofer || !tweeter)
+                        ? 'Load both drivers to continue'
+                        : ''
+                    }
+                  >
+                    Next →
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    className="primary"
+                    onClick={() => {
+                      setWizardOpen(false);
+                      // Land on the design cockpit, not wherever the wizard was
+                      // launched from (e.g. Import): the Filters tab shows the
+                      // "Optimizer chose…" summary + curves; Network is one click
+                      // away for the built schematic + BOM.
+                      setDesignTab('filters');
+                      runVfOptimize();
+                    }}
+                    disabled={vfBusy || !result}
+                  >
+                    🚀 Optimize — design for me
+                  </button>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+      {trapOpen && (
+        <div className="busy-overlay" onClick={() => setTrapOpen(false)}>
+          <div className="busy-card targets-card" onClick={(e) => e.stopPropagation()}>
+            <div className="busy-title">➕ Add LCR notch (trap)</div>
+            <p className="sub">
+              A series L–C–R across the driver — a low-impedance path at the centre frequency that
+              sucks out a peak. <strong>Depth</strong> sets R, <strong>Q</strong> sets the L/C ratio;
+              the values follow from the measured impedance. It goes in live — fine-tune afterwards
+              with ⚙ Optimize components.
+            </p>
+            <p>
+              Driver{' '}
+              <select value={trapModel} onChange={(e) => setTrapModel(e.target.value)}>
+                {zModels.map((m) => (
+                  <option key={m} value={m}>
+                    {m}
+                  </option>
+                ))}
+              </select>
+            </p>
+            <p>
+              Centre{' '}
+              <input
+                type="number"
+                min={100}
+                max={20000}
+                step={50}
+                value={trapFreq}
+                onChange={(e) => setTrapFreq(e.target.value)}
+                style={{ width: '6rem' }}
+              />{' '}
+              Hz · depth{' '}
+              <input
+                type="number"
+                max={0}
+                step={0.5}
+                value={trapDepth}
+                onChange={(e) => setTrapDepth(e.target.value)}
+                style={{ width: '4.5rem' }}
+              />{' '}
+              dB · Q{' '}
+              <input
+                type="number"
+                min={0.2}
+                step={0.1}
+                value={trapQ}
+                onChange={(e) => setTrapQ(e.target.value)}
+                style={{ width: '4rem' }}
+              />
+            </p>
+            {trapCompute ? (
+              <p>
+                →{' '}
+                <strong>
+                  {trapCompute.Lmh} mH · {trapCompute.Cuf} µF · {trapCompute.R} Ω
+                </strong>{' '}
+                <span className="sub">
+                  (|Z| ≈ {trapCompute.zmag} Ω at {trapFreq} Hz)
+                </span>
+              </p>
+            ) : (
+              <p className="sub">
+                Enter a centre frequency and a <strong>negative</strong> depth (a cut) — passive can
+                only notch a peak, not boost.
+              </p>
+            )}
+            <div className="row" style={{ justifyContent: 'space-between', marginTop: '0.6rem' }}>
+              <button type="button" onClick={() => setTrapOpen(false)}>
+                Cancel
+              </button>
+              <button
+                type="button"
+                className="primary"
+                disabled={!trapCompute}
+                onClick={addNotchTrap}
+              >
+                Add trap
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      {showTargets && (
+        <div className="busy-overlay" onClick={() => setShowTargets(false)}>
+          <div className="busy-card targets-card" onClick={(e) => e.stopPropagation()}>
+            <div className="busy-title">🎯 Design targets — virtual → acoustic</div>
+            <p className="sub">
+              The virtual target design the last passive build was fitted to (acoustic mode fits
+              measured driver × filter against these ideal shapes).
+            </p>
+            <p>
+              <strong>Woofer / mid target:</strong>{' '}
+              {vFilters.woofer.lp.enabled
+                ? `LP ${vFilters.woofer.lp.kind}${vFilters.woofer.lp.order} (${
+                    vFilters.woofer.lp.order * 6
+                  } dB/oct electrical) @ ${Math.round(vFilters.woofer.lp.freq)} Hz`
+                : 'no LP'}
+              {vFilters.woofer.hp.enabled &&
+                ` · HP ${vFilters.woofer.hp.kind}${vFilters.woofer.hp.order} @ ${Math.round(
+                  vFilters.woofer.hp.freq,
+                )} Hz`}
+              {vFilters.woofer.gainDb !== 0 && ` · gain ${vFilters.woofer.gainDb.toFixed(1)} dB`}
+              {vFilters.woofer.eq.filter((b) => b.enabled).length > 0 && (
+                <>
+                  <br />
+                  EQ:{' '}
+                  {vFilters.woofer.eq
+                    .filter((b) => b.enabled)
+                    .map(
+                      (b) =>
+                        `${b.type ?? 'peak'} ${Math.round(b.freq)} Hz ${b.gainDb.toFixed(1)} dB Q${b.q.toFixed(1)}`,
+                    )
+                    .join(' · ')}
+                </>
+              )}
+            </p>
+            <p>
+              <strong>Tweeter target:</strong>{' '}
+              {vFilters.tweeter.hp.enabled
+                ? `HP ${vFilters.tweeter.hp.kind}${vFilters.tweeter.hp.order} (${
+                    vFilters.tweeter.hp.order * 6
+                  } dB/oct electrical) @ ${Math.round(vFilters.tweeter.hp.freq)} Hz`
+                : 'no HP'}
+              {vFilters.tweeter.lp.enabled &&
+                ` · LP ${vFilters.tweeter.lp.kind}${vFilters.tweeter.lp.order} @ ${Math.round(
+                  vFilters.tweeter.lp.freq,
+                )} Hz`}
+              {vFilters.tweeter.gainDb !== 0 && ` · gain ${vFilters.tweeter.gainDb.toFixed(1)} dB`}
+              {inverted && ' · polarity inverted'}
+              {vFilters.tweeter.eq.filter((b) => b.enabled).length > 0 && (
+                <>
+                  <br />
+                  EQ:{' '}
+                  {vFilters.tweeter.eq
+                    .filter((b) => b.enabled)
+                    .map(
+                      (b) =>
+                        `${b.type ?? 'peak'} ${Math.round(b.freq)} Hz ${b.gainDb.toFixed(1)} dB Q${b.q.toFixed(1)}`,
+                    )
+                    .join(' · ')}
+                </>
+              )}
+            </p>
+            {acousticSlopes && (
+              <p>
+                <strong>Measured on the current sim:</strong> acoustic crossover ≈{' '}
+                {Math.round(acousticSlopes.xo)} Hz
+                {acousticSlopes.wooferDbPerOct !== null && (
+                  <>
+                    {' '}
+                    · mid falls ≈ {Math.abs(acousticSlopes.wooferDbPerOct).toFixed(0)} dB/oct above
+                    it (≈ {ordinal(Math.max(1, Math.round(Math.abs(acousticSlopes.wooferDbPerOct) / 6)))}
+                    -order acoustic)
+                  </>
+                )}
+                {acousticSlopes.tweeterDbPerOct !== null && (
+                  <>
+                    {' '}
+                    · tweeter falls ≈ {Math.abs(acousticSlopes.tweeterDbPerOct).toFixed(0)} dB/oct
+                    below it (≈{' '}
+                    {ordinal(Math.max(1, Math.round(Math.abs(acousticSlopes.tweeterDbPerOct) / 6)))}
+                    -order acoustic)
+                  </>
+                )}
+              </p>
+            )}
+            <p className="sub">
+              Electrical component count ≠ acoustic order: the driver's own rolloff and impedance
+              stack on top of the network, and acoustic-mode synthesis exploits that. The measured
+              slopes above are the real (acoustic) orders.
+            </p>
+            <button type="button" onClick={() => setShowTargets(false)}>
+              Close
+            </button>
+          </div>
+        </div>
+      )}
+      <header className="topbar" title="Combined SPL & relative phase — woofer normalised to 0°, tweeter shown against it.">
+        <h1>Acoustic Design Studio</h1>
+        <div className="status-chips">
+          {timing && (
+            <span
+              className={`status-chip ${timing.ref.verdict === 'plausible' ? 'chip-ok' : 'chip-warn'}`}
+              title={timing.ref.message}
+            >
+              <span className="chip-dot" />
+              Timing <strong>{timing.ref.verdict}</strong>
+            </span>
+          )}
+          {integration?.score !== null && integration?.score !== undefined && (
+            <span className="status-chip" title="Summing efficiency, 0–100 (overlap-weighted)">
+              Integration <strong>{integration.score.toFixed(0)}</strong>
+            </span>
+          )}
+          {integration?.overlapCentreHz != null && (
+            <span className="status-chip" title="Where the driver levels meet">
+              Overlap <strong>{Math.round(integration.overlapCentreHz)} Hz</strong>
+            </span>
+          )}
+          {phaseStats && (
+            <span className="status-chip" title="95th-percentile phase error in the driver overlap">
+              Fase P95 <strong>{phaseStats.p95ErrorDeg.toFixed(0)}°</strong>
+            </span>
+          )}
+        </div>
+        <div className="theme-switch" role="group" aria-label="Layout">
+          {(
+            [
+              ['auto', 'Auto', 'Follow window width: split when it fits, stacked when narrow'],
+              ['split', 'Split', 'Always two panes: design left, charts right'],
+              ['stacked', 'Stacked', 'Always the classic single-column stack'],
+            ] as const
+          ).map(([m, label, tip]) => (
+            <button
+              key={m}
+              type="button"
+              className={layoutMode === m ? 'active' : ''}
+              onClick={() => setLayoutMode(m)}
+              title={tip}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+        <div className="theme-switch" role="group" aria-label="Theme">
+          {(['system', 'light', 'dark'] as const).map((t) => (
+            <button
+              key={t}
+              type="button"
+              className={theme === t ? 'active' : ''}
+              onClick={() => setTheme(t)}
+              title={`Theme: ${t === 'system' ? 'follow the OS' : t}`}
+            >
+              {t === 'system' ? 'Auto' : t === 'light' ? 'Light' : 'Dark'}
+            </button>
+          ))}
+        </div>
+      </header>
+
+      <div className={`workspace${designTab === 'network' ? ' wide-left' : ''}`}>
+        <aside className="design-pane">
+          <nav className="pane-tabs" aria-label="Design panels">
+            {(
+              [
+                ['import', 'Import', 'Load measurements and projects, see what is imported per driver and attach notes to files'],
+                ['data', 'Setup', 'View range, phase convention, tweeter adjustment, vxp variant and the timing sanity check'],
+                ['filters', 'Filters', 'Virtual target filters (HP/LP/EQ per driver), the Optimize button and passive synthesis'],
+                ['network', 'Network', 'The passive network editor: schematic, component tuning, catalog and BOM'],
+              ] as const
+            ).map(([id, label, tip]) => (
+              <button
+                key={id}
+                type="button"
+                className={designTab === id ? 'active' : ''}
+                onClick={() => setDesignTab(id)}
+                title={tip}
+              >
+                {label}
+              </button>
+            ))}
+          </nav>
+          <div className="pane-body">
+            {designTab === 'import' && (
+              <>
+      <div className="panel">
+        <div className="row">
+          <label title="FRD = frequency response (SPL + phase), ZMA = measured impedance. Select the 0° file plus all horizontal angle files and the .ZMA in one go — angles are recognised by filename.">
+            Woofer / mid FRD + ZMA (multi-select all hor angles + impedance)
+            <input type="file" accept=".frd,.txt,.zma,.ZMA" multiple onChange={loadDriverFiles('woofer')} />
+          </label>
+          <label title="FRD = frequency response (SPL + phase), ZMA = measured impedance. Select the 0° file plus all horizontal angle files and the .ZMA in one go — angles are recognised by filename.">
+            Tweeter FRD + ZMA (multi-select all hor angles + impedance)
+            <input type="file" accept=".frd,.txt,.zma,.ZMA" multiple onChange={loadDriverFiles('tweeter')} />
+          </label>
+          <label title="Optional: import a VituixCAD project to simulate Stefan's crossover variants. Select the .vxp together with its .ZMA and response .txt files.">
+            VituixCAD project (.vxp + .ZMA + response .txt — select together)
+            <input
+              type="file"
+              accept=".vxp,.zma,.ZMA,.txt,.frd"
+              multiple
+              onChange={loadVituixFiles}
+            />
+          </label>
+          <button
+            type="button"
+            onClick={loadDemo}
+            title="Load the bundled KOAN measurements (all angles + impedances + vxp variants) — instant playground"
+          >
+            Load KOAN demo data
+          </button>
+          <span className="project-actions">
+            <button
+              type="button"
+              onClick={saveProject}
+              disabled={!woofer && !tweeter}
+              title="Download everything (raw measurement files + design state) as one project file"
+            >
+              Save project
+            </button>
+            <label className="file-button" title="Restore a previously saved project file">
+              Load project
+              <input
+                type="file"
+                accept=".json,.adsproj"
+                onChange={loadProjectFromFile}
+                style={{ display: 'none' }}
+              />
+            </label>
+            <button type="button" onClick={resetProject} title="Clear autosave and start fresh">
+              Reset
+            </button>
+          </span>
+        </div>
+        <div className="row" style={{ marginTop: '0.5rem' }}>
+          <span className="derived">Component catalog:</span>
+          <label
+            className="file-button"
+            title="Import a component catalog (brands, series, E-grids, tiers, prices) — the optimizer's Snap to catalog and the BOM use it. A series with a built-in id overrides the built-in."
+          >
+            Import catalog
+            <input
+              type="file"
+              accept=".json,.adscatalog.json"
+              onChange={importCatalogFromFile}
+              style={{ display: 'none' }}
+            />
+          </label>
+          <button
+            type="button"
+            onClick={exportCatalog}
+            title="Download the current catalog as an editable JSON template"
+          >
+            Export catalog
+          </button>
+          <span className="derived">
+            {allSeries().length} series
+            {customCatalogParts().length > 0 && ` · ${customCatalogParts().length} exact parts`}
+            {allSeries().some((s) => s.basePrice !== undefined) ||
+            customCatalogParts().some((p) => p.priceEur !== undefined)
+              ? ' · prices loaded'
+              : ' · no prices yet'}
+          </span>
+        </div>
+        {persistNote && <p className="filenames">{persistNote} · autosaves locally on every change</p>}
+        {vxpNote && <p className="filenames">{vxpNote}</p>}
+        {error && <p className="error">Parse error: {error}</p>}
+        {woofer && tweeter && (
+          <p className="filenames">
+            {woofer.name} · {tweeter.name}
+            {zModels.length > 0 && ` · Z ✓ (${zModels.join(', ')})`}
+          </p>
+        )}
+      </div>
+
+      <div className="panel">
+        <h2>Imported files</h2>
+        {(() => {
+          interface Row {
+            key: string;
+            name: string;
+            detail: string;
+          }
+          interface Group {
+            title: string;
+            colorVar?: string;
+            rows: Row[];
+          }
+          const groups: Group[] = [];
+          const driverGroup = (
+            slot: 'woofer' | 'tweeter',
+            loaded: Loaded | null,
+            zKey: string,
+            title: string,
+            colorVar: string,
+          ) => {
+            const rows: Row[] = [];
+            if (loaded) {
+              rows.push({
+                key: `${slot}:${loaded.name}`,
+                name: loaded.name,
+                detail: 'FRD — SPL response (0°)',
+              });
+            }
+            for (const a of angleSets?.[slot] ?? []) {
+              if (loaded && a.name === loaded.name) continue;
+              rows.push({ key: `${slot}:${a.name}`, name: a.name, detail: `FRD — ${a.hor}° hor` });
+            }
+            const z = zStandalone[zKey];
+            if (z) {
+              rows.push({ key: `${slot}:${z.file.name}`, name: z.file.name, detail: 'ZMA — impedance' });
+            }
+            if (rows.length > 0) groups.push({ title, colorVar, rows });
+          };
+          driverGroup('woofer', woofer, 'mid', 'Woofer / mid', '--viz-woofer');
+          driverGroup('tweeter', tweeter, 'tweeter', 'Tweeter', '--viz-tweeter');
+          if (project) {
+            const rows: Row[] = [
+              {
+                key: `vxp:${project.vxpFile.name}`,
+                name: project.vxpFile.name,
+                detail: `.vxp — ${project.vxp.crossovers.length} crossover variants`,
+              },
+            ];
+            for (const [model, f] of Object.entries(project.impedanceFiles)) {
+              rows.push({ key: `vxp:${f.name}`, name: f.name, detail: `ZMA — impedance (${model})` });
+            }
+            groups.push({ title: 'VituixCAD project', rows });
+          }
+          if (groups.length === 0) {
+            return (
+              <p className="sub" style={{ margin: 0 }}>
+                Nothing imported yet — load driver files above, or hit "Load KOAN demo data".
+              </p>
+            );
+          }
+          return groups.map((g) => (
+            <div key={g.title} className="file-group">
+              <h3>
+                {g.colorVar && (
+                  <span className="legend-key" style={{ background: `var(${g.colorVar})` }} />
+                )}
+                {g.title}
+              </h3>
+              {g.rows.map((r) => (
+                <div key={r.key} className="file-row">
+                  <div className="file-row-head">
+                    <span className="file-name">{r.name}</span>
+                    <span className="file-kind">{r.detail}</span>
+                  </div>
+                  <input
+                    className="file-note"
+                    placeholder="Add a note… (mic distance, smoothing, gate, which prototype)"
+                    value={fileNotes[r.key] ?? ''}
+                    onChange={(e) => {
+                      const v = e.target.value;
+                      setFileNotes((p) => {
+                        const next = { ...p };
+                        if (v) next[r.key] = v;
+                        else delete next[r.key];
+                        return next;
+                      });
+                    }}
+                    title="Free note for this file — autosaved and included in the project file"
+                  />
+                </div>
+              ))}
+            </div>
+          ));
+        })()}
+      </div>
+              </>
+            )}
+
+            {designTab === 'data' && !woofer && !tweeter && (
+              <p className="sub pane-hint">
+                No measurements yet — load them in the Import tab first.
+              </p>
+            )}
+            {designTab === 'data' && (
+              <>
+      {woofer && tweeter && (
+        <>
+          <div className="panel controls">
+            <fieldset>
+              <legend>
+                View range
+                {rangeEditing && <span className="derived"> — simulation paused while editing</span>}
+              </legend>
+              <label title="Lower edge of the simulation grid AND the optimizer/metrics evaluation band. The sim pauses while you type; commits on Enter/blur. Zooming a chart and clicking 'use as view range' writes back here.">
+                f min (Hz)
+                <input
+                  type="number"
+                  value={fMin}
+                  onChange={(e) => setFMin(e.target.value)}
+                  onFocus={() => setRangeEditing(true)}
+                  onBlur={() => setRangeEditing(false)}
+                  onKeyDown={(e) => e.key === 'Enter' && e.currentTarget.blur()}
+                />
+              </label>
+              <label title="Upper edge of the simulation grid AND the optimizer/metrics evaluation band. The sim pauses while you type; commits on Enter/blur.">
+                f max (Hz)
+                <input
+                  type="number"
+                  value={fMax}
+                  onChange={(e) => setFMax(e.target.value)}
+                  onFocus={() => setRangeEditing(true)}
+                  onBlur={() => setRangeEditing(false)}
+                  onKeyDown={(e) => e.key === 'Enter' && e.currentTarget.blur()}
+                />
+              </label>
+              <label title="Y-axis floor of the SPL charts — empty = automatic">
+                SPL min (dB)
+                <input
+                  type="number"
+                  placeholder="auto"
+                  value={splMin}
+                  onChange={(e) => setSplMin(e.target.value)}
+                />
+              </label>
+              <label title="Y-axis ceiling of the SPL charts — empty = automatic">
+                SPL max (dB)
+                <input
+                  type="number"
+                  placeholder="auto"
+                  value={splMax}
+                  onChange={(e) => setSplMax(e.target.value)}
+                />
+              </label>
+            </fieldset>
+            <fieldset>
+              <legend>Driver phase</legend>
+              <label title="Measured = the real measured phase incl. the true inter-driver time offset — the whole point of this tool. Minimum phase = reconstructed from magnitude (offsets discarded), only for apples-to-apples VituixCAD comparison.">
+                Convention
+                <select
+                  value={phaseMode}
+                  onChange={(e) => setPhaseMode(e.target.value as 'measured' | 'minimum')}
+                >
+                  <option value="measured">Measured (real timing)</option>
+                  <option value="minimum">Minimum phase (VituixCAD-style)</option>
+                </select>
+              </label>
+              {phaseMode === 'minimum' && (
+                <span className="derived">
+                  measured inter-driver timing discarded — comparison mode
+                </span>
+              )}
+              {phaseMode === 'measured' && timing?.ref.verdict === 'plausible' && (
+                <span className="derived">
+                  auto: shared time reference plausible — real timing in use
+                </span>
+              )}
+            </fieldset>
+            <fieldset>
+              <legend>Tweeter adjustment</legend>
+              <label title="Simulate moving the tweeter physically (mm depth, + = recessed = extra delay). With measured phase and a shared time reference the real timing is already in the data — leave 0.">
+                Offset (mm, + = recessed)
+                <input
+                  type="number"
+                  step="0.5"
+                  value={offsetMm}
+                  onChange={(e) => setOffsetMm(e.target.value)}
+                />
+              </label>
+              <label title="Level adjustment on the tweeter branch, dB">
+                Level trim (dB)
+                <input
+                  type="number"
+                  step="0.5"
+                  value={trimDb}
+                  onChange={(e) => setTrimDb(e.target.value)}
+                />
+              </label>
+              <label
+                className="check"
+                title="Flip the tweeter 180° (swap + and −) — the classic move around an LR2 crossover"
+              >
+                <input
+                  type="checkbox"
+                  checked={inverted}
+                  onChange={(e) => setInverted(e.target.checked)}
+                />
+                Invert polarity
+              </label>
+              <span className="derived" title="The mm offset expressed as time delay">= {delayUs.toFixed(0)} µs delay</span>
+              {phaseMode === 'measured' &&
+                timing?.ref.verdict === 'plausible' &&
+                num(offsetMm, 0) !== 0 && (
+                  <span className="nl-warning">
+                    measured phase already carries the real timing — leave 0 unless you are
+                    simulating a physical move
+                  </span>
+                )}
+              {phaseMode === 'minimum' && timing?.ref.verdict === 'plausible' && (
+                <span className="derived">
+                  auto-filled from the measured Δ ({timing.ref.deltaMm.toFixed(1)} mm) — minimum
+                  phase discards the measured timing
+                </span>
+              )}
+            </fieldset>
+            {project && (
+              <fieldset>
+                <legend>Crossover (VituixCAD project)</legend>
+                <label title="Simulate one of the crossover variants from the imported VituixCAD project (solved on the measured impedances). 'None' shows the raw drivers.">
+                  Variant
+                  <select value={xoName} onChange={(e) => setXoName(e.target.value)}>
+                    <option value="none">None (raw drivers)</option>
+                    {project.vxp.crossovers.map((c) => (
+                      <option key={c.name} value={c.name}>
+                        {c.name}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              </fieldset>
+            )}
+          </div>
+          {sim?.xoError && <p className="error">Crossover error: {sim.xoError}</p>}
+        </>
+      )}
+
+      {timing && (
+        <div className="panel timing">
+          <h2>Timing sanity check</h2>
+          <div className={`verdict ${verdictClass(timing.ref.verdict)}`}>
+            <strong>{verdictHeading(timing.ref.verdict)}</strong>
+            <div style={{ marginTop: '0.4rem' }}>{timing.ref.message}</div>
+          </div>
+          <div className="stats">
+            <Stat
+              k="Woofer delay"
+              v={`${timing.w.delayMs.toFixed(3)} ms`}
+              sub={`R² ${timing.w.rSquared.toFixed(3)}`}
+            />
+            <Stat
+              k="Tweeter delay"
+              v={`${timing.t.delayMs.toFixed(3)} ms`}
+              sub={`R² ${timing.t.rSquared.toFixed(3)}`}
+            />
+            <Stat
+              k="Apparent mic distance"
+              v={`${(timing.ref.apparentDistanceM.woofer * 100).toFixed(1)} / ${(
+                timing.ref.apparentDistanceM.tweeter * 100
+              ).toFixed(1)} cm`}
+              sub="woofer / tweeter — incl. common latency"
+            />
+            <Stat
+              k="Acoustic-centre Δ"
+              v={`${timing.ref.deltaUs.toFixed(0)} µs ≈ ${timing.ref.deltaMm.toFixed(1)} mm`}
+              sub="tweeter later = positive"
+            />
+          </div>
+          {timing.ref.verdict === 'plausible' && (
+            <p className="sub" style={{ margin: '0.75rem 0 0' }}>
+              VituixCAD equivalent (Minimum phase ON): give the{' '}
+              <strong>{timing.ref.deltaUs >= 0 ? 'tweeter' : 'woofer/mid'}</strong> a Delay of{' '}
+              <strong>{Math.abs(timing.ref.deltaUs).toFixed(0)} µs</strong> (or Z ={' '}
+              {`−${Math.abs(timing.ref.deltaMm).toFixed(1)} mm`}), the other driver 0. Only the
+              DIFFERENCE matters — never enter the shared ~
+              {(Math.min(timing.w.delayMs, timing.t.delayMs) * 1000).toFixed(0)} µs bulk delay.
+            </p>
+          )}
+        </div>
+      )}
+              </>
+            )}
+
+            {designTab === 'filters' && !result && (
+              <p className="sub pane-hint">
+                Nothing to design yet — load measurements in the Import tab first.
+              </p>
+            )}
+            {designTab === 'filters' && result && (
+        <>
+          <div className="panel">
+            <h2>Virtual filters (target design)</h2>
+            <div className="row" style={{ marginBottom: '1rem' }}>
+              <button
+                type="button"
+                onClick={runVfOptimize}
+                disabled={vfBusy}
+                title="Design the crossover, build it as a passive network and simulate it — all in one go (lands in the Working tab)"
+              >
+                {vfBusy ? 'Optimizing + building…' : 'Optimize — design for me'}
+              </button>
+              {vfBusy && vfProgress && (
+                <span className="derived">
+                  {vfProgress.label ?? `round ${vfProgress.round}`} ·{' '}
+                  {vfProgress.evals.toLocaleString('nl-NL')} network sims ·{' '}
+                  {vfProgress.rippleDb.toFixed(2)} dB / {vfProgress.phaseDeg.toFixed(1)}°
+                </span>
+              )}
+              <select
+                value={synthMode}
+                onChange={(e) => setSynthMode(e.target.value as 'filter' | 'acoustic')}
+                title="What the passive build optimises for: the acoustic result on the measured driver, or an exact reproduction of the filter curve"
+              >
+                <option value="acoustic">Acoustic result (flatten measured driver)</option>
+                <option value="filter">Filter curve (reproduce target exactly)</option>
+              </select>
+              <button
+                type="button"
+                className={showOptSettings ? 'active-toggle' : ''}
+                onClick={() => setShowOptSettings((s) => !s)}
+                title="Optimizer settings: priority, amplitude target, in-room weight, EQ bands"
+              >
+                ⚙ Settings
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  // Start at the import gate (step 0) when there is no driver
+                  // data yet — the wizard should take you from nothing to a
+                  // built crossover, not assume measurements exist.
+                  setWizardStep(!woofer || !tweeter ? 0 : 1);
+                  setWizardOpen(true);
+                }}
+                title="Design wizard: load measurements, then goals, priority, crossover point, acoustic slopes and component choices in one guided flow — ends with Optimize"
+              >
+                🧙 Wizard
+              </button>
+              <button
+                type="button"
+                onClick={resetVirtualFilters}
+                disabled={vfBusy}
+                title="Filters back to the clean starting point — measurements and crossover selection stay"
+              >
+                Reset filters
+              </button>
+              <label title="Take the virtual filters out of the simulation, keeping their settings — auto-on when a built passive network replaces them">
+                <input
+                  type="checkbox"
+                  checked={vfBypass}
+                  onChange={(e) => setVfBypass(e.target.checked)}
+                />{' '}
+                Bypass
+              </label>
+              {vfBypass && (
+                <span className="derived">virtual filters muted — passive network / raw drivers only</span>
+              )}
+            </div>
+            {showOptSettings && (
+              <div className="row opt-settings" style={{ marginBottom: '1rem' }}>
+                <label title="The big trade-off: budget split between a flat response and flat phase. More phase = flatter phase but more amplitude ripple. Both ends are anchored (100% phase = 90/10 internally): with the response weight at true zero the optimizer would trade a wrecked response for a phase metric it can then game.">
+                  Priority: response {100 - phasePriority}% · phase {phasePriority}%
+                  <input
+                    type="range"
+                    min={0}
+                    max={100}
+                    step={5}
+                    value={phasePriority}
+                    onChange={(e) => setPhasePriority(Number(e.target.value))}
+                    style={{ width: '14rem', accentColor: 'var(--accent)' }}
+                  />
+                </label>
+                <label title="How phase error is judged. Integration band = the panel's average + excursions over the WHOLE overlap window (flat across the handover, matches the numbers you read — Sanders keuze). Classic = overlap-weighted mean, centre-heavy (the old behaviour, kept as fallback).">
+                  Phase metric
+                  <select
+                    value={phaseMetricMode}
+                    onChange={(e) => setPhaseMetricMode(e.target.value as 'band' | 'overlap')}
+                  >
+                    <option value="band">Integration band (avg + P95)</option>
+                    <option value="overlap">Classic (overlap-weighted)</option>
+                  </select>
+                </label>
+                <label>
+                  Amplitude target
+                  <select
+                    value={ampTarget}
+                    onChange={(e) => setAmpTarget(e.target.value as 'onAxis' | 'listeningWindow')}
+                    disabled={!angleSets}
+                    title={angleSets ? '' : 'Load angle measurements to enable'}
+                  >
+                    <option value="onAxis">On-axis (0°)</option>
+                    <option value="listeningWindow">Listening window (0–30°)</option>
+                  </select>
+                </label>
+                <label title={angleSets ? '' : 'Load angle measurements to enable'}>
+                  In-room weight: {dirWeight}% (energy average)
+                  <input
+                    type="range"
+                    min={0}
+                    max={100}
+                    step={5}
+                    value={dirWeight}
+                    onChange={(e) => setDirWeight(Number(e.target.value))}
+                    disabled={!angleSets}
+                    style={{ width: '11rem', accentColor: 'var(--accent)' }}
+                  />
+                </label>
+                <label
+                  className="inline-num"
+                  title="Hard cap on EQ bands per driver the optimizer may spend — more bands = finer correction but a bigger search (and more passive components later)"
+                >
+                  EQ bands/driver for optimizer
+                  <input
+                    type="number"
+                    min={0}
+                    max={8}
+                    step={1}
+                    value={vfEqBands}
+                    onChange={(e) =>
+                      setVfEqBands(Math.max(0, Math.min(8, Math.round(Number(e.target.value)))))
+                    }
+                  />
+                </label>
+                <label title="Preferred HP/LP alignment — binding: the designer picks the foundation, the optimizer designs the best crossover on it (knees, level, polarity and EQ stay free). Auto = free choice from the library.">
+                  HP/LP preference
+                  <select value={hpLpPref} onChange={(e) => setHpLpPref(e.target.value)}>
+                    <option value="auto">Auto (library)</option>
+                    <option value="LR2">LR2 (12 dB/oct)</option>
+                    <option value="LR4">LR4 (24 dB/oct)</option>
+                    <option value="BW2">BW2 (12 dB/oct)</option>
+                    <option value="BW3">BW3 (18 dB/oct)</option>
+                    <option value="BW4">BW4 (24 dB/oct)</option>
+                    <option value="BS2">Bessel 2 (12 dB/oct)</option>
+                    <option value="BS3">Bessel 3 (18 dB/oct)</option>
+                    <option value="BS4">Bessel 4 (24 dB/oct)</option>
+                  </select>
+                </label>
+                <label title="Target ACOUSTIC slope of the mid above the crossing — the measured rolloff (driver + filter), not the electrical order. Falling short costs more than being steeper. Auto = free.">
+                  Acoustic slope mid
+                  <select value={acSlopeMid} onChange={(e) => setAcSlopeMid(e.target.value)}>
+                    <option value="auto">Auto</option>
+                    {['12', '18', '24', '30', '36'].map((v) => (
+                      <option key={v} value={v}>
+                        {v} dB/oct
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <label title="Target ACOUSTIC slope of the tweeter below the crossing — the classic 'acoustic 4th order at the tweeter' rule is 24 dB/oct. Check the result in 🎯 Targets. Auto = free.">
+                  Acoustic slope tweeter
+                  <select value={acSlopeTweeter} onChange={(e) => setAcSlopeTweeter(e.target.value)}>
+                    <option value="auto">Auto</option>
+                    {['12', '18', '24', '30', '36'].map((v) => (
+                      <option key={v} value={v}>
+                        {v} dB/oct
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <label title="Staged design (trapmethode): HP/LP structure first; EQ bands, Zobel/LCR networks and bypass caps are only added while the targets below are unmet — the fewest components that reach the goal, with a per-stage report.">
+                  <input
+                    type="checkbox"
+                    checked={stagedOn}
+                    onChange={(e) => setStagedOn(e.target.checked)}
+                  />{' '}
+                  Staged (fewest components)
+                </label>
+                {stagedOn && (
+                  <span className="inline-num" title="'Good enough' targets: stop escalating once ripple (peak ±dB, the same number the SPL strip shows) AND average phase error (°) are both met — variable per project, this is the designer's call">
+                    ≤{' '}
+                    <input
+                      type="number"
+                      min={0.1}
+                      max={3}
+                      step={0.1}
+                      value={targetRipple}
+                      onChange={(e) => setTargetRipple(e.target.value)}
+                    />{' '}
+                    ±dB ·{' '}
+                    <input
+                      type="number"
+                      min={1}
+                      max={90}
+                      step={1}
+                      value={targetPhase}
+                      onChange={(e) => setTargetPhase(e.target.value)}
+                    />
+                    °
+                  </span>
+                )}
+                <label title="EQ bands may only cut, so the design is exactly what a passive network can build — holding a drooping band flat becomes lowering the level of the rest. Turn off for active designs, where boosting is real.">
+                  <input
+                    type="checkbox"
+                    checked={vfCutOnly}
+                    onChange={(e) => setVfCutOnly(e.target.checked)}
+                  />{' '}
+                  Passive-honest (EQ cut-only)
+                </label>
+                <label title="Stopband leakage beside the crossover must stay ≥20 dB below the combined — cone-breakup phase cannot be filtered away, it can only be made irrelevant in level">
+                  <input
+                    type="checkbox"
+                    checked={breakupGuard}
+                    onChange={(e) => setBreakupGuard(e.target.checked)}
+                  />{' '}
+                  Breakup guard (≥20 dB)
+                </label>
+                <label
+                  style={{ opacity: hasImportedCatalog() ? 1 : 0.5 }}
+                  title={
+                    hasImportedCatalog()
+                      ? 'Snap the passive build to purchasable catalog values, simulated with their real DCR/ESR — the fit error against real parts becomes visible instead of assumed away'
+                      : 'Import a catalog first — without one there are no real parts to snap to, so the design keeps theoretically ideal (continuous) values'
+                  }
+                >
+                  <input
+                    type="checkbox"
+                    checked={catalogSnap && hasImportedCatalog()}
+                    disabled={!hasImportedCatalog()}
+                    onChange={(e) => setCatalogSnap(e.target.checked)}
+                  />{' '}
+                  Snap to catalog{!hasImportedCatalog() && ' (needs import)'}
+                </label>
+                <label title="Pin the ACOUSTIC crossover: the frequency where the filtered drivers actually cross must land within frequency ± margin — in the design optimizer AND the component tuner. Margin 0 = exactly there (±2% search room remains).">
+                  <input
+                    type="checkbox"
+                    checked={xoRangeOn}
+                    onChange={(e) => setXoRangeOn(e.target.checked)}
+                  />{' '}
+                  Crossover point
+                </label>
+                {tweeterHpFloor !== null && (
+                  <span
+                    className="derived"
+                    title="Hard floor for the tweeter's electrical HP knee: the classic ≥2×Fs rule, read from the measured impedance peak. Knee-domain — coexists with the crossover point."
+                  >
+                    HP floor {tweeterHpFloor} Hz (2×Fs)
+                  </span>
+                )}
+                {xoRangeOn && (
+                  <span
+                    className="inline-num"
+                    title="The ACOUSTIC handover — where the filtered drivers actually cross — must land within frequency ± margin. The electrical knees stay free (with a hot tweeter they sit far above the acoustic crossing)."
+                  >
+                    <input
+                      type="number"
+                      min={300}
+                      max={12000}
+                      step={100}
+                      value={xoFreqHz}
+                      onChange={(e) => setXoFreqHz(e.target.value)}
+                    />
+                    {' Hz ± '}
+                    <input
+                      type="number"
+                      min={0}
+                      max={5000}
+                      step={50}
+                      value={xoMarginHz}
+                      onChange={(e) => setXoMarginHz(e.target.value)}
+                    />{' '}
+                    Hz
+                  </span>
+                )}
+                {vfEqBands > 4 && (
+                  <span className="derived">
+                    {vfEqBands} bands = {3 + 6 * vfEqBands} search dimensions — slower, may need a
+                    second run
+                  </span>
+                )}
+              </div>
+            )}
+            {vfError && <p className="error">{vfError}</p>}
+            {vfOpt && (
+              <p className="vf-opt-summary">
+                Optimizer chose: LP {vfOpt.structure.wooferLpKind}
+                {vfOpt.structure.wooferLpOrder} ({vfOpt.structure.wooferLpOrder * 6} dB/oct) @{' '}
+                {Math.round(vfOpt.specs.woofer.lp.freq)} Hz · HP {vfOpt.structure.tweeterHpKind}
+                {vfOpt.structure.tweeterHpOrder} ({vfOpt.structure.tweeterHpOrder * 6} dB/oct) @{' '}
+                {Math.round(vfOpt.specs.tweeter.hp.freq)} Hz · tweeter{' '}
+                {vfOpt.specs.tweeter.gainDb.toFixed(1)} dB · polarity{' '}
+                {vfOpt.inverted ? 'inverted' : 'normal'} · EQ used:{' '}
+                {vfOpt.bandsUsed.woofer}+{vfOpt.bandsUsed.tweeter} — ripple{' '}
+                {vfOpt.before.responseStdDb.toFixed(2)} →{' '}
+                <strong>{vfOpt.after.responseStdDb.toFixed(2)} dB</strong> · phase error{' '}
+                {vfOpt.before.avgPhaseErrDeg.toFixed(0)}° →{' '}
+                <strong>{vfOpt.after.avgPhaseErrDeg.toFixed(1)}°</strong> · score{' '}
+                {vfOpt.before.integrationScore?.toFixed(0)} →{' '}
+                <strong>{vfOpt.after.integrationScore?.toFixed(0)}</strong>
+                {vfOpt.after.powerStdDb !== null && vfOpt.before.powerStdDb !== null && (
+                  <>
+                    {' '}· power ripple {vfOpt.before.powerStdDb.toFixed(2)} →{' '}
+                    <strong>{vfOpt.after.powerStdDb.toFixed(2)} dB</strong>
+                  </>
+                )}
+                {vfRunStats && (
+                  <>
+                    {' '}· {vfRunStats.rounds} rounds ·{' '}
+                    {vfRunStats.evals.toLocaleString('nl-NL')} sims
+                  </>
+                )}
+              </p>
+            )}
+            {vfOpt && vfOpt.stages.length > 0 && (
+              <p
+                className="vf-opt-summary sub"
+                title="What each escalation stage of the staged design bought (ripple / phase after that stage)"
+              >
+                Stages:{' '}
+                {vfOpt.stages
+                  .map((s) => `${s.label} → ${s.rippleDb.toFixed(2)} dB / ${s.phaseDeg.toFixed(1)}°`)
+                  .join('  ·  ')}
+              </p>
+            )}
+            <div className="vf-grid">
+              <DriverFilterControls
+                title="Woofer / mid"
+                accentVar="--viz-woofer"
+                spec={vFilters.woofer}
+                onChange={(woofer) => setVFilters((p) => ({ ...p, woofer }))}
+              />
+              <DriverFilterControls
+                title="Tweeter"
+                accentVar="--viz-tweeter"
+                spec={vFilters.tweeter}
+                onChange={(tweeter) => setVFilters((p) => ({ ...p, tweeter }))}
+              />
+            </div>
+          </div>
+
+          {zModels.length > 0 && (
+            <div className="panel">
+              <h2>Passive synthesis</h2>
+              <p className="sub" style={{ marginBottom: '0.8rem' }}>
+                Fit real component values (on the measured impedances) to the virtual target above.
+              </p>
+              <div className="row" style={{ marginBottom: '0.9rem' }}>
+                <button
+                  type="button"
+                  onClick={() => {
+                    // Yield a frame so the busy overlay paints before the
+                    // synchronous solver blocks the thread.
+                    setSynthBusy(true);
+                    setTimeout(() => {
+                      try {
+                        runSynthesis();
+                      } finally {
+                        setSynthBusy(false);
+                      }
+                    }, 30);
+                  }}
+                  disabled={synthBusy}
+                  title="Fit real components to the virtual target and simulate it (lands in the Working tab) — for hand-made filters; Optimize does this automatically"
+                >
+                  Build passive filter
+                </button>
+                <span className="derived">
+                  optimises for "{synthMode === 'acoustic' ? 'Acoustic result' : 'Filter curve'}"
+                  (dropdown next to Optimize) · uses the priority setting from the Virtual filters
+                  panel
+                </span>
+              </div>
+              {synth?.error && <p className="error">{synth.error}</p>}
+              {synth && !synth.error && (
+                <div className="vf-grid" style={{ marginTop: '1rem' }}>
+                  {(['woofer', 'tweeter'] as const).map((slot) => {
+                    const r = synth[slot];
+                    if (!r) return null;
+                    return (
+                      <div key={slot} className="synth-result">
+                        <h3>
+                          <span
+                            className="legend-key"
+                            style={{ background: `var(--viz-${slot})` }}
+                          />
+                          {slot === 'woofer' ? 'Woofer / mid' : 'Tweeter'} branch
+                        </h3>
+                        <table>
+                          <tbody>
+                            {r.components.map((c) => (
+                              <tr key={c.id}>
+                                <td className="synth-role">
+                                  {c.role}
+                                  {c.catalogLabel && (
+                                    <span className="derived"> — {c.catalogLabel}</span>
+                                  )}
+                                </td>
+                                <td className="synth-value">{formatComponent(c)}</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                        <p className="synth-fit">
+                          fit: {r.rmsDb.toFixed(2)} dB / {r.rmsDeg.toFixed(1)}° RMS
+                          {r.converged ? '' : ' (not converged — treat as rough)'}
+                        </p>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+              {synth && !synth.error && (synth.woofer || synth.tweeter) && result && (
+                <SynthChart synth={synth} freq={result.freq} xDomain={xDomain} />
+              )}
+            </div>
+          )}
+        </>
+            )}
+
+            {designTab === 'network' && !result && (
+              <p className="sub pane-hint">
+                No network to edit yet — load measurements in the Import tab first.
+              </p>
+            )}
+            {designTab === 'network' && result && (
+        <>
+          <div className="panel">
+            <h2>Network editor (passive)</h2>
+            <p className="sub" style={{ marginBottom: '0.8rem' }}>
+              Drag parts, draw wires, edit values — the schematic IS the network: parts connect
+              where their points touch, and every change re-solves live on the measured
+              impedances. Inductors carry DCR, capacitors ESR. Drivers are a list (N-way ready);
+              the summed result uses the mid/tweeter slots for now.
+            </p>
+            <div className="row" style={{ marginBottom: '0.8rem' }}>
+              <button
+                type="button"
+                onClick={importNetworkFromVariant}
+                disabled={!project || xoName === 'none'}
+                title={project ? 'Open the selected crossover variant in a new tab' : 'Load a vxp project first'}
+              >
+                Import variant {xoName !== 'none' ? `(${xoName})` : ''}
+              </button>
+              <button
+                type="button"
+                onClick={startNetworkFromTemplate}
+                title="Start a fresh network in a new tab: generator + drivers, unfiltered — build your own from scratch"
+              >
+                New from template
+              </button>
+              <button
+                type="button"
+                onClick={exportActiveFilter}
+                disabled={!activeDesign}
+                title="Download the active tab as a standalone .adsfilter.json — share it or bring it into another project"
+              >
+                Export filter
+              </button>
+              <label className="file-button" title="Open an exported .adsfilter.json in a new tab">
+                Import filter
+                <input
+                  type="file"
+                  accept=".json,.adsfilter"
+                  onChange={importFilterFromFile}
+                  style={{ display: 'none' }}
+                />
+              </label>
+              <button
+                type="button"
+                onClick={exportCatalog}
+                title="Download the component catalog as an editable JSON template — add your own brands/series and import it back"
+              >
+                Export catalog
+              </button>
+              <label
+                className="file-button"
+                title="Import a component-catalog JSON: your series appear in the inspector next to the built-in ones (persisted across sessions)"
+              >
+                Import catalog
+                <input
+                  type="file"
+                  accept=".json,.adscatalog"
+                  onChange={importCatalogFromFile}
+                  style={{ display: 'none' }}
+                />
+              </label>
+              <button
+                type="button"
+                onClick={runNetOptimize}
+                disabled={!activeDesign || netOptBusy || !sim || zModels.length === 0}
+                title="Re-fit the UNLOCKED component values of the active tab against the measured response — 🔒 parts keep their value"
+              >
+                {netOptBusy ? 'Tuning…' : '⚙ Optimize components'}
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setTrapModel(zModels[0] ?? 'mid');
+                  setTrapOpen(true);
+                }}
+                disabled={!activeDesign || zModels.length === 0}
+                title="Add an LCR notch (series trap across a driver) to tame a peak — enter frequency, depth and Q; values follow from the measured impedance and the result shows live"
+              >
+                ➕ Add notch
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  if (!activeDesign) return;
+                  const tidied = tidySchematic(activeDesign.parts);
+                  if (!tidied) {
+                    setNetOptNote(
+                      'Layout not tidied: topology too exotic for the auto-placer (bridge, shared series section, or open/shorted parts).',
+                    );
+                    return;
+                  }
+                  commitSchematic(tidied); // undo-able
+                  setNetOptNote('Layout tidied — same netlist, fresh placement (Undo to revert).');
+                }}
+                disabled={!activeDesign}
+                title="Redraw this schematic from its netlist: series path as a bus, chains hanging down, branches stacked with air — electrically identical, undo-able. Fixes cramped layouts from older exports."
+              >
+                Tidy layout
+              </button>
+              <button
+                type="button"
+                onClick={() => setShowTargets(true)}
+                title="What was this network built FOR? The virtual target design (HP/LP kind, order, knees, EQ bands) plus the MEASURED acoustic slopes beside the crossing — electrical component count never equals acoustic order."
+              >
+                🎯 Targets
+              </button>
+              {netOptNote && <span className="derived">{netOptNote}</span>}
+              <label title="Feed the active tab's network into the simulation instead of the selected vxp variant — every edit re-solves live">
+                <input
+                  type="checkbox"
+                  checked={networkActive}
+                  disabled={!schematic}
+                  onChange={(e) => setNetworkActive(e.target.checked)}
+                />{' '}
+                Use in simulation (replaces the vxp variant)
+              </label>
+              {designs.length > 1 && (
+                <label title="Show the other tabs' summed responses as dashed ghost curves in the SPL chart">
+                  <input
+                    type="checkbox"
+                    checked={compareTabs}
+                    onChange={(e) => setCompareTabs(e.target.checked)}
+                  />{' '}
+                  Compare tabs in SPL chart
+                </label>
+              )}
+            </div>
+            {designs.length > 0 && (
+              <div className="design-tabs">
+                {designs.map((d) => (
+                  <DesignTab
+                    key={d.id}
+                    design={d}
+                    active={d.id === activeDesignId}
+                    onSelect={() => selectDesign(d.id)}
+                    onRename={(name) => renameDesign(d.id, name)}
+                    onDelete={() => deleteDesign(d.id)}
+                  />
+                ))}
+                {saveNameDraft === null ? (
+                  <button
+                    type="button"
+                    className="design-tab-dup"
+                    onClick={() => setSaveNameDraft(uniqueDesignName('Filter', designs))}
+                    disabled={!activeDesignId}
+                    title="Snapshot the active tab into memory under a name — keep tweaking here, compare against the saved one"
+                  >
+                    💾 Save filter
+                  </button>
+                ) : (
+                  <span className="design-tab-savename">
+                    <input
+                      autoFocus
+                      value={saveNameDraft}
+                      placeholder="Filter name"
+                      onChange={(e) => setSaveNameDraft(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') saveActiveDesign(saveNameDraft);
+                        if (e.key === 'Escape') setSaveNameDraft(null);
+                      }}
+                    />
+                    <button type="button" onClick={() => saveActiveDesign(saveNameDraft)} title="Save (Enter)">
+                      ✓
+                    </button>
+                    <button type="button" onClick={() => setSaveNameDraft(null)} title="Cancel (Esc)">
+                      ×
+                    </button>
+                  </span>
+                )}
+              </div>
+            )}
+            {schematic ? (
+              <>
+                <SchematicEditor
+                  parts={schematic.parts}
+                  models={zModels}
+                  onChange={commitSchematic}
+                  onUndo={undoSchematic}
+                  canUndo={schHistory.length > 0}
+                />
+                {networkIssues && (networkIssues.errors.length > 0 || networkIssues.warnings.length > 0) && (
+                  <div className="nl-issues">
+                    {networkIssues.errors.map((m) => (
+                      <p key={m} className="error">{m}</p>
+                    ))}
+                    {networkIssues.warnings.map((m) => (
+                      <p key={m} className="nl-warning">{m}</p>
+                    ))}
+                  </div>
+                )}
+                {(() => {
+                  const bom = bomFor(schematic.parts);
+                  if (bom.rows.length === 0) return null;
+                  return (
+                    <details className="bom">
+                      <summary>
+                        BOM — {bom.rows.length} components ·{' '}
+                        {bom.totalEur !== null
+                          ? `≥ €${bom.totalEur.toFixed(2)} (${bom.pricedCount}/${bom.rows.length} priced)`
+                          : 'no prices in catalog yet'}
+                        {bom.unmatchedCount > 0 && ` · ${bom.unmatchedCount} without exact catalog match`}
+                      </summary>
+                      <table>
+                        <tbody>
+                          {bom.rows.map((row) => (
+                            <tr key={row.partId}>
+                              <td className="synth-role">{row.partId}</td>
+                              <td className="synth-value">
+                                {row.kind === 'L'
+                                  ? `${Number((row.value * 1e3).toPrecision(4))} mH`
+                                  : row.kind === 'C'
+                                    ? `${Number((row.value * 1e6).toPrecision(4))} µF`
+                                    : `${Number(row.value.toPrecision(4))} Ω`}
+                              </td>
+                              <td className="synth-role">
+                                {row.match
+                                  ? `${row.match.brand} ${row.match.series} — ${formatCatalogPart(row.match)}`
+                                  : row.stackMatch
+                                    ? row.stackMatch.label
+                                    : 'no exact catalog value'}
+                              </td>
+                              <td className="synth-value">
+                                {row.match?.priceEur !== undefined
+                                  ? `€${row.match.priceEur.toFixed(2)}`
+                                  : row.stackMatch?.priceEur !== undefined
+                                    ? `€${row.stackMatch.priceEur.toFixed(2)}`
+                                    : '—'}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </details>
+                  );
+                })()}
+              </>
+            ) : (
+              <p className="sub">
+                No network yet — "Build passive filter" drops the synthesised design here as a tab,
+                or import the selected variant / start from a template (generator + drivers,
+                unfiltered).
+              </p>
+            )}
+          </div>
+        </>
+            )}
+          </div>
+        </aside>
+
+        <main className="analysis-pane">
+      {!woofer || !tweeter ? (
+        <p className="sub pane-hint">
+          Load driver measurements (Import tab) to start simulating — or hit "Load KOAN demo data".
+        </p>
+      ) : null}
+
+      {woofer && tweeter && !result && (
+        <div className="panel">
+          <div className="verdict mismatch">
+            <strong>Nothing to simulate: the view range is invalid.</strong> f min must be below
+            f max, inside the measured range ({Math.ceil(Math.max(woofer.frd.freq[0], tweeter.frd.freq[0]))}–
+            {Math.floor(Math.min(woofer.frd.freq.at(-1) ?? 20000, tweeter.frd.freq.at(-1) ?? 20000))}{' '}
+            Hz). Fix “f min” / “f max” in the Setup tab — everything returns instantly.
+          </div>
+        </div>
+      )}
+
+      {result && (
+        <>
+          <div className="panel-toggles">
+            <span className="toggles-cap">Charts</span>
+            {PANEL_KEYS.map((k) => (
+              <button
+                key={k}
+                type="button"
+                className={`panel-toggle${showPanels[k] ? ' on' : ''}`}
+                aria-pressed={showPanels[k]}
+                title={
+                  showPanels[k]
+                    ? 'Hide this panel (skips its computation too)'
+                    : 'Show this panel'
+                }
+                onClick={() => setShowPanels((p) => ({ ...p, [k]: !p[k] }))}
+              >
+                {showPanels[k] ? '✓ ' : ''}
+                {PANEL_LABEL[k]}
+              </button>
+            ))}
+          </div>
+
+          {/* Only when the sim TRULY shows raw drivers: no active editor
+              network, no live virtual filters, no vxp variant. The old
+              vxp-only check kept shouting "RAW drivers" straight over an
+              active Working network. */}
+          {result &&
+            !networkActive &&
+            !(project && xoName !== 'none') &&
+            (vfBypass || (!isActive(vFilters.woofer) && !isActive(vFilters.tweeter))) && (
+              <div className="panel">
+                <div className="verdict no-reference">
+                  <strong>No filter in the simulation — you are looking at the RAW drivers.</strong>{' '}
+                  Design one in the Filters tab (Optimize — design for me), activate a network in
+                  the Network tab{project ? ', or pick a vxp variant in the Setup tab' : ''}.
+                </div>
+              </div>
+            )}
+
+          <div className={`panel${splPinned ? ' spl-sticky' : ''}`}>
+            <div className="panel-head">
+              <h2>SPL</h2>
+              <button
+                type="button"
+                className={`pin-btn${splPinned ? ' on' : ''}`}
+                aria-pressed={splPinned}
+                onClick={() => setSplPinned((p) => !p)}
+                title={
+                  splPinned
+                    ? 'SPL is pinned: it stays put while the other charts scroll underneath. Click to let it scroll along.'
+                    : 'Pin the SPL chart to the top while you scroll through the other charts.'
+                }
+              >
+                📌
+              </button>
+            </div>
+            <Chart
+              series={splSeries}
+              xDomain={xDomain}
+              yDomain={splDomain}
+              yTickStep={5}
+              yUnit="dB"
+              height={320}
+              onXRangeCommit={commitViewRange}
+              onVisibleXChange={onSplVisibleX}
+              handles={splHandles}
+              onHandleMove={moveSplHandle}
+              onHandleWheel={wheelSplHandle}
+            />
+            {splHandles && (
+              <p className="sub handle-hint">
+                Dots = your virtual filters: drag a hollow dot to move a crossover knee, drag a
+                solid dot for EQ freq/gain, scroll on it for Q.
+              </p>
+            )}
+            <div className="align-legend">
+              <span className="align-title">Combined-curve color = phase alignment:</span>
+              {TIER_ORDER.map((c) => (
+                <span key={c} className="legend-item">
+                  <span className="legend-key" style={{ background: TIER_COLOR[c] }} />
+                  {TIER_LABEL[c]}
+                </span>
+              ))}
+            </div>
+          </div>
+
+          {integration && (
+            <div className="panel slim">
+              {integration.score !== null ? (
+                <div className="score-strip">
+                  <span className="strip-label">Acoustic integration</span>
+                  <span
+                    className="strip-score"
+                    title="Summing efficiency 0–100: overlap-weighted cos(ε/2). 100 = every overlapping point sums perfectly, ~71 = everything at 90°."
+                  >
+                    {integration.score.toFixed(0)}
+                  </span>
+                  {combinedRippleDb !== null && (
+                    <span
+                      className="strip-item"
+                      title="Combined SPL flatness over the currently VISIBLE frequency range (zoom the SPL chart and this follows) — ± half the peak-to-peak deviation of the summed response. The amplitude side of integration: even a perfect summing score shows ripple here when the drivers' own responses aren't flat."
+                    >
+                      ±{combinedRippleDb.toFixed(1)} dB
+                    </span>
+                  )}
+                  <span
+                    className="strip-item"
+                    title="Overlap centre — the frequency where the driver levels meet (≈ the acoustic crossover point)."
+                  >
+                    overlap{' '}
+                    {integration.overlapCentreHz !== null
+                      ? `${Math.round(integration.overlapCentreHz)} Hz`
+                      : '—'}
+                  </span>
+                  <span
+                    className="strip-item"
+                    title="Integration bandwidth — contiguous band around the overlap centre where the phase error stays ≤90°. Also drawn as the shaded zone in the phase chart."
+                  >
+                    {integration.bandwidth
+                      ? `bandwidth ${Math.round(integration.bandwidth.fLo)}–${Math.round(
+                          integration.bandwidth.fHi,
+                        )} Hz · ${integration.bandwidth.octaves.toFixed(1)} oct`
+                      : 'bandwidth none (>90° at the overlap centre)'}
+                  </span>
+                </div>
+              ) : (
+                <p className="sub" style={{ margin: 0 }}>
+                  No overlap region within 20 dB — the drivers never meet, nothing to integrate.
+                </p>
+              )}
+            </div>
+          )}
+
+          {directivity && (
+            <div className="panel">
+              <h2>Directivity (horizontal)</h2>
+              <p className="sub" style={{ marginBottom: '0.8rem' }}>
+                Same filter at every measured angle ({directivity.angles.join('/')}° hor, one side).
+                Horizontal only — vertical lobing is not in this data.
+              </p>
+              {showPanels.directivity && (
+              <>
+              <Chart
+                series={[
+                  ...directivity.angles.map((a, i) => ({
+                    id: `a${a}`,
+                    label: `${a}°`,
+                    color: a === 0 ? 'var(--viz-combined)' : 'var(--viz-tick)',
+                    width: a === 0 ? 2.5 : 1.2,
+                    x: directivity.freq,
+                    y: directivity.combinedByAngle[i],
+                  })),
+                  {
+                    id: 'lw',
+                    label: 'Listening window (0–30°)',
+                    color: 'var(--viz-tweeter)',
+                    dash: '2 3',
+                    width: 2,
+                    x: directivity.freq,
+                    y: directivity.listeningWindowDb,
+                  },
+                  {
+                    id: 'pwr',
+                    label: 'Energy average (hor)',
+                    color: 'var(--viz-woofer)',
+                    dash: '6 4',
+                    width: 2.5,
+                    x: directivity.freq,
+                    y: directivity.powerDb,
+                  },
+                ]}
+                xDomain={xDomain}
+                yDomain={splDomain}
+                yTickStep={5}
+                yUnit="dB"
+                height={300}
+              />
+              <Chart
+                series={[
+                  {
+                    id: 'di',
+                    label: 'Directivity index (on-axis − energy average)',
+                    color: 'var(--viz-tweeter)',
+                    x: directivity.freq,
+                    y: directivity.diDb,
+                  },
+                ]}
+                xDomain={xDomain}
+                yDomain={[-6, 12]}
+                yTickStep={3}
+                yUnit="dB"
+                height={200}
+                yReference={0}
+              />
+              </>
+              )}
+              {sonogram && (
+                <>
+                  <div className="row" style={{ margin: '1rem 0 0.4rem' }}>
+                    <h3 style={{ margin: 0 }}>Sonogram</h3>
+                    <label>
+                      Scale{' '}
+                      <select
+                        title="Normalized: each frequency relative to its own 0° level (pure beamwidth). Absolute: relative to the loudest point (level and directivity together)."
+                        value={sonogramMode}
+                        onChange={(e) => setSonogramMode(e.target.value as SonogramMode)}
+                      >
+                        <option value="normalized">Normalized (0° = 0 dB per frequency)</option>
+                        <option value="absolute">Absolute (rel. loudest point)</option>
+                      </select>
+                    </label>
+                  </div>
+                  <p className="sub" style={{ marginBottom: '0.6rem' }}>
+                    Negative angles mirror the measured side (symmetry assumed). Dashed contour =
+                    −6 dB beamwidth; gaps mean wider than the measured {Math.max(...directivity.angles)}°.
+                  </p>
+                  <Sonogram
+                    data={sonogram.data}
+                    beamwidthDeg={sonogram.beamwidth}
+                    xDomain={xDomain}
+                  />
+                </>
+              )}
+            </div>
+          )}
+
+          {showPanels.transfer && sim?.transfers && result && (
+            <div className="panel">
+              <h2>Filter transfer (driver voltage vs source)</h2>
+              <Chart
+                series={[
+                  sim.transfers.woofer && {
+                    id: 'hw',
+                    label: 'Woofer/mid filter',
+                    color: 'var(--viz-woofer)',
+                    x: result.freq,
+                    y: sim.transfers.woofer.map((h) => 20 * Math.log10(cAbs(h) || Number.MIN_VALUE)),
+                  },
+                  sim.transfers.tweeter && {
+                    id: 'ht',
+                    label: 'Tweeter filter',
+                    color: 'var(--viz-tweeter)',
+                    x: result.freq,
+                    y: sim.transfers.tweeter.map((h) => 20 * Math.log10(cAbs(h) || Number.MIN_VALUE)),
+                  },
+                ].filter((s): s is NonNullable<typeof s> => s !== null)}
+                xDomain={xDomain}
+                yDomain={[-50, 5]}
+                yTickStep={5}
+                yUnit="dB"
+                height={260}
+              />
+            </div>
+          )}
+
+          {showPanels.phase && (
+          <div className="panel">
+            <h2>Tweeter phase relative to woofer</h2>
+            {phaseStats && (
+              <div className="score-strip">
+                <span className="strip-label">Phase flatness</span>
+                <span
+                  className="strip-score"
+                  title="Flatness score 0–100 over the driver overlap (overlap-weighted) — how flat the relative phase stays where both drivers play."
+                >
+                  {phaseStats.score}
+                </span>
+                <span className="strip-item">{phaseStats.label}</span>
+                <span
+                  className="strip-item"
+                  title="Average |relative phase| in the overlap region."
+                >
+                  avg {phaseStats.avgErrorDeg.toFixed(1)}°
+                </span>
+                <span
+                  className="strip-item"
+                  title="95th-percentile phase error — the worst 5% excluded."
+                >
+                  P95 {phaseStats.p95ErrorDeg.toFixed(0)}°
+                </span>
+                <span
+                  className="strip-item"
+                  title="Standard deviation of the phase error — the wobble."
+                >
+                  σ {phaseStats.stdDevDeg.toFixed(1)}°
+                </span>
+                <span
+                  className="strip-item"
+                  title="Share of the overlap region with the phase error within ±5 / ±10 / ±15°."
+                >
+                  ±5° {phaseStats.withinPct[5].toFixed(0)}% · ±10°{' '}
+                  {phaseStats.withinPct[10].toFixed(0)}% · ±15°{' '}
+                  {phaseStats.withinPct[15].toFixed(0)}%
+                </span>
+              </div>
+            )}
+            <Chart
+              series={phaseSeries}
+              xDomain={xDomain}
+              yDomain={[-180, 180]}
+              yTickStep={45}
+              yUnit="°"
+              height={280}
+              yReference={0}
+              referenceLabel="woofer 0°"
+              bands={phaseBands}
+              xBands={
+                integration?.bandwidth
+                  ? [
+                      {
+                        from: integration.bandwidth.fLo,
+                        to: integration.bandwidth.fHi,
+                        color: 'var(--viz-combined)',
+                        opacity: 0.08,
+                        label: `integration bandwidth ${integration.bandwidth.octaves.toFixed(1)} oct`,
+                      },
+                    ]
+                  : undefined
+              }
+              xMarkers={
+                integration?.overlapCentreHz
+                  ? [
+                      {
+                        x: integration.overlapCentreHz,
+                        label: `overlap ${Math.round(integration.overlapCentreHz)} Hz`,
+                      },
+                    ]
+                  : undefined
+              }
+              onXRangeCommit={commitViewRange}
+            />
+            <div className="align-legend">
+              <span className="align-title">Zones &amp; line color = distance from 0°:</span>
+              {TIER_ORDER.map((c) => (
+                <span key={c} className="legend-item">
+                  <span className="legend-key" style={{ background: TIER_COLOR[c] }} />
+                  {TIER_LABEL[c]}
+                </span>
+              ))}
+            </div>
+          </div>
+          )}
+        </>
+      )}
+
+      {timeDomain && result && (
+        <>
+          <div className="panel">
+            <h2>Excess group delay (combined)</h2>
+            <Chart
+              series={[
+                {
+                  id: 'egd',
+                  label: `Excess group delay (bulk ${timeDomain.egd.minDelayMs.toFixed(2)} ms removed)`,
+                  color: 'var(--viz-combined)',
+                  x: timeDomain.egd.freq,
+                  y: timeDomain.egd.egdMs,
+                },
+              ]}
+              xDomain={xDomain}
+              yDomain={[
+                -0.2,
+                Math.min(
+                  8,
+                  Math.max(1, Math.ceil(Math.max(...timeDomain.egd.egdMs.filter((_, i) => timeDomain.egd.freq[i] >= 300)) * 2) / 2),
+                ),
+              ]}
+              yTickStep={0.5}
+              yUnit="ms"
+              height={240}
+              yReference={0}
+            />
+          </div>
+
+          <div className="panel">
+            <h2>Step response &amp; ETC (IFFT of combined response)</h2>
+            <p className="sub" style={{ marginBottom: '0.8rem' }}>
+              Sanity check, not a measurement — band edges are tapered. t = 0 at the impulse peak
+              (arrival {timeDomain.td.peakTimeMs.toFixed(2)} ms).
+            </p>
+            <Chart
+              series={[
+                {
+                  id: 'step',
+                  label: 'Step response (normalized)',
+                  color: 'var(--viz-combined)',
+                  x: timeDomain.td.timeMs,
+                  y: timeDomain.td.step,
+                },
+                {
+                  id: 'imp',
+                  label: 'Impulse (normalized)',
+                  color: 'var(--viz-tweeter)',
+                  dash: '4 4',
+                  x: timeDomain.td.timeMs,
+                  y: timeDomain.td.impulse,
+                },
+              ]}
+              xDomain={[timeDomain.td.timeMs[0], timeDomain.td.timeMs[timeDomain.td.timeMs.length - 1]]}
+              xScale="linear"
+              xUnit="ms"
+              yDomain={[-1.1, 1.1]}
+              yTickStep={0.5}
+              yUnit=""
+              height={240}
+              yReference={0}
+            />
+            <Chart
+              series={[
+                {
+                  id: 'etc',
+                  label: 'ETC — energy-time curve',
+                  color: 'var(--viz-woofer)',
+                  x: timeDomain.td.timeMs,
+                  y: timeDomain.td.etcDb,
+                },
+              ]}
+              xDomain={[timeDomain.td.timeMs[0], timeDomain.td.timeMs[timeDomain.td.timeMs.length - 1]]}
+              xScale="linear"
+              xUnit="ms"
+              yDomain={[-60, 0]}
+              yTickStep={10}
+              yUnit="dB"
+              height={220}
+            />
+          </div>
+        </>
+      )}
+
+        </main>
+      </div>
+    </div>
+  );
+}
+
+function SynthChart({
+  synth,
+  freq,
+  xDomain,
+}: {
+  synth: { woofer?: SynthesisResult; tweeter?: SynthesisResult; mode: 'filter' | 'acoustic' };
+  freq: readonly number[];
+  xDomain: [number, number];
+}) {
+  const dbOf = (h: Complex) => 20 * Math.log10(cAbs(h) || 1e-9);
+  const acoustic = synth.mode === 'acoustic';
+
+  const series: Series[] = [];
+  for (const slot of ['woofer', 'tweeter'] as const) {
+    const r = synth[slot];
+    if (!r) continue;
+    const color = `var(--viz-${slot})`;
+    const label = slot === 'woofer' ? 'Woofer/mid' : 'Tweeter';
+    if (acoustic && r.acousticAchievedDb && r.acousticTargetDb) {
+      series.push(
+        { id: `${slot}-t`, label: `${label} target shape`, color, dash: '5 4', x: freq, y: r.acousticTargetDb },
+        { id: `${slot}-a`, label: `${label} result (driver × filter)`, color, x: freq, y: r.acousticAchievedDb },
+      );
+    } else {
+      series.push(
+        { id: `${slot}-t`, label: `${label} target`, color, dash: '5 4', x: freq, y: r.target.map(dbOf) },
+        { id: `${slot}-a`, label: `${label} achieved`, color, x: freq, y: r.achieved.map(dbOf) },
+      );
+    }
+  }
+
+  let yDomain: [number, number] = [-50, 5];
+  if (acoustic) {
+    const vals = series.flatMap((s) => s.y.filter((v) => Number.isFinite(v)));
+    const hi = Math.ceil((Math.max(...vals) + 2) / 5) * 5;
+    yDomain = [hi - 50, hi];
+  }
+
+  return (
+    <div style={{ marginTop: '1rem' }}>
+      <Chart
+        series={series}
+        xDomain={xDomain}
+        yDomain={yDomain}
+        yTickStep={5}
+        yUnit="dB"
+        height={260}
+      />
+    </div>
+  );
+}
+
+function Stat({ k, v, sub }: { k: string; v: string; sub?: string }) {
+  return (
+    <div className="stat">
+      <div className="k">{k}</div>
+      <div className="v">{v}</div>
+      {sub && <div className="s">{sub}</div>}
+    </div>
+  );
+}
+
+/** One network-design tab: click = activate, double-click = rename inline. */
+function DesignTab({
+  design,
+  active,
+  onSelect,
+  onRename,
+  onDelete,
+}: {
+  design: NetworkDesign;
+  active: boolean;
+  onSelect: () => void;
+  onRename: (name: string) => void;
+  onDelete: () => void;
+}) {
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState(design.name);
+  return (
+    <span className={`design-tab${active ? ' active' : ''}`}>
+      {editing ? (
+        <input
+          autoFocus
+          value={draft}
+          onChange={(e) => setDraft(e.target.value)}
+          onBlur={() => {
+            onRename(draft);
+            setEditing(false);
+          }}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') (e.target as HTMLInputElement).blur();
+            if (e.key === 'Escape') {
+              setDraft(design.name);
+              setEditing(false);
+            }
+          }}
+        />
+      ) : (
+        <button
+          type="button"
+          className="design-tab-name"
+          onClick={onSelect}
+          onDoubleClick={() => {
+            setDraft(design.name);
+            setEditing(true);
+          }}
+          title="Click to activate, double-click to rename"
+        >
+          {design.name}
+        </button>
+      )}
+      <button
+        type="button"
+        className="design-tab-close"
+        onClick={() => {
+          if (window.confirm(`Delete tab "${design.name}"?`)) onDelete();
+        }}
+        title={`Delete "${design.name}"`}
+      >
+        ×
+      </button>
+    </span>
+  );
+}
+
+/** "Synth", "Synth 2", "Synth 3" … — first free variant of a tab name. */
+function uniqueDesignName(base: string, existing: readonly NetworkDesign[]): string {
+  const taken = new Set(existing.map((d) => d.name));
+  if (!taken.has(base)) return base;
+  for (let i = 2; ; i++) {
+    const name = `${base} ${i}`;
+    if (!taken.has(name)) return name;
+  }
+}
+
+function verdictClass(v: 'plausible' | 'suspect' | 'unreliable'): string {
+  return v === 'plausible' ? 'ok' : v === 'suspect' ? 'mismatch' : 'no-reference';
+}
+
+function verdictHeading(v: 'plausible' | 'suspect' | 'unreliable'): string {
+  switch (v) {
+    case 'plausible':
+      return '✓ Shared time reference plausible';
+    case 'suspect':
+      return '✗ Time bases disagree';
+    case 'unreliable':
+      return '⚠ Cannot judge (fit not delay-like)';
+  }
+}

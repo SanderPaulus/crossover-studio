@@ -1,0 +1,135 @@
+import { describe, it, expect } from 'vitest';
+import {
+  unwrapPhaseDeg,
+  estimateBulkDelay,
+  checkTimingOffset,
+  assessSharedReference,
+} from './timing.ts';
+
+/** Wrap a degree value into (-180, 180]. */
+function wrap(deg: number): number {
+  let d = ((deg + 180) % 360) - 180;
+  if (d <= -180) d += 360;
+  return d;
+}
+
+/** Log-spaced frequency axis. */
+function logFreq(fLow: number, fHigh: number, n: number): number[] {
+  const out: number[] = [];
+  for (let i = 0; i < n; i++) {
+    out.push(fLow * (fHigh / fLow) ** (i / (n - 1)));
+  }
+  return out;
+}
+
+describe('unwrapPhaseDeg', () => {
+  it('removes a single wrap crossing', () => {
+    const unwrapped = unwrapPhaseDeg([170, -170]);
+    expect(unwrapped[0]).toBe(170);
+    expect(unwrapped[1]).toBeCloseTo(190, 9); // +360 restored
+  });
+
+  it('leaves an already-continuous signal untouched', () => {
+    const p = [0, 10, 20, 30];
+    expect(unwrapPhaseDeg(p)).toEqual(p);
+  });
+});
+
+describe('estimateBulkDelay', () => {
+  it('recovers a known pure delay from wrapped phase', () => {
+    const tau = 0.35e-3; // 0.35 ms
+    const freq = logFreq(100, 20000, 400);
+    const phase = freq.map((f) => wrap(-360 * f * tau));
+
+    const est = estimateBulkDelay(freq, phase);
+    expect(est.delaySeconds).toBeCloseTo(tau, 6);
+    expect(est.delayMs).toBeCloseTo(0.35, 4);
+    expect(est.rSquared).toBeGreaterThan(0.999);
+  });
+
+  it('reports low R² when phase is not delay-like', () => {
+    const freq = logFreq(100, 20000, 400);
+    // Random-ish phase with no consistent slope.
+    const phase = freq.map((f) => wrap(60 * Math.sin(f / 800)));
+    const est = estimateBulkDelay(freq, phase);
+    expect(est.rSquared).toBeLessThan(0.9);
+  });
+});
+
+describe('checkTimingOffset', () => {
+  const tau = 0.5e-3;
+  const freq = logFreq(100, 20000, 400);
+  const phase = freq.map((f) => wrap(-360 * f * tau));
+
+  it('passes when declared matches the phase-derived delay', () => {
+    const r = checkTimingOffset(freq, phase, { declaredMs: 0.5 });
+    expect(r.verdict).toBe('ok');
+    expect(r.differenceMs).toBeLessThan(0.05);
+  });
+
+  it('flags a mismatch that would otherwise stay silent', () => {
+    const r = checkTimingOffset(freq, phase, { declaredMs: 0.2 });
+    expect(r.verdict).toBe('mismatch');
+    expect(r.differenceMs).toBeCloseTo(0.3, 2);
+    expect(r.message).toMatch(/MISMATCH/);
+  });
+
+  it('refuses to trust the estimate when the fit is poor', () => {
+    const messy = freq.map((f) => wrap(90 * Math.sin(f / 500)));
+    const r = checkTimingOffset(freq, messy, { declaredMs: 0.5 });
+    expect(r.verdict).toBe('unreliable');
+  });
+
+  it('reports no-reference when no declared value is given', () => {
+    const r = checkTimingOffset(freq, phase, {});
+    expect(r.verdict).toBe('no-reference');
+    expect(r.estimate.delayMs).toBeCloseTo(0.5, 3);
+  });
+});
+
+describe('assessSharedReference', () => {
+  const est = (delayMs: number, rSquared = 0.999) =>
+    ({
+      delaySeconds: delayMs / 1000,
+      delayMs,
+      slopeDegPerHz: -0.36 * delayMs,
+      rSquared,
+      band: [500, 5000] as [number, number],
+      sampleCount: 100,
+    });
+
+  it('accepts a geometry-sized delta and reports apparent distances', () => {
+    const r = assessSharedReference(est(1.708), est(1.755));
+    expect(r.verdict).toBe('plausible');
+    expect(r.deltaUs).toBeCloseTo(47, 0);
+    expect(r.deltaMm).toBeCloseTo(16.1, 1);
+    expect(r.apparentDistanceM.woofer).toBeCloseTo(0.586, 3);
+    expect(r.apparentDistanceM.tweeter).toBeCloseTo(0.602, 3);
+  });
+
+  it('flags a re-referenced time axis as suspect', () => {
+    // One file re-referenced to t=0 at the IR peak: its bulk delay collapses.
+    const r = assessSharedReference(est(1.708), est(0.02));
+    expect(r.verdict).toBe('suspect');
+    expect(r.message).toMatch(/do not trust/i);
+  });
+
+  it('reports the delta signed (tweeter minus woofer)', () => {
+    const r = assessSharedReference(est(1.755), est(1.708));
+    expect(r.deltaUs).toBeCloseTo(-47, 0);
+    expect(r.verdict).toBe('plausible');
+  });
+
+  it('refuses to judge on a poor fit', () => {
+    const r = assessSharedReference(est(1.708), est(1.755, 0.5));
+    expect(r.verdict).toBe('unreliable');
+    expect(r.message).toMatch(/tweeter R²=0.500/);
+  });
+
+  it('honours a custom geometry threshold', () => {
+    const r = assessSharedReference(est(1.7), est(1.9), { maxGeometryUs: 100 });
+    expect(r.verdict).toBe('suspect');
+    const r2 = assessSharedReference(est(1.7), est(1.9), { maxGeometryUs: 250 });
+    expect(r2.verdict).toBe('plausible');
+  });
+});
