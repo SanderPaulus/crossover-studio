@@ -1633,9 +1633,13 @@ export default function App() {
         const centre = Math.sqrt(floor * ceil);
         return [centre / 1.22, centre * 1.22];
       })();
-      const variants: { label: string; xoRange?: [number, number] }[] = userXo
-        ? crossoverVariants(userXo)
-        : [{ label: 'free', xoRange: saneFree }];
+      // Scan THREE crossover candidates across the driver window (like a pin
+      // does), not one chain — Sander measured that a pinned 2100±200 runs far
+      // more sims and comes back with a better filter (SPL AND phase), because
+      // it explores 3× wider. Give the free run the same breadth automatically.
+      // No band at all (no impedance floor) → one truly-free chain (+ rescue).
+      const variants: { label: string; xoRange?: [number, number] }[] =
+        crossoverVariants(userXo ?? saneFree);
       const chainResults: ChainResult[] = [];
       let idx = 0;
       let totalRounds = 0;
@@ -2088,15 +2092,18 @@ export default function App() {
     e.target.value = '';
   }
 
-  // SPL y-domain: auto from visible traces (null trace excluded — its dips
-  // would blow up the range), 5 dB rounding, manual override wins.
+  // SPL y-domain: top from the loudest visible trace; bottom anchored to the
+  // COMBINED passband level minus a fixed ~50 dB window (not the raw min — the
+  // drivers' deep rolloff tails, ~30 dB at the band edges, dragged the floor to
+  // 25 dB and wasted half the chart). 5 dB rounding, manual override wins.
   const splDomain: [number, number] = useMemo(() => {
     let lo = 60;
     let hi = 110;
     if (result) {
       const vals = [...result.woofer.spl, ...result.tweeter.spl, ...result.combinedSpl];
-      lo = Math.floor((Math.min(...vals) - 3) / 5) * 5;
+      const passTop = Math.max(...result.combinedSpl); // passband reference
       hi = Math.ceil((Math.max(...vals) + 3) / 5) * 5;
+      lo = Math.floor((passTop - 50) / 5) * 5;
     }
     return [num(splMin, lo), num(splMax, hi)];
   }, [result, splMin, splMax]);
@@ -2704,14 +2711,32 @@ export default function App() {
                       </span>
                     </p>
                     <p style={{ margin: 0 }}>
-                      Now {fMin}–{fMax} Hz.{' '}
+                      <input
+                        type="number"
+                        min={20}
+                        max={5000}
+                        step={10}
+                        value={fMin}
+                        onChange={(e) => setFMin(e.target.value)}
+                        style={{ width: '5.5rem' }}
+                      />{' '}
+                      –{' '}
+                      <input
+                        type="number"
+                        min={1000}
+                        max={40000}
+                        step={100}
+                        value={fMax}
+                        onChange={(e) => setFMax(e.target.value)}
+                        style={{ width: '6rem' }}
+                      />{' '}
+                      Hz{' '}
                       {fMin !== String(suggestedBand[0]) || fMax !== String(suggestedBand[1]) ? (
                         <>
-                          Suggested{' '}
+                          · suggested{' '}
                           <strong>
                             {suggestedBand[0]}–{suggestedBand[1]} Hz
                           </strong>{' '}
-                          (your usable measured range).{' '}
                           <button
                             type="button"
                             onClick={() => {
@@ -2723,7 +2748,7 @@ export default function App() {
                           </button>
                         </>
                       ) : (
-                        <span className="sub">✓ matches your usable measured range.</span>
+                        <span className="sub">✓ = your usable measured range</span>
                       )}
                     </p>
                     <p className="sub" style={{ margin: '0.1rem 0 0' }}>

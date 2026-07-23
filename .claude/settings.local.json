@@ -86,7 +86,8 @@
       "Bash(npx tsx *)",
       "Bash(git init *)",
       "Bash(git add *)",
-      "Bash(git -c 'user.name=Sander \\(via Claude Code\\)' -c user.email=sandersomers@gmail.com commit -q -m 'Baseline snapshot before optimizer-exploration revert *)"
+      "Bash(git -c 'user.name=Sander \\(via Claude Code\\)' -c user.email=sandersomers@gmail.com commit -q -m 'Baseline snapshot before optimizer-exploration revert *)",
+      "Bash(git -c 'user.name=Sander \\(via Claude Code\\)' -c user.email=sandersomers@gmail.com commit -q -m 'Prioritize optimizer exploration over speed; UI fixes *)"
     ]
   }
 }

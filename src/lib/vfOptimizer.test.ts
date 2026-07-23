@@ -560,27 +560,6 @@ describe('optimizeVfCluster (priority multi-start)', () => {
     expect(asym.structure.tweeterHpOrder).toBe(2);
   });
 
-  it('the structure pre-screen picks the SAME winner as full enumeration, cheaper', () => {
-    // The coarse screen (top-4 of 16) must never drop the eventual winner: for
-    // each priority the default screened run and a full-enumeration run
-    // (screenKeep ≥ 16) must land on the identical structure and metrics — the
-    // surviving full descents are bit-identical by construction, so the only
-    // way to differ is a dropped winner. And the screened run is cheaper.
-    for (const p of [0.15, 0.5, 0.85]) {
-      const screened = optimizeVirtualFilters(grid, woofer, tweeter, emptySeed, NO_ADJ, {
-        phasePriority: p,
-      });
-      const full = optimizeVirtualFilters(grid, woofer, tweeter, emptySeed, NO_ADJ, {
-        phasePriority: p,
-        structureScreenKeep: 16,
-      });
-      expect(screened.structure).toEqual(full.structure);
-      expect(screened.after.responseStdDb).toBeCloseTo(full.after.responseStdDb, 6);
-      expect(screened.after.avgPhaseErrDeg).toBeCloseTo(full.after.avgPhaseErrDeg, 6);
-      expect(screened.evaluations).toBeLessThan(full.evaluations);
-    }
-  });
-
   it('extreme setpoints clamp+dedup to a 2-run cluster', () => {
     const hi = optimizeVfCluster(grid, woofer, tweeter, emptySeed, NO_ADJ, { phasePriority: 1 });
     expect(hi.runs).toBeGreaterThanOrEqual(2);

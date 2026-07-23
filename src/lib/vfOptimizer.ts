@@ -186,14 +186,6 @@ export interface VfOptimizeOptions {
    */
   fixedStructure?: { lp: StructChoice; hp: StructChoice };
   /**
-   * SPEED: how many of the 16 pre-screened LP/HP combos get the full descent
-   * (default 4). The screen is a short both-polarity descent; only the top-K
-   * by screened fx run the full 220-iteration both-polarity descent. ≥16 =
-   * full enumeration (the test reference). Ignored when the structure is
-   * pinned (`structurePreference`/`fixedStructure`).
-   */
-  structureScreenKeep?: number;
-  /**
    * Staged design ("trapmethode"): stop escalating as soon as BOTH targets
    * are met — ripple (std dev, dB) and average overlap phase error (°). The
    * HP/LP structure must earn as much as it can first; EQ bands are only
@@ -776,28 +768,15 @@ export function optimizeVirtualFilters(
     // skip the 4×4 enumeration and just refine it (polarity still free).
     state = runStruct(fixedStructure.lp, fixedStructure.hp);
   } else {
-    // SPEED: coarse pre-screen. The 4×4 library is the biggest vf cost (32
-    // full descents). Screen every combo with a SHORT both-polarity descent
-    // (same decision structure as runStruct — both polarities, so a structure
-    // is never dropped for a polarity artefact — just fewer iterations), keep
-    // the top-K by screened fx, then run the FULL runStruct only on those.
-    // The surviving full descents are IDENTICAL to the old enumeration (cold,
-    // 220 iters, both polarities); the screen is purely a filter, so the only
-    // risk is dropping the eventual winner — guarded by a generous K and a
-    // regression test that the pre-screen winner matches the full-enum winner.
-    const SCREEN_ITERS = 60;
-    const KEEP = Math.max(1, Math.round(opts.structureScreenKeep ?? 4));
-    const screened: { lp: StructChoice; hp: StructChoice; fx: number }[] = [];
+    // FULL enumeration over the alignment library — the exploration matters
+    // more than the speed here (Sander: a wider scan gives a measurably better
+    // filter). The earlier coarse pre-screen was reverted for that reason.
+    let bestFree: State | null = null;
     for (const lp of AUTO_STRUCTS) {
       for (const hp of AUTO_STRUCTS) {
-        screened.push({ lp, hp, fx: runStructIters(lp, hp, SCREEN_ITERS).fx });
+        const run = runStruct(lp, hp);
+        if (!bestFree || run.fx < bestFree.fx) bestFree = run;
       }
-    }
-    screened.sort((a, b) => a.fx - b.fx);
-    let bestFree: State | null = null;
-    for (const c of screened.slice(0, KEEP)) {
-      const run = runStruct(c.lp, c.hp);
-      if (!bestFree || run.fx < bestFree.fx) bestFree = run;
     }
     state = bestFree!;
   }
@@ -1274,22 +1253,17 @@ export function optimizeVfCluster(
     runs++;
     return r;
   };
-  // The setpoint run is the SAFE baseline (full structure enumeration): the
-  // returned design must never score worse than it. It runs FIRST so its
-  // structure can seed the neighbours — Sander's flip was the SAME structure
-  // in a different KNEE basin (BS4/LR2 both times), and a ±5% priority nudge
-  // essentially never changes the optimal alignment. So the neighbours PROBE
-  // for a better basin with that structure FIXED (knees stay free — the basin
-  // exploration is intact) instead of re-enumerating all 16 combos: the whole
-  // reason to probe (a different knee basin) is preserved at a fraction of the
-  // cost.
+  // The setpoint run is the SAFE baseline: the returned design must never score
+  // worse than it. Each neighbour runs its OWN FULL structure enumeration (the
+  // structure-sharing shortcut was reverted — Sander: the wider scan gives a
+  // measurably better filter, and letting a neighbour priority pick its own
+  // alignment is part of that exploration).
   const spRun: VfOptimizeResult = run(seed, adjust, sp);
-  const spStruct = structureOf(spRun);
   let winner: VfOptimizeResult = spRun;
   let winnerP = sp;
   let winnerScore = vfPriorityScore(spRun.after, sp);
   for (const p of neighbours) {
-    const r = run(seed, adjust, p, spStruct);
+    const r = run(seed, adjust, p);
     // Rank on the SETPOINT, not on the priority this candidate was tuned at.
     const s = vfPriorityScore(r.after, sp);
     if (s < winnerScore) {
