@@ -96,7 +96,12 @@
       "Bash(git -c 'user.name=Sander \\(via Claude Code\\)' -c user.email=sandersomers@gmail.com commit -q -m 'Fix: imported vxp crossover applied NO filter \\(hard-coded driver names\\) *)",
       "Bash(git -c 'user.name=Sander \\(via Claude Code\\)' -c user.email=sandersomers@gmail.com commit -q -m 'vxp import: read the driver PART Z-offset \\(per variant\\), apply it *)",
       "Bash(git -c 'user.name=Sander \\(via Claude Code\\)' -c user.email=sandersomers@gmail.com commit -q -m 'vxp import: auto-select the first crossover variant *)",
-      "Bash(git -c 'user.name=Sander \\(via Claude Code\\)' -c user.email=sandersomers@gmail.com commit -q -m 'Add VituixCAD phase reference overlay \\(peer comparison\\) *)"
+      "Bash(git -c 'user.name=Sander \\(via Claude Code\\)' -c user.email=sandersomers@gmail.com commit -q -m 'Add VituixCAD phase reference overlay \\(peer comparison\\) *)",
+      "Bash(grep -vE '^\\\\s*$')",
+      "Bash(grep -E 'bulk|rel|=>|per-driver|###|Hz|[0-9]{3,5} ')",
+      "Bash(grep -E 'Hz|[0-9]{3,5} ')",
+      "Bash(git -c 'user.name=Sander \\(via Claude Code\\)' -c user.email=sandersomers@gmail.com commit -q -m 'vxp import: stop applying driver-PART Z as a time offset *)",
+      "Bash(git -c 'user.name=Sander \\(via Claude Code\\)' -c user.email=sandersomers@gmail.com commit -q -m 'Update local permission allowlist *)"
     ]
   }
 }
