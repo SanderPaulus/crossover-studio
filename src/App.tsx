@@ -2483,6 +2483,54 @@ export default function App() {
                   amplitude target &amp; in-room weight in the Goals step. The full importer (VituixCAD
                   projects, save/load) lives in the Import tab.
                 </p>
+                {timing && (
+                  <div
+                    style={{
+                      marginTop: '0.6rem',
+                      paddingTop: '0.5rem',
+                      borderTop: '1px solid rgba(128,128,128,0.25)',
+                    }}
+                  >
+                    <p style={{ margin: '0 0 0.2rem' }}>
+                      <strong>Timing check</strong>{' '}
+                      <span className="sub">
+                        — do the two phase measurements share a time reference? (Wrong timing
+                        silently ruins the phase sum — it's the whole reason this tool exists.)
+                      </span>
+                    </p>
+                    {timing.ref.verdict === 'plausible' ? (
+                      <p className="sub" style={{ margin: 0 }}>
+                        ✓ <strong>Plausible</strong> — the measured phase carries the real
+                        inter-driver delay (Δ {timing.ref.deltaUs.toFixed(0)} µs ≈{' '}
+                        {timing.ref.deltaMm.toFixed(1)} mm). Offset stays 0; nothing to enter.
+                      </p>
+                    ) : (
+                      <>
+                        <p className="nl-warning" style={{ margin: '0 0 0.3rem' }}>
+                          ⚠ <strong>{timing.ref.verdict}</strong> — {timing.ref.message}
+                        </p>
+                        <p style={{ margin: 0 }}>
+                          Physical offset between the drivers' acoustic centres (tweeter deeper =
+                          positive){' '}
+                          <input
+                            type="number"
+                            step={1}
+                            value={offsetMm}
+                            onChange={(e) => setOffsetMm(e.target.value)}
+                            style={{ width: '5rem' }}
+                          />{' '}
+                          mm <span className="sub">= {delayUs.toFixed(0)} µs delay</span>
+                        </p>
+                        <p className="sub" style={{ margin: '0.2rem 0 0' }}>
+                          Enter it from the physical driver spacing (the measured Δ ≈{' '}
+                          {timing.ref.deltaMm.toFixed(1)} mm looks off, so don't trust it blindly).
+                          The full timing sanity check + the measured/minimum phase toggle live in
+                          the Setup tab.
+                        </p>
+                      </>
+                    )}
+                  </div>
+                )}
                 <div
                   style={{
                     marginTop: '0.6rem',
