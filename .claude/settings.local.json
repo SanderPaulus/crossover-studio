@@ -90,7 +90,9 @@
       "Bash(git -c 'user.name=Sander \\(via Claude Code\\)' -c user.email=sandersomers@gmail.com commit -q -m 'Prioritize optimizer exploration over speed; UI fixes *)",
       "Bash(git -c 'user.name=Sander \\(via Claude Code\\)' -c user.email=sandersomers@gmail.com commit -q -m 'Wizard import gate: surface the component catalog *)",
       "Bash(git -c 'user.name=Sander \\(via Claude Code\\)' -c user.email=sandersomers@gmail.com commit -q -m 'Wizard gate: timing plausibility check on import *)",
-      "Bash(git -c 'user.name=Sander \\(via Claude Code\\)' -c user.email=sandersomers@gmail.com commit -q -m 'Baseline before vxp per-driver fidelity work *)"
+      "Bash(git -c 'user.name=Sander \\(via Claude Code\\)' -c user.email=sandersomers@gmail.com commit -q -m 'Baseline before vxp per-driver fidelity work *)",
+      "Bash(grep -iE \"vxp|\\\\.txt$\")",
+      "Bash(git -c 'user.name=Sander \\(via Claude Code\\)' -c user.email=sandersomers@gmail.com commit -q -m 'vxp import: honour per-driver acoustic settings for 1:1 reproduction *)"
     ]
   }
 }

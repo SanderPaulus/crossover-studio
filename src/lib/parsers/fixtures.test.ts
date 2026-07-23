@@ -109,6 +109,13 @@ describe('VituixCAD .vxp project', () => {
     expect(project.drivers[0].impedanceFileName).toBe('tweeter.ZMA');
     expect(project.drivers[1].impedanceFileName).toBe('mid_Backwavecone_sheep75gram.ZMA');
     expect(project.drivers[1].responses[0].fileName).toBe('mid_hor0_mettape.txt');
+
+    // Per-driver acoustic settings needed to reproduce VituixCAD 1:1: the Z
+    // depth coordinate, response delay and relative polarity.
+    expect(project.drivers[0].z).toBe(6); // tweeter
+    expect(project.drivers[1].z).toBe(4); // mid
+    expect(project.drivers.every((d) => d.responseDelay === 0)).toBe(true);
+    expect(project.drivers.every((d) => d.inverted === false)).toBe(true);
   });
 
   it('extracts all crossover variants with component values', () => {

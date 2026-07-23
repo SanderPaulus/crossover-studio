@@ -23,7 +23,11 @@ export interface VxpDriver {
   /** True when VituixCAD is set to discard measured phase for this driver. */
   minimumPhase: boolean;
   inverted: boolean;
+  /** Explicit response delay (ms in the VituixCAD project). */
   responseDelay: number;
+  /** Acoustic-centre depth coordinate (mm). Higher Z = closer to the mic =
+   *  earlier arrival; the driver-to-driver Z DIFFERENCE is the on-axis offset. */
+  z: number;
   /** Raw path as stored in the project (often absolute, e.g. "Z:\\x.ZMA"). */
   impedanceFile?: string;
   /** Basename of impedanceFile, for matching against locally loaded files. */
@@ -127,6 +131,7 @@ function parseDriver(d: Record<string, unknown>): VxpDriver {
     minimumPhase: asBool(d['MinimumPhase']),
     inverted: asBool(d['ResponseInvert']),
     responseDelay: Number(d['ResponseDelay'] ?? 0),
+    z: Number(d['Z'] ?? 0),
     impedanceFile,
     impedanceFileName: impedanceFile ? basename(impedanceFile) : undefined,
     responses: asArray(d['RESPONSE'] as Record<string, unknown>[]).map((r) => ({

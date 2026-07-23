@@ -834,8 +834,15 @@ export default function App() {
       const status: string[] = [];
       const isTweeterModel = (m: string) => /tweet|hoch|\bht\b/i.test(m);
 
+      let twDrv: (typeof vxp.drivers)[number] | undefined;
+      let wfDrv: (typeof vxp.drivers)[number] | undefined;
       for (const d of vxp.drivers) {
         const parts: string[] = [];
+        // First match wins — a vxp can carry a helper "woofer+tweeter parallel"
+        // driver whose name matches both patterns; it must not clobber the real
+        // tweeter/woofer slots.
+        if (isTweeterModel(d.model)) twDrv ??= d;
+        else wfDrv ??= d;
 
         // Impedance: from this selection, else keep what was already loaded.
         const wanted = d.impedanceFileName?.toLowerCase();
@@ -886,10 +893,26 @@ export default function App() {
 
       setProject({ vxp, vxpFile, impedances, impedanceFiles });
       setXoName('none');
-      // Match the source tool's convention so the first comparison lines up —
-      // unless the timing check finds a plausible shared reference, then the
-      // auto-switch effect flips to Measured (real timing beats comparison).
-      setPhaseMode('minimum');
+      // 1:1 with the import: honour the vxp's OWN per-driver acoustic settings
+      // (phase convention, inter-driver Z-offset + response delay, relative
+      // polarity) so the app reproduces VituixCAD exactly. These EXPLICIT
+      // project values must win over the app's timing-based auto-behaviours —
+      // so skip the phase auto-switch and the offset auto-fill for this load.
+      phaseAutoSkip.current = true;
+      offsetAutoSkip.current = true;
+      if (twDrv && wfDrv) {
+        // App offset is "tweeter mm, + = recessed/later". VituixCAD Z: higher =
+        // closer = earlier, so tweeter-vs-woofer offset = wooferZ − tweeterZ.
+        // ResponseDelay is ms; +delay = later = recessed (+mm), c = 343 m/s.
+        const MM_PER_MS = 343;
+        const offMm =
+          (wfDrv.z - twDrv.z) + (twDrv.responseDelay - wfDrv.responseDelay) * MM_PER_MS;
+        setPhaseMode(twDrv.minimumPhase || wfDrv.minimumPhase ? 'minimum' : 'measured');
+        setOffsetMm(String(Math.round(offMm * 10) / 10));
+        setInverted(!!twDrv.inverted !== !!wfDrv.inverted);
+      } else {
+        setPhaseMode('minimum');
+      }
       setVxpNote(
         `${vxpFile.name} — ${vxp.crossovers.length} crossover variant(s) · ` +
           status.join(' · ') +
