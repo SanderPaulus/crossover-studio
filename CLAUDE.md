@@ -17,7 +17,61 @@ minimum phase reconstrueert. Voertaal met Sander: **Nederlands**; code/comments 
   `vxpNetwork.ts`). Fixtures = echte KOAN-metingen in `parsers/fixtures/`. **vxp is volledig
   optioneel**: .zma's kunnen per driver mee in de FRD-file-dialoog (standalone `zStandalone`,
   merged met evt. project-impedanties; keys 'mid'/'tweeter'); solver/synthese/editor draaien op
-  de merged map. vxp = alleen nog import van Stefans crossover-varianten
+  de merged map. vxp = alleen nog import van Stefans crossover-varianten.
+  **`vxpExport.ts` (`serializeVxp`, "Export .vxp"-knop in de Network-tab)**: exacte inverse
+  van de parser — het actieve netwerk terug als VituixCAD-project (onze parts dragen al
+  VituixCAD-grid-coördinaten, dus de CROSSOVER-blok re-serialiseert direct; ontbrekende
+  standaard-params — Generator Tg/Rg, spoel Wire/Rpar/Cpar, cap ESR — worden aangevuld zodat
+  VituixCAD het bestand schoon opent). **Alle netwerk-tabs gaan mee als crossover-varianten**
+  (actieve tab wordt CROSSOVER, rest CROSSOVER1/2/…; gedeelde DRIVER-header = union van modellen
+  over alle tabs; één `<Variant>N</Variant>`). Round-trip-regressietest incl. de echte KOAN-fixture.
+  **Map-export (Sanders "de meetbestanden moeten mee")**: de knop schrijft via de File System
+  Access API (`showDirectoryPicker`, Chromium) een submap met de `.vxp` ÉN alle response-/
+  impedantiebestanden erin — VituixCAD opent zonder "N/N frequency response files not found".
+  Bestandsnamen worden één keer geschoond (demo-suffix eraf, response krijgt .txt) en identiek
+  in de .vxp-referentie én op schijf gebruikt; een `place`-helper dedupliceert gelijke files maar
+  hernoemt een botsing tussen VERSCHILLENDE files (…_2) zodat twee drivers nooit stil dezelfde
+  response delen. Firefox/Safari (geen API) vallen terug op alleen de .vxp-download + een note
+  met de handmatig te plaatsen bestandsnamen. **`<Variant>` = het 0-BASED SLOT-NUMMER van de
+  actieve variant** (CROSSOVER=0, CROSSOVER1=1, … CROSSOVER7=7) — DÉ oorzaak van Sanders
+  hardnekkige "Amount of sources must be one": bewezen met zijn 2023-referentiebestand
+  (`<Variant>0</Variant>` met alle 8 slots vol) + de KOAN-fixture (`<Variant>2</Variant>` →
+  CROSSOVER2). Eerst het AANTAL wegschrijven en daarna een 1-based index wezen allebei naar een
+  slot dat niet in het bestand zat → leeg canvas + de fout per driver (2×). Export zet de
+  actieve tab vooraan als CROSSOVER (slot 0) en schrijft `<Variant>0</Variant>`.
+  Elke variant MOET precies één Generator (bron) hebben, anders weigert
+  VituixCAD hem; tabs zonder één-bron (bv. een geïmporteerde kale filter) worden overgeslagen
+  met een note i.p.v. de hele export te vergiftigen. **Byte-compat (hard geleerd): UTF-8 MÉT BOM
+  + CRLF** — VituixCADs Windows/.NET-reader miste zonder BOM de UTF-8-detectie en las non-ASCII
+  units (Ω) verkeerd, waardoor het crossover-blok niet parste → 0 bronnen → óók "Amount of
+  sources must be one" (per variant, dus 2×). `serializeVxp` eindigt met `'﻿' + s.replace(\n→\r\n)`;
+  de fixture is UTF-8-with-BOM + CRLF, regressietest bewaakt het. **PartID-sanering (dé echte
+  "sources"-fix, Sanders geplakte Working.vxp)**: VituixCAD-PartIDs zijn strikt letter+nummer
+  (C1/L2/G1/D1) en zijn part-loader parseert ze — de merge-IDs `G`, `D`, `B·C1` braken het
+  laden, parts vielen weg incl. de Generator → lege canvas + "Amount of sources must be one".
+  `sanitizedPartIds` per variant: geldige IDs blijven (round-trip intact), rest hernummerd op
+  type-prefix; Ground/Wire krijgen géén PartID. Ook veld-getrouw gemaakt: Wire-parts dragen
+  `<Open>`, Driver-parts de `DriverTarget`/`FilterTarget`-blokken, en de SPEAKER-header het
+  volledige veld-set (walls/Toein/AxialTarget/PowerTarget) zoals VituixCAD zelf schrijft.
+  **Rigide symbool-geometrie (dé hardnekkigste "sources"-oorzaak)**: VituixCAD-symbolen hebben
+  een VASTE voetafdruk — terminals van elk 2-terminal-component exact 6 grid-eenheden uiteen,
+  CenX/CenY = exact het midden, `Rotated` = as (verticaal True), Driver-terminals op CenX−1,
+  Ground-punt op CenY−1 (nagemeten over de hele KOAN-fixture). Onze eigen schema's gebruiken
+  5/7-spans → VituixCAD kan de parts niet reconstrueren → generator los → per DRIVER "Amount
+  of sources must be one" (vandaar 2×). `normalizeGeometry` in de export: terminal A blijft,
+  B → A±6 op de as, stub-Wire old-B→new-B houdt de netten intact (union-find-regressietest);
+  fixture-parts (al span 6) zijn no-op — Driver/Inductor-headers nu byte-identiek aan origineel.
+  **Timing-brug (Sanders eis, jul 2026): VituixCAD reconstrueert de fase ZELF**
+  (`MinimumPhase=True` voor élke driver) en de tweeter krijgt de GEMETEN inter-driver-Δ als
+  expliciete `ResponseDelay` (µs, uit `timing.ref.deltaUs`, tweeter-later = positief; fallback
+  offsetMm/c), de mid 0. Zo reproduceert VituixCADs eigen simulatie de onze — exact het
+  "Minimum phase ON"-recept uit het timing-paneel, nu automatisch in de export en ONAFHANKELIJK
+  van de app-weergave-toggle (measured/minimum). Bewust NIET de delay als Z (VituixCAD rekent Z
+  zelf om — één van de twee, nooit allebei: dubbeltelling, zie [[vituixcad-z-not-a-delay]]).
+  NB: min-phase-reconstructie matcht onze measured-sim ~1 dB (non-minimum-phase content zoals
+  breakup kan VituixCAD niet reconstrueren) en onze minimum-modus-sim exact. De App bouwt de
+  DRIVER-blokken uit de slot-mapping (isTweeterModel) + geladen response/impedantie-filenames;
+  de gebruiker plaatst die files zelf naast de .vxp (of gebruikt de map-export hieronder)
 - `timing.ts` — HET fundament: bulk-delay-fit uit unwrapped fase + `assessSharedReference`
   (gedeelde-tijdreferentie-verdict). Silent-failure-risico van verkeerde timing is de bestaansreden
 - `dsp.ts` — logspace/resample (unwrapped-fase-interpolatie, `clampEdges` voor Z), `combine`

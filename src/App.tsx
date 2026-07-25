@@ -2,12 +2,12 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { parseFrd } from './lib/parsers/frd.ts';
 import { parseZma } from './lib/parsers/zma.ts';
 import { parseVxp, type VxpCrossover, type VxpPart, type VxpProject } from './lib/parsers/vxp.ts';
-import { estimateBulkDelay, assessSharedReference } from './lib/timing.ts';
+import { estimateBulkDelay, assessSharedReference, SPEED_OF_SOUND } from './lib/timing.ts';
 import { logspace, resample, combine, offsetMmToDelayS, applyTransfer } from './lib/dsp.ts';
 import { computeIntegration } from './lib/integration.ts';
 import { crossoverToNetlist } from './lib/vxpNetwork.ts';
 import { solveNetwork } from './lib/network.ts';
-import { isTweeterModel, pickSlots } from './lib/driverSlots.ts';
+import { isTweeterModel, pickSlots, withSlotAliases } from './lib/driverSlots.ts';
 import { estimateCoilDcr, validateNetlist } from './lib/netlistEdit.ts';
 import {
   mergeSynthesizedSchematics,
@@ -17,6 +17,8 @@ import {
 } from './lib/schematicEdit.ts';
 import SchematicEditor from './components/SchematicEditor.tsx';
 import { deserializeFilter, serializeFilter } from './lib/filterFile.ts';
+import { serializeVxp } from './lib/parsers/vxpExport.ts';
+import type { VxpDriver } from './lib/parsers/vxp.ts';
 import { tidySchematic } from './lib/tidyLayout.ts';
 import {
   allSeries,
@@ -103,6 +105,19 @@ interface Loaded {
   name: string;
   raw: string;
   frd: Parsed;
+}
+
+/** Minimal typing for the Chromium File System Access API (folder export). */
+interface FsWritable {
+  write(data: string): Promise<void>;
+  close(): Promise<void>;
+}
+interface FsFileHandle {
+  createWritable(): Promise<FsWritable>;
+}
+interface FsDirHandle {
+  getDirectoryHandle(name: string, opts?: { create?: boolean }): Promise<FsDirHandle>;
+  getFileHandle(name: string, opts?: { create?: boolean }): Promise<FsFileHandle>;
 }
 interface AngleEntry {
   hor: number;
@@ -227,6 +242,27 @@ function slotTransfers(sol: {
     hW: woofer ? sol.transfers[woofer.id] ?? null : null,
     hT: tweeter ? sol.transfers[tweeter.id] ?? null : null,
   };
+}
+
+/**
+ * Complex driver impedances resampled onto `grid`, keyed BOTH by each driver's
+ * own model name AND by its mid/tweeter SLOT. Synthesized networks use models
+ * 'mid'/'tweeter', vxp-imported networks use the real model names, and the
+ * design chain hardcodes `driverZ.mid`/`.tweeter` — so a single map keyed both
+ * ways resolves for every consumer. Without the slot aliases, a project loaded
+ * from a .vxp (impedances keyed "Woofer 12w8524"/"Tweeter r2604-83200") left
+ * `driverZ.mid` undefined and the synthesis crashed ("reading '<xo index>'").
+ */
+function zGridWithSlots(
+  impedances: Record<string, ParsedZma>,
+  grid: readonly number[],
+): Record<string, Complex[]> {
+  const out: Record<string, Complex[]> = {};
+  for (const [model, z] of Object.entries(impedances)) {
+    const g = resample(z.freq, z.magnitude, z.phase, [...grid], { clampEdges: true });
+    out[model] = g.spl.map((mag, i) => fromPolar(mag, (g.phaseDeg[i] * Math.PI) / 180));
+  }
+  return withSlotAliases(out);
 }
 
 /** Parse a numeric field, falling back when blank/invalid (module-level twin
@@ -1632,12 +1668,7 @@ export default function App() {
      * chain — design rounds → synthesis → assembled tune — and the final
      * results compete. Deterministic: same input → same output. ---- */
     if (Object.keys(impedances).length > 0) {
-      const zOnGrid = Object.fromEntries(
-        Object.entries(impedances).map(([model, z]) => {
-          const g = resample(z.freq, z.magnitude, z.phase, [...grid], { clampEdges: true });
-          return [model, g.spl.map((mag, i) => fromPolar(mag, (g.phaseDeg[i] * Math.PI) / 180))];
-        }),
-      );
+      const zOnGrid = zGridWithSlots(impedances, grid);
       const safety = (() => {
         const lo = Math.max(200, woofer.frd.freq[0], tweeter.frd.freq[0]);
         const hi = Math.min(
@@ -1651,15 +1682,7 @@ export default function App() {
           freqs: sGrid,
           w: resample(woofer.frd.freq, woofer.frd.spl, woofer.frd.phase, sGrid),
           t: resample(tweeter.frd.freq, tweeter.frd.spl, tweeter.frd.phase, sGrid),
-          z: Object.fromEntries(
-            Object.entries(impedances).map(([model, zz]) => {
-              const g = resample(zz.freq, zz.magnitude, zz.phase, sGrid, { clampEdges: true });
-              return [
-                model,
-                g.spl.map((mag, i) => fromPolar(mag, (g.phaseDeg[i] * Math.PI) / 180)),
-              ];
-            }),
-          ),
+          z: zGridWithSlots(impedances, sGrid),
         };
       })();
       const targets = stagedOn
@@ -2018,12 +2041,7 @@ export default function App() {
     setTimeout(() => {
       try {
         const grid = sim.combined.freq;
-        const zOnGrid = Object.fromEntries(
-          Object.entries(impedances).map(([model, z]) => {
-            const g = resample(z.freq, z.magnitude, z.phase, [...grid], { clampEdges: true });
-            return [model, g.spl.map((mag, i) => fromPolar(mag, (g.phaseDeg[i] * Math.PI) / 180))];
-          }),
-        );
+        const zOnGrid = zGridWithSlots(impedances, grid);
         // Full-measurement-band safety data: the view range is the design
         // scope, but the tuner's fundamentals (crossing, valley, protection)
         // must hold on the WHOLE measurement — a zoomed view must not let a
@@ -2042,15 +2060,7 @@ export default function App() {
             freqs: sGrid,
             w: resample(woofer.frd.freq, woofer.frd.spl, woofer.frd.phase, sGrid),
             t: resample(tweeter.frd.freq, tweeter.frd.spl, tweeter.frd.phase, sGrid),
-            z: Object.fromEntries(
-              Object.entries(impedances).map(([model, zz]) => {
-                const g = resample(zz.freq, zz.magnitude, zz.phase, sGrid, { clampEdges: true });
-                return [
-                  model,
-                  g.spl.map((mag, i) => fromPolar(mag, (g.phaseDeg[i] * Math.PI) / 180)),
-                ];
-              }),
-            ),
+            z: zGridWithSlots(impedances, sGrid),
           };
         })();
         const r = optimizeNetworkValues(
@@ -2150,6 +2160,190 @@ export default function App() {
     a.download = `${safe}.adsfilter.json`;
     a.click();
     URL.revokeObjectURL(a.href);
+  }
+
+  /**
+   * Export the network(s) as a VituixCAD .vxp project — the inverse of the
+   * importer. Every tab becomes a crossover variant (CROSSOVER, CROSSOVER1, …),
+   * exactly how VituixCAD stores Stefan's variants. Our parts already carry
+   * VituixCAD grid coordinates, so each block re-serialises directly; DRIVER
+   * blocks point at the loaded measurement/impedance file names.
+   *
+   * Measured-phase fidelity: in 'measured' mode we emit MinimumPhase=False with
+   * NO Z/delay offset — the inter-driver Δ lives in the response files, so
+   * VituixCAD reads the same phase the app designed on. Adding a delay on top
+   * would double-count it. Only in 'minimum' mode do we hand VituixCAD the
+   * tweeter Z offset it needs to reconstruct that Δ.
+   */
+  async function exportActiveVxp() {
+    if (designs.length === 0) return;
+    // VituixCAD reconstructs each driver's phase from its magnitude
+    // (MinimumPhase=True) and we hand it the measured inter-driver Δ as an
+    // explicit tweeter Delay, so its own simulation reproduces ours. The Δ is the
+    // physical measured timing (tweeter later = positive µs); fall back to the
+    // manual offset when timing is unavailable. This is the "Minimum phase ON"
+    // recipe from the timing panel, applied automatically.
+    const deltaUs = timing?.ref.deltaUs ?? numOf(offsetMm, 0) / (SPEED_OF_SOUND / 1000);
+    const tweeterDelayUs = Math.round(deltaUs * 10) / 10;
+
+    // Every VituixCAD crossover variant must have exactly ONE source (Generator),
+    // else it rejects the file with "Amount of sources must be one". A tab that
+    // is an incomplete network (e.g. an imported bare filter) has none — skip it
+    // rather than poison the whole export.
+    const genCount = (d: NetworkDesign) => d.parts.filter((p) => p.type === 'Generator').length;
+    const exportable = designs.filter((d) => genCount(d) === 1);
+    const skipped = designs.filter((d) => genCount(d) !== 1).map((d) => d.name);
+    if (exportable.length === 0) {
+      setPersistNote(
+        `Nothing to export: a VituixCAD variant needs exactly one generator (source), and no tab ` +
+          `qualifies${skipped.length ? ` (${skipped.join(', ')})` : ''}. Add a generator to the network first.`,
+      );
+      return;
+    }
+
+    // Distinct driver models across the exportable tabs, in first-seen order —
+    // the DRIVER header is shared by every crossover variant in a vxp.
+    const models: string[] = [];
+    for (const d of exportable)
+      for (const p of d.parts)
+        if (p.type === 'Driver' && p.model && !models.includes(p.model)) models.push(p.model);
+
+    // Filenames must be identical in the .vxp reference AND on disk, so we clean
+    // once and use the result for both. Strip the demo suffix; ensure responses
+    // carry an extension VituixCAD recognises.
+    const clean = (n: string) => n.replace(/\s*\(demo\)\s*$/i, '').trim() || 'file';
+    const asResponse = (n: string) => (/\.[a-z0-9]+$/i.test(n) ? n : `${n}.txt`);
+
+    // Collect the raw text of every file we reference, keyed by its final name.
+    // `place` deduplicates identical files but disambiguates a name clash between
+    // DIFFERENT files, so two drivers can never silently share one response file.
+    const files = new Map<string, string>();
+    const missing: string[] = [];
+    const place = (name: string, raw: string): string => {
+      const existing = files.get(name);
+      if (existing === undefined || existing === raw) {
+        files.set(name, raw);
+        return name;
+      }
+      const dot = name.lastIndexOf('.');
+      const stem = dot > 0 ? name.slice(0, dot) : name;
+      const ext = dot > 0 ? name.slice(dot) : '';
+      let i = 2;
+      let cand = `${stem}_${i}${ext}`;
+      while (files.has(cand) && files.get(cand) !== raw) cand = `${stem}_${++i}${ext}`;
+      files.set(cand, raw);
+      return cand;
+    };
+
+    const drivers: VxpDriver[] = models.map((model) => {
+      const tw = isTweeterModel(model);
+      const onAxis = tw ? tweeter : woofer;
+      const angles = (tw ? angleSets?.tweeter : angleSets?.woofer) ?? [];
+      const src =
+        angles.length > 0
+          ? angles.map((a) => ({ name: asResponse(clean(a.name)), hor: a.hor, raw: a.raw }))
+          : onAxis
+            ? [{ name: asResponse(clean(onAxis.name)), hor: 0, raw: onAxis.raw }]
+            : [];
+      if (src.length === 0) missing.push(`${model} responses`);
+      const responses = src.map((s) => ({ fileName: place(s.name, s.raw), hor: s.hor, ver: 0 }));
+      const zStore = zStandalone[model]?.file ?? project?.impedanceFiles[model];
+      let zName: string | undefined;
+      if (zStore) {
+        zName = place(clean(zStore.name), zStore.raw);
+      } else {
+        missing.push(`${model} impedance`);
+      }
+      return {
+        model,
+        // VituixCAD simulates the phase itself; the tweeter carries the measured
+        // inter-driver Δ as a Delay so its result matches ours.
+        minimumPhase: true,
+        inverted: false,
+        responseDelay: tw ? tweeterDelayUs : 0,
+        z: 0,
+        impedanceFile: zName,
+        impedanceFileName: zName,
+        responses,
+      };
+    });
+
+    // The active tab leads (becomes CROSSOVER, the variant VituixCAD opens on),
+    // the rest follow. Only exportable tabs (exactly one source) are included.
+    const activeExportable = activeDesign && genCount(activeDesign) === 1 ? activeDesign : null;
+    const ordered = activeExportable
+      ? [activeExportable, ...exportable.filter((d) => d.id !== activeExportable.id)]
+      : exportable;
+    const crossovers = ordered.map((d) => ({ name: 'CROSSOVER', parts: d.parts }));
+
+    const names = ordered.map((d) => d.name).join(', ');
+    const xml = serializeVxp(
+      { drivers, crossovers },
+      {
+        description: `Exported from Acoustic Design Studio — ${names}`,
+        // Active tab sits in slot 0 (CROSSOVER); <Variant> is the 0-based slot number.
+        activeVariant: 0,
+        // Carry the app's view range into VituixCAD's analysis/plot range.
+        xMin: numOf(fMin, 300),
+        xMax: numOf(fMax, 20000),
+      },
+    );
+    const base = (ordered[0]?.name ?? 'design').replace(/[^\w\- ]+/g, '').trim() || 'design';
+    const vxpName = `${base}.vxp`;
+    files.set(vxpName, xml);
+
+    const bridge = `Minimum phase ON (VituixCAD reconstructs phase) — tweeter Delay ${tweeterDelayUs} µs carries the inter-driver Δ`;
+    const variants =
+      ordered.length > 1 ? `${ordered.length} variants (${names})` : '1 variant';
+    const skippedNote = skipped.length
+      ? ` Skipped ${skipped.join(', ')} (no single generator).`
+      : '';
+    const dataFiles = [...files.keys()].filter((n) => n !== vxpName);
+
+    // Preferred path (Chromium): write the whole folder so the .vxp AND its
+    // measurement files land together — VituixCAD opens it without hunting.
+    const picker = (
+      window as unknown as {
+        showDirectoryPicker?: (o?: { mode?: string }) => Promise<FsDirHandle>;
+      }
+    ).showDirectoryPicker;
+    if (picker) {
+      try {
+        const parent = await picker({ mode: 'readwrite' });
+        const dir = await parent.getDirectoryHandle(base, { create: true });
+        for (const [name, data] of files) {
+          const fh = await dir.getFileHandle(name, { create: true });
+          const w = await fh.createWritable();
+          await w.write(data);
+          await w.close();
+        }
+        setPersistNote(
+          `Exported folder “${base}/” — ${vxpName} + ${dataFiles.length} measurement file` +
+            `${dataFiles.length === 1 ? '' : 's'} (${variants}). ${bridge}. Open ${vxpName} in VituixCAD.` +
+            skippedNote +
+            (missing.length ? ` Note: no ${missing.join(', ')} on record.` : ''),
+        );
+        return;
+      } catch (err) {
+        // User cancelled the folder picker — silently stop, no fallback download.
+        if (err instanceof DOMException && err.name === 'AbortError') return;
+        // Any other failure falls through to the single-file download below.
+      }
+    }
+
+    // Fallback (Firefox/Safari): download just the .vxp; the user places the
+    // measurement files beside it manually.
+    const blob = new Blob([xml], { type: 'application/xml' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = vxpName;
+    a.click();
+    URL.revokeObjectURL(a.href);
+    setPersistNote(
+      `Exported ${vxpName} (${variants}). ${bridge}.${skippedNote} This browser can’t write folders — place the ` +
+        `measurement files next to it manually: ${dataFiles.join(', ')}. ` +
+        `(Chrome/Edge export the whole folder in one go.)`,
+    );
   }
 
   async function importFilterFromFile(e: React.ChangeEvent<HTMLInputElement>) {
@@ -4353,6 +4547,14 @@ export default function App() {
                 title="Download the active tab as a standalone .adsfilter.json — share it or bring it into another project"
               >
                 Export filter
+              </button>
+              <button
+                type="button"
+                onClick={exportActiveVxp}
+                disabled={designs.length === 0}
+                title="Export ALL network tabs as a VituixCAD project folder — the .vxp (each tab a crossover variant CROSSOVER, CROSSOVER1, …) PLUS every measurement/impedance file, written together so VituixCAD opens it without hunting. Pick a folder when asked (Chrome/Edge). VituixCAD reconstructs the phase itself (MinimumPhase=True) and the tweeter carries the measured inter-driver Δ as a Delay, so its simulation matches ours."
+              >
+                Export .vxp
               </button>
               <label className="file-button" title="Open an exported .adsfilter.json in a new tab">
                 Import filter

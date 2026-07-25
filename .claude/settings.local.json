@@ -101,7 +101,17 @@
       "Bash(grep -E 'bulk|rel|=>|per-driver|###|Hz|[0-9]{3,5} ')",
       "Bash(grep -E 'Hz|[0-9]{3,5} ')",
       "Bash(git -c 'user.name=Sander \\(via Claude Code\\)' -c user.email=sandersomers@gmail.com commit -q -m 'vxp import: stop applying driver-PART Z as a time offset *)",
-      "Bash(git -c 'user.name=Sander \\(via Claude Code\\)' -c user.email=sandersomers@gmail.com commit -q -m 'Update local permission allowlist *)"
+      "Bash(git -c 'user.name=Sander \\(via Claude Code\\)' -c user.email=sandersomers@gmail.com commit -q -m 'Update local permission allowlist *)",
+      "Bash(timeout 100 npx vitest run src/lib/_chaindiag.test.ts)",
+      "Bash(echo \"exit=$?\")",
+      "Read(//tmp/**)",
+      "Bash(grep -n \"^function slotTransfers\\\\|function slotTransfers\\\\|^const slotTransfers\\\\|import { isTweeterModel, pickSlots }\\\\|^import type { Complex\\\\|ParsedZma\" src/App.tsx)",
+      "Bash(awk '/<Type>Capacitor<|<Type>Inductor<|<Type>Resistor</{p=1} p{print NR\": \"$0} /<\\\\/PART>/{if\\(p\\){print \"---\"; c++; p=0}} c>=3{exit}' \"src/lib/parsers/fixtures/KOAN 2951 Prototype 140826.vxp\")",
+      "Bash(xxd \"src/lib/parsers/fixtures/KOAN 2951 Prototype 140826.vxp\")",
+      "Bash(awk '/<Type>Wire</{p=1; print \"--- Wire part ---\"} p{print} /<\\\\/PART>/{if\\(p\\){c++; p=0}} c>=2{exit}' \"src/lib/parsers/fixtures/KOAN 2951 Prototype 140826.vxp\")",
+      "Bash(xxd '/Users/sandersomers/UTM - Shared Folder/Speaker Robbert/231226Rear12W8524-R2604-832.vxp')",
+      "Bash(awk '/<Type>Inductor</{p=1} p{print} /<\\\\/PART>/{if\\(p\\)exit}' '/Users/sandersomers/UTM - Shared Folder/Speaker Robbert/231226Rear12W8524-R2604-832.vxp')",
+      "Bash(git commit -m ' *)"
     ]
   }
 }
