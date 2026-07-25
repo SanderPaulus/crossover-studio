@@ -1218,15 +1218,19 @@ export default function App() {
    * fill happens only when the convention or the measurements change):
    * measured phase carries the real timing IN the phase, so the knob belongs
    * at 0; minimum phase throws that timing away, so the knob must carry the
-   * measured Δ (bulk-delay fit) instead. Skipped on project restore.
+   * EXCESS-phase Δ (measured − minimum phase) — the raw bulk-delay Δ is
+   * contaminated by the drivers' minimum-phase slopes and on KOAN even has
+   * the opposite sign (+16.2 mm raw vs −17.2 mm excess). Falls back to the
+   * raw Δ when the excess fit is unavailable. Skipped on project restore.
    */
   const offsetAutoSkip = useRef(false);
   useEffect(() => {
     const skip = offsetAutoSkip.current;
     offsetAutoSkip.current = false;
     if (skip || !timing || timing.ref.verdict !== 'plausible') return;
-    setOffsetMm(phaseMode === 'minimum' ? timing.ref.deltaMm.toFixed(1) : '0');
-  }, [phaseMode, timing]);
+    const bridgeMm = excessBridge ? excessBridge.deltaUs * 0.343 : timing.ref.deltaMm;
+    setOffsetMm(phaseMode === 'minimum' ? bridgeMm.toFixed(1) : '0');
+  }, [phaseMode, timing, excessBridge]);
 
   const integration = useMemo(() => (result ? computeIntegration(result) : null), [result]);
 
@@ -4059,8 +4063,11 @@ export default function App() {
                 )}
               {phaseMode === 'minimum' && timing?.ref.verdict === 'plausible' && (
                 <span className="derived">
-                  auto-filled from the measured Δ ({timing.ref.deltaMm.toFixed(1)} mm) — minimum
-                  phase discards the measured timing
+                  auto-filled from the excess-phase Δ (
+                  {(excessBridge ? excessBridge.deltaUs * 0.343 : timing.ref.deltaMm).toFixed(1)}{' '}
+                  mm) — minimum phase discards the measured timing, and the raw Δ (
+                  {timing.ref.deltaMm.toFixed(1)} mm) is contaminated by the drivers&apos; own
+                  minimum-phase slopes
                 </span>
               )}
             </fieldset>
