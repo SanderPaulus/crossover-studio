@@ -28,3 +28,23 @@ export function pickSlots<T extends { model: string }>(
     woofer: pool.find((d) => !isTweeterModel(d.model)),
   };
 }
+
+/**
+ * Given a per-driver map keyed by MODEL name, add `mid`/`tweeter` SLOT aliases
+ * pointing at the same values (unless those keys already exist). Synthesized
+ * networks address drivers as 'mid'/'tweeter' and the design chain hardcodes
+ * `driverZ.mid`/`.tweeter`, while a .vxp-loaded project keys everything by the
+ * real model name ("Woofer 12w8524"/"Tweeter r2604-83200"). Without the alias,
+ * `driverZ.mid` was undefined and synthesis crashed indexing it. Keying both
+ * ways lets model-addressed (vxp) AND slot-addressed (synthesized) consumers
+ * resolve from one map.
+ */
+export function withSlotAliases<T>(byModel: Record<string, T>): Record<string, T> {
+  const out = { ...byModel };
+  const { woofer, tweeter } = pickSlots(Object.keys(byModel).map((model) => ({ model })));
+  if (woofer && out[woofer.model] !== undefined && out.mid === undefined) out.mid = out[woofer.model];
+  if (tweeter && out[tweeter.model] !== undefined && out.tweeter === undefined) {
+    out.tweeter = out[tweeter.model];
+  }
+  return out;
+}
