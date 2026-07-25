@@ -62,16 +62,21 @@ minimum phase reconstrueert. Voertaal met Sander: **Nederlands**; code/comments 
   B → A±6 op de as, stub-Wire old-B→new-B houdt de netten intact (union-find-regressietest);
   fixture-parts (al span 6) zijn no-op — Driver/Inductor-headers nu byte-identiek aan origineel.
   **Timing-brug (Sanders eis, jul 2026): VituixCAD reconstrueert de fase ZELF**
-  (`MinimumPhase=True` voor élke driver) en de tweeter krijgt de GEMETEN inter-driver-Δ als
-  expliciete `ResponseDelay` (µs, uit `timing.ref.deltaUs`, tweeter-later = positief; fallback
-  offsetMm/c), de mid 0. Zo reproduceert VituixCADs eigen simulatie de onze — exact het
-  "Minimum phase ON"-recept uit het timing-paneel, nu automatisch in de export en ONAFHANKELIJK
-  van de app-weergave-toggle (measured/minimum). Bewust NIET de delay als Z (VituixCAD rekent Z
-  zelf om — één van de twee, nooit allebei: dubbeltelling, zie [[vituixcad-z-not-a-delay]]).
-  NB: min-phase-reconstructie matcht onze measured-sim ~1 dB (non-minimum-phase content zoals
-  breakup kan VituixCAD niet reconstrueren) en onze minimum-modus-sim exact. De App bouwt de
+  (`MinimumPhase=True` voor élke driver) en elke driver krijgt zijn **EXCESS-fase-delay**
+  (gemeten fase − minimum-fase-reconstructie, gefit als pure delay; genormaliseerd: vroegste
+  driver 0, latere positief) als `ResponseDelay`. **HARD GELEERD (Sanders "moet het niet −47 µs
+  zijn?"): de rauwe bulk-delay-Δ is NIET de brugwaarde** — de rauwe fit absorbeert de
+  minimum-fase-helling van de driver zelf. Op KOAN: rauwe Δ zegt tweeter +47 µs LATER, excess-Δ
+  zegt tweeter ~50 µs EERDER (hij staat fysiek ~17 mm vóór de mid — Sander wist het); alleen de
+  excess-brug reproduceert de gemeten relatieve fase (~2° vs ~78° fout, en SPL-som van max
+  2,4 dB fout naar vrijwel exact). `excessDelayMsOf` in App (module-level), óók gevoed aan het
+  timing-paneel-advies (`excessBridge`-memo); regressietest in timing.test.ts pint de
+  tegengestelde tekens vast. Bewust NIET de delay als Z (VituixCAD rekent Z zelf om — één van de
+  twee, nooit allebei: dubbeltelling, zie [[vituixcad-z-not-a-delay]]). De App bouwt de
   DRIVER-blokken uit de slot-mapping (isTweeterModel) + geladen response/impedantie-filenames;
-  de gebruiker plaatst die files zelf naast de .vxp (of gebruikt de map-export hieronder)
+  de gebruiker plaatst die files zelf naast de .vxp (of gebruikt de map-export hieronder).
+  NB: de minimum-modus-AUTOFILL (offsetMm = rauwe deltaMm) draagt dezelfde rauwe-Δ-besmetting —
+  bewust nog niet omgezet naar de excess-Δ (raakt de sim-weergave; Sanders keuze)
 - `timing.ts` — HET fundament: bulk-delay-fit uit unwrapped fase + `assessSharedReference`
   (gedeelde-tijdreferentie-verdict). Silent-failure-risico van verkeerde timing is de bestaansreden
 - `dsp.ts` — logspace/resample (unwrapped-fase-interpolatie, `clampEdges` voor Z), `combine`
@@ -419,12 +424,19 @@ minimum phase reconstrueert. Voertaal met Sander: **Nederlands**; code/comments 
   R²=1,000. Mic ~50 cm tussen drivers, gedeelde tijdreferentie → offset-regelaar hoort op 0.
   Auto-fill (bij verdict 'plausible', blijft aanpasbaar; skip bij restore): measured → 0,
   minimum → gemeten Δmm; in measured met offset ≠ 0 verschijnt een waarschuwing (dubbeltelling)
+- **Rauwe bulk-Δ ≠ akoestisch-centrum-Δ (jul 2026)**: de bulk-delay-fit op rauwe fase (mid
+  1,708/tweeter 1,755 ms → "+47 µs tweeter later") absorbeert de min-fase-helling van de driver;
+  de EXCESS-fase-fit (gemeten − minimum phase) geeft de echte looptijden (mid 1,729/tweeter
+  1,679 ms → tweeter ~50 µs/17 mm EERDER = vóór de mid). Voor de measured-modus-som maakt dit
+  niets uit (alleen het rauwe RELATIEVE verschil telt en dat zit in de files); voor élke
+  minimum-fase-consument (VituixCAD-brug, export-delays) is de excess-Δ de juiste waarde
 - **Measured phase = default en de waarheid** (mits sanity check groen). Auto-regel: nieuwe
   metingen met verdict 'plausible' (gedeelde tijdreferentie) zetten de conventie automatisch op
   Measured — wint ook van de Minimum-default bij vxp-load; project-restore respecteert de
   opgeslagen keuze. Minimum-modus alleen voor VituixCAD-vergelijking (auto-aan bij vxp-load
-  zonder plausibele timing) en diagnose. VituixCAD-brug: tweeter Delay +47 µs
-  óf Z −16,2 mm (staat kant-en-klaar onder het timing-panel), Minimum phase UIT = optie A
+  zonder plausibele timing) en diagnose. VituixCAD-brug (gecorrigeerd jul 2026): mid Delay
+  +50 µs (excess-Δ, staat onder het timing-panel en zit automatisch in de export) — NIET de
+  oude "+47 µs op de tweeter" uit de rauwe Δ; Minimum phase UIT + Delay 0 = optie A
 - Overnamepunt ~2,2 kHz; tweeter ~5-10 dB heter dan mid; mid-breakup ~5,5 kHz; tweeter-bult →
   Stefans notch 6,5 kHz. In var3 is de mid NIET geïnverteerd (met gemeten fase; origineel wél)
 - Drie kruisvalidaties met VituixCAD binnen ~1 dB (CROSSOVER1, var3, gesynthetiseerd netwerk)

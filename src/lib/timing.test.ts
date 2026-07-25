@@ -133,3 +133,47 @@ describe('assessSharedReference', () => {
     expect(r2.verdict).toBe('plausible');
   });
 });
+
+describe('excess-phase delay vs raw bulk delay (the minimum-phase bridge)', () => {
+  // THE lesson (jul 2026, Sanders "moet het niet −47 µs zijn?"): the raw
+  // bulk-delay fit absorbs each driver's minimum-phase slope, so its Δ is NOT
+  // the acoustic-centre offset a minimum-phase consumer (VituixCAD Delay, our
+  // .vxp export) must re-apply. On the real KOAN measurements the raw fit says
+  // tweeter +47 µs LATER while the excess-phase fit (measured − minimum phase)
+  // says ~50 µs EARLIER — opposite SIGNS — and only the excess-based bridge
+  // reproduces the measured relative phase (~2° vs ~78° error).
+  it('KOAN: raw Δ and excess Δ have opposite signs', async () => {
+    const { readFileSync } = await import('node:fs');
+    const { join, dirname } = await import('node:path');
+    const { fileURLToPath } = await import('node:url');
+    const { parseFrd } = await import('./parsers/frd.ts');
+    const { logspace, resample } = await import('./dsp.ts');
+    const { minimumPhaseDeg } = await import('./minphase.ts');
+
+    const FIX = join(dirname(fileURLToPath(import.meta.url)), 'parsers', 'fixtures');
+    const mid = parseFrd(readFileSync(join(FIX, 'mid_hor0_mettape.txt'), 'utf-8'));
+    const tw = parseFrd(readFileSync(join(FIX, 'tweet_hor0_mettape.txt'), 'utf-8'));
+
+    const raw = (f: ReturnType<typeof parseFrd>) =>
+      estimateBulkDelay(f.freq, f.phase, [
+        Math.max(500, f.freq[0]),
+        Math.min(5000, f.freq[f.freq.length - 1]),
+      ]).delayMs;
+    const excess = (f: ReturnType<typeof parseFrd>) => {
+      const lo = Math.max(500, f.freq[0] * 1.05);
+      const hi = Math.min(5000, f.freq[f.freq.length - 1] * 0.95);
+      const g = resample(f.freq, f.spl, f.phase, logspace(lo, 20000, 400));
+      const mp = minimumPhaseDeg(g.freq, g.spl);
+      return estimateBulkDelay(g.freq, g.phaseDeg.map((p, i) => p - mp[i]), [lo, hi]).delayMs;
+    };
+
+    const rawDeltaUs = (raw(tw) - raw(mid)) * 1000;
+    const excessDeltaUs = (excess(tw) - excess(mid)) * 1000;
+
+    // Raw: tweeter appears ~47 µs LATER. Excess: tweeter is ~50 µs EARLIER.
+    expect(rawDeltaUs).toBeGreaterThan(40);
+    expect(rawDeltaUs).toBeLessThan(55);
+    expect(excessDeltaUs).toBeLessThan(-40);
+    expect(excessDeltaUs).toBeGreaterThan(-60);
+  });
+});

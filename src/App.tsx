@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { parseFrd } from './lib/parsers/frd.ts';
 import { parseZma } from './lib/parsers/zma.ts';
 import { parseVxp, type VxpCrossover, type VxpPart, type VxpProject } from './lib/parsers/vxp.ts';
-import { estimateBulkDelay, assessSharedReference, SPEED_OF_SOUND } from './lib/timing.ts';
+import { estimateBulkDelay, assessSharedReference } from './lib/timing.ts';
 import { logspace, resample, combine, offsetMmToDelayS, applyTransfer } from './lib/dsp.ts';
 import { computeIntegration } from './lib/integration.ts';
 import { crossoverToNetlist } from './lib/vxpNetwork.ts';
@@ -263,6 +263,30 @@ function zGridWithSlots(
     out[model] = g.spl.map((mag, i) => fromPolar(mag, (g.phaseDeg[i] * Math.PI) / 180));
   }
   return withSlotAliases(out);
+}
+
+/**
+ * Excess-phase delay of a driver: measured phase minus its minimum-phase
+ * reconstruction, fitted as a pure delay (ms). THE bridge quantity for any
+ * minimum-phase consumer (VituixCAD's Delay field sits ON TOP of its own
+ * reconstruction). Not interchangeable with the raw bulk-delay fit: that one
+ * is contaminated by each driver's minimum-phase slope — measured on KOAN the
+ * raw Δ says tweeter +47 µs LATER while the excess Δ says 50 µs EARLIER (the
+ * tweeter physically sits ~17 mm proud of the mid), and only the excess-based
+ * bridge reproduces the measured relative phase (~2° vs ~78° error).
+ */
+function excessDelayMsOf(frd: Parsed): number | null {
+  try {
+    const lo = Math.max(500, frd.freq[0] * 1.05);
+    const hi = Math.min(5000, frd.freq[frd.freq.length - 1] * 0.95);
+    if (hi <= lo * 1.5) return null;
+    const g = resample(frd.freq, frd.spl, frd.phase, logspace(lo, 20000, 400));
+    const mp = minimumPhaseDeg(g.freq, g.spl);
+    const excess = g.phaseDeg.map((p, i) => p - mp[i]);
+    return estimateBulkDelay(g.freq, excess, [lo, hi]).delayMs;
+  } catch {
+    return null;
+  }
 }
 
 /** Parse a numeric field, falling back when blank/invalid (module-level twin
@@ -1161,6 +1185,16 @@ export default function App() {
     } catch {
       return null;
     }
+  }, [woofer, tweeter]);
+
+  /** Excess-phase bridge Δ (tweeter − woofer, µs): the value a minimum-phase
+   *  consumer (VituixCAD, our export) needs to reproduce the measured relative
+   *  phase. Positive = tweeter later. Distinct from timing.ref.deltaUs (raw). */
+  const excessBridge = useMemo(() => {
+    if (!woofer || !tweeter) return null;
+    const w = excessDelayMsOf(woofer.frd);
+    const t = excessDelayMsOf(tweeter.frd);
+    return w !== null && t !== null ? { deltaUs: (t - w) * 1000 } : null;
   }, [woofer, tweeter]);
 
   /**
@@ -2178,13 +2212,22 @@ export default function App() {
   async function exportActiveVxp() {
     if (designs.length === 0) return;
     // VituixCAD reconstructs each driver's phase from its magnitude
-    // (MinimumPhase=True) and we hand it the measured inter-driver Δ as an
-    // explicit tweeter Delay, so its own simulation reproduces ours. The Δ is the
-    // physical measured timing (tweeter later = positive µs); fall back to the
-    // manual offset when timing is unavailable. This is the "Minimum phase ON"
-    // recipe from the timing panel, applied automatically.
-    const deltaUs = timing?.ref.deltaUs ?? numOf(offsetMm, 0) / (SPEED_OF_SOUND / 1000);
-    const tweeterDelayUs = Math.round(deltaUs * 10) / 10;
+    // (MinimumPhase=True); the Delay we hand it sits ON TOP of that
+    // reconstruction. The correct bridge value is therefore the EXCESS-phase
+    // delay (measured phase − minimum phase, fitted as a pure delay) — NOT the
+    // raw bulk-delay Δ, which is contaminated by each driver's minimum-phase
+    // slope. Measured on KOAN: raw Δ says tweeter +47 µs LATER, excess says
+    // tweeter 50 µs EARLIER (it physically sits ~17 mm proud of the mid, as
+    // Sander knew) — and the excess-based bridge reproduces our measured sim
+    // within ~2° where the raw-Δ bridge was ~78° off. Delays are normalized so
+    // the earliest driver gets 0 and the later one a POSITIVE delay.
+    const exWoofer = woofer ? excessDelayMsOf(woofer.frd) : null;
+    const exTweeter = tweeter ? excessDelayMsOf(tweeter.frd) : null;
+    const earliestMs = Math.min(exWoofer ?? 0, exTweeter ?? 0);
+    const delayUs = (ex: number | null) =>
+      ex === null ? 0 : Math.round((ex - earliestMs) * 1000 * 10) / 10;
+    const wooferDelayUs = delayUs(exWoofer);
+    const tweeterDelayUs = delayUs(exTweeter);
 
     // Every VituixCAD crossover variant must have exactly ONE source (Generator),
     // else it rejects the file with "Amount of sources must be one". A tab that
@@ -2256,11 +2299,12 @@ export default function App() {
       }
       return {
         model,
-        // VituixCAD simulates the phase itself; the tweeter carries the measured
-        // inter-driver Δ as a Delay so its result matches ours.
+        // VituixCAD simulates the phase itself; each driver carries its
+        // excess-phase delay (relative to the earliest driver) so the
+        // reconstruction reproduces our measured relative phase.
         minimumPhase: true,
         inverted: false,
-        responseDelay: tw ? tweeterDelayUs : 0,
+        responseDelay: tw ? tweeterDelayUs : wooferDelayUs,
         z: 0,
         impedanceFile: zName,
         impedanceFileName: zName,
@@ -2292,7 +2336,9 @@ export default function App() {
     const vxpName = `${base}.vxp`;
     files.set(vxpName, xml);
 
-    const bridge = `Minimum phase ON (VituixCAD reconstructs phase) — tweeter Delay ${tweeterDelayUs} µs carries the inter-driver Δ`;
+    const bridge =
+      `Minimum phase ON (VituixCAD reconstructs phase) — excess-phase delays: ` +
+      `mid ${wooferDelayUs} µs / tweeter ${tweeterDelayUs} µs carry the inter-driver timing`;
     const variants =
       ordered.length > 1 ? `${ordered.length} variants (${names})` : '1 variant';
     const skippedNote = skipped.length
@@ -4072,11 +4118,20 @@ export default function App() {
           </div>
           {timing.ref.verdict === 'plausible' && (
             <p className="sub" style={{ margin: '0.75rem 0 0' }}>
-              VituixCAD equivalent (Minimum phase ON): give the{' '}
-              <strong>{timing.ref.deltaUs >= 0 ? 'tweeter' : 'woofer/mid'}</strong> a Delay of{' '}
-              <strong>{Math.abs(timing.ref.deltaUs).toFixed(0)} µs</strong> (or Z ={' '}
-              {`−${Math.abs(timing.ref.deltaMm).toFixed(1)} mm`}), the other driver 0. Only the
-              DIFFERENCE matters — never enter the shared ~
+              {excessBridge ? (
+                <>
+                  VituixCAD equivalent (Minimum phase ON): give the{' '}
+                  <strong>{excessBridge.deltaUs >= 0 ? 'tweeter' : 'woofer/mid'}</strong> a Delay
+                  of <strong>{Math.abs(excessBridge.deltaUs).toFixed(0)} µs</strong>, the other
+                  driver 0 — this is the EXCESS-phase Δ (measured − minimum phase), the value a
+                  minimum-phase reconstruction needs. NB: it can differ from the raw Δ above in
+                  size AND sign (the raw fit absorbs each driver&apos;s minimum-phase slope).
+                  The .vxp export fills this in automatically.
+                </>
+              ) : (
+                <>VituixCAD equivalent: use the .vxp export — it derives the bridge delays.</>
+              )}{' '}
+              Only the DIFFERENCE matters — never enter the shared ~
               {(Math.min(timing.w.delayMs, timing.t.delayMs) * 1000).toFixed(0)} µs bulk delay.
             </p>
           )}
