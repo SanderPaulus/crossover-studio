@@ -146,17 +146,26 @@ export function runChainScan(
   const state = new Map<string, { evals: number; text: string; done: boolean }>();
   let lastRipple: number | undefined;
   let lastPhase: number | undefined;
+  // THROTTLED (trailing, ~12/s): four workers burst progress messages, and
+  // every emit re-renders the whole app under a blurred overlay — unthrottled
+  // bursts caused visible paint stutter ("flikkeren"). The timer reads the
+  // CURRENT state map when it fires, so the last update is never lost.
+  let emitQueued = false;
   const emit = () => {
-    if (!onProgress) return;
-    let evals = 0;
-    let done = 0;
-    const items: { label: string; text: string; done: boolean }[] = [];
-    for (const [label, st] of state) {
-      evals += st.evals;
-      if (st.done) done++;
-      items.push({ label, text: st.text, done: st.done });
-    }
-    onProgress({ round: done, evals, rippleDb: lastRipple, phaseDeg: lastPhase, items });
+    if (!onProgress || emitQueued) return;
+    emitQueued = true;
+    setTimeout(() => {
+      emitQueued = false;
+      let evals = 0;
+      let done = 0;
+      const items: { label: string; text: string; done: boolean }[] = [];
+      for (const [label, st] of state) {
+        evals += st.evals;
+        if (st.done) done++;
+        items.push({ label, text: st.text, done: st.done });
+      }
+      onProgress({ round: done, evals, rippleDb: lastRipple, phaseDeg: lastPhase, items });
+    }, 80);
   };
   const runOne = (v: { label: string; xoRange?: [number, number] }, slot: number) => {
     state.set(v.label, { evals: 0, text: 'queued', done: false });

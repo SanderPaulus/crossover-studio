@@ -116,6 +116,10 @@ export interface NetOptimizeResult {
   added: string[];
   /** Catalog snap: singles-vs-stacks comparison ("bewust stapelen"). */
   snapNote?: string;
+  /** Amp-load floor (system |Z| ≥ 3 Ω): set when the tuned result dipped
+   *  below the floor — either "lifted a → b Ω" (repair accepted) or a
+   *  could-not-repair warning. See Z_FLOOR_OHM. */
+  ampFloorNote?: string;
   /** Set when the full-band safety gate rejected the tuned result and the
    *  seed was returned unchanged (see NetOptimizeOptions.safety). */
   safetyNote?: string;
@@ -131,6 +135,20 @@ const PARAM_OF: Record<'R' | 'L' | 'C', { name: string; factor: number }> = {
   L: { name: 'L', factor: 1e3 }, // schematic params store mH
   C: { name: 'C', factor: 1e6 }, // … and µF
 };
+
+/** FUNDAMENTAL — amplifier-load floor (Sanders, jul 2026): the system input
+ *  impedance should not dip below this. Voltage drive makes a low-Z
+ *  realisation INVISIBLE to every response metric (the sim holds the voltage,
+ *  only the amplifier feels the current), so a shunt trap/Zobel with a small
+ *  R near the input can quietly buy response quality with an amp-hostile dip.
+ *  Enforcement is DECISION-LEVEL ONLY (structure gates, safety gate, and a
+ *  locally-seeded repair retune before the snap) — an always-on fx penalty
+ *  was tried and REVERTED: on the notch-torture net the term cost a mere
+ *  0.065 at the relevant optimum (system min 2.93 Ω) yet rerouted the
+ *  deterministic simplex into a basin 6 dB worse in ripple (8.0 → 14.5 dB).
+ *  The textbook-anchor lesson, again: ANY objective add-on perturbs the
+ *  search path through a multimodal landscape, however small its value. */
+const Z_FLOOR_OHM = 3.0;
 
 /** Soft buildability bounds, as in synthesis. */
 const BOUNDS: Record<'C' | 'L' | 'R', [number, number]> = {
@@ -357,6 +375,10 @@ export function optimizeNetworkValues(
     xoDipDb: number;
     midSlopeDbOct: number | null;
     tweeterSlopeDbOct: number | null;
+    /** Minimum system |Zin| over the band (amplifier load). */
+    zMinOhm: number;
+    /** How far that minimum sits BELOW the amp-load floor (0 when healthy). */
+    zShortOhm: number;
   } => {
     const sol = solveNetwork(net, freqs, z);
     const hFor = (model: string) => {
@@ -511,6 +533,15 @@ export function optimizeNetworkValues(
       leakSqDb = n ? acc / n : 0;
     }
 
+    // FUNDAMENTAL — amplifier-load floor: min |Zin| below Z_FLOOR_OHM is a
+    // silent failure (voltage drive hides it from every response metric).
+    let zMinOhm = Infinity;
+    for (const c of sol.inputZ) {
+      const zm = Math.hypot(c.re, c.im);
+      if (zm < zMinOhm) zMinOhm = zm;
+    }
+    const zShortOhm = Math.max(0, Z_FLOOR_OHM - zMinOhm);
+
     // FUNDAMENTAL — tweeter protection (always on): electrical drive at and
     // below crossing/3 stays ≤ −15 dB, whatever the shape metric prefers.
     let protSqDb = 0;
@@ -540,6 +571,8 @@ export function optimizeNetworkValues(
       xoDipDb,
       midSlopeDbOct,
       tweeterSlopeDbOct,
+      zMinOhm,
+      zShortOhm,
     };
   };
 
@@ -588,6 +621,8 @@ export function optimizeNetworkValues(
       0.02 * m.protSqDb +
       // Dead-spot crossing (always on): a 19 dB-deep crossing hole costs
       // ~180 — dominant, as it should be; a healthy design pays 0.
+      // NB: the amp-load floor is deliberately NOT here (see Z_FLOOR_OHM) —
+      // it lives in the gates and the repair pass, never in the objective.
       0.5 * m.xoDipDb * m.xoDipDb +
       xoPenalty(m.xoHz) +
       slopePen
@@ -654,6 +689,9 @@ export function optimizeNetworkValues(
     budgetScale = 1,
     barrier: { rippleDb: number; phaseDeg: number } | null = null,
     applyWindow = true,
+    /** Amp-load floor REPAIR barrier — only the repair pass sets this; the
+     *  normal tune objective must stay clean (see Z_FLOOR_OHM). */
+    zFloorBarrier = false,
   ): TuneOut => {
     const { work, free } = buildWork(ps);
     if (free.length === 0) {
@@ -719,6 +757,11 @@ export function optimizeNetworkValues(
         const exR = Math.max(0, m.ripplePeakDb - barrier.rippleDb * 0.92);
         const exP = Math.max(0, (m.phaseDeg - barrier.phaseDeg * 0.92) / 15);
         barr = 120 * (exR * exR + exP * exP) + 4 * Math.max(0, m.protSqDb - protRef);
+      }
+      if (zFloorBarrier) {
+        // Locally-seeded repair barrier (the proven target-barrier pattern):
+        // pulls the dip up to the floor, from a point that is already good.
+        barr += 120 * (m.zShortOhm / Z_FLOOR_OHM) ** 2;
       }
       return fxOf(m) + barr + 8 * penalty;
     };
@@ -854,6 +897,7 @@ export function optimizeNetworkValues(
         mAlt.phaseDeg <= opts.staged.phaseDeg &&
         mAlt.protSqDb <= mBase.protSqDb + 0.5 &&
         mAlt.xoDipDb <= mBase.xoDipDb + 1 &&
+        mAlt.zShortOhm <= mBase.zShortOhm + 0.1 &&
         (!breakupGuard || mAlt.leakSqDb <= mBase.leakSqDb + 4)
       ) {
         return alt;
@@ -910,6 +954,7 @@ export function optimizeNetworkValues(
     const safe = (m: Metrics, ref: Metrics): boolean =>
       m.protSqDb <= ref.protSqDb + 0.5 &&
       m.xoDipDb <= ref.xoDipDb + 1 &&
+      m.zShortOhm <= ref.zShortOhm + 0.1 &&
       (!breakupGuard || m.leakSqDb <= ref.leakSqDb + 4);
     /** Escalation adds a part + full retune: protection shifts a little by
      *  nature (the fx already prices it at 0.02·protSqDb). The prune-strict
@@ -918,6 +963,7 @@ export function optimizeNetworkValues(
     const safeEsc = (m: Metrics, ref: Metrics): boolean =>
       m.protSqDb <= ref.protSqDb + 3 &&
       m.xoDipDb <= ref.xoDipDb + 2 &&
+      m.zShortOhm <= ref.zShortOhm + 0.3 &&
       (!breakupGuard || m.leakSqDb <= ref.leakSqDb + 4);
 
     if (meets(curFull)) {
@@ -1104,6 +1150,7 @@ export function optimizeNetworkValues(
           const safeOk =
             fm.protSqDb <= base0.protSqDb + 0.5 &&
             fm.xoDipDb <= base0.xoDipDb + 1 &&
+            fm.zShortOhm <= base0.zShortOhm + 0.1 &&
             (!breakupGuard || fm.leakSqDb <= base0.leakSqDb + 4);
           // Quality-only gate — NO per-step cost check. Gating on the mid-tune
           // cost estimate backfired (measured on C2): `estimateCostEur` picks
@@ -1116,6 +1163,47 @@ export function optimizeNetworkValues(
           if (!meetsOk || !safeOk) break;
           cur = cand;
         }
+      }
+    }
+  }
+
+  /* ---- Amp-load floor repair (decision-level, see Z_FLOOR_OHM). When the
+   * tuned result dips below the floor — a shunt trap/Zobel R near the input,
+   * or an amp-hostile value the response metrics cannot see — a locally
+   * seeded barrier retune walks the values up out of the dip. Accepted only
+   * when it genuinely lifts the minimum AND the response stays in class
+   * (prune-doctrine 10%) with the fundamentals intact; otherwise the result
+   * stands and the note tells the truth (the Impedance panel shows it too). */
+  let ampFloorNote: string | undefined;
+  {
+    const fullOf = (ps: readonly VxpPart[]): Metrics =>
+      metricsOn(buildWork(ps).work, grid, wBase, tBase, driverZ, angleData ?? null);
+    const mCur = fullOf(cur.parts);
+    if (mCur.zShortOhm > 0.15) {
+      onStage?.('amp-load floor');
+      const rep = tune(cur.parts, 0.6, opts.staged ?? null, true, true);
+      const mRep = fullOf(rep.parts);
+      const targetsKept =
+        !opts.staged ||
+        mCur.ripplePeakDb > opts.staged.rippleDb || // weren't met before either
+        (mRep.ripplePeakDb <= opts.staged.rippleDb && mRep.phaseDeg <= opts.staged.phaseDeg);
+      const ok =
+        mRep.zShortOhm < mCur.zShortOhm - 0.1 &&
+        rep.fx <= cur.fx * 1.1 &&
+        targetsKept &&
+        mRep.protSqDb <= mCur.protSqDb + 0.5 &&
+        mRep.xoDipDb <= mCur.xoDipDb + 1 &&
+        (!breakupGuard || mRep.leakSqDb <= mCur.leakSqDb + 4);
+      if (ok) {
+        ampFloorNote =
+          `amp-load floor: system impedance minimum lifted ` +
+          `${mCur.zMinOhm.toFixed(1)} → ${mRep.zMinOhm.toFixed(1)} Ω (floor ${Z_FLOOR_OHM} Ω)`;
+        cur = { ...rep, freeCount: cur.freeCount };
+      } else {
+        ampFloorNote =
+          `amp-load floor: system impedance dips to ${mCur.zMinOhm.toFixed(1)} Ω ` +
+          `(floor ${Z_FLOOR_OHM} Ω) and could not be repaired without losing response quality — ` +
+          `check the Impedance panel`;
       }
     }
   }
@@ -1274,6 +1362,12 @@ export function optimizeNetworkValues(
       reasons.push(`the crossing sank into a ${resS.xoDipDb.toFixed(0)} dB hole`);
     }
     if (resS.protSqDb > seedS.protSqDb + 3) reasons.push('tweeter protection got worse');
+    if (resS.zShortOhm > seedS.zShortOhm + 0.2) {
+      reasons.push(
+        `the system impedance dips to ${resS.zMinOhm.toFixed(1)} Ω ` +
+          `(amplifier-load floor ${Z_FLOOR_OHM} Ω)`,
+      );
+    }
     if (reasons.length > 0) {
       return {
         parts: cloneParts(parts),
@@ -1338,6 +1432,7 @@ export function optimizeNetworkValues(
     removed,
     added,
     ...(snapNote ? { snapNote } : {}),
+    ...(ampFloorNote ? { ampFloorNote } : {}),
     ...(valueWindowNote ? { valueWindowNote } : {}),
   };
 }

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { parseFrd } from './lib/parsers/frd.ts';
 import { parseZma } from './lib/parsers/zma.ts';
 import { parseVxp, type VxpCrossover, type VxpPart, type VxpProject } from './lib/parsers/vxp.ts';
@@ -15,6 +15,8 @@ import {
   normalizeOrigin,
 } from './lib/schematicEdit.ts';
 import SchematicEditor from './components/SchematicEditor.tsx';
+import { HelpPanel } from './components/HelpPanel.tsx';
+import { helpSectionForTab } from './lib/help.ts';
 import {
   filterTemplate,
   supportsWayCount,
@@ -183,14 +185,15 @@ const TIER_LABEL: Record<PhaseTier, string> = {
 };
 
 /** Toggleable analysis panels (any combination visible; OFF = not computed). */
-type PanelKey = 'directivity' | 'sonogram' | 'transfer' | 'phase' | 'time';
+type PanelKey = 'directivity' | 'sonogram' | 'transfer' | 'impedance' | 'phase' | 'time';
 
-const PANEL_KEYS: PanelKey[] = ['directivity', 'sonogram', 'transfer', 'phase', 'time'];
+const PANEL_KEYS: PanelKey[] = ['directivity', 'sonogram', 'transfer', 'impedance', 'phase', 'time'];
 
 const PANEL_LABEL: Record<PanelKey, string> = {
   directivity: 'Directivity',
   sonogram: 'Sonogram',
   transfer: 'Filter transfer',
+  impedance: 'Impedance',
   phase: 'Phase',
   time: 'Time domain',
 };
@@ -652,6 +655,8 @@ export default function App() {
   /** Component wizard: tier profile + binding series per kind for the snap. */
   const [wizardOpen, setWizardOpen] = useState(false);
   const [wizardStep, setWizardStep] = useState(1);
+  /** In-app manual; opens on the section matching the active design tab. */
+  const [helpOpen, setHelpOpen] = useState(false);
   const [snapProfile, setSnapProfile] = useState('auto');
   const [snapSeriesL, setSnapSeriesL] = useState('auto');
   const [snapSeriesC, setSnapSeriesC] = useState('auto');
@@ -1233,6 +1238,7 @@ export default function App() {
     // Apply the selected passive crossover: solve the network on the measured
     // impedances, then fold each driver's voltage transfer into its response.
     let transfers: { woofer: Complex[] | null; tweeter: Complex[] | null } | null = null;
+    let systemZ: Complex[] | null = null;
     let xoError: string | null = null;
     const xo =
       project && xoName !== 'none'
@@ -1261,6 +1267,7 @@ export default function App() {
         if (hW) w = applyTransfer(w, hW);
         if (hT) t = applyTransfer(t, hT);
         transfers = { woofer: hW, tweeter: hT };
+        systemZ = sol.inputZ;
       } catch (e) {
         xoError = e instanceof Error ? e.message : String(e);
       }
@@ -1289,6 +1296,7 @@ export default function App() {
         inverted,
       }),
       transfers,
+      systemZ,
       xoError,
       base,
     };
@@ -1944,6 +1952,7 @@ export default function App() {
           setSynth({ mode: synthMode, woofer: win.synthWoofer, tweeter: win.synthTweeter });
           setWorkingDesign(win.parts);
           setVfBypass(true); // the BUILT network is the result on screen
+          setScanSort(null);
           setChainScan(
             results.length > 1
               ? {
@@ -1966,7 +1975,8 @@ export default function App() {
                 (win.bomTotalEur !== null ? ` · BOM €${Math.round(win.bomTotalEur)}` : '')) +
               (win.net.snapNote ? ` · ${win.net.snapNote}` : '') +
               (win.net.valueWindowNote ? ` · ${win.net.valueWindowNote}` : '') +
-              (win.net.safetyNote ? ` · ⚠ ${win.net.safetyNote}` : ''),
+              (win.net.safetyNote ? ` · ⚠ ${win.net.safetyNote}` : '') +
+              (win.net.ampFloorNote ? ` · ⚠ ${win.net.ampFloorNote}` : ''),
           );
         })
         .catch((e) => {
@@ -2166,6 +2176,8 @@ export default function App() {
    *  popup blink for milliseconds (Sanders glitch-melding). Show immediately,
    *  hide only when no busy flag returns within 250 ms. */
   const [overlayVisible, setOverlayVisible] = useState(false);
+  /** Frozen busy-card body shown during the close-linger (see render). */
+  const busyCardBodyRef = useRef<ReactNode>(null);
   useEffect(() => {
     if (anyBusy) {
       setOverlayVisible(true);
@@ -2193,6 +2205,19 @@ export default function App() {
     /** Label of the row currently loaded in Working. */
     active: string;
   } | null>(null);
+
+  /** Scan-table sort: click a header to sort by that column (asc → desc →
+   *  back to the RANKING order, which is the default and keeps 🏆 on top). */
+  const [scanSort, setScanSort] = useState<{
+    key: 'xo' | 'ripple' | 'phase' | 'bom';
+    dir: 1 | -1;
+  } | null>(null);
+
+  function toggleScanSort(key: 'xo' | 'ripple' | 'phase' | 'bom') {
+    setScanSort((s0) =>
+      s0?.key !== key ? { key, dir: 1 } : s0.dir === 1 ? { key, dir: -1 } : null,
+    );
+  }
 
   /** Load a scan candidate's complete design (specs + synth + tuned network)
    *  into Working — same application as the winner gets, undo-able. */
@@ -2289,7 +2314,8 @@ export default function App() {
                 (r.removed.length > 0 ? ` · pruned: ${r.removed.join(', ')}` : '') +
                 (r.added.length > 0 ? ` · bypass-C added: ${r.added.join(', ')}` : '') +
                 (r.snapNote ? ` · ${r.snapNote}` : '') +
-                (r.valueWindowNote ? ` · ${r.valueWindowNote}` : ''),
+                (r.valueWindowNote ? ` · ${r.valueWindowNote}` : '') +
+                (r.ampFloorNote ? ` · ⚠ ${r.ampFloorNote}` : ''),
         );
       })
       .catch((e) => {
@@ -2591,10 +2617,10 @@ export default function App() {
   // Distinct muted hue per ghost: with identical grays the legend chips were
   // indistinguishable — dash patterns only help inside the chart itself.
   const GHOST_COLORS = ['var(--viz-ghost1)', 'var(--viz-ghost2)', 'var(--viz-ghost3)', 'var(--viz-ghost4)'];
-  const tabGhosts: { spl: Series[]; phase: Series[] } = useMemo(() => {
+  const tabGhosts: { spl: Series[]; phase: Series[]; z: Series[] } = useMemo(() => {
     if (!compareTabs || !networkActive || !sim || designs.length < 2)
-      return { spl: [], phase: [] };
-    if (Object.keys(impedances).length === 0) return { spl: [], phase: [] };
+      return { spl: [], phase: [], z: [] };
+    if (Object.keys(impedances).length === 0) return { spl: [], phase: [], z: [] };
     const grid = sim.combined.freq;
     const zOnGrid = Object.fromEntries(
       Object.entries(impedances).map(([model, z]) => {
@@ -2604,6 +2630,7 @@ export default function App() {
     );
     const spl: Series[] = [];
     const phase: Series[] = [];
+    const z: Series[] = [];
     designs
       .filter((d) => d.id !== activeDesignId)
       .forEach((d, i) => {
@@ -2633,13 +2660,42 @@ export default function App() {
             id: `ghostp:${d.id}`,
             y: breakPhaseWraps(combined.relativePhaseDeg.slice()),
           });
+          z.push({
+            ...style,
+            id: `ghostz:${d.id}`,
+            y: sol.inputZ.map((c) => Math.min(cAbs(c), 1e4)),
+          });
         } catch {
           // Unsolvable tab (work in progress) — simply no ghost for it.
         }
       });
-    return { spl, phase };
+    return { spl, phase, z };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [compareTabs, networkActive, sim, impedances, designs, activeDesignId, offsetMm, trimDb, inverted]);
+
+  /** System-impedance display data: |Z| curve + min/max markers. High |Z| is
+   *  harmless (an easy load); only the MINIMUM matters for the amplifier —
+   *  tiers follow IEC 60268-5's 0.8×nominal floor (6.4 Ω = 8 Ω-safe,
+   *  3.2 Ω = 4 Ω territory, below that amp-unfriendly). */
+  const systemZInfo = useMemo(() => {
+    if (!showPanels.impedance || !sim?.systemZ) return null;
+    const freq = sim.combined.freq;
+    // Cap the open-network blow-up (~1/G_LEAK) so the chart scale stays sane.
+    const mags = sim.systemZ.map((c) => Math.min(cAbs(c), 1e4));
+    let minI = 0;
+    let maxI = 0;
+    mags.forEach((m, i) => {
+      if (m < mags[minI]) minI = i;
+      if (m > mags[maxI]) maxI = i;
+    });
+    return {
+      mags,
+      minOhm: mags[minI],
+      minHz: freq[minI],
+      maxOhm: mags[maxI],
+      maxHz: freq[maxI],
+    };
+  }, [showPanels.impedance, sim]);
 
   const splSeries: Series[] = useMemo(() => {
     if (!result) return [];
@@ -2886,69 +2942,81 @@ export default function App() {
 
   const delayUs = offsetMmToDelayS(num(offsetMm, 0)) * 1e6;
 
+  // Busy-card body, built during render and snapshotted for the close-linger.
+  const busyCardBody = (
+    <>
+      <div className="busy-spinner" />
+      <div className="busy-title">
+        {vfBusy
+          ? 'Optimizing crossover…'
+          : netOptBusy
+            ? 'Tuning components on the assembled network…'
+            : 'Building passive network…'}
+      </div>
+      {vfBusy && vfProgress?.items ? (
+        // Scan view: one STABLE row per candidate + a totals line — the
+        // card never changes size while stages tick underneath.
+        <>
+          <table className="busy-scan">
+            <tbody>
+              {vfProgress.items.map((it) => (
+                <tr key={it.label} className={it.done ? 'done' : ''}>
+                  <td>{it.label}</td>
+                  <td>{it.text}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          <div className="busy-totals">
+            {vfProgress.round}/{vfProgress.items.length} done ·{' '}
+            {vfProgress.evals.toLocaleString('nl-NL')} sims
+            {vfProgress.rippleDb !== undefined && vfProgress.phaseDeg !== undefined
+              ? ` · best ${vfProgress.rippleDb.toFixed(2)} dB / ${vfProgress.phaseDeg.toFixed(1)}°`
+              : ''}
+            {` · ${Math.floor(busyElapsed / 60)}:${String(busyElapsed % 60).padStart(2, '0')}`}
+          </div>
+        </>
+      ) : (
+        <div className="busy-detail">
+          {vfBusy && vfProgress
+            ? `round ${vfProgress.round} · ${vfProgress.evals.toLocaleString('nl-NL')} network sims` +
+              (vfProgress.rippleDb !== undefined && vfProgress.phaseDeg !== undefined
+                ? ` · best ${vfProgress.rippleDb.toFixed(2)} dB / ${vfProgress.phaseDeg.toFixed(1)}°`
+                : '')
+            : vfBusy
+              ? 'searching structures and EQ stages — runs in the background, the app stays live'
+              : netOptBusy
+                ? `${netOptStage ? `stage: ${netOptStage} — ` : ''}value fit, prune/escalate, debris sweep`
+                : 'fitting real component values on the measured impedances'}
+          {anyBusy && busyElapsed > 0 ? ` · ${Math.floor(busyElapsed / 60)}:${String(busyElapsed % 60).padStart(2, '0')}` : ''}
+        </div>
+      )}
+      {(vfBusy || netOptBusy) && (
+        <button
+          type="button"
+          className="busy-cancel"
+          onClick={cancelOptimTasks}
+          title="Stop the run — nothing is committed, your design stays as it was"
+        >
+          Cancel
+        </button>
+      )}
+    </>
+  );
+  if (anyBusy) busyCardBodyRef.current = busyCardBody;
+
   return (
     <div className={`app-shell layout-${layoutMode}`}>
       {overlayVisible && (
         <div className="busy-overlay" role="status" aria-live="polite">
-          <div className="busy-card">
-            <div className="busy-spinner" />
-            <div className="busy-title">
-              {vfBusy
-                ? 'Optimizing crossover…'
-                : netOptBusy
-                  ? 'Tuning components on the assembled network…'
-                  : 'Building passive network…'}
-            </div>
-            {vfBusy && vfProgress?.items ? (
-              // Scan view: one STABLE row per candidate + a totals line — the
-              // card never changes size while stages tick underneath.
-              <>
-                <table className="busy-scan">
-                  <tbody>
-                    {vfProgress.items.map((it) => (
-                      <tr key={it.label} className={it.done ? 'done' : ''}>
-                        <td>{it.label}</td>
-                        <td>{it.text}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-                <div className="busy-totals">
-                  {vfProgress.round}/{vfProgress.items.length} done ·{' '}
-                  {vfProgress.evals.toLocaleString('nl-NL')} sims
-                  {vfProgress.rippleDb !== undefined && vfProgress.phaseDeg !== undefined
-                    ? ` · best ${vfProgress.rippleDb.toFixed(2)} dB / ${vfProgress.phaseDeg.toFixed(1)}°`
-                    : ''}
-                  {` · ${Math.floor(busyElapsed / 60)}:${String(busyElapsed % 60).padStart(2, '0')}`}
-                </div>
-              </>
-            ) : (
-              <div className="busy-detail">
-                {vfBusy && vfProgress
-                  ? `round ${vfProgress.round} · ${vfProgress.evals.toLocaleString('nl-NL')} network sims` +
-                    (vfProgress.rippleDb !== undefined && vfProgress.phaseDeg !== undefined
-                      ? ` · best ${vfProgress.rippleDb.toFixed(2)} dB / ${vfProgress.phaseDeg.toFixed(1)}°`
-                      : '')
-                  : vfBusy
-                    ? 'searching structures and EQ stages — runs in the background, the app stays live'
-                    : netOptBusy
-                      ? `${netOptStage ? `stage: ${netOptStage} — ` : ''}value fit, prune/escalate, debris sweep`
-                      : 'fitting real component values on the measured impedances'}
-                {anyBusy && busyElapsed > 0 ? ` · ${Math.floor(busyElapsed / 60)}:${String(busyElapsed % 60).padStart(2, '0')}` : ''}
-              </div>
-            )}
-            {(vfBusy || netOptBusy) && (
-              <button
-                type="button"
-                className="busy-cancel"
-                onClick={cancelOptimTasks}
-                title="Stop the run — nothing is committed, your design stays as it was"
-              >
-                Cancel
-              </button>
-            )}
-          </div>
+          {/* During the 250 ms close-linger (anyBusy false) the card renders
+              its FROZEN last body — swapping to fallback text for a few
+              frames read as a flicker (Sanders tweede melding). */}
+          <div className="busy-card">{anyBusy ? busyCardBody : busyCardBodyRef.current}</div>
         </div>
+      )}
+      {helpOpen && (
+        <HelpPanel initialId={helpSectionForTab(designTab)} onClose={() => setHelpOpen(false)} />
       )}
       {wizardOpen && (
         <div className="busy-overlay" onClick={() => setWizardOpen(false)}>
@@ -3926,6 +3994,13 @@ export default function App() {
             </button>
           ))}
         </div>
+        <button
+          type="button"
+          onClick={() => setHelpOpen(true)}
+          title="Handleiding: doorzoekbare uitleg van elke tab, de optimizer, de scores en de VituixCAD-uitwisseling"
+        >
+          ❓ Help
+        </button>
       </header>
 
       <div className={`workspace${designTab === 'network' ? ' wide-left' : ''}`}>
@@ -5054,18 +5129,45 @@ export default function App() {
             {chainScan && (
               <table
                 className="scan-table scan-table-pick"
-                title="Full-chain crossover scan, ranked best first — click a row to load that candidate's complete design (filters + tuned network) into Working"
+                title="Full-chain crossover scan — click a row to load that candidate's complete design (filters + tuned network) into Working; click a header to sort"
               >
                 <thead>
                   <tr>
-                    <th>crossover</th>
-                    <th>ripple</th>
-                    <th>phase</th>
-                    <th>BOM</th>
+                    {(
+                      [
+                        ['xo', 'crossover'],
+                        ['ripple', 'ripple'],
+                        ['phase', 'phase'],
+                        ['bom', 'BOM'],
+                      ] as const
+                    ).map(([key, caption]) => (
+                      <th
+                        key={key}
+                        className={scanSort?.key === key ? 'sorted' : ''}
+                        onClick={() => toggleScanSort(key)}
+                        title="Sort by this column — ascending, descending, then back to the ranking order (🏆 first)"
+                      >
+                        {caption}
+                        {scanSort?.key === key ? (scanSort.dir === 1 ? ' ▲' : ' ▼') : ''}
+                      </th>
+                    ))}
                   </tr>
                 </thead>
                 <tbody>
-                  {chainScan.rows.map((r) => (
+                  {[...chainScan.rows]
+                    .sort((a, b) => {
+                      if (!scanSort) return 0; // ranking order (stable sort)
+                      const v = (r: typeof a): number =>
+                        scanSort.key === 'xo'
+                          ? parseFloat(r.label)
+                          : scanSort.key === 'ripple'
+                            ? r.rippleDb
+                            : scanSort.key === 'phase'
+                              ? r.phaseDeg
+                              : (r.bomEur ?? Number.POSITIVE_INFINITY);
+                      return (v(a) - v(b)) * scanSort.dir;
+                    })
+                    .map((r) => (
                     <tr
                       key={r.label}
                       className={`${r.winner ? 'winner' : ''}${chainScan.active === r.label ? ' active' : ''}`}
@@ -5505,6 +5607,50 @@ export default function App() {
                 yTickStep={5}
                 yUnit="dB"
                 height={260}
+              />
+            </div>
+          )}
+
+          {systemZInfo && result && (
+            <div className="panel">
+              <h2>System impedance (amplifier load)</h2>
+              <div className="score-strip">
+                <span className="strip-label">Z min</span>
+                <span
+                  className={`strip-score ${
+                    systemZInfo.minOhm >= 6.4 ? 'ok' : systemZInfo.minOhm >= 3.2 ? 'warn' : 'bad'
+                  }`}
+                  title="Lowest system impedance the amplifier sees — the only side that can hurt it (current/heat). IEC 60268-5: minimum ≥ 0.8× the rated impedance. Green ≥ 6.4 Ω (safe as an '8 Ω' speaker), orange ≥ 3.2 Ω ('4 Ω' territory — fine for most solid-state amps), red below that."
+                >
+                  {systemZInfo.minOhm.toFixed(1)} Ω
+                </span>
+                <span className="strip-item">@ {Math.round(systemZInfo.minHz)} Hz</span>
+                <span
+                  className="strip-item"
+                  title="Highest system impedance. High is HARMLESS — the amp simply delivers less current there. It only becomes audible with a high-output-impedance amplifier (tube amps): the response then follows this curve."
+                >
+                  max {systemZInfo.maxOhm >= 1000 ? '≥1k' : systemZInfo.maxOhm.toFixed(0)} Ω @{' '}
+                  {Math.round(systemZInfo.maxHz)} Hz
+                </span>
+              </div>
+              <Chart
+                series={[
+                  {
+                    id: 'zin',
+                    label: 'System |Z|',
+                    color: 'var(--viz-combined)',
+                    width: 2.5,
+                    x: result.freq,
+                    y: systemZInfo.mags,
+                  },
+                  ...tabGhosts.z,
+                ]}
+                xDomain={xDomain}
+                yDomain={[0, Math.min(200, Math.max(20, Math.ceil((systemZInfo.maxOhm * 1.1) / 10) * 10))]}
+                yTickStep={systemZInfo.maxOhm <= 36 ? 5 : systemZInfo.maxOhm <= 90 ? 10 : 25}
+                yUnit="Ω"
+                height={240}
+                xMarkers={[{ x: systemZInfo.minHz, color: 'var(--viz-tick)', label: 'Z min' }]}
               />
             </div>
           )}

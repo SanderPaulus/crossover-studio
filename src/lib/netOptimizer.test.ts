@@ -609,6 +609,58 @@ describe('dead-branch fundamentals & full-band safety gate', () => {
   });
 });
 
+describe('amplifier-load floor (system Z ≥ 3 Ω fundamental)', () => {
+  /** System |Zin| minimum of a parts array, straight from the solver. */
+  const zMinOf = (parts: readonly VxpPart[]): number => {
+    const { netlist } = crossoverToNetlist({ name: 'zmin', parts: [...parts] });
+    const sol = solveNetwork(netlist, grid, driverZ);
+    return Math.min(...sol.inputZ.map((c) => Math.hypot(c.re, c.im)));
+  };
+
+  it('lifts an amp-hostile shunt R across the input back above the floor', () => {
+    // A 2 Ω resistor straight across the generator is RESPONSE-INVARIANT
+    // (Rg = 1 mΩ voltage drive: driver voltages don't change whatever its
+    // value) — the response objective has exactly zero gradient on it, so
+    // only the amp-load floor REPAIR pass can rescue the amplifier. The
+    // silent-failure case this fundamental exists for. (The floor lives at
+    // decision level only — an fx term was tried and reverted, see
+    // Z_FLOOR_OHM in netOptimizer.ts.)
+    const seed: VxpPart[] = [
+      ...crudeNetwork('none'),
+      {
+        type: 'Resistor',
+        partId: 'RS1',
+        params: [{ name: 'R', value: 2.0, unit: 'Ω' }],
+        wires: [{ x: 3, y: 4 }, { x: 5, y: 11 }],
+      },
+      { type: 'Ground', params: [], wires: [{ x: 5, y: 11 }] },
+    ];
+    expect(zMinOf(seed)).toBeLessThan(2.1); // the seed really is amp-hostile
+    const r = optimizeNetworkValues(seed, grid, wBase, tBase, driverZ, NO_ADJ, {
+      phasePriority: 0.3,
+    });
+    // The repair must lift the dip (essentially) back to the floor; 2.8
+    // allows the barrier's soft tail near 3.0.
+    expect(zMinOf(r.parts)).toBeGreaterThan(2.8);
+    expect(r.ampFloorNote).toContain('lifted');
+    // …without buying it with response quality.
+    expect(r.after.rippleDb).toBeLessThanOrEqual(r.before.rippleDb + 1e-9);
+  });
+
+  it('a healthy network never enters the repair pass', () => {
+    // The crude network's own system minimum sits ABOVE the floor (KOAN mid
+    // 3.66 Ω + series L) — the repair must not trigger and the tune must
+    // deliver its classic result untouched (regression: the floor is a
+    // safety net at decision level, never a steering term).
+    const r = optimizeNetworkValues(crudeNetwork('none'), grid, wBase, tBase, driverZ, NO_ADJ, {
+      phasePriority: 0.3,
+    });
+    expect(zMinOf(r.parts)).toBeGreaterThan(3);
+    expect(r.ampFloorNote).toBeUndefined();
+    expect(r.after.rippleDb).toBeLessThan(r.before.rippleDb);
+  });
+});
+
 describe('catalog snap gating', () => {
   it('catalogSnap without an imported catalog is a no-op (continuous values kept)', () => {
     setCustomSeries([]);

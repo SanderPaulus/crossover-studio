@@ -7,7 +7,7 @@ minimum phase reconstrueert. Voertaal met Sander: **Nederlands**; code/comments 
 ## Commands
 
 - `npm run dev` — dev-server via de Browser-pane tool (`preview_start {name:"dev"}`), poort 5173
-- `npx vitest run` — testsuite (281 tests, allemaal groen houden)
+- `npx vitest run` — testsuite (294 tests, allemaal groen houden)
 - `npm run build` / `npx tsc -b` — build & typecheck (tsconfig.test.json dekt de tests, Node-types)
 - Na elke wijziging: typecheck + tests + build draaien; UI-wijzigingen in de Browser-pane verifiëren
 
@@ -81,7 +81,9 @@ minimum phase reconstrueert. Voertaal met Sander: **Nederlands**; code/comments 
   (gedeelde-tijdreferentie-verdict). Silent-failure-risico van verkeerde timing is de bestaansreden
 - `dsp.ts` — logspace/resample (unwrapped-fase-interpolatie, `clampEdges` voor Z), `combine`
   (complexe som; exporteert ook `combinedPhaseDeg`), `applyTransfer`
-- `network.ts` — MNA-solver (complexe admittantie, Norton-bron, gemeten Z als driver-load)
+- `network.ts` — MNA-solver (complexe admittantie, Norton-bron, gemeten Z als driver-load).
+  Elke solve levert ook `inputZ`: de systeem-ingangsimpedantie aan de generatorklemmen
+  (excl. Rg) — de versterker-belastingscurve, voedt het Impedance-paneel
 - `filters.ts` — virtuele filters: BW/LR 1-4 + **Bessel 2-4** ('BS'; per-sectie
   frequentieschaling `f` in `sections()` — Bessel-secties delen geen gezamenlijke poolradius),
   peaking EQ + **lowShelf/highShelf** (analoge prototypes)
@@ -214,6 +216,21 @@ minimum phase reconstrueert. Voertaal met Sander: **Nederlands**; code/comments 
   UI: auto bij .adsfilter-import (oude exports dragen hun kramp-layout in het bestand mee —
   Sanders "near perfect"-import) + "Tidy layout"-knop in de editor-toolbar (undo-baar);
   vxp-varianten van Stefan worden NIET aangeraakt (zijn tekening, zijn indeling)
+- `help.ts` + `components/HelpPanel.tsx` — **in-app handleiding (❓ Help in de topbar, jul 2026)**:
+  Nederlandstalige content (UI-labels blijven Engels zoals in de app) als pure data
+  (`HELP_SECTIONS`, blokmodel p/h/ul/steps met alleen `**bold**`/`` `code` ``-markup),
+  doorzoekbaar (`searchHelp`, AND-semantiek over titel+keywords+body, markup gestript) en
+  contextueel: de knop opent op de sectie van de actieve design-tab (`helpSectionForTab`).
+  Panel = busy-overlay + brede `.help-card` (TOC links, scrollende body rechts; niet-matchende
+  TOC-items gedimd; Esc sluit). Secties: snelstart, per tab, **"🤖 Onder de motorkap: de
+  optimizer"** (Sanders wens: de keten in vogelvlucht, de vuistregels — rol-anker,
+  tweeter-vloer, serie-pad-plafond, gated Zobel/Fs-trap, vrije knieën, krimpladder,
+  kosten-op-beslispunten — en de vangnetten — nooit-slechter, full-grid audit, dode-tak,
+  safety-gate, doel-barrière, drift-catch — in gewone-mensen-taal, zonder codenamen),
+  wizard/catalogus, grafieken, scores, fase-concepten (measured/minimum/excess),
+  VituixCAD-uitwisseling, sneltoetsen, troubleshooting. Tests bewaken unieke ids,
+  gebalanceerde markup en de tab-mapping — nieuwe features horen hier een
+  sectie-update te krijgen
 - `filterFile.ts` — filter-uitwisseling: één ontwerp-tab als standalone .adsfilter.json
   (formaat-marker + versie + validatie); Export-knop (actieve tab) / Import (nieuwe tab)
 - `filterTemplates.ts` — **netwerk-templates ("New from template", Network-toolbar)**: het derde
@@ -397,7 +414,9 @@ minimum phase reconstrueert. Voertaal met Sander: **Nederlands**; code/comments 
   smalle slice kost nu "geen-kruising"-geld. Geverifieerd: winnaar-slice [1800–2000]
   landde op 1831. **Scan-tabel = KEUZELIJST (Sanders wens)**: elke rij draagt zijn volle
   ChainResult; klik laadt dát kandidaat-ontwerp compleet in Working (specs+synth+getuned
-  net, undo-baar), ◂ markeert de geladen rij, 🏆 blijft de ranking-winnaar. Sessie-only.
+  net, undo-baar), ◂ markeert de geladen rij, 🏆 blijft de ranking-winnaar. Kolomkoppen
+  SORTEERBAAR (klik: oplopend → aflopend → terug naar ranking; BOM-loos zakt onderaan bij
+  oplopend; nieuwe scan reset de sortering). Sessie-only.
   **Busy-overlay heeft een 250ms-LINGER** (`overlayVisible`): busy-flag-handoffs
   (vf → sync build → assembled tune) hadden één-frame-gaten die de popup milliseconden
   lieten knipperen (Sanders glitch-melding). HARD GELEERD (KOAN-
@@ -477,9 +496,17 @@ minimum phase reconstrueert. Voertaal met Sander: **Nederlands**; code/comments 
   max 920 px). CSS: media query gegate op `:not(.layout-split)`, geforceerd-stacked blok op
   `.layout-stacked`, `#root:has(...)` voor de hoogte.
 - **Fase C — grafieken à la carte**: toggle-chips boven het analysepaneel (Directivity/Sonogram/
-  Filter transfer/Phase/Time domain, elke combinatie tegelijk, localStorage 'ads-ui-panels',
-  default alles aan). Uit = óók niet berekend: de memos voor directivity/sonogram/timeDomain/
-  phaseSeries gaten op `showPanels`. SPL + integratiescore staan altijd aan (chips!).
+  Filter transfer/Impedance/Phase/Time domain, elke combinatie tegelijk, localStorage
+  'ads-ui-panels', default alles aan). Uit = óók niet berekend: de memos voor directivity/
+  sonogram/timeDomain/phaseSeries gaten op `showPanels`. SPL + integratiescore staan altijd aan
+  (chips!). **Impedance-paneel (jul 2026, Robberts "weerstand 3–7 kHz is heel hoog"-tip)**:
+  systeemimpedantie |Z| van het actieve passieve netwerk (VituixCAD-pariteit) uit `sol.inputZ`,
+  met Z-min-chip op IEC 60268-5-ankers (≥ 0,8× nominaal: groen ≥ 6,4 Ω, oranje ≥ 3,2 Ω, rood
+  eronder), Z-min-marker in de chart, max-Z als info-item en tab-ghosts. Doctrine: alleen het
+  MINIMUM kan de versterker pijn doen (stroom/warmte); hoge Z (gepadde tweeter + geblokkeerde
+  mid-tak boven de kruising) is onschadelijk — hoorbaar enkel via hoge-uitgangsimpedantie-
+  versterkers (buizen). NB: de KOAN-mid meet zélf 3,66 Ω min rond 388 Hz — oranje is daar de
+  eerlijke driver-waarheid, geen netwerk-fout.
 - **Fase D — filter-handles in de SPL-chart**: `handles` op Chart (App: `splHandles`) — holle
   dot = HP/LP-knie (alleen x-drag), volle dot = EQ-band (drag = freq+gain, wheel = Q); alleen
   zichtbaar als de virtuele filters actief zijn (verdwijnen bij vfBypass — anders zou je

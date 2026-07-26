@@ -62,6 +62,12 @@ export interface SolveResult {
    */
   transfers: Record<string, Complex[]>;
   drivers: DriverElement[];
+  /**
+   * System input impedance the generator sees at its terminals — the external
+   * network only, its own series Rg excluded: Zin = V_terminals / I_delivered.
+   * This is the amplifier-load curve (VituixCAD's Impedance chart).
+   */
+  inputZ: Complex[];
 }
 
 export class NetworkError extends Error {}
@@ -92,6 +98,7 @@ export function solveNetwork(
 
   const transfers: Record<string, Complex[]> = {};
   for (const d of drivers) transfers[d.id] = new Array<Complex>(freq.length);
+  const inputZ = new Array<Complex>(freq.length);
 
   // Reusable matrix/vector buffers.
   const G: Complex[][] = Array.from({ length: n }, () => new Array<Complex>(n));
@@ -149,9 +156,18 @@ export function solveNetwork(
       const h = div(vd, cplx(sources[0].volts));
       transfers[d.id][k] = d.inverted ? scale(h, -1) : h;
     }
+
+    // Input impedance at the generator terminals: the current it delivers into
+    // the external network is (Eg − V_terminals)/Rg (the drop over its own
+    // series Rg in the Thevenin picture). A fully open network still yields a
+    // finite ~1/G_LEAK thanks to the diagonal leak.
+    const src = sources[0];
+    const vs = sub(nodeV(src.nodes[0]), nodeV(src.nodes[1]));
+    const iIn = scale(sub(cplx(src.volts), vs), 1 / src.seriesR);
+    inputZ[k] = div(vs, iIn);
   }
 
-  return { transfers, drivers };
+  return { transfers, drivers, inputZ };
 }
 
 /**

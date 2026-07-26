@@ -141,3 +141,57 @@ describe('solveNetwork', () => {
     expect(() => solveNetwork(net, [1000], {})).toThrow(NetworkError);
   });
 });
+
+describe('solveNetwork input impedance', () => {
+  const freq = [100, 1000, 10000];
+
+  it('bare driver load: Zin equals the measured driver Z (Rg excluded)', () => {
+    const net: Netlist = {
+      nodeCount: 2,
+      elements: [SRC, { kind: 'driver', id: 'D1', model: 'd', nodes: [1, 0], inverted: false }],
+    };
+    const r = solveNetwork(net, freq, { d: [cplx(8), cplx(32), cplx(6, 4)] });
+    expect(abs(r.inputZ[0])).toBeCloseTo(8, 3);
+    expect(abs(r.inputZ[1])).toBeCloseTo(32, 3); // resonance peak passes through
+    expect(r.inputZ[2].re).toBeCloseTo(6, 3);
+    expect(r.inputZ[2].im).toBeCloseTo(4, 3); // complex Z survives, not just |Z|
+  });
+
+  it('series R adds to the load: divider network shows R + Rload', () => {
+    const net: Netlist = {
+      nodeCount: 3,
+      elements: [
+        SRC,
+        { kind: 'R', id: 'R1', nodes: [1, 2], value: 8 },
+        { kind: 'driver', id: 'D1', model: 'd', nodes: [2, 0], inverted: false },
+      ],
+    };
+    const r = solveNetwork(net, freq, { d: flatZ(freq, 8) });
+    for (const z of r.inputZ) expect(abs(z)).toBeCloseTo(16, 3);
+  });
+
+  it('series L over a resistive load: |Zin| = √(R² + (ωL)²)', () => {
+    const L = 1e-3;
+    const Rl = 8;
+    const net: Netlist = {
+      nodeCount: 3,
+      elements: [
+        SRC,
+        { kind: 'L', id: 'L1', nodes: [1, 2], value: L, seriesR: 0 },
+        { kind: 'driver', id: 'D1', model: 'd', nodes: [2, 0], inverted: false },
+      ],
+    };
+    const r = solveNetwork(net, freq, { d: flatZ(freq, Rl) });
+    freq.forEach((f, i) => {
+      const wL = 2 * Math.PI * f * L;
+      expect(abs(r.inputZ[i])).toBeCloseTo(Math.hypot(Rl, wL), 2);
+    });
+  });
+
+  it('open network (no load at all) yields a huge but finite Zin', () => {
+    const net: Netlist = { nodeCount: 2, elements: [SRC] };
+    const r = solveNetwork(net, [1000], {});
+    expect(Number.isFinite(abs(r.inputZ[0]))).toBe(true);
+    expect(abs(r.inputZ[0])).toBeGreaterThan(1e9); // ~1/G_LEAK
+  });
+});
