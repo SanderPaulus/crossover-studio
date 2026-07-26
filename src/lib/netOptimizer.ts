@@ -1368,13 +1368,22 @@ export function optimizeNetworkValues(
       reasons.push(`the crossing sank into a ${resS.xoDipDb.toFixed(0)} dB hole`);
     }
     if (resS.protSqDb > seedS.protSqDb + 3) reasons.push('tweeter protection got worse');
+    let zReason = false;
     if (resS.zShortOhm > seedS.zShortOhm + 0.2) {
+      zReason = true;
       reasons.push(
         `the system impedance dips to ${resS.zMinOhm.toFixed(1)} Ω ` +
           `(amplifier-load floor ${Z_FLOOR_OHM} Ω)`,
       );
     }
     if (reasons.length > 0) {
+      // The band advice only fits the band-scoped degenerations; an amp-load
+      // dip can happen on a full view range and has its own remedy.
+      const tail =
+        zReason && reasons.length === 1
+          ? 'Check the Impedance panel; a series resistor in the offending shunt/trap is the usual fix.'
+          : 'The evaluated band is narrower than the measurement; widen the view range to let ' +
+            'the optimizer see the whole design.';
       return {
         parts: cloneParts(parts),
         before: report(before),
@@ -1383,10 +1392,7 @@ export function optimizeNetworkValues(
         evaluations,
         removed: [],
         added: [],
-        safetyNote:
-          `safety gate: tune rejected on the full measurement band — ${reasons.join('; ')}. ` +
-          'The evaluated band is narrower than the measurement; widen the view range to let ' +
-          'the optimizer see the whole design.',
+        safetyNote: `safety gate: tune rejected on the full measurement band — ${reasons.join('; ')}. ${tail}`,
       };
     }
   }
