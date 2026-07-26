@@ -1,0 +1,239 @@
+/**
+ * Main-thread client for the optimizer Web Worker (optimWorker.ts): a small
+ * promise-based API with per-task progress callbacks and HARD cancel.
+ *
+ * Cancel = terminate the workers and reject every pending task with
+ * CancelledError. Termination truly stops the compute mid-flight — no
+ * cooperative cancellation flags needed inside the solvers — and the next
+ * task simply spawns fresh workers (each request re-hydrates the catalog,
+ * so a respawn loses no state).
+ *
+ * The crossover SCAN fans its candidates out over a small worker POOL
+ * (multi-core: three chains in the time of one). Each candidate is fully
+ * independent and deterministic, so parallel execution returns bit-identical
+ * results in the same order as the old sequential loop.
+ */
+import type {
+  CatalogPayload,
+  ChainOneProgress,
+  NetOptimizePayload,
+  OptimResponse,
+  VfProgressMsg,
+  VfRoundsPayload,
+  VfRoundsResult,
+} from './optimWorker.ts';
+import type { NetOptimizeResult } from './netOptimizer.ts';
+import {
+  followupVariantsFor,
+  type ChainInput,
+  type ChainResult,
+} from './designChain.ts';
+import { customCatalogParts, customSeries } from './catalog.ts';
+
+export class CancelledError extends Error {
+  constructor() {
+    super('cancelled');
+    this.name = 'CancelledError';
+  }
+}
+
+interface Pending {
+  resolve: (v: unknown) => void;
+  reject: (e: Error) => void;
+  onProgress?: (d: unknown) => void;
+}
+
+const workers: (Worker | null)[] = [];
+let seq = 0;
+const pending = new Map<number, Pending>();
+
+function spawn(): Worker {
+  const wk = new Worker(new URL('./optimWorker.ts', import.meta.url), { type: 'module' });
+  wk.onmessage = (e: MessageEvent<OptimResponse>) => {
+    const m = e.data;
+    const p = pending.get(m.id);
+    if (!p) return;
+    if (m.kind === 'progress') {
+      p.onProgress?.(m.data);
+      return;
+    }
+    pending.delete(m.id);
+    if (m.kind === 'done') p.resolve(m.data);
+    else p.reject(new Error(m.message));
+  };
+  wk.onerror = (e) => {
+    // A worker-level failure (load error etc.) fails every pending task.
+    for (const p of pending.values()) p.reject(new Error(e.message || 'optimizer worker error'));
+    pending.clear();
+  };
+  return wk;
+}
+
+function workerAt(slot: number): Worker {
+  while (workers.length <= slot) workers.push(null);
+  if (!workers[slot]) workers[slot] = spawn();
+  return workers[slot]!;
+}
+
+/** Current user-imported catalog, shipped with every request so the worker's
+ *  module state matches the main thread's (stateless across respawns). */
+function catalogPayload(): CatalogPayload {
+  return { series: customSeries(), parts: customCatalogParts() };
+}
+
+function run<T>(
+  slot: number,
+  kind: 'chainOne' | 'vfRounds' | 'netOptimize',
+  payload: unknown,
+  onProgress?: (d: unknown) => void,
+): Promise<T> {
+  const wk = workerAt(slot);
+  const id = ++seq;
+  return new Promise<T>((resolve, reject) => {
+    pending.set(id, { resolve: resolve as (v: unknown) => void, reject, onProgress });
+    wk.postMessage({ id, kind, catalog: catalogPayload(), payload });
+  });
+}
+
+export interface ChainScanInput {
+  base: Omit<ChainInput, 'xoRange'>;
+  variants: { label: string; xoRange?: [number, number] }[];
+  targets?: { rippleDb: number; phaseDeg: number };
+}
+
+export interface ChainScanResult {
+  results: ChainResult[];
+  totalRounds: number;
+  totalSims: number;
+}
+
+/** Aggregated live view over concurrently running candidates. */
+export interface ScanProgress {
+  /** Completed candidates so far. */
+  round: number;
+  /** Total network sims across all candidates (running + done). */
+  evals: number;
+  rippleDb?: number;
+  phaseDeg?: number;
+  /** One STABLE row per candidate (insertion order): the busy overlay renders
+   *  these as a fixed little table so the popup never changes size. */
+  items: { label: string; text: string; done: boolean }[];
+}
+
+const stageText = (p: ChainOneProgress): string =>
+  p.stage === 'design'
+    ? `design r${p.round ?? '?'}`
+    : p.stage === 'synthesis'
+      ? 'synthesis'
+      : p.detail
+        ? `tune (${p.detail})`
+        : 'tune';
+
+/**
+ * Crossover scan over the worker pool. Candidates run CONCURRENTLY (one per
+ * worker, up to cores−1); the truly-free single-candidate run keeps its
+ * rescue semantics: run first, and only when it misses the staged targets
+ * append the pinned follow-ups (those then run in parallel).
+ */
+export function runChainScan(
+  input: ChainScanInput,
+  onProgress?: (d: ScanProgress) => void,
+): Promise<ChainScanResult> {
+  const poolSize = Math.max(
+    1,
+    Math.min(4, (typeof navigator !== 'undefined' ? navigator.hardwareConcurrency : 4) - 1 || 1),
+  );
+  const state = new Map<string, { evals: number; text: string; done: boolean }>();
+  let lastRipple: number | undefined;
+  let lastPhase: number | undefined;
+  const emit = () => {
+    if (!onProgress) return;
+    let evals = 0;
+    let done = 0;
+    const items: { label: string; text: string; done: boolean }[] = [];
+    for (const [label, st] of state) {
+      evals += st.evals;
+      if (st.done) done++;
+      items.push({ label, text: st.text, done: st.done });
+    }
+    onProgress({ round: done, evals, rippleDb: lastRipple, phaseDeg: lastPhase, items });
+  };
+  const runOne = (v: { label: string; xoRange?: [number, number] }, slot: number) => {
+    state.set(v.label, { evals: 0, text: 'queued', done: false });
+    return run<ChainResult>(
+      slot,
+      'chainOne',
+      { input: { ...input.base, xoRange: v.xoRange }, label: v.label },
+      (d) => {
+        const p = d as ChainOneProgress;
+        const st = state.get(v.label);
+        if (!st) return;
+        st.evals = p.evals;
+        st.text = stageText(p);
+        if (p.rippleDb !== undefined) lastRipple = p.rippleDb;
+        if (p.phaseDeg !== undefined) lastPhase = p.phaseDeg;
+        emit();
+      },
+    ).then((r) => {
+      const st = state.get(v.label);
+      if (st) {
+        st.evals = r.evaluations;
+        st.text = `✓ ${r.net.after.rippleDb.toFixed(2)} dB/${r.net.after.phaseDeg.toFixed(1)}°`;
+        st.done = true;
+      }
+      lastRipple = r.net.after.rippleDb;
+      lastPhase = r.net.after.phaseDeg;
+      emit();
+      return r;
+    });
+  };
+
+  const finish = (results: ChainResult[]): ChainScanResult => ({
+    results,
+    totalRounds: results.reduce((a, r) => a + r.rounds, 0),
+    totalSims: results.reduce((a, r) => a + r.evaluations, 0),
+  });
+
+  const vs = input.variants;
+  // Truly-free single run with rescue semantics (see designChain doc).
+  if (vs.length === 1 && !vs[0].xoRange && input.targets) {
+    const targets = input.targets;
+    return runOne(vs[0], 0).then((first) => {
+      const met =
+        first.net.after.rippleDb <= targets.rippleDb && first.net.after.phaseDeg <= targets.phaseDeg;
+      if (met || !first.net.after.xoHz) return finish([first]);
+      const follow = followupVariantsFor(first.net.after.xoHz);
+      return Promise.all(follow.map((v, i) => runOne(v, i % poolSize))).then((rest) =>
+        finish([first, ...rest]),
+      );
+    });
+  }
+  return Promise.all(vs.map((v, i) => runOne(v, i % poolSize))).then(finish);
+}
+
+export function runVfRoundsTask(
+  payload: VfRoundsPayload,
+  onProgress?: (d: VfProgressMsg) => void,
+): Promise<VfRoundsResult> {
+  return run<VfRoundsResult>(0, 'vfRounds', payload, onProgress as (d: unknown) => void);
+}
+
+export function runNetOptimizeTask(
+  payload: NetOptimizePayload,
+  onStage?: (label: string) => void,
+): Promise<NetOptimizeResult> {
+  return run<NetOptimizeResult>(0, 'netOptimize', payload, (d) => {
+    const m = d as { netStage?: string };
+    if (m.netStage) onStage?.(m.netStage);
+  });
+}
+
+/** Hard cancel: kill every worker, reject all pending with CancelledError. */
+export function cancelOptimTasks(): void {
+  for (let i = 0; i < workers.length; i++) {
+    workers[i]?.terminate();
+    workers[i] = null;
+  }
+  for (const p of pending.values()) p.reject(new CancelledError());
+  pending.clear();
+}

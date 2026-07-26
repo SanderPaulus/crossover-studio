@@ -38,6 +38,31 @@ interface Group {
   parts: VxpPart[]; // parallel members between the same node pair
 }
 
+/**
+ * Sort key for a shunt chain hanging off one node: its LC resonance (Hz).
+ * Chains on the SAME node are electrically interchangeable, so ordering them
+ * is free — L-only chains shunt the low end (key 0), C-only chains the top
+ * (key ∞), LCR notches land in between ordered by centre frequency (Sanders
+ * wens: meerdere notches lezen gesorteerd, laag → hoog van links naar rechts).
+ */
+function chainSortKey(stack: readonly VxpPart[]): number {
+  let L = 0; // H, series inductances add
+  let Cinv = 0; // 1/F, series capacitances combine reciprocally
+  for (const p of stack) {
+    if (p.type === 'Inductor') {
+      const mH = p.params.find((q) => q.name === 'L')?.value;
+      if (mH) L += mH * 1e-3;
+    } else if (p.type === 'Capacitor') {
+      const uF = p.params.find((q) => q.name === 'C')?.value;
+      if (uF) Cinv += 1 / (uF * 1e-6);
+    }
+  }
+  const C = Cinv > 0 ? 1 / Cinv : 0;
+  if (L > 0 && C > 0) return 1 / (2 * Math.PI * Math.sqrt(L * C));
+  if (L > 0) return 0;
+  return Number.POSITIVE_INFINITY;
+}
+
 interface Pt {
   x: number;
   y: number;
@@ -204,24 +229,31 @@ export function tidySchematic(orig: readonly VxpPart[]): VxpPart[] | null {
       track(y + 1);
     };
 
-    /** All remaining chains hanging off node n, spread over columns. */
+    /** All remaining chains hanging off node n, spread over columns —
+     *  collected first, then placed in resonance order (chainSortKey). */
     const drawShunts = (n: number): boolean => {
+      const stacks: VxpPart[][] = [];
       for (;;) {
         const cands = (adj.get(n) ?? []).filter((g) => !used.has(g.key));
-        if (cands.length === 0) return true;
+        if (cands.length === 0) break;
         const g = cands[0];
         if (other(g, n) === 0) {
           // Direct shunt(s) to ground. Multiple parts in this group are the
           // COMMON case (two grounded elements on one node = parallel in
           // netlist terms) — each gets its own column.
           used.add(g.key);
-          for (const p of g.parts) placeColumn([p]);
+          for (const p of g.parts) stacks.push([p]);
         } else {
           const chain = chainFrom(n, g);
           if (!chain) return false;
-          placeColumn(chain.map((cg) => cg.parts[0]));
+          stacks.push(chain.map((cg) => cg.parts[0]));
         }
       }
+      stacks
+        .map((s, i) => ({ s, i, key: chainSortKey(s) }))
+        .sort((a, b) => a.key - b.key || a.i - b.i)
+        .forEach(({ s }) => placeColumn(s));
+      return true;
     };
 
     let node = hot;

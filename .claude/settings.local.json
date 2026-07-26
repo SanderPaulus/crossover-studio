@@ -113,7 +113,11 @@
       "Bash(awk '/<Type>Inductor</{p=1} p{print} /<\\\\/PART>/{if\\(p\\)exit}' '/Users/sandersomers/UTM - Shared Folder/Speaker Robbert/231226Rear12W8524-R2604-832.vxp')",
       "Bash(git commit -m ' *)",
       "Bash(awk 'NR>=4281 && NR<=4500 && index\\($0,\"opt-settings\"\\)==0 && $0 ~ /^            \\\\\\)\\\\}/ {print NR\": \"$0; exit}' src/App.tsx)",
-      "Bash(grep -n \"setActiveDesignId\\(\\\\s*$\\\\|d.activeDesignId\" src/App.tsx)"
+      "Bash(grep -n \"setActiveDesignId\\(\\\\s*$\\\\|d.activeDesignId\" src/App.tsx)",
+      "Bash(git config *)",
+      "Bash(git commit *)",
+      "Bash(grep -n \"SchematicEditor$\\\\|<SchematicEditor\" src/App.tsx)",
+      "Bash(grep -n \"vfProgress.label ?? \\\\`round\" src/App.tsx)"
     ]
   }
 }

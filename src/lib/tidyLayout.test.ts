@@ -163,6 +163,42 @@ describe('tidySchematic', () => {
     expect(minYTw).toBeGreaterThan(maxYMid);
   });
 
+  it('orders same-node notch chains by resonance frequency (low → high, left → right)', () => {
+    // Two LCR traps on the driver's hot node, drawn HIGH-f0 first: tidy may
+    // reorder freely (same node = electrically identical) and must come out
+    // sorted by centre frequency.
+    const orig: VxpPart[] = [
+      { type: 'Generator', partId: 'G', params: [{ name: 'Eg', value: 2.83, unit: 'V' }], wires: [P(3, 6), P(3, 13)] },
+      GND(3, 13),
+      part('Inductor', 'L1', 0.3, P(3, 6), P(10, 6)),
+      // Trap HI ≈ 8 kHz (0.05 mH · 8 µF) at the LEFT…
+      part('Inductor', 'HL', 0.05, P(10, 6), P(10, 11)),
+      part('Capacitor', 'HC', 8, P(10, 11), P(10, 16)),
+      part('Resistor', 'HR', 3, P(10, 16), P(10, 21)),
+      GND(10, 21),
+      W(P(10, 6), P(17, 6)),
+      // …trap LO ≈ 1 kHz (0.5 mH · 50 µF) at the RIGHT: wrong order on purpose.
+      part('Inductor', 'LL', 0.5, P(17, 6), P(17, 11)),
+      part('Capacitor', 'LC', 50, P(17, 11), P(17, 16)),
+      part('Resistor', 'LR', 4, P(17, 16), P(17, 21)),
+      GND(17, 21),
+      W(P(17, 6), P(24, 6)),
+      { type: 'Driver', partId: 'D', model: 'mid', inverted: false, params: [], wires: [P(24, 6), P(24, 13)] },
+      GND(24, 13),
+    ];
+    const tidied = tidySchematic(orig);
+    expect(tidied).not.toBeNull();
+    // Electrically identical…
+    const a = transfers(orig);
+    const b = transfers(tidied!);
+    for (let i = 0; i < GRID.length; i++) expect(b.mid[i]).toBeCloseTo(a.mid[i], 9);
+    // …and the LOW-f0 trap now sits LEFT of the HIGH-f0 trap.
+    const xOf = (id: string) => tidied!.find((p) => p.partId === id)!.wires[0].x;
+    expect(xOf('LL')).toBeLessThan(xOf('HL'));
+    // The driver still closes the bus: everything sits left of it.
+    expect(Math.max(xOf('LL'), xOf('HL'))).toBeLessThan(xOf('D'));
+  });
+
   it('keeps locks, polarity and extra params on the redrawn parts', () => {
     const orig = nearPerfect().map((p) =>
       p.partId === 'L1'

@@ -22,6 +22,11 @@
   --viz-grid: #e1e0d9;
   --viz-axis: #c3c2b7;
   --viz-tick: #898781;
+  /* Compare-overlay ghosts: muted but DISTINCT hues, one per tab. */
+  --viz-ghost1: #64748b;
+  --viz-ghost2: #8a7a4a;
+  --viz-ghost3: #8b6f8f;
+  --viz-ghost4: #4f8577;
 }
 
 /*
@@ -53,6 +58,10 @@
     --viz-grid: #2c2c2a;
     --viz-axis: #383835;
     --viz-tick: #898781;
+    --viz-ghost1: #94a3b8;
+    --viz-ghost2: #b3a273;
+    --viz-ghost3: #b294b6;
+    --viz-ghost4: #7fb3a4;
   }
 }
 
@@ -78,6 +87,10 @@
   --viz-grid: #2c2c2a;
   --viz-axis: #383835;
   --viz-tick: #898781;
+  --viz-ghost1: #94a3b8;
+  --viz-ghost2: #b3a273;
+  --viz-ghost3: #b294b6;
+  --viz-ghost4: #7fb3a4;
 }
 
 :root[data-theme='light'] {
@@ -393,11 +406,26 @@ body {
 }
 
 .status-chip.chip-ok .chip-dot {
-  background: #17a34a;
+  background: var(--ok);
 }
 
 .status-chip.chip-warn .chip-dot {
-  background: #e0a72e;
+  background: var(--warn);
+}
+
+.status-chip.chip-bad .chip-dot {
+  background: var(--bad);
+}
+
+/* Tier-coloured chip VALUES: design health readable straight from the topbar. */
+.status-chip.chip-ok strong {
+  color: var(--ok);
+}
+.status-chip.chip-warn strong {
+  color: var(--warn);
+}
+.status-chip.chip-bad strong {
+  color: var(--bad);
 }
 
 /* Narrow screens: fall back to the classic single-column stack — unless the
@@ -799,6 +827,55 @@ h2 {
   height: 3px;
   border-radius: 2px;
   flex: none;
+}
+
+/* Beats the generic `.chart svg { width: 100% }` responsive rule. */
+.chart svg.legend-key-dash,
+svg.legend-key-dash {
+  width: 22px;
+  height: 6px;
+  border-radius: 0;
+  display: inline-block;
+}
+
+/* Crossover-scan result table (design-chain ranking, best first). */
+.scan-table {
+  border-collapse: collapse;
+  font-size: 0.82rem;
+  margin: 0 0 0.9rem;
+  font-variant-numeric: tabular-nums;
+}
+.scan-table th,
+.scan-table td {
+  text-align: left;
+  padding: 0.25rem 0.9rem 0.25rem 0;
+  border-bottom: 1px solid var(--border);
+}
+.scan-table th {
+  color: var(--muted);
+  font-weight: 600;
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+.scan-table tr.winner td {
+  color: var(--fg);
+  font-weight: 600;
+}
+.scan-table td {
+  color: var(--muted);
+}
+
+/* Pickable scan rows: the table is a menu, not just a report. */
+.scan-table-pick tbody tr {
+  cursor: pointer;
+}
+.scan-table-pick tbody tr:hover td {
+  color: var(--fg);
+}
+.scan-table-pick tr.active td {
+  color: var(--accent);
+  font-weight: 600;
 }
 
 /* Network-design tabs. */
@@ -1598,12 +1675,52 @@ button:disabled {
   border-radius: 12px;
   background: var(--panel);
   box-shadow: 0 8px 30px rgba(0, 0, 0, 0.25);
-  max-width: 26rem;
+  /* FIXED width: ticking stage texts must never resize the popup. */
+  width: min(28rem, 92vw);
   text-align: center;
+}
+
+/* Scan view inside the busy card: stable row per candidate + totals line. */
+.busy-scan {
+  border-collapse: collapse;
+  font-size: 0.85rem;
+  font-variant-numeric: tabular-nums;
+  width: 100%;
+  table-layout: fixed;
+}
+.busy-scan td {
+  padding: 0.2rem 0.5rem;
+  border-bottom: 1px solid var(--border);
+  text-align: left;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--muted);
+}
+.busy-scan td:first-child {
+  width: 34%;
+  font-weight: 600;
+  color: var(--fg);
+}
+.busy-scan tr.done td {
+  color: var(--ok);
+}
+.busy-totals {
+  font-size: 0.85rem;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
 }
 .busy-title {
   font-weight: 600;
   font-size: 1rem;
+}
+.busy-cancel {
+  margin-top: 0.2rem;
+  border-color: var(--bad);
+  color: var(--bad);
+}
+.busy-cancel:hover {
+  background: var(--bad-bg);
 }
 .busy-detail {
   color: var(--muted);

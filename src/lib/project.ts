@@ -73,6 +73,8 @@ export interface ProjectDesign {
   /** Crossover point as centre frequency + symmetric margin (Hz). */
   xoFreqHz?: string;
   xoMarginHz?: string;
+  /** Crossover-scan candidate count across the pinned range (odd, 3..11). */
+  xoScanSteps?: number;
   /** Optional: preferred HP/LP alignment for the optimizer ('auto' = free). */
   hpLpPref?: string;
   /** Optional: phase metric for the optimizers — 'band' (panel avg + P95,

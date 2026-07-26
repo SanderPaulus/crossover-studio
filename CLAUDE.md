@@ -201,7 +201,15 @@ minimum phase reconstrueert. Voertaal met Sander: **Nederlands**; code/comments 
   knooppunt-paar), nooit door ground; parallelle serie-groepen ≤3 = bus + gestapelde lussen
   (pad+bypass, parallelle LCR-trap); lineaire ketens naar ground = kolommen (direct-naar-ground-
   groep met meerdere leden = de NORMALE situatie — elk lid eigen kolom, hard geleerd); takken
-  dynamisch gestapeld. BEWUST conservatief: bruggen/gedeelde serie-secties/vertakkende ketens/
+  dynamisch gestapeld. **Zelfde-knoop-ketens gesorteerd op LC-resonantie** (`chainSortKey`,
+  laag → hoog van links naar rechts, Sanders wens; alleen bínnen één knoop — volgorde over
+  serie-elementen heen is elektrisch bepaald; L-only = 0, C-only = ∞, regressietest).
+  **"➕ Add notch" plaatst vóór de driver** (App `addNotchTrap`): loopt per grid-eenheid naar
+  links de tussenruimte in; kolom afgewezen bij punt-botsing (punt-coïncidentie zou twee traps
+  stil tot één SAMENSMELTEN — echte bug, gefixt) of horizontaal component-lichaam eroverheen;
+  terugval naar rechts. Draait daarna AUTOMATISCH tidy (Sanders wens) zodat notches meteen
+  gesorteerd landen; tidy-weigering (exotische topologie) = handmatige plaatsing blijft, één
+  commit = één undo-stap voor trap+redraw samen. BEWUST conservatief: bruggen/gedeelde serie-secties/vertakkende ketens/
   open-shorted parts → null = originele tekening blijft (mooi-maar-fout hertekenen is liegen).
   UI: auto bij .adsfilter-import (oude exports dragen hun kramp-layout in het bestand mee —
   Sanders "near perfect"-import) + "Tidy layout"-knop in de editor-toolbar (undo-baar);
@@ -370,13 +378,35 @@ minimum phase reconstrueert. Voertaal met Sander: **Nederlands**; code/comments 
   winnaar-slot gepromoot want paarsgewijze 5%-ties zijn niet transitief. Zelfde principe in
   de multi-start-tuner: bij ≤1% fx-gelijke bekkens wint de goedkopere realisatie (bomFor;
   zonder geprijsde catalogus verandert er niets). Kosten sturen ALLEEN op beslissingsniveau,
-  nooit in de zoek-objective — de anker-les. Scan-tabel in de note toont €-totalen per xo). Kandidaten: het gepinde
-  crossover-punt ± één marge-stap (3 ketens), zonder pin één vrije keten. HARD GELEERD (KOAN-
+  nooit in de zoek-objective — de anker-les. Scan-tabel in de note toont €-totalen per xo). Kandidaten: INSTELBAAR aantal
+  stappen (⚙ naast het crossover-punt, 3/5/7/9 — Sanders idee; oneven zodat de pin zelf
+  altijd meedoet). **De gepinde range ÍS de zoekruimte, ONDERVERDEELD**: centres gelijkmatig
+  van rand tot rand, elke kandidaat gekooid in zijn eigen ±halve-spacing-slice (geklemd op de
+  range) — de slices betegelen de range exact, niets erbuiten, buren overlappen niet.
+  HARD GELEERD (Sanders "het is geen venster in een venster toch?"): de eerste versie gaf
+  elke kandidaat wéér het volle ±marge-venster — "2400" op een 2100±300-pin mocht dan tot
+  2700 zoeken (buiten de pin) en buurvensters overlapten ~90%, waardoor de fijne
+  onderverdeling niets betekende. `crossoverVariants(range, steps)`; UI toont "⏱ ~N×
+  runtime" — compute groeit lineair, de pool vangt ~4 tegelijk op. Zonder pin één vrije
+  keten. NB: een kandidaat-label is het slice-CENTRUM; de gemeten "overlap … Hz" in de
+  strip is de échte akoestische kruising van het gebouwde netwerk bínnen die slice.
+  **Adaptief xo-penalty-gewicht (vfOptimizer + netOptimizer, gespiegeld)**: het klassieke
+  30·oct² bindt smalle slices niet (Sanders 2e screenshot: "2325" landde op 2152, één
+  slice-breedte erbuiten, voor ~0,4 penalty) — gewicht schaalt met (0,15 oct/halve
+  breedte)², cap ×100; brede pins (≥±0,15 oct) exact ongewijzigd, ontsnappen uit een
+  smalle slice kost nu "geen-kruising"-geld. Geverifieerd: winnaar-slice [1800–2000]
+  landde op 1831. **Scan-tabel = KEUZELIJST (Sanders wens)**: elke rij draagt zijn volle
+  ChainResult; klik laadt dát kandidaat-ontwerp compleet in Working (specs+synth+getuned
+  net, undo-baar), ◂ markeert de geladen rij, 🏆 blijft de ranking-winnaar. Sessie-only.
+  **Busy-overlay heeft een 250ms-LINGER** (`overlayVisible`): busy-flag-handoffs
+  (vf → sync build → assembled tune) hadden één-frame-gaten die de popup milliseconden
+  lieten knipperen (Sanders glitch-melding). HARD GELEERD (KOAN-
   meting, Sanders "we halen niet het maximale eruit"): de vf-ranking voorspelt de eindranking
   NIET — xo 1900±200 leek vf-slechtst (0,84 dB) en werd assembled-best (0,33 dB/3,5°), terwijl
   Sanders 2100-pin eindigde op 0,94 dB/12,5°; scannen op de eindmeting loont dus ~3×. Winnaar
-  landt compleet (specs+synth+getunede parts) in Working; netOptNote toont de scan-tabel;
-  teller toont "xo 1900 Hz (1/3)". ZONDER pin draait éérst één vrije keten; de twee gepinde
+  landt compleet (specs+synth+getunede parts) in Working; de scan-uitslag rendert als échte
+  tabel (`chainScan`-state + `.scan-table`, winnaar 🏆, gerankte rijen met ripple/fase/BOM —
+  de note houdt alleen winnaar + snap/safety-notes); teller toont "xo 1900 Hz (1/3)". ZONDER pin draait éérst één vrije keten; de twee gepinde
   vervolg-kandidaten rond de gevonden kruising (`followupVariantsFor`, ±12% centres) zijn
   RESCUE-ONLY: ze draaien alléén als de vrije keten de staged-targets MIST. Sanders: "xo free
   lijkt het goed te doen" — klopt, de vrije keten won beide metingen, dus targets gehaald =
@@ -410,6 +440,13 @@ minimum phase reconstrueert. Voertaal met Sander: **Nederlands**; code/comments 
   passive build (anders dubbel gefilterd), auto-uit na optimizer-run (resultaat moet zichtbaar)
 - `components/Chart.tsx` — eigen SVG-chart: log/lineair, kleur-langs-lijn (pointColors), zones
   (bands), hover-tooltip, legend-toggles. Kleuren gevalideerd via dataviz-skill.
+  **Gestreepte series tonen hun dash-patroon in de legend-chip** (svg-lijntje i.p.v. blokje;
+  let op `.chart svg { width:100% }` — de dash-chip heeft een specifiekere regel nodig).
+  Ghost-curves krijgen elk een eigen gedempte tint (`--viz-ghost1..4`, licht+donker) — met
+  identiek grijs waren de legend-chips van meerdere tabs niet uit elkaar te houden.
+  Topbar-chips Integration/Fase P95 kleuren mee met de tier (ok ≥90/≤45°, warn ≥75/≤90°,
+  anders bad). Schematic-editor heeft undo én REDO (`schFuture`, Cmd/Ctrl+Z en
+  Cmd/Ctrl+Shift+Z of Ctrl+Y; verse edit wist de redo-tak).
   **Interactie (UI-fase A)**: wheel = X-zoom om cursor (Shift = Y), drag = pan, dubbelklik/reset-
   knop = terug; puur view-transform (sim onaangeroerd), "use as view range" commit de zoom naar
   fMin/fMax (en een commit reset de zoom). Gekoppelde crosshair over alle log-x-charts
@@ -503,10 +540,30 @@ minimum phase reconstrueert. Voertaal met Sander: **Nederlands**; code/comments 
   hellingen naast de kruising (least-squares over ~1 octaaf, in dB/oct én ≈ akoestische orde)
   — elektrische componentvolgorde ≠ akoestische orde, en dit maakt de "akoestisch 4e orde bij
   de tweeter"-vuistregel controleerbaar (KOAN: elektrisch LR2-doel → gemeten ~21 dB/oct ≈ 4e)
-- Lange synchrone rekenwerk = `.busy-overlay` (blur + spinner + fase-tekst + live teller;
-  vfBusy/netOptBusy/synthBusy): callers yielden eerst een frame (setTimeout ~30 ms) zodat de
-  overlay TEKENT vóór de solver blokkeert — "er gebeurt niets" was Sanders klacht. Spinner
-  bevriest tijdens het blok zelf; échte vloeiendheid = de Web Worker van de kandidatenlijst
+- **Optimizers draaien in een WEB WORKER** (`optimWorker.ts` + `optimClient.ts`, jul 2026):
+  netOptimize, de crossover-scan (variants-lus + rescue-logica in de worker; ranking op de
+  main thread) en de vf-rounds-lus. UI blijft live (spinner animeert écht, tellers tikken via
+  progress-messages, scrollen werkt), en de `.busy-overlay` heeft een CANCEL-knop —
+  `cancelOptimTasks()` TERMINATE't de worker (geen coöperatieve vlaggen in de solvers nodig;
+  volgende run spawnt vers, elke request hydrateert de catalogus zelf via `setCustomSeries`,
+  want worker-module-state overleeft een terminate niet en localStorage bestaat er niet).
+  Alles over de boundary is plain structured-cloneable data; CancelledError wordt stil
+  geslikt (busy reset, ontwerp onaangeroerd). Handmatige "Build passive filter" (seconden)
+  bleef bewust synchroon. Gemeten: tijdens een 50s-tune-run antwoordt de main thread direct
+  (vroeger: 30s-timeout op élke call), resultaat landt netjes, cancel laat het ontwerp intact.
+  **Parallelle scan + fijnmazige voortgang (Sanders "alive gevoel", jul 2026)**: de
+  crossover-kandidaten draaien CONCURRENT over een worker-POOL (max 4, cores−1; client
+  orkestreert per 'chainOne'-request, rescue-semantiek behouden: vrije keten eerst, follow-ups
+  parallel) — bit-identieke uitslag, gemeten ~3× sneller (3m47 vs ~10+ min sequentieel).
+  `runDesignChain` kreeg een `onProgress`-callback (per design-ronde + stage-switches) en
+  `optimizeNetworkValues` een `onStage` (value tune/prune/escalation/drift check/shrink
+  ladder/snap) — callbacks worden WORKER-ZIJDIG geïnjecteerd (functies kunnen niet door
+  postMessage; nooit in de payload). De busy-kaart rendert de scan als VAST TABELLETJE
+  (rij per kandidaat met live stage, ✓+cijfers bij klaar) + totalenregel
+  ("1/3 done · 378.287 sims · best 1.14 dB/6.6° · 1:12" met tikkende klok) op een kaart met
+  VASTE breedte — één groeiende zin liet de popup van maat veranderen (Sanders klacht).
+  GPU bewust NIET gedaan: sequentiële simplex-stappen op kleine MNA-matrices passen slecht
+  bij WebGPU (transfer-overhead domineert); multi-core via workers was de echte winst
 
 ## Status
 
@@ -664,8 +721,7 @@ Overige kandidaten (belangrijkste eerst):
   (serie-pad premium / shunt budget via rol-info)
 - Virtueel↔passief-gat verder dichten: **Fs-vloer voor de HP-knie** (≥ ~2×Fs uit gemeten Z)
   in de vfOptimizer-bounds (xoRange dekt dit handmatig al af)
-- Web Worker voor vloeiende optimizer-teller (scroll blokkeert nu tijdens de tuner;
-  staged component-run duurt ~20 s)
+- ~~Web Worker voor vloeiende optimizer-teller~~ KLAAR (optimWorker/optimClient, incl. Cancel)
 - Desnoei-rondelimiet (8) dynamisch maken of dode-keten-opruiming bundelen (een gesnoeide
   notch laat zijn buren voor volgende rondes)
 - genormaliseerde hoekcurves, verticale metingen (lobing) als Sander die doet.

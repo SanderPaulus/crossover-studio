@@ -45,12 +45,14 @@ interface Props {
   onChange: (parts: VxpPart[]) => void;
   onUndo: () => void;
   canUndo: boolean;
+  onRedo: () => void;
+  canRedo: boolean;
 }
 
 const MIN_W = 46; // grid units the canvas at least shows
 const MIN_H = 24;
 
-export default function SchematicEditor({ parts, models, onChange, onUndo, canUndo }: Props) {
+export default function SchematicEditor({ parts, models, onChange, onUndo, canUndo, onRedo, canRedo }: Props) {
   const svgRef = useRef<SVGSVGElement>(null);
   const [tool, setTool] = useState<Tool>({ kind: 'select' });
   const [sel, setSel] = useState<number | null>(null);
@@ -132,6 +134,16 @@ export default function SchematicEditor({ parts, models, onChange, onUndo, canUn
   }
 
   function onKeyDown(e: React.KeyboardEvent) {
+    // Standard undo/redo chords: Cmd/Ctrl+Z, Shift for redo (Ctrl+Y too).
+    if ((e.metaKey || e.ctrlKey) && (e.key === 'z' || e.key === 'Z' || e.key === 'y')) {
+      e.preventDefault();
+      if (e.key === 'y' || e.shiftKey) {
+        if (canRedo) onRedo();
+      } else if (canUndo) {
+        onUndo();
+      }
+      return;
+    }
     if (e.key === 'Escape') {
       setTool({ kind: 'select' });
       setWireStart(null);
@@ -197,8 +209,11 @@ export default function SchematicEditor({ parts, models, onChange, onUndo, canUn
           🔓 all
         </button>
         <span className="sch-toolbar-sep" />
-        <button type="button" onClick={onUndo} disabled={!canUndo} title="Undo the last edit">
+        <button type="button" onClick={onUndo} disabled={!canUndo} title="Undo the last edit (Cmd/Ctrl+Z)">
           Undo
+        </button>
+        <button type="button" onClick={onRedo} disabled={!canRedo} title="Redo the undone edit (Cmd/Ctrl+Shift+Z)">
+          Redo
         </button>
         <span className="derived">
           {tool.kind === 'wire'

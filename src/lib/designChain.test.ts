@@ -48,13 +48,37 @@ const seed = () => ({
 });
 
 describe('designChain', () => {
-  it('crossoverVariants: pin → three centres with the pin margin; no pin → free', () => {
+  it('crossoverVariants: the pinned range is SUBDIVIDED — slices tile it, nothing outside', () => {
     expect(crossoverVariants(undefined)).toEqual([{ label: 'free' }]);
     const v = crossoverVariants([1900, 2300]);
     expect(v).toHaveLength(3);
-    expect(v[1].xoRange).toEqual([1900, 2300]);
-    expect(v[0].xoRange![0]).toBeLessThan(1900);
-    expect(v[2].xoRange![1]).toBeGreaterThan(2300);
+    // Centres at edge / pin / edge, each with its own ±half-spacing slice.
+    expect(v.map((x) => x.label)).toEqual(['1900 Hz', '2100 Hz', '2300 Hz']);
+    expect(v[0].xoRange).toEqual([1900, 2000]);
+    expect(v[1].xoRange).toEqual([2000, 2200]);
+    expect(v[2].xoRange).toEqual([2200, 2300]);
+    // NOT windows-within-windows (Sanders correctie): no slice leaves the pin.
+    for (const x of v) {
+      expect(x.xoRange![0]).toBeGreaterThanOrEqual(1900);
+      expect(x.xoRange![1]).toBeLessThanOrEqual(2300);
+    }
+  });
+
+  it('crossoverVariants: configurable steps — odd, tiling slices, pin centre included', () => {
+    const v5 = crossoverVariants([1900, 2300], 5);
+    expect(v5).toHaveLength(5);
+    expect(v5[2].label).toBe('2100 Hz'); // the pin centre itself is a candidate
+    // Slices tile the range EXACTLY: contiguous, inside the pin, full cover.
+    expect(v5[0].xoRange![0]).toBe(1900);
+    expect(v5[4].xoRange![1]).toBe(2300);
+    for (let i = 1; i < v5.length; i++) {
+      expect(v5[i].xoRange![0]).toBeCloseTo(v5[i - 1].xoRange![1], 6);
+    }
+    expect(new Set(v5.map((x) => x.label)).size).toBe(5);
+    // Even/odd handling: an even request rounds UP to the next odd count.
+    expect(crossoverVariants([1900, 2300], 10)).toHaveLength(11);
+    // steps=3 ≡ the default.
+    expect(crossoverVariants([1900, 2300], 3)).toEqual(crossoverVariants([1900, 2300]));
   });
 
   it('followupVariantsFor: two pinned candidates straddling the free crossing', () => {

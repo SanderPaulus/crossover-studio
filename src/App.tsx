@@ -36,15 +36,14 @@ import {
   setCustomSeries,
   type SnapPrefs,
 } from './lib/catalog.ts';
-import { optimizeNetworkValues } from './lib/netOptimizer.ts';
 import {
-  crossoverVariants,
-  followupVariantsFor,
-  rankChainResults,
-  runDesignChain,
-  type ChainResult,
-  type ChainSettings,
-} from './lib/designChain.ts';
+  cancelOptimTasks,
+  CancelledError,
+  runChainScan,
+  runNetOptimizeTask,
+  runVfRoundsTask,
+} from './lib/optimClient.ts';
+import { crossoverVariants, rankChainResults, type ChainResult, type ChainSettings } from './lib/designChain.ts';
 import { deserializeCatalog, serializeCatalog } from './lib/catalogFile.ts';
 import { fromPolar, abs as cAbs, mul as cMul, type Complex } from './lib/complex.ts';
 import {
@@ -57,13 +56,7 @@ import {
 } from './lib/filters.ts';
 import { synthesize, formatComponent, type SynthesisResult, type SynthesizedComponent } from './lib/synthesis.ts';
 import { computePhaseStats } from './lib/phaseStats.ts';
-import {
-  optimizeVfCluster,
-  optimizeVirtualFilters,
-  structureOf,
-  type VfOptimizeResult,
-  type StructChoice,
-} from './lib/vfOptimizer.ts';
+import { type VfOptimizeResult, type StructChoice } from './lib/vfOptimizer.ts';
 import { toTimeDomain, excessGroupDelay } from './lib/timeDomain.ts';
 import {
   serializeProject,
@@ -590,6 +583,9 @@ export default function App() {
    *  Margin 0 = "exactly there" (a minimal ±2% keeps the search alive). */
   const [xoFreqHz, setXoFreqHz] = useState('2200');
   const [xoMarginHz, setXoMarginHz] = useState('400');
+  /** Scan candidates across the pinned range (odd, 3..11; Sanders idee):
+   *  more steps = a finer sweep, compute grows ~linearly (pool absorbs some). */
+  const [xoScanSteps, setXoScanSteps] = useState(3);
   /** Preferred HP/LP alignment (strong prior for the structure search);
    *  'auto' = free enumeration over the alignment library. */
   const [hpLpPref, setHpLpPref] = useState('auto');
@@ -676,6 +672,7 @@ export default function App() {
   const [activeDesignId, setActiveDesignId] = useState<string | null>(null);
   const [networkActive, setNetworkActive] = useState(false);
   const [schHistory, setSchHistory] = useState<VxpPart[][]>([]); // per active tab
+  const [schFuture, setSchFuture] = useState<VxpPart[][]>([]); // redo stack
   const [compareTabs, setCompareTabs] = useState(true);
 
   const activeDesign = useMemo(
@@ -690,14 +687,24 @@ export default function App() {
   function commitSchematic(parts: VxpPart[]) {
     if (!activeDesign) return;
     setSchHistory((h) => [...h.slice(-49), activeDesign.parts]);
+    setSchFuture([]); // a fresh edit invalidates the redo branch
     setDesigns((ds) => ds.map((d) => (d.id === activeDesign.id ? { ...d, parts } : d)));
   }
 
   function undoSchematic() {
-    if (schHistory.length === 0 || !activeDesignId) return;
+    if (schHistory.length === 0 || !activeDesign) return;
     const prev = schHistory[schHistory.length - 1];
-    setDesigns((ds) => ds.map((d) => (d.id === activeDesignId ? { ...d, parts: prev } : d)));
+    setSchFuture((f) => [...f.slice(-49), activeDesign.parts]);
+    setDesigns((ds) => ds.map((d) => (d.id === activeDesign.id ? { ...d, parts: prev } : d)));
     setSchHistory(schHistory.slice(0, -1));
+  }
+
+  function redoSchematic() {
+    if (schFuture.length === 0 || !activeDesign) return;
+    const next = schFuture[schFuture.length - 1];
+    setSchHistory((h) => [...h.slice(-49), activeDesign.parts]);
+    setDesigns((ds) => ds.map((d) => (d.id === activeDesign.id ? { ...d, parts: next } : d)));
+    setSchFuture(schFuture.slice(0, -1));
   }
 
   /* ---- Add LCR notch (series trap across a driver) — popup on the Network
@@ -739,8 +746,33 @@ export default function App() {
       setTrapOpen(false);
       return;
     }
-    const tx = hot.x + 7; // hang the trap just right of the driver
     const y = hot.y;
+    // Column pick: BEFORE the driver first (signal flow reads generator →
+    // filter → driver, so a trap right of the driver looks "after" it —
+    // Sanders klacht), walking left per grid unit into the gap between the
+    // last series element and the driver; rightward as fallback. A column is
+    // usable when (a) no existing POINT sits in its y-range — wires connect
+    // at coincident points, so landing on occupied coordinates would silently
+    // MERGE parts (two traps became one) — and (b) no horizontal component
+    // BODY on the bus row spans it (hanging a trap off a part body reads as
+    // nonsense; hanging off a wire is normal).
+    const pointNear = (cx: number) =>
+      activeDesign.parts.some((p) => p.wires.some((w) => w.x === cx && w.y >= y - 1 && w.y <= y + 16));
+    const bodySpans = (cx: number) =>
+      activeDesign.parts.some(
+        (p) =>
+          p.type !== 'Wire' &&
+          p.type !== 'Ground' &&
+          p.wires.length === 2 &&
+          p.wires[0].y === y &&
+          p.wires[1].y === y &&
+          Math.min(p.wires[0].x, p.wires[1].x) < cx &&
+          cx < Math.max(p.wires[0].x, p.wires[1].x),
+      );
+    const candidates: number[] = [];
+    for (let dx = 3; dx <= 24; dx++) candidates.push(hot.x - dx); // before the driver
+    for (let k = 1; k <= 12; k++) candidates.push(hot.x + 7 * k); // fallback: right
+    const tx = candidates.find((c) => c >= 2 && !pointNear(c) && !bodySpans(c)) ?? hot.x + 7 * 13;
     const { Lmh, Cuf, R, Lh } = trapCompute;
     const ps: VxpPart[] = [...activeDesign.parts];
     const idL = nextPartId(ps, 'Inductor');
@@ -772,11 +804,18 @@ export default function App() {
     });
     ps.push({ type: 'Ground', params: [], wires: [{ x: tx, y: y + 15 }] });
     ps.push({ type: 'Wire', params: [], wires: [{ x: hot.x, y }, { x: tx, y }] });
-    commitSchematic(ps);
+    // Auto-tidy (Sanders wens): the fresh trap lands in a redrawn layout with
+    // same-node notches sorted by frequency, immediately. tidySchematic is
+    // conservative — exotic topologies return null and the manual placement
+    // stays. One commit = one undo step reverts trap AND redraw together.
+    const tidied = tidySchematic(ps);
+    commitSchematic(tidied ?? ps);
     setTrapOpen(false);
     setNetOptNote(
       `Added LCR trap @ ${Math.round(numOf(trapFreq, 0))} Hz on ${trapModel}: ${Lmh} mH · ${Cuf} µF · ${R} Ω. ` +
-        `Fine-tune with ⚙ Optimize components; "Tidy layout" redraws it.`,
+        (tidied
+          ? 'Layout tidied — notches sorted by frequency. Fine-tune with ⚙ Optimize components.'
+          : 'Fine-tune with ⚙ Optimize components; layout kept as-is (topology too exotic for the auto-placer).'),
     );
   }
 
@@ -790,6 +829,7 @@ export default function App() {
       setSchHistory((h) => [...h.slice(-49), existing.parts]);
     } else {
       setSchHistory([]);
+    setSchFuture([]);
     }
     setDesigns((ds) =>
       ds.some((d) => d.id === WORKING_ID)
@@ -823,6 +863,7 @@ export default function App() {
     setActiveDesignId(id);
     setLastSavedId(id);
     setSchHistory([]);
+    setSchFuture([]);
     setNetworkActive(true);
     setSaveNameDraft(null);
   }
@@ -836,6 +877,7 @@ export default function App() {
     setDesigns((ds) => ds.map((d) => (d.id === lastSavedId ? { ...d, parts } : d)));
     setActiveDesignId(lastSavedId);
     setSchHistory([]);
+    setSchFuture([]);
     setNetworkActive(true);
   }
 
@@ -845,6 +887,7 @@ export default function App() {
     setDesigns((ds) => [...ds, { id, name: uniqueDesignName(name, ds), parts }]);
     setActiveDesignId(id);
     setSchHistory([]);
+    setSchFuture([]);
     setNetworkActive(true);
   }
 
@@ -852,6 +895,7 @@ export default function App() {
     if (id === activeDesignId) return;
     setActiveDesignId(id);
     setSchHistory([]);
+    setSchFuture([]);
   }
 
   function renameDesign(id: string, name: string) {
@@ -867,6 +911,7 @@ export default function App() {
     if (activeDesignId === id) {
       setActiveDesignId(rest.length > 0 ? rest[rest.length - 1].id : null);
       setSchHistory([]);
+    setSchFuture([]);
       if (rest.length === 0) setNetworkActive(false);
     }
   }
@@ -1464,11 +1509,17 @@ export default function App() {
   const [vfProgress, setVfProgress] = useState<{
     round: number;
     evals: number;
-    rippleDb: number;
-    phaseDeg: number;
-    /** Crossover-scan phase label, e.g. "xo 1900 Hz (1/3)". */
+    rippleDb?: number;
+    phaseDeg?: number;
+    /** Live phase label (vf-rounds path). */
     label?: string;
+    /** Scan path: one STABLE row per candidate — rendered as a fixed table. */
+    items?: { label: string; text: string; done: boolean }[];
   } | null>(null);
+  /** Coarse stage of a standalone component tune ("value tune", "snap", …). */
+  const [netOptStage, setNetOptStage] = useState<string | null>(null);
+  /** Elapsed seconds while the busy overlay is up — part of the totals line. */
+  const [busyElapsed, setBusyElapsed] = useState(0);
   /** Completed-run stats: the LAST round's progress update gets batched away
    *  with finish()'s cleanup, so without this the user only ever sees
    *  "round N−1" ("ik zie maar 1 ronde"). */
@@ -1527,6 +1578,7 @@ export default function App() {
         xoRangeOn,
         xoFreqHz,
         xoMarginHz,
+        xoScanSteps,
         hpLpPref,
         phaseMetric: phaseMetricMode,
         acSlopeMid,
@@ -1615,6 +1667,7 @@ export default function App() {
           : null,
     );
     setSchHistory([]);
+    setSchFuture([]);
     setLastSavedId(restored.some((x) => x.id === d.lastSavedDesignId) ? d.lastSavedDesignId! : null);
     setNetworkActive((d.networkActive ?? false) && restored.length > 0);
     setVfBypass(d.vfBypass ?? false);
@@ -1626,6 +1679,7 @@ export default function App() {
     if (d.xoFreqHz !== undefined) {
       setXoFreqHz(d.xoFreqHz);
       setXoMarginHz(d.xoMarginHz ?? '400');
+      setXoScanSteps(d.xoScanSteps ?? 3);
     } else if (d.xoRangeLo !== undefined || d.xoRangeHi !== undefined) {
       const lo = Number(d.xoRangeLo) || 1800;
       const hi = Number(d.xoRangeHi) || 3500;
@@ -1720,7 +1774,7 @@ export default function App() {
     }, 800);
     return () => clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [woofer, tweeter, project, zStandalone, angleSets, fileNotes, vFilters, xoName, offsetMm, trimDb, inverted, fMin, fMax, splMin, splMax, phasePriority, vfEqBands, phaseMode, dirWeight, ampTarget, sonogramMode, designs, activeDesignId, lastSavedId, networkActive, vfBypass, catalogSnap, breakupGuard, xoRangeOn, xoFreqHz, xoMarginHz, hpLpPref, phaseMetricMode, acSlopeMid, acSlopeTweeter, midSizeInch, snapProfile, snapSeriesL, snapSeriesC, snapSeriesR, snapStacks, snapBoundToSeries, stagedOn, targetRipple, targetPhase]);
+  }, [woofer, tweeter, project, zStandalone, angleSets, fileNotes, vFilters, xoName, offsetMm, trimDb, inverted, fMin, fMax, splMin, splMax, phasePriority, vfEqBands, phaseMode, dirWeight, ampTarget, sonogramMode, designs, activeDesignId, lastSavedId, networkActive, vfBypass, catalogSnap, breakupGuard, xoRangeOn, xoFreqHz, xoMarginHz, xoScanSteps, hpLpPref, phaseMetricMode, acSlopeMid, acSlopeTweeter, midSizeInch, snapProfile, snapSeriesL, snapSeriesC, snapSeriesR, snapStacks, snapBoundToSeries, stagedOn, targetRipple, targetPhase]);
 
   function resetProject() {
     localStorage.removeItem(AUTOSAVE_KEY);
@@ -1749,6 +1803,7 @@ export default function App() {
     setVfBusy(true);
     setVfError(null);
     setVfProgress(null);
+    setChainScan(null);
 
     const grid = result.freq;
     const w = resample(woofer.frd.freq, woofer.frd.spl, woofer.frd.phase, grid);
@@ -1858,48 +1913,24 @@ export default function App() {
       // it explores 3× wider. Give the free run the same breadth automatically.
       // No band at all (no impedance floor) → one truly-free chain (+ rescue).
       const variants: { label: string; xoRange?: [number, number] }[] =
-        crossoverVariants(userXo ?? saneFree);
-      const chainResults: ChainResult[] = [];
-      let idx = 0;
-      let totalRounds = 0;
-      let totalSims = 0;
+        crossoverVariants(userXo ?? saneFree, xoScanSteps);
       const adjust = { offsetMm: num(offsetMm, 0), trimDb: num(trimDb, 0), inverted };
-      const stepChain = () => {
-        try {
-          const v = variants[idx];
-          const r = runDesignChain(
-            { grid: [...grid], w, t, driverZ: zOnGrid, adjust, seed: defaultVFilters(), settings, xoRange: v.xoRange },
-            v.label,
-          );
-          chainResults.push(r);
-          totalRounds += r.rounds;
-          totalSims += r.evaluations;
-          // TRULY-free run (no Fs floor to bound it, `!v.xoRange`): a single
-          // chain in a bad basin has nothing to beat it, so rescue with
-          // follow-ups when it misses the staged targets. The sane-band-bounded
-          // free run (v.xoRange = saneFree) needs none of this — the band
-          // constraint already keeps its crossover sensible.
-          if (idx === 0 && !v.xoRange && r.net.after.xoHz && targets) {
-            const met =
-              r.net.after.rippleDb <= targets.rippleDb &&
-              r.net.after.phaseDeg <= targets.phaseDeg;
-            if (!met) variants.push(...followupVariantsFor(r.net.after.xoHz));
-          }
-          setVfProgress({
-            round: idx + 1,
-            evals: totalSims,
-            rippleDb: r.net.after.rippleDb,
-            phaseDeg: r.net.after.phaseDeg,
-            label: `xo ${v.label} (${idx + 1}/${variants.length})`,
-          });
-          idx++;
-          if (idx < variants.length) {
-            setTimeout(stepChain, 40); // let the counter paint
-            return;
-          }
+      // The whole scan runs in the optimizer WORKER (variants loop + the
+      // truly-free rescue logic live there): the UI stays responsive, the
+      // per-variant counter ticks via progress messages, and Cancel simply
+      // terminates the worker.
+      runChainScan(
+        {
+          base: { grid: [...grid], w, t, driverZ: zOnGrid, adjust, seed: defaultVFilters(), settings },
+          variants,
+          targets,
+        },
+        (d) => setVfProgress(d),
+      )
+        .then(({ results, totalRounds, totalSims }) => {
           // Winner: targets met first, then blended score at the priority.
           const ranked = rankChainResults(
-            chainResults,
+            results,
             targets,
             phasePriority / 100,
             tweeterHpFloor ?? undefined,
@@ -1913,31 +1944,39 @@ export default function App() {
           setSynth({ mode: synthMode, woofer: win.synthWoofer, tweeter: win.synthTweeter });
           setWorkingDesign(win.parts);
           setVfBypass(true); // the BUILT network is the result on screen
+          setChainScan(
+            results.length > 1
+              ? {
+                  rows: ranked.map((rr) => ({
+                    label: rr.label,
+                    rippleDb: rr.net.after.rippleDb,
+                    phaseDeg: rr.net.after.phaseDeg,
+                    bomEur: rr.bomTotalEur,
+                    winner: rr === win,
+                    result: rr,
+                  })),
+                  active: win.label,
+                }
+              : null,
+          );
           setNetOptNote(
-            (variants.length > 1
-              ? `crossover scan — winner xo ${win.label}: ` +
-                ranked
-                  .map(
-                    (rr) =>
-                      `${rr.label} ${rr.net.after.rippleDb.toFixed(2)} dB/${rr.net.after.phaseDeg.toFixed(1)}°` +
-                      (rr.bomTotalEur !== null ? ` €${Math.round(rr.bomTotalEur)}` : ''),
-                  )
-                  .join(' · ')
+            (results.length > 1
+              ? `crossover scan — winner xo ${win.label}`
               : `${win.net.after.rippleDb.toFixed(2)} dB / ${win.net.after.phaseDeg.toFixed(1)}°` +
                 (win.bomTotalEur !== null ? ` · BOM €${Math.round(win.bomTotalEur)}` : '')) +
               (win.net.snapNote ? ` · ${win.net.snapNote}` : '') +
               (win.net.valueWindowNote ? ` · ${win.net.valueWindowNote}` : '') +
               (win.net.safetyNote ? ` · ⚠ ${win.net.safetyNote}` : ''),
           );
+        })
+        .catch((e) => {
+          if (!(e instanceof CancelledError))
+            setVfError(e instanceof Error ? e.message : String(e));
+        })
+        .finally(() => {
           setVfProgress(null);
           setVfBusy(false);
-        } catch (e) {
-          setVfError(e instanceof Error ? e.message : String(e));
-          setVfProgress(null);
-          setVfBusy(false);
-        }
-      };
-      setTimeout(stepChain, 30);
+        });
       return;
     }
 
@@ -1946,9 +1985,6 @@ export default function App() {
      * pays", with a hard ROUND cap as the bound. Deliberately NO wall-clock
      * budget — deterministic across machines. ---- */
     const MAX_ROUNDS = 12;
-    let best: VfOptimizeResult | null = null;
-    let round = 0;
-    let totalEvals = 0;
 
     // Two starting points, no manual "Reset filters" needed: the user's
     // current design (respected as seed, guarded against regression) AND a
@@ -1960,6 +1996,8 @@ export default function App() {
     // yardstick lets the optimizer land there itself instead of the user
     // hunting with the slider. Only the fresh explorer clusters (+2 runs); the
     // current-design seed and the re-seed rounds stay single runs.
+    // The round LOOP itself runs in the optimizer worker (runVfRounds): the
+    // per-round counter ticks via progress messages, Cancel terminates.
     const clean = defaultVFilters();
     const currentIsClean = !isActive(vFilters.woofer) && !isActive(vFilters.tweeter);
     const seedQueue: { specs: typeof vFilters; inv: boolean; cluster?: boolean }[] = currentIsClean
@@ -1968,84 +2006,40 @@ export default function App() {
           { specs: vFilters, inv: inverted },
           { specs: clean, inv: false, cluster: true },
         ];
-    let seedSpecs = seedQueue[0].specs;
-    let seedInverted = seedQueue[0].inv;
-    let seedCluster = seedQueue[0].cluster ?? false;
-    // Re-seed rounds fix the structure to the best so far (speed): the queue
-    // seeds still enumerate, only the deep refinement rounds skip it.
-    let seedFixed = false;
-    let queueIdx = 1;
-
-    const finish = () => {
-      if (!best) return;
-      setVFilters(best.specs);
-      setInverted(best.inverted);
-      setVfOpt(best);
-      setVfRunStats({ rounds: round, evals: totalEvals });
-      // Optimizer results must be visible: lift a bypass that would hide them.
-      setVfBypass(false);
-      // One click does it all: build the passive filter from the best result
-      // and simulate it (lands in the Working tab, bypass back on) — then the
-      // component tuner polishes the ASSEMBLED network (next render, when the
-      // sim reflects the fresh build).
-      runSynthesis(best.specs);
-      setPendingNetTune(true);
-      setVfProgress(null);
-      setVfBusy(false);
-    };
-
-    const step = () => {
-      try {
-        const adj = { offsetMm: num(offsetMm, 0), trimDb: num(trimDb, 0), inverted: seedInverted };
-        let r: VfOptimizeResult;
-        if (seedCluster) {
-          const cl = optimizeVfCluster(grid, w, t, seedSpecs, adj, opts);
-          r = cl.best;
-          totalEvals += cl.evaluations;
-        } else {
-          const stepOpts =
-            seedFixed && best ? { ...opts, fixedStructure: structureOf(best) } : opts;
-          r = optimizeVirtualFilters(grid, w, t, seedSpecs, adj, stepOpts);
-          totalEvals += r.evaluations;
-        }
-        round++;
-        const improved = !best || r.objective < best.objective * 0.99;
-        if (!best || r.objective < best.objective) best = r;
-        setVfProgress({
-          round,
-          evals: totalEvals,
-          rippleDb: best.after.responseStdDb,
-          phaseDeg: best.after.avgPhaseErrDeg,
-        });
-        // Queued starting points always get their turn; after that, rounds
-        // continue from the best so far while they keep paying ≥1%.
-        if (round < MAX_ROUNDS && (queueIdx < seedQueue.length || improved)) {
-          if (queueIdx < seedQueue.length) {
-            seedSpecs = seedQueue[queueIdx].specs;
-            seedInverted = seedQueue[queueIdx].inv;
-            seedCluster = seedQueue[queueIdx].cluster ?? false;
-            seedFixed = false;
-            queueIdx++;
-          } else {
-            // Seed from the BEST so far — a regressed round must not drag
-            // the search along with it.
-            seedSpecs = best.specs;
-            seedInverted = best.inverted;
-            seedCluster = false;
-            seedFixed = true;
-          }
-          setTimeout(step, 40); // let the counter paint before the next round
-          return;
-        }
-        finish();
-      } catch (e) {
-        setVfError(e instanceof Error ? e.message : String(e));
+    runVfRoundsTask(
+      {
+        grid: [...grid],
+        w,
+        t,
+        opts,
+        seedQueue,
+        offsetMm: num(offsetMm, 0),
+        trimDb: num(trimDb, 0),
+        maxRounds: MAX_ROUNDS,
+      },
+      (d) => setVfProgress(d),
+    )
+      .then(({ best, round, totalEvals }) => {
+        setVFilters(best.specs);
+        setInverted(best.inverted);
+        setVfOpt(best);
+        setVfRunStats({ rounds: round, evals: totalEvals });
+        // Optimizer results must be visible: lift a bypass that would hide them.
+        setVfBypass(false);
+        // One click does it all: build the passive filter from the best result
+        // and simulate it (lands in a build tab, bypass back on) — then the
+        // component tuner polishes the ASSEMBLED network (next render, when the
+        // sim reflects the fresh build).
+        runSynthesis(best.specs);
+        setPendingNetTune(true);
+      })
+      .catch((e) => {
+        if (!(e instanceof CancelledError)) setVfError(e instanceof Error ? e.message : String(e));
+      })
+      .finally(() => {
         setVfProgress(null);
         setVfBusy(false);
-      }
-    };
-    // Yield a frame so the busy state paints before the solver blocks.
-    setTimeout(step, 30);
+      });
   }
 
   /**
@@ -2156,7 +2150,63 @@ export default function App() {
   /** Passive-in-the-loop: re-fit the ACTIVE tab's unlocked component values
    *  against the measured combined response. 🔒 parts keep their value. */
   const [netOptBusy, setNetOptBusy] = useState(false);
+  // Elapsed ticker for the busy overlay's totals line (restarts per run).
+  const anyBusy = vfBusy || netOptBusy || synthBusy;
+  useEffect(() => {
+    if (!anyBusy) {
+      setBusyElapsed(0);
+      return;
+    }
+    const t0 = Date.now();
+    const iv = setInterval(() => setBusyElapsed(Math.floor((Date.now() - t0) / 1000)), 1000);
+    return () => clearInterval(iv);
+  }, [anyBusy]);
+  /** Overlay visibility with a short LINGER: busy-flag handoffs (vf-rounds →
+   *  synchronous build → assembled tune) have one-frame gaps that made the
+   *  popup blink for milliseconds (Sanders glitch-melding). Show immediately,
+   *  hide only when no busy flag returns within 250 ms. */
+  const [overlayVisible, setOverlayVisible] = useState(false);
+  useEffect(() => {
+    if (anyBusy) {
+      setOverlayVisible(true);
+      return;
+    }
+    const t = setTimeout(() => setOverlayVisible(false), 250);
+    return () => clearTimeout(t);
+  }, [anyBusy]);
+
   const [netOptNote, setNetOptNote] = useState<string | null>(null);
+  /** Crossover-scan results as STRUCTURED rows — rendered as a small table
+   *  instead of one long note line (readability; Sanders UX-ronde). Each row
+   *  carries its FULL chain result: clicking a row loads that candidate's
+   *  design into Working (Sanders "keuzelijst") — the scan is a menu, not
+   *  just a report. Session-only (not persisted). */
+  const [chainScan, setChainScan] = useState<{
+    rows: {
+      label: string;
+      rippleDb: number;
+      phaseDeg: number;
+      bomEur: number | null;
+      winner: boolean;
+      result: ChainResult;
+    }[];
+    /** Label of the row currently loaded in Working. */
+    active: string;
+  } | null>(null);
+
+  /** Load a scan candidate's complete design (specs + synth + tuned network)
+   *  into Working — same application as the winner gets, undo-able. */
+  function applyScanCandidate(row: { label: string; result: ChainResult }) {
+    const r = row.result;
+    setVFilters(r.vf.specs);
+    setInverted(r.vf.inverted);
+    setVfOpt(r.vf);
+    synthFresh.current = true;
+    setSynth({ mode: synthMode, woofer: r.synthWoofer, tweeter: r.synthTweeter });
+    setWorkingDesign(r.parts);
+    setVfBypass(true);
+    setChainScan((c) => (c ? { ...c, active: row.label } : c));
+  }
   /** One-click chain: after Optimize→Build lands in Working, auto-run the
    *  component tuner ON THE ASSEMBLY — branch syntheses are judged per
    *  branch, only the tuner judges the built SUM (phase included). */
@@ -2173,56 +2223,59 @@ export default function App() {
     if (!activeDesign || !sim || Object.keys(impedances).length === 0) return;
     setNetOptBusy(true);
     setNetOptNote(null);
-    setTimeout(() => {
-      try {
-        const grid = sim.combined.freq;
-        const zOnGrid = zGridWithSlots(impedances, grid);
-        // Full-measurement-band safety data: the view range is the design
-        // scope, but the tuner's fundamentals (crossing, valley, protection)
-        // must hold on the WHOLE measurement — a zoomed view must not let a
-        // branch die out of sight.
-        const safety = (() => {
-          if (!woofer || !tweeter) return undefined;
-          const lo = Math.max(200, woofer.frd.freq[0], tweeter.frd.freq[0]);
-          const hi = Math.min(
-            20000,
-            woofer.frd.freq[woofer.frd.freq.length - 1],
-            tweeter.frd.freq[tweeter.frd.freq.length - 1],
-          );
-          if (!(hi > lo * 1.5)) return undefined;
-          const sGrid = logspace(lo, hi, 240);
-          return {
-            freqs: sGrid,
-            w: resample(woofer.frd.freq, woofer.frd.spl, woofer.frd.phase, sGrid),
-            t: resample(tweeter.frd.freq, tweeter.frd.spl, tweeter.frd.phase, sGrid),
-            z: zGridWithSlots(impedances, sGrid),
-          };
-        })();
-        const r = optimizeNetworkValues(
-          activeDesign.parts,
-          grid,
-          sim.base.w,
-          sim.base.t,
-          zOnGrid,
-          { offsetMm: num(offsetMm, 0), trimDb: num(trimDb, 0), inverted },
-          {
-            phasePriority: phasePriority / 100,
-            angleData: angleResponsesOn(grid) ?? undefined,
-            directivityWeight: dirWeight / 100,
-            ampTarget,
-            breakupGuard,
-            staged: stagedOn
-              ? { rippleDb: num(targetRipple, 1.5), phaseDeg: num(targetPhase, 10) }
-              : undefined,
-            xoRange: xoRangeValue(),
-            phaseMetric: phaseMetricMode,
-            acousticSlopes: acousticSlopesValue(),
-            catalogSnap: catalogSnap && hasImportedCatalog(),
-            snapPrefs: snapPrefsValue(),
-            band: [Math.max(300, grid[0]), Math.min(grid[grid.length - 1] * 0.975, num(fMax, 20000))],
-            safety,
-          },
-        );
+    setNetOptStage(null);
+    setChainScan(null);
+    const grid = sim.combined.freq;
+    const zOnGrid = zGridWithSlots(impedances, grid);
+    // Full-measurement-band safety data: the view range is the design
+    // scope, but the tuner's fundamentals (crossing, valley, protection)
+    // must hold on the WHOLE measurement — a zoomed view must not let a
+    // branch die out of sight.
+    const safety = (() => {
+      if (!woofer || !tweeter) return undefined;
+      const lo = Math.max(200, woofer.frd.freq[0], tweeter.frd.freq[0]);
+      const hi = Math.min(
+        20000,
+        woofer.frd.freq[woofer.frd.freq.length - 1],
+        tweeter.frd.freq[tweeter.frd.freq.length - 1],
+      );
+      if (!(hi > lo * 1.5)) return undefined;
+      const sGrid = logspace(lo, hi, 240);
+      return {
+        freqs: sGrid,
+        w: resample(woofer.frd.freq, woofer.frd.spl, woofer.frd.phase, sGrid),
+        t: resample(tweeter.frd.freq, tweeter.frd.spl, tweeter.frd.phase, sGrid),
+        z: zGridWithSlots(impedances, sGrid),
+      };
+    })();
+    // Off the main thread: the tuner runs in the optimizer worker — the UI
+    // stays live and the busy overlay's Cancel button can terminate the run.
+    runNetOptimizeTask({
+      parts: [...activeDesign.parts],
+      grid: [...grid],
+      w: sim.base.w,
+      t: sim.base.t,
+      z: zOnGrid,
+      adjust: { offsetMm: num(offsetMm, 0), trimDb: num(trimDb, 0), inverted },
+      opts: {
+        phasePriority: phasePriority / 100,
+        angleData: angleResponsesOn(grid) ?? undefined,
+        directivityWeight: dirWeight / 100,
+        ampTarget,
+        breakupGuard,
+        staged: stagedOn
+          ? { rippleDb: num(targetRipple, 1.5), phaseDeg: num(targetPhase, 10) }
+          : undefined,
+        xoRange: xoRangeValue() ?? undefined,
+        phaseMetric: phaseMetricMode,
+        acousticSlopes: acousticSlopesValue() ?? undefined,
+        catalogSnap: catalogSnap && hasImportedCatalog(),
+        snapPrefs: snapPrefsValue(),
+        band: [Math.max(300, grid[0]), Math.min(grid[grid.length - 1] * 0.975, num(fMax, 20000))],
+        safety,
+      },
+    }, (stage) => setNetOptStage(stage))
+      .then((r) => {
         if (!r.safetyNote) {
           commitSchematic(r.parts); // undo-able, sim follows live
           setNetworkActive(true);
@@ -2238,12 +2291,11 @@ export default function App() {
                 (r.snapNote ? ` · ${r.snapNote}` : '') +
                 (r.valueWindowNote ? ` · ${r.valueWindowNote}` : ''),
         );
-      } catch (e) {
-        setError(e instanceof Error ? e.message : String(e));
-      } finally {
-        setNetOptBusy(false);
-      }
-    }, 30);
+      })
+      .catch((e) => {
+        if (!(e instanceof CancelledError)) setError(e instanceof Error ? e.message : String(e));
+      })
+      .finally(() => setNetOptBusy(false));
   }
 
   /** User-imported catalog series survive across sessions and projects. */
@@ -2536,6 +2588,9 @@ export default function App() {
    *  measured Z, same tweeter adjustments) — one solve per tab feeds both
    *  charts. Muted dashed "ghosts" behind the live curves. */
   const GHOST_DASHES = ['7 4', '2 3', '10 3 2 3', '4 4'];
+  // Distinct muted hue per ghost: with identical grays the legend chips were
+  // indistinguishable — dash patterns only help inside the chart itself.
+  const GHOST_COLORS = ['var(--viz-ghost1)', 'var(--viz-ghost2)', 'var(--viz-ghost3)', 'var(--viz-ghost4)'];
   const tabGhosts: { spl: Series[]; phase: Series[] } = useMemo(() => {
     if (!compareTabs || !networkActive || !sim || designs.length < 2)
       return { spl: [], phase: [] };
@@ -2567,7 +2622,7 @@ export default function App() {
           });
           const style = {
             label: d.name,
-            color: 'var(--viz-tick)',
+            color: GHOST_COLORS[i % GHOST_COLORS.length],
             dash: GHOST_DASHES[i % GHOST_DASHES.length],
             width: 1.4,
             x: grid,
@@ -2833,7 +2888,7 @@ export default function App() {
 
   return (
     <div className={`app-shell layout-${layoutMode}`}>
-      {(vfBusy || netOptBusy || synthBusy) && (
+      {overlayVisible && (
         <div className="busy-overlay" role="status" aria-live="polite">
           <div className="busy-card">
             <div className="busy-spinner" />
@@ -2844,15 +2899,54 @@ export default function App() {
                   ? 'Tuning components on the assembled network…'
                   : 'Building passive network…'}
             </div>
-            <div className="busy-detail">
-              {vfBusy && vfProgress
-                ? `${vfProgress.label ?? `round ${vfProgress.round}`} · ${vfProgress.evals.toLocaleString('nl-NL')} network sims · ${vfProgress.rippleDb.toFixed(2)} dB / ${vfProgress.phaseDeg.toFixed(1)}°`
-                : vfBusy
-                  ? 'searching structures and EQ stages — the app is unresponsive while the solver runs'
-                  : netOptBusy
-                    ? 'value fit, prune/escalate, debris sweep — a staged run can take ~20–30 s'
-                    : 'fitting real component values on the measured impedances'}
-            </div>
+            {vfBusy && vfProgress?.items ? (
+              // Scan view: one STABLE row per candidate + a totals line — the
+              // card never changes size while stages tick underneath.
+              <>
+                <table className="busy-scan">
+                  <tbody>
+                    {vfProgress.items.map((it) => (
+                      <tr key={it.label} className={it.done ? 'done' : ''}>
+                        <td>{it.label}</td>
+                        <td>{it.text}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+                <div className="busy-totals">
+                  {vfProgress.round}/{vfProgress.items.length} done ·{' '}
+                  {vfProgress.evals.toLocaleString('nl-NL')} sims
+                  {vfProgress.rippleDb !== undefined && vfProgress.phaseDeg !== undefined
+                    ? ` · best ${vfProgress.rippleDb.toFixed(2)} dB / ${vfProgress.phaseDeg.toFixed(1)}°`
+                    : ''}
+                  {` · ${Math.floor(busyElapsed / 60)}:${String(busyElapsed % 60).padStart(2, '0')}`}
+                </div>
+              </>
+            ) : (
+              <div className="busy-detail">
+                {vfBusy && vfProgress
+                  ? `round ${vfProgress.round} · ${vfProgress.evals.toLocaleString('nl-NL')} network sims` +
+                    (vfProgress.rippleDb !== undefined && vfProgress.phaseDeg !== undefined
+                      ? ` · best ${vfProgress.rippleDb.toFixed(2)} dB / ${vfProgress.phaseDeg.toFixed(1)}°`
+                      : '')
+                  : vfBusy
+                    ? 'searching structures and EQ stages — runs in the background, the app stays live'
+                    : netOptBusy
+                      ? `${netOptStage ? `stage: ${netOptStage} — ` : ''}value fit, prune/escalate, debris sweep`
+                      : 'fitting real component values on the measured impedances'}
+                {anyBusy && busyElapsed > 0 ? ` · ${Math.floor(busyElapsed / 60)}:${String(busyElapsed % 60).padStart(2, '0')}` : ''}
+              </div>
+            )}
+            {(vfBusy || netOptBusy) && (
+              <button
+                type="button"
+                className="busy-cancel"
+                onClick={cancelOptimTasks}
+                title="Stop the run — nothing is committed, your design stays as it was"
+              >
+                Cancel
+              </button>
+            )}
           </div>
         </div>
       )}
@@ -3775,7 +3869,12 @@ export default function App() {
             </span>
           )}
           {integration?.score !== null && integration?.score !== undefined && (
-            <span className="status-chip" title="Summing efficiency, 0–100 (overlap-weighted)">
+            <span
+              className={`status-chip ${
+                integration.score >= 90 ? 'chip-ok' : integration.score >= 75 ? 'chip-warn' : 'chip-bad'
+              }`}
+              title="Summing sanity, 0–100 (overlap-weighted) — green is the normal state; it only drops when the drivers actively fight"
+            >
               Integration <strong>{integration.score.toFixed(0)}</strong>
             </span>
           )}
@@ -3785,7 +3884,12 @@ export default function App() {
             </span>
           )}
           {phaseStats && (
-            <span className="status-chip" title="95th-percentile phase error in the driver overlap">
+            <span
+              className={`status-chip ${
+                phaseStats.p95ErrorDeg <= 45 ? 'chip-ok' : phaseStats.p95ErrorDeg <= 90 ? 'chip-warn' : 'chip-bad'
+              }`}
+              title="95th-percentile phase error in the driver overlap — ≤45° sums fully, ≤90° still gains ≥3 dB, beyond that the drivers stop helping each other"
+            >
               Fase P95 <strong>{phaseStats.p95ErrorDeg.toFixed(0)}°</strong>
             </span>
           )}
@@ -4339,9 +4443,13 @@ export default function App() {
             </div>
             {vfBusy && vfProgress && (
               <p className="derived" style={{ margin: '0 0 1rem' }}>
-                {vfProgress.label ?? `round ${vfProgress.round}`} ·{' '}
-                {vfProgress.evals.toLocaleString('nl-NL')} network sims ·{' '}
-                {vfProgress.rippleDb.toFixed(2)} dB / {vfProgress.phaseDeg.toFixed(1)}°
+                {vfProgress.items
+                  ? `scan ${vfProgress.round}/${vfProgress.items.length}`
+                  : (vfProgress.label ?? `round ${vfProgress.round}`)}{' '}
+                · {vfProgress.evals.toLocaleString('nl-NL')} network sims ·{' '}
+                {vfProgress.rippleDb !== undefined && vfProgress.phaseDeg !== undefined
+                  ? `${vfProgress.rippleDb.toFixed(2)} dB / ${vfProgress.phaseDeg.toFixed(1)}°`
+                  : '…'}
               </p>
             )}
             {vfBypass && (
@@ -4545,6 +4653,21 @@ export default function App() {
                       onChange={(e) => setXoMarginHz(e.target.value)}
                     />{' '}
                     Hz
+                    {' · '}
+                    <select
+                      value={xoScanSteps}
+                      onChange={(e) => setXoScanSteps(Number(e.target.value))}
+                      title="How many crossover candidates the scan simulates across the pinned range (evenly spaced, your pin always included). Every candidate runs the FULL design chain, so compute grows about linearly — the worker pool runs several at once, but 9 steps still takes a multiple of 3. More steps = a finer sweep of the handover region."
+                    >
+                      {[3, 5, 7, 9].map((n) => (
+                        <option key={n} value={n}>
+                          {n} steps
+                        </option>
+                      ))}
+                    </select>
+                    {xoScanSteps > 3 && (
+                      <span className="derived"> ⏱ ~{Math.ceil(xoScanSteps / 3)}× runtime</span>
+                    )}
                   </span>
                 )}
                 {vfEqBands > 4 && (
@@ -4928,6 +5051,44 @@ export default function App() {
                 {netOptNote}
               </p>
             )}
+            {chainScan && (
+              <table
+                className="scan-table scan-table-pick"
+                title="Full-chain crossover scan, ranked best first — click a row to load that candidate's complete design (filters + tuned network) into Working"
+              >
+                <thead>
+                  <tr>
+                    <th>crossover</th>
+                    <th>ripple</th>
+                    <th>phase</th>
+                    <th>BOM</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {chainScan.rows.map((r) => (
+                    <tr
+                      key={r.label}
+                      className={`${r.winner ? 'winner' : ''}${chainScan.active === r.label ? ' active' : ''}`}
+                      onClick={() => applyScanCandidate(r)}
+                      title={
+                        chainScan.active === r.label
+                          ? 'This candidate is loaded in Working'
+                          : `Load the ${r.label} design into Working (undo-able)`
+                      }
+                    >
+                      <td>
+                        {r.winner ? '🏆 ' : ''}
+                        {r.label}
+                        {chainScan.active === r.label ? ' ◂' : ''}
+                      </td>
+                      <td>{r.rippleDb.toFixed(2)} dB</td>
+                      <td>{r.phaseDeg.toFixed(1)}°</td>
+                      <td>{r.bomEur !== null ? `€${Math.round(r.bomEur)}` : '—'}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
             {designs.length > 0 && (
               <div className="design-tabs">
                 {designs.map((d) => (
@@ -4997,6 +5158,8 @@ export default function App() {
                   onChange={commitSchematic}
                   onUndo={undoSchematic}
                   canUndo={schHistory.length > 0}
+                  onRedo={redoSchematic}
+                  canRedo={schFuture.length > 0}
                 />
                 {networkIssues && (networkIssues.errors.length > 0 || networkIssues.warnings.length > 0) && (
                   <div className="nl-issues">

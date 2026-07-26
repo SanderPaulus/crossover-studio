@@ -63,6 +63,10 @@ export interface NetOptimizeOptions {
    *  overlap window + P95 excursion term; 'overlap' = classic weighted mean.
    *  Must match the design optimizer's setting. */
   phaseMetric?: 'band' | 'overlap';
+  /** Coarse stage callback (value tune, prune, snap, …) for live progress.
+   *  NOT structured-cloneable — callers across a worker boundary inject it
+   *  on the worker side, never in the posted payload. */
+  onStage?: (label: string) => void;
   /** Snap the TUNED network to purchasable catalog values as the final step
    *  (discrete coordinate descent with real DCR/ESR, stacks allowed, budget
    *  pressure via costWeight). Without this the tuner un-snaps whatever the
@@ -263,6 +267,7 @@ export function optimizeNetworkValues(
     ampTarget = 'onAxis',
     breakupGuard = false,
     phaseMetric = 'band',
+    onStage,
   } = opts;
   const acSlopes =
     opts.acousticSlopes && (opts.acousticSlopes.mid || opts.acousticSlopes.tweeter)
@@ -551,7 +556,12 @@ export function optimizeNetworkValues(
     if (!xoR) return 0;
     const oct =
       xoHz < xoR[0] ? Math.log2(xoR[0] / xoHz) : xoHz > xoR[1] ? Math.log2(xoHz / xoR[1]) : 0;
-    return 30 * oct * oct;
+    // ADAPTIVE weight, mirrored from vfOptimizer: wide pins keep the classic
+    // 30·oct², narrow SCAN slices scale up (×(0.15 oct / half-width)², cap
+    // ×100) so a candidate cannot cheaply drift into a neighbour's slice.
+    const halfOct = Math.log2(xoR[1] / xoR[0]) / 2;
+    const scale = Math.min(100, Math.max(1, (0.15 / Math.max(halfOct, 1e-6)) ** 2));
+    return 30 * scale * oct * oct;
   };
   const fxOf = (m: Metrics): number => {
     const amp =
@@ -762,6 +772,7 @@ export function optimizeNetworkValues(
     angleData ?? null,
   );
 
+  onStage?.('value tune');
   /* ---- Stage: value tuning (always) — MULTI-START. The response landscape
    * is multimodal and under-determined: many value-sets sum equally flat,
    * and from an arbitrary seed the tuner may converge into a low-impedance
@@ -910,6 +921,7 @@ export function optimizeNetworkValues(
       (!breakupGuard || m.leakSqDb <= ref.leakSqDb + 4);
 
     if (meets(curFull)) {
+      onStage?.('prune sweep');
       /* ---- PRUNE: shed parts whose removal is (nearly) FREE ----
        * Every unlocked part gets two removal variants: `open` (a shunt part
        * simply disappears) and `shorted` (a series part becomes a wire). The
@@ -961,6 +973,7 @@ export function optimizeNetworkValues(
         if (!accepted) break;
       }
     } else {
+      onStage?.('escalation');
       /* ---- ESCALATE (rule 3): bypass-C across series resistors ---- */
       for (let round = 0; round < 2 && !meets(curFull); round++) {
         let best: { id: string; t: TuneOut } | null = null;
@@ -984,6 +997,7 @@ export function optimizeNetworkValues(
     if (removed.length + added.length > 0) cur = tune(cur.parts, 1, tgt);
   }
 
+  onStage?.('drift check');
   /* ---- LATE drift catch: staged retunes (barrier tune, prune/escalation
    * settles) walk values back into the big-cap basin AFTER the early
    * challenges — measured on the 1900-chain: the early challenge moved to
@@ -992,6 +1006,7 @@ export function optimizeNetworkValues(
    * before the snap freezes values onto purchasable parts. ---- */
   cur = driftCatch(cur);
 
+  onStage?.('cap shrink ladder');
   /* ---- Cap SHRINK LADDER (Sanders: "met B·C1 laag beginnen en langzaam
    * opvoeren om te vergelijken" — implemented as the equivalent warm-started
    * walk DOWN, and extended to C2/every free cap on Sanders' request):
@@ -1106,6 +1121,7 @@ export function optimizeNetworkValues(
   }
 
   let snapNote: string | undefined;
+  onStage?.('catalog snap');
   /* ---- Catalog snap (final step): land every free part on purchasable
    * values, judged on the ASSEMBLED network with real DCR/ESR riding along.
    * Runs last on purpose — any later value tune would un-snap it. ---- */

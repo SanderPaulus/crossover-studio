@@ -628,7 +628,15 @@ export function optimizeVirtualFilters(
     if (!xo) return 0;
     const oct =
       xoHz < xo[0] ? Math.log2(xo[0] / xoHz) : xoHz > xo[1] ? Math.log2(xoHz / xo[1]) : 0;
-    return 30 * oct * oct;
+    // ADAPTIVE weight: for a classic wide pin (±0.15 oct or more) this is the
+    // original 30·oct² — but a narrow SCAN slice must actually cage its
+    // candidate (Sanders screenshot: "2325 Hz" landed at 2152, a slice-width
+    // outside, for a penalty of ~0.4 — the subdivision meant nothing). Scale
+    // by (0.15 oct / half-width)², capped ×100, so escaping a narrow slice by
+    // one slice-width costs ~"no crossing" money regardless of slice size.
+    const halfOct = Math.log2(xo[1] / xo[0]) / 2;
+    const scale = Math.min(100, Math.max(1, (0.15 / Math.max(halfOct, 1e-6)) ** 2));
+    return 30 * scale * oct * oct;
   };
   /** Band mode punishes excursions too: "vaker voorbij de 15°/45°-schaal"
    *  must cost, even when the average still looks tidy. */

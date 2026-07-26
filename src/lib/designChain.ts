@@ -83,8 +83,24 @@ export interface ChainResult {
   bomTotalEur: number | null;
 }
 
+/** Fine-grained progress from inside one chain run — feeds the live busy
+ *  counter ("alive feeling"): a tick per design round and per stage switch. */
+export interface ChainStageProgress {
+  stage: 'design' | 'synthesis' | 'tune';
+  round?: number;
+  evals: number;
+  rippleDb?: number;
+  phaseDeg?: number;
+  /** Sub-stage detail from the assembled tune (value tune, prune, snap…). */
+  detail?: string;
+}
+
 /** One full chain for one crossover-range candidate. */
-export function runDesignChain(input: ChainInput, label = 'chain'): ChainResult {
+export function runDesignChain(
+  input: ChainInput,
+  label = 'chain',
+  onProgress?: (p: ChainStageProgress) => void,
+): ChainResult {
   const { grid, w, t, driverZ, adjust, settings: s } = input;
   const vfOpts = {
     phasePriority: s.phasePriority,
@@ -139,11 +155,19 @@ export function runDesignChain(input: ChainInput, label = 'chain'): ChainResult 
     }
     const improved = !best || r.objective < best.objective * 0.99;
     if (!best || r.objective < best.objective) best = r;
+    onProgress?.({
+      stage: 'design',
+      round: rounds,
+      evals: evaluations,
+      rippleDb: best.after.responseStdDb,
+      phaseDeg: best.after.avgPhaseErrDeg,
+    });
     if (!improved) break;
     seed = best.specs;
     seedInv = best.inverted;
   }
   const b = best!;
+  onProgress?.({ stage: 'synthesis', evals: evaluations });
 
   // Synthesis per branch — passives cannot boost: shift gains to attenuation.
   const gShift = Math.max(b.specs.woofer.gainDb, b.specs.tweeter.gainDb, 0);
@@ -179,6 +203,7 @@ export function runDesignChain(input: ChainInput, label = 'chain'): ChainResult 
   ]).parts;
 
   // Assembled tune — the only stage that judges the interplay.
+  onProgress?.({ stage: 'tune', evals: evaluations });
   const net = optimizeNetworkValues(
     merged,
     grid,
@@ -200,6 +225,7 @@ export function runDesignChain(input: ChainInput, label = 'chain'): ChainResult 
       snapPrefs: s.snapPrefs,
       band: s.band,
       safety: s.safety,
+      onStage: (detail) => onProgress?.({ stage: 'tune', evals: evaluations, detail }),
     },
   );
   return {
@@ -235,28 +261,42 @@ export function followupVariantsFor(
   ];
 }
 
-/** Crossover-range candidates for a scan: the user's pin plus one step down
- *  and one step up (step = the pin's margin, floor 150 Hz) — "meerdere
- *  varianten van het overgangspunt". No pin → a single free run (the caller
- *  appends `followupVariantsFor` candidates once the free crossing is known). */
+/** Crossover-range candidates for a scan: the user's pinned range IS the
+ *  search space, SUBDIVIDED into `steps` slices — centres evenly spaced from
+ *  edge to edge (endpoints included, steps forced odd so the pin centre is
+ *  always among them), each candidate constrained to its own ±half-spacing
+ *  slice, clamped to the range. The slices tile the range exactly: no
+ *  candidate can wander outside the pin, and neighbours don't overlap.
+ *  HARD GELEERD (Sanders "het is geen venster in een venster toch?"): the
+ *  first version gave every candidate the pin's FULL ±margin window again —
+ *  "2400 Hz" on a 2100±300 pin could then explore up to 2700 (outside the
+ *  pin!) and neighbouring windows overlapped ~90%, making the fine
+ *  subdivision meaningless. No pin → a single free run (the caller appends
+ *  `followupVariantsFor` candidates once the free crossing is known). */
 export function crossoverVariants(
   xoRange: [number, number] | undefined,
+  steps = 3,
 ): { label: string; xoRange?: [number, number] }[] {
   if (!xoRange) return [{ label: 'free' }];
-  const lo = Math.min(...xoRange);
-  const hi = Math.max(...xoRange);
-  const c = (lo + hi) / 2;
-  const m = Math.max((hi - lo) / 2, c * 0.02);
-  const step = Math.max(m, 150);
-  const mk = (centre: number): [number, number] => [
-    Math.max(300, centre - m),
-    Math.min(12000, centre + m),
-  ];
-  return [
-    { label: `${Math.round(c - step)} Hz`, xoRange: mk(c - step) },
-    { label: `${Math.round(c)} Hz`, xoRange: mk(c) },
-    { label: `${Math.round(c + step)} Hz`, xoRange: mk(c + step) },
-  ];
+  const n = Math.max(3, Math.min(11, Math.round(steps) | 1)); // odd, 3..11
+  const lo = Math.max(300, Math.min(...xoRange));
+  const hi = Math.min(12000, Math.max(...xoRange));
+  const spacing = (hi - lo) / (n - 1);
+  const half = spacing / 2;
+  const out: { label: string; xoRange?: [number, number] }[] = [];
+  const seen = new Set<string>();
+  for (let i = 0; i < n; i++) {
+    const centre = lo + spacing * i;
+    let label = `${Math.round(centre)} Hz`;
+    // Labels key the scan-progress rows — keep them unique.
+    while (seen.has(label)) label = `${label}·`;
+    seen.add(label);
+    out.push({
+      label,
+      xoRange: [Math.max(lo, centre - half), Math.min(hi, centre + half)],
+    });
+  }
+  return out;
 }
 
 /** Rank chain results: targets met first (staged), then the blended
