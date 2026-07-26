@@ -7,7 +7,7 @@ minimum phase reconstrueert. Voertaal met Sander: **Nederlands**; code/comments 
 ## Commands
 
 - `npm run dev` — dev-server via de Browser-pane tool (`preview_start {name:"dev"}`), poort 5173
-- `npx vitest run` — testsuite (237 tests, allemaal groen houden)
+- `npx vitest run` — testsuite (281 tests, allemaal groen houden)
 - `npm run build` / `npx tsc -b` — build & typecheck (tsconfig.test.json dekt de tests, Node-types)
 - Na elke wijziging: typecheck + tests + build draaien; UI-wijzigingen in de Browser-pane verifiëren
 
@@ -125,12 +125,22 @@ minimum phase reconstrueert. Voertaal met Sander: **Nederlands**; code/comments 
   optimizer-samenvatting). (c) `hpFloorHz` — automatische Fs-vloer (≥2×Fs uit de gemeten
   tweeter-Z-piek, App rekent hem uit en toont "HP floor … Hz (2×Fs)" in ⚙); knie-domein,
   bestaat los naast het (akoestische) crossover point.
-  **`cutOnly` (passief-eerlijk, UI-default UIT sinds jul 2026, Sanders keuze — synthese
-  normaliseert boosts tóch naar attenuatie, dus vrij laten geeft de vf-optimizer meer ruimte;
-  de passieve build boost nooit)**: EQ-banden alleen ≤0 dB (boosts bestaan passief
-  niet; plafond verlagen = shelf-cuts, niveau is gratis in de flatness-metric); boost-seeds
-  geklemd, geadopteerde boost-banden op 0, vangnet telt een boost-seed niet als geldig.
-  Driver-gain blijft vrij (synthese-gShift vertaalt naar verzwakking van de luidste).
+  **`cutOnly` (sinds eind jul 2026 ALTIJD AAN — passief-only-doctrine, Sanders besluit:
+  "deze tool is uitsluitend voor passieve filters")**: EQ-banden alleen ≤0 dB (boosts bestaan
+  passief niet; plafond verlagen = shelf-cuts, niveau is gratis in de flatness-metric);
+  boost-seeds geklemd, geadopteerde boost-banden op 0, vangnet telt een boost-seed niet als
+  geldig. De ⚙-toggle "Passive-honest (EQ cut-only)" is VERWIJDERD (zijn "uit"-stand was per
+  eigen tooltip voor actieve ontwerpen); App geeft hard `cutOnly: true` door aan vfOptimizer
+  én designChain. De eerdere vrij-laten-nuance (boost-vrijheid gaf de optimizer iets meer
+  ruimte, synthese normaliseerde toch) is bewust opgeofferd: handmatige invoer klemt op ≤0
+  (EQ-gain-veld max=0, chart-dot-drag geklemd, driver-Gain-veld max=0 — pad de luidste), dus
+  optimizer-boosts zouden waardes opleveren die de UI niet kan bewerken. Legacy-migratie
+  (`sanitizePassiveSpecs`, bij project/autosave-restore): EQ-boosts → 0, positieve
+  driver-gains als PAAR omlaag geschoven (gShift-stijl) zodat de woofer/tweeter-balans van
+  een oud ontwerp exact intact blijft — één kant klemmen zou stil de balans verschuiven.
+  Handmatige "Build passive filter" klemt bovendien zelf nog EQ-boosts (verdediging in de
+  diepte) en landt sinds eind jul 2026 in een NIEUWE tab per build ("Passive build N",
+  spring naar Network-tab) — de vaste Working-tab is alleen nog van de Optimize-flow.
   **`xoRange`** (UI: "Crossover point" = frequentie ± marge; App vertaalt naar [f−m, f+m],
   marge geklemd op ≥2% van f zodat marge 0 = "precies daar"; legacy lo/hi-projecten migreren
   naar centrum±marge): pint het **AKOESTISCHE kruispunt** — waar de gefilterde drivers elkaar
@@ -198,6 +208,19 @@ minimum phase reconstrueert. Voertaal met Sander: **Nederlands**; code/comments 
   vxp-varianten van Stefan worden NIET aangeraakt (zijn tekening, zijn indeling)
 - `filterFile.ts` — filter-uitwisseling: één ontwerp-tab als standalone .adsfilter.json
   (formaat-marker + versie + validatie); Export-knop (actieve tab) / Import (nieuwe tab)
+- `filterTemplates.ts` — **netwerk-templates ("New from template", Network-toolbar)**: het derde
+  startpunt naast Import en de optimizer — "snel kunnen knutselen" (Sander). Kiezer = weg-keuze +
+  orde-dropdown: `Blank (drivers only)` (= de oude kale generator+drivers via `templateSchematic`)
+  of 1e–4e orde (6/12/18/24 dB/oct). Waardes zijn **GENERIEK** (Sanders keuze — bewust NIET op de
+  gemeten Z gefit): Butterworth-achtige ladder op een neutrale **8 Ω / 2,5 kHz-referentie**
+  (`A=R/2πfc`, `B=1/2πfc·R`); de topologie (part-count + series/shunt-rollen) is het punt, de
+  gebruiker tuned de waardes. LP-tak (eerste model) + HP-tak (laatste model) via
+  `mergeSynthesizedSchematics`, dus een template landt met dezelfde nette layout als een
+  synthese-uitkomst (Tidy-layout werkt er meteen op); de HP-ladder is de DUALE van de
+  LP-prototype (L↔C, reciproke coëfficiënt). **3-weg is gescaffold maar nog niet gebouwd**
+  (toekomstige N-weg-bouw): de dropdown toont "3-way (coming soon)" disabled, `supportsWayCount`
+  gate't de UI — uitbreiden = die functie + een bandpass-ladder toevoegen. Test verifieert per
+  orde geldigheid/oplosbaarheid/hellingsdiepte + part-count
 - `catalog.ts` — componentenbibliotheek-fundament (fase 3): echte PRODUCTSERIES in een
   merk-onafhankelijk formaat (`CatalogSeries` + `CatalogPart`: kind L/C/R, value, seriesR,
   wireMm, powerW, priceEur optioneel — géén verzonnen prijzen; waarderoosters = E12 binnen
@@ -329,7 +352,8 @@ minimum phase reconstrueert. Voertaal met Sander: **Nederlands**; code/comments 
   eigen tab (`design.networkDesigns` + `activeDesignId`; legacy `design.schematic` migreert naar
   één tab); imports/builds openen een nieuwe tab (nooit werk kwijt), dupliceren/hernoemen
   (dubbelklik)/sluiten; vergelijk-overlay = gestippelde grijze ghosts van de andere tabs in de
-  SPL-chart. **Breakup-guard (toggle ⚙ Settings, default aan; in vfOptimizer én netOptimizer)**:
+  SPL-chart ÉN de fase-chart (relatieve fase per tab; één solve per tab voedt beide via
+  `tabGhosts`, zelfde dash-patronen). **Breakup-guard (toggle ⚙ Settings, default aan; in vfOptimizer én netOptimizer)**:
   stopband-lekkage naast de gemeten kruising (1,6×–4×, gespiegeld) moet ≥20 dB onder de som —
   resonantie-FASE is niet te filteren, alleen in niveau irrelevant te maken (penalty
   0,02×gem. kwadratisch tekort). **Werkflow-slotstuk**: na Optimize→Build draait de
@@ -370,11 +394,18 @@ minimum phase reconstrueert. Voertaal met Sander: **Nederlands**; code/comments 
   "Alumen → dus ≤10 µF"-semantiek zou een waardevenster-feature zijn, bewust nog niet gebouwd.
   Alles deterministisch (geen wall-clock; `vfRunStats` toont rondes+sims na afloop). Het beste
   resultaat wint, wordt passief gebouwd én gesimuleerd — alles landt in de vaste **Working-tab**
-  (id 'working', wordt overschreven per run, met undo); "💾 Save filter" vraagt eerst een naam (inline input,
-  Enter/Esc) en snapshot dan het actieve ontwerp naar een tab (blijft waar je bent, snapshot
-  wordt ghost). Synthese-modus (acoustic/filter curve) = dropdown naast de Optimize-knop.
+  (id 'working', wordt overschreven per run, met undo). Opslaan = klassiek Save/Save-as-paar
+  (Sanders wens, twee rondes): "Save as new" vraagt een naam (inline input, Enter/Esc), bewaart
+  het actieve ontwerp als tab en MAAKT DIE ACTIEF (opslaan = actief worden; herkomst-tab blijft
+  als ghost achter); "💾 Save" OVERSCHRIJFT de laatst-opgeslagen filter-tab met het actieve
+  ontwerp en springt ernaartoe (target = `lastSavedId`, gepersisteerd als `lastSavedDesignId`;
+  disabled zonder target of wanneer de actieve tab zélf het target is — tabs bewerken live).
+  Synthese-modus (acoustic/filter curve) = dropdown naast de Optimize-knop én in het Passive
+  synthesis-paneel (zelfde state).
   Combined-curve heet "Combined — {tabnaam}" zodat tabs vs. ghosts optellen. "Build passive filter" bestaat nog
-  voor handgemaakte virtuele filters en schrijft ook naar Working. Optimizer-instellingen
+  voor handgemaakte virtuele filters en opent per klik een NIEUWE "Passive build N"-tab
+  (accumuleert, springt naar de Network-tab; Sanders keuze — alleen de Optimize-flow
+  overschrijft Working). Optimizer-instellingen
   ingeklapt achter ⚙ Settings. **vfBypass**: virtuele filters uit de sim (instellingen blijven) — auto-aan bij
   passive build (anders dubbel gefilterd), auto-uit na optimizer-run (resultaat moet zichtbaar)
 - `components/Chart.tsx` — eigen SVG-chart: log/lineair, kleur-langs-lijn (pointColors), zones
@@ -446,6 +477,17 @@ minimum phase reconstrueert. Voertaal met Sander: **Nederlands**; code/comments 
   DCR-kritisch; notch-R absorbeert spoel-DCR
 
 ## UI-lessen (hard geleerd, niet regresseren)
+
+- **Filter bands volgen de bypass-state uit ELKE bron** (jul 2026, twee rondes): bypass aan
+  (handmatig, Build óf optimizer) → sectie ingeklapt; bypass uit → open; handmatig uitklappen
+  tijdens bypass blijft kunnen. Eerste ronde was handmatig-only (Sanders "het resette mijn
+  filter bands" — inklappen op een Build las als dataverlies), tweede ronde draaide hij dat
+  bewust terug NADAT de ingeklapte header een samenvattingsregel kreeg ("muted · Woofer/mid:
+  LP LR4 @2000 — …"). Die summary-regel is dus de voorwaarde: NOOIT kaal inklappen.
+  Uitgeklapte inklapsecties (Filter bands, ⚙ optimizer-settings) zijn één omkaderde kaart
+  met accent-rand + titelbalk; toolbars zijn gelabelde `.tool-group`-clusters (Start/Export/
+  Catalog/Tools/Simulation op de Network-tab, Design/Configure/State op Filters, Measurements/
+  Project/Catalog op Import)
 
 - Bedieningspanelen NOOIT achter de berekening die ze moeten herstellen (fMax="1"-val)
 - View-range-velden: focus-freeze (sim pauzeert bij focus, commit op blur/Enter) + debounce

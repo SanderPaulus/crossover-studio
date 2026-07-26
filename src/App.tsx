@@ -13,9 +13,15 @@ import {
   mergeSynthesizedSchematics,
   nextPartId,
   normalizeOrigin,
-  templateSchematic,
 } from './lib/schematicEdit.ts';
 import SchematicEditor from './components/SchematicEditor.tsx';
+import {
+  filterTemplate,
+  supportsWayCount,
+  TEMPLATE_ORDERS,
+  type FilterOrder,
+  type WayCount,
+} from './lib/filterTemplates.ts';
 import { deserializeFilter, serializeFilter } from './lib/filterFile.ts';
 import { serializeVxp } from './lib/parsers/vxpExport.ts';
 import type { VxpDriver } from './lib/parsers/vxp.ts';
@@ -275,6 +281,46 @@ function zGridWithSlots(
  * tweeter physically sits ~17 mm proud of the mid), and only the excess-based
  * bridge reproduces the measured relative phase (~2° vs ~78° error).
  */
+/**
+ * Passive-only migration for restored projects/autosaves: EQ boosts clamp to
+ * 0 dB (the UI no longer accepts them, and a passive build never realises
+ * them), and a positive driver gain is normalised away by shifting BOTH
+ * branch gains down by the common excess — clamping one side alone would
+ * silently shift the woofer/tweeter balance a legacy design relied on.
+ */
+function sanitizePassiveSpecs(specs: { woofer: DriverFilterSpec; tweeter: DriverFilterSpec }): {
+  woofer: DriverFilterSpec;
+  tweeter: DriverFilterSpec;
+} {
+  const shift = Math.max(specs.woofer.gainDb, specs.tweeter.gainDb, 0);
+  const fix = (s: DriverFilterSpec): DriverFilterSpec => ({
+    ...s,
+    gainDb: Math.round((s.gainDb - shift) * 10) / 10,
+    eq: s.eq.map((b) => (b.gainDb > 0 ? { ...b, gainDb: 0 } : b)),
+  });
+  return { woofer: fix(specs.woofer), tweeter: fix(specs.tweeter) };
+}
+
+/** Break a phase polyline at ±180° wrap seams (NaN gap) instead of drawing
+ *  vertical jumps. Mutates and returns the array. */
+function breakPhaseWraps(arr: number[]): number[] {
+  for (let i = 1; i < arr.length; i++) {
+    if (Math.abs(arr[i] - arr[i - 1]) > 180) arr[i - 1] = NaN;
+  }
+  return arr;
+}
+
+/** One-line summary of a driver's virtual filter, for the collapsed header. */
+function filterSummaryLine(spec: DriverFilterSpec, side: 'woofer' | 'tweeter'): string {
+  const name = side === 'woofer' ? 'Woofer/mid' : 'Tweeter';
+  const parts: string[] = [];
+  if (spec.hp.enabled) parts.push(`HP ${spec.hp.kind}${spec.hp.order} @${Math.round(spec.hp.freq)}`);
+  if (spec.lp.enabled) parts.push(`LP ${spec.lp.kind}${spec.lp.order} @${Math.round(spec.lp.freq)}`);
+  const nEq = spec.eq.filter((b) => b.enabled).length;
+  if (nEq > 0) parts.push(`${nEq} EQ`);
+  return `${name}: ${parts.length > 0 ? parts.join(', ') : 'flat'}`;
+}
+
 function excessDelayMsOf(frd: Parsed): number | null {
   try {
     const lo = Math.max(500, frd.freq[0] * 1.05);
@@ -510,14 +556,25 @@ export default function App() {
    *  passive network is imported into the editor (it replaces them — leaving
    *  them on would filter twice); also handy for A/B: target vs. passive. */
   const [vfBypass, setVfBypass] = useState(false);
+  /** Collapse the per-driver filter-band editor. Follows the bypass state
+   *  from ANY source (manual toggle, Build, optimizer): muted sliders do
+   *  nothing, so they only cost space (Sanders besluit, tweede ronde — his
+   *  earlier "it wiped my filters" read is defused by the summary line in the
+   *  collapsed header, which must stay). Manually expandable via the header
+   *  while bypassed. */
+  const [vfCollapsed, setVfCollapsed] = useState(false);
+  useEffect(() => {
+    setVfCollapsed(vfBypass);
+  }, [vfBypass]);
   /** Optimizer settings collapsed by default — the button is the workflow. */
   const [showOptSettings, setShowOptSettings] = useState(false);
-  /** Passive-honest optimizer: EQ cut-only, so the virtual design is exactly
-   *  what the passive network can build. Default OFF (Sander): the synthesis
-   *  normalizes any boost to relative attenuation anyway, so leaving boosts
-   *  free gives the virtual optimizer more room; the passive build still can't
-   *  boost. Toggle on to keep the virtual target itself literally passive. */
-  const [vfCutOnly, setVfCutOnly] = useState(false);
+  // Passive-only doctrine (Sander, jul 2026): this tool designs PASSIVE
+  // filters exclusively, so EQ is cut-only EVERYWHERE — the former
+  // "Passive-honest (EQ cut-only)" toggle is gone and the optimizer always
+  // runs cutOnly. (Its "off" mode was, per its own tooltip, for active
+  // designs.) The freed-boost tuning nuance from July is deliberately
+  // sacrificed for consistency: manual inputs clamp to ≤0 dB, so an
+  // optimizer emitting boost bands would land values the UI cannot edit.
   /** Snap the passive build to purchasable catalog parts (real DCR/ESR).
    *  Default on: with a catalog imported you clearly intend to build with real
    *  parts. Only ever effective when a catalog is imported — the engine calls
@@ -743,9 +800,14 @@ export default function App() {
     setNetworkActive(true);
   }
 
-  /** Snapshot the active tab into memory under a chosen name — stays where
-   *  you are, the snapshot shows up as a ghost in the compare overlay. */
+  /** Save the active design under a chosen name and SWITCH to the saved tab
+   *  (Sanders wens: opslaan = actief worden) — the tab you came from stays
+   *  behind as a ghost in the compare overlay. */
   const [saveNameDraft, setSaveNameDraft] = useState<string | null>(null);
+  /** Classic Save/Save-as split (Sanders wens): "💾 Save" overwrites the LAST
+   *  saved filter tab, "Save as new" opens the name input. Persisted so the
+   *  Save target survives a reload. */
+  const [lastSavedId, setLastSavedId] = useState<string | null>(null);
 
   function saveActiveDesign(name: string) {
     if (!activeDesign) return;
@@ -758,7 +820,23 @@ export default function App() {
         parts: structuredClone(activeDesign.parts),
       },
     ]);
+    setActiveDesignId(id);
+    setLastSavedId(id);
+    setSchHistory([]);
+    setNetworkActive(true);
     setSaveNameDraft(null);
+  }
+
+  /** "💾 Save": overwrite the last-saved filter tab with the active design and
+   *  switch to it. Disabled in the UI when there is no target yet, or when the
+   *  target IS the active tab (a tab edits live — nothing to save then). */
+  function overwriteLastSaved() {
+    if (!activeDesign || !lastSavedId || lastSavedId === activeDesignId) return;
+    const parts = structuredClone(activeDesign.parts);
+    setDesigns((ds) => ds.map((d) => (d.id === lastSavedId ? { ...d, parts } : d)));
+    setActiveDesignId(lastSavedId);
+    setSchHistory([]);
+    setNetworkActive(true);
   }
 
   /** New tab (auto-unique name), activated, driving the sim. */
@@ -785,6 +863,7 @@ export default function App() {
   function deleteDesign(id: string) {
     const rest = designs.filter((d) => d.id !== id);
     setDesigns(rest);
+    if (lastSavedId === id) setLastSavedId(null);
     if (activeDesignId === id) {
       setActiveDesignId(rest.length > 0 ? rest[rest.length - 1].id : null);
       setSchHistory([]);
@@ -1440,9 +1519,9 @@ export default function App() {
         sonogramMode,
         networkDesigns: designs.length > 0 ? designs : undefined,
         activeDesignId: activeDesignId ?? undefined,
+        lastSavedDesignId: lastSavedId ?? undefined,
         networkActive,
         vfBypass,
-        vfCutOnly,
         catalogSnap,
         breakupGuard,
         xoRangeOn,
@@ -1508,7 +1587,7 @@ export default function App() {
     }
     setFileNotes(state.fileNotes ?? {});
     const d = state.design;
-    setVFilters(d.vFilters);
+    setVFilters(sanitizePassiveSpecs(d.vFilters));
     setXoName(d.xoName);
     setOffsetMm(d.offsetMm);
     setTrimDb(d.trimDb);
@@ -1536,9 +1615,10 @@ export default function App() {
           : null,
     );
     setSchHistory([]);
+    setLastSavedId(restored.some((x) => x.id === d.lastSavedDesignId) ? d.lastSavedDesignId! : null);
     setNetworkActive((d.networkActive ?? false) && restored.length > 0);
     setVfBypass(d.vfBypass ?? false);
-    setVfCutOnly(d.vfCutOnly ?? false);
+    // d.vfCutOnly is ignored: the tool is passive-only, cut-only is not optional.
     setCatalogSnap(d.catalogSnap ?? true);
     setBreakupGuard(d.breakupGuard ?? true);
     setXoRangeOn(d.xoRangeOn ?? false);
@@ -1640,7 +1720,7 @@ export default function App() {
     }, 800);
     return () => clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [woofer, tweeter, project, zStandalone, angleSets, fileNotes, vFilters, xoName, offsetMm, trimDb, inverted, fMin, fMax, splMin, splMax, phasePriority, vfEqBands, phaseMode, dirWeight, ampTarget, sonogramMode, designs, activeDesignId, networkActive, vfBypass, vfCutOnly, catalogSnap, breakupGuard, xoRangeOn, xoFreqHz, xoMarginHz, hpLpPref, phaseMetricMode, acSlopeMid, acSlopeTweeter, midSizeInch, snapProfile, snapSeriesL, snapSeriesC, snapSeriesR, snapStacks, snapBoundToSeries, stagedOn, targetRipple, targetPhase]);
+  }, [woofer, tweeter, project, zStandalone, angleSets, fileNotes, vFilters, xoName, offsetMm, trimDb, inverted, fMin, fMax, splMin, splMax, phasePriority, vfEqBands, phaseMode, dirWeight, ampTarget, sonogramMode, designs, activeDesignId, lastSavedId, networkActive, vfBypass, catalogSnap, breakupGuard, xoRangeOn, xoFreqHz, xoMarginHz, hpLpPref, phaseMetricMode, acSlopeMid, acSlopeTweeter, midSizeInch, snapProfile, snapSeriesL, snapSeriesC, snapSeriesR, snapStacks, snapBoundToSeries, stagedOn, targetRipple, targetPhase]);
 
   function resetProject() {
     localStorage.removeItem(AUTOSAVE_KEY);
@@ -1682,7 +1762,7 @@ export default function App() {
       angleData,
       directivityWeight: dirWeight / 100,
       ampTarget,
-      cutOnly: vfCutOnly,
+      cutOnly: true, // passive-only: EQ may never boost
       breakupGuard,
       structurePreference: parseHpLpPref(hpLpPref),
       targets: stagedOn
@@ -1732,7 +1812,7 @@ export default function App() {
         angleData,
         directivityWeight: dirWeight / 100,
         ampTarget,
-        cutOnly: vfCutOnly,
+        cutOnly: true, // passive-only: EQ may never boost
         breakupGuard,
         structurePreference: parseHpLpPref(hpLpPref),
         targets,
@@ -2005,11 +2085,14 @@ export default function App() {
         ...(synthMode === 'acoustic' ? { driverSplDb: rawSpl(l) } : {}),
       });
       // Passives cannot boost: shift both driver gains down by the highest
-      // one, preserving the RELATIVE balance with only attenuation.
+      // one, preserving the RELATIVE balance with only attenuation. EQ bands
+      // are clamped to attenuation too — the UI already prevents entering a
+      // boost, this also catches any legacy positive band.
       const gShift = Math.max(specs.woofer.gainDb, specs.tweeter.gainDb, 0);
       const shifted = (specIn: DriverFilterSpec): DriverFilterSpec => ({
         ...specIn,
         gainDb: Math.round((specIn.gainDb - gShift) * 10) / 10,
+        eq: specIn.eq.map((b) => ({ ...b, gainDb: Math.min(0, b.gainDb) })),
       });
       const out: SynthState = { mode: synthMode };
       if (isActive(specs.woofer))
@@ -2022,7 +2105,16 @@ export default function App() {
         const branches: { components: SynthesizedComponent[]; model: string }[] = [];
         if (out.woofer) branches.push({ components: out.woofer.components, model: 'mid' });
         if (out.tweeter) branches.push({ components: out.tweeter.components, model: 'tweeter' });
-        setWorkingDesign(mergeSynthesizedSchematics(branches).parts);
+        const parts = mergeSynthesizedSchematics(branches).parts;
+        if (specsIn) {
+          // Optimizer flow (Optimize — design for me): the fixed Working tab.
+          setWorkingDesign(parts);
+        } else {
+          // Manual "Build passive filter": a fresh tab each time (nothing is
+          // overwritten, builds accumulate to compare) and jump to the editor.
+          addDesign('Passive build', parts);
+          setDesignTab('network');
+        }
         setVfBypass(true);
       }
     } catch (e) {
@@ -2049,8 +2141,13 @@ export default function App() {
     addDesign(xoName, normalizeOrigin(xo.parts));
   }
 
+  // "New from template" picker: generic starting network next to Import.
+  const [templateWays, setTemplateWays] = useState<WayCount>(2);
+  const [templateOrder, setTemplateOrder] = useState<FilterOrder>(2);
   function startNetworkFromTemplate() {
-    addDesign('New network', templateSchematic(zModels.length > 0 ? zModels : ['mid', 'tweeter']).parts);
+    const models = zModels.length > 0 ? zModels : ['mid', 'tweeter'];
+    const xo = filterTemplate({ order: templateOrder, wayCount: templateWays, models });
+    addDesign(xo.name || 'New network', normalizeOrigin(xo.parts));
   }
 
   /** Manual "Build passive filter" runs the synchronous synthesis — the
@@ -2434,13 +2531,15 @@ export default function App() {
     ? [result.freq[0], result.freq[result.freq.length - 1]]
     : [num(fMinDeb, 200), num(fMaxDeb, 20000)];
 
-  /** Compare-overlay: combined SPL of every non-active design tab, computed
-   *  through the same pipeline (network solve on measured Z, same tweeter
-   *  adjustments). Muted dashed "ghosts" behind the live curves. */
+  /** Compare-overlay: combined SPL AND relative phase of every non-active
+   *  design tab, computed through the same pipeline (network solve on
+   *  measured Z, same tweeter adjustments) — one solve per tab feeds both
+   *  charts. Muted dashed "ghosts" behind the live curves. */
   const GHOST_DASHES = ['7 4', '2 3', '10 3 2 3', '4 4'];
-  const ghostSeries: Series[] = useMemo(() => {
-    if (!compareTabs || !networkActive || !sim || designs.length < 2) return [];
-    if (Object.keys(impedances).length === 0) return [];
+  const tabGhosts: { spl: Series[]; phase: Series[] } = useMemo(() => {
+    if (!compareTabs || !networkActive || !sim || designs.length < 2)
+      return { spl: [], phase: [] };
+    if (Object.keys(impedances).length === 0) return { spl: [], phase: [] };
     const grid = sim.combined.freq;
     const zOnGrid = Object.fromEntries(
       Object.entries(impedances).map(([model, z]) => {
@@ -2448,7 +2547,8 @@ export default function App() {
         return [model, g.spl.map((mag, i) => fromPolar(mag, (g.phaseDeg[i] * Math.PI) / 180))];
       }),
     );
-    const out: Series[] = [];
+    const spl: Series[] = [];
+    const phase: Series[] = [];
     designs
       .filter((d) => d.id !== activeDesignId)
       .forEach((d, i) => {
@@ -2465,20 +2565,24 @@ export default function App() {
             trimDb: num(trimDb, 0),
             inverted,
           });
-          out.push({
-            id: `ghost:${d.id}`,
+          const style = {
             label: d.name,
             color: 'var(--viz-tick)',
             dash: GHOST_DASHES[i % GHOST_DASHES.length],
             width: 1.4,
             x: grid,
-            y: combined.combinedSpl,
+          };
+          spl.push({ ...style, id: `ghost:${d.id}`, y: combined.combinedSpl });
+          phase.push({
+            ...style,
+            id: `ghostp:${d.id}`,
+            y: breakPhaseWraps(combined.relativePhaseDeg.slice()),
           });
         } catch {
           // Unsolvable tab (work in progress) — simply no ghost for it.
         }
       });
-    return out;
+    return { spl, phase };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [compareTabs, networkActive, sim, impedances, designs, activeDesignId, offsetMm, trimDb, inverted]);
 
@@ -2490,7 +2594,7 @@ export default function App() {
       ? integration.points.map((p) => (p.cls ? TIER_COLOR[phaseTier(p.phaseErrorDeg)] : null))
       : undefined;
     return [
-      ...ghostSeries,
+      ...tabGhosts.spl,
       { id: 'w', label: 'Woofer/mid', color: 'var(--viz-woofer)', x: result.freq, y: result.woofer.spl },
       { id: 't', label: 'Tweeter', color: 'var(--viz-tweeter)', x: result.freq, y: result.tweeter.spl },
       {
@@ -2515,7 +2619,7 @@ export default function App() {
       },
     ];
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [result, integration, ghostSeries, networkActive, activeDesign]);
+  }, [result, integration, tabGhosts, networkActive, activeDesign]);
 
   /**
    * Design handles ON the SPL chart (UI-fase D): drag the crossover knees and
@@ -2589,7 +2693,8 @@ export default function App() {
         const i = Number(part.slice(2));
         const band = spec.eq[i];
         if (!band) return p;
-        const gain = Math.min(12, Math.max(-30, band.gainDb + dyUnits));
+        // Cut only: a passive network cannot boost, so EQ bands stay ≤ 0 dB.
+        const gain = Math.min(0, Math.max(-30, band.gainDb + dyUnits));
         const eq = spec.eq.slice();
         eq[i] = { ...band, freq: f, gainDb: Math.round(gain * 10) / 10 };
         spec.eq = eq;
@@ -2616,20 +2721,16 @@ export default function App() {
 
   const phaseSeries: Series[] = useMemo(() => {
     if (!showPanels.phase || !result) return [];
-    // Break lines at ±180° wrap seams instead of drawing vertical jumps.
-    const breakWraps = (arr: number[]): number[] => {
-      for (let i = 1; i < arr.length; i++) {
-        if (Math.abs(arr[i] - arr[i - 1]) > 180) arr[i - 1] = NaN;
-      }
-      return arr;
-    };
+    const breakWraps = breakPhaseWraps;
     const wrapDeg = (d: number) => {
       let v = d % 360;
       if (v > 180) v -= 360;
       if (v < -180) v += 360;
       return v;
     };
-    const out: Series[] = [];
+    // Compare-overlay ghosts first, so the live curves draw on top of them —
+    // same tabs, same dashes as in the SPL chart.
+    const out: Series[] = [...tabGhosts.phase];
     // The phase each active filter chain ADDS per driver (arg of the total
     // transfer: passive network × virtual filters) — "the selected filters".
     const transfers = sim?.transfers;
@@ -2710,7 +2811,7 @@ export default function App() {
       });
     }
     return out;
-  }, [result, integration, sim, offsetMm, trimDb, inverted, showPanels.phase, refResp]);
+  }, [result, integration, sim, offsetMm, trimDb, inverted, showPanels.phase, refResp, tabGhosts]);
 
   /** "How far off is the phase" zones behind the relative-phase curve. */
   const phaseBands = useMemo(
@@ -3749,88 +3850,98 @@ export default function App() {
             {designTab === 'import' && (
               <>
       <div className="panel">
-        <div className="row">
-          <label title="FRD = frequency response (SPL + phase), ZMA = measured impedance. Select the 0° file plus all horizontal angle files and the .ZMA in one go — angles are recognised by filename.">
-            Woofer / mid FRD + ZMA (multi-select all hor angles + impedance)
-            <input type="file" accept=".frd,.txt,.zma,.ZMA" multiple onChange={loadDriverFiles('woofer')} />
-          </label>
-          <label title="FRD = frequency response (SPL + phase), ZMA = measured impedance. Select the 0° file plus all horizontal angle files and the .ZMA in one go — angles are recognised by filename.">
-            Tweeter FRD + ZMA (multi-select all hor angles + impedance)
-            <input type="file" accept=".frd,.txt,.zma,.ZMA" multiple onChange={loadDriverFiles('tweeter')} />
-          </label>
-          <label title="Optional: import a VituixCAD project to simulate Stefan's crossover variants. Select the .vxp together with its .ZMA and response .txt files.">
-            VituixCAD project (.vxp + .ZMA + response .txt — select together)
-            <input
-              type="file"
-              accept=".vxp,.zma,.ZMA,.txt,.frd"
-              multiple
-              onChange={loadVituixFiles}
-            />
-          </label>
-          <label title="Phase peer-comparison: in VituixCAD export the FILTERED woofer and tweeter responses (crossover applied), select BOTH here. The Phase chart then draws VituixCAD's relative phase (tweeter − woofer) in our convention as a dashed reference.">
-            VituixCAD phase reference (filtered woofer + tweeter — select both)
-            <input type="file" accept=".frd,.txt" multiple onChange={loadReference} />
-            {refResp && <span className="derived"> ✓ {refResp.names}</span>}
-          </label>
-          <button
-            type="button"
-            onClick={loadDemo}
-            title="Load the bundled KOAN measurements (all angles + impedances + vxp variants) — instant playground"
-          >
-            Load KOAN demo data
-          </button>
-          <span className="project-actions">
-            <button
-              type="button"
-              onClick={saveProject}
-              disabled={!woofer && !tweeter}
-              title="Download everything (raw measurement files + design state) as one project file"
-            >
-              Save project
-            </button>
-            <label className="file-button" title="Restore a previously saved project file">
-              Load project
-              <input
-                type="file"
-                accept=".json,.adsproj"
-                onChange={loadProjectFromFile}
-                style={{ display: 'none' }}
-              />
-            </label>
-            <button type="button" onClick={resetProject} title="Clear autosave and start fresh">
-              Reset
-            </button>
-          </span>
-        </div>
-        <div className="row" style={{ marginTop: '0.5rem' }}>
-          <span className="derived">Component catalog:</span>
-          <label
-            className="file-button"
-            title="Import a component catalog (brands, series, E-grids, tiers, prices) — the optimizer's Snap to catalog and the BOM use it. A series with a built-in id overrides the built-in."
-          >
-            Import catalog
-            <input
-              type="file"
-              accept=".json,.adscatalog.json"
-              onChange={importCatalogFromFile}
-              style={{ display: 'none' }}
-            />
-          </label>
-          <button
-            type="button"
-            onClick={exportCatalog}
-            title="Download the current catalog as an editable JSON template"
-          >
-            Export catalog
-          </button>
-          <span className="derived">
-            {allSeries().length} series
-            {customCatalogParts().length > 0 && ` · ${customCatalogParts().length} exact parts`}
-            {allSeries().some((s) => s.basePrice !== undefined) ||
-            customCatalogParts().some((p) => p.priceEur !== undefined)
-              ? ' · prices loaded'
-              : ' · no prices yet'}
-          </span>
+        <div className="tool-groups">
+          <div className="tool-group">
+            <span className="tool-group-label">Measurements</span>
+            <div className="tool-group-body files">
+              <label title="FRD = frequency response (SPL + phase), ZMA = measured impedance. Select the 0° file plus all horizontal angle files and the .ZMA in one go — angles are recognised by filename.">
+                Woofer / mid FRD + ZMA (multi-select all hor angles + impedance)
+                <input type="file" accept=".frd,.txt,.zma,.ZMA" multiple onChange={loadDriverFiles('woofer')} />
+              </label>
+              <label title="FRD = frequency response (SPL + phase), ZMA = measured impedance. Select the 0° file plus all horizontal angle files and the .ZMA in one go — angles are recognised by filename.">
+                Tweeter FRD + ZMA (multi-select all hor angles + impedance)
+                <input type="file" accept=".frd,.txt,.zma,.ZMA" multiple onChange={loadDriverFiles('tweeter')} />
+              </label>
+              <label title="Optional: import a VituixCAD project to simulate Stefan's crossover variants. Select the .vxp together with its .ZMA and response .txt files.">
+                VituixCAD project (.vxp + .ZMA + response .txt — select together)
+                <input
+                  type="file"
+                  accept=".vxp,.zma,.ZMA,.txt,.frd"
+                  multiple
+                  onChange={loadVituixFiles}
+                />
+              </label>
+              <label title="Phase peer-comparison: in VituixCAD export the FILTERED woofer and tweeter responses (crossover applied), select BOTH here. The Phase chart then draws VituixCAD's relative phase (tweeter − woofer) in our convention as a dashed reference.">
+                VituixCAD phase reference (filtered woofer + tweeter — select both)
+                <input type="file" accept=".frd,.txt" multiple onChange={loadReference} />
+                {refResp && <span className="derived"> ✓ {refResp.names}</span>}
+              </label>
+              <button
+                type="button"
+                onClick={loadDemo}
+                title="Load the bundled KOAN measurements (all angles + impedances + vxp variants) — instant playground"
+              >
+                Load KOAN demo data
+              </button>
+            </div>
+          </div>
+          <div className="tool-group">
+            <span className="tool-group-label">Project</span>
+            <div className="tool-group-body">
+              <button
+                type="button"
+                onClick={saveProject}
+                disabled={!woofer && !tweeter}
+                title="Download everything (raw measurement files + design state) as one project file"
+              >
+                Save project
+              </button>
+              <label className="file-button" title="Restore a previously saved project file">
+                Load project
+                <input
+                  type="file"
+                  accept=".json,.adsproj"
+                  onChange={loadProjectFromFile}
+                  style={{ display: 'none' }}
+                />
+              </label>
+              <button type="button" onClick={resetProject} title="Clear autosave and start fresh">
+                Reset
+              </button>
+            </div>
+          </div>
+          <div className="tool-group">
+            <span className="tool-group-label">Component catalog</span>
+            <div className="tool-group-body">
+              <label
+                className="file-button"
+                title="Import a component catalog (brands, series, E-grids, tiers, prices) — the optimizer's Snap to catalog and the BOM use it. A series with a built-in id overrides the built-in."
+              >
+                Import catalog
+                <input
+                  type="file"
+                  accept=".json,.adscatalog.json"
+                  onChange={importCatalogFromFile}
+                  style={{ display: 'none' }}
+                />
+              </label>
+              <button
+                type="button"
+                onClick={exportCatalog}
+                title="Download the current catalog as an editable JSON template"
+              >
+                Export catalog
+              </button>
+              <span className="derived">
+                {allSeries().length} series
+                {customCatalogParts().length > 0 && ` · ${customCatalogParts().length} exact parts`}
+                {allSeries().some((s) => s.basePrice !== undefined) ||
+                customCatalogParts().some((p) => p.priceEur !== undefined)
+                  ? ' · prices loaded'
+                  : ' · no prices yet'}
+              </span>
+            </div>
+          </div>
         </div>
         {persistNote && <p className="filenames">{persistNote} · autosaves locally on every change</p>}
         {vxpNote && <p className="filenames">{vxpNote}</p>}
@@ -4156,73 +4267,91 @@ export default function App() {
         <>
           <div className="panel">
             <h2>Virtual filters (target design)</h2>
-            <div className="row" style={{ marginBottom: '1rem' }}>
-              <button
-                type="button"
-                onClick={runVfOptimize}
-                disabled={vfBusy}
-                title="Design the crossover, build it as a passive network and simulate it — all in one go (lands in the Working tab)"
-              >
-                {vfBusy ? 'Optimizing + building…' : 'Optimize — design for me'}
-              </button>
-              {vfBusy && vfProgress && (
-                <span className="derived">
-                  {vfProgress.label ?? `round ${vfProgress.round}`} ·{' '}
-                  {vfProgress.evals.toLocaleString('nl-NL')} network sims ·{' '}
-                  {vfProgress.rippleDb.toFixed(2)} dB / {vfProgress.phaseDeg.toFixed(1)}°
-                </span>
-              )}
-              <select
-                value={synthMode}
-                onChange={(e) => setSynthMode(e.target.value as 'filter' | 'acoustic')}
-                title="What the passive build optimises for: the acoustic result on the measured driver, or an exact reproduction of the filter curve"
-              >
-                <option value="acoustic">Acoustic result (flatten measured driver)</option>
-                <option value="filter">Filter curve (reproduce target exactly)</option>
-              </select>
-              <button
-                type="button"
-                className={showOptSettings ? 'active-toggle' : ''}
-                onClick={() => setShowOptSettings((s) => !s)}
-                title="Optimizer settings: priority, amplitude target, in-room weight, EQ bands"
-              >
-                ⚙ Settings
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  // Start at the import gate (step 0) when there is no driver
-                  // data yet — the wizard should take you from nothing to a
-                  // built crossover, not assume measurements exist.
-                  setWizardStep(!woofer || !tweeter ? 0 : 1);
-                  setWizardOpen(true);
-                }}
-                title="Design wizard: load measurements, then goals, priority, crossover point, acoustic slopes and component choices in one guided flow — ends with Optimize"
-              >
-                🧙 Wizard
-              </button>
-              <button
-                type="button"
-                onClick={resetVirtualFilters}
-                disabled={vfBusy}
-                title="Filters back to the clean starting point — measurements and crossover selection stay"
-              >
-                Reset filters
-              </button>
-              <label title="Take the virtual filters out of the simulation, keeping their settings — auto-on when a built passive network replaces them">
-                <input
-                  type="checkbox"
-                  checked={vfBypass}
-                  onChange={(e) => setVfBypass(e.target.checked)}
-                />{' '}
-                Bypass
-              </label>
-              {vfBypass && (
-                <span className="derived">virtual filters muted — passive network / raw drivers only</span>
-              )}
+            <div className="tool-groups" style={{ marginBottom: '1rem' }}>
+              <div className="tool-group">
+                <span className="tool-group-label">Design</span>
+                <div className="tool-group-body">
+                  <button
+                    type="button"
+                    onClick={runVfOptimize}
+                    disabled={vfBusy}
+                    title="Design the crossover, build it as a passive network and simulate it — all in one go (lands in the Working tab)"
+                  >
+                    {vfBusy ? 'Optimizing + building…' : 'Optimize — design for me'}
+                  </button>
+                  <select
+                    value={synthMode}
+                    onChange={(e) => setSynthMode(e.target.value as 'filter' | 'acoustic')}
+                    title="What the passive build optimises for: the acoustic result on the measured driver, or an exact reproduction of the filter curve"
+                  >
+                    <option value="acoustic">Acoustic result (flatten measured driver)</option>
+                    <option value="filter">Filter curve (reproduce target exactly)</option>
+                  </select>
+                </div>
+              </div>
+              <div className="tool-group">
+                <span className="tool-group-label">Configure</span>
+                <div className="tool-group-body">
+                  <button
+                    type="button"
+                    className={showOptSettings ? 'active-toggle' : ''}
+                    onClick={() => setShowOptSettings((s) => !s)}
+                    title="Optimizer settings: priority, amplitude target, in-room weight, EQ bands"
+                  >
+                    ⚙ Settings
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      // Start at the import gate (step 0) when there is no driver
+                      // data yet — the wizard should take you from nothing to a
+                      // built crossover, not assume measurements exist.
+                      setWizardStep(!woofer || !tweeter ? 0 : 1);
+                      setWizardOpen(true);
+                    }}
+                    title="Design wizard: load measurements, then goals, priority, crossover point, acoustic slopes and component choices in one guided flow — ends with Optimize"
+                  >
+                    🧙 Wizard
+                  </button>
+                </div>
+              </div>
+              <div className="tool-group">
+                <span className="tool-group-label">State</span>
+                <div className="tool-group-body">
+                  <button
+                    type="button"
+                    onClick={resetVirtualFilters}
+                    disabled={vfBusy}
+                    title="Filters back to the clean starting point — measurements and crossover selection stay"
+                  >
+                    Reset filters
+                  </button>
+                  <label title="Take the virtual filters out of the simulation, keeping their settings — auto-on when a built passive network replaces them">
+                    <input
+                      type="checkbox"
+                      checked={vfBypass}
+                      onChange={(e) => setVfBypass(e.target.checked)}
+                    />{' '}
+                    Bypass
+                  </label>
+                </div>
+              </div>
             </div>
+            {vfBusy && vfProgress && (
+              <p className="derived" style={{ margin: '0 0 1rem' }}>
+                {vfProgress.label ?? `round ${vfProgress.round}`} ·{' '}
+                {vfProgress.evals.toLocaleString('nl-NL')} network sims ·{' '}
+                {vfProgress.rippleDb.toFixed(2)} dB / {vfProgress.phaseDeg.toFixed(1)}°
+              </p>
+            )}
+            {vfBypass && (
+              <p className="derived" style={{ margin: '0 0 1rem' }}>
+                virtual filters muted — passive network / raw drivers only
+              </p>
+            )}
             {showOptSettings && (
               <div className="row opt-settings" style={{ marginBottom: '1rem' }}>
+                <span className="opt-settings-cap">Optimizer settings</span>
                 <label title="The big trade-off: budget split between a flat response and flat phase. More phase = flatter phase but more amplitude ripple. Both ends are anchored (100% phase = 90/10 internally): with the response weight at true zero the optimizer would trade a wrecked response for a phase metric it can then game.">
                   Priority: response {100 - phasePriority}% · phase {phasePriority}%
                   <input
@@ -4353,14 +4482,6 @@ export default function App() {
                     °
                   </span>
                 )}
-                <label title="EQ bands may only cut, so the design is exactly what a passive network can build — holding a drooping band flat becomes lowering the level of the rest. Turn off for active designs, where boosting is real.">
-                  <input
-                    type="checkbox"
-                    checked={vfCutOnly}
-                    onChange={(e) => setVfCutOnly(e.target.checked)}
-                  />{' '}
-                  Passive-honest (EQ cut-only)
-                </label>
                 <label title="Stopband leakage beside the crossover must stay ≥20 dB below the combined — cone-breakup phase cannot be filtered away, it can only be made irrelevant in level">
                   <input
                     type="checkbox"
@@ -4476,19 +4597,50 @@ export default function App() {
                   .join('  ·  ')}
               </p>
             )}
-            <div className="vf-grid">
-              <DriverFilterControls
-                title="Woofer / mid"
-                accentVar="--viz-woofer"
-                spec={vFilters.woofer}
-                onChange={(woofer) => setVFilters((p) => ({ ...p, woofer }))}
-              />
-              <DriverFilterControls
-                title="Tweeter"
-                accentVar="--viz-tweeter"
-                spec={vFilters.tweeter}
-                onChange={(tweeter) => setVFilters((p) => ({ ...p, tweeter }))}
-              />
+            <div className={`vf-panel${vfCollapsed ? '' : ' open'}`}>
+              <button
+                type="button"
+                className="vf-collapse-head"
+                aria-expanded={!vfCollapsed}
+                onClick={() => setVfCollapsed((c) => !c)}
+                title={
+                  vfCollapsed
+                    ? 'Show the per-driver filter bands (HP/LP/EQ)'
+                    : 'Hide the per-driver filter bands'
+                }
+              >
+                <span className="vf-collapse-caret">{vfCollapsed ? '▸' : '▾'}</span>
+                <span>Filter bands</span>
+                {vfCollapsed && (
+                  <span className="derived vf-collapse-summary">
+                    {vfBypass ? 'muted · ' : ''}
+                    {filterSummaryLine(vFilters.woofer, 'woofer')} — {filterSummaryLine(vFilters.tweeter, 'tweeter')}
+                  </span>
+                )}
+              </button>
+              {!vfCollapsed && synthMode === 'acoustic' && (
+                <p className="derived vf-mode-hint">
+                  Build mode is “Acoustic result”: EQ values here are seeds — a passive build
+                  re-tunes each enabled band's freq/gain/Q to flatten the measured driver.
+                  Switch to “Filter curve” to build exactly what you draw.
+                </p>
+              )}
+              {!vfCollapsed && (
+                <div className="vf-grid">
+                  <DriverFilterControls
+                    title="Woofer / mid"
+                    accentVar="--viz-woofer"
+                    spec={vFilters.woofer}
+                    onChange={(woofer) => setVFilters((p) => ({ ...p, woofer }))}
+                  />
+                  <DriverFilterControls
+                    title="Tweeter"
+                    accentVar="--viz-tweeter"
+                    spec={vFilters.tweeter}
+                    onChange={(tweeter) => setVFilters((p) => ({ ...p, tweeter }))}
+                  />
+                </div>
+              )}
             </div>
           </div>
 
@@ -4496,9 +4648,19 @@ export default function App() {
             <div className="panel">
               <h2>Passive synthesis</h2>
               <p className="sub" style={{ marginBottom: '0.8rem' }}>
-                Fit real component values (on the measured impedances) to the virtual target above.
+                {synthMode === 'filter'
+                  ? 'Builds YOUR drawn curve: the HP/LP knees and EQ bands above are the target, reproduced with real components on the measured impedances.'
+                  : 'Re-designs while building: real components are fitted so the MEASURED driver comes out flat against the ideal HP/LP shape. Enabled EQ bands only grant correction slots (their freq/gain/Q are re-tuned) — the result deliberately differs from the virtual sim above.'}
               </p>
               <div className="row" style={{ marginBottom: '0.9rem' }}>
+                <select
+                  value={synthMode}
+                  onChange={(e) => setSynthMode(e.target.value as 'filter' | 'acoustic')}
+                  title="What this build optimises for — same setting as the dropdown next to Optimize"
+                >
+                  <option value="acoustic">Acoustic result (flatten measured driver)</option>
+                  <option value="filter">Filter curve (reproduce target exactly)</option>
+                </select>
                 <button
                   type="button"
                   onClick={() => {
@@ -4514,14 +4676,12 @@ export default function App() {
                     }, 30);
                   }}
                   disabled={synthBusy}
-                  title="Fit real components to the virtual target and simulate it (lands in the Working tab) — for hand-made filters; Optimize does this automatically"
+                  title="Fit real components and simulate the result — lands in a new 'Passive build' tab on the Network page. Follow up with ⚙ Optimize components there to tune the assembled sum (phase!)."
                 >
                   Build passive filter
                 </button>
                 <span className="derived">
-                  optimises for "{synthMode === 'acoustic' ? 'Acoustic result' : 'Filter curve'}"
-                  (dropdown next to Optimize) · uses the priority setting from the Virtual filters
-                  panel
+                  uses the priority setting from ⚙ Settings
                 </span>
               </div>
               {synth?.error && <p className="error">{synth.error}</p>}
@@ -4586,132 +4746,188 @@ export default function App() {
               impedances. Inductors carry DCR, capacitors ESR. Drivers are a list (N-way ready);
               the summed result uses the mid/tweeter slots for now.
             </p>
-            <div className="row" style={{ marginBottom: '0.8rem' }}>
-              <button
-                type="button"
-                onClick={importNetworkFromVariant}
-                disabled={!project || xoName === 'none'}
-                title={project ? 'Open the selected crossover variant in a new tab' : 'Load a vxp project first'}
-              >
-                Import variant {xoName !== 'none' ? `(${xoName})` : ''}
-              </button>
-              <button
-                type="button"
-                onClick={startNetworkFromTemplate}
-                title="Start a fresh network in a new tab: generator + drivers, unfiltered — build your own from scratch"
-              >
-                New from template
-              </button>
-              <button
-                type="button"
-                onClick={exportActiveFilter}
-                disabled={!activeDesign}
-                title="Download the active tab as a standalone .adsfilter.json — share it or bring it into another project"
-              >
-                Export filter
-              </button>
-              <button
-                type="button"
-                onClick={exportActiveVxp}
-                disabled={designs.length === 0}
-                title="Export ALL network tabs as a VituixCAD project folder — the .vxp (each tab a crossover variant CROSSOVER, CROSSOVER1, …) PLUS every measurement/impedance file, written together so VituixCAD opens it without hunting. Pick a folder when asked (Chrome/Edge). VituixCAD reconstructs the phase itself (MinimumPhase=True) and the tweeter carries the measured inter-driver Δ as a Delay, so its simulation matches ours."
-              >
-                Export .vxp
-              </button>
-              <label className="file-button" title="Open an exported .adsfilter.json in a new tab">
-                Import filter
-                <input
-                  type="file"
-                  accept=".json,.adsfilter"
-                  onChange={importFilterFromFile}
-                  style={{ display: 'none' }}
-                />
-              </label>
-              <button
-                type="button"
-                onClick={exportCatalog}
-                title="Download the component catalog as an editable JSON template — add your own brands/series and import it back"
-              >
-                Export catalog
-              </button>
-              <label
-                className="file-button"
-                title="Import a component-catalog JSON: your series appear in the inspector next to the built-in ones (persisted across sessions)"
-              >
-                Import catalog
-                <input
-                  type="file"
-                  accept=".json,.adscatalog"
-                  onChange={importCatalogFromFile}
-                  style={{ display: 'none' }}
-                />
-              </label>
-              <button
-                type="button"
-                onClick={runNetOptimize}
-                disabled={!activeDesign || netOptBusy || !sim || zModels.length === 0}
-                title="Re-fit the UNLOCKED component values of the active tab against the measured response — 🔒 parts keep their value"
-              >
-                {netOptBusy ? 'Tuning…' : '⚙ Optimize components'}
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  setTrapModel(zModels[0] ?? 'mid');
-                  setTrapOpen(true);
-                }}
-                disabled={!activeDesign || zModels.length === 0}
-                title="Add an LCR notch (series trap across a driver) to tame a peak — enter frequency, depth and Q; values follow from the measured impedance and the result shows live"
-              >
-                ➕ Add notch
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  if (!activeDesign) return;
-                  const tidied = tidySchematic(activeDesign.parts);
-                  if (!tidied) {
-                    setNetOptNote(
-                      'Layout not tidied: topology too exotic for the auto-placer (bridge, shared series section, or open/shorted parts).',
-                    );
-                    return;
-                  }
-                  commitSchematic(tidied); // undo-able
-                  setNetOptNote('Layout tidied — same netlist, fresh placement (Undo to revert).');
-                }}
-                disabled={!activeDesign}
-                title="Redraw this schematic from its netlist: series path as a bus, chains hanging down, branches stacked with air — electrically identical, undo-able. Fixes cramped layouts from older exports."
-              >
-                Tidy layout
-              </button>
-              <button
-                type="button"
-                onClick={() => setShowTargets(true)}
-                title="What was this network built FOR? The virtual target design (HP/LP kind, order, knees, EQ bands) plus the MEASURED acoustic slopes beside the crossing — electrical component count never equals acoustic order."
-              >
-                🎯 Targets
-              </button>
-              {netOptNote && <span className="derived">{netOptNote}</span>}
-              <label title="Feed the active tab's network into the simulation instead of the selected vxp variant — every edit re-solves live">
-                <input
-                  type="checkbox"
-                  checked={networkActive}
-                  disabled={!schematic}
-                  onChange={(e) => setNetworkActive(e.target.checked)}
-                />{' '}
-                Use in simulation (replaces the vxp variant)
-              </label>
-              {designs.length > 1 && (
-                <label title="Show the other tabs' summed responses as dashed ghost curves in the SPL chart">
-                  <input
-                    type="checkbox"
-                    checked={compareTabs}
-                    onChange={(e) => setCompareTabs(e.target.checked)}
-                  />{' '}
-                  Compare tabs in SPL chart
-                </label>
-              )}
+            <div className="tool-groups" style={{ marginBottom: '0.8rem' }}>
+              <div className="tool-group">
+                <span className="tool-group-label">Start</span>
+                <div className="tool-group-body">
+                  <button
+                    type="button"
+                    onClick={importNetworkFromVariant}
+                    disabled={!project || xoName === 'none'}
+                    title={project ? 'Open the selected crossover variant in a new tab' : 'Load a vxp project first'}
+                  >
+                    Import variant {xoName !== 'none' ? `(${xoName})` : ''}
+                  </button>
+                  <label className="file-button" title="Open an exported .adsfilter.json in a new tab">
+                    Import filter
+                    <input
+                      type="file"
+                      accept=".json,.adsfilter"
+                      onChange={importFilterFromFile}
+                      style={{ display: 'none' }}
+                    />
+                  </label>
+                  <span
+                    className="template-picker"
+                    title="Start a fresh network in a new tab from a generic template — plausible starting values you tune from, the counterpart to Import and the optimizer"
+                  >
+                    <select
+                      value={templateWays}
+                      onChange={(e) => setTemplateWays(Number(e.target.value) as WayCount)}
+                      title="Number of ways. 3-way is coming with the N-way build."
+                    >
+                      <option value={2}>2-way</option>
+                      <option value={3} disabled>
+                        3-way (coming soon)
+                      </option>
+                    </select>
+                    <select
+                      value={templateOrder}
+                      onChange={(e) => setTemplateOrder(Number(e.target.value) as FilterOrder)}
+                      disabled={!supportsWayCount(templateWays)}
+                      title="Filter order / slope for both branches — generic Butterworth-style seed values"
+                    >
+                      {TEMPLATE_ORDERS.map((t) => (
+                        <option key={t.order} value={t.order}>
+                          {t.label}
+                        </option>
+                      ))}
+                    </select>
+                    <button
+                      type="button"
+                      onClick={startNetworkFromTemplate}
+                      disabled={!supportsWayCount(templateWays)}
+                    >
+                      New from template
+                    </button>
+                  </span>
+                </div>
+              </div>
+              <div className="tool-group">
+                <span className="tool-group-label">Export</span>
+                <div className="tool-group-body">
+                  <button
+                    type="button"
+                    onClick={exportActiveFilter}
+                    disabled={!activeDesign}
+                    title="Download the active tab as a standalone .adsfilter.json — share it or bring it into another project"
+                  >
+                    Export filter
+                  </button>
+                  <button
+                    type="button"
+                    onClick={exportActiveVxp}
+                    disabled={designs.length === 0}
+                    title="Export ALL network tabs as a VituixCAD project folder — the .vxp (each tab a crossover variant CROSSOVER, CROSSOVER1, …) PLUS every measurement/impedance file, written together so VituixCAD opens it without hunting. Pick a folder when asked (Chrome/Edge). VituixCAD reconstructs the phase itself (MinimumPhase=True) and the tweeter carries the measured inter-driver Δ as a Delay, so its simulation matches ours."
+                  >
+                    Export .vxp
+                  </button>
+                </div>
+              </div>
+              <div className="tool-group">
+                <span className="tool-group-label">Catalog</span>
+                <div className="tool-group-body">
+                  <button
+                    type="button"
+                    onClick={exportCatalog}
+                    title="Download the component catalog as an editable JSON template — add your own brands/series and import it back"
+                  >
+                    Export
+                  </button>
+                  <label
+                    className="file-button"
+                    title="Import a component-catalog JSON: your series appear in the inspector next to the built-in ones (persisted across sessions)"
+                  >
+                    Import
+                    <input
+                      type="file"
+                      accept=".json,.adscatalog"
+                      onChange={importCatalogFromFile}
+                      style={{ display: 'none' }}
+                    />
+                  </label>
+                </div>
+              </div>
+              <div className="tool-group">
+                <span className="tool-group-label">Tools</span>
+                <div className="tool-group-body">
+                  <button
+                    type="button"
+                    onClick={runNetOptimize}
+                    disabled={!activeDesign || netOptBusy || !sim || zModels.length === 0}
+                    title="Re-fit the UNLOCKED component values of the active tab against the measured response — 🔒 parts keep their value"
+                  >
+                    {netOptBusy ? 'Tuning…' : '⚙ Optimize components'}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setTrapModel(zModels[0] ?? 'mid');
+                      setTrapOpen(true);
+                    }}
+                    disabled={!activeDesign || zModels.length === 0}
+                    title="Add an LCR notch (series trap across a driver) to tame a peak — enter frequency, depth and Q; values follow from the measured impedance and the result shows live"
+                  >
+                    ➕ Add notch
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (!activeDesign) return;
+                      const tidied = tidySchematic(activeDesign.parts);
+                      if (!tidied) {
+                        setNetOptNote(
+                          'Layout not tidied: topology too exotic for the auto-placer (bridge, shared series section, or open/shorted parts).',
+                        );
+                        return;
+                      }
+                      commitSchematic(tidied); // undo-able
+                      setNetOptNote('Layout tidied — same netlist, fresh placement (Undo to revert).');
+                    }}
+                    disabled={!activeDesign}
+                    title="Redraw this schematic from its netlist: series path as a bus, chains hanging down, branches stacked with air — electrically identical, undo-able. Fixes cramped layouts from older exports."
+                  >
+                    Tidy layout
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setShowTargets(true)}
+                    title="What was this network built FOR? The virtual target design (HP/LP kind, order, knees, EQ bands) plus the MEASURED acoustic slopes beside the crossing — electrical component count never equals acoustic order."
+                  >
+                    🎯 Targets
+                  </button>
+                </div>
+              </div>
+              <div className="tool-group">
+                <span className="tool-group-label">Simulation</span>
+                <div className="tool-group-body">
+                  <label title="Feed the active tab's network into the simulation instead of the selected vxp variant — every edit re-solves live">
+                    <input
+                      type="checkbox"
+                      checked={networkActive}
+                      disabled={!schematic}
+                      onChange={(e) => setNetworkActive(e.target.checked)}
+                    />{' '}
+                    Use in simulation
+                  </label>
+                  {designs.length > 1 && (
+                    <label title="Show the other tabs' summed responses as dashed ghost curves in the SPL chart">
+                      <input
+                        type="checkbox"
+                        checked={compareTabs}
+                        onChange={(e) => setCompareTabs(e.target.checked)}
+                      />{' '}
+                      Compare tabs
+                    </label>
+                  )}
+                </div>
+              </div>
             </div>
+            {netOptNote && (
+              <p className="derived" style={{ margin: '0 0 0.8rem' }}>
+                {netOptNote}
+              </p>
+            )}
             {designs.length > 0 && (
               <div className="design-tabs">
                 {designs.map((d) => (
@@ -4725,15 +4941,32 @@ export default function App() {
                   />
                 ))}
                 {saveNameDraft === null ? (
-                  <button
-                    type="button"
-                    className="design-tab-dup"
-                    onClick={() => setSaveNameDraft(uniqueDesignName('Filter', designs))}
-                    disabled={!activeDesignId}
-                    title="Snapshot the active tab into memory under a name — keep tweaking here, compare against the saved one"
-                  >
-                    💾 Save filter
-                  </button>
+                  <>
+                    <button
+                      type="button"
+                      className="design-tab-dup"
+                      onClick={overwriteLastSaved}
+                      disabled={!activeDesignId || !lastSavedId || lastSavedId === activeDesignId}
+                      title={
+                        lastSavedId && lastSavedId !== activeDesignId
+                          ? `Overwrite "${designs.find((d) => d.id === lastSavedId)?.name ?? ''}" with the active design and switch to it`
+                          : lastSavedId === activeDesignId && lastSavedId !== null
+                            ? 'This IS the saved filter — edits are live, nothing to save'
+                            : 'No saved filter yet — use Save as new first'
+                      }
+                    >
+                      💾 Save
+                    </button>
+                    <button
+                      type="button"
+                      className="design-tab-dup"
+                      onClick={() => setSaveNameDraft(uniqueDesignName('Filter', designs))}
+                      disabled={!activeDesignId}
+                      title="Save the active design under a NEW name and switch to that saved tab — the tab you came from stays as a ghost to compare against"
+                    >
+                      Save as new
+                    </button>
+                  </>
                 ) : (
                   <span className="design-tab-savename">
                     <input
@@ -4945,18 +5178,23 @@ export default function App() {
                 <div className="score-strip">
                   <span className="strip-label">Acoustic integration</span>
                   <span
-                    className="strip-score"
-                    title="Summing efficiency 0–100: overlap-weighted cos(ε/2). 100 = every overlapping point sums perfectly, ~71 = everything at 90°."
+                    className={`strip-score ${
+                      integration.score >= 90 ? 'ok' : integration.score >= 75 ? 'warn' : 'bad'
+                    }`}
+                    title="Summing sanity 0–100: overlap-weighted cos(ε/2) — how well the drivers add up as ONE source. High is NORMAL (45° error still scores 92); it only drops when the drivers actively fight: wrong polarity, a timing fault, or a crossover in a phase null. Green = summing healthy; steer the design on Flatness and Phase flatness."
                   >
                     {integration.score.toFixed(0)}
                   </span>
                   {combinedRippleDb !== null && (
-                    <span
-                      className="strip-item"
-                      title="Combined SPL flatness over the currently VISIBLE frequency range (zoom the SPL chart and this follows) — ± half the peak-to-peak deviation of the summed response. The amplitude side of integration: even a perfect summing score shows ripple here when the drivers' own responses aren't flat."
-                    >
-                      ±{combinedRippleDb.toFixed(1)} dB
-                    </span>
+                    <>
+                      <span className="strip-label">Flatness</span>
+                      <span
+                        className="strip-score"
+                        title="Combined SPL flatness over the currently VISIBLE frequency range (zoom the SPL chart and this follows) — ± half the peak-to-peak deviation of the summed response. The amplitude side of integration, and the number that discriminates between designs: even a perfect summing score shows ripple here when the drivers' own responses aren't flat."
+                      >
+                        ±{combinedRippleDb.toFixed(1)} dB
+                      </span>
+                    </>
                   )}
                   <span
                     className="strip-item"

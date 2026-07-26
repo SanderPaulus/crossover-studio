@@ -133,7 +133,7 @@ function EqRow({
     <div className="vf-row">
       <label
         className="check vf-enable"
-        title="Enable this EQ band — note: passive synthesis cannot boost, positive gains fall away when building"
+        title="Enable this EQ band — cut only (≤ 0 dB): a passive network cannot boost"
       >
         <input
           type="checkbox"
@@ -145,7 +145,7 @@ function EqRow({
       <select
         value={band.type ?? 'peak'}
         onChange={(e) => onChange({ ...band, type: e.target.value as EqBandType })}
-        title="Peak cuts/boosts around the frequency; shelves apply the gain below (low) or above (high) it"
+        title="Peak cuts around the frequency; shelves apply the cut below (low) or above (high) it — lowering everything except a band is how passive 'lifts' it"
       >
         <option value="peak">Peak</option>
         <option value="lowShelf">Low shelf</option>
@@ -156,14 +156,14 @@ function EqRow({
         onChange={(freq) => onChange({ ...band, freq })}
         help="Centre frequency of this band — also draggable as the solid dot on the SPL chart"
       />
-      <label className="inline-num" title="Gain: − cuts, + boosts (passive builds can only cut)">
+      <label className="inline-num" title="Gain (cut only): a passive network cannot boost, so EQ bands may only attenuate (≤ 0 dB). Lower the level of the rest to lift a band.">
         <input
           type="number"
           step={0.5}
           min={-20}
-          max={12}
+          max={0}
           value={band.gainDb}
-          onChange={(e) => onChange({ ...band, gainDb: Number(e.target.value) })}
+          onChange={(e) => onChange({ ...band, gainDb: Math.min(0, Number(e.target.value)) })}
         />
         <span className="unit-suffix">dB</span>
       </label>
@@ -230,16 +230,16 @@ export default function DriverFilterControls({ title, accentVar, spec, onChange 
         </button>
         <label
           className="inline-num"
-          title="Overall gain of this driver branch — the synthesis turns level differences into attenuation of the loudest branch"
+          title="Overall level of this driver branch (attenuation only, ≤ 0 dB — passive networks cannot amplify): pad the louder driver down to balance"
         >
           Gain
           <input
             type="number"
             step={0.5}
             min={-30}
-            max={12}
+            max={0}
             value={spec.gainDb}
-            onChange={(e) => onChange({ ...spec, gainDb: Number(e.target.value) })}
+            onChange={(e) => onChange({ ...spec, gainDb: Math.min(0, Number(e.target.value)) })}
           />
           <span className="unit-suffix">dB</span>
         </label>

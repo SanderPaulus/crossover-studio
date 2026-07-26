@@ -111,7 +111,9 @@
       "Bash(awk '/<Type>Wire</{p=1; print \"--- Wire part ---\"} p{print} /<\\\\/PART>/{if\\(p\\){c++; p=0}} c>=2{exit}' \"src/lib/parsers/fixtures/KOAN 2951 Prototype 140826.vxp\")",
       "Bash(xxd '/Users/sandersomers/UTM - Shared Folder/Speaker Robbert/231226Rear12W8524-R2604-832.vxp')",
       "Bash(awk '/<Type>Inductor</{p=1} p{print} /<\\\\/PART>/{if\\(p\\)exit}' '/Users/sandersomers/UTM - Shared Folder/Speaker Robbert/231226Rear12W8524-R2604-832.vxp')",
-      "Bash(git commit -m ' *)"
+      "Bash(git commit -m ' *)",
+      "Bash(awk 'NR>=4281 && NR<=4500 && index\\($0,\"opt-settings\"\\)==0 && $0 ~ /^            \\\\\\)\\\\}/ {print NR\": \"$0; exit}' src/App.tsx)",
+      "Bash(grep -n \"setActiveDesignId\\(\\\\s*$\\\\|d.activeDesignId\" src/App.tsx)"
     ]
   }
 }

@@ -52,6 +52,8 @@ export interface ProjectDesign {
   /** Optional: network-editor tabs (step 6) and which one is active. */
   networkDesigns?: NetworkDesign[];
   activeDesignId?: string;
+  /** Target of the "💾 Save" (overwrite) button — the last saved filter tab. */
+  lastSavedDesignId?: string;
   /** Legacy (pre-tabs): single editable schematic — migrated to one tab on load. */
   schematic?: VxpCrossover;
   networkActive?: boolean;

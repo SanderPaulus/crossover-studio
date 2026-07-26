@@ -266,6 +266,18 @@ body {
   cursor: help;
 }
 
+/* Integration score = sanity light: green is the normal state, colour only
+   shifts when the drivers actively fight (polarity/timing/null). */
+.score-strip .strip-score.ok {
+  color: var(--ok);
+}
+.score-strip .strip-score.warn {
+  color: var(--warn);
+}
+.score-strip .strip-score.bad {
+  color: var(--bad);
+}
+
 .panel-toggles {
   display: flex;
   flex-wrap: wrap;
@@ -483,6 +495,111 @@ h1 {
   gap: 1rem;
   align-items: center;
   flex-wrap: wrap;
+}
+
+/* Toolbar segmentation: small labelled clusters instead of one long button row.
+   The label is a muted caption; the body wraps its controls on one baseline. */
+.tool-groups {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+  align-items: stretch;
+}
+.tool-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  padding: 0.45rem 0.6rem 0.55rem;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg);
+}
+.tool-group-label {
+  font-size: 0.62rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.09em;
+  color: var(--muted);
+  user-select: none;
+}
+.tool-group-body {
+  display: flex;
+  gap: 0.45rem;
+  align-items: center;
+  flex-wrap: wrap;
+  flex: 1;
+}
+.tool-group-body label {
+  flex-direction: row;
+  align-items: center;
+  gap: 0.35rem;
+}
+/* File-picker labels keep their caption-above-input stacking. */
+.tool-group-body.files label {
+  flex-direction: column;
+  align-items: flex-start;
+}
+.template-picker {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+}
+
+/* Collapsible header for the per-driver filter-band editor. */
+.vf-collapse-head {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  width: 100%;
+  text-align: left;
+  padding: 0.5rem 0.7rem;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--fg);
+}
+.vf-collapse-head:hover {
+  border-color: var(--accent);
+}
+.vf-collapse-caret {
+  color: var(--muted);
+  font-size: 0.8rem;
+  width: 0.9rem;
+}
+.vf-collapse-summary {
+  font-weight: 400;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Expanded: header + driver grid read as one bounded card (matches the
+   optimizer-settings treatment). The header becomes the card's title bar. */
+.vf-panel.open {
+  border: 1px solid var(--accent);
+  border-radius: 10px;
+  background: var(--bg);
+  overflow: hidden;
+}
+.vf-panel.open .vf-collapse-head {
+  border: none;
+  border-bottom: 1px solid var(--border);
+  border-radius: 0;
+  background: transparent;
+}
+.vf-panel.open .vf-collapse-head:hover {
+  border-color: var(--border);
+  color: var(--accent);
+}
+.vf-panel.open .vf-grid {
+  padding: 1.1rem;
+}
+.vf-panel.open .vf-mode-hint {
+  margin: 0;
+  padding: 0.7rem 1.1rem 0;
+  font-size: 0.8rem;
 }
 
 label {
@@ -756,6 +873,25 @@ h2 {
 .active-toggle {
   border-color: var(--accent);
   color: var(--accent);
+}
+
+/* Optimizer settings: one bounded card when expanded, so it reads as a single
+   unit distinct from the toolbar above it. */
+.opt-settings {
+  border: 1px solid var(--accent);
+  border-radius: 10px;
+  background: var(--bg);
+  padding: 1rem 1.1rem 1.1rem;
+  row-gap: 1.1rem;
+}
+.opt-settings-cap {
+  flex-basis: 100%;
+  font-size: 0.62rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.09em;
+  color: var(--muted);
+  margin-bottom: -0.3rem;
 }
 
 /* Schematic editor (network editor, step 6). */
