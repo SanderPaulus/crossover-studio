@@ -1187,9 +1187,15 @@ export function optimizeNetworkValues(
         !opts.staged ||
         mCur.ripplePeakDb > opts.staged.rippleDb || // weren't met before either
         (mRep.ripplePeakDb <= opts.staged.rippleDb && mRep.phaseDeg <= opts.staged.phaseDeg);
+      // Quality bar: within the prune-doctrine 10% of the (amp-hostile) tuned
+      // optimum — OR simply better than the SEED. The second arm matters:
+      // when the response-optimum genuinely needs the low-Z realisation, a
+      // repair beyond 10% still beats rejecting the whole tune back to the
+      // seed (measured on the crude template: tuner → 1.5 Ω dip, repair
+      // outside 10%, and the safety gate then threw the entire tune away).
       const ok =
         mRep.zShortOhm < mCur.zShortOhm - 0.1 &&
-        rep.fx <= cur.fx * 1.1 &&
+        (rep.fx <= cur.fx * 1.1 || rep.fx <= fxOrig) &&
         targetsKept &&
         mRep.protSqDb <= mCur.protSqDb + 0.5 &&
         mRep.xoDipDb <= mCur.xoDipDb + 1 &&
