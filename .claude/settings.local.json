@@ -117,7 +117,9 @@
       "Bash(git config *)",
       "Bash(git commit *)",
       "Bash(grep -n \"SchematicEditor$\\\\|<SchematicEditor\" src/App.tsx)",
-      "Bash(grep -n \"vfProgress.label ?? \\\\`round\" src/App.tsx)"
+      "Bash(grep -n \"vfProgress.label ?? \\\\`round\" src/App.tsx)",
+      "Bash(git diff-index *)",
+      "Bash(git check-ignore *)"
     ]
   }
 }

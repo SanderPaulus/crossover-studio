@@ -7,7 +7,7 @@ minimum phase reconstrueert. Voertaal met Sander: **Nederlands**; code/comments 
 ## Commands
 
 - `npm run dev` — dev-server via de Browser-pane tool (`preview_start {name:"dev"}`), poort 5173
-- `npx vitest run` — testsuite (294 tests, allemaal groen houden)
+- `npx vitest run` — testsuite (296 tests, allemaal groen houden)
 - `npm run build` / `npx tsc -b` — build & typecheck (tsconfig.test.json dekt de tests, Node-types)
 - Na elke wijziging: typecheck + tests + build draaien; UI-wijzigingen in de Browser-pane verifiëren
 
@@ -638,6 +638,20 @@ wordt puur een import-optie, niets hangt er meer van af. Gefaseerd:
   NB: het kale crude-testnet zónder pad is een ander geval — daar is starven de enige
   niveauregeling van de 5–10 dB hetere tweeter en bestaat er geen beter waardenbekken; de
   vallei-metric vuurt daar terecht niet (vlak-op-mid-niveau = trap noch vallei).
+  **Versterker-vloer (jul 2026, Robbert→Sanders "niet onder de 3 Ω"; `Z_FLOOR_OHM`)**: systeem-
+  |Zin| < 3 Ω is een stille fout (spanningssturing: onzichtbaar in élke responsmetriek, alleen
+  de versterker voelt hem — bv. een trap/Zobel-R vlak bij de ingang). Handhaving UITSLUITEND
+  op beslisniveau: `zShortOhm` in de metrics, gates (prune/escalatie/challenge/krimpladder,
+  slack +0,1/+0,3), full-grid safety-gate-reden, en een REPARATIE-pass vóór de snap (lokaal
+  geseedde barrière-retune à la doel-barrière; alleen geaccepteerd bij echte lift + respons
+  binnen 10% + fundamentals intact; anders `ampFloorNote`-waarschuwing, UI toont hem naast de
+  snap-notes). **HARD GELEERD (de anker-les nóg een keer, nu gemeten op het pad zelf)**: een
+  fx-term van amper 0,065 op het relevante optimum (2,93 Ω net onder de vloer) stuurde de
+  deterministische simplex op het notch-testnet een 6 dB slechter bekken in (8,0 → 14,5 dB
+  rimpel) — élke objective-toevoeging verlegt het zoekpad, hoe klein ook; ook "vuurt alleen in
+  gedegenereerd gebied" is niet veilig als de grens in normaal gebied ligt. Regressietests:
+  respons-invariante 2 Ω-shunt-R over de ingang wordt gerepareerd (>2,8 Ω), gezond netwerk
+  raakt de reparatie-pass nooit aan, en de plain tune is bit-identiek aan vóór de feature.
   **Serie-pad-realisme-plafond (jul 2026, Sanders 91 µF-B·C1)**: de tuner parkeerde waardes
   in de HOEKEN van de bouwbaarheidsdoos (91 µF serie-cap ≙ 0,87 Ω bij 2 kHz = draadje-met-
   extra-stappen, vlak onder het 100 µF-plafond; alleen als elco te koop). `SERIES_CEIL`
