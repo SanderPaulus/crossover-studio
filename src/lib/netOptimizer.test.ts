@@ -609,7 +609,7 @@ describe('dead-branch fundamentals & full-band safety gate', () => {
   });
 });
 
-describe('amplifier-load floor (system Z ≥ 3 Ω fundamental)', () => {
+describe('amplifier-load floor (system Z ≥ 2.5 Ω fundamental)', () => {
   /** System |Zin| minimum of a parts array, straight from the solver. */
   const zMinOf = (parts: readonly VxpPart[]): number => {
     const { netlist } = crossoverToNetlist({ name: 'zmin', parts: [...parts] });
@@ -639,9 +639,9 @@ describe('amplifier-load floor (system Z ≥ 3 Ω fundamental)', () => {
     const r = optimizeNetworkValues(seed, grid, wBase, tBase, driverZ, NO_ADJ, {
       phasePriority: 0.3,
     });
-    // The repair must lift the dip (essentially) back to the floor; 2.8
-    // allows the barrier's soft tail near 3.0.
-    expect(zMinOf(r.parts)).toBeGreaterThan(2.8);
+    // The repair must lift the dip (essentially) back to the 2.5 Ω floor;
+    // 2.3 allows the barrier's soft tail plus the 0.15 acceptance tolerance.
+    expect(zMinOf(r.parts)).toBeGreaterThan(2.3);
     expect(r.ampFloorNote).toContain('lifted');
     // …without buying it with response quality.
     expect(r.after.rippleDb).toBeLessThanOrEqual(r.before.rippleDb + 1e-9);
