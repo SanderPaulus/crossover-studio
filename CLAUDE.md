@@ -7,7 +7,7 @@ minimum phase reconstrueert. Voertaal met Sander: **Nederlands**; code/comments 
 ## Commands
 
 - `npm run dev` — dev-server via de Browser-pane tool (`preview_start {name:"dev"}`), poort 5173
-- `npx vitest run` — testsuite (307 tests, allemaal groen houden)
+- `npx vitest run` — testsuite (312 tests, allemaal groen houden)
 - `npm run build` / `npx tsc -b` — build & typecheck (tsconfig.test.json dekt de tests, Node-types)
 - Na elke wijziging: typecheck + tests + build draaien; UI-wijzigingen in de Browser-pane verifiëren
 
