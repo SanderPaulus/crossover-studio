@@ -256,7 +256,7 @@ export const HELP_SECTIONS: HelpSection[] = [
     title: '🧙 Wizard, catalogus & componenten',
     keywords: [
       'wizard', 'catalog', 'catalogus', 'tier', 'premium', 'budget', 'positie', 'stapelen', 'stacks',
-      'jantzen', 'mundorf', 'prijzen', 'snap', 'serie', 'merk',
+      'jantzen', 'mundorf', 'prijzen', 'snap', 'serie', 'merk', 'manage', 'beheer', 'sku',
     ],
     blocks: [
       {
@@ -273,6 +273,7 @@ export const HELP_SECTIONS: HelpSection[] = [
           '**Merk/serie per soort** (L/C/R) is bindend voor de snap, maar begrenst geen waardes: dekt de voorkeursserie een waarde niet, dan zakt de keuze door naar de volgende serie in plaats van een verkeerde waarde te forceren.',
           '**Stapelen**: een gevraagde waarde die niet als één onderdeel bestaat mag als 2-delige stapel (spoelen in serie, caps parallel) — maar alleen als het beste enkele onderdeel echt tekortschiet, en de note meldt wat singles-only zou kosten aan fit en euro’s.',
           '**Eigen catalogus**: exporteer de template (JSON), vul eigen merken/series/SKU’s met prijzen, en importeer terug. Een import met een bestaand serie-id overschrijft de ingebouwde versie — zo landen prijs-updates.',
+          '**🗂 Manage… (catalogusbeheer)**: SKU’s toevoegen, bewerken en verwijderen zonder de app te verlaten — waardes (mH/µF/Ω), DCR/ESR, draaddikte, prijs en tier, met dezelfde validatie als de import. Wijzigingen blijven in het paneel tot je op **Save** drukt; daarna gebruiken snap, BOM en inspector ze meteen. Let op: de éérste exacte SKU van een merk+serie verbergt het gegenereerde waarderooster van die serie — voer dan de hele reeks in.',
           'De snap schrijft zijn keuze op het component, dus de BOM toont exact het gekozen SKU — ook bij vijfvoudig ambigue waardes als 10 µF.',
         ],
       },

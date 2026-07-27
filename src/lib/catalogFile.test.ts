@@ -33,6 +33,21 @@ describe('catalog exchange format', () => {
     expect(top[0].value).toBeCloseTo(10e-6, 9);
   });
 
+  it('roundtrips exact SKUs with their MEASURED seriesR intact', () => {
+    // Regression: serialize writes CatalogPart.seriesR, but the reader only
+    // knew dcr/esr — an export→reimport cycle silently replaced measured
+    // DCR/ESR with estimates. The manager re-saves, so fidelity is a must.
+    const parts = [
+      // Measured DCR far from the 1.4 mm air-core estimate (~0.29 Ω @ 1 mH).
+      { id: 'X-L-100', brand: 'X', series: 'Coil', kind: 'L' as const, value: 1e-3, seriesR: 0.62, wireMm: 0.7, priceEur: 3.4 },
+      // Measured ESR ≠ the 0.02 default.
+      { id: 'X-C-100', brand: 'X', series: 'Cap', kind: 'C' as const, value: 10e-6, seriesR: 0.011, tier: 'premium' as const },
+      { id: 'X-R-1R0', brand: 'X', series: 'Res', kind: 'R' as const, value: 1, seriesR: 0, powerW: 10 },
+    ];
+    const back = deserializeCatalog(serializeCatalog([], parts));
+    expect(back.parts).toEqual(parts);
+  });
+
   it('rejects malformed files with clear errors', () => {
     expect(() => deserializeCatalog('nope')).toThrow(/JSON/);
     expect(() => deserializeCatalog('{"format":"x"}')).toThrow(/catalog file/);

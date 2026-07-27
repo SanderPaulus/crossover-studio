@@ -1930,3 +1930,96 @@ button:disabled {
 .wizard-foot .primary:disabled {
   opacity: 0.5;
 }
+
+/* Catalog manager: wide overlay card — staged SKU table + edit form. */
+.catmgr-card {
+  width: min(62rem, 94vw);
+  max-width: none;
+  height: min(84vh, 48rem);
+  gap: 0.5rem;
+}
+.catmgr-card .help-head select {
+  padding: 0.3rem 0.4rem;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg);
+  color: var(--fg);
+  font-size: 0.85rem;
+}
+.catmgr-tablewrap {
+  flex: 1;
+  min-height: 8rem;
+  width: 100%;
+  overflow: auto;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 0 0.6rem;
+}
+.catmgr-table {
+  width: 100%;
+  margin: 0;
+}
+.catmgr-table thead th {
+  position: sticky;
+  top: 0;
+  background: var(--panel);
+  z-index: 1;
+  padding-top: 0.4rem;
+}
+.catmgr-table tr.editing td {
+  color: var(--accent);
+}
+.catmgr-actions {
+  white-space: nowrap;
+}
+.catmgr-actions button {
+  padding: 0.1rem 0.35rem;
+  margin-right: 0.25rem;
+  font-size: 0.8rem;
+}
+.catmgr-form {
+  width: 100%;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 0.6rem 0.8rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+}
+.catmgr-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(9rem, 1fr));
+  gap: 0.5rem 0.8rem;
+}
+.catmgr-grid label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  font-size: 0.75rem;
+  color: var(--muted);
+}
+.catmgr-grid input,
+.catmgr-grid select {
+  padding: 0.3rem 0.45rem;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--bg);
+  color: var(--fg);
+  font-size: 0.85rem;
+}
+.catmgr-shadow {
+  margin: 0;
+}
+.catmgr-formbtns {
+  display: flex;
+  gap: 0.5rem;
+}
+.catmgr-footer {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  width: 100%;
+}
+.catmgr-footer .sub {
+  color: var(--warn, #d90);
+}

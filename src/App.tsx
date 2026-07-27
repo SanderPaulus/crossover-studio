@@ -16,6 +16,7 @@ import {
 } from './lib/schematicEdit.ts';
 import SchematicEditor from './components/SchematicEditor.tsx';
 import { HelpPanel } from './components/HelpPanel.tsx';
+import { CatalogManager } from './components/CatalogManager.tsx';
 import { helpSectionForTab } from './lib/help.ts';
 import {
   filterTemplate,
@@ -33,9 +34,11 @@ import {
   bomFor,
   catalogSeries,
   customCatalogParts,
+  customSeries,
   formatCatalogPart,
   hasImportedCatalog,
   setCustomSeries,
+  type CatalogPart,
   type SnapPrefs,
 } from './lib/catalog.ts';
 import {
@@ -657,6 +660,7 @@ export default function App() {
   const [wizardStep, setWizardStep] = useState(1);
   /** In-app manual; opens on the section matching the active design tab. */
   const [helpOpen, setHelpOpen] = useState(false);
+  const [catalogMgrOpen, setCatalogMgrOpen] = useState(false);
   const [snapProfile, setSnapProfile] = useState('auto');
   const [snapSeriesL, setSnapSeriesL] = useState('auto');
   const [snapSeriesC, setSnapSeriesC] = useState('auto');
@@ -2349,6 +2353,24 @@ export default function App() {
     URL.revokeObjectURL(a.href);
   }
 
+  /** Commit the catalog manager's edited SKU list: same persistence path as
+   *  a file import (custom series ride along unchanged). */
+  function saveCatalogParts(parts: CatalogPart[]) {
+    const series = customSeries();
+    setCustomSeries(series, parts);
+    if (series.length === 0 && parts.length === 0) {
+      // An empty custom catalog would be rejected on the next load — built-ins
+      // take over, so drop the stored blob instead of persisting an invalid one.
+      localStorage.removeItem(CUSTOM_CATALOG_KEY);
+    } else {
+      localStorage.setItem(CUSTOM_CATALOG_KEY, serializeCatalog(series, parts));
+    }
+    setPersistNote(
+      `Catalog updated — ${parts.length} exact SKUs active (snap, BOM and inspector use them)`,
+    );
+    setCatalogMgrOpen(false);
+  }
+
   async function importCatalogFromFile(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -3017,6 +3039,9 @@ export default function App() {
       )}
       {helpOpen && (
         <HelpPanel initialId={helpSectionForTab(designTab)} onClose={() => setHelpOpen(false)} />
+      )}
+      {catalogMgrOpen && (
+        <CatalogManager onClose={() => setCatalogMgrOpen(false)} onSave={saveCatalogParts} />
       )}
       {wizardOpen && (
         <div className="busy-overlay" onClick={() => setWizardOpen(false)}>
@@ -4111,6 +4136,13 @@ export default function App() {
               >
                 Export catalog
               </button>
+              <button
+                type="button"
+                onClick={() => setCatalogMgrOpen(true)}
+                title="Add, edit or remove exact SKUs (values, DCR/ESR, prices, tiers) without leaving the app — saved to the same catalog the optimizer and BOM use"
+              >
+                🗂 Manage…
+              </button>
               <span className="derived">
                 {allSeries().length} series
                 {customCatalogParts().length > 0 && ` · ${customCatalogParts().length} exact parts`}
@@ -5044,6 +5076,13 @@ export default function App() {
                       style={{ display: 'none' }}
                     />
                   </label>
+                  <button
+                    type="button"
+                    onClick={() => setCatalogMgrOpen(true)}
+                    title="Add, edit or remove exact SKUs (values, DCR/ESR, prices, tiers) without leaving the app"
+                  >
+                    🗂 Manage…
+                  </button>
                 </div>
               </div>
               <div className="tool-group">

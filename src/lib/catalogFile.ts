@@ -170,8 +170,11 @@ export function deserializeCatalog(text: string): CatalogImport {
       throw new CatalogFileError(`Component "${id}": tier must be budget, standard or premium.`);
     }
     const gauge = c['gauge'] ?? c['wireMm'];
-    const dcr = c['dcr'];
-    const esr = c['esr'];
+    // `seriesR` is our own serialized spelling (CatalogPart) — without it a
+    // save/export→reimport cycle silently replaces measured DCR/ESR with
+    // estimates (roundtrip fidelity matters now the in-app manager re-saves).
+    const dcr = c['dcr'] ?? c['seriesR'];
+    const esr = c['esr'] ?? c['seriesR'];
     const price = c['price'] ?? c['priceEur'];
     const powerW = c['powerW'];
     const num = (v: unknown): number | undefined =>

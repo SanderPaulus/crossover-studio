@@ -120,7 +120,8 @@
       "Bash(grep -n \"vfProgress.label ?? \\\\`round\" src/App.tsx)",
       "Bash(git diff-index *)",
       "Bash(git check-ignore *)",
-      "Bash(Z_DEBUG=1 npx vitest run src/lib/__zapp.test.ts)"
+      "Bash(Z_DEBUG=1 npx vitest run src/lib/__zapp.test.ts)",
+      "Bash(grep -n \"Export catalog\\\\|Export$\\\\|catalogMgrOpen\\\\|helpOpen &&\" \"/Users/sandersomers/SD Acoustics/Design Studio/src/App.tsx\")"
     ]
   }
 }

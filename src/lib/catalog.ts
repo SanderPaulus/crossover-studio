@@ -363,6 +363,17 @@ export function customCatalogParts(): CatalogPart[] {
   return customParts;
 }
 
+/** The generated-grid series definition (built-in or imported) covering a
+ *  brand+series, if any. The catalog manager uses it to warn that a FIRST
+ *  exact SKU for such a series shadows the entire generated grid. */
+export function gridSeriesFor(brand: string, series: string): CatalogSeries | undefined {
+  const overridden = new Set(custom.map((s) => s.id));
+  const key = seriesKey(brand, series);
+  return [...SERIES.filter((s) => !overridden.has(s.id)), ...custom].find(
+    (s) => seriesKey(s.brand, s.series) === key,
+  );
+}
+
 /** True once the user has imported a real catalog (flat SKUs or series).
  *  Snap-to-catalog is only meaningful then: without an import the only
  *  "catalog" is the built-in estimated grid, and Sander's rule is to keep

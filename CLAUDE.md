@@ -7,7 +7,7 @@ minimum phase reconstrueert. Voertaal met Sander: **Nederlands**; code/comments 
 ## Commands
 
 - `npm run dev` — dev-server via de Browser-pane tool (`preview_start {name:"dev"}`), poort 5173
-- `npx vitest run` — testsuite (296 tests, allemaal groen houden)
+- `npx vitest run` — testsuite (307 tests, allemaal groen houden)
 - `npm run build` / `npx tsc -b` — build & typecheck (tsconfig.test.json dekt de tests, Node-types)
 - Na elke wijziging: typecheck + tests + build draaien; UI-wijzigingen in de Browser-pane verifiëren
 
@@ -323,6 +323,19 @@ minimum phase reconstrueert. Voertaal met Sander: **Nederlands**; code/comments 
   behouden); MRES-3R3-fixturetest bijgewerkt 14,50→24,90. Het BOM-totaal wordt gedomineerd door
   de premium-spoelen/-caps (nu accuraat); de tail is indicatief. Reprice-script staat in de
   scratchpad, niet in de repo.
+  **🗂 Catalog manager (jul 2026, Sanders "beheer tool voor het catalogus-bestand")**:
+  in-app SKU-beheer — toevoegen/bewerken/verwijderen zonder de export→handmatig-editen→import-
+  lus (de bron van de losse-quote/decade-gat/schattingsprijs-incidenten). `catalogManager.ts`
+  (upsertSku/removeSku/skuError/gridShadowNote + display-unit-helpers mH/µF/Ω, unit-getest) +
+  `CatalogManager.tsx` (overlay à la HelpPanel: gefilterde SKU-tabel, edit-form met dezelfde
+  validatie als de import, staged draft — niets raakt de live catalogus tot **Save**; dirty-
+  close vraagt bevestiging). Save = zelfde persistentie-pad als import (setCustomSeries +
+  localStorage); knop "🗂 Manage…" in beide Catalog-groepen (Import- én Network-tab).
+  `gridSeriesFor` in catalog.ts voedt de waarschuwing dat de éérste exacte SKU van een
+  merk+serie het gegenereerde rooster schaduwt. **Roundtrip-fix als fundament**:
+  deserializeCatalog las alleen dcr/esr terug terwijl serializeCatalog `seriesR` schrijft —
+  export→reimport verving gemeten DCR/ESR stilletjes door schattingen; leest nu ook seriesR
+  (regressietest). Form-reset houdt brand/serie/tier vast (serie-reeksen invoeren).
   **🧙 Component wizard (knop naast ⚙ Settings)**: kwaliteitsprofiel (Auto / Positie =
   Sanders doctrine serie-pad premium·shunt budget / Budget / Balanced / Premium) + BINDENDE
   merk/serie-keuze per soort (L/C/R, Auto = vrij) — gepersisteerd, gevoed aan beide snaps via
