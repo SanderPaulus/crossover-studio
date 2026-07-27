@@ -2,13 +2,18 @@ import { afterEach, describe, expect, it } from 'vitest';
 import type { CatalogPart } from './catalog.ts';
 import { setCustomSeries } from './catalog.ts';
 import { deserializeCatalog, serializeCatalog } from './catalogFile.ts';
+import type { CatalogSeries } from './catalog.ts';
 import {
   formatSkuValue,
   fromDisplayValue,
   gridShadowNote,
+  managedSeries,
+  removeSeries,
   removeSku,
+  seriesGridError,
   skuError,
   toDisplayValue,
+  upsertSeries,
   upsertSku,
 } from './catalogManager.ts';
 
@@ -101,6 +106,81 @@ describe('catalog manager: grid-shadow warning', () => {
       { id: 'audyn-q4', brand: 'Intertechnik', series: 'Audyn Q4', kind: 'C', range: [1e-6, 100e-6] },
     ]);
     expect(gridShadowNote([], part({ brand: 'Intertechnik', series: 'Audyn Q4' }))).toMatch(/SHADOWS/);
+  });
+});
+
+const series = (over: Partial<CatalogSeries> = {}): CatalogSeries => ({
+  id: 'x-cap',
+  brand: 'X',
+  series: 'Cap',
+  kind: 'C',
+  range: [1e-6, 100e-6],
+  ...over,
+});
+
+describe('catalog manager: series CRUD', () => {
+  it('lists built-ins, applies overrides, and flags SKU-shadowed grids', () => {
+    const override = series({ id: 'jantzen-crosscap', brand: 'Jantzen', series: 'Cross-Cap', esr: 0.05 });
+    const rows = managedSeries(
+      [override, series()],
+      [part({ brand: 'Jantzen', series: 'Cross-Cap' })],
+    );
+    const cc = rows.find((r) => r.series.id === 'jantzen-crosscap')!;
+    expect(cc.source).toBe('override');
+    expect(cc.series.esr).toBe(0.05); // the override's data, not the built-in's
+    expect(cc.shadowedBy).toBe(1);
+    const custom = rows.find((r) => r.series.id === 'x-cap')!;
+    expect(custom.source).toBe('custom');
+    expect(custom.shadowedBy).toBe(0);
+    // Plain built-ins ride along unshadowed.
+    expect(rows.find((r) => r.series.id === 'jantzen-zstd')!.source).toBe('builtin');
+    // The override is not ALSO listed as a custom row.
+    expect(rows.filter((r) => r.series.id === 'jantzen-crosscap')).toHaveLength(1);
+  });
+
+  it('editing a built-in lands as an override; removing it reverts', () => {
+    const edited = upsertSeries([], series({ id: 'jantzen-mox', brand: 'Jantzen', series: 'MOX', kind: 'R', range: [0.22, 82], powerW: 10, tier: 'budget' }), 'jantzen-mox');
+    expect(edited).toHaveLength(1);
+    expect(managedSeries(edited, []).find((r) => r.series.id === 'jantzen-mox')!.source).toBe('override');
+    const reverted = removeSeries(edited, 'jantzen-mox');
+    const row = managedSeries(reverted, []).find((r) => r.series.id === 'jantzen-mox')!;
+    expect(row.source).toBe('builtin');
+    expect(row.series.tier).toBeUndefined();
+  });
+
+  it('upsert replaces by originalId and appends otherwise', () => {
+    const base = [series()];
+    const replaced = upsertSeries(base, series({ esr: 0.03 }), 'x-cap');
+    expect(replaced).toHaveLength(1);
+    expect(replaced[0].esr).toBe(0.03);
+    expect(upsertSeries(base, series({ id: 'x-cap2' }))).toHaveLength(2);
+    expect(base[0].esr).toBeUndefined(); // pure
+  });
+
+  it('validates against the file-reader rules', () => {
+    expect(seriesGridError(series({ id: '' }), [])).toMatch(/id/);
+    expect(seriesGridError(series({ range: [2e-6, 1e-6] }), [])).toMatch(/Range/);
+    expect(seriesGridError(series({ kind: 'L' }), [])).toMatch(/gauge/);
+    expect(seriesGridError(series({ kind: 'L', gauges: [0] }), [])).toMatch(/gauges/);
+    expect(seriesGridError(series({ esr: -1 }), [])).toMatch(/ESR/);
+    expect(seriesGridError(series({ powerW: 0 }), [])).toMatch(/Power/);
+    expect(seriesGridError(series({ basePrice: -1 }), [])).toMatch(/Base price/);
+    expect(seriesGridError(series({ dcrFactor: 3 }), [])).toMatch(/DCR factor/);
+    expect(seriesGridError(series(), [series({ series: 'Other' })])).toMatch(/already exists/);
+    expect(seriesGridError(series(), [series()], 'x-cap')).toBeNull();
+    // A NEW series may not accidentally claim a built-in id.
+    expect(seriesGridError(series({ id: 'jantzen-mox', kind: 'R', range: [0.22, 82], powerW: 10 }), [])).toMatch(/built-in/);
+    expect(seriesGridError(series(), [])).toBeNull();
+  });
+
+  it('an edited series list roundtrips through the file format', () => {
+    const custom = upsertSeries(
+      [],
+      series({ id: 'jantzen-crosscap', brand: 'Jantzen', series: 'Cross-Cap', esr: 0.05, tier: 'budget', basePrice: 2, costFactor: 1e5, eSeries: 'E12' }),
+      'jantzen-crosscap',
+    );
+    const back = deserializeCatalog(serializeCatalog(custom, []));
+    expect(back.series).toEqual(custom);
   });
 });
 

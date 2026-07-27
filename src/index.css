@@ -2023,3 +2023,22 @@ button:disabled {
 .catmgr-footer .sub {
   color: var(--warn, #d90);
 }
+
+/* Catalog manager: SKUs | Series view toggle. */
+.catmgr-views {
+  display: flex;
+  gap: 0.25rem;
+}
+.catmgr-views button {
+  padding: 0.3rem 0.7rem;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg);
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+.catmgr-views button.active {
+  color: var(--accent);
+  border-color: var(--accent);
+  font-weight: 600;
+}

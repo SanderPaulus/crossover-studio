@@ -34,11 +34,11 @@ import {
   bomFor,
   catalogSeries,
   customCatalogParts,
-  customSeries,
   formatCatalogPart,
   hasImportedCatalog,
   setCustomSeries,
   type CatalogPart,
+  type CatalogSeries,
   type SnapPrefs,
 } from './lib/catalog.ts';
 import {
@@ -2353,10 +2353,9 @@ export default function App() {
     URL.revokeObjectURL(a.href);
   }
 
-  /** Commit the catalog manager's edited SKU list: same persistence path as
-   *  a file import (custom series ride along unchanged). */
-  function saveCatalogParts(parts: CatalogPart[]) {
-    const series = customSeries();
+  /** Commit the catalog manager's edited catalog (custom series + exact
+   *  SKUs): same persistence path as a file import. */
+  function saveCatalogParts(series: CatalogSeries[], parts: CatalogPart[]) {
     setCustomSeries(series, parts);
     if (series.length === 0 && parts.length === 0) {
       // An empty custom catalog would be rejected on the next load — built-ins

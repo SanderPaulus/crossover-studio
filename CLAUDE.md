@@ -336,6 +336,15 @@ minimum phase reconstrueert. Voertaal met Sander: **Nederlands**; code/comments 
   deserializeCatalog las alleen dcr/esr terug terwijl serializeCatalog `seriesR` schrijft —
   export→reimport verving gemeten DCR/ESR stilletjes door schattingen; leest nu ook seriesR
   (regressietest). Form-reset houdt brand/serie/tier vast (serie-reeksen invoeren).
+  **Series-weergave (zelfde sessie, Sanders "wil ik er ook bij")**: SKUs|Series-toggle in het
+  panel; series-tabel = builtins + custom via `managedSeries` (bron-badge builtin/override/
+  custom + ⛱N = geschaduwd door N exacte SKU's; part-derived series staan er bewust NIET in —
+  die bewerk je via hun SKU's). Ingebouwde serie bewerken = override met hetzelfde id
+  (import-semantiek), ↩ verwijdert de override en de builtin keert terug (`builtinSeries()`
+  export). Edit-form per kind: bereik (display-units), E12/E24, gauges/dcrFactor (L),
+  esr (C), powerW (R), basePrice/costFactor, tier; validatie `seriesGridError` spiegelt de
+  file-reader incl. "nieuw id mag niet per ongeluk een builtin claimen". Save commit series
+  én parts samen (App `saveCatalogParts(series, parts)`).
   **🧙 Component wizard (knop naast ⚙ Settings)**: kwaliteitsprofiel (Auto / Positie =
   Sanders doctrine serie-pad premium·shunt budget / Budget / Balanced / Premium) + BINDENDE
   merk/serie-keuze per soort (L/C/R, Auto = vrij) — gepersisteerd, gevoed aan beide snaps via

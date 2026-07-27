@@ -363,6 +363,13 @@ export function customCatalogParts(): CatalogPart[] {
   return customParts;
 }
 
+/** The built-in product-series definitions (the manager shows them as the
+ *  overridable baseline — an edit lands as a custom series with the SAME id,
+ *  exactly like a file import overrides a built-in). */
+export function builtinSeries(): CatalogSeries[] {
+  return SERIES;
+}
+
 /** The generated-grid series definition (built-in or imported) covering a
  *  brand+series, if any. The catalog manager uses it to warn that a FIRST
  *  exact SKU for such a series shadows the entire generated grid. */
