@@ -2307,7 +2307,7 @@ export default function App() {
         }
         setNetOptNote(
           r.safetyNote
-            ? `⚠ ${r.safetyNote}`
+            ? `⚠ ${r.safetyNote}` + (r.ampFloorNote ? ` · ${r.ampFloorNote}` : '')
             : `${r.tuned} components tuned (${r.evaluations.toLocaleString('nl-NL')} sims) — ` +
                 `ripple ${r.before.rippleDb.toFixed(2)} → ${r.after.rippleDb.toFixed(2)} dB · ` +
                 `phase ${r.before.phaseDeg.toFixed(1)}° → ${r.after.phaseDeg.toFixed(1)}°` +

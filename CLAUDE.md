@@ -646,9 +646,11 @@ wordt puur een import-optie, niets hangt er meer van af. Gefaseerd:
   slack +0,1/+0,3), full-grid safety-gate-reden (eigen remedie-tekst i.p.v. "widen the view
   range"), en een REPARATIE-pass vóór de snap (lokaal geseedde barrière-retune à la
   doel-barrière, stijf gewicht 1200 — bij 120 bleef hij op 2,7 steken; detectie én acceptatie
-  op eval- ÉN safety-grid, vol-of-niet: deelreparatie bounced toch op de gate; kwaliteitslat =
-  10% van het tuned optimum ÓF beter dan de seed; anders `ampFloorNote`-waarschuwing, UI toont
-  hem naast de snap-notes). **VLOER = 2,5, niet Sanders 3,0 (gemeten)**: een textbook 2e-orde
+  op eval- ÉN safety-grid, vol-of-niet: deelreparatie bounced toch op de gate; acceptatie =
+  targets + tweeter-prot onvoorwaardelijk, en dan strikt-betere fx (kortsluit de dip/leak-
+  armen — hard geleerd: repFx 4,8 < 5,7 werd op een +7-leak-arm geweigerd en de gate gooide
+  daarna 100% van de tune weg) ÓF de 10%/seed-window mét die armen; anders `ampFloorNote`-
+  waarschuwing, UI toont hem naast de snap-notes). **VLOER = 2,5, niet Sanders 3,0 (gemeten)**: een textbook 2e-orde
   LP op de KOAN-mid (zelf 3,66 Ω) dipt bij de knie onvermijdelijk naar ~2,7 Ω — een 3,0-vloer
   keurt élk correct filter op een 4Ω-klasse driver af en de reparatie kan fysica niet "fixen";
   1,5 (gedegenereerd) vs 2,7 (eerlijk) scheidt op 2,5 schoon. Het Impedance-paneel blijft

@@ -1210,29 +1210,48 @@ export function optimizeNetworkValues(
     const zCur = worstZ(mCur, cur.parts);
     if (zCur.short > 0.15) {
       onStage?.('amp-load floor');
-      const rep = tune(cur.parts, 1, opts.staged ?? null, true, true);
+      // A dipping SEED (user network already below the floor) moves the bar:
+      // the safety gate judges against the seed, so "as healthy as the seed"
+      // is repaired enough there.
+      const zSeed = worstZ(fullOf(parts), parts);
+      const repairedEnough = (s: number): boolean => s <= Math.max(0.15, zSeed.short + 0.15);
+      // Iterate the barrier retune (max 3 warm-started rounds): one round's
+      // simplex budget regularly stalls short (measured in the app chain:
+      // 1.2 → 2.14 Ω in round one, threshold 2.5).
+      let rep = tune(cur.parts, 1, opts.staged ?? null, true, true);
+      let zRepI = worstZ(fullOf(rep.parts), rep.parts);
+      for (let round = 1; round < 3 && !repairedEnough(zRepI.short); round++) {
+        const again = tune(rep.parts, 1, opts.staged ?? null, true, true);
+        const zAgain = worstZ(fullOf(again.parts), again.parts);
+        if (!(zAgain.short < zRepI.short - 1e-3)) break; // no longer improving
+        rep = again;
+        zRepI = zAgain;
+      }
       const mRep = fullOf(rep.parts);
-      const zRep = worstZ(mRep, rep.parts);
+      const zRep = zRepI;
       const targetsKept =
         !opts.staged ||
         mCur.ripplePeakDb > opts.staged.rippleDb || // weren't met before either
         (mRep.ripplePeakDb <= opts.staged.rippleDb && mRep.phaseDeg <= opts.staged.phaseDeg);
-      // Quality bar: within the prune-doctrine 10% of the (amp-hostile) tuned
-      // optimum — OR simply better than the SEED. The second arm matters:
-      // when the response-optimum genuinely needs the low-Z realisation, a
-      // repair beyond 10% still beats rejecting the whole tune back to the
-      // seed (measured on the crude template: tuner → 1.5 Ω dip, repair
-      // outside 10%, and the safety gate then threw the entire tune away).
-      // Full repair or nothing: a partial lift (2.7 of 3 Ω) still fails the
-      // safety gate and the whole tune would bounce back to the seed anyway —
-      // the dip must clear the detection threshold itself.
-      const ok =
-        zRep.short <= 0.15 &&
+      // Full repair or nothing: a partial lift (2.7 of 3 Ω at the old floor)
+      // still fails the safety gate and the whole tune bounces back to the
+      // seed anyway — the dip must clear the detection threshold itself.
+      // Acceptance beyond that: targets kept, tweeter protection never
+      // surrendered (the one non-negotiable), and then EITHER the repair is
+      // strictly better on the full objective — which already prices every
+      // fundamental, and rejecting a strictly-better repair hands the user
+      // the raw seed instead (measured: repFx 4.8 < 5.7 refused on a +7 leak
+      // arm, and the gate then threw 100% of the tune away) — OR it stays in
+      // the prune-doctrine 10%/seed window with the leak/dip arms intact.
+      const armsOk =
         (rep.fx <= cur.fx * 1.1 || rep.fx <= fxOrig) &&
-        targetsKept &&
-        mRep.protSqDb <= mCur.protSqDb + 0.5 &&
         mRep.xoDipDb <= mCur.xoDipDb + 1 &&
         (!breakupGuard || mRep.leakSqDb <= mCur.leakSqDb + 4);
+      const ok =
+        repairedEnough(zRep.short) &&
+        targetsKept &&
+        mRep.protSqDb <= mCur.protSqDb + 3 &&
+        (rep.fx <= cur.fx || armsOk);
       if (ok) {
         ampFloorNote =
           `amp-load floor: system impedance minimum lifted ` +
@@ -1426,6 +1445,9 @@ export function optimizeNetworkValues(
         removed: [],
         added: [],
         safetyNote: `safety gate: tune rejected on the full measurement band — ${reasons.join('; ')}. ${tail}`,
+        // What the repair pass tried/achieved — the note explains WHY the
+        // gate still saw a dip (repair refused, or never reached the floor).
+        ...(ampFloorNote ? { ampFloorNote } : {}),
       };
     }
   }
