@@ -285,7 +285,7 @@ export const HELP_SECTIONS: HelpSection[] = [
     keywords: [
       'zoom', 'pan', 'crosshair', 'handles', 'slepen', 'wheel', 'sonogram', 'directivity',
       'panelen', 'chips', 'sticky', 'legend', 'ghost', 'impedantie', 'impedance', 'belasting',
-      'versterker', 'ohm',
+      'versterker', 'ohm', 'scheidingslijn', 'splitter', 'breedte', 'paneel', 'layout',
     ],
     blocks: [
       {
@@ -297,6 +297,7 @@ export const HELP_SECTIONS: HelpSection[] = [
           '**Panel-chips** boven het analysepaneel schakelen Directivity, Sonogram, Filter transfer, Impedance, Phase en Time domain los aan/uit — uit is ook écht niet berekend, dat scheelt rekentijd. SPL en de integratiescore staan altijd aan.',
           '**System impedance** — de belasting die de versterker van het actieve passieve netwerk ziet (|Z| aan de ingang, zoals VituixCADs Impedance-chart). Alleen het **minimum** kan kwaad (stroom/warmte): de `Z min`-chip kleurt op de IEC-vuistregel ≥ 0,8× nominaal (groen ≥ 6,4 Ω, oranje ≥ 3,2 Ω). Een hóge impedantie — bv. boven de kruising, waar de serie-spoelen de ene tak blokkeren en de pad de andere optilt — is onschadelijk; alleen een versterker met hoge uitgangsimpedantie (buizen) hoort die curve terug in de frequentierespons.',
           '**📌** pint de SPL-chart vast (sticky) zodat hij meescrollt.',
+          'De **scheidingslijn** tussen het invoerpaneel en de grafieken is versleepbaar: sleep hem naar rechts voor meer invoerruimte (de grafieken schalen mee), dubbelklik om terug te gaan naar de automatische breedte. De keuze wordt onthouden.',
           '**Legend-chips** togglen curves; ghost-curves van andere ontwerp-tabs zijn gestippeld en gedempt gekleurd per tab.',
           '**Sonogram**: discrete 3 dB-banden met −6 dB-beamwidth-contour; schaal genormaliseerd of absoluut.',
           'In de fase-chart staan naast de driver-fases ook de filter-fase per tak en de ruwe driver-Δφ (gestippeld); verticale markers tonen de integratie-bandbreedte en het overlap-centrum.',
@@ -307,13 +308,14 @@ export const HELP_SECTIONS: HelpSection[] = [
   {
     id: 'scores',
     title: '🚦 Scores & status-chips',
-    keywords: ['integration', 'score', 'fase p95', 'overlap', 'timing', 'flatness', 'kleuren', 'chips', 'verdict'],
+    keywords: ['integration', 'score', 'fase p95', 'overlap', 'timing', 'flatness', 'kleuren', 'chips', 'verdict', 'response', 'ripple', 'gemiddeld', 'p95', 'bereik'],
     blocks: [
       {
         t: 'ul',
         items: [
           '**Timing** — het verdict van de gedeelde-tijdreferentie-check: `plausible` = de gemeten fase is bruikbaar als waarheid. Niet groen? Eerst uitzoeken waarom, vóór er ook maar iets ontworpen wordt.',
-          '**Integration** (0–100) — optel-gezondheid, overlap-gewogen. Groen (≥ 90) is de nórmale toestand; hij zakt pas als de drivers elkaar actief tegenwerken. De klassegrenzen liggen op fysische ankers: 45° (vrijwel volledig optellen), 90° (nog ≥ 3 dB winst), 120° (drivers helpen elkaar niet meer).',
+          '**Response** (0–100, topbar + de strip onder de SPL-chart) — vlakheid van de gecombineerde respons over het héle zichtbare bereik, berekend uit de gemíddelde afwijking t.o.v. het mediaan-niveau. Eén smalle dip domineert deze score dus niet — daarvoor staat de klassieke **peak ±dB** ernaast, samen met avg/P95 en "±1 dB over N% van het bereik". Groot gat tussen avg en peak = het probleem is lokaal, niet overal.',
+          '**Integration** (0–100, bewust op de achtergrond in de strip) — optel-gezondheid, overlap-gewogen. Hoog is de nórmale toestand; hij zakt pas als de drivers elkaar actief tegenwerken (polariteit, timing, kruising in een fase-null) en kleurt dan rood. Stuur het ontwerp op Response flatness en Phase flatness. De klassegrenzen liggen op fysische ankers: 45° (vrijwel volledig optellen), 90° (nog ≥ 3 dB winst), 120° (drivers helpen elkaar niet meer).',
           '**Overlap** — de frequentie waar de driverniveaus elkaar kruisen: het échte akoestische overnamepunt van de huidige som.',
           '**Fase P95** — 95e-percentiel fasefout in het overlapgebied; ≤ 45° groen, ≤ 90° oranje. De fase-flatness-strip onder de charts toont daarnaast score/gemiddelde/P95 over het overlapgebied.',
           'De kleurladder in de fase-chart (15/45/90/120°) is strenger dan de score-ankers: groen betekent daar ≤ 15° — puur visueel, de score verandert er niet door.',

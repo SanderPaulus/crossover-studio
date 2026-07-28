@@ -9,7 +9,14 @@ minimum phase reconstrueert. Voertaal met Sander: **Nederlands**; code/comments 
 - `npm run dev` — dev-server via de Browser-pane tool (`preview_start {name:"dev"}`), poort 5173
 - `npx vitest run` — testsuite (312 tests, allemaal groen houden)
 - `npm run build` / `npx tsc -b` — build & typecheck (tsconfig.test.json dekt de tests, Node-types)
-- Na elke wijziging: typecheck + tests + build draaien; UI-wijzigingen in de Browser-pane verifiëren
+- Verificatie is GESCOPED op wat de wijziging raakt (Sanders regel, jul 2026 — de volle suite
+  duurt ~3,5 min en de tests dekken alleen src/lib):
+  - `src/lib`-wijzigingen (engine): typecheck + VOLLE testsuite + build — stille schade
+    (timing/fase/solver) is hier het risico
+  - pure UI/CSS-wijzigingen (App.tsx, components/, index.css): typecheck + alleen de tests van
+    geraakte lib-bestanden (bv. `npx vitest run src/lib/help.test.ts`) + build + verificatie
+    in de Browser-pane — de suite bewijst hier niets extra's
+  - twijfel of gemengd → volle suite
 
 ## Architectuur (src/lib, alles unit-getest)
 
@@ -185,6 +192,16 @@ minimum phase reconstrueert. Voertaal met Sander: **Nederlands**; code/comments 
   p=0,85→2,1 dB/8° (top −4 dB — "de 119 dB-inzak" is een fasekeuze, geen bug)
 - `integration.ts` — score = overlap-gewogen cos(ε/2); klassen op 45/90/120° (fysische ankers)
 - `phaseStats.ts` — fase-flatness-score/avg/P95/std over overlapgebied (à la Stefans screenshot)
+- `responseStats.ts` — **Response flatness (jul 2026, Sanders "±dB kan ook op 1 plek zijn")**:
+  hele-bereik-vlakheid van de combined SPL over het zichtbare bereik — score 0–100 uit de
+  GEMIDDELDE |afwijking| t.o.v. het MEDIAAN-niveau (anker 1,5 dB ≙ ±3 dB-klasse; mediaan
+  omdat een mean-referentie door de suckout zelf wordt meegetrokken), plus avg/P95/peak-±dB
+  en within-% (±0,5/1/2 dB). UI: topbar-chip "Response" (ok ≥85/warn ≥70) VERVANGT de
+  Integration-chip; de SPL-strip leidt met Response flatness en integration/overlap/bandwidth
+  staan er gedempt achter (`.strip-item.alert` kleurt integration alsnog rood <75 — sanity-
+  lamp blijft zichtbaar bij polariteit/timing-fouten). Sanders keuze: integration naar de
+  achtergrond, sturen op response- en fase-vlakheid. Display-only, optimizer-objectives
+  ongewijzigd
 - `directivity.ts` — per-hoek som (zelfde filter elke hoek), energy average, listening window (≤30°), DI
 - `sonogram.ts` + `components/Sonogram.tsx` — directivity-sonogram: ±hoeken gespiegeld, discrete
   3 dB-banden (vloer −24 dB, sequentiële blauwe ramp, dark-mode flipt het anker), −6 dB-beamwidth-

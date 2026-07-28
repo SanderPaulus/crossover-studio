@@ -121,12 +121,35 @@ body {
   flex: 1 1 auto;
   min-height: 0;
   display: grid;
-  grid-template-columns: clamp(300px, 33vw, 460px) 1fr;
+  /* Left pane: user-dragged --pane-w wins, else the automatic clamp; always
+     capped so the charts keep ≥340 px. Middle column = the drag splitter. */
+  grid-template-columns:
+    max(260px, min(var(--pane-w, clamp(300px, 33vw, 460px)), calc(100% - 346px)))
+    6px
+    minmax(0, 1fr);
 }
 
 /* The schematic editor needs elbow room — widen the pane on the Network tab. */
 .workspace.wide-left {
-  grid-template-columns: clamp(420px, 46vw, 700px) 1fr;
+  grid-template-columns:
+    max(260px, min(var(--pane-w, clamp(420px, 46vw, 700px)), calc(100% - 346px)))
+    6px
+    minmax(0, 1fr);
+}
+
+.pane-splitter {
+  cursor: col-resize;
+  touch-action: none;
+  background: transparent;
+  border-left: 1px solid var(--border);
+  margin-left: -1px; /* sit on top of the design-pane border */
+  transition: background 0.15s;
+}
+
+.pane-splitter:hover,
+.pane-splitter:active {
+  background: var(--accent, #3987e5);
+  opacity: 0.55;
 }
 
 .design-pane {
@@ -277,6 +300,13 @@ body {
 
 .score-strip .strip-item[title] {
   cursor: help;
+}
+
+/* Backgrounded metric that still shouts when it goes genuinely wrong
+   (e.g. the integration sanity light on a polarity/timing fault). */
+.score-strip .strip-item.alert {
+  color: var(--bad);
+  font-weight: 600;
 }
 
 /* Integration score = sanity light: green is the normal state, colour only
@@ -449,6 +479,10 @@ body {
     border-right: none;
   }
 
+  .app-shell:not(.layout-split) .pane-splitter {
+    display: none;
+  }
+
   .app-shell:not(.layout-split) .pane-body,
   .app-shell:not(.layout-split) .analysis-pane {
     overflow: visible;
@@ -486,6 +520,10 @@ body {
 
 .app-shell.layout-stacked .design-pane {
   border-right: none;
+}
+
+.app-shell.layout-stacked .pane-splitter {
+  display: none;
 }
 
 .app-shell.layout-stacked .pane-body,
