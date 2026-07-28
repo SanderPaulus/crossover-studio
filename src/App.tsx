@@ -82,6 +82,7 @@ import { angleFromFilename } from './lib/angles.ts';
 import demoMidZma from './lib/parsers/fixtures/mid_Backwavecone_sheep75gram.ZMA?raw';
 import demoTweetZma from './lib/parsers/fixtures/tweeter.ZMA?raw';
 import demoVxp from './lib/parsers/fixtures/KOAN 2951 Prototype 140826.vxp?raw';
+import demoCatalog from './lib/parsers/fixtures/gemini-catalog-v6.json?raw';
 import demoMid15 from './lib/parsers/fixtures/mid_hor15_mettape.txt?raw';
 import demoMid30 from './lib/parsers/fixtures/mid_hor30_mettape.txt?raw';
 import demoMid45 from './lib/parsers/fixtures/mid_hor45_mettape.txt?raw';
@@ -1002,6 +1003,21 @@ export default function App() {
         tweeter: { name: 'tweeter.ZMA', raw: demoTweetZma },
       },
     });
+    // The demo playground ships the priced Jantzen/Mundorf catalog too, so
+    // Snap to catalog and the BOM work out of the box — but NEVER overwrite
+    // a catalog the user imported or edited themselves.
+    if (!localStorage.getItem(CUSTOM_CATALOG_KEY)) {
+      try {
+        const imp = deserializeCatalog(demoCatalog);
+        setCustomSeries(imp.series, imp.parts);
+        localStorage.setItem(CUSTOM_CATALOG_KEY, serializeCatalog(imp.series, imp.parts));
+        setPersistNote(
+          `Demo catalog loaded — ${imp.parts.length} priced SKUs (snap, BOM and inspector use them)`,
+        );
+      } catch {
+        // Demo catalog fixture unreadable: run with built-ins.
+      }
+    }
   }
 
   /**
