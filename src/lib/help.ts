@@ -300,7 +300,7 @@ export const HELP_SECTIONS: HelpSection[] = [
           'De **scheidingslijn** tussen het invoerpaneel en de grafieken is versleepbaar: sleep hem naar rechts voor meer invoerruimte (de grafieken schalen mee), dubbelklik om terug te gaan naar de automatische breedte. De keuze wordt onthouden.',
           '**Legend-chips** togglen curves; ghost-curves van andere ontwerp-tabs zijn gestippeld en gedempt gekleurd per tab.',
           '**Sonogram**: discrete 3 dB-banden met −6 dB-beamwidth-contour; schaal genormaliseerd of absoluut.',
-          'In de fase-chart staan naast de driver-fases ook de filter-fase per tak en de ruwe driver-Δφ (gestippeld); verticale markers tonen de integratie-bandbreedte en het overlap-centrum.',
+          'In de fase-chart staan naast de relatieve fase standaard ook **Woofer/Tweeter phase (total)**: de tótale fase per driver (gemeten + filter, met een gedeelde langzame trend eruit voor leesbaarheid — beide curves krijgen exact dezelfde correctie, dus hun onderlinge verschil blijft ongemoeid). Waar de relatieve curve op 0° zit liggen die twee lijnen exact op elkaar — het gat ertussen ís de relatieve fase; een tak die >60 dB onder de som ligt wordt niet getekend. De ruwe driver-Δφ (fijn gestippeld) staat er ter referentie bij; de **filter-fase per tak** (alleen wat het netwerk toevoegt, niet de fase van de driver zelf) staat standaard uit en is via de legend-chips aan te zetten. Verticale markers tonen de integratie-bandbreedte en het overlap-centrum.',
         ],
       },
     ],

@@ -26,6 +26,10 @@ export interface Series {
   pointColors?: readonly (string | null)[];
   /** Stroke width override (default 2). */
   width?: number;
+  /** Start legend-hidden: the series is computed and listed, but the user
+   *  opts in by clicking its legend chip (used for optional overlays). Only
+   *  seeds the initial state — a user's click always wins afterwards. */
+  defaultOff?: boolean;
 }
 
 /** Draggable design handle drawn on top of the chart (e.g. a filter knee). */
@@ -175,6 +179,21 @@ export default function Chart({
   useEffect(() => {
     onVisibleXChange?.(vx[0], vx[1]);
   }, [vx[0], vx[1], onVisibleXChange]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Seed defaultOff series into the hidden set ONCE per series id — new ids
+  // may appear later (data loads async), and a user's explicit toggle must
+  // never be overridden afterwards.
+  const seenIds = useRef<Set<string>>(new Set());
+  useEffect(() => {
+    const add: string[] = [];
+    for (const s of allSeries) {
+      if (!seenIds.current.has(s.id)) {
+        seenIds.current.add(s.id);
+        if (s.defaultOff) add.push(s.id);
+      }
+    }
+    if (add.length > 0) setHidden((prev) => new Set([...prev, ...add]));
+  }, [allSeries]);
 
   const series = useMemo(() => allSeries.filter((s) => !hidden.has(s.id)), [allSeries, hidden]);
 
