@@ -135,12 +135,12 @@ export function deserializeProject(text: string): ProjectState {
   try {
     doc = JSON.parse(text);
   } catch {
-    throw new ProjectError('Not valid JSON — is this an Acoustic Design Studio project file?');
+    throw new ProjectError('Not valid JSON — is this a Crossover Studio project file?');
   }
   if (typeof doc !== 'object' || doc === null) throw new ProjectError('Not a project object.');
   const d = doc as Record<string, unknown>;
   if (d['format'] !== PROJECT_FORMAT) {
-    throw new ProjectError('Not an Acoustic Design Studio project file (format marker missing).');
+    throw new ProjectError('Not a Crossover Studio project file (format marker missing).');
   }
   if (typeof d['version'] !== 'number' || d['version'] > PROJECT_VERSION) {
     throw new ProjectError(

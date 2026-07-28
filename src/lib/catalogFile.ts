@@ -64,7 +64,7 @@ export function deserializeCatalog(text: string): CatalogImport {
     );
   }
   if (d['format'] !== CATALOG_FORMAT) {
-    throw new CatalogFileError('Not an Acoustic Design Studio catalog file.');
+    throw new CatalogFileError('Not a Crossover Studio catalog file.');
   }
   if (typeof d['version'] !== 'number' || !(d['version'] >= 1)) {
     throw new CatalogFileError('Catalog file has no valid version number.');

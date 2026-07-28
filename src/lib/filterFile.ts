@@ -35,7 +35,7 @@ export function deserializeFilter(text: string): { name: string; parts: VxpPart[
     throw new FilterFileError('Not a JSON file.');
   }
   if (d['format'] !== FILTER_FORMAT) {
-    throw new FilterFileError('Not an Acoustic Design Studio filter file.');
+    throw new FilterFileError('Not a Crossover Studio filter file.');
   }
   if (typeof d['version'] !== 'number' || d['version'] > FILTER_VERSION) {
     throw new FilterFileError(

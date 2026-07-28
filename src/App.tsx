@@ -2524,7 +2524,7 @@ export default function App() {
     const xml = serializeVxp(
       { drivers, crossovers },
       {
-        description: `Exported from Acoustic Design Studio — ${names}`,
+        description: `Exported from SD Acoustics Crossover Studio — ${names}`,
         // Active tab sits in slot 0 (CROSSOVER); <Variant> is the 0-based slot number.
         activeVariant: 0,
         // Carry the app's view range into VituixCAD's analysis/plot range.
@@ -3949,7 +3949,7 @@ export default function App() {
         </div>
       )}
       <header className="topbar" title="Combined SPL & relative phase — woofer normalised to 0°, tweeter shown against it.">
-        <h1>Acoustic Design Studio</h1>
+        <h1>SD Acoustics - Crossover Studio</h1>
         <div className="status-chips">
           {timing && (
             <span

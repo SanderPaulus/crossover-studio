@@ -1,4 +1,4 @@
-# Acoustic Design Studio
+# SD Acoustics - Crossover Studio (v/h Acoustic Design Studio)
 
 Eigen crossover-ontwerptool (React + TypeScript, pure frontend, Vite) voor Sander & Stefan.
 Kern-idee: ontwerpen op **gemeten fase** (incl. echt inter-driver tijdverschil) waar VituixCAD
