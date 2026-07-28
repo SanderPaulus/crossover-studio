@@ -132,6 +132,21 @@ describe('designChain', () => {
     expect(free[0].label).toBe('a');
   });
 
+  it('rankChainResults: ranks on the whole-range avg — a narrow dip does not decide the winner', () => {
+    const mk = (rippleDb: number, avgDevDb: number | undefined, phaseDeg: number, label: string) =>
+      ({ label, bomTotalEur: null, net: { after: { rippleDb, avgDevDb, phaseDeg } } }) as never;
+    // A: one narrow dip — bad peak, flat everywhere else (low avg).
+    // B: broad wobble — better peak, worse everywhere (high avg).
+    // Peak-based ranking picked B; the whole-range verdict picks A.
+    const a = mk(1.2, 0.3, 4, 'narrow-dip');
+    const b = mk(0.9, 0.7, 4, 'broad-wobble');
+    expect(rankChainResults([b, a], undefined, 0.5)[0].label).toBe('narrow-dip');
+    // Without the avg field (legacy results) the peak fallback still rules.
+    const aOld = mk(1.2, undefined, 4, 'narrow-dip');
+    const bOld = mk(0.9, undefined, 4, 'broad-wobble');
+    expect(rankChainResults([bOld, aOld], undefined, 0.5)[0].label).toBe('broad-wobble');
+  });
+
   it('rankChainResults: among near-equal winners the cheaper BOM wins', () => {
     const mk = (rippleDb: number, phaseDeg: number, label: string, bomTotalEur: number | null) =>
       ({ label, bomTotalEur, net: { after: { rippleDb, phaseDeg } } }) as never;

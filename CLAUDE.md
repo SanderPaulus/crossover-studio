@@ -194,9 +194,13 @@ minimum phase reconstrueert. Voertaal met Sander: **Nederlands**; code/comments 
 - `phaseStats.ts` — fase-flatness-score/avg/P95/std over overlapgebied (à la Stefans screenshot)
 - `responseStats.ts` — **Response flatness (jul 2026, Sanders "±dB kan ook op 1 plek zijn")**:
   hele-bereik-vlakheid van de combined SPL over het zichtbare bereik — score 0–100 uit de
-  GEMIDDELDE |afwijking| t.o.v. het MEDIAAN-niveau (anker 1,5 dB ≙ ±3 dB-klasse; mediaan
-  omdat een mean-referentie door de suckout zelf wordt meegetrokken), plus avg/P95/peak-±dB
-  en within-% (±0,5/1/2 dB). UI: topbar-chip "Response" (ok ≥85/warn ≥70) VERVANGT de
+  GEMIDDELDE |afwijking| t.o.v. het MEDIAAN-niveau (mediaan omdat een mean-referentie door
+  de suckout zelf wordt meegetrokken), plus avg/P95/peak-±dB en within-% (±0,5/1/2 dB).
+  **Score is bewust NIET-LINEAIR: 100·(1−(avg/2,5)^1,3), geijkt op ontwerpersoordeel**
+  (Sanders les na de eerste, lineaire versie: zijn ±1,2 dB-peak curve kreeg 61 rood terwijl
+  élke ontwerper "very good" zegt — een lineaire dB-schaal maakt de goede zone te duur):
+  ±1 dB-klasse (avg ≈0,6) ≈ 85 groen "Very good", ±3 dB-wiebel (avg ≈1,5) ≈ 48 rood;
+  kalibratietest pint de ankers. UI: topbar-chip "Response" (ok ≥85/warn ≥70) VERVANGT de
   Integration-chip; de SPL-strip leidt met Response flatness en integration/overlap/bandwidth
   staan er gedempt achter (`.strip-item.alert` kleurt integration alsnog rood <75 — sanity-
   lamp blijft zichtbaar bij polariteit/timing-fouten). Sanders keuze: integration naar de
@@ -428,7 +432,13 @@ minimum phase reconstrueert. Voertaal met Sander: **Nederlands**; code/comments 
   gemeten impedanties draait "Optimize — design for me" per overgangspunt-kandidaat de HELE
   keten — vf-rondes (re-seed van beste, <1% stop, max 12) → synthese → assembled netTune —
   en laat de EINDresultaten concurreren (`runDesignChain`+`crossoverVariants`+`rankChainResults`;
-  ranking: targets-gehaald eerst, dan blended score op de priority, en bij bijna-gelijke
+  ranking: targets-gehaald eerst, dan blended score op de priority — **de rimpelterm daarin is
+  sinds jul 2026 de HELE-BEREIK avg |afwijking| (×π/2, zodat een gladde ±A-wiebel exact A
+  scoort — zelfde rimpel↔fase-balans als de oude piekterm) i.p.v. de piek-±dB**: één smalle dip
+  beslist de winnaar niet meer (Sanders doctrine, consistent met de Response-score;
+  `avgDevDb` in netOptimizer-report, avg-kolom in de scan-tabel, piek = fallback voor legacy;
+  targets blijven bewust PIEK — "rimpel ≤ X" is een nergens-slechter-dan-garantie; de
+  zoek-objectives zelf waren al hele-bereik (std) en zijn per de anker-les onaangeroerd), en bij bijna-gelijke
   winnaars (≤5% score, zelfde targets-klasse) wint de GOEDKOOPSTE BOM — Sanders "caps zo
   klein mogelijk": bij gelijke kwaliteit heeft €600 niets te zoeken boven €300; alleen op de
   winnaar-slot gepromoot want paarsgewijze 5%-ties zijn niet transitief. Zelfde principe in

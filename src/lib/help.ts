@@ -112,7 +112,7 @@ export const HELP_SECTIONS: HelpSection[] = [
         t: 'ul',
         items: [
           'Met gemeten impedanties draait de knop een **full-chain scan**: per crossover-kandidaat de hele keten (virtuele rondes → synthese → componenttuning op het samengestelde netwerk) en de eindresultaten concurreren. De tussenstand-ranking zegt niets — alleen de eindmeting telt.',
-          'De **scan-tabel** is een keuzelijst: 🏆 markeert de ranking-winnaar, klik op een rij laadt dát complete ontwerp in Working (undo-baar), kolomkoppen sorteren.',
+          'De **scan-tabel** is een keuzelijst: 🏆 markeert de ranking-winnaar, klik op een rij laadt dát complete ontwerp in Working (undo-baar), kolomkoppen sorteren. De ranking oordeelt op de **hele-bereik-gemiddelde afwijking** (avg-kolom) — één smalle dip beslist de winnaar niet; de **peak ±dB**-kolom toont de slechtste plek en is waar de targets op poorten ("nergens slechter dan").',
           'Zonder crossover-pin draait eerst één vrije keten; alleen als die de targets mist volgen redding-kandidaten rond de gevonden kruising.',
           'Bij (bijna) gelijke kwaliteit wint de **goedkoopste BOM** — kosten sturen op beslispunten, nooit in de zoektocht zelf.',
           'De optimizer draait in een web worker: de UI blijft bedienbaar en **Cancel** breekt af zonder het ontwerp te raken.',
@@ -314,7 +314,7 @@ export const HELP_SECTIONS: HelpSection[] = [
         t: 'ul',
         items: [
           '**Timing** — het verdict van de gedeelde-tijdreferentie-check: `plausible` = de gemeten fase is bruikbaar als waarheid. Niet groen? Eerst uitzoeken waarom, vóór er ook maar iets ontworpen wordt.',
-          '**Response** (0–100, topbar + de strip onder de SPL-chart) — vlakheid van de gecombineerde respons over het héle zichtbare bereik, berekend uit de gemíddelde afwijking t.o.v. het mediaan-niveau. Eén smalle dip domineert deze score dus niet — daarvoor staat de klassieke **peak ±dB** ernaast, samen met avg/P95 en "±1 dB over N% van het bereik". Groot gat tussen avg en peak = het probleem is lokaal, niet overal.',
+          '**Response** (0–100, topbar + de strip onder de SPL-chart) — vlakheid van de gecombineerde respons over het héle zichtbare bereik, berekend uit de gemíddelde afwijking t.o.v. het mediaan-niveau. Eén smalle dip domineert deze score dus niet — daarvoor staat de klassieke **peak ±dB** ernaast, samen met avg/P95 en "±1 dB over N% van het bereik". Groot gat tussen avg en peak = het probleem is lokaal, niet overal. De schaal is geijkt op het ontwerpersoordeel: een hele-band **±1 dB-klasse** respons scoort ~85 (groen, "very good"), een echte ±3 dB-wiebel zakt onder de 50.',
           '**Integration** (0–100, bewust op de achtergrond in de strip) — optel-gezondheid, overlap-gewogen. Hoog is de nórmale toestand; hij zakt pas als de drivers elkaar actief tegenwerken (polariteit, timing, kruising in een fase-null) en kleurt dan rood. Stuur het ontwerp op Response flatness en Phase flatness. De klassegrenzen liggen op fysische ankers: 45° (vrijwel volledig optellen), 90° (nog ≥ 3 dB winst), 120° (drivers helpen elkaar niet meer).',
           '**Overlap** — de frequentie waar de driverniveaus elkaar kruisen: het échte akoestische overnamepunt van de huidige som.',
           '**Fase P95** — 95e-percentiel fasefout in het overlapgebied; ≤ 45° groen, ≤ 90° oranje. De fase-flatness-strip onder de charts toont daarnaast score/gemiddelde/P95 over het overlapgebied.',

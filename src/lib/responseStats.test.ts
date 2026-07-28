@@ -26,7 +26,7 @@ describe('computeResponseStats', () => {
     const spl = freq.map((_, i) => (i >= 190 && i < 210 ? 84 : 90));
     const s = computeResponseStats(freq, spl, 200, 20000)!;
     expect(s.rippleDb).toBeGreaterThan(2.5); // the classic number blows up…
-    expect(s.score).toBeGreaterThanOrEqual(78); // …the range score stays honest
+    expect(s.score).toBeGreaterThanOrEqual(90); // …the range score stays honest
     expect(s.withinPct[1]).toBeGreaterThan(90);
   });
 
@@ -37,6 +37,20 @@ describe('computeResponseStats', () => {
     const sn = computeResponseStats(freq, notch, 200, 20000)!;
     expect(sw.score).toBeLessThan(sn.score);
     expect(sw.avgDevDb).toBeGreaterThan(sn.avgDevDb);
+  });
+
+  it('calibration: a ±1 dB-class response reads as Very good, a ±3 dB-class wobble as red', () => {
+    // Designer-judgment anchors (Sanders les): a whole-band wobble staying
+    // within roughly ±1 dB is "very good" — the score must not paint it as a
+    // problem. A genuine ±3 dB-class wobble must land clearly below 50.
+    const oneDbClass = freq.map((_, i) => 90 + 0.9 * Math.sin(i / 8)); // avg ≈ 0.57
+    const threeDbClass = freq.map((_, i) => 90 + 3 * Math.sin(i / 8)); // avg ≈ 1.9
+    const good = computeResponseStats(freq, oneDbClass, 200, 20000)!;
+    const bad = computeResponseStats(freq, threeDbClass, 200, 20000)!;
+    expect(good.score).toBeGreaterThanOrEqual(83);
+    expect(good.score).toBeLessThanOrEqual(88);
+    expect(good.label).toBe('Very good');
+    expect(bad.score).toBeLessThan(50);
   });
 
   it('is level-free: an offset changes nothing', () => {

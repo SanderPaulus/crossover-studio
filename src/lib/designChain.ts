@@ -311,8 +311,17 @@ export function rankChainResults(
   hpFloorHz?: number,
 ): ChainResult[] {
   const p = 0.15 + 0.7 * Math.min(Math.max(phasePriority, 0), 1);
+  // Whole-range verdict in the ripple slot (Sanders doctrine, jul 2026): rank
+  // on the AVERAGE |deviation|, scaled by π/2 so a smooth ±A dB wobble scores
+  // exactly A — the same value the old peak number gave it. Which NUMBER is
+  // judged changes (one narrow dip no longer decides the winner); the
+  // ripple↔phase balance does not. Peak stays the fallback for results
+  // without the field. Targets (`meets`) deliberately stay peak-based: the
+  // user's "ripple ≤ X dB" is a nowhere-worse-than guarantee.
+  const rippleOf = (r: ChainResult): number =>
+    r.net.after.avgDevDb != null ? (Math.PI / 2) * r.net.after.avgDevDb : r.net.after.rippleDb;
   const score = (r: ChainResult): number =>
-    2 * (1 - p) * r.net.after.rippleDb ** 2 + 2 * p * (r.net.after.phaseDeg / 15) ** 2;
+    2 * (1 - p) * rippleOf(r) ** 2 + 2 * p * (r.net.after.phaseDeg / 15) ** 2;
   const meets = (r: ChainResult): boolean =>
     !targets ||
     (r.net.after.rippleDb <= targets.rippleDb && r.net.after.phaseDeg <= targets.phaseDeg);

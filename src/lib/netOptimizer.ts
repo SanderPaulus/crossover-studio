@@ -103,10 +103,10 @@ export interface NetOptimizeOptions {
 export interface NetOptimizeResult {
   /** The schematic parts with re-fitted values (locked ones untouched). */
   parts: VxpPart[];
-  before: { rippleDb: number; phaseDeg: number };
+  before: { rippleDb: number; avgDevDb?: number; phaseDeg: number };
   /** Full-grid metrics of the delivered network; `xoHz` = its acoustic
    *  crossing (used by the no-pin scan to derive follow-up candidates). */
-  after: { rippleDb: number; phaseDeg: number; xoHz?: number | null };
+  after: { rippleDb: number; avgDevDb?: number; phaseDeg: number; xoHz?: number | null };
   /** How many component values were free to move (final network). */
   tuned: number;
   evaluations: number;
@@ -341,6 +341,28 @@ export function optimizeNetworkValues(
     return Math.sqrt(Math.max(0, sq / n - mean * mean));
   };
 
+  /** Mean |deviation| vs the band mean — the whole-range verdict number the
+   *  chain ranking judges on (Sanders doctrine, jul 2026: one narrow dip must
+   *  not decide the winner). Reported alongside the peak; never fed to the
+   *  search objective (the anchor lesson — the objective keeps bandStd). */
+  const bandAvgDev = (freq: readonly number[], spl: readonly number[]): number => {
+    let s = 0;
+    let n = 0;
+    for (let i = 0; i < freq.length; i++) {
+      if (freq[i] < band[0] || freq[i] > band[1]) continue;
+      s += spl[i];
+      n++;
+    }
+    if (n === 0) return 0;
+    const mean = s / n;
+    let acc = 0;
+    for (let i = 0; i < freq.length; i++) {
+      if (freq[i] < band[0] || freq[i] > band[1]) continue;
+      acc += Math.abs(spl[i] - mean);
+    }
+    return acc / n;
+  };
+
   /** Peak flatness = ±(max−min)/2 over the band — the SAME number the SPL
    *  strip reads (combinedRippleDb), the unit staged TARGETS gate on and
    *  before/after report. The search objective keeps the smooth std-dev
@@ -370,6 +392,9 @@ export function optimizeNetworkValues(
     /** Peak ±dB over the band — what the strip reads, targets gate on and
      *  before/after report. Never fed to the search objective. */
     ripplePeakDb: number;
+    /** Mean |deviation| of the on-axis combined vs the band mean — the
+     *  whole-range verdict for the chain ranking. Report-only. */
+    avgDevDb: number;
     phaseDeg: number;
     phaseP95Deg: number;
     powerStdDb: number | null;
@@ -569,6 +594,7 @@ export function optimizeNetworkValues(
     return {
       rippleDb: targetStd,
       ripplePeakDb: bandPeak(r.freq, r.combinedSpl),
+      avgDevDb: bandAvgDev(r.freq, r.combinedSpl),
       phaseDeg:
         phaseMetric === 'band' ? (uN > 0 ? uSum / uN : 180) : wSum > 0 ? eSum / wSum : 180,
       phaseP95Deg,
@@ -1403,8 +1429,13 @@ export function optimizeNetworkValues(
   }
   const after = metricsOn(buildWork(outParts).work, grid, wBase, tBase, driverZ, angleData ?? null);
 
-  // before/after report the PEAK ±dB (the strip's unit, matching the target).
-  const report = (m: Metrics) => ({ rippleDb: m.ripplePeakDb, phaseDeg: m.phaseDeg });
+  // before/after report the PEAK ±dB (the strip's unit, matching the target)
+  // plus the whole-range avg |deviation| for the chain ranking / scan table.
+  const report = (m: Metrics) => ({
+    rippleDb: m.ripplePeakDb,
+    avgDevDb: m.avgDevDb,
+    phaseDeg: m.phaseDeg,
+  });
 
   /* ---- Full-band safety gate: the evaluation band is the user's design
    * scope, but fundamentals are whole-design properties. Re-check them on

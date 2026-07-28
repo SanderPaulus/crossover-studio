@@ -15,10 +15,14 @@
  */
 
 export interface ResponseStats {
-  /** 0–100, from the average |deviation|: 100·(1 − avg/1.5 dB), clamped.
-   *  Anchored so that an average deviation of 1.5 dB — a ±3 dB-class
-   *  response — scores 0, mirroring the 45° full-summing anchor of the
-   *  phase score. */
+  /** 0–100: 100·(1 − (avg/2.5 dB)^1.3), clamped. Deliberately NONLINEAR,
+   *  calibrated on designer judgment rather than a linear dB scale (Sanders
+   *  les, jul 2026: a ±1 dB-class response is "very good" and must read as
+   *  such): ruler-flat = 100, a whole-band ±1 dB-class response (avg ≈0.6)
+   *  ≈ 85, a genuine ±3 dB-class wobble (avg ≈1.5) ≈ 48, avg 2.5 dB = 0.
+   *  A linear anchor made the good zone too expensive: below the ±1 dB
+   *  class every extra tenth of a dB matters far less to a designer than
+   *  the same tenth past 1.5 dB. */
   score: number;
   label: 'Excellent' | 'Very good' | 'Good' | 'Fair' | 'Poor';
   /** Mean |deviation| from the median level (dB) — the whole-range number. */
@@ -32,7 +36,8 @@ export interface ResponseStats {
   sampleCount: number;
 }
 
-const SCORE_ANCHOR_DB = 1.5;
+const SCORE_ANCHOR_DB = 2.5; // avg deviation where the score bottoms out
+const SCORE_EXP = 1.3; // gentle below the ±1 dB class, steep beyond it
 
 export function computeResponseStats(
   freq: readonly number[],
@@ -69,9 +74,12 @@ export function computeResponseStats(
 
   const within = (t: number) => (100 * dev.filter((e) => e <= t).length) / n;
 
-  const score = Math.max(0, Math.min(100, Math.round(100 * (1 - avg / SCORE_ANCHOR_DB))));
+  const score = Math.max(
+    0,
+    Math.min(100, Math.round(100 * (1 - (avg / SCORE_ANCHOR_DB) ** SCORE_EXP))),
+  );
   const label =
-    score >= 85 ? 'Excellent' : score >= 70 ? 'Very good' : score >= 55 ? 'Good' : score >= 40 ? 'Fair' : 'Poor';
+    score >= 90 ? 'Excellent' : score >= 75 ? 'Very good' : score >= 60 ? 'Good' : score >= 45 ? 'Fair' : 'Poor';
 
   return {
     score,

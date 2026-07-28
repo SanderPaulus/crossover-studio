@@ -2022,6 +2022,7 @@ export default function App() {
                   rows: ranked.map((rr) => ({
                     label: rr.label,
                     rippleDb: rr.net.after.rippleDb,
+                    avgDevDb: rr.net.after.avgDevDb ?? null,
                     phaseDeg: rr.net.after.phaseDeg,
                     bomEur: rr.bomTotalEur,
                     winner: rr === win,
@@ -2260,6 +2261,8 @@ export default function App() {
     rows: {
       label: string;
       rippleDb: number;
+      /** Whole-range avg |deviation| — the number the ranking judges on. */
+      avgDevDb: number | null;
       phaseDeg: number;
       bomEur: number | null;
       winner: boolean;
@@ -2272,11 +2275,11 @@ export default function App() {
   /** Scan-table sort: click a header to sort by that column (asc → desc →
    *  back to the RANKING order, which is the default and keeps 🏆 on top). */
   const [scanSort, setScanSort] = useState<{
-    key: 'xo' | 'ripple' | 'phase' | 'bom';
+    key: 'xo' | 'ripple' | 'avg' | 'phase' | 'bom';
     dir: 1 | -1;
   } | null>(null);
 
-  function toggleScanSort(key: 'xo' | 'ripple' | 'phase' | 'bom') {
+  function toggleScanSort(key: 'xo' | 'ripple' | 'avg' | 'phase' | 'bom') {
     setScanSort((s0) =>
       s0?.key !== key ? { key, dir: 1 } : s0.dir === 1 ? { key, dir: -1 } : null,
     );
@@ -5237,7 +5240,8 @@ export default function App() {
                     {(
                       [
                         ['xo', 'crossover'],
-                        ['ripple', 'ripple'],
+                        ['ripple', 'peak'],
+                        ['avg', 'avg'],
                         ['phase', 'phase'],
                         ['bom', 'BOM'],
                       ] as const
@@ -5263,9 +5267,11 @@ export default function App() {
                           ? parseFloat(r.label)
                           : scanSort.key === 'ripple'
                             ? r.rippleDb
-                            : scanSort.key === 'phase'
-                              ? r.phaseDeg
-                              : (r.bomEur ?? Number.POSITIVE_INFINITY);
+                            : scanSort.key === 'avg'
+                              ? (r.avgDevDb ?? Number.POSITIVE_INFINITY)
+                              : scanSort.key === 'phase'
+                                ? r.phaseDeg
+                                : (r.bomEur ?? Number.POSITIVE_INFINITY);
                       return (v(a) - v(b)) * scanSort.dir;
                     })
                     .map((r) => (
@@ -5284,7 +5290,12 @@ export default function App() {
                         {r.label}
                         {chainScan.active === r.label ? ' ◂' : ''}
                       </td>
-                      <td>{r.rippleDb.toFixed(2)} dB</td>
+                      <td title="Peak ±dB — the worst single spot (what the staged targets gate on)">
+                        {r.rippleDb.toFixed(2)} dB
+                      </td>
+                      <td title="Whole-range average |deviation| — the number the ranking judges on: one narrow dip doesn't decide the winner">
+                        {r.avgDevDb !== null ? `${r.avgDevDb.toFixed(2)} dB` : '—'}
+                      </td>
                       <td>{r.phaseDeg.toFixed(1)}°</td>
                       <td>{r.bomEur !== null ? `€${Math.round(r.bomEur)}` : '—'}</td>
                     </tr>
