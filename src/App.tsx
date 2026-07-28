@@ -1588,7 +1588,12 @@ export default function App() {
     items?: { label: string; text: string; done: boolean }[];
   } | null>(null);
   /** Coarse stage of a standalone component tune ("value tune", "snap", …). */
-  const [netOptStage, setNetOptStage] = useState<string | null>(null);
+  /** Component-tune progress à la the scan card (Sanders wens): the PLANNED
+   *  stage pipeline (fixed rows, card never changes size) + the fired-stage
+   *  history from the worker. A stage the pipeline passed without firing
+   *  (conditional: escalation, amp-floor repair) shows as skipped. */
+  const [netOptPlan, setNetOptPlan] = useState<string[] | null>(null);
+  const [netOptStages, setNetOptStages] = useState<string[]>([]);
   /** Elapsed seconds while the busy overlay is up — part of the totals line. */
   const [busyElapsed, setBusyElapsed] = useState(0);
   /** Completed-run stats: the LAST round's progress update gets batched away
@@ -2311,10 +2316,21 @@ export default function App() {
   }, [pendingNetTune, sim, activeDesign, netOptBusy]);
 
   function runNetOptimize() {
+    // Guard against programmatic double-starts (the button is disabled while
+    // busy, but a second overlapping run would interleave stage labels).
+    if (netOptBusy) return;
     if (!activeDesign || !sim || Object.keys(impedances).length === 0) return;
     setNetOptBusy(true);
     setNetOptNote(null);
-    setNetOptStage(null);
+    setNetOptStages([]);
+    setNetOptPlan([
+      'value tune',
+      ...(stagedOn ? ['prune sweep', 'escalation'] : []),
+      'drift check',
+      'cap shrink ladder',
+      'amp-load floor',
+      ...(catalogSnap && hasImportedCatalog() ? ['catalog snap'] : []),
+    ]);
     setChainScan(null);
     const grid = sim.combined.freq;
     const zOnGrid = zGridWithSlots(impedances, grid);
@@ -2365,7 +2381,7 @@ export default function App() {
         band: [Math.max(300, grid[0]), Math.min(grid[grid.length - 1] * 0.975, num(fMax, 20000))],
         safety,
       },
-    }, (stage) => setNetOptStage(stage))
+    }, (stage) => setNetOptStages((p) => [...p, stage]))
       .then((r) => {
         if (!r.safetyNote) {
           commitSchematic(r.parts); // undo-able, sim follows live
@@ -2932,6 +2948,9 @@ export default function App() {
       h ? h.map((c) => (Math.atan2(c.im, c.re) * 180) / Math.PI) : null;
     const fw = filterPhase(transfers?.woofer);
     const ft = filterPhase(transfers?.tweeter);
+    // Filter-phase-per-branch starts legend-hidden (Sanders keuze, jul 2026):
+    // the per-driver TOTAL curves below are the default reading; what the
+    // network alone adds is opt-in detail.
     if (fw) {
       out.push({
         id: 'fw',
@@ -2941,6 +2960,7 @@ export default function App() {
         y: breakWraps(fw),
         dash: '5 3',
         width: 1.6,
+        defaultOff: true,
       });
     }
     if (ft) {
@@ -2952,6 +2972,7 @@ export default function App() {
         y: breakWraps(ft),
         dash: '5 3',
         width: 1.6,
+        defaultOff: true,
       });
     }
     // Raw-driver reference (same offset/trim/polarity, no filters): the
@@ -2971,6 +2992,58 @@ export default function App() {
         dash: '2 3',
         width: 1.4,
       });
+    }
+    // Per-driver TOTAL phase, ON by default (Sanders keuze: dit is de
+    // standaard-aflezing; de filter-fase-per-tak hierboven is de opt-in en
+    // de legend-chips zijn de enige toggle). Uses result.woofer/
+    // .tweeter.phaseDeg DIRECTLY — the exact arrays the relative curve is the
+    // difference of, so these render wherever that one does. Hard geleerd
+    // (twee rondes "geen lijnen"): rebuilding the totals from base + a
+    // re-unwrapped filter arg turned to noise where a branch's |H| underflows
+    // (unwrap random-walks on numeric dust) and breakPhaseWraps then cut the
+    // whole line. Both curves get the SAME reference subtracted (~1-octave
+    // moving average of the combined system phase), so their DIFFERENCE — the
+    // relative curve — is untouched: where it sits at 0°, these two lie
+    // exactly on top of each other (Stefans check). A branch >60 dB below the
+    // sum is masked out: it contributes nothing and its phase means nothing.
+    {
+      const cp = result.combinedPhaseDeg;
+      const n = cp.length;
+      const octaves = Math.log2(result.freq[n - 1] / result.freq[0]);
+      const half = Math.max(2, Math.round(n / octaves / 2)); // ≈ half an octave
+      const pre = new Array<number>(n + 1).fill(0);
+      for (let i = 0; i < n; i++) pre[i + 1] = pre[i] + cp[i];
+      const ref = cp.map((_, i) => {
+        const a = Math.max(0, i - half);
+        const b = Math.min(n - 1, i + half);
+        return (pre[b + 1] - pre[a]) / (b - a + 1);
+      });
+      const disp = (drv: { spl: number[]; phaseDeg: number[] }): number[] =>
+        drv.phaseDeg.map((p, i) =>
+          drv.spl[i] < result.combinedSpl[i] - 60 ? NaN : p - ref[i],
+        );
+      const wDisp = disp(result.woofer);
+      const tDisp = disp(result.tweeter);
+      out.push(
+        {
+          id: 'wtot',
+          label: 'Woofer phase (total)',
+          color: 'var(--viz-woofer)',
+          x: result.freq,
+          y: breakWraps(wDisp.map(wrapDeg)),
+          dash: '9 4',
+          width: 1.6,
+        },
+        {
+          id: 'ttot',
+          label: 'Tweeter phase (total)',
+          color: 'var(--viz-tweeter)',
+          x: result.freq,
+          y: breakWraps(tDisp.map(wrapDeg)),
+          dash: '9 4',
+          width: 1.6,
+        },
+      );
     }
     // Same alignment coloring as the SPL combined curve: the phase line itself
     // shows how far off it is — but only in the overlap region where it counts.
@@ -3059,6 +3132,32 @@ export default function App() {
             {` · ${Math.floor(busyElapsed / 60)}:${String(busyElapsed % 60).padStart(2, '0')}`}
           </div>
         </>
+      ) : !vfBusy && netOptBusy && netOptPlan ? (
+        // Component-tune view: the SAME stable-card pattern as the scan — one
+        // fixed row per pipeline stage, states tick underneath (Sanders wens).
+        <>
+          <table className="busy-scan">
+            <tbody>
+              {netOptPlan.map((st) => {
+                // Order-agnostic on purpose: stages fire in rounds and revisit
+                // earlier labels (drift catches, ladder retunes), so "later
+                // stage started ⇒ this one was skipped" would lie. A stage is
+                // simply pending until it fires.
+                const cur = netOptStages[netOptStages.length - 1];
+                const state = st === cur ? 'active' : netOptStages.includes(st) ? 'done' : 'pending';
+                return (
+                  <tr key={st} className={state === 'done' ? 'done' : ''}>
+                    <td>{st}</td>
+                    <td>{state === 'active' ? 'running…' : state === 'done' ? '✓' : ''}</td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+          <div className="busy-totals">
+            {`${Math.floor(busyElapsed / 60)}:${String(busyElapsed % 60).padStart(2, '0')}`}
+          </div>
+        </>
       ) : (
         <div className="busy-detail">
           {vfBusy && vfProgress
@@ -3069,7 +3168,7 @@ export default function App() {
             : vfBusy
               ? 'searching structures and EQ stages — runs in the background, the app stays live'
               : netOptBusy
-                ? `${netOptStage ? `stage: ${netOptStage} — ` : ''}value fit, prune/escalate, debris sweep`
+                ? 'value fit, prune/escalate, debris sweep'
                 : 'fitting real component values on the measured impedances'}
           {anyBusy && busyElapsed > 0 ? ` · ${Math.floor(busyElapsed / 60)}:${String(busyElapsed % 60).padStart(2, '0')}` : ''}
         </div>
@@ -4458,7 +4557,7 @@ export default function App() {
                 </span>
               )}
             </fieldset>
-            {project && (
+            {project && project.vxp.crossovers.length > 0 && (
               <fieldset>
                 <legend>Crossover (VituixCAD project)</legend>
                 <label title="Simulate one of the crossover variants from the imported VituixCAD project (solved on the measured impedances). 'None' shows the raw drivers.">
@@ -5528,38 +5627,7 @@ export default function App() {
                 📌
               </button>
             </div>
-            <Chart
-              series={splSeries}
-              xDomain={xDomain}
-              yDomain={splDomain}
-              yTickStep={5}
-              yUnit="dB"
-              height={320}
-              onXRangeCommit={commitViewRange}
-              onVisibleXChange={onSplVisibleX}
-              handles={splHandles}
-              onHandleMove={moveSplHandle}
-              onHandleWheel={wheelSplHandle}
-            />
-            {splHandles && (
-              <p className="sub handle-hint">
-                Dots = your virtual filters: drag a hollow dot to move a crossover knee, drag a
-                solid dot for EQ freq/gain, scroll on it for Q.
-              </p>
-            )}
-            <div className="align-legend">
-              <span className="align-title">Combined-curve color = phase alignment:</span>
-              {TIER_ORDER.map((c) => (
-                <span key={c} className="legend-item">
-                  <span className="legend-key" style={{ background: TIER_COLOR[c] }} />
-                  {TIER_LABEL[c]}
-                </span>
-              ))}
-            </div>
-          </div>
-
-          {(combinedFlat || integration) && (
-            <div className="panel slim">
+            {(combinedFlat || integration) && (
               <div className="score-strip">
                 {combinedFlat && (
                   <>
@@ -5623,8 +5691,36 @@ export default function App() {
                     </span>
                   ))}
               </div>
+            )}
+            <Chart
+              series={splSeries}
+              xDomain={xDomain}
+              yDomain={splDomain}
+              yTickStep={5}
+              yUnit="dB"
+              height={320}
+              onXRangeCommit={commitViewRange}
+              onVisibleXChange={onSplVisibleX}
+              handles={splHandles}
+              onHandleMove={moveSplHandle}
+              onHandleWheel={wheelSplHandle}
+            />
+            {splHandles && (
+              <p className="sub handle-hint">
+                Dots = your virtual filters: drag a hollow dot to move a crossover knee, drag a
+                solid dot for EQ freq/gain, scroll on it for Q.
+              </p>
+            )}
+            <div className="align-legend">
+              <span className="align-title">Combined-curve color = phase alignment:</span>
+              {TIER_ORDER.map((c) => (
+                <span key={c} className="legend-item">
+                  <span className="legend-key" style={{ background: TIER_COLOR[c] }} />
+                  {TIER_LABEL[c]}
+                </span>
+              ))}
             </div>
-          )}
+          </div>
 
           {directivity && (
             <div className="panel">

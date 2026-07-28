@@ -522,7 +522,23 @@ minimum phase reconstrueert. Voertaal met Sander: **Nederlands**; code/comments 
   `xBands`/`xMarkers` (o.a. integration bandwidth + overlap-centre in de fase-chart).
   **Fase-kleurladder (display-only, App.tsx `phaseTier`)**: 15/45/90/120° — groen alléén ≤15°;
   de fysische 45/90/120°-ankers in integration.ts blijven de score bepalen.
-  Fase-chart toont ook filter-fase per tak (arg van totale transfer) + ruwe driver-Δφ (dashed)
+  Fase-chart toont ook filter-fase per tak (arg van totale transfer) + ruwe driver-Δφ (dashed).
+  **Per-driver-totaalfase (jul 2026, Stefans "horen de stippellijnen niet op elkaar te
+  liggen?")**: "Woofer/Tweeter phase (total)" staan standaard AAN (Sanders eindkeuze) en de
+  filter-fase-per-tak-stippellijnen standaard UIT via `defaultOff` op Series (géén aparte
+  checkbox, de legend ís de toggle; Chart seedt defaultOff-ids één keer in de hidden-set,
+  een user-klik wint daarna altijd). De totals tekenen de TOTALE fase per
+  driver — RECHTSTREEKS result.woofer/.tweeter.phaseDeg (de arrays waarvan de relatieve
+  curve het verschil is, dus ze tekenen overal waar die tekent), beide minus een GEDEELDE
+  ~1-octaaf-trend van de combined-systeemfase — verschil onaangetast, samenvallen-bij-0°
+  exact; tak >60 dB onder de som wordt gemaskeerd (draagt niets bij, fase betekenisloos).
+  HARD GELEERD (2× Sanders "geen lijnen"): totalen zelf reconstrueren uit base + opnieuw
+  ge-unwrapte filter-arg wordt ruis waar |H| van een tak numeriek doodloopt (unwrap
+  random-walkt op numeriek stof) en breakPhaseWraps knipt dan de hele lijn weg; ook een
+  globale bulk-delay-fit als referentie liet op echte metingen een steile rest-helling
+  achter (zelfde symptoom) — demo-data verhulde beide.
+  De filter-fase-stippellijnen
+  zijn alleen wat het netwerk toevoegt; de verwarring daarover was de aanleiding
 
 ## Workspace-layout (UI-fase B, jul 2026)
 
@@ -536,9 +552,10 @@ minimum phase reconstrueert. Voertaal met Sander: **Nederlands**; code/comments 
   ProjectState, key "group:filename", mee in autosave én projectfile). Setup-tab = view range/
   driver phase/tweeter adjustment/vxp-variant + timing sanity; Filters-tab = virtual filters +
   passive synthesis; Network-tab = netwerk-editor (workspace krijgt dan `wide-left` — de
-  schematic-editor heeft breedte nodig). Scores boven de charts zijn compacte `.score-strip`s
-  (integration + phase flatness) — de grafiek is de hoofdzaak; vrijwel elk control heeft een
-  title-tooltip (helpers).
+  schematic-editor heeft breedte nodig). Scores zijn compacte `.score-strip`s ÍN het
+  bijbehorende chart-paneel (Response flatness + gedempte integration-items in het SPL-paneel,
+  phase flatness in het fase-paneel — Sanders wens jul 2026: geen losse sectie onder de chart)
+  — de grafiek is de hoofdzaak; vrijwel elk control heeft een title-tooltip (helpers).
 - **Layout-toggle in de topbar** (naast thema, localStorage 'ads-ui-layout'): Auto (volgt
   vensterbreedte, split ≥760 px — het Claude-browserpaneel is ~800 px, vandaar de lage drempel) /
   Split (altijd twee panes, ook smal) / Stacked (altijd de klassieke stapeling, gecentreerd op
