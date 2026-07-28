@@ -5,6 +5,11 @@ name: Deploy to GitHub Pages
 on:
   push:
     branches: [main]
+    # Docs-only pushes (README, CLAUDE.md, notes) don't change the app —
+    # skip the test+deploy cycle. A mixed push (docs + code) still deploys.
+    paths-ignore:
+      - '**.md'
+      - '.claude/**'
   workflow_dispatch:
 
 permissions:
