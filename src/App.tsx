@@ -1,4 +1,13 @@
-import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type CSSProperties,
+  type PointerEvent as ReactPointerEvent,
+  type ReactNode,
+} from 'react';
 import { parseFrd } from './lib/parsers/frd.ts';
 import { parseZma } from './lib/parsers/zma.ts';
 import { parseVxp, type VxpCrossover, type VxpPart, type VxpProject } from './lib/parsers/vxp.ts';
@@ -61,6 +70,7 @@ import {
 } from './lib/filters.ts';
 import { synthesize, formatComponent, type SynthesisResult, type SynthesizedComponent } from './lib/synthesis.ts';
 import { computePhaseStats } from './lib/phaseStats.ts';
+import { computeResponseStats } from './lib/responseStats.ts';
 import { type VfOptimizeResult, type StructChoice } from './lib/vfOptimizer.ts';
 import { toTimeDomain, excessGroupDelay } from './lib/timeDomain.ts';
 import {
@@ -500,6 +510,45 @@ export default function App() {
   useEffect(() => {
     localStorage.setItem('ads-ui-layout', layoutMode);
   }, [layoutMode]);
+
+  /**
+   * Draggable divider between the design pane and the charts: width in px of
+   * the left pane, null = automatic (the CSS clamp defaults). During a drag the
+   * CSS variable is written straight to the DOM node so the whole app doesn't
+   * re-render per mouse move; the value is committed to state on release.
+   */
+  const [paneW, setPaneW] = useState<number | null>(() => {
+    const v = Number(localStorage.getItem('ads-ui-panew') ?? NaN);
+    return Number.isFinite(v) && v >= 240 ? v : null;
+  });
+  useEffect(() => {
+    if (paneW == null) localStorage.removeItem('ads-ui-panew');
+    else localStorage.setItem('ads-ui-panew', String(Math.round(paneW)));
+  }, [paneW]);
+  const workspaceRef = useRef<HTMLDivElement | null>(null);
+  const startPaneDrag = (e: ReactPointerEvent<HTMLDivElement>) => {
+    const ws = workspaceRef.current;
+    if (!ws) return;
+    e.preventDefault();
+    const el = e.currentTarget;
+    el.setPointerCapture(e.pointerId);
+    const rect = ws.getBoundingClientRect();
+    let w: number | null = null;
+    const move = (ev: PointerEvent) => {
+      // Keep both panes usable: left ≥260 px, charts ≥340 px (+6 px splitter).
+      w = Math.max(260, Math.min(ev.clientX - rect.left, rect.width - 346));
+      ws.style.setProperty('--pane-w', `${w}px`);
+    };
+    const done = () => {
+      el.removeEventListener('pointermove', move);
+      el.removeEventListener('pointerup', done);
+      el.removeEventListener('pointercancel', done);
+      if (w != null) setPaneW(w);
+    };
+    el.addEventListener('pointermove', move);
+    el.addEventListener('pointerup', done);
+    el.addEventListener('pointercancel', done);
+  };
 
   /** Active tab of the left design pane (persisted: reopen where you left off). */
   const [designTab, setDesignTab] = useState<'import' | 'data' | 'filters' | 'network'>(() => {
@@ -1393,22 +1442,16 @@ export default function App() {
     setSplViewX((prev) => (prev && prev[0] === lo && prev[1] === hi ? prev : [lo, hi]));
   }, []);
 
-  /** Amplitude counterpart to the summing score: how flat the COMBINED SPL
-   *  actually comes out across the VISIBLE SPL range (tracks the chart zoom),
-   *  as ± half the peak-to-peak. A perfect summing score still leaves this
-   *  visible when the drivers' own responses ripple. */
-  const combinedRippleDb = useMemo(() => {
+  /** Amplitude counterpart to the summing score: whole-range flatness stats of
+   *  the COMBINED SPL across the VISIBLE SPL range (tracks the chart zoom).
+   *  Score/avg/P95 judge the entire range; the peak ±dB rides along as the
+   *  classic single number — that one can be dominated by one narrow spot,
+   *  which is exactly why it no longer stands alone (Sanders wens, jul 2026). */
+  const combinedFlat = useMemo(() => {
     if (!result) return null;
     const lo = splViewX ? splViewX[0] : result.freq[0];
     const hi = splViewX ? splViewX[1] : result.freq[result.freq.length - 1];
-    let min = Infinity;
-    let max = -Infinity;
-    for (let i = 0; i < result.freq.length; i++) {
-      if (result.freq[i] < lo || result.freq[i] > hi) continue;
-      if (result.combinedSpl[i] < min) min = result.combinedSpl[i];
-      if (result.combinedSpl[i] > max) max = result.combinedSpl[i];
-    }
-    return Number.isFinite(min) && max > min ? (max - min) / 2 : null;
+    return computeResponseStats(result.freq, result.combinedSpl, lo, hi);
   }, [result, splViewX]);
 
   /** Measured ACOUSTIC slopes beside the crossing (dB/oct, least squares over
@@ -3976,14 +4019,14 @@ export default function App() {
               Timing <strong>{timing.ref.verdict}</strong>
             </span>
           )}
-          {integration?.score !== null && integration?.score !== undefined && (
+          {combinedFlat && (
             <span
               className={`status-chip ${
-                integration.score >= 90 ? 'chip-ok' : integration.score >= 75 ? 'chip-warn' : 'chip-bad'
+                combinedFlat.score >= 85 ? 'chip-ok' : combinedFlat.score >= 70 ? 'chip-warn' : 'chip-bad'
               }`}
-              title="Summing sanity, 0–100 (overlap-weighted) — green is the normal state; it only drops when the drivers actively fight"
+              title="Whole-range flatness of the combined response, 0–100 — from the AVERAGE deviation over the visible range, so one narrow dip can't dominate the verdict (the peak ±dB in the SPL strip still shows it)"
             >
-              Integration <strong>{integration.score.toFixed(0)}</strong>
+              Response <strong>{combinedFlat.score.toFixed(0)}</strong>
             </span>
           )}
           {integration?.overlapCentreHz != null && (
@@ -4043,7 +4086,11 @@ export default function App() {
         </button>
       </header>
 
-      <div className={`workspace${designTab === 'network' ? ' wide-left' : ''}`}>
+      <div
+        ref={workspaceRef}
+        className={`workspace${designTab === 'network' ? ' wide-left' : ''}`}
+        style={paneW != null ? ({ '--pane-w': `${paneW}px` } as CSSProperties) : undefined}
+      >
         <aside className="design-pane">
           <nav className="pane-tabs" aria-label="Design panels">
             {(
@@ -5386,6 +5433,15 @@ export default function App() {
           </div>
         </aside>
 
+        <div
+          className="pane-splitter"
+          role="separator"
+          aria-orientation="vertical"
+          title="Drag to resize the panes — double-click to reset to automatic width"
+          onPointerDown={startPaneDrag}
+          onDoubleClick={() => setPaneW(null)}
+        />
+
         <main className="analysis-pane">
       {!woofer || !tweeter ? (
         <p className="sub pane-hint">
@@ -5491,55 +5547,71 @@ export default function App() {
             </div>
           </div>
 
-          {integration && (
+          {(combinedFlat || integration) && (
             <div className="panel slim">
-              {integration.score !== null ? (
-                <div className="score-strip">
-                  <span className="strip-label">Acoustic integration</span>
-                  <span
-                    className={`strip-score ${
-                      integration.score >= 90 ? 'ok' : integration.score >= 75 ? 'warn' : 'bad'
-                    }`}
-                    title="Summing sanity 0–100: overlap-weighted cos(ε/2) — how well the drivers add up as ONE source. High is NORMAL (45° error still scores 92); it only drops when the drivers actively fight: wrong polarity, a timing fault, or a crossover in a phase null. Green = summing healthy; steer the design on Flatness and Phase flatness."
-                  >
-                    {integration.score.toFixed(0)}
-                  </span>
-                  {combinedRippleDb !== null && (
+              <div className="score-strip">
+                {combinedFlat && (
+                  <>
+                    <span className="strip-label">Response flatness</span>
+                    <span
+                      className={`strip-score ${
+                        combinedFlat.score >= 85 ? 'ok' : combinedFlat.score >= 70 ? 'warn' : 'bad'
+                      }`}
+                      title="Whole-range flatness of the combined SPL over the currently VISIBLE range (zoom the SPL chart and this follows): 0–100 from the AVERAGE |deviation| vs the median level. Judges the entire range — one narrow dip barely moves it; the peak ±dB next to it still exposes that dip."
+                    >
+                      {combinedFlat.score.toFixed(0)}
+                    </span>
+                    <span
+                      className="strip-item"
+                      title="Deviation from the median level over the visible range: average (the whole-range number), 95th percentile, and the classic single-spot peak ±dB — a big gap between avg and peak means the trouble is local, not everywhere."
+                    >
+                      avg ±{combinedFlat.avgDevDb.toFixed(2)} · P95 ±
+                      {combinedFlat.p95DevDb.toFixed(1)} · peak ±{combinedFlat.rippleDb.toFixed(1)}{' '}
+                      dB
+                    </span>
+                    <span
+                      className="strip-item"
+                      title={`Share of the visible range within ±0.5 / ±1 / ±2 dB of the median level: ${combinedFlat.withinPct[0.5].toFixed(0)}% · ${combinedFlat.withinPct[1].toFixed(0)}% · ${combinedFlat.withinPct[2].toFixed(0)}%.`}
+                    >
+                      ±1 dB {combinedFlat.withinPct[1].toFixed(0)}%
+                    </span>
+                  </>
+                )}
+                {integration &&
+                  (integration.score !== null ? (
                     <>
-                      <span className="strip-label">Flatness</span>
                       <span
-                        className="strip-score"
-                        title="Combined SPL flatness over the currently VISIBLE frequency range (zoom the SPL chart and this follows) — ± half the peak-to-peak deviation of the summed response. The amplitude side of integration, and the number that discriminates between designs: even a perfect summing score shows ripple here when the drivers' own responses aren't flat."
+                        className={`strip-item${integration.score < 75 ? ' alert' : ''}`}
+                        title="Summing sanity 0–100: overlap-weighted cos(ε/2) — how well the drivers add up as ONE source. High is NORMAL (45° error still scores 92); it only drops when the drivers actively fight: wrong polarity, a timing fault, or a crossover in a phase null. Deliberately in the background — steer the design on Response flatness and Phase flatness."
                       >
-                        ±{combinedRippleDb.toFixed(1)} dB
+                        integration {integration.score.toFixed(0)}
+                      </span>
+                      <span
+                        className="strip-item"
+                        title="Overlap centre — the frequency where the driver levels meet (≈ the acoustic crossover point)."
+                      >
+                        overlap{' '}
+                        {integration.overlapCentreHz !== null
+                          ? `${Math.round(integration.overlapCentreHz)} Hz`
+                          : '—'}
+                      </span>
+                      <span
+                        className="strip-item"
+                        title="Integration bandwidth — contiguous band around the overlap centre where the phase error stays ≤90°. Also drawn as the shaded zone in the phase chart."
+                      >
+                        {integration.bandwidth
+                          ? `bandwidth ${Math.round(integration.bandwidth.fLo)}–${Math.round(
+                              integration.bandwidth.fHi,
+                            )} Hz · ${integration.bandwidth.octaves.toFixed(1)} oct`
+                          : 'bandwidth none (>90° at the overlap centre)'}
                       </span>
                     </>
-                  )}
-                  <span
-                    className="strip-item"
-                    title="Overlap centre — the frequency where the driver levels meet (≈ the acoustic crossover point)."
-                  >
-                    overlap{' '}
-                    {integration.overlapCentreHz !== null
-                      ? `${Math.round(integration.overlapCentreHz)} Hz`
-                      : '—'}
-                  </span>
-                  <span
-                    className="strip-item"
-                    title="Integration bandwidth — contiguous band around the overlap centre where the phase error stays ≤90°. Also drawn as the shaded zone in the phase chart."
-                  >
-                    {integration.bandwidth
-                      ? `bandwidth ${Math.round(integration.bandwidth.fLo)}–${Math.round(
-                          integration.bandwidth.fHi,
-                        )} Hz · ${integration.bandwidth.octaves.toFixed(1)} oct`
-                      : 'bandwidth none (>90° at the overlap centre)'}
-                  </span>
-                </div>
-              ) : (
-                <p className="sub" style={{ margin: 0 }}>
-                  No overlap region within 20 dB — the drivers never meet, nothing to integrate.
-                </p>
-              )}
+                  ) : (
+                    <span className="strip-item alert">
+                      no overlap within 20 dB — the drivers never meet, nothing to integrate
+                    </span>
+                  ))}
+              </div>
             </div>
           )}
 
