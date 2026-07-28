@@ -799,4 +799,4 @@ Overige kandidaten (belangrijkste eerst):
   notch laat zijn buren voor volgende rondes)
 - genormaliseerde hoekcurves, verticale metingen (lobing) als Sander die doet.
 
-Dev-server draait doorgaans al; demo-knop "Load KOAN demo data" laadt alles incl. hoeken.
+Dev-server draait doorgaans al; demo-knop "Load KOAN demo data" laadt alles incl. hoeken + de geprijsde demo-catalogus (guarded: nooit over een eigen import heen).

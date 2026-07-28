@@ -49,7 +49,7 @@ export const HELP_SECTIONS: HelpSection[] = [
       {
         t: 'p',
         text:
-          'Geen eigen metingen bij de hand? **Load KOAN demo data** (Import-tab) laadt een complete echte meetset incl. hoeken.',
+          'Geen eigen metingen bij de hand? **Load KOAN demo data** (Import-tab) laadt een complete echte meetset incl. hoeken, plus de geprijsde democatalogus (alleen als je nog geen eigen catalogus hebt geïmporteerd).',
       },
     ],
   },
