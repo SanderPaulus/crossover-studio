@@ -9,6 +9,8 @@ import { fromPolar } from './complex.ts';
 import { defaultEq, defaultHpLp, evalDriverFilter, type DriverFilterSpec } from './filters.ts';
 import { optimizeSoloFilter, runSoloChain } from './soloOptimizer.ts';
 import { optimizeNetworkValues } from './netOptimizer.ts';
+import { tidySchematic } from './tidyLayout.ts';
+import { crossoverToNetlist } from './vxpNetwork.ts';
 import type { VxpPart } from './parsers/vxp.ts';
 
 const FIXTURES = join(dirname(fileURLToPath(import.meta.url)), 'parsers', 'fixtures');
@@ -198,6 +200,37 @@ describe('runSoloChain (design → synthesis → assembled solo tune)', () => {
   const zma = parseZma(load('mid_Backwavecone_sheep75gram.ZMA'));
   const zg = resample(zma.freq, zma.magnitude, zma.phase, grid, { clampEdges: true });
   const z = zg.spl.map((m, i) => fromPolar(m, (zg.phaseDeg[i] * Math.PI) / 180));
+
+  it('stays drawable by the tidy auto-placer, even after staged escalation', () => {
+    // Sanders' "Tidy layout doet niets": a ripple target the driver cannot
+    // reach keeps the staged escalation hunting, and it used to hang a bypass
+    // cap across the damping R INSIDE the parallel LCR trap — a 4-member
+    // parallel group, which the auto-placer refuses to draw (rightly: it
+    // cannot be laid out as a ladder). The bypass move is for lone pad
+    // resistors only.
+    const r = runSoloChain({
+      grid,
+      d,
+      z,
+      model: 'mid',
+      seed: cleanSpec(),
+      settings: {
+        eqBands: 3,
+        band: [300, 19000],
+        targets: { rippleDb: 0.3 }, // deliberately unreachable → escalation
+      },
+    });
+    expect(tidySchematic(r.parts)).not.toBeNull();
+    // No series-path element may end up with three parallel companions.
+    const net = crossoverToNetlist({ name: 'solo', parts: r.parts }).netlist;
+    const groups = new Map<string, number>();
+    for (const e of net.elements) {
+      if (e.kind !== 'R' && e.kind !== 'L' && e.kind !== 'C') continue;
+      const k = [...e.nodes].sort((a, b) => a - b).join('-');
+      groups.set(k, (groups.get(k) ?? 0) + 1);
+    }
+    expect(Math.max(...groups.values())).toBeLessThanOrEqual(3);
+  });
 
   it('produces a solvable single-branch network that improves flatness', () => {
     const r = runSoloChain({

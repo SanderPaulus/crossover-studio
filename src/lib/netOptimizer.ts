@@ -320,6 +320,10 @@ export function optimizeNetworkValues(
    *  undo it). Decision-level only: a gate on the delivered result, never a
    *  term in the search objective (the anchor lesson). */
   const soloSensBudgetDb = 6;
+  /** Effective cap for the solo wall/gate: the budget, or the level the SEED
+   *  already spends when that is more (baffle-step compensation legitimately
+   *  costs 6–10 dB). Set once the seed metrics exist; until then no wall. */
+  let soloLossCap = Infinity;
   const acSlopes =
     opts.acousticSlopes && (opts.acousticSlopes.mid || opts.acousticSlopes.tweeter)
       ? opts.acousticSlopes
@@ -399,6 +403,13 @@ export function optimizeNetworkValues(
     const m = Math.floor(vals.length / 2);
     return vals.length % 2 ? vals[m] : (vals[m - 1] + vals[m]) / 2;
   };
+
+  /** SOLO: the RAW driver's median level (no network) — the reference the
+   *  sensitivity budget is measured against. The silent ghost sits at −400 dB,
+   *  so the per-point max IS the real driver. */
+  const rawMedianRef = solo
+    ? medianOf(grid, wBase.spl.map((v, i) => Math.max(v, tBase.spl[i])))
+    : 0;
 
   /** Peak flatness = ±(max−min)/2 over the band — the SAME number the SPL
    *  strip reads (combinedRippleDb), the unit staged TARGETS gate on and
@@ -846,6 +857,22 @@ export function optimizeNetworkValues(
         const exP = Math.max(0, (m.phaseDeg - barrier.phaseDeg * 0.92) / 15);
         barr = 120 * (exR * exR + exP * exP) + 4 * Math.max(0, m.protSqDb - protRef);
       }
+      // SOLO sensitivity wall. Exactly ZERO inside the cap, so the search path
+      // through the healthy region is untouched (the same argument that makes
+      // the buildability windows safe) — it only walls off the region where
+      // "flatness" means "attenuate everything". Without it the tuner walks
+      // out of bounds on real drivers and the final gate throws the whole tune
+      // away, handing back seed values (measured on Robbert's 12W8524:
+      // rejected at 12.6 dB and 20 dB loss).
+      // The cap is SEED-RELATIVE (see soloLossCap): a design that deliberately
+      // spends level — baffle-step compensation on a woofer is exactly that,
+      // and Sanders' own manual 12W8524 filter spends ~10 dB — keeps its own
+      // level as the reference. The wall stops the tuner from spending MORE,
+      // it never second-guesses the designer's starting point.
+      if (solo) {
+        const over = Math.max(0, rawMedianRef - m.medianDb - soloLossCap);
+        if (over > 0) barr += 200 * over * over;
+      }
       if (zFloorBarrier) {
         // Locally-seeded repair barrier (the proven target-barrier pattern):
         // pulls the dip up to the floor, from a point that is already good.
@@ -905,17 +932,13 @@ export function optimizeNetworkValues(
     driverZ,
     angleData ?? null,
   );
-  /** SOLO: the RAW driver's median level (no network) — the reference the
-   *  sensitivity budget is measured against. The silent ghost sits at −400 dB,
-   *  so the per-point max IS the real driver. */
-  const rawMedianDb = solo
-    ? medianOf(grid, wBase.spl.map((v, i) => Math.max(v, tBase.spl[i])))
-    : 0;
   /** Solo sensitivity gate: the network may not spend more than the budget of
    *  the driver's own median level. Always true for two-driver designs (level
    *  there is a pairing decision, priced by the crossing fundamentals). */
   const soloSensOk = (m: Metrics): boolean =>
-    !solo || rawMedianDb - m.medianDb <= soloSensBudgetDb;
+    !solo || rawMedianRef - m.medianDb <= soloLossCap;
+
+  if (solo) soloLossCap = Math.max(soloSensBudgetDb, rawMedianRef - before.medianDb);
 
   onStage?.('value tune');
   /* ---- Stage: value tuning (always) — MULTI-START. The response landscape
@@ -1509,8 +1532,8 @@ export function optimizeNetworkValues(
    * Only fires when the SEED was inside the budget — a user network that is
    * already padded down keeps its own level as the reference. ---- */
   if (solo) {
-    const seedLoss = rawMedianDb - before.medianDb;
-    const resLoss = rawMedianDb - after.medianDb;
+    const seedLoss = rawMedianRef - before.medianDb;
+    const resLoss = rawMedianRef - after.medianDb;
     if (resLoss > soloSensBudgetDb && resLoss > seedLoss + 0.2) {
       return {
         parts: cloneParts(parts),
@@ -1699,7 +1722,16 @@ function unanchoredKeys(ps: readonly VxpPart[]): Set<string> {
 /** Rule-3 candidates: a capacitor looped across every unlocked series
  *  resistor (neither terminal grounded) that has no parallel C yet, seeded
  *  for a 4 kHz and a 10 kHz shelf corner. Drawn as the same raised loop the
- *  synthesis uses for pad+bypass. */
+ *  synthesis uses for pad+bypass.
+ *
+ *  The move only makes sense for a PAD resistor — one that stands alone in
+ *  the series path. A resistor that already has a parallel companion is the
+ *  damping R inside a trap (the solo engine's parallel LCR, or a notch): a
+ *  cap across it just detunes the trap, and the fourth parallel member also
+ *  pushes the group past what the tidy auto-placer can draw (Sanders'
+ *  "Tidy layout doet niets" — 4 members in one group, refused). The old
+ *  guard compared COORDINATES, so it never saw companions that share the
+ *  same NODES on different rows; this one asks the netlist. */
 function bypassCandidates(
   ps: readonly VxpPart[],
   cloneParts: (x: readonly VxpPart[]) => VxpPart[],
@@ -1714,17 +1746,32 @@ function bypassCandidates(
   }
   const newId = `C${maxC + 1}`;
 
+  // The move is "lift the top octave around the PAD" — pads live in the
+  // SERIES path. "Not grounded" was too weak a proxy: a Zobel resistor sits
+  // at node 3-4 (ungrounded) yet hangs in a chain toward ground, and a
+  // parallel member inside such a chain is something the tidy auto-placer
+  // cannot draw at all — Sanders' second "Tidy layout doet niets" case.
+  const posOf = busPositions(ps);
+
   const out: Array<{ id: string; trial: VxpPart[] }> = [];
   for (const el of netlist.elements) {
     if (el.kind !== 'R' || el.nodes.includes(0)) continue;
     const q = ps.find((pp) => pp.partId === el.id);
     if (!q || q.locked || q.open || q.shorted) continue;
+    if (posOf(el.id) !== 'series') continue;
     const A = q.wires[0];
     const B = q.wires[q.wires.length - 1];
-    // Skip when some capacitor already shares both terminals (existing bypass).
-    const hasEnd = (pp: VxpPart, pt: { x: number; y: number }) =>
-      pp.wires.some((w) => w.x === pt.x && w.y === pt.y);
-    if (ps.some((pp) => pp.type === 'Capacitor' && hasEnd(pp, A) && hasEnd(pp, B))) continue;
+    // Skip when ANYTHING already sits in parallel with this resistor (judged
+    // on NODES, not coordinates): an existing bypass, or — the real case —
+    // the R inside a parallel L∥C∥R trap. Only a lone pad resistor qualifies.
+    const parallelCompanion = netlist.elements.some(
+      (o) =>
+        o.id !== el.id &&
+        (o.kind === 'R' || o.kind === 'L' || o.kind === 'C') &&
+        ((o.nodes[0] === el.nodes[0] && o.nodes[1] === el.nodes[1]) ||
+          (o.nodes[0] === el.nodes[1] && o.nodes[1] === el.nodes[0])),
+    );
+    if (parallelCompanion) continue;
     // Raised loop: perpendicular offset whose corner points are unused (a
     // coordinate coincidence would silently create a junction).
     const offsets =

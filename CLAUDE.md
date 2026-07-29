@@ -7,7 +7,7 @@ minimum phase reconstrueert. Voertaal met Sander: **Nederlands**; code/comments 
 ## Commands
 
 - `npm run dev` — dev-server via de Browser-pane tool (`preview_start {name:"dev"}`), poort 5173
-- `npx vitest run` — testsuite (334 tests, allemaal groen houden)
+- `npx vitest run` — testsuite (335 tests, allemaal groen houden)
 - `npm run build` / `npx tsc -b` — build & typecheck (tsconfig.test.json dekt de tests, Node-types)
 - Verificatie is GESCOPED op wat de wijziging raakt (Sanders regel, jul 2026 — de volle suite
   duurt ~3,5 min en de tests dekken alleen src/lib):
@@ -603,7 +603,21 @@ de staged safe-checks en een EINDPOORT die een resultaat weigert dat >6 dB onder
 driverniveau landt (seed blijft staan + uitleg-note). Referentie = de RAUWE driver
 (ghost = −400, dus per punt max(w,t) ÍS de driver); een al gepadde seed houdt zijn eigen
 niveau als referentie (gate vuurt alleen als het resultaat het seed-verlies vergroot).
-Beslisniveau, nooit in de objective — de anker-les. Gemeten na de fix (KOAN-mid, volle
+Beslisniveau, nooit in de objective — de anker-les. **Cap is SEED-RELATIEF**
+(`soloLossCap = max(6, verlies van de seed)`): baffle-step-compensatie kost legitiem 6–10 dB
+en Sanders eigen 12W8524-filter geeft ~10 dB uit — de muur belet de tuner om er MEER bij te
+doen, hij bevraagt nooit het startpunt van de ontwerper. Naast de eindpoort staat de cap ook
+als BARRIÈRE in de solo-tune zelf (exact 0 binnen de cap, dus het zoekpad in gezond gebied
+blijft ongemoeid — zelfde argument als de bouwbaarheidsvensters); zonder die muur liep de
+tuner er telkens ín en gooide de eindpoort de hele tune weg (gemeten op Robberts 12W8524:
+afgewezen bij 12,6 en 20 dB verlies; mét muur wordt hij geaccepteerd en verbetert 1,39 → 0,97 dB).
+**Bypass-C-escalatie alleen op ECHTE pad-weerstanden (jul 2026, Sanders "Tidy layout doet
+niets")**: de kandidaat-filter keek naar COÖRDINATEN ("zit er al een C op deze twee punten")
+en "niet geaard". Beide te zwak — de damping-R ín een parallelle LCR-trap deelt de knopen maar
+niet de rijen (→ 4 leden in één parallelgroep, die de auto-placer terecht weigert), en een
+Zobel-R is ongeaard maar hangt in een keten naar ground (een parallel lid dáárin kan tidy per
+definitie niet tekenen). Nu: netlijst-gebaseerde parallel-companion-check + `busPositions`
+serie-pad-eis, precies de gedocumenteerde bedoeling ("bypass-C over serie-weerstanden"). Gemeten na de fix (KOAN-mid, volle
 200–20k): notch @5641 Hz + shelf, peak 10,10→4,56 dB, kosten 2,6 dB gevoeligheid; op de
 verstandige band 300–8000 Hz: Response 63→89. UI: "Optimize — flatten driver", solo-"Build passive filter" bouwt
 de topologie uit de huidige spec (nieuwe "Solo build"-tab, waardes = textbook-seeds),

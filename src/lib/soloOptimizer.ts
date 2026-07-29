@@ -425,16 +425,22 @@ export function buildSoloNetwork(
     };
   };
   /** A series group: main element on the bus + parallel companions as loops
-   *  below (chained stub wires — wires connect only at their POINTS). */
+   *  below (chained stub wires — wires connect only at their POINTS).
+   *  Rows are 4 apart, not 3: at 3 the id of one member landed on the value
+   *  label of the next (Sanders' screenshot — "0.15 mH" written through
+   *  "C5"). Same lesson the shunt spreader learned in the two-way layout. */
   const seriesGroup = (members: Array<{ kind: 'L' | 'C' | 'R'; si: number }>) => {
-    bus(x); // ensure bus reaches x
+    // Never start a group on the generator's column: its symbol spans y 4→11,
+    // so stacked members would be drawn straight through it.
+    if (x <= 3) bus(6);
     const A = x;
     const B = x + 6;
+    const ROW = 4;
     members.forEach((m, i) => {
-      const y = 4 + i * 3;
+      const y = 4 + i * ROW;
       if (i > 0) {
-        parts.push({ type: 'Wire', params: [], wires: [{ x: A, y: y - 3 }, { x: A, y }] });
-        parts.push({ type: 'Wire', params: [], wires: [{ x: B, y: y - 3 }, { x: B, y }] });
+        parts.push({ type: 'Wire', params: [], wires: [{ x: A, y: y - ROW }, { x: A, y }] });
+        parts.push({ type: 'Wire', params: [], wires: [{ x: B, y: y - ROW }, { x: B, y }] });
       }
       parts.push(el(m.kind, m.si, [{ x: A, y }, { x: B, y }]));
     });
