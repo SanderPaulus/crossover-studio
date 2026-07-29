@@ -14,25 +14,20 @@ excess-fase-brug, integration-score, directivity-som. Daarvoor is een tweede dri
 
 ---
 
-## 0. Eén driver in een 2-weg-app
+## 0. Single-driver mode (in de app ingebouwd, jul 2026)
 
-De rekenketen kan één driver prima aan; alleen de UI eist twee geladen metingen
-(`if (!woofer || !tweeter) return null`, App.tsx). Omzeilen zonder code:
+Eén geladen driver is genoeg: laad de **FRS8-FRD + ZMA** in het Woofer/mid-slot en de
+simulatie draait op die ene tak. De **Combined**-curve is dan exact "FRS8 door jouw netwerk"
+en het Impedance-paneel toont de ingangsimpedantie van datzelfde netwerk.
 
-1. Laad je **FRS8-FRD in beide slots** — dezelfde file bij "Woofer/mid" én bij "Tweeter".
-2. Laad de **FRS8-ZMA** in het mid-slot (één impedantie is genoeg).
-3. Setup-tab → **Level trim = −80 dB**. De tweeter-tak draagt dan 0,0009 dB bij; hij bestaat
-   effectief niet meer.
-4. Network-tab: bouw je netwerk met **één driver-part** (model `mid`). De tweeter krijgt geen
-   tak, dus geen filter — maar op −80 dB maakt dat niets uit.
-
-De **Combined**-curve is dan exact "FRS8 door jouw netwerk", en het Impedance-paneel toont de
-ingangsimpedantie van datzelfde netwerk. Negeer de integration-/fase-scores: die vergelijken
-twee identieke drivers en zijn hier betekenisloos.
-
-*(Alternatief: een echte single-driver-modus in de app. Netter, en het is dezelfde
-generalisatie als fase 4 op de roadmap — maar het raakt App.tsx breed en is niets om vlak vóór
-een meetsessie in te bouwen. De truc hierboven kost een minuut.)*
+- **Network-tab → New from template** scaffoldt automatisch alleen de geladen driver
+  (generator + driver, ongefilterd) — teken daar je gebouwde netwerk na.
+- Alles wat twee drivers vergelijkt (relatieve fase, integration-score, timing-check,
+  null-check-curve, tweeter adjustment) verbergt zichzelf; het fase-paneel toont de
+  **totale fase van de solo-driver** — precies wat je tegen de meting legt.
+- De crossover-optimizers (Optimize / wizard / component-tuner / passive build) zijn
+  geblokkeerd met uitleg: hun vangnetten zijn kruising-verankerd en een kruising bestaat
+  hier niet. Voor deze validatie heb je ze ook niet nodig.
 
 ## 1. De kale meting
 

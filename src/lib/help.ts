@@ -56,12 +56,13 @@ export const HELP_SECTIONS: HelpSection[] = [
   {
     id: 'import',
     title: '📥 Import-tab',
-    keywords: ['frd', 'zma', 'vxp', 'bestanden', 'metingen', 'laden', 'project', 'notities', 'inventaris'],
+    keywords: ['frd', 'zma', 'vxp', 'bestanden', 'metingen', 'laden', 'project', 'notities', 'inventaris', 'single-driver', 'één driver', 'validatie'],
     blocks: [
       {
         t: 'ul',
         items: [
           '**FRD + ZMA per driver**: selecteer het 0°-bestand, alle horizontale hoek-bestanden én de .ZMA in één file-dialoog; hoeken worden herkend aan de bestandsnaam. De .ZMA mag dus gewoon mee in dezelfde selectie — een VituixCAD-project is nergens voor nodig.',
+          '**Single-driver mode**: één geladen driver (FRD + ZMA) is genoeg — de simulatie draait dan op die ene tak. Ideaal om de simulatie tegen een échte meting te valideren: meet de driver kaal, teken het gebouwde netwerk na op de Network-tab en vergelijk Combined + impedantie met de meting mét netwerk. Alles wat twee drivers nodig heeft (relatieve fase, integration, timing-check, de crossover-optimizers) verbergt of blokkeert zichzelf met uitleg.',
           '**VituixCAD-project (.vxp)** is volledig optioneel: gebruik het alleen om bestaande crossover-varianten (bv. van Stefan) te importeren. Elke variant wordt kiesbaar op de Setup-tab en kan als eigen ontwerp-tab geopend worden.',
           '**Imported files**: de inventaris toont per driver wat er geladen is; elk bestand kan een vrije notitie krijgen ("meting 50 cm, raam open"). Notities gaan mee in de autosave en het projectbestand.',
           '**Save/Load project** bewaart álles — ruwe meetbestanden, filters, netwerk-tabs, instellingen — in één JSON. Daarnaast draait er continu een autosave (localStorage) die nooit bestaande data overschrijft met een lege sessie.',

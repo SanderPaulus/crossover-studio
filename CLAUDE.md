@@ -7,7 +7,7 @@ minimum phase reconstrueert. Voertaal met Sander: **Nederlands**; code/comments 
 ## Commands
 
 - `npm run dev` — dev-server via de Browser-pane tool (`preview_start {name:"dev"}`), poort 5173
-- `npx vitest run` — testsuite (312 tests, allemaal groen houden)
+- `npx vitest run` — testsuite (324 tests, allemaal groen houden)
 - `npm run build` / `npx tsc -b` — build & typecheck (tsconfig.test.json dekt de tests, Node-types)
 - Verificatie is GESCOPED op wat de wijziging raakt (Sanders regel, jul 2026 — de volle suite
   duurt ~3,5 min en de tests dekken alleen src/lib):
@@ -548,6 +548,23 @@ minimum phase reconstrueert. Voertaal met Sander: **Nederlands**; code/comments 
   achter (zelfde symptoom) — demo-data verhulde beide.
   De filter-fase-stippellijnen
   zijn alleen wat het netwerk toevoegt; de verwarring daarover was de aanleiding
+
+## Single-driver mode (jul 2026, Sanders FRS8-validatie)
+
+Eén geladen meting is genoeg: het lege slot krijgt in de sim een **stille ghost-tak**
+(`SILENT_GHOST_DB = −400`, App.tsx) zodat `combine()` en elke downstream-consument hun
+twee-tak-vorm houden — de combined ÍS de solo-tak (1e-20 in amplitude; ver onder het
+−60 dB-fasemasker én het 20 dB-overlapvenster, dus phaseStats/integration degraderen vanzelf
+naar null/geen-overlap). `soloDriver` ('woofer'|'tweeter') stuurt de UI: ghost-curves,
+null-check, relatieve fase, tier-zones/align-legends, integration-strip en tweeter-adjustment
+verbergen; het fase-paneel kopt "{driver} phase (total)". De crossover-optimizers
+(vfOptimize/wizard-🚀/netOptimize/Build passive) zijn geblokkeerd met uitleg-tooltip — de
+dode-tak-fundamentals zijn kruising-verankerd en zonder tweede driver bestaat er geen
+kruising (netOptimize heeft ook een programmatische guard). "New from template" scaffoldt
+alleen het geladen slot (ghost-driver-part zou de solve met missing-impedance blokkeren);
+de orde-templates (2-weg LP+HP) zijn disabled. Bestaansreden: VALIDATIE.md — netwerk op een
+echte solo-driver (FRS8) meten en de sim 1-op-1 tegen de meting leggen. Dit is bewust de
+eerste trede van de N-weg-generalisatie (fase 4), niet een aparte modus in de engine.
 
 ## Workspace-layout (UI-fase B, jul 2026)
 

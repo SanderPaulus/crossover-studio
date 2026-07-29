@@ -144,7 +144,9 @@
       "Bash(gh pr *)",
       "Bash(git pull *)",
       "Bash(awk 'NR>=3050 && NR<=3120 && \\(/\\\\}, \\\\[/ || /refResp/\\)' \"/Users/sandersomers/SD Acoustics/Design Studio/src/App.tsx\")",
-      "Bash(awk 'NR>=2955 && NR<=2985 && /\\\\}, \\\\[/' src/App.tsx)"
+      "Bash(awk 'NR>=2955 && NR<=2985 && /\\\\}, \\\\[/' src/App.tsx)",
+      "Bash(lsof -nP -iTCP -sTCP:LISTEN)",
+      "Bash(awk '{print $9}')"
     ]
   }
 }
