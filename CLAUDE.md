@@ -7,7 +7,7 @@ minimum phase reconstrueert. Voertaal met Sander: **Nederlands**; code/comments 
 ## Commands
 
 - `npm run dev` — dev-server via de Browser-pane tool (`preview_start {name:"dev"}`), poort 5173
-- `npx vitest run` — testsuite (330 tests, allemaal groen houden)
+- `npx vitest run` — testsuite (333 tests, allemaal groen houden)
 - `npm run build` / `npx tsc -b` — build & typecheck (tsconfig.test.json dekt de tests, Node-types)
 - Verificatie is GESCOPED op wat de wijziging raakt (Sanders regel, jul 2026 — de volle suite
   duurt ~3,5 min en de tests dekken alleen src/lib):
@@ -582,7 +582,23 @@ solo-topologie is de klassieke breedbander-correctie: **parallelle LCR-trap ín 
 (lowShelf-cut), plus **gated Zobel** over de driver (|Z|-stijging ≥1,3×, textbook-seed) —
 structuur van de engine, waardes van de tuner ("Add notch + Optimize components",
 geautomatiseerd). Gemeten op de synthetische FRS8 (bult 8 kHz): Response 58→94, peak
-4,78→0,64 dB, BOM €5. UI: "Optimize — flatten driver", solo-"Build passive filter" bouwt
+4,78→0,64 dB, BOM €5.
+**GEVOELIGHEIDSBUDGET (`sensitivityBudgetDb`, default 6 — Sanders eerste echte solo-run,
+jul 2026)**: std-vlakheid is NIVEAU-BLIND, dus "alles onder 10 kHz weggooien" vlakt net zo
+goed als "de 5,6 kHz-breakup temmen" — en met cut-only is de shelf de goedkoopste weg. Zijn
+uitkomst: twee low-shelf-cuts (33 Ω/2,2 Ω serieweerstanden, geen énkele spoel in het schema),
+−15 dB onder 10 kHz, Response 0, peak ±19,9 dB — de engine meldde succes omdat het puin glad
+was. Dit is de solo-tegenhanger van de dode-tak-degeneratie: een toestand die geen
+responsmetriek ziet. Handhaving als FEASIBILITY (kandidaat-poort + push-back in de refine,
+zoals de waardevensters), nooit als kwaliteitsterm in de objective — de anker-les. Meet op de
+MEDIAAN (een diepe smalle notch — het hele punt — mag niet als "verloren gevoeligheid" lezen,
+een brede shelf wel). Plus: **Q-vloer 0,7 op peak-banden** (bij Q 0,3 is een "piek-cut"
+gewoon breedband-verzwakking in vermomming) en shelf-seeds geklemd op het RESTERENDE budget.
+**`dipLimit` in het resultaat**: cut-only kan een dip niet optillen, dus een dip is de eerlijke
+bodem onder de vlakheid — de note meldt hem ("limited by a 4,7 dB dip at 17150 Hz") zodat een
+matige score als fysica leest i.p.v. een mislukte run. Gemeten na de fix (KOAN-mid, volle
+200–20k): notch @5641 Hz + shelf, peak 10,10→4,56 dB, kosten 2,6 dB gevoeligheid; op de
+verstandige band 300–8000 Hz: Response 63→89. UI: "Optimize — flatten driver", solo-"Build passive filter" bouwt
 de topologie uit de huidige spec (nieuwe "Solo build"-tab, waardes = textbook-seeds),
 ⚙ Optimize components solo-tuned (note zonder fase), wizard slaat de Crossover-stap over,
 kruising-settings disabled met uitleg. 3-weg wordt dezelfde gelaagdheid met TWEE paren.

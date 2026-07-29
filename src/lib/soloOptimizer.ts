@@ -35,6 +35,21 @@ export interface SoloOptimizeOptions {
   band?: [number, number];
   /** Stop escalating once the peak ±dB ripple target is met (full grid). */
   targets?: { rippleDb: number };
+  /**
+   * FUNDAMENTAL — sensitivity budget (dB, default 6). How much median passband
+   * level the correction may spend. HARD LEARNED (Sanders' first real solo run,
+   * jul 2026): std-flatness is LEVEL-BLIND, so "throw away everything below
+   * 10 kHz" flattens exactly as well as "tame the 5.6 kHz breakup" — and with
+   * cut-only EQ the shelf is the CHEAPEST way to do it. His result: two
+   * low-shelf cuts (33 Ω / 2.2 Ω series resistors, no coil in the schematic at
+   * all), −15 dB below 10 kHz, Response score 0, peak ±19.9 dB — the engine
+   * reported success because the wreckage was smooth. This is the solo
+   * equivalent of the two-way dead-branch degeneration: a state no response
+   * metric can see. Enforced as a FEASIBILITY constraint (candidate gate +
+   * push-back in the refine, like the value windows), never as a quality nudge
+   * in the objective — the anchor lesson.
+   */
+  sensitivityBudgetDb?: number;
   maxIterations?: number;
 }
 
@@ -53,6 +68,16 @@ export interface SoloOptimizeResult {
   evaluations: number;
   /** Final full-grid search objective (band std) — chain-comparison yardstick. */
   objective: number;
+  /** Median passband level the correction costs (dB, ≥0) — what flatness was
+   *  paid for. Reported so the trade is visible instead of discovered later. */
+  sensitivityCostDb: number;
+  /** The deepest DIP left in the corrected response (dB below its median, and
+   *  where). Cut-only cannot lift a dip: the only "fix" is attenuating
+   *  everything else, which the sensitivity budget forbids — so a dip is the
+   *  honest floor on flatness. Reported so a mediocre score reads as physics
+   *  ("that region is not this driver's job") instead of a failed optimizer.
+   *  null when nothing meaningful is left. */
+  dipLimit: { db: number; hz: number } | null;
 }
 
 const cloneSpec = (s: DriverFilterSpec): DriverFilterSpec => ({
@@ -125,6 +150,25 @@ export function optimizeSoloFilter(
   const innerStd = (spec: DriverFilterSpec): number => stats(optFreq, respOn(spec, optFreq, optSpl)).std;
   const fullStats = (spec: DriverFilterSpec) => stats(grid, respOn(spec, grid, driver.spl));
 
+  /** MEDIAN passband level over the band — the level reference for the
+   *  sensitivity budget. Median, not mean: a deep narrow notch (the whole
+   *  point of the exercise) must not read as "lost sensitivity", while a
+   *  broad shelf cut moves the median and does. */
+  const medianLevel = (freqs: readonly number[], spl: readonly number[]): number => {
+    const vals = inBand(freqs).map((i) => spl[i]).sort((a, b) => a - b);
+    if (vals.length === 0) return 0;
+    const m = Math.floor(vals.length / 2);
+    return vals.length % 2 ? vals[m] : (vals[m - 1] + vals[m]) / 2;
+  };
+  const rawMedianInner = medianLevel(optFreq, optSpl);
+  const rawMedianFull = medianLevel(grid, driver.spl);
+  const sensBudget = Math.max(0, opts.sensitivityBudgetDb ?? 6);
+  /** Sensitivity spent by a spec (dB, ≥0) on the inner grid. */
+  const costOf = (s: DriverFilterSpec): number =>
+    Math.max(0, rawMedianInner - medianLevel(optFreq, respOn(s, optFreq, optSpl)));
+  const costOfFull = (s: DriverFilterSpec): number =>
+    Math.max(0, rawMedianFull - medianLevel(grid, respOn(s, grid, driver.spl)));
+
   // Seed: adopt the user's spec as-is, EQ boosts clamped to 0 (cut-only).
   const spec = cloneSpec(seedSpec);
   spec.eq = spec.eq.map((b) => ({ ...b, gainDb: Math.min(0, b.gainDb) }));
@@ -144,7 +188,12 @@ export function optimizeSoloFilter(
         const f = 10 ** x[j * 3];
         b.freq = Math.min(band[1] * 1.2, Math.max(band[0] * 0.8, f));
         b.gainDb = Math.min(0, Math.max(-18, x[j * 3 + 1]));
-        b.q = Math.min(12, Math.max(0.3, 10 ** x[j * 3 + 2]));
+        // Q FLOOR per type: a 'peak' band exists to tame a resonance, so it
+        // stays a notch (≥0.7). At the old 0.3 floor a "peak cut" degenerates
+        // into broadband attenuation — the same level-blind wreckage the
+        // sensitivity budget guards against, wearing a different hat.
+        const qFloor = (b.type ?? 'peak') === 'peak' ? 0.7 : 0.3;
+        b.q = Math.min(12, Math.max(qFloor, 10 ** x[j * 3 + 2]));
         j++;
       }
       return out;
@@ -152,7 +201,12 @@ export function optimizeSoloFilter(
     const objective = (x: readonly number[]): number => {
       let pen = 0;
       for (let j = 0; j < bands.length; j++) pen += 2 * Math.max(0, x[j * 3 + 1]) ** 2;
-      return innerStd(apply(x)) + pen;
+      const trial = apply(x);
+      // Sensitivity budget as a FEASIBILITY push-back (like the value windows
+      // in the component tuner): inside the budget it contributes nothing, so
+      // the search path in the healthy region is untouched.
+      const over = Math.max(0, costOf(trial) - sensBudget);
+      return innerStd(trial) + pen + 4 * over * over;
     };
     const iters = Math.round((opts.maxIterations ?? 400) * budgetScale * Math.max(1, bands.length / 2));
     let fit = nelderMead(objective, x0, { maxIterations: iters, tolerance: 1e-6, step: 0.08 });
@@ -201,7 +255,7 @@ export function optimizeSoloFilter(
       for (let i = pi; i >= ids[0]; i--) if (spl[i] < m.mean + prom / 2) { loF = optFreq[i]; break; }
       for (let i = pi; i <= ids[ids.length - 1]; i++) if (spl[i] < m.mean + prom / 2) { hiF = optFreq[i]; break; }
       const bw = Math.max(1.05, hiF / loF);
-      const q = Math.min(8, Math.max(0.5, optFreq[pi] / (optFreq[pi] * (bw - 1))));
+      const q = Math.min(8, Math.max(0.7, optFreq[pi] / (optFreq[pi] * (bw - 1))));
       out.push({ enabled: true, type: 'peak', freq: optFreq[pi], gainDb: -Math.min(12, prom), q });
     }
     // (b/c) Shelf cuts: whichever half of the band runs hot gets pulled down.
@@ -216,10 +270,15 @@ export function optimizeSoloFilter(
     }
     if (loN > 3 && hiN > 3) {
       const tilt = hiSum / hiN - loSum / loN;
-      if (tilt > 0.8) {
-        out.push({ enabled: true, type: 'highShelf', freq: split, gainDb: -Math.min(10, tilt), q: 0.7 });
-      } else if (tilt < -0.8) {
-        out.push({ enabled: true, type: 'lowShelf', freq: split, gainDb: -Math.min(10, -tilt), q: 0.7 });
+      // A shelf may never propose more cut than the REMAINING sensitivity
+      // budget: a shelf moves the median by roughly its own depth, so an
+      // unbounded seed walks straight into the wreckage case.
+      const room = Math.max(0, sensBudget - costOf(cur));
+      const depth = (want: number) => Math.min(10, want, room);
+      if (tilt > 0.8 && room > 0.3) {
+        out.push({ enabled: true, type: 'highShelf', freq: split, gainDb: -depth(tilt), q: 0.7 });
+      } else if (tilt < -0.8 && room > 0.3) {
+        out.push({ enabled: true, type: 'lowShelf', freq: split, gainDb: -depth(-tilt), q: 0.7 });
       }
     }
     return out;
@@ -234,6 +293,9 @@ export function optimizeSoloFilter(
       const trial = cloneSpec(cur);
       trial.eq = [...trial.eq.filter((b) => b.enabled), cand];
       const refined = refine(trial, 0.7);
+      // GATE: flatness bought beyond the sensitivity budget is not a design,
+      // it is attenuation. Rejected outright, however good the metric looks.
+      if (costOf(refined) > sensBudget + 1e-9) continue;
       const fx = innerStd(refined);
       if (!best || fx < best.fx) {
         const kind = cand.type === 'peak' ? 'notch' : cand.type === 'highShelf' ? 'high-shelf cut' : 'low-shelf cut';
@@ -267,13 +329,22 @@ export function optimizeSoloFilter(
     }
   }
 
-  // Never worse than the (clamped) seed on the full grid.
+  // Never worse than the (clamped) seed on the full grid — and never over
+  // budget: a refine that walked past the sensitivity cap loses to the seed.
   const seedClamped = cloneSpec(spec);
   const finalStd = stats(grid, respOn(cur, grid, driver.spl)).std;
   const seedStd = stats(grid, respOn(seedClamped, grid, driver.spl)).std;
-  if (seedStd < finalStd) cur = seedClamped;
+  if (seedStd < finalStd || costOfFull(cur) > sensBudget + 0.5) cur = seedClamped;
 
   const after = fullStats(cur);
+  // What still limits the result: the deepest remaining dip below the median.
+  const finalSpl = respOn(cur, grid, driver.spl);
+  const finalMed = medianLevel(grid, finalSpl);
+  let dipLimit: { db: number; hz: number } | null = null;
+  for (const i of inBand(grid)) {
+    const below = finalMed - finalSpl[i];
+    if (below > 2 && (!dipLimit || below > dipLimit.db)) dipLimit = { db: below, hz: grid[i] };
+  }
   return {
     spec: cur,
     before: { ripplePeakDb: before.peak, avgDevDb: before.avg },
@@ -281,6 +352,8 @@ export function optimizeSoloFilter(
     stages,
     evaluations,
     objective: Math.min(finalStd, seedStd),
+    sensitivityCostDb: costOfFull(cur),
+    dipLimit,
   };
 }
 

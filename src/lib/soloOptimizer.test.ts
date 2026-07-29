@@ -6,7 +6,7 @@ import { parseFrd } from './parsers/frd.ts';
 import { parseZma } from './parsers/zma.ts';
 import { logspace, resample, type GriddedResponse } from './dsp.ts';
 import { fromPolar } from './complex.ts';
-import { defaultEq, defaultHpLp, type DriverFilterSpec } from './filters.ts';
+import { defaultEq, defaultHpLp, evalDriverFilter, type DriverFilterSpec } from './filters.ts';
 import { optimizeSoloFilter, runSoloChain } from './soloOptimizer.ts';
 
 const FIXTURES = join(dirname(fileURLToPath(import.meta.url)), 'parsers', 'fixtures');
@@ -79,6 +79,43 @@ describe('optimizeSoloFilter (single-driver design engine)', () => {
     const r = optimizeSoloFilter(grid, bumpyDriver, seeded, { eqBands: 2 });
     for (const b of r.spec.eq) expect(b.gainDb).toBeLessThanOrEqual(0);
     expect(r.after.avgDevDb).toBeLessThanOrEqual(r.before.avgDevDb + 1e-9);
+  });
+
+  it('never buys flatness by throwing away sensitivity (Sanders 33 Ω run)', () => {
+    // A driver whose top octave is DEAD: std-flatness can be "fixed" by
+    // attenuating everything below it — which is what the first version did
+    // (two low-shelf cuts, 33 Ω series resistor, Response score 0). The
+    // sensitivity budget must forbid it.
+    const deadTop: GriddedResponse = {
+      freq: [...grid],
+      spl: grid.map((f) => (f < 9000 ? 88 : 88 - 14 * Math.min(1, Math.log2(f / 9000)))),
+      phaseDeg: grid.map(() => 0),
+    };
+    const r = optimizeSoloFilter(grid, deadTop, cleanSpec(), {
+      eqBands: 4,
+      band: [300, 19000],
+      sensitivityBudgetDb: 6,
+    });
+    expect(r.sensitivityCostDb).toBeLessThanOrEqual(6.5);
+    // The passband must survive: no 14 dB "flattening" of everything.
+    const h = evalDriverFilter(r.spec, [1000]);
+    const atOneK = 20 * Math.log10(Math.hypot(h[0].re, h[0].im));
+    expect(atOneK).toBeGreaterThan(-6.5);
+    // And the honest limitation is reported rather than optimised away.
+    expect(r.dipLimit).not.toBeNull();
+  });
+
+  it('reports the sensitivity cost of the correction it chose', () => {
+    const r = optimizeSoloFilter(grid, bumpyDriver, cleanSpec(), { eqBands: 3 });
+    expect(r.sensitivityCostDb).toBeGreaterThanOrEqual(0);
+    expect(r.sensitivityCostDb).toBeLessThanOrEqual(6);
+  });
+
+  it('keeps peak bands narrow enough to be notches, not broadband cuts', () => {
+    const r = optimizeSoloFilter(grid, bumpyDriver, cleanSpec(), { eqBands: 3 });
+    for (const b of r.spec.eq.filter((x) => x.enabled && (x.type ?? 'peak') === 'peak')) {
+      expect(b.q).toBeGreaterThanOrEqual(0.7);
+    }
   });
 
   it('leaves an already-flat driver alone', () => {

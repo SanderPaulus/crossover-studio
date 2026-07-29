@@ -1985,7 +1985,14 @@ export default function App() {
             setNetOptNote(
               `solo design (virtual — load a .ZMA to build it): peak ` +
                 `${r.before.ripplePeakDb.toFixed(2)} → ${r.after.ripplePeakDb.toFixed(2)} dB · ` +
-                r.stages.map((s) => s.label).join(' → '),
+                r.stages.map((s) => s.label).join(' → ') +
+                (r.sensitivityCostDb > 0.2
+                  ? ` · costs ${r.sensitivityCostDb.toFixed(1)} dB sensitivity`
+                  : '') +
+                (r.dipLimit
+                  ? ` · ⓘ limited by a ${r.dipLimit.db.toFixed(1)} dB dip at ` +
+                    `${Math.round(r.dipLimit.hz)} Hz — passive cuts cannot lift a dip`
+                  : ''),
             );
           } catch (e) {
             setVfError(e instanceof Error ? e.message : String(e));
@@ -2060,6 +2067,16 @@ export default function App() {
               `peak ${r.vf.before.ripplePeakDb.toFixed(2)} → ${r.net.after.rippleDb.toFixed(2)} dB` +
               (r.net.after.avgDevDb !== undefined
                 ? ` · avg ${r.net.after.avgDevDb.toFixed(2)} dB`
+                : '') +
+              (r.vf.sensitivityCostDb > 0.2
+                ? ` · costs ${r.vf.sensitivityCostDb.toFixed(1)} dB sensitivity`
+                : '') +
+              // A dip is the honest floor: cut-only cannot lift it, so say so
+              // instead of leaving a mediocre score looking like a bad run.
+              (r.vf.dipLimit
+                ? ` · ⓘ limited by a ${r.vf.dipLimit.db.toFixed(1)} dB dip at ` +
+                  `${Math.round(r.vf.dipLimit.hz)} Hz — passive cuts cannot lift a dip; ` +
+                  `narrow the view range if that region isn't this driver's job`
                 : '') +
               (r.bomTotalEur !== null ? ` · BOM €${Math.round(r.bomTotalEur)}` : '') +
               (r.net.snapNote ? ` · ${r.net.snapNote}` : '') +
