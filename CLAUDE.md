@@ -206,6 +206,15 @@ minimum phase reconstrueert. Voertaal met Sander: **Nederlands**; code/comments 
   lamp blijft zichtbaar bij polariteit/timing-fouten). Sanders keuze: integration naar de
   achtergrond, sturen op response- en fase-vlakheid. Display-only, optimizer-objectives
   ongewijzigd
+- `tolerance.ts` — **bouwtolerantie-analyse (jul 2026, Sanders keuze uit de UI-ideeënlijst)**:
+  worst-case-envelop om de combined SPL bij ±tol% op élk fysiek R/L/C-element
+  (one-at-a-time hoekanalyse, 2N+1 solves, eerste-orde-som van de per-part-shifts =
+  pessimistisch "alle fouten tegen je in"; RSS ernaast = realistisch bij onafhankelijke
+  fouten) + per-part gevoeligheidsranking (waar 2%-parts lonen). Deterministisch, geen RNG.
+  UI: "Tolerance band ±2/5/10%" in de Simulation-groep (gepersisteerd), envelop als fijne
+  stippellijnen om de combined, strip-item "build ±5%: worst ±… · RSS ±… · sensitive L1, …"
+  in het SPL-paneel; tolBand-memo herrekent live met dezelfde part-bron/vf-stacking/adjust
+  als de sim (vf vóór of ná het netwerk vermenigvuldigen is equivalent — pre-applied)
 - `directivity.ts` — per-hoek som (zelfde filter elke hoek), energy average, listening window (≤30°), DI
 - `sonogram.ts` + `components/Sonogram.tsx` — directivity-sonogram: ±hoeken gespiegeld, discrete
   3 dB-banden (vloer −24 dB, sequentiële blauwe ramp, dark-mode flipt het anker), −6 dB-beamwidth-
@@ -573,6 +582,15 @@ minimum phase reconstrueert. Voertaal met Sander: **Nederlands**; code/comments 
   mid-tak boven de kruising) is onschadelijk — hoorbaar enkel via hoge-uitgangsimpedantie-
   versterkers (buizen). NB: de KOAN-mid meet zélf 3,66 Ω min rond 388 Hz — oranje is daar de
   eerlijke driver-waarheid, geen netwerk-fout.
+- **Target-curves in de SPL-chart (jul 2026, Stefans "ik heb de targets nodig in de
+  grafiek")**: legend-chips "Woofer/Tweeter target" (defaultOff) tekenen de akoestische
+  doelvorm van het virtuele ontwerp (zelfde bron als de 🎯 Targets-popup: evalDriverFilter
+  op vFilters MET eq:[] — **EQ/shelves zijn gereedschap-niet-doel** (acoustic-doctrine);
+  ze meetekenen liet het doel afwijken precies waar de driver niet vlak is, Stefans
+  "dan zit het er ver naast"-vondst; tweeter-trim rijdt mee) met ÉÉN gedeeld niveau-anker (gepoolde
+  passband-mediaan vs de gemeten driver-responsies) — gedeeld zodat de RELATIEVE
+  target-niveaus behouden blijven en een te zachte tak zichtbaar afwijkt i.p.v.
+  meegeankerd te worden.
 - **Fase D — filter-handles in de SPL-chart**: `handles` op Chart (App: `splHandles`) — holle
   dot = HP/LP-knie (alleen x-drag), volle dot = EQ-band (drag = freq+gain, wheel = Q); alleen
   zichtbaar als de virtuele filters actief zijn (verdwijnen bij vfBypass — anders zou je
@@ -659,6 +677,9 @@ minimum phase reconstrueert. Voertaal met Sander: **Nederlands**; code/comments 
   bij WebGPU (transfer-overhead domineert); multi-core via workers was de echte winst
 
 ## Status
+
+**Planning leeft in [ROADMAP.md](ROADMAP.md)** (kort/middel/groot + bewust-niet;
+Sanders leesvolgorde). Dit Status-blok blijft de engineering-stand van zaken.
 
 Origineel 8-stappenplan: 1-5, 7, 8 klaar + veel extra's (optimizer, synthese, directivity,
 fase-conventies, shelves, VituixCAD-import/brug). Sonogram + −6dB-beamwidth zijn af (sonogram.ts).
