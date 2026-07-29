@@ -121,7 +121,30 @@
       "Bash(git diff-index *)",
       "Bash(git check-ignore *)",
       "Bash(Z_DEBUG=1 npx vitest run src/lib/__zapp.test.ts)",
-      "Bash(grep -n \"Export catalog\\\\|Export$\\\\|catalogMgrOpen\\\\|helpOpen &&\" \"/Users/sandersomers/SD Acoustics/Design Studio/src/App.tsx\")"
+      "Bash(grep -n \"Export catalog\\\\|Export$\\\\|catalogMgrOpen\\\\|helpOpen &&\" \"/Users/sandersomers/SD Acoustics/Design Studio/src/App.tsx\")",
+      "Bash(git -C \"/Users/sandersomers/SD Acoustics/Design Studio\" remote -v)",
+      "Bash(git -C \"/Users/sandersomers/SD Acoustics/Design Studio\" log --oneline)",
+      "Bash(gh auth *)",
+      "Bash(echo \"exit: $?\")",
+      "Bash(npm i *)",
+      "Bash(python3 -c ' *)",
+      "Bash(echo \"tsc exit: $?\")",
+      "Bash(npm uninstall *)",
+      "Bash(git checkout *)",
+      "Bash(brew --version)",
+      "Bash(brew install *)",
+      "Bash(gh --version)",
+      "Bash(git ls-remote *)",
+      "Bash(git remote *)",
+      "Bash(pkill -f \"gh auth login\")",
+      "Bash(git push *)",
+      "Bash(gh api *)",
+      "Bash(gh run *)",
+      "Bash(gh pr create --base main --title 'UI: draggable pane splitter + whole-range Response flatness score' --body ' *)",
+      "Bash(gh pr *)",
+      "Bash(git pull *)",
+      "Bash(awk 'NR>=3050 && NR<=3120 && \\(/\\\\}, \\\\[/ || /refResp/\\)' \"/Users/sandersomers/SD Acoustics/Design Studio/src/App.tsx\")",
+      "Bash(awk 'NR>=2955 && NR<=2985 && /\\\\}, \\\\[/' src/App.tsx)"
     ]
   }
 }
