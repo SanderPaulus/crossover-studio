@@ -146,7 +146,9 @@
       "Bash(awk 'NR>=3050 && NR<=3120 && \\(/\\\\}, \\\\[/ || /refResp/\\)' \"/Users/sandersomers/SD Acoustics/Design Studio/src/App.tsx\")",
       "Bash(awk 'NR>=2955 && NR<=2985 && /\\\\}, \\\\[/' src/App.tsx)",
       "Bash(lsof -nP -iTCP -sTCP:LISTEN)",
-      "Bash(awk '{print $9}')"
+      "Bash(awk '{print $9}')",
+      "Bash(awk -F: '$1 > 4900 && $1 < 5600')",
+      "Bash(awk -F: '$1 > 3740 && $1 < 4270')"
     ]
   }
 }

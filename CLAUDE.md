@@ -7,7 +7,7 @@ minimum phase reconstrueert. Voertaal met Sander: **Nederlands**; code/comments 
 ## Commands
 
 - `npm run dev` — dev-server via de Browser-pane tool (`preview_start {name:"dev"}`), poort 5173
-- `npx vitest run` — testsuite (324 tests, allemaal groen houden)
+- `npx vitest run` — testsuite (330 tests, allemaal groen houden)
 - `npm run build` / `npx tsc -b` — build & typecheck (tsconfig.test.json dekt de tests, Node-types)
 - Verificatie is GESCOPED op wat de wijziging raakt (Sanders regel, jul 2026 — de volle suite
   duurt ~3,5 min en de tests dekken alleen src/lib):
@@ -556,15 +556,36 @@ Eén geladen meting is genoeg: het lege slot krijgt in de sim een **stille ghost
 twee-tak-vorm houden — de combined ÍS de solo-tak (1e-20 in amplitude; ver onder het
 −60 dB-fasemasker én het 20 dB-overlapvenster, dus phaseStats/integration degraderen vanzelf
 naar null/geen-overlap). `soloDriver` ('woofer'|'tweeter') stuurt de UI: ghost-curves,
-null-check, relatieve fase, tier-zones/align-legends, integration-strip en tweeter-adjustment
-verbergen; het fase-paneel kopt "{driver} phase (total)". De crossover-optimizers
-(vfOptimize/wizard-🚀/netOptimize/Build passive) zijn geblokkeerd met uitleg-tooltip — de
-dode-tak-fundamentals zijn kruising-verankerd en zonder tweede driver bestaat er geen
-kruising (netOptimize heeft ook een programmatische guard). "New from template" scaffoldt
-alleen het geladen slot (ghost-driver-part zou de solve met missing-impedance blokkeren);
-de orde-templates (2-weg LP+HP) zijn disabled. Bestaansreden: VALIDATIE.md — netwerk op een
-echte solo-driver (FRS8) meten en de sim 1-op-1 tegen de meting leggen. Dit is bewust de
-eerste trede van de N-weg-generalisatie (fase 4), niet een aparte modus in de engine.
+null-check, relatieve fase, tier-zones/align-legends, integration-strip, tweeter-adjustment
+en het ghost-filterblok verbergen; het fase-paneel kopt "{driver} phase (total)".
+"New from template" scaffoldt alleen het geladen slot; de orde-templates (2-weg LP+HP) zijn
+disabled. Bestaansreden: VALIDATIE.md — netwerk op een echte solo-driver (FRS8) meten en de
+sim 1-op-1 tegen de meting leggen. Bewust de eerste trede van de N-weg-generalisatie (fase 4).
+
+**Solo-optimizers (jul 2026, Sanders "juist wél optimizen, solo-georiënteerd")** — de
+architectuurkeuze na zijn "3-weg optimaliseert straks ook anders": gedeelde kern +
+**eigen structuur-zoeker per topologie**. (a) `netOptimizer` kreeg `opts.solo` ("0
+driver-paren"): álle kruising-verankerde termen (xo-penalty incl. de altijd-120, vallei,
+breakup, tweeter-protectie, acoustic slopes) zijn paar-eigenschappen en vervallen; fase
+rapporteert 0 (een constante 180°-term zou de %-beslispoorten — challenge 1%, prune 10%,
+ladder 1% — vergiftigen); objective = puur tak-vlakheid; Z-vloer/serie-plafond/krimpladder/
+drift-catch/snap/staged blijven; directivity uit (paart hoeksets over beide drivers); duo-pad
+bit-identiek (volle suite = regressie). (b) `soloOptimizer.ts` = de eigen solo-engine:
+`optimizeSoloFilter` (greedy cut-only EQ/shelf-kandidaten tegen mediaan-vlak, joint-NM-refine,
+full-grid-audit ≥0,5%, trapmethode-stop op ripple-target, deterministisch; KOAN-mid:
+6,8→1,1 dB piek, notch op de 5,6 kHz-breakup gevonden) + `buildSoloNetwork` + `runSoloChain`
+(design → topologie → solo-netTune, worker-request 'soloChain'). **HARD GELEERD (eerste
+chain-poging hergebruikte de 2-weg-synthese)**: een shunt-trap naar ground doet NIETS aan een
+ideale spanningsbron — in een crossover levert de ladder de bronimpedantie, solo niet. De
+solo-topologie is de klassieke breedbander-correctie: **parallelle LCR-trap ín het seriepad**
+(R = Zd·(10^(d/20)−1) op |Z|(f0)), serie-L∥R (highShelf-cut/baffle-step), serie-C∥R
+(lowShelf-cut), plus **gated Zobel** over de driver (|Z|-stijging ≥1,3×, textbook-seed) —
+structuur van de engine, waardes van de tuner ("Add notch + Optimize components",
+geautomatiseerd). Gemeten op de synthetische FRS8 (bult 8 kHz): Response 58→94, peak
+4,78→0,64 dB, BOM €5. UI: "Optimize — flatten driver", solo-"Build passive filter" bouwt
+de topologie uit de huidige spec (nieuwe "Solo build"-tab, waardes = textbook-seeds),
+⚙ Optimize components solo-tuned (note zonder fase), wizard slaat de Crossover-stap over,
+kruising-settings disabled met uitleg. 3-weg wordt dezelfde gelaagdheid met TWEE paren.
 
 ## Workspace-layout (UI-fase B, jul 2026)
 

@@ -82,6 +82,20 @@ export interface NetOptimizeOptions {
   /** Target ACOUSTIC slopes beside the crossing (dB/oct) — same steering as
    *  the design optimizer, so the tuner keeps the achieved orders. */
   acousticSlopes?: { mid?: number; tweeter?: number };
+  /** SINGLE-DRIVER mode ("0 driver pairs"): the network drives ONE measured
+   *  driver and the other slot carries a silent ghost. Every crossing-anchored
+   *  term (xo pin/penalty, valley, breakup guard, tweeter protection, acoustic
+   *  slopes) is a property of ADJACENT DRIVER PAIRS — with zero pairs they are
+   *  all skipped, and the phase metric (relative phase between drivers) is
+   *  reported as 0 and carries no objective weight. What remains is the honest
+   *  solo objective: whole-range flatness of the branch + the pair-independent
+   *  fundamentals (amp-load floor, series-path realism, buildability), plus
+   *  the full toolbox (staged prune/escalation, shrink ladder, drift catch,
+   *  catalog snap). Directivity terms are disabled for now (they pair angle
+   *  sets across both drivers). NB: this flag must NOT change the two-driver
+   *  path in any way — regression-tested bit-identical. The planned 3-way
+   *  generalisation is the same idea with TWO pairs, not another special case. */
+  solo?: boolean;
   /** FULL-measurement-band safety data (grid independent of the evaluation
    *  band). The tuner's quality metrics deliberately follow the user's view
    *  range, but that means a zoomed-in band silently hides whole-design
@@ -289,12 +303,15 @@ export function optimizeNetworkValues(
   const {
     phasePriority = 0.5,
     maxIterations,
-    angleData,
     ampTarget = 'onAxis',
     breakupGuard = false,
     phaseMetric = 'band',
     onStage,
   } = opts;
+  const solo = opts.solo === true;
+  // Solo: directivity terms pair angle sets across BOTH drivers — with one
+  // driver the pairing is empty and the power average degenerates to NaN.
+  const angleData = solo ? undefined : opts.angleData;
   const acSlopes =
     opts.acousticSlopes && (opts.acousticSlopes.mid || opts.acousticSlopes.tweeter)
       ? opts.acousticSlopes
@@ -595,9 +612,14 @@ export function optimizeNetworkValues(
       rippleDb: targetStd,
       ripplePeakDb: bandPeak(r.freq, r.combinedSpl),
       avgDevDb: bandAvgDev(r.freq, r.combinedSpl),
-      phaseDeg:
-        phaseMetric === 'band' ? (uN > 0 ? uSum / uN : 180) : wSum > 0 ? eSum / wSum : 180,
-      phaseP95Deg,
+      // Solo: relative phase against a silent ghost is noise — report 0 so
+      // every phase gate (staged target, barrier) passes trivially and the
+      // %-based fx gates keep their meaning (a constant 180° term would
+      // swamp them).
+      phaseDeg: solo
+        ? 0
+        : phaseMetric === 'band' ? (uN > 0 ? uSum / uN : 180) : wSum > 0 ? eSum / wSum : 180,
+      phaseP95Deg: solo ? 0 : phaseP95Deg,
       powerStdDb,
       leakSqDb,
       protSqDb,
@@ -635,6 +657,13 @@ export function optimizeNetworkValues(
       dW > 0 && m.powerStdDb !== null
         ? (1 - dW) * m.rippleDb ** 2 + dW * m.powerStdDb ** 2
         : m.rippleDb ** 2;
+    // Solo ("0 driver pairs"): flatness of the branch is the whole story —
+    // every crossing-anchored term is pair-defined and the phase metric is 0
+    // by construction. A constant no-crossing penalty (120) would poison the
+    // %-based decision gates (challenge 1%, prune 10%, ladder 1%), so the
+    // solo objective is exactly the amplitude term. The amp-load floor stays
+    // decision-level (gates + repair pass), same as the two-driver path.
+    if (solo) return 2 * amp;
     const phase =
       (m.phaseDeg / 15) ** 2 +
       (phaseMetric === 'band' ? 0.5 * (m.phaseP95Deg / 45) ** 2 : 0);

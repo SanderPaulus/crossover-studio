@@ -25,9 +25,12 @@ en het Impedance-paneel toont de ingangsimpedantie van datzelfde netwerk.
 - Alles wat twee drivers vergelijkt (relatieve fase, integration-score, timing-check,
   null-check-curve, tweeter adjustment) verbergt zichzelf; het fase-paneel toont de
   **totale fase van de solo-driver** — precies wat je tegen de meting legt.
-- De crossover-optimizers (Optimize / wizard / component-tuner / passive build) zijn
-  geblokkeerd met uitleg: hun vangnetten zijn kruising-verankerd en een kruising bestaat
-  hier niet. Voor deze validatie heb je ze ook niet nodig.
+- De optimizers werken ook solo, met een eigen engine: **Optimize — flatten driver**
+  ontwerpt cut-only EQ/shelves en bouwt ze als echte breedbander-topologie (serie-LCR-traps,
+  shelf-groepen, gated Zobel); **⚙ Optimize components** tuned componentwaardes op pure
+  respons-vlakheid. Voor laag 3 van dit protocol (de negatieve controle) is dat precies
+  de tegenstander-generator: laat de solo-optimizer een correctienetwerk ontwerpen en meet
+  het naast je eigen handontwerp.
 
 ## 1. De kale meting
 
