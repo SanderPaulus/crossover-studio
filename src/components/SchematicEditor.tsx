@@ -373,38 +373,76 @@ export default function SchematicEditor({ parts, models, onChange, onUndo, canUn
                   </option>
                 ))}
               </select>
-              {nearestParts(
-                catKind,
-                (partParam(selPart, catKind) ?? 0) * CAT_UNIT[catKind].toSi,
-                3,
-                prefSeries[catKind] === 'all' ? undefined : prefSeries[catKind],
-              ).map((p: CatalogPart) => (
-                <button
-                  key={p.id}
-                  type="button"
-                  title={`${p.brand} ${p.series}${p.kind === 'R' ? '' : ` — apply value + ${p.kind === 'L' ? 'DCR' : 'ESR'}`}`}
-                  onClick={() => {
-                    const u = CAT_UNIT[p.kind];
-                    const withVal = setPartParam(
-                      parts,
-                      sel!,
-                      p.kind,
-                      Number((p.value / u.toSi).toPrecision(6)),
-                      u.unit,
-                    );
-                    const withRes =
-                      p.kind === 'R'
-                        ? withVal
-                        : setPartParam(withVal, sel!, p.kind === 'L' ? 'DCR' : 'ESR', p.seriesR, 'Ω');
-                    // Stamp the chosen SKU so the BOM attributes THIS part —
-                    // otherwise it falls back to value/ESR and a same-value
-                    // series swap (or any resistor swap) stays invisible.
-                    onChange(setPartProps(withRes, sel!, { catalog: p.id }));
-                  }}
-                >
-                  {formatCatalogPart(p)}
-                </button>
-              ))}
+              {(() => {
+                const si = (partParam(selPart, catKind) ?? 0) * CAT_UNIT[catKind].toSi;
+                const scope = prefSeries[catKind] === 'all' ? undefined : prefSeries[catKind];
+                const applyCatalogPart = (p: CatalogPart) => {
+                  const u = CAT_UNIT[p.kind];
+                  const withVal = setPartParam(
+                    parts,
+                    sel!,
+                    p.kind,
+                    Number((p.value / u.toSi).toPrecision(6)),
+                    u.unit,
+                  );
+                  const withRes =
+                    p.kind === 'R'
+                      ? withVal
+                      : setPartParam(withVal, sel!, p.kind === 'L' ? 'DCR' : 'ESR', p.seriesR, 'Ω');
+                  // Stamp the chosen SKU so the BOM attributes THIS part —
+                  // otherwise it falls back to value/ESR and a same-value
+                  // series swap (or any resistor swap) stays invisible.
+                  onChange(setPartProps(withRes, sel!, { catalog: p.id }));
+                };
+                const candidates = nearestParts(catKind, si, 8, scope);
+                // Quick-pick buttons: one per DISTINCT value (first = best
+                // variant), max 3 — the full variant list (gauges, brands,
+                // prices) lives in the dropdown so the row never grows wide
+                // (Sanders zijwaarts-scrollen-klacht + dropdown-idee).
+                // Dedupe on the DISPLAY precision: catalog parts of the same
+                // nominal value can differ in float dust across series.
+                const seen = new Set<number>();
+                const quick: CatalogPart[] = [];
+                for (const p of candidates) {
+                  const key = Number(p.value.toPrecision(3));
+                  if (seen.has(key)) continue;
+                  seen.add(key);
+                  quick.push(p);
+                  if (quick.length === 3) break;
+                }
+                return (
+                  <>
+                    <select
+                      className="cat-parts"
+                      value=""
+                      onChange={(e) => {
+                        const p = candidates.find((c) => c.id === e.target.value);
+                        if (p) applyCatalogPart(p);
+                      }}
+                      title="Every nearby catalog part in this scope — all values, gauge variants and prices; picking one applies it"
+                    >
+                      <option value="" disabled>
+                        all {candidates.length} parts…
+                      </option>
+                      {candidates.map((p) => (
+                        <option key={p.id} value={p.id}>
+                          {p.brand} · {formatCatalogPart(p)}
+                        </option>
+                      ))}
+                    </select>
+                    {quick.map((p) => (
+                      <button
+                        key={p.id}
+                        type="button"
+                        title={`${p.brand} ${p.series}${p.kind === 'R' ? '' : ` — apply value + ${p.kind === 'L' ? 'DCR' : 'ESR'}`}`}
+                        onClick={() => applyCatalogPart(p)}
+                      >
+                        {formatCatalogPart(p)}
+                      </button>
+                    ))}
+                  </>
+                );
+              })()}
             </span>
           )}
           {catKind && (

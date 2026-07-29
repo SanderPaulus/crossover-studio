@@ -1104,12 +1104,22 @@ svg.legend-key-dash {
   display: inline-flex;
   align-items: center;
   gap: 0.3rem;
+  /* "All series" can offer a dozen-plus candidates — wrap them into extra
+     rows instead of growing the inspector sideways (Sanders scroll-klacht). */
+  flex-wrap: wrap;
+  min-width: 0;
 }
 
 .cat-suggest button {
   font-size: 0.75rem;
   padding: 0.15rem 0.5rem;
   font-variant-numeric: tabular-nums;
+}
+
+/* The full-candidates dropdown sizes to its longest option — cap it so the
+   row stays tidy; the opened list still shows the full labels. */
+.cat-suggest .cat-parts {
+  max-width: 10.5rem;
 }
 
 .nl-remove {
@@ -1759,6 +1769,19 @@ button:disabled {
   font-size: 0.85rem;
   color: var(--muted);
   font-variant-numeric: tabular-nums;
+}
+
+/* Old → new component values of the last tune run, collapsed by default. */
+.tune-diff {
+  margin: 0 0 0.8rem;
+}
+.tune-diff summary {
+  cursor: pointer;
+  color: var(--muted);
+  font-size: 0.82rem;
+}
+.tune-diff .scan-table {
+  margin-top: 0.4rem;
 }
 .busy-title {
   font-weight: 600;

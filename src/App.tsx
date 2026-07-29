@@ -71,6 +71,7 @@ import {
 import { synthesize, formatComponent, type SynthesisResult, type SynthesizedComponent } from './lib/synthesis.ts';
 import { computePhaseStats } from './lib/phaseStats.ts';
 import { computeResponseStats } from './lib/responseStats.ts';
+import { toleranceBand } from './lib/tolerance.ts';
 import { type VfOptimizeResult, type StructChoice } from './lib/vfOptimizer.ts';
 import { toTimeDomain, excessGroupDelay } from './lib/timeDomain.ts';
 import {
@@ -320,6 +321,41 @@ function breakPhaseWraps(arr: number[]): number[] {
   return arr;
 }
 
+/** Old → new value rows for the tune-diff table: L/C/R parts matched by
+ *  partId whose value param moved. Values stay in the schematic's display
+ *  units (mH/µF/Ω). Removed/added parts are already named in the note. */
+function diffTunedParts(
+  seed: readonly VxpPart[],
+  tuned: readonly VxpPart[],
+): { id: string; from: number; to: number; unit: string }[] {
+  const PARAMS: Record<string, { name: string; unit: string }> = {
+    Inductor: { name: 'L', unit: 'mH' },
+    Capacitor: { name: 'C', unit: 'µF' },
+    Resistor: { name: 'R', unit: 'Ω' },
+  };
+  const valueOf = (p: VxpPart): { v: number; unit: string } | null => {
+    const meta = PARAMS[p.type];
+    if (!meta || p.partId === undefined || p.open || p.shorted) return null;
+    const v = p.params.find((q) => q.name === meta.name)?.value;
+    return v === undefined ? null : { v, unit: meta.unit };
+  };
+  const seedVal = new Map<string, { v: number; unit: string }>();
+  for (const p of seed) {
+    const sv = valueOf(p);
+    if (sv && p.partId) seedVal.set(p.partId, sv);
+  }
+  const rows: { id: string; from: number; to: number; unit: string }[] = [];
+  for (const p of tuned) {
+    const tv = valueOf(p);
+    if (!tv || !p.partId) continue;
+    const sv = seedVal.get(p.partId);
+    if (!sv || sv.unit !== tv.unit) continue;
+    if (Math.abs(tv.v - sv.v) <= Math.abs(sv.v) * 5e-4) continue; // unchanged
+    rows.push({ id: p.partId, from: sv.v, to: tv.v, unit: tv.unit });
+  }
+  return rows;
+}
+
 /** One-line summary of a driver's virtual filter, for the collapsed header. */
 function filterSummaryLine(spec: DriverFilterSpec, side: 'woofer' | 'tweeter'): string {
   const name = side === 'woofer' ? 'Woofer/mid' : 'Tweeter';
@@ -560,6 +596,21 @@ export default function App() {
   }, [designTab]);
 
   /** Pin the SPL chart to the top of the analysis pane while the rest scrolls. */
+  /** Build-tolerance band on the SPL chart (±% on every physical R/L/C,
+   *  worst-case envelope; see lib/tolerance.ts). Opt-in — it costs 2N+1
+   *  network solves per sim change. Persisted. */
+  const [tolOn, setTolOn] = useState<boolean>(() => localStorage.getItem('ads-ui-tolband') === 'on');
+  useEffect(() => {
+    localStorage.setItem('ads-ui-tolband', tolOn ? 'on' : 'off');
+  }, [tolOn]);
+  const [tolPct, setTolPct] = useState<number>(() => {
+    const v = Number(localStorage.getItem('ads-ui-tolpct'));
+    return v === 2 || v === 10 ? v : 5;
+  });
+  useEffect(() => {
+    localStorage.setItem('ads-ui-tolpct', String(tolPct));
+  }, [tolPct]);
+
   const [splPinned, setSplPinned] = useState<boolean>(
     () => localStorage.getItem('ads-ui-splpin') !== 'off',
   );
@@ -2037,10 +2088,15 @@ export default function App() {
                 }
               : null,
           );
+          setNetOptDiff(null); // fresh design — an old tune-diff would lie
           setNetOptNote(
             (results.length > 1
               ? `crossover scan — winner xo ${win.label}`
-              : `${win.net.after.rippleDb.toFixed(2)} dB / ${win.net.after.phaseDeg.toFixed(1)}°` +
+              : `peak ${win.net.after.rippleDb.toFixed(2)} dB` +
+                (win.net.after.avgDevDb !== undefined
+                  ? ` · avg ${win.net.after.avgDevDb.toFixed(2)} dB`
+                  : '') +
+                ` / ${win.net.after.phaseDeg.toFixed(1)}°` +
                 (win.bomTotalEur !== null ? ` · BOM €${Math.round(win.bomTotalEur)}` : '')) +
               (win.net.snapNote ? ` · ${win.net.snapNote}` : '') +
               (win.net.valueWindowNote ? ` · ${win.net.valueWindowNote}` : '') +
@@ -2257,6 +2313,13 @@ export default function App() {
   }, [anyBusy]);
 
   const [netOptNote, setNetOptNote] = useState<string | null>(null);
+  /** Old → new component values of the last tune run ("⚙ Optimize
+   *  components" / auto-tune) — makes the tuner inspectable: you see WHERE
+   *  it found its gains instead of just "N components tuned" (Sanders wens,
+   *  jul 2026). Cleared when a new design lands from the Optimize flow. */
+  const [netOptDiff, setNetOptDiff] = useState<
+    { id: string; from: number; to: number; unit: string }[] | null
+  >(null);
   /** Crossover-scan results as STRUCTURED rows — rendered as a small table
    *  instead of one long note line (readability; Sanders UX-ronde). Each row
    *  carries its FULL chain result: clicking a row loads that candidate's
@@ -2320,8 +2383,10 @@ export default function App() {
     // busy, but a second overlapping run would interleave stage labels).
     if (netOptBusy) return;
     if (!activeDesign || !sim || Object.keys(impedances).length === 0) return;
+    const seedParts = [...activeDesign.parts];
     setNetOptBusy(true);
     setNetOptNote(null);
+    setNetOptDiff(null);
     setNetOptStages([]);
     setNetOptPlan([
       'value tune',
@@ -2358,7 +2423,7 @@ export default function App() {
     // Off the main thread: the tuner runs in the optimizer worker — the UI
     // stays live and the busy overlay's Cancel button can terminate the run.
     runNetOptimizeTask({
-      parts: [...activeDesign.parts],
+      parts: seedParts,
       grid: [...grid],
       w: sim.base.w,
       t: sim.base.t,
@@ -2386,13 +2451,17 @@ export default function App() {
         if (!r.safetyNote) {
           commitSchematic(r.parts); // undo-able, sim follows live
           setNetworkActive(true);
+          setNetOptDiff(diffTunedParts(seedParts, r.parts));
         }
         setNetOptNote(
           r.safetyNote
             ? `⚠ ${r.safetyNote}` + (r.ampFloorNote ? ` · ${r.ampFloorNote}` : '')
             : `${r.tuned} components tuned (${r.evaluations.toLocaleString('nl-NL')} sims) — ` +
-                `ripple ${r.before.rippleDb.toFixed(2)} → ${r.after.rippleDb.toFixed(2)} dB · ` +
-                `phase ${r.before.phaseDeg.toFixed(1)}° → ${r.after.phaseDeg.toFixed(1)}°` +
+                `peak ${r.before.rippleDb.toFixed(2)} → ${r.after.rippleDb.toFixed(2)} dB` +
+                (r.before.avgDevDb !== undefined && r.after.avgDevDb !== undefined
+                  ? ` · avg ${r.before.avgDevDb.toFixed(2)} → ${r.after.avgDevDb.toFixed(2)} dB`
+                  : '') +
+                ` · phase ${r.before.phaseDeg.toFixed(1)}° → ${r.after.phaseDeg.toFixed(1)}°` +
                 (r.removed.length > 0 ? ` · pruned: ${r.removed.join(', ')}` : '') +
                 (r.added.length > 0 ? ` · bypass-C added: ${r.added.join(', ')}` : '') +
                 (r.snapNote ? ` · ${r.snapNote}` : '') +
@@ -2781,6 +2850,10 @@ export default function App() {
     const freq = sim.combined.freq;
     // Cap the open-network blow-up (~1/G_LEAK) so the chart scale stays sane.
     const mags = sim.systemZ.map((c) => Math.min(cAbs(c), 1e4));
+    // Load character: arg(Z) — negative = capacitive, positive = inductive.
+    // Low |Z| alone is current/heat; low AND capacitive is the combination
+    // marginal amplifiers dislike (Sanders 15–20 kHz question, jul 2026).
+    const phase = sim.systemZ.map((c) => (Math.atan2(c.im, c.re) * 180) / Math.PI);
     let minI = 0;
     let maxI = 0;
     mags.forEach((m, i) => {
@@ -2789,12 +2862,92 @@ export default function App() {
     });
     return {
       mags,
+      phase,
       minOhm: mags[minI],
       minHz: freq[minI],
+      minPhaseDeg: phase[minI],
       maxOhm: mags[maxI],
       maxHz: freq[maxI],
     };
   }, [showPanels.impedance, sim]);
+
+  /** Build-tolerance envelope for the ACTIVE passive network — the same part
+   *  source, virtual-filter stacking and adjustment the sim uses, so the band
+   *  hugs the exact combined curve on screen. Null while off or without a
+   *  solvable network. */
+  const tolBand = useMemo(() => {
+    if (!tolOn || !sim) return null;
+    const xo =
+      project && xoName !== 'none' ? project.vxp.crossovers.find((c) => c.name === xoName) : undefined;
+    const parts = networkActive && schematic ? schematic.parts : xo?.parts;
+    if (!parts || Object.keys(impedances).length === 0) return null;
+    const grid = sim.combined.freq;
+    // Virtual filters multiply per driver just like in the sim; order vs the
+    // network transfer is irrelevant, so pre-applying them here is exact.
+    let wEff = sim.base.w;
+    let tEff = sim.base.t;
+    if (!vfBypass && isActive(vFilters.woofer)) {
+      wEff = applyTransfer(wEff, evalDriverFilter(vFilters.woofer, grid));
+    }
+    if (!vfBypass && isActive(vFilters.tweeter)) {
+      tEff = applyTransfer(tEff, evalDriverFilter(vFilters.tweeter, grid));
+    }
+    return toleranceBand(parts, grid, wEff, tEff, zGridWithSlots(impedances, grid), {
+      offsetMm: num(offsetMm, 0),
+      trimDb: num(trimDb, 0),
+      inverted,
+    }, tolPct);
+  }, [tolOn, tolPct, sim, project, xoName, networkActive, schematic, impedances, vfBypass, vFilters, offsetMm, trimDb, inverted]);
+
+  /** Per-driver ACOUSTIC target curves for the SPL chart (Stefans vraag:
+   *  "hoever volgt de respons per speaker het target?") — the ideal shape of
+   *  the virtual target design (same source as the 🎯 Targets popup), placed
+   *  with ONE shared level offset (pooled passband median vs the actual
+   *  driver responses). Sharing the offset preserves the targets' RELATIVE
+   *  levels: a branch playing 2 dB under its target SHOWS as 2 dB deviation
+   *  instead of being re-anchored away. Tweeter trim rides into its target —
+   *  the trim knob is a playback adjustment, not a build deviation. */
+  const targetSeries: Series[] = useMemo(() => {
+    if (!result) return [];
+    const defs = [
+      { id: 'wtarget', label: 'Woofer target', spec: vFilters.woofer, drv: result.woofer, color: 'var(--viz-woofer)', trim: 0 },
+      { id: 'ttarget', label: 'Tweeter target', spec: vFilters.tweeter, drv: result.tweeter, color: 'var(--viz-tweeter)', trim: num(trimDb, 0) },
+    ].filter((d) => isActive(d.spec));
+    if (defs.length === 0) return [];
+    const shapes = defs.map((d) => {
+      // ACOUSTIC target = the ideal HP/LP alignment shape (+ gain) ONLY.
+      // EQ bands and shelves are deliberately excluded: in acoustic mode
+      // they are TOOLS that flatten the driver, not part of the goal —
+      // drawing them made the target deviate from the measured branch
+      // exactly where the driver isn't flat (Stefans "dan zit het er ver
+      // naast": double-counting, hard geleerd jul 2026).
+      const h = evalDriverFilter({ ...d.spec, eq: [] }, result.freq);
+      return h.map((c) => 20 * Math.log10(Math.hypot(c.re, c.im) || 1e-12) + d.trim);
+    });
+    // One shared offset: pooled median of (measured − shape) over each
+    // shape's own passband (within 3 dB of its top).
+    const pool: number[] = [];
+    defs.forEach((d, k) => {
+      const shape = shapes[k];
+      const top = Math.max(...shape);
+      for (let i = 0; i < shape.length; i++) {
+        if (shape[i] >= top - 3 && Number.isFinite(d.drv.spl[i])) pool.push(d.drv.spl[i] - shape[i]);
+      }
+    });
+    if (pool.length < 8) return [];
+    pool.sort((a, b) => a - b);
+    const offset = pool[Math.floor(pool.length / 2)];
+    return defs.map((d, k) => ({
+      id: d.id,
+      label: d.label,
+      color: d.color,
+      dash: '2 4',
+      width: 1.6,
+      x: result.freq,
+      y: shapes[k].map((s) => s + offset),
+      defaultOff: true,
+    }));
+  }, [result, vFilters, trimDb]);
 
   const splSeries: Series[] = useMemo(() => {
     if (!result) return [];
@@ -2805,6 +2958,32 @@ export default function App() {
       : undefined;
     return [
       ...tabGhosts.spl,
+      // Build-tolerance envelope hugs the combined curve — drawn first so the
+      // live curves stay on top.
+      ...(tolBand
+        ? ([
+            {
+              id: 'tolhi',
+              label: `±${tolBand.tolPct}% build tolerance ↑`,
+              color: 'var(--viz-tick)',
+              dash: '3 3',
+              width: 1.2,
+              x: result.freq,
+              y: tolBand.upperDb,
+            },
+            {
+              id: 'tollo',
+              label: `±${tolBand.tolPct}% build tolerance ↓`,
+              color: 'var(--viz-tick)',
+              dash: '3 3',
+              width: 1.2,
+              x: result.freq,
+              y: tolBand.lowerDb,
+            },
+          ] satisfies Series[])
+        : []),
+      // Acoustic per-driver targets (legend-opt-in) under the live curves.
+      ...targetSeries,
       { id: 'w', label: 'Woofer/mid', color: 'var(--viz-woofer)', x: result.freq, y: result.woofer.spl },
       { id: 't', label: 'Tweeter', color: 'var(--viz-tweeter)', x: result.freq, y: result.tweeter.spl },
       {
@@ -2829,7 +3008,7 @@ export default function App() {
       },
     ];
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [result, integration, tabGhosts, networkActive, activeDesign]);
+  }, [result, integration, tabGhosts, networkActive, activeDesign, tolBand, targetSeries]);
 
   /**
    * Design handles ON the SPL chart (UI-fase D): drag the crossover knees and
@@ -5321,6 +5500,23 @@ export default function App() {
                       Compare tabs
                     </label>
                   )}
+                  <label title="Worst-case envelope around the combined curve when every physical R/L/C lands within its tolerance — what building with real parts can do to this design. Numbers in the SPL strip; the tooltip there ranks the most sensitive parts.">
+                    <input
+                      type="checkbox"
+                      checked={tolOn}
+                      onChange={(e) => setTolOn(e.target.checked)}
+                    />{' '}
+                    Tolerance band ±
+                    <select
+                      value={tolPct}
+                      onChange={(e) => setTolPct(Number(e.target.value))}
+                      title="Component tolerance class: 2% (measured/selected parts), 5% (good film caps & air coils), 10% (electrolytics, budget parts)"
+                    >
+                      <option value={2}>2%</option>
+                      <option value={5}>5%</option>
+                      <option value={10}>10%</option>
+                    </select>
+                  </label>
                 </div>
               </div>
             </div>
@@ -5328,6 +5524,41 @@ export default function App() {
               <p className="derived" style={{ margin: '0 0 0.8rem' }}>
                 {netOptNote}
               </p>
+            )}
+            {netOptDiff && netOptDiff.length > 0 && (
+              <details className="tune-diff">
+                <summary>{netOptDiff.length} value changes — old → new</summary>
+                <table className="scan-table">
+                  <thead>
+                    <tr>
+                      <th>part</th>
+                      <th>old</th>
+                      <th>new</th>
+                      <th>Δ</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {netOptDiff.map((d) => {
+                      const pct = ((d.to - d.from) / Math.abs(d.from)) * 100;
+                      return (
+                        <tr key={d.id}>
+                          <td>{d.id}</td>
+                          <td>
+                            {Number(d.from.toPrecision(3))} {d.unit}
+                          </td>
+                          <td>
+                            {Number(d.to.toPrecision(3))} {d.unit}
+                          </td>
+                          <td>
+                            {pct > 0 ? '+' : ''}
+                            {Math.abs(pct) >= 100 ? pct.toFixed(0) : pct.toFixed(1)}%
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </details>
             )}
             {chainScan && (
               <table
@@ -5656,6 +5887,16 @@ export default function App() {
                     </span>
                   </>
                 )}
+                {tolBand && (
+                  <span
+                    className="strip-item"
+                    title={`How far the combined response can drift when every physical R/L/C lands ±${tolBand.tolPct}% off its value. Worst = all errors aligned against you (the guarantee before soldering); RSS = statistically realistic with independent part errors. Most sensitive parts: ${tolBand.perPart.slice(0, 5).map((p) => `${p.id} (±${p.maxAbsDb.toFixed(2)} dB)`).join(', ')} — tight-tolerance (or measured) parts pay off there first.`}
+                  >
+                    build ±{tolBand.tolPct}%: worst ±{tolBand.worstHalfDb.toFixed(2)} · RSS ±
+                    {tolBand.rssHalfDb.toFixed(2)} dB · sensitive{' '}
+                    {tolBand.perPart.slice(0, 3).map((p) => p.id).join(', ')}
+                  </span>
+                )}
                 {integration &&
                   (integration.score !== null ? (
                     <>
@@ -5860,6 +6101,18 @@ export default function App() {
                 <span className="strip-item">@ {Math.round(systemZInfo.minHz)} Hz</span>
                 <span
                   className="strip-item"
+                  title="Load character AT the impedance minimum: arg(Z), negative = capacitive, positive = inductive. Low |Z| alone costs current/heat; low AND strongly capacitive (≲ −45°) is the combination marginal amplifiers (tube, some class-D) dislike most."
+                >
+                  {systemZInfo.minPhaseDeg > 0 ? '+' : ''}
+                  {systemZInfo.minPhaseDeg.toFixed(0)}°{' '}
+                  {Math.abs(systemZInfo.minPhaseDeg) < 15
+                    ? '(resistive)'
+                    : systemZInfo.minPhaseDeg < 0
+                      ? '(capacitive)'
+                      : '(inductive)'}
+                </span>
+                <span
+                  className="strip-item"
                   title="Highest system impedance. High is HARMLESS — the amp simply delivers less current there. It only becomes audible with a high-output-impedance amplifier (tube amps): the response then follows this curve."
                 >
                   max {systemZInfo.maxOhm >= 1000 ? '≥1k' : systemZInfo.maxOhm.toFixed(0)} Ω @{' '}
@@ -5883,6 +6136,25 @@ export default function App() {
                 yTickStep={systemZInfo.maxOhm <= 36 ? 5 : systemZInfo.maxOhm <= 90 ? 10 : 25}
                 yUnit="Ω"
                 height={240}
+                xMarkers={[{ x: systemZInfo.minHz, color: 'var(--viz-tick)', label: 'Z min' }]}
+              />
+              <Chart
+                series={[
+                  {
+                    id: 'zphase',
+                    label: 'Z phase (− = capacitive, + = inductive)',
+                    color: 'var(--viz-combined)',
+                    dash: '5 3',
+                    width: 2,
+                    x: result.freq,
+                    y: systemZInfo.phase,
+                  },
+                ]}
+                xDomain={xDomain}
+                yDomain={[-90, 90]}
+                yTickStep={30}
+                yUnit="°"
+                height={150}
                 xMarkers={[{ x: systemZInfo.minHz, color: 'var(--viz-tick)', label: 'Z min' }]}
               />
             </div>
