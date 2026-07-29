@@ -6,6 +6,14 @@ Volgorde binnen een blok = aanbevolen prioriteit. Inschattingen zijn grof:
 
 ## Onlangs afgerond (jul 2026, ter referentie)
 
+- **Single-driver mode**: één FRD+ZMA volstaat — sim draait op de solo-tak,
+  twee-driver-UI verbergt/blokkeert zichzelf. Voor de FRS8-validatiemeting
+  (VALIDATIE.md) én de eerste trede richting fase 4 (N-weg)
+- **Solo-optimizers** (soloOptimizer.ts + netOptimizer `solo`): "Optimize —
+  flatten driver" ontwerpt cut-only EQ/shelves en bouwt de échte
+  breedbander-topologie (serie-LCR-traps, shelf-groepen, gated Zobel);
+  ⚙ Optimize components tuned solo op pure vlakheid. Architectuur:
+  gedeelde kern + eigen structuur-zoeker per topologie — de mal voor 3-weg
 - Versleepbare paneelscheiding (grafieken ↔ invoer, dubbelklik = auto)
 - **Response flatness**-score (hele-bereik, mediaan-referentie, geijkt op
   ontwerpersoordeel) + integration naar de achtergrond

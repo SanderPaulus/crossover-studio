@@ -14,6 +14,7 @@ import type { Complex } from './complex.ts';
 import type { GriddedResponse, TweeterAdjust } from './dsp.ts';
 import type { VxpPart } from './parsers/vxp.ts';
 import { runDesignChain, type ChainInput, type ChainStageProgress } from './designChain.ts';
+import { runSoloChain, type SoloChainInput } from './soloOptimizer.ts';
 import {
   optimizeVfCluster,
   optimizeVirtualFilters,
@@ -79,6 +80,7 @@ export type OptimRequest = { id: number; catalog?: CatalogPayload | null } & (
   | { kind: 'chainOne'; payload: ChainOnePayload }
   | { kind: 'vfRounds'; payload: VfRoundsPayload }
   | { kind: 'netOptimize'; payload: NetOptimizePayload }
+  | { kind: 'soloChain'; payload: SoloChainInput }
 );
 
 /** Progress from one chain candidate, tagged with its variant label. */
@@ -165,6 +167,11 @@ self.onmessage = (e: MessageEvent<OptimRequest>) => {
         });
         break;
       }
+      case 'soloChain':
+        data = runSoloChain(req.payload, (pr) =>
+          post({ id: req.id, kind: 'progress', data: { ...pr, variant: 'solo' } }),
+        );
+        break;
     }
     post({ id: req.id, kind: 'done', data });
   } catch (err) {

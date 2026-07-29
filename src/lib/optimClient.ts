@@ -23,10 +23,12 @@ import type {
   VfRoundsResult,
 } from './optimWorker.ts';
 import type { NetOptimizeResult } from './netOptimizer.ts';
+import type { SoloChainInput, SoloChainResult } from './soloOptimizer.ts';
 import {
   followupVariantsFor,
   type ChainInput,
   type ChainResult,
+  type ChainStageProgress,
 } from './designChain.ts';
 import { customCatalogParts, customSeries } from './catalog.ts';
 
@@ -83,7 +85,7 @@ function catalogPayload(): CatalogPayload {
 
 function run<T>(
   slot: number,
-  kind: 'chainOne' | 'vfRounds' | 'netOptimize',
+  kind: 'chainOne' | 'vfRounds' | 'netOptimize' | 'soloChain',
   payload: unknown,
   onProgress?: (d: unknown) => void,
 ): Promise<T> {
@@ -225,6 +227,14 @@ export function runVfRoundsTask(
   onProgress?: (d: VfProgressMsg) => void,
 ): Promise<VfRoundsResult> {
   return run<VfRoundsResult>(0, 'vfRounds', payload, onProgress as (d: unknown) => void);
+}
+
+/** Single-driver design chain (solo flatten → solo topology → solo tune). */
+export function runSoloChainTask(
+  payload: SoloChainInput,
+  onProgress?: (p: ChainStageProgress) => void,
+): Promise<SoloChainResult> {
+  return run<SoloChainResult>(0, 'soloChain', payload, onProgress as (d: unknown) => void);
 }
 
 export function runNetOptimizeTask(

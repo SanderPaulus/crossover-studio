@@ -55,8 +55,10 @@ import {
   CancelledError,
   runChainScan,
   runNetOptimizeTask,
+  runSoloChainTask,
   runVfRoundsTask,
 } from './lib/optimClient.ts';
+import { buildSoloNetwork, optimizeSoloFilter } from './lib/soloOptimizer.ts';
 import { crossoverVariants, rankChainResults, type ChainResult, type ChainSettings } from './lib/designChain.ts';
 import { deserializeCatalog, serializeCatalog } from './lib/catalogFile.ts';
 import { fromPolar, abs as cAbs, mul as cMul, type Complex } from './lib/complex.ts';
@@ -246,6 +248,13 @@ function useTheme(): [Theme, (t: Theme) => void] {
   }, [theme]);
   return [theme, setTheme];
 }
+
+/** Silent ghost level for the missing branch in single-driver mode: at
+ *  −400 dB the branch contributes 1e-20 in amplitude — the combined result IS
+ *  the solo branch, while every two-branch consumer keeps its shape. Far below
+ *  the −60 dB phase-mask and the 20 dB integration-overlap window, so the
+ *  ghost never draws a phase line and never counts as overlap. */
+const SILENT_GHOST_DB = -400;
 
 /** Map a solved network's drivers to the woofer/tweeter voltage transfers by
  *  SLOT (not hard-coded model name), so an imported vxp with freely-named
@@ -1331,18 +1340,34 @@ export default function App() {
   };
 
 
+  /** Single-driver mode: exactly one measurement loaded. The sim runs on that
+   *  branch alone (silent ghost in the other slot); everything inherently
+   *  two-driver — relative phase, integration, timing, the crossover
+   *  optimizers — hides or disables. 'woofer' | 'tweeter' names the solo slot. */
+  const soloDriver = woofer && !tweeter ? 'woofer' : tweeter && !woofer ? 'tweeter' : null;
+
   const sim = useMemo(() => {
-    if (!woofer || !tweeter) return null;
-    const lo = Math.max(num(fMinDeb, 200), woofer.frd.freq[0], tweeter.frd.freq[0]);
+    // Single-driver mode: ONE loaded measurement is enough (validation flow:
+    // measure a lone driver, rebuild the physical network in the editor,
+    // compare sim vs measurement). The missing slot gets a silent ghost
+    // branch so combine() and every downstream consumer keep their
+    // two-branch shape; the UI hides the ghost's curves and scores.
+    if (!woofer && !tweeter) return null;
+    const present = [woofer, tweeter].filter((d): d is Loaded => d !== null);
+    const lo = Math.max(num(fMinDeb, 200), ...present.map((d) => d.frd.freq[0]));
     const hi = Math.min(
       num(fMaxDeb, 20000),
-      woofer.frd.freq[woofer.frd.freq.length - 1],
-      tweeter.frd.freq[tweeter.frd.freq.length - 1],
+      ...present.map((d) => d.frd.freq[d.frd.freq.length - 1]),
     );
     if (!(hi > lo)) return null;
     const grid = logspace(lo, hi, GRID_N);
-    let w = resample(woofer.frd.freq, woofer.frd.spl, woofer.frd.phase, grid);
-    let t = resample(tweeter.frd.freq, tweeter.frd.spl, tweeter.frd.phase, grid);
+    const silent = () => ({
+      freq: grid,
+      spl: grid.map(() => SILENT_GHOST_DB),
+      phaseDeg: grid.map(() => 0),
+    });
+    let w = woofer ? resample(woofer.frd.freq, woofer.frd.spl, woofer.frd.phase, grid) : silent();
+    let t = tweeter ? resample(tweeter.frd.freq, tweeter.frd.spl, tweeter.frd.phase, grid) : silent();
 
     // VituixCAD-style comparison mode: throw away the measured phase and
     // reconstruct minimum phase from magnitude (drivers then sum with zero
@@ -1926,6 +1951,132 @@ export default function App() {
    * run reads as work, not a hang.
    */
   function runVfOptimize() {
+    // SINGLE-DRIVER path: its own engine (soloOptimizer) — flatten the one
+    // measured driver with cut-only EQ/shelves, build the SOLO topology
+    // (series traps / shelf groups / gated Zobel) and solo-tune the result.
+    if (soloDriver && result) {
+      const solo = (soloDriver === 'woofer' ? woofer : tweeter)!;
+      const model = soloDriver === 'woofer' ? 'mid' : 'tweeter';
+      const spec = vFilters[soloDriver];
+      const grid = result.freq;
+      const band: [number, number] = [
+        Math.max(300, grid[0]),
+        Math.min(grid[grid.length - 1] * 0.975, num(fMax, 20000)),
+      ];
+      const z = impedances[model];
+      setVfBusy(true);
+      setVfError(null);
+      setVfProgress(null);
+      setChainScan(null);
+      if (!z) {
+        // No impedance → design the virtual filter only (mirrors the classic
+        // no-impedance vf flow; fast enough to run synchronously).
+        setTimeout(() => {
+          try {
+            const d = resample(solo.frd.freq, solo.frd.spl, solo.frd.phase, grid);
+            const r = optimizeSoloFilter(grid, d, spec, {
+              eqBands: vfEqBands,
+              band,
+              targets: stagedOn ? { rippleDb: num(targetRipple, 1.5) } : undefined,
+            });
+            setVFilters((p) => ({ ...p, [soloDriver]: r.spec }));
+            setVfBypass(false); // virtual result — must be audible in the sim
+            setNetOptDiff(null);
+            setNetOptNote(
+              `solo design (virtual — load a .ZMA to build it): peak ` +
+                `${r.before.ripplePeakDb.toFixed(2)} → ${r.after.ripplePeakDb.toFixed(2)} dB · ` +
+                r.stages.map((s) => s.label).join(' → '),
+            );
+          } catch (e) {
+            setVfError(e instanceof Error ? e.message : String(e));
+          } finally {
+            setVfBusy(false);
+          }
+        }, 30);
+        return;
+      }
+      const d = resample(solo.frd.freq, solo.frd.spl, solo.frd.phase, grid);
+      const zg = resample(z.freq, z.magnitude, z.phase, grid, { clampEdges: true });
+      const zOnGrid = zg.spl.map((m, i) => fromPolar(m, (zg.phaseDeg[i] * Math.PI) / 180));
+      const safety = (() => {
+        const lo = Math.max(200, solo.frd.freq[0]);
+        const hi = Math.min(20000, solo.frd.freq[solo.frd.freq.length - 1]);
+        if (!(hi > lo * 1.5)) return undefined;
+        const sGrid = logspace(lo, hi, 240);
+        const sz = resample(z.freq, z.magnitude, z.phase, sGrid, { clampEdges: true });
+        return {
+          freqs: sGrid,
+          d: resample(solo.frd.freq, solo.frd.spl, solo.frd.phase, sGrid),
+          z: sz.spl.map((m, i) => fromPolar(m, (sz.phaseDeg[i] * Math.PI) / 180)),
+        };
+      })();
+      runSoloChainTask(
+        {
+          grid: [...grid],
+          d,
+          z: zOnGrid,
+          model,
+          seed: spec,
+          settings: {
+            eqBands: vfEqBands,
+            band,
+            targets: stagedOn ? { rippleDb: num(targetRipple, 1.5) } : undefined,
+            catalogSnap: catalogSnap && hasImportedCatalog(),
+            snapPrefs: snapPrefsValue(),
+            safety,
+          },
+        },
+        (p) =>
+          setVfProgress({
+            round: p.round ?? 0,
+            evals: p.evals,
+            rippleDb: p.rippleDb,
+            items: [
+              {
+                label: 'solo',
+                text:
+                  p.stage === 'design'
+                    ? 'design'
+                    : p.stage === 'synthesis'
+                      ? 'build topology'
+                      : p.detail
+                        ? `tune (${p.detail})`
+                        : 'tune',
+                done: false,
+              },
+            ],
+          }),
+      )
+        .then((r) => {
+          setVFilters((p) => ({ ...p, [soloDriver]: r.vf.spec }));
+          setVfOpt(null); // two-way result panel — stale for a solo run
+          setSynth(null);
+          setVfRunStats({ rounds: 1, evals: r.vf.evaluations + r.net.evaluations });
+          setWorkingDesign(r.parts);
+          setVfBypass(true); // the BUILT network is the result on screen
+          setNetOptDiff(null);
+          setNetOptNote(
+            `solo chain — ${r.structure.join(' · ') || 'no correction needed'} — ` +
+              `peak ${r.vf.before.ripplePeakDb.toFixed(2)} → ${r.net.after.rippleDb.toFixed(2)} dB` +
+              (r.net.after.avgDevDb !== undefined
+                ? ` · avg ${r.net.after.avgDevDb.toFixed(2)} dB`
+                : '') +
+              (r.bomTotalEur !== null ? ` · BOM €${Math.round(r.bomTotalEur)}` : '') +
+              (r.net.snapNote ? ` · ${r.net.snapNote}` : '') +
+              (r.net.safetyNote ? ` · ⚠ ${r.net.safetyNote}` : '') +
+              (r.net.ampFloorNote ? ` · ⚠ ${r.net.ampFloorNote}` : ''),
+          );
+        })
+        .catch((e) => {
+          if (!(e instanceof CancelledError))
+            setVfError(e instanceof Error ? e.message : String(e));
+        })
+        .finally(() => {
+          setVfProgress(null);
+          setVfBusy(false);
+        });
+      return;
+    }
     if (!woofer || !tweeter || !result) return;
     setVfBusy(true);
     setVfError(null);
@@ -2184,6 +2335,38 @@ export default function App() {
    * bypassed — leaving them on would filter twice.
    */
   function runSynthesis(specsIn?: { woofer: DriverFilterSpec; tweeter: DriverFilterSpec }) {
+    // SINGLE-DRIVER path: build the solo topology from the current virtual
+    // filter (series traps / shelf groups / gated Zobel — buildSoloNetwork),
+    // untouched values; ⚙ Optimize components is the fitting step. The
+    // two-way branch synthesis cannot serve here (its shunt corrections do
+    // nothing against an ideal voltage source without a ladder).
+    if (soloDriver) {
+      if (!result) return;
+      const model = soloDriver === 'woofer' ? 'mid' : 'tweeter';
+      const z = impedances[model];
+      if (!z) {
+        setSynth({ mode: synthMode, error: `No measured impedance for "${model}" — add its .ZMA.` });
+        return;
+      }
+      const grid = result.freq;
+      const zg = resample(z.freq, z.magnitude, z.phase, grid, { clampEdges: true });
+      const zOnGrid = zg.spl.map((m, i) => fromPolar(m, (zg.phaseDeg[i] * Math.PI) / 180));
+      const spec = {
+        ...vFilters[soloDriver],
+        eq: vFilters[soloDriver].eq.map((b) => ({ ...b, gainDb: Math.min(0, b.gainDb) })),
+      };
+      const { parts, structure } = buildSoloNetwork(spec, grid, zOnGrid, model);
+      addDesign('Solo build', parts);
+      setDesignTab('network');
+      setNetworkActive(true);
+      setVfBypass(true); // the network replaces the virtual filter in the sim
+      setSynth({ mode: synthMode });
+      setNetOptNote(
+        `solo build — ${structure.join(' · ') || 'no enabled cut bands: bare generator + driver'}` +
+          ' — textbook seed values; run ⚙ Optimize components to fit them',
+      );
+      return;
+    }
     if (!result || !woofer || !tweeter || Object.keys(impedances).length === 0) return;
     const specs = specsIn ?? vFilters;
     // Optimizer flow: vFilters are being replaced in the same batch — this
@@ -2274,7 +2457,10 @@ export default function App() {
   const [templateWays, setTemplateWays] = useState<WayCount>(2);
   const [templateOrder, setTemplateOrder] = useState<FilterOrder>(2);
   function startNetworkFromTemplate() {
-    const models = zModels.length > 0 ? zModels : ['mid', 'tweeter'];
+    // Single-driver mode: scaffold only the loaded slot — a ghost driver part
+    // would just block the solve with a missing-impedance error.
+    const fallback = soloDriver ? [soloDriver === 'woofer' ? 'mid' : 'tweeter'] : ['mid', 'tweeter'];
+    const models = zModels.length > 0 ? zModels : fallback;
     const xo = filterTemplate({ order: templateOrder, wayCount: templateWays, models });
     addDesign(xo.name || 'New network', normalizeOrigin(xo.parts));
   }
@@ -2404,19 +2590,20 @@ export default function App() {
     // must hold on the WHOLE measurement — a zoomed view must not let a
     // branch die out of sight.
     const safety = (() => {
-      if (!woofer || !tweeter) return undefined;
-      const lo = Math.max(200, woofer.frd.freq[0], tweeter.frd.freq[0]);
-      const hi = Math.min(
-        20000,
-        woofer.frd.freq[woofer.frd.freq.length - 1],
-        tweeter.frd.freq[tweeter.frd.freq.length - 1],
-      );
+      // Solo: the safety grid covers the one measured driver; the ghost slot
+      // stays silent (only the pair-independent fundamentals — amp-load
+      // floor — gate there).
+      const present = [woofer, tweeter].filter((d): d is Loaded => d !== null);
+      if (present.length === 0) return undefined;
+      const lo = Math.max(200, ...present.map((d) => d.frd.freq[0]));
+      const hi = Math.min(20000, ...present.map((d) => d.frd.freq[d.frd.freq.length - 1]));
       if (!(hi > lo * 1.5)) return undefined;
       const sGrid = logspace(lo, hi, 240);
+      const silent = { freq: sGrid, spl: sGrid.map(() => -400), phaseDeg: sGrid.map(() => 0) };
       return {
         freqs: sGrid,
-        w: resample(woofer.frd.freq, woofer.frd.spl, woofer.frd.phase, sGrid),
-        t: resample(tweeter.frd.freq, tweeter.frd.spl, tweeter.frd.phase, sGrid),
+        w: woofer ? resample(woofer.frd.freq, woofer.frd.spl, woofer.frd.phase, sGrid) : silent,
+        t: tweeter ? resample(tweeter.frd.freq, tweeter.frd.spl, tweeter.frd.phase, sGrid) : silent,
         z: zGridWithSlots(impedances, sGrid),
       };
     })();
@@ -2430,17 +2617,20 @@ export default function App() {
       z: zOnGrid,
       adjust: { offsetMm: num(offsetMm, 0), trimDb: num(trimDb, 0), inverted },
       opts: {
+        // Single-driver mode: "0 driver pairs" — the tuner drops every
+        // crossing-anchored term and judges branch flatness (+ amp floor).
+        solo: !!soloDriver,
         phasePriority: phasePriority / 100,
         angleData: angleResponsesOn(grid) ?? undefined,
         directivityWeight: dirWeight / 100,
         ampTarget,
         breakupGuard,
         staged: stagedOn
-          ? { rippleDb: num(targetRipple, 1.5), phaseDeg: num(targetPhase, 10) }
+          ? { rippleDb: num(targetRipple, 1.5), phaseDeg: soloDriver ? 3600 : num(targetPhase, 10) }
           : undefined,
-        xoRange: xoRangeValue() ?? undefined,
+        xoRange: soloDriver ? undefined : xoRangeValue() ?? undefined,
         phaseMetric: phaseMetricMode,
-        acousticSlopes: acousticSlopesValue() ?? undefined,
+        acousticSlopes: soloDriver ? undefined : acousticSlopesValue() ?? undefined,
         catalogSnap: catalogSnap && hasImportedCatalog(),
         snapPrefs: snapPrefsValue(),
         band: [Math.max(300, grid[0]), Math.min(grid[grid.length - 1] * 0.975, num(fMax, 20000))],
@@ -2461,7 +2651,8 @@ export default function App() {
                 (r.before.avgDevDb !== undefined && r.after.avgDevDb !== undefined
                   ? ` · avg ${r.before.avgDevDb.toFixed(2)} → ${r.after.avgDevDb.toFixed(2)} dB`
                   : '') +
-                ` · phase ${r.before.phaseDeg.toFixed(1)}° → ${r.after.phaseDeg.toFixed(1)}°` +
+                // Solo: relative phase does not exist — don't report a fake 0°.
+                (soloDriver ? '' : ` · phase ${r.before.phaseDeg.toFixed(1)}° → ${r.after.phaseDeg.toFixed(1)}°`) +
                 (r.removed.length > 0 ? ` · pruned: ${r.removed.join(', ')}` : '') +
                 (r.added.length > 0 ? ` · bypass-C added: ${r.added.join(', ')}` : '') +
                 (r.snapNote ? ` · ${r.snapNote}` : '') +
@@ -2910,9 +3101,9 @@ export default function App() {
   const targetSeries: Series[] = useMemo(() => {
     if (!result) return [];
     const defs = [
-      { id: 'wtarget', label: 'Woofer target', spec: vFilters.woofer, drv: result.woofer, color: 'var(--viz-woofer)', trim: 0 },
-      { id: 'ttarget', label: 'Tweeter target', spec: vFilters.tweeter, drv: result.tweeter, color: 'var(--viz-tweeter)', trim: num(trimDb, 0) },
-    ].filter((d) => isActive(d.spec));
+      { id: 'wtarget', label: 'Woofer target', spec: vFilters.woofer, drv: result.woofer, color: 'var(--viz-woofer)', trim: 0, loaded: !!woofer },
+      { id: 'ttarget', label: 'Tweeter target', spec: vFilters.tweeter, drv: result.tweeter, color: 'var(--viz-tweeter)', trim: num(trimDb, 0), loaded: !!tweeter },
+    ].filter((d) => d.loaded && isActive(d.spec));
     if (defs.length === 0) return [];
     const shapes = defs.map((d) => {
       // ACOUSTIC target = the ideal HP/LP alignment shape (+ gain) ONLY.
@@ -2947,7 +3138,7 @@ export default function App() {
       y: shapes[k].map((s) => s + offset),
       defaultOff: true,
     }));
-  }, [result, vFilters, trimDb]);
+  }, [result, vFilters, trimDb, woofer, tweeter]);
 
   const splSeries: Series[] = useMemo(() => {
     if (!result) return [];
@@ -2984,8 +3175,14 @@ export default function App() {
         : []),
       // Acoustic per-driver targets (legend-opt-in) under the live curves.
       ...targetSeries,
-      { id: 'w', label: 'Woofer/mid', color: 'var(--viz-woofer)', x: result.freq, y: result.woofer.spl },
-      { id: 't', label: 'Tweeter', color: 'var(--viz-tweeter)', x: result.freq, y: result.tweeter.spl },
+      // Single-driver mode: the ghost branch sits at −400 dB — skip its curve
+      // and the (two-driver) polarity null check instead of drawing noise.
+      ...(woofer
+        ? [{ id: 'w', label: 'Woofer/mid', color: 'var(--viz-woofer)', x: result.freq, y: result.woofer.spl } satisfies Series]
+        : []),
+      ...(tweeter
+        ? [{ id: 't', label: 'Tweeter', color: 'var(--viz-tweeter)', x: result.freq, y: result.tweeter.spl } satisfies Series]
+        : []),
       {
         id: 'c',
         // The active tab IS the live combined curve (never a ghost) — name it
@@ -2998,17 +3195,21 @@ export default function App() {
         pointColors: alignColors,
         width: 2.5,
       },
-      {
-        id: 'n',
-        label: 'Combined, tweeter inverted (null check)',
-        color: 'var(--viz-null)',
-        x: result.freq,
-        y: result.invertedSpl,
-        dash: '5 4',
-      },
+      ...(soloDriver
+        ? []
+        : [
+            {
+              id: 'n',
+              label: 'Combined, tweeter inverted (null check)',
+              color: 'var(--viz-null)',
+              x: result.freq,
+              y: result.invertedSpl,
+              dash: '5 4',
+            } satisfies Series,
+          ]),
     ];
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [result, integration, tabGhosts, networkActive, activeDesign, tolBand, targetSeries]);
+  }, [result, integration, tabGhosts, networkActive, activeDesign, tolBand, targetSeries, soloDriver]);
 
   /**
    * Design handles ON the SPL chart (UI-fase D): drag the crossover knees and
@@ -3156,7 +3357,8 @@ export default function App() {
     }
     // Raw-driver reference (same offset/trim/polarity, no filters): the
     // distance to the main curve is exactly what the filters contribute.
-    if (sim && (fw || ft)) {
+    // Meaningless against a silent ghost — skipped in single-driver mode.
+    if (!soloDriver && sim && (fw || ft)) {
       const raw = combine(sim.base.w, sim.base.t, {
         offsetMm: num(offsetMm, 0),
         trimDb: num(trimDb, 0),
@@ -3201,49 +3403,55 @@ export default function App() {
         drv.phaseDeg.map((p, i) =>
           drv.spl[i] < result.combinedSpl[i] - 60 ? NaN : p - ref[i],
         );
-      const wDisp = disp(result.woofer);
-      const tDisp = disp(result.tweeter);
-      out.push(
-        {
+      // Ghost branch (single-driver mode) is fully NaN-masked anyway — skip
+      // its series so the legend stays honest.
+      if (woofer) {
+        out.push({
           id: 'wtot',
           label: 'Woofer phase (total)',
           color: 'var(--viz-woofer)',
           x: result.freq,
-          y: breakWraps(wDisp.map(wrapDeg)),
+          y: breakWraps(disp(result.woofer).map(wrapDeg)),
           dash: '9 4',
           width: 1.6,
-        },
-        {
+        });
+      }
+      if (tweeter) {
+        out.push({
           id: 'ttot',
           label: 'Tweeter phase (total)',
           color: 'var(--viz-tweeter)',
           x: result.freq,
-          y: breakWraps(tDisp.map(wrapDeg)),
+          y: breakWraps(disp(result.tweeter).map(wrapDeg)),
           dash: '9 4',
           width: 1.6,
-        },
-      );
+        });
+      }
     }
     // Same alignment coloring as the SPL combined curve: the phase line itself
     // shows how far off it is — but only in the overlap region where it counts.
     const alignColors = integration
       ? integration.points.map((p) => (p.cls ? TIER_COLOR[phaseTier(p.phaseErrorDeg)] : null))
       : undefined;
-    out.push({
-      id: 'rel',
-      label: 'Tweeter phase relative to woofer',
-      color: 'var(--viz-tweeter)',
-      x: result.freq,
-      y: breakWraps(result.relativePhaseDeg.slice()),
-      pointColors: alignColors,
-      width: 2.5,
-    });
+    // The relative curve is the headline in 2-way mode; against a silent
+    // ghost it is pure noise — single-driver mode leads with the total phase.
+    if (!soloDriver) {
+      out.push({
+        id: 'rel',
+        label: 'Tweeter phase relative to woofer',
+        color: 'var(--viz-tweeter)',
+        x: result.freq,
+        y: breakWraps(result.relativePhaseDeg.slice()),
+        pointColors: alignColors,
+        width: 2.5,
+      });
+    }
     // VituixCAD reference: its filtered tweeter − woofer, computed the SAME way
     // (unwrap-resample onto our grid, then wrapped difference) so it's a true
     // peer of the curve above. NB: VituixCAD's export has the inter-driver
     // timing removed (drivers time-aligned to ~0 mm), which is exactly why it
     // diverges from our measured-phase curve — hence the label.
-    if (refResp) {
+    if (refResp && !soloDriver) {
       const rw = resample(refResp.woofer.freq, refResp.woofer.spl, refResp.woofer.phase, result.freq);
       const rt = resample(refResp.tweeter.freq, refResp.tweeter.spl, refResp.tweeter.phase, result.freq);
       out.push({
@@ -3257,7 +3465,7 @@ export default function App() {
       });
     }
     return out;
-  }, [result, integration, sim, offsetMm, trimDb, inverted, showPanels.phase, refResp, tabGhosts]);
+  }, [result, integration, sim, offsetMm, trimDb, inverted, showPanels.phase, refResp, tabGhosts, woofer, tweeter, soloDriver]);
 
   /** "How far off is the phase" zones behind the relative-phase curve. */
   const phaseBands = useMemo(
@@ -3440,7 +3648,9 @@ export default function App() {
                   />
                 </label>
                 <p className="sub">
-                  Both drivers are needed to continue. <strong>Impedances (.ZMA)</strong> unlock the
+                  Two drivers = crossover design; one driver = <strong>single-driver mode</strong>
+                  {' '}(flatten that driver — series traps, shelf groups, Zobel).{' '}
+                  <strong>Impedances (.ZMA)</strong> unlock the
                   passive build &amp; component tune; <strong>angle files</strong> unlock the
                   amplitude target &amp; in-room weight in the Goals step. The full importer (VituixCAD
                   projects, save/load) lives in the Import tab.
@@ -3560,50 +3770,66 @@ export default function App() {
                       onChange={(e) => setTargetRipple(e.target.value)}
                       style={{ width: '4.5rem' }}
                     />{' '}
-                    ±dB peak (as in the SPL strip) · phase ≤{' '}
-                    <input
-                      type="number"
-                      min={1}
-                      max={90}
-                      step={1}
-                      value={targetPhase}
-                      onChange={(e) => setTargetPhase(e.target.value)}
-                      style={{ width: '4.5rem' }}
-                    />{' '}
-                    °
+                    ±dB peak (as in the SPL strip)
+                    {!soloDriver && (
+                      <>
+                        {' '}· phase ≤{' '}
+                        <input
+                          type="number"
+                          min={1}
+                          max={90}
+                          step={1}
+                          value={targetPhase}
+                          onChange={(e) => setTargetPhase(e.target.value)}
+                          style={{ width: '4.5rem' }}
+                        />{' '}
+                        °
+                      </>
+                    )}
                   </p>
                 )}
+                {soloDriver ? (
+                  <p className="sub">
+                    Single-driver mode: relative phase does not exist, so the priority trade-off
+                    doesn't apply — the solo engine optimises response flatness with cut-only
+                    EQ/shelves.
+                  </p>
+                ) : (
                 <p style={{ marginBottom: '0.1rem' }}>What should the optimizer favour?</p>
-                {(
-                  [
-                    ['flat', 25, 'Flattest on-axis response', 'the tightest ±dB straight ahead'],
-                    ['bal', 50, 'Balanced', 'equal weight — a good default'],
+                )}
+                {!soloDriver &&
+                  (
                     [
-                      'phase',
-                      75,
-                      'Tightest phase & off-axis',
-                      'best driver phase-tracking / vertical spread (often near-free)',
-                    ],
-                  ] as const
-                ).map(([key, val, label, hint]) => {
-                  const bucket =
-                    phasePriority < 40 ? 'flat' : phasePriority > 60 ? 'phase' : 'bal';
-                  return (
-                    <label key={key} style={{ display: 'block' }}>
-                      <input
-                        type="radio"
-                        name="wiz-priority"
-                        checked={bucket === key}
-                        onChange={() => setPhasePriority(val)}
-                      />{' '}
-                      {label} <span className="sub">— {hint}</span>
-                    </label>
-                  );
-                })}
+                      ['flat', 25, 'Flattest on-axis response', 'the tightest ±dB straight ahead'],
+                      ['bal', 50, 'Balanced', 'equal weight — a good default'],
+                      [
+                        'phase',
+                        75,
+                        'Tightest phase & off-axis',
+                        'best driver phase-tracking / vertical spread (often near-free)',
+                      ],
+                    ] as const
+                  ).map(([key, val, label, hint]) => {
+                    const bucket =
+                      phasePriority < 40 ? 'flat' : phasePriority > 60 ? 'phase' : 'bal';
+                    return (
+                      <label key={key} style={{ display: 'block' }}>
+                        <input
+                          type="radio"
+                          name="wiz-priority"
+                          checked={bucket === key}
+                          onChange={() => setPhasePriority(val)}
+                        />{' '}
+                        {label} <span className="sub">— {hint}</span>
+                      </label>
+                    );
+                  })}
+                {!soloDriver && (
                 <p className="sub">
                   On real measurements a smooth response already buys most of the phase, so
                   these differ less than you'd expect — fine control (any %) lives in ⚙ Settings.
                 </p>
+                )}
                 {angleSets ? (
                   <>
                     {/* --- Amplitude target: its own section, with a live illustration --- */}
@@ -4035,6 +4261,20 @@ export default function App() {
                   <strong>Review &amp; run</strong> — here's the plan. Optimize designs, builds and
                   tunes the whole chain in one go.
                 </p>
+                {soloDriver ? (
+                  <p>
+                    <strong>Single-driver mode</strong> — flatten the{' '}
+                    {soloDriver === 'woofer' ? 'woofer/mid' : 'tweeter'} with cut-only EQ/shelves
+                    (≤ {vfEqBands} bands), built as series traps / shelf groups (+ Zobel when the
+                    impedance rises) and component-tuned against the measurement.
+                    <br />
+                    {stagedOn ? `Staged: target ≤ ${targetRipple} dB peak ripple` : 'Classic full-budget run'}
+                    <br />
+                    {catalogSnap && hasImportedCatalog()
+                      ? `Snap to catalog · profile ${snapProfile}`
+                      : 'Theoretically ideal (continuous) component values — no snap'}
+                  </p>
+                ) : (
                 <p>
                   {stagedOn
                     ? `Staged: targets ≤ ${targetRipple} dB / ${targetPhase}°`
@@ -4052,8 +4292,10 @@ export default function App() {
                     ? `Snap to catalog · profile ${snapProfile}`
                     : 'Theoretically ideal (continuous) component values — no snap'}
                 </p>
+                )}
                 <p className="sub">
-                  Optimize runs the full chain: design → passive build → component tune
+                  Optimize runs the full chain: design →{' '}
+                  {soloDriver ? 'solo topology build' : 'passive build'} → component tune
                   {catalogSnap && hasImportedCatalog() ? ' → catalog snap' : ''}.
                 </p>
               </>
@@ -4064,7 +4306,10 @@ export default function App() {
             <div className="wizard-foot">
               <div className="row">
                 {wizardStep > 1 ? (
-                  <button type="button" onClick={() => setWizardStep((st) => st - 1)}>
+                  <button
+                    type="button"
+                    onClick={() => setWizardStep((st) => st - (soloDriver && st === 3 ? 2 : 1))}
+                  >
                     ← Back
                   </button>
                 ) : (
@@ -4078,11 +4323,12 @@ export default function App() {
                   <button
                     type="button"
                     className="primary"
-                    onClick={() => setWizardStep((st) => st + 1)}
-                    disabled={wizardStep === 0 && (!woofer || !tweeter)}
+                    // Solo skips the Crossover step (2) — nothing to cross.
+                    onClick={() => setWizardStep((st) => st + (soloDriver && st === 1 ? 2 : 1))}
+                    disabled={wizardStep === 0 && !woofer && !tweeter}
                     title={
-                      wizardStep === 0 && (!woofer || !tweeter)
-                        ? 'Load both drivers to continue'
+                      wizardStep === 0 && !woofer && !tweeter
+                        ? 'Load at least one driver to continue (one = single-driver mode)'
                         : ''
                     }
                   >
@@ -4500,10 +4746,11 @@ export default function App() {
         {persistNote && <p className="filenames">{persistNote} · autosaves locally on every change</p>}
         {vxpNote && <p className="filenames">{vxpNote}</p>}
         {error && <p className="error">Parse error: {error}</p>}
-        {woofer && tweeter && (
+        {(woofer || tweeter) && (
           <p className="filenames">
-            {woofer.name} · {tweeter.name}
+            {[woofer?.name, tweeter?.name].filter(Boolean).join(' · ')}
             {zModels.length > 0 && ` · Z ✓ (${zModels.join(', ')})`}
+            {soloDriver && ' · single-driver mode'}
           </p>
         )}
       </div>
@@ -4614,7 +4861,7 @@ export default function App() {
             )}
             {designTab === 'data' && (
               <>
-      {woofer && tweeter && (
+      {(woofer || tweeter) && (
         <>
           <div className="panel controls">
             <fieldset>
@@ -4686,6 +4933,9 @@ export default function App() {
                 </span>
               )}
             </fieldset>
+            {/* Inter-driver adjustments — nothing to adjust against in
+                single-driver mode, so the whole fieldset hides. */}
+            {!soloDriver && (
             <fieldset>
               <legend>Tweeter adjustment</legend>
               <label title="Simulate moving the tweeter physically (mm depth, + = recessed = extra delay). With measured phase and a shared time reference the real timing is already in the data — leave 0.">
@@ -4736,6 +4986,7 @@ export default function App() {
                 </span>
               )}
             </fieldset>
+            )}
             {project && project.vxp.crossovers.length > 0 && (
               <fieldset>
                 <legend>Crossover (VituixCAD project)</legend>
@@ -4829,9 +5080,13 @@ export default function App() {
                     type="button"
                     onClick={runVfOptimize}
                     disabled={vfBusy}
-                    title="Design the crossover, build it as a passive network and simulate it — all in one go (lands in the Working tab)"
+                    title={
+                      soloDriver
+                        ? 'Single-driver mode: flatten this driver — cut-only EQ/shelf design, built as series traps / shelf groups (+ gated Zobel) and component-tuned against the measurement (lands in the Working tab)'
+                        : 'Design the crossover, build it as a passive network and simulate it — all in one go (lands in the Working tab)'
+                    }
                   >
-                    {vfBusy ? 'Optimizing + building…' : 'Optimize — design for me'}
+                    {vfBusy ? 'Optimizing + building…' : soloDriver ? 'Optimize — flatten driver' : 'Optimize — design for me'}
                   </button>
                   <select
                     value={synthMode}
@@ -4859,8 +5114,9 @@ export default function App() {
                     onClick={() => {
                       // Start at the import gate (step 0) when there is no driver
                       // data yet — the wizard should take you from nothing to a
-                      // built crossover, not assume measurements exist.
-                      setWizardStep(!woofer || !tweeter ? 0 : 1);
+                      // built crossover, not assume measurements exist. One
+                      // loaded driver is enough (single-driver mode).
+                      setWizardStep(!woofer && !tweeter ? 0 : 1);
                       setWizardOpen(true);
                     }}
                     title="Design wizard: load measurements, then goals, priority, crossover point, acoustic slopes and component choices in one guided flow — ends with Optimize"
@@ -4910,7 +5166,14 @@ export default function App() {
             {showOptSettings && (
               <div className="row opt-settings" style={{ marginBottom: '1rem' }}>
                 <span className="opt-settings-cap">Optimizer settings</span>
-                <label title="The big trade-off: budget split between a flat response and flat phase. More phase = flatter phase but more amplitude ripple. Both ends are anchored (100% phase = 90/10 internally): with the response weight at true zero the optimizer would trade a wrecked response for a phase metric it can then game.">
+                {soloDriver && (
+                  <span className="derived" style={{ flexBasis: '100%' }}>
+                    Single-driver mode — crossover settings (priority, phase, slopes, crossover
+                    point, HP/LP) don't apply and are disabled; the solo engine designs cut-only
+                    EQ/shelves within the EQ-band budget and the targets' ripple.
+                  </span>
+                )}
+                <label title={soloDriver ? 'Single-driver mode: relative phase does not exist — the solo objective is response flatness only' : "The big trade-off: budget split between a flat response and flat phase. More phase = flatter phase but more amplitude ripple. Both ends are anchored (100% phase = 90/10 internally): with the response weight at true zero the optimizer would trade a wrecked response for a phase metric it can then game."}>
                   Priority: response {100 - phasePriority}% · phase {phasePriority}%
                   <input
                     type="range"
@@ -4919,6 +5182,7 @@ export default function App() {
                     step={5}
                     value={phasePriority}
                     onChange={(e) => setPhasePriority(Number(e.target.value))}
+                    disabled={!!soloDriver}
                     style={{ width: '14rem', accentColor: 'var(--accent)' }}
                   />
                 </label>
@@ -4927,6 +5191,7 @@ export default function App() {
                   <select
                     value={phaseMetricMode}
                     onChange={(e) => setPhaseMetricMode(e.target.value as 'band' | 'overlap')}
+                    disabled={!!soloDriver}
                   >
                     <option value="band">Integration band (avg + P95)</option>
                     <option value="overlap">Classic (overlap-weighted)</option>
@@ -4937,14 +5202,14 @@ export default function App() {
                   <select
                     value={ampTarget}
                     onChange={(e) => setAmpTarget(e.target.value as 'onAxis' | 'listeningWindow')}
-                    disabled={!angleSets}
-                    title={angleSets ? '' : 'Load angle measurements to enable'}
+                    disabled={!angleSets || !!soloDriver}
+                    title={soloDriver ? 'Single-driver mode: directivity terms pair both drivers — on-axis only for now' : angleSets ? '' : 'Load angle measurements to enable'}
                   >
                     <option value="onAxis">On-axis (0°)</option>
                     <option value="listeningWindow">Listening window (0–30°)</option>
                   </select>
                 </label>
-                <label title={angleSets ? '' : 'Load angle measurements to enable'}>
+                <label title={soloDriver ? 'Single-driver mode: directivity terms pair both drivers — disabled for now' : angleSets ? '' : 'Load angle measurements to enable'}>
                   In-room weight: {dirWeight}% (energy average)
                   <input
                     type="range"
@@ -4953,7 +5218,7 @@ export default function App() {
                     step={5}
                     value={dirWeight}
                     onChange={(e) => setDirWeight(Number(e.target.value))}
-                    disabled={!angleSets}
+                    disabled={!angleSets || !!soloDriver}
                     style={{ width: '11rem', accentColor: 'var(--accent)' }}
                   />
                 </label>
@@ -4975,7 +5240,7 @@ export default function App() {
                 </label>
                 <label title="Preferred HP/LP alignment — binding: the designer picks the foundation, the optimizer designs the best crossover on it (knees, level, polarity and EQ stay free). Auto = free choice from the library.">
                   HP/LP preference
-                  <select value={hpLpPref} onChange={(e) => setHpLpPref(e.target.value)}>
+                  <select value={hpLpPref} onChange={(e) => setHpLpPref(e.target.value)} disabled={!!soloDriver}>
                     <option value="auto">Auto (library)</option>
                     <option value="LR2">LR2 (12 dB/oct)</option>
                     <option value="LR4">LR4 (24 dB/oct)</option>
@@ -4989,7 +5254,7 @@ export default function App() {
                 </label>
                 <label title="Target ACOUSTIC slope of the mid above the crossing — the measured rolloff (driver + filter), not the electrical order. Falling short costs more than being steeper. Auto = free.">
                   Acoustic slope mid
-                  <select value={acSlopeMid} onChange={(e) => setAcSlopeMid(e.target.value)}>
+                  <select value={acSlopeMid} onChange={(e) => setAcSlopeMid(e.target.value)} disabled={!!soloDriver}>
                     <option value="auto">Auto</option>
                     {['12', '18', '24', '30', '36'].map((v) => (
                       <option key={v} value={v}>
@@ -5000,7 +5265,7 @@ export default function App() {
                 </label>
                 <label title="Target ACOUSTIC slope of the tweeter below the crossing — the classic 'acoustic 4th order at the tweeter' rule is 24 dB/oct. Check the result in 🎯 Targets. Auto = free.">
                   Acoustic slope tweeter
-                  <select value={acSlopeTweeter} onChange={(e) => setAcSlopeTweeter(e.target.value)}>
+                  <select value={acSlopeTweeter} onChange={(e) => setAcSlopeTweeter(e.target.value)} disabled={!!soloDriver}>
                     <option value="auto">Auto</option>
                     {['12', '18', '24', '30', '36'].map((v) => (
                       <option key={v} value={v}>
@@ -5028,16 +5293,22 @@ export default function App() {
                       value={targetRipple}
                       onChange={(e) => setTargetRipple(e.target.value)}
                     />{' '}
-                    ±dB ·{' '}
-                    <input
-                      type="number"
-                      min={1}
-                      max={90}
-                      step={1}
-                      value={targetPhase}
-                      onChange={(e) => setTargetPhase(e.target.value)}
-                    />
-                    °
+                    ±dB
+                    {/* Solo: no relative phase, so no phase target. */}
+                    {!soloDriver && (
+                      <>
+                        {' '}·{' '}
+                        <input
+                          type="number"
+                          min={1}
+                          max={90}
+                          step={1}
+                          value={targetPhase}
+                          onChange={(e) => setTargetPhase(e.target.value)}
+                        />
+                        °
+                      </>
+                    )}
                   </span>
                 )}
                 <label title="Stopband leakage beside the crossover must stay ≥20 dB below the combined — cone-breakup phase cannot be filtered away, it can only be made irrelevant in level">
@@ -5045,6 +5316,7 @@ export default function App() {
                     type="checkbox"
                     checked={breakupGuard}
                     onChange={(e) => setBreakupGuard(e.target.checked)}
+                    disabled={!!soloDriver}
                   />{' '}
                   Breakup guard (≥20 dB)
                 </label>
@@ -5069,6 +5341,7 @@ export default function App() {
                     type="checkbox"
                     checked={xoRangeOn}
                     onChange={(e) => setXoRangeOn(e.target.checked)}
+                    disabled={!!soloDriver}
                   />{' '}
                   Crossover point
                 </label>
@@ -5187,7 +5460,9 @@ export default function App() {
                 {vfCollapsed && (
                   <span className="derived vf-collapse-summary">
                     {vfBypass ? 'muted · ' : ''}
-                    {filterSummaryLine(vFilters.woofer, 'woofer')} — {filterSummaryLine(vFilters.tweeter, 'tweeter')}
+                    {soloDriver
+                      ? filterSummaryLine(vFilters[soloDriver], soloDriver)
+                      : `${filterSummaryLine(vFilters.woofer, 'woofer')} — ${filterSummaryLine(vFilters.tweeter, 'tweeter')}`}
                   </span>
                 )}
               </button>
@@ -5200,18 +5475,24 @@ export default function App() {
               )}
               {!vfCollapsed && (
                 <div className="vf-grid">
-                  <DriverFilterControls
-                    title="Woofer / mid"
-                    accentVar="--viz-woofer"
-                    spec={vFilters.woofer}
-                    onChange={(woofer) => setVFilters((p) => ({ ...p, woofer }))}
-                  />
-                  <DriverFilterControls
-                    title="Tweeter"
-                    accentVar="--viz-tweeter"
-                    spec={vFilters.tweeter}
-                    onChange={(tweeter) => setVFilters((p) => ({ ...p, tweeter }))}
-                  />
+                  {/* Solo: only the loaded driver's block — the other slot
+                      would edit a silent ghost. */}
+                  {soloDriver !== 'tweeter' && (
+                    <DriverFilterControls
+                      title="Woofer / mid"
+                      accentVar="--viz-woofer"
+                      spec={vFilters.woofer}
+                      onChange={(woofer) => setVFilters((p) => ({ ...p, woofer }))}
+                    />
+                  )}
+                  {soloDriver !== 'woofer' && (
+                    <DriverFilterControls
+                      title="Tweeter"
+                      accentVar="--viz-tweeter"
+                      spec={vFilters.tweeter}
+                      onChange={(tweeter) => setVFilters((p) => ({ ...p, tweeter }))}
+                    />
+                  )}
                 </div>
               )}
             </div>
@@ -5249,7 +5530,11 @@ export default function App() {
                     }, 30);
                   }}
                   disabled={synthBusy}
-                  title="Fit real components and simulate the result — lands in a new 'Passive build' tab on the Network page. Follow up with ⚙ Optimize components there to tune the assembled sum (phase!)."
+                  title={
+                    soloDriver
+                      ? "Single-driver mode: build the solo topology from the enabled cut bands (series traps / shelf groups + gated Zobel) with textbook seed values — lands in a new 'Solo build' tab; ⚙ Optimize components fits the values"
+                      : "Fit real components and simulate the result — lands in a new 'Passive build' tab on the Network page. Follow up with ⚙ Optimize components there to tune the assembled sum (phase!)."
+                  }
                 >
                   Build passive filter
                 </button>
@@ -5355,10 +5640,14 @@ export default function App() {
                       </option>
                     </select>
                     <select
-                      value={templateOrder}
+                      value={soloDriver ? 0 : templateOrder}
                       onChange={(e) => setTemplateOrder(Number(e.target.value) as FilterOrder)}
-                      disabled={!supportsWayCount(templateWays)}
-                      title="Filter order / slope for both branches — generic Butterworth-style seed values"
+                      disabled={!supportsWayCount(templateWays) || !!soloDriver}
+                      title={
+                        soloDriver
+                          ? 'Single-driver mode — only the blank scaffold applies (LP/HP templates need two branches)'
+                          : 'Filter order / slope for both branches — generic Butterworth-style seed values'
+                      }
                     >
                       {TEMPLATE_ORDERS.map((t) => (
                         <option key={t.order} value={t.order}>
@@ -5435,7 +5724,11 @@ export default function App() {
                     type="button"
                     onClick={runNetOptimize}
                     disabled={!activeDesign || netOptBusy || !sim || zModels.length === 0}
-                    title="Re-fit the UNLOCKED component values of the active tab against the measured response — 🔒 parts keep their value"
+                    title={
+                      soloDriver
+                        ? 'Single-driver mode: re-fit the UNLOCKED component values against the measured driver — objective is branch flatness (+ amp-load floor); crossover terms do not apply'
+                        : 'Re-fit the UNLOCKED component values of the active tab against the measured response — 🔒 parts keep their value'
+                    }
                   >
                     {netOptBusy ? 'Tuning…' : '⚙ Optimize components'}
                   </button>
@@ -5784,18 +6077,22 @@ export default function App() {
         />
 
         <main className="analysis-pane">
-      {!woofer || !tweeter ? (
+      {!woofer && !tweeter ? (
         <p className="sub pane-hint">
-          Load driver measurements (Import tab) to start simulating — or hit "Load KOAN demo data".
+          Load driver measurements (Import tab) to start simulating — one driver is enough
+          (single-driver mode) — or hit "Load KOAN demo data".
         </p>
       ) : null}
 
-      {woofer && tweeter && !result && (
+      {(woofer || tweeter) && !result && (
         <div className="panel">
           <div className="verdict mismatch">
             <strong>Nothing to simulate: the view range is invalid.</strong> f min must be below
-            f max, inside the measured range ({Math.ceil(Math.max(woofer.frd.freq[0], tweeter.frd.freq[0]))}–
-            {Math.floor(Math.min(woofer.frd.freq.at(-1) ?? 20000, tweeter.frd.freq.at(-1) ?? 20000))}{' '}
+            f max, inside the measured range (
+            {Math.ceil(Math.max(...[woofer, tweeter].filter(Boolean).map((d) => d!.frd.freq[0])))}–
+            {Math.floor(
+              Math.min(...[woofer, tweeter].filter(Boolean).map((d) => d!.frd.freq.at(-1) ?? 20000)),
+            )}{' '}
             Hz). Fix “f min” / “f max” in the Setup tab — everything returns instantly.
           </div>
         </div>
@@ -5897,7 +6194,8 @@ export default function App() {
                     {tolBand.perPart.slice(0, 3).map((p) => p.id).join(', ')}
                   </span>
                 )}
-                {integration &&
+                {!soloDriver &&
+                  integration &&
                   (integration.score !== null ? (
                     <>
                       <span
@@ -5952,6 +6250,8 @@ export default function App() {
                 solid dot for EQ freq/gain, scroll on it for Q.
               </p>
             )}
+            {/* Alignment coloring compares two drivers — nothing to color solo. */}
+            {!soloDriver && (
             <div className="align-legend">
               <span className="align-title">Combined-curve color = phase alignment:</span>
               {TIER_ORDER.map((c) => (
@@ -5961,6 +6261,7 @@ export default function App() {
                 </span>
               ))}
             </div>
+            )}
           </div>
 
           {directivity && (
@@ -6162,7 +6463,11 @@ export default function App() {
 
           {showPanels.phase && (
           <div className="panel">
-            <h2>Tweeter phase relative to woofer</h2>
+            <h2>
+              {soloDriver
+                ? `${soloDriver === 'woofer' ? 'Woofer/mid' : 'Tweeter'} phase (total)`
+                : 'Tweeter phase relative to woofer'}
+            </h2>
             {phaseStats && (
               <div className="score-strip">
                 <span className="strip-label">Phase flatness</span>
@@ -6209,8 +6514,8 @@ export default function App() {
               yUnit="°"
               height={280}
               yReference={0}
-              referenceLabel="woofer 0°"
-              bands={phaseBands}
+              referenceLabel={soloDriver ? '0°' : 'woofer 0°'}
+              bands={soloDriver ? [] : phaseBands}
               xBands={
                 integration?.bandwidth
                   ? [
@@ -6236,6 +6541,8 @@ export default function App() {
               }
               onXRangeCommit={commitViewRange}
             />
+            {/* Tier zones read the RELATIVE phase — hidden with it in solo mode. */}
+            {!soloDriver && (
             <div className="align-legend">
               <span className="align-title">Zones &amp; line color = distance from 0°:</span>
               {TIER_ORDER.map((c) => (
@@ -6245,6 +6552,7 @@ export default function App() {
                 </span>
               ))}
             </div>
+            )}
           </div>
           )}
         </>
