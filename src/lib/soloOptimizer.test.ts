@@ -8,6 +8,8 @@ import { logspace, resample, type GriddedResponse } from './dsp.ts';
 import { fromPolar } from './complex.ts';
 import { defaultEq, defaultHpLp, evalDriverFilter, type DriverFilterSpec } from './filters.ts';
 import { optimizeSoloFilter, runSoloChain } from './soloOptimizer.ts';
+import { optimizeNetworkValues } from './netOptimizer.ts';
+import type { VxpPart } from './parsers/vxp.ts';
 
 const FIXTURES = join(dirname(fileURLToPath(import.meta.url)), 'parsers', 'fixtures');
 const load = (name: string) => readFileSync(join(FIXTURES, name), 'utf-8');
@@ -127,6 +129,65 @@ describe('optimizeSoloFilter (single-driver design engine)', () => {
     const r = optimizeSoloFilter(grid, flat, cleanSpec(), { eqBands: 4 });
     expect(r.spec.eq.filter((b) => b.enabled).length).toBe(0);
     expect(r.after.ripplePeakDb).toBeLessThan(0.05);
+  });
+});
+
+describe('solo component tuner: sensitivity gate', () => {
+  const frd = parseFrd(load('mid_hor0_mettape.txt'));
+  const d = resample(frd.freq, frd.spl, frd.phase, grid);
+  const zma = parseZma(load('mid_Backwavecone_sheep75gram.ZMA'));
+  const zg = resample(zma.freq, zma.magnitude, zma.phase, grid, { clampEdges: true });
+  const z = zg.spl.map((m, i) => fromPolar(m, (zg.phaseDeg[i] * Math.PI) / 180));
+  const ghost: GriddedResponse = {
+    freq: [...grid],
+    spl: grid.map(() => -400),
+    phaseDeg: grid.map(() => 0),
+  };
+
+  /** Series resistor into the driver: the tuner can "flatten" by cranking it
+   *  (attenuation is level-blind to std-flatness). It must not. */
+  const padNetwork = (ohms: number): VxpPart[] => [
+    {
+      type: 'Generator',
+      partId: 'G1',
+      params: [
+        { name: 'Eg', value: 2.83, unit: 'V' },
+        { name: 'Rg', value: 0.001, unit: 'Ω' },
+      ],
+      wires: [{ x: 3, y: 4 }, { x: 3, y: 11 }],
+    },
+    { type: 'Ground', params: [], wires: [{ x: 3, y: 11 }] },
+    {
+      type: 'Resistor',
+      partId: 'R1',
+      params: [{ name: 'R', value: ohms, unit: 'Ω' }],
+      wires: [{ x: 3, y: 4 }, { x: 10, y: 4 }],
+    },
+    {
+      type: 'Driver',
+      partId: 'D1',
+      model: 'mid',
+      inverted: false,
+      params: [],
+      wires: [{ x: 10, y: 4 }, { x: 10, y: 11 }],
+    },
+    { type: 'Ground', params: [], wires: [{ x: 10, y: 11 }] },
+  ];
+
+  it('never delivers a network that flattens by attenuating the driver', () => {
+    const r = optimizeNetworkValues(
+      padNetwork(1),
+      grid,
+      d,
+      ghost,
+      { mid: z },
+      { offsetMm: 0, trimDb: 0, inverted: false },
+      { solo: true, band: [300, 19000] },
+    );
+    // Either the tuner kept the level, or the gate rejected it outright.
+    const rOhms = r.parts.find((p) => p.partId === 'R1')?.params.find((q) => q.name === 'R')?.value;
+    expect(rOhms).toBeLessThan(12); // a 33 Ω-style pad must never be the answer
+    if (r.safetyNote) expect(r.safetyNote).toMatch(/sensitivity/i);
   });
 });
 

@@ -7,7 +7,7 @@ minimum phase reconstrueert. Voertaal met Sander: **Nederlands**; code/comments 
 ## Commands
 
 - `npm run dev` — dev-server via de Browser-pane tool (`preview_start {name:"dev"}`), poort 5173
-- `npx vitest run` — testsuite (333 tests, allemaal groen houden)
+- `npx vitest run` — testsuite (334 tests, allemaal groen houden)
 - `npm run build` / `npx tsc -b` — build & typecheck (tsconfig.test.json dekt de tests, Node-types)
 - Verificatie is GESCOPED op wat de wijziging raakt (Sanders regel, jul 2026 — de volle suite
   duurt ~3,5 min en de tests dekken alleen src/lib):
@@ -596,7 +596,14 @@ een brede shelf wel). Plus: **Q-vloer 0,7 op peak-banden** (bij Q 0,3 is een "pi
 gewoon breedband-verzwakking in vermomming) en shelf-seeds geklemd op het RESTERENDE budget.
 **`dipLimit` in het resultaat**: cut-only kan een dip niet optillen, dus een dip is de eerlijke
 bodem onder de vlakheid — de note meldt hem ("limited by a 4,7 dB dip at 17150 Hz") zodat een
-matige score als fysica leest i.p.v. een mislukte run. Gemeten na de fix (KOAN-mid, volle
+matige score als fysica leest i.p.v. een mislukte run. **Dezelfde blindheid zat in de TUNER**
+(zijn solo-objective is óók std-vlakheid, dus hij had geen enkele reden Sanders 33 Ω terug te
+draaien): `netOptimizer` solo kreeg daarom `medianDb` in de metrics, een `soloSensOk`-gate in
+de staged safe-checks en een EINDPOORT die een resultaat weigert dat >6 dB onder het kale
+driverniveau landt (seed blijft staan + uitleg-note). Referentie = de RAUWE driver
+(ghost = −400, dus per punt max(w,t) ÍS de driver); een al gepadde seed houdt zijn eigen
+niveau als referentie (gate vuurt alleen als het resultaat het seed-verlies vergroot).
+Beslisniveau, nooit in de objective — de anker-les. Gemeten na de fix (KOAN-mid, volle
 200–20k): notch @5641 Hz + shelf, peak 10,10→4,56 dB, kosten 2,6 dB gevoeligheid; op de
 verstandige band 300–8000 Hz: Response 63→89. UI: "Optimize — flatten driver", solo-"Build passive filter" bouwt
 de topologie uit de huidige spec (nieuwe "Solo build"-tab, waardes = textbook-seeds),

@@ -312,6 +312,14 @@ export function optimizeNetworkValues(
   // Solo: directivity terms pair angle sets across BOTH drivers — with one
   // driver the pairing is empty and the power average degenerates to NaN.
   const angleData = solo ? undefined : opts.angleData;
+  /** SOLO sensitivity budget (dB): how far the tuned network's median level
+   *  may sit below the RAW driver. Same fundamental as the design engine —
+   *  and needed here for the same reason: the flatness objective is
+   *  LEVEL-BLIND, so "attenuate everything" scores as well as "fix the peak"
+   *  (Sanders' run: −15 dB below 10 kHz, and the tuner had no reason to
+   *  undo it). Decision-level only: a gate on the delivered result, never a
+   *  term in the search objective (the anchor lesson). */
+  const soloSensBudgetDb = 6;
   const acSlopes =
     opts.acousticSlopes && (opts.acousticSlopes.mid || opts.acousticSlopes.tweeter)
       ? opts.acousticSlopes
@@ -380,6 +388,18 @@ export function optimizeNetworkValues(
     return acc / n;
   };
 
+  /** Median level over the band — reference for the SOLO sensitivity budget. */
+  const medianOf = (freq: readonly number[], spl: readonly number[]): number => {
+    const vals: number[] = [];
+    for (let i = 0; i < freq.length; i++) {
+      if (freq[i] >= band[0] && freq[i] <= band[1]) vals.push(spl[i]);
+    }
+    if (vals.length === 0) return 0;
+    vals.sort((a, b) => a - b);
+    const m = Math.floor(vals.length / 2);
+    return vals.length % 2 ? vals[m] : (vals[m - 1] + vals[m]) / 2;
+  };
+
   /** Peak flatness = ±(max−min)/2 over the band — the SAME number the SPL
    *  strip reads (combinedRippleDb), the unit staged TARGETS gate on and
    *  before/after report. The search objective keeps the smooth std-dev
@@ -429,6 +449,10 @@ export function optimizeNetworkValues(
     zMinOhm: number;
     /** How far that minimum sits BELOW the amp-load floor (0 when healthy). */
     zShortOhm: number;
+    /** MEDIAN combined level over the band — the reference for the SOLO
+     *  sensitivity budget. Median so a deep narrow notch doesn't read as lost
+     *  sensitivity while broad attenuation does. */
+    medianDb: number;
   } => {
     const sol = solveNetwork(net, freqs, z);
     const hFor = (model: string) => {
@@ -629,6 +653,7 @@ export function optimizeNetworkValues(
       tweeterSlopeDbOct,
       zMinOhm,
       zShortOhm,
+      medianDb: medianOf(r.freq, r.combinedSpl),
     };
   };
 
@@ -880,6 +905,17 @@ export function optimizeNetworkValues(
     driverZ,
     angleData ?? null,
   );
+  /** SOLO: the RAW driver's median level (no network) — the reference the
+   *  sensitivity budget is measured against. The silent ghost sits at −400 dB,
+   *  so the per-point max IS the real driver. */
+  const rawMedianDb = solo
+    ? medianOf(grid, wBase.spl.map((v, i) => Math.max(v, tBase.spl[i])))
+    : 0;
+  /** Solo sensitivity gate: the network may not spend more than the budget of
+   *  the driver's own median level. Always true for two-driver designs (level
+   *  there is a pairing decision, priced by the crossing fundamentals). */
+  const soloSensOk = (m: Metrics): boolean =>
+    !solo || rawMedianDb - m.medianDb <= soloSensBudgetDb;
 
   onStage?.('value tune');
   /* ---- Stage: value tuning (always) — MULTI-START. The response landscape
@@ -1021,6 +1057,7 @@ export function optimizeNetworkValues(
       m.protSqDb <= ref.protSqDb + 0.5 &&
       m.xoDipDb <= ref.xoDipDb + 1 &&
       m.zShortOhm <= ref.zShortOhm + 0.1 &&
+      soloSensOk(m) &&
       (!breakupGuard || m.leakSqDb <= ref.leakSqDb + 4);
     /** Escalation adds a part + full retune: protection shifts a little by
      *  nature (the fx already prices it at 0.02·protSqDb). The prune-strict
@@ -1465,6 +1502,34 @@ export function optimizeNetworkValues(
     avgDevDb: m.avgDevDb,
     phaseDeg: m.phaseDeg,
   });
+
+  /* ---- SOLO sensitivity gate (see soloSensBudgetDb): a tuned result that
+   * bought its flatness with broadband attenuation loses to the seed. The
+   * flatness objective cannot see the difference, so this must be a gate.
+   * Only fires when the SEED was inside the budget — a user network that is
+   * already padded down keeps its own level as the reference. ---- */
+  if (solo) {
+    const seedLoss = rawMedianDb - before.medianDb;
+    const resLoss = rawMedianDb - after.medianDb;
+    if (resLoss > soloSensBudgetDb && resLoss > seedLoss + 0.2) {
+      return {
+        parts: cloneParts(parts),
+        before: report(before),
+        after: report(before),
+        tuned: 0,
+        evaluations,
+        removed: [],
+        added: [],
+        safetyNote:
+          `sensitivity gate: the tune reached its flatness by attenuating the driver ` +
+          `${resLoss.toFixed(1)} dB below its own level (budget ${soloSensBudgetDb} dB) — ` +
+          `rejected, your values are unchanged. Flattening by pulling everything down is not ` +
+          `a filter; check for oversized series resistors, or narrow the view range to the ` +
+          `band this driver should actually cover.`,
+        ...(ampFloorNote ? { ampFloorNote } : {}),
+      };
+    }
+  }
 
   /* ---- Full-band safety gate: the evaluation band is the user's design
    * scope, but fundamentals are whole-design properties. Re-check them on
