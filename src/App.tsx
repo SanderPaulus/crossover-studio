@@ -256,6 +256,10 @@ function useTheme(): [Theme, (t: Theme) => void] {
  *  ghost never draws a phase line and never counts as overlap. */
 const SILENT_GHOST_DB = -400;
 
+/** Compact frequency label: 9335 → "9.3 kHz", 245 → "245 Hz". */
+const hz = (f: number): string =>
+  f >= 1000 ? `${(f / 1000).toFixed(f >= 10000 ? 0 : 1)} kHz` : `${Math.round(f)} Hz`;
+
 /** Map a solved network's drivers to the woofer/tweeter voltage transfers by
  *  SLOT (not hard-coded model name), so an imported vxp with freely-named
  *  drivers still gets its crossover applied. */
@@ -780,6 +784,8 @@ export default function App() {
    *  series-path slots of that kind to the series' value range. */
   const [snapBoundToSeries, setSnapBoundToSeries] = useState(false);
   const [targetRipple, setTargetRipple] = useState('1.5');
+  /** Single-driver mode: sensitivity a correction may spend for flatness. */
+  const [soloSensDb, setSoloSensDb] = useState('6');
   const [targetPhase, setTargetPhase] = useState('10');
 
   /** Editable schematic networks (step 6), as TABS: every design lives in its
@@ -1744,6 +1750,7 @@ export default function App() {
         snapBoundToSeries,
         stagedOn,
         targetRipple,
+        soloSensDb,
         targetPhase,
       },
     };
@@ -1854,6 +1861,7 @@ export default function App() {
     setSnapBoundToSeries(d.snapBoundToSeries ?? false);
     setStagedOn(d.stagedOn ?? true);
     setTargetRipple(d.targetRipple ?? '1.5');
+    setSoloSensDb(d.soloSensDb ?? '6');
     setTargetPhase(d.targetPhase ?? '10');
   }
 
@@ -1926,7 +1934,7 @@ export default function App() {
     }, 800);
     return () => clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [woofer, tweeter, project, zStandalone, angleSets, fileNotes, vFilters, xoName, offsetMm, trimDb, inverted, fMin, fMax, splMin, splMax, phasePriority, vfEqBands, phaseMode, dirWeight, ampTarget, sonogramMode, designs, activeDesignId, lastSavedId, networkActive, vfBypass, catalogSnap, breakupGuard, xoRangeOn, xoFreqHz, xoMarginHz, xoScanSteps, hpLpPref, phaseMetricMode, acSlopeMid, acSlopeTweeter, midSizeInch, snapProfile, snapSeriesL, snapSeriesC, snapSeriesR, snapStacks, snapBoundToSeries, stagedOn, targetRipple, targetPhase]);
+  }, [woofer, tweeter, project, zStandalone, angleSets, fileNotes, vFilters, xoName, offsetMm, trimDb, inverted, fMin, fMax, splMin, splMax, phasePriority, vfEqBands, phaseMode, dirWeight, ampTarget, sonogramMode, designs, activeDesignId, lastSavedId, networkActive, vfBypass, catalogSnap, breakupGuard, xoRangeOn, xoFreqHz, xoMarginHz, xoScanSteps, hpLpPref, phaseMetricMode, acSlopeMid, acSlopeTweeter, midSizeInch, snapProfile, snapSeriesL, snapSeriesC, snapSeriesR, snapStacks, snapBoundToSeries, stagedOn, targetRipple, targetPhase, soloSensDb]);
 
   function resetProject() {
     localStorage.removeItem(AUTOSAVE_KEY);
@@ -1978,20 +1986,22 @@ export default function App() {
               eqBands: vfEqBands,
               band,
               targets: stagedOn ? { rippleDb: num(targetRipple, 1.5) } : undefined,
+              sensitivityBudgetDb: num(soloSensDb, 6),
             });
             setVFilters((p) => ({ ...p, [soloDriver]: r.spec }));
             setVfBypass(false); // virtual result — must be audible in the sim
             setNetOptDiff(null);
             setNetOptNote(
-              `solo design (virtual — load a .ZMA to build it): peak ` +
-                `${r.before.ripplePeakDb.toFixed(2)} → ${r.after.ripplePeakDb.toFixed(2)} dB · ` +
+              `solo design (virtual — load a .ZMA to build it) — designed ` +
+                `${hz(r.designBand[0])}–${hz(r.designBand[1])}: peak ` +
+                `${r.inBandBefore.ripplePeakDb.toFixed(2)} → ${r.inBandAfter.ripplePeakDb.toFixed(2)} dB · ` +
                 r.stages.map((s) => s.label).join(' → ') +
                 (r.sensitivityCostDb > 0.2
                   ? ` · costs ${r.sensitivityCostDb.toFixed(1)} dB sensitivity`
                   : '') +
                 (r.dipLimit
-                  ? ` · ⓘ limited by a ${r.dipLimit.db.toFixed(1)} dB dip at ` +
-                    `${Math.round(r.dipLimit.hz)} Hz — passive cuts cannot lift a dip`
+                  ? ` · ⓘ outside that band the driver is too far down to reach ` +
+                    `(${r.dipLimit.db.toFixed(0)} dB dip at ${hz(r.dipLimit.hz)})`
                   : ''),
             );
           } catch (e) {
@@ -2028,6 +2038,7 @@ export default function App() {
             eqBands: vfEqBands,
             band,
             targets: stagedOn ? { rippleDb: num(targetRipple, 1.5) } : undefined,
+            sensitivityBudgetDb: num(soloSensDb, 6),
             catalogSnap: catalogSnap && hasImportedCatalog(),
             snapPrefs: snapPrefsValue(),
             safety,
@@ -2064,19 +2075,23 @@ export default function App() {
           setNetOptDiff(null);
           setNetOptNote(
             `solo chain — ${r.structure.join(' · ') || 'no correction needed'} — ` +
-              `peak ${r.vf.before.ripplePeakDb.toFixed(2)} → ${r.net.after.rippleDb.toFixed(2)} dB` +
+              // Both numbers on the SAME band (the one designed on): a
+              // whole-range "before" against an in-band "after" would flatter
+              // the run by exactly the size of the unreachable region.
+              `designed ${hz(r.vf.designBand[0])}–${hz(r.vf.designBand[1])}: ` +
+              `peak ${r.vf.inBandBefore.ripplePeakDb.toFixed(2)} → ${r.net.after.rippleDb.toFixed(2)} dB` +
               (r.net.after.avgDevDb !== undefined
                 ? ` · avg ${r.net.after.avgDevDb.toFixed(2)} dB`
                 : '') +
               (r.vf.sensitivityCostDb > 0.2
                 ? ` · costs ${r.vf.sensitivityCostDb.toFixed(1)} dB sensitivity`
                 : '') +
-              // A dip is the honest floor: cut-only cannot lift it, so say so
-              // instead of leaving a mediocre score looking like a bad run.
+              // Say what was left out and why — cut-only cannot lift a dip, so
+              // a mediocre whole-range score is physics, not a failed run.
               (r.vf.dipLimit
-                ? ` · ⓘ limited by a ${r.vf.dipLimit.db.toFixed(1)} dB dip at ` +
-                  `${Math.round(r.vf.dipLimit.hz)} Hz — passive cuts cannot lift a dip; ` +
-                  `narrow the view range if that region isn't this driver's job`
+                ? ` · ⓘ outside that band the driver is too far down to reach ` +
+                  `(${r.vf.dipLimit.db.toFixed(0)} dB dip at ${hz(r.vf.dipLimit.hz)}) — ` +
+                  `passive cuts can only cut, so that part sets the whole-range score`
                 : '') +
               (r.bomTotalEur !== null ? ` · BOM €${Math.round(r.bomTotalEur)}` : '') +
               (r.net.snapNote ? ` · ${r.net.snapNote}` : '') +
@@ -2637,6 +2652,7 @@ export default function App() {
         // Single-driver mode: "0 driver pairs" — the tuner drops every
         // crossing-anchored term and judges branch flatness (+ amp floor).
         solo: !!soloDriver,
+        soloSensitivityDb: num(soloSensDb, 6),
         phasePriority: phasePriority / 100,
         angleData: angleResponsesOn(grid) ?? undefined,
         directivityWeight: dirWeight / 100,
@@ -4286,6 +4302,7 @@ export default function App() {
                     impedance rises) and component-tuned against the measurement.
                     <br />
                     {stagedOn ? `Staged: target ≤ ${targetRipple} dB peak ripple` : 'Classic full-budget run'}
+                    {' · sensitivity budget '}{soloSensDb} dB
                     <br />
                     {catalogSnap && hasImportedCatalog()
                       ? `Snap to catalog · profile ${snapProfile}`
@@ -5184,11 +5201,28 @@ export default function App() {
               <div className="row opt-settings" style={{ marginBottom: '1rem' }}>
                 <span className="opt-settings-cap">Optimizer settings</span>
                 {soloDriver && (
-                  <span className="derived" style={{ flexBasis: '100%' }}>
-                    Single-driver mode — crossover settings (priority, phase, slopes, crossover
-                    point, HP/LP) don't apply and are disabled; the solo engine designs cut-only
-                    EQ/shelves within the EQ-band budget and the targets' ripple.
-                  </span>
+                  <>
+                    <span className="derived" style={{ flexBasis: '100%' }}>
+                      Single-driver mode — crossover settings (priority, phase, slopes, crossover
+                      point, HP/LP) don't apply and are disabled; the solo engine designs cut-only
+                      EQ/shelves within the EQ-band budget and the targets' ripple.
+                    </span>
+                    <label
+                      className="inline-num"
+                      title="How much SENSITIVITY the correction may spend to buy flatness. Passive filters can only cut, so every dB of flatness in a dip-limited region is paid for in level. 6 dB ≈ a baffle-step's worth — right for a driver that will get a crossover. A fullranger carrying the whole range is often worth 10–15 dB: pulling the passband down toward a collapsing top end measurably improves the whole-range score, at the cost of efficiency. Also sets which band can be designed at all: regions further down than this are out of reach by definition."
+                    >
+                      Sensitivity budget
+                      <input
+                        type="number"
+                        min={0}
+                        max={20}
+                        step={0.5}
+                        value={soloSensDb}
+                        onChange={(e) => setSoloSensDb(e.target.value)}
+                      />{' '}
+                      dB
+                    </label>
+                  </>
                 )}
                 <label title={soloDriver ? 'Single-driver mode: relative phase does not exist — the solo objective is response flatness only' : "The big trade-off: budget split between a flat response and flat phase. More phase = flatter phase but more amplitude ripple. Both ends are anchored (100% phase = 90/10 internally): with the response weight at true zero the optimizer would trade a wrecked response for a phase metric it can then game."}>
                   Priority: response {100 - phasePriority}% · phase {phasePriority}%

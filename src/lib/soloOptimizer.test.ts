@@ -122,6 +122,38 @@ describe('optimizeSoloFilter (single-driver design engine)', () => {
     }
   });
 
+  it('designs where design is possible when a fullranger dies at the top', () => {
+    // Sanders' point: a fullrange driver must be judged over the WHOLE range,
+    // so "narrow the view range" is no answer. But a 30 dB cliff cannot be
+    // flattened by cutting — only approached by throwing away 30 dB
+    // everywhere. So the engine designs the reachable band and keeps scoring
+    // the requested one.
+    const cliff: GriddedResponse = {
+      freq: [...grid],
+      spl: grid.map((f) => {
+        const bump = 5 * Math.exp(-((Math.log2(f / 2500)) ** 2) * 6);
+        const die = f > 9000 ? -30 * Math.min(1, Math.log2(f / 9000)) : 0;
+        return 88 + bump + die;
+      }),
+      phaseDeg: grid.map(() => 0),
+    };
+    const r = optimizeSoloFilter(grid, cliff, cleanSpec(), {
+      eqBands: 4,
+      band: [300, 19000],
+    });
+    // The dead top is out of the design band, the live part is kept.
+    expect(r.designBand[1]).toBeLessThan(14000);
+    expect(r.designBand[1]).toBeGreaterThan(7000);
+    expect(r.designBand[0]).toBeLessThan(400);
+    // In-band it does real work…
+    expect(r.inBandAfter.ripplePeakDb).toBeLessThan(r.inBandBefore.ripplePeakDb * 0.7);
+    // …without spending the passband to chase the cliff…
+    expect(r.sensitivityCostDb).toBeLessThanOrEqual(6.5);
+    // …and the whole-range score still tells the truth about it.
+    expect(r.after.ripplePeakDb).toBeGreaterThan(5);
+    expect(r.dipLimit!.hz).toBeGreaterThan(9000);
+  });
+
   it('leaves an already-flat driver alone', () => {
     const flat: GriddedResponse = {
       freq: [...grid],

@@ -611,6 +611,25 @@ als BARRIÈRE in de solo-tune zelf (exact 0 binnen de cap, dus het zoekpad in ge
 blijft ongemoeid — zelfde argument als de bouwbaarheidsvensters); zonder die muur liep de
 tuner er telkens ín en gooide de eindpoort de hele tune weg (gemeten op Robberts 12W8524:
 afgewezen bij 12,6 en 20 dB verlies; mét muur wordt hij geaccepteerd en verbetert 1,39 → 0,97 dB).
+**BREEDBANDER OVER HET HELE BEREIK (jul 2026, Sanders "hij neemt de gehele range op zich")**:
+"zet je view range smaller" is géén antwoord als de driver het hele bereik moet dragen. Maar
+een 30 dB-klif boven 10 kHz is met cut-only niet vlak te maken — alleen te BENADEREN door
+overal 30 dB weg te gooien. Daarom `designBandFor`: de aangevraagde band minus DODE RANDEN
+(buitenste punten die verder dan het gevoeligheidsbudget onder de mediaan liggen; drempel ÍS
+het budget, dus zelf-consistent: wat je niet kunt betalen is per definitie onbereikbaar).
+Alleen de buitenste bereikbare punten begrenzen — een mid-band dip wordt nooit uitgesneden,
+die zie je in de score. De ZOEKTOCHT (kandidaten, escalatie, targets, audit, én de band die
+de solo-tuner meekrijgt) loopt op die ontwerpband; élk gerapporteerd cijfer blijft op de
+AANGEVRAAGDE band, zodat de klif zichtbaar blijft. Gemeten op Robberts 12W8524 (110 Hz–20 kHz
+gevraagd, budget 6): ontwerpband 111–9342 Hz, hele-bereik-piek 22,9 → 1,7 dB in-band. Note
+meldt beide banden + wat erbuiten onbereikbaar is; `inBandBefore`/`inBandAfter` bestaan zodat
+een in-band "na" nooit tegen een hele-bereik "voor" wordt gezet (dat vleit met exact de
+grootte van de klif). **Budget is een INSTELLING** (⚙ Settings in solo, `soloSensDb`,
+default 6 dB, gepersisteerd): 6 ≈ een baffle-step, goed voor een driver die nog een kruising
+krijgt; een breedbander is 10–15 dB waard. Gemeten sweep op de rauwe 12W8524 (hele-bereik
+avg): 6 dB → 2,86 · 10 dB → 2,26 · 12 dB → 2,22 · 15 dB → 2,69 (voorbij ~12 loopt de
+ontwerpband de klif in en verdunnen de traps). Efficiëntie vs. hele-bereik-vlakheid is een
+ontwerperskeuze, geen constante van mij.
 **Bypass-C-escalatie alleen op ECHTE pad-weerstanden (jul 2026, Sanders "Tidy layout doet
 niets")**: de kandidaat-filter keek naar COÖRDINATEN ("zit er al een C op deze twee punten")
 en "niet geaard". Beide te zwak — de damping-R ín een parallelle LCR-trap deelt de knopen maar

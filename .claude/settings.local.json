@@ -148,7 +148,15 @@
       "Bash(lsof -nP -iTCP -sTCP:LISTEN)",
       "Bash(awk '{print $9}')",
       "Bash(awk -F: '$1 > 4900 && $1 < 5600')",
-      "Bash(awk -F: '$1 > 3740 && $1 < 4270')"
+      "Bash(awk -F: '$1 > 3740 && $1 < 4270')",
+      "Bash(sed -i '' 's/`\\(budget ${soloSensBudgetDb} dB\\)/`\\(cap ${soloLossCap.toFixed\\(1\\)} dB\\)/' src/lib/netOptimizer.ts)",
+      "Bash(grep -n \"budget \\\\${soloSensBudgetDb}\" src/lib/netOptimizer.ts)",
+      "Bash(ls -d ~/.claude/skills/*/ ~/.claude/plugins/*/ 2>/dev/null; echo \"--- project ---\"; ls -d \"/Users/sandersomers/SD Acoustics/Design Studio/.claude/skills/\"*/ 2>/dev/null)",
+      "Bash(awk 'NR>2 && $1>250 && $1<300 {print \"  300Hz:\", $2; exit}' \"VituixCAD_AxialFR Woofer 12w8524.frd\")",
+      "Bash(awk 'NR>2 && $1>9000 {print \"  9k:\", $2; exit}' \"VituixCAD_AxialFR Woofer 12w8524.frd\")",
+      "Bash(awk 'NR>2 && $1>18000 {print \"  18k:\", $2; exit}' \"VituixCAD_AxialFR Woofer 12w8524.frd\")",
+      "Bash(awk '$1>250 && $1<300 {print \"  300Hz:\", $2; exit}' 12w_ver0_hor_deg0.frd)",
+      "Bash(awk '$1>18000 {print \"  18k:\", $2; exit}' 12w_ver0_hor_deg0.frd)"
     ]
   }
 }

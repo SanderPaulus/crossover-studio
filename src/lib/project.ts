@@ -100,6 +100,10 @@ export interface ProjectDesign {
   stagedOn?: boolean;
   targetRipple?: string;
   targetPhase?: string;
+  /** Single-driver mode: how much sensitivity (dB) a correction may spend to
+   *  buy flatness. Default 6; a fullranger carrying the whole range is worth
+   *  more (Sanders' 12W8524: ~10 dB scores far better whole-range). */
+  soloSensDb?: string;
 }
 
 export interface ProjectState {

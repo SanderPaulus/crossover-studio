@@ -96,6 +96,13 @@ export interface NetOptimizeOptions {
    *  path in any way — regression-tested bit-identical. The planned 3-way
    *  generalisation is the same idea with TWO pairs, not another special case. */
   solo?: boolean;
+  /** Solo sensitivity budget (dB, default 6): how far below the raw driver's
+   *  own median level the network may land. A DESIGNER'S CHOICE, not a
+   *  constant — measured on Robbert's 12W8524 used fullrange, Sanders' manual
+   *  filter spends ~10 dB pulling 200 Hz–8 kHz down toward the collapsed top
+   *  and scores far better over the whole range (avg 1.7 vs 2.9 dB) than a
+   *  6 dB-capped run. Efficiency versus whole-range flatness is his call. */
+  soloSensitivityDb?: number;
   /** FULL-measurement-band safety data (grid independent of the evaluation
    *  band). The tuner's quality metrics deliberately follow the user's view
    *  range, but that means a zoomed-in band silently hides whole-design
@@ -319,7 +326,7 @@ export function optimizeNetworkValues(
    *  (Sanders' run: −15 dB below 10 kHz, and the tuner had no reason to
    *  undo it). Decision-level only: a gate on the delivered result, never a
    *  term in the search objective (the anchor lesson). */
-  const soloSensBudgetDb = 6;
+  const soloSensBudgetDb = Math.max(0, opts.soloSensitivityDb ?? 6);
   /** Effective cap for the solo wall/gate: the budget, or the level the SEED
    *  already spends when that is more (baffle-step compensation legitimately
    *  costs 6–10 dB). Set once the seed metrics exist; until then no wall. */
@@ -1534,7 +1541,12 @@ export function optimizeNetworkValues(
   if (solo) {
     const seedLoss = rawMedianRef - before.medianDb;
     const resLoss = rawMedianRef - after.medianDb;
-    if (resLoss > soloSensBudgetDb && resLoss > seedLoss + 0.2) {
+    // Judged against the SAME cap the wall enforces, plus a little slack: the
+    // wall permits exactly soloLossCap, so a result sitting on the cap must
+    // not then be thrown away by the gate (measured: a 6.0 dB result against a
+    // 6 dB cap lost the whole tune over floating-point dust). The gate is the
+    // backstop for gross violations, not a second, stricter limit.
+    if (resLoss > soloLossCap + 0.5 && resLoss > seedLoss + 0.2) {
       return {
         parts: cloneParts(parts),
         before: report(before),

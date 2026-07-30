@@ -78,6 +78,61 @@ export interface SoloOptimizeResult {
    *  ("that region is not this driver's job") instead of a failed optimizer.
    *  null when nothing meaningful is left. */
   dipLimit: { db: number; hz: number } | null;
+  /** The band actually DESIGNED on (Hz) — the requested band minus dead edges
+   *  the correction cannot reach (see designBandFor). Equal to the requested
+   *  band when nothing was trimmed. Scoring/reporting still covers the full
+   *  requested band: the designer keeps seeing the whole truth. */
+  designBand: [number, number];
+  /** Raw driver and designed result, both measured over the DESIGN band —
+   *  the honest pair to quote together. Mixing a whole-range "before" with an
+   *  in-band "after" flatters the run by exactly the size of the cliff. */
+  inBandBefore: { ripplePeakDb: number; avgDevDb: number };
+  inBandAfter: { ripplePeakDb: number; avgDevDb: number };
+}
+
+/**
+ * The band a cut-only correction can actually WORK on: the requested band
+ * minus dead EDGES — the outermost region where the driver sits more than
+ * `budgetDb` below its own median.
+ *
+ * Why (Sanders' fullranger, jul 2026): "smaller view range" is no answer when
+ * the driver genuinely has to cover the whole range — but a 30 dB cliff above
+ * 10 kHz cannot be flattened by cutting, only *approached* by throwing away
+ * 30 dB everywhere, which the sensitivity budget rightly forbids. Trying
+ * anyway wastes the band budget and the sensitivity on the one region that
+ * can never improve. So: design where design is possible, keep SCORING the
+ * whole requested band (the designer must keep seeing the cliff), and say
+ * which band was used.
+ *
+ * The threshold IS the sensitivity budget, which makes it self-consistent:
+ * a region you cannot afford to bring the rest down to is out of reach by
+ * definition. A gentle baffle-step deficit (a few dB) therefore stays IN
+ * scope — cutting the top to match it is legitimate, standard practice.
+ * Only the OUTERMOST reachable points bound the band, so a mid-band dip is
+ * never carved out: you live with those, and the score shows them.
+ */
+export function designBandFor(
+  freqs: readonly number[],
+  spl: readonly number[],
+  band: [number, number],
+  budgetDb: number,
+): [number, number] {
+  const ids: number[] = [];
+  for (let i = 0; i < freqs.length; i++) {
+    if (freqs[i] >= band[0] && freqs[i] <= band[1]) ids.push(i);
+  }
+  if (ids.length < 8) return band;
+  const sorted = ids.map((i) => spl[i]).sort((a, b) => a - b);
+  const mid = Math.floor(sorted.length / 2);
+  const median = sorted.length % 2 ? sorted[mid] : (sorted[mid - 1] + sorted[mid]) / 2;
+  const thr = median - budgetDb;
+  const alive = ids.filter((i) => spl[i] >= thr);
+  if (alive.length < 8) return band;
+  const lo = Math.max(band[0], freqs[alive[0]]);
+  const hi = Math.min(band[1], freqs[alive[alive.length - 1]]);
+  // Never hand back a sliver: if less than an octave survives, something is
+  // odd about the measurement — design the requested band and report honestly.
+  return hi > lo * 2 ? [lo, hi] : band;
 }
 
 const cloneSpec = (s: DriverFilterSpec): DriverFilterSpec => ({
@@ -94,7 +149,13 @@ export function optimizeSoloFilter(
   opts: SoloOptimizeOptions = {},
 ): SoloOptimizeResult {
   const budget = Math.max(0, Math.min(8, opts.eqBands ?? 4));
-  const band: [number, number] = opts.band ?? [grid[0] * 1.02, grid[grid.length - 1] * 0.975];
+  const sensBudget = Math.max(0, opts.sensitivityBudgetDb ?? 6);
+  /** What the designer asked to see and be judged on. */
+  const reqBand: [number, number] = opts.band ?? [grid[0] * 1.02, grid[grid.length - 1] * 0.975];
+  /** What can actually be designed: the requested band minus dead edges the
+   *  correction can never reach. Everything in the SEARCH uses this; every
+   *  reported number uses reqBand, so the cliff stays visible. */
+  const band = designBandFor(grid, driver.spl, reqBand, sensBudget);
   let evaluations = 0;
 
   // Decimated inner grid for the search; full grid for stages/audit/report —
@@ -116,14 +177,17 @@ export function optimizeSoloFilter(
     return baseSpl.map((s, i) => s + 20 * Math.log10(Math.hypot(h[i].re, h[i].im) || 1e-12));
   };
 
-  const inBand = (freqs: readonly number[]) =>
-    freqs.map((f, i) => (f >= band[0] && f <= band[1] ? i : -1)).filter((i) => i >= 0);
+  const idsIn = (freqs: readonly number[], b: readonly [number, number]) =>
+    freqs.map((f, i) => (f >= b[0] && f <= b[1] ? i : -1)).filter((i) => i >= 0);
+  /** Indices inside the DESIGN band (what the search works on). */
+  const inBand = (freqs: readonly number[]) => idsIn(freqs, band);
 
-  const stats = (
+  const statsIn = (
+    b: readonly [number, number],
     freqs: readonly number[],
     spl: readonly number[],
   ): { std: number; avg: number; peak: number; mean: number } => {
-    const ids = inBand(freqs);
+    const ids = idsIn(freqs, b);
     let s = 0;
     for (const i of ids) s += spl[i];
     const mean = s / Math.max(1, ids.length);
@@ -147,8 +211,12 @@ export function optimizeSoloFilter(
     };
   };
 
+  /** Search-side stats: DESIGN band. */
+  const stats = (freqs: readonly number[], spl: readonly number[]) => statsIn(band, freqs, spl);
   const innerStd = (spec: DriverFilterSpec): number => stats(optFreq, respOn(spec, optFreq, optSpl)).std;
-  const fullStats = (spec: DriverFilterSpec) => stats(grid, respOn(spec, grid, driver.spl));
+  /** Report-side stats: the full REQUESTED band — the designer is judged on
+   *  what they asked to see, including the part no filter can reach. */
+  const fullStats = (spec: DriverFilterSpec) => statsIn(reqBand, grid, respOn(spec, grid, driver.spl));
 
   /** MEDIAN passband level over the band — the level reference for the
    *  sensitivity budget. Median, not mean: a deep narrow notch (the whole
@@ -162,7 +230,6 @@ export function optimizeSoloFilter(
   };
   const rawMedianInner = medianLevel(optFreq, optSpl);
   const rawMedianFull = medianLevel(grid, driver.spl);
-  const sensBudget = Math.max(0, opts.sensitivityBudgetDb ?? 6);
   /** Sensitivity spent by a spec (dB, ≥0) on the inner grid. */
   const costOf = (s: DriverFilterSpec): number =>
     Math.max(0, rawMedianInner - medianLevel(optFreq, respOn(s, optFreq, optSpl)));
@@ -341,7 +408,9 @@ export function optimizeSoloFilter(
   const finalSpl = respOn(cur, grid, driver.spl);
   const finalMed = medianLevel(grid, finalSpl);
   let dipLimit: { db: number; hz: number } | null = null;
-  for (const i of inBand(grid)) {
+  // Judged over the REQUESTED band: the cliff outside the design band is
+  // exactly what the designer needs to be told about.
+  for (const i of idsIn(grid, reqBand)) {
     const below = finalMed - finalSpl[i];
     if (below > 2 && (!dipLimit || below > dipLimit.db)) dipLimit = { db: below, hz: grid[i] };
   }
@@ -354,6 +423,15 @@ export function optimizeSoloFilter(
     objective: Math.min(finalStd, seedStd),
     sensitivityCostDb: costOfFull(cur),
     dipLimit,
+    designBand: band,
+    inBandBefore: (() => {
+      const m = statsIn(band, grid, driver.spl);
+      return { ripplePeakDb: m.peak, avgDevDb: m.avg };
+    })(),
+    inBandAfter: (() => {
+      const m = statsIn(band, grid, finalSpl);
+      return { ripplePeakDb: m.peak, avgDevDb: m.avg };
+    })(),
   };
 }
 
@@ -522,6 +600,9 @@ export interface SoloChainSettings {
   eqBands: number;
   band: [number, number];
   targets?: { rippleDb: number };
+  /** Sensitivity budget (dB, default 6) — see SoloOptimizeOptions. Governs the
+   *  design stage AND the assembled tune, so both work to the same rule. */
+  sensitivityBudgetDb?: number;
   catalogSnap?: boolean;
   snapPrefs?: SnapPrefs;
   maxIterations?: number;
@@ -577,6 +658,7 @@ export function runSoloChain(
     eqBands: s.eqBands,
     band: s.band,
     targets: s.targets,
+    sensitivityBudgetDb: s.sensitivityBudgetDb,
     maxIterations: s.maxIterations,
   });
   onProgress?.({
@@ -628,12 +710,16 @@ export function runSoloChain(
     { offsetMm: 0, trimDb: 0, inverted: false },
     {
       solo: true,
+      soloSensitivityDb: s.sensitivityBudgetDb,
       // Solo staged: the phase target is trivially met (phase metric is 0);
       // a huge value documents that only ripple gates here.
       staged: s.targets ? { rippleDb: s.targets.rippleDb, phaseDeg: 3600 } : undefined,
       catalogSnap: s.catalogSnap,
       snapPrefs: s.snapPrefs,
-      band: s.band,
+      // The tuner works the SAME designable band as the design stage — on the
+      // requested band it would chase the unreachable cliff, blow the
+      // sensitivity cap and get its whole tune rejected.
+      band: vf.designBand,
       ...(s.safety
         ? {
             safety: {
