@@ -1740,6 +1740,27 @@ button:disabled {
   text-align: center;
 }
 
+/* base-ui renders backdrop and popup as SIBLINGS in the portal, so a modal
+   card centres itself instead of riding the backdrop's flex box. */
+.modal-card {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 201;
+  /* Tall dialogs (the 4-step wizard) scroll inside the card instead of
+     spilling past the viewport edges, which is what a centred card without a
+     height cap does. Cards that already scroll internally (help, catalog
+     manager) stay short enough that this never engages. */
+  max-height: 92vh;
+  overflow: auto;
+}
+/* The card is a flex column: under a height cap its children would SHRINK
+   (content then hides behind the footer) instead of making the card scroll. */
+.modal-card > * {
+  flex-shrink: 0;
+}
+
 /* Scan view inside the busy card: stable row per candidate + totals line. */
 .busy-scan {
   border-collapse: collapse;
