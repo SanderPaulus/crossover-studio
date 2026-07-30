@@ -5258,7 +5258,42 @@ export default function App() {
                       point, HP/LP) don't apply and are disabled; the solo engine designs cut-only
                       EQ/shelves within the EQ-band budget and the targets' ripple.
                     </span>
-                    <label title="How the LEVEL goal is expressed. Off: a relative sensitivity budget (how many dB of efficiency the correction may spend). On: an absolute target level — the engine flattens everything down TO that level, and everything below it is out of reach by definition. The absolute form is the better-posed goal (a fixed target cannot be met by moving the average) and it sets the reachable band in one number.">
+                    {/* HOW FAR MAY IT DROP — the one control that decides how
+                        much this engine can do. It used to be called
+                        "sensitivity budget", which is jargon: Sanders read a
+                        panel that contained the answer twice and still asked
+                        for "een invoerveld voor hoe laag hij mag zakken". The
+                        label now says exactly that, and the readout shows the
+                        absolute level it works out to. */}
+                    <label
+                      className="inline-num"
+                      title="How much LEVEL the correction may give up. Passive filters can only cut, so flatness is paid for in efficiency — this is the budget for that payment. 6 dB ≈ a baffle-step's worth, right for a driver that will still get a crossover. A fullranger carrying the whole range is usually worth 10–20 dB: the further it may drop, the further up the band it can pull things flat."
+                    >
+                      May drop by
+                      <input
+                        type="number"
+                        min={0}
+                        max={40}
+                        step={0.5}
+                        value={soloSensDb}
+                        disabled={soloFloorOn}
+                        onChange={(e) => setSoloSensDb(e.target.value)}
+                      />{' '}
+                      dB
+                    </label>
+                    {!soloFloorOn && soloFloorInfo && (
+                      <span
+                        className="derived"
+                        title="What that budget means in absolute terms: the driver's own median level over the evaluation band, and the level the correction may sink to."
+                      >
+                        → down to {(soloFloorInfo.median - num(soloSensDb, 6)).toFixed(0)} dB
+                        (driver sits at {soloFloorInfo.median.toFixed(0)})
+                      </span>
+                    )}
+                    <label
+                      className="check"
+                      title="Instead of 'may drop by N dB', name the level itself: the engine flattens everything down TO that level. Better-posed (a fixed target cannot be met by moving the average) and it tells you directly how far up the band the correction can reach."
+                    >
                       <input
                         type="checkbox"
                         checked={soloFloorOn}
@@ -5269,13 +5304,13 @@ export default function App() {
                           }
                         }}
                       />{' '}
-                      Target level (absolute)
+                      or flatten to a fixed level
                     </label>
-                    {soloFloorOn ? (
+                    {soloFloorOn && (
                       <>
                         <label
                           className="inline-num"
-                          title="Flatten down TO this level (dB, in your measurement's own scale). Passive filters can only cut, so a lower target reaches further up the band but costs efficiency. Everything already below this level cannot be lifted and stays out of scope."
+                          title="Flatten down TO this level (dB, in your own measurement's scale — check the SPL chart). A lower target reaches further up the band but costs efficiency. Anything already below this level cannot be lifted and stays out of scope."
                         >
                           Flat at
                           <input
@@ -5297,22 +5332,6 @@ export default function App() {
                           </span>
                         )}
                       </>
-                    ) : (
-                      <label
-                        className="inline-num"
-                        title="How much SENSITIVITY the correction may spend to buy flatness. Passive filters can only cut, so every dB of flatness in a dip-limited region is paid for in level. 6 dB ≈ a baffle-step's worth — right for a driver that will get a crossover. A fullranger carrying the whole range is often worth 10–15 dB. Also sets which band can be designed at all: regions further down than this are out of reach by definition."
-                      >
-                        Sensitivity budget
-                        <input
-                          type="number"
-                          min={0}
-                          max={20}
-                          step={0.5}
-                          value={soloSensDb}
-                          onChange={(e) => setSoloSensDb(e.target.value)}
-                        />{' '}
-                        dB
-                      </label>
                     )}
                   </>
                 )}

@@ -648,7 +648,14 @@ het EIGEN gemiddelde van de respons, ook in bodem-modus. Tegen de vaste bodem le
 band als "15 dB te hard", wint de tilt/shelf-kandidaat élke ronde en stapelen breedband-cuts
 zich op: drie low-shelf-cuts, géén notch op de 7 kHz-breakup, en 4 banden SLECHTER dan 2
 (peak 8,62 vs 3,41). Na de scheiding: 4 banden → peak 3,23 / avg 1,59 mét pad 12,4 Ω.
-UI: ⚙ Settings-keuze "Target level (absolute)" met live "driver sits at X dB · reaches A–B",
+UI (herbenoemd na Sanders "misschien een invoerveld voor hoe laag hij mag zakken?" — hij las
+een paneel dat het antwoord TWEE keer bevatte en zag het niet: "Sensitivity budget" is jargon
+en de bodem-checkbox stond uit, waardoor dat veld verborgen was): het relatieve veld heet nu
+**"May drop by … dB"** met een absolute uitlezing ernaast ("→ down to 114 dB (driver sits at
+129)"), en de bodem-schakelaar heet **"or flatten to a fixed level"**. Max verhoogd 20 → 40 dB.
+Gemeten met "may drop by 15" + 4 banden op Robberts 12W8524: Response 0 → 22, hele-bereik avg
+2,07 dB, in-band (113 Hz–13 kHz) peak 11,16 → 2,29 dB / avg 0,96 — beter dan élk relatief
+budget hiervoor en dicht bij Sanders handwerk (1,93). Verder de ⚙ Settings-keuze met live "driver sits at X dB · reaches A–B",
 default-voorstel mediaan−10; de bodem staat in de dB-schaal van de geladen FRD. Ook gefixt:
 de solo-band werd op 300 Hz geklemd (2-weg-aanname) — een breedbander vanaf 110 Hz moet
 vanaf 110 Hz ontworpen worden.
