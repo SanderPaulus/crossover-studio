@@ -6,8 +6,13 @@ import { parseFrd } from './parsers/frd.ts';
 import { parseZma } from './parsers/zma.ts';
 import { logspace, resample, type GriddedResponse } from './dsp.ts';
 import { fromPolar } from './complex.ts';
-import { defaultEq, defaultHpLp, type DriverFilterSpec } from './filters.ts';
-import { optimizeSoloFilter, runSoloChain } from './soloOptimizer.ts';
+import { defaultEq, defaultHpLp, evalDriverFilter, type DriverFilterSpec } from './filters.ts';
+import { buildSoloNetwork, optimizeSoloFilter, runSoloChain } from './soloOptimizer.ts';
+import { optimizeNetworkValues } from './netOptimizer.ts';
+import { tidySchematic } from './tidyLayout.ts';
+import { crossoverToNetlist } from './vxpNetwork.ts';
+import { solveNetwork } from './network.ts';
+import type { VxpPart } from './parsers/vxp.ts';
 
 const FIXTURES = join(dirname(fileURLToPath(import.meta.url)), 'parsers', 'fixtures');
 const load = (name: string) => readFileSync(join(FIXTURES, name), 'utf-8');
@@ -81,6 +86,116 @@ describe('optimizeSoloFilter (single-driver design engine)', () => {
     expect(r.after.avgDevDb).toBeLessThanOrEqual(r.before.avgDevDb + 1e-9);
   });
 
+  it('never buys flatness by throwing away sensitivity (Sanders 33 Ω run)', () => {
+    // A driver whose top octave is DEAD: std-flatness can be "fixed" by
+    // attenuating everything below it — which is what the first version did
+    // (two low-shelf cuts, 33 Ω series resistor, Response score 0). The
+    // sensitivity budget must forbid it.
+    const deadTop: GriddedResponse = {
+      freq: [...grid],
+      spl: grid.map((f) => (f < 9000 ? 88 : 88 - 14 * Math.min(1, Math.log2(f / 9000)))),
+      phaseDeg: grid.map(() => 0),
+    };
+    const r = optimizeSoloFilter(grid, deadTop, cleanSpec(), {
+      eqBands: 4,
+      band: [300, 19000],
+      sensitivityBudgetDb: 6,
+    });
+    expect(r.sensitivityCostDb).toBeLessThanOrEqual(6.5);
+    // The passband must survive: no 14 dB "flattening" of everything.
+    const h = evalDriverFilter(r.spec, [1000]);
+    const atOneK = 20 * Math.log10(Math.hypot(h[0].re, h[0].im));
+    expect(atOneK).toBeGreaterThan(-6.5);
+    // And the honest limitation is reported rather than optimised away.
+    expect(r.dipLimit).not.toBeNull();
+  });
+
+  it('reports the sensitivity cost of the correction it chose', () => {
+    const r = optimizeSoloFilter(grid, bumpyDriver, cleanSpec(), { eqBands: 3 });
+    expect(r.sensitivityCostDb).toBeGreaterThanOrEqual(0);
+    expect(r.sensitivityCostDb).toBeLessThanOrEqual(6);
+  });
+
+  it('keeps peak bands narrow enough to be notches, not broadband cuts', () => {
+    const r = optimizeSoloFilter(grid, bumpyDriver, cleanSpec(), { eqBands: 3 });
+    for (const b of r.spec.eq.filter((x) => x.enabled && (x.type ?? 'peak') === 'peak')) {
+      expect(b.q).toBeGreaterThanOrEqual(0.7);
+    }
+  });
+
+  it('designs where design is possible when a fullranger dies at the top', () => {
+    // Sanders' point: a fullrange driver must be judged over the WHOLE range,
+    // so "narrow the view range" is no answer. But a 30 dB cliff cannot be
+    // flattened by cutting — only approached by throwing away 30 dB
+    // everywhere. So the engine designs the reachable band and keeps scoring
+    // the requested one.
+    const cliff: GriddedResponse = {
+      freq: [...grid],
+      spl: grid.map((f) => {
+        const bump = 5 * Math.exp(-((Math.log2(f / 2500)) ** 2) * 6);
+        const die = f > 9000 ? -30 * Math.min(1, Math.log2(f / 9000)) : 0;
+        return 88 + bump + die;
+      }),
+      phaseDeg: grid.map(() => 0),
+    };
+    const r = optimizeSoloFilter(grid, cliff, cleanSpec(), {
+      eqBands: 4,
+      band: [300, 19000],
+    });
+    // The dead top is out of the design band, the live part is kept.
+    expect(r.designBand[1]).toBeLessThan(14000);
+    expect(r.designBand[1]).toBeGreaterThan(7000);
+    expect(r.designBand[0]).toBeLessThan(400);
+    // In-band it does real work…
+    expect(r.inBandAfter.ripplePeakDb).toBeLessThan(r.inBandBefore.ripplePeakDb * 0.7);
+    // …without spending the passband to chase the cliff…
+    expect(r.sensitivityCostDb).toBeLessThanOrEqual(6.5);
+    // …and the whole-range score still tells the truth about it.
+    expect(r.after.ripplePeakDb).toBeGreaterThan(5);
+    expect(r.dipLimit!.hz).toBeGreaterThan(9000);
+  });
+
+  it('floor mode: flattens down TO an absolute target level', () => {
+    // Sanders' idea: an absolute SPL floor instead of a relative budget. The
+    // goal is then well-posed for a cut-only network — everything above the
+    // floor gets cut to it, everything below is out of reach — and the floor
+    // alone decides how far the correctable band reaches.
+    const r = optimizeSoloFilter(grid, bumpyDriver, cleanSpec(), {
+      eqBands: 4,
+      band: [300, 19000],
+      targetLevelDb: 80, // driver sits at ~85–90 dB
+    });
+    // The correction reaches the target rather than some floating average:
+    // the median of the corrected response lands near the floor.
+    const h = evalDriverFilter(r.spec, grid);
+    const corrected = grid
+      .map((f, i) => (f >= 300 && f <= 19000 ? bumpyDriver.spl[i] + 20 * Math.log10(Math.hypot(h[i].re, h[i].im)) : null))
+      .filter((v): v is number => v !== null)
+      .sort((a, b) => a - b);
+    const median = corrected[Math.floor(corrected.length / 2)];
+    expect(median).toBeGreaterThan(76);
+    expect(median).toBeLessThan(84);
+    // A level element is part of the answer — an EQ band cannot move a whole
+    // passband to a target level.
+    expect(r.spec.gainDb).toBeLessThan(0);
+  });
+
+  it('floor mode: a lower floor reaches further up the band', () => {
+    // The relationship the designer reasons about: "floor at X → flat up to Y".
+    const cliff: GriddedResponse = {
+      freq: [...grid],
+      spl: grid.map((f) => 90 - (f > 6000 ? 28 * Math.min(1, Math.log2(f / 6000)) : 0)),
+      phaseDeg: grid.map(() => 0),
+    };
+    const high = optimizeSoloFilter(grid, cliff, cleanSpec(), {
+      eqBands: 2, band: [300, 19000], targetLevelDb: 86,
+    });
+    const low = optimizeSoloFilter(grid, cliff, cleanSpec(), {
+      eqBands: 2, band: [300, 19000], targetLevelDb: 70,
+    });
+    expect(low.designBand[1]).toBeGreaterThan(high.designBand[1] * 1.2);
+  });
+
   it('leaves an already-flat driver alone', () => {
     const flat: GriddedResponse = {
       freq: [...grid],
@@ -93,6 +208,65 @@ describe('optimizeSoloFilter (single-driver design engine)', () => {
   });
 });
 
+describe('solo component tuner: sensitivity gate', () => {
+  const frd = parseFrd(load('mid_hor0_mettape.txt'));
+  const d = resample(frd.freq, frd.spl, frd.phase, grid);
+  const zma = parseZma(load('mid_Backwavecone_sheep75gram.ZMA'));
+  const zg = resample(zma.freq, zma.magnitude, zma.phase, grid, { clampEdges: true });
+  const z = zg.spl.map((m, i) => fromPolar(m, (zg.phaseDeg[i] * Math.PI) / 180));
+  const ghost: GriddedResponse = {
+    freq: [...grid],
+    spl: grid.map(() => -400),
+    phaseDeg: grid.map(() => 0),
+  };
+
+  /** Series resistor into the driver: the tuner can "flatten" by cranking it
+   *  (attenuation is level-blind to std-flatness). It must not. */
+  const padNetwork = (ohms: number): VxpPart[] => [
+    {
+      type: 'Generator',
+      partId: 'G1',
+      params: [
+        { name: 'Eg', value: 2.83, unit: 'V' },
+        { name: 'Rg', value: 0.001, unit: 'Ω' },
+      ],
+      wires: [{ x: 3, y: 4 }, { x: 3, y: 11 }],
+    },
+    { type: 'Ground', params: [], wires: [{ x: 3, y: 11 }] },
+    {
+      type: 'Resistor',
+      partId: 'R1',
+      params: [{ name: 'R', value: ohms, unit: 'Ω' }],
+      wires: [{ x: 3, y: 4 }, { x: 10, y: 4 }],
+    },
+    {
+      type: 'Driver',
+      partId: 'D1',
+      model: 'mid',
+      inverted: false,
+      params: [],
+      wires: [{ x: 10, y: 4 }, { x: 10, y: 11 }],
+    },
+    { type: 'Ground', params: [], wires: [{ x: 10, y: 11 }] },
+  ];
+
+  it('never delivers a network that flattens by attenuating the driver', () => {
+    const r = optimizeNetworkValues(
+      padNetwork(1),
+      grid,
+      d,
+      ghost,
+      { mid: z },
+      { offsetMm: 0, trimDb: 0, inverted: false },
+      { solo: true, band: [300, 19000] },
+    );
+    // Either the tuner kept the level, or the gate rejected it outright.
+    const rOhms = r.parts.find((p) => p.partId === 'R1')?.params.find((q) => q.name === 'R')?.value;
+    expect(rOhms).toBeLessThan(12); // a 33 Ω-style pad must never be the answer
+    if (r.safetyNote) expect(r.safetyNote).toMatch(/sensitivity/i);
+  });
+});
+
 describe('runSoloChain (design → synthesis → assembled solo tune)', () => {
   // Real KOAN mid measurement + impedance: the honest end-to-end case.
   const frd = parseFrd(load('mid_hor0_mettape.txt'));
@@ -100,6 +274,162 @@ describe('runSoloChain (design → synthesis → assembled solo tune)', () => {
   const zma = parseZma(load('mid_Backwavecone_sheep75gram.ZMA'));
   const zg = resample(zma.freq, zma.magnitude, zma.phase, grid, { clampEdges: true });
   const z = zg.spl.map((m, i) => fromPolar(m, (zg.phaseDeg[i] * Math.PI) / 180));
+
+  it('"may drop by N" is a ceiling: more permission is never worse', () => {
+    // Sanders: 20 dB gave a worse result than 15. The control says MAY, but
+    // the spend fed the reachable band, so a bigger permission widened the
+    // band, spread the same few correction bands thinner and lost the breakup
+    // trap. Measured whole-range avg went 2.35 / 2.17 / 2.76 / 2.54 / 3.65 for
+    // 6 / 10 / 15 / 20 / 25 dB — erratic in the one direction a designer
+    // expects to be safe. The engine now searches the spend up to the ceiling.
+    const wholeAvg = (spl: readonly number[]) => {
+      const ids = grid.map((f, i) => (f >= 300 && f <= 19000 ? i : -1)).filter((i) => i >= 0);
+      const vals = ids.map((i) => spl[i]).sort((a, b) => a - b);
+      const med = vals[Math.floor(vals.length / 2)];
+      return ids.reduce((a, i) => a + Math.abs(spl[i] - med), 0) / ids.length;
+    };
+    const run = (sensitivityBudgetDb: number) => {
+      const r = runSoloChain({
+        grid, d, z, model: 'mid',
+        seed: cleanSpec(),
+        settings: { eqBands: 3, band: [300, 19000], targets: { rippleDb: 3 }, sensitivityBudgetDb },
+      });
+      const sol = solveNetwork(
+        crossoverToNetlist({ name: 'm', parts: r.parts }).netlist, grid, { mid: z });
+      const drv = sol.drivers.find((x) => x.model === 'mid')!;
+      const h = sol.transfers[drv.id];
+      return wholeAvg(d.spl.map((v, i) => v + 20 * Math.log10(Math.hypot(h[i].re, h[i].im) || 1e-12)));
+    };
+    const tight = run(6);
+    const loose = run(15);
+    // A bigger allowance may not cost quality — the ladder always contains the
+    // conservative candidate, so the best can only improve or stay equal.
+    expect(loose).toBeLessThanOrEqual(tight + 0.02);
+  }, 300000);
+
+  it('defends the design stage\'s notch through tune and snap', () => {
+    // Sanders, twice: "de piek bij 7 kHz wordt niet aangepakt". The design
+    // stage DID trap it — the value tune and the catalog snap then eroded it,
+    // both while improving their own RMS metric, because a narrow resonance
+    // barely registers in std. The solo amplitude term is peak-aware now.
+    const peaky: GriddedResponse = {
+      freq: [...grid],
+      spl: grid.map((f) => 90 + 14 * Math.exp(-((Math.log2(f / 7000)) ** 2) * 40)),
+      phaseDeg: grid.map(() => 0),
+    };
+    const r = runSoloChain({
+      grid, d: peaky, z, model: 'mid',
+      seed: cleanSpec(),
+      settings: { eqBands: 3, band: [300, 19000], targets: { rippleDb: 2 }, sensitivityBudgetDb: 10 },
+    });
+    const sol = solveNetwork(
+      crossoverToNetlist({ name: 'p', parts: r.parts }).netlist, grid, { mid: z });
+    const drv = sol.drivers.find((x) => x.model === 'mid')!;
+    const h = sol.transfers[drv.id];
+    const out = peaky.spl.map((v, i) => v + 20 * Math.log10(Math.hypot(h[i].re, h[i].im) || 1e-12));
+    const idx = (f: number) => {
+      let b = 0;
+      for (let i = 1; i < grid.length; i++) if (Math.abs(grid[i] - f) < Math.abs(grid[b] - f)) b = i;
+      return b;
+    };
+    // The +14 dB spike must end up close to its neighbours, not standing proud.
+    const atPeak = out[idx(7000)];
+    const beside = (out[idx(3000)] + out[idx(15000)]) / 2;
+    expect(atPeak - beside).toBeLessThan(6);
+  }, 300000);
+
+  it('the bare "no correction" network passes the driver through', () => {
+    // Regression for a shipped bug: the no-correction fallback was built by
+    // FILTERING the R/L/C parts out of the corrected network. Those components
+    // are the links between the bus points, so what was left was a generator,
+    // an orphan wire and a disconnected driver — simulating as a dead flat
+    // line, which then scored a perfect Response 100.
+    const { parts } = buildSoloNetwork(
+      { gainDb: 0, hp: defaultHpLp(200), lp: defaultHpLp(20000), eq: [] },
+      grid,
+      z,
+      'mid',
+    );
+    const sol = solveNetwork(crossoverToNetlist({ name: 'bare', parts }).netlist, grid, { mid: z });
+    const drv = sol.drivers.find((x) => x.model === 'mid')!;
+    const h = sol.transfers[drv.id];
+    // A bare generator → driver network is a straight wire: |H| = 1 (0 dB).
+    for (let i = 0; i < grid.length; i += 25) {
+      const db = 20 * Math.log10(Math.hypot(h[i].re, h[i].im) || 1e-12);
+      expect(db).toBeGreaterThan(-0.5);
+      expect(db).toBeLessThan(0.5);
+    }
+  });
+
+  it('never delivers a network that is worse than the raw driver whole-range', () => {
+    // Sanders' avg ±5.66 run: the correction improved its own design band and
+    // still made the number he is judged by worse than no filter at all. Every
+    // never-worse guard until then judged the band it optimised.
+    const wholeAvg = (spl: readonly number[]) => {
+      const ids = grid.map((f, i) => (f >= 110 && f <= 19000 ? i : -1)).filter((i) => i >= 0);
+      const vals = ids.map((i) => spl[i]).sort((a, b) => a - b);
+      const med = vals[Math.floor(vals.length / 2)];
+      return ids.reduce((a, i) => a + Math.abs(spl[i] - med), 0) / ids.length;
+    };
+    // A very low target on a driver with a hard top-end cliff is the recipe:
+    // it reaches far, spends a lot of level, and the cliff cannot follow.
+    for (const targetLevelDb of [95, 105]) {
+      const r = runSoloChain({
+        grid, d, z, model: 'mid',
+        seed: cleanSpec(),
+        settings: { eqBands: 4, band: [110, 19000], targets: { rippleDb: 1.5 }, targetLevelDb },
+      });
+      const sol = solveNetwork(
+        crossoverToNetlist({ name: 'v', parts: r.parts }).netlist, grid, { mid: z });
+      const drv = sol.drivers.find((x) => x.model === 'mid')!;
+      const h = sol.transfers[drv.id];
+      const out = d.spl.map((v, i) => v + 20 * Math.log10(Math.hypot(h[i].re, h[i].im) || 1e-12));
+      expect(wholeAvg(out)).toBeLessThanOrEqual(wholeAvg(d.spl) + 0.06);
+      // And whatever it delivers must still be a WORKING network: a severed
+      // circuit simulates as a dead flat line and scores a perfect 100 —
+      // exactly the degenerate result the first version of this gate shipped.
+      const ids = grid.map((f, i) => (f >= 110 && f <= 19000 ? i : -1)).filter((i) => i >= 0);
+      const spread = Math.max(...ids.map((i) => out[i])) - Math.min(...ids.map((i) => out[i]));
+      expect(spread).toBeGreaterThan(1); // the driver's own shape must survive
+      // Still connected = the level lands NEAR the requested floor. (An
+      // earlier revision asserted "within 25 dB of the raw driver", written
+      // when deep floors were rejected outright — now the L-pad genuinely
+      // delivers them, and 29 dB of requested attenuation is the feature.)
+      const mid = ids[Math.floor(ids.length / 2)];
+      expect(out[mid]).toBeGreaterThan(targetLevelDb - 10);
+    }
+  });
+
+  it('stays drawable by the tidy auto-placer, even after staged escalation', () => {
+    // Sanders' "Tidy layout doet niets": a ripple target the driver cannot
+    // reach keeps the staged escalation hunting, and it used to hang a bypass
+    // cap across the damping R INSIDE the parallel LCR trap — a 4-member
+    // parallel group, which the auto-placer refuses to draw (rightly: it
+    // cannot be laid out as a ladder). The bypass move is for lone pad
+    // resistors only.
+    const r = runSoloChain({
+      grid,
+      d,
+      z,
+      model: 'mid',
+      seed: cleanSpec(),
+      settings: {
+        eqBands: 3,
+        band: [300, 19000],
+        targets: { rippleDb: 0.3 }, // deliberately unreachable → escalation
+      },
+    });
+    expect(tidySchematic(r.parts)).not.toBeNull();
+    // No series-path element may end up with three parallel companions.
+    const net = crossoverToNetlist({ name: 'solo', parts: r.parts }).netlist;
+    const groups = new Map<string, number>();
+    for (const e of net.elements) {
+      if (e.kind !== 'R' && e.kind !== 'L' && e.kind !== 'C') continue;
+      const k = [...e.nodes].sort((a, b) => a - b).join('-');
+      groups.set(k, (groups.get(k) ?? 0) + 1);
+    }
+    expect(Math.max(...groups.values())).toBeLessThanOrEqual(3);
+  });
 
   it('produces a solvable single-branch network that improves flatness', () => {
     const r = runSoloChain({

@@ -58,7 +58,7 @@ import {
   runSoloChainTask,
   runVfRoundsTask,
 } from './lib/optimClient.ts';
-import { buildSoloNetwork, optimizeSoloFilter } from './lib/soloOptimizer.ts';
+import { buildSoloNetwork, optimizeSoloFilter, reachableBandFor } from './lib/soloOptimizer.ts';
 import { crossoverVariants, rankChainResults, type ChainResult, type ChainSettings } from './lib/designChain.ts';
 import { deserializeCatalog, serializeCatalog } from './lib/catalogFile.ts';
 import { fromPolar, abs as cAbs, mul as cMul, type Complex } from './lib/complex.ts';
@@ -255,6 +255,10 @@ function useTheme(): [Theme, (t: Theme) => void] {
  *  the −60 dB phase-mask and the 20 dB integration-overlap window, so the
  *  ghost never draws a phase line and never counts as overlap. */
 const SILENT_GHOST_DB = -400;
+
+/** Compact frequency label: 9335 → "9.3 kHz", 245 → "245 Hz". */
+const hz = (f: number): string =>
+  f >= 1000 ? `${(f / 1000).toFixed(f >= 10000 ? 0 : 1)} kHz` : `${Math.round(f)} Hz`;
 
 /** Map a solved network's drivers to the woofer/tweeter voltage transfers by
  *  SLOT (not hard-coded model name), so an imported vxp with freely-named
@@ -735,6 +739,14 @@ export default function App() {
    *  band. The USABLE span where both drivers have data — floored at 200 Hz (a
    *  mid/tweeter tuning floor; raw FRDs often carry an unreliable sub-100 Hz
    *  tail) and capped at 20 kHz. */
+  /** The solo level goal as the engine wants it: either an absolute target
+   *  level, or the relative sensitivity budget. One place so the design stage
+   *  and the component tuner can never disagree. */
+  const soloLevelGoal = (): { targetLevelDb?: number; sensitivityBudgetDb?: number } => {
+    if (soloFloorOn && soloFloorInfo) return { targetLevelDb: soloFloorInfo.floor };
+    return { sensitivityBudgetDb: num(soloSensDb, 6) };
+  };
+
   const suggestedBand = useMemo((): [number, number] | null => {
     if (!woofer || !tweeter) return null;
     const wf = woofer.frd.freq;
@@ -780,6 +792,13 @@ export default function App() {
    *  series-path slots of that kind to the series' value range. */
   const [snapBoundToSeries, setSnapBoundToSeries] = useState(false);
   const [targetRipple, setTargetRipple] = useState('1.5');
+  /** Single-driver mode: sensitivity a correction may spend for flatness. */
+  const [soloSensDb, setSoloSensDb] = useState('6');
+  /** Single-driver mode: absolute target level instead of the relative budget
+   *  (Sanders' floor idea — a fixed target cannot be gamed by moving the mean,
+   *  and it sets how far the correctable band reaches in one number). */
+  const [soloFloorOn, setSoloFloorOn] = useState(false);
+  const [soloFloorDb, setSoloFloorDb] = useState('');
   const [targetPhase, setTargetPhase] = useState('10');
 
   /** Editable schematic networks (step 6), as TABS: every design lives in its
@@ -1449,6 +1468,32 @@ export default function App() {
 
   const result = sim?.combined ?? null;
 
+  /** Single-driver mode, floor control: the driver's own median level over the
+   *  evaluation band, the level the engine would target by default, and — for
+   *  the entered floor — how far a cut-only correction can then reach.
+   *  Sanders' point: "floor at X → flat up to Y kHz" is the relationship the
+   *  designer actually reasons about, so show it live. */
+  const soloFloorInfo = useMemo(() => {
+    if (!soloDriver || !sim || !result) return null;
+    const d = soloDriver === 'woofer' ? sim.base.w : sim.base.t;
+    const freqs = result.freq;
+    const band: [number, number] = [
+      freqs[0] * 1.02,
+      Math.min(freqs[freqs.length - 1] * 0.975, num(fMax, 20000)),
+    ];
+    const vals = freqs
+      .map((f, i) => (f >= band[0] && f <= band[1] ? d.spl[i] : null))
+      .filter((v): v is number => v !== null)
+      .sort((a, b) => a - b);
+    if (vals.length < 8) return null;
+    const median = vals[Math.floor(vals.length / 2)];
+    const entered = soloFloorDb.trim() === '' ? null : Number(soloFloorDb);
+    const floor = entered !== null && Number.isFinite(entered) ? entered : Math.round(median - 10);
+    const reach = reachableBandFor(freqs, d.spl, band, floor);
+    return { median, floor, suggested: Math.round(median - 10), reach };
+  }, [soloDriver, sim, result, fMax, soloFloorDb]);
+
+
   const timing = useMemo(() => {
     if (!woofer || !tweeter) return null;
     const band = (frd: Parsed): [number, number] => [
@@ -1744,6 +1789,9 @@ export default function App() {
         snapBoundToSeries,
         stagedOn,
         targetRipple,
+        soloSensDb,
+        soloFloorOn,
+        soloFloorDb,
         targetPhase,
       },
     };
@@ -1854,6 +1902,9 @@ export default function App() {
     setSnapBoundToSeries(d.snapBoundToSeries ?? false);
     setStagedOn(d.stagedOn ?? true);
     setTargetRipple(d.targetRipple ?? '1.5');
+    setSoloSensDb(d.soloSensDb ?? '6');
+    setSoloFloorOn(d.soloFloorOn ?? false);
+    setSoloFloorDb(d.soloFloorDb ?? '');
     setTargetPhase(d.targetPhase ?? '10');
   }
 
@@ -1926,7 +1977,7 @@ export default function App() {
     }, 800);
     return () => clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [woofer, tweeter, project, zStandalone, angleSets, fileNotes, vFilters, xoName, offsetMm, trimDb, inverted, fMin, fMax, splMin, splMax, phasePriority, vfEqBands, phaseMode, dirWeight, ampTarget, sonogramMode, designs, activeDesignId, lastSavedId, networkActive, vfBypass, catalogSnap, breakupGuard, xoRangeOn, xoFreqHz, xoMarginHz, xoScanSteps, hpLpPref, phaseMetricMode, acSlopeMid, acSlopeTweeter, midSizeInch, snapProfile, snapSeriesL, snapSeriesC, snapSeriesR, snapStacks, snapBoundToSeries, stagedOn, targetRipple, targetPhase]);
+  }, [woofer, tweeter, project, zStandalone, angleSets, fileNotes, vFilters, xoName, offsetMm, trimDb, inverted, fMin, fMax, splMin, splMax, phasePriority, vfEqBands, phaseMode, dirWeight, ampTarget, sonogramMode, designs, activeDesignId, lastSavedId, networkActive, vfBypass, catalogSnap, breakupGuard, xoRangeOn, xoFreqHz, xoMarginHz, xoScanSteps, hpLpPref, phaseMetricMode, acSlopeMid, acSlopeTweeter, midSizeInch, snapProfile, snapSeriesL, snapSeriesC, snapSeriesR, snapStacks, snapBoundToSeries, stagedOn, targetRipple, targetPhase, soloSensDb, soloFloorOn, soloFloorDb]);
 
   function resetProject() {
     localStorage.removeItem(AUTOSAVE_KEY);
@@ -1959,8 +2010,10 @@ export default function App() {
       const model = soloDriver === 'woofer' ? 'mid' : 'tweeter';
       const spec = vFilters[soloDriver];
       const grid = result.freq;
+      // NB: no 300 Hz clamp here (unlike the two-way flow) — a fullranger
+      // measured from 110 Hz must be designed from 110 Hz.
       const band: [number, number] = [
-        Math.max(300, grid[0]),
+        grid[0] * 1.02,
         Math.min(grid[grid.length - 1] * 0.975, num(fMax, 20000)),
       ];
       const z = impedances[model];
@@ -1978,14 +2031,23 @@ export default function App() {
               eqBands: vfEqBands,
               band,
               targets: stagedOn ? { rippleDb: num(targetRipple, 1.5) } : undefined,
+              ...soloLevelGoal(),
             });
             setVFilters((p) => ({ ...p, [soloDriver]: r.spec }));
             setVfBypass(false); // virtual result — must be audible in the sim
             setNetOptDiff(null);
             setNetOptNote(
-              `solo design (virtual — load a .ZMA to build it): peak ` +
-                `${r.before.ripplePeakDb.toFixed(2)} → ${r.after.ripplePeakDb.toFixed(2)} dB · ` +
-                r.stages.map((s) => s.label).join(' → '),
+              `solo design (virtual — load a .ZMA to build it) — designed ` +
+                `${hz(r.designBand[0])}–${hz(r.designBand[1])}: peak ` +
+                `${r.inBandBefore.ripplePeakDb.toFixed(2)} → ${r.inBandAfter.ripplePeakDb.toFixed(2)} dB · ` +
+                r.stages.map((s) => s.label).join(' → ') +
+                (r.sensitivityCostDb > 0.2
+                  ? ` · costs ${r.sensitivityCostDb.toFixed(1)} dB sensitivity`
+                  : '') +
+                (r.dipLimit
+                  ? ` · ⓘ outside that band the driver is too far down to reach ` +
+                    `(${r.dipLimit.db.toFixed(0)} dB dip at ${hz(r.dipLimit.hz)})`
+                  : ''),
             );
           } catch (e) {
             setVfError(e instanceof Error ? e.message : String(e));
@@ -2021,6 +2083,7 @@ export default function App() {
             eqBands: vfEqBands,
             band,
             targets: stagedOn ? { rippleDb: num(targetRipple, 1.5) } : undefined,
+            ...soloLevelGoal(),
             catalogSnap: catalogSnap && hasImportedCatalog(),
             snapPrefs: snapPrefsValue(),
             safety,
@@ -2057,9 +2120,23 @@ export default function App() {
           setNetOptDiff(null);
           setNetOptNote(
             `solo chain — ${r.structure.join(' · ') || 'no correction needed'} — ` +
-              `peak ${r.vf.before.ripplePeakDb.toFixed(2)} → ${r.net.after.rippleDb.toFixed(2)} dB` +
+              // Both numbers on the SAME band (the one designed on): a
+              // whole-range "before" against an in-band "after" would flatter
+              // the run by exactly the size of the unreachable region.
+              `designed ${hz(r.vf.designBand[0])}–${hz(r.vf.designBand[1])}: ` +
+              `peak ${r.vf.inBandBefore.ripplePeakDb.toFixed(2)} → ${r.net.after.rippleDb.toFixed(2)} dB` +
               (r.net.after.avgDevDb !== undefined
                 ? ` · avg ${r.net.after.avgDevDb.toFixed(2)} dB`
+                : '') +
+              (r.vf.sensitivityCostDb > 0.2
+                ? ` · costs ${r.vf.sensitivityCostDb.toFixed(1)} dB sensitivity`
+                : '') +
+              // Say what was left out and why — cut-only cannot lift a dip, so
+              // a mediocre whole-range score is physics, not a failed run.
+              (r.vf.dipLimit
+                ? ` · ⓘ outside that band the driver is too far down to reach ` +
+                  `(${r.vf.dipLimit.db.toFixed(0)} dB dip at ${hz(r.vf.dipLimit.hz)}) — ` +
+                  `passive cuts can only cut, so that part sets the whole-range score`
                 : '') +
               (r.bomTotalEur !== null ? ` · BOM €${Math.round(r.bomTotalEur)}` : '') +
               (r.net.snapNote ? ` · ${r.net.snapNote}` : '') +
@@ -2620,6 +2697,12 @@ export default function App() {
         // Single-driver mode: "0 driver pairs" — the tuner drops every
         // crossing-anchored term and judges branch flatness (+ amp floor).
         solo: !!soloDriver,
+        // Floor mode: the tuner may spend down to the target level, no further.
+        soloSensitivityDb:
+          soloFloorOn && soloFloorInfo
+            ? Math.max(0, soloFloorInfo.median - soloFloorInfo.floor)
+            : num(soloSensDb, 6),
+        soloTargetLevelDb: soloFloorOn && soloFloorInfo ? soloFloorInfo.floor : undefined,
         phasePriority: phasePriority / 100,
         angleData: angleResponsesOn(grid) ?? undefined,
         directivityWeight: dirWeight / 100,
@@ -4269,6 +4352,9 @@ export default function App() {
                     impedance rises) and component-tuned against the measurement.
                     <br />
                     {stagedOn ? `Staged: target ≤ ${targetRipple} dB peak ripple` : 'Classic full-budget run'}
+                    {soloFloorOn && soloFloorInfo
+                      ? ` · flat at ${soloFloorInfo.floor} dB (reaches ${hz(soloFloorInfo.reach[0])}–${hz(soloFloorInfo.reach[1])})`
+                      : ` · sensitivity budget ${soloSensDb} dB`}
                     <br />
                     {catalogSnap && hasImportedCatalog()
                       ? `Snap to catalog · profile ${snapProfile}`
@@ -5167,11 +5253,88 @@ export default function App() {
               <div className="row opt-settings" style={{ marginBottom: '1rem' }}>
                 <span className="opt-settings-cap">Optimizer settings</span>
                 {soloDriver && (
-                  <span className="derived" style={{ flexBasis: '100%' }}>
-                    Single-driver mode — crossover settings (priority, phase, slopes, crossover
-                    point, HP/LP) don't apply and are disabled; the solo engine designs cut-only
-                    EQ/shelves within the EQ-band budget and the targets' ripple.
-                  </span>
+                  <>
+                    <span className="derived" style={{ flexBasis: '100%' }}>
+                      Single-driver mode — crossover settings (priority, phase, slopes, crossover
+                      point, HP/LP) don't apply and are disabled; the solo engine designs cut-only
+                      EQ/shelves within the EQ-band budget and the targets' ripple.
+                    </span>
+                    {/* HOW FAR MAY IT DROP — the one control that decides how
+                        much this engine can do. It used to be called
+                        "sensitivity budget", which is jargon: Sanders read a
+                        panel that contained the answer twice and still asked
+                        for "een invoerveld voor hoe laag hij mag zakken". The
+                        label now says exactly that, and the readout shows the
+                        absolute level it works out to. */}
+                    <label
+                      className="inline-num"
+                      title="How much LEVEL the correction may give up. Passive filters can only cut, so flatness is paid for in efficiency — this is the budget for that payment. 6 dB ≈ a baffle-step's worth, right for a driver that will still get a crossover. A fullranger carrying the whole range is usually worth 10–20 dB: the further it may drop, the further up the band it can pull things flat."
+                    >
+                      May drop by
+                      <input
+                        type="number"
+                        min={0}
+                        max={40}
+                        step={0.5}
+                        value={soloSensDb}
+                        disabled={soloFloorOn}
+                        onChange={(e) => setSoloSensDb(e.target.value)}
+                      />{' '}
+                      dB
+                    </label>
+                    {!soloFloorOn && soloFloorInfo && (
+                      <span
+                        className="derived"
+                        title="What that budget means in absolute terms: the driver's own median level over the evaluation band, and the level the correction may sink to."
+                      >
+                        → down to {(soloFloorInfo.median - num(soloSensDb, 6)).toFixed(0)} dB
+                        (driver sits at {soloFloorInfo.median.toFixed(0)})
+                      </span>
+                    )}
+                    <label
+                      className="check"
+                      title="Instead of 'may drop by N dB', name the level itself: the engine flattens everything down TO that level. Better-posed (a fixed target cannot be met by moving the average) and it tells you directly how far up the band the correction can reach."
+                    >
+                      <input
+                        type="checkbox"
+                        checked={soloFloorOn}
+                        onChange={(e) => {
+                          setSoloFloorOn(e.target.checked);
+                          if (e.target.checked && soloFloorDb.trim() === '' && soloFloorInfo) {
+                            setSoloFloorDb(String(soloFloorInfo.suggested));
+                          }
+                        }}
+                      />{' '}
+                      or flatten to a fixed level
+                    </label>
+                    {soloFloorOn && (
+                      <>
+                        <label
+                          className="inline-num"
+                          title="Flatten down TO this level (dB, in your own measurement's scale — check the SPL chart). A lower target reaches further up the band but costs efficiency. Anything already below this level cannot be lifted and stays out of scope."
+                        >
+                          Flat at
+                          <input
+                            type="number"
+                            step={1}
+                            value={soloFloorDb}
+                            placeholder={soloFloorInfo ? String(soloFloorInfo.suggested) : ''}
+                            onChange={(e) => setSoloFloorDb(e.target.value)}
+                          />{' '}
+                          dB
+                        </label>
+                        {soloFloorInfo && (
+                          <span
+                            className="derived"
+                            title="The driver's own median level over the evaluation band, and how far a cut-only correction can reach at the target level you entered."
+                          >
+                            driver sits at {soloFloorInfo.median.toFixed(0)} dB · reaches{' '}
+                            {hz(soloFloorInfo.reach[0])}–{hz(soloFloorInfo.reach[1])}
+                          </span>
+                        )}
+                      </>
+                    )}
+                  </>
                 )}
                 <label title={soloDriver ? 'Single-driver mode: relative phase does not exist — the solo objective is response flatness only' : "The big trade-off: budget split between a flat response and flat phase. More phase = flatter phase but more amplitude ripple. Both ends are anchored (100% phase = 90/10 internally): with the response weight at true zero the optimizer would trade a wrecked response for a phase metric it can then game."}>
                   Priority: response {100 - phasePriority}% · phase {phasePriority}%

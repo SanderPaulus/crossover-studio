@@ -7,7 +7,7 @@ minimum phase reconstrueert. Voertaal met Sander: **Nederlands**; code/comments 
 ## Commands
 
 - `npm run dev` — dev-server via de Browser-pane tool (`preview_start {name:"dev"}`), poort 5173
-- `npx vitest run` — testsuite (330 tests, allemaal groen houden)
+- `npx vitest run` — testsuite (335 tests, allemaal groen houden)
 - `npm run build` / `npx tsc -b` — build & typecheck (tsconfig.test.json dekt de tests, Node-types)
 - Verificatie is GESCOPED op wat de wijziging raakt (Sanders regel, jul 2026 — de volle suite
   duurt ~3,5 min en de tests dekken alleen src/lib):
@@ -582,7 +582,153 @@ solo-topologie is de klassieke breedbander-correctie: **parallelle LCR-trap ín 
 (lowShelf-cut), plus **gated Zobel** over de driver (|Z|-stijging ≥1,3×, textbook-seed) —
 structuur van de engine, waardes van de tuner ("Add notch + Optimize components",
 geautomatiseerd). Gemeten op de synthetische FRS8 (bult 8 kHz): Response 58→94, peak
-4,78→0,64 dB, BOM €5. UI: "Optimize — flatten driver", solo-"Build passive filter" bouwt
+4,78→0,64 dB, BOM €5.
+**GEVOELIGHEIDSBUDGET (`sensitivityBudgetDb`, default 6 — Sanders eerste echte solo-run,
+jul 2026)**: std-vlakheid is NIVEAU-BLIND, dus "alles onder 10 kHz weggooien" vlakt net zo
+goed als "de 5,6 kHz-breakup temmen" — en met cut-only is de shelf de goedkoopste weg. Zijn
+uitkomst: twee low-shelf-cuts (33 Ω/2,2 Ω serieweerstanden, geen énkele spoel in het schema),
+−15 dB onder 10 kHz, Response 0, peak ±19,9 dB — de engine meldde succes omdat het puin glad
+was. Dit is de solo-tegenhanger van de dode-tak-degeneratie: een toestand die geen
+responsmetriek ziet. Handhaving als FEASIBILITY (kandidaat-poort + push-back in de refine,
+zoals de waardevensters), nooit als kwaliteitsterm in de objective — de anker-les. Meet op de
+MEDIAAN (een diepe smalle notch — het hele punt — mag niet als "verloren gevoeligheid" lezen,
+een brede shelf wel). Plus: **Q-vloer 0,7 op peak-banden** (bij Q 0,3 is een "piek-cut"
+gewoon breedband-verzwakking in vermomming) en shelf-seeds geklemd op het RESTERENDE budget.
+**`dipLimit` in het resultaat**: cut-only kan een dip niet optillen, dus een dip is de eerlijke
+bodem onder de vlakheid — de note meldt hem ("limited by a 4,7 dB dip at 17150 Hz") zodat een
+matige score als fysica leest i.p.v. een mislukte run. **Dezelfde blindheid zat in de TUNER**
+(zijn solo-objective is óók std-vlakheid, dus hij had geen enkele reden Sanders 33 Ω terug te
+draaien): `netOptimizer` solo kreeg daarom `medianDb` in de metrics, een `soloSensOk`-gate in
+de staged safe-checks en een EINDPOORT die een resultaat weigert dat >6 dB onder het kale
+driverniveau landt (seed blijft staan + uitleg-note). Referentie = de RAUWE driver
+(ghost = −400, dus per punt max(w,t) ÍS de driver); een al gepadde seed houdt zijn eigen
+niveau als referentie (gate vuurt alleen als het resultaat het seed-verlies vergroot).
+Beslisniveau, nooit in de objective — de anker-les. **Cap is SEED-RELATIEF**
+(`soloLossCap = max(6, verlies van de seed)`): baffle-step-compensatie kost legitiem 6–10 dB
+en Sanders eigen 12W8524-filter geeft ~10 dB uit — de muur belet de tuner om er MEER bij te
+doen, hij bevraagt nooit het startpunt van de ontwerper. Naast de eindpoort staat de cap ook
+als BARRIÈRE in de solo-tune zelf (exact 0 binnen de cap, dus het zoekpad in gezond gebied
+blijft ongemoeid — zelfde argument als de bouwbaarheidsvensters); zonder die muur liep de
+tuner er telkens ín en gooide de eindpoort de hele tune weg (gemeten op Robberts 12W8524:
+afgewezen bij 12,6 en 20 dB verlies; mét muur wordt hij geaccepteerd en verbetert 1,39 → 0,97 dB).
+**BREEDBANDER OVER HET HELE BEREIK (jul 2026, Sanders "hij neemt de gehele range op zich")**:
+"zet je view range smaller" is géén antwoord als de driver het hele bereik moet dragen. Maar
+een 30 dB-klif boven 10 kHz is met cut-only niet vlak te maken — alleen te BENADEREN door
+overal 30 dB weg te gooien. Daarom `designBandFor`: de aangevraagde band minus DODE RANDEN
+(buitenste punten die verder dan het gevoeligheidsbudget onder de mediaan liggen; drempel ÍS
+het budget, dus zelf-consistent: wat je niet kunt betalen is per definitie onbereikbaar).
+Alleen de buitenste bereikbare punten begrenzen — een mid-band dip wordt nooit uitgesneden,
+die zie je in de score. De ZOEKTOCHT (kandidaten, escalatie, targets, audit, én de band die
+de solo-tuner meekrijgt) loopt op die ontwerpband; élk gerapporteerd cijfer blijft op de
+AANGEVRAAGDE band, zodat de klif zichtbaar blijft. Gemeten op Robberts 12W8524 (110 Hz–20 kHz
+gevraagd, budget 6): ontwerpband 111–9342 Hz, hele-bereik-piek 22,9 → 1,7 dB in-band. Note
+meldt beide banden + wat erbuiten onbereikbaar is; `inBandBefore`/`inBandAfter` bestaan zodat
+een in-band "na" nooit tegen een hele-bereik "voor" wordt gezet (dat vleit met exact de
+grootte van de klif). **Budget is een INSTELLING** (⚙ Settings in solo, `soloSensDb`,
+default 6 dB, gepersisteerd): 6 ≈ een baffle-step, goed voor een driver die nog een kruising
+krijgt; een breedbander is 10–15 dB waard. Gemeten sweep op de rauwe 12W8524 (hele-bereik
+avg): 6 dB → 2,86 · 10 dB → 2,26 · 12 dB → 2,22 · 15 dB → 2,69 (voorbij ~12 loopt de
+ontwerpband de klif in en verdunnen de traps). Efficiëntie vs. hele-bereik-vlakheid is een
+ontwerperskeuze, geen constante van mij.
+**BODEM-MODUS / absoluut niveau-doel (`targetLevelDb`, Sanders idee jul 2026 — "een bodem op
+SPL-niveau tot waar de engine mag werken")**: DE betere formulering, en hij lost het
+kernprobleem bij de wortel op. Het relatieve budget meet spreiding rond een ZWEVEND gemiddelde,
+dus "vlakker" kan ook door het gemiddelde te verplaatsen — vandaar al het vangnet-werk. Een
+VASTE bodem is niet te gamen (cut-only kan altijd omlaag, nooit omhoog: "vlak op 95 dB" is
+precies de vorm die passief kán) en één getal doet wat eerst twee gekoppelde parameters deden:
+hoeveel niveau je inlevert ÉN hoe ver de band reikt (`reachableBandFor` = waar de driver ≥ de
+bodem zit). Gemeten op Robberts 12W8524 (110 Hz–20 kHz): bodem 122 → reikt 9,6 kHz · 118 →
+11 kHz · 114 → 13 kHz · 106 → 14,9 kHz, en hele-bereik avg 2,12 bij bodem 114 tegen 2,22 voor
+het beste relatieve budget. Twee dingen die erbij hoorden: (1) de engine kreeg een
+NIVEAU-ELEMENT — een negatieve `spec.gainDb` landt als serie-pad-weerstand in
+`buildSoloNetwork` (dat veld werd daarvóór stil genegeerd); met alleen EQ-banden kun je een
+passband van 130 dB nooit naar een doelniveau brengen. (2) **HARD GELEERD (in de app
+geverifieerd): niveau en VORM moeten gescheiden blijven** — kandidaten meten prominentie tegen
+het EIGEN gemiddelde van de respons, ook in bodem-modus. Tegen de vaste bodem leest de hele
+band als "15 dB te hard", wint de tilt/shelf-kandidaat élke ronde en stapelen breedband-cuts
+zich op: drie low-shelf-cuts, géén notch op de 7 kHz-breakup, en 4 banden SLECHTER dan 2
+(peak 8,62 vs 3,41). Na de scheiding: 4 banden → peak 3,23 / avg 1,59 mét pad 12,4 Ω.
+UI (herbenoemd na Sanders "misschien een invoerveld voor hoe laag hij mag zakken?" — hij las
+een paneel dat het antwoord TWEE keer bevatte en zag het niet: "Sensitivity budget" is jargon
+en de bodem-checkbox stond uit, waardoor dat veld verborgen was): het relatieve veld heet nu
+**"May drop by … dB"** met een absolute uitlezing ernaast ("→ down to 114 dB (driver sits at
+129)"), en de bodem-schakelaar heet **"or flatten to a fixed level"**. Max verhoogd 20 → 40 dB.
+Gemeten met "may drop by 15" + 4 banden op Robberts 12W8524: Response 0 → 22, hele-bereik avg
+2,07 dB, in-band (113 Hz–13 kHz) peak 11,16 → 2,29 dB / avg 0,96 — beter dan élk relatief
+budget hiervoor en dicht bij Sanders handwerk (1,93). Verder de ⚙ Settings-keuze met live "driver sits at X dB · reaches A–B",
+default-voorstel mediaan−10; de bodem staat in de dB-schaal van de geladen FRD. Ook gefixt:
+de solo-band werd op 300 Hz geklemd (2-weg-aanname) — een breedbander vanaf 110 Hz moet
+vanaf 110 Hz ontworpen worden.
+**HELE-BEREIK nooit-slechter-poort (jul 2026, Sanders avg ±5,66-run)**: élke nooit-slechter-
+garantie beoordeelde tot dan de band die hij zélf optimaliseerde (ontwerpstap op de
+ontwerpband, tuner op zijn eigen band). Geen daarvan belooft het getal dat de ONTWERPER leest —
+gemiddelde afwijking over het gevraagde bereik. Een correctie kan zijn eigen band verbeteren en
+het hele bereik tóch slechter maken (passband 10 dB omlaag terwijl de onbereikbare top blijft
+staan); dat leveren is onverdedigbaar, want géén filter was dan beter. `runSoloChain` meet het
+geleverde netwerk daarom na op de GEVRAAGDE band tegen de kale driver en levert bij verlies de
+kale driver + de reden ("try a lower target level, or a narrower view range"). **HARD GELEERD
+in dezelfde poort (Sanders "Response 100 met een rechte lijn")**: die kale terugval mag NIET
+door de R/L/C's uit het gebouwde netwerk te FILTEREN — die componenten ZIJN de schakels tussen
+de bus-punten, dus wat overblijft is een generator, een wees-draad en een LOSGEKOPPELDE driver.
+Die simuleert als een kaarsrechte lijn en scoort vervolgens een perfecte 100 (een constante
+heeft geen afwijking) — de degeneratie die geen responsmetriek ziet, nu in het vangnet zelf.
+Terugval wordt daarom VERS gebouwd via `buildSoloNetwork` met een lege spec; regressietest eist
+|H| = 0 dB (±0,5) over de hele band.
+NB nog open: `buildSoloNetwork` realiseert HP/LP NIET (alleen EQ-banden + pad + Zobel) — een
+virtuele high-pass staat dus niet in het gebouwde netwerk.
+**BODEM-MODUS AFGEMAAKT (jul 2026, Sanders "flatten to a fixed level lijkt niet te gebeuren
++ de 7 kHz-piek wordt niet aangepakt")** — drie gaten in één screenshot: (1) een diepe pad was
+één serieweerstand, maar tegen een Z die 7 → 35 Ω stijgt volgt de verzwakking de Z-curve
+(+14 dB tilt i.p.v. een niveau) → `buildSoloNetwork` bouwt bij ≤ −6 dB nu een echte
+**constant-impedantie L-PAD** (Rs = Z0(1−a), Rp = Z0·a/(1−a), Z0 = mediaan |Z|; Rp ≪ |Z|
+overal, dus de deling Rp/(Rs+Rp) is frequentie-vlak en de versterker ziet ≈ Z0); (2) de
+componenttuner was bodem-blind (std is niveau-invariant) en wiste het niveau-doel — 
+`netOptimizer` kreeg `soloTargetLevelDb`: de solo-amplitudeterm wordt dan RMS-afwijking van
+het VASTE niveau (geen extra term — het ÍS de objective in die modus); (3) de refine tunede
+gain mét de banden, en gain −25 ≡ shelves-overal-−25: het niveauwerk droop naar twee gestapelde
+low-shelfs, verbrandde het bandenbudget en de breakup hield géén band over → **gain staat VAST
+op (bodem − mediaan)**, pad doet niveau, banden doen vorm (zelfde scheiding als de kandidaten).
+Gemeten (12W8524, "Flat at 104" op een 129 dB-driver): mediaan landt op 103,6 · L-pad
+9,8 Ω + 0,60 Ω · trap @ 6805 Hz · 7 kHz van 111,9 → 103,4. NB: bodem-modus optimaliseert
+vs-bodem; de Response-score blijft mediaan-relatief en kan iets lager lezen dan de
+"May drop"-modus met ladder — dat is de betekenis van de modus, geen bug.
+**PEAK-BEWUSTE solo-objective + catalogus-bereikmelding (jul 2026, Sanders 2× "de piek bij
+7 kHz wordt niet aangepakt")**: de ONTWERPSTAP deed het goed (notch @6919 Hz −18 dB, 7 kHz van
+136,3 → 108,4 dB) — de stappen erná braken het af: componenttuner 108 → 116, catalog-snap
+116 → 125, allebei terwijl hun eigen metriek "verbeterde". Oorzaak: RMS-vlakheid merkt een
+smalle resonantie nauwelijks (een 20 dB-piek beslaat een paar procent van de band), terwijl het
+juist het eerste is wat je ziet én hoort. De solo-amplitudeterm is nu peak-bewust:
+`targetStd = √(std² + 0,35·maxPositieveExcursie²)` t.o.v. de mediaan (of de bodem in
+bodem-modus), zodat tune/prune/krimpladder/snap verdedigen wat de ontwerpstap won. ALLEEN solo
+— het 2-weg-pad heeft daar zijn breakup-guard voor en blijft onaangeroerd.
+**Catalogus-bereikmelding**: de tuner wilde 269 Ω en 118 Ω dempingsweerstanden voor zijn traps,
+de geïmporteerde catalogus stopt bij 33 Ω → de snap leverde stil traps met een derde van de
+diepte. Een dekkingsgat is onzichtbaar in de waardes en leest als mysterieus fit-verlies, dus
+de snap meldt nu welke slots tegen de rand van het assortiment aanlopen ("R3 wants 46,1 Ω,
+catalog offers 33,0 Ω — add those values (🗂 Manage…) or switch Snap to catalog off").
+**"MAY drop" is een PLAFOND, geen opdracht (jul 2026, Sanders "20 dB geeft een slechter
+resultaat dan 15")**: het veld zegt MAY, maar de engine besteedde altijd alles. Het bedrag
+voedt de bereikbare band (`designBandFor`), dus méér toestemming verbreedde de band, spreidde
+dezelfde handvol correctiebanden dunner en de 7 kHz-breakup verloor van de klif. Gemeten
+(hele-bereik avg): 6 → 2,35 · 10 → 2,17 · 15 → 2,76 · 20 → 2,54 · 25 → 3,65, met de trap die
+kwam en ging — erratisch in precies de richting waarvan een ontwerper veiligheid verwacht.
+`runSoloChain` is nu een wrapper die de keten draait op een ABSOLUTE ladder van bestedingen
+([6,10,15,20,25,30,40] ∩ ≤plafond) en de beste HELE-BEREIK-uitkomst houdt; een hoger plafond
+voegt alleen kandidaten TOE, dus het resultaat kan nooit slechter worden (gemeten na de fix:
+2,35 · 2,17 · 2,17 · 2,17 · 2,17, trap overal aanwezig). Ties gaan naar de KLEINSTE besteding
+(gelijke vlakheid voor minder rendementsverlies) en de note meldt "spent 10.0 of 25.0 dB
+allowed — more attenuation measured worse over the whole range". Kosten: plafond 6 = één run
+(zoals voorheen), hoger plafond = meer runs — de gebruiker vraagt zelf om die bredere zoektocht.
+Bewust NIET in bodem-modus: daar heeft de ontwerper het niveau zelf benoemd.
+**Bypass-C-escalatie alleen op ECHTE pad-weerstanden (jul 2026, Sanders "Tidy layout doet
+niets")**: de kandidaat-filter keek naar COÖRDINATEN ("zit er al een C op deze twee punten")
+en "niet geaard". Beide te zwak — de damping-R ín een parallelle LCR-trap deelt de knopen maar
+niet de rijen (→ 4 leden in één parallelgroep, die de auto-placer terecht weigert), en een
+Zobel-R is ongeaard maar hangt in een keten naar ground (een parallel lid dáárin kan tidy per
+definitie niet tekenen). Nu: netlijst-gebaseerde parallel-companion-check + `busPositions`
+serie-pad-eis, precies de gedocumenteerde bedoeling ("bypass-C over serie-weerstanden"). Gemeten na de fix (KOAN-mid, volle
+200–20k): notch @5641 Hz + shelf, peak 10,10→4,56 dB, kosten 2,6 dB gevoeligheid; op de
+verstandige band 300–8000 Hz: Response 63→89. UI: "Optimize — flatten driver", solo-"Build passive filter" bouwt
 de topologie uit de huidige spec (nieuwe "Solo build"-tab, waardes = textbook-seeds),
 ⚙ Optimize components solo-tuned (note zonder fase), wizard slaat de Crossover-stap over,
 kruising-settings disabled met uitleg. 3-weg wordt dezelfde gelaagdheid met TWEE paren.

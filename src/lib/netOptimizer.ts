@@ -96,6 +96,22 @@ export interface NetOptimizeOptions {
    *  path in any way — regression-tested bit-identical. The planned 3-way
    *  generalisation is the same idea with TWO pairs, not another special case. */
   solo?: boolean;
+  /** Solo sensitivity budget (dB, default 6): how far below the raw driver's
+   *  own median level the network may land. A DESIGNER'S CHOICE, not a
+   *  constant — measured on Robbert's 12W8524 used fullrange, Sanders' manual
+   *  filter spends ~10 dB pulling 200 Hz–8 kHz down toward the collapsed top
+   *  and scores far better over the whole range (avg 1.7 vs 2.9 dB) than a
+   *  6 dB-capped run. Efficiency versus whole-range flatness is his call. */
+  soloSensitivityDb?: number;
+  /** Solo FLOOR MODE: the absolute target level (dB, FRD scale). When set,
+   *  the solo amplitude term measures deviation from THIS FIXED LEVEL instead
+   *  of spread around the response's own mean. Without it the tuner is
+   *  level-blind and erases the design stage's level goal (Sanders' "flatten
+   *  to a fixed level lijkt niet te gebeuren": the chain landed the seed at
+   *  the floor, then the tune let the level drift wherever shape-flatness
+   *  liked). Not an extra objective term — it IS the objective in this mode,
+   *  and a fixed target cannot be gamed by moving the average. */
+  soloTargetLevelDb?: number;
   /** FULL-measurement-band safety data (grid independent of the evaluation
    *  band). The tuner's quality metrics deliberately follow the user's view
    *  range, but that means a zoomed-in band silently hides whole-design
@@ -312,6 +328,18 @@ export function optimizeNetworkValues(
   // Solo: directivity terms pair angle sets across BOTH drivers — with one
   // driver the pairing is empty and the power average degenerates to NaN.
   const angleData = solo ? undefined : opts.angleData;
+  /** SOLO sensitivity budget (dB): how far the tuned network's median level
+   *  may sit below the RAW driver. Same fundamental as the design engine —
+   *  and needed here for the same reason: the flatness objective is
+   *  LEVEL-BLIND, so "attenuate everything" scores as well as "fix the peak"
+   *  (Sanders' run: −15 dB below 10 kHz, and the tuner had no reason to
+   *  undo it). Decision-level only: a gate on the delivered result, never a
+   *  term in the search objective (the anchor lesson). */
+  const soloSensBudgetDb = Math.max(0, opts.soloSensitivityDb ?? 6);
+  /** Effective cap for the solo wall/gate: the budget, or the level the SEED
+   *  already spends when that is more (baffle-step compensation legitimately
+   *  costs 6–10 dB). Set once the seed metrics exist; until then no wall. */
+  let soloLossCap = Infinity;
   const acSlopes =
     opts.acousticSlopes && (opts.acousticSlopes.mid || opts.acousticSlopes.tweeter)
       ? opts.acousticSlopes
@@ -380,6 +408,25 @@ export function optimizeNetworkValues(
     return acc / n;
   };
 
+  /** Median level over the band — reference for the SOLO sensitivity budget. */
+  const medianOf = (freq: readonly number[], spl: readonly number[]): number => {
+    const vals: number[] = [];
+    for (let i = 0; i < freq.length; i++) {
+      if (freq[i] >= band[0] && freq[i] <= band[1]) vals.push(spl[i]);
+    }
+    if (vals.length === 0) return 0;
+    vals.sort((a, b) => a - b);
+    const m = Math.floor(vals.length / 2);
+    return vals.length % 2 ? vals[m] : (vals[m - 1] + vals[m]) / 2;
+  };
+
+  /** SOLO: the RAW driver's median level (no network) — the reference the
+   *  sensitivity budget is measured against. The silent ghost sits at −400 dB,
+   *  so the per-point max IS the real driver. */
+  const rawMedianRef = solo
+    ? medianOf(grid, wBase.spl.map((v, i) => Math.max(v, tBase.spl[i])))
+    : 0;
+
   /** Peak flatness = ±(max−min)/2 over the band — the SAME number the SPL
    *  strip reads (combinedRippleDb), the unit staged TARGETS gate on and
    *  before/after report. The search objective keeps the smooth std-dev
@@ -429,6 +476,10 @@ export function optimizeNetworkValues(
     zMinOhm: number;
     /** How far that minimum sits BELOW the amp-load floor (0 when healthy). */
     zShortOhm: number;
+    /** MEDIAN combined level over the band — the reference for the SOLO
+     *  sensitivity budget. Median so a deep narrow notch doesn't read as lost
+     *  sensitivity while broad attenuation does. */
+    medianDb: number;
   } => {
     const sol = solveNetwork(net, freqs, z);
     const hFor = (model: string) => {
@@ -499,7 +550,45 @@ export function optimizeNetworkValues(
       }
     }
 
-    const targetStd = useLw && lwStd !== null ? lwStd : bandStd(r.freq, r.combinedSpl);
+    let targetStd = useLw && lwStd !== null ? lwStd : bandStd(r.freq, r.combinedSpl);
+    // Solo floor mode: the amplitude term is RMS deviation from the FIXED
+    // target level — bandStd is level-invariant and would erase the level
+    // goal the design stage just met (see soloTargetLevelDb).
+    if (solo && opts.soloTargetLevelDb !== undefined) {
+      let sq = 0;
+      let n = 0;
+      for (let i = 0; i < r.freq.length; i++) {
+        if (r.freq[i] < band[0] || r.freq[i] > band[1]) continue;
+        const dd = r.combinedSpl[i] - opts.soloTargetLevelDb;
+        sq += dd * dd;
+        n++;
+      }
+      targetStd = n > 0 ? Math.sqrt(sq / n) : targetStd;
+    }
+    // SOLO — PEAK-AWARE amplitude term. HARD LEARNED (Sanders, twice: "de piek
+    // bij 7 kHz wordt niet aangepakt"): RMS flatness barely notices a narrow
+    // resonance — a 20 dB breakup spike covers a few percent of the band, so
+    // std hardly moves — yet it is the first thing a designer sees and hears.
+    // The design stage trapped the 12W8524 breakup to 108 dB; the value tune
+    // then let it drift back to 116 and the catalog snap to 125, both while
+    // "improving" their own metric. Blending the worst POSITIVE excursion into
+    // the solo amplitude term makes every downstream stage — tune, prune,
+    // shrink ladder, snap — defend what the design stage won. Solo only: the
+    // two-way objective is untouched (its breakup guard covers this case).
+    if (solo) {
+      const vals: number[] = [];
+      for (let i = 0; i < r.freq.length; i++) {
+        if (r.freq[i] >= band[0] && r.freq[i] <= band[1]) vals.push(r.combinedSpl[i]);
+      }
+      if (vals.length > 0) {
+        const ref =
+          opts.soloTargetLevelDb ??
+          [...vals].sort((a, b) => a - b)[Math.floor(vals.length / 2)];
+        let over = 0;
+        for (const v of vals) over = Math.max(over, v - ref);
+        targetStd = Math.sqrt(targetStd * targetStd + 0.35 * over * over);
+      }
+    }
 
     // Where the filtered drivers meet — anchor for the guard and protection.
     let xi = -1;
@@ -629,6 +718,7 @@ export function optimizeNetworkValues(
       tweeterSlopeDbOct,
       zMinOhm,
       zShortOhm,
+      medianDb: medianOf(r.freq, r.combinedSpl),
     };
   };
 
@@ -821,6 +911,22 @@ export function optimizeNetworkValues(
         const exP = Math.max(0, (m.phaseDeg - barrier.phaseDeg * 0.92) / 15);
         barr = 120 * (exR * exR + exP * exP) + 4 * Math.max(0, m.protSqDb - protRef);
       }
+      // SOLO sensitivity wall. Exactly ZERO inside the cap, so the search path
+      // through the healthy region is untouched (the same argument that makes
+      // the buildability windows safe) — it only walls off the region where
+      // "flatness" means "attenuate everything". Without it the tuner walks
+      // out of bounds on real drivers and the final gate throws the whole tune
+      // away, handing back seed values (measured on Robbert's 12W8524:
+      // rejected at 12.6 dB and 20 dB loss).
+      // The cap is SEED-RELATIVE (see soloLossCap): a design that deliberately
+      // spends level — baffle-step compensation on a woofer is exactly that,
+      // and Sanders' own manual 12W8524 filter spends ~10 dB — keeps its own
+      // level as the reference. The wall stops the tuner from spending MORE,
+      // it never second-guesses the designer's starting point.
+      if (solo) {
+        const over = Math.max(0, rawMedianRef - m.medianDb - soloLossCap);
+        if (over > 0) barr += 200 * over * over;
+      }
       if (zFloorBarrier) {
         // Locally-seeded repair barrier (the proven target-barrier pattern):
         // pulls the dip up to the floor, from a point that is already good.
@@ -880,6 +986,13 @@ export function optimizeNetworkValues(
     driverZ,
     angleData ?? null,
   );
+  /** Solo sensitivity gate: the network may not spend more than the budget of
+   *  the driver's own median level. Always true for two-driver designs (level
+   *  there is a pairing decision, priced by the crossing fundamentals). */
+  const soloSensOk = (m: Metrics): boolean =>
+    !solo || rawMedianRef - m.medianDb <= soloLossCap;
+
+  if (solo) soloLossCap = Math.max(soloSensBudgetDb, rawMedianRef - before.medianDb);
 
   onStage?.('value tune');
   /* ---- Stage: value tuning (always) — MULTI-START. The response landscape
@@ -1021,6 +1134,7 @@ export function optimizeNetworkValues(
       m.protSqDb <= ref.protSqDb + 0.5 &&
       m.xoDipDb <= ref.xoDipDb + 1 &&
       m.zShortOhm <= ref.zShortOhm + 0.1 &&
+      soloSensOk(m) &&
       (!breakupGuard || m.leakSqDb <= ref.leakSqDb + 4);
     /** Escalation adds a part + full retune: protection shifts a little by
      *  nature (the fx already prices it at 0.02·protSqDb). The prune-strict
@@ -1427,6 +1541,43 @@ export function optimizeNetworkValues(
             : '');
       }
     }
+    /* ---- Catalog RANGE report (Sanders' 7 kHz breakup, jul 2026): the tuner
+     * wanted 269 Ω and 118 Ω damping resistors for its traps; the imported
+     * catalog stops at 33 Ω, so the snap quietly handed back traps with a
+     * third of the depth and the breakup peak returned. A coverage gap is
+     * invisible in the values — it only shows as a mysterious fit loss — so
+     * name it: which slots are pinned against the end of what the catalog
+     * offers, and how far short they fall. ---- */
+    {
+      const short: string[] = [];
+      snapables.forEach(({ q }, j) => {
+        const p = picks[j];
+        const kind = KIND_OF[q.type];
+        if (!p || !kind) return;
+        const u = PARAM_OF[kind];
+        const want = (q.params.find((x) => x.name === u.name)?.value ?? 0) / u.factor;
+        if (!(want > 0)) return;
+        // Only flag a REAL shortfall: the pick is >25% off and nothing in the
+        // candidate list gets closer (i.e. we are against the range edge).
+        const got = p.value;
+        const rel = Math.abs(got - want) / want;
+        if (rel < 0.25) return;
+        const better = cands[j].some((c) => Math.abs(c.value - want) / want < rel - 1e-9);
+        if (better) return;
+        const fmt = (v: number) =>
+          kind === 'L' ? `${(v * 1e3).toPrecision(3)} mH`
+          : kind === 'C' ? `${(v * 1e6).toPrecision(3)} µF`
+          : `${v.toPrecision(3)} Ω`;
+        short.push(`${q.partId} wants ${fmt(want)}, catalog offers ${fmt(got)}`);
+      });
+      if (short.length > 0) {
+        snapNote =
+          (snapNote ? `${snapNote} · ` : '') +
+          `⚠ catalog range: ${short.join('; ')} — the fit is limited by what the ` +
+          `catalog stocks, not by the design. Add those values (🗂 Manage…) or ` +
+          `switch Snap to catalog off to see what the design can really do.`;
+      }
+    }
     cur = { ...cur, parts: applied(picks) };
   }
 
@@ -1465,6 +1616,39 @@ export function optimizeNetworkValues(
     avgDevDb: m.avgDevDb,
     phaseDeg: m.phaseDeg,
   });
+
+  /* ---- SOLO sensitivity gate (see soloSensBudgetDb): a tuned result that
+   * bought its flatness with broadband attenuation loses to the seed. The
+   * flatness objective cannot see the difference, so this must be a gate.
+   * Only fires when the SEED was inside the budget — a user network that is
+   * already padded down keeps its own level as the reference. ---- */
+  if (solo) {
+    const seedLoss = rawMedianRef - before.medianDb;
+    const resLoss = rawMedianRef - after.medianDb;
+    // Judged against the SAME cap the wall enforces, plus a little slack: the
+    // wall permits exactly soloLossCap, so a result sitting on the cap must
+    // not then be thrown away by the gate (measured: a 6.0 dB result against a
+    // 6 dB cap lost the whole tune over floating-point dust). The gate is the
+    // backstop for gross violations, not a second, stricter limit.
+    if (resLoss > soloLossCap + 0.5 && resLoss > seedLoss + 0.2) {
+      return {
+        parts: cloneParts(parts),
+        before: report(before),
+        after: report(before),
+        tuned: 0,
+        evaluations,
+        removed: [],
+        added: [],
+        safetyNote:
+          `sensitivity gate: the tune reached its flatness by attenuating the driver ` +
+          `${resLoss.toFixed(1)} dB below its own level (budget ${soloSensBudgetDb} dB) — ` +
+          `rejected, your values are unchanged. Flattening by pulling everything down is not ` +
+          `a filter; check for oversized series resistors, or narrow the view range to the ` +
+          `band this driver should actually cover.`,
+        ...(ampFloorNote ? { ampFloorNote } : {}),
+      };
+    }
+  }
 
   /* ---- Full-band safety gate: the evaluation band is the user's design
    * scope, but fundamentals are whole-design properties. Re-check them on
@@ -1634,7 +1818,16 @@ function unanchoredKeys(ps: readonly VxpPart[]): Set<string> {
 /** Rule-3 candidates: a capacitor looped across every unlocked series
  *  resistor (neither terminal grounded) that has no parallel C yet, seeded
  *  for a 4 kHz and a 10 kHz shelf corner. Drawn as the same raised loop the
- *  synthesis uses for pad+bypass. */
+ *  synthesis uses for pad+bypass.
+ *
+ *  The move only makes sense for a PAD resistor — one that stands alone in
+ *  the series path. A resistor that already has a parallel companion is the
+ *  damping R inside a trap (the solo engine's parallel LCR, or a notch): a
+ *  cap across it just detunes the trap, and the fourth parallel member also
+ *  pushes the group past what the tidy auto-placer can draw (Sanders'
+ *  "Tidy layout doet niets" — 4 members in one group, refused). The old
+ *  guard compared COORDINATES, so it never saw companions that share the
+ *  same NODES on different rows; this one asks the netlist. */
 function bypassCandidates(
   ps: readonly VxpPart[],
   cloneParts: (x: readonly VxpPart[]) => VxpPart[],
@@ -1649,17 +1842,32 @@ function bypassCandidates(
   }
   const newId = `C${maxC + 1}`;
 
+  // The move is "lift the top octave around the PAD" — pads live in the
+  // SERIES path. "Not grounded" was too weak a proxy: a Zobel resistor sits
+  // at node 3-4 (ungrounded) yet hangs in a chain toward ground, and a
+  // parallel member inside such a chain is something the tidy auto-placer
+  // cannot draw at all — Sanders' second "Tidy layout doet niets" case.
+  const posOf = busPositions(ps);
+
   const out: Array<{ id: string; trial: VxpPart[] }> = [];
   for (const el of netlist.elements) {
     if (el.kind !== 'R' || el.nodes.includes(0)) continue;
     const q = ps.find((pp) => pp.partId === el.id);
     if (!q || q.locked || q.open || q.shorted) continue;
+    if (posOf(el.id) !== 'series') continue;
     const A = q.wires[0];
     const B = q.wires[q.wires.length - 1];
-    // Skip when some capacitor already shares both terminals (existing bypass).
-    const hasEnd = (pp: VxpPart, pt: { x: number; y: number }) =>
-      pp.wires.some((w) => w.x === pt.x && w.y === pt.y);
-    if (ps.some((pp) => pp.type === 'Capacitor' && hasEnd(pp, A) && hasEnd(pp, B))) continue;
+    // Skip when ANYTHING already sits in parallel with this resistor (judged
+    // on NODES, not coordinates): an existing bypass, or — the real case —
+    // the R inside a parallel L∥C∥R trap. Only a lone pad resistor qualifies.
+    const parallelCompanion = netlist.elements.some(
+      (o) =>
+        o.id !== el.id &&
+        (o.kind === 'R' || o.kind === 'L' || o.kind === 'C') &&
+        ((o.nodes[0] === el.nodes[0] && o.nodes[1] === el.nodes[1]) ||
+          (o.nodes[0] === el.nodes[1] && o.nodes[1] === el.nodes[0])),
+    );
+    if (parallelCompanion) continue;
     // Raised loop: perpendicular offset whose corner points are unused (a
     // coordinate coincidence would silently create a junction).
     const offsets =

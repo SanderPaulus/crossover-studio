@@ -26,6 +26,8 @@ import type { Complex } from './complex.ts';
 import type { VxpPart } from './parsers/vxp.ts';
 import { optimizeNetworkValues, type NetOptimizeResult } from './netOptimizer.ts';
 import { bomFor, type SnapPrefs } from './catalog.ts';
+import { crossoverToNetlist } from './vxpNetwork.ts';
+import { solveNetwork } from './network.ts';
 import type { ChainStageProgress } from './designChain.ts';
 
 export interface SoloOptimizeOptions {
@@ -35,6 +37,34 @@ export interface SoloOptimizeOptions {
   band?: [number, number];
   /** Stop escalating once the peak ±dB ripple target is met (full grid). */
   targets?: { rippleDb: number };
+  /**
+   * FUNDAMENTAL — sensitivity budget (dB, default 6). How much median passband
+   * level the correction may spend. HARD LEARNED (Sanders' first real solo run,
+   * jul 2026): std-flatness is LEVEL-BLIND, so "throw away everything below
+   * 10 kHz" flattens exactly as well as "tame the 5.6 kHz breakup" — and with
+   * cut-only EQ the shelf is the CHEAPEST way to do it. His result: two
+   * low-shelf cuts (33 Ω / 2.2 Ω series resistors, no coil in the schematic at
+   * all), −15 dB below 10 kHz, Response score 0, peak ±19.9 dB — the engine
+   * reported success because the wreckage was smooth. This is the solo
+   * equivalent of the two-way dead-branch degeneration: a state no response
+   * metric can see. Enforced as a FEASIBILITY constraint (candidate gate +
+   * push-back in the refine, like the value windows), never as a quality nudge
+   * in the objective — the anchor lesson.
+   */
+  sensitivityBudgetDb?: number;
+  /**
+   * ABSOLUTE SPL FLOOR (dB, in the loaded FRD's own scale) — Sanders' idea, and
+   * a better-posed goal than the relative budget above. A cut-only network can
+   * always go DOWN and never up, so "be flat at 95 dB" is exactly the shape of
+   * problem passive filters can solve: every point above the floor gets cut to
+   * it, every point below it is out of reach by definition. One number then
+   * fixes BOTH things the relative budget needed two coupled parameters for —
+   * how much level may be spent, and how far the designable band reaches.
+   * The objective becomes deviation from a FIXED target instead of spread
+   * around a floating mean, which is why it needs no level guard at all.
+   * When set, this REPLACES sensitivityBudgetDb.
+   */
+  targetLevelDb?: number;
   maxIterations?: number;
 }
 
@@ -53,6 +83,96 @@ export interface SoloOptimizeResult {
   evaluations: number;
   /** Final full-grid search objective (band std) — chain-comparison yardstick. */
   objective: number;
+  /** Median passband level the correction costs (dB, ≥0) — what flatness was
+   *  paid for. Reported so the trade is visible instead of discovered later. */
+  sensitivityCostDb: number;
+  /** The deepest DIP left in the corrected response (dB below its median, and
+   *  where). Cut-only cannot lift a dip: the only "fix" is attenuating
+   *  everything else, which the sensitivity budget forbids — so a dip is the
+   *  honest floor on flatness. Reported so a mediocre score reads as physics
+   *  ("that region is not this driver's job") instead of a failed optimizer.
+   *  null when nothing meaningful is left. */
+  dipLimit: { db: number; hz: number } | null;
+  /** The band actually DESIGNED on (Hz) — the requested band minus dead edges
+   *  the correction cannot reach (see designBandFor). Equal to the requested
+   *  band when nothing was trimmed. Scoring/reporting still covers the full
+   *  requested band: the designer keeps seeing the whole truth. */
+  designBand: [number, number];
+  /** Raw driver and designed result, both measured over the DESIGN band —
+   *  the honest pair to quote together. Mixing a whole-range "before" with an
+   *  in-band "after" flatters the run by exactly the size of the cliff. */
+  inBandBefore: { ripplePeakDb: number; avgDevDb: number };
+  inBandAfter: { ripplePeakDb: number; avgDevDb: number };
+}
+
+/**
+ * The band a cut-only correction can actually WORK on: the requested band
+ * minus dead EDGES — the outermost region where the driver sits more than
+ * `budgetDb` below its own median.
+ *
+ * Why (Sanders' fullranger, jul 2026): "smaller view range" is no answer when
+ * the driver genuinely has to cover the whole range — but a 30 dB cliff above
+ * 10 kHz cannot be flattened by cutting, only *approached* by throwing away
+ * 30 dB everywhere, which the sensitivity budget rightly forbids. Trying
+ * anyway wastes the band budget and the sensitivity on the one region that
+ * can never improve. So: design where design is possible, keep SCORING the
+ * whole requested band (the designer must keep seeing the cliff), and say
+ * which band was used.
+ *
+ * The threshold IS the sensitivity budget, which makes it self-consistent:
+ * a region you cannot afford to bring the rest down to is out of reach by
+ * definition. A gentle baffle-step deficit (a few dB) therefore stays IN
+ * scope — cutting the top to match it is legitimate, standard practice.
+ * Only the OUTERMOST reachable points bound the band, so a mid-band dip is
+ * never carved out: you live with those, and the score shows them.
+ */
+export function designBandFor(
+  freqs: readonly number[],
+  spl: readonly number[],
+  band: [number, number],
+  budgetDb: number,
+): [number, number] {
+  const ids: number[] = [];
+  for (let i = 0; i < freqs.length; i++) {
+    if (freqs[i] >= band[0] && freqs[i] <= band[1]) ids.push(i);
+  }
+  if (ids.length < 8) return band;
+  const sorted = ids.map((i) => spl[i]).sort((a, b) => a - b);
+  const mid = Math.floor(sorted.length / 2);
+  const median = sorted.length % 2 ? sorted[mid] : (sorted[mid - 1] + sorted[mid]) / 2;
+  const thr = median - budgetDb;
+  const alive = ids.filter((i) => spl[i] >= thr);
+  if (alive.length < 8) return band;
+  const lo = Math.max(band[0], freqs[alive[0]]);
+  const hi = Math.min(band[1], freqs[alive[alive.length - 1]]);
+  // Never hand back a sliver: if less than an octave survives, something is
+  // odd about the measurement — design the requested band and report honestly.
+  return hi > lo * 2 ? [lo, hi] : band;
+}
+
+/**
+ * FLOOR MODE band: the contiguous span where the raw driver sits AT or ABOVE
+ * an absolute target level, i.e. the region a cut-only network can actually
+ * bring down to that level. Below the floor there is nothing to do — passive
+ * filters cannot lift. Outermost reachable points bound the band (a dip in the
+ * middle stays in scope and shows up in the score, same doctrine as
+ * designBandFor).
+ */
+export function reachableBandFor(
+  freqs: readonly number[],
+  spl: readonly number[],
+  band: [number, number],
+  floorDb: number,
+): [number, number] {
+  const ids: number[] = [];
+  for (let i = 0; i < freqs.length; i++) {
+    if (freqs[i] >= band[0] && freqs[i] <= band[1]) ids.push(i);
+  }
+  const alive = ids.filter((i) => spl[i] >= floorDb);
+  if (alive.length < 8) return band;
+  const lo = Math.max(band[0], freqs[alive[0]]);
+  const hi = Math.min(band[1], freqs[alive[alive.length - 1]]);
+  return hi > lo * 1.5 ? [lo, hi] : band;
 }
 
 const cloneSpec = (s: DriverFilterSpec): DriverFilterSpec => ({
@@ -69,7 +189,23 @@ export function optimizeSoloFilter(
   opts: SoloOptimizeOptions = {},
 ): SoloOptimizeResult {
   const budget = Math.max(0, Math.min(8, opts.eqBands ?? 4));
-  const band: [number, number] = opts.band ?? [grid[0] * 1.02, grid[grid.length - 1] * 0.975];
+  /** What the designer asked to see and be judged on. */
+  const reqBand: [number, number] = opts.band ?? [grid[0] * 1.02, grid[grid.length - 1] * 0.975];
+  /** FLOOR MODE (Sanders): an absolute target level. The goal is then "be flat
+   *  AT this level", and the designable band is simply where the driver can
+   *  reach it — no relative budget, no level guard needed. */
+  const floorDb = opts.targetLevelDb;
+  const sensBudget = floorDb !== undefined
+    ? Infinity // the floor governs the level; nothing else may cap it
+    : Math.max(0, opts.sensitivityBudgetDb ?? 6);
+  /** What can actually be designed: in floor mode the region the driver can be
+   *  cut down TO (raw ≥ floor); otherwise the requested band minus dead edges.
+   *  Everything in the SEARCH uses this; every reported number uses reqBand,
+   *  so the unreachable part stays visible. */
+  const band =
+    floorDb !== undefined
+      ? reachableBandFor(grid, driver.spl, reqBand, floorDb)
+      : designBandFor(grid, driver.spl, reqBand, sensBudget);
   let evaluations = 0;
 
   // Decimated inner grid for the search; full grid for stages/audit/report —
@@ -91,17 +227,23 @@ export function optimizeSoloFilter(
     return baseSpl.map((s, i) => s + 20 * Math.log10(Math.hypot(h[i].re, h[i].im) || 1e-12));
   };
 
-  const inBand = (freqs: readonly number[]) =>
-    freqs.map((f, i) => (f >= band[0] && f <= band[1] ? i : -1)).filter((i) => i >= 0);
+  const idsIn = (freqs: readonly number[], b: readonly [number, number]) =>
+    freqs.map((f, i) => (f >= b[0] && f <= b[1] ? i : -1)).filter((i) => i >= 0);
+  /** Indices inside the DESIGN band (what the search works on). */
+  const inBand = (freqs: readonly number[]) => idsIn(freqs, band);
 
-  const stats = (
+  const statsIn = (
+    b: readonly [number, number],
     freqs: readonly number[],
     spl: readonly number[],
   ): { std: number; avg: number; peak: number; mean: number } => {
-    const ids = inBand(freqs);
+    const ids = idsIn(freqs, b);
     let s = 0;
     for (const i of ids) s += spl[i];
-    const mean = s / Math.max(1, ids.length);
+    // FLOOR MODE: the reference is the FIXED target, not the band's own mean.
+    // That is the whole point — a floating mean lets "flatness" be bought by
+    // moving the mean (level-blind), a fixed target cannot be gamed.
+    const mean = floorDb !== undefined ? floorDb : s / Math.max(1, ids.length);
     let sq = 0;
     let abs = 0;
     let lo = Infinity;
@@ -122,18 +264,58 @@ export function optimizeSoloFilter(
     };
   };
 
+  /** Search-side stats: DESIGN band. */
+  const stats = (freqs: readonly number[], spl: readonly number[]) => statsIn(band, freqs, spl);
   const innerStd = (spec: DriverFilterSpec): number => stats(optFreq, respOn(spec, optFreq, optSpl)).std;
-  const fullStats = (spec: DriverFilterSpec) => stats(grid, respOn(spec, grid, driver.spl));
+  /** Report-side stats: the full REQUESTED band — the designer is judged on
+   *  what they asked to see, including the part no filter can reach. */
+  const fullStats = (spec: DriverFilterSpec) => statsIn(reqBand, grid, respOn(spec, grid, driver.spl));
+
+  /** MEDIAN passband level over the band — the level reference for the
+   *  sensitivity budget. Median, not mean: a deep narrow notch (the whole
+   *  point of the exercise) must not read as "lost sensitivity", while a
+   *  broad shelf cut moves the median and does. */
+  const medianLevel = (freqs: readonly number[], spl: readonly number[]): number => {
+    const vals = inBand(freqs).map((i) => spl[i]).sort((a, b) => a - b);
+    if (vals.length === 0) return 0;
+    const m = Math.floor(vals.length / 2);
+    return vals.length % 2 ? vals[m] : (vals[m - 1] + vals[m]) / 2;
+  };
+  const rawMedianInner = medianLevel(optFreq, optSpl);
+  const rawMedianFull = medianLevel(grid, driver.spl);
+  /** Sensitivity spent by a spec (dB, ≥0) on the inner grid. */
+  const costOf = (s: DriverFilterSpec): number =>
+    Math.max(0, rawMedianInner - medianLevel(optFreq, respOn(s, optFreq, optSpl)));
+  const costOfFull = (s: DriverFilterSpec): number =>
+    Math.max(0, rawMedianFull - medianLevel(grid, respOn(s, grid, driver.spl)));
 
   // Seed: adopt the user's spec as-is, EQ boosts clamped to 0 (cut-only).
   const spec = cloneSpec(seedSpec);
   spec.eq = spec.eq.map((b) => ({ ...b, gainDb: Math.min(0, b.gainDb) }));
+  // FLOOR MODE needs a LEVEL element: bringing a 130 dB passband to a 95 dB
+  // floor is a pad, not an EQ band. Seed the overall gain at the distance to
+  // the floor and let the refine tune it (realized as a series resistor by
+  // buildSoloNetwork). Without this the engine has no way to reach the floor
+  // at all and the bands waste themselves trying.
+  if (floorDb !== undefined) {
+    spec.gainDb = Math.max(-40, Math.min(0, floorDb - rawMedianInner));
+  }
 
   /** Joint NM refinement of ALL enabled EQ bands (freq/gain/Q in log space,
    *  gain clamped ≤ 0 with a push-back penalty). Never worse than its seed. */
   const refine = (s: DriverFilterSpec, budgetScale = 1): DriverFilterSpec => {
     const bands = s.eq.filter((b) => b.enabled);
+    // Floor mode always has something to fit — the level element — even with
+    // no bands at all.
     if (bands.length === 0) return s;
+    // Floor mode: the overall gain is SEEDED at (floor − median) and stays
+    // FIXED — never a search parameter. HARD LEARNED (Sanders' "Flat at 104",
+    // second round): tuning gain jointly with the bands makes level and shape
+    // interchangeable (gain −25 ≡ shelves everywhere −25), and the refine
+    // drifted the level work into two stacked low-shelf cuts. Those burned
+    // the band budget on level, the 7 kHz breakup kept its two remaining
+    // bands... elsewhere, and the pad vanished from the built network. Level
+    // is the pad's job; bands are for shape — same separation as candidates.
     const x0: number[] = [];
     for (const b of bands) x0.push(Math.log10(b.freq), b.gainDb, Math.log10(b.q));
     const apply = (x: readonly number[]): DriverFilterSpec => {
@@ -144,7 +326,12 @@ export function optimizeSoloFilter(
         const f = 10 ** x[j * 3];
         b.freq = Math.min(band[1] * 1.2, Math.max(band[0] * 0.8, f));
         b.gainDb = Math.min(0, Math.max(-18, x[j * 3 + 1]));
-        b.q = Math.min(12, Math.max(0.3, 10 ** x[j * 3 + 2]));
+        // Q FLOOR per type: a 'peak' band exists to tame a resonance, so it
+        // stays a notch (≥0.7). At the old 0.3 floor a "peak cut" degenerates
+        // into broadband attenuation — the same level-blind wreckage the
+        // sensitivity budget guards against, wearing a different hat.
+        const qFloor = (b.type ?? 'peak') === 'peak' ? 0.7 : 0.3;
+        b.q = Math.min(12, Math.max(qFloor, 10 ** x[j * 3 + 2]));
         j++;
       }
       return out;
@@ -152,7 +339,12 @@ export function optimizeSoloFilter(
     const objective = (x: readonly number[]): number => {
       let pen = 0;
       for (let j = 0; j < bands.length; j++) pen += 2 * Math.max(0, x[j * 3 + 1]) ** 2;
-      return innerStd(apply(x)) + pen;
+      const trial = apply(x);
+      // Sensitivity budget as a FEASIBILITY push-back (like the value windows
+      // in the component tuner): inside the budget it contributes nothing, so
+      // the search path in the healthy region is untouched.
+      const over = Math.max(0, costOf(trial) - sensBudget);
+      return innerStd(trial) + pen + 4 * over * over;
     };
     const iters = Math.round((opts.maxIterations ?? 400) * budgetScale * Math.max(1, bands.length / 2));
     let fit = nelderMead(objective, x0, { maxIterations: iters, tolerance: 1e-6, step: 0.08 });
@@ -189,7 +381,15 @@ export function optimizeSoloFilter(
   const candidates = (): EqBandSpec[] => {
     const spl = respOn(cur, optFreq, optSpl);
     const ids = inBand(optFreq);
-    const m = stats(optFreq, spl);
+    // SHAPE reference is the response's OWN mean, even in floor mode — the
+    // level offset is the gain element's job. HARD LEARNED (verified in the
+    // app on Robbert's 12W8524): measuring prominence against the fixed floor
+    // makes the whole band read as "15 dB too loud", so the tilt/shelf
+    // candidate wins every round and stacks up broadband cuts — three
+    // low-shelf cuts and no notch on the 7 kHz breakup, worse with 4 bands
+    // than with 2. Level is a level problem; bands are for shape.
+    const shapeMean = ids.reduce((a, i) => a + spl[i], 0) / Math.max(1, ids.length);
+    const m = { ...stats(optFreq, spl), mean: shapeMean };
     const out: EqBandSpec[] = [];
     // (a) Peak cut: max positive deviation, Q from the half-prominence width.
     let pi = -1;
@@ -201,7 +401,7 @@ export function optimizeSoloFilter(
       for (let i = pi; i >= ids[0]; i--) if (spl[i] < m.mean + prom / 2) { loF = optFreq[i]; break; }
       for (let i = pi; i <= ids[ids.length - 1]; i++) if (spl[i] < m.mean + prom / 2) { hiF = optFreq[i]; break; }
       const bw = Math.max(1.05, hiF / loF);
-      const q = Math.min(8, Math.max(0.5, optFreq[pi] / (optFreq[pi] * (bw - 1))));
+      const q = Math.min(8, Math.max(0.7, optFreq[pi] / (optFreq[pi] * (bw - 1))));
       out.push({ enabled: true, type: 'peak', freq: optFreq[pi], gainDb: -Math.min(12, prom), q });
     }
     // (b/c) Shelf cuts: whichever half of the band runs hot gets pulled down.
@@ -216,10 +416,15 @@ export function optimizeSoloFilter(
     }
     if (loN > 3 && hiN > 3) {
       const tilt = hiSum / hiN - loSum / loN;
-      if (tilt > 0.8) {
-        out.push({ enabled: true, type: 'highShelf', freq: split, gainDb: -Math.min(10, tilt), q: 0.7 });
-      } else if (tilt < -0.8) {
-        out.push({ enabled: true, type: 'lowShelf', freq: split, gainDb: -Math.min(10, -tilt), q: 0.7 });
+      // A shelf may never propose more cut than the REMAINING sensitivity
+      // budget: a shelf moves the median by roughly its own depth, so an
+      // unbounded seed walks straight into the wreckage case.
+      const room = Math.max(0, sensBudget - costOf(cur));
+      const depth = (want: number) => Math.min(10, want, room);
+      if (tilt > 0.8 && room > 0.3) {
+        out.push({ enabled: true, type: 'highShelf', freq: split, gainDb: -depth(tilt), q: 0.7 });
+      } else if (tilt < -0.8 && room > 0.3) {
+        out.push({ enabled: true, type: 'lowShelf', freq: split, gainDb: -depth(-tilt), q: 0.7 });
       }
     }
     return out;
@@ -234,6 +439,9 @@ export function optimizeSoloFilter(
       const trial = cloneSpec(cur);
       trial.eq = [...trial.eq.filter((b) => b.enabled), cand];
       const refined = refine(trial, 0.7);
+      // GATE: flatness bought beyond the sensitivity budget is not a design,
+      // it is attenuation. Rejected outright, however good the metric looks.
+      if (costOf(refined) > sensBudget + 1e-9) continue;
       const fx = innerStd(refined);
       if (!best || fx < best.fx) {
         const kind = cand.type === 'peak' ? 'notch' : cand.type === 'highShelf' ? 'high-shelf cut' : 'low-shelf cut';
@@ -267,13 +475,24 @@ export function optimizeSoloFilter(
     }
   }
 
-  // Never worse than the (clamped) seed on the full grid.
+  // Never worse than the (clamped) seed on the full grid — and never over
+  // budget: a refine that walked past the sensitivity cap loses to the seed.
   const seedClamped = cloneSpec(spec);
   const finalStd = stats(grid, respOn(cur, grid, driver.spl)).std;
   const seedStd = stats(grid, respOn(seedClamped, grid, driver.spl)).std;
-  if (seedStd < finalStd) cur = seedClamped;
+  if (seedStd < finalStd || costOfFull(cur) > sensBudget + 0.5) cur = seedClamped;
 
   const after = fullStats(cur);
+  // What still limits the result: the deepest remaining dip below the median.
+  const finalSpl = respOn(cur, grid, driver.spl);
+  const finalMed = medianLevel(grid, finalSpl);
+  let dipLimit: { db: number; hz: number } | null = null;
+  // Judged over the REQUESTED band: the cliff outside the design band is
+  // exactly what the designer needs to be told about.
+  for (const i of idsIn(grid, reqBand)) {
+    const below = finalMed - finalSpl[i];
+    if (below > 2 && (!dipLimit || below > dipLimit.db)) dipLimit = { db: below, hz: grid[i] };
+  }
   return {
     spec: cur,
     before: { ripplePeakDb: before.peak, avgDevDb: before.avg },
@@ -281,6 +500,17 @@ export function optimizeSoloFilter(
     stages,
     evaluations,
     objective: Math.min(finalStd, seedStd),
+    sensitivityCostDb: costOfFull(cur),
+    dipLimit,
+    designBand: band,
+    inBandBefore: (() => {
+      const m = statsIn(band, grid, driver.spl);
+      return { ripplePeakDb: m.peak, avgDevDb: m.avg };
+    })(),
+    inBandAfter: (() => {
+      const m = statsIn(band, grid, finalSpl);
+      return { ripplePeakDb: m.peak, avgDevDb: m.avg };
+    })(),
   };
 }
 
@@ -352,21 +582,65 @@ export function buildSoloNetwork(
     };
   };
   /** A series group: main element on the bus + parallel companions as loops
-   *  below (chained stub wires — wires connect only at their POINTS). */
+   *  below (chained stub wires — wires connect only at their POINTS).
+   *  Rows are 4 apart, not 3: at 3 the id of one member landed on the value
+   *  label of the next (Sanders' screenshot — "0.15 mH" written through
+   *  "C5"). Same lesson the shunt spreader learned in the two-way layout. */
   const seriesGroup = (members: Array<{ kind: 'L' | 'C' | 'R'; si: number }>) => {
-    bus(x); // ensure bus reaches x
+    // Never start a group on the generator's column: its symbol spans y 4→11,
+    // so stacked members would be drawn straight through it.
+    if (x <= 3) bus(6);
     const A = x;
     const B = x + 6;
+    const ROW = 4;
     members.forEach((m, i) => {
-      const y = 4 + i * 3;
+      const y = 4 + i * ROW;
       if (i > 0) {
-        parts.push({ type: 'Wire', params: [], wires: [{ x: A, y: y - 3 }, { x: A, y }] });
-        parts.push({ type: 'Wire', params: [], wires: [{ x: B, y: y - 3 }, { x: B, y }] });
+        parts.push({ type: 'Wire', params: [], wires: [{ x: A, y: y - ROW }, { x: A, y }] });
+        parts.push({ type: 'Wire', params: [], wires: [{ x: B, y: y - ROW }, { x: B, y }] });
       }
       parts.push(el(m.kind, m.si, [{ x: A, y }, { x: B, y }]));
     });
     x = B;
   };
+  // LEVEL element first: a negative overall gain is a PAD, realized as a plain
+  // series resistor sized on |Z| at the band centre. (Floor mode leans on this
+  // — an EQ band cannot move a whole passband to a target level.) A single
+  // resistor tracks the driver's Z rather than being perfectly flat; the traps
+  // and the component tuner absorb the residual shape, which is cheaper in
+  // parts than a full L-pad.
+  let padShunt: number | null = null;
+  if (spec.gainDb < -0.2) {
+    // Nominal Z for the pad: the MEDIAN |Z| over the band, not one spot value.
+    const zs = grid.map((_, i) => Math.hypot(z[i].re, z[i].im)).sort((p, q) => p - q);
+    const z0 = Math.max(1, zs[Math.floor(zs.length / 2)]);
+    const a = 10 ** (spec.gainDb / 20); // 0 < a < 1
+    if (spec.gainDb <= -6) {
+      // Deep level shift → constant-impedance L-PAD, not a lone series R.
+      // HARD LEARNED (Sanders' "Flat at 104" on a 129 dB driver): a single
+      // series R against a Z that rises 7 → 35 Ω gives attenuation that
+      // FOLLOWS the impedance curve — a +14 dB tilt instead of a level, and
+      // the correction bands then waste themselves fighting the tilt instead
+      // of the breakup. The L-pad's small parallel R swamps the driver's Z
+      // (Rp ≪ |Z| everywhere), so the division Rp/(Rs+Rp) is frequency-flat
+      // and the amplifier still sees ≈ z0. Rs = Z0(1−a), Rp = Z0·a/(1−a).
+      const Rs = Math.max(0.22, Math.min(220, z0 * (1 - a)));
+      const Rp = Math.max(0.22, Math.min(220, (z0 * a) / (1 - a)));
+      seriesGroup([{ kind: 'R', si: Rs }]);
+      padShunt = Rp;
+      structure.push(
+        `L-pad ${Rs.toFixed(1)} Ω series + ${Rp.toFixed(2)} Ω across driver ` +
+          `(${spec.gainDb.toFixed(1)} dB to the target level)`,
+      );
+    } else {
+      // Shallow pad: a single series R is fine — the Z-tilt over a few dB is
+      // small and the tuner/Zobel absorb it. Cheaper in parts and in power.
+      const R = Math.max(0.22, Math.min(220, z0 * (1 / a - 1)));
+      seriesGroup([{ kind: 'R', si: R }]);
+      structure.push(`series pad ${R.toFixed(1)} Ω (${spec.gainDb.toFixed(1)} dB to the target level)`);
+    }
+    bus(x + 3);
+  }
   const bands = spec.eq
     .filter((b) => b.enabled && b.gainDb < 0)
     .sort((a, b) => a.freq - b.freq);
@@ -407,6 +681,16 @@ export function buildSoloNetwork(
     wires: [{ x: xd, y: 4 }, { x: xd, y: 11 }],
   });
   parts.push({ type: 'Ground', params: [], wires: [{ x: xd, y: 11 }] });
+  // L-pad parallel leg: the small R across the driver that makes a deep pad
+  // frequency-flat (see above). Placed at the driver node, before the Zobel.
+  let xTail = xd;
+  if (padShunt !== null) {
+    const xp = xTail + 5;
+    parts.push({ type: 'Wire', params: [], wires: [{ x: xTail, y: 4 }, { x: xp, y: 4 }] });
+    parts.push(el('R', padShunt, [{ x: xp, y: 4 }, { x: xp, y: 9 }]));
+    parts.push({ type: 'Ground', params: [], wires: [{ x: xp, y: 9 }] });
+    xTail = xp;
+  }
   // Gated Zobel across the driver: |Z| rising ≥1.3× from its band minimum
   // defeats the series elements above — classic gate, textbook seed.
   {
@@ -428,8 +712,8 @@ export function buildSoloNetwork(
       // of the band; the tuner refines.
       const fz = Math.max(1000, Math.min(fHi, 4000));
       const C = 1 / (2 * Math.PI * fz * R);
-      const xz = xd + 5;
-      parts.push({ type: 'Wire', params: [], wires: [{ x: xd, y: 4 }, { x: xz, y: 4 }] });
+      const xz = xTail + 5;
+      parts.push({ type: 'Wire', params: [], wires: [{ x: xTail, y: 4 }, { x: xz, y: 4 }] });
       parts.push(el('R', R, [{ x: xz, y: 4 }, { x: xz, y: 8 }]));
       parts.push(el('C', C, [{ x: xz, y: 8 }, { x: xz, y: 12 }]));
       parts.push({ type: 'Ground', params: [], wires: [{ x: xz, y: 12 }] });
@@ -443,6 +727,11 @@ export interface SoloChainSettings {
   eqBands: number;
   band: [number, number];
   targets?: { rippleDb: number };
+  /** Absolute SPL target level (dB, FRD scale) — see SoloOptimizeOptions. */
+  targetLevelDb?: number;
+  /** Sensitivity budget (dB, default 6) — see SoloOptimizeOptions. Governs the
+   *  design stage AND the assembled tune, so both work to the same rule. */
+  sensitivityBudgetDb?: number;
   catalogSnap?: boolean;
   snapPrefs?: SnapPrefs;
   maxIterations?: number;
@@ -487,7 +776,7 @@ const silentGhost = (freqs: readonly number[]): GriddedResponse => ({
  *   the real measurement — the "Add notch + Optimize components" flow,
  *   automated.
  */
-export function runSoloChain(
+function runSoloChainOnce(
   input: SoloChainInput,
   onProgress?: (p: ChainStageProgress) => void,
 ): SoloChainResult {
@@ -498,6 +787,8 @@ export function runSoloChain(
     eqBands: s.eqBands,
     band: s.band,
     targets: s.targets,
+    sensitivityBudgetDb: s.sensitivityBudgetDb,
+    targetLevelDb: s.targetLevelDb,
     maxIterations: s.maxIterations,
   });
   onProgress?.({
@@ -549,12 +840,17 @@ export function runSoloChain(
     { offsetMm: 0, trimDb: 0, inverted: false },
     {
       solo: true,
+      soloSensitivityDb: s.sensitivityBudgetDb,
+      soloTargetLevelDb: s.targetLevelDb,
       // Solo staged: the phase target is trivially met (phase metric is 0);
       // a huge value documents that only ripple gates here.
       staged: s.targets ? { rippleDb: s.targets.rippleDb, phaseDeg: 3600 } : undefined,
       catalogSnap: s.catalogSnap,
       snapPrefs: s.snapPrefs,
-      band: s.band,
+      // The tuner works the SAME designable band as the design stage — on the
+      // requested band it would chase the unreachable cliff, blow the
+      // sensitivity cap and get its whole tune rejected.
+      band: vf.designBand,
       ...(s.safety
         ? {
             safety: {
@@ -568,5 +864,178 @@ export function runSoloChain(
       onStage: (detail) => onProgress?.({ stage: 'tune', evals: vf.evaluations, detail }),
     },
   );
+  /* ---- WHOLE-RANGE never-worse gate (Sanders' avg ±5.66 run) ----
+   * Every never-worse guard so far judges the band it optimised: the design
+   * stage on the design band, the tuner on its own band. Neither promises the
+   * number the DESIGNER reads — mean deviation over the requested range. A
+   * correction can improve its own band and still make the whole range worse
+   * (pull the passband down 10 dB while the unreachable top stays put), and
+   * shipping that is indefensible: no filter at all would have been better.
+   * So: measure the delivered network over the REQUESTED band against the raw
+   * driver, and when it loses, hand back the bare driver with the reason. ---- */
+  const wholeRangeAvg = (spl: readonly number[]): number => {
+    const ids = grid
+      .map((f, i) => (f >= s.band[0] && f <= s.band[1] ? i : -1))
+      .filter((i) => i >= 0);
+    if (ids.length === 0) return 0;
+    const vals = ids.map((i) => spl[i]).sort((a, b) => a - b);
+    const med = vals[Math.floor(vals.length / 2)];
+    return ids.reduce((a, i) => a + Math.abs(spl[i] - med), 0) / ids.length;
+  };
+  const deliveredSpl = (() => {
+    try {
+      const sol = solveNetwork(
+        crossoverToNetlist({ name: 'solo-verify', parts: net.parts }).netlist,
+        grid,
+        { [model]: z },
+      );
+      const drv = sol.drivers.find((x) => x.model === model);
+      if (!drv) return null;
+      const h = sol.transfers[drv.id];
+      return d.spl.map(
+        (v, i) => v + 20 * Math.log10(Math.hypot(h[i].re, h[i].im) || 1e-12),
+      );
+    } catch {
+      return null;
+    }
+  })();
+  if (deliveredSpl) {
+    const rawAvg = wholeRangeAvg(d.spl);
+    const gotAvg = wholeRangeAvg(deliveredSpl);
+    if (gotAvg > rawAvg + 0.05) {
+      // Build the bare network FROM SCRATCH. Filtering the R/L/C parts out of
+      // the built one severs the circuit: those components ARE the links
+      // between the bus points, so what is left is a generator, an orphan wire
+      // and a disconnected driver — which simulates as a dead flat line and
+      // even scores 100 (a constant has no deviation). An empty spec gives a
+      // correct generator → wire → driver → ground network.
+      const bare = buildSoloNetwork(
+        { gainDb: 0, hp: vf.spec.hp, lp: vf.spec.lp, eq: [] },
+        grid,
+        z,
+        model,
+      ).parts;
+      const flat = { rippleDb: vf.before.ripplePeakDb, avgDevDb: rawAvg, phaseDeg: 0 };
+      return {
+        vf,
+        structure: [
+          `no correction delivered — every candidate made the whole range worse ` +
+            `(${gotAvg.toFixed(2)} vs ${rawAvg.toFixed(2)} dB avg): the reachable band ` +
+            `improves but the part below the target cannot follow. Try a lower target ` +
+            `level (reaches further) or a narrower view range.`,
+        ],
+        parts: bare,
+        net: {
+          parts: bare,
+          before: flat,
+          after: { ...flat, xoHz: null },
+          tuned: 0,
+          evaluations: net.evaluations,
+          removed: [],
+          added: [],
+        },
+        bomTotalEur: null,
+      };
+    }
+  }
+
   return { vf, structure, parts: net.parts, net, bomTotalEur: bomFor(net.parts).totalEur };
+}
+
+/**
+ * Full solo chain with the level spend SEARCHED rather than spent.
+ *
+ * HARD LEARNED (Sanders, jul 2026 — "May drop by 20 dB" giving a worse result
+ * than 15): the control says MAY, but the engine treated it as MUST. The spend
+ * feeds the reachable band (designBandFor), so raising the permission widened
+ * the band, spread the same handful of correction bands over a region that
+ * includes the hopeless part, and the breakup peak lost out to the cliff.
+ * Measured on Robbert's 12W8524 (whole-range avg): 6 dB → 2.35, 10 → 2.17,
+ * 15 → 2.76, 20 → 2.54, 25 → 3.65, with the 7 kHz trap appearing and
+ * vanishing along the way. Erratic in the one direction a designer expects to
+ * be safe.
+ *
+ * So the permission is a CEILING and the engine picks the spend: run the chain
+ * at a small ladder of candidate spends and keep the best whole-range result.
+ * The ladder always contains a conservative anchor (6 dB, or the ceiling when
+ * that is smaller), so a generous permission can no longer be worse than a
+ * tight one. Deterministic; ~4 chain runs.
+ *
+ * In FLOOR mode there is nothing to search — the designer named the level.
+ */
+export function runSoloChain(
+  input: SoloChainInput,
+  onProgress?: (p: ChainStageProgress) => void,
+): SoloChainResult {
+  const { grid, d, settings: s } = input;
+  if (s.targetLevelDb !== undefined) return runSoloChainOnce(input, onProgress);
+
+  const cap = Math.max(0, s.sensitivityBudgetDb ?? 6);
+  // ABSOLUTE ladder, not fractions of the ceiling: raising the permission then
+  // only ADDS candidates, so the best result can never get worse — which is
+  // precisely the guarantee "may drop by N" implies. Fractions of the cap gave
+  // a different candidate set per setting and kept a residual wobble.
+  // Cost scales with the permission (cap 6 = one run, as before).
+  const ladder = [...new Set([6, 10, 15, 20, 25, 30, 40, cap])]
+    .map((v) => Math.round(v * 10) / 10)
+    .filter((v) => v > 0 && v <= cap)
+    .sort((a, b) => a - b);
+  if (ladder.length <= 1) {
+    return runSoloChainOnce(
+      { ...input, settings: { ...s, sensitivityBudgetDb: ladder[0] ?? cap } },
+      onProgress,
+    );
+  }
+
+  /** Whole-range verdict — the number the designer is judged by. */
+  const idsReq = grid
+    .map((f, i) => (f >= s.band[0] && f <= s.band[1] ? i : -1))
+    .filter((i) => i >= 0);
+  const wholeAvg = (spl: readonly number[]): number => {
+    if (idsReq.length === 0) return 0;
+    const vals = idsReq.map((i) => spl[i]).sort((a, b) => a - b);
+    const med = vals[Math.floor(vals.length / 2)];
+    return idsReq.reduce((a, i) => a + Math.abs(spl[i] - med), 0) / idsReq.length;
+  };
+  const deliveredOf = (parts: readonly VxpPart[]): number[] | null => {
+    try {
+      const sol = solveNetwork(
+        crossoverToNetlist({ name: 'solo-pick', parts: [...parts] }).netlist,
+        grid,
+        { [input.model]: input.z },
+      );
+      const drv = sol.drivers.find((x) => x.model === input.model);
+      if (!drv) return null;
+      const h = sol.transfers[drv.id];
+      return d.spl.map((v, i) => v + 20 * Math.log10(Math.hypot(h[i].re, h[i].im) || 1e-12));
+    } catch {
+      return null;
+    }
+  };
+
+  let best: { r: SoloChainResult; avg: number; spend: number } | null = null;
+  let evals = 0;
+  for (const spend of ladder) {
+    const r = runSoloChainOnce(
+      { ...input, settings: { ...s, sensitivityBudgetDb: spend } },
+      (p) => onProgress?.({ ...p, evals: evals + p.evals }),
+    );
+    evals += r.vf.evaluations + r.net.evaluations;
+    const spl = deliveredOf(r.parts);
+    const avg = spl ? wholeAvg(spl) : Infinity;
+    // Ties go to the SMALLER spend: equal flatness for less lost efficiency.
+    if (!best || avg < best.avg - 0.01) best = { r, avg, spend };
+  }
+  const pick = best!;
+  return {
+    ...pick.r,
+    structure:
+      pick.spend < cap - 0.05
+        ? [
+            ...pick.r.structure,
+            `spent ${pick.spend.toFixed(1)} of ${cap.toFixed(1)} dB allowed — ` +
+              `more attenuation measured worse over the whole range`,
+          ]
+        : pick.r.structure,
+  };
 }
