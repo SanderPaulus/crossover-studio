@@ -24,9 +24,13 @@
   --viz-tweeter: #0d9488;
   --viz-combined: #4a3aa7;
   --viz-null: #e34948;
-  --viz-grid: #e1e0d9;
-  --viz-axis: #c3c2b7;
-  --viz-tick: #898781;
+  /* Chart furniture in the interface's own grey family. It used to be warm
+     (#e1e0d9 / #c3c2b7 / #898781) next to cool UI greys, so the axis and grid
+     read as a different system than the panel around them. Re-tinted at
+     MATCHED luminance — same visual weight, only the yellow cast gone. */
+  --viz-grid: #dee0e4;
+  --viz-axis: #c0c2c5;
+  --viz-tick: #868789;
   /* Compare-overlay ghosts: muted but DISTINCT hues, one per tab. */
   --viz-ghost1: #64748b;
   --viz-ghost2: #8a7a4a;
@@ -63,9 +67,9 @@
     --viz-tweeter: #14b8a6;
     --viz-combined: #9085e9;
     --viz-null: #e66767;
-    --viz-grid: #2c2c2a;
-    --viz-axis: #383835;
-    --viz-tick: #898781;
+    --viz-grid: #2a2c2f;
+    --viz-axis: #36383c;
+    --viz-tick: #828791;
     --viz-ghost1: #94a3b8;
     --viz-ghost2: #b3a273;
     --viz-ghost3: #b294b6;
@@ -92,9 +96,9 @@
   --viz-tweeter: #14b8a6;
   --viz-combined: #9085e9;
   --viz-null: #e66767;
-  --viz-grid: #2c2c2a;
-  --viz-axis: #383835;
-  --viz-tick: #898781;
+  --viz-grid: #2a2c2f;
+  --viz-axis: #36383c;
+  --viz-tick: #828791;
   --viz-ghost1: #94a3b8;
   --viz-ghost2: #b3a273;
   --viz-ghost3: #b294b6;
