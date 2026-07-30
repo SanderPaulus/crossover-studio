@@ -692,6 +692,20 @@ Gemeten (12W8524, "Flat at 104" op een 129 dB-driver): mediaan landt op 103,6 ·
 9,8 Ω + 0,60 Ω · trap @ 6805 Hz · 7 kHz van 111,9 → 103,4. NB: bodem-modus optimaliseert
 vs-bodem; de Response-score blijft mediaan-relatief en kan iets lager lezen dan de
 "May drop"-modus met ladder — dat is de betekenis van de modus, geen bug.
+**PEAK-BEWUSTE solo-objective + catalogus-bereikmelding (jul 2026, Sanders 2× "de piek bij
+7 kHz wordt niet aangepakt")**: de ONTWERPSTAP deed het goed (notch @6919 Hz −18 dB, 7 kHz van
+136,3 → 108,4 dB) — de stappen erná braken het af: componenttuner 108 → 116, catalog-snap
+116 → 125, allebei terwijl hun eigen metriek "verbeterde". Oorzaak: RMS-vlakheid merkt een
+smalle resonantie nauwelijks (een 20 dB-piek beslaat een paar procent van de band), terwijl het
+juist het eerste is wat je ziet én hoort. De solo-amplitudeterm is nu peak-bewust:
+`targetStd = √(std² + 0,35·maxPositieveExcursie²)` t.o.v. de mediaan (of de bodem in
+bodem-modus), zodat tune/prune/krimpladder/snap verdedigen wat de ontwerpstap won. ALLEEN solo
+— het 2-weg-pad heeft daar zijn breakup-guard voor en blijft onaangeroerd.
+**Catalogus-bereikmelding**: de tuner wilde 269 Ω en 118 Ω dempingsweerstanden voor zijn traps,
+de geïmporteerde catalogus stopt bij 33 Ω → de snap leverde stil traps met een derde van de
+diepte. Een dekkingsgat is onzichtbaar in de waardes en leest als mysterieus fit-verlies, dus
+de snap meldt nu welke slots tegen de rand van het assortiment aanlopen ("R3 wants 46,1 Ω,
+catalog offers 33,0 Ω — add those values (🗂 Manage…) or switch Snap to catalog off").
 **"MAY drop" is een PLAFOND, geen opdracht (jul 2026, Sanders "20 dB geeft een slechter
 resultaat dan 15")**: het veld zegt MAY, maar de engine besteedde altijd alles. Het bedrag
 voedt de bereikbare band (`designBandFor`), dus méér toestemming verbreedde de band, spreidde

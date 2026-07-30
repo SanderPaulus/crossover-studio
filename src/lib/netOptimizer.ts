@@ -565,6 +565,30 @@ export function optimizeNetworkValues(
       }
       targetStd = n > 0 ? Math.sqrt(sq / n) : targetStd;
     }
+    // SOLO — PEAK-AWARE amplitude term. HARD LEARNED (Sanders, twice: "de piek
+    // bij 7 kHz wordt niet aangepakt"): RMS flatness barely notices a narrow
+    // resonance — a 20 dB breakup spike covers a few percent of the band, so
+    // std hardly moves — yet it is the first thing a designer sees and hears.
+    // The design stage trapped the 12W8524 breakup to 108 dB; the value tune
+    // then let it drift back to 116 and the catalog snap to 125, both while
+    // "improving" their own metric. Blending the worst POSITIVE excursion into
+    // the solo amplitude term makes every downstream stage — tune, prune,
+    // shrink ladder, snap — defend what the design stage won. Solo only: the
+    // two-way objective is untouched (its breakup guard covers this case).
+    if (solo) {
+      const vals: number[] = [];
+      for (let i = 0; i < r.freq.length; i++) {
+        if (r.freq[i] >= band[0] && r.freq[i] <= band[1]) vals.push(r.combinedSpl[i]);
+      }
+      if (vals.length > 0) {
+        const ref =
+          opts.soloTargetLevelDb ??
+          [...vals].sort((a, b) => a - b)[Math.floor(vals.length / 2)];
+        let over = 0;
+        for (const v of vals) over = Math.max(over, v - ref);
+        targetStd = Math.sqrt(targetStd * targetStd + 0.35 * over * over);
+      }
+    }
 
     // Where the filtered drivers meet — anchor for the guard and protection.
     let xi = -1;
@@ -1515,6 +1539,43 @@ export function optimizeNetworkValues(
           (Number.isFinite(dEur) && Math.abs(dEur) >= 0.5
             ? ` and cost €${Math.abs(dEur).toFixed(0)} ${dEur > 0 ? 'less' : 'more'}`
             : '');
+      }
+    }
+    /* ---- Catalog RANGE report (Sanders' 7 kHz breakup, jul 2026): the tuner
+     * wanted 269 Ω and 118 Ω damping resistors for its traps; the imported
+     * catalog stops at 33 Ω, so the snap quietly handed back traps with a
+     * third of the depth and the breakup peak returned. A coverage gap is
+     * invisible in the values — it only shows as a mysterious fit loss — so
+     * name it: which slots are pinned against the end of what the catalog
+     * offers, and how far short they fall. ---- */
+    {
+      const short: string[] = [];
+      snapables.forEach(({ q }, j) => {
+        const p = picks[j];
+        const kind = KIND_OF[q.type];
+        if (!p || !kind) return;
+        const u = PARAM_OF[kind];
+        const want = (q.params.find((x) => x.name === u.name)?.value ?? 0) / u.factor;
+        if (!(want > 0)) return;
+        // Only flag a REAL shortfall: the pick is >25% off and nothing in the
+        // candidate list gets closer (i.e. we are against the range edge).
+        const got = p.value;
+        const rel = Math.abs(got - want) / want;
+        if (rel < 0.25) return;
+        const better = cands[j].some((c) => Math.abs(c.value - want) / want < rel - 1e-9);
+        if (better) return;
+        const fmt = (v: number) =>
+          kind === 'L' ? `${(v * 1e3).toPrecision(3)} mH`
+          : kind === 'C' ? `${(v * 1e6).toPrecision(3)} µF`
+          : `${v.toPrecision(3)} Ω`;
+        short.push(`${q.partId} wants ${fmt(want)}, catalog offers ${fmt(got)}`);
+      });
+      if (short.length > 0) {
+        snapNote =
+          (snapNote ? `${snapNote} · ` : '') +
+          `⚠ catalog range: ${short.join('; ')} — the fit is limited by what the ` +
+          `catalog stocks, not by the design. Add those values (🗂 Manage…) or ` +
+          `switch Snap to catalog off to see what the design can really do.`;
       }
     }
     cur = { ...cur, parts: applied(picks) };

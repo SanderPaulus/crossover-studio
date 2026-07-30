@@ -307,6 +307,37 @@ describe('runSoloChain (design → synthesis → assembled solo tune)', () => {
     expect(loose).toBeLessThanOrEqual(tight + 0.02);
   }, 300000);
 
+  it('defends the design stage\'s notch through tune and snap', () => {
+    // Sanders, twice: "de piek bij 7 kHz wordt niet aangepakt". The design
+    // stage DID trap it — the value tune and the catalog snap then eroded it,
+    // both while improving their own RMS metric, because a narrow resonance
+    // barely registers in std. The solo amplitude term is peak-aware now.
+    const peaky: GriddedResponse = {
+      freq: [...grid],
+      spl: grid.map((f) => 90 + 14 * Math.exp(-((Math.log2(f / 7000)) ** 2) * 40)),
+      phaseDeg: grid.map(() => 0),
+    };
+    const r = runSoloChain({
+      grid, d: peaky, z, model: 'mid',
+      seed: cleanSpec(),
+      settings: { eqBands: 3, band: [300, 19000], targets: { rippleDb: 2 }, sensitivityBudgetDb: 10 },
+    });
+    const sol = solveNetwork(
+      crossoverToNetlist({ name: 'p', parts: r.parts }).netlist, grid, { mid: z });
+    const drv = sol.drivers.find((x) => x.model === 'mid')!;
+    const h = sol.transfers[drv.id];
+    const out = peaky.spl.map((v, i) => v + 20 * Math.log10(Math.hypot(h[i].re, h[i].im) || 1e-12));
+    const idx = (f: number) => {
+      let b = 0;
+      for (let i = 1; i < grid.length; i++) if (Math.abs(grid[i] - f) < Math.abs(grid[b] - f)) b = i;
+      return b;
+    };
+    // The +14 dB spike must end up close to its neighbours, not standing proud.
+    const atPeak = out[idx(7000)];
+    const beside = (out[idx(3000)] + out[idx(15000)]) / 2;
+    expect(atPeak - beside).toBeLessThan(6);
+  }, 300000);
+
   it('the bare "no correction" network passes the driver through', () => {
     // Regression for a shipped bug: the no-correction fallback was built by
     // FILTERING the R/L/C parts out of the corrected network. Those components
