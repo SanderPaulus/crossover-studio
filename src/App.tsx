@@ -24,6 +24,7 @@ import {
   normalizeOrigin,
 } from './lib/schematicEdit.ts';
 import SchematicEditor from './components/SchematicEditor.tsx';
+import NumberFlow from '@number-flow/react';
 import { Modal } from './components/Modal.tsx';
 import { HelpPanel } from './components/HelpPanel.tsx';
 import { CatalogManager } from './components/CatalogManager.tsx';
@@ -260,6 +261,38 @@ const SILENT_GHOST_DB = -400;
 /** Compact frequency label: 9335 → "9.3 kHz", 245 → "245 Hz". */
 const hz = (f: number): string =>
   f >= 1000 ? `${(f / 1000).toFixed(f >= 10000 ? 0 : 1)} kHz` : `${Math.round(f)} Hz`;
+
+/**
+ * Simulation counter in the busy card. It arrives in jumps of thousands per
+ * progress message; rolling the digits makes a long run read as work in
+ * progress rather than a number that redraws. nl-NL grouping as before.
+ *
+ * Deliberately NOT applied to the elapsed clock or the "N/M done" counter:
+ * a digit animating every single second for three minutes is motion the
+ * designer has to keep ignoring, and the round counter moves twice a run.
+ */
+function SimCount({ value }: { value: number }) {
+  // aria-label because NumberFlow paints its digits as shadow-DOM spans with
+  // no readable text: without this the busy card's live region announces
+  // "0/3 done · sims · best dB / °" — every number missing.
+  return (
+    <NumberFlow value={value} locales="nl-NL" aria-label={value.toLocaleString('nl-NL')} />
+  );
+}
+
+/** Best-so-far ripple/phase. These only move when the optimizer actually
+ *  improves, so the roll IS the signal — it marks the moment of progress.
+ *  en-US on purpose: a decimal DOT, matching every other toFixed() readout. */
+function BestMetric({ value, digits }: { value: number; digits: number }) {
+  return (
+    <NumberFlow
+      value={value}
+      locales="en-US"
+      format={{ minimumFractionDigits: digits, maximumFractionDigits: digits }}
+      aria-label={value.toFixed(digits)}
+    />
+  );
+}
 
 /** Map a solved network's drivers to the woofer/tweeter voltage transfers by
  *  SLOT (not hard-coded model name), so an imported vxp with freely-named
@@ -3596,10 +3629,14 @@ export default function App() {
           </table>
           <div className="busy-totals">
             {vfProgress.round}/{vfProgress.items.length} done ·{' '}
-            {vfProgress.evals.toLocaleString('nl-NL')} sims
-            {vfProgress.rippleDb !== undefined && vfProgress.phaseDeg !== undefined
-              ? ` · best ${vfProgress.rippleDb.toFixed(2)} dB / ${vfProgress.phaseDeg.toFixed(1)}°`
-              : ''}
+            <SimCount value={vfProgress.evals} /> sims
+            {vfProgress.rippleDb !== undefined && vfProgress.phaseDeg !== undefined && (
+              <>
+                {' · best '}
+                <BestMetric value={vfProgress.rippleDb} digits={2} /> dB /{' '}
+                <BestMetric value={vfProgress.phaseDeg} digits={1} />°
+              </>
+            )}
             {` · ${Math.floor(busyElapsed / 60)}:${String(busyElapsed % 60).padStart(2, '0')}`}
           </div>
         </>
@@ -3631,16 +3668,25 @@ export default function App() {
         </>
       ) : (
         <div className="busy-detail">
-          {vfBusy && vfProgress
-            ? `round ${vfProgress.round} · ${vfProgress.evals.toLocaleString('nl-NL')} network sims` +
-              (vfProgress.rippleDb !== undefined && vfProgress.phaseDeg !== undefined
-                ? ` · best ${vfProgress.rippleDb.toFixed(2)} dB / ${vfProgress.phaseDeg.toFixed(1)}°`
-                : '')
-            : vfBusy
-              ? 'searching structures and EQ stages — runs in the background, the app stays live'
-              : netOptBusy
-                ? 'value fit, prune/escalate, debris sweep'
-                : 'fitting real component values on the measured impedances'}
+          {vfBusy && vfProgress ? (
+            <>
+              {`round ${vfProgress.round} · `}
+              <SimCount value={vfProgress.evals} /> network sims
+              {vfProgress.rippleDb !== undefined && vfProgress.phaseDeg !== undefined && (
+                <>
+                  {' · best '}
+                  <BestMetric value={vfProgress.rippleDb} digits={2} /> dB /{' '}
+                  <BestMetric value={vfProgress.phaseDeg} digits={1} />°
+                </>
+              )}
+            </>
+          ) : vfBusy ? (
+            'searching structures and EQ stages — runs in the background, the app stays live'
+          ) : netOptBusy ? (
+            'value fit, prune/escalate, debris sweep'
+          ) : (
+            'fitting real component values on the measured impedances'
+          )}
           {anyBusy && busyElapsed > 0 ? ` · ${Math.floor(busyElapsed / 60)}:${String(busyElapsed % 60).padStart(2, '0')}` : ''}
         </div>
       )}
