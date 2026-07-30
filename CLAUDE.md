@@ -7,7 +7,7 @@ minimum phase reconstrueert. Voertaal met Sander: **Nederlands**; code/comments 
 ## Commands
 
 - `npm run dev` — dev-server via de Browser-pane tool (`preview_start {name:"dev"}`), poort 5173
-- `npx vitest run` — testsuite (335 tests, allemaal groen houden)
+- `npx vitest run` — testsuite (354 tests, allemaal groen houden)
 - `npm run build` / `npx tsc -b` — build & typecheck (tsconfig.test.json dekt de tests, Node-types)
 - Verificatie is GESCOPED op wat de wijziging raakt (Sanders regel, jul 2026 — de volle suite
   duurt ~3,5 min en de tests dekken alleen src/lib):
@@ -548,6 +548,36 @@ minimum phase reconstrueert. Voertaal met Sander: **Nederlands**; code/comments 
   achter (zelfde symptoom) — demo-data verhulde beide.
   De filter-fase-stippellijnen
   zijn alleen wat het netwerk toevoegt; de verwarring daarover was de aanleiding
+
+## Gedeelde kern voor drie engines (jul 2026, Sanders "misschien kunnen ze wat delen")
+
+- **`bandMetrics.ts` — één implementatie van "hoe vlak is deze respons over deze band"**
+  (mediaan, mean, std, gemiddelde afwijking, piek ±, en apart `peakExcess`/`peakDeficit`),
+  plus `reachableBand` (de band die een cut-only correctie kan halen) en `flatnessObjective`
+  (std, optioneel gemengd met de grootste positieve uitschieter). Bestaansreden: dit stond
+  VIER keer los geïmplementeerd — tuner, solo-engine, scan-ranking, paneel — en dat is exact
+  de bug-familie die het meest heeft gekost: elke bewaker oordeelde op zijn eigen privé-
+  definitie van vlakheid, waardoor een correctie zijn eigen getal kon verbeteren terwijl het
+  getal dat de ONTWERPER leest slechter werd. Met drie engines is dat geen risico om te lopen.
+  Solo-engine en `medianOf` in de tuner draaien erop; `responseStats.ts` blijft de
+  gekalibreerde DISPLAY-score op dezelfde definities.
+  **BEWUSTE UITZONDERING**: `bandStd` ín `netOptimizer` blijft zijn eigen (one-pass) rekenwijze
+  houden. Die functie ÍS de 2-weg-zoek-objective; de vormen zijn wiskundig gelijk maar niet
+  bit-identiek, en de anker-les (zie `Z_FLOOR_OHM`) is dat élke verstoring de deterministische
+  simplex een ander bekken in stuurt. Cosmetische netheid is dat risico niet waard.
+- **Kruising-termen zijn PAAR-eigenschappen** (`pairMetrics` in netOptimizer): akoestisch
+  kruispunt, vallei-check, akoestische hellingen, breakup-guard en bescherming van de bovenste
+  driver horen bij één AANGRENZEND DRIVERPAAR, niet bij het ontwerp als geheel. Solo = 0 paren
+  (alles vervalt), 2-weg = 1, 3-weg = 2 en itereert simpelweg. Met precies één paar is de
+  rekenkunde onveranderd — de determinisme-tests pinnen dat vast. Dit vervangt de verspreide
+  `if (solo)`-takken door "geen paren", en maakt 3-weg een kwestie van de lijst vullen.
+- **GEMETEN, niet aangenomen: de 2-weg-engine heeft de peak-blindheid NIET nodig.** Een
+  geïnjecteerde smalle +10 dB-resonantie op 12 kHz (5,5× de kruising, dus buiten het venster
+  van de breakup-guard): de ontwerpstap zet er twee banden op, en na bouwen + tunen + snap is
+  de uitschieter −0,4 dB — de notch overleeft de hele keten. Bij solo verdween hij juist
+  (136 → 108 → 116 → 125) omdat die realisatie een 269 Ω-dempingsweerstand nodig had die de
+  catalogus niet voert. Zelfde blindheid in de metriek, andere fysica in de realisatie. Dus
+  GEEN peak-term in de 2-weg-objective: niet aanraken wat niet stuk is.
 
 ## Single-driver mode (jul 2026, Sanders FRS8-validatie)
 

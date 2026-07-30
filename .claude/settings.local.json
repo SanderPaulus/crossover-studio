@@ -168,7 +168,15 @@
       "Bash(awk 'NR>=741 && NR<=760' src/lib/soloOptimizer.ts)",
       "Bash(awk 'NR>=880 && NR<=895' src/lib/soloOptimizer.ts)",
       "Bash(grep -n \"cur = { ...cur, parts: applied\\(picks\\) };\" -B8 src/lib/netOptimizer.ts)",
-      "Bash(grep -E \"--- snap|7 kHz:|snapNote:\")"
+      "Bash(grep -E \"--- snap|7 kHz:|snapNote:\")",
+      "Bash(awk '{print $2}')",
+      "Bash(git stash *)",
+      "Bash(awk 'NR>=600 && NR<=700' src/lib/netOptimizer.ts)",
+      "Bash(awk 'NR>=596 && NR<=712' src/lib/netOptimizer.ts)",
+      "Bash(awk 'NR>=738 && NR<=778' src/lib/netOptimizer.ts)",
+      "Bash(sed -i '' 's/testsuite \\(335 tests/testsuite \\(354 tests/' CLAUDE.md)",
+      "Bash(solo)",
+      "Bash(python3 \"/private/tmp/claude-501/-Users-sandersomers-SD-Acoustics-Design-Studio/2af54103-1b9c-476d-934d-af7033a3f193/scratchpad/claudemd-add.py\")"
     ]
   }
 }

@@ -1,4 +1,5 @@
 import { nelderMead } from './optimize.ts';
+import { bandMedian } from './bandMetrics.ts';
 import { crossoverToNetlist } from './vxpNetwork.ts';
 import { solveNetwork, type NetElement, type PassiveElement } from './network.ts';
 import { applyTransfer, combine, type GriddedResponse, type TweeterAdjust } from './dsp.ts';
@@ -372,6 +373,20 @@ export function optimizeNetworkValues(
     ? { woofer: pickAngles(angleData.woofer), tweeter: pickAngles(angleData.tweeter) }
     : null;
 
+  /* ---- Band statistics. The canonical implementations live in
+   * bandMetrics.ts and every engine should use them — EXCEPT the two helpers
+   * below that sit in this tuner's inner loop.
+   *
+   * `bandStd` IS the two-way search objective. It computes the variance the
+   * one-pass way (E[x²] − E[x]²) where bandMetrics uses the two-pass form;
+   * the results agree mathematically but not bit-for-bit, and this optimizer
+   * is a deterministic simplex through a multimodal landscape — the anchor
+   * lesson (see Z_FLOOR_OHM) is that ANY perturbation, however small, reroutes
+   * the search into a different basin. Swapping it for cosmetic sharing would
+   * risk real, unmeasured quality changes across every existing two-way
+   * design. It stays until there is a reason to change it, and then it gets
+   * measured. Report-only helpers may be shared freely; the solo engine and
+   * the display already are. ---- */
   const bandStd = (freq: readonly number[], spl: readonly number[]): number => {
     let s = 0;
     let sq = 0;
@@ -408,17 +423,11 @@ export function optimizeNetworkValues(
     return acc / n;
   };
 
-  /** Median level over the band — reference for the SOLO sensitivity budget. */
-  const medianOf = (freq: readonly number[], spl: readonly number[]): number => {
-    const vals: number[] = [];
-    for (let i = 0; i < freq.length; i++) {
-      if (freq[i] >= band[0] && freq[i] <= band[1]) vals.push(spl[i]);
-    }
-    if (vals.length === 0) return 0;
-    vals.sort((a, b) => a - b);
-    const m = Math.floor(vals.length / 2);
-    return vals.length % 2 ? vals[m] : (vals[m - 1] + vals[m]) / 2;
-  };
+  /** Median level over the band — reference for the SOLO sensitivity budget.
+   *  Shared implementation (bandMetrics.ts): solo-only, so no risk to the
+   *  two-way search path. */
+  const medianOf = (freq: readonly number[], spl: readonly number[]): number =>
+    bandMedian(freq, spl, band);
 
   /** SOLO: the RAW driver's median level (no network) — the reference the
    *  sensitivity budget is measured against. The silent ghost sits at −400 dB,
@@ -590,87 +599,152 @@ export function optimizeNetworkValues(
       }
     }
 
-    // Where the filtered drivers meet — anchor for the guard and protection.
-    let xi = -1;
-    for (let i = 1; i < r.freq.length; i++) {
-      if (wF.spl[i] - tF.spl[i] <= 0) {
-        xi = i;
-        break;
-      }
+    /* ---- ADJACENT DRIVER PAIR metrics ---------------------------------
+     * Everything below — the acoustic crossing, the valley check, the
+     * acoustic slopes, the breakup guard and the upper driver's protection —
+     * is a property of ONE ADJACENT PAIR of drivers, not of the design as a
+     * whole. Making that explicit is what lets one tuner serve every
+     * topology: solo has 0 pairs (all of it vanishes), a 2-way has 1, a 3-way
+     * will have 2 and simply iterates. Until the sim itself is N-way the list
+     * holds at most one entry, and with exactly one pair the arithmetic is
+     * unchanged — the determinism tests pin that.
+     * ------------------------------------------------------------------- */
+    interface DriverPair {
+      /** Lower driver: filtered response + its electrical transfer. */
+      lower: GriddedResponse;
+      /** Upper driver — the one that needs protecting below the crossing. */
+      upper: GriddedResponse;
+      upperH: readonly Complex[] | null;
+      /** Target acoustic slopes beside this crossing, if any. */
+      slopeLower?: number;
+      slopeUpper?: number;
     }
-    const xoF = xi > 0 ? r.freq[xi] : null;
+    const pairs: DriverPair[] = solo
+      ? []
+      : [
+          {
+            lower: wF,
+            upper: tF,
+            upperH: hT,
+            slopeLower: acSlopes?.mid,
+            slopeUpper: acSlopes?.tweeter,
+          },
+        ];
 
-    // FUNDAMENTAL — the crossing must not sit in a VALLEY. A starved branch
-    // still "crosses" the other one, but deep in a hole between the mid's
-    // rolloff and the tweeter's late entry (Sanders 0.68 µF cap: crossing at
-    // 6.7 kHz with the mid ~25 dB down, and every crossing-anchored guard
-    // looked exactly there and saw nothing wrong). A valley has HIGHER
-    // combined level on BOTH sides of the crossing; a mere level STEP (hot
-    // unpadded tweeter) is higher on one side only and is already priced by
-    // ripple — a global reference (band mean/P90) cannot tell the two apart
-    // and walls off the tuner's own escape path (hard learned in this
-    // guard's first two cuts). 6 dB is free room (BW3 crossings, driver
-    // ripple); beyond that the crossing is a dead spot.
-    let xoDipDb = 0;
-    if (xi > 0) {
-      const xoHzV = r.freq[xi];
-      let maxLo = -Infinity;
-      let maxHi = -Infinity;
+    const fitSlope = (spl: readonly number[], lo: number, hi: number): number | null => {
+      let n = 0;
+      let sx = 0;
+      let sy = 0;
+      let sxx = 0;
+      let sxy = 0;
       for (let i = 0; i < r.freq.length; i++) {
         const f = r.freq[i];
-        if (f >= xoHzV / 4 && f <= xoHzV / 1.3) maxLo = Math.max(maxLo, r.combinedSpl[i]);
-        else if (f >= xoHzV * 1.3 && f <= xoHzV * 4) maxHi = Math.max(maxHi, r.combinedSpl[i]);
+        if (f < lo || f > hi) continue;
+        const x = Math.log2(f);
+        n++;
+        sx += x;
+        sy += spl[i];
+        sxx += x * x;
+        sxy += x * spl[i];
       }
-      if (Number.isFinite(maxLo) && Number.isFinite(maxHi)) {
-        xoDipDb = Math.max(0, Math.min(maxLo, maxHi) - r.combinedSpl[xi] - 6);
-      }
-    }
+      if (n < 4) return null;
+      return (n * sxy - sx * sy) / (n * sxx - sx * sx);
+    };
 
-    // Measured acoustic slopes beside the crossing (only when targeted).
-    let midSlopeDbOct: number | null = null;
-    let tweeterSlopeDbOct: number | null = null;
-    if (acSlopes && xoF !== null) {
-      const fitSlope = (spl: readonly number[], lo: number, hi: number): number | null => {
-        let n = 0;
-        let sx = 0;
-        let sy = 0;
-        let sxx = 0;
-        let sxy = 0;
+    /** All crossing-anchored numbers for one pair. */
+    const pairMetrics = (p: DriverPair) => {
+      // Where the filtered drivers meet — anchor for the guard and protection.
+      let xi = -1;
+      for (let i = 1; i < r.freq.length; i++) {
+        if (p.lower.spl[i] - p.upper.spl[i] <= 0) {
+          xi = i;
+          break;
+        }
+      }
+      const xoF = xi > 0 ? r.freq[xi] : null;
+
+      // FUNDAMENTAL — the crossing must not sit in a VALLEY. A starved branch
+      // still "crosses" the other one, but deep in a hole between the lower
+      // driver's rolloff and the upper one's late entry (Sanders 0.68 µF cap:
+      // crossing at 6.7 kHz with the mid ~25 dB down, and every
+      // crossing-anchored guard looked exactly there and saw nothing wrong).
+      // A valley has HIGHER combined level on BOTH sides of the crossing; a
+      // mere level STEP (hot unpadded tweeter) is higher on one side only and
+      // is already priced by ripple — a global reference (band mean/P90)
+      // cannot tell the two apart and walls off the tuner's own escape path
+      // (hard learned in this guard's first two cuts). 6 dB is free room (BW3
+      // crossings, driver ripple); beyond that the crossing is a dead spot.
+      let xoDipDb = 0;
+      if (xi > 0) {
+        const xoHzV = r.freq[xi];
+        let maxLo = -Infinity;
+        let maxHi = -Infinity;
         for (let i = 0; i < r.freq.length; i++) {
           const f = r.freq[i];
-          if (f < lo || f > hi) continue;
-          const x = Math.log2(f);
-          n++;
-          sx += x;
-          sy += spl[i];
-          sxx += x * x;
-          sxy += x * spl[i];
+          if (f >= xoHzV / 4 && f <= xoHzV / 1.3) maxLo = Math.max(maxLo, r.combinedSpl[i]);
+          else if (f >= xoHzV * 1.3 && f <= xoHzV * 4) maxHi = Math.max(maxHi, r.combinedSpl[i]);
         }
-        if (n < 4) return null;
-        return (n * sxy - sx * sy) / (n * sxx - sx * sx);
-      };
-      if (acSlopes.mid) midSlopeDbOct = fitSlope(wF.spl, xoF * 1.15, xoF * 2.2);
-      if (acSlopes.tweeter) tweeterSlopeDbOct = fitSlope(tF.spl, xoF / 2.2, xoF / 1.15);
-    }
+        if (Number.isFinite(maxLo) && Number.isFinite(maxHi)) {
+          xoDipDb = Math.max(0, Math.min(maxLo, maxHi) - r.combinedSpl[xi] - 6);
+        }
+      }
 
-    // Breakup guard — same definition as the design optimizer.
-    let leakSqDb = 0;
-    if (breakupGuard && xoF !== null) {
-      let acc = 0;
-      let n = 0;
-      for (let i = 0; i < r.freq.length; i++) {
-        const f = r.freq[i];
-        let margin: number | null = null;
-        if (f >= xoF * 1.6 && f <= xoF * 4) margin = r.combinedSpl[i] - wF.spl[i];
-        else if (f >= xoF / 4 && f <= xoF / 1.6) margin = r.combinedSpl[i] - tF.spl[i];
-        if (margin !== null) {
-          const d = Math.max(0, 20 - margin);
+      // Measured acoustic slopes beside the crossing (only when targeted).
+      let lowerSlopeDbOct: number | null = null;
+      let upperSlopeDbOct: number | null = null;
+      if (acSlopes && xoF !== null) {
+        if (p.slopeLower) lowerSlopeDbOct = fitSlope(p.lower.spl, xoF * 1.15, xoF * 2.2);
+        if (p.slopeUpper) upperSlopeDbOct = fitSlope(p.upper.spl, xoF / 2.2, xoF / 1.15);
+      }
+
+      // Breakup guard — same definition as the design optimizer.
+      let leakSqDb = 0;
+      if (breakupGuard && xoF !== null) {
+        let acc = 0;
+        let n = 0;
+        for (let i = 0; i < r.freq.length; i++) {
+          const f = r.freq[i];
+          let margin: number | null = null;
+          if (f >= xoF * 1.6 && f <= xoF * 4) margin = r.combinedSpl[i] - p.lower.spl[i];
+          else if (f >= xoF / 4 && f <= xoF / 1.6) margin = r.combinedSpl[i] - p.upper.spl[i];
+          if (margin !== null) {
+            const d = Math.max(0, 20 - margin);
+            acc += d * d;
+            n++;
+          }
+        }
+        leakSqDb = n ? acc / n : 0;
+      }
+
+      // FUNDAMENTAL — upper-driver protection (always on): electrical drive at
+      // and below crossing/3 stays ≤ −15 dB, whatever the shape metric prefers.
+      let protSqDb = 0;
+      if (p.upperH && xoF !== null) {
+        let acc = 0;
+        let n = 0;
+        for (let i = 0; i < r.freq.length; i++) {
+          if (r.freq[i] > xoF / 3) continue;
+          const mag = 20 * Math.log10(Math.hypot(p.upperH[i].re, p.upperH[i].im) || 1e-9);
+          const d = Math.max(0, mag + 15);
           acc += d * d;
           n++;
         }
+        protSqDb = n ? acc / n : 0;
       }
-      leakSqDb = n ? acc / n : 0;
-    }
+      return { xoF, xoDipDb, lowerSlopeDbOct, upperSlopeDbOct, leakSqDb, protSqDb };
+    };
+
+    // Aggregate over the pairs. With one pair these are that pair's values
+    // (bit-identical to the hardcoded version); with none they are the
+    // neutral values solo mode needs; with two a 3-way simply sums the
+    // squared-deficit terms and reports the lowest crossing first.
+    const pm = pairs.map(pairMetrics);
+    const xoF = pm.length > 0 ? pm[0].xoF : null;
+    const xoDipDb = pm.reduce((a, m) => a + m.xoDipDb, 0);
+    const leakSqDb = pm.reduce((a, m) => a + m.leakSqDb, 0);
+    const protSqDb = pm.reduce((a, m) => a + m.protSqDb, 0);
+    const midSlopeDbOct = pm.length > 0 ? pm[0].lowerSlopeDbOct : null;
+    const tweeterSlopeDbOct = pm.length > 0 ? pm[0].upperSlopeDbOct : null;
 
     // FUNDAMENTAL — amplifier-load floor: min |Zin| below Z_FLOOR_OHM is a
     // silent failure (voltage drive hides it from every response metric).
@@ -680,22 +754,6 @@ export function optimizeNetworkValues(
       if (zm < zMinOhm) zMinOhm = zm;
     }
     const zShortOhm = Math.max(0, Z_FLOOR_OHM - zMinOhm);
-
-    // FUNDAMENTAL — tweeter protection (always on): electrical drive at and
-    // below crossing/3 stays ≤ −15 dB, whatever the shape metric prefers.
-    let protSqDb = 0;
-    if (hT && xoF !== null) {
-      let acc = 0;
-      let n = 0;
-      for (let i = 0; i < r.freq.length; i++) {
-        if (r.freq[i] > xoF / 3) continue;
-        const mag = 20 * Math.log10(Math.hypot(hT[i].re, hT[i].im) || 1e-9);
-        const d = Math.max(0, mag + 15);
-        acc += d * d;
-        n++;
-      }
-      protSqDb = n ? acc / n : 0;
-    }
 
     return {
       rippleDb: targetStd,
