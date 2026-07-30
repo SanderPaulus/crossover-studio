@@ -14,14 +14,23 @@
   --bad-bg: #fee2e2;
   --accent: #2563eb;
 
-  /* Validated chart series colors (dataviz palette, light) */
+  /* Validated chart series colors (dataviz palette, light).
+     Tweeter is a TEAL, not the original green: at #1baf7a it sat at 2.69:1 on
+     the panel — under the 3:1 bar for graphics, and it is one of the two main
+     curves. Plain darkening (#149366, 3.72:1) fixed the contrast but halved
+     the protanope's separation from the red null-check curve (ΔE 23 → 13);
+     teal buys the contrast AND keeps that distance (3.58:1, ΔE 22). */
   --viz-woofer: #2a78d6;
-  --viz-tweeter: #1baf7a;
+  --viz-tweeter: #0d9488;
   --viz-combined: #4a3aa7;
   --viz-null: #e34948;
-  --viz-grid: #e1e0d9;
-  --viz-axis: #c3c2b7;
-  --viz-tick: #898781;
+  /* Chart furniture in the interface's own grey family. It used to be warm
+     (#e1e0d9 / #c3c2b7 / #898781) next to cool UI greys, so the axis and grid
+     read as a different system than the panel around them. Re-tinted at
+     MATCHED luminance — same visual weight, only the yellow cast gone. */
+  --viz-grid: #dee0e4;
+  --viz-axis: #c0c2c5;
+  --viz-tick: #868789;
   /* Compare-overlay ghosts: muted but DISTINCT hues, one per tab. */
   --viz-ghost1: #64748b;
   --viz-ghost2: #8a7a4a;
@@ -50,14 +59,17 @@
     --bad-bg: #3a1414;
     --accent: #60a5fa;
 
-    /* Dark-stepped series colors (validated against #171a21) */
+    /* Dark-stepped series colors (validated against #171a21). Tweeter follows
+       the light theme's teal so the series keeps ONE identity across themes;
+       it also measures better than the green it replaces (6.99:1 vs 5.11, and
+       ΔE 20 vs 12 from the null curve for a protanope). */
     --viz-woofer: #3987e5;
-    --viz-tweeter: #199e70;
+    --viz-tweeter: #14b8a6;
     --viz-combined: #9085e9;
     --viz-null: #e66767;
-    --viz-grid: #2c2c2a;
-    --viz-axis: #383835;
-    --viz-tick: #898781;
+    --viz-grid: #2a2c2f;
+    --viz-axis: #36383c;
+    --viz-tick: #828791;
     --viz-ghost1: #94a3b8;
     --viz-ghost2: #b3a273;
     --viz-ghost3: #b294b6;
@@ -81,12 +93,12 @@
   --accent: #60a5fa;
 
   --viz-woofer: #3987e5;
-  --viz-tweeter: #199e70;
+  --viz-tweeter: #14b8a6;
   --viz-combined: #9085e9;
   --viz-null: #e66767;
-  --viz-grid: #2c2c2a;
-  --viz-axis: #383835;
-  --viz-tick: #898781;
+  --viz-grid: #2a2c2f;
+  --viz-axis: #36383c;
+  --viz-tick: #828791;
   --viz-ghost1: #94a3b8;
   --viz-ghost2: #b3a273;
   --viz-ghost3: #b294b6;
@@ -122,9 +134,11 @@ body {
   min-height: 0;
   display: grid;
   /* Left pane: user-dragged --pane-w wins, else the automatic clamp; always
-     capped so the charts keep ≥340 px. Middle column = the drag splitter. */
+     capped so the charts keep ≥340 px AND at least 40% of the width — the px
+     guard alone left the SPL chart a 263 px strip in an 800 px window.
+     Middle column = the drag splitter. */
   grid-template-columns:
-    max(260px, min(var(--pane-w, clamp(300px, 33vw, 460px)), calc(100% - 346px)))
+    max(260px, min(var(--pane-w, clamp(300px, 33vw, 460px)), calc(100% - 346px), 60%))
     6px
     minmax(0, 1fr);
 }
@@ -132,7 +146,7 @@ body {
 /* The schematic editor needs elbow room — widen the pane on the Network tab. */
 .workspace.wide-left {
   grid-template-columns:
-    max(260px, min(var(--pane-w, clamp(420px, 46vw, 700px)), calc(100% - 346px)))
+    max(260px, min(var(--pane-w, clamp(420px, 46vw, 700px)), calc(100% - 346px), 60%))
     6px
     minmax(0, 1fr);
 }
@@ -459,8 +473,14 @@ body {
 }
 
 /* Narrow screens: fall back to the classic single-column stack — unless the
-   topbar layout toggle forces "Split". */
-@media (max-width: 760px) {
+   topbar layout toggle forces "Split".
+   Threshold raised 760 → 1000 px after measuring what "it fits" actually
+   bought at 800 px (the Claude browser pane, the width this was tuned for):
+   an SPL chart of 263 × 93 px with a 144 px score strip above it. Split needs
+   room for a design pane AND a readable graph; below ~1000 px it has neither,
+   and stacked gives the chart the full width. "Split" in the topbar still
+   forces two panes at any width. */
+@media (max-width: 1000px) {
   #root:has(.app-shell:not(.layout-split)) {
     height: auto;
   }
@@ -609,6 +629,13 @@ h1 {
   display: inline-flex;
   align-items: center;
   gap: 0.3rem;
+  /* Way + order + button is the widest cluster in the toolbars; without
+     wrapping it alone pushed the page 106 px past a 375 px window. */
+  flex-wrap: wrap;
+  max-width: 100%;
+}
+.template-picker select {
+  min-width: 0;
 }
 
 /* Collapsible header for the per-driver filter-band editor. */
@@ -857,6 +884,18 @@ h2 {
   display: inline-flex;
   align-items: center;
   gap: 0.4rem;
+}
+
+/* Folds the supporting curves (ghosts, tolerance, targets) out of the legend
+   so it cannot outgrow the graph. Reads as a control, not as a series. */
+.legend-more {
+  padding: 0 0.4rem;
+  border: 1px dashed var(--border);
+  border-radius: 999px;
+  background: none;
+  color: var(--muted);
+  font-size: 0.78rem;
+  align-self: center;
 }
 
 .legend-key {
@@ -1254,6 +1293,19 @@ button:hover {
   border-color: var(--accent);
 }
 
+/* One designed focus ring for every control. Without this the app rode on the
+   browser default, which differs per browser and does not follow the accent.
+   :focus-visible only, so a mouse click never paints a ring. */
+button:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible,
+[tabindex]:focus-visible,
+summary:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
 .controls {
   display: flex;
   gap: 2rem;
@@ -1318,7 +1370,11 @@ label.check {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 1rem;
+  gap: 0.5rem 1rem;
+  /* Wrap instead of pushing past the right edge: below ~700 px the chips and
+     switches used to overflow the window (measured 707 px of content in a
+     375 px viewport, so the whole page scrolled sideways). */
+  flex-wrap: wrap;
   padding: 0.5rem 1.1rem;
   border-bottom: 1px solid var(--border);
 }
@@ -1327,6 +1383,10 @@ label.check {
   margin: 0;
   font-size: 1.05rem;
   white-space: nowrap;
+  /* The title may shrink and ellipsise; the status chips must not. */
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .theme-switch {
@@ -1738,6 +1798,27 @@ button:disabled {
   /* FIXED width: ticking stage texts must never resize the popup. */
   width: min(28rem, 92vw);
   text-align: center;
+}
+
+/* base-ui renders backdrop and popup as SIBLINGS in the portal, so a modal
+   card centres itself instead of riding the backdrop's flex box. */
+.modal-card {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 201;
+  /* Tall dialogs (the 4-step wizard) scroll inside the card instead of
+     spilling past the viewport edges, which is what a centred card without a
+     height cap does. Cards that already scroll internally (help, catalog
+     manager) stay short enough that this never engages. */
+  max-height: 92vh;
+  overflow: auto;
+}
+/* The card is a flex column: under a height cap its children would SHRINK
+   (content then hides behind the footer) instead of making the card scroll. */
+.modal-card > * {
+  flex-shrink: 0;
 }
 
 /* Scan view inside the busy card: stable row per candidate + totals line. */

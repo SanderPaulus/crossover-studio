@@ -24,6 +24,8 @@ import {
   normalizeOrigin,
 } from './lib/schematicEdit.ts';
 import SchematicEditor from './components/SchematicEditor.tsx';
+import NumberFlow from '@number-flow/react';
+import { Modal } from './components/Modal.tsx';
 import { HelpPanel } from './components/HelpPanel.tsx';
 import { CatalogManager } from './components/CatalogManager.tsx';
 import { helpSectionForTab } from './lib/help.ts';
@@ -259,6 +261,38 @@ const SILENT_GHOST_DB = -400;
 /** Compact frequency label: 9335 → "9.3 kHz", 245 → "245 Hz". */
 const hz = (f: number): string =>
   f >= 1000 ? `${(f / 1000).toFixed(f >= 10000 ? 0 : 1)} kHz` : `${Math.round(f)} Hz`;
+
+/**
+ * Simulation counter in the busy card. It arrives in jumps of thousands per
+ * progress message; rolling the digits makes a long run read as work in
+ * progress rather than a number that redraws. nl-NL grouping as before.
+ *
+ * Deliberately NOT applied to the elapsed clock or the "N/M done" counter:
+ * a digit animating every single second for three minutes is motion the
+ * designer has to keep ignoring, and the round counter moves twice a run.
+ */
+function SimCount({ value }: { value: number }) {
+  // aria-label because NumberFlow paints its digits as shadow-DOM spans with
+  // no readable text: without this the busy card's live region announces
+  // "0/3 done · sims · best dB / °" — every number missing.
+  return (
+    <NumberFlow value={value} locales="nl-NL" aria-label={value.toLocaleString('nl-NL')} />
+  );
+}
+
+/** Best-so-far ripple/phase. These only move when the optimizer actually
+ *  improves, so the roll IS the signal — it marks the moment of progress.
+ *  en-US on purpose: a decimal DOT, matching every other toFixed() readout. */
+function BestMetric({ value, digits }: { value: number; digits: number }) {
+  return (
+    <NumberFlow
+      value={value}
+      locales="en-US"
+      format={{ minimumFractionDigits: digits, maximumFractionDigits: digits }}
+      aria-label={value.toFixed(digits)}
+    />
+  );
+}
 
 /** Map a solved network's drivers to the woofer/tweeter voltage transfers by
  *  SLOT (not hard-coded model name), so an imported vxp with freely-named
@@ -549,8 +583,9 @@ export default function App() {
   };
 
   /**
-   * Layout mode: 'auto' follows window width (split ≥760 px), 'split' and
-   * 'stacked' force the two-pane / classic single-column layout. Persisted.
+   * Layout mode: 'auto' follows window width (split ≥1000 px — the CSS media
+   * query owns the number), 'split' and 'stacked' force the two-pane / classic
+   * single-column layout. Persisted.
    */
   const [layoutMode, setLayoutMode] = useState<'auto' | 'split' | 'stacked'>(() => {
     const m = localStorage.getItem('ads-ui-layout');
@@ -561,19 +596,35 @@ export default function App() {
   }, [layoutMode]);
 
   /**
-   * Draggable divider between the design pane and the charts: width in px of
-   * the left pane, null = automatic (the CSS clamp defaults). During a drag the
-   * CSS variable is written straight to the DOM node so the whole app doesn't
-   * re-render per mouse move; the value is committed to state on release.
+   * Draggable divider between the design pane and the charts: the left pane's
+   * share of the workspace (0–1), null = automatic (the CSS clamp defaults).
+   *
+   * A FRACTION, not pixels — hard learned by measuring: a width dragged on a
+   * wide monitor (704 px) followed the app into an 800 px window, where the
+   * `calc(100% - 346px)` guard was all that stood between the charts and
+   * nothing. The SPL chart ended up 263 × 93 px with a 144 px score strip
+   * above it. A share scales with the window, so the preference means the
+   * same thing on both screens.
+   *
+   * During a drag the CSS variable is written straight to the DOM node so the
+   * whole app doesn't re-render per mouse move; state is committed on release.
    */
-  const [paneW, setPaneW] = useState<number | null>(() => {
-    const v = Number(localStorage.getItem('ads-ui-panew') ?? NaN);
-    return Number.isFinite(v) && v >= 240 ? v : null;
+  const [paneFrac, setPaneFrac] = useState<number | null>(() => {
+    const f = Number(localStorage.getItem('ads-ui-panefrac') ?? NaN);
+    if (Number.isFinite(f) && f > 0.1 && f < 0.9) return f;
+    // Migrate the legacy px setting against the current window (the workspace
+    // spans the full width), so an existing split is not silently discarded.
+    const px = Number(localStorage.getItem('ads-ui-panew') ?? NaN);
+    if (Number.isFinite(px) && px >= 240 && window.innerWidth > 0) {
+      return Math.min(0.8, Math.max(0.2, px / window.innerWidth));
+    }
+    return null;
   });
   useEffect(() => {
-    if (paneW == null) localStorage.removeItem('ads-ui-panew');
-    else localStorage.setItem('ads-ui-panew', String(Math.round(paneW)));
-  }, [paneW]);
+    localStorage.removeItem('ads-ui-panew');
+    if (paneFrac == null) localStorage.removeItem('ads-ui-panefrac');
+    else localStorage.setItem('ads-ui-panefrac', paneFrac.toFixed(4));
+  }, [paneFrac]);
   const workspaceRef = useRef<HTMLDivElement | null>(null);
   const startPaneDrag = (e: ReactPointerEvent<HTMLDivElement>) => {
     const ws = workspaceRef.current;
@@ -582,17 +633,18 @@ export default function App() {
     const el = e.currentTarget;
     el.setPointerCapture(e.pointerId);
     const rect = ws.getBoundingClientRect();
-    let w: number | null = null;
+    let frac: number | null = null;
     const move = (ev: PointerEvent) => {
       // Keep both panes usable: left ≥260 px, charts ≥340 px (+6 px splitter).
-      w = Math.max(260, Math.min(ev.clientX - rect.left, rect.width - 346));
-      ws.style.setProperty('--pane-w', `${w}px`);
+      const w = Math.max(260, Math.min(ev.clientX - rect.left, rect.width - 346));
+      frac = w / rect.width;
+      ws.style.setProperty('--pane-w', `${(frac * 100).toFixed(3)}%`);
     };
     const done = () => {
       el.removeEventListener('pointermove', move);
       el.removeEventListener('pointerup', done);
       el.removeEventListener('pointercancel', done);
-      if (w != null) setPaneW(w);
+      if (frac != null) setPaneFrac(frac);
     };
     el.addEventListener('pointermove', move);
     el.addEventListener('pointerup', done);
@@ -3095,6 +3147,8 @@ export default function App() {
             dash: GHOST_DASHES[i % GHOST_DASHES.length],
             width: 1.4,
             x: grid,
+            // Comparison curves, not the subject — fold them in the legend.
+            secondary: true,
           };
           spl.push({ ...style, id: `ghost:${d.id}`, y: combined.combinedSpl });
           phase.push({
@@ -3220,6 +3274,7 @@ export default function App() {
       x: result.freq,
       y: shapes[k].map((s) => s + offset),
       defaultOff: true,
+      secondary: true,
     }));
   }, [result, vFilters, trimDb, woofer, tweeter]);
 
@@ -3244,6 +3299,7 @@ export default function App() {
               width: 1.2,
               x: result.freq,
               y: tolBand.upperDb,
+              secondary: true,
             },
             {
               id: 'tollo',
@@ -3253,6 +3309,7 @@ export default function App() {
               width: 1.2,
               x: result.freq,
               y: tolBand.lowerDb,
+              secondary: true,
             },
           ] satisfies Series[])
         : []),
@@ -3595,10 +3652,14 @@ export default function App() {
           </table>
           <div className="busy-totals">
             {vfProgress.round}/{vfProgress.items.length} done ·{' '}
-            {vfProgress.evals.toLocaleString('nl-NL')} sims
-            {vfProgress.rippleDb !== undefined && vfProgress.phaseDeg !== undefined
-              ? ` · best ${vfProgress.rippleDb.toFixed(2)} dB / ${vfProgress.phaseDeg.toFixed(1)}°`
-              : ''}
+            <SimCount value={vfProgress.evals} /> sims
+            {vfProgress.rippleDb !== undefined && vfProgress.phaseDeg !== undefined && (
+              <>
+                {' · best '}
+                <BestMetric value={vfProgress.rippleDb} digits={2} /> dB /{' '}
+                <BestMetric value={vfProgress.phaseDeg} digits={1} />°
+              </>
+            )}
             {` · ${Math.floor(busyElapsed / 60)}:${String(busyElapsed % 60).padStart(2, '0')}`}
           </div>
         </>
@@ -3630,16 +3691,25 @@ export default function App() {
         </>
       ) : (
         <div className="busy-detail">
-          {vfBusy && vfProgress
-            ? `round ${vfProgress.round} · ${vfProgress.evals.toLocaleString('nl-NL')} network sims` +
-              (vfProgress.rippleDb !== undefined && vfProgress.phaseDeg !== undefined
-                ? ` · best ${vfProgress.rippleDb.toFixed(2)} dB / ${vfProgress.phaseDeg.toFixed(1)}°`
-                : '')
-            : vfBusy
-              ? 'searching structures and EQ stages — runs in the background, the app stays live'
-              : netOptBusy
-                ? 'value fit, prune/escalate, debris sweep'
-                : 'fitting real component values on the measured impedances'}
+          {vfBusy && vfProgress ? (
+            <>
+              {`round ${vfProgress.round} · `}
+              <SimCount value={vfProgress.evals} /> network sims
+              {vfProgress.rippleDb !== undefined && vfProgress.phaseDeg !== undefined && (
+                <>
+                  {' · best '}
+                  <BestMetric value={vfProgress.rippleDb} digits={2} /> dB /{' '}
+                  <BestMetric value={vfProgress.phaseDeg} digits={1} />°
+                </>
+              )}
+            </>
+          ) : vfBusy ? (
+            'searching structures and EQ stages — runs in the background, the app stays live'
+          ) : netOptBusy ? (
+            'value fit, prune/escalate, debris sweep'
+          ) : (
+            'fitting real component values on the measured impedances'
+          )}
           {anyBusy && busyElapsed > 0 ? ` · ${Math.floor(busyElapsed / 60)}:${String(busyElapsed % 60).padStart(2, '0')}` : ''}
         </div>
       )}
@@ -3674,118 +3744,75 @@ export default function App() {
         <CatalogManager onClose={() => setCatalogMgrOpen(false)} onSave={saveCatalogParts} />
       )}
       {wizardOpen && (
-        <div className="busy-overlay" onClick={() => setWizardOpen(false)}>
-          <div className="busy-card targets-card wizard-card" onClick={(e) => e.stopPropagation()}>
-            <div className="busy-title">🧙 Design wizard</div>
-            <div className="wizard-steps">
-              {[1, 2, 3, 4].map((n) => (
-                <span key={n} className={wizardStep >= 1 && n <= wizardStep ? 'done' : ''} />
-              ))}
-            </div>
-            <p className="sub" style={{ width: '100%', margin: 0 }}>
-              {wizardStep === 0
-                ? 'First — load your measurements'
-                : `Step ${wizardStep} of 4 · ${
-                    ['Goals', 'Crossover', 'Components', 'Review & run'][wizardStep - 1]
-                  }`}
-            </p>
+        <Modal
+          open
+          onClose={() => setWizardOpen(false)}
+          label="Design wizard"
+          cardClass="targets-card wizard-card"
+        >
+          <div className="busy-title">🧙 Design wizard</div>
+          <div className="wizard-steps">
+            {[1, 2, 3, 4].map((n) => (
+              <span key={n} className={wizardStep >= 1 && n <= wizardStep ? 'done' : ''} />
+            ))}
+          </div>
+          <p className="sub" style={{ width: '100%', margin: 0 }}>
+            {wizardStep === 0
+              ? 'First — load your measurements'
+              : `Step ${wizardStep} of 4 · ${
+                  ['Goals', 'Crossover', 'Components', 'Review & run'][wizardStep - 1]
+                }`}
+          </p>
 
-            <div className="wizard-body">
-            {wizardStep === 0 && (
-              <>
-                <p>
-                  <strong>Measurements</strong> — the wizard designs from your driver data, so we
-                  need that first. Load a 0° FRD per driver to start; include the .ZMA impedance
-                  and any angle files in the SAME pick to unlock more (they're recognised by
-                  extension and filename).
-                </p>
-                <button
-                  type="button"
-                  className="primary"
-                  onClick={loadDemo}
-                  title="Load the bundled KOAN measurements (all angles + impedances + vxp variants) — instant playground"
-                >
-                  🎧 Load KOAN demo data
-                </button>
-                <p className="sub" style={{ marginBottom: '0.2rem' }}>
-                  …or load your own:
-                </p>
-                <label className="file-button" style={{ display: 'block', marginBottom: '0.3rem' }}>
-                  {woofer ? `✓ Woofer / mid — ${woofer.name}` : 'Woofer / mid — FRD (+ ZMA, + angle files)'}
-                  <input
-                    type="file"
-                    accept=".frd,.txt,.zma,.ZMA"
-                    multiple
-                    onChange={loadDriverFiles('woofer')}
-                    style={{ display: 'none' }}
-                  />
-                </label>
-                <label className="file-button" style={{ display: 'block' }}>
-                  {tweeter ? `✓ Tweeter — ${tweeter.name}` : 'Tweeter — FRD (+ ZMA, + angle files)'}
-                  <input
-                    type="file"
-                    accept=".frd,.txt,.zma,.ZMA"
-                    multiple
-                    onChange={loadDriverFiles('tweeter')}
-                    style={{ display: 'none' }}
-                  />
-                </label>
-                <p className="sub">
-                  Two drivers = crossover design; one driver = <strong>single-driver mode</strong>
-                  {' '}(flatten that driver — series traps, shelf groups, Zobel).{' '}
-                  <strong>Impedances (.ZMA)</strong> unlock the
-                  passive build &amp; component tune; <strong>angle files</strong> unlock the
-                  amplitude target &amp; in-room weight in the Goals step. The full importer (VituixCAD
-                  projects, save/load) lives in the Import tab.
-                </p>
-                {timing && (
-                  <div
-                    style={{
-                      marginTop: '0.6rem',
-                      paddingTop: '0.5rem',
-                      borderTop: '1px solid rgba(128,128,128,0.25)',
-                    }}
-                  >
-                    <p style={{ margin: '0 0 0.2rem' }}>
-                      <strong>Timing check</strong>{' '}
-                      <span className="sub">
-                        — do the two phase measurements share a time reference? (Wrong timing
-                        silently ruins the phase sum — it's the whole reason this tool exists.)
-                      </span>
-                    </p>
-                    {timing.ref.verdict === 'plausible' ? (
-                      <p className="sub" style={{ margin: 0 }}>
-                        ✓ <strong>Plausible</strong> — the measured phase carries the real
-                        inter-driver delay (Δ {timing.ref.deltaUs.toFixed(0)} µs ≈{' '}
-                        {timing.ref.deltaMm.toFixed(1)} mm). Offset stays 0; nothing to enter.
-                      </p>
-                    ) : (
-                      <>
-                        <p className="nl-warning" style={{ margin: '0 0 0.3rem' }}>
-                          ⚠ <strong>{timing.ref.verdict}</strong> — {timing.ref.message}
-                        </p>
-                        <p style={{ margin: 0 }}>
-                          Physical offset between the drivers' acoustic centres (tweeter deeper =
-                          positive){' '}
-                          <input
-                            type="number"
-                            step={1}
-                            value={offsetMm}
-                            onChange={(e) => setOffsetMm(e.target.value)}
-                            style={{ width: '5rem' }}
-                          />{' '}
-                          mm <span className="sub">= {delayUs.toFixed(0)} µs delay</span>
-                        </p>
-                        <p className="sub" style={{ margin: '0.2rem 0 0' }}>
-                          Enter it from the physical driver spacing (the measured Δ ≈{' '}
-                          {timing.ref.deltaMm.toFixed(1)} mm looks off, so don't trust it blindly).
-                          The full timing sanity check + the measured/minimum phase toggle live in
-                          the Setup tab.
-                        </p>
-                      </>
-                    )}
-                  </div>
-                )}
+          <div className="wizard-body">
+          {wizardStep === 0 && (
+            <>
+              <p>
+                <strong>Measurements</strong> — the wizard designs from your driver data, so we
+                need that first. Load a 0° FRD per driver to start; include the .ZMA impedance
+                and any angle files in the SAME pick to unlock more (they're recognised by
+                extension and filename).
+              </p>
+              <button
+                type="button"
+                className="primary"
+                onClick={loadDemo}
+                title="Load the bundled KOAN measurements (all angles + impedances + vxp variants) — instant playground"
+              >
+                🎧 Load KOAN demo data
+              </button>
+              <p className="sub" style={{ marginBottom: '0.2rem' }}>
+                …or load your own:
+              </p>
+              <label className="file-button" style={{ display: 'block', marginBottom: '0.3rem' }}>
+                {woofer ? `✓ Woofer / mid — ${woofer.name}` : 'Woofer / mid — FRD (+ ZMA, + angle files)'}
+                <input
+                  type="file"
+                  accept=".frd,.txt,.zma,.ZMA"
+                  multiple
+                  onChange={loadDriverFiles('woofer')}
+                  style={{ display: 'none' }}
+                />
+              </label>
+              <label className="file-button" style={{ display: 'block' }}>
+                {tweeter ? `✓ Tweeter — ${tweeter.name}` : 'Tweeter — FRD (+ ZMA, + angle files)'}
+                <input
+                  type="file"
+                  accept=".frd,.txt,.zma,.ZMA"
+                  multiple
+                  onChange={loadDriverFiles('tweeter')}
+                  style={{ display: 'none' }}
+                />
+              </label>
+              <p className="sub">
+                Two drivers = crossover design; one driver = <strong>single-driver mode</strong>
+                {' '}(flatten that driver — series traps, shelf groups, Zobel).{' '}
+                <strong>Impedances (.ZMA)</strong> unlock the
+                passive build &amp; component tune; <strong>angle files</strong> unlock the
+                amplitude target &amp; in-room weight in the Goals step. The full importer (VituixCAD
+                projects, save/load) lives in the Import tab.
+              </p>
+              {timing && (
                 <div
                   style={{
                     marginTop: '0.6rem',
@@ -3794,831 +3821,883 @@ export default function App() {
                   }}
                 >
                   <p style={{ margin: '0 0 0.2rem' }}>
-                    <strong>Component catalog</strong>{' '}
+                    <strong>Timing check</strong>{' '}
                     <span className="sub">
-                      — powers Snap to catalog &amp; the BOM. It lives OUTSIDE the project, so it
-                      persists across a Reset (that's why the optimizer can still use one).
+                      — do the two phase measurements share a time reference? (Wrong timing
+                      silently ruins the phase sum — it's the whole reason this tool exists.)
                     </span>
                   </p>
-                  <p className="sub" style={{ margin: '0 0 0.3rem' }}>
-                    {hasImportedCatalog()
-                      ? `✓ An imported catalog is still loaded — ${allSeries().length} series` +
-                        (customCatalogParts().length
-                          ? ` · ${customCatalogParts().length} exact parts`
-                          : '') +
-                        (allSeries().some((sr) => sr.basePrice !== undefined) ||
-                        customCatalogParts().some((pp) => pp.priceEur !== undefined)
-                          ? ' · prices'
-                          : '') +
-                        '. Snap-to-catalog is available.'
-                      : `No imported catalog — only the built-in library (${allSeries().length} series) for BOM matching & inspector suggestions. Import one to unlock Snap to catalog + real prices.`}
-                  </p>
-                  <label className="file-button" style={{ display: 'inline-block' }}>
-                    {hasImportedCatalog() ? 'Replace catalog' : 'Import catalog (optional)'}
-                    <input
-                      type="file"
-                      accept=".json,.adscatalog"
-                      onChange={importCatalogFromFile}
-                      style={{ display: 'none' }}
-                    />
-                  </label>
-                </div>
-              </>
-            )}
-
-            {wizardStep === 1 && (
-              <>
-                <p>
-                  <strong>Goals</strong> — start with what "done" means. How simple should the
-                  filter be, and how do you weigh a flat response against tight phase? (Shared
-                  with ⚙ Settings — this is just the guided path.)
-                </p>
-                <label style={{ display: 'block' }}>
-                  <input
-                    type="checkbox"
-                    checked={stagedOn}
-                    onChange={(e) => setStagedOn(e.target.checked)}
-                  />{' '}
-                  Staged design — stop escalating once the targets are met (fewest components)
-                </label>
-                {stagedOn && (
-                  <p>
-                    Targets: ripple ≤{' '}
-                    <input
-                      type="number"
-                      min={0.1}
-                      max={3}
-                      step={0.1}
-                      value={targetRipple}
-                      onChange={(e) => setTargetRipple(e.target.value)}
-                      style={{ width: '4.5rem' }}
-                    />{' '}
-                    ±dB peak (as in the SPL strip)
-                    {!soloDriver && (
-                      <>
-                        {' '}· phase ≤{' '}
+                  {timing.ref.verdict === 'plausible' ? (
+                    <p className="sub" style={{ margin: 0 }}>
+                      ✓ <strong>Plausible</strong> — the measured phase carries the real
+                      inter-driver delay (Δ {timing.ref.deltaUs.toFixed(0)} µs ≈{' '}
+                      {timing.ref.deltaMm.toFixed(1)} mm). Offset stays 0; nothing to enter.
+                    </p>
+                  ) : (
+                    <>
+                      <p className="nl-warning" style={{ margin: '0 0 0.3rem' }}>
+                        ⚠ <strong>{timing.ref.verdict}</strong> — {timing.ref.message}
+                      </p>
+                      <p style={{ margin: 0 }}>
+                        Physical offset between the drivers' acoustic centres (tweeter deeper =
+                        positive){' '}
                         <input
                           type="number"
-                          min={1}
-                          max={90}
                           step={1}
-                          value={targetPhase}
-                          onChange={(e) => setTargetPhase(e.target.value)}
-                          style={{ width: '4.5rem' }}
+                          value={offsetMm}
+                          onChange={(e) => setOffsetMm(e.target.value)}
+                          style={{ width: '5rem' }}
                         />{' '}
-                        °
-                      </>
-                    )}
-                  </p>
-                )}
-                {soloDriver ? (
-                  <p className="sub">
-                    Single-driver mode: relative phase does not exist, so the priority trade-off
-                    doesn't apply — the solo engine optimises response flatness with cut-only
-                    EQ/shelves.
-                  </p>
-                ) : (
-                <p style={{ marginBottom: '0.1rem' }}>What should the optimizer favour?</p>
-                )}
-                {!soloDriver &&
-                  (
-                    [
-                      ['flat', 25, 'Flattest on-axis response', 'the tightest ±dB straight ahead'],
-                      ['bal', 50, 'Balanced', 'equal weight — a good default'],
-                      [
-                        'phase',
-                        75,
-                        'Tightest phase & off-axis',
-                        'best driver phase-tracking / vertical spread (often near-free)',
-                      ],
-                    ] as const
-                  ).map(([key, val, label, hint]) => {
-                    const bucket =
-                      phasePriority < 40 ? 'flat' : phasePriority > 60 ? 'phase' : 'bal';
-                    return (
-                      <label key={key} style={{ display: 'block' }}>
-                        <input
-                          type="radio"
-                          name="wiz-priority"
-                          checked={bucket === key}
-                          onChange={() => setPhasePriority(val)}
-                        />{' '}
-                        {label} <span className="sub">— {hint}</span>
-                      </label>
-                    );
-                  })}
-                {!soloDriver && (
-                <p className="sub">
-                  On real measurements a smooth response already buys most of the phase, so
-                  these differ less than you'd expect — fine control (any %) lives in ⚙ Settings.
-                </p>
-                )}
-                {angleSets ? (
-                  <>
-                    {/* --- Amplitude target: its own section, with a live illustration --- */}
-                    <div
-                      style={{
-                        marginTop: '0.7rem',
-                        paddingTop: '0.5rem',
-                        borderTop: '1px solid rgba(128,128,128,0.25)',
-                      }}
-                    >
-                      <p style={{ margin: '0 0 0.3rem' }}>
-                        <strong>Amplitude target</strong>{' '}
-                        <span className="sub">— which curve the optimizer flattens</span>
+                        mm <span className="sub">= {delayUs.toFixed(0)} µs delay</span>
                       </p>
-                      <div style={{ display: 'flex', gap: '0.9rem', alignItems: 'center', flexWrap: 'wrap' }}>
-                        <div style={{ flex: '0 0 auto', textAlign: 'center' }}>
-                          {(() => {
-                            const win = ampTarget === 'listeningWindow';
-                            const rays = [
-                              { deg: 0, x: 136, y: 96 },
-                              { deg: 15, x: 132.3, y: 67.5 },
-                              { deg: 30, x: 121.3, y: 41 },
-                              { deg: 45, x: 103.8, y: 18.2 },
-                              { deg: 60, x: 81, y: 0.7 },
-                            ];
-                            return (
-                              <svg viewBox="0 0 150 116" width="150" height="116" aria-hidden="true">
-                                {win && (
-                                  <polygon
-                                    points="26,96 136,96 132.3,67.5 121.3,41"
-                                    fill="var(--accent)"
-                                    opacity="0.18"
-                                  />
-                                )}
-                                {rays.map((r) => {
-                                  const hot = win ? r.deg <= 30 : r.deg === 0;
-                                  return (
-                                    <line
-                                      key={r.deg}
-                                      x1={26}
-                                      y1={96}
-                                      x2={r.x}
-                                      y2={r.y}
-                                      stroke={hot ? 'var(--accent)' : 'currentColor'}
-                                      strokeOpacity={hot ? 1 : 0.25}
-                                      strokeWidth={hot ? 2 : 1}
-                                    />
-                                  );
-                                })}
-                                <rect x="11" y="82" width="18" height="28" rx="3" fill="currentColor" opacity="0.3" />
-                                <circle cx="21" cy="96" r="6.5" fill="currentColor" opacity="0.55" />
-                                <text x="138" y="99" fontSize="8" fill="currentColor" opacity="0.55">0°</text>
-                                <text x="123" y="38" fontSize="8" fill="currentColor" opacity="0.55">30°</text>
-                                <text x="70" y="8" fontSize="8" fill="currentColor" opacity="0.55">60°</text>
-                              </svg>
-                            );
-                          })()}
-                          <p className="sub" style={{ margin: '0.1rem 0 0' }}>
-                            {ampTarget === 'listeningWindow'
-                              ? 'flattening the 0–30° average'
-                              : 'flattening the 0° axis'}
-                          </p>
-                        </div>
-                        <div style={{ flex: '1 1 12rem' }}>
-                          <label style={{ display: 'block' }}>
-                            <input
-                              type="radio"
-                              name="wiz-amptarget"
-                              checked={ampTarget === 'onAxis'}
-                              onChange={() => setAmpTarget('onAxis')}
-                            />{' '}
-                            On-axis (0°){' '}
-                            <span className="sub">
-                              — flattest response dead ahead; off-axis falls where it falls. Best
-                              for near-field or a fixed seat.
-                            </span>
-                          </label>
-                          <label style={{ display: 'block', marginTop: '0.3rem' }}>
-                            <input
-                              type="radio"
-                              name="wiz-amptarget"
-                              checked={ampTarget === 'listeningWindow'}
-                              onChange={() => setAmpTarget('listeningWindow')}
-                            />{' '}
-                            Listening window (0–30°){' '}
-                            <span className="sub">
-                              — averages the front arc, so a hair of on-axis flatness buys a
-                              smoother tone across a normal seating spread.
-                            </span>
-                          </label>
-                        </div>
-                      </div>
-                    </div>
-                    {/* --- In-room weight: its own section --- */}
-                    <div
-                      style={{
-                        marginTop: '0.6rem',
-                        paddingTop: '0.5rem',
-                        borderTop: '1px solid rgba(128,128,128,0.25)',
-                      }}
-                    >
-                      <p style={{ margin: '0 0 0.2rem' }}>
-                        <strong>In-room weight: {dirWeight}%</strong>{' '}
-                        <span className="sub">(energy average)</span>
-                      </p>
-                      <input
-                        type="range"
-                        min={0}
-                        max={100}
-                        step={5}
-                        value={dirWeight}
-                        onChange={(e) => setDirWeight(Number(e.target.value))}
-                        style={{ width: '11rem', accentColor: 'var(--accent)', verticalAlign: 'middle' }}
-                      />
                       <p className="sub" style={{ margin: '0.2rem 0 0' }}>
-                        How much it ALSO smooths the energy average (the power response: every angle
-                        summed ≈ the room's tonal balance). Higher = more even directivity /
-                        smoother in-room sound, trading a little on-axis flatness. 0% = on-axis
-                        only.
+                        Enter it from the physical driver spacing (the measured Δ ≈{' '}
+                        {timing.ref.deltaMm.toFixed(1)} mm looks off, so don't trust it blindly).
+                        The full timing sanity check + the measured/minimum phase toggle live in
+                        the Setup tab.
                       </p>
-                    </div>
-                  </>
-                ) : (
-                  <p className="sub" style={{ marginTop: '0.7rem' }}>
-                    <strong>Amplitude target &amp; in-room weight</strong> unlock once you load
-                    angle measurements (Import → per-driver angle FRDs). With only a 0° measurement
-                    there is nothing off-axis to optimise, so these stay inert.
-                  </p>
-                )}
-              </>
-            )}
-
-            {wizardStep === 2 && (
-              <>
-                <p>
-                  <strong>Crossover</strong> — where the drivers hand over, and how steep the
-                  ACOUSTIC slopes are. On real measurements Auto usually wins; force a slope only
-                  when you have a reason — a placeholder driver, or a house alignment.
+                    </>
+                  )}
+                </div>
+              )}
+              <div
+                style={{
+                  marginTop: '0.6rem',
+                  paddingTop: '0.5rem',
+                  borderTop: '1px solid rgba(128,128,128,0.25)',
+                }}
+              >
+                <p style={{ margin: '0 0 0.2rem' }}>
+                  <strong>Component catalog</strong>{' '}
+                  <span className="sub">
+                    — powers Snap to catalog &amp; the BOM. It lives OUTSIDE the project, so it
+                    persists across a Reset (that's why the optimizer can still use one).
+                  </span>
                 </p>
-                {suggestedBand && (
+                <p className="sub" style={{ margin: '0 0 0.3rem' }}>
+                  {hasImportedCatalog()
+                    ? `✓ An imported catalog is still loaded — ${allSeries().length} series` +
+                      (customCatalogParts().length
+                        ? ` · ${customCatalogParts().length} exact parts`
+                        : '') +
+                      (allSeries().some((sr) => sr.basePrice !== undefined) ||
+                      customCatalogParts().some((pp) => pp.priceEur !== undefined)
+                        ? ' · prices'
+                        : '') +
+                      '. Snap-to-catalog is available.'
+                    : `No imported catalog — only the built-in library (${allSeries().length} series) for BOM matching & inspector suggestions. Import one to unlock Snap to catalog + real prices.`}
+                </p>
+                <label className="file-button" style={{ display: 'inline-block' }}>
+                  {hasImportedCatalog() ? 'Replace catalog' : 'Import catalog (optional)'}
+                  <input
+                    type="file"
+                    accept=".json,.adscatalog"
+                    onChange={importCatalogFromFile}
+                    style={{ display: 'none' }}
+                  />
+                </label>
+              </div>
+            </>
+          )}
+
+          {wizardStep === 1 && (
+            <>
+              <p>
+                <strong>Goals</strong> — start with what "done" means. How simple should the
+                filter be, and how do you weigh a flat response against tight phase? (Shared
+                with ⚙ Settings — this is just the guided path.)
+              </p>
+              <label style={{ display: 'block' }}>
+                <input
+                  type="checkbox"
+                  checked={stagedOn}
+                  onChange={(e) => setStagedOn(e.target.checked)}
+                />{' '}
+                Staged design — stop escalating once the targets are met (fewest components)
+              </label>
+              {stagedOn && (
+                <p>
+                  Targets: ripple ≤{' '}
+                  <input
+                    type="number"
+                    min={0.1}
+                    max={3}
+                    step={0.1}
+                    value={targetRipple}
+                    onChange={(e) => setTargetRipple(e.target.value)}
+                    style={{ width: '4.5rem' }}
+                  />{' '}
+                  ±dB peak (as in the SPL strip)
+                  {!soloDriver && (
+                    <>
+                      {' '}· phase ≤{' '}
+                      <input
+                        type="number"
+                        min={1}
+                        max={90}
+                        step={1}
+                        value={targetPhase}
+                        onChange={(e) => setTargetPhase(e.target.value)}
+                        style={{ width: '4.5rem' }}
+                      />{' '}
+                      °
+                    </>
+                  )}
+                </p>
+              )}
+              {soloDriver ? (
+                <p className="sub">
+                  Single-driver mode: relative phase does not exist, so the priority trade-off
+                  doesn't apply — the solo engine optimises response flatness with cut-only
+                  EQ/shelves.
+                </p>
+              ) : (
+              <p style={{ marginBottom: '0.1rem' }}>What should the optimizer favour?</p>
+              )}
+              {!soloDriver &&
+                (
+                  [
+                    ['flat', 25, 'Flattest on-axis response', 'the tightest ±dB straight ahead'],
+                    ['bal', 50, 'Balanced', 'equal weight — a good default'],
+                    [
+                      'phase',
+                      75,
+                      'Tightest phase & off-axis',
+                      'best driver phase-tracking / vertical spread (often near-free)',
+                    ],
+                  ] as const
+                ).map(([key, val, label, hint]) => {
+                  const bucket =
+                    phasePriority < 40 ? 'flat' : phasePriority > 60 ? 'phase' : 'bal';
+                  return (
+                    <label key={key} style={{ display: 'block' }}>
+                      <input
+                        type="radio"
+                        name="wiz-priority"
+                        checked={bucket === key}
+                        onChange={() => setPhasePriority(val)}
+                      />{' '}
+                      {label} <span className="sub">— {hint}</span>
+                    </label>
+                  );
+                })}
+              {!soloDriver && (
+              <p className="sub">
+                On real measurements a smooth response already buys most of the phase, so
+                these differ less than you'd expect — fine control (any %) lives in ⚙ Settings.
+              </p>
+              )}
+              {angleSets ? (
+                <>
+                  {/* --- Amplitude target: its own section, with a live illustration --- */}
                   <div
                     style={{
-                      marginBottom: '0.5rem',
-                      paddingBottom: '0.5rem',
-                      borderBottom: '1px solid rgba(128,128,128,0.25)',
+                      marginTop: '0.7rem',
+                      paddingTop: '0.5rem',
+                      borderTop: '1px solid rgba(128,128,128,0.25)',
+                    }}
+                  >
+                    <p style={{ margin: '0 0 0.3rem' }}>
+                      <strong>Amplitude target</strong>{' '}
+                      <span className="sub">— which curve the optimizer flattens</span>
+                    </p>
+                    <div style={{ display: 'flex', gap: '0.9rem', alignItems: 'center', flexWrap: 'wrap' }}>
+                      <div style={{ flex: '0 0 auto', textAlign: 'center' }}>
+                        {(() => {
+                          const win = ampTarget === 'listeningWindow';
+                          const rays = [
+                            { deg: 0, x: 136, y: 96 },
+                            { deg: 15, x: 132.3, y: 67.5 },
+                            { deg: 30, x: 121.3, y: 41 },
+                            { deg: 45, x: 103.8, y: 18.2 },
+                            { deg: 60, x: 81, y: 0.7 },
+                          ];
+                          return (
+                            <svg viewBox="0 0 150 116" width="150" height="116" aria-hidden="true">
+                              {win && (
+                                <polygon
+                                  points="26,96 136,96 132.3,67.5 121.3,41"
+                                  fill="var(--accent)"
+                                  opacity="0.18"
+                                />
+                              )}
+                              {rays.map((r) => {
+                                const hot = win ? r.deg <= 30 : r.deg === 0;
+                                return (
+                                  <line
+                                    key={r.deg}
+                                    x1={26}
+                                    y1={96}
+                                    x2={r.x}
+                                    y2={r.y}
+                                    stroke={hot ? 'var(--accent)' : 'currentColor'}
+                                    strokeOpacity={hot ? 1 : 0.25}
+                                    strokeWidth={hot ? 2 : 1}
+                                  />
+                                );
+                              })}
+                              <rect x="11" y="82" width="18" height="28" rx="3" fill="currentColor" opacity="0.3" />
+                              <circle cx="21" cy="96" r="6.5" fill="currentColor" opacity="0.55" />
+                              <text x="138" y="99" fontSize="8" fill="currentColor" opacity="0.55">0°</text>
+                              <text x="123" y="38" fontSize="8" fill="currentColor" opacity="0.55">30°</text>
+                              <text x="70" y="8" fontSize="8" fill="currentColor" opacity="0.55">60°</text>
+                            </svg>
+                          );
+                        })()}
+                        <p className="sub" style={{ margin: '0.1rem 0 0' }}>
+                          {ampTarget === 'listeningWindow'
+                            ? 'flattening the 0–30° average'
+                            : 'flattening the 0° axis'}
+                        </p>
+                      </div>
+                      <div style={{ flex: '1 1 12rem' }}>
+                        <label style={{ display: 'block' }}>
+                          <input
+                            type="radio"
+                            name="wiz-amptarget"
+                            checked={ampTarget === 'onAxis'}
+                            onChange={() => setAmpTarget('onAxis')}
+                          />{' '}
+                          On-axis (0°){' '}
+                          <span className="sub">
+                            — flattest response dead ahead; off-axis falls where it falls. Best
+                            for near-field or a fixed seat.
+                          </span>
+                        </label>
+                        <label style={{ display: 'block', marginTop: '0.3rem' }}>
+                          <input
+                            type="radio"
+                            name="wiz-amptarget"
+                            checked={ampTarget === 'listeningWindow'}
+                            onChange={() => setAmpTarget('listeningWindow')}
+                          />{' '}
+                          Listening window (0–30°){' '}
+                          <span className="sub">
+                            — averages the front arc, so a hair of on-axis flatness buys a
+                            smoother tone across a normal seating spread.
+                          </span>
+                        </label>
+                      </div>
+                    </div>
+                  </div>
+                  {/* --- In-room weight: its own section --- */}
+                  <div
+                    style={{
+                      marginTop: '0.6rem',
+                      paddingTop: '0.5rem',
+                      borderTop: '1px solid rgba(128,128,128,0.25)',
                     }}
                   >
                     <p style={{ margin: '0 0 0.2rem' }}>
-                      <strong>Tuning range</strong>{' '}
-                      <span className="sub">
-                        — the band the optimizer flattens &amp; scores over (the design scope)
-                      </span>
+                      <strong>In-room weight: {dirWeight}%</strong>{' '}
+                      <span className="sub">(energy average)</span>
                     </p>
-                    <p style={{ margin: 0 }}>
-                      <input
-                        type="number"
-                        min={20}
-                        max={5000}
-                        step={10}
-                        value={fMin}
-                        onChange={(e) => setFMin(e.target.value)}
-                        style={{ width: '5.5rem' }}
-                      />{' '}
-                      –{' '}
-                      <input
-                        type="number"
-                        min={1000}
-                        max={40000}
-                        step={100}
-                        value={fMax}
-                        onChange={(e) => setFMax(e.target.value)}
-                        style={{ width: '6rem' }}
-                      />{' '}
-                      Hz{' '}
-                      {fMin !== String(suggestedBand[0]) || fMax !== String(suggestedBand[1]) ? (
-                        <>
-                          · suggested{' '}
-                          <strong>
-                            {suggestedBand[0]}–{suggestedBand[1]} Hz
-                          </strong>{' '}
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setFMin(String(suggestedBand[0]));
-                              setFMax(String(suggestedBand[1]));
-                            }}
-                          >
-                            Use suggested
-                          </button>
-                        </>
-                      ) : (
-                        <span className="sub">✓ = your usable measured range</span>
-                      )}
+                    <input
+                      type="range"
+                      min={0}
+                      max={100}
+                      step={5}
+                      value={dirWeight}
+                      onChange={(e) => setDirWeight(Number(e.target.value))}
+                      style={{ width: '11rem', accentColor: 'var(--accent)', verticalAlign: 'middle' }}
+                    />
+                    <p className="sub" style={{ margin: '0.2rem 0 0' }}>
+                      How much it ALSO smooths the energy average (the power response: every angle
+                      summed ≈ the room's tonal balance). Higher = more even directivity /
+                      smoother in-room sound, trading a little on-axis flatness. 0% = on-axis
+                      only.
                     </p>
-                    <p className="sub" style={{ margin: '0.1rem 0 0' }}>
-                      Wider = the whole speaker is judged; narrower = focus the tuning on the
-                      crossover (a full-band safety check still guards the rest).
-                    </p>
-                    {systemLevelDb && (
-                      <p style={{ margin: '0.3rem 0 0' }}>
-                        <strong>Target level ≈ {systemLevelDb.level} dB</strong>{' '}
-                        <span className="sub">
-                          — the passive system level, set by the {systemLevelDb.limiter} (the louder
-                          driver is padded down to match; passive can't boost above this).
-                        </span>
-                      </p>
-                    )}
                   </div>
-                )}
-                <label style={{ display: 'block' }}>
-                  <input
-                    type="checkbox"
-                    checked={xoRangeOn}
-                    onChange={(e) => setXoRangeOn(e.target.checked)}
-                  />{' '}
-                  Pin the acoustic crossover point
-                </label>
-                {xoRangeOn && (
-                  <p>
+                </>
+              ) : (
+                <p className="sub" style={{ marginTop: '0.7rem' }}>
+                  <strong>Amplitude target &amp; in-room weight</strong> unlock once you load
+                  angle measurements (Import → per-driver angle FRDs). With only a 0° measurement
+                  there is nothing off-axis to optimise, so these stay inert.
+                </p>
+              )}
+            </>
+          )}
+
+          {wizardStep === 2 && (
+            <>
+              <p>
+                <strong>Crossover</strong> — where the drivers hand over, and how steep the
+                ACOUSTIC slopes are. On real measurements Auto usually wins; force a slope only
+                when you have a reason — a placeholder driver, or a house alignment.
+              </p>
+              {suggestedBand && (
+                <div
+                  style={{
+                    marginBottom: '0.5rem',
+                    paddingBottom: '0.5rem',
+                    borderBottom: '1px solid rgba(128,128,128,0.25)',
+                  }}
+                >
+                  <p style={{ margin: '0 0 0.2rem' }}>
+                    <strong>Tuning range</strong>{' '}
+                    <span className="sub">
+                      — the band the optimizer flattens &amp; scores over (the design scope)
+                    </span>
+                  </p>
+                  <p style={{ margin: 0 }}>
                     <input
                       type="number"
-                      min={300}
-                      max={12000}
-                      step={100}
-                      value={xoFreqHz}
-                      onChange={(e) => setXoFreqHz(e.target.value)}
+                      min={20}
+                      max={5000}
+                      step={10}
+                      value={fMin}
+                      onChange={(e) => setFMin(e.target.value)}
                       style={{ width: '5.5rem' }}
                     />{' '}
-                    Hz ±{' '}
+                    –{' '}
                     <input
                       type="number"
-                      min={0}
-                      max={5000}
-                      step={50}
-                      value={xoMarginHz}
-                      onChange={(e) => setXoMarginHz(e.target.value)}
-                      style={{ width: '5rem' }}
+                      min={1000}
+                      max={40000}
+                      step={100}
+                      value={fMax}
+                      onChange={(e) => setFMax(e.target.value)}
+                      style={{ width: '6rem' }}
                     />{' '}
-                    Hz
+                    Hz{' '}
+                    {fMin !== String(suggestedBand[0]) || fMax !== String(suggestedBand[1]) ? (
+                      <>
+                        · suggested{' '}
+                        <strong>
+                          {suggestedBand[0]}–{suggestedBand[1]} Hz
+                        </strong>{' '}
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setFMin(String(suggestedBand[0]));
+                            setFMax(String(suggestedBand[1]));
+                          }}
+                        >
+                          Use suggested
+                        </button>
+                      </>
+                    ) : (
+                      <span className="sub">✓ = your usable measured range</span>
+                    )}
                   </p>
-                )}
-                <p className="sub">
-                  {xoRangeOn
-                    ? 'Pinned: the optimizer aims for this acoustic crossover (± margin) and picks the best design there.'
-                    : tweeterHpFloor !== null && midXoCeiling !== null
-                      ? `Free: the optimizer aims for the CENTRE of your driver window — ≈${Math.round(
-                          Math.sqrt(tweeterHpFloor * Math.max(midXoCeiling, tweeterHpFloor * 1.2)),
-                        )} Hz, the geometric mean of the 2×Fs tweeter floor (${tweeterHpFloor} Hz) and the ${midXoCeiling} Hz mid beaming ceiling. Pin only to override.`
-                      : 'Free: the optimizer stays within a sensible band (≈2×Fs up to the mid beaming limit) and picks the best crossover there. Set the mid size below for a physically-exact window; pin only for a specific point.'}
-                </p>
-                {tweeterHpFloor !== null && (
-                  <p className="sub">HP floor {tweeterHpFloor} Hz (2×Fs) is applied automatically.</p>
-                )}
-                <p>
-                  Mid size (sets the beaming ceiling){' '}
-                  <select value={midSizeInch} onChange={(e) => setMidSizeInch(e.target.value)}>
-                    <option value="">unknown</option>
-                    {['3', '4', '5', '5.25', '6.5', '8'].map((v) => (
-                      <option key={v} value={v}>
-                        {v}"
-                      </option>
-                    ))}
-                  </select>
-                  {midXoCeiling !== null && (
-                    <span className="sub"> · beaming ceiling ≈ {midXoCeiling} Hz</span>
+                  <p className="sub" style={{ margin: '0.1rem 0 0' }}>
+                    Wider = the whole speaker is judged; narrower = focus the tuning on the
+                    crossover (a full-band safety check still guards the rest).
+                  </p>
+                  {systemLevelDb && (
+                    <p style={{ margin: '0.3rem 0 0' }}>
+                      <strong>Target level ≈ {systemLevelDb.level} dB</strong>{' '}
+                      <span className="sub">
+                        — the passive system level, set by the {systemLevelDb.limiter} (the louder
+                        driver is padded down to match; passive can't boost above this).
+                      </span>
+                    </p>
                   )}
-                </p>
-                <p className="sub" style={{ marginBottom: '0.15rem' }}>
-                  The next two look alike but are NOT the same thing — one is how you build it,
-                  the other is what comes out:
-                </p>
-                <p style={{ margin: '0 0 0.1rem' }}>
-                  <strong>HP/LP alignment</strong>{' '}
-                  <span className="sub">— the ELECTRICAL filter you build (topology &amp; part count; binding)</span>{' '}
-                  <select value={hpLpPref} onChange={(e) => setHpLpPref(e.target.value)}>
-                    <option value="auto">Auto (library)</option>
-                    {['LR2', 'LR4', 'BW2', 'BW3', 'BW4', 'BS2', 'BS3', 'BS4'].map((v) => (
-                      <option key={v} value={v}>
-                        {v}
-                      </option>
-                    ))}
-                  </select>
-                </p>
-                <p style={{ margin: '0 0 0.1rem' }}>
-                  <strong>Acoustic slopes</strong>{' '}
-                  <span className="sub">— the MEASURED roll-off of driver + filter together (the result)</span>
-                  <br />
-                  mid{' '}
-                  <select value={acSlopeMid} onChange={(e) => setAcSlopeMid(e.target.value)}>
-                    <option value="auto">Auto</option>
-                    {['12', '18', '24', '30', '36'].map((v) => (
-                      <option key={v} value={v}>
-                        {v} dB/oct
-                      </option>
-                    ))}
-                  </select>{' '}
-                  · tweeter{' '}
-                  <select value={acSlopeTweeter} onChange={(e) => setAcSlopeTweeter(e.target.value)}>
-                    <option value="auto">Auto</option>
-                    {['12', '18', '24', '30', '36'].map((v) => (
-                      <option key={v} value={v}>
-                        {v} dB/oct
-                      </option>
-                    ))}
-                  </select>
-                </p>
-                <p className="sub">
-                  Electrical order ≠ acoustic order: the driver already rolls off, so an electrical
-                  LR2 can MEASURE as an acoustic 4th order. Set the alignment when you care about the
-                  build (part count / a house alignment); set the acoustic slopes when you care about
-                  the summation result; leave either on Auto to let the measurement decide (often a
-                  touch better). Pinning both can over-constrain.
-                </p>
-              </>
-            )}
-
-            {wizardStep === 3 && (
-              <>
+                </div>
+              )}
+              <label style={{ display: 'block' }}>
+                <input
+                  type="checkbox"
+                  checked={xoRangeOn}
+                  onChange={(e) => setXoRangeOn(e.target.checked)}
+                />{' '}
+                Pin the acoustic crossover point
+              </label>
+              {xoRangeOn && (
                 <p>
-                  <strong>Components</strong> — now turn the ideal design into parts you can buy:
-                  snap to your catalog, then choose quality tiers and brands.
-                </p>
-                <label
-                  style={{ display: 'block', opacity: hasImportedCatalog() ? 1 : 0.5 }}
-                  title={
-                    hasImportedCatalog()
-                      ? 'Snap the build + tuner to purchasable catalog values'
-                      : 'Import a catalog first — without one there are no real parts to snap to, so the design keeps theoretically ideal (continuous) values'
-                  }
-                >
                   <input
-                    type="checkbox"
-                    checked={catalogSnap && hasImportedCatalog()}
-                    disabled={!hasImportedCatalog()}
-                    onChange={(e) => setCatalogSnap(e.target.checked)}
+                    type="number"
+                    min={300}
+                    max={12000}
+                    step={100}
+                    value={xoFreqHz}
+                    onChange={(e) => setXoFreqHz(e.target.value)}
+                    style={{ width: '5.5rem' }}
                   />{' '}
-                  Snap to catalog (build + tuner end on purchasable values)
-                  {!hasImportedCatalog() && ' — import a catalog first'}
-                </label>
-                <p className="sub">
-                  Catalog: {allSeries().length} series
-                  {customCatalogParts().length > 0 && ` · ${customCatalogParts().length} exact parts`}
-                  {allSeries().some((sr) => sr.basePrice !== undefined) ||
-                  customCatalogParts().some((pp) => pp.priceEur !== undefined)
-                    ? ' · prices loaded'
-                    : ' · no prices yet'}
+                  Hz ±{' '}
+                  <input
+                    type="number"
+                    min={0}
+                    max={5000}
+                    step={50}
+                    value={xoMarginHz}
+                    onChange={(e) => setXoMarginHz(e.target.value)}
+                    style={{ width: '5rem' }}
+                  />{' '}
+                  Hz
                 </p>
-                {(
-                  [
-                    ['auto', 'Auto — no tier preference'],
-                    ['position', 'Position (doctrine): series-path premium · shunt/notch budget'],
-                    ['budget', 'Budget — cheapest tiers everywhere'],
-                    ['balanced', 'Balanced — standard tier everywhere'],
-                    ['premium', 'Premium — best tiers everywhere'],
-                  ] as const
-                ).map(([v, label]) => (
-                  <label key={v} style={{ display: 'block' }}>
+              )}
+              <p className="sub">
+                {xoRangeOn
+                  ? 'Pinned: the optimizer aims for this acoustic crossover (± margin) and picks the best design there.'
+                  : tweeterHpFloor !== null && midXoCeiling !== null
+                    ? `Free: the optimizer aims for the CENTRE of your driver window — ≈${Math.round(
+                        Math.sqrt(tweeterHpFloor * Math.max(midXoCeiling, tweeterHpFloor * 1.2)),
+                      )} Hz, the geometric mean of the 2×Fs tweeter floor (${tweeterHpFloor} Hz) and the ${midXoCeiling} Hz mid beaming ceiling. Pin only to override.`
+                    : 'Free: the optimizer stays within a sensible band (≈2×Fs up to the mid beaming limit) and picks the best crossover there. Set the mid size below for a physically-exact window; pin only for a specific point.'}
+              </p>
+              {tweeterHpFloor !== null && (
+                <p className="sub">HP floor {tweeterHpFloor} Hz (2×Fs) is applied automatically.</p>
+              )}
+              <p>
+                Mid size (sets the beaming ceiling){' '}
+                <select value={midSizeInch} onChange={(e) => setMidSizeInch(e.target.value)}>
+                  <option value="">unknown</option>
+                  {['3', '4', '5', '5.25', '6.5', '8'].map((v) => (
+                    <option key={v} value={v}>
+                      {v}"
+                    </option>
+                  ))}
+                </select>
+                {midXoCeiling !== null && (
+                  <span className="sub"> · beaming ceiling ≈ {midXoCeiling} Hz</span>
+                )}
+              </p>
+              <p className="sub" style={{ marginBottom: '0.15rem' }}>
+                The next two look alike but are NOT the same thing — one is how you build it,
+                the other is what comes out:
+              </p>
+              <p style={{ margin: '0 0 0.1rem' }}>
+                <strong>HP/LP alignment</strong>{' '}
+                <span className="sub">— the ELECTRICAL filter you build (topology &amp; part count; binding)</span>{' '}
+                <select value={hpLpPref} onChange={(e) => setHpLpPref(e.target.value)}>
+                  <option value="auto">Auto (library)</option>
+                  {['LR2', 'LR4', 'BW2', 'BW3', 'BW4', 'BS2', 'BS3', 'BS4'].map((v) => (
+                    <option key={v} value={v}>
+                      {v}
+                    </option>
+                  ))}
+                </select>
+              </p>
+              <p style={{ margin: '0 0 0.1rem' }}>
+                <strong>Acoustic slopes</strong>{' '}
+                <span className="sub">— the MEASURED roll-off of driver + filter together (the result)</span>
+                <br />
+                mid{' '}
+                <select value={acSlopeMid} onChange={(e) => setAcSlopeMid(e.target.value)}>
+                  <option value="auto">Auto</option>
+                  {['12', '18', '24', '30', '36'].map((v) => (
+                    <option key={v} value={v}>
+                      {v} dB/oct
+                    </option>
+                  ))}
+                </select>{' '}
+                · tweeter{' '}
+                <select value={acSlopeTweeter} onChange={(e) => setAcSlopeTweeter(e.target.value)}>
+                  <option value="auto">Auto</option>
+                  {['12', '18', '24', '30', '36'].map((v) => (
+                    <option key={v} value={v}>
+                      {v} dB/oct
+                    </option>
+                  ))}
+                </select>
+              </p>
+              <p className="sub">
+                Electrical order ≠ acoustic order: the driver already rolls off, so an electrical
+                LR2 can MEASURE as an acoustic 4th order. Set the alignment when you care about the
+                build (part count / a house alignment); set the acoustic slopes when you care about
+                the summation result; leave either on Auto to let the measurement decide (often a
+                touch better). Pinning both can over-constrain.
+              </p>
+            </>
+          )}
+
+          {wizardStep === 3 && (
+            <>
+              <p>
+                <strong>Components</strong> — now turn the ideal design into parts you can buy:
+                snap to your catalog, then choose quality tiers and brands.
+              </p>
+              <label
+                style={{ display: 'block', opacity: hasImportedCatalog() ? 1 : 0.5 }}
+                title={
+                  hasImportedCatalog()
+                    ? 'Snap the build + tuner to purchasable catalog values'
+                    : 'Import a catalog first — without one there are no real parts to snap to, so the design keeps theoretically ideal (continuous) values'
+                }
+              >
+                <input
+                  type="checkbox"
+                  checked={catalogSnap && hasImportedCatalog()}
+                  disabled={!hasImportedCatalog()}
+                  onChange={(e) => setCatalogSnap(e.target.checked)}
+                />{' '}
+                Snap to catalog (build + tuner end on purchasable values)
+                {!hasImportedCatalog() && ' — import a catalog first'}
+              </label>
+              <p className="sub">
+                Catalog: {allSeries().length} series
+                {customCatalogParts().length > 0 && ` · ${customCatalogParts().length} exact parts`}
+                {allSeries().some((sr) => sr.basePrice !== undefined) ||
+                customCatalogParts().some((pp) => pp.priceEur !== undefined)
+                  ? ' · prices loaded'
+                  : ' · no prices yet'}
+              </p>
+              {(
+                [
+                  ['auto', 'Auto — no tier preference'],
+                  ['position', 'Position (doctrine): series-path premium · shunt/notch budget'],
+                  ['budget', 'Budget — cheapest tiers everywhere'],
+                  ['balanced', 'Balanced — standard tier everywhere'],
+                  ['premium', 'Premium — best tiers everywhere'],
+                ] as const
+              ).map(([v, label]) => (
+                <label key={v} style={{ display: 'block' }}>
+                  <input
+                    type="radio"
+                    name="snap-profile"
+                    checked={snapProfile === v}
+                    onChange={() => setSnapProfile(v)}
+                  />{' '}
+                  {label}
+                </label>
+              ))}
+              {(
+                [
+                  ['L', 'Coils', snapSeriesL, setSnapSeriesL],
+                  ['C', 'Capacitors', snapSeriesC, setSnapSeriesC],
+                  ['R', 'Resistors', snapSeriesR, setSnapSeriesR],
+                ] as const
+              ).map(([kind, label, value, set]) => (
+                <label key={kind} style={{ display: 'block' }}>
+                  {label}{' '}
+                  <select value={value} onChange={(e) => set(e.target.value)}>
+                    <option value="auto">Auto (all series)</option>
+                    {catalogSeries(kind).map((sr) => (
+                      <option key={sr.id} value={sr.id}>
+                        {sr.brand} {sr.series}
+                        {sr.tier ? ` · ${sr.tier}` : ''}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              ))}
+              {(() => {
+                const anySeries =
+                  snapSeriesL !== 'auto' || snapSeriesC !== 'auto' || snapSeriesR !== 'auto';
+                return (
+                  <label
+                    style={{ display: 'block', opacity: anySeries ? 1 : 0.5 }}
+                    title={
+                      anySeries
+                        ? "Bound series also HARD-limit the fit to their value range (series-path slots only), so the optimizer works within e.g. Alumen 1–10 µF and the rest of the network adapts. The result reports what the constraint cost vs an unconstrained fit."
+                        : 'Pick a specific series above first — this constrains the fit to that series’ values.'
+                    }
+                  >
                     <input
-                      type="radio"
-                      name="snap-profile"
-                      checked={snapProfile === v}
-                      onChange={() => setSnapProfile(v)}
+                      type="checkbox"
+                      checked={snapBoundToSeries && anySeries}
+                      disabled={!anySeries}
+                      onChange={(e) => setSnapBoundToSeries(e.target.checked)}
                     />{' '}
-                    {label}
+                    Constrain the fit to the chosen series’ values (series-path only) — e.g.
+                    dead-set on Alumen ⇒ the tweeter cap stays 1–10 µF and the network adapts
                   </label>
-                ))}
-                {(
-                  [
-                    ['L', 'Coils', snapSeriesL, setSnapSeriesL],
-                    ['C', 'Capacitors', snapSeriesC, setSnapSeriesC],
-                    ['R', 'Resistors', snapSeriesR, setSnapSeriesR],
-                  ] as const
-                ).map(([kind, label, value, set]) => (
-                  <label key={kind} style={{ display: 'block' }}>
-                    {label}{' '}
-                    <select value={value} onChange={(e) => set(e.target.value)}>
-                      <option value="auto">Auto (all series)</option>
-                      {catalogSeries(kind).map((sr) => (
-                        <option key={sr.id} value={sr.id}>
-                          {sr.brand} {sr.series}
-                          {sr.tier ? ` · ${sr.tier}` : ''}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
-                ))}
-                {(() => {
-                  const anySeries =
-                    snapSeriesL !== 'auto' || snapSeriesC !== 'auto' || snapSeriesR !== 'auto';
-                  return (
-                    <label
-                      style={{ display: 'block', opacity: anySeries ? 1 : 0.5 }}
-                      title={
-                        anySeries
-                          ? "Bound series also HARD-limit the fit to their value range (series-path slots only), so the optimizer works within e.g. Alumen 1–10 µF and the rest of the network adapts. The result reports what the constraint cost vs an unconstrained fit."
-                          : 'Pick a specific series above first — this constrains the fit to that series’ values.'
-                      }
-                    >
-                      <input
-                        type="checkbox"
-                        checked={snapBoundToSeries && anySeries}
-                        disabled={!anySeries}
-                        onChange={(e) => setSnapBoundToSeries(e.target.checked)}
-                      />{' '}
-                      Constrain the fit to the chosen series’ values (series-path only) — e.g.
-                      dead-set on Alumen ⇒ the tweeter cap stays 1–10 µF and the network adapts
-                    </label>
-                  );
-                })()}
-                <label style={{ display: 'block' }}>
-                  <input
-                    type="checkbox"
-                    checked={snapStacks}
-                    onChange={(e) => setSnapStacks(e.target.checked)}
-                  />{' '}
-                  Allow 2-part stacks — a preferred tier/series stacks WITHIN itself before
-                  falling back; the result reports what stacking bought (fit % / €)
-                </label>
-                <p className="sub">
-                  Series choices are binding per type; a series that cannot cover a value falls
-                  back rather than breaking the fit.
-                </p>
-              </>
-            )}
+                );
+              })()}
+              <label style={{ display: 'block' }}>
+                <input
+                  type="checkbox"
+                  checked={snapStacks}
+                  onChange={(e) => setSnapStacks(e.target.checked)}
+                />{' '}
+                Allow 2-part stacks — a preferred tier/series stacks WITHIN itself before
+                falling back; the result reports what stacking bought (fit % / €)
+              </label>
+              <p className="sub">
+                Series choices are binding per type; a series that cannot cover a value falls
+                back rather than breaking the fit.
+              </p>
+            </>
+          )}
 
-            {wizardStep === 4 && (
-              <>
+          {wizardStep === 4 && (
+            <>
+              <p>
+                <strong>Review &amp; run</strong> — here's the plan. Optimize designs, builds and
+                tunes the whole chain in one go.
+              </p>
+              {soloDriver ? (
                 <p>
-                  <strong>Review &amp; run</strong> — here's the plan. Optimize designs, builds and
-                  tunes the whole chain in one go.
-                </p>
-                {soloDriver ? (
-                  <p>
-                    <strong>Single-driver mode</strong> — flatten the{' '}
-                    {soloDriver === 'woofer' ? 'woofer/mid' : 'tweeter'} with cut-only EQ/shelves
-                    (≤ {vfEqBands} bands), built as series traps / shelf groups (+ Zobel when the
-                    impedance rises) and component-tuned against the measurement.
-                    <br />
-                    {stagedOn ? `Staged: target ≤ ${targetRipple} dB peak ripple` : 'Classic full-budget run'}
-                    {soloFloorOn && soloFloorInfo
-                      ? ` · flat at ${soloFloorInfo.floor} dB (reaches ${hz(soloFloorInfo.reach[0])}–${hz(soloFloorInfo.reach[1])})`
-                      : ` · sensitivity budget ${soloSensDb} dB`}
-                    <br />
-                    {catalogSnap && hasImportedCatalog()
-                      ? `Snap to catalog · profile ${snapProfile}`
-                      : 'Theoretically ideal (continuous) component values — no snap'}
-                  </p>
-                ) : (
-                <p>
-                  {stagedOn
-                    ? `Staged: targets ≤ ${targetRipple} dB / ${targetPhase}°`
-                    : 'Classic full-budget run'}{' '}
-                  · priority {100 - phasePriority}/{phasePriority}
+                  <strong>Single-driver mode</strong> — flatten the{' '}
+                  {soloDriver === 'woofer' ? 'woofer/mid' : 'tweeter'} with cut-only EQ/shelves
+                  (≤ {vfEqBands} bands), built as series traps / shelf groups (+ Zobel when the
+                  impedance rises) and component-tuned against the measurement.
                   <br />
-                  {xoRangeOn ? `Crossover pinned at ${xoFreqHz} ± ${xoMarginHz} Hz` : 'Crossover free'}
-                  {tweeterHpFloor !== null && ` · HP floor ${tweeterHpFloor} Hz`}
-                  <br />
-                  Alignment {hpLpPref === 'auto' ? 'Auto' : hpLpPref} · slopes mid{' '}
-                  {acSlopeMid === 'auto' ? 'Auto' : `${acSlopeMid} dB/oct`} / tweeter{' '}
-                  {acSlopeTweeter === 'auto' ? 'Auto' : `${acSlopeTweeter} dB/oct`}
+                  {stagedOn ? `Staged: target ≤ ${targetRipple} dB peak ripple` : 'Classic full-budget run'}
+                  {soloFloorOn && soloFloorInfo
+                    ? ` · flat at ${soloFloorInfo.floor} dB (reaches ${hz(soloFloorInfo.reach[0])}–${hz(soloFloorInfo.reach[1])})`
+                    : ` · sensitivity budget ${soloSensDb} dB`}
                   <br />
                   {catalogSnap && hasImportedCatalog()
                     ? `Snap to catalog · profile ${snapProfile}`
                     : 'Theoretically ideal (continuous) component values — no snap'}
                 </p>
-                )}
-                <p className="sub">
-                  Optimize runs the full chain: design →{' '}
-                  {soloDriver ? 'solo topology build' : 'passive build'} → component tune
-                  {catalogSnap && hasImportedCatalog() ? ' → catalog snap' : ''}.
-                </p>
-              </>
-            )}
+              ) : (
+              <p>
+                {stagedOn
+                  ? `Staged: targets ≤ ${targetRipple} dB / ${targetPhase}°`
+                  : 'Classic full-budget run'}{' '}
+                · priority {100 - phasePriority}/{phasePriority}
+                <br />
+                {xoRangeOn ? `Crossover pinned at ${xoFreqHz} ± ${xoMarginHz} Hz` : 'Crossover free'}
+                {tweeterHpFloor !== null && ` · HP floor ${tweeterHpFloor} Hz`}
+                <br />
+                Alignment {hpLpPref === 'auto' ? 'Auto' : hpLpPref} · slopes mid{' '}
+                {acSlopeMid === 'auto' ? 'Auto' : `${acSlopeMid} dB/oct`} / tweeter{' '}
+                {acSlopeTweeter === 'auto' ? 'Auto' : `${acSlopeTweeter} dB/oct`}
+                <br />
+                {catalogSnap && hasImportedCatalog()
+                  ? `Snap to catalog · profile ${snapProfile}`
+                  : 'Theoretically ideal (continuous) component values — no snap'}
+              </p>
+              )}
+              <p className="sub">
+                Optimize runs the full chain: design →{' '}
+                {soloDriver ? 'solo topology build' : 'passive build'} → component tune
+                {catalogSnap && hasImportedCatalog() ? ' → catalog snap' : ''}.
+              </p>
+            </>
+          )}
 
+          </div>
+
+          <div className="wizard-foot">
+            <div className="row">
+              {wizardStep > 1 ? (
+                <button
+                  type="button"
+                  onClick={() => setWizardStep((st) => st - (soloDriver && st === 3 ? 2 : 1))}
+                >
+                  ← Back
+                </button>
+              ) : (
+                <button type="button" onClick={() => setWizardOpen(false)}>
+                  Cancel
+                </button>
+              )}
             </div>
-
-            <div className="wizard-foot">
-              <div className="row">
-                {wizardStep > 1 ? (
-                  <button
-                    type="button"
-                    onClick={() => setWizardStep((st) => st - (soloDriver && st === 3 ? 2 : 1))}
-                  >
-                    ← Back
-                  </button>
-                ) : (
-                  <button type="button" onClick={() => setWizardOpen(false)}>
-                    Cancel
-                  </button>
-                )}
-              </div>
-              <div className="row">
-                {wizardStep < 4 ? (
-                  <button
-                    type="button"
-                    className="primary"
-                    // Solo skips the Crossover step (2) — nothing to cross.
-                    onClick={() => setWizardStep((st) => st + (soloDriver && st === 1 ? 2 : 1))}
-                    disabled={wizardStep === 0 && !woofer && !tweeter}
-                    title={
-                      wizardStep === 0 && !woofer && !tweeter
-                        ? 'Load at least one driver to continue (one = single-driver mode)'
-                        : ''
-                    }
-                  >
-                    Next →
-                  </button>
-                ) : (
-                  <button
-                    type="button"
-                    className="primary"
-                    onClick={() => {
-                      setWizardOpen(false);
-                      // Land on the design cockpit, not wherever the wizard was
-                      // launched from (e.g. Import): the Filters tab shows the
-                      // "Optimizer chose…" summary + curves; Network is one click
-                      // away for the built schematic + BOM.
-                      setDesignTab('filters');
-                      runVfOptimize();
-                    }}
-                    disabled={vfBusy || !result}
-                  >
-                    🚀 Optimize — design for me
-                  </button>
-                )}
-              </div>
+            <div className="row">
+              {wizardStep < 4 ? (
+                <button
+                  type="button"
+                  className="primary"
+                  // Solo skips the Crossover step (2) — nothing to cross.
+                  onClick={() => setWizardStep((st) => st + (soloDriver && st === 1 ? 2 : 1))}
+                  disabled={wizardStep === 0 && !woofer && !tweeter}
+                  title={
+                    wizardStep === 0 && !woofer && !tweeter
+                      ? 'Load at least one driver to continue (one = single-driver mode)'
+                      : ''
+                  }
+                >
+                  Next →
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  className="primary"
+                  onClick={() => {
+                    setWizardOpen(false);
+                    // Land on the design cockpit, not wherever the wizard was
+                    // launched from (e.g. Import): the Filters tab shows the
+                    // "Optimizer chose…" summary + curves; Network is one click
+                    // away for the built schematic + BOM.
+                    setDesignTab('filters');
+                    runVfOptimize();
+                  }}
+                  disabled={vfBusy || !result}
+                >
+                  🚀 Optimize — design for me
+                </button>
+              )}
             </div>
           </div>
-        </div>
+        </Modal>
       )}
       {trapOpen && (
-        <div className="busy-overlay" onClick={() => setTrapOpen(false)}>
-          <div className="busy-card targets-card" onClick={(e) => e.stopPropagation()}>
-            <div className="busy-title">➕ Add LCR notch (trap)</div>
+        <Modal
+          open
+          onClose={() => setTrapOpen(false)}
+          label="Add LCR notch (trap)"
+          cardClass="targets-card"
+        >
+          <div className="busy-title">➕ Add LCR notch (trap)</div>
+          <p className="sub">
+            A series L–C–R across the driver — a low-impedance path at the centre frequency that
+            sucks out a peak. <strong>Depth</strong> sets R, <strong>Q</strong> sets the L/C ratio;
+            the values follow from the measured impedance. It goes in live — fine-tune afterwards
+            with ⚙ Optimize components.
+          </p>
+          <p>
+            Driver{' '}
+            <select value={trapModel} onChange={(e) => setTrapModel(e.target.value)}>
+              {zModels.map((m) => (
+                <option key={m} value={m}>
+                  {m}
+                </option>
+              ))}
+            </select>
+          </p>
+          <p>
+            Centre{' '}
+            <input
+              type="number"
+              min={100}
+              max={20000}
+              step={50}
+              value={trapFreq}
+              onChange={(e) => setTrapFreq(e.target.value)}
+              style={{ width: '6rem' }}
+            />{' '}
+            Hz · depth{' '}
+            <input
+              type="number"
+              max={0}
+              step={0.5}
+              value={trapDepth}
+              onChange={(e) => setTrapDepth(e.target.value)}
+              style={{ width: '4.5rem' }}
+            />{' '}
+            dB · Q{' '}
+            <input
+              type="number"
+              min={0.2}
+              step={0.1}
+              value={trapQ}
+              onChange={(e) => setTrapQ(e.target.value)}
+              style={{ width: '4rem' }}
+            />
+          </p>
+          {trapCompute ? (
+            <p>
+              →{' '}
+              <strong>
+                {trapCompute.Lmh} mH · {trapCompute.Cuf} µF · {trapCompute.R} Ω
+              </strong>{' '}
+              <span className="sub">
+                (|Z| ≈ {trapCompute.zmag} Ω at {trapFreq} Hz)
+              </span>
+            </p>
+          ) : (
             <p className="sub">
-              A series L–C–R across the driver — a low-impedance path at the centre frequency that
-              sucks out a peak. <strong>Depth</strong> sets R, <strong>Q</strong> sets the L/C ratio;
-              the values follow from the measured impedance. It goes in live — fine-tune afterwards
-              with ⚙ Optimize components.
+              Enter a centre frequency and a <strong>negative</strong> depth (a cut) — passive can
+              only notch a peak, not boost.
             </p>
-            <p>
-              Driver{' '}
-              <select value={trapModel} onChange={(e) => setTrapModel(e.target.value)}>
-                {zModels.map((m) => (
-                  <option key={m} value={m}>
-                    {m}
-                  </option>
-                ))}
-              </select>
-            </p>
-            <p>
-              Centre{' '}
-              <input
-                type="number"
-                min={100}
-                max={20000}
-                step={50}
-                value={trapFreq}
-                onChange={(e) => setTrapFreq(e.target.value)}
-                style={{ width: '6rem' }}
-              />{' '}
-              Hz · depth{' '}
-              <input
-                type="number"
-                max={0}
-                step={0.5}
-                value={trapDepth}
-                onChange={(e) => setTrapDepth(e.target.value)}
-                style={{ width: '4.5rem' }}
-              />{' '}
-              dB · Q{' '}
-              <input
-                type="number"
-                min={0.2}
-                step={0.1}
-                value={trapQ}
-                onChange={(e) => setTrapQ(e.target.value)}
-                style={{ width: '4rem' }}
-              />
-            </p>
-            {trapCompute ? (
-              <p>
-                →{' '}
-                <strong>
-                  {trapCompute.Lmh} mH · {trapCompute.Cuf} µF · {trapCompute.R} Ω
-                </strong>{' '}
-                <span className="sub">
-                  (|Z| ≈ {trapCompute.zmag} Ω at {trapFreq} Hz)
-                </span>
-              </p>
-            ) : (
-              <p className="sub">
-                Enter a centre frequency and a <strong>negative</strong> depth (a cut) — passive can
-                only notch a peak, not boost.
-              </p>
-            )}
-            <div className="row" style={{ justifyContent: 'space-between', marginTop: '0.6rem' }}>
-              <button type="button" onClick={() => setTrapOpen(false)}>
-                Cancel
-              </button>
-              <button
-                type="button"
-                className="primary"
-                disabled={!trapCompute}
-                onClick={addNotchTrap}
-              >
-                Add trap
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-      {showTargets && (
-        <div className="busy-overlay" onClick={() => setShowTargets(false)}>
-          <div className="busy-card targets-card" onClick={(e) => e.stopPropagation()}>
-            <div className="busy-title">🎯 Design targets — virtual → acoustic</div>
-            <p className="sub">
-              The virtual target design the last passive build was fitted to (acoustic mode fits
-              measured driver × filter against these ideal shapes).
-            </p>
-            <p>
-              <strong>Woofer / mid target:</strong>{' '}
-              {vFilters.woofer.lp.enabled
-                ? `LP ${vFilters.woofer.lp.kind}${vFilters.woofer.lp.order} (${
-                    vFilters.woofer.lp.order * 6
-                  } dB/oct electrical) @ ${Math.round(vFilters.woofer.lp.freq)} Hz`
-                : 'no LP'}
-              {vFilters.woofer.hp.enabled &&
-                ` · HP ${vFilters.woofer.hp.kind}${vFilters.woofer.hp.order} @ ${Math.round(
-                  vFilters.woofer.hp.freq,
-                )} Hz`}
-              {vFilters.woofer.gainDb !== 0 && ` · gain ${vFilters.woofer.gainDb.toFixed(1)} dB`}
-              {vFilters.woofer.eq.filter((b) => b.enabled).length > 0 && (
-                <>
-                  <br />
-                  EQ:{' '}
-                  {vFilters.woofer.eq
-                    .filter((b) => b.enabled)
-                    .map(
-                      (b) =>
-                        `${b.type ?? 'peak'} ${Math.round(b.freq)} Hz ${b.gainDb.toFixed(1)} dB Q${b.q.toFixed(1)}`,
-                    )
-                    .join(' · ')}
-                </>
-              )}
-            </p>
-            <p>
-              <strong>Tweeter target:</strong>{' '}
-              {vFilters.tweeter.hp.enabled
-                ? `HP ${vFilters.tweeter.hp.kind}${vFilters.tweeter.hp.order} (${
-                    vFilters.tweeter.hp.order * 6
-                  } dB/oct electrical) @ ${Math.round(vFilters.tweeter.hp.freq)} Hz`
-                : 'no HP'}
-              {vFilters.tweeter.lp.enabled &&
-                ` · LP ${vFilters.tweeter.lp.kind}${vFilters.tweeter.lp.order} @ ${Math.round(
-                  vFilters.tweeter.lp.freq,
-                )} Hz`}
-              {vFilters.tweeter.gainDb !== 0 && ` · gain ${vFilters.tweeter.gainDb.toFixed(1)} dB`}
-              {inverted && ' · polarity inverted'}
-              {vFilters.tweeter.eq.filter((b) => b.enabled).length > 0 && (
-                <>
-                  <br />
-                  EQ:{' '}
-                  {vFilters.tweeter.eq
-                    .filter((b) => b.enabled)
-                    .map(
-                      (b) =>
-                        `${b.type ?? 'peak'} ${Math.round(b.freq)} Hz ${b.gainDb.toFixed(1)} dB Q${b.q.toFixed(1)}`,
-                    )
-                    .join(' · ')}
-                </>
-              )}
-            </p>
-            {acousticSlopes && (
-              <p>
-                <strong>Measured on the current sim:</strong> acoustic crossover ≈{' '}
-                {Math.round(acousticSlopes.xo)} Hz
-                {acousticSlopes.wooferDbPerOct !== null && (
-                  <>
-                    {' '}
-                    · mid falls ≈ {Math.abs(acousticSlopes.wooferDbPerOct).toFixed(0)} dB/oct above
-                    it (≈ {ordinal(Math.max(1, Math.round(Math.abs(acousticSlopes.wooferDbPerOct) / 6)))}
-                    -order acoustic)
-                  </>
-                )}
-                {acousticSlopes.tweeterDbPerOct !== null && (
-                  <>
-                    {' '}
-                    · tweeter falls ≈ {Math.abs(acousticSlopes.tweeterDbPerOct).toFixed(0)} dB/oct
-                    below it (≈{' '}
-                    {ordinal(Math.max(1, Math.round(Math.abs(acousticSlopes.tweeterDbPerOct) / 6)))}
-                    -order acoustic)
-                  </>
-                )}
-              </p>
-            )}
-            <p className="sub">
-              Electrical component count ≠ acoustic order: the driver's own rolloff and impedance
-              stack on top of the network, and acoustic-mode synthesis exploits that. The measured
-              slopes above are the real (acoustic) orders.
-            </p>
-            <button type="button" onClick={() => setShowTargets(false)}>
-              Close
+          )}
+          <div className="row" style={{ justifyContent: 'space-between', marginTop: '0.6rem' }}>
+            <button type="button" onClick={() => setTrapOpen(false)}>
+              Cancel
+            </button>
+            <button
+              type="button"
+              className="primary"
+              disabled={!trapCompute}
+              onClick={addNotchTrap}
+            >
+              Add trap
             </button>
           </div>
-        </div>
+        </Modal>
+      )}
+      {showTargets && (
+        <Modal
+          open
+          onClose={() => setShowTargets(false)}
+          label="Design targets — virtual to acoustic"
+          cardClass="targets-card"
+        >
+          <div className="busy-title">🎯 Design targets — virtual → acoustic</div>
+          <p className="sub">
+            The virtual target design the last passive build was fitted to (acoustic mode fits
+            measured driver × filter against these ideal shapes).
+          </p>
+          <p>
+            <strong>Woofer / mid target:</strong>{' '}
+            {vFilters.woofer.lp.enabled
+              ? `LP ${vFilters.woofer.lp.kind}${vFilters.woofer.lp.order} (${
+                  vFilters.woofer.lp.order * 6
+                } dB/oct electrical) @ ${Math.round(vFilters.woofer.lp.freq)} Hz`
+              : 'no LP'}
+            {vFilters.woofer.hp.enabled &&
+              ` · HP ${vFilters.woofer.hp.kind}${vFilters.woofer.hp.order} @ ${Math.round(
+                vFilters.woofer.hp.freq,
+              )} Hz`}
+            {vFilters.woofer.gainDb !== 0 && ` · gain ${vFilters.woofer.gainDb.toFixed(1)} dB`}
+            {vFilters.woofer.eq.filter((b) => b.enabled).length > 0 && (
+              <>
+                <br />
+                EQ:{' '}
+                {vFilters.woofer.eq
+                  .filter((b) => b.enabled)
+                  .map(
+                    (b) =>
+                      `${b.type ?? 'peak'} ${Math.round(b.freq)} Hz ${b.gainDb.toFixed(1)} dB Q${b.q.toFixed(1)}`,
+                  )
+                  .join(' · ')}
+              </>
+            )}
+          </p>
+          <p>
+            <strong>Tweeter target:</strong>{' '}
+            {vFilters.tweeter.hp.enabled
+              ? `HP ${vFilters.tweeter.hp.kind}${vFilters.tweeter.hp.order} (${
+                  vFilters.tweeter.hp.order * 6
+                } dB/oct electrical) @ ${Math.round(vFilters.tweeter.hp.freq)} Hz`
+              : 'no HP'}
+            {vFilters.tweeter.lp.enabled &&
+              ` · LP ${vFilters.tweeter.lp.kind}${vFilters.tweeter.lp.order} @ ${Math.round(
+                vFilters.tweeter.lp.freq,
+              )} Hz`}
+            {vFilters.tweeter.gainDb !== 0 && ` · gain ${vFilters.tweeter.gainDb.toFixed(1)} dB`}
+            {inverted && ' · polarity inverted'}
+            {vFilters.tweeter.eq.filter((b) => b.enabled).length > 0 && (
+              <>
+                <br />
+                EQ:{' '}
+                {vFilters.tweeter.eq
+                  .filter((b) => b.enabled)
+                  .map(
+                    (b) =>
+                      `${b.type ?? 'peak'} ${Math.round(b.freq)} Hz ${b.gainDb.toFixed(1)} dB Q${b.q.toFixed(1)}`,
+                  )
+                  .join(' · ')}
+              </>
+            )}
+          </p>
+          {acousticSlopes && (
+            <p>
+              <strong>Measured on the current sim:</strong> acoustic crossover ≈{' '}
+              {Math.round(acousticSlopes.xo)} Hz
+              {acousticSlopes.wooferDbPerOct !== null && (
+                <>
+                  {' '}
+                  · mid falls ≈ {Math.abs(acousticSlopes.wooferDbPerOct).toFixed(0)} dB/oct above
+                  it (≈ {ordinal(Math.max(1, Math.round(Math.abs(acousticSlopes.wooferDbPerOct) / 6)))}
+                  -order acoustic)
+                </>
+              )}
+              {acousticSlopes.tweeterDbPerOct !== null && (
+                <>
+                  {' '}
+                  · tweeter falls ≈ {Math.abs(acousticSlopes.tweeterDbPerOct).toFixed(0)} dB/oct
+                  below it (≈{' '}
+                  {ordinal(Math.max(1, Math.round(Math.abs(acousticSlopes.tweeterDbPerOct) / 6)))}
+                  -order acoustic)
+                </>
+              )}
+            </p>
+          )}
+          <p className="sub">
+            Electrical component count ≠ acoustic order: the driver's own rolloff and impedance
+            stack on top of the network, and acoustic-mode synthesis exploits that. The measured
+            slopes above are the real (acoustic) orders.
+          </p>
+          <button type="button" onClick={() => setShowTargets(false)}>
+            Close
+          </button>
+        </Modal>
       )}
       <header className="topbar" title="Combined SPL & relative phase — woofer normalised to 0°, tweeter shown against it.">
         <h1>SD Acoustics - Crossover Studio</h1>
@@ -4702,7 +4781,11 @@ export default function App() {
       <div
         ref={workspaceRef}
         className={`workspace${designTab === 'network' ? ' wide-left' : ''}`}
-        style={paneW != null ? ({ '--pane-w': `${paneW}px` } as CSSProperties) : undefined}
+        style={
+          paneFrac != null
+            ? ({ '--pane-w': `${(paneFrac * 100).toFixed(3)}%` } as CSSProperties)
+            : undefined
+        }
       >
         <aside className="design-pane">
           <nav className="pane-tabs" aria-label="Design panels">
@@ -6234,9 +6317,30 @@ export default function App() {
           className="pane-splitter"
           role="separator"
           aria-orientation="vertical"
+          aria-label="Resize the design and chart panes — arrow keys adjust, Home resets"
+          tabIndex={0}
           title="Drag to resize the panes — double-click to reset to automatic width"
           onPointerDown={startPaneDrag}
-          onDoubleClick={() => setPaneW(null)}
+          onDoubleClick={() => setPaneFrac(null)}
+          onKeyDown={(e) => {
+            // A drag handle that only responds to a pointer is a control the
+            // keyboard cannot reach at all; 2% a press matches the drag's feel.
+            const step = e.key === 'ArrowLeft' ? -0.02 : e.key === 'ArrowRight' ? 0.02 : 0;
+            if (step !== 0) {
+              e.preventDefault();
+              const ws = workspaceRef.current;
+              const cur =
+                paneFrac ??
+                (ws
+                  ? (ws.firstElementChild?.getBoundingClientRect().width ?? 0) /
+                    ws.getBoundingClientRect().width
+                  : 0.4);
+              setPaneFrac(Math.min(0.6, Math.max(0.2, cur + step)));
+            } else if (e.key === 'Home') {
+              e.preventDefault();
+              setPaneFrac(null);
+            }
+          }}
         />
 
         <main className="analysis-pane">
@@ -6308,6 +6412,9 @@ export default function App() {
                 type="button"
                 className={`pin-btn${splPinned ? ' on' : ''}`}
                 aria-pressed={splPinned}
+                // Icon-only: a tooltip is hover-only, so it is no label at all
+                // for a keyboard or a screen reader.
+                aria-label="Pin the SPL chart to the top"
                 onClick={() => setSplPinned((p) => !p)}
                 title={
                   splPinned
@@ -6929,6 +7036,7 @@ function DesignTab({
           if (window.confirm(`Delete tab "${design.name}"?`)) onDelete();
         }}
         title={`Delete "${design.name}"`}
+        aria-label={`Delete tab "${design.name}"`}
       >
         ×
       </button>
