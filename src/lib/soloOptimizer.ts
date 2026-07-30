@@ -26,6 +26,8 @@ import type { Complex } from './complex.ts';
 import type { VxpPart } from './parsers/vxp.ts';
 import { optimizeNetworkValues, type NetOptimizeResult } from './netOptimizer.ts';
 import { bomFor, type SnapPrefs } from './catalog.ts';
+import { crossoverToNetlist } from './vxpNetwork.ts';
+import { solveNetwork } from './network.ts';
 import type { ChainStageProgress } from './designChain.ts';
 
 export interface SoloOptimizeOptions {
@@ -823,5 +825,71 @@ export function runSoloChain(
       onStage: (detail) => onProgress?.({ stage: 'tune', evals: vf.evaluations, detail }),
     },
   );
+  /* ---- WHOLE-RANGE never-worse gate (Sanders' avg ±5.66 run) ----
+   * Every never-worse guard so far judges the band it optimised: the design
+   * stage on the design band, the tuner on its own band. Neither promises the
+   * number the DESIGNER reads — mean deviation over the requested range. A
+   * correction can improve its own band and still make the whole range worse
+   * (pull the passband down 10 dB while the unreachable top stays put), and
+   * shipping that is indefensible: no filter at all would have been better.
+   * So: measure the delivered network over the REQUESTED band against the raw
+   * driver, and when it loses, hand back the bare driver with the reason. ---- */
+  const wholeRangeAvg = (spl: readonly number[]): number => {
+    const ids = grid
+      .map((f, i) => (f >= s.band[0] && f <= s.band[1] ? i : -1))
+      .filter((i) => i >= 0);
+    if (ids.length === 0) return 0;
+    const vals = ids.map((i) => spl[i]).sort((a, b) => a - b);
+    const med = vals[Math.floor(vals.length / 2)];
+    return ids.reduce((a, i) => a + Math.abs(spl[i] - med), 0) / ids.length;
+  };
+  const deliveredSpl = (() => {
+    try {
+      const sol = solveNetwork(
+        crossoverToNetlist({ name: 'solo-verify', parts: net.parts }).netlist,
+        grid,
+        { [model]: z },
+      );
+      const drv = sol.drivers.find((x) => x.model === model);
+      if (!drv) return null;
+      const h = sol.transfers[drv.id];
+      return d.spl.map(
+        (v, i) => v + 20 * Math.log10(Math.hypot(h[i].re, h[i].im) || 1e-12),
+      );
+    } catch {
+      return null;
+    }
+  })();
+  if (deliveredSpl) {
+    const rawAvg = wholeRangeAvg(d.spl);
+    const gotAvg = wholeRangeAvg(deliveredSpl);
+    if (gotAvg > rawAvg + 0.05) {
+      const bare = merged.filter(
+        (p) => !['Inductor', 'Capacitor', 'Resistor'].includes(p.type),
+      );
+      const flat = { rippleDb: vf.before.ripplePeakDb, avgDevDb: rawAvg, phaseDeg: 0 };
+      return {
+        vf,
+        structure: [
+          `no correction delivered — every candidate made the whole range worse ` +
+            `(${gotAvg.toFixed(2)} vs ${rawAvg.toFixed(2)} dB avg): the reachable band ` +
+            `improves but the part below the target cannot follow. Try a lower target ` +
+            `level (reaches further) or a narrower view range.`,
+        ],
+        parts: bare,
+        net: {
+          parts: bare,
+          before: flat,
+          after: { ...flat, xoHz: null },
+          tuned: 0,
+          evaluations: net.evaluations,
+          removed: [],
+          added: [],
+        },
+        bomTotalEur: null,
+      };
+    }
+  }
+
   return { vf, structure, parts: net.parts, net, bomTotalEur: bomFor(net.parts).totalEur };
 }

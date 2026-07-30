@@ -11,6 +11,7 @@ import { optimizeSoloFilter, runSoloChain } from './soloOptimizer.ts';
 import { optimizeNetworkValues } from './netOptimizer.ts';
 import { tidySchematic } from './tidyLayout.ts';
 import { crossoverToNetlist } from './vxpNetwork.ts';
+import { solveNetwork } from './network.ts';
 import type { VxpPart } from './parsers/vxp.ts';
 
 const FIXTURES = join(dirname(fileURLToPath(import.meta.url)), 'parsers', 'fixtures');
@@ -273,6 +274,33 @@ describe('runSoloChain (design → synthesis → assembled solo tune)', () => {
   const zma = parseZma(load('mid_Backwavecone_sheep75gram.ZMA'));
   const zg = resample(zma.freq, zma.magnitude, zma.phase, grid, { clampEdges: true });
   const z = zg.spl.map((m, i) => fromPolar(m, (zg.phaseDeg[i] * Math.PI) / 180));
+
+  it('never delivers a network that is worse than the raw driver whole-range', () => {
+    // Sanders' avg ±5.66 run: the correction improved its own design band and
+    // still made the number he is judged by worse than no filter at all. Every
+    // never-worse guard until then judged the band it optimised.
+    const wholeAvg = (spl: readonly number[]) => {
+      const ids = grid.map((f, i) => (f >= 110 && f <= 19000 ? i : -1)).filter((i) => i >= 0);
+      const vals = ids.map((i) => spl[i]).sort((a, b) => a - b);
+      const med = vals[Math.floor(vals.length / 2)];
+      return ids.reduce((a, i) => a + Math.abs(spl[i] - med), 0) / ids.length;
+    };
+    // A very low target on a driver with a hard top-end cliff is the recipe:
+    // it reaches far, spends a lot of level, and the cliff cannot follow.
+    for (const targetLevelDb of [95, 105]) {
+      const r = runSoloChain({
+        grid, d, z, model: 'mid',
+        seed: cleanSpec(),
+        settings: { eqBands: 4, band: [110, 19000], targets: { rippleDb: 1.5 }, targetLevelDb },
+      });
+      const sol = solveNetwork(
+        crossoverToNetlist({ name: 'v', parts: r.parts }).netlist, grid, { mid: z });
+      const drv = sol.drivers.find((x) => x.model === 'mid')!;
+      const h = sol.transfers[drv.id];
+      const out = d.spl.map((v, i) => v + 20 * Math.log10(Math.hypot(h[i].re, h[i].im) || 1e-12));
+      expect(wholeAvg(out)).toBeLessThanOrEqual(wholeAvg(d.spl) + 0.06);
+    }
+  });
 
   it('stays drawable by the tidy auto-placer, even after staged escalation', () => {
     // Sanders' "Tidy layout doet niets": a ripple target the driver cannot

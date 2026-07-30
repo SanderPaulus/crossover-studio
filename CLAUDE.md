@@ -652,6 +652,16 @@ UI: ⚙ Settings-keuze "Target level (absolute)" met live "driver sits at X dB �
 default-voorstel mediaan−10; de bodem staat in de dB-schaal van de geladen FRD. Ook gefixt:
 de solo-band werd op 300 Hz geklemd (2-weg-aanname) — een breedbander vanaf 110 Hz moet
 vanaf 110 Hz ontworpen worden.
+**HELE-BEREIK nooit-slechter-poort (jul 2026, Sanders avg ±5,66-run)**: élke nooit-slechter-
+garantie beoordeelde tot dan de band die hij zélf optimaliseerde (ontwerpstap op de
+ontwerpband, tuner op zijn eigen band). Geen daarvan belooft het getal dat de ONTWERPER leest —
+gemiddelde afwijking over het gevraagde bereik. Een correctie kan zijn eigen band verbeteren en
+het hele bereik tóch slechter maken (passband 10 dB omlaag terwijl de onbereikbare top blijft
+staan); dat leveren is onverdedigbaar, want géén filter was dan beter. `runSoloChain` meet het
+geleverde netwerk daarom na op de GEVRAAGDE band tegen de kale driver en levert bij verlies de
+kale driver + de reden ("try a lower target level, or a narrower view range").
+NB nog open: `buildSoloNetwork` realiseert HP/LP NIET (alleen EQ-banden + pad + Zobel) — een
+virtuele high-pass staat dus niet in het gebouwde netwerk.
 **Bypass-C-escalatie alleen op ECHTE pad-weerstanden (jul 2026, Sanders "Tidy layout doet
 niets")**: de kandidaat-filter keek naar COÖRDINATEN ("zit er al een C op deze twee punten")
 en "niet geaard". Beide te zwak — de damping-R ín een parallelle LCR-trap deelt de knopen maar
