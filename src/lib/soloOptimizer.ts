@@ -20,6 +20,7 @@
  *  - never worse than the seed; fully deterministic (no RNG, no wall-clock).
  */
 import { nelderMead } from './optimize.ts';
+import { bandIndices, bandMedian, bandStats, reachableBand } from './bandMetrics.ts';
 import { evalDriverFilter, type DriverFilterSpec, type EqBandSpec } from './filters.ts';
 import type { GriddedResponse } from './dsp.ts';
 import type { Complex } from './complex.ts';
@@ -164,15 +165,9 @@ export function reachableBandFor(
   band: [number, number],
   floorDb: number,
 ): [number, number] {
-  const ids: number[] = [];
-  for (let i = 0; i < freqs.length; i++) {
-    if (freqs[i] >= band[0] && freqs[i] <= band[1]) ids.push(i);
-  }
-  const alive = ids.filter((i) => spl[i] >= floorDb);
-  if (alive.length < 8) return band;
-  const lo = Math.max(band[0], freqs[alive[0]]);
-  const hi = Math.min(band[1], freqs[alive[alive.length - 1]]);
-  return hi > lo * 1.5 ? [lo, hi] : band;
+  // Thin wrapper over the shared implementation: "reachable" with an absolute
+  // reference is depth 0 below that level.
+  return reachableBand(freqs, spl, band, 0, floorDb);
 }
 
 const cloneSpec = (s: DriverFilterSpec): DriverFilterSpec => ({
@@ -227,40 +222,25 @@ export function optimizeSoloFilter(
     return baseSpl.map((s, i) => s + 20 * Math.log10(Math.hypot(h[i].re, h[i].im) || 1e-12));
   };
 
-  const idsIn = (freqs: readonly number[], b: readonly [number, number]) =>
-    freqs.map((f, i) => (f >= b[0] && f <= b[1] ? i : -1)).filter((i) => i >= 0);
+  const idsIn = bandIndices;
   /** Indices inside the DESIGN band (what the search works on). */
-  const inBand = (freqs: readonly number[]) => idsIn(freqs, band);
+  const inBand = (freqs: readonly number[]) => bandIndices(freqs, band);
 
+  /** Band statistics via the SHARED implementation (bandMetrics.ts). In floor
+   *  mode the reference is the FIXED target, not the band's own mean — that is
+   *  the whole point: a floating mean lets "flatness" be bought by moving the
+   *  mean, a fixed target cannot be gamed. */
   const statsIn = (
     b: readonly [number, number],
     freqs: readonly number[],
     spl: readonly number[],
   ): { std: number; avg: number; peak: number; mean: number } => {
-    const ids = idsIn(freqs, b);
-    let s = 0;
-    for (const i of ids) s += spl[i];
-    // FLOOR MODE: the reference is the FIXED target, not the band's own mean.
-    // That is the whole point — a floating mean lets "flatness" be bought by
-    // moving the mean (level-blind), a fixed target cannot be gamed.
-    const mean = floorDb !== undefined ? floorDb : s / Math.max(1, ids.length);
-    let sq = 0;
-    let abs = 0;
-    let lo = Infinity;
-    let hi = -Infinity;
-    for (const i of ids) {
-      const d = spl[i] - mean;
-      sq += d * d;
-      abs += Math.abs(d);
-      if (spl[i] < lo) lo = spl[i];
-      if (spl[i] > hi) hi = spl[i];
-    }
-    const n = Math.max(1, ids.length);
+    const st = bandStats(freqs, spl, b, floorDb !== undefined ? floorDb : 'mean');
     return {
-      std: Math.sqrt(sq / n),
-      avg: abs / n,
-      peak: Number.isFinite(lo) && hi > lo ? (hi - lo) / 2 : 0,
-      mean,
+      std: st.std,
+      avg: st.avgDev,
+      peak: st.peak,
+      mean: floorDb !== undefined ? floorDb : st.mean,
     };
   };
 
@@ -271,16 +251,12 @@ export function optimizeSoloFilter(
    *  what they asked to see, including the part no filter can reach. */
   const fullStats = (spec: DriverFilterSpec) => statsIn(reqBand, grid, respOn(spec, grid, driver.spl));
 
-  /** MEDIAN passband level over the band — the level reference for the
+  /** MEDIAN passband level over the design band — the level reference for the
    *  sensitivity budget. Median, not mean: a deep narrow notch (the whole
    *  point of the exercise) must not read as "lost sensitivity", while a
    *  broad shelf cut moves the median and does. */
-  const medianLevel = (freqs: readonly number[], spl: readonly number[]): number => {
-    const vals = inBand(freqs).map((i) => spl[i]).sort((a, b) => a - b);
-    if (vals.length === 0) return 0;
-    const m = Math.floor(vals.length / 2);
-    return vals.length % 2 ? vals[m] : (vals[m - 1] + vals[m]) / 2;
-  };
+  const medianLevel = (freqs: readonly number[], spl: readonly number[]): number =>
+    bandMedian(freqs, spl, band);
   const rawMedianInner = medianLevel(optFreq, optSpl);
   const rawMedianFull = medianLevel(grid, driver.spl);
   /** Sensitivity spent by a spec (dB, ≥0) on the inner grid. */
