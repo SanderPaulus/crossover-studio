@@ -14,9 +14,14 @@
   --bad-bg: #fee2e2;
   --accent: #2563eb;
 
-  /* Validated chart series colors (dataviz palette, light) */
+  /* Validated chart series colors (dataviz palette, light).
+     Tweeter is a TEAL, not the original green: at #1baf7a it sat at 2.69:1 on
+     the panel — under the 3:1 bar for graphics, and it is one of the two main
+     curves. Plain darkening (#149366, 3.72:1) fixed the contrast but halved
+     the protanope's separation from the red null-check curve (ΔE 23 → 13);
+     teal buys the contrast AND keeps that distance (3.58:1, ΔE 22). */
   --viz-woofer: #2a78d6;
-  --viz-tweeter: #1baf7a;
+  --viz-tweeter: #0d9488;
   --viz-combined: #4a3aa7;
   --viz-null: #e34948;
   --viz-grid: #e1e0d9;
@@ -50,9 +55,12 @@
     --bad-bg: #3a1414;
     --accent: #60a5fa;
 
-    /* Dark-stepped series colors (validated against #171a21) */
+    /* Dark-stepped series colors (validated against #171a21). Tweeter follows
+       the light theme's teal so the series keeps ONE identity across themes;
+       it also measures better than the green it replaces (6.99:1 vs 5.11, and
+       ΔE 20 vs 12 from the null curve for a protanope). */
     --viz-woofer: #3987e5;
-    --viz-tweeter: #199e70;
+    --viz-tweeter: #14b8a6;
     --viz-combined: #9085e9;
     --viz-null: #e66767;
     --viz-grid: #2c2c2a;
@@ -81,7 +89,7 @@
   --accent: #60a5fa;
 
   --viz-woofer: #3987e5;
-  --viz-tweeter: #199e70;
+  --viz-tweeter: #14b8a6;
   --viz-combined: #9085e9;
   --viz-null: #e66767;
   --viz-grid: #2c2c2a;
