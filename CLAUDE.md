@@ -778,12 +778,26 @@ kruising-settings disabled met uitleg. 3-weg wordt dezelfde gelaagdheid met TWEE
   schematic-editor heeft breedte nodig). Scores zijn compacte `.score-strip`s ÍN het
   bijbehorende chart-paneel (Response flatness + gedempte integration-items in het SPL-paneel,
   phase flatness in het fase-paneel — Sanders wens jul 2026: geen losse sectie onder de chart)
-  — de grafiek is de hoofdzaak; vrijwel elk control heeft een title-tooltip (helpers).
+  — de grafiek is de hoofdzaak; vrijwel elk control heeft een title-tooltip (helpers — maar een
+  tooltip is hover-only, dus icoon-only knoppen hebben daarnáást een `aria-label`).
 - **Layout-toggle in de topbar** (naast thema, localStorage 'ads-ui-layout'): Auto (volgt
-  vensterbreedte, split ≥760 px — het Claude-browserpaneel is ~800 px, vandaar de lage drempel) /
-  Split (altijd twee panes, ook smal) / Stacked (altijd de klassieke stapeling, gecentreerd op
-  max 920 px). CSS: media query gegate op `:not(.layout-split)`, geforceerd-stacked blok op
-  `.layout-stacked`, `#root:has(...)` voor de hoogte.
+  vensterbreedte, **split ≥1000 px**) / Split (altijd twee panes, ook smal) / Stacked (altijd de
+  klassieke stapeling, gecentreerd op max 920 px). CSS: media query gegate op
+  `:not(.layout-split)`, geforceerd-stacked blok op `.layout-stacked`, `#root:has(...)` voor de
+  hoogte. **De drempel stond op 760 px omdat het Claude-browserpaneel ~800 px is — dat was
+  precies de verkeerde conclusie (jul 2026, gemeten)**: op 800 px leverde split een SPL-chart van
+  263 × 93 px op met een 144 px score-strip erbóven, dus de grafiek — de hoofdzaak — was het
+  kleinste ding op het scherm. "Split zodra het past" heeft ruimte nodig voor én een design-pane
+  én een leesbare grafiek; onder ~1000 px is er geen van beide en geeft stacked de chart de volle
+  breedte (gemeten: 726 × 258 px in hetzelfde venster). Split blijft handmatig forceerbaar.
+- **Splitter-positie is een FRACTIE, niet pixels** (`ads-ui-panefrac`, legacy `ads-ui-panew`
+  migreert éénmalig tegen de huidige vensterbreedte). Hard geleerd: een pane die op een breed
+  scherm naar 704 px was gesleept reisde mee naar een 800 px venster, waar alleen de
+  `calc(100% - 346px)`-guard nog tussen de charts en niets in stond. Een aandeel schaalt mee, dus
+  de voorkeur betekent op elk scherm hetzelfde; de design-pane is bovendien op 60% geplafonneerd.
+  De splitter is toetsenbord-bedienbaar (tabIndex, pijltjes 2%/druk, Home = terug naar
+  automatisch) — een sleep-handle die alleen op een pointer reageert is voor het toetsenbord
+  onbereikbaar.
 - **Fase C — grafieken à la carte**: toggle-chips boven het analysepaneel (Directivity/Sonogram/
   Filter transfer/Impedance/Phase/Time domain, elke combinatie tegelijk, localStorage
   'ads-ui-panels', default alles aan). Uit = óók niet berekend: de memos voor directivity/
@@ -851,6 +865,45 @@ kruising-settings disabled met uitleg. 3-weg wordt dezelfde gelaagdheid met TWEE
   Catalog/Tools/Simulation op de Network-tab, Design/Configure/State op Filters, Measurements/
   Project/Catalog op Import)
 
+- **De legenda mag de grafiek niet overgroeien** (`secondary` op Series, jul 2026): elke feature
+  kreeg terecht een legend-chip, maar niemand besloot ooit hoeveel er sámen mochten staan — elf
+  SPL-items wikkelden op 800 px naar acht regels (158 px legenda boven een 93 px grafiek).
+  Ondersteunende curves (tab-ghosts, tolerantie-envelop, target-vormen) vouwen achter één
+  "+N more"-chip. BEWUST alleen presentatie: een opgevouwen curve wordt gewoon getekend, en een
+  serie die de gebruiker zélf heeft uitgezet blijft in de lijst staan (anders verdwijnt zijn chip
+  buiten bereik). Hard geleerd in dezelfde bouw: tel wat er kán vouwen, niet wat er ís gevouwen —
+  op het gevouwen aantal verdween de chip zodra je hem uitklapte, zonder weg terug
+- **Kleur is nooit de enige drager** (jul 2026, doorgemeten met CVD-simulatie): blauw↔paars valt
+  voor een protanoop volledig samen (ΔE 2 in dark mode) en dat is met géén paars/magenta/roze te
+  repareren — alleen amber/oranje scheidt echt, want de blauw-geel-as blijft intact. Die kleuren
+  zijn hier bezet door de fase-tiers, dus de app lost het op met PATROON: null-check gestippeld,
+  ghosts elk hun eigen dash, impulse/energy-average gestippeld, on-axis dik-massief. Zo houden
+  ook samenvallende tinten hun betekenis. (Gecontroleerd: er is geen enkele grafiek waar een
+  massieve paarse curve naast een massieve blauwe ligt — in de SPL-plot valt de combined buiten
+  het overlapgebied wél terug op paars, maar dáár ligt hij per definitie bovenop de dominante
+  driver.) `--viz-tweeter` is om dezelfde reden een TEAL: als groen zat hij op 2,69:1 (onder de
+  3:1-grens voor grafiek-elementen) en simpelweg donkerder maken schoof hem naar de rode
+  null-curve toe (ΔE 23 → 13)
+- **Chart-meubels horen in de grijsfamilie van de interface**: grid/axis/tick waren warm naast
+  koele UI-grijzen, wat als een ander systeem las. Hertint op GELIJKE luminantie — zwaarte
+  onveranderd, alleen de gele zweem weg. Een vaag raster hoort vaag te blijven
+- **Alle popups delen `components/Modal.tsx`** (base-ui Dialog, jul 2026 — eerste externe
+  UI-dependency, naast `@number-flow/react` voor de rollende sim-teller in de busy-kaart): wizard,
+  Add notch, 🎯 Targets, ❓ Help en 🗂 Catalog manager. Daarvóór hadden vijf popups drie
+  verschillende afsluit-gedragingen (Help/Catalog luisterden zelf op Esc, de rest niet) en geen
+  van allen een focus-trap of focus-herstel. Drie dingen die je NIET moet terugdraaien:
+  (a) **de busy-overlay is bewust GEEN Modal** — hij is een `role="status"` live region, mag
+  tijdens een run van minuten geen focus vangen en draagt de 250 ms close-linger met bevroren
+  body; (b) base-ui zet de app erachter alléén op `aria-hidden`, dus Tab liep er gewoon in —
+  `Modal` zet zelf `inert` op `#root` (de dialog hangt in een portal op `<body>`, daarbuiten), en
+  dat is wat de trap laat werken; (c) Esc bereikt de dialog NIET vanuit een `type="search"`-veld,
+  en juist dat veld heeft de focus bij openen in Help én Catalog manager — beide sluiten daar
+  expliciet via hun eigen `onKeyDown`. De dirty-guard van de catalogus loopt via de `onClose` van
+  Modal, dus Esc/backdrop/Cancel vallen allemaal onder dezelfde bevestiging
+- **Eén ontworpen `:focus-visible`-ring** (2 px accent) op alle controls; zonder reed de app op
+  de browser-default, die per browser verschilt en het accent negeert. Icoon-only knoppen
+  (tab-sluiten, 📌, de ✕ van dialogs) hebben een `aria-label` nodig: een `title` is hover-only en
+  dus géén label voor toetsenbord of screenreader
 - Bedieningspanelen NOOIT achter de berekening die ze moeten herstellen (fMax="1"-val)
 - View-range-velden: focus-freeze (sim pauzeert bij focus, commit op blur/Enter) + debounce
 - Optimizer-instellingen moeten zichtbaar effect hebben; resultaten schrijven terug naar live state
