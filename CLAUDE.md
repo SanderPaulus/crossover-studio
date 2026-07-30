@@ -676,6 +676,20 @@ Terugval wordt daarom VERS gebouwd via `buildSoloNetwork` met een lege spec; reg
 |H| = 0 dB (±0,5) over de hele band.
 NB nog open: `buildSoloNetwork` realiseert HP/LP NIET (alleen EQ-banden + pad + Zobel) — een
 virtuele high-pass staat dus niet in het gebouwde netwerk.
+**"MAY drop" is een PLAFOND, geen opdracht (jul 2026, Sanders "20 dB geeft een slechter
+resultaat dan 15")**: het veld zegt MAY, maar de engine besteedde altijd alles. Het bedrag
+voedt de bereikbare band (`designBandFor`), dus méér toestemming verbreedde de band, spreidde
+dezelfde handvol correctiebanden dunner en de 7 kHz-breakup verloor van de klif. Gemeten
+(hele-bereik avg): 6 → 2,35 · 10 → 2,17 · 15 → 2,76 · 20 → 2,54 · 25 → 3,65, met de trap die
+kwam en ging — erratisch in precies de richting waarvan een ontwerper veiligheid verwacht.
+`runSoloChain` is nu een wrapper die de keten draait op een ABSOLUTE ladder van bestedingen
+([6,10,15,20,25,30,40] ∩ ≤plafond) en de beste HELE-BEREIK-uitkomst houdt; een hoger plafond
+voegt alleen kandidaten TOE, dus het resultaat kan nooit slechter worden (gemeten na de fix:
+2,35 · 2,17 · 2,17 · 2,17 · 2,17, trap overal aanwezig). Ties gaan naar de KLEINSTE besteding
+(gelijke vlakheid voor minder rendementsverlies) en de note meldt "spent 10.0 of 25.0 dB
+allowed — more attenuation measured worse over the whole range". Kosten: plafond 6 = één run
+(zoals voorheen), hoger plafond = meer runs — de gebruiker vraagt zelf om die bredere zoektocht.
+Bewust NIET in bodem-modus: daar heeft de ontwerper het niveau zelf benoemd.
 **Bypass-C-escalatie alleen op ECHTE pad-weerstanden (jul 2026, Sanders "Tidy layout doet
 niets")**: de kandidaat-filter keek naar COÖRDINATEN ("zit er al een C op deze twee punten")
 en "niet geaard". Beide te zwak — de damping-R ín een parallelle LCR-trap deelt de knopen maar

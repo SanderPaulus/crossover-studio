@@ -275,6 +275,38 @@ describe('runSoloChain (design → synthesis → assembled solo tune)', () => {
   const zg = resample(zma.freq, zma.magnitude, zma.phase, grid, { clampEdges: true });
   const z = zg.spl.map((m, i) => fromPolar(m, (zg.phaseDeg[i] * Math.PI) / 180));
 
+  it('"may drop by N" is a ceiling: more permission is never worse', () => {
+    // Sanders: 20 dB gave a worse result than 15. The control says MAY, but
+    // the spend fed the reachable band, so a bigger permission widened the
+    // band, spread the same few correction bands thinner and lost the breakup
+    // trap. Measured whole-range avg went 2.35 / 2.17 / 2.76 / 2.54 / 3.65 for
+    // 6 / 10 / 15 / 20 / 25 dB — erratic in the one direction a designer
+    // expects to be safe. The engine now searches the spend up to the ceiling.
+    const wholeAvg = (spl: readonly number[]) => {
+      const ids = grid.map((f, i) => (f >= 300 && f <= 19000 ? i : -1)).filter((i) => i >= 0);
+      const vals = ids.map((i) => spl[i]).sort((a, b) => a - b);
+      const med = vals[Math.floor(vals.length / 2)];
+      return ids.reduce((a, i) => a + Math.abs(spl[i] - med), 0) / ids.length;
+    };
+    const run = (sensitivityBudgetDb: number) => {
+      const r = runSoloChain({
+        grid, d, z, model: 'mid',
+        seed: cleanSpec(),
+        settings: { eqBands: 3, band: [300, 19000], targets: { rippleDb: 3 }, sensitivityBudgetDb },
+      });
+      const sol = solveNetwork(
+        crossoverToNetlist({ name: 'm', parts: r.parts }).netlist, grid, { mid: z });
+      const drv = sol.drivers.find((x) => x.model === 'mid')!;
+      const h = sol.transfers[drv.id];
+      return wholeAvg(d.spl.map((v, i) => v + 20 * Math.log10(Math.hypot(h[i].re, h[i].im) || 1e-12)));
+    };
+    const tight = run(6);
+    const loose = run(15);
+    // A bigger allowance may not cost quality — the ladder always contains the
+    // conservative candidate, so the best can only improve or stay equal.
+    expect(loose).toBeLessThanOrEqual(tight + 0.02);
+  }, 300000);
+
   it('the bare "no correction" network passes the driver through', () => {
     // Regression for a shipped bug: the no-correction fallback was built by
     // FILTERING the R/L/C parts out of the corrected network. Those components

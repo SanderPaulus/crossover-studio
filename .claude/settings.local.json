@@ -164,7 +164,9 @@
       "Bash(grep -n \"flat at \\\\${soloFloorInfo.floor}\" src/App.tsx)",
       "Bash(grep -n \"sensitivity budget \\\\${soloSensDb}\\\\|soloSensDb} dB\" src/App.tsx)",
       "Bash(cd \"/Users/sandersomers/SD Acoustics/Design Studio\" && mkdir -p public/robbert && cp \"/Users/sandersomers/UTM - Shared Folder/Speaker Robbert/12w_ver0_hor_deg0.frd\" \"/Users/sandersomers/UTM - Shared Folder/Speaker Robbert/woofer 1.ZMA\" public/robbert/ && ls public/robbert/)",
-      "Bash(grep -n \"return { vf, structure, parts: net.parts, net, bomTotalEur\" -B6 src/lib/soloOptimizer.ts)"
+      "Bash(grep -n \"return { vf, structure, parts: net.parts, net, bomTotalEur\" -B6 src/lib/soloOptimizer.ts)",
+      "Bash(awk 'NR>=741 && NR<=760' src/lib/soloOptimizer.ts)",
+      "Bash(awk 'NR>=880 && NR<=895' src/lib/soloOptimizer.ts)"
     ]
   }
 }

@@ -738,7 +738,7 @@ const silentGhost = (freqs: readonly number[]): GriddedResponse => ({
  *   the real measurement — the "Add notch + Optimize components" flow,
  *   automated.
  */
-export function runSoloChain(
+function runSoloChainOnce(
   input: SoloChainInput,
   onProgress?: (p: ChainStageProgress) => void,
 ): SoloChainResult {
@@ -901,4 +901,102 @@ export function runSoloChain(
   }
 
   return { vf, structure, parts: net.parts, net, bomTotalEur: bomFor(net.parts).totalEur };
+}
+
+/**
+ * Full solo chain with the level spend SEARCHED rather than spent.
+ *
+ * HARD LEARNED (Sanders, jul 2026 — "May drop by 20 dB" giving a worse result
+ * than 15): the control says MAY, but the engine treated it as MUST. The spend
+ * feeds the reachable band (designBandFor), so raising the permission widened
+ * the band, spread the same handful of correction bands over a region that
+ * includes the hopeless part, and the breakup peak lost out to the cliff.
+ * Measured on Robbert's 12W8524 (whole-range avg): 6 dB → 2.35, 10 → 2.17,
+ * 15 → 2.76, 20 → 2.54, 25 → 3.65, with the 7 kHz trap appearing and
+ * vanishing along the way. Erratic in the one direction a designer expects to
+ * be safe.
+ *
+ * So the permission is a CEILING and the engine picks the spend: run the chain
+ * at a small ladder of candidate spends and keep the best whole-range result.
+ * The ladder always contains a conservative anchor (6 dB, or the ceiling when
+ * that is smaller), so a generous permission can no longer be worse than a
+ * tight one. Deterministic; ~4 chain runs.
+ *
+ * In FLOOR mode there is nothing to search — the designer named the level.
+ */
+export function runSoloChain(
+  input: SoloChainInput,
+  onProgress?: (p: ChainStageProgress) => void,
+): SoloChainResult {
+  const { grid, d, settings: s } = input;
+  if (s.targetLevelDb !== undefined) return runSoloChainOnce(input, onProgress);
+
+  const cap = Math.max(0, s.sensitivityBudgetDb ?? 6);
+  // ABSOLUTE ladder, not fractions of the ceiling: raising the permission then
+  // only ADDS candidates, so the best result can never get worse — which is
+  // precisely the guarantee "may drop by N" implies. Fractions of the cap gave
+  // a different candidate set per setting and kept a residual wobble.
+  // Cost scales with the permission (cap 6 = one run, as before).
+  const ladder = [...new Set([6, 10, 15, 20, 25, 30, 40, cap])]
+    .map((v) => Math.round(v * 10) / 10)
+    .filter((v) => v > 0 && v <= cap)
+    .sort((a, b) => a - b);
+  if (ladder.length <= 1) {
+    return runSoloChainOnce(
+      { ...input, settings: { ...s, sensitivityBudgetDb: ladder[0] ?? cap } },
+      onProgress,
+    );
+  }
+
+  /** Whole-range verdict — the number the designer is judged by. */
+  const idsReq = grid
+    .map((f, i) => (f >= s.band[0] && f <= s.band[1] ? i : -1))
+    .filter((i) => i >= 0);
+  const wholeAvg = (spl: readonly number[]): number => {
+    if (idsReq.length === 0) return 0;
+    const vals = idsReq.map((i) => spl[i]).sort((a, b) => a - b);
+    const med = vals[Math.floor(vals.length / 2)];
+    return idsReq.reduce((a, i) => a + Math.abs(spl[i] - med), 0) / idsReq.length;
+  };
+  const deliveredOf = (parts: readonly VxpPart[]): number[] | null => {
+    try {
+      const sol = solveNetwork(
+        crossoverToNetlist({ name: 'solo-pick', parts: [...parts] }).netlist,
+        grid,
+        { [input.model]: input.z },
+      );
+      const drv = sol.drivers.find((x) => x.model === input.model);
+      if (!drv) return null;
+      const h = sol.transfers[drv.id];
+      return d.spl.map((v, i) => v + 20 * Math.log10(Math.hypot(h[i].re, h[i].im) || 1e-12));
+    } catch {
+      return null;
+    }
+  };
+
+  let best: { r: SoloChainResult; avg: number; spend: number } | null = null;
+  let evals = 0;
+  for (const spend of ladder) {
+    const r = runSoloChainOnce(
+      { ...input, settings: { ...s, sensitivityBudgetDb: spend } },
+      (p) => onProgress?.({ ...p, evals: evals + p.evals }),
+    );
+    evals += r.vf.evaluations + r.net.evaluations;
+    const spl = deliveredOf(r.parts);
+    const avg = spl ? wholeAvg(spl) : Infinity;
+    // Ties go to the SMALLER spend: equal flatness for less lost efficiency.
+    if (!best || avg < best.avg - 0.01) best = { r, avg, spend };
+  }
+  const pick = best!;
+  return {
+    ...pick.r,
+    structure:
+      pick.spend < cap - 0.05
+        ? [
+            ...pick.r.structure,
+            `spent ${pick.spend.toFixed(1)} of ${cap.toFixed(1)} dB allowed — ` +
+              `more attenuation measured worse over the whole range`,
+          ]
+        : pick.r.structure,
+  };
 }
