@@ -122,9 +122,11 @@ body {
   min-height: 0;
   display: grid;
   /* Left pane: user-dragged --pane-w wins, else the automatic clamp; always
-     capped so the charts keep ≥340 px. Middle column = the drag splitter. */
+     capped so the charts keep ≥340 px AND at least 40% of the width — the px
+     guard alone left the SPL chart a 263 px strip in an 800 px window.
+     Middle column = the drag splitter. */
   grid-template-columns:
-    max(260px, min(var(--pane-w, clamp(300px, 33vw, 460px)), calc(100% - 346px)))
+    max(260px, min(var(--pane-w, clamp(300px, 33vw, 460px)), calc(100% - 346px), 60%))
     6px
     minmax(0, 1fr);
 }
@@ -132,7 +134,7 @@ body {
 /* The schematic editor needs elbow room — widen the pane on the Network tab. */
 .workspace.wide-left {
   grid-template-columns:
-    max(260px, min(var(--pane-w, clamp(420px, 46vw, 700px)), calc(100% - 346px)))
+    max(260px, min(var(--pane-w, clamp(420px, 46vw, 700px)), calc(100% - 346px), 60%))
     6px
     minmax(0, 1fr);
 }
@@ -459,8 +461,14 @@ body {
 }
 
 /* Narrow screens: fall back to the classic single-column stack — unless the
-   topbar layout toggle forces "Split". */
-@media (max-width: 760px) {
+   topbar layout toggle forces "Split".
+   Threshold raised 760 → 1000 px after measuring what "it fits" actually
+   bought at 800 px (the Claude browser pane, the width this was tuned for):
+   an SPL chart of 263 × 93 px with a 144 px score strip above it. Split needs
+   room for a design pane AND a readable graph; below ~1000 px it has neither,
+   and stacked gives the chart the full width. "Split" in the topbar still
+   forces two panes at any width. */
+@media (max-width: 1000px) {
   #root:has(.app-shell:not(.layout-split)) {
     height: auto;
   }
@@ -609,6 +617,13 @@ h1 {
   display: inline-flex;
   align-items: center;
   gap: 0.3rem;
+  /* Way + order + button is the widest cluster in the toolbars; without
+     wrapping it alone pushed the page 106 px past a 375 px window. */
+  flex-wrap: wrap;
+  max-width: 100%;
+}
+.template-picker select {
+  min-width: 0;
 }
 
 /* Collapsible header for the per-driver filter-band editor. */
@@ -857,6 +872,18 @@ h2 {
   display: inline-flex;
   align-items: center;
   gap: 0.4rem;
+}
+
+/* Folds the supporting curves (ghosts, tolerance, targets) out of the legend
+   so it cannot outgrow the graph. Reads as a control, not as a series. */
+.legend-more {
+  padding: 0 0.4rem;
+  border: 1px dashed var(--border);
+  border-radius: 999px;
+  background: none;
+  color: var(--muted);
+  font-size: 0.78rem;
+  align-self: center;
 }
 
 .legend-key {
@@ -1254,6 +1281,19 @@ button:hover {
   border-color: var(--accent);
 }
 
+/* One designed focus ring for every control. Without this the app rode on the
+   browser default, which differs per browser and does not follow the accent.
+   :focus-visible only, so a mouse click never paints a ring. */
+button:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible,
+[tabindex]:focus-visible,
+summary:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
 .controls {
   display: flex;
   gap: 2rem;
@@ -1318,7 +1358,11 @@ label.check {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 1rem;
+  gap: 0.5rem 1rem;
+  /* Wrap instead of pushing past the right edge: below ~700 px the chips and
+     switches used to overflow the window (measured 707 px of content in a
+     375 px viewport, so the whole page scrolled sideways). */
+  flex-wrap: wrap;
   padding: 0.5rem 1.1rem;
   border-bottom: 1px solid var(--border);
 }
@@ -1327,6 +1371,10 @@ label.check {
   margin: 0;
   font-size: 1.05rem;
   white-space: nowrap;
+  /* The title may shrink and ellipsise; the status chips must not. */
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .theme-switch {

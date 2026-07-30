@@ -364,7 +364,7 @@ export function CatalogManager({ onClose, onSave }: Props) {
           <option value="C">C — caps</option>
           <option value="R">R — resistors</option>
         </select>
-        <button type="button" onClick={close} title="Close (Esc)">
+        <button type="button" onClick={close} title="Close (Esc)" aria-label="Close the catalog manager">
           ✕
         </button>
       </div>

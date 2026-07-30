@@ -583,8 +583,9 @@ export default function App() {
   };
 
   /**
-   * Layout mode: 'auto' follows window width (split ≥760 px), 'split' and
-   * 'stacked' force the two-pane / classic single-column layout. Persisted.
+   * Layout mode: 'auto' follows window width (split ≥1000 px — the CSS media
+   * query owns the number), 'split' and 'stacked' force the two-pane / classic
+   * single-column layout. Persisted.
    */
   const [layoutMode, setLayoutMode] = useState<'auto' | 'split' | 'stacked'>(() => {
     const m = localStorage.getItem('ads-ui-layout');
@@ -595,19 +596,35 @@ export default function App() {
   }, [layoutMode]);
 
   /**
-   * Draggable divider between the design pane and the charts: width in px of
-   * the left pane, null = automatic (the CSS clamp defaults). During a drag the
-   * CSS variable is written straight to the DOM node so the whole app doesn't
-   * re-render per mouse move; the value is committed to state on release.
+   * Draggable divider between the design pane and the charts: the left pane's
+   * share of the workspace (0–1), null = automatic (the CSS clamp defaults).
+   *
+   * A FRACTION, not pixels — hard learned by measuring: a width dragged on a
+   * wide monitor (704 px) followed the app into an 800 px window, where the
+   * `calc(100% - 346px)` guard was all that stood between the charts and
+   * nothing. The SPL chart ended up 263 × 93 px with a 144 px score strip
+   * above it. A share scales with the window, so the preference means the
+   * same thing on both screens.
+   *
+   * During a drag the CSS variable is written straight to the DOM node so the
+   * whole app doesn't re-render per mouse move; state is committed on release.
    */
-  const [paneW, setPaneW] = useState<number | null>(() => {
-    const v = Number(localStorage.getItem('ads-ui-panew') ?? NaN);
-    return Number.isFinite(v) && v >= 240 ? v : null;
+  const [paneFrac, setPaneFrac] = useState<number | null>(() => {
+    const f = Number(localStorage.getItem('ads-ui-panefrac') ?? NaN);
+    if (Number.isFinite(f) && f > 0.1 && f < 0.9) return f;
+    // Migrate the legacy px setting against the current window (the workspace
+    // spans the full width), so an existing split is not silently discarded.
+    const px = Number(localStorage.getItem('ads-ui-panew') ?? NaN);
+    if (Number.isFinite(px) && px >= 240 && window.innerWidth > 0) {
+      return Math.min(0.8, Math.max(0.2, px / window.innerWidth));
+    }
+    return null;
   });
   useEffect(() => {
-    if (paneW == null) localStorage.removeItem('ads-ui-panew');
-    else localStorage.setItem('ads-ui-panew', String(Math.round(paneW)));
-  }, [paneW]);
+    localStorage.removeItem('ads-ui-panew');
+    if (paneFrac == null) localStorage.removeItem('ads-ui-panefrac');
+    else localStorage.setItem('ads-ui-panefrac', paneFrac.toFixed(4));
+  }, [paneFrac]);
   const workspaceRef = useRef<HTMLDivElement | null>(null);
   const startPaneDrag = (e: ReactPointerEvent<HTMLDivElement>) => {
     const ws = workspaceRef.current;
@@ -616,17 +633,18 @@ export default function App() {
     const el = e.currentTarget;
     el.setPointerCapture(e.pointerId);
     const rect = ws.getBoundingClientRect();
-    let w: number | null = null;
+    let frac: number | null = null;
     const move = (ev: PointerEvent) => {
       // Keep both panes usable: left ≥260 px, charts ≥340 px (+6 px splitter).
-      w = Math.max(260, Math.min(ev.clientX - rect.left, rect.width - 346));
-      ws.style.setProperty('--pane-w', `${w}px`);
+      const w = Math.max(260, Math.min(ev.clientX - rect.left, rect.width - 346));
+      frac = w / rect.width;
+      ws.style.setProperty('--pane-w', `${(frac * 100).toFixed(3)}%`);
     };
     const done = () => {
       el.removeEventListener('pointermove', move);
       el.removeEventListener('pointerup', done);
       el.removeEventListener('pointercancel', done);
-      if (w != null) setPaneW(w);
+      if (frac != null) setPaneFrac(frac);
     };
     el.addEventListener('pointermove', move);
     el.addEventListener('pointerup', done);
@@ -3129,6 +3147,8 @@ export default function App() {
             dash: GHOST_DASHES[i % GHOST_DASHES.length],
             width: 1.4,
             x: grid,
+            // Comparison curves, not the subject — fold them in the legend.
+            secondary: true,
           };
           spl.push({ ...style, id: `ghost:${d.id}`, y: combined.combinedSpl });
           phase.push({
@@ -3254,6 +3274,7 @@ export default function App() {
       x: result.freq,
       y: shapes[k].map((s) => s + offset),
       defaultOff: true,
+      secondary: true,
     }));
   }, [result, vFilters, trimDb, woofer, tweeter]);
 
@@ -3278,6 +3299,7 @@ export default function App() {
               width: 1.2,
               x: result.freq,
               y: tolBand.upperDb,
+              secondary: true,
             },
             {
               id: 'tollo',
@@ -3287,6 +3309,7 @@ export default function App() {
               width: 1.2,
               x: result.freq,
               y: tolBand.lowerDb,
+              secondary: true,
             },
           ] satisfies Series[])
         : []),
@@ -4758,7 +4781,11 @@ export default function App() {
       <div
         ref={workspaceRef}
         className={`workspace${designTab === 'network' ? ' wide-left' : ''}`}
-        style={paneW != null ? ({ '--pane-w': `${paneW}px` } as CSSProperties) : undefined}
+        style={
+          paneFrac != null
+            ? ({ '--pane-w': `${(paneFrac * 100).toFixed(3)}%` } as CSSProperties)
+            : undefined
+        }
       >
         <aside className="design-pane">
           <nav className="pane-tabs" aria-label="Design panels">
@@ -6290,9 +6317,30 @@ export default function App() {
           className="pane-splitter"
           role="separator"
           aria-orientation="vertical"
+          aria-label="Resize the design and chart panes — arrow keys adjust, Home resets"
+          tabIndex={0}
           title="Drag to resize the panes — double-click to reset to automatic width"
           onPointerDown={startPaneDrag}
-          onDoubleClick={() => setPaneW(null)}
+          onDoubleClick={() => setPaneFrac(null)}
+          onKeyDown={(e) => {
+            // A drag handle that only responds to a pointer is a control the
+            // keyboard cannot reach at all; 2% a press matches the drag's feel.
+            const step = e.key === 'ArrowLeft' ? -0.02 : e.key === 'ArrowRight' ? 0.02 : 0;
+            if (step !== 0) {
+              e.preventDefault();
+              const ws = workspaceRef.current;
+              const cur =
+                paneFrac ??
+                (ws
+                  ? (ws.firstElementChild?.getBoundingClientRect().width ?? 0) /
+                    ws.getBoundingClientRect().width
+                  : 0.4);
+              setPaneFrac(Math.min(0.6, Math.max(0.2, cur + step)));
+            } else if (e.key === 'Home') {
+              e.preventDefault();
+              setPaneFrac(null);
+            }
+          }}
         />
 
         <main className="analysis-pane">
@@ -6364,6 +6412,9 @@ export default function App() {
                 type="button"
                 className={`pin-btn${splPinned ? ' on' : ''}`}
                 aria-pressed={splPinned}
+                // Icon-only: a tooltip is hover-only, so it is no label at all
+                // for a keyboard or a screen reader.
+                aria-label="Pin the SPL chart to the top"
                 onClick={() => setSplPinned((p) => !p)}
                 title={
                   splPinned
@@ -6985,6 +7036,7 @@ function DesignTab({
           if (window.confirm(`Delete tab "${design.name}"?`)) onDelete();
         }}
         title={`Delete "${design.name}"`}
+        aria-label={`Delete tab "${design.name}"`}
       >
         ×
       </button>

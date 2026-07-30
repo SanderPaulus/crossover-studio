@@ -30,6 +30,10 @@ export interface Series {
    *  opts in by clicking its legend chip (used for optional overlays). Only
    *  seeds the initial state — a user's click always wins afterwards. */
   defaultOff?: boolean;
+  /** Supporting curve (tab ghosts, tolerance envelope, target shapes): folded
+   *  behind a "+N" chip so the legend cannot outgrow the graph it explains.
+   *  Purely presentational — a folded series is still drawn. */
+  secondary?: boolean;
 }
 
 /** Draggable design handle drawn on top of the chart (e.g. a filter knee). */
@@ -196,6 +200,20 @@ export default function Chart({
   }, [allSeries]);
 
   const series = useMemo(() => allSeries.filter((s) => !hidden.has(s.id)), [allSeries, hidden]);
+
+  // Legend folding. Measured at an 800 px window: eleven SPL entries wrapped to
+  // eight rows and left the graph 93 px tall — the legend outgrew the thing it
+  // labels. Supporting curves fold behind one chip; a series the user has
+  // explicitly toggled off stays listed, or its chip would vanish out of reach.
+  const [showSecondary, setShowSecondary] = useState(false);
+  const legendSeries = useMemo(
+    () => allSeries.filter((s) => !s.secondary || showSecondary || hidden.has(s.id)),
+    [allSeries, showSecondary, hidden],
+  );
+  // Foldable = what CAN fold, not what IS folded: counting the folded ones made
+  // the chip disappear the moment it was expanded, with no way back.
+  const foldable = allSeries.filter((s) => s.secondary && !hidden.has(s.id)).length;
+  const foldedCount = allSeries.length - legendSeries.length;
 
   const toggle = (id: string) =>
     setHidden((prev) => {
@@ -482,7 +500,7 @@ export default function Chart({
   return (
     <div className="chart">
       <div className="chart-legend">
-        {allSeries.map((s) => (
+        {legendSeries.map((s) => (
           <button
             key={s.id}
             type="button"
@@ -503,6 +521,21 @@ export default function Chart({
             {s.label}
           </button>
         ))}
+        {foldable > 0 && (
+          <button
+            type="button"
+            className="legend-more"
+            onClick={() => setShowSecondary((v) => !v)}
+            aria-expanded={showSecondary}
+            title={
+              showSecondary
+                ? 'Fold the supporting curves back up'
+                : 'Show ghosts, tolerance band and target shapes in the legend (they are drawn either way)'
+            }
+          >
+            {showSecondary ? '− fewer' : `+${foldedCount} more`}
+          </button>
+        )}
       </div>
       {view && (
         <div className="chart-zoom-tools">

@@ -84,7 +84,7 @@ export function HelpPanel({ initialId, onClose }: Props) {
           }}
           autoFocus
         />
-        <button type="button" onClick={onClose} title="Sluiten (Esc)">
+        <button type="button" onClick={onClose} title="Sluiten (Esc)" aria-label="Handleiding sluiten">
           ✕
         </button>
       </div>
