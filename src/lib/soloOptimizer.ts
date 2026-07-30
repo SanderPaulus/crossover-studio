@@ -864,9 +864,18 @@ export function runSoloChain(
     const rawAvg = wholeRangeAvg(d.spl);
     const gotAvg = wholeRangeAvg(deliveredSpl);
     if (gotAvg > rawAvg + 0.05) {
-      const bare = merged.filter(
-        (p) => !['Inductor', 'Capacitor', 'Resistor'].includes(p.type),
-      );
+      // Build the bare network FROM SCRATCH. Filtering the R/L/C parts out of
+      // the built one severs the circuit: those components ARE the links
+      // between the bus points, so what is left is a generator, an orphan wire
+      // and a disconnected driver — which simulates as a dead flat line and
+      // even scores 100 (a constant has no deviation). An empty spec gives a
+      // correct generator → wire → driver → ground network.
+      const bare = buildSoloNetwork(
+        { gainDb: 0, hp: vf.spec.hp, lp: vf.spec.lp, eq: [] },
+        grid,
+        z,
+        model,
+      ).parts;
       const flat = { rippleDb: vf.before.ripplePeakDb, avgDevDb: rawAvg, phaseDeg: 0 };
       return {
         vf,

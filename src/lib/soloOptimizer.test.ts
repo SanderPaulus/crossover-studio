@@ -7,7 +7,7 @@ import { parseZma } from './parsers/zma.ts';
 import { logspace, resample, type GriddedResponse } from './dsp.ts';
 import { fromPolar } from './complex.ts';
 import { defaultEq, defaultHpLp, evalDriverFilter, type DriverFilterSpec } from './filters.ts';
-import { optimizeSoloFilter, runSoloChain } from './soloOptimizer.ts';
+import { buildSoloNetwork, optimizeSoloFilter, runSoloChain } from './soloOptimizer.ts';
 import { optimizeNetworkValues } from './netOptimizer.ts';
 import { tidySchematic } from './tidyLayout.ts';
 import { crossoverToNetlist } from './vxpNetwork.ts';
@@ -275,6 +275,29 @@ describe('runSoloChain (design → synthesis → assembled solo tune)', () => {
   const zg = resample(zma.freq, zma.magnitude, zma.phase, grid, { clampEdges: true });
   const z = zg.spl.map((m, i) => fromPolar(m, (zg.phaseDeg[i] * Math.PI) / 180));
 
+  it('the bare "no correction" network passes the driver through', () => {
+    // Regression for a shipped bug: the no-correction fallback was built by
+    // FILTERING the R/L/C parts out of the corrected network. Those components
+    // are the links between the bus points, so what was left was a generator,
+    // an orphan wire and a disconnected driver — simulating as a dead flat
+    // line, which then scored a perfect Response 100.
+    const { parts } = buildSoloNetwork(
+      { gainDb: 0, hp: defaultHpLp(200), lp: defaultHpLp(20000), eq: [] },
+      grid,
+      z,
+      'mid',
+    );
+    const sol = solveNetwork(crossoverToNetlist({ name: 'bare', parts }).netlist, grid, { mid: z });
+    const drv = sol.drivers.find((x) => x.model === 'mid')!;
+    const h = sol.transfers[drv.id];
+    // A bare generator → driver network is a straight wire: |H| = 1 (0 dB).
+    for (let i = 0; i < grid.length; i += 25) {
+      const db = 20 * Math.log10(Math.hypot(h[i].re, h[i].im) || 1e-12);
+      expect(db).toBeGreaterThan(-0.5);
+      expect(db).toBeLessThan(0.5);
+    }
+  });
+
   it('never delivers a network that is worse than the raw driver whole-range', () => {
     // Sanders' avg ±5.66 run: the correction improved its own design band and
     // still made the number he is judged by worse than no filter at all. Every
@@ -299,6 +322,14 @@ describe('runSoloChain (design → synthesis → assembled solo tune)', () => {
       const h = sol.transfers[drv.id];
       const out = d.spl.map((v, i) => v + 20 * Math.log10(Math.hypot(h[i].re, h[i].im) || 1e-12));
       expect(wholeAvg(out)).toBeLessThanOrEqual(wholeAvg(d.spl) + 0.06);
+      // And whatever it delivers must still be a WORKING network: a severed
+      // circuit simulates as a dead flat line and scores a perfect 100 —
+      // exactly the degenerate result the first version of this gate shipped.
+      const ids = grid.map((f, i) => (f >= 110 && f <= 19000 ? i : -1)).filter((i) => i >= 0);
+      const spread = Math.max(...ids.map((i) => out[i])) - Math.min(...ids.map((i) => out[i]));
+      expect(spread).toBeGreaterThan(1); // the driver's own shape must survive
+      const mid = ids[Math.floor(ids.length / 2)];
+      expect(out[mid]).toBeGreaterThan(d.spl[mid] - 25); // still connected
     }
   });
 

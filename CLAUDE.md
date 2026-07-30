@@ -659,7 +659,14 @@ gemiddelde afwijking over het gevraagde bereik. Een correctie kan zijn eigen ban
 het hele bereik tóch slechter maken (passband 10 dB omlaag terwijl de onbereikbare top blijft
 staan); dat leveren is onverdedigbaar, want géén filter was dan beter. `runSoloChain` meet het
 geleverde netwerk daarom na op de GEVRAAGDE band tegen de kale driver en levert bij verlies de
-kale driver + de reden ("try a lower target level, or a narrower view range").
+kale driver + de reden ("try a lower target level, or a narrower view range"). **HARD GELEERD
+in dezelfde poort (Sanders "Response 100 met een rechte lijn")**: die kale terugval mag NIET
+door de R/L/C's uit het gebouwde netwerk te FILTEREN — die componenten ZIJN de schakels tussen
+de bus-punten, dus wat overblijft is een generator, een wees-draad en een LOSGEKOPPELDE driver.
+Die simuleert als een kaarsrechte lijn en scoort vervolgens een perfecte 100 (een constante
+heeft geen afwijking) — de degeneratie die geen responsmetriek ziet, nu in het vangnet zelf.
+Terugval wordt daarom VERS gebouwd via `buildSoloNetwork` met een lege spec; regressietest eist
+|H| = 0 dB (±0,5) over de hele band.
 NB nog open: `buildSoloNetwork` realiseert HP/LP NIET (alleen EQ-banden + pad + Zobel) — een
 virtuele high-pass staat dus niet in het gebouwde netwerk.
 **Bypass-C-escalatie alleen op ECHTE pad-weerstanden (jul 2026, Sanders "Tidy layout doet
