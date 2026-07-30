@@ -307,14 +307,19 @@ export function optimizeSoloFilter(
     const bands = s.eq.filter((b) => b.enabled);
     // Floor mode always has something to fit — the level element — even with
     // no bands at all.
-    if (bands.length === 0 && floorDb === undefined) return s;
+    if (bands.length === 0) return s;
+    // Floor mode: the overall gain is SEEDED at (floor − median) and stays
+    // FIXED — never a search parameter. HARD LEARNED (Sanders' "Flat at 104",
+    // second round): tuning gain jointly with the bands makes level and shape
+    // interchangeable (gain −25 ≡ shelves everywhere −25), and the refine
+    // drifted the level work into two stacked low-shelf cuts. Those burned
+    // the band budget on level, the 7 kHz breakup kept its two remaining
+    // bands... elsewhere, and the pad vanished from the built network. Level
+    // is the pad's job; bands are for shape — same separation as candidates.
     const x0: number[] = [];
     for (const b of bands) x0.push(Math.log10(b.freq), b.gainDb, Math.log10(b.q));
-    const gi = x0.length; // index of the overall-gain parameter (floor mode)
-    if (floorDb !== undefined) x0.push(s.gainDb);
     const apply = (x: readonly number[]): DriverFilterSpec => {
       const out = cloneSpec(s);
-      if (floorDb !== undefined) out.gainDb = Math.max(-40, Math.min(0, x[gi]));
       let j = 0;
       for (const b of out.eq) {
         if (!b.enabled) continue;
@@ -604,13 +609,36 @@ export function buildSoloNetwork(
   // resistor tracks the driver's Z rather than being perfectly flat; the traps
   // and the component tuner absorb the residual shape, which is cheaper in
   // parts than a full L-pad.
+  let padShunt: number | null = null;
   if (spec.gainDb < -0.2) {
-    const fMid = Math.sqrt(grid[0] * grid[grid.length - 1]);
-    const zd = zMag(fMid);
+    // Nominal Z for the pad: the MEDIAN |Z| over the band, not one spot value.
+    const zs = grid.map((_, i) => Math.hypot(z[i].re, z[i].im)).sort((p, q) => p - q);
+    const z0 = Math.max(1, zs[Math.floor(zs.length / 2)]);
     const a = 10 ** (spec.gainDb / 20); // 0 < a < 1
-    const R = Math.max(0.22, Math.min(220, zd * (1 / a - 1)));
-    seriesGroup([{ kind: 'R', si: R }]);
-    structure.push(`series pad ${R.toFixed(1)} Ω (${spec.gainDb.toFixed(1)} dB to the target level)`);
+    if (spec.gainDb <= -6) {
+      // Deep level shift → constant-impedance L-PAD, not a lone series R.
+      // HARD LEARNED (Sanders' "Flat at 104" on a 129 dB driver): a single
+      // series R against a Z that rises 7 → 35 Ω gives attenuation that
+      // FOLLOWS the impedance curve — a +14 dB tilt instead of a level, and
+      // the correction bands then waste themselves fighting the tilt instead
+      // of the breakup. The L-pad's small parallel R swamps the driver's Z
+      // (Rp ≪ |Z| everywhere), so the division Rp/(Rs+Rp) is frequency-flat
+      // and the amplifier still sees ≈ z0. Rs = Z0(1−a), Rp = Z0·a/(1−a).
+      const Rs = Math.max(0.22, Math.min(220, z0 * (1 - a)));
+      const Rp = Math.max(0.22, Math.min(220, (z0 * a) / (1 - a)));
+      seriesGroup([{ kind: 'R', si: Rs }]);
+      padShunt = Rp;
+      structure.push(
+        `L-pad ${Rs.toFixed(1)} Ω series + ${Rp.toFixed(2)} Ω across driver ` +
+          `(${spec.gainDb.toFixed(1)} dB to the target level)`,
+      );
+    } else {
+      // Shallow pad: a single series R is fine — the Z-tilt over a few dB is
+      // small and the tuner/Zobel absorb it. Cheaper in parts and in power.
+      const R = Math.max(0.22, Math.min(220, z0 * (1 / a - 1)));
+      seriesGroup([{ kind: 'R', si: R }]);
+      structure.push(`series pad ${R.toFixed(1)} Ω (${spec.gainDb.toFixed(1)} dB to the target level)`);
+    }
     bus(x + 3);
   }
   const bands = spec.eq
@@ -653,6 +681,16 @@ export function buildSoloNetwork(
     wires: [{ x: xd, y: 4 }, { x: xd, y: 11 }],
   });
   parts.push({ type: 'Ground', params: [], wires: [{ x: xd, y: 11 }] });
+  // L-pad parallel leg: the small R across the driver that makes a deep pad
+  // frequency-flat (see above). Placed at the driver node, before the Zobel.
+  let xTail = xd;
+  if (padShunt !== null) {
+    const xp = xTail + 5;
+    parts.push({ type: 'Wire', params: [], wires: [{ x: xTail, y: 4 }, { x: xp, y: 4 }] });
+    parts.push(el('R', padShunt, [{ x: xp, y: 4 }, { x: xp, y: 9 }]));
+    parts.push({ type: 'Ground', params: [], wires: [{ x: xp, y: 9 }] });
+    xTail = xp;
+  }
   // Gated Zobel across the driver: |Z| rising ≥1.3× from its band minimum
   // defeats the series elements above — classic gate, textbook seed.
   {
@@ -674,8 +712,8 @@ export function buildSoloNetwork(
       // of the band; the tuner refines.
       const fz = Math.max(1000, Math.min(fHi, 4000));
       const C = 1 / (2 * Math.PI * fz * R);
-      const xz = xd + 5;
-      parts.push({ type: 'Wire', params: [], wires: [{ x: xd, y: 4 }, { x: xz, y: 4 }] });
+      const xz = xTail + 5;
+      parts.push({ type: 'Wire', params: [], wires: [{ x: xTail, y: 4 }, { x: xz, y: 4 }] });
       parts.push(el('R', R, [{ x: xz, y: 4 }, { x: xz, y: 8 }]));
       parts.push(el('C', C, [{ x: xz, y: 8 }, { x: xz, y: 12 }]));
       parts.push({ type: 'Ground', params: [], wires: [{ x: xz, y: 12 }] });
@@ -803,6 +841,7 @@ function runSoloChainOnce(
     {
       solo: true,
       soloSensitivityDb: s.sensitivityBudgetDb,
+      soloTargetLevelDb: s.targetLevelDb,
       // Solo staged: the phase target is trivially met (phase metric is 0);
       // a huge value documents that only ripple gates here.
       staged: s.targets ? { rippleDb: s.targets.rippleDb, phaseDeg: 3600 } : undefined,

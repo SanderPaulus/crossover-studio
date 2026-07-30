@@ -2702,6 +2702,7 @@ export default function App() {
           soloFloorOn && soloFloorInfo
             ? Math.max(0, soloFloorInfo.median - soloFloorInfo.floor)
             : num(soloSensDb, 6),
+        soloTargetLevelDb: soloFloorOn && soloFloorInfo ? soloFloorInfo.floor : undefined,
         phasePriority: phasePriority / 100,
         angleData: angleResponsesOn(grid) ?? undefined,
         directivityWeight: dirWeight / 100,

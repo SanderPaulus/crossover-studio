@@ -103,6 +103,15 @@ export interface NetOptimizeOptions {
    *  and scores far better over the whole range (avg 1.7 vs 2.9 dB) than a
    *  6 dB-capped run. Efficiency versus whole-range flatness is his call. */
   soloSensitivityDb?: number;
+  /** Solo FLOOR MODE: the absolute target level (dB, FRD scale). When set,
+   *  the solo amplitude term measures deviation from THIS FIXED LEVEL instead
+   *  of spread around the response's own mean. Without it the tuner is
+   *  level-blind and erases the design stage's level goal (Sanders' "flatten
+   *  to a fixed level lijkt niet te gebeuren": the chain landed the seed at
+   *  the floor, then the tune let the level drift wherever shape-flatness
+   *  liked). Not an extra objective term — it IS the objective in this mode,
+   *  and a fixed target cannot be gamed by moving the average. */
+  soloTargetLevelDb?: number;
   /** FULL-measurement-band safety data (grid independent of the evaluation
    *  band). The tuner's quality metrics deliberately follow the user's view
    *  range, but that means a zoomed-in band silently hides whole-design
@@ -541,7 +550,21 @@ export function optimizeNetworkValues(
       }
     }
 
-    const targetStd = useLw && lwStd !== null ? lwStd : bandStd(r.freq, r.combinedSpl);
+    let targetStd = useLw && lwStd !== null ? lwStd : bandStd(r.freq, r.combinedSpl);
+    // Solo floor mode: the amplitude term is RMS deviation from the FIXED
+    // target level — bandStd is level-invariant and would erase the level
+    // goal the design stage just met (see soloTargetLevelDb).
+    if (solo && opts.soloTargetLevelDb !== undefined) {
+      let sq = 0;
+      let n = 0;
+      for (let i = 0; i < r.freq.length; i++) {
+        if (r.freq[i] < band[0] || r.freq[i] > band[1]) continue;
+        const dd = r.combinedSpl[i] - opts.soloTargetLevelDb;
+        sq += dd * dd;
+        n++;
+      }
+      targetStd = n > 0 ? Math.sqrt(sq / n) : targetStd;
+    }
 
     // Where the filtered drivers meet — anchor for the guard and protection.
     let xi = -1;

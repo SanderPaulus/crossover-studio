@@ -676,6 +676,22 @@ Terugval wordt daarom VERS gebouwd via `buildSoloNetwork` met een lege spec; reg
 |H| = 0 dB (±0,5) over de hele band.
 NB nog open: `buildSoloNetwork` realiseert HP/LP NIET (alleen EQ-banden + pad + Zobel) — een
 virtuele high-pass staat dus niet in het gebouwde netwerk.
+**BODEM-MODUS AFGEMAAKT (jul 2026, Sanders "flatten to a fixed level lijkt niet te gebeuren
++ de 7 kHz-piek wordt niet aangepakt")** — drie gaten in één screenshot: (1) een diepe pad was
+één serieweerstand, maar tegen een Z die 7 → 35 Ω stijgt volgt de verzwakking de Z-curve
+(+14 dB tilt i.p.v. een niveau) → `buildSoloNetwork` bouwt bij ≤ −6 dB nu een echte
+**constant-impedantie L-PAD** (Rs = Z0(1−a), Rp = Z0·a/(1−a), Z0 = mediaan |Z|; Rp ≪ |Z|
+overal, dus de deling Rp/(Rs+Rp) is frequentie-vlak en de versterker ziet ≈ Z0); (2) de
+componenttuner was bodem-blind (std is niveau-invariant) en wiste het niveau-doel — 
+`netOptimizer` kreeg `soloTargetLevelDb`: de solo-amplitudeterm wordt dan RMS-afwijking van
+het VASTE niveau (geen extra term — het ÍS de objective in die modus); (3) de refine tunede
+gain mét de banden, en gain −25 ≡ shelves-overal-−25: het niveauwerk droop naar twee gestapelde
+low-shelfs, verbrandde het bandenbudget en de breakup hield géén band over → **gain staat VAST
+op (bodem − mediaan)**, pad doet niveau, banden doen vorm (zelfde scheiding als de kandidaten).
+Gemeten (12W8524, "Flat at 104" op een 129 dB-driver): mediaan landt op 103,6 · L-pad
+9,8 Ω + 0,60 Ω · trap @ 6805 Hz · 7 kHz van 111,9 → 103,4. NB: bodem-modus optimaliseert
+vs-bodem; de Response-score blijft mediaan-relatief en kan iets lager lezen dan de
+"May drop"-modus met ladder — dat is de betekenis van de modus, geen bug.
 **"MAY drop" is een PLAFOND, geen opdracht (jul 2026, Sanders "20 dB geeft een slechter
 resultaat dan 15")**: het veld zegt MAY, maar de engine besteedde altijd alles. Het bedrag
 voedt de bereikbare band (`designBandFor`), dus méér toestemming verbreedde de band, spreidde

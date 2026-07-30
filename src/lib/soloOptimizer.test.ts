@@ -360,8 +360,12 @@ describe('runSoloChain (design → synthesis → assembled solo tune)', () => {
       const ids = grid.map((f, i) => (f >= 110 && f <= 19000 ? i : -1)).filter((i) => i >= 0);
       const spread = Math.max(...ids.map((i) => out[i])) - Math.min(...ids.map((i) => out[i]));
       expect(spread).toBeGreaterThan(1); // the driver's own shape must survive
+      // Still connected = the level lands NEAR the requested floor. (An
+      // earlier revision asserted "within 25 dB of the raw driver", written
+      // when deep floors were rejected outright — now the L-pad genuinely
+      // delivers them, and 29 dB of requested attenuation is the feature.)
       const mid = ids[Math.floor(ids.length / 2)];
-      expect(out[mid]).toBeGreaterThan(d.spl[mid] - 25); // still connected
+      expect(out[mid]).toBeGreaterThan(targetLevelDb - 10);
     }
   });
 
