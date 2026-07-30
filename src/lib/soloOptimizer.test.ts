@@ -154,6 +154,47 @@ describe('optimizeSoloFilter (single-driver design engine)', () => {
     expect(r.dipLimit!.hz).toBeGreaterThan(9000);
   });
 
+  it('floor mode: flattens down TO an absolute target level', () => {
+    // Sanders' idea: an absolute SPL floor instead of a relative budget. The
+    // goal is then well-posed for a cut-only network — everything above the
+    // floor gets cut to it, everything below is out of reach — and the floor
+    // alone decides how far the correctable band reaches.
+    const r = optimizeSoloFilter(grid, bumpyDriver, cleanSpec(), {
+      eqBands: 4,
+      band: [300, 19000],
+      targetLevelDb: 80, // driver sits at ~85–90 dB
+    });
+    // The correction reaches the target rather than some floating average:
+    // the median of the corrected response lands near the floor.
+    const h = evalDriverFilter(r.spec, grid);
+    const corrected = grid
+      .map((f, i) => (f >= 300 && f <= 19000 ? bumpyDriver.spl[i] + 20 * Math.log10(Math.hypot(h[i].re, h[i].im)) : null))
+      .filter((v): v is number => v !== null)
+      .sort((a, b) => a - b);
+    const median = corrected[Math.floor(corrected.length / 2)];
+    expect(median).toBeGreaterThan(76);
+    expect(median).toBeLessThan(84);
+    // A level element is part of the answer — an EQ band cannot move a whole
+    // passband to a target level.
+    expect(r.spec.gainDb).toBeLessThan(0);
+  });
+
+  it('floor mode: a lower floor reaches further up the band', () => {
+    // The relationship the designer reasons about: "floor at X → flat up to Y".
+    const cliff: GriddedResponse = {
+      freq: [...grid],
+      spl: grid.map((f) => 90 - (f > 6000 ? 28 * Math.min(1, Math.log2(f / 6000)) : 0)),
+      phaseDeg: grid.map(() => 0),
+    };
+    const high = optimizeSoloFilter(grid, cliff, cleanSpec(), {
+      eqBands: 2, band: [300, 19000], targetLevelDb: 86,
+    });
+    const low = optimizeSoloFilter(grid, cliff, cleanSpec(), {
+      eqBands: 2, band: [300, 19000], targetLevelDb: 70,
+    });
+    expect(low.designBand[1]).toBeGreaterThan(high.designBand[1] * 1.2);
+  });
+
   it('leaves an already-flat driver alone', () => {
     const flat: GriddedResponse = {
       freq: [...grid],

@@ -104,6 +104,11 @@ export interface ProjectDesign {
    *  buy flatness. Default 6; a fullranger carrying the whole range is worth
    *  more (Sanders' 12W8524: ~10 dB scores far better whole-range). */
   soloSensDb?: string;
+  /** Single-driver mode: use an ABSOLUTE target level (Sanders' floor idea)
+   *  instead of the relative sensitivity budget, and the level itself (dB in
+   *  the loaded FRD's own scale). */
+  soloFloorOn?: boolean;
+  soloFloorDb?: string;
 }
 
 export interface ProjectState {

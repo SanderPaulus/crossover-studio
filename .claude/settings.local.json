@@ -156,7 +156,14 @@
       "Bash(awk 'NR>2 && $1>9000 {print \"  9k:\", $2; exit}' \"VituixCAD_AxialFR Woofer 12w8524.frd\")",
       "Bash(awk 'NR>2 && $1>18000 {print \"  18k:\", $2; exit}' \"VituixCAD_AxialFR Woofer 12w8524.frd\")",
       "Bash(awk '$1>250 && $1<300 {print \"  300Hz:\", $2; exit}' 12w_ver0_hor_deg0.frd)",
-      "Bash(awk '$1>18000 {print \"  18k:\", $2; exit}' 12w_ver0_hor_deg0.frd)"
+      "Bash(awk '$1>18000 {print \"  18k:\", $2; exit}' 12w_ver0_hor_deg0.frd)",
+      "Bash(git tag *)",
+      "Bash(awk 'NR>=3626 && NR<=4400 && /^      \\\\\\)\\\\}$|^      \\\\{/ {print NR\": \"$0}' src/App.tsx)",
+      "Bash(ADS_HP=1 npx vitest run src/lib/soloDebug.test.ts)",
+      "Bash(ADS_BROAD=1 npx vitest run src/lib/soloDebug.test.ts)",
+      "Bash(grep -n \"flat at \\\\${soloFloorInfo.floor}\" src/App.tsx)",
+      "Bash(grep -n \"sensitivity budget \\\\${soloSensDb}\\\\|soloSensDb} dB\" src/App.tsx)",
+      "Bash(cd \"/Users/sandersomers/SD Acoustics/Design Studio\" && mkdir -p public/robbert && cp \"/Users/sandersomers/UTM - Shared Folder/Speaker Robbert/12w_ver0_hor_deg0.frd\" \"/Users/sandersomers/UTM - Shared Folder/Speaker Robbert/woofer 1.ZMA\" public/robbert/ && ls public/robbert/)"
     ]
   }
 }

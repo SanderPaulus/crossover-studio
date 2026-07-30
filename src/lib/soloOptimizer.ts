@@ -50,6 +50,19 @@ export interface SoloOptimizeOptions {
    * in the objective — the anchor lesson.
    */
   sensitivityBudgetDb?: number;
+  /**
+   * ABSOLUTE SPL FLOOR (dB, in the loaded FRD's own scale) — Sanders' idea, and
+   * a better-posed goal than the relative budget above. A cut-only network can
+   * always go DOWN and never up, so "be flat at 95 dB" is exactly the shape of
+   * problem passive filters can solve: every point above the floor gets cut to
+   * it, every point below it is out of reach by definition. One number then
+   * fixes BOTH things the relative budget needed two coupled parameters for —
+   * how much level may be spent, and how far the designable band reaches.
+   * The objective becomes deviation from a FIXED target instead of spread
+   * around a floating mean, which is why it needs no level guard at all.
+   * When set, this REPLACES sensitivityBudgetDb.
+   */
+  targetLevelDb?: number;
   maxIterations?: number;
 }
 
@@ -135,6 +148,31 @@ export function designBandFor(
   return hi > lo * 2 ? [lo, hi] : band;
 }
 
+/**
+ * FLOOR MODE band: the contiguous span where the raw driver sits AT or ABOVE
+ * an absolute target level, i.e. the region a cut-only network can actually
+ * bring down to that level. Below the floor there is nothing to do — passive
+ * filters cannot lift. Outermost reachable points bound the band (a dip in the
+ * middle stays in scope and shows up in the score, same doctrine as
+ * designBandFor).
+ */
+export function reachableBandFor(
+  freqs: readonly number[],
+  spl: readonly number[],
+  band: [number, number],
+  floorDb: number,
+): [number, number] {
+  const ids: number[] = [];
+  for (let i = 0; i < freqs.length; i++) {
+    if (freqs[i] >= band[0] && freqs[i] <= band[1]) ids.push(i);
+  }
+  const alive = ids.filter((i) => spl[i] >= floorDb);
+  if (alive.length < 8) return band;
+  const lo = Math.max(band[0], freqs[alive[0]]);
+  const hi = Math.min(band[1], freqs[alive[alive.length - 1]]);
+  return hi > lo * 1.5 ? [lo, hi] : band;
+}
+
 const cloneSpec = (s: DriverFilterSpec): DriverFilterSpec => ({
   ...s,
   hp: { ...s.hp },
@@ -149,13 +187,23 @@ export function optimizeSoloFilter(
   opts: SoloOptimizeOptions = {},
 ): SoloOptimizeResult {
   const budget = Math.max(0, Math.min(8, opts.eqBands ?? 4));
-  const sensBudget = Math.max(0, opts.sensitivityBudgetDb ?? 6);
   /** What the designer asked to see and be judged on. */
   const reqBand: [number, number] = opts.band ?? [grid[0] * 1.02, grid[grid.length - 1] * 0.975];
-  /** What can actually be designed: the requested band minus dead edges the
-   *  correction can never reach. Everything in the SEARCH uses this; every
-   *  reported number uses reqBand, so the cliff stays visible. */
-  const band = designBandFor(grid, driver.spl, reqBand, sensBudget);
+  /** FLOOR MODE (Sanders): an absolute target level. The goal is then "be flat
+   *  AT this level", and the designable band is simply where the driver can
+   *  reach it — no relative budget, no level guard needed. */
+  const floorDb = opts.targetLevelDb;
+  const sensBudget = floorDb !== undefined
+    ? Infinity // the floor governs the level; nothing else may cap it
+    : Math.max(0, opts.sensitivityBudgetDb ?? 6);
+  /** What can actually be designed: in floor mode the region the driver can be
+   *  cut down TO (raw ≥ floor); otherwise the requested band minus dead edges.
+   *  Everything in the SEARCH uses this; every reported number uses reqBand,
+   *  so the unreachable part stays visible. */
+  const band =
+    floorDb !== undefined
+      ? reachableBandFor(grid, driver.spl, reqBand, floorDb)
+      : designBandFor(grid, driver.spl, reqBand, sensBudget);
   let evaluations = 0;
 
   // Decimated inner grid for the search; full grid for stages/audit/report —
@@ -190,7 +238,10 @@ export function optimizeSoloFilter(
     const ids = idsIn(freqs, b);
     let s = 0;
     for (const i of ids) s += spl[i];
-    const mean = s / Math.max(1, ids.length);
+    // FLOOR MODE: the reference is the FIXED target, not the band's own mean.
+    // That is the whole point — a floating mean lets "flatness" be bought by
+    // moving the mean (level-blind), a fixed target cannot be gamed.
+    const mean = floorDb !== undefined ? floorDb : s / Math.max(1, ids.length);
     let sq = 0;
     let abs = 0;
     let lo = Infinity;
@@ -239,16 +290,29 @@ export function optimizeSoloFilter(
   // Seed: adopt the user's spec as-is, EQ boosts clamped to 0 (cut-only).
   const spec = cloneSpec(seedSpec);
   spec.eq = spec.eq.map((b) => ({ ...b, gainDb: Math.min(0, b.gainDb) }));
+  // FLOOR MODE needs a LEVEL element: bringing a 130 dB passband to a 95 dB
+  // floor is a pad, not an EQ band. Seed the overall gain at the distance to
+  // the floor and let the refine tune it (realized as a series resistor by
+  // buildSoloNetwork). Without this the engine has no way to reach the floor
+  // at all and the bands waste themselves trying.
+  if (floorDb !== undefined) {
+    spec.gainDb = Math.max(-40, Math.min(0, floorDb - rawMedianInner));
+  }
 
   /** Joint NM refinement of ALL enabled EQ bands (freq/gain/Q in log space,
    *  gain clamped ≤ 0 with a push-back penalty). Never worse than its seed. */
   const refine = (s: DriverFilterSpec, budgetScale = 1): DriverFilterSpec => {
     const bands = s.eq.filter((b) => b.enabled);
-    if (bands.length === 0) return s;
+    // Floor mode always has something to fit — the level element — even with
+    // no bands at all.
+    if (bands.length === 0 && floorDb === undefined) return s;
     const x0: number[] = [];
     for (const b of bands) x0.push(Math.log10(b.freq), b.gainDb, Math.log10(b.q));
+    const gi = x0.length; // index of the overall-gain parameter (floor mode)
+    if (floorDb !== undefined) x0.push(s.gainDb);
     const apply = (x: readonly number[]): DriverFilterSpec => {
       const out = cloneSpec(s);
+      if (floorDb !== undefined) out.gainDb = Math.max(-40, Math.min(0, x[gi]));
       let j = 0;
       for (const b of out.eq) {
         if (!b.enabled) continue;
@@ -310,7 +374,15 @@ export function optimizeSoloFilter(
   const candidates = (): EqBandSpec[] => {
     const spl = respOn(cur, optFreq, optSpl);
     const ids = inBand(optFreq);
-    const m = stats(optFreq, spl);
+    // SHAPE reference is the response's OWN mean, even in floor mode — the
+    // level offset is the gain element's job. HARD LEARNED (verified in the
+    // app on Robbert's 12W8524): measuring prominence against the fixed floor
+    // makes the whole band read as "15 dB too loud", so the tilt/shelf
+    // candidate wins every round and stacks up broadband cuts — three
+    // low-shelf cuts and no notch on the 7 kHz breakup, worse with 4 bands
+    // than with 2. Level is a level problem; bands are for shape.
+    const shapeMean = ids.reduce((a, i) => a + spl[i], 0) / Math.max(1, ids.length);
+    const m = { ...stats(optFreq, spl), mean: shapeMean };
     const out: EqBandSpec[] = [];
     // (a) Peak cut: max positive deviation, Q from the half-prominence width.
     let pi = -1;
@@ -524,6 +596,21 @@ export function buildSoloNetwork(
     });
     x = B;
   };
+  // LEVEL element first: a negative overall gain is a PAD, realized as a plain
+  // series resistor sized on |Z| at the band centre. (Floor mode leans on this
+  // — an EQ band cannot move a whole passband to a target level.) A single
+  // resistor tracks the driver's Z rather than being perfectly flat; the traps
+  // and the component tuner absorb the residual shape, which is cheaper in
+  // parts than a full L-pad.
+  if (spec.gainDb < -0.2) {
+    const fMid = Math.sqrt(grid[0] * grid[grid.length - 1]);
+    const zd = zMag(fMid);
+    const a = 10 ** (spec.gainDb / 20); // 0 < a < 1
+    const R = Math.max(0.22, Math.min(220, zd * (1 / a - 1)));
+    seriesGroup([{ kind: 'R', si: R }]);
+    structure.push(`series pad ${R.toFixed(1)} Ω (${spec.gainDb.toFixed(1)} dB to the target level)`);
+    bus(x + 3);
+  }
   const bands = spec.eq
     .filter((b) => b.enabled && b.gainDb < 0)
     .sort((a, b) => a.freq - b.freq);
@@ -600,6 +687,8 @@ export interface SoloChainSettings {
   eqBands: number;
   band: [number, number];
   targets?: { rippleDb: number };
+  /** Absolute SPL target level (dB, FRD scale) — see SoloOptimizeOptions. */
+  targetLevelDb?: number;
   /** Sensitivity budget (dB, default 6) — see SoloOptimizeOptions. Governs the
    *  design stage AND the assembled tune, so both work to the same rule. */
   sensitivityBudgetDb?: number;
@@ -659,6 +748,7 @@ export function runSoloChain(
     band: s.band,
     targets: s.targets,
     sensitivityBudgetDb: s.sensitivityBudgetDb,
+    targetLevelDb: s.targetLevelDb,
     maxIterations: s.maxIterations,
   });
   onProgress?.({

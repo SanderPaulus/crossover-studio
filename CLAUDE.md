@@ -630,6 +630,28 @@ krijgt; een breedbander is 10–15 dB waard. Gemeten sweep op de rauwe 12W8524 (
 avg): 6 dB → 2,86 · 10 dB → 2,26 · 12 dB → 2,22 · 15 dB → 2,69 (voorbij ~12 loopt de
 ontwerpband de klif in en verdunnen de traps). Efficiëntie vs. hele-bereik-vlakheid is een
 ontwerperskeuze, geen constante van mij.
+**BODEM-MODUS / absoluut niveau-doel (`targetLevelDb`, Sanders idee jul 2026 — "een bodem op
+SPL-niveau tot waar de engine mag werken")**: DE betere formulering, en hij lost het
+kernprobleem bij de wortel op. Het relatieve budget meet spreiding rond een ZWEVEND gemiddelde,
+dus "vlakker" kan ook door het gemiddelde te verplaatsen — vandaar al het vangnet-werk. Een
+VASTE bodem is niet te gamen (cut-only kan altijd omlaag, nooit omhoog: "vlak op 95 dB" is
+precies de vorm die passief kán) en één getal doet wat eerst twee gekoppelde parameters deden:
+hoeveel niveau je inlevert ÉN hoe ver de band reikt (`reachableBandFor` = waar de driver ≥ de
+bodem zit). Gemeten op Robberts 12W8524 (110 Hz–20 kHz): bodem 122 → reikt 9,6 kHz · 118 →
+11 kHz · 114 → 13 kHz · 106 → 14,9 kHz, en hele-bereik avg 2,12 bij bodem 114 tegen 2,22 voor
+het beste relatieve budget. Twee dingen die erbij hoorden: (1) de engine kreeg een
+NIVEAU-ELEMENT — een negatieve `spec.gainDb` landt als serie-pad-weerstand in
+`buildSoloNetwork` (dat veld werd daarvóór stil genegeerd); met alleen EQ-banden kun je een
+passband van 130 dB nooit naar een doelniveau brengen. (2) **HARD GELEERD (in de app
+geverifieerd): niveau en VORM moeten gescheiden blijven** — kandidaten meten prominentie tegen
+het EIGEN gemiddelde van de respons, ook in bodem-modus. Tegen de vaste bodem leest de hele
+band als "15 dB te hard", wint de tilt/shelf-kandidaat élke ronde en stapelen breedband-cuts
+zich op: drie low-shelf-cuts, géén notch op de 7 kHz-breakup, en 4 banden SLECHTER dan 2
+(peak 8,62 vs 3,41). Na de scheiding: 4 banden → peak 3,23 / avg 1,59 mét pad 12,4 Ω.
+UI: ⚙ Settings-keuze "Target level (absolute)" met live "driver sits at X dB · reaches A–B",
+default-voorstel mediaan−10; de bodem staat in de dB-schaal van de geladen FRD. Ook gefixt:
+de solo-band werd op 300 Hz geklemd (2-weg-aanname) — een breedbander vanaf 110 Hz moet
+vanaf 110 Hz ontworpen worden.
 **Bypass-C-escalatie alleen op ECHTE pad-weerstanden (jul 2026, Sanders "Tidy layout doet
 niets")**: de kandidaat-filter keek naar COÖRDINATEN ("zit er al een C op deze twee punten")
 en "niet geaard". Beide te zwak — de damping-R ín een parallelle LCR-trap deelt de knopen maar
