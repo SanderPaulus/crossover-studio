@@ -569,6 +569,10 @@ export default function Chart({
           </button>
         </div>
       )}
+      {/* The plot wrapper is the coordinate frame for the label overlay: `.chart`
+          itself also holds the legend, so percentages taken against it would
+          place the labels tens of pixels off the points they annotate. */}
+      <div className="chart-plot">
       <svg
         ref={svgRef}
         viewBox={`0 0 ${W} ${H}`}
@@ -661,30 +665,21 @@ export default function Chart({
             </g>
           ) : null,
         )}
-        {/* annotated points on a curve (loudest / quietest spot) */}
-        {points?.map((p, i) => {
-          if (!(p.x >= vx[0] && p.x <= vx[1]) || !Number.isFinite(p.y)) return null;
-          const cx = xPos(p.x);
-          const cy = yPos(p.y);
-          const above = p.place !== 'below';
-          // Keep the label inside the plot when the point sits near an edge.
-          const anchor = cx > W - PAD.r - 60 ? 'end' : cx < PAD.l + 60 ? 'start' : 'middle';
-          return (
+        {/* annotated points on a curve (loudest / quietest spot) — the ring
+            only; the label rides in an HTML overlay below, see there. */}
+        {points?.map((p, i) =>
+          p.x >= vx[0] && p.x <= vx[1] && Number.isFinite(p.y) ? (
             <g key={`pt${i}`} className="chart-point">
               {p.title && <title>{p.title}</title>}
-              <circle cx={cx} cy={cy} r={4} style={p.color ? { stroke: p.color } : undefined} />
-              <text
-                x={cx + (anchor === 'end' ? -6 : anchor === 'start' ? 6 : 0)}
-                y={cy + (above ? -10 : 16)}
-                textAnchor={anchor}
-                className="tick chart-point-label"
-                style={p.color ? { fill: p.color } : undefined}
-              >
-                {p.label}
-              </text>
+              <circle
+                cx={xPos(p.x)}
+                cy={yPos(p.y)}
+                r={3.5}
+                style={p.color ? { stroke: p.color } : undefined}
+              />
             </g>
-          );
-        })}
+          ) : null,
+        )}
         {/* axes labels */}
         {xTicks.map((f) => (
           <text key={f} x={xPos(f)} y={H - PAD.b + 16} className="tick" textAnchor="middle">
@@ -790,6 +785,30 @@ export default function Chart({
           </>
         )}
       </svg>
+      {/* Point labels as HTML, not SVG text. Inside the viewBox a font size is
+          in CHART units, so the same label renders small in a narrow pane and
+          oversized on a wide screen — it was never as quiet as it measured.
+          Positioned in percentages so it still tracks the plot geometry. */}
+      {points?.some((p) => p.x >= vx[0] && p.x <= vx[1] && Number.isFinite(p.y)) && (
+        <div className="chart-point-labels" aria-hidden>
+          {points.map((p, i) =>
+            p.x >= vx[0] && p.x <= vx[1] && Number.isFinite(p.y) ? (
+              <span
+                key={`ptl${i}`}
+                className={`chart-point-label${p.place === 'below' ? ' below' : ''}`}
+                style={{
+                  left: `${(xPos(p.x) / W) * 100}%`,
+                  top: `${(yPos(p.y) / H) * 100}%`,
+                  ...(p.color ? { color: p.color } : {}),
+                }}
+              >
+                {p.label}
+              </span>
+            ) : null,
+          )}
+        </div>
+      )}
+      </div>
     </div>
   );
 }

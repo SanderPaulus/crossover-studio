@@ -840,20 +840,38 @@ h2 {
   stroke-width: 1.1;
   opacity: 0.7;
 }
-/* The viewBox is scaled down to the panel width (~0.8), so 11 px tick text
-   lands near 9 px on screen — fine for "2k", too small for a reading.
-   Beats `.chart .tick`, which shares this specificity but comes later.
-   The halo (panel-coloured stroke painted UNDER the glyphs) is what keeps a
-   curve from running through the lettering: the label sits on the data, and
-   boxing it in would be louder than the annotation deserves. */
-.chart text.chart-point-label {
-  font-weight: 600;
-  font-size: 13px;
-  opacity: 0.85;
-  stroke: var(--panel);
-  stroke-width: 3.5px;
-  stroke-linejoin: round;
-  paint-order: stroke fill;
+/* Point labels live in an HTML overlay, NOT in the SVG: a font size inside the
+   viewBox is in chart units, so it grew on wide screens and shrank in a narrow
+   pane. Here 10 px is 10 px everywhere. The text-shadow is the halo that keeps
+   a curve from running through the lettering — quieter than boxing the label,
+   and there is no reliably empty side to move it to (in the passband every
+   curve converges near the top of the plot). */
+.chart-plot {
+  position: relative;
+}
+
+.chart-point-labels {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.chart-point-label {
+  position: absolute;
+  transform: translate(-50%, -160%);
+  font-size: 10px;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  color: var(--muted);
+  opacity: 0.75;
+  text-shadow:
+    0 0 3px var(--panel),
+    0 0 3px var(--panel),
+    0 0 2px var(--panel);
+}
+
+.chart-point-label.below {
+  transform: translate(-50%, 60%);
 }
 
 .chart .xband-label {
