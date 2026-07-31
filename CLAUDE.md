@@ -762,6 +762,13 @@ verstandige band 300–8000 Hz: Response 63→89. UI: "Optimize — flatten driv
 de topologie uit de huidige spec (nieuwe "Solo build"-tab, waardes = textbook-seeds),
 ⚙ Optimize components solo-tuned (note zonder fase), wizard slaat de Crossover-stap over,
 kruising-settings disabled met uitleg. 3-weg wordt dezelfde gelaagdheid met TWEE paren.
+**Wizard-stappen komen uit een LIJST (`wizardSteps`, jul 2026)**, niet uit een vast aantal met
+index-rekenwerk: solo laat de Crossover-stap weg, en de oude `st + (solo ? 2 : 1)`-sprongen
+lieten de kop "Step 3 of 4" zeggen terwijl de gebruiker er drie liep — mét het overgeslagen
+bolletje gevuld. Bolletjes, "Step x of y" en beide navigatieknoppen lezen nu uit dezelfde lijst,
+dus een stap toevoegen (3-weg heeft een tweede kruising nodig) is één regel i.p.v. weer een
+off-by-one. `id` blijft het nummer waar de inhoudsblokken op schakelen; een effect verplaatst de
+wizard naar een geldige stap als de lijst onder hem verandert (driver erbij/eraf tijdens gebruik).
 
 ## Workspace-layout (UI-fase B, jul 2026)
 

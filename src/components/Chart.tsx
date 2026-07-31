@@ -67,6 +67,20 @@ interface ChartProps {
   xBands?: { from: number; to: number; color: string; opacity?: number; label?: string }[];
   /** Emphasized vertical marker lines (e.g. overlap centre). */
   xMarkers?: { x: number; color?: string; label?: string }[];
+  /** Annotated points ON a curve (e.g. the loudest/quietest spot of the
+   *  combined response): a small ring at (x, y) with a label beside it.
+   *  Unlike xMarkers this says WHERE on both axes without a full-height rule
+   *  cutting through the plot. `place` keeps the label off the curve. */
+  points?: {
+    x: number;
+    y: number;
+    label: string;
+    /** Full sentence for the hover tooltip — the visible label stays short
+     *  because the viewBox is scaled down and long text ends up ~9 px. */
+    title?: string;
+    color?: string;
+    place?: 'above' | 'below';
+  }[];
   /** When set, a "use as view range" button commits the zoomed X-range. */
   onXRangeCommit?: (lo: number, hi: number) => void;
   /** Fires with the currently VISIBLE x-range (zoom/pan included, live —
@@ -152,6 +166,7 @@ export default function Chart({
   bands,
   xBands,
   xMarkers,
+  points,
   onXRangeCommit,
   onVisibleXChange,
   handles,
@@ -554,6 +569,10 @@ export default function Chart({
           </button>
         </div>
       )}
+      {/* The plot wrapper is the coordinate frame for the label overlay: `.chart`
+          itself also holds the legend, so percentages taken against it would
+          place the labels tens of pixels off the points they annotate. */}
+      <div className="chart-plot">
       <svg
         ref={svgRef}
         viewBox={`0 0 ${W} ${H}`}
@@ -643,6 +662,21 @@ export default function Chart({
                   {m.label}
                 </text>
               )}
+            </g>
+          ) : null,
+        )}
+        {/* annotated points on a curve (loudest / quietest spot) — the ring
+            only; the label rides in an HTML overlay below, see there. */}
+        {points?.map((p, i) =>
+          p.x >= vx[0] && p.x <= vx[1] && Number.isFinite(p.y) ? (
+            <g key={`pt${i}`} className="chart-point">
+              {p.title && <title>{p.title}</title>}
+              <circle
+                cx={xPos(p.x)}
+                cy={yPos(p.y)}
+                r={3.5}
+                style={p.color ? { stroke: p.color } : undefined}
+              />
             </g>
           ) : null,
         )}
@@ -751,6 +785,30 @@ export default function Chart({
           </>
         )}
       </svg>
+      {/* Point labels as HTML, not SVG text. Inside the viewBox a font size is
+          in CHART units, so the same label renders small in a narrow pane and
+          oversized on a wide screen — it was never as quiet as it measured.
+          Positioned in percentages so it still tracks the plot geometry. */}
+      {points?.some((p) => p.x >= vx[0] && p.x <= vx[1] && Number.isFinite(p.y)) && (
+        <div className="chart-point-labels" aria-hidden>
+          {points.map((p, i) =>
+            p.x >= vx[0] && p.x <= vx[1] && Number.isFinite(p.y) ? (
+              <span
+                key={`ptl${i}`}
+                className={`chart-point-label${p.place === 'below' ? ' below' : ''}`}
+                style={{
+                  left: `${(xPos(p.x) / W) * 100}%`,
+                  top: `${(yPos(p.y) / H) * 100}%`,
+                  ...(p.color ? { color: p.color } : {}),
+                }}
+              >
+                {p.label}
+              </span>
+            ) : null,
+          )}
+        </div>
+      )}
+      </div>
     </div>
   );
 }

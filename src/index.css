@@ -832,6 +832,48 @@ h2 {
   stroke-dasharray: 5 4;
 }
 
+/* Annotated point on a curve: a hollow ring so the curve stays readable
+   underneath it, and a label that must not compete with the curves. */
+.chart .chart-point circle {
+  fill: none;
+  stroke: var(--viz-tick);
+  stroke-width: 1.1;
+  opacity: 0.7;
+}
+/* Point labels live in an HTML overlay, NOT in the SVG: a font size inside the
+   viewBox is in chart units, so it grew on wide screens and shrank in a narrow
+   pane. Here 10 px is 10 px everywhere. The text-shadow is the halo that keeps
+   a curve from running through the lettering — quieter than boxing the label,
+   and there is no reliably empty side to move it to (in the passband every
+   curve converges near the top of the plot). */
+.chart-plot {
+  position: relative;
+}
+
+.chart-point-labels {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.chart-point-label {
+  position: absolute;
+  transform: translate(-50%, -160%);
+  font-size: 10px;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  color: var(--muted);
+  opacity: 0.75;
+  text-shadow:
+    0 0 3px var(--panel),
+    0 0 3px var(--panel),
+    0 0 2px var(--panel);
+}
+
+.chart-point-label.below {
+  transform: translate(-50%, 60%);
+}
+
 .chart .xband-label {
   font-size: 10px;
   letter-spacing: 0.03em;

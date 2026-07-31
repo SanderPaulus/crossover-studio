@@ -29,6 +29,7 @@ import { Modal } from './components/Modal.tsx';
 import { HelpPanel } from './components/HelpPanel.tsx';
 import { CatalogManager } from './components/CatalogManager.tsx';
 import { helpSectionForTab } from './lib/help.ts';
+import { fileSafeName } from './lib/filenames.ts';
 import {
   filterTemplate,
   supportsWayCount,
@@ -1417,6 +1418,35 @@ export default function App() {
    *  optimizers — hides or disables. 'woofer' | 'tweeter' names the solo slot. */
   const soloDriver = woofer && !tweeter ? 'woofer' : tweeter && !woofer ? 'tweeter' : null;
 
+  /**
+   * The wizard's steps for THIS design, as a list — the progress dots, the
+   * "Step x of y" line and both nav buttons all read from it. Solo drops the
+   * Crossover step (nothing to cross), and it used to be skipped with index
+   * arithmetic while the header still counted to four: a solo user walked
+   * three steps and was told "Step 3 of 4", with the skipped dot filled in.
+   * A list also makes the N-way growth a one-line change (a 3-way design
+   * needs a second crossover step) instead of another off-by-one.
+   * `id` stays the number the content blocks below switch on.
+   */
+  const wizardSteps = useMemo(
+    () =>
+      [
+        { id: 1, label: 'Goals' },
+        ...(soloDriver ? [] : [{ id: 2, label: 'Crossover' }]),
+        { id: 3, label: 'Components' },
+        { id: 4, label: 'Review & run' },
+      ] as const,
+    [soloDriver],
+  );
+  /** Where we are in that list; −1 is the "load measurements" gate (step 0). */
+  const wizardPos = wizardSteps.findIndex((s) => s.id === wizardStep);
+  // A driver added or removed while the wizard is open changes the step list
+  // under it. Without this the solo run would land on the Crossover step it is
+  // supposed to skip, and the header would read the gate copy.
+  useEffect(() => {
+    if (wizardStep > 0 && wizardPos < 0) setWizardStep(wizardSteps[0].id);
+  }, [wizardStep, wizardPos, wizardSteps]);
+
   const sim = useMemo(() => {
     // Single-driver mode: ONE loaded measurement is enough (validation flow:
     // measure a lone driver, rebuild the physical network in the editor,
@@ -1626,6 +1656,38 @@ export default function App() {
     const hi = splViewX ? splViewX[1] : result.freq[result.freq.length - 1];
     return computeResponseStats(result.freq, result.combinedSpl, lo, hi);
   }, [result, splViewX]);
+
+  /** The loudest and quietest spot of the combined curve, marked in the chart.
+   *  Straight from `combinedFlat`, so the dots sit exactly where the peak ±dB
+   *  in the strip comes from and follow the same band (and the same zoom).
+   *  NB: with a view range that reaches into a driver's rolloff the dip is the
+   *  rolloff, not a design fault — it marks the range you asked to be judged. */
+  const splExtremes = useMemo(() => {
+    if (!combinedFlat) return undefined;
+    const { peak, dip } = combinedFlat;
+    return [
+      {
+        x: peak.freqHz,
+        y: peak.splDb,
+        label: `max ${peak.splDb.toFixed(1)} dB`,
+        title: `Loudest point of the combined response in this range: ${peak.splDb.toFixed(
+          1,
+        )} dB at ${hz(peak.freqHz)} — ${peak.devDb >= 0 ? '+' : ''}${peak.devDb.toFixed(
+          1,
+        )} dB against the median level`,
+        place: 'above' as const,
+      },
+      {
+        x: dip.freqHz,
+        y: dip.splDb,
+        label: `min ${dip.splDb.toFixed(1)} dB`,
+        title: `Quietest point of the combined response in this range: ${dip.splDb.toFixed(
+          1,
+        )} dB at ${hz(dip.freqHz)} — ${dip.devDb.toFixed(1)} dB against the median level`,
+        place: 'below' as const,
+      },
+    ];
+  }, [combinedFlat]);
 
   /** Measured ACOUSTIC slopes beside the crossing (dB/oct, least squares over
    *  ~1 octave). The electrical parts don't reveal the acoustic order — the
@@ -2863,8 +2925,7 @@ export default function App() {
     const blob = new Blob([serializeFilter(activeDesign)], { type: 'application/json' });
     const a = document.createElement('a');
     a.href = URL.createObjectURL(blob);
-    const safe = activeDesign.name.replace(/[^\w\- ]+/g, '').trim() || 'filter';
-    a.download = `${safe}.adsfilter.json`;
+    a.download = `${fileSafeName(activeDesign.name, 'filter')}.adsfilter.json`;
     a.click();
     URL.revokeObjectURL(a.href);
   }
@@ -3005,7 +3066,7 @@ export default function App() {
         xMax: numOf(fMax, 20000),
       },
     );
-    const base = (ordered[0]?.name ?? 'design').replace(/[^\w\- ]+/g, '').trim() || 'design';
+    const base = fileSafeName(ordered[0]?.name ?? 'design', 'design');
     const vxpName = `${base}.vxp`;
     files.set(vxpName, xml);
 
@@ -3752,16 +3813,14 @@ export default function App() {
         >
           <div className="busy-title">🧙 Design wizard</div>
           <div className="wizard-steps">
-            {[1, 2, 3, 4].map((n) => (
-              <span key={n} className={wizardStep >= 1 && n <= wizardStep ? 'done' : ''} />
+            {wizardSteps.map((s, i) => (
+              <span key={s.id} className={wizardPos >= 0 && i <= wizardPos ? 'done' : ''} />
             ))}
           </div>
           <p className="sub" style={{ width: '100%', margin: 0 }}>
-            {wizardStep === 0
+            {wizardPos < 0
               ? 'First — load your measurements'
-              : `Step ${wizardStep} of 4 · ${
-                  ['Goals', 'Crossover', 'Components', 'Review & run'][wizardStep - 1]
-                }`}
+              : `Step ${wizardPos + 1} of ${wizardSteps.length} · ${wizardSteps[wizardPos].label}`}
           </p>
 
           <div className="wizard-body">
@@ -4465,10 +4524,12 @@ export default function App() {
 
           <div className="wizard-foot">
             <div className="row">
-              {wizardStep > 1 ? (
+              {wizardPos > 0 ? (
                 <button
                   type="button"
-                  onClick={() => setWizardStep((st) => st - (soloDriver && st === 3 ? 2 : 1))}
+                  // Walk the list, never ±1 on the id: which steps exist is a
+                  // property of the design (solo has no crossover step).
+                  onClick={() => setWizardStep(wizardSteps[wizardPos - 1].id)}
                 >
                   ← Back
                 </button>
@@ -4479,12 +4540,11 @@ export default function App() {
               )}
             </div>
             <div className="row">
-              {wizardStep < 4 ? (
+              {wizardPos < wizardSteps.length - 1 ? (
                 <button
                   type="button"
                   className="primary"
-                  // Solo skips the Crossover step (2) — nothing to cross.
-                  onClick={() => setWizardStep((st) => st + (soloDriver && st === 1 ? 2 : 1))}
+                  onClick={() => setWizardStep(wizardSteps[wizardPos + 1]?.id ?? wizardSteps[0].id)}
                   disabled={wizardStep === 0 && !woofer && !tweeter}
                   title={
                     wizardStep === 0 && !woofer && !tweeter
@@ -6510,6 +6570,7 @@ export default function App() {
               height={320}
               onXRangeCommit={commitViewRange}
               onVisibleXChange={onSplVisibleX}
+              points={splExtremes}
               handles={splHandles}
               onHandleMove={moveSplHandle}
               onHandleWheel={wheelSplHandle}

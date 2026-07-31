@@ -34,6 +34,15 @@ export interface ResponseStats {
   /** Share of samples within ±0.5 / ±1 / ±2 dB of the median level. */
   withinPct: { 0.5: number; 1: number; 2: number };
   sampleCount: number;
+  /** The median level itself (dB), so a caller can place the deviations back
+   *  on the absolute scale it drew the curve on. */
+  medianDb: number;
+  /** WHERE the extremes sit — the loudest and quietest point in the range.
+   *  `rippleDb` says how far the response swings; a designer's next question
+   *  is always "at what frequency", and answering it from a second, private
+   *  scan of the curve is how the panel and the metric drift apart. */
+  peak: { freqHz: number; splDb: number; devDb: number };
+  dip: { freqHz: number; splDb: number; devDb: number };
 }
 
 const SCORE_ANCHOR_DB = 2.5; // avg deviation where the score bottoms out
@@ -46,10 +55,14 @@ export function computeResponseStats(
   fHi: number,
 ): ResponseStats | null {
   const dev: number[] = [];
+  // Frequencies kept alongside the levels, so the extremes can be reported
+  // with the place they occur at instead of just their size.
+  const hz: number[] = [];
   for (let i = 0; i < freq.length; i++) {
     if (freq[i] < fLo || freq[i] > fHi) continue;
     if (!Number.isFinite(spl[i])) continue;
     dev.push(spl[i]);
+    hz.push(freq[i]);
   }
   const n = dev.length;
   if (n < 8) return null; // too few samples to call anything "a range"
@@ -59,13 +72,21 @@ export function computeResponseStats(
     n % 2 === 1 ? byLevel[(n - 1) / 2] : (byLevel[n / 2 - 1] + byLevel[n / 2]) / 2;
   let min = Infinity;
   let max = -Infinity;
+  let minAt = 0;
+  let maxAt = 0;
   let sumAbs = 0;
   for (let i = 0; i < n; i++) {
     const d = dev[i] - median;
     dev[i] = Math.abs(d);
     sumAbs += dev[i];
-    if (d < min) min = d;
-    if (d > max) max = d;
+    if (d < min) {
+      min = d;
+      minAt = i;
+    }
+    if (d > max) {
+      max = d;
+      maxAt = i;
+    }
   }
   const avg = sumAbs / n;
 
@@ -89,5 +110,8 @@ export function computeResponseStats(
     rippleDb: (max - min) / 2,
     withinPct: { 0.5: within(0.5), 1: within(1), 2: within(2) },
     sampleCount: n,
+    medianDb: median,
+    peak: { freqHz: hz[maxAt], splDb: median + max, devDb: max },
+    dip: { freqHz: hz[minAt], splDb: median + min, devDb: min },
   };
 }
