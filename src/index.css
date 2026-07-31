@@ -837,14 +837,23 @@ h2 {
 .chart .chart-point circle {
   fill: none;
   stroke: var(--viz-tick);
-  stroke-width: 1.6;
+  stroke-width: 1.1;
+  opacity: 0.7;
 }
 /* The viewBox is scaled down to the panel width (~0.8), so 11 px tick text
    lands near 9 px on screen — fine for "2k", too small for a reading.
-   Beats `.chart .tick`, which shares this specificity but comes later. */
+   Beats `.chart .tick`, which shares this specificity but comes later.
+   The halo (panel-coloured stroke painted UNDER the glyphs) is what keeps a
+   curve from running through the lettering: the label sits on the data, and
+   boxing it in would be louder than the annotation deserves. */
 .chart text.chart-point-label {
   font-weight: 600;
-  font-size: 14px;
+  font-size: 13px;
+  opacity: 0.85;
+  stroke: var(--panel);
+  stroke-width: 3.5px;
+  stroke-linejoin: round;
+  paint-order: stroke fill;
 }
 
 .chart .xband-label {
