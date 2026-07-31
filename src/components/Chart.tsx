@@ -67,6 +67,20 @@ interface ChartProps {
   xBands?: { from: number; to: number; color: string; opacity?: number; label?: string }[];
   /** Emphasized vertical marker lines (e.g. overlap centre). */
   xMarkers?: { x: number; color?: string; label?: string }[];
+  /** Annotated points ON a curve (e.g. the loudest/quietest spot of the
+   *  combined response): a small ring at (x, y) with a label beside it.
+   *  Unlike xMarkers this says WHERE on both axes without a full-height rule
+   *  cutting through the plot. `place` keeps the label off the curve. */
+  points?: {
+    x: number;
+    y: number;
+    label: string;
+    /** Full sentence for the hover tooltip — the visible label stays short
+     *  because the viewBox is scaled down and long text ends up ~9 px. */
+    title?: string;
+    color?: string;
+    place?: 'above' | 'below';
+  }[];
   /** When set, a "use as view range" button commits the zoomed X-range. */
   onXRangeCommit?: (lo: number, hi: number) => void;
   /** Fires with the currently VISIBLE x-range (zoom/pan included, live —
@@ -152,6 +166,7 @@ export default function Chart({
   bands,
   xBands,
   xMarkers,
+  points,
   onXRangeCommit,
   onVisibleXChange,
   handles,
@@ -646,6 +661,30 @@ export default function Chart({
             </g>
           ) : null,
         )}
+        {/* annotated points on a curve (loudest / quietest spot) */}
+        {points?.map((p, i) => {
+          if (!(p.x >= vx[0] && p.x <= vx[1]) || !Number.isFinite(p.y)) return null;
+          const cx = xPos(p.x);
+          const cy = yPos(p.y);
+          const above = p.place !== 'below';
+          // Keep the label inside the plot when the point sits near an edge.
+          const anchor = cx > W - PAD.r - 60 ? 'end' : cx < PAD.l + 60 ? 'start' : 'middle';
+          return (
+            <g key={`pt${i}`} className="chart-point">
+              {p.title && <title>{p.title}</title>}
+              <circle cx={cx} cy={cy} r={4} style={p.color ? { stroke: p.color } : undefined} />
+              <text
+                x={cx + (anchor === 'end' ? -6 : anchor === 'start' ? 6 : 0)}
+                y={cy + (above ? -10 : 16)}
+                textAnchor={anchor}
+                className="tick chart-point-label"
+                style={p.color ? { fill: p.color } : undefined}
+              >
+                {p.label}
+              </text>
+            </g>
+          );
+        })}
         {/* axes labels */}
         {xTicks.map((f) => (
           <text key={f} x={xPos(f)} y={H - PAD.b + 16} className="tick" textAnchor="middle">

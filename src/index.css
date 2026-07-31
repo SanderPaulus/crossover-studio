@@ -832,6 +832,21 @@ h2 {
   stroke-dasharray: 5 4;
 }
 
+/* Annotated point on a curve: a hollow ring so the curve stays readable
+   underneath it, and a label that must not compete with the curves. */
+.chart .chart-point circle {
+  fill: none;
+  stroke: var(--viz-tick);
+  stroke-width: 1.6;
+}
+/* The viewBox is scaled down to the panel width (~0.8), so 11 px tick text
+   lands near 9 px on screen — fine for "2k", too small for a reading.
+   Beats `.chart .tick`, which shares this specificity but comes later. */
+.chart text.chart-point-label {
+  font-weight: 600;
+  font-size: 14px;
+}
+
 .chart .xband-label {
   font-size: 10px;
   letter-spacing: 0.03em;

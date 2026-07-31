@@ -72,6 +72,34 @@ describe('computeResponseStats', () => {
     expect(computeResponseStats(freq, spl, 500, 505)).toBeNull();
   });
 
+  it('reports WHERE the extremes are, on the absolute dB scale', () => {
+    // One planted bump and one planted dip, both inside the range.
+    const spl = freq.map((f) => (f > 4900 && f < 5100 ? 96 : f > 990 && f < 1010 ? 85 : 90));
+    const s = computeResponseStats(freq, spl, 200, 20000)!;
+    expect(s.peak.freqHz).toBeGreaterThan(4900);
+    expect(s.peak.freqHz).toBeLessThan(5100);
+    expect(s.peak.splDb).toBeCloseTo(96, 6);
+    expect(s.dip.freqHz).toBeGreaterThan(990);
+    expect(s.dip.freqHz).toBeLessThan(1010);
+    expect(s.dip.splDb).toBeCloseTo(85, 6);
+    // The markers and the headline ripple must be the same measurement: the
+    // chart annotation may never disagree with the number in the strip.
+    expect((s.peak.splDb - s.dip.splDb) / 2).toBeCloseTo(s.rippleDb, 9);
+    expect(s.peak.devDb).toBeCloseTo(s.peak.splDb - s.medianDb, 9);
+    expect(s.dip.devDb).toBeCloseTo(s.dip.splDb - s.medianDb, 9);
+  });
+
+  it('keeps the extremes inside the requested range', () => {
+    // Loudest and quietest points both sit OUTSIDE the window asked for.
+    const spl = freq.map((f) => (f < 400 ? 110 : f > 15000 ? 70 : 90 + (f > 2000 && f < 2100 ? 2 : 0)));
+    const s = computeResponseStats(freq, spl, 1000, 10000)!;
+    expect(s.peak.freqHz).toBeGreaterThanOrEqual(1000);
+    expect(s.peak.freqHz).toBeLessThanOrEqual(10000);
+    expect(s.dip.freqHz).toBeGreaterThanOrEqual(1000);
+    expect(s.dip.freqHz).toBeLessThanOrEqual(10000);
+    expect(s.peak.splDb).toBeCloseTo(92, 6);
+  });
+
   it('p95 sits between avg and peak on a mixed response', () => {
     const spl = freq.map((_, i) => 90 + (i % 50 === 0 ? 4 : 0.4 * Math.sin(i / 5)));
     const s = computeResponseStats(freq, spl, 200, 20000)!;

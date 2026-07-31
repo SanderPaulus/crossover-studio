@@ -1656,6 +1656,38 @@ export default function App() {
     return computeResponseStats(result.freq, result.combinedSpl, lo, hi);
   }, [result, splViewX]);
 
+  /** The loudest and quietest spot of the combined curve, marked in the chart.
+   *  Straight from `combinedFlat`, so the dots sit exactly where the peak ±dB
+   *  in the strip comes from and follow the same band (and the same zoom).
+   *  NB: with a view range that reaches into a driver's rolloff the dip is the
+   *  rolloff, not a design fault — it marks the range you asked to be judged. */
+  const splExtremes = useMemo(() => {
+    if (!combinedFlat) return undefined;
+    const { peak, dip } = combinedFlat;
+    return [
+      {
+        x: peak.freqHz,
+        y: peak.splDb,
+        label: `max ${peak.splDb.toFixed(1)} dB`,
+        title: `Loudest point of the combined response in this range: ${peak.splDb.toFixed(
+          1,
+        )} dB at ${hz(peak.freqHz)} — ${peak.devDb >= 0 ? '+' : ''}${peak.devDb.toFixed(
+          1,
+        )} dB against the median level`,
+        place: 'above' as const,
+      },
+      {
+        x: dip.freqHz,
+        y: dip.splDb,
+        label: `min ${dip.splDb.toFixed(1)} dB`,
+        title: `Quietest point of the combined response in this range: ${dip.splDb.toFixed(
+          1,
+        )} dB at ${hz(dip.freqHz)} — ${dip.devDb.toFixed(1)} dB against the median level`,
+        place: 'below' as const,
+      },
+    ];
+  }, [combinedFlat]);
+
   /** Measured ACOUSTIC slopes beside the crossing (dB/oct, least squares over
    *  ~1 octave). The electrical parts don't reveal the acoustic order — the
    *  driver's own rolloff stacks on top of the filter; this is the number
@@ -6538,6 +6570,7 @@ export default function App() {
               height={320}
               onXRangeCommit={commitViewRange}
               onVisibleXChange={onSplVisibleX}
+              points={splExtremes}
               handles={splHandles}
               onHandleMove={moveSplHandle}
               onHandleWheel={wheelSplHandle}
