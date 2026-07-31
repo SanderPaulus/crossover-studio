@@ -29,6 +29,7 @@ import { Modal } from './components/Modal.tsx';
 import { HelpPanel } from './components/HelpPanel.tsx';
 import { CatalogManager } from './components/CatalogManager.tsx';
 import { helpSectionForTab } from './lib/help.ts';
+import { fileSafeName } from './lib/filenames.ts';
 import {
   filterTemplate,
   supportsWayCount,
@@ -2924,8 +2925,7 @@ export default function App() {
     const blob = new Blob([serializeFilter(activeDesign)], { type: 'application/json' });
     const a = document.createElement('a');
     a.href = URL.createObjectURL(blob);
-    const safe = activeDesign.name.replace(/[^\w\- ]+/g, '').trim() || 'filter';
-    a.download = `${safe}.adsfilter.json`;
+    a.download = `${fileSafeName(activeDesign.name, 'filter')}.adsfilter.json`;
     a.click();
     URL.revokeObjectURL(a.href);
   }
@@ -3066,7 +3066,7 @@ export default function App() {
         xMax: numOf(fMax, 20000),
       },
     );
-    const base = (ordered[0]?.name ?? 'design').replace(/[^\w\- ]+/g, '').trim() || 'design';
+    const base = fileSafeName(ordered[0]?.name ?? 'design', 'design');
     const vxpName = `${base}.vxp`;
     files.set(vxpName, xml);
 
