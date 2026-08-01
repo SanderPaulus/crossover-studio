@@ -44,31 +44,66 @@ Volgorde binnen een blok = aanbevolen prioriteit. Inschattingen zijn grof:
    "equivalent peak dissipation resistance": zo zwaar voelt de belasting écht.
    Verfijning van de nieuwe fase-chart.
 
+6. **Import-sanity: bestandstype op inhoud herkennen** (S) — de import kiest de
+   parser puur op extensie (`.zma` of niet), terwijl FRD en ZMA dezelfde drie
+   kolommen hebben. Een impedantiebestand dat niet `.zma` heet komt dus binnen
+   als responsie: 6,5 Ω belandt als 6,5 dB, zonder foutmelding — alleen een
+   driver die ineens 6 dB speelt. Signaleren, niet automatisch omschakelen (een
+   tweede stille beslissing is de eerste niet waard). Wordt acuut zodra iemand
+   een ARTA-export rechtstreeks probeert.
+7. **ARTA/LIMP-import** (S/M, wacht op voorbeeldbestanden) — Sanders maat meet
+   met ARTA (impedantie via LIMP) en zet het in VituixCAD om naar ZMA; die
+   omweg kan er waarschijnlijk uit. `parseTabular` is al ruim genoeg
+   (`#`/`*`/`;`/`//`-comments, tab/komma/puntkomma, decimale komma, kopregels
+   zonder marker). Nodig vóór de bouw: de ARTA/LIMP-export zélf én de .zma die
+   VituixCAD ervan maakt, om beide curves naast elkaar te leggen — ARTA kent
+   meerdere formaten (.pir en .lim zijn binair), dus gokken heeft geen zin.
+
 ## Middel — meer werk, duidelijke winst
 
-6. **Ontwerp-rapport exporteren** (M) — zelfstandige HTML met schema, BOM
+8. **Ontwerp-rapport exporteren** (M) — zelfstandige HTML met schema, BOM
    (met prijzen), SPL/fase/impedantie-curves en de scores. Deelbaar met
    Stefan, bouwdocumentatie bij de speaker.
-7. **Fs-vloer in de vfOptimizer-bounds** (S/M) — de automatische ≥2×Fs-vloer
+9. **Fs-vloer in de vfOptimizer-bounds** (S/M) — de automatische ≥2×Fs-vloer
    geldt nu voor de HP-knie in de keten; ook als bound in de vrije
    vf-verkenning meenemen (xoRange dekt het handmatig al af).
-8. **Catalogus-onderhoud** (doorlopend) — nieuwe Gemini/SKU-updates blijven
-   importeerbaar; prijzen periodiek herijken op echte NL/EU-ankers (zie de
-   prijsverificatie-ronde in CLAUDE.md).
+10. **Catalogus-onderhoud** (doorlopend) — nieuwe Gemini/SKU-updates blijven
+    importeerbaar; prijzen periodiek herijken op echte NL/EU-ankers (zie de
+    prijsverificatie-ronde in CLAUDE.md).
 
 ## Groot — de fases
 
-9. **Fase 4: 3-weg / N-weg** (L) — het netlist-fundament is N-weg-klaar en de
-   template-kiezer heeft de (disabled) 3-weg-optie al. Nodig: N-weg-som in de
-   sim, bandpass-tak in synthese/templates, optimizer/integration/directivity
-   naar N drivers, UI voor drie takken.
-10. **Driverbibliotheek** (L) — meetbundels (FRD + hoeken + ZMA) per driver,
+11. **Fase 4: 3-weg / N-weg** (L) — het netlist-fundament is N-weg-klaar en de
+    template-kiezer heeft de (disabled) 3-weg-optie al. Nodig: N-weg-som in de
+    sim, bandpass-tak in synthese/templates, optimizer/integration/directivity
+    naar N drivers, UI voor drie takken.
+12. **Driverbibliotheek** (L) — meetbundels (FRD + hoeken + ZMA) per driver,
     herbruikbaar over projecten; het einde van losse-bestanden-slepen.
-11. **Serie-crossover-topologie** (L) — eigen build-pad + vergelijkingsharnas
+13. **Serie-crossover-topologie** (L) — eigen build-pad + vergelijkingsharnas
     naast de parallelle synthese (bewust uitgesteld tot dat harnas er is).
-12. **Genormaliseerde hoekcurves & verticale metingen** (M, wacht op data) —
+14. **Genormaliseerde hoekcurves & verticale metingen** (M, wacht op data) —
     zodra Sander verticaal meet: lobing-analyse naast de horizontale
     directivity.
+15. **Meetmodule in de app** (L) — sweep + deconvolutie kan met Web Audio, en
+    fft.ts/timeDomain.ts doen de wiskunde al. Twee harde voorwaarden vóórdat
+    dit iets waard is:
+    (a) **Gekalibreerde meetmicrofoon mét cal-bestand.** Geverifieerd op de
+    MM-1-bestanden (JustOct `.mic`): `parseFrd` leest ze ongewijzigd — 134
+    punten, 10 Hz–21 kHz, 0 dB op 1 kHz, header netjes bij de comments. Maar:
+    de **fasekolom is leeg** (mic-fase blijft dus een minimum-fase-aanname),
+    het bestand is **Latin-1** en niet UTF-8, en 0° vs 90° scheelt tot **6 dB
+    in de topoctaaf** — de app moet vragen onder welke hoek is gemeten, niet
+    zelf kiezen. Zelfde stille-fout-familie als punt 6.
+    (b) **Eén klokdomein met loopback-kanaal.** Browserlatency is niet
+    deterministisch; zonder gedeeld tijdnul is het inter-driver-tijdverschil —
+    het kernidee van deze tool, 47 µs ≈ 16 mm — verzonnen. Een USB-meetmic is
+    daarmee de verkeerde route (eigen klok, geen elektrische loopback); XLR in
+    een 2-in/2-uit-interface wel.
+    Realistische eerste stap is niet REW namaken maar de VALIDATIE.md-lus
+    sluiten: een verificatie-sweep die de meting als extra curve over de
+    simulatie van de actieve tab legt. Relatieve respons volstaat daarvoor —
+    absolute dB heb je niet nodig om te zien of het model klopt. Impedantie
+    meten vraagt een sense-resistor-jig: hardware, geen software.
 
 ## Bewust niet
 
