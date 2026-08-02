@@ -11,6 +11,7 @@ import {
 import { parseFrd } from './lib/parsers/frd.ts';
 import { parseZma } from './lib/parsers/zma.ts';
 import { parseLim, limToZmaText } from './lib/parsers/lim.ts';
+import { classifyLevelProfile } from './lib/parsers/classify.ts';
 import { parseVxp, type VxpCrossover, type VxpPart, type VxpProject } from './lib/parsers/vxp.ts';
 import { estimateBulkDelay, assessSharedReference } from './lib/timing.ts';
 import { logspace, resample, combine, offsetMmToDelayS, applyTransfer } from './lib/dsp.ts';
@@ -1120,6 +1121,13 @@ export default function App() {
       e.target.value = '';
       if (files.length === 0) return;
       setError(null);
+      // Content-vs-extension sanity (roadmap jul 2026): the parser is chosen
+      // by extension while FRD and ZMA share the same three columns, so a
+      // misnamed file loads cleanly into the WRONG slot — ohms in the dB
+      // column, no error, just a driver at ~7 dB. Warn loudly on a confident
+      // level-profile mismatch but still load as asked: signalling, never a
+      // second silent decision.
+      const warnings: string[] = [];
       try {
         // ZMA files in the same selection become this driver's impedance —
         // no vxp project needed for solving/synthesis.
@@ -1128,6 +1136,15 @@ export default function App() {
         for (const f of zmaFiles) {
           const raw = await f.text();
           const zma = parseZma(raw);
+          const cls = classifyLevelProfile(zma.magnitude);
+          if (cls.kind === 'spl') {
+            warnings.push(
+              `"${f.name}" is named .zma but its levels look like an SPL response ` +
+                `(median ≈ ${cls.medianLevel.toFixed(0)}) — the solver would see a ` +
+                `~${cls.medianLevel.toFixed(0)} Ω driver. If this is a response file, ` +
+                `rename it to .frd and reload.`,
+            );
+          }
           setZStandalone((prev) => ({ ...prev, [model]: { file: { name: f.name, raw }, zma } }));
         }
         // LIMP's binary .lim (ARTA) is converted to ZMA text ONCE, here at the
@@ -1146,12 +1163,32 @@ export default function App() {
         const frdOnly = files.filter(
           (f) => !/\.(zma|lim)$/i.test(f.name),
         );
-        if (frdOnly.length === 0) return;
+        if (frdOnly.length === 0) {
+          // Impedance-only selection: still surface any .zma warnings.
+          if (warnings.length > 0) setError(warnings.join(' '));
+          return;
+        }
         const byHor = new Map<number, AngleEntry>();
         for (const f of frdOnly) {
           const raw = await f.text();
           const hor = angleFromFilename(f.name) ?? 0;
-          byHor.set(hor, { hor, name: f.name, raw, frd: parseFrd(raw) });
+          const frd = parseFrd(raw);
+          // Only 3-column files can be a misnamed ZMA (parseZma demands
+          // phase), which also keeps 2-column normalized target curves out
+          // of this check's reach.
+          if (frd.hasPhase) {
+            const cls = classifyLevelProfile(frd.spl);
+            if (cls.kind === 'impedance') {
+              warnings.push(
+                `"${f.name}" was loaded as a response, but its levels look like an ` +
+                  `impedance measurement (median ≈ ${cls.medianLevel.toFixed(1)} Ω, all ` +
+                  `positive) — as SPL that is a driver at ~${cls.medianLevel.toFixed(0)} dB. ` +
+                  `If this is a ZMA/LIMP export, rename it to .zma (or load the .lim) so ` +
+                  `it lands in the impedance slot.`,
+              );
+            }
+          }
+          byHor.set(hor, { hor, name: f.name, raw, frd });
         }
         const entries = [...byHor.values()].sort((a, b) => a.hor - b.hor);
         const axis = entries.find((a) => a.hor === 0) ?? entries[0];
@@ -1167,7 +1204,9 @@ export default function App() {
         });
       } catch (err) {
         setError(err instanceof Error ? err.message : String(err));
+        return;
       }
+      if (warnings.length > 0) setError(warnings.join(' '));
     };
   }
 
@@ -4990,7 +5029,10 @@ export default function App() {
         </div>
         {persistNote && <p className="filenames">{persistNote} · autosaves locally on every change</p>}
         {vxpNote && <p className="filenames">{vxpNote}</p>}
-        {error && <p className="error">Parse error: {error}</p>}
+        {/* One banner for parse failures AND content warnings — the old
+            hardcoded "Parse error:" prefix lied for anything that wasn't one
+            (the vxp-pick hint, the impedance-as-response warning). */}
+        {error && <p className="error">⚠ {error}</p>}
         {(woofer || tweeter) && (
           <p className="filenames">
             {[woofer?.name, tweeter?.name].filter(Boolean).join(' · ')}

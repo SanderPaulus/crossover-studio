@@ -31,6 +31,10 @@ Volgorde binnen een blok = aanbevolen prioriteit. Inschattingen zijn grof:
   tweeter parallel-meting klopt op ~0,1 Ω met de berekende combinatie).
   Conversie naar ZMA-tekst op de importgrens, dus persistentie en
   VituixCAD-export werken ongewijzigd; de omweg via VituixCAD is weg
+- **Import-sanity op inhoud** (aug 2026): niveauprofiel-check bij het laden —
+  een impedantiebestand dat als responsie binnenkomt (of andersom) krijgt een
+  luide waarschuwing i.p.v. stil ohms-in-de-dB-kolom. Signaleren, niet
+  omschakelen; getest op de KOAN-fixtures beide kanten op
 
 ## Kort — kleine, afgebakende verbeteringen
 
@@ -49,40 +53,32 @@ Volgorde binnen een blok = aanbevolen prioriteit. Inschattingen zijn grof:
    "equivalent peak dissipation resistance": zo zwaar voelt de belasting écht.
    Verfijning van de nieuwe fase-chart.
 
-6. **Import-sanity: bestandstype op inhoud herkennen** (S) — de import kiest de
-   parser puur op extensie (`.zma` of niet), terwijl FRD en ZMA dezelfde drie
-   kolommen hebben. Een impedantiebestand dat niet `.zma` heet komt dus binnen
-   als responsie: 6,5 Ω belandt als 6,5 dB, zonder foutmelding — alleen een
-   driver die ineens 6 dB speelt. Signaleren, niet automatisch omschakelen (een
-   tweede stille beslissing is de eerste niet waard). Wordt acuut zodra iemand
-   een ARTA-export rechtstreeks probeert.
-
 ## Middel — meer werk, duidelijke winst
 
-7. **Ontwerp-rapport exporteren** (M) — zelfstandige HTML met schema, BOM
+6. **Ontwerp-rapport exporteren** (M) — zelfstandige HTML met schema, BOM
    (met prijzen), SPL/fase/impedantie-curves en de scores. Deelbaar met
    Stefan, bouwdocumentatie bij de speaker.
-8. **Fs-vloer in de vfOptimizer-bounds** (S/M) — de automatische ≥2×Fs-vloer
+7. **Fs-vloer in de vfOptimizer-bounds** (S/M) — de automatische ≥2×Fs-vloer
    geldt nu voor de HP-knie in de keten; ook als bound in de vrije
    vf-verkenning meenemen (xoRange dekt het handmatig al af).
-9. **Catalogus-onderhoud** (doorlopend) — nieuwe Gemini/SKU-updates blijven
+8. **Catalogus-onderhoud** (doorlopend) — nieuwe Gemini/SKU-updates blijven
    importeerbaar; prijzen periodiek herijken op echte NL/EU-ankers (zie de
    prijsverificatie-ronde in CLAUDE.md).
 
 ## Groot — de fases
 
-10. **Fase 4: 3-weg / N-weg** (L) — het netlist-fundament is N-weg-klaar en de
-    template-kiezer heeft de (disabled) 3-weg-optie al. Nodig: N-weg-som in de
-    sim, bandpass-tak in synthese/templates, optimizer/integration/directivity
-    naar N drivers, UI voor drie takken.
-11. **Driverbibliotheek** (L) — meetbundels (FRD + hoeken + ZMA) per driver,
+9. **Fase 4: 3-weg / N-weg** (L) — het netlist-fundament is N-weg-klaar en de
+   template-kiezer heeft de (disabled) 3-weg-optie al. Nodig: N-weg-som in de
+   sim, bandpass-tak in synthese/templates, optimizer/integration/directivity
+   naar N drivers, UI voor drie takken.
+10. **Driverbibliotheek** (L) — meetbundels (FRD + hoeken + ZMA) per driver,
     herbruikbaar over projecten; het einde van losse-bestanden-slepen.
-12. **Serie-crossover-topologie** (L) — eigen build-pad + vergelijkingsharnas
+11. **Serie-crossover-topologie** (L) — eigen build-pad + vergelijkingsharnas
     naast de parallelle synthese (bewust uitgesteld tot dat harnas er is).
-13. **Genormaliseerde hoekcurves & verticale metingen** (M, wacht op data) —
+12. **Genormaliseerde hoekcurves & verticale metingen** (M, wacht op data) —
     zodra Sander verticaal meet: lobing-analyse naast de horizontale
     directivity.
-14. **Meetmodule in de app** (L) — sweep + deconvolutie kan met Web Audio, en
+13. **Meetmodule in de app** (L) — sweep + deconvolutie kan met Web Audio, en
     fft.ts/timeDomain.ts doen de wiskunde al. Twee harde voorwaarden vóórdat
     dit iets waard is:
     (a) **Gekalibreerde meetmicrofoon mét cal-bestand.** Geverifieerd op de
@@ -91,7 +87,7 @@ Volgorde binnen een blok = aanbevolen prioriteit. Inschattingen zijn grof:
     de **fasekolom is leeg** (mic-fase blijft dus een minimum-fase-aanname),
     het bestand is **Latin-1** en niet UTF-8, en 0° vs 90° scheelt tot **6 dB
     in de topoctaaf** — de app moet vragen onder welke hoek is gemeten, niet
-    zelf kiezen. Zelfde stille-fout-familie als punt 6.
+    zelf kiezen. Zelfde stille-fout-familie als de import-sanity-check.
     (b) **Eén klokdomein met loopback-kanaal.** Browserlatency is niet
     deterministisch; zonder gedeeld tijdnul is het inter-driver-tijdverschil —
     het kernidee van deze tool, 47 µs ≈ 16 mm — verzonnen. Een USB-meetmic is
@@ -102,13 +98,13 @@ Volgorde binnen een blok = aanbevolen prioriteit. Inschattingen zijn grof:
     simulatie van de actieve tab legt. Relatieve respons volstaat daarvoor —
     absolute dB heb je niet nodig om te zien of het model klopt. Impedantie
     meten vraagt een sense-resistor-jig: hardware, geen software.
-15. **ARTA .pir-import met gating-UI** (M/L, future — wacht op voorbeeldpaar)
+14. **ARTA .pir-import met gating-UI** (M/L, future — wacht op voorbeeldpaar)
     — de ruwe impulsrespons vóór ARTA's gate/FFT-stap; feitelijk de
-    ANALYSE-helft van de meetmodule (punt 14), los te bouwen. Geen tweede
+    ANALYSE-helft van de meetmodule (punt 13), los te bouwen. Geen tweede
     .lim: een .pir → FRD vraagt een GATE-keuze (venster vóór de eerste
     reflectie) die Robbert nu bewust in ARTA maakt — automatisch gaten met
     een vaste waarde bakt stil een meetkeuze in (zelfde stille-fout-familie
-    als punt 6). Dus: parser (S) + gate+FFT→FRD op fft.ts (M) + gating-UI met
+    als de import-sanity-check). Dus: parser (S) + gate+FFT→FRD op fft.ts (M) + gating-UI met
     sleepbaar venster en zichtbare reflecties (M, het meeste werk). Harde
     invariant: de gate mag de TIJDAS NIET HERNULLEN — per bestand een eigen
     t=0 gooit het inter-driver-tijdverschil weg (Robberts set: Δ105 µs ≈
@@ -116,8 +112,8 @@ Volgorde binnen een blok = aanbevolen prioriteit. Inschattingen zijn grof:
     regressietest verplicht. Winst = export-klikken besparen (2 drivers ×
     8 hoeken), geen blokkade: de FRD-route draagt fase én timing al. Bouwen
     zodra er een validatiepaar ligt (één .pir + de FRD die ARTA daaruit
-    exporteerde — zelfde bewijs-aanpak als de .lim-import) of zodra punt 14
-    actueel wordt.
+    exporteerde — zelfde bewijs-aanpak als de .lim-import) of zodra de
+    meetmodule (punt 13) actueel wordt.
 
 ## Bewust niet
 

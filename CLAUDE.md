@@ -36,6 +36,15 @@ minimum phase reconstrueert. Voertaal met Sander: **Nederlands**; code/comments 
   VituixCAD-map-export) blijft tekst en VituixCAD kan het resultaat wél lezen. |Z| ≤ 0
   wordt hard afgewezen: een mis-gedecodeerd bestand faalt luid i.p.v. als waanzinnige
   driver-load te solven.
+  **`classify.ts` (import-sanity, aug 2026)**: niveauprofiel-check op de importgrens —
+  FRD en ZMA zijn dezelfde drie kolommen en de parser wordt op EXTENSIE gekozen, dus een
+  impedantie-export die .txt heet laadde stil als responsie (ohms in de dB-kolom, driver
+  op ~7 dB). `classifyLevelProfile`: één waarde ≤ 0 ⇒ SPL (|Z| kan niet negatief, genormaliseerde
+  responsies wel), mediaan < 45 ⇒ impedance-achtig, > 60 ⇒ SPL-achtig, ertussen = stil.
+  App WAARSCHUWT luid bij een overtuigende mismatch en laadt gewoon door — signaleren,
+  nooit een tweede stille beslissing; FRD-kant alleen op 3-koloms bestanden (2-koloms
+  genormaliseerde target-curves vallen zo buiten bereik). Banner-prefix "Parse error:"
+  is daarbij vervangen door "⚠" — hij loog al voor de vxp-pick-hint.
   **`vxpExport.ts` (`serializeVxp`, "Export .vxp"-knop in de Network-tab)**: exacte inverse
   van de parser — het actieve netwerk terug als VituixCAD-project (onze parts dragen al
   VituixCAD-grid-coördinaten, dus de CROSSOVER-blok re-serialiseert direct; ontbrekende
