@@ -102,6 +102,22 @@ Volgorde binnen een blok = aanbevolen prioriteit. Inschattingen zijn grof:
     simulatie van de actieve tab legt. Relatieve respons volstaat daarvoor —
     absolute dB heb je niet nodig om te zien of het model klopt. Impedantie
     meten vraagt een sense-resistor-jig: hardware, geen software.
+15. **ARTA .pir-import met gating-UI** (M/L, future — wacht op voorbeeldpaar)
+    — de ruwe impulsrespons vóór ARTA's gate/FFT-stap; feitelijk de
+    ANALYSE-helft van de meetmodule (punt 14), los te bouwen. Geen tweede
+    .lim: een .pir → FRD vraagt een GATE-keuze (venster vóór de eerste
+    reflectie) die Robbert nu bewust in ARTA maakt — automatisch gaten met
+    een vaste waarde bakt stil een meetkeuze in (zelfde stille-fout-familie
+    als punt 6). Dus: parser (S) + gate+FFT→FRD op fft.ts (M) + gating-UI met
+    sleepbaar venster en zichtbare reflecties (M, het meeste werk). Harde
+    invariant: de gate mag de TIJDAS NIET HERNULLEN — per bestand een eigen
+    t=0 gooit het inter-driver-tijdverschil weg (Robberts set: Δ105 µs ≈
+    36 mm, gemeten, verdict plausible) en dat is het fundament van de tool;
+    regressietest verplicht. Winst = export-klikken besparen (2 drivers ×
+    8 hoeken), geen blokkade: de FRD-route draagt fase én timing al. Bouwen
+    zodra er een validatiepaar ligt (één .pir + de FRD die ARTA daaruit
+    exporteerde — zelfde bewijs-aanpak als de .lim-import) of zodra punt 14
+    actueel wordt.
 
 ## Bewust niet
 
