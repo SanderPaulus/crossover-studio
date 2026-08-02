@@ -20,11 +20,22 @@ minimum phase reconstrueert. Voertaal met Sander: **Nederlands**; code/comments 
 
 ## Architectuur (src/lib, alles unit-getest)
 
-- `parsers/` — frd/zma/vxp (VituixCAD-project incl. WIRE-topologie via coördinaat-union-find in
+- `parsers/` — frd/zma/vxp/**lim** (VituixCAD-project incl. WIRE-topologie via coördinaat-union-find in
   `vxpNetwork.ts`). Fixtures = echte KOAN-metingen in `parsers/fixtures/`. **vxp is volledig
   optioneel**: .zma's kunnen per driver mee in de FRD-file-dialoog (standalone `zStandalone`,
   merged met evt. project-impedanties; keys 'mid'/'tweeter'); solver/synthese/editor draaien op
   de merged map. vxp = alleen nog import van Stefans crossover-varianten.
+  **`lim.ts` (aug 2026): ARTA/LIMP's binaire .lim-impedantie direct importeerbaar** —
+  formaat reverse-engineered ("LIM\0", int32-count @12, float32-samplerate @24, dan
+  float32-triplets freq/|Z|/fase vanaf byte 28) en gevalideerd met FYSICA: de fixtures
+  dragen woofer, tweeter én dezelfde twee parallel gemeten — complex parallel van de
+  eerste twee reproduceert de derde op ~0,1 Ω (regressietest; verwisselde kolommen slaan
+  complexe parallelrekening volledig stuk, dus de test bewijst de kolomtoewijzing).
+  Integratie: `limToZmaText` converteert op de IMPORTGRENS naar canonieke ZMA-tekst (met
+  herkomst-comment) en de app slaat DIE op — alles stroomafwaarts (autosave, project,
+  VituixCAD-map-export) blijft tekst en VituixCAD kan het resultaat wél lezen. |Z| ≤ 0
+  wordt hard afgewezen: een mis-gedecodeerd bestand faalt luid i.p.v. als waanzinnige
+  driver-load te solven.
   **`vxpExport.ts` (`serializeVxp`, "Export .vxp"-knop in de Network-tab)**: exacte inverse
   van de parser — het actieve netwerk terug als VituixCAD-project (onze parts dragen al
   VituixCAD-grid-coördinaten, dus de CROSSOVER-blok re-serialiseert direct; ontbrekende

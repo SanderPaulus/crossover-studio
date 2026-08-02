@@ -26,6 +26,11 @@ Volgorde binnen een blok = aanbevolen prioriteit. Inschattingen zijn grof:
 - Voor/na-tabel ("N value changes") na elke tune-run
 - **Bouwtolerantie-band** ±2/5/10% met worst-case/RSS en gevoeligheidsranking
 - Setup-tab: vxp-variantsectie verborgen zonder varianten
+- **LIMP .lim-import** (aug 2026): ARTA's binaire impedantieformaat direct
+  inladen — formaat reverse-engineered en gevalideerd met fysica (woofer ∥
+  tweeter parallel-meting klopt op ~0,1 Ω met de berekende combinatie).
+  Conversie naar ZMA-tekst op de importgrens, dus persistentie en
+  VituixCAD-export werken ongewijzigd; de omweg via VituixCAD is weg
 
 ## Kort — kleine, afgebakende verbeteringen
 
@@ -51,40 +56,33 @@ Volgorde binnen een blok = aanbevolen prioriteit. Inschattingen zijn grof:
    driver die ineens 6 dB speelt. Signaleren, niet automatisch omschakelen (een
    tweede stille beslissing is de eerste niet waard). Wordt acuut zodra iemand
    een ARTA-export rechtstreeks probeert.
-7. **ARTA/LIMP-import** (S/M, wacht op voorbeeldbestanden) — Sanders maat meet
-   met ARTA (impedantie via LIMP) en zet het in VituixCAD om naar ZMA; die
-   omweg kan er waarschijnlijk uit. `parseTabular` is al ruim genoeg
-   (`#`/`*`/`;`/`//`-comments, tab/komma/puntkomma, decimale komma, kopregels
-   zonder marker). Nodig vóór de bouw: de ARTA/LIMP-export zélf én de .zma die
-   VituixCAD ervan maakt, om beide curves naast elkaar te leggen — ARTA kent
-   meerdere formaten (.pir en .lim zijn binair), dus gokken heeft geen zin.
 
 ## Middel — meer werk, duidelijke winst
 
-8. **Ontwerp-rapport exporteren** (M) — zelfstandige HTML met schema, BOM
+7. **Ontwerp-rapport exporteren** (M) — zelfstandige HTML met schema, BOM
    (met prijzen), SPL/fase/impedantie-curves en de scores. Deelbaar met
    Stefan, bouwdocumentatie bij de speaker.
-9. **Fs-vloer in de vfOptimizer-bounds** (S/M) — de automatische ≥2×Fs-vloer
+8. **Fs-vloer in de vfOptimizer-bounds** (S/M) — de automatische ≥2×Fs-vloer
    geldt nu voor de HP-knie in de keten; ook als bound in de vrije
    vf-verkenning meenemen (xoRange dekt het handmatig al af).
-10. **Catalogus-onderhoud** (doorlopend) — nieuwe Gemini/SKU-updates blijven
-    importeerbaar; prijzen periodiek herijken op echte NL/EU-ankers (zie de
-    prijsverificatie-ronde in CLAUDE.md).
+9. **Catalogus-onderhoud** (doorlopend) — nieuwe Gemini/SKU-updates blijven
+   importeerbaar; prijzen periodiek herijken op echte NL/EU-ankers (zie de
+   prijsverificatie-ronde in CLAUDE.md).
 
 ## Groot — de fases
 
-11. **Fase 4: 3-weg / N-weg** (L) — het netlist-fundament is N-weg-klaar en de
+10. **Fase 4: 3-weg / N-weg** (L) — het netlist-fundament is N-weg-klaar en de
     template-kiezer heeft de (disabled) 3-weg-optie al. Nodig: N-weg-som in de
     sim, bandpass-tak in synthese/templates, optimizer/integration/directivity
     naar N drivers, UI voor drie takken.
-12. **Driverbibliotheek** (L) — meetbundels (FRD + hoeken + ZMA) per driver,
+11. **Driverbibliotheek** (L) — meetbundels (FRD + hoeken + ZMA) per driver,
     herbruikbaar over projecten; het einde van losse-bestanden-slepen.
-13. **Serie-crossover-topologie** (L) — eigen build-pad + vergelijkingsharnas
+12. **Serie-crossover-topologie** (L) — eigen build-pad + vergelijkingsharnas
     naast de parallelle synthese (bewust uitgesteld tot dat harnas er is).
-14. **Genormaliseerde hoekcurves & verticale metingen** (M, wacht op data) —
+13. **Genormaliseerde hoekcurves & verticale metingen** (M, wacht op data) —
     zodra Sander verticaal meet: lobing-analyse naast de horizontale
     directivity.
-15. **Meetmodule in de app** (L) — sweep + deconvolutie kan met Web Audio, en
+14. **Meetmodule in de app** (L) — sweep + deconvolutie kan met Web Audio, en
     fft.ts/timeDomain.ts doen de wiskunde al. Twee harde voorwaarden vóórdat
     dit iets waard is:
     (a) **Gekalibreerde meetmicrofoon mét cal-bestand.** Geverifieerd op de

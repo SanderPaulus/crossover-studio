@@ -10,6 +10,7 @@ import {
 } from 'react';
 import { parseFrd } from './lib/parsers/frd.ts';
 import { parseZma } from './lib/parsers/zma.ts';
+import { parseLim, limToZmaText } from './lib/parsers/lim.ts';
 import { parseVxp, type VxpCrossover, type VxpPart, type VxpProject } from './lib/parsers/vxp.ts';
 import { estimateBulkDelay, assessSharedReference } from './lib/timing.ts';
 import { logspace, resample, combine, offsetMmToDelayS, applyTransfer } from './lib/dsp.ts';
@@ -1129,7 +1130,22 @@ export default function App() {
           const zma = parseZma(raw);
           setZStandalone((prev) => ({ ...prev, [model]: { file: { name: f.name, raw }, zma } }));
         }
-        const frdOnly = files.filter((f) => !f.name.toLowerCase().endsWith('.zma'));
+        // LIMP's binary .lim (ARTA) is converted to ZMA text ONCE, here at the
+        // boundary: everything downstream (autosave, project files, the
+        // VituixCAD folder export) stores raw files as text and re-parses them
+        // on restore. The stored raw IS the converted text — re-parsing it
+        // keeps raw and in-memory data provably identical.
+        const limFiles = files.filter((f) => f.name.toLowerCase().endsWith('.lim'));
+        for (const f of limFiles) {
+          const lim = parseLim(await f.arrayBuffer());
+          const raw = limToZmaText(lim, f.name);
+          const zma = parseZma(raw);
+          const name = f.name.replace(/\.lim$/i, '.zma');
+          setZStandalone((prev) => ({ ...prev, [model]: { file: { name, raw }, zma } }));
+        }
+        const frdOnly = files.filter(
+          (f) => !/\.(zma|lim)$/i.test(f.name),
+        );
         if (frdOnly.length === 0) return;
         const byHor = new Map<number, AngleEntry>();
         for (const f of frdOnly) {
@@ -3844,20 +3860,20 @@ export default function App() {
                 …or load your own:
               </p>
               <label className="file-button" style={{ display: 'block', marginBottom: '0.3rem' }}>
-                {woofer ? `✓ Woofer / mid — ${woofer.name}` : 'Woofer / mid — FRD (+ ZMA, + angle files)'}
+                {woofer ? `✓ Woofer / mid — ${woofer.name}` : 'Woofer / mid — FRD (+ ZMA/LIMP, + angle files)'}
                 <input
                   type="file"
-                  accept=".frd,.txt,.zma,.ZMA"
+                  accept=".frd,.txt,.zma,.ZMA,.lim"
                   multiple
                   onChange={loadDriverFiles('woofer')}
                   style={{ display: 'none' }}
                 />
               </label>
               <label className="file-button" style={{ display: 'block' }}>
-                {tweeter ? `✓ Tweeter — ${tweeter.name}` : 'Tweeter — FRD (+ ZMA, + angle files)'}
+                {tweeter ? `✓ Tweeter — ${tweeter.name}` : 'Tweeter — FRD (+ ZMA/LIMP, + angle files)'}
                 <input
                   type="file"
-                  accept=".frd,.txt,.zma,.ZMA"
+                  accept=".frd,.txt,.zma,.ZMA,.lim"
                   multiple
                   onChange={loadDriverFiles('tweeter')}
                   style={{ display: 'none' }}
@@ -4878,11 +4894,11 @@ export default function App() {
             <div className="tool-group-body files">
               <label title="FRD = frequency response (SPL + phase), ZMA = measured impedance. Select the 0° file plus all horizontal angle files and the .ZMA in one go — angles are recognised by filename.">
                 Woofer / mid FRD + ZMA (multi-select all hor angles + impedance)
-                <input type="file" accept=".frd,.txt,.zma,.ZMA" multiple onChange={loadDriverFiles('woofer')} />
+                <input type="file" accept=".frd,.txt,.zma,.ZMA,.lim" multiple onChange={loadDriverFiles('woofer')} />
               </label>
               <label title="FRD = frequency response (SPL + phase), ZMA = measured impedance. Select the 0° file plus all horizontal angle files and the .ZMA in one go — angles are recognised by filename.">
                 Tweeter FRD + ZMA (multi-select all hor angles + impedance)
-                <input type="file" accept=".frd,.txt,.zma,.ZMA" multiple onChange={loadDriverFiles('tweeter')} />
+                <input type="file" accept=".frd,.txt,.zma,.ZMA,.lim" multiple onChange={loadDriverFiles('tweeter')} />
               </label>
               <label title="Optional: import a VituixCAD project to simulate Stefan's crossover variants. Select the .vxp together with its .ZMA and response .txt files.">
                 VituixCAD project (.vxp + .ZMA + response .txt — select together)
