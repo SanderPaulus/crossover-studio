@@ -26,6 +26,15 @@ Volgorde binnen een blok = aanbevolen prioriteit. Inschattingen zijn grof:
 - Voor/na-tabel ("N value changes") na elke tune-run
 - **Bouwtolerantie-band** ±2/5/10% met worst-case/RSS en gevoeligheidsranking
 - Setup-tab: vxp-variantsectie verborgen zonder varianten
+- **LIMP .lim-import** (aug 2026): ARTA's binaire impedantieformaat direct
+  inladen — formaat reverse-engineered en gevalideerd met fysica (woofer ∥
+  tweeter parallel-meting klopt op ~0,1 Ω met de berekende combinatie).
+  Conversie naar ZMA-tekst op de importgrens, dus persistentie en
+  VituixCAD-export werken ongewijzigd; de omweg via VituixCAD is weg
+- **Import-sanity op inhoud** (aug 2026): niveauprofiel-check bij het laden —
+  een impedantiebestand dat als responsie binnenkomt (of andersom) krijgt een
+  luide waarschuwing i.p.v. stil ohms-in-de-dB-kolom. Signaleren, niet
+  omschakelen; getest op de KOAN-fixtures beide kanten op
 
 ## Kort — kleine, afgebakende verbeteringen
 
@@ -69,6 +78,42 @@ Volgorde binnen een blok = aanbevolen prioriteit. Inschattingen zijn grof:
 12. **Genormaliseerde hoekcurves & verticale metingen** (M, wacht op data) —
     zodra Sander verticaal meet: lobing-analyse naast de horizontale
     directivity.
+13. **Meetmodule in de app** (L) — sweep + deconvolutie kan met Web Audio, en
+    fft.ts/timeDomain.ts doen de wiskunde al. Twee harde voorwaarden vóórdat
+    dit iets waard is:
+    (a) **Gekalibreerde meetmicrofoon mét cal-bestand.** Geverifieerd op de
+    MM-1-bestanden (JustOct `.mic`): `parseFrd` leest ze ongewijzigd — 134
+    punten, 10 Hz–21 kHz, 0 dB op 1 kHz, header netjes bij de comments. Maar:
+    de **fasekolom is leeg** (mic-fase blijft dus een minimum-fase-aanname),
+    het bestand is **Latin-1** en niet UTF-8, en 0° vs 90° scheelt tot **6 dB
+    in de topoctaaf** — de app moet vragen onder welke hoek is gemeten, niet
+    zelf kiezen. Zelfde stille-fout-familie als de import-sanity-check.
+    (b) **Eén klokdomein met loopback-kanaal.** Browserlatency is niet
+    deterministisch; zonder gedeeld tijdnul is het inter-driver-tijdverschil —
+    het kernidee van deze tool, 47 µs ≈ 16 mm — verzonnen. Een USB-meetmic is
+    daarmee de verkeerde route (eigen klok, geen elektrische loopback); XLR in
+    een 2-in/2-uit-interface wel.
+    Realistische eerste stap is niet REW namaken maar de VALIDATIE.md-lus
+    sluiten: een verificatie-sweep die de meting als extra curve over de
+    simulatie van de actieve tab legt. Relatieve respons volstaat daarvoor —
+    absolute dB heb je niet nodig om te zien of het model klopt. Impedantie
+    meten vraagt een sense-resistor-jig: hardware, geen software.
+14. **ARTA .pir-import met gating-UI** (M/L, future — wacht op voorbeeldpaar)
+    — de ruwe impulsrespons vóór ARTA's gate/FFT-stap; feitelijk de
+    ANALYSE-helft van de meetmodule (punt 13), los te bouwen. Geen tweede
+    .lim: een .pir → FRD vraagt een GATE-keuze (venster vóór de eerste
+    reflectie) die Robbert nu bewust in ARTA maakt — automatisch gaten met
+    een vaste waarde bakt stil een meetkeuze in (zelfde stille-fout-familie
+    als de import-sanity-check). Dus: parser (S) + gate+FFT→FRD op fft.ts (M) + gating-UI met
+    sleepbaar venster en zichtbare reflecties (M, het meeste werk). Harde
+    invariant: de gate mag de TIJDAS NIET HERNULLEN — per bestand een eigen
+    t=0 gooit het inter-driver-tijdverschil weg (Robberts set: Δ105 µs ≈
+    36 mm, gemeten, verdict plausible) en dat is het fundament van de tool;
+    regressietest verplicht. Winst = export-klikken besparen (2 drivers ×
+    8 hoeken), geen blokkade: de FRD-route draagt fase én timing al. Bouwen
+    zodra er een validatiepaar ligt (één .pir + de FRD die ARTA daaruit
+    exporteerde — zelfde bewijs-aanpak als de .lim-import) of zodra de
+    meetmodule (punt 13) actueel wordt.
 
 ## Bewust niet
 

@@ -10,6 +10,8 @@ import {
 } from 'react';
 import { parseFrd } from './lib/parsers/frd.ts';
 import { parseZma } from './lib/parsers/zma.ts';
+import { parseLim, limToZmaText } from './lib/parsers/lim.ts';
+import { classifyLevelProfile } from './lib/parsers/classify.ts';
 import { parseVxp, type VxpCrossover, type VxpPart, type VxpProject } from './lib/parsers/vxp.ts';
 import { estimateBulkDelay, assessSharedReference } from './lib/timing.ts';
 import { logspace, resample, combine, offsetMmToDelayS, applyTransfer } from './lib/dsp.ts';
@@ -1119,6 +1121,13 @@ export default function App() {
       e.target.value = '';
       if (files.length === 0) return;
       setError(null);
+      // Content-vs-extension sanity (roadmap jul 2026): the parser is chosen
+      // by extension while FRD and ZMA share the same three columns, so a
+      // misnamed file loads cleanly into the WRONG slot — ohms in the dB
+      // column, no error, just a driver at ~7 dB. Warn loudly on a confident
+      // level-profile mismatch but still load as asked: signalling, never a
+      // second silent decision.
+      const warnings: string[] = [];
       try {
         // ZMA files in the same selection become this driver's impedance —
         // no vxp project needed for solving/synthesis.
@@ -1127,15 +1136,59 @@ export default function App() {
         for (const f of zmaFiles) {
           const raw = await f.text();
           const zma = parseZma(raw);
+          const cls = classifyLevelProfile(zma.magnitude);
+          if (cls.kind === 'spl') {
+            warnings.push(
+              `"${f.name}" is named .zma but its levels look like an SPL response ` +
+                `(median ≈ ${cls.medianLevel.toFixed(0)}) — the solver would see a ` +
+                `~${cls.medianLevel.toFixed(0)} Ω driver. If this is a response file, ` +
+                `rename it to .frd and reload.`,
+            );
+          }
           setZStandalone((prev) => ({ ...prev, [model]: { file: { name: f.name, raw }, zma } }));
         }
-        const frdOnly = files.filter((f) => !f.name.toLowerCase().endsWith('.zma'));
-        if (frdOnly.length === 0) return;
+        // LIMP's binary .lim (ARTA) is converted to ZMA text ONCE, here at the
+        // boundary: everything downstream (autosave, project files, the
+        // VituixCAD folder export) stores raw files as text and re-parses them
+        // on restore. The stored raw IS the converted text — re-parsing it
+        // keeps raw and in-memory data provably identical.
+        const limFiles = files.filter((f) => f.name.toLowerCase().endsWith('.lim'));
+        for (const f of limFiles) {
+          const lim = parseLim(await f.arrayBuffer());
+          const raw = limToZmaText(lim, f.name);
+          const zma = parseZma(raw);
+          const name = f.name.replace(/\.lim$/i, '.zma');
+          setZStandalone((prev) => ({ ...prev, [model]: { file: { name, raw }, zma } }));
+        }
+        const frdOnly = files.filter(
+          (f) => !/\.(zma|lim)$/i.test(f.name),
+        );
+        if (frdOnly.length === 0) {
+          // Impedance-only selection: still surface any .zma warnings.
+          if (warnings.length > 0) setError(warnings.join(' '));
+          return;
+        }
         const byHor = new Map<number, AngleEntry>();
         for (const f of frdOnly) {
           const raw = await f.text();
           const hor = angleFromFilename(f.name) ?? 0;
-          byHor.set(hor, { hor, name: f.name, raw, frd: parseFrd(raw) });
+          const frd = parseFrd(raw);
+          // Only 3-column files can be a misnamed ZMA (parseZma demands
+          // phase), which also keeps 2-column normalized target curves out
+          // of this check's reach.
+          if (frd.hasPhase) {
+            const cls = classifyLevelProfile(frd.spl);
+            if (cls.kind === 'impedance') {
+              warnings.push(
+                `"${f.name}" was loaded as a response, but its levels look like an ` +
+                  `impedance measurement (median ≈ ${cls.medianLevel.toFixed(1)} Ω, all ` +
+                  `positive) — as SPL that is a driver at ~${cls.medianLevel.toFixed(0)} dB. ` +
+                  `If this is a ZMA/LIMP export, rename it to .zma (or load the .lim) so ` +
+                  `it lands in the impedance slot.`,
+              );
+            }
+          }
+          byHor.set(hor, { hor, name: f.name, raw, frd });
         }
         const entries = [...byHor.values()].sort((a, b) => a.hor - b.hor);
         const axis = entries.find((a) => a.hor === 0) ?? entries[0];
@@ -1151,7 +1204,9 @@ export default function App() {
         });
       } catch (err) {
         setError(err instanceof Error ? err.message : String(err));
+        return;
       }
+      if (warnings.length > 0) setError(warnings.join(' '));
     };
   }
 
@@ -3844,20 +3899,20 @@ export default function App() {
                 …or load your own:
               </p>
               <label className="file-button" style={{ display: 'block', marginBottom: '0.3rem' }}>
-                {woofer ? `✓ Woofer / mid — ${woofer.name}` : 'Woofer / mid — FRD (+ ZMA, + angle files)'}
+                {woofer ? `✓ Woofer / mid — ${woofer.name}` : 'Woofer / mid — FRD (+ ZMA/LIMP, + angle files)'}
                 <input
                   type="file"
-                  accept=".frd,.txt,.zma,.ZMA"
+                  accept=".frd,.txt,.zma,.ZMA,.lim"
                   multiple
                   onChange={loadDriverFiles('woofer')}
                   style={{ display: 'none' }}
                 />
               </label>
               <label className="file-button" style={{ display: 'block' }}>
-                {tweeter ? `✓ Tweeter — ${tweeter.name}` : 'Tweeter — FRD (+ ZMA, + angle files)'}
+                {tweeter ? `✓ Tweeter — ${tweeter.name}` : 'Tweeter — FRD (+ ZMA/LIMP, + angle files)'}
                 <input
                   type="file"
-                  accept=".frd,.txt,.zma,.ZMA"
+                  accept=".frd,.txt,.zma,.ZMA,.lim"
                   multiple
                   onChange={loadDriverFiles('tweeter')}
                   style={{ display: 'none' }}
@@ -4878,11 +4933,11 @@ export default function App() {
             <div className="tool-group-body files">
               <label title="FRD = frequency response (SPL + phase), ZMA = measured impedance. Select the 0° file plus all horizontal angle files and the .ZMA in one go — angles are recognised by filename.">
                 Woofer / mid FRD + ZMA (multi-select all hor angles + impedance)
-                <input type="file" accept=".frd,.txt,.zma,.ZMA" multiple onChange={loadDriverFiles('woofer')} />
+                <input type="file" accept=".frd,.txt,.zma,.ZMA,.lim" multiple onChange={loadDriverFiles('woofer')} />
               </label>
               <label title="FRD = frequency response (SPL + phase), ZMA = measured impedance. Select the 0° file plus all horizontal angle files and the .ZMA in one go — angles are recognised by filename.">
                 Tweeter FRD + ZMA (multi-select all hor angles + impedance)
-                <input type="file" accept=".frd,.txt,.zma,.ZMA" multiple onChange={loadDriverFiles('tweeter')} />
+                <input type="file" accept=".frd,.txt,.zma,.ZMA,.lim" multiple onChange={loadDriverFiles('tweeter')} />
               </label>
               <label title="Optional: import a VituixCAD project to simulate Stefan's crossover variants. Select the .vxp together with its .ZMA and response .txt files.">
                 VituixCAD project (.vxp + .ZMA + response .txt — select together)
@@ -4974,7 +5029,10 @@ export default function App() {
         </div>
         {persistNote && <p className="filenames">{persistNote} · autosaves locally on every change</p>}
         {vxpNote && <p className="filenames">{vxpNote}</p>}
-        {error && <p className="error">Parse error: {error}</p>}
+        {/* One banner for parse failures AND content warnings — the old
+            hardcoded "Parse error:" prefix lied for anything that wasn't one
+            (the vxp-pick hint, the impedance-as-response warning). */}
+        {error && <p className="error">⚠ {error}</p>}
         {(woofer || tweeter) && (
           <p className="filenames">
             {[woofer?.name, tweeter?.name].filter(Boolean).join(' · ')}
