@@ -15,7 +15,7 @@ import { classifyLevelProfile } from './lib/parsers/classify.ts';
 import { compareMeasurement } from './lib/verification.ts';
 import { parseVxp, type VxpCrossover, type VxpPart, type VxpProject } from './lib/parsers/vxp.ts';
 import { estimateBulkDelay, assessSharedReference } from './lib/timing.ts';
-import { logspace, resample, combine, combineN, offsetMmToDelayS, applyTransfer } from './lib/dsp.ts';
+import { logspace, resample, combine, combineN, offsetMmToDelayS, applyTransfer, type GriddedResponse } from './lib/dsp.ts';
 import { computeIntegration } from './lib/integration.ts';
 import { crossoverToNetlist } from './lib/vxpNetwork.ts';
 import { solveNetwork } from './lib/network.ts';
@@ -1673,11 +1673,26 @@ export default function App() {
     // solo paths stay bit-identical to before the mid slot existed.
     const midIn = threeWay ? midDrv : null;
     const present = [woofer, midIn, tweeter].filter((d): d is Loaded => d !== null);
-    const lo = Math.max(num(fMinDeb, 200), ...present.map((d) => d.frd.freq[0]));
-    const hi = Math.min(
-      num(fMaxDeb, 20000),
-      ...present.map((d) => d.frd.freq[d.frd.freq.length - 1]),
-    );
+    // Grid span: 2-way keeps the historical INTERSECTION of the measured
+    // ranges (bit-compat). 3-way spans the UNION (trede 4b, per-branch
+    // bands): Robbert's tweeter FRD starts at 640 Hz, and an intersection
+    // grid would hide the woofer-mid handover (~300-600 Hz) entirely. A
+    // branch outside its own measured range counts as SILENT below — the
+    // honest floor: the sum then carries only real contributions, and the
+    // tuner's driver-protection guard still watches the ELECTRICAL drive
+    // there, which is what actually endangers a tweeter.
+    const lo = threeWay
+      ? Math.max(num(fMinDeb, 200), Math.min(...present.map((d) => d.frd.freq[0])))
+      : Math.max(num(fMinDeb, 200), ...present.map((d) => d.frd.freq[0]));
+    const hi = threeWay
+      ? Math.min(
+          num(fMaxDeb, 20000),
+          Math.max(...present.map((d) => d.frd.freq[d.frd.freq.length - 1])),
+        )
+      : Math.min(
+          num(fMaxDeb, 20000),
+          ...present.map((d) => d.frd.freq[d.frd.freq.length - 1]),
+        );
     if (!(hi > lo)) return null;
     const grid = logspace(lo, hi, GRID_N);
     const silent = () => ({
@@ -1685,9 +1700,24 @@ export default function App() {
       spl: grid.map(() => SILENT_GHOST_DB),
       phaseDeg: grid.map(() => 0),
     });
-    let w = woofer ? resample(woofer.frd.freq, woofer.frd.spl, woofer.frd.phase, grid) : silent();
-    let t = tweeter ? resample(tweeter.frd.freq, tweeter.frd.spl, tweeter.frd.phase, grid) : silent();
-    let m = midIn ? resample(midIn.frd.freq, midIn.frd.spl, midIn.frd.phase, grid) : null;
+    /** Resample onto the grid; outside the driver's own measured range the
+     *  branch is the silent ghost (3-way only — 2-way grids never extend
+     *  past a measurement by construction). */
+    const banded = (l: Loaded): GriddedResponse => {
+      const f0 = l.frd.freq[0];
+      const f1 = l.frd.freq[l.frd.freq.length - 1];
+      const g = resample(l.frd.freq, l.frd.spl, l.frd.phase, grid, { clampEdges: true });
+      return {
+        freq: grid,
+        spl: g.spl.map((v, i) => (grid[i] < f0 || grid[i] > f1 ? SILENT_GHOST_DB : v)),
+        phaseDeg: g.phaseDeg.map((v, i) => (grid[i] < f0 || grid[i] > f1 ? 0 : v)),
+      };
+    };
+    const toGrid = (l: Loaded): GriddedResponse =>
+      threeWay ? banded(l) : resample(l.frd.freq, l.frd.spl, l.frd.phase, grid);
+    let w = woofer ? toGrid(woofer) : silent();
+    let t = tweeter ? toGrid(tweeter) : silent();
+    let m = midIn ? toGrid(midIn) : null;
 
     // VituixCAD-style comparison mode: throw away the measured phase and
     // reconstruct minimum phase from magnitude (drivers then sum with zero
@@ -1923,11 +1953,29 @@ export default function App() {
   }, [phaseMode, timing, excessBridge]);
 
   // 3-way: the crossing score is a PAIR property (low-mid, mid-high) — the
-  // 2-way woofer↔tweeter overlap is meaningless there. Pair scores are trede 4.
+  // 2-way woofer↔tweeter overlap is meaningless there, so `integration` stays
+  // null and `pairScores` carries the two ADJACENT pairs instead (trede 4b).
   const integration = useMemo(
     () => (result && !threeWay ? computeIntegration(result) : null),
     [result, threeWay],
   );
+
+  /** Per-adjacent-pair integration + phase flatness (3-way only). Silent
+   *  ghost regions (per-branch bands) drop out of the overlap window on
+   *  their own — the weights die with the level. */
+  const pairScores = useMemo(() => {
+    if (!threeWay || !sim?.mid || !result) return null;
+    const zero = { offsetMm: 0, trimDb: 0, inverted: false };
+    const mk = (lo: GriddedResponse, hi: GriddedResponse) => {
+      const r = combine(lo, hi, zero);
+      const integ = computeIntegration(r);
+      return { integ, stats: computePhaseStats(r.relativePhaseDeg, integ.points) };
+    };
+    return {
+      low: mk(result.woofer, sim.mid),
+      high: mk(sim.mid, result.tweeter),
+    };
+  }, [threeWay, sim, result]);
 
   /** The SPL chart's live visible x-range (Hz), zoom/pan included — mirrored
    *  up from the chart so the ±dB read-out tracks exactly what you see. */
@@ -2898,7 +2946,12 @@ export default function App() {
         return g.spl.map((m, i) => fromPolar(m, (g.phaseDeg[i] * Math.PI) / 180));
       };
       // RAW driver responses (no filters applied) for acoustic-mode targets.
-      const rawSpl = (l: Loaded) => resample(l.frd.freq, l.frd.spl, l.frd.phase, grid).spl;
+      // 3-way: the grid spans the UNION of the branch ranges, so a branch's
+      // raw SPL must clamp at its own measurement edges — synthBanded then
+      // slices exactly the measured sub-grid, so the clamped points are never
+      // actually fitted (same pattern as the verification overlay).
+      const rawSpl = (l: Loaded) =>
+        resample(l.frd.freq, l.frd.spl, l.frd.phase, grid, threeWay ? { clampEdges: true } : undefined).spl;
       const opts = (l: Loaded) => ({
         mode: synthMode,
         phasePriority: phasePriority / 100,
@@ -2922,6 +2975,54 @@ export default function App() {
       // The optimizer never passes specsIn in 3-way (gated until trede 4), so
       // the mid spec always comes from the live vFilters.
       const midSpec = threeWay && midDrv ? vFilters.mid : null;
+      // 3-way per-branch bands (trede 4b): each branch is synthesised on the
+      // SLICE of the grid its own measurement covers — fitting against
+      // silent-ghost points would poison the level/median logic. The result
+      // arrays are padded back to the full grid with NaN so the SynthChart
+      // simply draws gaps outside the branch's band.
+      const subIdxFor = (l: Loaded): number[] => {
+        const f0 = l.frd.freq[0];
+        const f1 = l.frd.freq[l.frd.freq.length - 1];
+        const idxs: number[] = [];
+        for (let i = 0; i < grid.length; i++) if (grid[i] >= f0 && grid[i] <= f1) idxs.push(i);
+        return idxs;
+      };
+      const synthBanded = (
+        spec: DriverFilterSpec,
+        l: Loaded,
+        zModel: string,
+      ): SynthesisResult => {
+        const idxs = subIdxFor(l);
+        if (!threeWay || idxs.length === grid.length) {
+          return synthesize(spec, grid, zFor(zModel), opts(l));
+        }
+        const sub = idxs.map((i) => grid[i]);
+        const zg = zFor(zModel);
+        const zSub = idxs.map((i) => zg[i]);
+        const o = opts(l);
+        const r = synthesize(spec, sub, zSub, {
+          ...o,
+          ...(o.driverSplDb ? { driverSplDb: idxs.map((i) => o.driverSplDb![i]) } : {}),
+        });
+        const padC = (arr: Complex[]): Complex[] => {
+          const out: Complex[] = grid.map(() => ({ re: NaN, im: NaN }));
+          idxs.forEach((gi, k) => (out[gi] = arr[k]));
+          return out;
+        };
+        const padN = (arr: number[] | undefined): number[] | undefined => {
+          if (!arr) return undefined;
+          const out = grid.map(() => NaN);
+          idxs.forEach((gi, k) => (out[gi] = arr[k]));
+          return out;
+        };
+        return {
+          ...r,
+          achieved: padC(r.achieved),
+          target: padC(r.target),
+          acousticAchievedDb: padN(r.acousticAchievedDb),
+          acousticTargetDb: padN(r.acousticTargetDb),
+        };
+      };
       const gShift = Math.max(specs.woofer.gainDb, specs.tweeter.gainDb, midSpec?.gainDb ?? 0, 0);
       const shifted = (specIn: DriverFilterSpec): DriverFilterSpec => ({
         ...specIn,
@@ -2932,11 +3033,11 @@ export default function App() {
       const lowKey = threeWay ? 'woofer' : 'mid';
       const out: SynthState = { mode: synthMode };
       if (isActive(specs.woofer))
-        out.woofer = synthesize(shifted(specs.woofer), grid, zFor(lowKey), opts(woofer));
+        out.woofer = synthBanded(shifted(specs.woofer), woofer, lowKey);
       if (midSpec && isActive(midSpec) && midDrv)
-        out.mid = synthesize(shifted(midSpec), grid, zFor('mid'), opts(midDrv));
+        out.mid = synthBanded(shifted(midSpec), midDrv, 'mid');
       if (isActive(specs.tweeter))
-        out.tweeter = synthesize(shifted(specs.tweeter), grid, zFor('tweeter'), opts(tweeter));
+        out.tweeter = synthBanded(shifted(specs.tweeter), tweeter, 'tweeter');
       if (!out.woofer && !out.mid && !out.tweeter)
         out.error = 'No active virtual filter blocks to synthesise.';
       setSynth(out);
@@ -3714,6 +3815,15 @@ export default function App() {
     }));
   }, [result, threeWay, vFilters, trimDb, woofer, tweeter]);
 
+  /** Mask silent-ghost regions (per-branch bands, 3-way) to chart gaps. A
+   *  real branch never sits below −300 dB; the ghost lives at −400 and a
+   *  filtered ghost only sinks further. */
+  const maskSilent = useCallback(
+    (spl: readonly number[]): number[] =>
+      threeWay ? spl.map((v) => (v <= SILENT_GHOST_DB + 100 ? NaN : v)) : [...spl],
+    [threeWay],
+  );
+
   const splSeries: Series[] = useMemo(() => {
     if (!result) return [];
     // Color the combined curve by phase-alignment tier inside the overlap
@@ -3767,14 +3877,16 @@ export default function App() {
         : []),
       // Single-driver mode: the ghost branch sits at −400 dB — skip its curve
       // and the (two-driver) polarity null check instead of drawing noise.
+      // 3-way per-branch bands: outside its own measured range a branch sits
+      // at the silent ghost — masked to a gap instead of a −400 dB cliff.
       ...(woofer
-        ? [{ id: 'w', label: threeWay ? 'Woofer' : 'Woofer/mid', color: 'var(--viz-woofer)', x: result.freq, y: result.woofer.spl } satisfies Series]
+        ? [{ id: 'w', label: threeWay ? 'Woofer' : 'Woofer/mid', color: 'var(--viz-woofer)', x: result.freq, y: maskSilent(result.woofer.spl) } satisfies Series]
         : []),
       ...(sim?.mid
-        ? [{ id: 'm', label: 'Midrange', color: 'var(--viz-mid)', x: result.freq, y: sim.mid.spl } satisfies Series]
+        ? [{ id: 'm', label: 'Midrange', color: 'var(--viz-mid)', x: result.freq, y: maskSilent(sim.mid.spl) } satisfies Series]
         : []),
       ...(tweeter
-        ? [{ id: 't', label: 'Tweeter', color: 'var(--viz-tweeter)', x: result.freq, y: result.tweeter.spl } satisfies Series]
+        ? [{ id: 't', label: 'Tweeter', color: 'var(--viz-tweeter)', x: result.freq, y: maskSilent(result.tweeter.spl) } satisfies Series]
         : []),
       {
         id: 'c',
@@ -3802,7 +3914,7 @@ export default function App() {
           ]),
     ];
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [result, sim, threeWay, integration, tabGhosts, networkActive, activeDesign, tolBand, targetSeries, soloDriver, verifyCompare, verify]);
+  }, [result, sim, threeWay, maskSilent, integration, tabGhosts, networkActive, activeDesign, tolBand, targetSeries, soloDriver, verifyCompare, verify]);
 
   /**
    * Design handles ON the SPL chart (UI-fase D): drag the crossover knees and
@@ -4063,12 +4175,21 @@ export default function App() {
     // the ADJACENT pairs are the design quantity, so those two curves lead.
     if (threeWay && sim?.mid) {
       const midPh = sim.mid.phaseDeg;
+      // Per-branch bands: relative phase against a silent-ghost region is
+      // noise — mask where either branch has no measured data.
+      const alive = (spl: readonly number[], i: number) => spl[i] > SILENT_GHOST_DB + 100;
       out.push({
         id: 'relmw',
         label: 'Mid phase relative to woofer',
         color: 'var(--viz-mid)',
         x: result.freq,
-        y: breakWraps(midPh.map((p, i) => wrapDeg(p - result.woofer.phaseDeg[i]))),
+        y: breakWraps(
+          midPh.map((p, i) =>
+            alive(sim.mid!.spl, i) && alive(result.woofer.spl, i)
+              ? wrapDeg(p - result.woofer.phaseDeg[i])
+              : NaN,
+          ),
+        ),
         width: 2.2,
       });
       out.push({
@@ -4076,7 +4197,13 @@ export default function App() {
         label: 'Tweeter phase relative to mid',
         color: 'var(--viz-tweeter)',
         x: result.freq,
-        y: breakWraps(result.tweeter.phaseDeg.map((p, i) => wrapDeg(p - midPh[i]))),
+        y: breakWraps(
+          result.tweeter.phaseDeg.map((p, i) =>
+            alive(result.tweeter.spl, i) && alive(sim.mid!.spl, i)
+              ? wrapDeg(p - midPh[i])
+              : NaN,
+          ),
+        ),
         width: 2.2,
       });
     } else if (!soloDriver) {
@@ -5548,6 +5675,20 @@ export default function App() {
               Overlap <strong>{Math.round(integration.overlapCentreHz)} Hz</strong>
             </span>
           )}
+          {pairScores &&
+            pairScores.low.integ.overlapCentreHz != null &&
+            pairScores.high.integ.overlapCentreHz != null && (
+              <span
+                className="status-chip"
+                title="Where the driver levels meet, per adjacent pair: woofer-mid / mid-tweeter"
+              >
+                Overlap{' '}
+                <strong>
+                  {Math.round(pairScores.low.integ.overlapCentreHz)} /{' '}
+                  {Math.round(pairScores.high.integ.overlapCentreHz)} Hz
+                </strong>
+              </span>
+            )}
           {phaseStats && (
             <span
               className={`status-chip ${
@@ -5558,6 +5699,22 @@ export default function App() {
               Fase P95 <strong>{phaseStats.p95ErrorDeg.toFixed(0)}°</strong>
             </span>
           )}
+          {pairScores && (pairScores.low.stats || pairScores.high.stats) && (() => {
+            const worst = Math.max(
+              pairScores.low.stats?.p95ErrorDeg ?? 0,
+              pairScores.high.stats?.p95ErrorDeg ?? 0,
+            );
+            return (
+              <span
+                className={`status-chip ${
+                  worst <= 45 ? 'chip-ok' : worst <= 90 ? 'chip-warn' : 'chip-bad'
+                }`}
+                title="Worst pair's 95th-percentile phase error (woofer-mid vs mid-tweeter overlap windows)"
+              >
+                Fase P95 <strong>{worst.toFixed(0)}°</strong>
+              </span>
+            );
+          })()}
         </div>
         <div className="theme-switch" role="group" aria-label="Layout">
           {(
@@ -7477,6 +7634,30 @@ export default function App() {
                       no overlap within 20 dB — the drivers never meet, nothing to integrate
                     </span>
                   ))}
+                {pairScores &&
+                  (
+                    [
+                      ['W-M', pairScores.low] as const,
+                      ['M-T', pairScores.high] as const,
+                    ]
+                  ).map(([label, ps]) => (
+                    <span
+                      key={label}
+                      className={`strip-item${
+                        ps.integ.score !== null && ps.integ.score < 75 ? ' alert' : ''
+                      }`}
+                      title={`Adjacent pair ${label === 'W-M' ? 'woofer-mid' : 'mid-tweeter'}: summing score (overlap-weighted cos(ε/2)) and where the levels meet`}
+                    >
+                      {label}{' '}
+                      {ps.integ.score !== null
+                        ? `${ps.integ.score.toFixed(0)} · ${
+                            ps.integ.overlapCentreHz !== null
+                              ? `${Math.round(ps.integ.overlapCentreHz)} Hz`
+                              : '—'
+                          }`
+                        : 'no overlap'}
+                    </span>
+                  ))}
               </div>
             )}
             <Chart
@@ -7764,6 +7945,28 @@ export default function App() {
                 </span>
               </div>
             )}
+            {pairScores && (
+              <div className="score-strip">
+                <span className="strip-label">Phase flatness</span>
+                {(
+                  [
+                    ['woofer-mid', pairScores.low.stats] as const,
+                    ['mid-tweeter', pairScores.high.stats] as const,
+                  ]
+                ).map(([label, st]) => (
+                  <span
+                    key={label}
+                    className="strip-item"
+                    title={`Relative-phase flatness over the ${label} overlap window: score 0–100, average and P95 |phase error|.`}
+                  >
+                    {label}{' '}
+                    {st
+                      ? `${st.score} · avg ${st.avgErrorDeg.toFixed(1)}° · P95 ${st.p95ErrorDeg.toFixed(0)}°`
+                      : 'no overlap'}
+                  </span>
+                ))}
+              </div>
+            )}
             <Chart
               series={phaseSeries}
               xDomain={xDomain}
@@ -7795,7 +7998,26 @@ export default function App() {
                         label: `overlap ${Math.round(integration.overlapCentreHz)} Hz`,
                       },
                     ]
-                  : undefined
+                  : pairScores
+                    ? [
+                        ...(pairScores.low.integ.overlapCentreHz
+                          ? [
+                              {
+                                x: pairScores.low.integ.overlapCentreHz,
+                                label: `W-M ${Math.round(pairScores.low.integ.overlapCentreHz)} Hz`,
+                              },
+                            ]
+                          : []),
+                        ...(pairScores.high.integ.overlapCentreHz
+                          ? [
+                              {
+                                x: pairScores.high.integ.overlapCentreHz,
+                                label: `M-T ${Math.round(pairScores.high.integ.overlapCentreHz)} Hz`,
+                              },
+                            ]
+                          : []),
+                      ]
+                    : undefined
               }
               onXRangeCommit={commitViewRange}
             />

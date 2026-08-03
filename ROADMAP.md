@@ -114,9 +114,28 @@ Volgorde binnen een blok = aanbevolen prioriteit. Inschattingen zijn grof:
    volle suite 402 = bewijs). ⚙ Optimize components werkt dus in 3-weg.
    GEMETEN op Robberts set: de amp-vloer-gate vuurt eerlijk (generieke seeds
    dippen daar zelf al ~2 Ω — drie parallelle takken rond de lage overname) en
-   de 640 Hz-gridvloer knelt. Volgende stappen trede 4: per-tak-banden (tak
-   buiten eigen meetbereik = stil), pairwise timing-check, en de twee-paar-
-   designChain + 2D-crossover-scan.
+   de 640 Hz-gridvloer knelt.
+   **Trede 4b KLAAR (aug 2026): per-tak-banden + per-paar-scores.** In 3-weg
+   spant het sim-grid de UNIE van de meetbereiken (2-weg houdt de historische
+   doorsnede — bit-compat); een tak buiten zijn eigen meetbereik is de stille
+   ghost (eerlijke vloer: de som draagt alleen echte bijdragen, en de
+   drive-bescherming bewaakt de tweeter dáár elektrisch). Charts maskeren
+   stilte naar gaps; tak-syntheses fitten op hun eigen sub-grid (arrays
+   NaN-gepad voor de SynthChart; rawSpl clampt in 3-weg — de slicing snijdt
+   de geclampte punten weg). `pairScores` in de App: per aangrenzend paar
+   integration + phaseStats — topbar "Overlap laag/hoog", SPL-strip
+   "W-M/M-T score · Hz", fasepaneel per-paar-flatness, paar-markers in de
+   fase-chart. GEMETEN op Robbert: de 400 Hz-overname is nu ontwerpbaar
+   (build W-M 531 Hz — vóór 4b onzichtbaar achter de 640 Hz-gridvloer).
+   Eerlijke bevinding: de tuner-Z-vloer bijt daar structureel (tune dreef
+   naar 1,6 Ω, reparatie haalde de vloer niet — twee 4 Ω-klasse drivers
+   parallel kunnen fysiek ~2,4 Ω halen) — Z als ontwerprandvoorwaarde is
+   trede-4c-werk. Nog open in 4b-staart: pairwise timing-check (verdicts per
+   aangrenzend paar met eigen fitband — de huidige w-t-check op 500–5000 Hz
+   zegt op Robberts set eerlijk "cannot judge").
+   Volgende stap trede 4c: de twee-paar-designChain + 2D-crossover-scan
+   (vfOptimizer/synthese/scan over twee overgangspunten, Z-vloer als
+   ontwerprandvoorwaarde, directivity/tolerantie/tab-ghosts liften mee).
    **Trede 3 KLAAR (aug 2026): de bandpass-tak.** De synthese kón het al —
    `deriveTopology` cascadeert de HP-ladder in de LP-ladder zodra beide knieën
    enabled zijn; nu bewezen op de gemeten KOAN-mid (regressietest; ~2 dB rms

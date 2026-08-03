@@ -856,6 +856,19 @@ tolerantie-band, tab-ghosts, target-curves, templates (alleen Blank-scaffold, m�
 drivers). Autosave-deps uitgebreid (midDrv + mid-adjust — de harde les). Demo-load reset
 midDrv (anders wordt KOAN stil een 3-weg). 2-weg/solo bit-onaangeroerd: volle suite (394)
 groen + browser-check op Sanders v1-autosave (restored identiek door het nieuwe leespad).
+**Per-tak-banden (trede 4b)**: in 3-weg spant het sim-grid de UNIE van de meetbereiken
+(2-weg houdt de doorsnede — bit-compat); `banded()` zet een tak buiten zijn eigen
+meetbereik op de stille ghost — eerlijke vloer: de som draagt alleen echte bijdragen en
+de tuner-drive-bescherming bewaakt de tweeter daar elektrisch (Robberts tweeter-FRD
+begint op 640 Hz; de 400 Hz-overname is nu ontwerpbaar). `maskSilent` maakt gaps in de
+SPL/fase-charts (geen −400-klif); tak-syntheses fitten op hun eigen sub-grid
+(`synthBanded`, arrays NaN-gepad voor de SynthChart; `rawSpl` clampt in 3-weg — de
+slicing snijdt de geclampte punten weg, zelfde patroon als verification).
+**Per-paar-scores (trede 4b)**: `pairScores`-memo = per aangrenzend paar
+combine+computeIntegration+computePhaseStats (stille regio's vallen vanzelf uit het
+overlapvenster) — topbar-chips "Overlap laag/hoog Hz" + slechtste-paar Fase P95,
+SPL-strip "W-M/M-T score · Hz", fasepaneel per-paar-flatnessregel, paar-markers in de
+fase-chart. Nog open (4b-staart): pairwise timing-verdicts met eigen fitband per paar.
 **Trede 3 (aug 2026) — bandpass-tak**: `deriveTopology` cascadeerde HP→LP al bij beide
 knieën enabled (nu test-gepind op de gemeten KOAN-mid); `filterTemplates` bouwt 3-weg
 (LP@600 / bandpass 600–3000 / HP@3000, generiek 8 Ω; mid = 2×orde, id-counters gedeeld
