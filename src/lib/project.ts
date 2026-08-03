@@ -121,6 +121,9 @@ export interface ProjectState {
   angleFiles?: { woofer: StoredAngleFile[]; tweeter: StoredAngleFile[] };
   /** Free-text notes per imported file, keyed "group:filename" (optional). */
   fileNotes?: Record<string, string>;
+  /** Optional: measured response of the BUILT system, overlaid against the
+   *  simulation (the VALIDATIE.md loop). One file; reloading replaces it. */
+  verifyFile?: StoredFile;
   design: ProjectDesign;
 }
 
@@ -213,6 +216,7 @@ export function deserializeProject(text: string): ProjectState {
     impedances: Object.keys(impedances).length ? impedances : undefined,
     vxp: file(d['vxp']),
     fileNotes,
+    verifyFile: file(d['verifyFile']),
     design,
   };
 }

@@ -12,6 +12,7 @@ import { parseFrd } from './lib/parsers/frd.ts';
 import { parseZma } from './lib/parsers/zma.ts';
 import { parseLim, limToZmaText } from './lib/parsers/lim.ts';
 import { classifyLevelProfile } from './lib/parsers/classify.ts';
+import { compareMeasurement } from './lib/verification.ts';
 import { parseVxp, type VxpCrossover, type VxpPart, type VxpProject } from './lib/parsers/vxp.ts';
 import { estimateBulkDelay, assessSharedReference } from './lib/timing.ts';
 import { logspace, resample, combine, offsetMmToDelayS, applyTransfer } from './lib/dsp.ts';
@@ -497,6 +498,9 @@ export default function App() {
   const [project, setProject] = useState<ProjectData | null>(null);
   /** VituixCAD phase reference: its FILTERED woofer + tweeter responses, so we
    *  can draw its relative phase (tweeter − woofer) in OUR convention. */
+  /** Measured response of the BUILT system, for the model-vs-measurement
+   *  overlay (VALIDATIE.md loop). Persisted with the project. */
+  const [verify, setVerify] = useState<{ name: string; raw: string; frd: Parsed & { hasPhase: boolean } } | null>(null);
   const [refResp, setRefResp] = useState<{ woofer: Parsed; tweeter: Parsed; names: string } | null>(
     null,
   );
@@ -835,6 +839,9 @@ export default function App() {
   /** Component wizard: tier profile + binding series per kind for the snap. */
   const [wizardOpen, setWizardOpen] = useState(false);
   const [wizardStep, setWizardStep] = useState(1);
+  /** Compare wizard: guided model-vs-measurement validation (VALIDATIE.md). */
+  const [cmpOpen, setCmpOpen] = useState(false);
+  const [cmpStep, setCmpStep] = useState(1);
   /** In-app manual; opens on the section matching the active design tab. */
   const [helpOpen, setHelpOpen] = useState(false);
   const [catalogMgrOpen, setCatalogMgrOpen] = useState(false);
@@ -1426,6 +1433,30 @@ export default function App() {
     }
   }
 
+  /** Load the measured response of the BUILT system for the model-vs-
+   *  measurement overlay. One file; loading again replaces it. */
+  async function loadVerification(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file) return;
+    setError(null);
+    try {
+      const raw = await file.text();
+      const frd = parseFrd(raw);
+      const cls = classifyLevelProfile(frd.spl);
+      setVerify({ name: file.name, raw, frd });
+      if (frd.hasPhase && cls.kind === 'impedance') {
+        setError(
+          `"${file.name}" was loaded as the verification measurement, but its levels look ` +
+            `like an impedance file (median ≈ ${cls.medianLevel.toFixed(1)} Ω) — the ` +
+            `comparison below will be meaningless.`,
+        );
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
+    }
+  }
+
   const num = (s: string, fallback: number) => {
     const v = Number(s);
     return s.trim() !== '' && Number.isFinite(v) ? v : fallback;
@@ -1712,6 +1743,16 @@ export default function App() {
     return computeResponseStats(result.freq, result.combinedSpl, lo, hi);
   }, [result, splViewX]);
 
+  /** Model vs measurement (VALIDATIE.md loop): the loaded verification FRD
+   *  against the simulated combined, level-aligned and delay-fitted over the
+   *  VISIBLE range — the overlay and the strip judge the same band. */
+  const verifyCompare = useMemo(() => {
+    if (!result || !verify) return null;
+    const lo = splViewX ? splViewX[0] : result.freq[0];
+    const hi = splViewX ? splViewX[1] : result.freq[result.freq.length - 1];
+    return compareMeasurement(result.freq, result.combinedSpl, result.combinedPhaseDeg, verify.frd, [lo, hi]);
+  }, [result, verify, splViewX]);
+
   /** The loudest and quietest spot of the combined curve, marked in the chart.
    *  Straight from `combinedFlat`, so the dots sit exactly where the peak ±dB
    *  in the strip comes from and follow the same band (and the same zoom).
@@ -1918,6 +1959,7 @@ export default function App() {
           }
         : undefined,
       fileNotes: Object.keys(fileNotes).length > 0 ? fileNotes : undefined,
+      verifyFile: verify ? { name: verify.name, raw: verify.raw } : undefined,
       design: {
         vFilters,
         xoName,
@@ -2007,6 +2049,11 @@ export default function App() {
       setAngleSets(null);
     }
     setFileNotes(state.fileNotes ?? {});
+    setVerify(
+      state.verifyFile
+        ? { name: state.verifyFile.name, raw: state.verifyFile.raw, frd: parseFrd(state.verifyFile.raw) }
+        : null,
+    );
     const d = state.design;
     setVFilters(sanitizePassiveSpecs(d.vFilters));
     setXoName(d.xoName);
@@ -2146,7 +2193,7 @@ export default function App() {
     }, 800);
     return () => clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [woofer, tweeter, project, zStandalone, angleSets, fileNotes, vFilters, xoName, offsetMm, trimDb, inverted, fMin, fMax, splMin, splMax, phasePriority, vfEqBands, phaseMode, dirWeight, ampTarget, sonogramMode, designs, activeDesignId, lastSavedId, networkActive, vfBypass, catalogSnap, breakupGuard, xoRangeOn, xoFreqHz, xoMarginHz, xoScanSteps, hpLpPref, phaseMetricMode, acSlopeMid, acSlopeTweeter, midSizeInch, snapProfile, snapSeriesL, snapSeriesC, snapSeriesR, snapStacks, snapBoundToSeries, stagedOn, targetRipple, targetPhase, soloSensDb, soloFloorOn, soloFloorDb]);
+  }, [woofer, tweeter, project, zStandalone, angleSets, fileNotes, verify, vFilters, xoName, offsetMm, trimDb, inverted, fMin, fMax, splMin, splMax, phasePriority, vfEqBands, phaseMode, dirWeight, ampTarget, sonogramMode, designs, activeDesignId, lastSavedId, networkActive, vfBypass, catalogSnap, breakupGuard, xoRangeOn, xoFreqHz, xoMarginHz, xoScanSteps, hpLpPref, phaseMetricMode, acSlopeMid, acSlopeTweeter, midSizeInch, snapProfile, snapSeriesL, snapSeriesC, snapSeriesR, snapStacks, snapBoundToSeries, stagedOn, targetRipple, targetPhase, soloSensDb, soloFloorOn, soloFloorDb]);
 
   function resetProject() {
     localStorage.removeItem(AUTOSAVE_KEY);
@@ -3431,6 +3478,20 @@ export default function App() {
         : []),
       // Acoustic per-driver targets (legend-opt-in) under the live curves.
       ...targetSeries,
+      // Model-vs-measurement overlay: the measured build, level-aligned.
+      ...(verifyCompare && verify
+        ? [
+            {
+              id: 'verify',
+              label: `Measured — ${verify.name} (${verifyCompare.offsetDb >= 0 ? '+' : ''}${verifyCompare.offsetDb.toFixed(1)} dB)`,
+              color: 'var(--viz-ghost3)',
+              dash: '9 3',
+              width: 2.2,
+              x: result.freq,
+              y: verifyCompare.alignedSpl,
+            } satisfies Series,
+          ]
+        : []),
       // Single-driver mode: the ghost branch sits at −400 dB — skip its curve
       // and the (two-driver) polarity null check instead of drawing noise.
       ...(woofer
@@ -3465,7 +3526,7 @@ export default function App() {
           ]),
     ];
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [result, integration, tabGhosts, networkActive, activeDesign, tolBand, targetSeries, soloDriver]);
+  }, [result, integration, tabGhosts, networkActive, activeDesign, tolBand, targetSeries, soloDriver, verifyCompare, verify]);
 
   /**
    * Design handles ON the SPL chart (UI-fase D): drag the crossover knees and
@@ -3720,8 +3781,23 @@ export default function App() {
         width: 1.8,
       });
     }
+    // Model-vs-measurement phase residual: what remains of (measured −
+    // simulated) phase after the fitted mic delay + constant offset are
+    // removed. Flat at 0° = the model's phase is right; structure = where it
+    // is not. Works in solo mode too — that IS the validation flow.
+    if (verifyCompare?.phase) {
+      out.push({
+        id: 'verifres',
+        label: 'Measured phase residual (vs model)',
+        color: 'var(--viz-ghost3)',
+        x: result.freq,
+        y: verifyCompare.phase.residualDeg,
+        dash: '9 3',
+        width: 2,
+      });
+    }
     return out;
-  }, [result, integration, sim, offsetMm, trimDb, inverted, showPanels.phase, refResp, tabGhosts, woofer, tweeter, soloDriver]);
+  }, [result, integration, sim, offsetMm, trimDb, inverted, showPanels.phase, refResp, tabGhosts, woofer, tweeter, soloDriver, verifyCompare]);
 
   /** "How far off is the phase" zones behind the relative-phase curve. */
   const phaseBands = useMemo(
@@ -4631,6 +4707,198 @@ export default function App() {
           </div>
         </Modal>
       )}
+      {cmpOpen && (() => {
+        // Guided model-vs-measurement validation. A CHECKLIST, not a flow
+        // that does things for you: every step reads live app state, so a
+        // step you completed elsewhere is simply already green.
+        const steps = [
+          { id: 1, label: 'Design' },
+          { id: 2, label: 'Drivers' },
+          { id: 3, label: 'Measurement' },
+          { id: 4, label: 'Verdict' },
+        ];
+        const pos = steps.findIndex((st) => st.id === cmpStep);
+        const zMid = !!impedances['mid'];
+        const zTw = !!impedances['tweeter'];
+        const Ok = ({ ok, children }: { ok: boolean; children: ReactNode }) => (
+          <p style={{ margin: '0.15rem 0' }}>
+            {ok ? '✅' : '⬜'} {children}
+          </p>
+        );
+        return (
+          <Modal
+            open
+            onClose={() => setCmpOpen(false)}
+            label="Compare wizard — model vs measurement"
+            cardClass="targets-card wizard-card"
+          >
+            <div className="busy-title">🔬 Compare — model vs measurement</div>
+            <div className="wizard-steps">
+              {steps.map((st, i) => (
+                <span key={st.id} className={i <= pos ? 'done' : ''} />
+              ))}
+            </div>
+            <p className="sub" style={{ width: '100%', margin: 0 }}>
+              Step {pos + 1} of {steps.length} · {steps[pos].label}
+            </p>
+            <div className="wizard-body">
+              {cmpStep === 1 && (
+                <>
+                  <p>
+                    <strong>Design</strong> — the comparison judges the simulated Combined of the
+                    ACTIVE network tab, so that tab must be the design you actually built.
+                  </p>
+                  <Ok ok={designs.length > 0}>
+                    A network design exists{activeDesign ? <> — active: <strong>{activeDesign.name}</strong></> : null}.
+                    Import one (Network → Import filter / Import variant) or rebuild the physical
+                    build with New from template + the editor.
+                  </Ok>
+                  <Ok ok={networkActive}>
+                    "Use in simulation" is on — otherwise the sim shows the virtual filters, not
+                    your network.
+                  </Ok>
+                  <p className="sub">
+                    Rebuilding what is physically on the bench? Enter the MEASURED component values
+                    in the inspector — that difference (design vs solder) is often the first thing
+                    this comparison exposes.
+                  </p>
+                </>
+              )}
+              {cmpStep === 2 && (
+                <>
+                  <p>
+                    <strong>Drivers</strong> — the simulation is measured drivers × your network,
+                    so the driver files must be the same measurements the design was made with.
+                  </p>
+                  <Ok ok={!!woofer}>Woofer/mid response (FRD){woofer ? ` — ${woofer.name}` : ''}</Ok>
+                  <Ok ok={zMid}>Woofer/mid impedance (ZMA/LIMP)</Ok>
+                  <Ok ok={!!tweeter}>Tweeter response (FRD){tweeter ? ` — ${tweeter.name}` : ''}</Ok>
+                  <Ok ok={zTw}>Tweeter impedance (ZMA/LIMP)</Ok>
+                  <p className="sub">
+                    Single-driver validation (one driver through its network) is fine: load just
+                    that driver and the app runs in solo mode.
+                  </p>
+                </>
+              )}
+              {cmpStep === 3 && (
+                <>
+                  <p>
+                    <strong>Measurement</strong> — measure the BUILT system with the same rig as
+                    the driver measurements (same gate, same mic position discipline), export as
+                    FRD with phase, and load it here.
+                  </p>
+                  <Ok ok={!!verify}>
+                    Verification measurement{verify ? ` — ${verify.name}` : ''}
+                  </Ok>
+                  <p>
+                    <label className="file-button">
+                      {verify ? 'Replace measurement…' : 'Load measurement (FRD)…'}
+                      <input type="file" accept=".frd,.txt" onChange={loadVerification} />
+                    </label>
+                    {verify && (
+                      <button
+                        type="button"
+                        onClick={() => setVerify(null)}
+                        style={{ marginLeft: '0.5rem' }}
+                      >
+                        Remove
+                      </button>
+                    )}
+                  </p>
+                  <p className="sub">
+                    Level and mic distance do NOT need to match the sim — the comparison aligns
+                    level (median) and fits the mic delay out of the phase, and shows both numbers
+                    instead of hiding them.
+                  </p>
+                </>
+              )}
+              {cmpStep === 4 && (
+                <>
+                  <p>
+                    <strong>Verdict</strong> — judged over the visible SPL range (zoom the chart to
+                    change the band being graded).
+                  </p>
+                  {!verifyCompare ? (
+                    <p className="sub">
+                      No comparison yet — {verify ? 'the simulation has no result (check steps 1–2).' : 'load a verification measurement in step 3.'}
+                    </p>
+                  ) : (
+                    <>
+                      <p>
+                        <strong>Magnitude</strong>: avg ±{verifyCompare.avgAbsDb.toFixed(2)} dB ·
+                        P95 ±{verifyCompare.p95AbsDb.toFixed(2)} dB · worst{' '}
+                        {verifyCompare.maxAt.deltaDb.toFixed(1)} dB at {hz(verifyCompare.maxAt.freqHz)}
+                        {' '}(band {Math.round(verifyCompare.band[0])}–{Math.round(verifyCompare.band[1])} Hz,
+                        level-aligned {verifyCompare.offsetDb >= 0 ? '+' : ''}
+                        {verifyCompare.offsetDb.toFixed(1)} dB)
+                      </p>
+                      {verifyCompare.phase ? (
+                        <p>
+                          <strong>Phase</strong>: residual avg {verifyCompare.phase.avgAbsDeg.toFixed(1)}° ·
+                          P95 {verifyCompare.phase.p95AbsDeg.toFixed(0)}° · fitted mic delay{' '}
+                          {verifyCompare.phase.fittedDelayUs.toFixed(0)} µs
+                          {verifyCompare.phase.looksInverted && (
+                            <> · <strong>⚠ offset ≈ 180° — the build is likely wired INVERTED vs the sim</strong></>
+                          )}
+                        </p>
+                      ) : (
+                        <p className="sub">Measurement carries no phase column — magnitude verdict only.</p>
+                      )}
+                      <p className="sub">
+                        The overlay lives in the SPL chart, the phase residual in the Phase chart —
+                        flat at 0° means the model's phase is right where it matters.
+                      </p>
+                    </>
+                  )}
+                </>
+              )}
+            </div>
+            <div className="wizard-foot">
+              <div className="row">
+                {pos > 0 ? (
+                  <button type="button" onClick={() => setCmpStep(steps[pos - 1].id)}>
+                    ← Back
+                  </button>
+                ) : (
+                  <button type="button" onClick={() => setCmpOpen(false)}>
+                    Cancel
+                  </button>
+                )}
+              </div>
+              <div className="row">
+                {pos < steps.length - 1 ? (
+                  <button type="button" className="primary" onClick={() => setCmpStep(steps[pos + 1].id)}>
+                    Next →
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    className="primary"
+                    // The button PROMISES charts, so it delivers them: the
+                    // phase residual lives in the Phase panel (which may be
+                    // toggled off), and in stacked layout the charts sit
+                    // below the fold — enable and scroll instead of hoping.
+                    onClick={() => {
+                      if (verifyCompare?.phase) setShowPanels((p) => ({ ...p, phase: true }));
+                      setCmpOpen(false);
+                      // Instant, not smooth: in stacked layout this can be a
+                      // multi-thousand-px jump, and smooth scrolling pauses
+                      // entirely in a backgrounded tab (rAF throttling).
+                      setTimeout(() => {
+                        document
+                          .querySelector('.analysis-pane .panel')
+                          ?.scrollIntoView({ block: 'start' });
+                      }, 60);
+                    }}
+                  >
+                    Done — show the charts
+                  </button>
+                )}
+              </div>
+            </div>
+          </Modal>
+        );
+      })()}
       {trapOpen && (
         <Modal
           open
@@ -4953,6 +5221,33 @@ export default function App() {
                 <input type="file" accept=".frd,.txt" multiple onChange={loadReference} />
                 {refResp && <span className="derived"> ✓ {refResp.names}</span>}
               </label>
+              <label title="Model vs measurement (the validation loop): measure the BUILT system, load that FRD here, and the SPL chart overlays it against the simulated combined — level-aligned, with the deviation numbers in the SPL strip. Load again to replace.">
+                Verification measurement (built system, FRD)
+                <input type="file" accept=".frd,.txt" onChange={loadVerification} />
+                {verify && (
+                  <span className="derived">
+                    {' '}✓ {verify.name}{' '}
+                    <button
+                      type="button"
+                      onClick={() => setVerify(null)}
+                      title="Remove the verification measurement"
+                      aria-label="Remove the verification measurement"
+                    >
+                      ✕
+                    </button>
+                  </span>
+                )}
+              </label>
+              <button
+                type="button"
+                onClick={() => {
+                  setCmpStep(1);
+                  setCmpOpen(true);
+                }}
+                title="Guided model-vs-measurement check: design, drivers, measurement, verdict — step by step"
+              >
+                🔬 Compare wizard
+              </button>
               <button
                 type="button"
                 onClick={loadDemo}
@@ -6580,6 +6875,19 @@ export default function App() {
                     build ±{tolBand.tolPct}%: worst ±{tolBand.worstHalfDb.toFixed(2)} · RSS ±
                     {tolBand.rssHalfDb.toFixed(2)} dB · sensitive{' '}
                     {tolBand.perPart.slice(0, 3).map((p) => p.id).join(', ')}
+                  </span>
+                )}
+                {verifyCompare && (
+                  <span
+                    className={`strip-item${verifyCompare.maxAbsDb > 3 ? ' alert' : ''}`}
+                    title={`Model vs measurement over ${Math.round(verifyCompare.band[0])}–${Math.round(verifyCompare.band[1])} Hz. The measurement was level-aligned by ${verifyCompare.offsetDb.toFixed(1)} dB (median — absolute calibration differs by nature). Worst deviation ${verifyCompare.maxAt.deltaDb.toFixed(1)} dB at ${Math.round(verifyCompare.maxAt.freqHz)} Hz${verifyCompare.phase ? `. Phase: fitted mic delay ${verifyCompare.phase.fittedDelayUs.toFixed(0)} µs removed, residual avg ${verifyCompare.phase.avgAbsDeg.toFixed(1)}° / P95 ${verifyCompare.phase.p95AbsDeg.toFixed(0)}°${verifyCompare.phase.looksInverted ? ' — offset near 180°: the build is likely wired INVERTED vs the sim' : ''}` : ''}`}
+                  >
+                    meas Δ avg ±{verifyCompare.avgAbsDb.toFixed(2)} · P95 ±
+                    {verifyCompare.p95AbsDb.toFixed(2)} · worst {verifyCompare.maxAt.deltaDb.toFixed(1)} dB @{' '}
+                    {hz(verifyCompare.maxAt.freqHz)}
+                    {verifyCompare.phase &&
+                      ` · fase ${verifyCompare.phase.avgAbsDeg.toFixed(1)}°/${verifyCompare.phase.p95AbsDeg.toFixed(0)}°`}
+                    {verifyCompare.phase?.looksInverted && ' · ⚠ inverted?'}
                   </span>
                 )}
                 {!soloDriver &&

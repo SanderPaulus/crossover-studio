@@ -212,6 +212,28 @@ minimum phase reconstrueert. Voertaal met Sander: **Nederlands**; code/comments 
   p=0,85→2,1 dB/8° (top −4 dB — "de 119 dB-inzak" is een fasekeuze, geen bug)
 - `integration.ts` — score = overlap-gewogen cos(ε/2); klassen op 45/90/120° (fysische ankers)
 - `phaseStats.ts` — fase-flatness-score/avg/P95/std over overlapgebied (à la Stefans screenshot)
+- `verification.ts` — **model-vs-meting-overlay (aug 2026, de VALIDATIE.md-lus als
+  feature)**: gemeten FRD van de gebouwde build tegen de gesimuleerde Combined.
+  Twee normalisaties, allebei GERAPPORTEERD i.p.v. verstopt (echte fysische
+  verschillen, geen modelfouten): niveau-offset = mediaan over de band (mean zou
+  door de afwijking zelf getrokken worden — zelfde mediaan-doctrine als
+  responseStats) en zichtbaar in de legend; mic-afstand = pure delay + constante
+  offset least-squares op het fase-VERSCHIL gefit en verwijderd — het residu is
+  de eerlijke fase-afwijking, de gefitte delay wordt getoond (ís de mic-afstand)
+  en een offset ~180° flagt "likely wired INVERTED" i.p.v. stil corrigeren.
+  Vergeleken op overlap van sim-grid × meetbereik × ZICHTBAAR bereik (gated
+  LF-staart vervuilt het oordeel nooit; NaN buiten de band = chart tekent niks).
+  UI: "Verification measurement"-slot op de Import-tab (één file, herladen
+  vervangt, ✕ wist), overlay-serie in SPL, residu-serie in fase-chart,
+  meas-Δ-stripitem (alert bij >3 dB). Persistent (`verifyFile` in ProjectState).
+  HARD GELEERD bij de bouw: de autosave-effect heeft een EXPLICIETE dependency-
+  lijst — nieuwe persistente state MOET daar ook in, anders slaat hij stil niet
+  op (verify ontbrak eerst; in de browser gevonden doordat de reload hem kwijt was).
+  **🔬 Compare wizard** (knop naast het Verification-slot, Import-tab): de lus als
+  begeleide CHECKLIST in vier stappen (Design/Drivers/Measurement/Verdict) op het
+  wizardSteps-lijstpatroon + Modal — elke stap leest live state (geen eigen flow),
+  meting laden kan ín stap 3 via dezelfde loadVerification, stap 4 toont de
+  verifyCompare-cijfers incl. inverted-flag.
 - `responseStats.ts` — **Response flatness (jul 2026, Sanders "±dB kan ook op 1 plek zijn")**:
   hele-bereik-vlakheid van de combined SPL over het zichtbare bereik — score 0–100 uit de
   GEMIDDELDE |afwijking| t.o.v. het MEDIAAN-niveau (mediaan omdat een mean-referentie door

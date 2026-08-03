@@ -14,6 +14,21 @@ excess-fase-brug, integration-score, directivity-som. Daarvoor is een tweede dri
 
 ---
 
+## 0b. Model-vs-meting-overlay (in de app ingebouwd, aug 2026)
+
+De vergelijkstap van dit protocol zit nu ín de app: **Import-tab →
+"Verification measurement"**. Laad de gemeten FRD van de gebouwde build en:
+
+- de SPL-chart tekent de meting over de gesimuleerde Combined (niveau
+  automatisch uitgelijnd; de offset staat in de legend),
+- de SPL-strip toont avg/P95/grootste afwijking mét frequentie,
+- de fase-chart toont het fase-residu ná het wegfitten van de mic-afstand
+  (de gefitte delay staat in de tooltip — sanity: ~343 mm per ms),
+- een fase-offset rond 180° wordt gemeld als vermoedelijk omgekeerde
+  aansluiting — niet stil gecorrigeerd.
+
+Alles wordt beoordeeld over het zichtbare bereik, dus zoom = de band waar
+je het model op afrekent. De meting is persistent (project + autosave).
 ## 0. Single-driver mode (in de app ingebouwd, jul 2026)
 
 Eén geladen driver is genoeg: laad de **FRS8-FRD + ZMA** in het Woofer/mid-slot en de
