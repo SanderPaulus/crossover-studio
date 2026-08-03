@@ -106,8 +106,19 @@ Volgorde binnen een blok = aanbevolen prioriteit. Inschattingen zijn grof:
    Optimizers/synthese/vxp-export/integratie-score zijn in 3-weg GEGATE met
    uitleg (paar-eigenschappen — trede 4); 2-weg/solo-paden bit-onaangeroerd
    (volle suite + browser-check op Sanders v1-autosave).
-   Daarna: (3) bandpass-tak in synthese/templates, (4) optimizers met twee
-   paren + 2D-crossover-scan, (5) vxp-brug/help; directivity/tolerantie/
+   **Trede 3 KLAAR (aug 2026): de bandpass-tak.** De synthese kón het al —
+   `deriveTopology` cascadeert de HP-ladder in de LP-ladder zodra beide knieën
+   enabled zijn; nu bewezen op de gemeten KOAN-mid (regressietest; ~2 dB rms
+   is daar eerlijk: de Z-piek op 388 Hz ligt ín de 600 Hz-overgang, de Fs-trap
+   is tuner-werk). 3-weg-TEMPLATES staan aan (1e–4e orde, LP / bandpass / HP
+   op neutrale 600/3000 Hz-referenties, mid = 2×orde onderdelen; modellen via
+   pickSlotsN geresolved — zModels-laadvolgorde is niet te vertrouwen) en
+   **"Build passive filter" werkt in 3-weg**: drie tak-fits landen als één
+   netwerk in een Passive build-tab, met een eerlijke note dat de assembled
+   tune (paar-oordeel) nog volgt. Wizard/help-teksten mee.
+   Daarna: (4) optimizers met twee paren + 2D-crossover-scan — dé grote
+   trede: pairMetrics-lus in netOptimizer, twee-paar-designChain, solo/duo
+   regressie bit-identiek; (5) vxp-brug/help; directivity/tolerantie/
    tab-ghosts in 3-weg liften mee op trede 4.
 10. **Driverbibliotheek** (L) — meetbundels (FRD + hoeken + ZMA) per driver,
     herbruikbaar over projecten; het einde van losse-bestanden-slepen.

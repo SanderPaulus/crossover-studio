@@ -19,7 +19,7 @@ import { mergeSynthesizedSchematics, templateSchematic } from './schematicEdit.t
 /** 0 = blank (drivers only), 1..4 = filter order (6/12/18/24 dB/oct). */
 export type FilterOrder = 0 | 1 | 2 | 3 | 4;
 
-/** 2-way is live; 3-way is scaffolded for the future N-way build. */
+/** Both live since phase-4 trede 3 (3-way = LP / bandpass / HP ladders). */
 export type WayCount = 2 | 3;
 
 export interface TemplateSpec {
@@ -31,9 +31,13 @@ export interface TemplateSpec {
 
 /** Neutral reference the generic seed values are computed at. */
 const R_REF = 8; // Ω
-const FC_REF = 2500; // Hz
-const A = R_REF / (2 * Math.PI * FC_REF); // series-L scale, H
-const B = 1 / (2 * Math.PI * FC_REF * R_REF); // shunt/series-C scale, F
+const FC_REF = 2500; // Hz — the 2-way crossover reference (unchanged)
+/** 3-way neutral crossover references: low and high transition. */
+const FC_LOW_3W = 600; // Hz
+const FC_HIGH_3W = 3000; // Hz
+/** Series-L scale (H) and shunt/series-C scale (F) at a corner frequency. */
+const scaleA = (fc: number) => R_REF / (2 * Math.PI * fc);
+const scaleB = (fc: number) => 1 / (2 * Math.PI * fc * R_REF);
 
 /** One ladder element: capacitor or inductor, series or shunt, and its
  *  coefficient on the L-scale (A) or C-scale (B). */
@@ -78,32 +82,61 @@ function ladder(order: Exclude<FilterOrder, 0>, highPass: boolean): Elem[] {
 }
 
 /** Turn a ladder into synthesis components (roles drive the schematic layout:
- *  a role containing 'series' is drawn on the bus, otherwise it shunts). */
-function branchComponents(order: Exclude<FilterOrder, 0>, highPass: boolean): SynthesizedComponent[] {
+ *  a role containing 'series' is drawn on the bus, otherwise it shunts).
+ *  Counters are passed in so a bandpass branch (two cascaded ladders) keeps
+ *  its part ids unique. */
+function branchComponents(
+  order: Exclude<FilterOrder, 0>,
+  highPass: boolean,
+  fc: number = FC_REF,
+  counters: { c: number; l: number } = { c: 0, l: 0 },
+): SynthesizedComponent[] {
   const kindTag = highPass ? 'HP' : 'LP';
-  let ci = 0;
-  let li = 0;
+  const A = scaleA(fc);
+  const B = scaleB(fc);
   return ladder(order, highPass).map((e) => {
     const value = e.kind === 'L' ? e.coeff * A : e.coeff * B;
-    const id = e.kind === 'L' ? `L${++li}` : `C${++ci}`;
+    const id = e.kind === 'L' ? `L${++counters.l}` : `C${++counters.c}`;
     const place = e.series ? 'series' : 'shunt';
     return { id, kind: e.kind, value, role: `${kindTag} ${place} ${e.kind}` };
   });
 }
 
+/** Bandpass branch for the 3-way middle driver: the high-pass ladder at the
+ *  LOW transition cascaded into the low-pass ladder at the HIGH transition —
+ *  source → HP section(s) → LP section(s) → driver, one series path. */
+function bandpassComponents(order: Exclude<FilterOrder, 0>): SynthesizedComponent[] {
+  const counters = { c: 0, l: 0 };
+  return [
+    ...branchComponents(order, true, FC_LOW_3W, counters),
+    ...branchComponents(order, false, FC_HIGH_3W, counters),
+  ];
+}
+
 /**
  * Build a network template. 2-way maps the first model to a low-pass branch
- * and the last to a high-pass branch. Order 0 (or an empty/unknown model set)
- * falls back to the bare generator+drivers scaffold. 3-way is not built yet —
- * callers should gate the UI on `supportsWayCount` and pass 2 for now.
+ * and the last to a high-pass branch (2.5 kHz reference); 3-way maps
+ * first/middle/last to LP @600 Hz / bandpass 600–3000 Hz / HP @3 kHz.
+ * Order 0 (or a model set too small for the way count) falls back to the
+ * bare generator+drivers scaffold.
  */
 export function filterTemplate(spec: TemplateSpec): VxpCrossover {
   const { order, wayCount, models } = spec;
-  const slots = models.length > 0 ? models : ['mid', 'tweeter'];
+  const slots = models.length > 0 ? models : wayCount === 3 ? ['woofer', 'mid', 'tweeter'] : ['mid', 'tweeter'];
 
-  if (order === 0 || wayCount !== 2 || slots.length < 2) {
+  if (order === 0 || slots.length < wayCount) {
     // Blank scaffold: generator + drivers, unfiltered.
     return templateSchematic(slots);
+  }
+
+  const ordinal = order === 1 ? '1st' : order === 2 ? '2nd' : order === 3 ? '3rd' : '4th';
+  if (wayCount === 3) {
+    const xo = mergeSynthesizedSchematics([
+      { components: branchComponents(order, false, FC_LOW_3W), model: slots[0] },
+      { components: bandpassComponents(order), model: slots[1] },
+      { components: branchComponents(order, true, FC_HIGH_3W), model: slots[slots.length - 1] },
+    ]);
+    return { ...xo, name: `3-way · ${ordinal} order` };
   }
 
   const lpModel = slots[0];
@@ -112,7 +145,7 @@ export function filterTemplate(spec: TemplateSpec): VxpCrossover {
     { components: branchComponents(order, false), model: lpModel },
     { components: branchComponents(order, true), model: hpModel },
   ]);
-  return { ...xo, name: `2-way · ${order === 1 ? '1st' : order === 2 ? '2nd' : order === 3 ? '3rd' : '4th'} order` };
+  return { ...xo, name: `2-way · ${ordinal} order` };
 }
 
 /** UI descriptor: the orders on offer, most-used first. */
@@ -124,7 +157,7 @@ export const TEMPLATE_ORDERS: readonly { order: FilterOrder; label: string }[] =
   { order: 4, label: '4th order · 24 dB/oct' },
 ];
 
-/** 3-way is intentionally not wired yet (future N-way build). */
+/** Both way counts build since phase-4 trede 3. */
 export function supportsWayCount(wayCount: WayCount): boolean {
-  return wayCount === 2;
+  return wayCount === 2 || wayCount === 3;
 }

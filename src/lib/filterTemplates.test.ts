@@ -64,3 +64,59 @@ describe('filterTemplate', () => {
     expect(reactive(4)).toBe(8);
   });
 });
+
+describe('filterTemplate 3-way (phase-4 trede 3)', () => {
+  // Probe grid around the 600 / 3000 Hz neutral references: deep low, the
+  // mid-band centre (geometric mean ≈ 1342 Hz), deep high.
+  const GRID3 = [100, 1342, 20000];
+  const models = ['w 12w', 'mid m15', 'tweeter r26'];
+  const solve3 = (order: FilterOrder) => {
+    const xo = filterTemplate({ order, wayCount: 3, models });
+    const { netlist } = crossoverToNetlist(xo);
+    const z = Object.fromEntries(models.map((m) => [m, GRID3.map(() => cplx(8))]));
+    const sol = solveNetwork(netlist, GRID3, z);
+    const mag = (model: string, k: number) => {
+      const d = sol.drivers.find((x) => x.model === model)!;
+      const h = sol.transfers[d.id][k];
+      return Math.hypot(h.re, h.im);
+    };
+    return { xo, netlist, mag };
+  };
+
+  it('every order builds a valid, single-generator, solvable 3-way network', () => {
+    for (const order of [1, 2, 3, 4] as FilterOrder[]) {
+      const { xo, netlist } = solve3(order);
+      expect(xo.parts.filter((p) => p.type === 'Generator')).toHaveLength(1);
+      expect(xo.parts.filter((p) => p.type === 'Driver')).toHaveLength(3);
+      expect(validateNetlist(netlist, models).errors).toHaveLength(0);
+    }
+  });
+
+  it('the middle branch is a real bandpass: passes the centre, blocks both ends', () => {
+    for (const order of [1, 2, 3, 4] as FilterOrder[]) {
+      const { mag } = solve3(order);
+      expect(mag('mid m15', 1)).toBeGreaterThan(0.55); // centre of the band
+      expect(mag('mid m15', 0)).toBeLessThan(0.35); // 100 Hz — below the band
+      expect(mag('mid m15', 2)).toBeLessThan(0.35); // 20 kHz — above the band
+      // Outer branches keep their classic shapes.
+      expect(mag('w 12w', 0)).toBeGreaterThan(0.9);
+      expect(mag('w 12w', 2)).toBeLessThan(0.3);
+      expect(mag('tweeter r26', 2)).toBeGreaterThan(0.9);
+      expect(mag('tweeter r26', 0)).toBeLessThan(0.3);
+    }
+  });
+
+  it('reactive part count: order per outer branch, twice that for the bandpass', () => {
+    for (const order of [1, 2, 3, 4] as const) {
+      const n = filterTemplate({ order, wayCount: 3, models }).parts.filter(
+        (p) => p.type === 'Capacitor' || p.type === 'Inductor',
+      ).length;
+      expect(n).toBe(4 * order); // order + 2·order + order
+    }
+  });
+
+  it('a model set too small for 3-way falls back to the blank scaffold', () => {
+    const xo = filterTemplate({ order: 2, wayCount: 3, models: ['a', 'b'] });
+    expect(xo.parts.some((p) => p.type === 'Capacitor' || p.type === 'Inductor')).toBe(false);
+  });
+});

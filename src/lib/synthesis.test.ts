@@ -89,6 +89,31 @@ describe('synthesize on measured KOAN impedances', () => {
     expect(db(r.achieved[at(8000)])).toBeLessThan(-40);
   });
 
+  it('fits a BANDPASS (hp+lp both enabled) on the mid — the 3-way middle branch', () => {
+    // Phase-4 trede 3: the middle branch of a 3-way is simply a spec with
+    // both knees enabled — deriveTopology cascades the HP ladder into the LP
+    // ladder on one series path. Proven here on the measured KOAN mid Z.
+    const spec: DriverFilterSpec = {
+      gainDb: 0,
+      hp: { ...defaultHpLp(600), enabled: true, kind: 'LR', order: 2 },
+      lp: { ...defaultHpLp(3000), enabled: true, kind: 'LR', order: 2 },
+      eq: [],
+    };
+    const r = synthesize(spec, grid, midZ);
+
+    // C L (HP) + L C (LP) = 4 reactive elements on one branch.
+    expect(r.components.filter((c) => c.kind === 'C' || c.kind === 'L')).toHaveLength(4);
+    // Sanity, not a quality pin: the KOAN mid's impedance peak sits at
+    // ~388 Hz, right inside the 600 Hz HP transition — a bare 2nd-order
+    // ladder honestly fits ~2 dB rms there (an Fs trap is the tuner's job).
+    expect(r.rmsDb).toBeLessThan(2.5);
+    // Passes the band centre (√(600·3000) ≈ 1342 Hz, LR knees cost ~−6 dB
+    // each at their corner, so the centre sits near 0 dB), blocks both ends.
+    expect(db(r.achieved[at(1342)])).toBeGreaterThan(-3);
+    expect(db(r.achieved[at(220)])).toBeLessThan(-15);
+    expect(db(r.achieved[at(12000)])).toBeLessThan(-15);
+  });
+
   it('synthesises an L-pad for negative gain', () => {
     const spec: DriverFilterSpec = {
       gainDb: -8,

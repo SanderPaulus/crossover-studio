@@ -856,6 +856,14 @@ tolerantie-band, tab-ghosts, target-curves, templates (alleen Blank-scaffold, m�
 drivers). Autosave-deps uitgebreid (midDrv + mid-adjust — de harde les). Demo-load reset
 midDrv (anders wordt KOAN stil een 3-weg). 2-weg/solo bit-onaangeroerd: volle suite (394)
 groen + browser-check op Sanders v1-autosave (restored identiek door het nieuwe leespad).
+**Trede 3 (aug 2026) — bandpass-tak**: `deriveTopology` cascadeerde HP→LP al bij beide
+knieën enabled (nu test-gepind op de gemeten KOAN-mid); `filterTemplates` bouwt 3-weg
+(LP@600 / bandpass 600–3000 / HP@3000, generiek 8 Ω; mid = 2×orde, id-counters gedeeld
+over de twee ladders); App: "Build passive filter" in 3-weg = drie tak-fits (zFor
+'woofer'/'mid'/'tweeter', gShift over drie takken) → één merge in een Passive build-tab
++ note "assembled tune volgt" — netOptimize blijft gegate (paar-oordeel, trede 4);
+template-modellen via pickSlotsN (zModels-laadvolgorde ≠ takvolgorde), way-select volgt
+de geladen set.
 **Wizard-systeemkeuze (Sanders voorstel, aug 2026)**: stap 0 begint met 1-weg/2-weg/3-weg
 (`wizardWays`, localStorage 'ads-wizard-ways'; data wint bij openen — volle 3-weg forceert 3,
 exact twee buitentakken 2) en toont alléén de bijbehorende slots; **Next blokkeert op

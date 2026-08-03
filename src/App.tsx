@@ -2093,6 +2093,7 @@ export default function App() {
 
   interface SynthState {
     woofer?: SynthesisResult;
+    mid?: SynthesisResult;
     tweeter?: SynthesisResult;
     mode: 'filter' | 'acoustic';
     error?: string;
@@ -2912,26 +2913,37 @@ export default function App() {
         snapPrefs: snapPrefsValue(),
         ...(synthMode === 'acoustic' ? { driverSplDb: rawSpl(l) } : {}),
       });
-      // Passives cannot boost: shift both driver gains down by the highest
+      // Passives cannot boost: shift all driver gains down by the highest
       // one, preserving the RELATIVE balance with only attenuation. EQ bands
       // are clamped to attenuation too — the UI already prevents entering a
       // boost, this also catches any legacy positive band.
-      const gShift = Math.max(specs.woofer.gainDb, specs.tweeter.gainDb, 0);
+      // 3-way (trede 3): the middle branch is a spec with BOTH knees enabled —
+      // deriveTopology cascades HP into LP on one series path (bandpass).
+      // The optimizer never passes specsIn in 3-way (gated until trede 4), so
+      // the mid spec always comes from the live vFilters.
+      const midSpec = threeWay && midDrv ? vFilters.mid : null;
+      const gShift = Math.max(specs.woofer.gainDb, specs.tweeter.gainDb, midSpec?.gainDb ?? 0, 0);
       const shifted = (specIn: DriverFilterSpec): DriverFilterSpec => ({
         ...specIn,
         gainDb: Math.round((specIn.gainDb - gShift) * 10) / 10,
         eq: specIn.eq.map((b) => ({ ...b, gainDb: Math.min(0, b.gainDb) })),
       });
+      // Canonical model name of the LOW branch shifts with the branch set.
+      const lowKey = threeWay ? 'woofer' : 'mid';
       const out: SynthState = { mode: synthMode };
       if (isActive(specs.woofer))
-        out.woofer = synthesize(shifted(specs.woofer), grid, zFor('mid'), opts(woofer));
+        out.woofer = synthesize(shifted(specs.woofer), grid, zFor(lowKey), opts(woofer));
+      if (midSpec && isActive(midSpec) && midDrv)
+        out.mid = synthesize(shifted(midSpec), grid, zFor('mid'), opts(midDrv));
       if (isActive(specs.tweeter))
         out.tweeter = synthesize(shifted(specs.tweeter), grid, zFor('tweeter'), opts(tweeter));
-      if (!out.woofer && !out.tweeter) out.error = 'No active virtual filter blocks to synthesise.';
+      if (!out.woofer && !out.mid && !out.tweeter)
+        out.error = 'No active virtual filter blocks to synthesise.';
       setSynth(out);
       if (!out.error) {
         const branches: { components: SynthesizedComponent[]; model: string }[] = [];
-        if (out.woofer) branches.push({ components: out.woofer.components, model: 'mid' });
+        if (out.woofer) branches.push({ components: out.woofer.components, model: lowKey });
+        if (out.mid) branches.push({ components: out.mid.components, model: 'mid' });
         if (out.tweeter) branches.push({ components: out.tweeter.components, model: 'tweeter' });
         const parts = mergeSynthesizedSchematics(branches).parts;
         if (specsIn) {
@@ -2942,6 +2954,13 @@ export default function App() {
           // overwritten, builds accumulate to compare) and jump to the editor.
           addDesign('Passive build', parts);
           setDesignTab('network');
+          if (threeWay) {
+            setNetOptNote(
+              '3-way build — three per-branch fits (woofer LP · mid bandpass · tweeter HP). ' +
+                'The assembled component tune judges driver PAIRS and is a later step, so ' +
+                'polish values by hand for now.',
+            );
+          }
         }
         setVfBypass(true);
       }
@@ -2976,11 +2995,21 @@ export default function App() {
     // Single-driver mode: scaffold only the loaded slot — a ghost driver part
     // would just block the solve with a missing-impedance error.
     const fallback = soloDriver ? [soloDriver === 'woofer' ? 'mid' : 'tweeter'] : ['mid', 'tweeter'];
-    const models = zModels.length > 0 ? zModels : fallback;
-    // 3-way: only the blank scaffold applies until the bandpass template
-    // exists — an LP/HP pair template would silently skip the mid driver.
-    const order = threeWay ? 0 : templateOrder;
-    const xo = filterTemplate({ order, wayCount: templateWays, models });
+    let models = zModels.length > 0 ? zModels : fallback;
+    // 3-way: the branch order matters (LP / bandpass / HP), so resolve the
+    // models through pickSlotsN instead of trusting zModels' load order. In
+    // 3-way mode the models are the canonical woofer/mid/tweeter names, so
+    // this always resolves; an exotic set falls back to the blank scaffold.
+    let order = templateOrder;
+    if (threeWay) {
+      const slots = pickSlotsN(models.map((m) => ({ model: m })));
+      if (slots.woofer && slots.mid && slots.tweeter) {
+        models = [slots.woofer.model, slots.mid.model, slots.tweeter.model];
+      } else {
+        order = 0;
+      }
+    }
+    const xo = filterTemplate({ order, wayCount: threeWay ? 3 : templateWays, models });
     addDesign(xo.name || 'New network', normalizeOrigin(xo.parts));
   }
 
@@ -4350,10 +4379,10 @@ export default function App() {
               )}
               {wizardWays === 3 && wizardMissing.length === 0 && (
                 <p className="sub" style={{ marginTop: '0.4rem' }}>
-                  ✓ 3-way set complete. The sim, virtual filters (mid = bandpass) and the network
-                  editor are live; the <strong>3-way optimizer is a later step</strong>, so the
-                  wizard ends here — start a network with New from template (the blank scaffold
-                  carries all three drivers) and design by hand.
+                  ✓ 3-way set complete. The sim, virtual filters (mid = bandpass), Build passive
+                  filter (three fitted branches) and the 3-way templates are live; the{' '}
+                  <strong>3-way optimizer is a later step</strong>, so the wizard ends here —
+                  design in the Filters tab and the network editor.
                 </p>
               )}
               <p className="sub">
@@ -6672,10 +6701,10 @@ export default function App() {
                       }
                     }, 30);
                   }}
-                  disabled={synthBusy || threeWay}
+                  disabled={synthBusy}
                   title={
                     threeWay
-                      ? '3-way mode: passive synthesis builds one LP+HP driver pair — the bandpass branch is a later step. Draw the 3-way network by hand in the editor for now.'
+                      ? "3-way: fits three branches on the measured impedances — woofer LP, mid BANDPASS (hp+lp), tweeter HP — and lands them as one network in a new 'Passive build' tab. Per-branch fits only: the assembled component tune (pairs) is a later step."
                       : soloDriver
                         ? "Single-driver mode: build the solo topology from the enabled cut bands (series traps / shelf groups + gated Zobel) with textbook seed values — lands in a new 'Solo build' tab; ⚙ Optimize components fits the values"
                         : "Fit real components and simulate the result — lands in a new 'Passive build' tab on the Network page. Follow up with ⚙ Optimize components there to tune the assembled sum (phase!)."
@@ -6690,7 +6719,7 @@ export default function App() {
               {synth?.error && <p className="error">{synth.error}</p>}
               {synth && !synth.error && (
                 <div className="vf-grid" style={{ marginTop: '1rem' }}>
-                  {(['woofer', 'tweeter'] as const).map((slot) => {
+                  {(['woofer', 'mid', 'tweeter'] as const).map((slot) => {
                     const r = synth[slot];
                     if (!r) return null;
                     return (
@@ -6700,7 +6729,14 @@ export default function App() {
                             className="legend-key"
                             style={{ background: `var(--viz-${slot})` }}
                           />
-                          {slot === 'woofer' ? 'Woofer / mid' : 'Tweeter'} branch
+                          {slot === 'woofer'
+                            ? synth.mid
+                              ? 'Woofer'
+                              : 'Woofer / mid'
+                            : slot === 'mid'
+                              ? 'Midrange (bandpass)'
+                              : 'Tweeter'}{' '}
+                          branch
                         </h3>
                         <table>
                           <tbody>
@@ -6775,24 +6811,29 @@ export default function App() {
                     title="Start a fresh network in a new tab from a generic template — plausible starting values you tune from, the counterpart to Import and the optimizer"
                   >
                     <select
-                      value={templateWays}
+                      value={threeWay ? 3 : templateWays}
                       onChange={(e) => setTemplateWays(Number(e.target.value) as WayCount)}
-                      title="Number of ways. 3-way is coming with the N-way build."
+                      disabled={threeWay}
+                      title={
+                        threeWay
+                          ? '3-way mode: the template follows the loaded branch set (a 2-way template would silently skip the mid)'
+                          : 'Number of ways — 3-way templates need all three branches loaded'
+                      }
                     >
                       <option value={2}>2-way</option>
-                      <option value={3} disabled>
-                        3-way (coming soon)
+                      <option value={3} disabled={!threeWay}>
+                        {threeWay ? '3-way' : '3-way (load three drivers)'}
                       </option>
                     </select>
                     <select
-                      value={soloDriver || threeWay ? 0 : templateOrder}
+                      value={soloDriver ? 0 : templateOrder}
                       onChange={(e) => setTemplateOrder(Number(e.target.value) as FilterOrder)}
-                      disabled={!supportsWayCount(templateWays) || !!soloDriver || threeWay}
+                      disabled={!supportsWayCount(templateWays) || !!soloDriver}
                       title={
-                        threeWay
-                          ? '3-way mode — only the blank scaffold (all three drivers) applies; the bandpass template is a later step'
-                          : soloDriver
-                            ? 'Single-driver mode — only the blank scaffold applies (LP/HP templates need two branches)'
+                        soloDriver
+                          ? 'Single-driver mode — only the blank scaffold applies (LP/HP templates need two branches)'
+                          : threeWay
+                            ? 'Filter order / slope per branch (mid = bandpass, twice the parts) — generic Butterworth-style seed values at 600 / 3000 Hz'
                             : 'Filter order / slope for both branches — generic Butterworth-style seed values'
                       }
                     >
@@ -7852,7 +7893,12 @@ function SynthChart({
   freq,
   xDomain,
 }: {
-  synth: { woofer?: SynthesisResult; tweeter?: SynthesisResult; mode: 'filter' | 'acoustic' };
+  synth: {
+    woofer?: SynthesisResult;
+    mid?: SynthesisResult;
+    tweeter?: SynthesisResult;
+    mode: 'filter' | 'acoustic';
+  };
   freq: readonly number[];
   xDomain: [number, number];
 }) {
@@ -7860,11 +7906,11 @@ function SynthChart({
   const acoustic = synth.mode === 'acoustic';
 
   const series: Series[] = [];
-  for (const slot of ['woofer', 'tweeter'] as const) {
+  for (const slot of ['woofer', 'mid', 'tweeter'] as const) {
     const r = synth[slot];
     if (!r) continue;
     const color = `var(--viz-${slot})`;
-    const label = slot === 'woofer' ? 'Woofer/mid' : 'Tweeter';
+    const label = slot === 'woofer' ? (synth.mid ? 'Woofer' : 'Woofer/mid') : slot === 'mid' ? 'Midrange' : 'Tweeter';
     if (acoustic && r.acousticAchievedDb && r.acousticTargetDb) {
       series.push(
         { id: `${slot}-t`, label: `${label} target shape`, color, dash: '5 4', x: freq, y: r.acousticTargetDb },
