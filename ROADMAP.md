@@ -133,9 +133,25 @@ Volgorde binnen een blok = aanbevolen prioriteit. Inschattingen zijn grof:
    trede-4c-werk. Nog open in 4b-staart: pairwise timing-check (verdicts per
    aangrenzend paar met eigen fitband — de huidige w-t-check op 500–5000 Hz
    zegt op Robberts set eerlijk "cannot judge").
-   Volgende stap trede 4c: de twee-paar-designChain + 2D-crossover-scan
-   (vfOptimizer/synthese/scan over twee overgangspunten, Z-vloer als
-   ontwerprandvoorwaarde, directivity/tolerantie/tab-ghosts liften mee).
+   **Trede 4c KLAAR (aug 2026, staged v1): de 3-weg-ontwerpketen.**
+   `threeWayChain.ts`: per (laag, hoog)-kandidaat een TEXTBOOK-doelontwerp
+   (LR4-knieën + niveau-trims uit de gemeten tak-medianen, cut-only) →
+   tak-synthese op elke taks eigen alive-subgrid → assembled TWEE-PAAR-tune;
+   `crossover3Variants` = 2×2-rooster rond de rauwe paar-kruisingen;
+   `rankChain3Results` gate't EERST op het versterker-verdict (zOk), dan
+   targets, dan de 2-weg-blend, tie → goedkoopste BOM. Bewust v1 zonder
+   vf-EQ-enumeratie (de acoustic-synthese draagt de gegate correcties al;
+   de note zegt "staged v1"). Worker 'chain3One' + pool-scan in de client;
+   App: Optimize — design for me werkt in 3-weg, wizard loopt door (zonder
+   Crossover-stap, à la solo), winnaar landt compleet in Working.
+   GEMETEN op Robberts echte set: winnaar 411/2520 Hz → avg 0,79 dB /
+   peak 1,66 dB / fase 9,7°, Response 77, beide paren integratie-score 99,
+   Fase P95 27° — terwijl 767 Hz-kandidaten 9–14 dB scoren (de scan
+   onderscheidt echt; de woofer-breakup wreekt zich daar). Determinisme
+   test-gepind. Nog open (4-staart): pairwise timing-verdicts, xo-pin per
+   paar in de UI, scan-keuzetabel voor 3-weg, per-tak-EQ-enumeratie in de
+   keten, directivity/tolerantie/tab-ghosts in 3-weg, vxp-export 3-weg
+   (trede 5).
    **Trede 3 KLAAR (aug 2026): de bandpass-tak.** De synthese kón het al —
    `deriveTopology` cascadeert de HP-ladder in de LP-ladder zodra beide knieën
    enabled zijn; nu bewezen op de gemeten KOAN-mid (regressietest; ~2 dB rms

@@ -70,7 +70,9 @@ import {
   runNetOptimizeTask,
   runSoloChainTask,
   runVfRoundsTask,
+  runChain3Scan,
 } from './lib/optimClient.ts';
+import { crossover3Variants, rankChain3Results } from './lib/threeWayChain.ts';
 import { buildSoloNetwork, optimizeSoloFilter, reachableBandFor } from './lib/soloOptimizer.ts';
 import { crossoverVariants, rankChainResults, type ChainResult, type ChainSettings } from './lib/designChain.ts';
 import { deserializeCatalog, serializeCatalog } from './lib/catalogFile.ts';
@@ -1646,11 +1648,13 @@ export default function App() {
     () =>
       [
         { id: 1, label: 'Goals' },
-        ...(soloDriver ? [] : [{ id: 2, label: 'Crossover' }]),
+        // Solo has nothing to cross; 3-way derives its 2D candidates from the
+        // measured pair crossings (the Crossover step is 2-way vocabulary).
+        ...(soloDriver || threeWay ? [] : [{ id: 2, label: 'Crossover' }]),
         { id: 3, label: 'Components' },
         { id: 4, label: 'Review & run' },
       ] as const,
-    [soloDriver],
+    [soloDriver, threeWay],
   );
   /** Where we are in that list; −1 is the "load measurements" gate (step 0). */
   const wizardPos = wizardSteps.findIndex((s) => s.id === wizardStep);
@@ -2490,6 +2494,124 @@ export default function App() {
    * run reads as work, not a hang.
    */
   function runVfOptimize() {
+    // THREE-WAY path (trede 4c): the staged 2D chain — textbook LR4 targets
+    // + measured level trims per (low, high) handover candidate, per-branch
+    // synthesis on each branch's own band, assembled TWO-PAIR tune, and the
+    // amplifier-load verdict as a ranking gate. Runs over the worker pool.
+    if (threeWay && sim && sim.mid && midDrv && result) {
+      if (Object.keys(impedances).length < 3) {
+        setVfError('3-way design needs all three measured impedances (.ZMA per driver).');
+        return;
+      }
+      const grid = result.freq;
+      const zOnGrid = zGridWithSlots(impedances, grid);
+      const band: [number, number] = [
+        Math.max(200, grid[0] * 1.02),
+        Math.min(grid[grid.length - 1] * 0.975, num(fMax, 20000)),
+      ];
+      const safety = (() => {
+        const present = [woofer, midDrv, tweeter].filter((d): d is Loaded => d !== null);
+        const lo = Math.max(200, Math.min(...present.map((d) => d.frd.freq[0])));
+        const hi = Math.min(20000, Math.max(...present.map((d) => d.frd.freq[d.frd.freq.length - 1])));
+        if (!(hi > lo * 1.5)) return undefined;
+        const sGrid = logspace(lo, hi, 240);
+        const bandedOn = (l: Loaded): GriddedResponse => {
+          const g = resample(l.frd.freq, l.frd.spl, l.frd.phase, sGrid, { clampEdges: true });
+          const f0 = l.frd.freq[0];
+          const f1 = l.frd.freq[l.frd.freq.length - 1];
+          return {
+            freq: sGrid,
+            spl: g.spl.map((v, i) => (sGrid[i] < f0 || sGrid[i] > f1 ? SILENT_GHOST_DB : v)),
+            phaseDeg: g.phaseDeg.map((v, i) => (sGrid[i] < f0 || sGrid[i] > f1 ? 0 : v)),
+          };
+        };
+        return {
+          freqs: sGrid,
+          w: bandedOn(woofer!),
+          t: bandedOn(tweeter!),
+          m: bandedOn(midDrv),
+          z: zGridWithSlots(impedances, sGrid),
+        };
+      })();
+      const settings = {
+        phasePriority: phasePriority / 100,
+        targets: stagedOn
+          ? { rippleDb: num(targetRipple, 1.5), phaseDeg: num(targetPhase, 10) }
+          : undefined,
+        breakupGuard,
+        phaseMetric: phaseMetricMode,
+        synthMode,
+        catalogSnap: catalogSnap && hasImportedCatalog(),
+        snapPrefs: snapPrefsValue(),
+        band,
+        safety,
+      };
+      const tAdj = { offsetMm: num(offsetMm, 0), trimDb: num(trimDb, 0), inverted };
+      const mAdj = { offsetMm: num(midOffsetMm, 0), trimDb: num(midTrimDb, 0), inverted: midInverted };
+      const variants = crossover3Variants(sim.base.w, sim.base.m!, sim.base.t);
+      const inputs = variants.map((v) => ({
+        grid: [...grid],
+        w: sim.base.w,
+        m: sim.base.m!,
+        t: sim.base.t,
+        driverZ: zOnGrid,
+        tAdjust: tAdj,
+        midAdjust: mAdj,
+        xoLow: v.xoLow,
+        xoHigh: v.xoHigh,
+        label: v.label,
+        settings,
+      }));
+      setVfBusy(true);
+      setVfError(null);
+      setVfProgress(null);
+      setChainScan(null);
+      setNetOptDiff(null);
+      runChain3Scan(inputs, (d) =>
+        setVfProgress({ round: d.round, evals: d.evals, items: d.items }),
+      )
+        .then((results) => {
+          const ranked = rankChain3Results(results, settings.targets, settings.phasePriority);
+          const win = ranked[0];
+          setVFilters((prev) => ({ ...prev, ...win.specs }));
+          setSynth({
+            mode: synthMode,
+            woofer: win.synthWoofer,
+            mid: win.synthMid,
+            tweeter: win.synthTweeter,
+          });
+          setWorkingDesign(win.parts);
+          setNetworkActive(true);
+          setVfBypass(true);
+          setVfOpt(null);
+          setVfRunStats(null);
+          const line = (r: typeof win): string =>
+            `${r.label}: ${r.net.after.rippleDb.toFixed(2)} dB/${r.net.after.phaseDeg.toFixed(1)}°` +
+            (r.bomTotalEur !== null ? ` · €${Math.round(r.bomTotalEur)}` : '') +
+            (r.zOk ? '' : ' · ⚠ amp-load');
+          setNetOptNote(
+            `3-way scan (staged v1: LR4 targets + measured trims, two-pair tune) — winner ` +
+              `xo ${win.label}` +
+              (win.net.after.avgDevDb !== undefined
+                ? ` · avg ${win.net.after.avgDevDb.toFixed(2)} dB`
+                : '') +
+              ` · ${line(win)}` +
+              ` — others: ${ranked.slice(1).map(line).join(' · ')}` +
+              (win.net.snapNote ? ` · ${win.net.snapNote}` : '') +
+              (win.net.safetyNote ? ` · ⚠ ${win.net.safetyNote}` : '') +
+              (win.net.ampFloorNote ? ` · ⚠ ${win.net.ampFloorNote}` : ''),
+          );
+          setDesignTab('network');
+        })
+        .catch((e) => {
+          if (!(e instanceof CancelledError)) setVfError(e instanceof Error ? e.message : String(e));
+        })
+        .finally(() => {
+          setVfProgress(null);
+          setVfBusy(false);
+        });
+      return;
+    }
     // SINGLE-DRIVER path: its own engine (soloOptimizer) — flatten the one
     // measured driver with cut-only EQ/shelves, build the SOLO topology
     // (series traps / shelf groups / gated Zobel) and solo-tune the result.
@@ -4524,10 +4646,9 @@ export default function App() {
               )}
               {wizardWays === 3 && wizardMissing.length === 0 && (
                 <p className="sub" style={{ marginTop: '0.4rem' }}>
-                  ✓ 3-way set complete. The sim, virtual filters (mid = bandpass), Build passive
-                  filter (three fitted branches) and the 3-way templates are live; the{' '}
-                  <strong>3-way optimizer is a later step</strong>, so the wizard ends here —
-                  design in the Filters tab and the network editor.
+                  ✓ 3-way set complete — continue to Goals. Optimize runs the staged 2D scan:
+                  LR4 targets + measured level trims per handover candidate, per-branch
+                  synthesis, assembled two-pair tune (amp-load verdict gates the ranking).
                 </p>
               )}
               <p className="sub">
@@ -5205,27 +5326,7 @@ export default function App() {
               )}
             </div>
             <div className="row">
-              {wizardStep === 0 && wizardWays === 3 ? (
-                // The 3-way optimizer is a later step, so the wizard's guided
-                // Goals/Crossover/Components flow (all optimizer-bound) would
-                // dead-end — the honest exit is straight into the editor.
-                <button
-                  type="button"
-                  className="primary"
-                  onClick={() => {
-                    setWizardOpen(false);
-                    setDesignTab('network');
-                  }}
-                  disabled={wizardMissing.length > 0}
-                  title={
-                    wizardMissing.length > 0
-                      ? `Still needed: ${wizardMissing.join(', ')}`
-                      : 'Set complete — design the 3-way by hand in the network editor (the 3-way optimizer is a later step)'
-                  }
-                >
-                  Open Network editor →
-                </button>
-              ) : wizardPos < wizardSteps.length - 1 ? (
+              {wizardPos < wizardSteps.length - 1 ? (
                 <button
                   type="button"
                   className="primary"
@@ -5252,12 +5353,7 @@ export default function App() {
                     setDesignTab('filters');
                     runVfOptimize();
                   }}
-                  disabled={vfBusy || !result || threeWay}
-                  title={
-                    threeWay
-                      ? '3-way mode: the crossover optimizer designs one driver pair — the two-pair (3-way) optimizer is a later step'
-                      : undefined
-                  }
+                  disabled={vfBusy || !result}
                 >
                   🚀 Optimize — design for me
                 </button>
@@ -6333,10 +6429,10 @@ export default function App() {
                   <button
                     type="button"
                     onClick={runVfOptimize}
-                    disabled={vfBusy || threeWay}
+                    disabled={vfBusy}
                     title={
                       threeWay
-                        ? '3-way mode: the crossover optimizer designs one driver PAIR — the two-pair (3-way) optimizer is a later step. The sim, virtual filters and network editor already work.'
+                        ? '3-way: staged 2D scan — LR4 targets + measured level trims per (low, high) handover candidate, per-branch synthesis, assembled two-pair tune; the amp-load verdict gates the ranking. Winner lands in the Working tab.'
                         : soloDriver
                           ? 'Single-driver mode: flatten this driver — cut-only EQ/shelf design, built as series traps / shelf groups (+ gated Zobel) and component-tuned against the measurement (lands in the Working tab)'
                           : 'Design the crossover, build it as a passive network and simulate it — all in one go (lands in the Working tab)'
@@ -6371,10 +6467,8 @@ export default function App() {
                       // Start at the import gate (step 0) when there is no driver
                       // data yet — the wizard should take you from nothing to a
                       // built crossover, not assume measurements exist. One
-                      // loaded driver is enough (single-driver mode). A loaded
-                      // 3-way also lands on step 0: the guided steps beyond it
-                      // are optimizer-bound and that optimizer is a later step.
-                      setWizardStep(!woofer && !tweeter ? 0 : threeWay ? 0 : 1);
+                      // loaded driver is enough (single-driver mode).
+                      setWizardStep(!woofer && !tweeter ? 0 : 1);
                       setWizardOpen(true);
                     }}
                     title="Design wizard: load measurements, then goals, priority, crossover point, acoustic slopes and component choices in one guided flow — ends with Optimize"

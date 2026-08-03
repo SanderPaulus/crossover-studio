@@ -23,6 +23,7 @@ import {
   type VfSpecs,
 } from './vfOptimizer.ts';
 import { optimizeNetworkValues, type NetOptimizeOptions } from './netOptimizer.ts';
+import { runThreeWayChain, type Chain3Input } from './threeWayChain.ts';
 import { setCustomSeries, type CatalogPart, type CatalogSeries } from './catalog.ts';
 
 export interface CatalogPayload {
@@ -33,6 +34,10 @@ export interface CatalogPayload {
 export interface ChainOnePayload {
   input: ChainInput;
   label: string;
+}
+
+export interface Chain3OnePayload {
+  input: Chain3Input;
 }
 
 export interface VfSeed {
@@ -78,6 +83,7 @@ export interface VfProgressMsg {
 
 export type OptimRequest = { id: number; catalog?: CatalogPayload | null } & (
   | { kind: 'chainOne'; payload: ChainOnePayload }
+  | { kind: 'chain3One'; payload: Chain3OnePayload }
   | { kind: 'vfRounds'; payload: VfRoundsPayload }
   | { kind: 'netOptimize'; payload: NetOptimizePayload }
   | { kind: 'soloChain'; payload: SoloChainInput }
@@ -151,6 +157,13 @@ self.onmessage = (e: MessageEvent<OptimRequest>) => {
         const { input, label } = req.payload;
         data = runDesignChain(input, label, (pr) =>
           post({ id: req.id, kind: 'progress', data: { ...pr, variant: label } }),
+        );
+        break;
+      }
+      case 'chain3One': {
+        const p = req.payload;
+        data = runThreeWayChain(p.input, (pr) =>
+          post({ id: req.id, kind: 'progress', data: { ...pr, variant: p.input.label } }),
         );
         break;
       }
