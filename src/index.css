@@ -22,6 +22,11 @@
      teal buys the contrast AND keeps that distance (3.58:1, ΔE 22). */
   --viz-woofer: #2a78d6;
   --viz-tweeter: #0d9488;
+  /* 3-way middle branch: AMBER — the only hue family that truly separates
+     from blue/teal/purple for a protanope (the blue-yellow axis survives CVD).
+     Amber-700 keeps ≥4.5:1 on the light panel; the red null curve stays
+     distinct by its dash pattern (kleur is nooit de enige drager). */
+  --viz-mid: #b45309;
   --viz-combined: #4a3aa7;
   --viz-null: #e34948;
   /* Chart furniture in the interface's own grey family. It used to be warm
@@ -65,6 +70,7 @@
        ΔE 20 vs 12 from the null curve for a protanope). */
     --viz-woofer: #3987e5;
     --viz-tweeter: #14b8a6;
+    --viz-mid: #f59e0b;
     --viz-combined: #9085e9;
     --viz-null: #e66767;
     --viz-grid: #2a2c2f;
@@ -94,6 +100,7 @@
 
   --viz-woofer: #3987e5;
   --viz-tweeter: #14b8a6;
+  --viz-mid: #f59e0b;
   --viz-combined: #9085e9;
   --viz-null: #e66767;
   --viz-grid: #2a2c2f;

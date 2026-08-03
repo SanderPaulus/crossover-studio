@@ -88,16 +88,27 @@ Volgorde binnen een blok = aanbevolen prioriteit. Inschattingen zijn grof:
    mid op naam, en bij niet te scheiden namen WEIGERT de mapping met een
    melding i.p.v. te raden (een mid die als woofer meetelt is precies de
    stille fout waar deze codebase tegen bestaat).
-   **EERSTE BESLISSING voor trede 2b (bewust doorgeschoven naar een frisse
-   sessie): de sleutel-semantiek.** zStandalone/impedances gebruiken 'mid'
-   als sleutel voor de LAGE tak (2-weg-historie); in 3-weg betekent 'mid' de
-   middentak. Opties: slot-ids hernoemen naar low/mid/high mét migratie van
-   autosave/projectformaat, of model-naam-keys overal. Dit raakt
-   persistentie — niet aan beginnen op het eind van een lange sessie.
-   Daarna: (2b) mid-slot door de App (import, sim via combineN, charts,
-   optimizers vergrendeld tot trede 4), (3) bandpass-tak in synthese/
-   templates, (4) optimizers met twee paren + 2D-crossover-scan,
-   (5) vxp-brug/projectformaat/help.
+   **Trede 2b KLAAR (aug 2026): de sleutel-knoop opgelost + mid-slot door de
+   App.** De knoop was namespace-vervuiling: 'mid' was tegelijk MODEL-naam
+   (van de gebruiker/het bestand — KOANs lage driver héét mid) en
+   OPSLAG-sleutel (van ons, 2-weg-historie). Oplossing: **opslag spreekt
+   ROLLEN** (`BranchRole` low/mid/high; zStandalone + projectformaat v2
+   `zByRole`), **netlijsten houden vrije model-namen**, en de brug is
+   `pickSlotsN` (`canonicalModelForRole` = dé ene plek waar "de lage tak
+   heet historisch 'mid'" leeft; `withSlotAliasesN` = de alias-laag, 2-weg
+   test-gepind identiek). v1-bestanden migreren bij LEZEN ('mid'→low,
+   'tweeter'→high — nooit een vxp's model-namen-record); niets wordt ooit
+   herschreven. App: derde import-slot (Midrange), sim via combineN zodra
+   álle drie responsies geladen zijn (anders luide banner + mid buiten de
+   sleutelruimte — géén stille verschuiving onder een lopend 2-weg-ontwerp),
+   mid-filterkaart (hp+lp = bandpass), mid-adjust, amber `--viz-mid`-curves,
+   fase-chart met de twee AANGRENZENDE paren, SPL-handles op de mid.
+   Optimizers/synthese/vxp-export/integratie-score zijn in 3-weg GEGATE met
+   uitleg (paar-eigenschappen — trede 4); 2-weg/solo-paden bit-onaangeroerd
+   (volle suite + browser-check op Sanders v1-autosave).
+   Daarna: (3) bandpass-tak in synthese/templates, (4) optimizers met twee
+   paren + 2D-crossover-scan, (5) vxp-brug/help; directivity/tolerantie/
+   tab-ghosts in 3-weg liften mee op trede 4.
 10. **Driverbibliotheek** (L) — meetbundels (FRD + hoeken + ZMA) per driver,
     herbruikbaar over projecten; het einde van losse-bestanden-slepen.
     Uitbreiding daarbovenop: **ontwerpgeheugen als seed-bibliotheek** —
