@@ -7856,6 +7856,10 @@ export default function App() {
                             ps.integ.overlapCentreHz !== null
                               ? `${Math.round(ps.integ.overlapCentreHz)} Hz`
                               : '—'
+                          }${
+                            ps.integ.bandwidth
+                              ? ` · ${ps.integ.bandwidth.octaves.toFixed(1)} oct`
+                              : ''
                           }`
                         : 'no overlap'}
                     </span>
@@ -8190,7 +8194,32 @@ export default function App() {
                         label: `integration bandwidth ${integration.bandwidth.octaves.toFixed(1)} oct`,
                       },
                     ]
-                  : undefined
+                  : pairScores
+                    ? [
+                        ...(pairScores.low.integ.bandwidth
+                          ? [
+                              {
+                                from: pairScores.low.integ.bandwidth.fLo,
+                                to: pairScores.low.integ.bandwidth.fHi,
+                                color: 'var(--viz-mid)',
+                                opacity: 0.08,
+                                label: `W-M bandwidth ${pairScores.low.integ.bandwidth.octaves.toFixed(1)} oct`,
+                              },
+                            ]
+                          : []),
+                        ...(pairScores.high.integ.bandwidth
+                          ? [
+                              {
+                                from: pairScores.high.integ.bandwidth.fLo,
+                                to: pairScores.high.integ.bandwidth.fHi,
+                                color: 'var(--viz-tweeter)',
+                                opacity: 0.08,
+                                label: `M-T bandwidth ${pairScores.high.integ.bandwidth.octaves.toFixed(1)} oct`,
+                              },
+                            ]
+                          : []),
+                      ]
+                    : undefined
               }
               xMarkers={
                 integration?.overlapCentreHz
