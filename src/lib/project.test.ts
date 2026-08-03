@@ -69,6 +69,69 @@ describe('project persistence', () => {
   });
 });
 
+describe('v2 role-keyed storage + v1 migration (phase-4 trede 2b)', () => {
+  it('round-trips a 3-way project: mid response, role-keyed Z, mid angles', () => {
+    const threeWay: ProjectState = {
+      ...state,
+      vxp: undefined,
+      impedances: undefined,
+      mid: { name: 'm15cf.frd', raw: '100 85 0\n' },
+      zByRole: {
+        low: { name: 'w.zma', raw: '100 8 0\n' },
+        mid: { name: 'm.zma', raw: '100 6 0\n' },
+        high: { name: 't.zma', raw: '100 5 0\n' },
+      },
+      angleFiles: {
+        woofer: [{ hor: 0, name: 'w0.txt', raw: 'a' }],
+        tweeter: [{ hor: 0, name: 't0.txt', raw: 'b' }],
+        mid: [{ hor: 15, name: 'm15.txt', raw: 'c' }],
+      },
+    };
+    const restored = deserializeProject(serializeProject(threeWay));
+    expect(restored).toEqual(threeWay);
+  });
+
+  it("migrates a v1 standalone project: impedances 'mid'/'tweeter' become roles low/high", () => {
+    // Hand-built v1 document — the exact shape the old app wrote for a project
+    // WITHOUT a vxp: standalone ZMAs lived in `impedances` under the synthesis
+    // vocabulary, where 'mid' meant the LOW branch.
+    const v1 = JSON.stringify({
+      format: PROJECT_FORMAT,
+      version: 1,
+      woofer: state.woofer,
+      tweeter: state.tweeter,
+      impedances: {
+        mid: { name: 'low.ZMA', raw: '100 8 0\n' },
+        tweeter: { name: 'high.ZMA', raw: '100 5 0\n' },
+      },
+      design: state.design,
+    });
+    const restored = deserializeProject(v1);
+    expect(restored.zByRole).toEqual({
+      low: { name: 'low.ZMA', raw: '100 8 0\n' },
+      high: { name: 'high.ZMA', raw: '100 5 0\n' },
+    });
+    expect(restored.impedances).toBeUndefined();
+  });
+
+  it('a v1 vxp project is NOT migrated: model-named impedances stay verbatim', () => {
+    // A real vxp driver may legitimately be CALLED "mid" (KOAN's is) — those
+    // keys are model names, not storage slots, and must never be re-keyed.
+    const v1 = JSON.stringify({
+      format: PROJECT_FORMAT,
+      version: 1,
+      woofer: state.woofer,
+      tweeter: state.tweeter,
+      impedances: { mid: { name: 'mid.ZMA', raw: '100 8 0\n' } },
+      vxp: state.vxp,
+      design: state.design,
+    });
+    const restored = deserializeProject(v1);
+    expect(restored.impedances).toEqual({ mid: { name: 'mid.ZMA', raw: '100 8 0\n' } });
+    expect(restored.zByRole).toBeUndefined();
+  });
+});
+
 describe('angle-file persistence', () => {
   it('round-trips per-driver angle sets', () => {
     const withAngles: ProjectState = {

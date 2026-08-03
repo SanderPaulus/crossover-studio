@@ -49,6 +49,30 @@ export function withSlotAliases<T>(byModel: Record<string, T>): Record<string, T
   return out;
 }
 
+/**
+ * N-way generalization of {@link withSlotAliases}. With ≤2 real drivers the
+ * behavior is EXACTLY the historical one (low aliased as 'mid', high as
+ * 'tweeter' — pinned by test); with a resolvable 3-way the canonical aliases
+ * become 'woofer'/'mid'/'tweeter' — the middle branch now owns 'mid', which
+ * is precisely how the naming knot dissolves. Ambiguous driver sets get NO
+ * aliases (real model names still resolve); surfacing the ambiguity is the
+ * UI's job via {@link pickSlotsN}, not this map's.
+ */
+export function withSlotAliasesN<T>(byModel: Record<string, T>): Record<string, T> {
+  const out = { ...byModel };
+  const slots = pickSlotsN(Object.keys(byModel).map((model) => ({ model })));
+  if (slots.ambiguous) return out;
+  const alias = (model: string | undefined, as: string) => {
+    if (model !== undefined && out[model] !== undefined && out[as] === undefined) {
+      out[as] = out[model];
+    }
+  };
+  alias(slots.woofer?.model, canonicalModelForRole('low', !!slots.mid));
+  alias(slots.mid?.model, 'mid');
+  alias(slots.tweeter?.model, 'tweeter');
+  return out;
+}
+
 /** True when a driver model belongs in the MID slot of a 3-way. Only
  *  consulted when a network carries ≥2 non-tweeter drivers: in a 2-way the
  *  single non-tweeter is the low branch regardless of its name (KOAN's low
@@ -74,6 +98,32 @@ export interface SlotsN<T> {
  * rather than silently assigning branches — a mid summed as a woofer is the
  * kind of quiet wrongness this codebase exists to avoid.
  */
+/**
+ * Branch ROLES — the storage vocabulary (phase 4, trede 2b key decision).
+ *
+ * Measurements are stored per role, never per model name: 'mid' as a MODEL
+ * name is owned by the user/file (KOAN's low driver is literally called
+ * "mid") and resolves through {@link pickSlotsN}; 'mid' as a storage key was
+ * the 2-way-era overload that collided the moment a real middle branch
+ * existed. Storage speaks roles, netlists speak model names, this module is
+ * the bridge between them.
+ */
+export type BranchRole = 'low' | 'mid' | 'high';
+
+/**
+ * The canonical model name a role-stored measurement is published under in a
+ * model-keyed map (the solver looks drivers up by model name). THE single
+ * place where "the low branch is historically called mid" lives: synthesized
+ * 2-way networks address their drivers as 'mid'/'tweeter', so without a real
+ * middle branch the low role keeps that name; with one, 'mid' belongs to the
+ * middle branch and the low role becomes 'woofer'.
+ */
+export function canonicalModelForRole(role: BranchRole, hasMid: boolean): string {
+  if (role === 'high') return 'tweeter';
+  if (role === 'mid') return 'mid';
+  return hasMid ? 'woofer' : 'mid';
+}
+
 export function pickSlotsN<T extends { model: string }>(drivers: readonly T[]): SlotsN<T> {
   const real = drivers.filter((d) => !/parallel|\+/i.test(d.model));
   const pool = real.length > 0 ? real : [...drivers];
