@@ -35,6 +35,12 @@ Volgorde binnen een blok = aanbevolen prioriteit. Inschattingen zijn grof:
   een impedantiebestand dat als responsie binnenkomt (of andersom) krijgt een
   luide waarschuwing i.p.v. stil ohms-in-de-dB-kolom. Signaleren, niet
   omschakelen; getest op de KOAN-fixtures beide kanten op
+- **Model-vs-meting-overlay** (aug 2026, `verification.ts`): de VALIDATIE.md-lus
+  als feature — gemeten FRD van de gebouwde build over de gesimuleerde Combined,
+  niveau-uitgelijnd (offset zichtbaar), Δ-cijfers (avg/P95/worst @ f) in de
+  SPL-strip; fase: mic-delay weggefit, residu-curve in de fase-chart,
+  polariteit-flag bij offset ~180°. Alles op het ZICHTBARE bereik, dus overlay
+  en strip oordelen over dezelfde band. Persistent in project + autosave
 
 ## Kort — kleine, afgebakende verbeteringen
 
@@ -73,6 +79,12 @@ Volgorde binnen een blok = aanbevolen prioriteit. Inschattingen zijn grof:
    naar N drivers, UI voor drie takken.
 10. **Driverbibliotheek** (L) — meetbundels (FRD + hoeken + ZMA) per driver,
     herbruikbaar over projecten; het einde van losse-bestanden-slepen.
+    Uitbreiding daarbovenop: **ontwerpgeheugen als seed-bibliotheek** —
+    afgeronde ontwerpen bewaren mét driver-kenmerken (Fs, Z-profiel,
+    kruisingsgebied) en bij een nieuw ontwerp het meest gelijkende als éxtra
+    startpunt meegeven naast de textbook-seed. Retrieval, geen training:
+    deterministisch en uitlegbaar — zelfde patroon als de multi-start-tuner
+    (seeding verkent bekkens zonder het zoekpad te verstoren, de anker-les).
 11. **Serie-crossover-topologie** (L) — eigen build-pad + vergelijkingsharnas
     naast de parallelle synthese (bewust uitgesteld tot dat harnas er is).
 12. **Genormaliseerde hoekcurves & verticale metingen** (M, wacht op data) —
@@ -123,3 +135,13 @@ Volgorde binnen een blok = aanbevolen prioriteit. Inschattingen zijn grof:
   WebGPU past slecht bij sequentiële simplex-stappen (zie CLAUDE.md).
 - Kosten of "realisme" als extra term in zoek-objectives — de anker-les:
   alleen op schone beslispunten (ranking, snap), nooit in de zoektocht.
+- Lerende/AI-gestuurde optimizer ("steeds gerichter zoeken") — drie gemeten
+  argumenten (aug 2026): (1) de dataset is twee ontwerpers en een handvol
+  driver-sets groot, daar generaliseert niets van; (2) een geleerd model is
+  een PROXY voor de eindmeting, en zelfs de fysisch onderbouwde vf-proxy
+  voorspelde de eindranking niet (xo 1900 vf-slechtst → assembled-best; de
+  remedie was scannen op de eindmeting, ~3× winst) — een zwakkere proxy
+  terugbrengen is die les terugdraaien; (3) er valt niets te besparen:
+  ~380k sims in <4 min met volledige dekking van de zoekruimte. Wat WEL mag
+  leren: de seeds (ontwerpgeheugen, zie punt 10) en het model (kalibratie
+  uit de meet-lus) — retrieval en calibratie, deterministisch, geen training.

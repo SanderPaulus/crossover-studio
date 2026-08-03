@@ -12,6 +12,7 @@ import { parseFrd } from './lib/parsers/frd.ts';
 import { parseZma } from './lib/parsers/zma.ts';
 import { parseLim, limToZmaText } from './lib/parsers/lim.ts';
 import { classifyLevelProfile } from './lib/parsers/classify.ts';
+import { compareMeasurement } from './lib/verification.ts';
 import { parseVxp, type VxpCrossover, type VxpPart, type VxpProject } from './lib/parsers/vxp.ts';
 import { estimateBulkDelay, assessSharedReference } from './lib/timing.ts';
 import { logspace, resample, combine, offsetMmToDelayS, applyTransfer } from './lib/dsp.ts';
@@ -497,6 +498,9 @@ export default function App() {
   const [project, setProject] = useState<ProjectData | null>(null);
   /** VituixCAD phase reference: its FILTERED woofer + tweeter responses, so we
    *  can draw its relative phase (tweeter − woofer) in OUR convention. */
+  /** Measured response of the BUILT system, for the model-vs-measurement
+   *  overlay (VALIDATIE.md loop). Persisted with the project. */
+  const [verify, setVerify] = useState<{ name: string; raw: string; frd: Parsed & { hasPhase: boolean } } | null>(null);
   const [refResp, setRefResp] = useState<{ woofer: Parsed; tweeter: Parsed; names: string } | null>(
     null,
   );
@@ -1426,6 +1430,30 @@ export default function App() {
     }
   }
 
+  /** Load the measured response of the BUILT system for the model-vs-
+   *  measurement overlay. One file; loading again replaces it. */
+  async function loadVerification(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file) return;
+    setError(null);
+    try {
+      const raw = await file.text();
+      const frd = parseFrd(raw);
+      const cls = classifyLevelProfile(frd.spl);
+      setVerify({ name: file.name, raw, frd });
+      if (frd.hasPhase && cls.kind === 'impedance') {
+        setError(
+          `"${file.name}" was loaded as the verification measurement, but its levels look ` +
+            `like an impedance file (median ≈ ${cls.medianLevel.toFixed(1)} Ω) — the ` +
+            `comparison below will be meaningless.`,
+        );
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
+    }
+  }
+
   const num = (s: string, fallback: number) => {
     const v = Number(s);
     return s.trim() !== '' && Number.isFinite(v) ? v : fallback;
@@ -1712,6 +1740,16 @@ export default function App() {
     return computeResponseStats(result.freq, result.combinedSpl, lo, hi);
   }, [result, splViewX]);
 
+  /** Model vs measurement (VALIDATIE.md loop): the loaded verification FRD
+   *  against the simulated combined, level-aligned and delay-fitted over the
+   *  VISIBLE range — the overlay and the strip judge the same band. */
+  const verifyCompare = useMemo(() => {
+    if (!result || !verify) return null;
+    const lo = splViewX ? splViewX[0] : result.freq[0];
+    const hi = splViewX ? splViewX[1] : result.freq[result.freq.length - 1];
+    return compareMeasurement(result.freq, result.combinedSpl, result.combinedPhaseDeg, verify.frd, [lo, hi]);
+  }, [result, verify, splViewX]);
+
   /** The loudest and quietest spot of the combined curve, marked in the chart.
    *  Straight from `combinedFlat`, so the dots sit exactly where the peak ±dB
    *  in the strip comes from and follow the same band (and the same zoom).
@@ -1918,6 +1956,7 @@ export default function App() {
           }
         : undefined,
       fileNotes: Object.keys(fileNotes).length > 0 ? fileNotes : undefined,
+      verifyFile: verify ? { name: verify.name, raw: verify.raw } : undefined,
       design: {
         vFilters,
         xoName,
@@ -2007,6 +2046,11 @@ export default function App() {
       setAngleSets(null);
     }
     setFileNotes(state.fileNotes ?? {});
+    setVerify(
+      state.verifyFile
+        ? { name: state.verifyFile.name, raw: state.verifyFile.raw, frd: parseFrd(state.verifyFile.raw) }
+        : null,
+    );
     const d = state.design;
     setVFilters(sanitizePassiveSpecs(d.vFilters));
     setXoName(d.xoName);
@@ -2146,7 +2190,7 @@ export default function App() {
     }, 800);
     return () => clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [woofer, tweeter, project, zStandalone, angleSets, fileNotes, vFilters, xoName, offsetMm, trimDb, inverted, fMin, fMax, splMin, splMax, phasePriority, vfEqBands, phaseMode, dirWeight, ampTarget, sonogramMode, designs, activeDesignId, lastSavedId, networkActive, vfBypass, catalogSnap, breakupGuard, xoRangeOn, xoFreqHz, xoMarginHz, xoScanSteps, hpLpPref, phaseMetricMode, acSlopeMid, acSlopeTweeter, midSizeInch, snapProfile, snapSeriesL, snapSeriesC, snapSeriesR, snapStacks, snapBoundToSeries, stagedOn, targetRipple, targetPhase, soloSensDb, soloFloorOn, soloFloorDb]);
+  }, [woofer, tweeter, project, zStandalone, angleSets, fileNotes, verify, vFilters, xoName, offsetMm, trimDb, inverted, fMin, fMax, splMin, splMax, phasePriority, vfEqBands, phaseMode, dirWeight, ampTarget, sonogramMode, designs, activeDesignId, lastSavedId, networkActive, vfBypass, catalogSnap, breakupGuard, xoRangeOn, xoFreqHz, xoMarginHz, xoScanSteps, hpLpPref, phaseMetricMode, acSlopeMid, acSlopeTweeter, midSizeInch, snapProfile, snapSeriesL, snapSeriesC, snapSeriesR, snapStacks, snapBoundToSeries, stagedOn, targetRipple, targetPhase, soloSensDb, soloFloorOn, soloFloorDb]);
 
   function resetProject() {
     localStorage.removeItem(AUTOSAVE_KEY);
@@ -3431,6 +3475,20 @@ export default function App() {
         : []),
       // Acoustic per-driver targets (legend-opt-in) under the live curves.
       ...targetSeries,
+      // Model-vs-measurement overlay: the measured build, level-aligned.
+      ...(verifyCompare && verify
+        ? [
+            {
+              id: 'verify',
+              label: `Measured — ${verify.name} (${verifyCompare.offsetDb >= 0 ? '+' : ''}${verifyCompare.offsetDb.toFixed(1)} dB)`,
+              color: 'var(--viz-ghost3)',
+              dash: '9 3',
+              width: 2.2,
+              x: result.freq,
+              y: verifyCompare.alignedSpl,
+            } satisfies Series,
+          ]
+        : []),
       // Single-driver mode: the ghost branch sits at −400 dB — skip its curve
       // and the (two-driver) polarity null check instead of drawing noise.
       ...(woofer
@@ -3465,7 +3523,7 @@ export default function App() {
           ]),
     ];
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [result, integration, tabGhosts, networkActive, activeDesign, tolBand, targetSeries, soloDriver]);
+  }, [result, integration, tabGhosts, networkActive, activeDesign, tolBand, targetSeries, soloDriver, verifyCompare, verify]);
 
   /**
    * Design handles ON the SPL chart (UI-fase D): drag the crossover knees and
@@ -3720,8 +3778,23 @@ export default function App() {
         width: 1.8,
       });
     }
+    // Model-vs-measurement phase residual: what remains of (measured −
+    // simulated) phase after the fitted mic delay + constant offset are
+    // removed. Flat at 0° = the model's phase is right; structure = where it
+    // is not. Works in solo mode too — that IS the validation flow.
+    if (verifyCompare?.phase) {
+      out.push({
+        id: 'verifres',
+        label: 'Measured phase residual (vs model)',
+        color: 'var(--viz-ghost3)',
+        x: result.freq,
+        y: verifyCompare.phase.residualDeg,
+        dash: '9 3',
+        width: 2,
+      });
+    }
     return out;
-  }, [result, integration, sim, offsetMm, trimDb, inverted, showPanels.phase, refResp, tabGhosts, woofer, tweeter, soloDriver]);
+  }, [result, integration, sim, offsetMm, trimDb, inverted, showPanels.phase, refResp, tabGhosts, woofer, tweeter, soloDriver, verifyCompare]);
 
   /** "How far off is the phase" zones behind the relative-phase curve. */
   const phaseBands = useMemo(
@@ -4952,6 +5025,23 @@ export default function App() {
                 VituixCAD phase reference (filtered woofer + tweeter — select both)
                 <input type="file" accept=".frd,.txt" multiple onChange={loadReference} />
                 {refResp && <span className="derived"> ✓ {refResp.names}</span>}
+              </label>
+              <label title="Model vs measurement (the validation loop): measure the BUILT system, load that FRD here, and the SPL chart overlays it against the simulated combined — level-aligned, with the deviation numbers in the SPL strip. Load again to replace.">
+                Verification measurement (built system, FRD)
+                <input type="file" accept=".frd,.txt" onChange={loadVerification} />
+                {verify && (
+                  <span className="derived">
+                    {' '}✓ {verify.name}{' '}
+                    <button
+                      type="button"
+                      onClick={() => setVerify(null)}
+                      title="Remove the verification measurement"
+                      aria-label="Remove the verification measurement"
+                    >
+                      ✕
+                    </button>
+                  </span>
+                )}
               </label>
               <button
                 type="button"
@@ -6580,6 +6670,19 @@ export default function App() {
                     build ±{tolBand.tolPct}%: worst ±{tolBand.worstHalfDb.toFixed(2)} · RSS ±
                     {tolBand.rssHalfDb.toFixed(2)} dB · sensitive{' '}
                     {tolBand.perPart.slice(0, 3).map((p) => p.id).join(', ')}
+                  </span>
+                )}
+                {verifyCompare && (
+                  <span
+                    className={`strip-item${verifyCompare.maxAbsDb > 3 ? ' alert' : ''}`}
+                    title={`Model vs measurement over ${Math.round(verifyCompare.band[0])}–${Math.round(verifyCompare.band[1])} Hz. The measurement was level-aligned by ${verifyCompare.offsetDb.toFixed(1)} dB (median — absolute calibration differs by nature). Worst deviation ${verifyCompare.maxAt.deltaDb.toFixed(1)} dB at ${Math.round(verifyCompare.maxAt.freqHz)} Hz${verifyCompare.phase ? `. Phase: fitted mic delay ${verifyCompare.phase.fittedDelayUs.toFixed(0)} µs removed, residual avg ${verifyCompare.phase.avgAbsDeg.toFixed(1)}° / P95 ${verifyCompare.phase.p95AbsDeg.toFixed(0)}°${verifyCompare.phase.looksInverted ? ' — offset near 180°: the build is likely wired INVERTED vs the sim' : ''}` : ''}`}
+                  >
+                    meas Δ avg ±{verifyCompare.avgAbsDb.toFixed(2)} · P95 ±
+                    {verifyCompare.p95AbsDb.toFixed(2)} · worst {verifyCompare.maxAt.deltaDb.toFixed(1)} dB @{' '}
+                    {hz(verifyCompare.maxAt.freqHz)}
+                    {verifyCompare.phase &&
+                      ` · fase ${verifyCompare.phase.avgAbsDeg.toFixed(1)}°/${verifyCompare.phase.p95AbsDeg.toFixed(0)}°`}
+                    {verifyCompare.phase?.looksInverted && ' · ⚠ inverted?'}
                   </span>
                 )}
                 {!soloDriver &&
