@@ -117,6 +117,11 @@ minimum phase reconstrueert. Voertaal met Sander: **Nederlands**; code/comments 
   algoritme en eist Object.is-gelijkheid op de KOAN-fixtures over drie adjust-varianten;
   daarbovenop loopt de hele suite (incl. KOAN-waardepins en determinisme-tests) door de
   nieuwe kern. App/UI is nog 2-slots — dat is trede 2.
+- `driverSlots.ts` — model→slot-mapping. **N-weg (aug 2026, trede 2a)**: `pickSlotsN` —
+  2 drivers = exact `pickSlots` (KOANs lage driver heet "mid" en blijft de LAGE tak,
+  test-gepind); 3 = tweeter+mid op naam (`isMidModel`); niet te scheiden namen ⇒
+  `ambiguous`-melding i.p.v. raden. NB sleutel-knoop voor trede 2b: zStandalone/impedances
+  key'en de LAGE tak als 'mid' — zie ROADMAP fase 4 vóór het aanraken van persistentie.
 - `network.ts` — MNA-solver (complexe admittantie, Norton-bron, gemeten Z als driver-load).
   Elke solve levert ook `inputZ`: de systeem-ingangsimpedantie aan de generatorklemmen
   (excl. Rg) — de versterker-belastingscurve, voedt het Impedance-paneel

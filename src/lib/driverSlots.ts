@@ -48,3 +48,53 @@ export function withSlotAliases<T>(byModel: Record<string, T>): Record<string, T
   }
   return out;
 }
+
+/** True when a driver model belongs in the MID slot of a 3-way. Only
+ *  consulted when a network carries ≥2 non-tweeter drivers: in a 2-way the
+ *  single non-tweeter is the low branch regardless of its name (KOAN's low
+ *  driver is literally called "mid" — that behavior is pinned). */
+export function isMidModel(model: string): boolean {
+  return /mid|squawk|\bmr\b/i.test(model);
+}
+
+export interface SlotsN<T> {
+  woofer?: T;
+  mid?: T;
+  tweeter?: T;
+  /** Non-empty when the drivers could not be told apart by name — the caller
+   *  must SURFACE this instead of guessing (signalling doctrine). */
+  ambiguous?: string;
+}
+
+/**
+ * N-way slot mapping. Two drivers: exactly the historical pickSlots behavior
+ * (tweeter by name, the other is the low branch). Three: the tweeter by
+ * name, then the mid by name among the remaining two; when the names cannot
+ * separate them (both or neither match) the mapping REFUSES with a message
+ * rather than silently assigning branches — a mid summed as a woofer is the
+ * kind of quiet wrongness this codebase exists to avoid.
+ */
+export function pickSlotsN<T extends { model: string }>(drivers: readonly T[]): SlotsN<T> {
+  const real = drivers.filter((d) => !/parallel|\+/i.test(d.model));
+  const pool = real.length > 0 ? real : [...drivers];
+  const tweeter = pool.find((d) => isTweeterModel(d.model));
+  const rest = pool.filter((d) => d !== tweeter);
+  if (rest.length <= 1) return { woofer: rest[0], tweeter };
+  if (rest.length === 2) {
+    const mids = rest.filter((d) => isMidModel(d.model));
+    if (mids.length === 1) {
+      return { woofer: rest.find((d) => d !== mids[0]), mid: mids[0], tweeter };
+    }
+    return {
+      tweeter,
+      ambiguous:
+        `Cannot tell woofer from mid by name (` +
+        rest.map((d) => `"${d.model}"`).join(', ') +
+        `) — include "mid" in the midrange driver's model name.`,
+    };
+  }
+  return {
+    tweeter,
+    ambiguous: `${rest.length} non-tweeter drivers — more than a 3-way; not supported yet.`,
+  };
+}

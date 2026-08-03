@@ -82,9 +82,22 @@ Volgorde binnen een blok = aanbevolen prioriteit. Inschattingen zijn grof:
    per-tak adjust, `combine` als dunne wrapper erover; K=2 bit-identiek
    bewezen tegen een bevroren kopie van het oude algoritme én via de volle
    suite (381 tests) door de nieuwe kern, looptijd ongewijzigd.
-   Nog nodig: (2) UI voor drie takken incl. per-driver trim/invert,
-   (3) bandpass-tak in synthese/templates, (4) optimizers met twee paren +
-   2D-crossover-scan, (5) vxp-brug/projectformaat/help.
+   **Trede 2a KLAAR: slot-laag N-weg** — `pickSlotsN`/`isMidModel` in
+   driverSlots.ts: 2 drivers = exact het oude gedrag (KOANs lage driver héét
+   "mid" en blijft de LAGE tak — gepind in een test), 3 drivers = tweeter en
+   mid op naam, en bij niet te scheiden namen WEIGERT de mapping met een
+   melding i.p.v. te raden (een mid die als woofer meetelt is precies de
+   stille fout waar deze codebase tegen bestaat).
+   **EERSTE BESLISSING voor trede 2b (bewust doorgeschoven naar een frisse
+   sessie): de sleutel-semantiek.** zStandalone/impedances gebruiken 'mid'
+   als sleutel voor de LAGE tak (2-weg-historie); in 3-weg betekent 'mid' de
+   middentak. Opties: slot-ids hernoemen naar low/mid/high mét migratie van
+   autosave/projectformaat, of model-naam-keys overal. Dit raakt
+   persistentie — niet aan beginnen op het eind van een lange sessie.
+   Daarna: (2b) mid-slot door de App (import, sim via combineN, charts,
+   optimizers vergrendeld tot trede 4), (3) bandpass-tak in synthese/
+   templates, (4) optimizers met twee paren + 2D-crossover-scan,
+   (5) vxp-brug/projectformaat/help.
 10. **Driverbibliotheek** (L) — meetbundels (FRD + hoeken + ZMA) per driver,
     herbruikbaar over projecten; het einde van losse-bestanden-slepen.
     Uitbreiding daarbovenop: **ontwerpgeheugen als seed-bibliotheek** —
