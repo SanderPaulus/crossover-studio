@@ -2957,8 +2957,7 @@ export default function App() {
           if (threeWay) {
             setNetOptNote(
               '3-way build — three per-branch fits (woofer LP · mid bandpass · tweeter HP). ' +
-                'The assembled component tune judges driver PAIRS and is a later step, so ' +
-                'polish values by hand for now.',
+                'Run ⚙ Optimize components to tune the assembled sum (both crossings guarded).',
             );
           }
         }
@@ -3140,8 +3139,10 @@ export default function App() {
     const safety = (() => {
       // Solo: the safety grid covers the one measured driver; the ghost slot
       // stays silent (only the pair-independent fundamentals — amp-load
-      // floor — gate there).
-      const present = [woofer, tweeter].filter((d): d is Loaded => d !== null);
+      // floor — gate there). 3-way: the mid rides along on the safety grid.
+      const present = [woofer, threeWay ? midDrv : null, tweeter].filter(
+        (d): d is Loaded => d !== null,
+      );
       if (present.length === 0) return undefined;
       const lo = Math.max(200, ...present.map((d) => d.frd.freq[0]));
       const hi = Math.min(20000, ...present.map((d) => d.frd.freq[d.frd.freq.length - 1]));
@@ -3152,6 +3153,9 @@ export default function App() {
         freqs: sGrid,
         w: woofer ? resample(woofer.frd.freq, woofer.frd.spl, woofer.frd.phase, sGrid) : silent,
         t: tweeter ? resample(tweeter.frd.freq, tweeter.frd.spl, tweeter.frd.phase, sGrid) : silent,
+        ...(threeWay && midDrv
+          ? { m: resample(midDrv.frd.freq, midDrv.frd.spl, midDrv.frd.phase, sGrid) }
+          : {}),
         z: zGridWithSlots(impedances, sGrid),
       };
     })();
@@ -3182,7 +3186,21 @@ export default function App() {
         staged: stagedOn
           ? { rippleDb: num(targetRipple, 1.5), phaseDeg: soloDriver ? 3600 : num(targetPhase, 10) }
           : undefined,
-        xoRange: soloDriver ? undefined : xoRangeValue() ?? undefined,
+        // 3-way (trede 4a): the middle branch turns on the two-pair path.
+        // The crossover pin and directivity terms are 2-way vocabulary and
+        // stay off; acoustic slopes steer the TOP pair (mid/tweeter).
+        midBranch:
+          threeWay && sim.mid && midDrv
+            ? {
+                response: sim.base.m!,
+                adjust: {
+                  offsetMm: num(midOffsetMm, 0),
+                  trimDb: num(midTrimDb, 0),
+                  inverted: midInverted,
+                },
+              }
+            : undefined,
+        xoRange: soloDriver || threeWay ? undefined : xoRangeValue() ?? undefined,
         phaseMetric: phaseMetricMode,
         acousticSlopes: soloDriver ? undefined : acousticSlopesValue() ?? undefined,
         catalogSnap: catalogSnap && hasImportedCatalog(),
@@ -6911,10 +6929,10 @@ export default function App() {
                   <button
                     type="button"
                     onClick={runNetOptimize}
-                    disabled={!activeDesign || netOptBusy || !sim || zModels.length === 0 || threeWay}
+                    disabled={!activeDesign || netOptBusy || !sim || zModels.length === 0}
                     title={
                       threeWay
-                        ? '3-way mode: the component tuner judges one driver pair — the two-pair objective is a later step'
+                        ? '3-way: re-fit the UNLOCKED component values against the measured three-branch sum — both adjacent crossings are guarded (valley, protection, dead-branch), phase is judged per pair'
                         : soloDriver
                           ? 'Single-driver mode: re-fit the UNLOCKED component values against the measured driver — objective is branch flatness (+ amp-load floor); crossover terms do not apply'
                           : 'Re-fit the UNLOCKED component values of the active tab against the measured response — 🔒 parts keep their value'

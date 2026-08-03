@@ -1077,7 +1077,17 @@ wordt puur een import-optie, niets hangt er meer van af. Gefaseerd:
 4. **3-weg-UI + driverbibliotheek**: meetbundels (FRD+ZMA+hoeken) per driver, herbruikbaar
    over projecten; optimizer/directivity/integration mee naar N-weg
 
-- `netOptimizer.ts` — **passief-in-de-lus** (´⚙ Optimize components´-knop in netwerkpaneel):
+- `netOptimizer.ts` — **passief-in-de-lus** (´⚙ Optimize components´-knop in netwerkpaneel).
+  **TWEE-PAAR (aug 2026, trede 4a)**: `opts.midBranch` {response, adjust} zet het
+  3-weg-pad aan — tak-transfers via pickSlotsN (canonieke én echte modelnamen), som via
+  combineN, paar-lijst [(low,mid),(mid,high)] met per paar een eigen computeIntegration
+  (fase = gemiddelde over beide overlapvensters), xo-penalty en safety-gate per paar,
+  textbook-anker = meetkundig gemiddelde van de paar-kruisingen (één paar bit-identiek:
+  x^(1/1) ≡ x). midBranch undefined ⇒ 2-weg byte-voor-byte (de volle suite is het bewijs);
+  directivity/xoRange zijn 2-weg-vocabulaire en gaan in 3-weg uit; safety-note zegt bij een
+  seed die al onder de vloer zit "the seed already sat at X Ω" (eerlijke attributie —
+  drie parallelle takken rond de lage overname dippen structureel). App levert de mid via
+  opts (structured-cloneable, geen worker-wijziging) + safety.m:
   her-fit de waardes van de niet-vergrendelde R/L/C's van de actieve tab direct tegen de
   gemeten som (ripple+fase, priority-slider, én **directivity-bewust**: angleData +
   directivityWeight + ampTarget als de vfOptimizer); `locked?: boolean` op VxpPart (🔒 in

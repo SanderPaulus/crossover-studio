@@ -106,6 +106,17 @@ Volgorde binnen een blok = aanbevolen prioriteit. Inschattingen zijn grof:
    Optimizers/synthese/vxp-export/integratie-score zijn in 3-weg GEGATE met
    uitleg (paar-eigenschappen — trede 4); 2-weg/solo-paden bit-onaangeroerd
    (volle suite + browser-check op Sanders v1-autosave).
+   **Trede 4a KLAAR (aug 2026): de componenttuner is twee-paar.** `netOptimizer`
+   kreeg `opts.midBranch`: tak-transfers via pickSlotsN, som via combineN,
+   paar-lijst [(low,mid),(mid,high)], fase per paar gemiddeld, álle beslispunten
+   paar-bewust (xo-penalty per paar, safety-gate op beide kruisingen, textbook-
+   anker = meetkundig gemiddelde). 2-weg byte-onaangeroerd (midBranch undefined;
+   volle suite 402 = bewijs). ⚙ Optimize components werkt dus in 3-weg.
+   GEMETEN op Robberts set: de amp-vloer-gate vuurt eerlijk (generieke seeds
+   dippen daar zelf al ~2 Ω — drie parallelle takken rond de lage overname) en
+   de 640 Hz-gridvloer knelt. Volgende stappen trede 4: per-tak-banden (tak
+   buiten eigen meetbereik = stil), pairwise timing-check, en de twee-paar-
+   designChain + 2D-crossover-scan.
    **Trede 3 KLAAR (aug 2026): de bandpass-tak.** De synthese kón het al —
    `deriveTopology` cascadeert de HP-ladder in de LP-ladder zodra beide knieën
    enabled zijn; nu bewezen op de gemeten KOAN-mid (regressietest; ~2 dB rms
