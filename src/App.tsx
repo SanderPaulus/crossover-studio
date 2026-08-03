@@ -4874,7 +4874,22 @@ export default function App() {
                   <button
                     type="button"
                     className="primary"
-                    onClick={() => setCmpOpen(false)}
+                    // The button PROMISES charts, so it delivers them: the
+                    // phase residual lives in the Phase panel (which may be
+                    // toggled off), and in stacked layout the charts sit
+                    // below the fold — enable and scroll instead of hoping.
+                    onClick={() => {
+                      if (verifyCompare?.phase) setShowPanels((p) => ({ ...p, phase: true }));
+                      setCmpOpen(false);
+                      // Instant, not smooth: in stacked layout this can be a
+                      // multi-thousand-px jump, and smooth scrolling pauses
+                      // entirely in a backgrounded tab (rAF throttling).
+                      setTimeout(() => {
+                        document
+                          .querySelector('.analysis-pane .panel')
+                          ?.scrollIntoView({ block: 'start' });
+                      }, 60);
+                    }}
                   >
                     Done — show the charts
                   </button>
