@@ -260,9 +260,15 @@ export function rankChain3Results(
     r.net.after.avgDevDb != null ? (Math.PI / 2) * r.net.after.avgDevDb : r.net.after.rippleDb;
   const score = (r: Chain3Result): number =>
     2 * (1 - p) * rippleOf(r) ** 2 + 2 * p * (r.net.after.phaseDeg / 15) ** 2;
+  // Coupled pairs: the target must hold at the WORST pair — averaging would
+  // let a good mid-tweeter crossing pay for a bad woofer-mid one.
+  const worstPhase = (r: Chain3Result): number =>
+    r.net.after.pairPhaseDeg && r.net.after.pairPhaseDeg.length > 0
+      ? Math.max(...r.net.after.pairPhaseDeg)
+      : r.net.after.phaseDeg;
   const meets = (r: Chain3Result): boolean =>
     !targets ||
-    (r.net.after.rippleDb <= targets.rippleDb && r.net.after.phaseDeg <= targets.phaseDeg);
+    (r.net.after.rippleDb <= targets.rippleDb && worstPhase(r) <= targets.phaseDeg);
   const ranked = [...results].sort((a, b) => {
     const za = a.zOk ? 0 : 1;
     const zb = b.zOk ? 0 : 1;

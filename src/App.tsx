@@ -2626,6 +2626,9 @@ export default function App() {
           setVfRunStats(null);
           const line = (r: typeof win): string =>
             `${r.label}: ${r.net.after.rippleDb.toFixed(2)} dB/${r.net.after.phaseDeg.toFixed(1)}°` +
+            (r.net.after.pairPhaseDeg && r.net.after.pairPhaseDeg.length === 2
+              ? ` (W-M ${r.net.after.pairPhaseDeg[0].toFixed(1)}° · M-T ${r.net.after.pairPhaseDeg[1].toFixed(1)}°)`
+              : '') +
             (r.bomTotalEur !== null ? ` · €${Math.round(r.bomTotalEur)}` : '') +
             (r.zOk ? '' : ' · ⚠ amp-load');
           setNetOptNote(

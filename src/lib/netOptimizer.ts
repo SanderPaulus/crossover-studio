@@ -156,7 +156,15 @@ export interface NetOptimizeResult {
   before: { rippleDb: number; avgDevDb?: number; phaseDeg: number };
   /** Full-grid metrics of the delivered network; `xoHz` = its acoustic
    *  crossing (used by the no-pin scan to derive follow-up candidates). */
-  after: { rippleDb: number; avgDevDb?: number; phaseDeg: number; xoHz?: number | null };
+  after: {
+    rippleDb: number;
+    avgDevDb?: number;
+    phaseDeg: number;
+    /** 3-way: uniform-average phase error per adjacent pair [low, high] —
+     *  the coupled-pairs verdict (gates judge the worst of these). */
+    pairPhaseDeg?: number[];
+    xoHz?: number | null;
+  };
   /** How many component values were free to move (final network). */
   tuned: number;
   evaluations: number;
@@ -512,6 +520,9 @@ export function optimizeNetworkValues(
     xoHzPairs: (number | null)[];
     /** Measured slopes beside each pair's crossing (same order). */
     pairSlopes: { lower: number | null; upper: number | null }[];
+    /** Uniform-average phase error PER pair — the coupled-pairs gate reads
+     *  the WORST of these (solo: empty). */
+    pairPhaseDeg: number[];
     /** How far the combined SPL at the crossing sits BELOW the band mean
      *  (dB, beyond a 6 dB allowance). A healthy crossing meets ON level; a
      *  starved branch "crosses" the other one deep in a hole instead. */
@@ -592,15 +603,27 @@ export function optimizeNetworkValues(
     let uSum = 0;
     let uN = 0;
     const buckets = new Array<number>(181).fill(0);
+    // Per-pair uniform averages ride along: the pairs are COUPLED through the
+    // shared mid branch (a woofer-mid move shifts the mid's SPL and thereby
+    // the mid-tweeter crossing — Sanders' observation), and an AVERAGED
+    // metric would let the tuner trade one crossing against the other
+    // invisibly. The gates below judge the WORST pair; the search objective
+    // keeps the average (the anchor lesson: no objective perturbation).
+    const pairPhaseDeg: number[] = [];
     for (const integ of integList) {
+      let pSum = 0;
+      let pN = 0;
       for (const pt of integ.points) {
         if (pt.cls === null) continue;
         wSum += pt.weight;
         eSum += pt.weight * pt.phaseErrorDeg;
         uSum += pt.phaseErrorDeg;
         uN++;
+        pSum += pt.phaseErrorDeg;
+        pN++;
         buckets[Math.min(180, Math.round(pt.phaseErrorDeg))]++;
       }
+      pairPhaseDeg.push(pN > 0 ? pSum / pN : 180);
     }
     let phaseP95Deg = 180;
     if (uN > 0) {
@@ -880,6 +903,7 @@ export function optimizeNetworkValues(
       xoHz: xoF,
       xoHzPairs: pm.map((x) => x.xoF),
       pairSlopes: pm.map((x) => ({ lower: x.lowerSlopeDbOct, upper: x.upperSlopeDbOct })),
+      pairPhaseDeg: solo ? [] : pairPhaseDeg,
       xoDipDb,
       midSlopeDbOct,
       tweeterSlopeDbOct,
@@ -966,6 +990,12 @@ export function optimizeNetworkValues(
       slopePen
     );
   };
+
+  /** Phase number the STAGED gates judge: the WORST pair in 3-way (coupled
+   *  pairs must both meet the target — averaging would let one crossing pay
+   *  for the other), the classic metric with one pair (bit-compatible). */
+  const phaseGate = (m: Metrics): number =>
+    m.pairPhaseDeg.length > 1 ? Math.max(...m.pairPhaseDeg) : m.phaseDeg;
 
   const cloneParts = (ps: readonly VxpPart[]): VxpPart[] =>
     ps.map((q) => ({
@@ -1265,7 +1295,7 @@ export function optimizeNetworkValues(
       const mBase = full(base.parts);
       if (
         mAlt.ripplePeakDb <= opts.staged.rippleDb &&
-        mAlt.phaseDeg <= opts.staged.phaseDeg &&
+        phaseGate(mAlt) <= opts.staged.phaseDeg &&
         mAlt.protSqDb <= mBase.protSqDb + 0.5 &&
         mAlt.xoDipDb <= mBase.xoDipDb + 1 &&
         mAlt.zShortOhm <= mBase.zShortOhm + 0.1 &&
@@ -1312,7 +1342,7 @@ export function optimizeNetworkValues(
     const fullM = (ps: readonly VxpPart[]): Metrics =>
       metricsOn(buildWork(ps).work, grid, wBase, tBase, midFull, driverZ, angleData ?? null);
     const meets = (m: Metrics): boolean =>
-      m.ripplePeakDb <= tgt.rippleDb && m.phaseDeg <= tgt.phaseDeg;
+      m.ripplePeakDb <= tgt.rippleDb && phaseGate(m) <= tgt.phaseDeg;
     // Steer INTO the target region from the fx-optimum: the barrier is a
     // local refinement — applied from a cold seed it drowns the landscape
     // (learned the hard way: 843 µF caps chasing an unreachable target).
@@ -1476,7 +1506,7 @@ export function optimizeNetworkValues(
     const baseMeets =
       base0 !== null &&
       (!opts.staged ||
-        (base0.ripplePeakDb <= opts.staged.rippleDb && base0.phaseDeg <= opts.staged.phaseDeg));
+        (base0.ripplePeakDb <= opts.staged.rippleDb && phaseGate(base0) <= opts.staged.phaseDeg));
     if (base0 !== null && baseMeets) {
       const fx00 = cur.fx;
       for (const id of ladderIds) {
@@ -1518,7 +1548,7 @@ export function optimizeNetworkValues(
           const fm = fullOf(cand.parts);
           const meetsOk =
             !opts.staged ||
-            (fm.ripplePeakDb <= opts.staged.rippleDb && fm.phaseDeg <= opts.staged.phaseDeg);
+            (fm.ripplePeakDb <= opts.staged.rippleDb && phaseGate(fm) <= opts.staged.phaseDeg);
           const safeOk =
             fm.protSqDb <= base0.protSqDb + 0.5 &&
             fm.xoDipDb <= base0.xoDipDb + 1 &&
@@ -1593,7 +1623,7 @@ export function optimizeNetworkValues(
       const targetsKept =
         !opts.staged ||
         mCur.ripplePeakDb > opts.staged.rippleDb || // weren't met before either
-        (mRep.ripplePeakDb <= opts.staged.rippleDb && mRep.phaseDeg <= opts.staged.phaseDeg);
+        (mRep.ripplePeakDb <= opts.staged.rippleDb && phaseGate(mRep) <= opts.staged.phaseDeg);
       // Full repair or nothing: a partial lift (2.7 of 3 Ω at the old floor)
       // still fails the safety gate and the whole tune bounces back to the
       // seed anyway — the dip must clear the detection threshold itself.
@@ -1807,6 +1837,7 @@ export function optimizeNetworkValues(
     rippleDb: m.ripplePeakDb,
     avgDevDb: m.avgDevDb,
     phaseDeg: m.phaseDeg,
+    ...(m.pairPhaseDeg.length > 1 ? { pairPhaseDeg: m.pairPhaseDeg } : {}),
   });
 
   /* ---- SOLO sensitivity gate (see soloSensBudgetDb): a tuned result that

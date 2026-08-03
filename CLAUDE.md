@@ -893,6 +893,13 @@ vier flank-doelen: acSlopeWoofer (woofer-LP laag), acSlopeMidHp (mid-HP laag —
 heeft twee flanken"), acSlopeMid (mid-LP hoog), acSlopeTweeter. netOptimizer:
 `acousticSlopes.low` + `xoRangePairs` per paar in fx (2-weg bit-identiek: één paar = de
 oude twee one()-calls). Alles gepersisteerd (design-velden + autosave-deps).
+**Gekoppelde-paren-poort (aug 2026, Sanders "W-M raakt de SPL en dus M-T")**: de paren
+delen de mid-tak, dus een gemiddelde fase-metriek laat de tuner de ene overgang stil
+inruilen tegen de andere. `pairPhaseDeg` (uniform gemiddelde per paar) rijdt mee in de
+metrics + het rapport; élke staged-beslispoort (meets/prune/escalatie/reparatie) en de
+chain-ranking oordelen op het SLECHTSTE paar (`phaseGate`/`worstPhase`); de
+zoek-objective houdt het gemiddelde (anker-les). 2-weg bit-compat: één paar ⇒
+m.phaseDeg. Scan-note toont "(W-M x° · M-T y°)".
 **Wizard-systeemkeuze (Sanders voorstel, aug 2026)**: stap 0 begint met 1-weg/2-weg/3-weg
 (`wizardWays`, localStorage 'ads-wizard-ways'; data wint bij openen — volle 3-weg forceert 3,
 exact twee buitentakken 2) en toont alléén de bijbehorende slots; **Next blokkeert op
