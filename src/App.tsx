@@ -857,8 +857,13 @@ export default function App() {
    *  more steps = a finer sweep, compute grows ~linearly (pool absorbs some). */
   const [xoScanSteps, setXoScanSteps] = useState(3);
   /** Preferred HP/LP alignment (strong prior for the structure search);
-   *  'auto' = free enumeration over the alignment library. */
+   *  'auto' = free enumeration over the alignment library. In 3-way this is
+   *  the HIGH (mid-tweeter) crossing — same convention as acSlopeMid/Tweeter,
+   *  which have always meant the top pair. */
   const [hpLpPref, setHpLpPref] = useState('auto');
+  /** 3-way: alignment preference for the LOW (woofer-mid) crossing. Two
+   *  handovers are two independent foundations to choose. */
+  const [hpLpPrefLow, setHpLpPrefLow] = useState('auto');
   /** Staged design ("trapmethode"): HP/LP first, every next layer (EQ,
    *  Zobel/LCR, bypass-C) only while the targets are unmet — fewest
    *  components that reach the goal. */
@@ -2285,6 +2290,7 @@ export default function App() {
         xoMarginHz,
         xoScanSteps,
         hpLpPref,
+        hpLpPrefLow,
         phaseMetric: phaseMetricMode,
         acSlopeMid,
         acSlopeTweeter,
@@ -2413,6 +2419,7 @@ export default function App() {
       setXoMarginHz('400');
     }
     setHpLpPref(d.hpLpPref ?? 'auto');
+    setHpLpPrefLow(d.hpLpPrefLow ?? 'auto');
     setPhaseMetricMode(d.phaseMetric ?? 'band');
     setAcSlopeMid(d.acSlopeMid ?? '24');
     setAcSlopeTweeter(d.acSlopeTweeter ?? '12');
@@ -2504,7 +2511,7 @@ export default function App() {
     }, 800);
     return () => clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [woofer, midDrv, tweeter, project, zStandalone, angleSets, fileNotes, verify, vFilters, xoName, offsetMm, trimDb, inverted, midOffsetMm, midTrimDb, midInverted, fMin, fMax, splMin, splMax, phasePriority, vfEqBands, phaseMode, dirWeight, ampTarget, sonogramMode, designs, activeDesignId, lastSavedId, networkActive, vfBypass, catalogSnap, breakupGuard, xoRangeOn, xoFreqHz, xoMarginHz, xoScanSteps, hpLpPref, phaseMetricMode, acSlopeMid, acSlopeTweeter, acSlopeWoofer, acSlopeMidHp, xoLowFreqHz, xoLowMarginHz, midSizeInch, snapProfile, snapSeriesL, snapSeriesC, snapSeriesR, snapStacks, snapBoundToSeries, stagedOn, targetRipple, targetPhase, soloSensDb, soloFloorOn, soloFloorDb]);
+  }, [woofer, midDrv, tweeter, project, zStandalone, angleSets, fileNotes, verify, vFilters, xoName, offsetMm, trimDb, inverted, midOffsetMm, midTrimDb, midInverted, fMin, fMax, splMin, splMax, phasePriority, vfEqBands, phaseMode, dirWeight, ampTarget, sonogramMode, designs, activeDesignId, lastSavedId, networkActive, vfBypass, catalogSnap, breakupGuard, xoRangeOn, xoFreqHz, xoMarginHz, xoScanSteps, hpLpPref, hpLpPrefLow, phaseMetricMode, acSlopeMid, acSlopeTweeter, acSlopeWoofer, acSlopeMidHp, xoLowFreqHz, xoLowMarginHz, midSizeInch, snapProfile, snapSeriesL, snapSeriesC, snapSeriesR, snapStacks, snapBoundToSeries, stagedOn, targetRipple, targetPhase, soloSensDb, soloFloorOn, soloFloorDb]);
 
   function resetProject() {
     localStorage.removeItem(AUTOSAVE_KEY);
@@ -2577,6 +2584,9 @@ export default function App() {
         acousticSlopes: acousticSlopesValue(),
         xoLowPin: pins.low,
         xoHighPin: pins.high,
+        hpFloorHz: tweeterHpFloor ?? undefined,
+        structureLow: parseHpLpPref(hpLpPrefLow),
+        structureHigh: parseHpLpPref(hpLpPref),
         breakupGuard,
         phaseMetric: phaseMetricMode,
         synthMode,
@@ -2613,6 +2623,10 @@ export default function App() {
           const ranked = rankChain3Results(results, settings.targets, settings.phasePriority);
           const win = ranked[0];
           setVFilters((prev) => ({ ...prev, ...win.specs }));
+          // The design step CHOSE the polarities; the sim must sum the design
+          // that was actually fitted, so the checkboxes follow it.
+          setMidInverted(win.midInverted);
+          setInverted(win.tweeterInverted);
           setSynth({
             mode: synthMode,
             woofer: win.synthWoofer,
@@ -2632,8 +2646,8 @@ export default function App() {
             (r.bomTotalEur !== null ? ` · €${Math.round(r.bomTotalEur)}` : '') +
             (r.zOk ? '' : ' · ⚠ amp-load');
           setNetOptNote(
-            `3-way scan (staged v1: LR4 targets + measured trims, two-pair tune) — winner ` +
-              `xo ${win.label}` +
+            `3-way scan (alignment × polarity design step, two-pair tune) — winner ` +
+              `xo ${win.label} · ${win.structureLabel}` +
               (win.net.after.avgDevDb !== undefined
                 ? ` · avg ${win.net.after.avgDevDb.toFixed(2)} dB`
                 : '') +
@@ -6723,8 +6737,24 @@ export default function App() {
                     }
                   />
                 </label>
+                {threeWay && (
+                  <label title="Preferred alignment for the LOW (woofer-mid) handover — binding: the designer picks the foundation, the optimizer keeps knees, level and polarity free. Auto = free choice from the library.">
+                    HP/LP preference (low xo)
+                    <select value={hpLpPrefLow} onChange={(e) => setHpLpPrefLow(e.target.value)}>
+                      <option value="auto">Auto (library)</option>
+                      <option value="LR2">LR2 (12 dB/oct)</option>
+                      <option value="LR4">LR4 (24 dB/oct)</option>
+                      <option value="BW2">BW2 (12 dB/oct)</option>
+                      <option value="BW3">BW3 (18 dB/oct)</option>
+                      <option value="BW4">BW4 (24 dB/oct)</option>
+                      <option value="BS2">Bessel 2 (12 dB/oct)</option>
+                      <option value="BS3">Bessel 3 (18 dB/oct)</option>
+                      <option value="BS4">Bessel 4 (24 dB/oct)</option>
+                    </select>
+                  </label>
+                )}
                 <label title="Preferred HP/LP alignment — binding: the designer picks the foundation, the optimizer designs the best crossover on it (knees, level, polarity and EQ stay free). Auto = free choice from the library.">
-                  HP/LP preference
+                  {threeWay ? 'HP/LP preference (high xo)' : 'HP/LP preference'}
                   <select value={hpLpPref} onChange={(e) => setHpLpPref(e.target.value)} disabled={!!soloDriver}>
                     <option value="auto">Auto (library)</option>
                     <option value="LR2">LR2 (12 dB/oct)</option>

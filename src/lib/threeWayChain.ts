@@ -1,6 +1,7 @@
 import type { Complex } from './complex.ts';
-import { defaultHpLp, type DriverFilterSpec } from './filters.ts';
+import type { DriverFilterSpec } from './filters.ts';
 import type { BranchAdjust, GriddedResponse, TweeterAdjust } from './dsp.ts';
+import { designThreeWay, type Struct3Choice } from './threeWayDesign.ts';
 import { synthesize, type SynthesisResult } from './synthesis.ts';
 import { mergeSynthesizedSchematics } from './schematicEdit.ts';
 import { optimizeNetworkValues, type NetOptimizeResult } from './netOptimizer.ts';
@@ -40,6 +41,14 @@ export interface Chain3Settings {
    *  tune via the per-pair xo pin. */
   xoLowPin?: { freq: number; margin: number };
   xoHighPin?: { freq: number; margin: number };
+  /** Tweeter HP floor (≥2×Fs, Hz): the design step never puts the high knee
+   *  below it. */
+  hpFloorHz?: number;
+  /** BINDING alignment choice per crossing (the designer picks the
+   *  foundation; knees, level and polarity stay free). Omit for the free
+   *  enumeration over the library. */
+  structureLow?: Struct3Choice;
+  structureHigh?: Struct3Choice;
   breakupGuard?: boolean;
   phaseMetric?: 'band' | 'overlap';
   synthMode: 'filter' | 'acoustic';
@@ -86,54 +95,53 @@ export interface Chain3Result {
   /** Amplifier-load verdict of the DELIVERED network: false when the tune was
    *  rejected on the Z floor or the dip could not be repaired. */
   zOk: boolean;
+  /** Polarities the design step CHOSE — the UI checkboxes must follow these,
+   *  or the simulation sums a different design than the one that was fitted. */
+  midInverted: boolean;
+  tweeterInverted: boolean;
+  /** Structure summary of the winning design ("LR4 @411 · BW3 @2520 · mid inv"). */
+  structureLabel: string;
 }
 
 /** A branch is alive where its banded response is above the silent ghost. */
 const ALIVE_DB = -300;
-
-/** Median SPL of a branch over [lo,hi] ∩ its alive region; null when empty. */
-function bandMedian(
-  g: GriddedResponse,
-  lo: number,
-  hi: number,
-): number | null {
-  const vals: number[] = [];
-  for (let i = 0; i < g.freq.length; i++) {
-    if (g.freq[i] < lo || g.freq[i] > hi) continue;
-    if (g.spl[i] <= ALIVE_DB) continue;
-    vals.push(g.spl[i]);
-  }
-  if (vals.length < 4) return null;
-  vals.sort((a, b) => a - b);
-  return vals[Math.floor(vals.length / 2)];
-}
 
 /** One full chain for one (xoLow, xoHigh) candidate. */
 export function runThreeWayChain(
   input: Chain3Input,
   onProgress?: (p: ChainStageProgress) => void,
 ): Chain3Result {
-  const { grid, w, m, t, driverZ, tAdjust, midAdjust, xoLow, xoHigh, settings: s } = input;
+  const { grid, w, m, t, driverZ, xoLow, xoHigh, settings: s } = input;
 
-  // ---- Target design: textbook LR4 knees + measured level trims ----------
-  // Passband medians per branch (each on its own honest region); every branch
-  // trims DOWN to the quietest one — passive is cut-only.
-  const medians = {
-    w: bandMedian(w, s.band[0], xoLow),
-    m: bandMedian(m, xoLow, xoHigh),
-    t: bandMedian(t, xoHigh, s.band[1]),
-  };
-  const present = [medians.w, medians.m, medians.t].filter((v): v is number => v !== null);
-  const floor = present.length > 0 ? Math.min(...present) : 0;
-  const trim = (own: number | null): number =>
-    own === null ? 0 : Math.min(0, Math.round((floor - own) * 10) / 10);
-
-  const lr4 = (freq: number) => ({ ...defaultHpLp(freq), enabled: true, kind: 'LR' as const, order: 4 as const });
-  const specs = {
-    woofer: { gainDb: trim(medians.w), hp: defaultHpLp(200), lp: lr4(xoLow), eq: [] },
-    mid: { gainDb: trim(medians.m), hp: lr4(xoLow), lp: lr4(xoHigh), eq: [] },
-    tweeter: { gainDb: trim(medians.t), hp: lr4(xoHigh), lp: defaultHpLp(20000), eq: [] },
-  };
+  /* ---- Target design: ALIGNMENT × POLARITY enumeration -------------------
+   * Was: textbook LR4 on both crossings and polarity as loaded. Both are
+   * decisions the component tuner can never repair (it moves values on a
+   * fixed topology and a fixed polarity), and unlike the two-way chain there
+   * is no EQ stage downstream to wash an alignment mistake out. The virtual
+   * design step settles them on pure filter math — cheap enough to be
+   * exhaustive (64 structures ≪ one network tune). ---- */
+  onProgress?.({ stage: 'design', evals: 0, round: 1 });
+  const design = designThreeWay({
+    w,
+    m,
+    t,
+    tAdjust: input.tAdjust,
+    midAdjust: input.midAdjust,
+    xoLow,
+    xoHigh,
+    band: s.band,
+    phasePriority: s.phasePriority,
+    xoLowPin: s.xoLowPin,
+    xoHighPin: s.xoHighPin,
+    hpFloorHz: s.hpFloorHz,
+    structureLow: s.structureLow,
+    structureHigh: s.structureHigh,
+  });
+  const specs = design.specs;
+  // The chosen polarities become the branch adjustments everything downstream
+  // sums with — synthesis fits per branch, the tune judges the assembled sum.
+  const tAdjust: TweeterAdjust = { ...input.tAdjust, inverted: design.tweeterInverted };
+  const midAdjust: BranchAdjust = { ...input.midAdjust, inverted: design.midInverted };
 
   // ---- Per-branch synthesis on each branch's own alive sub-grid ----------
   onProgress?.({ stage: 'synthesis', evals: 0 });
@@ -201,6 +209,9 @@ export function runThreeWayChain(
     net,
     bomTotalEur: bomFor(net.parts).totalEur,
     zOk,
+    midInverted: design.midInverted,
+    tweeterInverted: design.tweeterInverted,
+    structureLabel: design.label,
   };
 }
 

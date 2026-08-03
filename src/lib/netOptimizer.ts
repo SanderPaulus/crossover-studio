@@ -1160,6 +1160,52 @@ export function optimizeNetworkValues(
     let fit = nelderMead(objective, x0, { maxIterations: iters, tolerance: 1e-6, step: 0.1 });
     const again = nelderMead(objective, [...fit.x], { maxIterations: iters, tolerance: 1e-6, step: 0.25 });
     if (again.fx < fit.fx) fit = again;
+    /* ---- Block-coordinate refinement (THREE-WAY, full tunes only) --------
+     * An assembled three-branch network carries 16–25 free values, and past
+     * ~10 dims a single simplex crawls — the exact wall the branch synthesis
+     * already hits and solves this way. Re-polish overlapping 6-dim blocks
+     * around the best point, then one tight full-dimensional polish.
+     *
+     * Blocks are index-based: merged parts arrive in BRANCH order, so
+     * consecutive slots mostly share a branch and the 3-step overlap spans
+     * the seams — which is what keeps this from degenerating into "tune the
+     * pairs separately". The coupling is never broken: every block is scored
+     * by the SAME full objective (both pairs, whole network) and accepted
+     * only when that objective improves. Search depth only — what "better"
+     * means is untouched (the anchor lesson).
+     *
+     * Gated on 3-way so two-way stays bit-identical, and on the FULL tunes
+     * (budgetScale ≥ 1, no amp-floor repair): the 0.6-scale retunes are local
+     * recoveries from an already-good point where the deep search does not
+     * pay for its runtime. ---- */
+    if (midB !== undefined && !zFloorBarrier && budgetScale >= 1 && free.length > 9) {
+      for (let start = 0; start < free.length; start += 3) {
+        const ids: number[] = [];
+        for (let k = start; k < Math.min(start + 6, free.length); k++) ids.push(k);
+        if (ids.length < 2) break;
+        const subObjective = (xs: readonly number[]): number => {
+          const full = [...fit.x];
+          ids.forEach((slot, j) => (full[slot] = xs[j]));
+          return objective(full);
+        };
+        const sub = nelderMead(
+          subObjective,
+          ids.map((i) => fit.x[i]),
+          { maxIterations: 400, tolerance: 1e-7, step: 0.08 },
+        );
+        if (sub.fx < fit.fx) {
+          const full = [...fit.x];
+          ids.forEach((slot, j) => (full[slot] = sub.x[j]));
+          fit = { ...fit, x: full, fx: sub.fx };
+        }
+      }
+      const polish = nelderMead(objective, [...fit.x], {
+        maxIterations: iters,
+        tolerance: 1e-6,
+        step: 0.04,
+      });
+      if (polish.fx < fit.fx) fit = polish;
+    }
     // Never end worse than the values we started from.
     if (objective(x0) <= objective(fit.x)) fit = { ...fit, x: [...x0] };
 

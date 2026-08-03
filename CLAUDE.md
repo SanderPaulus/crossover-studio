@@ -877,8 +877,9 @@ over de twee ladders); App: "Build passive filter" in 3-weg = drie tak-fits (zFo
 + note "assembled tune volgt" — netOptimize blijft gegate (paar-oordeel, trede 4);
 template-modellen via pickSlotsN (zModels-laadvolgorde ≠ takvolgorde), way-select volgt
 de geladen set.
-**Trede 4c (aug 2026) — de 3-weg-ontwerpketen (`threeWayChain.ts`, staged v1)**:
-per (xoLow, xoHigh)-kandidaat textbook-LR4-specs + niveau-trims uit tak-medianen
+**Trede 4c (aug 2026) — de 3-weg-ontwerpketen (`threeWayChain.ts`)**: per (xoLow, xoHigh)-
+kandidaat een doelontwerp uit de structuur-zoeker (`threeWayDesign.ts`, zie onder — v1 zette
+hier nog vaste textbook-LR4-specs) + niveau-trims uit tak-medianen
 (cut-only) → tak-synthese op alive-subgrids → twee-paar-netTune; 2×2-kandidaten rond de
 rauwe paar-kruisingen; ranking gate't eerst op zOk (versterker-verdict — Z is
 ontwerpfysica in 3-weg, nooit een objective-term), dan targets, dan de blend, tie →
@@ -900,6 +901,47 @@ metrics + het rapport; élke staged-beslispoort (meets/prune/escalatie/reparatie
 chain-ranking oordelen op het SLECHTSTE paar (`phaseGate`/`worstPhase`); de
 zoek-objective houdt het gemiddelde (anker-les). 2-weg bit-compat: één paar ⇒
 m.phaseDeg. Scan-note toont "(W-M x° · M-T y°)".
+**Diepere zoektocht in de gezamenlijke tune (aug 2026, zelfde ronde)**: de tak-synthese
+schakelt boven 9 dims al blok-coördinaat-verfijning in ("past ~10 dims crawlt één simplex"),
+maar de ASSEMBLED tuner had dat nooit gekregen — en een 3-weg-netwerk draagt 16–25 vrije
+waardes. `tune()` doet nu na de multi-start overlappende 6-dim blokken (stap 3) plus één
+strakke volledige polish. Blokken zijn INDEX-gebaseerd: gemergede parts komen in TAK-volgorde
+binnen, dus opeenvolgende slots delen meestal een tak en de overlap overbrugt de naden — dat
+is precies wat verhindert dat het "de paren apart tunen" wordt. De koppeling blijft intact:
+elk blok wordt gescoord door dezelfde VOLLE objective (beide paren, hele netwerk) en alleen
+geaccepteerd als die verbetert — zoekdiepte, geen objective-wijziging (anker-les). Gegate op
+3-weg (`midB !== undefined`) zodat 2-weg bit-identiek blijft, en op de VOLLE tunes
+(budgetScale ≥ 1, geen amp-floor-reparatie): de 0,6-schaal-retunes zijn lokale herstelstappen
+vanaf een al goed punt waar de diepe zoektocht zijn runtime niet terugverdient.
+**GEMETEN, hele keten A/B op Robberts echte 3-weg-set (411/2520 Hz, filter-modus)**: oud
+(textbook-LR4 + polariteit-zoals-geladen, geen blok-verfijning) → piek-rimpel 5,13 dB /
+avgDev 1,055 dB / fase 10,5° / paren 9,0–11,9°; nieuw → **1,58 dB / 0,628 dB / 6,6° /
+6,1–7,0°**. Piek ruim 3× beter, hele-bereik-afwijking 40% beter, slechtste paar bijna
+gehalveerd. Kost wél runtime (de blok-passes zijn echte MNA-solves) — dat is de bewuste ruil
+voor "het beste resultaat".
+**Structuur-zoeker (`threeWayDesign.ts`, aug 2026 — Sanders "we moeten voor het beste
+resultaat gaan")**: de staged-v1-keten ging van vaste textbook-LR4 + polariteit-zoals-geladen
+rechtstreeks de synthese in. Twee beslissingen die de componenttuner NOOIT kan repareren
+(hij verzet waardes op een VASTE topologie en een VASTE polariteit), en de 2-weg-les
+"EQ wast alignment-verschillen weg" gaat hier niet op — de 3-weg-keten heeft geen EQ-trede.
+`designThreeWay` enumereert daarom alignment(laag) × alignment(hoog) × mid-polariteit ×
+tweeter-polariteit = 64 structuren op PURE filtermath (evalDriverFilter × applyTransfer ×
+combineN, geen enkele MNA-solve), verfijnt de basisknoppen van de beste 4 met NM, en levert
+de winnende doelspecs. GEMETEN op Robberts set: de 64 structuren spreiden de combined-std
+van 1,39 tot 6,52 dB (factor 4,7) — de keuze is dus geen formaliteit; de slechtste rijen zijn
+precies de polariteit-suckouts. Op ZIJN drivers wint LR4/LR4 non-inverted (de oude
+textbook-gok zat dus goed, maar nu is dat GEMETEN i.p.v. aangenomen).
+Doctrines die erin zitten: één kruising = één beslissing (het paar deelt knie én alignment —
+`woofer.lp ≡ mid.hp`, test-gepind); polariteit wordt ABSOLUUT bepaald en overschrijft de
+inkomende checkbox (de UI volgt daarna via `setMidInverted`/`setInverted`, anders simuleert
+de app een ander ontwerp dan er gefit is); fase-metriek = uniform gemiddelde + P95-term,
+exact de 'band'-definitie van paneel en 2-weg-objective (de "elke bewaker zijn eigen
+privé-definitie"-bugfamilie); objective middelt de PAREN (glad voor de simplex — anker-les),
+de gekoppelde-paren-WORST-regel blijft op de beslispoorten; EQ-banden bewust NIET (die zijn
+synthese-gereedschap, acoustic-doctrine). Bindende keuze per kruising via `structureLow`/
+`structureHigh` — de ⚙-dropdown "HP/LP preference" was in 3-weg wél zichtbaar maar werd
+GENEGEERD; nu twee dropdowns (laag/hoog), zelfde conventie als de flank-doelen
+(`hpLpPrefLow` gepersisteerd, mét autosave-dep).
 **Wizard-systeemkeuze (Sanders voorstel, aug 2026)**: stap 0 begint met 1-weg/2-weg/3-weg
 (`wizardWays`, localStorage 'ads-wizard-ways'; data wint bij openen — volle 3-weg forceert 3,
 exact twee buitentakken 2) en toont alléén de bijbehorende slots; **Next blokkeert op

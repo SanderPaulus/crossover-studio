@@ -152,6 +152,23 @@ Volgorde binnen een blok = aanbevolen prioriteit. Inschattingen zijn grof:
    paar in de UI, scan-keuzetabel voor 3-weg, per-tak-EQ-enumeratie in de
    keten, directivity/tolerantie/tab-ghosts in 3-weg, vxp-export 3-weg
    (trede 5).
+
+   **Trede 4d KLAAR (aug 2026, Sanders "we moeten voor het beste resultaat
+   gaan"): de twee gaten in 4c gedicht.** (a) `threeWayDesign.ts` — een echte
+   STRUCTUUR-ZOEKER: alignment(laag) × alignment(hoog) × mid-polariteit ×
+   tweeter-polariteit (64 structuren) op pure filtermath, daarna de basisknoppen
+   van de beste 4 verfijnd. v1 gokte hier vaste LR4 + polariteit-zoals-geladen,
+   en dat zijn juist de twee dingen die de componenttuner NOOIT kan repareren
+   (vaste topologie, vaste polariteit) — de 2-weg-uitvlucht "EQ wast het weg"
+   bestaat hier niet, want de 3-weg-keten heeft geen EQ-trede. Gemeten spreiding
+   over de 64: combined-std 1,39 → 6,52 dB. (b) blok-coördinaat-verfijning in de
+   assembled tune (de tak-synthese doet dit al boven 9 dims; een 3-weg-netwerk
+   draagt er 16–25) — zoekdiepte op dezelfde volle objective, gegate op 3-weg.
+   **A/B over de hele keten op Robberts set (411/2520):** piek-rimpel
+   5,13 → 1,58 dB, avgDev 1,055 → 0,628 dB, fase 10,5 → 6,6°, slechtste paar
+   11,9 → 7,0°. Kost runtime; dat is de bewuste ruil. Bindende alignment per
+   kruising nu via twee ⚙-dropdowns (de bestaande "HP/LP preference" was in
+   3-weg zichtbaar maar werd genegeerd).
    **Trede 3 KLAAR (aug 2026): de bandpass-tak.** De synthese kón het al —
    `deriveTopology` cascadeert de HP-ladder in de LP-ladder zodra beide knieën
    enabled zijn; nu bewezen op de gemeten KOAN-mid (regressietest; ~2 dB rms
