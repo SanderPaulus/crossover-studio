@@ -216,6 +216,10 @@ export function crossover3Variants(
   m: GriddedResponse,
   t: GriddedResponse,
   pins?: { low?: { freq: number; margin: number }; high?: { freq: number; margin: number } },
+  /** Tweeter HP floor (≥2×Fs, Hz): pushes the HIGH anchor up. A hot tweeter
+   *  crosses the raw mid several octaves below a sensible handover (the old
+   *  2-way lesson), which made every M-T candidate read like a W-M one. */
+  hpFloorHz?: number,
 ): { label: string; xoLow: number; xoHigh: number }[] {
   const firstCross = (lower: GriddedResponse, upper: GriddedResponse, lo: number, hi: number): number => {
     for (let i = 0; i < lower.freq.length; i++) {
@@ -227,7 +231,10 @@ export function crossover3Variants(
     return Math.sqrt(lo * hi);
   };
   const rawLow = Math.min(1200, Math.max(250, firstCross(w, m, 200, 1500)));
-  const rawHigh = Math.min(7000, Math.max(1800, firstCross(m, t, 1200, 9000)));
+  const rawHigh = Math.min(
+    7000,
+    Math.max(1800, firstCross(m, t, 1200, 9000), hpFloorHz ?? 0),
+  );
   // A pinned axis collapses to its centre — the designer chose; the tune
   // holds it there via the per-pair xo pin. Unpinned axes keep the 2-step
   // competition around the raw crossing.
@@ -238,7 +245,9 @@ export function crossover3Variants(
     for (const fh of highs) {
       const xoLow = Math.round(Math.min(1200, Math.max(250, fl)));
       const xoHigh = Math.round(Math.min(8000, Math.max(xoLow * 2.5, Math.min(7000, fh))));
-      out.push({ label: `${xoLow}/${xoHigh} Hz`, xoLow, xoHigh });
+      // Two crossover POINTS, labeled unambiguously — "411/2520 Hz" read as
+      // one woofer-mid RANGE (Sanders' report).
+      out.push({ label: `W-M ${xoLow} · M-T ${xoHigh} Hz`, xoLow, xoHigh });
     }
   }
   return out;

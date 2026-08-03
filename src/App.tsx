@@ -2587,7 +2587,7 @@ export default function App() {
       };
       const tAdj = { offsetMm: num(offsetMm, 0), trimDb: num(trimDb, 0), inverted };
       const mAdj = { offsetMm: num(midOffsetMm, 0), trimDb: num(midTrimDb, 0), inverted: midInverted };
-      const variants = crossover3Variants(sim.base.w, sim.base.m!, sim.base.t, pins);
+      const variants = crossover3Variants(sim.base.w, sim.base.m!, sim.base.t, pins, tweeterHpFloor ?? undefined);
       const inputs = variants.map((v) => ({
         grid: [...grid],
         w: sim.base.w,
