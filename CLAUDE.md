@@ -107,7 +107,28 @@ minimum phase reconstrueert. Voertaal met Sander: **Nederlands**; code/comments 
 - `timing.ts` — HET fundament: bulk-delay-fit uit unwrapped fase + `assessSharedReference`
   (gedeelde-tijdreferentie-verdict). Silent-failure-risico van verkeerde timing is de bestaansreden
 - `dsp.ts` — logspace/resample (unwrapped-fase-interpolatie, `clampEdges` voor Z), `combine`
-  (complexe som; exporteert ook `combinedPhaseDeg`), `applyTransfer`
+  (complexe som; exporteert ook `combinedPhaseDeg`), `applyTransfer`.
+  **N-weg-kern (aug 2026, fase-4 trede 1)**: `combineN(branches[])` — élke tak zijn eigen
+  optionele `BranchAdjust` (trim/offset/invert, de generalisatie van TweeterAdjust), één tak
+  is legaal (solo zonder ghost-truc), plus `relativePhaseBetween(a,b)` als paar-helper.
+  `combine()` is nu een DUNNE WRAPPER over dezelfde `sumBranches`-kern — de accumulatie start
+  bewust OP de eerste tak (niet op nul) zodat K=2 bit-identiek is aan de historische fused
+  loop. Bewijs is niet-circulair: dsp.nway.test.ts draagt een BEVROREN kopie van het oude
+  algoritme en eist Object.is-gelijkheid op de KOAN-fixtures over drie adjust-varianten;
+  daarbovenop loopt de hele suite (incl. KOAN-waardepins en determinisme-tests) door de
+  nieuwe kern. App/UI is nog 2-slots — dat is trede 2.
+- `driverSlots.ts` — model→slot-mapping. **N-weg (aug 2026, trede 2a)**: `pickSlotsN` —
+  2 drivers = exact `pickSlots` (KOANs lage driver heet "mid" en blijft de LAGE tak,
+  test-gepind); 3 = tweeter+mid op naam (`isMidModel`); niet te scheiden namen ⇒
+  `ambiguous`-melding i.p.v. raden.
+  **Trede 2b (aug 2026) — de sleutel-knoop opgelost: OPSLAG SPREEKT ROLLEN, netlijsten
+  spreken model-namen, dit bestand is de brug.** `BranchRole` ('low'|'mid'|'high') is het
+  opslag-vocabulaire (App-zStandalone + project-v2 `zByRole`); `canonicalModelForRole` is
+  dé ene plek waar "de lage tak heet historisch 'mid'" leeft (zonder echte mid: low→'mid',
+  mét: low→'woofer', mid→'mid', high→'tweeter'); `withSlotAliasesN` generaliseert de
+  alias-laag (2-weg bit-identiek aan `withSlotAliases`, test-gepind; ambigu = géén
+  aliassen, echte namen blijven resolven). 'mid' als MODEL-naam blijft legaal en resolvet
+  via pickSlotsN — alleen de opslag-betekenis is verdwenen.
 - `network.ts` — MNA-solver (complexe admittantie, Norton-bron, gemeten Z als driver-load).
   Elke solve levert ook `inputZ`: de systeem-ingangsimpedantie aan de generatorklemmen
   (excl. Rg) — de versterker-belastingscurve, voedt het Impedance-paneel
@@ -263,7 +284,12 @@ minimum phase reconstrueert. Voertaal met Sander: **Nederlands**; code/comments 
   contour, scale genormaliseerd/absoluut (gepersisteerd), canvas-heatmap in SVG-frame
 - `minphase.ts` — cepstrum-minimum-phase (fs 768k default; puur voor VituixCAD-vergelijkmodus)
 - `timeDomain.ts` + `fft.ts` — EGD (bulk eruit), step response, ETC via IFFT
-- `project.ts` — persistentie: raw files + design-state in JSON, versieveld, autosave localStorage
+- `project.ts` — persistentie: raw files + design-state in JSON, versieveld, autosave localStorage.
+  **v2 (aug 2026, trede 2b)**: standalone impedanties rol-gesleuteld in `zByRole`
+  (`impedances` = alléén vxp-model-namen), plus `mid`-responsie, `angleFiles.mid`,
+  `vFilters.mid` en mid-adjust-velden. v1 migreert bij LEZEN ('mid'→low, 'tweeter'→high,
+  alleen zónder vxp — een echte vxp-driver mág "mid" heten); nooit herschrijven,
+  fixture-tests pinnen migratie én dat het vxp-record onaangeroerd blijft
 - `synthSchematic.ts` / `components/Schematic.tsx` — schema-rendering (ook van synthese-uitkomst).
   **Layout (jul 2026, Sanders overlap-screenshot)**: mergeSynthesizedSchematics plaatst elke
   tak DYNAMISCH 5 rijen onder het diepste punt van alles erboven (vaste ROW=16 botste zodra
@@ -811,6 +837,42 @@ bolletje gevuld. Bolletjes, "Step x of y" en beide navigatieknoppen lezen nu uit
 dus een stap toevoegen (3-weg heeft een tweede kruising nodig) is één regel i.p.v. weer een
 off-by-one. `id` blijft het nummer waar de inhoudsblokken op schakelen; een effect verplaatst de
 wizard naar een geldige stap als de lijst onder hem verandert (driver erbij/eraf tijdens gebruik).
+
+## 3-weg-modus in de App (aug 2026, fase-4 trede 2b)
+
+`midDrv` = de MIDDENtak (state `woofer`/`tweeter` zijn de low/high ROLLEN, naam-agnostisch);
+`threeWay` = alle drie RESPONSIES geladen; sim somt dan via `combineN` (per-tak adjust:
+`midOffsetMm`/`midTrimDb`/`midInverted` naast de tweeter-velden) en het result houdt de
+2-weg-VORM (woofer=low, tweeter=adjusted high, combined* = drie-tak-som) zodat élke
+combined-consument blijft werken; `sim.mid` rijdt mee voor de charts. Netwerk-transfers in
+3-weg via `slotTransfersN` (ambigu ⇒ xoError, geen raden). **`midIgnored`** (mid-data zonder
+volledige 3-weg): luide banner én de mid-Z blijft uit de solver-map — anders verschuiven de
+canonieke sleutels stil onder een lopend 2-weg-ontwerp (precies de stille fout).
+UI: derde import-slot + ✕, amber `--viz-mid`, mid-filterkaart (hp+lp = bandpass, gratis in
+het spec-model), fase-chart toont de twee AANGRENZENDE paren (w-t-verschil betekent daar
+niets), SPL-handles ook op de mid. GEGATE met uitleg-titles (paar-eigenschappen, trede 4):
+optimizers, synthese, netOptimize, vxp-export, integratie/phaseStats, directivity/sonogram,
+tolerantie-band, tab-ghosts, target-curves, templates (alleen Blank-scaffold, mét alle drie
+drivers). Autosave-deps uitgebreid (midDrv + mid-adjust — de harde les). Demo-load reset
+midDrv (anders wordt KOAN stil een 3-weg). 2-weg/solo bit-onaangeroerd: volle suite (394)
+groen + browser-check op Sanders v1-autosave (restored identiek door het nieuwe leespad).
+**Trede 3 (aug 2026) — bandpass-tak**: `deriveTopology` cascadeerde HP→LP al bij beide
+knieën enabled (nu test-gepind op de gemeten KOAN-mid); `filterTemplates` bouwt 3-weg
+(LP@600 / bandpass 600–3000 / HP@3000, generiek 8 Ω; mid = 2×orde, id-counters gedeeld
+over de twee ladders); App: "Build passive filter" in 3-weg = drie tak-fits (zFor
+'woofer'/'mid'/'tweeter', gShift over drie takken) → één merge in een Passive build-tab
++ note "assembled tune volgt" — netOptimize blijft gegate (paar-oordeel, trede 4);
+template-modellen via pickSlotsN (zModels-laadvolgorde ≠ takvolgorde), way-select volgt
+de geladen set.
+**Wizard-systeemkeuze (Sanders voorstel, aug 2026)**: stap 0 begint met 1-weg/2-weg/3-weg
+(`wizardWays`, localStorage 'ads-wizard-ways'; data wint bij openen — volle 3-weg forceert 3,
+exact twee buitentakken 2) en toont alléén de bijbehorende slots; **Next blokkeert op
+`wizardMissing`** (tooltip + regel noemen wat mist), meer-geladen-dan-gedeclareerd geeft een
+⚠-note (`wizardOverloaded` — de app volgt de DATA, nooit de keuze; begeleiding, geen tweede
+bron van waarheid). 3-weg-pad eindigt op stap 0 met "Open Network editor →" (de
+Goals/Crossover/Components-stappen zijn optimizer-gebonden en die optimizer is trede 4);
+de 🧙-knop opent bij threeWay daarom óók op stap 0. Demo-knop alleen bij 2-weg (KOAN ís
+2-weg).
 
 ## Workspace-layout (UI-fase B, jul 2026)
 

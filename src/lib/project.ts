@@ -1,3 +1,4 @@
+import type { BranchRole } from './driverSlots.ts';
 import type { DriverFilterSpec } from './filters.ts';
 import type { VxpCrossover, VxpPart } from './parsers/vxp.ts';
 
@@ -18,7 +19,14 @@ export interface NetworkDesign {
  */
 
 export const PROJECT_FORMAT = 'acoustic-design-studio-project';
-export const PROJECT_VERSION = 1;
+/**
+ * v2 (aug 2026, phase-4 trede 2b): storage speaks branch ROLES. Standalone
+ * per-branch impedances moved from the model-named `impedances` record (where
+ * the LOW branch was keyed 'mid' — the 2-way-era overload that collides with
+ * a real middle branch) into role-keyed `zByRole`; `impedances` now carries
+ * only vxp model-named files. v1 files migrate on read, are never rewritten.
+ */
+export const PROJECT_VERSION = 2;
 
 export interface StoredFile {
   name: string;
@@ -30,11 +38,17 @@ export interface StoredAngleFile extends StoredFile {
 }
 
 export interface ProjectDesign {
-  vFilters: { woofer: DriverFilterSpec; tweeter: DriverFilterSpec };
+  /** `mid` optional: only present when a middle branch is loaded (3-way). */
+  vFilters: { woofer: DriverFilterSpec; tweeter: DriverFilterSpec; mid?: DriverFilterSpec };
   xoName: string;
   offsetMm: string;
   trimDb: string;
   inverted: boolean;
+  /** 3-way: the middle branch's own adjust (the tweeter fields above stay the
+   *  high branch's — per-branch adjust is the combineN generalization). */
+  midOffsetMm?: string;
+  midTrimDb?: string;
+  midInverted?: boolean;
   fMin: string;
   fMax: string;
   splMin: string;
@@ -113,12 +127,20 @@ export interface ProjectDesign {
 
 export interface ProjectState {
   woofer?: StoredFile;
+  /** 3-way: the middle branch's response (v2+). */
+  mid?: StoredFile;
   tweeter?: StoredFile;
-  /** Keyed by driver model name used in the crossover ("mid", "tweeter"). */
+  /** vxp-project impedances, keyed by the REAL driver model names. Until v1
+   *  this record also carried the standalone per-branch ZMAs under the
+   *  synthesis vocabulary ('mid' = low branch!) — those live in `zByRole`
+   *  since v2; v1 files migrate on read. */
   impedances?: Record<string, StoredFile>;
+  /** Standalone per-branch impedances, keyed by branch ROLE (v2+). */
+  zByRole?: Partial<Record<BranchRole, StoredFile>>;
   vxp?: StoredFile;
-  /** Optional since v1 files predating it: per-driver angle response sets. */
-  angleFiles?: { woofer: StoredAngleFile[]; tweeter: StoredAngleFile[] };
+  /** Optional since v1 files predating it: per-driver angle response sets.
+   *  `mid` optional (v2+, 3-way). */
+  angleFiles?: { woofer: StoredAngleFile[]; tweeter: StoredAngleFile[]; mid?: StoredAngleFile[] };
   /** Free-text notes per imported file, keyed "group:filename" (optional). */
   fileNotes?: Record<string, string>;
   /** Optional: measured response of the BUILT system, overlaid against the
@@ -182,6 +204,30 @@ export function deserializeProject(text: string): ProjectState {
     }
   }
 
+  // Standalone per-branch impedances by ROLE (v2+), plus the v1 migration:
+  // without a vxp, v1 stored the standalone ZMAs in `impedances` under the
+  // synthesis vocabulary — 'mid' meaning the LOW branch. Migrate those keys to
+  // roles on read; a vxp project's model-named record is never touched (a real
+  // vxp driver may legitimately be CALLED "mid" — KOAN's is).
+  const zByRole: Partial<Record<BranchRole, StoredFile>> = {};
+  const zByRoleIn = d['zByRole'] as Record<string, unknown> | undefined;
+  if (zByRoleIn && typeof zByRoleIn === 'object') {
+    for (const role of ['low', 'mid', 'high'] as const) {
+      const f = file(zByRoleIn[role]);
+      if (f) zByRole[role] = f;
+    }
+  }
+  if (d['version'] === 1 && !d['vxp']) {
+    if (impedances['mid']) {
+      zByRole.low = impedances['mid'];
+      delete impedances['mid'];
+    }
+    if (impedances['tweeter']) {
+      zByRole.high = impedances['tweeter'];
+      delete impedances['tweeter'];
+    }
+  }
+
   const angleFile = (v: unknown): StoredAngleFile | undefined => {
     const f = file(v);
     if (!f) return undefined;
@@ -197,7 +243,10 @@ export function deserializeProject(text: string): ProjectState {
         : [];
     const w = side('woofer');
     const t = side('tweeter');
-    if (w.length + t.length > 0) angleFiles = { woofer: w, tweeter: t };
+    const m = side('mid');
+    if (w.length + t.length + m.length > 0) {
+      angleFiles = { woofer: w, tweeter: t, ...(m.length > 0 ? { mid: m } : {}) };
+    }
   }
 
   const notesIn = d['fileNotes'] as Record<string, unknown> | undefined;
@@ -211,9 +260,11 @@ export function deserializeProject(text: string): ProjectState {
 
   return {
     woofer: file(d['woofer']),
+    mid: file(d['mid']),
     angleFiles,
     tweeter: file(d['tweeter']),
     impedances: Object.keys(impedances).length ? impedances : undefined,
+    zByRole: Object.keys(zByRole).length ? zByRole : undefined,
     vxp: file(d['vxp']),
     fileNotes,
     verifyFile: file(d['verifyFile']),

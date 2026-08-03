@@ -15,11 +15,18 @@ import { classifyLevelProfile } from './lib/parsers/classify.ts';
 import { compareMeasurement } from './lib/verification.ts';
 import { parseVxp, type VxpCrossover, type VxpPart, type VxpProject } from './lib/parsers/vxp.ts';
 import { estimateBulkDelay, assessSharedReference } from './lib/timing.ts';
-import { logspace, resample, combine, offsetMmToDelayS, applyTransfer } from './lib/dsp.ts';
+import { logspace, resample, combine, combineN, offsetMmToDelayS, applyTransfer } from './lib/dsp.ts';
 import { computeIntegration } from './lib/integration.ts';
 import { crossoverToNetlist } from './lib/vxpNetwork.ts';
 import { solveNetwork } from './lib/network.ts';
-import { isTweeterModel, pickSlots, withSlotAliases } from './lib/driverSlots.ts';
+import {
+  canonicalModelForRole,
+  isTweeterModel,
+  pickSlots,
+  pickSlotsN,
+  withSlotAliasesN,
+  type BranchRole,
+} from './lib/driverSlots.ts';
 import { estimateCoilDcr, validateNetlist } from './lib/netlistEdit.ts';
 import {
   mergeSynthesizedSchematics,
@@ -152,6 +159,9 @@ interface AngleEntry {
 interface AngleSets {
   woofer: AngleEntry[];
   tweeter: AngleEntry[];
+  /** 3-way: the middle branch's angle set (stored; directivity pairing is a
+   *  later step). */
+  mid?: AngleEntry[];
 }
 interface ProjectData {
   vxp: VxpProject;
@@ -312,6 +322,22 @@ function slotTransfers(sol: {
   };
 }
 
+/** 3-way variant: resolve the solved network's drivers to low/mid/high via
+ *  pickSlotsN. Ambiguous names refuse with the message (surfaced as the sim's
+ *  crossover error) rather than guessing which branch is which. */
+function slotTransfersN(sol: {
+  drivers: { id: string; model: string }[];
+  transfers: Record<string, Complex[]>;
+}): { hW: Complex[] | null; hM: Complex[] | null; hT: Complex[] | null; ambiguous?: string } {
+  const slots = pickSlotsN(sol.drivers);
+  if (slots.ambiguous) return { hW: null, hM: null, hT: null, ambiguous: slots.ambiguous };
+  return {
+    hW: slots.woofer ? sol.transfers[slots.woofer.id] ?? null : null,
+    hM: slots.mid ? sol.transfers[slots.mid.id] ?? null : null,
+    hT: slots.tweeter ? sol.transfers[slots.tweeter.id] ?? null : null,
+  };
+}
+
 /**
  * Complex driver impedances resampled onto `grid`, keyed BOTH by each driver's
  * own model name AND by its mid/tweeter SLOT. Synthesized networks use models
@@ -330,7 +356,7 @@ function zGridWithSlots(
     const g = resample(z.freq, z.magnitude, z.phase, [...grid], { clampEdges: true });
     out[model] = g.spl.map((mag, i) => fromPolar(mag, (g.phaseDeg[i] * Math.PI) / 180));
   }
-  return withSlotAliases(out);
+  return withSlotAliasesN(out);
 }
 
 /**
@@ -350,17 +376,28 @@ function zGridWithSlots(
  * branch gains down by the common excess — clamping one side alone would
  * silently shift the woofer/tweeter balance a legacy design relied on.
  */
-function sanitizePassiveSpecs(specs: { woofer: DriverFilterSpec; tweeter: DriverFilterSpec }): {
+function sanitizePassiveSpecs(specs: {
   woofer: DriverFilterSpec;
   tweeter: DriverFilterSpec;
+  mid?: DriverFilterSpec;
+}): {
+  woofer: DriverFilterSpec;
+  tweeter: DriverFilterSpec;
+  mid?: DriverFilterSpec;
 } {
-  const shift = Math.max(specs.woofer.gainDb, specs.tweeter.gainDb, 0);
+  // The common shift spans ALL branches present, so the inter-branch balance
+  // of a legacy design stays exactly intact.
+  const shift = Math.max(specs.woofer.gainDb, specs.tweeter.gainDb, specs.mid?.gainDb ?? 0, 0);
   const fix = (s: DriverFilterSpec): DriverFilterSpec => ({
     ...s,
     gainDb: Math.round((s.gainDb - shift) * 10) / 10,
     eq: s.eq.map((b) => (b.gainDb > 0 ? { ...b, gainDb: 0 } : b)),
   });
-  return { woofer: fix(specs.woofer), tweeter: fix(specs.tweeter) };
+  return {
+    woofer: fix(specs.woofer),
+    tweeter: fix(specs.tweeter),
+    ...(specs.mid ? { mid: fix(specs.mid) } : {}),
+  };
 }
 
 /** Break a phase polyline at ±180° wrap seams (NaN gap) instead of drawing
@@ -408,8 +445,8 @@ function diffTunedParts(
 }
 
 /** One-line summary of a driver's virtual filter, for the collapsed header. */
-function filterSummaryLine(spec: DriverFilterSpec, side: 'woofer' | 'tweeter'): string {
-  const name = side === 'woofer' ? 'Woofer/mid' : 'Tweeter';
+function filterSummaryLine(spec: DriverFilterSpec, side: 'woofer' | 'mid' | 'tweeter'): string {
+  const name = side === 'woofer' ? 'Woofer/mid' : side === 'mid' ? 'Mid' : 'Tweeter';
   const parts: string[] = [];
   if (spec.hp.enabled) parts.push(`HP ${spec.hp.kind}${spec.hp.order} @${Math.round(spec.hp.freq)}`);
   if (spec.lp.enabled) parts.push(`LP ${spec.lp.kind}${spec.lp.order} @${Math.round(spec.lp.freq)}`);
@@ -495,6 +532,10 @@ export default function App() {
   const [theme, setTheme] = useTheme();
   const [woofer, setWoofer] = useState<Loaded | null>(null);
   const [tweeter, setTweeter] = useState<Loaded | null>(null);
+  /** 3-way: the MIDDLE branch's response. The `woofer`/`tweeter` states are
+   *  the low/high branch ROLES (name-agnostic — KOAN's low driver is called
+   *  "mid"); this is the third role, phase-4 trede 2b. */
+  const [midDrv, setMidDrv] = useState<Loaded | null>(null);
   const [project, setProject] = useState<ProjectData | null>(null);
   /** VituixCAD phase reference: its FILTERED woofer + tweeter responses, so we
    *  can draw its relative phase (tweeter − woofer) in OUR convention. */
@@ -504,17 +545,50 @@ export default function App() {
   const [refResp, setRefResp] = useState<{ woofer: Parsed; tweeter: Parsed; names: string } | null>(
     null,
   );
-  /** Standalone per-model impedances (ZMA in the driver file dialogs) — the
-   *  vxp project is NOT required for solving/synthesis/editor. */
-  const [zStandalone, setZStandalone] = useState<Record<string, { file: StoredFile; zma: ParsedZma }>>({});
+  /** Standalone per-branch impedances (ZMA in the driver file dialogs), keyed
+   *  by branch ROLE — storage speaks roles since trede 2b; model names belong
+   *  to the netlist. The vxp project is NOT required for solving/synthesis. */
+  const [zStandalone, setZStandalone] = useState<
+    Partial<Record<BranchRole, { file: StoredFile; zma: ParsedZma }>>
+  >({});
+
+  /** Any middle-branch DATA exists (response or impedance) — drives labels
+   *  and the "mid not in play yet" warning. */
+  const hasMidBranch = !!midDrv || !!zStandalone.mid;
+
+  /** 3-way mode: all three RESPONSES loaded. The sim then sums via combineN;
+   *  everything inherently two-way (crossover optimizers, synthesis, vxp
+   *  export, integration score) is gated off with a message until trede 4. */
+  const threeWay = !!(woofer && midDrv && tweeter);
+  /** Mid data without a full 3-way cannot be placed — say so loudly and keep
+   *  it out of the sim AND the solver map (signalling, never a silent guess).
+   *  Publishing the mid Z while !threeWay would shift the 2-way canonical
+   *  keys under a running design — exactly the quiet wrongness to avoid. */
+  const midIgnored = hasMidBranch && !threeWay;
 
   /** All measured impedances by model: vxp-project ones + standalone ZMAs
-   *  (standalone wins on collision — the file you just picked is the truth). */
+   *  published under their role's canonical model name (standalone wins on
+   *  collision — the file you just picked is the truth). Outside 3-way mode
+   *  this yields exactly the historical 'mid'/'tweeter' keys, and the mid
+   *  branch's Z stays out entirely (see midIgnored). */
   const impedances = useMemo(() => {
     const out: Record<string, ParsedZma> = { ...(project?.impedances ?? {}) };
-    for (const [model, v] of Object.entries(zStandalone)) out[model] = v.zma;
+    for (const [role, v] of Object.entries(zStandalone)) {
+      if (!v) continue;
+      if (role === 'mid' && !threeWay) continue;
+      out[canonicalModelForRole(role as BranchRole, threeWay)] = v.zma;
+    }
     return out;
-  }, [project, zStandalone]);
+  }, [project, zStandalone, threeWay]);
+
+  /** Reverse bridge for file-level consumers (map export): the standalone Z
+   *  entry whose canonical model name matches a netlist model, if any. */
+  const zStandaloneForModel = (model: string) => {
+    for (const role of ['low', 'mid', 'high'] as const) {
+      if (canonicalModelForRole(role, threeWay) === model) return zStandalone[role];
+    }
+    return undefined;
+  };
 
   /** The ≥2×Fs rule from the measured tweeter impedance: a hard floor for
    *  the optimizer's HP knee. Null without a pronounced resonance peak; an
@@ -559,6 +633,14 @@ export default function App() {
       lp: { ...defaultHpLp(2000), kind: 'LR' as const, order: 4 as const },
       eq: [defaultEq(1000, 0, 1), defaultEq(4000, 0, 1)],
     },
+    // 3-way middle branch: a bandpass is simply hp+lp both enabled — the spec
+    // model already carries both. Neutral LR4 seeds, disabled until used.
+    mid: {
+      gainDb: 0,
+      hp: { ...defaultHpLp(400), kind: 'LR' as const, order: 4 as const },
+      lp: { ...defaultHpLp(3000), kind: 'LR' as const, order: 4 as const },
+      eq: [defaultEq(1500, 0, 1), defaultEq(5000, 0, 1)],
+    },
     tweeter: {
       gainDb: 0,
       hp: { ...defaultHpLp(2900), kind: 'LR' as const, order: 2 as const },
@@ -566,9 +648,11 @@ export default function App() {
       eq: [defaultEq(6500, -10, 0.5), defaultEq(10000, 0, 1)],
     },
   });
-  const [vFilters, setVFilters] = useState<{ woofer: DriverFilterSpec; tweeter: DriverFilterSpec }>(
-    defaultVFilters,
-  );
+  const [vFilters, setVFilters] = useState<{
+    woofer: DriverFilterSpec;
+    mid: DriverFilterSpec;
+    tweeter: DriverFilterSpec;
+  }>(defaultVFilters);
 
   // View controls. The inputs update instantly; the simulation follows the
   // DEBOUNCED values so half-typed numbers never reach it.
@@ -715,6 +799,11 @@ export default function App() {
   const [offsetMm, setOffsetMm] = useState('0');
   const [trimDb, setTrimDb] = useState('0');
   const [inverted, setInverted] = useState(false);
+  /** 3-way: the middle branch's own adjust (the fields above stay the high
+   *  branch's — per-branch adjust is the combineN generalization). */
+  const [midOffsetMm, setMidOffsetMm] = useState('0');
+  const [midTrimDb, setMidTrimDb] = useState('0');
+  const [midInverted, setMidInverted] = useState(false);
 
   /**
    * Driver phase convention. 'measured' (default) uses the real measured
@@ -839,6 +928,38 @@ export default function App() {
   /** Component wizard: tier profile + binding series per kind for the snap. */
   const [wizardOpen, setWizardOpen] = useState(false);
   const [wizardStep, setWizardStep] = useState(1);
+  /** Declared system type in the wizard (Sanders voorstel, aug 2026): intent
+   *  FIRST, then only the applicable measurement slots, and Next blocks until
+   *  the declared set is complete. GUIDANCE ONLY — the engine keeps inferring
+   *  its mode from what is actually loaded (one source of truth); a mismatch
+   *  is surfaced as a note, never silently resolved. */
+  const [wizardWays, setWizardWaysRaw] = useState<1 | 2 | 3>(() => {
+    const v = Number(localStorage.getItem('ads-wizard-ways'));
+    return v === 1 || v === 3 ? (v as 1 | 3) : 2;
+  });
+  const setWizardWays = (w: 1 | 2 | 3) => {
+    setWizardWaysRaw(w);
+    localStorage.setItem('ads-wizard-ways', String(w));
+  };
+  // Data wins over a stale stored choice: opening the wizard with a full
+  // 3-way loaded declares 3-way, with exactly the two outer branches 2-way.
+  useEffect(() => {
+    if (!wizardOpen) return;
+    if (threeWay) setWizardWaysRaw(3);
+    else if (woofer && tweeter && !midDrv) setWizardWaysRaw(2);
+  }, [wizardOpen, threeWay, woofer, tweeter, midDrv]);
+  /** The declared set's measurement checklist; Next blocks while incomplete. */
+  const wizardMissing: string[] = (() => {
+    if (wizardWays === 1) return woofer || tweeter ? [] : ['driver response (FRD)'];
+    const out: string[] = [];
+    if (!woofer) out.push('woofer response');
+    if (wizardWays === 3 && !midDrv) out.push('midrange response');
+    if (!tweeter) out.push('tweeter response');
+    return out;
+  })();
+  /** More loaded than declared — surfaced, never silently resolved. */
+  const wizardOverloaded =
+    wizardWays === 1 ? !!(woofer && tweeter) || !!midDrv : wizardWays === 2 ? !!midDrv : false;
   /** Compare wizard: guided model-vs-measurement validation (VALIDATIE.md). */
   const [cmpOpen, setCmpOpen] = useState(false);
   const [cmpStep, setCmpStep] = useState(1);
@@ -1122,7 +1243,7 @@ export default function App() {
    * (or unmarked) file becomes the main response, the full set feeds the
    * directivity view. A fresh selection replaces that driver's previous set.
    */
-  function loadDriverFiles(side: 'woofer' | 'tweeter') {
+  function loadDriverFiles(side: 'woofer' | 'mid' | 'tweeter') {
     return async (e: React.ChangeEvent<HTMLInputElement>) => {
       const files = [...(e.target.files ?? [])];
       e.target.value = '';
@@ -1137,8 +1258,9 @@ export default function App() {
       const warnings: string[] = [];
       try {
         // ZMA files in the same selection become this driver's impedance —
-        // no vxp project needed for solving/synthesis.
-        const model = side === 'woofer' ? 'mid' : 'tweeter';
+        // no vxp project needed for solving/synthesis. Stored by branch ROLE;
+        // the canonical model name is derived where the solver map is built.
+        const role: BranchRole = side === 'woofer' ? 'low' : side === 'mid' ? 'mid' : 'high';
         const zmaFiles = files.filter((f) => f.name.toLowerCase().endsWith('.zma'));
         for (const f of zmaFiles) {
           const raw = await f.text();
@@ -1152,7 +1274,7 @@ export default function App() {
                 `rename it to .frd and reload.`,
             );
           }
-          setZStandalone((prev) => ({ ...prev, [model]: { file: { name: f.name, raw }, zma } }));
+          setZStandalone((prev) => ({ ...prev, [role]: { file: { name: f.name, raw }, zma } }));
         }
         // LIMP's binary .lim (ARTA) is converted to ZMA text ONCE, here at the
         // boundary: everything downstream (autosave, project files, the
@@ -1165,7 +1287,7 @@ export default function App() {
           const raw = limToZmaText(lim, f.name);
           const zma = parseZma(raw);
           const name = f.name.replace(/\.lim$/i, '.zma');
-          setZStandalone((prev) => ({ ...prev, [model]: { file: { name, raw }, zma } }));
+          setZStandalone((prev) => ({ ...prev, [role]: { file: { name, raw }, zma } }));
         }
         const frdOnly = files.filter(
           (f) => !/\.(zma|lim)$/i.test(f.name),
@@ -1201,13 +1323,16 @@ export default function App() {
         const axis = entries.find((a) => a.hor === 0) ?? entries[0];
         const loaded: Loaded = { name: axis.name, raw: axis.raw, frd: axis.frd };
         if (side === 'woofer') setWoofer(loaded);
+        else if (side === 'mid') setMidDrv(loaded);
         else setTweeter(loaded);
         setAngleSets((prev) => {
+          const mid = side === 'mid' ? entries : prev?.mid ?? [];
           const next = {
             woofer: side === 'woofer' ? entries : prev?.woofer ?? [],
             tweeter: side === 'tweeter' ? entries : prev?.tweeter ?? [],
+            ...(mid.length > 0 ? { mid } : {}),
           };
-          return next.woofer.length + next.tweeter.length > 0 ? next : null;
+          return next.woofer.length + next.tweeter.length + mid.length > 0 ? next : null;
         });
       } catch (err) {
         setError(err instanceof Error ? err.message : String(err));
@@ -1220,6 +1345,9 @@ export default function App() {
   function loadDemo() {
     setError(null);
     setWoofer({ name: 'mid_hor0_mettape.txt (demo)', raw: demoMid, frd: parseFrd(demoMid) });
+    // The demo is the 2-way KOAN set — a leftover mid branch would turn it
+    // into an accidental 3-way.
+    setMidDrv(null);
     setTweeter({ name: 'tweet_hor0_mettape.txt (demo)', raw: demoTweet, frd: parseFrd(demoTweet) });
     const entry = (hor: number, raw: string): AngleEntry => ({
       hor,
@@ -1540,7 +1668,11 @@ export default function App() {
     // branch so combine() and every downstream consumer keep their
     // two-branch shape; the UI hides the ghost's curves and scores.
     if (!woofer && !tweeter) return null;
-    const present = [woofer, tweeter].filter((d): d is Loaded => d !== null);
+    // 3-way: the mid branch joins the grid only when both outer branches are
+    // loaded; a mid without them is IGNORED (banner explains) so the 2-way and
+    // solo paths stay bit-identical to before the mid slot existed.
+    const midIn = threeWay ? midDrv : null;
+    const present = [woofer, midIn, tweeter].filter((d): d is Loaded => d !== null);
     const lo = Math.max(num(fMinDeb, 200), ...present.map((d) => d.frd.freq[0]));
     const hi = Math.min(
       num(fMaxDeb, 20000),
@@ -1555,6 +1687,7 @@ export default function App() {
     });
     let w = woofer ? resample(woofer.frd.freq, woofer.frd.spl, woofer.frd.phase, grid) : silent();
     let t = tweeter ? resample(tweeter.frd.freq, tweeter.frd.spl, tweeter.frd.phase, grid) : silent();
+    let m = midIn ? resample(midIn.frd.freq, midIn.frd.spl, midIn.frd.phase, grid) : null;
 
     // VituixCAD-style comparison mode: throw away the measured phase and
     // reconstruct minimum phase from magnitude (drivers then sum with zero
@@ -1562,14 +1695,19 @@ export default function App() {
     if (phaseMode === 'minimum') {
       w = { ...w, phaseDeg: minimumPhaseDeg(grid, w.spl) };
       t = { ...t, phaseDeg: minimumPhaseDeg(grid, t.spl) };
+      if (m) m = { ...m, phaseDeg: minimumPhaseDeg(grid, m.spl) };
     }
     // Raw gridded responses (phase convention applied, nothing else) — the
     // starting point for the compare-overlay of other design tabs.
-    const base = { w, t };
+    const base = { w, m, t };
 
     // Apply the selected passive crossover: solve the network on the measured
     // impedances, then fold each driver's voltage transfer into its response.
-    let transfers: { woofer: Complex[] | null; tweeter: Complex[] | null } | null = null;
+    let transfers: {
+      woofer: Complex[] | null;
+      mid?: Complex[] | null;
+      tweeter: Complex[] | null;
+    } | null = null;
     let systemZ: Complex[] | null = null;
     let xoError: string | null = null;
     const xo =
@@ -1595,11 +1733,24 @@ export default function App() {
         // drivers freely (e.g. "Woofer 12w8524" / "Tweeter r2604"), so matching
         // literal "mid"/"tweeter" silently applied NO filter and summed the raw
         // drivers (crossover looked like it landed way too high).
-        const { hW, hT } = slotTransfers(sol);
-        if (hW) w = applyTransfer(w, hW);
-        if (hT) t = applyTransfer(t, hT);
-        transfers = { woofer: hW, tweeter: hT };
-        systemZ = sol.inputZ;
+        if (m) {
+          const { hW, hM, hT, ambiguous } = slotTransfersN(sol);
+          if (ambiguous) {
+            xoError = ambiguous;
+          } else {
+            if (hW) w = applyTransfer(w, hW);
+            if (hM) m = applyTransfer(m, hM);
+            if (hT) t = applyTransfer(t, hT);
+            transfers = { woofer: hW, mid: hM, tweeter: hT };
+            systemZ = sol.inputZ;
+          }
+        } else {
+          const { hW, hT } = slotTransfers(sol);
+          if (hW) w = applyTransfer(w, hW);
+          if (hT) t = applyTransfer(t, hT);
+          transfers = { woofer: hW, tweeter: hT };
+          systemZ = sol.inputZ;
+        }
       } catch (e) {
         xoError = e instanceof Error ? e.message : String(e);
       }
@@ -1613,26 +1764,75 @@ export default function App() {
     if (!vfBypass && isActive(vFilters.woofer)) {
       const h = evalDriverFilter(vFilters.woofer, grid);
       w = applyTransfer(w, h);
-      transfers = { woofer: stack(transfers?.woofer ?? null, h), tweeter: transfers?.tweeter ?? null };
+      transfers = { ...(transfers ?? { woofer: null, tweeter: null }), woofer: stack(transfers?.woofer ?? null, h) };
+    }
+    if (!vfBypass && m && isActive(vFilters.mid)) {
+      const h = evalDriverFilter(vFilters.mid, grid);
+      m = applyTransfer(m, h);
+      transfers = { ...(transfers ?? { woofer: null, tweeter: null }), mid: stack(transfers?.mid ?? null, h) };
     }
     if (!vfBypass && isActive(vFilters.tweeter)) {
       const h = evalDriverFilter(vFilters.tweeter, grid);
       t = applyTransfer(t, h);
-      transfers = { woofer: transfers?.woofer ?? null, tweeter: stack(transfers?.tweeter ?? null, h) };
+      transfers = { ...(transfers ?? { woofer: null, tweeter: null }), tweeter: stack(transfers?.tweeter ?? null, h) };
+    }
+
+    const tAdj = { offsetMm: num(offsetMm, 0), trimDb: num(trimDb, 0), inverted };
+    if (m) {
+      // 3-way sum via the N-way core. The result keeps the 2-way CombineResult
+      // SHAPE (woofer = low branch, tweeter = adjusted high branch) so every
+      // combined-curve consumer keeps working; the mid branch rides alongside.
+      const mAdj = {
+        offsetMm: num(midOffsetMm, 0),
+        trimDb: num(midTrimDb, 0),
+        inverted: midInverted,
+      };
+      const n3 = combineN([
+        { response: w },
+        { response: m, adjust: mAdj },
+        { response: t, adjust: tAdj },
+      ]);
+      // The null check keeps its 2-way meaning: same sum, tweeter flipped.
+      const n3inv = combineN([
+        { response: w },
+        { response: m, adjust: mAdj },
+        { response: t, adjust: { ...tAdj, inverted: !tAdj.inverted } },
+      ]);
+      const wrap = (d: number) => {
+        let v = d % 360;
+        if (v > 180) v -= 360;
+        if (v < -180) v += 360;
+        return v;
+      };
+      const midB = n3.branches[1];
+      const tB = n3.branches[2];
+      return {
+        combined: {
+          freq: grid,
+          woofer: w,
+          tweeter: tB,
+          combinedSpl: n3.combinedSpl,
+          combinedPhaseDeg: n3.combinedPhaseDeg,
+          invertedSpl: n3inv.combinedSpl,
+          relativePhaseDeg: tB.phaseDeg.map((p, i) => wrap(p - w.phaseDeg[i])),
+        },
+        mid: midB,
+        transfers,
+        systemZ,
+        xoError,
+        base,
+      };
     }
 
     return {
-      combined: combine(w, t, {
-        offsetMm: num(offsetMm, 0),
-        trimDb: num(trimDb, 0),
-        inverted,
-      }),
+      combined: combine(w, t, tAdj),
+      mid: null,
       transfers,
       systemZ,
       xoError,
       base,
     };
-  }, [woofer, tweeter, project, impedances, xoName, vFilters, vfBypass, phaseMode, fMinDeb, fMaxDeb, offsetMm, trimDb, inverted, schematic, networkActive]);
+  }, [woofer, midDrv, threeWay, tweeter, project, impedances, xoName, vFilters, vfBypass, phaseMode, fMinDeb, fMaxDeb, offsetMm, trimDb, inverted, midOffsetMm, midTrimDb, midInverted, schematic, networkActive]);
 
   const result = sim?.combined ?? null;
 
@@ -1722,7 +1922,12 @@ export default function App() {
     setOffsetMm(phaseMode === 'minimum' ? bridgeMm.toFixed(1) : '0');
   }, [phaseMode, timing, excessBridge]);
 
-  const integration = useMemo(() => (result ? computeIntegration(result) : null), [result]);
+  // 3-way: the crossing score is a PAIR property (low-mid, mid-high) — the
+  // 2-way woofer↔tweeter overlap is meaningless there. Pair scores are trede 4.
+  const integration = useMemo(
+    () => (result && !threeWay ? computeIntegration(result) : null),
+    [result, threeWay],
+  );
 
   /** The SPL chart's live visible x-range (Hz), zoom/pan included — mirrored
    *  up from the chart so the ±dB read-out tracks exactly what you see. */
@@ -1843,6 +2048,9 @@ export default function App() {
     // À-la-carte: skip the per-angle solve entirely when neither consumer shows.
     if (!showPanels.directivity && !showPanels.sonogram) return null;
     if (!angleSets || !result || !sim) return null;
+    // 3-way: the per-angle sum pairs exactly two branches — a mid-less sum
+    // would be silently wrong. Directivity follows in a later step.
+    if (threeWay) return null;
     const sets = angleResponsesOn(result.freq);
     if (!sets) return null;
     return computeDirectivity(
@@ -1853,7 +2061,7 @@ export default function App() {
       { offsetMm: num(offsetMm, 0), trimDb: num(trimDb, 0), inverted },
     );
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [angleSets, result, sim, phaseMode, offsetMm, trimDb, inverted, showPanels.directivity, showPanels.sonogram]);
+  }, [angleSets, result, sim, threeWay, phaseMode, offsetMm, trimDb, inverted, showPanels.directivity, showPanels.sonogram]);
 
   const [sonogramMode, setSonogramMode] = useState<SonogramMode>('normalized');
   const sonogram = useMemo(
@@ -1885,6 +2093,7 @@ export default function App() {
 
   interface SynthState {
     woofer?: SynthesisResult;
+    mid?: SynthesisResult;
     tweeter?: SynthesisResult;
     mode: 'filter' | 'acoustic';
     error?: string;
@@ -1941,21 +2150,27 @@ export default function App() {
   const [persistNote, setPersistNote] = useState<string | null>(null);
 
   function snapshot(): ProjectState {
+    const zByRole: NonNullable<ProjectState['zByRole']> = {};
+    for (const role of ['low', 'mid', 'high'] as const) {
+      const v = zStandalone[role];
+      if (v) zByRole[role] = v.file;
+    }
     return {
       woofer: woofer ? { name: woofer.name, raw: woofer.raw } : undefined,
+      mid: midDrv ? { name: midDrv.name, raw: midDrv.raw } : undefined,
       tweeter: tweeter ? { name: tweeter.name, raw: tweeter.raw } : undefined,
-      impedances:
-        project || Object.keys(zStandalone).length > 0
-          ? {
-              ...(project?.impedanceFiles ?? {}),
-              ...Object.fromEntries(Object.entries(zStandalone).map(([m, v]) => [m, v.file])),
-            }
-          : undefined,
+      // v2: `impedances` carries only the vxp's model-named files; the
+      // standalone per-branch ZMAs live role-keyed in `zByRole`.
+      impedances: project ? { ...project.impedanceFiles } : undefined,
+      zByRole: Object.keys(zByRole).length > 0 ? zByRole : undefined,
       vxp: project ? project.vxpFile : undefined,
       angleFiles: angleSets
         ? {
             woofer: angleSets.woofer.map((a) => ({ hor: a.hor, name: a.name, raw: a.raw })),
             tweeter: angleSets.tweeter.map((a) => ({ hor: a.hor, name: a.name, raw: a.raw })),
+            ...(angleSets.mid && angleSets.mid.length > 0
+              ? { mid: angleSets.mid.map((a) => ({ hor: a.hor, name: a.name, raw: a.raw })) }
+              : {}),
           }
         : undefined,
       fileNotes: Object.keys(fileNotes).length > 0 ? fileNotes : undefined,
@@ -1966,6 +2181,9 @@ export default function App() {
         offsetMm,
         trimDb,
         inverted,
+        midOffsetMm,
+        midTrimDb,
+        midInverted,
         fMin,
         fMax,
         splMin,
@@ -2014,6 +2232,7 @@ export default function App() {
     const toLoaded = (f?: StoredFile): Loaded | null =>
       f ? { name: f.name, raw: f.raw, frd: parseFrd(f.raw) } : null;
     setWoofer(toLoaded(state.woofer));
+    setMidDrv(toLoaded(state.mid));
     setTweeter(toLoaded(state.tweeter));
     if (state.vxp && state.impedances) {
       const impedances: Record<string, ParsedZma> = {};
@@ -2026,24 +2245,25 @@ export default function App() {
         impedances,
         impedanceFiles: state.impedances,
       });
-      setZStandalone({});
     } else {
       setProject(null);
-      // Impedances without a vxp: the standalone per-driver ZMAs.
-      setZStandalone(
-        state.impedances
-          ? Object.fromEntries(
-              Object.entries(state.impedances).map(([m, f]) => [m, { file: f, zma: parseZma(f.raw) }]),
-            )
-          : {},
-      );
     }
+    // Standalone per-branch ZMAs by ROLE (v2 format; v1 files arrive here
+    // already migrated by deserializeProject).
+    const zRestored: typeof zStandalone = {};
+    for (const role of ['low', 'mid', 'high'] as const) {
+      const f = state.zByRole?.[role];
+      if (f) zRestored[role] = { file: f, zma: parseZma(f.raw) };
+    }
+    setZStandalone(zRestored);
     if (state.angleFiles) {
       const toEntries = (files: { hor: number; name: string; raw: string }[]): AngleEntry[] =>
         files.map((f) => ({ ...f, frd: parseFrd(f.raw) }));
+      const mid = toEntries(state.angleFiles.mid ?? []);
       setAngleSets({
         woofer: toEntries(state.angleFiles.woofer ?? []),
         tweeter: toEntries(state.angleFiles.tweeter ?? []),
+        ...(mid.length > 0 ? { mid } : {}),
       });
     } else {
       setAngleSets(null);
@@ -2055,11 +2275,15 @@ export default function App() {
         : null,
     );
     const d = state.design;
-    setVFilters(sanitizePassiveSpecs(d.vFilters));
+    const saneVf = sanitizePassiveSpecs(d.vFilters);
+    setVFilters({ ...saneVf, mid: saneVf.mid ?? defaultVFilters().mid });
     setXoName(d.xoName);
     setOffsetMm(d.offsetMm);
     setTrimDb(d.trimDb);
     setInverted(d.inverted);
+    setMidOffsetMm(d.midOffsetMm ?? '0');
+    setMidTrimDb(d.midTrimDb ?? '0');
+    setMidInverted(d.midInverted ?? false);
     setFMin(d.fMin);
     setFMax(d.fMax);
     setSplMin(d.splMin);
@@ -2193,7 +2417,7 @@ export default function App() {
     }, 800);
     return () => clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [woofer, tweeter, project, zStandalone, angleSets, fileNotes, verify, vFilters, xoName, offsetMm, trimDb, inverted, fMin, fMax, splMin, splMax, phasePriority, vfEqBands, phaseMode, dirWeight, ampTarget, sonogramMode, designs, activeDesignId, lastSavedId, networkActive, vfBypass, catalogSnap, breakupGuard, xoRangeOn, xoFreqHz, xoMarginHz, xoScanSteps, hpLpPref, phaseMetricMode, acSlopeMid, acSlopeTweeter, midSizeInch, snapProfile, snapSeriesL, snapSeriesC, snapSeriesR, snapStacks, snapBoundToSeries, stagedOn, targetRipple, targetPhase, soloSensDb, soloFloorOn, soloFloorDb]);
+  }, [woofer, midDrv, tweeter, project, zStandalone, angleSets, fileNotes, verify, vFilters, xoName, offsetMm, trimDb, inverted, midOffsetMm, midTrimDb, midInverted, fMin, fMax, splMin, splMax, phasePriority, vfEqBands, phaseMode, dirWeight, ampTarget, sonogramMode, designs, activeDesignId, lastSavedId, networkActive, vfBypass, catalogSnap, breakupGuard, xoRangeOn, xoFreqHz, xoMarginHz, xoScanSteps, hpLpPref, phaseMetricMode, acSlopeMid, acSlopeTweeter, midSizeInch, snapProfile, snapSeriesL, snapSeriesC, snapSeriesR, snapStacks, snapBoundToSeries, stagedOn, targetRipple, targetPhase, soloSensDb, soloFloorOn, soloFloorDb]);
 
   function resetProject() {
     localStorage.removeItem(AUTOSAVE_KEY);
@@ -2507,7 +2731,7 @@ export default function App() {
             tweeterHpFloor ?? undefined,
           );
           const win = ranked[0];
-          setVFilters(win.vf.specs);
+          setVFilters((p) => ({ ...p, ...win.vf.specs }));
           setInverted(win.vf.inverted);
           setVfOpt(win.vf);
           setVfRunStats({ rounds: totalRounds, evals: totalSims });
@@ -2599,7 +2823,7 @@ export default function App() {
       (d) => setVfProgress(d),
     )
       .then(({ best, round, totalEvals }) => {
-        setVFilters(best.specs);
+        setVFilters((p) => ({ ...p, ...best.specs }));
         setInverted(best.inverted);
         setVfOpt(best);
         setVfRunStats({ rounds: round, evals: totalEvals });
@@ -2689,26 +2913,37 @@ export default function App() {
         snapPrefs: snapPrefsValue(),
         ...(synthMode === 'acoustic' ? { driverSplDb: rawSpl(l) } : {}),
       });
-      // Passives cannot boost: shift both driver gains down by the highest
+      // Passives cannot boost: shift all driver gains down by the highest
       // one, preserving the RELATIVE balance with only attenuation. EQ bands
       // are clamped to attenuation too — the UI already prevents entering a
       // boost, this also catches any legacy positive band.
-      const gShift = Math.max(specs.woofer.gainDb, specs.tweeter.gainDb, 0);
+      // 3-way (trede 3): the middle branch is a spec with BOTH knees enabled —
+      // deriveTopology cascades HP into LP on one series path (bandpass).
+      // The optimizer never passes specsIn in 3-way (gated until trede 4), so
+      // the mid spec always comes from the live vFilters.
+      const midSpec = threeWay && midDrv ? vFilters.mid : null;
+      const gShift = Math.max(specs.woofer.gainDb, specs.tweeter.gainDb, midSpec?.gainDb ?? 0, 0);
       const shifted = (specIn: DriverFilterSpec): DriverFilterSpec => ({
         ...specIn,
         gainDb: Math.round((specIn.gainDb - gShift) * 10) / 10,
         eq: specIn.eq.map((b) => ({ ...b, gainDb: Math.min(0, b.gainDb) })),
       });
+      // Canonical model name of the LOW branch shifts with the branch set.
+      const lowKey = threeWay ? 'woofer' : 'mid';
       const out: SynthState = { mode: synthMode };
       if (isActive(specs.woofer))
-        out.woofer = synthesize(shifted(specs.woofer), grid, zFor('mid'), opts(woofer));
+        out.woofer = synthesize(shifted(specs.woofer), grid, zFor(lowKey), opts(woofer));
+      if (midSpec && isActive(midSpec) && midDrv)
+        out.mid = synthesize(shifted(midSpec), grid, zFor('mid'), opts(midDrv));
       if (isActive(specs.tweeter))
         out.tweeter = synthesize(shifted(specs.tweeter), grid, zFor('tweeter'), opts(tweeter));
-      if (!out.woofer && !out.tweeter) out.error = 'No active virtual filter blocks to synthesise.';
+      if (!out.woofer && !out.mid && !out.tweeter)
+        out.error = 'No active virtual filter blocks to synthesise.';
       setSynth(out);
       if (!out.error) {
         const branches: { components: SynthesizedComponent[]; model: string }[] = [];
-        if (out.woofer) branches.push({ components: out.woofer.components, model: 'mid' });
+        if (out.woofer) branches.push({ components: out.woofer.components, model: lowKey });
+        if (out.mid) branches.push({ components: out.mid.components, model: 'mid' });
         if (out.tweeter) branches.push({ components: out.tweeter.components, model: 'tweeter' });
         const parts = mergeSynthesizedSchematics(branches).parts;
         if (specsIn) {
@@ -2719,6 +2954,13 @@ export default function App() {
           // overwritten, builds accumulate to compare) and jump to the editor.
           addDesign('Passive build', parts);
           setDesignTab('network');
+          if (threeWay) {
+            setNetOptNote(
+              '3-way build — three per-branch fits (woofer LP · mid bandpass · tweeter HP). ' +
+                'The assembled component tune judges driver PAIRS and is a later step, so ' +
+                'polish values by hand for now.',
+            );
+          }
         }
         setVfBypass(true);
       }
@@ -2753,8 +2995,21 @@ export default function App() {
     // Single-driver mode: scaffold only the loaded slot — a ghost driver part
     // would just block the solve with a missing-impedance error.
     const fallback = soloDriver ? [soloDriver === 'woofer' ? 'mid' : 'tweeter'] : ['mid', 'tweeter'];
-    const models = zModels.length > 0 ? zModels : fallback;
-    const xo = filterTemplate({ order: templateOrder, wayCount: templateWays, models });
+    let models = zModels.length > 0 ? zModels : fallback;
+    // 3-way: the branch order matters (LP / bandpass / HP), so resolve the
+    // models through pickSlotsN instead of trusting zModels' load order. In
+    // 3-way mode the models are the canonical woofer/mid/tweeter names, so
+    // this always resolves; an exotic set falls back to the blank scaffold.
+    let order = templateOrder;
+    if (threeWay) {
+      const slots = pickSlotsN(models.map((m) => ({ model: m })));
+      if (slots.woofer && slots.mid && slots.tweeter) {
+        models = [slots.woofer.model, slots.mid.model, slots.tweeter.model];
+      } else {
+        order = 0;
+      }
+    }
+    const xo = filterTemplate({ order, wayCount: threeWay ? 3 : templateWays, models });
     addDesign(xo.name || 'New network', normalizeOrigin(xo.parts));
   }
 
@@ -2836,7 +3091,7 @@ export default function App() {
    *  into Working — same application as the winner gets, undo-able. */
   function applyScanCandidate(row: { label: string; result: ChainResult }) {
     const r = row.result;
-    setVFilters(r.vf.specs);
+    setVFilters((p) => ({ ...p, ...r.vf.specs }));
     setInverted(r.vf.inverted);
     setVfOpt(r.vf);
     synthFresh.current = true;
@@ -3126,7 +3381,7 @@ export default function App() {
             : [];
       if (src.length === 0) missing.push(`${model} responses`);
       const responses = src.map((s) => ({ fileName: place(s.name, s.raw), hor: s.hor, ver: 0 }));
-      const zStore = zStandalone[model]?.file ?? project?.impedanceFiles[model];
+      const zStore = zStandaloneForModel(model)?.file ?? project?.impedanceFiles[model];
       let zName: string | undefined;
       if (zStore) {
         zName = place(clean(zStore.name), zStore.raw);
@@ -3275,7 +3530,7 @@ export default function App() {
   // indistinguishable — dash patterns only help inside the chart itself.
   const GHOST_COLORS = ['var(--viz-ghost1)', 'var(--viz-ghost2)', 'var(--viz-ghost3)', 'var(--viz-ghost4)'];
   const tabGhosts: { spl: Series[]; phase: Series[]; z: Series[] } = useMemo(() => {
-    if (!compareTabs || !networkActive || !sim || designs.length < 2)
+    if (!compareTabs || !networkActive || !sim || designs.length < 2 || threeWay)
       return { spl: [], phase: [], z: [] };
     if (Object.keys(impedances).length === 0) return { spl: [], phase: [], z: [] };
     const grid = sim.combined.freq;
@@ -3330,7 +3585,7 @@ export default function App() {
       });
     return { spl, phase, z };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [compareTabs, networkActive, sim, impedances, designs, activeDesignId, offsetMm, trimDb, inverted]);
+  }, [compareTabs, networkActive, sim, threeWay, impedances, designs, activeDesignId, offsetMm, trimDb, inverted]);
 
   /** System-impedance display data: |Z| curve + min/max markers. High |Z| is
    *  harmless (an easy load); only the MINIMUM matters for the amplifier —
@@ -3367,7 +3622,7 @@ export default function App() {
    *  hugs the exact combined curve on screen. Null while off or without a
    *  solvable network. */
   const tolBand = useMemo(() => {
-    if (!tolOn || !sim) return null;
+    if (!tolOn || !sim || threeWay) return null;
     const xo =
       project && xoName !== 'none' ? project.vxp.crossovers.find((c) => c.name === xoName) : undefined;
     const parts = networkActive && schematic ? schematic.parts : xo?.parts;
@@ -3388,7 +3643,7 @@ export default function App() {
       trimDb: num(trimDb, 0),
       inverted,
     }, tolPct);
-  }, [tolOn, tolPct, sim, project, xoName, networkActive, schematic, impedances, vfBypass, vFilters, offsetMm, trimDb, inverted]);
+  }, [tolOn, tolPct, sim, threeWay, project, xoName, networkActive, schematic, impedances, vfBypass, vFilters, offsetMm, trimDb, inverted]);
 
   /** Per-driver ACOUSTIC target curves for the SPL chart (Stefans vraag:
    *  "hoever volgt de respons per speaker het target?") — the ideal shape of
@@ -3399,7 +3654,7 @@ export default function App() {
    *  instead of being re-anchored away. Tweeter trim rides into its target —
    *  the trim knob is a playback adjustment, not a build deviation. */
   const targetSeries: Series[] = useMemo(() => {
-    if (!result) return [];
+    if (!result || threeWay) return [];
     const defs = [
       { id: 'wtarget', label: 'Woofer target', spec: vFilters.woofer, drv: result.woofer, color: 'var(--viz-woofer)', trim: 0, loaded: !!woofer },
       { id: 'ttarget', label: 'Tweeter target', spec: vFilters.tweeter, drv: result.tweeter, color: 'var(--viz-tweeter)', trim: num(trimDb, 0), loaded: !!tweeter },
@@ -3439,7 +3694,7 @@ export default function App() {
       defaultOff: true,
       secondary: true,
     }));
-  }, [result, vFilters, trimDb, woofer, tweeter]);
+  }, [result, threeWay, vFilters, trimDb, woofer, tweeter]);
 
   const splSeries: Series[] = useMemo(() => {
     if (!result) return [];
@@ -3495,7 +3750,10 @@ export default function App() {
       // Single-driver mode: the ghost branch sits at −400 dB — skip its curve
       // and the (two-driver) polarity null check instead of drawing noise.
       ...(woofer
-        ? [{ id: 'w', label: 'Woofer/mid', color: 'var(--viz-woofer)', x: result.freq, y: result.woofer.spl } satisfies Series]
+        ? [{ id: 'w', label: threeWay ? 'Woofer' : 'Woofer/mid', color: 'var(--viz-woofer)', x: result.freq, y: result.woofer.spl } satisfies Series]
+        : []),
+      ...(sim?.mid
+        ? [{ id: 'm', label: 'Midrange', color: 'var(--viz-mid)', x: result.freq, y: sim.mid.spl } satisfies Series]
         : []),
       ...(tweeter
         ? [{ id: 't', label: 'Tweeter', color: 'var(--viz-tweeter)', x: result.freq, y: result.tweeter.spl } satisfies Series]
@@ -3526,7 +3784,7 @@ export default function App() {
           ]),
     ];
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [result, integration, tabGhosts, networkActive, activeDesign, tolBand, targetSeries, soloDriver, verifyCompare, verify]);
+  }, [result, sim, threeWay, integration, tabGhosts, networkActive, activeDesign, tolBand, targetSeries, soloDriver, verifyCompare, verify]);
 
   /**
    * Design handles ON the SPL chart (UI-fase D): drag the crossover knees and
@@ -3549,11 +3807,17 @@ export default function App() {
       return curve[best];
     };
     const out: ChartHandle[] = [];
-    for (const slot of ['woofer', 'tweeter'] as const) {
+    const slots = threeWay ? (['woofer', 'mid', 'tweeter'] as const) : (['woofer', 'tweeter'] as const);
+    for (const slot of slots) {
       const spec = vFilters[slot];
-      const curve = slot === 'woofer' ? result.woofer.spl : result.tweeter.spl;
+      const curve =
+        slot === 'woofer'
+          ? result.woofer.spl
+          : slot === 'mid'
+            ? (sim?.mid?.spl ?? result.woofer.spl)
+            : result.tweeter.spl;
       const color = `var(--viz-${slot})`;
-      const name = slot === 'woofer' ? 'Woofer/mid' : 'Tweeter';
+      const name = slot === 'woofer' ? (threeWay ? 'Woofer' : 'Woofer/mid') : slot === 'mid' ? 'Midrange' : 'Tweeter';
       if (spec.hp.enabled) {
         out.push({
           id: `${slot}:hp`,
@@ -3587,10 +3851,10 @@ export default function App() {
       });
     }
     return out.length > 0 ? out : undefined;
-  }, [result, vFilters, vfBypass]);
+  }, [result, sim, threeWay, vFilters, vfBypass]);
 
   const moveSplHandle = (id: string, x: number, dyUnits: number) => {
-    const [slot, part] = id.split(':') as ['woofer' | 'tweeter', string];
+    const [slot, part] = id.split(':') as ['woofer' | 'mid' | 'tweeter', string];
     const f = Math.round(Math.min(20000, Math.max(20, x)));
     setVFilters((p) => {
       const spec = { ...p[slot] };
@@ -3611,7 +3875,7 @@ export default function App() {
   };
 
   const wheelSplHandle = (id: string, factor: number) => {
-    const [slot, part] = id.split(':') as ['woofer' | 'tweeter', string];
+    const [slot, part] = id.split(':') as ['woofer' | 'mid' | 'tweeter', string];
     if (!part.startsWith('eq')) return;
     const i = Number(part.slice(2));
     setVFilters((p) => {
@@ -3644,6 +3908,7 @@ export default function App() {
     const filterPhase = (h: Complex[] | null | undefined): number[] | null =>
       h ? h.map((c) => (Math.atan2(c.im, c.re) * 180) / Math.PI) : null;
     const fw = filterPhase(transfers?.woofer);
+    const fm = filterPhase(transfers?.mid);
     const ft = filterPhase(transfers?.tweeter);
     // Filter-phase-per-branch starts legend-hidden (Sanders keuze, jul 2026):
     // the per-driver TOTAL curves below are the default reading; what the
@@ -3655,6 +3920,18 @@ export default function App() {
         color: 'var(--viz-woofer)',
         x: result.freq,
         y: breakWraps(fw),
+        dash: '5 3',
+        width: 1.6,
+        defaultOff: true,
+      });
+    }
+    if (fm) {
+      out.push({
+        id: 'fm',
+        label: 'Mid filter phase',
+        color: 'var(--viz-mid)',
+        x: result.freq,
+        y: breakWraps(fm),
         dash: '5 3',
         width: 1.6,
         defaultOff: true,
@@ -3675,7 +3952,8 @@ export default function App() {
     // Raw-driver reference (same offset/trim/polarity, no filters): the
     // distance to the main curve is exactly what the filters contribute.
     // Meaningless against a silent ghost — skipped in single-driver mode.
-    if (!soloDriver && sim && (fw || ft)) {
+    // (2-way only: the 3-way pair curves below carry their own meaning.)
+    if (!soloDriver && !threeWay && sim && (fw || ft)) {
       const raw = combine(sim.base.w, sim.base.t, {
         offsetMm: num(offsetMm, 0),
         trimDb: num(trimDb, 0),
@@ -3733,6 +4011,17 @@ export default function App() {
           width: 1.6,
         });
       }
+      if (sim?.mid) {
+        out.push({
+          id: 'mtot',
+          label: 'Mid phase (total)',
+          color: 'var(--viz-mid)',
+          x: result.freq,
+          y: breakWraps(disp(sim.mid).map(wrapDeg)),
+          dash: '9 4',
+          width: 1.6,
+        });
+      }
       if (tweeter) {
         out.push({
           id: 'ttot',
@@ -3752,7 +4041,27 @@ export default function App() {
       : undefined;
     // The relative curve is the headline in 2-way mode; against a silent
     // ghost it is pure noise — single-driver mode leads with the total phase.
-    if (!soloDriver) {
+    // 3-way: the woofer↔tweeter difference means nothing (they never cross) —
+    // the ADJACENT pairs are the design quantity, so those two curves lead.
+    if (threeWay && sim?.mid) {
+      const midPh = sim.mid.phaseDeg;
+      out.push({
+        id: 'relmw',
+        label: 'Mid phase relative to woofer',
+        color: 'var(--viz-mid)',
+        x: result.freq,
+        y: breakWraps(midPh.map((p, i) => wrapDeg(p - result.woofer.phaseDeg[i]))),
+        width: 2.2,
+      });
+      out.push({
+        id: 'reltm',
+        label: 'Tweeter phase relative to mid',
+        color: 'var(--viz-tweeter)',
+        x: result.freq,
+        y: breakWraps(result.tweeter.phaseDeg.map((p, i) => wrapDeg(p - midPh[i]))),
+        width: 2.2,
+      });
+    } else if (!soloDriver) {
       out.push({
         id: 'rel',
         label: 'Tweeter phase relative to woofer',
@@ -3768,7 +4077,7 @@ export default function App() {
     // peer of the curve above. NB: VituixCAD's export has the inter-driver
     // timing removed (drivers time-aligned to ~0 mm), which is exactly why it
     // diverges from our measured-phase curve — hence the label.
-    if (refResp && !soloDriver) {
+    if (refResp && !soloDriver && !threeWay) {
       const rw = resample(refResp.woofer.freq, refResp.woofer.spl, refResp.woofer.phase, result.freq);
       const rt = resample(refResp.tweeter.freq, refResp.tweeter.spl, refResp.tweeter.phase, result.freq);
       out.push({
@@ -3797,7 +4106,7 @@ export default function App() {
       });
     }
     return out;
-  }, [result, integration, sim, offsetMm, trimDb, inverted, showPanels.phase, refResp, tabGhosts, woofer, tweeter, soloDriver, verifyCompare]);
+  }, [result, integration, sim, threeWay, offsetMm, trimDb, inverted, showPanels.phase, refResp, tabGhosts, woofer, tweeter, soloDriver, verifyCompare]);
 
   /** "How far off is the phase" zones behind the relative-phase curve. */
   const phaseBands = useMemo(
@@ -3958,49 +4267,129 @@ export default function App() {
           {wizardStep === 0 && (
             <>
               <p>
-                <strong>Measurements</strong> — the wizard designs from your driver data, so we
-                need that first. Load a 0° FRD per driver to start; include the .ZMA impedance
-                and any angle files in the SAME pick to unlock more (they're recognised by
+                <strong>System type</strong> — what are we designing? The wizard then shows only
+                the measurement slots that apply, and Next unlocks once the set is complete.
+              </p>
+              <div className="row" style={{ marginBottom: '0.5rem' }}>
+                {([
+                  [1, '1-way (single driver)'],
+                  [2, '2-way'],
+                  [3, '3-way'],
+                ] as const).map(([w, label]) => (
+                  <button
+                    key={w}
+                    type="button"
+                    className={wizardWays === w ? 'active-toggle' : ''}
+                    aria-pressed={wizardWays === w}
+                    onClick={() => setWizardWays(w)}
+                    title={
+                      w === 1
+                        ? 'Flatten one driver (series traps, shelf groups, Zobel) — the validation flow'
+                        : w === 2
+                          ? 'Classic two-driver crossover design — the full optimizer chain'
+                          : 'Three branches: sim, filters and network editor work; the 3-way optimizer is a later step'
+                    }
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+              <p className="sub" style={{ marginBottom: '0.4rem' }}>
+                <strong>Measurements</strong> — load a 0° FRD per driver; include the .ZMA
+                impedance and any angle files in the SAME pick to unlock more (recognised by
                 extension and filename).
               </p>
-              <button
-                type="button"
-                className="primary"
-                onClick={loadDemo}
-                title="Load the bundled KOAN measurements (all angles + impedances + vxp variants) — instant playground"
-              >
-                🎧 Load KOAN demo data
-              </button>
+              {wizardWays === 2 && (
+                <button
+                  type="button"
+                  className="primary"
+                  onClick={loadDemo}
+                  title="Load the bundled KOAN measurements (all angles + impedances + vxp variants) — instant playground"
+                >
+                  🎧 Load KOAN demo data
+                </button>
+              )}
               <p className="sub" style={{ marginBottom: '0.2rem' }}>
-                …or load your own:
+                {wizardWays === 2 ? '…or load your own:' : 'Load your measurements:'}
               </p>
-              <label className="file-button" style={{ display: 'block', marginBottom: '0.3rem' }}>
-                {woofer ? `✓ Woofer / mid — ${woofer.name}` : 'Woofer / mid — FRD (+ ZMA/LIMP, + angle files)'}
-                <input
-                  type="file"
-                  accept=".frd,.txt,.zma,.ZMA,.lim"
-                  multiple
-                  onChange={loadDriverFiles('woofer')}
-                  style={{ display: 'none' }}
-                />
-              </label>
-              <label className="file-button" style={{ display: 'block' }}>
-                {tweeter ? `✓ Tweeter — ${tweeter.name}` : 'Tweeter — FRD (+ ZMA/LIMP, + angle files)'}
-                <input
-                  type="file"
-                  accept=".frd,.txt,.zma,.ZMA,.lim"
-                  multiple
-                  onChange={loadDriverFiles('tweeter')}
-                  style={{ display: 'none' }}
-                />
-              </label>
+              {wizardWays === 1 ? (
+                <label className="file-button" style={{ display: 'block' }}>
+                  {woofer || tweeter
+                    ? `✓ Driver — ${(woofer ?? tweeter)!.name}`
+                    : 'Driver — FRD (+ ZMA/LIMP, + angle files)'}
+                  <input
+                    type="file"
+                    accept=".frd,.txt,.zma,.ZMA,.lim"
+                    multiple
+                    onChange={loadDriverFiles('woofer')}
+                    style={{ display: 'none' }}
+                  />
+                </label>
+              ) : (
+                <>
+                  <label className="file-button" style={{ display: 'block', marginBottom: '0.3rem' }}>
+                    {woofer
+                      ? `✓ ${wizardWays === 3 ? 'Woofer' : 'Woofer / mid'} — ${woofer.name}`
+                      : `${wizardWays === 3 ? 'Woofer' : 'Woofer / mid'} — FRD (+ ZMA/LIMP, + angle files)`}
+                    <input
+                      type="file"
+                      accept=".frd,.txt,.zma,.ZMA,.lim"
+                      multiple
+                      onChange={loadDriverFiles('woofer')}
+                      style={{ display: 'none' }}
+                    />
+                  </label>
+                  {wizardWays === 3 && (
+                    <label className="file-button" style={{ display: 'block', marginBottom: '0.3rem' }}>
+                      {midDrv
+                        ? `✓ Midrange — ${midDrv.name}`
+                        : 'Midrange — FRD (+ ZMA/LIMP, + angle files)'}
+                      <input
+                        type="file"
+                        accept=".frd,.txt,.zma,.ZMA,.lim"
+                        multiple
+                        onChange={loadDriverFiles('mid')}
+                        style={{ display: 'none' }}
+                      />
+                    </label>
+                  )}
+                  <label className="file-button" style={{ display: 'block' }}>
+                    {tweeter ? `✓ Tweeter — ${tweeter.name}` : 'Tweeter — FRD (+ ZMA/LIMP, + angle files)'}
+                    <input
+                      type="file"
+                      accept=".frd,.txt,.zma,.ZMA,.lim"
+                      multiple
+                      onChange={loadDriverFiles('tweeter')}
+                      style={{ display: 'none' }}
+                    />
+                  </label>
+                </>
+              )}
+              {wizardMissing.length > 0 && (
+                <p className="sub" style={{ marginTop: '0.4rem' }}>
+                  Still needed for a {wizardWays}-way: <strong>{wizardMissing.join(', ')}</strong>.
+                </p>
+              )}
+              {wizardOverloaded && (
+                <p className="nl-warning" style={{ marginTop: '0.4rem' }}>
+                  ⚠ More is loaded than a {wizardWays}-way — the app follows what is actually
+                  loaded, never the declared choice. Switch the system type above, or remove the
+                  extra driver in the Import tab (✕).
+                </p>
+              )}
+              {wizardWays === 3 && wizardMissing.length === 0 && (
+                <p className="sub" style={{ marginTop: '0.4rem' }}>
+                  ✓ 3-way set complete. The sim, virtual filters (mid = bandpass), Build passive
+                  filter (three fitted branches) and the 3-way templates are live; the{' '}
+                  <strong>3-way optimizer is a later step</strong>, so the wizard ends here —
+                  design in the Filters tab and the network editor.
+                </p>
+              )}
               <p className="sub">
-                Two drivers = crossover design; one driver = <strong>single-driver mode</strong>
-                {' '}(flatten that driver — series traps, shelf groups, Zobel).{' '}
-                <strong>Impedances (.ZMA)</strong> unlock the
-                passive build &amp; component tune; <strong>angle files</strong> unlock the
-                amplitude target &amp; in-room weight in the Goals step. The full importer (VituixCAD
-                projects, save/load) lives in the Import tab.
+                <strong>Impedances (.ZMA)</strong> unlock the passive build &amp; component tune;{' '}
+                <strong>angle files</strong> unlock the amplitude target &amp; in-room weight in
+                the Goals step. The full importer (VituixCAD projects, save/load) lives in the
+                Import tab.
               </p>
               {timing && (
                 <div
@@ -4671,15 +5060,35 @@ export default function App() {
               )}
             </div>
             <div className="row">
-              {wizardPos < wizardSteps.length - 1 ? (
+              {wizardStep === 0 && wizardWays === 3 ? (
+                // The 3-way optimizer is a later step, so the wizard's guided
+                // Goals/Crossover/Components flow (all optimizer-bound) would
+                // dead-end — the honest exit is straight into the editor.
+                <button
+                  type="button"
+                  className="primary"
+                  onClick={() => {
+                    setWizardOpen(false);
+                    setDesignTab('network');
+                  }}
+                  disabled={wizardMissing.length > 0}
+                  title={
+                    wizardMissing.length > 0
+                      ? `Still needed: ${wizardMissing.join(', ')}`
+                      : 'Set complete — design the 3-way by hand in the network editor (the 3-way optimizer is a later step)'
+                  }
+                >
+                  Open Network editor →
+                </button>
+              ) : wizardPos < wizardSteps.length - 1 ? (
                 <button
                   type="button"
                   className="primary"
                   onClick={() => setWizardStep(wizardSteps[wizardPos + 1]?.id ?? wizardSteps[0].id)}
-                  disabled={wizardStep === 0 && !woofer && !tweeter}
+                  disabled={wizardStep === 0 && wizardMissing.length > 0}
                   title={
-                    wizardStep === 0 && !woofer && !tweeter
-                      ? 'Load at least one driver to continue (one = single-driver mode)'
+                    wizardStep === 0 && wizardMissing.length > 0
+                      ? `Still needed for a ${wizardWays}-way: ${wizardMissing.join(', ')}`
                       : ''
                   }
                 >
@@ -4698,7 +5107,12 @@ export default function App() {
                     setDesignTab('filters');
                     runVfOptimize();
                   }}
-                  disabled={vfBusy || !result}
+                  disabled={vfBusy || !result || threeWay}
+                  title={
+                    threeWay
+                      ? '3-way mode: the crossover optimizer designs one driver pair — the two-pair (3-way) optimizer is a later step'
+                      : undefined
+                  }
                 >
                   🚀 Optimize — design for me
                 </button>
@@ -4718,7 +5132,8 @@ export default function App() {
           { id: 4, label: 'Verdict' },
         ];
         const pos = steps.findIndex((st) => st.id === cmpStep);
-        const zMid = !!impedances['mid'];
+        const zLow = !!impedances[canonicalModelForRole('low', threeWay)];
+        const zMidBr = !!impedances['mid'] && threeWay;
         const zTw = !!impedances['tweeter'];
         const Ok = ({ ok, children }: { ok: boolean; children: ReactNode }) => (
           <p style={{ margin: '0.15rem 0' }}>
@@ -4770,8 +5185,14 @@ export default function App() {
                     <strong>Drivers</strong> — the simulation is measured drivers × your network,
                     so the driver files must be the same measurements the design was made with.
                   </p>
-                  <Ok ok={!!woofer}>Woofer/mid response (FRD){woofer ? ` — ${woofer.name}` : ''}</Ok>
-                  <Ok ok={zMid}>Woofer/mid impedance (ZMA/LIMP)</Ok>
+                  <Ok ok={!!woofer}>{threeWay ? 'Woofer' : 'Woofer/mid'} response (FRD){woofer ? ` — ${woofer.name}` : ''}</Ok>
+                  <Ok ok={zLow}>{threeWay ? 'Woofer' : 'Woofer/mid'} impedance (ZMA/LIMP)</Ok>
+                  {threeWay && (
+                    <>
+                      <Ok ok={!!midDrv}>Midrange response (FRD){midDrv ? ` — ${midDrv.name}` : ''}</Ok>
+                      <Ok ok={zMidBr}>Midrange impedance (ZMA/LIMP)</Ok>
+                    </>
+                  )}
                   <Ok ok={!!tweeter}>Tweeter response (FRD){tweeter ? ` — ${tweeter.name}` : ''}</Ok>
                   <Ok ok={zTw}>Tweeter impedance (ZMA/LIMP)</Ok>
                   <p className="sub">
@@ -5200,8 +5621,37 @@ export default function App() {
             <span className="tool-group-label">Measurements</span>
             <div className="tool-group-body files">
               <label title="FRD = frequency response (SPL + phase), ZMA = measured impedance. Select the 0° file plus all horizontal angle files and the .ZMA in one go — angles are recognised by filename.">
-                Woofer / mid FRD + ZMA (multi-select all hor angles + impedance)
+                {hasMidBranch ? 'Woofer' : 'Woofer / mid'} FRD + ZMA (multi-select all hor angles + impedance)
                 <input type="file" accept=".frd,.txt,.zma,.ZMA,.lim" multiple onChange={loadDriverFiles('woofer')} />
+              </label>
+              <label title="3-way: the MIDDLE branch. FRD = frequency response (SPL + phase), ZMA = measured impedance — select the 0° file plus angle files and the .ZMA in one go. Needs a woofer AND a tweeter loaded to join the sum.">
+                Midrange (3-way) FRD + ZMA (multi-select all hor angles + impedance)
+                <input type="file" accept=".frd,.txt,.zma,.ZMA,.lim" multiple onChange={loadDriverFiles('mid')} />
+                {midDrv && (
+                  <span className="derived">
+                    {' '}✓ {midDrv.name}{' '}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setMidDrv(null);
+                        setZStandalone((prev) => {
+                          const next = { ...prev };
+                          delete next.mid;
+                          return next;
+                        });
+                        setAngleSets((prev) => {
+                          if (!prev) return prev;
+                          const { mid: _drop, ...rest } = prev;
+                          return rest.woofer.length + rest.tweeter.length > 0 ? rest : null;
+                        });
+                      }}
+                      title="Remove the midrange branch (back to 2-way)"
+                      aria-label="Remove the midrange branch"
+                    >
+                      ✕
+                    </button>
+                  </span>
+                )}
               </label>
               <label title="FRD = frequency response (SPL + phase), ZMA = measured impedance. Select the 0° file plus all horizontal angle files and the .ZMA in one go — angles are recognised by filename.">
                 Tweeter FRD + ZMA (multi-select all hor angles + impedance)
@@ -5328,11 +5778,26 @@ export default function App() {
             hardcoded "Parse error:" prefix lied for anything that wasn't one
             (the vxp-pick hint, the impedance-as-response warning). */}
         {error && <p className="error">⚠ {error}</p>}
+        {midIgnored && (
+          <p className="error">
+            ⚠ Midrange data loaded, but 3-way mode needs a woofer FRD, a midrange FRD and a
+            tweeter FRD ({[
+              !woofer && 'woofer response',
+              !midDrv && 'midrange response',
+              !tweeter && 'tweeter response',
+            ]
+              .filter(Boolean)
+              .join(', ')}{' '}
+            missing) — the midrange is NOT in the sim yet. Load what's missing, or remove the
+            midrange (✕ in the Import tab).
+          </p>
+        )}
         {(woofer || tweeter) && (
           <p className="filenames">
-            {[woofer?.name, tweeter?.name].filter(Boolean).join(' · ')}
+            {[woofer?.name, midDrv?.name, tweeter?.name].filter(Boolean).join(' · ')}
             {zModels.length > 0 && ` · Z ✓ (${zModels.join(', ')})`}
             {soloDriver && ' · single-driver mode'}
+            {threeWay && ' · 3-way mode'}
           </p>
         )}
       </div>
@@ -5352,9 +5817,9 @@ export default function App() {
           }
           const groups: Group[] = [];
           const driverGroup = (
-            slot: 'woofer' | 'tweeter',
+            slot: 'woofer' | 'mid' | 'tweeter',
             loaded: Loaded | null,
-            zKey: string,
+            zKey: BranchRole,
             title: string,
             colorVar: string,
           ) => {
@@ -5376,8 +5841,9 @@ export default function App() {
             }
             if (rows.length > 0) groups.push({ title, colorVar, rows });
           };
-          driverGroup('woofer', woofer, 'mid', 'Woofer / mid', '--viz-woofer');
-          driverGroup('tweeter', tweeter, 'tweeter', 'Tweeter', '--viz-tweeter');
+          driverGroup('woofer', woofer, 'low', hasMidBranch ? 'Woofer' : 'Woofer / mid', '--viz-woofer');
+          driverGroup('mid', midDrv, 'mid', 'Midrange', '--viz-mid');
+          driverGroup('tweeter', tweeter, 'high', 'Tweeter', '--viz-tweeter');
           if (project) {
             const rows: Row[] = [
               {
@@ -5569,6 +6035,37 @@ export default function App() {
               )}
             </fieldset>
             )}
+            {threeWay && (
+              <fieldset>
+                <legend>Midrange adjustment</legend>
+                <label title="Simulate moving the midrange physically (mm depth, + = recessed = extra delay). With measured phase and a shared time reference the real timing is already in the data — leave 0.">
+                  Offset (mm, + = recessed)
+                  <input
+                    type="number"
+                    step="0.5"
+                    value={midOffsetMm}
+                    onChange={(e) => setMidOffsetMm(e.target.value)}
+                  />
+                </label>
+                <label title="Level adjustment on the midrange branch, dB">
+                  Level trim (dB)
+                  <input
+                    type="number"
+                    step="0.5"
+                    value={midTrimDb}
+                    onChange={(e) => setMidTrimDb(e.target.value)}
+                  />
+                </label>
+                <label className="check" title="Flip the midrange 180° (swap + and −)">
+                  <input
+                    type="checkbox"
+                    checked={midInverted}
+                    onChange={(e) => setMidInverted(e.target.checked)}
+                  />
+                  Invert polarity
+                </label>
+              </fieldset>
+            )}
             {project && project.vxp.crossovers.length > 0 && (
               <fieldset>
                 <legend>Crossover (VituixCAD project)</legend>
@@ -5661,11 +6158,13 @@ export default function App() {
                   <button
                     type="button"
                     onClick={runVfOptimize}
-                    disabled={vfBusy}
+                    disabled={vfBusy || threeWay}
                     title={
-                      soloDriver
-                        ? 'Single-driver mode: flatten this driver — cut-only EQ/shelf design, built as series traps / shelf groups (+ gated Zobel) and component-tuned against the measurement (lands in the Working tab)'
-                        : 'Design the crossover, build it as a passive network and simulate it — all in one go (lands in the Working tab)'
+                      threeWay
+                        ? '3-way mode: the crossover optimizer designs one driver PAIR — the two-pair (3-way) optimizer is a later step. The sim, virtual filters and network editor already work.'
+                        : soloDriver
+                          ? 'Single-driver mode: flatten this driver — cut-only EQ/shelf design, built as series traps / shelf groups (+ gated Zobel) and component-tuned against the measurement (lands in the Working tab)'
+                          : 'Design the crossover, build it as a passive network and simulate it — all in one go (lands in the Working tab)'
                     }
                   >
                     {vfBusy ? 'Optimizing + building…' : soloDriver ? 'Optimize — flatten driver' : 'Optimize — design for me'}
@@ -5697,8 +6196,10 @@ export default function App() {
                       // Start at the import gate (step 0) when there is no driver
                       // data yet — the wizard should take you from nothing to a
                       // built crossover, not assume measurements exist. One
-                      // loaded driver is enough (single-driver mode).
-                      setWizardStep(!woofer && !tweeter ? 0 : 1);
+                      // loaded driver is enough (single-driver mode). A loaded
+                      // 3-way also lands on step 0: the guided steps beyond it
+                      // are optimizer-bound and that optimizer is a later step.
+                      setWizardStep(!woofer && !tweeter ? 0 : threeWay ? 0 : 1);
                       setWizardOpen(true);
                     }}
                     title="Design wizard: load measurements, then goals, priority, crossover point, acoustic slopes and component choices in one guided flow — ends with Optimize"
@@ -6121,7 +6622,11 @@ export default function App() {
                     {vfBypass ? 'muted · ' : ''}
                     {soloDriver
                       ? filterSummaryLine(vFilters[soloDriver], soloDriver)
-                      : `${filterSummaryLine(vFilters.woofer, 'woofer')} — ${filterSummaryLine(vFilters.tweeter, 'tweeter')}`}
+                      : [
+                          filterSummaryLine(vFilters.woofer, 'woofer'),
+                          ...(threeWay ? [filterSummaryLine(vFilters.mid, 'mid')] : []),
+                          filterSummaryLine(vFilters.tweeter, 'tweeter'),
+                        ].join(' — ')}
                   </span>
                 )}
               </button>
@@ -6138,10 +6643,18 @@ export default function App() {
                       would edit a silent ghost. */}
                   {soloDriver !== 'tweeter' && (
                     <DriverFilterControls
-                      title="Woofer / mid"
+                      title={threeWay ? 'Woofer' : 'Woofer / mid'}
                       accentVar="--viz-woofer"
                       spec={vFilters.woofer}
                       onChange={(woofer) => setVFilters((p) => ({ ...p, woofer }))}
+                    />
+                  )}
+                  {threeWay && (
+                    <DriverFilterControls
+                      title="Midrange"
+                      accentVar="--viz-mid"
+                      spec={vFilters.mid}
+                      onChange={(mid) => setVFilters((p) => ({ ...p, mid }))}
                     />
                   )}
                   {soloDriver !== 'woofer' && (
@@ -6190,9 +6703,11 @@ export default function App() {
                   }}
                   disabled={synthBusy}
                   title={
-                    soloDriver
-                      ? "Single-driver mode: build the solo topology from the enabled cut bands (series traps / shelf groups + gated Zobel) with textbook seed values — lands in a new 'Solo build' tab; ⚙ Optimize components fits the values"
-                      : "Fit real components and simulate the result — lands in a new 'Passive build' tab on the Network page. Follow up with ⚙ Optimize components there to tune the assembled sum (phase!)."
+                    threeWay
+                      ? "3-way: fits three branches on the measured impedances — woofer LP, mid BANDPASS (hp+lp), tweeter HP — and lands them as one network in a new 'Passive build' tab. Per-branch fits only: the assembled component tune (pairs) is a later step."
+                      : soloDriver
+                        ? "Single-driver mode: build the solo topology from the enabled cut bands (series traps / shelf groups + gated Zobel) with textbook seed values — lands in a new 'Solo build' tab; ⚙ Optimize components fits the values"
+                        : "Fit real components and simulate the result — lands in a new 'Passive build' tab on the Network page. Follow up with ⚙ Optimize components there to tune the assembled sum (phase!)."
                   }
                 >
                   Build passive filter
@@ -6204,7 +6719,7 @@ export default function App() {
               {synth?.error && <p className="error">{synth.error}</p>}
               {synth && !synth.error && (
                 <div className="vf-grid" style={{ marginTop: '1rem' }}>
-                  {(['woofer', 'tweeter'] as const).map((slot) => {
+                  {(['woofer', 'mid', 'tweeter'] as const).map((slot) => {
                     const r = synth[slot];
                     if (!r) return null;
                     return (
@@ -6214,7 +6729,14 @@ export default function App() {
                             className="legend-key"
                             style={{ background: `var(--viz-${slot})` }}
                           />
-                          {slot === 'woofer' ? 'Woofer / mid' : 'Tweeter'} branch
+                          {slot === 'woofer'
+                            ? synth.mid
+                              ? 'Woofer'
+                              : 'Woofer / mid'
+                            : slot === 'mid'
+                              ? 'Midrange (bandpass)'
+                              : 'Tweeter'}{' '}
+                          branch
                         </h3>
                         <table>
                           <tbody>
@@ -6289,13 +6811,18 @@ export default function App() {
                     title="Start a fresh network in a new tab from a generic template — plausible starting values you tune from, the counterpart to Import and the optimizer"
                   >
                     <select
-                      value={templateWays}
+                      value={threeWay ? 3 : templateWays}
                       onChange={(e) => setTemplateWays(Number(e.target.value) as WayCount)}
-                      title="Number of ways. 3-way is coming with the N-way build."
+                      disabled={threeWay}
+                      title={
+                        threeWay
+                          ? '3-way mode: the template follows the loaded branch set (a 2-way template would silently skip the mid)'
+                          : 'Number of ways — 3-way templates need all three branches loaded'
+                      }
                     >
                       <option value={2}>2-way</option>
-                      <option value={3} disabled>
-                        3-way (coming soon)
+                      <option value={3} disabled={!threeWay}>
+                        {threeWay ? '3-way' : '3-way (load three drivers)'}
                       </option>
                     </select>
                     <select
@@ -6305,7 +6832,9 @@ export default function App() {
                       title={
                         soloDriver
                           ? 'Single-driver mode — only the blank scaffold applies (LP/HP templates need two branches)'
-                          : 'Filter order / slope for both branches — generic Butterworth-style seed values'
+                          : threeWay
+                            ? 'Filter order / slope per branch (mid = bandpass, twice the parts) — generic Butterworth-style seed values at 600 / 3000 Hz'
+                            : 'Filter order / slope for both branches — generic Butterworth-style seed values'
                       }
                     >
                       {TEMPLATE_ORDERS.map((t) => (
@@ -6338,7 +6867,7 @@ export default function App() {
                   <button
                     type="button"
                     onClick={exportActiveVxp}
-                    disabled={designs.length === 0}
+                    disabled={designs.length === 0 || threeWay}
                     title="Export ALL network tabs as a VituixCAD project folder — the .vxp (each tab a crossover variant CROSSOVER, CROSSOVER1, …) PLUS every measurement/impedance file, written together so VituixCAD opens it without hunting. Pick a folder when asked (Chrome/Edge). VituixCAD reconstructs the phase itself (MinimumPhase=True) and the tweeter carries the measured inter-driver Δ as a Delay, so its simulation matches ours."
                   >
                     Export .vxp
@@ -6382,11 +6911,13 @@ export default function App() {
                   <button
                     type="button"
                     onClick={runNetOptimize}
-                    disabled={!activeDesign || netOptBusy || !sim || zModels.length === 0}
+                    disabled={!activeDesign || netOptBusy || !sim || zModels.length === 0 || threeWay}
                     title={
-                      soloDriver
-                        ? 'Single-driver mode: re-fit the UNLOCKED component values against the measured driver — objective is branch flatness (+ amp-load floor); crossover terms do not apply'
-                        : 'Re-fit the UNLOCKED component values of the active tab against the measured response — 🔒 parts keep their value'
+                      threeWay
+                        ? '3-way mode: the component tuner judges one driver pair — the two-pair objective is a later step'
+                        : soloDriver
+                          ? 'Single-driver mode: re-fit the UNLOCKED component values against the measured driver — objective is branch flatness (+ amp-load floor); crossover terms do not apply'
+                          : 'Re-fit the UNLOCKED component values of the active tab against the measured response — 🔒 parts keep their value'
                     }
                   >
                     {netOptBusy ? 'Tuning…' : '⚙ Optimize components'}
@@ -6808,7 +7339,10 @@ export default function App() {
           {result &&
             !networkActive &&
             !(project && xoName !== 'none') &&
-            (vfBypass || (!isActive(vFilters.woofer) && !isActive(vFilters.tweeter))) && (
+            (vfBypass ||
+              (!isActive(vFilters.woofer) &&
+                !isActive(vFilters.tweeter) &&
+                !(threeWay && isActive(vFilters.mid)))) && (
               <div className="panel">
                 <div className="verdict no-reference">
                   <strong>No filter in the simulation — you are looking at the RAW drivers.</strong>{' '}
@@ -7061,10 +7595,17 @@ export default function App() {
                 series={[
                   sim.transfers.woofer && {
                     id: 'hw',
-                    label: 'Woofer/mid filter',
+                    label: threeWay ? 'Woofer filter' : 'Woofer/mid filter',
                     color: 'var(--viz-woofer)',
                     x: result.freq,
                     y: sim.transfers.woofer.map((h) => 20 * Math.log10(cAbs(h) || Number.MIN_VALUE)),
+                  },
+                  (sim.transfers.mid ?? null) && {
+                    id: 'hm',
+                    label: 'Mid filter',
+                    color: 'var(--viz-mid)',
+                    x: result.freq,
+                    y: sim.transfers.mid!.map((h) => 20 * Math.log10(cAbs(h) || Number.MIN_VALUE)),
                   },
                   sim.transfers.tweeter && {
                     id: 'ht',
@@ -7163,7 +7704,9 @@ export default function App() {
             <h2>
               {soloDriver
                 ? `${soloDriver === 'woofer' ? 'Woofer/mid' : 'Tweeter'} phase (total)`
-                : 'Tweeter phase relative to woofer'}
+                : threeWay
+                  ? 'Relative phase per driver pair'
+                  : 'Tweeter phase relative to woofer'}
             </h2>
             {phaseStats && (
               <div className="score-strip">
@@ -7350,7 +7893,12 @@ function SynthChart({
   freq,
   xDomain,
 }: {
-  synth: { woofer?: SynthesisResult; tweeter?: SynthesisResult; mode: 'filter' | 'acoustic' };
+  synth: {
+    woofer?: SynthesisResult;
+    mid?: SynthesisResult;
+    tweeter?: SynthesisResult;
+    mode: 'filter' | 'acoustic';
+  };
   freq: readonly number[];
   xDomain: [number, number];
 }) {
@@ -7358,11 +7906,11 @@ function SynthChart({
   const acoustic = synth.mode === 'acoustic';
 
   const series: Series[] = [];
-  for (const slot of ['woofer', 'tweeter'] as const) {
+  for (const slot of ['woofer', 'mid', 'tweeter'] as const) {
     const r = synth[slot];
     if (!r) continue;
     const color = `var(--viz-${slot})`;
-    const label = slot === 'woofer' ? 'Woofer/mid' : 'Tweeter';
+    const label = slot === 'woofer' ? (synth.mid ? 'Woofer' : 'Woofer/mid') : slot === 'mid' ? 'Midrange' : 'Tweeter';
     if (acoustic && r.acousticAchievedDb && r.acousticTargetDb) {
       series.push(
         { id: `${slot}-t`, label: `${label} target shape`, color, dash: '5 4', x: freq, y: r.acousticTargetDb },

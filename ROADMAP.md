@@ -77,9 +77,49 @@ Volgorde binnen een blok = aanbevolen prioriteit. Inschattingen zijn grof:
 ## Groot — de fases
 
 9. **Fase 4: 3-weg / N-weg** (L) — het netlist-fundament is N-weg-klaar en de
-   template-kiezer heeft de (disabled) 3-weg-optie al. Nodig: N-weg-som in de
-   sim, bandpass-tak in synthese/templates, optimizer/integration/directivity
-   naar N drivers, UI voor drie takken.
+   template-kiezer heeft de (disabled) 3-weg-optie al.
+   **Trede 1 KLAAR (aug 2026): de som-kern is N-weg** — `combineN` in dsp.ts,
+   per-tak adjust, `combine` als dunne wrapper erover; K=2 bit-identiek
+   bewezen tegen een bevroren kopie van het oude algoritme én via de volle
+   suite (381 tests) door de nieuwe kern, looptijd ongewijzigd.
+   **Trede 2a KLAAR: slot-laag N-weg** — `pickSlotsN`/`isMidModel` in
+   driverSlots.ts: 2 drivers = exact het oude gedrag (KOANs lage driver héét
+   "mid" en blijft de LAGE tak — gepind in een test), 3 drivers = tweeter en
+   mid op naam, en bij niet te scheiden namen WEIGERT de mapping met een
+   melding i.p.v. te raden (een mid die als woofer meetelt is precies de
+   stille fout waar deze codebase tegen bestaat).
+   **Trede 2b KLAAR (aug 2026): de sleutel-knoop opgelost + mid-slot door de
+   App.** De knoop was namespace-vervuiling: 'mid' was tegelijk MODEL-naam
+   (van de gebruiker/het bestand — KOANs lage driver héét mid) en
+   OPSLAG-sleutel (van ons, 2-weg-historie). Oplossing: **opslag spreekt
+   ROLLEN** (`BranchRole` low/mid/high; zStandalone + projectformaat v2
+   `zByRole`), **netlijsten houden vrije model-namen**, en de brug is
+   `pickSlotsN` (`canonicalModelForRole` = dé ene plek waar "de lage tak
+   heet historisch 'mid'" leeft; `withSlotAliasesN` = de alias-laag, 2-weg
+   test-gepind identiek). v1-bestanden migreren bij LEZEN ('mid'→low,
+   'tweeter'→high — nooit een vxp's model-namen-record); niets wordt ooit
+   herschreven. App: derde import-slot (Midrange), sim via combineN zodra
+   álle drie responsies geladen zijn (anders luide banner + mid buiten de
+   sleutelruimte — géén stille verschuiving onder een lopend 2-weg-ontwerp),
+   mid-filterkaart (hp+lp = bandpass), mid-adjust, amber `--viz-mid`-curves,
+   fase-chart met de twee AANGRENZENDE paren, SPL-handles op de mid.
+   Optimizers/synthese/vxp-export/integratie-score zijn in 3-weg GEGATE met
+   uitleg (paar-eigenschappen — trede 4); 2-weg/solo-paden bit-onaangeroerd
+   (volle suite + browser-check op Sanders v1-autosave).
+   **Trede 3 KLAAR (aug 2026): de bandpass-tak.** De synthese kón het al —
+   `deriveTopology` cascadeert de HP-ladder in de LP-ladder zodra beide knieën
+   enabled zijn; nu bewezen op de gemeten KOAN-mid (regressietest; ~2 dB rms
+   is daar eerlijk: de Z-piek op 388 Hz ligt ín de 600 Hz-overgang, de Fs-trap
+   is tuner-werk). 3-weg-TEMPLATES staan aan (1e–4e orde, LP / bandpass / HP
+   op neutrale 600/3000 Hz-referenties, mid = 2×orde onderdelen; modellen via
+   pickSlotsN geresolved — zModels-laadvolgorde is niet te vertrouwen) en
+   **"Build passive filter" werkt in 3-weg**: drie tak-fits landen als één
+   netwerk in een Passive build-tab, met een eerlijke note dat de assembled
+   tune (paar-oordeel) nog volgt. Wizard/help-teksten mee.
+   Daarna: (4) optimizers met twee paren + 2D-crossover-scan — dé grote
+   trede: pairMetrics-lus in netOptimizer, twee-paar-designChain, solo/duo
+   regressie bit-identiek; (5) vxp-brug/help; directivity/tolerantie/
+   tab-ghosts in 3-weg liften mee op trede 4.
 10. **Driverbibliotheek** (L) — meetbundels (FRD + hoeken + ZMA) per driver,
     herbruikbaar over projecten; het einde van losse-bestanden-slepen.
     Uitbreiding daarbovenop: **ontwerpgeheugen als seed-bibliotheek** —
