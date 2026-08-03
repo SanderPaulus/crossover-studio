@@ -89,6 +89,9 @@ export interface ProjectDesign {
   xoMarginHz?: string;
   /** Crossover-scan candidate count across the pinned range (odd, 3..11). */
   xoScanSteps?: number;
+  /** 3-way scan: candidate steps PER crossing (1..3 → 1/4/9 chains). Applies
+   *  pinned or not — every candidate gets its own slice either way. */
+  xo3Steps?: number;
   /** Optional: preferred HP/LP alignment for the optimizer ('auto' = free).
    *  In 3-way this is the HIGH (mid-tweeter) crossing; `hpLpPrefLow` is the
    *  woofer-mid one. */

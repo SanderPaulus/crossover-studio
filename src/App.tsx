@@ -864,6 +864,10 @@ export default function App() {
   /** 3-way: alignment preference for the LOW (woofer-mid) crossing. Two
    *  handovers are two independent foundations to choose. */
   const [hpLpPrefLow, setHpLpPrefLow] = useState('auto');
+  /** 3-way scan: candidate steps PER CROSSING (1/2/3 → 1/4/9 full chains).
+   *  Independent of the crossover pin — every candidate is caged in its own
+   *  slice either way, so "how many" is always a meaningful cost knob. */
+  const [xo3Steps, setXo3Steps] = useState(2);
   /** Staged design ("trapmethode"): HP/LP first, every next layer (EQ,
    *  Zobel/LCR, bypass-C) only while the targets are unmet — fewest
    *  components that reach the goal. */
@@ -2289,6 +2293,7 @@ export default function App() {
         xoFreqHz,
         xoMarginHz,
         xoScanSteps,
+        xo3Steps,
         hpLpPref,
         hpLpPrefLow,
         phaseMetric: phaseMetricMode,
@@ -2409,6 +2414,7 @@ export default function App() {
       setXoFreqHz(d.xoFreqHz);
       setXoMarginHz(d.xoMarginHz ?? '400');
       setXoScanSteps(d.xoScanSteps ?? 3);
+      setXo3Steps(d.xo3Steps ?? 2);
     } else if (d.xoRangeLo !== undefined || d.xoRangeHi !== undefined) {
       const lo = Number(d.xoRangeLo) || 1800;
       const hi = Number(d.xoRangeHi) || 3500;
@@ -2511,7 +2517,7 @@ export default function App() {
     }, 800);
     return () => clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [woofer, midDrv, tweeter, project, zStandalone, angleSets, fileNotes, verify, vFilters, xoName, offsetMm, trimDb, inverted, midOffsetMm, midTrimDb, midInverted, fMin, fMax, splMin, splMax, phasePriority, vfEqBands, phaseMode, dirWeight, ampTarget, sonogramMode, designs, activeDesignId, lastSavedId, networkActive, vfBypass, catalogSnap, breakupGuard, xoRangeOn, xoFreqHz, xoMarginHz, xoScanSteps, hpLpPref, hpLpPrefLow, phaseMetricMode, acSlopeMid, acSlopeTweeter, acSlopeWoofer, acSlopeMidHp, xoLowFreqHz, xoLowMarginHz, midSizeInch, snapProfile, snapSeriesL, snapSeriesC, snapSeriesR, snapStacks, snapBoundToSeries, stagedOn, targetRipple, targetPhase, soloSensDb, soloFloorOn, soloFloorDb]);
+  }, [woofer, midDrv, tweeter, project, zStandalone, angleSets, fileNotes, verify, vFilters, xoName, offsetMm, trimDb, inverted, midOffsetMm, midTrimDb, midInverted, fMin, fMax, splMin, splMax, phasePriority, vfEqBands, phaseMode, dirWeight, ampTarget, sonogramMode, designs, activeDesignId, lastSavedId, networkActive, vfBypass, catalogSnap, breakupGuard, xoRangeOn, xoFreqHz, xoMarginHz, xoScanSteps, xo3Steps, hpLpPref, hpLpPrefLow, phaseMetricMode, acSlopeMid, acSlopeTweeter, acSlopeWoofer, acSlopeMidHp, xoLowFreqHz, xoLowMarginHz, midSizeInch, snapProfile, snapSeriesL, snapSeriesC, snapSeriesR, snapStacks, snapBoundToSeries, stagedOn, targetRipple, targetPhase, soloSensDb, soloFloorOn, soloFloorDb]);
 
   function resetProject() {
     localStorage.removeItem(AUTOSAVE_KEY);
@@ -2597,7 +2603,14 @@ export default function App() {
       };
       const tAdj = { offsetMm: num(offsetMm, 0), trimDb: num(trimDb, 0), inverted };
       const mAdj = { offsetMm: num(midOffsetMm, 0), trimDb: num(midTrimDb, 0), inverted: midInverted };
-      const variants = crossover3Variants(sim.base.w, sim.base.m!, sim.base.t, pins, tweeterHpFloor ?? undefined);
+      const variants = crossover3Variants(
+        sim.base.w,
+        sim.base.m!,
+        sim.base.t,
+        pins,
+        tweeterHpFloor ?? undefined,
+        xo3Steps,
+      );
       const inputs = variants.map((v) => ({
         grid: [...grid],
         w: sim.base.w,
@@ -2608,6 +2621,8 @@ export default function App() {
         midAdjust: mAdj,
         xoLow: v.xoLow,
         xoHigh: v.xoHigh,
+        xoLowRange: v.xoLowRange,
+        xoHighRange: v.xoHighRange,
         label: v.label,
         settings,
       }));
@@ -2638,15 +2653,26 @@ export default function App() {
           setVfBypass(true);
           setVfOpt(null);
           setVfRunStats(null);
+          // DELIVERED handovers, not just the candidate label: a design can
+          // meet every flatness target while its crossings sit an octave off
+          // the knees it was built on, and that is invisible in the numbers.
+          const crossings = (r: typeof win): string => {
+            const xo = r.net.after.xoHzPairs;
+            if (!xo || xo.length !== 2) return '';
+            const f = (v: number | null) => (v == null ? '—' : `${Math.round(v)}`);
+            return ` · crosses ${f(xo[0])}/${f(xo[1])} Hz`;
+          };
           const line = (r: typeof win): string =>
             `${r.label}: ${r.net.after.rippleDb.toFixed(2)} dB/${r.net.after.phaseDeg.toFixed(1)}°` +
             (r.net.after.pairPhaseDeg && r.net.after.pairPhaseDeg.length === 2
               ? ` (W-M ${r.net.after.pairPhaseDeg[0].toFixed(1)}° · M-T ${r.net.after.pairPhaseDeg[1].toFixed(1)}°)`
               : '') +
+            crossings(r) +
             (r.bomTotalEur !== null ? ` · €${Math.round(r.bomTotalEur)}` : '') +
             (r.zOk ? '' : ' · ⚠ amp-load');
           setNetOptNote(
-            `3-way scan (alignment × polarity design step, two-pair tune) — winner ` +
+            `3-way scan (${variants.length} candidate${variants.length > 1 ? 's' : ''}, ` +
+              `alignment × polarity design step, two-pair tune) — winner ` +
               `xo ${win.label} · ${win.structureLabel}` +
               (win.net.after.avgDevDb !== undefined
                 ? ` · avg ${win.net.after.avgDevDb.toFixed(2)} dB`
@@ -6894,6 +6920,18 @@ export default function App() {
                     HP floor {tweeterHpFloor} Hz (2×Fs)
                   </span>
                 )}
+                {threeWay && (
+                  <label title="How many handover candidates the 3-way scan simulates PER crossing. Each candidate runs the full design chain inside its own slice of the search range, so the count is squared: 2 steps = 4 chains. Works pinned or unpinned — without a pin the range is the neighbourhood of the raw crossings.">
+                    Scan steps per crossing
+                    <select value={xo3Steps} onChange={(e) => setXo3Steps(Number(e.target.value))}>
+                      {[1, 2, 3].map((n) => (
+                        <option key={n} value={n}>
+                          {n} ({n * n} sim{n * n > 1 ? 's' : ''})
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                )}
                 {xoRangeOn && threeWay && (
                   <span
                     className="inline-num"
@@ -6944,20 +6982,27 @@ export default function App() {
                       onChange={(e) => setXoMarginHz(e.target.value)}
                     />{' '}
                     Hz
-                    {' · '}
-                    <select
-                      value={xoScanSteps}
-                      onChange={(e) => setXoScanSteps(Number(e.target.value))}
-                      title="How many crossover candidates the scan simulates across the pinned range (evenly spaced, your pin always included). Every candidate runs the FULL design chain, so compute grows about linearly — the worker pool runs several at once, but 9 steps still takes a multiple of 3. More steps = a finer sweep of the handover region."
-                    >
-                      {[3, 5, 7, 9].map((n) => (
-                        <option key={n} value={n}>
-                          {n} steps
-                        </option>
-                      ))}
-                    </select>
-                    {xoScanSteps > 3 && (
-                      <span className="derived"> ⏱ ~{Math.ceil(xoScanSteps / 3)}× runtime</span>
+                    {/* Candidate count: 2-way sweeps ONE axis from here; 3-way
+                        has its own per-crossing control above (two axes, and
+                        it must work unpinned too). */}
+                    {!threeWay && (
+                      <>
+                        {' · '}
+                        <select
+                          value={xoScanSteps}
+                          onChange={(e) => setXoScanSteps(Number(e.target.value))}
+                          title="How many crossover candidates the scan simulates across the pinned range (evenly spaced, your pin always included). Every candidate runs the FULL design chain, so compute grows about linearly — the worker pool runs several at once, but 9 steps still takes a multiple of 3. More steps = a finer sweep of the handover region."
+                        >
+                          {[3, 5, 7, 9].map((n) => (
+                            <option key={n} value={n}>
+                              {n} steps
+                            </option>
+                          ))}
+                        </select>
+                        {xoScanSteps > 3 && (
+                          <span className="derived"> ⏱ ~{Math.ceil(xoScanSteps / 3)}× runtime</span>
+                        )}
+                      </>
                     )}
                   </span>
                 )}

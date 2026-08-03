@@ -77,6 +77,11 @@ export interface Chain3Input {
   /** Candidate handover points (Hz). */
   xoLow: number;
   xoHigh: number;
+  /** This candidate's own CAGE per axis (from `crossover3Variants`). Holds the
+   *  acoustic crossing through design AND tune; without it the tuner drifts
+   *  the handover away from the knees the design step chose. */
+  xoLowRange?: [number, number];
+  xoHighRange?: [number, number];
   label: string;
   settings: Chain3Settings;
 }
@@ -131,8 +136,11 @@ export function runThreeWayChain(
     xoHigh,
     band: s.band,
     phasePriority: s.phasePriority,
-    xoLowPin: s.xoLowPin,
-    xoHighPin: s.xoHighPin,
+    // The candidate's cage IS the knee window — the design step and the tune
+    // must agree on where this candidate's handovers live, or the tune spends
+    // its budget undoing the design.
+    xoLowWindow: input.xoLowRange,
+    xoHighWindow: input.xoHighRange,
     hpFloorHz: s.hpFloorHz,
     structureLow: s.structureLow,
     structureHigh: s.structureHigh,
@@ -178,12 +186,16 @@ export function runThreeWayChain(
   onProgress?.({ stage: 'tune', evals: 0 });
   const pinRange = (pin?: { freq: number; margin: number }): [number, number] | null =>
     pin ? [pin.freq - Math.max(pin.margin, pin.freq * 0.02), pin.freq + Math.max(pin.margin, pin.freq * 0.02)] : null;
+  // The candidate's own cage wins over the raw designer pin: the scan already
+  // subdivided that pin, and this candidate owns one slice of it.
+  const lowCage = input.xoLowRange ?? pinRange(s.xoLowPin);
+  const highCage = input.xoHighRange ?? pinRange(s.xoHighPin);
   const net = optimizeNetworkValues(merged, grid, w, t, driverZ, tAdjust, {
     midBranch: { response: m, adjust: midAdjust },
     phasePriority: s.phasePriority,
     breakupGuard: s.breakupGuard,
     acousticSlopes: s.acousticSlopes,
-    xoRangePairs: [pinRange(s.xoLowPin), pinRange(s.xoHighPin)],
+    xoRangePairs: [lowCage, highCage],
     staged: s.targets,
     phaseMetric: s.phaseMetric,
     catalogSnap: s.catalogSnap,
@@ -215,12 +227,59 @@ export function runThreeWayChain(
   };
 }
 
+export interface Chain3Variant {
+  label: string;
+  xoLow: number;
+  xoHigh: number;
+  /** The candidate's own CAGE per axis — held during the tune. */
+  xoLowRange: [number, number];
+  xoHighRange: [number, number];
+}
+
 /**
- * 2D candidate grid around the RAW pair crossings (where the unfiltered
- * branch levels meet — the natural handover neighbourhoods). Two steps per
- * axis (×0.75 / ×1.4 around the crossing) = 4 chains: enough competition to
- * escape a bad basin without the runtime of a full grid. Clamped to sane
- * territory and to xoHigh ≥ 2.5 × xoLow (a 3-way needs real branch bands).
+ * Subdivide [lo, hi] into `n` candidate centres, each caged in its own
+ * ±half-spacing slice. The slices TILE the range exactly: nothing outside it,
+ * neighbours never overlap — the two-way scan doctrine, in log space.
+ *
+ * n = 1 collapses to the geometric centre with the whole range as its cage.
+ */
+function sliceAxis(
+  lo: number,
+  hi: number,
+  n: number,
+): { centre: number; range: [number, number] }[] {
+  const L = Math.log(lo);
+  const H = Math.log(hi);
+  if (!(H > L) || n <= 1) {
+    return [{ centre: Math.exp((L + H) / 2), range: [lo, hi] }];
+  }
+  const step = (H - L) / (n - 1);
+  const out: { centre: number; range: [number, number] }[] = [];
+  for (let i = 0; i < n; i++) {
+    const c = L + i * step;
+    out.push({
+      centre: Math.exp(c),
+      range: [Math.exp(Math.max(L, c - step / 2)), Math.exp(Math.min(H, c + step / 2))],
+    });
+  }
+  return out;
+}
+
+/**
+ * 2D candidate grid over the two handovers.
+ *
+ * Each candidate carries its OWN cage per axis, pinned or not. Without one the
+ * tuner drags the acoustic crossings wherever its objective marginally
+ * prefers: measured on Robbert's set, a design with knees at 490/3000 Hz was
+ * delivered crossing at 1256/6361 Hz — the mid-tweeter handover landing an
+ * octave up, inside the mid's breakup, which is exactly where its phase falls
+ * apart. This is the two-way "vrij schuivende kruisingen" lesson, which the
+ * three-way chain had never been given.
+ *
+ * A pinned axis subdivides the PIN; a free axis subdivides the neighbourhood
+ * of the raw crossing (×0.75 … ×1.4), where the unfiltered branch levels meet.
+ * Clamped to sane territory and to xoHigh ≥ 2.5 × xoLow (a 3-way needs real
+ * branch bands).
  */
 export function crossover3Variants(
   w: GriddedResponse,
@@ -231,7 +290,10 @@ export function crossover3Variants(
    *  crosses the raw mid several octaves below a sensible handover (the old
    *  2-way lesson), which made every M-T candidate read like a W-M one. */
   hpFloorHz?: number,
-): { label: string; xoLow: number; xoHigh: number }[] {
+  /** Candidate steps PER AXIS: 1/2/3 → 1/4/9 full chains. Runtime grows with
+   *  the square, so this is the designer's cost knob. */
+  steps = 2,
+): Chain3Variant[] {
   const firstCross = (lower: GriddedResponse, upper: GriddedResponse, lo: number, hi: number): number => {
     for (let i = 0; i < lower.freq.length; i++) {
       const f = lower.freq[i];
@@ -246,19 +308,54 @@ export function crossover3Variants(
     7000,
     Math.max(1800, firstCross(m, t, 1200, 9000), hpFloorHz ?? 0),
   );
-  // A pinned axis collapses to its centre — the designer chose; the tune
-  // holds it there via the per-pair xo pin. Unpinned axes keep the 2-step
-  // competition around the raw crossing.
-  const lows = pins?.low ? [pins.low.freq] : [rawLow * 0.75, rawLow * 1.4];
-  const highs = pins?.high ? [pins.high.freq] : [rawHigh * 0.75, rawHigh * 1.4];
-  const out: { label: string; xoLow: number; xoHigh: number }[] = [];
-  for (const fl of lows) {
-    for (const fh of highs) {
-      const xoLow = Math.round(Math.min(1200, Math.max(250, fl)));
-      const xoHigh = Math.round(Math.min(8000, Math.max(xoLow * 2.5, Math.min(7000, fh))));
+  const n = Math.max(1, Math.round(steps));
+  /** The searchable span of one axis: the pin when given, else the raw
+   *  crossing's neighbourhood. Either way it gets SUBDIVIDED — a pin is a
+   *  search space, not a single point (the two-way doctrine). */
+  const span = (
+    raw: number,
+    pin: { freq: number; margin: number } | undefined,
+  ): [number, number] => {
+    if (!pin) return [raw * 0.75, raw * 1.4];
+    const mrg = Math.max(pin.margin, pin.freq * 0.02);
+    return [pin.freq - mrg, pin.freq + mrg];
+  };
+  const [lLo, lHi] = span(rawLow, pins?.low);
+  const [hLo, hHi] = span(rawHigh, pins?.high);
+  const out: Chain3Variant[] = [];
+  for (const fl of sliceAxis(lLo, lHi, n)) {
+    for (const fh of sliceAxis(hLo, hHi, n)) {
+      const xoLow = Math.round(Math.min(1200, Math.max(250, fl.centre)));
+      const xoHigh = Math.round(Math.min(8000, Math.max(xoLow * 2.5, Math.min(7000, fh.centre))));
+      // The cage follows the same clamps as the centre, and never collapses
+      // to a point: a zero-width range would make the xo penalty a cliff.
+      const cage = (
+        r: [number, number],
+        centre: number,
+        lo: number,
+        hi: number,
+      ): [number, number] => {
+        const a = Math.min(Math.max(r[0], lo), hi);
+        const b = Math.min(Math.max(r[1], lo), hi);
+        const half = Math.max(centre * 0.02, (b - a) / 2);
+        return [Math.min(a, centre - half), Math.max(b, centre + half)];
+      };
+      // The xoHigh ≥ 2.5 × xoLow clamp can push two adjacent steps onto the
+      // SAME point (seen with steps=3: the 767 Hz row's two lowest high-steps
+      // both clamped to 1918). That is a duplicate candidate: it burns a full
+      // chain's runtime for a result already being computed, and — because the
+      // scan's progress table is keyed by label — it silently loses a row, so
+      // "9 candidates" would show as 8. One point, one candidate.
+      if (out.some((o) => o.xoLow === xoLow && o.xoHigh === xoHigh)) continue;
       // Two crossover POINTS, labeled unambiguously — "411/2520 Hz" read as
       // one woofer-mid RANGE (Sanders' report).
-      out.push({ label: `W-M ${xoLow} · M-T ${xoHigh} Hz`, xoLow, xoHigh });
+      out.push({
+        label: `W-M ${xoLow} · M-T ${xoHigh} Hz`,
+        xoLow,
+        xoHigh,
+        xoLowRange: cage(fl.range, xoLow, 250, 1200),
+        xoHighRange: cage(fh.range, xoHigh, xoLow * 2.5, 8000),
+      });
     }
   }
   return out;

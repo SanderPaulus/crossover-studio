@@ -1844,8 +1844,10 @@ button:disabled {
   border-radius: 12px;
   background: var(--panel);
   box-shadow: 0 8px 30px rgba(0, 0, 0, 0.25);
-  /* FIXED width: ticking stage texts must never resize the popup. */
-  width: min(28rem, 92vw);
+  /* FIXED width: ticking stage texts must never resize the popup. Sized for
+     the WIDEST label the scan produces — the 3-way candidates carry both
+     handovers ("W-M 411 · M-T 2520 Hz"), which the 2-way-era 28rem clipped. */
+  width: min(34rem, 92vw);
   text-align: center;
 }
 
@@ -1888,7 +1890,9 @@ button:disabled {
   color: var(--muted);
 }
 .busy-scan td:first-child {
-  width: 34%;
+  /* Wide enough for a full two-handover label; the stage column keeps the
+     rest, which still fits "tune (cap shrink ladder)". */
+  width: 47%;
   font-weight: 600;
   color: var(--fg);
 }

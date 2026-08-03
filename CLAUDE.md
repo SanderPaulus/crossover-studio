@@ -901,6 +901,42 @@ metrics + het rapport; élke staged-beslispoort (meets/prune/escalatie/reparatie
 chain-ranking oordelen op het SLECHTSTE paar (`phaseGate`/`worstPhase`); de
 zoek-objective houdt het gemiddelde (anker-les). 2-weg bit-compat: één paar ⇒
 m.phaseDeg. Scan-note toont "(W-M x° · M-T y°)".
+**Kandidaat-kooien + instelbaar aantal (aug 2026, Sanders eerste echte 3-weg-run)**: zijn scan
+leverde een ontwerp met knieën op 490/3000 Hz dat AKOESTISCH kruiste op 1256/6361 Hz — de
+mid-tweeter-overgang een octaaf te hoog, midden in de mid-breakup, en dáár stond zijn fase-P95
+op 50°. Oorzaak: `crossover3Variants` gaf alleen kandidaat-CENTRA, en de keten zette
+`xoRangePairs` alleen als de gebruiker zelf pinde — zonder pin `[null, null]`, dus niets hield
+de kruising vast (exact de 2-weg-les "vrij schuivende kruisingen", die 3-weg nooit had
+gekregen). Nu draagt elke kandidaat zijn eigen KOOI per as (`sliceAxis` betegelt de as in
+log-ruimte: gepinde as = de pin onderverdeeld, vrije as = de omgeving van de rauwe kruising
+×0,75…×1,4), en die kooi voedt zowel het knie-venster van de ontwerpstap als `xoRangePairs`
+in de tune — ontwerp en tune moeten het eens zijn over waar deze kandidaat woont.
+`xo3Steps` (⚙, 1/2/3 → 1/4/9 ketens, gepersisteerd) werkt GEPIND ÉN VRIJ — Sanders wens; de
+2-weg-`xoScanSteps`-select is in 3-weg verborgen (twee betekenissen van "steps" naast elkaar).
+Kandidaten worden GEDEDUPLICEERD op (xoLow, xoHigh): de clamp xoHigh ≥ 2,5×xoLow kan twee
+stappen op hetzelfde punt zetten (bij steps=3 clampten de twee laagste hoog-stappen van de
+767 Hz-rij allebei naar 1918), en dat kostte een volle keten-runtime aan een dubbel resultaat
+terwijl de voortgangstabel — op LABEL gekeyed — de rij stil opslokte: "9 kandidaten" toonde
+als 8 en er draaiden er 9. In de browser gevonden door de rijen te tellen.
+`after.xoHzPairs` wordt nu gerapporteerd en de scan-note toont "crosses x/y Hz": een ontwerp
+kan élk vlakheidsdoel halen terwijl zijn overgangen een octaaf naast de knieën liggen, en dat
+was nergens afleesbaar.
+**GEMETEN, en eerlijk gemengd** (Robbert, zelfde kandidaat, staged targets, geen pin):
+ongekooid ontwierp 345/1620 → leverde 363/**3954**, avgDev 1,172, paren 5,0/18,6°; gekooid
+ontwierp 341/1844 → leverde 363/**2776**, avgDev 1,341, paren 8,0/14,5°. De kooi halveert de
+drift en verbetert het slechtste paar 22%, maar kost 14% vlakheid — en de kruising ontsnapt
+nog steeds (2776 boven de kooigrens 1844). De xo-penalty is ZACHT (kwadratisch in octaven,
+adaptief gewicht pas onder ±0,15 oct halve breedte), dus een brede kooi bindt niet echt; de
+winst zit vooral in kandidaten die eindelijk écht verschillende gebieden verkennen i.p.v. naar
+hetzelfde bekken te convergeren. Meer stappen ⇒ smallere kooien ⇒ strakker gebonden.
+**NOG OPEN, de vermoedelijke echte oorzaak (aug 2026, niet gerepareerd)**: de breakup-guard
+bewaakt `[xo×1,6 … xo×4]` — volledig verankerd aan de GEMETEN kruising (netOptimizer, in de
+per-paar-lus). Bij een kruising van 2520 Hz bewaakt hij de mid op 4,0–10,1 kHz en dekt de
+5,6 kHz-breakup; drijft de kruising naar 6361 Hz, dan verschuift de bewaakte band mee naar
+10,2–25,4 kHz en valt de breakup er BUITEN. Een weggedreven kruising maakt dus zijn eigen
+bewaker blind, wat verder wegdrijven goedkoper maakt — een vicieuze cirkel. De guard aan de
+gemeten resonantie verankeren i.p.v. aan de kruising is de kandidaat-fix, maar die zit in
+2-weg-gedeelde code en verdient een eigen meting (anker-les: niet blind aanraken).
 **Diepere zoektocht in de gezamenlijke tune (aug 2026, zelfde ronde)**: de tak-synthese
 schakelt boven 9 dims al blok-coördinaat-verfijning in ("past ~10 dims crawlt één simplex"),
 maar de ASSEMBLED tuner had dat nooit gekregen — en een 3-weg-netwerk draagt 16–25 vrije

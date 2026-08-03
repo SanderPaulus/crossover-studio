@@ -66,9 +66,11 @@ export interface Design3Input {
   xoHigh: number;
   band: [number, number];
   phasePriority: number;
-  /** Designer pins (freq ± margin, Hz). A pinned axis is held. */
-  xoLowPin?: { freq: number; margin: number };
-  xoHighPin?: { freq: number; margin: number };
+  /** Knee window per crossing (Hz) — the candidate's own cage from the scan.
+   *  The refine may move the knee inside it, never out. Omit for a free ±20%
+   *  neighbourhood around the candidate. */
+  xoLowWindow?: [number, number];
+  xoHighWindow?: [number, number];
   /** Binding alignment choice per crossing; omit for free enumeration. */
   structureLow?: Struct3Choice;
   structureHigh?: Struct3Choice;
@@ -298,23 +300,22 @@ export function designThreeWay(input: Design3Input): Design3Result {
   // knees, because moving a crossing moves each branch's own passband.
   const kneeWindow = (
     centre: number,
-    pin: { freq: number; margin: number } | undefined,
+    win: [number, number] | undefined,
     lo: number,
     hi: number,
   ): [number, number] => {
-    if (pin) {
-      const mrg = Math.max(pin.margin, pin.freq * 0.02);
-      return [Math.max(lo, pin.freq - mrg), Math.min(hi, pin.freq + mrg)];
-    }
-    // Unpinned: ±20% around the candidate. Wide enough for the refine to find
-    // the local best, tight enough that the scan's two steps per axis (×0.75 /
-    // ×1.4) stay separate candidates instead of collapsing onto each other.
-    return [Math.max(lo, centre / 1.2), Math.min(hi, centre * 1.2)];
+    // The scan's cage, clamped to sane territory. Falling back to ±20% around
+    // the candidate keeps a direct caller (or a test) sensible: wide enough to
+    // refine, tight enough that neighbouring scan steps stay distinct.
+    const [a, b] = win ?? [centre / 1.2, centre * 1.2];
+    const w0 = Math.max(lo, Math.min(a, b));
+    const w1 = Math.min(hi, Math.max(a, b));
+    return w1 > w0 ? [w0, w1] : [Math.max(lo, centre / 1.05), Math.min(hi, centre * 1.05)];
   };
-  const lowWin = kneeWindow(input.xoLow, input.xoLowPin, 150, 1500);
+  const lowWin = kneeWindow(input.xoLow, input.xoLowWindow, 150, 1500);
   const highWin = kneeWindow(
     input.xoHigh,
-    input.xoHighPin,
+    input.xoHighWindow,
     Math.max(1000, hpFloorHz ?? 0),
     9000,
   );

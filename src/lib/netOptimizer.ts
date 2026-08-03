@@ -164,6 +164,11 @@ export interface NetOptimizeResult {
      *  the coupled-pairs verdict (gates judge the worst of these). */
     pairPhaseDeg?: number[];
     xoHz?: number | null;
+    /** 3-way: the DELIVERED acoustic crossing per adjacent pair [low, high].
+     *  Worth reporting on its own: a design can meet every flatness target
+     *  while its handovers sit an octave off the knees that were designed —
+     *  measured on Robbert's set before the candidates were caged. */
+    xoHzPairs?: (number | null)[];
   };
   /** How many component values were free to move (final network). */
   tuned: number;
@@ -1884,6 +1889,7 @@ export function optimizeNetworkValues(
     avgDevDb: m.avgDevDb,
     phaseDeg: m.phaseDeg,
     ...(m.pairPhaseDeg.length > 1 ? { pairPhaseDeg: m.pairPhaseDeg } : {}),
+    ...(m.xoHzPairs.length > 1 ? { xoHzPairs: m.xoHzPairs } : {}),
   });
 
   /* ---- SOLO sensitivity gate (see soloSensBudgetDb): a tuned result that

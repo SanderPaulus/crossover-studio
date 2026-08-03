@@ -98,12 +98,12 @@ describe('threeWayDesign — alignment × polarity structure search', () => {
     expect(d.evaluated).toBeGreaterThanOrEqual(4);
   });
 
-  it('keeps a pinned crossing inside its pin', () => {
+  it('keeps each knee inside the candidate cage it was handed', () => {
     const d = designThreeWay({
       ...base,
       xoLow: 500,
-      xoLowPin: { freq: 500, margin: 40 },
-      xoHighPin: { freq: 3000, margin: 200 },
+      xoLowWindow: [460, 540],
+      xoHighWindow: [2800, 3200],
     });
     expect(d.xoLow).toBeGreaterThanOrEqual(459);
     expect(d.xoLow).toBeLessThanOrEqual(541);

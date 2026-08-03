@@ -93,6 +93,60 @@ describe('threeWayChain (phase-4 trede 4c, staged v1)', () => {
     }
   });
 
+  it('every candidate carries a cage that CONTAINS its own centre', () => {
+    // Without a cage the tuner drags the acoustic crossing away from the knees
+    // the design step chose (measured: 490/3000 designed → 1256/6361 built).
+    // A cage that excluded its own centre would be worse than none.
+    for (const steps of [1, 2, 3]) {
+      const vs = crossover3Variants(w, m, t, undefined, undefined, steps);
+      // At most steps², fewer when the xoHigh ≥ 2.5 × xoLow clamp collapses
+      // two steps onto one point — those are deduped, never run twice.
+      expect(vs.length).toBeGreaterThan(0);
+      expect(vs.length).toBeLessThanOrEqual(steps * steps);
+      // Labels must stay unique: the scan's progress table is keyed by label,
+      // so a duplicate would silently swallow a row.
+      expect(new Set(vs.map((v) => v.label)).size).toBe(vs.length);
+      for (const v of vs) {
+        expect(v.xoLowRange[0]).toBeLessThanOrEqual(v.xoLow);
+        expect(v.xoLowRange[1]).toBeGreaterThanOrEqual(v.xoLow);
+        expect(v.xoHighRange[0]).toBeLessThanOrEqual(v.xoHigh);
+        expect(v.xoHighRange[1]).toBeGreaterThanOrEqual(v.xoHigh);
+        // Never a zero-width cage: the xo penalty would become a cliff.
+        expect(v.xoLowRange[1]).toBeGreaterThan(v.xoLowRange[0]);
+        expect(v.xoHighRange[1]).toBeGreaterThan(v.xoHighRange[0]);
+      }
+    }
+  });
+
+  it('a pinned axis is SUBDIVIDED, not collapsed, and stays inside the pin', () => {
+    const vs = crossover3Variants(
+      w,
+      m,
+      t,
+      { low: { freq: 500, margin: 100 }, high: { freq: 3000, margin: 400 } },
+      undefined,
+      3,
+    );
+    expect(vs).toHaveLength(9);
+    // Three distinct low centres and three distinct high ones — the pin is a
+    // search space that gets tiled, exactly like the two-way scan.
+    expect(new Set(vs.map((v) => v.xoLow)).size).toBe(3);
+    expect(new Set(vs.map((v) => v.xoHigh)).size).toBe(3);
+    for (const v of vs) {
+      expect(v.xoLow).toBeGreaterThanOrEqual(399);
+      expect(v.xoLow).toBeLessThanOrEqual(601);
+      expect(v.xoHigh).toBeGreaterThanOrEqual(2599);
+      expect(v.xoHigh).toBeLessThanOrEqual(3401);
+    }
+  });
+
+  it('steps=1 collapses to a single candidate that still owns a real cage', () => {
+    const vs = crossover3Variants(w, m, t, undefined, undefined, 1);
+    expect(vs).toHaveLength(1);
+    expect(vs[0].xoLowRange[1]).toBeGreaterThan(vs[0].xoLowRange[0]);
+    expect(vs[0].xoHighRange[1]).toBeGreaterThan(vs[0].xoHighRange[0]);
+  });
+
   it('ranking gates on the amp-load verdict before anything else', () => {
     const mk = (label: string, zOk: boolean, avgDev: number, phase: number, bom: number | null): Chain3Result =>
       ({
