@@ -40,7 +40,10 @@ Volgorde binnen een blok = aanbevolen prioriteit. Inschattingen zijn grof:
   niveau-uitgelijnd (offset zichtbaar), Δ-cijfers (avg/P95/worst @ f) in de
   SPL-strip; fase: mic-delay weggefit, residu-curve in de fase-chart,
   polariteit-flag bij offset ~180°. Alles op het ZICHTBARE bereik, dus overlay
-  en strip oordelen over dezelfde band. Persistent in project + autosave
+  en strip oordelen over dezelfde band. Persistent in project + autosave.
+  Plus **🔬 Compare wizard** (Import-tab): dezelfde lus als begeleide
+  checklist — vier stappen die live app-state lezen, meting laden kan ín de
+  wizard, verdict met de cijfers als slotstap
 
 ## Kort — kleine, afgebakende verbeteringen
 

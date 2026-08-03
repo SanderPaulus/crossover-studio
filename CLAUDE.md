@@ -229,6 +229,11 @@ minimum phase reconstrueert. Voertaal met Sander: **Nederlands**; code/comments 
   HARD GELEERD bij de bouw: de autosave-effect heeft een EXPLICIETE dependency-
   lijst — nieuwe persistente state MOET daar ook in, anders slaat hij stil niet
   op (verify ontbrak eerst; in de browser gevonden doordat de reload hem kwijt was).
+  **🔬 Compare wizard** (knop naast het Verification-slot, Import-tab): de lus als
+  begeleide CHECKLIST in vier stappen (Design/Drivers/Measurement/Verdict) op het
+  wizardSteps-lijstpatroon + Modal — elke stap leest live state (geen eigen flow),
+  meting laden kan ín stap 3 via dezelfde loadVerification, stap 4 toont de
+  verifyCompare-cijfers incl. inverted-flag.
 - `responseStats.ts` — **Response flatness (jul 2026, Sanders "±dB kan ook op 1 plek zijn")**:
   hele-bereik-vlakheid van de combined SPL over het zichtbare bereik — score 0–100 uit de
   GEMIDDELDE |afwijking| t.o.v. het MEDIAAN-niveau (mediaan omdat een mean-referentie door

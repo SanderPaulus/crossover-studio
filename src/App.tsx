@@ -839,6 +839,9 @@ export default function App() {
   /** Component wizard: tier profile + binding series per kind for the snap. */
   const [wizardOpen, setWizardOpen] = useState(false);
   const [wizardStep, setWizardStep] = useState(1);
+  /** Compare wizard: guided model-vs-measurement validation (VALIDATIE.md). */
+  const [cmpOpen, setCmpOpen] = useState(false);
+  const [cmpStep, setCmpStep] = useState(1);
   /** In-app manual; opens on the section matching the active design tab. */
   const [helpOpen, setHelpOpen] = useState(false);
   const [catalogMgrOpen, setCatalogMgrOpen] = useState(false);
@@ -4704,6 +4707,183 @@ export default function App() {
           </div>
         </Modal>
       )}
+      {cmpOpen && (() => {
+        // Guided model-vs-measurement validation. A CHECKLIST, not a flow
+        // that does things for you: every step reads live app state, so a
+        // step you completed elsewhere is simply already green.
+        const steps = [
+          { id: 1, label: 'Design' },
+          { id: 2, label: 'Drivers' },
+          { id: 3, label: 'Measurement' },
+          { id: 4, label: 'Verdict' },
+        ];
+        const pos = steps.findIndex((st) => st.id === cmpStep);
+        const zMid = !!impedances['mid'];
+        const zTw = !!impedances['tweeter'];
+        const Ok = ({ ok, children }: { ok: boolean; children: ReactNode }) => (
+          <p style={{ margin: '0.15rem 0' }}>
+            {ok ? '✅' : '⬜'} {children}
+          </p>
+        );
+        return (
+          <Modal
+            open
+            onClose={() => setCmpOpen(false)}
+            label="Compare wizard — model vs measurement"
+            cardClass="targets-card wizard-card"
+          >
+            <div className="busy-title">🔬 Compare — model vs measurement</div>
+            <div className="wizard-steps">
+              {steps.map((st, i) => (
+                <span key={st.id} className={i <= pos ? 'done' : ''} />
+              ))}
+            </div>
+            <p className="sub" style={{ width: '100%', margin: 0 }}>
+              Step {pos + 1} of {steps.length} · {steps[pos].label}
+            </p>
+            <div className="wizard-body">
+              {cmpStep === 1 && (
+                <>
+                  <p>
+                    <strong>Design</strong> — the comparison judges the simulated Combined of the
+                    ACTIVE network tab, so that tab must be the design you actually built.
+                  </p>
+                  <Ok ok={designs.length > 0}>
+                    A network design exists{activeDesign ? <> — active: <strong>{activeDesign.name}</strong></> : null}.
+                    Import one (Network → Import filter / Import variant) or rebuild the physical
+                    build with New from template + the editor.
+                  </Ok>
+                  <Ok ok={networkActive}>
+                    "Use in simulation" is on — otherwise the sim shows the virtual filters, not
+                    your network.
+                  </Ok>
+                  <p className="sub">
+                    Rebuilding what is physically on the bench? Enter the MEASURED component values
+                    in the inspector — that difference (design vs solder) is often the first thing
+                    this comparison exposes.
+                  </p>
+                </>
+              )}
+              {cmpStep === 2 && (
+                <>
+                  <p>
+                    <strong>Drivers</strong> — the simulation is measured drivers × your network,
+                    so the driver files must be the same measurements the design was made with.
+                  </p>
+                  <Ok ok={!!woofer}>Woofer/mid response (FRD){woofer ? ` — ${woofer.name}` : ''}</Ok>
+                  <Ok ok={zMid}>Woofer/mid impedance (ZMA/LIMP)</Ok>
+                  <Ok ok={!!tweeter}>Tweeter response (FRD){tweeter ? ` — ${tweeter.name}` : ''}</Ok>
+                  <Ok ok={zTw}>Tweeter impedance (ZMA/LIMP)</Ok>
+                  <p className="sub">
+                    Single-driver validation (one driver through its network) is fine: load just
+                    that driver and the app runs in solo mode.
+                  </p>
+                </>
+              )}
+              {cmpStep === 3 && (
+                <>
+                  <p>
+                    <strong>Measurement</strong> — measure the BUILT system with the same rig as
+                    the driver measurements (same gate, same mic position discipline), export as
+                    FRD with phase, and load it here.
+                  </p>
+                  <Ok ok={!!verify}>
+                    Verification measurement{verify ? ` — ${verify.name}` : ''}
+                  </Ok>
+                  <p>
+                    <label className="file-button">
+                      {verify ? 'Replace measurement…' : 'Load measurement (FRD)…'}
+                      <input type="file" accept=".frd,.txt" onChange={loadVerification} />
+                    </label>
+                    {verify && (
+                      <button
+                        type="button"
+                        onClick={() => setVerify(null)}
+                        style={{ marginLeft: '0.5rem' }}
+                      >
+                        Remove
+                      </button>
+                    )}
+                  </p>
+                  <p className="sub">
+                    Level and mic distance do NOT need to match the sim — the comparison aligns
+                    level (median) and fits the mic delay out of the phase, and shows both numbers
+                    instead of hiding them.
+                  </p>
+                </>
+              )}
+              {cmpStep === 4 && (
+                <>
+                  <p>
+                    <strong>Verdict</strong> — judged over the visible SPL range (zoom the chart to
+                    change the band being graded).
+                  </p>
+                  {!verifyCompare ? (
+                    <p className="sub">
+                      No comparison yet — {verify ? 'the simulation has no result (check steps 1–2).' : 'load a verification measurement in step 3.'}
+                    </p>
+                  ) : (
+                    <>
+                      <p>
+                        <strong>Magnitude</strong>: avg ±{verifyCompare.avgAbsDb.toFixed(2)} dB ·
+                        P95 ±{verifyCompare.p95AbsDb.toFixed(2)} dB · worst{' '}
+                        {verifyCompare.maxAt.deltaDb.toFixed(1)} dB at {hz(verifyCompare.maxAt.freqHz)}
+                        {' '}(band {Math.round(verifyCompare.band[0])}–{Math.round(verifyCompare.band[1])} Hz,
+                        level-aligned {verifyCompare.offsetDb >= 0 ? '+' : ''}
+                        {verifyCompare.offsetDb.toFixed(1)} dB)
+                      </p>
+                      {verifyCompare.phase ? (
+                        <p>
+                          <strong>Phase</strong>: residual avg {verifyCompare.phase.avgAbsDeg.toFixed(1)}° ·
+                          P95 {verifyCompare.phase.p95AbsDeg.toFixed(0)}° · fitted mic delay{' '}
+                          {verifyCompare.phase.fittedDelayUs.toFixed(0)} µs
+                          {verifyCompare.phase.looksInverted && (
+                            <> · <strong>⚠ offset ≈ 180° — the build is likely wired INVERTED vs the sim</strong></>
+                          )}
+                        </p>
+                      ) : (
+                        <p className="sub">Measurement carries no phase column — magnitude verdict only.</p>
+                      )}
+                      <p className="sub">
+                        The overlay lives in the SPL chart, the phase residual in the Phase chart —
+                        flat at 0° means the model's phase is right where it matters.
+                      </p>
+                    </>
+                  )}
+                </>
+              )}
+            </div>
+            <div className="wizard-foot">
+              <div className="row">
+                {pos > 0 ? (
+                  <button type="button" onClick={() => setCmpStep(steps[pos - 1].id)}>
+                    ← Back
+                  </button>
+                ) : (
+                  <button type="button" onClick={() => setCmpOpen(false)}>
+                    Cancel
+                  </button>
+                )}
+              </div>
+              <div className="row">
+                {pos < steps.length - 1 ? (
+                  <button type="button" className="primary" onClick={() => setCmpStep(steps[pos + 1].id)}>
+                    Next →
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    className="primary"
+                    onClick={() => setCmpOpen(false)}
+                  >
+                    Done — show the charts
+                  </button>
+                )}
+              </div>
+            </div>
+          </Modal>
+        );
+      })()}
       {trapOpen && (
         <Modal
           open
@@ -5043,6 +5223,16 @@ export default function App() {
                   </span>
                 )}
               </label>
+              <button
+                type="button"
+                onClick={() => {
+                  setCmpStep(1);
+                  setCmpOpen(true);
+                }}
+                title="Guided model-vs-measurement check: design, drivers, measurement, verdict — step by step"
+              >
+                🔬 Compare wizard
+              </button>
               <button
                 type="button"
                 onClick={loadDemo}
