@@ -95,6 +95,93 @@ function adjustPhaseDeg(f: number, adj: TweeterAdjust): number {
   return -360 * f * delay + (adj.inverted ? 180 : 0);
 }
 
+/** Per-branch adjustment for the N-way core: every branch may carry its own
+ *  level trim, physical offset (delay) and polarity — the generalization of
+ *  the tweeter-only TweeterAdjust. All optional; omitted = untouched. */
+export type BranchAdjust = Partial<TweeterAdjust>;
+
+export interface CombineNResult {
+  freq: number[];
+  /** Branches AFTER their adjustments were applied, in input order. */
+  branches: GriddedResponse[];
+  /** 20·log10 |Σ Hk| */
+  combinedSpl: number[];
+  /** arg(Σ Hk), degrees, UNWRAPPED — feeds group delay and the IFFT. */
+  combinedPhaseDeg: number[];
+}
+
+/** Apply a branch adjustment; an absent/empty adjust returns the input
+ *  object UNCHANGED (same reference), matching the old woofer path. */
+function prepareBranch(g: GriddedResponse, adj?: BranchAdjust): GriddedResponse {
+  if (!adj || ((adj.trimDb ?? 0) === 0 && (adj.offsetMm ?? 0) === 0 && !adj.inverted)) return g;
+  const full: TweeterAdjust = {
+    offsetMm: adj.offsetMm ?? 0,
+    trimDb: adj.trimDb ?? 0,
+    inverted: adj.inverted ?? false,
+  };
+  return {
+    freq: g.freq,
+    spl: g.spl.map((v) => v + full.trimDb),
+    phaseDeg: g.phaseDeg.map((p, i) => p + adjustPhaseDeg(g.freq[i], full)),
+  };
+}
+
+/** Shared summation core. Accumulation starts AT the first branch (not at
+ *  zero) so the K=2 arithmetic is bit-identical to the historical fused
+ *  woofer+tweeter loop — the 2-way regression suite depends on that. */
+function sumBranches(prepared: GriddedResponse[]): {
+  complexes: Complex[][];
+  combinedSpl: number[];
+  combinedPhaseRaw: number[];
+} {
+  const n = prepared[0].freq.length;
+  for (const b of prepared) {
+    if (b.freq.length !== n) throw new Error('combine: responses must share one grid');
+  }
+  const complexes = prepared.map(() => new Array<Complex>(n));
+  const combinedSpl = new Array<number>(n);
+  const combinedPhaseRaw = new Array<number>(n);
+  for (let i = 0; i < n; i++) {
+    let acc = toComplex(prepared[0].spl[i], prepared[0].phaseDeg[i]);
+    complexes[0][i] = acc;
+    for (let k = 1; k < prepared.length; k++) {
+      const c = toComplex(prepared[k].spl[i], prepared[k].phaseDeg[i]);
+      complexes[k][i] = c;
+      acc = add(acc, c);
+    }
+    combinedSpl[i] = 20 * Math.log10(Math.hypot(acc.re, acc.im) || Number.MIN_VALUE);
+    combinedPhaseRaw[i] = (Math.atan2(acc.im, acc.re) * 180) / Math.PI;
+  }
+  return { complexes, combinedSpl, combinedPhaseRaw };
+}
+
+/**
+ * N-way acoustic summation: any number of branches, each with its own
+ * optional adjustment. The 2-way `combine` below is a thin wrapper over this
+ * core, so the entire existing test suite exercises it. One branch is legal
+ * (the solo case, without the silent-ghost construction).
+ */
+export function combineN(
+  branchesIn: { response: GriddedResponse; adjust?: BranchAdjust }[],
+): CombineNResult {
+  if (branchesIn.length === 0) throw new Error('combineN: at least one branch required');
+  const prepared = branchesIn.map((b) => prepareBranch(b.response, b.adjust));
+  const { combinedSpl, combinedPhaseRaw } = sumBranches(prepared);
+  return {
+    freq: prepared[0].freq,
+    branches: prepared,
+    combinedSpl,
+    combinedPhaseDeg: unwrapPhaseDeg(combinedPhaseRaw),
+  };
+}
+
+/** Wrapped phase of branch b relative to branch a (a is the 0° line) — the
+ *  pairwise generalization of the tweeter-relative-to-woofer curve. */
+export function relativePhaseBetween(a: GriddedResponse, b: GriddedResponse): number[] {
+  if (a.freq.length !== b.freq.length) throw new Error('relativePhaseBetween: grid mismatch');
+  return b.phaseDeg.map((p, i) => wrapDeg(p - a.phaseDeg[i]));
+}
+
 export interface CombineResult {
   freq: number[];
   woofer: GriddedResponse;
@@ -121,23 +208,22 @@ export function combine(
   const n = woofer.freq.length;
   if (tweeterRaw.freq.length !== n) throw new Error('combine: responses must share one grid');
 
+  // Thin wrapper over the N-way core. NB: the tweeter adjustment is applied
+  // even when it is all-zero (prepareBranch would skip it, so it is applied
+  // here explicitly) to preserve the historical always-copy behavior.
   const tweeter: GriddedResponse = {
     freq: tweeterRaw.freq,
     spl: tweeterRaw.spl.map((s) => s + adj.trimDb),
     phaseDeg: tweeterRaw.phaseDeg.map((p, i) => p + adjustPhaseDeg(tweeterRaw.freq[i], adj)),
   };
 
-  const combinedSpl = new Array<number>(n);
-  const combinedPhaseRaw = new Array<number>(n);
+  const { complexes, combinedSpl, combinedPhaseRaw } = sumBranches([woofer, tweeter]);
+
   const invertedSpl = new Array<number>(n);
   const relativePhaseDeg = new Array<number>(n);
-
   for (let i = 0; i < n; i++) {
-    const hw = toComplex(woofer.spl[i], woofer.phaseDeg[i]);
-    const ht = toComplex(tweeter.spl[i], tweeter.phaseDeg[i]);
-    const sum = add(hw, ht);
-    combinedSpl[i] = 20 * Math.log10(Math.hypot(...toPair(sum)) || Number.MIN_VALUE);
-    combinedPhaseRaw[i] = (Math.atan2(sum.im, sum.re) * 180) / Math.PI;
+    const hw = complexes[0][i];
+    const ht = complexes[1][i];
     invertedSpl[i] = 20 * Math.log10(
       Math.hypot(hw.re - ht.re, hw.im - ht.im) || Number.MIN_VALUE,
     );
@@ -154,8 +240,6 @@ export function combine(
     relativePhaseDeg,
   };
 }
-
-const toPair = (c: Complex): [number, number] => [c.re, c.im];
 
 /**
  * Apply a (filter) voltage transfer to an acoustic response: SPL shifts by

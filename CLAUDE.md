@@ -107,7 +107,16 @@ minimum phase reconstrueert. Voertaal met Sander: **Nederlands**; code/comments 
 - `timing.ts` — HET fundament: bulk-delay-fit uit unwrapped fase + `assessSharedReference`
   (gedeelde-tijdreferentie-verdict). Silent-failure-risico van verkeerde timing is de bestaansreden
 - `dsp.ts` — logspace/resample (unwrapped-fase-interpolatie, `clampEdges` voor Z), `combine`
-  (complexe som; exporteert ook `combinedPhaseDeg`), `applyTransfer`
+  (complexe som; exporteert ook `combinedPhaseDeg`), `applyTransfer`.
+  **N-weg-kern (aug 2026, fase-4 trede 1)**: `combineN(branches[])` — élke tak zijn eigen
+  optionele `BranchAdjust` (trim/offset/invert, de generalisatie van TweeterAdjust), één tak
+  is legaal (solo zonder ghost-truc), plus `relativePhaseBetween(a,b)` als paar-helper.
+  `combine()` is nu een DUNNE WRAPPER over dezelfde `sumBranches`-kern — de accumulatie start
+  bewust OP de eerste tak (niet op nul) zodat K=2 bit-identiek is aan de historische fused
+  loop. Bewijs is niet-circulair: dsp.nway.test.ts draagt een BEVROREN kopie van het oude
+  algoritme en eist Object.is-gelijkheid op de KOAN-fixtures over drie adjust-varianten;
+  daarbovenop loopt de hele suite (incl. KOAN-waardepins en determinisme-tests) door de
+  nieuwe kern. App/UI is nog 2-slots — dat is trede 2.
 - `network.ts` — MNA-solver (complexe admittantie, Norton-bron, gemeten Z als driver-load).
   Elke solve levert ook `inputZ`: de systeem-ingangsimpedantie aan de generatorklemmen
   (excl. Rg) — de versterker-belastingscurve, voedt het Impedance-paneel

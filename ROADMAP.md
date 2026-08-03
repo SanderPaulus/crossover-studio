@@ -77,9 +77,14 @@ Volgorde binnen een blok = aanbevolen prioriteit. Inschattingen zijn grof:
 ## Groot — de fases
 
 9. **Fase 4: 3-weg / N-weg** (L) — het netlist-fundament is N-weg-klaar en de
-   template-kiezer heeft de (disabled) 3-weg-optie al. Nodig: N-weg-som in de
-   sim, bandpass-tak in synthese/templates, optimizer/integration/directivity
-   naar N drivers, UI voor drie takken.
+   template-kiezer heeft de (disabled) 3-weg-optie al.
+   **Trede 1 KLAAR (aug 2026): de som-kern is N-weg** — `combineN` in dsp.ts,
+   per-tak adjust, `combine` als dunne wrapper erover; K=2 bit-identiek
+   bewezen tegen een bevroren kopie van het oude algoritme én via de volle
+   suite (381 tests) door de nieuwe kern, looptijd ongewijzigd.
+   Nog nodig: (2) UI voor drie takken incl. per-driver trim/invert,
+   (3) bandpass-tak in synthese/templates, (4) optimizers met twee paren +
+   2D-crossover-scan, (5) vxp-brug/projectformaat/help.
 10. **Driverbibliotheek** (L) — meetbundels (FRD + hoeken + ZMA) per driver,
     herbruikbaar over projecten; het einde van losse-bestanden-slepen.
     Uitbreiding daarbovenop: **ontwerpgeheugen als seed-bibliotheek** —
