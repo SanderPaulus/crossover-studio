@@ -271,7 +271,12 @@ export const HELP_SECTIONS: HelpSection[] = [
         text:
           'De **🧙 Wizard** is de begeleide route: Goals (doelen + prioriteit) → Crossover (punt, hellingen, ' +
           'Fs-vloer) → Components (catalogus, kwaliteit, merken) → Summary + 🚀 Optimize. Het is dezelfde state ' +
-          'als ⚙ Settings — geen aparte werelden.',
+          'als ⚙ Settings — geen aparte werelden. De metingen-stap begint met de **systeemkeuze** (1-weg / ' +
+          '2-weg / 3-weg): alleen de bijbehorende meting-slots verschijnen en **Next ontgrendelt pas als de ' +
+          'gekozen set compleet is** (de knop-tooltip zegt wat er nog mist). De keuze is begeleiding — de app ' +
+          'volgt altijd wat er écht geladen is, en meldt een mismatch in plaats van hem stil op te lossen. ' +
+          'Bij 3-weg eindigt de wizard na de metingen eerlijk met **Open Network editor** (de 3-weg-optimizer ' +
+          'komt in een latere stap).',
       },
       {
         t: 'ul',

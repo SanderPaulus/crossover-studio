@@ -928,6 +928,38 @@ export default function App() {
   /** Component wizard: tier profile + binding series per kind for the snap. */
   const [wizardOpen, setWizardOpen] = useState(false);
   const [wizardStep, setWizardStep] = useState(1);
+  /** Declared system type in the wizard (Sanders voorstel, aug 2026): intent
+   *  FIRST, then only the applicable measurement slots, and Next blocks until
+   *  the declared set is complete. GUIDANCE ONLY — the engine keeps inferring
+   *  its mode from what is actually loaded (one source of truth); a mismatch
+   *  is surfaced as a note, never silently resolved. */
+  const [wizardWays, setWizardWaysRaw] = useState<1 | 2 | 3>(() => {
+    const v = Number(localStorage.getItem('ads-wizard-ways'));
+    return v === 1 || v === 3 ? (v as 1 | 3) : 2;
+  });
+  const setWizardWays = (w: 1 | 2 | 3) => {
+    setWizardWaysRaw(w);
+    localStorage.setItem('ads-wizard-ways', String(w));
+  };
+  // Data wins over a stale stored choice: opening the wizard with a full
+  // 3-way loaded declares 3-way, with exactly the two outer branches 2-way.
+  useEffect(() => {
+    if (!wizardOpen) return;
+    if (threeWay) setWizardWaysRaw(3);
+    else if (woofer && tweeter && !midDrv) setWizardWaysRaw(2);
+  }, [wizardOpen, threeWay, woofer, tweeter, midDrv]);
+  /** The declared set's measurement checklist; Next blocks while incomplete. */
+  const wizardMissing: string[] = (() => {
+    if (wizardWays === 1) return woofer || tweeter ? [] : ['driver response (FRD)'];
+    const out: string[] = [];
+    if (!woofer) out.push('woofer response');
+    if (wizardWays === 3 && !midDrv) out.push('midrange response');
+    if (!tweeter) out.push('tweeter response');
+    return out;
+  })();
+  /** More loaded than declared — surfaced, never silently resolved. */
+  const wizardOverloaded =
+    wizardWays === 1 ? !!(woofer && tweeter) || !!midDrv : wizardWays === 2 ? !!midDrv : false;
   /** Compare wizard: guided model-vs-measurement validation (VALIDATIE.md). */
   const [cmpOpen, setCmpOpen] = useState(false);
   const [cmpStep, setCmpStep] = useState(1);
@@ -4206,63 +4238,129 @@ export default function App() {
           {wizardStep === 0 && (
             <>
               <p>
-                <strong>Measurements</strong> — the wizard designs from your driver data, so we
-                need that first. Load a 0° FRD per driver to start; include the .ZMA impedance
-                and any angle files in the SAME pick to unlock more (they're recognised by
+                <strong>System type</strong> — what are we designing? The wizard then shows only
+                the measurement slots that apply, and Next unlocks once the set is complete.
+              </p>
+              <div className="row" style={{ marginBottom: '0.5rem' }}>
+                {([
+                  [1, '1-way (single driver)'],
+                  [2, '2-way'],
+                  [3, '3-way'],
+                ] as const).map(([w, label]) => (
+                  <button
+                    key={w}
+                    type="button"
+                    className={wizardWays === w ? 'active-toggle' : ''}
+                    aria-pressed={wizardWays === w}
+                    onClick={() => setWizardWays(w)}
+                    title={
+                      w === 1
+                        ? 'Flatten one driver (series traps, shelf groups, Zobel) — the validation flow'
+                        : w === 2
+                          ? 'Classic two-driver crossover design — the full optimizer chain'
+                          : 'Three branches: sim, filters and network editor work; the 3-way optimizer is a later step'
+                    }
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+              <p className="sub" style={{ marginBottom: '0.4rem' }}>
+                <strong>Measurements</strong> — load a 0° FRD per driver; include the .ZMA
+                impedance and any angle files in the SAME pick to unlock more (recognised by
                 extension and filename).
               </p>
-              <button
-                type="button"
-                className="primary"
-                onClick={loadDemo}
-                title="Load the bundled KOAN measurements (all angles + impedances + vxp variants) — instant playground"
-              >
-                🎧 Load KOAN demo data
-              </button>
+              {wizardWays === 2 && (
+                <button
+                  type="button"
+                  className="primary"
+                  onClick={loadDemo}
+                  title="Load the bundled KOAN measurements (all angles + impedances + vxp variants) — instant playground"
+                >
+                  🎧 Load KOAN demo data
+                </button>
+              )}
               <p className="sub" style={{ marginBottom: '0.2rem' }}>
-                …or load your own:
+                {wizardWays === 2 ? '…or load your own:' : 'Load your measurements:'}
               </p>
-              <label className="file-button" style={{ display: 'block', marginBottom: '0.3rem' }}>
-                {woofer
-                  ? `✓ ${hasMidBranch ? 'Woofer' : 'Woofer / mid'} — ${woofer.name}`
-                  : `${hasMidBranch ? 'Woofer' : 'Woofer / mid'} — FRD (+ ZMA/LIMP, + angle files)`}
-                <input
-                  type="file"
-                  accept=".frd,.txt,.zma,.ZMA,.lim"
-                  multiple
-                  onChange={loadDriverFiles('woofer')}
-                  style={{ display: 'none' }}
-                />
-              </label>
-              <label className="file-button" style={{ display: 'block', marginBottom: '0.3rem' }}>
-                {midDrv
-                  ? `✓ Midrange — ${midDrv.name}`
-                  : 'Midrange (3-way) — FRD (+ ZMA/LIMP, + angle files)'}
-                <input
-                  type="file"
-                  accept=".frd,.txt,.zma,.ZMA,.lim"
-                  multiple
-                  onChange={loadDriverFiles('mid')}
-                  style={{ display: 'none' }}
-                />
-              </label>
-              <label className="file-button" style={{ display: 'block' }}>
-                {tweeter ? `✓ Tweeter — ${tweeter.name}` : 'Tweeter — FRD (+ ZMA/LIMP, + angle files)'}
-                <input
-                  type="file"
-                  accept=".frd,.txt,.zma,.ZMA,.lim"
-                  multiple
-                  onChange={loadDriverFiles('tweeter')}
-                  style={{ display: 'none' }}
-                />
-              </label>
+              {wizardWays === 1 ? (
+                <label className="file-button" style={{ display: 'block' }}>
+                  {woofer || tweeter
+                    ? `✓ Driver — ${(woofer ?? tweeter)!.name}`
+                    : 'Driver — FRD (+ ZMA/LIMP, + angle files)'}
+                  <input
+                    type="file"
+                    accept=".frd,.txt,.zma,.ZMA,.lim"
+                    multiple
+                    onChange={loadDriverFiles('woofer')}
+                    style={{ display: 'none' }}
+                  />
+                </label>
+              ) : (
+                <>
+                  <label className="file-button" style={{ display: 'block', marginBottom: '0.3rem' }}>
+                    {woofer
+                      ? `✓ ${wizardWays === 3 ? 'Woofer' : 'Woofer / mid'} — ${woofer.name}`
+                      : `${wizardWays === 3 ? 'Woofer' : 'Woofer / mid'} — FRD (+ ZMA/LIMP, + angle files)`}
+                    <input
+                      type="file"
+                      accept=".frd,.txt,.zma,.ZMA,.lim"
+                      multiple
+                      onChange={loadDriverFiles('woofer')}
+                      style={{ display: 'none' }}
+                    />
+                  </label>
+                  {wizardWays === 3 && (
+                    <label className="file-button" style={{ display: 'block', marginBottom: '0.3rem' }}>
+                      {midDrv
+                        ? `✓ Midrange — ${midDrv.name}`
+                        : 'Midrange — FRD (+ ZMA/LIMP, + angle files)'}
+                      <input
+                        type="file"
+                        accept=".frd,.txt,.zma,.ZMA,.lim"
+                        multiple
+                        onChange={loadDriverFiles('mid')}
+                        style={{ display: 'none' }}
+                      />
+                    </label>
+                  )}
+                  <label className="file-button" style={{ display: 'block' }}>
+                    {tweeter ? `✓ Tweeter — ${tweeter.name}` : 'Tweeter — FRD (+ ZMA/LIMP, + angle files)'}
+                    <input
+                      type="file"
+                      accept=".frd,.txt,.zma,.ZMA,.lim"
+                      multiple
+                      onChange={loadDriverFiles('tweeter')}
+                      style={{ display: 'none' }}
+                    />
+                  </label>
+                </>
+              )}
+              {wizardMissing.length > 0 && (
+                <p className="sub" style={{ marginTop: '0.4rem' }}>
+                  Still needed for a {wizardWays}-way: <strong>{wizardMissing.join(', ')}</strong>.
+                </p>
+              )}
+              {wizardOverloaded && (
+                <p className="nl-warning" style={{ marginTop: '0.4rem' }}>
+                  ⚠ More is loaded than a {wizardWays}-way — the app follows what is actually
+                  loaded, never the declared choice. Switch the system type above, or remove the
+                  extra driver in the Import tab (✕).
+                </p>
+              )}
+              {wizardWays === 3 && wizardMissing.length === 0 && (
+                <p className="sub" style={{ marginTop: '0.4rem' }}>
+                  ✓ 3-way set complete. The sim, virtual filters (mid = bandpass) and the network
+                  editor are live; the <strong>3-way optimizer is a later step</strong>, so the
+                  wizard ends here — start a network with New from template (the blank scaffold
+                  carries all three drivers) and design by hand.
+                </p>
+              )}
               <p className="sub">
-                Two drivers = crossover design; one driver = <strong>single-driver mode</strong>
-                {' '}(flatten that driver — series traps, shelf groups, Zobel).{' '}
-                <strong>Impedances (.ZMA)</strong> unlock the
-                passive build &amp; component tune; <strong>angle files</strong> unlock the
-                amplitude target &amp; in-room weight in the Goals step. The full importer (VituixCAD
-                projects, save/load) lives in the Import tab.
+                <strong>Impedances (.ZMA)</strong> unlock the passive build &amp; component tune;{' '}
+                <strong>angle files</strong> unlock the amplitude target &amp; in-room weight in
+                the Goals step. The full importer (VituixCAD projects, save/load) lives in the
+                Import tab.
               </p>
               {timing && (
                 <div
@@ -4933,15 +5031,35 @@ export default function App() {
               )}
             </div>
             <div className="row">
-              {wizardPos < wizardSteps.length - 1 ? (
+              {wizardStep === 0 && wizardWays === 3 ? (
+                // The 3-way optimizer is a later step, so the wizard's guided
+                // Goals/Crossover/Components flow (all optimizer-bound) would
+                // dead-end — the honest exit is straight into the editor.
+                <button
+                  type="button"
+                  className="primary"
+                  onClick={() => {
+                    setWizardOpen(false);
+                    setDesignTab('network');
+                  }}
+                  disabled={wizardMissing.length > 0}
+                  title={
+                    wizardMissing.length > 0
+                      ? `Still needed: ${wizardMissing.join(', ')}`
+                      : 'Set complete — design the 3-way by hand in the network editor (the 3-way optimizer is a later step)'
+                  }
+                >
+                  Open Network editor →
+                </button>
+              ) : wizardPos < wizardSteps.length - 1 ? (
                 <button
                   type="button"
                   className="primary"
                   onClick={() => setWizardStep(wizardSteps[wizardPos + 1]?.id ?? wizardSteps[0].id)}
-                  disabled={wizardStep === 0 && !woofer && !tweeter}
+                  disabled={wizardStep === 0 && wizardMissing.length > 0}
                   title={
-                    wizardStep === 0 && !woofer && !tweeter
-                      ? 'Load at least one driver to continue (one = single-driver mode)'
+                    wizardStep === 0 && wizardMissing.length > 0
+                      ? `Still needed for a ${wizardWays}-way: ${wizardMissing.join(', ')}`
                       : ''
                   }
                 >
@@ -6049,8 +6167,10 @@ export default function App() {
                       // Start at the import gate (step 0) when there is no driver
                       // data yet — the wizard should take you from nothing to a
                       // built crossover, not assume measurements exist. One
-                      // loaded driver is enough (single-driver mode).
-                      setWizardStep(!woofer && !tweeter ? 0 : 1);
+                      // loaded driver is enough (single-driver mode). A loaded
+                      // 3-way also lands on step 0: the guided steps beyond it
+                      // are optimizer-bound and that optimizer is a later step.
+                      setWizardStep(!woofer && !tweeter ? 0 : threeWay ? 0 : 1);
                       setWizardOpen(true);
                     }}
                     title="Design wizard: load measurements, then goals, priority, crossover point, acoustic slopes and component choices in one guided flow — ends with Optimize"

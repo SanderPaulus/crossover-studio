@@ -856,6 +856,15 @@ tolerantie-band, tab-ghosts, target-curves, templates (alleen Blank-scaffold, m�
 drivers). Autosave-deps uitgebreid (midDrv + mid-adjust — de harde les). Demo-load reset
 midDrv (anders wordt KOAN stil een 3-weg). 2-weg/solo bit-onaangeroerd: volle suite (394)
 groen + browser-check op Sanders v1-autosave (restored identiek door het nieuwe leespad).
+**Wizard-systeemkeuze (Sanders voorstel, aug 2026)**: stap 0 begint met 1-weg/2-weg/3-weg
+(`wizardWays`, localStorage 'ads-wizard-ways'; data wint bij openen — volle 3-weg forceert 3,
+exact twee buitentakken 2) en toont alléén de bijbehorende slots; **Next blokkeert op
+`wizardMissing`** (tooltip + regel noemen wat mist), meer-geladen-dan-gedeclareerd geeft een
+⚠-note (`wizardOverloaded` — de app volgt de DATA, nooit de keuze; begeleiding, geen tweede
+bron van waarheid). 3-weg-pad eindigt op stap 0 met "Open Network editor →" (de
+Goals/Crossover/Components-stappen zijn optimizer-gebonden en die optimizer is trede 4);
+de 🧙-knop opent bij threeWay daarom óók op stap 0. Demo-knop alleen bij 2-weg (KOAN ís
+2-weg).
 
 ## Workspace-layout (UI-fase B, jul 2026)
 
