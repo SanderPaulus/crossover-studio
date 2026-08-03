@@ -97,6 +97,11 @@ export interface ProjectDesign {
   /** Optional: target acoustic slopes beside the crossing ('auto' = free). */
   acSlopeMid?: string;
   acSlopeTweeter?: string;
+  /** 3-way: LOW-pair slopes (woofer LP / mid HP) and the low handover pin. */
+  acSlopeWoofer?: string;
+  acSlopeMidHp?: string;
+  xoLowFreqHz?: string;
+  xoLowMarginHz?: string;
   /** Optional: component-wizard snap preferences. */
   snapProfile?: string;
   snapSeriesL?: string;

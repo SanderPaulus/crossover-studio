@@ -871,6 +871,15 @@ export default function App() {
    *  the "akoestisch 4e orde bij de tweeter"-knop. */
   const [acSlopeMid, setAcSlopeMid] = useState('24');
   const [acSlopeTweeter, setAcSlopeTweeter] = useState('12');
+  /** 3-way: the LOW handover's own pin and slope targets (Sanders: "een
+   *  3-weg heeft twee akoestische flanken op de mid" — the mid has an HP
+   *  flank at the low crossing AND an LP flank at the high one, and the
+   *  woofer's LP flank needs its own knob too). The existing xoFreqHz/
+   *  acSlopeMid/acSlopeTweeter keep steering the HIGH (mid-tweeter) pair. */
+  const [xoLowFreqHz, setXoLowFreqHz] = useState('400');
+  const [xoLowMarginHz, setXoLowMarginHz] = useState('150');
+  const [acSlopeWoofer, setAcSlopeWoofer] = useState('24');
+  const [acSlopeMidHp, setAcSlopeMidHp] = useState('24');
   /** Mid nominal size (inch) — sets the crossover CEILING via cone beaming
    *  (f ≈ c/π·d_eff; a MID property, per Gemini's window rules). '' = unknown
    *  → the free band falls back to the tweeter-anchored ceiling. */
@@ -1610,11 +1619,29 @@ export default function App() {
     };
   };
 
-  /** Target acoustic slopes for both optimizers ('auto' selections drop out). */
-  const acousticSlopesValue = (): { mid?: number; tweeter?: number } | undefined => {
+  /** Target acoustic slopes for both optimizers ('auto' selections drop out).
+   *  3-way adds the LOW pair's flanks (woofer LP / mid HP). */
+  const acousticSlopesValue = ():
+    | { mid?: number; tweeter?: number; low?: { lower?: number; upper?: number } }
+    | undefined => {
     const mid = acSlopeMid === 'auto' ? undefined : Number(acSlopeMid);
     const tweeter = acSlopeTweeter === 'auto' ? undefined : Number(acSlopeTweeter);
-    return mid || tweeter ? { mid, tweeter } : undefined;
+    const lowLower = threeWay && acSlopeWoofer !== 'auto' ? Number(acSlopeWoofer) : undefined;
+    const lowUpper = threeWay && acSlopeMidHp !== 'auto' ? Number(acSlopeMidHp) : undefined;
+    const low = lowLower || lowUpper ? { lower: lowLower, upper: lowUpper } : undefined;
+    return mid || tweeter || low ? { mid, tweeter, ...(low ? { low } : {}) } : undefined;
+  };
+
+  /** 3-way pins for the design chain (freq ± margin per handover). */
+  const xoPinsValue = (): {
+    low?: { freq: number; margin: number };
+    high?: { freq: number; margin: number };
+  } => {
+    if (!xoRangeOn) return {};
+    return {
+      low: { freq: num(xoLowFreqHz, 400), margin: num(xoLowMarginHz, 150) },
+      high: { freq: num(xoFreqHz, 2200), margin: num(xoMarginHz, 400) },
+    };
   };
 
   /** Designer's crossover point as [lo, hi] for the optimizers: centre ±
@@ -2261,6 +2288,10 @@ export default function App() {
         phaseMetric: phaseMetricMode,
         acSlopeMid,
         acSlopeTweeter,
+        acSlopeWoofer,
+        acSlopeMidHp,
+        xoLowFreqHz,
+        xoLowMarginHz,
         midSizeInch,
         snapProfile,
         snapSeriesL,
@@ -2385,6 +2416,10 @@ export default function App() {
     setPhaseMetricMode(d.phaseMetric ?? 'band');
     setAcSlopeMid(d.acSlopeMid ?? '24');
     setAcSlopeTweeter(d.acSlopeTweeter ?? '12');
+    setAcSlopeWoofer(d.acSlopeWoofer ?? '24');
+    setAcSlopeMidHp(d.acSlopeMidHp ?? '24');
+    setXoLowFreqHz(d.xoLowFreqHz ?? '400');
+    setXoLowMarginHz(d.xoLowMarginHz ?? '150');
     setMidSizeInch(d.midSizeInch ?? '');
     setSnapProfile(d.snapProfile ?? 'auto');
     setSnapSeriesL(d.snapSeriesL ?? 'auto');
@@ -2469,7 +2504,7 @@ export default function App() {
     }, 800);
     return () => clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [woofer, midDrv, tweeter, project, zStandalone, angleSets, fileNotes, verify, vFilters, xoName, offsetMm, trimDb, inverted, midOffsetMm, midTrimDb, midInverted, fMin, fMax, splMin, splMax, phasePriority, vfEqBands, phaseMode, dirWeight, ampTarget, sonogramMode, designs, activeDesignId, lastSavedId, networkActive, vfBypass, catalogSnap, breakupGuard, xoRangeOn, xoFreqHz, xoMarginHz, xoScanSteps, hpLpPref, phaseMetricMode, acSlopeMid, acSlopeTweeter, midSizeInch, snapProfile, snapSeriesL, snapSeriesC, snapSeriesR, snapStacks, snapBoundToSeries, stagedOn, targetRipple, targetPhase, soloSensDb, soloFloorOn, soloFloorDb]);
+  }, [woofer, midDrv, tweeter, project, zStandalone, angleSets, fileNotes, verify, vFilters, xoName, offsetMm, trimDb, inverted, midOffsetMm, midTrimDb, midInverted, fMin, fMax, splMin, splMax, phasePriority, vfEqBands, phaseMode, dirWeight, ampTarget, sonogramMode, designs, activeDesignId, lastSavedId, networkActive, vfBypass, catalogSnap, breakupGuard, xoRangeOn, xoFreqHz, xoMarginHz, xoScanSteps, hpLpPref, phaseMetricMode, acSlopeMid, acSlopeTweeter, acSlopeWoofer, acSlopeMidHp, xoLowFreqHz, xoLowMarginHz, midSizeInch, snapProfile, snapSeriesL, snapSeriesC, snapSeriesR, snapStacks, snapBoundToSeries, stagedOn, targetRipple, targetPhase, soloSensDb, soloFloorOn, soloFloorDb]);
 
   function resetProject() {
     localStorage.removeItem(AUTOSAVE_KEY);
@@ -2533,11 +2568,15 @@ export default function App() {
           z: zGridWithSlots(impedances, sGrid),
         };
       })();
+      const pins = xoPinsValue();
       const settings = {
         phasePriority: phasePriority / 100,
         targets: stagedOn
           ? { rippleDb: num(targetRipple, 1.5), phaseDeg: num(targetPhase, 10) }
           : undefined,
+        acousticSlopes: acousticSlopesValue(),
+        xoLowPin: pins.low,
+        xoHighPin: pins.high,
         breakupGuard,
         phaseMetric: phaseMetricMode,
         synthMode,
@@ -2548,7 +2587,7 @@ export default function App() {
       };
       const tAdj = { offsetMm: num(offsetMm, 0), trimDb: num(trimDb, 0), inverted };
       const mAdj = { offsetMm: num(midOffsetMm, 0), trimDb: num(midTrimDb, 0), inverted: midInverted };
-      const variants = crossover3Variants(sim.base.w, sim.base.m!, sim.base.t);
+      const variants = crossover3Variants(sim.base.w, sim.base.m!, sim.base.t, pins);
       const inputs = variants.map((v) => ({
         grid: [...grid],
         w: sim.base.w,
@@ -3424,6 +3463,20 @@ export default function App() {
               }
             : undefined,
         xoRange: soloDriver || threeWay ? undefined : xoRangeValue() ?? undefined,
+        xoRangePairs:
+          threeWay && xoRangeOn
+            ? (() => {
+                const pr = (pin?: { freq: number; margin: number }): [number, number] | null =>
+                  pin
+                    ? [
+                        pin.freq - Math.max(pin.margin, pin.freq * 0.02),
+                        pin.freq + Math.max(pin.margin, pin.freq * 0.02),
+                      ]
+                    : null;
+                const pins = xoPinsValue();
+                return [pr(pins.low), pr(pins.high)];
+              })()
+            : undefined,
         phaseMetric: phaseMetricMode,
         acousticSlopes: soloDriver ? undefined : acousticSlopesValue() ?? undefined,
         catalogSnap: catalogSnap && hasImportedCatalog(),
@@ -6682,7 +6735,7 @@ export default function App() {
                   </select>
                 </label>
                 <label title="Target ACOUSTIC slope of the mid above the crossing — the measured rolloff (driver + filter), not the electrical order. Falling short costs more than being steeper. Auto = free.">
-                  Acoustic slope mid
+                  {threeWay ? 'Acoustic slope mid LP (high xo)' : 'Acoustic slope mid'}
                   <select value={acSlopeMid} onChange={(e) => setAcSlopeMid(e.target.value)} disabled={!!soloDriver}>
                     <option value="auto">Auto</option>
                     {['12', '18', '24', '30', '36'].map((v) => (
@@ -6703,6 +6756,32 @@ export default function App() {
                     ))}
                   </select>
                 </label>
+                {threeWay && (
+                  <>
+                    <label title="3-way: target ACOUSTIC slope of the WOOFER above the low crossing (its LP flank). Auto = free.">
+                      Acoustic slope woofer (low xo)
+                      <select value={acSlopeWoofer} onChange={(e) => setAcSlopeWoofer(e.target.value)}>
+                        <option value="auto">Auto</option>
+                        {['12', '18', '24', '30', '36'].map((v) => (
+                          <option key={v} value={v}>
+                            {v} dB/oct
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                    <label title="3-way: target ACOUSTIC slope of the MID below the low crossing (its HP flank) — the mid's second flank.">
+                      Acoustic slope mid HP (low xo)
+                      <select value={acSlopeMidHp} onChange={(e) => setAcSlopeMidHp(e.target.value)}>
+                        <option value="auto">Auto</option>
+                        {['12', '18', '24', '30', '36'].map((v) => (
+                          <option key={v} value={v}>
+                            {v} dB/oct
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                  </>
+                )}
                 <label title="Staged design (trapmethode): HP/LP structure first; EQ bands, Zobel/LCR networks and bypass caps are only added while the targets below are unmet — the fewest components that reach the goal, with a per-stage report.">
                   <input
                     type="checkbox"
@@ -6772,7 +6851,7 @@ export default function App() {
                     onChange={(e) => setXoRangeOn(e.target.checked)}
                     disabled={!!soloDriver}
                   />{' '}
-                  Crossover point
+                  {threeWay ? 'Crossover points (low + high)' : 'Crossover point'}
                 </label>
                 {tweeterHpFloor !== null && (
                   <span
@@ -6782,11 +6861,38 @@ export default function App() {
                     HP floor {tweeterHpFloor} Hz (2×Fs)
                   </span>
                 )}
+                {xoRangeOn && threeWay && (
+                  <span
+                    className="inline-num"
+                    title="3-way: the LOW handover (woofer→mid) — the acoustic crossing must land within frequency ± margin, in the design chain AND the component tuner."
+                  >
+                    {'low '}
+                    <input
+                      type="number"
+                      min={150}
+                      max={2000}
+                      step={50}
+                      value={xoLowFreqHz}
+                      onChange={(e) => setXoLowFreqHz(e.target.value)}
+                    />
+                    {' Hz ± '}
+                    <input
+                      type="number"
+                      min={0}
+                      max={1000}
+                      step={25}
+                      value={xoLowMarginHz}
+                      onChange={(e) => setXoLowMarginHz(e.target.value)}
+                    />{' '}
+                    Hz
+                  </span>
+                )}
                 {xoRangeOn && (
                   <span
                     className="inline-num"
                     title="The ACOUSTIC handover — where the filtered drivers actually cross — must land within frequency ± margin. The electrical knees stay free (with a hot tweeter they sit far above the acoustic crossing)."
                   >
+                    {threeWay ? 'high ' : ''}
                     <input
                       type="number"
                       min={300}
@@ -6892,7 +6998,9 @@ export default function App() {
                     {soloDriver
                       ? filterSummaryLine(vFilters[soloDriver], soloDriver)
                       : [
-                          filterSummaryLine(vFilters.woofer, 'woofer'),
+                          threeWay
+                            ? filterSummaryLine(vFilters.woofer, 'woofer').replace(/^Woofer\/mid/, 'Woofer')
+                            : filterSummaryLine(vFilters.woofer, 'woofer'),
                           ...(threeWay ? [filterSummaryLine(vFilters.mid, 'mid')] : []),
                           filterSummaryLine(vFilters.tweeter, 'tweeter'),
                         ].join(' — ')}

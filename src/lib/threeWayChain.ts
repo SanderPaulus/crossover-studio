@@ -32,6 +32,14 @@ import type { ChainStageProgress } from './designChain.ts';
 export interface Chain3Settings {
   phasePriority: number; // 0..1
   targets?: { rippleDb: number; phaseDeg: number };
+  /** Target acoustic slopes: mid/tweeter = the TOP pair, low = the LOW pair
+   *  (woofer LP flank / mid HP flank). */
+  acousticSlopes?: { mid?: number; tweeter?: number; low?: { lower?: number; upper?: number } };
+  /** Designer pins for the two handovers (freq ± margin, Hz). A pinned axis
+   *  collapses the candidate grid on that axis and HOLDS the crossing in the
+   *  tune via the per-pair xo pin. */
+  xoLowPin?: { freq: number; margin: number };
+  xoHighPin?: { freq: number; margin: number };
   breakupGuard?: boolean;
   phaseMetric?: 'band' | 'overlap';
   synthMode: 'filter' | 'acoustic';
@@ -160,10 +168,14 @@ export function runThreeWayChain(
 
   // ---- Assembled two-pair tune -------------------------------------------
   onProgress?.({ stage: 'tune', evals: 0 });
+  const pinRange = (pin?: { freq: number; margin: number }): [number, number] | null =>
+    pin ? [pin.freq - Math.max(pin.margin, pin.freq * 0.02), pin.freq + Math.max(pin.margin, pin.freq * 0.02)] : null;
   const net = optimizeNetworkValues(merged, grid, w, t, driverZ, tAdjust, {
     midBranch: { response: m, adjust: midAdjust },
     phasePriority: s.phasePriority,
     breakupGuard: s.breakupGuard,
+    acousticSlopes: s.acousticSlopes,
+    xoRangePairs: [pinRange(s.xoLowPin), pinRange(s.xoHighPin)],
     staged: s.targets,
     phaseMetric: s.phaseMetric,
     catalogSnap: s.catalogSnap,
@@ -203,6 +215,7 @@ export function crossover3Variants(
   w: GriddedResponse,
   m: GriddedResponse,
   t: GriddedResponse,
+  pins?: { low?: { freq: number; margin: number }; high?: { freq: number; margin: number } },
 ): { label: string; xoLow: number; xoHigh: number }[] {
   const firstCross = (lower: GriddedResponse, upper: GriddedResponse, lo: number, hi: number): number => {
     for (let i = 0; i < lower.freq.length; i++) {
@@ -215,9 +228,14 @@ export function crossover3Variants(
   };
   const rawLow = Math.min(1200, Math.max(250, firstCross(w, m, 200, 1500)));
   const rawHigh = Math.min(7000, Math.max(1800, firstCross(m, t, 1200, 9000)));
+  // A pinned axis collapses to its centre — the designer chose; the tune
+  // holds it there via the per-pair xo pin. Unpinned axes keep the 2-step
+  // competition around the raw crossing.
+  const lows = pins?.low ? [pins.low.freq] : [rawLow * 0.75, rawLow * 1.4];
+  const highs = pins?.high ? [pins.high.freq] : [rawHigh * 0.75, rawHigh * 1.4];
   const out: { label: string; xoLow: number; xoHigh: number }[] = [];
-  for (const fl of [rawLow * 0.75, rawLow * 1.4]) {
-    for (const fh of [rawHigh * 0.75, rawHigh * 1.4]) {
+  for (const fl of lows) {
+    for (const fh of highs) {
       const xoLow = Math.round(Math.min(1200, Math.max(250, fl)));
       const xoHigh = Math.round(Math.min(8000, Math.max(xoLow * 2.5, Math.min(7000, fh))));
       out.push({ label: `${xoLow}/${xoHigh} Hz`, xoLow, xoHigh });

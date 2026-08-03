@@ -82,8 +82,15 @@ export interface NetOptimizeOptions {
    *  never through ground) vs hanging off it (shunt/notch chains). */
   snapPrefs?: SnapPrefs;
   /** Target ACOUSTIC slopes beside the crossing (dB/oct) — same steering as
-   *  the design optimizer, so the tuner keeps the achieved orders. */
-  acousticSlopes?: { mid?: number; tweeter?: number };
+   *  the design optimizer, so the tuner keeps the achieved orders. In 3-way
+   *  `mid`/`tweeter` steer the TOP pair (their historical meaning: lower and
+   *  upper driver of that crossing); `low` steers the LOW pair — the woofer's
+   *  LP flank and the mid's HP flank (Sanders: "een 3-weg heeft twee
+   *  akoestische flanken op de mid"). */
+  acousticSlopes?: { mid?: number; tweeter?: number; low?: { lower?: number; upper?: number } };
+  /** 3-way: pin the ACOUSTIC crossing PER adjacent pair [low, high] — the
+   *  two-pair counterpart of xoRange (which stays 2-way vocabulary). */
+  xoRangePairs?: ([number, number] | null)[];
   /** SINGLE-DRIVER mode ("0 driver pairs"): the network drives ONE measured
    *  driver and the other slot carries a silent ghost. Every crossing-anchored
    *  term (xo pin/penalty, valley, breakup guard, tweeter protection, acoustic
@@ -359,7 +366,11 @@ export function optimizeNetworkValues(
    *  costs 6–10 dB). Set once the seed metrics exist; until then no wall. */
   let soloLossCap = Infinity;
   const acSlopes =
-    opts.acousticSlopes && (opts.acousticSlopes.mid || opts.acousticSlopes.tweeter)
+    opts.acousticSlopes &&
+    (opts.acousticSlopes.mid ||
+      opts.acousticSlopes.tweeter ||
+      opts.acousticSlopes.low?.lower ||
+      opts.acousticSlopes.low?.upper)
       ? opts.acousticSlopes
       : null;
   // Anchored envelope (see vfOptimizer): both terms always exist — a 0%
@@ -499,6 +510,8 @@ export function optimizeNetworkValues(
     xoHz: number | null;
     /** Per-adjacent-pair crossings, low pair first (1 entry in 2-way). */
     xoHzPairs: (number | null)[];
+    /** Measured slopes beside each pair's crossing (same order). */
+    pairSlopes: { lower: number | null; upper: number | null }[];
     /** How far the combined SPL at the crossing sits BELOW the band mean
      *  (dB, beyond a 6 dB allowance). A healthy crossing meets ON level; a
      *  starved branch "crosses" the other one deep in a hole instead. */
@@ -696,9 +709,15 @@ export function optimizeNetworkValues(
       ? []
       : bW && bM && bT
         ? [
-            // Low pair: no slope targets — the acousticSlopes UI speaks
-            // mid/tweeter, which is the TOP pair's vocabulary.
-            { lower: bW, upper: bM, upperH: hM },
+            // Low pair: its own slope targets (acousticSlopes.low); the
+            // mid/tweeter fields keep steering the TOP pair.
+            {
+              lower: bW,
+              upper: bM,
+              upperH: hM,
+              slopeLower: acSlopes?.low?.lower,
+              slopeUpper: acSlopes?.low?.upper,
+            },
             {
               lower: bM,
               upper: bT,
@@ -860,6 +879,7 @@ export function optimizeNetworkValues(
       protSqDb,
       xoHz: xoF,
       xoHzPairs: pm.map((x) => x.xoF),
+      pairSlopes: pm.map((x) => ({ lower: x.lowerSlopeDbOct, upper: x.upperSlopeDbOct })),
       xoDipDb,
       midSlopeDbOct,
       tweeterSlopeDbOct,
@@ -877,15 +897,19 @@ export function optimizeNetworkValues(
   // so without this term the degenerate state escapes every guard at once
   // (Sanders schema: 0.68 µF series cap, tweeter ~25 dB down, no alarm).
   const xoR = opts.xoRange ?? null;
-  const xoPenalty = (xoHz: number | null): number => {
+  const xoPenaltyFor = (xoHz: number | null, range: [number, number] | null): number => {
     if (xoHz == null) return 120; // no crossing at all ≙ 2 octaves off
-    if (!xoR) return 0;
+    if (!range) return 0;
     const oct =
-      xoHz < xoR[0] ? Math.log2(xoR[0] / xoHz) : xoHz > xoR[1] ? Math.log2(xoHz / xoR[1]) : 0;
+      xoHz < range[0]
+        ? Math.log2(range[0] / xoHz)
+        : xoHz > range[1]
+          ? Math.log2(xoHz / range[1])
+          : 0;
     // ADAPTIVE weight, mirrored from vfOptimizer: wide pins keep the classic
     // 30·oct², narrow SCAN slices scale up (×(0.15 oct / half-width)², cap
     // ×100) so a candidate cannot cheaply drift into a neighbour's slice.
-    const halfOct = Math.log2(xoR[1] / xoR[0]) / 2;
+    const halfOct = Math.log2(range[1] / range[0]) / 2;
     const scale = Math.min(100, Math.max(1, (0.15 / Math.max(halfOct, 1e-6)) ** 2));
     return 30 * scale * oct * oct;
   };
@@ -911,8 +935,19 @@ export function optimizeNetworkValues(
         const d = (Math.abs(measured) - target) / 6;
         slopePen += d < 0 ? 2.5 * d * d : 0.4 * d * d;
       };
-      one(m.midSlopeDbOct, acSlopes.mid);
-      one(m.tweeterSlopeDbOct, acSlopes.tweeter);
+      // Per pair: the LAST pair carries the mid/tweeter targets (2-way: the
+      // only pair — identical arithmetic); earlier pairs carry `low`.
+      const nPairs = m.pairSlopes.length;
+      for (let pi = 0; pi < nPairs; pi++) {
+        const sl = m.pairSlopes[pi];
+        if (pi === nPairs - 1) {
+          one(sl.lower, acSlopes.mid);
+          one(sl.upper, acSlopes.tweeter);
+        } else {
+          one(sl.lower, acSlopes.low?.lower);
+          one(sl.upper, acSlopes.low?.upper);
+        }
+      }
     }
     return (
       2 * (1 - p) * amp +
@@ -924,7 +959,10 @@ export function optimizeNetworkValues(
       // NB: the amp-load floor is deliberately NOT here (see Z_FLOOR_OHM) —
       // it lives in the gates and the repair pass, never in the objective.
       0.5 * m.xoDipDb * m.xoDipDb +
-      m.xoHzPairs.reduce((a: number, x) => a + xoPenalty(x), 0) +
+      m.xoHzPairs.reduce(
+        (a: number, x, i) => a + xoPenaltyFor(x, opts.xoRangePairs?.[i] ?? xoR),
+        0,
+      ) +
       slopePen
     );
   };

@@ -885,6 +885,14 @@ ontwerpfysica in 3-weg, nooit een objective-term), dan targets, dan de blend, ti
 goedkoopste BOM. Worker 'chain3One' + `runChain3Scan` (pool). App: 3-weg-pad in
 runVfOptimize (winnaar → Working + specs → vFilters + synth-state), wizard zonder
 Crossover-stap. Gemeten op Robbert: 411/2520 Hz → 0,79 dB avg/9,7°, paren 99/99.
+**Per-paar-pins + per-paar-flanken (aug 2026, Sanders settings-review)**: in 3-weg vraagt
+"Crossover points (low + high)" twéé pinnen (laag xoLowFreqHz±xoLowMarginHz, hoog = de
+bestaande xoFreqHz±xoMarginHz) — gepinde as = kandidaat-collapse in de scan én
+`xoRangePairs`-pin in de tune (dé fix voor de vrij schuivende kruisingen, 411→1237); en
+vier flank-doelen: acSlopeWoofer (woofer-LP laag), acSlopeMidHp (mid-HP laag — "de mid
+heeft twee flanken"), acSlopeMid (mid-LP hoog), acSlopeTweeter. netOptimizer:
+`acousticSlopes.low` + `xoRangePairs` per paar in fx (2-weg bit-identiek: één paar = de
+oude twee one()-calls). Alles gepersisteerd (design-velden + autosave-deps).
 **Wizard-systeemkeuze (Sanders voorstel, aug 2026)**: stap 0 begint met 1-weg/2-weg/3-weg
 (`wizardWays`, localStorage 'ads-wizard-ways'; data wint bij openen — volle 3-weg forceert 3,
 exact twee buitentakken 2) en toont alléén de bijbehorende slots; **Next blokkeert op
