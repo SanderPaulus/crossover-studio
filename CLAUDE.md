@@ -856,6 +856,15 @@ tolerantie-band, tab-ghosts, target-curves, templates (alleen Blank-scaffold, m�
 drivers). [Stand aug 2026: optimizers/synthese/netOptimize (trede 3–4c) én
 directivity/sonogram (zie onder) zijn inmiddels ONT-gate; vxp-export, tolerantie-band,
 tab-ghosts en target-curves zijn nog 2-weg.]
+**Fase-chart in 3-weg = ÉÉN genaaide lijn (aug 2026, Sanders "een berg lijnen over
+elkaar")**: default toont het paneel alleen "Relative phase — active pair" — per frequentie
+de relatieve fase van het ACTIEVE paar (mid-vs-woofer bínnen het W-M-overlapvenster,
+tweeter-vs-mid bínnen het M-T-venster, NaN-gat ertussen: daar draagt geen paar over), per
+punt tier-gekleurd zoals de 2-weg-hoofdlijn. Fysisch verdedigbaar omdat een paar-curve
+buiten zijn eigen overlapvenster toch niets betekent. De twee volledige paar-curves én de
+drie totaal-lijnen zijn in 3-weg `defaultOff` (de legend ís de toggle — 2-weg houdt de
+totals default AAN, Stefans check / Sanders eindkeuze). Paar-keuze bij dubbele dekking:
+onder het meetkundig gemiddelde van de twee overlap-centra wint het lage paar.
 **Directivity + sonogram in 3-weg (aug 2026, Sanders "werken niet")**:
 `computeDirectivityN` in directivity.ts — N takken via combineN, elk met eigen transfer +
 BranchAdjust; het oude `computeDirectivity` is er een dunne wrapper over (combine ≡ combineN

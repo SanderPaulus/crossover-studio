@@ -4409,6 +4409,11 @@ export default function App() {
         );
       // Ghost branch (single-driver mode) is fully NaN-masked anyway — skip
       // its series so the legend stays honest.
+      // 3-way: defaultOff — with three totals PLUS the pair curves the panel
+      // drowned (Sanders: "een berg lijnen over elkaar"); the stitched
+      // active-pair line below is the default reading there. 2-way keeps the
+      // totals on (Stefans check, Sanders eindkeuze) — the legend toggles.
+      const totOff = threeWay ? { defaultOff: true } : {};
       if (woofer) {
         out.push({
           id: 'wtot',
@@ -4418,6 +4423,7 @@ export default function App() {
           y: breakWraps(disp(result.woofer).map(wrapDeg)),
           dash: '9 4',
           width: 1.6,
+          ...totOff,
         });
       }
       if (sim?.mid) {
@@ -4429,6 +4435,7 @@ export default function App() {
           y: breakWraps(disp(sim.mid).map(wrapDeg)),
           dash: '9 4',
           width: 1.6,
+          ...totOff,
         });
       }
       if (tweeter) {
@@ -4440,6 +4447,7 @@ export default function App() {
           y: breakWraps(disp(result.tweeter).map(wrapDeg)),
           dash: '9 4',
           width: 1.6,
+          ...totOff,
         });
       }
     }
@@ -4457,6 +4465,44 @@ export default function App() {
       // Per-branch bands: relative phase against a silent-ghost region is
       // noise — mask where either branch has no measured data.
       const alive = (spl: readonly number[], i: number) => spl[i] > SILENT_GHOST_DB + 100;
+      /* ONE stitched headline (Sanders aug 2026: "een berg lijnen over
+       * elkaar"): a pair's relative phase only means anything inside its OWN
+       * overlap window, so one line can carry both — mid-vs-woofer inside the
+       * W-M window, tweeter-vs-mid inside the M-T one, a gap in between
+       * (nothing hands over there). Tier-colored per point like the 2-way
+       * headline. The two full per-pair curves stay available behind their
+       * legend chips (defaultOff — the legend IS the toggle). */
+      if (pairScores) {
+        const lowPts = pairScores.low.integ.points;
+        const highPts = pairScores.high.integ.points;
+        const cLow = pairScores.low.integ.overlapCentreHz;
+        const cHigh = pairScores.high.integ.overlapCentreHz;
+        const split = cLow !== null && cHigh !== null ? Math.sqrt(cLow * cHigh) : null;
+        const y: number[] = new Array(result.freq.length).fill(NaN);
+        const cols: (string | null)[] = new Array(result.freq.length).fill(null);
+        for (let i = 0; i < result.freq.length; i++) {
+          const lowOn = lowPts[i]?.cls !== null && lowPts[i] !== undefined;
+          const highOn = highPts[i]?.cls !== null && highPts[i] !== undefined;
+          const useLow =
+            lowOn && (!highOn || (split !== null && result.freq[i] < split));
+          if (useLow) {
+            y[i] = wrapDeg(midPh[i] - result.woofer.phaseDeg[i]);
+            cols[i] = TIER_COLOR[phaseTier(lowPts[i].phaseErrorDeg)];
+          } else if (highOn) {
+            y[i] = wrapDeg(result.tweeter.phaseDeg[i] - midPh[i]);
+            cols[i] = TIER_COLOR[phaseTier(highPts[i].phaseErrorDeg)];
+          }
+        }
+        out.push({
+          id: 'pairalign',
+          label: 'Relative phase — active pair',
+          color: 'var(--viz-combined)',
+          x: result.freq,
+          y: breakWraps(y),
+          pointColors: cols,
+          width: 2.5,
+        });
+      }
       out.push({
         id: 'relmw',
         label: 'Mid phase relative to woofer',
@@ -4470,6 +4516,7 @@ export default function App() {
           ),
         ),
         width: 2.2,
+        defaultOff: true,
       });
       out.push({
         id: 'reltm',
@@ -4484,6 +4531,7 @@ export default function App() {
           ),
         ),
         width: 2.2,
+        defaultOff: true,
       });
     } else if (!soloDriver) {
       out.push({
@@ -4530,7 +4578,7 @@ export default function App() {
       });
     }
     return out;
-  }, [result, integration, sim, threeWay, offsetMm, trimDb, inverted, showPanels.phase, refResp, tabGhosts, woofer, tweeter, soloDriver, verifyCompare]);
+  }, [result, integration, pairScores, sim, threeWay, offsetMm, trimDb, inverted, showPanels.phase, refResp, tabGhosts, woofer, tweeter, soloDriver, verifyCompare]);
 
   /** "How far off is the phase" zones behind the relative-phase curve. */
   const phaseBands = useMemo(
