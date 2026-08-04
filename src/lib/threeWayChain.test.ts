@@ -178,6 +178,24 @@ describe('threeWayChain (phase-4 trede 4c, staged v1)', () => {
     }
   });
 
+  it('a MEASURED M-T ceiling extends the free rail, but never past the onset', () => {
+    // A wideband mid measuring its beaming onset at 8.5 kHz: the free scan
+    // may explore UP TO that onset (the old 7 kHz rail clipped below it) —
+    // but never beyond. Past the measured onset is pin territory: the
+    // physics ceiling caps the free search, only the designer may step over.
+    const vs = crossover3Variants(w, m, t, undefined, 1310, 3, undefined, {
+      floorHz: 1310,
+      ceilHz: 8500,
+    });
+    const highs = vs.map((v) => v.xoHigh);
+    expect(Math.max(...highs)).toBeGreaterThan(7000);
+    expect(Math.max(...highs)).toBeLessThanOrEqual(8500);
+    for (const v of vs) expect(v.xoHighRange[1]).toBeLessThanOrEqual(8500 * 1.01);
+    // Without a measured ceiling the classic 7 kHz rail stands.
+    const free = crossover3Variants(w, m, t, undefined, 1310, 3);
+    for (const v of free) expect(v.xoHigh).toBeLessThanOrEqual(8000);
+  });
+
   it('a pin means EXACTLY what the designer typed (Sanders: "ranges kloppen niet")', () => {
     // 400 ± 200 and 8700 ± 50, 3 steps: the pin CENTRES themselves must run
     // (edge-to-edge log-slicing put the middle on the geometric centre, 346),

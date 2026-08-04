@@ -2797,7 +2797,12 @@ export default function App() {
                 : '') +
               ` · ${line(win)}` +
               ` — others: ${ranked.slice(1).map(line).join(' · ')}` +
-              (win.xoPinNote ? ` · ${win.xoPinNote}` : '') +
+              // A pin the physics could not honour must be LOUD (Sanders:
+              // "soms moeten we dat kunnen bypassen met een expliciete
+              // waarschuwing") — the pin IS the designer's bypass of every
+              // derived rule, so a silently-missed pin reads as "de range
+              // wordt genegeerd". Lead the note with it instead of burying it.
+              (win.xoPinNote ? ` · ⚠ PIN: ${win.xoPinNote}` : '') +
               (win.net.snapNote ? ` · ${win.net.snapNote}` : '') +
               (win.net.safetyNote ? ` · ⚠ ${win.net.safetyNote}` : '') +
               (win.net.ampFloorNote ? ` · ⚠ ${win.net.ampFloorNote}` : ''),
@@ -7151,15 +7156,30 @@ export default function App() {
                 {threeWay && physWin3 && (
                   <span
                     className="derived"
-                    title="The free scan derives both handover windows from the measurements themselves: floor = 2×Fs (measured impedance) and where the upper driver reaches its own level; ceiling = the lower driver's MEASURED beaming onset from the angle files (size-formula fallback without them). A pin overrides its axis."
+                    title="The free scan derives both handover windows from the measurements themselves: floor = 2×Fs (measured impedance) and where the upper driver reaches its own level; ceiling = the lower driver's MEASURED beaming onset from the angle files (size-formula fallback without them). A pin is the designer's explicit override of its axis — the scan then searches the pin, not this window, and warns loudly when the physics cannot deliver it."
                   >
-                    W-M {Math.round(physWin3.low.floorHz ?? 250)}–
-                    {Math.round(Math.min(1500, physWin3.low.ceilHz ?? 1200))} Hz
-                    {physWin3.lowCeilMeasured ? ' (measured beaming)' : ''}
-                    {' · M-T '}
-                    {Math.round(physWin3.high.floorHz ?? 1200)}–
-                    {Math.round(Math.min(7000, physWin3.high.ceilHz ?? 7000))} Hz
-                    {physWin3.highCeilMeasured ? ' (measured beaming)' : ''}
+                    {xoRangeOn ? (
+                      <>W-M pinned · </>
+                    ) : (
+                      <>
+                        W-M {Math.round(physWin3.low.floorHz ?? 250)}–
+                        {Math.round(Math.min(1500, physWin3.low.ceilHz ?? 1200))} Hz
+                        {physWin3.lowCeilMeasured ? ' (measured beaming)' : ''}
+                        {' · '}
+                      </>
+                    )}
+                    {xoRangeOn ? (
+                      <>M-T pinned — pins override the derived windows</>
+                    ) : (
+                      <>
+                        M-T {Math.round(physWin3.high.floorHz ?? 1200)}–
+                        {Math.round(
+                          Math.min(12000, Math.max(7000, physWin3.high.ceilHz ?? 7000)),
+                        )}{' '}
+                        Hz
+                        {physWin3.highCeilMeasured ? ' (measured beaming)' : ''}
+                      </>
+                    )}
                   </span>
                 )}
                 {xoRangeOn && threeWay && (

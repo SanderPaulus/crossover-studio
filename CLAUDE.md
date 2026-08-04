@@ -1061,6 +1061,24 @@ het eerder met de hand afgeleide advies). NB eerlijk: Robberts mid REIKT wél to
 van een screenshot was fout), dus daar regeert de 2×Fs-vloer; de reach-vloer is het vangnet
 voor drivers die het niet doen. Synthetische unit-tests pinnen blip-robuustheid,
 staart-robuustheid en de null-gevallen.
+**Gemeten plafond mag de vrije rails oprekken, nooit voorbij het bundelpunt (Sanders
+breedbander-observatie + "maar de bundeling zal anders zeggen")**: een breedband-mid geeft
+qua fase/SPL de beste M-T rond 8,7–9 kHz (gemeten: 3–7° paar-fase daar vs ~10° op 4,9k —
+minder filterordes, natuurlijke rolloff doet de flank, tweeter luiert), maar zijn gemeten
+bundelpunt is 8022 Hz. De regel: een GEMETEN plafond boven de klassieke rail (7000 hoog /
+1500 laag) rekt de vrije rail op TOT dat bundelpunt (kandidaat op 8022 kan nu vrij gevonden
+worden), maar nooit erverbij — voorbij het gemeten bundelpunt is PIN-terrein: de fysica
+begrenst de vrije zoektocht, alleen de ontwerper stapt er expliciet overheen, en de
+in-room-term + xoPinNote prijzen/melden die keuze eerlijk. Test-gepind (ceiling 8500 ⇒ max
+vrije kandidaat ≤8500, zonder venster blijft 7000/8000).
+**Pin-zichtbaarheid (Sanders "lijkt de range te negeren … bypassen met een expliciete
+waarschuwing")**: de pin ÍS de expliciete bypass van élke afgeleide regel, dus (a) een
+niet-gehouden pin leidt de scan-note nu met "⚠ PIN: could not hold …" i.p.v. begraven te
+staan, en (b) de ⚙-venster-uitlezing toont bij een actieve pin "W-M pinned · M-T pinned —
+pins override the derived windows" i.p.v. het vrije venster te blijven tonen (dat las als
+"hij negeert mijn range"). NB de verwarring in zijn screenshot: Filter-bands-KNIEËN
+(LR4@479/2710) zijn elektrische doelen en blijven vrij — de pin zit op de AKOESTISCHE
+kruising; knieën ver van de pin zijn geen bewijs van een genegeerde pin.
 **In-room weight in 3-weg (aug 2026, Sanders "is de 2-weg-engine hier ook blind voor?")**:
 nee — de 2-weg weegt met hoekdata de energy-average-vlakheid mee (dirWeight, default 25%),
 en juist dáár verschijnt een directiviteits-trap bij de overname die on-axis onzichtbaar is.

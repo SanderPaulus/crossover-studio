@@ -471,7 +471,15 @@ export function crossover3Variants(
   const freeHigh = freeSpan(
     highWindow,
     [rawHigh * 0.75, rawHigh * 1.4],
-    [Math.max(1200, hpFloorHz ?? 0), 7000],
+    // A MEASURED ceiling above the classic 7 kHz rail extends it (≤ 12 kHz):
+    // a wideband mid legitimately hands over near the top of the band —
+    // Robbert's mid measures its beaming onset at 8022 Hz and Sanders'
+    // preferred ~8.7–9 kHz basin measured 3–7° pair phase; a free scan
+    // clipped at 7 kHz could never discover that basin on its own.
+    [
+      Math.max(1200, hpFloorHz ?? 0),
+      Math.min(12000, Math.max(7000, highWindow?.ceilHz ?? 0)),
+    ],
   );
   const [lLo, lHi] = pins?.low ? span(rawLow, pins.low) : freeLow;
   const [hLo, hHi] = pins?.high ? span(rawHigh, pins.high) : freeHigh;
@@ -489,8 +497,15 @@ export function crossover3Variants(
       // crushed every candidate to 7 kHz ("hij blijft hangen op 7 kHz"). The
       // rails exist to keep the FREE scan sensible; an explicit pin is the
       // designer's own call.
-      const lowCap = pins?.low ? 2000 : 1500;
-      const highCap = pins?.high ? 12000 : 7000;
+      // A MEASURED window ceiling may extend the free rails (a small woofer's
+      // beaming sits above 1500, a wideband mid's above 7000) — but the
+      // MEASURED ONSET itself stays the cap: past it is pin territory.
+      const lowCap = pins?.low
+        ? 2000
+        : Math.min(2000, Math.max(1500, lowWindow?.ceilHz ?? 1500));
+      const highCap = pins?.high
+        ? 12000
+        : Math.min(12000, Math.max(7000, highWindow?.ceilHz ?? 7000));
       // The pinned lower rail follows the UI's own input minimum (150 Hz):
       // Sanders' 400 ± 200 pin reaches 200 and the free-scan 250-floor
       // silently pulled that edge candidate up.
