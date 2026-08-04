@@ -1885,11 +1885,21 @@ export default function App() {
         { response: m, adjust: mAdj },
         { response: t, adjust: tAdj },
       ]);
-      // The null check keeps its 2-way meaning: same sum, tweeter flipped.
+      // The null check keeps its 2-way meaning: same sum, tweeter flipped —
+      // that nulls the M-T handover ONLY (at the W-M crossing the tweeter
+      // contributes nothing). The W-M handover gets its OWN check with the
+      // WOOFER flipped (Sanders: "woofer/mid zou deze ook moeten weergeven");
+      // deliberately not the mid — the mid is shared between both pairs, so
+      // flipping it would null both crossings at once and read ambiguous.
       const n3inv = combineN([
         { response: w },
         { response: m, adjust: mAdj },
         { response: t, adjust: { ...tAdj, inverted: !tAdj.inverted } },
+      ]);
+      const n3invLow = combineN([
+        { response: w, adjust: { inverted: true } },
+        { response: m, adjust: mAdj },
+        { response: t, adjust: tAdj },
       ]);
       const wrap = (d: number) => {
         let v = d % 360;
@@ -1907,6 +1917,7 @@ export default function App() {
           combinedSpl: n3.combinedSpl,
           combinedPhaseDeg: n3.combinedPhaseDeg,
           invertedSpl: n3inv.combinedSpl,
+          invertedLowSpl: n3invLow.combinedSpl,
           relativePhaseDeg: tB.phaseDeg.map((p, i) => wrap(p - w.phaseDeg[i])),
         },
         mid: midB,
@@ -4184,13 +4195,31 @@ export default function App() {
         : [
             {
               id: 'n',
-              label: 'Combined, tweeter inverted (null check)',
+              // 3-way: this flip only nulls the M-T handover — say so, and add
+              // the W-M twin below (woofer flipped; the shared mid stays put).
+              label: threeWay
+                ? 'Combined, tweeter inverted (null check M-T)'
+                : 'Combined, tweeter inverted (null check)',
               color: 'var(--viz-null)',
               x: result.freq,
               y: result.invertedSpl,
               dash: '5 4',
             } satisfies Series,
           ]),
+      ...(threeWay && sim && 'invertedLowSpl' in sim.combined
+        ? [
+            {
+              id: 'nlow',
+              label: 'Combined, woofer inverted (null check W-M)',
+              color: 'var(--viz-null)',
+              x: result.freq,
+              y: sim.combined.invertedLowSpl,
+              // Same null-family color, DIFFERENT dash: pattern carries the
+              // distinction (the CVD doctrine — color is never the only carrier).
+              dash: '2 3',
+            } satisfies Series,
+          ]
+        : []),
     ];
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [result, sim, threeWay, maskSilent, integration, tabGhosts, networkActive, activeDesign, tolBand, targetSeries, soloDriver, verifyCompare, verify]);
