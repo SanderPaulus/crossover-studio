@@ -46,7 +46,7 @@ export interface NetOptimizeOptions {
   maxIterations?: number;
   /** Per-driver angle responses (same grid) — enables the directivity-aware
    *  terms, exactly like the design optimizer. */
-  angleData?: { woofer: AngleResponse[]; tweeter: AngleResponse[] };
+  angleData?: { woofer: AngleResponse[]; tweeter: AngleResponse[]; mid?: AngleResponse[] };
   /** 0..1: share of the amplitude budget on the energy average. Default 0. */
   directivityWeight?: number;
   /** Which curve the amplitude term flattens. Default 'onAxis'. */
@@ -370,7 +370,18 @@ export function optimizeNetworkValues(
   // driver the pairing is empty and the power average degenerates to NaN.
   // 3-way: same reason, other direction — the pairing covers exactly two of
   // the three branches, so the power average would be silently wrong.
-  const angleData = solo || midB ? undefined : opts.angleData;
+  // 3-way: the in-room weight needs the MID's own angle set — without it a
+  // two-branch angle sum would be silently wrong, so the term stays off.
+  // (Historically directivity was gated off for 3-way entirely; that made the
+  // scan blind to woofer beaming — Sanders measured his woofer −3.5 dB at
+  // 30°/600 Hz while the tuner happily parked the W-M handover above it.)
+  const angleData = solo
+    ? undefined
+    : midB
+      ? opts.angleData?.mid
+        ? opts.angleData
+        : undefined
+      : opts.angleData;
   /** SOLO sensitivity budget (dB): how far the tuned network's median level
    *  may sit below the RAW driver. Same fundamental as the design engine —
    *  and needed here for the same reason: the flatness objective is
@@ -419,7 +430,11 @@ export function optimizeNetworkValues(
   const pickAngles = (set: AngleResponse[]): AngleResponse[] =>
     set.map((a) => ({ hor: a.hor, response: pick(a.response) }));
   const optAngles = angleData
-    ? { woofer: pickAngles(angleData.woofer), tweeter: pickAngles(angleData.tweeter) }
+    ? {
+        woofer: pickAngles(angleData.woofer),
+        tweeter: pickAngles(angleData.tweeter),
+        ...(angleData.mid ? { mid: pickAngles(angleData.mid) } : {}),
+      }
     : null;
 
   /* ---- Band statistics. The canonical implementations live in
@@ -508,7 +523,7 @@ export function optimizeNetworkValues(
     t: GriddedResponse,
     m: GriddedResponse | null,
     z: Record<string, readonly Complex[]>,
-    angles: { woofer: AngleResponse[]; tweeter: AngleResponse[] } | null,
+    angles: { woofer: AngleResponse[]; tweeter: AngleResponse[]; mid?: AngleResponse[] } | null,
   ): {
     /** Std-dev flatness — the smooth term the SEARCH objective minimizes. */
     rippleDb: number;
@@ -651,14 +666,22 @@ export function optimizeNetworkValues(
     }
 
     // Directivity terms — the same transfers at every measured angle, exactly
-    // like the design optimizer judges.
+    // like the design optimizer judges. 3-way: the three-branch per-angle sum
+    // (the computeDirectivityN semantics), each branch with its own transfer
+    // and adjust; a directivity STEP at a handover — the beaming woofer
+    // handing to a still-wide mid — shows up here as energy-average wobble
+    // even when the on-axis sum is dead flat.
     let powerStdDb: number | null = null;
     let lwStd: number | null = null;
     if (angles) {
       const n = r.freq.length;
       const shared = angles.woofer
         .map((a) => a.hor)
-        .filter((h) => angles.tweeter.some((tt) => tt.hor === h));
+        .filter(
+          (h) =>
+            angles.tweeter.some((tt) => tt.hor === h) &&
+            (!mF || !angles.mid || angles.mid.some((mm) => mm.hor === h)),
+        );
       const powerAcc = new Array<number>(n).fill(0);
       const lwAcc = new Array<number>(n).fill(0);
       let lwCount = 0;
@@ -667,7 +690,18 @@ export function optimizeNetworkValues(
         let at = angles.tweeter.find((x) => x.hor === hor)!.response;
         if (hW) aw = applyTransfer(aw, hW);
         if (hT) at = applyTransfer(at, hT);
-        const spl = combine(aw, at, adjust).combinedSpl;
+        let spl: number[];
+        if (mF && angles.mid) {
+          let am = angles.mid.find((x) => x.hor === hor)!.response;
+          if (hM) am = applyTransfer(am, hM as Complex[]);
+          spl = combineN([
+            { response: aw },
+            { response: am, adjust: midAdj },
+            { response: at, adjust },
+          ]).combinedSpl;
+        } else {
+          spl = combine(aw, at, adjust).combinedSpl;
+        }
         for (let i = 0; i < n; i++) powerAcc[i] += 10 ** (spl[i] / 10);
         if (hor <= 30) {
           for (let i = 0; i < n; i++) lwAcc[i] += 10 ** (spl[i] / 10);

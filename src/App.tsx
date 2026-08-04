@@ -2663,6 +2663,8 @@ export default function App() {
         structureLow: parseHpLpPref(hpLpPrefLow),
         structureHigh: parseHpLpPref(hpLpPref),
         breakupGuard,
+        directivityWeight: dirWeight / 100,
+        ampTarget,
         phaseMetric: phaseMetricMode,
         synthMode,
         catalogSnap: catalogSnap && hasImportedCatalog(),
@@ -2672,6 +2674,14 @@ export default function App() {
       };
       const tAdj = { offsetMm: num(offsetMm, 0), trimDb: num(trimDb, 0), inverted };
       const mAdj = { offsetMm: num(midOffsetMm, 0), trimDb: num(midTrimDb, 0), inverted: midInverted };
+      // Banded per-branch angle sets (same treatment as the 0° branches) —
+      // arms the in-room weight; without the mid's own set the term stays off.
+      const angleSets3 = (() => {
+        const ad = angleResponsesOn(grid);
+        return ad?.mid && ad.mid.length > 0
+          ? { woofer: ad.woofer, mid: ad.mid, tweeter: ad.tweeter }
+          : undefined;
+      })();
       const variants = crossover3Variants(
         sim.base.w,
         sim.base.m!,
@@ -2689,6 +2699,7 @@ export default function App() {
         m: sim.base.m!,
         t: sim.base.t,
         driverZ: zOnGrid,
+        angleData: angleSets3,
         tAdjust: tAdj,
         midAdjust: mAdj,
         xoLow: v.xoLow,

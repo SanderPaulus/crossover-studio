@@ -1040,6 +1040,24 @@ synthese-gereedschap, acoustic-doctrine). Bindende keuze per kruising via `struc
 `structureHigh` — de ⚙-dropdown "HP/LP preference" was in 3-weg wél zichtbaar maar werd
 GENEGEERD; nu twee dropdowns (laag/hoog), zelfde conventie als de flank-doelen
 (`hpLpPrefLow` gepersisteerd, mét autosave-dep).
+**In-room weight in 3-weg (aug 2026, Sanders "is de 2-weg-engine hier ook blind voor?")**:
+nee — de 2-weg weegt met hoekdata de energy-average-vlakheid mee (dirWeight, default 25%),
+en juist dáár verschijnt een directiviteits-trap bij de overname die on-axis onzichtbaar is.
+De 3-weg gooide angleData weg ("2-weg-vocabulaire", trede 4a) — terwijl Sanders woofer
+gemeten −3,5 dB @30°/600 Hz doet en de mid daar nog rondstraalt. Nu: netOptimizers
+hoek-blok somt in 3-weg DRIE takken per hoek (combineN-semantiek, elk met eigen transfer +
+adjust; mid-hoekset VERPLICHT om te armeren — een twee-tak-som zou stil fout zijn),
+`Chain3Input.angleData` + settings.directivityWeight/ampTarget, App levert de banded
+hoeksets (zelfde ghost-behandeling als de 0°-takken). GEMETEN (zelfde vrije kandidaat, A/B):
+on-axis-only leverde de W-M-overname op 3033 Hz — midden in het bundelgebied — met fase
+63/40°; met in-room 25% op 919 Hz met fase 32/35° en betere rimpel. De term stuurt dus
+meetbaar wég van de bundeling; het paneel-advies blijft: pin W-M ~575±75 op déze drivers
+(de energy average is een gewogen gemiddelde, geen harde muur). NB de ontwerpstap
+(designThreeWay) is nog on-axis — de tuner en de ranking dragen de term. NB2, eerlijke
+kanttekening uit dezelfde meting: het vrije M-T-anker (overlap-centrum op de RAUWE
+responsies) vindt bij een hete tweeter alsnog het láge kruispunt (~1200→1800-vloer) — het
+"paneel-anker 5455" uit een eerdere sessie kwam van een GEFILTERDE staat. Vrij scannen op
+de hoge as blijft dus zwak op hete tweeters; de pin is daar het gereedschap.
 **Pin-semantiek + hold-the-pin-reparatie (aug 2026, Sanders "zou niet boven de 575 mogen")**:
 drie lagen, in volgorde gebouwd. (1) `slicePinned`: een pin betekent LETTERLIJK wat de
 ontwerper intypt — marge exact (de oude ≥2%-van-f-vloer maakte van 8700±50 stil ±174; de

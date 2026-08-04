@@ -10,6 +10,7 @@ import type { SnapPrefs } from './catalog.ts';
 import { bomFor } from './catalog.ts';
 import type { VxpPart } from './parsers/vxp.ts';
 import type { ChainStageProgress } from './designChain.ts';
+import type { AngleResponse } from './directivity.ts';
 
 /**
  * Three-way design chain — phase-4 trede 4c, deliberately STAGED (v1).
@@ -51,6 +52,11 @@ export interface Chain3Settings {
   structureLow?: Struct3Choice;
   structureHigh?: Struct3Choice;
   breakupGuard?: boolean;
+  /** In-room weight for the assembled tune (0..1): blends energy-average
+   *  flatness into the amplitude term — the 2-way recipe, now three-branch.
+   *  Needs angleData on the input (with the mid's own set) to do anything. */
+  directivityWeight?: number;
+  ampTarget?: 'onAxis' | 'listeningWindow';
   phaseMetric?: 'band' | 'overlap';
   synthMode: 'filter' | 'acoustic';
   catalogSnap?: boolean;
@@ -73,6 +79,9 @@ export interface Chain3Input {
   t: GriddedResponse;
   /** Keyed by the canonical 3-way model names woofer/mid/tweeter. */
   driverZ: Record<string, readonly Complex[]>;
+  /** Banded per-branch angle sets (same grid/ghost treatment as w/m/t) —
+   *  feeds the in-room weight; the MID set is required for the term to arm. */
+  angleData?: { woofer: AngleResponse[]; mid: AngleResponse[]; tweeter: AngleResponse[] };
   tAdjust: TweeterAdjust;
   midAdjust: BranchAdjust;
   /** Candidate handover points (Hz). */
@@ -199,6 +208,9 @@ export function runThreeWayChain(
     midBranch: { response: m, adjust: midAdjust },
     phasePriority: s.phasePriority,
     breakupGuard: s.breakupGuard,
+    angleData: input.angleData,
+    directivityWeight: s.directivityWeight,
+    ampTarget: s.ampTarget,
     acousticSlopes: s.acousticSlopes,
     xoRangePairs: [lowCage, highCage],
     staged: s.targets,
