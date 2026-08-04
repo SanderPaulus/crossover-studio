@@ -103,7 +103,8 @@ import Chart, { type ChartHandle, type Series } from './components/Chart.tsx';
 import DriverFilterControls from './components/FilterControls.tsx';
 import demoMid from './lib/parsers/fixtures/mid_hor0_mettape.txt?raw';
 import demoTweet from './lib/parsers/fixtures/tweet_hor0_mettape.txt?raw';
-import { computeDirectivity, computeDirectivityN, type AngleResponse } from './lib/directivity.ts';
+import { beamingCeilingHz, computeDirectivity, computeDirectivityN, type AngleResponse } from './lib/directivity.ts';
+import { reachesLevelHz } from './lib/bandMetrics.ts';
 import { beamwidth6dBHalfAngle, buildSonogram, type SonogramMode } from './lib/sonogram.ts';
 import Sonogram from './components/Sonogram.tsx';
 import { angleFromFilename } from './lib/angles.ts';
@@ -2034,6 +2035,44 @@ export default function App() {
     [result, threeWay],
   );
 
+  /* Free-axis physics windows for the 3-way scan, derived from MEASUREMENTS
+   * (Sanders: "het doel is dat de optimizer dit verzint"): floor = 2×Fs AND
+   * where the upper driver reaches its own level; ceiling = the lower
+   * driver's measured beaming onset from the loaded angle sets (size-formula
+   * fallback). What the designer read off the charts by hand, the scan now
+   * derives itself — measured on Robbert: W-M [353…631], M-T [1310…7000
+   * (mid beams at 8022)], exactly the hand-derived advice. Also carries the
+   * banded angle sets that arm the in-room weight. */
+  const physWin3 = useMemo(() => {
+    if (!threeWay || !sim?.mid || !result || !sim.base.m) return null;
+    const grid = result.freq;
+    const ad = angleResponsesOn(grid);
+    const angleSets =
+      ad?.mid && ad.mid.length > 0
+        ? { woofer: ad.woofer, mid: ad.mid, tweeter: ad.tweeter }
+        : undefined;
+    const maxOpt = (...vs: (number | null | undefined)[]): number | null => {
+      const xs = vs.filter((v): v is number => typeof v === 'number' && v > 0);
+      return xs.length ? Math.max(...xs) : null;
+    };
+    const wBeam = angleSets ? beamingCeilingHz(angleSets.woofer) : null;
+    const mBeam = angleSets ? beamingCeilingHz(angleSets.mid) : null;
+    return {
+      angleSets,
+      low: {
+        floorHz: maxOpt(midHpFloor, reachesLevelHz(grid, sim.base.m.spl)),
+        ceilHz: wBeam ?? wooferXoCeiling,
+      },
+      lowCeilMeasured: wBeam !== null,
+      high: {
+        floorHz: maxOpt(tweeterHpFloor, reachesLevelHz(grid, sim.base.t.spl)),
+        ceilHz: mBeam ?? midXoCeiling,
+      },
+      highCeilMeasured: mBeam !== null,
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [threeWay, sim, result, phaseMode, angleSets, midHpFloor, wooferXoCeiling, midXoCeiling, tweeterHpFloor]);
+
   /** Per-adjacent-pair integration + phase flatness (3-way only). Silent
    *  ghost regions (per-branch bands) drop out of the overlap window on
    *  their own — the weights die with the level. */
@@ -2676,12 +2715,9 @@ export default function App() {
       const mAdj = { offsetMm: num(midOffsetMm, 0), trimDb: num(midTrimDb, 0), inverted: midInverted };
       // Banded per-branch angle sets (same treatment as the 0° branches) —
       // arms the in-room weight; without the mid's own set the term stays off.
-      const angleSets3 = (() => {
-        const ad = angleResponsesOn(grid);
-        return ad?.mid && ad.mid.length > 0
-          ? { woofer: ad.woofer, mid: ad.mid, tweeter: ad.tweeter }
-          : undefined;
-      })();
+      const angleSets3 = physWin3?.angleSets;
+      const lowWin3 = physWin3?.low ?? { floorHz: midHpFloor, ceilHz: wooferXoCeiling };
+      const highWin3 = physWin3?.high ?? { floorHz: tweeterHpFloor, ceilHz: midXoCeiling };
       const variants = crossover3Variants(
         sim.base.w,
         sim.base.m!,
@@ -2689,9 +2725,8 @@ export default function App() {
         pins,
         tweeterHpFloor ?? undefined,
         xo3Steps,
-        // The free W-M axis searches the physics window: 2×Fs of the measured
-        // mid up to the woofer's beaming limit (the two-way saneFree recipe).
-        { floorHz: midHpFloor, ceilHz: wooferXoCeiling },
+        lowWin3,
+        highWin3,
       );
       const inputs = variants.map((v) => ({
         grid: [...grid],
@@ -7113,14 +7148,18 @@ export default function App() {
                     </select>
                   </label>
                 )}
-                {threeWay && (midHpFloor !== null || wooferXoCeiling !== null) && (
+                {threeWay && physWin3 && (
                   <span
                     className="derived"
-                    title="The free W-M scan searches this window: from 2×Fs of the measured mid impedance up to the woofer's beaming limit. A pin overrides it."
+                    title="The free scan derives both handover windows from the measurements themselves: floor = 2×Fs (measured impedance) and where the upper driver reaches its own level; ceiling = the lower driver's MEASURED beaming onset from the angle files (size-formula fallback without them). A pin overrides its axis."
                   >
-                    W-M window {midHpFloor ?? 250}–{Math.min(1500, wooferXoCeiling ?? 1200)} Hz
-                    {midHpFloor !== null ? ' (2×Fs mid' : ' (default floor'}
-                    {wooferXoCeiling !== null ? ' / woofer beaming)' : ' / default ceiling)'}
+                    W-M {Math.round(physWin3.low.floorHz ?? 250)}–
+                    {Math.round(Math.min(1500, physWin3.low.ceilHz ?? 1200))} Hz
+                    {physWin3.lowCeilMeasured ? ' (measured beaming)' : ''}
+                    {' · M-T '}
+                    {Math.round(physWin3.high.floorHz ?? 1200)}–
+                    {Math.round(Math.min(7000, physWin3.high.ceilHz ?? 7000))} Hz
+                    {physWin3.highCeilMeasured ? ' (measured beaming)' : ''}
                   </span>
                 )}
                 {xoRangeOn && threeWay && (

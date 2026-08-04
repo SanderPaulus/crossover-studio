@@ -1040,6 +1040,27 @@ synthese-gereedschap, acoustic-doctrine). Bindende keuze per kruising via `struc
 `structureHigh` — de ⚙-dropdown "HP/LP preference" was in 3-weg wél zichtbaar maar werd
 GENEGEERD; nu twee dropdowns (laag/hoog), zelfde conventie als de flank-doelen
 (`hpLpPrefLow` gepersisteerd, mét autosave-dep).
+**GEMETEN fysica-vensters voor beide vrije assen (aug 2026, Sanders "het doel is dat de
+optimizer dit verzint")**: wat de ontwerper handmatig uit de grafieken las, leidt de scan nu
+zelf af. `beamingCeilingHz` (directivity.ts): eerste frequentie waar het ±⅙-oct-gemediane
+0°−30°-verschil ≥4 dB komt én dat een HALVE octaaf volhoudt — HARD GELEERD op Robberts mid:
+een baffle-diffractie-wiebel (+4,6 dB @1,5 kHz, weg bij 2 kHz) overleeft een ⅓-oct-check en
+las als "beaming op 1462" terwijl echte bundeling alleen maar erger wordt met frequentie;
+met ½ oct → 8022 Hz, het echte punt. `reachesLevelHz` (bandMetrics.ts): laagste frequentie
+waar een driver binnen 6 dB van zijn passband komt — referentie = BOVENSTE KWARTIEL, niet
+de mediaan (een driver die over zijn hele bereik gemeten is besteedt octaven aan flanken;
+de mediaan zakt daardoor onder de passband en noemde de flank te vroeg "op niveau").
+Vensters: W-M-vloer = max(2×Fs mid, mid-reach), W-M-plafond = gemeten woofer-beaming;
+M-T-vloer = max(2×Fs tweeter, tweeter-reach), M-T-plafond = gemeten MID-beaming (dicht ook
+het "vrije hoge as is zwak"-gat); size-formules zijn terugval zonder hoekdata.
+`crossover3Variants` kreeg `highWindow` (spiegel van lowWindow, gedeelde `freeSpan`-logica);
+App-memo `physWin3` voedt scan én ⚙-uitlezing ("W-M 353–629 Hz (measured beaming) · M-T
+1310–7000 Hz (measured beaming)" — live op Robberts data; W-M-kandidaten 353/472/631 = exact
+het eerder met de hand afgeleide advies). NB eerlijk: Robberts mid REIKT wél tot ~170 Hz
+(104-106 dB gemeten op 162-185 — de FRD is de waarheid; mijn eerdere "pas op 550"-aflezing
+van een screenshot was fout), dus daar regeert de 2×Fs-vloer; de reach-vloer is het vangnet
+voor drivers die het niet doen. Synthetische unit-tests pinnen blip-robuustheid,
+staart-robuustheid en de null-gevallen.
 **In-room weight in 3-weg (aug 2026, Sanders "is de 2-weg-engine hier ook blind voor?")**:
 nee — de 2-weg weegt met hoekdata de energy-average-vlakheid mee (dirWeight, default 25%),
 en juist dáár verschijnt een directiviteits-trap bij de overname die on-axis onzichtbaar is.

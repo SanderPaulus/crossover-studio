@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { logspace } from './dsp.ts';
-import { bandIndices, bandMedian, bandStats, flatnessObjective, reachableBand } from './bandMetrics.ts';
+import { bandIndices, bandMedian, bandStats, flatnessObjective, reachableBand, reachesLevelHz } from './bandMetrics.ts';
 
 const grid = logspace(100, 20000, 400);
 const flat = (level: number) => grid.map(() => level);
@@ -105,5 +105,50 @@ describe('bandIndices / bandMedian', () => {
   it('bandMedian averages the middle pair for an even count', () => {
     const f = [100, 200, 300, 400];
     expect(bandMedian(f, [10, 20, 30, 40], [100, 400])).toBeCloseTo(25, 9);
+  });
+});
+
+describe('reachesLevelHz — the handover floor made measurable', () => {
+  const freq = Array.from({ length: 200 }, (_, i) => 100 * (200 / 100) ** (i / 199) * 10 ** (i / 199 * 0));
+  // Log grid 100..10000.
+  const logGrid = Array.from({ length: 200 }, (_, i) => 100 * (10000 / 100) ** (i / 199));
+  void freq;
+
+  it('finds where a rising driver reaches its passband', () => {
+    // 24 dB/oct rise to full level at 500 Hz, flat 100 dB above.
+    const spl = logGrid.map((f) => (f < 500 ? 100 - 24 * Math.log2(500 / f) : 100));
+    const hz = reachesLevelHz(logGrid, spl, 6);
+    // Within 6 dB of the passband ≈ a quarter octave below 500.
+    expect(hz).not.toBeNull();
+    expect(hz!).toBeGreaterThan(350);
+    expect(hz!).toBeLessThan(510);
+  });
+
+  it('long measured tails do not drag the reference off the passband', () => {
+    // A driver measured across its whole range: rising flank below 500,
+    // passband 100 dB up to 5 kHz, falling flank above — the tails cover
+    // half the grid. A plain median would sit below the passband and call
+    // the flank "at level" far too early (the Robbert-mid lesson: 157 Hz for
+    // a driver that is at level from ~170); the upper-quartile reference is
+    // the passband.
+    const spl = logGrid.map((f) =>
+      f < 500 ? 100 - 30 * Math.log2(500 / f) : f > 5000 ? 100 - 30 * Math.log2(f / 5000) : 100,
+    );
+    const hz = reachesLevelHz(logGrid, spl, 6);
+    expect(hz).not.toBeNull();
+    expect(hz!).toBeGreaterThan(350);
+    expect(hz!).toBeLessThan(510);
+  });
+
+  it('already-at-level from the first sample returns the first frequency', () => {
+    const spl = logGrid.map(() => 100);
+    expect(reachesLevelHz(logGrid, spl, 6)).toBe(logGrid[0]);
+  });
+
+  it('silent-ghost samples are ignored', () => {
+    const spl = logGrid.map((f) => (f < 300 ? -400 : 100));
+    const hz = reachesLevelHz(logGrid, spl, 6);
+    expect(hz).not.toBeNull();
+    expect(hz!).toBeGreaterThanOrEqual(300);
   });
 });

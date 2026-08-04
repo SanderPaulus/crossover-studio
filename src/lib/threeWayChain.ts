@@ -367,6 +367,11 @@ export function crossover3Variants(
    *  honest search space. Either side optional; the overlap anchor stays the
    *  fallback. A designer pin still overrides everything. */
   lowWindow?: { floorHz?: number | null; ceilHz?: number | null },
+  /** Same recipe for the free M-T axis: floor = max(2×Fs tweeter, where the
+   *  tweeter reaches level), ceiling = the MID's measured beaming onset. The
+   *  raw-overlap anchor is weak evidence on this axis too — a hot tweeter's
+   *  raw level-crossing sits far below any sensible handover. */
+  highWindow?: { floorHz?: number | null; ceilHz?: number | null },
 ): Chain3Variant[] {
   /* Anchor = the raw pair's OVERLAP CENTRE — the same computeIntegration
    * number the panel's pair chips show ("Overlap 1631 / 5455 Hz"), so the
@@ -434,29 +439,42 @@ export function crossover3Variants(
       { centre: hi, range: [b2, hi] },
     ];
   };
-  /* Free low axis: physics bounds first (floor = 2×Fs mid, ceiling = woofer
-   * beaming), the overlap-anchor neighbourhood for whichever side is missing.
-   * A degenerate window (floor above ceiling: a big mid with a small woofer —
-   * a design problem no scan can solve) falls back to the anchor entirely. */
-  const freeLow = ((): [number, number] => {
-    const floor = lowWindow?.floorHz ?? null;
-    const ceil = lowWindow?.ceilHz ?? null;
-    let lo = Math.max(250, floor ?? rawLow * 0.75);
-    let hi = Math.min(1500, ceil ?? Math.min(1200, rawLow * 1.4));
+  /* Free axes: physics bounds first (floor = 2×Fs + where the upper driver
+   * reaches level, ceiling = the lower driver's measured beaming onset), the
+   * overlap-anchor neighbourhood for whichever side is missing. A degenerate
+   * window (floor above ceiling) falls back to the anchor entirely — that is
+   * a design problem no scan can solve. */
+  const freeSpan = (
+    win: { floorHz?: number | null; ceilHz?: number | null } | undefined,
+    anchorSpan: [number, number],
+    rail: [number, number],
+  ): [number, number] => {
+    const floor = win?.floorHz ?? null;
+    const ceil = win?.ceilHz ?? null;
+    let lo = Math.max(rail[0], floor ?? anchorSpan[0]);
+    let hi = Math.min(rail[1], ceil ?? anchorSpan[1]);
     if (hi <= lo * 1.05) {
       // A single known PHYSICS bound beats a disagreeing level anchor (the
-      // anchor is weak evidence on this axis): give the missing side an
-      // octave of room from the bound instead of discarding it.
-      if (floor !== null && ceil === null) hi = Math.min(1500, lo * 2);
-      else if (ceil !== null && floor === null) lo = Math.max(250, hi / 2);
-      // Both bounds known and in conflict (big mid + small woofer): a design
-      // problem no scan can solve — fall back to the anchor neighbourhood.
-      else return [rawLow * 0.75, Math.min(1200, rawLow * 1.4)];
+      // anchor is weak evidence): give the missing side an octave of room
+      // from the bound instead of discarding it.
+      if (floor !== null && ceil === null) hi = Math.min(rail[1], lo * 2);
+      else if (ceil !== null && floor === null) lo = Math.max(rail[0], hi / 2);
+      else return anchorSpan;
     }
-    return hi > lo * 1.05 ? [lo, hi] : [rawLow * 0.75, Math.min(1200, rawLow * 1.4)];
-  })();
+    return hi > lo * 1.05 ? [lo, hi] : anchorSpan;
+  };
+  const freeLow = freeSpan(
+    lowWindow,
+    [rawLow * 0.75, Math.min(1200, rawLow * 1.4)],
+    [250, 1500],
+  );
+  const freeHigh = freeSpan(
+    highWindow,
+    [rawHigh * 0.75, rawHigh * 1.4],
+    [Math.max(1200, hpFloorHz ?? 0), 7000],
+  );
   const [lLo, lHi] = pins?.low ? span(rawLow, pins.low) : freeLow;
-  const [hLo, hHi] = span(rawHigh, pins?.high);
+  const [hLo, hHi] = pins?.high ? span(rawHigh, pins.high) : freeHigh;
   const lowSlices = pins?.low ? slicePinned(pins.low, n) : sliceAxis(lLo, lHi, n);
   const highSlices = pins?.high ? slicePinned(pins.high, n) : sliceAxis(hLo, hHi, n);
   const out: Chain3Variant[] = [];

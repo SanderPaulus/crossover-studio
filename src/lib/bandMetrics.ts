@@ -175,6 +175,38 @@ export function flatnessObjective(
  * octave (something is odd about the measurement — design it and report
  * honestly rather than hand back a sliver).
  */
+/**
+ * The LOWEST frequency where a driver has climbed to within `dropDb` of its
+ * own passband median — "waar reikt hij tot niveau". The handover-floor
+ * physics made measurable: passive filters only cut, so the UPPER driver of
+ * a pair must already be at level at the crossing; below this point a
+ * handover forces either a sag in the sum or padding the whole system down
+ * to the driver's falling flank. Robbert's mid: Fs-floor says ≥353 Hz but
+ * the response only reaches level around ~550 — this floor is the stricter,
+ * honest one. Ghost/silent samples (≤ −300 dB) are ignored; null when the
+ * response never comes within `dropDb` of its median (broken measurement).
+ */
+export function reachesLevelHz(
+  freq: readonly number[],
+  spl: readonly number[],
+  dropDb = 6,
+): number | null {
+  const alive: number[] = [];
+  for (let i = 0; i < freq.length; i++) if (spl[i] > -300) alive.push(i);
+  if (alive.length < 8) return null;
+  // Reference = the UPPER QUARTILE, not the median: a driver measured across
+  // its whole range spends octaves on its rising and falling flanks, and a
+  // plain median gets dragged off the passband by those tails (measured on
+  // Robbert's mid: median-based "reaches level" said 157 Hz for a driver
+  // that only comes up around ~550). The upper quartile IS the passband.
+  const sorted = alive.map((i) => spl[i]).sort((a, b) => a - b);
+  const ref = sorted[Math.floor(sorted.length * 0.75)];
+  for (const i of alive) {
+    if (spl[i] >= ref - dropDb) return freq[i];
+  }
+  return null;
+}
+
 export function reachableBand(
   freq: readonly number[],
   spl: readonly number[],

@@ -27,6 +27,75 @@ export interface AngleResponse {
   response: GriddedResponse;
 }
 
+/**
+ * MEASURED beaming onset of a RAW driver (Hz): the first frequency where its
+ * response at the widest measured angle has fallen `thresholdDb` below
+ * on-axis — and STAYS down (≥ threshold−1 dB for the next ⅓ octave), so a
+ * single interference blip does not read as beaming (Robbert's mid shows a
+ * +4.6 dB spike at 1.5 kHz that is gone again at 2 kHz).
+ *
+ * This is the handover-ceiling physics made measurable: crossing a driver
+ * above its beaming onset hands a NARROW radiator to a WIDE one, which the
+ * on-axis sum never shows but the room hears (power-response step). The
+ * cone-size formula stays as the fallback for sets without angle data —
+ * measured beats estimated when both exist.
+ *
+ * Uses the widest angle ≥ 30° that was measured (30° in Robbert's sets); the
+ * 0° set is the reference. Smoothed with a ±⅙-octave median. Returns null
+ * when there is no such angle, no shared alive region, or the driver never
+ * beams within its measured band.
+ */
+export function beamingCeilingHz(
+  angles: readonly AngleResponse[],
+  thresholdDb = 4,
+): number | null {
+  const on = angles.find((a) => a.hor === 0);
+  const wide = angles
+    .filter((a) => a.hor >= 30)
+    .sort((a, b) => b.hor - a.hor)[0];
+  if (!on || !wide) return null;
+  const f = on.response.freq;
+  const n = f.length;
+  // Raw 0° − widest-angle difference, only where both are measured.
+  const diff: number[] = new Array(n).fill(NaN);
+  for (let i = 0; i < n; i++) {
+    const a = on.response.spl[i];
+    const b = wide.response.spl[i];
+    if (a > -300 && b > -300) diff[i] = a - b;
+  }
+  // ±⅙-octave median smoothing.
+  const smooth: number[] = new Array(n).fill(NaN);
+  for (let i = 0; i < n; i++) {
+    if (Number.isNaN(diff[i])) continue;
+    const lo = f[i] / 2 ** (1 / 6);
+    const hi = f[i] * 2 ** (1 / 6);
+    const win: number[] = [];
+    for (let j = 0; j < n; j++) {
+      if (f[j] >= lo && f[j] <= hi && !Number.isNaN(diff[j])) win.push(diff[j]);
+    }
+    if (win.length === 0) continue;
+    win.sort((a, b) => a - b);
+    smooth[i] = win[Math.floor(win.length / 2)];
+  }
+  // First onset that PERSISTS for half an octave. Half, not a third: measured
+  // on Robbert's mid, a baffle-diffraction wobble (+4.6 dB at 1.5 kHz, gone
+  // by 2 kHz) survives a ⅓-octave check and mislabels 1.46 kHz as beaming —
+  // real beaming only gets WORSE with frequency, a diffraction ripple comes
+  // back down.
+  for (let i = 0; i < n; i++) {
+    if (Number.isNaN(smooth[i]) || smooth[i] < thresholdDb) continue;
+    let holds = true;
+    for (let j = i; j < n && f[j] <= f[i] * 2 ** 0.5; j++) {
+      if (!Number.isNaN(smooth[j]) && smooth[j] < thresholdDb - 1) {
+        holds = false;
+        break;
+      }
+    }
+    if (holds) return f[i];
+  }
+  return null;
+}
+
 export interface DirectivityResult {
   freq: number[];
   angles: number[];
