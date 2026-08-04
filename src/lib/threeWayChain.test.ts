@@ -140,6 +140,44 @@ describe('threeWayChain (phase-4 trede 4c, staged v1)', () => {
     }
   });
 
+  it('a designer pin overrides the sane-territory rails (Sanders: stuck at 7 kHz)', () => {
+    // High pinned at 9000 ± 300: the old hard 7000-cap crushed every
+    // candidate to 7 kHz. The UI allows pins up to 12 kHz — the pin wins.
+    const vs = crossover3Variants(
+      w,
+      m,
+      t,
+      { low: { freq: 300, margin: 200 }, high: { freq: 9000, margin: 300 } },
+      1310,
+      3,
+    );
+    expect(vs.length).toBeGreaterThan(0);
+    for (const v of vs) {
+      expect(v.xoHigh).toBeGreaterThanOrEqual(8700);
+      expect(v.xoHigh).toBeLessThanOrEqual(9300);
+      expect(v.xoHighRange[1]).toBeGreaterThanOrEqual(v.xoHigh);
+    }
+    // Same on the low axis: a 1800-pin must not be crushed to 1500.
+    const lowPinned = crossover3Variants(
+      w,
+      m,
+      t,
+      { low: { freq: 1800, margin: 100 }, high: { freq: 6000, margin: 300 } },
+      undefined,
+      2,
+    );
+    for (const v of lowPinned) {
+      expect(v.xoLow).toBeGreaterThanOrEqual(1700);
+      expect(v.xoLow).toBeLessThanOrEqual(1900);
+    }
+    // The FREE scan keeps its classic rails — the caps only yield to a pin.
+    const free = crossover3Variants(w, m, t, undefined, undefined, 2);
+    for (const v of free) {
+      expect(v.xoLow).toBeLessThanOrEqual(1500);
+      expect(v.xoHigh).toBeLessThanOrEqual(8000);
+    }
+  });
+
   it('steps=1 collapses to a single candidate that still owns a real cage', () => {
     const vs = crossover3Variants(w, m, t, undefined, undefined, 1);
     expect(vs).toHaveLength(1);

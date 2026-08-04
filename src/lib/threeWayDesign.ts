@@ -352,12 +352,15 @@ export function designThreeWay(input: Design3Input): Design3Result {
     const w1 = Math.min(hi, Math.max(a, b));
     return w1 > w0 ? [w0, w1] : [Math.max(lo, centre / 1.05), Math.min(hi, centre * 1.05)];
   };
-  const lowWin = kneeWindow(input.xoLow, input.xoLowWindow, 150, 1500);
+  // Rails follow the UI's own pin limits (low 2000, high 12000): a designer
+  // pin at 9 kHz must not be pulled back by a tighter internal guess — the
+  // scan's cage (win) is the real constraint, the rails only catch nonsense.
+  const lowWin = kneeWindow(input.xoLow, input.xoLowWindow, 150, 2000);
   const highWin = kneeWindow(
     input.xoHigh,
     input.xoHighWindow,
     Math.max(1000, hpFloorHz ?? 0),
-    9000,
+    12000,
   );
 
   let best: Design3Result | null = null;

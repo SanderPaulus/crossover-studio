@@ -373,8 +373,18 @@ export function crossover3Variants(
       // Low centre may reach 1500 (the design step's own knee ceiling): a
       // physics window from a small woofer legitimately sits above the old
       // 1200 cap, and a designer pin up to the UI's 2000 was crushed by it.
-      const xoLow = Math.round(Math.min(1500, Math.max(250, fl.centre)));
-      const xoHigh = Math.round(Math.min(8000, Math.max(xoLow * 2.5, Math.min(7000, fh.centre))));
+      // A designer PIN overrides the sane-territory rails on BOTH axes, up to
+      // the UI's own input limits (low 2000, high 12000) — Sanders pinned the
+      // high handover at 9000 ± 300 and the old hard 7000-cap silently
+      // crushed every candidate to 7 kHz ("hij blijft hangen op 7 kHz"). The
+      // rails exist to keep the FREE scan sensible; an explicit pin is the
+      // designer's own call.
+      const lowCap = pins?.low ? 2000 : 1500;
+      const highCap = pins?.high ? 12000 : 7000;
+      const xoLow = Math.round(Math.min(lowCap, Math.max(250, fl.centre)));
+      const xoHigh = Math.round(
+        Math.min(Math.max(highCap, 8000), Math.max(xoLow * 2.5, Math.min(highCap, fh.centre))),
+      );
       // The cage follows the same clamps as the centre, and never collapses
       // to a point: a zero-width range would make the xo penalty a cliff.
       const cage = (
@@ -401,8 +411,8 @@ export function crossover3Variants(
         label: `W-M ${xoLow} · M-T ${xoHigh} Hz`,
         xoLow,
         xoHigh,
-        xoLowRange: cage(fl.range, xoLow, 250, 1500),
-        xoHighRange: cage(fh.range, xoHigh, xoLow * 2.5, 8000),
+        xoLowRange: cage(fl.range, xoLow, 250, lowCap),
+        xoHighRange: cage(fh.range, xoHigh, xoLow * 2.5, Math.max(highCap, 8000)),
       });
     }
   }
