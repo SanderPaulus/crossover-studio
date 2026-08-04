@@ -1040,6 +1040,29 @@ synthese-gereedschap, acoustic-doctrine). Bindende keuze per kruising via `struc
 `structureHigh` — de ⚙-dropdown "HP/LP preference" was in 3-weg wél zichtbaar maar werd
 GENEGEERD; nu twee dropdowns (laag/hoog), zelfde conventie als de flank-doelen
 (`hpLpPrefLow` gepersisteerd, mét autosave-dep).
+**Pin-semantiek + hold-the-pin-reparatie (aug 2026, Sanders "zou niet boven de 575 mogen")**:
+drie lagen, in volgorde gebouwd. (1) `slicePinned`: een pin betekent LETTERLIJK wat de
+ontwerper intypt — marge exact (de oude ≥2%-van-f-vloer maakte van 8700±50 stil ±174; de
+2%-ademruimte zit nu op de kooi-RAILS), pin-centrum draait altijd zelf mee (rand-tot-rand-
+log-slicing legde het midden op het meetkundige centrum: 400±200 → 346, nooit 400), gepinde
+rails volgen de UI-invoerlimieten (150–2000 laag, tot 12000 hoog — de v1-caps 7000/8000/1500
+pletten Sanders 9 kHz-pin stil naar 7 kHz). (2) Kooien van rand-kandidaten worden op het
+PIN-VENSTER geklemd — de "nooit nul-breed"-verbreding stak eerst een halve spacing vóórbij
+de pinrand (575-kandidaat → kooi-top 623) en brak de belofte opnieuw; mét de klem houdt de
+gewone zachte penalty de kruising al binnen (gemeten: geleverd 578 op een 575-pin, geen
+reparatie nodig). (3) Vangnet: `xoPinHard`-reparatie-pass in de keten (Z-vloer-doctrine —
+eerst normaal tunen, alléén bij ontsnapping van een GEPINDE as een lokaal geseedde retune
+met stijve barrière; vrije-as-kooien zijn boekhouding, geen belofte). HARD GELEERD: de
+xoF-kruising is een TRAPFUNCTIE van de componentwaardes (verspringt per gridpunt), dus de
+stijve 1200·oct²-barrière heeft op zijn plateau geen gradiënt en de warm-geseedde simplex
+zakte terug naar vlakheid (gemeten: bleef op 705). De reparatie kreeg daarom een CONTINUE
+metgezel (`xoEdgeSq`, alleen in repair-mode): "op de bovenrand van het venster heeft de
+bovenste driver de onderste al ingehaald, op de onderrand nog niet" — twee gladde
+dB-verschillen, gewicht 20 (3 dB tekort ≈ 180). Gemeten: 705 → 617 mét alleen de barrières,
+en met de kooi-klem is de reparatie de terugval i.p.v. het pad. `xoPinNote` rapporteert
+eerlijk beide uitkomsten ("pinned crossing held: … → …" / "could not hold … consider
+widening the pin") en de App-note toont hem. Plain paths bit-compat: xoEdgeSq is overal 0
+buiten repair-mode.
 **Wizard-systeemkeuze (Sanders voorstel, aug 2026)**: stap 0 begint met 1-weg/2-weg/3-weg
 (`wizardWays`, localStorage 'ads-wizard-ways'; data wint bij openen — volle 3-weg forceert 3,
 exact twee buitentakken 2) en toont alléén de bijbehorende slots; **Next blokkeert op

@@ -2751,6 +2751,7 @@ export default function App() {
                 : '') +
               ` · ${line(win)}` +
               ` — others: ${ranked.slice(1).map(line).join(' · ')}` +
+              (win.xoPinNote ? ` · ${win.xoPinNote}` : '') +
               (win.net.snapNote ? ` · ${win.net.snapNote}` : '') +
               (win.net.safetyNote ? ` · ⚠ ${win.net.safetyNote}` : '') +
               (win.net.ampFloorNote ? ` · ⚠ ${win.net.ampFloorNote}` : ''),

@@ -91,6 +91,11 @@ export interface NetOptimizeOptions {
   /** 3-way: pin the ACOUSTIC crossing PER adjacent pair [low, high] — the
    *  two-pair counterpart of xoRange (which stays 2-way vocabulary). */
   xoRangePairs?: ([number, number] | null)[];
+  /** REPAIR-pass only: stiff (1200·oct²) xo-pin barrier instead of the soft
+   *  adaptive weight. Set exclusively by the chain's hold-the-pin retune,
+   *  seeded from an already-tuned point — never on a cold seed (the barrier
+   *  lesson) and never in the normal tune (the anchor lesson). */
+  xoPinHard?: boolean;
   /** SINGLE-DRIVER mode ("0 driver pairs"): the network drives ONE measured
    *  driver and the other slot carries a silent ghost. Every crossing-anchored
    *  term (xo pin/penalty, valley, breakup guard, tweeter protection, acoustic
@@ -523,6 +528,8 @@ export function optimizeNetworkValues(
     xoHz: number | null;
     /** Per-adjacent-pair crossings, low pair first (1 entry in 2-way). */
     xoHzPairs: (number | null)[];
+    /** Repair-only continuous pin barrier (see xoEdgeSq); zeros otherwise. */
+    xoEdgeSq: number[];
     /** Measured slopes beside each pair's crossing (same order). */
     pairSlopes: { lower: number | null; upper: number | null }[];
     /** Uniform-average phase error PER pair — the coupled-pairs gate reads
@@ -872,6 +879,36 @@ export function optimizeNetworkValues(
     // neutral values solo mode needs; with two a 3-way simply sums the
     // squared-deficit terms and reports the lowest crossing first.
     const pm = pairs.map(pairMetrics);
+    /* HARD-PIN repair only — a CONTINUOUS companion to the xoF pin. xoF is a
+     * grid crossing: piecewise-CONSTANT in the component values, so on its
+     * plateaus the stiff barrier has no gradient and the warm-seeded repair
+     * simplex settles back on flatness (measured: pinned ≤575 Hz, repair
+     * delivered 705 and gave up). The smooth equivalent of "the crossing sits
+     * inside [lo, hi]": at hi the upper driver has already caught the lower
+     * one, at lo it has not yet — both are plain dB differences, continuous
+     * in every value. Zeros everywhere outside repair mode (bit-compat). */
+    const xoEdgeSq = pairs.map((p, k) => {
+      if (!opts.xoPinHard) return 0;
+      const rge = opts.xoRangePairs?.[k];
+      if (!rge) return 0;
+      const idxAt = (f: number): number => {
+        let best = 0;
+        for (let i = 1; i < r.freq.length; i++) {
+          if (Math.abs(r.freq[i] - f) < Math.abs(r.freq[best] - f)) best = i;
+        }
+        return best;
+      };
+      let acc = 0;
+      const iHi = idxAt(rge[1]);
+      if (p.lower.spl[iHi] > -300 && p.upper.spl[iHi] > -300) {
+        acc += Math.max(0, p.lower.spl[iHi] - p.upper.spl[iHi]) ** 2;
+      }
+      const iLo = idxAt(rge[0]);
+      if (p.lower.spl[iLo] > -300 && p.upper.spl[iLo] > -300) {
+        acc += Math.max(0, p.upper.spl[iLo] - p.lower.spl[iLo]) ** 2;
+      }
+      return acc;
+    });
     const xoF = pm.length > 0 ? pm[0].xoF : null;
     const xoDipDb = pm.reduce((a, x) => a + x.xoDipDb, 0);
     const leakSqDb = pm.reduce((a, x) => a + x.leakSqDb, 0);
@@ -907,6 +944,7 @@ export function optimizeNetworkValues(
       protSqDb,
       xoHz: xoF,
       xoHzPairs: pm.map((x) => x.xoF),
+      xoEdgeSq,
       pairSlopes: pm.map((x) => ({ lower: x.lowerSlopeDbOct, upper: x.upperSlopeDbOct })),
       pairPhaseDeg: solo ? [] : pairPhaseDeg,
       xoDipDb,
@@ -935,6 +973,13 @@ export function optimizeNetworkValues(
         : xoHz > range[1]
           ? Math.log2(xoHz / range[1])
           : 0;
+    // HARD-PIN repair mode (see opts.xoPinHard): a stiff barrier weight, the
+    // Z-floor-repair lesson — the quadratic is weak near the boundary, and at
+    // the soft weight a 0.15-oct escape costs ~0.7 while buying real flatness
+    // (measured: Sanders' 400 ± 175 pin delivered a 636 Hz crossing). Only the
+    // locally-seeded repair pass sets this; the normal tune's search path
+    // stays untouched (the anchor lesson).
+    if (opts.xoPinHard) return 1200 * oct * oct;
     // ADAPTIVE weight, mirrored from vfOptimizer: wide pins keep the classic
     // 30·oct², narrow SCAN slices scale up (×(0.15 oct / half-width)², cap
     // ×100) so a candidate cannot cheaply drift into a neighbour's slice.
@@ -992,6 +1037,9 @@ export function optimizeNetworkValues(
         (a: number, x, i) => a + xoPenaltyFor(x, opts.xoRangePairs?.[i] ?? xoR),
         0,
       ) +
+      // Repair mode: the continuous window-edge barrier (see xoEdgeSq) —
+      // 3 dB short at an edge costs 180, dominant. Zero outside repair.
+      (opts.xoPinHard ? 20 * m.xoEdgeSq.reduce((a: number, v: number) => a + v, 0) : 0) +
       slopePen
     );
   };

@@ -107,6 +107,9 @@ export interface Chain3Result {
   tweeterInverted: boolean;
   /** Structure summary of the winning design ("LR4 @411 · BW3 @2520 · mid inv"). */
   structureLabel: string;
+  /** Set when a pinned crossing escaped and the hold-the-pin repair ran —
+   *  reports the outcome either way (honest attribution). */
+  xoPinNote?: string;
 }
 
 /** A branch is alive where its banded response is above the silent ghost. */
@@ -192,7 +195,7 @@ export function runThreeWayChain(
   // subdivided that pin, and this candidate owns one slice of it.
   const lowCage = input.xoLowRange ?? pinRange(s.xoLowPin);
   const highCage = input.xoHighRange ?? pinRange(s.xoHighPin);
-  const net = optimizeNetworkValues(merged, grid, w, t, driverZ, tAdjust, {
+  const tuneOpts = {
     midBranch: { response: m, adjust: midAdjust },
     phasePriority: s.phasePriority,
     breakupGuard: s.breakupGuard,
@@ -204,8 +207,56 @@ export function runThreeWayChain(
     snapPrefs: s.snapPrefs,
     band: s.band,
     safety: s.safety,
-    onStage: (detail) => onProgress?.({ stage: 'tune', evals: 0, detail }),
-  });
+    onStage: (detail: string) => onProgress?.({ stage: 'tune', evals: 0, detail }),
+  };
+  let net = optimizeNetworkValues(merged, grid, w, t, driverZ, tAdjust, tuneOpts);
+
+  /* ---- Hold-the-pin repair (DESIGNER pins only) --------------------------
+   * The soft xo penalty loses to flatness for small escapes: Sanders pinned
+   * W-M 400 ± 175 and the delivered crossing sat at 636 Hz — a 0.15-oct
+   * escape costs ~0.7 fx at the soft weight, cheaper than the flatness it
+   * buys. A pin is the designer's explicit promise, so mirror the Z-floor
+   * doctrine: normal tune first (search path untouched — the anchor lesson),
+   * then, ONLY when a PINNED axis escaped its window, a locally-seeded
+   * retune with the stiff 1200·oct² barrier. Accepted when the crossings
+   * are back inside; the honest xoPinNote reports either way. Free axes are
+   * never repaired — their cage is scan bookkeeping, not a promise. ---- */
+  let xoPinNote: string | undefined;
+  {
+    const slack = 1.02; // measurement-grid wiggle, ~0.03 oct
+    const escaped = (
+      xo: number | null | undefined,
+      cage: [number, number] | null,
+      pinned: boolean,
+    ): boolean =>
+      pinned && cage !== null && xo != null && (xo < cage[0] / slack || xo > cage[1] * slack);
+    const pairsXo = net.after.xoHzPairs ?? [];
+    const lowEsc = escaped(pairsXo[0], lowCage, s.xoLowPin !== undefined);
+    const highEsc = escaped(pairsXo[1], highCage, s.xoHighPin !== undefined);
+    if (lowEsc || highEsc) {
+      onProgress?.({ stage: 'tune', evals: 0, detail: 'hold pinned crossing' });
+      const rep = optimizeNetworkValues(net.parts, grid, w, t, driverZ, tAdjust, {
+        ...tuneOpts,
+        xoPinHard: true,
+      });
+      const rXo = rep.after.xoHzPairs ?? [];
+      const fixed =
+        !escaped(rXo[0], lowCage, s.xoLowPin !== undefined) &&
+        !escaped(rXo[1], highCage, s.xoHighPin !== undefined);
+      const hz = (v: number | null | undefined) => (v == null ? '—' : `${Math.round(v)}`);
+      if (fixed) {
+        xoPinNote =
+          `pinned crossing held: ${hz(pairsXo[0])}/${hz(pairsXo[1])} → ` +
+          `${hz(rXo[0])}/${hz(rXo[1])} Hz`;
+        net = rep;
+      } else {
+        xoPinNote =
+          `could not hold the pinned crossing inside its window ` +
+          `(delivers ${hz(pairsXo[0])}/${hz(pairsXo[1])} Hz) — the drivers may ` +
+          `not support a handover there; consider widening the pin`;
+      }
+    }
+  }
 
   const zOk =
     !net.safetyNote &&
@@ -226,6 +277,7 @@ export function runThreeWayChain(
     midInverted: design.midInverted,
     tweeterInverted: design.tweeterInverted,
     structureLabel: design.label,
+    xoPinNote,
   };
 }
 
@@ -419,6 +471,11 @@ export function crossover3Variants(
       );
       // The cage follows the same clamps as the centre, and never collapses
       // to a point: a zero-width range would make the xo penalty a cliff.
+      // For a PINNED axis the rails are the pin window itself (inflated to at
+      // least ±2% for breathing room — the old margin-floor semantics, now on
+      // the rails where they belong): the first cage version widened an EDGE
+      // slice's cage half a spacing PAST the pin edge (575-candidate → cage
+      // top 623), quietly re-breaking the designer's promise the pin made.
       const cage = (
         r: [number, number],
         centre: number,
@@ -428,8 +485,24 @@ export function crossover3Variants(
         const a = Math.min(Math.max(r[0], lo), hi);
         const b = Math.min(Math.max(r[1], lo), hi);
         const half = Math.max(centre * 0.02, (b - a) / 2);
-        return [Math.min(a, centre - half), Math.max(b, centre + half)];
+        return [
+          Math.max(lo, Math.min(a, centre - half)),
+          Math.min(hi, Math.max(b, centre + half)),
+        ];
       };
+      const pinRail = (
+        pin: { freq: number; margin: number } | undefined,
+        fallback: [number, number],
+      ): [number, number] => {
+        if (!pin) return fallback;
+        const mrg = Math.max(pin.margin, pin.freq * 0.02);
+        return [
+          Math.max(fallback[0], pin.freq - mrg),
+          Math.min(fallback[1], pin.freq + mrg),
+        ];
+      };
+      const lowRail = pinRail(pins?.low, [lowFloor, lowCap]);
+      const highRail = pinRail(pins?.high, [xoLow * 2.5, Math.max(highCap, 8000)]);
       // The xoHigh ≥ 2.5 × xoLow clamp can push two adjacent steps onto the
       // SAME point (seen with steps=3: the 767 Hz row's two lowest high-steps
       // both clamped to 1918). That is a duplicate candidate: it burns a full
@@ -443,8 +516,8 @@ export function crossover3Variants(
         label: `W-M ${xoLow} · M-T ${xoHigh} Hz`,
         xoLow,
         xoHigh,
-        xoLowRange: cage(fl.range, xoLow, lowFloor, lowCap),
-        xoHighRange: cage(fh.range, xoHigh, xoLow * 2.5, Math.max(highCap, 8000)),
+        xoLowRange: cage(fl.range, xoLow, lowRail[0], lowRail[1]),
+        xoHighRange: cage(fh.range, xoHigh, highRail[0], highRail[1]),
       });
     }
   }
