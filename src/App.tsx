@@ -2102,6 +2102,16 @@ export default function App() {
    *  Score/avg/P95 judge the entire range; the peak ±dB rides along as the
    *  classic single number — that one can be dominated by one narrow spot,
    *  which is exactly why it no longer stands alone (Sanders wens, jul 2026). */
+  /** The optimizer's own low band edge, when the Response score above it
+   *  judges territory the optimizer never designed on. Null when they agree
+   *  (nothing to warn about) — see the strip item for the reasoning. */
+  const optimizerFloorHz = useMemo(() => {
+    if (!result) return null;
+    const floor = Math.max(200, result.freq[0] * 1.02);
+    const visibleLo = splViewX ? splViewX[0] : result.freq[0];
+    return visibleLo < floor / 1.05 ? floor : null;
+  }, [result, splViewX]);
+
   const combinedFlat = useMemo(() => {
     if (!result) return null;
     const lo = splViewX ? splViewX[0] : result.freq[0];
@@ -8105,6 +8115,22 @@ export default function App() {
                     >
                       ±1 dB {combinedFlat.withinPct[1].toFixed(0)}%
                     </span>
+                    {/* HONEST BAND ATTRIBUTION. The score judges the VISIBLE
+                        range; the optimizer designs from a floor (200 Hz).
+                        Measured on Robbert: the same design scores avg ±1.04
+                        over 200 Hz–18 kHz and ±1.84 over 20 Hz–20 kHz — the
+                        whole difference is the woofer's own rolloff below
+                        200 Hz, which no CUT-ONLY passive network can lift.
+                        Two watchdogs on two different bands is exactly the
+                        bug family bandMetrics was extracted for: say it. */}
+                    {optimizerFloorHz !== null && (
+                      <span
+                        className="strip-item"
+                        title={`The optimizer designs from ${Math.round(optimizerFloorHz)} Hz up; the score above judges everything you SEE. Below that floor the woofer runs into its own rolloff, and a cut-only passive network cannot lift it — it could only match it by throwing away sensitivity everywhere else (baffle-step territory, a deliberate designer's choice). Zoom the SPL chart to the design band to read the score the optimizer actually worked on.`}
+                      >
+                        designed from {Math.round(optimizerFloorHz)} Hz
+                      </span>
+                    )}
                   </>
                 )}
                 {tolBand && (

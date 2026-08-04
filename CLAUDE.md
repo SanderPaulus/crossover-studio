@@ -1040,6 +1040,21 @@ synthese-gereedschap, acoustic-doctrine). Bindende keuze per kruising via `struc
 `structureHigh` — de ⚙-dropdown "HP/LP preference" was in 3-weg wél zichtbaar maar werd
 GENEGEERD; nu twee dropdowns (laag/hoog), zelfde conventie als de flank-doelen
 (`hpLpPrefLow` gepersisteerd, mét autosave-dep).
+**Band-attributie in de SPL-strip (aug 2026, "spoor de Response-beperking op")**: de
+tilt-hypothese was FOUT — gemeten op Robbert is de virtuele som van de ontwerpstap vlak
+(LOW 200–700 Hz 109,8 vs HIGH 3k–16k 110,3 → tilt 0,5 dB) en de niveau-trims kloppen. De hele
+Response-beperking is een BAND-MISMATCH: de score oordeelt over het ZICHTBARE bereik, de
+optimizer ontwerpt vanaf een vloer van 200 Hz. Zelfde ontwerp: avg ±1,04 (200 Hz–18 kHz) vs
+±1,84 (20 Hz–20 kHz) — in de app score 77 vs 44, en het verschil is volledig de eigen
+afval van de woofer onder 200 Hz (107,8 dB @20 Hz vs 114,7 @500), die een CUT-ONLY passief
+netwerk niet kán optillen (alleen evenaren door overal gevoeligheid weg te gooien —
+baffle-step-terrein, een bewuste ontwerperskeuze). Dit is exact de bugfamilie waarvoor
+bandMetrics is uitgetrokken (twee bewakers, twee banden), dus: `optimizerFloorHz`-memo +
+strip-item "designed from 200 Hz", dat ALLEEN verschijnt als het zichtbare bereik onder die
+vloer duikt. Bewust géén objective-wijziging (anker-les) en géén verlaagde vloer: laag
+meenemen zonder gevoeligheidsbudget is precies de solo-val ("alles omlaag = ook vlak").
+NB Sanders HP-vermoeden: een HP op de woofer zou het cijfer juist verslechteren — de afval
+ís al de HP van de kast; wat ontbreekt is niet filtering maar zichtbaarheid.
 **EQ-trede in de 3-weg-ontwerpstap (aug 2026, Sanders "bouw jij maar eens" — 2-weg-pariteit)**:
 de laatste ontbrekende trede. Sanders beste run (Response 27) werd begrensd door precies wat
 géén ketentrap kon aanraken: een HF-tilt van de som en de in-band-bulten van de mid. Stage 3
