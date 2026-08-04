@@ -14,7 +14,7 @@ import { parseLim, limToZmaText } from './lib/parsers/lim.ts';
 import { classifyLevelProfile } from './lib/parsers/classify.ts';
 import { compareMeasurement } from './lib/verification.ts';
 import { parseVxp, type VxpCrossover, type VxpPart, type VxpProject } from './lib/parsers/vxp.ts';
-import { estimateBulkDelay, assessSharedReference } from './lib/timing.ts';
+import { estimateBulkDelay, assessSharedReference, assessPairTimeBase } from './lib/timing.ts';
 import { logspace, resample, combine, combineN, offsetMmToDelayS, applyTransfer, type GriddedResponse } from './lib/dsp.ts';
 import { computeIntegration } from './lib/integration.ts';
 import { crossoverToNetlist } from './lib/vxpNetwork.ts';
@@ -1981,6 +1981,94 @@ export default function App() {
       return null;
     }
   }, [woofer, tweeter]);
+
+  /* THREE-WAY time-base check, per ADJACENT pair, on EXCESS phase.
+   * The 2-way check compares woofer↔tweeter over a fixed 500–5000 Hz band on
+   * RAW phase; in a 3-way those two barely overlap (the mid carries the
+   * middle) and raw phase absorbs each driver's own rolloff rotation, so it
+   * reports "unreliable" even when the files share a clock. Measured on
+   * Robbert's set: raw phase gave the mid 304 µs (200–800) vs 8 µs (5–8k) —
+   * one driver, two travel times — while EXCESS phase gives −21 µs with
+   * R² = 1.000 in every sub-band, and M-T Δ ≈ 33 µs (11 mm), plain baffle
+   * geometry. Reproducibility across bands IS the fingerprint of a shared
+   * clock; an independent time base yields an arbitrary offset. */
+  const timing3 = useMemo(() => {
+    if (!threeWay || !woofer || !midDrv || !tweeter) return null;
+    /** Excess-phase bulk-delay fit of one driver over [lo, hi]. */
+    const fit = (frd: Parsed, lo: number, hi: number) => {
+      const g = resample(frd.freq, frd.spl, frd.phase, logspace(frd.freq[0] * 1.05, 20000, 400));
+      const mp = minimumPhaseDeg(g.freq, g.spl);
+      const excess = g.phaseDeg.map((p, i) => p - mp[i]);
+      return estimateBulkDelay(g.freq, excess, [lo, hi]);
+    };
+    /** A driver's own PASSBAND: within 10 dB of its upper-quartile level.
+     *  File extent is useless here — these FRDs run from 5 Hz, and fitting a
+     *  delay through a region with no output is what produced R² = 0.101. */
+    const playBand = (frd: Parsed): [number, number] | null => {
+      const sorted = [...frd.spl].sort((x, y) => x - y);
+      const ref = sorted[Math.floor(sorted.length * 0.75)] - 10;
+      let lo = -1;
+      let hi = -1;
+      for (let i = 0; i < frd.freq.length; i++) {
+        if (frd.spl[i] >= ref) {
+          if (lo < 0) lo = i;
+          hi = i;
+        }
+      }
+      return lo >= 0 && hi > lo ? [frd.freq[lo], frd.freq[hi]] : null;
+    };
+    /** Fit band of one pair: the overlap of both passbands, clamped to the
+     *  region where an excess-phase fit is meaningful — the minimum-phase
+     *  reconstruction is FFT-based and its outermost octaves are edge effect,
+     *  not driver behaviour. */
+    const pairBand = (a: Parsed, b: Parsed): [number, number] | null => {
+      const pa = playBand(a);
+      const pb = playBand(b);
+      if (!pa || !pb) return null;
+      const lo = Math.max(pa[0], pb[0], 200) * 1.2;
+      const hi = Math.min(pa[1], pb[1], 10000) * 0.85;
+      return hi > lo * 2 ? [lo, hi] : null;
+    };
+    const one = (
+      lower: Parsed,
+      upper: Parsed,
+      names: { lower: string; upper: string },
+    ) => {
+      const band = pairBand(lower, upper);
+      if (!band) return null;
+      try {
+        /* Search the WIDEST clean sub-band rather than trusting one guess.
+         * A delay is band-independent by definition, so the honest question
+         * is "where is the phase delay-like for BOTH?" — near a driver's own
+         * rolloff knee it never is (Robbert's tweeter: R² 0.68 from 768 Hz,
+         * 0.95 from 3 kHz). Trimming the low edge in fixed steps keeps this
+         * deterministic, and the verdict reports the band it settled on. */
+        let bestPair: ReturnType<typeof assessPairTimeBase> | null = null;
+        let bestWorstR2 = -1;
+        for (const k of [1, 1.5, 2.5, 4]) {
+          const lo = band[0] * k;
+          if (band[1] <= lo * 2) break;
+          const sub: [number, number] = [lo, band[1]];
+          const l = fit(lower, sub[0], sub[1]);
+          const u = fit(upper, sub[0], sub[1]);
+          const res = assessPairTimeBase({ lower: l, upper: u, band: sub, names });
+          const worstR2 = Math.min(l.rSquared, u.rSquared);
+          if (worstR2 > bestWorstR2) {
+            bestWorstR2 = worstR2;
+            bestPair = res;
+          }
+          if (res.verdict !== 'unreliable') return res;
+        }
+        return bestPair;
+      } catch {
+        return null;
+      }
+    };
+    return {
+      low: one(woofer.frd, midDrv.frd, { lower: 'woofer', upper: 'mid' }),
+      high: one(midDrv.frd, tweeter.frd, { lower: 'mid', upper: 'tweeter' }),
+    };
+  }, [threeWay, woofer, midDrv, tweeter]);
 
   /** Excess-phase bridge Δ (tweeter − woofer, µs): the value a minimum-phase
    *  consumer (VituixCAD, our export) needs to reproduce the measured relative
@@ -6062,7 +6150,27 @@ export default function App() {
       <header className="topbar" title="Combined SPL & relative phase — woofer normalised to 0°, tweeter shown against it.">
         <h1>SD Acoustics - Crossover Studio</h1>
         <div className="status-chips">
-          {timing && (
+          {/* 3-way: the PER-PAIR excess-phase verdict (see timing3) — the
+              2-way woofer↔tweeter/raw-phase check is a false alarm here. The
+              chip shows the worst pair; the tooltip carries both. */}
+          {threeWay && timing3 && (timing3.low || timing3.high) ? (
+            (() => {
+              const pairs = [timing3.low, timing3.high].filter(
+                (p): p is NonNullable<typeof p> => p !== null,
+              );
+              const rank = { plausible: 0, suspect: 1, unreliable: 2 } as const;
+              const worst = pairs.reduce((a, b) => (rank[b.verdict] > rank[a.verdict] ? b : a));
+              return (
+                <span
+                  className={`status-chip ${worst.verdict === 'plausible' ? 'chip-ok' : 'chip-warn'}`}
+                  title={`Time base per adjacent pair, judged on EXCESS phase (measured − minimum-phase) over a band where both drivers play — the raw-phase check absorbs each driver's own rolloff and misreads a healthy set as broken.\n\n${pairs.map((p) => p.message).join('\n\n')}`}
+                >
+                  <span className="chip-dot" />
+                  Timing <strong>{worst.verdict}</strong>
+                </span>
+              );
+            })()
+          ) : timing ? (
             <span
               className={`status-chip ${timing.ref.verdict === 'plausible' ? 'chip-ok' : 'chip-warn'}`}
               title={timing.ref.message}
@@ -6070,7 +6178,7 @@ export default function App() {
               <span className="chip-dot" />
               Timing <strong>{timing.ref.verdict}</strong>
             </span>
-          )}
+          ) : null}
           {combinedFlat && (
             <span
               className={`status-chip ${

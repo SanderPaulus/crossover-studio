@@ -1040,6 +1040,29 @@ synthese-gereedschap, acoustic-doctrine). Bindende keuze per kruising via `struc
 `structureHigh` — de ⚙-dropdown "HP/LP preference" was in 3-weg wél zichtbaar maar werd
 GENEGEERD; nu twee dropdowns (laag/hoog), zelfde conventie als de flank-doelen
 (`hpLpPrefLow` gepersisteerd, mét autosave-dep).
+**PER-PAAR TIMING-VERDICT OP EXCESS-FASE (aug 2026, Sanders "ik vermoed dat mid/tweeter een
+gedeelde tijdlijn hebben") — de 4b-staart, en het was een VALS ALARM**: de topbar-chip stond
+de hele 3-weg-sessie op "unreliable" en zette daarmee élk fase-cijfer onder voorbehoud. Drie
+oorzaken, alle drie fout aan de CHECK, niet aan de metingen: (1) hij vergelijkt
+woofer↔tweeter — in een 3-weg de twee drivers die elkaar nauwelijks overlappen (de mid draagt
+alles ertussen); (2) op RAUWE fase, die de eigen minimum-fase-rotatie van elke driver opslikt,
+dus de R² klapt in zodra een driver afvalt; (3) over een vaste 500–5000 Hz die bij geen van
+beide paren past. GEMETEN bewijs dat het de check is: rauwe fase gaf Robberts mid 304 µs
+(200–800) én 8 µs (5–8k) — één driver kán geen twee looptijden hebben; op EXCESS-fase geeft
+dezelfde mid **−21 µs met R² = 1,000 in élke subband**. Die reproduceerbaarheid ÍS de
+vingerafdruk van een gedeelde klok: een losse tijdreferentie levert een willekeurige offset,
+geen herhaalbare. `assessPairTimeBase` (timing.ts, unit-getest; `assessSharedReference`
+onaangeroerd → 2-weg exact gelijk) + `timing3`-memo in de App: per aangrenzend paar een
+excess-fase-fit, chip toont het SLECHTSTE paar, tooltip beide. Twee harde lessen in de
+fitband: (a) de FILE-grenzen zijn waardeloos (deze FRD's beginnen op 5 Hz — dat gaf R²=0,101),
+dus de band komt uit het echte PASSBAND per driver (binnen 10 dB van het bovenste kwartiel),
+geklemd op 200–10000 Hz omdat de FFT-minimum-fase aan zijn randen randeffect is; (b) bij de
+rolloff-knie van een driver is fase nooit delay-achtig (tweeter R² 0,68 vanaf 768 Hz, 0,95
+vanaf 3 kHz), dus de lage rand wordt in vaste stappen (×1, 1,5, 2,5, 4) getrimd tot beide
+fits schoon zijn — deterministisch, en het verdict meldt de band waarop het landde.
+UITKOMST op Robbert: **W-M −33 µs (−11 mm) · M-T +39 µs (+13 mm) → beide "plausible"**, dus
+gewone baffle-geometrie en een gedeelde tijdbasis. Alle fase-conclusies van deze sessie staan
+dus NIET meer onder voorbehoud.
 **Band-attributie in de SPL-strip (aug 2026, "spoor de Response-beperking op")**: de
 tilt-hypothese was FOUT — gemeten op Robbert is de virtuele som van de ontwerpstap vlak
 (LOW 200–700 Hz 109,8 vs HIGH 3k–16k 110,3 → tilt 0,5 dB) en de niveau-trims kloppen. De hele

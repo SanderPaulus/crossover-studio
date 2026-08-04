@@ -4,6 +4,8 @@ import {
   estimateBulkDelay,
   checkTimingOffset,
   assessSharedReference,
+  assessPairTimeBase,
+  type BulkDelayEstimate,
 } from './timing.ts';
 
 /** Wrap a degree value into (-180, 180]. */
@@ -175,5 +177,49 @@ describe('excess-phase delay vs raw bulk delay (the minimum-phase bridge)', () =
     expect(rawDeltaUs).toBeLessThan(55);
     expect(excessDeltaUs).toBeLessThan(-40);
     expect(excessDeltaUs).toBeGreaterThan(-60);
+  });
+});
+
+describe('assessPairTimeBase — per-pair verdict on excess phase', () => {
+  const est = (delayUs: number, r2: number): BulkDelayEstimate => ({
+    delaySeconds: delayUs * 1e-6,
+    delayMs: delayUs * 1e-3,
+    rSquared: r2,
+    slopeDegPerHz: 0,
+    band: [3000, 8000],
+    sampleCount: 100,
+  });
+  const names = { lower: 'mid', upper: 'tweeter' };
+  const band: [number, number] = [3000, 8000];
+
+  it('a small, well-fitted difference is baffle geometry — plausible', () => {
+    // Robbert's measured case: mid −21 µs, tweeter +12 µs, both clean fits.
+    const r = assessPairTimeBase({ lower: est(-21, 0.999), upper: est(12, 0.989), band, names });
+    expect(r.verdict).toBe('plausible');
+    expect(r.deltaUs).toBeCloseTo(33, 6);
+    expect(r.deltaMm).toBeCloseTo(33e-6 * 343 * 1000, 3);
+    expect(r.message).toMatch(/share a time base/);
+  });
+
+  it('a millisecond-scale jump is a broken time base — suspect', () => {
+    const r = assessPairTimeBase({ lower: est(0, 0.99), upper: est(1500, 0.99), band, names });
+    expect(r.verdict).toBe('suspect');
+    expect(r.message).toMatch(/re-referenced|different session/);
+  });
+
+  it('a poor fit refuses to judge rather than guessing', () => {
+    const r = assessPairTimeBase({ lower: est(-21, 0.5), upper: est(12, 0.99), band, names });
+    expect(r.verdict).toBe('unreliable');
+    expect(r.message).toMatch(/not delay-like/);
+    // It still reports WHICH driver failed, and over which band.
+    expect(r.message).toMatch(/mid R²/);
+    expect(r.message).toMatch(/3000–8000 Hz/);
+  });
+
+  it('the sign convention is upper − lower (positive = upper later)', () => {
+    const later = assessPairTimeBase({ lower: est(0, 0.99), upper: est(50, 0.99), band, names });
+    expect(later.deltaUs).toBeGreaterThan(0);
+    const earlier = assessPairTimeBase({ lower: est(50, 0.99), upper: est(0, 0.99), band, names });
+    expect(earlier.deltaUs).toBeLessThan(0);
   });
 });
