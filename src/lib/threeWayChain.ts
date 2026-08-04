@@ -335,14 +335,40 @@ export function crossover3Variants(
   const n = Math.max(1, Math.round(steps));
   /** The searchable span of one axis: the pin when given, else the raw
    *  crossing's neighbourhood. Either way it gets SUBDIVIDED — a pin is a
-   *  search space, not a single point (the two-way doctrine). */
+   *  search space, not a single point (the two-way doctrine).
+   *
+   *  A pin's span is the EXACT user margin (Sanders: "de ranges lijken niet
+   *  overeen te komen met wat ik opgeef" — the old ≥2%-of-f floor turned his
+   *  deliberate 8700 ± 50 into ± 174). The 2% breathing room the tune needs
+   *  lives in cage() below, where it belongs; margin 0 still means "exactly
+   *  there" with a ±2% cage. */
   const span = (
     raw: number,
     pin: { freq: number; margin: number } | undefined,
   ): [number, number] => {
     if (!pin) return [raw * 0.75, raw * 1.4];
-    const mrg = Math.max(pin.margin, pin.freq * 0.02);
-    return [pin.freq - mrg, pin.freq + mrg];
+    return [pin.freq - pin.margin, pin.freq + pin.margin];
+  };
+  /** Pinned-axis slicing: the PIN ITSELF is always a candidate (the two-way
+   *  doctrine — "oneven zodat de pin zelf altijd meedoet"). Edge-to-edge
+   *  log-slicing put the middle step on the GEOMETRIC centre of the span,
+   *  which is not the pin (400 ± 200 → middle 346, never 400). */
+  const slicePinned = (
+    pin: { freq: number; margin: number },
+    nSteps: number,
+  ): { centre: number; range: [number, number] }[] => {
+    const lo = pin.freq - pin.margin;
+    const hi = pin.freq + pin.margin;
+    if (nSteps <= 1 || !(hi > lo)) return [{ centre: pin.freq, range: [lo, hi] }];
+    if (nSteps === 2) return sliceAxis(lo, hi, 2);
+    // n = 3: [edge, pin, edge]; cage boundaries at the geometric midpoints.
+    const b1 = Math.sqrt(lo * pin.freq);
+    const b2 = Math.sqrt(pin.freq * hi);
+    return [
+      { centre: lo, range: [lo, b1] },
+      { centre: pin.freq, range: [b1, b2] },
+      { centre: hi, range: [b2, hi] },
+    ];
   };
   /* Free low axis: physics bounds first (floor = 2×Fs mid, ceiling = woofer
    * beaming), the overlap-anchor neighbourhood for whichever side is missing.
@@ -367,9 +393,11 @@ export function crossover3Variants(
   })();
   const [lLo, lHi] = pins?.low ? span(rawLow, pins.low) : freeLow;
   const [hLo, hHi] = span(rawHigh, pins?.high);
+  const lowSlices = pins?.low ? slicePinned(pins.low, n) : sliceAxis(lLo, lHi, n);
+  const highSlices = pins?.high ? slicePinned(pins.high, n) : sliceAxis(hLo, hHi, n);
   const out: Chain3Variant[] = [];
-  for (const fl of sliceAxis(lLo, lHi, n)) {
-    for (const fh of sliceAxis(hLo, hHi, n)) {
+  for (const fl of lowSlices) {
+    for (const fh of highSlices) {
       // Low centre may reach 1500 (the design step's own knee ceiling): a
       // physics window from a small woofer legitimately sits above the old
       // 1200 cap, and a designer pin up to the UI's 2000 was crushed by it.
@@ -381,7 +409,11 @@ export function crossover3Variants(
       // designer's own call.
       const lowCap = pins?.low ? 2000 : 1500;
       const highCap = pins?.high ? 12000 : 7000;
-      const xoLow = Math.round(Math.min(lowCap, Math.max(250, fl.centre)));
+      // The pinned lower rail follows the UI's own input minimum (150 Hz):
+      // Sanders' 400 ± 200 pin reaches 200 and the free-scan 250-floor
+      // silently pulled that edge candidate up.
+      const lowFloor = pins?.low ? 150 : 250;
+      const xoLow = Math.round(Math.min(lowCap, Math.max(lowFloor, fl.centre)));
       const xoHigh = Math.round(
         Math.min(Math.max(highCap, 8000), Math.max(xoLow * 2.5, Math.min(highCap, fh.centre))),
       );
@@ -411,7 +443,7 @@ export function crossover3Variants(
         label: `W-M ${xoLow} · M-T ${xoHigh} Hz`,
         xoLow,
         xoHigh,
-        xoLowRange: cage(fl.range, xoLow, 250, lowCap),
+        xoLowRange: cage(fl.range, xoLow, lowFloor, lowCap),
         xoHighRange: cage(fh.range, xoHigh, xoLow * 2.5, Math.max(highCap, 8000)),
       });
     }

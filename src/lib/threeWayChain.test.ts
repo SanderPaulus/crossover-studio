@@ -178,6 +178,38 @@ describe('threeWayChain (phase-4 trede 4c, staged v1)', () => {
     }
   });
 
+  it('a pin means EXACTLY what the designer typed (Sanders: "ranges kloppen niet")', () => {
+    // 400 ± 200 and 8700 ± 50, 3 steps: the pin CENTRES themselves must run
+    // (edge-to-edge log-slicing put the middle on the geometric centre, 346),
+    // the margin is the user's own number (the old ≥2%-of-f floor turned
+    // ± 50 into ± 174), and the 200 Hz edge is not pulled up to the free-scan
+    // 250-floor (the UI input allows 150).
+    const vs = crossover3Variants(
+      w,
+      m,
+      t,
+      { low: { freq: 400, margin: 200 }, high: { freq: 8700, margin: 50 } },
+      1310,
+      3,
+    );
+    expect(new Set(vs.map((v) => v.xoLow))).toEqual(new Set([200, 400, 600]));
+    expect(new Set(vs.map((v) => v.xoHigh))).toEqual(new Set([8650, 8700, 8750]));
+    // Margin 0 still means "exactly there", with the ±2% cage as tune room.
+    const exact = crossover3Variants(
+      w,
+      m,
+      t,
+      { low: { freq: 400, margin: 0 }, high: { freq: 8700, margin: 0 } },
+      1310,
+      3,
+    );
+    expect(exact).toHaveLength(1);
+    expect(exact[0].xoLow).toBe(400);
+    expect(exact[0].xoHigh).toBe(8700);
+    expect(exact[0].xoLowRange[0]).toBeLessThan(400);
+    expect(exact[0].xoLowRange[1]).toBeGreaterThan(400);
+  });
+
   it('steps=1 collapses to a single candidate that still owns a real cage', () => {
     const vs = crossover3Variants(w, m, t, undefined, undefined, 1);
     expect(vs).toHaveLength(1);
