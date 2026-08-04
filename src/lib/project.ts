@@ -121,6 +121,9 @@ export interface ProjectDesign {
   /** Optional: mid nominal size (inch) — sets the crossover ceiling via cone
    *  beaming. '' / absent = unknown. */
   midSizeInch?: string;
+  /** 3-way: woofer nominal size (inch) — the W-M handover's beaming ceiling,
+   *  the mirror of midSizeInch. '' / absent = unknown. */
+  wooferSizeInch?: string;
   /** Optional: staged design (stop escalating once targets met), default true. */
   stagedOn?: boolean;
   targetRipple?: string;

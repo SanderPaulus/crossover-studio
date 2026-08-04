@@ -103,7 +103,7 @@ import Chart, { type ChartHandle, type Series } from './components/Chart.tsx';
 import DriverFilterControls from './components/FilterControls.tsx';
 import demoMid from './lib/parsers/fixtures/mid_hor0_mettape.txt?raw';
 import demoTweet from './lib/parsers/fixtures/tweet_hor0_mettape.txt?raw';
-import { computeDirectivity, type AngleResponse } from './lib/directivity.ts';
+import { computeDirectivity, computeDirectivityN, type AngleResponse } from './lib/directivity.ts';
 import { beamwidth6dBHalfAngle, buildSonogram, type SonogramMode } from './lib/sonogram.ts';
 import Sonogram from './components/Sonogram.tsx';
 import { angleFromFilename } from './lib/angles.ts';
@@ -592,16 +592,15 @@ export default function App() {
     return undefined;
   };
 
-  /** The ≥2×Fs rule from the measured tweeter impedance: a hard floor for
-   *  the optimizer's HP knee. Null without a pronounced resonance peak; an
-   *  explicit crossover range overrides it (the designer's own call). */
-  const tweeterHpFloor = useMemo(() => {
-    const z = impedances['tweeter'];
+  /** The ≥2×Fs rule from a measured impedance: a hard floor for a branch's
+   *  HP knee. Null without a pronounced resonance peak (≥1.4× the plateau
+   *  just above it) inside [lo, hi] — the driver-family's plausible Fs range. */
+  const fsFloorFrom = (z: ParsedZma | undefined, lo: number, hi: number): number | null => {
     if (!z) return null;
     let fPk = 0;
     let zPk = 0;
     for (let i = 0; i < z.freq.length; i++) {
-      if (z.freq[i] < 300 || z.freq[i] > 3000) continue;
+      if (z.freq[i] < lo || z.freq[i] > hi) continue;
       if (z.magnitude[i] > zPk) {
         zPk = z.magnitude[i];
         fPk = z.freq[i];
@@ -618,7 +617,22 @@ export default function App() {
     }
     if (!n || zPk < 1.4 * (ref / n)) return null;
     return Math.round(2 * fPk);
-  }, [impedances]);
+  };
+  /** Tweeter HP floor: an explicit crossover range overrides it (the
+   *  designer's own call). */
+  const tweeterHpFloor = useMemo(
+    () => fsFloorFrom(impedances['tweeter'], 300, 3000),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [impedances],
+  );
+  /** 3-way: the same ≥2×Fs rule for the MID's HP knee — the physics floor of
+   *  the W-M handover (Robbert's mid: Fs 176 Hz ⇒ floor 353 Hz, exactly the
+   *  region the tuner kept preferring over the level-based anchor). */
+  const midHpFloor = useMemo(
+    () => (threeWay ? fsFloorFrom(impedances['mid'], 60, 1500) : null),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [impedances, threeWay],
+  );
   const [angleSets, setAngleSets] = useState<AngleSets | null>(null);
   const [xoName, setXoName] = useState<string>('none');
   const [error, setError] = useState<string | null>(null);
@@ -903,6 +917,15 @@ export default function App() {
     const dEff = inch * 0.0254 * 0.82;
     return Math.round((3 * 343) / (Math.PI * dEff));
   }, [midSizeInch]);
+  /** 3-way: woofer nominal size (inch) — the W-M handover's beaming CEILING,
+   *  the exact mirror of the mid-size rule above. '' = unknown. */
+  const [wooferSizeInch, setWooferSizeInch] = useState('');
+  const wooferXoCeiling = useMemo(() => {
+    const inch = Number(wooferSizeInch);
+    if (!(inch > 0)) return null;
+    const dEff = inch * 0.0254 * 0.82;
+    return Math.round((3 * 343) / (Math.PI * dEff));
+  }, [wooferSizeInch]);
   /** Wizard "think-along": suggested tuning range = the optimizer's evaluation
    *  band. The USABLE span where both drivers have data — floored at 200 Hz (a
    *  mid/tweeter tuning floor; raw FRDs often carry an unreliable sub-100 Hz
@@ -2113,19 +2136,36 @@ export default function App() {
   /** Design-targets popup (Network toolbar). */
   const [showTargets, setShowTargets] = useState(false);
 
-  /** Angle responses resampled onto a grid, phase convention applied. */
+  /** Angle responses resampled onto a grid, phase convention applied. In
+   *  3-way the grid spans the UNION of the drivers' measurement ranges, so
+   *  each angle file gets the same banded treatment as the 0° sim branches:
+   *  clamped resample + silent ghost outside its own measured range — a
+   *  plain resample would throw on the first tweeter angle file (measures
+   *  from ~640 Hz) and silently null the whole directivity computation. */
   function angleResponsesOn(grid: readonly number[]) {
     if (!angleSets) return null;
     const toGrid = (frd: Parsed) => {
-      const g = resample(frd.freq, frd.spl, frd.phase, [...grid]);
-      return phaseMode === 'minimum'
-        ? { ...g, phaseDeg: minimumPhaseDeg(grid, g.spl, { sampleRate: 192000, fftSize: 32768 }) }
-        : g;
+      const g = threeWay
+        ? resample(frd.freq, frd.spl, frd.phase, [...grid], { clampEdges: true })
+        : resample(frd.freq, frd.spl, frd.phase, [...grid]);
+      const withPhase =
+        phaseMode === 'minimum'
+          ? { ...g, phaseDeg: minimumPhaseDeg(grid, g.spl, { sampleRate: 192000, fftSize: 32768 }) }
+          : g;
+      if (!threeWay) return withPhase;
+      const f0 = frd.freq[0];
+      const f1 = frd.freq[frd.freq.length - 1];
+      return {
+        freq: withPhase.freq,
+        spl: withPhase.spl.map((v, i) => (grid[i] < f0 || grid[i] > f1 ? SILENT_GHOST_DB : v)),
+        phaseDeg: withPhase.phaseDeg.map((v, i) => (grid[i] < f0 || grid[i] > f1 ? 0 : v)),
+      };
     };
     try {
       return {
         woofer: angleSets.woofer.map((a): AngleResponse => ({ hor: a.hor, response: toGrid(a.frd) })),
         tweeter: angleSets.tweeter.map((a): AngleResponse => ({ hor: a.hor, response: toGrid(a.frd) })),
+        mid: angleSets.mid?.map((a): AngleResponse => ({ hor: a.hor, response: toGrid(a.frd) })),
       };
     } catch {
       return null;
@@ -2136,20 +2176,36 @@ export default function App() {
     // À-la-carte: skip the per-angle solve entirely when neither consumer shows.
     if (!showPanels.directivity && !showPanels.sonogram) return null;
     if (!angleSets || !result || !sim) return null;
-    // 3-way: the per-angle sum pairs exactly two branches — a mid-less sum
-    // would be silently wrong. Directivity follows in a later step.
-    if (threeWay) return null;
     const sets = angleResponsesOn(result.freq);
     if (!sets) return null;
+    const tAdj = { offsetMm: num(offsetMm, 0), trimDb: num(trimDb, 0), inverted };
+    if (threeWay) {
+      // Three branch layers through the N-branch core. The mid's OWN angle
+      // set is required — a mid-less sum would be silently wrong.
+      if (!sets.mid || sets.mid.length === 0) return null;
+      return computeDirectivityN([
+        { angles: sets.woofer, h: sim.transfers?.woofer ?? null },
+        {
+          angles: sets.mid,
+          h: sim.transfers?.mid ?? null,
+          adjust: {
+            offsetMm: num(midOffsetMm, 0),
+            trimDb: num(midTrimDb, 0),
+            inverted: midInverted,
+          },
+        },
+        { angles: sets.tweeter, h: sim.transfers?.tweeter ?? null, adjust: tAdj },
+      ]);
+    }
     return computeDirectivity(
       sets.woofer,
       sets.tweeter,
       sim.transfers?.woofer ?? null,
       sim.transfers?.tweeter ?? null,
-      { offsetMm: num(offsetMm, 0), trimDb: num(trimDb, 0), inverted },
+      tAdj,
     );
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [angleSets, result, sim, threeWay, phaseMode, offsetMm, trimDb, inverted, showPanels.directivity, showPanels.sonogram]);
+  }, [angleSets, result, sim, threeWay, phaseMode, offsetMm, trimDb, inverted, midOffsetMm, midTrimDb, midInverted, showPanels.directivity, showPanels.sonogram]);
 
   const [sonogramMode, setSonogramMode] = useState<SonogramMode>('normalized');
   const sonogram = useMemo(
@@ -2304,6 +2360,7 @@ export default function App() {
         xoLowFreqHz,
         xoLowMarginHz,
         midSizeInch,
+        wooferSizeInch,
         snapProfile,
         snapSeriesL,
         snapSeriesC,
@@ -2434,6 +2491,7 @@ export default function App() {
     setXoLowFreqHz(d.xoLowFreqHz ?? '400');
     setXoLowMarginHz(d.xoLowMarginHz ?? '150');
     setMidSizeInch(d.midSizeInch ?? '');
+    setWooferSizeInch(d.wooferSizeInch ?? '');
     setSnapProfile(d.snapProfile ?? 'auto');
     setSnapSeriesL(d.snapSeriesL ?? 'auto');
     setSnapSeriesC(d.snapSeriesC ?? 'auto');
@@ -2517,7 +2575,7 @@ export default function App() {
     }, 800);
     return () => clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [woofer, midDrv, tweeter, project, zStandalone, angleSets, fileNotes, verify, vFilters, xoName, offsetMm, trimDb, inverted, midOffsetMm, midTrimDb, midInverted, fMin, fMax, splMin, splMax, phasePriority, vfEqBands, phaseMode, dirWeight, ampTarget, sonogramMode, designs, activeDesignId, lastSavedId, networkActive, vfBypass, catalogSnap, breakupGuard, xoRangeOn, xoFreqHz, xoMarginHz, xoScanSteps, xo3Steps, hpLpPref, hpLpPrefLow, phaseMetricMode, acSlopeMid, acSlopeTweeter, acSlopeWoofer, acSlopeMidHp, xoLowFreqHz, xoLowMarginHz, midSizeInch, snapProfile, snapSeriesL, snapSeriesC, snapSeriesR, snapStacks, snapBoundToSeries, stagedOn, targetRipple, targetPhase, soloSensDb, soloFloorOn, soloFloorDb]);
+  }, [woofer, midDrv, tweeter, project, zStandalone, angleSets, fileNotes, verify, vFilters, xoName, offsetMm, trimDb, inverted, midOffsetMm, midTrimDb, midInverted, fMin, fMax, splMin, splMax, phasePriority, vfEqBands, phaseMode, dirWeight, ampTarget, sonogramMode, designs, activeDesignId, lastSavedId, networkActive, vfBypass, catalogSnap, breakupGuard, xoRangeOn, xoFreqHz, xoMarginHz, xoScanSteps, xo3Steps, hpLpPref, hpLpPrefLow, phaseMetricMode, acSlopeMid, acSlopeTweeter, acSlopeWoofer, acSlopeMidHp, xoLowFreqHz, xoLowMarginHz, midSizeInch, wooferSizeInch, snapProfile, snapSeriesL, snapSeriesC, snapSeriesR, snapStacks, snapBoundToSeries, stagedOn, targetRipple, targetPhase, soloSensDb, soloFloorOn, soloFloorDb]);
 
   function resetProject() {
     localStorage.removeItem(AUTOSAVE_KEY);
@@ -2610,6 +2668,9 @@ export default function App() {
         pins,
         tweeterHpFloor ?? undefined,
         xo3Steps,
+        // The free W-M axis searches the physics window: 2×Fs of the measured
+        // mid up to the woofer's beaming limit (the two-way saneFree recipe).
+        { floorHz: midHpFloor, ceilHz: wooferXoCeiling },
       );
       const inputs = variants.map((v) => ({
         grid: [...grid],
@@ -6931,6 +6992,29 @@ export default function App() {
                       ))}
                     </select>
                   </label>
+                )}
+                {threeWay && (
+                  <label title="Woofer nominal size — sets the W-M handover's beaming CEILING (a cone is practically usable to ~3× its beaming onset), the mirror of the mid-size rule for the high crossing. With the 2×Fs floor from the measured mid impedance this gives the free scan a physics window instead of a guess.">
+                    Woofer size (W-M ceiling)
+                    <select value={wooferSizeInch} onChange={(e) => setWooferSizeInch(e.target.value)}>
+                      <option value="">unknown</option>
+                      {['5', '6.5', '8', '10', '12', '15'].map((v) => (
+                        <option key={v} value={v}>
+                          {v}"
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                )}
+                {threeWay && (midHpFloor !== null || wooferXoCeiling !== null) && (
+                  <span
+                    className="derived"
+                    title="The free W-M scan searches this window: from 2×Fs of the measured mid impedance up to the woofer's beaming limit. A pin overrides it."
+                  >
+                    W-M window {midHpFloor ?? 250}–{Math.min(1500, wooferXoCeiling ?? 1200)} Hz
+                    {midHpFloor !== null ? ' (2×Fs mid' : ' (default floor'}
+                    {wooferXoCeiling !== null ? ' / woofer beaming)' : ' / default ceiling)'}
+                  </span>
                 )}
                 {xoRangeOn && threeWay && (
                   <span

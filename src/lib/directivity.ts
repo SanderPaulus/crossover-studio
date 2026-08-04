@@ -1,5 +1,11 @@
 import type { Complex } from './complex.ts';
-import { applyTransfer, combine, type GriddedResponse, type TweeterAdjust } from './dsp.ts';
+import {
+  applyTransfer,
+  combineN,
+  type BranchAdjust,
+  type GriddedResponse,
+  type TweeterAdjust,
+} from './dsp.ts';
 
 /**
  * Horizontal directivity of the filtered system.
@@ -34,30 +40,44 @@ export interface DirectivityResult {
   diDb: number[];
 }
 
-export function computeDirectivity(
-  woofer: readonly AngleResponse[],
-  tweeter: readonly AngleResponse[],
-  hWoofer: readonly Complex[] | null,
-  hTweeter: readonly Complex[] | null,
-  adjust: TweeterAdjust,
+export interface DirectivityBranch {
+  angles: readonly AngleResponse[];
+  /** Electrical transfer of this branch (same at every angle); null = wire. */
+  h: readonly Complex[] | null;
+  adjust?: BranchAdjust;
+}
+
+/**
+ * N-branch horizontal directivity — the combineN generalization. The 2-way
+ * `computeDirectivity` below is a thin wrapper over this (combine IS combineN
+ * for two branches, bit-identical by the dsp.nway regression), so the whole
+ * existing suite exercises the shared core.
+ */
+export function computeDirectivityN(
+  branches: readonly DirectivityBranch[],
 ): DirectivityResult | null {
-  // Pair up the angles present for BOTH drivers.
-  const angles = woofer
-    .map((w) => w.hor)
-    .filter((a) => tweeter.some((t) => t.hor === a))
+  if (branches.length === 0) return null;
+  // Pair up the angles present for EVERY branch.
+  const angles = branches[0].angles
+    .map((a) => a.hor)
+    .filter((a) => branches.every((b) => b.angles.some((x) => x.hor === a)))
     .sort((a, b) => a - b);
   if (angles.length < 2 || !angles.includes(0)) return null;
 
-  const freq = [...woofer[0].response.freq];
+  const freq = [...branches[0].angles[0].response.freq];
   const n = freq.length;
 
   const combinedByAngle: number[][] = [];
   for (const a of angles) {
-    let w = woofer.find((x) => x.hor === a)!.response;
-    let t = tweeter.find((x) => x.hor === a)!.response;
-    if (hWoofer) w = applyTransfer(w, hWoofer as Complex[]);
-    if (hTweeter) t = applyTransfer(t, hTweeter as Complex[]);
-    combinedByAngle.push(combine(w, t, adjust).combinedSpl);
+    combinedByAngle.push(
+      combineN(
+        branches.map((b) => {
+          let r = b.angles.find((x) => x.hor === a)!.response;
+          if (b.h) r = applyTransfer(r, b.h as Complex[]);
+          return { response: r, adjust: b.adjust };
+        }),
+      ).combinedSpl,
+    );
   }
 
   const onAxis = combinedByAngle[angles.indexOf(0)];
@@ -76,4 +96,17 @@ export function computeDirectivity(
   }
 
   return { freq, angles, combinedByAngle, powerDb, listeningWindowDb, diDb };
+}
+
+export function computeDirectivity(
+  woofer: readonly AngleResponse[],
+  tweeter: readonly AngleResponse[],
+  hWoofer: readonly Complex[] | null,
+  hTweeter: readonly Complex[] | null,
+  adjust: TweeterAdjust,
+): DirectivityResult | null {
+  return computeDirectivityN([
+    { angles: woofer, h: hWoofer },
+    { angles: tweeter, h: hTweeter, adjust },
+  ]);
 }

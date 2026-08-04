@@ -295,6 +295,14 @@ export function crossover3Variants(
   /** Candidate steps PER AXIS: 1/2/3 → 1/4/9 full chains. Runtime grows with
    *  the square, so this is the designer's cost knob. */
   steps = 2,
+  /** PHYSICS window for the free W-M axis — the two-way saneFree recipe:
+   *  floor = 2×Fs from the measured MID impedance (protects the mid's low
+   *  end), ceiling = woofer cone beaming from its nominal size. W-M levels
+   *  never truly cross on real sets (a mid sits below its woofer), so a
+   *  level-based anchor is weak evidence there — physics bounds are the
+   *  honest search space. Either side optional; the overlap anchor stays the
+   *  fallback. A designer pin still overrides everything. */
+  lowWindow?: { floorHz?: number | null; ceilHz?: number | null },
 ): Chain3Variant[] {
   /* Anchor = the raw pair's OVERLAP CENTRE — the same computeIntegration
    * number the panel's pair chips show ("Overlap 1631 / 5455 Hz"), so the
@@ -336,12 +344,36 @@ export function crossover3Variants(
     const mrg = Math.max(pin.margin, pin.freq * 0.02);
     return [pin.freq - mrg, pin.freq + mrg];
   };
-  const [lLo, lHi] = span(rawLow, pins?.low);
+  /* Free low axis: physics bounds first (floor = 2×Fs mid, ceiling = woofer
+   * beaming), the overlap-anchor neighbourhood for whichever side is missing.
+   * A degenerate window (floor above ceiling: a big mid with a small woofer —
+   * a design problem no scan can solve) falls back to the anchor entirely. */
+  const freeLow = ((): [number, number] => {
+    const floor = lowWindow?.floorHz ?? null;
+    const ceil = lowWindow?.ceilHz ?? null;
+    let lo = Math.max(250, floor ?? rawLow * 0.75);
+    let hi = Math.min(1500, ceil ?? Math.min(1200, rawLow * 1.4));
+    if (hi <= lo * 1.05) {
+      // A single known PHYSICS bound beats a disagreeing level anchor (the
+      // anchor is weak evidence on this axis): give the missing side an
+      // octave of room from the bound instead of discarding it.
+      if (floor !== null && ceil === null) hi = Math.min(1500, lo * 2);
+      else if (ceil !== null && floor === null) lo = Math.max(250, hi / 2);
+      // Both bounds known and in conflict (big mid + small woofer): a design
+      // problem no scan can solve — fall back to the anchor neighbourhood.
+      else return [rawLow * 0.75, Math.min(1200, rawLow * 1.4)];
+    }
+    return hi > lo * 1.05 ? [lo, hi] : [rawLow * 0.75, Math.min(1200, rawLow * 1.4)];
+  })();
+  const [lLo, lHi] = pins?.low ? span(rawLow, pins.low) : freeLow;
   const [hLo, hHi] = span(rawHigh, pins?.high);
   const out: Chain3Variant[] = [];
   for (const fl of sliceAxis(lLo, lHi, n)) {
     for (const fh of sliceAxis(hLo, hHi, n)) {
-      const xoLow = Math.round(Math.min(1200, Math.max(250, fl.centre)));
+      // Low centre may reach 1500 (the design step's own knee ceiling): a
+      // physics window from a small woofer legitimately sits above the old
+      // 1200 cap, and a designer pin up to the UI's 2000 was crushed by it.
+      const xoLow = Math.round(Math.min(1500, Math.max(250, fl.centre)));
       const xoHigh = Math.round(Math.min(8000, Math.max(xoLow * 2.5, Math.min(7000, fh.centre))));
       // The cage follows the same clamps as the centre, and never collapses
       // to a point: a zero-width range would make the xo penalty a cliff.
@@ -369,7 +401,7 @@ export function crossover3Variants(
         label: `W-M ${xoLow} · M-T ${xoHigh} Hz`,
         xoLow,
         xoHigh,
-        xoLowRange: cage(fl.range, xoLow, 250, 1200),
+        xoLowRange: cage(fl.range, xoLow, 250, 1500),
         xoHighRange: cage(fh.range, xoHigh, xoLow * 2.5, 8000),
       });
     }

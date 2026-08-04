@@ -147,6 +147,43 @@ describe('threeWayChain (phase-4 trede 4c, staged v1)', () => {
     expect(vs[0].xoHighRange[1]).toBeGreaterThan(vs[0].xoHighRange[0]);
   });
 
+  it('the free W-M axis honours the physics window (2×Fs mid / woofer beaming)', () => {
+    const vs = crossover3Variants(w, m, t, undefined, undefined, 3, {
+      floorHz: 400,
+      ceilHz: 900,
+    });
+    for (const v of vs) {
+      expect(v.xoLow).toBeGreaterThanOrEqual(400);
+      expect(v.xoLow).toBeLessThanOrEqual(900);
+    }
+    // Floor-only: the ceiling falls back to the anchor neighbourhood.
+    const floorOnly = crossover3Variants(w, m, t, undefined, undefined, 2, { floorHz: 500 });
+    for (const v of floorOnly) expect(v.xoLow).toBeGreaterThanOrEqual(500);
+    // Degenerate window (floor above ceiling) falls back to the anchor —
+    // never an inverted span.
+    const degenerate = crossover3Variants(w, m, t, undefined, undefined, 2, {
+      floorHz: 1000,
+      ceilHz: 600,
+    });
+    for (const v of degenerate) {
+      expect(v.xoLowRange[1]).toBeGreaterThan(v.xoLowRange[0]);
+    }
+    // A designer pin still overrides the physics window.
+    const pinned = crossover3Variants(
+      w,
+      m,
+      t,
+      { low: { freq: 500, margin: 50 } },
+      undefined,
+      2,
+      { floorHz: 700, ceilHz: 1200 },
+    );
+    for (const v of pinned) {
+      expect(v.xoLow).toBeGreaterThanOrEqual(449);
+      expect(v.xoLow).toBeLessThanOrEqual(551);
+    }
+  });
+
   it('ranking gates on the amp-load verdict before anything else', () => {
     const mk = (label: string, zOk: boolean, avgDev: number, phase: number, bom: number | null): Chain3Result =>
       ({

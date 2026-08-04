@@ -853,7 +853,33 @@ het spec-model), fase-chart toont de twee AANGRENZENDE paren (w-t-verschil betek
 niets), SPL-handles ook op de mid. GEGATE met uitleg-titles (paar-eigenschappen, trede 4):
 optimizers, synthese, netOptimize, vxp-export, integratie/phaseStats, directivity/sonogram,
 tolerantie-band, tab-ghosts, target-curves, templates (alleen Blank-scaffold, mét alle drie
-drivers). Autosave-deps uitgebreid (midDrv + mid-adjust — de harde les). Demo-load reset
+drivers). [Stand aug 2026: optimizers/synthese/netOptimize (trede 3–4c) én
+directivity/sonogram (zie onder) zijn inmiddels ONT-gate; vxp-export, tolerantie-band,
+tab-ghosts en target-curves zijn nog 2-weg.]
+**Directivity + sonogram in 3-weg (aug 2026, Sanders "werken niet")**:
+`computeDirectivityN` in directivity.ts — N takken via combineN, elk met eigen transfer +
+BranchAdjust; het oude `computeDirectivity` is er een dunne wrapper over (combine ≡ combineN
+voor K=2, dus de bestaande tests dekken de kern). App-memo: 3-weg = drie lagen (woofer/mid/
+tweeter-transfers + mid-adjust), mid-hoekset VERPLICHT (mid-loze som zou stil fout zijn ⇒
+null). HARD GELEERD: `angleResponsesOn` moet in 3-weg dezelfde banded-behandeling krijgen als
+de 0°-takken (clampEdges + stille ghost buiten het eigen meetbereik) — het union-grid begint
+onder het bereik van de tweeter-hoekbestanden (~640 Hz) en een kale resample GOOIT dan, de
+catch maakte er stil null van en het paneel bleef gewoon leeg. Sonogram lift gratis mee (leest
+het directivity-resultaat). Browser-geverifieerd op Robberts volle hoekset (0/10/20/30° × 3).
+**W-M-fysica-venster (aug 2026, Sanders "moet W-M altijd handmatig?")**: nee — het
+2-weg-saneFree-recept gegeneraliseerd. Vloer = 2×Fs uit de GEMETEN mid-impedantie
+(`midHpFloor`, zelfde piek-detectie als de tweeter-vloer via `fsFloorFrom`, zoekvenster
+60–1500 Hz; Robberts mid: Fs 176 ⇒ vloer 353 Hz — precies de regio die de tuner al verkoos
+boven het niveau-anker); plafond = woofer-conus-beaming (`wooferSizeInch`-veld, zelfde formule
+als midSizeInch; 8" ⇒ 1966, geklemd op 1500). `crossover3Variants` kreeg `lowWindow`
+{floorHz, ceilHz}: de vrije W-M-as doorzoekt dát venster, overlap-anker alleen nog als
+fallback; ⚙ toont "W-M window 353–1500 Hz (2×Fs mid / woofer beaming)" live. HARD GELEERD in
+de test: één bekend fysica-anker moet van een tegensprekend niveau-anker WINNEN — bij het
+w≡m-fixture viel het overlap-centrum op de eerste grid-frequentie en de degeneratie-terugval
+gooide de vloer weg; nu krijgt de ontbrekende kant een octaaf ruimte vanaf het bekende anker,
+en alleen twéé strijdige fysica-ankers (grote mid + kleine woofer) vallen terug. Low-as-clamp
+1200 → 1500 (een klein-woofer-venster zit daar legitiem boven; de UI-pin tot 2000 werd er ook
+door geplet). Persistent: wooferSizeInch in project/snapshot/restore/autosave-deps. Autosave-deps uitgebreid (midDrv + mid-adjust — de harde les). Demo-load reset
 midDrv (anders wordt KOAN stil een 3-weg). 2-weg/solo bit-onaangeroerd: volle suite (394)
 groen + browser-check op Sanders v1-autosave (restored identiek door het nieuwe leespad).
 **Per-tak-banden (trede 4b)**: in 3-weg spant het sim-grid de UNIE van de meetbereiken
