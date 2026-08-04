@@ -51,6 +51,9 @@ export interface Chain3Settings {
    *  enumeration over the library. */
   structureLow?: Struct3Choice;
   structureHigh?: Struct3Choice;
+  /** Greedy cut-only EQ budget per branch in the design step (the 2-way
+   *  "EQ bands/driver" setting; 0/absent = off). */
+  eqBands?: number;
   breakupGuard?: boolean;
   /** In-room weight for the assembled tune (0..1): blends energy-average
    *  flatness into the amplitude term — the 2-way recipe, now three-branch.
@@ -158,6 +161,7 @@ export function runThreeWayChain(
     structureLow: s.structureLow,
     structureHigh: s.structureHigh,
     breakupGuard: s.breakupGuard,
+    eqBandsPerBranch: s.eqBands,
   });
   const specs = design.specs;
   // The chosen polarities become the branch adjustments everything downstream

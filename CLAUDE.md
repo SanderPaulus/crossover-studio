@@ -1040,6 +1040,23 @@ synthese-gereedschap, acoustic-doctrine). Bindende keuze per kruising via `struc
 `structureHigh` — de ⚙-dropdown "HP/LP preference" was in 3-weg wél zichtbaar maar werd
 GENEGEERD; nu twee dropdowns (laag/hoog), zelfde conventie als de flank-doelen
 (`hpLpPrefLow` gepersisteerd, mét autosave-dep).
+**EQ-trede in de 3-weg-ontwerpstap (aug 2026, Sanders "bouw jij maar eens" — 2-weg-pariteit)**:
+de laatste ontbrekende trede. Sanders beste run (Response 27) werd begrensd door precies wat
+géén ketentrap kon aanraken: een HF-tilt van de som en de in-band-bulten van de mid. Stage 3
+in `designThreeWay` (ná structuur + knie-refine, `eqBandsPerBranch` — gevoed door de
+bestaande "EQ bands/driver"-instelling; 0/afwezig = uit, staged-v1 bit-compat, test-gepind):
+greedy CUT-ONLY, per ronde (a) een piek-cut op de slechtste POSITIEVE uitschieter van de som
+t.o.v. de mediaan, toegeschreven aan de tak die dáár dominant is, plus (b) tilt-gated
+shelf-kandidaten (highShelf-cut op mid/tweeter bij >1 dB te hete bovenhelft, lowShelf-cut op
+de woofer bij het omgekeerde); elke kandidaat 3-dim NM-verfijnd (freq ±0,67 oct, gain
+geklemd ≤0, Q-vloer 0,7 — de solo-les: daaronder is een "piek-cut" vermomd breedbandverlies)
+tegen de VOLLE objective (amp + paar-fase + lek), gehouden bij ≥1% winst — een band moet
+zijn fysieke componenten verdienen. Specs dragen de banden → de synthese realiseert ze al
+(traps/shelf-pads, acoustic-doctrine "gereedschap-niet-doel") → de tuner verfijnt.
+Label meldt "· N EQ". Unit-getest op een synthetische +10 dB-bult op 1,5 kHz in de mid:
+band landt op de juiste tak nabij de bult, cut-only overal, budget per tak gerespecteerd,
+deterministisch. Bijvangst dezelfde ronde: het staged-doel-rimpelveld klemde op max 3 dB
+(Sanders kon zijn doel niet kwijt) — beide invoervelden nu max 6.
 **GEMETEN fysica-vensters voor beide vrije assen (aug 2026, Sanders "het doel is dat de
 optimizer dit verzint")**: wat de ontwerper handmatig uit de grafieken las, leidt de scan nu
 zelf af. `beamingCeilingHz` (directivity.ts): eerste frequentie waar het ±⅙-oct-gemediane

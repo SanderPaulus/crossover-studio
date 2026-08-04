@@ -2702,6 +2702,7 @@ export default function App() {
         structureLow: parseHpLpPref(hpLpPrefLow),
         structureHigh: parseHpLpPref(hpLpPref),
         breakupGuard,
+        eqBands: vfEqBands,
         directivityWeight: dirWeight / 100,
         ampTarget,
         phaseMetric: phaseMetricMode,
@@ -5070,7 +5071,7 @@ export default function App() {
                   <input
                     type="number"
                     min={0.1}
-                    max={3}
+                    max={6}
                     step={0.1}
                     value={targetRipple}
                     onChange={(e) => setTargetRipple(e.target.value)}
@@ -7063,7 +7064,7 @@ export default function App() {
                     <input
                       type="number"
                       min={0.1}
-                      max={3}
+                      max={6}
                       step={0.1}
                       value={targetRipple}
                       onChange={(e) => setTargetRipple(e.target.value)}

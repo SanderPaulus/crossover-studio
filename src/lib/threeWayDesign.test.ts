@@ -115,4 +115,54 @@ describe('threeWayDesign — alignment × polarity structure search', () => {
     const d = designThreeWay({ ...base, xoHigh: 2200, hpFloorHz: 2600 });
     expect(d.xoHigh).toBeGreaterThanOrEqual(2600);
   });
+
+  describe('stage 3: greedy cut-only EQ (2-way parity)', () => {
+    // A +10 dB narrow bump at 1.5 kHz injected into the MID — solidly inside
+    // its passband, where no other chain stage can touch it.
+    const bumped: GriddedResponse = {
+      freq: m.freq,
+      spl: m.spl.map((v, i) => {
+        const x = Math.log2(m.freq[i] / 1500);
+        return v + 10 * Math.exp(-(x * x) / (2 * 0.15 * 0.15));
+      }),
+      phaseDeg: [...m.phaseDeg],
+    };
+
+    it('budget 0 (default) leaves the specs EQ-free — staged-v1 bit-compat', () => {
+      const d = designThreeWay({ ...base, m: bumped });
+      expect(d.specs.woofer.eq).toHaveLength(0);
+      expect(d.specs.mid.eq).toHaveLength(0);
+      expect(d.specs.tweeter.eq).toHaveLength(0);
+    });
+
+    it('cuts the mid bump: a band lands near it, on the right branch, cut-only', () => {
+      const off = designThreeWay({ ...base, m: bumped });
+      const on = designThreeWay({ ...base, m: bumped, eqBandsPerBranch: 2 });
+      // The design with EQ must beat the same design without it.
+      expect(on.fx).toBeLessThan(off.fx);
+      // At least one band, on the MID (the dominant branch at the bump), as a
+      // CUT near 1.5 kHz.
+      const midBands = on.specs.mid.eq.filter((b) => b.enabled);
+      expect(midBands.length).toBeGreaterThan(0);
+      const near = midBands.find((b) => b.freq > 900 && b.freq < 2500);
+      expect(near).toBeDefined();
+      expect(near!.gainDb).toBeLessThan(0);
+      // Passive doctrine: every placed band is a cut, everywhere.
+      for (const spec of [on.specs.woofer, on.specs.mid, on.specs.tweeter]) {
+        for (const b of spec.eq) expect(b.gainDb).toBeLessThanOrEqual(0);
+      }
+      // Budget respected per branch.
+      for (const spec of [on.specs.woofer, on.specs.mid, on.specs.tweeter]) {
+        expect(spec.eq.filter((b) => b.enabled).length).toBeLessThanOrEqual(2);
+      }
+      // The label reports the band count honestly.
+      expect(on.label).toMatch(/· \d+ EQ$/);
+    });
+
+    it('is deterministic with EQ on', () => {
+      const a = designThreeWay({ ...base, m: bumped, eqBandsPerBranch: 2 });
+      const b = designThreeWay({ ...base, m: bumped, eqBandsPerBranch: 2 });
+      expect(JSON.stringify(a)).toBe(JSON.stringify(b));
+    });
+  });
 });

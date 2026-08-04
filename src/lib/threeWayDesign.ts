@@ -4,6 +4,7 @@ import {
   evalDriverFilter,
   isActive,
   type DriverFilterSpec,
+  type EqBandSpec,
   type FilterKind,
 } from './filters.ts';
 import {
@@ -74,6 +75,11 @@ export interface Design3Input {
   /** Binding alignment choice per crossing; omit for free enumeration. */
   structureLow?: Struct3Choice;
   structureHigh?: Struct3Choice;
+  /** Greedy CUT-ONLY EQ budget PER BRANCH (0/absent = off — the staged-v1
+   *  behaviour, bit-compatible). This is the stage that separates the 3-way
+   *  chain from 2-way parity: without it nothing in the chain can touch an
+   *  in-band bump of a branch or a broad tilt of the sum. */
+  eqBandsPerBranch?: number;
   /** Tweeter HP floor (≥2×Fs, Hz) — the high knee never goes below it. */
   hpFloorHz?: number;
   /** Breakup guard (stopband leakage ≥20 dB down beside each crossing),
@@ -412,6 +418,186 @@ export function designThreeWay(input: Design3Input): Design3Result {
           `${structLabel(c.alignHigh)} @${Math.round(xoHigh)}` +
           `${c.midInverted ? ' · mid inv' : ''}${c.tweeterInverted ? ' · tweeter inv' : ''}`,
         evaluated: 0,
+      };
+    }
+  }
+
+  /* ---- Stage 3: greedy CUT-ONLY EQ per branch (2-way parity) -------------
+   * Structure and knees are settled; what remains is what no downstream
+   * stage can repair: an IN-BAND bump of one branch (the mid's 2–5 kHz
+   * wobble) or a broad tilt of the sum (hot top). Mirror the proven 2-way
+   * recipe, simplified: each round seeds a peak CUT at the sum's worst
+   * positive excursion — attributed to the branch DOMINANT there — plus
+   * tilt-gated shelf candidates; each candidate is NM-refined against the
+   * full objective (amp + pair phase + leak) and kept only on a ≥1% gain.
+   * Cut-only throughout (passive doctrine): gains clamp to ≤0, dips are the
+   * honest floor. Budget is per branch, from the same "EQ bands/driver"
+   * setting the 2-way uses. ---- */
+  const eqBudget = Math.max(0, Math.floor(input.eqBandsPerBranch ?? 0));
+  if (eqBudget > 0 && best) {
+    const clone = (s: Design3Specs): Design3Specs => ({
+      woofer: { ...s.woofer, eq: s.woofer.eq.map((b) => ({ ...b })) },
+      mid: { ...s.mid, eq: s.mid.eq.map((b) => ({ ...b })) },
+      tweeter: { ...s.tweeter, eq: s.tweeter.eq.map((b) => ({ ...b })) },
+    });
+    const mi = best.midInverted;
+    const ti = best.tweeterInverted;
+    /** Sum + per-branch filtered SPL, for candidate seeding only. */
+    const sumInfo = (specs: Design3Specs) => {
+      const apply = (g: GriddedResponse, spec: DriverFilterSpec): GriddedResponse =>
+        isActive(spec) ? applyTransfer(g, evalDriverFilter(spec, g.freq)) : g;
+      const wF = apply(w, specs.woofer);
+      const mF = apply(m, specs.mid);
+      const tF = apply(t, specs.tweeter);
+      const sum = combineN([
+        { response: wF },
+        { response: mF, adjust: { ...midAdjust, inverted: mi } },
+        { response: tF, adjust: { ...tAdjust, inverted: ti } },
+      ]);
+      return { sum, branches: [wF.spl, mF.spl, tF.spl] as const };
+    };
+    const keys = ['woofer', 'mid', 'tweeter'] as const;
+    let specs = clone(best.specs);
+    let fx = best.fx;
+    let placed = 0;
+    for (let round = 0; round < eqBudget * 3; round++) {
+      const info = sumInfo(specs);
+      const stats = bandStats(info.sum.freq, info.sum.combinedSpl, band, 'median');
+      if (stats.count === 0) break;
+      interface Cand {
+        branch: (typeof keys)[number];
+        band: EqBandSpec;
+        shelf: boolean;
+      }
+      const cands: Cand[] = [];
+      // Worst POSITIVE excursion → peak cut on the dominant branch there.
+      let pkIdx = -1;
+      let pkExc = 1; // ≥1 dB before a band is worth a component
+      for (let i = 0; i < info.sum.freq.length; i++) {
+        const f = info.sum.freq[i];
+        if (f < band[0] || f > band[1]) continue;
+        const exc = info.sum.combinedSpl[i] - stats.median;
+        if (exc > pkExc) {
+          pkExc = exc;
+          pkIdx = i;
+        }
+      }
+      if (pkIdx >= 0) {
+        let dom = 0;
+        for (let k = 1; k < 3; k++) {
+          if (info.branches[k][pkIdx] > info.branches[dom][pkIdx]) dom = k;
+        }
+        if (specs[keys[dom]].eq.filter((b) => b.enabled).length < eqBudget) {
+          cands.push({
+            branch: keys[dom],
+            band: {
+              enabled: true,
+              type: 'peak',
+              freq: info.sum.freq[pkIdx],
+              gainDb: -Math.min(12, pkExc),
+              q: 2,
+            },
+            shelf: false,
+          });
+        }
+      }
+      // Broad tilt → shelf cut on the hot side (tilt-gated, like 2-way).
+      const centre = Math.sqrt(band[0] * band[1]);
+      let loSum = 0;
+      let loN = 0;
+      let hiSum = 0;
+      let hiN = 0;
+      for (let i = 0; i < info.sum.freq.length; i++) {
+        const f = info.sum.freq[i];
+        if (f < band[0] || f > band[1]) continue;
+        const d = info.sum.combinedSpl[i] - stats.median;
+        if (f < centre) {
+          loSum += d;
+          loN++;
+        } else {
+          hiSum += d;
+          hiN++;
+        }
+      }
+      const tilt = hiN > 0 && loN > 0 ? hiSum / hiN - loSum / loN : 0;
+      if (tilt > 1) {
+        for (const b of ['mid', 'tweeter'] as const) {
+          if (specs[b].eq.filter((x) => x.enabled).length >= eqBudget) continue;
+          cands.push({
+            branch: b,
+            band: {
+              enabled: true,
+              type: 'highShelf',
+              freq: centre * 1.5,
+              gainDb: -Math.min(8, tilt),
+              q: 0.71,
+            },
+            shelf: true,
+          });
+        }
+      } else if (tilt < -1) {
+        if (specs.woofer.eq.filter((x) => x.enabled).length < eqBudget) {
+          cands.push({
+            branch: 'woofer',
+            band: {
+              enabled: true,
+              type: 'lowShelf',
+              freq: centre / 1.5,
+              gainDb: -Math.min(8, -tilt),
+              q: 0.71,
+            },
+            shelf: true,
+          });
+        }
+      }
+      if (cands.length === 0) break;
+      // Refine each candidate jointly (freq/gain[/Q]); keep the best if it
+      // buys ≥1% — a band must earn its physical components.
+      let bestCand: { specs: Design3Specs; fx: number; pair: [number, number] } | null = null;
+      for (const c of cands) {
+        const trial = clone(specs);
+        trial[c.branch].eq = [...trial[c.branch].eq, { ...c.band }];
+        const bandRef = trial[c.branch].eq[trial[c.branch].eq.length - 1];
+        const objective = (x: readonly number[]): number => {
+          let penalty = 0;
+          const f0 = Math.exp(x[0]);
+          const fLo = c.band.freq / 1.6;
+          const fHi = c.band.freq * 1.6;
+          bandRef.freq = Math.min(Math.max(f0, fLo), fHi);
+          if (f0 < fLo || f0 > fHi) penalty += 1;
+          // CUT-ONLY: the gain axis is clamped at 0 from above.
+          bandRef.gainDb = Math.min(0, Math.max(-15, x[1]));
+          if (!c.shelf) {
+            // Q floor 0.7 (solo lesson: below it a "peak cut" is broadband
+            // attenuation in disguise).
+            bandRef.q = Math.min(8, Math.max(0.7, Math.exp(x[2])));
+          }
+          return evaluate(trial, mi, ti).fx + penalty;
+        };
+        const x0 = c.shelf
+          ? [Math.log(c.band.freq), c.band.gainDb]
+          : [Math.log(c.band.freq), c.band.gainDb, Math.log(c.band.q)];
+        const fit = nelderMead(objective, x0, {
+          maxIterations: 140,
+          tolerance: 1e-6,
+          step: 0.12,
+        });
+        objective(fit.x); // write the winning params back into bandRef
+        const scored = evaluate(trial, mi, ti);
+        if (!bestCand || scored.fx < bestCand.fx) {
+          bestCand = { specs: trial, fx: scored.fx, pair: scored.pairPhaseDeg };
+        }
+      }
+      if (!bestCand || bestCand.fx > fx * 0.99) break;
+      specs = bestCand.specs;
+      fx = bestCand.fx;
+      placed++;
+      best = {
+        ...best,
+        specs,
+        fx,
+        pairPhaseDeg: bestCand.pair,
+        label: `${best.label.replace(/ · \d+ EQ$/, '')} · ${placed} EQ`,
       };
     }
   }
