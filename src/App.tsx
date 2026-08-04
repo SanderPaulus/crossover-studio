@@ -4478,11 +4478,29 @@ export default function App() {
         const cLow = pairScores.low.integ.overlapCentreHz;
         const cHigh = pairScores.high.integ.overlapCentreHz;
         const split = cLow !== null && cHigh !== null ? Math.sqrt(cLow * cHigh) : null;
+        // Each pair's window as ONE CONTIGUOUS span (first..last overlap
+        // point). The raw per-point |ΔdB| ≤ 20 test flickers at the window
+        // edges — that drew bites and orphan islands in the line (Sanders'
+        // report); interior points that briefly fail the test still carry a
+        // perfectly meaningful relative phase.
+        const spanOf = (pts: typeof lowPts): [number, number] | null => {
+          let lo = -1;
+          let hi = -1;
+          for (let i = 0; i < pts.length; i++) {
+            if (pts[i].cls !== null) {
+              if (lo < 0) lo = i;
+              hi = i;
+            }
+          }
+          return lo >= 0 ? [lo, hi] : null;
+        };
+        const lowSpan = spanOf(lowPts);
+        const highSpan = spanOf(highPts);
         const y: number[] = new Array(result.freq.length).fill(NaN);
         const cols: (string | null)[] = new Array(result.freq.length).fill(null);
         for (let i = 0; i < result.freq.length; i++) {
-          const lowOn = lowPts[i]?.cls !== null && lowPts[i] !== undefined;
-          const highOn = highPts[i]?.cls !== null && highPts[i] !== undefined;
+          const lowOn = lowSpan !== null && i >= lowSpan[0] && i <= lowSpan[1];
+          const highOn = highSpan !== null && i >= highSpan[0] && i <= highSpan[1];
           const useLow =
             lowOn && (!highOn || (split !== null && result.freq[i] < split));
           if (useLow) {

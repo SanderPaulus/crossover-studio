@@ -861,7 +861,11 @@ elkaar")**: default toont het paneel alleen "Relative phase — active pair" —
 de relatieve fase van het ACTIEVE paar (mid-vs-woofer bínnen het W-M-overlapvenster,
 tweeter-vs-mid bínnen het M-T-venster, NaN-gat ertussen: daar draagt geen paar over), per
 punt tier-gekleurd zoals de 2-weg-hoofdlijn. Fysisch verdedigbaar omdat een paar-curve
-buiten zijn eigen overlapvenster toch niets betekent. De twee volledige paar-curves én de
+buiten zijn eigen overlapvenster toch niets betekent. Elk paar-venster is ÉÉN AANEENGESLOTEN
+span (eerste t/m laatste overlap-punt, Sanders "happen in de lijn"): de rauwe
+per-punt-|ΔdB|≤20-test flikkert aan de randen en tekende beten en losse eilandjes;
+binnenpunten die de test even missen dragen gewoon een betekenisvolle relatieve fase
+(phaseErrorDeg bestaat op élk integratiepunt). De twee volledige paar-curves én de
 drie totaal-lijnen zijn in 3-weg `defaultOff` (de legend ís de toggle — 2-weg houdt de
 totals default AAN, Stefans check / Sanders eindkeuze). Paar-keuze bij dubbele dekking:
 onder het meetkundig gemiddelde van de twee overlap-centra wint het lage paar.
