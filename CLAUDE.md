@@ -929,14 +929,37 @@ nog steeds (2776 boven de kooigrens 1844). De xo-penalty is ZACHT (kwadratisch i
 adaptief gewicht pas onder ±0,15 oct halve breedte), dus een brede kooi bindt niet echt; de
 winst zit vooral in kandidaten die eindelijk écht verschillende gebieden verkennen i.p.v. naar
 hetzelfde bekken te convergeren. Meer stappen ⇒ smallere kooien ⇒ strakker gebonden.
-**NOG OPEN, de vermoedelijke echte oorzaak (aug 2026, niet gerepareerd)**: de breakup-guard
-bewaakt `[xo×1,6 … xo×4]` — volledig verankerd aan de GEMETEN kruising (netOptimizer, in de
-per-paar-lus). Bij een kruising van 2520 Hz bewaakt hij de mid op 4,0–10,1 kHz en dekt de
-5,6 kHz-breakup; drijft de kruising naar 6361 Hz, dan verschuift de bewaakte band mee naar
-10,2–25,4 kHz en valt de breakup er BUITEN. Een weggedreven kruising maakt dus zijn eigen
-bewaker blind, wat verder wegdrijven goedkoper maakt — een vicieuze cirkel. De guard aan de
-gemeten resonantie verankeren i.p.v. aan de kruising is de kandidaat-fix, maar die zit in
-2-weg-gedeelde code en verdient een eigen meting (anker-les: niet blind aanraken).
+**De drift-oorzaak: GEVONDEN via tak-dissectie, en het was NIET mijn eerste hypothese
+(aug 2026, drie metingen diep)**. Hypothese 1 was: de breakup-guard bewaakt `[xo×1,6…xo×4]`
+(kruising-verankerd), dus een weggedreven kruising blindt zijn eigen bewaker — plausibel, en
+WEERLEGD: een resonantie-verankerde extra guard-band (`breakupHzOf`, lokale-trend-piek) maakte
+álles meetbaar slechter (avgDev 1,17→1,31 ongekooid) én Robberts mid heeft helemaal geen
+scherpe resonantie (null — zijn "breakup" is een brede bult). Volledig teruggedraaid.
+Onderweg twee proces-lessen: (1) het eerste meetscript had zijn EIGEN piekdetectie i.p.v. de
+engine-functie en rapporteerde cijfers die de engine nooit zag — meet altijd door de echte
+functie; (2) een hele-band-mediaan als piekreferentie wijst bij een 50 dB-klimmende respons
+gewoon "waar de curve het hoogst is" aan — een breakup is een LOKALE piek (±½-octaaf-venster).
+**De echte oorzaak (tak-dissectie: target vs synth vs tuned |H| op probe-frequenties)**: de
+synthese volgt het doelontwerp op 0,4 dB — ONSCHULDIG; de TUNER herbouwde de tweeter-tak
+(doel BW3@1620/−5,4 dB@2k → geleverd −29,5 dB@2k) omdat het lek-venster ONDER de kruising
+(`[xo/4…xo/1,6]`, tweeter ≥20 dB onder de som) bij BW3@1620 met déze hete tweeter
+ONVERVULBAAR is (~17 dB op 1 kHz) — de tuner "lost" dat op door de kruising omhoog te duwen.
+De ontwerpstap koos die structuur omdat hij de guard NIET kende: de 2-weg-ontwerper heeft de
+lek-term (0,02·leakSq) wél in zijn objective, `designThreeWay` had hem niet. **Fix: de
+ontwerpstap draagt nu dezelfde lek-term op hetzelfde gewicht** (netOptimizer-definitie,
+per paar rond het gemeten overlap-centrum van dat paar) — een fundamental die de tuner
+handhaaft moet zichtbaar zijn voor de trap die de structuur kiest, anders vechten ze en wint
+de tuner. Gemeten daarna: ontwerp kiest ZELF LR4@2700, tuner respecteert het (−17,0 vs doel
+−16,1 @2k), geleverde M-T-kruising 2838 vs ontworpen 2700 — de strijd is weg.
+**Scan-ankers = het overlap-centrum van het paneel** (computeIntegration op het rauwe paar —
+zelfde definitie als de "Overlap x/y Hz"-chips): de eerste versie (`firstCross`, "eerste punt
+waar boven ≥ onder") vond bij een hete tweeter de ónderrand van het zoekvenster en bij een
+mid-stiller-dan-woofer niets (meetkundig-gemiddelde-fallback) — ankers 548/1800 Hz waar het
+paneel 1631/5455 zegt; de scan zocht in de verkeerde buurten en de tuner bleef richting de
+echte overname-regio ontsnappen. NB nog open: het W-M-anker uit het overlap-centrum is zwak
+bewijs (die niveaus KRUISEN nooit echt — W-M-keuze is conus-grootte/directiviteit-domein, de
+tuner wil op Robbert lager dan het anker) en de topbar zegt "Timing unreliable" — álle
+fase-conclusies op deze set staan onder dat voorbehoud.
 **Diepere zoektocht in de gezamenlijke tune (aug 2026, zelfde ronde)**: de tak-synthese
 schakelt boven 9 dims al blok-coördinaat-verfijning in ("past ~10 dims crawlt één simplex"),
 maar de ASSEMBLED tuner had dat nooit gekregen — en een 3-weg-netwerk draagt 16–25 vrije

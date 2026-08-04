@@ -1,6 +1,7 @@
 import type { Complex } from './complex.ts';
 import type { DriverFilterSpec } from './filters.ts';
-import type { BranchAdjust, GriddedResponse, TweeterAdjust } from './dsp.ts';
+import { combine, type BranchAdjust, type GriddedResponse, type TweeterAdjust } from './dsp.ts';
+import { computeIntegration } from './integration.ts';
 import { designThreeWay, type Struct3Choice } from './threeWayDesign.ts';
 import { synthesize, type SynthesisResult } from './synthesis.ts';
 import { mergeSynthesizedSchematics } from './schematicEdit.ts';
@@ -144,6 +145,7 @@ export function runThreeWayChain(
     hpFloorHz: s.hpFloorHz,
     structureLow: s.structureLow,
     structureHigh: s.structureHigh,
+    breakupGuard: s.breakupGuard,
   });
   const specs = design.specs;
   // The chosen polarities become the branch adjustments everything downstream
@@ -294,19 +296,33 @@ export function crossover3Variants(
    *  the square, so this is the designer's cost knob. */
   steps = 2,
 ): Chain3Variant[] {
-  const firstCross = (lower: GriddedResponse, upper: GriddedResponse, lo: number, hi: number): number => {
-    for (let i = 0; i < lower.freq.length; i++) {
-      const f = lower.freq[i];
-      if (f < lo || f > hi) continue;
-      if (lower.spl[i] <= ALIVE_DB || upper.spl[i] <= ALIVE_DB) continue;
-      if (upper.spl[i] >= lower.spl[i]) return f;
+  /* Anchor = the raw pair's OVERLAP CENTRE — the same computeIntegration
+   * number the panel's pair chips show ("Overlap 1631 / 5455 Hz"), so the
+   * scan searches the neighbourhood the designer is already looking at.
+   *
+   * The first version used "first frequency where the upper driver's level
+   * reaches the lower's" — with a HOT tweeter that is the bottom edge of the
+   * search window (it is above the mid everywhere), and with a mid that sits
+   * below the woofer through the whole low window it found nothing at all and
+   * fell back to a geometric mean. Measured on Robbert's set the anchors came
+   * out at 548/1800 Hz where the panel's overlap centres sit at 1631/5455 —
+   * the scan searched the wrong neighbourhoods entirely, and the tuner kept
+   * escaping toward the real handover region. One definition of "where the
+   * drivers meet", shared with the display (the bandMetrics lesson). */
+  const overlapAnchor = (lower: GriddedResponse, upper: GriddedResponse): number | null => {
+    try {
+      const c = computeIntegration(
+        combine(lower, upper, { offsetMm: 0, trimDb: 0, inverted: false }),
+      ).overlapCentreHz;
+      return c !== null && Number.isFinite(c) ? c : null;
+    } catch {
+      return null;
     }
-    return Math.sqrt(lo * hi);
   };
-  const rawLow = Math.min(1200, Math.max(250, firstCross(w, m, 200, 1500)));
+  const rawLow = Math.min(1200, Math.max(250, overlapAnchor(w, m) ?? Math.sqrt(200 * 1500)));
   const rawHigh = Math.min(
     7000,
-    Math.max(1800, firstCross(m, t, 1200, 9000), hpFloorHz ?? 0),
+    Math.max(1800, overlapAnchor(m, t) ?? Math.sqrt(1200 * 9000), hpFloorHz ?? 0),
   );
   const n = Math.max(1, Math.round(steps));
   /** The searchable span of one axis: the pin when given, else the raw

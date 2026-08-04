@@ -76,6 +76,10 @@ export interface Design3Input {
   structureHigh?: Struct3Choice;
   /** Tweeter HP floor (≥2×Fs, Hz) — the high knee never goes below it. */
   hpFloorHz?: number;
+  /** Breakup guard (stopband leakage ≥20 dB down beside each crossing),
+   *  default ON — matching the app-wide default. See the leak term below for
+   *  why the DESIGN step must carry it. */
+  breakupGuard?: boolean;
 }
 
 export interface Design3Result {
@@ -225,7 +229,7 @@ export function designThreeWay(input: Design3Input): Design3Result {
     const pairPhase = (
       lo: GriddedResponse,
       hi: GriddedResponse,
-    ): { avg: number; p95: number } => {
+    ): { avg: number; p95: number; xoHz: number | null } => {
       const r = combine(lo, hi, zero);
       const integ = computeIntegration(r);
       let sumErr = 0;
@@ -239,7 +243,7 @@ export function designThreeWay(input: Design3Input): Design3Result {
       }
       // No overlap at all = the branches never meet: a real defect, priced as
       // a full 180° miss rather than silently scoring zero.
-      if (n === 0) return { avg: 180, p95: 180 };
+      if (n === 0) return { avg: 180, p95: 180, xoHz: integ.overlapCentreHz };
       const need = Math.ceil(0.95 * n);
       let acc = 0;
       let p95 = 180;
@@ -250,10 +254,46 @@ export function designThreeWay(input: Design3Input): Design3Result {
           break;
         }
       }
-      return { avg: sumErr / n, p95 };
+      return { avg: sumErr / n, p95, xoHz: integ.overlapCentreHz };
     };
     const low = pairPhase(sum.branches[0], sum.branches[1]);
     const high = pairPhase(sum.branches[1], sum.branches[2]);
+
+    /* Breakup-guard LEAK term — the netOptimizer definition at the 2-way
+     * DESIGN weight (0.02·leakSq, see vfOptimizer's objective). HARD LEARNED
+     * (branch dissection on Robbert's set): without it the design step picks
+     * structures the guard makes UNSATISFIABLE — it chose BW3 @1620 for a
+     * tweeter that sits only ~17 dB under the sum at 1 kHz where the guard
+     * demands 20, so the tuner "solved" the conflict by rebuilding the branch
+     * (−5.4 dB @2k designed → −29.5 delivered) and driving the crossing from
+     * 1620 to 3954 Hz. A fundamental the tuner enforces must be visible to the
+     * stage that picks the structure, or the two fight and the tuner wins. */
+    const leakOf = (
+      lower: GriddedResponse,
+      upper: GriddedResponse,
+      xoHz: number | null,
+    ): number => {
+      if (xoHz === null) return 0;
+      let acc = 0;
+      let n = 0;
+      for (let i = 0; i < sum.freq.length; i++) {
+        const f = sum.freq[i];
+        let margin: number | null = null;
+        if (f >= xoHz * 1.6 && f <= xoHz * 4) margin = sum.combinedSpl[i] - lower.spl[i];
+        else if (f >= xoHz / 4 && f <= xoHz / 1.6) margin = sum.combinedSpl[i] - upper.spl[i];
+        if (margin !== null) {
+          const d = Math.max(0, 20 - margin);
+          acc += d * d;
+          n++;
+        }
+      }
+      return n ? acc / n : 0;
+    };
+    const leakSq =
+      input.breakupGuard === false
+        ? 0
+        : leakOf(sum.branches[0], sum.branches[1], low.xoHz) +
+          leakOf(sum.branches[1], sum.branches[2], high.xoHz);
 
     // The OBJECTIVE averages the pairs (smooth for the simplex — the anchor
     // lesson: never make the search path jagged). The coupled-pairs WORST-pair
@@ -262,7 +302,7 @@ export function designThreeWay(input: Design3Input): Design3Result {
     const p95 = (low.p95 + high.p95) / 2;
     const phaseTerm = (avg / 15) ** 2 + 0.5 * (p95 / 45) ** 2;
     return {
-      fx: 2 * (1 - pw) * amp + 2 * pw * phaseTerm,
+      fx: 2 * (1 - pw) * amp + 2 * pw * phaseTerm + 0.02 * leakSq,
       pairPhaseDeg: [low.avg, high.avg],
     };
   };
