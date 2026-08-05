@@ -2674,15 +2674,37 @@ button:disabled {
 details.cabinet-driver > summary {
   cursor: pointer;
   list-style: none;
+  /* A caret alone was too small to see and too small to hit (Sanders). The
+     whole head is the target now: full-width row, its own padding, and a
+     hover/focus background so it reads as something you can click. */
+  margin: -0.15rem -0.4rem 0;
+  padding: 0.3rem 0.4rem;
+  border-radius: 6px;
+  transition: background 120ms ease;
+}
+details.cabinet-driver > summary:hover {
+  background: color-mix(in srgb, var(--fg) 7%, transparent);
 }
 details.cabinet-driver > summary::-webkit-details-marker {
   display: none;
 }
 details.cabinet-driver > summary::before {
   content: '▾';
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.35rem;
+  height: 1.35rem;
+  flex: 0 0 auto;
+  border: 1px solid var(--border);
+  border-radius: 6px;
   color: var(--muted);
-  font-size: 0.8rem;
-  margin-right: 0.1rem;
+  font-size: 0.75rem;
+  margin-right: 0.15rem;
+}
+details.cabinet-driver > summary:hover::before {
+  border-color: var(--accent);
+  color: var(--fg);
 }
 details.cabinet-driver:not([open]) > summary::before {
   content: '▸';
@@ -2700,4 +2722,12 @@ details.cabinet-driver:not([open]) .cd-summary {
 /* Collapsed, the inline count editor is noise next to the summary line. */
 details.cabinet-driver:not([open]) .cd-head .inline-num {
   display: none;
+}
+
+/* The card became a <details> (display:block), so the derived lines lost the
+   flex-basis:100% that used to put each on its own row and ran together as
+   one string ("...ceilingeffective Ø 126 mmleaving these blank..."). */
+details.cabinet-driver .derived {
+  display: block;
+  margin-top: 0.15rem;
 }

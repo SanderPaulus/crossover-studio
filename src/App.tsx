@@ -8136,6 +8136,20 @@ export default function App() {
                   >
                     {vfBusy ? 'Optimizing + building…' : soloDriver ? 'Optimize — flatten driver' : 'Optimize — design for me'}
                   </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      // Start at the import gate (step 0) when there is no driver
+                      // data yet — the wizard should take you from nothing to a
+                      // built crossover, not assume measurements exist. One
+                      // loaded driver is enough (single-driver mode).
+                      setWizardStep(!woofer && !tweeter ? 0 : 1);
+                      setWizardOpen(true);
+                    }}
+                    title="Design wizard: load measurements, then goals, priority, crossover point, acoustic slopes and component choices in one guided flow — ends with Optimize"
+                  >
+                    {uiMode === 'guided' ? '🧙 Walk me through it' : '🧙 Wizard'}
+                  </button>
                   <select
                     className={uiMode === 'guided' ? 'expert-only' : undefined}
                     value={synthMode}
@@ -8157,20 +8171,6 @@ export default function App() {
                     title="Optimizer settings: priority, amplitude target, in-room weight, EQ bands"
                   >
                     ⚙ Settings
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      // Start at the import gate (step 0) when there is no driver
-                      // data yet — the wizard should take you from nothing to a
-                      // built crossover, not assume measurements exist. One
-                      // loaded driver is enough (single-driver mode).
-                      setWizardStep(!woofer && !tweeter ? 0 : 1);
-                      setWizardOpen(true);
-                    }}
-                    title="Design wizard: load measurements, then goals, priority, crossover point, acoustic slopes and component choices in one guided flow — ends with Optimize"
-                  >
-                    🧙 Wizard
                   </button>
                 </div>
               </div>
