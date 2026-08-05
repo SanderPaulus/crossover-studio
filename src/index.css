@@ -2526,3 +2526,24 @@ button:disabled {
   color: var(--bad);
   font-weight: 600;
 }
+
+/* Group headings inside the optimizer settings. The block held 24 controls in
+   one flat flex row with a single caption on top, so everything looked equally
+   important and nothing told you WHICH decision a control belongs to. Full-row
+   spans, so the flex wrap breaks cleanly at each heading. */
+.opt-settings .opt-group-cap {
+  flex-basis: 100%;
+  margin: 0.55rem 0 -0.1rem;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--muted);
+  border-top: 1px solid var(--border);
+  padding-top: 0.5rem;
+}
+.opt-settings .opt-group-cap:first-of-type {
+  border-top: none;
+  margin-top: 0.2rem;
+  padding-top: 0;
+}

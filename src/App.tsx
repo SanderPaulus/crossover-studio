@@ -8091,6 +8091,7 @@ export default function App() {
                     )}
                   </>
                 )}
+                <span className="opt-group-cap">Goals &amp; weighting</span>
                 <label title={soloDriver ? 'Single-driver mode: relative phase does not exist — the solo objective is response flatness only' : "The big trade-off: budget split between a flat response and flat phase. More phase = flatter phase but more amplitude ripple. Both ends are anchored (100% phase = 90/10 internally): with the response weight at true zero the optimizer would trade a wrecked response for a phase metric it can then game."}>
                   Priority: response {100 - phasePriority}% · phase {phasePriority}%
                   <input
@@ -8140,6 +8141,7 @@ export default function App() {
                     style={{ width: '11rem', accentColor: 'var(--accent)' }}
                   />
                 </label>
+                <span className="opt-group-cap">Filter shape</span>
                 <label
                   className="inline-num"
                   title="Hard cap on EQ bands per driver the optimizer may spend — more bands = finer correction but a bigger search (and more passive components later)"
@@ -8234,6 +8236,7 @@ export default function App() {
                     </label>
                   </>
                 )}
+                <span className="opt-group-cap">Targets</span>
                 <label title="Staged design (trapmethode): HP/LP structure first; EQ bands, Zobel/LCR networks and bypass caps are only added while the targets below are unmet — the fewest components that reach the goal, with a per-stage report.">
                   <input
                     type="checkbox"
@@ -8271,6 +8274,7 @@ export default function App() {
                     )}
                   </span>
                 )}
+                <span className="opt-group-cap">Safety nets</span>
                 <label title="Stopband leakage beside the crossover must stay ≥20 dB below the combined — cone-breakup phase cannot be filtered away, it can only be made irrelevant in level">
                   <input
                     type="checkbox"
@@ -8280,6 +8284,7 @@ export default function App() {
                   />{' '}
                   Breakup guard (≥20 dB)
                 </label>
+                <span className="opt-group-cap">Components</span>
                 <label
                   style={{ opacity: hasImportedCatalog() ? 1 : 0.5 }}
                   title={
@@ -8296,6 +8301,7 @@ export default function App() {
                   />{' '}
                   Snap to catalog{!hasImportedCatalog() && ' (needs import)'}
                 </label>
+                <span className="opt-group-cap">Crossover</span>
                 <label title="Pin the ACOUSTIC crossover: the frequency where the filtered drivers actually cross must land within frequency ± margin — in the design optimizer AND the component tuner. Margin 0 = exactly there (±2% search room remains).">
                   <input
                     type="checkbox"
@@ -8325,6 +8331,7 @@ export default function App() {
                     </select>
                   </label>
                 )}
+                <span className="opt-group-cap">Driver limits</span>
                 {threeWay && (
                   <label title="Woofer nominal size — sets the W-M handover's beaming CEILING (a cone is practically usable to ~3× its beaming onset), the mirror of the mid-size rule for the high crossing. With the 2×Fs floor from the measured mid impedance this gives the free scan a physics window instead of a guess.">
                     Woofer size (W-M ceiling)
