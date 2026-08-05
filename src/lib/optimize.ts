@@ -1,7 +1,11 @@
 /**
- * Nelder-Mead simplex minimiser — compact, derivative-free. Used by the
- * passive-filter synthesis to fit component values (in log-space) so the
- * MNA-solved response matches a target transfer.
+ * Nelder-Mead simplex minimiser — compact, derivative-free.
+ *
+ * Used wherever the objective has terms no gradient can see: the component
+ * tuner (its acoustic crossing is a step function of the values), the virtual
+ * and solo filter optimisers. The passive-filter VALUE fit moved to `lbfgs.ts`
+ * on the exact adjoint gradient in aug 2026 — that objective is smooth, and a
+ * quasi-Newton method exploits it.
  */
 
 export interface NelderMeadOptions {

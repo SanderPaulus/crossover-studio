@@ -23,6 +23,7 @@ import type {
   VfRoundsResult,
 } from './optimWorker.ts';
 import type { NetOptimizeResult } from './netOptimizer.ts';
+import type { Chain3Input, Chain3Result } from './threeWayChain.ts';
 import type { SoloChainInput, SoloChainResult } from './soloOptimizer.ts';
 import {
   followupVariantsFor,
@@ -85,7 +86,7 @@ function catalogPayload(): CatalogPayload {
 
 function run<T>(
   slot: number,
-  kind: 'chainOne' | 'vfRounds' | 'netOptimize' | 'soloChain',
+  kind: 'chainOne' | 'chain3One' | 'vfRounds' | 'netOptimize' | 'soloChain',
   payload: unknown,
   onProgress?: (d: unknown) => void,
 ): Promise<T> {
@@ -220,6 +221,58 @@ export function runChainScan(
     });
   }
   return Promise.all(vs.map((v, i) => runOne(v, i % poolSize))).then(finish);
+}
+
+/** 3-way 2D crossover scan (trede 4c): every (low, high) candidate runs a
+ *  full chain concurrently over the pool; same throttled aggregate progress
+ *  as the 2-way scan. No rescue semantics — the 2D grid IS the competition. */
+export function runChain3Scan(
+  inputs: Chain3Input[],
+  onProgress?: (d: ScanProgress) => void,
+): Promise<Chain3Result[]> {
+  const poolSize = Math.max(
+    1,
+    Math.min(4, (typeof navigator !== 'undefined' ? navigator.hardwareConcurrency : 4) - 1 || 1),
+  );
+  const state = new Map<string, { evals: number; text: string; done: boolean }>();
+  let emitQueued = false;
+  const emit = () => {
+    if (!onProgress || emitQueued) return;
+    emitQueued = true;
+    setTimeout(() => {
+      emitQueued = false;
+      let evals = 0;
+      let done = 0;
+      const items: { label: string; text: string; done: boolean }[] = [];
+      for (const [label, st] of state) {
+        evals += st.evals;
+        if (st.done) done++;
+        items.push({ label, text: st.text, done: st.done });
+      }
+      onProgress({ round: done, evals, items });
+    }, 80);
+  };
+  return Promise.all(
+    inputs.map((input, i) => {
+      state.set(input.label, { evals: 0, text: 'queued', done: false });
+      return run<Chain3Result>(i % poolSize, 'chain3One', { input }, (d) => {
+        const p = d as ChainOneProgress;
+        const st = state.get(input.label);
+        if (!st) return;
+        st.text = stageText(p);
+        emit();
+      }).then((r) => {
+        const st = state.get(input.label);
+        if (st) {
+          st.evals = r.net.evaluations;
+          st.text = `✓ ${r.net.after.rippleDb.toFixed(2)} dB/${r.net.after.phaseDeg.toFixed(1)}°${r.zOk ? '' : ' ⚠Z'}`;
+          st.done = true;
+        }
+        emit();
+        return r;
+      });
+    }),
+  );
 }
 
 export function runVfRoundsTask(

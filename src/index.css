@@ -1844,8 +1844,10 @@ button:disabled {
   border-radius: 12px;
   background: var(--panel);
   box-shadow: 0 8px 30px rgba(0, 0, 0, 0.25);
-  /* FIXED width: ticking stage texts must never resize the popup. */
-  width: min(28rem, 92vw);
+  /* FIXED width: ticking stage texts must never resize the popup. Sized for
+     the WIDEST label the scan produces — the 3-way candidates carry both
+     handovers ("W-M 411 · M-T 2520 Hz"), which the 2-way-era 28rem clipped. */
+  width: min(34rem, 92vw);
   text-align: center;
 }
 
@@ -1888,7 +1890,9 @@ button:disabled {
   color: var(--muted);
 }
 .busy-scan td:first-child {
-  width: 34%;
+  /* Wide enough for a full two-handover label; the stage column keeps the
+     rest, which still fits "tune (cap shrink ladder)". */
+  width: 47%;
   font-weight: 600;
   color: var(--fg);
 }
@@ -2232,4 +2236,185 @@ button:disabled {
   color: var(--accent);
   border-color: var(--accent);
   font-weight: 600;
+}
+
+/* Cabinet & drivers: one block per loaded driver inside the Setup fieldset.
+   Indented and rule-marked so a column of x/y/Sd fields reads as belonging to
+   its driver rather than to the cabinet above it. */
+.cabinet-driver {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem 0.7rem;
+  width: 100%;
+  padding: 0.35rem 0 0.35rem 0.6rem;
+  border-left: 2px solid var(--border);
+}
+.cabinet-driver > strong {
+  min-width: 6.5rem;
+}
+.cabinet-driver .derived {
+  flex-basis: 100%;
+}
+
+/* The reference point is the anchor for every position in the block, so it is
+   explained ON SCREEN rather than in a tooltip — a tooltip is hover-only, and
+   this is the one thing a reader must know before typing anything. */
+.cabinet-note {
+  flex-basis: 100%;
+  margin: 0.1rem 0 0.3rem;
+  font-size: 0.82rem;
+  line-height: 1.45;
+  color: var(--muted);
+  max-width: 60ch;
+}
+
+/* ---- Measuring guide -------------------------------------------------- *
+   Illustrations are driven by the app's own geometry functions, so they are
+   live diagrams rather than pictures. Motion is purposeful: the sweep loop
+   exists because "the turntable turns the CABINET" is a motion a still frame
+   cannot make, and it yields to any manual input. */
+.mg-card {
+  /* Body copy, not a dialog prompt: left-aligned and measured. The shared card
+     centres its text, which is right for a confirm box and wrong for prose. */
+  text-align: left;
+}
+.mg-card p,
+.mg-card ul,
+.mg-card h3 {
+  max-width: 68ch;
+}
+.mg-card h3 {
+  margin: 1.4rem 0 0.4rem;
+  font-size: 1rem;
+}
+.mg-card figure {
+  margin: 0.6rem 0 0.2rem;
+}
+.mg-card figcaption {
+  margin-top: 0.35rem;
+  font-size: 0.78rem;
+  line-height: 1.45;
+  color: var(--muted);
+  max-width: 62ch;
+}
+.mg-cross {
+  stroke: var(--muted);
+  stroke-width: 1.5;
+}
+.mg-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+.mg-head h2 {
+  margin: 0;
+}
+.mg-stage {
+  padding: 0.4rem;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--panel-2, var(--panel));
+}
+.mg-svg {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+.mg-cab {
+  fill: var(--border);
+  opacity: 0.55;
+}
+.mg-baffle {
+  stroke: var(--muted);
+  stroke-width: 2;
+}
+.mg-axis {
+  stroke: var(--muted);
+  stroke-width: 1;
+  stroke-dasharray: 4 4;
+}
+.mg-ray {
+  stroke: var(--muted);
+  stroke-width: 1.5;
+  opacity: 0.85;
+}
+.mg-arc {
+  fill: var(--accent);
+  opacity: 0.16;
+}
+.mg-drv {
+  stroke: var(--panel);
+  stroke-width: 1;
+}
+.mg-mic {
+  fill: var(--accent);
+}
+.mg-lbl {
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+  /* Halo so a label stays readable wherever it lands — the tweeter's sits
+     right on the dashed mic axis by construction. */
+  paint-order: stroke;
+  stroke: var(--panel);
+  stroke-width: 3px;
+  stroke-linejoin: round;
+}
+.mg-mic-lbl,
+.mg-ref-lbl {
+  fill: var(--muted);
+  text-anchor: middle;
+}
+.mg-ref-lbl {
+  text-anchor: start;
+}
+.mg-slider {
+  /* The app's global `label` is a column; a slider row must say otherwise
+     explicitly or the range input stretches to the label's full height. */
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+  margin: 0.2rem 0 0.9rem;
+  font-size: 0.85rem;
+}
+.mg-slider input[type='range'] {
+  height: auto;
+  align-self: center;
+}
+.mg-slider input[type='range'] {
+  flex: 1 1 12rem;
+  min-width: 8rem;
+}
+.mg-slider output {
+  min-width: 5rem;
+  font-variant-numeric: tabular-nums;
+  color: var(--muted);
+}
+.mg-table {
+  border-collapse: collapse;
+  margin: 0.2rem 0 0.6rem;
+  font-size: 0.85rem;
+  font-variant-numeric: tabular-nums;
+}
+.mg-table th,
+.mg-table td {
+  padding: 0.15rem 0.9rem 0.15rem 0;
+  text-align: left;
+}
+.mg-table th {
+  color: var(--muted);
+  font-weight: 500;
+}
+.mg-ok {
+  color: var(--ok, var(--muted));
+}
+.mg-warn {
+  color: var(--warn, var(--muted));
+}
+
+.mg-tablenote {
+  margin: 0.9rem 0 0.2rem;
 }

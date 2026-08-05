@@ -94,6 +94,37 @@ function sections(
   }
 }
 
+/**
+ * Per-LADDER-ELEMENT pole data for seeding a passive realisation: one entry per
+ * reactive element, in source→driver order.
+ *
+ * A textbook ladder element is sized from the Q and corner of the section it
+ * belongs to — `C = Q/(ω·R)`, `L = R/(ω·Q)` — so a synthesiser that ignores the
+ * chosen alignment seeds every filter at Q = 1. That is not any of the
+ * alignments this app offers: Linkwitz-Riley is Q = 0.5 and Butterworth 0.707,
+ * so a Q = 1 seed is exactly 2× too much capacitance and half the inductance
+ * for the default choice. A first-order section is Q = 1 by definition, which
+ * is why the plain `1/(ω·R)` form is right there and only there.
+ *
+ * Bessel sections do not sit at the nominal corner; `evalHpLp` scales them by
+ * `sec.f`, and the direction inverts for high-pass (its ratio is f0/f). The
+ * corner returned here follows that same convention, so the seed matches the
+ * transfer function it is being fitted to.
+ */
+export function ladderElementSeeds(
+  spec: HpLpSpec,
+  mode: 'hp' | 'lp',
+): Array<{ q: number; cornerHz: number }> {
+  const out: Array<{ q: number; cornerHz: number }> = [];
+  for (const sec of sections(spec.kind, spec.order)) {
+    const scale = sec.f ?? 1;
+    const cornerHz = mode === 'lp' ? spec.freq * scale : spec.freq / scale;
+    const q = sec.order === 1 ? 1 : (sec.q ?? Math.SQRT1_2);
+    for (let i = 0; i < sec.order; i++) out.push({ q, cornerHz });
+  }
+  return out;
+}
+
 /** H(jω) of one HP/LP block at frequency f. */
 export function evalHpLp(spec: HpLpSpec, mode: 'hp' | 'lp', f: number): Complex {
   // Normalised s = j·(f/f0) for LP; HP is the s → 1/s transform.

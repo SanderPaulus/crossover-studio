@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { computeDirectivity, type AngleResponse } from './directivity.ts';
+import { beamingCeilingHz, computeDirectivity, type AngleResponse } from './directivity.ts';
 import { logspace, resample, type GriddedResponse } from './dsp.ts';
 import { parseFrd } from './parsers/frd.ts';
 import { evalDriverFilter, defaultHpLp } from './filters.ts';
@@ -85,5 +85,55 @@ describe('computeDirectivity', () => {
     // is also a directivity decision, and why this chart exists.
     expect(at(raw, 12000)).toBeLessThan(0);
     expect(at(filtered, 12000)).toBeGreaterThan(0);
+  });
+});
+
+describe('beamingCeilingHz — measured handover ceiling', () => {
+  const shaped = (f30: (f: number) => number): AngleResponse[] => [
+    { hor: 0, response: flat(90) },
+    { hor: 10, response: flat(90) },
+    {
+      hor: 30,
+      response: { freq: [...grid], spl: grid.map((f) => 90 - f30(f)), phaseDeg: grid.map(() => 0) },
+    },
+  ];
+
+  it('finds the onset where the 30° response stays down', () => {
+    // 0 dB down below 1 kHz, then narrowing ~6 dB/oct above it.
+    const hz = beamingCeilingHz(shaped((f) => Math.max(0, 6 * Math.log2(f / 1000))));
+    // Threshold 4 dB on a 6 dB/oct slope → ~1.59 kHz.
+    expect(hz).not.toBeNull();
+    expect(hz!).toBeGreaterThan(1200);
+    expect(hz!).toBeLessThan(2100);
+  });
+
+  it('a diffraction blip does NOT read as beaming (Robbert mid lesson)', () => {
+    // A 5 dB ripple confined to ⅓ octave around 1.5 kHz, wide again above,
+    // real beaming from 6 kHz. Real beaming only gets worse with frequency;
+    // a ripple comes back down — the ½-octave persistence check separates
+    // them.
+    const hz = beamingCeilingHz(
+      shaped((f) => {
+        const blip = Math.abs(Math.log2(f / 1500)) < 1 / 6 ? 5 : 0;
+        const beam = Math.max(0, 9 * Math.log2(f / 6000));
+        return blip + beam;
+      }),
+    );
+    expect(hz).not.toBeNull();
+    expect(hz!).toBeGreaterThan(5000);
+  });
+
+  it('a driver that never beams inside its band returns null', () => {
+    expect(beamingCeilingHz(shaped(() => 1))).toBeNull();
+  });
+
+  it('needs a 0° reference and a ≥30° angle', () => {
+    const only0 = [{ hor: 0, response: flat(90) }];
+    expect(beamingCeilingHz(only0)).toBeNull();
+    const narrow = [
+      { hor: 0, response: flat(90) },
+      { hor: 10, response: flat(90) },
+    ];
+    expect(beamingCeilingHz(narrow)).toBeNull();
   });
 });

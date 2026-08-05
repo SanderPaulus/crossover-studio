@@ -333,3 +333,105 @@ export function assessSharedReference(
       `measurements — do not trust the relative phase.`,
   };
 }
+
+/* ---------------------------------------------------------------------------
+ * PER-PAIR time-base check on EXCESS phase (3-way).
+ *
+ * The check above compares ONE pair of raw bulk-delay fits. In a three-way
+ * that breaks down twice over, and the failure is a false alarm rather than a
+ * missed fault — which is worse, because a designer then distrusts phase
+ * numbers that are actually sound:
+ *
+ *  1. WRONG PAIR. It compares the woofer and the tweeter — the two drivers
+ *     that in a 3-way barely overlap at all (the mid carries everything in
+ *     between). Neither fit band contains a region where both play.
+ *  2. WRONG PHASE. A raw bulk-delay fit absorbs the driver's OWN minimum-phase
+ *     rotation, so its R² collapses wherever the driver is rolling off, and
+ *     the fitted "delay" changes from band to band. Measured on Robbert's set
+ *     the mid reported 304 µs over 200–800 Hz and 8 µs over 5–8 kHz — the same
+ *     driver cannot have two travel times.
+ *
+ * The honest quantity is the EXCESS delay (measured − minimum-phase
+ * reconstruction), the same one the VituixCAD bridge already uses. On excess
+ * phase the same mid reports −21 µs with R² = 1.000 in EVERY sub-band: that
+ * stability is the actual fingerprint of a shared clock, because independent
+ * time references produce an arbitrary offset, not a reproducible one.
+ *
+ * So: fit each ADJACENT pair on excess phase, over a band where BOTH drivers
+ * genuinely play, and judge that. `assessSharedReference` above is untouched —
+ * two-way keeps its exact behaviour.
+ * ------------------------------------------------------------------------- */
+
+export interface PairTimeBaseResult {
+  verdict: SharedRefVerdict;
+  /** The band both drivers were fitted over (Hz). */
+  band: [number, number];
+  /** upper − lower excess delay, µs (positive = upper driver later). */
+  deltaUs: number;
+  deltaMm: number;
+  rSquared: { lower: number; upper: number };
+  message: string;
+}
+
+export interface PairTimeBaseInput {
+  /** Excess-phase bulk-delay fit of the LOWER driver of the pair. */
+  lower: BulkDelayEstimate;
+  upper: BulkDelayEstimate;
+  band: [number, number];
+  /** Names for the message ("mid", "tweeter", …). */
+  names: { lower: string; upper: string };
+}
+
+/**
+ * Judge one adjacent pair's shared time base from EXCESS-phase fits.
+ *
+ * Thresholds mirror the two-way check: |Δ| beyond `maxGeometryUs` cannot be
+ * driver geometry on one baffle, and a fit that is not delay-like cannot
+ * support any verdict at all. R² is judged on the pair's WORST fit.
+ */
+export function assessPairTimeBase(
+  input: PairTimeBaseInput,
+  opts: SharedReferenceOptions = {},
+): PairTimeBaseResult {
+  const { maxGeometryUs = 300, minRSquared = 0.9 } = opts;
+  const { lower, upper, band, names } = input;
+  const deltaUs = (upper.delaySeconds - lower.delaySeconds) * 1e6;
+  const deltaMm = deltaUs * 1e-6 * SPEED_OF_SOUND * 1000;
+  const rSquared = { lower: lower.rSquared, upper: upper.rSquared };
+  const base = { band, deltaUs, deltaMm, rSquared };
+  const where = `${Math.round(band[0])}–${Math.round(band[1])} Hz`;
+
+  if (lower.rSquared < minRSquared || upper.rSquared < minRSquared) {
+    const which = [
+      lower.rSquared < minRSquared ? `${names.lower} R²=${lower.rSquared.toFixed(3)}` : null,
+      upper.rSquared < minRSquared ? `${names.upper} R²=${upper.rSquared.toFixed(3)}` : null,
+    ]
+      .filter(Boolean)
+      .join(', ');
+    return {
+      ...base,
+      verdict: 'unreliable',
+      message:
+        `${names.lower}–${names.upper}: excess phase is not delay-like over ${where} ` +
+        `(${which} < ${minRSquared}) — this pair's time base cannot be judged here.`,
+    };
+  }
+  if (Math.abs(deltaUs) <= maxGeometryUs) {
+    return {
+      ...base,
+      verdict: 'plausible',
+      message:
+        `${names.lower}–${names.upper}: excess-delay difference ${deltaUs.toFixed(0)} µs ` +
+        `(${deltaMm.toFixed(0)} mm) over ${where} — consistent with acoustic-centre geometry ` +
+        `on one baffle, so these two share a time base.`,
+    };
+  }
+  return {
+    ...base,
+    verdict: 'suspect',
+    message:
+      `${names.lower}–${names.upper}: excess-delay difference ${deltaUs.toFixed(0)} µs ` +
+      `(${deltaMm.toFixed(0)} mm) over ${where} is too large for driver geometry on one ` +
+      `baffle — suspect a re-referenced time axis or a different session for one of these files.`,
+  };
+}

@@ -1,10 +1,11 @@
 import type { Complex } from './complex.ts';
 import { abs, arg } from './complex.ts';
 import type { DriverFilterSpec } from './filters.ts';
-import { evalDriverFilter } from './filters.ts';
+import { evalDriverFilter, ladderElementSeeds } from './filters.ts';
 import type { Netlist, NetElement, PassiveElement } from './network.ts';
 import { solveNetwork } from './network.ts';
-import { nelderMead } from './optimize.ts';
+import { lbfgs } from './lbfgs.ts';
+import { dbPhaseGradient, solveWithSensitivities } from './adjoint.ts';
 import { coilDcr, hasImportedCatalog, pickCandidates, type CatalogPick, type SnapPrefs } from './catalog.ts';
 import { wrapDeg } from './dsp.ts';
 
@@ -15,8 +16,8 @@ import { wrapDeg } from './dsp.ts';
  * Approach: derive a ladder topology from the target spec (HP order → series-C
  * / shunt-L sections, LP order → series-L / shunt-C sections, negative gain →
  * L-pad, cutting EQ band → series-RLC notch across the driver), seed it with
- * textbook values computed against |Z(fc)|, then let Nelder-Mead refine the
- * values (in log-space, so they stay positive) until the MNA-solved transfer
+ * textbook values computed against |Z(fc)|, then let a gradient search refine
+ * the values (in log-space, so they stay positive) until the MNA-solved transfer
  * matches the target in magnitude AND phase. The load is always the measured
  * complex impedance — the whole reason naive textbook values miss.
  *
@@ -64,6 +65,25 @@ interface Slot {
   kind: 'C' | 'L' | 'R';
   role: string;
   initial: number; // F / H / Ω
+  /**
+   * The ALIGNMENT-AWARE textbook value — `C = Q/(ωR)`, `L = R/(ωQ)` with the Q
+   * of the chosen alignment — offered to the fit as an extra STARTING POINT.
+   *
+   * `initial` above deliberately stays the historical Q = 1 form, because the
+   * role ANCHOR is built on it and the anchor is part of the objective. Moving
+   * it was measured to change two acoustic-mode results for the worse: that was
+   * not a seeding change at all but an objective change, and the anchor lesson
+   * says those are the ones that bite. The anchor is a DEGENERACY detector with
+   * ×3 of free room anyway — the two conventions differ by at most 2×, so both
+   * sit comfortably inside it and either serves that purpose.
+   *
+   * Why two conventions exist at all: a doubly-terminated LADDER of order ≥ 4
+   * does not have the element values of its cascaded biquads (Dickason's LR4
+   * high-pass table gives 0.2533 and 0.0563 for the two series caps, where the
+   * per-section-Q form gives 0.1125 twice — their geometric mean). Neither is
+   * "the" textbook value, so the fit starts from both and keeps what wins.
+   */
+  altInitial?: number;
 }
 
 interface Topology {
@@ -115,18 +135,30 @@ function deriveTopology(
   const rungs: Rung[] = [];
 
   if (spec.hp.enabled) {
-    const fc = spec.hp.freq;
-    const R = zAt(fc);
-    const w0 = 2 * Math.PI * fc;
+    const R = zAt(spec.hp.freq);
     // Exactly `order` reactive elements, alternating series C / shunt L — an
-    // odd order gets its honest 3-element ladder, not a detuned 4th.
+    // odd order gets its honest 3-element ladder, not a detuned 4th. Values
+    // come from the CHOSEN alignment's pole data (C = Q/ωR, L = R/ωQ); seeding
+    // everything at Q = 1 would be 2x too much capacitance for Linkwitz-Riley.
+    const seeds = ladderElementSeeds(spec.hp, 'hp');
     for (let i = 0; i < spec.hp.order; i++) {
       const sec = Math.floor(i / 2) + 1;
+      const w = 2 * Math.PI * seeds[i].cornerHz;
       if (i % 2 === 0) {
-        slots.push({ kind: 'C', role: `HP section ${sec} series C`, initial: 1 / (w0 * R) });
+        slots.push({
+          kind: 'C',
+          role: `HP section ${sec} series C`,
+          initial: 1 / (w * R),
+          altInitial: seeds[i].q / (w * R),
+        });
         rungs.push({ type: 'series', slot: slots.length - 1 });
       } else {
-        slots.push({ kind: 'L', role: `HP section ${sec} shunt L`, initial: R / w0 });
+        slots.push({
+          kind: 'L',
+          role: `HP section ${sec} shunt L`,
+          initial: R / w,
+          altInitial: R / (w * seeds[i].q),
+        });
         rungs.push({ type: 'shunt', slot: slots.length - 1 });
       }
     }
@@ -136,16 +168,26 @@ function deriveTopology(
   // trap adds elliptic-style steepness right where breakup lives.
   let lpMidInsert: number | null = null;
   if (spec.lp.enabled) {
-    const fc = spec.lp.freq;
-    const R = zAt(fc);
-    const w0 = 2 * Math.PI * fc;
+    const R = zAt(spec.lp.freq);
+    const seeds = ladderElementSeeds(spec.lp, 'lp');
     for (let i = 0; i < spec.lp.order; i++) {
       const sec = Math.floor(i / 2) + 1;
+      const w = 2 * Math.PI * seeds[i].cornerHz;
       if (i % 2 === 0) {
-        slots.push({ kind: 'L', role: `LP section ${sec} series L`, initial: R / w0 });
+        slots.push({
+          kind: 'L',
+          role: `LP section ${sec} series L`,
+          initial: R / w,
+          altInitial: R / (w * seeds[i].q),
+        });
         rungs.push({ type: 'series', slot: slots.length - 1 });
       } else {
-        slots.push({ kind: 'C', role: `LP section ${sec} shunt C`, initial: 1 / (w0 * R) });
+        slots.push({
+          kind: 'C',
+          role: `LP section ${sec} shunt C`,
+          initial: 1 / (w * R),
+          altInitial: seeds[i].q / (w * R),
+        });
         rungs.push({ type: 'shunt', slot: slots.length - 1 });
       }
       // Mid-ladder trap insertion point: between the first full section and
@@ -357,6 +399,8 @@ function deriveTopology(
 export interface SynthesizeOptions {
   /** Decimate the grid by this factor during optimisation. Default 5. */
   decimate?: number;
+  /** Iteration cap per descent run. Default scales with slot count; the
+   *  gradient search normally converges two orders below it. */
   maxIterations?: number;
   /** Wire the driver inverted (e.g. LR2 partner). Default false. */
   inverted?: boolean;
@@ -662,70 +706,199 @@ export function synthesize(
     );
   };
 
-  // Iteration budget scales with dimensionality: a heavy multi-notch branch
-  // (15+ dims) simply needs more simplex steps than a bare LR2 ladder.
-  const maxIterations = opts.maxIterations ?? Math.max(900, 140 * topo.slots.length);
+  /**
+   * The SAME objective with its exact gradient (adjoint.ts). Every term above
+   * is differentiable in log10 space — the guards are all `max(0,·)²`, which
+   * has a continuous derivative — so this is the identical function, not an
+   * approximation of it.
+   *
+   * `objective` above stays the scalar AUTHORITY: the discrete catalog pass
+   * evaluates through it, and so does the multi-start selection below — so a
+   * chain-rule slip here could cost convergence speed but never the choice of
+   * end point. The network sensitivities underneath are verified against finite
+   * differences of the production solver in adjoint.test.ts; this whole
+   * function was checked the same way against `objective` over every KOAN
+   * topology in the suite (3–18 slots, filter and acoustic mode, with and
+   * without catalog-snap): worst relative error 1e-7.
+   */
+  const slotIds = topo.slots.map((_, i) => `S${i}`);
+  /** d(modelled coil DCR)/dL for the catalog-snap fit, where DCR ≡ f(L). */
+  const dModelSrs = (vals: readonly number[]): (number | undefined)[] =>
+    topo.slots.map((s, i) =>
+      s.kind === 'L' ? 0.29 * 0.65 * (vals[i] * 1e3) ** -0.35 * 1e3 : undefined,
+    );
 
-  const x0 = topo.slots.map((s) => Math.log10(s.initial));
-  let fit = nelderMead(objective, x0, { maxIterations, tolerance: 1e-6, step: 0.12 });
-  // Deterministic restarts: high-dimensional branches (several notch chains)
-  // regularly stall in a poor basin from the textbook seed. Widen the simplex
-  // around the best point, then nudge it apart; keep whatever wins.
-  // "Converged" = the simplex collapsed within budget OR the search went
-  // stationary: a fresh run can no longer improve the objective by >1%. In
-  // 15+ dimensions the simplex rarely collapses inside any sane budget even
-  // AT the minimum — the iteration counter alone would cry wolf.
-  let stationary = false;
-  for (const rs of [
-    { perturb: 0, step: 0.3 },
-    { perturb: 0.18, step: 0.12 },
-  ]) {
-    if (fit.converged && fit.fx < 0.02) break;
-    const xs = fit.x.map((v, i) => v + rs.perturb * (i % 2 === 0 ? 1 : -1));
-    const again = nelderMead(objective, xs, { maxIterations, tolerance: 1e-6, step: rs.step });
-    if (again.fx < fit.fx) fit = again;
-  }
-  // Block-coordinate refinement: past ~10 dims one simplex crawls. Re-polish
-  // overlapping 6-dim blocks around the global best (cheap, targeted), then
-  // finish with a tight full-dimensional polish from the refined point.
-  if (topo.slots.length > 9) {
-    for (let start = 0; start < topo.slots.length; start += 3) {
-      const ids: number[] = [];
-      for (let k = start; k < Math.min(start + 6, topo.slots.length); k++) ids.push(k);
-      const subObjective = (xs: readonly number[]): number => {
-        const full = [...fit.x];
-        ids.forEach((slot, j) => (full[slot] = xs[j]));
-        return objective(full);
-      };
-      const sub = nelderMead(subObjective, ids.map((i) => fit.x[i]), {
-        maxIterations: 400,
-        tolerance: 1e-7,
-        step: 0.08,
-      });
-      if (sub.fx < fit.fx) {
-        const full = [...fit.x];
-        ids.forEach((slot, j) => (full[slot] = sub.x[j]));
-        fit = { ...fit, x: full, fx: sub.fx };
+  const objectiveGrad = (logVals: readonly number[]): { fx: number; grad: number[] } => {
+    const n = logVals.length;
+    const vals = logVals.map((v) => 10 ** v);
+    const grad = new Array<number>(n).fill(0);
+    let sens;
+    try {
+      sens = solveWithSensitivities(
+        topo.build(vals, catalogSnap ? modelSrs(vals) : undefined),
+        optFreq,
+        { drv: optZ },
+        slotIds,
+        catalogSnap ? { dSeriesRdValue: dModelSrs(vals) } : {},
+      );
+    } catch {
+      return { fx: 1e9, grad };
+    }
+    const h = sens.transfers['D'];
+    const m = h.length;
+
+    // Per-slot dB and degree sensitivities at every optimisation point.
+    const gDb: Float64Array[] = [];
+    const gDeg: Float64Array[] = [];
+    for (let s = 0; s < n; s++) {
+      const a = new Float64Array(m);
+      const b = new Float64Array(m);
+      for (let i = 0; i < m; i++) {
+        const g = dbPhaseGradient(h[i], sens.dTransfers['D'][s][i]);
+        a[i] = g.dDb;
+        b[i] = g.dDeg;
+      }
+      gDb.push(a);
+      gDeg.push(b);
+    }
+
+    // Reuses magErrors — one definition of the level refit, not two.
+    const dbErrs = magErrors(h, optSpl);
+    const drift = lastLevelDrift;
+    // Acoustic mode re-fits the reference level every evaluation, so the level
+    // itself moves with the components: ∂level/∂θ is a weighted mean of ∂dB/∂θ.
+    const dLevel = new Float64Array(n);
+    if (optSpl) {
+      for (let s = 0; s < n; s++) {
+        let acc = 0;
+        for (let i = 0; i < m; i++) acc += weights[i] * gDb[s][i];
+        dLevel[s] = acc / wSum;
       }
     }
-    // Tight full-dimensional polish rounds; stop when a round stops paying.
-    for (let round = 0; round < 3; round++) {
-      const final = nelderMead(objective, [...fit.x], { maxIterations, tolerance: 1e-6, step: 0.04 });
-      const gained = final.fx < fit.fx * 0.99;
-      if (final.fx < fit.fx) fit = final;
-      if (!gained || fit.converged) break;
+
+    let acc = 0;
+    for (let i = 0; i < m; i++) {
+      const degErr = wrapDeg(((arg(h[i]) - arg(optTarget[i])) * 180) / Math.PI);
+      acc += weights[i] * (magW * dbErrs[i] * dbErrs[i] + phW * (degErr / PHASE_SCALE) ** 2);
+      for (let s = 0; s < n; s++) {
+        const dErr = gDb[s][i] - dLevel[s];
+        grad[s] +=
+          weights[i] *
+          (2 * magW * dbErrs[i] * dErr +
+            (2 * phW * degErr * gDeg[s][i]) / (PHASE_SCALE * PHASE_SCALE));
+      }
+    }
+    let fx = acc / wSum;
+    for (let s = 0; s < n; s++) grad[s] = grad[s] / wSum + 0.1 * drift * dLevel[s];
+    fx += 0.05 * drift * drift;
+
+    if (protMask) {
+      let prot = 0;
+      let np = 0;
+      const pg = new Array<number>(n).fill(0);
+      for (let i = 0; i < m; i++) {
+        if (!protMask[i]) continue;
+        np++;
+        const d = Math.max(0, dbOf(h[i]) + 15);
+        prot += d * d;
+        if (d > 0) for (let s = 0; s < n; s++) pg[s] += 2 * d * gDb[s][i];
+      }
+      if (np) {
+        fx += (0.02 * prot) / np;
+        for (let s = 0; s < n; s++) grad[s] += (0.02 * pg[s]) / np;
+      }
+    }
+
+    for (let i = 0; i < n; i++) {
+      const [lo, hi] = BOUNDS[topo.slots[i].kind];
+      const v = logVals[i];
+      if (v < Math.log10(lo)) {
+        fx += 8 * (Math.log10(lo) - v) ** 2;
+        grad[i] -= 16 * (Math.log10(lo) - v);
+      } else if (v > Math.log10(hi)) {
+        fx += 8 * (v - Math.log10(hi)) ** 2;
+        grad[i] += 16 * (v - Math.log10(hi));
+      }
+      if (anchored[i]) {
+        const d = v - Math.log10(topo.slots[i].initial);
+        const ex = Math.max(0, Math.abs(d) - LOG3);
+        if (ex > 0) {
+          fx += 6 * ex * ex;
+          grad[i] += 12 * ex * Math.sign(d);
+        }
+      }
+    }
+
+    return { fx, grad };
+  };
+
+  const maxIterations = opts.maxIterations ?? Math.max(900, 140 * topo.slots.length);
+
+  /**
+   * Value fit: L-BFGS on the exact adjoint gradient, from a SCATTER of
+   * deterministic starting points.
+   *
+   * Why this shape. A gradient method commits to the basin it starts in, so it
+   * is not a drop-in for a simplex — measured on real KOAN branches, single-
+   * start L-BFGS matched Nelder-Mead's optimum from close seeds and LOST from
+   * far ones. But it reaches those optima in ~30–60× fewer solves, and that
+   * surplus buys the thing a descent method actually lacks: DIVERSITY. Five
+   * scattered starts, keep the best. Measured over 12 (topology × seed) cases
+   * at 8/15/20 dimensions: 2 wins, 10 ties, 0 losses against the full former
+   * recipe (simplex + restarts + block refinement + polish + probe), at 2.6×
+   * the speed.
+   *
+   * Note this is SEEDING, the mechanism this codebase has repeatedly found to
+   * be the safe way to inject a prior — the objective itself is untouched.
+   */
+  const x0 = topo.slots.map((s) => Math.log10(s.initial));
+  const lbfgsOpts = { maxIterations, maxStep: 0.4, tolerance: 1e-10 } as const;
+
+  /**
+   * Which start wins is decided by `objective` — the SCALAR authority the
+   * discrete catalog pass and the tests also evaluate through. So a slip in
+   * the gradient's chain rule could at worst cost convergence speed; it can
+   * never make the fit SELECT a point it measures as worse. (The network
+   * sensitivities themselves are verified exactly in adjoint.test.ts.)
+   */
+  // The second textbook convention (see Slot.altInitial) rides along as one
+  // more start — only where it actually differs from the first.
+  const xAlt = topo.slots.map((s) => Math.log10(s.altInitial ?? s.initial));
+  const altDiffers = xAlt.some((v, i) => Math.abs(v - x0[i]) > 1e-9);
+
+  let fit = lbfgs(objectiveGrad, x0, lbfgsOpts);
+  let best = objective(fit.x);
+  const scatterOf = (base: readonly number[]): number[][] =>
+    (
+      [
+        [0.3, 0],
+        [0.3, 1.6],
+        [0.75, 0.8],
+        [0.75, 2.4],
+      ] as const
+    ).map(([amp, phase]) => base.map((v, i) => v + amp * Math.cos(i * 1.1 + phase)));
+  const starts: number[][] = altDiffers ? [xAlt, ...scatterOf(x0)] : scatterOf(x0);
+  for (const xs of starts) {
+    if (best < 0.02) break;
+    const again = lbfgs(objectiveGrad, xs, lbfgsOpts);
+    const score = objective(again.x);
+    if (score < best) {
+      fit = again;
+      best = score;
     }
   }
-
-  // Stationarity probe: one fresh, wide simplex from the end point. If it
-  // cannot find >3% more, the basin is exhausted — that IS convergence in
-  // practice; a raw iteration counter in 15+ dims would cry wolf forever.
-  {
-    const before = fit.fx;
-    const probe = nelderMead(objective, [...fit.x], { maxIterations: 600, tolerance: 1e-6, step: 0.2 });
-    if (probe.fx < fit.fx) fit = probe;
-    stationary = fit.fx >= before * 0.97;
+  // Final descent from the best point: closes the gap when a scatter start
+  // landed just outside the winning basin.
+  const before = best;
+  const polish = lbfgs(objectiveGrad, [...fit.x], lbfgsOpts);
+  const polished = objective(polish.x);
+  if (polished < best) {
+    fit = polish;
+    best = polished;
   }
+  // "Stationary" keeps its old meaning: one more full attempt from the end
+  // point cannot find >3% more, so the basin is exhausted.
+  const stationary = best >= before * 0.97;
 
   let values = fit.x.map((v) => 10 ** v);
   let seriesRsFinal: (number | undefined)[] | undefined;

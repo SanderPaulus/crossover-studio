@@ -2,7 +2,8 @@ import { nelderMead } from './optimize.ts';
 import { bandMedian } from './bandMetrics.ts';
 import { crossoverToNetlist } from './vxpNetwork.ts';
 import { solveNetwork, type NetElement, type PassiveElement } from './network.ts';
-import { applyTransfer, combine, type GriddedResponse, type TweeterAdjust } from './dsp.ts';
+import { applyTransfer, combine, combineN, type BranchAdjust, type GriddedResponse, type TweeterAdjust } from './dsp.ts';
+import { pickSlotsN } from './driverSlots.ts';
 import { computeIntegration } from './integration.ts';
 import type { Complex } from './complex.ts';
 import type { VxpPart } from './parsers/vxp.ts';
@@ -45,7 +46,7 @@ export interface NetOptimizeOptions {
   maxIterations?: number;
   /** Per-driver angle responses (same grid) — enables the directivity-aware
    *  terms, exactly like the design optimizer. */
-  angleData?: { woofer: AngleResponse[]; tweeter: AngleResponse[] };
+  angleData?: { woofer: AngleResponse[]; tweeter: AngleResponse[]; mid?: AngleResponse[] };
   /** 0..1: share of the amplitude budget on the energy average. Default 0. */
   directivityWeight?: number;
   /** Which curve the amplitude term flattens. Default 'onAxis'. */
@@ -81,8 +82,20 @@ export interface NetOptimizeOptions {
    *  never through ground) vs hanging off it (shunt/notch chains). */
   snapPrefs?: SnapPrefs;
   /** Target ACOUSTIC slopes beside the crossing (dB/oct) — same steering as
-   *  the design optimizer, so the tuner keeps the achieved orders. */
-  acousticSlopes?: { mid?: number; tweeter?: number };
+   *  the design optimizer, so the tuner keeps the achieved orders. In 3-way
+   *  `mid`/`tweeter` steer the TOP pair (their historical meaning: lower and
+   *  upper driver of that crossing); `low` steers the LOW pair — the woofer's
+   *  LP flank and the mid's HP flank (Sanders: "een 3-weg heeft twee
+   *  akoestische flanken op de mid"). */
+  acousticSlopes?: { mid?: number; tweeter?: number; low?: { lower?: number; upper?: number } };
+  /** 3-way: pin the ACOUSTIC crossing PER adjacent pair [low, high] — the
+   *  two-pair counterpart of xoRange (which stays 2-way vocabulary). */
+  xoRangePairs?: ([number, number] | null)[];
+  /** REPAIR-pass only: stiff (1200·oct²) xo-pin barrier instead of the soft
+   *  adaptive weight. Set exclusively by the chain's hold-the-pin retune,
+   *  seeded from an already-tuned point — never on a cold seed (the barrier
+   *  lesson) and never in the normal tune (the anchor lesson). */
+  xoPinHard?: boolean;
   /** SINGLE-DRIVER mode ("0 driver pairs"): the network drives ONE measured
    *  driver and the other slot carries a silent ghost. Every crossing-anchored
    *  term (xo pin/penalty, valley, breakup guard, tweeter protection, acoustic
@@ -127,8 +140,19 @@ export interface NetOptimizeOptions {
     freqs: readonly number[];
     w: GriddedResponse;
     t: GriddedResponse;
+    /** 3-way: the middle branch on the safety grid. */
+    m?: GriddedResponse;
     z: Record<string, readonly Complex[]>;
   };
+  /** 3-WAY (phase-4 trede 4): the MIDDLE branch — its base response on the
+   *  same grid as wBase/tBase, plus its own adjust. When set, the tuner runs
+   *  the two-pair path: branch transfers resolve by SLOT (pickSlotsN, so
+   *  canonical and real model names both work), the combined sum runs through
+   *  combineN, the pair list holds (low,mid) and (mid,high), and the phase
+   *  metric averages the ADJACENT pairs' overlap windows. When absent the
+   *  2-way path is byte-for-byte the historical one. Directivity terms are
+   *  ignored in 3-way (they pair exactly two angle sets). */
+  midBranch?: { response: GriddedResponse; adjust: BranchAdjust };
 }
 
 export interface NetOptimizeResult {
@@ -137,7 +161,20 @@ export interface NetOptimizeResult {
   before: { rippleDb: number; avgDevDb?: number; phaseDeg: number };
   /** Full-grid metrics of the delivered network; `xoHz` = its acoustic
    *  crossing (used by the no-pin scan to derive follow-up candidates). */
-  after: { rippleDb: number; avgDevDb?: number; phaseDeg: number; xoHz?: number | null };
+  after: {
+    rippleDb: number;
+    avgDevDb?: number;
+    phaseDeg: number;
+    /** 3-way: uniform-average phase error per adjacent pair [low, high] —
+     *  the coupled-pairs verdict (gates judge the worst of these). */
+    pairPhaseDeg?: number[];
+    xoHz?: number | null;
+    /** 3-way: the DELIVERED acoustic crossing per adjacent pair [low, high].
+     *  Worth reporting on its own: a design can meet every flatness target
+     *  while its handovers sit an octave off the knees that were designed —
+     *  measured on Robbert's set before the candidates were caged. */
+    xoHzPairs?: (number | null)[];
+  };
   /** How many component values were free to move (final network). */
   tuned: number;
   evaluations: number;
@@ -213,6 +250,40 @@ const SERIES_CEIL: Record<'C' | 'L' | 'R', number> = {
   L: 8e-3,
   R: 47,
 };
+
+/**
+ * ...but a CONSTANT ceiling is wrong as soon as the crossover moves, because
+ * what makes a series part "a wire with extra steps" is its reactance relative
+ * to the load, and that scales as 1/(f·Z). The constants above were calibrated
+ * on a 2-way tweeter branch (~2 kHz into ~6 Ω); a 3-way woofer-to-mid crossing
+ * at 200–400 Hz into a 4 Ω midrange legitimately needs 4–8× more capacitance
+ * for the SAME electrical job. Blanket-applied, 33 µF forbids exactly the part
+ * a competent designer specifies there — Troels Gravesen ships 88 µF (4 × 22 µF
+ * film) in the midrange high-pass of at least seven published 3-ways, with the
+ * value tracking his woofer-mid point almost proportionally (22 µF at 900 Hz,
+ * 38.6 µF at 700 Hz, 66 µF at 400 Hz, 88–99 µF at 200 Hz).
+ *
+ * So the ceiling scales with the design's own textbook magnitude, and the
+ * multipliers below reproduce the constants above at that original 2 kHz / 6 Ω
+ * reference. The constants stay as a FLOOR on the ceiling: a design whose
+ * textbook value is small keeps exactly the old limit (2-way behaviour is
+ * unchanged, which the suite's value pins check), and only a design that
+ * genuinely needs more gets more. Upper-side only, as before.
+ *
+ * The C and L multipliers differ by a lot (2.5× vs 16.8×) because the original
+ * constants did: a series woofer inductor is legitimately far closer to "a
+ * wire" than a series capacitor ever is. That asymmetry is inherited on
+ * purpose rather than tidied away.
+ */
+const SERIES_CEIL_MULT: Record<'C' | 'L', number> = { C: 2.488, L: 16.76 };
+
+function seriesCeilFor(
+  kind: 'C' | 'L' | 'R',
+  textbook: { L: number; C: number },
+): number {
+  if (kind === 'R') return SERIES_CEIL.R;
+  return Math.max(SERIES_CEIL[kind], SERIES_CEIL_MULT[kind] * textbook[kind]);
+}
 
 /** Reset big-side reactive OUTLIERS (> tol × textbook magnitude) to exactly
  *  textbook; returns null when nothing exceeds. Only the big side: oversized
@@ -326,9 +397,25 @@ export function optimizeNetworkValues(
     onStage,
   } = opts;
   const solo = opts.solo === true;
+  /** 3-way: the middle branch (never in solo). */
+  const midB = solo ? undefined : opts.midBranch;
+  const midAdj: BranchAdjust = midB?.adjust ?? {};
   // Solo: directivity terms pair angle sets across BOTH drivers — with one
   // driver the pairing is empty and the power average degenerates to NaN.
-  const angleData = solo ? undefined : opts.angleData;
+  // 3-way: same reason, other direction — the pairing covers exactly two of
+  // the three branches, so the power average would be silently wrong.
+  // 3-way: the in-room weight needs the MID's own angle set — without it a
+  // two-branch angle sum would be silently wrong, so the term stays off.
+  // (Historically directivity was gated off for 3-way entirely; that made the
+  // scan blind to woofer beaming — Sanders measured his woofer −3.5 dB at
+  // 30°/600 Hz while the tuner happily parked the W-M handover above it.)
+  const angleData = solo
+    ? undefined
+    : midB
+      ? opts.angleData?.mid
+        ? opts.angleData
+        : undefined
+      : opts.angleData;
   /** SOLO sensitivity budget (dB): how far the tuned network's median level
    *  may sit below the RAW driver. Same fundamental as the design engine —
    *  and needed here for the same reason: the flatness objective is
@@ -342,7 +429,11 @@ export function optimizeNetworkValues(
    *  costs 6–10 dB). Set once the seed metrics exist; until then no wall. */
   let soloLossCap = Infinity;
   const acSlopes =
-    opts.acousticSlopes && (opts.acousticSlopes.mid || opts.acousticSlopes.tweeter)
+    opts.acousticSlopes &&
+    (opts.acousticSlopes.mid ||
+      opts.acousticSlopes.tweeter ||
+      opts.acousticSlopes.low?.lower ||
+      opts.acousticSlopes.low?.upper)
       ? opts.acousticSlopes
       : null;
   // Anchored envelope (see vfOptimizer): both terms always exist — a 0%
@@ -364,13 +455,20 @@ export function optimizeNetworkValues(
   });
   const optW = pick(wBase);
   const optT = pick(tBase);
+  const optM = midB ? pick(midB.response) : null;
+  /** Full-grid middle branch for the report/gate call sites. */
+  const midFull = midB ? midB.response : null;
   const optZ = Object.fromEntries(
     Object.entries(driverZ).map(([m, z]) => [m, idx.map((i) => z[i])]),
   );
   const pickAngles = (set: AngleResponse[]): AngleResponse[] =>
     set.map((a) => ({ hor: a.hor, response: pick(a.response) }));
   const optAngles = angleData
-    ? { woofer: pickAngles(angleData.woofer), tweeter: pickAngles(angleData.tweeter) }
+    ? {
+        woofer: pickAngles(angleData.woofer),
+        tweeter: pickAngles(angleData.tweeter),
+        ...(angleData.mid ? { mid: pickAngles(angleData.mid) } : {}),
+      }
     : null;
 
   /* ---- Band statistics. The canonical implementations live in
@@ -457,8 +555,9 @@ export function optimizeNetworkValues(
     freqs: readonly number[],
     w: GriddedResponse,
     t: GriddedResponse,
+    m: GriddedResponse | null,
     z: Record<string, readonly Complex[]>,
-    angles: { woofer: AngleResponse[]; tweeter: AngleResponse[] } | null,
+    angles: { woofer: AngleResponse[]; tweeter: AngleResponse[]; mid?: AngleResponse[] } | null,
   ): {
     /** Std-dev flatness — the smooth term the SEARCH objective minimizes. */
     rippleDb: number;
@@ -473,8 +572,18 @@ export function optimizeNetworkValues(
     powerStdDb: number | null;
     leakSqDb: number;
     protSqDb: number;
-    /** Acoustic crossing of the filtered drivers (Hz), null if none. */
+    /** Acoustic crossing of the filtered drivers (Hz), null if none.
+     *  3-way: the LOWEST pair's crossing (xoHzPairs carries all). */
     xoHz: number | null;
+    /** Per-adjacent-pair crossings, low pair first (1 entry in 2-way). */
+    xoHzPairs: (number | null)[];
+    /** Repair-only continuous pin barrier (see xoEdgeSq); zeros otherwise. */
+    xoEdgeSq: number[];
+    /** Measured slopes beside each pair's crossing (same order). */
+    pairSlopes: { lower: number | null; upper: number | null }[];
+    /** Uniform-average phase error PER pair — the coupled-pairs gate reads
+     *  the WORST of these (solo: empty). */
+    pairPhaseDeg: number[];
     /** How far the combined SPL at the crossing sits BELOW the band mean
      *  (dB, beyond a 6 dB allowance). A healthy crossing meets ON level; a
      *  starved branch "crosses" the other one deep in a hole instead. */
@@ -495,26 +604,87 @@ export function optimizeNetworkValues(
       const d = sol.drivers.find((x) => x.model === model);
       return d ? sol.transfers[d.id] : null;
     };
-    const hW = hFor('mid');
-    const hT = hFor('tweeter');
+    // 3-way: resolve the three branch transfers by SLOT over the solved
+    // drivers (canonical woofer/mid/tweeter and real model names both work;
+    // ambiguous names were refused upstream). 2-way keeps the historical
+    // exact-name lookup byte-for-byte.
+    let hW: readonly Complex[] | null;
+    let hT: readonly Complex[] | null;
+    let hM: readonly Complex[] | null = null;
+    if (m) {
+      const slots = pickSlotsN(sol.drivers);
+      hW = slots.woofer ? sol.transfers[slots.woofer.id] ?? null : null;
+      hM = slots.mid ? sol.transfers[slots.mid.id] ?? null : null;
+      hT = slots.tweeter ? sol.transfers[slots.tweeter.id] ?? null : null;
+    } else {
+      hW = hFor('mid');
+      hT = hFor('tweeter');
+    }
     const wF = hW ? applyTransfer(w, hW) : w;
     const tF = hT ? applyTransfer(t, hT) : t;
-    const r = combine(wF, tF, adjust);
-    const integ = computeIntegration(r);
+    const mF = m ? (hM ? applyTransfer(m, hM) : m) : null;
+
+    // 2-way: the classic pairwise combine (byte-identical path). 3-way: the
+    // three-branch sum via the N-way core; the ADJACENT pairs each get their
+    // own integration so the phase metric judges both overlap windows.
+    let rFreq: readonly number[];
+    let rCombinedSpl: number[];
+    let integList: ReturnType<typeof computeIntegration>[];
+    // Adjusted branches for the pair list (3-way) — combineN returns them.
+    let bW: GriddedResponse | null = null;
+    let bM: GriddedResponse | null = null;
+    let bT: GriddedResponse | null = null;
+    if (mF) {
+      const n3 = combineN([
+        { response: wF },
+        { response: mF, adjust: midAdj },
+        { response: tF, adjust },
+      ]);
+      rFreq = wF.freq;
+      rCombinedSpl = n3.combinedSpl;
+      bW = n3.branches[0];
+      bM = n3.branches[1];
+      bT = n3.branches[2];
+      const zeroAdj: TweeterAdjust = { offsetMm: 0, trimDb: 0, inverted: false };
+      integList = [
+        computeIntegration(combine(bW, bM, zeroAdj)),
+        computeIntegration(combine(bM, bT, zeroAdj)),
+      ];
+    } else {
+      const r2 = combine(wF, tF, adjust);
+      rFreq = r2.freq;
+      rCombinedSpl = r2.combinedSpl;
+      integList = [computeIntegration(r2)];
+    }
+    const r = { freq: rFreq, combinedSpl: rCombinedSpl };
     // Both phase metrics (see vfOptimizer): weighted classic and the panel's
-    // uniform avg + bucket-P95 over the overlap window.
+    // uniform avg + bucket-P95 — 3-way sums the pairs' overlap windows.
     let wSum = 0;
     let eSum = 0;
     let uSum = 0;
     let uN = 0;
     const buckets = new Array<number>(181).fill(0);
-    for (const pt of integ.points) {
-      if (pt.cls === null) continue;
-      wSum += pt.weight;
-      eSum += pt.weight * pt.phaseErrorDeg;
-      uSum += pt.phaseErrorDeg;
-      uN++;
-      buckets[Math.min(180, Math.round(pt.phaseErrorDeg))]++;
+    // Per-pair uniform averages ride along: the pairs are COUPLED through the
+    // shared mid branch (a woofer-mid move shifts the mid's SPL and thereby
+    // the mid-tweeter crossing — Sanders' observation), and an AVERAGED
+    // metric would let the tuner trade one crossing against the other
+    // invisibly. The gates below judge the WORST pair; the search objective
+    // keeps the average (the anchor lesson: no objective perturbation).
+    const pairPhaseDeg: number[] = [];
+    for (const integ of integList) {
+      let pSum = 0;
+      let pN = 0;
+      for (const pt of integ.points) {
+        if (pt.cls === null) continue;
+        wSum += pt.weight;
+        eSum += pt.weight * pt.phaseErrorDeg;
+        uSum += pt.phaseErrorDeg;
+        uN++;
+        pSum += pt.phaseErrorDeg;
+        pN++;
+        buckets[Math.min(180, Math.round(pt.phaseErrorDeg))]++;
+      }
+      pairPhaseDeg.push(pN > 0 ? pSum / pN : 180);
     }
     let phaseP95Deg = 180;
     if (uN > 0) {
@@ -530,14 +700,22 @@ export function optimizeNetworkValues(
     }
 
     // Directivity terms — the same transfers at every measured angle, exactly
-    // like the design optimizer judges.
+    // like the design optimizer judges. 3-way: the three-branch per-angle sum
+    // (the computeDirectivityN semantics), each branch with its own transfer
+    // and adjust; a directivity STEP at a handover — the beaming woofer
+    // handing to a still-wide mid — shows up here as energy-average wobble
+    // even when the on-axis sum is dead flat.
     let powerStdDb: number | null = null;
     let lwStd: number | null = null;
     if (angles) {
       const n = r.freq.length;
       const shared = angles.woofer
         .map((a) => a.hor)
-        .filter((h) => angles.tweeter.some((tt) => tt.hor === h));
+        .filter(
+          (h) =>
+            angles.tweeter.some((tt) => tt.hor === h) &&
+            (!mF || !angles.mid || angles.mid.some((mm) => mm.hor === h)),
+        );
       const powerAcc = new Array<number>(n).fill(0);
       const lwAcc = new Array<number>(n).fill(0);
       let lwCount = 0;
@@ -546,7 +724,18 @@ export function optimizeNetworkValues(
         let at = angles.tweeter.find((x) => x.hor === hor)!.response;
         if (hW) aw = applyTransfer(aw, hW);
         if (hT) at = applyTransfer(at, hT);
-        const spl = combine(aw, at, adjust).combinedSpl;
+        let spl: number[];
+        if (mF && angles.mid) {
+          let am = angles.mid.find((x) => x.hor === hor)!.response;
+          if (hM) am = applyTransfer(am, hM as Complex[]);
+          spl = combineN([
+            { response: aw },
+            { response: am, adjust: midAdj },
+            { response: at, adjust },
+          ]).combinedSpl;
+        } else {
+          spl = combine(aw, at, adjust).combinedSpl;
+        }
         for (let i = 0; i < n; i++) powerAcc[i] += 10 ** (spl[i] / 10);
         if (hor <= 30) {
           for (let i = 0; i < n; i++) lwAcc[i] += 10 ** (spl[i] / 10);
@@ -621,15 +810,34 @@ export function optimizeNetworkValues(
     }
     const pairs: DriverPair[] = solo
       ? []
-      : [
-          {
-            lower: wF,
-            upper: tF,
-            upperH: hT,
-            slopeLower: acSlopes?.mid,
-            slopeUpper: acSlopes?.tweeter,
-          },
-        ];
+      : bW && bM && bT
+        ? [
+            // Low pair: its own slope targets (acousticSlopes.low); the
+            // mid/tweeter fields keep steering the TOP pair.
+            {
+              lower: bW,
+              upper: bM,
+              upperH: hM,
+              slopeLower: acSlopes?.low?.lower,
+              slopeUpper: acSlopes?.low?.upper,
+            },
+            {
+              lower: bM,
+              upper: bT,
+              upperH: hT,
+              slopeLower: acSlopes?.mid,
+              slopeUpper: acSlopes?.tweeter,
+            },
+          ]
+        : [
+            {
+              lower: wF,
+              upper: tF,
+              upperH: hT,
+              slopeLower: acSlopes?.mid,
+              slopeUpper: acSlopes?.tweeter,
+            },
+          ];
 
     const fitSlope = (spl: readonly number[], lo: number, hi: number): number | null => {
       let n = 0;
@@ -739,12 +947,44 @@ export function optimizeNetworkValues(
     // neutral values solo mode needs; with two a 3-way simply sums the
     // squared-deficit terms and reports the lowest crossing first.
     const pm = pairs.map(pairMetrics);
+    /* HARD-PIN repair only — a CONTINUOUS companion to the xoF pin. xoF is a
+     * grid crossing: piecewise-CONSTANT in the component values, so on its
+     * plateaus the stiff barrier has no gradient and the warm-seeded repair
+     * simplex settles back on flatness (measured: pinned ≤575 Hz, repair
+     * delivered 705 and gave up). The smooth equivalent of "the crossing sits
+     * inside [lo, hi]": at hi the upper driver has already caught the lower
+     * one, at lo it has not yet — both are plain dB differences, continuous
+     * in every value. Zeros everywhere outside repair mode (bit-compat). */
+    const xoEdgeSq = pairs.map((p, k) => {
+      if (!opts.xoPinHard) return 0;
+      const rge = opts.xoRangePairs?.[k];
+      if (!rge) return 0;
+      const idxAt = (f: number): number => {
+        let best = 0;
+        for (let i = 1; i < r.freq.length; i++) {
+          if (Math.abs(r.freq[i] - f) < Math.abs(r.freq[best] - f)) best = i;
+        }
+        return best;
+      };
+      let acc = 0;
+      const iHi = idxAt(rge[1]);
+      if (p.lower.spl[iHi] > -300 && p.upper.spl[iHi] > -300) {
+        acc += Math.max(0, p.lower.spl[iHi] - p.upper.spl[iHi]) ** 2;
+      }
+      const iLo = idxAt(rge[0]);
+      if (p.lower.spl[iLo] > -300 && p.upper.spl[iLo] > -300) {
+        acc += Math.max(0, p.upper.spl[iLo] - p.lower.spl[iLo]) ** 2;
+      }
+      return acc;
+    });
     const xoF = pm.length > 0 ? pm[0].xoF : null;
-    const xoDipDb = pm.reduce((a, m) => a + m.xoDipDb, 0);
-    const leakSqDb = pm.reduce((a, m) => a + m.leakSqDb, 0);
-    const protSqDb = pm.reduce((a, m) => a + m.protSqDb, 0);
-    const midSlopeDbOct = pm.length > 0 ? pm[0].lowerSlopeDbOct : null;
-    const tweeterSlopeDbOct = pm.length > 0 ? pm[0].upperSlopeDbOct : null;
+    const xoDipDb = pm.reduce((a, x) => a + x.xoDipDb, 0);
+    const leakSqDb = pm.reduce((a, x) => a + x.leakSqDb, 0);
+    const protSqDb = pm.reduce((a, x) => a + x.protSqDb, 0);
+    // The slope targets ride on the LAST pair (mid/tweeter vocabulary) — with
+    // one pair that is pm[0], unchanged.
+    const midSlopeDbOct = pm.length > 0 ? pm[pm.length - 1].lowerSlopeDbOct : null;
+    const tweeterSlopeDbOct = pm.length > 0 ? pm[pm.length - 1].upperSlopeDbOct : null;
 
     // FUNDAMENTAL — amplifier-load floor: min |Zin| below Z_FLOOR_OHM is a
     // silent failure (voltage drive hides it from every response metric).
@@ -771,6 +1011,10 @@ export function optimizeNetworkValues(
       leakSqDb,
       protSqDb,
       xoHz: xoF,
+      xoHzPairs: pm.map((x) => x.xoF),
+      xoEdgeSq,
+      pairSlopes: pm.map((x) => ({ lower: x.lowerSlopeDbOct, upper: x.upperSlopeDbOct })),
+      pairPhaseDeg: solo ? [] : pairPhaseDeg,
       xoDipDb,
       midSlopeDbOct,
       tweeterSlopeDbOct,
@@ -788,15 +1032,26 @@ export function optimizeNetworkValues(
   // so without this term the degenerate state escapes every guard at once
   // (Sanders schema: 0.68 µF series cap, tweeter ~25 dB down, no alarm).
   const xoR = opts.xoRange ?? null;
-  const xoPenalty = (xoHz: number | null): number => {
+  const xoPenaltyFor = (xoHz: number | null, range: [number, number] | null): number => {
     if (xoHz == null) return 120; // no crossing at all ≙ 2 octaves off
-    if (!xoR) return 0;
+    if (!range) return 0;
     const oct =
-      xoHz < xoR[0] ? Math.log2(xoR[0] / xoHz) : xoHz > xoR[1] ? Math.log2(xoHz / xoR[1]) : 0;
+      xoHz < range[0]
+        ? Math.log2(range[0] / xoHz)
+        : xoHz > range[1]
+          ? Math.log2(xoHz / range[1])
+          : 0;
+    // HARD-PIN repair mode (see opts.xoPinHard): a stiff barrier weight, the
+    // Z-floor-repair lesson — the quadratic is weak near the boundary, and at
+    // the soft weight a 0.15-oct escape costs ~0.7 while buying real flatness
+    // (measured: Sanders' 400 ± 175 pin delivered a 636 Hz crossing). Only the
+    // locally-seeded repair pass sets this; the normal tune's search path
+    // stays untouched (the anchor lesson).
+    if (opts.xoPinHard) return 1200 * oct * oct;
     // ADAPTIVE weight, mirrored from vfOptimizer: wide pins keep the classic
     // 30·oct², narrow SCAN slices scale up (×(0.15 oct / half-width)², cap
     // ×100) so a candidate cannot cheaply drift into a neighbour's slice.
-    const halfOct = Math.log2(xoR[1] / xoR[0]) / 2;
+    const halfOct = Math.log2(range[1] / range[0]) / 2;
     const scale = Math.min(100, Math.max(1, (0.15 / Math.max(halfOct, 1e-6)) ** 2));
     return 30 * scale * oct * oct;
   };
@@ -822,8 +1077,19 @@ export function optimizeNetworkValues(
         const d = (Math.abs(measured) - target) / 6;
         slopePen += d < 0 ? 2.5 * d * d : 0.4 * d * d;
       };
-      one(m.midSlopeDbOct, acSlopes.mid);
-      one(m.tweeterSlopeDbOct, acSlopes.tweeter);
+      // Per pair: the LAST pair carries the mid/tweeter targets (2-way: the
+      // only pair — identical arithmetic); earlier pairs carry `low`.
+      const nPairs = m.pairSlopes.length;
+      for (let pi = 0; pi < nPairs; pi++) {
+        const sl = m.pairSlopes[pi];
+        if (pi === nPairs - 1) {
+          one(sl.lower, acSlopes.mid);
+          one(sl.upper, acSlopes.tweeter);
+        } else {
+          one(sl.lower, acSlopes.low?.lower);
+          one(sl.upper, acSlopes.low?.upper);
+        }
+      }
     }
     return (
       2 * (1 - p) * amp +
@@ -835,10 +1101,22 @@ export function optimizeNetworkValues(
       // NB: the amp-load floor is deliberately NOT here (see Z_FLOOR_OHM) —
       // it lives in the gates and the repair pass, never in the objective.
       0.5 * m.xoDipDb * m.xoDipDb +
-      xoPenalty(m.xoHz) +
+      m.xoHzPairs.reduce(
+        (a: number, x, i) => a + xoPenaltyFor(x, opts.xoRangePairs?.[i] ?? xoR),
+        0,
+      ) +
+      // Repair mode: the continuous window-edge barrier (see xoEdgeSq) —
+      // 3 dB short at an edge costs 180, dominant. Zero outside repair.
+      (opts.xoPinHard ? 20 * m.xoEdgeSq.reduce((a: number, v: number) => a + v, 0) : 0) +
       slopePen
     );
   };
+
+  /** Phase number the STAGED gates judge: the WORST pair in 3-way (coupled
+   *  pairs must both meet the target — averaging would let one crossing pay
+   *  for the other), the classic metric with one pair (bit-compatible). */
+  const phaseGate = (m: Metrics): number =>
+    m.pairPhaseDeg.length > 1 ? Math.max(...m.pairPhaseDeg) : m.phaseDeg;
 
   const cloneParts = (ps: readonly VxpPart[]): VxpPart[] =>
     ps.map((q) => ({
@@ -864,7 +1142,7 @@ export function optimizeNetworkValues(
   const quickFx = (ps: readonly VxpPart[]): number => {
     const { work } = buildWork(ps);
     evaluations++;
-    return fxOf(metricsOn(work, optW.freq, optW, optT, optZ, optAngles));
+    return fxOf(metricsOn(work, optW.freq, optW, optT, optM, optZ, optAngles));
   };
 
   /** Value window for a slot (log10 SI): SERIES-PATH slots of a bound kind are
@@ -906,7 +1184,7 @@ export function optimizeNetworkValues(
   ): TuneOut => {
     const { work, free } = buildWork(ps);
     if (free.length === 0) {
-      const m = metricsOn(work, optW.freq, optW, optT, optZ, optAngles);
+      const m = metricsOn(work, optW.freq, optW, optT, optM, optZ, optAngles);
       return { parts: cloneParts(ps), freeCount: 0, fx: fxOf(m), metrics: m };
     }
     // Realism anchor: per element the effective soft window = buildability
@@ -924,7 +1202,7 @@ export function optimizeNetworkValues(
         ? win[i]![1]
         : Math.log10(
             posOf(e.id) === 'series'
-              ? Math.min(SERIES_CEIL[e.kind], BOUNDS[e.kind][1])
+              ? Math.min(seriesCeilFor(e.kind, textbook), BOUNDS[e.kind][1])
               : BOUNDS[e.kind][1],
           ),
     );
@@ -935,7 +1213,7 @@ export function optimizeNetworkValues(
     let protRef = Infinity;
     if (barrier) {
       try {
-        protRef = metricsOn(work, optW.freq, optW, optT, optZ, optAngles).protSqDb + 0.5;
+        protRef = metricsOn(work, optW.freq, optW, optT, optM, optZ, optAngles).protSqDb + 0.5;
       } catch {
         protRef = Infinity;
       }
@@ -955,7 +1233,7 @@ export function optimizeNetworkValues(
       }
       let m;
       try {
-        m = metricsOn(work, optW.freq, optW, optT, optZ, optAngles);
+        m = metricsOn(work, optW.freq, optW, optT, optM, optZ, optAngles);
       } catch {
         return 1e9;
       }
@@ -1003,13 +1281,59 @@ export function optimizeNetworkValues(
     let fit = nelderMead(objective, x0, { maxIterations: iters, tolerance: 1e-6, step: 0.1 });
     const again = nelderMead(objective, [...fit.x], { maxIterations: iters, tolerance: 1e-6, step: 0.25 });
     if (again.fx < fit.fx) fit = again;
+    /* ---- Block-coordinate refinement (THREE-WAY, full tunes only) --------
+     * An assembled three-branch network carries 16–25 free values, and past
+     * ~10 dims a single simplex crawls — the exact wall the branch synthesis
+     * already hits and solves this way. Re-polish overlapping 6-dim blocks
+     * around the best point, then one tight full-dimensional polish.
+     *
+     * Blocks are index-based: merged parts arrive in BRANCH order, so
+     * consecutive slots mostly share a branch and the 3-step overlap spans
+     * the seams — which is what keeps this from degenerating into "tune the
+     * pairs separately". The coupling is never broken: every block is scored
+     * by the SAME full objective (both pairs, whole network) and accepted
+     * only when that objective improves. Search depth only — what "better"
+     * means is untouched (the anchor lesson).
+     *
+     * Gated on 3-way so two-way stays bit-identical, and on the FULL tunes
+     * (budgetScale ≥ 1, no amp-floor repair): the 0.6-scale retunes are local
+     * recoveries from an already-good point where the deep search does not
+     * pay for its runtime. ---- */
+    if (midB !== undefined && !zFloorBarrier && budgetScale >= 1 && free.length > 9) {
+      for (let start = 0; start < free.length; start += 3) {
+        const ids: number[] = [];
+        for (let k = start; k < Math.min(start + 6, free.length); k++) ids.push(k);
+        if (ids.length < 2) break;
+        const subObjective = (xs: readonly number[]): number => {
+          const full = [...fit.x];
+          ids.forEach((slot, j) => (full[slot] = xs[j]));
+          return objective(full);
+        };
+        const sub = nelderMead(
+          subObjective,
+          ids.map((i) => fit.x[i]),
+          { maxIterations: 400, tolerance: 1e-7, step: 0.08 },
+        );
+        if (sub.fx < fit.fx) {
+          const full = [...fit.x];
+          ids.forEach((slot, j) => (full[slot] = sub.x[j]));
+          fit = { ...fit, x: full, fx: sub.fx };
+        }
+      }
+      const polish = nelderMead(objective, [...fit.x], {
+        maxIterations: iters,
+        tolerance: 1e-6,
+        step: 0.04,
+      });
+      if (polish.fx < fit.fx) fit = polish;
+    }
     // Never end worse than the values we started from.
     if (objective(x0) <= objective(fit.x)) fit = { ...fit, x: [...x0] };
 
     free.forEach((e, i) => {
       e.value = 10 ** (hard[i] ? Math.min(Math.max(fit.x[i], winLo[i]), winHi[i]) : fit.x[i]);
     });
-    const m = metricsOn(work, optW.freq, optW, optT, optZ, optAngles);
+    const m = metricsOn(work, optW.freq, optW, optT, optM, optZ, optAngles);
     const valueOf = new Map(free.map((e) => [e.id, e.value]));
     const out = cloneParts(ps).map((q) => {
       if (q.partId === undefined || !valueOf.has(q.partId) || q.open || q.shorted) return q;
@@ -1041,6 +1365,7 @@ export function optimizeNetworkValues(
     grid,
     wBase,
     tBase,
+    midFull,
     driverZ,
     angleData ?? null,
   );
@@ -1067,7 +1392,13 @@ export function optimizeNetworkValues(
    * groter" measurably destabilized the search and was reverted.) Both
    * starts are deterministic, so same input → same output, every run. ---- */
   const textbook = (() => {
-    let fc = before.xoHz;
+    // Anchor frequency: the crossing (2-way), or the geometric mean of the
+    // pair crossings (3-way — one shared anchor keeps the reseed conservative
+    // rather than flagging every top-pair part against a low-fc textbook).
+    // With one pair x ** (1/1) === x, so the 2-way value is bit-identical.
+    const xs = before.xoHzPairs.filter((x): x is number => x != null && x > 0);
+    let fc: number | null =
+      xs.length > 0 ? xs.reduce((a, b) => a * b, 1) ** (1 / xs.length) : null;
     if (!fc || !(fc > 0)) fc = xoR ? Math.sqrt(xoR[0] * xoR[1]) : Math.sqrt(band[0] * band[1]);
     const zs: number[] = [];
     for (const z of Object.values(driverZ)) {
@@ -1126,12 +1457,12 @@ export function optimizeNetworkValues(
     }
     if (opts.staged && alt.fx <= base.fx * 1.1 && cheaper()) {
       const full = (ps: readonly VxpPart[]): Metrics =>
-        metricsOn(buildWork(ps).work, grid, wBase, tBase, driverZ, angleData ?? null);
+        metricsOn(buildWork(ps).work, grid, wBase, tBase, midFull, driverZ, angleData ?? null);
       const mAlt = full(alt.parts);
       const mBase = full(base.parts);
       if (
         mAlt.ripplePeakDb <= opts.staged.rippleDb &&
-        mAlt.phaseDeg <= opts.staged.phaseDeg &&
+        phaseGate(mAlt) <= opts.staged.phaseDeg &&
         mAlt.protSqDb <= mBase.protSqDb + 0.5 &&
         mAlt.xoDipDb <= mBase.xoDipDb + 1 &&
         mAlt.zShortOhm <= mBase.zShortOhm + 0.1 &&
@@ -1176,9 +1507,9 @@ export function optimizeNetworkValues(
     // decimated inner grid drives the search but its (integration-weighted)
     // phase metric can differ visibly from the full-grid one.
     const fullM = (ps: readonly VxpPart[]): Metrics =>
-      metricsOn(buildWork(ps).work, grid, wBase, tBase, driverZ, angleData ?? null);
+      metricsOn(buildWork(ps).work, grid, wBase, tBase, midFull, driverZ, angleData ?? null);
     const meets = (m: Metrics): boolean =>
-      m.ripplePeakDb <= tgt.rippleDb && m.phaseDeg <= tgt.phaseDeg;
+      m.ripplePeakDb <= tgt.rippleDb && phaseGate(m) <= tgt.phaseDeg;
     // Steer INTO the target region from the fx-optimum: the barrier is a
     // local refinement — applied from a cold seed it drowns the landscape
     // (learned the hard way: 843 µF caps chasing an unreachable target).
@@ -1323,7 +1654,7 @@ export function optimizeNetworkValues(
       return bestV;
     };
     const fullOf = (ps: readonly VxpPart[]): Metrics =>
-      metricsOn(buildWork(ps).work, grid, wBase, tBase, driverZ, angleData ?? null);
+      metricsOn(buildWork(ps).work, grid, wBase, tBase, midFull, driverZ, angleData ?? null);
     const posOfCur = busPositions(cur.parts);
     const freeCaps = cur.parts.filter(
       (q) =>
@@ -1342,7 +1673,7 @@ export function optimizeNetworkValues(
     const baseMeets =
       base0 !== null &&
       (!opts.staged ||
-        (base0.ripplePeakDb <= opts.staged.rippleDb && base0.phaseDeg <= opts.staged.phaseDeg));
+        (base0.ripplePeakDb <= opts.staged.rippleDb && phaseGate(base0) <= opts.staged.phaseDeg));
     if (base0 !== null && baseMeets) {
       const fx00 = cur.fx;
       for (const id of ladderIds) {
@@ -1384,7 +1715,7 @@ export function optimizeNetworkValues(
           const fm = fullOf(cand.parts);
           const meetsOk =
             !opts.staged ||
-            (fm.ripplePeakDb <= opts.staged.rippleDb && fm.phaseDeg <= opts.staged.phaseDeg);
+            (fm.ripplePeakDb <= opts.staged.rippleDb && phaseGate(fm) <= opts.staged.phaseDeg);
           const safeOk =
             fm.protSqDb <= base0.protSqDb + 0.5 &&
             fm.xoDipDb <= base0.xoDipDb + 1 &&
@@ -1415,7 +1746,7 @@ export function optimizeNetworkValues(
   let ampFloorNote: string | undefined;
   {
     const fullOf = (ps: readonly VxpPart[]): Metrics =>
-      metricsOn(buildWork(ps).work, grid, wBase, tBase, driverZ, angleData ?? null);
+      metricsOn(buildWork(ps).work, grid, wBase, tBase, midFull, driverZ, angleData ?? null);
     // Judge the dip on the evaluation grid AND the safety grid (when given):
     // the safety gate rejects on ITS grid, and a narrow resonant dip — or one
     // outside a zoomed view range — only shows up there. Detection and
@@ -1425,7 +1756,7 @@ export function optimizeNetworkValues(
       let min = m.zMinOhm;
       if (opts.safety) {
         const s = opts.safety;
-        const ms = metricsOn(buildWork(ps).work, s.freqs, s.w, s.t, s.z, null);
+        const ms = metricsOn(buildWork(ps).work, s.freqs, s.w, s.t, s.m ?? null, s.z, null);
         if (ms.zShortOhm > short) {
           short = ms.zShortOhm;
           min = ms.zMinOhm;
@@ -1459,7 +1790,7 @@ export function optimizeNetworkValues(
       const targetsKept =
         !opts.staged ||
         mCur.ripplePeakDb > opts.staged.rippleDb || // weren't met before either
-        (mRep.ripplePeakDb <= opts.staged.rippleDb && mRep.phaseDeg <= opts.staged.phaseDeg);
+        (mRep.ripplePeakDb <= opts.staged.rippleDb && phaseGate(mRep) <= opts.staged.phaseDeg);
       // Full repair or nothing: a partial lift (2.7 of 3 Ω at the old floor)
       // still fails the safety gate and the whole tune bounces back to the
       // seed anyway — the dip must clear the detection threshold itself.
@@ -1665,7 +1996,7 @@ export function optimizeNetworkValues(
     outParts = outParts.filter((q) => !un.has(debrisKey(q)));
     outParts = trimStubs(outParts);
   }
-  const after = metricsOn(buildWork(outParts).work, grid, wBase, tBase, driverZ, angleData ?? null);
+  const after = metricsOn(buildWork(outParts).work, grid, wBase, tBase, midFull, driverZ, angleData ?? null);
 
   // before/after report the PEAK ±dB (the strip's unit, matching the target)
   // plus the whole-range avg |deviation| for the chain ranking / scan table.
@@ -1673,6 +2004,8 @@ export function optimizeNetworkValues(
     rippleDb: m.ripplePeakDb,
     avgDevDb: m.avgDevDb,
     phaseDeg: m.phaseDeg,
+    ...(m.pairPhaseDeg.length > 1 ? { pairPhaseDeg: m.pairPhaseDeg } : {}),
+    ...(m.xoHzPairs.length > 1 ? { xoHzPairs: m.xoHzPairs } : {}),
   });
 
   /* ---- SOLO sensitivity gate (see soloSensBudgetDb): a tuned result that
@@ -1714,10 +2047,20 @@ export function optimizeNetworkValues(
    * crossing, valley crossing, unprotected tweeter) loses to the seed. ---- */
   if (opts.safety) {
     const s = opts.safety;
-    const seedS = metricsOn(buildWork(parts).work, s.freqs, s.w, s.t, s.z, null);
-    const resS = metricsOn(buildWork(outParts).work, s.freqs, s.w, s.t, s.z, null);
+    const seedS = metricsOn(buildWork(parts).work, s.freqs, s.w, s.t, s.m ?? null, s.z, null);
+    const resS = metricsOn(buildWork(outParts).work, s.freqs, s.w, s.t, s.m ?? null, s.z, null);
     const reasons: string[] = [];
-    if (resS.xoHz == null && seedS.xoHz != null) reasons.push('the acoustic crossing disappeared');
+    // Per PAIR: in a 3-way losing EITHER crossing is the same degeneration
+    // (with one pair this is exactly the old xoHz check).
+    for (let pi = 0; pi < Math.max(seedS.xoHzPairs.length, resS.xoHzPairs.length); pi++) {
+      if (resS.xoHzPairs[pi] == null && seedS.xoHzPairs[pi] != null) {
+        reasons.push(
+          seedS.xoHzPairs.length > 1
+            ? `the ${pi === 0 ? 'low' : 'high'} acoustic crossing disappeared`
+            : 'the acoustic crossing disappeared',
+        );
+      }
+    }
     if (resS.xoDipDb > seedS.xoDipDb + 2) {
       reasons.push(`the crossing sank into a ${resS.xoDipDb.toFixed(0)} dB hole`);
     }
@@ -1725,9 +2068,14 @@ export function optimizeNetworkValues(
     let zReason = false;
     if (resS.zShortOhm > seedS.zShortOhm + 0.2) {
       zReason = true;
+      // Honest attribution: a seed that already sits under the floor is a
+      // DESIGN property (three parallel branches around a crossover often
+      // are), not something the tuner broke — say so.
+      const seedTail =
+        seedS.zShortOhm > 0 ? ` — the seed already sat at ${seedS.zMinOhm.toFixed(1)} Ω` : '';
       reasons.push(
         `the system impedance dips to ${resS.zMinOhm.toFixed(1)} Ω ` +
-          `(amplifier-load floor ${Z_FLOOR_OHM} Ω)`,
+          `(amplifier-load floor ${Z_FLOOR_OHM} Ω)${seedTail}`,
       );
     }
     if (reasons.length > 0) {
@@ -1779,6 +2127,7 @@ export function optimizeNetworkValues(
         grid,
         wBase,
         tBase,
+        midFull,
         driverZ,
         angleData ?? null,
       );

@@ -136,3 +136,46 @@ describe('stacking (Sanders doctrine: single where possible, stack as fallback)'
     expect(far[0].parts).toHaveLength(1);
   });
 });
+
+describe('uniform banks (the 4 x 22 uF realisation)', () => {
+  it('offers a bank for a big midrange value and labels it buildably', () => {
+    // 88 uF is Troels Gravesen's published midrange high-pass value in several
+    // 3-ways, and he builds it as 4 x 22 uF. The catalog must be able to say so.
+    const picks = stackCandidates('C', 88e-6, 6);
+    const bank = picks.find((p) => p.parts.length >= 3);
+    expect(bank).toBeDefined();
+    expect(bank!.parts.length).toBeGreaterThanOrEqual(3);
+    // Every member of a uniform bank is the same part...
+    const ids = new Set(bank!.parts.map((p) => p.id));
+    expect(ids.size).toBe(1);
+    // ...the sum lands on the target...
+    expect(Math.abs(Math.log(bank!.value / 88e-6))).toBeLessThan(Math.log(1.4));
+    // ...and the label tells the builder what to buy.
+    expect(bank!.label).toMatch(/\d× in parallel/);
+  });
+
+  it('parallels ESR and sums DCR the way the physics does', () => {
+    const capBank = stackCandidates('C', 88e-6, 8).find(
+      (p) => p.parts.length >= 2 && new Set(p.parts.map((q) => q.id)).size === 1,
+    )!;
+    // Caps in parallel: ESR divides.
+    expect(capBank.seriesR).toBeCloseTo(capBank.parts[0].seriesR / capBank.parts.length, 9);
+    const coilBank = stackCandidates('L', 6.6e-3, 8).find(
+      (p) => p.parts.length >= 2 && new Set(p.parts.map((q) => q.id)).size === 1,
+    )!;
+    // Coils in series: DCR adds.
+    expect(coilBank.seriesR).toBeCloseTo(coilBank.parts[0].seriesR * coilBank.parts.length, 9);
+  });
+
+  it('prefers the fewest physical parts when two realisations tie on value', () => {
+    const picks = stackCandidates('C', 20e-6, 8);
+    const exact = picks.filter((p) => Math.abs(Math.log(p.value / 20e-6)) < 1e-6);
+    if (exact.length > 1) {
+      for (let i = 1; i < exact.length; i++) {
+        expect(exact[i].parts.length).toBeGreaterThanOrEqual(exact[i - 1].parts.length);
+      }
+    }
+    // And a value the grid carries outright still resolves as a single part.
+    expect(pickCandidates('C', 10e-6, 3)[0].parts).toHaveLength(1);
+  });
+});

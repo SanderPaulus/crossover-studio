@@ -89,14 +89,25 @@ export interface ProjectDesign {
   xoMarginHz?: string;
   /** Crossover-scan candidate count across the pinned range (odd, 3..11). */
   xoScanSteps?: number;
-  /** Optional: preferred HP/LP alignment for the optimizer ('auto' = free). */
+  /** 3-way scan: candidate steps PER crossing (1..3 → 1/4/9 chains). Applies
+   *  pinned or not — every candidate gets its own slice either way. */
+  xo3Steps?: number;
+  /** Optional: preferred HP/LP alignment for the optimizer ('auto' = free).
+   *  In 3-way this is the HIGH (mid-tweeter) crossing; `hpLpPrefLow` is the
+   *  woofer-mid one. */
   hpLpPref?: string;
+  hpLpPrefLow?: string;
   /** Optional: phase metric for the optimizers — 'band' (panel avg + P95,
    *  default) or 'overlap' (classic weighted mean, the fallback). */
   phaseMetric?: 'band' | 'overlap';
   /** Optional: target acoustic slopes beside the crossing ('auto' = free). */
   acSlopeMid?: string;
   acSlopeTweeter?: string;
+  /** 3-way: LOW-pair slopes (woofer LP / mid HP) and the low handover pin. */
+  acSlopeWoofer?: string;
+  acSlopeMidHp?: string;
+  xoLowFreqHz?: string;
+  xoLowMarginHz?: string;
   /** Optional: component-wizard snap preferences. */
   snapProfile?: string;
   snapSeriesL?: string;
@@ -110,6 +121,41 @@ export interface ProjectDesign {
   /** Optional: mid nominal size (inch) — sets the crossover ceiling via cone
    *  beaming. '' / absent = unknown. */
   midSizeInch?: string;
+  /** 3-way: woofer nominal size (inch) — the W-M handover's beaming ceiling,
+   *  the mirror of midSizeInch. '' / absent = unknown. */
+  wooferSizeInch?: string;
+  /** Directivity philosophy for the measured beaming ceiling (ka tier). */
+  kaTier?: string;
+  /** How many wavelengths of driver spacing the design tolerates. */
+  ctcK?: string;
+  /**
+   * Cabinet geometry + measurement context: driver positions relative to the
+   * measurement reference point, mic distance, baffle size, enclosure per
+   * driver, listening position. All strings ('' = not entered); every consumer
+   * treats absent as "this criterion does not apply".
+   */
+  cabinet?: {
+    micDistanceMm?: string;
+    micElevationDeg?: string;
+    gateMs?: string;
+    baffleWidthMm?: string;
+    baffleHeightMm?: string;
+    refFromTopMm?: string;
+    refHeightMm?: string;
+    listenDistanceM?: string;
+    listenEarHeightMm?: string;
+    drivers?: Partial<
+      Record<'low' | 'mid' | 'high', { xMm?: string; yMm?: string; enclosure?: string; fbHz?: string }>
+    >;
+  };
+  /** Cone-breakup upper limit: off, or cross at f_b / harmonic. */
+  breakupLimitOn?: boolean;
+  breakupHarmonic?: string;
+  /** Datasheet numbers for the excursion floor, per branch role, and the SPL
+   *  it is computed for. Absent = the criterion does not apply. */
+  sdCm2?: Partial<Record<'low' | 'mid' | 'high', string>>;
+  xmaxMm?: Partial<Record<'low' | 'mid' | 'high', string>>;
+  excursionSpl?: string;
   /** Optional: staged design (stop escalating once targets met), default true. */
   stagedOn?: boolean;
   targetRipple?: string;
@@ -146,6 +192,23 @@ export interface ProjectState {
   /** Optional: measured response of the BUILT system, overlaid against the
    *  simulation (the VALIDATIE.md loop). One file; reloading replaces it. */
   verifyFile?: StoredFile;
+  /** Optional: near-field measurements per branch role, plus their splice
+   *  settings. The files are stored raw like every other measurement so a
+   *  project stays self-contained. */
+  nearField?: Partial<
+    Record<
+      'low' | 'mid' | 'high',
+      {
+        cone?: StoredFile;
+        port?: StoredFile;
+        portDiaMm?: string;
+        transitionHz?: string;
+        blendOctaves?: string;
+        stepOn?: boolean;
+        stepDepthDb?: string;
+      }
+    >
+  >;
   design: ProjectDesign;
 }
 
@@ -268,6 +331,7 @@ export function deserializeProject(text: string): ProjectState {
     vxp: file(d['vxp']),
     fileNotes,
     verifyFile: file(d['verifyFile']),
+    nearField: (d['nearField'] as ProjectState['nearField']) ?? undefined,
     design,
   };
 }

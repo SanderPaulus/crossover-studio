@@ -132,6 +132,184 @@ minimum phase reconstrueert. Voertaal met Sander: **Nederlands**; code/comments 
 - `network.ts` — MNA-solver (complexe admittantie, Norton-bron, gemeten Z als driver-load).
   Elke solve levert ook `inputZ`: de systeem-ingangsimpedantie aan de generatorklemmen
   (excl. Rg) — de versterker-belastingscurve, voedt het Impedance-paneel
+- `components/MeasuringGuide.tsx` — **📐 Measure: de meetgids als iets dat je BEDIENT
+  (aug 2026, Sanders "er moet ook een guide komen om op de juiste manier te meten")**. De twee
+  illustraties draaien op dezelfde `trueOffAxisDeg`/`farFieldVerdict` als de engine, dus de gids
+  KAN niet afwijken van de app: sleep de mic naar achteren en de tekening, de getallen en de
+  optimizer-vensters bewegen samen. Dát is de reden dat hij in de app zit en niet in een pdf.
+  Zij-aanzicht = waar "al off-axis bij 0°" vandaan komt (500 mm → tweeter 0°/mid 13°/woofer 37°;
+  2000 mm → 0°/3°/11°); bovenaanzicht = de draaitafel draait de KAST, niet elke driver.
+  **Eén isotrope schaal** in beide tekeningen — x en y mogen nooit apart schalen, anders liegen
+  de hoeken; de kast krimpt daardoor echt als je achteruit loopt, en dát is de les. De viewBox
+  wordt wel bijgesneden tot wat er staat (lege ruimte is alleen lege ruimte).
+  Beweging is doelgericht (animatie-skill-principe): de sweep-loop bestaat omdat "de tafel draait
+  de kast" een BEWEGING is die een stilstaand beeld niet kan maken; hij is een yoyo-loop, stopt
+  zodra je een regelaar aanraakt, en `prefers-reduced-motion` haalt hem helemaal weg (de sliders
+  leren hetzelfde met de hand). UI-les onderweg: de globale `label`-regel is een KOLOM, dus een
+  slider-rij moet expliciet `flex-direction: row` zeggen of de range-input wordt tot volle
+  labelhoogte uitgerekt (192 px).
+- `nearField.ts` — **de laag-eind-merge (aug 2026, Sanders "merge maar")**. Bestaansreden staat
+  in de cijfers: een gepoorte binnenmeting is pas eerlijk boven `f = 1/t_gate` (binnenshuis
+  200–290 Hz) en een 3-weg kruist woofer-mid op 300–500 Hz — precies het gebied dat het meeste
+  zorg vraagt is het gebied waar de verre-veldmeting ophoudt. Klippel stelt het als regel: de
+  kruising MOET boven de splice-frequentie liggen.
+  Fysica, alledrie gepubliceerd en onderling gecontroleerd: bovengrens nabij-veld `f = c/(2πa)`
+  (ka = 1) — Klippel schrijft hem als 5475/a[cm], Keele als 4311/D[inch], en die twee zijn
+  ALGEBRAÏSCH dezelfde formule (4311/(2/2,54) = 5475,0), een prettige kruisvalidatie uit twee
+  onafhankelijke lijnen; schaling naar het verre veld `a/(2r)` (ARTA AN4, halve ruimte);
+  meerdere stralers via Keele's diameter-gewogen COMPLEXE som (poort telt mee met
+  `D_poort/D_conus` — onder de afstemming trekken ze elkaar grotendeels af, wat een
+  magnitude-som niet kán weergeven).
+  **Wat hier ANDERS is dan bij een magnitude-tool**: deze app somt gemeten fase, dus een splice
+  die alleen niveaus matcht plant een onbekende delay-stap precies op de woofer-mid-kruising.
+  `mergeNearFar` fit daarom eerst NIVEAU (mediaan over de blend — mean wordt getrokken door de
+  afwijking die je meet, dezelfde doctrine als responseStats) én een PURE DELAY (kleinste
+  kwadraten op het ge-unwrapte fase-VERSCHIL, exact de vorm uit verification.ts), en crossfade
+  pas daarna — in het COMPLEXE domein, want magnitude en fase apart faden verzint een respons
+  die geen van beide helften heeft. Alles wordt gerapporteerd: niveau, delay, residu, en een
+  offset rond 180° leest als "nabij-veld omgekeerd aangesloten" i.p.v. stil gecorrigeerd.
+  **Baffle step** is een instelbare shelf, geen diffractiemodel: een nabij-veldmeting is overal
+  halve ruimte terwijl een echte kast onderin tot 6 dB verliest, maar de gepubliceerde formules
+  verschillen onderling ~3× en de meting is het met geen van alle eens (de afstand tot elke rand
+  telt zwaarder dan de breedte). Een knop die de ontwerper ziet en zet is beter dan een model dat
+  gezaghebbend oogt en het niet is. `checkTransition` weigert een splice buiten één van beide
+  grenzen, en zegt het apart als er ÜBERHAUPT geen eerlijke splice bestaat ("meet verder weg,
+  hoger, of buiten") — dat is een meetprobleem, geen knop om aan te draaien.
+  App: slot per tak (conus + optioneel poort) op de Import-tab, en de merge gebeurt AAN DE BRON
+  (`merged`-memo → `effective()`), zodat grid, sim, optimizer, charts en scores één respons zien
+  en niets hoeft te weten van waar het laag vandaan komt. Zelfcontrole in de browser: dezelfde
+  meting als nabij-veld laden geeft delay 0 µs en residu 0,0°, en het niveau precies de
+  `a/2r`-schaling terug.
+- `cabinet.ts` — **kastgeometrie + meetcontext (aug 2026, Sanders "meer invoervelden voor een
+  beter beeld")**. De app LEIDDE af wat de ontwerper gewoon WEET; elke "het zou dit kunnen zijn,
+  of dat" van die dag kwam door een ontbrekend getal. Twee regels houden het beheersbaar:
+  **(1) een veld mag er alleen in als het een getal verandert dat de app toont** (geen
+  documentatie-velden), en **(2) deze velden voeden vensters, waarschuwingen en kruiscontroles —
+  nooit de meetdata zelf**, anders modelleer je waar je meet.
+  Coördinaten: baffle-vlak, oorsprong op het MEETREFERENTIEPUNT (waar de mic op gericht stond /
+  de draai-as), +x rechts, +y omhoog, mm.
+  **`trueOffAxisDeg` is de belangrijkste functie van het bestand.** Een horizontale draaitafel
+  levert "0°/10°/20°/30°" van de KAST, niet van elke driver. Met de mic op afstand R en de kast
+  θ gedraaid staat de mic op (R·sinθ, 0, R·cosθ); een driver op (x, y, 0) kijkt langs +z, dus
+  cos φ = R·cosθ / |(R·sinθ−x, −y, R·cosθ)|. GEMETEN op Sanders eigen set (woofer 380 mm onder
+  het referentiepunt, mic op 500 mm): zijn sweep dekt in werkelijkheid **37°→46°**, niet 0°→30° —
+  de "0°"-curve staat al 37° van de wooferas af. Omdat directiviteit vlak begint en verderop
+  steil wordt, is een 37→46-verschil veel groter dan een echte 0→30; **dát is waarom die woofer
+  vanaf 300 Hz leek te bundelen**. De tweeter, die op het referentiepunt zit, geeft keurig
+  0°→0°…30°→30° — de rekenkunde controleert zichzelf. Op 1,5 m zou dezelfde woofer 9,5°→31°
+  dekken.
+  **`micElevationDeg` (aug 2026, na Sanders `ver10`-vraag)**: een rig kan ook een vaste
+  VERTICALE hoek hebben (+ = mic boven het referentievlak). Geen verfijning maar een
+  hoofdterm: op een driver 380 mm laag bij 500 mm verschuift ±10° de ware hoek van 31° naar 43°,
+  dus het veld is GETEKEND en wordt nooit geraden. 0 = de gewone situatie en reduceert exact
+  tot de oude vorm. (Sanders eigen set bleek er géén te hebben: `ver10` in zijn bestandsnamen is
+  geen verticale hoek — hij mat één horizontale sweep op 50 cm recht vóór de tweeter.)
+  **HARD GELEERD — de gids had het mis over draaien**: hij zei "draai de kast, niet de mic, want
+  een mic op een boog verandert ook de afstand". GEMETEN: met de boog gecentreerd op het
+  referentiepunt en verticaal gestapelde drivers is de afstand tot élke driver exact constant
+  (0,00 dB op 0° én 30° — de offset zit in de rotatie-as, dus hij valt weg). Mic-op-draaischijf
+  is dus meetkundig identiek aan kast-op-draaischijf. Het échte argument voor de kast draaien is
+  een ander: dan blijft de mic op ÉÉN plek in de kamer en dragen alle curves dezelfde reflecties,
+  terwijl een reizende mic per stap een ander vloer-/wand-pad ontmoet. Alleen een HORIZONTAAL
+  verschoven driver voelt de geometrie wel (90 mm opzij ⇒ 0,51 dB over een 30°-sweep).
+  `rotationLevelOffsetDb`: het niveauverschil dat puur uit de rig-geometrie komt. NUL voor een
+  driver recht boven/onder een verticale draai-as (draaien verandert die afstand niet), en
+  alleen zichtbaar bij een HORIZONTAAL verschoven driver — daarom is een constante
+  laagfrequente offset tussen hoekcurves een aanwijzing over de opstelling, niet over de driver.
+  Verder: `farFieldVerdict` (afstand/bronmaat, werkregel ≥3× — Sanders 50 cm op een 300 mm-front
+  is 1,7×), `pistonDiameterMm` (uit Sd; de eerlijke diameter voor élke ka-regel),
+  `centreToCentreMm` (AFGELEID uit posities — hetzelfde feit twee keer intypen is precies wat we
+  niet doen; verving twee handmatige velden van dezelfde dag), `baffleStepHz` (alleen gemeld:
+  een on-baffle-meting bevat de step al, nog eens aftrekken telt dubbel), `nearestEdgeMm`,
+  `listeningAngleDeg` (maakt van een afstandsregel een uitspraak over jouw kamer: een nul op
+  ±25° is onschadelijk als je 2° van de as zit) en `boxRolloff`/`unloadingRisk` — een gesloten
+  kast ÍS al een 2e-orde hoogdoorlaat, dus LR2 elektrisch geeft LR4 akoestisch, precies de
+  hefboom waarmee die 88 µF ~30 µF wordt; een poort betekent bovendien dat de kast zélf midden
+  kan uitstralen.
+- `driverLimits.ts` — **"welke frequenties redt deze driver niet" (aug 2026, Sanders
+  onderzoeksvraag)**. Er is GEEN enkele regel voor een kruispunt; er is een stapel
+  onafhankelijke ongelijkheden en het ontwerpvenster is hun doorsnede. Alles hier staat op
+  BESLISNIVEAU (venstergrenzen + rapportage), nooit in een objective — de anker-les.
+  (a) **Breakup → f ≤ f_b/3**: een resonantie op f_b wordt aangeslagen als DERDE harmonische
+  van f_b/3, dus de vervormingsprijs valt ruim een octaaf ONDER de piek. Purifi meet het exact
+  (breakups 5/10 kHz → H3-pieken 1,6/3,3 kHz); onafhankelijk bevestigd op de Dayton RS180. Een
+  notch repareert dit NIET (die dempt de grondtoon op de breakup, niet de harmonischen die er
+  vanaf lager landen). Detectie = afwijking van een ±½-OCTAAF LOKALE trend — bewust niet van
+  een bandbrede referentie: op een 50 dB-klimmende respons wijst een bandmediaan gewoon "waar
+  de curve het hoogst is" (gemeten, en dé reden dat een eerdere poging is teruggedraaid).
+  Impedantie-corroboratie wordt GERAPPORTEERD, nooit geëist. **Er bestaat geen gepubliceerd
+  algoritme voor breakup-detectie uit SPL of Z** (de strenge route is laservibrometrie) — dus
+  dit is ons eigen criterium en het hoort zichtbaar en uitschakelbaar te zijn.
+  (b) **`KA_TIERS` — bundelingsdrempels uit de zuigerwiskunde**. Uit
+  D(θ)=2J₁(ka·sinθ)/(ka·sinθ) op 30°: ka=1 → 0,27 dB · ka=2 (industriegrens "nooit boven
+  gebruiken") → 1,11 dB · ka=3,83 → 4,34 dB. "−6 dB op 30°" (de intuïtieve grens) is ka=4,43 —
+  dat getal definieert BEAMWIDTH (IEC 60268-5 §23.4.1), niet een kruispuntplafond.
+  **HARD GELEERD OP SANDERS ECHTE 3-WEG-SET, en het draaide een wijziging van dezelfde dag
+  terug**: de default blijft de EMPIRISCHE 4 dB, níét het theoretisch strengere ka=2. De
+  zuigerformule veronderstelt een starre zuiger in een ONEINDIG SCHERM, terwijl een gemeten
+  0°−30°-verschil bij lage frequenties vooral baffle-DIFFRACTIE is. Gemeten (grote woofer,
+  Fs 73 Hz, nog op vol niveau tot 7 kHz): ka=1 → 150 Hz · ka=2 → 304 Hz · 2 dB → 373 · 3 dB →
+  586 · **4 dB → 628**; en voor de mid: ka=2 → 1376 · 3 dB → 7802 · 4 dB → 8035. Bij ka=2
+  "bundelt" die woofer dus vanaf 304 Hz — ónder de eigen 2×Fs-vloer van de mid (353) — en
+  verklaart de tool een doodgewoon 3-weg-ontwerp onmogelijk. Let ook op de mid tussen 2 en
+  3 dB: één decibel drempel verschuift het plafond een factor 5,6, want bij lage drempels
+  haalt élke diffractie-wiebel de vasthoud-test. 4 dB is geen ronder getal maar het getal dat
+  contact met meetdata overleeft. De strenge tiers blijven kiesbaar (correct voor een zuiger,
+  en bruikbaar bij schone anechoïsche data of een bewust conservatieve filosofie).
+  **De les onder de les**: dit was een onderzoek-gedreven wijziging die er in de literatuur
+  onaanvechtbaar uitzag en pas op ECHTE metingen van de gebruiker sneuvelde — synthetische
+  tests en de KOAN-set toonden het niet. Bijbehorend in
+  directivity.ts: de vasthoud-slack werd `thresholdDb − 1` en is nu `× 0,75` — bit-identiek op
+  de oude default 4, maar bij 1,11 dB zou "−1" elke wiebel accepteren.
+  (c) **`lobingCeilingHz` — hart-op-hart-afstand**, pure geometrie, nul metingen: een voorwaartse
+  nul kan pas bestaan vanaf d ≥ λ/2. **Dit is de kwantitatieve reden dat 3-wegs op 200–500 Hz
+  kruisen** — woofer en mid zijn het verst uit elkaar staande aangrenzende paar (300 mm ⇒ 572 Hz
+  bij k=0,5). LR4's "zero lobing error" gaat alleen over de FASE: het centreert de lob, het haalt
+  de nullen niet weg. k is echt omstreden (0,25 puntbron · 0,5 geen nul · 1,0 Dickason ·
+  1,1–1,3 Saunisto, die een ±25°-nul ACCEPTEERT voor een gladdere power response) en de bronnen
+  optimaliseren verschillende dingen — dus instelling, geen constante.
+  (d) **`effectiveBandIec` — IEC 60268-5 §21.2**, het enige criterium hier dat een NORM is en
+  geen vuistregel: −10 dB onder het octaafgemiddelde bij maximale gevoeligheid, en "sharp
+  troughs narrower than 1/9 octave shall be neglected" — precies de dip-immuniteit waar
+  bandMetrics voor is uitgetrokken. Neemt de LANGSTE aaneengesloten run, niet eerste-tot-laatste:
+  een gat dat de 1/9-octaafregel overleeft breekt de band echt af (in de test gevonden).
+  (e) **`excursionFloorHz`** — SPL = 108,4 + 20log(f²·Sd·Xmax) (halve ruimte), dus
+  f_min = √(10^((L−108,4)/20)/(Sd·Xmax)). Geverifieerd tegen Linkwitz' eigen gepubliceerde
+  cijfer voor de D2905/9700 (hij zegt 101 dB @1400 Hz; formule geeft 100,8). NIVEAU-bewust, en
+  dat is het hele punt tegenover een kaal Fs-veelvoud: dezelfde 1"-dome redt 587 Hz bij 90 dB
+  en 829 Hz bij 96. Vraagt twee datasheet-getallen per driver (⚙ Settings, gepersisteerd);
+  zonder die getallen vervalt het criterium stilzwijgend.
+  App: `physWin3` voegt alle vier samen tot de W-M/M-T-vensters én rapporteert `limits` zodat de
+  ⚙-uitlezing kan zeggen WELK criterium bindt ("572 Hz (lobing)") — een venster dat je niet kunt
+  toeschrijven kun je niet aanpassen.
+- `adjoint.ts` + `lbfgs.ts` — **analytische gevoeligheden + gradiënt-zoeker (aug 2026,
+  Sanders ML-vraag)**. De vraag was of machine learning de optimizer kan verbeteren; het
+  eerlijke antwoord was "niet in de objective (de anker-les, en een black box maakt élke
+  diagnose van vandaag onmogelijk) — maar er ligt iets beters vóór in de rij". Dat is dit.
+  `solveWithSensitivities` levert ∂H/∂(log10 waarde) voor élk component via de ADJOINT-methode
+  uit de circuitsimulatie: uit G·v = I volgt ∂v/∂p = −G⁻¹(∂G/∂p)v, en omdat een passief netwerk
+  RECIPROOK is (G symmetrisch) komt de adjoint λ uit DEZELFDE LU-factorisatie. Eén
+  twee-terminal-stamp is één admittantie × een vast patroon, dus het matrixproduct klapt samen
+  tot een scalair: **∂H/∂p = −(dy/dp)(λa−λb)(va−vb)/Eg**. Kosten: één extra driehoeks-solve per
+  driver per frequentie i.p.v. één volledige her-solve PER COMPONENT — bij 20 slots een factor
+  20 op elke gradiënt. `dbPhaseGradient` is de kettingregel naar de twee eenheden waarin élke
+  objective hier geschreven is (dB en graden). Optioneel `dSeriesRdValue` voor het geval waarin
+  de parasiet uit de waarde volgt (gemodelleerde spoel-DCR in de catalog-snap-fit) — zonder die
+  koppeling is de gradiënt plausibel maar fout, en een optimizer daalt daar stil langs af.
+  network.ts houdt bewust zijn eigen enkelvoudige solver: dat is het productiepad en de
+  anker-les zegt niet aanraken wat niet stuk is. Élke gradiënt is tegen centrale eindige
+  differenties van de PRODUCTIE-solver getest (R/L/C, geïnverteerde driver, meerdere outputs,
+  gekoppelde DCR) — een verkeerde gradiënt "werkt" namelijk gewoon, hij daalt alleen slecht,
+  en niets anders in de suite zou het merken.
+  **HARD GELEERD (gemeten, 12 gevallen × 8/15/20 dims op echte KOAN-takken)**: L-BFGS is GEEN
+  drop-in voor Nelder-Mead. Met één startpunt vond hij hetzelfde optimum vanaf nabije seeds
+  (30–60× minder solves) maar VERLOOR drie keer vanaf verre seeds — een dalingsmethode
+  committeert zich aan het dal waarin hij start, een simplex reflecteert nog rond. De fix is
+  niet de daling slimmer maken maar de 10× snelheidswinst uitgeven aan DIVERSITEIT: vijf
+  verstrooide deterministische startpunten, beste houden. Daarmee: **2 winsten, 10 gelijk,
+  0 verliezen** tegen het volledige oude recept (simplex + restarts + blok-verfijning + polish
+  + probe), bij 2,6× de snelheid. Dit is SEEDING — het enige mechanisme dat dit project
+  herhaaldelijk veilig heeft bevonden om een prior in te brengen; de objective blijft onaangeroerd
 - `filters.ts` — virtuele filters: BW/LR 1-4 + **Bessel 2-4** ('BS'; per-sectie
   frequentieschaling `f` in `sections()` — Bessel-secties delen geen gezamenlijke poolradius),
   peaking EQ + **lowShelf/highShelf** (analoge prototypes)
@@ -204,7 +382,7 @@ minimum phase reconstrueert. Voertaal met Sander: **Nederlands**; code/comments 
   bestaat er los naast); vangnet wijst een seed met kruising buiten het bereik af.
   Gemeten na de fix: 2400±200 → overlap 2271 Hz op het gebouwde+getunede netwerk
 - `synthesis.ts` — passieve synthese: topologie uit spec (ladder/L-pad/notch/**shelf→pad+bypass**),
-  Nelder-Mead (`optimize.ts`) in log-ruimte, bouwbaarheids-penalty, modes 'filter' | 'acoustic'
+  gradiënt-zoektocht (`lbfgs.ts` op `adjoint.ts`) in log-ruimte, bouwbaarheids-penalty, modes 'filter' | 'acoustic'
   (acoustic = FRD×filter tegen ideale vorm, level-vrij, EQ=gereedschap-niet-target, weging²;
   **level-vrijheid is gedempt**: drift-penalty 0,05·ΔdB² t.o.v. de seed-level — hard geleerd:
   ongebonden dreef een pad-zware tak ~20 dB weg en sloopte de tak-verhoudingen).
@@ -226,9 +404,36 @@ minimum phase reconstrueert. Voertaal met Sander: **Nederlands**; code/comments 
   twee-pass via `corrections: 'off'`). Klassieke vuistregels als kruisvalidatie: Zobel nodig bij
   |Z|-stijging >1,3× door de LP-band; Fs-trap overbodig als kruispunt ≥2 octaven boven Fs bij
   ≥2e orde. Oneven ordes krijgen een EERLIJKE ladder (order = aantal reactieve elementen;
-  3e-orde = C-L-C, geen ontstemde 4e). **Zoekstrategie**: iteratiebudget 140/slot, deterministische
-  restarts, blok-coördinaat-verfijning >9 dims, polish-rondes; `converged` = simplex-collapse
-  óf stationariteits-probe (verse brede simplex vindt <3% meer). **Fase↔vlakheid-trade zit in
+  3e-orde = C-L-C, geen ontstemde 4e).
+  **Alignment-bewuste seed (aug 2026)**: `deriveTopology` las `spec.hp.kind` NOOIT — élk element
+  kreeg `1/(ω₀R)` respectievelijk `R/ω₀`, ongeacht Linkwitz-Riley, Butterworth of Bessel. Die
+  coëfficiënt (0,1592) is **Q = 1**, en dat is geen enkel alignment dat de app aanbiedt: LR is
+  Q=0,5 en BW 0,707, dus voor de standaardkeuze werd élke cap 2× te groot en élke spoel 2× te
+  klein geseed. `ladderElementSeeds` (filters.ts) levert nu per ladder-element de Q en het
+  werkelijke hoekpunt van zijn sectie (Bessel-secties liggen niet op de nominale knie, en die
+  schaling KEERT OM voor hoogdoorlaat).
+  **HARD GELEERD, en het is de anker-les in vermomming**: die betere waarde als `initial`
+  gebruiken maakte twee acoustic-mode-resultaten SLECHTER — want het rol-ANKER hangt aan
+  `initial`, dus dat was geen seed-wijziging maar een OBJECTIVE-wijziging. `initial` houdt nu
+  bewust de historische Q=1-vorm (objective byte-identiek, waardepins groen) en de
+  alignment-waarde rijdt mee als `altInitial`: een EXTRA startpunt in de multi-start. Het anker
+  is toch een degeneratie-detector met ×3 speling, en de twee conventies schelen hooguit 2×.
+  Bijkomend inzicht: een dubbelbelaste LADDER van orde ≥4 heeft sowieso niet de waardes van zijn
+  gecascadeerde biquads (Dickason LR4-hoogdoorlaat: 0,2533 en 0,0563 voor de twee seriecaps,
+  waar de per-sectie-Q-vorm 2× 0,1125 geeft — hun meetkundig gemiddelde). Geen van beide is
+  "de" textbook-waarde, dus de fit start vanaf allebei en houdt wat wint.
+  **Zoekstrategie (aug 2026 omgebouwd naar gradiënten)**:
+  L-BFGS op de EXACTE adjoint-gradiënt van dezelfde objective (élke term is C1 in log-ruimte —
+  de bewakers zijn allemaal `max(0,·)²`), vanaf VIJF verstrooide deterministische startpunten +
+  een slot-daling vanaf de beste. Welke start wint wordt beslist door de SCALAIRE `objective`
+  (dezelfde functie die de discrete catalogus-pass en de tests evalueren), dus een misstap in de
+  kettingregel kan hooguit convergentiesnelheid kosten — hij kan de fit nooit een punt laten
+  KIEZEN dat hij zelf als slechter meet. `converged` = L-BFGS-convergentie óf stationariteit
+  (een verse daling vanaf het eindpunt vindt <3% meer). Dit verving simplex + restarts +
+  blok-coördinaat-verfijning + polish-rondes + probe. GEMETEN op 8 echte KOAN-taken (filter- én
+  acoustic-mode, 2–14 componenten): **3,4× sneller** (2688 → 791 ms), rmsDb identiek op 5 en
+  BETER op 3 — de zwaarste (BW3 + 2 EQ, 14 slots) van 1614 → 274 ms, de acoustic-tweeter van
+  1,37 → 1,14 dB. Volle synthesis-suite 15,9 → 5,5 s met alle 22 waardepins groen. **Fase↔vlakheid-trade zit in
   de priority-slider en is groot**: zware tweeter-tak p=0,15→0,41 dB/23°, p=0,5→0,9/17°,
   p=0,85→2,1 dB/8° (top −4 dB — "de 119 dB-inzak" is een fasekeuze, geen bug)
 - `integration.ts` — score = overlap-gewogen cos(ε/2); klassen op 45/90/120° (fysische ankers)
@@ -470,6 +675,16 @@ minimum phase reconstrueert. Voertaal met Sander: **Nederlands**; code/comments 
   singles-only would fit X% worse and cost €Y less") — kiezen mét cijfers, geen verrassing in
   de BOM. Dit verving Sanders idee van 3 volledige vergelijkings-simulaties (te duur; de
   stapel-keuze valt pas in de snap-fase, dus dáár vergelijken is gratis).
+  **UNIFORME BANKEN (aug 2026)**: naast het gemengde PAAR biedt `stackCandidates` nu ook
+  N IDENTIEKE onderdelen (2×/3×/4×) — de realisatie die een echte bouwer kiest. Gravesen bouwt
+  zijn 88 µF als 4×22 µF en noteert op zijn eigen schema "C2011 can be 88-99 uF without
+  impacting performance". Het is meer dan netheid: **premium film STOPT rond 22 µF** (Jantzen
+  Superior Z-Cap houdt daar op), dus zonder banken kan de premium-pool een mid-hoogdoorlaat
+  helemaal niet dekken en zakt de snap gedwongen een tier — de klacht "de wizard negeert mijn
+  premium-keuze", maar veroorzaakt door rekenkunde i.p.v. door de tier-logica. Banken scherpen
+  bovendien de tolerantie (N onafhankelijke delen sommeren op ~σ/√N), en juist tolerantie — niet
+  het diëlektricum — is wat de metingen als het echte risico aanwijzen. ESR deelt door N, DCR
+  telt op. Gelijkspel op waarde gaat naar de realisatie met de MINSTE fysieke delen.
   **BOM is stapel-bewust**: geen single-match → 2-delige stack-match (som binnen 1%, met
   prijs) — de netwerk-snap bouwt stapels en de BOM moet ze kunnen benoemen i.p.v.
   "no exact catalog value" (Sanders klacht).
@@ -853,9 +1068,61 @@ het spec-model), fase-chart toont de twee AANGRENZENDE paren (w-t-verschil betek
 niets), SPL-handles ook op de mid. GEGATE met uitleg-titles (paar-eigenschappen, trede 4):
 optimizers, synthese, netOptimize, vxp-export, integratie/phaseStats, directivity/sonogram,
 tolerantie-band, tab-ghosts, target-curves, templates (alleen Blank-scaffold, mét alle drie
-drivers). Autosave-deps uitgebreid (midDrv + mid-adjust — de harde les). Demo-load reset
+drivers). [Stand aug 2026: optimizers/synthese/netOptimize (trede 3–4c) én
+directivity/sonogram (zie onder) zijn inmiddels ONT-gate; vxp-export, tolerantie-band,
+tab-ghosts en target-curves zijn nog 2-weg.]
+**Fase-chart in 3-weg = ÉÉN genaaide lijn (aug 2026, Sanders "een berg lijnen over
+elkaar")**: default toont het paneel alleen "Relative phase — active pair" — per frequentie
+de relatieve fase van het ACTIEVE paar (mid-vs-woofer bínnen het W-M-overlapvenster,
+tweeter-vs-mid bínnen het M-T-venster, NaN-gat ertussen: daar draagt geen paar over), per
+punt tier-gekleurd zoals de 2-weg-hoofdlijn. Fysisch verdedigbaar omdat een paar-curve
+buiten zijn eigen overlapvenster toch niets betekent. Elk paar-venster is ÉÉN AANEENGESLOTEN
+span (eerste t/m laatste overlap-punt, Sanders "happen in de lijn"): de rauwe
+per-punt-|ΔdB|≤20-test flikkert aan de randen en tekende beten en losse eilandjes;
+binnenpunten die de test even missen dragen gewoon een betekenisvolle relatieve fase
+(phaseErrorDeg bestaat op élk integratiepunt). De twee volledige paar-curves én de
+drie totaal-lijnen zijn in 3-weg `defaultOff` (de legend ís de toggle — 2-weg houdt de
+totals default AAN, Stefans check / Sanders eindkeuze). Paar-keuze bij dubbele dekking:
+onder het meetkundig gemiddelde van de twee overlap-centra wint het lage paar.
+**Directivity + sonogram in 3-weg (aug 2026, Sanders "werken niet")**:
+`computeDirectivityN` in directivity.ts — N takken via combineN, elk met eigen transfer +
+BranchAdjust; het oude `computeDirectivity` is er een dunne wrapper over (combine ≡ combineN
+voor K=2, dus de bestaande tests dekken de kern). App-memo: 3-weg = drie lagen (woofer/mid/
+tweeter-transfers + mid-adjust), mid-hoekset VERPLICHT (mid-loze som zou stil fout zijn ⇒
+null). HARD GELEERD: `angleResponsesOn` moet in 3-weg dezelfde banded-behandeling krijgen als
+de 0°-takken (clampEdges + stille ghost buiten het eigen meetbereik) — het union-grid begint
+onder het bereik van de tweeter-hoekbestanden (~640 Hz) en een kale resample GOOIT dan, de
+catch maakte er stil null van en het paneel bleef gewoon leeg. Sonogram lift gratis mee (leest
+het directivity-resultaat). Browser-geverifieerd op Robberts volle hoekset (0/10/20/30° × 3).
+**W-M-fysica-venster (aug 2026, Sanders "moet W-M altijd handmatig?")**: nee — het
+2-weg-saneFree-recept gegeneraliseerd. Vloer = 2×Fs uit de GEMETEN mid-impedantie
+(`midHpFloor`, zelfde piek-detectie als de tweeter-vloer via `fsFloorFrom`, zoekvenster
+60–1500 Hz; Robberts mid: Fs 176 ⇒ vloer 353 Hz — precies de regio die de tuner al verkoos
+boven het niveau-anker); plafond = woofer-conus-beaming (`wooferSizeInch`-veld, zelfde formule
+als midSizeInch; 8" ⇒ 1966, geklemd op 1500). `crossover3Variants` kreeg `lowWindow`
+{floorHz, ceilHz}: de vrije W-M-as doorzoekt dát venster, overlap-anker alleen nog als
+fallback; ⚙ toont "W-M window 353–1500 Hz (2×Fs mid / woofer beaming)" live. HARD GELEERD in
+de test: één bekend fysica-anker moet van een tegensprekend niveau-anker WINNEN — bij het
+w≡m-fixture viel het overlap-centrum op de eerste grid-frequentie en de degeneratie-terugval
+gooide de vloer weg; nu krijgt de ontbrekende kant een octaaf ruimte vanaf het bekende anker,
+en alleen twéé strijdige fysica-ankers (grote mid + kleine woofer) vallen terug. Low-as-clamp
+1200 → 1500 (een klein-woofer-venster zit daar legitiem boven; de UI-pin tot 2000 werd er ook
+door geplet). Persistent: wooferSizeInch in project/snapshot/restore/autosave-deps. Autosave-deps uitgebreid (midDrv + mid-adjust — de harde les). Demo-load reset
 midDrv (anders wordt KOAN stil een 3-weg). 2-weg/solo bit-onaangeroerd: volle suite (394)
 groen + browser-check op Sanders v1-autosave (restored identiek door het nieuwe leespad).
+**Per-tak-banden (trede 4b)**: in 3-weg spant het sim-grid de UNIE van de meetbereiken
+(2-weg houdt de doorsnede — bit-compat); `banded()` zet een tak buiten zijn eigen
+meetbereik op de stille ghost — eerlijke vloer: de som draagt alleen echte bijdragen en
+de tuner-drive-bescherming bewaakt de tweeter daar elektrisch (Robberts tweeter-FRD
+begint op 640 Hz; de 400 Hz-overname is nu ontwerpbaar). `maskSilent` maakt gaps in de
+SPL/fase-charts (geen −400-klif); tak-syntheses fitten op hun eigen sub-grid
+(`synthBanded`, arrays NaN-gepad voor de SynthChart; `rawSpl` clampt in 3-weg — de
+slicing snijdt de geclampte punten weg, zelfde patroon als verification).
+**Per-paar-scores (trede 4b)**: `pairScores`-memo = per aangrenzend paar
+combine+computeIntegration+computePhaseStats (stille regio's vallen vanzelf uit het
+overlapvenster) — topbar-chips "Overlap laag/hoog Hz" + slechtste-paar Fase P95,
+SPL-strip "W-M/M-T score · Hz", fasepaneel per-paar-flatnessregel, paar-markers in de
+fase-chart. Nog open (4b-staart): pairwise timing-verdicts met eigen fitband per paar.
 **Trede 3 (aug 2026) — bandpass-tak**: `deriveTopology` cascadeerde HP→LP al bij beide
 knieën enabled (nu test-gepind op de gemeten KOAN-mid); `filterTemplates` bouwt 3-weg
 (LP@600 / bandpass 600–3000 / HP@3000, generiek 8 Ω; mid = 2×orde, id-counters gedeeld
@@ -864,6 +1131,265 @@ over de twee ladders); App: "Build passive filter" in 3-weg = drie tak-fits (zFo
 + note "assembled tune volgt" — netOptimize blijft gegate (paar-oordeel, trede 4);
 template-modellen via pickSlotsN (zModels-laadvolgorde ≠ takvolgorde), way-select volgt
 de geladen set.
+**Trede 4c (aug 2026) — de 3-weg-ontwerpketen (`threeWayChain.ts`)**: per (xoLow, xoHigh)-
+kandidaat een doelontwerp uit de structuur-zoeker (`threeWayDesign.ts`, zie onder — v1 zette
+hier nog vaste textbook-LR4-specs) + niveau-trims uit tak-medianen
+(cut-only) → tak-synthese op alive-subgrids → twee-paar-netTune; 2×2-kandidaten rond de
+rauwe paar-kruisingen; ranking gate't eerst op zOk (versterker-verdict — Z is
+ontwerpfysica in 3-weg, nooit een objective-term), dan targets, dan de blend, tie →
+goedkoopste BOM. Worker 'chain3One' + `runChain3Scan` (pool). App: 3-weg-pad in
+runVfOptimize (winnaar → Working + specs → vFilters + synth-state), wizard zonder
+Crossover-stap. Gemeten op Robbert: 411/2520 Hz → 0,79 dB avg/9,7°, paren 99/99.
+**Per-paar-pins + per-paar-flanken (aug 2026, Sanders settings-review)**: in 3-weg vraagt
+"Crossover points (low + high)" twéé pinnen (laag xoLowFreqHz±xoLowMarginHz, hoog = de
+bestaande xoFreqHz±xoMarginHz) — gepinde as = kandidaat-collapse in de scan én
+`xoRangePairs`-pin in de tune (dé fix voor de vrij schuivende kruisingen, 411→1237); en
+vier flank-doelen: acSlopeWoofer (woofer-LP laag), acSlopeMidHp (mid-HP laag — "de mid
+heeft twee flanken"), acSlopeMid (mid-LP hoog), acSlopeTweeter. netOptimizer:
+`acousticSlopes.low` + `xoRangePairs` per paar in fx (2-weg bit-identiek: één paar = de
+oude twee one()-calls). Alles gepersisteerd (design-velden + autosave-deps).
+**Gekoppelde-paren-poort (aug 2026, Sanders "W-M raakt de SPL en dus M-T")**: de paren
+delen de mid-tak, dus een gemiddelde fase-metriek laat de tuner de ene overgang stil
+inruilen tegen de andere. `pairPhaseDeg` (uniform gemiddelde per paar) rijdt mee in de
+metrics + het rapport; élke staged-beslispoort (meets/prune/escalatie/reparatie) en de
+chain-ranking oordelen op het SLECHTSTE paar (`phaseGate`/`worstPhase`); de
+zoek-objective houdt het gemiddelde (anker-les). 2-weg bit-compat: één paar ⇒
+m.phaseDeg. Scan-note toont "(W-M x° · M-T y°)".
+**Kandidaat-kooien + instelbaar aantal (aug 2026, Sanders eerste echte 3-weg-run)**: zijn scan
+leverde een ontwerp met knieën op 490/3000 Hz dat AKOESTISCH kruiste op 1256/6361 Hz — de
+mid-tweeter-overgang een octaaf te hoog, midden in de mid-breakup, en dáár stond zijn fase-P95
+op 50°. Oorzaak: `crossover3Variants` gaf alleen kandidaat-CENTRA, en de keten zette
+`xoRangePairs` alleen als de gebruiker zelf pinde — zonder pin `[null, null]`, dus niets hield
+de kruising vast (exact de 2-weg-les "vrij schuivende kruisingen", die 3-weg nooit had
+gekregen). Nu draagt elke kandidaat zijn eigen KOOI per as (`sliceAxis` betegelt de as in
+log-ruimte: gepinde as = de pin onderverdeeld, vrije as = de omgeving van de rauwe kruising
+×0,75…×1,4), en die kooi voedt zowel het knie-venster van de ontwerpstap als `xoRangePairs`
+in de tune — ontwerp en tune moeten het eens zijn over waar deze kandidaat woont.
+`xo3Steps` (⚙, 1/2/3 → 1/4/9 ketens, gepersisteerd) werkt GEPIND ÉN VRIJ — Sanders wens; de
+2-weg-`xoScanSteps`-select is in 3-weg verborgen (twee betekenissen van "steps" naast elkaar).
+Kandidaten worden GEDEDUPLICEERD op (xoLow, xoHigh): de clamp xoHigh ≥ 2,5×xoLow kan twee
+stappen op hetzelfde punt zetten (bij steps=3 clampten de twee laagste hoog-stappen van de
+767 Hz-rij allebei naar 1918), en dat kostte een volle keten-runtime aan een dubbel resultaat
+terwijl de voortgangstabel — op LABEL gekeyed — de rij stil opslokte: "9 kandidaten" toonde
+als 8 en er draaiden er 9. In de browser gevonden door de rijen te tellen.
+`after.xoHzPairs` wordt nu gerapporteerd en de scan-note toont "crosses x/y Hz": een ontwerp
+kan élk vlakheidsdoel halen terwijl zijn overgangen een octaaf naast de knieën liggen, en dat
+was nergens afleesbaar.
+**GEMETEN, en eerlijk gemengd** (Robbert, zelfde kandidaat, staged targets, geen pin):
+ongekooid ontwierp 345/1620 → leverde 363/**3954**, avgDev 1,172, paren 5,0/18,6°; gekooid
+ontwierp 341/1844 → leverde 363/**2776**, avgDev 1,341, paren 8,0/14,5°. De kooi halveert de
+drift en verbetert het slechtste paar 22%, maar kost 14% vlakheid — en de kruising ontsnapt
+nog steeds (2776 boven de kooigrens 1844). De xo-penalty is ZACHT (kwadratisch in octaven,
+adaptief gewicht pas onder ±0,15 oct halve breedte), dus een brede kooi bindt niet echt; de
+winst zit vooral in kandidaten die eindelijk écht verschillende gebieden verkennen i.p.v. naar
+hetzelfde bekken te convergeren. Meer stappen ⇒ smallere kooien ⇒ strakker gebonden.
+**De drift-oorzaak: GEVONDEN via tak-dissectie, en het was NIET mijn eerste hypothese
+(aug 2026, drie metingen diep)**. Hypothese 1 was: de breakup-guard bewaakt `[xo×1,6…xo×4]`
+(kruising-verankerd), dus een weggedreven kruising blindt zijn eigen bewaker — plausibel, en
+WEERLEGD: een resonantie-verankerde extra guard-band (`breakupHzOf`, lokale-trend-piek) maakte
+álles meetbaar slechter (avgDev 1,17→1,31 ongekooid) én Robberts mid heeft helemaal geen
+scherpe resonantie (null — zijn "breakup" is een brede bult). Volledig teruggedraaid.
+Onderweg twee proces-lessen: (1) het eerste meetscript had zijn EIGEN piekdetectie i.p.v. de
+engine-functie en rapporteerde cijfers die de engine nooit zag — meet altijd door de echte
+functie; (2) een hele-band-mediaan als piekreferentie wijst bij een 50 dB-klimmende respons
+gewoon "waar de curve het hoogst is" aan — een breakup is een LOKALE piek (±½-octaaf-venster).
+**De echte oorzaak (tak-dissectie: target vs synth vs tuned |H| op probe-frequenties)**: de
+synthese volgt het doelontwerp op 0,4 dB — ONSCHULDIG; de TUNER herbouwde de tweeter-tak
+(doel BW3@1620/−5,4 dB@2k → geleverd −29,5 dB@2k) omdat het lek-venster ONDER de kruising
+(`[xo/4…xo/1,6]`, tweeter ≥20 dB onder de som) bij BW3@1620 met déze hete tweeter
+ONVERVULBAAR is (~17 dB op 1 kHz) — de tuner "lost" dat op door de kruising omhoog te duwen.
+De ontwerpstap koos die structuur omdat hij de guard NIET kende: de 2-weg-ontwerper heeft de
+lek-term (0,02·leakSq) wél in zijn objective, `designThreeWay` had hem niet. **Fix: de
+ontwerpstap draagt nu dezelfde lek-term op hetzelfde gewicht** (netOptimizer-definitie,
+per paar rond het gemeten overlap-centrum van dat paar) — een fundamental die de tuner
+handhaaft moet zichtbaar zijn voor de trap die de structuur kiest, anders vechten ze en wint
+de tuner. Gemeten daarna: ontwerp kiest ZELF LR4@2700, tuner respecteert het (−17,0 vs doel
+−16,1 @2k), geleverde M-T-kruising 2838 vs ontworpen 2700 — de strijd is weg.
+**Scan-ankers = het overlap-centrum van het paneel** (computeIntegration op het rauwe paar —
+zelfde definitie als de "Overlap x/y Hz"-chips): de eerste versie (`firstCross`, "eerste punt
+waar boven ≥ onder") vond bij een hete tweeter de ónderrand van het zoekvenster en bij een
+mid-stiller-dan-woofer niets (meetkundig-gemiddelde-fallback) — ankers 548/1800 Hz waar het
+paneel 1631/5455 zegt; de scan zocht in de verkeerde buurten en de tuner bleef richting de
+echte overname-regio ontsnappen. NB nog open: het W-M-anker uit het overlap-centrum is zwak
+bewijs (die niveaus KRUISEN nooit echt — W-M-keuze is conus-grootte/directiviteit-domein, de
+tuner wil op Robbert lager dan het anker) en de topbar zegt "Timing unreliable" — álle
+fase-conclusies op deze set staan onder dat voorbehoud.
+**Diepere zoektocht in de gezamenlijke tune (aug 2026, zelfde ronde)**: de tak-synthese
+schakelt boven 9 dims al blok-coördinaat-verfijning in ("past ~10 dims crawlt één simplex"),
+maar de ASSEMBLED tuner had dat nooit gekregen — en een 3-weg-netwerk draagt 16–25 vrije
+waardes. `tune()` doet nu na de multi-start overlappende 6-dim blokken (stap 3) plus één
+strakke volledige polish. Blokken zijn INDEX-gebaseerd: gemergede parts komen in TAK-volgorde
+binnen, dus opeenvolgende slots delen meestal een tak en de overlap overbrugt de naden — dat
+is precies wat verhindert dat het "de paren apart tunen" wordt. De koppeling blijft intact:
+elk blok wordt gescoord door dezelfde VOLLE objective (beide paren, hele netwerk) en alleen
+geaccepteerd als die verbetert — zoekdiepte, geen objective-wijziging (anker-les). Gegate op
+3-weg (`midB !== undefined`) zodat 2-weg bit-identiek blijft, en op de VOLLE tunes
+(budgetScale ≥ 1, geen amp-floor-reparatie): de 0,6-schaal-retunes zijn lokale herstelstappen
+vanaf een al goed punt waar de diepe zoektocht zijn runtime niet terugverdient.
+**GEMETEN, hele keten A/B op Robberts echte 3-weg-set (411/2520 Hz, filter-modus)**: oud
+(textbook-LR4 + polariteit-zoals-geladen, geen blok-verfijning) → piek-rimpel 5,13 dB /
+avgDev 1,055 dB / fase 10,5° / paren 9,0–11,9°; nieuw → **1,58 dB / 0,628 dB / 6,6° /
+6,1–7,0°**. Piek ruim 3× beter, hele-bereik-afwijking 40% beter, slechtste paar bijna
+gehalveerd. Kost wél runtime (de blok-passes zijn echte MNA-solves) — dat is de bewuste ruil
+voor "het beste resultaat".
+**Structuur-zoeker (`threeWayDesign.ts`, aug 2026 — Sanders "we moeten voor het beste
+resultaat gaan")**: de staged-v1-keten ging van vaste textbook-LR4 + polariteit-zoals-geladen
+rechtstreeks de synthese in. Twee beslissingen die de componenttuner NOOIT kan repareren
+(hij verzet waardes op een VASTE topologie en een VASTE polariteit), en de 2-weg-les
+"EQ wast alignment-verschillen weg" gaat hier niet op — de 3-weg-keten heeft geen EQ-trede.
+`designThreeWay` enumereert daarom alignment(laag) × alignment(hoog) × mid-polariteit ×
+tweeter-polariteit = 64 structuren op PURE filtermath (evalDriverFilter × applyTransfer ×
+combineN, geen enkele MNA-solve), verfijnt de basisknoppen van de beste 4 met NM, en levert
+de winnende doelspecs. GEMETEN op Robberts set: de 64 structuren spreiden de combined-std
+van 1,39 tot 6,52 dB (factor 4,7) — de keuze is dus geen formaliteit; de slechtste rijen zijn
+precies de polariteit-suckouts. Op ZIJN drivers wint LR4/LR4 non-inverted (de oude
+textbook-gok zat dus goed, maar nu is dat GEMETEN i.p.v. aangenomen).
+Doctrines die erin zitten: één kruising = één beslissing (het paar deelt knie én alignment —
+`woofer.lp ≡ mid.hp`, test-gepind); polariteit wordt ABSOLUUT bepaald en overschrijft de
+inkomende checkbox (de UI volgt daarna via `setMidInverted`/`setInverted`, anders simuleert
+de app een ander ontwerp dan er gefit is); fase-metriek = uniform gemiddelde + P95-term,
+exact de 'band'-definitie van paneel en 2-weg-objective (de "elke bewaker zijn eigen
+privé-definitie"-bugfamilie); objective middelt de PAREN (glad voor de simplex — anker-les),
+de gekoppelde-paren-WORST-regel blijft op de beslispoorten; EQ-banden bewust NIET (die zijn
+synthese-gereedschap, acoustic-doctrine). Bindende keuze per kruising via `structureLow`/
+`structureHigh` — de ⚙-dropdown "HP/LP preference" was in 3-weg wél zichtbaar maar werd
+GENEGEERD; nu twee dropdowns (laag/hoog), zelfde conventie als de flank-doelen
+(`hpLpPrefLow` gepersisteerd, mét autosave-dep).
+**PER-PAAR TIMING-VERDICT OP EXCESS-FASE (aug 2026, Sanders "ik vermoed dat mid/tweeter een
+gedeelde tijdlijn hebben") — de 4b-staart, en het was een VALS ALARM**: de topbar-chip stond
+de hele 3-weg-sessie op "unreliable" en zette daarmee élk fase-cijfer onder voorbehoud. Drie
+oorzaken, alle drie fout aan de CHECK, niet aan de metingen: (1) hij vergelijkt
+woofer↔tweeter — in een 3-weg de twee drivers die elkaar nauwelijks overlappen (de mid draagt
+alles ertussen); (2) op RAUWE fase, die de eigen minimum-fase-rotatie van elke driver opslikt,
+dus de R² klapt in zodra een driver afvalt; (3) over een vaste 500–5000 Hz die bij geen van
+beide paren past. GEMETEN bewijs dat het de check is: rauwe fase gaf Robberts mid 304 µs
+(200–800) én 8 µs (5–8k) — één driver kán geen twee looptijden hebben; op EXCESS-fase geeft
+dezelfde mid **−21 µs met R² = 1,000 in élke subband**. Die reproduceerbaarheid ÍS de
+vingerafdruk van een gedeelde klok: een losse tijdreferentie levert een willekeurige offset,
+geen herhaalbare. `assessPairTimeBase` (timing.ts, unit-getest; `assessSharedReference`
+onaangeroerd → 2-weg exact gelijk) + `timing3`-memo in de App: per aangrenzend paar een
+excess-fase-fit, chip toont het SLECHTSTE paar, tooltip beide. Twee harde lessen in de
+fitband: (a) de FILE-grenzen zijn waardeloos (deze FRD's beginnen op 5 Hz — dat gaf R²=0,101),
+dus de band komt uit het echte PASSBAND per driver (binnen 10 dB van het bovenste kwartiel),
+geklemd op 200–10000 Hz omdat de FFT-minimum-fase aan zijn randen randeffect is; (b) bij de
+rolloff-knie van een driver is fase nooit delay-achtig (tweeter R² 0,68 vanaf 768 Hz, 0,95
+vanaf 3 kHz), dus de lage rand wordt in vaste stappen (×1, 1,5, 2,5, 4) getrimd tot beide
+fits schoon zijn — deterministisch, en het verdict meldt de band waarop het landde.
+UITKOMST op Robbert: **W-M −33 µs (−11 mm) · M-T +39 µs (+13 mm) → beide "plausible"**, dus
+gewone baffle-geometrie en een gedeelde tijdbasis. Alle fase-conclusies van deze sessie staan
+dus NIET meer onder voorbehoud.
+**Band-attributie in de SPL-strip (aug 2026, "spoor de Response-beperking op")**: de
+tilt-hypothese was FOUT — gemeten op Robbert is de virtuele som van de ontwerpstap vlak
+(LOW 200–700 Hz 109,8 vs HIGH 3k–16k 110,3 → tilt 0,5 dB) en de niveau-trims kloppen. De hele
+Response-beperking is een BAND-MISMATCH: de score oordeelt over het ZICHTBARE bereik, de
+optimizer ontwerpt vanaf een vloer van 200 Hz. Zelfde ontwerp: avg ±1,04 (200 Hz–18 kHz) vs
+±1,84 (20 Hz–20 kHz) — in de app score 77 vs 44, en het verschil is volledig de eigen
+afval van de woofer onder 200 Hz (107,8 dB @20 Hz vs 114,7 @500), die een CUT-ONLY passief
+netwerk niet kán optillen (alleen evenaren door overal gevoeligheid weg te gooien —
+baffle-step-terrein, een bewuste ontwerperskeuze). Dit is exact de bugfamilie waarvoor
+bandMetrics is uitgetrokken (twee bewakers, twee banden), dus: `optimizerFloorHz`-memo +
+strip-item "designed from 200 Hz", dat ALLEEN verschijnt als het zichtbare bereik onder die
+vloer duikt. Bewust géén objective-wijziging (anker-les) en géén verlaagde vloer: laag
+meenemen zonder gevoeligheidsbudget is precies de solo-val ("alles omlaag = ook vlak").
+NB Sanders HP-vermoeden: een HP op de woofer zou het cijfer juist verslechteren — de afval
+ís al de HP van de kast; wat ontbreekt is niet filtering maar zichtbaarheid.
+**EQ-trede in de 3-weg-ontwerpstap (aug 2026, Sanders "bouw jij maar eens" — 2-weg-pariteit)**:
+de laatste ontbrekende trede. Sanders beste run (Response 27) werd begrensd door precies wat
+géén ketentrap kon aanraken: een HF-tilt van de som en de in-band-bulten van de mid. Stage 3
+in `designThreeWay` (ná structuur + knie-refine, `eqBandsPerBranch` — gevoed door de
+bestaande "EQ bands/driver"-instelling; 0/afwezig = uit, staged-v1 bit-compat, test-gepind):
+greedy CUT-ONLY, per ronde (a) een piek-cut op de slechtste POSITIEVE uitschieter van de som
+t.o.v. de mediaan, toegeschreven aan de tak die dáár dominant is, plus (b) tilt-gated
+shelf-kandidaten (highShelf-cut op mid/tweeter bij >1 dB te hete bovenhelft, lowShelf-cut op
+de woofer bij het omgekeerde); elke kandidaat 3-dim NM-verfijnd (freq ±0,67 oct, gain
+geklemd ≤0, Q-vloer 0,7 — de solo-les: daaronder is een "piek-cut" vermomd breedbandverlies)
+tegen de VOLLE objective (amp + paar-fase + lek), gehouden bij ≥1% winst — een band moet
+zijn fysieke componenten verdienen. Specs dragen de banden → de synthese realiseert ze al
+(traps/shelf-pads, acoustic-doctrine "gereedschap-niet-doel") → de tuner verfijnt.
+Label meldt "· N EQ". Unit-getest op een synthetische +10 dB-bult op 1,5 kHz in de mid:
+band landt op de juiste tak nabij de bult, cut-only overal, budget per tak gerespecteerd,
+deterministisch. Bijvangst dezelfde ronde: het staged-doel-rimpelveld klemde op max 3 dB
+(Sanders kon zijn doel niet kwijt) — beide invoervelden nu max 6.
+**GEMETEN fysica-vensters voor beide vrije assen (aug 2026, Sanders "het doel is dat de
+optimizer dit verzint")**: wat de ontwerper handmatig uit de grafieken las, leidt de scan nu
+zelf af. `beamingCeilingHz` (directivity.ts): eerste frequentie waar het ±⅙-oct-gemediane
+0°−30°-verschil ≥4 dB komt én dat een HALVE octaaf volhoudt — HARD GELEERD op Robberts mid:
+een baffle-diffractie-wiebel (+4,6 dB @1,5 kHz, weg bij 2 kHz) overleeft een ⅓-oct-check en
+las als "beaming op 1462" terwijl echte bundeling alleen maar erger wordt met frequentie;
+met ½ oct → 8022 Hz, het echte punt. `reachesLevelHz` (bandMetrics.ts): laagste frequentie
+waar een driver binnen 6 dB van zijn passband komt — referentie = BOVENSTE KWARTIEL, niet
+de mediaan (een driver die over zijn hele bereik gemeten is besteedt octaven aan flanken;
+de mediaan zakt daardoor onder de passband en noemde de flank te vroeg "op niveau").
+Vensters: W-M-vloer = max(2×Fs mid, mid-reach), W-M-plafond = gemeten woofer-beaming;
+M-T-vloer = max(2×Fs tweeter, tweeter-reach), M-T-plafond = gemeten MID-beaming (dicht ook
+het "vrije hoge as is zwak"-gat); size-formules zijn terugval zonder hoekdata.
+`crossover3Variants` kreeg `highWindow` (spiegel van lowWindow, gedeelde `freeSpan`-logica);
+App-memo `physWin3` voedt scan én ⚙-uitlezing ("W-M 353–629 Hz (measured beaming) · M-T
+1310–7000 Hz (measured beaming)" — live op Robberts data; W-M-kandidaten 353/472/631 = exact
+het eerder met de hand afgeleide advies). NB eerlijk: Robberts mid REIKT wél tot ~170 Hz
+(104-106 dB gemeten op 162-185 — de FRD is de waarheid; mijn eerdere "pas op 550"-aflezing
+van een screenshot was fout), dus daar regeert de 2×Fs-vloer; de reach-vloer is het vangnet
+voor drivers die het niet doen. Synthetische unit-tests pinnen blip-robuustheid,
+staart-robuustheid en de null-gevallen.
+**Gemeten plafond mag de vrije rails oprekken, nooit voorbij het bundelpunt (Sanders
+breedbander-observatie + "maar de bundeling zal anders zeggen")**: een breedband-mid geeft
+qua fase/SPL de beste M-T rond 8,7–9 kHz (gemeten: 3–7° paar-fase daar vs ~10° op 4,9k —
+minder filterordes, natuurlijke rolloff doet de flank, tweeter luiert), maar zijn gemeten
+bundelpunt is 8022 Hz. De regel: een GEMETEN plafond boven de klassieke rail (7000 hoog /
+1500 laag) rekt de vrije rail op TOT dat bundelpunt (kandidaat op 8022 kan nu vrij gevonden
+worden), maar nooit erverbij — voorbij het gemeten bundelpunt is PIN-terrein: de fysica
+begrenst de vrije zoektocht, alleen de ontwerper stapt er expliciet overheen, en de
+in-room-term + xoPinNote prijzen/melden die keuze eerlijk. Test-gepind (ceiling 8500 ⇒ max
+vrije kandidaat ≤8500, zonder venster blijft 7000/8000).
+**Pin-zichtbaarheid (Sanders "lijkt de range te negeren … bypassen met een expliciete
+waarschuwing")**: de pin ÍS de expliciete bypass van élke afgeleide regel, dus (a) een
+niet-gehouden pin leidt de scan-note nu met "⚠ PIN: could not hold …" i.p.v. begraven te
+staan, en (b) de ⚙-venster-uitlezing toont bij een actieve pin "W-M pinned · M-T pinned —
+pins override the derived windows" i.p.v. het vrije venster te blijven tonen (dat las als
+"hij negeert mijn range"). NB de verwarring in zijn screenshot: Filter-bands-KNIEËN
+(LR4@479/2710) zijn elektrische doelen en blijven vrij — de pin zit op de AKOESTISCHE
+kruising; knieën ver van de pin zijn geen bewijs van een genegeerde pin.
+**In-room weight in 3-weg (aug 2026, Sanders "is de 2-weg-engine hier ook blind voor?")**:
+nee — de 2-weg weegt met hoekdata de energy-average-vlakheid mee (dirWeight, default 25%),
+en juist dáár verschijnt een directiviteits-trap bij de overname die on-axis onzichtbaar is.
+De 3-weg gooide angleData weg ("2-weg-vocabulaire", trede 4a) — terwijl Sanders woofer
+gemeten −3,5 dB @30°/600 Hz doet en de mid daar nog rondstraalt. Nu: netOptimizers
+hoek-blok somt in 3-weg DRIE takken per hoek (combineN-semantiek, elk met eigen transfer +
+adjust; mid-hoekset VERPLICHT om te armeren — een twee-tak-som zou stil fout zijn),
+`Chain3Input.angleData` + settings.directivityWeight/ampTarget, App levert de banded
+hoeksets (zelfde ghost-behandeling als de 0°-takken). GEMETEN (zelfde vrije kandidaat, A/B):
+on-axis-only leverde de W-M-overname op 3033 Hz — midden in het bundelgebied — met fase
+63/40°; met in-room 25% op 919 Hz met fase 32/35° en betere rimpel. De term stuurt dus
+meetbaar wég van de bundeling; het paneel-advies blijft: pin W-M ~575±75 op déze drivers
+(de energy average is een gewogen gemiddelde, geen harde muur). NB de ontwerpstap
+(designThreeWay) is nog on-axis — de tuner en de ranking dragen de term. NB2, eerlijke
+kanttekening uit dezelfde meting: het vrije M-T-anker (overlap-centrum op de RAUWE
+responsies) vindt bij een hete tweeter alsnog het láge kruispunt (~1200→1800-vloer) — het
+"paneel-anker 5455" uit een eerdere sessie kwam van een GEFILTERDE staat. Vrij scannen op
+de hoge as blijft dus zwak op hete tweeters; de pin is daar het gereedschap.
+**Pin-semantiek + hold-the-pin-reparatie (aug 2026, Sanders "zou niet boven de 575 mogen")**:
+drie lagen, in volgorde gebouwd. (1) `slicePinned`: een pin betekent LETTERLIJK wat de
+ontwerper intypt — marge exact (de oude ≥2%-van-f-vloer maakte van 8700±50 stil ±174; de
+2%-ademruimte zit nu op de kooi-RAILS), pin-centrum draait altijd zelf mee (rand-tot-rand-
+log-slicing legde het midden op het meetkundige centrum: 400±200 → 346, nooit 400), gepinde
+rails volgen de UI-invoerlimieten (150–2000 laag, tot 12000 hoog — de v1-caps 7000/8000/1500
+pletten Sanders 9 kHz-pin stil naar 7 kHz). (2) Kooien van rand-kandidaten worden op het
+PIN-VENSTER geklemd — de "nooit nul-breed"-verbreding stak eerst een halve spacing vóórbij
+de pinrand (575-kandidaat → kooi-top 623) en brak de belofte opnieuw; mét de klem houdt de
+gewone zachte penalty de kruising al binnen (gemeten: geleverd 578 op een 575-pin, geen
+reparatie nodig). (3) Vangnet: `xoPinHard`-reparatie-pass in de keten (Z-vloer-doctrine —
+eerst normaal tunen, alléén bij ontsnapping van een GEPINDE as een lokaal geseedde retune
+met stijve barrière; vrije-as-kooien zijn boekhouding, geen belofte). HARD GELEERD: de
+xoF-kruising is een TRAPFUNCTIE van de componentwaardes (verspringt per gridpunt), dus de
+stijve 1200·oct²-barrière heeft op zijn plateau geen gradiënt en de warm-geseedde simplex
+zakte terug naar vlakheid (gemeten: bleef op 705). De reparatie kreeg daarom een CONTINUE
+metgezel (`xoEdgeSq`, alleen in repair-mode): "op de bovenrand van het venster heeft de
+bovenste driver de onderste al ingehaald, op de onderrand nog niet" — twee gladde
+dB-verschillen, gewicht 20 (3 dB tekort ≈ 180). Gemeten: 705 → 617 mét alleen de barrières,
+en met de kooi-klem is de reparatie de terugval i.p.v. het pad. `xoPinNote` rapporteert
+eerlijk beide uitkomsten ("pinned crossing held: … → …" / "could not hold … consider
+widening the pin") en de App-note toont hem. Plain paths bit-compat: xoEdgeSq is overal 0
+buiten repair-mode.
 **Wizard-systeemkeuze (Sanders voorstel, aug 2026)**: stap 0 begint met 1-weg/2-weg/3-weg
 (`wizardWays`, localStorage 'ads-wizard-ways'; data wint bij openen — volle 3-weg forceert 3,
 exact twee buitentakken 2) en toont alléén de bijbehorende slots; **Next blokkeert op
@@ -1077,7 +1603,17 @@ wordt puur een import-optie, niets hangt er meer van af. Gefaseerd:
 4. **3-weg-UI + driverbibliotheek**: meetbundels (FRD+ZMA+hoeken) per driver, herbruikbaar
    over projecten; optimizer/directivity/integration mee naar N-weg
 
-- `netOptimizer.ts` — **passief-in-de-lus** (´⚙ Optimize components´-knop in netwerkpaneel):
+- `netOptimizer.ts` — **passief-in-de-lus** (´⚙ Optimize components´-knop in netwerkpaneel).
+  **TWEE-PAAR (aug 2026, trede 4a)**: `opts.midBranch` {response, adjust} zet het
+  3-weg-pad aan — tak-transfers via pickSlotsN (canonieke én echte modelnamen), som via
+  combineN, paar-lijst [(low,mid),(mid,high)] met per paar een eigen computeIntegration
+  (fase = gemiddelde over beide overlapvensters), xo-penalty en safety-gate per paar,
+  textbook-anker = meetkundig gemiddelde van de paar-kruisingen (één paar bit-identiek:
+  x^(1/1) ≡ x). midBranch undefined ⇒ 2-weg byte-voor-byte (de volle suite is het bewijs);
+  directivity/xoRange zijn 2-weg-vocabulaire en gaan in 3-weg uit; safety-note zegt bij een
+  seed die al onder de vloer zit "the seed already sat at X Ω" (eerlijke attributie —
+  drie parallelle takken rond de lage overname dippen structureel). App levert de mid via
+  opts (structured-cloneable, geen worker-wijziging) + safety.m:
   her-fit de waardes van de niet-vergrendelde R/L/C's van de actieve tab direct tegen de
   gemeten som (ripple+fase, priority-slider, én **directivity-bewust**: angleData +
   directivityWeight + ampTarget als de vfOptimizer); `locked?: boolean` op VxpPart (🔒 in
@@ -1131,7 +1667,22 @@ wordt puur een import-optie, niets hangt er meer van af. Gefaseerd:
   in de HOEKEN van de bouwbaarheidsdoos (91 µF serie-cap ≙ 0,87 Ω bij 2 kHz = draadje-met-
   extra-stappen, vlak onder het 100 µF-plafond; alleen als elco te koop). `SERIES_CEIL`
   (C ≤ 33 µF, L ≤ 8 mH) verstrakt het zachte venster voor SERIE-PAD-elementen (zelfde
-  bus-BFS als de snap-doctrine, nu gedeeld via `busPositions`). BEWUST alleen de bovenkant:
+  bus-BFS als de snap-doctrine, nu gedeeld via `busPositions`).
+  **SCHAALT MEE sinds aug 2026 (Sanders "de CAPS zijn echt heel groot")**: een CONSTANT plafond
+  is fout zodra de kruising verschuift, want wat een serie-onderdeel tot "draadje" maakt is zijn
+  reactantie t.o.v. de last — en die schaalt met 1/(f·Z). De constanten waren geijkt op een
+  2-weg-tweetertak (~2 kHz in ~6 Ω); een 3-weg W-M op 200–400 Hz in een 4 Ω-mid heeft voor
+  DEZELFDE elektrische taak legitiem 4–8× meer capaciteit nodig. Blanco toegepast verbiedt
+  33 µF precies het onderdeel dat een vakman daar kiest: **Gravesen levert 88 µF (4×22 µF film)
+  in de mid-hoogdoorlaat van minstens zeven gepubliceerde 3-wegs**, met de waarde bijna
+  evenredig aan zijn W-M-punt (22 µF @900 Hz · 38,6 @700 · 66 @400 · 88–99 @200). Nu
+  `seriesCeilFor` = max(constante, multiplier × textbook-magnitude van dít ontwerp), waarbij de
+  multipliers (C ×2,488 · L ×16,76) de oude constanten exact reproduceren op die 2 kHz/6 Ω-
+  referentie. De constante blijft dus een VLOER onder het plafond: 2-weg-gedrag ongewijzigd
+  (de waardepins bewaken dat), alleen een ontwerp dat écht meer nodig heeft krijgt meer. De
+  C/L-multipliers verschillen sterk omdat de oude constanten dat deden — een serie-woofer-spoel
+  is legitiem veel dichter bij "een draadje" dan een seriecap ooit is; die asymmetrie is bewust
+  geërfd i.p.v. weggepoetst. BEWUST alleen de bovenkant:
   een vloer aan de onderkant vecht met het starving-evenwicht dat de dode-tak-fundamentals
   bezitten — hard geleerd: mét vloer werd de prune-bait in het padloze testnet dragend
   (tuner leunde op de keten i.p.v. de cap te starven) en snoeide staged niets meer.

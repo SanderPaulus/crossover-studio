@@ -44,6 +44,42 @@ Volgorde binnen een blok = aanbevolen prioriteit. Inschattingen zijn grof:
   Plus **🔬 Compare wizard** (Import-tab): dezelfde lus als begeleide
   checklist — vier stappen die live app-state lezen, meting laden kan ín de
   wizard, verdict met de cijfers als slotstap
+- **Near-field laag-eind-merge** (aug 2026, `nearField.ts`): het gat dat het
+  meetonderzoek aanwees. Binnenshuis is een gepoorte meting pas eerlijk boven
+  200–290 Hz en een 3-weg kruist woofer-mid daar net boven; de merge haalt het
+  laag uit een nabij-veldmeting (conus + optioneel poort, complex gesommeerd),
+  schaalt met a/2r, fit niveau EN pure delay over de blend, en crossfade
+  complex. Ook: de gate-limiet volgt nu uit de vloerreflectie, dus de app zegt
+  zelf tot welke frequentie je meting draagt en biedt aan f min daarop te zetten.
+- **Cabinet & drivers-invoer** (aug 2026, `cabinet.ts` + Setup-tab): driverposities,
+  meetafstand, baffle, kasttype per driver, Sd/Xmax en luisterpositie. Regel:
+  een veld mag er alleen in als het een getal verandert dat de app toont, en
+  het voedt vensters/waarschuwingen — nooit de meetdata. Grootste opbrengst:
+  de app rekent uit welke hoek een meting ECHT heeft vastgelegd (Sanders woofer
+  bleek 37°→46° te dekken in plaats van 0°→30°) en meldt of de meetafstand
+  überhaupt ver-veld was.
+- **Driver-limieten uit de meting** (aug 2026, `driverLimits.ts`): waar een driver
+  ophoudt, volgt nu uit de data i.p.v. uit een vuistregel. Breakup → kruis op
+  f_b/3 (harmonische afbeelding, door Purifi gemeten); bundeling geijkt op ka
+  in plaats van op smaak (onze oude 4 dB bleek ka≈3,5 — veel te ruim; de
+  industriegrens ka=2 is 1,11 dB); hart-op-hart-afstand als gratis geometrisch
+  plafond (dé reden dat 3-wegs op 200–500 Hz kruisen); de IEC-norm voor de
+  bruikbare band; en een niveau-bewuste excursievloer uit Sd+Xmax. De ⚙-uitlezing
+  noemt WELK criterium bindt.
+- **Grote caps: het was geen fout** (aug 2026) — onderzoek naar Gravesens
+  gepubliceerde 3-wegs laat zien dat 88–99 µF in een mid-hoogdoorlaat normale
+  praktijk is bij een laag W-M-punt, gebouwd als 4×22 µF film. Daarop aangepast:
+  het serie-plafond schaalt mee met 1/(f·Z) i.p.v. blanco 33 µF, en de catalogus
+  kan uniforme banken benoemen. Bijvangst: de synthese seedde élk alignment op
+  Q=1 (2× te grote caps voor Linkwitz-Riley) — nu meegenomen als extra startpunt.
+- **Analytische gradiënten in de synthese** (aug 2026, `adjoint.ts` + `lbfgs.ts`):
+  de tak-fit zoekt niet langer op de tast. De adjoint-methode levert de exacte
+  afgeleide van de respons naar élke componentwaarde voor de prijs van één
+  extra driehoeks-solve (i.p.v. een her-solve per component), en L-BFGS gebruikt
+  die kromming direct. Gemeten: **3,4× sneller** op acht echte KOAN-taken, fit
+  identiek op vijf en beter op drie; nul regressies in de suite. Kwam uit
+  Sanders vraag of machine learning de optimizer kan verbeteren — het antwoord
+  was "niet in de objective, en hier ligt eerst een exacte methode klaar"
 
 ## Kort — kleine, afgebakende verbeteringen
 
@@ -73,10 +109,27 @@ Volgorde binnen een blok = aanbevolen prioriteit. Inschattingen zijn grof:
 8. **Catalogus-onderhoud** (doorlopend) — nieuwe Gemini/SKU-updates blijven
    importeerbaar; prijzen periodiek herijken op echte NL/EU-ankers (zie de
    prijsverificatie-ronde in CLAUDE.md).
+9. **Gradiënt-warmstart voor de componenttuner** (M/L) — het vervolg op
+   `adjoint.ts`. De synthese draait nu op exacte gradiënten; `netOptimizer.tune`
+   nog niet, en dáár zit de meeste rekentijd van een scan (een 3-weg-net draagt
+   16–25 vrije waardes). Kan niet één-op-één: zijn objective bevat termen die
+   NIET differentieerbaar zijn — de akoestische kruising is een trapfunctie van
+   de componentwaardes (in aug 2026 gemeten toen de stijve pin-barrière geen
+   gradiënt bleek te hebben), en de overlap-maskers van computeIntegration
+   springen. De veilige vorm is dus een HYBRIDE: L-BFGS op het gladde deel
+   (tak-vlakheid + fase) als warme start, daarna de bestaande Nelder-Mead met
+   de VOLLE objective — puur seeding, het enige mechanisme dat hier
+   herhaaldelijk veilig is gebleken. De anker-les blijft leidend: de objective
+   zelf blijft af.
+10. **Run-logboek als dataset** (S, dan doorlopend) — elke optimizer-run
+    produceert al (instellingen → resultaat); die paren wegschrijven kost bijna
+    niets en levert over maanden de enige data waarmee je een voorspellend model
+    voor kandidaat-snoei kunt BEOORDELEN in plaats van hopen. Eerst meten, dan
+    bouwen — precies de werkwijze die deze zomer drie hypotheses afschoot.
 
 ## Groot — de fases
 
-9. **Fase 4: 3-weg / N-weg** (L) — het netlist-fundament is N-weg-klaar en de
+11. **Fase 4: 3-weg / N-weg** (L) — het netlist-fundament is N-weg-klaar en de
    template-kiezer heeft de (disabled) 3-weg-optie al.
    **Trede 1 KLAAR (aug 2026): de som-kern is N-weg** — `combineN` in dsp.ts,
    per-tak adjust, `combine` als dunne wrapper erover; K=2 bit-identiek
@@ -106,6 +159,69 @@ Volgorde binnen een blok = aanbevolen prioriteit. Inschattingen zijn grof:
    Optimizers/synthese/vxp-export/integratie-score zijn in 3-weg GEGATE met
    uitleg (paar-eigenschappen — trede 4); 2-weg/solo-paden bit-onaangeroerd
    (volle suite + browser-check op Sanders v1-autosave).
+   **Trede 4a KLAAR (aug 2026): de componenttuner is twee-paar.** `netOptimizer`
+   kreeg `opts.midBranch`: tak-transfers via pickSlotsN, som via combineN,
+   paar-lijst [(low,mid),(mid,high)], fase per paar gemiddeld, álle beslispunten
+   paar-bewust (xo-penalty per paar, safety-gate op beide kruisingen, textbook-
+   anker = meetkundig gemiddelde). 2-weg byte-onaangeroerd (midBranch undefined;
+   volle suite 402 = bewijs). ⚙ Optimize components werkt dus in 3-weg.
+   GEMETEN op Robberts set: de amp-vloer-gate vuurt eerlijk (generieke seeds
+   dippen daar zelf al ~2 Ω — drie parallelle takken rond de lage overname) en
+   de 640 Hz-gridvloer knelt.
+   **Trede 4b KLAAR (aug 2026): per-tak-banden + per-paar-scores.** In 3-weg
+   spant het sim-grid de UNIE van de meetbereiken (2-weg houdt de historische
+   doorsnede — bit-compat); een tak buiten zijn eigen meetbereik is de stille
+   ghost (eerlijke vloer: de som draagt alleen echte bijdragen, en de
+   drive-bescherming bewaakt de tweeter dáár elektrisch). Charts maskeren
+   stilte naar gaps; tak-syntheses fitten op hun eigen sub-grid (arrays
+   NaN-gepad voor de SynthChart; rawSpl clampt in 3-weg — de slicing snijdt
+   de geclampte punten weg). `pairScores` in de App: per aangrenzend paar
+   integration + phaseStats — topbar "Overlap laag/hoog", SPL-strip
+   "W-M/M-T score · Hz", fasepaneel per-paar-flatness, paar-markers in de
+   fase-chart. GEMETEN op Robbert: de 400 Hz-overname is nu ontwerpbaar
+   (build W-M 531 Hz — vóór 4b onzichtbaar achter de 640 Hz-gridvloer).
+   Eerlijke bevinding: de tuner-Z-vloer bijt daar structureel (tune dreef
+   naar 1,6 Ω, reparatie haalde de vloer niet — twee 4 Ω-klasse drivers
+   parallel kunnen fysiek ~2,4 Ω halen) — Z als ontwerprandvoorwaarde is
+   trede-4c-werk. Nog open in 4b-staart: pairwise timing-check (verdicts per
+   aangrenzend paar met eigen fitband — de huidige w-t-check op 500–5000 Hz
+   zegt op Robberts set eerlijk "cannot judge").
+   **Trede 4c KLAAR (aug 2026, staged v1): de 3-weg-ontwerpketen.**
+   `threeWayChain.ts`: per (laag, hoog)-kandidaat een TEXTBOOK-doelontwerp
+   (LR4-knieën + niveau-trims uit de gemeten tak-medianen, cut-only) →
+   tak-synthese op elke taks eigen alive-subgrid → assembled TWEE-PAAR-tune;
+   `crossover3Variants` = 2×2-rooster rond de rauwe paar-kruisingen;
+   `rankChain3Results` gate't EERST op het versterker-verdict (zOk), dan
+   targets, dan de 2-weg-blend, tie → goedkoopste BOM. Bewust v1 zonder
+   vf-EQ-enumeratie (de acoustic-synthese draagt de gegate correcties al;
+   de note zegt "staged v1"). Worker 'chain3One' + pool-scan in de client;
+   App: Optimize — design for me werkt in 3-weg, wizard loopt door (zonder
+   Crossover-stap, à la solo), winnaar landt compleet in Working.
+   GEMETEN op Robberts echte set: winnaar 411/2520 Hz → avg 0,79 dB /
+   peak 1,66 dB / fase 9,7°, Response 77, beide paren integratie-score 99,
+   Fase P95 27° — terwijl 767 Hz-kandidaten 9–14 dB scoren (de scan
+   onderscheidt echt; de woofer-breakup wreekt zich daar). Determinisme
+   test-gepind. Nog open (4-staart): pairwise timing-verdicts, xo-pin per
+   paar in de UI, scan-keuzetabel voor 3-weg, per-tak-EQ-enumeratie in de
+   keten, directivity/tolerantie/tab-ghosts in 3-weg, vxp-export 3-weg
+   (trede 5).
+
+   **Trede 4d KLAAR (aug 2026, Sanders "we moeten voor het beste resultaat
+   gaan"): de twee gaten in 4c gedicht.** (a) `threeWayDesign.ts` — een echte
+   STRUCTUUR-ZOEKER: alignment(laag) × alignment(hoog) × mid-polariteit ×
+   tweeter-polariteit (64 structuren) op pure filtermath, daarna de basisknoppen
+   van de beste 4 verfijnd. v1 gokte hier vaste LR4 + polariteit-zoals-geladen,
+   en dat zijn juist de twee dingen die de componenttuner NOOIT kan repareren
+   (vaste topologie, vaste polariteit) — de 2-weg-uitvlucht "EQ wast het weg"
+   bestaat hier niet, want de 3-weg-keten heeft geen EQ-trede. Gemeten spreiding
+   over de 64: combined-std 1,39 → 6,52 dB. (b) blok-coördinaat-verfijning in de
+   assembled tune (de tak-synthese doet dit al boven 9 dims; een 3-weg-netwerk
+   draagt er 16–25) — zoekdiepte op dezelfde volle objective, gegate op 3-weg.
+   **A/B over de hele keten op Robberts set (411/2520):** piek-rimpel
+   5,13 → 1,58 dB, avgDev 1,055 → 0,628 dB, fase 10,5 → 6,6°, slechtste paar
+   11,9 → 7,0°. Kost runtime; dat is de bewuste ruil. Bindende alignment per
+   kruising nu via twee ⚙-dropdowns (de bestaande "HP/LP preference" was in
+   3-weg zichtbaar maar werd genegeerd).
    **Trede 3 KLAAR (aug 2026): de bandpass-tak.** De synthese kón het al —
    `deriveTopology` cascadeert de HP-ladder in de LP-ladder zodra beide knieën
    enabled zijn; nu bewezen op de gemeten KOAN-mid (regressietest; ~2 dB rms
@@ -120,7 +236,7 @@ Volgorde binnen een blok = aanbevolen prioriteit. Inschattingen zijn grof:
    trede: pairMetrics-lus in netOptimizer, twee-paar-designChain, solo/duo
    regressie bit-identiek; (5) vxp-brug/help; directivity/tolerantie/
    tab-ghosts in 3-weg liften mee op trede 4.
-10. **Driverbibliotheek** (L) — meetbundels (FRD + hoeken + ZMA) per driver,
+12. **Driverbibliotheek** (L) — meetbundels (FRD + hoeken + ZMA) per driver,
     herbruikbaar over projecten; het einde van losse-bestanden-slepen.
     Uitbreiding daarbovenop: **ontwerpgeheugen als seed-bibliotheek** —
     afgeronde ontwerpen bewaren mét driver-kenmerken (Fs, Z-profiel,
@@ -128,12 +244,12 @@ Volgorde binnen een blok = aanbevolen prioriteit. Inschattingen zijn grof:
     startpunt meegeven naast de textbook-seed. Retrieval, geen training:
     deterministisch en uitlegbaar — zelfde patroon als de multi-start-tuner
     (seeding verkent bekkens zonder het zoekpad te verstoren, de anker-les).
-11. **Serie-crossover-topologie** (L) — eigen build-pad + vergelijkingsharnas
+13. **Serie-crossover-topologie** (L) — eigen build-pad + vergelijkingsharnas
     naast de parallelle synthese (bewust uitgesteld tot dat harnas er is).
-12. **Genormaliseerde hoekcurves & verticale metingen** (M, wacht op data) —
+14. **Genormaliseerde hoekcurves & verticale metingen** (M, wacht op data) —
     zodra Sander verticaal meet: lobing-analyse naast de horizontale
     directivity.
-13. **Meetmodule in de app** (L) — sweep + deconvolutie kan met Web Audio, en
+15. **Meetmodule in de app** (L) — sweep + deconvolutie kan met Web Audio, en
     fft.ts/timeDomain.ts doen de wiskunde al. Twee harde voorwaarden vóórdat
     dit iets waard is:
     (a) **Gekalibreerde meetmicrofoon mét cal-bestand.** Geverifieerd op de
@@ -153,7 +269,7 @@ Volgorde binnen een blok = aanbevolen prioriteit. Inschattingen zijn grof:
     simulatie van de actieve tab legt. Relatieve respons volstaat daarvoor —
     absolute dB heb je niet nodig om te zien of het model klopt. Impedantie
     meten vraagt een sense-resistor-jig: hardware, geen software.
-14. **ARTA .pir-import met gating-UI** (M/L, future — wacht op voorbeeldpaar)
+16. **ARTA .pir-import met gating-UI** (M/L, future — wacht op voorbeeldpaar)
     — de ruwe impulsrespons vóór ARTA's gate/FFT-stap; feitelijk de
     ANALYSE-helft van de meetmodule (punt 13), los te bouwen. Geen tweede
     .lim: een .pir → FRD vraagt een GATE-keuze (venster vóór de eerste

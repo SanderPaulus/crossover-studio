@@ -14,8 +14,8 @@ import { parseLim, limToZmaText } from './lib/parsers/lim.ts';
 import { classifyLevelProfile } from './lib/parsers/classify.ts';
 import { compareMeasurement } from './lib/verification.ts';
 import { parseVxp, type VxpCrossover, type VxpPart, type VxpProject } from './lib/parsers/vxp.ts';
-import { estimateBulkDelay, assessSharedReference } from './lib/timing.ts';
-import { logspace, resample, combine, combineN, offsetMmToDelayS, applyTransfer } from './lib/dsp.ts';
+import { estimateBulkDelay, assessSharedReference, assessPairTimeBase } from './lib/timing.ts';
+import { logspace, resample, combine, combineN, offsetMmToDelayS, applyTransfer, type GriddedResponse } from './lib/dsp.ts';
 import { computeIntegration } from './lib/integration.ts';
 import { crossoverToNetlist } from './lib/vxpNetwork.ts';
 import { solveNetwork } from './lib/network.ts';
@@ -29,6 +29,38 @@ import {
 } from './lib/driverSlots.ts';
 import { estimateCoilDcr, validateNetlist } from './lib/netlistEdit.ts';
 import {
+
+  checkTransition,
+  mergeNearFar,
+  nearFieldMaxHz,
+  nearToFarDb,
+  sumRadiators,
+} from './lib/nearField.ts';
+import {
+  KA_TIERS,
+  breakupCeilingHz,
+  breakupHz,
+  excursionFloorHz,
+  lobingCeilingHz,
+  type KaTier,
+} from './lib/driverLimits.ts';
+import {
+  baffleStepHz,
+  boxRolloff,
+  centreToCentreMm,
+  farFieldVerdict,
+  floorBounceGate,
+  gateLimitHz,
+  listeningAngleDeg,
+  nearestEdgeMm,
+  pistonDiameterMm,
+  rotationLevelOffsetDb,
+  trueOffAxisDeg,
+  unloadingRisk,
+  type DriverPlacement,
+  type Enclosure,
+} from './lib/cabinet.ts';
+import {
   mergeSynthesizedSchematics,
   nextPartId,
   normalizeOrigin,
@@ -37,6 +69,7 @@ import SchematicEditor from './components/SchematicEditor.tsx';
 import NumberFlow from '@number-flow/react';
 import { Modal } from './components/Modal.tsx';
 import { HelpPanel } from './components/HelpPanel.tsx';
+import { MeasuringGuide } from './components/MeasuringGuide.tsx';
 import { CatalogManager } from './components/CatalogManager.tsx';
 import { helpSectionForTab } from './lib/help.ts';
 import { fileSafeName } from './lib/filenames.ts';
@@ -70,7 +103,9 @@ import {
   runNetOptimizeTask,
   runSoloChainTask,
   runVfRoundsTask,
+  runChain3Scan,
 } from './lib/optimClient.ts';
+import { crossover3Variants, rankChain3Results } from './lib/threeWayChain.ts';
 import { buildSoloNetwork, optimizeSoloFilter, reachableBandFor } from './lib/soloOptimizer.ts';
 import { crossoverVariants, rankChainResults, type ChainResult, type ChainSettings } from './lib/designChain.ts';
 import { deserializeCatalog, serializeCatalog } from './lib/catalogFile.ts';
@@ -93,6 +128,7 @@ import {
   serializeProject,
   deserializeProject,
   type NetworkDesign,
+  type ProjectDesign,
   type ProjectState,
   type StoredFile,
 } from './lib/project.ts';
@@ -101,7 +137,8 @@ import Chart, { type ChartHandle, type Series } from './components/Chart.tsx';
 import DriverFilterControls from './components/FilterControls.tsx';
 import demoMid from './lib/parsers/fixtures/mid_hor0_mettape.txt?raw';
 import demoTweet from './lib/parsers/fixtures/tweet_hor0_mettape.txt?raw';
-import { computeDirectivity, type AngleResponse } from './lib/directivity.ts';
+import { beamingCeilingHz, computeDirectivity, computeDirectivityN, type AngleResponse } from './lib/directivity.ts';
+import { reachesLevelHz } from './lib/bandMetrics.ts';
 import { beamwidth6dBHalfAngle, buildSonogram, type SonogramMode } from './lib/sonogram.ts';
 import Sonogram from './components/Sonogram.tsx';
 import { angleFromFilename } from './lib/angles.ts';
@@ -455,6 +492,151 @@ function filterSummaryLine(spec: DriverFilterSpec, side: 'woofer' | 'mid' | 'twe
   return `${name}: ${parts.length > 0 ? parts.join(', ') : 'flat'}`;
 }
 
+/** One branch's near-field material: the cone measurement, an optional port or
+ *  passive-radiator measurement, and the splice settings. */
+interface NearFieldSlot {
+  cone: StoredFile | null;
+  port: StoredFile | null;
+  /** Effective diameter of the port mouth, mm — its weight in Keele's sum. */
+  portDiaMm: string;
+  /** Blend centre, Hz. Empty = the app proposes one. */
+  transitionHz: string;
+  blendOctaves: string;
+  /** Put the baffle step back into the half-space near field. */
+  stepOn: boolean;
+  stepDepthDb: string;
+}
+const emptyNearField = (): NearFieldSlot => ({
+  cone: null,
+  port: null,
+  portDiaMm: '',
+  transitionHz: '',
+  blendOctaves: '1',
+  stepOn: true,
+  stepDepthDb: '6',
+});
+
+/** Cabinet geometry + measurement context, as typed (strings so a field can be
+ *  empty; every consumer treats absent as "criterion does not apply"). */
+interface CabinetDriver {
+  /** Offset from the measurement reference point, mm. +x right, +y up. */
+  xMm: string;
+  yMm: string;
+  enclosure: Enclosure;
+  /** Box corner: Fc for sealed, Fb for ported. */
+  fbHz: string;
+}
+interface CabinetState {
+  /** Microphone distance during the FRD sweeps, mm. */
+  micDistanceMm: string;
+  /** Fixed VERTICAL angle of the rig, degrees; + = mic above the reference
+   *  plane. Usually 0 (mic level with the reference point). Signed on purpose:
+   *  on a driver 380 mm low at 500 mm, ±10° swings the true angle 31°↔43°. */
+  micElevationDeg: string;
+  /** The reflection-free window the operator ACTUALLY used, ms. Ground truth
+   *  when known — it beats any prediction from geometry. '' = predict it. */
+  gateMs: string;
+  baffleWidthMm: string;
+  baffleHeightMm: string;
+  /** How far below the top of the baffle the reference point sits, mm. */
+  refFromTopMm: string;
+  /** Height of the reference point above the floor, mm. */
+  refHeightMm: string;
+  listenDistanceM: string;
+  listenEarHeightMm: string;
+  drivers: Record<BranchRole, CabinetDriver>;
+}
+const emptyCabinetDriver = (): CabinetDriver => ({
+  xMm: '',
+  yMm: '',
+  enclosure: 'unknown',
+  fbHz: '',
+});
+const emptyCabinet = (): CabinetState => ({
+  micDistanceMm: '',
+  micElevationDeg: '',
+  gateMs: '',
+  baffleWidthMm: '',
+  baffleHeightMm: '',
+  refFromTopMm: '',
+  refHeightMm: '',
+  listenDistanceM: '',
+  listenEarHeightMm: '',
+  drivers: { low: emptyCabinetDriver(), mid: emptyCabinetDriver(), high: emptyCabinetDriver() },
+});
+/** Restore a cabinet block from a project/autosave, filling every gap with the
+ *  empty default — an older file simply has no geometry, and that must read as
+ *  "not entered", never as a zero position at the reference point. */
+function mergeCabinet(raw: ProjectDesign['cabinet']): CabinetState {
+  const base = emptyCabinet();
+  if (!raw) return base;
+  const roles: BranchRole[] = ['low', 'mid', 'high'];
+  const drivers = { ...base.drivers };
+  for (const r of roles) {
+    const d = raw.drivers?.[r];
+    if (!d) continue;
+    const enc = d.enclosure;
+    drivers[r] = {
+      xMm: d.xMm ?? '',
+      yMm: d.yMm ?? '',
+      enclosure:
+        enc === 'sealed' || enc === 'ported' || enc === 'open' ? (enc as Enclosure) : 'unknown',
+      fbHz: d.fbHz ?? '',
+    };
+  }
+  return {
+    micDistanceMm: raw.micDistanceMm ?? '',
+    micElevationDeg: raw.micElevationDeg ?? '',
+    gateMs: raw.gateMs ?? '',
+    baffleWidthMm: raw.baffleWidthMm ?? '',
+    baffleHeightMm: raw.baffleHeightMm ?? '',
+    refFromTopMm: raw.refFromTopMm ?? '',
+    refHeightMm: raw.refHeightMm ?? '',
+    listenDistanceM: raw.listenDistanceM ?? '',
+    listenEarHeightMm: raw.listenEarHeightMm ?? '',
+    drivers,
+  };
+}
+
+/** A driver's placement, or null when it has not been entered. Both numbers
+ *  must be present — half a position is not a position. */
+function placementOf(d: CabinetDriver): DriverPlacement | null {
+  const x = Number(d.xMm);
+  const y = Number(d.yMm);
+  if (d.xMm.trim() === '' || d.yMm.trim() === '' || !Number.isFinite(x) || !Number.isFinite(y)) {
+    return null;
+  }
+  return { xMm: x, yMm: y };
+}
+
+/**
+ * Name the criterion that actually SETS a handover ceiling. A window the
+ * designer cannot attribute is a window he cannot act on: "572 Hz" invites
+ * an argument, "572 Hz (lobing, 300 mm spacing)" invites a decision — move
+ * the drivers closer, or accept the null and raise k.
+ */
+function bindingCeil(
+  lim: {
+    beam: number | null;
+    lobe: number | null;
+    breakup: { hz: number; corroboratedByZ: boolean } | null;
+    excursion: number | null;
+  },
+  beamMeasured: boolean,
+): string {
+  const cands: Array<[number, string]> = [];
+  if (lim.beam !== null) cands.push([lim.beam, beamMeasured ? 'measured beaming' : 'beaming']);
+  if (lim.lobe !== null) cands.push([lim.lobe, 'lobing']);
+  if (lim.breakup)
+    cands.push([
+      lim.breakup.hz / 3,
+      `breakup ${Math.round(lim.breakup.hz)} Hz${lim.breakup.corroboratedByZ ? '+Z' : ''}`,
+    ]);
+  if (cands.length === 0) return '';
+  cands.sort((a, b) => a[0] - b[0]);
+  return ` (${cands[0][1]})`;
+}
+
 function excessDelayMsOf(frd: Parsed): number | null {
   try {
     const lo = Math.max(500, frd.freq[0] * 1.05);
@@ -590,16 +772,15 @@ export default function App() {
     return undefined;
   };
 
-  /** The ≥2×Fs rule from the measured tweeter impedance: a hard floor for
-   *  the optimizer's HP knee. Null without a pronounced resonance peak; an
-   *  explicit crossover range overrides it (the designer's own call). */
-  const tweeterHpFloor = useMemo(() => {
-    const z = impedances['tweeter'];
+  /** The ≥2×Fs rule from a measured impedance: a hard floor for a branch's
+   *  HP knee. Null without a pronounced resonance peak (≥1.4× the plateau
+   *  just above it) inside [lo, hi] — the driver-family's plausible Fs range. */
+  const fsFloorFrom = (z: ParsedZma | undefined, lo: number, hi: number): number | null => {
     if (!z) return null;
     let fPk = 0;
     let zPk = 0;
     for (let i = 0; i < z.freq.length; i++) {
-      if (z.freq[i] < 300 || z.freq[i] > 3000) continue;
+      if (z.freq[i] < lo || z.freq[i] > hi) continue;
       if (z.magnitude[i] > zPk) {
         zPk = z.magnitude[i];
         fPk = z.freq[i];
@@ -616,7 +797,22 @@ export default function App() {
     }
     if (!n || zPk < 1.4 * (ref / n)) return null;
     return Math.round(2 * fPk);
-  }, [impedances]);
+  };
+  /** Tweeter HP floor: an explicit crossover range overrides it (the
+   *  designer's own call). */
+  const tweeterHpFloor = useMemo(
+    () => fsFloorFrom(impedances['tweeter'], 300, 3000),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [impedances],
+  );
+  /** 3-way: the same ≥2×Fs rule for the MID's HP knee — the physics floor of
+   *  the W-M handover (Robbert's mid: Fs 176 Hz ⇒ floor 353 Hz, exactly the
+   *  region the tuner kept preferring over the level-based anchor). */
+  const midHpFloor = useMemo(
+    () => (threeWay ? fsFloorFrom(impedances['mid'], 60, 1500) : null),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [impedances, threeWay],
+  );
   const [angleSets, setAngleSets] = useState<AngleSets | null>(null);
   const [xoName, setXoName] = useState<string>('none');
   const [error, setError] = useState<string | null>(null);
@@ -855,8 +1051,17 @@ export default function App() {
    *  more steps = a finer sweep, compute grows ~linearly (pool absorbs some). */
   const [xoScanSteps, setXoScanSteps] = useState(3);
   /** Preferred HP/LP alignment (strong prior for the structure search);
-   *  'auto' = free enumeration over the alignment library. */
+   *  'auto' = free enumeration over the alignment library. In 3-way this is
+   *  the HIGH (mid-tweeter) crossing — same convention as acSlopeMid/Tweeter,
+   *  which have always meant the top pair. */
   const [hpLpPref, setHpLpPref] = useState('auto');
+  /** 3-way: alignment preference for the LOW (woofer-mid) crossing. Two
+   *  handovers are two independent foundations to choose. */
+  const [hpLpPrefLow, setHpLpPrefLow] = useState('auto');
+  /** 3-way scan: candidate steps PER CROSSING (1/2/3 → 1/4/9 full chains).
+   *  Independent of the crossover pin — every candidate is caged in its own
+   *  slice either way, so "how many" is always a meaningful cost knob. */
+  const [xo3Steps, setXo3Steps] = useState(2);
   /** Staged design ("trapmethode"): HP/LP first, every next layer (EQ,
    *  Zobel/LCR, bypass-C) only while the targets are unmet — fewest
    *  components that reach the goal. */
@@ -869,6 +1074,15 @@ export default function App() {
    *  the "akoestisch 4e orde bij de tweeter"-knop. */
   const [acSlopeMid, setAcSlopeMid] = useState('24');
   const [acSlopeTweeter, setAcSlopeTweeter] = useState('12');
+  /** 3-way: the LOW handover's own pin and slope targets (Sanders: "een
+   *  3-weg heeft twee akoestische flanken op de mid" — the mid has an HP
+   *  flank at the low crossing AND an LP flank at the high one, and the
+   *  woofer's LP flank needs its own knob too). The existing xoFreqHz/
+   *  acSlopeMid/acSlopeTweeter keep steering the HIGH (mid-tweeter) pair. */
+  const [xoLowFreqHz, setXoLowFreqHz] = useState('400');
+  const [xoLowMarginHz, setXoLowMarginHz] = useState('150');
+  const [acSlopeWoofer, setAcSlopeWoofer] = useState('24');
+  const [acSlopeMidHp, setAcSlopeMidHp] = useState('24');
   /** Mid nominal size (inch) — sets the crossover CEILING via cone beaming
    *  (f ≈ c/π·d_eff; a MID property, per Gemini's window rules). '' = unknown
    *  → the free band falls back to the tweeter-anchored ceiling. */
@@ -883,6 +1097,59 @@ export default function App() {
     const dEff = inch * 0.0254 * 0.82;
     return Math.round((3 * 343) / (Math.PI * dEff));
   }, [midSizeInch]);
+  /** 3-way: woofer nominal size (inch) — the W-M handover's beaming CEILING,
+   *  the exact mirror of the mid-size rule above. '' = unknown. */
+  const [wooferSizeInch, setWooferSizeInch] = useState('');
+  /** Directivity philosophy for the measured beaming ceiling. Default is the
+   *  empirical 4 dB, NOT the theoretically stricter ka = 2 — measured on a real
+   *  3-way set the tight tiers fire on baffle diffraction and declare an
+   *  ordinary design impossible (see KA_TIERS). */
+  const [kaTier, setKaTier] = useState<KaTier>('measured');
+  /**
+   * Cabinet geometry + measurement context — the facts the designer KNOWS and
+   * the app would otherwise infer. One object rather than fifteen useStates:
+   * it is one thing conceptually, and it persists as one field.
+   *
+   * Driver positions are relative to the MEASUREMENT REFERENCE POINT (where the
+   * mic was aimed / the turntable axis), +x right and +y up. Centre-to-centre
+   * per pair is DERIVED from these — asking for it separately would be the same
+   * fact typed twice, and positions additionally reveal which driver was
+   * off-axis during the sweep.
+   */
+  const [cabinet, setCabinet] = useState<CabinetState>(() => emptyCabinet());
+  /**
+   * Near-field low-end merge, per branch. A gated indoor far field runs out
+   * around 200–290 Hz and a three-way's woofer-mid crossover lives at
+   * 300–500 Hz, so the region that needs the most care is the one the gate
+   * cannot support. Only the low and mid branches get a slot: a tweeter has no
+   * low-end problem worth splicing.
+   */
+  const [nearField, setNearField] = useState<Record<BranchRole, NearFieldSlot>>(() => ({
+    low: emptyNearField(),
+    mid: emptyNearField(),
+    high: emptyNearField(),
+  }));
+  /** How much spacing the design tolerates, in wavelengths. Genuinely
+   *  contested (0.5 = no forward null … 1.2 = Saunisto's power-response
+   *  optimum, which ACCEPTS a ±25° null), so the designer owns it. */
+  const [ctcK, setCtcK] = useState('0.5');
+  /** Cone breakup as an upper limit: cross at or below f_b / harmonic. */
+  const [breakupLimitOn, setBreakupLimitOn] = useState(true);
+  const [breakupHarmonic, setBreakupHarmonic] = useState('3');
+  /** Datasheet numbers for the excursion floor — the level-aware version of
+   *  "cross a tweeter at 2-3x Fs". Two fields per driver, and without them the
+   *  criterion simply does not apply. */
+  const [sdCm2, setSdCm2] = useState<Record<BranchRole, string>>({ low: '', mid: '', high: '' });
+  const [xmaxMm, setXmaxMm] = useState<Record<BranchRole, string>>({ low: '', mid: '', high: '' });
+  /** The SPL the excursion floor is computed FOR — a 1" dome is fine to 587 Hz
+   *  at 90 dB and only to 829 Hz at 96 dB, and that is the whole point. */
+  const [excursionSpl, setExcursionSpl] = useState('96');
+  const wooferXoCeiling = useMemo(() => {
+    const inch = Number(wooferSizeInch);
+    if (!(inch > 0)) return null;
+    const dEff = inch * 0.0254 * 0.82;
+    return Math.round((3 * 343) / (Math.PI * dEff));
+  }, [wooferSizeInch]);
   /** Wizard "think-along": suggested tuning range = the optimizer's evaluation
    *  band. The USABLE span where both drivers have data — floored at 200 Hz (a
    *  mid/tweeter tuning floor; raw FRDs often carry an unreliable sub-100 Hz
@@ -965,6 +1232,7 @@ export default function App() {
   const [cmpStep, setCmpStep] = useState(1);
   /** In-app manual; opens on the section matching the active design tab. */
   const [helpOpen, setHelpOpen] = useState(false);
+  const [measureGuideOpen, setMeasureGuideOpen] = useState(false);
   const [catalogMgrOpen, setCatalogMgrOpen] = useState(false);
   const [snapProfile, setSnapProfile] = useState('auto');
   const [snapSeriesL, setSnapSeriesL] = useState('auto');
@@ -1585,6 +1853,39 @@ export default function App() {
     }
   }
 
+  /** Load one near-field measurement into a branch's slot. Kept as raw text
+   *  like every other measurement so the project file stays self-contained. */
+  async function loadNearField(
+    e: React.ChangeEvent<HTMLInputElement>,
+    role: BranchRole,
+    which: 'cone' | 'port',
+  ) {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file) return;
+    setError(null);
+    try {
+      const raw = await file.text();
+      const frd = parseFrd(raw);
+      if (!frd.hasPhase) {
+        setError(
+          `"${file.name}" carries no phase. A near-field splice without phase would plant an ` +
+            `unknown delay step at the crossover — measure it with a timing reference.`,
+        );
+      }
+      const cls = classifyLevelProfile(frd.spl);
+      if (cls.kind === 'impedance') {
+        setError(
+          `"${file.name}" looks like an impedance file (median ≈ ${cls.medianLevel.toFixed(1)} Ω), ` +
+            `not a response.`,
+        );
+      }
+      setNearField((n) => ({ ...n, [role]: { ...n[role], [which]: { name: file.name, raw } } }));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
+    }
+  }
+
   const num = (s: string, fallback: number) => {
     const v = Number(s);
     return s.trim() !== '' && Number.isFinite(v) ? v : fallback;
@@ -1608,11 +1909,29 @@ export default function App() {
     };
   };
 
-  /** Target acoustic slopes for both optimizers ('auto' selections drop out). */
-  const acousticSlopesValue = (): { mid?: number; tweeter?: number } | undefined => {
+  /** Target acoustic slopes for both optimizers ('auto' selections drop out).
+   *  3-way adds the LOW pair's flanks (woofer LP / mid HP). */
+  const acousticSlopesValue = ():
+    | { mid?: number; tweeter?: number; low?: { lower?: number; upper?: number } }
+    | undefined => {
     const mid = acSlopeMid === 'auto' ? undefined : Number(acSlopeMid);
     const tweeter = acSlopeTweeter === 'auto' ? undefined : Number(acSlopeTweeter);
-    return mid || tweeter ? { mid, tweeter } : undefined;
+    const lowLower = threeWay && acSlopeWoofer !== 'auto' ? Number(acSlopeWoofer) : undefined;
+    const lowUpper = threeWay && acSlopeMidHp !== 'auto' ? Number(acSlopeMidHp) : undefined;
+    const low = lowLower || lowUpper ? { lower: lowLower, upper: lowUpper } : undefined;
+    return mid || tweeter || low ? { mid, tweeter, ...(low ? { low } : {}) } : undefined;
+  };
+
+  /** 3-way pins for the design chain (freq ± margin per handover). */
+  const xoPinsValue = (): {
+    low?: { freq: number; margin: number };
+    high?: { freq: number; margin: number };
+  } => {
+    if (!xoRangeOn) return {};
+    return {
+      low: { freq: num(xoLowFreqHz, 400), margin: num(xoLowMarginHz, 150) },
+      high: { freq: num(xoFreqHz, 2200), margin: num(xoMarginHz, 400) },
+    };
   };
 
   /** Designer's crossover point as [lo, hi] for the optimizers: centre ±
@@ -1646,11 +1965,13 @@ export default function App() {
     () =>
       [
         { id: 1, label: 'Goals' },
-        ...(soloDriver ? [] : [{ id: 2, label: 'Crossover' }]),
+        // Solo has nothing to cross; 3-way derives its 2D candidates from the
+        // measured pair crossings (the Crossover step is 2-way vocabulary).
+        ...(soloDriver || threeWay ? [] : [{ id: 2, label: 'Crossover' }]),
         { id: 3, label: 'Components' },
         { id: 4, label: 'Review & run' },
       ] as const,
-    [soloDriver],
+    [soloDriver, threeWay],
   );
   /** Where we are in that list; −1 is the "load measurements" gate (step 0). */
   const wizardPos = wizardSteps.findIndex((s) => s.id === wizardStep);
@@ -1661,6 +1982,208 @@ export default function App() {
     if (wizardStep > 0 && wizardPos < 0) setWizardStep(wizardSteps[0].id);
   }, [wizardStep, wizardPos, wizardSteps]);
 
+  /**
+   * Everything the entered geometry lets us SAY, in one place.
+   *
+   * The rule that keeps this from becoming a form nobody fills in: each field
+   * has to change a number the app shows. Positions give centre-to-centre and
+   * the true measurement angles; distance gives the far-field verdict; the
+   * enclosure gives the acoustic order the box already provides. Nothing here
+   * touches measured data — it bounds windows, cross-checks and warns.
+   */
+  const cabinetInfo = useMemo(() => {
+    const micMm = Number(cabinet.micDistanceMm);
+    const micElev = Number(cabinet.micElevationDeg) || 0;
+    const place = {
+      low: placementOf(cabinet.drivers.low),
+      mid: placementOf(cabinet.drivers.mid),
+      high: placementOf(cabinet.drivers.high),
+    };
+    const angleListOf = (role: BranchRole): number[] => {
+      const set =
+        role === 'low' ? angleSets?.woofer : role === 'mid' ? angleSets?.mid : angleSets?.tweeter;
+      return set ? [...new Set(set.map((a) => a.hor))].sort((a, b) => a - b) : [];
+    };
+    /** What a nominal sweep REALLY captured for this driver. Null unless both
+     *  a position and a mic distance are known. */
+    const trueAngles = (role: BranchRole) => {
+      const p = place[role];
+      if (!p || !(micMm > 0)) return null;
+      const list = angleListOf(role);
+      if (list.length === 0) return null;
+      return list.map((nominal) => ({
+        nominal,
+        actual: trueOffAxisDeg(p, micMm, nominal, micElev),
+        levelDb: rotationLevelOffsetDb(p, micMm, nominal, micElev),
+      }));
+    };
+    const diaOf = (role: BranchRole) => pistonDiameterMm(Number(sdCm2[role]));
+    const biggestDriverMm = Math.max(
+      ...(['low', 'mid', 'high'] as BranchRole[]).map((r) => diaOf(r) ?? 0),
+    );
+    const baffleW = Number(cabinet.baffleWidthMm);
+    const farField = farFieldVerdict(micMm, {
+      driverDiameterMm: biggestDriverMm,
+      baffleWidthMm: baffleW > 0 ? baffleW : undefined,
+    });
+    // How low the measurement can honestly claim to reach. A stated gate wins
+    // over the predicted floor bounce — the operator knows what window was used.
+    const predicted = floorBounceGate(micMm, Number(cabinet.refHeightMm), micElev);
+    const statedHz = gateLimitHz(Number(cabinet.gateMs));
+    const reliable =
+      statedHz !== null
+        ? { fromHz: statedHz, gateMs: Number(cabinet.gateMs), stated: true }
+        : predicted
+          ? { fromHz: predicted.fromHz, gateMs: predicted.gateMs, stated: false }
+          : null;
+    const ctc = (a: BranchRole, b: BranchRole) =>
+      place[a] && place[b] ? centreToCentreMm(place[a]!, place[b]!) : null;
+    const baffle =
+      baffleW > 0 && Number(cabinet.baffleHeightMm) > 0
+        ? {
+            widthMm: baffleW,
+            heightMm: Number(cabinet.baffleHeightMm),
+            refFromTopMm: Number(cabinet.refFromTopMm) || 0,
+          }
+        : null;
+    return {
+      place,
+      trueAngles,
+      diaOf,
+      farField,
+      /** Adjacent-pair spacing. In 2-way the single pair is low↔high. */
+      ctcLow: threeWay ? ctc('low', 'mid') : ctc('low', 'high'),
+      ctcHigh: threeWay ? ctc('mid', 'high') : null,
+      reliable,
+      baffleStep: baffleStepHz(baffleW),
+      edgeOf: (role: BranchRole) =>
+        place[role] && baffle ? nearestEdgeMm(place[role]!, baffle) : null,
+      listenAngle: listeningAngleDeg(
+        Number(cabinet.refHeightMm),
+        Number(cabinet.listenEarHeightMm),
+        Number(cabinet.listenDistanceM),
+      ),
+      boxOf: (role: BranchRole) => boxRolloff(cabinet.drivers[role].enclosure),
+      unloadOf: (role: BranchRole) => unloadingRisk(cabinet.drivers[role].enclosure),
+    };
+  }, [cabinet, sdCm2, angleSets, threeWay]);
+
+  /**
+   * Near-field merge per branch: the driver's effective response, with its low
+   * end taken from the near-field measurement where the gate can no longer
+   * support the far field.
+   *
+   * Done HERE, at the source, so everything downstream — grid span, sim,
+   * optimizer, charts, scores — sees one response and needs no knowledge of
+   * where its low end came from. The merged FRD simply reaches lower.
+   */
+  const merged = useMemo(() => {
+    const out: Partial<Record<BranchRole, { frd: Parsed; report: string; ok: boolean }>> = {};
+    const src: [BranchRole, Loaded | null][] = [
+      ['low', woofer],
+      ['mid', midDrv],
+      ['high', tweeter],
+    ];
+    const micMm = Number(cabinet.micDistanceMm);
+    for (const [role, loaded] of src) {
+      const slot = nearField[role];
+      if (!loaded || !slot.cone) continue;
+      const sd = Number(sdCm2[role]);
+      const nearMax = nearFieldMaxHz(sd);
+      const scaleDb = nearToFarDb(sd, micMm);
+      if (nearMax === null || scaleDb === null) {
+        out[role] = {
+          frd: loaded.frd,
+          ok: false,
+          report: 'needs Sd for this driver and the mic distance — without them the near field cannot be scaled',
+        };
+        continue;
+      }
+      let cone: Parsed;
+      let port: Parsed | null = null;
+      try {
+        cone = parseFrd(slot.cone.raw);
+        if (slot.port) port = parseFrd(slot.port.raw);
+      } catch (err) {
+        out[role] = { frd: loaded.frd, ok: false, report: String(err) };
+        continue;
+      }
+      // One grid spanning the near field's low end up through the far field.
+      const lo = Math.max(5, cone.freq[0]);
+      const hi = Math.min(loaded.frd.freq[loaded.frd.freq.length - 1], 20000);
+      if (!(hi > lo * 4)) {
+        out[role] = { frd: loaded.frd, ok: false, report: 'near-field and far-field ranges barely overlap' };
+        continue;
+      }
+      const g = logspace(lo, hi, GRID_N);
+      const onGrid = (p: Parsed) => resample(p.freq, p.spl, p.phase, g, { clampEdges: true });
+      const gc = onGrid(cone);
+      const gf = onGrid(loaded.frd);
+      // Keele's diameter-weighted COMPLEX sum of cone + port.
+      let nearSpl = gc.spl;
+      let nearPhase = gc.phaseDeg;
+      const portDia = Number(slot.portDiaMm);
+      if (port && portDia > 0) {
+        const dia = (Math.sqrt((sd * 1e-4) / Math.PI) * 2 * 1000) || 1;
+        const gp = onGrid(port);
+        const summed = sumRadiators([
+          { p: gc.spl.map((v, i) => fromPolar(10 ** (v / 20), (gc.phaseDeg[i] * Math.PI) / 180)), diameterMm: dia },
+          { p: gp.spl.map((v, i) => fromPolar(10 ** (v / 20), (gp.phaseDeg[i] * Math.PI) / 180)), diameterMm: portDia },
+        ]);
+        if (summed) {
+          nearSpl = summed.map((c) => 20 * Math.log10(Math.hypot(c.re, c.im) || 1e-12));
+          nearPhase = summed.map((c) => (Math.atan2(c.im, c.re) * 180) / Math.PI);
+        }
+      }
+      // Half-space scaling to the far-field distance.
+      nearSpl = nearSpl.map((v) => v + scaleDb);
+      const farMin = cabinetInfo.reliable?.fromHz ?? null;
+      const proposed =
+        Number(slot.transitionHz) > 0
+          ? Number(slot.transitionHz)
+          : farMin !== null
+            ? Math.min(nearMax * 0.8, Math.max(farMin * 1.3, 300))
+            : 300;
+      const check = checkTransition(proposed, nearMax, farMin);
+      const m = mergeNearFar({
+        freq: g,
+        farSpl: gf.spl,
+        farPhaseDeg: gf.phaseDeg,
+        nearSpl,
+        nearPhaseDeg: nearPhase,
+        transitionHz: proposed,
+        blendOctaves: Number(slot.blendOctaves) || 1,
+        baffleStepHz: slot.stepOn ? (cabinetInfo.baffleStep ?? 0) : 0,
+        baffleStepDepthDb: Number(slot.stepDepthDb) || 6,
+      });
+      if (!m) {
+        out[role] = { frd: loaded.frd, ok: false, report: 'merge failed on this grid' };
+        continue;
+      }
+      const bits = [
+        `spliced at ${Math.round(proposed)} Hz`,
+        `level ${m.levelDb >= 0 ? '+' : ''}${m.levelDb.toFixed(1)} dB`,
+        `delay ${m.delayUs.toFixed(0)} µs`,
+        `residual ${m.residualDeg.toFixed(1)}°`,
+      ];
+      if (Math.abs(Math.abs(m.offsetDeg) - 180) < 45) bits.push('⚠ near field looks INVERTED');
+      if (m.residualDeg > 25) bits.push('⚠ the two halves disagree — check the splice frequency');
+      if (!check.ok) bits.push(`⚠ ${check.note}`);
+      out[role] = {
+        ok: check.ok,
+        report: bits.join(' · '),
+        frd: { freq: [...g], spl: m.spl, phase: m.phaseDeg, hasPhase: true, meta: loaded.frd.meta },
+      };
+    }
+    return out;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [woofer, midDrv, tweeter, nearField, sdCm2, cabinet.micDistanceMm, cabinetInfo]);
+
+  /** A branch as the rest of the app should see it: merged when a near-field
+   *  splice is configured and worked, untouched otherwise. */
+  const effective = (l: Loaded | null, role: BranchRole): Loaded | null =>
+    l && merged[role]?.ok ? { ...l, frd: merged[role]!.frd } : l;
+
   const sim = useMemo(() => {
     // Single-driver mode: ONE loaded measurement is enough (validation flow:
     // measure a lone driver, rebuild the physical network in the editor,
@@ -1668,16 +2191,35 @@ export default function App() {
     // branch so combine() and every downstream consumer keep their
     // two-branch shape; the UI hides the ghost's curves and scores.
     if (!woofer && !tweeter) return null;
+    // Near-field-merged where configured: the branch's low end then comes from
+    // a measurement the gate can actually support.
+    const wIn = effective(woofer, 'low');
+    const tIn = effective(tweeter, 'high');
     // 3-way: the mid branch joins the grid only when both outer branches are
     // loaded; a mid without them is IGNORED (banner explains) so the 2-way and
     // solo paths stay bit-identical to before the mid slot existed.
-    const midIn = threeWay ? midDrv : null;
-    const present = [woofer, midIn, tweeter].filter((d): d is Loaded => d !== null);
-    const lo = Math.max(num(fMinDeb, 200), ...present.map((d) => d.frd.freq[0]));
-    const hi = Math.min(
-      num(fMaxDeb, 20000),
-      ...present.map((d) => d.frd.freq[d.frd.freq.length - 1]),
-    );
+    const midIn = threeWay ? effective(midDrv, 'mid') : null;
+    const present = [wIn, midIn, tIn].filter((d): d is Loaded => d !== null);
+    // Grid span: 2-way keeps the historical INTERSECTION of the measured
+    // ranges (bit-compat). 3-way spans the UNION (trede 4b, per-branch
+    // bands): Robbert's tweeter FRD starts at 640 Hz, and an intersection
+    // grid would hide the woofer-mid handover (~300-600 Hz) entirely. A
+    // branch outside its own measured range counts as SILENT below — the
+    // honest floor: the sum then carries only real contributions, and the
+    // tuner's driver-protection guard still watches the ELECTRICAL drive
+    // there, which is what actually endangers a tweeter.
+    const lo = threeWay
+      ? Math.max(num(fMinDeb, 200), Math.min(...present.map((d) => d.frd.freq[0])))
+      : Math.max(num(fMinDeb, 200), ...present.map((d) => d.frd.freq[0]));
+    const hi = threeWay
+      ? Math.min(
+          num(fMaxDeb, 20000),
+          Math.max(...present.map((d) => d.frd.freq[d.frd.freq.length - 1])),
+        )
+      : Math.min(
+          num(fMaxDeb, 20000),
+          ...present.map((d) => d.frd.freq[d.frd.freq.length - 1]),
+        );
     if (!(hi > lo)) return null;
     const grid = logspace(lo, hi, GRID_N);
     const silent = () => ({
@@ -1685,9 +2227,24 @@ export default function App() {
       spl: grid.map(() => SILENT_GHOST_DB),
       phaseDeg: grid.map(() => 0),
     });
-    let w = woofer ? resample(woofer.frd.freq, woofer.frd.spl, woofer.frd.phase, grid) : silent();
-    let t = tweeter ? resample(tweeter.frd.freq, tweeter.frd.spl, tweeter.frd.phase, grid) : silent();
-    let m = midIn ? resample(midIn.frd.freq, midIn.frd.spl, midIn.frd.phase, grid) : null;
+    /** Resample onto the grid; outside the driver's own measured range the
+     *  branch is the silent ghost (3-way only — 2-way grids never extend
+     *  past a measurement by construction). */
+    const banded = (l: Loaded): GriddedResponse => {
+      const f0 = l.frd.freq[0];
+      const f1 = l.frd.freq[l.frd.freq.length - 1];
+      const g = resample(l.frd.freq, l.frd.spl, l.frd.phase, grid, { clampEdges: true });
+      return {
+        freq: grid,
+        spl: g.spl.map((v, i) => (grid[i] < f0 || grid[i] > f1 ? SILENT_GHOST_DB : v)),
+        phaseDeg: g.phaseDeg.map((v, i) => (grid[i] < f0 || grid[i] > f1 ? 0 : v)),
+      };
+    };
+    const toGrid = (l: Loaded): GriddedResponse =>
+      threeWay ? banded(l) : resample(l.frd.freq, l.frd.spl, l.frd.phase, grid);
+    let w = wIn ? toGrid(wIn) : silent();
+    let t = tIn ? toGrid(tIn) : silent();
+    let m = midIn ? toGrid(midIn) : null;
 
     // VituixCAD-style comparison mode: throw away the measured phase and
     // reconstruct minimum phase from magnitude (drivers then sum with zero
@@ -1792,11 +2349,21 @@ export default function App() {
         { response: m, adjust: mAdj },
         { response: t, adjust: tAdj },
       ]);
-      // The null check keeps its 2-way meaning: same sum, tweeter flipped.
+      // The null check keeps its 2-way meaning: same sum, tweeter flipped —
+      // that nulls the M-T handover ONLY (at the W-M crossing the tweeter
+      // contributes nothing). The W-M handover gets its OWN check with the
+      // WOOFER flipped (Sanders: "woofer/mid zou deze ook moeten weergeven");
+      // deliberately not the mid — the mid is shared between both pairs, so
+      // flipping it would null both crossings at once and read ambiguous.
       const n3inv = combineN([
         { response: w },
         { response: m, adjust: mAdj },
         { response: t, adjust: { ...tAdj, inverted: !tAdj.inverted } },
+      ]);
+      const n3invLow = combineN([
+        { response: w, adjust: { inverted: true } },
+        { response: m, adjust: mAdj },
+        { response: t, adjust: tAdj },
       ]);
       const wrap = (d: number) => {
         let v = d % 360;
@@ -1814,6 +2381,7 @@ export default function App() {
           combinedSpl: n3.combinedSpl,
           combinedPhaseDeg: n3.combinedPhaseDeg,
           invertedSpl: n3inv.combinedSpl,
+          invertedLowSpl: n3invLow.combinedSpl,
           relativePhaseDeg: tB.phaseDeg.map((p, i) => wrap(p - w.phaseDeg[i])),
         },
         mid: midB,
@@ -1877,6 +2445,94 @@ export default function App() {
     }
   }, [woofer, tweeter]);
 
+  /* THREE-WAY time-base check, per ADJACENT pair, on EXCESS phase.
+   * The 2-way check compares woofer↔tweeter over a fixed 500–5000 Hz band on
+   * RAW phase; in a 3-way those two barely overlap (the mid carries the
+   * middle) and raw phase absorbs each driver's own rolloff rotation, so it
+   * reports "unreliable" even when the files share a clock. Measured on
+   * Robbert's set: raw phase gave the mid 304 µs (200–800) vs 8 µs (5–8k) —
+   * one driver, two travel times — while EXCESS phase gives −21 µs with
+   * R² = 1.000 in every sub-band, and M-T Δ ≈ 33 µs (11 mm), plain baffle
+   * geometry. Reproducibility across bands IS the fingerprint of a shared
+   * clock; an independent time base yields an arbitrary offset. */
+  const timing3 = useMemo(() => {
+    if (!threeWay || !woofer || !midDrv || !tweeter) return null;
+    /** Excess-phase bulk-delay fit of one driver over [lo, hi]. */
+    const fit = (frd: Parsed, lo: number, hi: number) => {
+      const g = resample(frd.freq, frd.spl, frd.phase, logspace(frd.freq[0] * 1.05, 20000, 400));
+      const mp = minimumPhaseDeg(g.freq, g.spl);
+      const excess = g.phaseDeg.map((p, i) => p - mp[i]);
+      return estimateBulkDelay(g.freq, excess, [lo, hi]);
+    };
+    /** A driver's own PASSBAND: within 10 dB of its upper-quartile level.
+     *  File extent is useless here — these FRDs run from 5 Hz, and fitting a
+     *  delay through a region with no output is what produced R² = 0.101. */
+    const playBand = (frd: Parsed): [number, number] | null => {
+      const sorted = [...frd.spl].sort((x, y) => x - y);
+      const ref = sorted[Math.floor(sorted.length * 0.75)] - 10;
+      let lo = -1;
+      let hi = -1;
+      for (let i = 0; i < frd.freq.length; i++) {
+        if (frd.spl[i] >= ref) {
+          if (lo < 0) lo = i;
+          hi = i;
+        }
+      }
+      return lo >= 0 && hi > lo ? [frd.freq[lo], frd.freq[hi]] : null;
+    };
+    /** Fit band of one pair: the overlap of both passbands, clamped to the
+     *  region where an excess-phase fit is meaningful — the minimum-phase
+     *  reconstruction is FFT-based and its outermost octaves are edge effect,
+     *  not driver behaviour. */
+    const pairBand = (a: Parsed, b: Parsed): [number, number] | null => {
+      const pa = playBand(a);
+      const pb = playBand(b);
+      if (!pa || !pb) return null;
+      const lo = Math.max(pa[0], pb[0], 200) * 1.2;
+      const hi = Math.min(pa[1], pb[1], 10000) * 0.85;
+      return hi > lo * 2 ? [lo, hi] : null;
+    };
+    const one = (
+      lower: Parsed,
+      upper: Parsed,
+      names: { lower: string; upper: string },
+    ) => {
+      const band = pairBand(lower, upper);
+      if (!band) return null;
+      try {
+        /* Search the WIDEST clean sub-band rather than trusting one guess.
+         * A delay is band-independent by definition, so the honest question
+         * is "where is the phase delay-like for BOTH?" — near a driver's own
+         * rolloff knee it never is (Robbert's tweeter: R² 0.68 from 768 Hz,
+         * 0.95 from 3 kHz). Trimming the low edge in fixed steps keeps this
+         * deterministic, and the verdict reports the band it settled on. */
+        let bestPair: ReturnType<typeof assessPairTimeBase> | null = null;
+        let bestWorstR2 = -1;
+        for (const k of [1, 1.5, 2.5, 4]) {
+          const lo = band[0] * k;
+          if (band[1] <= lo * 2) break;
+          const sub: [number, number] = [lo, band[1]];
+          const l = fit(lower, sub[0], sub[1]);
+          const u = fit(upper, sub[0], sub[1]);
+          const res = assessPairTimeBase({ lower: l, upper: u, band: sub, names });
+          const worstR2 = Math.min(l.rSquared, u.rSquared);
+          if (worstR2 > bestWorstR2) {
+            bestWorstR2 = worstR2;
+            bestPair = res;
+          }
+          if (res.verdict !== 'unreliable') return res;
+        }
+        return bestPair;
+      } catch {
+        return null;
+      }
+    };
+    return {
+      low: one(woofer.frd, midDrv.frd, { lower: 'woofer', upper: 'mid' }),
+      high: one(midDrv.frd, tweeter.frd, { lower: 'mid', upper: 'tweeter' }),
+    };
+  }, [threeWay, woofer, midDrv, tweeter]);
+
   /** Excess-phase bridge Δ (tweeter − woofer, µs): the value a minimum-phase
    *  consumer (VituixCAD, our export) needs to reproduce the measured relative
    *  phase. Positive = tweeter later. Distinct from timing.ref.deltaUs (raw). */
@@ -1923,11 +2579,118 @@ export default function App() {
   }, [phaseMode, timing, excessBridge]);
 
   // 3-way: the crossing score is a PAIR property (low-mid, mid-high) — the
-  // 2-way woofer↔tweeter overlap is meaningless there. Pair scores are trede 4.
+  // 2-way woofer↔tweeter overlap is meaningless there, so `integration` stays
+  // null and `pairScores` carries the two ADJACENT pairs instead (trede 4b).
   const integration = useMemo(
     () => (result && !threeWay ? computeIntegration(result) : null),
     [result, threeWay],
   );
+
+  /* Free-axis physics windows for the 3-way scan, derived from MEASUREMENTS
+   * (Sanders: "het doel is dat de optimizer dit verzint"): floor = 2×Fs AND
+   * where the upper driver reaches its own level; ceiling = the lower
+   * driver's measured beaming onset from the loaded angle sets (size-formula
+   * fallback). What the designer read off the charts by hand, the scan now
+   * derives itself — measured on Robbert: W-M [353…631], M-T [1310…7000
+   * (mid beams at 8022)], exactly the hand-derived advice. Also carries the
+   * banded angle sets that arm the in-room weight. */
+  const physWin3 = useMemo(() => {
+    if (!threeWay || !sim?.mid || !result || !sim.base.m) return null;
+    const grid = result.freq;
+    const ad = angleResponsesOn(grid);
+    const angleSets =
+      ad?.mid && ad.mid.length > 0
+        ? { woofer: ad.woofer, mid: ad.mid, tweeter: ad.tweeter }
+        : undefined;
+    const maxOpt = (...vs: (number | null | undefined)[]): number | null => {
+      const xs = vs.filter((v): v is number => typeof v === 'number' && v > 0);
+      return xs.length ? Math.max(...xs) : null;
+    };
+    const minOpt = (...vs: (number | null | undefined)[]): number | null => {
+      const xs = vs.filter((v): v is number => typeof v === 'number' && v > 0);
+      return xs.length ? Math.min(...xs) : null;
+    };
+
+    // --- upper limits of the LOWER driver of each pair ---------------------
+    // Beaming, MEASURED, at the chosen ka tier (see KA_TIERS).
+    const kaThr = KA_TIERS[kaTier].diff30Db;
+    const wBeam = angleSets ? beamingCeilingHz(angleSets.woofer, kaThr) : null;
+    const mBeam = angleSets ? beamingCeilingHz(angleSets.mid, kaThr) : null;
+    // Vertical lobing from centre-to-centre spacing — geometry, no measurement.
+    const kk = Number(ctcK) > 0 ? Number(ctcK) : 0.5;
+    const wLobe = lobingCeilingHz(cabinetInfo.ctcLow ?? 0, kk);
+    const mLobe = lobingCeilingHz(cabinetInfo.ctcHigh ?? 0, kk);
+    // Cone breakup: a resonance at f_b is excited as the Nth harmonic of f_b/N,
+    // so the penalty lands more than an octave BELOW the peak.
+    const harm = Number(breakupHarmonic) > 0 ? Number(breakupHarmonic) : 3;
+    const zMagOf = (role: BranchRole): number[] | undefined => {
+      try {
+        const z = zGridWithSlots(impedances, grid)[canonicalModelForRole(role, threeWay)];
+        return z ? z.map((c) => Math.hypot(c.re, c.im)) : undefined;
+      } catch {
+        return undefined;
+      }
+    };
+    const breakOf = (role: BranchRole, spl: readonly number[]) => {
+      if (!breakupLimitOn) return null;
+      const reach = reachesLevelHz(grid, spl);
+      return breakupHz(grid, spl, {
+        zMag: zMagOf(role),
+        searchFromHz: Math.max(300, (reach ?? 0) * 2),
+      });
+    };
+    const wBreak = breakOf('low', sim.base.w.spl);
+    const mBreak = breakOf('mid', sim.base.m.spl);
+
+    // --- lower limits of the UPPER driver of each pair ---------------------
+    const spl = Number(excursionSpl);
+    const exOf = (role: BranchRole) =>
+      Number.isFinite(spl) ? excursionFloorHz(Number(sdCm2[role]), Number(xmaxMm[role]), spl) : null;
+    const midEx = exOf('mid');
+    const twtEx = exOf('high');
+
+    const lowCeil = minOpt(wBeam ?? wooferXoCeiling, wLobe, wBreak && breakupCeilingHz(wBreak.hz, harm));
+    const highCeil = minOpt(mBeam ?? midXoCeiling, mLobe, mBreak && breakupCeilingHz(mBreak.hz, harm));
+    return {
+      angleSets,
+      low: {
+        floorHz: maxOpt(midHpFloor, reachesLevelHz(grid, sim.base.m.spl), midEx),
+        ceilHz: lowCeil,
+      },
+      lowCeilMeasured: wBeam !== null,
+      high: {
+        floorHz: maxOpt(tweeterHpFloor, reachesLevelHz(grid, sim.base.t.spl), twtEx),
+        ceilHz: highCeil,
+      },
+      highCeilMeasured: mBeam !== null,
+      /** Every criterion's own number, so the panel can say WHICH one binds —
+       *  a window the designer cannot attribute is a window he cannot act on. */
+      limits: {
+        low: { beam: wBeam, lobe: wLobe, breakup: wBreak, excursion: midEx },
+        high: { beam: mBeam, lobe: mLobe, breakup: mBreak, excursion: twtEx },
+      },
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [threeWay, sim, result, phaseMode, angleSets, midHpFloor, wooferXoCeiling, midXoCeiling,
+      tweeterHpFloor, kaTier, cabinetInfo, ctcK, breakupLimitOn, breakupHarmonic,
+      sdCm2, xmaxMm, excursionSpl, impedances]);
+
+  /** Per-adjacent-pair integration + phase flatness (3-way only). Silent
+   *  ghost regions (per-branch bands) drop out of the overlap window on
+   *  their own — the weights die with the level. */
+  const pairScores = useMemo(() => {
+    if (!threeWay || !sim?.mid || !result) return null;
+    const zero = { offsetMm: 0, trimDb: 0, inverted: false };
+    const mk = (lo: GriddedResponse, hi: GriddedResponse) => {
+      const r = combine(lo, hi, zero);
+      const integ = computeIntegration(r);
+      return { integ, stats: computePhaseStats(r.relativePhaseDeg, integ.points) };
+    };
+    return {
+      low: mk(result.woofer, sim.mid),
+      high: mk(sim.mid, result.tweeter),
+    };
+  }, [threeWay, sim, result]);
 
   /** The SPL chart's live visible x-range (Hz), zoom/pan included — mirrored
    *  up from the chart so the ±dB read-out tracks exactly what you see. */
@@ -1941,6 +2704,16 @@ export default function App() {
    *  Score/avg/P95 judge the entire range; the peak ±dB rides along as the
    *  classic single number — that one can be dominated by one narrow spot,
    *  which is exactly why it no longer stands alone (Sanders wens, jul 2026). */
+  /** The optimizer's own low band edge, when the Response score above it
+   *  judges territory the optimizer never designed on. Null when they agree
+   *  (nothing to warn about) — see the strip item for the reasoning. */
+  const optimizerFloorHz = useMemo(() => {
+    if (!result) return null;
+    const floor = Math.max(200, result.freq[0] * 1.02);
+    const visibleLo = splViewX ? splViewX[0] : result.freq[0];
+    return visibleLo < floor / 1.05 ? floor : null;
+  }, [result, splViewX]);
+
   const combinedFlat = useMemo(() => {
     if (!result) return null;
     const lo = splViewX ? splViewX[0] : result.freq[0];
@@ -2025,19 +2798,36 @@ export default function App() {
   /** Design-targets popup (Network toolbar). */
   const [showTargets, setShowTargets] = useState(false);
 
-  /** Angle responses resampled onto a grid, phase convention applied. */
+  /** Angle responses resampled onto a grid, phase convention applied. In
+   *  3-way the grid spans the UNION of the drivers' measurement ranges, so
+   *  each angle file gets the same banded treatment as the 0° sim branches:
+   *  clamped resample + silent ghost outside its own measured range — a
+   *  plain resample would throw on the first tweeter angle file (measures
+   *  from ~640 Hz) and silently null the whole directivity computation. */
   function angleResponsesOn(grid: readonly number[]) {
     if (!angleSets) return null;
     const toGrid = (frd: Parsed) => {
-      const g = resample(frd.freq, frd.spl, frd.phase, [...grid]);
-      return phaseMode === 'minimum'
-        ? { ...g, phaseDeg: minimumPhaseDeg(grid, g.spl, { sampleRate: 192000, fftSize: 32768 }) }
-        : g;
+      const g = threeWay
+        ? resample(frd.freq, frd.spl, frd.phase, [...grid], { clampEdges: true })
+        : resample(frd.freq, frd.spl, frd.phase, [...grid]);
+      const withPhase =
+        phaseMode === 'minimum'
+          ? { ...g, phaseDeg: minimumPhaseDeg(grid, g.spl, { sampleRate: 192000, fftSize: 32768 }) }
+          : g;
+      if (!threeWay) return withPhase;
+      const f0 = frd.freq[0];
+      const f1 = frd.freq[frd.freq.length - 1];
+      return {
+        freq: withPhase.freq,
+        spl: withPhase.spl.map((v, i) => (grid[i] < f0 || grid[i] > f1 ? SILENT_GHOST_DB : v)),
+        phaseDeg: withPhase.phaseDeg.map((v, i) => (grid[i] < f0 || grid[i] > f1 ? 0 : v)),
+      };
     };
     try {
       return {
         woofer: angleSets.woofer.map((a): AngleResponse => ({ hor: a.hor, response: toGrid(a.frd) })),
         tweeter: angleSets.tweeter.map((a): AngleResponse => ({ hor: a.hor, response: toGrid(a.frd) })),
+        mid: angleSets.mid?.map((a): AngleResponse => ({ hor: a.hor, response: toGrid(a.frd) })),
       };
     } catch {
       return null;
@@ -2048,20 +2838,36 @@ export default function App() {
     // À-la-carte: skip the per-angle solve entirely when neither consumer shows.
     if (!showPanels.directivity && !showPanels.sonogram) return null;
     if (!angleSets || !result || !sim) return null;
-    // 3-way: the per-angle sum pairs exactly two branches — a mid-less sum
-    // would be silently wrong. Directivity follows in a later step.
-    if (threeWay) return null;
     const sets = angleResponsesOn(result.freq);
     if (!sets) return null;
+    const tAdj = { offsetMm: num(offsetMm, 0), trimDb: num(trimDb, 0), inverted };
+    if (threeWay) {
+      // Three branch layers through the N-branch core. The mid's OWN angle
+      // set is required — a mid-less sum would be silently wrong.
+      if (!sets.mid || sets.mid.length === 0) return null;
+      return computeDirectivityN([
+        { angles: sets.woofer, h: sim.transfers?.woofer ?? null },
+        {
+          angles: sets.mid,
+          h: sim.transfers?.mid ?? null,
+          adjust: {
+            offsetMm: num(midOffsetMm, 0),
+            trimDb: num(midTrimDb, 0),
+            inverted: midInverted,
+          },
+        },
+        { angles: sets.tweeter, h: sim.transfers?.tweeter ?? null, adjust: tAdj },
+      ]);
+    }
     return computeDirectivity(
       sets.woofer,
       sets.tweeter,
       sim.transfers?.woofer ?? null,
       sim.transfers?.tweeter ?? null,
-      { offsetMm: num(offsetMm, 0), trimDb: num(trimDb, 0), inverted },
+      tAdj,
     );
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [angleSets, result, sim, threeWay, phaseMode, offsetMm, trimDb, inverted, showPanels.directivity, showPanels.sonogram]);
+  }, [angleSets, result, sim, threeWay, phaseMode, offsetMm, trimDb, inverted, midOffsetMm, midTrimDb, midInverted, showPanels.directivity, showPanels.sonogram]);
 
   const [sonogramMode, setSonogramMode] = useState<SonogramMode>('normalized');
   const sonogram = useMemo(
@@ -2175,6 +2981,23 @@ export default function App() {
         : undefined,
       fileNotes: Object.keys(fileNotes).length > 0 ? fileNotes : undefined,
       verifyFile: verify ? { name: verify.name, raw: verify.raw } : undefined,
+      nearField: (() => {
+        const out: NonNullable<ProjectState['nearField']> = {};
+        for (const r of ['low', 'mid', 'high'] as BranchRole[]) {
+          const n = nearField[r];
+          if (!n.cone && !n.port) continue;
+          out[r] = {
+            ...(n.cone ? { cone: n.cone } : {}),
+            ...(n.port ? { port: n.port } : {}),
+            portDiaMm: n.portDiaMm,
+            transitionHz: n.transitionHz,
+            blendOctaves: n.blendOctaves,
+            stepOn: n.stepOn,
+            stepDepthDb: n.stepDepthDb,
+          };
+        }
+        return Object.keys(out).length ? out : undefined;
+      })(),
       design: {
         vFilters,
         xoName,
@@ -2205,11 +3028,26 @@ export default function App() {
         xoFreqHz,
         xoMarginHz,
         xoScanSteps,
+        xo3Steps,
         hpLpPref,
+        hpLpPrefLow,
         phaseMetric: phaseMetricMode,
         acSlopeMid,
         acSlopeTweeter,
+        acSlopeWoofer,
+        acSlopeMidHp,
+        xoLowFreqHz,
+        xoLowMarginHz,
         midSizeInch,
+        wooferSizeInch,
+        kaTier,
+        cabinet,
+        ctcK,
+        breakupLimitOn,
+        breakupHarmonic,
+        sdCm2,
+        xmaxMm,
+        excursionSpl,
         snapProfile,
         snapSeriesL,
         snapSeriesC,
@@ -2274,6 +3112,27 @@ export default function App() {
         ? { name: state.verifyFile.name, raw: state.verifyFile.raw, frd: parseFrd(state.verifyFile.raw) }
         : null,
     );
+    setNearField(() => {
+      const base: Record<BranchRole, NearFieldSlot> = {
+        low: emptyNearField(),
+        mid: emptyNearField(),
+        high: emptyNearField(),
+      };
+      for (const r of ['low', 'mid', 'high'] as BranchRole[]) {
+        const n = state.nearField?.[r];
+        if (!n) continue;
+        base[r] = {
+          cone: n.cone ?? null,
+          port: n.port ?? null,
+          portDiaMm: n.portDiaMm ?? '',
+          transitionHz: n.transitionHz ?? '',
+          blendOctaves: n.blendOctaves ?? '1',
+          stepOn: n.stepOn ?? true,
+          stepDepthDb: n.stepDepthDb ?? '6',
+        };
+      }
+      return base;
+    });
     const d = state.design;
     const saneVf = sanitizePassiveSpecs(d.vFilters);
     setVFilters({ ...saneVf, mid: saneVf.mid ?? defaultVFilters().mid });
@@ -2320,6 +3179,7 @@ export default function App() {
       setXoFreqHz(d.xoFreqHz);
       setXoMarginHz(d.xoMarginHz ?? '400');
       setXoScanSteps(d.xoScanSteps ?? 3);
+      setXo3Steps(d.xo3Steps ?? 2);
     } else if (d.xoRangeLo !== undefined || d.xoRangeHi !== undefined) {
       const lo = Number(d.xoRangeLo) || 1800;
       const hi = Number(d.xoRangeHi) || 3500;
@@ -2330,10 +3190,24 @@ export default function App() {
       setXoMarginHz('400');
     }
     setHpLpPref(d.hpLpPref ?? 'auto');
+    setHpLpPrefLow(d.hpLpPrefLow ?? 'auto');
     setPhaseMetricMode(d.phaseMetric ?? 'band');
     setAcSlopeMid(d.acSlopeMid ?? '24');
     setAcSlopeTweeter(d.acSlopeTweeter ?? '12');
+    setAcSlopeWoofer(d.acSlopeWoofer ?? '24');
+    setAcSlopeMidHp(d.acSlopeMidHp ?? '24');
+    setXoLowFreqHz(d.xoLowFreqHz ?? '400');
+    setXoLowMarginHz(d.xoLowMarginHz ?? '150');
     setMidSizeInch(d.midSizeInch ?? '');
+    setWooferSizeInch(d.wooferSizeInch ?? '');
+    setKaTier((d.kaTier as KaTier) in KA_TIERS ? (d.kaTier as KaTier) : 'measured');
+    setCabinet(mergeCabinet(d.cabinet));
+    setCtcK(d.ctcK ?? '0.5');
+    setBreakupLimitOn(d.breakupLimitOn ?? true);
+    setBreakupHarmonic(d.breakupHarmonic ?? '3');
+    setSdCm2({ low: d.sdCm2?.low ?? '', mid: d.sdCm2?.mid ?? '', high: d.sdCm2?.high ?? '' });
+    setXmaxMm({ low: d.xmaxMm?.low ?? '', mid: d.xmaxMm?.mid ?? '', high: d.xmaxMm?.high ?? '' });
+    setExcursionSpl(d.excursionSpl ?? '96');
     setSnapProfile(d.snapProfile ?? 'auto');
     setSnapSeriesL(d.snapSeriesL ?? 'auto');
     setSnapSeriesC(d.snapSeriesC ?? 'auto');
@@ -2417,7 +3291,7 @@ export default function App() {
     }, 800);
     return () => clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [woofer, midDrv, tweeter, project, zStandalone, angleSets, fileNotes, verify, vFilters, xoName, offsetMm, trimDb, inverted, midOffsetMm, midTrimDb, midInverted, fMin, fMax, splMin, splMax, phasePriority, vfEqBands, phaseMode, dirWeight, ampTarget, sonogramMode, designs, activeDesignId, lastSavedId, networkActive, vfBypass, catalogSnap, breakupGuard, xoRangeOn, xoFreqHz, xoMarginHz, xoScanSteps, hpLpPref, phaseMetricMode, acSlopeMid, acSlopeTweeter, midSizeInch, snapProfile, snapSeriesL, snapSeriesC, snapSeriesR, snapStacks, snapBoundToSeries, stagedOn, targetRipple, targetPhase, soloSensDb, soloFloorOn, soloFloorDb]);
+  }, [woofer, midDrv, tweeter, project, zStandalone, angleSets, fileNotes, verify, vFilters, xoName, offsetMm, trimDb, inverted, midOffsetMm, midTrimDb, midInverted, fMin, fMax, splMin, splMax, phasePriority, vfEqBands, phaseMode, dirWeight, ampTarget, sonogramMode, designs, activeDesignId, lastSavedId, networkActive, vfBypass, catalogSnap, breakupGuard, xoRangeOn, xoFreqHz, xoMarginHz, xoScanSteps, xo3Steps, hpLpPref, hpLpPrefLow, phaseMetricMode, acSlopeMid, acSlopeTweeter, acSlopeWoofer, acSlopeMidHp, xoLowFreqHz, xoLowMarginHz, midSizeInch, wooferSizeInch, kaTier, cabinet, nearField, ctcK, breakupLimitOn, breakupHarmonic, sdCm2, xmaxMm, excursionSpl, snapProfile, snapSeriesL, snapSeriesC, snapSeriesR, snapStacks, snapBoundToSeries, stagedOn, targetRipple, targetPhase, soloSensDb, soloFloorOn, soloFloorDb]);
 
   function resetProject() {
     localStorage.removeItem(AUTOSAVE_KEY);
@@ -2442,6 +3316,175 @@ export default function App() {
    * run reads as work, not a hang.
    */
   function runVfOptimize() {
+    // THREE-WAY path (trede 4c): the staged 2D chain — textbook LR4 targets
+    // + measured level trims per (low, high) handover candidate, per-branch
+    // synthesis on each branch's own band, assembled TWO-PAIR tune, and the
+    // amplifier-load verdict as a ranking gate. Runs over the worker pool.
+    if (threeWay && sim && sim.mid && midDrv && result) {
+      if (Object.keys(impedances).length < 3) {
+        setVfError('3-way design needs all three measured impedances (.ZMA per driver).');
+        return;
+      }
+      const grid = result.freq;
+      const zOnGrid = zGridWithSlots(impedances, grid);
+      const band: [number, number] = [
+        Math.max(200, grid[0] * 1.02),
+        Math.min(grid[grid.length - 1] * 0.975, num(fMax, 20000)),
+      ];
+      const safety = (() => {
+        const present = [woofer, midDrv, tweeter].filter((d): d is Loaded => d !== null);
+        const lo = Math.max(200, Math.min(...present.map((d) => d.frd.freq[0])));
+        const hi = Math.min(20000, Math.max(...present.map((d) => d.frd.freq[d.frd.freq.length - 1])));
+        if (!(hi > lo * 1.5)) return undefined;
+        const sGrid = logspace(lo, hi, 240);
+        const bandedOn = (l: Loaded): GriddedResponse => {
+          const g = resample(l.frd.freq, l.frd.spl, l.frd.phase, sGrid, { clampEdges: true });
+          const f0 = l.frd.freq[0];
+          const f1 = l.frd.freq[l.frd.freq.length - 1];
+          return {
+            freq: sGrid,
+            spl: g.spl.map((v, i) => (sGrid[i] < f0 || sGrid[i] > f1 ? SILENT_GHOST_DB : v)),
+            phaseDeg: g.phaseDeg.map((v, i) => (sGrid[i] < f0 || sGrid[i] > f1 ? 0 : v)),
+          };
+        };
+        return {
+          freqs: sGrid,
+          w: bandedOn(woofer!),
+          t: bandedOn(tweeter!),
+          m: bandedOn(midDrv),
+          z: zGridWithSlots(impedances, sGrid),
+        };
+      })();
+      const pins = xoPinsValue();
+      const settings = {
+        phasePriority: phasePriority / 100,
+        targets: stagedOn
+          ? { rippleDb: num(targetRipple, 1.5), phaseDeg: num(targetPhase, 10) }
+          : undefined,
+        acousticSlopes: acousticSlopesValue(),
+        xoLowPin: pins.low,
+        xoHighPin: pins.high,
+        hpFloorHz: tweeterHpFloor ?? undefined,
+        structureLow: parseHpLpPref(hpLpPrefLow),
+        structureHigh: parseHpLpPref(hpLpPref),
+        breakupGuard,
+        eqBands: vfEqBands,
+        directivityWeight: dirWeight / 100,
+        ampTarget,
+        phaseMetric: phaseMetricMode,
+        synthMode,
+        catalogSnap: catalogSnap && hasImportedCatalog(),
+        snapPrefs: snapPrefsValue(),
+        band,
+        safety,
+      };
+      const tAdj = { offsetMm: num(offsetMm, 0), trimDb: num(trimDb, 0), inverted };
+      const mAdj = { offsetMm: num(midOffsetMm, 0), trimDb: num(midTrimDb, 0), inverted: midInverted };
+      // Banded per-branch angle sets (same treatment as the 0° branches) —
+      // arms the in-room weight; without the mid's own set the term stays off.
+      const angleSets3 = physWin3?.angleSets;
+      const lowWin3 = physWin3?.low ?? { floorHz: midHpFloor, ceilHz: wooferXoCeiling };
+      const highWin3 = physWin3?.high ?? { floorHz: tweeterHpFloor, ceilHz: midXoCeiling };
+      const variants = crossover3Variants(
+        sim.base.w,
+        sim.base.m!,
+        sim.base.t,
+        pins,
+        tweeterHpFloor ?? undefined,
+        xo3Steps,
+        lowWin3,
+        highWin3,
+      );
+      const inputs = variants.map((v) => ({
+        grid: [...grid],
+        w: sim.base.w,
+        m: sim.base.m!,
+        t: sim.base.t,
+        driverZ: zOnGrid,
+        angleData: angleSets3,
+        tAdjust: tAdj,
+        midAdjust: mAdj,
+        xoLow: v.xoLow,
+        xoHigh: v.xoHigh,
+        xoLowRange: v.xoLowRange,
+        xoHighRange: v.xoHighRange,
+        label: v.label,
+        settings,
+      }));
+      setVfBusy(true);
+      setVfError(null);
+      setVfProgress(null);
+      setChainScan(null);
+      setNetOptDiff(null);
+      runChain3Scan(inputs, (d) =>
+        setVfProgress({ round: d.round, evals: d.evals, items: d.items }),
+      )
+        .then((results) => {
+          const ranked = rankChain3Results(results, settings.targets, settings.phasePriority);
+          const win = ranked[0];
+          setVFilters((prev) => ({ ...prev, ...win.specs }));
+          // The design step CHOSE the polarities; the sim must sum the design
+          // that was actually fitted, so the checkboxes follow it.
+          setMidInverted(win.midInverted);
+          setInverted(win.tweeterInverted);
+          setSynth({
+            mode: synthMode,
+            woofer: win.synthWoofer,
+            mid: win.synthMid,
+            tweeter: win.synthTweeter,
+          });
+          setWorkingDesign(win.parts);
+          setNetworkActive(true);
+          setVfBypass(true);
+          setVfOpt(null);
+          setVfRunStats(null);
+          // DELIVERED handovers, not just the candidate label: a design can
+          // meet every flatness target while its crossings sit an octave off
+          // the knees it was built on, and that is invisible in the numbers.
+          const crossings = (r: typeof win): string => {
+            const xo = r.net.after.xoHzPairs;
+            if (!xo || xo.length !== 2) return '';
+            const f = (v: number | null) => (v == null ? '—' : `${Math.round(v)}`);
+            return ` · crosses ${f(xo[0])}/${f(xo[1])} Hz`;
+          };
+          const line = (r: typeof win): string =>
+            `${r.label}: ${r.net.after.rippleDb.toFixed(2)} dB/${r.net.after.phaseDeg.toFixed(1)}°` +
+            (r.net.after.pairPhaseDeg && r.net.after.pairPhaseDeg.length === 2
+              ? ` (W-M ${r.net.after.pairPhaseDeg[0].toFixed(1)}° · M-T ${r.net.after.pairPhaseDeg[1].toFixed(1)}°)`
+              : '') +
+            crossings(r) +
+            (r.bomTotalEur !== null ? ` · €${Math.round(r.bomTotalEur)}` : '') +
+            (r.zOk ? '' : ' · ⚠ amp-load');
+          setNetOptNote(
+            `3-way scan (${variants.length} candidate${variants.length > 1 ? 's' : ''}, ` +
+              `alignment × polarity design step, two-pair tune) — winner ` +
+              `xo ${win.label} · ${win.structureLabel}` +
+              (win.net.after.avgDevDb !== undefined
+                ? ` · avg ${win.net.after.avgDevDb.toFixed(2)} dB`
+                : '') +
+              ` · ${line(win)}` +
+              ` — others: ${ranked.slice(1).map(line).join(' · ')}` +
+              // A pin the physics could not honour must be LOUD (Sanders:
+              // "soms moeten we dat kunnen bypassen met een expliciete
+              // waarschuwing") — the pin IS the designer's bypass of every
+              // derived rule, so a silently-missed pin reads as "de range
+              // wordt genegeerd". Lead the note with it instead of burying it.
+              (win.xoPinNote ? ` · ⚠ PIN: ${win.xoPinNote}` : '') +
+              (win.net.snapNote ? ` · ${win.net.snapNote}` : '') +
+              (win.net.safetyNote ? ` · ⚠ ${win.net.safetyNote}` : '') +
+              (win.net.ampFloorNote ? ` · ⚠ ${win.net.ampFloorNote}` : ''),
+          );
+          setDesignTab('network');
+        })
+        .catch((e) => {
+          if (!(e instanceof CancelledError)) setVfError(e instanceof Error ? e.message : String(e));
+        })
+        .finally(() => {
+          setVfProgress(null);
+          setVfBusy(false);
+        });
+      return;
+    }
     // SINGLE-DRIVER path: its own engine (soloOptimizer) — flatten the one
     // measured driver with cut-only EQ/shelves, build the SOLO topology
     // (series traps / shelf groups / gated Zobel) and solo-tune the result.
@@ -2898,7 +3941,12 @@ export default function App() {
         return g.spl.map((m, i) => fromPolar(m, (g.phaseDeg[i] * Math.PI) / 180));
       };
       // RAW driver responses (no filters applied) for acoustic-mode targets.
-      const rawSpl = (l: Loaded) => resample(l.frd.freq, l.frd.spl, l.frd.phase, grid).spl;
+      // 3-way: the grid spans the UNION of the branch ranges, so a branch's
+      // raw SPL must clamp at its own measurement edges — synthBanded then
+      // slices exactly the measured sub-grid, so the clamped points are never
+      // actually fitted (same pattern as the verification overlay).
+      const rawSpl = (l: Loaded) =>
+        resample(l.frd.freq, l.frd.spl, l.frd.phase, grid, threeWay ? { clampEdges: true } : undefined).spl;
       const opts = (l: Loaded) => ({
         mode: synthMode,
         phasePriority: phasePriority / 100,
@@ -2922,6 +3970,54 @@ export default function App() {
       // The optimizer never passes specsIn in 3-way (gated until trede 4), so
       // the mid spec always comes from the live vFilters.
       const midSpec = threeWay && midDrv ? vFilters.mid : null;
+      // 3-way per-branch bands (trede 4b): each branch is synthesised on the
+      // SLICE of the grid its own measurement covers — fitting against
+      // silent-ghost points would poison the level/median logic. The result
+      // arrays are padded back to the full grid with NaN so the SynthChart
+      // simply draws gaps outside the branch's band.
+      const subIdxFor = (l: Loaded): number[] => {
+        const f0 = l.frd.freq[0];
+        const f1 = l.frd.freq[l.frd.freq.length - 1];
+        const idxs: number[] = [];
+        for (let i = 0; i < grid.length; i++) if (grid[i] >= f0 && grid[i] <= f1) idxs.push(i);
+        return idxs;
+      };
+      const synthBanded = (
+        spec: DriverFilterSpec,
+        l: Loaded,
+        zModel: string,
+      ): SynthesisResult => {
+        const idxs = subIdxFor(l);
+        if (!threeWay || idxs.length === grid.length) {
+          return synthesize(spec, grid, zFor(zModel), opts(l));
+        }
+        const sub = idxs.map((i) => grid[i]);
+        const zg = zFor(zModel);
+        const zSub = idxs.map((i) => zg[i]);
+        const o = opts(l);
+        const r = synthesize(spec, sub, zSub, {
+          ...o,
+          ...(o.driverSplDb ? { driverSplDb: idxs.map((i) => o.driverSplDb![i]) } : {}),
+        });
+        const padC = (arr: Complex[]): Complex[] => {
+          const out: Complex[] = grid.map(() => ({ re: NaN, im: NaN }));
+          idxs.forEach((gi, k) => (out[gi] = arr[k]));
+          return out;
+        };
+        const padN = (arr: number[] | undefined): number[] | undefined => {
+          if (!arr) return undefined;
+          const out = grid.map(() => NaN);
+          idxs.forEach((gi, k) => (out[gi] = arr[k]));
+          return out;
+        };
+        return {
+          ...r,
+          achieved: padC(r.achieved),
+          target: padC(r.target),
+          acousticAchievedDb: padN(r.acousticAchievedDb),
+          acousticTargetDb: padN(r.acousticTargetDb),
+        };
+      };
       const gShift = Math.max(specs.woofer.gainDb, specs.tweeter.gainDb, midSpec?.gainDb ?? 0, 0);
       const shifted = (specIn: DriverFilterSpec): DriverFilterSpec => ({
         ...specIn,
@@ -2932,11 +4028,11 @@ export default function App() {
       const lowKey = threeWay ? 'woofer' : 'mid';
       const out: SynthState = { mode: synthMode };
       if (isActive(specs.woofer))
-        out.woofer = synthesize(shifted(specs.woofer), grid, zFor(lowKey), opts(woofer));
+        out.woofer = synthBanded(shifted(specs.woofer), woofer, lowKey);
       if (midSpec && isActive(midSpec) && midDrv)
-        out.mid = synthesize(shifted(midSpec), grid, zFor('mid'), opts(midDrv));
+        out.mid = synthBanded(shifted(midSpec), midDrv, 'mid');
       if (isActive(specs.tweeter))
-        out.tweeter = synthesize(shifted(specs.tweeter), grid, zFor('tweeter'), opts(tweeter));
+        out.tweeter = synthBanded(shifted(specs.tweeter), tweeter, 'tweeter');
       if (!out.woofer && !out.mid && !out.tweeter)
         out.error = 'No active virtual filter blocks to synthesise.';
       setSynth(out);
@@ -2957,8 +4053,7 @@ export default function App() {
           if (threeWay) {
             setNetOptNote(
               '3-way build — three per-branch fits (woofer LP · mid bandpass · tweeter HP). ' +
-                'The assembled component tune judges driver PAIRS and is a later step, so ' +
-                'polish values by hand for now.',
+                'Run ⚙ Optimize components to tune the assembled sum (both crossings guarded).',
             );
           }
         }
@@ -3140,8 +4235,10 @@ export default function App() {
     const safety = (() => {
       // Solo: the safety grid covers the one measured driver; the ghost slot
       // stays silent (only the pair-independent fundamentals — amp-load
-      // floor — gate there).
-      const present = [woofer, tweeter].filter((d): d is Loaded => d !== null);
+      // floor — gate there). 3-way: the mid rides along on the safety grid.
+      const present = [woofer, threeWay ? midDrv : null, tweeter].filter(
+        (d): d is Loaded => d !== null,
+      );
       if (present.length === 0) return undefined;
       const lo = Math.max(200, ...present.map((d) => d.frd.freq[0]));
       const hi = Math.min(20000, ...present.map((d) => d.frd.freq[d.frd.freq.length - 1]));
@@ -3152,6 +4249,9 @@ export default function App() {
         freqs: sGrid,
         w: woofer ? resample(woofer.frd.freq, woofer.frd.spl, woofer.frd.phase, sGrid) : silent,
         t: tweeter ? resample(tweeter.frd.freq, tweeter.frd.spl, tweeter.frd.phase, sGrid) : silent,
+        ...(threeWay && midDrv
+          ? { m: resample(midDrv.frd.freq, midDrv.frd.spl, midDrv.frd.phase, sGrid) }
+          : {}),
         z: zGridWithSlots(impedances, sGrid),
       };
     })();
@@ -3182,7 +4282,35 @@ export default function App() {
         staged: stagedOn
           ? { rippleDb: num(targetRipple, 1.5), phaseDeg: soloDriver ? 3600 : num(targetPhase, 10) }
           : undefined,
-        xoRange: soloDriver ? undefined : xoRangeValue() ?? undefined,
+        // 3-way (trede 4a): the middle branch turns on the two-pair path.
+        // The crossover pin and directivity terms are 2-way vocabulary and
+        // stay off; acoustic slopes steer the TOP pair (mid/tweeter).
+        midBranch:
+          threeWay && sim.mid && midDrv
+            ? {
+                response: sim.base.m!,
+                adjust: {
+                  offsetMm: num(midOffsetMm, 0),
+                  trimDb: num(midTrimDb, 0),
+                  inverted: midInverted,
+                },
+              }
+            : undefined,
+        xoRange: soloDriver || threeWay ? undefined : xoRangeValue() ?? undefined,
+        xoRangePairs:
+          threeWay && xoRangeOn
+            ? (() => {
+                const pr = (pin?: { freq: number; margin: number }): [number, number] | null =>
+                  pin
+                    ? [
+                        pin.freq - Math.max(pin.margin, pin.freq * 0.02),
+                        pin.freq + Math.max(pin.margin, pin.freq * 0.02),
+                      ]
+                    : null;
+                const pins = xoPinsValue();
+                return [pr(pins.low), pr(pins.high)];
+              })()
+            : undefined,
         phaseMetric: phaseMetricMode,
         acousticSlopes: soloDriver ? undefined : acousticSlopesValue() ?? undefined,
         catalogSnap: catalogSnap && hasImportedCatalog(),
@@ -3696,6 +4824,15 @@ export default function App() {
     }));
   }, [result, threeWay, vFilters, trimDb, woofer, tweeter]);
 
+  /** Mask silent-ghost regions (per-branch bands, 3-way) to chart gaps. A
+   *  real branch never sits below −300 dB; the ghost lives at −400 and a
+   *  filtered ghost only sinks further. */
+  const maskSilent = useCallback(
+    (spl: readonly number[]): number[] =>
+      threeWay ? spl.map((v) => (v <= SILENT_GHOST_DB + 100 ? NaN : v)) : [...spl],
+    [threeWay],
+  );
+
   const splSeries: Series[] = useMemo(() => {
     if (!result) return [];
     // Color the combined curve by phase-alignment tier inside the overlap
@@ -3749,14 +4886,16 @@ export default function App() {
         : []),
       // Single-driver mode: the ghost branch sits at −400 dB — skip its curve
       // and the (two-driver) polarity null check instead of drawing noise.
+      // 3-way per-branch bands: outside its own measured range a branch sits
+      // at the silent ghost — masked to a gap instead of a −400 dB cliff.
       ...(woofer
-        ? [{ id: 'w', label: threeWay ? 'Woofer' : 'Woofer/mid', color: 'var(--viz-woofer)', x: result.freq, y: result.woofer.spl } satisfies Series]
+        ? [{ id: 'w', label: threeWay ? 'Woofer' : 'Woofer/mid', color: 'var(--viz-woofer)', x: result.freq, y: maskSilent(result.woofer.spl) } satisfies Series]
         : []),
       ...(sim?.mid
-        ? [{ id: 'm', label: 'Midrange', color: 'var(--viz-mid)', x: result.freq, y: sim.mid.spl } satisfies Series]
+        ? [{ id: 'm', label: 'Midrange', color: 'var(--viz-mid)', x: result.freq, y: maskSilent(sim.mid.spl) } satisfies Series]
         : []),
       ...(tweeter
-        ? [{ id: 't', label: 'Tweeter', color: 'var(--viz-tweeter)', x: result.freq, y: result.tweeter.spl } satisfies Series]
+        ? [{ id: 't', label: 'Tweeter', color: 'var(--viz-tweeter)', x: result.freq, y: maskSilent(result.tweeter.spl) } satisfies Series]
         : []),
       {
         id: 'c',
@@ -3775,16 +4914,34 @@ export default function App() {
         : [
             {
               id: 'n',
-              label: 'Combined, tweeter inverted (null check)',
+              // 3-way: this flip only nulls the M-T handover — say so, and add
+              // the W-M twin below (woofer flipped; the shared mid stays put).
+              label: threeWay
+                ? 'Combined, tweeter inverted (null check M-T)'
+                : 'Combined, tweeter inverted (null check)',
               color: 'var(--viz-null)',
               x: result.freq,
               y: result.invertedSpl,
               dash: '5 4',
             } satisfies Series,
           ]),
+      ...(threeWay && sim && 'invertedLowSpl' in sim.combined
+        ? [
+            {
+              id: 'nlow',
+              label: 'Combined, woofer inverted (null check W-M)',
+              color: 'var(--viz-null)',
+              x: result.freq,
+              y: sim.combined.invertedLowSpl,
+              // Same null-family color, DIFFERENT dash: pattern carries the
+              // distinction (the CVD doctrine — color is never the only carrier).
+              dash: '2 3',
+            } satisfies Series,
+          ]
+        : []),
     ];
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [result, sim, threeWay, integration, tabGhosts, networkActive, activeDesign, tolBand, targetSeries, soloDriver, verifyCompare, verify]);
+  }, [result, sim, threeWay, maskSilent, integration, tabGhosts, networkActive, activeDesign, tolBand, targetSeries, soloDriver, verifyCompare, verify]);
 
   /**
    * Design handles ON the SPL chart (UI-fase D): drag the crossover knees and
@@ -4000,6 +5157,11 @@ export default function App() {
         );
       // Ghost branch (single-driver mode) is fully NaN-masked anyway — skip
       // its series so the legend stays honest.
+      // 3-way: defaultOff — with three totals PLUS the pair curves the panel
+      // drowned (Sanders: "een berg lijnen over elkaar"); the stitched
+      // active-pair line below is the default reading there. 2-way keeps the
+      // totals on (Stefans check, Sanders eindkeuze) — the legend toggles.
+      const totOff = threeWay ? { defaultOff: true } : {};
       if (woofer) {
         out.push({
           id: 'wtot',
@@ -4009,6 +5171,7 @@ export default function App() {
           y: breakWraps(disp(result.woofer).map(wrapDeg)),
           dash: '9 4',
           width: 1.6,
+          ...totOff,
         });
       }
       if (sim?.mid) {
@@ -4020,6 +5183,7 @@ export default function App() {
           y: breakWraps(disp(sim.mid).map(wrapDeg)),
           dash: '9 4',
           width: 1.6,
+          ...totOff,
         });
       }
       if (tweeter) {
@@ -4031,6 +5195,7 @@ export default function App() {
           y: breakWraps(disp(result.tweeter).map(wrapDeg)),
           dash: '9 4',
           width: 1.6,
+          ...totOff,
         });
       }
     }
@@ -4045,21 +5210,94 @@ export default function App() {
     // the ADJACENT pairs are the design quantity, so those two curves lead.
     if (threeWay && sim?.mid) {
       const midPh = sim.mid.phaseDeg;
+      // Per-branch bands: relative phase against a silent-ghost region is
+      // noise — mask where either branch has no measured data.
+      const alive = (spl: readonly number[], i: number) => spl[i] > SILENT_GHOST_DB + 100;
+      /* ONE stitched headline (Sanders aug 2026: "een berg lijnen over
+       * elkaar"): a pair's relative phase only means anything inside its OWN
+       * overlap window, so one line can carry both — mid-vs-woofer inside the
+       * W-M window, tweeter-vs-mid inside the M-T one, a gap in between
+       * (nothing hands over there). Tier-colored per point like the 2-way
+       * headline. The two full per-pair curves stay available behind their
+       * legend chips (defaultOff — the legend IS the toggle). */
+      if (pairScores) {
+        const lowPts = pairScores.low.integ.points;
+        const highPts = pairScores.high.integ.points;
+        const cLow = pairScores.low.integ.overlapCentreHz;
+        const cHigh = pairScores.high.integ.overlapCentreHz;
+        const split = cLow !== null && cHigh !== null ? Math.sqrt(cLow * cHigh) : null;
+        // Each pair's window as ONE CONTIGUOUS span (first..last overlap
+        // point). The raw per-point |ΔdB| ≤ 20 test flickers at the window
+        // edges — that drew bites and orphan islands in the line (Sanders'
+        // report); interior points that briefly fail the test still carry a
+        // perfectly meaningful relative phase.
+        const spanOf = (pts: typeof lowPts): [number, number] | null => {
+          let lo = -1;
+          let hi = -1;
+          for (let i = 0; i < pts.length; i++) {
+            if (pts[i].cls !== null) {
+              if (lo < 0) lo = i;
+              hi = i;
+            }
+          }
+          return lo >= 0 ? [lo, hi] : null;
+        };
+        const lowSpan = spanOf(lowPts);
+        const highSpan = spanOf(highPts);
+        const y: number[] = new Array(result.freq.length).fill(NaN);
+        const cols: (string | null)[] = new Array(result.freq.length).fill(null);
+        for (let i = 0; i < result.freq.length; i++) {
+          const lowOn = lowSpan !== null && i >= lowSpan[0] && i <= lowSpan[1];
+          const highOn = highSpan !== null && i >= highSpan[0] && i <= highSpan[1];
+          const useLow =
+            lowOn && (!highOn || (split !== null && result.freq[i] < split));
+          if (useLow) {
+            y[i] = wrapDeg(midPh[i] - result.woofer.phaseDeg[i]);
+            cols[i] = TIER_COLOR[phaseTier(lowPts[i].phaseErrorDeg)];
+          } else if (highOn) {
+            y[i] = wrapDeg(result.tweeter.phaseDeg[i] - midPh[i]);
+            cols[i] = TIER_COLOR[phaseTier(highPts[i].phaseErrorDeg)];
+          }
+        }
+        out.push({
+          id: 'pairalign',
+          label: 'Relative phase — active pair',
+          color: 'var(--viz-combined)',
+          x: result.freq,
+          y: breakWraps(y),
+          pointColors: cols,
+          width: 2.5,
+        });
+      }
       out.push({
         id: 'relmw',
         label: 'Mid phase relative to woofer',
         color: 'var(--viz-mid)',
         x: result.freq,
-        y: breakWraps(midPh.map((p, i) => wrapDeg(p - result.woofer.phaseDeg[i]))),
+        y: breakWraps(
+          midPh.map((p, i) =>
+            alive(sim.mid!.spl, i) && alive(result.woofer.spl, i)
+              ? wrapDeg(p - result.woofer.phaseDeg[i])
+              : NaN,
+          ),
+        ),
         width: 2.2,
+        defaultOff: true,
       });
       out.push({
         id: 'reltm',
         label: 'Tweeter phase relative to mid',
         color: 'var(--viz-tweeter)',
         x: result.freq,
-        y: breakWraps(result.tweeter.phaseDeg.map((p, i) => wrapDeg(p - midPh[i]))),
+        y: breakWraps(
+          result.tweeter.phaseDeg.map((p, i) =>
+            alive(result.tweeter.spl, i) && alive(sim.mid!.spl, i)
+              ? wrapDeg(p - midPh[i])
+              : NaN,
+          ),
+        ),
         width: 2.2,
+        defaultOff: true,
       });
     } else if (!soloDriver) {
       out.push({
@@ -4106,7 +5344,7 @@ export default function App() {
       });
     }
     return out;
-  }, [result, integration, sim, threeWay, offsetMm, trimDb, inverted, showPanels.phase, refResp, tabGhosts, woofer, tweeter, soloDriver, verifyCompare]);
+  }, [result, integration, pairScores, sim, threeWay, offsetMm, trimDb, inverted, showPanels.phase, refResp, tabGhosts, woofer, tweeter, soloDriver, verifyCompare]);
 
   /** "How far off is the phase" zones behind the relative-phase curve. */
   const phaseBands = useMemo(
@@ -4241,6 +5479,7 @@ export default function App() {
       {helpOpen && (
         <HelpPanel initialId={helpSectionForTab(designTab)} onClose={() => setHelpOpen(false)} />
       )}
+      <MeasuringGuide open={measureGuideOpen} onClose={() => setMeasureGuideOpen(false)} />
       {catalogMgrOpen && (
         <CatalogManager onClose={() => setCatalogMgrOpen(false)} onSave={saveCatalogParts} />
       )}
@@ -4379,10 +5618,9 @@ export default function App() {
               )}
               {wizardWays === 3 && wizardMissing.length === 0 && (
                 <p className="sub" style={{ marginTop: '0.4rem' }}>
-                  ✓ 3-way set complete. The sim, virtual filters (mid = bandpass), Build passive
-                  filter (three fitted branches) and the 3-way templates are live; the{' '}
-                  <strong>3-way optimizer is a later step</strong>, so the wizard ends here —
-                  design in the Filters tab and the network editor.
+                  ✓ 3-way set complete — continue to Goals. Optimize runs the staged 2D scan:
+                  LR4 targets + measured level trims per handover candidate, per-branch
+                  synthesis, assembled two-pair tune (amp-load verdict gates the ranking).
                 </p>
               )}
               <p className="sub">
@@ -4500,7 +5738,7 @@ export default function App() {
                   <input
                     type="number"
                     min={0.1}
-                    max={3}
+                    max={6}
                     step={0.1}
                     value={targetRipple}
                     onChange={(e) => setTargetRipple(e.target.value)}
@@ -5060,27 +6298,7 @@ export default function App() {
               )}
             </div>
             <div className="row">
-              {wizardStep === 0 && wizardWays === 3 ? (
-                // The 3-way optimizer is a later step, so the wizard's guided
-                // Goals/Crossover/Components flow (all optimizer-bound) would
-                // dead-end — the honest exit is straight into the editor.
-                <button
-                  type="button"
-                  className="primary"
-                  onClick={() => {
-                    setWizardOpen(false);
-                    setDesignTab('network');
-                  }}
-                  disabled={wizardMissing.length > 0}
-                  title={
-                    wizardMissing.length > 0
-                      ? `Still needed: ${wizardMissing.join(', ')}`
-                      : 'Set complete — design the 3-way by hand in the network editor (the 3-way optimizer is a later step)'
-                  }
-                >
-                  Open Network editor →
-                </button>
-              ) : wizardPos < wizardSteps.length - 1 ? (
+              {wizardPos < wizardSteps.length - 1 ? (
                 <button
                   type="button"
                   className="primary"
@@ -5107,12 +6325,7 @@ export default function App() {
                     setDesignTab('filters');
                     runVfOptimize();
                   }}
-                  disabled={vfBusy || !result || threeWay}
-                  title={
-                    threeWay
-                      ? '3-way mode: the crossover optimizer designs one driver pair — the two-pair (3-way) optimizer is a later step'
-                      : undefined
-                  }
+                  disabled={vfBusy || !result}
                 >
                   🚀 Optimize — design for me
                 </button>
@@ -5506,7 +6719,27 @@ export default function App() {
       <header className="topbar" title="Combined SPL & relative phase — woofer normalised to 0°, tweeter shown against it.">
         <h1>SD Acoustics - Crossover Studio</h1>
         <div className="status-chips">
-          {timing && (
+          {/* 3-way: the PER-PAIR excess-phase verdict (see timing3) — the
+              2-way woofer↔tweeter/raw-phase check is a false alarm here. The
+              chip shows the worst pair; the tooltip carries both. */}
+          {threeWay && timing3 && (timing3.low || timing3.high) ? (
+            (() => {
+              const pairs = [timing3.low, timing3.high].filter(
+                (p): p is NonNullable<typeof p> => p !== null,
+              );
+              const rank = { plausible: 0, suspect: 1, unreliable: 2 } as const;
+              const worst = pairs.reduce((a, b) => (rank[b.verdict] > rank[a.verdict] ? b : a));
+              return (
+                <span
+                  className={`status-chip ${worst.verdict === 'plausible' ? 'chip-ok' : 'chip-warn'}`}
+                  title={`Time base per adjacent pair, judged on EXCESS phase (measured − minimum-phase) over a band where both drivers play — the raw-phase check absorbs each driver's own rolloff and misreads a healthy set as broken.\n\n${pairs.map((p) => p.message).join('\n\n')}`}
+                >
+                  <span className="chip-dot" />
+                  Timing <strong>{worst.verdict}</strong>
+                </span>
+              );
+            })()
+          ) : timing ? (
             <span
               className={`status-chip ${timing.ref.verdict === 'plausible' ? 'chip-ok' : 'chip-warn'}`}
               title={timing.ref.message}
@@ -5514,7 +6747,7 @@ export default function App() {
               <span className="chip-dot" />
               Timing <strong>{timing.ref.verdict}</strong>
             </span>
-          )}
+          ) : null}
           {combinedFlat && (
             <span
               className={`status-chip ${
@@ -5530,6 +6763,20 @@ export default function App() {
               Overlap <strong>{Math.round(integration.overlapCentreHz)} Hz</strong>
             </span>
           )}
+          {pairScores &&
+            pairScores.low.integ.overlapCentreHz != null &&
+            pairScores.high.integ.overlapCentreHz != null && (
+              <span
+                className="status-chip"
+                title="Where the driver levels meet, per adjacent pair: woofer-mid / mid-tweeter"
+              >
+                Overlap{' '}
+                <strong>
+                  {Math.round(pairScores.low.integ.overlapCentreHz)} /{' '}
+                  {Math.round(pairScores.high.integ.overlapCentreHz)} Hz
+                </strong>
+              </span>
+            )}
           {phaseStats && (
             <span
               className={`status-chip ${
@@ -5540,6 +6787,22 @@ export default function App() {
               Fase P95 <strong>{phaseStats.p95ErrorDeg.toFixed(0)}°</strong>
             </span>
           )}
+          {pairScores && (pairScores.low.stats || pairScores.high.stats) && (() => {
+            const worst = Math.max(
+              pairScores.low.stats?.p95ErrorDeg ?? 0,
+              pairScores.high.stats?.p95ErrorDeg ?? 0,
+            );
+            return (
+              <span
+                className={`status-chip ${
+                  worst <= 45 ? 'chip-ok' : worst <= 90 ? 'chip-warn' : 'chip-bad'
+                }`}
+                title="Worst pair's 95th-percentile phase error (woofer-mid vs mid-tweeter overlap windows)"
+              >
+                Fase P95 <strong>{worst.toFixed(0)}°</strong>
+              </span>
+            );
+          })()}
         </div>
         <div className="theme-switch" role="group" aria-label="Layout">
           {(
@@ -5573,6 +6836,13 @@ export default function App() {
             </button>
           ))}
         </div>
+        <button
+          type="button"
+          onClick={() => setMeasureGuideOpen(true)}
+          title="Meetgids: waar richt je de mic op, hoe ver moet je erbij vandaan, en wat legt een hoeksweep werkelijk vast. De illustraties draaien op dezelfde geometrie als de optimizer."
+        >
+          📐 Measure
+        </button>
         <button
           type="button"
           onClick={() => setHelpOpen(true)}
@@ -5657,6 +6927,118 @@ export default function App() {
                 Tweeter FRD + ZMA (multi-select all hor angles + impedance)
                 <input type="file" accept=".frd,.txt,.zma,.ZMA,.lim" multiple onChange={loadDriverFiles('tweeter')} />
               </label>
+              {(['low', 'mid'] as BranchRole[])
+                .filter((r) => (r === 'low' ? !!woofer : !!midDrv))
+                .map((role) => {
+                  const slot = nearField[role];
+                  const title = role === 'low' ? (hasMidBranch ? 'Woofer' : 'Woofer / mid') : 'Midrange';
+                  const set = (patch: Partial<NearFieldSlot>) =>
+                    setNearField((n) => ({ ...n, [role]: { ...n[role], ...patch } }));
+                  const nfMax = nearFieldMaxHz(Number(sdCm2[role]));
+                  const rep = merged[role];
+                  return (
+                    <div key={role} className="cabinet-driver">
+                      <strong>{title} — near field</strong>
+                      <label
+                        className="file-button"
+                        title="Near-field measurement of the CONE: microphone 5 mm from the centre of the dust cap. This is what gives the branch a low end the gate cannot reach. Export with phase."
+                      >
+                        {slot.cone ? `Cone: ${slot.cone.name}` : 'Load cone near field…'}
+                        <input
+                          type="file"
+                          accept=".frd,.txt"
+                          onChange={(e) => loadNearField(e, role, 'cone')}
+                        />
+                      </label>
+                      {slot.cone && (
+                        <button
+                          type="button"
+                          className="icon"
+                          aria-label={`Remove the ${title} cone near-field measurement`}
+                          onClick={() => set({ cone: null })}
+                        >
+                          ✕
+                        </button>
+                      )}
+                      {slot.cone && (
+                        <>
+                          <label
+                            className="file-button"
+                            title="Optional: near-field measurement at the PORT mouth (or passive radiator). It is summed with the cone COMPLEX and weighted by its diameter — below the box tuning the two largely cancel, which a magnitude-only sum cannot represent."
+                          >
+                            {slot.port ? `Port: ${slot.port.name}` : 'Load port near field…'}
+                            <input
+                              type="file"
+                              accept=".frd,.txt"
+                              onChange={(e) => loadNearField(e, role, 'port')}
+                            />
+                          </label>
+                          {slot.port && (
+                            <span className="inline-num" title="Effective diameter of the port mouth, mm. A rectangular vent: the diameter of a circle with the same area. This is its weight in the sum.">
+                              {'port Ø '}
+                              <input
+                                type="number"
+                                min={0}
+                                step={1}
+                                value={slot.portDiaMm}
+                                onChange={(e) => set({ portDiaMm: e.target.value })}
+                              />
+                              {' mm'}
+                              <button
+                                type="button"
+                                className="icon"
+                                aria-label={`Remove the ${title} port near-field measurement`}
+                                onClick={() => set({ port: null })}
+                              >
+                                ✕
+                              </button>
+                            </span>
+                          )}
+                          <span className="inline-num" title="Splice centre and how wide the crossfade is. Leave the frequency empty and the app proposes one that sits inside both validity limits: above what the gate supports, below where the cone stops being a simple source (ka = 1).">
+                            {'splice at '}
+                            <input
+                              type="number"
+                              min={0}
+                              step={10}
+                              placeholder="auto"
+                              value={slot.transitionHz}
+                              onChange={(e) => set({ transitionHz: e.target.value })}
+                            />
+                            {' Hz, blend '}
+                            <input
+                              type="number"
+                              min={0.25}
+                              max={3}
+                              step={0.25}
+                              value={slot.blendOctaves}
+                              onChange={(e) => set({ blendOctaves: e.target.value })}
+                            />
+                            {' oct'}
+                          </span>
+                          <label title="A near-field measurement is a half-space result throughout, but a real cabinet loses up to 6 dB at low frequency as it radiates into full space. Without this the spliced low end reads too high. Deliberately an adjustable shelf rather than a diffraction model: the published formulas disagree by about 3x and measurement disagrees with all of them.">
+                            <input
+                              type="checkbox"
+                              checked={slot.stepOn}
+                              onChange={(e) => set({ stepOn: e.target.checked })}
+                            />
+                            {' baffle step back in'}
+                          </label>
+                          {nfMax !== null && (
+                            <span className="derived">
+                              near field valid below ≈ {Math.round(nfMax)} Hz (ka = 1)
+                              {cabinetInfo.reliable
+                                ? ` · far field above ≈ ${Math.round(cabinetInfo.reliable.fromHz)} Hz`
+                                : ' · enter the mic distance and reference height for the far-field limit'}
+                            </span>
+                          )}
+                          {rep && (
+                            <span className={`derived${rep.ok ? '' : ' alert'}`}>{rep.report}</span>
+                          )}
+                        </>
+                      )}
+                    </div>
+                  );
+                })}
               <label title="Optional: import a VituixCAD project to simulate Stefan's crossover variants. Select the .vxp together with its .ZMA and response .txt files.">
                 VituixCAD project (.vxp + .ZMA + response .txt — select together)
                 <input
@@ -5959,6 +7341,288 @@ export default function App() {
               </label>
             </fieldset>
             <fieldset>
+              <legend>
+                Cabinet &amp; drivers
+                <span className="derived">
+                  {' '}
+                  — what you know, so the app stops guessing
+                </span>
+              </legend>
+              <p className="cabinet-note">
+                Everything below is measured from the <strong>reference point</strong>: the spot
+                the microphone was aimed at during the sweeps, and — on a turntable — the axis the
+                cabinet turned around. Most people aim at the tweeter, so the tweeter sits at{' '}
+                <strong>x 0, y 0</strong> and anything lower gets a <strong>negative y</strong>.
+                Nothing here changes your measurements; it lets the app work out what those
+                measurements actually captured.
+              </p>
+              <label title="Microphone distance during the FRD sweeps. This is what decides whether the angle files mean what they say: at close range a driver sitting well below the mic is already far off ITS OWN axis at nominal 0°, which exaggerates every off-axis difference and makes a woofer look like it beams far too low.">
+                Mic distance (mm)
+                <input
+                  type="number"
+                  min={0}
+                  step={50}
+                  value={cabinet.micDistanceMm}
+                  onChange={(e) => setCabinet((c) => ({ ...c, micDistanceMm: e.target.value }))}
+                />
+              </label>
+              <label title="Fixed VERTICAL angle of the rig, degrees — positive means the microphone sat ABOVE the reference plane, negative below. Leave at 0 for the usual case: mic level with the point it is aimed at. Signed on purpose: on a driver 380 mm below the reference at 500 mm, ten degrees either way swings its true angle between 31° and 43°.">
+                Mic elevation (°)
+                <input
+                  type="number"
+                  min={-45}
+                  max={45}
+                  step={1}
+                  placeholder="0"
+                  value={cabinet.micElevationDeg}
+                  onChange={(e) => setCabinet((c) => ({ ...c, micElevationDeg: e.target.value }))}
+                />
+              </label>
+              {cabinetInfo.farField && (
+                <span className={`derived${cabinetInfo.farField.ok ? '' : ' alert'}`}>
+                  {cabinetInfo.farField.ok
+                    ? `far field ok — ${cabinetInfo.farField.ratio.toFixed(1)}× the source`
+                    : `only ${cabinetInfo.farField.ratio.toFixed(1)}× the source (${Math.round(
+                        cabinetInfo.farField.sourceMm,
+                      )} mm) — treat directivity as indicative`}
+                </span>
+              )}
+              <label title="The reflection-free window you actually gated with, in ms — from REW's or ARTA's own setting. Leave empty and the app predicts it from the floor bounce instead. A stated gate always wins: it is what happened, not what geometry suggests.">
+                Gate used (ms)
+                <input
+                  type="number"
+                  min={0}
+                  step={0.1}
+                  placeholder="predict"
+                  value={cabinet.gateMs}
+                  onChange={(e) => setCabinet((c) => ({ ...c, gateMs: e.target.value }))}
+                />
+              </label>
+              {cabinetInfo.reliable && (
+                <span className="derived">
+                  {cabinetInfo.reliable.stated
+                    ? `gate ${cabinetInfo.reliable.gateMs.toFixed(2)} ms → honest down to ≈ ${Math.round(
+                        cabinetInfo.reliable.fromHz,
+                      )} Hz`
+                    : `floor bounce at ${cabinetInfo.reliable.gateMs.toFixed(
+                        2,
+                      )} ms → honest down to ≈ ${Math.round(
+                        cabinetInfo.reliable.fromHz,
+                      )} Hz (best case: assumes the floor is the nearest reflector)`}
+                  {Number(fMin) > 0 && Number(fMin) < cabinetInfo.reliable.fromHz * 0.95 && (
+                    <>
+                      {' — '}
+                      <strong>
+                        the view range starts at {Math.round(Number(fMin))} Hz, below what this
+                        measurement supports
+                      </strong>
+                      {' '}
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setFMin(String(Math.round(cabinetInfo.reliable!.fromHz)))
+                        }
+                      >
+                        use {Math.round(cabinetInfo.reliable.fromHz)} Hz as f min
+                      </button>
+                    </>
+                  )}
+                </span>
+              )}
+              <label title="Baffle width. Reported only, never applied: a properly measured on-baffle response already contains the baffle step, so subtracting it again would count it twice. Useful for reading a response — that broad tilt is the cabinet, not the driver.">
+                Baffle W (mm)
+                <input
+                  type="number"
+                  min={0}
+                  step={10}
+                  value={cabinet.baffleWidthMm}
+                  onChange={(e) => setCabinet((c) => ({ ...c, baffleWidthMm: e.target.value }))}
+                />
+              </label>
+              <label title="Baffle height — with the reference offset below it, this gives each driver's distance to the nearest edge, which is what actually shapes diffraction (more than the width does).">
+                Baffle H (mm)
+                <input
+                  type="number"
+                  min={0}
+                  step={10}
+                  value={cabinet.baffleHeightMm}
+                  onChange={(e) => setCabinet((c) => ({ ...c, baffleHeightMm: e.target.value }))}
+                />
+              </label>
+              <label title="How far below the TOP of the baffle the measurement reference point sits — the point the mic was aimed at and, on a turntable, the rotation axis. Everything else is measured relative to it.">
+                Reference point: mm below the baffle top
+                <input
+                  type="number"
+                  min={0}
+                  step={10}
+                  value={cabinet.refFromTopMm}
+                  onChange={(e) => setCabinet((c) => ({ ...c, refFromTopMm: e.target.value }))}
+                />
+              </label>
+              {cabinetInfo.baffleStep && (
+                <span className="derived">
+                  baffle step ≈ {Math.round(cabinetInfo.baffleStep)} Hz (already in your measurement)
+                </span>
+              )}
+              <label title="Height of the reference point above the floor, and the listener's ear height and distance. Together they say at what vertical angle you actually sit — which is what turns a driver-spacing rule into a decision: a null at ±25° is harmless if you sit 2° off the axis.">
+                Reference point: mm above the floor
+                <input
+                  type="number"
+                  min={0}
+                  step={10}
+                  value={cabinet.refHeightMm}
+                  onChange={(e) => setCabinet((c) => ({ ...c, refHeightMm: e.target.value }))}
+                />
+              </label>
+              <label title="Listening distance, metres.">
+                Listen (m)
+                <input
+                  type="number"
+                  min={0}
+                  step={0.1}
+                  value={cabinet.listenDistanceM}
+                  onChange={(e) => setCabinet((c) => ({ ...c, listenDistanceM: e.target.value }))}
+                />
+              </label>
+              <label title="Ear height above the floor, mm.">
+                Ear height (mm)
+                <input
+                  type="number"
+                  min={0}
+                  step={10}
+                  value={cabinet.listenEarHeightMm}
+                  onChange={(e) => setCabinet((c) => ({ ...c, listenEarHeightMm: e.target.value }))}
+                />
+              </label>
+              {cabinetInfo.listenAngle !== null && (
+                <span className="derived">
+                  you sit {Math.abs(cabinetInfo.listenAngle).toFixed(1)}°{' '}
+                  {cabinetInfo.listenAngle >= 0 ? 'below' : 'above'} the reference axis
+                </span>
+              )}
+              {(
+                [
+                  ['low', hasMidBranch ? 'Woofer' : 'Woofer / mid', woofer],
+                  ['mid', 'Midrange', midDrv],
+                  ['high', 'Tweeter', tweeter],
+                ] as [BranchRole, string, unknown][]
+              )
+                .filter(([, , loaded]) => !!loaded)
+                .map(([role, title]) => {
+                  const d = cabinet.drivers[role];
+                  const set = (patch: Partial<CabinetDriver>) =>
+                    setCabinet((c) => ({
+                      ...c,
+                      drivers: { ...c.drivers, [role]: { ...c.drivers[role], ...patch } },
+                    }));
+                  const angles = cabinetInfo.trueAngles(role);
+                  const box = cabinetInfo.boxOf(role);
+                  const edge = cabinetInfo.edgeOf(role);
+                  const dia = cabinetInfo.diaOf(role);
+                  return (
+                    <div key={role} className="cabinet-driver">
+                      <strong>{title}</strong>
+                      <span
+                        className="inline-num"
+                        title="Position of this driver's centre relative to the measurement reference point: x to the right, y UP (so a driver below the reference has a negative y). Centre-to-centre spacing per pair — and with it the vertical-lobing ceiling — is derived from these, so you never type the same fact twice."
+                      >
+                        {'x '}
+                        <input
+                          type="number"
+                          step={5}
+                          placeholder="0"
+                          value={d.xMm}
+                          onChange={(e) => set({ xMm: e.target.value })}
+                        />
+                        {' right, y '}
+                        <input
+                          type="number"
+                          step={5}
+                          placeholder="0"
+                          value={d.yMm}
+                          onChange={(e) => set({ yMm: e.target.value })}
+                        />
+                        {' up (mm from the reference point)'}
+                      </span>
+                      <label title="Enclosure behind THIS driver. A sealed box is already a 2nd-order acoustic high-pass at its corner, so a 2nd-order electrical filter yields a 4th-order acoustic slope — on a low crossover that is the difference between one ~30 µF capacitor and a pair adding to ~90 µF. A port also means the box can radiate its own midrange through a pipe resonance.">
+                        Box
+                        <select
+                          value={d.enclosure}
+                          onChange={(e) => set({ enclosure: e.target.value as Enclosure })}
+                        >
+                          <option value="unknown">unknown</option>
+                          <option value="sealed">sealed</option>
+                          <option value="ported">ported</option>
+                          <option value="open">open / dipole</option>
+                        </select>
+                      </label>
+                      {d.enclosure !== 'unknown' && d.enclosure !== 'open' && (
+                        <label title="Box corner frequency: Fc for a sealed box, Fb for a ported one.">
+                          {d.enclosure === 'ported' ? 'Fb (Hz)' : 'Fc (Hz)'}
+                          <input
+                            type="number"
+                            min={0}
+                            step={1}
+                            value={d.fbHz}
+                            onChange={(e) => set({ fbHz: e.target.value })}
+                          />
+                        </label>
+                      )}
+                      <span
+                        className="inline-num"
+                        title="Cone area and linear excursion from the datasheet. Sd gives the effective piston diameter (the honest one for every beaming rule — nominal size includes a surround that does not radiate); Sd and Xmax together give the level-aware excursion floor."
+                      >
+                        {'Sd '}
+                        <input
+                          type="number"
+                          min={0}
+                          step={1}
+                          value={sdCm2[role]}
+                          onChange={(e) => setSdCm2((q) => ({ ...q, [role]: e.target.value }))}
+                        />
+                        {' cm² Xmax '}
+                        <input
+                          type="number"
+                          min={0}
+                          step={0.1}
+                          value={xmaxMm[role]}
+                          onChange={(e) => setXmaxMm((q) => ({ ...q, [role]: e.target.value }))}
+                        />
+                        {' mm'}
+                      </span>
+                      {cabinetInfo.place[role] &&
+                        cabinetInfo.place[role]!.xMm === 0 &&
+                        cabinetInfo.place[role]!.yMm === 0 && (
+                          <span className="derived">
+                            this driver IS the reference point — the mic was aimed here
+                          </span>
+                        )}
+                      {dia && (
+                        <span className="derived">effective Ø {Math.round(dia)} mm</span>
+                      )}
+                      {angles && (
+                        <span className="derived">
+                          your sweep really covers{' '}
+                          {angles
+                            .map((a) => `${a.nominal}°→${a.actual!.toFixed(0)}°`)
+                            .join(', ')}
+                        </span>
+                      )}
+                      {box.note && <span className="derived">{box.note}</span>}
+                      {cabinetInfo.unloadOf(role) === 'high' && (
+                        <span className="derived alert">
+                          ported: excursion runs away below Fb — worth a steeper electrical
+                          high-pass than a sealed box would need
+                        </span>
+                      )}
+                      {edge !== null && (
+                        <span className="derived">nearest baffle edge {Math.round(edge)} mm</span>
+                      )}
+                    </div>
+                  );
+                })}
+            </fieldset>
+            <fieldset>
               <legend>Driver phase</legend>
               <label title="Measured = the real measured phase incl. the true inter-driver time offset — the whole point of this tool. Minimum phase = reconstructed from magnitude (offsets discarded), only for apples-to-apples VituixCAD comparison.">
                 Convention
@@ -6158,10 +7822,10 @@ export default function App() {
                   <button
                     type="button"
                     onClick={runVfOptimize}
-                    disabled={vfBusy || threeWay}
+                    disabled={vfBusy}
                     title={
                       threeWay
-                        ? '3-way mode: the crossover optimizer designs one driver PAIR — the two-pair (3-way) optimizer is a later step. The sim, virtual filters and network editor already work.'
+                        ? '3-way: staged 2D scan — LR4 targets + measured level trims per (low, high) handover candidate, per-branch synthesis, assembled two-pair tune; the amp-load verdict gates the ranking. Winner lands in the Working tab.'
                         : soloDriver
                           ? 'Single-driver mode: flatten this driver — cut-only EQ/shelf design, built as series traps / shelf groups (+ gated Zobel) and component-tuned against the measurement (lands in the Working tab)'
                           : 'Design the crossover, build it as a passive network and simulate it — all in one go (lands in the Working tab)'
@@ -6196,10 +7860,8 @@ export default function App() {
                       // Start at the import gate (step 0) when there is no driver
                       // data yet — the wizard should take you from nothing to a
                       // built crossover, not assume measurements exist. One
-                      // loaded driver is enough (single-driver mode). A loaded
-                      // 3-way also lands on step 0: the guided steps beyond it
-                      // are optimizer-bound and that optimizer is a later step.
-                      setWizardStep(!woofer && !tweeter ? 0 : threeWay ? 0 : 1);
+                      // loaded driver is enough (single-driver mode).
+                      setWizardStep(!woofer && !tweeter ? 0 : 1);
                       setWizardOpen(true);
                     }}
                     title="Design wizard: load measurements, then goals, priority, crossover point, acoustic slopes and component choices in one guided flow — ends with Optimize"
@@ -6398,8 +8060,24 @@ export default function App() {
                     }
                   />
                 </label>
+                {threeWay && (
+                  <label title="Preferred alignment for the LOW (woofer-mid) handover — binding: the designer picks the foundation, the optimizer keeps knees, level and polarity free. Auto = free choice from the library.">
+                    HP/LP preference (low xo)
+                    <select value={hpLpPrefLow} onChange={(e) => setHpLpPrefLow(e.target.value)}>
+                      <option value="auto">Auto (library)</option>
+                      <option value="LR2">LR2 (12 dB/oct)</option>
+                      <option value="LR4">LR4 (24 dB/oct)</option>
+                      <option value="BW2">BW2 (12 dB/oct)</option>
+                      <option value="BW3">BW3 (18 dB/oct)</option>
+                      <option value="BW4">BW4 (24 dB/oct)</option>
+                      <option value="BS2">Bessel 2 (12 dB/oct)</option>
+                      <option value="BS3">Bessel 3 (18 dB/oct)</option>
+                      <option value="BS4">Bessel 4 (24 dB/oct)</option>
+                    </select>
+                  </label>
+                )}
                 <label title="Preferred HP/LP alignment — binding: the designer picks the foundation, the optimizer designs the best crossover on it (knees, level, polarity and EQ stay free). Auto = free choice from the library.">
-                  HP/LP preference
+                  {threeWay ? 'HP/LP preference (high xo)' : 'HP/LP preference'}
                   <select value={hpLpPref} onChange={(e) => setHpLpPref(e.target.value)} disabled={!!soloDriver}>
                     <option value="auto">Auto (library)</option>
                     <option value="LR2">LR2 (12 dB/oct)</option>
@@ -6413,7 +8091,7 @@ export default function App() {
                   </select>
                 </label>
                 <label title="Target ACOUSTIC slope of the mid above the crossing — the measured rolloff (driver + filter), not the electrical order. Falling short costs more than being steeper. Auto = free.">
-                  Acoustic slope mid
+                  {threeWay ? 'Acoustic slope mid LP (high xo)' : 'Acoustic slope mid'}
                   <select value={acSlopeMid} onChange={(e) => setAcSlopeMid(e.target.value)} disabled={!!soloDriver}>
                     <option value="auto">Auto</option>
                     {['12', '18', '24', '30', '36'].map((v) => (
@@ -6434,6 +8112,32 @@ export default function App() {
                     ))}
                   </select>
                 </label>
+                {threeWay && (
+                  <>
+                    <label title="3-way: target ACOUSTIC slope of the WOOFER above the low crossing (its LP flank). Auto = free.">
+                      Acoustic slope woofer (low xo)
+                      <select value={acSlopeWoofer} onChange={(e) => setAcSlopeWoofer(e.target.value)}>
+                        <option value="auto">Auto</option>
+                        {['12', '18', '24', '30', '36'].map((v) => (
+                          <option key={v} value={v}>
+                            {v} dB/oct
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                    <label title="3-way: target ACOUSTIC slope of the MID below the low crossing (its HP flank) — the mid's second flank.">
+                      Acoustic slope mid HP (low xo)
+                      <select value={acSlopeMidHp} onChange={(e) => setAcSlopeMidHp(e.target.value)}>
+                        <option value="auto">Auto</option>
+                        {['12', '18', '24', '30', '36'].map((v) => (
+                          <option key={v} value={v}>
+                            {v} dB/oct
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                  </>
+                )}
                 <label title="Staged design (trapmethode): HP/LP structure first; EQ bands, Zobel/LCR networks and bypass caps are only added while the targets below are unmet — the fewest components that reach the goal, with a per-stage report.">
                   <input
                     type="checkbox"
@@ -6448,7 +8152,7 @@ export default function App() {
                     <input
                       type="number"
                       min={0.1}
-                      max={3}
+                      max={6}
                       step={0.1}
                       value={targetRipple}
                       onChange={(e) => setTargetRipple(e.target.value)}
@@ -6503,7 +8207,7 @@ export default function App() {
                     onChange={(e) => setXoRangeOn(e.target.checked)}
                     disabled={!!soloDriver}
                   />{' '}
-                  Crossover point
+                  {threeWay ? 'Crossover points (low + high)' : 'Crossover point'}
                 </label>
                 {tweeterHpFloor !== null && (
                   <span
@@ -6513,11 +8217,206 @@ export default function App() {
                     HP floor {tweeterHpFloor} Hz (2×Fs)
                   </span>
                 )}
+                {threeWay && (
+                  <label title="How many handover candidates the 3-way scan simulates PER crossing. Each candidate runs the full design chain inside its own slice of the search range, so the count is squared: 2 steps = 4 chains. Works pinned or unpinned — without a pin the range is the neighbourhood of the raw crossings.">
+                    Scan steps per crossing
+                    <select value={xo3Steps} onChange={(e) => setXo3Steps(Number(e.target.value))}>
+                      {[1, 2, 3].map((n) => (
+                        <option key={n} value={n}>
+                          {n} ({n * n} sim{n * n > 1 ? 's' : ''})
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                )}
+                {threeWay && (
+                  <label title="Woofer nominal size — sets the W-M handover's beaming CEILING (a cone is practically usable to ~3× its beaming onset), the mirror of the mid-size rule for the high crossing. With the 2×Fs floor from the measured mid impedance this gives the free scan a physics window instead of a guess.">
+                    Woofer size (W-M ceiling)
+                    <select value={wooferSizeInch} onChange={(e) => setWooferSizeInch(e.target.value)}>
+                      <option value="">unknown</option>
+                      {['5', '6.5', '8', '10', '12', '15'].map((v) => (
+                        <option key={v} value={v}>
+                          {v}"
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                )}
+                {threeWay && (
+                  <label title="Directivity philosophy for the MEASURED beaming ceiling — the on-axis minus 30° difference at which a driver counts as beaming. Default is the empirical 4 dB, NOT the theoretically stricter ka = 2, and that is deliberate: the ka figures come from an ideal piston in an infinite baffle, while a real measured 0−30° difference at low frequency is mostly baffle diffraction. Measured on a real 3-way set, ka = 2 puts the woofer&apos;s ceiling at 304 Hz — below the mid&apos;s own 2×Fs floor — declaring an ordinary design impossible; 4 dB gives 628 Hz. The strict tiers stay available for a conservative philosophy or clean anechoic data. (For reference: &apos;−6 dB at 30°&apos; is ka = 4.43, past every published limit — that defines BEAMWIDTH, not a crossover ceiling.)">
+                    Beaming limit
+                    <select value={kaTier} onChange={(e) => setKaTier(e.target.value as KaTier)}>
+                      {(Object.keys(KA_TIERS) as KaTier[]).map((k) => (
+                        <option key={k} value={k}>
+                          {k} — ka {KA_TIERS[k].ka} ({KA_TIERS[k].diff30Db} dB)
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                )}
+                {threeWay && (
+                  <span
+                    className="inline-num"
+                    title="How many wavelengths of DRIVER SPACING the design tolerates. The spacing itself is derived from the driver positions you enter under Setup → Cabinet & drivers; two drivers half a wavelength apart already put a null in the vertical response. The sources genuinely disagree here and they optimise different things, so this is the designer's call."
+                  >
+                    {'Lobing k '}
+                    <select value={ctcK} onChange={(e) => setCtcK(e.target.value)}>
+                      <option value="0.25">0.25 — point source</option>
+                      <option value="0.5">0.5 — no forward null</option>
+                      <option value="1">1.0 — Dickason</option>
+                      <option value="1.2">1.2 — Saunisto (power response)</option>
+                    </select>
+                    {cabinetInfo.ctcLow !== null || cabinetInfo.ctcHigh !== null ? (
+                      <span className="derived">
+                        {' '}
+                        c-t-c{' '}
+                        {cabinetInfo.ctcLow !== null ? `W-M ${Math.round(cabinetInfo.ctcLow)}` : ''}
+                        {cabinetInfo.ctcHigh !== null
+                          ? ` · M-T ${Math.round(cabinetInfo.ctcHigh)}`
+                          : ''}{' '}
+                        mm
+                      </span>
+                    ) : (
+                      <span className="derived"> — enter driver positions to apply</span>
+                    )}
+                  </span>
+                )}
+                {threeWay && (
+                  <label title="Cone breakup as an upper limit. A resonance at f_b is excited as the THIRD harmonic of a fundamental at f_b/3 (Purifi measured exactly this: breakups at 5 and 10 kHz produce HD3 peaks at 1.6 and 3.3 kHz), so the distortion penalty lands more than an octave BELOW the peak. A notch does not repair it — it attenuates the fundamental at the breakup, not the harmonics arriving there from lower fundamentals. NOTE: no published algorithm exists for finding breakup in an SPL curve; this is our own criterion, which is why it is switchable and the detected frequency is shown.">
+                    Breakup ceiling
+                    <select
+                      value={breakupLimitOn ? breakupHarmonic : 'off'}
+                      onChange={(e) => {
+                        if (e.target.value === 'off') setBreakupLimitOn(false);
+                        else {
+                          setBreakupLimitOn(true);
+                          setBreakupHarmonic(e.target.value);
+                        }
+                      }}
+                    >
+                      <option value="off">off</option>
+                      <option value="3">f_b / 3 (HD3)</option>
+                      <option value="5">f_b / 5 (HD5, hard cones)</option>
+                    </select>
+                  </label>
+                )}
+                {threeWay && (
+                  <span
+                    className="inline-num"
+                    title="Excursion floor — the LEVEL-aware version of 'cross a tweeter at 2-3x Fs'. SPL = 108.4 + 20log(f²·Sd·Xmax) in half space, so a driver runs out of linear travel below f = sqrt(10^((L-108.4)/20)/(Sd·Xmax)). Both numbers come straight off the datasheet; without them the criterion simply does not apply. The level matters: a 1 inch dome is fine to 587 Hz at 90 dB and only to 829 Hz at 96 dB."
+                  >
+                    {'Sd/Xmax mid '}
+                    <input
+                      type="number"
+                      min={0}
+                      step={1}
+                      value={sdCm2.mid}
+                      onChange={(e) => setSdCm2((p) => ({ ...p, mid: e.target.value }))}
+                    />
+                    {' cm² / '}
+                    <input
+                      type="number"
+                      min={0}
+                      step={0.1}
+                      value={xmaxMm.mid}
+                      onChange={(e) => setXmaxMm((p) => ({ ...p, mid: e.target.value }))}
+                    />
+                    {' mm · tweeter '}
+                    <input
+                      type="number"
+                      min={0}
+                      step={1}
+                      value={sdCm2.high}
+                      onChange={(e) => setSdCm2((p) => ({ ...p, high: e.target.value }))}
+                    />
+                    {' cm² / '}
+                    <input
+                      type="number"
+                      min={0}
+                      step={0.1}
+                      value={xmaxMm.high}
+                      onChange={(e) => setXmaxMm((p) => ({ ...p, high: e.target.value }))}
+                    />
+                    {' mm @ '}
+                    <input
+                      type="number"
+                      min={70}
+                      max={120}
+                      step={1}
+                      value={excursionSpl}
+                      onChange={(e) => setExcursionSpl(e.target.value)}
+                    />
+                    {' dB'}
+                  </span>
+                )}
+                {threeWay && physWin3 && (
+                  <span
+                    className="derived"
+                    title="The free scan derives both handover windows from the measurements themselves: floor = 2×Fs (measured impedance) and where the upper driver reaches its own level; ceiling = the lower driver's MEASURED beaming onset from the angle files (size-formula fallback without them). A pin is the designer's explicit override of its axis — the scan then searches the pin, not this window, and warns loudly when the physics cannot deliver it."
+                  >
+                    {xoRangeOn ? (
+                      <>W-M pinned · </>
+                    ) : (
+                      <>
+                        W-M {Math.round(physWin3.low.floorHz ?? 250)}–
+                        {Math.round(physWin3.low.ceilHz ?? 1200)} Hz
+                        {bindingCeil(physWin3.limits.low, physWin3.lowCeilMeasured)}
+                        {' · '}
+                      </>
+                    )}
+                    {physWin3.low.ceilHz !== null &&
+                      physWin3.low.floorHz !== null &&
+                      physWin3.low.ceilHz <= physWin3.low.floorHz && (
+                        <strong> ⚠ no room</strong>
+                      )}
+                    {xoRangeOn ? (
+                      <>M-T pinned — pins override the derived windows</>
+                    ) : (
+                      <>
+                        M-T {Math.round(physWin3.high.floorHz ?? 1200)}–
+                        {Math.round(physWin3.high.ceilHz ?? 7000)} Hz
+                        {bindingCeil(physWin3.limits.high, physWin3.highCeilMeasured)}
+                        {physWin3.high.ceilHz !== null &&
+                          physWin3.high.floorHz !== null &&
+                          physWin3.high.ceilHz <= physWin3.high.floorHz && (
+                            <strong> ⚠ no room</strong>
+                          )}
+                      </>
+                    )}
+                  </span>
+                )}
+                {xoRangeOn && threeWay && (
+                  <span
+                    className="inline-num"
+                    title="3-way: the LOW handover (woofer→mid) — the acoustic crossing must land within frequency ± margin, in the design chain AND the component tuner."
+                  >
+                    {'low '}
+                    <input
+                      type="number"
+                      min={150}
+                      max={2000}
+                      step={50}
+                      value={xoLowFreqHz}
+                      onChange={(e) => setXoLowFreqHz(e.target.value)}
+                    />
+                    {' Hz ± '}
+                    <input
+                      type="number"
+                      min={0}
+                      max={1000}
+                      step={25}
+                      value={xoLowMarginHz}
+                      onChange={(e) => setXoLowMarginHz(e.target.value)}
+                    />{' '}
+                    Hz
+                  </span>
+                )}
                 {xoRangeOn && (
                   <span
                     className="inline-num"
                     title="The ACOUSTIC handover — where the filtered drivers actually cross — must land within frequency ± margin. The electrical knees stay free (with a hot tweeter they sit far above the acoustic crossing)."
                   >
+                    {threeWay ? 'high ' : ''}
                     <input
                       type="number"
                       min={300}
@@ -6536,20 +8435,27 @@ export default function App() {
                       onChange={(e) => setXoMarginHz(e.target.value)}
                     />{' '}
                     Hz
-                    {' · '}
-                    <select
-                      value={xoScanSteps}
-                      onChange={(e) => setXoScanSteps(Number(e.target.value))}
-                      title="How many crossover candidates the scan simulates across the pinned range (evenly spaced, your pin always included). Every candidate runs the FULL design chain, so compute grows about linearly — the worker pool runs several at once, but 9 steps still takes a multiple of 3. More steps = a finer sweep of the handover region."
-                    >
-                      {[3, 5, 7, 9].map((n) => (
-                        <option key={n} value={n}>
-                          {n} steps
-                        </option>
-                      ))}
-                    </select>
-                    {xoScanSteps > 3 && (
-                      <span className="derived"> ⏱ ~{Math.ceil(xoScanSteps / 3)}× runtime</span>
+                    {/* Candidate count: 2-way sweeps ONE axis from here; 3-way
+                        has its own per-crossing control above (two axes, and
+                        it must work unpinned too). */}
+                    {!threeWay && (
+                      <>
+                        {' · '}
+                        <select
+                          value={xoScanSteps}
+                          onChange={(e) => setXoScanSteps(Number(e.target.value))}
+                          title="How many crossover candidates the scan simulates across the pinned range (evenly spaced, your pin always included). Every candidate runs the FULL design chain, so compute grows about linearly — the worker pool runs several at once, but 9 steps still takes a multiple of 3. More steps = a finer sweep of the handover region."
+                        >
+                          {[3, 5, 7, 9].map((n) => (
+                            <option key={n} value={n}>
+                              {n} steps
+                            </option>
+                          ))}
+                        </select>
+                        {xoScanSteps > 3 && (
+                          <span className="derived"> ⏱ ~{Math.ceil(xoScanSteps / 3)}× runtime</span>
+                        )}
+                      </>
                     )}
                   </span>
                 )}
@@ -6623,7 +8529,9 @@ export default function App() {
                     {soloDriver
                       ? filterSummaryLine(vFilters[soloDriver], soloDriver)
                       : [
-                          filterSummaryLine(vFilters.woofer, 'woofer'),
+                          threeWay
+                            ? filterSummaryLine(vFilters.woofer, 'woofer').replace(/^Woofer\/mid/, 'Woofer')
+                            : filterSummaryLine(vFilters.woofer, 'woofer'),
                           ...(threeWay ? [filterSummaryLine(vFilters.mid, 'mid')] : []),
                           filterSummaryLine(vFilters.tweeter, 'tweeter'),
                         ].join(' — ')}
@@ -6911,10 +8819,10 @@ export default function App() {
                   <button
                     type="button"
                     onClick={runNetOptimize}
-                    disabled={!activeDesign || netOptBusy || !sim || zModels.length === 0 || threeWay}
+                    disabled={!activeDesign || netOptBusy || !sim || zModels.length === 0}
                     title={
                       threeWay
-                        ? '3-way mode: the component tuner judges one driver pair — the two-pair objective is a later step'
+                        ? '3-way: re-fit the UNLOCKED component values against the measured three-branch sum — both adjacent crossings are guarded (valley, protection, dead-branch), phase is judged per pair'
                         : soloDriver
                           ? 'Single-driver mode: re-fit the UNLOCKED component values against the measured driver — objective is branch flatness (+ amp-load floor); crossover terms do not apply'
                           : 'Re-fit the UNLOCKED component values of the active tab against the measured response — 🔒 parts keep their value'
@@ -7399,6 +9307,22 @@ export default function App() {
                     >
                       ±1 dB {combinedFlat.withinPct[1].toFixed(0)}%
                     </span>
+                    {/* HONEST BAND ATTRIBUTION. The score judges the VISIBLE
+                        range; the optimizer designs from a floor (200 Hz).
+                        Measured on Robbert: the same design scores avg ±1.04
+                        over 200 Hz–18 kHz and ±1.84 over 20 Hz–20 kHz — the
+                        whole difference is the woofer's own rolloff below
+                        200 Hz, which no CUT-ONLY passive network can lift.
+                        Two watchdogs on two different bands is exactly the
+                        bug family bandMetrics was extracted for: say it. */}
+                    {optimizerFloorHz !== null && (
+                      <span
+                        className="strip-item"
+                        title={`The optimizer designs from ${Math.round(optimizerFloorHz)} Hz up; the score above judges everything you SEE. Below that floor the woofer runs into its own rolloff, and a cut-only passive network cannot lift it — it could only match it by throwing away sensitivity everywhere else (baffle-step territory, a deliberate designer's choice). Zoom the SPL chart to the design band to read the score the optimizer actually worked on.`}
+                      >
+                        designed from {Math.round(optimizerFloorHz)} Hz
+                      </span>
+                    )}
                   </>
                 )}
                 {tolBand && (
@@ -7457,6 +9381,34 @@ export default function App() {
                   ) : (
                     <span className="strip-item alert">
                       no overlap within 20 dB — the drivers never meet, nothing to integrate
+                    </span>
+                  ))}
+                {pairScores &&
+                  (
+                    [
+                      ['W-M', pairScores.low] as const,
+                      ['M-T', pairScores.high] as const,
+                    ]
+                  ).map(([label, ps]) => (
+                    <span
+                      key={label}
+                      className={`strip-item${
+                        ps.integ.score !== null && ps.integ.score < 75 ? ' alert' : ''
+                      }`}
+                      title={`Adjacent pair ${label === 'W-M' ? 'woofer-mid' : 'mid-tweeter'}: summing score (overlap-weighted cos(ε/2)) and where the levels meet`}
+                    >
+                      {label}{' '}
+                      {ps.integ.score !== null
+                        ? `${ps.integ.score.toFixed(0)} · ${
+                            ps.integ.overlapCentreHz !== null
+                              ? `${Math.round(ps.integ.overlapCentreHz)} Hz`
+                              : '—'
+                          }${
+                            ps.integ.bandwidth
+                              ? ` · ${ps.integ.bandwidth.octaves.toFixed(1)} oct`
+                              : ''
+                          }`
+                        : 'no overlap'}
                     </span>
                   ))}
               </div>
@@ -7746,6 +9698,28 @@ export default function App() {
                 </span>
               </div>
             )}
+            {pairScores && (
+              <div className="score-strip">
+                <span className="strip-label">Phase flatness</span>
+                {(
+                  [
+                    ['woofer-mid', pairScores.low.stats] as const,
+                    ['mid-tweeter', pairScores.high.stats] as const,
+                  ]
+                ).map(([label, st]) => (
+                  <span
+                    key={label}
+                    className="strip-item"
+                    title={`Relative-phase flatness over the ${label} overlap window: score 0–100, average and P95 |phase error|.`}
+                  >
+                    {label}{' '}
+                    {st
+                      ? `${st.score} · avg ${st.avgErrorDeg.toFixed(1)}° · P95 ${st.p95ErrorDeg.toFixed(0)}°`
+                      : 'no overlap'}
+                  </span>
+                ))}
+              </div>
+            )}
             <Chart
               series={phaseSeries}
               xDomain={xDomain}
@@ -7767,7 +9741,32 @@ export default function App() {
                         label: `integration bandwidth ${integration.bandwidth.octaves.toFixed(1)} oct`,
                       },
                     ]
-                  : undefined
+                  : pairScores
+                    ? [
+                        ...(pairScores.low.integ.bandwidth
+                          ? [
+                              {
+                                from: pairScores.low.integ.bandwidth.fLo,
+                                to: pairScores.low.integ.bandwidth.fHi,
+                                color: 'var(--viz-mid)',
+                                opacity: 0.08,
+                                label: `W-M bandwidth ${pairScores.low.integ.bandwidth.octaves.toFixed(1)} oct`,
+                              },
+                            ]
+                          : []),
+                        ...(pairScores.high.integ.bandwidth
+                          ? [
+                              {
+                                from: pairScores.high.integ.bandwidth.fLo,
+                                to: pairScores.high.integ.bandwidth.fHi,
+                                color: 'var(--viz-tweeter)',
+                                opacity: 0.08,
+                                label: `M-T bandwidth ${pairScores.high.integ.bandwidth.octaves.toFixed(1)} oct`,
+                              },
+                            ]
+                          : []),
+                      ]
+                    : undefined
               }
               xMarkers={
                 integration?.overlapCentreHz
@@ -7777,7 +9776,26 @@ export default function App() {
                         label: `overlap ${Math.round(integration.overlapCentreHz)} Hz`,
                       },
                     ]
-                  : undefined
+                  : pairScores
+                    ? [
+                        ...(pairScores.low.integ.overlapCentreHz
+                          ? [
+                              {
+                                x: pairScores.low.integ.overlapCentreHz,
+                                label: `W-M ${Math.round(pairScores.low.integ.overlapCentreHz)} Hz`,
+                              },
+                            ]
+                          : []),
+                        ...(pairScores.high.integ.overlapCentreHz
+                          ? [
+                              {
+                                x: pairScores.high.integ.overlapCentreHz,
+                                label: `M-T ${Math.round(pairScores.high.integ.overlapCentreHz)} Hz`,
+                              },
+                            ]
+                          : []),
+                      ]
+                    : undefined
               }
               onXRangeCommit={commitViewRange}
             />
