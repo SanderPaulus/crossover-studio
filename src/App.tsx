@@ -7542,7 +7542,7 @@ export default function App() {
                   onChange={(e) => setCabinet((c) => ({ ...c, micDistanceMm: e.target.value }))}
                 />
               </label>
-              <label title="Fixed VERTICAL angle of the rig, degrees — positive means the microphone sat ABOVE the reference plane, negative below. Leave at 0 for the usual case: mic level with the point it is aimed at. Signed on purpose: on a driver 380 mm below the reference at 500 mm, ten degrees either way swings its true angle between 31° and 43°.">
+              <label className={uiMode === 'guided' ? 'expert-only' : undefined} title="Fixed VERTICAL angle of the rig, degrees — positive means the microphone sat ABOVE the reference plane, negative below. Leave at 0 for the usual case: mic level with the point it is aimed at. Signed on purpose: on a driver 380 mm below the reference at 500 mm, ten degrees either way swings its true angle between 31° and 43°.">
                 Mic elevation (°)
                 <input
                   type="number"
@@ -7605,7 +7605,9 @@ export default function App() {
                   )}
                 </span>
               )}
-              <span className="cab-group-cap">The cabinet</span>
+              <span className={`cab-group-cap${uiMode === 'guided' ? ' expert-only' : ''}`}>
+                The cabinet
+              </span>
               {/* Sanders vraag: "zijn deze 2 niet hetzelfde?" over Baffle H en
                   "mm below the baffle top". Nee — de eerste is de MAAT van het
                   paneel, de tweede is WAAR de oorsprong daarin zit. Dat de
@@ -7614,7 +7616,7 @@ export default function App() {
                   een afmeting is en de ander een positie. Nu twee gelabelde
                   regels, hetzelfde raster als de driverkaarten: rij 1 = het
                   paneel, rij 2 = het punt waar alles vanaf gemeten wordt. */}
-              <div className="cd-grid">
+              <div className={`cd-grid${uiMode === 'guided' ? ' expert-only' : ''}`}>
                 <span className="cd-label">Baffle</span>
                 <span
                   className="cd-fields"
@@ -7675,8 +7677,10 @@ export default function App() {
                   baffle step ≈ {Math.round(cabinetInfo.baffleStep)} Hz (already in your measurement)
                 </span>
               )}
-              <span className="cab-group-cap">Where you listen</span>
-              <label title="Listening distance, metres.">
+              <span className={`cab-group-cap${uiMode === 'guided' ? ' expert-only' : ''}`}>
+                Where you listen
+              </span>
+              <label className={uiMode === 'guided' ? 'expert-only' : undefined} title="Listening distance, metres.">
                 Listen (m)
                 <input
                   type="number"
@@ -7686,7 +7690,7 @@ export default function App() {
                   onChange={(e) => setCabinet((c) => ({ ...c, listenDistanceM: e.target.value }))}
                 />
               </label>
-              <label title="Ear height above the floor, mm.">
+              <label className={uiMode === 'guided' ? 'expert-only' : undefined} title="Ear height above the floor, mm.">
                 Ear height (mm)
                 <input
                   type="number"
@@ -7721,8 +7725,32 @@ export default function App() {
                   const box = cabinetInfo.boxOf(role);
                   const edge = cabinetInfo.edgeOf(role);
                   const dia = cabinetInfo.diaOf(role);
+                  // "Moeten we hier niet een bypass-vinkje voor?" (Sanders).
+                  // Leeglaten ÍS al de bypass — elke consument behandelt een
+                  // leeg veld als "criterium niet van toepassing". Wat ontbrak
+                  // is dat je dat kunt ZIEN: een leeg veld zei niet of je er
+                  // nog niet aan toe was of het bewust oversloeg, en al
+                  // helemaal niet wát je ermee uitzet. Een apart vinkje zou een
+                  // derde toestand toevoegen aan iets met er al twee, met als
+                  // risico precies de stille fout: aangevinkt, vergeten, en
+                  // later je afvragen waarom een criterium nooit vuurt.
+                  const uit: string[] = [];
+                  if (!(Number(sdCm2[role]) > 0) || !(Number(xmaxMm[role]) > 0)) {
+                    uit.push('excursion floor');
+                  }
+                  if (!(Number(sdCm2[role]) > 0)) uit.push('cone size for the beaming rules');
+                  if (!d.xMm && !d.yMm) uit.push('driver spacing, lobing and edge distance');
+                  if (d.enclosure === 'unknown') uit.push('what the box itself already filters');
+                  const samenvatting = [
+                    Number(d.count) > 1 ? `${d.count}×` : '',
+                    d.xMm || d.yMm ? `at ${d.xMm || 0}, ${d.yMm || 0} mm` : 'no position',
+                    d.enclosure !== 'unknown' ? d.enclosure : '',
+                    Number(sdCm2[role]) > 0 ? `Sd ${sdCm2[role]} cm²` : 'no datasheet numbers',
+                  ]
+                    .filter(Boolean)
+                    .join(' · ');
                   return (
-                    <div key={role} className="cabinet-driver">
+                    <details key={role} className="cabinet-driver" open>
                       {/* Was één doorlopende regel met invoervelden ertussen
                           ("Woofer x [ ] right, y [ ] up (mm ...)"), wat leest
                           als een zin met gaten in plaats van als een formulier
@@ -7730,7 +7758,11 @@ export default function App() {
                           Nu een gelabeld raster: één onderwerp per regel, label
                           links, en het AANTAL bij de naam -- dat hoort bij de
                           identiteit van de tak, niet bij zijn afmetingen. */}
-                      <div className="cd-head">
+                      {/* Inklapbaar: een ingevulde driver hoeft geen ruimte te
+                          blijven vragen. NOOIT kaal ingeklapt — de samenvatting
+                          in de kop is de voorwaarde, anders leest dichtklappen
+                          als dataverlies (de les uit Filter bands). */}
+                      <summary className="cd-head">
                         <strong>{title}</strong>
                         <span
                           className="inline-num"
@@ -7759,7 +7791,8 @@ export default function App() {
                             </>
                           )}
                         </span>
-                      </div>
+                        <span className="cd-summary">{samenvatting}</span>
+                      </summary>
                       <div className="cd-grid">
                         <span className="cd-label">Position</span>
                         <span
@@ -7874,7 +7907,13 @@ export default function App() {
                       {edge !== null && (
                         <span className="derived">nearest baffle edge {Math.round(edge)} mm</span>
                       )}
-                    </div>
+                      {uit.length > 0 && (
+                        <span className="derived">
+                          {'leaving these blank is fine — it switches off: '}
+                          {uit.join(' · ')}
+                        </span>
+                      )}
+                    </details>
                   );
                 })}
             </fieldset>

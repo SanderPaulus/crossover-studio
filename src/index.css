@@ -2667,3 +2667,37 @@ button:disabled {
   text-transform: uppercase;
   color: var(--muted);
 }
+
+/* Driver card is collapsible: a filled-in driver need not keep asking for
+   space. The summary line in the head is the CONDITION — a bare collapsed
+   section reads as data loss (the Filter-bands lesson). */
+details.cabinet-driver > summary {
+  cursor: pointer;
+  list-style: none;
+}
+details.cabinet-driver > summary::-webkit-details-marker {
+  display: none;
+}
+details.cabinet-driver > summary::before {
+  content: '▾';
+  color: var(--muted);
+  font-size: 0.8rem;
+  margin-right: 0.1rem;
+}
+details.cabinet-driver:not([open]) > summary::before {
+  content: '▸';
+}
+/* Only meaningful once collapsed — open, the fields themselves say it. */
+.cd-summary {
+  display: none;
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+details.cabinet-driver:not([open]) .cd-summary {
+  display: inline;
+}
+
+/* Collapsed, the inline count editor is noise next to the summary line. */
+details.cabinet-driver:not([open]) .cd-head .inline-num {
+  display: none;
+}
