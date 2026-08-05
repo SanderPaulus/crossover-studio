@@ -2987,7 +2987,7 @@ export default function App() {
     /** Live phase label (vf-rounds path). */
     label?: string;
     /** Scan path: one STABLE row per candidate — rendered as a fixed table. */
-    items?: { label: string; text: string; done: boolean }[];
+    items?: { label: string; text: string; done: boolean; warn?: string }[];
   } | null>(null);
   /** Coarse stage of a standalone component tune ("value tune", "snap", …). */
   /** Component-tune progress à la the scan card (Sanders wens): the PLANNED
@@ -5440,7 +5440,10 @@ export default function App() {
               {vfProgress.items.map((it) => (
                 <tr key={it.label} className={it.done ? 'done' : ''}>
                   <td>{it.label}</td>
-                  <td>{it.text}</td>
+                  <td>
+                    {it.text}
+                    {it.warn && <span className="scan-warn"> {it.warn}</span>}
+                  </td>
                 </tr>
               ))}
             </tbody>

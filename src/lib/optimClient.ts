@@ -120,7 +120,15 @@ export interface ScanProgress {
   phaseDeg?: number;
   /** One STABLE row per candidate (insertion order): the busy overlay renders
    *  these as a fixed little table so the popup never changes size. */
-  items: { label: string; text: string; done: boolean }[];
+  items: {
+    label: string;
+    text: string;
+    done: boolean;
+    /** A finished candidate whose amp load fails the floor. Kept OUT of `text`
+     *  so the view can colour the warning without parsing the string — the
+     *  glyph carries the meaning, the colour only reinforces it. */
+    warn?: string;
+  }[];
 }
 
 const stageText = (p: ChainOneProgress): string =>
@@ -146,7 +154,7 @@ export function runChainScan(
     1,
     Math.min(4, (typeof navigator !== 'undefined' ? navigator.hardwareConcurrency : 4) - 1 || 1),
   );
-  const state = new Map<string, { evals: number; text: string; done: boolean }>();
+  const state = new Map<string, { evals: number; text: string; done: boolean; warn?: string }>();
   let lastRipple: number | undefined;
   let lastPhase: number | undefined;
   // THROTTLED (trailing, ~12/s): four workers burst progress messages, and
@@ -161,11 +169,11 @@ export function runChainScan(
       emitQueued = false;
       let evals = 0;
       let done = 0;
-      const items: { label: string; text: string; done: boolean }[] = [];
+      const items: { label: string; text: string; done: boolean; warn?: string }[] = [];
       for (const [label, st] of state) {
         evals += st.evals;
         if (st.done) done++;
-        items.push({ label, text: st.text, done: st.done });
+        items.push({ label, text: st.text, done: st.done, warn: st.warn });
       }
       onProgress({ round: done, evals, rippleDb: lastRipple, phaseDeg: lastPhase, items });
     }, 80);
@@ -234,7 +242,7 @@ export function runChain3Scan(
     1,
     Math.min(4, (typeof navigator !== 'undefined' ? navigator.hardwareConcurrency : 4) - 1 || 1),
   );
-  const state = new Map<string, { evals: number; text: string; done: boolean }>();
+  const state = new Map<string, { evals: number; text: string; done: boolean; warn?: string }>();
   let emitQueued = false;
   const emit = () => {
     if (!onProgress || emitQueued) return;
@@ -243,11 +251,11 @@ export function runChain3Scan(
       emitQueued = false;
       let evals = 0;
       let done = 0;
-      const items: { label: string; text: string; done: boolean }[] = [];
+      const items: { label: string; text: string; done: boolean; warn?: string }[] = [];
       for (const [label, st] of state) {
         evals += st.evals;
         if (st.done) done++;
-        items.push({ label, text: st.text, done: st.done });
+        items.push({ label, text: st.text, done: st.done, warn: st.warn });
       }
       onProgress({ round: done, evals, items });
     }, 80);
@@ -265,7 +273,8 @@ export function runChain3Scan(
         const st = state.get(input.label);
         if (st) {
           st.evals = r.net.evaluations;
-          st.text = `✓ ${r.net.after.rippleDb.toFixed(2)} dB/${r.net.after.phaseDeg.toFixed(1)}°${r.zOk ? '' : ' ⚠Z'}`;
+          st.text = `✓ ${r.net.after.rippleDb.toFixed(2)} dB/${r.net.after.phaseDeg.toFixed(1)}°`;
+          st.warn = r.zOk ? undefined : '⚠Z';
           st.done = true;
         }
         emit();

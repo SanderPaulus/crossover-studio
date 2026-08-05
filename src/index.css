@@ -2518,3 +2518,11 @@ button:disabled {
     }
   }
 }
+
+/* Scan warning marker (⚠Z: this candidate's amp load fails the floor). Colour
+   REINFORCES, it never carries alone — the glyph says it too, which is what
+   keeps it readable for a colour-blind reader and in a screenshot. */
+.busy-scan .scan-warn {
+  color: var(--bad);
+  font-weight: 600;
+}
