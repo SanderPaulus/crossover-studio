@@ -5588,6 +5588,226 @@ export default function App() {
   );
   if (anyBusy) busyCardBodyRef.current = busyCardBody;
 
+  /** Per-driver facts (position, enclosure, datasheet numbers, how many).
+   *  Lives in step 1 "Your drivers" — these are properties of the DRIVER,
+   *  while the baffle, the reference point and the mic rig belong to the
+   *  cabinet in step 2. Held as a variable because the two blocks render
+   *  in different tabs. */
+  const driverFacts = (
+    <>
+                {(
+                  [
+                    ['low', hasMidBranch ? 'Woofer' : 'Woofer / mid', woofer],
+                    ['mid', 'Midrange', midDrv],
+                    ['high', 'Tweeter', tweeter],
+                  ] as [BranchRole, string, unknown][]
+                )
+                  .filter(([, , loaded]) => !!loaded)
+                  .map(([role, title]) => {
+                    const d = cabinet.drivers[role];
+                    const set = (patch: Partial<CabinetDriver>) =>
+                      setCabinet((c) => ({
+                        ...c,
+                        drivers: { ...c.drivers, [role]: { ...c.drivers[role], ...patch } },
+                      }));
+                    const angles = cabinetInfo.trueAngles(role);
+                    const box = cabinetInfo.boxOf(role);
+                    const edge = cabinetInfo.edgeOf(role);
+                    const dia = cabinetInfo.diaOf(role);
+                    // "Moeten we hier niet een bypass-vinkje voor?" (Sanders).
+                    // Leeglaten ÍS al de bypass — elke consument behandelt een
+                    // leeg veld als "criterium niet van toepassing". Wat ontbrak
+                    // is dat je dat kunt ZIEN: een leeg veld zei niet of je er
+                    // nog niet aan toe was of het bewust oversloeg, en al
+                    // helemaal niet wát je ermee uitzet. Een apart vinkje zou een
+                    // derde toestand toevoegen aan iets met er al twee, met als
+                    // risico precies de stille fout: aangevinkt, vergeten, en
+                    // later je afvragen waarom een criterium nooit vuurt.
+                    const uit: string[] = [];
+                    if (!(Number(sdCm2[role]) > 0) || !(Number(xmaxMm[role]) > 0)) {
+                      uit.push('excursion floor');
+                    }
+                    if (!(Number(sdCm2[role]) > 0)) uit.push('cone size for the beaming rules');
+                    if (!d.xMm && !d.yMm) uit.push('driver spacing, lobing and edge distance');
+                    if (d.enclosure === 'unknown') uit.push('what the box itself already filters');
+                    const samenvatting = [
+                      Number(d.count) > 1 ? `${d.count}×` : '',
+                      d.xMm || d.yMm ? `at ${d.xMm || 0}, ${d.yMm || 0} mm` : 'no position',
+                      d.enclosure !== 'unknown' ? d.enclosure : '',
+                      Number(sdCm2[role]) > 0 ? `Sd ${sdCm2[role]} cm²` : 'no datasheet numbers',
+                    ]
+                      .filter(Boolean)
+                      .join(' · ');
+                    return (
+                      <details key={role} className="cabinet-driver" open>
+                        {/* Was één doorlopende regel met invoervelden ertussen
+                            ("Woofer x [ ] right, y [ ] up (mm ...)"), wat leest
+                            als een zin met gaten in plaats van als een formulier
+                            (Sanders: "ik vind het toch rommelig met de drivers").
+                            Nu een gelabeld raster: één onderwerp per regel, label
+                            links, en het AANTAL bij de naam -- dat hoort bij de
+                            identiteit van de tak, niet bij zijn afmetingen. */}
+                        {/* Inklapbaar: een ingevulde driver hoeft geen ruimte te
+                            blijven vragen. NOOIT kaal ingeklapt — de samenvatting
+                            in de kop is de voorwaarde, anders leest dichtklappen
+                            als dataverlies (de les uit Filter bands). */}
+                        <summary className="cd-head">
+                          <strong>{title}</strong>
+                          <span
+                            className="inline-num"
+                            title="How many IDENTICAL drivers make up this branch. Dual woofers displace twice the air, so the excursion floor drops by √2 — but each cone still beams as itself, so Sd below stays the SINGLE driver's datasheet number. With more than one, their centre-to-centre spacing sets where the array's own vertical lobing starts, which is usually a lower ceiling than cone beaming."
+                          >
+                            {'× '}
+                            <input
+                              type="number"
+                              min={1}
+                              step={1}
+                              placeholder="1"
+                              value={d.count}
+                              onChange={(e) => set({ count: e.target.value })}
+                            />
+                            {Number(d.count) > 1 ? ' drivers, spaced ' : ' driver'}
+                            {Number(d.count) > 1 && (
+                              <>
+                                <input
+                                  type="number"
+                                  min={0}
+                                  step={1}
+                                  value={d.spacingMm}
+                                  onChange={(e) => set({ spacingMm: e.target.value })}
+                                />
+                                {' mm apart'}
+                              </>
+                            )}
+                          </span>
+                          <span className="cd-summary">{samenvatting}</span>
+                        </summary>
+                        <div className="cd-grid">
+                          <span className="cd-label">Position</span>
+                          <span
+                            className="cd-fields"
+                            title="Position of this driver's centre relative to the measurement reference point: x to the right, y UP (so a driver below the reference has a negative y). Centre-to-centre spacing per pair — and with it the vertical-lobing ceiling — is derived from these, so you never type the same fact twice."
+                          >
+                            {'x '}
+                            <input
+                              type="number"
+                              step={5}
+                              placeholder="0"
+                              value={d.xMm}
+                              onChange={(e) => set({ xMm: e.target.value })}
+                            />
+                            {' mm · y '}
+                            <input
+                              type="number"
+                              step={5}
+                              placeholder="0"
+                              value={d.yMm}
+                              onChange={(e) => set({ yMm: e.target.value })}
+                            />
+                            {' mm'}
+                            <span className="cd-hint">from the reference point · y up</span>
+                          </span>
+  
+                          <span className="cd-label">Enclosure</span>
+                          <span className="cd-fields">
+                            <select
+                              value={d.enclosure}
+                              onChange={(e) => set({ enclosure: e.target.value as Enclosure })}
+                              title="Enclosure behind THIS driver. A sealed box is already a 2nd-order acoustic high-pass at its corner, so a 2nd-order electrical filter yields a 4th-order acoustic slope — on a low crossover that is the difference between one ~30 µF capacitor and a pair adding to ~90 µF. A port also means the box can radiate its own midrange through a pipe resonance."
+                            >
+                              <option value="unknown">unknown</option>
+                              <option value="sealed">sealed</option>
+                              <option value="ported">ported</option>
+                              <option value="open">open / dipole</option>
+                            </select>
+                            {d.enclosure !== 'unknown' && d.enclosure !== 'open' && (
+                              <>
+                                {d.enclosure === 'ported' ? ' Fb ' : ' Fc '}
+                                <input
+                                  type="number"
+                                  min={0}
+                                  step={1}
+                                  value={d.fbHz}
+                                  onChange={(e) => set({ fbHz: e.target.value })}
+                                />
+                                {' Hz'}
+                              </>
+                            )}
+                          </span>
+  
+                          <span className="cd-label">Datasheet</span>
+                          <span
+                            className="cd-fields"
+                            title="Cone area and linear excursion from the datasheet, for ONE driver. Sd gives the effective piston diameter (the honest one for every beaming rule — nominal size includes a surround that does not radiate); Sd and Xmax together give the level-aware excursion floor."
+                          >
+                            {'Sd '}
+                            <input
+                              type="number"
+                              min={0}
+                              step={1}
+                              value={sdCm2[role]}
+                              onChange={(e) => setSdCm2((q) => ({ ...q, [role]: e.target.value }))}
+                            />
+                            {' cm² · Xmax '}
+                            <input
+                              type="number"
+                              min={0}
+                              step={0.1}
+                              value={xmaxMm[role]}
+                              onChange={(e) => setXmaxMm((q) => ({ ...q, [role]: e.target.value }))}
+                            />
+                            {' mm'}
+                          </span>
+                        </div>
+                        {Number(d.count) > 1 && (
+                          <span className="derived">
+                            {'excursion floor drops ×'}
+                            {(1 / Math.sqrt(Number(d.count))).toFixed(2)}
+                            {arrayLobe[role]
+                              ? ` · array lobing from ${Math.round(arrayLobe[role]!)} Hz`
+                              : ' · enter the spacing for the array lobing ceiling'}
+                          </span>
+                        )}
+                        {cabinetInfo.place[role] &&
+                          cabinetInfo.place[role]!.xMm === 0 &&
+                          cabinetInfo.place[role]!.yMm === 0 && (
+                            <span className="derived">
+                              this driver IS the reference point — the mic was aimed here
+                            </span>
+                          )}
+                        {dia && (
+                          <span className="derived">effective Ø {Math.round(dia)} mm</span>
+                        )}
+                        {angles && (
+                          <span className="derived">
+                            your sweep really covers{' '}
+                            {angles
+                              .map((a) => `${a.nominal}°→${a.actual!.toFixed(0)}°`)
+                              .join(', ')}
+                          </span>
+                        )}
+                        {box.note && <span className="derived">{box.note}</span>}
+                        {cabinetInfo.unloadOf(role) === 'high' && (
+                          <span className="derived alert">
+                            ported: excursion runs away below Fb — worth a steeper electrical
+                            high-pass than a sealed box would need
+                          </span>
+                        )}
+                        {edge !== null && (
+                          <span className="derived">nearest baffle edge {Math.round(edge)} mm</span>
+                        )}
+                        {uit.length > 0 && (
+                          <span className="derived">
+                            {'leaving these blank is fine — it switches off: '}
+                            {uit.join(' · ')}
+                          </span>
+                        )}
+                      </details>
+                    );
+                  })}
+    </>
+  );
+
   return (
     <div className={`app-shell layout-${layoutMode}`}>
       {overlayVisible && (
@@ -7329,6 +7549,19 @@ export default function App() {
             </div>
           </div>
         </div>
+        {/* De feiten over de DRIVERS staan bij de drivers: dit is stap 1,
+            waar hun metingen ook binnenkomen. De kast, het referentiepunt en
+            de meetopstelling horen bij stap 2 "Your cabinet". De stapnamen
+            zeiden dat al, alleen de indeling niet (Sanders opmerking). */}
+        {(woofer || midDrv || tweeter) && (
+          <fieldset className="cabinet-block">
+            <legend>
+              What you know about them
+              <span className="legend-sub"> — from the datasheet and a ruler</span>
+            </legend>
+            {driverFacts}
+          </fieldset>
+        )}
         {persistNote && <p className="filenames">{persistNote} · autosaves locally on every change</p>}
         {vxpNote && <p className="filenames">{vxpNote}</p>}
         {/* One banner for parse failures AND content warnings — the old
@@ -7517,10 +7750,10 @@ export default function App() {
             </fieldset>
             <fieldset>
               <legend>
-                Cabinet &amp; drivers
+                Cabinet &amp; measurement
                 <span className="derived">
                   {' '}
-                  — what you know, so the app stops guessing
+                  — the box and how you measured it (the drivers themselves are in step 1)
                 </span>
               </legend>
               <p className="cabinet-note">
@@ -7542,7 +7775,7 @@ export default function App() {
                   onChange={(e) => setCabinet((c) => ({ ...c, micDistanceMm: e.target.value }))}
                 />
               </label>
-              <label className={uiMode === 'guided' ? 'expert-only' : undefined} title="Fixed VERTICAL angle of the rig, degrees — positive means the microphone sat ABOVE the reference plane, negative below. Leave at 0 for the usual case: mic level with the point it is aimed at. Signed on purpose: on a driver 380 mm below the reference at 500 mm, ten degrees either way swings its true angle between 31° and 43°.">
+              <label title="Fixed VERTICAL angle of the rig, degrees — positive means the microphone sat ABOVE the reference plane, negative below. Leave at 0 for the usual case: mic level with the point it is aimed at. Signed on purpose: on a driver 380 mm below the reference at 500 mm, ten degrees either way swings its true angle between 31° and 43°.">
                 Mic elevation (°)
                 <input
                   type="number"
@@ -7605,9 +7838,7 @@ export default function App() {
                   )}
                 </span>
               )}
-              <span className={`cab-group-cap${uiMode === 'guided' ? ' expert-only' : ''}`}>
-                The cabinet
-              </span>
+              <span className="cab-group-cap">The cabinet</span>
               {/* Sanders vraag: "zijn deze 2 niet hetzelfde?" over Baffle H en
                   "mm below the baffle top". Nee — de eerste is de MAAT van het
                   paneel, de tweede is WAAR de oorsprong daarin zit. Dat de
@@ -7616,7 +7847,7 @@ export default function App() {
                   een afmeting is en de ander een positie. Nu twee gelabelde
                   regels, hetzelfde raster als de driverkaarten: rij 1 = het
                   paneel, rij 2 = het punt waar alles vanaf gemeten wordt. */}
-              <div className={`cd-grid${uiMode === 'guided' ? ' expert-only' : ''}`}>
+              <div className="cd-grid">
                 <span className="cd-label">Baffle</span>
                 <span
                   className="cd-fields"
@@ -7677,10 +7908,8 @@ export default function App() {
                   baffle step ≈ {Math.round(cabinetInfo.baffleStep)} Hz (already in your measurement)
                 </span>
               )}
-              <span className={`cab-group-cap${uiMode === 'guided' ? ' expert-only' : ''}`}>
-                Where you listen
-              </span>
-              <label className={uiMode === 'guided' ? 'expert-only' : undefined} title="Listening distance, metres.">
+              <span className="cab-group-cap">Where you listen</span>
+              <label title="Listening distance, metres.">
                 Listen (m)
                 <input
                   type="number"
@@ -7690,7 +7919,7 @@ export default function App() {
                   onChange={(e) => setCabinet((c) => ({ ...c, listenDistanceM: e.target.value }))}
                 />
               </label>
-              <label className={uiMode === 'guided' ? 'expert-only' : undefined} title="Ear height above the floor, mm.">
+              <label title="Ear height above the floor, mm.">
                 Ear height (mm)
                 <input
                   type="number"
@@ -7706,216 +7935,10 @@ export default function App() {
                   {cabinetInfo.listenAngle >= 0 ? 'below' : 'above'} the reference axis
                 </span>
               )}
-              {(
-                [
-                  ['low', hasMidBranch ? 'Woofer' : 'Woofer / mid', woofer],
-                  ['mid', 'Midrange', midDrv],
-                  ['high', 'Tweeter', tweeter],
-                ] as [BranchRole, string, unknown][]
-              )
-                .filter(([, , loaded]) => !!loaded)
-                .map(([role, title]) => {
-                  const d = cabinet.drivers[role];
-                  const set = (patch: Partial<CabinetDriver>) =>
-                    setCabinet((c) => ({
-                      ...c,
-                      drivers: { ...c.drivers, [role]: { ...c.drivers[role], ...patch } },
-                    }));
-                  const angles = cabinetInfo.trueAngles(role);
-                  const box = cabinetInfo.boxOf(role);
-                  const edge = cabinetInfo.edgeOf(role);
-                  const dia = cabinetInfo.diaOf(role);
-                  // "Moeten we hier niet een bypass-vinkje voor?" (Sanders).
-                  // Leeglaten ÍS al de bypass — elke consument behandelt een
-                  // leeg veld als "criterium niet van toepassing". Wat ontbrak
-                  // is dat je dat kunt ZIEN: een leeg veld zei niet of je er
-                  // nog niet aan toe was of het bewust oversloeg, en al
-                  // helemaal niet wát je ermee uitzet. Een apart vinkje zou een
-                  // derde toestand toevoegen aan iets met er al twee, met als
-                  // risico precies de stille fout: aangevinkt, vergeten, en
-                  // later je afvragen waarom een criterium nooit vuurt.
-                  const uit: string[] = [];
-                  if (!(Number(sdCm2[role]) > 0) || !(Number(xmaxMm[role]) > 0)) {
-                    uit.push('excursion floor');
-                  }
-                  if (!(Number(sdCm2[role]) > 0)) uit.push('cone size for the beaming rules');
-                  if (!d.xMm && !d.yMm) uit.push('driver spacing, lobing and edge distance');
-                  if (d.enclosure === 'unknown') uit.push('what the box itself already filters');
-                  const samenvatting = [
-                    Number(d.count) > 1 ? `${d.count}×` : '',
-                    d.xMm || d.yMm ? `at ${d.xMm || 0}, ${d.yMm || 0} mm` : 'no position',
-                    d.enclosure !== 'unknown' ? d.enclosure : '',
-                    Number(sdCm2[role]) > 0 ? `Sd ${sdCm2[role]} cm²` : 'no datasheet numbers',
-                  ]
-                    .filter(Boolean)
-                    .join(' · ');
-                  return (
-                    <details key={role} className="cabinet-driver" open>
-                      {/* Was één doorlopende regel met invoervelden ertussen
-                          ("Woofer x [ ] right, y [ ] up (mm ...)"), wat leest
-                          als een zin met gaten in plaats van als een formulier
-                          (Sanders: "ik vind het toch rommelig met de drivers").
-                          Nu een gelabeld raster: één onderwerp per regel, label
-                          links, en het AANTAL bij de naam -- dat hoort bij de
-                          identiteit van de tak, niet bij zijn afmetingen. */}
-                      {/* Inklapbaar: een ingevulde driver hoeft geen ruimte te
-                          blijven vragen. NOOIT kaal ingeklapt — de samenvatting
-                          in de kop is de voorwaarde, anders leest dichtklappen
-                          als dataverlies (de les uit Filter bands). */}
-                      <summary className="cd-head">
-                        <strong>{title}</strong>
-                        <span
-                          className="inline-num"
-                          title="How many IDENTICAL drivers make up this branch. Dual woofers displace twice the air, so the excursion floor drops by √2 — but each cone still beams as itself, so Sd below stays the SINGLE driver's datasheet number. With more than one, their centre-to-centre spacing sets where the array's own vertical lobing starts, which is usually a lower ceiling than cone beaming."
-                        >
-                          {'× '}
-                          <input
-                            type="number"
-                            min={1}
-                            step={1}
-                            placeholder="1"
-                            value={d.count}
-                            onChange={(e) => set({ count: e.target.value })}
-                          />
-                          {Number(d.count) > 1 ? ' drivers, spaced ' : ' driver'}
-                          {Number(d.count) > 1 && (
-                            <>
-                              <input
-                                type="number"
-                                min={0}
-                                step={1}
-                                value={d.spacingMm}
-                                onChange={(e) => set({ spacingMm: e.target.value })}
-                              />
-                              {' mm apart'}
-                            </>
-                          )}
-                        </span>
-                        <span className="cd-summary">{samenvatting}</span>
-                      </summary>
-                      <div className="cd-grid">
-                        <span className="cd-label">Position</span>
-                        <span
-                          className="cd-fields"
-                          title="Position of this driver's centre relative to the measurement reference point: x to the right, y UP (so a driver below the reference has a negative y). Centre-to-centre spacing per pair — and with it the vertical-lobing ceiling — is derived from these, so you never type the same fact twice."
-                        >
-                          {'x '}
-                          <input
-                            type="number"
-                            step={5}
-                            placeholder="0"
-                            value={d.xMm}
-                            onChange={(e) => set({ xMm: e.target.value })}
-                          />
-                          {' mm · y '}
-                          <input
-                            type="number"
-                            step={5}
-                            placeholder="0"
-                            value={d.yMm}
-                            onChange={(e) => set({ yMm: e.target.value })}
-                          />
-                          {' mm'}
-                          <span className="cd-hint">from the reference point · y up</span>
-                        </span>
-
-                        <span className="cd-label">Enclosure</span>
-                        <span className="cd-fields">
-                          <select
-                            value={d.enclosure}
-                            onChange={(e) => set({ enclosure: e.target.value as Enclosure })}
-                            title="Enclosure behind THIS driver. A sealed box is already a 2nd-order acoustic high-pass at its corner, so a 2nd-order electrical filter yields a 4th-order acoustic slope — on a low crossover that is the difference between one ~30 µF capacitor and a pair adding to ~90 µF. A port also means the box can radiate its own midrange through a pipe resonance."
-                          >
-                            <option value="unknown">unknown</option>
-                            <option value="sealed">sealed</option>
-                            <option value="ported">ported</option>
-                            <option value="open">open / dipole</option>
-                          </select>
-                          {d.enclosure !== 'unknown' && d.enclosure !== 'open' && (
-                            <>
-                              {d.enclosure === 'ported' ? ' Fb ' : ' Fc '}
-                              <input
-                                type="number"
-                                min={0}
-                                step={1}
-                                value={d.fbHz}
-                                onChange={(e) => set({ fbHz: e.target.value })}
-                              />
-                              {' Hz'}
-                            </>
-                          )}
-                        </span>
-
-                        <span className="cd-label">Datasheet</span>
-                        <span
-                          className="cd-fields"
-                          title="Cone area and linear excursion from the datasheet, for ONE driver. Sd gives the effective piston diameter (the honest one for every beaming rule — nominal size includes a surround that does not radiate); Sd and Xmax together give the level-aware excursion floor."
-                        >
-                          {'Sd '}
-                          <input
-                            type="number"
-                            min={0}
-                            step={1}
-                            value={sdCm2[role]}
-                            onChange={(e) => setSdCm2((q) => ({ ...q, [role]: e.target.value }))}
-                          />
-                          {' cm² · Xmax '}
-                          <input
-                            type="number"
-                            min={0}
-                            step={0.1}
-                            value={xmaxMm[role]}
-                            onChange={(e) => setXmaxMm((q) => ({ ...q, [role]: e.target.value }))}
-                          />
-                          {' mm'}
-                        </span>
-                      </div>
-                      {Number(d.count) > 1 && (
-                        <span className="derived">
-                          {'excursion floor drops ×'}
-                          {(1 / Math.sqrt(Number(d.count))).toFixed(2)}
-                          {arrayLobe[role]
-                            ? ` · array lobing from ${Math.round(arrayLobe[role]!)} Hz`
-                            : ' · enter the spacing for the array lobing ceiling'}
-                        </span>
-                      )}
-                      {cabinetInfo.place[role] &&
-                        cabinetInfo.place[role]!.xMm === 0 &&
-                        cabinetInfo.place[role]!.yMm === 0 && (
-                          <span className="derived">
-                            this driver IS the reference point — the mic was aimed here
-                          </span>
-                        )}
-                      {dia && (
-                        <span className="derived">effective Ø {Math.round(dia)} mm</span>
-                      )}
-                      {angles && (
-                        <span className="derived">
-                          your sweep really covers{' '}
-                          {angles
-                            .map((a) => `${a.nominal}°→${a.actual!.toFixed(0)}°`)
-                            .join(', ')}
-                        </span>
-                      )}
-                      {box.note && <span className="derived">{box.note}</span>}
-                      {cabinetInfo.unloadOf(role) === 'high' && (
-                        <span className="derived alert">
-                          ported: excursion runs away below Fb — worth a steeper electrical
-                          high-pass than a sealed box would need
-                        </span>
-                      )}
-                      {edge !== null && (
-                        <span className="derived">nearest baffle edge {Math.round(edge)} mm</span>
-                      )}
-                      {uit.length > 0 && (
-                        <span className="derived">
-                          {'leaving these blank is fine — it switches off: '}
-                          {uit.join(' · ')}
-                        </span>
-                      )}
-                    </details>
-                  );
-                })}
+              {/* De driverfeiten zijn verhuisd naar stap 1 "Your drivers":
+                  positie, Sd/Xmax, aantal en kasttype gaan over de DRIVER, de
+                  velden hierboven over de KAST en de meetopstelling. De
+                  stapnamen zeiden dat al; alleen de indeling niet (Sander). */}
             </fieldset>
             <fieldset className={uiMode === 'guided' ? 'expert-only' : undefined}>
               <legend>Driver phase</legend>
