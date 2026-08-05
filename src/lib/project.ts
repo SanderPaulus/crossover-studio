@@ -136,6 +136,7 @@ export interface ProjectDesign {
    */
   cabinet?: {
     micDistanceMm?: string;
+    micElevationDeg?: string;
     baffleWidthMm?: string;
     baffleHeightMm?: string;
     refFromTopMm?: string;

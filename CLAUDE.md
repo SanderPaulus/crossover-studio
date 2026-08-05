@@ -166,6 +166,20 @@ minimum phase reconstrueert. Voertaal met Sander: **Nederlands**; code/comments 
   vanaf 300 Hz leek te bundelen**. De tweeter, die op het referentiepunt zit, geeft keurig
   0°→0°…30°→30° — de rekenkunde controleert zichzelf. Op 1,5 m zou dezelfde woofer 9,5°→31°
   dekken.
+  **`micElevationDeg` (aug 2026, na Sanders `ver10`-vraag)**: een rig kan ook een vaste
+  VERTICALE hoek hebben (+ = mic boven het referentievlak). Geen verfijning maar een
+  hoofdterm: op een driver 380 mm laag bij 500 mm verschuift ±10° de ware hoek van 31° naar 43°,
+  dus het veld is GETEKEND en wordt nooit geraden. 0 = de gewone situatie en reduceert exact
+  tot de oude vorm. (Sanders eigen set bleek er géén te hebben: `ver10` in zijn bestandsnamen is
+  geen verticale hoek — hij mat één horizontale sweep op 50 cm recht vóór de tweeter.)
+  **HARD GELEERD — de gids had het mis over draaien**: hij zei "draai de kast, niet de mic, want
+  een mic op een boog verandert ook de afstand". GEMETEN: met de boog gecentreerd op het
+  referentiepunt en verticaal gestapelde drivers is de afstand tot élke driver exact constant
+  (0,00 dB op 0° én 30° — de offset zit in de rotatie-as, dus hij valt weg). Mic-op-draaischijf
+  is dus meetkundig identiek aan kast-op-draaischijf. Het échte argument voor de kast draaien is
+  een ander: dan blijft de mic op ÉÉN plek in de kamer en dragen alle curves dezelfde reflecties,
+  terwijl een reizende mic per stap een ander vloer-/wand-pad ontmoet. Alleen een HORIZONTAAL
+  verschoven driver voelt de geometrie wel (90 mm opzij ⇒ 0,51 dB over een 30°-sweep).
   `rotationLevelOffsetDb`: het niveauverschil dat puur uit de rig-geometrie komt. NUL voor een
   driver recht boven/onder een verticale draai-as (draaien verandert die afstand niet), en
   alleen zichtbaar bij een HORIZONTAAL verschoven driver — daarom is een constante

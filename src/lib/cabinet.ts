@@ -46,18 +46,29 @@ export interface DriverPlacement {
  * (x, y, 0) looking along +z, so
  *
  *     cos φ = R·cosθ / |(R·sinθ − x, −y, R·cosθ)|
+ *
+ * `micElevationDeg` covers a rig that also sits at a fixed VERTICAL angle —
+ * positive = the microphone above the reference plane. It is not a refinement:
+ * on a driver 380 mm below the reference at 500 mm, ±10° of elevation moves the
+ * true angle from 31° to 43°, so guessing the sign would be worse than not
+ * modelling it at all. Zero reduces to the plain form above.
  */
 export function trueOffAxisDeg(
   driver: DriverPlacement,
   micDistanceMm: number,
   nominalDeg: number,
+  micElevationDeg = 0,
 ): number | null {
   if (!(micDistanceMm > 0)) return null;
   const t = (nominalDeg * Math.PI) / 180;
-  const mx = micDistanceMm * Math.sin(t);
-  const mz = micDistanceMm * Math.cos(t);
+  const v = (micElevationDeg * Math.PI) / 180;
+  // Mic on a sphere around the reference point: horizontal angle t, vertical
+  // elevation v (positive = above the reference plane).
+  const mx = micDistanceMm * Math.cos(v) * Math.sin(t);
+  const my = micDistanceMm * Math.sin(v);
+  const mz = micDistanceMm * Math.cos(v) * Math.cos(t);
   const dx = mx - driver.xMm;
-  const dy = -driver.yMm;
+  const dy = my - driver.yMm;
   const len = Math.hypot(dx, dy, mz);
   if (!(len > 0)) return null;
   return (Math.acos(Math.max(-1, Math.min(1, mz / len))) * 180) / Math.PI;
@@ -78,14 +89,16 @@ export function rotationLevelOffsetDb(
   driver: DriverPlacement,
   micDistanceMm: number,
   nominalDeg: number,
+  micElevationDeg = 0,
 ): number | null {
   if (!(micDistanceMm > 0)) return null;
+  const v = (micElevationDeg * Math.PI) / 180;
   const at = (deg: number) => {
     const t = (deg * Math.PI) / 180;
     return Math.hypot(
-      micDistanceMm * Math.sin(t) - driver.xMm,
-      -driver.yMm,
-      micDistanceMm * Math.cos(t),
+      micDistanceMm * Math.cos(v) * Math.sin(t) - driver.xMm,
+      micDistanceMm * Math.sin(v) - driver.yMm,
+      micDistanceMm * Math.cos(v) * Math.cos(t),
     );
   };
   const d0 = at(0);

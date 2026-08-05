@@ -290,12 +290,22 @@ export function MeasuringGuide({ open, onClose }: { open: boolean; onClose: () =
         a smaller problem than angles that mean something other than what they say.
       </p>
 
-      <h3>3 · Turn the cabinet, not the microphone</h3>
+      <h3>3 · Keep the radius constant, centred on the reference point</h3>
       <p>
-        The angle in a file name belongs to the <strong>box</strong>. Rotate the speaker about the
-        reference point and leave the mic exactly where it is — moving the mic around an arc
-        changes the distance to every driver as well as the angle, and the two are then impossible
-        to separate afterwards.
+        The angle in a file name belongs to the <strong>box</strong>. What matters is that every
+        angle is taken at the <em>same distance</em> from the same reference point — swing the
+        microphone on an arc around it, or turn the speaker beneath it; for a vertically stacked
+        cabinet the two are geometrically identical, and the distance to every driver stays
+        exactly constant either way.
+      </p>
+      <p>
+        Turning the <strong>speaker</strong> is still the safer habit, for a reason that has
+        nothing to do with angles: the microphone then stays in one spot in the room, so every
+        curve carries the same reflections. A microphone that travels meets a different floor,
+        wall and ceiling path at each step, and whatever your gate does not remove ends up looking
+        like directivity. The one case where the geometry itself bites is a driver mounted{' '}
+        <em>off-centre horizontally</em> — 90 mm to one side already shifts its level by half a
+        decibel across a 30° sweep.
       </p>
       <figure className="mg-stage">
         <TopView micMm={micMm} deg={Math.round(deg)} />

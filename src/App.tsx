@@ -495,6 +495,10 @@ interface CabinetDriver {
 interface CabinetState {
   /** Microphone distance during the FRD sweeps, mm. */
   micDistanceMm: string;
+  /** Fixed VERTICAL angle of the rig, degrees; + = mic above the reference
+   *  plane. Usually 0 (mic level with the reference point). Signed on purpose:
+   *  on a driver 380 mm low at 500 mm, ±10° swings the true angle 31°↔43°. */
+  micElevationDeg: string;
   baffleWidthMm: string;
   baffleHeightMm: string;
   /** How far below the top of the baffle the reference point sits, mm. */
@@ -513,6 +517,7 @@ const emptyCabinetDriver = (): CabinetDriver => ({
 });
 const emptyCabinet = (): CabinetState => ({
   micDistanceMm: '',
+  micElevationDeg: '',
   baffleWidthMm: '',
   baffleHeightMm: '',
   refFromTopMm: '',
@@ -543,6 +548,7 @@ function mergeCabinet(raw: ProjectDesign['cabinet']): CabinetState {
   }
   return {
     micDistanceMm: raw.micDistanceMm ?? '',
+    micElevationDeg: raw.micElevationDeg ?? '',
     baffleWidthMm: raw.baffleWidthMm ?? '',
     baffleHeightMm: raw.baffleHeightMm ?? '',
     refFromTopMm: raw.refFromTopMm ?? '',
@@ -2309,6 +2315,7 @@ export default function App() {
    */
   const cabinetInfo = useMemo(() => {
     const micMm = Number(cabinet.micDistanceMm);
+    const micElev = Number(cabinet.micElevationDeg) || 0;
     const place = {
       low: placementOf(cabinet.drivers.low),
       mid: placementOf(cabinet.drivers.mid),
@@ -2328,8 +2335,8 @@ export default function App() {
       if (list.length === 0) return null;
       return list.map((nominal) => ({
         nominal,
-        actual: trueOffAxisDeg(p, micMm, nominal),
-        levelDb: rotationLevelOffsetDb(p, micMm, nominal),
+        actual: trueOffAxisDeg(p, micMm, nominal, micElev),
+        levelDb: rotationLevelOffsetDb(p, micMm, nominal, micElev),
       }));
     };
     const diaOf = (role: BranchRole) => pistonDiameterMm(Number(sdCm2[role]));
@@ -6992,6 +6999,18 @@ export default function App() {
                   step={50}
                   value={cabinet.micDistanceMm}
                   onChange={(e) => setCabinet((c) => ({ ...c, micDistanceMm: e.target.value }))}
+                />
+              </label>
+              <label title="Fixed VERTICAL angle of the rig, degrees — positive means the microphone sat ABOVE the reference plane, negative below. Leave at 0 for the usual case: mic level with the point it is aimed at. Signed on purpose: on a driver 380 mm below the reference at 500 mm, ten degrees either way swings its true angle between 31° and 43°.">
+                Mic elevation (°)
+                <input
+                  type="number"
+                  min={-45}
+                  max={45}
+                  step={1}
+                  placeholder="0"
+                  value={cabinet.micElevationDeg}
+                  onChange={(e) => setCabinet((c) => ({ ...c, micElevationDeg: e.target.value }))}
                 />
               </label>
               {cabinetInfo.farField && (

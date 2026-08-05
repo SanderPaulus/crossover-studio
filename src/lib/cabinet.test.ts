@@ -42,6 +42,34 @@ describe('true off-axis angle of a measurement', () => {
     }
   });
 
+  it('folds in a fixed rig ELEVATION, and the sign is decisive', () => {
+    // A driver 380 mm below the reference, measured at 500 mm. Tilting the rig
+    // by ten degrees moves the true angle by twelve — which is exactly why the
+    // field is signed and not assumed.
+    const d = { xMm: 0, yMm: -380 };
+    expect(trueOffAxisDeg(d, 500, 0, 0)!).toBeCloseTo(37.2, 0);
+    // Mic BELOW the reference plane looks straighter at a low driver...
+    expect(trueOffAxisDeg(d, 500, 0, -10)!).toBeCloseTo(30.7, 0);
+    // ...and above it, more obliquely.
+    expect(trueOffAxisDeg(d, 500, 0, 10)!).toBeCloseTo(43.5, 0);
+  });
+
+  it('elevation alone IS the off-axis angle for a driver at the reference', () => {
+    const at = { xMm: 0, yMm: 0 };
+    expect(trueOffAxisDeg(at, 500, 0, -10)!).toBeCloseTo(10, 6);
+    expect(trueOffAxisDeg(at, 500, 0, 10)!).toBeCloseTo(10, 6);
+    // Horizontal and vertical combine as arccos(cos h * cos v).
+    const combined = trueOffAxisDeg(at, 500, 30, 10)!;
+    const expected =
+      (Math.acos(Math.cos((30 * Math.PI) / 180) * Math.cos((10 * Math.PI) / 180)) * 180) / Math.PI;
+    expect(combined).toBeCloseTo(expected, 6);
+  });
+
+  it('defaults to a level rig, so existing behaviour is unchanged', () => {
+    const d = { xMm: 0, yMm: -250 };
+    expect(trueOffAxisDeg(d, 500, 30)).toBe(trueOffAxisDeg(d, 500, 30, 0));
+  });
+
   it('rejects a missing distance', () => {
     expect(trueOffAxisDeg({ xMm: 0, yMm: 0 }, 0, 30)).toBeNull();
   });
