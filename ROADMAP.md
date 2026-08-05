@@ -44,6 +44,14 @@ Volgorde binnen een blok = aanbevolen prioriteit. Inschattingen zijn grof:
   Plus **🔬 Compare wizard** (Import-tab): dezelfde lus als begeleide
   checklist — vier stappen die live app-state lezen, meting laden kan ín de
   wizard, verdict met de cijfers als slotstap
+- **Analytische gradiënten in de synthese** (aug 2026, `adjoint.ts` + `lbfgs.ts`):
+  de tak-fit zoekt niet langer op de tast. De adjoint-methode levert de exacte
+  afgeleide van de respons naar élke componentwaarde voor de prijs van één
+  extra driehoeks-solve (i.p.v. een her-solve per component), en L-BFGS gebruikt
+  die kromming direct. Gemeten: **3,4× sneller** op acht echte KOAN-taken, fit
+  identiek op vijf en beter op drie; nul regressies in de suite. Kwam uit
+  Sanders vraag of machine learning de optimizer kan verbeteren — het antwoord
+  was "niet in de objective, en hier ligt eerst een exacte methode klaar"
 
 ## Kort — kleine, afgebakende verbeteringen
 
@@ -73,10 +81,27 @@ Volgorde binnen een blok = aanbevolen prioriteit. Inschattingen zijn grof:
 8. **Catalogus-onderhoud** (doorlopend) — nieuwe Gemini/SKU-updates blijven
    importeerbaar; prijzen periodiek herijken op echte NL/EU-ankers (zie de
    prijsverificatie-ronde in CLAUDE.md).
+9. **Gradiënt-warmstart voor de componenttuner** (M/L) — het vervolg op
+   `adjoint.ts`. De synthese draait nu op exacte gradiënten; `netOptimizer.tune`
+   nog niet, en dáár zit de meeste rekentijd van een scan (een 3-weg-net draagt
+   16–25 vrije waardes). Kan niet één-op-één: zijn objective bevat termen die
+   NIET differentieerbaar zijn — de akoestische kruising is een trapfunctie van
+   de componentwaardes (in aug 2026 gemeten toen de stijve pin-barrière geen
+   gradiënt bleek te hebben), en de overlap-maskers van computeIntegration
+   springen. De veilige vorm is dus een HYBRIDE: L-BFGS op het gladde deel
+   (tak-vlakheid + fase) als warme start, daarna de bestaande Nelder-Mead met
+   de VOLLE objective — puur seeding, het enige mechanisme dat hier
+   herhaaldelijk veilig is gebleken. De anker-les blijft leidend: de objective
+   zelf blijft af.
+10. **Run-logboek als dataset** (S, dan doorlopend) — elke optimizer-run
+    produceert al (instellingen → resultaat); die paren wegschrijven kost bijna
+    niets en levert over maanden de enige data waarmee je een voorspellend model
+    voor kandidaat-snoei kunt BEOORDELEN in plaats van hopen. Eerst meten, dan
+    bouwen — precies de werkwijze die deze zomer drie hypotheses afschoot.
 
 ## Groot — de fases
 
-9. **Fase 4: 3-weg / N-weg** (L) — het netlist-fundament is N-weg-klaar en de
+11. **Fase 4: 3-weg / N-weg** (L) — het netlist-fundament is N-weg-klaar en de
    template-kiezer heeft de (disabled) 3-weg-optie al.
    **Trede 1 KLAAR (aug 2026): de som-kern is N-weg** — `combineN` in dsp.ts,
    per-tak adjust, `combine` als dunne wrapper erover; K=2 bit-identiek
@@ -183,7 +208,7 @@ Volgorde binnen een blok = aanbevolen prioriteit. Inschattingen zijn grof:
    trede: pairMetrics-lus in netOptimizer, twee-paar-designChain, solo/duo
    regressie bit-identiek; (5) vxp-brug/help; directivity/tolerantie/
    tab-ghosts in 3-weg liften mee op trede 4.
-10. **Driverbibliotheek** (L) — meetbundels (FRD + hoeken + ZMA) per driver,
+12. **Driverbibliotheek** (L) — meetbundels (FRD + hoeken + ZMA) per driver,
     herbruikbaar over projecten; het einde van losse-bestanden-slepen.
     Uitbreiding daarbovenop: **ontwerpgeheugen als seed-bibliotheek** —
     afgeronde ontwerpen bewaren mét driver-kenmerken (Fs, Z-profiel,
@@ -191,12 +216,12 @@ Volgorde binnen een blok = aanbevolen prioriteit. Inschattingen zijn grof:
     startpunt meegeven naast de textbook-seed. Retrieval, geen training:
     deterministisch en uitlegbaar — zelfde patroon als de multi-start-tuner
     (seeding verkent bekkens zonder het zoekpad te verstoren, de anker-les).
-11. **Serie-crossover-topologie** (L) — eigen build-pad + vergelijkingsharnas
+13. **Serie-crossover-topologie** (L) — eigen build-pad + vergelijkingsharnas
     naast de parallelle synthese (bewust uitgesteld tot dat harnas er is).
-12. **Genormaliseerde hoekcurves & verticale metingen** (M, wacht op data) —
+14. **Genormaliseerde hoekcurves & verticale metingen** (M, wacht op data) —
     zodra Sander verticaal meet: lobing-analyse naast de horizontale
     directivity.
-13. **Meetmodule in de app** (L) — sweep + deconvolutie kan met Web Audio, en
+15. **Meetmodule in de app** (L) — sweep + deconvolutie kan met Web Audio, en
     fft.ts/timeDomain.ts doen de wiskunde al. Twee harde voorwaarden vóórdat
     dit iets waard is:
     (a) **Gekalibreerde meetmicrofoon mét cal-bestand.** Geverifieerd op de
@@ -216,7 +241,7 @@ Volgorde binnen een blok = aanbevolen prioriteit. Inschattingen zijn grof:
     simulatie van de actieve tab legt. Relatieve respons volstaat daarvoor —
     absolute dB heb je niet nodig om te zien of het model klopt. Impedantie
     meten vraagt een sense-resistor-jig: hardware, geen software.
-14. **ARTA .pir-import met gating-UI** (M/L, future — wacht op voorbeeldpaar)
+16. **ARTA .pir-import met gating-UI** (M/L, future — wacht op voorbeeldpaar)
     — de ruwe impulsrespons vóór ARTA's gate/FFT-stap; feitelijk de
     ANALYSE-helft van de meetmodule (punt 13), los te bouwen. Geen tweede
     .lim: een .pir → FRD vraagt een GATE-keuze (venster vóór de eerste

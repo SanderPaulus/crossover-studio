@@ -173,7 +173,7 @@ export const HELP_SECTIONS: HelpSection[] = [
         items: [
           '**Structuur**: enumeratie van klassieke alignments (LR2/LR4/BW3/Bessel × polariteit) als fundament. Een HP/LP-voorkeur uit ⚙ Settings is bindend — de ontwerper kiest het fundament, de optimizer tuned knieën, niveau en polariteit.',
           '**EQ-banden**: greedy, één band per keer, en elke band moet zich bewijzen (≥ 1% verbetering). Alleen cuts — passief kan niet boosten.',
-          '**Passieve synthese per tak**: textbook-ladder als startpunt, dan een vorm-fit tegen de ideale akoestische som. Correcties (Zobel, Fs-trap, top-octave hold) komen er alleen in als de méting erom vraagt — niet standaard.',
+          '**Passieve synthese per tak**: textbook-ladder als startpunt, dan een vorm-fit tegen de ideale akoestische som. Die fit rekent de gevoeligheid van de respons voor elke componentwaarde exact uit in plaats van te proberen-en-kijken, en start vanuit vijf verschillende punten zodat hij niet in het eerste het beste dal blijft hangen. Correcties (Zobel, Fs-trap, top-octave hold) komen er alleen in als de méting erom vraagt — niet standaard.',
           '**Componenttuner op het geheel**: takken worden los gesynthetiseerd, maar alleen de tuner op het samengestelde netwerk ziet hoe ze samenspelen. Dit is waar de grote winst valt.',
           '**Catalogus-snap als slotstuk**: vrije waardes worden echte SKU’s, doorgerekend met hun echte DCR/ESR.',
         ],

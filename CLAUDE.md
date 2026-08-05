@@ -132,6 +132,34 @@ minimum phase reconstrueert. Voertaal met Sander: **Nederlands**; code/comments 
 - `network.ts` — MNA-solver (complexe admittantie, Norton-bron, gemeten Z als driver-load).
   Elke solve levert ook `inputZ`: de systeem-ingangsimpedantie aan de generatorklemmen
   (excl. Rg) — de versterker-belastingscurve, voedt het Impedance-paneel
+- `adjoint.ts` + `lbfgs.ts` — **analytische gevoeligheden + gradiënt-zoeker (aug 2026,
+  Sanders ML-vraag)**. De vraag was of machine learning de optimizer kan verbeteren; het
+  eerlijke antwoord was "niet in de objective (de anker-les, en een black box maakt élke
+  diagnose van vandaag onmogelijk) — maar er ligt iets beters vóór in de rij". Dat is dit.
+  `solveWithSensitivities` levert ∂H/∂(log10 waarde) voor élk component via de ADJOINT-methode
+  uit de circuitsimulatie: uit G·v = I volgt ∂v/∂p = −G⁻¹(∂G/∂p)v, en omdat een passief netwerk
+  RECIPROOK is (G symmetrisch) komt de adjoint λ uit DEZELFDE LU-factorisatie. Eén
+  twee-terminal-stamp is één admittantie × een vast patroon, dus het matrixproduct klapt samen
+  tot een scalair: **∂H/∂p = −(dy/dp)(λa−λb)(va−vb)/Eg**. Kosten: één extra driehoeks-solve per
+  driver per frequentie i.p.v. één volledige her-solve PER COMPONENT — bij 20 slots een factor
+  20 op elke gradiënt. `dbPhaseGradient` is de kettingregel naar de twee eenheden waarin élke
+  objective hier geschreven is (dB en graden). Optioneel `dSeriesRdValue` voor het geval waarin
+  de parasiet uit de waarde volgt (gemodelleerde spoel-DCR in de catalog-snap-fit) — zonder die
+  koppeling is de gradiënt plausibel maar fout, en een optimizer daalt daar stil langs af.
+  network.ts houdt bewust zijn eigen enkelvoudige solver: dat is het productiepad en de
+  anker-les zegt niet aanraken wat niet stuk is. Élke gradiënt is tegen centrale eindige
+  differenties van de PRODUCTIE-solver getest (R/L/C, geïnverteerde driver, meerdere outputs,
+  gekoppelde DCR) — een verkeerde gradiënt "werkt" namelijk gewoon, hij daalt alleen slecht,
+  en niets anders in de suite zou het merken.
+  **HARD GELEERD (gemeten, 12 gevallen × 8/15/20 dims op echte KOAN-takken)**: L-BFGS is GEEN
+  drop-in voor Nelder-Mead. Met één startpunt vond hij hetzelfde optimum vanaf nabije seeds
+  (30–60× minder solves) maar VERLOOR drie keer vanaf verre seeds — een dalingsmethode
+  committeert zich aan het dal waarin hij start, een simplex reflecteert nog rond. De fix is
+  niet de daling slimmer maken maar de 10× snelheidswinst uitgeven aan DIVERSITEIT: vijf
+  verstrooide deterministische startpunten, beste houden. Daarmee: **2 winsten, 10 gelijk,
+  0 verliezen** tegen het volledige oude recept (simplex + restarts + blok-verfijning + polish
+  + probe), bij 2,6× de snelheid. Dit is SEEDING — het enige mechanisme dat dit project
+  herhaaldelijk veilig heeft bevonden om een prior in te brengen; de objective blijft onaangeroerd
 - `filters.ts` — virtuele filters: BW/LR 1-4 + **Bessel 2-4** ('BS'; per-sectie
   frequentieschaling `f` in `sections()` — Bessel-secties delen geen gezamenlijke poolradius),
   peaking EQ + **lowShelf/highShelf** (analoge prototypes)
@@ -204,7 +232,7 @@ minimum phase reconstrueert. Voertaal met Sander: **Nederlands**; code/comments 
   bestaat er los naast); vangnet wijst een seed met kruising buiten het bereik af.
   Gemeten na de fix: 2400±200 → overlap 2271 Hz op het gebouwde+getunede netwerk
 - `synthesis.ts` — passieve synthese: topologie uit spec (ladder/L-pad/notch/**shelf→pad+bypass**),
-  Nelder-Mead (`optimize.ts`) in log-ruimte, bouwbaarheids-penalty, modes 'filter' | 'acoustic'
+  gradiënt-zoektocht (`lbfgs.ts` op `adjoint.ts`) in log-ruimte, bouwbaarheids-penalty, modes 'filter' | 'acoustic'
   (acoustic = FRD×filter tegen ideale vorm, level-vrij, EQ=gereedschap-niet-target, weging²;
   **level-vrijheid is gedempt**: drift-penalty 0,05·ΔdB² t.o.v. de seed-level — hard geleerd:
   ongebonden dreef een pad-zware tak ~20 dB weg en sloopte de tak-verhoudingen).
@@ -226,9 +254,18 @@ minimum phase reconstrueert. Voertaal met Sander: **Nederlands**; code/comments 
   twee-pass via `corrections: 'off'`). Klassieke vuistregels als kruisvalidatie: Zobel nodig bij
   |Z|-stijging >1,3× door de LP-band; Fs-trap overbodig als kruispunt ≥2 octaven boven Fs bij
   ≥2e orde. Oneven ordes krijgen een EERLIJKE ladder (order = aantal reactieve elementen;
-  3e-orde = C-L-C, geen ontstemde 4e). **Zoekstrategie**: iteratiebudget 140/slot, deterministische
-  restarts, blok-coördinaat-verfijning >9 dims, polish-rondes; `converged` = simplex-collapse
-  óf stationariteits-probe (verse brede simplex vindt <3% meer). **Fase↔vlakheid-trade zit in
+  3e-orde = C-L-C, geen ontstemde 4e). **Zoekstrategie (aug 2026 omgebouwd naar gradiënten)**:
+  L-BFGS op de EXACTE adjoint-gradiënt van dezelfde objective (élke term is C1 in log-ruimte —
+  de bewakers zijn allemaal `max(0,·)²`), vanaf VIJF verstrooide deterministische startpunten +
+  een slot-daling vanaf de beste. Welke start wint wordt beslist door de SCALAIRE `objective`
+  (dezelfde functie die de discrete catalogus-pass en de tests evalueren), dus een misstap in de
+  kettingregel kan hooguit convergentiesnelheid kosten — hij kan de fit nooit een punt laten
+  KIEZEN dat hij zelf als slechter meet. `converged` = L-BFGS-convergentie óf stationariteit
+  (een verse daling vanaf het eindpunt vindt <3% meer). Dit verving simplex + restarts +
+  blok-coördinaat-verfijning + polish-rondes + probe. GEMETEN op 8 echte KOAN-taken (filter- én
+  acoustic-mode, 2–14 componenten): **3,4× sneller** (2688 → 791 ms), rmsDb identiek op 5 en
+  BETER op 3 — de zwaarste (BW3 + 2 EQ, 14 slots) van 1614 → 274 ms, de acoustic-tweeter van
+  1,37 → 1,14 dB. Volle synthesis-suite 15,9 → 5,5 s met alle 22 waardepins groen. **Fase↔vlakheid-trade zit in
   de priority-slider en is groot**: zware tweeter-tak p=0,15→0,41 dB/23°, p=0,5→0,9/17°,
   p=0,85→2,1 dB/8° (top −4 dB — "de 119 dB-inzak" is een fasekeuze, geen bug)
 - `integration.ts` — score = overlap-gewogen cos(ε/2); klassen op 45/90/120° (fysische ankers)
