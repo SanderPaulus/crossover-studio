@@ -452,8 +452,43 @@ export interface SnapPrefs {
    *  adapts, instead of fitting free then snapping (which wrecks the response —
    *  the 1.8 dB lesson). Shunt/notch slots keep the wide bounds. */
   boundToSeries?: boolean;
+  /** Reference impedance (Ω) the coil DCR budget is measured against — the
+   *  median |Z| the network works into. Optional: without it the DCR guard
+   *  below stays off and behaviour is exactly as before. */
+  refOhms?: number;
 }
 export type SnapPosition = 'series' | 'shunt';
+
+/**
+ * How much DCR a coil may carry in this position, in dB of level it is
+ * allowed to cost.
+ *
+ * THE POINT (Sanders "de doctrine moet de beste spoelen kiezen waar het er
+ * toe doet"): for a capacitor, "budget" means a cheaper dielectric — nearly
+ * the same part electrically. For an INDUCTOR "budget" means thinner wire,
+ * and DCR is a first-order electrical parameter: it changes the filter, the
+ * damping and the impedance minimum. Tier cannot express that, because tier
+ * lives per SERIES while gauge varies per SKU — every Air Core coil from
+ * 0.3 to 1.8 mm carries the same tier.
+ *
+ * Why a guard is needed at all even though the solver DOES model DCR: the
+ * tuner simply compensates it elsewhere and the response stays flat, so the
+ * cost is paid in SENSITIVITY, which no response metric sees. That is exactly
+ * the blindness solo mode already fixed with its sensitivity budget — this is
+ * the same rule for the branch that feeds a driver.
+ *
+ * Series path sits directly in series with the driver, so its DCR is a
+ * straight level loss: budget 0.5 dB ≈ 6% of the reference impedance. A shunt
+ * leg only loses depth of its short, so it gets four times the room.
+ */
+export const DCR_BUDGET_DB: Record<SnapPosition, number> = { series: 0.5, shunt: 2.0 };
+
+export function dcrCeilingOhms(position: SnapPosition | undefined, refOhms: number): number {
+  if (!(refOhms > 0)) return Infinity;
+  const db = DCR_BUDGET_DB[position ?? 'shunt'];
+  // Level through a series resistance: 20·log10(Z / (Z + R)) = −db.
+  return refOhms * (10 ** (db / 20) - 1);
+}
 
 /** Ordered candidate pools per wizard preference: binding series first,
  *  then the tier cascade. The caller keeps walking down (ending at the full
@@ -532,8 +567,24 @@ export function pickCandidates(
   position?: SnapPosition,
 ): CatalogPick[] {
   const stacksOk = prefs?.allowStacks !== false;
+  // Coil DCR guard (see dcrCeilingOhms): drop gauges whose resistance costs
+  // more level than this position may spend. Applied to the POOL, before the
+  // nearest-value walk, so the shortlist is filled with usable gauges instead
+  // of being spent on wire that is too thin. Never empties the pool: if every
+  // variant of a value is over budget the thickest survives, so a slot always
+  // has something to snap to and the caller still sees the honest DCR.
+  const withinDcr = (parts: readonly CatalogPart[]) => {
+    const ceil = kind === 'L' ? dcrCeilingOhms(position, prefs?.refOhms ?? 0) : Infinity;
+    if (!isFinite(ceil)) return parts;
+    const ok = parts.filter((p) => (p.seriesR ?? 0) <= ceil);
+    if (ok.length > 0) return ok;
+    const best = [...parts].sort((a, b) => (a.seriesR ?? 0) - (b.seriesR ?? 0))[0];
+    return best ? [best] : parts;
+  };
   const singlesFrom = (parts: readonly CatalogPart[]) =>
-    nearestWithVariants(parts.filter((p) => p.kind === kind), value, count).map(singlePick);
+    nearestWithVariants(withinDcr(parts.filter((p) => p.kind === kind)), value, count).map(
+      singlePick,
+    );
   // Walk the preference pools: a pool covers the value when a SINGLE part is
   // within 25% — or, with stacking allowed, when an IN-POOL stack lands
   // within 5%. Premium may stack premium before dropping a tier (Sanders).
@@ -548,8 +599,13 @@ export function pickCandidates(
       return [...singles, ...poolStacks];
     }
   }
-  // No preference (or nothing covered): the full catalog.
-  const singles = nearestParts(kind, value, count).map(singlePick);
+  // No preference (or nothing covered): the full catalog — the DCR guard is
+  // NOT a preference, it is feasibility, so it applies here too.
+  const singles = nearestWithVariants(
+    withinDcr(catalogParts().filter((p) => p.kind === kind)),
+    value,
+    count,
+  ).map(singlePick);
   const bestErr = singles.length > 0 ? Math.abs(Math.log(singles[0].value / value)) : Infinity;
   if (bestErr <= Math.log(1.03) || !stacksOk) return singles;
   return [...singles, ...stackCandidates(kind, value, count)];

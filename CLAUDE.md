@@ -688,6 +688,31 @@ minimum phase reconstrueert. Voertaal met Sander: **Nederlands**; code/comments 
   **BOM is stapel-bewust**: geen single-match → 2-delige stack-match (som binnen 1%, met
   prijs) — de netwerk-snap bouwt stapels en de BOM moet ze kunnen benoemen i.p.v.
   "no exact catalog value" (Sanders klacht).
+  **SPOEL-DCR IS EEN POSITIE-EIGENSCHAP, GEEN TIER (aug 2026, Sanders "de doctrine moet
+  natuurlijk de beste spoelen kiezen waar het er toe doet")**: bij een CAP betekent budget een
+  ander diëlektricum — elektrisch bijna dezelfde component. Bij een SPOEL betekent budget
+  DUNNER DRAAD, en DCR is een eersteorde-parameter: het verandert het filter, de demping en het
+  impedantieminimum. Tier kán dat niet uitdrukken, want tier leeft per SERIE terwijl gauge per
+  SKU varieert — élke Air Core van 0,3 tot 1,8 mm draagt dezelfde tier. `dcrCeilingOhms`
+  (catalog.ts) vertaalt de positie daarom in een DCR-budget uitgedrukt in dB NIVEAUVERLIES
+  (`DCR_BUDGET_DB` = serie 0,5 dB · shunt 2,0 dB) tegen de GEMETEN mediaan |Z| die het netwerk
+  in werkt (`refOhms`, netOptimizer levert hem) — schaalvrij, dus een 4 Ω-mid krijgt vanzelf een
+  strakker plafond dan een 8 Ω-woofer. Toegepast op de POOL vóór de nearest-value-wandeling
+  (anders wordt de shortlist volgemaakt met te dun draad) en het is FEASIBILITY, geen voorkeur:
+  hij geldt óók bij profile 'auto' en bij de volle-catalogus-terugval. Weigert nooit alles — als
+  élke variant over budget is blijft de dikste staan, zodat een slot altijd iets heeft om naar
+  te snappen en de eerlijke DCR gewoon zichtbaar wordt.
+  **WAAROM EEN GUARD NODIG IS TERWIJL DE SOLVER DCR AL MODELLEERT**: de tuner compenseert hem
+  gewoon elders, de responsie blijft vlak, en je betaalt in RENDEMENT — wat geen enkele
+  responsmetriek ziet. Exact de blindheid die solo-modus al had opgelost met
+  `sensitivityBudgetDb`; 3-weg had hem nooit gekregen.
+  **HARD GELEERD — de oude catalogus was PER ONGELUK veilig**: met 27 handmatig samengestelde
+  Air Core-onderdelen (3 diktes, hoogste DCR bij ≥1 mH = 1,45 Ω) bestond een elektrisch onzinnige
+  keuze domweg niet. De aanvulling tot het volle assortiment (11 diktes, tot 24,76 Ω) haalde dat
+  onbedoelde vangnet weg en de kostendruk pakte prompt de dunste draad: Sanders 3-weg-run kwam
+  terug met een 2,4 mH-spoel op 0,3 mm à 6,43 Ω in de mid-tak (~11 Ω spoelweerstand in die tak,
+  was ~3,6 Ω). Een catalogus completer maken kan dus een bewaker slopen die niemand had
+  opgeschreven omdat de dataset hem impliciet leverde.
   **Budget-druk in de snap (`costWeight`, default 0,0015)**: kandidaat-score ×(1+w·ΣEUR) —
   tussen (bijna-)gelijkwaardige realisaties wint de goedkope; "lagere waardes = goedkoper"
   volgt vanzelf uit het prijsmodel. Tie-breaker, geen kwaliteitsruil (€20 ≈ 3% fit); zonder

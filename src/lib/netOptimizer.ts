@@ -1841,6 +1841,18 @@ export function optimizeNetworkValues(
       if (hit) return params.map((q) => (q.name === name ? { ...q, value } : { ...q }));
       return [...params.map((q) => ({ ...q })), { name, value, unit }];
     };
+    // Reference impedance for the coil DCR budget: the median |Z| the network
+    // actually works into. Measured, not assumed, so a 4 Ω mid gets a tighter
+    // ceiling than an 8 Ω woofer without a second constant to keep in sync.
+    const refOhms = (() => {
+      const zs: number[] = [];
+      for (const z of Object.values(driverZ)) {
+        for (const c of z) zs.push(Math.hypot(c.re, c.im));
+      }
+      zs.sort((a, b) => a - b);
+      return zs.length > 0 ? zs[Math.floor(zs.length / 2)] : 0;
+    })();
+    const snapPrefs: SnapPrefs = { profile: 'auto', ...(opts.snapPrefs ?? {}), refOhms };
     const snapables = cur.parts
       .map((q, i) => ({ q, i }))
       .filter(({ q }) => KIND_OF[q.type] && !q.locked && !q.open && !q.shorted && q.partId);
@@ -1851,7 +1863,7 @@ export function optimizeNetworkValues(
       const kind = KIND_OF[q.type];
       const u = PARAM_OF[kind];
       const raw = q.params.find((p) => p.name === u.name)?.value ?? 0;
-      return pickCandidates(kind, raw / u.factor, 3, opts.snapPrefs ?? null, posOfPart(q.partId!));
+      return pickCandidates(kind, raw / u.factor, 3, snapPrefs, posOfPart(q.partId!));
     });
     const applied = (ch: (CatalogPick | null)[]): VxpPart[] => {
       const out = cloneParts(cur.parts);
@@ -1903,7 +1915,7 @@ export function optimizeNetworkValues(
     // variant and report the percentage difference — the designer sees what
     // stacking bought instead of discovering it in the BOM.
     if (picks.some((p) => p && p.parts.length > 1)) {
-      const noStackPrefs: SnapPrefs = { ...(opts.snapPrefs ?? { profile: 'auto' }), allowStacks: false };
+      const noStackPrefs: SnapPrefs = { ...snapPrefs, allowStacks: false };
       const singleCands = snapables.map(({ q }) => {
         const kind = KIND_OF[q.type];
         const u = PARAM_OF[kind];
