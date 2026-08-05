@@ -7696,103 +7696,120 @@ export default function App() {
                   const dia = cabinetInfo.diaOf(role);
                   return (
                     <div key={role} className="cabinet-driver">
-                      <strong>{title}</strong>
-                      <span
-                        className="inline-num"
-                        title="Position of this driver's centre relative to the measurement reference point: x to the right, y UP (so a driver below the reference has a negative y). Centre-to-centre spacing per pair — and with it the vertical-lobing ceiling — is derived from these, so you never type the same fact twice."
-                      >
-                        {'x '}
-                        <input
-                          type="number"
-                          step={5}
-                          placeholder="0"
-                          value={d.xMm}
-                          onChange={(e) => set({ xMm: e.target.value })}
-                        />
-                        {' right, y '}
-                        <input
-                          type="number"
-                          step={5}
-                          placeholder="0"
-                          value={d.yMm}
-                          onChange={(e) => set({ yMm: e.target.value })}
-                        />
-                        {' up (mm from the reference point)'}
-                      </span>
-                      <label title="Enclosure behind THIS driver. A sealed box is already a 2nd-order acoustic high-pass at its corner, so a 2nd-order electrical filter yields a 4th-order acoustic slope — on a low crossover that is the difference between one ~30 µF capacitor and a pair adding to ~90 µF. A port also means the box can radiate its own midrange through a pipe resonance.">
-                        Box
-                        <select
-                          value={d.enclosure}
-                          onChange={(e) => set({ enclosure: e.target.value as Enclosure })}
+                      {/* Was één doorlopende regel met invoervelden ertussen
+                          ("Woofer x [ ] right, y [ ] up (mm ...)"), wat leest
+                          als een zin met gaten in plaats van als een formulier
+                          (Sanders: "ik vind het toch rommelig met de drivers").
+                          Nu een gelabeld raster: één onderwerp per regel, label
+                          links, en het AANTAL bij de naam -- dat hoort bij de
+                          identiteit van de tak, niet bij zijn afmetingen. */}
+                      <div className="cd-head">
+                        <strong>{title}</strong>
+                        <span
+                          className="inline-num"
+                          title="How many IDENTICAL drivers make up this branch. Dual woofers displace twice the air, so the excursion floor drops by √2 — but each cone still beams as itself, so Sd below stays the SINGLE driver's datasheet number. With more than one, their centre-to-centre spacing sets where the array's own vertical lobing starts, which is usually a lower ceiling than cone beaming."
                         >
-                          <option value="unknown">unknown</option>
-                          <option value="sealed">sealed</option>
-                          <option value="ported">ported</option>
-                          <option value="open">open / dipole</option>
-                        </select>
-                      </label>
-                      {d.enclosure !== 'unknown' && d.enclosure !== 'open' && (
-                        <label title="Box corner frequency: Fc for a sealed box, Fb for a ported one.">
-                          {d.enclosure === 'ported' ? 'Fb (Hz)' : 'Fc (Hz)'}
+                          {'× '}
+                          <input
+                            type="number"
+                            min={1}
+                            step={1}
+                            placeholder="1"
+                            value={d.count}
+                            onChange={(e) => set({ count: e.target.value })}
+                          />
+                          {Number(d.count) > 1 ? ' drivers, spaced ' : ' driver'}
+                          {Number(d.count) > 1 && (
+                            <>
+                              <input
+                                type="number"
+                                min={0}
+                                step={1}
+                                value={d.spacingMm}
+                                onChange={(e) => set({ spacingMm: e.target.value })}
+                              />
+                              {' mm apart'}
+                            </>
+                          )}
+                        </span>
+                      </div>
+                      <div className="cd-grid">
+                        <span className="cd-label">Position</span>
+                        <span
+                          className="cd-fields"
+                          title="Position of this driver's centre relative to the measurement reference point: x to the right, y UP (so a driver below the reference has a negative y). Centre-to-centre spacing per pair — and with it the vertical-lobing ceiling — is derived from these, so you never type the same fact twice."
+                        >
+                          {'x '}
+                          <input
+                            type="number"
+                            step={5}
+                            placeholder="0"
+                            value={d.xMm}
+                            onChange={(e) => set({ xMm: e.target.value })}
+                          />
+                          {' mm · y '}
+                          <input
+                            type="number"
+                            step={5}
+                            placeholder="0"
+                            value={d.yMm}
+                            onChange={(e) => set({ yMm: e.target.value })}
+                          />
+                          {' mm'}
+                          <span className="cd-hint">from the reference point · y up</span>
+                        </span>
+
+                        <span className="cd-label">Enclosure</span>
+                        <span className="cd-fields">
+                          <select
+                            value={d.enclosure}
+                            onChange={(e) => set({ enclosure: e.target.value as Enclosure })}
+                            title="Enclosure behind THIS driver. A sealed box is already a 2nd-order acoustic high-pass at its corner, so a 2nd-order electrical filter yields a 4th-order acoustic slope — on a low crossover that is the difference between one ~30 µF capacitor and a pair adding to ~90 µF. A port also means the box can radiate its own midrange through a pipe resonance."
+                          >
+                            <option value="unknown">unknown</option>
+                            <option value="sealed">sealed</option>
+                            <option value="ported">ported</option>
+                            <option value="open">open / dipole</option>
+                          </select>
+                          {d.enclosure !== 'unknown' && d.enclosure !== 'open' && (
+                            <>
+                              {d.enclosure === 'ported' ? ' Fb ' : ' Fc '}
+                              <input
+                                type="number"
+                                min={0}
+                                step={1}
+                                value={d.fbHz}
+                                onChange={(e) => set({ fbHz: e.target.value })}
+                              />
+                              {' Hz'}
+                            </>
+                          )}
+                        </span>
+
+                        <span className="cd-label">Datasheet</span>
+                        <span
+                          className="cd-fields"
+                          title="Cone area and linear excursion from the datasheet, for ONE driver. Sd gives the effective piston diameter (the honest one for every beaming rule — nominal size includes a surround that does not radiate); Sd and Xmax together give the level-aware excursion floor."
+                        >
+                          {'Sd '}
                           <input
                             type="number"
                             min={0}
                             step={1}
-                            value={d.fbHz}
-                            onChange={(e) => set({ fbHz: e.target.value })}
+                            value={sdCm2[role]}
+                            onChange={(e) => setSdCm2((q) => ({ ...q, [role]: e.target.value }))}
                           />
-                        </label>
-                      )}
-                      <span
-                        className="inline-num"
-                        title="Cone area and linear excursion from the datasheet. Sd gives the effective piston diameter (the honest one for every beaming rule — nominal size includes a surround that does not radiate); Sd and Xmax together give the level-aware excursion floor."
-                      >
-                        {'Sd '}
-                        <input
-                          type="number"
-                          min={0}
-                          step={1}
-                          value={sdCm2[role]}
-                          onChange={(e) => setSdCm2((q) => ({ ...q, [role]: e.target.value }))}
-                        />
-                        {' cm² Xmax '}
-                        <input
-                          type="number"
-                          min={0}
-                          step={0.1}
-                          value={xmaxMm[role]}
-                          onChange={(e) => setXmaxMm((q) => ({ ...q, [role]: e.target.value }))}
-                        />
-                        {' mm'}
-                      </span>
-                      <span
-                        className="inline-num"
-                        title="How many IDENTICAL drivers make up this branch. Dual woofers displace twice the air, so the excursion floor drops by √2 — but each cone still beams as itself, so Sd above stays the SINGLE driver's datasheet number. With more than one, their centre-to-centre spacing sets where the array's own vertical lobing starts, which is usually a lower ceiling than cone beaming."
-                      >
-                        {'× '}
-                        <input
-                          type="number"
-                          min={1}
-                          step={1}
-                          placeholder="1"
-                          value={d.count}
-                          onChange={(e) => set({ count: e.target.value })}
-                        />
-                        {' drivers'}
-                        {Number(d.count) > 1 && (
-                          <>
-                            {', spaced '}
-                            <input
-                              type="number"
-                              min={0}
-                              step={1}
-                              value={d.spacingMm}
-                              onChange={(e) => set({ spacingMm: e.target.value })}
-                            />
-                            {' mm apart'}
-                          </>
-                        )}
-                      </span>
+                          {' cm² · Xmax '}
+                          <input
+                            type="number"
+                            min={0}
+                            step={0.1}
+                            value={xmaxMm[role]}
+                            onChange={(e) => setXmaxMm((q) => ({ ...q, [role]: e.target.value }))}
+                          />
+                          {' mm'}
+                        </span>
+                      </div>
                       {Number(d.count) > 1 && (
                         <span className="derived">
                           {'excursion floor drops ×'}

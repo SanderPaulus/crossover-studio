@@ -2333,6 +2333,54 @@ button:disabled {
 .cabinet-driver > strong {
   min-width: 6.5rem;
 }
+/* Driver card: name + count on top, then one labelled row per subject. The old
+   card put everything in one wrapping flex line, so it read as a sentence with
+   holes in it rather than a form — you could not scan for "where is Xmax". */
+.cd-head {
+  display: flex;
+  align-items: baseline;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+  width: 100%;
+}
+.cd-grid {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: 0.3rem 0.7rem;
+  align-items: center;
+  width: 100%;
+  margin: 0.3rem 0 0.15rem;
+}
+.cd-label {
+  font-size: 0.78rem;
+  color: var(--muted);
+}
+.cd-fields {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  flex-wrap: wrap;
+  font-size: 0.82rem;
+  color: var(--muted);
+}
+.cd-fields input[type='number'] {
+  width: 5rem;
+}
+.cd-hint {
+  font-size: 0.74rem;
+  opacity: 0.75;
+  margin-left: 0.2rem;
+}
+/* Narrow pane: the label column would squeeze the fields, so stack instead. */
+@media (max-width: 620px) {
+  .cd-grid {
+    grid-template-columns: 1fr;
+    gap: 0.1rem;
+  }
+  .cd-label {
+    margin-top: 0.35rem;
+  }
+}
 .cabinet-driver .derived {
   flex-basis: 100%;
 }
