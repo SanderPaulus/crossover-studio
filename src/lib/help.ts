@@ -447,9 +447,15 @@ export function searchHelp(query: string, sections: HelpSection[] = HELP_SECTION
 }
 
 /** Which manual section belongs to a design-pane tab (contextual ❓ open). */
-export function helpSectionForTab(tab: 'import' | 'data' | 'filters' | 'network'): string {
+export function helpSectionForTab(
+  tab: 'import' | 'drivers' | 'data' | 'filters' | 'network',
+): string {
   switch (tab) {
     case 'import':
+      return 'import';
+    // The per-driver facts split off into their own step; the import section
+    // still describes loading those drivers, so it stays the right landing.
+    case 'drivers':
       return 'import';
     case 'data':
       return 'setup';

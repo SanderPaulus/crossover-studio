@@ -958,9 +958,11 @@ export default function App() {
   };
 
   /** Active tab of the left design pane (persisted: reopen where you left off). */
-  const [designTab, setDesignTab] = useState<'import' | 'data' | 'filters' | 'network'>(() => {
+  const [designTab, setDesignTab] = useState<
+    'import' | 'drivers' | 'data' | 'filters' | 'network'
+  >(() => {
     const t = localStorage.getItem('ads-ui-tab');
-    return t === 'data' || t === 'filters' || t === 'network' ? t : 'import';
+    return t === 'drivers' || t === 'data' || t === 'filters' || t === 'network' ? t : 'import';
   });
   useEffect(() => {
     localStorage.setItem('ads-ui-tab', designTab);
@@ -2483,7 +2485,11 @@ export default function App() {
     () => ({
       // A driver is only useful with a response; impedance and datasheet
       // numbers unlock extra criteria and are checked inside the step.
-      drivers: !!(woofer || tweeter),
+      // Step 1 is about getting files in; step 2 about what you know of them.
+      files: !!(woofer || tweeter),
+      drivers: (['low', 'mid', 'high'] as BranchRole[]).some(
+        (r) => Number(sdCm2[r]) > 0 || !!cabinet.drivers[r].xMm || !!cabinet.drivers[r].yMm,
+      ),
       // Mic distance is the one number that unlocks the honest-range advice —
       // without it the app cannot tell you what your measurement supports.
       cabinet: Number(cabinet.micDistanceMm) > 0,
@@ -2491,7 +2497,7 @@ export default function App() {
       design: !!result,
       build: designs.some((d) => d.parts.length > 2),
     }),
-    [woofer, tweeter, cabinet.micDistanceMm, result, designs],
+    [woofer, tweeter, cabinet, sdCm2, result, designs],
   );
 
 
@@ -7235,8 +7241,9 @@ export default function App() {
             <nav className="pane-steps" aria-label="Design steps">
               {(
                 [
-                  ['import', 'Your drivers', guidedDone.drivers, 'Load the measurements of each driver, and its cone area and travel from the datasheet.'],
-                  ['data', 'Your cabinet', guidedDone.cabinet, 'Where the drivers sit on the baffle and how you measured — this is what lets the app judge your measurements instead of trusting them.'],
+                  ['import', 'Your project', guidedDone.files, 'Load your measurement files, and save or reopen a project.'],
+                  ['drivers', 'Your drivers', guidedDone.drivers, 'What you know about each driver: where it sits, what box is behind it, and its cone area and travel from the datasheet.'],
+                  ['data', 'Your cabinet', guidedDone.cabinet, 'The box and how you measured it — this is what lets the app judge your measurements instead of trusting them.'],
                   ['filters', 'Design it', guidedDone.design, 'One button. The app picks the crossover points, the filter shapes and the parts, and shows what it chose.'],
                   ['network', 'Your build', guidedDone.build, 'The schematic and the shopping list.'],
                 ] as const
@@ -7259,8 +7266,9 @@ export default function App() {
           <nav className="pane-tabs" aria-label="Design panels">
               {(
               [
-                ['import', 'Import', 'Load measurements and projects, see what is imported per driver and attach notes to files'],
-                ['data', 'Setup', 'View range, phase convention, tweeter adjustment, vxp variant and the timing sanity check'],
+                ['import', 'Project', 'Load measurements, catalogs and projects; save your work'],
+                ['drivers', 'Drivers', 'Per-driver facts (position, enclosure, Sd/Xmax, how many) and the imported-file inventory with notes'],
+                ['data', 'Setup', 'View range, cabinet and mic geometry, phase convention, tweeter adjustment, vxp variant and the timing sanity check'],
                 ['filters', 'Filters', 'Virtual target filters (HP/LP/EQ per driver), the Optimize button and passive synthesis'],
                 ['network', 'Network', 'The passive network editor: schematic, component tuning, catalog and BOM'],
               ] as const
@@ -7549,19 +7557,6 @@ export default function App() {
             </div>
           </div>
         </div>
-        {/* De feiten over de DRIVERS staan bij de drivers: dit is stap 1,
-            waar hun metingen ook binnenkomen. De kast, het referentiepunt en
-            de meetopstelling horen bij stap 2 "Your cabinet". De stapnamen
-            zeiden dat al, alleen de indeling niet (Sanders opmerking). */}
-        {(woofer || midDrv || tweeter) && (
-          <fieldset className="cabinet-block">
-            <legend>
-              What you know about them
-              <span className="legend-sub"> — from the datasheet and a ruler</span>
-            </legend>
-            {driverFacts}
-          </fieldset>
-        )}
         {persistNote && <p className="filenames">{persistNote} · autosaves locally on every change</p>}
         {vxpNote && <p className="filenames">{vxpNote}</p>}
         {/* One banner for parse failures AND content warnings — the old
@@ -7592,6 +7587,30 @@ export default function App() {
         )}
       </div>
 
+              </>
+            )}
+
+            {designTab === 'drivers' && (
+              <>
+        {/* Stap 2 "Your drivers": alles wat je over de DRIVERS weet.
+            Laden en bewaren is stap 1 "Your project", de kast is stap 3.
+            Ze stonden alle drie op één tab en dat werd een zootje. */}
+        {!woofer && !tweeter && (
+          <p className="pane-hint">Load a driver in step 1 first — then this is where you tell the app what you know about it.</p>
+        )}
+        {/* De feiten over de DRIVERS staan bij de drivers: dit is stap 1,
+            waar hun metingen ook binnenkomen. De kast, het referentiepunt en
+            de meetopstelling horen bij stap 2 "Your cabinet". De stapnamen
+            zeiden dat al, alleen de indeling niet (Sanders opmerking). */}
+        {(woofer || midDrv || tweeter) && (
+          <fieldset className="cabinet-block">
+            <legend>
+              What you know about them
+              <span className="legend-sub"> — from the datasheet and a ruler</span>
+            </legend>
+            {driverFacts}
+          </fieldset>
+        )}
       <div className="panel">
         <h2>Imported files</h2>
         {(() => {
@@ -7691,7 +7710,6 @@ export default function App() {
       </div>
               </>
             )}
-
             {designTab === 'data' && !woofer && !tweeter && (
               <p className="sub pane-hint">
                 No measurements yet — load them in the Import tab first.
