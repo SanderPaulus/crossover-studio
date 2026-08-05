@@ -14,6 +14,15 @@
   --bad-bg: #fee2e2;
   --accent: #2563eb;
 
+  /* Motion. This app deliberately barely moves: almost everything here is
+     high-frequency (tab switches, legend toggles, crosshair, dragging handles),
+     and animating those makes a tool feel SLOWER. Only two things earn motion —
+     press feedback, and popups that appear occasionally. The built-in CSS
+     easings are too weak to read as intentional, hence the explicit curves. */
+  --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
+  --press: 160ms;
+  --pop-in: 200ms;
+
   /* Validated chart series colors (dataviz palette, light).
      Tweeter is a TEAL, not the original green: at #1baf7a it sat at 2.69:1 on
      the panel — under the 3:1 bar for graphics, and it is one of the two main
@@ -1336,10 +1345,20 @@ button {
   font-size: 0.85rem;
   cursor: pointer;
   align-self: end;
+  transition: transform var(--press) var(--ease-out);
 }
 
 button:hover {
   border-color: var(--accent);
+}
+
+/* Press feedback — the one piece of motion this app genuinely lacked. Buttons
+   here start work that runs for seconds to minutes ("Optimize — design for
+   me"), and between the click and the busy overlay nothing confirmed that the
+   click had landed. Transform only: it skips layout and paint, and it scales
+   the label along with the button, which is what makes it read as physical. */
+button:active:not(:disabled) {
+  transform: scale(0.97);
 }
 
 /* One designed focus ring for every control. Without this the app rode on the
@@ -1865,6 +1884,50 @@ button:disabled {
      manager) stay short enough that this never engages. */
   max-height: 92vh;
   overflow: auto;
+  transition:
+    transform var(--pop-in) var(--ease-out),
+    opacity var(--pop-in) var(--ease-out);
+}
+
+/* Popup entrance. Modals here are OCCASIONAL (wizard, help, catalog manager,
+   targets, add-notch) — the frequency band where motion actually belongs;
+   something appearing out of nothing reads as broken.
+   base-ui mounts the popup with `data-open` ALREADY set, so there is no
+   attribute flip for a transition to run from — `@starting-style` supplies the
+   pre-mount state, which is exactly what it exists for.
+   Two deliberate choices: the scale starts at 0.96 and never at 0 (nothing in
+   the real world appears from nothing), and transform-origin stays CENTRE — a
+   modal is not anchored to a trigger the way a popover is, so growing it out
+   of the button would be a lie about where it lives. The translate is part of
+   the centring, so it has to be restated inside the transform.
+   The visible state is the DEFAULT: only the entering state is written down,
+   so a popup can never get stuck invisible if an attribute is ever missing.
+
+   ENTRANCE ONLY, deliberately. An exit transition was built and then removed,
+   for two measured reasons:
+   (1) Five of the six popups are mounted as `{open && <Modal open …>}` — the
+       parent removes them from the tree, so base-ui is never told "closing"
+       and has nothing to animate. Only the measuring guide passes a boolean.
+       An exit that works in one popup and not the other five is worse than no
+       exit at all: inconsistency reads as a glitch.
+   (2) Where it DID engage, base-ui holds the element mounted until
+       `getAnimations()` resolves. In a backgrounded tab the transition never
+       starts, so the dialog stayed mounted with its pointer-blocking backdrop
+       (it recovers when the tab is shown again, but the exposure is real).
+   Leaving instantly is the limit case of "exit faster than enter", which is
+   the direction the guidance points anyway. Appearing out of nothing is the
+   half that actually reads as broken, and that half is fixed. */
+@starting-style {
+  .modal-card[data-open] {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(0.96);
+  }
+  .modal-backdrop[data-open] {
+    opacity: 0;
+  }
+}
+.modal-backdrop {
+  transition: opacity var(--pop-in) var(--ease-out);
 }
 /* The card is a flex column: under a height cap its children would SHRINK
    (content then hides behind the footer) instead of making the card scroll. */
@@ -2417,4 +2480,24 @@ button:disabled {
 
 .mg-tablenote {
   margin: 0.9rem 0 0.2rem;
+}
+
+/* Reduced motion means FEWER and GENTLER animations, not zero: fades aid
+   comprehension, movement is what causes trouble. So the popup keeps its
+   opacity fade and loses the scale, and the press feedback — which is
+   movement, however small — goes away entirely. The spinner stays: it is not
+   decoration, it is the only sign that a multi-minute run is still alive.
+   MeasuringGuide.tsx honours the same query in JS for its sweep loop. */
+@media (prefers-reduced-motion: reduce) {
+  button {
+    transition: none;
+  }
+  button:active:not(:disabled) {
+    transform: none;
+  }
+  @starting-style {
+    .modal-card[data-open] {
+      transform: translate(-50%, -50%);
+    }
+  }
 }

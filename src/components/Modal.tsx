@@ -56,7 +56,11 @@ export function Modal({ open, onClose, label, cardClass, children }: Props) {
       }}
     >
       <Dialog.Portal>
-        <Dialog.Backdrop className="busy-overlay" />
+        {/* `modal-backdrop` is what carries the fade. `.busy-overlay` is shared
+            with the REAL busy overlay (a live region owning its own 250 ms
+            close-linger), so motion must never hang off that class alone — it
+            would animate a thing that already manages its own timing. */}
+        <Dialog.Backdrop className="busy-overlay modal-backdrop" />
         <Dialog.Popup
           className={`busy-card modal-card${cardClass ? ` ${cardClass}` : ''}`}
           aria-label={label}
