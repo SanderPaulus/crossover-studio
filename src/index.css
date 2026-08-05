@@ -2652,3 +2652,18 @@ button:disabled {
 .expert-only {
   display: none;
 }
+
+/* Sub-headings inside the cabinet block. Mic rig, cabinet geometry and
+   listening position were one undifferentiated field soup — the reader had to
+   infer from each label which of the three he was answering, and "Mic
+   distance" ended up floating beside the intro paragraph. Full-row spans, so
+   the flex wrap breaks at each heading. */
+.cab-group-cap {
+  flex-basis: 100%;
+  margin: 0.7rem 0 -0.15rem;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--muted);
+}

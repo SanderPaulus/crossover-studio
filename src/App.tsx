@@ -7531,6 +7531,7 @@ export default function App() {
                 Nothing here changes your measurements; it lets the app work out what those
                 measurements actually captured.
               </p>
+              <span className="cab-group-cap">How you measured</span>
               <label title="Microphone distance during the FRD sweeps. This is what decides whether the angle files mean what they say: at close range a driver sitting well below the mic is already far off ITS OWN axis at nominal 0°, which exaggerates every off-axis difference and makes a woofer look like it beams far too low.">
                 Mic distance (mm)
                 <input
@@ -7604,6 +7605,7 @@ export default function App() {
                   )}
                 </span>
               )}
+              <span className="cab-group-cap">The cabinet</span>
               <label title="Baffle width. Reported only, never applied: a properly measured on-baffle response already contains the baffle step, so subtracting it again would count it twice. Useful for reading a response — that broad tilt is the cabinet, not the driver.">
                 Baffle W (mm)
                 <input
@@ -7649,6 +7651,7 @@ export default function App() {
                   onChange={(e) => setCabinet((c) => ({ ...c, refHeightMm: e.target.value }))}
                 />
               </label>
+              <span className="cab-group-cap">Where you listen</span>
               <label title="Listening distance, metres.">
                 Listen (m)
                 <input
