@@ -59,6 +59,7 @@ import SchematicEditor from './components/SchematicEditor.tsx';
 import NumberFlow from '@number-flow/react';
 import { Modal } from './components/Modal.tsx';
 import { HelpPanel } from './components/HelpPanel.tsx';
+import { MeasuringGuide } from './components/MeasuringGuide.tsx';
 import { CatalogManager } from './components/CatalogManager.tsx';
 import { helpSectionForTab } from './lib/help.ts';
 import { fileSafeName } from './lib/filenames.ts';
@@ -1174,6 +1175,7 @@ export default function App() {
   const [cmpStep, setCmpStep] = useState(1);
   /** In-app manual; opens on the section matching the active design tab. */
   const [helpOpen, setHelpOpen] = useState(false);
+  const [measureGuideOpen, setMeasureGuideOpen] = useState(false);
   const [catalogMgrOpen, setCatalogMgrOpen] = useState(false);
   const [snapProfile, setSnapProfile] = useState('auto');
   const [snapSeriesL, setSnapSeriesL] = useState('auto');
@@ -5217,6 +5219,7 @@ export default function App() {
       {helpOpen && (
         <HelpPanel initialId={helpSectionForTab(designTab)} onClose={() => setHelpOpen(false)} />
       )}
+      <MeasuringGuide open={measureGuideOpen} onClose={() => setMeasureGuideOpen(false)} />
       {catalogMgrOpen && (
         <CatalogManager onClose={() => setCatalogMgrOpen(false)} onSave={saveCatalogParts} />
       )}
@@ -6573,6 +6576,13 @@ export default function App() {
             </button>
           ))}
         </div>
+        <button
+          type="button"
+          onClick={() => setMeasureGuideOpen(true)}
+          title="Meetgids: waar richt je de mic op, hoe ver moet je erbij vandaan, en wat legt een hoeksweep werkelijk vast. De illustraties draaien op dezelfde geometrie als de optimizer."
+        >
+          📐 Measure
+        </button>
         <button
           type="button"
           onClick={() => setHelpOpen(true)}

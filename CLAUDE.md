@@ -132,6 +132,22 @@ minimum phase reconstrueert. Voertaal met Sander: **Nederlands**; code/comments 
 - `network.ts` — MNA-solver (complexe admittantie, Norton-bron, gemeten Z als driver-load).
   Elke solve levert ook `inputZ`: de systeem-ingangsimpedantie aan de generatorklemmen
   (excl. Rg) — de versterker-belastingscurve, voedt het Impedance-paneel
+- `components/MeasuringGuide.tsx` — **📐 Measure: de meetgids als iets dat je BEDIENT
+  (aug 2026, Sanders "er moet ook een guide komen om op de juiste manier te meten")**. De twee
+  illustraties draaien op dezelfde `trueOffAxisDeg`/`farFieldVerdict` als de engine, dus de gids
+  KAN niet afwijken van de app: sleep de mic naar achteren en de tekening, de getallen en de
+  optimizer-vensters bewegen samen. Dát is de reden dat hij in de app zit en niet in een pdf.
+  Zij-aanzicht = waar "al off-axis bij 0°" vandaan komt (500 mm → tweeter 0°/mid 13°/woofer 37°;
+  2000 mm → 0°/3°/11°); bovenaanzicht = de draaitafel draait de KAST, niet elke driver.
+  **Eén isotrope schaal** in beide tekeningen — x en y mogen nooit apart schalen, anders liegen
+  de hoeken; de kast krimpt daardoor echt als je achteruit loopt, en dát is de les. De viewBox
+  wordt wel bijgesneden tot wat er staat (lege ruimte is alleen lege ruimte).
+  Beweging is doelgericht (animatie-skill-principe): de sweep-loop bestaat omdat "de tafel draait
+  de kast" een BEWEGING is die een stilstaand beeld niet kan maken; hij is een yoyo-loop, stopt
+  zodra je een regelaar aanraakt, en `prefers-reduced-motion` haalt hem helemaal weg (de sliders
+  leren hetzelfde met de hand). UI-les onderweg: de globale `label`-regel is een KOLOM, dus een
+  slider-rij moet expliciet `flex-direction: row` zeggen of de range-input wordt tot volle
+  labelhoogte uitgerekt (192 px).
 - `cabinet.ts` — **kastgeometrie + meetcontext (aug 2026, Sanders "meer invoervelden voor een
   beter beeld")**. De app LEIDDE af wat de ontwerper gewoon WEET; elke "het zou dit kunnen zijn,
   of dat" van die dag kwam door een ontbrekend getal. Twee regels houden het beheersbaar:
