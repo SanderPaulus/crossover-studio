@@ -1,6 +1,8 @@
 import { describe, it, expect } from 'vitest';
 import {
   baffleStepHz,
+  floorBounceGate,
+  gateLimitHz,
   boxRolloff,
   centreToCentreMm,
   farFieldVerdict,
@@ -117,6 +119,41 @@ describe('piston diameter from Sd', () => {
     // A 1" dome, 7 cm2.
     expect(pistonDiameterMm(7)!).toBeCloseTo(29.9, 0);
     expect(pistonDiameterMm(0)).toBeNull();
+  });
+});
+
+describe('how low the measurement reaches', () => {
+  it('quantifies the trade every measurement makes', () => {
+    // Reference 1 m above the floor, mic level with it. Backing away improves
+    // the far field and SHORTENS the gate — the two rules pull opposite ways,
+    // and this is the table that makes the compromise a decision.
+    const at = (m: number) => floorBounceGate(m * 1000, 1000)!;
+    expect(at(0.5).fromHz).toBeCloseTo(220, -1);
+    expect(at(1).fromHz).toBeCloseTo(277, -1);
+    expect(at(1.5).fromHz).toBeCloseTo(343, -1);
+    expect(at(3).fromHz).toBeCloseTo(566, -1);
+    // Monotone: further away is always a shorter window.
+    expect(at(0.5).gateMs).toBeGreaterThan(at(1).gateMs);
+    expect(at(1).gateMs).toBeGreaterThan(at(3).gateMs);
+  });
+
+  it('a taller stand buys low end', () => {
+    // Same distance, speaker higher off the floor -> later bounce -> lower f.
+    expect(floorBounceGate(1000, 1500)!.fromHz).toBeLessThan(floorBounceGate(1000, 800)!.fromHz);
+  });
+
+  it('follows the mic when the rig is tilted', () => {
+    const level = floorBounceGate(1000, 1000, 0)!;
+    const up = floorBounceGate(1000, 1000, 10)!;
+    // Mic raised: it moves away from the floor, so the bounce arrives later.
+    expect(up.gateMs).toBeGreaterThan(level.gateMs);
+  });
+
+  it('needs both numbers, and refuses nonsense', () => {
+    expect(floorBounceGate(0, 1000)).toBeNull();
+    expect(floorBounceGate(1000, 0)).toBeNull();
+    expect(gateLimitHz(4)).toBeCloseTo(250, 6);
+    expect(gateLimitHz(0)).toBeNull();
   });
 });
 

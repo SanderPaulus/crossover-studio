@@ -285,9 +285,41 @@ export function MeasuringGuide({ open, onClose }: { open: boolean; onClose: () =
         </p>
       )}
       <p>
-        The working rule is <strong>at least three times the largest dimension of the baffle</strong>,
-        and further is better. Trade the extra reflections for it: a gate that has to be shorter is
-        a smaller problem than angles that mean something other than what they say.
+        For a full-size three-way, <strong>measure at 1.5–2 m</strong>, and never below 1 m. The
+        &ldquo;three times the baffle&rdquo; figure is a rule of thumb its own sources label as
+        one; the argument that actually settles it is <em>relative timing</em>. Design at one
+        distance and listen at another, and every driver&apos;s path length changes by a different
+        amount — which lands directly in the crossover phase:
+      </p>
+      <table className="mg-table">
+        <thead>
+          <tr>
+            <th>designed at</th>
+            <th>woofer–mid error @300 Hz</th>
+            <th>mid–tweeter error @2.5 kHz</th>
+          </tr>
+        </thead>
+        <tbody>
+          {[
+            ['0.5 m', '36°', '68°'],
+            ['1.0 m', '17°', '28°'],
+            ['1.5 m', '9°', '14°'],
+            ['2.0 m', '4°', '7°'],
+          ].map(([d, a, b]) => (
+            <tr key={d}>
+              <td>{d}</td>
+              <td>{a}</td>
+              <td>{b}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+      <p>
+        (Relative to a 3 m listening position, for a tower with the mid 180 mm and the woofer
+        450 mm below the tweeter.) Sixty-eight degrees at the mid–tweeter is the difference between
+        a flat sum and a visible suck-out — in a tool that otherwise lands within a few degrees.
+        Backing away does cost gate length, so measure <strong>high</strong> — around half your
+        room height — and put something soft on the floor and ceiling along the reflection path.
       </p>
 
       <h3>3 · Keep the radius constant, centred on the reference point</h3>

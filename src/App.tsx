@@ -41,6 +41,8 @@ import {
   boxRolloff,
   centreToCentreMm,
   farFieldVerdict,
+  floorBounceGate,
+  gateLimitHz,
   listeningAngleDeg,
   nearestEdgeMm,
   pistonDiameterMm,
@@ -499,6 +501,9 @@ interface CabinetState {
    *  plane. Usually 0 (mic level with the reference point). Signed on purpose:
    *  on a driver 380 mm low at 500 mm, ±10° swings the true angle 31°↔43°. */
   micElevationDeg: string;
+  /** The reflection-free window the operator ACTUALLY used, ms. Ground truth
+   *  when known — it beats any prediction from geometry. '' = predict it. */
+  gateMs: string;
   baffleWidthMm: string;
   baffleHeightMm: string;
   /** How far below the top of the baffle the reference point sits, mm. */
@@ -518,6 +523,7 @@ const emptyCabinetDriver = (): CabinetDriver => ({
 const emptyCabinet = (): CabinetState => ({
   micDistanceMm: '',
   micElevationDeg: '',
+  gateMs: '',
   baffleWidthMm: '',
   baffleHeightMm: '',
   refFromTopMm: '',
@@ -549,6 +555,7 @@ function mergeCabinet(raw: ProjectDesign['cabinet']): CabinetState {
   return {
     micDistanceMm: raw.micDistanceMm ?? '',
     micElevationDeg: raw.micElevationDeg ?? '',
+    gateMs: raw.gateMs ?? '',
     baffleWidthMm: raw.baffleWidthMm ?? '',
     baffleHeightMm: raw.baffleHeightMm ?? '',
     refFromTopMm: raw.refFromTopMm ?? '',
@@ -2348,6 +2355,16 @@ export default function App() {
       driverDiameterMm: biggestDriverMm,
       baffleWidthMm: baffleW > 0 ? baffleW : undefined,
     });
+    // How low the measurement can honestly claim to reach. A stated gate wins
+    // over the predicted floor bounce — the operator knows what window was used.
+    const predicted = floorBounceGate(micMm, Number(cabinet.refHeightMm), micElev);
+    const statedHz = gateLimitHz(Number(cabinet.gateMs));
+    const reliable =
+      statedHz !== null
+        ? { fromHz: statedHz, gateMs: Number(cabinet.gateMs), stated: true }
+        : predicted
+          ? { fromHz: predicted.fromHz, gateMs: predicted.gateMs, stated: false }
+          : null;
     const ctc = (a: BranchRole, b: BranchRole) =>
       place[a] && place[b] ? centreToCentreMm(place[a]!, place[b]!) : null;
     const baffle =
@@ -2366,6 +2383,7 @@ export default function App() {
       /** Adjacent-pair spacing. In 2-way the single pair is low↔high. */
       ctcLow: threeWay ? ctc('low', 'mid') : ctc('low', 'high'),
       ctcHigh: threeWay ? ctc('mid', 'high') : null,
+      reliable,
       baffleStep: baffleStepHz(baffleW),
       edgeOf: (role: BranchRole) =>
         place[role] && baffle ? nearestEdgeMm(place[role]!, baffle) : null,
@@ -7020,6 +7038,48 @@ export default function App() {
                     : `only ${cabinetInfo.farField.ratio.toFixed(1)}× the source (${Math.round(
                         cabinetInfo.farField.sourceMm,
                       )} mm) — treat directivity as indicative`}
+                </span>
+              )}
+              <label title="The reflection-free window you actually gated with, in ms — from REW's or ARTA's own setting. Leave empty and the app predicts it from the floor bounce instead. A stated gate always wins: it is what happened, not what geometry suggests.">
+                Gate used (ms)
+                <input
+                  type="number"
+                  min={0}
+                  step={0.1}
+                  placeholder="predict"
+                  value={cabinet.gateMs}
+                  onChange={(e) => setCabinet((c) => ({ ...c, gateMs: e.target.value }))}
+                />
+              </label>
+              {cabinetInfo.reliable && (
+                <span className="derived">
+                  {cabinetInfo.reliable.stated
+                    ? `gate ${cabinetInfo.reliable.gateMs.toFixed(2)} ms → honest down to ≈ ${Math.round(
+                        cabinetInfo.reliable.fromHz,
+                      )} Hz`
+                    : `floor bounce at ${cabinetInfo.reliable.gateMs.toFixed(
+                        2,
+                      )} ms → honest down to ≈ ${Math.round(
+                        cabinetInfo.reliable.fromHz,
+                      )} Hz (best case: assumes the floor is the nearest reflector)`}
+                  {Number(fMin) > 0 && Number(fMin) < cabinetInfo.reliable.fromHz * 0.95 && (
+                    <>
+                      {' — '}
+                      <strong>
+                        the view range starts at {Math.round(Number(fMin))} Hz, below what this
+                        measurement supports
+                      </strong>
+                      {' '}
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setFMin(String(Math.round(cabinetInfo.reliable!.fromHz)))
+                        }
+                      >
+                        use {Math.round(cabinetInfo.reliable.fromHz)} Hz as f min
+                      </button>
+                    </>
+                  )}
                 </span>
               )}
               <label title="Baffle width. Reported only, never applied: a properly measured on-baffle response already contains the baffle step, so subtracting it again would count it twice. Useful for reading a response — that broad tilt is the cabinet, not the driver.">

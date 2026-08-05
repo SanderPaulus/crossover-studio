@@ -148,6 +148,69 @@ export function pistonDiameterMm(sdCm2: number): number | null {
 }
 
 /* ------------------------------------------------------------------ *
+ * 2b. How low does the measurement actually reach?
+ * ------------------------------------------------------------------ */
+
+export interface GateVerdict {
+  /** Reflection-free window, ms. */
+  gateMs: number;
+  /** Lowest frequency the window can support, Hz. */
+  fromHz: number;
+  /** Extra path length the first reflection travels, mm. */
+  extraPathMm: number;
+}
+
+/**
+ * Lowest frequency a gated measurement can honestly claim, from the geometry
+ * that decides it — the FLOOR BOUNCE.
+ *
+ * A windowed measurement is anechoic only until the first reflection arrives;
+ * after that the window has to close, and a window of t seconds cannot resolve
+ * anything whose period is longer than t. So `f_min ≈ 1/t_gate`. (That is the
+ * optimistic bound — one full period just fits. Some practitioners use 2/t for
+ * comfort; the number here is the ceiling on what you could claim, not a
+ * promise.)
+ *
+ * For a speaker on a stand with the mic at the same height, the floor is
+ * usually the first reflection and its path is pure geometry: mirror the source
+ * to −h and measure. THE POINT is that this fights the far-field rule head-on —
+ * backing away improves directivity and SHORTENS the gate:
+ *
+ *      0.5 m → 4.55 ms → 220 Hz, but only 1.7× a 300 mm baffle
+ *      1.0 m → 3.60 ms → 277 Hz, and 3.3× — the shortest distance that is
+ *      1.5 m → 2.92 ms → 343 Hz         genuinely far field
+ *      3.0 m → 1.77 ms → 566 Hz
+ *
+ * Best case, deliberately: it assumes the floor is the nearest reflector. A low
+ * ceiling or a near wall makes it worse, and the gate the operator actually
+ * used is the ground truth — hence the manual override in the UI.
+ */
+export function floorBounceGate(
+  micDistanceMm: number,
+  refHeightMm: number,
+  micElevationDeg = 0,
+): GateVerdict | null {
+  if (!(micDistanceMm > 0) || !(refHeightMm > 0)) return null;
+  const v = (micElevationDeg * Math.PI) / 180;
+  const horizMm = micDistanceMm * Math.cos(v);
+  const micHeightMm = refHeightMm + micDistanceMm * Math.sin(v);
+  if (!(micHeightMm > 0)) return null;
+  // Image source mirrored through the floor.
+  const bounceMm = Math.hypot(horizMm, refHeightMm + micHeightMm);
+  const extraPathMm = bounceMm - micDistanceMm;
+  if (!(extraPathMm > 0)) return null;
+  const gateMs = extraPathMm / C_AIR;
+  return { gateMs, fromHz: 1000 / gateMs, extraPathMm };
+}
+
+/** Lowest frequency a stated gate can support — for when the operator knows
+ *  the window they actually used and that beats any prediction. */
+export function gateLimitHz(gateMs: number): number | null {
+  if (!(gateMs > 0)) return null;
+  return 1000 / gateMs;
+}
+
+/* ------------------------------------------------------------------ *
  * 3. Spacing, edges, baffle step
  * ------------------------------------------------------------------ */
 
