@@ -192,6 +192,23 @@ export interface ProjectState {
   /** Optional: measured response of the BUILT system, overlaid against the
    *  simulation (the VALIDATIE.md loop). One file; reloading replaces it. */
   verifyFile?: StoredFile;
+  /** Optional: near-field measurements per branch role, plus their splice
+   *  settings. The files are stored raw like every other measurement so a
+   *  project stays self-contained. */
+  nearField?: Partial<
+    Record<
+      'low' | 'mid' | 'high',
+      {
+        cone?: StoredFile;
+        port?: StoredFile;
+        portDiaMm?: string;
+        transitionHz?: string;
+        blendOctaves?: string;
+        stepOn?: boolean;
+        stepDepthDb?: string;
+      }
+    >
+  >;
   design: ProjectDesign;
 }
 
@@ -314,6 +331,7 @@ export function deserializeProject(text: string): ProjectState {
     vxp: file(d['vxp']),
     fileNotes,
     verifyFile: file(d['verifyFile']),
+    nearField: (d['nearField'] as ProjectState['nearField']) ?? undefined,
     design,
   };
 }

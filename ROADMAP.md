@@ -44,6 +44,13 @@ Volgorde binnen een blok = aanbevolen prioriteit. Inschattingen zijn grof:
   Plus **🔬 Compare wizard** (Import-tab): dezelfde lus als begeleide
   checklist — vier stappen die live app-state lezen, meting laden kan ín de
   wizard, verdict met de cijfers als slotstap
+- **Near-field laag-eind-merge** (aug 2026, `nearField.ts`): het gat dat het
+  meetonderzoek aanwees. Binnenshuis is een gepoorte meting pas eerlijk boven
+  200–290 Hz en een 3-weg kruist woofer-mid daar net boven; de merge haalt het
+  laag uit een nabij-veldmeting (conus + optioneel poort, complex gesommeerd),
+  schaalt met a/2r, fit niveau EN pure delay over de blend, en crossfade
+  complex. Ook: de gate-limiet volgt nu uit de vloerreflectie, dus de app zegt
+  zelf tot welke frequentie je meting draagt en biedt aan f min daarop te zetten.
 - **Cabinet & drivers-invoer** (aug 2026, `cabinet.ts` + Setup-tab): driverposities,
   meetafstand, baffle, kasttype per driver, Sd/Xmax en luisterpositie. Regel:
   een veld mag er alleen in als het een getal verandert dat de app toont, en

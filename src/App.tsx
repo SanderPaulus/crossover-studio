@@ -29,6 +29,14 @@ import {
 } from './lib/driverSlots.ts';
 import { estimateCoilDcr, validateNetlist } from './lib/netlistEdit.ts';
 import {
+
+  checkTransition,
+  mergeNearFar,
+  nearFieldMaxHz,
+  nearToFarDb,
+  sumRadiators,
+} from './lib/nearField.ts';
+import {
   KA_TIERS,
   breakupCeilingHz,
   breakupHz,
@@ -483,6 +491,30 @@ function filterSummaryLine(spec: DriverFilterSpec, side: 'woofer' | 'mid' | 'twe
   if (nEq > 0) parts.push(`${nEq} EQ`);
   return `${name}: ${parts.length > 0 ? parts.join(', ') : 'flat'}`;
 }
+
+/** One branch's near-field material: the cone measurement, an optional port or
+ *  passive-radiator measurement, and the splice settings. */
+interface NearFieldSlot {
+  cone: StoredFile | null;
+  port: StoredFile | null;
+  /** Effective diameter of the port mouth, mm — its weight in Keele's sum. */
+  portDiaMm: string;
+  /** Blend centre, Hz. Empty = the app proposes one. */
+  transitionHz: string;
+  blendOctaves: string;
+  /** Put the baffle step back into the half-space near field. */
+  stepOn: boolean;
+  stepDepthDb: string;
+}
+const emptyNearField = (): NearFieldSlot => ({
+  cone: null,
+  port: null,
+  portDiaMm: '',
+  transitionHz: '',
+  blendOctaves: '1',
+  stepOn: true,
+  stepDepthDb: '6',
+});
 
 /** Cabinet geometry + measurement context, as typed (strings so a field can be
  *  empty; every consumer treats absent as "criterion does not apply"). */
@@ -1085,6 +1117,18 @@ export default function App() {
    * off-axis during the sweep.
    */
   const [cabinet, setCabinet] = useState<CabinetState>(() => emptyCabinet());
+  /**
+   * Near-field low-end merge, per branch. A gated indoor far field runs out
+   * around 200–290 Hz and a three-way's woofer-mid crossover lives at
+   * 300–500 Hz, so the region that needs the most care is the one the gate
+   * cannot support. Only the low and mid branches get a slot: a tweeter has no
+   * low-end problem worth splicing.
+   */
+  const [nearField, setNearField] = useState<Record<BranchRole, NearFieldSlot>>(() => ({
+    low: emptyNearField(),
+    mid: emptyNearField(),
+    high: emptyNearField(),
+  }));
   /** How much spacing the design tolerates, in wavelengths. Genuinely
    *  contested (0.5 = no forward null … 1.2 = Saunisto's power-response
    *  optimum, which ACCEPTS a ±25° null), so the designer owns it. */
@@ -1809,6 +1853,39 @@ export default function App() {
     }
   }
 
+  /** Load one near-field measurement into a branch's slot. Kept as raw text
+   *  like every other measurement so the project file stays self-contained. */
+  async function loadNearField(
+    e: React.ChangeEvent<HTMLInputElement>,
+    role: BranchRole,
+    which: 'cone' | 'port',
+  ) {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file) return;
+    setError(null);
+    try {
+      const raw = await file.text();
+      const frd = parseFrd(raw);
+      if (!frd.hasPhase) {
+        setError(
+          `"${file.name}" carries no phase. A near-field splice without phase would plant an ` +
+            `unknown delay step at the crossover — measure it with a timing reference.`,
+        );
+      }
+      const cls = classifyLevelProfile(frd.spl);
+      if (cls.kind === 'impedance') {
+        setError(
+          `"${file.name}" looks like an impedance file (median ≈ ${cls.medianLevel.toFixed(1)} Ω), ` +
+            `not a response.`,
+        );
+      }
+      setNearField((n) => ({ ...n, [role]: { ...n[role], [which]: { name: file.name, raw } } }));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
+    }
+  }
+
   const num = (s: string, fallback: number) => {
     const v = Number(s);
     return s.trim() !== '' && Number.isFinite(v) ? v : fallback;
@@ -1905,6 +1982,208 @@ export default function App() {
     if (wizardStep > 0 && wizardPos < 0) setWizardStep(wizardSteps[0].id);
   }, [wizardStep, wizardPos, wizardSteps]);
 
+  /**
+   * Everything the entered geometry lets us SAY, in one place.
+   *
+   * The rule that keeps this from becoming a form nobody fills in: each field
+   * has to change a number the app shows. Positions give centre-to-centre and
+   * the true measurement angles; distance gives the far-field verdict; the
+   * enclosure gives the acoustic order the box already provides. Nothing here
+   * touches measured data — it bounds windows, cross-checks and warns.
+   */
+  const cabinetInfo = useMemo(() => {
+    const micMm = Number(cabinet.micDistanceMm);
+    const micElev = Number(cabinet.micElevationDeg) || 0;
+    const place = {
+      low: placementOf(cabinet.drivers.low),
+      mid: placementOf(cabinet.drivers.mid),
+      high: placementOf(cabinet.drivers.high),
+    };
+    const angleListOf = (role: BranchRole): number[] => {
+      const set =
+        role === 'low' ? angleSets?.woofer : role === 'mid' ? angleSets?.mid : angleSets?.tweeter;
+      return set ? [...new Set(set.map((a) => a.hor))].sort((a, b) => a - b) : [];
+    };
+    /** What a nominal sweep REALLY captured for this driver. Null unless both
+     *  a position and a mic distance are known. */
+    const trueAngles = (role: BranchRole) => {
+      const p = place[role];
+      if (!p || !(micMm > 0)) return null;
+      const list = angleListOf(role);
+      if (list.length === 0) return null;
+      return list.map((nominal) => ({
+        nominal,
+        actual: trueOffAxisDeg(p, micMm, nominal, micElev),
+        levelDb: rotationLevelOffsetDb(p, micMm, nominal, micElev),
+      }));
+    };
+    const diaOf = (role: BranchRole) => pistonDiameterMm(Number(sdCm2[role]));
+    const biggestDriverMm = Math.max(
+      ...(['low', 'mid', 'high'] as BranchRole[]).map((r) => diaOf(r) ?? 0),
+    );
+    const baffleW = Number(cabinet.baffleWidthMm);
+    const farField = farFieldVerdict(micMm, {
+      driverDiameterMm: biggestDriverMm,
+      baffleWidthMm: baffleW > 0 ? baffleW : undefined,
+    });
+    // How low the measurement can honestly claim to reach. A stated gate wins
+    // over the predicted floor bounce — the operator knows what window was used.
+    const predicted = floorBounceGate(micMm, Number(cabinet.refHeightMm), micElev);
+    const statedHz = gateLimitHz(Number(cabinet.gateMs));
+    const reliable =
+      statedHz !== null
+        ? { fromHz: statedHz, gateMs: Number(cabinet.gateMs), stated: true }
+        : predicted
+          ? { fromHz: predicted.fromHz, gateMs: predicted.gateMs, stated: false }
+          : null;
+    const ctc = (a: BranchRole, b: BranchRole) =>
+      place[a] && place[b] ? centreToCentreMm(place[a]!, place[b]!) : null;
+    const baffle =
+      baffleW > 0 && Number(cabinet.baffleHeightMm) > 0
+        ? {
+            widthMm: baffleW,
+            heightMm: Number(cabinet.baffleHeightMm),
+            refFromTopMm: Number(cabinet.refFromTopMm) || 0,
+          }
+        : null;
+    return {
+      place,
+      trueAngles,
+      diaOf,
+      farField,
+      /** Adjacent-pair spacing. In 2-way the single pair is low↔high. */
+      ctcLow: threeWay ? ctc('low', 'mid') : ctc('low', 'high'),
+      ctcHigh: threeWay ? ctc('mid', 'high') : null,
+      reliable,
+      baffleStep: baffleStepHz(baffleW),
+      edgeOf: (role: BranchRole) =>
+        place[role] && baffle ? nearestEdgeMm(place[role]!, baffle) : null,
+      listenAngle: listeningAngleDeg(
+        Number(cabinet.refHeightMm),
+        Number(cabinet.listenEarHeightMm),
+        Number(cabinet.listenDistanceM),
+      ),
+      boxOf: (role: BranchRole) => boxRolloff(cabinet.drivers[role].enclosure),
+      unloadOf: (role: BranchRole) => unloadingRisk(cabinet.drivers[role].enclosure),
+    };
+  }, [cabinet, sdCm2, angleSets, threeWay]);
+
+  /**
+   * Near-field merge per branch: the driver's effective response, with its low
+   * end taken from the near-field measurement where the gate can no longer
+   * support the far field.
+   *
+   * Done HERE, at the source, so everything downstream — grid span, sim,
+   * optimizer, charts, scores — sees one response and needs no knowledge of
+   * where its low end came from. The merged FRD simply reaches lower.
+   */
+  const merged = useMemo(() => {
+    const out: Partial<Record<BranchRole, { frd: Parsed; report: string; ok: boolean }>> = {};
+    const src: [BranchRole, Loaded | null][] = [
+      ['low', woofer],
+      ['mid', midDrv],
+      ['high', tweeter],
+    ];
+    const micMm = Number(cabinet.micDistanceMm);
+    for (const [role, loaded] of src) {
+      const slot = nearField[role];
+      if (!loaded || !slot.cone) continue;
+      const sd = Number(sdCm2[role]);
+      const nearMax = nearFieldMaxHz(sd);
+      const scaleDb = nearToFarDb(sd, micMm);
+      if (nearMax === null || scaleDb === null) {
+        out[role] = {
+          frd: loaded.frd,
+          ok: false,
+          report: 'needs Sd for this driver and the mic distance — without them the near field cannot be scaled',
+        };
+        continue;
+      }
+      let cone: Parsed;
+      let port: Parsed | null = null;
+      try {
+        cone = parseFrd(slot.cone.raw);
+        if (slot.port) port = parseFrd(slot.port.raw);
+      } catch (err) {
+        out[role] = { frd: loaded.frd, ok: false, report: String(err) };
+        continue;
+      }
+      // One grid spanning the near field's low end up through the far field.
+      const lo = Math.max(5, cone.freq[0]);
+      const hi = Math.min(loaded.frd.freq[loaded.frd.freq.length - 1], 20000);
+      if (!(hi > lo * 4)) {
+        out[role] = { frd: loaded.frd, ok: false, report: 'near-field and far-field ranges barely overlap' };
+        continue;
+      }
+      const g = logspace(lo, hi, GRID_N);
+      const onGrid = (p: Parsed) => resample(p.freq, p.spl, p.phase, g, { clampEdges: true });
+      const gc = onGrid(cone);
+      const gf = onGrid(loaded.frd);
+      // Keele's diameter-weighted COMPLEX sum of cone + port.
+      let nearSpl = gc.spl;
+      let nearPhase = gc.phaseDeg;
+      const portDia = Number(slot.portDiaMm);
+      if (port && portDia > 0) {
+        const dia = (Math.sqrt((sd * 1e-4) / Math.PI) * 2 * 1000) || 1;
+        const gp = onGrid(port);
+        const summed = sumRadiators([
+          { p: gc.spl.map((v, i) => fromPolar(10 ** (v / 20), (gc.phaseDeg[i] * Math.PI) / 180)), diameterMm: dia },
+          { p: gp.spl.map((v, i) => fromPolar(10 ** (v / 20), (gp.phaseDeg[i] * Math.PI) / 180)), diameterMm: portDia },
+        ]);
+        if (summed) {
+          nearSpl = summed.map((c) => 20 * Math.log10(Math.hypot(c.re, c.im) || 1e-12));
+          nearPhase = summed.map((c) => (Math.atan2(c.im, c.re) * 180) / Math.PI);
+        }
+      }
+      // Half-space scaling to the far-field distance.
+      nearSpl = nearSpl.map((v) => v + scaleDb);
+      const farMin = cabinetInfo.reliable?.fromHz ?? null;
+      const proposed =
+        Number(slot.transitionHz) > 0
+          ? Number(slot.transitionHz)
+          : farMin !== null
+            ? Math.min(nearMax * 0.8, Math.max(farMin * 1.3, 300))
+            : 300;
+      const check = checkTransition(proposed, nearMax, farMin);
+      const m = mergeNearFar({
+        freq: g,
+        farSpl: gf.spl,
+        farPhaseDeg: gf.phaseDeg,
+        nearSpl,
+        nearPhaseDeg: nearPhase,
+        transitionHz: proposed,
+        blendOctaves: Number(slot.blendOctaves) || 1,
+        baffleStepHz: slot.stepOn ? (cabinetInfo.baffleStep ?? 0) : 0,
+        baffleStepDepthDb: Number(slot.stepDepthDb) || 6,
+      });
+      if (!m) {
+        out[role] = { frd: loaded.frd, ok: false, report: 'merge failed on this grid' };
+        continue;
+      }
+      const bits = [
+        `spliced at ${Math.round(proposed)} Hz`,
+        `level ${m.levelDb >= 0 ? '+' : ''}${m.levelDb.toFixed(1)} dB`,
+        `delay ${m.delayUs.toFixed(0)} µs`,
+        `residual ${m.residualDeg.toFixed(1)}°`,
+      ];
+      if (Math.abs(Math.abs(m.offsetDeg) - 180) < 45) bits.push('⚠ near field looks INVERTED');
+      if (m.residualDeg > 25) bits.push('⚠ the two halves disagree — check the splice frequency');
+      if (!check.ok) bits.push(`⚠ ${check.note}`);
+      out[role] = {
+        ok: check.ok,
+        report: bits.join(' · '),
+        frd: { freq: [...g], spl: m.spl, phase: m.phaseDeg, hasPhase: true, meta: loaded.frd.meta },
+      };
+    }
+    return out;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [woofer, midDrv, tweeter, nearField, sdCm2, cabinet.micDistanceMm, cabinetInfo]);
+
+  /** A branch as the rest of the app should see it: merged when a near-field
+   *  splice is configured and worked, untouched otherwise. */
+  const effective = (l: Loaded | null, role: BranchRole): Loaded | null =>
+    l && merged[role]?.ok ? { ...l, frd: merged[role]!.frd } : l;
+
   const sim = useMemo(() => {
     // Single-driver mode: ONE loaded measurement is enough (validation flow:
     // measure a lone driver, rebuild the physical network in the editor,
@@ -1912,11 +2191,15 @@ export default function App() {
     // branch so combine() and every downstream consumer keep their
     // two-branch shape; the UI hides the ghost's curves and scores.
     if (!woofer && !tweeter) return null;
+    // Near-field-merged where configured: the branch's low end then comes from
+    // a measurement the gate can actually support.
+    const wIn = effective(woofer, 'low');
+    const tIn = effective(tweeter, 'high');
     // 3-way: the mid branch joins the grid only when both outer branches are
     // loaded; a mid without them is IGNORED (banner explains) so the 2-way and
     // solo paths stay bit-identical to before the mid slot existed.
-    const midIn = threeWay ? midDrv : null;
-    const present = [woofer, midIn, tweeter].filter((d): d is Loaded => d !== null);
+    const midIn = threeWay ? effective(midDrv, 'mid') : null;
+    const present = [wIn, midIn, tIn].filter((d): d is Loaded => d !== null);
     // Grid span: 2-way keeps the historical INTERSECTION of the measured
     // ranges (bit-compat). 3-way spans the UNION (trede 4b, per-branch
     // bands): Robbert's tweeter FRD starts at 640 Hz, and an intersection
@@ -1959,8 +2242,8 @@ export default function App() {
     };
     const toGrid = (l: Loaded): GriddedResponse =>
       threeWay ? banded(l) : resample(l.frd.freq, l.frd.spl, l.frd.phase, grid);
-    let w = woofer ? toGrid(woofer) : silent();
-    let t = tweeter ? toGrid(tweeter) : silent();
+    let w = wIn ? toGrid(wIn) : silent();
+    let t = tIn ? toGrid(tIn) : silent();
     let m = midIn ? toGrid(midIn) : null;
 
     // VituixCAD-style comparison mode: throw away the measured phase and
@@ -2311,92 +2594,6 @@ export default function App() {
    * derives itself — measured on Robbert: W-M [353…631], M-T [1310…7000
    * (mid beams at 8022)], exactly the hand-derived advice. Also carries the
    * banded angle sets that arm the in-room weight. */
-  /**
-   * Everything the entered geometry lets us SAY, in one place.
-   *
-   * The rule that keeps this from becoming a form nobody fills in: each field
-   * has to change a number the app shows. Positions give centre-to-centre and
-   * the true measurement angles; distance gives the far-field verdict; the
-   * enclosure gives the acoustic order the box already provides. Nothing here
-   * touches measured data — it bounds windows, cross-checks and warns.
-   */
-  const cabinetInfo = useMemo(() => {
-    const micMm = Number(cabinet.micDistanceMm);
-    const micElev = Number(cabinet.micElevationDeg) || 0;
-    const place = {
-      low: placementOf(cabinet.drivers.low),
-      mid: placementOf(cabinet.drivers.mid),
-      high: placementOf(cabinet.drivers.high),
-    };
-    const angleListOf = (role: BranchRole): number[] => {
-      const set =
-        role === 'low' ? angleSets?.woofer : role === 'mid' ? angleSets?.mid : angleSets?.tweeter;
-      return set ? [...new Set(set.map((a) => a.hor))].sort((a, b) => a - b) : [];
-    };
-    /** What a nominal sweep REALLY captured for this driver. Null unless both
-     *  a position and a mic distance are known. */
-    const trueAngles = (role: BranchRole) => {
-      const p = place[role];
-      if (!p || !(micMm > 0)) return null;
-      const list = angleListOf(role);
-      if (list.length === 0) return null;
-      return list.map((nominal) => ({
-        nominal,
-        actual: trueOffAxisDeg(p, micMm, nominal, micElev),
-        levelDb: rotationLevelOffsetDb(p, micMm, nominal, micElev),
-      }));
-    };
-    const diaOf = (role: BranchRole) => pistonDiameterMm(Number(sdCm2[role]));
-    const biggestDriverMm = Math.max(
-      ...(['low', 'mid', 'high'] as BranchRole[]).map((r) => diaOf(r) ?? 0),
-    );
-    const baffleW = Number(cabinet.baffleWidthMm);
-    const farField = farFieldVerdict(micMm, {
-      driverDiameterMm: biggestDriverMm,
-      baffleWidthMm: baffleW > 0 ? baffleW : undefined,
-    });
-    // How low the measurement can honestly claim to reach. A stated gate wins
-    // over the predicted floor bounce — the operator knows what window was used.
-    const predicted = floorBounceGate(micMm, Number(cabinet.refHeightMm), micElev);
-    const statedHz = gateLimitHz(Number(cabinet.gateMs));
-    const reliable =
-      statedHz !== null
-        ? { fromHz: statedHz, gateMs: Number(cabinet.gateMs), stated: true }
-        : predicted
-          ? { fromHz: predicted.fromHz, gateMs: predicted.gateMs, stated: false }
-          : null;
-    const ctc = (a: BranchRole, b: BranchRole) =>
-      place[a] && place[b] ? centreToCentreMm(place[a]!, place[b]!) : null;
-    const baffle =
-      baffleW > 0 && Number(cabinet.baffleHeightMm) > 0
-        ? {
-            widthMm: baffleW,
-            heightMm: Number(cabinet.baffleHeightMm),
-            refFromTopMm: Number(cabinet.refFromTopMm) || 0,
-          }
-        : null;
-    return {
-      place,
-      trueAngles,
-      diaOf,
-      farField,
-      /** Adjacent-pair spacing. In 2-way the single pair is low↔high. */
-      ctcLow: threeWay ? ctc('low', 'mid') : ctc('low', 'high'),
-      ctcHigh: threeWay ? ctc('mid', 'high') : null,
-      reliable,
-      baffleStep: baffleStepHz(baffleW),
-      edgeOf: (role: BranchRole) =>
-        place[role] && baffle ? nearestEdgeMm(place[role]!, baffle) : null,
-      listenAngle: listeningAngleDeg(
-        Number(cabinet.refHeightMm),
-        Number(cabinet.listenEarHeightMm),
-        Number(cabinet.listenDistanceM),
-      ),
-      boxOf: (role: BranchRole) => boxRolloff(cabinet.drivers[role].enclosure),
-      unloadOf: (role: BranchRole) => unloadingRisk(cabinet.drivers[role].enclosure),
-    };
-  }, [cabinet, sdCm2, angleSets, threeWay]);
-
   const physWin3 = useMemo(() => {
     if (!threeWay || !sim?.mid || !result || !sim.base.m) return null;
     const grid = result.freq;
@@ -2784,6 +2981,23 @@ export default function App() {
         : undefined,
       fileNotes: Object.keys(fileNotes).length > 0 ? fileNotes : undefined,
       verifyFile: verify ? { name: verify.name, raw: verify.raw } : undefined,
+      nearField: (() => {
+        const out: NonNullable<ProjectState['nearField']> = {};
+        for (const r of ['low', 'mid', 'high'] as BranchRole[]) {
+          const n = nearField[r];
+          if (!n.cone && !n.port) continue;
+          out[r] = {
+            ...(n.cone ? { cone: n.cone } : {}),
+            ...(n.port ? { port: n.port } : {}),
+            portDiaMm: n.portDiaMm,
+            transitionHz: n.transitionHz,
+            blendOctaves: n.blendOctaves,
+            stepOn: n.stepOn,
+            stepDepthDb: n.stepDepthDb,
+          };
+        }
+        return Object.keys(out).length ? out : undefined;
+      })(),
       design: {
         vFilters,
         xoName,
@@ -2898,6 +3112,27 @@ export default function App() {
         ? { name: state.verifyFile.name, raw: state.verifyFile.raw, frd: parseFrd(state.verifyFile.raw) }
         : null,
     );
+    setNearField(() => {
+      const base: Record<BranchRole, NearFieldSlot> = {
+        low: emptyNearField(),
+        mid: emptyNearField(),
+        high: emptyNearField(),
+      };
+      for (const r of ['low', 'mid', 'high'] as BranchRole[]) {
+        const n = state.nearField?.[r];
+        if (!n) continue;
+        base[r] = {
+          cone: n.cone ?? null,
+          port: n.port ?? null,
+          portDiaMm: n.portDiaMm ?? '',
+          transitionHz: n.transitionHz ?? '',
+          blendOctaves: n.blendOctaves ?? '1',
+          stepOn: n.stepOn ?? true,
+          stepDepthDb: n.stepDepthDb ?? '6',
+        };
+      }
+      return base;
+    });
     const d = state.design;
     const saneVf = sanitizePassiveSpecs(d.vFilters);
     setVFilters({ ...saneVf, mid: saneVf.mid ?? defaultVFilters().mid });
@@ -3056,7 +3291,7 @@ export default function App() {
     }, 800);
     return () => clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [woofer, midDrv, tweeter, project, zStandalone, angleSets, fileNotes, verify, vFilters, xoName, offsetMm, trimDb, inverted, midOffsetMm, midTrimDb, midInverted, fMin, fMax, splMin, splMax, phasePriority, vfEqBands, phaseMode, dirWeight, ampTarget, sonogramMode, designs, activeDesignId, lastSavedId, networkActive, vfBypass, catalogSnap, breakupGuard, xoRangeOn, xoFreqHz, xoMarginHz, xoScanSteps, xo3Steps, hpLpPref, hpLpPrefLow, phaseMetricMode, acSlopeMid, acSlopeTweeter, acSlopeWoofer, acSlopeMidHp, xoLowFreqHz, xoLowMarginHz, midSizeInch, wooferSizeInch, kaTier, cabinet, ctcK, breakupLimitOn, breakupHarmonic, sdCm2, xmaxMm, excursionSpl, snapProfile, snapSeriesL, snapSeriesC, snapSeriesR, snapStacks, snapBoundToSeries, stagedOn, targetRipple, targetPhase, soloSensDb, soloFloorOn, soloFloorDb]);
+  }, [woofer, midDrv, tweeter, project, zStandalone, angleSets, fileNotes, verify, vFilters, xoName, offsetMm, trimDb, inverted, midOffsetMm, midTrimDb, midInverted, fMin, fMax, splMin, splMax, phasePriority, vfEqBands, phaseMode, dirWeight, ampTarget, sonogramMode, designs, activeDesignId, lastSavedId, networkActive, vfBypass, catalogSnap, breakupGuard, xoRangeOn, xoFreqHz, xoMarginHz, xoScanSteps, xo3Steps, hpLpPref, hpLpPrefLow, phaseMetricMode, acSlopeMid, acSlopeTweeter, acSlopeWoofer, acSlopeMidHp, xoLowFreqHz, xoLowMarginHz, midSizeInch, wooferSizeInch, kaTier, cabinet, nearField, ctcK, breakupLimitOn, breakupHarmonic, sdCm2, xmaxMm, excursionSpl, snapProfile, snapSeriesL, snapSeriesC, snapSeriesR, snapStacks, snapBoundToSeries, stagedOn, targetRipple, targetPhase, soloSensDb, soloFloorOn, soloFloorDb]);
 
   function resetProject() {
     localStorage.removeItem(AUTOSAVE_KEY);
@@ -6692,6 +6927,118 @@ export default function App() {
                 Tweeter FRD + ZMA (multi-select all hor angles + impedance)
                 <input type="file" accept=".frd,.txt,.zma,.ZMA,.lim" multiple onChange={loadDriverFiles('tweeter')} />
               </label>
+              {(['low', 'mid'] as BranchRole[])
+                .filter((r) => (r === 'low' ? !!woofer : !!midDrv))
+                .map((role) => {
+                  const slot = nearField[role];
+                  const title = role === 'low' ? (hasMidBranch ? 'Woofer' : 'Woofer / mid') : 'Midrange';
+                  const set = (patch: Partial<NearFieldSlot>) =>
+                    setNearField((n) => ({ ...n, [role]: { ...n[role], ...patch } }));
+                  const nfMax = nearFieldMaxHz(Number(sdCm2[role]));
+                  const rep = merged[role];
+                  return (
+                    <div key={role} className="cabinet-driver">
+                      <strong>{title} — near field</strong>
+                      <label
+                        className="file-button"
+                        title="Near-field measurement of the CONE: microphone 5 mm from the centre of the dust cap. This is what gives the branch a low end the gate cannot reach. Export with phase."
+                      >
+                        {slot.cone ? `Cone: ${slot.cone.name}` : 'Load cone near field…'}
+                        <input
+                          type="file"
+                          accept=".frd,.txt"
+                          onChange={(e) => loadNearField(e, role, 'cone')}
+                        />
+                      </label>
+                      {slot.cone && (
+                        <button
+                          type="button"
+                          className="icon"
+                          aria-label={`Remove the ${title} cone near-field measurement`}
+                          onClick={() => set({ cone: null })}
+                        >
+                          ✕
+                        </button>
+                      )}
+                      {slot.cone && (
+                        <>
+                          <label
+                            className="file-button"
+                            title="Optional: near-field measurement at the PORT mouth (or passive radiator). It is summed with the cone COMPLEX and weighted by its diameter — below the box tuning the two largely cancel, which a magnitude-only sum cannot represent."
+                          >
+                            {slot.port ? `Port: ${slot.port.name}` : 'Load port near field…'}
+                            <input
+                              type="file"
+                              accept=".frd,.txt"
+                              onChange={(e) => loadNearField(e, role, 'port')}
+                            />
+                          </label>
+                          {slot.port && (
+                            <span className="inline-num" title="Effective diameter of the port mouth, mm. A rectangular vent: the diameter of a circle with the same area. This is its weight in the sum.">
+                              {'port Ø '}
+                              <input
+                                type="number"
+                                min={0}
+                                step={1}
+                                value={slot.portDiaMm}
+                                onChange={(e) => set({ portDiaMm: e.target.value })}
+                              />
+                              {' mm'}
+                              <button
+                                type="button"
+                                className="icon"
+                                aria-label={`Remove the ${title} port near-field measurement`}
+                                onClick={() => set({ port: null })}
+                              >
+                                ✕
+                              </button>
+                            </span>
+                          )}
+                          <span className="inline-num" title="Splice centre and how wide the crossfade is. Leave the frequency empty and the app proposes one that sits inside both validity limits: above what the gate supports, below where the cone stops being a simple source (ka = 1).">
+                            {'splice at '}
+                            <input
+                              type="number"
+                              min={0}
+                              step={10}
+                              placeholder="auto"
+                              value={slot.transitionHz}
+                              onChange={(e) => set({ transitionHz: e.target.value })}
+                            />
+                            {' Hz, blend '}
+                            <input
+                              type="number"
+                              min={0.25}
+                              max={3}
+                              step={0.25}
+                              value={slot.blendOctaves}
+                              onChange={(e) => set({ blendOctaves: e.target.value })}
+                            />
+                            {' oct'}
+                          </span>
+                          <label title="A near-field measurement is a half-space result throughout, but a real cabinet loses up to 6 dB at low frequency as it radiates into full space. Without this the spliced low end reads too high. Deliberately an adjustable shelf rather than a diffraction model: the published formulas disagree by about 3x and measurement disagrees with all of them.">
+                            <input
+                              type="checkbox"
+                              checked={slot.stepOn}
+                              onChange={(e) => set({ stepOn: e.target.checked })}
+                            />
+                            {' baffle step back in'}
+                          </label>
+                          {nfMax !== null && (
+                            <span className="derived">
+                              near field valid below ≈ {Math.round(nfMax)} Hz (ka = 1)
+                              {cabinetInfo.reliable
+                                ? ` · far field above ≈ ${Math.round(cabinetInfo.reliable.fromHz)} Hz`
+                                : ' · enter the mic distance and reference height for the far-field limit'}
+                            </span>
+                          )}
+                          {rep && (
+                            <span className={`derived${rep.ok ? '' : ' alert'}`}>{rep.report}</span>
+                          )}
+                        </>
+                      )}
+                    </div>
+                  );
+                })}
               <label title="Optional: import a VituixCAD project to simulate Stefan's crossover variants. Select the .vxp together with its .ZMA and response .txt files.">
                 VituixCAD project (.vxp + .ZMA + response .txt — select together)
                 <input

@@ -148,6 +148,38 @@ minimum phase reconstrueert. Voertaal met Sander: **Nederlands**; code/comments 
   leren hetzelfde met de hand). UI-les onderweg: de globale `label`-regel is een KOLOM, dus een
   slider-rij moet expliciet `flex-direction: row` zeggen of de range-input wordt tot volle
   labelhoogte uitgerekt (192 px).
+- `nearField.ts` — **de laag-eind-merge (aug 2026, Sanders "merge maar")**. Bestaansreden staat
+  in de cijfers: een gepoorte binnenmeting is pas eerlijk boven `f = 1/t_gate` (binnenshuis
+  200–290 Hz) en een 3-weg kruist woofer-mid op 300–500 Hz — precies het gebied dat het meeste
+  zorg vraagt is het gebied waar de verre-veldmeting ophoudt. Klippel stelt het als regel: de
+  kruising MOET boven de splice-frequentie liggen.
+  Fysica, alledrie gepubliceerd en onderling gecontroleerd: bovengrens nabij-veld `f = c/(2πa)`
+  (ka = 1) — Klippel schrijft hem als 5475/a[cm], Keele als 4311/D[inch], en die twee zijn
+  ALGEBRAÏSCH dezelfde formule (4311/(2/2,54) = 5475,0), een prettige kruisvalidatie uit twee
+  onafhankelijke lijnen; schaling naar het verre veld `a/(2r)` (ARTA AN4, halve ruimte);
+  meerdere stralers via Keele's diameter-gewogen COMPLEXE som (poort telt mee met
+  `D_poort/D_conus` — onder de afstemming trekken ze elkaar grotendeels af, wat een
+  magnitude-som niet kán weergeven).
+  **Wat hier ANDERS is dan bij een magnitude-tool**: deze app somt gemeten fase, dus een splice
+  die alleen niveaus matcht plant een onbekende delay-stap precies op de woofer-mid-kruising.
+  `mergeNearFar` fit daarom eerst NIVEAU (mediaan over de blend — mean wordt getrokken door de
+  afwijking die je meet, dezelfde doctrine als responseStats) én een PURE DELAY (kleinste
+  kwadraten op het ge-unwrapte fase-VERSCHIL, exact de vorm uit verification.ts), en crossfade
+  pas daarna — in het COMPLEXE domein, want magnitude en fase apart faden verzint een respons
+  die geen van beide helften heeft. Alles wordt gerapporteerd: niveau, delay, residu, en een
+  offset rond 180° leest als "nabij-veld omgekeerd aangesloten" i.p.v. stil gecorrigeerd.
+  **Baffle step** is een instelbare shelf, geen diffractiemodel: een nabij-veldmeting is overal
+  halve ruimte terwijl een echte kast onderin tot 6 dB verliest, maar de gepubliceerde formules
+  verschillen onderling ~3× en de meting is het met geen van alle eens (de afstand tot elke rand
+  telt zwaarder dan de breedte). Een knop die de ontwerper ziet en zet is beter dan een model dat
+  gezaghebbend oogt en het niet is. `checkTransition` weigert een splice buiten één van beide
+  grenzen, en zegt het apart als er ÜBERHAUPT geen eerlijke splice bestaat ("meet verder weg,
+  hoger, of buiten") — dat is een meetprobleem, geen knop om aan te draaien.
+  App: slot per tak (conus + optioneel poort) op de Import-tab, en de merge gebeurt AAN DE BRON
+  (`merged`-memo → `effective()`), zodat grid, sim, optimizer, charts en scores één respons zien
+  en niets hoeft te weten van waar het laag vandaan komt. Zelfcontrole in de browser: dezelfde
+  meting als nabij-veld laden geeft delay 0 µs en residu 0,0°, en het niveau precies de
+  `a/2r`-schaling terug.
 - `cabinet.ts` — **kastgeometrie + meetcontext (aug 2026, Sanders "meer invoervelden voor een
   beter beeld")**. De app LEIDDE af wat de ontwerper gewoon WEET; elke "het zou dit kunnen zijn,
   of dat" van die dag kwam door een ontbrekend getal. Twee regels houden het beheersbaar:
