@@ -37,6 +37,20 @@ import {
   type KaTier,
 } from './lib/driverLimits.ts';
 import {
+  baffleStepHz,
+  boxRolloff,
+  centreToCentreMm,
+  farFieldVerdict,
+  listeningAngleDeg,
+  nearestEdgeMm,
+  pistonDiameterMm,
+  rotationLevelOffsetDb,
+  trueOffAxisDeg,
+  unloadingRisk,
+  type DriverPlacement,
+  type Enclosure,
+} from './lib/cabinet.ts';
+import {
   mergeSynthesizedSchematics,
   nextPartId,
   normalizeOrigin,
@@ -103,6 +117,7 @@ import {
   serializeProject,
   deserializeProject,
   type NetworkDesign,
+  type ProjectDesign,
   type ProjectState,
   type StoredFile,
 } from './lib/project.ts';
@@ -464,6 +479,88 @@ function filterSummaryLine(spec: DriverFilterSpec, side: 'woofer' | 'mid' | 'twe
   const nEq = spec.eq.filter((b) => b.enabled).length;
   if (nEq > 0) parts.push(`${nEq} EQ`);
   return `${name}: ${parts.length > 0 ? parts.join(', ') : 'flat'}`;
+}
+
+/** Cabinet geometry + measurement context, as typed (strings so a field can be
+ *  empty; every consumer treats absent as "criterion does not apply"). */
+interface CabinetDriver {
+  /** Offset from the measurement reference point, mm. +x right, +y up. */
+  xMm: string;
+  yMm: string;
+  enclosure: Enclosure;
+  /** Box corner: Fc for sealed, Fb for ported. */
+  fbHz: string;
+}
+interface CabinetState {
+  /** Microphone distance during the FRD sweeps, mm. */
+  micDistanceMm: string;
+  baffleWidthMm: string;
+  baffleHeightMm: string;
+  /** How far below the top of the baffle the reference point sits, mm. */
+  refFromTopMm: string;
+  /** Height of the reference point above the floor, mm. */
+  refHeightMm: string;
+  listenDistanceM: string;
+  listenEarHeightMm: string;
+  drivers: Record<BranchRole, CabinetDriver>;
+}
+const emptyCabinetDriver = (): CabinetDriver => ({
+  xMm: '',
+  yMm: '',
+  enclosure: 'unknown',
+  fbHz: '',
+});
+const emptyCabinet = (): CabinetState => ({
+  micDistanceMm: '',
+  baffleWidthMm: '',
+  baffleHeightMm: '',
+  refFromTopMm: '',
+  refHeightMm: '',
+  listenDistanceM: '',
+  listenEarHeightMm: '',
+  drivers: { low: emptyCabinetDriver(), mid: emptyCabinetDriver(), high: emptyCabinetDriver() },
+});
+/** Restore a cabinet block from a project/autosave, filling every gap with the
+ *  empty default — an older file simply has no geometry, and that must read as
+ *  "not entered", never as a zero position at the reference point. */
+function mergeCabinet(raw: ProjectDesign['cabinet']): CabinetState {
+  const base = emptyCabinet();
+  if (!raw) return base;
+  const roles: BranchRole[] = ['low', 'mid', 'high'];
+  const drivers = { ...base.drivers };
+  for (const r of roles) {
+    const d = raw.drivers?.[r];
+    if (!d) continue;
+    const enc = d.enclosure;
+    drivers[r] = {
+      xMm: d.xMm ?? '',
+      yMm: d.yMm ?? '',
+      enclosure:
+        enc === 'sealed' || enc === 'ported' || enc === 'open' ? (enc as Enclosure) : 'unknown',
+      fbHz: d.fbHz ?? '',
+    };
+  }
+  return {
+    micDistanceMm: raw.micDistanceMm ?? '',
+    baffleWidthMm: raw.baffleWidthMm ?? '',
+    baffleHeightMm: raw.baffleHeightMm ?? '',
+    refFromTopMm: raw.refFromTopMm ?? '',
+    refHeightMm: raw.refHeightMm ?? '',
+    listenDistanceM: raw.listenDistanceM ?? '',
+    listenEarHeightMm: raw.listenEarHeightMm ?? '',
+    drivers,
+  };
+}
+
+/** A driver's placement, or null when it has not been entered. Both numbers
+ *  must be present — half a position is not a position. */
+function placementOf(d: CabinetDriver): DriverPlacement | null {
+  const x = Number(d.xMm);
+  const y = Number(d.yMm);
+  if (d.xMm.trim() === '' || d.yMm.trim() === '' || !Number.isFinite(x) || !Number.isFinite(y)) {
+    return null;
+  }
+  return { xMm: x, yMm: y };
 }
 
 /**
@@ -962,11 +1059,18 @@ export default function App() {
    *  3-way set the tight tiers fire on baffle diffraction and declare an
    *  ordinary design impossible (see KA_TIERS). */
   const [kaTier, setKaTier] = useState<KaTier>('measured');
-  /** Acoustic centre-to-centre spacing per adjacent pair (mm). Pure geometry,
-   *  no measurement — and the constraint that actually explains why 3-ways
-   *  cross where they do. '' = unknown, rule not applied. */
-  const [ctcLowMm, setCtcLowMm] = useState('');
-  const [ctcHighMm, setCtcHighMm] = useState('');
+  /**
+   * Cabinet geometry + measurement context — the facts the designer KNOWS and
+   * the app would otherwise infer. One object rather than fifteen useStates:
+   * it is one thing conceptually, and it persists as one field.
+   *
+   * Driver positions are relative to the MEASUREMENT REFERENCE POINT (where the
+   * mic was aimed / the turntable axis), +x right and +y up. Centre-to-centre
+   * per pair is DERIVED from these — asking for it separately would be the same
+   * fact typed twice, and positions additionally reveal which driver was
+   * off-axis during the sweep.
+   */
+  const [cabinet, setCabinet] = useState<CabinetState>(() => emptyCabinet());
   /** How much spacing the design tolerates, in wavelengths. Genuinely
    *  contested (0.5 = no forward null … 1.2 = Saunisto's power-response
    *  optimum, which ACCEPTS a ±25° null), so the designer owns it. */
@@ -2192,6 +2296,80 @@ export default function App() {
    * derives itself — measured on Robbert: W-M [353…631], M-T [1310…7000
    * (mid beams at 8022)], exactly the hand-derived advice. Also carries the
    * banded angle sets that arm the in-room weight. */
+  /**
+   * Everything the entered geometry lets us SAY, in one place.
+   *
+   * The rule that keeps this from becoming a form nobody fills in: each field
+   * has to change a number the app shows. Positions give centre-to-centre and
+   * the true measurement angles; distance gives the far-field verdict; the
+   * enclosure gives the acoustic order the box already provides. Nothing here
+   * touches measured data — it bounds windows, cross-checks and warns.
+   */
+  const cabinetInfo = useMemo(() => {
+    const micMm = Number(cabinet.micDistanceMm);
+    const place = {
+      low: placementOf(cabinet.drivers.low),
+      mid: placementOf(cabinet.drivers.mid),
+      high: placementOf(cabinet.drivers.high),
+    };
+    const angleListOf = (role: BranchRole): number[] => {
+      const set =
+        role === 'low' ? angleSets?.woofer : role === 'mid' ? angleSets?.mid : angleSets?.tweeter;
+      return set ? [...new Set(set.map((a) => a.hor))].sort((a, b) => a - b) : [];
+    };
+    /** What a nominal sweep REALLY captured for this driver. Null unless both
+     *  a position and a mic distance are known. */
+    const trueAngles = (role: BranchRole) => {
+      const p = place[role];
+      if (!p || !(micMm > 0)) return null;
+      const list = angleListOf(role);
+      if (list.length === 0) return null;
+      return list.map((nominal) => ({
+        nominal,
+        actual: trueOffAxisDeg(p, micMm, nominal),
+        levelDb: rotationLevelOffsetDb(p, micMm, nominal),
+      }));
+    };
+    const diaOf = (role: BranchRole) => pistonDiameterMm(Number(sdCm2[role]));
+    const biggestDriverMm = Math.max(
+      ...(['low', 'mid', 'high'] as BranchRole[]).map((r) => diaOf(r) ?? 0),
+    );
+    const baffleW = Number(cabinet.baffleWidthMm);
+    const farField = farFieldVerdict(micMm, {
+      driverDiameterMm: biggestDriverMm,
+      baffleWidthMm: baffleW > 0 ? baffleW : undefined,
+    });
+    const ctc = (a: BranchRole, b: BranchRole) =>
+      place[a] && place[b] ? centreToCentreMm(place[a]!, place[b]!) : null;
+    const baffle =
+      baffleW > 0 && Number(cabinet.baffleHeightMm) > 0
+        ? {
+            widthMm: baffleW,
+            heightMm: Number(cabinet.baffleHeightMm),
+            refFromTopMm: Number(cabinet.refFromTopMm) || 0,
+          }
+        : null;
+    return {
+      place,
+      trueAngles,
+      diaOf,
+      farField,
+      /** Adjacent-pair spacing. In 2-way the single pair is low↔high. */
+      ctcLow: threeWay ? ctc('low', 'mid') : ctc('low', 'high'),
+      ctcHigh: threeWay ? ctc('mid', 'high') : null,
+      baffleStep: baffleStepHz(baffleW),
+      edgeOf: (role: BranchRole) =>
+        place[role] && baffle ? nearestEdgeMm(place[role]!, baffle) : null,
+      listenAngle: listeningAngleDeg(
+        Number(cabinet.refHeightMm),
+        Number(cabinet.listenEarHeightMm),
+        Number(cabinet.listenDistanceM),
+      ),
+      boxOf: (role: BranchRole) => boxRolloff(cabinet.drivers[role].enclosure),
+      unloadOf: (role: BranchRole) => unloadingRisk(cabinet.drivers[role].enclosure),
+    };
+  }, [cabinet, sdCm2, angleSets, threeWay]);
+
   const physWin3 = useMemo(() => {
     if (!threeWay || !sim?.mid || !result || !sim.base.m) return null;
     const grid = result.freq;
@@ -2216,8 +2394,8 @@ export default function App() {
     const mBeam = angleSets ? beamingCeilingHz(angleSets.mid, kaThr) : null;
     // Vertical lobing from centre-to-centre spacing — geometry, no measurement.
     const kk = Number(ctcK) > 0 ? Number(ctcK) : 0.5;
-    const wLobe = lobingCeilingHz(Number(ctcLowMm), kk);
-    const mLobe = lobingCeilingHz(Number(ctcHighMm), kk);
+    const wLobe = lobingCeilingHz(cabinetInfo.ctcLow ?? 0, kk);
+    const mLobe = lobingCeilingHz(cabinetInfo.ctcHigh ?? 0, kk);
     // Cone breakup: a resonance at f_b is excited as the Nth harmonic of f_b/N,
     // so the penalty lands more than an octave BELOW the peak.
     const harm = Number(breakupHarmonic) > 0 ? Number(breakupHarmonic) : 3;
@@ -2270,7 +2448,7 @@ export default function App() {
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [threeWay, sim, result, phaseMode, angleSets, midHpFloor, wooferXoCeiling, midXoCeiling,
-      tweeterHpFloor, kaTier, ctcLowMm, ctcHighMm, ctcK, breakupLimitOn, breakupHarmonic,
+      tweeterHpFloor, kaTier, cabinetInfo, ctcK, breakupLimitOn, breakupHarmonic,
       sdCm2, xmaxMm, excursionSpl, impedances]);
 
   /** Per-adjacent-pair integration + phase flatness (3-way only). Silent
@@ -2622,8 +2800,7 @@ export default function App() {
         midSizeInch,
         wooferSizeInch,
         kaTier,
-        ctcLowMm,
-        ctcHighMm,
+        cabinet,
         ctcK,
         breakupLimitOn,
         breakupHarmonic,
@@ -2762,8 +2939,7 @@ export default function App() {
     setMidSizeInch(d.midSizeInch ?? '');
     setWooferSizeInch(d.wooferSizeInch ?? '');
     setKaTier((d.kaTier as KaTier) in KA_TIERS ? (d.kaTier as KaTier) : 'measured');
-    setCtcLowMm(d.ctcLowMm ?? '');
-    setCtcHighMm(d.ctcHighMm ?? '');
+    setCabinet(mergeCabinet(d.cabinet));
     setCtcK(d.ctcK ?? '0.5');
     setBreakupLimitOn(d.breakupLimitOn ?? true);
     setBreakupHarmonic(d.breakupHarmonic ?? '3');
@@ -2853,7 +3029,7 @@ export default function App() {
     }, 800);
     return () => clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [woofer, midDrv, tweeter, project, zStandalone, angleSets, fileNotes, verify, vFilters, xoName, offsetMm, trimDb, inverted, midOffsetMm, midTrimDb, midInverted, fMin, fMax, splMin, splMax, phasePriority, vfEqBands, phaseMode, dirWeight, ampTarget, sonogramMode, designs, activeDesignId, lastSavedId, networkActive, vfBypass, catalogSnap, breakupGuard, xoRangeOn, xoFreqHz, xoMarginHz, xoScanSteps, xo3Steps, hpLpPref, hpLpPrefLow, phaseMetricMode, acSlopeMid, acSlopeTweeter, acSlopeWoofer, acSlopeMidHp, xoLowFreqHz, xoLowMarginHz, midSizeInch, wooferSizeInch, kaTier, ctcLowMm, ctcHighMm, ctcK, breakupLimitOn, breakupHarmonic, sdCm2, xmaxMm, excursionSpl, snapProfile, snapSeriesL, snapSeriesC, snapSeriesR, snapStacks, snapBoundToSeries, stagedOn, targetRipple, targetPhase, soloSensDb, soloFloorOn, soloFloorDb]);
+  }, [woofer, midDrv, tweeter, project, zStandalone, angleSets, fileNotes, verify, vFilters, xoName, offsetMm, trimDb, inverted, midOffsetMm, midTrimDb, midInverted, fMin, fMax, splMin, splMax, phasePriority, vfEqBands, phaseMode, dirWeight, ampTarget, sonogramMode, designs, activeDesignId, lastSavedId, networkActive, vfBypass, catalogSnap, breakupGuard, xoRangeOn, xoFreqHz, xoMarginHz, xoScanSteps, xo3Steps, hpLpPref, hpLpPrefLow, phaseMetricMode, acSlopeMid, acSlopeTweeter, acSlopeWoofer, acSlopeMidHp, xoLowFreqHz, xoLowMarginHz, midSizeInch, wooferSizeInch, kaTier, cabinet, ctcK, breakupLimitOn, breakupHarmonic, sdCm2, xmaxMm, excursionSpl, snapProfile, snapSeriesL, snapSeriesC, snapSeriesR, snapStacks, snapBoundToSeries, stagedOn, targetRipple, targetPhase, soloSensDb, soloFloorOn, soloFloorDb]);
 
   function resetProject() {
     localStorage.removeItem(AUTOSAVE_KEY);
@@ -6783,6 +6959,217 @@ export default function App() {
               </label>
             </fieldset>
             <fieldset>
+              <legend>
+                Cabinet &amp; drivers
+                <span className="derived">
+                  {' '}
+                  — what you know, so the app stops guessing
+                </span>
+              </legend>
+              <label title="Microphone distance during the FRD sweeps. This is what decides whether the angle files mean what they say: at close range a driver sitting well below the mic is already far off ITS OWN axis at nominal 0°, which exaggerates every off-axis difference and makes a woofer look like it beams far too low.">
+                Mic distance (mm)
+                <input
+                  type="number"
+                  min={0}
+                  step={50}
+                  value={cabinet.micDistanceMm}
+                  onChange={(e) => setCabinet((c) => ({ ...c, micDistanceMm: e.target.value }))}
+                />
+              </label>
+              {cabinetInfo.farField && (
+                <span className={`derived${cabinetInfo.farField.ok ? '' : ' alert'}`}>
+                  {cabinetInfo.farField.ok
+                    ? `far field ok — ${cabinetInfo.farField.ratio.toFixed(1)}× the source`
+                    : `only ${cabinetInfo.farField.ratio.toFixed(1)}× the source (${Math.round(
+                        cabinetInfo.farField.sourceMm,
+                      )} mm) — treat directivity as indicative`}
+                </span>
+              )}
+              <label title="Baffle width. Reported only, never applied: a properly measured on-baffle response already contains the baffle step, so subtracting it again would count it twice. Useful for reading a response — that broad tilt is the cabinet, not the driver.">
+                Baffle W (mm)
+                <input
+                  type="number"
+                  min={0}
+                  step={10}
+                  value={cabinet.baffleWidthMm}
+                  onChange={(e) => setCabinet((c) => ({ ...c, baffleWidthMm: e.target.value }))}
+                />
+              </label>
+              <label title="Baffle height — with the reference offset below it, this gives each driver's distance to the nearest edge, which is what actually shapes diffraction (more than the width does).">
+                Baffle H (mm)
+                <input
+                  type="number"
+                  min={0}
+                  step={10}
+                  value={cabinet.baffleHeightMm}
+                  onChange={(e) => setCabinet((c) => ({ ...c, baffleHeightMm: e.target.value }))}
+                />
+              </label>
+              <label title="How far below the TOP of the baffle the measurement reference point sits — the point the mic was aimed at and, on a turntable, the rotation axis. Everything else is measured relative to it.">
+                Ref below top (mm)
+                <input
+                  type="number"
+                  min={0}
+                  step={10}
+                  value={cabinet.refFromTopMm}
+                  onChange={(e) => setCabinet((c) => ({ ...c, refFromTopMm: e.target.value }))}
+                />
+              </label>
+              {cabinetInfo.baffleStep && (
+                <span className="derived">
+                  baffle step ≈ {Math.round(cabinetInfo.baffleStep)} Hz (already in your measurement)
+                </span>
+              )}
+              <label title="Height of the reference point above the floor, and the listener's ear height and distance. Together they say at what vertical angle you actually sit — which is what turns a driver-spacing rule into a decision: a null at ±25° is harmless if you sit 2° off the axis.">
+                Ref height (mm)
+                <input
+                  type="number"
+                  min={0}
+                  step={10}
+                  value={cabinet.refHeightMm}
+                  onChange={(e) => setCabinet((c) => ({ ...c, refHeightMm: e.target.value }))}
+                />
+              </label>
+              <label title="Listening distance, metres.">
+                Listen (m)
+                <input
+                  type="number"
+                  min={0}
+                  step={0.1}
+                  value={cabinet.listenDistanceM}
+                  onChange={(e) => setCabinet((c) => ({ ...c, listenDistanceM: e.target.value }))}
+                />
+              </label>
+              <label title="Ear height above the floor, mm.">
+                Ear height (mm)
+                <input
+                  type="number"
+                  min={0}
+                  step={10}
+                  value={cabinet.listenEarHeightMm}
+                  onChange={(e) => setCabinet((c) => ({ ...c, listenEarHeightMm: e.target.value }))}
+                />
+              </label>
+              {cabinetInfo.listenAngle !== null && (
+                <span className="derived">
+                  you sit {Math.abs(cabinetInfo.listenAngle).toFixed(1)}°{' '}
+                  {cabinetInfo.listenAngle >= 0 ? 'below' : 'above'} the reference axis
+                </span>
+              )}
+              {(
+                [
+                  ['low', hasMidBranch ? 'Woofer' : 'Woofer / mid', woofer],
+                  ['mid', 'Midrange', midDrv],
+                  ['high', 'Tweeter', tweeter],
+                ] as [BranchRole, string, unknown][]
+              )
+                .filter(([, , loaded]) => !!loaded)
+                .map(([role, title]) => {
+                  const d = cabinet.drivers[role];
+                  const set = (patch: Partial<CabinetDriver>) =>
+                    setCabinet((c) => ({
+                      ...c,
+                      drivers: { ...c.drivers, [role]: { ...c.drivers[role], ...patch } },
+                    }));
+                  const angles = cabinetInfo.trueAngles(role);
+                  const box = cabinetInfo.boxOf(role);
+                  const edge = cabinetInfo.edgeOf(role);
+                  const dia = cabinetInfo.diaOf(role);
+                  return (
+                    <div key={role} className="cabinet-driver">
+                      <strong>{title}</strong>
+                      <span
+                        className="inline-num"
+                        title="Position of this driver's centre relative to the measurement reference point: x to the right, y UP (so a driver below the reference has a negative y). Centre-to-centre spacing per pair — and with it the vertical-lobing ceiling — is derived from these, so you never type the same fact twice."
+                      >
+                        {'x '}
+                        <input
+                          type="number"
+                          step={5}
+                          value={d.xMm}
+                          onChange={(e) => set({ xMm: e.target.value })}
+                        />
+                        {' y '}
+                        <input
+                          type="number"
+                          step={5}
+                          value={d.yMm}
+                          onChange={(e) => set({ yMm: e.target.value })}
+                        />
+                        {' mm'}
+                      </span>
+                      <label title="Enclosure behind THIS driver. A sealed box is already a 2nd-order acoustic high-pass at its corner, so a 2nd-order electrical filter yields a 4th-order acoustic slope — on a low crossover that is the difference between one ~30 µF capacitor and a pair adding to ~90 µF. A port also means the box can radiate its own midrange through a pipe resonance.">
+                        Box
+                        <select
+                          value={d.enclosure}
+                          onChange={(e) => set({ enclosure: e.target.value as Enclosure })}
+                        >
+                          <option value="unknown">unknown</option>
+                          <option value="sealed">sealed</option>
+                          <option value="ported">ported</option>
+                          <option value="open">open / dipole</option>
+                        </select>
+                      </label>
+                      {d.enclosure !== 'unknown' && d.enclosure !== 'open' && (
+                        <label title="Box corner frequency: Fc for a sealed box, Fb for a ported one.">
+                          {d.enclosure === 'ported' ? 'Fb (Hz)' : 'Fc (Hz)'}
+                          <input
+                            type="number"
+                            min={0}
+                            step={1}
+                            value={d.fbHz}
+                            onChange={(e) => set({ fbHz: e.target.value })}
+                          />
+                        </label>
+                      )}
+                      <span
+                        className="inline-num"
+                        title="Cone area and linear excursion from the datasheet. Sd gives the effective piston diameter (the honest one for every beaming rule — nominal size includes a surround that does not radiate); Sd and Xmax together give the level-aware excursion floor."
+                      >
+                        {'Sd '}
+                        <input
+                          type="number"
+                          min={0}
+                          step={1}
+                          value={sdCm2[role]}
+                          onChange={(e) => setSdCm2((q) => ({ ...q, [role]: e.target.value }))}
+                        />
+                        {' cm² Xmax '}
+                        <input
+                          type="number"
+                          min={0}
+                          step={0.1}
+                          value={xmaxMm[role]}
+                          onChange={(e) => setXmaxMm((q) => ({ ...q, [role]: e.target.value }))}
+                        />
+                        {' mm'}
+                      </span>
+                      {dia && (
+                        <span className="derived">effective Ø {Math.round(dia)} mm</span>
+                      )}
+                      {angles && (
+                        <span className="derived">
+                          your sweep really covers{' '}
+                          {angles
+                            .map((a) => `${a.nominal}°→${a.actual!.toFixed(0)}°`)
+                            .join(', ')}
+                        </span>
+                      )}
+                      {box.note && <span className="derived">{box.note}</span>}
+                      {cabinetInfo.unloadOf(role) === 'high' && (
+                        <span className="derived alert">
+                          ported: excursion runs away below Fb — worth a steeper electrical
+                          high-pass than a sealed box would need
+                        </span>
+                      )}
+                      {edge !== null && (
+                        <span className="derived">nearest baffle edge {Math.round(edge)} mm</span>
+                      )}
+                    </div>
+                  );
+                })}
+            </fieldset>
+            <fieldset>
               <legend>Driver phase</legend>
               <label title="Measured = the real measured phase incl. the true inter-driver time offset — the whole point of this tool. Minimum phase = reconstructed from magnitude (offsets discarded), only for apples-to-apples VituixCAD comparison.">
                 Convention
@@ -7417,33 +7804,28 @@ export default function App() {
                 {threeWay && (
                   <span
                     className="inline-num"
-                    title="Acoustic centre-to-centre spacing per adjacent pair (mm). Pure geometry — no measurement — and the constraint that actually explains why 3-ways cross at 200–500 Hz: the woofer and mid are the farthest-apart pair. A forward null can only exist once the spacing reaches half a wavelength. Leave empty to skip the rule."
+                    title="How many wavelengths of DRIVER SPACING the design tolerates. The spacing itself is derived from the driver positions you enter under Setup → Cabinet & drivers; two drivers half a wavelength apart already put a null in the vertical response. The sources genuinely disagree here and they optimise different things, so this is the designer's call."
                   >
-                    {'c-t-c W-M '}
-                    <input
-                      type="number"
-                      min={0}
-                      max={800}
-                      step={5}
-                      value={ctcLowMm}
-                      onChange={(e) => setCtcLowMm(e.target.value)}
-                    />
-                    {' M-T '}
-                    <input
-                      type="number"
-                      min={0}
-                      max={800}
-                      step={5}
-                      value={ctcHighMm}
-                      onChange={(e) => setCtcHighMm(e.target.value)}
-                    />
-                    {' mm, k '}
+                    {'Lobing k '}
                     <select value={ctcK} onChange={(e) => setCtcK(e.target.value)}>
                       <option value="0.25">0.25 — point source</option>
                       <option value="0.5">0.5 — no forward null</option>
                       <option value="1">1.0 — Dickason</option>
                       <option value="1.2">1.2 — Saunisto (power response)</option>
                     </select>
+                    {cabinetInfo.ctcLow !== null || cabinetInfo.ctcHigh !== null ? (
+                      <span className="derived">
+                        {' '}
+                        c-t-c{' '}
+                        {cabinetInfo.ctcLow !== null ? `W-M ${Math.round(cabinetInfo.ctcLow)}` : ''}
+                        {cabinetInfo.ctcHigh !== null
+                          ? ` · M-T ${Math.round(cabinetInfo.ctcHigh)}`
+                          : ''}{' '}
+                        mm
+                      </span>
+                    ) : (
+                      <span className="derived"> — enter driver positions to apply</span>
+                    )}
                   </span>
                 )}
                 {threeWay && (

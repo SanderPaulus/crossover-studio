@@ -2237,3 +2237,22 @@ button:disabled {
   border-color: var(--accent);
   font-weight: 600;
 }
+
+/* Cabinet & drivers: one block per loaded driver inside the Setup fieldset.
+   Indented and rule-marked so a column of x/y/Sd fields reads as belonging to
+   its driver rather than to the cabinet above it. */
+.cabinet-driver {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem 0.7rem;
+  width: 100%;
+  padding: 0.35rem 0 0.35rem 0.6rem;
+  border-left: 2px solid var(--border);
+}
+.cabinet-driver > strong {
+  min-width: 6.5rem;
+}
+.cabinet-driver .derived {
+  flex-basis: 100%;
+}

@@ -44,6 +44,13 @@ Volgorde binnen een blok = aanbevolen prioriteit. Inschattingen zijn grof:
   Plus **🔬 Compare wizard** (Import-tab): dezelfde lus als begeleide
   checklist — vier stappen die live app-state lezen, meting laden kan ín de
   wizard, verdict met de cijfers als slotstap
+- **Cabinet & drivers-invoer** (aug 2026, `cabinet.ts` + Setup-tab): driverposities,
+  meetafstand, baffle, kasttype per driver, Sd/Xmax en luisterpositie. Regel:
+  een veld mag er alleen in als het een getal verandert dat de app toont, en
+  het voedt vensters/waarschuwingen — nooit de meetdata. Grootste opbrengst:
+  de app rekent uit welke hoek een meting ECHT heeft vastgelegd (Sanders woofer
+  bleek 37°→46° te dekken in plaats van 0°→30°) en meldt of de meetafstand
+  überhaupt ver-veld was.
 - **Driver-limieten uit de meting** (aug 2026, `driverLimits.ts`): waar een driver
   ophoudt, volgt nu uit de data i.p.v. uit een vuistregel. Breakup → kruis op
   f_b/3 (harmonische afbeelding, door Purifi gemeten); bundeling geijkt op ka

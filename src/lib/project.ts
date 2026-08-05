@@ -126,11 +126,26 @@ export interface ProjectDesign {
   wooferSizeInch?: string;
   /** Directivity philosophy for the measured beaming ceiling (ka tier). */
   kaTier?: string;
-  /** Acoustic centre-to-centre spacing per adjacent pair (mm), '' = unknown,
-   *  and how many wavelengths of it the design tolerates. */
-  ctcLowMm?: string;
-  ctcHighMm?: string;
+  /** How many wavelengths of driver spacing the design tolerates. */
   ctcK?: string;
+  /**
+   * Cabinet geometry + measurement context: driver positions relative to the
+   * measurement reference point, mic distance, baffle size, enclosure per
+   * driver, listening position. All strings ('' = not entered); every consumer
+   * treats absent as "this criterion does not apply".
+   */
+  cabinet?: {
+    micDistanceMm?: string;
+    baffleWidthMm?: string;
+    baffleHeightMm?: string;
+    refFromTopMm?: string;
+    refHeightMm?: string;
+    listenDistanceM?: string;
+    listenEarHeightMm?: string;
+    drivers?: Partial<
+      Record<'low' | 'mid' | 'high', { xMm?: string; yMm?: string; enclosure?: string; fbHz?: string }>
+    >;
+  };
   /** Cone-breakup upper limit: off, or cross at f_b / harmonic. */
   breakupLimitOn?: boolean;
   breakupHarmonic?: string;

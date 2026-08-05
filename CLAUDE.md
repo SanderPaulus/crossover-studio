@@ -132,6 +132,38 @@ minimum phase reconstrueert. Voertaal met Sander: **Nederlands**; code/comments 
 - `network.ts` — MNA-solver (complexe admittantie, Norton-bron, gemeten Z als driver-load).
   Elke solve levert ook `inputZ`: de systeem-ingangsimpedantie aan de generatorklemmen
   (excl. Rg) — de versterker-belastingscurve, voedt het Impedance-paneel
+- `cabinet.ts` — **kastgeometrie + meetcontext (aug 2026, Sanders "meer invoervelden voor een
+  beter beeld")**. De app LEIDDE af wat de ontwerper gewoon WEET; elke "het zou dit kunnen zijn,
+  of dat" van die dag kwam door een ontbrekend getal. Twee regels houden het beheersbaar:
+  **(1) een veld mag er alleen in als het een getal verandert dat de app toont** (geen
+  documentatie-velden), en **(2) deze velden voeden vensters, waarschuwingen en kruiscontroles —
+  nooit de meetdata zelf**, anders modelleer je waar je meet.
+  Coördinaten: baffle-vlak, oorsprong op het MEETREFERENTIEPUNT (waar de mic op gericht stond /
+  de draai-as), +x rechts, +y omhoog, mm.
+  **`trueOffAxisDeg` is de belangrijkste functie van het bestand.** Een horizontale draaitafel
+  levert "0°/10°/20°/30°" van de KAST, niet van elke driver. Met de mic op afstand R en de kast
+  θ gedraaid staat de mic op (R·sinθ, 0, R·cosθ); een driver op (x, y, 0) kijkt langs +z, dus
+  cos φ = R·cosθ / |(R·sinθ−x, −y, R·cosθ)|. GEMETEN op Sanders eigen set (woofer 380 mm onder
+  het referentiepunt, mic op 500 mm): zijn sweep dekt in werkelijkheid **37°→46°**, niet 0°→30° —
+  de "0°"-curve staat al 37° van de wooferas af. Omdat directiviteit vlak begint en verderop
+  steil wordt, is een 37→46-verschil veel groter dan een echte 0→30; **dát is waarom die woofer
+  vanaf 300 Hz leek te bundelen**. De tweeter, die op het referentiepunt zit, geeft keurig
+  0°→0°…30°→30° — de rekenkunde controleert zichzelf. Op 1,5 m zou dezelfde woofer 9,5°→31°
+  dekken.
+  `rotationLevelOffsetDb`: het niveauverschil dat puur uit de rig-geometrie komt. NUL voor een
+  driver recht boven/onder een verticale draai-as (draaien verandert die afstand niet), en
+  alleen zichtbaar bij een HORIZONTAAL verschoven driver — daarom is een constante
+  laagfrequente offset tussen hoekcurves een aanwijzing over de opstelling, niet over de driver.
+  Verder: `farFieldVerdict` (afstand/bronmaat, werkregel ≥3× — Sanders 50 cm op een 300 mm-front
+  is 1,7×), `pistonDiameterMm` (uit Sd; de eerlijke diameter voor élke ka-regel),
+  `centreToCentreMm` (AFGELEID uit posities — hetzelfde feit twee keer intypen is precies wat we
+  niet doen; verving twee handmatige velden van dezelfde dag), `baffleStepHz` (alleen gemeld:
+  een on-baffle-meting bevat de step al, nog eens aftrekken telt dubbel), `nearestEdgeMm`,
+  `listeningAngleDeg` (maakt van een afstandsregel een uitspraak over jouw kamer: een nul op
+  ±25° is onschadelijk als je 2° van de as zit) en `boxRolloff`/`unloadingRisk` — een gesloten
+  kast ÍS al een 2e-orde hoogdoorlaat, dus LR2 elektrisch geeft LR4 akoestisch, precies de
+  hefboom waarmee die 88 µF ~30 µF wordt; een poort betekent bovendien dat de kast zélf midden
+  kan uitstralen.
 - `driverLimits.ts` — **"welke frequenties redt deze driver niet" (aug 2026, Sanders
   onderzoeksvraag)**. Er is GEEN enkele regel voor een kruispunt; er is een stapel
   onafhankelijke ongelijkheden en het ontwerpvenster is hun doorsnede. Alles hier staat op
