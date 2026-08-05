@@ -3511,24 +3511,30 @@ export default function App() {
             crossings(r) +
             (r.bomTotalEur !== null ? ` · €${Math.round(r.bomTotalEur)}` : '') +
             (r.zOk ? '' : ' · ⚠ amp-load');
+          // ONE LINE PER FACT. This was a single run-on sentence of ~600
+          // characters carrying the winner, every loser, prices and warnings;
+          // the reader had to parse prose to find the one ⚠ that mattered.
+          // NB the 3-way path sets chainScan to null, so unlike the 2-way scan
+          // there is no results table — nothing may be dropped here, only
+          // structured.
+          const waarschuwingen = [
+            win.xoPinNote ? `⚠ PIN: ${win.xoPinNote}` : '',
+            win.net.snapNote ?? '',
+            win.net.safetyNote ? `⚠ ${win.net.safetyNote}` : '',
+            win.net.ampFloorNote ? `⚠ ${win.net.ampFloorNote}` : '',
+          ].filter(Boolean);
           setNetOptNote(
-            `3-way scan (${variants.length} candidate${variants.length > 1 ? 's' : ''}, ` +
-              `alignment × polarity design step, two-pair tune) — winner ` +
-              `xo ${win.label} · ${win.structureLabel}` +
-              (win.net.after.avgDevDb !== undefined
-                ? ` · avg ${win.net.after.avgDevDb.toFixed(2)} dB`
-                : '') +
-              ` · ${line(win)}` +
-              ` — others: ${ranked.slice(1).map(line).join(' · ')}` +
-              // A pin the physics could not honour must be LOUD (Sanders:
-              // "soms moeten we dat kunnen bypassen met een expliciete
-              // waarschuwing") — the pin IS the designer's bypass of every
-              // derived rule, so a silently-missed pin reads as "de range
-              // wordt genegeerd". Lead the note with it instead of burying it.
-              (win.xoPinNote ? ` · ⚠ PIN: ${win.xoPinNote}` : '') +
-              (win.net.snapNote ? ` · ${win.net.snapNote}` : '') +
-              (win.net.safetyNote ? ` · ⚠ ${win.net.safetyNote}` : '') +
-              (win.net.ampFloorNote ? ` · ⚠ ${win.net.ampFloorNote}` : ''),
+            [
+              `3-way scan — ${variants.length} candidate${variants.length > 1 ? 's' : ''} ` +
+                `(alignment × polarity design step, two-pair tune)`,
+              `winner  xo ${win.label} · ${win.structureLabel}` +
+                (win.net.after.avgDevDb !== undefined
+                  ? ` · avg ${win.net.after.avgDevDb.toFixed(2)} dB`
+                  : ''),
+              `        ${line(win)}`,
+              ...ranked.slice(1).map((r, i) => `${i === 0 ? 'others  ' : '        '}${line(r)}`),
+              ...waarschuwingen,
+            ].join('\n'),
           );
           setDesignTab('network');
         })
@@ -5746,7 +5752,7 @@ export default function App() {
                 <p style={{ margin: '0 0 0.2rem' }}>
                   <strong>Component catalog</strong>{' '}
                   <span className="sub">
-                    — powers Snap to catalog &amp; the BOM. It lives OUTSIDE the project, so it
+                    — powers catalog snapping &amp; the BOM. It lives OUTSIDE the project, so it
                     persists across a Reset (that's why the optimizer can still use one).
                   </span>
                 </p>
@@ -5761,7 +5767,7 @@ export default function App() {
                         ? ' · prices'
                         : '') +
                       '. Snap-to-catalog is available.'
-                    : `No imported catalog — only the built-in library (${allSeries().length} series) for BOM matching & inspector suggestions. Import one to unlock Snap to catalog + real prices.`}
+                    : `No imported catalog — only the built-in library (${allSeries().length} series) for BOM matching & inspector suggestions. Import one to unlock catalog snapping + real prices.`}
                 </p>
                 <label className="file-button" style={{ display: 'inline-block' }}>
                   {hasImportedCatalog() ? 'Replace catalog' : 'Import catalog (optional)'}
@@ -5956,7 +5962,7 @@ export default function App() {
                       </div>
                     </div>
                   </div>
-                  {/* --- In-room weight: its own section --- */}
+                  {/* --- Weight for in-room sound: its own section --- */}
                   <div
                     style={{
                       marginTop: '0.6rem',
@@ -5965,7 +5971,7 @@ export default function App() {
                     }}
                   >
                     <p style={{ margin: '0 0 0.2rem' }}>
-                      <strong>In-room weight: {dirWeight}%</strong>{' '}
+                      <strong>Weight for in-room sound: {dirWeight}%</strong>{' '}
                       <span className="sub">(energy average)</span>
                     </p>
                     <input
@@ -6114,7 +6120,10 @@ export default function App() {
                     : 'Free: the optimizer stays within a sensible band (≈2×Fs up to the mid beaming limit) and picks the best crossover there. Set the mid size below for a physically-exact window; pin only for a specific point.'}
               </p>
               {tweeterHpFloor !== null && (
-                <p className="sub">HP floor {tweeterHpFloor} Hz (2×Fs) is applied automatically.</p>
+                <p className="sub">
+                  The tweeter is kept above {tweeterHpFloor} Hz automatically — twice its own
+                  resonance, read from your impedance measurement.
+                </p>
               )}
               <p>
                 Mid size (sets the beaming ceiling){' '}
@@ -6199,7 +6208,7 @@ export default function App() {
                   disabled={!hasImportedCatalog()}
                   onChange={(e) => setCatalogSnap(e.target.checked)}
                 />{' '}
-                Snap to catalog (build + tuner end on purchasable values)
+                Use real catalog parts (build + tuner end on purchasable values)
                 {!hasImportedCatalog() && ' — import a catalog first'}
               </label>
               <p className="sub">
@@ -6307,7 +6316,7 @@ export default function App() {
                     : ` · sensitivity budget ${soloSensDb} dB`}
                   <br />
                   {catalogSnap && hasImportedCatalog()
-                    ? `Snap to catalog · profile ${snapProfile}`
+                    ? `catalog parts · profile ${snapProfile}`
                     : 'Theoretically ideal (continuous) component values — no snap'}
                 </p>
               ) : (
@@ -6325,7 +6334,7 @@ export default function App() {
                 {acSlopeTweeter === 'auto' ? 'Auto' : `${acSlopeTweeter} dB/oct`}
                 <br />
                 {catalogSnap && hasImportedCatalog()
-                  ? `Snap to catalog · profile ${snapProfile}`
+                  ? `catalog parts · profile ${snapProfile}`
                   : 'Theoretically ideal (continuous) component values — no snap'}
               </p>
               )}
@@ -7178,7 +7187,7 @@ export default function App() {
             <div className="tool-group-body">
               <label
                 className="file-button"
-                title="Import a component catalog (brands, series, E-grids, tiers, prices) — the optimizer's Snap to catalog and the BOM use it. A series with a built-in id overrides the built-in."
+                title="Import a component catalog (brands, series, E-grids, tiers, prices) — the optimizer's catalog snapping and the BOM use it. A series with a built-in id overrides the built-in."
               >
                 Import catalog
                 <input
@@ -8129,7 +8138,7 @@ export default function App() {
                   </select>
                 </label>
                 <label title={soloDriver ? 'Single-driver mode: directivity terms pair both drivers — disabled for now' : angleSets ? '' : 'Load angle measurements to enable'}>
-                  In-room weight: {dirWeight}% (energy average)
+                  Weight for in-room sound: {dirWeight}% (energy average)
                   <input
                     type="range"
                     min={0}
@@ -8146,7 +8155,7 @@ export default function App() {
                   className="inline-num"
                   title="Hard cap on EQ bands per driver the optimizer may spend — more bands = finer correction but a bigger search (and more passive components later)"
                 >
-                  EQ bands/driver for optimizer
+                  Correction bands per driver (max)
                   <input
                     type="number"
                     min={0}
@@ -8243,7 +8252,7 @@ export default function App() {
                     checked={stagedOn}
                     onChange={(e) => setStagedOn(e.target.checked)}
                   />{' '}
-                  Staged (fewest components)
+                  Use as few components as possible
                 </label>
                 {stagedOn && (
                   <span className="inline-num" title="'Good enough' targets: stop escalating once ripple (peak ±dB, the same number the SPL strip shows) AND average phase error (°) are both met — variable per project, this is the designer's call">
@@ -8282,7 +8291,7 @@ export default function App() {
                     onChange={(e) => setBreakupGuard(e.target.checked)}
                     disabled={!!soloDriver}
                   />{' '}
-                  Breakup guard (≥20 dB)
+                  Keep cone breakup ≥20 dB down
                 </label>
                 <span className="opt-group-cap">Components</span>
                 <label
@@ -8299,7 +8308,7 @@ export default function App() {
                     disabled={!hasImportedCatalog()}
                     onChange={(e) => setCatalogSnap(e.target.checked)}
                   />{' '}
-                  Snap to catalog{!hasImportedCatalog() && ' (needs import)'}
+                  Use real catalog parts{!hasImportedCatalog() && ' (needs import)'}
                 </label>
                 <span className="opt-group-cap">Crossover</span>
                 <label title="Pin the ACOUSTIC crossover: the frequency where the filtered drivers actually cross must land within frequency ± margin — in the design optimizer AND the component tuner. Margin 0 = exactly there (±2% search room remains).">
@@ -8316,12 +8325,12 @@ export default function App() {
                     className="derived"
                     title="Hard floor for the tweeter's electrical HP knee: the classic ≥2×Fs rule, read from the measured impedance peak. Knee-domain — coexists with the crossover point."
                   >
-                    HP floor {tweeterHpFloor} Hz (2×Fs)
+                    tweeter kept above {tweeterHpFloor} Hz (2× its measured resonance)
                   </span>
                 )}
                 {threeWay && (
                   <label title="How many handover candidates the 3-way scan simulates PER crossing. Each candidate runs the full design chain inside its own slice of the search range, so the count is squared: 2 steps = 4 chains. Works pinned or unpinned — without a pin the range is the neighbourhood of the raw crossings.">
-                    Scan steps per crossing
+                    Handover candidates to try
                     <select value={xo3Steps} onChange={(e) => setXo3Steps(Number(e.target.value))}>
                       {[1, 2, 3].map((n) => (
                         <option key={n} value={n}>
@@ -8332,7 +8341,7 @@ export default function App() {
                   </label>
                 )}
                 <span className="opt-group-cap">Driver limits</span>
-                {threeWay && (
+                {threeWay && !physWin3?.lowCeilMeasured && (
                   <label title="Woofer nominal size — sets the W-M handover's beaming CEILING (a cone is practically usable to ~3× its beaming onset), the mirror of the mid-size rule for the high crossing. With the 2×Fs floor from the measured mid impedance this gives the free scan a physics window instead of a guess.">
                     Woofer size (W-M ceiling)
                     <select value={wooferSizeInch} onChange={(e) => setWooferSizeInch(e.target.value)}>
@@ -8347,7 +8356,7 @@ export default function App() {
                 )}
                 {threeWay && (
                   <label title="Directivity philosophy for the MEASURED beaming ceiling — the on-axis minus 30° difference at which a driver counts as beaming. Default is the empirical 4 dB, NOT the theoretically stricter ka = 2, and that is deliberate: the ka figures come from an ideal piston in an infinite baffle, while a real measured 0−30° difference at low frequency is mostly baffle diffraction. Measured on a real 3-way set, ka = 2 puts the woofer&apos;s ceiling at 304 Hz — below the mid&apos;s own 2×Fs floor — declaring an ordinary design impossible; 4 dB gives 628 Hz. The strict tiers stay available for a conservative philosophy or clean anechoic data. (For reference: &apos;−6 dB at 30°&apos; is ka = 4.43, past every published limit — that defines BEAMWIDTH, not a crossover ceiling.)">
-                    Beaming limit
+                    When a cone counts as beaming
                     <select value={kaTier} onChange={(e) => setKaTier(e.target.value as KaTier)}>
                       {(Object.keys(KA_TIERS) as KaTier[]).map((k) => (
                         <option key={k} value={k}>
@@ -8362,7 +8371,7 @@ export default function App() {
                     className="inline-num"
                     title="How many wavelengths of DRIVER SPACING the design tolerates. The spacing itself is derived from the driver positions you enter under Setup → Cabinet & drivers; two drivers half a wavelength apart already put a null in the vertical response. The sources genuinely disagree here and they optimise different things, so this is the designer's call."
                   >
-                    {'Lobing k '}
+                    {'Vertical lobing: how strict '}
                     <select value={ctcK} onChange={(e) => setCtcK(e.target.value)}>
                       <option value="0.25">0.25 — point source</option>
                       <option value="0.5">0.5 — no forward null</option>
@@ -8386,7 +8395,7 @@ export default function App() {
                 )}
                 {threeWay && (
                   <label title="Cone breakup as an upper limit. A resonance at f_b is excited as the THIRD harmonic of a fundamental at f_b/3 (Purifi measured exactly this: breakups at 5 and 10 kHz produce HD3 peaks at 1.6 and 3.3 kHz), so the distortion penalty lands more than an octave BELOW the peak. A notch does not repair it — it attenuates the fundamental at the breakup, not the harmonics arriving there from lower fundamentals. NOTE: no published algorithm exists for finding breakup in an SPL curve; this is our own criterion, which is why it is switchable and the detected frequency is shown.">
-                    Breakup ceiling
+                    Stay this far below cone breakup
                     <select
                       value={breakupLimitOn ? breakupHarmonic : 'off'}
                       onChange={(e) => {
@@ -8406,41 +8415,9 @@ export default function App() {
                 {threeWay && (
                   <span
                     className="inline-num"
-                    title="Excursion floor — the LEVEL-aware version of 'cross a tweeter at 2-3x Fs'. SPL = 108.4 + 20log(f²·Sd·Xmax) in half space, so a driver runs out of linear travel below f = sqrt(10^((L-108.4)/20)/(Sd·Xmax)). Both numbers come straight off the datasheet; without them the criterion simply does not apply. The level matters: a 1 inch dome is fine to 587 Hz at 90 dB and only to 829 Hz at 96 dB."
+                    title="The LEVEL this design must reach — the level-aware version of 'cross a tweeter at 2-3x Fs'. SPL = 108.4 + 20log(f²·Sd·Xmax) in half space, so a driver runs out of linear travel below f = sqrt(10^((L-108.4)/20)/(Sd·Xmax)) and the crossover floor moves up with the level you ask for. Sd and Xmax themselves are DRIVER FACTS and live on the Setup tab; this is the only part of the criterion that is a design decision."
                   >
-                    {'Sd/Xmax mid '}
-                    <input
-                      type="number"
-                      min={0}
-                      step={1}
-                      value={sdCm2.mid}
-                      onChange={(e) => setSdCm2((p) => ({ ...p, mid: e.target.value }))}
-                    />
-                    {' cm² / '}
-                    <input
-                      type="number"
-                      min={0}
-                      step={0.1}
-                      value={xmaxMm.mid}
-                      onChange={(e) => setXmaxMm((p) => ({ ...p, mid: e.target.value }))}
-                    />
-                    {' mm · tweeter '}
-                    <input
-                      type="number"
-                      min={0}
-                      step={1}
-                      value={sdCm2.high}
-                      onChange={(e) => setSdCm2((p) => ({ ...p, high: e.target.value }))}
-                    />
-                    {' cm² / '}
-                    <input
-                      type="number"
-                      min={0}
-                      step={0.1}
-                      value={xmaxMm.high}
-                      onChange={(e) => setXmaxMm((p) => ({ ...p, high: e.target.value }))}
-                    />
-                    {' mm @ '}
+                    {'Design for '}
                     <input
                       type="number"
                       min={70}
@@ -8452,40 +8429,56 @@ export default function App() {
                     {' dB'}
                   </span>
                 )}
+                {threeWay && (
+                  <span className="derived" style={{ flexBasis: '100%' }}>
+                    {sdCm2.mid && sdCm2.high
+                      ? `excursion floor: mid ${Math.round(
+                          excursionFloorHz(Number(sdCm2.mid), Number(xmaxMm.mid), Number(excursionSpl), {
+                            count: Number(cabinet.drivers.mid.count) || 1,
+                          }) ?? 0,
+                        )} Hz · tweeter ${Math.round(
+                          excursionFloorHz(Number(sdCm2.high), Number(xmaxMm.high), Number(excursionSpl), {
+                            count: Number(cabinet.drivers.high.count) || 1,
+                          }) ?? 0,
+                        )} Hz — from the Sd/Xmax on the Setup tab`
+                      : 'enter Sd and Xmax per driver on the Setup tab to use this criterion'}
+                  </span>
+                )}
                 {threeWay && physWin3 && (
                   <span
                     className="derived"
+                    style={{ flexBasis: '100%' }}
                     title="The free scan derives both handover windows from the measurements themselves: floor = 2×Fs (measured impedance) and where the upper driver reaches its own level; ceiling = the lower driver's MEASURED beaming onset from the angle files (size-formula fallback without them). A pin is the designer's explicit override of its axis — the scan then searches the pin, not this window, and warns loudly when the physics cannot deliver it."
                   >
-                    {xoRangeOn ? (
-                      <>W-M pinned · </>
-                    ) : (
-                      <>
-                        W-M {Math.round(physWin3.low.floorHz ?? 250)}–
-                        {Math.round(physWin3.low.ceilHz ?? 1200)} Hz
-                        {bindingCeil(physWin3.limits.low, physWin3.lowCeilMeasured)}
-                        {' · '}
-                      </>
-                    )}
-                    {physWin3.low.ceilHz !== null &&
-                      physWin3.low.floorHz !== null &&
-                      physWin3.low.ceilHz <= physWin3.low.floorHz && (
-                        <strong> ⚠ no room</strong>
-                      )}
-                    {xoRangeOn ? (
-                      <>M-T pinned — pins override the derived windows</>
-                    ) : (
-                      <>
-                        M-T {Math.round(physWin3.high.floorHz ?? 1200)}–
-                        {Math.round(physWin3.high.ceilHz ?? 7000)} Hz
-                        {bindingCeil(physWin3.limits.high, physWin3.highCeilMeasured)}
-                        {physWin3.high.ceilHz !== null &&
-                          physWin3.high.floorHz !== null &&
-                          physWin3.high.ceilHz <= physWin3.high.floorHz && (
-                            <strong> ⚠ no room</strong>
+                    {/* One line per handover, each naming the criterion that
+                        BINDS. The old single dense line hid exactly that: a
+                        window you cannot attribute is a window you cannot act
+                        on, and it is the binding rule that tells you which
+                        knob (or which driver) to change. */}
+                    {(['low', 'high'] as const).map((side) => {
+                      const w = physWin3[side];
+                      const naam = side === 'low' ? 'W-M' : 'M-T';
+                      if (xoRangeOn) {
+                        return (
+                          <span key={side} style={{ display: 'block' }}>
+                            {naam}: pinned — your pin overrides the derived window
+                          </span>
+                        );
+                      }
+                      const geen =
+                        w.ceilHz !== null && w.floorHz !== null && w.ceilHz <= w.floorHz;
+                      return (
+                        <span key={side} style={{ display: 'block' }}>
+                          {naam} {Math.round(w.floorHz ?? (side === 'low' ? 250 : 1200))}–
+                          {Math.round(w.ceilHz ?? (side === 'low' ? 1200 : 7000))} Hz
+                          {bindingCeil(
+                            physWin3.limits[side],
+                            side === 'low' ? physWin3.lowCeilMeasured : physWin3.highCeilMeasured,
                           )}
-                      </>
-                    )}
+                          {geen && <strong> ⚠ no room — these two cannot meet</strong>}
+                        </span>
+                      );
+                    })}
                   </span>
                 )}
                 {xoRangeOn && threeWay && (
@@ -9015,7 +9008,7 @@ export default function App() {
               </div>
             </div>
             {netOptNote && (
-              <p className="derived" style={{ margin: '0 0 0.8rem' }}>
+              <p className="derived" style={{ margin: '0 0 0.8rem', whiteSpace: 'pre-line' }}>
                 {netOptNote}
               </p>
             )}
