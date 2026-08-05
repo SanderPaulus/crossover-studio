@@ -2414,3 +2414,7 @@ button:disabled {
 .mg-warn {
   color: var(--warn, var(--muted));
 }
+
+.mg-tablenote {
+  margin: 0.9rem 0 0.2rem;
+}

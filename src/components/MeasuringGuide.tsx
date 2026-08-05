@@ -220,16 +220,24 @@ export function MeasuringGuide({ open, onClose }: { open: boolean; onClose: () =
 
       <h3>2 · Stand far enough back</h3>
       <p>
-        This is where most sets go wrong, and it is invisible in the files. A driver sitting well
-        below the reference point is <strong>already far off its own axis at nominal 0°</strong>.
-        Drag the microphone and watch what the same speaker&apos;s angle set turns into:
+        You sweep <em>horizontally</em> — but there is a second angle you never chose. A driver
+        sitting below the reference point has the microphone somewhere above it, so the line from
+        that driver to the mic already runs at an angle{' '}
+        <strong>before the turntable moves at all</strong>. It is there at every horizontal step,
+        it is set purely by how far back you stand, and it is invisible in the files.
+      </p>
+      <p>
+        The side view below shows only that unavoidable part. Drag the microphone and watch it
+        shrink:
       </p>
       <figure className="mg-stage">
         <SideView micMm={micMm} />
         <figcaption>
-          Side view. The crosshair is the reference point; the dashed line is where the mic is
-          aimed. Angles are drawn to scale, so the cabinet really does shrink as you back away —
-          that shrinking is the whole point.
+          <strong>Side view — the angle you did not choose.</strong> The crosshair is the
+          reference point and the dashed line is where the mic is aimed; every driver below it
+          looks up at the microphone. This is not a measurement you take — it is where the driver
+          sits. Drawn to scale, so the cabinet genuinely shrinks as you back away, and with it
+          this angle.
         </figcaption>
       </figure>
       <label className="mg-slider">
@@ -247,12 +255,16 @@ export function MeasuringGuide({ open, onClose }: { open: boolean; onClose: () =
         />
         <output>{micMm} mm</output>
       </label>
+      <p className="mg-tablenote">
+        Put the two together — your horizontal sweep on top of the vertical offset above — and
+        this is the angle each driver was <em>actually</em> measured at:
+      </p>
       <table className="mg-table">
         <thead>
           <tr>
             <th>driver</th>
-            <th>your &ldquo;0°&rdquo; really is</th>
-            <th>your &ldquo;30°&rdquo; really is</th>
+            <th>you turned to 0°, it saw</th>
+            <th>you turned to 30°, it saw</th>
           </tr>
         </thead>
         <tbody>
@@ -288,7 +300,10 @@ export function MeasuringGuide({ open, onClose }: { open: boolean; onClose: () =
       <figure className="mg-stage">
         <TopView micMm={micMm} deg={Math.round(deg)} />
         <figcaption>
-          Top view. The microphone never moves; the cabinet turns about the reference point.
+          <strong>Top view — the angle you do choose.</strong> The microphone never moves; the
+          cabinet turns about the reference point. This is the number in your file names, and it
+          belongs to the box: every driver turns through it together, on top of whatever vertical
+          offset it already had.
         </figcaption>
       </figure>
       <label className="mg-slider">
