@@ -713,6 +713,14 @@ minimum phase reconstrueert. Voertaal met Sander: **Nederlands**; code/comments 
   terug met een 2,4 mH-spoel op 0,3 mm à 6,43 Ω in de mid-tak (~11 Ω spoelweerstand in die tak,
   was ~3,6 Ω). Een catalogus completer maken kan dus een bewaker slopen die niemand had
   opgeschreven omdat de dataset hem impliciet leverde.
+  **GEMETEN end-to-end op Sanders 3-weg-set (volle scan, 4 kandidaten, vóór/ná de guard)**:
+  spoelweerstand in de mid-tak 11 → 2,7 Ω (B·L4 6,43 → 1,80 Ω · B·L9 2,50 → 0,15 · L3 1,49 →
+  0,31); Response 69 → 74 (avg ±1,02 → ±0,89); W-M-fase 13,3° → 12,3°; Z-min-dip verplaatst van
+  359 Hz — midden in de W-M-kruising — naar 2731 Hz; BOM €47 → €50. Ook de drie VERLIEZENDE
+  kandidaten werden beter (3,97 → 2,79 dB), dus de guard tilt de hele scan op en niet alleen de
+  winnaar. NB expliciet NIET opgelost hierdoor: Z min blijft 2,2 Ω onder de 2,5-vloer (andere
+  oorzaak — drie parallelle takken rond de lage overname) en de W-M-P95 blijft 40° tegen de 26°
+  die de losse componenttuner eerder haalde; dat verschil scan-vs-tune is nog onverklaard.
   **Budget-druk in de snap (`costWeight`, default 0,0015)**: kandidaat-score ×(1+w·ΣEUR) —
   tussen (bijna-)gelijkwaardige realisaties wint de goedkope; "lagere waardes = goedkoper"
   volgt vanzelf uit het prijsmodel. Tie-breaker, geen kwaliteitsruil (€20 ≈ 3% fit); zonder
