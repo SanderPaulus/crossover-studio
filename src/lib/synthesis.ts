@@ -1,7 +1,7 @@
 import type { Complex } from './complex.ts';
 import { abs, arg } from './complex.ts';
 import type { DriverFilterSpec } from './filters.ts';
-import { evalDriverFilter } from './filters.ts';
+import { evalDriverFilter, ladderElementSeeds } from './filters.ts';
 import type { Netlist, NetElement, PassiveElement } from './network.ts';
 import { solveNetwork } from './network.ts';
 import { lbfgs } from './lbfgs.ts';
@@ -65,6 +65,25 @@ interface Slot {
   kind: 'C' | 'L' | 'R';
   role: string;
   initial: number; // F / H / Ω
+  /**
+   * The ALIGNMENT-AWARE textbook value — `C = Q/(ωR)`, `L = R/(ωQ)` with the Q
+   * of the chosen alignment — offered to the fit as an extra STARTING POINT.
+   *
+   * `initial` above deliberately stays the historical Q = 1 form, because the
+   * role ANCHOR is built on it and the anchor is part of the objective. Moving
+   * it was measured to change two acoustic-mode results for the worse: that was
+   * not a seeding change at all but an objective change, and the anchor lesson
+   * says those are the ones that bite. The anchor is a DEGENERACY detector with
+   * ×3 of free room anyway — the two conventions differ by at most 2×, so both
+   * sit comfortably inside it and either serves that purpose.
+   *
+   * Why two conventions exist at all: a doubly-terminated LADDER of order ≥ 4
+   * does not have the element values of its cascaded biquads (Dickason's LR4
+   * high-pass table gives 0.2533 and 0.0563 for the two series caps, where the
+   * per-section-Q form gives 0.1125 twice — their geometric mean). Neither is
+   * "the" textbook value, so the fit starts from both and keeps what wins.
+   */
+  altInitial?: number;
 }
 
 interface Topology {
@@ -116,18 +135,30 @@ function deriveTopology(
   const rungs: Rung[] = [];
 
   if (spec.hp.enabled) {
-    const fc = spec.hp.freq;
-    const R = zAt(fc);
-    const w0 = 2 * Math.PI * fc;
+    const R = zAt(spec.hp.freq);
     // Exactly `order` reactive elements, alternating series C / shunt L — an
-    // odd order gets its honest 3-element ladder, not a detuned 4th.
+    // odd order gets its honest 3-element ladder, not a detuned 4th. Values
+    // come from the CHOSEN alignment's pole data (C = Q/ωR, L = R/ωQ); seeding
+    // everything at Q = 1 would be 2x too much capacitance for Linkwitz-Riley.
+    const seeds = ladderElementSeeds(spec.hp, 'hp');
     for (let i = 0; i < spec.hp.order; i++) {
       const sec = Math.floor(i / 2) + 1;
+      const w = 2 * Math.PI * seeds[i].cornerHz;
       if (i % 2 === 0) {
-        slots.push({ kind: 'C', role: `HP section ${sec} series C`, initial: 1 / (w0 * R) });
+        slots.push({
+          kind: 'C',
+          role: `HP section ${sec} series C`,
+          initial: 1 / (w * R),
+          altInitial: seeds[i].q / (w * R),
+        });
         rungs.push({ type: 'series', slot: slots.length - 1 });
       } else {
-        slots.push({ kind: 'L', role: `HP section ${sec} shunt L`, initial: R / w0 });
+        slots.push({
+          kind: 'L',
+          role: `HP section ${sec} shunt L`,
+          initial: R / w,
+          altInitial: R / (w * seeds[i].q),
+        });
         rungs.push({ type: 'shunt', slot: slots.length - 1 });
       }
     }
@@ -137,16 +168,26 @@ function deriveTopology(
   // trap adds elliptic-style steepness right where breakup lives.
   let lpMidInsert: number | null = null;
   if (spec.lp.enabled) {
-    const fc = spec.lp.freq;
-    const R = zAt(fc);
-    const w0 = 2 * Math.PI * fc;
+    const R = zAt(spec.lp.freq);
+    const seeds = ladderElementSeeds(spec.lp, 'lp');
     for (let i = 0; i < spec.lp.order; i++) {
       const sec = Math.floor(i / 2) + 1;
+      const w = 2 * Math.PI * seeds[i].cornerHz;
       if (i % 2 === 0) {
-        slots.push({ kind: 'L', role: `LP section ${sec} series L`, initial: R / w0 });
+        slots.push({
+          kind: 'L',
+          role: `LP section ${sec} series L`,
+          initial: R / w,
+          altInitial: R / (w * seeds[i].q),
+        });
         rungs.push({ type: 'series', slot: slots.length - 1 });
       } else {
-        slots.push({ kind: 'C', role: `LP section ${sec} shunt C`, initial: 1 / (w0 * R) });
+        slots.push({
+          kind: 'C',
+          role: `LP section ${sec} shunt C`,
+          initial: 1 / (w * R),
+          altInitial: seeds[i].q / (w * R),
+        });
         rungs.push({ type: 'shunt', slot: slots.length - 1 });
       }
       // Mid-ladder trap insertion point: between the first full section and
@@ -820,16 +861,25 @@ export function synthesize(
    * never make the fit SELECT a point it measures as worse. (The network
    * sensitivities themselves are verified exactly in adjoint.test.ts.)
    */
+  // The second textbook convention (see Slot.altInitial) rides along as one
+  // more start — only where it actually differs from the first.
+  const xAlt = topo.slots.map((s) => Math.log10(s.altInitial ?? s.initial));
+  const altDiffers = xAlt.some((v, i) => Math.abs(v - x0[i]) > 1e-9);
+
   let fit = lbfgs(objectiveGrad, x0, lbfgsOpts);
   let best = objective(fit.x);
-  for (const [amp, phase] of [
-    [0.3, 0],
-    [0.3, 1.6],
-    [0.75, 0.8],
-    [0.75, 2.4],
-  ] as const) {
+  const scatterOf = (base: readonly number[]): number[][] =>
+    (
+      [
+        [0.3, 0],
+        [0.3, 1.6],
+        [0.75, 0.8],
+        [0.75, 2.4],
+      ] as const
+    ).map(([amp, phase]) => base.map((v, i) => v + amp * Math.cos(i * 1.1 + phase)));
+  const starts: number[][] = altDiffers ? [xAlt, ...scatterOf(x0)] : scatterOf(x0);
+  for (const xs of starts) {
     if (best < 0.02) break;
-    const xs = x0.map((v, i) => v + amp * Math.cos(i * 1.1 + phase));
     const again = lbfgs(objectiveGrad, xs, lbfgsOpts);
     const score = objective(again.x);
     if (score < best) {

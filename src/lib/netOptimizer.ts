@@ -251,6 +251,40 @@ const SERIES_CEIL: Record<'C' | 'L' | 'R', number> = {
   R: 47,
 };
 
+/**
+ * ...but a CONSTANT ceiling is wrong as soon as the crossover moves, because
+ * what makes a series part "a wire with extra steps" is its reactance relative
+ * to the load, and that scales as 1/(f·Z). The constants above were calibrated
+ * on a 2-way tweeter branch (~2 kHz into ~6 Ω); a 3-way woofer-to-mid crossing
+ * at 200–400 Hz into a 4 Ω midrange legitimately needs 4–8× more capacitance
+ * for the SAME electrical job. Blanket-applied, 33 µF forbids exactly the part
+ * a competent designer specifies there — Troels Gravesen ships 88 µF (4 × 22 µF
+ * film) in the midrange high-pass of at least seven published 3-ways, with the
+ * value tracking his woofer-mid point almost proportionally (22 µF at 900 Hz,
+ * 38.6 µF at 700 Hz, 66 µF at 400 Hz, 88–99 µF at 200 Hz).
+ *
+ * So the ceiling scales with the design's own textbook magnitude, and the
+ * multipliers below reproduce the constants above at that original 2 kHz / 6 Ω
+ * reference. The constants stay as a FLOOR on the ceiling: a design whose
+ * textbook value is small keeps exactly the old limit (2-way behaviour is
+ * unchanged, which the suite's value pins check), and only a design that
+ * genuinely needs more gets more. Upper-side only, as before.
+ *
+ * The C and L multipliers differ by a lot (2.5× vs 16.8×) because the original
+ * constants did: a series woofer inductor is legitimately far closer to "a
+ * wire" than a series capacitor ever is. That asymmetry is inherited on
+ * purpose rather than tidied away.
+ */
+const SERIES_CEIL_MULT: Record<'C' | 'L', number> = { C: 2.488, L: 16.76 };
+
+function seriesCeilFor(
+  kind: 'C' | 'L' | 'R',
+  textbook: { L: number; C: number },
+): number {
+  if (kind === 'R') return SERIES_CEIL.R;
+  return Math.max(SERIES_CEIL[kind], SERIES_CEIL_MULT[kind] * textbook[kind]);
+}
+
 /** Reset big-side reactive OUTLIERS (> tol × textbook magnitude) to exactly
  *  textbook; returns null when nothing exceeds. Only the big side: oversized
  *  caps/coils are the arbitrary-basin signature, small values are legitimate
@@ -1168,7 +1202,7 @@ export function optimizeNetworkValues(
         ? win[i]![1]
         : Math.log10(
             posOf(e.id) === 'series'
-              ? Math.min(SERIES_CEIL[e.kind], BOUNDS[e.kind][1])
+              ? Math.min(seriesCeilFor(e.kind, textbook), BOUNDS[e.kind][1])
               : BOUNDS[e.kind][1],
           ),
     );

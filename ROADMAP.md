@@ -44,6 +44,20 @@ Volgorde binnen een blok = aanbevolen prioriteit. Inschattingen zijn grof:
   Plus **🔬 Compare wizard** (Import-tab): dezelfde lus als begeleide
   checklist — vier stappen die live app-state lezen, meting laden kan ín de
   wizard, verdict met de cijfers als slotstap
+- **Driver-limieten uit de meting** (aug 2026, `driverLimits.ts`): waar een driver
+  ophoudt, volgt nu uit de data i.p.v. uit een vuistregel. Breakup → kruis op
+  f_b/3 (harmonische afbeelding, door Purifi gemeten); bundeling geijkt op ka
+  in plaats van op smaak (onze oude 4 dB bleek ka≈3,5 — veel te ruim; de
+  industriegrens ka=2 is 1,11 dB); hart-op-hart-afstand als gratis geometrisch
+  plafond (dé reden dat 3-wegs op 200–500 Hz kruisen); de IEC-norm voor de
+  bruikbare band; en een niveau-bewuste excursievloer uit Sd+Xmax. De ⚙-uitlezing
+  noemt WELK criterium bindt.
+- **Grote caps: het was geen fout** (aug 2026) — onderzoek naar Gravesens
+  gepubliceerde 3-wegs laat zien dat 88–99 µF in een mid-hoogdoorlaat normale
+  praktijk is bij een laag W-M-punt, gebouwd als 4×22 µF film. Daarop aangepast:
+  het serie-plafond schaalt mee met 1/(f·Z) i.p.v. blanco 33 µF, en de catalogus
+  kan uniforme banken benoemen. Bijvangst: de synthese seedde élk alignment op
+  Q=1 (2× te grote caps voor Linkwitz-Riley) — nu meegenomen als extra startpunt.
 - **Analytische gradiënten in de synthese** (aug 2026, `adjoint.ts` + `lbfgs.ts`):
   de tak-fit zoekt niet langer op de tast. De adjoint-methode levert de exacte
   afgeleide van de respons naar élke componentwaarde voor de prijs van één

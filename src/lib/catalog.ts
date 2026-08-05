@@ -309,8 +309,27 @@ const singlePick = (p: CatalogPart): CatalogPick => ({
   ...(p.priceEur !== undefined ? { priceEur: p.priceEur } : {}),
 });
 
-/** 2-part stacks whose SUM lands near the target (series L / parallel C).
- *  Resistors are excluded: the E-grid is dense and they are cheap anyway. */
+/**
+ * Multi-part realisations whose SUM lands near the target (coils in series,
+ * caps in parallel). Two shapes, because designers build both:
+ *
+ *  - a MIXED PAIR (e.g. 33 + 5.6 µF) — reaches a value the grid does not have;
+ *  - a UNIFORM BANK of N identical parts (2×, 3×, 4×) — what a real 3-way
+ *    midrange high-pass actually looks like. Troels Gravesen's published
+ *    designs use 4 × 22 µF, 3 × 33 µF and 2 × 47 µF, and he notes on his own
+ *    schematic that "C2011 can be 88-99 uF without impacting performance".
+ *
+ * The bank matters for more than tidiness: premium film simply STOPS around
+ * 22 µF (Jantzen Superior Z-Cap's range ends there), so without banks the
+ * premium pool cannot cover a midrange high-pass at all and the snap is forced
+ * down a tier — the "wizard ignored my premium choice" complaint, but caused by
+ * arithmetic rather than by the tier logic. Banks also tighten tolerance: N
+ * independent parts sum to about σ/√N, and tolerance (not dielectric) is what
+ * the measurements say actually matters.
+ *
+ * Resistors are excluded: the E-grid is dense and they are cheap anyway.
+ * The caller applies a per-extra-part handicap, so a bank must genuinely pay.
+ */
 export function stackCandidates(
   kind: CatalogKind,
   value: number,
@@ -323,6 +342,27 @@ export function stackCandidates(
       ? nearestWithVariants(pool.filter((p) => p.kind === kind), v, n)
       : nearestParts(kind, v, n);
   const out = new Map<string, CatalogPick>();
+  // Uniform banks of N identical parts, largest N first so a clean 4× bank is
+  // preferred over a ragged pair at the same value.
+  for (const n of [4, 3, 2]) {
+    for (const a of nearestIn(value / n, 2)) {
+      const v = a.value * n;
+      if (Math.abs(Math.log(v / value)) > Math.log(1.4)) continue;
+      const key = Array(n).fill(a.id).join('+');
+      if (out.has(key)) continue;
+      out.set(key, {
+        value: v,
+        seriesR: kind === 'L' ? a.seriesR * n : a.seriesR / n,
+        label: `${partLabel(a)} ${fmtVal(kind, a.value)} (${n}× ${
+          kind === 'L' ? 'in series' : 'in parallel'
+        })`,
+        parts: Array(n).fill(a),
+        ...(a.priceEur !== undefined
+          ? { priceEur: Number((a.priceEur * n).toFixed(2)) }
+          : {}),
+      });
+    }
+  }
   for (const f of [0.5, 0.33, 0.7]) {
     for (const a of nearestIn(value * f, 2)) {
       if (!(a.value < value)) continue;
@@ -354,7 +394,13 @@ export function stackCandidates(
     }
   }
   return [...out.values()]
-    .sort((x, y) => Math.abs(Math.log(x.value / value)) - Math.abs(Math.log(y.value / value)))
+    .sort((x, y) => {
+      const d = Math.abs(Math.log(x.value / value)) - Math.abs(Math.log(y.value / value));
+      // Near-ties go to the realisation with FEWER physical parts — "single
+      // where it can" applies inside the stack shortlist too.
+      if (Math.abs(d) > 1e-6) return d;
+      return x.parts.length - y.parts.length;
+    })
     .slice(0, count);
 }
 

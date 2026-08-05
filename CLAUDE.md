@@ -132,6 +132,49 @@ minimum phase reconstrueert. Voertaal met Sander: **Nederlands**; code/comments 
 - `network.ts` — MNA-solver (complexe admittantie, Norton-bron, gemeten Z als driver-load).
   Elke solve levert ook `inputZ`: de systeem-ingangsimpedantie aan de generatorklemmen
   (excl. Rg) — de versterker-belastingscurve, voedt het Impedance-paneel
+- `driverLimits.ts` — **"welke frequenties redt deze driver niet" (aug 2026, Sanders
+  onderzoeksvraag)**. Er is GEEN enkele regel voor een kruispunt; er is een stapel
+  onafhankelijke ongelijkheden en het ontwerpvenster is hun doorsnede. Alles hier staat op
+  BESLISNIVEAU (venstergrenzen + rapportage), nooit in een objective — de anker-les.
+  (a) **Breakup → f ≤ f_b/3**: een resonantie op f_b wordt aangeslagen als DERDE harmonische
+  van f_b/3, dus de vervormingsprijs valt ruim een octaaf ONDER de piek. Purifi meet het exact
+  (breakups 5/10 kHz → H3-pieken 1,6/3,3 kHz); onafhankelijk bevestigd op de Dayton RS180. Een
+  notch repareert dit NIET (die dempt de grondtoon op de breakup, niet de harmonischen die er
+  vanaf lager landen). Detectie = afwijking van een ±½-OCTAAF LOKALE trend — bewust niet van
+  een bandbrede referentie: op een 50 dB-klimmende respons wijst een bandmediaan gewoon "waar
+  de curve het hoogst is" (gemeten, en dé reden dat een eerdere poging is teruggedraaid).
+  Impedantie-corroboratie wordt GERAPPORTEERD, nooit geëist. **Er bestaat geen gepubliceerd
+  algoritme voor breakup-detectie uit SPL of Z** (de strenge route is laservibrometrie) — dus
+  dit is ons eigen criterium en het hoort zichtbaar en uitschakelbaar te zijn.
+  (b) **`KA_TIERS` — de bundelingsdrempel geijkt op ka** i.p.v. op smaak. Uit
+  D(θ)=2J₁(ka·sinθ)/(ka·sinθ) op 30°: ka=1 → 0,27 dB · **ka=2 (industriegrens "nooit boven
+  gebruiken") → 1,11 dB** · ka=3,83 → 4,34 dB. HARD GELEERD: onze historische 4 dB is ka≈3,5,
+  vrijwel de agressieve tier; en "−6 dB op 30°" (de intuïtieve grens) is ka=4,43 — dat getal
+  definieert BEAMWIDTH (IEC 60268-5 §23.4.1), niet een kruispuntplafond. De tier is een
+  instelling: het is een directiviteits-filosofie, geen constante. Bijbehorend in
+  directivity.ts: de vasthoud-slack werd `thresholdDb − 1` en is nu `× 0,75` — bit-identiek op
+  de oude default 4, maar bij 1,11 dB zou "−1" elke wiebel accepteren.
+  (c) **`lobingCeilingHz` — hart-op-hart-afstand**, pure geometrie, nul metingen: een voorwaartse
+  nul kan pas bestaan vanaf d ≥ λ/2. **Dit is de kwantitatieve reden dat 3-wegs op 200–500 Hz
+  kruisen** — woofer en mid zijn het verst uit elkaar staande aangrenzende paar (300 mm ⇒ 572 Hz
+  bij k=0,5). LR4's "zero lobing error" gaat alleen over de FASE: het centreert de lob, het haalt
+  de nullen niet weg. k is echt omstreden (0,25 puntbron · 0,5 geen nul · 1,0 Dickason ·
+  1,1–1,3 Saunisto, die een ±25°-nul ACCEPTEERT voor een gladdere power response) en de bronnen
+  optimaliseren verschillende dingen — dus instelling, geen constante.
+  (d) **`effectiveBandIec` — IEC 60268-5 §21.2**, het enige criterium hier dat een NORM is en
+  geen vuistregel: −10 dB onder het octaafgemiddelde bij maximale gevoeligheid, en "sharp
+  troughs narrower than 1/9 octave shall be neglected" — precies de dip-immuniteit waar
+  bandMetrics voor is uitgetrokken. Neemt de LANGSTE aaneengesloten run, niet eerste-tot-laatste:
+  een gat dat de 1/9-octaafregel overleeft breekt de band echt af (in de test gevonden).
+  (e) **`excursionFloorHz`** — SPL = 108,4 + 20log(f²·Sd·Xmax) (halve ruimte), dus
+  f_min = √(10^((L−108,4)/20)/(Sd·Xmax)). Geverifieerd tegen Linkwitz' eigen gepubliceerde
+  cijfer voor de D2905/9700 (hij zegt 101 dB @1400 Hz; formule geeft 100,8). NIVEAU-bewust, en
+  dat is het hele punt tegenover een kaal Fs-veelvoud: dezelfde 1"-dome redt 587 Hz bij 90 dB
+  en 829 Hz bij 96. Vraagt twee datasheet-getallen per driver (⚙ Settings, gepersisteerd);
+  zonder die getallen vervalt het criterium stilzwijgend.
+  App: `physWin3` voegt alle vier samen tot de W-M/M-T-vensters én rapporteert `limits` zodat de
+  ⚙-uitlezing kan zeggen WELK criterium bindt ("572 Hz (lobing)") — een venster dat je niet kunt
+  toeschrijven kun je niet aanpassen.
 - `adjoint.ts` + `lbfgs.ts` — **analytische gevoeligheden + gradiënt-zoeker (aug 2026,
   Sanders ML-vraag)**. De vraag was of machine learning de optimizer kan verbeteren; het
   eerlijke antwoord was "niet in de objective (de anker-les, en een black box maakt élke
@@ -254,7 +297,25 @@ minimum phase reconstrueert. Voertaal met Sander: **Nederlands**; code/comments 
   twee-pass via `corrections: 'off'`). Klassieke vuistregels als kruisvalidatie: Zobel nodig bij
   |Z|-stijging >1,3× door de LP-band; Fs-trap overbodig als kruispunt ≥2 octaven boven Fs bij
   ≥2e orde. Oneven ordes krijgen een EERLIJKE ladder (order = aantal reactieve elementen;
-  3e-orde = C-L-C, geen ontstemde 4e). **Zoekstrategie (aug 2026 omgebouwd naar gradiënten)**:
+  3e-orde = C-L-C, geen ontstemde 4e).
+  **Alignment-bewuste seed (aug 2026)**: `deriveTopology` las `spec.hp.kind` NOOIT — élk element
+  kreeg `1/(ω₀R)` respectievelijk `R/ω₀`, ongeacht Linkwitz-Riley, Butterworth of Bessel. Die
+  coëfficiënt (0,1592) is **Q = 1**, en dat is geen enkel alignment dat de app aanbiedt: LR is
+  Q=0,5 en BW 0,707, dus voor de standaardkeuze werd élke cap 2× te groot en élke spoel 2× te
+  klein geseed. `ladderElementSeeds` (filters.ts) levert nu per ladder-element de Q en het
+  werkelijke hoekpunt van zijn sectie (Bessel-secties liggen niet op de nominale knie, en die
+  schaling KEERT OM voor hoogdoorlaat).
+  **HARD GELEERD, en het is de anker-les in vermomming**: die betere waarde als `initial`
+  gebruiken maakte twee acoustic-mode-resultaten SLECHTER — want het rol-ANKER hangt aan
+  `initial`, dus dat was geen seed-wijziging maar een OBJECTIVE-wijziging. `initial` houdt nu
+  bewust de historische Q=1-vorm (objective byte-identiek, waardepins groen) en de
+  alignment-waarde rijdt mee als `altInitial`: een EXTRA startpunt in de multi-start. Het anker
+  is toch een degeneratie-detector met ×3 speling, en de twee conventies schelen hooguit 2×.
+  Bijkomend inzicht: een dubbelbelaste LADDER van orde ≥4 heeft sowieso niet de waardes van zijn
+  gecascadeerde biquads (Dickason LR4-hoogdoorlaat: 0,2533 en 0,0563 voor de twee seriecaps,
+  waar de per-sectie-Q-vorm 2× 0,1125 geeft — hun meetkundig gemiddelde). Geen van beide is
+  "de" textbook-waarde, dus de fit start vanaf allebei en houdt wat wint.
+  **Zoekstrategie (aug 2026 omgebouwd naar gradiënten)**:
   L-BFGS op de EXACTE adjoint-gradiënt van dezelfde objective (élke term is C1 in log-ruimte —
   de bewakers zijn allemaal `max(0,·)²`), vanaf VIJF verstrooide deterministische startpunten +
   een slot-daling vanaf de beste. Welke start wint wordt beslist door de SCALAIRE `objective`
@@ -507,6 +568,16 @@ minimum phase reconstrueert. Voertaal met Sander: **Nederlands**; code/comments 
   singles-only would fit X% worse and cost €Y less") — kiezen mét cijfers, geen verrassing in
   de BOM. Dit verving Sanders idee van 3 volledige vergelijkings-simulaties (te duur; de
   stapel-keuze valt pas in de snap-fase, dus dáár vergelijken is gratis).
+  **UNIFORME BANKEN (aug 2026)**: naast het gemengde PAAR biedt `stackCandidates` nu ook
+  N IDENTIEKE onderdelen (2×/3×/4×) — de realisatie die een echte bouwer kiest. Gravesen bouwt
+  zijn 88 µF als 4×22 µF en noteert op zijn eigen schema "C2011 can be 88-99 uF without
+  impacting performance". Het is meer dan netheid: **premium film STOPT rond 22 µF** (Jantzen
+  Superior Z-Cap houdt daar op), dus zonder banken kan de premium-pool een mid-hoogdoorlaat
+  helemaal niet dekken en zakt de snap gedwongen een tier — de klacht "de wizard negeert mijn
+  premium-keuze", maar veroorzaakt door rekenkunde i.p.v. door de tier-logica. Banken scherpen
+  bovendien de tolerantie (N onafhankelijke delen sommeren op ~σ/√N), en juist tolerantie — niet
+  het diëlektricum — is wat de metingen als het echte risico aanwijzen. ESR deelt door N, DCR
+  telt op. Gelijkspel op waarde gaat naar de realisatie met de MINSTE fysieke delen.
   **BOM is stapel-bewust**: geen single-match → 2-delige stack-match (som binnen 1%, met
   prijs) — de netwerk-snap bouwt stapels en de BOM moet ze kunnen benoemen i.p.v.
   "no exact catalog value" (Sanders klacht).
@@ -1489,7 +1560,22 @@ wordt puur een import-optie, niets hangt er meer van af. Gefaseerd:
   in de HOEKEN van de bouwbaarheidsdoos (91 µF serie-cap ≙ 0,87 Ω bij 2 kHz = draadje-met-
   extra-stappen, vlak onder het 100 µF-plafond; alleen als elco te koop). `SERIES_CEIL`
   (C ≤ 33 µF, L ≤ 8 mH) verstrakt het zachte venster voor SERIE-PAD-elementen (zelfde
-  bus-BFS als de snap-doctrine, nu gedeeld via `busPositions`). BEWUST alleen de bovenkant:
+  bus-BFS als de snap-doctrine, nu gedeeld via `busPositions`).
+  **SCHAALT MEE sinds aug 2026 (Sanders "de CAPS zijn echt heel groot")**: een CONSTANT plafond
+  is fout zodra de kruising verschuift, want wat een serie-onderdeel tot "draadje" maakt is zijn
+  reactantie t.o.v. de last — en die schaalt met 1/(f·Z). De constanten waren geijkt op een
+  2-weg-tweetertak (~2 kHz in ~6 Ω); een 3-weg W-M op 200–400 Hz in een 4 Ω-mid heeft voor
+  DEZELFDE elektrische taak legitiem 4–8× meer capaciteit nodig. Blanco toegepast verbiedt
+  33 µF precies het onderdeel dat een vakman daar kiest: **Gravesen levert 88 µF (4×22 µF film)
+  in de mid-hoogdoorlaat van minstens zeven gepubliceerde 3-wegs**, met de waarde bijna
+  evenredig aan zijn W-M-punt (22 µF @900 Hz · 38,6 @700 · 66 @400 · 88–99 @200). Nu
+  `seriesCeilFor` = max(constante, multiplier × textbook-magnitude van dít ontwerp), waarbij de
+  multipliers (C ×2,488 · L ×16,76) de oude constanten exact reproduceren op die 2 kHz/6 Ω-
+  referentie. De constante blijft dus een VLOER onder het plafond: 2-weg-gedrag ongewijzigd
+  (de waardepins bewaken dat), alleen een ontwerp dat écht meer nodig heeft krijgt meer. De
+  C/L-multipliers verschillen sterk omdat de oude constanten dat deden — een serie-woofer-spoel
+  is legitiem veel dichter bij "een draadje" dan een seriecap ooit is; die asymmetrie is bewust
+  geërfd i.p.v. weggepoetst. BEWUST alleen de bovenkant:
   een vloer aan de onderkant vecht met het starving-evenwicht dat de dode-tak-fundamentals
   bezitten — hard geleerd: mét vloer werd de prune-bait in het padloze testnet dragend
   (tuner leunde op de keten i.p.v. de cap te starven) en snoeide staged niets meer.

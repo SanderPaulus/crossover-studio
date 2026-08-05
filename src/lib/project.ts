@@ -124,6 +124,21 @@ export interface ProjectDesign {
   /** 3-way: woofer nominal size (inch) — the W-M handover's beaming ceiling,
    *  the mirror of midSizeInch. '' / absent = unknown. */
   wooferSizeInch?: string;
+  /** Directivity philosophy for the measured beaming ceiling (ka tier). */
+  kaTier?: string;
+  /** Acoustic centre-to-centre spacing per adjacent pair (mm), '' = unknown,
+   *  and how many wavelengths of it the design tolerates. */
+  ctcLowMm?: string;
+  ctcHighMm?: string;
+  ctcK?: string;
+  /** Cone-breakup upper limit: off, or cross at f_b / harmonic. */
+  breakupLimitOn?: boolean;
+  breakupHarmonic?: string;
+  /** Datasheet numbers for the excursion floor, per branch role, and the SPL
+   *  it is computed for. Absent = the criterion does not apply. */
+  sdCm2?: Partial<Record<'low' | 'mid' | 'high', string>>;
+  xmaxMm?: Partial<Record<'low' | 'mid' | 'high', string>>;
+  excursionSpl?: string;
   /** Optional: staged design (stop escalating once targets met), default true. */
   stagedOn?: boolean;
   targetRipple?: string;

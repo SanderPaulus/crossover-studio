@@ -85,8 +85,12 @@ export function beamingCeilingHz(
   for (let i = 0; i < n; i++) {
     if (Number.isNaN(smooth[i]) || smooth[i] < thresholdDb) continue;
     let holds = true;
+    // Slack is PROPORTIONAL, not a fixed 1 dB: the threshold is now calibrated
+    // on ka (see KA_TIERS in driverLimits.ts) and the industry ka = 2 limit is
+    // only 1.11 dB, where "threshold − 1" would accept almost any wobble.
+    // ×0.75 reproduces the historical 3 dB slack exactly at the old default 4.
     for (let j = i; j < n && f[j] <= f[i] * 2 ** 0.5; j++) {
-      if (!Number.isNaN(smooth[j]) && smooth[j] < thresholdDb - 1) {
+      if (!Number.isNaN(smooth[j]) && smooth[j] < thresholdDb * 0.75) {
         holds = false;
         break;
       }

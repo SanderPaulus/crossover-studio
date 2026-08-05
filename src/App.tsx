@@ -29,6 +29,14 @@ import {
 } from './lib/driverSlots.ts';
 import { estimateCoilDcr, validateNetlist } from './lib/netlistEdit.ts';
 import {
+  KA_TIERS,
+  breakupCeilingHz,
+  breakupHz,
+  excursionFloorHz,
+  lobingCeilingHz,
+  type KaTier,
+} from './lib/driverLimits.ts';
+import {
   mergeSynthesizedSchematics,
   nextPartId,
   normalizeOrigin,
@@ -456,6 +464,34 @@ function filterSummaryLine(spec: DriverFilterSpec, side: 'woofer' | 'mid' | 'twe
   const nEq = spec.eq.filter((b) => b.enabled).length;
   if (nEq > 0) parts.push(`${nEq} EQ`);
   return `${name}: ${parts.length > 0 ? parts.join(', ') : 'flat'}`;
+}
+
+/**
+ * Name the criterion that actually SETS a handover ceiling. A window the
+ * designer cannot attribute is a window he cannot act on: "572 Hz" invites
+ * an argument, "572 Hz (lobing, 300 mm spacing)" invites a decision — move
+ * the drivers closer, or accept the null and raise k.
+ */
+function bindingCeil(
+  lim: {
+    beam: number | null;
+    lobe: number | null;
+    breakup: { hz: number; corroboratedByZ: boolean } | null;
+    excursion: number | null;
+  },
+  beamMeasured: boolean,
+): string {
+  const cands: Array<[number, string]> = [];
+  if (lim.beam !== null) cands.push([lim.beam, beamMeasured ? 'measured beaming' : 'beaming']);
+  if (lim.lobe !== null) cands.push([lim.lobe, 'lobing']);
+  if (lim.breakup)
+    cands.push([
+      lim.breakup.hz / 3,
+      `breakup ${Math.round(lim.breakup.hz)} Hz${lim.breakup.corroboratedByZ ? '+Z' : ''}`,
+    ]);
+  if (cands.length === 0) return '';
+  cands.sort((a, b) => a[0] - b[0]);
+  return ` (${cands[0][1]})`;
 }
 
 function excessDelayMsOf(frd: Parsed): number | null {
@@ -921,6 +957,30 @@ export default function App() {
   /** 3-way: woofer nominal size (inch) — the W-M handover's beaming CEILING,
    *  the exact mirror of the mid-size rule above. '' = unknown. */
   const [wooferSizeInch, setWooferSizeInch] = useState('');
+  /** Directivity philosophy for the measured beaming ceiling. The historical
+   *  4 dB (on-axis minus 30°) is ka ≈ 3.5 — nearly the aggressive tier; the
+   *  industry limit "never operate a cone above ka = 2" is only 1.11 dB. */
+  const [kaTier, setKaTier] = useState<KaTier>('standard');
+  /** Acoustic centre-to-centre spacing per adjacent pair (mm). Pure geometry,
+   *  no measurement — and the constraint that actually explains why 3-ways
+   *  cross where they do. '' = unknown, rule not applied. */
+  const [ctcLowMm, setCtcLowMm] = useState('');
+  const [ctcHighMm, setCtcHighMm] = useState('');
+  /** How much spacing the design tolerates, in wavelengths. Genuinely
+   *  contested (0.5 = no forward null … 1.2 = Saunisto's power-response
+   *  optimum, which ACCEPTS a ±25° null), so the designer owns it. */
+  const [ctcK, setCtcK] = useState('0.5');
+  /** Cone breakup as an upper limit: cross at or below f_b / harmonic. */
+  const [breakupLimitOn, setBreakupLimitOn] = useState(true);
+  const [breakupHarmonic, setBreakupHarmonic] = useState('3');
+  /** Datasheet numbers for the excursion floor — the level-aware version of
+   *  "cross a tweeter at 2-3x Fs". Two fields per driver, and without them the
+   *  criterion simply does not apply. */
+  const [sdCm2, setSdCm2] = useState<Record<BranchRole, string>>({ low: '', mid: '', high: '' });
+  const [xmaxMm, setXmaxMm] = useState<Record<BranchRole, string>>({ low: '', mid: '', high: '' });
+  /** The SPL the excursion floor is computed FOR — a 1" dome is fine to 587 Hz
+   *  at 90 dB and only to 829 Hz at 96 dB, and that is the whole point. */
+  const [excursionSpl, setExcursionSpl] = useState('96');
   const wooferXoCeiling = useMemo(() => {
     const inch = Number(wooferSizeInch);
     if (!(inch > 0)) return null;
@@ -2143,23 +2203,74 @@ export default function App() {
       const xs = vs.filter((v): v is number => typeof v === 'number' && v > 0);
       return xs.length ? Math.max(...xs) : null;
     };
-    const wBeam = angleSets ? beamingCeilingHz(angleSets.woofer) : null;
-    const mBeam = angleSets ? beamingCeilingHz(angleSets.mid) : null;
+    const minOpt = (...vs: (number | null | undefined)[]): number | null => {
+      const xs = vs.filter((v): v is number => typeof v === 'number' && v > 0);
+      return xs.length ? Math.min(...xs) : null;
+    };
+
+    // --- upper limits of the LOWER driver of each pair ---------------------
+    // Beaming, MEASURED, at the chosen ka tier (see KA_TIERS).
+    const kaThr = KA_TIERS[kaTier].diff30Db;
+    const wBeam = angleSets ? beamingCeilingHz(angleSets.woofer, kaThr) : null;
+    const mBeam = angleSets ? beamingCeilingHz(angleSets.mid, kaThr) : null;
+    // Vertical lobing from centre-to-centre spacing — geometry, no measurement.
+    const kk = Number(ctcK) > 0 ? Number(ctcK) : 0.5;
+    const wLobe = lobingCeilingHz(Number(ctcLowMm), kk);
+    const mLobe = lobingCeilingHz(Number(ctcHighMm), kk);
+    // Cone breakup: a resonance at f_b is excited as the Nth harmonic of f_b/N,
+    // so the penalty lands more than an octave BELOW the peak.
+    const harm = Number(breakupHarmonic) > 0 ? Number(breakupHarmonic) : 3;
+    const zMagOf = (role: BranchRole): number[] | undefined => {
+      try {
+        const z = zGridWithSlots(impedances, grid)[canonicalModelForRole(role, threeWay)];
+        return z ? z.map((c) => Math.hypot(c.re, c.im)) : undefined;
+      } catch {
+        return undefined;
+      }
+    };
+    const breakOf = (role: BranchRole, spl: readonly number[]) => {
+      if (!breakupLimitOn) return null;
+      const reach = reachesLevelHz(grid, spl);
+      return breakupHz(grid, spl, {
+        zMag: zMagOf(role),
+        searchFromHz: Math.max(300, (reach ?? 0) * 2),
+      });
+    };
+    const wBreak = breakOf('low', sim.base.w.spl);
+    const mBreak = breakOf('mid', sim.base.m.spl);
+
+    // --- lower limits of the UPPER driver of each pair ---------------------
+    const spl = Number(excursionSpl);
+    const exOf = (role: BranchRole) =>
+      Number.isFinite(spl) ? excursionFloorHz(Number(sdCm2[role]), Number(xmaxMm[role]), spl) : null;
+    const midEx = exOf('mid');
+    const twtEx = exOf('high');
+
+    const lowCeil = minOpt(wBeam ?? wooferXoCeiling, wLobe, wBreak && breakupCeilingHz(wBreak.hz, harm));
+    const highCeil = minOpt(mBeam ?? midXoCeiling, mLobe, mBreak && breakupCeilingHz(mBreak.hz, harm));
     return {
       angleSets,
       low: {
-        floorHz: maxOpt(midHpFloor, reachesLevelHz(grid, sim.base.m.spl)),
-        ceilHz: wBeam ?? wooferXoCeiling,
+        floorHz: maxOpt(midHpFloor, reachesLevelHz(grid, sim.base.m.spl), midEx),
+        ceilHz: lowCeil,
       },
       lowCeilMeasured: wBeam !== null,
       high: {
-        floorHz: maxOpt(tweeterHpFloor, reachesLevelHz(grid, sim.base.t.spl)),
-        ceilHz: mBeam ?? midXoCeiling,
+        floorHz: maxOpt(tweeterHpFloor, reachesLevelHz(grid, sim.base.t.spl), twtEx),
+        ceilHz: highCeil,
       },
       highCeilMeasured: mBeam !== null,
+      /** Every criterion's own number, so the panel can say WHICH one binds —
+       *  a window the designer cannot attribute is a window he cannot act on. */
+      limits: {
+        low: { beam: wBeam, lobe: wLobe, breakup: wBreak, excursion: midEx },
+        high: { beam: mBeam, lobe: mLobe, breakup: mBreak, excursion: twtEx },
+      },
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [threeWay, sim, result, phaseMode, angleSets, midHpFloor, wooferXoCeiling, midXoCeiling, tweeterHpFloor]);
+  }, [threeWay, sim, result, phaseMode, angleSets, midHpFloor, wooferXoCeiling, midXoCeiling,
+      tweeterHpFloor, kaTier, ctcLowMm, ctcHighMm, ctcK, breakupLimitOn, breakupHarmonic,
+      sdCm2, xmaxMm, excursionSpl, impedances]);
 
   /** Per-adjacent-pair integration + phase flatness (3-way only). Silent
    *  ghost regions (per-branch bands) drop out of the overlap window on
@@ -2509,6 +2620,15 @@ export default function App() {
         xoLowMarginHz,
         midSizeInch,
         wooferSizeInch,
+        kaTier,
+        ctcLowMm,
+        ctcHighMm,
+        ctcK,
+        breakupLimitOn,
+        breakupHarmonic,
+        sdCm2,
+        xmaxMm,
+        excursionSpl,
         snapProfile,
         snapSeriesL,
         snapSeriesC,
@@ -2640,6 +2760,15 @@ export default function App() {
     setXoLowMarginHz(d.xoLowMarginHz ?? '150');
     setMidSizeInch(d.midSizeInch ?? '');
     setWooferSizeInch(d.wooferSizeInch ?? '');
+    setKaTier((d.kaTier as KaTier) in KA_TIERS ? (d.kaTier as KaTier) : 'standard');
+    setCtcLowMm(d.ctcLowMm ?? '');
+    setCtcHighMm(d.ctcHighMm ?? '');
+    setCtcK(d.ctcK ?? '0.5');
+    setBreakupLimitOn(d.breakupLimitOn ?? true);
+    setBreakupHarmonic(d.breakupHarmonic ?? '3');
+    setSdCm2({ low: d.sdCm2?.low ?? '', mid: d.sdCm2?.mid ?? '', high: d.sdCm2?.high ?? '' });
+    setXmaxMm({ low: d.xmaxMm?.low ?? '', mid: d.xmaxMm?.mid ?? '', high: d.xmaxMm?.high ?? '' });
+    setExcursionSpl(d.excursionSpl ?? '96');
     setSnapProfile(d.snapProfile ?? 'auto');
     setSnapSeriesL(d.snapSeriesL ?? 'auto');
     setSnapSeriesC(d.snapSeriesC ?? 'auto');
@@ -2723,7 +2852,7 @@ export default function App() {
     }, 800);
     return () => clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [woofer, midDrv, tweeter, project, zStandalone, angleSets, fileNotes, verify, vFilters, xoName, offsetMm, trimDb, inverted, midOffsetMm, midTrimDb, midInverted, fMin, fMax, splMin, splMax, phasePriority, vfEqBands, phaseMode, dirWeight, ampTarget, sonogramMode, designs, activeDesignId, lastSavedId, networkActive, vfBypass, catalogSnap, breakupGuard, xoRangeOn, xoFreqHz, xoMarginHz, xoScanSteps, xo3Steps, hpLpPref, hpLpPrefLow, phaseMetricMode, acSlopeMid, acSlopeTweeter, acSlopeWoofer, acSlopeMidHp, xoLowFreqHz, xoLowMarginHz, midSizeInch, wooferSizeInch, snapProfile, snapSeriesL, snapSeriesC, snapSeriesR, snapStacks, snapBoundToSeries, stagedOn, targetRipple, targetPhase, soloSensDb, soloFloorOn, soloFloorDb]);
+  }, [woofer, midDrv, tweeter, project, zStandalone, angleSets, fileNotes, verify, vFilters, xoName, offsetMm, trimDb, inverted, midOffsetMm, midTrimDb, midInverted, fMin, fMax, splMin, splMax, phasePriority, vfEqBands, phaseMode, dirWeight, ampTarget, sonogramMode, designs, activeDesignId, lastSavedId, networkActive, vfBypass, catalogSnap, breakupGuard, xoRangeOn, xoFreqHz, xoMarginHz, xoScanSteps, xo3Steps, hpLpPref, hpLpPrefLow, phaseMetricMode, acSlopeMid, acSlopeTweeter, acSlopeWoofer, acSlopeMidHp, xoLowFreqHz, xoLowMarginHz, midSizeInch, wooferSizeInch, kaTier, ctcLowMm, ctcHighMm, ctcK, breakupLimitOn, breakupHarmonic, sdCm2, xmaxMm, excursionSpl, snapProfile, snapSeriesL, snapSeriesC, snapSeriesR, snapStacks, snapBoundToSeries, stagedOn, targetRipple, targetPhase, soloSensDb, soloFloorOn, soloFloorDb]);
 
   function resetProject() {
     localStorage.removeItem(AUTOSAVE_KEY);
@@ -7272,6 +7401,118 @@ export default function App() {
                     </select>
                   </label>
                 )}
+                {threeWay && (
+                  <label title="Directivity philosophy for the MEASURED beaming ceiling. The threshold is the on-axis minus 30° difference of an ideal piston at that ka. The historical 4 dB is ka ≈ 3.5 — nearly 'aggressive'. The industry rule 'never operate a cone above ka = 2' is only 1.11 dB down at 30°, and '−6 dB at 30°' (a common intuition) is ka = 4.43, far past every published limit — that figure defines BEAMWIDTH, not a crossover ceiling.">
+                    Beaming limit
+                    <select value={kaTier} onChange={(e) => setKaTier(e.target.value as KaTier)}>
+                      {(Object.keys(KA_TIERS) as KaTier[]).map((k) => (
+                        <option key={k} value={k}>
+                          {k} — ka {KA_TIERS[k].ka} ({KA_TIERS[k].diff30Db} dB)
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                )}
+                {threeWay && (
+                  <span
+                    className="inline-num"
+                    title="Acoustic centre-to-centre spacing per adjacent pair (mm). Pure geometry — no measurement — and the constraint that actually explains why 3-ways cross at 200–500 Hz: the woofer and mid are the farthest-apart pair. A forward null can only exist once the spacing reaches half a wavelength. Leave empty to skip the rule."
+                  >
+                    {'c-t-c W-M '}
+                    <input
+                      type="number"
+                      min={0}
+                      max={800}
+                      step={5}
+                      value={ctcLowMm}
+                      onChange={(e) => setCtcLowMm(e.target.value)}
+                    />
+                    {' M-T '}
+                    <input
+                      type="number"
+                      min={0}
+                      max={800}
+                      step={5}
+                      value={ctcHighMm}
+                      onChange={(e) => setCtcHighMm(e.target.value)}
+                    />
+                    {' mm, k '}
+                    <select value={ctcK} onChange={(e) => setCtcK(e.target.value)}>
+                      <option value="0.25">0.25 — point source</option>
+                      <option value="0.5">0.5 — no forward null</option>
+                      <option value="1">1.0 — Dickason</option>
+                      <option value="1.2">1.2 — Saunisto (power response)</option>
+                    </select>
+                  </span>
+                )}
+                {threeWay && (
+                  <label title="Cone breakup as an upper limit. A resonance at f_b is excited as the THIRD harmonic of a fundamental at f_b/3 (Purifi measured exactly this: breakups at 5 and 10 kHz produce HD3 peaks at 1.6 and 3.3 kHz), so the distortion penalty lands more than an octave BELOW the peak. A notch does not repair it — it attenuates the fundamental at the breakup, not the harmonics arriving there from lower fundamentals. NOTE: no published algorithm exists for finding breakup in an SPL curve; this is our own criterion, which is why it is switchable and the detected frequency is shown.">
+                    Breakup ceiling
+                    <select
+                      value={breakupLimitOn ? breakupHarmonic : 'off'}
+                      onChange={(e) => {
+                        if (e.target.value === 'off') setBreakupLimitOn(false);
+                        else {
+                          setBreakupLimitOn(true);
+                          setBreakupHarmonic(e.target.value);
+                        }
+                      }}
+                    >
+                      <option value="off">off</option>
+                      <option value="3">f_b / 3 (HD3)</option>
+                      <option value="5">f_b / 5 (HD5, hard cones)</option>
+                    </select>
+                  </label>
+                )}
+                {threeWay && (
+                  <span
+                    className="inline-num"
+                    title="Excursion floor — the LEVEL-aware version of 'cross a tweeter at 2-3x Fs'. SPL = 108.4 + 20log(f²·Sd·Xmax) in half space, so a driver runs out of linear travel below f = sqrt(10^((L-108.4)/20)/(Sd·Xmax)). Both numbers come straight off the datasheet; without them the criterion simply does not apply. The level matters: a 1 inch dome is fine to 587 Hz at 90 dB and only to 829 Hz at 96 dB."
+                  >
+                    {'Sd/Xmax mid '}
+                    <input
+                      type="number"
+                      min={0}
+                      step={1}
+                      value={sdCm2.mid}
+                      onChange={(e) => setSdCm2((p) => ({ ...p, mid: e.target.value }))}
+                    />
+                    {' cm² / '}
+                    <input
+                      type="number"
+                      min={0}
+                      step={0.1}
+                      value={xmaxMm.mid}
+                      onChange={(e) => setXmaxMm((p) => ({ ...p, mid: e.target.value }))}
+                    />
+                    {' mm · tweeter '}
+                    <input
+                      type="number"
+                      min={0}
+                      step={1}
+                      value={sdCm2.high}
+                      onChange={(e) => setSdCm2((p) => ({ ...p, high: e.target.value }))}
+                    />
+                    {' cm² / '}
+                    <input
+                      type="number"
+                      min={0}
+                      step={0.1}
+                      value={xmaxMm.high}
+                      onChange={(e) => setXmaxMm((p) => ({ ...p, high: e.target.value }))}
+                    />
+                    {' mm @ '}
+                    <input
+                      type="number"
+                      min={70}
+                      max={120}
+                      step={1}
+                      value={excursionSpl}
+                      onChange={(e) => setExcursionSpl(e.target.value)}
+                    />
+                    {' dB'}
+                  </span>
+                )}
                 {threeWay && physWin3 && (
                   <span
                     className="derived"
@@ -7282,21 +7523,28 @@ export default function App() {
                     ) : (
                       <>
                         W-M {Math.round(physWin3.low.floorHz ?? 250)}–
-                        {Math.round(Math.min(1500, physWin3.low.ceilHz ?? 1200))} Hz
-                        {physWin3.lowCeilMeasured ? ' (measured beaming)' : ''}
+                        {Math.round(physWin3.low.ceilHz ?? 1200)} Hz
+                        {bindingCeil(physWin3.limits.low, physWin3.lowCeilMeasured)}
                         {' · '}
                       </>
                     )}
+                    {physWin3.low.ceilHz !== null &&
+                      physWin3.low.floorHz !== null &&
+                      physWin3.low.ceilHz <= physWin3.low.floorHz && (
+                        <strong> ⚠ no room</strong>
+                      )}
                     {xoRangeOn ? (
                       <>M-T pinned — pins override the derived windows</>
                     ) : (
                       <>
                         M-T {Math.round(physWin3.high.floorHz ?? 1200)}–
-                        {Math.round(
-                          Math.min(12000, Math.max(7000, physWin3.high.ceilHz ?? 7000)),
-                        )}{' '}
-                        Hz
-                        {physWin3.highCeilMeasured ? ' (measured beaming)' : ''}
+                        {Math.round(physWin3.high.ceilHz ?? 7000)} Hz
+                        {bindingCeil(physWin3.limits.high, physWin3.highCeilMeasured)}
+                        {physWin3.high.ceilHz !== null &&
+                          physWin3.high.floorHz !== null &&
+                          physWin3.high.ceilHz <= physWin3.high.floorHz && (
+                            <strong> ⚠ no room</strong>
+                          )}
                       </>
                     )}
                   </span>
