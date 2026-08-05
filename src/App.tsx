@@ -525,6 +525,16 @@ interface CabinetDriver {
   enclosure: Enclosure;
   /** Box corner: Fc for sealed, Fb for ported. */
   fbHz: string;
+  /** How many IDENTICAL drivers make up this branch ('' or '1' = one). Dual
+   *  woofers are ordinary (MTM, 2.5-way), and the count is not cosmetic: n
+   *  drivers displace n times the air, so the excursion floor drops by √n —
+   *  while each cone still beams as itself, which is why Sd stays the single
+   *  driver's datasheet value instead of being pre-multiplied. */
+  count: string;
+  /** Centre-to-centre spacing BETWEEN those drivers, mm. Only meaningful when
+   *  count > 1: it sets where the array's own vertical lobing starts, which is
+   *  a different (and usually lower) ceiling than cone beaming. */
+  spacingMm: string;
 }
 interface CabinetState {
   /** Microphone distance during the FRD sweeps, mm. */
@@ -551,6 +561,8 @@ const emptyCabinetDriver = (): CabinetDriver => ({
   yMm: '',
   enclosure: 'unknown',
   fbHz: '',
+  count: '',
+  spacingMm: '',
 });
 const emptyCabinet = (): CabinetState => ({
   micDistanceMm: '',
@@ -582,6 +594,8 @@ function mergeCabinet(raw: ProjectDesign['cabinet']): CabinetState {
       enclosure:
         enc === 'sealed' || enc === 'ported' || enc === 'open' ? (enc as Enclosure) : 'unknown',
       fbHz: d.fbHz ?? '',
+      count: d.count ?? '',
+      spacingMm: d.spacingMm ?? '',
     };
   }
   return {
@@ -619,6 +633,10 @@ function bindingCeil(
   lim: {
     beam: number | null;
     lobe: number | null;
+    /** Lobing of a MULTI-driver branch on its own spacing — a separate
+     *  criterion from lobing against the neighbouring branch, and usually
+     *  the lower of the two once a branch holds more than one driver. */
+    arrayLobe: number | null;
     breakup: { hz: number; corroboratedByZ: boolean } | null;
     excursion: number | null;
   },
@@ -627,6 +645,7 @@ function bindingCeil(
   const cands: Array<[number, string]> = [];
   if (lim.beam !== null) cands.push([lim.beam, beamMeasured ? 'measured beaming' : 'beaming']);
   if (lim.lobe !== null) cands.push([lim.lobe, 'lobing']);
+  if (lim.arrayLobe !== null) cands.push([lim.arrayLobe, 'array lobing']);
   if (lim.breakup)
     cands.push([
       lim.breakup.hz / 3,
@@ -2068,6 +2087,21 @@ export default function App() {
     };
   }, [cabinet, sdCm2, angleSets, threeWay]);
 
+  /** Where a MULTI-driver branch starts lobing on its own spacing. This is a
+   *  different ceiling from cone beaming: two woofers 200 mm apart interfere
+   *  vertically long before either cone becomes directional, and that is the
+   *  quantitative reason a dual-woofer branch wants to hand over lower. Uses
+   *  the same k the user picked for the driver-to-driver rule. */
+  const arrayLobe = useMemo(() => {
+    const out: Partial<Record<BranchRole, number | null>> = {};
+    for (const role of ['low', 'mid', 'high'] as BranchRole[]) {
+      const d = cabinet.drivers[role];
+      out[role] =
+        Number(d.count) > 1 ? lobingCeilingHz(Number(d.spacingMm), Number(ctcK) || 0.5) : null;
+    }
+    return out as Record<BranchRole, number | null>;
+  }, [cabinet, ctcK]);
+
   /**
    * Near-field merge per branch: the driver's effective response, with its low
    * end taken from the near-field measurement where the gate can no longer
@@ -2645,12 +2679,34 @@ export default function App() {
     // --- lower limits of the UPPER driver of each pair ---------------------
     const spl = Number(excursionSpl);
     const exOf = (role: BranchRole) =>
-      Number.isFinite(spl) ? excursionFloorHz(Number(sdCm2[role]), Number(xmaxMm[role]), spl) : null;
+      Number.isFinite(spl)
+        ? excursionFloorHz(Number(sdCm2[role]), Number(xmaxMm[role]), spl, {
+            count: Number(cabinet.drivers[role].count) || 1,
+          })
+        : null;
     const midEx = exOf('mid');
     const twtEx = exOf('high');
 
-    const lowCeil = minOpt(wBeam ?? wooferXoCeiling, wLobe, wBreak && breakupCeilingHz(wBreak.hz, harm));
-    const highCeil = minOpt(mBeam ?? midXoCeiling, mLobe, mBreak && breakupCeilingHz(mBreak.hz, harm));
+    // A branch built from SEVERAL drivers lobes on its OWN spacing too, and
+    // that ceiling is independent of cone beaming: two woofers 205 mm apart
+    // interfere vertically at 837 Hz however small each cone is. It belongs in
+    // the window for the same reason the driver-to-driver spacing does.
+    const arrayOf = (role: BranchRole) =>
+      Number(cabinet.drivers[role].count) > 1
+        ? lobingCeilingHz(Number(cabinet.drivers[role].spacingMm), kk)
+        : null;
+    const lowCeil = minOpt(
+      wBeam ?? wooferXoCeiling,
+      wLobe,
+      arrayOf('low'),
+      wBreak && breakupCeilingHz(wBreak.hz, harm),
+    );
+    const highCeil = minOpt(
+      mBeam ?? midXoCeiling,
+      mLobe,
+      arrayOf('mid'),
+      mBreak && breakupCeilingHz(mBreak.hz, harm),
+    );
     return {
       angleSets,
       low: {
@@ -2666,14 +2722,14 @@ export default function App() {
       /** Every criterion's own number, so the panel can say WHICH one binds —
        *  a window the designer cannot attribute is a window he cannot act on. */
       limits: {
-        low: { beam: wBeam, lobe: wLobe, breakup: wBreak, excursion: midEx },
-        high: { beam: mBeam, lobe: mLobe, breakup: mBreak, excursion: twtEx },
+        low: { beam: wBeam, lobe: wLobe, arrayLobe: arrayOf('low'), breakup: wBreak, excursion: midEx },
+        high: { beam: mBeam, lobe: mLobe, arrayLobe: arrayOf('mid'), breakup: mBreak, excursion: twtEx },
       },
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [threeWay, sim, result, phaseMode, angleSets, midHpFloor, wooferXoCeiling, midXoCeiling,
       tweeterHpFloor, kaTier, cabinetInfo, ctcK, breakupLimitOn, breakupHarmonic,
-      sdCm2, xmaxMm, excursionSpl, impedances]);
+      sdCm2, xmaxMm, excursionSpl, impedances, cabinet]);
 
   /** Per-adjacent-pair integration + phase flatness (3-way only). Silent
    *  ghost regions (per-branch bands) drop out of the overlap window on
@@ -7590,6 +7646,43 @@ export default function App() {
                         />
                         {' mm'}
                       </span>
+                      <span
+                        className="inline-num"
+                        title="How many IDENTICAL drivers make up this branch. Dual woofers displace twice the air, so the excursion floor drops by √2 — but each cone still beams as itself, so Sd above stays the SINGLE driver's datasheet number. With more than one, their centre-to-centre spacing sets where the array's own vertical lobing starts, which is usually a lower ceiling than cone beaming."
+                      >
+                        {'× '}
+                        <input
+                          type="number"
+                          min={1}
+                          step={1}
+                          placeholder="1"
+                          value={d.count}
+                          onChange={(e) => set({ count: e.target.value })}
+                        />
+                        {' drivers'}
+                        {Number(d.count) > 1 && (
+                          <>
+                            {', spaced '}
+                            <input
+                              type="number"
+                              min={0}
+                              step={1}
+                              value={d.spacingMm}
+                              onChange={(e) => set({ spacingMm: e.target.value })}
+                            />
+                            {' mm apart'}
+                          </>
+                        )}
+                      </span>
+                      {Number(d.count) > 1 && (
+                        <span className="derived">
+                          {'excursion floor drops ×'}
+                          {(1 / Math.sqrt(Number(d.count))).toFixed(2)}
+                          {arrayLobe[role]
+                            ? ` · array lobing from ${Math.round(arrayLobe[role]!)} Hz`
+                            : ' · enter the spacing for the array lobing ceiling'}
+                        </span>
+                      )}
                       {cabinetInfo.place[role] &&
                         cabinetInfo.place[role]!.xMm === 0 &&
                         cabinetInfo.place[role]!.yMm === 0 && (

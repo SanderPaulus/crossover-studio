@@ -261,6 +261,20 @@ minimum phase reconstrueert. Voertaal met Sander: **Nederlands**; code/comments 
   tests en de KOAN-set toonden het niet. Bijbehorend in
   directivity.ts: de vasthoud-slack werd `thresholdDb − 1` en is nu `× 0,75` — bit-identiek op
   de oude default 4, maar bij 1,11 dB zou "−1" elke wiebel accepteren.
+  (b2) **MEERDERE DRIVERS PER TAK (aug 2026, Sanders "dubbele woofers is natuurlijk geen vreemd
+  iets")**: `count` + `spacingMm` per tak (Setup-paneel, gepersisteerd). DE VALKUIL is welk getal
+  je vermenigvuldigt: n drivers verplaatsen n× zoveel lucht, dus de excursievloer zakt met √n
+  (`excursionFloorHz({count})` — vier woofers kopen één octaaf, niet vier), MAAR élke conus
+  bundelt nog steeds als zichzelf. Sd blijft daarom de waarde van ÉÉN driver van het datasheet.
+  De verleidelijke sluipweg — Sd alvast verdubbelen — maakt de excursievloer goed en het
+  bundelplafond fout: 2×124,7 cm² leest als een zuiger van 178 mm waar de echte conus 126 mm is,
+  dus je krijgt een directiviteitsschatting voor een driver die niet bestaat (in de app gezien,
+  test pint beide diameters). Wat een array wél toevoegt is INTERFERENTIE: `lobingCeilingHz` op
+  de ONDERLINGE afstand, en dat plafond ligt meestal ver onder conusbundeling (twee woofers
+  205 mm uiteen loberen al op 837 Hz) — dát is de kwantitatieve reden dat een dubbele-woofertak
+  laag wil overnemen. Zit in `physWin3` als volwaardig criterium naast beaming/lobing/breakup én
+  in de toeschrijving ("(array lobing)"), want een venster dat je niet kunt toeschrijven kun je
+  niet aanpassen.
   (c) **`lobingCeilingHz` — hart-op-hart-afstand**, pure geometrie, nul metingen: een voorwaartse
   nul kan pas bestaan vanaf d ≥ λ/2. **Dit is de kwantitatieve reden dat 3-wegs op 200–500 Hz
   kruisen** — woofer en mid zijn het verst uit elkaar staande aangrenzende paar (300 mm ⇒ 572 Hz

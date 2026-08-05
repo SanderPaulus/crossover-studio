@@ -332,11 +332,20 @@ export function excursionFloorHz(
   sdCm2: number,
   xmaxMm: number,
   targetSplDb: number,
-  opts: { distanceM?: number; halfSpace?: boolean } = {},
+  opts: { distanceM?: number; halfSpace?: boolean; count?: number } = {},
 ): number | null {
-  const { distanceM = 1, halfSpace = true } = opts;
+  const { distanceM = 1, halfSpace = true, count = 1 } = opts;
   if (!(sdCm2 > 0) || !(xmaxMm > 0)) return null;
-  const vd = (sdCm2 * 1e-4) * (xmaxMm * 1e-3); // m³
+  // `count` identical drivers sharing the branch displace `count` times the
+  // volume, so the floor drops by √count (four woofers buy one octave, not
+  // four). Sd stays the SINGLE cone's datasheet value on purpose: the same
+  // number feeds the piston diameter, and each cone beams as itself — an
+  // array adds interference lobes, it does not grow the cone. Folding the
+  // count into Sd would make the excursion floor right and the beaming
+  // ceiling wrong, which is how a dual-woofer design quietly gets a
+  // directivity estimate for a driver that does not exist.
+  const n = count > 0 ? count : 1;
+  const vd = n * (sdCm2 * 1e-4) * (xmaxMm * 1e-3); // m³
   const k = halfSpace ? 108.4 : 102.4;
   return Math.sqrt((10 ** ((targetSplDb - k) / 20) * distanceM) / vd);
 }

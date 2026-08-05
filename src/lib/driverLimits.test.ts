@@ -12,6 +12,7 @@ import {
   firstNullAngleDeg,
   lobingCeilingHz,
 } from './driverLimits.ts';
+import { pistonDiameterMm } from './cabinet.ts';
 import { parseFrd } from './parsers/frd.ts';
 import { parseZma } from './parsers/zma.ts';
 import { logspace, resample } from './dsp.ts';
@@ -236,5 +237,32 @@ describe('excursion floor', () => {
   it('returns null without the datasheet numbers', () => {
     expect(excursionFloorHz(0, 0.5, 90)).toBeNull();
     expect(excursionFloorHz(7, 0, 90)).toBeNull();
+  });
+});
+
+describe('several identical drivers in one branch', () => {
+  it('drops the excursion floor by √n, and Sd stays the SINGLE cone', () => {
+    const one = excursionFloorHz(124.7, 6, 96)!;
+    const two = excursionFloorHz(124.7, 6, 96, { count: 2 })!;
+    const four = excursionFloorHz(124.7, 6, 96, { count: 4 })!;
+    // Twice the displacement buys √2, not 2 — four woofers buy one octave.
+    expect(one / two).toBeCloseTo(Math.SQRT2, 6);
+    expect(one / four).toBeCloseTo(2, 6);
+    // Absent or nonsensical counts must read as one driver, never as zero
+    // displacement (which would divide by zero and report an infinite floor).
+    expect(excursionFloorHz(124.7, 6, 96, { count: 0 })).toBeCloseTo(one, 9);
+    expect(excursionFloorHz(124.7, 6, 96, { count: 1 })).toBeCloseTo(one, 9);
+  });
+
+  it('the cone diameter is NOT the array — that is what keeps beaming honest', () => {
+    // Folding the count into Sd (the tempting shortcut) would model one big
+    // piston: 2 × 124.7 cm² reads as a 178 mm cone instead of the real 126 mm,
+    // so the beaming ceiling would be attributed to a driver that does not
+    // exist. The array's own ceiling comes from SPACING instead.
+    expect(pistonDiameterMm(124.7)!).toBeCloseTo(126, 0);
+    expect(pistonDiameterMm(2 * 124.7)!).toBeCloseTo(178, 0);
+    // Two woofers 205 mm apart lobe at 837 Hz — far below where either cone
+    // starts beaming, which is exactly why a dual-woofer branch crosses low.
+    expect(lobingCeilingHz(205, 0.5)!).toBeCloseTo(837, 0);
   });
 });
