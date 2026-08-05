@@ -2256,3 +2256,15 @@ button:disabled {
 .cabinet-driver .derived {
   flex-basis: 100%;
 }
+
+/* The reference point is the anchor for every position in the block, so it is
+   explained ON SCREEN rather than in a tooltip — a tooltip is hover-only, and
+   this is the one thing a reader must know before typing anything. */
+.cabinet-note {
+  flex-basis: 100%;
+  margin: 0.1rem 0 0.3rem;
+  font-size: 0.82rem;
+  line-height: 1.45;
+  color: var(--muted);
+  max-width: 60ch;
+}

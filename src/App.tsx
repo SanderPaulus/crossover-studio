@@ -6966,6 +6966,14 @@ export default function App() {
                   — what you know, so the app stops guessing
                 </span>
               </legend>
+              <p className="cabinet-note">
+                Everything below is measured from the <strong>reference point</strong>: the spot
+                the microphone was aimed at during the sweeps, and — on a turntable — the axis the
+                cabinet turned around. Most people aim at the tweeter, so the tweeter sits at{' '}
+                <strong>x 0, y 0</strong> and anything lower gets a <strong>negative y</strong>.
+                Nothing here changes your measurements; it lets the app work out what those
+                measurements actually captured.
+              </p>
               <label title="Microphone distance during the FRD sweeps. This is what decides whether the angle files mean what they say: at close range a driver sitting well below the mic is already far off ITS OWN axis at nominal 0°, which exaggerates every off-axis difference and makes a woofer look like it beams far too low.">
                 Mic distance (mm)
                 <input
@@ -7006,7 +7014,7 @@ export default function App() {
                 />
               </label>
               <label title="How far below the TOP of the baffle the measurement reference point sits — the point the mic was aimed at and, on a turntable, the rotation axis. Everything else is measured relative to it.">
-                Ref below top (mm)
+                Reference point: mm below the baffle top
                 <input
                   type="number"
                   min={0}
@@ -7021,7 +7029,7 @@ export default function App() {
                 </span>
               )}
               <label title="Height of the reference point above the floor, and the listener's ear height and distance. Together they say at what vertical angle you actually sit — which is what turns a driver-spacing rule into a decision: a null at ±25° is harmless if you sit 2° off the axis.">
-                Ref height (mm)
+                Reference point: mm above the floor
                 <input
                   type="number"
                   min={0}
@@ -7086,17 +7094,19 @@ export default function App() {
                         <input
                           type="number"
                           step={5}
+                          placeholder="0"
                           value={d.xMm}
                           onChange={(e) => set({ xMm: e.target.value })}
                         />
-                        {' y '}
+                        {' right, y '}
                         <input
                           type="number"
                           step={5}
+                          placeholder="0"
                           value={d.yMm}
                           onChange={(e) => set({ yMm: e.target.value })}
                         />
-                        {' mm'}
+                        {' up (mm from the reference point)'}
                       </span>
                       <label title="Enclosure behind THIS driver. A sealed box is already a 2nd-order acoustic high-pass at its corner, so a 2nd-order electrical filter yields a 4th-order acoustic slope — on a low crossover that is the difference between one ~30 µF capacitor and a pair adding to ~90 µF. A port also means the box can radiate its own midrange through a pipe resonance.">
                         Box
@@ -7144,6 +7154,13 @@ export default function App() {
                         />
                         {' mm'}
                       </span>
+                      {cabinetInfo.place[role] &&
+                        cabinetInfo.place[role]!.xMm === 0 &&
+                        cabinetInfo.place[role]!.yMm === 0 && (
+                          <span className="derived">
+                            this driver IS the reference point — the mic was aimed here
+                          </span>
+                        )}
                       {dia && (
                         <span className="derived">effective Ø {Math.round(dia)} mm</span>
                       )}
