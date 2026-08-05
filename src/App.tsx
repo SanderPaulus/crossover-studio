@@ -966,6 +966,39 @@ export default function App() {
     localStorage.setItem('ads-ui-tab', designTab);
   }, [designTab]);
 
+  /**
+   * Guided vs Expert.
+   *
+   * The tool exists so that someone who does not know how to build a filter
+   * still ends up with speakers — and at the same time a pro must be able to
+   * work properly. Those are not the same interface, and the dividing line is
+   * NOT "easy versus hard". It is:
+   *
+   *   facts about YOUR speaker      -> a beginner can answer these
+   *   overrides on MY reasoning     -> only someone who knows better can
+   *
+   * Which drivers, how many, where on the baffle, how you measured, how loud
+   * you want to play: all answerable, and all things the app cannot derive.
+   * Alignment preference, acoustic slopes, phase metric, tier profiles, staged
+   * targets, crossover pins: overrides, every one of them, and the app already
+   * has a defensible answer for each.
+   *
+   * Guided therefore shows FEWER KNOBS BUT NOT LESS DIAGNOSIS — a first build
+   * fails on measurement mistakes and unsafe loads, so the verdicts stay.
+   *
+   * Default: guided for someone new, expert for a session that already has
+   * work in it (changing a working setup out from under someone is its own
+   * kind of bug).
+   */
+  const [uiMode, setUiMode] = useState<'guided' | 'expert'>(() => {
+    const m = localStorage.getItem('ads-ui-mode');
+    if (m === 'guided' || m === 'expert') return m;
+    return localStorage.getItem('ads-autosave') ? 'expert' : 'guided';
+  });
+  useEffect(() => {
+    localStorage.setItem('ads-ui-mode', uiMode);
+  }, [uiMode]);
+
   /** Pin the SPL chart to the top of the analysis pane while the rest scrolls. */
   /** Build-tolerance band on the SPL chart (±% on every physical R/L/C,
    *  worst-case envelope; see lib/tolerance.ts). Opt-in — it costs 2N+1
@@ -2437,6 +2470,30 @@ export default function App() {
   }, [woofer, midDrv, threeWay, tweeter, project, impedances, xoName, vFilters, vfBypass, phaseMode, fMinDeb, fMaxDeb, offsetMm, trimDb, inverted, midOffsetMm, midTrimDb, midInverted, schematic, networkActive]);
 
   const result = sim?.combined ?? null;
+
+  /**
+   * What the guided route counts as "this step is done".
+   *
+   * Deliberately generous: a tick means "you have given me enough to work
+   * with", not "this is perfect". The step stays open, the checks inside the
+   * panel keep nagging about quality (timing, far field, gate). A tick that
+   * demands perfection would just stop a beginner at step one.
+   */
+  const guidedDone = useMemo(
+    () => ({
+      // A driver is only useful with a response; impedance and datasheet
+      // numbers unlock extra criteria and are checked inside the step.
+      drivers: !!(woofer || tweeter),
+      // Mic distance is the one number that unlocks the honest-range advice —
+      // without it the app cannot tell you what your measurement supports.
+      cabinet: Number(cabinet.micDistanceMm) > 0,
+      // Something has been designed: virtual filters or a built network.
+      design: !!result,
+      build: designs.some((d) => d.parts.length > 2),
+    }),
+    [woofer, tweeter, cabinet.micDistanceMm, result, designs],
+  );
+
 
   /** Single-driver mode, floor control: the driver's own median level over the
    *  evaluation band, the level the engine would target by default, and — for
@@ -6872,6 +6929,24 @@ export default function App() {
             );
           })()}
         </div>
+        <div className="theme-switch" role="group" aria-label="Mode">
+          {(
+            [
+              ['guided', 'Guided', 'A numbered route from measurements to a shopping list. The app decides the crossover, the filter shapes and the parts; you supply the facts about your speaker. Every check and warning stays visible.'],
+              ['expert', 'Expert', 'Everything: alignment preference, acoustic slopes, phase metric, crossover pins, component tiers, the network editor. Overrides on top of the same engine.'],
+            ] as const
+          ).map(([m, label, tip]) => (
+            <button
+              key={m}
+              type="button"
+              className={uiMode === m ? 'active' : ''}
+              onClick={() => setUiMode(m)}
+              title={tip}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
         <div className="theme-switch" role="group" aria-label="Layout">
           {(
             [
@@ -6930,8 +7005,39 @@ export default function App() {
         }
       >
         <aside className="design-pane">
+          {uiMode === 'guided' ? (
+            /* GUIDED: the same four panels, but presented as a numbered route
+               with a completion mark per step. The panels were already in the
+               right order — what a beginner misses is not content but the
+               knowledge that there IS an order, and where he is in it. Later
+               steps stay clickable on purpose: blocking them would hide what
+               is coming, and a locked button teaches nothing about why. */
+            <nav className="pane-steps" aria-label="Design steps">
+              {(
+                [
+                  ['import', 'Your drivers', guidedDone.drivers, 'Load the measurements of each driver, and its cone area and travel from the datasheet.'],
+                  ['data', 'Your cabinet', guidedDone.cabinet, 'Where the drivers sit on the baffle and how you measured — this is what lets the app judge your measurements instead of trusting them.'],
+                  ['filters', 'Design it', guidedDone.design, 'One button. The app picks the crossover points, the filter shapes and the parts, and shows what it chose.'],
+                  ['network', 'Your build', guidedDone.build, 'The schematic and the shopping list.'],
+                ] as const
+              ).map(([id, label, done, tip], i) => (
+                <button
+                  key={id}
+                  type="button"
+                  className={`${designTab === id ? 'active' : ''}${done ? ' step-done' : ''}`}
+                  onClick={() => setDesignTab(id)}
+                  title={tip}
+                >
+                  <span className="step-num" aria-hidden="true">
+                    {done ? '✓' : i + 1}
+                  </span>
+                  {label}
+                </button>
+              ))}
+            </nav>
+          ) : (
           <nav className="pane-tabs" aria-label="Design panels">
-            {(
+              {(
               [
                 ['import', 'Import', 'Load measurements and projects, see what is imported per driver and attach notes to files'],
                 ['data', 'Setup', 'View range, phase convention, tweeter adjustment, vxp variant and the timing sanity check'],
@@ -6949,7 +7055,8 @@ export default function App() {
                 {label}
               </button>
             ))}
-          </nav>
+            </nav>
+          )}
           <div className="pane-body">
             {designTab === 'import' && (
               <>

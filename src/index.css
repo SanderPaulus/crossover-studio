@@ -2547,3 +2547,52 @@ button:disabled {
   margin-top: 0.2rem;
   padding-top: 0;
 }
+
+/* Guided route: the same four panels as the expert tabs, but numbered so the
+   reader can see there IS an order and where he is in it. Later steps stay
+   clickable — locking them would hide what is coming and teach nothing. */
+.pane-steps {
+  flex: 0 0 auto;
+  display: flex;
+  gap: 0.3rem;
+  padding: 0.4rem 0.9rem 0;
+  border-bottom: 1px solid var(--border);
+  flex-wrap: wrap;
+}
+.pane-steps button {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  border-radius: 0;
+  padding: 0.45rem 0.6rem;
+  font-weight: 600;
+  color: var(--muted);
+  cursor: pointer;
+}
+.pane-steps button:hover {
+  color: var(--fg);
+}
+.pane-steps button.active {
+  color: var(--fg);
+  border-bottom-color: var(--accent);
+}
+.pane-steps .step-num {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.35rem;
+  height: 1.35rem;
+  border-radius: 50%;
+  border: 1px solid var(--border);
+  font-size: 0.72rem;
+  font-weight: 700;
+}
+/* Done is stated by the tick AND the fill — colour never carries alone. */
+.pane-steps button.step-done .step-num {
+  background: var(--ok-bg);
+  border-color: var(--ok);
+  color: var(--ok);
+}
