@@ -7289,7 +7289,7 @@ export default function App() {
               </button>
             </div>
           </div>
-          <div className="tool-group">
+          <div className={`tool-group${uiMode === 'guided' ? ' expert-only' : ''}`}>
             <span className="tool-group-label">Component catalog</span>
             <div className="tool-group-body">
               <label
@@ -7834,7 +7834,7 @@ export default function App() {
                   );
                 })}
             </fieldset>
-            <fieldset>
+            <fieldset className={uiMode === 'guided' ? 'expert-only' : undefined}>
               <legend>Driver phase</legend>
               <label title="Measured = the real measured phase incl. the true inter-driver time offset — the whole point of this tool. Minimum phase = reconstructed from magnitude (offsets discarded), only for apples-to-apples VituixCAD comparison.">
                 Convention
@@ -7860,7 +7860,7 @@ export default function App() {
             {/* Inter-driver adjustments — nothing to adjust against in
                 single-driver mode, so the whole fieldset hides. */}
             {!soloDriver && (
-            <fieldset>
+            <fieldset className={uiMode === 'guided' ? 'expert-only' : undefined}>
               <legend>Tweeter adjustment</legend>
               <label title="Simulate moving the tweeter physically (mm depth, + = recessed = extra delay). With measured phase and a shared time reference the real timing is already in the data — leave 0.">
                 Offset (mm, + = recessed)
@@ -7912,7 +7912,7 @@ export default function App() {
             </fieldset>
             )}
             {threeWay && (
-              <fieldset>
+              <fieldset className={uiMode === 'guided' ? 'expert-only' : undefined}>
                 <legend>Midrange adjustment</legend>
                 <label title="Simulate moving the midrange physically (mm depth, + = recessed = extra delay). With measured phase and a shared time reference the real timing is already in the data — leave 0.">
                   Offset (mm, + = recessed)
@@ -8026,7 +8026,15 @@ export default function App() {
             {designTab === 'filters' && result && (
         <>
           <div className="panel">
-            <h2>Virtual filters (target design)</h2>
+            <h2>{uiMode === 'guided' ? 'Design the filter' : 'Virtual filters (target design)'}</h2>
+            {uiMode === 'guided' && (
+              <p className="sub">
+                One button. The app works out where the drivers should hand over to each other,
+                what shape each filter needs and which real parts to buy — using your measurements,
+                not rules of thumb. It tries several crossover points and keeps the best one. Expect
+                a few minutes.
+              </p>
+            )}
             <div className="tool-groups" style={{ marginBottom: '1rem' }}>
               <div className="tool-group">
                 <span className="tool-group-label">Design</span>
@@ -8046,6 +8054,7 @@ export default function App() {
                     {vfBusy ? 'Optimizing + building…' : soloDriver ? 'Optimize — flatten driver' : 'Optimize — design for me'}
                   </button>
                   <select
+                    className={uiMode === 'guided' ? 'expert-only' : undefined}
                     value={synthMode}
                     onChange={(e) => setSynthMode(e.target.value as 'filter' | 'acoustic')}
                     title="What the passive build optimises for: the acoustic result on the measured driver, or an exact reproduction of the filter curve"
@@ -8055,7 +8064,7 @@ export default function App() {
                   </select>
                 </div>
               </div>
-              <div className="tool-group">
+              <div className={`tool-group${uiMode === 'guided' ? ' expert-only' : ''}`}>
                 <span className="tool-group-label">Configure</span>
                 <div className="tool-group-body">
                   <button
@@ -8082,7 +8091,7 @@ export default function App() {
                   </button>
                 </div>
               </div>
-              <div className="tool-group">
+              <div className={`tool-group${uiMode === 'guided' ? ' expert-only' : ''}`}>
                 <span className="tool-group-label">State</span>
                 <div className="tool-group-body">
                   <button
@@ -8115,7 +8124,7 @@ export default function App() {
                   : '…'}
               </p>
             )}
-            {vfBypass && (
+            {vfBypass && uiMode === 'expert' && (
               <p className="derived" style={{ margin: '0 0 1rem' }}>
                 virtual filters muted — passive network / raw drivers only
               </p>
@@ -8712,7 +8721,11 @@ export default function App() {
                   .join('  ·  ')}
               </p>
             )}
-            <div className={`vf-panel${vfCollapsed ? '' : ' open'}`}>
+            <div
+              className={`vf-panel${vfCollapsed ? '' : ' open'}${
+                uiMode === 'guided' ? ' expert-only' : ''
+              }`}
+            >
               <button
                 type="button"
                 className="vf-collapse-head"
@@ -8782,7 +8795,7 @@ export default function App() {
           </div>
 
           {zModels.length > 0 && (
-            <div className="panel">
+            <div className={`panel${uiMode === 'guided' ? ' expert-only' : ''}`}>
               <h2>Passive synthesis</h2>
               <p className="sub" style={{ marginBottom: '0.8rem' }}>
                 {synthMode === 'filter'
@@ -8897,7 +8910,7 @@ export default function App() {
               the summed result uses the mid/tweeter slots for now.
             </p>
             <div className="tool-groups" style={{ marginBottom: '0.8rem' }}>
-              <div className="tool-group">
+              <div className={`tool-group${uiMode === 'guided' ? ' expert-only' : ''}`}>
                 <span className="tool-group-label">Start</span>
                 <div className="tool-group-body">
                   <button
@@ -8964,7 +8977,7 @@ export default function App() {
                   </span>
                 </div>
               </div>
-              <div className="tool-group">
+              <div className={`tool-group${uiMode === 'guided' ? ' expert-only' : ''}`}>
                 <span className="tool-group-label">Export</span>
                 <div className="tool-group-body">
                   <button
@@ -8985,7 +8998,7 @@ export default function App() {
                   </button>
                 </div>
               </div>
-              <div className="tool-group">
+              <div className={`tool-group${uiMode === 'guided' ? ' expert-only' : ''}`}>
                 <span className="tool-group-label">Catalog</span>
                 <div className="tool-group-body">
                   <button
@@ -9016,7 +9029,7 @@ export default function App() {
                   </button>
                 </div>
               </div>
-              <div className="tool-group">
+              <div className={`tool-group${uiMode === 'guided' ? ' expert-only' : ''}`}>
                 <span className="tool-group-label">Tools</span>
                 <div className="tool-group-body">
                   <button
@@ -9072,7 +9085,7 @@ export default function App() {
                   </button>
                 </div>
               </div>
-              <div className="tool-group">
+              <div className={`tool-group${uiMode === 'guided' ? ' expert-only' : ''}`}>
                 <span className="tool-group-label">Simulation</span>
                 <div className="tool-group-body">
                   <label title="Feed the active tab's network into the simulation instead of the selected vxp variant — every edit re-solves live">
