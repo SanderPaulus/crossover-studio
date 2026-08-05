@@ -1356,9 +1356,26 @@ button:hover {
    here start work that runs for seconds to minutes ("Optimize — design for
    me"), and between the click and the busy overlay nothing confirmed that the
    click had landed. Transform only: it skips layout and paint, and it scales
-   the label along with the button, which is what makes it read as physical. */
+   the label along with the button, which is what makes it read as physical.
+   Press and release are NOT symmetric: pressing is the user's own action and
+   must acknowledge instantly, releasing is the interface settling back. */
 button:active:not(:disabled) {
   transform: scale(0.97);
+  transition-duration: 90ms;
+}
+
+/* …but NOT on the high-frequency chrome. Tabs, legend chips and panel toggles
+   get clicked tens of times per session; feedback there is already carried by
+   the state change itself (the tab activates, the curve vanishes), so a scale
+   is decoration on exactly the elements that can least afford it. Legend chips
+   also sit in a wrapping row, where a scaling chip nudges its neighbours. */
+.pane-tabs button:active,
+.design-tab:active,
+.design-tab-close:active,
+.chart-legend .legend-item:active,
+.panel-toggle:active,
+.pin-btn:active {
+  transform: none;
 }
 
 /* One designed focus ring for every control. Without this the app rode on the
