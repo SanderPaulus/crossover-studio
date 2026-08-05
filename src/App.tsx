@@ -7606,51 +7606,75 @@ export default function App() {
                 </span>
               )}
               <span className="cab-group-cap">The cabinet</span>
-              <label title="Baffle width. Reported only, never applied: a properly measured on-baffle response already contains the baffle step, so subtracting it again would count it twice. Useful for reading a response — that broad tilt is the cabinet, not the driver.">
-                Baffle W (mm)
-                <input
-                  type="number"
-                  min={0}
-                  step={10}
-                  value={cabinet.baffleWidthMm}
-                  onChange={(e) => setCabinet((c) => ({ ...c, baffleWidthMm: e.target.value }))}
-                />
-              </label>
-              <label title="Baffle height — with the reference offset below it, this gives each driver's distance to the nearest edge, which is what actually shapes diffraction (more than the width does).">
-                Baffle H (mm)
-                <input
-                  type="number"
-                  min={0}
-                  step={10}
-                  value={cabinet.baffleHeightMm}
-                  onChange={(e) => setCabinet((c) => ({ ...c, baffleHeightMm: e.target.value }))}
-                />
-              </label>
-              <label title="How far below the TOP of the baffle the measurement reference point sits — the point the mic was aimed at and, on a turntable, the rotation axis. Everything else is measured relative to it.">
-                Reference point: mm below the baffle top
-                <input
-                  type="number"
-                  min={0}
-                  step={10}
-                  value={cabinet.refFromTopMm}
-                  onChange={(e) => setCabinet((c) => ({ ...c, refFromTopMm: e.target.value }))}
-                />
-              </label>
+              {/* Sanders vraag: "zijn deze 2 niet hetzelfde?" over Baffle H en
+                  "mm below the baffle top". Nee — de eerste is de MAAT van het
+                  paneel, de tweede is WAAR de oorsprong daarin zit. Dat de
+                  vraag opkwam is de fout: beide heetten "... (mm)" en stonden
+                  als losse velden naast elkaar, dus niets liet zien dat de een
+                  een afmeting is en de ander een positie. Nu twee gelabelde
+                  regels, hetzelfde raster als de driverkaarten: rij 1 = het
+                  paneel, rij 2 = het punt waar alles vanaf gemeten wordt. */}
+              <div className="cd-grid">
+                <span className="cd-label">Baffle</span>
+                <span
+                  className="cd-fields"
+                  title="The size of the front panel itself. Width is reported only, never applied: a properly measured on-baffle response already contains the baffle step, so subtracting it again would count it twice. Height matters via the edge distances below."
+                >
+                  {'W '}
+                  <input
+                    type="number"
+                    min={0}
+                    step={10}
+                    value={cabinet.baffleWidthMm}
+                    onChange={(e) => setCabinet((c) => ({ ...c, baffleWidthMm: e.target.value }))}
+                  />
+                  {' mm · H '}
+                  <input
+                    type="number"
+                    min={0}
+                    step={10}
+                    value={cabinet.baffleHeightMm}
+                    onChange={(e) => setCabinet((c) => ({ ...c, baffleHeightMm: e.target.value }))}
+                  />
+                  {' mm'}
+                  <span className="cd-hint">the whole front panel</span>
+                </span>
+
+                <span className="cd-label">Reference point</span>
+                <span
+                  className="cd-fields"
+                  title="WHERE that reference point sits — the spot the mic was aimed at and, on a turntable, the rotation axis. Below the top edge it gives each driver its distance to the nearest edge (what actually shapes diffraction, more than the width does); above the floor it gives, with your ear height and distance, the vertical angle you really listen at."
+                >
+                  <input
+                    type="number"
+                    min={0}
+                    step={10}
+                    value={cabinet.refFromTopMm}
+                    onChange={(e) => setCabinet((c) => ({ ...c, refFromTopMm: e.target.value }))}
+                  />
+                  {' mm below the top edge · '}
+                  <input
+                    type="number"
+                    min={0}
+                    step={10}
+                    value={cabinet.refHeightMm}
+                    onChange={(e) => setCabinet((c) => ({ ...c, refHeightMm: e.target.value }))}
+                  />
+                  {' mm above the floor'}
+                </span>
+              </div>
+              {Number(cabinet.baffleHeightMm) > 0 &&
+                Number(cabinet.refFromTopMm) > Number(cabinet.baffleHeightMm) && (
+                  <span className="derived alert">
+                    the reference point cannot sit {cabinet.refFromTopMm} mm below the top of a{' '}
+                    {cabinet.baffleHeightMm} mm baffle — one of the two is the other field
+                  </span>
+                )}
               {cabinetInfo.baffleStep && (
                 <span className="derived">
                   baffle step ≈ {Math.round(cabinetInfo.baffleStep)} Hz (already in your measurement)
                 </span>
               )}
-              <label title="Height of the reference point above the floor, and the listener's ear height and distance. Together they say at what vertical angle you actually sit — which is what turns a driver-spacing rule into a decision: a null at ±25° is harmless if you sit 2° off the axis.">
-                Reference point: mm above the floor
-                <input
-                  type="number"
-                  min={0}
-                  step={10}
-                  value={cabinet.refHeightMm}
-                  onChange={(e) => setCabinet((c) => ({ ...c, refHeightMm: e.target.value }))}
-                />
-              </label>
               <span className="cab-group-cap">Where you listen</span>
               <label title="Listening distance, metres.">
                 Listen (m)
