@@ -957,10 +957,11 @@ export default function App() {
   /** 3-way: woofer nominal size (inch) — the W-M handover's beaming CEILING,
    *  the exact mirror of the mid-size rule above. '' = unknown. */
   const [wooferSizeInch, setWooferSizeInch] = useState('');
-  /** Directivity philosophy for the measured beaming ceiling. The historical
-   *  4 dB (on-axis minus 30°) is ka ≈ 3.5 — nearly the aggressive tier; the
-   *  industry limit "never operate a cone above ka = 2" is only 1.11 dB. */
-  const [kaTier, setKaTier] = useState<KaTier>('standard');
+  /** Directivity philosophy for the measured beaming ceiling. Default is the
+   *  empirical 4 dB, NOT the theoretically stricter ka = 2 — measured on a real
+   *  3-way set the tight tiers fire on baffle diffraction and declare an
+   *  ordinary design impossible (see KA_TIERS). */
+  const [kaTier, setKaTier] = useState<KaTier>('measured');
   /** Acoustic centre-to-centre spacing per adjacent pair (mm). Pure geometry,
    *  no measurement — and the constraint that actually explains why 3-ways
    *  cross where they do. '' = unknown, rule not applied. */
@@ -2760,7 +2761,7 @@ export default function App() {
     setXoLowMarginHz(d.xoLowMarginHz ?? '150');
     setMidSizeInch(d.midSizeInch ?? '');
     setWooferSizeInch(d.wooferSizeInch ?? '');
-    setKaTier((d.kaTier as KaTier) in KA_TIERS ? (d.kaTier as KaTier) : 'standard');
+    setKaTier((d.kaTier as KaTier) in KA_TIERS ? (d.kaTier as KaTier) : 'measured');
     setCtcLowMm(d.ctcLowMm ?? '');
     setCtcHighMm(d.ctcHighMm ?? '');
     setCtcK(d.ctcK ?? '0.5');
@@ -7402,7 +7403,7 @@ export default function App() {
                   </label>
                 )}
                 {threeWay && (
-                  <label title="Directivity philosophy for the MEASURED beaming ceiling. The threshold is the on-axis minus 30° difference of an ideal piston at that ka. The historical 4 dB is ka ≈ 3.5 — nearly 'aggressive'. The industry rule 'never operate a cone above ka = 2' is only 1.11 dB down at 30°, and '−6 dB at 30°' (a common intuition) is ka = 4.43, far past every published limit — that figure defines BEAMWIDTH, not a crossover ceiling.">
+                  <label title="Directivity philosophy for the MEASURED beaming ceiling — the on-axis minus 30° difference at which a driver counts as beaming. Default is the empirical 4 dB, NOT the theoretically stricter ka = 2, and that is deliberate: the ka figures come from an ideal piston in an infinite baffle, while a real measured 0−30° difference at low frequency is mostly baffle diffraction. Measured on a real 3-way set, ka = 2 puts the woofer&apos;s ceiling at 304 Hz — below the mid&apos;s own 2×Fs floor — declaring an ordinary design impossible; 4 dB gives 628 Hz. The strict tiers stay available for a conservative philosophy or clean anechoic data. (For reference: &apos;−6 dB at 30°&apos; is ka = 4.43, past every published limit — that defines BEAMWIDTH, not a crossover ceiling.)">
                     Beaming limit
                     <select value={kaTier} onChange={(e) => setKaTier(e.target.value as KaTier)}>
                       {(Object.keys(KA_TIERS) as KaTier[]).map((k) => (

@@ -146,12 +146,25 @@ minimum phase reconstrueert. Voertaal met Sander: **Nederlands**; code/comments 
   Impedantie-corroboratie wordt GERAPPORTEERD, nooit geëist. **Er bestaat geen gepubliceerd
   algoritme voor breakup-detectie uit SPL of Z** (de strenge route is laservibrometrie) — dus
   dit is ons eigen criterium en het hoort zichtbaar en uitschakelbaar te zijn.
-  (b) **`KA_TIERS` — de bundelingsdrempel geijkt op ka** i.p.v. op smaak. Uit
-  D(θ)=2J₁(ka·sinθ)/(ka·sinθ) op 30°: ka=1 → 0,27 dB · **ka=2 (industriegrens "nooit boven
-  gebruiken") → 1,11 dB** · ka=3,83 → 4,34 dB. HARD GELEERD: onze historische 4 dB is ka≈3,5,
-  vrijwel de agressieve tier; en "−6 dB op 30°" (de intuïtieve grens) is ka=4,43 — dat getal
-  definieert BEAMWIDTH (IEC 60268-5 §23.4.1), niet een kruispuntplafond. De tier is een
-  instelling: het is een directiviteits-filosofie, geen constante. Bijbehorend in
+  (b) **`KA_TIERS` — bundelingsdrempels uit de zuigerwiskunde**. Uit
+  D(θ)=2J₁(ka·sinθ)/(ka·sinθ) op 30°: ka=1 → 0,27 dB · ka=2 (industriegrens "nooit boven
+  gebruiken") → 1,11 dB · ka=3,83 → 4,34 dB. "−6 dB op 30°" (de intuïtieve grens) is ka=4,43 —
+  dat getal definieert BEAMWIDTH (IEC 60268-5 §23.4.1), niet een kruispuntplafond.
+  **HARD GELEERD OP SANDERS ECHTE 3-WEG-SET, en het draaide een wijziging van dezelfde dag
+  terug**: de default blijft de EMPIRISCHE 4 dB, níét het theoretisch strengere ka=2. De
+  zuigerformule veronderstelt een starre zuiger in een ONEINDIG SCHERM, terwijl een gemeten
+  0°−30°-verschil bij lage frequenties vooral baffle-DIFFRACTIE is. Gemeten (grote woofer,
+  Fs 73 Hz, nog op vol niveau tot 7 kHz): ka=1 → 150 Hz · ka=2 → 304 Hz · 2 dB → 373 · 3 dB →
+  586 · **4 dB → 628**; en voor de mid: ka=2 → 1376 · 3 dB → 7802 · 4 dB → 8035. Bij ka=2
+  "bundelt" die woofer dus vanaf 304 Hz — ónder de eigen 2×Fs-vloer van de mid (353) — en
+  verklaart de tool een doodgewoon 3-weg-ontwerp onmogelijk. Let ook op de mid tussen 2 en
+  3 dB: één decibel drempel verschuift het plafond een factor 5,6, want bij lage drempels
+  haalt élke diffractie-wiebel de vasthoud-test. 4 dB is geen ronder getal maar het getal dat
+  contact met meetdata overleeft. De strenge tiers blijven kiesbaar (correct voor een zuiger,
+  en bruikbaar bij schone anechoïsche data of een bewust conservatieve filosofie).
+  **De les onder de les**: dit was een onderzoek-gedreven wijziging die er in de literatuur
+  onaanvechtbaar uitzag en pas op ECHTE metingen van de gebruiker sneuvelde — synthetische
+  tests en de KOAN-set toonden het niet. Bijbehorend in
   directivity.ts: de vasthoud-slack werd `thresholdDb − 1` en is nu `× 0,75` — bit-identiek op
   de oude default 4, maar bij 1,11 dB zou "−1" elke wiebel accepteren.
   (c) **`lobingCeilingHz` — hart-op-hart-afstand**, pure geometrie, nul metingen: een voorwaartse

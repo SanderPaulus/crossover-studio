@@ -138,8 +138,37 @@ export function breakupCeilingHz(breakup: number, harmonic = 3): number {
  * far PAST every published limit. That figure is the definition of BEAMWIDTH
  * (IEC 60268-5 §23.4.1 coverage angle), not a crossover ceiling. At the ka = 2
  * limit a driver is only 1.1 dB down at 30°.
+ *
+ * DEFAULT IS `measured` (4 dB), NOT the theoretically "correct" ka = 2 — and
+ * that is the single most important thing on this page.
+ *
+ * The piston formula assumes a rigid piston in an INFINITE BAFFLE. A real
+ * measured 0° − 30° difference at low frequency is dominated by baffle
+ * diffraction, not by cone directivity, so the tight tiers fire long before the
+ * cone is actually beaming. Measured on a real 3-way set (a big woofer, Fs
+ * 73 Hz, still at full output to 7 kHz):
+ *
+ *      threshold    woofer ceiling    mid ceiling
+ *      ka=1  0.27       150 Hz           233 Hz
+ *      ka=2  1.11       304 Hz          1376 Hz
+ *            2 dB       373 Hz          1403 Hz
+ *            3 dB       586 Hz          7802 Hz
+ *            4 dB       628 Hz          8035 Hz
+ *
+ * At ka = 2 the woofer "beams" from 304 Hz — below the mid's own 2×Fs floor of
+ * 353 Hz, so the tool declares a perfectly ordinary 3-way impossible. And note
+ * the mid between 2 and 3 dB: one decibel of threshold moves the ceiling by a
+ * factor 5.6, because at low thresholds any diffraction wobble satisfies the
+ * persistence test. The 4 dB figure is not a rounder number — it is the one
+ * that survives contact with measured data, which is why it was the historical
+ * default and is the default again.
+ *
+ * The strict tiers stay available: they are correct for a piston, and a
+ * designer who wants a conservative directivity philosophy (or who has clean
+ * anechoic data) can choose them deliberately.
  */
 export const KA_TIERS = {
+  measured: { ka: 3.7, diff30Db: 4 },
   conservative: { ka: 1, diff30Db: 0.27 },
   standard: { ka: 2, diff30Db: 1.11 },
   aggressive: { ka: 3.83, diff30Db: 4.34 },

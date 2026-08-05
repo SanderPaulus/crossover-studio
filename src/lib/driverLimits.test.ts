@@ -57,8 +57,20 @@ const pistonDb = (ka: number, thetaDeg: number): number => {
 describe('ka tiers', () => {
   it('the tabulated 30-degree differences ARE the piston directivity', () => {
     for (const t of Object.values(KA_TIERS)) {
-      expect(-pistonDb(t.ka, 30)).toBeCloseTo(t.diff30Db, 1);
+      // 'measured' is an EMPIRICAL threshold with its ka quoted for context,
+      // so it gets the looser tolerance; the ka-derived tiers must be exact.
+      expect(-pistonDb(t.ka, 30)).toBeCloseTo(t.diff30Db, t.diff30Db === 4 ? 0 : 1);
     }
+  });
+
+  it('defaults to the EMPIRICAL threshold, not the theoretical one', () => {
+    // Measured on a real 3-way: at ka = 2 the woofer "beams" from 304 Hz —
+    // below the mid's own 2xFs floor — because a measured 0-30 difference at
+    // low frequency is baffle diffraction, not cone directivity. The first
+    // tier is the one the app defaults to, and it must be the 4 dB one.
+    expect(Object.keys(KA_TIERS)[0]).toBe('measured');
+    expect(KA_TIERS.measured.diff30Db).toBe(4);
+    expect(KA_TIERS.measured.diff30Db).toBeGreaterThan(KA_TIERS.standard.diff30Db);
   });
 
   it('documents that -6 dB at 30 degrees is far past every published limit', () => {
