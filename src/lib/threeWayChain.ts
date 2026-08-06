@@ -5,7 +5,7 @@ import { computeIntegration } from './integration.ts';
 import { designThreeWay, type Struct3Choice } from './threeWayDesign.ts';
 import { synthesize, type SynthesisResult } from './synthesis.ts';
 import { mergeSynthesizedSchematics } from './schematicEdit.ts';
-import { optimizeNetworkValues, type NetOptimizeResult } from './netOptimizer.ts';
+import { optimizeNetworkValues, Z_FLOOR_OHM, type NetOptimizeResult } from './netOptimizer.ts';
 import type { SnapPrefs } from './catalog.ts';
 import { bomFor } from './catalog.ts';
 import type { VxpPart } from './parsers/vxp.ts';
@@ -111,8 +111,15 @@ export interface Chain3Result {
   net: NetOptimizeResult;
   bomTotalEur: number | null;
   /** Amplifier-load verdict of the DELIVERED network: false when the tune was
-   *  rejected on the Z floor or the dip could not be repaired. */
+   *  rejected on the Z floor or the dip could not be repaired. RELATIVE — it
+   *  says the tune did not make things worse, NOT that the load is sane. */
   zOk: boolean;
+  /** Minimum system |Zin| the amplifier actually sees, ohms. The absolute
+   *  companion to {@link zOk}, and the one a published design always states.
+   *  Ranked as a CLASS (above/below the floor), never blended into the score:
+   *  a load a designer would refuse to ship is not something a tenth of a dB
+   *  should be able to buy back. */
+  zMinOhm: number | null;
   /** Polarities the design step CHOSE — the UI checkboxes must follow these,
    *  or the simulation sums a different design than the one that was fitted. */
   midInverted: boolean;
@@ -277,6 +284,7 @@ export function runThreeWayChain(
   const zOk =
     !net.safetyNote &&
     !(net.ampFloorNote !== undefined && net.ampFloorNote.includes('could not be repaired'));
+  const zMinOhm = net.after.zMinOhm ?? null;
 
   return {
     label: input.label,
@@ -290,6 +298,7 @@ export function runThreeWayChain(
     net,
     bomTotalEur: bomFor(net.parts).totalEur,
     zOk,
+    zMinOhm,
     midInverted: design.midInverted,
     tweeterInverted: design.tweeterInverted,
     structureLabel: design.label,
@@ -598,9 +607,20 @@ export function rankChain3Results(
   const meets = (r: Chain3Result): boolean =>
     !targets ||
     (r.net.after.rippleDb <= targets.rippleDb && worstPhase(r) <= targets.phaseDeg);
+  /* Amplifier load, as a CLASS. zOk alone was not enough: it is relative
+   * (the tune did not worsen the dip), so a candidate whose seed already sat
+   * under the floor passed it and won with an amp-hostile load — measured on
+   * Sander's 3-way, which shipped a 2.2 Ohm minimum while every gate stayed
+   * green. A published design always states its impedance minimum; ours must
+   * therefore be able to lose on it. Class, not a score term: the anchor
+   * lesson says physics belongs at decision points, and a load you would
+   * refuse to ship must not be purchasable with a tenth of a dB. */
+  const zFloorOk = (r: Chain3Result): boolean =>
+    r.zMinOhm === null || r.zMinOhm >= Z_FLOOR_OHM;
+  const zClass = (r: Chain3Result): number => (r.zOk ? 0 : 2) + (zFloorOk(r) ? 0 : 1);
   const ranked = [...results].sort((a, b) => {
-    const za = a.zOk ? 0 : 1;
-    const zb = b.zOk ? 0 : 1;
+    const za = zClass(a);
+    const zb = zClass(b);
     if (za !== zb) return za - zb;
     const ma = meets(a) ? 0 : 1;
     const mb = meets(b) ? 0 : 1;
@@ -610,7 +630,8 @@ export function rankChain3Results(
   if (ranked.length > 1) {
     const s0 = score(ranked[0]);
     const tied = ranked.filter(
-      (r) => r.zOk === ranked[0].zOk && meets(r) === meets(ranked[0]) && score(r) <= s0 * 1.05,
+      (r) =>
+        zClass(r) === zClass(ranked[0]) && meets(r) === meets(ranked[0]) && score(r) <= s0 * 1.05,
     );
     if (tied.length > 1) {
       const priced = tied.filter((r) => r.bomTotalEur !== null);

@@ -273,7 +273,14 @@ describe('threeWayChain (phase-4 trede 4c, staged v1)', () => {
   });
 
   it('ranking gates on the amp-load verdict before anything else', () => {
-    const mk = (label: string, zOk: boolean, avgDev: number, phase: number, bom: number | null): Chain3Result =>
+    const mk = (
+      label: string,
+      zOk: boolean,
+      avgDev: number,
+      phase: number,
+      bom: number | null,
+      zMinOhm: number | null = 6,
+    ): Chain3Result =>
       ({
         label,
         xoLow: 400,
@@ -286,6 +293,7 @@ describe('threeWayChain (phase-4 trede 4c, staged v1)', () => {
         net: { after: { rippleDb: avgDev, avgDevDb: avgDev, phaseDeg: phase } } as Chain3Result['net'],
         bomTotalEur: bom,
         zOk,
+        zMinOhm,
         midInverted: false,
         tweeterInverted: false,
         structureLabel: 'LR4 @400 · LR4 @3000',
@@ -304,5 +312,58 @@ describe('threeWayChain (phase-4 trede 4c, staged v1)', () => {
       0.5,
     );
     expect(tied[0].label).toBe('b');
+  });
+
+  it('an amp-hostile impedance minimum loses even when every gate stayed green', () => {
+    const mk = (
+      label: string,
+      zOk: boolean,
+      avgDev: number,
+      phase: number,
+      bom: number | null,
+      zMinOhm: number | null = 6,
+    ): Chain3Result =>
+      ({
+        label,
+        xoLow: 400,
+        xoHigh: 3000,
+        specs: {} as Chain3Result['specs'],
+        synthWoofer: {} as Chain3Result['synthWoofer'],
+        synthMid: {} as Chain3Result['synthMid'],
+        synthTweeter: {} as Chain3Result['synthTweeter'],
+        parts: [],
+        net: { after: { rippleDb: avgDev, avgDevDb: avgDev, phaseDeg: phase } } as Chain3Result['net'],
+        bomTotalEur: bom,
+        zOk,
+        zMinOhm,
+        midInverted: false,
+        tweeterInverted: false,
+        structureLabel: 'LR4 @400 · LR4 @3000',
+      }) as Chain3Result;
+    // Sander's case: the tune never WORSENED the dip, so zOk is true — but the
+    // delivered load is 2.2 Ohm, under the amplifier floor. A flatter result
+    // must not be able to buy that with a tenth of a dB.
+    const ranked = rankChain3Results(
+      [mk('flat-but-2.2ohm', true, 0.2, 2, 300, 2.2), mk('sane-load', true, 0.5, 5, 300, 3.4)],
+      undefined,
+      0.5,
+    );
+    expect(ranked[0].label).toBe('sane-load');
+    // A failed tune (zOk false) is still worse than merely sitting low: the
+    // first says the numbers cannot be trusted, the second is an honest load.
+    const both = rankChain3Results(
+      [mk('rejected', false, 0.2, 2, 300, 6), mk('low-but-tuned', true, 0.5, 5, 300, 2.2)],
+      undefined,
+      0.5,
+    );
+    expect(both[0].label).toBe('low-but-tuned');
+    // Unknown impedance (older results, 2-way-shaped nets) must not be
+    // punished for a number nobody measured.
+    const unknown = rankChain3Results(
+      [mk('known-low', true, 0.2, 2, 300, 2.2), mk('unknown', true, 0.5, 5, 300, null)],
+      undefined,
+      0.5,
+    );
+    expect(unknown[0].label).toBe('unknown');
   });
 });

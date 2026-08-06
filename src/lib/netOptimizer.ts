@@ -165,6 +165,11 @@ export interface NetOptimizeResult {
     rippleDb: number;
     avgDevDb?: number;
     phaseDeg: number;
+    /** Delivered minimum system |Zin| in ohms — the amplifier's view of this
+     *  design. Reported (never optimised for): the safety gate only refuses a
+     *  tune that WORSENS the dip, so this is the only place the absolute
+     *  number becomes visible to a caller. See Z_FLOOR_OHM. */
+    zMinOhm?: number;
     /** 3-way: uniform-average phase error per adjacent pair [low, high] —
      *  the coupled-pairs verdict (gates judge the worst of these). */
     pairPhaseDeg?: number[];
@@ -224,7 +229,7 @@ const PARAM_OF: Record<'R' | 'L' | 'C', { name: string; factor: number }> = {
  *  degenerate case measured 1.5 Ω; 2.5 — the classic "4 Ω-capable amp"
  *  tolerance — separates the two cleanly. The Impedance panel's stricter
  *  IEC tiers (3.2/6.4 Ω) keep informing the designer either way. */
-const Z_FLOOR_OHM = 2.5;
+export const Z_FLOOR_OHM = 2.5;
 
 /** Soft buildability bounds, as in synthesis. */
 const BOUNDS: Record<'C' | 'L' | 'R', [number, number]> = {
@@ -2012,10 +2017,28 @@ export function optimizeNetworkValues(
 
   // before/after report the PEAK ±dB (the strip's unit, matching the target)
   // plus the whole-range avg |deviation| for the chain ranking / scan table.
-  const report = (m: Metrics) => ({
+  /* The DELIVERED absolute impedance minimum, judged on the eval grid AND the
+   * safety grid when one is given — a narrow dip outside a zoomed view range
+   * is exactly the one that reaches the amplifier anyway.
+   *
+   * WHY REPORT IT: the safety gate is RELATIVE (it only refuses a tune that
+   * makes the dip worse than the seed), so a design whose seed already sat
+   * under the floor passes every gate and still ships an amp-hostile load.
+   * Nothing downstream could see that number; the chain ranking now can. */
+  const zMinOf = (m: Metrics, ps: readonly VxpPart[]): number => {
+    let min = m.zMinOhm;
+    if (opts.safety) {
+      const sg = opts.safety;
+      const ms = metricsOn(buildWork(ps).work, sg.freqs, sg.w, sg.t, sg.m ?? null, sg.z, null);
+      if (ms.zMinOhm < min) min = ms.zMinOhm;
+    }
+    return min;
+  };
+  const report = (m: Metrics, ps: readonly VxpPart[]) => ({
     rippleDb: m.ripplePeakDb,
     avgDevDb: m.avgDevDb,
     phaseDeg: m.phaseDeg,
+    zMinOhm: zMinOf(m, ps),
     ...(m.pairPhaseDeg.length > 1 ? { pairPhaseDeg: m.pairPhaseDeg } : {}),
     ...(m.xoHzPairs.length > 1 ? { xoHzPairs: m.xoHzPairs } : {}),
   });
@@ -2036,8 +2059,8 @@ export function optimizeNetworkValues(
     if (resLoss > soloLossCap + 0.5 && resLoss > seedLoss + 0.2) {
       return {
         parts: cloneParts(parts),
-        before: report(before),
-        after: report(before),
+        before: report(before, parts),
+        after: report(before, parts),
         tuned: 0,
         evaluations,
         removed: [],
@@ -2100,8 +2123,8 @@ export function optimizeNetworkValues(
             'the optimizer see the whole design.';
       return {
         parts: cloneParts(parts),
-        before: report(before),
-        after: report(before),
+        before: report(before, parts),
+        after: report(before, parts),
         tuned: 0,
         evaluations,
         removed: [],
@@ -2155,8 +2178,8 @@ export function optimizeNetworkValues(
 
   return {
     parts: outParts,
-    before: report(before),
-    after: { ...report(after), xoHz: after.xoHz },
+    before: report(before, parts),
+    after: { ...report(after, outParts), xoHz: after.xoHz },
     tuned: cur.freeCount,
     evaluations,
     removed,

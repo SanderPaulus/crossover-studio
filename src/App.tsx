@@ -107,6 +107,7 @@ import {
   runChain3Scan,
 } from './lib/optimClient.ts';
 import { crossover3Variants, rankChain3Results } from './lib/threeWayChain.ts';
+import { Z_FLOOR_OHM } from './lib/netOptimizer.ts';
 import type { Chain3Result } from './lib/threeWayChain.ts';
 import { buildSoloNetwork, optimizeSoloFilter, reachableBandFor } from './lib/soloOptimizer.ts';
 import { crossoverVariants, rankChainResults, type ChainResult, type ChainSettings } from './lib/designChain.ts';
@@ -3595,6 +3596,7 @@ export default function App() {
                     rippleDb: rr.net.after.rippleDb,
                     avgDevDb: rr.net.after.avgDevDb ?? null,
                     phaseDeg: rr.net.after.phaseDeg,
+                    zMinOhm: rr.net.after.zMinOhm ?? null,
                     bomEur: rr.bomTotalEur,
                     winner: rr === win,
                     result: rr,
@@ -3618,6 +3620,7 @@ export default function App() {
               ? ` (W-M ${r.net.after.pairPhaseDeg[0].toFixed(1)}° · M-T ${r.net.after.pairPhaseDeg[1].toFixed(1)}°)`
               : '') +
             crossings(r) +
+            (r.zMinOhm !== null ? ` · Z ${r.zMinOhm.toFixed(1)} Ω` : '') +
             (r.bomTotalEur !== null ? ` · €${Math.round(r.bomTotalEur)}` : '') +
             (r.zOk ? '' : ' · ⚠ amp-load');
           // ONE LINE PER FACT. This was a single run-on sentence of ~600
@@ -3626,7 +3629,23 @@ export default function App() {
           // NB the 3-way path sets chainScan to null, so unlike the 2-way scan
           // there is no results table — nothing may be dropped here, only
           // structured.
+          /* A ranking gate whose verdict is invisible is half a feature: when
+           * EVERY candidate sits under the floor the gate reorders nothing and
+           * the designer silently gets an amp-hostile load anyway. Say it, and
+           * say whether it was the only option. */
+          const zLow = win.zMinOhm !== null && win.zMinOhm < Z_FLOOR_OHM;
+          const anySane = ranked.some((r) => r.zMinOhm !== null && r.zMinOhm >= Z_FLOOR_OHM);
+          const zNote = !zLow
+            ? ''
+            : `⚠ amplifier load: the winner dips to ${win.zMinOhm!.toFixed(1)} Ω ` +
+              `(floor ${Z_FLOOR_OHM} Ω)` +
+              (anySane
+                ? ' — a candidate with a sane load exists in the table; it ranks lower on flatness.'
+                : ' — no candidate in this scan stayed above it, so this is a design-level ' +
+                  'property of these drivers in this topology, not a tuning miss. Three branches ' +
+                  'in parallel around a handover is the usual cause; check the Impedance panel.');
           const waarschuwingen = [
+            zNote,
             win.xoPinNote ? `⚠ PIN: ${win.xoPinNote}` : '',
             win.net.snapNote ?? '',
             win.net.safetyNote ? `⚠ ${win.net.safetyNote}` : '',
@@ -3962,6 +3981,7 @@ export default function App() {
                     rippleDb: rr.net.after.rippleDb,
                     avgDevDb: rr.net.after.avgDevDb ?? null,
                     phaseDeg: rr.net.after.phaseDeg,
+                    zMinOhm: rr.net.after.zMinOhm ?? null,
                     bomEur: rr.bomTotalEur,
                     winner: rr === win,
                     result: rr,
@@ -4333,6 +4353,10 @@ export default function App() {
       avgDevDb: number | null;
       phaseDeg: number;
       bomEur: number | null;
+      /** Delivered minimum system |Zin| — what the amplifier sees. Shown
+       *  because the ranking now judges it: a criterion you cannot read is a
+       *  criterion you cannot argue with. null for 2-way rows. */
+      zMinOhm: number | null;
       winner: boolean;
       /** 2-way and 3-way scans produce different result shapes; the table only
        *  displays numbers, so it carries either and the loader branches. */
@@ -4345,11 +4369,11 @@ export default function App() {
   /** Scan-table sort: click a header to sort by that column (asc → desc →
    *  back to the RANKING order, which is the default and keeps 🏆 on top). */
   const [scanSort, setScanSort] = useState<{
-    key: 'xo' | 'ripple' | 'avg' | 'phase' | 'bom';
+    key: 'xo' | 'ripple' | 'avg' | 'phase' | 'zmin' | 'bom';
     dir: 1 | -1;
   } | null>(null);
 
-  function toggleScanSort(key: 'xo' | 'ripple' | 'avg' | 'phase' | 'bom') {
+  function toggleScanSort(key: 'xo' | 'ripple' | 'avg' | 'phase' | 'zmin' | 'bom') {
     setScanSort((s0) =>
       s0?.key !== key ? { key, dir: 1 } : s0.dir === 1 ? { key, dir: -1 } : null,
     );
@@ -9578,6 +9602,7 @@ export default function App() {
                         ['ripple', 'peak'],
                         ['avg', 'avg'],
                         ['phase', 'phase'],
+                        ['zmin', 'Z min'],
                         ['bom', 'BOM'],
                       ] as const
                     ).map(([key, caption]) => (
@@ -9606,7 +9631,9 @@ export default function App() {
                               ? (r.avgDevDb ?? Number.POSITIVE_INFINITY)
                               : scanSort.key === 'phase'
                                 ? r.phaseDeg
-                                : (r.bomEur ?? Number.POSITIVE_INFINITY);
+                                : scanSort.key === 'zmin'
+                                  ? -(r.zMinOhm ?? Number.NEGATIVE_INFINITY) // higher is better
+                                  : (r.bomEur ?? Number.POSITIVE_INFINITY);
                       return (v(a) - v(b)) * scanSort.dir;
                     })
                     .map((r) => (
@@ -9632,6 +9659,22 @@ export default function App() {
                         {r.avgDevDb !== null ? `${r.avgDevDb.toFixed(2)} dB` : '—'}
                       </td>
                       <td>{r.phaseDeg.toFixed(1)}°</td>
+                      <td
+                        className={
+                          r.zMinOhm !== null && r.zMinOhm < Z_FLOOR_OHM ? 'scan-z-low' : undefined
+                        }
+                        title={
+                          r.zMinOhm === null
+                            ? 'Minimum system impedance was not measured for this candidate'
+                            : r.zMinOhm < Z_FLOOR_OHM
+                              ? `The amplifier sees ${r.zMinOhm.toFixed(1)} Ω at its worst — below the ${Z_FLOOR_OHM} Ω floor, so this candidate ranks below every one with a sane load, however flat it is`
+                              : `Minimum system impedance the amplifier sees (floor ${Z_FLOOR_OHM} Ω)`
+                        }
+                      >
+                        {r.zMinOhm !== null
+                          ? `${r.zMinOhm < Z_FLOOR_OHM ? '⚠ ' : ''}${r.zMinOhm.toFixed(1)} Ω`
+                          : '—'}
+                      </td>
                       <td>{r.bomEur !== null ? `€${Math.round(r.bomEur)}` : '—'}</td>
                     </tr>
                   ))}
