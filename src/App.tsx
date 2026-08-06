@@ -4944,7 +4944,11 @@ export default function App() {
    *  hugs the exact combined curve on screen. Null while off or without a
    *  solvable network. */
   const tolBand = useMemo(() => {
-    if (!tolOn || !sim || threeWay) return null;
+    // 3-weg mag hier NIET meer uit: de tolerantieband is dé check die een
+    // rekenkundig optimum scheidt van een bouwbaar filter, en juist een
+    // 3-weg draagt de meeste onderdelen. Hem uitzetten beantwoordde stil een
+    // andere vraag dan er gesteld werd.
+    if (!tolOn || !sim) return null;
     const xo =
       project && xoName !== 'none' ? project.vxp.crossovers.find((c) => c.name === xoName) : undefined;
     const parts = networkActive && schematic ? schematic.parts : xo?.parts;
@@ -4960,12 +4964,30 @@ export default function App() {
     if (!vfBypass && isActive(vFilters.tweeter)) {
       tEff = applyTransfer(tEff, evalDriverFilter(vFilters.tweeter, grid));
     }
-    return toleranceBand(parts, grid, wEff, tEff, zGridWithSlots(impedances, grid), {
-      offsetMm: num(offsetMm, 0),
-      trimDb: num(trimDb, 0),
-      inverted,
-    }, tolPct);
-  }, [tolOn, tolPct, sim, threeWay, project, xoName, networkActive, schematic, impedances, vfBypass, vFilters, offsetMm, trimDb, inverted]);
+    let mEff = sim.base.m ?? null;
+    if (mEff && !vfBypass && isActive(vFilters.mid)) {
+      mEff = applyTransfer(mEff, evalDriverFilter(vFilters.mid, grid));
+    }
+    return toleranceBand(
+      parts,
+      grid,
+      wEff,
+      tEff,
+      zGridWithSlots(impedances, grid),
+      { offsetMm: num(offsetMm, 0), trimDb: num(trimDb, 0), inverted },
+      tolPct,
+      threeWay && mEff
+        ? {
+            response: mEff,
+            adjust: {
+              offsetMm: num(midOffsetMm, 0),
+              trimDb: num(midTrimDb, 0),
+              inverted: midInverted,
+            },
+          }
+        : undefined,
+    );
+  }, [tolOn, tolPct, sim, threeWay, project, xoName, networkActive, schematic, impedances, vfBypass, vFilters, offsetMm, trimDb, inverted, midOffsetMm, midTrimDb, midInverted]);
 
   /** Per-driver ACOUSTIC target curves for the SPL chart (Stefans vraag:
    *  "hoever volgt de respons per speaker het target?") — the ideal shape of
