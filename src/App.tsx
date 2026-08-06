@@ -5694,7 +5694,7 @@ export default function App() {
                             className="cd-fields"
                             title="Position of this driver's centre relative to the measurement reference point: x to the right, y UP (so a driver below the reference has a negative y). Centre-to-centre spacing per pair — and with it the vertical-lobing ceiling — is derived from these, so you never type the same fact twice."
                           >
-                            {'x '}
+                            <span className="cd-pre">x</span>
                             <input
                               type="number"
                               step={5}
@@ -5716,6 +5716,7 @@ export default function App() {
   
                           <span className="cd-label">Enclosure</span>
                           <span className="cd-fields">
+                            <span className="cd-pre" />
                             <select
                               value={d.enclosure}
                               onChange={(e) => set({ enclosure: e.target.value as Enclosure })}
@@ -5746,7 +5747,7 @@ export default function App() {
                             className="cd-fields"
                             title="Cone area and linear excursion from the datasheet, for ONE driver. Sd gives the effective piston diameter (the honest one for every beaming rule — nominal size includes a surround that does not radiate); Sd and Xmax together give the level-aware excursion floor."
                           >
-                            {'Sd '}
+                            <span className="cd-pre">Sd</span>
                             <input
                               type="number"
                               min={0}
@@ -7557,60 +7558,8 @@ export default function App() {
             </div>
           </div>
         </div>
-        {persistNote && <p className="filenames">{persistNote} · autosaves locally on every change</p>}
-        {vxpNote && <p className="filenames">{vxpNote}</p>}
-        {/* One banner for parse failures AND content warnings — the old
-            hardcoded "Parse error:" prefix lied for anything that wasn't one
-            (the vxp-pick hint, the impedance-as-response warning). */}
-        {error && <p className="error">⚠ {error}</p>}
-        {midIgnored && (
-          <p className="error">
-            ⚠ Midrange data loaded, but 3-way mode needs a woofer FRD, a midrange FRD and a
-            tweeter FRD ({[
-              !woofer && 'woofer response',
-              !midDrv && 'midrange response',
-              !tweeter && 'tweeter response',
-            ]
-              .filter(Boolean)
-              .join(', ')}{' '}
-            missing) — the midrange is NOT in the sim yet. Load what's missing, or remove the
-            midrange (✕ in the Import tab).
-          </p>
-        )}
-        {(woofer || tweeter) && (
-          <p className="filenames">
-            {[woofer?.name, midDrv?.name, tweeter?.name].filter(Boolean).join(' · ')}
-            {zModels.length > 0 && ` · Z ✓ (${zModels.join(', ')})`}
-            {soloDriver && ' · single-driver mode'}
-            {threeWay && ' · 3-way mode'}
-          </p>
-        )}
-      </div>
-
-              </>
-            )}
-
-            {designTab === 'drivers' && (
-              <>
-        {/* Stap 2 "Your drivers": alles wat je over de DRIVERS weet.
-            Laden en bewaren is stap 1 "Your project", de kast is stap 3.
-            Ze stonden alle drie op één tab en dat werd een zootje. */}
-        {!woofer && !tweeter && (
-          <p className="pane-hint">Load a driver in step 1 first — then this is where you tell the app what you know about it.</p>
-        )}
-        {/* De feiten over de DRIVERS staan bij de drivers: dit is stap 1,
-            waar hun metingen ook binnenkomen. De kast, het referentiepunt en
-            de meetopstelling horen bij stap 2 "Your cabinet". De stapnamen
-            zeiden dat al, alleen de indeling niet (Sanders opmerking). */}
-        {(woofer || midDrv || tweeter) && (
-          <fieldset className="cabinet-block">
-            <legend>
-              What you know about them
-              <span className="legend-sub"> — from the datasheet and a ruler</span>
-            </legend>
-            {driverFacts}
-          </fieldset>
-        )}
+        {/* De bestandsINVENTARIS gaat over bestanden, dus hij hoort bij
+            "Your project" -- niet bij wat je van een driver weet (Sander). */}
       <div className="panel">
         <h2>Imported files</h2>
         {(() => {
@@ -7708,6 +7657,60 @@ export default function App() {
           ));
         })()}
       </div>
+        {persistNote && <p className="filenames">{persistNote} · autosaves locally on every change</p>}
+        {vxpNote && <p className="filenames">{vxpNote}</p>}
+        {/* One banner for parse failures AND content warnings — the old
+            hardcoded "Parse error:" prefix lied for anything that wasn't one
+            (the vxp-pick hint, the impedance-as-response warning). */}
+        {error && <p className="error">⚠ {error}</p>}
+        {midIgnored && (
+          <p className="error">
+            ⚠ Midrange data loaded, but 3-way mode needs a woofer FRD, a midrange FRD and a
+            tweeter FRD ({[
+              !woofer && 'woofer response',
+              !midDrv && 'midrange response',
+              !tweeter && 'tweeter response',
+            ]
+              .filter(Boolean)
+              .join(', ')}{' '}
+            missing) — the midrange is NOT in the sim yet. Load what's missing, or remove the
+            midrange (✕ in the Import tab).
+          </p>
+        )}
+        {(woofer || tweeter) && (
+          <p className="filenames">
+            {[woofer?.name, midDrv?.name, tweeter?.name].filter(Boolean).join(' · ')}
+            {zModels.length > 0 && ` · Z ✓ (${zModels.join(', ')})`}
+            {soloDriver && ' · single-driver mode'}
+            {threeWay && ' · 3-way mode'}
+          </p>
+        )}
+      </div>
+
+              </>
+            )}
+
+            {designTab === 'drivers' && (
+              <>
+        {/* Stap 2 "Your drivers": alles wat je over de DRIVERS weet.
+            Laden en bewaren is stap 1 "Your project", de kast is stap 3.
+            Ze stonden alle drie op één tab en dat werd een zootje. */}
+        {!woofer && !tweeter && (
+          <p className="pane-hint">Load a driver in step 1 first — then this is where you tell the app what you know about it.</p>
+        )}
+        {/* De feiten over de DRIVERS staan bij de drivers: dit is stap 1,
+            waar hun metingen ook binnenkomen. De kast, het referentiepunt en
+            de meetopstelling horen bij stap 2 "Your cabinet". De stapnamen
+            zeiden dat al, alleen de indeling niet (Sanders opmerking). */}
+        {(woofer || midDrv || tweeter) && (
+          <fieldset className="cabinet-block">
+            <legend>
+              What you know about them
+              <span className="legend-sub"> — from the datasheet and a ruler</span>
+            </legend>
+            {driverFacts}
+          </fieldset>
+        )}
               </>
             )}
             {designTab === 'data' && !woofer && !tweeter && (

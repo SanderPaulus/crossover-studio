@@ -2345,11 +2345,27 @@ button:disabled {
 }
 .cd-grid {
   display: grid;
-  grid-template-columns: max-content 1fr;
+  /* FIXED label column, not max-content: with max-content every card sizes its
+     own column, so three cards that hold the same three labels still drift a
+     pixel or two apart and the eye has nothing to run down. */
+  grid-template-columns: 5.5rem 1fr;
   gap: 0.3rem 0.7rem;
   align-items: center;
   width: 100%;
   margin: 0.3rem 0 0.15rem;
+}
+/* Same reason in the head: "Woofer", "Midrange" and "Tweeter" differ in width,
+   so the count input landed at a different x on every card. */
+.cd-head > strong {
+  min-width: 6.5rem;
+}
+/* Each value row starts with a different token — "x", nothing, "Sd" — so the
+   first input landed at a different x on every row. A fixed-width slot for
+   that token gives the card one vertical line to read down. */
+.cd-pre {
+  display: inline-block;
+  min-width: 1.4rem;
+  flex: 0 0 auto;
 }
 .cd-label {
   font-size: 0.78rem;
@@ -2364,7 +2380,14 @@ button:disabled {
   color: var(--muted);
 }
 .cd-fields input[type='number'] {
-  width: 5rem;
+  width: 4.4rem;
+}
+/* The hint gets its own line: it is prose, and leaving it in the flow was what
+   pushed the position row past the pane edge — once one row wraps, nothing in
+   the card lines up any more. */
+.cd-hint {
+  flex-basis: 100%;
+  margin-left: 1.4rem;
 }
 .cd-hint {
   font-size: 0.74rem;
