@@ -1156,17 +1156,20 @@ export function optimizeNetworkValues(
   };
 
   /** One objective evaluation of a parts array as-is (no value tuning). */
-  /** One evaluation on the optimisation grid, keeping the metrics it produced.
-   *  Callers that need more than the scalar (the catalog snap wants the
-   *  impedance minimum, the dead-weight sweep wants the whole record) would
-   *  otherwise solve the same network twice. */
-  const quickEval = (ps: readonly VxpPart[]): { fx: number; m: Metrics } => {
+  const quickFx = (ps: readonly VxpPart[]): number => {
+    const { work } = buildWork(ps);
+    evaluations++;
+    return fxOf(metricsOn(work, optW.freq, optW, optT, optM, optZ, optAngles));
+  };
+  /** Same evaluation, but keeping the impedance minimum the metrics already
+   *  computed. The catalog snap needs it and a second solve would be pure
+   *  waste. */
+  const quickFxZ = (ps: readonly VxpPart[]): { fx: number; zMin: number } => {
     const { work } = buildWork(ps);
     evaluations++;
     const m = metricsOn(work, optW.freq, optW, optT, optM, optZ, optAngles);
-    return { fx: fxOf(m), m };
+    return { fx: fxOf(m), zMin: m.zMinOhm };
   };
-  const quickFx = (ps: readonly VxpPart[]): number => quickEval(ps).fx;
 
   /** Value window for a slot (log10 SI): SERIES-PATH slots of a bound kind are
    *  clamped to that series' value range (boundToSeries). null = no window, use
@@ -1759,103 +1762,6 @@ export function optimizeNetworkValues(
     }
   }
 
-  /* ---- DEAD-WEIGHT SWEEP (staged; runs whatever the targets say) --------
-   * The prune above is gated on meets(): removing a part costs quality, so
-   * you may only spend quality you have to spare. Right for a part that does
-   * something — and wrong for one that does NOTHING. A part whose removal
-   * moves the objective by under half a percent is not a trade-off, it is a
-   * component on the bill of materials doing nothing.
-   *
-   * MEASURED on Sander's 3-way (target 1 dB, delivered peak 2.22 dB, so the
-   * prune never ran): the tweeter branch shipped a 6.8 mH shunt coil — 186 Ω
-   * at the 4364 Hz handover against a ~6 Ω tweeter, an open circuit with a
-   * price tag. An unreachable target must not mean no cleanup at all.
-   *
-   * PLACED LAST, and that placement is the whole lesson. Run early (right
-   * before the prune) it made things measurably WORSE — the same candidate
-   * went 2.22 → 3.20 dB peak — because escalation, the drift catch and the
-   * shrink ladder all still had to run, and taking a part away robs them of
-   * a degree of freedom. A part that looks inert at one set of values may be
-   * exactly what a later barrier retune would have used. Asked here, after
-   * the values have settled, the question is the honest one: does this part
-   * do anything in the design we are about to ship?
-   *
-   * No retune before judging, deliberately: a retune can hide a real loss by
-   * repairing it elsewhere. Survivors get one settle afterwards. ---- */
-  if (opts.staged) {
-    const tgtL = opts.staged;
-    const fullL = (ps: readonly VxpPart[]): Metrics =>
-      opts.safety
-        ? metricsOn(
-            buildWork(ps).work,
-            opts.safety.freqs,
-            opts.safety.w,
-            opts.safety.t,
-            opts.safety.m ?? null,
-            opts.safety.z,
-            null,
-          )
-        : quickEval(ps).m;
-    const safeL = (m: Metrics, ref: Metrics): boolean =>
-      m.protSqDb <= ref.protSqDb + 0.5 &&
-      m.xoDipDb <= ref.xoDipDb + 1 &&
-      m.zShortOhm <= ref.zShortOhm + 0.1 &&
-      soloSensOk(m) &&
-      (!breakupGuard || m.leakSqDb <= ref.leakSqDb + 4);
-    const DEAD = 1.005;
-    const before0 = cur;
-    const removed0 = removed.length;
-    let refFull = fullL(cur.parts);
-    const full0 = refFull;
-    let swept = 0;
-    for (let round = 0; round < 8; round++) {
-      let best: { id: string; trial: VxpPart[]; fx: number; m: Metrics } | null = null;
-      for (const q of cur.parts) {
-        if (!RLC.has(q.type) || q.locked || q.open || q.shorted) continue;
-        if (q.partId === undefined) continue;
-        for (const mode of ['open', 'shorted'] as const) {
-          const trial = cur.parts.map((pp) => (pp === q ? { ...q, [mode]: true } : pp));
-          let ev: { fx: number; m: Metrics };
-          try {
-            ev = quickEval(trial);
-          } catch {
-            continue;
-          }
-          if (ev.fx > cur.fx * DEAD) continue;
-          if (!best || ev.fx < best.fx) best = { id: q.partId, trial, fx: ev.fx, m: ev.m };
-        }
-      }
-      if (!best) break;
-      const bFull = fullL(best.trial);
-      if (!safeL(bFull, refFull)) break;
-      cur = { parts: best.trial, fx: best.fx, freeCount: cur.freeCount, metrics: best.m };
-      refFull = bFull;
-      removed.push(best.id);
-      swept++;
-    }
-    if (swept > 0) {
-      cur = tune(cur.parts, 1, tgtL);
-      /* NEVER WORSE IN THE UNIT THE DESIGNER READS. The sweep judges on fx,
-       * the blended objective — and fx is not what the strip shows. Measured:
-       * a sweep that left fx no worse still moved peak ripple 2.22 → 3.09 dB
-       * (it bought phase with flatness, and nobody asked). This is the bug
-       * family bandMetrics was extracted for: every guard on its own private
-       * definition of flat. So the whole sweep is verified afterwards against
-       * what it started from, on the full grid, and rolled back entirely if
-       * the numbers on screen got worse. A cheaper bill is not worth a worse
-       * loudspeaker. */
-      const fullAfter = fullL(cur.parts);
-      const worse =
-        fullAfter.ripplePeakDb > full0.ripplePeakDb + 0.1 ||
-        fullAfter.avgDevDb > full0.avgDevDb + 0.05 ||
-        fullAfter.phaseDeg > full0.phaseDeg + 1;
-      if (worse) {
-        cur = before0;
-        removed.length = removed0;
-      }
-    }
-  }
-
   /* ---- Amp-load floor repair (decision-level, see Z_FLOOR_OHM). When the
    * tuned result dips below the floor — a shunt trap/Zobel R near the input,
    * or an amp-hostile value the response metrics cannot see — a locally
@@ -2025,16 +1931,14 @@ export function optimizeNetworkValues(
      * must still rank the least-bad ones instead of collapsing to "first
      * candidate in every slot". Asking for more than the floor is pointless,
      * and a pre-snap network already under it only has to not get worse. */
-    const zSnapTarget = Math.min(Z_FLOOR_OHM, quickEval(cur.parts).m.zMinOhm);
+    const zSnapTarget = Math.min(Z_FLOOR_OHM, quickFxZ(cur.parts).zMin);
     const snapScore = (ch: (CatalogPick | null)[]): number => {
       const extra = ch.reduce((a, p) => a + (p ? p.parts.length - 1 : 0), 0);
       const cost = ch.reduce((a, p) => a + (p?.priceEur ?? 0), 0);
       let fx: number;
       let zMin: number;
       try {
-        const ev = quickEval(applied(ch));
-        fx = ev.fx;
-        zMin = ev.m.zMinOhm;
+        ({ fx, zMin } = quickFxZ(applied(ch)));
       } catch {
         return 1e12;
       }

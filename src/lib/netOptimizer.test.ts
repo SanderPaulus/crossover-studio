@@ -704,49 +704,6 @@ describe('amplifier-load floor (system Z ≥ 2.5 Ω fundamental)', () => {
   });
 });
 
-describe('dead-weight sweep (staged, runs whatever the targets say)', () => {
-  it('removes a part that does nothing, with the targets out of reach', () => {
-    // A 100 mH coil shunted across the tweeter is thousands of ohms at every
-    // audible frequency: electrically it is not there. It costs money, a slot
-    // on the schematic and a line in the BOM. The staged PRUNE cannot touch
-    // it, because prune is gated on the targets being met — so an impossible
-    // target used to mean no cleanup at all. Measured on Sander's 3-way: a
-    // 6.8 mH shunt coil (186 Ω at the handover) shipped for exactly this
-    // reason.
-    const seed: VxpPart[] = [
-      ...crudeNetwork('none'),
-      {
-        type: 'Inductor',
-        partId: 'LDEAD',
-        params: [{ name: 'L', value: 100, unit: 'mH' }],
-        wires: [{ x: 3, y: 4 }, { x: 5, y: 11 }],
-      },
-      { type: 'Ground', params: [], wires: [{ x: 5, y: 11 }] },
-    ];
-    const r = optimizeNetworkValues(seed, grid, wBase, tBase, driverZ, NO_ADJ, {
-      phasePriority: 0.3,
-      staged: { rippleDb: 0.01, phaseDeg: 0.1 }, // deliberately unreachable
-    });
-    expect(r.removed).toContain('LDEAD');
-    // …and it really was free: the response must not have paid for it. The
-    // sweep judges on fx (the blended objective), so it is verified afterwards
-    // against peak/avg/phase — the units on the strip — and rolled back whole
-    // if those got worse. Measured without that check: fx no worse, peak
-    // ripple 2.22 → 3.09 dB.
-    expect(r.after.rippleDb).toBeLessThanOrEqual(r.before.rippleDb + 0.05);
-  });
-
-  it('a part that carries the design is never swept', () => {
-    // The mid's series inductor IS the low-pass. Same unreachable targets, so
-    // only the dead sweep can run — it must find nothing to take.
-    const r = optimizeNetworkValues(crudeNetwork('none'), grid, wBase, tBase, driverZ, NO_ADJ, {
-      phasePriority: 0.3,
-      staged: { rippleDb: 0.01, phaseDeg: 0.1 },
-    });
-    expect(r.removed).toEqual([]);
-  });
-});
-
 describe('catalog snap gating', () => {
   it('catalogSnap without an imported catalog is a no-op (continuous values kept)', () => {
     setCustomSeries([]);
