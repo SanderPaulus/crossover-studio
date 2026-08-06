@@ -1558,50 +1558,6 @@ export function optimizeNetworkValues(
       m.zShortOhm <= ref.zShortOhm + 0.3 &&
       (!breakupGuard || m.leakSqDb <= ref.leakSqDb + 4);
 
-    /* ---- DEAD-WEIGHT SWEEP (runs whatever the targets say) --------------
-     * The prune below is gated on meets(): removing a part costs quality, so
-     * you may only spend quality you have to spare. That is right for a part
-     * that does something — and wrong for one that does NOTHING. A part whose
-     * removal moves the objective by less than half a percent is not a
-     * trade-off, it is a component on the bill of materials doing nothing.
-     *
-     * MEASURED on Sander's 3-way (targets 1 dB, delivered peak 2.22 dB, so
-     * the prune never ran): the tweeter branch shipped a 6.8 mH shunt coil —
-     * 186 Ω at the 4364 Hz handover against a ~6 Ω tweeter, i.e. an open
-     * circuit with a price tag. Also a mid trap inductor at 55 Ω. An
-     * unreachable target must not mean "no cleanup at all".
-     *
-     * No retune before judging, deliberately: a retune can hide a real loss
-     * by repairing it elsewhere, and what is asked here is whether the part
-     * matters AS IT STANDS. The survivors get their full settle below. ---- */
-    {
-      const DEAD = 1.005;
-      for (let round = 0; round < 8; round++) {
-        let best: { id: string; trial: VxpPart[]; fx: number; m: Metrics } | null = null;
-        for (const q of cur.parts) {
-          if (!RLC.has(q.type) || q.locked || q.open || q.shorted) continue;
-          if (q.partId === undefined) continue;
-          for (const mode of ['open', 'shorted'] as const) {
-            const trial = cur.parts.map((pp) => (pp === q ? { ...q, [mode]: true } : pp));
-            let ev: { fx: number; m: Metrics };
-            try {
-              ev = quickEval(trial);
-            } catch {
-              continue;
-            }
-            if (ev.fx > cur.fx * DEAD) continue;
-            if (!best || ev.fx < best.fx) best = { id: q.partId, trial, fx: ev.fx, m: ev.m };
-          }
-        }
-        if (!best) break;
-        const bFull = fullM(best.trial);
-        if (!safe(bFull, curFull)) break;
-        cur = { parts: best.trial, fx: best.fx, freeCount: cur.freeCount, metrics: best.m };
-        curFull = bFull;
-        removed.push(best.id);
-      }
-    }
-
     if (meets(curFull)) {
       onStage?.('prune sweep');
       /* ---- PRUNE: shed parts whose removal is (nearly) FREE ----
@@ -1801,6 +1757,80 @@ export function optimizeNetworkValues(
         }
       }
     }
+  }
+
+  /* ---- DEAD-WEIGHT SWEEP (staged; runs whatever the targets say) --------
+   * The prune above is gated on meets(): removing a part costs quality, so
+   * you may only spend quality you have to spare. Right for a part that does
+   * something — and wrong for one that does NOTHING. A part whose removal
+   * moves the objective by under half a percent is not a trade-off, it is a
+   * component on the bill of materials doing nothing.
+   *
+   * MEASURED on Sander's 3-way (target 1 dB, delivered peak 2.22 dB, so the
+   * prune never ran): the tweeter branch shipped a 6.8 mH shunt coil — 186 Ω
+   * at the 4364 Hz handover against a ~6 Ω tweeter, an open circuit with a
+   * price tag. An unreachable target must not mean no cleanup at all.
+   *
+   * PLACED LAST, and that placement is the whole lesson. Run early (right
+   * before the prune) it made things measurably WORSE — the same candidate
+   * went 2.22 → 3.20 dB peak — because escalation, the drift catch and the
+   * shrink ladder all still had to run, and taking a part away robs them of
+   * a degree of freedom. A part that looks inert at one set of values may be
+   * exactly what a later barrier retune would have used. Asked here, after
+   * the values have settled, the question is the honest one: does this part
+   * do anything in the design we are about to ship?
+   *
+   * No retune before judging, deliberately: a retune can hide a real loss by
+   * repairing it elsewhere. Survivors get one settle afterwards. ---- */
+  if (opts.staged) {
+    const tgtL = opts.staged;
+    const fullL = (ps: readonly VxpPart[]): Metrics =>
+      opts.safety
+        ? metricsOn(
+            buildWork(ps).work,
+            opts.safety.freqs,
+            opts.safety.w,
+            opts.safety.t,
+            opts.safety.m ?? null,
+            opts.safety.z,
+            null,
+          )
+        : quickEval(ps).m;
+    const safeL = (m: Metrics, ref: Metrics): boolean =>
+      m.protSqDb <= ref.protSqDb + 0.5 &&
+      m.xoDipDb <= ref.xoDipDb + 1 &&
+      m.zShortOhm <= ref.zShortOhm + 0.1 &&
+      soloSensOk(m) &&
+      (!breakupGuard || m.leakSqDb <= ref.leakSqDb + 4);
+    const DEAD = 1.005;
+    let refFull = fullL(cur.parts);
+    let swept = 0;
+    for (let round = 0; round < 8; round++) {
+      let best: { id: string; trial: VxpPart[]; fx: number; m: Metrics } | null = null;
+      for (const q of cur.parts) {
+        if (!RLC.has(q.type) || q.locked || q.open || q.shorted) continue;
+        if (q.partId === undefined) continue;
+        for (const mode of ['open', 'shorted'] as const) {
+          const trial = cur.parts.map((pp) => (pp === q ? { ...q, [mode]: true } : pp));
+          let ev: { fx: number; m: Metrics };
+          try {
+            ev = quickEval(trial);
+          } catch {
+            continue;
+          }
+          if (ev.fx > cur.fx * DEAD) continue;
+          if (!best || ev.fx < best.fx) best = { id: q.partId, trial, fx: ev.fx, m: ev.m };
+        }
+      }
+      if (!best) break;
+      const bFull = fullL(best.trial);
+      if (!safeL(bFull, refFull)) break;
+      cur = { parts: best.trial, fx: best.fx, freeCount: cur.freeCount, metrics: best.m };
+      refFull = bFull;
+      removed.push(best.id);
+      swept++;
+    }
+    if (swept > 0) cur = tune(cur.parts, 1, tgtL);
   }
 
   /* ---- Amp-load floor repair (decision-level, see Z_FLOOR_OHM). When the
