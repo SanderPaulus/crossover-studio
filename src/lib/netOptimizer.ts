@@ -1156,20 +1156,17 @@ export function optimizeNetworkValues(
   };
 
   /** One objective evaluation of a parts array as-is (no value tuning). */
-  const quickFx = (ps: readonly VxpPart[]): number => {
-    const { work } = buildWork(ps);
-    evaluations++;
-    return fxOf(metricsOn(work, optW.freq, optW, optT, optM, optZ, optAngles));
-  };
-  /** Same evaluation, but keeping the impedance minimum the metrics already
-   *  computed. The catalog snap needs it and a second solve would be pure
-   *  waste. */
-  const quickFxZ = (ps: readonly VxpPart[]): { fx: number; zMin: number } => {
+  /** One evaluation on the optimisation grid, keeping the metrics it produced.
+   *  Callers that need more than the scalar (the catalog snap wants the
+   *  impedance minimum, the dead-weight sweep wants the whole record) would
+   *  otherwise solve the same network twice. */
+  const quickEval = (ps: readonly VxpPart[]): { fx: number; m: Metrics } => {
     const { work } = buildWork(ps);
     evaluations++;
     const m = metricsOn(work, optW.freq, optW, optT, optM, optZ, optAngles);
-    return { fx: fxOf(m), zMin: m.zMinOhm };
+    return { fx: fxOf(m), m };
   };
+  const quickFx = (ps: readonly VxpPart[]): number => quickEval(ps).fx;
 
   /** Value window for a slot (log10 SI): SERIES-PATH slots of a bound kind are
    *  clamped to that series' value range (boundToSeries). null = no window, use
@@ -1561,6 +1558,50 @@ export function optimizeNetworkValues(
       m.zShortOhm <= ref.zShortOhm + 0.3 &&
       (!breakupGuard || m.leakSqDb <= ref.leakSqDb + 4);
 
+    /* ---- DEAD-WEIGHT SWEEP (runs whatever the targets say) --------------
+     * The prune below is gated on meets(): removing a part costs quality, so
+     * you may only spend quality you have to spare. That is right for a part
+     * that does something — and wrong for one that does NOTHING. A part whose
+     * removal moves the objective by less than half a percent is not a
+     * trade-off, it is a component on the bill of materials doing nothing.
+     *
+     * MEASURED on Sander's 3-way (targets 1 dB, delivered peak 2.22 dB, so
+     * the prune never ran): the tweeter branch shipped a 6.8 mH shunt coil —
+     * 186 Ω at the 4364 Hz handover against a ~6 Ω tweeter, i.e. an open
+     * circuit with a price tag. Also a mid trap inductor at 55 Ω. An
+     * unreachable target must not mean "no cleanup at all".
+     *
+     * No retune before judging, deliberately: a retune can hide a real loss
+     * by repairing it elsewhere, and what is asked here is whether the part
+     * matters AS IT STANDS. The survivors get their full settle below. ---- */
+    {
+      const DEAD = 1.005;
+      for (let round = 0; round < 8; round++) {
+        let best: { id: string; trial: VxpPart[]; fx: number; m: Metrics } | null = null;
+        for (const q of cur.parts) {
+          if (!RLC.has(q.type) || q.locked || q.open || q.shorted) continue;
+          if (q.partId === undefined) continue;
+          for (const mode of ['open', 'shorted'] as const) {
+            const trial = cur.parts.map((pp) => (pp === q ? { ...q, [mode]: true } : pp));
+            let ev: { fx: number; m: Metrics };
+            try {
+              ev = quickEval(trial);
+            } catch {
+              continue;
+            }
+            if (ev.fx > cur.fx * DEAD) continue;
+            if (!best || ev.fx < best.fx) best = { id: q.partId, trial, fx: ev.fx, m: ev.m };
+          }
+        }
+        if (!best) break;
+        const bFull = fullM(best.trial);
+        if (!safe(bFull, curFull)) break;
+        cur = { parts: best.trial, fx: best.fx, freeCount: cur.freeCount, metrics: best.m };
+        curFull = bFull;
+        removed.push(best.id);
+      }
+    }
+
     if (meets(curFull)) {
       onStage?.('prune sweep');
       /* ---- PRUNE: shed parts whose removal is (nearly) FREE ----
@@ -1931,14 +1972,16 @@ export function optimizeNetworkValues(
      * must still rank the least-bad ones instead of collapsing to "first
      * candidate in every slot". Asking for more than the floor is pointless,
      * and a pre-snap network already under it only has to not get worse. */
-    const zSnapTarget = Math.min(Z_FLOOR_OHM, quickFxZ(cur.parts).zMin);
+    const zSnapTarget = Math.min(Z_FLOOR_OHM, quickEval(cur.parts).m.zMinOhm);
     const snapScore = (ch: (CatalogPick | null)[]): number => {
       const extra = ch.reduce((a, p) => a + (p ? p.parts.length - 1 : 0), 0);
       const cost = ch.reduce((a, p) => a + (p?.priceEur ?? 0), 0);
       let fx: number;
       let zMin: number;
       try {
-        ({ fx, zMin } = quickFxZ(applied(ch)));
+        const ev = quickEval(applied(ch));
+        fx = ev.fx;
+        zMin = ev.m.zMinOhm;
       } catch {
         return 1e12;
       }
