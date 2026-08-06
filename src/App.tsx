@@ -5623,6 +5623,7 @@ export default function App() {
         <BaffleView
           widthMm={w}
           heightMm={h}
+          horizontal={w > h}
           refFromTopMm={Number(cabinet.refFromTopMm) || 0}
           drivers={roles
             .filter(([r]) => (r === 'low' ? !!woofer : r === 'mid' ? !!midDrv : !!tweeter))
@@ -5840,7 +5841,11 @@ export default function App() {
                             {'excursion floor drops ×'}
                             {(1 / Math.sqrt(Number(d.count))).toFixed(2)}
                             {arrayLobe[role]
-                              ? ` · array lobing from ${Math.round(arrayLobe[role]!)} Hz`
+                              ? ` · array lobing from ${Math.round(arrayLobe[role]!)} Hz${
+                                  Number(cabinet.baffleWidthMm) > Number(cabinet.baffleHeightMm)
+                                    ? ' — ACROSS the seats: this baffle is wider than tall'
+                                    : ' — vertically, and you sit on that axis'
+                                }`
                               : ' · enter the spacing for the array lobing ceiling'}
                           </span>
                         )}
@@ -9921,7 +9926,9 @@ export default function App() {
               <h2>Directivity (horizontal)</h2>
               <p className="sub" style={{ marginBottom: '0.8rem' }}>
                 Same filter at every measured angle ({directivity.angles.join('/')}° hor, one side).
-                Horizontal only — vertical lobing is not in this data.
+                {Number(cabinet.baffleWidthMm) > Number(cabinet.baffleHeightMm)
+                  ? 'Horizontal only — but this baffle is wider than tall, so that IS the plane its drivers lobe in: this data captures it.'
+                  : 'Horizontal only — vertical lobing is not in this data.'}
               </p>
               {showPanels.directivity && (
               <>

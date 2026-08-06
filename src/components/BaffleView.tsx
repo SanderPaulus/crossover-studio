@@ -20,6 +20,11 @@ interface Props {
   /** How far below the top edge the measurement reference point sits. */
   refFromTopMm: number;
   drivers: readonly BaffleDriver[];
+  /** Drivers of a branch sit SIDE BY SIDE rather than stacked — a centre
+   *  channel. Not cosmetic: it decides in which plane the array's own lobing
+   *  lands, and for a centre speaker that plane is the one the listeners
+   *  spread out along. */
+  horizontal?: boolean;
 }
 
 /**
@@ -34,7 +39,7 @@ interface Props {
  * lies about exactly the thing it is here to show; the aspect ratio IS the
  * information. Same rule as the measuring guide.
  */
-export function BaffleView({ widthMm, heightMm, refFromTopMm, drivers }: Props) {
+export function BaffleView({ widthMm, heightMm, refFromTopMm, drivers, horizontal }: Props) {
   if (!(widthMm > 0) || !(heightMm > 0)) return null;
 
   // Fit the cabinet into a 150 px-wide drawing; the height follows from the
@@ -61,8 +66,8 @@ export function BaffleView({ widthMm, heightMm, refFromTopMm, drivers }: Props) 
     return Array.from({ length: n }, (_, i) => ({
       key: `${d.role}-${i}`,
       label: d.label,
-      cx: cx + d.xMm * s,
-      cy: refY - d.yMm * s + first + i * gap,
+      cx: cx + d.xMm * s + (horizontal ? first + i * gap : 0),
+      cy: refY - d.yMm * s + (horizontal ? 0 : first + i * gap),
       r,
       echt,
     }));
