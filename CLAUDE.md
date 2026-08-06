@@ -616,6 +616,19 @@ minimum phase reconstrueert. Voertaal met Sander: **Nederlands**; code/comments 
   hun rooster (dekkingsgat = stille fit-schade, dus nooit alles weggooien). partSeries()
   synthetiseert serie-entries zodat inspector-dropdown/seriesId-filters ze zien. JSON-fouten
   melden nu de parse-positie (Gemini's bestand had een losse quote op regel 108).
+  **ECHTE SKU's BOVEN GEGENEREERDE ROOSTERS (aug 2026, Sanders "gewoon een goed werkende app")**:
+  met een echte database geïmporteerd is een rooster-entry FICTIEVE VOORRAAD. Gemeten op zijn
+  3-weg: drie grote caps snapten op het ingebouwde "Standard Z-Cap"-rooster (22/56/91 µF) — een
+  serie die niet in zijn 2388-SKU-import zit, op een E24-waarde die het product niet kent —
+  terwijl een echte, geprijsde Cross-Cap ernaast lag. Rooster-entries dragen geen prijs, dus ze
+  lazen ook nog eens als GRATIS voor de kostenterm: ontbrekende data werkte als korting. 10 van
+  25 BOM-regels kwamen prijsloos én onbestelbaar uit de snap. `pickCandidates` filtert de pool
+  nu op `CatalogPart.real` (gestempeld op de IMPORTGRENS in `setCustomSeries`) vóór de
+  nearest-value-wandeling, op dezelfde 25%-reikwijdte als de pool-terugval, en ALLEEN waar echte
+  onderdelen de waarde kunnen dekken — het rooster wholesale weggooien heropent het
+  dekkingsgat-scenario, dat als mysterieus fit-verlies verschijnt i.p.v. als fout. Na de fix:
+  25/25 met prijs. NB de eerlijke prijs van eerlijkheid: het "vlakkere" ontwerp van daarvóór
+  (2,22 dB) leunde op die fictieve caps en was dus nooit bouwbaar.
   **Catalog v6 (jul 2026) + multi-gauge-doctrine**: het versieveld is INFORMATIEF — Gemini
   bumpt het per DATA-revisie, niet per formaat (v6 = v4-formaat met 169 SKU's: volle E12,
   sub-µF bypass, elco's tot 330 µF, MResist Supreme €14,50 als premium-gat-vuller, en
@@ -1404,6 +1417,19 @@ Label meldt "· N EQ". Unit-getest op een synthetische +10 dB-bult op 1,5 kHz in
 band landt op de juiste tak nabij de bult, cut-only overal, budget per tak gerespecteerd,
 deterministisch. Bijvangst dezelfde ronde: het staged-doel-rimpelveld klemde op max 3 dB
 (Sanders kon zijn doel niet kwijt) — beide invoervelden nu max 6.
+**PIEK-BEWUSTE amplitude-term in de ontwerpstap (aug 2026, Sanders "het filter moet echt
+sensible zijn")**: de EQ-trede stopt op een ≥1%-poort, en de amplitude-term was kale `std` —
+die merkt een 3 dB-lift nauwelijks. GEMETEN: het budget van 2 naar 4 banden zetten veranderde
+Sanders winnende ontwerp LETTERLIJK niets (byte-identieke cijfers, nog steeds "1 EQ"), want een
+tweede band kon zijn 1% niet verdienen terwijl de som 104,6–111,3 dB spande — precies het enige
+dat je hóórt was het enige waar geen band zijn componenten voor kon terugverdienen. Dezelfde
+blindheid als de solo-engine had, dus dezelfde metgezel op hetzelfde gewicht: `std² +
+0,35·peakExcess²` (bandMetrics), alleen POSITIEF en tegen de MEDIAAN — een dip is de eerlijke
+bodem van een cut-only ontwerp en mag niet lezen als een fout die de optimizer dan "repareert"
+door al het andere omlaag te trekken. Gemeten over het HELE 9-kandidaten-veld (gemiddelden):
+piek 3,57 → 3,20 dB · avg 0,99 → 0,96 · fase 20,0 → 17,8°; winnaar piek ±3,4 → ±2,4 dB,
+P95 ±2,6 → ±1,8, bouwtolerantie ±10% worst ±4,03 → ±3,07 (RSS ±1,83 → ±1,45), BOM €111 → €92,
+en er landen nu 2 EQ-banden waar er 1 landde.
 **GEMETEN fysica-vensters voor beide vrije assen (aug 2026, Sanders "het doel is dat de
 optimizer dit verzint")**: wat de ontwerper handmatig uit de grafieken las, leidt de scan nu
 zelf af. `beamingCeilingHz` (directivity.ts): eerste frequentie waar het ±⅙-oct-gemediane
