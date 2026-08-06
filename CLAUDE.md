@@ -1215,6 +1215,25 @@ scan-tabel (glyph eerst, kleur versterkt alleen), de waarde op elke kandidaat-re
 winnaar-note die onderscheidt tussen "er ís een gezonde kandidaat, hij scoort alleen minder
 vlak" en "geen enkele kandidaat haalde het" — dat tweede is een eigenschap van déze drivers in
 déze topologie (drie parallelle takken rond een overgang), geen tuning-misser.
+**GEPROBEERD EN TERUGGEDRAAID — dood-gewicht-veeg (aug 2026)**: de staged PRUNE is gegate op
+`meets()` (snoeien kost kwaliteit, dus je mag alleen kwaliteit uitgeven die je over hebt), en
+daardoor levert een ONHAALBAAR doel HELEMAAL geen opruiming. Gemeten op Sanders 3-weg (doel
+1 dB, geleverd 2,22 dB): de tweetertak droeg een 6,8 mH SHUNT-spoel — 186 Ω op de 4364 Hz-
+overgang tegen een ~6 Ω tweeter, dus een open verbinding mét prijskaartje, BOM-regel en
+schema-slot. De WAARNEMING klopt. De OPLOSSING niet: een veeg die onderdelen verwijdert
+waarvan verwijdering <0,5% van fx kost maakte het geleverde filter meetbaar SLECHTER — zelfde
+9-kandidaat-scan, winnende kandidaat 2,22 → 3,20 dB piek (veeg vóór de prune) en 2,22 → 3,09
+(veeg als laatste stap). De nooit-slechter-controle die ik erop zette vuurde NOOIT, en dát is
+het leerzame deel: op het moment dat de veeg draait degradeert hij niets — het verlies ontstaat
+STROOMAFWAARTS, in de amp-reparatie en de catalogus-snap, die op een netwerk met één onderdeel
+minder anders landen. Precies de "bewaker op trede N, stil ongedaan gemaakt op trede N+1"-vorm
+van de drie bugs hierboven, nu met mijn eigen bewaker als slachtoffer. Afgrenzen zou de hele
+staart twee keer per kandidaat kosten (de snap is het dure deel) en een bewaker op een bewaker
+stapelen is precies hoe het objective-anker eerder sneuvelde. Voor wie het oppakt: het
+criterium moet FYSISCH zijn (impedantie van dít element tegen de tak waar het in zit, over de
+band waar die tak werkelijk bijdraagt) i.p.v. een delta op de gemengde objective — een
+onderdeel dat écht inert is kan de stroomafwaartse stappen niet verplaatsen en heeft dus geen
+terugdraai nodig.
 **Per-paar-pins + per-paar-flanken (aug 2026, Sanders settings-review)**: in 3-weg vraagt
 "Crossover points (low + high)" twéé pinnen (laag xoLowFreqHz±xoLowMarginHz, hoog = de
 bestaande xoFreqHz±xoMarginHz) — gepinde as = kandidaat-collapse in de scan én
