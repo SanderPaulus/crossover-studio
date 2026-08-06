@@ -5636,7 +5636,34 @@ export default function App() {
               spacingMm: Number(cabinet.drivers[r].spacingMm) || 0,
             }))}
         />
-        <p className="derived">drawn to scale from the numbers on the left</p>
+        {(() => {
+          // Zeg WAAROM de tekening leeg oogt in plaats van een lege doos te
+          // tonen: zonder Sd is er geen echte conusmaat, en met alle posities
+          // op nul liggen de drivers op elkaar. Allebei zijn het ontbrekende
+          // getallen, geen fout in de tekening.
+          const rollen = (['low', 'mid', 'high'] as BranchRole[]).filter((r) =>
+            r === 'low' ? !!woofer : r === 'mid' ? !!midDrv : !!tweeter,
+          );
+          const zonderSd = rollen.filter((r) => !(Number(sdCm2[r]) > 0)).length;
+          const zonderPos = rollen.filter(
+            (r) => !cabinet.drivers[r].xMm && !cabinet.drivers[r].yMm,
+          ).length;
+          const mist = [
+            zonderSd > 0 ? `${zonderSd === rollen.length ? 'no' : `${zonderSd}`} Sd yet — those cones are dashed placeholders` : '',
+            zonderPos === rollen.length
+              ? 'every position is still 0, so they sit on top of each other'
+              : zonderPos > 0
+                ? `${zonderPos} without a position`
+                : '',
+          ].filter(Boolean);
+          return (
+            <p className="derived">
+              {mist.length === 0
+                ? 'drawn to scale from the numbers on the left'
+                : `to scale — ${mist.join(' · ')}`}
+            </p>
+          );
+        })()}
       </div>
     );
   })();

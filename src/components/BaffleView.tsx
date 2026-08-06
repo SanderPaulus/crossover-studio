@@ -46,9 +46,14 @@ export function BaffleView({ widthMm, heightMm, refFromTopMm, drivers }: Props) 
   const cx = pad + bw / 2;
   const refY = pad + refFromTopMm * s;
 
-  /** Every cone of a branch: one per driver, stacked on the spacing. */
+  /** Every cone of a branch: one per driver, stacked on the spacing.
+   *  Without Sd there is no honest diameter, so the driver is drawn DASHED at
+   *  a placeholder size — you still see that it is there and roughly where,
+   *  and the dash says "this size is not your data". Drawing nothing at all
+   *  left an empty box that looked broken (Sander: "ik mis het plaatje"). */
   const cones = drivers.flatMap((d) => {
-    const r = ((pistonDiameterMm(d.sdCm2) ?? 0) / 2) * s;
+    const echt = (pistonDiameterMm(d.sdCm2) ?? 0) > 0;
+    const r = echt ? ((pistonDiameterMm(d.sdCm2) ?? 0) / 2) * s : (widthMm * 0.18) * s;
     const n = Math.max(1, d.count);
     // Centre the stack on the branch position, so a pair straddles it.
     const gap = d.spacingMm * s;
@@ -59,6 +64,7 @@ export function BaffleView({ widthMm, heightMm, refFromTopMm, drivers }: Props) 
       cx: cx + d.xMm * s,
       cy: refY - d.yMm * s + first + i * gap,
       r,
+      echt,
     }));
   });
 
@@ -89,6 +95,8 @@ export function BaffleView({ widthMm, heightMm, refFromTopMm, drivers }: Props) 
             fill="none"
             stroke="var(--viz-tick)"
             strokeWidth={1.2}
+            strokeDasharray={c.echt ? undefined : '3 3'}
+            opacity={c.echt ? 1 : 0.6}
           />
         ) : null,
       )}
