@@ -34,6 +34,12 @@ export interface CatalogPart {
   powerW?: number;
   /** EUR list price — absent until real prices are entered. */
   priceEur?: number;
+  /** This is an EXACT market SKU from an imported database, not an entry
+   *  generated from a series' value grid. Grid entries are useful as a
+   *  fallback, but they are fictional inventory: they advertise values
+   *  nobody sells (E24 where the product runs E12) and, carrying no price,
+   *  they read as FREE to the cost-weighted snap. See pickCandidates. */
+  real?: true;
   /** Quality/price tier of the product series. */
   tier?: CatalogTier;
 }
@@ -159,7 +165,10 @@ export function setCustomSeries(series: CatalogSeries[], parts: CatalogPart[] = 
   // how a catalog update (prices, tiers, refined grids) lands. Re-importing
   // an exported template therefore never duplicates anything either.
   custom = series;
-  customParts = parts;
+  // Marked at the boundary, once: everything that arrives here is a real SKU
+  // by definition, and downstream code should not have to re-derive that from
+  // where an object happens to live.
+  customParts = parts.map((p) => (p.real ? p : { ...p, real: true as const }));
   cache = null;
 }
 
@@ -581,10 +590,27 @@ export function pickCandidates(
     const best = [...parts].sort((a, b) => (a.seriesR ?? 0) - (b.seriesR ?? 0))[0];
     return best ? [best] : parts;
   };
+  /* Real SKUs beat generated grids WHEN THEY CAN COVER THE VALUE. With a real
+   * database imported, a grid entry is fictional inventory: Sander's 3-way
+   * snapped three big caps onto a built-in "Standard Z-Cap" grid at 22/56/91
+   * µF — a series absent from his 2388-SKU import, at an E24 value the product
+   * does not come in — and because grid entries carry no price they looked
+   * FREE to the cost term while the real Cross-Cap next to them did not. Ten
+   * of twenty-five BOM lines came out unpriced and unbuyable.
+   *
+   * Only where real parts CAN cover, though (25%, the same reach the pool
+   * fallback uses): dropping the grid wholesale would reopen the coverage-gap
+   * failure, which shows up as mysterious fit loss rather than as an error. */
+  const preferReal = (parts: readonly CatalogPart[]) => {
+    const real = parts.filter((p) => p.real);
+    if (real.length === 0) return parts;
+    const covers = real.some((p) => Math.abs(Math.log(p.value / value)) <= Math.log(1.25));
+    return covers ? real : parts;
+  };
+  const usable = (parts: readonly CatalogPart[]) =>
+    preferReal(withinDcr(parts.filter((p) => p.kind === kind)));
   const singlesFrom = (parts: readonly CatalogPart[]) =>
-    nearestWithVariants(withinDcr(parts.filter((p) => p.kind === kind)), value, count).map(
-      singlePick,
-    );
+    nearestWithVariants(usable(parts), value, count).map(singlePick);
   // Walk the preference pools: a pool covers the value when a SINGLE part is
   // within 25% — or, with stacking allowed, when an IN-POOL stack lands
   // within 5%. Premium may stack premium before dropping a tier (Sanders).
@@ -592,7 +618,7 @@ export function pickCandidates(
     const singles = singlesFrom(pool);
     const bestErr = singles.length > 0 ? Math.abs(Math.log(singles[0].value / value)) : Infinity;
     if (bestErr <= Math.log(1.03)) return singles;
-    const poolStacks = stacksOk ? stackCandidates(kind, value, count, pool) : [];
+    const poolStacks = stacksOk ? stackCandidates(kind, value, count, usable(pool)) : [];
     const stackErr =
       poolStacks.length > 0 ? Math.abs(Math.log(poolStacks[0].value / value)) : Infinity;
     if (bestErr <= Math.log(1.25) || stackErr <= Math.log(1.05)) {
@@ -601,14 +627,11 @@ export function pickCandidates(
   }
   // No preference (or nothing covered): the full catalog — the DCR guard is
   // NOT a preference, it is feasibility, so it applies here too.
-  const singles = nearestWithVariants(
-    withinDcr(catalogParts().filter((p) => p.kind === kind)),
-    value,
-    count,
-  ).map(singlePick);
+  const full = usable(catalogParts());
+  const singles = nearestWithVariants(full, value, count).map(singlePick);
   const bestErr = singles.length > 0 ? Math.abs(Math.log(singles[0].value / value)) : Infinity;
   if (bestErr <= Math.log(1.03) || !stacksOk) return singles;
-  return [...singles, ...stackCandidates(kind, value, count)];
+  return [...singles, ...stackCandidates(kind, value, count, full)];
 }
 
 export interface BomRow {
