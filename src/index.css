@@ -2784,3 +2784,79 @@ details.cabinet-driver .derived {
     max-width: 210px;
   }
 }
+
+/* ---- Cabinet panel: Cards (guided) ----------------------------------------
+   Promoted from the prototype round. Leads with the ANSWER, not the input:
+   a beginner does not want to know that 500 mm is entered, he wants to know
+   that his sweeps are honest to 220 Hz and what to do about it. Fields are
+   one click away, never gone. */
+.cab-cards { display: flex; flex-direction: column; gap: 0.6rem; width: 100%; }
+.cab-card {
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--bg);
+}
+.cab-card > summary {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.7rem;
+  padding: 0.7rem 0.8rem;
+  cursor: pointer;
+  list-style: none;
+}
+.cab-card > summary::-webkit-details-marker { display: none; }
+.cab-card > summary:hover { background: color-mix(in srgb, var(--fg) 5%, transparent); border-radius: 10px; }
+.cab-card-icon {
+  flex: 0 0 auto;
+  width: 2rem; height: 2rem;
+  display: grid; place-items: center;
+  border: 1px solid var(--border); border-radius: 8px;
+}
+.cab-card-body { flex: 1; min-width: 0; display: block; }
+.cab-card-title { display: block; font-weight: 600; font-size: 0.92rem; }
+.cab-card-answer { display: block; margin-top: 0.12rem; font-size: 0.86rem; color: var(--muted); line-height: 1.5; }
+.cab-card-answer b { color: var(--fg); }
+/* The disclosure hint is the affordance — a bare caret was unreadable at this
+   size (the lesson from the driver cards). */
+.cab-card-more { flex: 0 0 auto; align-self: center; font-size: 0.78rem; color: var(--accent); }
+.cab-card[open] .cab-card-more { color: var(--muted); }
+.cab-card[open] .cab-card-more::before { content: '▾ '; }
+.cab-card:not([open]) .cab-card-more::before { content: '▸ '; }
+.cab-card-fields {
+  display: grid;
+  grid-template-columns: 7.5rem 1fr;
+  gap: 0.35rem 0.7rem;
+  align-items: center;
+  padding: 0 0.8rem 0.8rem 3.4rem;
+}
+
+/* ---- Cabinet panel: Ledger (expert) ---------------------------------------
+   Everything at once, consequence on the same line, so an odd value shows up
+   next to the number that caused it instead of three paragraphs away. */
+.lg { border: 1px solid var(--border); border-radius: 10px; overflow: hidden; width: 100%; }
+.lg-sec {
+  padding: 0.3rem 0.7rem;
+  background: color-mix(in srgb, var(--fg) 4%, transparent);
+  border-top: 1px solid var(--border);
+  font-size: 0.7rem; font-weight: 700; letter-spacing: 0.07em; text-transform: uppercase;
+  color: var(--muted);
+}
+.lg-sec:first-child { border-top: 0; }
+.lg-row {
+  display: grid;
+  grid-template-columns: minmax(8rem, 12rem) auto 1fr;
+  gap: 0.7rem;
+  align-items: center;
+  padding: 0.32rem 0.7rem;
+  border-top: 1px solid color-mix(in srgb, var(--border) 55%, transparent);
+}
+.lg-row:hover { background: color-mix(in srgb, var(--fg) 3%, transparent); }
+.lg-k { font-size: 0.84rem; }
+.lg-v { display: flex; align-items: center; gap: 0.25rem; font-size: 0.82rem; color: var(--muted); }
+.lg-v input[type='number'] { width: 4.6rem; }
+.lg-o { font-size: 0.8rem; color: var(--muted); text-align: right; }
+.lg-o .alert { color: var(--bad); }
+@media (max-width: 620px) {
+  .lg-row { grid-template-columns: 1fr auto; }
+  .lg-o { grid-column: 1 / -1; text-align: left; }
+}

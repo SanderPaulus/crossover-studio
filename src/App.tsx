@@ -7834,177 +7834,227 @@ export default function App() {
                 Nothing here changes your measurements; it lets the app work out what those
                 measurements actually captured.
               </p>
-              <span className="cab-group-cap">How you measured</span>
-              <label title="Microphone distance during the FRD sweeps. This is what decides whether the angle files mean what they say: at close range a driver sitting well below the mic is already far off ITS OWN axis at nominal 0°, which exaggerates every off-axis difference and makes a woofer look like it beams far too low.">
-                Mic distance (mm)
-                <input
-                  type="number"
-                  min={0}
-                  step={50}
-                  value={cabinet.micDistanceMm}
-                  onChange={(e) => setCabinet((c) => ({ ...c, micDistanceMm: e.target.value }))}
-                />
-              </label>
-              <label title="Fixed VERTICAL angle of the rig, degrees — positive means the microphone sat ABOVE the reference plane, negative below. Leave at 0 for the usual case: mic level with the point it is aimed at. Signed on purpose: on a driver 380 mm below the reference at 500 mm, ten degrees either way swings its true angle between 31° and 43°.">
-                Mic elevation (°)
-                <input
-                  type="number"
-                  min={-45}
-                  max={45}
-                  step={1}
-                  placeholder="0"
-                  value={cabinet.micElevationDeg}
-                  onChange={(e) => setCabinet((c) => ({ ...c, micElevationDeg: e.target.value }))}
-                />
-              </label>
-              {cabinetInfo.farField && (
-                <span className={`derived${cabinetInfo.farField.ok ? '' : ' alert'}`}>
-                  {cabinetInfo.farField.ok
-                    ? `far field ok — ${cabinetInfo.farField.ratio.toFixed(1)}× the source`
-                    : `only ${cabinetInfo.farField.ratio.toFixed(1)}× the source (${Math.round(
-                        cabinetInfo.farField.sourceMm,
-                      )} mm) — treat directivity as indicative`}
-                </span>
-              )}
-              <label title="The reflection-free window you actually gated with, in ms — from REW's or ARTA's own setting. Leave empty and the app predicts it from the floor bounce instead. A stated gate always wins: it is what happened, not what geometry suggests.">
-                Gate used (ms)
-                <input
-                  type="number"
-                  min={0}
-                  step={0.1}
-                  placeholder="predict"
-                  value={cabinet.gateMs}
-                  onChange={(e) => setCabinet((c) => ({ ...c, gateMs: e.target.value }))}
-                />
-              </label>
-              {cabinetInfo.reliable && (
-                <span className="derived">
-                  {cabinetInfo.reliable.stated
-                    ? `gate ${cabinetInfo.reliable.gateMs.toFixed(2)} ms → honest down to ≈ ${Math.round(
-                        cabinetInfo.reliable.fromHz,
-                      )} Hz`
-                    : `floor bounce at ${cabinetInfo.reliable.gateMs.toFixed(
-                        2,
-                      )} ms → honest down to ≈ ${Math.round(
-                        cabinetInfo.reliable.fromHz,
-                      )} Hz (best case: assumes the floor is the nearest reflector)`}
-                  {Number(fMin) > 0 && Number(fMin) < cabinetInfo.reliable.fromHz * 0.95 && (
-                    <>
-                      {' — '}
-                      <strong>
-                        the view range starts at {Math.round(Number(fMin))} Hz, below what this
-                        measurement supports
-                      </strong>
-                      {' '}
-                      <button
-                        type="button"
-                        onClick={() =>
-                          setFMin(String(Math.round(cabinetInfo.reliable!.fromHz)))
-                        }
-                      >
-                        use {Math.round(cabinetInfo.reliable.fromHz)} Hz as f min
-                      </button>
-                    </>
-                  )}
-                </span>
-              )}
-              <span className="cab-group-cap">The cabinet</span>
-              {/* Sanders vraag: "zijn deze 2 niet hetzelfde?" over Baffle H en
-                  "mm below the baffle top". Nee — de eerste is de MAAT van het
-                  paneel, de tweede is WAAR de oorsprong daarin zit. Dat de
-                  vraag opkwam is de fout: beide heetten "... (mm)" en stonden
-                  als losse velden naast elkaar, dus niets liet zien dat de een
-                  een afmeting is en de ander een positie. Nu twee gelabelde
-                  regels, hetzelfde raster als de driverkaarten: rij 1 = het
-                  paneel, rij 2 = het punt waar alles vanaf gemeten wordt. */}
-              <div className="cd-grid">
-                <span className="cd-label">Baffle</span>
-                <span
-                  className="cd-fields"
-                  title="The size of the front panel itself. Width is reported only, never applied: a properly measured on-baffle response already contains the baffle step, so subtracting it again would count it twice. Height matters via the edge distances below."
-                >
-                  {'W '}
-                  <input
-                    type="number"
-                    min={0}
-                    step={10}
-                    value={cabinet.baffleWidthMm}
-                    onChange={(e) => setCabinet((c) => ({ ...c, baffleWidthMm: e.target.value }))}
-                  />
-                  {' mm · H '}
-                  <input
-                    type="number"
-                    min={0}
-                    step={10}
-                    value={cabinet.baffleHeightMm}
-                    onChange={(e) => setCabinet((c) => ({ ...c, baffleHeightMm: e.target.value }))}
-                  />
-                  {' mm'}
-                  <span className="cd-hint">the whole front panel</span>
-                </span>
+              {/* Gepromoveerd uit de prototype-ronde (Sanders keuze):
+                  CARDS in guided, LEDGER in expert.
 
-                <span className="cd-label">Reference point</span>
-                <span
-                  className="cd-fields"
-                  title="WHERE that reference point sits — the spot the mic was aimed at and, on a turntable, the rotation axis. Below the top edge it gives each driver its distance to the nearest edge (what actually shapes diffraction, more than the width does); above the floor it gives, with your ear height and distance, the vertical angle you really listen at."
-                >
+                  Cards leidt met de UITKOMST ("je sweeps zijn eerlijk tot
+                  220 Hz") en zet de knop erbij; de velden staan eronder voor
+                  wie ze wil veranderen. Een beginner wil niet weten dat er
+                  500 mm staat, hij wil weten wat dat hem kost.
+
+                  Ledger toont alles tegelijk met het gevolg op dezelfde
+                  regel -- wie deze getallen zelf intypt wil ze naast elkaar
+                  kunnen vergelijken, niet uitklappen. */}
+              {(() => {
+                const veld = (
+                  val: string,
+                  set: (v: string) => void,
+                  step = 10,
+                  ph?: string,
+                ) => (
                   <input
                     type="number"
                     min={0}
-                    step={10}
-                    value={cabinet.refFromTopMm}
-                    onChange={(e) => setCabinet((c) => ({ ...c, refFromTopMm: e.target.value }))}
+                    step={step}
+                    placeholder={ph}
+                    value={val}
+                    onChange={(e) => set(e.target.value)}
                   />
-                  {' mm below the top edge · '}
-                  <input
-                    type="number"
-                    min={0}
-                    step={10}
-                    value={cabinet.refHeightMm}
-                    onChange={(e) => setCabinet((c) => ({ ...c, refHeightMm: e.target.value }))}
-                  />
-                  {' mm above the floor'}
-                </span>
-              </div>
-              {Number(cabinet.baffleHeightMm) > 0 &&
-                Number(cabinet.refFromTopMm) > Number(cabinet.baffleHeightMm) && (
-                  <span className="derived alert">
-                    the reference point cannot sit {cabinet.refFromTopMm} mm below the top of a{' '}
-                    {cabinet.baffleHeightMm} mm baffle — one of the two is the other field
-                  </span>
-                )}
-              {cabinetInfo.baffleStep && (
-                <span className="derived">
-                  baffle step ≈ {Math.round(cabinetInfo.baffleStep)} Hz (already in your measurement)
-                </span>
-              )}
-              <span className="cab-group-cap">Where you listen</span>
-              <label title="Listening distance, metres.">
-                Listen (m)
-                <input
-                  type="number"
-                  min={0}
-                  step={0.1}
-                  value={cabinet.listenDistanceM}
-                  onChange={(e) => setCabinet((c) => ({ ...c, listenDistanceM: e.target.value }))}
-                />
-              </label>
-              <label title="Ear height above the floor, mm.">
-                Ear height (mm)
-                <input
-                  type="number"
-                  min={0}
-                  step={10}
-                  value={cabinet.listenEarHeightMm}
-                  onChange={(e) => setCabinet((c) => ({ ...c, listenEarHeightMm: e.target.value }))}
-                />
-              </label>
-              {cabinetInfo.listenAngle !== null && (
-                <span className="derived">
-                  you sit {Math.abs(cabinetInfo.listenAngle).toFixed(1)}°{' '}
-                  {cabinetInfo.listenAngle >= 0 ? 'below' : 'above'} the reference axis
-                </span>
-              )}
+                );
+                const cab = (k: keyof CabinetState) => (v: string) =>
+                  setCabinet((c) => ({ ...c, [k]: v }));
+                const eerlijk = cabinetInfo.reliable;
+                const teLaag =
+                  eerlijk && Number(fMin) > 0 && Number(fMin) < eerlijk.fromHz * 0.95;
+                const knop = eerlijk ? (
+                  <button type="button" onClick={() => setFMin(String(Math.round(eerlijk.fromHz)))}>
+                    use {Math.round(eerlijk.fromHz)} Hz as f min
+                  </button>
+                ) : null;
+                const micUit = eerlijk
+                  ? `honest down to ≈ ${Math.round(eerlijk.fromHz)} Hz`
+                  : 'enter the mic distance to find out how low this measurement carries';
+                const stapUit = cabinetInfo.baffleStep
+                  ? `baffle step ≈ ${Math.round(cabinetInfo.baffleStep)} Hz`
+                  : '';
+                const zitUit =
+                  cabinetInfo.listenAngle !== null
+                    ? `you sit ${Math.abs(cabinetInfo.listenAngle).toFixed(1)}° ${
+                        cabinetInfo.listenAngle >= 0 ? 'below' : 'above'
+                      } the reference axis`
+                    : '';
+                const mis =
+                  Number(cabinet.baffleHeightMm) > 0 &&
+                  Number(cabinet.refFromTopMm) > Number(cabinet.baffleHeightMm);
+
+                if (uiMode === 'guided') {
+                  const kaart = (
+                    icoon: string,
+                    titel: string,
+                    antwoord: React.ReactNode,
+                    velden: React.ReactNode,
+                  ) => (
+                    <details className="cab-card">
+                      <summary>
+                        <span className="cab-card-icon" aria-hidden="true">
+                          {icoon}
+                        </span>
+                        <span className="cab-card-body">
+                          <span className="cab-card-title">{titel}</span>
+                          <span className="cab-card-answer">{antwoord}</span>
+                        </span>
+                        <span className="cab-card-more">change the numbers</span>
+                      </summary>
+                      <div className="cab-card-fields">{velden}</div>
+                    </details>
+                  );
+                  return (
+                    <div className="cab-cards">
+                      {kaart(
+                        '📏',
+                        'How far the mic stood',
+                        <>
+                          {micUit}
+                          {teLaag && (
+                            <>
+                              {' — your view range starts lower than that. '}
+                              {knop}
+                            </>
+                          )}
+                        </>,
+                        <>
+                          <span className="cd-label">Distance</span>
+                          <span className="cd-fields">
+                            {veld(cabinet.micDistanceMm, cab('micDistanceMm'))} mm
+                          </span>
+                          <span className="cd-label">Elevation</span>
+                          <span className="cd-fields">
+                            {veld(cabinet.micElevationDeg, cab('micElevationDeg'), 1, '0')} °
+                          </span>
+                          <span className="cd-label">Gate used</span>
+                          <span className="cd-fields">
+                            {veld(cabinet.gateMs, cab('gateMs'), 0.1, 'predict')} ms
+                          </span>
+                        </>,
+                      )}
+                      {kaart(
+                        '▭',
+                        'The box',
+                        stapUit ? (
+                          <>
+                            A {cabinet.baffleWidthMm} mm wide baffle puts its step around{' '}
+                            <b>{Math.round(cabinetInfo.baffleStep!)} Hz</b> — that broad tilt in
+                            your measurement is the cabinet, not the driver.
+                          </>
+                        ) : (
+                          'Add the baffle size and the app can tell the cabinet apart from the driver — and draw your front panel in step 2.'
+                        ),
+                        <>
+                          <span className="cd-label">Baffle</span>
+                          <span className="cd-fields">
+                            {veld(cabinet.baffleWidthMm, cab('baffleWidthMm'))} ×{' '}
+                            {veld(cabinet.baffleHeightMm, cab('baffleHeightMm'))} mm
+                          </span>
+                          <span className="cd-label">Reference point</span>
+                          <span className="cd-fields">
+                            {veld(cabinet.refFromTopMm, cab('refFromTopMm'))} mm below the top ·{' '}
+                            {veld(cabinet.refHeightMm, cab('refHeightMm'))} mm above the floor
+                          </span>
+                          {mis && (
+                            <span className="derived alert" style={{ gridColumn: '1 / -1' }}>
+                              the reference point cannot sit {cabinet.refFromTopMm} mm below the top
+                              of a {cabinet.baffleHeightMm} mm baffle — one of the two is the other
+                              field
+                            </span>
+                          )}
+                        </>,
+                      )}
+                      {kaart(
+                        '🪑',
+                        'Where you listen',
+                        zitUit ||
+                          'Add your seat and ear height, and a driver-spacing rule becomes a statement about YOUR room.',
+                        <>
+                          <span className="cd-label">Distance</span>
+                          <span className="cd-fields">
+                            {veld(cabinet.listenDistanceM, cab('listenDistanceM'), 0.1)} m
+                          </span>
+                          <span className="cd-label">Ear height</span>
+                          <span className="cd-fields">
+                            {veld(cabinet.listenEarHeightMm, cab('listenEarHeightMm'))} mm
+                          </span>
+                        </>,
+                      )}
+                    </div>
+                  );
+                }
+
+                const rij = (k: string, v: React.ReactNode, o?: React.ReactNode) => (
+                  <div className="lg-row">
+                    <span className="lg-k">{k}</span>
+                    <span className="lg-v">{v}</span>
+                    <span className="lg-o">{o}</span>
+                  </div>
+                );
+                return (
+                  <div className="lg">
+                    <div className="lg-sec">How you measured</div>
+                    {rij(
+                      'Mic distance',
+                      <>{veld(cabinet.micDistanceMm, cab('micDistanceMm'))} mm</>,
+                      cabinetInfo.farField
+                        ? `${cabinetInfo.farField.ratio.toFixed(1)}× the source — ${
+                            cabinetInfo.farField.ok ? 'far field' : 'close'
+                          }`
+                        : '',
+                    )}
+                    {rij(
+                      'Mic elevation',
+                      <>{veld(cabinet.micElevationDeg, cab('micElevationDeg'), 1, '0')} °</>,
+                    )}
+                    {rij(
+                      'Gate used',
+                      <>{veld(cabinet.gateMs, cab('gateMs'), 0.1, 'predict')} ms</>,
+                      <>
+                        {micUit} {teLaag && knop}
+                      </>,
+                    )}
+                    <div className="lg-sec">The cabinet</div>
+                    {rij(
+                      'Baffle width',
+                      <>{veld(cabinet.baffleWidthMm, cab('baffleWidthMm'))} mm</>,
+                      stapUit,
+                    )}
+                    {rij(
+                      'Baffle height',
+                      <>{veld(cabinet.baffleHeightMm, cab('baffleHeightMm'))} mm</>,
+                    )}
+                    {rij(
+                      'Reference point, below top',
+                      <>{veld(cabinet.refFromTopMm, cab('refFromTopMm'))} mm</>,
+                      mis ? (
+                        <strong className="alert">deeper than the baffle is tall</strong>
+                      ) : (
+                        ''
+                      ),
+                    )}
+                    {rij(
+                      'Reference point, above floor',
+                      <>{veld(cabinet.refHeightMm, cab('refHeightMm'))} mm</>,
+                    )}
+                    <div className="lg-sec">Where you listen</div>
+                    {rij(
+                      'Distance',
+                      <>{veld(cabinet.listenDistanceM, cab('listenDistanceM'), 0.1)} m</>,
+                      zitUit,
+                    )}
+                    {rij(
+                      'Ear height',
+                      <>{veld(cabinet.listenEarHeightMm, cab('listenEarHeightMm'))} mm</>,
+                    )}
+                  </div>
+                );
+              })()}
               {/* De driverfeiten zijn verhuisd naar stap 1 "Your drivers":
                   positie, Sd/Xmax, aantal en kasttype gaan over de DRIVER, de
                   velden hierboven over de KAST en de meetopstelling. De
