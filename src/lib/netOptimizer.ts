@@ -1803,7 +1803,10 @@ export function optimizeNetworkValues(
       soloSensOk(m) &&
       (!breakupGuard || m.leakSqDb <= ref.leakSqDb + 4);
     const DEAD = 1.005;
+    const before0 = cur;
+    const removed0 = removed.length;
     let refFull = fullL(cur.parts);
+    const full0 = refFull;
     let swept = 0;
     for (let round = 0; round < 8; round++) {
       let best: { id: string; trial: VxpPart[]; fx: number; m: Metrics } | null = null;
@@ -1830,7 +1833,27 @@ export function optimizeNetworkValues(
       removed.push(best.id);
       swept++;
     }
-    if (swept > 0) cur = tune(cur.parts, 1, tgtL);
+    if (swept > 0) {
+      cur = tune(cur.parts, 1, tgtL);
+      /* NEVER WORSE IN THE UNIT THE DESIGNER READS. The sweep judges on fx,
+       * the blended objective — and fx is not what the strip shows. Measured:
+       * a sweep that left fx no worse still moved peak ripple 2.22 → 3.09 dB
+       * (it bought phase with flatness, and nobody asked). This is the bug
+       * family bandMetrics was extracted for: every guard on its own private
+       * definition of flat. So the whole sweep is verified afterwards against
+       * what it started from, on the full grid, and rolled back entirely if
+       * the numbers on screen got worse. A cheaper bill is not worth a worse
+       * loudspeaker. */
+      const fullAfter = fullL(cur.parts);
+      const worse =
+        fullAfter.ripplePeakDb > full0.ripplePeakDb + 0.1 ||
+        fullAfter.avgDevDb > full0.avgDevDb + 0.05 ||
+        fullAfter.phaseDeg > full0.phaseDeg + 1;
+      if (worse) {
+        cur = before0;
+        removed.length = removed0;
+      }
+    }
   }
 
   /* ---- Amp-load floor repair (decision-level, see Z_FLOOR_OHM). When the

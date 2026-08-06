@@ -728,7 +728,11 @@ describe('dead-weight sweep (staged, runs whatever the targets say)', () => {
       staged: { rippleDb: 0.01, phaseDeg: 0.1 }, // deliberately unreachable
     });
     expect(r.removed).toContain('LDEAD');
-    // …and it really was free: the response must not have paid for it.
+    // …and it really was free: the response must not have paid for it. The
+    // sweep judges on fx (the blended objective), so it is verified afterwards
+    // against peak/avg/phase — the units on the strip — and rolled back whole
+    // if those got worse. Measured without that check: fx no worse, peak
+    // ripple 2.22 → 3.09 dB.
     expect(r.after.rippleDb).toBeLessThanOrEqual(r.before.rippleDb + 0.05);
   });
 
