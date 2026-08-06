@@ -107,6 +107,7 @@ import {
   runChain3Scan,
 } from './lib/optimClient.ts';
 import { crossover3Variants, rankChain3Results } from './lib/threeWayChain.ts';
+import type { Chain3Result } from './lib/threeWayChain.ts';
 import { buildSoloNetwork, optimizeSoloFilter, reachableBandFor } from './lib/soloOptimizer.ts';
 import { crossoverVariants, rankChainResults, type ChainResult, type ChainSettings } from './lib/designChain.ts';
 import { deserializeCatalog, serializeCatalog } from './lib/catalogFile.ts';
@@ -3580,6 +3581,28 @@ export default function App() {
           setVfBypass(true);
           setVfOpt(null);
           setVfRunStats(null);
+          // De scan-tabel werkt nu OOK in 3-weg (Sander: "bij de 2-weg kreeg
+          // ik alle opties te zien, maar nu niet"). Hij stond hier op null,
+          // dus de kandidaten leefden alleen als proza in de note -- terwijl
+          // juist bij drie takken de prijsverschillen tussen kandidaten groot
+          // zijn en je ze wilt kunnen proberen.
+          setScanSort(null);
+          setChainScan(
+            results.length > 1
+              ? {
+                  rows: ranked.map((rr) => ({
+                    label: rr.label,
+                    rippleDb: rr.net.after.rippleDb,
+                    avgDevDb: rr.net.after.avgDevDb ?? null,
+                    phaseDeg: rr.net.after.phaseDeg,
+                    bomEur: rr.bomTotalEur,
+                    winner: rr === win,
+                    result: rr,
+                  })),
+                  active: win.label,
+                }
+              : null,
+          );
           // DELIVERED handovers, not just the candidate label: a design can
           // meet every flatness target while its crossings sit an octave off
           // the knees it was built on, and that is invisible in the numbers.
@@ -4311,7 +4334,9 @@ export default function App() {
       phaseDeg: number;
       bomEur: number | null;
       winner: boolean;
-      result: ChainResult;
+      /** 2-way and 3-way scans produce different result shapes; the table only
+       *  displays numbers, so it carries either and the loader branches. */
+      result: ChainResult | Chain3Result;
     }[];
     /** Label of the row currently loaded in Working. */
     active: string;
@@ -4332,15 +4357,36 @@ export default function App() {
 
   /** Load a scan candidate's complete design (specs + synth + tuned network)
    *  into Working — same application as the winner gets, undo-able. */
-  function applyScanCandidate(row: { label: string; result: ChainResult }) {
+  function applyScanCandidate(row: { label: string; result: ChainResult | Chain3Result }) {
     const r = row.result;
-    setVFilters((p) => ({ ...p, ...r.vf.specs }));
-    setInverted(r.vf.inverted);
-    setVfOpt(r.vf);
-    synthFresh.current = true;
-    setSynth({ mode: synthMode, woofer: r.synthWoofer, tweeter: r.synthTweeter });
+    if ('vf' in r) {
+      // 2-way: the candidate carries a virtual-filter result.
+      setVFilters((p) => ({ ...p, ...r.vf.specs }));
+      setInverted(r.vf.inverted);
+      setVfOpt(r.vf);
+      synthFresh.current = true;
+      setSynth({ mode: synthMode, woofer: r.synthWoofer, tweeter: r.synthTweeter });
+    } else {
+      // 3-way: specs per branch plus the polarity the structure search chose.
+      // Apply exactly what the winner gets — same fields, same order — or a
+      // loaded row would simulate something other than what was fitted.
+      setVFilters((p) => ({ ...p, ...r.specs }));
+      setMidInverted(r.midInverted);
+      setInverted(r.tweeterInverted);
+      synthFresh.current = true;
+      setSynth({
+        mode: synthMode,
+        woofer: r.synthWoofer,
+        mid: r.synthMid,
+        tweeter: r.synthTweeter,
+      });
+      setVfOpt(null);
+      setVfRunStats(null);
+      setNetworkActive(true);
+    }
     setWorkingDesign(r.parts);
     setVfBypass(true);
+    setNetOptDiff(null);
     setChainScan((c) => (c ? { ...c, active: row.label } : c));
   }
   /** One-click chain: after Optimize→Build lands in Working, auto-run the
