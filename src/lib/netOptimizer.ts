@@ -136,6 +136,18 @@ export interface NetOptimizeOptions {
    *  When provided, the final result must not degrade the FUNDAMENTALS on
    *  this band versus the seed — otherwise the seed is returned unchanged
    *  with a `safetyNote`. */
+  /** The seed is MACHINE-GENERATED (a fresh synthesis from the design chain),
+   *  not something a designer chose. The amp-load repair is normally
+   *  seed-relative — we do not second-guess a user's own network — but that
+   *  bar is meaningless when we wrote the seed ourselves: a synthesis that
+   *  already dips to 0.5 ohm sets the bar at 0.5 ohm and the repair declares
+   *  victory without lifting anything. Measured on Sander's 3-way scan: all
+   *  four candidates shipped under the floor, the winner at 0.5 ohm from an
+   *  undamped shunt trap that is acoustically inaudible there and a dead
+   *  short to the amplifier. With this set, the repair must reach the real
+   *  floor, and it may spend response quality to get there — a short is not
+   *  a tradeable quantity. */
+  zFloorStrict?: boolean;
   safety?: {
     freqs: readonly number[];
     w: GriddedResponse;
@@ -1149,6 +1161,15 @@ export function optimizeNetworkValues(
     evaluations++;
     return fxOf(metricsOn(work, optW.freq, optW, optT, optM, optZ, optAngles));
   };
+  /** Same evaluation, but keeping the impedance minimum the metrics already
+   *  computed. The catalog snap needs it and a second solve would be pure
+   *  waste. */
+  const quickFxZ = (ps: readonly VxpPart[]): { fx: number; zMin: number } => {
+    const { work } = buildWork(ps);
+    evaluations++;
+    const m = metricsOn(work, optW.freq, optW, optT, optM, optZ, optAngles);
+    return { fx: fxOf(m), zMin: m.zMinOhm };
+  };
 
   /** Value window for a slot (log10 SI): SERIES-PATH slots of a bound kind are
    *  clamped to that series' value range (boundToSeries). null = no window, use
@@ -1777,7 +1798,8 @@ export function optimizeNetworkValues(
       // the safety gate judges against the seed, so "as healthy as the seed"
       // is repaired enough there.
       const zSeed = worstZ(fullOf(parts), parts);
-      const repairedEnough = (s: number): boolean => s <= Math.max(0.15, zSeed.short + 0.15);
+      const repairedEnough = (s: number): boolean =>
+        opts.zFloorStrict ? s <= 0.15 : s <= Math.max(0.15, zSeed.short + 0.15);
       // Iterate the barrier retune (max 3 warm-started rounds): one round's
       // simplex budget regularly stalls short (measured in the app chain:
       // 1.2 → 2.14 Ω in round one, threshold 2.5).
@@ -1810,15 +1832,27 @@ export function optimizeNetworkValues(
         (rep.fx <= cur.fx * 1.1 || rep.fx <= fxOrig) &&
         mRep.xoDipDb <= mCur.xoDipDb + 1 &&
         (!breakupGuard || mRep.leakSqDb <= mCur.leakSqDb + 4);
-      const ok =
-        repairedEnough(zRep.short) &&
-        targetsKept &&
+      /* Strict mode widens what a repair may cost. A 0.5 ohm minimum is not
+       * a quantity to trade against a tenth of a dB — it is a network the
+       * designer would not build. The fundamentals still hold (crossing,
+       * tweeter protection), and the note reports what the lift cost. */
+      const strictOk =
+        opts.zFloorStrict === true &&
+        zRep.short < zCur.short - 0.1 &&
         mRep.protSqDb <= mCur.protSqDb + 3 &&
-        (rep.fx <= cur.fx || armsOk);
+        mRep.xoDipDb <= mCur.xoDipDb + 1 &&
+        rep.fx <= cur.fx * 1.5;
+      const ok =
+        (repairedEnough(zRep.short) &&
+          targetsKept &&
+          mRep.protSqDb <= mCur.protSqDb + 3 &&
+          (rep.fx <= cur.fx || armsOk)) ||
+        strictOk;
       if (ok) {
         ampFloorNote =
           `amp-load floor: system impedance minimum lifted ` +
-          `${zCur.min.toFixed(1)} → ${zRep.min.toFixed(1)} Ω (floor ${Z_FLOOR_OHM} Ω)`;
+          `${zCur.min.toFixed(1)} → ${zRep.min.toFixed(1)} Ω (floor ${Z_FLOOR_OHM} Ω)` +
+          (zRep.short > 0.15 ? ' — still under the floor, but no longer a short' : '');
         cur = { ...rep, freeCount: cur.freeCount };
       } else {
         ampFloorNote =
@@ -1884,16 +1918,32 @@ export function optimizeNetworkValues(
       });
       return out;
     };
+    /* AMP LOAD SURVIVES THE SNAP. The snap judges on fxOf(), and the amp-load
+     * floor is deliberately absent there (see Z_FLOOR_OHM) — so the discrete
+     * pass happily undid the repair that ran two steps earlier. Measured on
+     * Sander's 3-way: "minimum lifted 2.1 → 2.4 Ω" in the note while the
+     * delivered network sat at 1.9 Ω, because the catalog values that fit best
+     * put the dip back. Same disease as the relative repair bar: a guard
+     * enforced at one step and silently undone at the next.
+     *
+     * Kept at DECISION level, and deliberately a steep penalty rather than a
+     * hard reject: when no purchasable combination clears the bar the descent
+     * must still rank the least-bad ones instead of collapsing to "first
+     * candidate in every slot". Asking for more than the floor is pointless,
+     * and a pre-snap network already under it only has to not get worse. */
+    const zSnapTarget = Math.min(Z_FLOOR_OHM, quickFxZ(cur.parts).zMin);
     const snapScore = (ch: (CatalogPick | null)[]): number => {
       const extra = ch.reduce((a, p) => a + (p ? p.parts.length - 1 : 0), 0);
       const cost = ch.reduce((a, p) => a + (p?.priceEur ?? 0), 0);
       let fx: number;
+      let zMin: number;
       try {
-        fx = quickFx(applied(ch));
+        ({ fx, zMin } = quickFxZ(applied(ch)));
       } catch {
         return 1e12;
       }
-      return fx * (1 + 0.05 * extra) * (1 + cw * cost);
+      const zShort = Math.max(0, zSnapTarget - zMin);
+      return fx * (1 + 0.05 * extra) * (1 + cw * cost) * (1 + 20 * zShort);
     };
     const descend = (candSets: CatalogPick[][]): { picks: (CatalogPick | null)[]; score: number } => {
       let ps: (CatalogPick | null)[] = candSets.map((c) => c[0] ?? null);
@@ -2034,6 +2084,18 @@ export function optimizeNetworkValues(
     }
     return min;
   };
+  /* The snap runs BEFORE this point, so the repair's claim has to be checked
+   * against what actually ships. A note reading "lifted 2.1 → 2.4 Ω" on a
+   * network delivering 1.9 Ω is worse than no note at all — it is the reason
+   * the give-back went unnoticed for as long as it did. */
+  if (ampFloorNote !== undefined && ampFloorNote.includes('lifted')) {
+    const zFinal = zMinOf(after, outParts);
+    const claimed = /→ ([\d.]+) Ω/.exec(ampFloorNote);
+    if (claimed && zFinal < parseFloat(claimed[1]) - 0.05) {
+      ampFloorNote += `; the catalog snap gave part of that back — delivered ${zFinal.toFixed(1)} Ω`;
+    }
+  }
+
   const report = (m: Metrics, ps: readonly VxpPart[]) => ({
     rippleDb: m.ripplePeakDb,
     avgDevDb: m.avgDevDb,

@@ -496,7 +496,17 @@ minimum phase reconstrueert. Voertaal met Sander: **Nederlands**; code/comments 
   UI: "Tolerance band ±2/5/10%" in de Simulation-groep (gepersisteerd), envelop als fijne
   stippellijnen om de combined, strip-item "build ±5%: worst ±… · RSS ±… · sensitive L1, …"
   in het SPL-paneel; tolBand-memo herrekent live met dezelfde part-bron/vf-stacking/adjust
-  als de sim (vf vóór of ná het netwerk vermenigvuldigen is equivalent — pre-applied)
+  als de sim (vf vóór of ná het netwerk vermenigvuldigen is equivalent — pre-applied).
+  **N-weg (aug 2026, Sanders "ik vind wel dat onze optimizer competitie moet zijn voor zelfs
+  iemand als een Troels")**: optionele `mid`-tak {response, adjust} ⇒ som via `pickSlotsN` +
+  `combineN` (dunne-wrapper-vorm à la `computeDirectivityN`; zonder mid is de takkenlijst
+  [low, high] en is het 2-weg-pad ongewijzigd — volle suite is het bewijs). Bestaansreden:
+  juist het ontwerp met de MEESTE onderdelen kon de bouwbaarheidsvraag niet gesteld krijgen.
+  Gemeten op Sanders 3-weg (24 parts): ±2% → worst ±0,67 / RSS ±0,30 dB · ±5% → ±1,67/±0,76 ·
+  ±10% → ±3,35/±1,60; de drie gevoeligste slots zijn alle drie SPOELEN (B·L5, B·C1, B·L2),
+  dus 2%-onderdelen dáár kopen bijna het hele verschil. NB het weegt WAARDE-spreiding, niet
+  DCR- of driver-exemplaarspreiding — die laatste is in de praktijk de grotere post en kan
+  geen enkele tool voorrekenen zonder twee gemeten exemplaren
 - `directivity.ts` — per-hoek som (zelfde filter elke hoek), energy average, listening window (≤30°), DI
 - `sonogram.ts` + `components/Sonogram.tsx` — directivity-sonogram: ±hoeken gespiegeld, discrete
   3 dB-banden (vloer −24 dB, sequentiële blauwe ramp, dark-mode flipt het anker), −6 dB-beamwidth-
@@ -1187,6 +1197,24 @@ ontwerpfysica in 3-weg, nooit een objective-term), dan targets, dan de blend, ti
 goedkoopste BOM. Worker 'chain3One' + `runChain3Scan` (pool). App: 3-weg-pad in
 runVfOptimize (winnaar → Working + specs → vFilters + synth-state), wizard zonder
 Crossover-stap. Gemeten op Robbert: 411/2520 Hz → 0,79 dB avg/9,7°, paren 99/99.
+**ABSOLUTE Z-vloer in de ranking (aug 2026, Sanders "het filter moet echt sensible zijn")**:
+`zOk` is RELATIEF — het zegt alleen dat de tune de dip niet erger maakte dan de seed waar hij
+mee begon. Een kandidaat wiens seed al ónder de vloer zat passeerde daarmee élke poort en won
+de scan met een versterker-vijandige last. GEMETEN op Sanders 3-weg: geleverd Z-minimum
+**2,2 Ω @ 2731 Hz** terwijl strip, poorten én ranking allemaal groen stonden; zijn staged-run
+op 1 dB/15° werd vervolgens in zijn geheel afgewezen omdat de tuner op 1,9 Ω uitkwam — het
+ontwerp was dus niet eens meer te verbéteren, want élke zet werd beoordeeld tegen een
+startpunt dat al in het gevarengebied lag. Het absolute getal was nergens afleesbaar:
+`netOptimizer` rapporteert nu `after.zMinOhm` (het SLECHTSTE van eval-grid en safety-grid — een
+smalle dip buiten een ingezoomde view range bereikt de versterker toch) en `Chain3Result`
+draagt hem. Ranking = KLASSE naast zOk (`zClass` = zOk-falen weegt zwaarder dan een eerlijk
+lage last), nooit een score-term: de anker-les houdt fysica op beslispunten, en een last die
+een ontwerper niet zou publiceren mag niet met een tiende dB terug te kopen zijn. Een
+ONGEMETEN minimum wordt nooit gestraft. Zichtbaar of het bestaat niet: "Z min"-kolom in de
+scan-tabel (glyph eerst, kleur versterkt alleen), de waarde op elke kandidaat-regel, en een
+winnaar-note die onderscheidt tussen "er ís een gezonde kandidaat, hij scoort alleen minder
+vlak" en "geen enkele kandidaat haalde het" — dat tweede is een eigenschap van déze drivers in
+déze topologie (drie parallelle takken rond een overgang), geen tuning-misser.
 **Per-paar-pins + per-paar-flanken (aug 2026, Sanders settings-review)**: in 3-weg vraagt
 "Crossover points (low + high)" twéé pinnen (laag xoLowFreqHz±xoLowMarginHz, hoog = de
 bestaande xoFreqHz±xoMarginHz) — gepinde as = kandidaat-collapse in de scan én

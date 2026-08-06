@@ -217,6 +217,9 @@ export function runThreeWayChain(
   const highCage = input.xoHighRange ?? pinRange(s.xoHighPin);
   const tuneOpts = {
     midBranch: { response: m, adjust: midAdjust },
+    // The seed here is OUR OWN synthesis, so the seed-relative amp-load bar
+    // has nothing to respect and everything to hide behind. See zFloorStrict.
+    zFloorStrict: true,
     phasePriority: s.phasePriority,
     breakupGuard: s.breakupGuard,
     angleData: input.angleData,

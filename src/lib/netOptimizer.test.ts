@@ -647,6 +647,49 @@ describe('amplifier-load floor (system Z ≥ 2.5 Ω fundamental)', () => {
     expect(r.after.rippleDb).toBeLessThanOrEqual(r.before.rippleDb + 1e-9);
   });
 
+  it('zFloorStrict repairs a machine-written seed the relative bar would excuse', () => {
+    // THE BUG THIS PINS (measured on Sander's 3-way scan): the repair bar is
+    // seed-relative — right for a designer's own network, meaningless when the
+    // seed came out of our own synthesis. A seed dipping to ~0.4 Ω sets the
+    // bar at ~0.4 Ω, so the pass "succeeds" without lifting anything, and all
+    // four scan candidates shipped under the floor (winner: 0.5 Ω).
+    const seed: VxpPart[] = [
+      ...crudeNetwork('none'),
+      {
+        type: 'Resistor',
+        partId: 'RS1',
+        params: [{ name: 'R', value: 0.4, unit: 'Ω' }],
+        wires: [{ x: 3, y: 4 }, { x: 5, y: 11 }],
+      },
+      { type: 'Ground', params: [], wires: [{ x: 5, y: 11 }] },
+    ];
+    expect(zMinOf(seed)).toBeLessThan(0.5);
+    const lax = optimizeNetworkValues(seed, grid, wBase, tBase, driverZ, NO_ADJ, {
+      phasePriority: 0.3,
+    });
+    const strict = optimizeNetworkValues(seed, grid, wBase, tBase, driverZ, NO_ADJ, {
+      phasePriority: 0.3,
+      zFloorStrict: true,
+    });
+    // THE INVARIANT, not a number: under strict the pass either reaches the
+    // floor or says out loud that it could not. The relative bar has no such
+    // obligation — it may accept whatever one barrier round happened to give
+    // and still call the result healthy, which is precisely how a 0.5 Ω
+    // network reached the top of a scan with every gate green.
+    // (This synthetic seed recovers in one round, so lax lands well too; the
+    // difference is the obligation, which is what must be pinned.)
+    const strictMin = zMinOf(strict.parts);
+    expect(strictMin > 2.3 || (strict.ampFloorNote ?? '').includes('could not be repaired')).toBe(
+      true,
+    );
+    expect(strictMin).toBeGreaterThanOrEqual(zMinOf(lax.parts) - 1e-9);
+    expect(strictMin).toBeGreaterThan(2.3);
+    // The delivered minimum is reported either way — that number is what the
+    // chain ranking judges, so it must exist even when nothing was repaired.
+    expect(lax.after.zMinOhm).toBeDefined();
+    expect(strict.after.zMinOhm).toBeGreaterThan(2.3);
+  });
+
   it('a healthy network never enters the repair pass', () => {
     // The crude network's own system minimum sits ABOVE the floor (KOAN mid
     // 3.66 Ω + series L) — the repair must not trigger and the tune must
