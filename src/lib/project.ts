@@ -144,6 +144,8 @@ export interface ProjectDesign {
     refHeightMm?: string;
     listenDistanceM?: string;
     listenEarHeightMm?: string;
+    /** Driver the mic was aimed at; that one is the reference point (0,0). */
+    refDriver?: string;
     drivers?: Partial<
       Record<
         'low' | 'mid' | 'high',

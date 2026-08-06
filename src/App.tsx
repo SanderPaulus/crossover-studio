@@ -555,6 +555,12 @@ interface CabinetState {
   refHeightMm: string;
   listenDistanceM: string;
   listenEarHeightMm: string;
+  /** Which driver the microphone was aimed at, if any. That driver IS the
+   *  reference point, so its offset is 0,0 BY DEFINITION — the app should
+   *  know it rather than ask for it (Sander: "de tweeter is toch de
+   *  reference? dan hoef ik toch geen offset in te vullen?"). '' = the mic
+   *  was aimed at some other spot and every driver has a real offset. */
+  refDriver: '' | BranchRole;
   drivers: Record<BranchRole, CabinetDriver>;
 }
 const emptyCabinetDriver = (): CabinetDriver => ({
@@ -575,6 +581,7 @@ const emptyCabinet = (): CabinetState => ({
   refHeightMm: '',
   listenDistanceM: '',
   listenEarHeightMm: '',
+  refDriver: '',
   drivers: { low: emptyCabinetDriver(), mid: emptyCabinetDriver(), high: emptyCabinetDriver() },
 });
 /** Restore a cabinet block from a project/autosave, filling every gap with the
@@ -609,6 +616,10 @@ function mergeCabinet(raw: ProjectDesign['cabinet']): CabinetState {
     refHeightMm: raw.refHeightMm ?? '',
     listenDistanceM: raw.listenDistanceM ?? '',
     listenEarHeightMm: raw.listenEarHeightMm ?? '',
+    refDriver:
+      raw.refDriver === 'low' || raw.refDriver === 'mid' || raw.refDriver === 'high'
+        ? raw.refDriver
+        : '',
     drivers,
   };
 }
@@ -5608,7 +5619,7 @@ export default function App() {
     if (!(w > 0) || !(h > 0)) {
       return (
         <p className="derived driver-facts-draw">
-          Add the baffle size in step 3 and this becomes a scale drawing of your front panel —
+          Add the baffle size on the cabinet step and this becomes a scale drawing of your front panel —
           the quickest way to see whether the positions you typed are the ones you meant.
         </p>
       );
@@ -5760,6 +5771,19 @@ export default function App() {
                         </summary>
                         <div className="cd-grid">
                           <span className="cd-label">Position</span>
+                          {cabinet.refDriver === role ? (
+                            /* Deze driver ÍS het referentiepunt, dus 0,0 is
+                               geen invoer maar een gevolg. Ernaar vragen
+                               nodigt uit tot de enige fout die het niet kan
+                               zijn -- Sander typte hier -50 voor de tweeter
+                               waar de microfoon nou juist op stond. */
+                            <span className="cd-fields">
+                              <span className="cd-pre" />
+                              <em>
+                                0, 0 — the mic was aimed here, so this driver defines the origin
+                              </em>
+                            </span>
+                          ) : (
                           <span
                             className="cd-fields"
                             title="Position of this driver's centre relative to the measurement reference point: x to the right, y UP (so a driver below the reference has a negative y). Centre-to-centre spacing per pair — and with it the vertical-lobing ceiling — is derived from these, so you never type the same fact twice."
@@ -5783,6 +5807,7 @@ export default function App() {
                             {' mm'}
                             <span className="cd-hint">from the reference point · y up</span>
                           </span>
+                          )}
   
                           <span className="cd-label">Enclosure</span>
                           <span className="cd-fields">
@@ -7317,8 +7342,8 @@ export default function App() {
               {(
                 [
                   ['import', 'Your project', guidedDone.files, 'Load your measurement files, and save or reopen a project.'],
-                  ['drivers', 'Your drivers', guidedDone.drivers, 'What you know about each driver: where it sits, what box is behind it, and its cone area and travel from the datasheet.'],
-                  ['data', 'Your cabinet', guidedDone.cabinet, 'The box and how you measured it — this is what lets the app judge your measurements instead of trusting them.'],
+                  ['data', 'Your cabinet', guidedDone.cabinet, 'The box and how you measured it. Do this before the drivers: it fixes the reference point everything else is measured from.'],
+                  ['drivers', 'Your drivers', guidedDone.drivers, 'Where each driver sits in that box, what is behind it, and its cone area and travel from the datasheet.'],
                   ['filters', 'Design it', guidedDone.design, 'One button. The app picks the crossover points, the filter shapes and the parts, and shows what it chose.'],
                   ['network', 'Your build', guidedDone.build, 'The schematic and the shopping list.'],
                 ] as const
@@ -7342,8 +7367,8 @@ export default function App() {
               {(
               [
                 ['import', 'Project', 'Load measurements, catalogs and projects; save your work'],
-                ['drivers', 'Drivers', 'Per-driver facts (position, enclosure, Sd/Xmax, how many) and the imported-file inventory with notes'],
                 ['data', 'Setup', 'View range, cabinet and mic geometry, phase convention, tweeter adjustment, vxp variant and the timing sanity check'],
+                ['drivers', 'Drivers', 'Per-driver facts: position in the cabinet, enclosure, Sd/Xmax and how many'],
                 ['filters', 'Filters', 'Virtual target filters (HP/LP/EQ per driver), the Optimize button and passive synthesis'],
                 ['network', 'Network', 'The passive network editor: schematic, component tuning, catalog and BOM'],
               ] as const
@@ -7855,7 +7880,7 @@ export default function App() {
                 Cabinet &amp; measurement
                 <span className="derived">
                   {' '}
-                  — the box and how you measured it (the drivers themselves are in step 1)
+                  — the box and how you measured it (the drivers themselves are the next step)
                 </span>
               </legend>
               <p className="cabinet-note">
@@ -7979,9 +8004,29 @@ export default function App() {
                             your measurement is the cabinet, not the driver.
                           </>
                         ) : (
-                          'Add the baffle size and the app can tell the cabinet apart from the driver — and draw your front panel in step 2.'
+                          'Add the baffle size and the app can tell the cabinet apart from the driver — and draw your front panel on the next step.'
                         ),
                         <>
+                          <span className="cd-label">Mic aimed at</span>
+                          <span className="cd-fields">
+                            <select
+                              value={cabinet.refDriver}
+                              onChange={(e) =>
+                                setCabinet((c) => ({
+                                  ...c,
+                                  refDriver: e.target.value as '' | BranchRole,
+                                }))
+                              }
+                            >
+                              <option value="">another spot on the baffle</option>
+                              <option value="high">the tweeter</option>
+                              <option value="mid">the midrange</option>
+                              <option value="low">the woofer</option>
+                            </select>
+                            <span className="cd-hint">
+                              that driver becomes 0,0 — you never type its own offset
+                            </span>
+                          </span>
                           <span className="cd-label">Baffle</span>
                           <span className="cd-fields">
                             {veld(cabinet.baffleWidthMm, cab('baffleWidthMm'))} ×{' '}
@@ -8052,6 +8097,21 @@ export default function App() {
                       </>,
                     )}
                     <div className="lg-sec">The cabinet</div>
+                    {rij(
+                      'Mic was aimed at',
+                      <select
+                        value={cabinet.refDriver}
+                        onChange={(e) =>
+                          setCabinet((c) => ({ ...c, refDriver: e.target.value as '' | BranchRole }))
+                        }
+                      >
+                        <option value="">another spot on the baffle</option>
+                        <option value="high">the tweeter</option>
+                        <option value="mid">the midrange</option>
+                        <option value="low">the woofer</option>
+                      </select>,
+                      cabinet.refDriver ? 'that driver is 0,0 — you do not type its offset' : '',
+                    )}
                     {rij(
                       'Baffle width',
                       <>{veld(cabinet.baffleWidthMm, cab('baffleWidthMm'))} mm</>,
