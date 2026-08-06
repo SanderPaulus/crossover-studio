@@ -2060,10 +2060,21 @@ export default function App() {
   const cabinetInfo = useMemo(() => {
     const micMm = Number(cabinet.micDistanceMm);
     const micElev = Number(cabinet.micElevationDeg) || 0;
+    /**
+     * The chosen reference driver IS the origin, so its offset is 0,0 — here,
+     * not just in the form. Hiding its inputs while still READING whatever was
+     * typed before the choice was made is the same silent-mismatch bug this
+     * project keeps hunting: Sander picked "the tweeter" and the app went on
+     * placing it at the -50 he had entered a minute earlier, which put it on
+     * the bottom edge of the baffle in the drawing and in every edge- and
+     * spacing-derived number.
+     */
+    const placeOf = (role: BranchRole) =>
+      cabinet.refDriver === role ? { xMm: 0, yMm: 0 } : placementOf(cabinet.drivers[role]);
     const place = {
-      low: placementOf(cabinet.drivers.low),
-      mid: placementOf(cabinet.drivers.mid),
-      high: placementOf(cabinet.drivers.high),
+      low: placeOf('low'),
+      mid: placeOf('mid'),
+      high: placeOf('high'),
     };
     const angleListOf = (role: BranchRole): number[] => {
       const set =
@@ -5641,8 +5652,8 @@ export default function App() {
             .map(([r, label]) => ({
               role: r,
               label,
-              xMm: Number(cabinet.drivers[r].xMm) || 0,
-              yMm: Number(cabinet.drivers[r].yMm) || 0,
+              xMm: cabinet.refDriver === r ? 0 : Number(cabinet.drivers[r].xMm) || 0,
+              yMm: cabinet.refDriver === r ? 0 : Number(cabinet.drivers[r].yMm) || 0,
               sdCm2: Number(sdCm2[r]) || 0,
               count: Number(cabinet.drivers[r].count) || 1,
               spacingMm: Number(cabinet.drivers[r].spacingMm) || 0,
@@ -5715,7 +5726,8 @@ export default function App() {
                       uit.push('excursion floor');
                     }
                     if (!(Number(sdCm2[role]) > 0)) uit.push('cone size for the beaming rules');
-                    if (!d.xMm && !d.yMm) uit.push('driver spacing, lobing and edge distance');
+                    if (cabinet.refDriver !== role && !d.xMm && !d.yMm)
+                    uit.push('driver spacing, lobing and edge distance');
                     if (d.enclosure === 'unknown') uit.push('what the box itself already filters');
                     const samenvatting = [
                       Number(d.count) > 1 ? `${d.count}×` : '',
