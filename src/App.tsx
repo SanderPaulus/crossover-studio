@@ -70,6 +70,7 @@ import NumberFlow from '@number-flow/react';
 import { Modal } from './components/Modal.tsx';
 import { HelpPanel } from './components/HelpPanel.tsx';
 import { MeasuringGuide } from './components/MeasuringGuide.tsx';
+import { BaffleView } from './components/BaffleView.tsx';
 import { CatalogManager } from './components/CatalogManager.tsx';
 import { helpSectionForTab } from './lib/help.ts';
 import { fileSafeName } from './lib/filenames.ts';
@@ -5599,6 +5600,47 @@ export default function App() {
    *  while the baffle, the reference point and the mic rig belong to the
    *  cabinet in step 2. Held as a variable because the two blocks render
    *  in different tabs. */
+  /** The baffle drawn from the numbers already typed, or a nudge toward the
+   *  two that are missing. Rendered beside the driver cards. */
+  const baffleDrawing = (() => {
+    const w = Number(cabinet.baffleWidthMm);
+    const h = Number(cabinet.baffleHeightMm);
+    if (!(w > 0) || !(h > 0)) {
+      return (
+        <p className="derived driver-facts-draw">
+          Add the baffle size in step 3 and this becomes a scale drawing of your front panel —
+          the quickest way to see whether the positions you typed are the ones you meant.
+        </p>
+      );
+    }
+    const roles: [BranchRole, string][] = [
+      ['low', hasMidBranch ? 'Woofer' : 'Woofer / mid'],
+      ['mid', 'Midrange'],
+      ['high', 'Tweeter'],
+    ];
+    return (
+      <div className="driver-facts-draw">
+        <BaffleView
+          widthMm={w}
+          heightMm={h}
+          refFromTopMm={Number(cabinet.refFromTopMm) || 0}
+          drivers={roles
+            .filter(([r]) => (r === 'low' ? !!woofer : r === 'mid' ? !!midDrv : !!tweeter))
+            .map(([r, label]) => ({
+              role: r,
+              label,
+              xMm: Number(cabinet.drivers[r].xMm) || 0,
+              yMm: Number(cabinet.drivers[r].yMm) || 0,
+              sdCm2: Number(sdCm2[r]) || 0,
+              count: Number(cabinet.drivers[r].count) || 1,
+              spacingMm: Number(cabinet.drivers[r].spacingMm) || 0,
+            }))}
+        />
+        <p className="derived">drawn to scale from the numbers on the left</p>
+      </div>
+    );
+  })();
+
   const driverFacts = (
     <>
                 {(
@@ -7708,7 +7750,14 @@ export default function App() {
               What you know about them
               <span className="legend-sub"> — from the datasheet and a ruler</span>
             </legend>
-            {driverFacts}
+            {/* De tekening staat HIER en niet bij de kast: hij beantwoordt
+                "staan mijn drivers waar ik denk", en dat zijn de getallen die
+                je op dit scherm intypt. Een verwisselde x/y of een komma-slip
+                zie je meteen; teruglezen van "y = -380" helpt daar niet. */}
+            <div className="driver-facts">
+              <div className="driver-facts-fields">{driverFacts}</div>
+              {baffleDrawing}
+            </div>
           </fieldset>
         )}
               </>
