@@ -2871,6 +2871,82 @@ export default function App() {
       tweeterHpFloor, kaTier, cabinetInfo, ctcK, breakupLimitOn, breakupHarmonic,
       sdCm2, xmaxMm, excursionSpl, impedances, cabinet]);
 
+  /* The SAME physics window for the TWO-WAY pair (woofer↔tweeter). The
+   * three-way scan has derived its search space from the measurements since
+   * August; the two-way scan never got it and still searches an unbounded
+   * neighbourhood of the raw crossing — the open roadmap item "Fs-vloer voor
+   * de HP-knie in de vfOptimizer-bounds", generalised: floor = 2×Fs AND
+   * where the tweeter reaches its own level AND its excursion floor; ceiling
+   * = the woofer's measured beaming onset, its lobing limit against the
+   * tweeter (auto-k by axis), its own array spacing, and its breakup/N.
+   * Reported as ONE window and used both to judge the delivered crossing and
+   * to bound the free scan. */
+  const physWin2 = useMemo(() => {
+    if (threeWay || soloDriver || !sim || !result) return null;
+    const grid = result.freq;
+    const ad = angleResponsesOn(grid);
+    const maxOpt = (...vs: (number | null | undefined)[]): number | null => {
+      const xs = vs.filter((v): v is number => typeof v === 'number' && v > 0);
+      return xs.length ? Math.max(...xs) : null;
+    };
+    const minOpt = (...vs: (number | null | undefined)[]): number | null => {
+      const xs = vs.filter((v): v is number => typeof v === 'number' && v > 0);
+      return xs.length ? Math.min(...xs) : null;
+    };
+    const wBeam = ad ? beamingCeilingHz(ad.woofer, KA_TIERS[kaTier].diff30Db) : null;
+    const kk =
+      ctcK === 'auto'
+        ? cabinetInfo.ctcLowVec
+          ? lobingKFor(cabinetInfo.ctcLowVec.dxMm, cabinetInfo.ctcLowVec.dyMm)
+          : 0.5
+        : Number(ctcK) > 0
+          ? Number(ctcK)
+          : 0.5;
+    const wLobe = lobingCeilingHz(cabinetInfo.ctcLow ?? 0, kk);
+    const wBaf = Number(cabinet.baffleWidthMm);
+    const hBaf = Number(cabinet.baffleHeightMm);
+    const horizArr = wBaf > 0 && hBaf > 0 ? wBaf > hBaf : true;
+    const kArr = ctcK === 'auto' ? lobingKFor(horizArr ? 1 : 0, horizArr ? 0 : 1) : kk;
+    const arrLow =
+      Number(cabinet.drivers.low.count) > 1
+        ? lobingCeilingHz(Number(cabinet.drivers.low.spacingMm), kArr)
+        : null;
+    const harm = Number(breakupHarmonic) > 0 ? Number(breakupHarmonic) : 3;
+    let wBreak: { hz: number } | null = null;
+    if (breakupLimitOn) {
+      try {
+        const z = zGridWithSlots(impedances, grid)[canonicalModelForRole('low', false)];
+        const reach = reachesLevelHz(grid, sim.base.w.spl);
+        wBreak = breakupHz(grid, sim.base.w.spl, {
+          zMag: z ? z.map((c) => Math.hypot(c.re, c.im)) : undefined,
+          searchFromHz: Math.max(300, (reach ?? 0) * 2),
+        });
+      } catch {
+        wBreak = null;
+      }
+    }
+    const splRef = Number(excursionSpl);
+    const twtEx = Number.isFinite(splRef)
+      ? excursionFloorHz(Number(sdCm2.high), Number(xmaxMm.high), splRef, {
+          count: Number(cabinet.drivers.high.count) || 1,
+        })
+      : null;
+    return {
+      floorHz: maxOpt(tweeterHpFloor, reachesLevelHz(grid, sim.base.t.spl), twtEx),
+      ceilHz: minOpt(
+        wBeam ?? wooferXoCeiling,
+        wLobe,
+        arrLow,
+        wBreak && breakupCeilingHz(wBreak.hz, harm),
+      ),
+      ceilMeasured: wBeam !== null,
+      limits: { beam: wBeam, lobe: wLobe, arrayLobe: arrLow, breakup: wBreak, excursion: twtEx },
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [threeWay, soloDriver, sim, result, phaseMode, kaTier, cabinetInfo, ctcK, cabinet,
+      breakupLimitOn, breakupHarmonic, impedances, excursionSpl, sdCm2, xmaxMm,
+      tweeterHpFloor, wooferXoCeiling]);
+
   /** Per-adjacent-pair integration + phase flatness (3-way only). Silent
    *  ghost regions (per-branch bands) drop out of the overlap window on
    *  their own — the weights die with the level. */
@@ -4032,7 +4108,19 @@ export default function App() {
       // within a sane band, not a hard pin — one chain, not a slow spread. A
       // user pin overrides it; no Fs floor (no impedance) → truly free.
       const userXo = xoRangeValue();
+      /* The MEASURED window bounds the free scan when it exists — the same
+       * move the three-way scan made in August, and the open roadmap item
+       * ("Fs-vloer voor de HP-knie in de vfOptimizer-bounds") generalised:
+       * floor = 2×Fs / reach / excursion, ceiling = measured beaming, lobing,
+       * array spacing and breakup/N. The old tweeter-anchored estimate stays
+       * the fallback when nothing has been measured yet. */
+      const measuredFree: [number, number] | undefined =
+        physWin2 && physWin2.floorHz != null && physWin2.ceilHz != null &&
+        physWin2.ceilHz > physWin2.floorHz * 1.05
+          ? [physWin2.floorHz, physWin2.ceilHz]
+          : undefined;
       const saneFree: [number, number] | undefined = (() => {
+        if (measuredFree) return measuredFree;
         if (tweeterHpFloor === null) return undefined;
         const floor = tweeterHpFloor; // tweeter: ≥2×Fs
         // Mid beaming ceiling when the mid size is known (the physically-right
@@ -4058,7 +4146,22 @@ export default function App() {
       // terminates the worker.
       runChainScan(
         {
-          base: { grid: [...grid], w, t, driverZ: zOnGrid, adjust, seed: defaultVFilters(), settings },
+          base: {
+            grid: [...grid],
+            w,
+            t,
+            driverZ: zOnGrid,
+            adjust,
+            seed: defaultVFilters(),
+            settings,
+            // A pin is the designer's promise; the measured window is the
+            // drivers'. A degenerate window judges nothing (three-way lesson).
+            judgeWindow: userXo
+              ? { floorHz: userXo[0], ceilHz: userXo[1] }
+              : measuredFree
+                ? { floorHz: measuredFree[0], ceilHz: measuredFree[1] }
+                : null,
+          },
           variants,
           targets,
         },
@@ -4091,8 +4194,8 @@ export default function App() {
                     avgDevDb: rr.net.after.avgDevDb ?? null,
                     phaseDeg: rr.net.after.phaseDeg,
                     zMinOhm: rr.net.after.zMinOhm ?? null,
-                    xoWindowOk: null,
-                    pairOverlapOct: null,
+                    xoWindowOk: rr.xoWindowOk,
+                    pairOverlapOct: rr.overlapOct != null ? [rr.overlapOct] : null,
                     bomEur: rr.bomTotalEur,
                     winner: rr === win,
                     result: rr,
@@ -4102,6 +4205,26 @@ export default function App() {
               : null,
           );
           setNetOptDiff(null); // fresh design — an old tune-diff would lie
+          // Same visibility rule as the three-way scan: a class the designer
+          // cannot read reorders silently.
+          const zLow2 = win.zMinOhm !== null && win.zMinOhm < Z_FLOOR_OHM;
+          const anySane2 = ranked.some((r) => r.zMinOhm !== null && r.zMinOhm >= Z_FLOOR_OHM);
+          const zNote2 = !zLow2
+            ? ''
+            : `\n⚠ amplifier load: the winner dips to ${win.zMinOhm!.toFixed(1)} Ω ` +
+              `(floor ${Z_FLOOR_OHM} Ω)` +
+              (anySane2
+                ? ' — a candidate with a sane load exists in the table; it ranks lower on flatness.'
+                : ' — no candidate stayed above it; check the Impedance panel.');
+          const xoNote2 =
+            win.xoWindowOk !== false
+              ? ''
+              : `\n⚠ handover: the delivered crossing (${
+                  win.net.after.xoHz ? Math.round(win.net.after.xoHz) : '—'
+                } Hz) sits outside its window` +
+                (ranked.some((r) => r.xoWindowOk !== false)
+                  ? ' — an in-window candidate exists in the table; it ranks lower on flatness.'
+                  : ' — no candidate stayed inside; check the Driver limits or pin the crossing.');
           setNetOptNote(
             (results.length > 1
               ? `crossover scan — winner xo ${win.label}`
@@ -4114,7 +4237,9 @@ export default function App() {
               (win.net.snapNote ? ` · ${win.net.snapNote}` : '') +
               (win.net.valueWindowNote ? ` · ${win.net.valueWindowNote}` : '') +
               (win.net.safetyNote ? ` · ⚠ ${win.net.safetyNote}` : '') +
-              (win.net.ampFloorNote ? ` · ⚠ ${win.net.ampFloorNote}` : ''),
+              (win.net.ampFloorNote ? ` · ⚠ ${win.net.ampFloorNote}` : '') +
+              zNote2 +
+              xoNote2,
           );
         })
         .catch((e) => {

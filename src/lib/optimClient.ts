@@ -201,6 +201,18 @@ export function runChainScan(
         st.text = `✓ ${r.net.after.rippleDb.toFixed(2)} dB/${r.net.after.phaseDeg.toFixed(1)}°`;
         st.done = true;
       }
+      // Same live warning the three-way scan shows: a candidate whose
+      // amplifier load or delivered handover failed is flagged while it
+      // lands, not only in the final table.
+      const st2 = state.get(v.label);
+      if (st2) {
+        st2.warn =
+          !r.zOk || (r.zMinOhm != null && r.zMinOhm < 2.5)
+            ? '⚠Z'
+            : r.xoWindowOk === false
+              ? '⚠xo'
+              : undefined;
+      }
       lastRipple = r.net.after.rippleDb;
       lastPhase = r.net.after.phaseDeg;
       emit();
