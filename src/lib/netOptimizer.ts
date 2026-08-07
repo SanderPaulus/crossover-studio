@@ -136,6 +136,27 @@ export interface NetOptimizeOptions {
    *  When provided, the final result must not degrade the FUNDAMENTALS on
    *  this band versus the seed — otherwise the seed is returned unchanged
    *  with a `safetyNote`. */
+  /** THE LEASH (designer sequence 3/3): per-branch acoustic TARGET magnitudes
+   *  from the design step, on `freq`. When present, each branch's delivered
+   *  |driver x filter| must stay inside a +/-3 dB corridor of its target
+   *  (NaN = unjudged point; the stopband belongs to the leak/protection
+   *  guards). Exactly 0 inside the corridor — the buildability-window
+   *  pattern — so a healthy tune pays nothing and the search path in sane
+   *  territory is untouched.
+   *
+   *  WHY: the assembled tune held the LARGEST freedom in the whole chain —
+   *  every value free, judged on the sum — which is the root the guards kept
+   *  patching around: cages, adaptive xo weights, the pin repair, the leak
+   *  term the design step had to learn because "de tuner herbouwde de
+   *  tweeter-tak" (BW3@1620 delivered as −29.5 dB@2k). Assembly's honest job
+   *  is small: align phase, trim levels, absorb realization error. The
+   *  corridor makes that the contract instead of a hope. */
+  branchTargets?: {
+    freq: number[];
+    low?: number[];
+    mid?: number[];
+    high?: number[];
+  };
   /** The seed is MACHINE-GENERATED (a fresh synthesis from the design chain),
    *  not something a designer chose. The amp-load repair is normally
    *  seed-relative — we do not second-guess a user's own network — but that
@@ -603,6 +624,9 @@ export function optimizeNetworkValues(
     /** Uniform-average phase error PER pair — the coupled-pairs gate reads
      *  the WORST of these (solo: empty). */
     pairPhaseDeg: number[];
+    /** Mean squared corridor excess over the branch targets (0 without
+     *  targets, and 0 for any tune that stays inside the corridor). */
+    corridorSq: number;
     /** Phase-coherent overlap width PER pair, octaves (integration bandwidth
      *  — the same number the pair chips show). Reported so the chain can put
      *  it in front of the designer: a W-M handover 3.2 octaves wide means
@@ -648,6 +672,48 @@ export function optimizeNetworkValues(
     const wF = hW ? applyTransfer(w, hW) : w;
     const tF = hT ? applyTransfer(t, hT) : t;
     const mF = m ? (hM ? applyTransfer(m, hM) : m) : null;
+
+    // Branch-target corridor (see opts.branchTargets). Interpolated in log-f
+    // because this evaluates on decimated and safety grids too; a NaN
+    // neighbour masks the point.
+    let corridorSq = 0;
+    const bt = opts.branchTargets;
+    if (bt) {
+      const CORRIDOR_DB = 3;
+      const at = (vals: readonly number[] | undefined, f: number): number | null => {
+        if (!vals) return null;
+        const fr = bt.freq;
+        if (f < fr[0] || f > fr[fr.length - 1]) return null;
+        let lo = 0;
+        let hi = fr.length - 1;
+        while (hi - lo > 1) {
+          const mid2 = (lo + hi) >> 1;
+          if (fr[mid2] <= f) lo = mid2;
+          else hi = mid2;
+        }
+        const a1 = vals[lo];
+        const a2v = vals[hi];
+        if (!Number.isFinite(a1) || !Number.isFinite(a2v)) return null;
+        const u = Math.log(f / fr[lo]) / Math.log(fr[hi] / fr[lo] || 2);
+        return a1 + (a2v - a1) * (Number.isFinite(u) ? u : 0);
+      };
+      const one = (resp: GriddedResponse | null, vals: readonly number[] | undefined) => {
+        if (!resp || !vals) return;
+        let sum = 0;
+        let n = 0;
+        for (let i = 0; i < freqs.length; i++) {
+          const tv = at(vals, freqs[i]);
+          if (tv === null) continue;
+          const dev = Math.abs(resp.spl[i] - tv) - CORRIDOR_DB;
+          if (dev > 0) sum += dev * dev;
+          n++;
+        }
+        if (n > 0) corridorSq += sum / n;
+      };
+      one(wF, bt.low);
+      one(mF, bt.mid);
+      one(tF, bt.high);
+    }
 
     // 2-way: the classic pairwise combine (byte-identical path). 3-way: the
     // three-branch sum via the N-way core; the ADJACENT pairs each get their
@@ -1041,6 +1107,7 @@ export function optimizeNetworkValues(
       pairSlopes: pm.map((x) => ({ lower: x.lowerSlopeDbOct, upper: x.upperSlopeDbOct })),
       pairPhaseDeg: solo ? [] : pairPhaseDeg,
       pairOverlapOct: solo ? [] : integList.map((ig) => ig.bandwidth?.octaves ?? null),
+      corridorSq,
       xoDipDb,
       midSlopeDbOct,
       tweeterSlopeDbOct,
@@ -1127,6 +1194,14 @@ export function optimizeNetworkValues(
       // NB: the amp-load floor is deliberately NOT here (see Z_FLOOR_OHM) —
       // it lives in the gates and the repair pass, never in the objective.
       0.5 * m.xoDipDb * m.xoDipDb +
+      // Branch-target corridor (0 without targets and for any in-corridor
+      // tune; see branchTargets). 2·(dev beyond ±3 dB)² per masked point —
+      // measured at 0.5 the amp term simply bought its way out (a 6.7 dB
+      // branch departure survived on the pad-less test net); at 2 a 2 dB
+      // excess costs ~2.4 (comparable to typical amp/phase gains) and a
+      // rebuild-scale 10 dB excess ~60 — decisive. Phase alignment and
+      // ±3 dB of trim stay exactly free.
+      2 * m.corridorSq +
       m.xoHzPairs.reduce(
         (a: number, x, i) => a + xoPenaltyFor(x, opts.xoRangePairs?.[i] ?? xoR),
         0,

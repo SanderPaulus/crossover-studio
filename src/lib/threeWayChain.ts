@@ -1,6 +1,12 @@
 import type { Complex } from './complex.ts';
-import type { DriverFilterSpec } from './filters.ts';
-import { combine, type BranchAdjust, type GriddedResponse, type TweeterAdjust } from './dsp.ts';
+import { evalDriverFilter, type DriverFilterSpec } from './filters.ts';
+import {
+  applyTransfer,
+  combine,
+  type BranchAdjust,
+  type GriddedResponse,
+  type TweeterAdjust,
+} from './dsp.ts';
 import { computeIntegration } from './integration.ts';
 import { designThreeWay, type Struct3Choice } from './threeWayDesign.ts';
 import { synthesize, type SynthesisResult } from './synthesis.ts';
@@ -236,8 +242,28 @@ export function runThreeWayChain(
   // subdivided that pin, and this candidate owns one slice of it.
   const lowCage = input.xoLowRange ?? pinRange(s.xoLowPin);
   const highCage = input.xoHighRange ?? pinRange(s.xoHighPin);
+  /* THE LEASH: the design step's acoustic target per branch, handed to the
+   * assembled tune as a corridor (see branchTargets in netOptimizer). Masked
+   * to where the branch is alive AND within 25 dB of its own target peak —
+   * below that the leak/protection guards own the stopband. */
+  const targetFor = (spec: DriverFilterSpec, resp: GriddedResponse): number[] => {
+    const tgt = applyTransfer(resp, evalDriverFilter(spec, [...grid]));
+    let peak = -Infinity;
+    for (let i = 0; i < grid.length; i++) {
+      if (resp.spl[i] > ALIVE_DB && tgt.spl[i] > peak) peak = tgt.spl[i];
+    }
+    return tgt.spl.map((v, i) => (resp.spl[i] > ALIVE_DB && v > peak - 25 ? v : NaN));
+  };
+  const branchTargets = {
+    freq: [...grid],
+    low: targetFor(specs.woofer, w),
+    mid: targetFor(specs.mid, m),
+    high: targetFor(specs.tweeter, t),
+  };
+
   const tuneOpts = {
     midBranch: { response: m, adjust: midAdjust },
+    branchTargets,
     // The seed here is OUR OWN synthesis, so the seed-relative amp-load bar
     // has nothing to respect and everything to hide behind. See zFloorStrict.
     zFloorStrict: true,

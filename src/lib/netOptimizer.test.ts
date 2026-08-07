@@ -734,6 +734,59 @@ describe('amplifier-load floor (system Z ≥ 2.5 Ω fundamental)', () => {
   });
 });
 
+describe('branch-target corridor (the leash, designer sequence 3/3)', () => {
+  /** Delivered branch magnitudes of a parts array (dB per grid point). */
+  const branchesOf = (parts: readonly VxpPart[]) => {
+    const { netlist } = crossoverToNetlist({ name: 'leash', parts: [...parts] });
+    const sol = solveNetwork(netlist, grid, driverZ);
+    const hOf = (model: string) => {
+      const d = sol.drivers.find((x) => x.model === model);
+      return d ? sol.transfers[d.id] : undefined;
+    };
+    return {
+      low: applyTransfer(wBase, hOf('mid')!).spl,
+      high: applyTransfer(tBase, hOf('tweeter')!).spl,
+    };
+  };
+
+  it('an ACHIEVABLE target is reached without leaving the corridor', () => {
+    // The corridor is only an honest contract when the target is one the
+    // design step would hand over: achievable, with sane levels. (Feeding it
+    // the raw SEED branches of the pad-less crude net demands "keep the
+    // tweeter 8 dB hot", which conflicts with the sum by construction — the
+    // real chain never creates that, its targets carry the trims.) So:
+    // targets = the branches of an UNLEASHED tune — reachable by definition —
+    // and the leashed tune from the same seed must reach comparable quality
+    // while staying inside the corridor. The bite (a rebuild costing ~60 fx)
+    // is arithmetic on the weight; the no-harm direction is what needs proof.
+    const seed = crudeNetwork('none');
+    const free = optimizeNetworkValues(seed, grid, wBase, tBase, driverZ, NO_ADJ, {
+      phasePriority: 0.3,
+    });
+    const tgt = branchesOf(free.parts);
+    const r = optimizeNetworkValues(seed, grid, wBase, tBase, driverZ, NO_ADJ, {
+      phasePriority: 0.3,
+      branchTargets: { freq: [...grid], low: [...tgt.low], high: [...tgt.high] },
+    });
+    expect(r.after.rippleDb).toBeLessThanOrEqual(free.after.rippleDb * 1.25 + 0.05);
+    const del = branchesOf(r.parts);
+    // Judge only where the branch carries real level (its own top 25 dB) —
+    // the same mask the chain sends; the stopband belongs to other guards.
+    const maxDev = (got: readonly number[], want: readonly number[]): number => {
+      const peak = Math.max(...want);
+      let worst = 0;
+      for (let i = 0; i < got.length; i++) {
+        if (want[i] < peak - 25) continue;
+        worst = Math.max(worst, Math.abs(got[i] - want[i]));
+      }
+      return worst;
+    };
+    // Corridor 3 dB is a soft barrier (weight 0.5), so allow a little skin.
+    expect(maxDev(del.low, tgt.low)).toBeLessThan(3.8);
+    expect(maxDev(del.high, tgt.high)).toBeLessThan(3.8);
+  });
+});
+
 describe('catalog snap gating', () => {
   it('catalogSnap without an imported catalog is a no-op (continuous values kept)', () => {
     setCustomSeries([]);
