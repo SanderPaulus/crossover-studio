@@ -1227,6 +1227,16 @@ combine+computeIntegration+computePhaseStats (stille regio's vallen vanzelf uit 
 overlapvenster) — topbar-chips "Overlap laag/hoog Hz" + slechtste-paar Fase P95,
 SPL-strip "W-M/M-T score · Hz", fasepaneel per-paar-flatnessregel, paar-markers in de
 fase-chart. Nog open (4b-staart): pairwise timing-verdicts met eigen fitband per paar.
+**Trede 5 (aug 2026) — vxp-export in 3-weg**: de export was 2-weg-bedraad op drie plekken
+(`isTweeterModel` als enige rolvraag, hoekset via `tw ? tweeter : woofer`, en twee excess-delays
+genormaliseerd op elkaar). Nu resolvet hij model → ROL via `pickSlotsN` — dezelfde mapping die de
+solver gebruikt, dus een mid kan niet als woofer exporteren met de verkeerde responsie, hoekset
+én delay; ambigu valt terug op de oude isTweeterModel-vraag. De delay-normalisatie loopt over
+álle geladen drivers (vroegste 0), wat bij twee drivers exact de oude rekensom is, en de note
+noemt de rollen die werkelijk geëxporteerd zijn. GEVERIFIEERD in de browser met drie
+ONDERSCHEIDBARE bestanden per rol: woofer→WOOFERFILE 50,1 µs · mid→MIDFILE 67,8 µs ·
+tweeter→TWEETERFILE 0 µs — elke rol zijn eigen meting en zijn eigen excess-delay. Dit was het
+laatste echte gat in fase 4: een 3-weg-ontwerp kon tot nu toe niet naar Stefan.
 **Trede 3 (aug 2026) — bandpass-tak**: `deriveTopology` cascadeerde HP→LP al bij beide
 knieën enabled (nu test-gepind op de gemeten KOAN-mid); `filterTemplates` bouwt 3-weg
 (LP@600 / bandpass 600–3000 / HP@3000, generiek 8 Ω; mid = 2×orde, id-counters gedeeld

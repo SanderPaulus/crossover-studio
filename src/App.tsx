@@ -4898,13 +4898,22 @@ export default function App() {
     // Sander knew) — and the excess-based bridge reproduces our measured sim
     // within ~2° where the raw-Δ bridge was ~78° off. Delays are normalized so
     // the earliest driver gets 0 and the later one a POSITIVE delay.
-    const exWoofer = woofer ? excessDelayMsOf(woofer.frd) : null;
-    const exTweeter = tweeter ? excessDelayMsOf(tweeter.frd) : null;
-    const earliestMs = Math.min(exWoofer ?? 0, exTweeter ?? 0);
-    const delayUs = (ex: number | null) =>
-      ex === null ? 0 : Math.round((ex - earliestMs) * 1000 * 10) / 10;
-    const wooferDelayUs = delayUs(exWoofer);
-    const tweeterDelayUs = delayUs(exTweeter);
+    // Per ROLE, so a three-way exports its middle branch too: the normalisation
+    // is over every loaded driver (earliest gets 0), which for two drivers is
+    // exactly the old arithmetic.
+    const exOf: Record<BranchRole, number | null> = {
+      low: woofer ? excessDelayMsOf(woofer.frd) : null,
+      mid: midDrv ? excessDelayMsOf(midDrv.frd) : null,
+      high: tweeter ? excessDelayMsOf(tweeter.frd) : null,
+    };
+    const present = (['low', 'mid', 'high'] as BranchRole[])
+      .map((r) => exOf[r])
+      .filter((v): v is number => v !== null);
+    const earliestMs = present.length > 0 ? Math.min(...present) : 0;
+    const delayUsFor = (role: BranchRole) => {
+      const ex = exOf[role];
+      return ex === null ? 0 : Math.round((ex - earliestMs) * 1000 * 10) / 10;
+    };
 
     // Every VituixCAD crossover variant must have exactly ONE source (Generator),
     // else it rejects the file with "Amount of sources must be one". A tab that
@@ -4955,10 +4964,26 @@ export default function App() {
       return cand;
     };
 
+    /* Model → ROLE via the same slot mapping the solver uses, so the export
+     * survives a three-way (and refuses to guess): a mid exported as a woofer
+     * would carry the wrong response, the wrong angle set and the wrong delay.
+     * Two drivers resolve exactly as isTweeterModel did before. */
+    const slotsN = pickSlotsN(models.map((model) => ({ model })));
+    const roleOfModel = (model: string): BranchRole | null => {
+      if (slotsN.ambiguous) return isTweeterModel(model) ? 'high' : 'low';
+      if (slotsN.tweeter?.model === model) return 'high';
+      if (slotsN.mid?.model === model) return 'mid';
+      if (slotsN.woofer?.model === model) return 'low';
+      return null;
+    };
+    const respOf: Record<BranchRole, typeof woofer> = { low: woofer, mid: midDrv, high: tweeter };
+    const anglesOf = (role: BranchRole) =>
+      (role === 'high' ? angleSets?.tweeter : role === 'mid' ? angleSets?.mid : angleSets?.woofer) ??
+      [];
     const drivers: VxpDriver[] = models.map((model) => {
-      const tw = isTweeterModel(model);
-      const onAxis = tw ? tweeter : woofer;
-      const angles = (tw ? angleSets?.tweeter : angleSets?.woofer) ?? [];
+      const role = roleOfModel(model) ?? 'low';
+      const onAxis = respOf[role];
+      const angles = anglesOf(role);
       const src =
         angles.length > 0
           ? angles.map((a) => ({ name: asResponse(clean(a.name)), hor: a.hor, raw: a.raw }))
@@ -4981,7 +5006,7 @@ export default function App() {
         // reconstruction reproduces our measured relative phase.
         minimumPhase: true,
         inverted: false,
-        responseDelay: tw ? tweeterDelayUs : wooferDelayUs,
+        responseDelay: delayUsFor(role),
         z: 0,
         impedanceFile: zName,
         impedanceFileName: zName,
@@ -5013,9 +5038,18 @@ export default function App() {
     const vxpName = `${base}.vxp`;
     files.set(vxpName, xml);
 
+    // Name the delays by the roles that were actually exported, so a three-way
+    // reads honestly instead of borrowing the two-way's "mid / tweeter".
     const bridge =
       `Minimum phase ON (VituixCAD reconstructs phase) — excess-phase delays: ` +
-      `mid ${wooferDelayUs} µs / tweeter ${tweeterDelayUs} µs carry the inter-driver timing`;
+      (['low', 'mid', 'high'] as BranchRole[])
+        .filter((r) => respOf[r] !== null && respOf[r] !== undefined)
+        .map(
+          (r) =>
+            `${r === 'low' ? 'woofer' : r === 'mid' ? 'mid' : 'tweeter'} ${delayUsFor(r)} µs`,
+        )
+        .join(' / ') +
+      ' carry the inter-driver timing';
     const variants =
       ordered.length > 1 ? `${ordered.length} variants (${names})` : '1 variant';
     const skippedNote = skipped.length
@@ -9676,8 +9710,8 @@ export default function App() {
                   <button
                     type="button"
                     onClick={exportActiveVxp}
-                    disabled={designs.length === 0 || threeWay}
-                    title="Export ALL network tabs as a VituixCAD project folder — the .vxp (each tab a crossover variant CROSSOVER, CROSSOVER1, …) PLUS every measurement/impedance file, written together so VituixCAD opens it without hunting. Pick a folder when asked (Chrome/Edge). VituixCAD reconstructs the phase itself (MinimumPhase=True) and the tweeter carries the measured inter-driver Δ as a Delay, so its simulation matches ours."
+                    disabled={designs.length === 0}
+                    title="Export ALL network tabs as a VituixCAD project folder — the .vxp (each tab a crossover variant CROSSOVER, CROSSOVER1, …) PLUS every measurement/impedance file, written together so VituixCAD opens it without hunting. Pick a folder when asked (Chrome/Edge). VituixCAD reconstructs the phase itself (MinimumPhase=True) and every driver carries its measured excess-phase delay (earliest driver 0), so its simulation matches ours — two-way and three-way alike."
                   >
                     Export .vxp
                   </button>
