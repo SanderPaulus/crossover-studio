@@ -213,6 +213,30 @@ export function lobingCeilingHz(spacingMm: number, k = 0.5): number | null {
   return (k * C_AIR) / (spacingMm / 1000);
 }
 
+/**
+ * The lobing strictness the GEOMETRY itself argues for — Sanders' question
+ * made the gap obvious: "de engine ziet toch dat de woofers naast elkaar
+ * liggen?" One global k cannot distinguish the two situations that matter:
+ *
+ * - HORIZONTAL separation (a centre's side-by-side woofers): the nulls sweep
+ *   ACROSS the seated listening window — every listener on the couch sits at
+ *   a different angle. Strict: k 0.5, no forward null may exist.
+ * - VERTICAL separation (a stacked mid/tweeter, a tower's woofer pair): the
+ *   nulls go to floor and ceiling; listeners spread horizontally, barely
+ *   vertically. Dickason's k 1.0 is the published anchor for exactly this
+ *   (Saunisto goes further still, accepting a ±25° null for power response).
+ *
+ * Mixed axes interpolate on the vertical fraction. This never invents beyond
+ * the published anchors — it picks WHICH anchor by the axis the pair actually
+ * lobes in, it is shown next to the setting, and the explicit values remain
+ * as overrides. Unknown geometry (no separation) falls back to strict.
+ */
+export function lobingKFor(dxMm: number, dyMm: number): number {
+  const d = Math.hypot(dxMm, dyMm);
+  if (!(d > 0)) return 0.5;
+  return 0.5 + 0.5 * (Math.abs(dyMm) / d);
+}
+
 /** Where the first vertical null lands, for reporting: sin θ = kλ/(2d) with
  *  matched phase. Returns null when no forward null exists (d < λ/2). */
 export function firstNullAngleDeg(spacingMm: number, freqHz: number): number | null {

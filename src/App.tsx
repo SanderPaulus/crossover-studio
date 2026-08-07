@@ -42,6 +42,7 @@ import {
   breakupHz,
   excursionFloorHz,
   lobingCeilingHz,
+  lobingKFor,
   type KaTier,
 } from './lib/driverLimits.ts';
 import {
@@ -1200,7 +1201,9 @@ export default function App() {
   /** How much spacing the design tolerates, in wavelengths. Genuinely
    *  contested (0.5 = no forward null … 1.2 = Saunisto's power-response
    *  optimum, which ACCEPTS a ±25° null), so the designer owns it. */
-  const [ctcK, setCtcK] = useState('0.5');
+  // 'auto' resolves the strictness per pair from the driver geometry
+  // (lobingKFor); restores of older projects keep their stored numeric value.
+  const [ctcK, setCtcK] = useState('auto');
   /** Cone breakup as an upper limit: cross at or below f_b / harmonic. */
   const [breakupLimitOn, setBreakupLimitOn] = useState(true);
   const [breakupHarmonic, setBreakupHarmonic] = useState('3');
@@ -2133,6 +2136,19 @@ export default function App() {
       /** Adjacent-pair spacing. In 2-way the single pair is low↔high. */
       ctcLow: threeWay ? ctc('low', 'mid') : ctc('low', 'high'),
       ctcHigh: threeWay ? ctc('mid', 'high') : null,
+      /** The AXIS each pair lobes in (dx/dy of the separation) — feeds the
+       *  auto lobing strictness: horizontal separation nulls sweep across the
+       *  seats (strict), vertical goes to floor/ceiling (Dickason). */
+      ctcLowVec: (() => {
+        const [a2, b2] = threeWay ? (['low', 'mid'] as const) : (['low', 'high'] as const);
+        return place[a2] && place[b2]
+          ? { dxMm: place[b2]!.xMm - place[a2]!.xMm, dyMm: place[b2]!.yMm - place[a2]!.yMm }
+          : null;
+      })(),
+      ctcHighVec:
+        threeWay && place.mid && place.high
+          ? { dxMm: place.high.xMm - place.mid.xMm, dyMm: place.high.yMm - place.mid.yMm }
+          : null,
       reliable,
       baffleStep: baffleStepHz(baffleW),
       edgeOf: (role: BranchRole) =>
@@ -2153,11 +2169,24 @@ export default function App() {
    *  quantitative reason a dual-woofer branch wants to hand over lower. Uses
    *  the same k the user picked for the driver-to-driver rule. */
   const arrayLobe = useMemo(() => {
+    // Array axis follows the baffle: wider than tall (a centre) stacks its
+    // drivers side by side — those nulls sweep ACROSS the seats, so auto is
+    // strict there; a tower's vertical stack gets Dickason. Unknown baffle =
+    // strict (auto may never be laxer than the old default when it cannot
+    // know the axis).
+    const w2 = Number(cabinet.baffleWidthMm);
+    const h2 = Number(cabinet.baffleHeightMm);
+    const horiz = w2 > 0 && h2 > 0 ? w2 > h2 : true;
+    const kArr =
+      ctcK === 'auto'
+        ? lobingKFor(horiz ? 1 : 0, horiz ? 0 : 1)
+        : Number(ctcK) > 0
+          ? Number(ctcK)
+          : 0.5;
     const out: Partial<Record<BranchRole, number | null>> = {};
     for (const role of ['low', 'mid', 'high'] as BranchRole[]) {
       const d = cabinet.drivers[role];
-      out[role] =
-        Number(d.count) > 1 ? lobingCeilingHz(Number(d.spacingMm), Number(ctcK) || 0.5) : null;
+      out[role] = Number(d.count) > 1 ? lobingCeilingHz(Number(d.spacingMm), kArr) : null;
     }
     return out as Record<BranchRole, number | null>;
   }, [cabinet, ctcK]);
@@ -2738,10 +2767,22 @@ export default function App() {
     const kaThr = KA_TIERS[kaTier].diff30Db;
     const wBeam = angleSets ? beamingCeilingHz(angleSets.woofer, kaThr) : null;
     const mBeam = angleSets ? beamingCeilingHz(angleSets.mid, kaThr) : null;
-    // Vertical lobing from centre-to-centre spacing — geometry, no measurement.
-    const kk = Number(ctcK) > 0 ? Number(ctcK) : 0.5;
-    const wLobe = lobingCeilingHz(cabinetInfo.ctcLow ?? 0, kk);
-    const mLobe = lobingCeilingHz(cabinetInfo.ctcHigh ?? 0, kk);
+    // Lobing from centre-to-centre spacing — geometry, no measurement. The
+    // strictness k resolves PER PAIR when set to auto: the axis of the
+    // separation decides which published anchor applies (lobingKFor — a
+    // centre's side-by-side woofers stay strict, a stacked mid/tweeter gets
+    // Dickason). Sanders' question, verbatim: "de engine ziet toch dat de
+    // woofers naast elkaar liggen?"
+    const kOf = (vec: { dxMm: number; dyMm: number } | null): number =>
+      ctcK === 'auto'
+        ? vec
+          ? lobingKFor(vec.dxMm, vec.dyMm)
+          : 0.5
+        : Number(ctcK) > 0
+          ? Number(ctcK)
+          : 0.5;
+    const wLobe = lobingCeilingHz(cabinetInfo.ctcLow ?? 0, kOf(cabinetInfo.ctcLowVec));
+    const mLobe = lobingCeilingHz(cabinetInfo.ctcHigh ?? 0, kOf(cabinetInfo.ctcHighVec));
     // Cone breakup: a resonance at f_b is excited as the Nth harmonic of f_b/N,
     // so the penalty lands more than an octave BELOW the peak.
     const harm = Number(breakupHarmonic) > 0 ? Number(breakupHarmonic) : 3;
@@ -2779,9 +2820,20 @@ export default function App() {
     // that ceiling is independent of cone beaming: two woofers 205 mm apart
     // interfere vertically at 837 Hz however small each cone is. It belongs in
     // the window for the same reason the driver-to-driver spacing does.
+    // Array strictness: same axis rule as arrayLobe — a centre's side-by-side
+    // pair stays strict under auto, a tower's vertical stack gets Dickason.
+    const wBaf = Number(cabinet.baffleWidthMm);
+    const hBaf = Number(cabinet.baffleHeightMm);
+    const horizArr = wBaf > 0 && hBaf > 0 ? wBaf > hBaf : true;
+    const kArr2 =
+      ctcK === 'auto'
+        ? lobingKFor(horizArr ? 1 : 0, horizArr ? 0 : 1)
+        : Number(ctcK) > 0
+          ? Number(ctcK)
+          : 0.5;
     const arrayOf = (role: BranchRole) =>
       Number(cabinet.drivers[role].count) > 1
-        ? lobingCeilingHz(Number(cabinet.drivers[role].spacingMm), kk)
+        ? lobingCeilingHz(Number(cabinet.drivers[role].spacingMm), kArr2)
         : null;
     const lowCeil = minOpt(
       wBeam ?? wooferXoCeiling,
@@ -9083,13 +9135,36 @@ export default function App() {
                     className="inline-num"
                     title="How many wavelengths of DRIVER SPACING the design tolerates. The spacing itself is derived from the driver positions you enter under Setup → Cabinet & drivers; two drivers half a wavelength apart already put a null in the vertical response. The sources genuinely disagree here and they optimise different things, so this is the designer's call."
                   >
-                    {'Vertical lobing: how strict '}
+                    {'Lobing: how strict '}
                     <select value={ctcK} onChange={(e) => setCtcK(e.target.value)}>
+                      <option value="auto">auto — from driver geometry</option>
                       <option value="0.25">0.25 — point source</option>
                       <option value="0.5">0.5 — no forward null</option>
                       <option value="1">1.0 — Dickason</option>
                       <option value="1.2">1.2 — Saunisto (power response)</option>
                     </select>
+                    {ctcK === 'auto' && (
+                      <span
+                        className="derived"
+                        title="Resolved per pair from the positions you entered: horizontally separated drivers lobe ACROSS the seats (strict, k 0.5 — no forward null); vertically separated ones lobe toward floor and ceiling, where Dickason's k 1.0 is the published anchor. Mixed axes interpolate. The explicit values remain as overrides."
+                      >
+                        {' '}
+                        {(
+                          [
+                            ['W-M', cabinetInfo.ctcLowVec],
+                            ['M-T', cabinetInfo.ctcHighVec],
+                          ] as const
+                        )
+                          .filter(([, v]) => v !== null)
+                          .map(([naam, v]) => {
+                            const k2 = lobingKFor(v!.dxMm, v!.dyMm);
+                            const as2 =
+                              Math.abs(v!.dyMm) >= Math.abs(v!.dxMm) ? 'vertical' : 'horizontal';
+                            return `${naam} k ${k2.toFixed(2)} (${as2})`;
+                          })
+                          .join(' · ') || 'enter driver positions to resolve'}
+                      </span>
+                    )}
                     {cabinetInfo.ctcLow !== null || cabinetInfo.ctcHigh !== null ? (
                       <span className="derived">
                         {' '}

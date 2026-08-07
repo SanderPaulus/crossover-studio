@@ -4,6 +4,7 @@ import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {
   KA_TIERS,
+  lobingKFor,
   beamingCeilingFromSize,
   breakupCeilingHz,
   breakupHz,
@@ -264,5 +265,18 @@ describe('several identical drivers in one branch', () => {
     // Two woofers 205 mm apart lobe at 837 Hz — far below where either cone
     // starts beaming, which is exactly why a dual-woofer branch crosses low.
     expect(lobingCeilingHz(205, 0.5)!).toBeCloseTo(837, 0);
+  });
+});
+
+describe('lobingKFor (auto strictness from the pair axis)', () => {
+  it('horizontal separation is strict, vertical relaxed, mixed interpolates', () => {
+    // A centre's side-by-side woofers: nulls sweep across the seats.
+    expect(lobingKFor(350, 0)).toBe(0.5);
+    // A stacked mid/tweeter: nulls go to floor and ceiling (Dickason).
+    expect(lobingKFor(0, 70)).toBe(1.0);
+    // 3-4-5 triangle: vertical fraction 0.8.
+    expect(lobingKFor(30, 40)).toBeCloseTo(0.9, 10);
+    // No separation: nothing to judge, fall back to strict.
+    expect(lobingKFor(0, 0)).toBe(0.5);
   });
 });
