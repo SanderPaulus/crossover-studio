@@ -1247,6 +1247,37 @@ criterium moet FYSISCH zijn (impedantie van dít element tegen de tak waar het i
 band waar die tak werkelijk bijdraagt) i.p.v. een delta op de gemengde objective — een
 onderdeel dat écht inert is kan de stroomafwaartse stappen niet verplaatsen en heeft dus geen
 terugdraai nodig.
+**DE ONTWERPERS-SEQUENCE (aug 2026, Sanders "mijn gevoel zegt dat de huidige sequence niet
+klopt" — en dat gevoel was juist)**: drie omkeringen t.o.v. hoe een topontwerper werkt, in één
+ronde rechtgezet. De toetssteen: bij een ontwerper stuurt de som nooit de structuur — de som
+valideert; structuur komt uit niveau + fysica. Élke bewaker die we om de tuner heen bouwden
+(kooien, adaptieve xo-gewichten, pin-reparatie, de lek-term in de ontwerpstap) was een
+symptoom van de omgekeerde volgorde. (1) **Niveau eerst**: `crossover3Variants` trimt élke tak
+naar de stilste (cut-only, medianen over fysica-gesplitste passbands) vóór de ankerbepaling —
+de rauwe ankers lazen de kruising van een luidspreker die na het padden niet bestaat
+(test: ankers zijn niveau-invariant, +8 dB tweeter verzet geen kandidaat; bewezen falend op de
+oude code). Anker-only bewust: designThreeWay her-leidt zijn trims per knie — één eigenaar per
+beslissing. (2) **De geleverde overname wordt beoordeeld**: `judgeWindows` (pin = belofte,
+gemeten venster = fysica; de kooi blijft boekhouding), `xoWindowOk` als ranking-KLASSE tussen
+Z-vloer en targets, `pairOverlapOct` gerapporteerd (netOptimizer geeft de integratie-bandbreedte
+per paar door — geen extra solve) in scan-tabel + note. Een kruising voorbij het bundelpunt is
+off-axis een ándere luidspreker, hoe vlak de som ook is — Sanders build: W-M op 1069 Hz met
+3,2 oct overlap tegen een 629 Hz-plafond, en het paneel gaf dat paar een 99 (integratie beloont
+brede overlap — juist voor een 2-weg-sóm, achterstevoren voor een overname). (3) **De tuner aan
+de leiband**: de keten geeft per tak het akoestische DOEL mee (spec × gemeten responsie,
+gemaskeerd op alive + eigen-piek−25 dB) en de objective draagt een corridor 2·(afwijking
+voorbij ±3 dB)² — exact 0 erbinnen (bouwbaarheidsvenster-patroon), dus fase uitlijnen en ±3 dB
+trimmen blijven gratis en een tak-herbouw van 10 dB kost ~60. Gewicht 0,5 was GEMETEN te zacht
+(6,7 dB ontsnapping op het pad-loze testnet); alleen de keten geeft targets (een user-netwerk
+heeft geen ontwerpdoel), plain paths bit-identiek.
+**GEMETEN A/B, zelfde 9 kandidaten, targets 3 dB/15°**: referentie-winnaar 2,43/0,83 dB maar
+W-M-paar 30,9° avg/P95 59°, kruisingen 578/8786 (buiten venster), 25–29 parts (10 prijsloos);
+sequence-winnaar 3,05/1,05 dB met paren 9,6°/8,7° (P95 22/23°), overlap 1,6/1,6 oct,
+kruisingen 418/4823 (binnen beide vensters), Z 2,8 Ω resistief, **18 parts, 18/18 geprijsd**.
+De ruil is die van de ontwerper zelf: ~0,4 dB on-axis-vlakheid koopt gebalanceerde overnames,
+een gezonde last en een derde minder onderdelen — en dat lage aantal is een BIJPRODUCT van de
+volgorde, geen snoeidruk. De vlakkere rijen staan nog in de tabel, mét de glyphs die uitleggen
+waarom ze verloren.
 **Per-paar-pins + per-paar-flanken (aug 2026, Sanders settings-review)**: in 3-weg vraagt
 "Crossover points (low + high)" twéé pinnen (laag xoLowFreqHz±xoLowMarginHz, hoog = de
 bestaande xoFreqHz±xoMarginHz) — gepinde as = kandidaat-collapse in de scan én
