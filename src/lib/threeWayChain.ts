@@ -389,7 +389,63 @@ export function crossover3Variants(
    *  raw level-crossing sits far below any sensible handover. */
   highWindow?: { floorHz?: number | null; ceilHz?: number | null },
 ): Chain3Variant[] {
-  /* Anchor = the raw pair's OVERLAP CENTRE — the same computeIntegration
+  /* ---- LEVEL FIRST (the designer sequence, step 2 — Sanders' own example:
+   * "meestal is de tweeter veel gevoeliger dan de rest, laten we eerst die
+   * zacht spelen, dan pas naar de xo kijken").
+   *
+   * The anchors below estimate where neighbouring drivers MEET — but a raw
+   * overlap centre is the crossing of a loudspeaker that will not exist once
+   * the pads are in: a tweeter 8 dB hot reaches level far below any sensible
+   * handover, and CLAUDE.md documented exactly that ("het vrije M-T-anker
+   * vindt bij een hete tweeter alsnog het lage kruispunt — de pin is daar
+   * het gereedschap"). Pinning was a workaround for an ordering fault.
+   *
+   * So the level decision comes first: coarse per-branch medians over
+   * physics-split passbands (window centres when measured, the free rails'
+   * geometric means otherwise), every branch trimmed DOWN to the quietest
+   * (passive is cut-only), and the anchors read the TRIMMED responses.
+   * Anchor-only on purpose: downstream, designThreeWay re-derives its trims
+   * from the xo-dependent passbands once the knees are chosen — one owner
+   * per decision, and this is the pre-decision that stops the anchors from
+   * looking at the wrong loudspeaker. Medians skip banded ghost samples
+   * (union grids carry −400 dB outside a branch's own measurement). */
+  const geoCentre = (win?: { floorHz?: number | null; ceilHz?: number | null }): number | null =>
+    win?.floorHz != null && win?.ceilHz != null && win.ceilHz > win.floorHz
+      ? Math.sqrt(win.floorHz * win.ceilHz)
+      : null;
+  const sLow = geoCentre(lowWindow) ?? Math.sqrt(250 * 1500);
+  const sHigh = Math.max(
+    geoCentre(highWindow) ?? Math.sqrt(1800 * 7000),
+    hpFloorHz ?? 0,
+    sLow * 1.5,
+  );
+  const aliveMedian = (r: GriddedResponse, band: [number, number]): number | null => {
+    const vals: number[] = [];
+    for (let i = 0; i < r.freq.length; i++) {
+      if (r.freq[i] < band[0] || r.freq[i] > band[1]) continue;
+      if (r.spl[i] <= ALIVE_DB) continue;
+      vals.push(r.spl[i]);
+    }
+    if (vals.length === 0) return null;
+    vals.sort((x, y) => x - y);
+    return vals[Math.floor(vals.length / 2)];
+  };
+  const meds = [
+    aliveMedian(w, [w.freq[0], sLow]),
+    aliveMedian(m, [sLow, sHigh]),
+    aliveMedian(t, [sHigh, t.freq[t.freq.length - 1]]),
+  ];
+  const present = meds.filter((x): x is number => x !== null);
+  const refDb = present.length > 0 ? Math.min(...present) : null;
+  const trimBy = (r: GriddedResponse, med: number | null): GriddedResponse =>
+    refDb === null || med === null || refDb - med === 0
+      ? r
+      : { ...r, spl: r.spl.map((v) => v + (refDb - med)) };
+  const wL = trimBy(w, meds[0]);
+  const mL = trimBy(m, meds[1]);
+  const tL = trimBy(t, meds[2]);
+
+  /* Anchor = the LEVEL-MATCHED pair's OVERLAP CENTRE — the same computeIntegration
    * number the panel's pair chips show ("Overlap 1631 / 5455 Hz"), so the
    * scan searches the neighbourhood the designer is already looking at.
    *
@@ -412,10 +468,10 @@ export function crossover3Variants(
       return null;
     }
   };
-  const rawLow = Math.min(1200, Math.max(250, overlapAnchor(w, m) ?? Math.sqrt(200 * 1500)));
+  const rawLow = Math.min(1200, Math.max(250, overlapAnchor(wL, mL) ?? Math.sqrt(200 * 1500)));
   const rawHigh = Math.min(
     7000,
-    Math.max(1800, overlapAnchor(m, t) ?? Math.sqrt(1200 * 9000), hpFloorHz ?? 0),
+    Math.max(1800, overlapAnchor(mL, tL) ?? Math.sqrt(1200 * 9000), hpFloorHz ?? 0),
   );
   const n = Math.max(1, Math.round(steps));
   /** The searchable span of one axis: the pin when given, else the raw
