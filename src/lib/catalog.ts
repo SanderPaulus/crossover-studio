@@ -541,6 +541,19 @@ function preferredPools(
       if (only.length > 0) out.push(only);
     }
   }
+  /* TIER PREFERENCE DOES NOT APPLY TO COILS. Coil DCR is a position
+   * property, not a tier (the documented doctrine): a cap's tier changes the
+   * dielectric, a coil's tier changes the WIRE, and DCR is a first-order
+   * parameter the solver models. A premium coil with the same DCR as a cheap
+   * one is electrically the same component at ten times the price — measured
+   * on Sanders' centre: the position profile put two Mundorf Zero-Ohm coils
+   * (319 + 228 EUR) in the woofer's series path while an 11-EUR P-core with
+   * 0.2 ohm more DCR sat in the same catalog, and the solver would have
+   * absorbed that difference without a trace. The DCR ceiling (dcrCeilingOhms,
+   * applied in pickCandidates) is the honest coil constraint; among coils
+   * that clear it, the snap's cost weight should decide. An EXPLICIT series
+   * binding above still wins — that is the designer's own call. */
+  if (kind === 'L') return out;
   const cascade: CatalogTier[] =
     prefs.profile === 'budget'
       ? ['budget', 'standard']
