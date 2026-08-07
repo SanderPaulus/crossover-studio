@@ -2608,6 +2608,17 @@ button:disabled {
    one flat flex row with a single caption on top, so everything looked equally
    important and nothing told you WHICH decision a control belongs to. Full-row
    spans, so the flex wrap breaks cleanly at each heading. */
+/* A checkbox belongs BESIDE the words it labels. The global `label` rule is a
+   COLUMN — right for field-above-input, wrong for a tick box — so every
+   checkbox in the settings card floated its box above its own text (Sander's
+   screenshot). Scoped rather than a class on a dozen labels, so a new setting
+   cannot forget it. */
+.opt-settings label:has(> input[type='checkbox']) {
+  flex-direction: row;
+  align-items: center;
+  gap: 0.4rem;
+}
+
 .opt-settings .opt-group-cap {
   flex-basis: 100%;
   margin: 0.55rem 0 -0.1rem;

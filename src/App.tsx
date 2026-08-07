@@ -8878,110 +8878,6 @@ export default function App() {
                     </select>
                   </label>
                 )}
-                <span className="opt-group-cap">Driver limits</span>
-                {threeWay && !physWin3?.lowCeilMeasured && (
-                  <label title="Woofer nominal size — sets the W-M handover's beaming CEILING (a cone is practically usable to ~3× its beaming onset), the mirror of the mid-size rule for the high crossing. With the 2×Fs floor from the measured mid impedance this gives the free scan a physics window instead of a guess.">
-                    Woofer size (W-M ceiling)
-                    <select value={wooferSizeInch} onChange={(e) => setWooferSizeInch(e.target.value)}>
-                      <option value="">unknown</option>
-                      {['5', '6.5', '8', '10', '12', '15'].map((v) => (
-                        <option key={v} value={v}>
-                          {v}"
-                        </option>
-                      ))}
-                    </select>
-                  </label>
-                )}
-                {threeWay && (
-                  <label title="Directivity philosophy for the MEASURED beaming ceiling — the on-axis minus 30° difference at which a driver counts as beaming. Default is the empirical 4 dB, NOT the theoretically stricter ka = 2, and that is deliberate: the ka figures come from an ideal piston in an infinite baffle, while a real measured 0−30° difference at low frequency is mostly baffle diffraction. Measured on a real 3-way set, ka = 2 puts the woofer&apos;s ceiling at 304 Hz — below the mid&apos;s own 2×Fs floor — declaring an ordinary design impossible; 4 dB gives 628 Hz. The strict tiers stay available for a conservative philosophy or clean anechoic data. (For reference: &apos;−6 dB at 30°&apos; is ka = 4.43, past every published limit — that defines BEAMWIDTH, not a crossover ceiling.)">
-                    When a cone counts as beaming
-                    <select value={kaTier} onChange={(e) => setKaTier(e.target.value as KaTier)}>
-                      {(Object.keys(KA_TIERS) as KaTier[]).map((k) => (
-                        <option key={k} value={k}>
-                          {k} — ka {KA_TIERS[k].ka} ({KA_TIERS[k].diff30Db} dB)
-                        </option>
-                      ))}
-                    </select>
-                  </label>
-                )}
-                {threeWay && (
-                  <span
-                    className="inline-num"
-                    title="How many wavelengths of DRIVER SPACING the design tolerates. The spacing itself is derived from the driver positions you enter under Setup → Cabinet & drivers; two drivers half a wavelength apart already put a null in the vertical response. The sources genuinely disagree here and they optimise different things, so this is the designer's call."
-                  >
-                    {'Vertical lobing: how strict '}
-                    <select value={ctcK} onChange={(e) => setCtcK(e.target.value)}>
-                      <option value="0.25">0.25 — point source</option>
-                      <option value="0.5">0.5 — no forward null</option>
-                      <option value="1">1.0 — Dickason</option>
-                      <option value="1.2">1.2 — Saunisto (power response)</option>
-                    </select>
-                    {cabinetInfo.ctcLow !== null || cabinetInfo.ctcHigh !== null ? (
-                      <span className="derived">
-                        {' '}
-                        c-t-c{' '}
-                        {cabinetInfo.ctcLow !== null ? `W-M ${Math.round(cabinetInfo.ctcLow)}` : ''}
-                        {cabinetInfo.ctcHigh !== null
-                          ? ` · M-T ${Math.round(cabinetInfo.ctcHigh)}`
-                          : ''}{' '}
-                        mm
-                      </span>
-                    ) : (
-                      <span className="derived"> — enter driver positions to apply</span>
-                    )}
-                  </span>
-                )}
-                {threeWay && (
-                  <label title="Cone breakup as an upper limit. A resonance at f_b is excited as the THIRD harmonic of a fundamental at f_b/3 (Purifi measured exactly this: breakups at 5 and 10 kHz produce HD3 peaks at 1.6 and 3.3 kHz), so the distortion penalty lands more than an octave BELOW the peak. A notch does not repair it — it attenuates the fundamental at the breakup, not the harmonics arriving there from lower fundamentals. NOTE: no published algorithm exists for finding breakup in an SPL curve; this is our own criterion, which is why it is switchable and the detected frequency is shown.">
-                    Stay this far below cone breakup
-                    <select
-                      value={breakupLimitOn ? breakupHarmonic : 'off'}
-                      onChange={(e) => {
-                        if (e.target.value === 'off') setBreakupLimitOn(false);
-                        else {
-                          setBreakupLimitOn(true);
-                          setBreakupHarmonic(e.target.value);
-                        }
-                      }}
-                    >
-                      <option value="off">off</option>
-                      <option value="3">f_b / 3 (HD3)</option>
-                      <option value="5">f_b / 5 (HD5, hard cones)</option>
-                    </select>
-                  </label>
-                )}
-                {threeWay && (
-                  <span
-                    className="inline-num"
-                    title="The LEVEL this design must reach — the level-aware version of 'cross a tweeter at 2-3x Fs'. SPL = 108.4 + 20log(f²·Sd·Xmax) in half space, so a driver runs out of linear travel below f = sqrt(10^((L-108.4)/20)/(Sd·Xmax)) and the crossover floor moves up with the level you ask for. Sd and Xmax themselves are DRIVER FACTS and live on the Setup tab; this is the only part of the criterion that is a design decision."
-                  >
-                    {'Design for '}
-                    <input
-                      type="number"
-                      min={70}
-                      max={120}
-                      step={1}
-                      value={excursionSpl}
-                      onChange={(e) => setExcursionSpl(e.target.value)}
-                    />
-                    {' dB'}
-                  </span>
-                )}
-                {threeWay && (
-                  <span className="derived" style={{ flexBasis: '100%' }}>
-                    {sdCm2.mid && sdCm2.high
-                      ? `excursion floor: mid ${Math.round(
-                          excursionFloorHz(Number(sdCm2.mid), Number(xmaxMm.mid), Number(excursionSpl), {
-                            count: Number(cabinet.drivers.mid.count) || 1,
-                          }) ?? 0,
-                        )} Hz · tweeter ${Math.round(
-                          excursionFloorHz(Number(sdCm2.high), Number(xmaxMm.high), Number(excursionSpl), {
-                            count: Number(cabinet.drivers.high.count) || 1,
-                          }) ?? 0,
-                        )} Hz — from the Sd/Xmax on the Setup tab`
-                      : 'enter Sd and Xmax per driver on the Setup tab to use this criterion'}
-                  </span>
-                )}
                 {threeWay && physWin3 && (
                   <span
                     className="derived"
@@ -9091,6 +8987,110 @@ export default function App() {
                         )}
                       </>
                     )}
+                  </span>
+                )}
+                <span className="opt-group-cap">Driver limits</span>
+                {threeWay && !physWin3?.lowCeilMeasured && (
+                  <label title="Woofer nominal size — sets the W-M handover's beaming CEILING (a cone is practically usable to ~3× its beaming onset), the mirror of the mid-size rule for the high crossing. With the 2×Fs floor from the measured mid impedance this gives the free scan a physics window instead of a guess.">
+                    Woofer size (W-M ceiling)
+                    <select value={wooferSizeInch} onChange={(e) => setWooferSizeInch(e.target.value)}>
+                      <option value="">unknown</option>
+                      {['5', '6.5', '8', '10', '12', '15'].map((v) => (
+                        <option key={v} value={v}>
+                          {v}"
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                )}
+                {threeWay && (
+                  <label title="Directivity philosophy for the MEASURED beaming ceiling — the on-axis minus 30° difference at which a driver counts as beaming. Default is the empirical 4 dB, NOT the theoretically stricter ka = 2, and that is deliberate: the ka figures come from an ideal piston in an infinite baffle, while a real measured 0−30° difference at low frequency is mostly baffle diffraction. Measured on a real 3-way set, ka = 2 puts the woofer&apos;s ceiling at 304 Hz — below the mid&apos;s own 2×Fs floor — declaring an ordinary design impossible; 4 dB gives 628 Hz. The strict tiers stay available for a conservative philosophy or clean anechoic data. (For reference: &apos;−6 dB at 30°&apos; is ka = 4.43, past every published limit — that defines BEAMWIDTH, not a crossover ceiling.)">
+                    When a cone counts as beaming
+                    <select value={kaTier} onChange={(e) => setKaTier(e.target.value as KaTier)}>
+                      {(Object.keys(KA_TIERS) as KaTier[]).map((k) => (
+                        <option key={k} value={k}>
+                          {k} — ka {KA_TIERS[k].ka} ({KA_TIERS[k].diff30Db} dB)
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                )}
+                {threeWay && (
+                  <span
+                    className="inline-num"
+                    title="How many wavelengths of DRIVER SPACING the design tolerates. The spacing itself is derived from the driver positions you enter under Setup → Cabinet & drivers; two drivers half a wavelength apart already put a null in the vertical response. The sources genuinely disagree here and they optimise different things, so this is the designer's call."
+                  >
+                    {'Vertical lobing: how strict '}
+                    <select value={ctcK} onChange={(e) => setCtcK(e.target.value)}>
+                      <option value="0.25">0.25 — point source</option>
+                      <option value="0.5">0.5 — no forward null</option>
+                      <option value="1">1.0 — Dickason</option>
+                      <option value="1.2">1.2 — Saunisto (power response)</option>
+                    </select>
+                    {cabinetInfo.ctcLow !== null || cabinetInfo.ctcHigh !== null ? (
+                      <span className="derived">
+                        {' '}
+                        c-t-c{' '}
+                        {cabinetInfo.ctcLow !== null ? `W-M ${Math.round(cabinetInfo.ctcLow)}` : ''}
+                        {cabinetInfo.ctcHigh !== null
+                          ? ` · M-T ${Math.round(cabinetInfo.ctcHigh)}`
+                          : ''}{' '}
+                        mm
+                      </span>
+                    ) : (
+                      <span className="derived"> — enter driver positions to apply</span>
+                    )}
+                  </span>
+                )}
+                {threeWay && (
+                  <label title="Cone breakup as an upper limit. A resonance at f_b is excited as the THIRD harmonic of a fundamental at f_b/3 (Purifi measured exactly this: breakups at 5 and 10 kHz produce HD3 peaks at 1.6 and 3.3 kHz), so the distortion penalty lands more than an octave BELOW the peak. A notch does not repair it — it attenuates the fundamental at the breakup, not the harmonics arriving there from lower fundamentals. NOTE: no published algorithm exists for finding breakup in an SPL curve; this is our own criterion, which is why it is switchable and the detected frequency is shown.">
+                    Stay this far below cone breakup
+                    <select
+                      value={breakupLimitOn ? breakupHarmonic : 'off'}
+                      onChange={(e) => {
+                        if (e.target.value === 'off') setBreakupLimitOn(false);
+                        else {
+                          setBreakupLimitOn(true);
+                          setBreakupHarmonic(e.target.value);
+                        }
+                      }}
+                    >
+                      <option value="off">off</option>
+                      <option value="3">f_b / 3 (HD3)</option>
+                      <option value="5">f_b / 5 (HD5, hard cones)</option>
+                    </select>
+                  </label>
+                )}
+                {threeWay && (
+                  <span
+                    className="inline-num"
+                    title="The LEVEL this design must reach — the level-aware version of 'cross a tweeter at 2-3x Fs'. SPL = 108.4 + 20log(f²·Sd·Xmax) in half space, so a driver runs out of linear travel below f = sqrt(10^((L-108.4)/20)/(Sd·Xmax)) and the crossover floor moves up with the level you ask for. Sd and Xmax themselves are DRIVER FACTS and live on the Setup tab; this is the only part of the criterion that is a design decision."
+                  >
+                    {'Design for '}
+                    <input
+                      type="number"
+                      min={70}
+                      max={120}
+                      step={1}
+                      value={excursionSpl}
+                      onChange={(e) => setExcursionSpl(e.target.value)}
+                    />
+                    {' dB'}
+                  </span>
+                )}
+                {threeWay && (
+                  <span className="derived" style={{ flexBasis: '100%' }}>
+                    {sdCm2.mid && sdCm2.high
+                      ? `excursion floor: mid ${Math.round(
+                          excursionFloorHz(Number(sdCm2.mid), Number(xmaxMm.mid), Number(excursionSpl), {
+                            count: Number(cabinet.drivers.mid.count) || 1,
+                          }) ?? 0,
+                        )} Hz · tweeter ${Math.round(
+                          excursionFloorHz(Number(sdCm2.high), Number(xmaxMm.high), Number(excursionSpl), {
+                            count: Number(cabinet.drivers.high.count) || 1,
+                          }) ?? 0,
+                        )} Hz — from the Sd/Xmax on the Setup tab`
+                      : 'enter Sd and Xmax per driver on the Setup tab to use this criterion'}
                   </span>
                 )}
                 {vfEqBands > 4 && (
