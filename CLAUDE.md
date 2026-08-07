@@ -558,6 +558,24 @@ minimum phase reconstrueert. Voertaal met Sander: **Nederlands**; code/comments 
   VituixCAD-uitwisseling, sneltoetsen, troubleshooting. Tests bewaken unieke ids,
   gebalanceerde markup en de tab-mapping — nieuwe features horen hier een
   sectie-update te krijgen
+- `report.ts` + "Export report" (Network-toolbar, aug 2026, Sanders "printbaar, en
+  misschien ook als import als we gaan vergelijken") — ÉÉN ontwerp als zelfstandige HTML
+  die drie dingen tegelijk is: printbare bouwdocumentatie (A4, `@page`, geen paginabreuk
+  ín een grafiek of tabelrij), een pagina die iemand zónder deze app kan lezen, en een
+  BESTAND DAT DE APP TERUGLEEST. Dat laatste is Sanders idee en de reden dat er géén
+  tweede formaat bij komt: de `.adsfilter`-payload rijdt verbatim mee in een verborgen
+  `<script type="application/json">`, en `deserializeFilter` vist hem eruit — één
+  importknop accepteert dus JSON én rapport. Escaping van `</` in de payload is getest
+  (een ontwerpnaam met `</script>` zou het blok anders vroegtijdig sluiten).
+  **Grafieken en schema worden NIET opnieuw getekend**: de App levert de SVG aan die al
+  op het scherm staat (`.analysis-pane .panel` in volgorde + `svg.sch-canvas`), dus het
+  rapport kan niet afwijken van wat de ontwerper zag — en de à-la-carte-panelen bepalen
+  vanzelf wat erin komt. Twee gevolgen die daarbij horen: de captured markup stijlt
+  zichzelf via CSS-variabelen (App zet tijdelijk `data-theme="light"`, leest ze uit en
+  herstelt het thema — papier is wit), en de legend is een DOM-element náást de SVG, dus
+  die reist als data mee. Het schema kwam eerst LEEG mee: al zijn lijnen zitten in
+  klassen (`.sch-wire`, `.sch-symbol line`, …), niet op de elementen — die regels staan nu
+  in de rapport-CSS.
 - `filterFile.ts` — filter-uitwisseling: één ontwerp-tab als standalone .adsfilter.json
   (formaat-marker + versie + validatie); Export-knop (actieve tab) / Import (nieuwe tab)
 - `filterTemplates.ts` — **netwerk-templates ("New from template", Network-toolbar)**: het derde

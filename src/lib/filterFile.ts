@@ -1,5 +1,6 @@
 import type { VxpPart } from './parsers/vxp.ts';
 import type { NetworkDesign } from './project.ts';
+import { extractReportPayload } from './report.ts';
 
 /**
  * Filter exchange format: ONE network design (a tab) as a standalone JSON
@@ -28,11 +29,15 @@ export function serializeFilter(design: Pick<NetworkDesign, 'name' | 'parts'>): 
 }
 
 export function deserializeFilter(text: string): { name: string; parts: VxpPart[] } {
+  // A DESIGN REPORT is also a filter file (Sanders idea): the printable HTML
+  // carries this exact payload in a hidden script block, so one import button
+  // accepts both shapes and a report can be mailed, printed, AND loaded back.
+  const source = extractReportPayload(text) ?? text;
   let d: Record<string, unknown>;
   try {
-    d = JSON.parse(text) as Record<string, unknown>;
+    d = JSON.parse(source) as Record<string, unknown>;
   } catch {
-    throw new FilterFileError('Not a JSON file.');
+    throw new FilterFileError('Not a filter file (expected JSON, or an exported design report).');
   }
   if (d['format'] !== FILTER_FORMAT) {
     throw new FilterFileError('Not a Crossover Studio filter file.');

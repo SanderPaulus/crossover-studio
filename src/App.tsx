@@ -83,6 +83,7 @@ import {
   type WayCount,
 } from './lib/filterTemplates.ts';
 import { deserializeFilter, serializeFilter } from './lib/filterFile.ts';
+import { buildReportHtml, type ReportRow, type ReportSection } from './lib/report.ts';
 import { serializeVxp } from './lib/parsers/vxpExport.ts';
 import type { VxpDriver } from './lib/parsers/vxp.ts';
 import { tidySchematic } from './lib/tidyLayout.ts';
@@ -4861,6 +4862,161 @@ export default function App() {
       setError(err instanceof Error ? err.message : String(err));
     }
     e.target.value = '';
+  }
+
+  /**
+   * Design report: the active design as ONE standalone, printable HTML file
+   * that this app can also read back (Sanders idea — no second format, the
+   * `.adsfilter` payload rides along hidden inside it).
+   *
+   * The charts and the schematic are NOT redrawn: it captures the SVG the app
+   * has already rendered, so the report cannot disagree with the screen the
+   * designer exported it from. Two consequences handled here: the captured
+   * markup styles itself through CSS variables (resolved in the LIGHT theme,
+   * because paper is white), and the legend is a DOM element beside the SVG,
+   * so it travels as data.
+   */
+  function exportReport() {
+    if (!activeDesign) return;
+    const root = document.documentElement;
+    // Resolve the palette as it looks on paper, whatever the app is wearing.
+    const themeBefore = root.getAttribute('data-theme');
+    root.setAttribute('data-theme', 'light');
+    const cs = getComputedStyle(root);
+    const cssVars = [
+      'viz-grid', 'viz-axis', 'viz-tick', 'viz-woofer', 'viz-mid', 'viz-tweeter',
+      'viz-combined', 'viz-null', 'viz-ghost1', 'viz-ghost2', 'viz-ghost3', 'viz-ghost4',
+    ]
+      .map((n) => `--${n}:${cs.getPropertyValue(`--${n}`).trim()};`)
+      .join(' ');
+
+    const sections: ReportSection[] = [];
+    const summary: ReportRow[] = [];
+    const push = (label: string, value: string | null | undefined, note?: string) => {
+      if (value) summary.push({ label, value, ...(note ? { note } : {}) });
+    };
+    push('Design', activeDesign.name);
+    push('Drivers', threeWay ? 'three-way' : soloDriver ? 'single driver' : 'two-way');
+    if (combinedFlat)
+      push(
+        'Response flatness',
+        `${Math.round(combinedFlat.score)} / 100`,
+        `avg ±${combinedFlat.avgDevDb.toFixed(2)} · P95 ±${combinedFlat.p95DevDb.toFixed(
+          2,
+        )} · peak ±${combinedFlat.peak.devDb.toFixed(2)} dB`,
+      );
+    if (pairScores) {
+      const pp = (n: string, p: typeof pairScores.low) =>
+        push(
+          `${n} handover`,
+          p.integ.overlapCentreHz ? `${Math.round(p.integ.overlapCentreHz)} Hz` : '—',
+          p.stats
+            ? `phase avg ${p.stats.avgErrorDeg.toFixed(1)}° · P95 ${p.stats.p95ErrorDeg.toFixed(
+                0,
+              )}°${p.integ.bandwidth ? ` · overlap ${p.integ.bandwidth.octaves.toFixed(1)} oct` : ''}`
+            : undefined,
+        );
+      pp('Woofer–mid', pairScores.low);
+      pp('Mid–tweeter', pairScores.high);
+    } else if (integration) {
+      push(
+        'Crossover',
+        integration.overlapCentreHz ? `${Math.round(integration.overlapCentreHz)} Hz` : '—',
+        phaseStats
+          ? `phase avg ${phaseStats.avgErrorDeg.toFixed(1)}° · P95 ${phaseStats.p95ErrorDeg.toFixed(0)}°`
+          : undefined,
+      );
+    }
+    if (systemZInfo)
+      push(
+        'System impedance',
+        `min ${systemZInfo.minOhm.toFixed(1)} Ω @ ${Math.round(systemZInfo.minHz)} Hz`,
+        `max ${systemZInfo.maxOhm.toFixed(0)} Ω`,
+      );
+    if (tolBand)
+      push(
+        `Build tolerance ±${tolPct}%`,
+        `worst ±${tolBand.worstHalfDb.toFixed(2)} dB`,
+        `RSS ±${tolBand.rssHalfDb.toFixed(2)} dB · sensitive ${tolBand.perPart
+          .slice(0, 3)
+          .map((q) => q.id)
+          .join(', ')}`,
+      );
+    if (timing) push('Timing', timing.ref.verdict);
+    push('View range', `${num(fMin, 200)}–${num(fMax, 20000)} Hz`);
+    sections.push({ title: 'Summary', rows: summary });
+
+    // Every VISIBLE chart panel, in the order they appear on screen: the
+    // à-la-carte panel choice therefore decides what the report contains.
+    for (const panel of Array.from(document.querySelectorAll('.analysis-pane .panel'))) {
+      const svgEl = panel.querySelector('.chart-plot svg') ?? panel.querySelector('svg');
+      if (!svgEl) continue;
+      const heading = panel.querySelector('h2, h3')?.textContent?.trim() || 'Chart';
+      const legend = Array.from(panel.querySelectorAll('.legend-item'))
+        .filter((li) => !li.classList.contains('off'))
+        .map((li) => ({
+          label: li.textContent?.trim() || '',
+          color:
+            (li.querySelector('.legend-key') as HTMLElement | null)?.style.background ||
+            (li.querySelector('line') as SVGLineElement | null)?.getAttribute('stroke') ||
+            'currentColor',
+        }))
+        .filter((l) => l.label !== '');
+      sections.push({ title: heading, svg: svgEl.outerHTML, legend });
+    }
+
+    // The editor canvas (`.sch-canvas`) in the Network tab, or a read-only
+    // schematic elsewhere — whichever is on screen.
+    const schSvg = document.querySelector('svg.sch-canvas, .schematic svg');
+    if (schSvg) sections.push({ title: 'Schematic', svg: schSvg.outerHTML, pageBreak: true });
+
+    const bom = bomFor(activeDesign.parts);
+    if (bom.rows.length > 0) {
+      const unit = (row: (typeof bom.rows)[number]) =>
+        row.kind === 'L'
+          ? `${Number((row.value * 1e3).toPrecision(4))} mH`
+          : row.kind === 'C'
+            ? `${Number((row.value * 1e6).toPrecision(4))} µF`
+            : `${Number(row.value.toPrecision(4))} Ω`;
+      sections.push({
+        title:
+          `Bill of materials — ${bom.rows.length} components` +
+          (bom.totalEur !== null
+            ? ` · ≥ €${bom.totalEur.toFixed(2)} (${bom.pricedCount}/${bom.rows.length} priced)`
+            : ''),
+        rows: bom.rows.map((row) => ({
+          label: row.partId,
+          value: unit(row),
+          note: row.match
+            ? `${row.match.brand} ${row.match.series} — ${formatCatalogPart(row.match)}`
+            : row.stackMatch
+              ? row.stackMatch.label
+              : 'no exact catalog value',
+        })),
+      });
+    }
+
+    root.setAttribute('data-theme', themeBefore ?? '');
+    if (themeBefore === null) root.removeAttribute('data-theme');
+
+    const html = buildReportHtml({
+      title: `${activeDesign.name} — crossover design`,
+      // 'none' is the vxp-variant placeholder, not a name anybody wrote.
+      subtitle: xoName && xoName !== 'none' ? `VituixCAD variant: ${xoName}` : undefined,
+      savedAt: new Date().toISOString().slice(0, 10),
+      sections,
+      cssVars,
+      payloadJson: serializeFilter(activeDesign),
+    });
+    const blob = new Blob([html], { type: 'text/html' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = `${fileSafeName(activeDesign.name, 'design')}-report.html`;
+    a.click();
+    URL.revokeObjectURL(a.href);
+    setPersistNote(
+      `Report exported — printable (A4), and it is also a filter file: Import filter accepts it back.`,
+    );
   }
 
   function exportActiveFilter() {
@@ -9714,6 +9870,14 @@ export default function App() {
                     title="Export ALL network tabs as a VituixCAD project folder — the .vxp (each tab a crossover variant CROSSOVER, CROSSOVER1, …) PLUS every measurement/impedance file, written together so VituixCAD opens it without hunting. Pick a folder when asked (Chrome/Edge). VituixCAD reconstructs the phase itself (MinimumPhase=True) and every driver carries its measured excess-phase delay (earliest driver 0), so its simulation matches ours — two-way and three-way alike."
                   >
                     Export .vxp
+                  </button>
+                  <button
+                    type="button"
+                    onClick={exportReport}
+                    disabled={!activeDesign}
+                    title="Export this design as a printable HTML report (A4): summary, the charts you have open, the schematic and the BOM with prices. The file is ALSO a filter file — Import filter reads it back, so a report can be mailed, printed and compared."
+                  >
+                    Export report
                   </button>
                 </div>
               </div>
