@@ -1380,6 +1380,15 @@ export function optimizeNetworkValues(
         // residue at weight 120 cost a negligible 1.2 and the repair stalled
         // there; the gate then rejected the whole tune anyway).
         barr += 1200 * (m.zShortOhm / Z_FLOOR_OHM) ** 2;
+        // THE HIERARCHY: the amplifier floor is non-negotiable, branch
+        // fidelity yields to it. With the corridor still counting, the
+        // repair paid corridor tax on exactly the branch shifts the lift
+        // needs — measured on Sanders' set (low crossings, three branches
+        // crowding 1–2.5 kHz): every candidate's repair failed, every tune
+        // was rejected wholesale, and the scan shipped nine raw seeds with
+        // 4.4–6.6 dB ripple and 0.1–2.0 Ω minima. The xo-window class and
+        // the ranking still judge whatever the repair does to the branches.
+        barr -= 2 * m.corridorSq;
       }
       return fxOf(m) + barr + 8 * penalty;
     };
@@ -1942,8 +1951,14 @@ export function optimizeNetworkValues(
       // the raw seed instead (measured: repFx 4.8 < 5.7 refused on a +7 leak
       // arm, and the gate then threw 100% of the tune away) — OR it stays in
       // the prune-doctrine 10%/seed window with the leak/dip arms intact.
+      /* Corridor-free on BOTH sides (same hierarchy as the search): the fx a
+       * repair is judged by must not contain the corridor tax on the very
+       * moves the repair exists to make. Arithmetic, not a re-solve — every
+       * TuneOut carries its final metrics. */
+      const nc = (t: { fx: number; metrics: Metrics }): number =>
+        t.fx - 2 * t.metrics.corridorSq;
       const armsOk =
-        (rep.fx <= cur.fx * 1.1 || rep.fx <= fxOrig) &&
+        (nc(rep) <= nc(cur) * 1.1 || nc(rep) <= fxOrig) &&
         mRep.xoDipDb <= mCur.xoDipDb + 1 &&
         (!breakupGuard || mRep.leakSqDb <= mCur.leakSqDb + 4);
       /* Strict mode widens what a repair may cost. A 0.5 ohm minimum is not
@@ -1955,12 +1970,12 @@ export function optimizeNetworkValues(
         zRep.short < zCur.short - 0.1 &&
         mRep.protSqDb <= mCur.protSqDb + 3 &&
         mRep.xoDipDb <= mCur.xoDipDb + 1 &&
-        rep.fx <= cur.fx * 1.5;
+        nc(rep) <= nc(cur) * 1.5;
       const ok =
         (repairedEnough(zRep.short) &&
           targetsKept &&
           mRep.protSqDb <= mCur.protSqDb + 3 &&
-          (rep.fx <= cur.fx || armsOk)) ||
+          (nc(rep) <= nc(cur) || armsOk)) ||
         strictOk;
       if (ok) {
         ampFloorNote =

@@ -781,9 +781,41 @@ describe('branch-target corridor (the leash, designer sequence 3/3)', () => {
       }
       return worst;
     };
-    // Corridor 3 dB is a soft barrier (weight 0.5), so allow a little skin.
+    // Corridor 3 dB is a soft barrier, so allow a little skin.
     expect(maxDev(del.low, tgt.low)).toBeLessThan(3.8);
     expect(maxDev(del.high, tgt.high)).toBeLessThan(3.8);
+  });
+
+  it('the corridor yields to the amp-load repair (the hierarchy)', () => {
+    // Measured on Sanders' set: with the corridor counting inside the repair
+    // pass, every candidate's Z-repair failed its own acceptance and the scan
+    // shipped nine raw seeds (4.4–6.6 dB ripple, 0.1–2.0 Ω minima, absurd
+    // BOMs). The floor is non-negotiable; branch fidelity yields to it. This
+    // pins the regression: strict repair WITH targets present must still
+    // reach the floor.
+    const seed: VxpPart[] = [
+      ...crudeNetwork('none'),
+      {
+        type: 'Resistor',
+        partId: 'RS1',
+        params: [{ name: 'R', value: 0.4, unit: 'Ω' }],
+        wires: [{ x: 3, y: 4 }, { x: 5, y: 11 }],
+      },
+      { type: 'Ground', params: [], wires: [{ x: 5, y: 11 }] },
+    ];
+    const tgt = branchesOf(seed);
+    const zMinOf = (parts: readonly VxpPart[]): number => {
+      const { netlist } = crossoverToNetlist({ name: 'zc', parts: [...parts] });
+      const sol = solveNetwork(netlist, grid, driverZ);
+      return Math.min(...sol.inputZ.map((c) => Math.hypot(c.re, c.im)));
+    };
+    const r = optimizeNetworkValues(seed, grid, wBase, tBase, driverZ, NO_ADJ, {
+      phasePriority: 0.3,
+      zFloorStrict: true,
+      branchTargets: { freq: [...grid], low: [...tgt.low], high: [...tgt.high] },
+    });
+    expect(zMinOf(r.parts)).toBeGreaterThan(2.3);
+    expect(r.safetyNote).toBeUndefined();
   });
 });
 
