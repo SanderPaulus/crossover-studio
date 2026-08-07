@@ -12,7 +12,7 @@
  * inputs → identical outputs, every run, every machine.
  */
 import type { Complex } from './complex.ts';
-import type { GriddedResponse, TweeterAdjust } from './dsp.ts';
+import { applyTransfer, type GriddedResponse, type TweeterAdjust } from './dsp.ts';
 import type { VxpPart } from './parsers/vxp.ts';
 import type { AngleResponse } from './directivity.ts';
 import {
@@ -27,7 +27,7 @@ import { synthesize, type SynthesisResult } from './synthesis.ts';
 import { mergeSynthesizedSchematics } from './schematicEdit.ts';
 import { optimizeNetworkValues, Z_FLOOR_OHM, type NetOptimizeResult } from './netOptimizer.ts';
 import { bomFor, type SnapPrefs } from './catalog.ts';
-import type { DriverFilterSpec } from './filters.ts';
+import { evalDriverFilter, type DriverFilterSpec } from './filters.ts';
 
 export interface ChainSettings {
   phasePriority: number; // 0..1
@@ -219,6 +219,28 @@ export function runDesignChain(
     { components: synthTweeter.components, model: 'tweeter' },
   ]).parts;
 
+  /* THE LEASH (see branchTargets in netOptimizer): the design step's
+   * acoustic target per branch, handed to the assembled tune as a ±3 dB
+   * corridor. Same architecture as the three-way chain, same risk — the tune
+   * holds the largest freedom in the chain and can rebuild a branch into
+   * something its designer never drew. Masked to the branch's own top 25 dB;
+   * the stopband belongs to the leak and protection guards.
+   *
+   * EQ bands ride along here (unlike three-way, where the design step's EQ is
+   * a separate stage): the two-way target IS spec-with-EQ, and the synthesis
+   * realises it, so the corridor must describe what was actually fitted. */
+  const targetFor = (spec: DriverFilterSpec, resp: GriddedResponse): number[] => {
+    const tgt = applyTransfer(resp, evalDriverFilter(spec, [...grid]));
+    let peak = -Infinity;
+    for (const v of tgt.spl) if (v > peak) peak = v;
+    return tgt.spl.map((v) => (v > peak - 25 ? v : NaN));
+  };
+  const branchTargets = {
+    freq: [...grid],
+    low: targetFor(shifted(b.specs.woofer), w),
+    high: targetFor(shifted(b.specs.tweeter), t),
+  };
+
   // Assembled tune — the only stage that judges the interplay.
   onProgress?.({ stage: 'tune', evals: evaluations });
   const net = optimizeNetworkValues(
@@ -230,6 +252,7 @@ export function runDesignChain(
     { ...adjust, inverted: b.inverted },
     {
       phasePriority: s.phasePriority,
+      branchTargets,
       // The seed here is OUR OWN synthesis, so the seed-relative amp-load bar
       // has nothing to respect and everything to hide behind (see
       // zFloorStrict — the three-way lesson, which applies verbatim).

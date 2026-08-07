@@ -816,6 +816,10 @@ function runSoloChainOnce(
     { offsetMm: 0, trimDb: 0, inverted: false },
     {
       solo: true,
+      // buildSoloNetwork wrote this seed, so the seed-relative amp-load bar
+      // has nothing to respect (see zFloorStrict). A solo network can dip
+      // just as hard — a trap's damping R sits straight across the input.
+      zFloorStrict: true,
       soloSensitivityDb: s.sensitivityBudgetDb,
       soloTargetLevelDb: s.targetLevelDb,
       // Solo staged: the phase target is trivially met (phase metric is 0);
