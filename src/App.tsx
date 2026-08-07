@@ -3542,14 +3542,40 @@ export default function App() {
       // What the DELIVERED crossings are judged against in the ranking: a pin
       // is the designer's promise; a measured physics window is the drivers'.
       // The candidate cage stays bookkeeping — see judgeWindows in the chain.
+      //
+      // A DEGENERATE window (floor at or above ceiling — "no room") judges
+      // NOTHING: every crossing fails a window that does not exist, which is
+      // how Sanders' ka-2 run came back with a warning glyph on all nine
+      // rows. The scan already falls back to the level anchors for its
+      // candidates; the broken premise must be said out loud instead
+      // (signaleren, nooit een tweede stille beslissing).
+      const sane = (win: { floorHz?: number | null; ceilHz?: number | null } | null) =>
+        win && win.floorHz != null && win.ceilHz != null && win.floorHz >= win.ceilHz
+          ? null
+          : win;
       const judgeWindows = {
         low: pins.low
           ? { floorHz: pins.low.freq - pins.low.margin, ceilHz: pins.low.freq + pins.low.margin }
-          : lowWin3,
+          : sane(lowWin3),
         high: pins.high
           ? { floorHz: pins.high.freq - pins.high.margin, ceilHz: pins.high.freq + pins.high.margin }
-          : highWin3,
+          : sane(highWin3),
       };
+      const brokenWindows = (
+        [
+          ['W-M', lowWin3, pins.low],
+          ['M-T', highWin3, pins.high],
+        ] as const
+      )
+        .filter(([, w2, pin]) => !pin && w2 && sane(w2) === null)
+        .map(
+          ([naam, w2]) =>
+            `⚠ ${naam} physics window has NO ROOM (${Math.round(w2!.floorHz!)}–` +
+            `${Math.round(w2!.ceilHz!)} Hz) — the scan fell back to the level-crossing ` +
+            `anchors and the delivered crossings cannot be judged on this axis. Check the ` +
+            `Driver limits (the measured 4 dB beaming tier is the default for a reason), ` +
+            `or pin this crossing yourself.`,
+        );
       const inputs = variants.map((v) => ({
         grid: [...grid],
         w: sim.base.w,
@@ -3674,6 +3700,7 @@ export default function App() {
                   : ' — no candidate stayed inside; the drivers or the window settings disagree ' +
                     'with every reachable design. Check the ⚙ window readout.');
           const waarschuwingen = [
+            ...brokenWindows,
             zNote,
             xoWinNote,
             win.xoPinNote ? `⚠ PIN: ${win.xoPinNote}` : '',
