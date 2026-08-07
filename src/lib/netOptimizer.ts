@@ -1575,7 +1575,30 @@ export function optimizeNetworkValues(
        * 7.8°, all "within target" and therefore invisible to the old gate.
        * Fewest components, but never quality as loose change. */
       const fx0 = cur.fx;
-      for (let round = 0; round < 8; round++) {
+      /* How many removals may be RETUNED AND TESTED per round, and how many
+       * rounds there are. Both were fixed at 3 and 8, and on a 29-part 3-way
+       * that is why obviously dead parts survived a pass whose targets were
+       * comfortably met (Sander: two 10 mH / 6.8 mH coils forming traps at
+       * 232 and 411 Hz inside a TWEETER branch, plus a 0.22 Ω series
+       * resistor).
+       *
+       * The top-3 rule is what excluded them, and the reason is subtle: a
+       * genuinely dead part's removal leaves fx almost EXACTLY where it was,
+       * while some live part's removal can push fx slightly DOWN before the
+       * retune. Sorted by raw fx the dead ones therefore rank below several
+       * others and never get tried — and `if (!accepted) break` then ends the
+       * whole sweep on the first round whose top three failed.
+       *
+       * So: retune and test the eight most promising removals per round rather
+       * than three, and let the round count follow the size of the design.
+       * Search DEPTH only: the acceptance gates are untouched, so a removal
+       * still has to keep the targets, keep the fundamentals, and cost ≤10%
+       * on its own and ≤35% in total. */
+      const freeParts = cur.parts.filter(
+        (q) => RLC.has(q.type) && !q.locked && !q.open && !q.shorted && q.partId !== undefined,
+      ).length;
+      const maxRounds = Math.min(20, Math.max(8, Math.floor(freeParts / 2)));
+      for (let round = 0; round < maxRounds; round++) {
         type Cand = { id: string; trial: VxpPart[]; fx: number };
         const cands: Cand[] = [];
         for (const q of cur.parts) {
@@ -1594,8 +1617,15 @@ export function optimizeNetworkValues(
           }
         }
         cands.sort((a, b) => a.fx - b.fx);
+        // Strictly a SUPERSET of the old top-3, so this can only ever find
+        // more. A threshold on raw fx was tried and reverted: an untuned
+        // removal often looks far worse than it is — the retune is what
+        // recovers it — so filtering on the pre-tune number threw away the
+        // very candidates the pass exists for (it broke the redundant-cap
+        // regression immediately).
+        const shortlist = cands.slice(0, 8);
         let accepted = false;
-        for (const cand of cands.slice(0, 3)) {
+        for (const cand of shortlist) {
           const t = tune(cand.trial, 0.6, tgt);
           const tFull = fullM(t.parts);
           if (

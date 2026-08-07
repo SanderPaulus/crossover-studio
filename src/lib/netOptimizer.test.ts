@@ -166,6 +166,36 @@ describe('staged mode (trapmethode on the assembled network)', () => {
     expect(r.after.phaseDeg).toBeLessThanOrEqual(staged.phaseDeg + 3);
   });
 
+  it('looser targets never cost MORE components (Sander\'s expectation)', () => {
+    // "Ik verwacht bij hogere marges dat ik minder onderdelen nodig heb" — that
+    // IS what staged mode promises, and it did not hold: the prune tested only
+    // the three lowest-fx removals per round and abandoned the whole sweep
+    // when those three failed. A genuinely dead part leaves fx almost exactly
+    // where it was, so it ranks BELOW removals that happen to nudge fx down,
+    // and it never got tried. Measured on his 29-part 3-way: targets met with
+    // room to spare (2.7 dB of 3, 12.8 deg of 15) and nothing was shed.
+    const seed = withRedundantCap();
+    const plain = optimizeNetworkValues(seed, grid, wBase, tBase, driverZ, NO_ADJ, {
+      phasePriority: 0.3,
+    });
+    const run = (rippleMul: number, phaseMul: number) =>
+      optimizeNetworkValues(seed, grid, wBase, tBase, driverZ, NO_ADJ, {
+        phasePriority: 0.3,
+        staged: {
+          rippleDb: plain.after.rippleDb * rippleMul + 0.05,
+          phaseDeg: plain.after.phaseDeg * phaseMul + 2,
+        },
+      });
+    const tight = run(1.05, 1.05);
+    const loose = run(1.6, 1.6);
+    const live = (r: ReturnType<typeof run>) =>
+      r.parts.filter((p) => p.partId && !p.open && !p.shorted && /^[LCR]/.test(p.type[0])).length;
+    expect(loose.removed.length).toBeGreaterThanOrEqual(tight.removed.length);
+    expect(live(loose)).toBeLessThanOrEqual(live(tight));
+    // …and the loose run still honours the goal it was given.
+    expect(loose.after.rippleDb).toBeLessThanOrEqual(plain.after.rippleDb * 1.6 + 0.2);
+  });
+
   it('a locked part is never pruned', () => {
     const parts = withRedundantCap().map((p) => (p.partId === 'C9' ? { ...p, locked: true } : p));
     const plain = optimizeNetworkValues(parts, grid, wBase, tBase, driverZ, NO_ADJ, {
