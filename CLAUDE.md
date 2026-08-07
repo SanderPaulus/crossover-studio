@@ -902,6 +902,40 @@ minimum phase reconstrueert. Voertaal met Sander: **Nederlands**; code/comments 
   De filter-fase-stippellijnen
   zijn alleen wat het netwerk toevoegt; de verwarring daarover was de aanleiding
 
+## De ontwerpers-sequence, geport naar 2-weg en solo (aug 2026)
+
+Sanders vraag "welke leermomenten kunnen we van de 3-weg gebruiken voor de 2-weg en de single
+driver" — de drie omkeringen bleken alle drie óók in de 2-weg-keten te zitten; hij was er alleen
+nooit naar gevraagd. Wat gedeeld was (staged-snoeidiepte, catalogus-realisme, spoel-tier-
+vrijstelling, DCR-plafond, snap-Z-bewaking) liftte al gratis mee.
+- **Z-vloer als ranking-klasse in `rankChainResults`** + `zFloorStrict` in de 2-weg-keten én in
+  `runSoloChain` (buildSoloNetwork schrijft die seed zelf — dezelfde redenering).
+- **`physWin2`** (App-memo): hetzelfde gemeten venster voor het 2-weg-paar — vloer =
+  max(2×Fs, reach, excursie), plafond = min(gemeten bundeling, lobing tegen de tweeter met
+  auto-k, eigen array-afstand, breakup/N). Dit is het openstaande roadmap-punt "Fs-vloer voor de
+  HP-knie in de vfOptimizer-bounds", gegeneraliseerd: het begrenst de vrije scan (vervangt de
+  tweeter-geankerde schatting) én oordeelt via `judgeWindow` over de GELEVERDE kruising. Niets
+  gemeten = oude schatting; een degeneratief venster oordeelt niet.
+- **Leiband op de 2-weg assembled tune** (`branchTargets`). GEMETEN A/B op de KOAN-keten
+  (doel 1 dB/10°, verder identiek): zónder piek 1,064 · avg 0,592 · fase 9,71° · kruising
+  **4230 Hz** · 19 parts; **mét** piek 0,883 · avg 0,312 · fase 3,58° · kruising **2965 Hz** ·
+  16 parts. Beter op élke as, en zonder leiband liep de kruising ruim een halve octaaf boven het
+  ontwerp — hetzelfde tak-herbouw-gedrag als bij 3-weg, nu ook in 2-weg aangetoond.
+- **BEWUST NIET geport**: de piek-bewuste amplitudeterm in de 2-weg-objective (destijds gemeten:
+  de EQ-trede + breakup-guard dekken dat geval al — "niet aanraken wat niet stuk is"), en
+  niveau-eerst (de 2-weg-EQ-trede wast niveauverschillen al weg en zijn kandidaten leunen niet
+  op rauwe ankers).
+- **`lobingKFor` (driverLimits)**: strengheid uit de PAAR-AS i.p.v. één globale knop — horizontaal
+  gescheiden drivers (een center) loberen ÓVER de bank (streng, k 0,5), verticaal gestapelde naar
+  vloer/plafond (Dickason k 1,0), gemengd interpoleert. UI-stand `auto` (default voor nieuwe
+  sessies; opgeslagen keuzes blijven). Op Sanders center: wooferpaar 350 mm horizontaal houdt
+  zijn 490 Hz-plafond, M-T 70 mm verticaal gaat 2450 → ~4900 Hz.
+- **Spoel-tier-vrijstelling (`preferredPools`)**: tier-voorkeur geldt NIET voor spoelen — DCR is
+  een positie-eigenschap, geen tier (de al opgeschreven doctrine). Gemeten op Sanders center:
+  het Positie-profiel zette twee Mundorf Zero-Ohm (€319 + €228) in het woofer-seriepad terwijl
+  een P-core van €11 met 0,2 Ω meer DCR in dezelfde catalogus stond. Het DCR-plafond blijft de
+  eerlijke spoelbeperking; daarbinnen beslist de kostenterm. Expliciete serie-binding wint nog.
+
 ## Gedeelde kern voor drie engines (jul 2026, Sanders "misschien kunnen ze wat delen")
 
 - **`bandMetrics.ts` — één implementatie van "hoe vlak is deze respons over deze band"**
