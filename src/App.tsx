@@ -5363,6 +5363,107 @@ export default function App() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [compareTabs, networkActive, sim, threeWay, impedances, designs, activeDesignId, offsetMm, trimDb, inverted]);
 
+  /**
+   * Compare every saved design on NUMBERS, not on curve shapes. The ghost
+   * overlay shows form; this answers "which one do I build" — Response score,
+   * worst-pair phase, the amplifier's minimum load, component count and BOM
+   * total, side by side. Same table pattern as the crossover scan.
+   *
+   * One solve per tab, on the SAME pipeline the live simulation uses (measured
+   * impedances, the branch adjustments as set), so a row cannot flatter a tab
+   * by measuring it differently. Works in three-way as well — unlike the ghost
+   * overlay, which is still two-way only.
+   */
+  const tabCompare = useMemo(() => {
+    if (!sim || designs.length < 2 || !result) return null;
+    if (Object.keys(impedances).length === 0) return null;
+    const grid = sim.combined.freq;
+    const zOnGrid = zGridWithSlots(impedances, grid);
+    const lo = splViewX ? splViewX[0] : grid[0];
+    const hi = splViewX ? splViewX[1] : grid[grid.length - 1];
+    const tAdj = { offsetMm: num(offsetMm, 0), trimDb: num(trimDb, 0), inverted };
+    const mAdj = {
+      offsetMm: num(midOffsetMm, 0),
+      trimDb: num(midTrimDb, 0),
+      inverted: midInverted,
+    };
+    const rows = designs.map((d) => {
+      const base = {
+        id: d.id,
+        name: d.name,
+        active: d.id === activeDesignId,
+        parts: d.parts.filter((p) => /Inductor|Capacitor|Resistor/.test(p.type)).length,
+        bomEur: null as number | null,
+        score: null as number | null,
+        avgDb: null as number | null,
+        peakDb: null as number | null,
+        phaseDeg: null as number | null,
+        p95Deg: null as number | null,
+        zMinOhm: null as number | null,
+        error: null as string | null,
+      };
+      try {
+        const bom = bomFor(d.parts);
+        base.bomEur = bom.totalEur;
+        const { netlist } = crossoverToNetlist({ name: d.name, parts: d.parts });
+        const sol = solveNetwork(netlist, grid, zOnGrid);
+        base.zMinOhm = Math.min(...sol.inputZ.map((c) => cAbs(c)));
+        const { hW, hM, hT, ambiguous } = slotTransfersN(sol);
+        if (ambiguous) return { ...base, error: 'driver names ambiguous' };
+        const w = hW ? applyTransfer(sim.base.w, hW) : sim.base.w;
+        const t = hT ? applyTransfer(sim.base.t, hT) : sim.base.t;
+        if (threeWay && sim.base.m) {
+          const m = hM ? applyTransfer(sim.base.m, hM) : sim.base.m;
+          const n3 = combineN([
+            { response: w },
+            { response: m, adjust: mAdj },
+            { response: t, adjust: tAdj },
+          ]);
+          const st = computeResponseStats(grid, n3.combinedSpl, lo, hi);
+          if (st) {
+            base.score = st.score;
+            base.avgDb = st.avgDevDb;
+            base.peakDb = st.peak.devDb;
+          }
+          // Coupled pairs: report the WORSE handover, the same rule every gate
+          // in the engine uses — an average would hide one bad crossing.
+          const pair = (a: GriddedResponse, b: GriddedResponse) => {
+            const r = combine(a, b, { offsetMm: 0, trimDb: 0, inverted: false });
+            const ig = computeIntegration(r);
+            return computePhaseStats(r.relativePhaseDeg, ig.points);
+          };
+          const ps = [pair(n3.branches[0], n3.branches[1]), pair(n3.branches[1], n3.branches[2])]
+            .filter((x): x is NonNullable<typeof x> => x !== null);
+          if (ps.length > 0) {
+            base.phaseDeg = Math.max(...ps.map((x) => x.avgErrorDeg));
+            base.p95Deg = Math.max(...ps.map((x) => x.p95ErrorDeg));
+          }
+        } else {
+          const r2 = combine(w, t, tAdj);
+          const st = computeResponseStats(grid, r2.combinedSpl, lo, hi);
+          if (st) {
+            base.score = st.score;
+            base.avgDb = st.avgDevDb;
+            base.peakDb = st.peak.devDb;
+          }
+          const ig = computeIntegration(r2);
+          const ph = computePhaseStats(r2.relativePhaseDeg, ig.points);
+          if (ph) {
+            base.phaseDeg = ph.avgErrorDeg;
+            base.p95Deg = ph.p95ErrorDeg;
+          }
+        }
+        return base;
+      } catch {
+        // A tab that is still work in progress simply has no numbers yet.
+        return { ...base, error: 'not solvable' };
+      }
+    });
+    return rows;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sim, result, designs, activeDesignId, impedances, splViewX, threeWay,
+      offsetMm, trimDb, inverted, midOffsetMm, midTrimDb, midInverted]);
+
   /** System-impedance display data: |Z| curve + min/max markers. High |Z| is
    *  harmless (an easy load); only the MINIMUM matters for the amplifier —
    *  tiers follow IEC 60268-5's 0.8×nominal floor (6.4 Ω = 8 Ω-safe,
@@ -10162,6 +10263,67 @@ export default function App() {
                   ))}
                 </tbody>
               </table>
+            )}
+            {tabCompare && tabCompare.length > 1 && (
+              <details className="tab-compare">
+                <summary>
+                  Compare {tabCompare.length} designs — score · phase · Z · parts · BOM
+                </summary>
+                <table
+                  className="scan-table scan-table-pick"
+                  title="Every saved design measured through the same pipeline as the live simulation. The ghost curves show shape; this shows the numbers. Click a row to switch to that design."
+                >
+                  <thead>
+                    <tr>
+                      <th>design</th>
+                      <th>response</th>
+                      <th>avg / peak</th>
+                      <th>phase</th>
+                      <th>Z min</th>
+                      <th>parts</th>
+                      <th>BOM</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {tabCompare.map((r) => (
+                      <tr
+                        key={r.id}
+                        className={r.active ? 'active' : ''}
+                        onClick={() => selectDesign(r.id)}
+                        title={r.active ? 'This design is open' : `Switch to ${r.name}`}
+                      >
+                        <td>
+                          {r.name}
+                          {r.active ? ' ◂' : ''}
+                        </td>
+                        <td>{r.error ? '—' : r.score !== null ? Math.round(r.score) : '—'}</td>
+                        <td>
+                          {r.avgDb !== null && r.peakDb !== null
+                            ? `±${r.avgDb.toFixed(2)} / ±${r.peakDb.toFixed(2)} dB`
+                            : r.error ?? '—'}
+                        </td>
+                        <td title={threeWay ? 'Worst of the two handovers' : undefined}>
+                          {r.phaseDeg !== null
+                            ? `${r.phaseDeg.toFixed(1)}° · P95 ${Math.round(r.p95Deg ?? 0)}°`
+                            : '—'}
+                        </td>
+                        <td
+                          className={
+                            r.zMinOhm !== null && r.zMinOhm < Z_FLOOR_OHM ? 'scan-z-low' : undefined
+                          }
+                          title={`Minimum system impedance (amplifier floor ${Z_FLOOR_OHM} Ω)`}
+                        >
+                          {r.zMinOhm !== null
+                            ? `${r.zMinOhm < Z_FLOOR_OHM ? '⚠ ' : ''}${r.zMinOhm.toFixed(1)} Ω`
+                            : '—'}
+                        </td>
+                        <td>{r.parts}</td>
+                        <td>{r.bomEur !== null ? `€${Math.round(r.bomEur)}` : '—'}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </details>
             )}
             {designs.length > 0 && (
               <div className="design-tabs">

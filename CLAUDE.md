@@ -558,6 +558,16 @@ minimum phase reconstrueert. Voertaal met Sander: **Nederlands**; code/comments 
   VituixCAD-uitwisseling, sneltoetsen, troubleshooting. Tests bewaken unieke ids,
   gebalanceerde markup en de tab-mapping — nieuwe features horen hier een
   sectie-update te krijgen
+- **Ontwerp-vergelijking (`tabCompare`, aug 2026, roadmap-punt 1)**: de ghost-curves tonen
+  VORM, deze tabel beantwoordt "welke bouw ik" — Response-score, avg/piek, slechtste-paar
+  fase + P95, Z-min (⚠ onder de vloer), aantal onderdelen en BOM-totaal per opgeslagen tab.
+  Ingeklapt onder de tabs (`<details>`; met één ontwerp zegt hij niets en hij mag het schema
+  niet wegduwen), rij aanklikken = naar die tab. Eén solve per tab door DEZELFDE pijplijn als
+  de live sim (gemeten Z, dezelfde tak-adjusts), zodat een rij zichzelf niet kan vleien met
+  een andere meetlat; in 3-weg via `slotTransfersN` + `combineN` met de WORST-paar-regel voor
+  fase (een gemiddelde verbergt één slechte overgang). Werkt dus óók in 3-weg — anders dan de
+  ghost-overlay, die 2-weg-only bleef. Een tab die naar een niet-geladen driver verwijst meldt
+  "not solvable" i.p.v. een getal te verzinnen.
 - `report.ts` + "Export report" (Network-toolbar, aug 2026, Sanders "printbaar, en
   misschien ook als import als we gaan vergelijken") — ÉÉN ontwerp als zelfstandige HTML
   die drie dingen tegelijk is: printbare bouwdocumentatie (A4, `@page`, geen paginabreuk

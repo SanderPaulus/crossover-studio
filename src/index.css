@@ -974,6 +974,24 @@ svg.legend-key-dash {
 }
 
 /* Crossover-scan result table (design-chain ranking, best first). */
+/* Design comparison: a collapsed table under the tabs. Collapsed by default —
+   with one design it says nothing, and it must not push the schematic down. */
+.tab-compare {
+  margin: 0.5rem 0 0.25rem;
+}
+.tab-compare > summary {
+  cursor: pointer;
+  font-size: 0.8rem;
+  color: var(--muted);
+  padding: 0.15rem 0;
+}
+.tab-compare > summary:hover {
+  color: var(--fg);
+}
+.tab-compare .scan-table {
+  margin-top: 0.35rem;
+}
+
 /* An impedance minimum under the amplifier floor: the glyph carries it, the
    colour only reinforces (colour is never the sole carrier). */
 .scan-table td.scan-z-low {
