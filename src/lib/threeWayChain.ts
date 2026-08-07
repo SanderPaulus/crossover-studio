@@ -95,6 +95,17 @@ export interface Chain3Input {
    *  the handover away from the knees the design step chose. */
   xoLowRange?: [number, number];
   xoHighRange?: [number, number];
+  /** What the DELIVERED crossings are judged against in the ranking: the pin
+   *  range when the designer pinned that axis (a promise), else the measured
+   *  physics window, else nothing. Distinct from the cage on purpose — the
+   *  cage is scan bookkeeping ("boekhouding, geen belofte"): a candidate
+   *  drifting into its neighbour's slice is fine, both slices are in-window.
+   *  Crossing OUTSIDE the physics window is the thing a designer refuses:
+   *  past the beaming/lobing bound both cones carry the region together. */
+  judgeWindows?: {
+    low?: { floorHz?: number | null; ceilHz?: number | null } | null;
+    high?: { floorHz?: number | null; ceilHz?: number | null } | null;
+  };
   label: string;
   settings: Chain3Settings;
 }
@@ -114,6 +125,16 @@ export interface Chain3Result {
    *  rejected on the Z floor or the dip could not be repaired. RELATIVE — it
    *  says the tune did not make things worse, NOT that the load is sane. */
   zOk: boolean;
+  /** Physics verdict on the DELIVERED handovers: every judged crossing sits
+   *  inside its window/pin (×1.06 slack — a beaming onset is a soft measured
+   *  number). null = nothing to judge (no pins, no measured windows). Ranked
+   *  as a class: meeting a flatness target with a crossing past the physics
+   *  window is the wrong loudspeaker, not a flatter one — measured on
+   *  Sander's set: W-M delivered at 1069 Hz with a 3.2-octave overlap against
+   *  a 629 Hz measured ceiling, and the ranking had no opinion. */
+  xoWindowOk: boolean | null;
+  /** Delivered overlap width per pair, octaves (null per pair when unknown). */
+  pairOverlapOct: (number | null)[] | null;
   /** Minimum system |Zin| the amplifier actually sees, ohms. The absolute
    *  companion to {@link zOk}, and the one a published design always states.
    *  Ranked as a CLASS (above/below the floor), never blended into the score:
@@ -288,6 +309,22 @@ export function runThreeWayChain(
     !net.safetyNote &&
     !(net.ampFloorNote !== undefined && net.ampFloorNote.includes('could not be repaired'));
   const zMinOhm = net.after.zMinOhm ?? null;
+  const judge = (
+    xo: number | null | undefined,
+    win?: { floorHz?: number | null; ceilHz?: number | null } | null,
+  ): boolean | null => {
+    if (!win || xo == null) return null;
+    const SLACK = 1.06;
+    if (win.floorHz != null && xo < win.floorHz / SLACK) return false;
+    if (win.ceilHz != null && xo > win.ceilHz * SLACK) return false;
+    return win.floorHz != null || win.ceilHz != null ? true : null;
+  };
+  const pairsXoDel = net.after.xoHzPairs ?? [];
+  const verdicts = [
+    judge(pairsXoDel[0], input.judgeWindows?.low),
+    judge(pairsXoDel[1], input.judgeWindows?.high),
+  ].filter((v): v is boolean => v !== null);
+  const xoWindowOk = verdicts.length === 0 ? null : verdicts.every(Boolean);
 
   return {
     label: input.label,
@@ -302,6 +339,8 @@ export function runThreeWayChain(
     bomTotalEur: bomFor(net.parts).totalEur,
     zOk,
     zMinOhm,
+    xoWindowOk,
+    pairOverlapOct: net.after.pairOverlapOct ?? null,
     midInverted: design.midInverted,
     tweeterInverted: design.tweeterInverted,
     structureLabel: design.label,
@@ -677,10 +716,19 @@ export function rankChain3Results(
   const zFloorOk = (r: Chain3Result): boolean =>
     r.zMinOhm === null || r.zMinOhm >= Z_FLOOR_OHM;
   const zClass = (r: Chain3Result): number => (r.zOk ? 0 : 2) + (zFloorOk(r) ? 0 : 1);
+  /* Delivered-handover physics, as a class between the amplifier and the
+   * flatness targets. Above targets on purpose: a crossing past the measured
+   * beaming/lobing bound is a different (worse) loudspeaker off-axis however
+   * flat it sums on-axis — the designer sequence's step 3 is a DECISION, and
+   * this is where the engine is held to it. Unknown (null) is never punished. */
+  const xoClass = (r: Chain3Result): number => (r.xoWindowOk === false ? 1 : 0);
   const ranked = [...results].sort((a, b) => {
     const za = zClass(a);
     const zb = zClass(b);
     if (za !== zb) return za - zb;
+    const xa = xoClass(a);
+    const xb = xoClass(b);
+    if (xa !== xb) return xa - xb;
     const ma = meets(a) ? 0 : 1;
     const mb = meets(b) ? 0 : 1;
     if (ma !== mb) return ma - mb;
@@ -690,7 +738,10 @@ export function rankChain3Results(
     const s0 = score(ranked[0]);
     const tied = ranked.filter(
       (r) =>
-        zClass(r) === zClass(ranked[0]) && meets(r) === meets(ranked[0]) && score(r) <= s0 * 1.05,
+        zClass(r) === zClass(ranked[0]) &&
+        xoClass(r) === xoClass(ranked[0]) &&
+        meets(r) === meets(ranked[0]) &&
+        score(r) <= s0 * 1.05,
     );
     if (tied.length > 1) {
       const priced = tied.filter((r) => r.bomTotalEur !== null);

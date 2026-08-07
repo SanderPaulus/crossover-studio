@@ -191,6 +191,8 @@ export interface NetOptimizeResult {
      *  while its handovers sit an octave off the knees that were designed —
      *  measured on Robbert's set before the candidates were caged. */
     xoHzPairs?: (number | null)[];
+    /** 3-way: delivered overlap width per pair, octaves. */
+    pairOverlapOct?: (number | null)[];
   };
   /** How many component values were free to move (final network). */
   tuned: number;
@@ -601,6 +603,12 @@ export function optimizeNetworkValues(
     /** Uniform-average phase error PER pair — the coupled-pairs gate reads
      *  the WORST of these (solo: empty). */
     pairPhaseDeg: number[];
+    /** Phase-coherent overlap width PER pair, octaves (integration bandwidth
+     *  — the same number the pair chips show). Reported so the chain can put
+     *  it in front of the designer: a W-M handover 3.2 octaves wide means
+     *  both cones carry the midrange together, which no on-axis number
+     *  reveals. */
+    pairOverlapOct: (number | null)[];
     /** How far the combined SPL at the crossing sits BELOW the band mean
      *  (dB, beyond a 6 dB allowance). A healthy crossing meets ON level; a
      *  starved branch "crosses" the other one deep in a hole instead. */
@@ -1032,6 +1040,7 @@ export function optimizeNetworkValues(
       xoEdgeSq,
       pairSlopes: pm.map((x) => ({ lower: x.lowerSlopeDbOct, upper: x.upperSlopeDbOct })),
       pairPhaseDeg: solo ? [] : pairPhaseDeg,
+      pairOverlapOct: solo ? [] : integList.map((ig) => ig.bandwidth?.octaves ?? null),
       xoDipDb,
       midSlopeDbOct,
       tweeterSlopeDbOct,
@@ -2133,6 +2142,7 @@ export function optimizeNetworkValues(
     zMinOhm: zMinOf(m, ps),
     ...(m.pairPhaseDeg.length > 1 ? { pairPhaseDeg: m.pairPhaseDeg } : {}),
     ...(m.xoHzPairs.length > 1 ? { xoHzPairs: m.xoHzPairs } : {}),
+    ...(m.pairOverlapOct.length > 1 ? { pairOverlapOct: m.pairOverlapOct } : {}),
   });
 
   /* ---- SOLO sensitivity gate (see soloSensBudgetDb): a tuned result that

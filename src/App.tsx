@@ -3539,6 +3539,17 @@ export default function App() {
         lowWin3,
         highWin3,
       );
+      // What the DELIVERED crossings are judged against in the ranking: a pin
+      // is the designer's promise; a measured physics window is the drivers'.
+      // The candidate cage stays bookkeeping — see judgeWindows in the chain.
+      const judgeWindows = {
+        low: pins.low
+          ? { floorHz: pins.low.freq - pins.low.margin, ceilHz: pins.low.freq + pins.low.margin }
+          : lowWin3,
+        high: pins.high
+          ? { floorHz: pins.high.freq - pins.high.margin, ceilHz: pins.high.freq + pins.high.margin }
+          : highWin3,
+      };
       const inputs = variants.map((v) => ({
         grid: [...grid],
         w: sim.base.w,
@@ -3552,6 +3563,7 @@ export default function App() {
         xoHigh: v.xoHigh,
         xoLowRange: v.xoLowRange,
         xoHighRange: v.xoHighRange,
+        judgeWindows,
         label: v.label,
         settings,
       }));
@@ -3597,6 +3609,8 @@ export default function App() {
                     avgDevDb: rr.net.after.avgDevDb ?? null,
                     phaseDeg: rr.net.after.phaseDeg,
                     zMinOhm: rr.net.after.zMinOhm ?? null,
+                    xoWindowOk: rr.xoWindowOk,
+                    pairOverlapOct: rr.pairOverlapOct,
                     bomEur: rr.bomTotalEur,
                     winner: rr === win,
                     result: rr,
@@ -3620,6 +3634,10 @@ export default function App() {
               ? ` (W-M ${r.net.after.pairPhaseDeg[0].toFixed(1)}° · M-T ${r.net.after.pairPhaseDeg[1].toFixed(1)}°)`
               : '') +
             crossings(r) +
+            (r.pairOverlapOct !== null
+              ? ` · ovl ${r.pairOverlapOct.map((o) => (o === null ? '—' : o.toFixed(1))).join('/')} oct`
+              : '') +
+            (r.xoWindowOk === false ? ' · ⚠ xo window' : '') +
             (r.zMinOhm !== null ? ` · Z ${r.zMinOhm.toFixed(1)} Ω` : '') +
             (r.bomTotalEur !== null ? ` · €${Math.round(r.bomTotalEur)}` : '') +
             (r.zOk ? '' : ' · ⚠ amp-load');
@@ -3644,8 +3662,20 @@ export default function App() {
                 : ' — no candidate in this scan stayed above it, so this is a design-level ' +
                   'property of these drivers in this topology, not a tuning miss. Three branches ' +
                   'in parallel around a handover is the usual cause; check the Impedance panel.');
+          /* Handover physics on the winner: same visibility rule as the Z
+           * floor — a class the designer cannot read reorders silently. */
+          const anyXoSane = ranked.some((r) => r.xoWindowOk !== false);
+          const xoWinNote =
+            win.xoWindowOk !== false
+              ? ''
+              : `⚠ handover: a delivered crossing sits outside its physics window` +
+                (anyXoSane
+                  ? ' — an in-window candidate exists in the table; it ranks lower on flatness.'
+                  : ' — no candidate stayed inside; the drivers or the window settings disagree ' +
+                    'with every reachable design. Check the ⚙ window readout.');
           const waarschuwingen = [
             zNote,
+            xoWinNote,
             win.xoPinNote ? `⚠ PIN: ${win.xoPinNote}` : '',
             win.net.snapNote ?? '',
             win.net.safetyNote ? `⚠ ${win.net.safetyNote}` : '',
@@ -3982,6 +4012,8 @@ export default function App() {
                     avgDevDb: rr.net.after.avgDevDb ?? null,
                     phaseDeg: rr.net.after.phaseDeg,
                     zMinOhm: rr.net.after.zMinOhm ?? null,
+                    xoWindowOk: null,
+                    pairOverlapOct: null,
                     bomEur: rr.bomTotalEur,
                     winner: rr === win,
                     result: rr,
@@ -4357,6 +4389,10 @@ export default function App() {
        *  because the ranking now judges it: a criterion you cannot read is a
        *  criterion you cannot argue with. null for 2-way rows. */
       zMinOhm: number | null;
+      /** Physics verdict on the delivered handovers (3-way; null = unjudged
+       *  or 2-way row) + the delivered overlap width per pair in octaves. */
+      xoWindowOk: boolean | null;
+      pairOverlapOct: (number | null)[] | null;
       winner: boolean;
       /** 2-way and 3-way scans produce different result shapes; the table only
        *  displays numbers, so it carries either and the loader branches. */
@@ -4369,11 +4405,11 @@ export default function App() {
   /** Scan-table sort: click a header to sort by that column (asc → desc →
    *  back to the RANKING order, which is the default and keeps 🏆 on top). */
   const [scanSort, setScanSort] = useState<{
-    key: 'xo' | 'ripple' | 'avg' | 'phase' | 'zmin' | 'bom';
+    key: 'xo' | 'ripple' | 'avg' | 'phase' | 'ovl' | 'zmin' | 'bom';
     dir: 1 | -1;
   } | null>(null);
 
-  function toggleScanSort(key: 'xo' | 'ripple' | 'avg' | 'phase' | 'zmin' | 'bom') {
+  function toggleScanSort(key: 'xo' | 'ripple' | 'avg' | 'phase' | 'ovl' | 'zmin' | 'bom') {
     setScanSort((s0) =>
       s0?.key !== key ? { key, dir: 1 } : s0.dir === 1 ? { key, dir: -1 } : null,
     );
@@ -9602,6 +9638,7 @@ export default function App() {
                         ['ripple', 'peak'],
                         ['avg', 'avg'],
                         ['phase', 'phase'],
+                        ['ovl', 'overlap'],
                         ['zmin', 'Z min'],
                         ['bom', 'BOM'],
                       ] as const
@@ -9631,7 +9668,11 @@ export default function App() {
                               ? (r.avgDevDb ?? Number.POSITIVE_INFINITY)
                               : scanSort.key === 'phase'
                                 ? r.phaseDeg
-                                : scanSort.key === 'zmin'
+                                : scanSort.key === 'ovl'
+                                  ? (r.pairOverlapOct
+                                      ? Math.max(...r.pairOverlapOct.map((o) => o ?? 0))
+                                      : Number.POSITIVE_INFINITY)
+                                  : scanSort.key === 'zmin'
                                   ? -(r.zMinOhm ?? Number.NEGATIVE_INFINITY) // higher is better
                                   : (r.bomEur ?? Number.POSITIVE_INFINITY);
                       return (v(a) - v(b)) * scanSort.dir;
@@ -9659,6 +9700,22 @@ export default function App() {
                         {r.avgDevDb !== null ? `${r.avgDevDb.toFixed(2)} dB` : '—'}
                       </td>
                       <td>{r.phaseDeg.toFixed(1)}°</td>
+                      <td
+                        className={r.xoWindowOk === false ? 'scan-z-low' : undefined}
+                        title={
+                          r.pairOverlapOct === null
+                            ? 'Delivered overlap width per pair (2-way rows do not carry it)'
+                            : r.xoWindowOk === false
+                              ? 'A delivered crossing sits OUTSIDE its physics window (pin or measured beaming/lobing bound) — off-axis this is a different loudspeaker, so it ranks below every candidate inside the window'
+                              : 'Delivered overlap width per pair, octaves (W-M / M-T) — how long both cones carry a region together; the phase-coherent integration bandwidth'
+                        }
+                      >
+                        {r.pairOverlapOct !== null
+                          ? `${r.xoWindowOk === false ? '⚠ ' : ''}${r.pairOverlapOct
+                              .map((o) => (o === null ? '—' : o.toFixed(1)))
+                              .join('/')} oct`
+                          : '—'}
+                      </td>
                       <td
                         className={
                           r.zMinOhm !== null && r.zMinOhm < Z_FLOOR_OHM ? 'scan-z-low' : undefined

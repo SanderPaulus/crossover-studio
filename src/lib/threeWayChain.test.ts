@@ -335,6 +335,8 @@ describe('threeWayChain (phase-4 trede 4c, staged v1)', () => {
         bomTotalEur: bom,
         zOk,
         zMinOhm,
+        xoWindowOk: null,
+        pairOverlapOct: null,
         midInverted: false,
         tweeterInverted: false,
         structureLabel: 'LR4 @400 · LR4 @3000',
@@ -377,6 +379,8 @@ describe('threeWayChain (phase-4 trede 4c, staged v1)', () => {
         bomTotalEur: bom,
         zOk,
         zMinOhm,
+        xoWindowOk: null,
+        pairOverlapOct: null,
         midInverted: false,
         tweeterInverted: false,
         structureLabel: 'LR4 @400 · LR4 @3000',
@@ -406,5 +410,57 @@ describe('threeWayChain (phase-4 trede 4c, staged v1)', () => {
       0.5,
     );
     expect(unknown[0].label).toBe('unknown');
+  });
+
+  it('a crossing outside its physics window loses to one inside, however flat', () => {
+    // Sander's case: W-M delivered at 1069 Hz with 3.2 octaves of overlap
+    // against a measured 629 Hz beaming ceiling — every gate green, targets
+    // met, and the ranking had no opinion. Off-axis that is a different
+    // loudspeaker (both cones carry the midrange together); a flatter on-axis
+    // sum must not be able to buy it.
+    const mk = (label: string, xoOk: boolean | null, avgDev: number, phase: number): Chain3Result =>
+      ({
+        label,
+        xoLow: 400,
+        xoHigh: 3000,
+        specs: {} as Chain3Result['specs'],
+        synthWoofer: {} as Chain3Result['synthWoofer'],
+        synthMid: {} as Chain3Result['synthMid'],
+        synthTweeter: {} as Chain3Result['synthTweeter'],
+        parts: [],
+        net: { after: { rippleDb: avgDev, avgDevDb: avgDev, phaseDeg: phase } } as Chain3Result['net'],
+        bomTotalEur: 100,
+        zOk: true,
+        zMinOhm: 6,
+        xoWindowOk: xoOk,
+        pairOverlapOct: null,
+        midInverted: false,
+        tweeterInverted: false,
+        structureLabel: 'LR4 @400 · LR4 @3000',
+      }) as Chain3Result;
+    const ranked = rankChain3Results(
+      [mk('flat-outside-window', false, 0.2, 2), mk('inside-window', true, 0.5, 5)],
+      undefined,
+      0.5,
+    );
+    expect(ranked[0].label).toBe('inside-window');
+    // The amplifier still outranks it: a sane load with a drifted crossing
+    // beats a dead short with a perfect one.
+    const withZ = rankChain3Results(
+      [
+        { ...mk('short-but-in-window', true, 0.2, 2), zMinOhm: 1.0 },
+        mk('sane-load-outside', false, 0.5, 5),
+      ],
+      undefined,
+      0.5,
+    );
+    expect(withZ[0].label).toBe('sane-load-outside');
+    // Unjudged (no pins, no measured windows) is never punished.
+    const unjudged = rankChain3Results(
+      [mk('judged-ok', true, 0.5, 5), mk('unjudged', null, 0.6, 6)],
+      undefined,
+      0.5,
+    );
+    expect(unjudged[0].label).toBe('judged-ok');
   });
 });
