@@ -175,6 +175,58 @@ describe('designChain', () => {
     expect(noPrices[0].label).toBe('a');
   });
 
+  it('rankChainResults: amplifier load and handover window outrank flatness', () => {
+    // Ported from the three-way ranking, where both gaps were measured: zOk is
+    // RELATIVE (the tune did not worsen the dip), so a seed already under the
+    // floor passed every gate and won with an amp-hostile load; and a crossing
+    // past the measured beaming/lobing bound is a different loudspeaker
+    // off-axis however flat it sums on-axis.
+    const mk = (
+      label: string,
+      rippleDb: number,
+      extra: { zOk?: boolean; zMinOhm?: number | null; xoWindowOk?: boolean | null },
+    ) =>
+      ({
+        label,
+        bomTotalEur: null,
+        zOk: extra.zOk ?? true,
+        zMinOhm: extra.zMinOhm ?? 6,
+        xoWindowOk: extra.xoWindowOk ?? null,
+        net: { after: { rippleDb, phaseDeg: 5 } },
+      }) as never;
+    const flatterButLow = rankChainResults(
+      [mk('flat-2ohm', 0.3, { zMinOhm: 2.0 }), mk('sane-load', 0.6, { zMinOhm: 3.2 })],
+      undefined,
+      0.5,
+    );
+    expect(flatterButLow[0].label).toBe('sane-load');
+    const outsideWindow = rankChainResults(
+      [mk('flat-outside', 0.3, { xoWindowOk: false }), mk('inside', 0.6, { xoWindowOk: true })],
+      undefined,
+      0.5,
+    );
+    expect(outsideWindow[0].label).toBe('inside');
+    // The amplifier still outranks the handover.
+    const both = rankChainResults(
+      [mk('short-in-window', 0.3, { zMinOhm: 1.0, xoWindowOk: true }),
+       mk('sane-outside', 0.6, { xoWindowOk: false })],
+      undefined,
+      0.5,
+    );
+    expect(both[0].label).toBe('sane-outside');
+    // Unmeasured fields (older results, unwindowed runs) are never punished:
+    // the raw score decides exactly as before.
+    const legacy = rankChainResults(
+      [
+        ({ label: 'oud-vlak', bomTotalEur: null, net: { after: { rippleDb: 0.3, phaseDeg: 5 } } }) as never,
+        ({ label: 'oud-minder', bomTotalEur: null, net: { after: { rippleDb: 0.6, phaseDeg: 5 } } }) as never,
+      ],
+      undefined,
+      0.5,
+    );
+    expect(legacy[0].label).toBe('oud-vlak');
+  });
+
   it('rankChainResults: among near-equal winners a tweeter-safe crossing wins', () => {
     const mk = (
       rippleDb: number,

@@ -136,6 +136,39 @@ export interface NetOptimizeOptions {
    *  When provided, the final result must not degrade the FUNDAMENTALS on
    *  this band versus the seed — otherwise the seed is returned unchanged
    *  with a `safetyNote`. */
+  /** THE LEASH (designer sequence 3/3): per-branch acoustic TARGET magnitudes
+   *  from the design step, on `freq`. When present, each branch's delivered
+   *  |driver x filter| must stay inside a +/-3 dB corridor of its target
+   *  (NaN = unjudged point; the stopband belongs to the leak/protection
+   *  guards). Exactly 0 inside the corridor — the buildability-window
+   *  pattern — so a healthy tune pays nothing and the search path in sane
+   *  territory is untouched.
+   *
+   *  WHY: the assembled tune held the LARGEST freedom in the whole chain —
+   *  every value free, judged on the sum — which is the root the guards kept
+   *  patching around: cages, adaptive xo weights, the pin repair, the leak
+   *  term the design step had to learn because "de tuner herbouwde de
+   *  tweeter-tak" (BW3@1620 delivered as −29.5 dB@2k). Assembly's honest job
+   *  is small: align phase, trim levels, absorb realization error. The
+   *  corridor makes that the contract instead of a hope. */
+  branchTargets?: {
+    freq: number[];
+    low?: number[];
+    mid?: number[];
+    high?: number[];
+  };
+  /** The seed is MACHINE-GENERATED (a fresh synthesis from the design chain),
+   *  not something a designer chose. The amp-load repair is normally
+   *  seed-relative — we do not second-guess a user's own network — but that
+   *  bar is meaningless when we wrote the seed ourselves: a synthesis that
+   *  already dips to 0.5 ohm sets the bar at 0.5 ohm and the repair declares
+   *  victory without lifting anything. Measured on Sander's 3-way scan: all
+   *  four candidates shipped under the floor, the winner at 0.5 ohm from an
+   *  undamped shunt trap that is acoustically inaudible there and a dead
+   *  short to the amplifier. With this set, the repair must reach the real
+   *  floor, and it may spend response quality to get there — a short is not
+   *  a tradeable quantity. */
+  zFloorStrict?: boolean;
   safety?: {
     freqs: readonly number[];
     w: GriddedResponse;
@@ -165,6 +198,11 @@ export interface NetOptimizeResult {
     rippleDb: number;
     avgDevDb?: number;
     phaseDeg: number;
+    /** Delivered minimum system |Zin| in ohms — the amplifier's view of this
+     *  design. Reported (never optimised for): the safety gate only refuses a
+     *  tune that WORSENS the dip, so this is the only place the absolute
+     *  number becomes visible to a caller. See Z_FLOOR_OHM. */
+    zMinOhm?: number;
     /** 3-way: uniform-average phase error per adjacent pair [low, high] —
      *  the coupled-pairs verdict (gates judge the worst of these). */
     pairPhaseDeg?: number[];
@@ -174,6 +212,8 @@ export interface NetOptimizeResult {
      *  while its handovers sit an octave off the knees that were designed —
      *  measured on Robbert's set before the candidates were caged. */
     xoHzPairs?: (number | null)[];
+    /** 3-way: delivered overlap width per pair, octaves. */
+    pairOverlapOct?: (number | null)[];
   };
   /** How many component values were free to move (final network). */
   tuned: number;
@@ -224,7 +264,7 @@ const PARAM_OF: Record<'R' | 'L' | 'C', { name: string; factor: number }> = {
  *  degenerate case measured 1.5 Ω; 2.5 — the classic "4 Ω-capable amp"
  *  tolerance — separates the two cleanly. The Impedance panel's stricter
  *  IEC tiers (3.2/6.4 Ω) keep informing the designer either way. */
-const Z_FLOOR_OHM = 2.5;
+export const Z_FLOOR_OHM = 2.5;
 
 /** Soft buildability bounds, as in synthesis. */
 const BOUNDS: Record<'C' | 'L' | 'R', [number, number]> = {
@@ -584,6 +624,15 @@ export function optimizeNetworkValues(
     /** Uniform-average phase error PER pair — the coupled-pairs gate reads
      *  the WORST of these (solo: empty). */
     pairPhaseDeg: number[];
+    /** Mean squared corridor excess over the branch targets (0 without
+     *  targets, and 0 for any tune that stays inside the corridor). */
+    corridorSq: number;
+    /** Phase-coherent overlap width PER pair, octaves (integration bandwidth
+     *  — the same number the pair chips show). Reported so the chain can put
+     *  it in front of the designer: a W-M handover 3.2 octaves wide means
+     *  both cones carry the midrange together, which no on-axis number
+     *  reveals. */
+    pairOverlapOct: (number | null)[];
     /** How far the combined SPL at the crossing sits BELOW the band mean
      *  (dB, beyond a 6 dB allowance). A healthy crossing meets ON level; a
      *  starved branch "crosses" the other one deep in a hole instead. */
@@ -623,6 +672,48 @@ export function optimizeNetworkValues(
     const wF = hW ? applyTransfer(w, hW) : w;
     const tF = hT ? applyTransfer(t, hT) : t;
     const mF = m ? (hM ? applyTransfer(m, hM) : m) : null;
+
+    // Branch-target corridor (see opts.branchTargets). Interpolated in log-f
+    // because this evaluates on decimated and safety grids too; a NaN
+    // neighbour masks the point.
+    let corridorSq = 0;
+    const bt = opts.branchTargets;
+    if (bt) {
+      const CORRIDOR_DB = 3;
+      const at = (vals: readonly number[] | undefined, f: number): number | null => {
+        if (!vals) return null;
+        const fr = bt.freq;
+        if (f < fr[0] || f > fr[fr.length - 1]) return null;
+        let lo = 0;
+        let hi = fr.length - 1;
+        while (hi - lo > 1) {
+          const mid2 = (lo + hi) >> 1;
+          if (fr[mid2] <= f) lo = mid2;
+          else hi = mid2;
+        }
+        const a1 = vals[lo];
+        const a2v = vals[hi];
+        if (!Number.isFinite(a1) || !Number.isFinite(a2v)) return null;
+        const u = Math.log(f / fr[lo]) / Math.log(fr[hi] / fr[lo] || 2);
+        return a1 + (a2v - a1) * (Number.isFinite(u) ? u : 0);
+      };
+      const one = (resp: GriddedResponse | null, vals: readonly number[] | undefined) => {
+        if (!resp || !vals) return;
+        let sum = 0;
+        let n = 0;
+        for (let i = 0; i < freqs.length; i++) {
+          const tv = at(vals, freqs[i]);
+          if (tv === null) continue;
+          const dev = Math.abs(resp.spl[i] - tv) - CORRIDOR_DB;
+          if (dev > 0) sum += dev * dev;
+          n++;
+        }
+        if (n > 0) corridorSq += sum / n;
+      };
+      one(wF, bt.low);
+      one(mF, bt.mid);
+      one(tF, bt.high);
+    }
 
     // 2-way: the classic pairwise combine (byte-identical path). 3-way: the
     // three-branch sum via the N-way core; the ADJACENT pairs each get their
@@ -1015,6 +1106,8 @@ export function optimizeNetworkValues(
       xoEdgeSq,
       pairSlopes: pm.map((x) => ({ lower: x.lowerSlopeDbOct, upper: x.upperSlopeDbOct })),
       pairPhaseDeg: solo ? [] : pairPhaseDeg,
+      pairOverlapOct: solo ? [] : integList.map((ig) => ig.bandwidth?.octaves ?? null),
+      corridorSq,
       xoDipDb,
       midSlopeDbOct,
       tweeterSlopeDbOct,
@@ -1101,6 +1194,14 @@ export function optimizeNetworkValues(
       // NB: the amp-load floor is deliberately NOT here (see Z_FLOOR_OHM) —
       // it lives in the gates and the repair pass, never in the objective.
       0.5 * m.xoDipDb * m.xoDipDb +
+      // Branch-target corridor (0 without targets and for any in-corridor
+      // tune; see branchTargets). 2·(dev beyond ±3 dB)² per masked point —
+      // measured at 0.5 the amp term simply bought its way out (a 6.7 dB
+      // branch departure survived on the pad-less test net); at 2 a 2 dB
+      // excess costs ~2.4 (comparable to typical amp/phase gains) and a
+      // rebuild-scale 10 dB excess ~60 — decisive. Phase alignment and
+      // ±3 dB of trim stay exactly free.
+      2 * m.corridorSq +
       m.xoHzPairs.reduce(
         (a: number, x, i) => a + xoPenaltyFor(x, opts.xoRangePairs?.[i] ?? xoR),
         0,
@@ -1143,6 +1244,15 @@ export function optimizeNetworkValues(
     const { work } = buildWork(ps);
     evaluations++;
     return fxOf(metricsOn(work, optW.freq, optW, optT, optM, optZ, optAngles));
+  };
+  /** Same evaluation, but keeping the impedance minimum the metrics already
+   *  computed. The catalog snap needs it and a second solve would be pure
+   *  waste. */
+  const quickFxZ = (ps: readonly VxpPart[]): { fx: number; zMin: number } => {
+    const { work } = buildWork(ps);
+    evaluations++;
+    const m = metricsOn(work, optW.freq, optW, optT, optM, optZ, optAngles);
+    return { fx: fxOf(m), zMin: m.zMinOhm };
   };
 
   /** Value window for a slot (log10 SI): SERIES-PATH slots of a bound kind are
@@ -1270,6 +1380,15 @@ export function optimizeNetworkValues(
         // residue at weight 120 cost a negligible 1.2 and the repair stalled
         // there; the gate then rejected the whole tune anyway).
         barr += 1200 * (m.zShortOhm / Z_FLOOR_OHM) ** 2;
+        // THE HIERARCHY: the amplifier floor is non-negotiable, branch
+        // fidelity yields to it. With the corridor still counting, the
+        // repair paid corridor tax on exactly the branch shifts the lift
+        // needs — measured on Sanders' set (low crossings, three branches
+        // crowding 1–2.5 kHz): every candidate's repair failed, every tune
+        // was rejected wholesale, and the scan shipped nine raw seeds with
+        // 4.4–6.6 dB ripple and 0.1–2.0 Ω minima. The xo-window class and
+        // the ranking still judge whatever the repair does to the branches.
+        barr -= 2 * m.corridorSq;
       }
       return fxOf(m) + barr + 8 * penalty;
     };
@@ -1549,7 +1668,30 @@ export function optimizeNetworkValues(
        * 7.8°, all "within target" and therefore invisible to the old gate.
        * Fewest components, but never quality as loose change. */
       const fx0 = cur.fx;
-      for (let round = 0; round < 8; round++) {
+      /* How many removals may be RETUNED AND TESTED per round, and how many
+       * rounds there are. Both were fixed at 3 and 8, and on a 29-part 3-way
+       * that is why obviously dead parts survived a pass whose targets were
+       * comfortably met (Sander: two 10 mH / 6.8 mH coils forming traps at
+       * 232 and 411 Hz inside a TWEETER branch, plus a 0.22 Ω series
+       * resistor).
+       *
+       * The top-3 rule is what excluded them, and the reason is subtle: a
+       * genuinely dead part's removal leaves fx almost EXACTLY where it was,
+       * while some live part's removal can push fx slightly DOWN before the
+       * retune. Sorted by raw fx the dead ones therefore rank below several
+       * others and never get tried — and `if (!accepted) break` then ends the
+       * whole sweep on the first round whose top three failed.
+       *
+       * So: retune and test the eight most promising removals per round rather
+       * than three, and let the round count follow the size of the design.
+       * Search DEPTH only: the acceptance gates are untouched, so a removal
+       * still has to keep the targets, keep the fundamentals, and cost ≤10%
+       * on its own and ≤35% in total. */
+      const freeParts = cur.parts.filter(
+        (q) => RLC.has(q.type) && !q.locked && !q.open && !q.shorted && q.partId !== undefined,
+      ).length;
+      const maxRounds = Math.min(20, Math.max(8, Math.floor(freeParts / 2)));
+      for (let round = 0; round < maxRounds; round++) {
         type Cand = { id: string; trial: VxpPart[]; fx: number };
         const cands: Cand[] = [];
         for (const q of cur.parts) {
@@ -1568,8 +1710,15 @@ export function optimizeNetworkValues(
           }
         }
         cands.sort((a, b) => a.fx - b.fx);
+        // Strictly a SUPERSET of the old top-3, so this can only ever find
+        // more. A threshold on raw fx was tried and reverted: an untuned
+        // removal often looks far worse than it is — the retune is what
+        // recovers it — so filtering on the pre-tune number threw away the
+        // very candidates the pass exists for (it broke the redundant-cap
+        // regression immediately).
+        const shortlist = cands.slice(0, 8);
         let accepted = false;
-        for (const cand of cands.slice(0, 3)) {
+        for (const cand of shortlist) {
           const t = tune(cand.trial, 0.6, tgt);
           const tFull = fullM(t.parts);
           if (
@@ -1772,7 +1921,8 @@ export function optimizeNetworkValues(
       // the safety gate judges against the seed, so "as healthy as the seed"
       // is repaired enough there.
       const zSeed = worstZ(fullOf(parts), parts);
-      const repairedEnough = (s: number): boolean => s <= Math.max(0.15, zSeed.short + 0.15);
+      const repairedEnough = (s: number): boolean =>
+        opts.zFloorStrict ? s <= 0.15 : s <= Math.max(0.15, zSeed.short + 0.15);
       // Iterate the barrier retune (max 3 warm-started rounds): one round's
       // simplex budget regularly stalls short (measured in the app chain:
       // 1.2 → 2.14 Ω in round one, threshold 2.5).
@@ -1801,19 +1951,37 @@ export function optimizeNetworkValues(
       // the raw seed instead (measured: repFx 4.8 < 5.7 refused on a +7 leak
       // arm, and the gate then threw 100% of the tune away) — OR it stays in
       // the prune-doctrine 10%/seed window with the leak/dip arms intact.
+      /* Corridor-free on BOTH sides (same hierarchy as the search): the fx a
+       * repair is judged by must not contain the corridor tax on the very
+       * moves the repair exists to make. Arithmetic, not a re-solve — every
+       * TuneOut carries its final metrics. */
+      const nc = (t: { fx: number; metrics: Metrics }): number =>
+        t.fx - 2 * t.metrics.corridorSq;
       const armsOk =
-        (rep.fx <= cur.fx * 1.1 || rep.fx <= fxOrig) &&
+        (nc(rep) <= nc(cur) * 1.1 || nc(rep) <= fxOrig) &&
         mRep.xoDipDb <= mCur.xoDipDb + 1 &&
         (!breakupGuard || mRep.leakSqDb <= mCur.leakSqDb + 4);
-      const ok =
-        repairedEnough(zRep.short) &&
-        targetsKept &&
+      /* Strict mode widens what a repair may cost. A 0.5 ohm minimum is not
+       * a quantity to trade against a tenth of a dB — it is a network the
+       * designer would not build. The fundamentals still hold (crossing,
+       * tweeter protection), and the note reports what the lift cost. */
+      const strictOk =
+        opts.zFloorStrict === true &&
+        zRep.short < zCur.short - 0.1 &&
         mRep.protSqDb <= mCur.protSqDb + 3 &&
-        (rep.fx <= cur.fx || armsOk);
+        mRep.xoDipDb <= mCur.xoDipDb + 1 &&
+        nc(rep) <= nc(cur) * 1.5;
+      const ok =
+        (repairedEnough(zRep.short) &&
+          targetsKept &&
+          mRep.protSqDb <= mCur.protSqDb + 3 &&
+          (nc(rep) <= nc(cur) || armsOk)) ||
+        strictOk;
       if (ok) {
         ampFloorNote =
           `amp-load floor: system impedance minimum lifted ` +
-          `${zCur.min.toFixed(1)} → ${zRep.min.toFixed(1)} Ω (floor ${Z_FLOOR_OHM} Ω)`;
+          `${zCur.min.toFixed(1)} → ${zRep.min.toFixed(1)} Ω (floor ${Z_FLOOR_OHM} Ω)` +
+          (zRep.short > 0.15 ? ' — still under the floor, but no longer a short' : '');
         cur = { ...rep, freeCount: cur.freeCount };
       } else {
         ampFloorNote =
@@ -1841,6 +2009,18 @@ export function optimizeNetworkValues(
       if (hit) return params.map((q) => (q.name === name ? { ...q, value } : { ...q }));
       return [...params.map((q) => ({ ...q })), { name, value, unit }];
     };
+    // Reference impedance for the coil DCR budget: the median |Z| the network
+    // actually works into. Measured, not assumed, so a 4 Ω mid gets a tighter
+    // ceiling than an 8 Ω woofer without a second constant to keep in sync.
+    const refOhms = (() => {
+      const zs: number[] = [];
+      for (const z of Object.values(driverZ)) {
+        for (const c of z) zs.push(Math.hypot(c.re, c.im));
+      }
+      zs.sort((a, b) => a - b);
+      return zs.length > 0 ? zs[Math.floor(zs.length / 2)] : 0;
+    })();
+    const snapPrefs: SnapPrefs = { profile: 'auto', ...(opts.snapPrefs ?? {}), refOhms };
     const snapables = cur.parts
       .map((q, i) => ({ q, i }))
       .filter(({ q }) => KIND_OF[q.type] && !q.locked && !q.open && !q.shorted && q.partId);
@@ -1851,7 +2031,7 @@ export function optimizeNetworkValues(
       const kind = KIND_OF[q.type];
       const u = PARAM_OF[kind];
       const raw = q.params.find((p) => p.name === u.name)?.value ?? 0;
-      return pickCandidates(kind, raw / u.factor, 3, opts.snapPrefs ?? null, posOfPart(q.partId!));
+      return pickCandidates(kind, raw / u.factor, 3, snapPrefs, posOfPart(q.partId!));
     });
     const applied = (ch: (CatalogPick | null)[]): VxpPart[] => {
       const out = cloneParts(cur.parts);
@@ -1867,16 +2047,32 @@ export function optimizeNetworkValues(
       });
       return out;
     };
+    /* AMP LOAD SURVIVES THE SNAP. The snap judges on fxOf(), and the amp-load
+     * floor is deliberately absent there (see Z_FLOOR_OHM) — so the discrete
+     * pass happily undid the repair that ran two steps earlier. Measured on
+     * Sander's 3-way: "minimum lifted 2.1 → 2.4 Ω" in the note while the
+     * delivered network sat at 1.9 Ω, because the catalog values that fit best
+     * put the dip back. Same disease as the relative repair bar: a guard
+     * enforced at one step and silently undone at the next.
+     *
+     * Kept at DECISION level, and deliberately a steep penalty rather than a
+     * hard reject: when no purchasable combination clears the bar the descent
+     * must still rank the least-bad ones instead of collapsing to "first
+     * candidate in every slot". Asking for more than the floor is pointless,
+     * and a pre-snap network already under it only has to not get worse. */
+    const zSnapTarget = Math.min(Z_FLOOR_OHM, quickFxZ(cur.parts).zMin);
     const snapScore = (ch: (CatalogPick | null)[]): number => {
       const extra = ch.reduce((a, p) => a + (p ? p.parts.length - 1 : 0), 0);
       const cost = ch.reduce((a, p) => a + (p?.priceEur ?? 0), 0);
       let fx: number;
+      let zMin: number;
       try {
-        fx = quickFx(applied(ch));
+        ({ fx, zMin } = quickFxZ(applied(ch)));
       } catch {
         return 1e12;
       }
-      return fx * (1 + 0.05 * extra) * (1 + cw * cost);
+      const zShort = Math.max(0, zSnapTarget - zMin);
+      return fx * (1 + 0.05 * extra) * (1 + cw * cost) * (1 + 20 * zShort);
     };
     const descend = (candSets: CatalogPick[][]): { picks: (CatalogPick | null)[]; score: number } => {
       let ps: (CatalogPick | null)[] = candSets.map((c) => c[0] ?? null);
@@ -1903,7 +2099,7 @@ export function optimizeNetworkValues(
     // variant and report the percentage difference — the designer sees what
     // stacking bought instead of discovering it in the BOM.
     if (picks.some((p) => p && p.parts.length > 1)) {
-      const noStackPrefs: SnapPrefs = { ...(opts.snapPrefs ?? { profile: 'auto' }), allowStacks: false };
+      const noStackPrefs: SnapPrefs = { ...snapPrefs, allowStacks: false };
       const singleCands = snapables.map(({ q }) => {
         const kind = KIND_OF[q.type];
         const u = PARAM_OF[kind];
@@ -2000,12 +2196,43 @@ export function optimizeNetworkValues(
 
   // before/after report the PEAK ±dB (the strip's unit, matching the target)
   // plus the whole-range avg |deviation| for the chain ranking / scan table.
-  const report = (m: Metrics) => ({
+  /* The DELIVERED absolute impedance minimum, judged on the eval grid AND the
+   * safety grid when one is given — a narrow dip outside a zoomed view range
+   * is exactly the one that reaches the amplifier anyway.
+   *
+   * WHY REPORT IT: the safety gate is RELATIVE (it only refuses a tune that
+   * makes the dip worse than the seed), so a design whose seed already sat
+   * under the floor passes every gate and still ships an amp-hostile load.
+   * Nothing downstream could see that number; the chain ranking now can. */
+  const zMinOf = (m: Metrics, ps: readonly VxpPart[]): number => {
+    let min = m.zMinOhm;
+    if (opts.safety) {
+      const sg = opts.safety;
+      const ms = metricsOn(buildWork(ps).work, sg.freqs, sg.w, sg.t, sg.m ?? null, sg.z, null);
+      if (ms.zMinOhm < min) min = ms.zMinOhm;
+    }
+    return min;
+  };
+  /* The snap runs BEFORE this point, so the repair's claim has to be checked
+   * against what actually ships. A note reading "lifted 2.1 → 2.4 Ω" on a
+   * network delivering 1.9 Ω is worse than no note at all — it is the reason
+   * the give-back went unnoticed for as long as it did. */
+  if (ampFloorNote !== undefined && ampFloorNote.includes('lifted')) {
+    const zFinal = zMinOf(after, outParts);
+    const claimed = /→ ([\d.]+) Ω/.exec(ampFloorNote);
+    if (claimed && zFinal < parseFloat(claimed[1]) - 0.05) {
+      ampFloorNote += `; the catalog snap gave part of that back — delivered ${zFinal.toFixed(1)} Ω`;
+    }
+  }
+
+  const report = (m: Metrics, ps: readonly VxpPart[]) => ({
     rippleDb: m.ripplePeakDb,
     avgDevDb: m.avgDevDb,
     phaseDeg: m.phaseDeg,
+    zMinOhm: zMinOf(m, ps),
     ...(m.pairPhaseDeg.length > 1 ? { pairPhaseDeg: m.pairPhaseDeg } : {}),
     ...(m.xoHzPairs.length > 1 ? { xoHzPairs: m.xoHzPairs } : {}),
+    ...(m.pairOverlapOct.length > 1 ? { pairOverlapOct: m.pairOverlapOct } : {}),
   });
 
   /* ---- SOLO sensitivity gate (see soloSensBudgetDb): a tuned result that
@@ -2024,8 +2251,8 @@ export function optimizeNetworkValues(
     if (resLoss > soloLossCap + 0.5 && resLoss > seedLoss + 0.2) {
       return {
         parts: cloneParts(parts),
-        before: report(before),
-        after: report(before),
+        before: report(before, parts),
+        after: report(before, parts),
         tuned: 0,
         evaluations,
         removed: [],
@@ -2088,8 +2315,8 @@ export function optimizeNetworkValues(
             'the optimizer see the whole design.';
       return {
         parts: cloneParts(parts),
-        before: report(before),
-        after: report(before),
+        before: report(before, parts),
+        after: report(before, parts),
         tuned: 0,
         evaluations,
         removed: [],
@@ -2143,8 +2370,8 @@ export function optimizeNetworkValues(
 
   return {
     parts: outParts,
-    before: report(before),
-    after: { ...report(after), xoHz: after.xoHz },
+    before: report(before, parts),
+    after: { ...report(after, outParts), xoHz: after.xoHz },
     tuned: cur.freeCount,
     evaluations,
     removed,

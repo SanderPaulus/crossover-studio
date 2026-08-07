@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   bomFor,
+  setCustomSeries,
   catalogParts,
   catalogSeries,
   coilDcr,
@@ -177,5 +178,138 @@ describe('uniform banks (the 4 x 22 uF realisation)', () => {
     }
     // And a value the grid carries outright still resolves as a single part.
     expect(pickCandidates('C', 10e-6, 3)[0].parts).toHaveLength(1);
+  });
+});
+
+describe('coil tier exemption (DCR is a position property, not a tier)', () => {
+  it('a premium profile does not narrow the coil pool to premium wire', () => {
+    // Two real coils, same value, both inside any sane DCR ceiling: a
+    // premium-tier foil at 300 EUR and a standard iron core at 12 EUR with
+    // 0.2 ohm more DCR — electrically near-identical, and the solver models
+    // the difference. Under profile 'premium' the old tier cascade returned
+    // ONLY the foil pool, so the snap could never even see the cheap coil
+    // (measured: two Zero-Ohm coils, 547 EUR, in one woofer branch). The
+    // candidates must now include both; the snap's cost weight decides.
+    setCustomSeries(
+      [],
+      [
+        {
+          id: 'FOIL-68',
+          brand: 'Gold',
+          series: 'Foil',
+          kind: 'L',
+          value: 6.8e-3,
+          seriesR: 0.18,
+          priceEur: 300,
+          tier: 'premium',
+        },
+        {
+          id: 'IRON-68',
+          brand: 'Iron',
+          series: 'Core',
+          kind: 'L',
+          value: 6.8e-3,
+          seriesR: 0.38,
+          priceEur: 12,
+          tier: 'standard',
+        },
+      ],
+    );
+    const picks = pickCandidates('L', 6.8e-3, 3, { profile: 'premium', refOhms: 8 }, 'series');
+    const ids = picks.flatMap((p) => p.parts.map((x) => x.id));
+    expect(ids).toContain('IRON-68');
+    expect(ids).toContain('FOIL-68');
+    // An EXPLICIT series binding is the designer's own call and still wins.
+    const bound = pickCandidates(
+      'L',
+      6.8e-3,
+      3,
+      { profile: 'premium', refOhms: 8, seriesByKind: { L: 'gold-foil' } },
+      'series',
+    );
+    expect(bound.every((p) => p.parts.every((x) => x.brand === 'Gold'))).toBe(true);
+    setCustomSeries([]);
+  });
+});
+
+describe('real SKUs beat generated grids (imported catalog)', () => {
+  it('does not pick a fictional grid value when a real part covers it', () => {
+    // Sander's case in miniature: a built-in-style series grid offering a
+    // value the product does not come in, next to a real priced SKU. The grid
+    // entry fits marginally better AND costs nothing, so without this rule the
+    // snap takes it — and the BOM line comes out unbuyable and unpriced.
+    setCustomSeries(
+      [
+        {
+          id: 'ghost-caps',
+          brand: 'Ghost',
+          series: 'Grid Only',
+          kind: 'C',
+          range: [1e-6, 1e-4],
+          eSeries: 'E24',
+        },
+      ],
+      [
+        {
+          id: 'REAL-82U',
+          brand: 'Real',
+          series: 'Buyable',
+          kind: 'C',
+          value: 82e-6,
+          seriesR: 0.02,
+          priceEur: 24,
+        },
+        {
+          id: 'REAL-100U',
+          brand: 'Real',
+          series: 'Buyable',
+          kind: 'C',
+          value: 100e-6,
+          seriesR: 0.02,
+          priceEur: 28,
+        },
+      ],
+    );
+    const picks = pickCandidates('C', 91e-6, 3);
+    expect(picks.length).toBeGreaterThan(0);
+    for (const p of picks) {
+      for (const part of p.parts) expect(part.brand).toBe('Real');
+    }
+    // …and every pick therefore carries a price the BOM can total.
+    expect(picks.every((p) => p.priceEur !== undefined)).toBe(true);
+    setCustomSeries([]);
+  });
+
+  it('keeps the grid where no real part can cover the value', () => {
+    // A coverage gap must stay covered: dropping the fallback wholesale turns
+    // a missing SKU range into silent fit damage instead of a visible one.
+    setCustomSeries(
+      [
+        {
+          id: 'ghost-caps',
+          brand: 'Ghost',
+          series: 'Grid Only',
+          kind: 'C',
+          range: [1e-6, 1e-3],
+          eSeries: 'E12',
+        },
+      ],
+      [
+        {
+          id: 'REAL-1U',
+          brand: 'Real',
+          series: 'Buyable',
+          kind: 'C',
+          value: 1e-6,
+          seriesR: 0.02,
+          priceEur: 5,
+        },
+      ],
+    );
+    const picks = pickCandidates('C', 470e-6, 3);
+    expect(picks.length).toBeGreaterThan(0);
+    // The real 1 µF is nowhere near 470 µF, so the grid must still be offered.
+    expect(picks.some((p) => p.parts.some((x) => x.brand === 'Ghost'))).toBe(true);
+    setCustomSeries([]);
   });
 });

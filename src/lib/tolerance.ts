@@ -1,7 +1,13 @@
 import { crossoverToNetlist } from './vxpNetwork.ts';
 import { solveNetwork, type PassiveElement } from './network.ts';
-import { applyTransfer, combine, type GriddedResponse, type TweeterAdjust } from './dsp.ts';
-import { pickSlots } from './driverSlots.ts';
+import {
+  applyTransfer,
+  combineN,
+  type BranchAdjust,
+  type GriddedResponse,
+  type TweeterAdjust,
+} from './dsp.ts';
+import { pickSlotsN } from './driverSlots.ts';
 import type { Complex } from './complex.ts';
 import type { VxpPart } from './parsers/vxp.ts';
 
@@ -40,6 +46,12 @@ export function toleranceBand(
   z: Record<string, readonly Complex[]>,
   adjust: TweeterAdjust,
   tolPct: number,
+  /** Optional MIDDLE branch — present makes this a 3-way analysis. The band
+   *  is a build-risk statement about the WHOLE loudspeaker, so leaving the mid
+   *  out would have quietly answered a different question than the one asked:
+   *  a 3-way's mid carries the most components and therefore most of the
+   *  tolerance exposure. */
+  mid?: { response: GriddedResponse; adjust: BranchAdjust },
 ): ToleranceResult | null {
   let netlist: ReturnType<typeof crossoverToNetlist>['netlist'];
   try {
@@ -57,13 +69,22 @@ export function toleranceBand(
   const combinedOf = (): number[] | null => {
     evaluations++;
     const sol = solveNetwork(net, [...grid], z);
-    const { woofer, tweeter } = pickSlots(sol.drivers);
-    const hW = woofer ? sol.transfers[woofer.id] ?? null : null;
-    const hT = tweeter ? sol.transfers[tweeter.id] ?? null : null;
-    if (!hW && !hT) return null;
+    const slots = pickSlotsN(sol.drivers);
+    if (slots.ambiguous) return null;
+    const hW = slots.woofer ? sol.transfers[slots.woofer.id] ?? null : null;
+    const hT = slots.tweeter ? sol.transfers[slots.tweeter.id] ?? null : null;
+    const hM = slots.mid ? sol.transfers[slots.mid.id] ?? null : null;
+    if (!hW && !hT && !hM) return null;
     const wF = hW ? applyTransfer(w, hW) : w;
     const tF = hT ? applyTransfer(t, hT) : t;
-    return combine(wF, tF, adjust).combinedSpl;
+    const branches = [
+      { response: wF, adjust: { offsetMm: 0, trimDb: 0, inverted: false } },
+      ...(mid
+        ? [{ response: hM ? applyTransfer(mid.response, hM) : mid.response, adjust: mid.adjust }]
+        : []),
+      { response: tF, adjust },
+    ];
+    return combineN(branches).combinedSpl;
   };
 
   const nominal = combinedOf();

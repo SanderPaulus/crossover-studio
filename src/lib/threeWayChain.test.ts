@@ -93,6 +93,47 @@ describe('threeWayChain (phase-4 trede 4c, staged v1)', () => {
     }
   });
 
+  it('anchors are LEVEL-INVARIANT: a hot branch must not move the candidates', () => {
+    // The designer sequence, step 2: levels are decided before the crossover
+    // is chosen. A raw overlap centre reads the crossing of a loudspeaker
+    // that will not exist once the pads are in — a tweeter 8 dB hot reaches
+    // level far below any sensible handover, and the scan then searches the
+    // wrong neighbourhood (documented; the pin was the workaround). With the
+    // anchors reading level-matched responses, adding gain to any one branch
+    // must not move the searched candidates beyond numerical dust.
+    //
+    // A DISTINCT woofer on purpose: the shared w≡m fixture has a CONSTANT
+    // level gap after trimming, so "maximum overlap" ties at every grid point
+    // and the argmax is decided by floating-point dust — the documented
+    // degeneracy of that fixture, not real behaviour. A 12 dB/oct tilt makes
+    // the W-M crossing real. Tolerance, not bit-equality: exact invariance is
+    // impossible in IEEE once the input itself is v+5.
+    const tilt = (r: GriddedResponse, cornerHz: number): GriddedResponse => ({
+      ...r,
+      spl: r.spl.map((v, i) => v - 12 * Math.max(0, Math.log2(r.freq[i] / cornerHz))),
+    });
+    const hot = (r: GriddedResponse, db: number): GriddedResponse => ({
+      ...r,
+      spl: r.spl.map((v) => v + db),
+    });
+    const wReal = tilt(m, 700);
+    const centres = (vs: ReturnType<typeof crossover3Variants>) =>
+      vs.map((v) => [v.xoLow, v.xoHigh] as const);
+    const base = centres(crossover3Variants(wReal, m, t));
+    for (const vs of [
+      centres(crossover3Variants(wReal, m, hot(t, 8))),
+      centres(crossover3Variants(wReal, hot(m, 5), t)),
+    ]) {
+      expect(vs.length).toBe(base.length);
+      for (let i = 0; i < vs.length; i++) {
+        expect(vs[i][0] / base[i][0]).toBeGreaterThan(0.95);
+        expect(vs[i][0] / base[i][0]).toBeLessThan(1.05);
+        expect(vs[i][1] / base[i][1]).toBeGreaterThan(0.95);
+        expect(vs[i][1] / base[i][1]).toBeLessThan(1.05);
+      }
+    }
+  });
+
   it('every candidate carries a cage that CONTAINS its own centre', () => {
     // Without a cage the tuner drags the acoustic crossing away from the knees
     // the design step chose (measured: 490/3000 designed → 1256/6361 built).
@@ -273,7 +314,14 @@ describe('threeWayChain (phase-4 trede 4c, staged v1)', () => {
   });
 
   it('ranking gates on the amp-load verdict before anything else', () => {
-    const mk = (label: string, zOk: boolean, avgDev: number, phase: number, bom: number | null): Chain3Result =>
+    const mk = (
+      label: string,
+      zOk: boolean,
+      avgDev: number,
+      phase: number,
+      bom: number | null,
+      zMinOhm: number | null = 6,
+    ): Chain3Result =>
       ({
         label,
         xoLow: 400,
@@ -286,6 +334,9 @@ describe('threeWayChain (phase-4 trede 4c, staged v1)', () => {
         net: { after: { rippleDb: avgDev, avgDevDb: avgDev, phaseDeg: phase } } as Chain3Result['net'],
         bomTotalEur: bom,
         zOk,
+        zMinOhm,
+        xoWindowOk: null,
+        pairOverlapOct: null,
         midInverted: false,
         tweeterInverted: false,
         structureLabel: 'LR4 @400 · LR4 @3000',
@@ -304,5 +355,112 @@ describe('threeWayChain (phase-4 trede 4c, staged v1)', () => {
       0.5,
     );
     expect(tied[0].label).toBe('b');
+  });
+
+  it('an amp-hostile impedance minimum loses even when every gate stayed green', () => {
+    const mk = (
+      label: string,
+      zOk: boolean,
+      avgDev: number,
+      phase: number,
+      bom: number | null,
+      zMinOhm: number | null = 6,
+    ): Chain3Result =>
+      ({
+        label,
+        xoLow: 400,
+        xoHigh: 3000,
+        specs: {} as Chain3Result['specs'],
+        synthWoofer: {} as Chain3Result['synthWoofer'],
+        synthMid: {} as Chain3Result['synthMid'],
+        synthTweeter: {} as Chain3Result['synthTweeter'],
+        parts: [],
+        net: { after: { rippleDb: avgDev, avgDevDb: avgDev, phaseDeg: phase } } as Chain3Result['net'],
+        bomTotalEur: bom,
+        zOk,
+        zMinOhm,
+        xoWindowOk: null,
+        pairOverlapOct: null,
+        midInverted: false,
+        tweeterInverted: false,
+        structureLabel: 'LR4 @400 · LR4 @3000',
+      }) as Chain3Result;
+    // Sander's case: the tune never WORSENED the dip, so zOk is true — but the
+    // delivered load is 2.2 Ohm, under the amplifier floor. A flatter result
+    // must not be able to buy that with a tenth of a dB.
+    const ranked = rankChain3Results(
+      [mk('flat-but-2.2ohm', true, 0.2, 2, 300, 2.2), mk('sane-load', true, 0.5, 5, 300, 3.4)],
+      undefined,
+      0.5,
+    );
+    expect(ranked[0].label).toBe('sane-load');
+    // A failed tune (zOk false) is still worse than merely sitting low: the
+    // first says the numbers cannot be trusted, the second is an honest load.
+    const both = rankChain3Results(
+      [mk('rejected', false, 0.2, 2, 300, 6), mk('low-but-tuned', true, 0.5, 5, 300, 2.2)],
+      undefined,
+      0.5,
+    );
+    expect(both[0].label).toBe('low-but-tuned');
+    // Unknown impedance (older results, 2-way-shaped nets) must not be
+    // punished for a number nobody measured.
+    const unknown = rankChain3Results(
+      [mk('known-low', true, 0.2, 2, 300, 2.2), mk('unknown', true, 0.5, 5, 300, null)],
+      undefined,
+      0.5,
+    );
+    expect(unknown[0].label).toBe('unknown');
+  });
+
+  it('a crossing outside its physics window loses to one inside, however flat', () => {
+    // Sander's case: W-M delivered at 1069 Hz with 3.2 octaves of overlap
+    // against a measured 629 Hz beaming ceiling — every gate green, targets
+    // met, and the ranking had no opinion. Off-axis that is a different
+    // loudspeaker (both cones carry the midrange together); a flatter on-axis
+    // sum must not be able to buy it.
+    const mk = (label: string, xoOk: boolean | null, avgDev: number, phase: number): Chain3Result =>
+      ({
+        label,
+        xoLow: 400,
+        xoHigh: 3000,
+        specs: {} as Chain3Result['specs'],
+        synthWoofer: {} as Chain3Result['synthWoofer'],
+        synthMid: {} as Chain3Result['synthMid'],
+        synthTweeter: {} as Chain3Result['synthTweeter'],
+        parts: [],
+        net: { after: { rippleDb: avgDev, avgDevDb: avgDev, phaseDeg: phase } } as Chain3Result['net'],
+        bomTotalEur: 100,
+        zOk: true,
+        zMinOhm: 6,
+        xoWindowOk: xoOk,
+        pairOverlapOct: null,
+        midInverted: false,
+        tweeterInverted: false,
+        structureLabel: 'LR4 @400 · LR4 @3000',
+      }) as Chain3Result;
+    const ranked = rankChain3Results(
+      [mk('flat-outside-window', false, 0.2, 2), mk('inside-window', true, 0.5, 5)],
+      undefined,
+      0.5,
+    );
+    expect(ranked[0].label).toBe('inside-window');
+    // The amplifier still outranks it: a sane load with a drifted crossing
+    // beats a dead short with a perfect one.
+    const withZ = rankChain3Results(
+      [
+        { ...mk('short-but-in-window', true, 0.2, 2), zMinOhm: 1.0 },
+        mk('sane-load-outside', false, 0.5, 5),
+      ],
+      undefined,
+      0.5,
+    );
+    expect(withZ[0].label).toBe('sane-load-outside');
+    // Unjudged (no pins, no measured windows) is never punished.
+    const unjudged = rankChain3Results(
+      [mk('judged-ok', true, 0.5, 5), mk('unjudged', null, 0.6, 6)],
+      undefined,
+      0.5,
+    );
+    expect(unjudged[0].label).toBe('judged-ok');
   });
 });

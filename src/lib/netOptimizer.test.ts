@@ -166,6 +166,36 @@ describe('staged mode (trapmethode on the assembled network)', () => {
     expect(r.after.phaseDeg).toBeLessThanOrEqual(staged.phaseDeg + 3);
   });
 
+  it('looser targets never cost MORE components (Sander\'s expectation)', () => {
+    // "Ik verwacht bij hogere marges dat ik minder onderdelen nodig heb" — that
+    // IS what staged mode promises, and it did not hold: the prune tested only
+    // the three lowest-fx removals per round and abandoned the whole sweep
+    // when those three failed. A genuinely dead part leaves fx almost exactly
+    // where it was, so it ranks BELOW removals that happen to nudge fx down,
+    // and it never got tried. Measured on his 29-part 3-way: targets met with
+    // room to spare (2.7 dB of 3, 12.8 deg of 15) and nothing was shed.
+    const seed = withRedundantCap();
+    const plain = optimizeNetworkValues(seed, grid, wBase, tBase, driverZ, NO_ADJ, {
+      phasePriority: 0.3,
+    });
+    const run = (rippleMul: number, phaseMul: number) =>
+      optimizeNetworkValues(seed, grid, wBase, tBase, driverZ, NO_ADJ, {
+        phasePriority: 0.3,
+        staged: {
+          rippleDb: plain.after.rippleDb * rippleMul + 0.05,
+          phaseDeg: plain.after.phaseDeg * phaseMul + 2,
+        },
+      });
+    const tight = run(1.05, 1.05);
+    const loose = run(1.6, 1.6);
+    const live = (r: ReturnType<typeof run>) =>
+      r.parts.filter((p) => p.partId && !p.open && !p.shorted && /^[LCR]/.test(p.type[0])).length;
+    expect(loose.removed.length).toBeGreaterThanOrEqual(tight.removed.length);
+    expect(live(loose)).toBeLessThanOrEqual(live(tight));
+    // …and the loose run still honours the goal it was given.
+    expect(loose.after.rippleDb).toBeLessThanOrEqual(plain.after.rippleDb * 1.6 + 0.2);
+  });
+
   it('a locked part is never pruned', () => {
     const parts = withRedundantCap().map((p) => (p.partId === 'C9' ? { ...p, locked: true } : p));
     const plain = optimizeNetworkValues(parts, grid, wBase, tBase, driverZ, NO_ADJ, {
@@ -647,6 +677,49 @@ describe('amplifier-load floor (system Z ≥ 2.5 Ω fundamental)', () => {
     expect(r.after.rippleDb).toBeLessThanOrEqual(r.before.rippleDb + 1e-9);
   });
 
+  it('zFloorStrict repairs a machine-written seed the relative bar would excuse', () => {
+    // THE BUG THIS PINS (measured on Sander's 3-way scan): the repair bar is
+    // seed-relative — right for a designer's own network, meaningless when the
+    // seed came out of our own synthesis. A seed dipping to ~0.4 Ω sets the
+    // bar at ~0.4 Ω, so the pass "succeeds" without lifting anything, and all
+    // four scan candidates shipped under the floor (winner: 0.5 Ω).
+    const seed: VxpPart[] = [
+      ...crudeNetwork('none'),
+      {
+        type: 'Resistor',
+        partId: 'RS1',
+        params: [{ name: 'R', value: 0.4, unit: 'Ω' }],
+        wires: [{ x: 3, y: 4 }, { x: 5, y: 11 }],
+      },
+      { type: 'Ground', params: [], wires: [{ x: 5, y: 11 }] },
+    ];
+    expect(zMinOf(seed)).toBeLessThan(0.5);
+    const lax = optimizeNetworkValues(seed, grid, wBase, tBase, driverZ, NO_ADJ, {
+      phasePriority: 0.3,
+    });
+    const strict = optimizeNetworkValues(seed, grid, wBase, tBase, driverZ, NO_ADJ, {
+      phasePriority: 0.3,
+      zFloorStrict: true,
+    });
+    // THE INVARIANT, not a number: under strict the pass either reaches the
+    // floor or says out loud that it could not. The relative bar has no such
+    // obligation — it may accept whatever one barrier round happened to give
+    // and still call the result healthy, which is precisely how a 0.5 Ω
+    // network reached the top of a scan with every gate green.
+    // (This synthetic seed recovers in one round, so lax lands well too; the
+    // difference is the obligation, which is what must be pinned.)
+    const strictMin = zMinOf(strict.parts);
+    expect(strictMin > 2.3 || (strict.ampFloorNote ?? '').includes('could not be repaired')).toBe(
+      true,
+    );
+    expect(strictMin).toBeGreaterThanOrEqual(zMinOf(lax.parts) - 1e-9);
+    expect(strictMin).toBeGreaterThan(2.3);
+    // The delivered minimum is reported either way — that number is what the
+    // chain ranking judges, so it must exist even when nothing was repaired.
+    expect(lax.after.zMinOhm).toBeDefined();
+    expect(strict.after.zMinOhm).toBeGreaterThan(2.3);
+  });
+
   it('a healthy network never enters the repair pass', () => {
     // The crude network's own system minimum sits ABOVE the floor (KOAN mid
     // 3.66 Ω + series L) — the repair must not trigger and the tune must
@@ -658,6 +731,91 @@ describe('amplifier-load floor (system Z ≥ 2.5 Ω fundamental)', () => {
     expect(zMinOf(r.parts)).toBeGreaterThan(3);
     expect(r.ampFloorNote).toBeUndefined();
     expect(r.after.rippleDb).toBeLessThan(r.before.rippleDb);
+  });
+});
+
+describe('branch-target corridor (the leash, designer sequence 3/3)', () => {
+  /** Delivered branch magnitudes of a parts array (dB per grid point). */
+  const branchesOf = (parts: readonly VxpPart[]) => {
+    const { netlist } = crossoverToNetlist({ name: 'leash', parts: [...parts] });
+    const sol = solveNetwork(netlist, grid, driverZ);
+    const hOf = (model: string) => {
+      const d = sol.drivers.find((x) => x.model === model);
+      return d ? sol.transfers[d.id] : undefined;
+    };
+    return {
+      low: applyTransfer(wBase, hOf('mid')!).spl,
+      high: applyTransfer(tBase, hOf('tweeter')!).spl,
+    };
+  };
+
+  it('an ACHIEVABLE target is reached without leaving the corridor', () => {
+    // The corridor is only an honest contract when the target is one the
+    // design step would hand over: achievable, with sane levels. (Feeding it
+    // the raw SEED branches of the pad-less crude net demands "keep the
+    // tweeter 8 dB hot", which conflicts with the sum by construction — the
+    // real chain never creates that, its targets carry the trims.) So:
+    // targets = the branches of an UNLEASHED tune — reachable by definition —
+    // and the leashed tune from the same seed must reach comparable quality
+    // while staying inside the corridor. The bite (a rebuild costing ~60 fx)
+    // is arithmetic on the weight; the no-harm direction is what needs proof.
+    const seed = crudeNetwork('none');
+    const free = optimizeNetworkValues(seed, grid, wBase, tBase, driverZ, NO_ADJ, {
+      phasePriority: 0.3,
+    });
+    const tgt = branchesOf(free.parts);
+    const r = optimizeNetworkValues(seed, grid, wBase, tBase, driverZ, NO_ADJ, {
+      phasePriority: 0.3,
+      branchTargets: { freq: [...grid], low: [...tgt.low], high: [...tgt.high] },
+    });
+    expect(r.after.rippleDb).toBeLessThanOrEqual(free.after.rippleDb * 1.25 + 0.05);
+    const del = branchesOf(r.parts);
+    // Judge only where the branch carries real level (its own top 25 dB) —
+    // the same mask the chain sends; the stopband belongs to other guards.
+    const maxDev = (got: readonly number[], want: readonly number[]): number => {
+      const peak = Math.max(...want);
+      let worst = 0;
+      for (let i = 0; i < got.length; i++) {
+        if (want[i] < peak - 25) continue;
+        worst = Math.max(worst, Math.abs(got[i] - want[i]));
+      }
+      return worst;
+    };
+    // Corridor 3 dB is a soft barrier, so allow a little skin.
+    expect(maxDev(del.low, tgt.low)).toBeLessThan(3.8);
+    expect(maxDev(del.high, tgt.high)).toBeLessThan(3.8);
+  });
+
+  it('the corridor yields to the amp-load repair (the hierarchy)', () => {
+    // Measured on Sanders' set: with the corridor counting inside the repair
+    // pass, every candidate's Z-repair failed its own acceptance and the scan
+    // shipped nine raw seeds (4.4–6.6 dB ripple, 0.1–2.0 Ω minima, absurd
+    // BOMs). The floor is non-negotiable; branch fidelity yields to it. This
+    // pins the regression: strict repair WITH targets present must still
+    // reach the floor.
+    const seed: VxpPart[] = [
+      ...crudeNetwork('none'),
+      {
+        type: 'Resistor',
+        partId: 'RS1',
+        params: [{ name: 'R', value: 0.4, unit: 'Ω' }],
+        wires: [{ x: 3, y: 4 }, { x: 5, y: 11 }],
+      },
+      { type: 'Ground', params: [], wires: [{ x: 5, y: 11 }] },
+    ];
+    const tgt = branchesOf(seed);
+    const zMinOf = (parts: readonly VxpPart[]): number => {
+      const { netlist } = crossoverToNetlist({ name: 'zc', parts: [...parts] });
+      const sol = solveNetwork(netlist, grid, driverZ);
+      return Math.min(...sol.inputZ.map((c) => Math.hypot(c.re, c.im)));
+    };
+    const r = optimizeNetworkValues(seed, grid, wBase, tBase, driverZ, NO_ADJ, {
+      phasePriority: 0.3,
+      zFloorStrict: true,
+      branchTargets: { freq: [...grid], low: [...tgt.low], high: [...tgt.high] },
+    });
+    expect(zMinOf(r.parts)).toBeGreaterThan(2.3);
+    expect(r.safetyNote).toBeUndefined();
   });
 });
 

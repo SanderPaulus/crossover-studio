@@ -2,7 +2,16 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { allSeries, bomFor, catalogSeries, nearestParts, pickCandidates, setCustomSeries } from './catalog.ts';
+import {
+  allSeries,
+  bomFor,
+  catalogSeries,
+  dcrCeilingOhms,
+  nearestParts,
+  pickCandidates,
+  setCustomSeries,
+} from './catalog.ts';
+import type { SnapPosition } from './catalog.ts';
 import { deserializeCatalog, serializeCatalog } from './catalogFile.ts';
 
 afterEach(() => setCustomSeries([]));
@@ -378,6 +387,50 @@ describe('v6 flat SKU database (Gemini data revision: E12 steps, sub-µF, big el
       const p = nearestParts('C', v, 1)[0];
       expect(p.value).toBeCloseTo(v, 12);
       expect(p.priceEur).toBeDefined();
+    }
+  });
+});
+
+describe('coil DCR budget per position (Sanders: the doctrine must pick the best coils where it matters)', () => {
+  it('spends thin wire only where it costs nothing, and never strands a slot', () => {
+    const imp = deserializeCatalog(
+      readFileSync(
+        join(dirname(fileURLToPath(import.meta.url)), 'parsers', 'fixtures', 'gemini-catalog-v8.json'),
+        'utf-8',
+      ),
+    );
+    setCustomSeries(imp.series, imp.parts);
+    try {
+      const REF = 6;
+      const worstDcr = (pos: SnapPosition | undefined, refOhms?: number) =>
+        Math.max(
+          ...pickCandidates(
+            'L',
+            2.4e-3,
+            3,
+            refOhms ? { profile: 'auto', refOhms } : null,
+            pos,
+          ).map((p) => p.seriesR ?? 0),
+        );
+      // The real case: a 2.4 mH slot. The full catalog offers this value on
+      // 0.3 mm wire at 6.4 Ω — electrically useless but cheapest, so the
+      // cost tie-break took it. Tier cannot express this (gauge varies per
+      // SKU, tier per series), so the budget is stated in dB of level.
+      expect(worstDcr('series', REF)).toBeLessThanOrEqual(dcrCeilingOhms('series', REF) + 1e-9);
+      expect(worstDcr('shunt', REF)).toBeLessThanOrEqual(dcrCeilingOhms('shunt', REF) + 1e-9);
+      // A shunt leg only loses depth of its short, so it gets more room —
+      // but still far less than the unguarded pool.
+      expect(dcrCeilingOhms('shunt', REF)).toBeGreaterThan(dcrCeilingOhms('series', REF));
+      expect(worstDcr(undefined)).toBeGreaterThan(dcrCeilingOhms('shunt', REF));
+      // Scale-free: the ceiling follows the impedance it works into.
+      expect(dcrCeilingOhms('series', 8)).toBeCloseTo((8 / 4) * dcrCeilingOhms('series', 4), 9);
+      // Feasibility, not preference: an impossible budget keeps the thickest
+      // wire rather than leaving the slot with nothing to snap to.
+      expect(
+        pickCandidates('L', 2.4e-3, 3, { profile: 'auto', refOhms: 0.001 }, 'series').length,
+      ).toBeGreaterThan(0);
+    } finally {
+      setCustomSeries([]);
     }
   });
 });

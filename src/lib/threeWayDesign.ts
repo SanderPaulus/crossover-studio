@@ -221,9 +221,22 @@ export function designThreeWay(input: Design3Input): Design3Result {
       return { fx: 1e9, pairPhaseDeg: [180, 180] };
     }
 
-    // Amplitude: whole-range flatness of the three-way sum over the band.
+    /* Amplitude: whole-range flatness of the three-way sum, PEAK-AWARE.
+     *
+     * Plain std is what a listener does not hear. Measured on Sander's set:
+     * the delivered sum spans 104.6 to 111.3 dB, and raising the EQ budget
+     * from 2 bands to 4 changed the winning design by literally nothing —
+     * byte-identical numbers — because a second band could not buy the 1% the
+     * greedy asks for. Cutting a 3 dB lift barely moves a standard deviation,
+     * so a band that fixes exactly what you hear cannot earn its components.
+     *
+     * The companion term is the solo engine's, at the same weight (see
+     * netOptimizer's solo branch): std² + 0.35·(worst positive excursion vs
+     * the median)². Positive only, and against the MEDIAN, on purpose — a dip
+     * is the honest floor of a cut-only design and must not read as an error
+     * the optimizer then "fixes" by pulling everything else down. */
     const stats = bandStats(sum.freq, sum.combinedSpl, band);
-    const amp = stats.count > 0 ? stats.std ** 2 : 1e6;
+    const amp = stats.count > 0 ? stats.std ** 2 + 0.35 * stats.peakExcess ** 2 : 1e6;
 
     // Phase: per ADJACENT pair, on the branches AS SUMMED (adjust applied), so
     // the pair score sees exactly what the sum sees.

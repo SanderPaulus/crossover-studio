@@ -1,11 +1,17 @@
 import type { Complex } from './complex.ts';
-import type { DriverFilterSpec } from './filters.ts';
-import { combine, type BranchAdjust, type GriddedResponse, type TweeterAdjust } from './dsp.ts';
+import { evalDriverFilter, type DriverFilterSpec } from './filters.ts';
+import {
+  applyTransfer,
+  combine,
+  type BranchAdjust,
+  type GriddedResponse,
+  type TweeterAdjust,
+} from './dsp.ts';
 import { computeIntegration } from './integration.ts';
 import { designThreeWay, type Struct3Choice } from './threeWayDesign.ts';
 import { synthesize, type SynthesisResult } from './synthesis.ts';
 import { mergeSynthesizedSchematics } from './schematicEdit.ts';
-import { optimizeNetworkValues, type NetOptimizeResult } from './netOptimizer.ts';
+import { optimizeNetworkValues, Z_FLOOR_OHM, type NetOptimizeResult } from './netOptimizer.ts';
 import type { SnapPrefs } from './catalog.ts';
 import { bomFor } from './catalog.ts';
 import type { VxpPart } from './parsers/vxp.ts';
@@ -95,6 +101,17 @@ export interface Chain3Input {
    *  the handover away from the knees the design step chose. */
   xoLowRange?: [number, number];
   xoHighRange?: [number, number];
+  /** What the DELIVERED crossings are judged against in the ranking: the pin
+   *  range when the designer pinned that axis (a promise), else the measured
+   *  physics window, else nothing. Distinct from the cage on purpose — the
+   *  cage is scan bookkeeping ("boekhouding, geen belofte"): a candidate
+   *  drifting into its neighbour's slice is fine, both slices are in-window.
+   *  Crossing OUTSIDE the physics window is the thing a designer refuses:
+   *  past the beaming/lobing bound both cones carry the region together. */
+  judgeWindows?: {
+    low?: { floorHz?: number | null; ceilHz?: number | null } | null;
+    high?: { floorHz?: number | null; ceilHz?: number | null } | null;
+  };
   label: string;
   settings: Chain3Settings;
 }
@@ -111,8 +128,25 @@ export interface Chain3Result {
   net: NetOptimizeResult;
   bomTotalEur: number | null;
   /** Amplifier-load verdict of the DELIVERED network: false when the tune was
-   *  rejected on the Z floor or the dip could not be repaired. */
+   *  rejected on the Z floor or the dip could not be repaired. RELATIVE — it
+   *  says the tune did not make things worse, NOT that the load is sane. */
   zOk: boolean;
+  /** Physics verdict on the DELIVERED handovers: every judged crossing sits
+   *  inside its window/pin (×1.06 slack — a beaming onset is a soft measured
+   *  number). null = nothing to judge (no pins, no measured windows). Ranked
+   *  as a class: meeting a flatness target with a crossing past the physics
+   *  window is the wrong loudspeaker, not a flatter one — measured on
+   *  Sander's set: W-M delivered at 1069 Hz with a 3.2-octave overlap against
+   *  a 629 Hz measured ceiling, and the ranking had no opinion. */
+  xoWindowOk: boolean | null;
+  /** Delivered overlap width per pair, octaves (null per pair when unknown). */
+  pairOverlapOct: (number | null)[] | null;
+  /** Minimum system |Zin| the amplifier actually sees, ohms. The absolute
+   *  companion to {@link zOk}, and the one a published design always states.
+   *  Ranked as a CLASS (above/below the floor), never blended into the score:
+   *  a load a designer would refuse to ship is not something a tenth of a dB
+   *  should be able to buy back. */
+  zMinOhm: number | null;
   /** Polarities the design step CHOSE — the UI checkboxes must follow these,
    *  or the simulation sums a different design than the one that was fitted. */
   midInverted: boolean;
@@ -208,8 +242,31 @@ export function runThreeWayChain(
   // subdivided that pin, and this candidate owns one slice of it.
   const lowCage = input.xoLowRange ?? pinRange(s.xoLowPin);
   const highCage = input.xoHighRange ?? pinRange(s.xoHighPin);
+  /* THE LEASH: the design step's acoustic target per branch, handed to the
+   * assembled tune as a corridor (see branchTargets in netOptimizer). Masked
+   * to where the branch is alive AND within 25 dB of its own target peak —
+   * below that the leak/protection guards own the stopband. */
+  const targetFor = (spec: DriverFilterSpec, resp: GriddedResponse): number[] => {
+    const tgt = applyTransfer(resp, evalDriverFilter(spec, [...grid]));
+    let peak = -Infinity;
+    for (let i = 0; i < grid.length; i++) {
+      if (resp.spl[i] > ALIVE_DB && tgt.spl[i] > peak) peak = tgt.spl[i];
+    }
+    return tgt.spl.map((v, i) => (resp.spl[i] > ALIVE_DB && v > peak - 25 ? v : NaN));
+  };
+  const branchTargets = {
+    freq: [...grid],
+    low: targetFor(specs.woofer, w),
+    mid: targetFor(specs.mid, m),
+    high: targetFor(specs.tweeter, t),
+  };
+
   const tuneOpts = {
     midBranch: { response: m, adjust: midAdjust },
+    branchTargets,
+    // The seed here is OUR OWN synthesis, so the seed-relative amp-load bar
+    // has nothing to respect and everything to hide behind. See zFloorStrict.
+    zFloorStrict: true,
     phasePriority: s.phasePriority,
     breakupGuard: s.breakupGuard,
     angleData: input.angleData,
@@ -277,6 +334,23 @@ export function runThreeWayChain(
   const zOk =
     !net.safetyNote &&
     !(net.ampFloorNote !== undefined && net.ampFloorNote.includes('could not be repaired'));
+  const zMinOhm = net.after.zMinOhm ?? null;
+  const judge = (
+    xo: number | null | undefined,
+    win?: { floorHz?: number | null; ceilHz?: number | null } | null,
+  ): boolean | null => {
+    if (!win || xo == null) return null;
+    const SLACK = 1.06;
+    if (win.floorHz != null && xo < win.floorHz / SLACK) return false;
+    if (win.ceilHz != null && xo > win.ceilHz * SLACK) return false;
+    return win.floorHz != null || win.ceilHz != null ? true : null;
+  };
+  const pairsXoDel = net.after.xoHzPairs ?? [];
+  const verdicts = [
+    judge(pairsXoDel[0], input.judgeWindows?.low),
+    judge(pairsXoDel[1], input.judgeWindows?.high),
+  ].filter((v): v is boolean => v !== null);
+  const xoWindowOk = verdicts.length === 0 ? null : verdicts.every(Boolean);
 
   return {
     label: input.label,
@@ -290,6 +364,9 @@ export function runThreeWayChain(
     net,
     bomTotalEur: bomFor(net.parts).totalEur,
     zOk,
+    zMinOhm,
+    xoWindowOk,
+    pairOverlapOct: net.after.pairOverlapOct ?? null,
     midInverted: design.midInverted,
     tweeterInverted: design.tweeterInverted,
     structureLabel: design.label,
@@ -377,7 +454,63 @@ export function crossover3Variants(
    *  raw level-crossing sits far below any sensible handover. */
   highWindow?: { floorHz?: number | null; ceilHz?: number | null },
 ): Chain3Variant[] {
-  /* Anchor = the raw pair's OVERLAP CENTRE — the same computeIntegration
+  /* ---- LEVEL FIRST (the designer sequence, step 2 — Sanders' own example:
+   * "meestal is de tweeter veel gevoeliger dan de rest, laten we eerst die
+   * zacht spelen, dan pas naar de xo kijken").
+   *
+   * The anchors below estimate where neighbouring drivers MEET — but a raw
+   * overlap centre is the crossing of a loudspeaker that will not exist once
+   * the pads are in: a tweeter 8 dB hot reaches level far below any sensible
+   * handover, and CLAUDE.md documented exactly that ("het vrije M-T-anker
+   * vindt bij een hete tweeter alsnog het lage kruispunt — de pin is daar
+   * het gereedschap"). Pinning was a workaround for an ordering fault.
+   *
+   * So the level decision comes first: coarse per-branch medians over
+   * physics-split passbands (window centres when measured, the free rails'
+   * geometric means otherwise), every branch trimmed DOWN to the quietest
+   * (passive is cut-only), and the anchors read the TRIMMED responses.
+   * Anchor-only on purpose: downstream, designThreeWay re-derives its trims
+   * from the xo-dependent passbands once the knees are chosen — one owner
+   * per decision, and this is the pre-decision that stops the anchors from
+   * looking at the wrong loudspeaker. Medians skip banded ghost samples
+   * (union grids carry −400 dB outside a branch's own measurement). */
+  const geoCentre = (win?: { floorHz?: number | null; ceilHz?: number | null }): number | null =>
+    win?.floorHz != null && win?.ceilHz != null && win.ceilHz > win.floorHz
+      ? Math.sqrt(win.floorHz * win.ceilHz)
+      : null;
+  const sLow = geoCentre(lowWindow) ?? Math.sqrt(250 * 1500);
+  const sHigh = Math.max(
+    geoCentre(highWindow) ?? Math.sqrt(1800 * 7000),
+    hpFloorHz ?? 0,
+    sLow * 1.5,
+  );
+  const aliveMedian = (r: GriddedResponse, band: [number, number]): number | null => {
+    const vals: number[] = [];
+    for (let i = 0; i < r.freq.length; i++) {
+      if (r.freq[i] < band[0] || r.freq[i] > band[1]) continue;
+      if (r.spl[i] <= ALIVE_DB) continue;
+      vals.push(r.spl[i]);
+    }
+    if (vals.length === 0) return null;
+    vals.sort((x, y) => x - y);
+    return vals[Math.floor(vals.length / 2)];
+  };
+  const meds = [
+    aliveMedian(w, [w.freq[0], sLow]),
+    aliveMedian(m, [sLow, sHigh]),
+    aliveMedian(t, [sHigh, t.freq[t.freq.length - 1]]),
+  ];
+  const present = meds.filter((x): x is number => x !== null);
+  const refDb = present.length > 0 ? Math.min(...present) : null;
+  const trimBy = (r: GriddedResponse, med: number | null): GriddedResponse =>
+    refDb === null || med === null || refDb - med === 0
+      ? r
+      : { ...r, spl: r.spl.map((v) => v + (refDb - med)) };
+  const wL = trimBy(w, meds[0]);
+  const mL = trimBy(m, meds[1]);
+  const tL = trimBy(t, meds[2]);
+
+  /* Anchor = the LEVEL-MATCHED pair's OVERLAP CENTRE — the same computeIntegration
    * number the panel's pair chips show ("Overlap 1631 / 5455 Hz"), so the
    * scan searches the neighbourhood the designer is already looking at.
    *
@@ -400,10 +533,10 @@ export function crossover3Variants(
       return null;
     }
   };
-  const rawLow = Math.min(1200, Math.max(250, overlapAnchor(w, m) ?? Math.sqrt(200 * 1500)));
+  const rawLow = Math.min(1200, Math.max(250, overlapAnchor(wL, mL) ?? Math.sqrt(200 * 1500)));
   const rawHigh = Math.min(
     7000,
-    Math.max(1800, overlapAnchor(m, t) ?? Math.sqrt(1200 * 9000), hpFloorHz ?? 0),
+    Math.max(1800, overlapAnchor(mL, tL) ?? Math.sqrt(1200 * 9000), hpFloorHz ?? 0),
   );
   const n = Math.max(1, Math.round(steps));
   /** The searchable span of one axis: the pin when given, else the raw
@@ -598,10 +731,30 @@ export function rankChain3Results(
   const meets = (r: Chain3Result): boolean =>
     !targets ||
     (r.net.after.rippleDb <= targets.rippleDb && worstPhase(r) <= targets.phaseDeg);
+  /* Amplifier load, as a CLASS. zOk alone was not enough: it is relative
+   * (the tune did not worsen the dip), so a candidate whose seed already sat
+   * under the floor passed it and won with an amp-hostile load — measured on
+   * Sander's 3-way, which shipped a 2.2 Ohm minimum while every gate stayed
+   * green. A published design always states its impedance minimum; ours must
+   * therefore be able to lose on it. Class, not a score term: the anchor
+   * lesson says physics belongs at decision points, and a load you would
+   * refuse to ship must not be purchasable with a tenth of a dB. */
+  const zFloorOk = (r: Chain3Result): boolean =>
+    r.zMinOhm === null || r.zMinOhm >= Z_FLOOR_OHM;
+  const zClass = (r: Chain3Result): number => (r.zOk ? 0 : 2) + (zFloorOk(r) ? 0 : 1);
+  /* Delivered-handover physics, as a class between the amplifier and the
+   * flatness targets. Above targets on purpose: a crossing past the measured
+   * beaming/lobing bound is a different (worse) loudspeaker off-axis however
+   * flat it sums on-axis — the designer sequence's step 3 is a DECISION, and
+   * this is where the engine is held to it. Unknown (null) is never punished. */
+  const xoClass = (r: Chain3Result): number => (r.xoWindowOk === false ? 1 : 0);
   const ranked = [...results].sort((a, b) => {
-    const za = a.zOk ? 0 : 1;
-    const zb = b.zOk ? 0 : 1;
+    const za = zClass(a);
+    const zb = zClass(b);
     if (za !== zb) return za - zb;
+    const xa = xoClass(a);
+    const xb = xoClass(b);
+    if (xa !== xb) return xa - xb;
     const ma = meets(a) ? 0 : 1;
     const mb = meets(b) ? 0 : 1;
     if (ma !== mb) return ma - mb;
@@ -610,7 +763,11 @@ export function rankChain3Results(
   if (ranked.length > 1) {
     const s0 = score(ranked[0]);
     const tied = ranked.filter(
-      (r) => r.zOk === ranked[0].zOk && meets(r) === meets(ranked[0]) && score(r) <= s0 * 1.05,
+      (r) =>
+        zClass(r) === zClass(ranked[0]) &&
+        xoClass(r) === xoClass(ranked[0]) &&
+        meets(r) === meets(ranked[0]) &&
+        score(r) <= s0 * 1.05,
     );
     if (tied.length > 1) {
       const priced = tied.filter((r) => r.bomTotalEur !== null);

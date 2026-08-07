@@ -261,6 +261,20 @@ minimum phase reconstrueert. Voertaal met Sander: **Nederlands**; code/comments 
   tests en de KOAN-set toonden het niet. Bijbehorend in
   directivity.ts: de vasthoud-slack werd `thresholdDb − 1` en is nu `× 0,75` — bit-identiek op
   de oude default 4, maar bij 1,11 dB zou "−1" elke wiebel accepteren.
+  (b2) **MEERDERE DRIVERS PER TAK (aug 2026, Sanders "dubbele woofers is natuurlijk geen vreemd
+  iets")**: `count` + `spacingMm` per tak (Setup-paneel, gepersisteerd). DE VALKUIL is welk getal
+  je vermenigvuldigt: n drivers verplaatsen n× zoveel lucht, dus de excursievloer zakt met √n
+  (`excursionFloorHz({count})` — vier woofers kopen één octaaf, niet vier), MAAR élke conus
+  bundelt nog steeds als zichzelf. Sd blijft daarom de waarde van ÉÉN driver van het datasheet.
+  De verleidelijke sluipweg — Sd alvast verdubbelen — maakt de excursievloer goed en het
+  bundelplafond fout: 2×124,7 cm² leest als een zuiger van 178 mm waar de echte conus 126 mm is,
+  dus je krijgt een directiviteitsschatting voor een driver die niet bestaat (in de app gezien,
+  test pint beide diameters). Wat een array wél toevoegt is INTERFERENTIE: `lobingCeilingHz` op
+  de ONDERLINGE afstand, en dat plafond ligt meestal ver onder conusbundeling (twee woofers
+  205 mm uiteen loberen al op 837 Hz) — dát is de kwantitatieve reden dat een dubbele-woofertak
+  laag wil overnemen. Zit in `physWin3` als volwaardig criterium naast beaming/lobing/breakup én
+  in de toeschrijving ("(array lobing)"), want een venster dat je niet kunt toeschrijven kun je
+  niet aanpassen.
   (c) **`lobingCeilingHz` — hart-op-hart-afstand**, pure geometrie, nul metingen: een voorwaartse
   nul kan pas bestaan vanaf d ≥ λ/2. **Dit is de kwantitatieve reden dat 3-wegs op 200–500 Hz
   kruisen** — woofer en mid zijn het verst uit elkaar staande aangrenzende paar (300 mm ⇒ 572 Hz
@@ -482,7 +496,17 @@ minimum phase reconstrueert. Voertaal met Sander: **Nederlands**; code/comments 
   UI: "Tolerance band ±2/5/10%" in de Simulation-groep (gepersisteerd), envelop als fijne
   stippellijnen om de combined, strip-item "build ±5%: worst ±… · RSS ±… · sensitive L1, …"
   in het SPL-paneel; tolBand-memo herrekent live met dezelfde part-bron/vf-stacking/adjust
-  als de sim (vf vóór of ná het netwerk vermenigvuldigen is equivalent — pre-applied)
+  als de sim (vf vóór of ná het netwerk vermenigvuldigen is equivalent — pre-applied).
+  **N-weg (aug 2026, Sanders "ik vind wel dat onze optimizer competitie moet zijn voor zelfs
+  iemand als een Troels")**: optionele `mid`-tak {response, adjust} ⇒ som via `pickSlotsN` +
+  `combineN` (dunne-wrapper-vorm à la `computeDirectivityN`; zonder mid is de takkenlijst
+  [low, high] en is het 2-weg-pad ongewijzigd — volle suite is het bewijs). Bestaansreden:
+  juist het ontwerp met de MEESTE onderdelen kon de bouwbaarheidsvraag niet gesteld krijgen.
+  Gemeten op Sanders 3-weg (24 parts): ±2% → worst ±0,67 / RSS ±0,30 dB · ±5% → ±1,67/±0,76 ·
+  ±10% → ±3,35/±1,60; de drie gevoeligste slots zijn alle drie SPOELEN (B·L5, B·C1, B·L2),
+  dus 2%-onderdelen dáár kopen bijna het hele verschil. NB het weegt WAARDE-spreiding, niet
+  DCR- of driver-exemplaarspreiding — die laatste is in de praktijk de grotere post en kan
+  geen enkele tool voorrekenen zonder twee gemeten exemplaren
 - `directivity.ts` — per-hoek som (zelfde filter elke hoek), energy average, listening window (≤30°), DI
 - `sonogram.ts` + `components/Sonogram.tsx` — directivity-sonogram: ±hoeken gespiegeld, discrete
   3 dB-banden (vloer −24 dB, sequentiële blauwe ramp, dark-mode flipt het anker), −6 dB-beamwidth-
@@ -592,6 +616,19 @@ minimum phase reconstrueert. Voertaal met Sander: **Nederlands**; code/comments 
   hun rooster (dekkingsgat = stille fit-schade, dus nooit alles weggooien). partSeries()
   synthetiseert serie-entries zodat inspector-dropdown/seriesId-filters ze zien. JSON-fouten
   melden nu de parse-positie (Gemini's bestand had een losse quote op regel 108).
+  **ECHTE SKU's BOVEN GEGENEREERDE ROOSTERS (aug 2026, Sanders "gewoon een goed werkende app")**:
+  met een echte database geïmporteerd is een rooster-entry FICTIEVE VOORRAAD. Gemeten op zijn
+  3-weg: drie grote caps snapten op het ingebouwde "Standard Z-Cap"-rooster (22/56/91 µF) — een
+  serie die niet in zijn 2388-SKU-import zit, op een E24-waarde die het product niet kent —
+  terwijl een echte, geprijsde Cross-Cap ernaast lag. Rooster-entries dragen geen prijs, dus ze
+  lazen ook nog eens als GRATIS voor de kostenterm: ontbrekende data werkte als korting. 10 van
+  25 BOM-regels kwamen prijsloos én onbestelbaar uit de snap. `pickCandidates` filtert de pool
+  nu op `CatalogPart.real` (gestempeld op de IMPORTGRENS in `setCustomSeries`) vóór de
+  nearest-value-wandeling, op dezelfde 25%-reikwijdte als de pool-terugval, en ALLEEN waar echte
+  onderdelen de waarde kunnen dekken — het rooster wholesale weggooien heropent het
+  dekkingsgat-scenario, dat als mysterieus fit-verlies verschijnt i.p.v. als fout. Na de fix:
+  25/25 met prijs. NB de eerlijke prijs van eerlijkheid: het "vlakkere" ontwerp van daarvóór
+  (2,22 dB) leunde op die fictieve caps en was dus nooit bouwbaar.
   **Catalog v6 (jul 2026) + multi-gauge-doctrine**: het versieveld is INFORMATIEF — Gemini
   bumpt het per DATA-revisie, niet per formaat (v6 = v4-formaat met 169 SKU's: volle E12,
   sub-µF bypass, elco's tot 330 µF, MResist Supreme €14,50 als premium-gat-vuller, en
@@ -688,6 +725,39 @@ minimum phase reconstrueert. Voertaal met Sander: **Nederlands**; code/comments 
   **BOM is stapel-bewust**: geen single-match → 2-delige stack-match (som binnen 1%, met
   prijs) — de netwerk-snap bouwt stapels en de BOM moet ze kunnen benoemen i.p.v.
   "no exact catalog value" (Sanders klacht).
+  **SPOEL-DCR IS EEN POSITIE-EIGENSCHAP, GEEN TIER (aug 2026, Sanders "de doctrine moet
+  natuurlijk de beste spoelen kiezen waar het er toe doet")**: bij een CAP betekent budget een
+  ander diëlektricum — elektrisch bijna dezelfde component. Bij een SPOEL betekent budget
+  DUNNER DRAAD, en DCR is een eersteorde-parameter: het verandert het filter, de demping en het
+  impedantieminimum. Tier kán dat niet uitdrukken, want tier leeft per SERIE terwijl gauge per
+  SKU varieert — élke Air Core van 0,3 tot 1,8 mm draagt dezelfde tier. `dcrCeilingOhms`
+  (catalog.ts) vertaalt de positie daarom in een DCR-budget uitgedrukt in dB NIVEAUVERLIES
+  (`DCR_BUDGET_DB` = serie 0,5 dB · shunt 2,0 dB) tegen de GEMETEN mediaan |Z| die het netwerk
+  in werkt (`refOhms`, netOptimizer levert hem) — schaalvrij, dus een 4 Ω-mid krijgt vanzelf een
+  strakker plafond dan een 8 Ω-woofer. Toegepast op de POOL vóór de nearest-value-wandeling
+  (anders wordt de shortlist volgemaakt met te dun draad) en het is FEASIBILITY, geen voorkeur:
+  hij geldt óók bij profile 'auto' en bij de volle-catalogus-terugval. Weigert nooit alles — als
+  élke variant over budget is blijft de dikste staan, zodat een slot altijd iets heeft om naar
+  te snappen en de eerlijke DCR gewoon zichtbaar wordt.
+  **WAAROM EEN GUARD NODIG IS TERWIJL DE SOLVER DCR AL MODELLEERT**: de tuner compenseert hem
+  gewoon elders, de responsie blijft vlak, en je betaalt in RENDEMENT — wat geen enkele
+  responsmetriek ziet. Exact de blindheid die solo-modus al had opgelost met
+  `sensitivityBudgetDb`; 3-weg had hem nooit gekregen.
+  **HARD GELEERD — de oude catalogus was PER ONGELUK veilig**: met 27 handmatig samengestelde
+  Air Core-onderdelen (3 diktes, hoogste DCR bij ≥1 mH = 1,45 Ω) bestond een elektrisch onzinnige
+  keuze domweg niet. De aanvulling tot het volle assortiment (11 diktes, tot 24,76 Ω) haalde dat
+  onbedoelde vangnet weg en de kostendruk pakte prompt de dunste draad: Sanders 3-weg-run kwam
+  terug met een 2,4 mH-spoel op 0,3 mm à 6,43 Ω in de mid-tak (~11 Ω spoelweerstand in die tak,
+  was ~3,6 Ω). Een catalogus completer maken kan dus een bewaker slopen die niemand had
+  opgeschreven omdat de dataset hem impliciet leverde.
+  **GEMETEN end-to-end op Sanders 3-weg-set (volle scan, 4 kandidaten, vóór/ná de guard)**:
+  spoelweerstand in de mid-tak 11 → 2,7 Ω (B·L4 6,43 → 1,80 Ω · B·L9 2,50 → 0,15 · L3 1,49 →
+  0,31); Response 69 → 74 (avg ±1,02 → ±0,89); W-M-fase 13,3° → 12,3°; Z-min-dip verplaatst van
+  359 Hz — midden in de W-M-kruising — naar 2731 Hz; BOM €47 → €50. Ook de drie VERLIEZENDE
+  kandidaten werden beter (3,97 → 2,79 dB), dus de guard tilt de hele scan op en niet alleen de
+  winnaar. NB expliciet NIET opgelost hierdoor: Z min blijft 2,2 Ω onder de 2,5-vloer (andere
+  oorzaak — drie parallelle takken rond de lage overname) en de W-M-P95 blijft 40° tegen de 26°
+  die de losse componenttuner eerder haalde; dat verschil scan-vs-tune is nog onverklaard.
   **Budget-druk in de snap (`costWeight`, default 0,0015)**: kandidaat-score ×(1+w·ΣEUR) —
   tussen (bijna-)gelijkwaardige realisaties wint de goedkope; "lagere waardes = goedkoper"
   volgt vanzelf uit het prijsmodel. Tie-breaker, geen kwaliteitsruil (€20 ≈ 3% fit); zonder
@@ -831,6 +901,40 @@ minimum phase reconstrueert. Voertaal met Sander: **Nederlands**; code/comments 
   achter (zelfde symptoom) — demo-data verhulde beide.
   De filter-fase-stippellijnen
   zijn alleen wat het netwerk toevoegt; de verwarring daarover was de aanleiding
+
+## De ontwerpers-sequence, geport naar 2-weg en solo (aug 2026)
+
+Sanders vraag "welke leermomenten kunnen we van de 3-weg gebruiken voor de 2-weg en de single
+driver" — de drie omkeringen bleken alle drie óók in de 2-weg-keten te zitten; hij was er alleen
+nooit naar gevraagd. Wat gedeeld was (staged-snoeidiepte, catalogus-realisme, spoel-tier-
+vrijstelling, DCR-plafond, snap-Z-bewaking) liftte al gratis mee.
+- **Z-vloer als ranking-klasse in `rankChainResults`** + `zFloorStrict` in de 2-weg-keten én in
+  `runSoloChain` (buildSoloNetwork schrijft die seed zelf — dezelfde redenering).
+- **`physWin2`** (App-memo): hetzelfde gemeten venster voor het 2-weg-paar — vloer =
+  max(2×Fs, reach, excursie), plafond = min(gemeten bundeling, lobing tegen de tweeter met
+  auto-k, eigen array-afstand, breakup/N). Dit is het openstaande roadmap-punt "Fs-vloer voor de
+  HP-knie in de vfOptimizer-bounds", gegeneraliseerd: het begrenst de vrije scan (vervangt de
+  tweeter-geankerde schatting) én oordeelt via `judgeWindow` over de GELEVERDE kruising. Niets
+  gemeten = oude schatting; een degeneratief venster oordeelt niet.
+- **Leiband op de 2-weg assembled tune** (`branchTargets`). GEMETEN A/B op de KOAN-keten
+  (doel 1 dB/10°, verder identiek): zónder piek 1,064 · avg 0,592 · fase 9,71° · kruising
+  **4230 Hz** · 19 parts; **mét** piek 0,883 · avg 0,312 · fase 3,58° · kruising **2965 Hz** ·
+  16 parts. Beter op élke as, en zonder leiband liep de kruising ruim een halve octaaf boven het
+  ontwerp — hetzelfde tak-herbouw-gedrag als bij 3-weg, nu ook in 2-weg aangetoond.
+- **BEWUST NIET geport**: de piek-bewuste amplitudeterm in de 2-weg-objective (destijds gemeten:
+  de EQ-trede + breakup-guard dekken dat geval al — "niet aanraken wat niet stuk is"), en
+  niveau-eerst (de 2-weg-EQ-trede wast niveauverschillen al weg en zijn kandidaten leunen niet
+  op rauwe ankers).
+- **`lobingKFor` (driverLimits)**: strengheid uit de PAAR-AS i.p.v. één globale knop — horizontaal
+  gescheiden drivers (een center) loberen ÓVER de bank (streng, k 0,5), verticaal gestapelde naar
+  vloer/plafond (Dickason k 1,0), gemengd interpoleert. UI-stand `auto` (default voor nieuwe
+  sessies; opgeslagen keuzes blijven). Op Sanders center: wooferpaar 350 mm horizontaal houdt
+  zijn 490 Hz-plafond, M-T 70 mm verticaal gaat 2450 → ~4900 Hz.
+- **Spoel-tier-vrijstelling (`preferredPools`)**: tier-voorkeur geldt NIET voor spoelen — DCR is
+  een positie-eigenschap, geen tier (de al opgeschreven doctrine). Gemeten op Sanders center:
+  het Positie-profiel zette twee Mundorf Zero-Ohm (€319 + €228) in het woofer-seriepad terwijl
+  een P-core van €11 met 0,2 Ω meer DCR in dezelfde catalogus stond. Het DCR-plafond blijft de
+  eerlijke spoelbeperking; daarbinnen beslist de kostenterm. Expliciete serie-binding wint nog.
 
 ## Gedeelde kern voor drie engines (jul 2026, Sanders "misschien kunnen ze wat delen")
 
@@ -1140,6 +1244,74 @@ ontwerpfysica in 3-weg, nooit een objective-term), dan targets, dan de blend, ti
 goedkoopste BOM. Worker 'chain3One' + `runChain3Scan` (pool). App: 3-weg-pad in
 runVfOptimize (winnaar → Working + specs → vFilters + synth-state), wizard zonder
 Crossover-stap. Gemeten op Robbert: 411/2520 Hz → 0,79 dB avg/9,7°, paren 99/99.
+**ABSOLUTE Z-vloer in de ranking (aug 2026, Sanders "het filter moet echt sensible zijn")**:
+`zOk` is RELATIEF — het zegt alleen dat de tune de dip niet erger maakte dan de seed waar hij
+mee begon. Een kandidaat wiens seed al ónder de vloer zat passeerde daarmee élke poort en won
+de scan met een versterker-vijandige last. GEMETEN op Sanders 3-weg: geleverd Z-minimum
+**2,2 Ω @ 2731 Hz** terwijl strip, poorten én ranking allemaal groen stonden; zijn staged-run
+op 1 dB/15° werd vervolgens in zijn geheel afgewezen omdat de tuner op 1,9 Ω uitkwam — het
+ontwerp was dus niet eens meer te verbéteren, want élke zet werd beoordeeld tegen een
+startpunt dat al in het gevarengebied lag. Het absolute getal was nergens afleesbaar:
+`netOptimizer` rapporteert nu `after.zMinOhm` (het SLECHTSTE van eval-grid en safety-grid — een
+smalle dip buiten een ingezoomde view range bereikt de versterker toch) en `Chain3Result`
+draagt hem. Ranking = KLASSE naast zOk (`zClass` = zOk-falen weegt zwaarder dan een eerlijk
+lage last), nooit een score-term: de anker-les houdt fysica op beslispunten, en een last die
+een ontwerper niet zou publiceren mag niet met een tiende dB terug te kopen zijn. Een
+ONGEMETEN minimum wordt nooit gestraft. Zichtbaar of het bestaat niet: "Z min"-kolom in de
+scan-tabel (glyph eerst, kleur versterkt alleen), de waarde op elke kandidaat-regel, en een
+winnaar-note die onderscheidt tussen "er ís een gezonde kandidaat, hij scoort alleen minder
+vlak" en "geen enkele kandidaat haalde het" — dat tweede is een eigenschap van déze drivers in
+déze topologie (drie parallelle takken rond een overgang), geen tuning-misser.
+**GEPROBEERD EN TERUGGEDRAAID — dood-gewicht-veeg (aug 2026)**: de staged PRUNE is gegate op
+`meets()` (snoeien kost kwaliteit, dus je mag alleen kwaliteit uitgeven die je over hebt), en
+daardoor levert een ONHAALBAAR doel HELEMAAL geen opruiming. Gemeten op Sanders 3-weg (doel
+1 dB, geleverd 2,22 dB): de tweetertak droeg een 6,8 mH SHUNT-spoel — 186 Ω op de 4364 Hz-
+overgang tegen een ~6 Ω tweeter, dus een open verbinding mét prijskaartje, BOM-regel en
+schema-slot. De WAARNEMING klopt. De OPLOSSING niet: een veeg die onderdelen verwijdert
+waarvan verwijdering <0,5% van fx kost maakte het geleverde filter meetbaar SLECHTER — zelfde
+9-kandidaat-scan, winnende kandidaat 2,22 → 3,20 dB piek (veeg vóór de prune) en 2,22 → 3,09
+(veeg als laatste stap). De nooit-slechter-controle die ik erop zette vuurde NOOIT, en dát is
+het leerzame deel: op het moment dat de veeg draait degradeert hij niets — het verlies ontstaat
+STROOMAFWAARTS, in de amp-reparatie en de catalogus-snap, die op een netwerk met één onderdeel
+minder anders landen. Precies de "bewaker op trede N, stil ongedaan gemaakt op trede N+1"-vorm
+van de drie bugs hierboven, nu met mijn eigen bewaker als slachtoffer. Afgrenzen zou de hele
+staart twee keer per kandidaat kosten (de snap is het dure deel) en een bewaker op een bewaker
+stapelen is precies hoe het objective-anker eerder sneuvelde. Voor wie het oppakt: het
+criterium moet FYSISCH zijn (impedantie van dít element tegen de tak waar het in zit, over de
+band waar die tak werkelijk bijdraagt) i.p.v. een delta op de gemengde objective — een
+onderdeel dat écht inert is kan de stroomafwaartse stappen niet verplaatsen en heeft dus geen
+terugdraai nodig.
+**DE ONTWERPERS-SEQUENCE (aug 2026, Sanders "mijn gevoel zegt dat de huidige sequence niet
+klopt" — en dat gevoel was juist)**: drie omkeringen t.o.v. hoe een topontwerper werkt, in één
+ronde rechtgezet. De toetssteen: bij een ontwerper stuurt de som nooit de structuur — de som
+valideert; structuur komt uit niveau + fysica. Élke bewaker die we om de tuner heen bouwden
+(kooien, adaptieve xo-gewichten, pin-reparatie, de lek-term in de ontwerpstap) was een
+symptoom van de omgekeerde volgorde. (1) **Niveau eerst**: `crossover3Variants` trimt élke tak
+naar de stilste (cut-only, medianen over fysica-gesplitste passbands) vóór de ankerbepaling —
+de rauwe ankers lazen de kruising van een luidspreker die na het padden niet bestaat
+(test: ankers zijn niveau-invariant, +8 dB tweeter verzet geen kandidaat; bewezen falend op de
+oude code). Anker-only bewust: designThreeWay her-leidt zijn trims per knie — één eigenaar per
+beslissing. (2) **De geleverde overname wordt beoordeeld**: `judgeWindows` (pin = belofte,
+gemeten venster = fysica; de kooi blijft boekhouding), `xoWindowOk` als ranking-KLASSE tussen
+Z-vloer en targets, `pairOverlapOct` gerapporteerd (netOptimizer geeft de integratie-bandbreedte
+per paar door — geen extra solve) in scan-tabel + note. Een kruising voorbij het bundelpunt is
+off-axis een ándere luidspreker, hoe vlak de som ook is — Sanders build: W-M op 1069 Hz met
+3,2 oct overlap tegen een 629 Hz-plafond, en het paneel gaf dat paar een 99 (integratie beloont
+brede overlap — juist voor een 2-weg-sóm, achterstevoren voor een overname). (3) **De tuner aan
+de leiband**: de keten geeft per tak het akoestische DOEL mee (spec × gemeten responsie,
+gemaskeerd op alive + eigen-piek−25 dB) en de objective draagt een corridor 2·(afwijking
+voorbij ±3 dB)² — exact 0 erbinnen (bouwbaarheidsvenster-patroon), dus fase uitlijnen en ±3 dB
+trimmen blijven gratis en een tak-herbouw van 10 dB kost ~60. Gewicht 0,5 was GEMETEN te zacht
+(6,7 dB ontsnapping op het pad-loze testnet); alleen de keten geeft targets (een user-netwerk
+heeft geen ontwerpdoel), plain paths bit-identiek.
+**GEMETEN A/B, zelfde 9 kandidaten, targets 3 dB/15°**: referentie-winnaar 2,43/0,83 dB maar
+W-M-paar 30,9° avg/P95 59°, kruisingen 578/8786 (buiten venster), 25–29 parts (10 prijsloos);
+sequence-winnaar 3,05/1,05 dB met paren 9,6°/8,7° (P95 22/23°), overlap 1,6/1,6 oct,
+kruisingen 418/4823 (binnen beide vensters), Z 2,8 Ω resistief, **18 parts, 18/18 geprijsd**.
+De ruil is die van de ontwerper zelf: ~0,4 dB on-axis-vlakheid koopt gebalanceerde overnames,
+een gezonde last en een derde minder onderdelen — en dat lage aantal is een BIJPRODUCT van de
+volgorde, geen snoeidruk. De vlakkere rijen staan nog in de tabel, mét de glyphs die uitleggen
+waarom ze verloren.
 **Per-paar-pins + per-paar-flanken (aug 2026, Sanders settings-review)**: in 3-weg vraagt
 "Crossover points (low + high)" twéé pinnen (laag xoLowFreqHz±xoLowMarginHz, hoog = de
 bestaande xoFreqHz±xoMarginHz) — gepinde as = kandidaat-collapse in de scan én
@@ -1310,6 +1482,19 @@ Label meldt "· N EQ". Unit-getest op een synthetische +10 dB-bult op 1,5 kHz in
 band landt op de juiste tak nabij de bult, cut-only overal, budget per tak gerespecteerd,
 deterministisch. Bijvangst dezelfde ronde: het staged-doel-rimpelveld klemde op max 3 dB
 (Sanders kon zijn doel niet kwijt) — beide invoervelden nu max 6.
+**PIEK-BEWUSTE amplitude-term in de ontwerpstap (aug 2026, Sanders "het filter moet echt
+sensible zijn")**: de EQ-trede stopt op een ≥1%-poort, en de amplitude-term was kale `std` —
+die merkt een 3 dB-lift nauwelijks. GEMETEN: het budget van 2 naar 4 banden zetten veranderde
+Sanders winnende ontwerp LETTERLIJK niets (byte-identieke cijfers, nog steeds "1 EQ"), want een
+tweede band kon zijn 1% niet verdienen terwijl de som 104,6–111,3 dB spande — precies het enige
+dat je hóórt was het enige waar geen band zijn componenten voor kon terugverdienen. Dezelfde
+blindheid als de solo-engine had, dus dezelfde metgezel op hetzelfde gewicht: `std² +
+0,35·peakExcess²` (bandMetrics), alleen POSITIEF en tegen de MEDIAAN — een dip is de eerlijke
+bodem van een cut-only ontwerp en mag niet lezen als een fout die de optimizer dan "repareert"
+door al het andere omlaag te trekken. Gemeten over het HELE 9-kandidaten-veld (gemiddelden):
+piek 3,57 → 3,20 dB · avg 0,99 → 0,96 · fase 20,0 → 17,8°; winnaar piek ±3,4 → ±2,4 dB,
+P95 ±2,6 → ±1,8, bouwtolerantie ±10% worst ±4,03 → ±3,07 (RSS ±1,83 → ±1,45), BOM €111 → €92,
+en er landen nu 2 EQ-banden waar er 1 landde.
 **GEMETEN fysica-vensters voor beide vrije assen (aug 2026, Sanders "het doel is dat de
 optimizer dit verzint")**: wat de ontwerper handmatig uit de grafieken las, leidt de scan nu
 zelf af. `beamingCeilingHz` (directivity.ts): eerste frequentie waar het ±⅙-oct-gemediane

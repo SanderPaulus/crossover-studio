@@ -14,6 +14,15 @@
   --bad-bg: #fee2e2;
   --accent: #2563eb;
 
+  /* Motion. This app deliberately barely moves: almost everything here is
+     high-frequency (tab switches, legend toggles, crosshair, dragging handles),
+     and animating those makes a tool feel SLOWER. Only two things earn motion —
+     press feedback, and popups that appear occasionally. The built-in CSS
+     easings are too weak to read as intentional, hence the explicit curves. */
+  --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
+  --press: 160ms;
+  --pop-in: 200ms;
+
   /* Validated chart series colors (dataviz palette, light).
      Tweeter is a TEAL, not the original green: at #1baf7a it sat at 2.69:1 on
      the panel — under the 3:1 bar for graphics, and it is one of the two main
@@ -965,6 +974,12 @@ svg.legend-key-dash {
 }
 
 /* Crossover-scan result table (design-chain ranking, best first). */
+/* An impedance minimum under the amplifier floor: the glyph carries it, the
+   colour only reinforces (colour is never the sole carrier). */
+.scan-table td.scan-z-low {
+  color: var(--bad);
+}
+
 .scan-table {
   border-collapse: collapse;
   font-size: 0.82rem;
@@ -1336,10 +1351,37 @@ button {
   font-size: 0.85rem;
   cursor: pointer;
   align-self: end;
+  transition: transform var(--press) var(--ease-out);
 }
 
 button:hover {
   border-color: var(--accent);
+}
+
+/* Press feedback — the one piece of motion this app genuinely lacked. Buttons
+   here start work that runs for seconds to minutes ("Optimize — design for
+   me"), and between the click and the busy overlay nothing confirmed that the
+   click had landed. Transform only: it skips layout and paint, and it scales
+   the label along with the button, which is what makes it read as physical.
+   Press and release are NOT symmetric: pressing is the user's own action and
+   must acknowledge instantly, releasing is the interface settling back. */
+button:active:not(:disabled) {
+  transform: scale(0.97);
+  transition-duration: 90ms;
+}
+
+/* …but NOT on the high-frequency chrome. Tabs, legend chips and panel toggles
+   get clicked tens of times per session; feedback there is already carried by
+   the state change itself (the tab activates, the curve vanishes), so a scale
+   is decoration on exactly the elements that can least afford it. Legend chips
+   also sit in a wrapping row, where a scaling chip nudges its neighbours. */
+.pane-tabs button:active,
+.design-tab:active,
+.design-tab-close:active,
+.chart-legend .legend-item:active,
+.panel-toggle:active,
+.pin-btn:active {
+  transform: none;
 }
 
 /* One designed focus ring for every control. Without this the app rode on the
@@ -1865,6 +1907,50 @@ button:disabled {
      manager) stay short enough that this never engages. */
   max-height: 92vh;
   overflow: auto;
+  transition:
+    transform var(--pop-in) var(--ease-out),
+    opacity var(--pop-in) var(--ease-out);
+}
+
+/* Popup entrance. Modals here are OCCASIONAL (wizard, help, catalog manager,
+   targets, add-notch) — the frequency band where motion actually belongs;
+   something appearing out of nothing reads as broken.
+   base-ui mounts the popup with `data-open` ALREADY set, so there is no
+   attribute flip for a transition to run from — `@starting-style` supplies the
+   pre-mount state, which is exactly what it exists for.
+   Two deliberate choices: the scale starts at 0.96 and never at 0 (nothing in
+   the real world appears from nothing), and transform-origin stays CENTRE — a
+   modal is not anchored to a trigger the way a popover is, so growing it out
+   of the button would be a lie about where it lives. The translate is part of
+   the centring, so it has to be restated inside the transform.
+   The visible state is the DEFAULT: only the entering state is written down,
+   so a popup can never get stuck invisible if an attribute is ever missing.
+
+   ENTRANCE ONLY, deliberately. An exit transition was built and then removed,
+   for two measured reasons:
+   (1) Five of the six popups are mounted as `{open && <Modal open …>}` — the
+       parent removes them from the tree, so base-ui is never told "closing"
+       and has nothing to animate. Only the measuring guide passes a boolean.
+       An exit that works in one popup and not the other five is worse than no
+       exit at all: inconsistency reads as a glitch.
+   (2) Where it DID engage, base-ui holds the element mounted until
+       `getAnimations()` resolves. In a backgrounded tab the transition never
+       starts, so the dialog stayed mounted with its pointer-blocking backdrop
+       (it recovers when the tab is shown again, but the exposure is real).
+   Leaving instantly is the limit case of "exit faster than enter", which is
+   the direction the guidance points anyway. Appearing out of nothing is the
+   half that actually reads as broken, and that half is fixed. */
+@starting-style {
+  .modal-card[data-open] {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(0.96);
+  }
+  .modal-backdrop[data-open] {
+    opacity: 0;
+  }
+}
+.modal-backdrop {
+  transition: opacity var(--pop-in) var(--ease-out);
 }
 /* The card is a flex column: under a height cap its children would SHRINK
    (content then hides behind the footer) instead of making the card scroll. */
@@ -2253,6 +2339,77 @@ button:disabled {
 .cabinet-driver > strong {
   min-width: 6.5rem;
 }
+/* Driver card: name + count on top, then one labelled row per subject. The old
+   card put everything in one wrapping flex line, so it read as a sentence with
+   holes in it rather than a form — you could not scan for "where is Xmax". */
+.cd-head {
+  display: flex;
+  align-items: baseline;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+  width: 100%;
+}
+.cd-grid {
+  display: grid;
+  /* FIXED label column, not max-content: with max-content every card sizes its
+     own column, so three cards that hold the same three labels still drift a
+     pixel or two apart and the eye has nothing to run down. */
+  grid-template-columns: 5.5rem 1fr;
+  gap: 0.3rem 0.7rem;
+  align-items: center;
+  width: 100%;
+  margin: 0.3rem 0 0.15rem;
+}
+/* Same reason in the head: "Woofer", "Midrange" and "Tweeter" differ in width,
+   so the count input landed at a different x on every card. */
+.cd-head > strong {
+  min-width: 6.5rem;
+}
+/* Each value row starts with a different token — "x", nothing, "Sd" — so the
+   first input landed at a different x on every row. A fixed-width slot for
+   that token gives the card one vertical line to read down. */
+.cd-pre {
+  display: inline-block;
+  min-width: 1.4rem;
+  flex: 0 0 auto;
+}
+.cd-label {
+  font-size: 0.78rem;
+  color: var(--muted);
+}
+.cd-fields {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  flex-wrap: wrap;
+  font-size: 0.82rem;
+  color: var(--muted);
+}
+.cd-fields input[type='number'] {
+  width: 4.4rem;
+}
+/* The hint gets its own line: it is prose, and leaving it in the flow was what
+   pushed the position row past the pane edge — once one row wraps, nothing in
+   the card lines up any more. */
+.cd-hint {
+  flex-basis: 100%;
+  margin-left: 1.4rem;
+}
+.cd-hint {
+  font-size: 0.74rem;
+  opacity: 0.75;
+  margin-left: 0.2rem;
+}
+/* Narrow pane: the label column would squeeze the fields, so stack instead. */
+@media (max-width: 620px) {
+  .cd-grid {
+    grid-template-columns: 1fr;
+    gap: 0.1rem;
+  }
+  .cd-label {
+    margin-top: 0.35rem;
+  }
+}
 .cabinet-driver .derived {
   flex-basis: 100%;
 }
@@ -2417,4 +2574,306 @@ button:disabled {
 
 .mg-tablenote {
   margin: 0.9rem 0 0.2rem;
+}
+
+/* Reduced motion means FEWER and GENTLER animations, not zero: fades aid
+   comprehension, movement is what causes trouble. So the popup keeps its
+   opacity fade and loses the scale, and the press feedback — which is
+   movement, however small — goes away entirely. The spinner stays: it is not
+   decoration, it is the only sign that a multi-minute run is still alive.
+   MeasuringGuide.tsx honours the same query in JS for its sweep loop. */
+@media (prefers-reduced-motion: reduce) {
+  button {
+    transition: none;
+  }
+  button:active:not(:disabled) {
+    transform: none;
+  }
+  @starting-style {
+    .modal-card[data-open] {
+      transform: translate(-50%, -50%);
+    }
+  }
+}
+
+/* Scan warning marker (⚠Z: this candidate's amp load fails the floor). Colour
+   REINFORCES, it never carries alone — the glyph says it too, which is what
+   keeps it readable for a colour-blind reader and in a screenshot. */
+.busy-scan .scan-warn {
+  color: var(--bad);
+  font-weight: 600;
+}
+
+/* Group headings inside the optimizer settings. The block held 24 controls in
+   one flat flex row with a single caption on top, so everything looked equally
+   important and nothing told you WHICH decision a control belongs to. Full-row
+   spans, so the flex wrap breaks cleanly at each heading. */
+/* A checkbox belongs BESIDE the words it labels. The global `label` rule is a
+   COLUMN — right for field-above-input, wrong for a tick box — so every
+   checkbox in the settings card floated its box above its own text (Sander's
+   screenshot). Scoped rather than a class on a dozen labels, so a new setting
+   cannot forget it. */
+.opt-settings label:has(> input[type='checkbox']) {
+  flex-direction: row;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.opt-settings .opt-group-cap {
+  flex-basis: 100%;
+  margin: 0.55rem 0 -0.1rem;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--muted);
+  border-top: 1px solid var(--border);
+  padding-top: 0.5rem;
+}
+.opt-settings .opt-group-cap:first-of-type {
+  border-top: none;
+  margin-top: 0.2rem;
+  padding-top: 0;
+}
+
+/* Guided route: the same four panels as the expert tabs, but numbered so the
+   reader can see there IS an order and where he is in it. Later steps stay
+   clickable — locking them would hide what is coming and teach nothing. */
+.pane-steps {
+  flex: 0 0 auto;
+  display: flex;
+  gap: 0.3rem;
+  padding: 0.4rem 0.9rem 0;
+  border-bottom: 1px solid var(--border);
+  flex-wrap: wrap;
+}
+.pane-steps button {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  border-radius: 0;
+  padding: 0.45rem 0.6rem;
+  font-weight: 600;
+  color: var(--muted);
+  cursor: pointer;
+}
+.pane-steps button:hover {
+  color: var(--fg);
+}
+.pane-steps button.active {
+  color: var(--fg);
+  border-bottom-color: var(--accent);
+}
+.pane-steps .step-num {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.35rem;
+  height: 1.35rem;
+  border-radius: 50%;
+  border: 1px solid var(--border);
+  font-size: 0.72rem;
+  font-weight: 700;
+}
+/* Done is stated by the tick AND the fill — colour never carries alone. */
+.pane-steps button.step-done .step-num {
+  background: var(--ok-bg);
+  border-color: var(--ok);
+  color: var(--ok);
+}
+
+/* Expert-only surface, hidden on the guided route. display:none also removes
+   it from the accessibility tree, so a screen reader gets the same reduced
+   interface a sighted beginner does — not a shorter-looking one with the same
+   tab order underneath. */
+.expert-only {
+  display: none;
+}
+
+/* Sub-headings inside the cabinet block. Mic rig, cabinet geometry and
+   listening position were one undifferentiated field soup — the reader had to
+   infer from each label which of the three he was answering, and "Mic
+   distance" ended up floating beside the intro paragraph. Full-row spans, so
+   the flex wrap breaks at each heading. */
+.cab-group-cap {
+  flex-basis: 100%;
+  margin: 0.7rem 0 -0.15rem;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+/* Driver card is collapsible: a filled-in driver need not keep asking for
+   space. The summary line in the head is the CONDITION — a bare collapsed
+   section reads as data loss (the Filter-bands lesson). */
+details.cabinet-driver > summary {
+  cursor: pointer;
+  list-style: none;
+  /* A caret alone was too small to see and too small to hit (Sanders). The
+     whole head is the target now: full-width row, its own padding, and a
+     hover/focus background so it reads as something you can click. */
+  margin: -0.15rem -0.4rem 0;
+  padding: 0.3rem 0.4rem;
+  border-radius: 6px;
+  transition: background 120ms ease;
+}
+details.cabinet-driver > summary:hover {
+  background: color-mix(in srgb, var(--fg) 7%, transparent);
+}
+details.cabinet-driver > summary::-webkit-details-marker {
+  display: none;
+}
+details.cabinet-driver > summary::before {
+  content: '▾';
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.35rem;
+  height: 1.35rem;
+  flex: 0 0 auto;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--muted);
+  font-size: 0.75rem;
+  margin-right: 0.15rem;
+}
+details.cabinet-driver > summary:hover::before {
+  border-color: var(--accent);
+  color: var(--fg);
+}
+details.cabinet-driver:not([open]) > summary::before {
+  content: '▸';
+}
+/* Only meaningful once collapsed — open, the fields themselves say it. */
+.cd-summary {
+  display: none;
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+details.cabinet-driver:not([open]) .cd-summary {
+  display: inline;
+}
+
+/* Collapsed, the inline count editor is noise next to the summary line. */
+details.cabinet-driver:not([open]) .cd-head .inline-num {
+  display: none;
+}
+
+/* The card became a <details> (display:block), so the derived lines lost the
+   flex-basis:100% that used to put each on its own row and ran together as
+   one string ("...ceilingeffective Ø 126 mmleaving these blank..."). */
+details.cabinet-driver .derived {
+  display: block;
+  margin-top: 0.15rem;
+}
+
+/* Driver step: fields on the left, the baffle drawn beside them. The drawing
+   is sticky because the cards scroll past it — the point is to check a number
+   against the picture while you type it. */
+.driver-facts {
+  display: grid;
+  grid-template-columns: 1fr minmax(150px, 210px);
+  gap: 1.2rem;
+  align-items: start;
+}
+.driver-facts-draw {
+  position: sticky;
+  top: 0.5rem;
+}
+.baffle-view {
+  width: 100%;
+  height: auto;
+  display: block;
+}
+/* Below the split threshold there is no room beside the fields; the drawing
+   goes under them rather than shrinking into a thumbnail. */
+@media (max-width: 900px) {
+  .driver-facts {
+    grid-template-columns: 1fr;
+  }
+  .driver-facts-draw {
+    position: static;
+    max-width: 210px;
+  }
+}
+
+/* ---- Cabinet panel: Cards (guided) ----------------------------------------
+   Promoted from the prototype round. Leads with the ANSWER, not the input:
+   a beginner does not want to know that 500 mm is entered, he wants to know
+   that his sweeps are honest to 220 Hz and what to do about it. Fields are
+   one click away, never gone. */
+.cab-cards { display: flex; flex-direction: column; gap: 0.6rem; width: 100%; }
+.cab-card {
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--bg);
+}
+.cab-card > summary {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.7rem;
+  padding: 0.7rem 0.8rem;
+  cursor: pointer;
+  list-style: none;
+}
+.cab-card > summary::-webkit-details-marker { display: none; }
+.cab-card > summary:hover { background: color-mix(in srgb, var(--fg) 5%, transparent); border-radius: 10px; }
+.cab-card-icon {
+  flex: 0 0 auto;
+  width: 2rem; height: 2rem;
+  display: grid; place-items: center;
+  border: 1px solid var(--border); border-radius: 8px;
+}
+.cab-card-body { flex: 1; min-width: 0; display: block; }
+.cab-card-title { display: block; font-weight: 600; font-size: 0.92rem; }
+.cab-card-answer { display: block; margin-top: 0.12rem; font-size: 0.86rem; color: var(--muted); line-height: 1.5; }
+.cab-card-answer b { color: var(--fg); }
+/* The disclosure hint is the affordance — a bare caret was unreadable at this
+   size (the lesson from the driver cards). */
+.cab-card-more { flex: 0 0 auto; align-self: center; font-size: 0.78rem; color: var(--accent); }
+.cab-card[open] .cab-card-more { color: var(--muted); }
+.cab-card[open] .cab-card-more::before { content: '▾ '; }
+.cab-card:not([open]) .cab-card-more::before { content: '▸ '; }
+.cab-card-fields {
+  display: grid;
+  grid-template-columns: 7.5rem 1fr;
+  gap: 0.35rem 0.7rem;
+  align-items: center;
+  padding: 0 0.8rem 0.8rem 3.4rem;
+}
+
+/* ---- Cabinet panel: Ledger (expert) ---------------------------------------
+   Everything at once, consequence on the same line, so an odd value shows up
+   next to the number that caused it instead of three paragraphs away. */
+.lg { border: 1px solid var(--border); border-radius: 10px; overflow: hidden; width: 100%; }
+.lg-sec {
+  padding: 0.3rem 0.7rem;
+  background: color-mix(in srgb, var(--fg) 4%, transparent);
+  border-top: 1px solid var(--border);
+  font-size: 0.7rem; font-weight: 700; letter-spacing: 0.07em; text-transform: uppercase;
+  color: var(--muted);
+}
+.lg-sec:first-child { border-top: 0; }
+.lg-row {
+  display: grid;
+  grid-template-columns: minmax(8rem, 12rem) auto 1fr;
+  gap: 0.7rem;
+  align-items: center;
+  padding: 0.32rem 0.7rem;
+  border-top: 1px solid color-mix(in srgb, var(--border) 55%, transparent);
+}
+.lg-row:hover { background: color-mix(in srgb, var(--fg) 3%, transparent); }
+.lg-k { font-size: 0.84rem; }
+.lg-v { display: flex; align-items: center; gap: 0.25rem; font-size: 0.82rem; color: var(--muted); }
+.lg-v input[type='number'] { width: 4.6rem; }
+.lg-o { font-size: 0.8rem; color: var(--muted); text-align: right; }
+.lg-o .alert { color: var(--bad); }
+@media (max-width: 620px) {
+  .lg-row { grid-template-columns: 1fr auto; }
+  .lg-o { grid-column: 1 / -1; text-align: left; }
 }

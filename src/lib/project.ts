@@ -144,8 +144,22 @@ export interface ProjectDesign {
     refHeightMm?: string;
     listenDistanceM?: string;
     listenEarHeightMm?: string;
+    /** Driver the mic was aimed at; that one is the reference point (0,0). */
+    refDriver?: string;
     drivers?: Partial<
-      Record<'low' | 'mid' | 'high', { xMm?: string; yMm?: string; enclosure?: string; fbHz?: string }>
+      Record<
+        'low' | 'mid' | 'high',
+        {
+          xMm?: string;
+          yMm?: string;
+          enclosure?: string;
+          fbHz?: string;
+          /** Identical drivers in this branch (dual woofers etc.); absent = 1. */
+          count?: string;
+          /** Centre-to-centre spacing between them, mm; only used when count > 1. */
+          spacingMm?: string;
+        }
+      >
     >;
   };
   /** Cone-breakup upper limit: off, or cross at f_b / harmonic. */

@@ -12,7 +12,7 @@
  * inputs → identical outputs, every run, every machine.
  */
 import type { Complex } from './complex.ts';
-import type { GriddedResponse, TweeterAdjust } from './dsp.ts';
+import { applyTransfer, type GriddedResponse, type TweeterAdjust } from './dsp.ts';
 import type { VxpPart } from './parsers/vxp.ts';
 import type { AngleResponse } from './directivity.ts';
 import {
@@ -25,9 +25,9 @@ import {
 } from './vfOptimizer.ts';
 import { synthesize, type SynthesisResult } from './synthesis.ts';
 import { mergeSynthesizedSchematics } from './schematicEdit.ts';
-import { optimizeNetworkValues, type NetOptimizeResult } from './netOptimizer.ts';
+import { optimizeNetworkValues, Z_FLOOR_OHM, type NetOptimizeResult } from './netOptimizer.ts';
 import { bomFor, type SnapPrefs } from './catalog.ts';
-import type { DriverFilterSpec } from './filters.ts';
+import { evalDriverFilter, type DriverFilterSpec } from './filters.ts';
 
 export interface ChainSettings {
   phasePriority: number; // 0..1
@@ -66,6 +66,12 @@ export interface ChainInput {
   seed: VfSpecs;
   settings: ChainSettings;
   xoRange?: [number, number];
+  /** What the DELIVERED crossing is judged against in the ranking: the pin
+   *  when the designer pinned it (a promise), else the measured physics
+   *  window (2xFs / excursion floor, beaming / lobing ceiling). Distinct
+   *  from xoRange, which is scan bookkeeping — the three-way lesson: a
+   *  candidate drifting inside the window is fine, leaving it is not. */
+  judgeWindow?: { floorHz?: number | null; ceilHz?: number | null } | null;
 }
 
 export interface ChainResult {
@@ -81,6 +87,17 @@ export interface ChainResult {
   net: NetOptimizeResult;
   /** Catalog BOM total (€) of the tuned network; null without priced catalog. */
   bomTotalEur: number | null;
+  /** Amplifier-load verdict of the DELIVERED network: false when the tune was
+   *  rejected on the Z floor or the dip could not be repaired. RELATIVE — it
+   *  says the tune did not make things worse, NOT that the load is sane. */
+  zOk: boolean;
+  /** Minimum system |Zin| the amplifier actually sees, ohms. The absolute
+   *  companion to {@link zOk}, ranked as a CLASS. */
+  zMinOhm: number | null;
+  /** Delivered crossing inside its window/pin (null = nothing to judge). */
+  xoWindowOk: boolean | null;
+  /** Delivered phase-coherent overlap width, octaves. */
+  overlapOct: number | null;
 }
 
 /** Fine-grained progress from inside one chain run — feeds the live busy
@@ -202,6 +219,28 @@ export function runDesignChain(
     { components: synthTweeter.components, model: 'tweeter' },
   ]).parts;
 
+  /* THE LEASH (see branchTargets in netOptimizer): the design step's
+   * acoustic target per branch, handed to the assembled tune as a ±3 dB
+   * corridor. Same architecture as the three-way chain, same risk — the tune
+   * holds the largest freedom in the chain and can rebuild a branch into
+   * something its designer never drew. Masked to the branch's own top 25 dB;
+   * the stopband belongs to the leak and protection guards.
+   *
+   * EQ bands ride along here (unlike three-way, where the design step's EQ is
+   * a separate stage): the two-way target IS spec-with-EQ, and the synthesis
+   * realises it, so the corridor must describe what was actually fitted. */
+  const targetFor = (spec: DriverFilterSpec, resp: GriddedResponse): number[] => {
+    const tgt = applyTransfer(resp, evalDriverFilter(spec, [...grid]));
+    let peak = -Infinity;
+    for (const v of tgt.spl) if (v > peak) peak = v;
+    return tgt.spl.map((v) => (v > peak - 25 ? v : NaN));
+  };
+  const branchTargets = {
+    freq: [...grid],
+    low: targetFor(shifted(b.specs.woofer), w),
+    high: targetFor(shifted(b.specs.tweeter), t),
+  };
+
   // Assembled tune — the only stage that judges the interplay.
   onProgress?.({ stage: 'tune', evals: evaluations });
   const net = optimizeNetworkValues(
@@ -213,6 +252,11 @@ export function runDesignChain(
     { ...adjust, inverted: b.inverted },
     {
       phasePriority: s.phasePriority,
+      branchTargets,
+      // The seed here is OUR OWN synthesis, so the seed-relative amp-load bar
+      // has nothing to respect and everything to hide behind (see
+      // zFloorStrict — the three-way lesson, which applies verbatim).
+      zFloorStrict: true,
       angleData: s.angleData,
       directivityWeight: s.directivityWeight,
       ampTarget: s.ampTarget,
@@ -228,9 +272,25 @@ export function runDesignChain(
       onStage: (detail) => onProgress?.({ stage: 'tune', evals: evaluations, detail }),
     },
   );
+  const zOk =
+    !net.safetyNote &&
+    !(net.ampFloorNote !== undefined && net.ampFloorNote.includes('could not be repaired'));
+  const win = input.judgeWindow;
+  const xoDel = net.after.xoHz;
+  const xoWindowOk = ((): boolean | null => {
+    if (!win || xoDel == null) return null;
+    const SLACK = 1.06;
+    if (win.floorHz != null && xoDel < win.floorHz / SLACK) return false;
+    if (win.ceilHz != null && xoDel > win.ceilHz * SLACK) return false;
+    return win.floorHz != null || win.ceilHz != null ? true : null;
+  })();
   return {
     label,
     xoRange: input.xoRange,
+    zOk,
+    zMinOhm: net.after.zMinOhm ?? null,
+    xoWindowOk,
+    overlapOct: net.after.pairOverlapOct?.[0] ?? null,
     vf: b,
     rounds,
     evaluations: evaluations + net.evaluations,
@@ -325,7 +385,26 @@ export function rankChainResults(
   const meets = (r: ChainResult): boolean =>
     !targets ||
     (r.net.after.rippleDb <= targets.rippleDb && r.net.after.phaseDeg <= targets.phaseDeg);
+  /* Amplifier load and delivered-handover physics as CLASSES above the
+   * flatness targets — ported verbatim from the three-way ranking, where both
+   * gaps were measured. zOk alone is relative (the tune did not worsen the
+   * dip), so a candidate whose seed already sat under the floor passed it and
+   * won with an amp-hostile load; and a crossing past the measured
+   * beaming/lobing bound is a different loudspeaker off-axis however flat it
+   * sums on-axis. Unknown (null / absent) is never punished, so older results
+   * and unwindowed runs rank exactly as before. */
+  const zFloorOk = (r: ChainResult): boolean =>
+    r.zMinOhm == null || r.zMinOhm >= Z_FLOOR_OHM;
+  const zClass = (r: ChainResult): number =>
+    (r.zOk === false ? 2 : 0) + (zFloorOk(r) ? 0 : 1);
+  const xoClass = (r: ChainResult): number => (r.xoWindowOk === false ? 1 : 0);
   const ranked = [...results].sort((a, b) => {
+    const za = zClass(a);
+    const zb = zClass(b);
+    if (za !== zb) return za - zb;
+    const xa = xoClass(a);
+    const xb = xoClass(b);
+    if (xa !== xb) return xa - xb;
     const ma = meets(a) ? 0 : 1;
     const mb = meets(b) ? 0 : 1;
     if (ma !== mb) return ma - mb;
@@ -342,7 +421,13 @@ export function rankChainResults(
   // nudges. Deterministic.
   if (ranked.length > 1) {
     const s0 = score(ranked[0]);
-    const tied = ranked.filter((r) => meets(r) === meets(ranked[0]) && score(r) <= s0 * 1.05);
+    const tied = ranked.filter(
+      (r) =>
+        zClass(r) === zClass(ranked[0]) &&
+        xoClass(r) === xoClass(ranked[0]) &&
+        meets(r) === meets(ranked[0]) &&
+        score(r) <= s0 * 1.05,
+    );
     if (tied.length > 1) {
       const safe = (r: ChainResult): boolean =>
         hpFloorHz == null || r.net.after.xoHz == null || r.net.after.xoHz >= hpFloorHz;

@@ -42,6 +42,7 @@ import {
   breakupHz,
   excursionFloorHz,
   lobingCeilingHz,
+  lobingKFor,
   type KaTier,
 } from './lib/driverLimits.ts';
 import {
@@ -70,6 +71,7 @@ import NumberFlow from '@number-flow/react';
 import { Modal } from './components/Modal.tsx';
 import { HelpPanel } from './components/HelpPanel.tsx';
 import { MeasuringGuide } from './components/MeasuringGuide.tsx';
+import { BaffleView } from './components/BaffleView.tsx';
 import { CatalogManager } from './components/CatalogManager.tsx';
 import { helpSectionForTab } from './lib/help.ts';
 import { fileSafeName } from './lib/filenames.ts';
@@ -106,6 +108,8 @@ import {
   runChain3Scan,
 } from './lib/optimClient.ts';
 import { crossover3Variants, rankChain3Results } from './lib/threeWayChain.ts';
+import { Z_FLOOR_OHM } from './lib/netOptimizer.ts';
+import type { Chain3Result } from './lib/threeWayChain.ts';
 import { buildSoloNetwork, optimizeSoloFilter, reachableBandFor } from './lib/soloOptimizer.ts';
 import { crossoverVariants, rankChainResults, type ChainResult, type ChainSettings } from './lib/designChain.ts';
 import { deserializeCatalog, serializeCatalog } from './lib/catalogFile.ts';
@@ -525,6 +529,16 @@ interface CabinetDriver {
   enclosure: Enclosure;
   /** Box corner: Fc for sealed, Fb for ported. */
   fbHz: string;
+  /** How many IDENTICAL drivers make up this branch ('' or '1' = one). Dual
+   *  woofers are ordinary (MTM, 2.5-way), and the count is not cosmetic: n
+   *  drivers displace n times the air, so the excursion floor drops by √n —
+   *  while each cone still beams as itself, which is why Sd stays the single
+   *  driver's datasheet value instead of being pre-multiplied. */
+  count: string;
+  /** Centre-to-centre spacing BETWEEN those drivers, mm. Only meaningful when
+   *  count > 1: it sets where the array's own vertical lobing starts, which is
+   *  a different (and usually lower) ceiling than cone beaming. */
+  spacingMm: string;
 }
 interface CabinetState {
   /** Microphone distance during the FRD sweeps, mm. */
@@ -544,6 +558,12 @@ interface CabinetState {
   refHeightMm: string;
   listenDistanceM: string;
   listenEarHeightMm: string;
+  /** Which driver the microphone was aimed at, if any. That driver IS the
+   *  reference point, so its offset is 0,0 BY DEFINITION — the app should
+   *  know it rather than ask for it (Sander: "de tweeter is toch de
+   *  reference? dan hoef ik toch geen offset in te vullen?"). '' = the mic
+   *  was aimed at some other spot and every driver has a real offset. */
+  refDriver: '' | BranchRole;
   drivers: Record<BranchRole, CabinetDriver>;
 }
 const emptyCabinetDriver = (): CabinetDriver => ({
@@ -551,6 +571,8 @@ const emptyCabinetDriver = (): CabinetDriver => ({
   yMm: '',
   enclosure: 'unknown',
   fbHz: '',
+  count: '',
+  spacingMm: '',
 });
 const emptyCabinet = (): CabinetState => ({
   micDistanceMm: '',
@@ -562,6 +584,7 @@ const emptyCabinet = (): CabinetState => ({
   refHeightMm: '',
   listenDistanceM: '',
   listenEarHeightMm: '',
+  refDriver: '',
   drivers: { low: emptyCabinetDriver(), mid: emptyCabinetDriver(), high: emptyCabinetDriver() },
 });
 /** Restore a cabinet block from a project/autosave, filling every gap with the
@@ -582,6 +605,8 @@ function mergeCabinet(raw: ProjectDesign['cabinet']): CabinetState {
       enclosure:
         enc === 'sealed' || enc === 'ported' || enc === 'open' ? (enc as Enclosure) : 'unknown',
       fbHz: d.fbHz ?? '',
+      count: d.count ?? '',
+      spacingMm: d.spacingMm ?? '',
     };
   }
   return {
@@ -594,6 +619,10 @@ function mergeCabinet(raw: ProjectDesign['cabinet']): CabinetState {
     refHeightMm: raw.refHeightMm ?? '',
     listenDistanceM: raw.listenDistanceM ?? '',
     listenEarHeightMm: raw.listenEarHeightMm ?? '',
+    refDriver:
+      raw.refDriver === 'low' || raw.refDriver === 'mid' || raw.refDriver === 'high'
+        ? raw.refDriver
+        : '',
     drivers,
   };
 }
@@ -619,6 +648,10 @@ function bindingCeil(
   lim: {
     beam: number | null;
     lobe: number | null;
+    /** Lobing of a MULTI-driver branch on its own spacing — a separate
+     *  criterion from lobing against the neighbouring branch, and usually
+     *  the lower of the two once a branch holds more than one driver. */
+    arrayLobe: number | null;
     breakup: { hz: number; corroboratedByZ: boolean } | null;
     excursion: number | null;
   },
@@ -627,6 +660,7 @@ function bindingCeil(
   const cands: Array<[number, string]> = [];
   if (lim.beam !== null) cands.push([lim.beam, beamMeasured ? 'measured beaming' : 'beaming']);
   if (lim.lobe !== null) cands.push([lim.lobe, 'lobing']);
+  if (lim.arrayLobe !== null) cands.push([lim.arrayLobe, 'array lobing']);
   if (lim.breakup)
     cands.push([
       lim.breakup.hz / 3,
@@ -939,13 +973,48 @@ export default function App() {
   };
 
   /** Active tab of the left design pane (persisted: reopen where you left off). */
-  const [designTab, setDesignTab] = useState<'import' | 'data' | 'filters' | 'network'>(() => {
+  const [designTab, setDesignTab] = useState<
+    'import' | 'drivers' | 'data' | 'filters' | 'network'
+  >(() => {
     const t = localStorage.getItem('ads-ui-tab');
-    return t === 'data' || t === 'filters' || t === 'network' ? t : 'import';
+    return t === 'drivers' || t === 'data' || t === 'filters' || t === 'network' ? t : 'import';
   });
   useEffect(() => {
     localStorage.setItem('ads-ui-tab', designTab);
   }, [designTab]);
+
+  /**
+   * Guided vs Expert.
+   *
+   * The tool exists so that someone who does not know how to build a filter
+   * still ends up with speakers — and at the same time a pro must be able to
+   * work properly. Those are not the same interface, and the dividing line is
+   * NOT "easy versus hard". It is:
+   *
+   *   facts about YOUR speaker      -> a beginner can answer these
+   *   overrides on MY reasoning     -> only someone who knows better can
+   *
+   * Which drivers, how many, where on the baffle, how you measured, how loud
+   * you want to play: all answerable, and all things the app cannot derive.
+   * Alignment preference, acoustic slopes, phase metric, tier profiles, staged
+   * targets, crossover pins: overrides, every one of them, and the app already
+   * has a defensible answer for each.
+   *
+   * Guided therefore shows FEWER KNOBS BUT NOT LESS DIAGNOSIS — a first build
+   * fails on measurement mistakes and unsafe loads, so the verdicts stay.
+   *
+   * Default: guided for someone new, expert for a session that already has
+   * work in it (changing a working setup out from under someone is its own
+   * kind of bug).
+   */
+  const [uiMode, setUiMode] = useState<'guided' | 'expert'>(() => {
+    const m = localStorage.getItem('ads-ui-mode');
+    if (m === 'guided' || m === 'expert') return m;
+    return localStorage.getItem('ads-autosave') ? 'expert' : 'guided';
+  });
+  useEffect(() => {
+    localStorage.setItem('ads-ui-mode', uiMode);
+  }, [uiMode]);
 
   /** Pin the SPL chart to the top of the analysis pane while the rest scrolls. */
   /** Build-tolerance band on the SPL chart (±% on every physical R/L/C,
@@ -1132,7 +1201,9 @@ export default function App() {
   /** How much spacing the design tolerates, in wavelengths. Genuinely
    *  contested (0.5 = no forward null … 1.2 = Saunisto's power-response
    *  optimum, which ACCEPTS a ±25° null), so the designer owns it. */
-  const [ctcK, setCtcK] = useState('0.5');
+  // 'auto' resolves the strictness per pair from the driver geometry
+  // (lobingKFor); restores of older projects keep their stored numeric value.
+  const [ctcK, setCtcK] = useState('auto');
   /** Cone breakup as an upper limit: cross at or below f_b / harmonic. */
   const [breakupLimitOn, setBreakupLimitOn] = useState(true);
   const [breakupHarmonic, setBreakupHarmonic] = useState('3');
@@ -1994,10 +2065,21 @@ export default function App() {
   const cabinetInfo = useMemo(() => {
     const micMm = Number(cabinet.micDistanceMm);
     const micElev = Number(cabinet.micElevationDeg) || 0;
+    /**
+     * The chosen reference driver IS the origin, so its offset is 0,0 — here,
+     * not just in the form. Hiding its inputs while still READING whatever was
+     * typed before the choice was made is the same silent-mismatch bug this
+     * project keeps hunting: Sander picked "the tweeter" and the app went on
+     * placing it at the -50 he had entered a minute earlier, which put it on
+     * the bottom edge of the baffle in the drawing and in every edge- and
+     * spacing-derived number.
+     */
+    const placeOf = (role: BranchRole) =>
+      cabinet.refDriver === role ? { xMm: 0, yMm: 0 } : placementOf(cabinet.drivers[role]);
     const place = {
-      low: placementOf(cabinet.drivers.low),
-      mid: placementOf(cabinet.drivers.mid),
-      high: placementOf(cabinet.drivers.high),
+      low: placeOf('low'),
+      mid: placeOf('mid'),
+      high: placeOf('high'),
     };
     const angleListOf = (role: BranchRole): number[] => {
       const set =
@@ -2054,6 +2136,19 @@ export default function App() {
       /** Adjacent-pair spacing. In 2-way the single pair is low↔high. */
       ctcLow: threeWay ? ctc('low', 'mid') : ctc('low', 'high'),
       ctcHigh: threeWay ? ctc('mid', 'high') : null,
+      /** The AXIS each pair lobes in (dx/dy of the separation) — feeds the
+       *  auto lobing strictness: horizontal separation nulls sweep across the
+       *  seats (strict), vertical goes to floor/ceiling (Dickason). */
+      ctcLowVec: (() => {
+        const [a2, b2] = threeWay ? (['low', 'mid'] as const) : (['low', 'high'] as const);
+        return place[a2] && place[b2]
+          ? { dxMm: place[b2]!.xMm - place[a2]!.xMm, dyMm: place[b2]!.yMm - place[a2]!.yMm }
+          : null;
+      })(),
+      ctcHighVec:
+        threeWay && place.mid && place.high
+          ? { dxMm: place.high.xMm - place.mid.xMm, dyMm: place.high.yMm - place.mid.yMm }
+          : null,
       reliable,
       baffleStep: baffleStepHz(baffleW),
       edgeOf: (role: BranchRole) =>
@@ -2067,6 +2162,34 @@ export default function App() {
       unloadOf: (role: BranchRole) => unloadingRisk(cabinet.drivers[role].enclosure),
     };
   }, [cabinet, sdCm2, angleSets, threeWay]);
+
+  /** Where a MULTI-driver branch starts lobing on its own spacing. This is a
+   *  different ceiling from cone beaming: two woofers 200 mm apart interfere
+   *  vertically long before either cone becomes directional, and that is the
+   *  quantitative reason a dual-woofer branch wants to hand over lower. Uses
+   *  the same k the user picked for the driver-to-driver rule. */
+  const arrayLobe = useMemo(() => {
+    // Array axis follows the baffle: wider than tall (a centre) stacks its
+    // drivers side by side — those nulls sweep ACROSS the seats, so auto is
+    // strict there; a tower's vertical stack gets Dickason. Unknown baffle =
+    // strict (auto may never be laxer than the old default when it cannot
+    // know the axis).
+    const w2 = Number(cabinet.baffleWidthMm);
+    const h2 = Number(cabinet.baffleHeightMm);
+    const horiz = w2 > 0 && h2 > 0 ? w2 > h2 : true;
+    const kArr =
+      ctcK === 'auto'
+        ? lobingKFor(horiz ? 1 : 0, horiz ? 0 : 1)
+        : Number(ctcK) > 0
+          ? Number(ctcK)
+          : 0.5;
+    const out: Partial<Record<BranchRole, number | null>> = {};
+    for (const role of ['low', 'mid', 'high'] as BranchRole[]) {
+      const d = cabinet.drivers[role];
+      out[role] = Number(d.count) > 1 ? lobingCeilingHz(Number(d.spacingMm), kArr) : null;
+    }
+    return out as Record<BranchRole, number | null>;
+  }, [cabinet, ctcK]);
 
   /**
    * Near-field merge per branch: the driver's effective response, with its low
@@ -2404,6 +2527,34 @@ export default function App() {
 
   const result = sim?.combined ?? null;
 
+  /**
+   * What the guided route counts as "this step is done".
+   *
+   * Deliberately generous: a tick means "you have given me enough to work
+   * with", not "this is perfect". The step stays open, the checks inside the
+   * panel keep nagging about quality (timing, far field, gate). A tick that
+   * demands perfection would just stop a beginner at step one.
+   */
+  const guidedDone = useMemo(
+    () => ({
+      // A driver is only useful with a response; impedance and datasheet
+      // numbers unlock extra criteria and are checked inside the step.
+      // Step 1 is about getting files in; step 2 about what you know of them.
+      files: !!(woofer || tweeter),
+      drivers: (['low', 'mid', 'high'] as BranchRole[]).some(
+        (r) => Number(sdCm2[r]) > 0 || !!cabinet.drivers[r].xMm || !!cabinet.drivers[r].yMm,
+      ),
+      // Mic distance is the one number that unlocks the honest-range advice —
+      // without it the app cannot tell you what your measurement supports.
+      cabinet: Number(cabinet.micDistanceMm) > 0,
+      // Something has been designed: virtual filters or a built network.
+      design: !!result,
+      build: designs.some((d) => d.parts.length > 2),
+    }),
+    [woofer, tweeter, cabinet, sdCm2, result, designs],
+  );
+
+
   /** Single-driver mode, floor control: the driver's own median level over the
    *  evaluation band, the level the engine would target by default, and — for
    *  the entered floor — how far a cut-only correction can then reach.
@@ -2616,10 +2767,22 @@ export default function App() {
     const kaThr = KA_TIERS[kaTier].diff30Db;
     const wBeam = angleSets ? beamingCeilingHz(angleSets.woofer, kaThr) : null;
     const mBeam = angleSets ? beamingCeilingHz(angleSets.mid, kaThr) : null;
-    // Vertical lobing from centre-to-centre spacing — geometry, no measurement.
-    const kk = Number(ctcK) > 0 ? Number(ctcK) : 0.5;
-    const wLobe = lobingCeilingHz(cabinetInfo.ctcLow ?? 0, kk);
-    const mLobe = lobingCeilingHz(cabinetInfo.ctcHigh ?? 0, kk);
+    // Lobing from centre-to-centre spacing — geometry, no measurement. The
+    // strictness k resolves PER PAIR when set to auto: the axis of the
+    // separation decides which published anchor applies (lobingKFor — a
+    // centre's side-by-side woofers stay strict, a stacked mid/tweeter gets
+    // Dickason). Sanders' question, verbatim: "de engine ziet toch dat de
+    // woofers naast elkaar liggen?"
+    const kOf = (vec: { dxMm: number; dyMm: number } | null): number =>
+      ctcK === 'auto'
+        ? vec
+          ? lobingKFor(vec.dxMm, vec.dyMm)
+          : 0.5
+        : Number(ctcK) > 0
+          ? Number(ctcK)
+          : 0.5;
+    const wLobe = lobingCeilingHz(cabinetInfo.ctcLow ?? 0, kOf(cabinetInfo.ctcLowVec));
+    const mLobe = lobingCeilingHz(cabinetInfo.ctcHigh ?? 0, kOf(cabinetInfo.ctcHighVec));
     // Cone breakup: a resonance at f_b is excited as the Nth harmonic of f_b/N,
     // so the penalty lands more than an octave BELOW the peak.
     const harm = Number(breakupHarmonic) > 0 ? Number(breakupHarmonic) : 3;
@@ -2645,12 +2808,45 @@ export default function App() {
     // --- lower limits of the UPPER driver of each pair ---------------------
     const spl = Number(excursionSpl);
     const exOf = (role: BranchRole) =>
-      Number.isFinite(spl) ? excursionFloorHz(Number(sdCm2[role]), Number(xmaxMm[role]), spl) : null;
+      Number.isFinite(spl)
+        ? excursionFloorHz(Number(sdCm2[role]), Number(xmaxMm[role]), spl, {
+            count: Number(cabinet.drivers[role].count) || 1,
+          })
+        : null;
     const midEx = exOf('mid');
     const twtEx = exOf('high');
 
-    const lowCeil = minOpt(wBeam ?? wooferXoCeiling, wLobe, wBreak && breakupCeilingHz(wBreak.hz, harm));
-    const highCeil = minOpt(mBeam ?? midXoCeiling, mLobe, mBreak && breakupCeilingHz(mBreak.hz, harm));
+    // A branch built from SEVERAL drivers lobes on its OWN spacing too, and
+    // that ceiling is independent of cone beaming: two woofers 205 mm apart
+    // interfere vertically at 837 Hz however small each cone is. It belongs in
+    // the window for the same reason the driver-to-driver spacing does.
+    // Array strictness: same axis rule as arrayLobe — a centre's side-by-side
+    // pair stays strict under auto, a tower's vertical stack gets Dickason.
+    const wBaf = Number(cabinet.baffleWidthMm);
+    const hBaf = Number(cabinet.baffleHeightMm);
+    const horizArr = wBaf > 0 && hBaf > 0 ? wBaf > hBaf : true;
+    const kArr2 =
+      ctcK === 'auto'
+        ? lobingKFor(horizArr ? 1 : 0, horizArr ? 0 : 1)
+        : Number(ctcK) > 0
+          ? Number(ctcK)
+          : 0.5;
+    const arrayOf = (role: BranchRole) =>
+      Number(cabinet.drivers[role].count) > 1
+        ? lobingCeilingHz(Number(cabinet.drivers[role].spacingMm), kArr2)
+        : null;
+    const lowCeil = minOpt(
+      wBeam ?? wooferXoCeiling,
+      wLobe,
+      arrayOf('low'),
+      wBreak && breakupCeilingHz(wBreak.hz, harm),
+    );
+    const highCeil = minOpt(
+      mBeam ?? midXoCeiling,
+      mLobe,
+      arrayOf('mid'),
+      mBreak && breakupCeilingHz(mBreak.hz, harm),
+    );
     return {
       angleSets,
       low: {
@@ -2666,14 +2862,90 @@ export default function App() {
       /** Every criterion's own number, so the panel can say WHICH one binds —
        *  a window the designer cannot attribute is a window he cannot act on. */
       limits: {
-        low: { beam: wBeam, lobe: wLobe, breakup: wBreak, excursion: midEx },
-        high: { beam: mBeam, lobe: mLobe, breakup: mBreak, excursion: twtEx },
+        low: { beam: wBeam, lobe: wLobe, arrayLobe: arrayOf('low'), breakup: wBreak, excursion: midEx },
+        high: { beam: mBeam, lobe: mLobe, arrayLobe: arrayOf('mid'), breakup: mBreak, excursion: twtEx },
       },
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [threeWay, sim, result, phaseMode, angleSets, midHpFloor, wooferXoCeiling, midXoCeiling,
       tweeterHpFloor, kaTier, cabinetInfo, ctcK, breakupLimitOn, breakupHarmonic,
-      sdCm2, xmaxMm, excursionSpl, impedances]);
+      sdCm2, xmaxMm, excursionSpl, impedances, cabinet]);
+
+  /* The SAME physics window for the TWO-WAY pair (woofer↔tweeter). The
+   * three-way scan has derived its search space from the measurements since
+   * August; the two-way scan never got it and still searches an unbounded
+   * neighbourhood of the raw crossing — the open roadmap item "Fs-vloer voor
+   * de HP-knie in de vfOptimizer-bounds", generalised: floor = 2×Fs AND
+   * where the tweeter reaches its own level AND its excursion floor; ceiling
+   * = the woofer's measured beaming onset, its lobing limit against the
+   * tweeter (auto-k by axis), its own array spacing, and its breakup/N.
+   * Reported as ONE window and used both to judge the delivered crossing and
+   * to bound the free scan. */
+  const physWin2 = useMemo(() => {
+    if (threeWay || soloDriver || !sim || !result) return null;
+    const grid = result.freq;
+    const ad = angleResponsesOn(grid);
+    const maxOpt = (...vs: (number | null | undefined)[]): number | null => {
+      const xs = vs.filter((v): v is number => typeof v === 'number' && v > 0);
+      return xs.length ? Math.max(...xs) : null;
+    };
+    const minOpt = (...vs: (number | null | undefined)[]): number | null => {
+      const xs = vs.filter((v): v is number => typeof v === 'number' && v > 0);
+      return xs.length ? Math.min(...xs) : null;
+    };
+    const wBeam = ad ? beamingCeilingHz(ad.woofer, KA_TIERS[kaTier].diff30Db) : null;
+    const kk =
+      ctcK === 'auto'
+        ? cabinetInfo.ctcLowVec
+          ? lobingKFor(cabinetInfo.ctcLowVec.dxMm, cabinetInfo.ctcLowVec.dyMm)
+          : 0.5
+        : Number(ctcK) > 0
+          ? Number(ctcK)
+          : 0.5;
+    const wLobe = lobingCeilingHz(cabinetInfo.ctcLow ?? 0, kk);
+    const wBaf = Number(cabinet.baffleWidthMm);
+    const hBaf = Number(cabinet.baffleHeightMm);
+    const horizArr = wBaf > 0 && hBaf > 0 ? wBaf > hBaf : true;
+    const kArr = ctcK === 'auto' ? lobingKFor(horizArr ? 1 : 0, horizArr ? 0 : 1) : kk;
+    const arrLow =
+      Number(cabinet.drivers.low.count) > 1
+        ? lobingCeilingHz(Number(cabinet.drivers.low.spacingMm), kArr)
+        : null;
+    const harm = Number(breakupHarmonic) > 0 ? Number(breakupHarmonic) : 3;
+    let wBreak: { hz: number } | null = null;
+    if (breakupLimitOn) {
+      try {
+        const z = zGridWithSlots(impedances, grid)[canonicalModelForRole('low', false)];
+        const reach = reachesLevelHz(grid, sim.base.w.spl);
+        wBreak = breakupHz(grid, sim.base.w.spl, {
+          zMag: z ? z.map((c) => Math.hypot(c.re, c.im)) : undefined,
+          searchFromHz: Math.max(300, (reach ?? 0) * 2),
+        });
+      } catch {
+        wBreak = null;
+      }
+    }
+    const splRef = Number(excursionSpl);
+    const twtEx = Number.isFinite(splRef)
+      ? excursionFloorHz(Number(sdCm2.high), Number(xmaxMm.high), splRef, {
+          count: Number(cabinet.drivers.high.count) || 1,
+        })
+      : null;
+    return {
+      floorHz: maxOpt(tweeterHpFloor, reachesLevelHz(grid, sim.base.t.spl), twtEx),
+      ceilHz: minOpt(
+        wBeam ?? wooferXoCeiling,
+        wLobe,
+        arrLow,
+        wBreak && breakupCeilingHz(wBreak.hz, harm),
+      ),
+      ceilMeasured: wBeam !== null,
+      limits: { beam: wBeam, lobe: wLobe, arrayLobe: arrLow, breakup: wBreak, excursion: twtEx },
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [threeWay, soloDriver, sim, result, phaseMode, kaTier, cabinetInfo, ctcK, cabinet,
+      breakupLimitOn, breakupHarmonic, impedances, excursionSpl, sdCm2, xmaxMm,
+      tweeterHpFloor, wooferXoCeiling]);
 
   /** Per-adjacent-pair integration + phase flatness (3-way only). Silent
    *  ghost regions (per-branch bands) drop out of the overlap window on
@@ -2931,7 +3203,7 @@ export default function App() {
     /** Live phase label (vf-rounds path). */
     label?: string;
     /** Scan path: one STABLE row per candidate — rendered as a fixed table. */
-    items?: { label: string; text: string; done: boolean }[];
+    items?: { label: string; text: string; done: boolean; warn?: string }[];
   } | null>(null);
   /** Coarse stage of a standalone component tune ("value tune", "snap", …). */
   /** Component-tune progress à la the scan card (Sanders wens): the PLANNED
@@ -3395,6 +3667,43 @@ export default function App() {
         lowWin3,
         highWin3,
       );
+      // What the DELIVERED crossings are judged against in the ranking: a pin
+      // is the designer's promise; a measured physics window is the drivers'.
+      // The candidate cage stays bookkeeping — see judgeWindows in the chain.
+      //
+      // A DEGENERATE window (floor at or above ceiling — "no room") judges
+      // NOTHING: every crossing fails a window that does not exist, which is
+      // how Sanders' ka-2 run came back with a warning glyph on all nine
+      // rows. The scan already falls back to the level anchors for its
+      // candidates; the broken premise must be said out loud instead
+      // (signaleren, nooit een tweede stille beslissing).
+      const sane = (win: { floorHz?: number | null; ceilHz?: number | null } | null) =>
+        win && win.floorHz != null && win.ceilHz != null && win.floorHz >= win.ceilHz
+          ? null
+          : win;
+      const judgeWindows = {
+        low: pins.low
+          ? { floorHz: pins.low.freq - pins.low.margin, ceilHz: pins.low.freq + pins.low.margin }
+          : sane(lowWin3),
+        high: pins.high
+          ? { floorHz: pins.high.freq - pins.high.margin, ceilHz: pins.high.freq + pins.high.margin }
+          : sane(highWin3),
+      };
+      const brokenWindows = (
+        [
+          ['W-M', lowWin3, pins.low],
+          ['M-T', highWin3, pins.high],
+        ] as const
+      )
+        .filter(([, w2, pin]) => !pin && w2 && sane(w2) === null)
+        .map(
+          ([naam, w2]) =>
+            `⚠ ${naam} physics window has NO ROOM (${Math.round(w2!.floorHz!)}–` +
+            `${Math.round(w2!.ceilHz!)} Hz) — the scan fell back to the level-crossing ` +
+            `anchors and the delivered crossings cannot be judged on this axis. Check the ` +
+            `Driver limits (the measured 4 dB beaming tier is the default for a reason), ` +
+            `or pin this crossing yourself.`,
+        );
       const inputs = variants.map((v) => ({
         grid: [...grid],
         w: sim.base.w,
@@ -3408,6 +3717,7 @@ export default function App() {
         xoHigh: v.xoHigh,
         xoLowRange: v.xoLowRange,
         xoHighRange: v.xoHighRange,
+        judgeWindows,
         label: v.label,
         settings,
       }));
@@ -3438,6 +3748,31 @@ export default function App() {
           setVfBypass(true);
           setVfOpt(null);
           setVfRunStats(null);
+          // De scan-tabel werkt nu OOK in 3-weg (Sander: "bij de 2-weg kreeg
+          // ik alle opties te zien, maar nu niet"). Hij stond hier op null,
+          // dus de kandidaten leefden alleen als proza in de note -- terwijl
+          // juist bij drie takken de prijsverschillen tussen kandidaten groot
+          // zijn en je ze wilt kunnen proberen.
+          setScanSort(null);
+          setChainScan(
+            results.length > 1
+              ? {
+                  rows: ranked.map((rr) => ({
+                    label: rr.label,
+                    rippleDb: rr.net.after.rippleDb,
+                    avgDevDb: rr.net.after.avgDevDb ?? null,
+                    phaseDeg: rr.net.after.phaseDeg,
+                    zMinOhm: rr.net.after.zMinOhm ?? null,
+                    xoWindowOk: rr.xoWindowOk,
+                    pairOverlapOct: rr.pairOverlapOct,
+                    bomEur: rr.bomTotalEur,
+                    winner: rr === win,
+                    result: rr,
+                  })),
+                  active: win.label,
+                }
+              : null,
+          );
           // DELIVERED handovers, not just the candidate label: a design can
           // meet every flatness target while its crossings sit an octave off
           // the knees it was built on, and that is invisible in the numbers.
@@ -3453,26 +3788,66 @@ export default function App() {
               ? ` (W-M ${r.net.after.pairPhaseDeg[0].toFixed(1)}° · M-T ${r.net.after.pairPhaseDeg[1].toFixed(1)}°)`
               : '') +
             crossings(r) +
+            (r.pairOverlapOct !== null
+              ? ` · ovl ${r.pairOverlapOct.map((o) => (o === null ? '—' : o.toFixed(1))).join('/')} oct`
+              : '') +
+            (r.xoWindowOk === false ? ' · ⚠ xo window' : '') +
+            (r.zMinOhm !== null ? ` · Z ${r.zMinOhm.toFixed(1)} Ω` : '') +
             (r.bomTotalEur !== null ? ` · €${Math.round(r.bomTotalEur)}` : '') +
             (r.zOk ? '' : ' · ⚠ amp-load');
+          // ONE LINE PER FACT. This was a single run-on sentence of ~600
+          // characters carrying the winner, every loser, prices and warnings;
+          // the reader had to parse prose to find the one ⚠ that mattered.
+          // NB the 3-way path sets chainScan to null, so unlike the 2-way scan
+          // there is no results table — nothing may be dropped here, only
+          // structured.
+          /* A ranking gate whose verdict is invisible is half a feature: when
+           * EVERY candidate sits under the floor the gate reorders nothing and
+           * the designer silently gets an amp-hostile load anyway. Say it, and
+           * say whether it was the only option. */
+          const zLow = win.zMinOhm !== null && win.zMinOhm < Z_FLOOR_OHM;
+          const anySane = ranked.some((r) => r.zMinOhm !== null && r.zMinOhm >= Z_FLOOR_OHM);
+          const zNote = !zLow
+            ? ''
+            : `⚠ amplifier load: the winner dips to ${win.zMinOhm!.toFixed(1)} Ω ` +
+              `(floor ${Z_FLOOR_OHM} Ω)` +
+              (anySane
+                ? ' — a candidate with a sane load exists in the table; it ranks lower on flatness.'
+                : ' — no candidate in this scan stayed above it, so this is a design-level ' +
+                  'property of these drivers in this topology, not a tuning miss. Three branches ' +
+                  'in parallel around a handover is the usual cause; check the Impedance panel.');
+          /* Handover physics on the winner: same visibility rule as the Z
+           * floor — a class the designer cannot read reorders silently. */
+          const anyXoSane = ranked.some((r) => r.xoWindowOk !== false);
+          const xoWinNote =
+            win.xoWindowOk !== false
+              ? ''
+              : `⚠ handover: a delivered crossing sits outside its physics window` +
+                (anyXoSane
+                  ? ' — an in-window candidate exists in the table; it ranks lower on flatness.'
+                  : ' — no candidate stayed inside; the drivers or the window settings disagree ' +
+                    'with every reachable design. Check the ⚙ window readout.');
+          const waarschuwingen = [
+            ...brokenWindows,
+            zNote,
+            xoWinNote,
+            win.xoPinNote ? `⚠ PIN: ${win.xoPinNote}` : '',
+            win.net.snapNote ?? '',
+            win.net.safetyNote ? `⚠ ${win.net.safetyNote}` : '',
+            win.net.ampFloorNote ? `⚠ ${win.net.ampFloorNote}` : '',
+          ].filter(Boolean);
           setNetOptNote(
-            `3-way scan (${variants.length} candidate${variants.length > 1 ? 's' : ''}, ` +
-              `alignment × polarity design step, two-pair tune) — winner ` +
-              `xo ${win.label} · ${win.structureLabel}` +
-              (win.net.after.avgDevDb !== undefined
-                ? ` · avg ${win.net.after.avgDevDb.toFixed(2)} dB`
-                : '') +
-              ` · ${line(win)}` +
-              ` — others: ${ranked.slice(1).map(line).join(' · ')}` +
-              // A pin the physics could not honour must be LOUD (Sanders:
-              // "soms moeten we dat kunnen bypassen met een expliciete
-              // waarschuwing") — the pin IS the designer's bypass of every
-              // derived rule, so a silently-missed pin reads as "de range
-              // wordt genegeerd". Lead the note with it instead of burying it.
-              (win.xoPinNote ? ` · ⚠ PIN: ${win.xoPinNote}` : '') +
-              (win.net.snapNote ? ` · ${win.net.snapNote}` : '') +
-              (win.net.safetyNote ? ` · ⚠ ${win.net.safetyNote}` : '') +
-              (win.net.ampFloorNote ? ` · ⚠ ${win.net.ampFloorNote}` : ''),
+            [
+              `3-way scan — ${variants.length} candidate${variants.length > 1 ? 's' : ''} ` +
+                `(alignment × polarity design step, two-pair tune)`,
+              `winner  xo ${win.label} · ${win.structureLabel}` +
+                (win.net.after.avgDevDb !== undefined
+                  ? ` · avg ${win.net.after.avgDevDb.toFixed(2)} dB`
+                  : ''),
+              `        ${line(win)}`,
+              ...ranked.slice(1).map((r, i) => `${i === 0 ? 'others  ' : '        '}${line(r)}`),
+              ...waarschuwingen,
+            ].join('\n'),
           );
           setDesignTab('network');
         })
@@ -3733,7 +4108,19 @@ export default function App() {
       // within a sane band, not a hard pin — one chain, not a slow spread. A
       // user pin overrides it; no Fs floor (no impedance) → truly free.
       const userXo = xoRangeValue();
+      /* The MEASURED window bounds the free scan when it exists — the same
+       * move the three-way scan made in August, and the open roadmap item
+       * ("Fs-vloer voor de HP-knie in de vfOptimizer-bounds") generalised:
+       * floor = 2×Fs / reach / excursion, ceiling = measured beaming, lobing,
+       * array spacing and breakup/N. The old tweeter-anchored estimate stays
+       * the fallback when nothing has been measured yet. */
+      const measuredFree: [number, number] | undefined =
+        physWin2 && physWin2.floorHz != null && physWin2.ceilHz != null &&
+        physWin2.ceilHz > physWin2.floorHz * 1.05
+          ? [physWin2.floorHz, physWin2.ceilHz]
+          : undefined;
       const saneFree: [number, number] | undefined = (() => {
+        if (measuredFree) return measuredFree;
         if (tweeterHpFloor === null) return undefined;
         const floor = tweeterHpFloor; // tweeter: ≥2×Fs
         // Mid beaming ceiling when the mid size is known (the physically-right
@@ -3759,7 +4146,22 @@ export default function App() {
       // terminates the worker.
       runChainScan(
         {
-          base: { grid: [...grid], w, t, driverZ: zOnGrid, adjust, seed: defaultVFilters(), settings },
+          base: {
+            grid: [...grid],
+            w,
+            t,
+            driverZ: zOnGrid,
+            adjust,
+            seed: defaultVFilters(),
+            settings,
+            // A pin is the designer's promise; the measured window is the
+            // drivers'. A degenerate window judges nothing (three-way lesson).
+            judgeWindow: userXo
+              ? { floorHz: userXo[0], ceilHz: userXo[1] }
+              : measuredFree
+                ? { floorHz: measuredFree[0], ceilHz: measuredFree[1] }
+                : null,
+          },
           variants,
           targets,
         },
@@ -3791,6 +4193,9 @@ export default function App() {
                     rippleDb: rr.net.after.rippleDb,
                     avgDevDb: rr.net.after.avgDevDb ?? null,
                     phaseDeg: rr.net.after.phaseDeg,
+                    zMinOhm: rr.net.after.zMinOhm ?? null,
+                    xoWindowOk: rr.xoWindowOk,
+                    pairOverlapOct: rr.overlapOct != null ? [rr.overlapOct] : null,
                     bomEur: rr.bomTotalEur,
                     winner: rr === win,
                     result: rr,
@@ -3800,6 +4205,26 @@ export default function App() {
               : null,
           );
           setNetOptDiff(null); // fresh design — an old tune-diff would lie
+          // Same visibility rule as the three-way scan: a class the designer
+          // cannot read reorders silently.
+          const zLow2 = win.zMinOhm !== null && win.zMinOhm < Z_FLOOR_OHM;
+          const anySane2 = ranked.some((r) => r.zMinOhm !== null && r.zMinOhm >= Z_FLOOR_OHM);
+          const zNote2 = !zLow2
+            ? ''
+            : `\n⚠ amplifier load: the winner dips to ${win.zMinOhm!.toFixed(1)} Ω ` +
+              `(floor ${Z_FLOOR_OHM} Ω)` +
+              (anySane2
+                ? ' — a candidate with a sane load exists in the table; it ranks lower on flatness.'
+                : ' — no candidate stayed above it; check the Impedance panel.');
+          const xoNote2 =
+            win.xoWindowOk !== false
+              ? ''
+              : `\n⚠ handover: the delivered crossing (${
+                  win.net.after.xoHz ? Math.round(win.net.after.xoHz) : '—'
+                } Hz) sits outside its window` +
+                (ranked.some((r) => r.xoWindowOk !== false)
+                  ? ' — an in-window candidate exists in the table; it ranks lower on flatness.'
+                  : ' — no candidate stayed inside; check the Driver limits or pin the crossing.');
           setNetOptNote(
             (results.length > 1
               ? `crossover scan — winner xo ${win.label}`
@@ -3812,7 +4237,9 @@ export default function App() {
               (win.net.snapNote ? ` · ${win.net.snapNote}` : '') +
               (win.net.valueWindowNote ? ` · ${win.net.valueWindowNote}` : '') +
               (win.net.safetyNote ? ` · ⚠ ${win.net.safetyNote}` : '') +
-              (win.net.ampFloorNote ? ` · ⚠ ${win.net.ampFloorNote}` : ''),
+              (win.net.ampFloorNote ? ` · ⚠ ${win.net.ampFloorNote}` : '') +
+              zNote2 +
+              xoNote2,
           );
         })
         .catch((e) => {
@@ -4162,8 +4589,18 @@ export default function App() {
       avgDevDb: number | null;
       phaseDeg: number;
       bomEur: number | null;
+      /** Delivered minimum system |Zin| — what the amplifier sees. Shown
+       *  because the ranking now judges it: a criterion you cannot read is a
+       *  criterion you cannot argue with. null for 2-way rows. */
+      zMinOhm: number | null;
+      /** Physics verdict on the delivered handovers (3-way; null = unjudged
+       *  or 2-way row) + the delivered overlap width per pair in octaves. */
+      xoWindowOk: boolean | null;
+      pairOverlapOct: (number | null)[] | null;
       winner: boolean;
-      result: ChainResult;
+      /** 2-way and 3-way scans produce different result shapes; the table only
+       *  displays numbers, so it carries either and the loader branches. */
+      result: ChainResult | Chain3Result;
     }[];
     /** Label of the row currently loaded in Working. */
     active: string;
@@ -4172,11 +4609,11 @@ export default function App() {
   /** Scan-table sort: click a header to sort by that column (asc → desc →
    *  back to the RANKING order, which is the default and keeps 🏆 on top). */
   const [scanSort, setScanSort] = useState<{
-    key: 'xo' | 'ripple' | 'avg' | 'phase' | 'bom';
+    key: 'xo' | 'ripple' | 'avg' | 'phase' | 'ovl' | 'zmin' | 'bom';
     dir: 1 | -1;
   } | null>(null);
 
-  function toggleScanSort(key: 'xo' | 'ripple' | 'avg' | 'phase' | 'bom') {
+  function toggleScanSort(key: 'xo' | 'ripple' | 'avg' | 'phase' | 'ovl' | 'zmin' | 'bom') {
     setScanSort((s0) =>
       s0?.key !== key ? { key, dir: 1 } : s0.dir === 1 ? { key, dir: -1 } : null,
     );
@@ -4184,15 +4621,36 @@ export default function App() {
 
   /** Load a scan candidate's complete design (specs + synth + tuned network)
    *  into Working — same application as the winner gets, undo-able. */
-  function applyScanCandidate(row: { label: string; result: ChainResult }) {
+  function applyScanCandidate(row: { label: string; result: ChainResult | Chain3Result }) {
     const r = row.result;
-    setVFilters((p) => ({ ...p, ...r.vf.specs }));
-    setInverted(r.vf.inverted);
-    setVfOpt(r.vf);
-    synthFresh.current = true;
-    setSynth({ mode: synthMode, woofer: r.synthWoofer, tweeter: r.synthTweeter });
+    if ('vf' in r) {
+      // 2-way: the candidate carries a virtual-filter result.
+      setVFilters((p) => ({ ...p, ...r.vf.specs }));
+      setInverted(r.vf.inverted);
+      setVfOpt(r.vf);
+      synthFresh.current = true;
+      setSynth({ mode: synthMode, woofer: r.synthWoofer, tweeter: r.synthTweeter });
+    } else {
+      // 3-way: specs per branch plus the polarity the structure search chose.
+      // Apply exactly what the winner gets — same fields, same order — or a
+      // loaded row would simulate something other than what was fitted.
+      setVFilters((p) => ({ ...p, ...r.specs }));
+      setMidInverted(r.midInverted);
+      setInverted(r.tweeterInverted);
+      synthFresh.current = true;
+      setSynth({
+        mode: synthMode,
+        woofer: r.synthWoofer,
+        mid: r.synthMid,
+        tweeter: r.synthTweeter,
+      });
+      setVfOpt(null);
+      setVfRunStats(null);
+      setNetworkActive(true);
+    }
     setWorkingDesign(r.parts);
     setVfBypass(true);
+    setNetOptDiff(null);
     setChainScan((c) => (c ? { ...c, active: row.label } : c));
   }
   /** One-click chain: after Optimize→Build lands in Working, auto-run the
@@ -4750,7 +5208,11 @@ export default function App() {
    *  hugs the exact combined curve on screen. Null while off or without a
    *  solvable network. */
   const tolBand = useMemo(() => {
-    if (!tolOn || !sim || threeWay) return null;
+    // 3-weg mag hier NIET meer uit: de tolerantieband is dé check die een
+    // rekenkundig optimum scheidt van een bouwbaar filter, en juist een
+    // 3-weg draagt de meeste onderdelen. Hem uitzetten beantwoordde stil een
+    // andere vraag dan er gesteld werd.
+    if (!tolOn || !sim) return null;
     const xo =
       project && xoName !== 'none' ? project.vxp.crossovers.find((c) => c.name === xoName) : undefined;
     const parts = networkActive && schematic ? schematic.parts : xo?.parts;
@@ -4766,12 +5228,30 @@ export default function App() {
     if (!vfBypass && isActive(vFilters.tweeter)) {
       tEff = applyTransfer(tEff, evalDriverFilter(vFilters.tweeter, grid));
     }
-    return toleranceBand(parts, grid, wEff, tEff, zGridWithSlots(impedances, grid), {
-      offsetMm: num(offsetMm, 0),
-      trimDb: num(trimDb, 0),
-      inverted,
-    }, tolPct);
-  }, [tolOn, tolPct, sim, threeWay, project, xoName, networkActive, schematic, impedances, vfBypass, vFilters, offsetMm, trimDb, inverted]);
+    let mEff = sim.base.m ?? null;
+    if (mEff && !vfBypass && isActive(vFilters.mid)) {
+      mEff = applyTransfer(mEff, evalDriverFilter(vFilters.mid, grid));
+    }
+    return toleranceBand(
+      parts,
+      grid,
+      wEff,
+      tEff,
+      zGridWithSlots(impedances, grid),
+      { offsetMm: num(offsetMm, 0), trimDb: num(trimDb, 0), inverted },
+      tolPct,
+      threeWay && mEff
+        ? {
+            response: mEff,
+            adjust: {
+              offsetMm: num(midOffsetMm, 0),
+              trimDb: num(midTrimDb, 0),
+              inverted: midInverted,
+            },
+          }
+        : undefined,
+    );
+  }, [tolOn, tolPct, sim, threeWay, project, xoName, networkActive, schematic, impedances, vfBypass, vFilters, offsetMm, trimDb, inverted, midOffsetMm, midTrimDb, midInverted]);
 
   /** Per-driver ACOUSTIC target curves for the SPL chart (Stefans vraag:
    *  "hoever volgt de respons per speaker het target?") — the ideal shape of
@@ -5384,7 +5864,10 @@ export default function App() {
               {vfProgress.items.map((it) => (
                 <tr key={it.label} className={it.done ? 'done' : ''}>
                   <td>{it.label}</td>
-                  <td>{it.text}</td>
+                  <td>
+                    {it.text}
+                    {it.warn && <span className="scan-warn"> {it.warn}</span>}
+                  </td>
                 </tr>
               ))}
             </tbody>
@@ -5465,6 +5948,315 @@ export default function App() {
     </>
   );
   if (anyBusy) busyCardBodyRef.current = busyCardBody;
+
+  /** Per-driver facts (position, enclosure, datasheet numbers, how many).
+   *  Lives in step 1 "Your drivers" — these are properties of the DRIVER,
+   *  while the baffle, the reference point and the mic rig belong to the
+   *  cabinet in step 2. Held as a variable because the two blocks render
+   *  in different tabs. */
+  /** The baffle drawn from the numbers already typed, or a nudge toward the
+   *  two that are missing. Rendered beside the driver cards. */
+  const baffleDrawing = (() => {
+    const w = Number(cabinet.baffleWidthMm);
+    const h = Number(cabinet.baffleHeightMm);
+    if (!(w > 0) || !(h > 0)) {
+      return (
+        <p className="derived driver-facts-draw">
+          Add the baffle size on the cabinet step and this becomes a scale drawing of your front panel —
+          the quickest way to see whether the positions you typed are the ones you meant.
+        </p>
+      );
+    }
+    const roles: [BranchRole, string][] = [
+      ['low', hasMidBranch ? 'Woofer' : 'Woofer / mid'],
+      ['mid', 'Midrange'],
+      ['high', 'Tweeter'],
+    ];
+    return (
+      <div className="driver-facts-draw">
+        <BaffleView
+          widthMm={w}
+          heightMm={h}
+          horizontal={w > h}
+          refFromTopMm={Number(cabinet.refFromTopMm) || 0}
+          drivers={roles
+            .filter(([r]) => (r === 'low' ? !!woofer : r === 'mid' ? !!midDrv : !!tweeter))
+            .map(([r, label]) => ({
+              role: r,
+              label,
+              xMm: cabinet.refDriver === r ? 0 : Number(cabinet.drivers[r].xMm) || 0,
+              yMm: cabinet.refDriver === r ? 0 : Number(cabinet.drivers[r].yMm) || 0,
+              sdCm2: Number(sdCm2[r]) || 0,
+              count: Number(cabinet.drivers[r].count) || 1,
+              spacingMm: Number(cabinet.drivers[r].spacingMm) || 0,
+            }))}
+        />
+        {(() => {
+          // Zeg WAAROM de tekening leeg oogt in plaats van een lege doos te
+          // tonen: zonder Sd is er geen echte conusmaat, en met alle posities
+          // op nul liggen de drivers op elkaar. Allebei zijn het ontbrekende
+          // getallen, geen fout in de tekening.
+          const rollen = (['low', 'mid', 'high'] as BranchRole[]).filter((r) =>
+            r === 'low' ? !!woofer : r === 'mid' ? !!midDrv : !!tweeter,
+          );
+          const zonderSd = rollen.filter((r) => !(Number(sdCm2[r]) > 0)).length;
+          const zonderPos = rollen.filter(
+            (r) => !cabinet.drivers[r].xMm && !cabinet.drivers[r].yMm,
+          ).length;
+          const mist = [
+            zonderSd > 0 ? `${zonderSd === rollen.length ? 'no' : `${zonderSd}`} Sd yet — those cones are dashed placeholders` : '',
+            zonderPos === rollen.length
+              ? 'every position is still 0, so they sit on top of each other'
+              : zonderPos > 0
+                ? `${zonderPos} without a position`
+                : '',
+          ].filter(Boolean);
+          return (
+            <p className="derived">
+              {mist.length === 0
+                ? 'drawn to scale from the numbers on the left'
+                : `to scale — ${mist.join(' · ')}`}
+            </p>
+          );
+        })()}
+      </div>
+    );
+  })();
+
+  const driverFacts = (
+    <>
+                {(
+                  [
+                    ['low', hasMidBranch ? 'Woofer' : 'Woofer / mid', woofer],
+                    ['mid', 'Midrange', midDrv],
+                    ['high', 'Tweeter', tweeter],
+                  ] as [BranchRole, string, unknown][]
+                )
+                  .filter(([, , loaded]) => !!loaded)
+                  .map(([role, title]) => {
+                    const d = cabinet.drivers[role];
+                    const set = (patch: Partial<CabinetDriver>) =>
+                      setCabinet((c) => ({
+                        ...c,
+                        drivers: { ...c.drivers, [role]: { ...c.drivers[role], ...patch } },
+                      }));
+                    const angles = cabinetInfo.trueAngles(role);
+                    const box = cabinetInfo.boxOf(role);
+                    const edge = cabinetInfo.edgeOf(role);
+                    const dia = cabinetInfo.diaOf(role);
+                    // "Moeten we hier niet een bypass-vinkje voor?" (Sanders).
+                    // Leeglaten ÍS al de bypass — elke consument behandelt een
+                    // leeg veld als "criterium niet van toepassing". Wat ontbrak
+                    // is dat je dat kunt ZIEN: een leeg veld zei niet of je er
+                    // nog niet aan toe was of het bewust oversloeg, en al
+                    // helemaal niet wát je ermee uitzet. Een apart vinkje zou een
+                    // derde toestand toevoegen aan iets met er al twee, met als
+                    // risico precies de stille fout: aangevinkt, vergeten, en
+                    // later je afvragen waarom een criterium nooit vuurt.
+                    const uit: string[] = [];
+                    if (!(Number(sdCm2[role]) > 0) || !(Number(xmaxMm[role]) > 0)) {
+                      uit.push('excursion floor');
+                    }
+                    if (!(Number(sdCm2[role]) > 0)) uit.push('cone size for the beaming rules');
+                    if (cabinet.refDriver !== role && !d.xMm && !d.yMm)
+                    uit.push('driver spacing, lobing and edge distance');
+                    if (d.enclosure === 'unknown') uit.push('what the box itself already filters');
+                    const samenvatting = [
+                      Number(d.count) > 1 ? `${d.count}×` : '',
+                      d.xMm || d.yMm ? `at ${d.xMm || 0}, ${d.yMm || 0} mm` : 'no position',
+                      d.enclosure !== 'unknown' ? d.enclosure : '',
+                      Number(sdCm2[role]) > 0 ? `Sd ${sdCm2[role]} cm²` : 'no datasheet numbers',
+                    ]
+                      .filter(Boolean)
+                      .join(' · ');
+                    return (
+                      <details key={role} className="cabinet-driver" open>
+                        {/* Was één doorlopende regel met invoervelden ertussen
+                            ("Woofer x [ ] right, y [ ] up (mm ...)"), wat leest
+                            als een zin met gaten in plaats van als een formulier
+                            (Sanders: "ik vind het toch rommelig met de drivers").
+                            Nu een gelabeld raster: één onderwerp per regel, label
+                            links, en het AANTAL bij de naam -- dat hoort bij de
+                            identiteit van de tak, niet bij zijn afmetingen. */}
+                        {/* Inklapbaar: een ingevulde driver hoeft geen ruimte te
+                            blijven vragen. NOOIT kaal ingeklapt — de samenvatting
+                            in de kop is de voorwaarde, anders leest dichtklappen
+                            als dataverlies (de les uit Filter bands). */}
+                        <summary className="cd-head">
+                          <strong>{title}</strong>
+                          <span
+                            className="inline-num"
+                            title="How many IDENTICAL drivers make up this branch. Dual woofers displace twice the air, so the excursion floor drops by √2 — but each cone still beams as itself, so Sd below stays the SINGLE driver's datasheet number. With more than one, their centre-to-centre spacing sets where the array's own vertical lobing starts, which is usually a lower ceiling than cone beaming."
+                          >
+                            {'× '}
+                            <input
+                              type="number"
+                              min={1}
+                              step={1}
+                              placeholder="1"
+                              value={d.count}
+                              onChange={(e) => set({ count: e.target.value })}
+                            />
+                            {Number(d.count) > 1 ? ' drivers, spaced ' : ' driver'}
+                            {Number(d.count) > 1 && (
+                              <>
+                                <input
+                                  type="number"
+                                  min={0}
+                                  step={1}
+                                  value={d.spacingMm}
+                                  onChange={(e) => set({ spacingMm: e.target.value })}
+                                />
+                                {' mm apart'}
+                              </>
+                            )}
+                          </span>
+                          <span className="cd-summary">{samenvatting}</span>
+                        </summary>
+                        <div className="cd-grid">
+                          <span className="cd-label">Position</span>
+                          {cabinet.refDriver === role ? (
+                            /* Deze driver ÍS het referentiepunt, dus 0,0 is
+                               geen invoer maar een gevolg. Ernaar vragen
+                               nodigt uit tot de enige fout die het niet kan
+                               zijn -- Sander typte hier -50 voor de tweeter
+                               waar de microfoon nou juist op stond. */
+                            <span className="cd-fields">
+                              <span className="cd-pre" />
+                              <em>
+                                0, 0 — the mic was aimed here, so this driver defines the origin
+                              </em>
+                            </span>
+                          ) : (
+                          <span
+                            className="cd-fields"
+                            title="Position of this driver's centre relative to the measurement reference point: x to the right, y UP (so a driver below the reference has a negative y). Centre-to-centre spacing per pair — and with it the vertical-lobing ceiling — is derived from these, so you never type the same fact twice."
+                          >
+                            <span className="cd-pre">x</span>
+                            <input
+                              type="number"
+                              step={5}
+                              placeholder="0"
+                              value={d.xMm}
+                              onChange={(e) => set({ xMm: e.target.value })}
+                            />
+                            {' mm · y '}
+                            <input
+                              type="number"
+                              step={5}
+                              placeholder="0"
+                              value={d.yMm}
+                              onChange={(e) => set({ yMm: e.target.value })}
+                            />
+                            {' mm'}
+                            <span className="cd-hint">from the reference point · y up</span>
+                          </span>
+                          )}
+  
+                          <span className="cd-label">Enclosure</span>
+                          <span className="cd-fields">
+                            <span className="cd-pre" />
+                            <select
+                              value={d.enclosure}
+                              onChange={(e) => set({ enclosure: e.target.value as Enclosure })}
+                              title="Enclosure behind THIS driver. A sealed box is already a 2nd-order acoustic high-pass at its corner, so a 2nd-order electrical filter yields a 4th-order acoustic slope — on a low crossover that is the difference between one ~30 µF capacitor and a pair adding to ~90 µF. A port also means the box can radiate its own midrange through a pipe resonance."
+                            >
+                              <option value="unknown">unknown</option>
+                              <option value="sealed">sealed</option>
+                              <option value="ported">ported</option>
+                              <option value="open">open / dipole</option>
+                            </select>
+                            {d.enclosure !== 'unknown' && d.enclosure !== 'open' && (
+                              <>
+                                {d.enclosure === 'ported' ? ' Fb ' : ' Fc '}
+                                <input
+                                  type="number"
+                                  min={0}
+                                  step={1}
+                                  value={d.fbHz}
+                                  onChange={(e) => set({ fbHz: e.target.value })}
+                                />
+                                {' Hz'}
+                              </>
+                            )}
+                          </span>
+  
+                          <span className="cd-label">Datasheet</span>
+                          <span
+                            className="cd-fields"
+                            title="Cone area and linear excursion from the datasheet, for ONE driver. Sd gives the effective piston diameter (the honest one for every beaming rule — nominal size includes a surround that does not radiate); Sd and Xmax together give the level-aware excursion floor."
+                          >
+                            <span className="cd-pre">Sd</span>
+                            <input
+                              type="number"
+                              min={0}
+                              step={1}
+                              value={sdCm2[role]}
+                              onChange={(e) => setSdCm2((q) => ({ ...q, [role]: e.target.value }))}
+                            />
+                            {' cm² · Xmax '}
+                            <input
+                              type="number"
+                              min={0}
+                              step={0.1}
+                              value={xmaxMm[role]}
+                              onChange={(e) => setXmaxMm((q) => ({ ...q, [role]: e.target.value }))}
+                            />
+                            {' mm'}
+                          </span>
+                        </div>
+                        {Number(d.count) > 1 && (
+                          <span className="derived">
+                            {'excursion floor drops ×'}
+                            {(1 / Math.sqrt(Number(d.count))).toFixed(2)}
+                            {arrayLobe[role]
+                              ? ` · array lobing from ${Math.round(arrayLobe[role]!)} Hz${
+                                  Number(cabinet.baffleWidthMm) > Number(cabinet.baffleHeightMm)
+                                    ? ' — ACROSS the seats: this baffle is wider than tall'
+                                    : ' — vertically, and you sit on that axis'
+                                }`
+                              : ' · enter the spacing for the array lobing ceiling'}
+                          </span>
+                        )}
+                        {cabinetInfo.place[role] &&
+                          cabinetInfo.place[role]!.xMm === 0 &&
+                          cabinetInfo.place[role]!.yMm === 0 && (
+                            <span className="derived">
+                              this driver IS the reference point — the mic was aimed here
+                            </span>
+                          )}
+                        {dia && (
+                          <span className="derived">effective Ø {Math.round(dia)} mm</span>
+                        )}
+                        {angles && (
+                          <span className="derived">
+                            your sweep really covers{' '}
+                            {angles
+                              .map((a) => `${a.nominal}°→${a.actual!.toFixed(0)}°`)
+                              .join(', ')}
+                          </span>
+                        )}
+                        {box.note && <span className="derived">{box.note}</span>}
+                        {cabinetInfo.unloadOf(role) === 'high' && (
+                          <span className="derived alert">
+                            ported: excursion runs away below Fb — worth a steeper electrical
+                            high-pass than a sealed box would need
+                          </span>
+                        )}
+                        {edge !== null && (
+                          <span className="derived">nearest baffle edge {Math.round(edge)} mm</span>
+                        )}
+                        {uit.length > 0 && (
+                          <span className="derived">
+                            {'leaving these blank is fine — it switches off: '}
+                            {uit.join(' · ')}
+                          </span>
+                        )}
+                      </details>
+                    );
+                  })}
+    </>
+  );
 
   return (
     <div className={`app-shell layout-${layoutMode}`}>
@@ -5687,7 +6479,7 @@ export default function App() {
                 <p style={{ margin: '0 0 0.2rem' }}>
                   <strong>Component catalog</strong>{' '}
                   <span className="sub">
-                    — powers Snap to catalog &amp; the BOM. It lives OUTSIDE the project, so it
+                    — powers catalog snapping &amp; the BOM. It lives OUTSIDE the project, so it
                     persists across a Reset (that's why the optimizer can still use one).
                   </span>
                 </p>
@@ -5702,7 +6494,7 @@ export default function App() {
                         ? ' · prices'
                         : '') +
                       '. Snap-to-catalog is available.'
-                    : `No imported catalog — only the built-in library (${allSeries().length} series) for BOM matching & inspector suggestions. Import one to unlock Snap to catalog + real prices.`}
+                    : `No imported catalog — only the built-in library (${allSeries().length} series) for BOM matching & inspector suggestions. Import one to unlock catalog snapping + real prices.`}
                 </p>
                 <label className="file-button" style={{ display: 'inline-block' }}>
                   {hasImportedCatalog() ? 'Replace catalog' : 'Import catalog (optional)'}
@@ -5897,7 +6689,7 @@ export default function App() {
                       </div>
                     </div>
                   </div>
-                  {/* --- In-room weight: its own section --- */}
+                  {/* --- Weight for in-room sound: its own section --- */}
                   <div
                     style={{
                       marginTop: '0.6rem',
@@ -5906,7 +6698,7 @@ export default function App() {
                     }}
                   >
                     <p style={{ margin: '0 0 0.2rem' }}>
-                      <strong>In-room weight: {dirWeight}%</strong>{' '}
+                      <strong>Weight for in-room sound: {dirWeight}%</strong>{' '}
                       <span className="sub">(energy average)</span>
                     </p>
                     <input
@@ -6055,7 +6847,10 @@ export default function App() {
                     : 'Free: the optimizer stays within a sensible band (≈2×Fs up to the mid beaming limit) and picks the best crossover there. Set the mid size below for a physically-exact window; pin only for a specific point.'}
               </p>
               {tweeterHpFloor !== null && (
-                <p className="sub">HP floor {tweeterHpFloor} Hz (2×Fs) is applied automatically.</p>
+                <p className="sub">
+                  The tweeter is kept above {tweeterHpFloor} Hz automatically — twice its own
+                  resonance, read from your impedance measurement.
+                </p>
               )}
               <p>
                 Mid size (sets the beaming ceiling){' '}
@@ -6140,7 +6935,7 @@ export default function App() {
                   disabled={!hasImportedCatalog()}
                   onChange={(e) => setCatalogSnap(e.target.checked)}
                 />{' '}
-                Snap to catalog (build + tuner end on purchasable values)
+                Use real catalog parts (build + tuner end on purchasable values)
                 {!hasImportedCatalog() && ' — import a catalog first'}
               </label>
               <p className="sub">
@@ -6248,7 +7043,7 @@ export default function App() {
                     : ` · sensitivity budget ${soloSensDb} dB`}
                   <br />
                   {catalogSnap && hasImportedCatalog()
-                    ? `Snap to catalog · profile ${snapProfile}`
+                    ? `catalog parts · profile ${snapProfile}`
                     : 'Theoretically ideal (continuous) component values — no snap'}
                 </p>
               ) : (
@@ -6266,7 +7061,7 @@ export default function App() {
                 {acSlopeTweeter === 'auto' ? 'Auto' : `${acSlopeTweeter} dB/oct`}
                 <br />
                 {catalogSnap && hasImportedCatalog()
-                  ? `Snap to catalog · profile ${snapProfile}`
+                  ? `catalog parts · profile ${snapProfile}`
                   : 'Theoretically ideal (continuous) component values — no snap'}
               </p>
               )}
@@ -6804,6 +7599,24 @@ export default function App() {
             );
           })()}
         </div>
+        <div className="theme-switch" role="group" aria-label="Mode">
+          {(
+            [
+              ['guided', 'Guided', 'A numbered route from measurements to a shopping list. The app decides the crossover, the filter shapes and the parts; you supply the facts about your speaker. Every check and warning stays visible.'],
+              ['expert', 'Expert', 'Everything: alignment preference, acoustic slopes, phase metric, crossover pins, component tiers, the network editor. Overrides on top of the same engine.'],
+            ] as const
+          ).map(([m, label, tip]) => (
+            <button
+              key={m}
+              type="button"
+              className={uiMode === m ? 'active' : ''}
+              onClick={() => setUiMode(m)}
+              title={tip}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
         <div className="theme-switch" role="group" aria-label="Layout">
           {(
             [
@@ -6862,11 +7675,44 @@ export default function App() {
         }
       >
         <aside className="design-pane">
+          {uiMode === 'guided' ? (
+            /* GUIDED: the same four panels, but presented as a numbered route
+               with a completion mark per step. The panels were already in the
+               right order — what a beginner misses is not content but the
+               knowledge that there IS an order, and where he is in it. Later
+               steps stay clickable on purpose: blocking them would hide what
+               is coming, and a locked button teaches nothing about why. */
+            <nav className="pane-steps" aria-label="Design steps">
+              {(
+                [
+                  ['import', 'Your project', guidedDone.files, 'Load your measurement files, and save or reopen a project.'],
+                  ['data', 'Your cabinet', guidedDone.cabinet, 'The box and how you measured it. Do this before the drivers: it fixes the reference point everything else is measured from.'],
+                  ['drivers', 'Your drivers', guidedDone.drivers, 'Where each driver sits in that box, what is behind it, and its cone area and travel from the datasheet.'],
+                  ['filters', 'Design it', guidedDone.design, 'One button. The app picks the crossover points, the filter shapes and the parts, and shows what it chose.'],
+                  ['network', 'Your build', guidedDone.build, 'The schematic and the shopping list.'],
+                ] as const
+              ).map(([id, label, done, tip], i) => (
+                <button
+                  key={id}
+                  type="button"
+                  className={`${designTab === id ? 'active' : ''}${done ? ' step-done' : ''}`}
+                  onClick={() => setDesignTab(id)}
+                  title={tip}
+                >
+                  <span className="step-num" aria-hidden="true">
+                    {done ? '✓' : i + 1}
+                  </span>
+                  {label}
+                </button>
+              ))}
+            </nav>
+          ) : (
           <nav className="pane-tabs" aria-label="Design panels">
-            {(
+              {(
               [
-                ['import', 'Import', 'Load measurements and projects, see what is imported per driver and attach notes to files'],
-                ['data', 'Setup', 'View range, phase convention, tweeter adjustment, vxp variant and the timing sanity check'],
+                ['import', 'Project', 'Load measurements, catalogs and projects; save your work'],
+                ['data', 'Setup', 'View range, cabinet and mic geometry, phase convention, tweeter adjustment, vxp variant and the timing sanity check'],
+                ['drivers', 'Drivers', 'Per-driver facts: position in the cabinet, enclosure, Sd/Xmax and how many'],
                 ['filters', 'Filters', 'Virtual target filters (HP/LP/EQ per driver), the Optimize button and passive synthesis'],
                 ['network', 'Network', 'The passive network editor: schematic, component tuning, catalog and BOM'],
               ] as const
@@ -6881,7 +7727,8 @@ export default function App() {
                 {label}
               </button>
             ))}
-          </nav>
+            </nav>
+          )}
           <div className="pane-body">
             {designTab === 'import' && (
               <>
@@ -7114,12 +7961,12 @@ export default function App() {
               </button>
             </div>
           </div>
-          <div className="tool-group">
+          <div className={`tool-group${uiMode === 'guided' ? ' expert-only' : ''}`}>
             <span className="tool-group-label">Component catalog</span>
             <div className="tool-group-body">
               <label
                 className="file-button"
-                title="Import a component catalog (brands, series, E-grids, tiers, prices) — the optimizer's Snap to catalog and the BOM use it. A series with a built-in id overrides the built-in."
+                title="Import a component catalog (brands, series, E-grids, tiers, prices) — the optimizer's catalog snapping and the BOM use it. A series with a built-in id overrides the built-in."
               >
                 Import catalog
                 <input
@@ -7154,36 +8001,8 @@ export default function App() {
             </div>
           </div>
         </div>
-        {persistNote && <p className="filenames">{persistNote} · autosaves locally on every change</p>}
-        {vxpNote && <p className="filenames">{vxpNote}</p>}
-        {/* One banner for parse failures AND content warnings — the old
-            hardcoded "Parse error:" prefix lied for anything that wasn't one
-            (the vxp-pick hint, the impedance-as-response warning). */}
-        {error && <p className="error">⚠ {error}</p>}
-        {midIgnored && (
-          <p className="error">
-            ⚠ Midrange data loaded, but 3-way mode needs a woofer FRD, a midrange FRD and a
-            tweeter FRD ({[
-              !woofer && 'woofer response',
-              !midDrv && 'midrange response',
-              !tweeter && 'tweeter response',
-            ]
-              .filter(Boolean)
-              .join(', ')}{' '}
-            missing) — the midrange is NOT in the sim yet. Load what's missing, or remove the
-            midrange (✕ in the Import tab).
-          </p>
-        )}
-        {(woofer || tweeter) && (
-          <p className="filenames">
-            {[woofer?.name, midDrv?.name, tweeter?.name].filter(Boolean).join(' · ')}
-            {zModels.length > 0 && ` · Z ✓ (${zModels.join(', ')})`}
-            {soloDriver && ' · single-driver mode'}
-            {threeWay && ' · 3-way mode'}
-          </p>
-        )}
-      </div>
-
+        {/* De bestandsINVENTARIS gaat over bestanden, dus hij hoort bij
+            "Your project" -- niet bij wat je van een driver weet (Sander). */}
       <div className="panel">
         <h2>Imported files</h2>
         {(() => {
@@ -7281,9 +8100,69 @@ export default function App() {
           ));
         })()}
       </div>
+        {persistNote && <p className="filenames">{persistNote} · autosaves locally on every change</p>}
+        {vxpNote && <p className="filenames">{vxpNote}</p>}
+        {/* One banner for parse failures AND content warnings — the old
+            hardcoded "Parse error:" prefix lied for anything that wasn't one
+            (the vxp-pick hint, the impedance-as-response warning). */}
+        {error && <p className="error">⚠ {error}</p>}
+        {midIgnored && (
+          <p className="error">
+            ⚠ Midrange data loaded, but 3-way mode needs a woofer FRD, a midrange FRD and a
+            tweeter FRD ({[
+              !woofer && 'woofer response',
+              !midDrv && 'midrange response',
+              !tweeter && 'tweeter response',
+            ]
+              .filter(Boolean)
+              .join(', ')}{' '}
+            missing) — the midrange is NOT in the sim yet. Load what's missing, or remove the
+            midrange (✕ in the Import tab).
+          </p>
+        )}
+        {(woofer || tweeter) && (
+          <p className="filenames">
+            {[woofer?.name, midDrv?.name, tweeter?.name].filter(Boolean).join(' · ')}
+            {zModels.length > 0 && ` · Z ✓ (${zModels.join(', ')})`}
+            {soloDriver && ' · single-driver mode'}
+            {threeWay && ' · 3-way mode'}
+          </p>
+        )}
+      </div>
+
               </>
             )}
 
+            {designTab === 'drivers' && (
+              <>
+        {/* Stap 2 "Your drivers": alles wat je over de DRIVERS weet.
+            Laden en bewaren is stap 1 "Your project", de kast is stap 3.
+            Ze stonden alle drie op één tab en dat werd een zootje. */}
+        {!woofer && !tweeter && (
+          <p className="pane-hint">Load a driver in step 1 first — then this is where you tell the app what you know about it.</p>
+        )}
+        {/* De feiten over de DRIVERS staan bij de drivers: dit is stap 1,
+            waar hun metingen ook binnenkomen. De kast, het referentiepunt en
+            de meetopstelling horen bij stap 2 "Your cabinet". De stapnamen
+            zeiden dat al, alleen de indeling niet (Sanders opmerking). */}
+        {(woofer || midDrv || tweeter) && (
+          <fieldset className="cabinet-block">
+            <legend>
+              What you know about them
+              <span className="legend-sub"> — from the datasheet and a ruler</span>
+            </legend>
+            {/* De tekening staat HIER en niet bij de kast: hij beantwoordt
+                "staan mijn drivers waar ik denk", en dat zijn de getallen die
+                je op dit scherm intypt. Een verwisselde x/y of een komma-slip
+                zie je meteen; teruglezen van "y = -380" helpt daar niet. */}
+            <div className="driver-facts">
+              <div className="driver-facts-fields">{driverFacts}</div>
+              {baffleDrawing}
+            </div>
+          </fieldset>
+        )}
+              </>
+            )}
             {designTab === 'data' && !woofer && !tweeter && (
               <p className="sub pane-hint">
                 No measurements yet — load them in the Import tab first.
@@ -7342,10 +8221,10 @@ export default function App() {
             </fieldset>
             <fieldset>
               <legend>
-                Cabinet &amp; drivers
+                Cabinet &amp; measurement
                 <span className="derived">
                   {' '}
-                  — what you know, so the app stops guessing
+                  — the box and how you measured it (the drivers themselves are the next step)
                 </span>
               </legend>
               <p className="cabinet-note">
@@ -7356,273 +8235,268 @@ export default function App() {
                 Nothing here changes your measurements; it lets the app work out what those
                 measurements actually captured.
               </p>
-              <label title="Microphone distance during the FRD sweeps. This is what decides whether the angle files mean what they say: at close range a driver sitting well below the mic is already far off ITS OWN axis at nominal 0°, which exaggerates every off-axis difference and makes a woofer look like it beams far too low.">
-                Mic distance (mm)
-                <input
-                  type="number"
-                  min={0}
-                  step={50}
-                  value={cabinet.micDistanceMm}
-                  onChange={(e) => setCabinet((c) => ({ ...c, micDistanceMm: e.target.value }))}
-                />
-              </label>
-              <label title="Fixed VERTICAL angle of the rig, degrees — positive means the microphone sat ABOVE the reference plane, negative below. Leave at 0 for the usual case: mic level with the point it is aimed at. Signed on purpose: on a driver 380 mm below the reference at 500 mm, ten degrees either way swings its true angle between 31° and 43°.">
-                Mic elevation (°)
-                <input
-                  type="number"
-                  min={-45}
-                  max={45}
-                  step={1}
-                  placeholder="0"
-                  value={cabinet.micElevationDeg}
-                  onChange={(e) => setCabinet((c) => ({ ...c, micElevationDeg: e.target.value }))}
-                />
-              </label>
-              {cabinetInfo.farField && (
-                <span className={`derived${cabinetInfo.farField.ok ? '' : ' alert'}`}>
-                  {cabinetInfo.farField.ok
-                    ? `far field ok — ${cabinetInfo.farField.ratio.toFixed(1)}× the source`
-                    : `only ${cabinetInfo.farField.ratio.toFixed(1)}× the source (${Math.round(
-                        cabinetInfo.farField.sourceMm,
-                      )} mm) — treat directivity as indicative`}
-                </span>
-              )}
-              <label title="The reflection-free window you actually gated with, in ms — from REW's or ARTA's own setting. Leave empty and the app predicts it from the floor bounce instead. A stated gate always wins: it is what happened, not what geometry suggests.">
-                Gate used (ms)
-                <input
-                  type="number"
-                  min={0}
-                  step={0.1}
-                  placeholder="predict"
-                  value={cabinet.gateMs}
-                  onChange={(e) => setCabinet((c) => ({ ...c, gateMs: e.target.value }))}
-                />
-              </label>
-              {cabinetInfo.reliable && (
-                <span className="derived">
-                  {cabinetInfo.reliable.stated
-                    ? `gate ${cabinetInfo.reliable.gateMs.toFixed(2)} ms → honest down to ≈ ${Math.round(
-                        cabinetInfo.reliable.fromHz,
-                      )} Hz`
-                    : `floor bounce at ${cabinetInfo.reliable.gateMs.toFixed(
-                        2,
-                      )} ms → honest down to ≈ ${Math.round(
-                        cabinetInfo.reliable.fromHz,
-                      )} Hz (best case: assumes the floor is the nearest reflector)`}
-                  {Number(fMin) > 0 && Number(fMin) < cabinetInfo.reliable.fromHz * 0.95 && (
-                    <>
-                      {' — '}
-                      <strong>
-                        the view range starts at {Math.round(Number(fMin))} Hz, below what this
-                        measurement supports
-                      </strong>
-                      {' '}
-                      <button
-                        type="button"
-                        onClick={() =>
-                          setFMin(String(Math.round(cabinetInfo.reliable!.fromHz)))
-                        }
-                      >
-                        use {Math.round(cabinetInfo.reliable.fromHz)} Hz as f min
-                      </button>
-                    </>
-                  )}
-                </span>
-              )}
-              <label title="Baffle width. Reported only, never applied: a properly measured on-baffle response already contains the baffle step, so subtracting it again would count it twice. Useful for reading a response — that broad tilt is the cabinet, not the driver.">
-                Baffle W (mm)
-                <input
-                  type="number"
-                  min={0}
-                  step={10}
-                  value={cabinet.baffleWidthMm}
-                  onChange={(e) => setCabinet((c) => ({ ...c, baffleWidthMm: e.target.value }))}
-                />
-              </label>
-              <label title="Baffle height — with the reference offset below it, this gives each driver's distance to the nearest edge, which is what actually shapes diffraction (more than the width does).">
-                Baffle H (mm)
-                <input
-                  type="number"
-                  min={0}
-                  step={10}
-                  value={cabinet.baffleHeightMm}
-                  onChange={(e) => setCabinet((c) => ({ ...c, baffleHeightMm: e.target.value }))}
-                />
-              </label>
-              <label title="How far below the TOP of the baffle the measurement reference point sits — the point the mic was aimed at and, on a turntable, the rotation axis. Everything else is measured relative to it.">
-                Reference point: mm below the baffle top
-                <input
-                  type="number"
-                  min={0}
-                  step={10}
-                  value={cabinet.refFromTopMm}
-                  onChange={(e) => setCabinet((c) => ({ ...c, refFromTopMm: e.target.value }))}
-                />
-              </label>
-              {cabinetInfo.baffleStep && (
-                <span className="derived">
-                  baffle step ≈ {Math.round(cabinetInfo.baffleStep)} Hz (already in your measurement)
-                </span>
-              )}
-              <label title="Height of the reference point above the floor, and the listener's ear height and distance. Together they say at what vertical angle you actually sit — which is what turns a driver-spacing rule into a decision: a null at ±25° is harmless if you sit 2° off the axis.">
-                Reference point: mm above the floor
-                <input
-                  type="number"
-                  min={0}
-                  step={10}
-                  value={cabinet.refHeightMm}
-                  onChange={(e) => setCabinet((c) => ({ ...c, refHeightMm: e.target.value }))}
-                />
-              </label>
-              <label title="Listening distance, metres.">
-                Listen (m)
-                <input
-                  type="number"
-                  min={0}
-                  step={0.1}
-                  value={cabinet.listenDistanceM}
-                  onChange={(e) => setCabinet((c) => ({ ...c, listenDistanceM: e.target.value }))}
-                />
-              </label>
-              <label title="Ear height above the floor, mm.">
-                Ear height (mm)
-                <input
-                  type="number"
-                  min={0}
-                  step={10}
-                  value={cabinet.listenEarHeightMm}
-                  onChange={(e) => setCabinet((c) => ({ ...c, listenEarHeightMm: e.target.value }))}
-                />
-              </label>
-              {cabinetInfo.listenAngle !== null && (
-                <span className="derived">
-                  you sit {Math.abs(cabinetInfo.listenAngle).toFixed(1)}°{' '}
-                  {cabinetInfo.listenAngle >= 0 ? 'below' : 'above'} the reference axis
-                </span>
-              )}
-              {(
-                [
-                  ['low', hasMidBranch ? 'Woofer' : 'Woofer / mid', woofer],
-                  ['mid', 'Midrange', midDrv],
-                  ['high', 'Tweeter', tweeter],
-                ] as [BranchRole, string, unknown][]
-              )
-                .filter(([, , loaded]) => !!loaded)
-                .map(([role, title]) => {
-                  const d = cabinet.drivers[role];
-                  const set = (patch: Partial<CabinetDriver>) =>
-                    setCabinet((c) => ({
-                      ...c,
-                      drivers: { ...c.drivers, [role]: { ...c.drivers[role], ...patch } },
-                    }));
-                  const angles = cabinetInfo.trueAngles(role);
-                  const box = cabinetInfo.boxOf(role);
-                  const edge = cabinetInfo.edgeOf(role);
-                  const dia = cabinetInfo.diaOf(role);
+              {/* Gepromoveerd uit de prototype-ronde (Sanders keuze):
+                  CARDS in guided, LEDGER in expert.
+
+                  Cards leidt met de UITKOMST ("je sweeps zijn eerlijk tot
+                  220 Hz") en zet de knop erbij; de velden staan eronder voor
+                  wie ze wil veranderen. Een beginner wil niet weten dat er
+                  500 mm staat, hij wil weten wat dat hem kost.
+
+                  Ledger toont alles tegelijk met het gevolg op dezelfde
+                  regel -- wie deze getallen zelf intypt wil ze naast elkaar
+                  kunnen vergelijken, niet uitklappen. */}
+              {(() => {
+                const veld = (
+                  val: string,
+                  set: (v: string) => void,
+                  step = 10,
+                  ph?: string,
+                ) => (
+                  <input
+                    type="number"
+                    min={0}
+                    step={step}
+                    placeholder={ph}
+                    value={val}
+                    onChange={(e) => set(e.target.value)}
+                  />
+                );
+                const cab = (k: keyof CabinetState) => (v: string) =>
+                  setCabinet((c) => ({ ...c, [k]: v }));
+                const eerlijk = cabinetInfo.reliable;
+                const teLaag =
+                  eerlijk && Number(fMin) > 0 && Number(fMin) < eerlijk.fromHz * 0.95;
+                const knop = eerlijk ? (
+                  <button type="button" onClick={() => setFMin(String(Math.round(eerlijk.fromHz)))}>
+                    use {Math.round(eerlijk.fromHz)} Hz as f min
+                  </button>
+                ) : null;
+                const micUit = eerlijk
+                  ? `honest down to ≈ ${Math.round(eerlijk.fromHz)} Hz`
+                  : 'enter the mic distance to find out how low this measurement carries';
+                const stapUit = cabinetInfo.baffleStep
+                  ? `baffle step ≈ ${Math.round(cabinetInfo.baffleStep)} Hz`
+                  : '';
+                const zitUit =
+                  cabinetInfo.listenAngle !== null
+                    ? `you sit ${Math.abs(cabinetInfo.listenAngle).toFixed(1)}° ${
+                        cabinetInfo.listenAngle >= 0 ? 'below' : 'above'
+                      } the reference axis`
+                    : '';
+                const mis =
+                  Number(cabinet.baffleHeightMm) > 0 &&
+                  Number(cabinet.refFromTopMm) > Number(cabinet.baffleHeightMm);
+
+                if (uiMode === 'guided') {
+                  const kaart = (
+                    icoon: string,
+                    titel: string,
+                    antwoord: React.ReactNode,
+                    velden: React.ReactNode,
+                  ) => (
+                    <details className="cab-card">
+                      <summary>
+                        <span className="cab-card-icon" aria-hidden="true">
+                          {icoon}
+                        </span>
+                        <span className="cab-card-body">
+                          <span className="cab-card-title">{titel}</span>
+                          <span className="cab-card-answer">{antwoord}</span>
+                        </span>
+                        <span className="cab-card-more">change the numbers</span>
+                      </summary>
+                      <div className="cab-card-fields">{velden}</div>
+                    </details>
+                  );
                   return (
-                    <div key={role} className="cabinet-driver">
-                      <strong>{title}</strong>
-                      <span
-                        className="inline-num"
-                        title="Position of this driver's centre relative to the measurement reference point: x to the right, y UP (so a driver below the reference has a negative y). Centre-to-centre spacing per pair — and with it the vertical-lobing ceiling — is derived from these, so you never type the same fact twice."
-                      >
-                        {'x '}
-                        <input
-                          type="number"
-                          step={5}
-                          placeholder="0"
-                          value={d.xMm}
-                          onChange={(e) => set({ xMm: e.target.value })}
-                        />
-                        {' right, y '}
-                        <input
-                          type="number"
-                          step={5}
-                          placeholder="0"
-                          value={d.yMm}
-                          onChange={(e) => set({ yMm: e.target.value })}
-                        />
-                        {' up (mm from the reference point)'}
-                      </span>
-                      <label title="Enclosure behind THIS driver. A sealed box is already a 2nd-order acoustic high-pass at its corner, so a 2nd-order electrical filter yields a 4th-order acoustic slope — on a low crossover that is the difference between one ~30 µF capacitor and a pair adding to ~90 µF. A port also means the box can radiate its own midrange through a pipe resonance.">
-                        Box
-                        <select
-                          value={d.enclosure}
-                          onChange={(e) => set({ enclosure: e.target.value as Enclosure })}
-                        >
-                          <option value="unknown">unknown</option>
-                          <option value="sealed">sealed</option>
-                          <option value="ported">ported</option>
-                          <option value="open">open / dipole</option>
-                        </select>
-                      </label>
-                      {d.enclosure !== 'unknown' && d.enclosure !== 'open' && (
-                        <label title="Box corner frequency: Fc for a sealed box, Fb for a ported one.">
-                          {d.enclosure === 'ported' ? 'Fb (Hz)' : 'Fc (Hz)'}
-                          <input
-                            type="number"
-                            min={0}
-                            step={1}
-                            value={d.fbHz}
-                            onChange={(e) => set({ fbHz: e.target.value })}
-                          />
-                        </label>
-                      )}
-                      <span
-                        className="inline-num"
-                        title="Cone area and linear excursion from the datasheet. Sd gives the effective piston diameter (the honest one for every beaming rule — nominal size includes a surround that does not radiate); Sd and Xmax together give the level-aware excursion floor."
-                      >
-                        {'Sd '}
-                        <input
-                          type="number"
-                          min={0}
-                          step={1}
-                          value={sdCm2[role]}
-                          onChange={(e) => setSdCm2((q) => ({ ...q, [role]: e.target.value }))}
-                        />
-                        {' cm² Xmax '}
-                        <input
-                          type="number"
-                          min={0}
-                          step={0.1}
-                          value={xmaxMm[role]}
-                          onChange={(e) => setXmaxMm((q) => ({ ...q, [role]: e.target.value }))}
-                        />
-                        {' mm'}
-                      </span>
-                      {cabinetInfo.place[role] &&
-                        cabinetInfo.place[role]!.xMm === 0 &&
-                        cabinetInfo.place[role]!.yMm === 0 && (
-                          <span className="derived">
-                            this driver IS the reference point — the mic was aimed here
+                    <div className="cab-cards">
+                      {kaart(
+                        '📏',
+                        'How far the mic stood',
+                        <>
+                          {micUit}
+                          {teLaag && (
+                            <>
+                              {' — your view range starts lower than that. '}
+                              {knop}
+                            </>
+                          )}
+                        </>,
+                        <>
+                          <span className="cd-label">Distance</span>
+                          <span className="cd-fields">
+                            {veld(cabinet.micDistanceMm, cab('micDistanceMm'))} mm
                           </span>
-                        )}
-                      {dia && (
-                        <span className="derived">effective Ø {Math.round(dia)} mm</span>
+                          <span className="cd-label">Elevation</span>
+                          <span className="cd-fields">
+                            {veld(cabinet.micElevationDeg, cab('micElevationDeg'), 1, '0')} °
+                          </span>
+                          <span className="cd-label">Gate used</span>
+                          <span className="cd-fields">
+                            {veld(cabinet.gateMs, cab('gateMs'), 0.1, 'predict')} ms
+                          </span>
+                        </>,
                       )}
-                      {angles && (
-                        <span className="derived">
-                          your sweep really covers{' '}
-                          {angles
-                            .map((a) => `${a.nominal}°→${a.actual!.toFixed(0)}°`)
-                            .join(', ')}
-                        </span>
+                      {kaart(
+                        '▭',
+                        'The box',
+                        stapUit ? (
+                          <>
+                            A {cabinet.baffleWidthMm} mm wide baffle puts its step around{' '}
+                            <b>{Math.round(cabinetInfo.baffleStep!)} Hz</b> — that broad tilt in
+                            your measurement is the cabinet, not the driver.
+                          </>
+                        ) : (
+                          'Add the baffle size and the app can tell the cabinet apart from the driver — and draw your front panel on the next step.'
+                        ),
+                        <>
+                          <span className="cd-label">Mic aimed at</span>
+                          <span className="cd-fields">
+                            <select
+                              value={cabinet.refDriver}
+                              onChange={(e) =>
+                                setCabinet((c) => ({
+                                  ...c,
+                                  refDriver: e.target.value as '' | BranchRole,
+                                }))
+                              }
+                            >
+                              <option value="">another spot on the baffle</option>
+                              <option value="high">the tweeter</option>
+                              <option value="mid">the midrange</option>
+                              <option value="low">the woofer</option>
+                            </select>
+                            <span className="cd-hint">
+                              that driver becomes 0,0 — you never type its own offset
+                            </span>
+                          </span>
+                          <span className="cd-label">Baffle</span>
+                          <span className="cd-fields">
+                            {veld(cabinet.baffleWidthMm, cab('baffleWidthMm'))} ×{' '}
+                            {veld(cabinet.baffleHeightMm, cab('baffleHeightMm'))} mm
+                          </span>
+                          <span className="cd-label">Reference point</span>
+                          <span className="cd-fields">
+                            {veld(cabinet.refFromTopMm, cab('refFromTopMm'))} mm below the top ·{' '}
+                            {veld(cabinet.refHeightMm, cab('refHeightMm'))} mm above the floor
+                          </span>
+                          {mis && (
+                            <span className="derived alert" style={{ gridColumn: '1 / -1' }}>
+                              the reference point cannot sit {cabinet.refFromTopMm} mm below the top
+                              of a {cabinet.baffleHeightMm} mm baffle — one of the two is the other
+                              field
+                            </span>
+                          )}
+                        </>,
                       )}
-                      {box.note && <span className="derived">{box.note}</span>}
-                      {cabinetInfo.unloadOf(role) === 'high' && (
-                        <span className="derived alert">
-                          ported: excursion runs away below Fb — worth a steeper electrical
-                          high-pass than a sealed box would need
-                        </span>
-                      )}
-                      {edge !== null && (
-                        <span className="derived">nearest baffle edge {Math.round(edge)} mm</span>
+                      {kaart(
+                        '🪑',
+                        'Where you listen',
+                        zitUit ||
+                          'Add your seat and ear height, and a driver-spacing rule becomes a statement about YOUR room.',
+                        <>
+                          <span className="cd-label">Distance</span>
+                          <span className="cd-fields">
+                            {veld(cabinet.listenDistanceM, cab('listenDistanceM'), 0.1)} m
+                          </span>
+                          <span className="cd-label">Ear height</span>
+                          <span className="cd-fields">
+                            {veld(cabinet.listenEarHeightMm, cab('listenEarHeightMm'))} mm
+                          </span>
+                        </>,
                       )}
                     </div>
                   );
-                })}
+                }
+
+                const rij = (k: string, v: React.ReactNode, o?: React.ReactNode) => (
+                  <div className="lg-row">
+                    <span className="lg-k">{k}</span>
+                    <span className="lg-v">{v}</span>
+                    <span className="lg-o">{o}</span>
+                  </div>
+                );
+                return (
+                  <div className="lg">
+                    <div className="lg-sec">How you measured</div>
+                    {rij(
+                      'Mic distance',
+                      <>{veld(cabinet.micDistanceMm, cab('micDistanceMm'))} mm</>,
+                      cabinetInfo.farField
+                        ? `${cabinetInfo.farField.ratio.toFixed(1)}× the source — ${
+                            cabinetInfo.farField.ok ? 'far field' : 'close'
+                          }`
+                        : '',
+                    )}
+                    {rij(
+                      'Mic elevation',
+                      <>{veld(cabinet.micElevationDeg, cab('micElevationDeg'), 1, '0')} °</>,
+                    )}
+                    {rij(
+                      'Gate used',
+                      <>{veld(cabinet.gateMs, cab('gateMs'), 0.1, 'predict')} ms</>,
+                      <>
+                        {micUit} {teLaag && knop}
+                      </>,
+                    )}
+                    <div className="lg-sec">The cabinet</div>
+                    {rij(
+                      'Mic was aimed at',
+                      <select
+                        value={cabinet.refDriver}
+                        onChange={(e) =>
+                          setCabinet((c) => ({ ...c, refDriver: e.target.value as '' | BranchRole }))
+                        }
+                      >
+                        <option value="">another spot on the baffle</option>
+                        <option value="high">the tweeter</option>
+                        <option value="mid">the midrange</option>
+                        <option value="low">the woofer</option>
+                      </select>,
+                      cabinet.refDriver ? 'that driver is 0,0 — you do not type its offset' : '',
+                    )}
+                    {rij(
+                      'Baffle width',
+                      <>{veld(cabinet.baffleWidthMm, cab('baffleWidthMm'))} mm</>,
+                      stapUit,
+                    )}
+                    {rij(
+                      'Baffle height',
+                      <>{veld(cabinet.baffleHeightMm, cab('baffleHeightMm'))} mm</>,
+                    )}
+                    {rij(
+                      'Reference point, below top',
+                      <>{veld(cabinet.refFromTopMm, cab('refFromTopMm'))} mm</>,
+                      mis ? (
+                        <strong className="alert">deeper than the baffle is tall</strong>
+                      ) : (
+                        ''
+                      ),
+                    )}
+                    {rij(
+                      'Reference point, above floor',
+                      <>{veld(cabinet.refHeightMm, cab('refHeightMm'))} mm</>,
+                    )}
+                    <div className="lg-sec">Where you listen</div>
+                    {rij(
+                      'Distance',
+                      <>{veld(cabinet.listenDistanceM, cab('listenDistanceM'), 0.1)} m</>,
+                      zitUit,
+                    )}
+                    {rij(
+                      'Ear height',
+                      <>{veld(cabinet.listenEarHeightMm, cab('listenEarHeightMm'))} mm</>,
+                    )}
+                  </div>
+                );
+              })()}
+              {/* De driverfeiten zijn verhuisd naar stap 1 "Your drivers":
+                  positie, Sd/Xmax, aantal en kasttype gaan over de DRIVER, de
+                  velden hierboven over de KAST en de meetopstelling. De
+                  stapnamen zeiden dat al; alleen de indeling niet (Sander). */}
             </fieldset>
-            <fieldset>
+            <fieldset className={uiMode === 'guided' ? 'expert-only' : undefined}>
               <legend>Driver phase</legend>
               <label title="Measured = the real measured phase incl. the true inter-driver time offset — the whole point of this tool. Minimum phase = reconstructed from magnitude (offsets discarded), only for apples-to-apples VituixCAD comparison.">
                 Convention
@@ -7648,7 +8522,7 @@ export default function App() {
             {/* Inter-driver adjustments — nothing to adjust against in
                 single-driver mode, so the whole fieldset hides. */}
             {!soloDriver && (
-            <fieldset>
+            <fieldset className={uiMode === 'guided' ? 'expert-only' : undefined}>
               <legend>Tweeter adjustment</legend>
               <label title="Simulate moving the tweeter physically (mm depth, + = recessed = extra delay). With measured phase and a shared time reference the real timing is already in the data — leave 0.">
                 Offset (mm, + = recessed)
@@ -7700,7 +8574,7 @@ export default function App() {
             </fieldset>
             )}
             {threeWay && (
-              <fieldset>
+              <fieldset className={uiMode === 'guided' ? 'expert-only' : undefined}>
                 <legend>Midrange adjustment</legend>
                 <label title="Simulate moving the midrange physically (mm depth, + = recessed = extra delay). With measured phase and a shared time reference the real timing is already in the data — leave 0.">
                   Offset (mm, + = recessed)
@@ -7814,7 +8688,15 @@ export default function App() {
             {designTab === 'filters' && result && (
         <>
           <div className="panel">
-            <h2>Virtual filters (target design)</h2>
+            <h2>{uiMode === 'guided' ? 'Design the filter' : 'Virtual filters (target design)'}</h2>
+            {uiMode === 'guided' && (
+              <p className="sub">
+                One button. The app works out where the drivers should hand over to each other,
+                what shape each filter needs and which real parts to buy — using your measurements,
+                not rules of thumb. It tries several crossover points and keeps the best one. Expect
+                a few minutes.
+              </p>
+            )}
             <div className="tool-groups" style={{ marginBottom: '1rem' }}>
               <div className="tool-group">
                 <span className="tool-group-label">Design</span>
@@ -7833,27 +8715,6 @@ export default function App() {
                   >
                     {vfBusy ? 'Optimizing + building…' : soloDriver ? 'Optimize — flatten driver' : 'Optimize — design for me'}
                   </button>
-                  <select
-                    value={synthMode}
-                    onChange={(e) => setSynthMode(e.target.value as 'filter' | 'acoustic')}
-                    title="What the passive build optimises for: the acoustic result on the measured driver, or an exact reproduction of the filter curve"
-                  >
-                    <option value="acoustic">Acoustic result (flatten measured driver)</option>
-                    <option value="filter">Filter curve (reproduce target exactly)</option>
-                  </select>
-                </div>
-              </div>
-              <div className="tool-group">
-                <span className="tool-group-label">Configure</span>
-                <div className="tool-group-body">
-                  <button
-                    type="button"
-                    className={showOptSettings ? 'active-toggle' : ''}
-                    onClick={() => setShowOptSettings((s) => !s)}
-                    title="Optimizer settings: priority, amplitude target, in-room weight, EQ bands"
-                  >
-                    ⚙ Settings
-                  </button>
                   <button
                     type="button"
                     onClick={() => {
@@ -7866,11 +8727,33 @@ export default function App() {
                     }}
                     title="Design wizard: load measurements, then goals, priority, crossover point, acoustic slopes and component choices in one guided flow — ends with Optimize"
                   >
-                    🧙 Wizard
+                    {uiMode === 'guided' ? '🧙 Walk me through it' : '🧙 Wizard'}
+                  </button>
+                  <select
+                    className={uiMode === 'guided' ? 'expert-only' : undefined}
+                    value={synthMode}
+                    onChange={(e) => setSynthMode(e.target.value as 'filter' | 'acoustic')}
+                    title="What the passive build optimises for: the acoustic result on the measured driver, or an exact reproduction of the filter curve"
+                  >
+                    <option value="acoustic">Acoustic result (flatten measured driver)</option>
+                    <option value="filter">Filter curve (reproduce target exactly)</option>
+                  </select>
+                </div>
+              </div>
+              <div className={`tool-group${uiMode === 'guided' ? ' expert-only' : ''}`}>
+                <span className="tool-group-label">Configure</span>
+                <div className="tool-group-body">
+                  <button
+                    type="button"
+                    className={showOptSettings ? 'active-toggle' : ''}
+                    onClick={() => setShowOptSettings((s) => !s)}
+                    title="Optimizer settings: priority, amplitude target, in-room weight, EQ bands"
+                  >
+                    ⚙ Settings
                   </button>
                 </div>
               </div>
-              <div className="tool-group">
+              <div className={`tool-group${uiMode === 'guided' ? ' expert-only' : ''}`}>
                 <span className="tool-group-label">State</span>
                 <div className="tool-group-body">
                   <button
@@ -7903,7 +8786,7 @@ export default function App() {
                   : '…'}
               </p>
             )}
-            {vfBypass && (
+            {vfBypass && uiMode === 'expert' && (
               <p className="derived" style={{ margin: '0 0 1rem' }}>
                 virtual filters muted — passive network / raw drivers only
               </p>
@@ -7995,6 +8878,7 @@ export default function App() {
                     )}
                   </>
                 )}
+                <span className="opt-group-cap">Goals &amp; weighting</span>
                 <label title={soloDriver ? 'Single-driver mode: relative phase does not exist — the solo objective is response flatness only' : "The big trade-off: budget split between a flat response and flat phase. More phase = flatter phase but more amplitude ripple. Both ends are anchored (100% phase = 90/10 internally): with the response weight at true zero the optimizer would trade a wrecked response for a phase metric it can then game."}>
                   Priority: response {100 - phasePriority}% · phase {phasePriority}%
                   <input
@@ -8032,7 +8916,7 @@ export default function App() {
                   </select>
                 </label>
                 <label title={soloDriver ? 'Single-driver mode: directivity terms pair both drivers — disabled for now' : angleSets ? '' : 'Load angle measurements to enable'}>
-                  In-room weight: {dirWeight}% (energy average)
+                  Weight for in-room sound: {dirWeight}% (energy average)
                   <input
                     type="range"
                     min={0}
@@ -8044,11 +8928,12 @@ export default function App() {
                     style={{ width: '11rem', accentColor: 'var(--accent)' }}
                   />
                 </label>
+                <span className="opt-group-cap">Filter shape</span>
                 <label
                   className="inline-num"
                   title="Hard cap on EQ bands per driver the optimizer may spend — more bands = finer correction but a bigger search (and more passive components later)"
                 >
-                  EQ bands/driver for optimizer
+                  Correction bands per driver (max)
                   <input
                     type="number"
                     min={0}
@@ -8138,13 +9023,14 @@ export default function App() {
                     </label>
                   </>
                 )}
+                <span className="opt-group-cap">Targets</span>
                 <label title="Staged design (trapmethode): HP/LP structure first; EQ bands, Zobel/LCR networks and bypass caps are only added while the targets below are unmet — the fewest components that reach the goal, with a per-stage report.">
                   <input
                     type="checkbox"
                     checked={stagedOn}
                     onChange={(e) => setStagedOn(e.target.checked)}
                   />{' '}
-                  Staged (fewest components)
+                  Use as few components as possible
                 </label>
                 {stagedOn && (
                   <span className="inline-num" title="'Good enough' targets: stop escalating once ripple (peak ±dB, the same number the SPL strip shows) AND average phase error (°) are both met — variable per project, this is the designer's call">
@@ -8175,6 +9061,7 @@ export default function App() {
                     )}
                   </span>
                 )}
+                <span className="opt-group-cap">Safety nets</span>
                 <label title="Stopband leakage beside the crossover must stay ≥20 dB below the combined — cone-breakup phase cannot be filtered away, it can only be made irrelevant in level">
                   <input
                     type="checkbox"
@@ -8182,8 +9069,9 @@ export default function App() {
                     onChange={(e) => setBreakupGuard(e.target.checked)}
                     disabled={!!soloDriver}
                   />{' '}
-                  Breakup guard (≥20 dB)
+                  Keep cone breakup ≥20 dB down
                 </label>
+                <span className="opt-group-cap">Components</span>
                 <label
                   style={{ opacity: hasImportedCatalog() ? 1 : 0.5 }}
                   title={
@@ -8198,8 +9086,9 @@ export default function App() {
                     disabled={!hasImportedCatalog()}
                     onChange={(e) => setCatalogSnap(e.target.checked)}
                   />{' '}
-                  Snap to catalog{!hasImportedCatalog() && ' (needs import)'}
+                  Use real catalog parts{!hasImportedCatalog() && ' (needs import)'}
                 </label>
+                <span className="opt-group-cap">Crossover</span>
                 <label title="Pin the ACOUSTIC crossover: the frequency where the filtered drivers actually cross must land within frequency ± margin — in the design optimizer AND the component tuner. Margin 0 = exactly there (±2% search room remains).">
                   <input
                     type="checkbox"
@@ -8214,12 +9103,12 @@ export default function App() {
                     className="derived"
                     title="Hard floor for the tweeter's electrical HP knee: the classic ≥2×Fs rule, read from the measured impedance peak. Knee-domain — coexists with the crossover point."
                   >
-                    HP floor {tweeterHpFloor} Hz (2×Fs)
+                    tweeter kept above {tweeterHpFloor} Hz (2× its measured resonance)
                   </span>
                 )}
                 {threeWay && (
                   <label title="How many handover candidates the 3-way scan simulates PER crossing. Each candidate runs the full design chain inside its own slice of the search range, so the count is squared: 2 steps = 4 chains. Works pinned or unpinned — without a pin the range is the neighbourhood of the raw crossings.">
-                    Scan steps per crossing
+                    Handover candidates to try
                     <select value={xo3Steps} onChange={(e) => setXo3Steps(Number(e.target.value))}>
                       {[1, 2, 3].map((n) => (
                         <option key={n} value={n}>
@@ -8229,160 +9118,41 @@ export default function App() {
                     </select>
                   </label>
                 )}
-                {threeWay && (
-                  <label title="Woofer nominal size — sets the W-M handover's beaming CEILING (a cone is practically usable to ~3× its beaming onset), the mirror of the mid-size rule for the high crossing. With the 2×Fs floor from the measured mid impedance this gives the free scan a physics window instead of a guess.">
-                    Woofer size (W-M ceiling)
-                    <select value={wooferSizeInch} onChange={(e) => setWooferSizeInch(e.target.value)}>
-                      <option value="">unknown</option>
-                      {['5', '6.5', '8', '10', '12', '15'].map((v) => (
-                        <option key={v} value={v}>
-                          {v}"
-                        </option>
-                      ))}
-                    </select>
-                  </label>
-                )}
-                {threeWay && (
-                  <label title="Directivity philosophy for the MEASURED beaming ceiling — the on-axis minus 30° difference at which a driver counts as beaming. Default is the empirical 4 dB, NOT the theoretically stricter ka = 2, and that is deliberate: the ka figures come from an ideal piston in an infinite baffle, while a real measured 0−30° difference at low frequency is mostly baffle diffraction. Measured on a real 3-way set, ka = 2 puts the woofer&apos;s ceiling at 304 Hz — below the mid&apos;s own 2×Fs floor — declaring an ordinary design impossible; 4 dB gives 628 Hz. The strict tiers stay available for a conservative philosophy or clean anechoic data. (For reference: &apos;−6 dB at 30°&apos; is ka = 4.43, past every published limit — that defines BEAMWIDTH, not a crossover ceiling.)">
-                    Beaming limit
-                    <select value={kaTier} onChange={(e) => setKaTier(e.target.value as KaTier)}>
-                      {(Object.keys(KA_TIERS) as KaTier[]).map((k) => (
-                        <option key={k} value={k}>
-                          {k} — ka {KA_TIERS[k].ka} ({KA_TIERS[k].diff30Db} dB)
-                        </option>
-                      ))}
-                    </select>
-                  </label>
-                )}
-                {threeWay && (
-                  <span
-                    className="inline-num"
-                    title="How many wavelengths of DRIVER SPACING the design tolerates. The spacing itself is derived from the driver positions you enter under Setup → Cabinet & drivers; two drivers half a wavelength apart already put a null in the vertical response. The sources genuinely disagree here and they optimise different things, so this is the designer's call."
-                  >
-                    {'Lobing k '}
-                    <select value={ctcK} onChange={(e) => setCtcK(e.target.value)}>
-                      <option value="0.25">0.25 — point source</option>
-                      <option value="0.5">0.5 — no forward null</option>
-                      <option value="1">1.0 — Dickason</option>
-                      <option value="1.2">1.2 — Saunisto (power response)</option>
-                    </select>
-                    {cabinetInfo.ctcLow !== null || cabinetInfo.ctcHigh !== null ? (
-                      <span className="derived">
-                        {' '}
-                        c-t-c{' '}
-                        {cabinetInfo.ctcLow !== null ? `W-M ${Math.round(cabinetInfo.ctcLow)}` : ''}
-                        {cabinetInfo.ctcHigh !== null
-                          ? ` · M-T ${Math.round(cabinetInfo.ctcHigh)}`
-                          : ''}{' '}
-                        mm
-                      </span>
-                    ) : (
-                      <span className="derived"> — enter driver positions to apply</span>
-                    )}
-                  </span>
-                )}
-                {threeWay && (
-                  <label title="Cone breakup as an upper limit. A resonance at f_b is excited as the THIRD harmonic of a fundamental at f_b/3 (Purifi measured exactly this: breakups at 5 and 10 kHz produce HD3 peaks at 1.6 and 3.3 kHz), so the distortion penalty lands more than an octave BELOW the peak. A notch does not repair it — it attenuates the fundamental at the breakup, not the harmonics arriving there from lower fundamentals. NOTE: no published algorithm exists for finding breakup in an SPL curve; this is our own criterion, which is why it is switchable and the detected frequency is shown.">
-                    Breakup ceiling
-                    <select
-                      value={breakupLimitOn ? breakupHarmonic : 'off'}
-                      onChange={(e) => {
-                        if (e.target.value === 'off') setBreakupLimitOn(false);
-                        else {
-                          setBreakupLimitOn(true);
-                          setBreakupHarmonic(e.target.value);
-                        }
-                      }}
-                    >
-                      <option value="off">off</option>
-                      <option value="3">f_b / 3 (HD3)</option>
-                      <option value="5">f_b / 5 (HD5, hard cones)</option>
-                    </select>
-                  </label>
-                )}
-                {threeWay && (
-                  <span
-                    className="inline-num"
-                    title="Excursion floor — the LEVEL-aware version of 'cross a tweeter at 2-3x Fs'. SPL = 108.4 + 20log(f²·Sd·Xmax) in half space, so a driver runs out of linear travel below f = sqrt(10^((L-108.4)/20)/(Sd·Xmax)). Both numbers come straight off the datasheet; without them the criterion simply does not apply. The level matters: a 1 inch dome is fine to 587 Hz at 90 dB and only to 829 Hz at 96 dB."
-                  >
-                    {'Sd/Xmax mid '}
-                    <input
-                      type="number"
-                      min={0}
-                      step={1}
-                      value={sdCm2.mid}
-                      onChange={(e) => setSdCm2((p) => ({ ...p, mid: e.target.value }))}
-                    />
-                    {' cm² / '}
-                    <input
-                      type="number"
-                      min={0}
-                      step={0.1}
-                      value={xmaxMm.mid}
-                      onChange={(e) => setXmaxMm((p) => ({ ...p, mid: e.target.value }))}
-                    />
-                    {' mm · tweeter '}
-                    <input
-                      type="number"
-                      min={0}
-                      step={1}
-                      value={sdCm2.high}
-                      onChange={(e) => setSdCm2((p) => ({ ...p, high: e.target.value }))}
-                    />
-                    {' cm² / '}
-                    <input
-                      type="number"
-                      min={0}
-                      step={0.1}
-                      value={xmaxMm.high}
-                      onChange={(e) => setXmaxMm((p) => ({ ...p, high: e.target.value }))}
-                    />
-                    {' mm @ '}
-                    <input
-                      type="number"
-                      min={70}
-                      max={120}
-                      step={1}
-                      value={excursionSpl}
-                      onChange={(e) => setExcursionSpl(e.target.value)}
-                    />
-                    {' dB'}
-                  </span>
-                )}
                 {threeWay && physWin3 && (
                   <span
                     className="derived"
+                    style={{ flexBasis: '100%' }}
                     title="The free scan derives both handover windows from the measurements themselves: floor = 2×Fs (measured impedance) and where the upper driver reaches its own level; ceiling = the lower driver's MEASURED beaming onset from the angle files (size-formula fallback without them). A pin is the designer's explicit override of its axis — the scan then searches the pin, not this window, and warns loudly when the physics cannot deliver it."
                   >
-                    {xoRangeOn ? (
-                      <>W-M pinned · </>
-                    ) : (
-                      <>
-                        W-M {Math.round(physWin3.low.floorHz ?? 250)}–
-                        {Math.round(physWin3.low.ceilHz ?? 1200)} Hz
-                        {bindingCeil(physWin3.limits.low, physWin3.lowCeilMeasured)}
-                        {' · '}
-                      </>
-                    )}
-                    {physWin3.low.ceilHz !== null &&
-                      physWin3.low.floorHz !== null &&
-                      physWin3.low.ceilHz <= physWin3.low.floorHz && (
-                        <strong> ⚠ no room</strong>
-                      )}
-                    {xoRangeOn ? (
-                      <>M-T pinned — pins override the derived windows</>
-                    ) : (
-                      <>
-                        M-T {Math.round(physWin3.high.floorHz ?? 1200)}–
-                        {Math.round(physWin3.high.ceilHz ?? 7000)} Hz
-                        {bindingCeil(physWin3.limits.high, physWin3.highCeilMeasured)}
-                        {physWin3.high.ceilHz !== null &&
-                          physWin3.high.floorHz !== null &&
-                          physWin3.high.ceilHz <= physWin3.high.floorHz && (
-                            <strong> ⚠ no room</strong>
+                    {/* One line per handover, each naming the criterion that
+                        BINDS. The old single dense line hid exactly that: a
+                        window you cannot attribute is a window you cannot act
+                        on, and it is the binding rule that tells you which
+                        knob (or which driver) to change. */}
+                    {(['low', 'high'] as const).map((side) => {
+                      const w = physWin3[side];
+                      const naam = side === 'low' ? 'W-M' : 'M-T';
+                      if (xoRangeOn) {
+                        return (
+                          <span key={side} style={{ display: 'block' }}>
+                            {naam}: pinned — your pin overrides the derived window
+                          </span>
+                        );
+                      }
+                      const geen =
+                        w.ceilHz !== null && w.floorHz !== null && w.ceilHz <= w.floorHz;
+                      return (
+                        <span key={side} style={{ display: 'block' }}>
+                          {naam} {Math.round(w.floorHz ?? (side === 'low' ? 250 : 1200))}–
+                          {Math.round(w.ceilHz ?? (side === 'low' ? 1200 : 7000))} Hz
+                          {bindingCeil(
+                            physWin3.limits[side],
+                            side === 'low' ? physWin3.lowCeilMeasured : physWin3.highCeilMeasured,
                           )}
-                      </>
-                    )}
+                          {geen && <strong> ⚠ no room — these two cannot meet</strong>}
+                        </span>
+                      );
+                    })}
                   </span>
                 )}
                 {xoRangeOn && threeWay && (
@@ -8459,6 +9229,133 @@ export default function App() {
                     )}
                   </span>
                 )}
+                <span className="opt-group-cap">Driver limits</span>
+                {threeWay && !physWin3?.lowCeilMeasured && (
+                  <label title="Woofer nominal size — sets the W-M handover's beaming CEILING (a cone is practically usable to ~3× its beaming onset), the mirror of the mid-size rule for the high crossing. With the 2×Fs floor from the measured mid impedance this gives the free scan a physics window instead of a guess.">
+                    Woofer size (W-M ceiling)
+                    <select value={wooferSizeInch} onChange={(e) => setWooferSizeInch(e.target.value)}>
+                      <option value="">unknown</option>
+                      {['5', '6.5', '8', '10', '12', '15'].map((v) => (
+                        <option key={v} value={v}>
+                          {v}"
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                )}
+                {threeWay && (
+                  <label title="Directivity philosophy for the MEASURED beaming ceiling — the on-axis minus 30° difference at which a driver counts as beaming. Default is the empirical 4 dB, NOT the theoretically stricter ka = 2, and that is deliberate: the ka figures come from an ideal piston in an infinite baffle, while a real measured 0−30° difference at low frequency is mostly baffle diffraction. Measured on a real 3-way set, ka = 2 puts the woofer&apos;s ceiling at 304 Hz — below the mid&apos;s own 2×Fs floor — declaring an ordinary design impossible; 4 dB gives 628 Hz. The strict tiers stay available for a conservative philosophy or clean anechoic data. (For reference: &apos;−6 dB at 30°&apos; is ka = 4.43, past every published limit — that defines BEAMWIDTH, not a crossover ceiling.)">
+                    When a cone counts as beaming
+                    <select value={kaTier} onChange={(e) => setKaTier(e.target.value as KaTier)}>
+                      {(Object.keys(KA_TIERS) as KaTier[]).map((k) => (
+                        <option key={k} value={k}>
+                          {k} — ka {KA_TIERS[k].ka} ({KA_TIERS[k].diff30Db} dB)
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                )}
+                {threeWay && (
+                  <span
+                    className="inline-num"
+                    title="How many wavelengths of DRIVER SPACING the design tolerates. The spacing itself is derived from the driver positions you enter under Setup → Cabinet & drivers; two drivers half a wavelength apart already put a null in the vertical response. The sources genuinely disagree here and they optimise different things, so this is the designer's call."
+                  >
+                    {'Lobing: how strict '}
+                    <select value={ctcK} onChange={(e) => setCtcK(e.target.value)}>
+                      <option value="auto">auto — from driver geometry</option>
+                      <option value="0.25">0.25 — point source</option>
+                      <option value="0.5">0.5 — no forward null</option>
+                      <option value="1">1.0 — Dickason</option>
+                      <option value="1.2">1.2 — Saunisto (power response)</option>
+                    </select>
+                    {ctcK === 'auto' && (
+                      <span
+                        className="derived"
+                        title="Resolved per pair from the positions you entered: horizontally separated drivers lobe ACROSS the seats (strict, k 0.5 — no forward null); vertically separated ones lobe toward floor and ceiling, where Dickason's k 1.0 is the published anchor. Mixed axes interpolate. The explicit values remain as overrides."
+                      >
+                        {' '}
+                        {(
+                          [
+                            ['W-M', cabinetInfo.ctcLowVec],
+                            ['M-T', cabinetInfo.ctcHighVec],
+                          ] as const
+                        )
+                          .filter(([, v]) => v !== null)
+                          .map(([naam, v]) => {
+                            const k2 = lobingKFor(v!.dxMm, v!.dyMm);
+                            const as2 =
+                              Math.abs(v!.dyMm) >= Math.abs(v!.dxMm) ? 'vertical' : 'horizontal';
+                            return `${naam} k ${k2.toFixed(2)} (${as2})`;
+                          })
+                          .join(' · ') || 'enter driver positions to resolve'}
+                      </span>
+                    )}
+                    {cabinetInfo.ctcLow !== null || cabinetInfo.ctcHigh !== null ? (
+                      <span className="derived">
+                        {' '}
+                        c-t-c{' '}
+                        {cabinetInfo.ctcLow !== null ? `W-M ${Math.round(cabinetInfo.ctcLow)}` : ''}
+                        {cabinetInfo.ctcHigh !== null
+                          ? ` · M-T ${Math.round(cabinetInfo.ctcHigh)}`
+                          : ''}{' '}
+                        mm
+                      </span>
+                    ) : (
+                      <span className="derived"> — enter driver positions to apply</span>
+                    )}
+                  </span>
+                )}
+                {threeWay && (
+                  <label title="Cone breakup as an upper limit. A resonance at f_b is excited as the THIRD harmonic of a fundamental at f_b/3 (Purifi measured exactly this: breakups at 5 and 10 kHz produce HD3 peaks at 1.6 and 3.3 kHz), so the distortion penalty lands more than an octave BELOW the peak. A notch does not repair it — it attenuates the fundamental at the breakup, not the harmonics arriving there from lower fundamentals. NOTE: no published algorithm exists for finding breakup in an SPL curve; this is our own criterion, which is why it is switchable and the detected frequency is shown.">
+                    Stay this far below cone breakup
+                    <select
+                      value={breakupLimitOn ? breakupHarmonic : 'off'}
+                      onChange={(e) => {
+                        if (e.target.value === 'off') setBreakupLimitOn(false);
+                        else {
+                          setBreakupLimitOn(true);
+                          setBreakupHarmonic(e.target.value);
+                        }
+                      }}
+                    >
+                      <option value="off">off</option>
+                      <option value="3">f_b / 3 (HD3)</option>
+                      <option value="5">f_b / 5 (HD5, hard cones)</option>
+                    </select>
+                  </label>
+                )}
+                {threeWay && (
+                  <span
+                    className="inline-num"
+                    title="The LEVEL this design must reach — the level-aware version of 'cross a tweeter at 2-3x Fs'. SPL = 108.4 + 20log(f²·Sd·Xmax) in half space, so a driver runs out of linear travel below f = sqrt(10^((L-108.4)/20)/(Sd·Xmax)) and the crossover floor moves up with the level you ask for. Sd and Xmax themselves are DRIVER FACTS and live on the Setup tab; this is the only part of the criterion that is a design decision."
+                  >
+                    {'Design for '}
+                    <input
+                      type="number"
+                      min={70}
+                      max={120}
+                      step={1}
+                      value={excursionSpl}
+                      onChange={(e) => setExcursionSpl(e.target.value)}
+                    />
+                    {' dB'}
+                  </span>
+                )}
+                {threeWay && (
+                  <span className="derived" style={{ flexBasis: '100%' }}>
+                    {sdCm2.mid && sdCm2.high
+                      ? `excursion floor: mid ${Math.round(
+                          excursionFloorHz(Number(sdCm2.mid), Number(xmaxMm.mid), Number(excursionSpl), {
+                            count: Number(cabinet.drivers.mid.count) || 1,
+                          }) ?? 0,
+                        )} Hz · tweeter ${Math.round(
+                          excursionFloorHz(Number(sdCm2.high), Number(xmaxMm.high), Number(excursionSpl), {
+                            count: Number(cabinet.drivers.high.count) || 1,
+                          }) ?? 0,
+                        )} Hz — from the Sd/Xmax on the Setup tab`
+                      : 'enter Sd and Xmax per driver on the Setup tab to use this criterion'}
+                  </span>
+                )}
                 {vfEqBands > 4 && (
                   <span className="derived">
                     {vfEqBands} bands = {3 + 6 * vfEqBands} search dimensions — slower, may need a
@@ -8509,7 +9406,11 @@ export default function App() {
                   .join('  ·  ')}
               </p>
             )}
-            <div className={`vf-panel${vfCollapsed ? '' : ' open'}`}>
+            <div
+              className={`vf-panel${vfCollapsed ? '' : ' open'}${
+                uiMode === 'guided' ? ' expert-only' : ''
+              }`}
+            >
               <button
                 type="button"
                 className="vf-collapse-head"
@@ -8579,7 +9480,7 @@ export default function App() {
           </div>
 
           {zModels.length > 0 && (
-            <div className="panel">
+            <div className={`panel${uiMode === 'guided' ? ' expert-only' : ''}`}>
               <h2>Passive synthesis</h2>
               <p className="sub" style={{ marginBottom: '0.8rem' }}>
                 {synthMode === 'filter'
@@ -8694,7 +9595,7 @@ export default function App() {
               the summed result uses the mid/tweeter slots for now.
             </p>
             <div className="tool-groups" style={{ marginBottom: '0.8rem' }}>
-              <div className="tool-group">
+              <div className={`tool-group${uiMode === 'guided' ? ' expert-only' : ''}`}>
                 <span className="tool-group-label">Start</span>
                 <div className="tool-group-body">
                   <button
@@ -8761,7 +9662,7 @@ export default function App() {
                   </span>
                 </div>
               </div>
-              <div className="tool-group">
+              <div className={`tool-group${uiMode === 'guided' ? ' expert-only' : ''}`}>
                 <span className="tool-group-label">Export</span>
                 <div className="tool-group-body">
                   <button
@@ -8782,7 +9683,7 @@ export default function App() {
                   </button>
                 </div>
               </div>
-              <div className="tool-group">
+              <div className={`tool-group${uiMode === 'guided' ? ' expert-only' : ''}`}>
                 <span className="tool-group-label">Catalog</span>
                 <div className="tool-group-body">
                   <button
@@ -8813,7 +9714,7 @@ export default function App() {
                   </button>
                 </div>
               </div>
-              <div className="tool-group">
+              <div className={`tool-group${uiMode === 'guided' ? ' expert-only' : ''}`}>
                 <span className="tool-group-label">Tools</span>
                 <div className="tool-group-body">
                   <button
@@ -8869,7 +9770,7 @@ export default function App() {
                   </button>
                 </div>
               </div>
-              <div className="tool-group">
+              <div className={`tool-group${uiMode === 'guided' ? ' expert-only' : ''}`}>
                 <span className="tool-group-label">Simulation</span>
                 <div className="tool-group-body">
                   <label title="Feed the active tab's network into the simulation instead of the selected vxp variant — every edit re-solves live">
@@ -8912,7 +9813,7 @@ export default function App() {
               </div>
             </div>
             {netOptNote && (
-              <p className="derived" style={{ margin: '0 0 0.8rem' }}>
+              <p className="derived" style={{ margin: '0 0 0.8rem', whiteSpace: 'pre-line' }}>
                 {netOptNote}
               </p>
             )}
@@ -8964,6 +9865,8 @@ export default function App() {
                         ['ripple', 'peak'],
                         ['avg', 'avg'],
                         ['phase', 'phase'],
+                        ['ovl', 'overlap'],
+                        ['zmin', 'Z min'],
                         ['bom', 'BOM'],
                       ] as const
                     ).map(([key, caption]) => (
@@ -8992,7 +9895,13 @@ export default function App() {
                               ? (r.avgDevDb ?? Number.POSITIVE_INFINITY)
                               : scanSort.key === 'phase'
                                 ? r.phaseDeg
-                                : (r.bomEur ?? Number.POSITIVE_INFINITY);
+                                : scanSort.key === 'ovl'
+                                  ? (r.pairOverlapOct
+                                      ? Math.max(...r.pairOverlapOct.map((o) => o ?? 0))
+                                      : Number.POSITIVE_INFINITY)
+                                  : scanSort.key === 'zmin'
+                                  ? -(r.zMinOhm ?? Number.NEGATIVE_INFINITY) // higher is better
+                                  : (r.bomEur ?? Number.POSITIVE_INFINITY);
                       return (v(a) - v(b)) * scanSort.dir;
                     })
                     .map((r) => (
@@ -9018,6 +9927,38 @@ export default function App() {
                         {r.avgDevDb !== null ? `${r.avgDevDb.toFixed(2)} dB` : '—'}
                       </td>
                       <td>{r.phaseDeg.toFixed(1)}°</td>
+                      <td
+                        className={r.xoWindowOk === false ? 'scan-z-low' : undefined}
+                        title={
+                          r.pairOverlapOct === null
+                            ? 'Delivered overlap width per pair (2-way rows do not carry it)'
+                            : r.xoWindowOk === false
+                              ? 'A delivered crossing sits OUTSIDE its physics window (pin or measured beaming/lobing bound) — off-axis this is a different loudspeaker, so it ranks below every candidate inside the window'
+                              : 'Delivered overlap width per pair, octaves (W-M / M-T) — how long both cones carry a region together; the phase-coherent integration bandwidth'
+                        }
+                      >
+                        {r.pairOverlapOct !== null
+                          ? `${r.xoWindowOk === false ? '⚠ ' : ''}${r.pairOverlapOct
+                              .map((o) => (o === null ? '—' : o.toFixed(1)))
+                              .join('/')} oct`
+                          : '—'}
+                      </td>
+                      <td
+                        className={
+                          r.zMinOhm !== null && r.zMinOhm < Z_FLOOR_OHM ? 'scan-z-low' : undefined
+                        }
+                        title={
+                          r.zMinOhm === null
+                            ? 'Minimum system impedance was not measured for this candidate'
+                            : r.zMinOhm < Z_FLOOR_OHM
+                              ? `The amplifier sees ${r.zMinOhm.toFixed(1)} Ω at its worst — below the ${Z_FLOOR_OHM} Ω floor, so this candidate ranks below every one with a sane load, however flat it is`
+                              : `Minimum system impedance the amplifier sees (floor ${Z_FLOOR_OHM} Ω)`
+                        }
+                      >
+                        {r.zMinOhm !== null
+                          ? `${r.zMinOhm < Z_FLOOR_OHM ? '⚠ ' : ''}${r.zMinOhm.toFixed(1)} Ω`
+                          : '—'}
+                      </td>
                       <td>{r.bomEur !== null ? `€${Math.round(r.bomEur)}` : '—'}</td>
                     </tr>
                   ))}
@@ -9452,7 +10393,9 @@ export default function App() {
               <h2>Directivity (horizontal)</h2>
               <p className="sub" style={{ marginBottom: '0.8rem' }}>
                 Same filter at every measured angle ({directivity.angles.join('/')}° hor, one side).
-                Horizontal only — vertical lobing is not in this data.
+                {Number(cabinet.baffleWidthMm) > Number(cabinet.baffleHeightMm)
+                  ? 'Horizontal only — but this baffle is wider than tall, so that IS the plane its drivers lobe in: this data captures it.'
+                  : 'Horizontal only — vertical lobing is not in this data.'}
               </p>
               {showPanels.directivity && (
               <>

@@ -213,6 +213,30 @@ export function lobingCeilingHz(spacingMm: number, k = 0.5): number | null {
   return (k * C_AIR) / (spacingMm / 1000);
 }
 
+/**
+ * The lobing strictness the GEOMETRY itself argues for — Sanders' question
+ * made the gap obvious: "de engine ziet toch dat de woofers naast elkaar
+ * liggen?" One global k cannot distinguish the two situations that matter:
+ *
+ * - HORIZONTAL separation (a centre's side-by-side woofers): the nulls sweep
+ *   ACROSS the seated listening window — every listener on the couch sits at
+ *   a different angle. Strict: k 0.5, no forward null may exist.
+ * - VERTICAL separation (a stacked mid/tweeter, a tower's woofer pair): the
+ *   nulls go to floor and ceiling; listeners spread horizontally, barely
+ *   vertically. Dickason's k 1.0 is the published anchor for exactly this
+ *   (Saunisto goes further still, accepting a ±25° null for power response).
+ *
+ * Mixed axes interpolate on the vertical fraction. This never invents beyond
+ * the published anchors — it picks WHICH anchor by the axis the pair actually
+ * lobes in, it is shown next to the setting, and the explicit values remain
+ * as overrides. Unknown geometry (no separation) falls back to strict.
+ */
+export function lobingKFor(dxMm: number, dyMm: number): number {
+  const d = Math.hypot(dxMm, dyMm);
+  if (!(d > 0)) return 0.5;
+  return 0.5 + 0.5 * (Math.abs(dyMm) / d);
+}
+
 /** Where the first vertical null lands, for reporting: sin θ = kλ/(2d) with
  *  matched phase. Returns null when no forward null exists (d < λ/2). */
 export function firstNullAngleDeg(spacingMm: number, freqHz: number): number | null {
@@ -332,11 +356,20 @@ export function excursionFloorHz(
   sdCm2: number,
   xmaxMm: number,
   targetSplDb: number,
-  opts: { distanceM?: number; halfSpace?: boolean } = {},
+  opts: { distanceM?: number; halfSpace?: boolean; count?: number } = {},
 ): number | null {
-  const { distanceM = 1, halfSpace = true } = opts;
+  const { distanceM = 1, halfSpace = true, count = 1 } = opts;
   if (!(sdCm2 > 0) || !(xmaxMm > 0)) return null;
-  const vd = (sdCm2 * 1e-4) * (xmaxMm * 1e-3); // m³
+  // `count` identical drivers sharing the branch displace `count` times the
+  // volume, so the floor drops by √count (four woofers buy one octave, not
+  // four). Sd stays the SINGLE cone's datasheet value on purpose: the same
+  // number feeds the piston diameter, and each cone beams as itself — an
+  // array adds interference lobes, it does not grow the cone. Folding the
+  // count into Sd would make the excursion floor right and the beaming
+  // ceiling wrong, which is how a dual-woofer design quietly gets a
+  // directivity estimate for a driver that does not exist.
+  const n = count > 0 ? count : 1;
+  const vd = n * (sdCm2 * 1e-4) * (xmaxMm * 1e-3); // m³
   const k = halfSpace ? 108.4 : 102.4;
   return Math.sqrt((10 ** ((targetSplDb - k) / 20) * distanceM) / vd);
 }
