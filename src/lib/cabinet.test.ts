@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest';
 import {
   C_AIR_MM_S,
   geometricPathExcessMm,
+  measuringDistanceVerdict,
   listeningDelayShiftUs,
   baffleStepHz,
   floorBounceGate,
@@ -235,6 +236,24 @@ describe('measuring-rig geometry inside a measured delay (Sanders question)', ()
     expect(geometricPathExcessMm(at(0), 500)).toBeCloseTo(0, 10);
     // And it SHRINKS with distance — the whole reason this matters.
     expect(geometricPathExcessMm(at(70), 3000)!).toBeLessThan(mid / 4);
+  });
+
+  it('judges the measuring distance in degrees at the handover, not in µs', () => {
+    // A time shift is only as harmful as the frequency it lands on: the same
+    // 12 µs is a shrug at 2 kHz and a real error at 8 kHz, so the verdict has
+    // to know where the drivers hand over.
+    const at48k = (us: number) => measuringDistanceVerdict(us, 4800)!;
+    // Sanders' centre measured at 500 mm: 11.8 µs → 20° → act.
+    expect(at48k(11.8).deg).toBeCloseTo(20.4, 0);
+    expect(at48k(11.8).verdict).toBe('act');
+    // The same set measured at 1.8 m: 1.6 µs → under 3° → nothing to do.
+    expect(at48k(1.6).verdict).toBe('fine');
+    // Sign is irrelevant — only the size of the error matters.
+    expect(at48k(-11.8).verdict).toBe('act');
+    // The SAME shift at a low handover is harmless: frequency is half the
+    // judgement, which is the whole reason this is not a µs threshold.
+    expect(measuringDistanceVerdict(11.8, 400)!.verdict).toBe('fine');
+    expect(measuringDistanceVerdict(5, 0)).toBeNull();
   });
 
   it('the measure→listen shift is what a filter aligned at the mic gets wrong', () => {

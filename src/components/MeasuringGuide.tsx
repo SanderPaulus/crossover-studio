@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { Modal } from './Modal';
-import { farFieldVerdict, trueOffAxisDeg } from '../lib/cabinet';
+import { farFieldVerdict, floorBounceGate, trueOffAxisDeg } from '../lib/cabinet';
 
 /**
  * How to take the measurements this tool designs on — as a guide you can
@@ -322,7 +322,85 @@ export function MeasuringGuide({ open, onClose }: { open: boolean; onClose: () =
         room height — and put something soft on the floor and ceiling along the reflection path.
       </p>
 
-      <h3>3 · Keep the radius constant, centred on the reference point</h3>
+      <h3>3 · The floor decides how low your measurement is worth anything</h3>
+      <p>
+        Indoors you are not measuring a response, you are measuring the first few milliseconds of
+        one. The gate has to close before the floor bounce arrives, and whatever window you get,
+        the measurement is only trustworthy above roughly <strong>1 / gate</strong>: a 5 ms window
+        means 200 Hz, and it is already a couple of dB out by the time it gets there.
+      </p>
+      <p>
+        Here is the trap, and it is the reason step 2 is not free. Backing away lengthens the
+        direct path more than it lengthens the bounce, so the window <em>shrinks</em> exactly as
+        you fix the far-field problem. Height is what buys it back — these are your slider&apos;s
+        distance against three stand heights, computed by the same function the app uses:
+      </p>
+      <table className="mg-table">
+        <thead>
+          <tr>
+            <th>speaker + mic at</th>
+            <th>gate</th>
+            <th>valid above</th>
+          </tr>
+        </thead>
+        <tbody>
+          {[800, 1200, 1600].map((h) => {
+            const g = floorBounceGate(micMm, h);
+            return (
+              <tr key={h}>
+                <td>{(h / 1000).toFixed(1)} m</td>
+                <td>{g ? `${g.gateMs.toFixed(2)} ms` : '—'}</td>
+                <td>{g ? `${Math.round(g.fromHz)} Hz` : '—'}</td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
+      <p>
+        So: <strong>get everything up in the air</strong> — a metre and a half beats a metre by
+        more than backing away costs you — and put the stand out in the room rather than against a
+        wall. Below the gate limit there are two honest ways out, and guessing is not one of them:
+        splice in a <strong>near-field</strong> measurement (Import → near-field slot; the app
+        matches level and delay and crossfades in the complex domain), or measure the low end{' '}
+        <strong>ground plane</strong> — speaker and microphone both on the floor, so the
+        reflection merges with the direct sound and there is no bounce left to gate. Ground plane
+        costs you a known +6 dB and needs the cabinet laid over, but it hands back the 100–500 Hz
+        region that a stand measurement cannot reach.
+      </p>
+
+      <h3>4 · One clock for every sweep</h3>
+      <p>
+        This is the step the whole tool stands on. Designing on measured phase only works if all
+        your driver files share <em>one</em> time origin — then the difference between their
+        arrival times is real, and it is the 40–50 µs that decides whether your crossover sums or
+        cancels. Break it and nothing downstream can tell.
+      </p>
+      <ul>
+        <li>
+          <strong>Do not move the microphone</strong> between driver sweeps, and do not move the
+          speaker either. One position, every driver.
+        </li>
+        <li>
+          <strong>Never re-zero the time axis</strong> per file — no &ldquo;set t=0 at the
+          peak&rdquo;, no per-file offset removal on export. That throws away exactly the number
+          you came for.
+        </li>
+        <li>
+          <strong>Give the rig a shared reference.</strong> With an audio interface, a{' '}
+          <em>loopback</em> channel is the strongest form. With a USB microphone there is no
+          loopback, so use your software&apos;s <em>acoustic timing reference</em>: a second
+          speaker that plays on every sweep and stays put relative to the mic (it has to reach
+          5 kHz — a sub cannot do this job).
+        </li>
+      </ul>
+      <p>
+        The app checks your work: load the drivers and the topbar reports a{' '}
+        <strong>timing verdict</strong>. &ldquo;Plausible&rdquo; means the arrival-time difference
+        is within what driver geometry can explain; anything else means the clock moved, and the
+        honest response is to re-measure rather than to design on it.
+      </p>
+
+      <h3>5 · Keep the radius constant, centred on the reference point</h3>
       <p>
         The angle in a file name belongs to the <strong>box</strong>. What matters is that every
         angle is taken at the <em>same distance</em> from the same reference point — swing the
@@ -369,7 +447,7 @@ export function MeasuringGuide({ open, onClose }: { open: boolean; onClose: () =
         )}
       </label>
 
-      <h3>4 · Measure the impedance separately</h3>
+      <h3>6 · Measure the impedance separately</h3>
       <p>
         Impedance is electrical: distance, angle and room do not enter into it. Measure each driver
         <em> in its finished cabinet</em> though — the box is what puts the resonance where it is,
@@ -377,7 +455,7 @@ export function MeasuringGuide({ open, onClose }: { open: boolean; onClose: () =
         ARTA/LIMP <code>.lim</code> files import directly.
       </p>
 
-      <h3>5 · Note these down while you are still at the speaker</h3>
+      <h3>7 · Note these down while you are still at the speaker</h3>
       <ul>
         <li>
           <strong>Reference point</strong> — which driver or spot, and how far below the top of the

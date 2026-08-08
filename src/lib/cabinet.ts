@@ -167,6 +167,34 @@ export function listeningDelayShiftUs(
   return Object.fromEntries(Object.entries(raw).map(([k, v]) => [k, v - earliest]));
 }
 
+/** A residual under this many degrees at the handover is not worth acting on. */
+export const MEASURE_DIST_OK_DEG = 5;
+/** Above this, the measuring distance is materially shaping the design. */
+export const MEASURE_DIST_ACT_DEG = 15;
+
+/**
+ * Is the measuring distance far enough that the rig's own geometry no longer
+ * shapes the design? Judged in DEGREES at the handover, not in microseconds:
+ * a time shift is only as harmful as the frequency it lands on, and the same
+ * 12 µs is 8° at 2 kHz and 34° at 8 kHz.
+ *
+ * This is the same 1/R geometry the far-field criterion describes, so the
+ * verdict tends to agree with "3× the largest dimension" — measuring far
+ * enough away fixes both at once, which is why the correction is a fallback
+ * and the tripod is the real fix.
+ */
+export function measuringDistanceVerdict(
+  shiftUs: number,
+  handoverHz: number,
+): { deg: number; verdict: 'fine' | 'marginal' | 'act' } | null {
+  if (!(handoverHz > 0) || !Number.isFinite(shiftUs)) return null;
+  const deg = Math.abs(360 * handoverHz * (shiftUs / 1e6));
+  return {
+    deg,
+    verdict: deg < MEASURE_DIST_OK_DEG ? 'fine' : deg < MEASURE_DIST_ACT_DEG ? 'marginal' : 'act',
+  };
+}
+
 /**
  * Level difference a measurement picks up from GEOMETRY alone — the mic-to-
  * driver distance changing as the cabinet turns. Positive = the off-axis

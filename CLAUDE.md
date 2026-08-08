@@ -142,6 +142,18 @@ minimum phase reconstrueert. Voertaal met Sander: **Nederlands**; code/comments 
   **Eén isotrope schaal** in beide tekeningen — x en y mogen nooit apart schalen, anders liegen
   de hoeken; de kast krimpt daardoor echt als je achteruit loopt, en dát is de les. De viewBox
   wordt wel bijgesneden tot wat er staat (lege ruimte is alleen lege ruimte).
+  **Meetonderzoek verwerkt (aug 2026, Sanders "check eens wat de beste manier van meten is")**:
+  drie secties erbij, alle drie met de rekensom erin i.p.v. een vuistregel. (3) **de vloer
+  bepaalt hoe laag je meting iets waard is** — gate ≈ 1/T, en de val is dat achteruit lopen de
+  gate KORTER maakt terwijl het het ver-veld-probleem oplost; de tabel draait live op
+  `floorBounceGate` met de bestaande afstand-slider (500 mm: 0,8 m hoog → 292 Hz, 1,6 m → 125 Hz),
+  dus hoogte koopt meer dan afstand kost. Uitwegen: nabij-veld-splice of GROUND PLANE (kast en
+  mic op de vloer, reflectie valt samen met het directe geluid; +6 dB, geen bounce meer).
+  (4) **één klok voor elke sweep** — de stap waar de hele tool op staat: mic niet verplaatsen,
+  tijdas nooit per bestand op nul zetten, en een gedeelde referentie (loopback met een interface;
+  met een USB-mic de acoustic timing reference, een tweede speaker die bij élke sweep meespeelt,
+  vast t.o.v. de mic, ≥5 kHz — geen sub). Bronnen: VituixCAD-meethandleiding (Kimmo Saunisto),
+  Audio Precision over gaten in gewone kamers, REW/miniDSP over de timing reference.
   Beweging is doelgericht (animatie-skill-principe): de sweep-loop bestaat omdat "de tafel draait
   de kast" een BEWEGING is die een stilstaand beeld niet kan maken; hij is een yoyo-loop, stopt
   zodra je een regelaar aanraakt, en `prefers-reduced-motion` haalt hem helemaal weg (de sliders
@@ -166,6 +178,17 @@ minimum phase reconstrueert. Voertaal met Sander: **Nederlands**; code/comments 
   onafhankelijk argument om verder weg te meten, náást het ver-veld-argument. UI: opt-in
   "Re-time to the listening distance" (uit by default, alleen in measured-fase — minimum-fase
   heeft de aankomsttijden al weggegooid; gepersisteerd mét autosave-dep).
+  **HET OORDEEL IS BELANGRIJKER DAN DE CORRECTIE (Sanders vervolgvraag "dan hoeven we toch niet
+  te compenseren?")**: klopt — het is dezelfde 1/R-meetkunde als het ver-veld-criterium, dus
+  verder weg meten ÍS de correctie. Op zijn center naar 3 m luisteren: gemeten op 500 mm
+  11,8 µs (20,5° bij 4,8 kHz), op 1,8 m nog 1,6 µs (2,7°). Maar op een TOREN (woofer 400 mm
+  onder de tweeter) blijft het bijten: 50,6 µs = 33° bij 1,8 kHz, zelfs gemeten op 1,8 m. Dus
+  `measuringDistanceVerdict` (cabinet.ts) oordeelt in GRADEN bij de hoogste overgang, niet in
+  µs — een tijdverschuiving is alleen zo erg als de frequentie waarop hij landt (dezelfde
+  12 µs is 8° op 2 kHz en 34° op 8 kHz). Drempels 5°/15°; het timing-paneel zegt "✓ ver genoeg"
+  / "△ grensgeval" / "⚠ de meetafstand vormt je ontwerp" mét het getal erbij, en wijst naar de
+  meting als oplossing en naar de re-timing als terugval. `seatShiftRaw` wordt daarom ALTIJD
+  berekend zodra de geometrie bekend is; de correctie zelf blijft opt-in.
   **HARD GELEERD bij de bouw**: de correctie mag NOOIT alleen in de sim landen. Een simulatie
   die de luisterplek toont terwijl de optimizers voor de microfoon ontwerpen is exact de
   "twee consumenten, twee definities"-splitsing waar deze codebase telkens voor betaalt —

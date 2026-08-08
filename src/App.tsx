@@ -52,6 +52,7 @@ import {
   centreToCentreMm,
   geometricPathExcessMm,
   listeningDelayShiftUs,
+  measuringDistanceVerdict,
   farFieldVerdict,
   floorBounceGate,
   gateLimitHz,
@@ -2321,8 +2322,7 @@ export default function App() {
    * mode has already thrown the arrival times away, and the offset knob is
    * carrying the excess-Δ there.
    */
-  const seatShiftMm = useMemo(() => {
-    if (!seatTiming || phaseMode !== 'measured') return null;
+  const seatShiftRaw = useMemo(() => {
     const R = Number(cabinet.micDistanceMm);
     const L = Number(cabinet.listenDistanceM) * 1000;
     if (!(R > 0) || !(L > 0)) return null;
@@ -2335,7 +2335,16 @@ export default function App() {
     if (!us) return null;
     const mm = (v: number) => (v / 1e6) * C_AIR_MM_S;
     return { low: mm(us.low ?? 0), mid: mm(us.mid ?? 0), high: mm(us.high ?? 0), us };
-  }, [seatTiming, phaseMode, cabinet, cabinetInfo]);
+    // Computed WHENEVER the geometry is known — the verdict below needs it even
+    // when the correction itself is switched off, because the useful question
+    // is "is my measuring distance good enough", not "how do I patch it".
+  }, [cabinet, cabinetInfo]);
+
+  /** Applied only on request, and only where arrival times still exist. */
+  const seatShiftMm = useMemo(
+    () => (seatTiming && phaseMode === 'measured' ? seatShiftRaw : null),
+    [seatTiming, phaseMode, seatShiftRaw],
+  );
 
   /**
    * THE branch adjustments — one definition, used by the simulation and by
@@ -3052,6 +3061,31 @@ export default function App() {
       high: mk(sim.mid, result.tweeter),
     };
   }, [threeWay, sim, result]);
+
+  /**
+   * Verdict on the MEASURING DISTANCE itself. The residual the correction
+   * would remove, expressed in degrees at the highest handover — because a
+   * time shift is only as harmful as the frequency it lands on. Same 1/R
+   * geometry as the far-field criterion, so this tends to agree with "3× the
+   * largest dimension": measuring far enough fixes both, and the correction
+   * is the fallback for when the room (or a tall cabinet) will not allow it.
+   */
+  const measureVerdict = useMemo(() => {
+    if (!seatShiftRaw) return null;
+    const hz =
+      pairScores?.high.integ.overlapCentreHz ??
+      integration?.overlapCentreHz ??
+      pairScores?.low.integ.overlapCentreHz ??
+      null;
+    if (!hz) return null;
+    // Worst pair, relative to the low branch — the same reference the sum uses.
+    const worstUs = Math.max(
+      Math.abs((seatShiftRaw.us.high ?? 0) - (seatShiftRaw.us.low ?? 0)),
+      threeWay ? Math.abs((seatShiftRaw.us.mid ?? 0) - (seatShiftRaw.us.low ?? 0)) : 0,
+    );
+    const v = measuringDistanceVerdict(worstUs, hz);
+    return v ? { ...v, hz, worstUs } : null;
+  }, [seatShiftRaw, pairScores, integration, threeWay]);
 
   /** The SPL chart's live visible x-range (Hz), zoom/pan included — mirrored
    *  up from the chart so the ±dB read-out tracks exactly what you see. */
@@ -9048,6 +9082,28 @@ export default function App() {
                   </>
                 );
               })()}
+            </p>
+          )}
+          {measureVerdict && (
+            <p
+              className="sub"
+              style={{ margin: '0.35rem 0 0' }}
+              title="The residual the seat correction would remove, expressed in degrees at the highest handover — a time shift is only as harmful as the frequency it lands on. Same 1/R geometry as the far-field rule, so measuring far enough away fixes both at once."
+            >
+              <strong>
+                {measureVerdict.verdict === 'fine'
+                  ? '✓ Measuring distance is far enough'
+                  : measureVerdict.verdict === 'marginal'
+                    ? '△ Measuring distance is borderline'
+                    : '⚠ Measuring distance is shaping the design'}
+              </strong>{' '}
+              — moving from the microphone to the listening seat would shift the branches by{' '}
+              {measureVerdict.worstUs.toFixed(1)} µs, which is{' '}
+              <strong>{measureVerdict.deg.toFixed(1)}°</strong> at the{' '}
+              {Math.round(measureVerdict.hz)} Hz handover.{' '}
+              {measureVerdict.verdict === 'fine'
+                ? 'Nothing to correct — leave the re-timing off.'
+                : 'Measuring further away fixes this at the source (it is the same geometry the far-field rule describes); the re-timing below is the fallback when the room or a tall cabinet will not allow it.'}
             </p>
           )}
           {seatShiftMm && (
