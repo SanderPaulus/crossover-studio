@@ -148,6 +148,30 @@ minimum phase reconstrueert. Voertaal met Sander: **Nederlands**; code/comments 
   leren hetzelfde met de hand). UI-les onderweg: de globale `label`-regel is een KOLOM, dus een
   slider-rij moet expliciet `flex-direction: row` zeggen of de range-input wordt tot volle
   labelhoogte uitgerekt (192 px).
+- **Meetgeometrie ín de gemeten delay (aug 2026, Sanders vraag "we meten toch ook de delay van
+  de hoek?")**: ja, en het is een derde tot de helft van het getal. Een aankomsttijd is
+  *totale padlengte ÷ c*, en dat pad is twee ongerelateerde dingen bij elkaar: (1) de diepte
+  van het akoestisch centrum — een DRIVER-eigenschap, overal hetzelfde — en (2) de schuine weg
+  van een mic op eindige afstand naar een driver op een andere hoogte — een RIG-eigenschap die
+  KRIMPT als je achteruit loopt. De som rapporteren als "de tweeter staat 17 mm vóór de mid"
+  schrijft dus een deel van het statief op het conto van de driver. Pas met de posities uit
+  `cabinet.ts` is dit te scheiden. `geometricPathExcessMm` + `pathLengthMm` (dezelfde
+  bol-om-het-referentiepunt-conventie als `trueOffAxisDeg` — het is hetzelfde statief); het
+  timing-paneel toont de SPLITSING tegen de EXCESS-Δ (de eerlijke maat voor diepte).
+  GEMETEN op een 90 mm-scheiding bij 500 mm: rig −23,4 µs van een excess-Δ van −50 µs.
+  **`listeningDelayShiftUs` — en dit is de ontwerp-relevante helft**: die schuine weg krimpt met
+  afstand, dus een som die bij de MICROFOON is uitgelijnd is dat bij de STOEL niet. Sanders
+  center, mid 70 mm van het referentiepunt: 14,2 µs op 500 mm → 2,4 µs op 3 m, een verschuiving
+  van 11,8 µs = **20,5° op zijn 4,8 kHz-overgang en 34° op 8 kHz**. Dat is een tweede,
+  onafhankelijk argument om verder weg te meten, náást het ver-veld-argument. UI: opt-in
+  "Re-time to the listening distance" (uit by default, alleen in measured-fase — minimum-fase
+  heeft de aankomsttijden al weggegooid; gepersisteerd mét autosave-dep).
+  **HARD GELEERD bij de bouw**: de correctie mag NOOIT alleen in de sim landen. Een simulatie
+  die de luisterplek toont terwijl de optimizers voor de microfoon ontwerpen is exact de
+  "twee consumenten, twee definities"-splitsing waar deze codebase telkens voor betaalt —
+  daarom is er nu één `branchAdj`-memo (tweeter + mid, relatief aan de lage tak) die de sim,
+  de vf-optimizer, de netTune, de tolerantieband, de tab-ghosts, `tabCompare` en de
+  fase-curves allemaal delen.
 - `nearField.ts` — **de laag-eind-merge (aug 2026, Sanders "merge maar")**. Bestaansreden staat
   in de cijfers: een gepoorte binnenmeting is pas eerlijk boven `f = 1/t_gate` (binnenshuis
   200–290 Hz) en een 3-weg kruist woofer-mid op 300–500 Hz — precies het gebied dat het meeste

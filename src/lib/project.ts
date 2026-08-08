@@ -128,6 +128,8 @@ export interface ProjectDesign {
   kaTier?: string;
   /** How many wavelengths of driver spacing the design tolerates. */
   ctcK?: string;
+  /** Opt-in: re-time branches from the measuring to the listening distance. */
+  seatTiming?: boolean;
   /**
    * Cabinet geometry + measurement context: driver positions relative to the
    * measurement reference point, mic distance, baffle size, enclosure per

@@ -48,7 +48,10 @@ import {
 import {
   baffleStepHz,
   boxRolloff,
+  C_AIR_MM_S,
   centreToCentreMm,
+  geometricPathExcessMm,
+  listeningDelayShiftUs,
   farFieldVerdict,
   floorBounceGate,
   gateLimitHz,
@@ -1205,6 +1208,10 @@ export default function App() {
   // 'auto' resolves the strictness per pair from the driver geometry
   // (lobingKFor); restores of older projects keep their stored numeric value.
   const [ctcK, setCtcK] = useState('auto');
+  /** Opt-in: re-time the branches from the MEASURING distance to the LISTENING
+   *  distance (see listeningDelayShiftUs). Off by default — it changes the sum,
+   *  and "measured phase is the truth" stays the default reading of the data. */
+  const [seatTiming, setSeatTiming] = useState(false);
   /** Cone breakup as an upper limit: cross at or below f_b / harmonic. */
   const [breakupLimitOn, setBreakupLimitOn] = useState(true);
   const [breakupHarmonic, setBreakupHarmonic] = useState('3');
@@ -2308,6 +2315,53 @@ export default function App() {
   const effective = (l: Loaded | null, role: BranchRole): Loaded | null =>
     l && merged[role]?.ok ? { ...l, frd: merged[role]!.frd } : l;
 
+  /**
+   * The measure→listen re-timing, as extra offset in MM per branch (the unit
+   * BranchAdjust speaks). Only meaningful with measured phase: minimum-phase
+   * mode has already thrown the arrival times away, and the offset knob is
+   * carrying the excess-Δ there.
+   */
+  const seatShiftMm = useMemo(() => {
+    if (!seatTiming || phaseMode !== 'measured') return null;
+    const R = Number(cabinet.micDistanceMm);
+    const L = Number(cabinet.listenDistanceM) * 1000;
+    if (!(R > 0) || !(L > 0)) return null;
+    const us = listeningDelayShiftUs(
+      { low: cabinetInfo.place.low, mid: cabinetInfo.place.mid, high: cabinetInfo.place.high },
+      R,
+      L,
+      Number(cabinet.micElevationDeg) || 0,
+    );
+    if (!us) return null;
+    const mm = (v: number) => (v / 1e6) * C_AIR_MM_S;
+    return { low: mm(us.low ?? 0), mid: mm(us.mid ?? 0), high: mm(us.high ?? 0), us };
+  }, [seatTiming, phaseMode, cabinet, cabinetInfo]);
+
+  /**
+   * THE branch adjustments — one definition, used by the simulation and by
+   * every engine that runs on it. Seat re-timing (seatShiftMm) is folded in
+   * here rather than at each call site: a simulation that shows the listening
+   * position while the optimizers design for the microphone is exactly the
+   * "two consumers, two definitions" split this codebase keeps paying for.
+   * Relative to the LOW branch, which is the reference `combine` sums against.
+   */
+  const branchAdj = useMemo(() => {
+    const relHigh = seatShiftMm ? seatShiftMm.high - seatShiftMm.low : 0;
+    const relMid = seatShiftMm ? seatShiftMm.mid - seatShiftMm.low : 0;
+    return {
+      tweeter: {
+        offsetMm: num(offsetMm, 0) + relHigh,
+        trimDb: num(trimDb, 0),
+        inverted,
+      },
+      mid: {
+        offsetMm: num(midOffsetMm, 0) + relMid,
+        trimDb: num(midTrimDb, 0),
+        inverted: midInverted,
+      },
+    };
+  }, [seatShiftMm, offsetMm, trimDb, inverted, midOffsetMm, midTrimDb, midInverted]);
+
   const sim = useMemo(() => {
     // Single-driver mode: ONE loaded measurement is enough (validation flow:
     // measure a lone driver, rebuild the physical network in the editor,
@@ -2458,16 +2512,17 @@ export default function App() {
       transfers = { ...(transfers ?? { woofer: null, tweeter: null }), tweeter: stack(transfers?.tweeter ?? null, h) };
     }
 
-    const tAdj = { offsetMm: num(offsetMm, 0), trimDb: num(trimDb, 0), inverted };
+    /* Seat re-timing (opt-in, see seatShiftMm): the oblique mic-to-driver path
+     * shrinks with distance, so a sum aligned at the microphone is not aligned
+     * at the listening seat. Applied RELATIVE TO THE LOW branch, because that
+     * is the reference `combine` already sums against — an overall delay is
+     * inaudible, only the differences are. Positive offsetMm = arrives later. */
+    const tAdj = branchAdj.tweeter;
     if (m) {
       // 3-way sum via the N-way core. The result keeps the 2-way CombineResult
       // SHAPE (woofer = low branch, tweeter = adjusted high branch) so every
       // combined-curve consumer keeps working; the mid branch rides alongside.
-      const mAdj = {
-        offsetMm: num(midOffsetMm, 0),
-        trimDb: num(midTrimDb, 0),
-        inverted: midInverted,
-      };
+      const mAdj = branchAdj.mid;
       const n3 = combineN([
         { response: w },
         { response: m, adjust: mAdj },
@@ -2524,7 +2579,7 @@ export default function App() {
       xoError,
       base,
     };
-  }, [woofer, midDrv, threeWay, tweeter, project, impedances, xoName, vFilters, vfBypass, phaseMode, fMinDeb, fMaxDeb, offsetMm, trimDb, inverted, midOffsetMm, midTrimDb, midInverted, schematic, networkActive]);
+  }, [woofer, midDrv, threeWay, tweeter, project, impedances, xoName, vFilters, vfBypass, phaseMode, fMinDeb, fMaxDeb, offsetMm, trimDb, inverted, midOffsetMm, midTrimDb, midInverted, branchAdj, schematic, networkActive]);
 
   const result = sim?.combined ?? null;
 
@@ -2694,6 +2749,39 @@ export default function App() {
     const t = excessDelayMsOf(tweeter.frd);
     return w !== null && t !== null ? { deltaUs: (t - w) * 1000 } : null;
   }, [woofer, tweeter]);
+
+  /**
+   * How much of the MEASURED inter-driver delay is the measuring rig?
+   *
+   * Sanders question, and it needed the position fields to be answerable: an
+   * arrival time is total path ÷ c, and that path is the driver's acoustic
+   * centre PLUS the plain oblique distance from a mic at finite range to a
+   * driver at a different height. The first is a driver property; the second
+   * belongs to the tripod and shrinks as you step back. Reporting the sum as
+   * "the tweeter sits 17 mm proud" quietly credits the rig for part of it.
+   */
+  const delayGeometry = useMemo(() => {
+    const R = Number(cabinet.micDistanceMm);
+    if (!(R > 0)) return null;
+    const elev = Number(cabinet.micElevationDeg) || 0;
+    const geo = (role: BranchRole) => {
+      const pl = cabinetInfo.place[role];
+      return pl ? geometricPathExcessMm(pl, R, elev) : null;
+    };
+    const pairOf = (lo: BranchRole, hi: BranchRole) => {
+      const a2 = geo(lo);
+      const b2 = geo(hi);
+      if (a2 === null || b2 === null) return null;
+      // Same sign convention as the timing panel: upper driver later = +.
+      const mm = b2 - a2;
+      return { mm, us: (mm / C_AIR_MM_S) * 1e6 };
+    };
+    return {
+      distanceMm: R,
+      pair: threeWay ? pairOf('mid', 'high') : pairOf('low', 'high'),
+      lowMid: threeWay ? pairOf('low', 'mid') : null,
+    };
+  }, [cabinet, threeWay, cabinetInfo]);
 
   /**
    * Auto phase convention: freshly loaded measurements that pass the shared-
@@ -3113,7 +3201,7 @@ export default function App() {
     if (!angleSets || !result || !sim) return null;
     const sets = angleResponsesOn(result.freq);
     if (!sets) return null;
-    const tAdj = { offsetMm: num(offsetMm, 0), trimDb: num(trimDb, 0), inverted };
+    const tAdj = branchAdj.tweeter;
     if (threeWay) {
       // Three branch layers through the N-branch core. The mid's OWN angle
       // set is required — a mid-less sum would be silently wrong.
@@ -3123,11 +3211,7 @@ export default function App() {
         {
           angles: sets.mid,
           h: sim.transfers?.mid ?? null,
-          adjust: {
-            offsetMm: num(midOffsetMm, 0),
-            trimDb: num(midTrimDb, 0),
-            inverted: midInverted,
-          },
+          adjust: branchAdj.mid,
         },
         { angles: sets.tweeter, h: sim.transfers?.tweeter ?? null, adjust: tAdj },
       ]);
@@ -3316,6 +3400,7 @@ export default function App() {
         kaTier,
         cabinet,
         ctcK,
+        seatTiming,
         breakupLimitOn,
         breakupHarmonic,
         sdCm2,
@@ -3476,6 +3561,7 @@ export default function App() {
     setKaTier((d.kaTier as KaTier) in KA_TIERS ? (d.kaTier as KaTier) : 'measured');
     setCabinet(mergeCabinet(d.cabinet));
     setCtcK(d.ctcK ?? '0.5');
+    setSeatTiming(d.seatTiming ?? false);
     setBreakupLimitOn(d.breakupLimitOn ?? true);
     setBreakupHarmonic(d.breakupHarmonic ?? '3');
     setSdCm2({ low: d.sdCm2?.low ?? '', mid: d.sdCm2?.mid ?? '', high: d.sdCm2?.high ?? '' });
@@ -3564,7 +3650,7 @@ export default function App() {
     }, 800);
     return () => clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [woofer, midDrv, tweeter, project, zStandalone, angleSets, fileNotes, verify, vFilters, xoName, offsetMm, trimDb, inverted, midOffsetMm, midTrimDb, midInverted, fMin, fMax, splMin, splMax, phasePriority, vfEqBands, phaseMode, dirWeight, ampTarget, sonogramMode, designs, activeDesignId, lastSavedId, networkActive, vfBypass, catalogSnap, breakupGuard, xoRangeOn, xoFreqHz, xoMarginHz, xoScanSteps, xo3Steps, hpLpPref, hpLpPrefLow, phaseMetricMode, acSlopeMid, acSlopeTweeter, acSlopeWoofer, acSlopeMidHp, xoLowFreqHz, xoLowMarginHz, midSizeInch, wooferSizeInch, kaTier, cabinet, nearField, ctcK, breakupLimitOn, breakupHarmonic, sdCm2, xmaxMm, excursionSpl, snapProfile, snapSeriesL, snapSeriesC, snapSeriesR, snapStacks, snapBoundToSeries, stagedOn, targetRipple, targetPhase, soloSensDb, soloFloorOn, soloFloorDb]);
+  }, [woofer, midDrv, tweeter, project, zStandalone, angleSets, fileNotes, verify, vFilters, xoName, offsetMm, trimDb, inverted, midOffsetMm, midTrimDb, midInverted, fMin, fMax, splMin, splMax, phasePriority, vfEqBands, phaseMode, dirWeight, ampTarget, sonogramMode, designs, activeDesignId, lastSavedId, networkActive, vfBypass, catalogSnap, breakupGuard, xoRangeOn, xoFreqHz, xoMarginHz, xoScanSteps, xo3Steps, hpLpPref, hpLpPrefLow, phaseMetricMode, acSlopeMid, acSlopeTweeter, acSlopeWoofer, acSlopeMidHp, xoLowFreqHz, xoLowMarginHz, midSizeInch, wooferSizeInch, kaTier, cabinet, nearField, ctcK, seatTiming, breakupLimitOn, breakupHarmonic, sdCm2, xmaxMm, excursionSpl, snapProfile, snapSeriesL, snapSeriesC, snapSeriesR, snapStacks, snapBoundToSeries, stagedOn, targetRipple, targetPhase, soloSensDb, soloFloorOn, soloFloorDb]);
 
   function resetProject() {
     localStorage.removeItem(AUTOSAVE_KEY);
@@ -3651,8 +3737,8 @@ export default function App() {
         band,
         safety,
       };
-      const tAdj = { offsetMm: num(offsetMm, 0), trimDb: num(trimDb, 0), inverted };
-      const mAdj = { offsetMm: num(midOffsetMm, 0), trimDb: num(midTrimDb, 0), inverted: midInverted };
+      const tAdj = branchAdj.tweeter;
+      const mAdj = branchAdj.mid;
       // Banded per-branch angle sets (same treatment as the 0° branches) —
       // arms the in-room weight; without the mid's own set the term stays off.
       const angleSets3 = physWin3?.angleSets;
@@ -4140,7 +4226,7 @@ export default function App() {
       // No band at all (no impedance floor) → one truly-free chain (+ rescue).
       const variants: { label: string; xoRange?: [number, number] }[] =
         crossoverVariants(userXo ?? saneFree, xoScanSteps);
-      const adjust = { offsetMm: num(offsetMm, 0), trimDb: num(trimDb, 0), inverted };
+      const adjust = branchAdj.tweeter;
       // The whole scan runs in the optimizer WORKER (variants loop + the
       // truly-free rescue logic live there): the UI stays responsive, the
       // per-variant counter ticks via progress messages, and Cancel simply
@@ -4287,8 +4373,10 @@ export default function App() {
         t,
         opts,
         seedQueue,
-        offsetMm: num(offsetMm, 0),
-        trimDb: num(trimDb, 0),
+        // Shared branch adjustment (seat re-timing included) — the optimizer
+        // must design for the same listener the simulation draws.
+        offsetMm: branchAdj.tweeter.offsetMm,
+        trimDb: branchAdj.tweeter.trimDb,
         maxRounds: MAX_ROUNDS,
       },
       (d) => setVfProgress(d),
@@ -4722,7 +4810,7 @@ export default function App() {
       w: sim.base.w,
       t: sim.base.t,
       z: zOnGrid,
-      adjust: { offsetMm: num(offsetMm, 0), trimDb: num(trimDb, 0), inverted },
+      adjust: branchAdj.tweeter,
       opts: {
         // Single-driver mode: "0 driver pairs" — the tuner drops every
         // crossing-anchored term and judges branch flatness (+ amp floor).
@@ -4748,11 +4836,7 @@ export default function App() {
           threeWay && sim.mid && midDrv
             ? {
                 response: sim.base.m!,
-                adjust: {
-                  offsetMm: num(midOffsetMm, 0),
-                  trimDb: num(midTrimDb, 0),
-                  inverted: midInverted,
-                },
+                adjust: branchAdj.mid,
               }
             : undefined,
         xoRange: soloDriver || threeWay ? undefined : xoRangeValue() ?? undefined,
@@ -5330,11 +5414,7 @@ export default function App() {
           const { hW, hT } = slotTransfers(sol);
           if (hW) w = applyTransfer(w, hW);
           if (hT) t = applyTransfer(t, hT);
-          const combined = combine(w, t, {
-            offsetMm: num(offsetMm, 0),
-            trimDb: num(trimDb, 0),
-            inverted,
-          });
+          const combined = combine(w, t, branchAdj.tweeter);
           const style = {
             label: d.name,
             color: GHOST_COLORS[i % GHOST_COLORS.length],
@@ -5361,7 +5441,7 @@ export default function App() {
       });
     return { spl, phase, z };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [compareTabs, networkActive, sim, threeWay, impedances, designs, activeDesignId, offsetMm, trimDb, inverted]);
+  }, [compareTabs, networkActive, sim, threeWay, impedances, designs, activeDesignId, branchAdj]);
 
   /**
    * Compare every saved design on NUMBERS, not on curve shapes. The ghost
@@ -5381,12 +5461,8 @@ export default function App() {
     const zOnGrid = zGridWithSlots(impedances, grid);
     const lo = splViewX ? splViewX[0] : grid[0];
     const hi = splViewX ? splViewX[1] : grid[grid.length - 1];
-    const tAdj = { offsetMm: num(offsetMm, 0), trimDb: num(trimDb, 0), inverted };
-    const mAdj = {
-      offsetMm: num(midOffsetMm, 0),
-      trimDb: num(midTrimDb, 0),
-      inverted: midInverted,
-    };
+    const tAdj = branchAdj.tweeter;
+    const mAdj = branchAdj.mid;
     const rows = designs.map((d) => {
       const base = {
         id: d.id,
@@ -5462,7 +5538,7 @@ export default function App() {
     return rows;
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sim, result, designs, activeDesignId, impedances, splViewX, threeWay,
-      offsetMm, trimDb, inverted, midOffsetMm, midTrimDb, midInverted]);
+      branchAdj]);
 
   /** System-impedance display data: |Z| curve + min/max markers. High |Z| is
    *  harmless (an easy load); only the MINIMUM matters for the amplifier —
@@ -5529,20 +5605,16 @@ export default function App() {
       wEff,
       tEff,
       zGridWithSlots(impedances, grid),
-      { offsetMm: num(offsetMm, 0), trimDb: num(trimDb, 0), inverted },
+      branchAdj.tweeter,
       tolPct,
       threeWay && mEff
         ? {
             response: mEff,
-            adjust: {
-              offsetMm: num(midOffsetMm, 0),
-              trimDb: num(midTrimDb, 0),
-              inverted: midInverted,
-            },
+            adjust: branchAdj.mid,
           }
         : undefined,
     );
-  }, [tolOn, tolPct, sim, threeWay, project, xoName, networkActive, schematic, impedances, vfBypass, vFilters, offsetMm, trimDb, inverted, midOffsetMm, midTrimDb, midInverted]);
+  }, [tolOn, tolPct, sim, threeWay, project, xoName, networkActive, schematic, impedances, vfBypass, vFilters, branchAdj]);
 
   /** Per-driver ACOUSTIC target curves for the SPL chart (Stefans vraag:
    *  "hoever volgt de respons per speaker het target?") — the ideal shape of
@@ -5882,11 +5954,7 @@ export default function App() {
     // Meaningless against a silent ghost — skipped in single-driver mode.
     // (2-way only: the 3-way pair curves below carry their own meaning.)
     if (!soloDriver && !threeWay && sim && (fw || ft)) {
-      const raw = combine(sim.base.w, sim.base.t, {
-        offsetMm: num(offsetMm, 0),
-        trimDb: num(trimDb, 0),
-        inverted,
-      });
+      const raw = combine(sim.base.w, sim.base.t, branchAdj.tweeter);
       out.push({
         id: 'raw',
         label: 'Relative phase — raw drivers',
@@ -6115,7 +6183,7 @@ export default function App() {
       });
     }
     return out;
-  }, [result, integration, pairScores, sim, threeWay, offsetMm, trimDb, inverted, showPanels.phase, refResp, tabGhosts, woofer, tweeter, soloDriver, verifyCompare]);
+  }, [result, integration, pairScores, sim, threeWay, branchAdj, showPanels.phase, refResp, tabGhosts, woofer, tweeter, soloDriver, verifyCompare]);
 
   /** "How far off is the phase" zones behind the relative-phase curve. */
   const phaseBands = useMemo(
@@ -8947,6 +9015,71 @@ export default function App() {
               sub="tweeter later = positive"
             />
           </div>
+          {delayGeometry?.pair && (
+            <p className="sub" style={{ margin: '0.75rem 0 0' }}>
+              {/* An arrival time is total path ÷ c, and that path is two
+                  unrelated things: the driver's acoustic centre (the same
+                  wherever you stand) and the oblique mic-to-driver distance
+                  (the tripod's, and it shrinks as you step back). Reporting
+                  the sum as a driver property credits the rig for part of it
+                  — Sanders question, answerable since the positions exist. */}
+              {(() => {
+                const totalUs = excessBridge ? excessBridge.deltaUs : timing.ref.deltaUs;
+                const rigUs = delayGeometry.pair!.us;
+                const acUs = totalUs - rigUs;
+                const mm = Math.abs(delayGeometry.pair!.mm);
+                const dir = delayGeometry.pair!.mm >= 0 ? 'further from' : 'closer to';
+                return (
+                  <>
+                    <strong>Split of that Δ:</strong> {rigUs.toFixed(1)} µs is the measuring
+                    RIG — at {Math.round(delayGeometry.distanceMm)} mm the upper driver sits{' '}
+                    {mm.toFixed(2)} mm {dir} the microphone than the lower one, purely because
+                    they are at different heights. The remaining{' '}
+                    <strong>{acUs.toFixed(1)} µs</strong> is the acoustic centres, and only
+                    that part is a property of the drivers.
+                    {excessBridge
+                      ? ' (Taken from the excess-phase Δ, the honest one for depth.)'
+                      : ''}{' '}
+                    The rig share shrinks with distance — which is why a sum aligned at the
+                    microphone is not aligned at the seat.
+                    {delayGeometry.lowMid && (
+                      <> Woofer→mid rig share: {delayGeometry.lowMid.us.toFixed(1)} µs.</>
+                    )}
+                  </>
+                );
+              })()}
+            </p>
+          )}
+          {seatShiftMm && (
+            <p className="sub" style={{ margin: '0.35rem 0 0' }}>
+              Seat re-timing ACTIVE: branches shifted by{' '}
+              {(['low', 'mid', 'high'] as const)
+                .filter((r) => threeWay || r !== 'mid')
+                .map((r) => `${r} ${(seatShiftMm.us[r] ?? 0).toFixed(1)} µs`)
+                .join(' · ')}{' '}
+              — the sum now shows the listening position, not the microphone.
+            </p>
+          )}
+          <label
+            className="check"
+            style={{ margin: '0.5rem 0 0' }}
+            title="Re-time each branch from the MEASURING distance to the LISTENING distance. The oblique path from a mic at close range to a driver at a different height is longer than it will be at the seat, so a sum aligned at the microphone drifts. Needs driver positions, mic distance and listening distance; measured phase only (minimum phase has already discarded the arrival times)."
+          >
+            <input
+              type="checkbox"
+              checked={seatTiming}
+              onChange={(e) => setSeatTiming(e.target.checked)}
+              disabled={phaseMode !== 'measured'}
+            />{' '}
+            Re-time to the listening distance
+            {phaseMode !== 'measured' && ' (measured phase only)'}
+            {seatTiming && !seatShiftMm && phaseMode === 'measured' && (
+              <span className="derived">
+                {' '}
+                — needs driver positions, mic distance and listening distance (Cabinet)
+              </span>
+            )}
+          </label>
           {timing.ref.verdict === 'plausible' && (
             <p className="sub" style={{ margin: '0.75rem 0 0' }}>
               {excessBridge ? (

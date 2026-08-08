@@ -1,5 +1,8 @@
 import { describe, it, expect } from 'vitest';
 import {
+  C_AIR_MM_S,
+  geometricPathExcessMm,
+  listeningDelayShiftUs,
   baffleStepHz,
   floorBounceGate,
   gateLimitHz,
@@ -215,5 +218,39 @@ describe('wavelength helper', () => {
     expect(wavelengthMm(343)).toBeCloseTo(1000, 6);
     // The 30-degree null of a 300 mm pair sits where half a wavelength is 150 mm.
     expect(wavelengthMm(1143) / 2).toBeCloseTo(150, 0);
+  });
+});
+
+describe('measuring-rig geometry inside a measured delay (Sanders question)', () => {
+  const at = (yMm: number) => ({ xMm: 0, yMm });
+
+  it('separates the oblique path from the acoustic centre', () => {
+    // A measured arrival is total path / c, and part of that path is simply
+    // the mic sitting at a finite distance while the driver sits higher.
+    // Sanders' centre: mid 70 mm from the reference point, mic at 500 mm.
+    const mid = geometricPathExcessMm(at(70), 500)!;
+    expect(mid).toBeCloseTo(4.88, 2);
+    expect((mid / C_AIR_MM_S) * 1e6).toBeCloseTo(14.2, 1);
+    // The reference point itself contributes nothing, by definition.
+    expect(geometricPathExcessMm(at(0), 500)).toBeCloseTo(0, 10);
+    // And it SHRINKS with distance — the whole reason this matters.
+    expect(geometricPathExcessMm(at(70), 3000)!).toBeLessThan(mid / 4);
+  });
+
+  it('the measure→listen shift is what a filter aligned at the mic gets wrong', () => {
+    const shift = listeningDelayShiftUs(
+      { low: at(50), mid: at(70), high: at(0) },
+      500,
+      3000,
+    )!;
+    // The tweeter is at the reference point, so its oblique path is zero at
+    // both distances: it does not move, and everything else moves toward it.
+    expect(shift.high).toBeCloseTo(11.8, 1);
+    expect(shift.mid).toBeCloseTo(0, 6);
+    // Earliest driver normalised to 0 — only the differences are audible.
+    expect(Math.min(...Object.values(shift))).toBeCloseTo(0, 10);
+    // Measuring where you listen leaves nothing to correct.
+    const none = listeningDelayShiftUs({ low: at(50), high: at(0) }, 2000, 2000)!;
+    for (const v of Object.values(none)) expect(v).toBeCloseTo(0, 10);
   });
 });

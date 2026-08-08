@@ -75,6 +75,99 @@ export function trueOffAxisDeg(
 }
 
 /**
+ * Path length from a listening/measuring point to ONE driver, mm.
+ *
+ * The point sits on a sphere around the REFERENCE point at `distanceMm`, at
+ * horizontal angle `nominalDeg` and elevation `elevationDeg` (positive =
+ * above the reference plane) — the same convention as trueOffAxisDeg, because
+ * it is the same rig.
+ */
+export function pathLengthMm(
+  driver: DriverPlacement,
+  distanceMm: number,
+  nominalDeg = 0,
+  elevationDeg = 0,
+): number | null {
+  if (!(distanceMm > 0)) return null;
+  const t = (nominalDeg * Math.PI) / 180;
+  const v = (elevationDeg * Math.PI) / 180;
+  return Math.hypot(
+    distanceMm * Math.cos(v) * Math.sin(t) - driver.xMm,
+    distanceMm * Math.sin(v) - driver.yMm,
+    distanceMm * Math.cos(v) * Math.cos(t),
+  );
+}
+
+/** Speed of sound, mm/s — the one place this project converts path to time. */
+export const C_AIR_MM_S = 343000;
+
+/**
+ * How much of a MEASURED inter-driver delay is the measuring rig rather than
+ * the drivers — Sanders question, and it is a real hole the position fields
+ * finally let us close.
+ *
+ * A measured arrival time is total path ÷ c, and that path is two unrelated
+ * things added together: the depth of the driver's acoustic centre (a driver
+ * property, the same wherever you stand) and the plain geometric distance from
+ * the mic to a driver that sits at a different height (a RIG property, which
+ * shrinks as you step back). Reporting the sum as "the tweeter sits 17 mm
+ * proud of the mid" quietly credits the tripod for part of it.
+ *
+ * Measured on Sanders' centre — mid 70 mm from the reference point, mic at
+ * 500 mm — the geometric share is 4.88 mm ≈ 14.2 µs, against measured excess
+ * delays of 40–50 µs: a third of the number.
+ *
+ * Returns the extra path (mm) versus the REFERENCE POINT itself, so a driver
+ * at the origin gets 0 and everything else is positive.
+ */
+export function geometricPathExcessMm(
+  driver: DriverPlacement,
+  distanceMm: number,
+  elevationDeg = 0,
+): number | null {
+  const d = pathLengthMm(driver, distanceMm, 0, elevationDeg);
+  if (d === null) return null;
+  return d - distanceMm;
+}
+
+/**
+ * The per-driver delay change between the distance a set was MEASURED at and
+ * the distance it will be LISTENED at, µs (positive = arrives later at the
+ * listening seat than the measurement implied).
+ *
+ * This is the design-relevant half of the same geometry. The measured phase is
+ * the truth AT THE MIC; a filter aligned there is not aligned at the seat,
+ * because the oblique path shrinks with distance. On Sanders' set the mid's
+ * geometric lead over the tweeter goes from 14.2 µs at 500 mm to 2.4 µs at
+ * 3 m — an 11.8 µs shift, which is 20° at his 4.8 kHz handover and 34° at
+ * 8 kHz. Not a refinement: it is the second, independent argument for
+ * measuring further away.
+ *
+ * Normalised so the EARLIEST driver is 0 — an overall delay is inaudible, only
+ * the differences between drivers matter.
+ */
+export function listeningDelayShiftUs(
+  drivers: Readonly<Record<string, DriverPlacement | null>>,
+  measureDistanceMm: number,
+  listenDistanceMm: number,
+  elevationDeg = 0,
+): Record<string, number> | null {
+  if (!(measureDistanceMm > 0) || !(listenDistanceMm > 0)) return null;
+  const raw: Record<string, number> = {};
+  for (const [key, d] of Object.entries(drivers)) {
+    if (!d) continue;
+    const atMic = geometricPathExcessMm(d, measureDistanceMm, elevationDeg);
+    const atSeat = geometricPathExcessMm(d, listenDistanceMm, elevationDeg);
+    if (atMic === null || atSeat === null) return null;
+    raw[key] = ((atSeat - atMic) / C_AIR_MM_S) * 1e6;
+  }
+  const vals = Object.values(raw);
+  if (vals.length === 0) return null;
+  const earliest = Math.min(...vals);
+  return Object.fromEntries(Object.entries(raw).map(([k, v]) => [k, v - earliest]));
+}
+
+/**
  * Level difference a measurement picks up from GEOMETRY alone — the mic-to-
  * driver distance changing as the cabinet turns. Positive = the off-axis
  * measurement reads LOWER purely because the driver moved further away.
