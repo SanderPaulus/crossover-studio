@@ -3024,16 +3024,28 @@ export default function App() {
     const leftover = roles.map((r) => arrival[r]! - rig[r]!);
     const k = Math.min(...leftover);
     const depths: Partial<Record<BranchRole, number>> = {};
+    const unexplained: BranchRole[] = [];
     for (const r of roles) {
       // SOLVE, don't subtract: the depth contributes less than its own length
       // at close range, so subtracting would read 150 mm as 133.
-      const d = depthForExcessMm(cabinetInfo.place[r]!, R, arrival[r]! - k, elev);
-      if (d === null) return null;
-      depths[r] = d;
+      // By construction k ≤ arrival − rig for every driver, so the target can
+      // never be below this driver's own rig share — but `a - (a - b)` is not
+      // bit-exactly `b`, and one ulp under the boundary would raise a
+      // contradiction warning on a perfectly sound set. Clamp on the identity,
+      // not as a fudge.
+      const target = Math.max(rig[r]!, arrival[r]! - k);
+      const d = depthForExcessMm(cabinetInfo.place[r]!, R, target, elev);
+      // No depth explains this arrival: the tripod's own share already
+      // accounts for MORE delay than was measured, which would put the cone
+      // in front of the baffle. A real contradiction between the typed
+      // position and the measurement — say so instead of vanishing.
+      if (d === null) unexplained.push(r);
+      else depths[r] = d;
     }
+    const solved = Object.values(depths) as number[];
     // Worth acting on? Under a millimetre is noise in a phase fit.
-    const spread = Math.max(...(Object.values(depths) as number[]));
-    return { depths, spread };
+    const spread = solved.length > 0 ? Math.max(...solved) : 0;
+    return { depths, spread, unexplained };
   }, [cabinet, timing, threeWay, woofer, midDrv, tweeter, cabinetInfo]);
 
   /**
@@ -9498,6 +9510,18 @@ export default function App() {
                   </>
                 );
               })()}
+            </p>
+          )}
+          {measuredDepth && measuredDepth.unexplained.length > 0 && (
+            <p className="sub alert" style={{ margin: '0.35rem 0 0' }}>
+              <strong>⚠ Position and measurement disagree.</strong> For{' '}
+              {measuredDepth.unexplained
+                .map((r) => (r === 'high' ? 'the tweeter' : r === 'mid' ? 'the midrange' : 'the woofer'))
+                .join(' and ')}
+              , the oblique path from a mic at {Math.round(Number(cabinet.micDistanceMm))} mm to a
+              driver at that height already accounts for MORE delay than the measurement found —
+              no mounting depth can explain the rest, because that would put the cone in front of
+              the baffle. Check the height you typed, or the time reference of the sweeps.
             </p>
           )}
           {measuredDepth && measuredDepth.spread >= 1 && (

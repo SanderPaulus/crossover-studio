@@ -305,6 +305,21 @@ minimum phase reconstrueert. Voertaal met Sander: **Nederlands**; code/comments 
   het akoestisch centrum achter het baffle-vlak zit — dus een diepte die je bij de tweeter
   intypte werd stil weggegooid. In de browser aangetoond: met 20 mm gaan zijn hoeken van
   0°→0°/15°→15°/30°→30° naar 0°→0°/15°→14°/30°→29°; daarvoor bewoog er niets.
+  **HET ANKER VERSCHUIFT, en dat is het antwoord op Sanders "als ik de hoogte van de mid
+  verander, verandert de diepte van de tweeter dan mee?"** — ja. Het anker is de ONDIEPSTE
+  driver (k = min over rollen van arrival − rig), en welke dat is hangt af van de posities.
+  GEMETEN op de KOAN-Δ van 17,15 mm padverschil, mic 500: tot ~132 mm verticale scheiding is
+  de tweeter de ondiepste (blijft 0, de woofer zakt van 17,1 → 9,3 → 6,4 → 0 bij y 0/90/105/132)
+  en DAARBOVEN wisselen ze om — bij y 200 leest de woofer 0 en de tweeter 21,4; bij y 400
+  zelfs 123. Er is dus altijd een oplossing, en de gevoeligheid is groot: 15 mm hoogte
+  (90 → 105) haalt een derde van de afgeleide diepte weg. Precies daarom is dit een
+  KRUISCONTROLE en geen meting — een fout in de ingetypte positie lekt vrijwel één op één in
+  de "gemeten" diepte.
+  Randgeval afgedekt: `a − (a − b)` is niet bit-exact `b`, en één ulp onder de rig-grens zou
+  op een gezonde set een tegenspraak-waarschuwing geven; het doel wordt daarom op de identiteit
+  geklemd (`max(rig, arrival − k)`), geen fudge. De echte tegenspraak-tak blijft bestaan voor
+  een kapotte tijdreferentie (>2 m diepte) en meldt zich luid i.p.v. de regel te laten
+  verdwijnen — stil weggaan leest als "niet van toepassing".
   Twee eerlijkheden die erbij horen: (1) een delay draagt één onbekende constante
   (elektronische latency), dus diepten zijn per definitie RELATIEF — de ondiepste driver
   krijgt 0 en dat is ook alles wat de fysica nodig heeft; (2) zodra je ze toepast verklaart
