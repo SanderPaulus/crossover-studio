@@ -6547,9 +6547,9 @@ export default function App() {
       );
     }
     const roles: [BranchRole, string][] = [
-      ['low', hasMidBranch ? 'Woofer' : 'Woofer / mid'],
-      ['mid', 'Midrange'],
       ['high', 'Tweeter'],
+      ['mid', 'Midrange'],
+      ['low', hasMidBranch ? 'Woofer' : 'Woofer / mid'],
     ];
     return (
       <div className="driver-facts-draw">
@@ -6579,13 +6579,20 @@ export default function App() {
             r === 'low' ? !!woofer : r === 'mid' ? !!midDrv : !!tweeter,
           );
           const zonderSd = rollen.filter((r) => !(Number(sdCm2[r]) > 0)).length;
-          const zonderPos = rollen.filter(
+          // The REFERENCE driver has no typed offset and never will: it is
+          // 0,0 by definition, and the cabinet step already fixed its height
+          // (so far below the top of the front panel). Counting it as
+          // "without a position" claimed the app knew less than it does.
+          const teTypen = rollen.filter((r) => cabinet.refDriver !== r);
+          const zonderPos = teTypen.filter(
             (r) => !cabinet.drivers[r].xMm && !cabinet.drivers[r].yMm,
           ).length;
           const mist = [
             zonderSd > 0 ? `${zonderSd === rollen.length ? 'no' : `${zonderSd}`} Sd yet — those cones are dashed placeholders` : '',
-            zonderPos === rollen.length
-              ? 'every position is still 0, so they sit on top of each other'
+            zonderPos > 0 && zonderPos === teTypen.length
+              ? teTypen.length === 1
+                ? 'the other driver has no offset yet, so it sits on the reference point'
+                : 'those offsets are still 0, so they sit on the reference point'
               : zonderPos > 0
                 ? `${zonderPos} without a position`
                 : '',
@@ -6604,11 +6611,15 @@ export default function App() {
 
   const driverFacts = (
     <>
+                {/* Top-down, the way the speaker stands in front of you
+                    (Sanders wens): tweeter, then mid, then the woofers. The
+                    cards then read in the same order as the drawing beside
+                    them and as the cabinet itself. */}
                 {(
                   [
-                    ['low', hasMidBranch ? 'Woofer' : 'Woofer / mid', woofer],
-                    ['mid', 'Midrange', midDrv],
                     ['high', 'Tweeter', tweeter],
+                    ['mid', 'Midrange', midDrv],
+                    ['low', hasMidBranch ? 'Woofer' : 'Woofer / mid', woofer],
                   ] as [BranchRole, string, unknown][]
                 )
                   .filter(([, , loaded]) => !!loaded)
@@ -6709,6 +6720,17 @@ export default function App() {
                               <span className="cd-pre" />
                               <em>
                                 0, 0 — the mic was aimed here, so this driver defines the origin
+                                {(() => {
+                                  // Its height is not unknown, it was fixed on the cabinet
+                                  // step. Saying so beats making the designer go and look.
+                                  const top = Number(cabinet.refFromTopMm);
+                                  const floor = Number(cabinet.refHeightMm);
+                                  const bits = [
+                                    top > 0 ? `${Math.round(top)} mm below the top` : '',
+                                    floor > 0 ? `${Math.round(floor)} mm above the floor` : '',
+                                  ].filter(Boolean);
+                                  return bits.length > 0 ? ` (${bits.join(', ')})` : '';
+                                })()}
                               </em>
                             </span>
                           ) : (
@@ -8394,6 +8416,10 @@ export default function App() {
             <span className="tool-group-label">Measurements</span>
             <div className="tool-group-body files">
               <label title="FRD = frequency response (SPL + phase), ZMA = measured impedance. Select the 0° file plus all horizontal angle files and the .ZMA in one go — angles are recognised by filename.">
+                Tweeter FRD + ZMA (multi-select all hor angles + impedance)
+                <input type="file" accept=".frd,.txt,.zma,.ZMA,.lim" multiple onChange={loadDriverFiles('tweeter')} />
+              </label>
+              <label title="FRD = frequency response (SPL + phase), ZMA = measured impedance. Select the 0° file plus all horizontal angle files and the .ZMA in one go — angles are recognised by filename.">
                 {hasMidBranch ? 'Woofer' : 'Woofer / mid'} FRD + ZMA (multi-select all hor angles + impedance)
                 <input type="file" accept=".frd,.txt,.zma,.ZMA,.lim" multiple onChange={loadDriverFiles('woofer')} />
               </label>
@@ -8426,11 +8452,7 @@ export default function App() {
                   </span>
                 )}
               </label>
-              <label title="FRD = frequency response (SPL + phase), ZMA = measured impedance. Select the 0° file plus all horizontal angle files and the .ZMA in one go — angles are recognised by filename.">
-                Tweeter FRD + ZMA (multi-select all hor angles + impedance)
-                <input type="file" accept=".frd,.txt,.zma,.ZMA,.lim" multiple onChange={loadDriverFiles('tweeter')} />
-              </label>
-              {(['low', 'mid'] as BranchRole[])
+              {(['mid', 'low'] as BranchRole[])
                 .filter((r) => (r === 'low' ? !!woofer : !!midDrv))
                 .map((role) => {
                   const slot = nearField[role];
@@ -8698,9 +8720,10 @@ export default function App() {
             }
             if (rows.length > 0) groups.push({ title, colorVar, rows });
           };
-          driverGroup('woofer', woofer, 'low', hasMidBranch ? 'Woofer' : 'Woofer / mid', '--viz-woofer');
-          driverGroup('mid', midDrv, 'mid', 'Midrange', '--viz-mid');
+          // Top-down everywhere (Sanders rule): tweeter, mid, woofers.
           driverGroup('tweeter', tweeter, 'high', 'Tweeter', '--viz-tweeter');
+          driverGroup('mid', midDrv, 'mid', 'Midrange', '--viz-mid');
+          driverGroup('woofer', woofer, 'low', hasMidBranch ? 'Woofer' : 'Woofer / mid', '--viz-woofer');
           if (project) {
             const rows: Row[] = [
               {
@@ -9027,9 +9050,11 @@ export default function App() {
                               that driver becomes 0,0 — you never type its own offset
                             </span>
                           </span>
-                          <span className="cd-label">Baffle</span>
+                          <span className="cd-label">Front panel</span>
                           <span className="cd-fields">
-                            {veld(cabinet.baffleWidthMm, cab('baffleWidthMm'))} ×{' '}
+                            {'width '}
+                            {veld(cabinet.baffleWidthMm, cab('baffleWidthMm'))}
+                            {' × height '}
                             {veld(cabinet.baffleHeightMm, cab('baffleHeightMm'))} mm
                           </span>
                           <span className="cd-label">Reference point</span>
@@ -9040,8 +9065,8 @@ export default function App() {
                           {mis && (
                             <span className="derived alert" style={{ gridColumn: '1 / -1' }}>
                               the reference point cannot sit {cabinet.refFromTopMm} mm below the top
-                              of a {cabinet.baffleHeightMm} mm baffle — one of the two is the other
-                              field
+                              of a {cabinet.baffleHeightMm} mm front panel — one of the two is the
+                              other field
                             </span>
                           )}
                         </>,
@@ -9113,12 +9138,12 @@ export default function App() {
                       cabinet.refDriver ? 'that driver is 0,0 — you do not type its offset' : '',
                     )}
                     {rij(
-                      'Baffle width',
+                      'Front panel width',
                       <>{veld(cabinet.baffleWidthMm, cab('baffleWidthMm'))} mm</>,
                       stapUit,
                     )}
                     {rij(
-                      'Baffle height',
+                      'Front panel height',
                       <>{veld(cabinet.baffleHeightMm, cab('baffleHeightMm'))} mm</>,
                     )}
                     {rij(
