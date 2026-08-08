@@ -2867,6 +2867,20 @@ details.cabinet-driver .derived {
 .cab-card-answer b { color: var(--fg); }
 /* The disclosure hint is the affordance — a bare caret was unreadable at this
    size (the lesson from the driver cards). */
+/* An action that belongs INSIDE a sentence — a button that reads as part of
+   the prose instead of interrupting it with a control. */
+.link-btn {
+  display: inline;
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  color: var(--accent);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  cursor: pointer;
+}
+.link-btn:hover { text-decoration-thickness: 2px; }
 .cab-card-more { flex: 0 0 auto; align-self: center; font-size: 0.78rem; color: var(--accent); }
 .cab-card[open] .cab-card-more { color: var(--muted); }
 .cab-card[open] .cab-card-more::before { content: '▾ '; }

@@ -50,6 +50,7 @@ import {
   boxRolloff,
   C_AIR_MM_S,
   centreToCentreMm,
+  depthForExcessMm,
   pathBreakdownMm,
   radiatingPanelWidthMm,
   listeningDelayShiftUs,
@@ -2211,13 +2212,15 @@ export default function App() {
      */
     const placeOf = (role: BranchRole) =>
       cabinet.refDriver === role
-        ? // The reference driver IS the origin by definition — that is the
-          // whole point of naming it — but it keeps its own radiating
-          // direction, which the origin says nothing about.
+        ? // The reference driver IS the origin — but only of x and y. Where
+          // the mic was aimed says nothing about how far behind the baffle
+          // plane its acoustic centre sits, nor which way it radiates, so
+          // those stay its own (a hard-coded 0 here silently dropped a depth
+          // the designer had typed).
           {
             xMm: 0,
             yMm: 0,
-            depthMm: 0,
+            depthMm: Number(cabinet.drivers[role].depthMm) || 0,
             facing: cabinet.drivers[role].facing ?? 'front',
             tiltDeg: Number(cabinet.drivers[role].tiltDeg) || 0,
           }
@@ -2971,6 +2974,67 @@ export default function App() {
       offBaffle: cabinetInfo.offBaffle,
     };
   }, [cabinet, threeWay, cabinetInfo]);
+
+  /**
+   * MEASURED mounting depth per driver, mm — the inverse of the split above,
+   * and the answer to "you already know where the mid is, so work out how deep
+   * the tweeter sits yourself".
+   *
+   * An arrival time is rig + mounting + acoustic centre. The rig share follows
+   * from the positions and the mic distance, and the last two together are
+   * exactly what `depthMm` means (how far the acoustic centre sits behind the
+   * baffle plane). So subtract the rig from the measured excess delay and what
+   * is left IS the depth — no ruler involved, and better than one, because a
+   * ruler cannot find an acoustic centre.
+   *
+   * RELATIVE by nature: a delay measurement only ever gives differences, so the
+   * shallowest driver is 0 and the rest are behind it. That is also all the
+   * physics needs.
+   *
+   * Excess phase, not raw: the raw bulk fit absorbs each driver's own
+   * minimum-phase slope and on KOAN even has the opposite sign.
+   */
+  const measuredDepth = useMemo(() => {
+    const R = Number(cabinet.micDistanceMm);
+    if (!(R > 0) || !timing || timing.ref.verdict !== 'plausible') return null;
+    const elev = Number(cabinet.micElevationDeg) || 0;
+    const roles: BranchRole[] = threeWay ? ['low', 'mid', 'high'] : ['low', 'high'];
+    const src: Record<BranchRole, Parsed | null> = {
+      low: woofer?.frd ?? null,
+      mid: midDrv?.frd ?? null,
+      high: tweeter?.frd ?? null,
+    };
+    // Measured arrival path per driver, and the share the tripod explains.
+    const arrival: Partial<Record<BranchRole, number>> = {};
+    const rig: Partial<Record<BranchRole, number>> = {};
+    for (const r of roles) {
+      const frd = src[r];
+      const pl = cabinetInfo.place[r];
+      if (!frd || !pl) return null;
+      const ms = excessDelayMsOf(frd);
+      const geo = pathBreakdownMm(pl, R, elev);
+      if (ms === null || geo === null) return null;
+      arrival[r] = ms * 1e-3 * C_AIR_MM_S;
+      rig[r] = geo.rigMm;
+    }
+    // A delay measurement carries one unknown constant (electronic latency),
+    // so depths are only ever RELATIVE. Pin it by putting the shallowest
+    // driver on the baffle: that is the one with the least path left over
+    // once its own rig share is removed.
+    const leftover = roles.map((r) => arrival[r]! - rig[r]!);
+    const k = Math.min(...leftover);
+    const depths: Partial<Record<BranchRole, number>> = {};
+    for (const r of roles) {
+      // SOLVE, don't subtract: the depth contributes less than its own length
+      // at close range, so subtracting would read 150 mm as 133.
+      const d = depthForExcessMm(cabinetInfo.place[r]!, R, arrival[r]! - k, elev);
+      if (d === null) return null;
+      depths[r] = d;
+    }
+    // Worth acting on? Under a millimetre is noise in a phase fit.
+    const spread = Math.max(...(Object.values(depths) as number[]));
+    return { depths, spread };
+  }, [cabinet, timing, threeWay, woofer, midDrv, tweeter, cabinetInfo]);
 
   /**
    * Auto phase convention: freshly loaded measurements that pass the shared-
@@ -6903,6 +6967,44 @@ export default function App() {
                               ' — two figures because the pair fires both ways; a sweep measures their sum'}
                           </span>
                         )}
+                        {measuredDepth?.depths[role] !== undefined && (
+                          <span className="derived">
+                            {/* The derivation lives under the timing panel on the
+                                cabinet step, which is the wrong place to read it:
+                                the field it answers is HERE. Same complaint as
+                                having to go and look up the reference height. */}
+                            {(() => {
+                              const m = measuredDepth.depths[role]!;
+                              const typed = d.depthMm.trim() !== '' ? Number(d.depthMm) : null;
+                              const off = typed !== null ? Math.abs(typed - m) : null;
+                              return (
+                                <>
+                                  <strong>measured depth {m.toFixed(1)} mm</strong>
+                                  {m < 0.05
+                                    ? ' — the shallowest of your drivers, so the others are measured behind it'
+                                    : ' behind the shallowest driver'}
+                                  , from the delay with the rig removed.
+                                  {off !== null && (
+                                    <>
+                                      {' '}
+                                      {off <= Math.max(1, 0.1 * Math.max(typed!, m))
+                                        ? `Your ${typed!.toFixed(1)} mm agrees.`
+                                        : `You typed ${typed!.toFixed(1)} mm — one of the two is wrong.`}
+                                    </>
+                                  )}{' '}
+                                  <button
+                                    type="button"
+                                    className="link-btn"
+                                    onClick={() => set({ depthMm: m.toFixed(1) })}
+                                    title="Write the measured depth into the field above. It fixes the geometry (true off-axis angle, centre-to-centre spacing), but note that the timing split then explains itself by construction and stops being an independent check."
+                                  >
+                                    use it
+                                  </button>
+                                </>
+                              );
+                            })()}
+                          </span>
+                        )}
                         {d.facing !== 'front' && (
                           <span className="derived alert">
                             {d.facing}-firing: a front turntable sweep cannot measure this
@@ -9396,6 +9498,60 @@ export default function App() {
                   </>
                 );
               })()}
+            </p>
+          )}
+          {measuredDepth && measuredDepth.spread >= 1 && (
+            <p className="sub" style={{ margin: '0.35rem 0 0' }}>
+              {/* The inverse of the split above: the measurement can tell you
+                  the depth instead of you measuring it with a ruler — and it
+                  finds the ACOUSTIC centre, which a ruler cannot. */}
+              <strong>Measured mounting depth:</strong>{' '}
+              {(['high', 'mid', 'low'] as BranchRole[])
+                .filter((r) => measuredDepth.depths[r] !== undefined)
+                .map((r) => {
+                  const naam =
+                    r === 'high'
+                      ? 'tweeter'
+                      : r === 'mid'
+                        ? 'midrange'
+                        : hasMidBranch
+                          ? 'woofer'
+                          : 'woofer/mid';
+                  return `${naam} ${measuredDepth.depths[r]!.toFixed(1)} mm`;
+                })
+                .join(' · ')}{' '}
+              behind the shallowest. Derived from the excess-phase delay with the
+              rig&rsquo;s own geometry removed, so it is what the drivers actually do
+              rather than what the drawing says.{' '}
+              <button
+                type="button"
+                className="link-btn"
+                onClick={() =>
+                  setCabinet((c) => ({
+                    ...c,
+                    drivers: Object.fromEntries(
+                      (['low', 'mid', 'high'] as BranchRole[]).map((r) => [
+                        r,
+                        measuredDepth.depths[r] === undefined
+                          ? c.drivers[r]
+                          : { ...c.drivers[r], depthMm: measuredDepth.depths[r]!.toFixed(1) },
+                      ]),
+                    ) as Record<BranchRole, CabinetDriver>,
+                  }))
+                }
+                title="Write these into the Mounting depth fields. Note what it costs: the timing split then explains itself by construction, so the residual stops being an independent check on your measurement. It still sharpens the geometry — true off-axis angle, centre-to-centre spacing — which does not depend on the delay at all."
+              >
+                use as mounting depth
+              </button>
+              {(['low', 'mid', 'high'] as BranchRole[]).some(
+                (r) => Number(cabinet.drivers[r].depthMm) > 0,
+              ) && (
+                <>
+                  {' '}
+                  With a depth already entered this is a CROSS-CHECK: if the two
+                  disagree, either the drawing or the measurement is wrong.
+                </>
+              )}
             </p>
           )}
           {measureVerdict && (

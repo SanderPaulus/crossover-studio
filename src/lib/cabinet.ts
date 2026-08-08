@@ -299,6 +299,51 @@ export function pathBreakdownMm(
 }
 
 /**
+ * The inverse of `pathBreakdownMm`: how deep must this driver sit to produce
+ * the excess path a delay measurement actually found?
+ *
+ * This is what lets the app work the depth out for itself instead of asking
+ * for a ruler — and it beats a ruler, because what a delay measures is the
+ * ACOUSTIC centre, which no ruler can find.
+ *
+ * It has to be solved rather than subtracted. `mountingMm` is not `depthMm`:
+ * close up the driver's offset and its depth partly share a direction, so the
+ * depth contributes less than its full length (see `pathBreakdownMm`). Simply
+ * taking "measured minus rig" is therefore short — by 2% on a 9 mm tweeter
+ * offset, but 11% on a 150 mm-deep side woofer at 500 mm, which is the case
+ * this whole feature exists for. Bisection on a monotonic function; a few
+ * dozen halvings cost nothing and remove the approximation entirely.
+ *
+ * Returns null when no depth in range produces that path (a measurement that
+ * says the driver is in FRONT of the baffle plane, say) — better than
+ * clamping to zero and calling it an answer.
+ */
+export function depthForExcessMm(
+  driver: DriverPlacement,
+  distanceMm: number,
+  targetExcessMm: number,
+  elevationDeg = 0,
+  maxDepthMm = 2000,
+): number | null {
+  const at = (d: number) =>
+    geometricPathExcessMm({ ...driver, depthMm: d }, distanceMm, elevationDeg);
+  const lo0 = at(0);
+  const hi0 = at(maxDepthMm);
+  if (lo0 === null || hi0 === null) return null;
+  if (targetExcessMm < lo0 || targetExcessMm > hi0) return null;
+  let lo = 0;
+  let hi = maxDepthMm;
+  for (let i = 0; i < 60; i++) {
+    const mid = (lo + hi) / 2;
+    const v = at(mid);
+    if (v === null) return null;
+    if (v < targetExcessMm) lo = mid;
+    else hi = mid;
+  }
+  return (lo + hi) / 2;
+}
+
+/**
  * The per-driver delay change between the distance a set was MEASURED at and
  * the distance it will be LISTENED at, µs (positive = arrives later at the
  * listening seat than the measurement implied).

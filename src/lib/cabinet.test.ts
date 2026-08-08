@@ -11,6 +11,7 @@ import {
   centreToCentreMm,
   farFieldVerdict,
   listeningAngleDeg,
+  depthForExcessMm,
   nearestEdgeMm,
   opposedAnglesDeg,
   pathBreakdownMm,
@@ -412,5 +413,38 @@ describe('the rest of the cabinet shapes a designer actually builds', () => {
     expect(oppositeFacing('left')).toBe('right');
     expect(oppositeFacing('front')).toBe('rear');
     expect(oppositeFacing('up')).toBe('down');
+  });
+});
+
+describe('working the mounting depth out of the measurement', () => {
+  // "You know where the mid is and you have the delays — surely you can work
+  // out how deep the tweeter sits?" Yes: subtract the rig from the measured
+  // arrival and what is left is the depth. It has to be SOLVED though, not
+  // subtracted, because the depth's contribution is not its own length.
+  const drv = { xMm: 0, yMm: -300 };
+
+  it('round-trips a known depth exactly', () => {
+    for (const depth of [0, 9.1, 40, 150, 400]) {
+      const excess = geometricPathExcessMm({ ...drv, depthMm: depth }, 500)!;
+      expect(depthForExcessMm(drv, 500, excess)!).toBeCloseTo(depth, 6);
+    }
+  });
+
+  it('beats subtracting, and by more the deeper the driver sits', () => {
+    // The naive "measured minus rig" is short because close up the offset and
+    // the depth partly share a direction. This is the error being removed.
+    const depth = 150;
+    const excess = geometricPathExcessMm({ ...drv, depthMm: depth }, 500)!;
+    const rig = geometricPathExcessMm(drv, 500)!;
+    const naive = excess - rig;
+    expect(naive).toBeCloseTo(132.8, 1); // 11% short of the true 150
+    expect(depthForExcessMm(drv, 500, excess)!).toBeCloseTo(150, 6);
+  });
+
+  it('refuses rather than clamps when no depth explains the path', () => {
+    // Less than the rig's own share means the driver sits in FRONT of the
+    // baffle plane — that is a measurement to question, not a zero to report.
+    const rig = geometricPathExcessMm(drv, 500)!;
+    expect(depthForExcessMm(drv, 500, rig - 5)).toBeNull();
   });
 });

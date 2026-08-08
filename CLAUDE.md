@@ -282,6 +282,37 @@ minimum phase reconstrueert. Voertaal met Sander: **Nederlands**; code/comments 
   (89 en niet 90 door de 6° kanteling — de rekenkunde controleert zichzelf). Het akoestische
   deel was al gedekt: `spacingMm` = kastbreedte voedt `lobingCeilingHz` (200 mm ⇒ 858 Hz), en
   dát is het getal dat zegt dat zo'n tak laag wil overnemen.
+  **DE APP REKENT DE DIEPTE NU ZELF UIT (aug 2026, Sanders "met de delays en de posities
+  moet je toch zelf kunnen uitvogelen hoe diep de tweeter zit?")**: ja — en het is de INVERSE
+  van `pathBreakdownMm`. Een aankomstpad is rig + montage + akoestisch centrum; de rig-term
+  volgt uit de posities, en de andere twee samen ZIJN precies wat `depthMm` betekent. Dus
+  `depthForExcessMm` (bisectie op de monotone padfunctie) lost per driver op welke diepte de
+  gemeten excess-delay verklaart, en het timing-paneel toont dat met een knop
+  "use as mounting depth". Beter dan een liniaal, want een delay meet het AKOESTISCH centrum.
+  **HARD GELEERD: het moet een INVERSIE zijn, geen aftrekking.** De eerste versie deed
+  `gemeten − rig` en dat is te weinig, want de montage-term is niet de diepte zelf (zie
+  hierboven): op de KOAN-tweeter 9,1 i.p.v. 9,3 mm (2%), maar op een 150 mm diepe zij-woofer
+  op 500 mm leest hij 133 — 11% eraf, precies het geval waarvoor de hele feature bestaat.
+  In de browser zichtbaar aan het residu: naïef bleef er −0,5 µs "akoestisch centrum" staan
+  na toepassen, met de inversie 0,1 µs.
+  **De uitkomst staat bij het VELD, niet alleen onder het timing-paneel** (Sanders "maar het
+  getal wordt niet ingevuld bij de tweeter?"): de afleiding hoorde op de cabinet-stap en het
+  veld dat hij beantwoordt staat op de drivers-stap — dezelfde blader-klacht als bij de
+  referentiehoogte. Elke driverkaart toont nu "measured depth X mm" met een eigen "use it",
+  en de ondiepste legt uit waarom hij 0,0 is i.p.v. leeg te lijken.
+  **BUG die daarbij boven kwam**: `placeOf` zette voor de REFERENTIE-driver `depthMm: 0` hard.
+  Het referentiepunt legt x en y vast — waar de mic op gericht stond zegt niets over hoe ver
+  het akoestisch centrum achter het baffle-vlak zit — dus een diepte die je bij de tweeter
+  intypte werd stil weggegooid. In de browser aangetoond: met 20 mm gaan zijn hoeken van
+  0°→0°/15°→15°/30°→30° naar 0°→0°/15°→14°/30°→29°; daarvoor bewoog er niets.
+  Twee eerlijkheden die erbij horen: (1) een delay draagt één onbekende constante
+  (elektronische latency), dus diepten zijn per definitie RELATIEF — de ondiepste driver
+  krijgt 0 en dat is ook alles wat de fysica nodig heeft; (2) zodra je ze toepast verklaart
+  de timing-splitsing zichzelf PER CONSTRUCTIE en is het residu geen onafhankelijke controle
+  meer. Dat staat in de tooltip, want het is een echte ruil: de geometrie (ware hoek,
+  hart-op-hart) wordt er wél scherper van en die hangt niet van de delay af. Met een al
+  ingevulde diepte leest de regel juist als KRUISCONTROLE ("als die twee niet overeenkomen
+  is één van beide fout") — dat is de rol die dit bestand het liefst speelt.
   Bewust NIET gemodelleerd, wel geweten: een ACHTERPOORT wordt in `sumRadiators` als
   samenvallend met de conus gesommeerd (Keele's methode is zo gedefinieerd). Onder ~100 Hz is
   de golflengte metersgroot en is dat prima; erboven draagt een poort nauwelijks. Een
