@@ -399,6 +399,16 @@ minimum phase reconstrueert. Voertaal met Sander: **Nederlands**; code/comments 
   kast ÍS al een 2e-orde hoogdoorlaat, dus LR2 elektrisch geeft LR4 akoestisch, precies de
   hefboom waarmee die 88 µF ~30 µF wordt; een poort betekent bovendien dat de kast zélf midden
   kan uitstralen.
+- **Sd verslaat de maat-dropdown (aug 2026, Sanders "deze gegevens heb ik toch al
+  ingevoerd")**: de wizard vroeg "Mid size" (duim-dropdown) voor het bundelplafond terwijl
+  Sd al ingetypt was — hetzelfde feit twee keer, en de dropdown is de mindere bron (0,82×
+  nominaal is een benadering; `pistonDiameterMm(Sd)` ís de effectieve zuiger).
+  `midXoCeiling`/`wooferXoCeiling` rekenen nu Sd-eerst met de dropdown als terugval, en de
+  UI verbergt de vraag zodra Sd hem beantwoordt ("Beaming ceiling ≈ 3469 Hz — from the Sd
+  you entered (Ø 94 mm); no need to pick a nominal size"). NB rolmapping: in 2-weg begrenst
+  midXoCeiling de LAGE tak (KOANs lage driver heet mid) ⇒ sdCm2.low; in 3-weg de echte mid.
+  Gemeten op de MW13TX-4: 5"-dropdown zei 3145 Hz, Sd 70 cm² zegt 3469 — de echte conus is
+  kleiner dan 0,82×5". Prioriteit blijft: gemeten bundeling (hoekdata) > Sd > dropdown.
 - `driverLimits.ts` — **"welke frequenties redt deze driver niet" (aug 2026, Sanders
   onderzoeksvraag)**. Er is GEEN enkele regel voor een kruispunt; er is een stapel
   onafhankelijke ongelijkheden en het ontwerpvenster is hun doorsnede. Alles hier staat op

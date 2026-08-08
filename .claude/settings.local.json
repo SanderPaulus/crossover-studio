@@ -176,7 +176,13 @@
       "Bash(awk 'NR>=738 && NR<=778' src/lib/netOptimizer.ts)",
       "Bash(sed -i '' 's/testsuite \\(335 tests/testsuite \\(354 tests/' CLAUDE.md)",
       "Bash(solo)",
-      "Bash(python3 \"/private/tmp/claude-501/-Users-sandersomers-SD-Acoustics-Design-Studio/2af54103-1b9c-476d-934d-af7033a3f193/scratchpad/claudemd-add.py\")"
+      "Bash(python3 \"/private/tmp/claude-501/-Users-sandersomers-SD-Acoustics-Design-Studio/2af54103-1b9c-476d-934d-af7033a3f193/scratchpad/claudemd-add.py\")",
+      "WebFetch(domain:solen.ca)",
+      "WebFetch(domain:hificompass.com)",
+      "WebFetch(domain:sbacoustics.com)",
+      "WebFetch(domain:www.bliesma.de)",
+      "WebFetch(domain:loudspeakerdatabase.com)",
+      "WebFetch(domain:www.madisoundspeakerstore.com)"
     ]
   }
 }

@@ -1284,6 +1284,14 @@ export default function App() {
   const [xoLowMarginHz, setXoLowMarginHz] = useState('150');
   const [acSlopeWoofer, setAcSlopeWoofer] = useState('24');
   const [acSlopeMidHp, setAcSlopeMidHp] = useState('24');
+  /** Datasheet numbers for the excursion floor — the level-aware version of
+   *  "cross a tweeter at 2-3x Fs". Two fields per driver, and without them the
+   *  criterion simply does not apply. */
+  const [sdCm2, setSdCm2] = useState<Record<BranchRole, string>>({ low: '', mid: '', high: '' });
+  const [xmaxMm, setXmaxMm] = useState<Record<BranchRole, string>>({ low: '', mid: '', high: '' });
+  /** The SPL the excursion floor is computed FOR — a 1" dome is fine to 587 Hz
+   *  at 90 dB and only to 829 Hz at 96 dB, and that is the whole point. */
+  const [excursionSpl, setExcursionSpl] = useState('96');
   /** Mid nominal size (inch) — sets the crossover CEILING via cone beaming
    *  (f ≈ c/π·d_eff; a MID property, per Gemini's window rules). '' = unknown
    *  → the free band falls back to the tweeter-anchored ceiling. */
@@ -1293,11 +1301,18 @@ export default function App() {
    *  onsets at c/π·d, and a cone is practically usable to ~3× that (a 5" ⇒
    *  ~3200 Hz, matching the ~3000–3500 rule of thumb). null when size unknown. */
   const midXoCeiling = useMemo(() => {
+    // Sd first: the datasheet Sd gives the true effective piston, so once it
+    // is entered on the Drivers step the size dropdown would be the same fact
+    // typed twice — and less precisely (the 0.82×nominal approximation).
+    // In 2-way this ceiling belongs to the LOW branch (KOAN's low driver is
+    // literally a mid); in 3-way to the actual middle branch.
+    const dia = pistonDiameterMm(Number(sdCm2[threeWay ? 'mid' : 'low']));
+    if (dia !== null) return Math.round((3 * 343) / (Math.PI * (dia / 1000)));
     const inch = Number(midSizeInch);
     if (!(inch > 0)) return null;
     const dEff = inch * 0.0254 * 0.82;
     return Math.round((3 * 343) / (Math.PI * dEff));
-  }, [midSizeInch]);
+  }, [midSizeInch, sdCm2, threeWay]);
   /** 3-way: woofer nominal size (inch) — the W-M handover's beaming CEILING,
    *  the exact mirror of the mid-size rule above. '' = unknown. */
   const [wooferSizeInch, setWooferSizeInch] = useState('');
@@ -1343,20 +1358,15 @@ export default function App() {
   /** Cone breakup as an upper limit: cross at or below f_b / harmonic. */
   const [breakupLimitOn, setBreakupLimitOn] = useState(true);
   const [breakupHarmonic, setBreakupHarmonic] = useState('3');
-  /** Datasheet numbers for the excursion floor — the level-aware version of
-   *  "cross a tweeter at 2-3x Fs". Two fields per driver, and without them the
-   *  criterion simply does not apply. */
-  const [sdCm2, setSdCm2] = useState<Record<BranchRole, string>>({ low: '', mid: '', high: '' });
-  const [xmaxMm, setXmaxMm] = useState<Record<BranchRole, string>>({ low: '', mid: '', high: '' });
-  /** The SPL the excursion floor is computed FOR — a 1" dome is fine to 587 Hz
-   *  at 90 dB and only to 829 Hz at 96 dB, and that is the whole point. */
-  const [excursionSpl, setExcursionSpl] = useState('96');
   const wooferXoCeiling = useMemo(() => {
+    // Same rule as midXoCeiling: entered Sd beats the nominal-size dropdown.
+    const dia = pistonDiameterMm(Number(sdCm2.low));
+    if (dia !== null) return Math.round((3 * 343) / (Math.PI * (dia / 1000)));
     const inch = Number(wooferSizeInch);
     if (!(inch > 0)) return null;
     const dEff = inch * 0.0254 * 0.82;
     return Math.round((3 * 343) / (Math.PI * dEff));
-  }, [wooferSizeInch]);
+  }, [wooferSizeInch, sdCm2]);
   /** Wizard "think-along": suggested tuning range = the optimizer's evaluation
    *  band. The USABLE span where both drivers have data — floored at 200 Hz (a
    *  mid/tweeter tuning floor; raw FRDs often carry an unreliable sub-100 Hz
@@ -7677,20 +7687,39 @@ export default function App() {
                   resonance, read from your impedance measurement.
                 </p>
               )}
-              <p>
-                Mid size (sets the beaming ceiling){' '}
-                <select value={midSizeInch} onChange={(e) => setMidSizeInch(e.target.value)}>
-                  <option value="">unknown</option>
-                  {['3', '4', '5', '5.25', '6.5', '8'].map((v) => (
-                    <option key={v} value={v}>
-                      {v}"
-                    </option>
-                  ))}
-                </select>
-                {midXoCeiling !== null && (
-                  <span className="sub"> · beaming ceiling ≈ {midXoCeiling} Hz</span>
-                )}
-              </p>
+              {(() => {
+                // Sd (Drivers step) already fixes the effective piston, and it
+                // beats the nominal-size approximation — so once it is entered,
+                // asking for the size again would be the same fact typed twice.
+                const dia = pistonDiameterMm(Number(sdCm2[threeWay ? 'mid' : 'low']));
+                if (dia !== null && midXoCeiling !== null) {
+                  return (
+                    <p>
+                      Beaming ceiling ≈ {midXoCeiling} Hz{' '}
+                      <span className="sub">
+                        — from the Sd you entered (effective piston Ø {Math.round(dia)} mm); no
+                        need to pick a nominal size
+                      </span>
+                    </p>
+                  );
+                }
+                return (
+                  <p>
+                    Mid size (sets the beaming ceiling){' '}
+                    <select value={midSizeInch} onChange={(e) => setMidSizeInch(e.target.value)}>
+                      <option value="">unknown</option>
+                      {['3', '4', '5', '5.25', '6.5', '8'].map((v) => (
+                        <option key={v} value={v}>
+                          {v}"
+                        </option>
+                      ))}
+                    </select>
+                    {midXoCeiling !== null && (
+                      <span className="sub"> · beaming ceiling ≈ {midXoCeiling} Hz</span>
+                    )}
+                  </p>
+                );
+              })()}
               <p className="sub" style={{ marginBottom: '0.15rem' }}>
                 The next two look alike but are NOT the same thing — one is how you build it,
                 the other is what comes out:
@@ -10239,7 +10268,8 @@ export default function App() {
                   </span>
                 )}
                 <span className="opt-group-cap">Driver limits</span>
-                {threeWay && !physWin3?.lowCeilMeasured && (
+                {threeWay && !physWin3?.lowCeilMeasured &&
+                  pistonDiameterMm(Number(sdCm2.low)) === null && (
                   <label title="Woofer nominal size — sets the W-M handover's beaming CEILING (a cone is practically usable to ~3× its beaming onset), the mirror of the mid-size rule for the high crossing. With the 2×Fs floor from the measured mid impedance this gives the free scan a physics window instead of a guess.">
                     Woofer size (W-M ceiling)
                     <select value={wooferSizeInch} onChange={(e) => setWooferSizeInch(e.target.value)}>
