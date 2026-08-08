@@ -6,6 +6,30 @@ Volgorde binnen een blok = aanbevolen prioriteit. Inschattingen zijn grof:
 
 ## Onlangs afgerond (jul–aug 2026, ter referentie)
 
+- **Drivers die niet op het front zitten** (aug 2026, naar aanleiding van
+  Sanders vraag of de app zij-woofers aankan — een vraag, geen veldmelding: er
+  is geen meting van zo'n kast in huis, de ernst is afgeleid en daarna
+  synthetisch aangetoond). Elke driver kreeg een montagediepte en een
+  richting, de kast een diepte. De motor raakte het niet: die ontwerpt op
+  gemeten responsie en gemeten fase, en waar een driver zit zit al ín zijn
+  meting. Maar de afgeleide getallen logen: een halve kastdiepte is ~440 µs,
+  en zonder montage-term boekt de app dat volledig op het akoestisch centrum.
+  De delay-splitsing is nu drieledig (rig · montage · driver), de ware hoek
+  meet tegen de eigen as van de driver (een zij-woofer leest 90° bij nominaal
+  0°, niet ~0°), hart-op-hart telt de diepte mee, en de baffle-step pakt het
+  paneel waar de driver echt op zit. Onderweg gemeten en tegen mijn eigen
+  aanname in: de montage-term is niet constant maar convergeert naar de
+  diepte, dus hij wordt op de meetafstand gerekend.
+  Daarna de vormen systematisch langsgelopen (Sanders "ik wil dat we met
+  dergelijk cabinet designs voorbereid zijn") en de drie resterende gaten
+  gedicht: **naar achteren vurend** (ambience-tweeter, bipool — 180° bij
+  nominaal 0, en zijn paneel is de achterwand), **schuine/getrapte baffle**
+  (`tiltDeg`, het spiegelbeeld van de rig-elevatie: 6° helling verschuift een
+  driver 250 mm laag van 26,6° naar 20,6°) en **tegenover elkaar staande
+  woofers** (`opposed` — twee ware hoeken tegelijk, gemeten 0°→89°/89° en
+  30°→66°/112°; middelen zou verzinnen zijn). Wat NIET gemodelleerd is en
+  waarom staat er ook: een achterpoort blijft samenvallend gesommeerd, want
+  dat is precies wat Keele's methode voorschrijft.
 - **FASE 4 IS DICHT** (aug 2026) — de laatste twee dingen die in 3-weg leeg
   bleven werken nu: de **tab-ghosts** (som via `combineN`, en de fase-ghost is
   dezelfde GESTIKTE actieve-paar-lijn als de live curve, met per tab zijn EIGEN

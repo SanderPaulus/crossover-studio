@@ -50,7 +50,8 @@ import {
   boxRolloff,
   C_AIR_MM_S,
   centreToCentreMm,
-  geometricPathExcessMm,
+  pathBreakdownMm,
+  radiatingPanelWidthMm,
   listeningDelayShiftUs,
   measuringDistanceVerdict,
   farFieldVerdict,
@@ -58,10 +59,12 @@ import {
   gateLimitHz,
   listeningAngleDeg,
   nearestEdgeMm,
+  opposedAnglesDeg,
   pistonDiameterMm,
   rotationLevelOffsetDb,
   trueOffAxisDeg,
   unloadingRisk,
+  type DriverFacing,
   type DriverPlacement,
   type Enclosure,
 } from './lib/cabinet.ts';
@@ -609,6 +612,20 @@ interface CabinetDriver {
    *  count > 1: it sets where the array's own vertical lobing starts, which is
    *  a different (and usually lower) ceiling than cone beaming. */
   spacingMm: string;
+  /** How far the acoustic centre sits behind the baffle plane, mm. '' = 0 =
+   *  on the baffle, which is what a normal front-mounted driver effectively
+   *  is. A side-firing woofer's centre is typically half a cabinet back, and
+   *  that is hundreds of microseconds of pure geometry. */
+  depthMm: string;
+  /** Which way the driver radiates. Side-firing woofers are an ordinary
+   *  design; without this the app judges their angle, their baffle and their
+   *  arrival time against the front panel they are not on. */
+  facing: DriverFacing;
+  /** Sloped/stepped baffle: degrees this driver is aimed further UP. */
+  tiltDeg: string;
+  /** count > 1 drivers sit on BOTH opposing panels, firing away from each
+   *  other — how side-mounted woofers are normally built (force cancelling). */
+  opposed: boolean;
 }
 interface CabinetState {
   /** Microphone distance during the FRD sweeps, mm. */
@@ -622,6 +639,9 @@ interface CabinetState {
   gateMs: string;
   baffleWidthMm: string;
   baffleHeightMm: string;
+  /** Front-to-back, mm. Only needed once a driver fires sideways: then THAT
+   *  is the width of the panel it radiates from. */
+  cabinetDepthMm: string;
   /** How far below the top of the baffle the reference point sits, mm. */
   refFromTopMm: string;
   /** Height of the reference point above the floor, mm. */
@@ -643,6 +663,10 @@ const emptyCabinetDriver = (): CabinetDriver => ({
   fbHz: '',
   count: '',
   spacingMm: '',
+  depthMm: '',
+  facing: 'front',
+  tiltDeg: '',
+  opposed: false,
 });
 const emptyCabinet = (): CabinetState => ({
   micDistanceMm: '',
@@ -650,6 +674,7 @@ const emptyCabinet = (): CabinetState => ({
   gateMs: '',
   baffleWidthMm: '',
   baffleHeightMm: '',
+  cabinetDepthMm: '',
   refFromTopMm: '',
   refHeightMm: '',
   listenDistanceM: '',
@@ -657,6 +682,12 @@ const emptyCabinet = (): CabinetState => ({
   refDriver: '',
   drivers: { low: emptyCabinetDriver(), mid: emptyCabinetDriver(), high: emptyCabinetDriver() },
 });
+const FACINGS: readonly DriverFacing[] = ['front', 'rear', 'left', 'right', 'up', 'down'];
+/** A stored facing, or 'front' — an unknown value must read as the ordinary
+ *  case, never crash a restore. */
+const asFacing = (v: string | undefined): DriverFacing =>
+  FACINGS.find((f) => f === v) ?? 'front';
+
 /** Restore a cabinet block from a project/autosave, filling every gap with the
  *  empty default — an older file simply has no geometry, and that must read as
  *  "not entered", never as a zero position at the reference point. */
@@ -677,6 +708,10 @@ function mergeCabinet(raw: ProjectDesign['cabinet']): CabinetState {
       fbHz: d.fbHz ?? '',
       count: d.count ?? '',
       spacingMm: d.spacingMm ?? '',
+      depthMm: d.depthMm ?? '',
+      facing: asFacing(d.facing),
+      tiltDeg: d.tiltDeg ?? '',
+      opposed: d.opposed === true,
     };
   }
   return {
@@ -685,6 +720,7 @@ function mergeCabinet(raw: ProjectDesign['cabinet']): CabinetState {
     gateMs: raw.gateMs ?? '',
     baffleWidthMm: raw.baffleWidthMm ?? '',
     baffleHeightMm: raw.baffleHeightMm ?? '',
+    cabinetDepthMm: raw.cabinetDepthMm ?? '',
     refFromTopMm: raw.refFromTopMm ?? '',
     refHeightMm: raw.refHeightMm ?? '',
     listenDistanceM: raw.listenDistanceM ?? '',
@@ -705,7 +741,17 @@ function placementOf(d: CabinetDriver): DriverPlacement | null {
   if (d.xMm.trim() === '' || d.yMm.trim() === '' || !Number.isFinite(x) || !Number.isFinite(y)) {
     return null;
   }
-  return { xMm: x, yMm: y };
+  const depth = Number(d.depthMm);
+  const tilt = Number(d.tiltDeg);
+  return {
+    xMm: x,
+    yMm: y,
+    depthMm: d.depthMm.trim() !== '' && Number.isFinite(depth) ? depth : 0,
+    facing: d.facing ?? 'front',
+    tiltDeg: d.tiltDeg.trim() !== '' && Number.isFinite(tilt) ? tilt : 0,
+    // Opposed only means anything with more than one driver in the branch.
+    opposed: d.opposed === true && Number(d.count) > 1,
+  };
 }
 
 /**
@@ -726,9 +772,23 @@ function bindingCeil(
     excursion: number | null;
   },
   beamMeasured: boolean,
+  /** The driver this ceiling came from does not radiate from the front. The
+   *  NUMBER still stands — a front sweep measures how fast the system falls
+   *  off-axis, and that is a real reason to hand over below it — but calling
+   *  it cone beaming would be wrong: most of it is the cabinet shadowing a
+   *  driver that points elsewhere. Name what it is, do not drop the bound. */
+  beamOffBaffle = false,
 ): string {
   const cands: Array<[number, string]> = [];
-  if (lim.beam !== null) cands.push([lim.beam, beamMeasured ? 'measured beaming' : 'beaming']);
+  if (lim.beam !== null)
+    cands.push([
+      lim.beam,
+      beamMeasured
+        ? beamOffBaffle
+          ? 'measured directivity, off-baffle driver'
+          : 'measured beaming'
+        : 'beaming',
+    ]);
   if (lim.lobe !== null) cands.push([lim.lobe, 'lobing']);
   if (lim.arrayLobe !== null) cands.push([lim.arrayLobe, 'array lobing']);
   if (lim.breakup)
@@ -2150,7 +2210,18 @@ export default function App() {
      * spacing-derived number.
      */
     const placeOf = (role: BranchRole) =>
-      cabinet.refDriver === role ? { xMm: 0, yMm: 0 } : placementOf(cabinet.drivers[role]);
+      cabinet.refDriver === role
+        ? // The reference driver IS the origin by definition — that is the
+          // whole point of naming it — but it keeps its own radiating
+          // direction, which the origin says nothing about.
+          {
+            xMm: 0,
+            yMm: 0,
+            depthMm: 0,
+            facing: cabinet.drivers[role].facing ?? 'front',
+            tiltDeg: Number(cabinet.drivers[role].tiltDeg) || 0,
+          }
+        : placementOf(cabinet.drivers[role]);
     const place = {
       low: placeOf('low'),
       mid: placeOf('mid'),
@@ -2171,6 +2242,9 @@ export default function App() {
       return list.map((nominal) => ({
         nominal,
         actual: trueOffAxisDeg(p, micMm, nominal, micElev),
+        // An opposed pair has no single answer, and averaging would be a
+        // fiction — report both, or nothing.
+        opposed: opposedAnglesDeg(p, micMm, nominal, micElev),
         levelDb: rotationLevelOffsetDb(p, micMm, nominal, micElev),
       }));
     };
@@ -2195,14 +2269,22 @@ export default function App() {
           : null;
     const ctc = (a: BranchRole, b: BranchRole) =>
       place[a] && place[b] ? centreToCentreMm(place[a]!, place[b]!) : null;
+    const boxDepth = Number(cabinet.cabinetDepthMm);
     const baffle =
       baffleW > 0 && Number(cabinet.baffleHeightMm) > 0
         ? {
             widthMm: baffleW,
             heightMm: Number(cabinet.baffleHeightMm),
+            depthMm: boxDepth > 0 ? boxDepth : undefined,
             refFromTopMm: Number(cabinet.refFromTopMm) || 0,
           }
         : null;
+    /** Any driver that is not on the front changes what several of these
+     *  numbers even MEAN — the readouts say so rather than quietly answering
+     *  a different question. */
+    const offBaffle = (['low', 'mid', 'high'] as BranchRole[]).filter(
+      (r) => (place[r]?.facing ?? 'front') !== 'front',
+    );
     return {
       place,
       trueAngles,
@@ -2226,6 +2308,21 @@ export default function App() {
           : null,
       reliable,
       baffleStep: baffleStepHz(baffleW),
+      offBaffle,
+      /** Baffle step for the panel THIS driver radiates from. A side-firing
+       *  woofer's baffle is the side panel, so its width is the cabinet depth
+       *  — on the narrow cabinets that use side woofers that is a factor of
+       *  two, which makes the front baffle's number simply the wrong one. */
+      baffleStepOf: (role: BranchRole) => {
+        const p = place[role];
+        if (!p || !(baffleW > 0)) return null;
+        const w = radiatingPanelWidthMm(p.facing, {
+          widthMm: baffleW,
+          heightMm: Number(cabinet.baffleHeightMm),
+          depthMm: boxDepth > 0 ? boxDepth : undefined,
+        });
+        return w === null ? null : baffleStepHz(w);
+      },
       edgeOf: (role: BranchRole) =>
         place[role] && baffle ? nearestEdgeMm(place[role]!, baffle) : null,
       listenAngle: listeningAngleDeg(
@@ -2841,20 +2938,37 @@ export default function App() {
     const elev = Number(cabinet.micElevationDeg) || 0;
     const geo = (role: BranchRole) => {
       const pl = cabinetInfo.place[role];
-      return pl ? geometricPathExcessMm(pl, R, elev) : null;
+      return pl ? pathBreakdownMm(pl, R, elev) : null;
     };
     const pairOf = (lo: BranchRole, hi: BranchRole) => {
       const a2 = geo(lo);
       const b2 = geo(hi);
       if (a2 === null || b2 === null) return null;
       // Same sign convention as the timing panel: upper driver later = +.
-      const mm = b2 - a2;
-      return { mm, us: (mm / C_AIR_MM_S) * 1e6 };
+      // Split three ways, because only the remainder is a DRIVER property:
+      // the rig share shrinks if you step back, and the mounting share is
+      // already explained by where the cabinet puts the cone. Charging a
+      // side-firing woofer's half-cabinet depth to its acoustic centre is
+      // what makes an ordinary speaker trip the timing check.
+      const mm = b2.totalMm - a2.totalMm;
+      const rigMm = b2.rigMm - a2.rigMm;
+      const mountMm = b2.mountingMm - a2.mountingMm;
+      return {
+        mm,
+        us: (mm / C_AIR_MM_S) * 1e6,
+        rigMm,
+        rigUs: (rigMm / C_AIR_MM_S) * 1e6,
+        mountMm,
+        mountUs: (mountMm / C_AIR_MM_S) * 1e6,
+      };
     };
     return {
       distanceMm: R,
       pair: threeWay ? pairOf('mid', 'high') : pairOf('low', 'high'),
       lowMid: threeWay ? pairOf('low', 'mid') : null,
+      /** Roles that radiate from another panel — their share of a measured
+       *  delay is geometry the app can name instead of blaming the driver. */
+      offBaffle: cabinetInfo.offBaffle,
     };
   }, [cabinet, threeWay, cabinetInfo]);
 
@@ -6506,6 +6620,7 @@ export default function App() {
                         drivers: { ...c.drivers, [role]: { ...c.drivers[role], ...patch } },
                       }));
                     const angles = cabinetInfo.trueAngles(role);
+                    const baffleFor = cabinetInfo.baffleStepOf(role);
                     const box = cabinetInfo.boxOf(role);
                     const edge = cabinetInfo.edgeOf(role);
                     const dia = cabinetInfo.diaOf(role);
@@ -6529,6 +6644,10 @@ export default function App() {
                     const samenvatting = [
                       Number(d.count) > 1 ? `${d.count}×` : '',
                       d.xMm || d.yMm ? `at ${d.xMm || 0}, ${d.yMm || 0} mm` : 'no position',
+                      d.facing !== 'front'
+                        ? `${d.facing}-firing${d.opposed && Number(d.count) > 1 ? ' pair' : ''}`
+                        : '',
+                      Number(d.tiltDeg) ? `tilt ${d.tiltDeg}°` : '',
                       d.enclosure !== 'unknown' ? d.enclosure : '',
                       Number(sdCm2[role]) > 0 ? `Sd ${sdCm2[role]} cm²` : 'no datasheet numbers',
                     ]
@@ -6617,7 +6736,62 @@ export default function App() {
                             <span className="cd-hint">from the reference point · y up</span>
                           </span>
                           )}
-  
+
+                          <span className="cd-label">Mounting</span>
+                          <span
+                            className="cd-fields"
+                            title="Which panel this driver radiates from, and how far its acoustic centre sits behind the baffle plane. Side-firing woofers are an ordinary design, and without this the app judges the driver against a front baffle it is not on: it would read ~0° off-axis when it is really 90°, take the baffle step from the wrong panel width, and charge half a cabinet of mounting depth (hundreds of µs) to the driver's acoustic centre — which is what makes a perfectly normal speaker trip the timing check."
+                          >
+                            <span className="cd-pre" />
+                            <select
+                              value={d.facing}
+                              onChange={(e) => set({ facing: e.target.value as DriverFacing })}
+                            >
+                              <option value="front">fires forward</option>
+                              <option value="rear">fires backward</option>
+                              <option value="left">fires left</option>
+                              <option value="right">fires right</option>
+                              <option value="up">fires up</option>
+                              <option value="down">fires down</option>
+                            </select>
+                            {' · depth '}
+                            <input
+                              type="number"
+                              min={0}
+                              step={5}
+                              placeholder="0"
+                              value={d.depthMm}
+                              onChange={(e) => set({ depthMm: e.target.value })}
+                            />
+                            {' mm · tilt '}
+                            <input
+                              type="number"
+                              step={1}
+                              placeholder="0"
+                              value={d.tiltDeg}
+                              onChange={(e) => set({ tiltDeg: e.target.value })}
+                            />
+                            {'°'}
+                            {Number(d.count) > 1 && d.facing !== 'front' && (
+                              <label
+                                className="cd-inline-check"
+                                title="These drivers sit on BOTH opposing panels, firing away from each other — the force-cancelling arrangement side-mounted woofers are normally built in. They then have two different true angles, and a sweep measures their sum."
+                              >
+                                <input
+                                  type="checkbox"
+                                  checked={d.opposed}
+                                  onChange={(e) => set({ opposed: e.target.checked })}
+                                />{' '}
+                                opposed pair
+                              </label>
+                            )}
+                            <span className="cd-hint">
+                              {d.facing === 'front'
+                                ? 'behind the baffle · tilt + = aimed up (sloped baffle)'
+                                : 'from the front, along the cabinet · tilt + = aimed up'}
+                            </span>
+                          </span>
+
                           <span className="cd-label">Enclosure</span>
                           <span className="cd-fields">
                             <span className="cd-pre" />
@@ -6697,8 +6871,25 @@ export default function App() {
                           <span className="derived">
                             your sweep really covers{' '}
                             {angles
-                              .map((a) => `${a.nominal}°→${a.actual!.toFixed(0)}°`)
+                              .map((a) =>
+                                a.opposed
+                                  ? `${a.nominal}°→${a.opposed.nearDeg.toFixed(0)}°/${a.opposed.farDeg.toFixed(0)}°`
+                                  : `${a.nominal}°→${a.actual!.toFixed(0)}°`,
+                              )
                               .join(', ')}
+                            {angles.some((a) => a.opposed) &&
+                              ' — two figures because the pair fires both ways; a sweep measures their sum'}
+                          </span>
+                        )}
+                        {d.facing !== 'front' && (
+                          <span className="derived alert">
+                            {d.facing}-firing: a front turntable sweep cannot measure this
+                            driver&rsquo;s own directivity — the numbers above are the SYSTEM
+                            turning, not the cone. Near-field is the honest route for its
+                            response, and its baffle is the{' '}
+                            {d.facing === 'left' || d.facing === 'right' ? 'side' : 'top/bottom'}{' '}
+                            panel
+                            {baffleFor !== null ? `, step around ${Math.round(baffleFor)} Hz` : ''}.
                           </span>
                         )}
                         {box.note && <span className="derived">{box.note}</span>}
@@ -8931,6 +9122,13 @@ export default function App() {
                       <>{veld(cabinet.baffleHeightMm, cab('baffleHeightMm'))} mm</>,
                     )}
                     {rij(
+                      'Cabinet depth',
+                      <>{veld(cabinet.cabinetDepthMm, cab('cabinetDepthMm'))} mm</>,
+                      cabinetInfo.offBaffle.length > 0
+                        ? 'the panel a side-firing driver radiates from'
+                        : 'only needed for side-firing drivers',
+                    )}
+                    {rij(
                       'Reference point, below top',
                       <>{veld(cabinet.refFromTopMm, cab('refFromTopMm'))} mm</>,
                       mis ? (
@@ -9131,25 +9329,44 @@ export default function App() {
                   — Sanders question, answerable since the positions exist. */}
               {(() => {
                 const totalUs = excessBridge ? excessBridge.deltaUs : timing.ref.deltaUs;
-                const rigUs = delayGeometry.pair!.us;
-                const acUs = totalUs - rigUs;
-                const mm = Math.abs(delayGeometry.pair!.mm);
-                const dir = delayGeometry.pair!.mm >= 0 ? 'further from' : 'closer to';
+                const p = delayGeometry.pair!;
+                const acUs = totalUs - p.us;
+                const mm = Math.abs(p.rigMm);
+                const dir = p.rigMm >= 0 ? 'further from' : 'closer to';
+                // Mounting depth only earns a sentence when there IS one: on a
+                // normal flush-mounted pair it is 0 and would be noise.
+                const mounted = Math.abs(p.mountUs) >= 1;
                 return (
                   <>
-                    <strong>Split of that Δ:</strong> {rigUs.toFixed(1)} µs is the measuring
+                    <strong>Split of that Δ:</strong> {p.rigUs.toFixed(1)} µs is the measuring
                     RIG — at {Math.round(delayGeometry.distanceMm)} mm the upper driver sits{' '}
                     {mm.toFixed(2)} mm {dir} the microphone than the lower one, purely because
-                    they are at different heights. The remaining{' '}
-                    <strong>{acUs.toFixed(1)} µs</strong> is the acoustic centres, and only
-                    that part is a property of the drivers.
+                    they are at different heights.
+                    {mounted && (
+                      <>
+                        {' '}
+                        Another <strong>{p.mountUs.toFixed(1)} µs</strong> is MOUNTING DEPTH:
+                        the cabinet puts one cone further back
+                        {delayGeometry.offBaffle.length > 0
+                          ? ` (${delayGeometry.offBaffle.join(', ')} does not radiate from the front baffle)`
+                          : ''}
+                        , which the drawing already explains and the drivers should not be
+                        blamed for.
+                      </>
+                    )}{' '}
+                    The remaining <strong>{acUs.toFixed(1)} µs</strong> is the acoustic
+                    centres, and only that part is a property of the drivers.
                     {excessBridge
                       ? ' (Taken from the excess-phase Δ, the honest one for depth.)'
                       : ''}{' '}
                     The rig share shrinks with distance — which is why a sum aligned at the
                     microphone is not aligned at the seat.
                     {delayGeometry.lowMid && (
-                      <> Woofer→mid rig share: {delayGeometry.lowMid.us.toFixed(1)} µs.</>
+                      <> Woofer→mid rig share: {delayGeometry.lowMid.rigUs.toFixed(1)} µs
+                      {Math.abs(delayGeometry.lowMid.mountUs) >= 1
+                        ? `, mounting ${delayGeometry.lowMid.mountUs.toFixed(1)} µs`
+                        : ''}
+                      .</>
                     )}
                   </>
                 );
@@ -9700,6 +9917,8 @@ export default function App() {
                           {bindingCeil(
                             physWin3.limits[side],
                             side === 'low' ? physWin3.lowCeilMeasured : physWin3.highCeilMeasured,
+                            // W-M's ceiling comes from the woofer, M-T's from the mid.
+                            cabinetInfo.offBaffle.includes(side === 'low' ? 'low' : 'mid'),
                           )}
                           {geen && <strong> ⚠ no room — these two cannot meet</strong>}
                         </span>

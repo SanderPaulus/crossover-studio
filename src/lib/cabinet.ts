@@ -15,11 +15,108 @@
 
 const C_AIR = 343;
 
+/**
+ * Which way a driver actually radiates. Not every driver is on the front:
+ * side-firing woofers are a normal design (a narrow front baffle, the cone
+ * area moved to the flanks), and so are up- and down-firing ones.
+ *
+ * This matters because almost everything on this page answers "where is this
+ * driver relative to the microphone" — and half of those answers need the
+ * driver's OWN axis, not the cabinet's. A side woofer sits 90° off-axis before
+ * the turntable moves at all, and its baffle is the side panel, not the front.
+ */
+export type DriverFacing = 'front' | 'rear' | 'left' | 'right' | 'up' | 'down';
+
+/** Unit normal of each facing in cabinet coordinates, before any tilt. */
+const AXIS: Record<DriverFacing, readonly [number, number, number]> = {
+  front: [0, 0, 1],
+  rear: [0, 0, -1],
+  right: [1, 0, 0],
+  left: [-1, 0, 0],
+  up: [0, 1, 0],
+  down: [0, -1, 0],
+};
+
+/** The panel opposite a given one — the other half of an opposed pair. */
+export const oppositeFacing = (f: DriverFacing): DriverFacing =>
+  ({ front: 'rear', rear: 'front', left: 'right', right: 'left', up: 'down', down: 'up' } as const)[
+    f
+  ];
+
+/**
+ * The driver's radiating axis, tilt included.
+ *
+ * `tiltDeg` is the sloped/stepped baffle: positive aims the driver further UP.
+ * It exists for the same reason `micElevationDeg` does — on a driver 250 mm
+ * below the reference at 500 mm the true angle is 26.6°, and a 6° baffle slope
+ * moves it to 20.6°, so leaving it out is not a rounding error. It is the
+ * mirror of the rig's elevation: one tilts the microphone, this tilts the
+ * driver.
+ *
+ * For a driver on a vertical panel (front/rear/left/right) the tilt rotates
+ * the axis up out of the horizontal plane. For an up- or down-firing one it
+ * rotates towards the FRONT, which is the only direction a designer aims such
+ * a driver on purpose.
+ *
+ * NB it tilts the AXIS, not the position: where the cone sits stays what you
+ * measured, and `depthMm` carries any step. On a real sloped baffle the two
+ * go together, and typing both is more honest than deriving one from a slope
+ * angle the app never sees.
+ */
+function axisOf(d: DriverPlacement): [number, number, number] {
+  const f = d.facing ?? 'front';
+  const [ax, ay, az] = AXIS[f];
+  const t = ((d.tiltDeg ?? 0) * Math.PI) / 180;
+  if (t === 0) return [ax, ay, az];
+  const c = Math.cos(t);
+  const s = Math.sin(t);
+  // Vertical facings tilt towards the front; the rest tilt up.
+  return f === 'up' || f === 'down' ? [ax, ay * c, s] : [ax * c, s, az * c];
+}
+
 export interface DriverPlacement {
   /** Horizontal offset from the measurement reference point, mm (+ = right). */
   xMm: number;
   /** Vertical offset from the measurement reference point, mm (+ = up). */
   yMm: number;
+  /** How far the acoustic centre sits BEHIND the baffle plane, mm (+ = deeper
+   *  into the cabinet). A front driver is a few cm; a side-firing woofer's
+   *  centre is typically half the cabinet depth back. Absent = 0 = on the
+   *  baffle, which is what every two-way tower effectively is. */
+  depthMm?: number;
+  /** Radiating direction. Absent = 'front'. */
+  facing?: DriverFacing;
+  /** Sloped or stepped baffle: degrees the driver's axis is aimed further UP
+   *  (towards the front, for an up/down-firing driver). Absent = flush. */
+  tiltDeg?: number;
+  /** This branch's drivers sit on BOTH opposing panels, firing away from each
+   *  other — the force-cancelling arrangement that side-mounted woofers are
+   *  normally built in. Their sum is what a sweep measures. */
+  opposed?: boolean;
+}
+
+/** Driver position in cabinet coordinates (+z out of the baffle), mm. */
+const posOf = (d: DriverPlacement): [number, number, number] => [
+  d.xMm,
+  d.yMm,
+  -(d.depthMm ?? 0),
+];
+
+/** Mic/listener position on a sphere around the REFERENCE point: horizontal
+ *  angle `nominalDeg`, elevation `elevationDeg` (+ = above the reference
+ *  plane). One definition, used by every function here — it is one rig. */
+function rigPoint(
+  distanceMm: number,
+  nominalDeg: number,
+  elevationDeg: number,
+): [number, number, number] {
+  const t = (nominalDeg * Math.PI) / 180;
+  const v = (elevationDeg * Math.PI) / 180;
+  return [
+    distanceMm * Math.cos(v) * Math.sin(t),
+    distanceMm * Math.sin(v),
+    distanceMm * Math.cos(v) * Math.cos(t),
+  ];
 }
 
 /* ------------------------------------------------------------------ *
@@ -52,6 +149,11 @@ export interface DriverPlacement {
  * on a driver 380 mm below the reference at 500 mm, ±10° of elevation moves the
  * true angle from 31° to 43°, so guessing the sign would be worse than not
  * modelling it at all. Zero reduces to the plain form above.
+ *
+ * The general form measures against the driver's OWN axis, so a side-firing
+ * woofer reads ~90° at a nominal 0° — which is the truth, and the reason a
+ * front turntable sweep says nothing about that driver's own directivity. A
+ * front-facing driver on the baffle reduces exactly to the expression above.
  */
 export function trueOffAxisDeg(
   driver: DriverPlacement,
@@ -60,18 +162,45 @@ export function trueOffAxisDeg(
   micElevationDeg = 0,
 ): number | null {
   if (!(micDistanceMm > 0)) return null;
-  const t = (nominalDeg * Math.PI) / 180;
-  const v = (micElevationDeg * Math.PI) / 180;
-  // Mic on a sphere around the reference point: horizontal angle t, vertical
-  // elevation v (positive = above the reference plane).
-  const mx = micDistanceMm * Math.cos(v) * Math.sin(t);
-  const my = micDistanceMm * Math.sin(v);
-  const mz = micDistanceMm * Math.cos(v) * Math.cos(t);
-  const dx = mx - driver.xMm;
-  const dy = my - driver.yMm;
-  const len = Math.hypot(dx, dy, mz);
+  const [mx, my, mz] = rigPoint(micDistanceMm, nominalDeg, micElevationDeg);
+  const [px, py, pz] = posOf(driver);
+  const dx = mx - px;
+  const dy = my - py;
+  const dz = mz - pz;
+  const len = Math.hypot(dx, dy, dz);
   if (!(len > 0)) return null;
-  return (Math.acos(Math.max(-1, Math.min(1, mz / len))) * 180) / Math.PI;
+  const [nx, ny, nz] = axisOf(driver);
+  const cos = (dx * nx + dy * ny + dz * nz) / len;
+  return (Math.acos(Math.max(-1, Math.min(1, cos))) * 180) / Math.PI;
+}
+
+/**
+ * Both true angles of an OPPOSED pair (side-mounted woofers firing away from
+ * each other), or null when the branch is not opposed.
+ *
+ * There is no single answer for such a branch, and inventing one is the whole
+ * failure mode this file exists to prevent: at a nominal 0° both drivers are
+ * 90° off their own axes, and turning the cabinet 30° puts one at 60° and the
+ * other at 120°. What a sweep captures is their SUM — which is why an opposed
+ * pair is used low, where each is omnidirectional and the question does not
+ * arise.
+ */
+export function opposedAnglesDeg(
+  driver: DriverPlacement,
+  micDistanceMm: number,
+  nominalDeg: number,
+  micElevationDeg = 0,
+): { nearDeg: number; farDeg: number } | null {
+  if (!driver.opposed) return null;
+  const a = trueOffAxisDeg(driver, micDistanceMm, nominalDeg, micElevationDeg);
+  const b = trueOffAxisDeg(
+    { ...driver, facing: oppositeFacing(driver.facing ?? 'front'), opposed: false },
+    micDistanceMm,
+    nominalDeg,
+    micElevationDeg,
+  );
+  if (a === null || b === null) return null;
+  return { nearDeg: Math.min(a, b), farDeg: Math.max(a, b) };
 }
 
 /**
@@ -89,13 +218,9 @@ export function pathLengthMm(
   elevationDeg = 0,
 ): number | null {
   if (!(distanceMm > 0)) return null;
-  const t = (nominalDeg * Math.PI) / 180;
-  const v = (elevationDeg * Math.PI) / 180;
-  return Math.hypot(
-    distanceMm * Math.cos(v) * Math.sin(t) - driver.xMm,
-    distanceMm * Math.sin(v) - driver.yMm,
-    distanceMm * Math.cos(v) * Math.cos(t),
-  );
+  const [mx, my, mz] = rigPoint(distanceMm, nominalDeg, elevationDeg);
+  const [px, py, pz] = posOf(driver);
+  return Math.hypot(mx - px, my - py, mz - pz);
 }
 
 /** Speed of sound, mm/s — the one place this project converts path to time. */
@@ -128,6 +253,49 @@ export function geometricPathExcessMm(
   const d = pathLengthMm(driver, distanceMm, 0, elevationDeg);
   if (d === null) return null;
   return d - distanceMm;
+}
+
+/**
+ * The same excess path, split into the parts that mean different things.
+ *
+ * With mounting depth in the model the sum is no longer two things but three,
+ * and only the last one is a property of the DRIVER:
+ *
+ *  - `rigMm`      the oblique path to a driver at another height. A rig
+ *                 property: it shrinks as you step back.
+ *  - `mountingMm` how much further away the cone sits because it is recessed,
+ *                 or on the side panel, or firing at the floor. KNOWN from the
+ *                 cabinet, and nothing to do with the driver's own acoustic
+ *                 centre. It is NOT simply `depthMm`: close up the offset and
+ *                 the depth partly share a direction, so a 150 mm-deep woofer
+ *                 300 mm low contributes 133 mm at 500 mm and converges on the
+ *                 full 150 only as you step back (145 at 1 m, 150 at 4 m).
+ *                 Which is why it is computed at the distance you measured at
+ *                 rather than read off the drawing.
+ *  - `totalMm`    their sum, which is what a delay measurement contains.
+ *
+ * This is why a side-firing woofer trips the timing check: half a cabinet
+ * depth is ~150 mm ≈ 440 µs, so without the mounting term the app reads a
+ * perfectly ordinary speaker as a driver whose acoustic centre is a third of a
+ * metre out of line. Subtracting what the geometry already explains leaves a
+ * residual that can be judged honestly.
+ *
+ * Split by construction, not by approximation: `rigMm` is the excess this
+ * driver would have at zero depth, so the two always add up to the total.
+ */
+export function pathBreakdownMm(
+  driver: DriverPlacement,
+  distanceMm: number,
+  elevationDeg = 0,
+): { rigMm: number; mountingMm: number; totalMm: number } | null {
+  const total = geometricPathExcessMm(driver, distanceMm, elevationDeg);
+  const rig = geometricPathExcessMm(
+    { xMm: driver.xMm, yMm: driver.yMm },
+    distanceMm,
+    elevationDeg,
+  );
+  if (total === null || rig === null) return null;
+  return { rigMm: rig, mountingMm: total - rig, totalMm: total };
 }
 
 /**
@@ -213,15 +381,7 @@ export function rotationLevelOffsetDb(
   micElevationDeg = 0,
 ): number | null {
   if (!(micDistanceMm > 0)) return null;
-  const v = (micElevationDeg * Math.PI) / 180;
-  const at = (deg: number) => {
-    const t = (deg * Math.PI) / 180;
-    return Math.hypot(
-      micDistanceMm * Math.cos(v) * Math.sin(t) - driver.xMm,
-      micDistanceMm * Math.sin(v) - driver.yMm,
-      micDistanceMm * Math.cos(v) * Math.cos(t),
-    );
-  };
+  const at = (deg: number) => pathLengthMm(driver, micDistanceMm, deg, micElevationDeg) ?? 0;
   const d0 = at(0);
   const d1 = at(nominalDeg);
   if (!(d0 > 0) || !(d1 > 0)) return null;
@@ -336,9 +496,41 @@ export function gateLimitHz(gateMs: number): number | null {
  * ------------------------------------------------------------------ */
 
 /** Acoustic centre-to-centre spacing of two drivers, mm — the input the
- *  vertical-lobing ceiling needs, derived instead of typed twice. */
+ *  vertical-lobing ceiling needs, derived instead of typed twice. Measured in
+ *  three dimensions: a side-firing woofer's centre is half a cabinet back, and
+ *  that separation is just as real as a vertical one. */
 export function centreToCentreMm(a: DriverPlacement, b: DriverPlacement): number {
-  return Math.hypot(a.xMm - b.xMm, a.yMm - b.yMm);
+  const [ax, ay, az] = posOf(a);
+  const [bx, by, bz] = posOf(b);
+  return Math.hypot(ax - bx, ay - by, az - bz);
+}
+
+/** The dimensions of the box, for the panel a driver actually sits on. */
+export interface BoxDims {
+  widthMm: number;
+  heightMm: number;
+  /** Front-to-back, mm. Only needed once a driver fires sideways. */
+  depthMm?: number;
+}
+
+/**
+ * The width of the panel a driver radiates from — the number the baffle step
+ * and the diffraction question are actually about.
+ *
+ * For a front driver it is the baffle width, as always. For a SIDE-firing one
+ * it is the cabinet DEPTH, and on the tall narrow cabinets that use side
+ * woofers those two differ by a factor of two or more — so the front baffle's
+ * step frequency is simply the wrong number for that driver. Up/down-firing
+ * drivers radiate from a panel that is width × depth; width is the honest
+ * choice for a step estimate that is already only an estimate.
+ */
+export function radiatingPanelWidthMm(
+  facing: DriverFacing | undefined,
+  box: BoxDims,
+): number | null {
+  const f = facing ?? 'front';
+  const w = f === 'left' || f === 'right' ? box.depthMm : box.widthMm;
+  return w !== undefined && w > 0 ? w : null;
 }
 
 /**
@@ -356,20 +548,35 @@ export function baffleStepHz(widthMm: number): number | null {
   return 115 / (widthMm / 1000);
 }
 
-/** Distance from a driver to the nearest baffle edge, mm. The asymmetry of
- *  these distances is what actually shapes diffraction — a driver centred
- *  left-to-right gets both edges at once and the ripple is worst. */
+/**
+ * Distance from a driver to the nearest edge of the panel it sits on, mm. The
+ * asymmetry of these distances is what actually shapes diffraction — a driver
+ * centred left-to-right gets both edges at once and the ripple is worst.
+ *
+ * A side-firing driver is measured on the SIDE panel: its horizontal
+ * coordinate there is its mounting depth from the front, and the panel spans
+ * the cabinet depth. Without the box depth there is nothing honest to say, so
+ * it returns null rather than quietly measuring against the front baffle.
+ */
 export function nearestEdgeMm(
   driver: DriverPlacement,
-  baffle: { widthMm: number; heightMm: number; refFromTopMm: number },
+  baffle: BoxDims & { refFromTopMm: number },
 ): number | null {
   if (!(baffle.widthMm > 0) || !(baffle.heightMm > 0)) return null;
   // Reference point sits on the vertical centre line, `refFromTopMm` below the top.
-  const left = baffle.widthMm / 2 + driver.xMm;
-  const right = baffle.widthMm / 2 - driver.xMm;
   const top = baffle.refFromTopMm - driver.yMm;
   const bottom = baffle.heightMm - baffle.refFromTopMm + driver.yMm;
-  const d = [left, right, top, bottom].filter((v) => Number.isFinite(v));
+  const facing = driver.facing ?? 'front';
+  let across: number[];
+  if (facing === 'left' || facing === 'right') {
+    const depth = baffle.depthMm;
+    if (!(depth !== undefined && depth > 0)) return null;
+    const fromFront = driver.depthMm ?? 0;
+    across = [fromFront, depth - fromFront];
+  } else {
+    across = [baffle.widthMm / 2 + driver.xMm, baffle.widthMm / 2 - driver.xMm];
+  }
+  const d = [...across, top, bottom].filter((v) => Number.isFinite(v));
   return d.length ? Math.min(...d) : null;
 }
 

@@ -142,6 +142,8 @@ export interface ProjectDesign {
     gateMs?: string;
     baffleWidthMm?: string;
     baffleHeightMm?: string;
+    /** Front-to-back, mm — the panel width for a side-firing driver. */
+    cabinetDepthMm?: string;
     refFromTopMm?: string;
     refHeightMm?: string;
     listenDistanceM?: string;
@@ -160,6 +162,14 @@ export interface ProjectDesign {
           count?: string;
           /** Centre-to-centre spacing between them, mm; only used when count > 1. */
           spacingMm?: string;
+          /** Acoustic centre behind the baffle plane, mm; absent = on it. */
+          depthMm?: string;
+          /** 'front' | 'rear' | 'left' | 'right' | 'up' | 'down'; absent = front. */
+          facing?: string;
+          /** Sloped/stepped baffle: degrees aimed further up. */
+          tiltDeg?: string;
+          /** count > 1 drivers on both opposing panels (force cancelling). */
+          opposed?: boolean;
         }
       >
     >;

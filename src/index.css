@@ -2413,6 +2413,20 @@ button:disabled {
   flex-basis: 100%;
   margin-left: 1.4rem;
 }
+/* A checkbox inside a field row: the global `label` rule is a COLUMN, so it
+   has to say row or the box and its text stack. */
+.cd-inline-check {
+  display: inline-flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 0.25rem;
+  margin-left: 0.5rem;
+  font-size: 0.8rem;
+  white-space: nowrap;
+}
+.cd-inline-check input {
+  margin: 0;
+}
 .cd-hint {
   font-size: 0.74rem;
   opacity: 0.75;

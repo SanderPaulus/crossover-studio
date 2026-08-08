@@ -235,6 +235,63 @@ minimum phase reconstrueert. Voertaal met Sander: **Nederlands**; code/comments 
   nooit de meetdata zelf**, anders modelleer je waar je meet.
   Coördinaten: baffle-vlak, oorsprong op het MEETREFERENTIEPUNT (waar de mic op gericht stond /
   de draai-as), +x rechts, +y omhoog, mm.
+  **NIET ELKE DRIVER ZIT OP HET FRONT (aug 2026, Sanders vriend met zij-woofers)**: `depthMm`
+  (akoestisch centrum achter het baffle-vlak) + `facing` ('front'|'left'|'right'|'up'|'down')
+  op `DriverPlacement`, plus `cabinetDepthMm` op de kast. NB de aanleiding was een VRAAG
+  ("houden we hier rekening mee?"), geen veldmelding — er is geen meting van zo'n kast in huis
+  en niemand heeft de fout in het wild gezien. De ernst is afgeleid en daarna SYNTHETISCH
+  aangetoond (150 mm diepte op de KOAN-set ingetypt, in de browser): een halve kastdiepte is
+  ~150 mm ≈ 440 µs, en zonder montage-term boekt de app dat volledig op het akoestisch centrum
+  van de driver — gemeten 432 µs die als driver-eigenschap las. Een normale kast zou dus lezen
+  als een driver die een derde meter uit het lood staat, en het timing-paneel zou daar terecht
+  over klagen. `pathBreakdownMm` splitst de gemeten padoverschot nu DRIEledig: `rigMm` (schuine weg,
+  krimpt met afstand), `mountingMm` (wat de kast al verklaart) en de rest — en alleen die rest
+  is een driver-eigenschap. Split is EXACT per constructie (`rigMm` = wat dezelfde driver op
+  diepte 0 zou hebben), dus de twee tellen altijd op tot het totaal.
+  **GEMETEN en het weerlegde mijn eigen aanname**: `mountingMm` is NIET constant met afstand.
+  Dichtbij delen de offset en de diepte deels een richting, dus een 150 mm diepe woofer 300 mm
+  laag draagt 133 mm bij op 500 mm en convergeert pas naar 150 als je achteruit loopt (145 op
+  1 m, 149,6 op 4 m). Daarom wordt hij op de MEETafstand gerekend en niet van de tekening
+  gelezen; de docstring beweerde eerst "constant" en dat is rechtgezet.
+  Verder generaliseerd, allemaal bit-identiek voor een front-driver op diepte 0 (test-gepind,
+  de 27 bestaande cabinet-tests bleven groen): `trueOffAxisDeg` meet tegen de EIGEN as van de
+  driver (een zij-woofer leest 90° bij nominaal 0° — gemeten in de app: 0°→90°, 30°→67°,
+  75°→31°, en dát is de waarheid die het baffle-vlak-model niet kon uitdrukken),
+  `centreToCentreMm` is 3D (diepte lobet net zo hard), `radiatingPanelWidthMm` geeft de
+  baffle-step het paneel waar de driver echt op zit (zij = kastDIEPTE; op een smalle kast een
+  factor 2), en `nearestEdgeMm` meet op het zijpaneel of geeft **null** zonder kastdiepte —
+  stil tegen het front meten zou een zelfverzekerd fout antwoord zijn.
+  **DE REST VAN DE KASTVORMEN (zelfde ronde, Sanders "ik wil dat we met dergelijk cabinet
+  designs voorbereid zijn")**: de vormen zijn systematisch langsgelopen tegen wat het model
+  kan uitdrukken, en er bleven drie echte gaten over — alledrie gesloten omdat ze een GETOOND
+  getal veranderen (de veldregel van dit bestand).
+  (a) **`'rear'`** in de facing-enum: ambience-tweeter, bipool, achterwaartse passieve
+  straler. 180° bij nominaal 0 is geen curiositeit maar de uitspraak "een fronsweep meet hier
+  de kamerreflectie, niet de driver"; zijn paneel is de achterwand (breedte = frontbreedte,
+  níét de diepte).
+  (b) **`tiltDeg`** — schuine/getrapte baffle, + = verder omhoog gericht. Exact het spiegelbeeld
+  van `micElevationDeg` (die kantelt de MIC, deze de DRIVER) en het verdient zijn plek met
+  hetzelfde argument: op een driver 250 mm laag bij 500 mm gaat de ware hoek van 26,6° naar
+  20,6° bij 6° helling, en naar 32,6° de andere kant op. Kantelt de AS, niet de positie — op
+  een echte schuine baffle horen beide, en twee getallen intypen is eerlijker dan er één
+  afleiden uit een hellingshoek die de app nooit ziet. Voor up/down-firing kantelt hij naar
+  VOREN (de enige richting waarin iemand zo'n driver bewust richt).
+  (c) **`opposed`** — de force-cancelling woofers op BEIDE zijpanelen, en dat is hoe
+  zij-woofers normaal gebouwd wórden. Zo'n tak heeft TWEE ware hoeken en `opposedAnglesDeg`
+  geeft ze allebei i.p.v. te middelen: in de app gemeten 0°→89°/89°, 30°→66°/112°, 75°→30°/146°
+  (89 en niet 90 door de 6° kanteling — de rekenkunde controleert zichzelf). Het akoestische
+  deel was al gedekt: `spacingMm` = kastbreedte voedt `lobingCeilingHz` (200 mm ⇒ 858 Hz), en
+  dát is het getal dat zegt dat zo'n tak laag wil overnemen.
+  Bewust NIET gemodelleerd, wel geweten: een ACHTERPOORT wordt in `sumRadiators` als
+  samenvallend met de conus gesommeerd (Keele's methode is zo gedefinieerd). Onder ~100 Hz is
+  de golflengte metersgroot en is dat prima; erboven draagt een poort nauwelijks. Een
+  padverschil erin modelleren zou schijnprecisie zijn op de enige plek waar de gepubliceerde
+  methode juist zegt het niet te doen.
+  Bewust NIET gedaan: het gemeten bundelplafond UITZETTEN voor een off-baffle driver. Het
+  GETAL blijft geldig (een fronsweep meet hoe snel het systeem off-axis afvalt, en dat is een
+  echte reden om lager over te nemen); alleen het ETIKET was fout, dus dat leest nu
+  "measured directivity, off-baffle driver" i.p.v. "measured beaming". Een venster weggooien
+  is riskanter dan het verkeerd labelen — de anker-les.
   **`trueOffAxisDeg` is de belangrijkste functie van het bestand.** Een horizontale draaitafel
   levert "0°/10°/20°/30°" van de KAST, niet van elke driver. Met de mic op afstand R en de kast
   θ gedraaid staat de mic op (R·sinθ, 0, R·cosθ); een driver op (x, y, 0) kijkt langs +z, dus

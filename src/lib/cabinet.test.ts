@@ -12,7 +12,11 @@ import {
   farFieldVerdict,
   listeningAngleDeg,
   nearestEdgeMm,
+  opposedAnglesDeg,
+  pathBreakdownMm,
+  oppositeFacing,
   pistonDiameterMm,
+  radiatingPanelWidthMm,
   rotationLevelOffsetDb,
   trueOffAxisDeg,
   unloadingRisk,
@@ -271,5 +275,142 @@ describe('measuring-rig geometry inside a measured delay (Sanders question)', ()
     // Measuring where you listen leaves nothing to correct.
     const none = listeningDelayShiftUs({ low: at(50), high: at(0) }, 2000, 2000)!;
     for (const v of Object.values(none)) expect(v).toBeCloseTo(0, 10);
+  });
+});
+
+describe('drivers that are not on the front baffle', () => {
+  // A friend's speaker with side-firing woofers. The whole point of these
+  // fields is that they change numbers the app SHOWS — they never touch the
+  // measured data, so the engine is unaffected either way.
+  const side = { xMm: 0, yMm: -300, depthMm: 150, facing: 'right' as const };
+
+  it('a side woofer is already 90 degrees off ITS OWN axis at a nominal 0', () => {
+    // The turntable turns the CABINET. A front sweep says nothing about this
+    // driver's own directivity, and the old baffle-plane model claimed it did.
+    expect(trueOffAxisDeg(side, 1000, 0)!).toBeGreaterThan(80);
+    // Turning the cabinet towards the driver's side brings it back on-axis.
+    const toward = trueOffAxisDeg(side, 1000, 90)!;
+    expect(toward).toBeLessThan(trueOffAxisDeg(side, 1000, 0)!);
+  });
+
+  it('front-facing drivers on the baffle are bit-identical to the old model', () => {
+    // The generalisation must not move a single existing number: every 2-way
+    // tower this app has ever seen is this case.
+    const plain = { xMm: 40, yMm: -250 };
+    const spelled = { xMm: 40, yMm: -250, depthMm: 0, facing: 'front' as const };
+    for (const a of [0, 10, 30]) {
+      expect(trueOffAxisDeg(spelled, 500, a)).toBe(trueOffAxisDeg(plain, 500, a));
+      expect(rotationLevelOffsetDb(spelled, 500, a)).toBe(rotationLevelOffsetDb(plain, 500, a));
+    }
+    expect(centreToCentreMm(spelled, plain)).toBe(0);
+  });
+
+  it('splits mounting depth out of a measured delay — the reason for all this', () => {
+    // Half a cabinet back is ~150 mm ≈ 437 µs of pure geometry. Charged to the
+    // driver it reads as an acoustic centre a third of a metre out of line,
+    // which is what trips the timing check on a perfectly ordinary speaker.
+    const b = pathBreakdownMm(side, 1000)!;
+    expect(b.mountingMm).toBeCloseTo(144.5, 1);
+    expect((b.mountingMm / C_AIR_MM_S) * 1e6).toBeCloseTo(421, 0);
+    // The split is exact by construction, never an approximation.
+    expect(b.rigMm + b.mountingMm).toBeCloseTo(b.totalMm, 10);
+    // And the rig share is what the same driver would have on the baffle.
+    expect(b.rigMm).toBeCloseTo(geometricPathExcessMm({ xMm: 0, yMm: -300 }, 1000)!, 10);
+  });
+
+  it('the two halves behave differently with distance — the reason to split them', () => {
+    // Stepping back drives the rig share to nothing, while the mounting share
+    // CONVERGES on the real depth (close up the offset and the depth partly
+    // share a direction, so it starts lower). Measured, not assumed: 133 mm at
+    // 500 mm, 149.6 at 4 m, against a true 150.
+    const near = pathBreakdownMm(side, 500)!;
+    const far = pathBreakdownMm(side, 4000)!;
+    expect(near.rigMm).toBeCloseTo(83.1, 1);
+    expect(far.rigMm).toBeLessThan(near.rigMm / 4);
+    expect(near.mountingMm).toBeCloseTo(132.8, 1);
+    expect(far.mountingMm).toBeCloseTo(149.6, 1);
+    expect(far.mountingMm).toBeLessThan(150);
+  });
+
+  it('counts the depth in centre-to-centre spacing (it lobes just as hard)', () => {
+    const tweeter = { xMm: 0, yMm: 0 };
+    // 300 mm down and 150 mm back: the separation is the 3-D distance.
+    expect(centreToCentreMm(side, tweeter)).toBeCloseTo(Math.hypot(300, 150), 6);
+  });
+
+  it('measures a side driver against the SIDE panel, not the front baffle', () => {
+    // Tall narrow cabinets are exactly the ones that use side woofers, so the
+    // front width is the wrong number by a factor of two or more.
+    const box = { widthMm: 200, heightMm: 1000, depthMm: 400 };
+    expect(radiatingPanelWidthMm('front', box)).toBe(200);
+    expect(radiatingPanelWidthMm('right', box)).toBe(400);
+    expect(radiatingPanelWidthMm(undefined, box)).toBe(200);
+    // Baffle step follows the panel it actually radiates from.
+    expect(baffleStepHz(radiatingPanelWidthMm('right', box)!)!).toBeCloseTo(287.5, 1);
+    expect(baffleStepHz(radiatingPanelWidthMm('front', box)!)!).toBeCloseTo(575, 1);
+  });
+
+  it('says nothing about a side driver\u2019s edges rather than guessing', () => {
+    const noDepth = { widthMm: 200, heightMm: 1000, refFromTopMm: 100 };
+    // Without a box depth there is no side panel to measure against; silently
+    // falling back to the front baffle would be a confident wrong answer.
+    expect(nearestEdgeMm(side, noDepth)).toBeNull();
+    const withDepth = { ...noDepth, depthMm: 400 };
+    // 150 mm from the front, 250 mm from the back, 200 mm below the reference:
+    // the front edge is nearest.
+    expect(nearestEdgeMm(side, withDepth)!).toBeCloseTo(150, 6);
+  });
+});
+
+describe('the rest of the cabinet shapes a designer actually builds', () => {
+  it('a rear-firing driver points away from the microphone', () => {
+    // Ambience tweeters and bipoles. 180 deg at a nominal 0 is not a quirk:
+    // it says a front sweep measures the room's reflection, not the driver.
+    const rear = { xMm: 0, yMm: 0, facing: 'rear' as const, depthMm: 300 };
+    expect(trueOffAxisDeg(rear, 1000, 0)!).toBeCloseTo(180, 6);
+    // Its baffle is the back panel — same width as the front, not the depth.
+    const box = { widthMm: 200, heightMm: 1000, depthMm: 400 };
+    expect(radiatingPanelWidthMm('rear', box)).toBe(200);
+  });
+
+  it('a sloped baffle aims the driver, and it is not a rounding error', () => {
+    // Same argument that justified the rig's elevation field, mirrored: it
+    // tilts the microphone, this tilts the driver.
+    const flat = { xMm: 0, yMm: -250 };
+    expect(trueOffAxisDeg(flat, 500, 0)!).toBeCloseTo(26.6, 1);
+    // The driver sits BELOW the reference, so aiming it UP points it at the
+    // microphone and the true angle drops.
+    expect(trueOffAxisDeg({ ...flat, tiltDeg: 6 }, 500, 0)!).toBeCloseTo(20.6, 1);
+    // Aiming it away does the opposite, by the same amount.
+    expect(trueOffAxisDeg({ ...flat, tiltDeg: -6 }, 500, 0)!).toBeCloseTo(32.6, 1);
+    // Zero tilt is exactly the untilted form — no drift for the common case.
+    expect(trueOffAxisDeg({ ...flat, tiltDeg: 0 }, 500, 30)).toBe(trueOffAxisDeg(flat, 500, 30));
+  });
+
+  it('tilt aims an up-firing driver towards the front, not sideways', () => {
+    // The only direction anyone aims an up- or down-firing driver on purpose.
+    const up = { xMm: 0, yMm: 0, facing: 'up' as const };
+    expect(trueOffAxisDeg(up, 1000, 0)!).toBeCloseTo(90, 6);
+    // Tilted a full 90 deg towards the front it becomes a front driver.
+    expect(trueOffAxisDeg({ ...up, tiltDeg: 90 }, 1000, 0)!).toBeCloseTo(0, 6);
+  });
+
+  it('an opposed pair has TWO true angles, and refuses to average them', () => {
+    // Force-cancelling side woofers: the standard way to build them. One
+    // number here would be a fiction — at 0 deg both are 90 deg off, and
+    // turning the cabinet splits them apart.
+    const pair = { xMm: 0, yMm: -300, depthMm: 150, facing: 'right' as const, opposed: true };
+    const at0 = opposedAnglesDeg(pair, 2000, 0)!;
+    expect(at0.nearDeg).toBeCloseTo(at0.farDeg, 0);
+    const at30 = opposedAnglesDeg(pair, 2000, 30)!;
+    expect(at30.farDeg - at30.nearDeg).toBeGreaterThan(50);
+    // Not opposed = nothing to report; the plain angle already covers it.
+    expect(opposedAnglesDeg({ ...pair, opposed: false }, 2000, 30)).toBeNull();
+  });
+
+  it('opposite panels really are opposite', () => {
+    expect(oppositeFacing('left')).toBe('right');
+    expect(oppositeFacing('front')).toBe('rear');
+    expect(oppositeFacing('up')).toBe('down');
   });
 });
