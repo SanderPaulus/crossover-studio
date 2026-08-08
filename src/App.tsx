@@ -6890,9 +6890,13 @@ export default function App() {
                               </label>
                             )}
                             <span className="cd-hint">
+                              {/* ACOUSTIC centre, and say so: "0 for a flush-mounted
+                                  driver" invited the flange reading — a flush-mounted
+                                  cone's centre still sits its cone depth back, which is
+                                  exactly what confused the measured-depth readout. */}
                               {d.facing === 'front'
-                                ? 'behind the baffle · tilt + = aimed up (sloped baffle)'
-                                : 'from the front, along the cabinet · tilt + = aimed up'}
+                                ? 'acoustic centre behind the baffle — a flush-mounted cone still sits its cone depth back · tilt + = aimed up'
+                                : 'acoustic centre from the front, along the cabinet · tilt + = aimed up'}
                             </span>
                           </span>
 

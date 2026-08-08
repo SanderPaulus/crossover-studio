@@ -315,6 +315,19 @@ minimum phase reconstrueert. Voertaal met Sander: **Nederlands**; code/comments 
   het akoestisch centrum achter het baffle-vlak zit — dus een diepte die je bij de tweeter
   intypte werd stil weggegooid. In de browser aangetoond: met 20 mm gaan zijn hoeken van
   0°→0°/15°→15°/30°→30° naar 0°→0°/15°→14°/30°→29°; daarvoor bewoog er niets.
+  **DE WISKUNDE HERBEVESTIGD VANAF DE RUWE FILES (Sanders "oorspronkelijk zat de tweeter
+  16 mm achter de mid... check de wiskunde nog maar eens")**: beide getallen komen uit
+  DEZELFDE meting — raw Δ +47,3 µs (tweeter later) vs excess Δ −50,1 µs (tweeter eerder) —
+  en het tekenconflict ís de juli-les; de scheidsrechter blijft de fase-reproductietest
+  (~2° vs ~78°). Zijn nieuwe fysieke feit WEERLEGT het oude teken juist: de tweeter zit
+  achter een 11 mm-waveguide en de mid is op het front geschroefd, maar diepte = AKOESTISCH
+  CENTRUM, niet de flens — een conus-AC zit bij de spreekspoel, cm's achter de flens. Meting:
+  mid-AC ~12 mm achter tweeter-AC ⇒ mid-AC ≈ 23 mm achter het front (normaal); het rauwe
+  teken zou een dome ~40 mm achter het front eisen. UI-hint "0 for a flush-mounted driver"
+  was de flens-lezing die dit voedde — vervangen door de akoestisch-centrum-formulering.
+  NB gevoeligheid nogmaals gemeten: 12,2 mm hoort bij Distance 1000 / y 100; op 500 mm is
+  het 7,4 — het Distance-veld moet de ECHTE meetafstand zijn (de "0°→6°"-uitlezing verraadt
+  welke er staat).
   **HET ANKER VERSCHUIFT, en dat is het antwoord op Sanders "als ik de hoogte van de mid
   verander, verandert de diepte van de tweeter dan mee?"** — ja. Het anker is de ONDIEPSTE
   driver (k = min over rollen van arrival − rig), en welke dat is hangt af van de posities.
