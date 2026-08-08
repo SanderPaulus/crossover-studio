@@ -455,6 +455,71 @@ function breakPhaseWraps(arr: number[]): number[] {
   return arr;
 }
 
+const wrapPhaseDeg = (d: number): number => {
+  let v = d % 360;
+  if (v > 180) v -= 360;
+  if (v < -180) v += 360;
+  return v;
+};
+
+/**
+ * The 3-way phase headline as ONE stitched line: mid-vs-woofer inside the W-M
+ * overlap window, tweeter-vs-mid inside the M-T one, a gap in between (nothing
+ * hands over there). A pair's relative phase is meaningless outside its own
+ * window, so one line can honestly carry both.
+ *
+ * Shared by the live curve and the comparison ghosts on purpose. Two consumers
+ * each re-deriving "which pair owns this frequency" is exactly the bug family
+ * this codebase keeps paying for — a ghost drawn on a different stitching rule
+ * than the live line is not a comparison.
+ */
+function stitchPairPhase(
+  lowPh: readonly number[],
+  midPh: readonly number[],
+  highPh: readonly number[],
+  freq: readonly number[],
+  low: { points: { cls: unknown; phaseErrorDeg: number }[]; overlapCentreHz: number | null },
+  high: { points: { cls: unknown; phaseErrorDeg: number }[]; overlapCentreHz: number | null },
+): { y: number[]; colors: (string | null)[] } {
+  // Each pair's window as ONE CONTIGUOUS span (first..last overlap point). The
+  // raw per-point |ΔdB| ≤ 20 test flickers at the edges — that drew bites and
+  // orphan islands; interior points that briefly fail it still carry a
+  // perfectly meaningful relative phase.
+  const spanOf = (pts: { cls: unknown }[]): [number, number] | null => {
+    let lo = -1;
+    let hi = -1;
+    for (let i = 0; i < pts.length; i++) {
+      if (pts[i].cls !== null) {
+        if (lo < 0) lo = i;
+        hi = i;
+      }
+    }
+    return lo >= 0 ? [lo, hi] : null;
+  };
+  const lowSpan = spanOf(low.points);
+  const highSpan = spanOf(high.points);
+  // Where both pairs claim a frequency, the geometric mean of the two overlap
+  // centres decides: below it the low pair owns the handover.
+  const split =
+    low.overlapCentreHz !== null && high.overlapCentreHz !== null
+      ? Math.sqrt(low.overlapCentreHz * high.overlapCentreHz)
+      : null;
+  const y: number[] = new Array(freq.length).fill(NaN);
+  const colors: (string | null)[] = new Array(freq.length).fill(null);
+  for (let i = 0; i < freq.length; i++) {
+    const lowOn = lowSpan !== null && i >= lowSpan[0] && i <= lowSpan[1];
+    const highOn = highSpan !== null && i >= highSpan[0] && i <= highSpan[1];
+    if (lowOn && (!highOn || (split !== null && freq[i] < split))) {
+      y[i] = wrapPhaseDeg(midPh[i] - lowPh[i]);
+      colors[i] = TIER_COLOR[phaseTier(low.points[i].phaseErrorDeg)];
+    } else if (highOn) {
+      y[i] = wrapPhaseDeg(highPh[i] - midPh[i]);
+      colors[i] = TIER_COLOR[phaseTier(high.points[i].phaseErrorDeg)];
+    }
+  }
+  return { y, colors };
+}
+
 /** Old → new value rows for the tune-diff table: L/C/R parts matched by
  *  partId whose value param moved. Values stay in the schematic's display
  *  units (mH/µF/Ω). Removed/added parts are already named in the note. */
@@ -777,9 +842,10 @@ export default function App() {
    *  and the "mid not in play yet" warning. */
   const hasMidBranch = !!midDrv || !!zStandalone.mid;
 
-  /** 3-way mode: all three RESPONSES loaded. The sim then sums via combineN;
-   *  everything inherently two-way (crossover optimizers, synthesis, vxp
-   *  export, integration score) is gated off with a message until trede 4. */
+  /** 3-way mode: all three RESPONSES loaded. The sim then sums via combineN.
+   *  Everything downstream now speaks pairs; what stays two-way is only what
+   *  is inherently a single-pair quantity (the overall integration score —
+   *  `pairScores` reports per adjacent pair instead). */
   const threeWay = !!(woofer && midDrv && tweeter);
   /** Mid data without a full 3-way cannot be placed — say so loudly and keep
    *  it out of the sim AND the solver map (signalling, never a silent guess).
@@ -5424,16 +5490,11 @@ export default function App() {
   // indistinguishable — dash patterns only help inside the chart itself.
   const GHOST_COLORS = ['var(--viz-ghost1)', 'var(--viz-ghost2)', 'var(--viz-ghost3)', 'var(--viz-ghost4)'];
   const tabGhosts: { spl: Series[]; phase: Series[]; z: Series[] } = useMemo(() => {
-    if (!compareTabs || !networkActive || !sim || designs.length < 2 || threeWay)
+    if (!compareTabs || !networkActive || !sim || designs.length < 2)
       return { spl: [], phase: [], z: [] };
     if (Object.keys(impedances).length === 0) return { spl: [], phase: [], z: [] };
     const grid = sim.combined.freq;
-    const zOnGrid = Object.fromEntries(
-      Object.entries(impedances).map(([model, z]) => {
-        const g = resample(z.freq, z.magnitude, z.phase, [...grid], { clampEdges: true });
-        return [model, g.spl.map((mag, i) => fromPolar(mag, (g.phaseDeg[i] * Math.PI) / 180))];
-      }),
-    );
+    const zOnGrid = zGridWithSlots(impedances, grid);
     const spl: Series[] = [];
     const phase: Series[] = [];
     const z: Series[] = [];
@@ -5443,12 +5504,22 @@ export default function App() {
         try {
           const { netlist } = crossoverToNetlist({ name: d.name, parts: d.parts });
           const sol = solveNetwork(netlist, grid, zOnGrid);
-          let w = sim.base.w;
-          let t = sim.base.t;
-          const { hW, hT } = slotTransfers(sol);
-          if (hW) w = applyTransfer(w, hW);
-          if (hT) t = applyTransfer(t, hT);
-          const combined = combine(w, t, branchAdj.tweeter);
+          const { hW, hM, hT, ambiguous } = slotTransfersN(sol);
+          if (ambiguous) return; // no guessing which branch is which
+          const w = hW ? applyTransfer(sim.base.w, hW) : sim.base.w;
+          const t = hT ? applyTransfer(sim.base.t, hT) : sim.base.t;
+          // Three-way ghosts sum all three branches — same pipeline as the
+          // live simulation, so a ghost cannot differ from the curve that tab
+          // would draw if you switched to it.
+          const n3 =
+            threeWay && sim.base.m
+              ? combineN([
+                  { response: w },
+                  { response: hM ? applyTransfer(sim.base.m, hM) : sim.base.m, adjust: branchAdj.mid },
+                  { response: t, adjust: branchAdj.tweeter },
+                ])
+              : null;
+          const combined = n3 ?? combine(w, t, branchAdj.tweeter);
           const style = {
             label: d.name,
             color: GHOST_COLORS[i % GHOST_COLORS.length],
@@ -5459,11 +5530,32 @@ export default function App() {
             secondary: true,
           };
           spl.push({ ...style, id: `ghost:${d.id}`, y: combined.combinedSpl });
-          phase.push({
-            ...style,
-            id: `ghostp:${d.id}`,
-            y: breakPhaseWraps(combined.relativePhaseDeg.slice()),
-          });
+          // Phase ghost: in 3-way the headline is the stitched active-pair
+          // line, and each tab gets its OWN overlap windows — a tab that hands
+          // over elsewhere should show that, not borrow the live design's
+          // split. Muted, so no tier colours here.
+          let phaseY: number[];
+          if (n3) {
+            const [bLow, bMid, bHigh] = n3.branches;
+            const flat = { offsetMm: 0, trimDb: 0, inverted: false };
+            const integOf = (a: GriddedResponse, b: GriddedResponse) =>
+              computeIntegration(combine(a, b, flat));
+            phaseY = breakPhaseWraps(
+              stitchPairPhase(
+                bLow.phaseDeg,
+                bMid.phaseDeg,
+                bHigh.phaseDeg,
+                grid,
+                integOf(bLow, bMid),
+                integOf(bMid, bHigh),
+              ).y,
+            );
+          } else {
+            phaseY = breakPhaseWraps(
+              (combined as { relativePhaseDeg: number[] }).relativePhaseDeg.slice(),
+            );
+          }
+          phase.push({ ...style, id: `ghostp:${d.id}`, y: phaseY });
           z.push({
             ...style,
             id: `ghostz:${d.id}`,
@@ -5485,8 +5577,7 @@ export default function App() {
    *
    * One solve per tab, on the SAME pipeline the live simulation uses (measured
    * impedances, the branch adjustments as set), so a row cannot flatter a tab
-   * by measuring it differently. Works in three-way as well — unlike the ghost
-   * overlay, which is still two-way only.
+   * by measuring it differently.
    */
   const tabCompare = useMemo(() => {
     if (!sim || designs.length < 2 || !result) return null;
@@ -5659,9 +5750,14 @@ export default function App() {
    *  instead of being re-anchored away. Tweeter trim rides into its target —
    *  the trim knob is a playback adjustment, not a build deviation. */
   const targetSeries: Series[] = useMemo(() => {
-    if (!result || threeWay) return [];
+    if (!result) return [];
     const defs = [
       { id: 'wtarget', label: 'Woofer target', spec: vFilters.woofer, drv: result.woofer, color: 'var(--viz-woofer)', trim: 0, loaded: !!woofer },
+      // The mid rides on the same rule: its target is the bandpass SHAPE, and
+      // its trim is part of it because `sim.mid` already carries the adjust.
+      ...(threeWay && sim?.mid
+        ? [{ id: 'mtarget', label: 'Midrange target', spec: vFilters.mid, drv: sim.mid, color: 'var(--viz-mid)', trim: num(midTrimDb, 0), loaded: !!midDrv }]
+        : []),
       { id: 'ttarget', label: 'Tweeter target', spec: vFilters.tweeter, drv: result.tweeter, color: 'var(--viz-tweeter)', trim: num(trimDb, 0), loaded: !!tweeter },
     ].filter((d) => d.loaded && isActive(d.spec));
     if (defs.length === 0) return [];
@@ -5682,6 +5778,9 @@ export default function App() {
       const shape = shapes[k];
       const top = Math.max(...shape);
       for (let i = 0; i < shape.length; i++) {
+        // Outside its own measured band a branch sits on the silent ghost; it
+        // carries no level, so anchoring on it would drag every target down.
+        if (d.drv.spl[i] <= SILENT_GHOST_DB + 100) continue;
         if (shape[i] >= top - 3 && Number.isFinite(d.drv.spl[i])) pool.push(d.drv.spl[i] - shape[i]);
       }
     });
@@ -5695,11 +5794,14 @@ export default function App() {
       dash: '2 4',
       width: 1.6,
       x: result.freq,
-      y: shapes[k].map((s) => s + offset),
+      // A target outside the branch's own measured band is a goal for data
+      // that does not exist — the gap is the honest drawing (same rule the
+      // branch curves themselves follow).
+      y: shapes[k].map((s, i) => (d.drv.spl[i] <= SILENT_GHOST_DB + 100 ? NaN : s + offset)),
       defaultOff: true,
       secondary: true,
     }));
-  }, [result, threeWay, vFilters, trimDb, woofer, tweeter]);
+  }, [result, sim, threeWay, vFilters, trimDb, midTrimDb, woofer, midDrv, tweeter]);
 
   /** Mask silent-ghost regions (per-branch bands, 3-way) to chart gaps. A
    *  real branch never sits below −300 dB; the ghost lives at −400 and a
@@ -6094,51 +6196,21 @@ export default function App() {
        * headline. The two full per-pair curves stay available behind their
        * legend chips (defaultOff — the legend IS the toggle). */
       if (pairScores) {
-        const lowPts = pairScores.low.integ.points;
-        const highPts = pairScores.high.integ.points;
-        const cLow = pairScores.low.integ.overlapCentreHz;
-        const cHigh = pairScores.high.integ.overlapCentreHz;
-        const split = cLow !== null && cHigh !== null ? Math.sqrt(cLow * cHigh) : null;
-        // Each pair's window as ONE CONTIGUOUS span (first..last overlap
-        // point). The raw per-point |ΔdB| ≤ 20 test flickers at the window
-        // edges — that drew bites and orphan islands in the line (Sanders'
-        // report); interior points that briefly fail the test still carry a
-        // perfectly meaningful relative phase.
-        const spanOf = (pts: typeof lowPts): [number, number] | null => {
-          let lo = -1;
-          let hi = -1;
-          for (let i = 0; i < pts.length; i++) {
-            if (pts[i].cls !== null) {
-              if (lo < 0) lo = i;
-              hi = i;
-            }
-          }
-          return lo >= 0 ? [lo, hi] : null;
-        };
-        const lowSpan = spanOf(lowPts);
-        const highSpan = spanOf(highPts);
-        const y: number[] = new Array(result.freq.length).fill(NaN);
-        const cols: (string | null)[] = new Array(result.freq.length).fill(null);
-        for (let i = 0; i < result.freq.length; i++) {
-          const lowOn = lowSpan !== null && i >= lowSpan[0] && i <= lowSpan[1];
-          const highOn = highSpan !== null && i >= highSpan[0] && i <= highSpan[1];
-          const useLow =
-            lowOn && (!highOn || (split !== null && result.freq[i] < split));
-          if (useLow) {
-            y[i] = wrapDeg(midPh[i] - result.woofer.phaseDeg[i]);
-            cols[i] = TIER_COLOR[phaseTier(lowPts[i].phaseErrorDeg)];
-          } else if (highOn) {
-            y[i] = wrapDeg(result.tweeter.phaseDeg[i] - midPh[i]);
-            cols[i] = TIER_COLOR[phaseTier(highPts[i].phaseErrorDeg)];
-          }
-        }
+        const st = stitchPairPhase(
+          result.woofer.phaseDeg,
+          midPh,
+          result.tweeter.phaseDeg,
+          result.freq,
+          pairScores.low.integ,
+          pairScores.high.integ,
+        );
         out.push({
           id: 'pairalign',
           label: 'Relative phase — active pair',
           color: 'var(--viz-combined)',
           x: result.freq,
-          y: breakWraps(y),
-          pointColors: cols,
+          y: breakWraps(st.y),
+          pointColors: st.colors,
           width: 2.5,
         });
       }
@@ -10904,6 +10976,7 @@ export default function App() {
               </div>
             )}
             <Chart
+              storageKey="spl"
               series={splSeries}
               xDomain={xDomain}
               yDomain={splDomain}
@@ -10949,6 +11022,7 @@ export default function App() {
               {showPanels.directivity && (
               <>
               <Chart
+                storageKey="directivity"
                 series={[
                   ...directivity.angles.map((a, i) => ({
                     id: `a${a}`,
@@ -11036,6 +11110,7 @@ export default function App() {
             <div className="panel">
               <h2>Filter transfer (driver voltage vs source)</h2>
               <Chart
+                storageKey="transfer"
                 series={[
                   sim.transfers.woofer && {
                     id: 'hw',
@@ -11103,6 +11178,7 @@ export default function App() {
                 </span>
               </div>
               <Chart
+                storageKey="impedance"
                 series={[
                   {
                     id: 'zin',
@@ -11122,6 +11198,7 @@ export default function App() {
                 xMarkers={[{ x: systemZInfo.minHz, color: 'var(--viz-tick)', label: 'Z min' }]}
               />
               <Chart
+                storageKey="impedance-phase"
                 series={[
                   {
                     id: 'zphase',
@@ -11213,6 +11290,7 @@ export default function App() {
               </div>
             )}
             <Chart
+              storageKey="phase"
               series={phaseSeries}
               xDomain={xDomain}
               yDomain={[-180, 180]}

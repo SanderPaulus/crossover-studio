@@ -949,6 +949,13 @@ minimum phase reconstrueert. Voertaal met Sander: **Nederlands**; code/comments 
   let op `.chart svg { width:100% }` — de dash-chip heeft een specifiekere regel nodig).
   Ghost-curves krijgen elk een eigen gedempte tint (`--viz-ghost1..4`, licht+donker) — met
   identiek grijs waren de legend-chips van meerdere tabs niet uit elkaar te houden.
+  **Legend-keuzes zijn persistent (aug 2026, roadmap-punt)**: `storageKey` op Chart →
+  localStorage `ads-legend-<key>` (spl/phase/directivity/transfer/impedance/impedance-phase).
+  Opgeslagen als EXPLICIETE keuzes per serie-id (`{id: verborgen}`), NOOIT als de resulterende
+  verborgen-set — een `defaultOff`-serie die de gebruiker nooit aanraakte moet zijn default
+  blijven volgen, anders bevriest een oude momentopname een latere default-wijziging. Seeding
+  schrijft dus niets; alleen een klik schrijft. De map is op 200 entries gekapt omdat
+  ghost-ids per ontwerp-tab bestaan en anders eindeloos zouden groeien.
   Topbar-chips Integration/Fase P95 kleuren mee met de tier (ok ≥90/≤45°, warn ≥75/≤90°,
   anders bad). Schematic-editor heeft undo én REDO (`schFuture`, Cmd/Ctrl+Z en
   Cmd/Ctrl+Shift+Z of Ctrl+Y; verse edit wist de redo-tak).
@@ -1244,12 +1251,21 @@ volledige 3-weg): luide banner én de mid-Z blijft uit de solver-map — anders 
 canonieke sleutels stil onder een lopend 2-weg-ontwerp (precies de stille fout).
 UI: derde import-slot + ✕, amber `--viz-mid`, mid-filterkaart (hp+lp = bandpass, gratis in
 het spec-model), fase-chart toont de twee AANGRENZENDE paren (w-t-verschil betekent daar
-niets), SPL-handles ook op de mid. GEGATE met uitleg-titles (paar-eigenschappen, trede 4):
-optimizers, synthese, netOptimize, vxp-export, integratie/phaseStats, directivity/sonogram,
-tolerantie-band, tab-ghosts, target-curves, templates (alleen Blank-scaffold, mét alle drie
-drivers). [Stand aug 2026: optimizers/synthese/netOptimize (trede 3–4c) én
-directivity/sonogram (zie onder) zijn inmiddels ONT-gate; vxp-export, tolerantie-band,
-tab-ghosts en target-curves zijn nog 2-weg.]
+niets), SPL-handles ook op de mid. **Stand aug 2026: FASE 4 IS DICHT — er is geen enkele
+2-weg-gate meer.** Alleen de OVERALL integratie-score blijft 2-weg van aard; `pairScores`
+rapporteert per aangrenzend paar in plaats daarvan.
+**Tab-ghosts + target-curves in 3-weg (aug 2026, de laatste twee gates)**: de ghost somt via
+`combineN` (rol-resolutie met `slotTransfersN`, ambigu ⇒ géén ghost i.p.v. raden), en zijn
+FASE-ghost is dezelfde GESTIKTE actieve-paar-lijn als de live curve — met per tab zijn EIGEN
+overlapvensters, want een tab die elders overneemt hoort dat te tonen en niet de split van het
+live ontwerp te lenen. Het stikwerk staat daarom in één gedeelde module-level `stitchPairPhase`
+(App.tsx) die live én ghost voedt: twee consumenten die zelf uitrekenen "welk paar bezit deze
+frequentie" is exact de bugfamilie waar deze codebase telkens voor betaalt. Ghosts blijven
+gedempt (géén tier-kleuren — de kleurladder is voor het actieve ontwerp). Target-curves:
+de mid krijgt zijn bandpass-doel (`vFilters.mid`, trim uit `branchAdj.mid` want `sim.mid`
+draagt de adjust al), en élk doel wordt GEMASKEERD buiten het meetbereik van zijn eigen tak —
+een doel voor data die niet bestaat is geen doel, en het gedeelde niveau-anker mag geen
+stille-ghost-punten (−400 dB) opzuigen.
 **Fase-chart in 3-weg = ÉÉN genaaide lijn (aug 2026, Sanders "een berg lijnen over
 elkaar")**: default toont het paneel alleen "Relative phase — active pair" — per frequentie
 de relatieve fase van het ACTIEVE paar (mid-vs-woofer bínnen het W-M-overlapvenster,

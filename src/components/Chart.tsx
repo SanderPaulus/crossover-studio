@@ -87,6 +87,9 @@ interface ChartProps {
    *  before any commit). Lets a caller mirror what the chart shows, e.g. a
    *  ±dB flatness read-out that tracks the zoom. */
   onVisibleXChange?: (lo: number, hi: number) => void;
+  /** Stable identity for this chart, used to remember which curves the user
+   *  switched off. Omit for charts whose legend is not worth remembering. */
+  storageKey?: string;
   /** Draggable overlay handles (design controls living in the chart itself). */
   handles?: ChartHandle[];
   /** Continuous drag feedback: absolute x (Hz), plus the y delta in chart units. */
@@ -152,6 +155,36 @@ interface View {
   y?: [number, number];
 }
 
+/**
+ * Legend choices survive a reload — the app's everything-is-persistent rule,
+ * which the legend was the last thing to miss.
+ *
+ * Stored as EXPLICIT choices per series id (true = user hid it), never as the
+ * resulting hidden set. A `defaultOff` series the user never touched must keep
+ * following its default, so that changing a default later still reaches
+ * everyone instead of being frozen out by a stale snapshot.
+ */
+type LegendPrefs = Record<string, boolean>;
+
+const legendKey = (k: string) => `ads-legend-${k}`;
+
+function loadLegendPrefs(k: string | undefined): LegendPrefs {
+  if (!k) return {};
+  try {
+    const raw = localStorage.getItem(legendKey(k));
+    if (!raw) return {};
+    const parsed: unknown = JSON.parse(raw);
+    if (!parsed || typeof parsed !== 'object') return {};
+    const out: LegendPrefs = {};
+    for (const [id, v] of Object.entries(parsed as Record<string, unknown>)) {
+      if (typeof v === 'boolean') out[id] = v;
+    }
+    return out;
+  } catch {
+    return {}; // unreadable preference is not worth a broken chart
+  }
+}
+
 export default function Chart({
   series: allSeries,
   xDomain,
@@ -169,6 +202,7 @@ export default function Chart({
   points,
   onXRangeCommit,
   onVisibleXChange,
+  storageKey,
   handles,
   onHandleMove,
   onHandleWheel,
@@ -199,19 +233,31 @@ export default function Chart({
     onVisibleXChange?.(vx[0], vx[1]);
   }, [vx[0], vx[1], onVisibleXChange]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Seed defaultOff series into the hidden set ONCE per series id — new ids
-  // may appear later (data loads async), and a user's explicit toggle must
-  // never be overridden afterwards.
+  // Seed each series' initial visibility ONCE per id — new ids may appear
+  // later (data loads async), and a user's explicit toggle must never be
+  // overridden afterwards. A remembered choice wins over `defaultOff`; without
+  // a remembered choice the default applies.
+  const prefs = useRef<LegendPrefs>(loadLegendPrefs(storageKey));
   const seenIds = useRef<Set<string>>(new Set());
   useEffect(() => {
     const add: string[] = [];
+    const drop: string[] = [];
     for (const s of allSeries) {
-      if (!seenIds.current.has(s.id)) {
-        seenIds.current.add(s.id);
+      if (seenIds.current.has(s.id)) continue;
+      seenIds.current.add(s.id);
+      const remembered = prefs.current[s.id];
+      if (remembered === undefined) {
         if (s.defaultOff) add.push(s.id);
-      }
+      } else if (remembered) add.push(s.id);
+      else drop.push(s.id);
     }
-    if (add.length > 0) setHidden((prev) => new Set([...prev, ...add]));
+    if (add.length === 0 && drop.length === 0) return;
+    setHidden((prev) => {
+      const next = new Set(prev);
+      add.forEach((id) => next.add(id));
+      drop.forEach((id) => next.delete(id));
+      return next;
+    });
   }, [allSeries]);
 
   const series = useMemo(() => allSeries.filter((s) => !hidden.has(s.id)), [allSeries, hidden]);
@@ -233,8 +279,22 @@ export default function Chart({
   const toggle = (id: string) =>
     setHidden((prev) => {
       const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
+      const nowHidden = !next.has(id);
+      if (nowHidden) next.add(id);
+      else next.delete(id);
+      if (storageKey) {
+        // Some ids are per-design (the tab ghosts), so the map would grow for
+        // as long as tabs come and go. Keep the most recent choices only.
+        const merged = { ...prefs.current, [id]: nowHidden };
+        const keys = Object.keys(merged);
+        if (keys.length > 200) keys.slice(0, keys.length - 200).forEach((k) => delete merged[k]);
+        prefs.current = merged;
+        try {
+          localStorage.setItem(legendKey(storageKey), JSON.stringify(prefs.current));
+        } catch {
+          // Storage full or blocked — the toggle still works this session.
+        }
+      }
       return next;
     });
 

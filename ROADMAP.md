@@ -6,6 +6,22 @@ Volgorde binnen een blok = aanbevolen prioriteit. Inschattingen zijn grof:
 
 ## Onlangs afgerond (jul–aug 2026, ter referentie)
 
+- **FASE 4 IS DICHT** (aug 2026) — de laatste twee dingen die in 3-weg leeg
+  bleven werken nu: de **tab-ghosts** (som via `combineN`, en de fase-ghost is
+  dezelfde GESTIKTE actieve-paar-lijn als de live curve, met per tab zijn EIGEN
+  overlapvensters — een tab die elders overneemt hoort dat te laten zien) en de
+  **target-curves** (de mid krijgt zijn bandpass-doel, gemaskeerd buiten zijn
+  eigen meetbereik: een doel voor data die niet bestaat is geen doel). Het
+  stikwerk zit nu in één gedeelde `stitchPairPhase` — live en ghost op
+  verschillende regels tekenen zou geen vergelijking zijn maar de bekende
+  "twee consumenten, twee definities"-val.
+- **Legend-keuzes overleven een reload** (aug 2026) — het laatste stuk UI dat
+  de alles-is-persistent-regel miste. Opgeslagen als EXPLICIETE keuzes per
+  curve, nooit als de resulterende verborgen-set: een `defaultOff`-curve die je
+  nooit hebt aangeraakt blijft zijn default volgen, zodat een latere wijziging
+  van die default iedereen nog bereikt. (Het oude punt "tab-ghosts onder één
+  groepstoggle" is vervallen: de `+N more`-vouw en de "Compare tabs"-schakelaar
+  doen dat werk al.)
 - **DE ONTWERPERS-SEQUENCE** (aug 2026, Sanders "mijn gevoel zegt dat de huidige
   sequence niet klopt") — de grootste ingreep van de zomer, en geen feature maar
   een VOLGORDE. De engine liet de SOM de STRUCTUUR sturen; elke bewaker die we
@@ -140,27 +156,15 @@ Volgorde binnen een blok = aanbevolen prioriteit. Inschattingen zijn grof:
 
 ## Kort — kleine, afgebakende verbeteringen
 
-1. **Vergelijkingstabel ontwerp-tabs** (S/M) — één tabel over alle opgeslagen
-   tabs: Response-score, fase-avg/P95, Z-min, componenten-aantal, BOM-totaal.
-   De ghost-curves tonen vorm; kiezen doe je op cijfers. Zelfde patroon als de
-   scan-tabel.
-2. **Legend-opruiming** (S) — de tab-ghosts per chart onder één "Other
-   tabs"-groepstoggle in plaats van losse chips per tab; de fase-legend heeft
-   er nu negen.
-3. **Legend-keuzes onthouden** (S) — aan/uit-klikken op curves overleeft nu
-   geen reload (alleen de defaults). Past bij de alles-persistent-doctrine.
-4. **Undo voor de Filters-tab** (M) — de schematic-editor heeft undo/redo, de
+1. **Undo voor de Filters-tab** (M) — de schematic-editor heeft undo/redo, de
    virtuele filters niet; een misklik op een chart-handle is onherstelbaar.
-5. **EPDR-curve** in het Impedance-paneel (S/M) — |Z| en fase gecombineerd tot
+2. **EPDR-curve** in het Impedance-paneel (S/M) — |Z| en fase gecombineerd tot
    "equivalent peak dissipation resistance": zo zwaar voelt de belasting écht.
    Verfijning van de nieuwe fase-chart.
 
 ## Middel — meer werk, duidelijke winst
 
-6. **Ontwerp-rapport exporteren** (M) — zelfstandige HTML met schema, BOM
-   (met prijzen), SPL/fase/impedantie-curves en de scores. Deelbaar met
-   Stefan, bouwdocumentatie bij de speaker.
-7. **BOUWEN EN METEN — de lus sluiten** (M, en het belangrijkste open punt) —
+3. **BOUWEN EN METEN — de lus sluiten** (M, en het belangrijkste open punt) —
    alles hierboven is een getrouwe simulatie van de meetdata; of de kéten klopt
    weten we pas als een gebouwd filter over zijn simulatie ligt. Het gereedschap
    staat er (verificatie-slot + 🔬 Compare wizard) en is nog nooit op een echte
@@ -168,7 +172,7 @@ Volgorde binnen een blok = aanbevolen prioriteit. Inschattingen zijn grof:
    verdiend; wijkt het af, dan wéét je dat het aan de meetopstelling ligt en niet
    aan het filter. Zolang dit open staat, is elke verdere optimizer-verfijning
    sleutelen aan de verkeerde kant van het probleem.
-8. **Dood gewicht fysisch herkennen** (M — gebouwd, gemeten, TERUGGEDRAAID)
+4. **Dood gewicht fysisch herkennen** (M — gebouwd, gemeten, TERUGGEDRAAID)
    — een tak kan onderdelen dragen die elektrisch niet bestaan (een 6,8 mH
    shunt-spoel = 186 Ω op de kruising; twee valstrikken op 232 en 411 Hz in een
    TWEETER-tak). Een veeg op "verwijderen kost <0,5% van de objective" maakte
@@ -180,10 +184,10 @@ Volgorde binnen een blok = aanbevolen prioriteit. Inschattingen zijn grof:
    de band waar die tak werkelijk bijdraagt — een onderdeel dat écht inert is
    kan de stroomafwaartse stappen niet verplaatsen en heeft dus geen terugdraai
    nodig. Zie CLAUDE.md voor de volledige meting.
-9. **Catalogus-onderhoud** (doorlopend) — nieuwe Gemini/SKU-updates blijven
+5. **Catalogus-onderhoud** (doorlopend) — nieuwe Gemini/SKU-updates blijven
    importeerbaar; prijzen periodiek herijken op echte NL/EU-ankers (zie de
    prijsverificatie-ronde in CLAUDE.md).
-10. **Gradiënt-warmstart voor de componenttuner** (M/L) — het vervolg op
+6. **Gradiënt-warmstart voor de componenttuner** (M/L) — het vervolg op
    `adjoint.ts`. De synthese draait nu op exacte gradiënten; `netOptimizer.tune`
    nog niet, en dáár zit de meeste rekentijd van een scan (een 3-weg-net draagt
    16–25 vrije waardes). Kan niet één-op-één: zijn objective bevat termen die
@@ -195,7 +199,7 @@ Volgorde binnen een blok = aanbevolen prioriteit. Inschattingen zijn grof:
    de VOLLE objective — puur seeding, het enige mechanisme dat hier
    herhaaldelijk veilig is gebleken. De anker-les blijft leidend: de objective
    zelf blijft af.
-11. **Run-logboek als dataset** (S, dan doorlopend) — elke optimizer-run
+7. **Run-logboek als dataset** (S, dan doorlopend) — elke optimizer-run
     produceert al (instellingen → resultaat); die paren wegschrijven kost bijna
     niets en levert over maanden de enige data waarmee je een voorspellend model
     voor kandidaat-snoei kunt BEOORDELEN in plaats van hopen. Eerst meten, dan
@@ -203,7 +207,7 @@ Volgorde binnen een blok = aanbevolen prioriteit. Inschattingen zijn grof:
 
 ## Groot — de fases
 
-12. **Fase 4: 3-weg / N-weg** (L) — het netlist-fundament is N-weg-klaar en de
+8. **Fase 4: 3-weg / N-weg** (L) — het netlist-fundament is N-weg-klaar en de
    template-kiezer heeft de (disabled) 3-weg-optie al.
    **Trede 1 KLAAR (aug 2026): de som-kern is N-weg** — `combineN` in dsp.ts,
    per-tak adjust, `combine` als dunne wrapper erover; K=2 bit-identiek
@@ -313,9 +317,15 @@ Volgorde binnen een blok = aanbevolen prioriteit. Inschattingen zijn grof:
    PAAR, de scan-keuzetabel in 3-weg, per-tak-EQ in de ontwerpstap,
    directivity + sonogram, en de bouwtolerantie-band. Daar bovenop de
    ontwerpers-sequence (zie "Onlangs afgerond") en de Z-vloer end-to-end.
-   **Nog open in fase 4**: vxp-export voor 3-weg (trede 5) en tab-ghosts /
-   target-curves in 3-weg.
-13. **Driverbibliotheek** (L) — meetbundels (FRD + hoeken + ZMA) per driver,
+   **Trede 5 KLAAR (aug 2026)**: vxp-export in 3-weg — model → ROL via
+   `pickSlotsN` (dezelfde mapping als de solver, dus een mid kan niet als
+   woofer exporteren mét de verkeerde responsie, hoekset én delay), en de
+   excess-delay-normalisatie loopt over álle geladen drivers. Een 3-weg-ontwerp
+   kan dus naar Stefan.
+   **FASE 4 IS HIERMEE DICHT** (aug 2026): tab-ghosts en target-curves waren de
+   laatste twee 2-weg-gates en zijn opgeheven. Alles wat een 2-weg-ontwerp kan,
+   kan een 3-weg-ontwerp nu ook.
+9. **Driverbibliotheek** (L) — meetbundels (FRD + hoeken + ZMA) per driver,
     herbruikbaar over projecten; het einde van losse-bestanden-slepen.
     Uitbreiding daarbovenop: **ontwerpgeheugen als seed-bibliotheek** —
     afgeronde ontwerpen bewaren mét driver-kenmerken (Fs, Z-profiel,
@@ -323,12 +333,12 @@ Volgorde binnen een blok = aanbevolen prioriteit. Inschattingen zijn grof:
     startpunt meegeven naast de textbook-seed. Retrieval, geen training:
     deterministisch en uitlegbaar — zelfde patroon als de multi-start-tuner
     (seeding verkent bekkens zonder het zoekpad te verstoren, de anker-les).
-14. **Serie-crossover-topologie** (L) — eigen build-pad + vergelijkingsharnas
+10. **Serie-crossover-topologie** (L) — eigen build-pad + vergelijkingsharnas
     naast de parallelle synthese (bewust uitgesteld tot dat harnas er is).
-15. **Genormaliseerde hoekcurves & verticale metingen** (M, wacht op data) —
+11. **Genormaliseerde hoekcurves & verticale metingen** (M, wacht op data) —
     zodra Sander verticaal meet: lobing-analyse naast de horizontale
     directivity.
-16. **Meetmodule in de app** (L) — sweep + deconvolutie kan met Web Audio, en
+12. **Meetmodule in de app** (L) — sweep + deconvolutie kan met Web Audio, en
     fft.ts/timeDomain.ts doen de wiskunde al. Twee harde voorwaarden vóórdat
     dit iets waard is:
     (a) **Gekalibreerde meetmicrofoon mét cal-bestand.** Geverifieerd op de
@@ -348,9 +358,9 @@ Volgorde binnen een blok = aanbevolen prioriteit. Inschattingen zijn grof:
     simulatie van de actieve tab legt. Relatieve respons volstaat daarvoor —
     absolute dB heb je niet nodig om te zien of het model klopt. Impedantie
     meten vraagt een sense-resistor-jig: hardware, geen software.
-17. **ARTA .pir-import met gating-UI** (M/L, future — wacht op voorbeeldpaar)
+13. **ARTA .pir-import met gating-UI** (M/L, future — wacht op voorbeeldpaar)
     — de ruwe impulsrespons vóór ARTA's gate/FFT-stap; feitelijk de
-    ANALYSE-helft van de meetmodule (punt 16), los te bouwen. Geen tweede
+    ANALYSE-helft van de meetmodule (punt 12), los te bouwen. Geen tweede
     .lim: een .pir → FRD vraagt een GATE-keuze (venster vóór de eerste
     reflectie) die Robbert nu bewust in ARTA maakt — automatisch gaten met
     een vaste waarde bakt stil een meetkeuze in (zelfde stille-fout-familie
@@ -363,7 +373,7 @@ Volgorde binnen een blok = aanbevolen prioriteit. Inschattingen zijn grof:
     8 hoeken), geen blokkade: de FRD-route draagt fase én timing al. Bouwen
     zodra er een validatiepaar ligt (één .pir + de FRD die ARTA daaruit
     exporteerde — zelfde bewijs-aanpak als de .lim-import) of zodra de
-    meetmodule (punt 16) actueel wordt.
+    meetmodule (punt 12) actueel wordt.
 
 ## Bewust niet
 
@@ -381,5 +391,5 @@ Volgorde binnen een blok = aanbevolen prioriteit. Inschattingen zijn grof:
   remedie was scannen op de eindmeting, ~3× winst) — een zwakkere proxy
   terugbrengen is die les terugdraaien; (3) er valt niets te besparen:
   ~380k sims in <4 min met volledige dekking van de zoekruimte. Wat WEL mag
-  leren: de seeds (ontwerpgeheugen, zie punt 13) en het model (kalibratie
+  leren: de seeds (ontwerpgeheugen, zie punt 9) en het model (kalibratie
   uit de meet-lus) — retrieval en calibratie, deterministisch, geen training.
