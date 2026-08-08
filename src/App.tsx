@@ -3045,7 +3045,13 @@ export default function App() {
     const solved = Object.values(depths) as number[];
     // Worth acting on? Under a millimetre is noise in a phase fit.
     const spread = solved.length > 0 ? Math.max(...solved) : 0;
-    return { depths, spread, unexplained };
+    // Which driver the others are counted from — named, so a readout can say
+    // "12.2 mm behind the tweeter" instead of leaving a bare 0 to interpret.
+    const shallowest = (Object.keys(depths) as BranchRole[]).reduce(
+      (best, r) => (depths[r]! < depths[best]! ? r : best),
+      (Object.keys(depths) as BranchRole[])[0],
+    );
+    return { depths, spread, unexplained, shallowest };
   }, [cabinet, timing, threeWay, woofer, midDrv, tweeter, cabinetInfo]);
 
   /**
@@ -6989,13 +6995,36 @@ export default function App() {
                               const m = measuredDepth.depths[role]!;
                               const typed = d.depthMm.trim() !== '' ? Number(d.depthMm) : null;
                               const off = typed !== null ? Math.abs(typed - m) : null;
+                              // Always phrase it as a RELATION between two named
+                              // drivers. Anchoring one at 0 and calling it "the
+                              // shallowest" reads as "unknown" — Sander expected
+                              // the tweeter's own number and found a bare 0.
+                              const anchor = measuredDepth.shallowest;
+                              const anchorName =
+                                anchor === 'high'
+                                  ? 'the tweeter'
+                                  : anchor === 'mid'
+                                    ? 'the midrange'
+                                    : hasMidBranch
+                                      ? 'the woofer'
+                                      : 'the woofer/mid';
+                              const deepest = measuredDepth.spread;
                               return (
                                 <>
-                                  <strong>measured depth {m.toFixed(1)} mm</strong>
-                                  {m < 0.05
-                                    ? ' — the shallowest of your drivers, so the others are measured behind it'
-                                    : ' behind the shallowest driver'}
-                                  , from the delay with the rig removed.
+                                  {role === anchor ? (
+                                    <>
+                                      <strong>measured: this is the shallowest driver</strong>, so it
+                                      is the 0 the others are counted from
+                                      {deepest >= 0.05
+                                        ? ` — they sit up to ${deepest.toFixed(1)} mm behind it.`
+                                        : '.'}
+                                    </>
+                                  ) : (
+                                    <>
+                                      <strong>measured depth {m.toFixed(1)} mm</strong> behind{' '}
+                                      {anchorName}, from the delay with the rig removed.
+                                    </>
+                                  )}
                                   {off !== null && (
                                     <>
                                       {' '}

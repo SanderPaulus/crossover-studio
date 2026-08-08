@@ -295,6 +295,16 @@ minimum phase reconstrueert. Voertaal met Sander: **Nederlands**; code/comments 
   op 500 mm leest hij 133 — 11% eraf, precies het geval waarvoor de hele feature bestaat.
   In de browser zichtbaar aan het residu: naïef bleef er −0,5 µs "akoestisch centrum" staan
   na toepassen, met de inversie 0,1 µs.
+  **De uitlezing is een RELATIE tussen twee genoemde drivers, geen kaal nulpunt** (Sanders
+  "ik verwacht rond 9,3 mm maar er staat 0"): het anker las als "onbekend" terwijl het
+  "dít is het nulpunt" betekent, en op een normale kast is het de TWEETER die het ondiepst
+  zit (ondiepe dome vs. een conus met motor erachter) — dus het getal landt bij de woofer
+  terwijl de vraag over de tweeter ging. Nu: "measured depth 9.3 mm behind the tweeter" op de
+  diepe kaart, en "this is the shallowest driver, so it is the 0 the others are counted from"
+  op de ondiepe. `measuredDepth.shallowest` draagt de rol zodat de tekst hem kan noemen.
+  NB de getallen verschillen per set: dezelfde functie gaf 9,3 op de KOAN-autosave en 12,2 op
+  Sanders eigen project — andere hoogte, andere meting. Dat is geen bug maar precies de
+  gevoeligheid die hieronder staat.
   **De uitkomst staat bij het VELD, niet alleen onder het timing-paneel** (Sanders "maar het
   getal wordt niet ingevuld bij de tweeter?"): de afleiding hoorde op de cabinet-stap en het
   veld dat hij beantwoordt staat op de drivers-stap — dezelfde blader-klacht als bij de
