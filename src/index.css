@@ -2698,6 +2698,31 @@ button:disabled {
   border-bottom: 1px solid var(--border);
   flex-wrap: wrap;
 }
+/* The guided stepper as ONE fixed bar above the whole workspace. Wayfinding
+   must not move: inside the design pane it sat centred on the form steps and
+   left-anchored on the chart steps, so the element that says "you are here"
+   was the one element that kept changing place. */
+.step-bar {
+  justify-content: center;
+  padding: 0.4rem 0.9rem 0;
+}
+/* Step switches are occasional, so the content may ease in — but only the
+   content: the bar itself stays put. Starts from the CURRENT state (opacity
+   only, a 4px rise), and reduced motion turns it off entirely. */
+.app-shell.mode-guided .pane-body,
+.app-shell.mode-guided .analysis-pane {
+  transition: opacity 180ms ease-out, transform 180ms ease-out;
+  @starting-style {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .app-shell.mode-guided .pane-body,
+  .app-shell.mode-guided .analysis-pane {
+    transition: none;
+  }
+}
 .pane-steps button {
   display: flex;
   align-items: center;

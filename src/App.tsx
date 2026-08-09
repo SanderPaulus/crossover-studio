@@ -7173,7 +7173,7 @@ export default function App() {
   );
 
   return (
-    <div className={`app-shell layout-${layoutMode}`}>
+    <div className={`app-shell layout-${layoutMode} mode-${uiMode}`}>
       {overlayVisible && (
         <div className="busy-overlay" role="status" aria-live="polite">
           {/* During the 250 ms close-linger (anyBusy false) the card renders
@@ -8598,6 +8598,41 @@ export default function App() {
         </button>
       </header>
 
+      {uiMode === 'guided' && (
+        /* GUIDED: a numbered route with a completion mark per step. It lives
+           ABOVE the workspace as one fixed, centred bar — wayfinding must not
+           move. When it sat inside the design pane it jumped between the
+           centred form steps and the left-anchored chart steps (Sanders
+           report): the one element that tells you where you are was the one
+           element that kept moving. Later steps stay clickable on purpose:
+           blocking them would hide what is coming, and a locked button
+           teaches nothing about why. */
+        <nav className="pane-steps step-bar" aria-label="Design steps">
+          {(
+            [
+              ['import', 'Your project', guidedDone.files, 'Load your measurement files, and save or reopen a project.'],
+              ['data', 'Your cabinet', guidedDone.cabinet, 'The box and how you measured it. Do this before the drivers: it fixes the reference point everything else is measured from.'],
+              ['drivers', 'Your drivers', guidedDone.drivers, 'Where each driver sits in that box, what is behind it, and its cone area and travel from the datasheet.'],
+              ['filters', 'Design it', guidedDone.design, 'One button. The app picks the crossover points, the filter shapes and the parts, and shows what it chose.'],
+              ['network', 'Your build', guidedDone.build, 'The schematic and the shopping list.'],
+            ] as const
+          ).map(([id, label, done, tip], i) => (
+            <button
+              key={id}
+              type="button"
+              className={`${designTab === id ? 'active' : ''}${done ? ' step-done' : ''}`}
+              onClick={() => setDesignTab(id)}
+              title={tip}
+            >
+              <span className="step-num" aria-hidden="true">
+                {done ? '✓' : i + 1}
+              </span>
+              {label}
+            </button>
+          ))}
+        </nav>
+      )}
+
       <div
         ref={workspaceRef}
         className={`workspace${designTab === 'network' ? ' wide-left' : ''}${
@@ -8612,39 +8647,8 @@ export default function App() {
         }
       >
         <aside className="design-pane">
-          {uiMode === 'guided' ? (
-            /* GUIDED: the same four panels, but presented as a numbered route
-               with a completion mark per step. The panels were already in the
-               right order — what a beginner misses is not content but the
-               knowledge that there IS an order, and where he is in it. Later
-               steps stay clickable on purpose: blocking them would hide what
-               is coming, and a locked button teaches nothing about why. */
-            <nav className="pane-steps" aria-label="Design steps">
-              {(
-                [
-                  ['import', 'Your project', guidedDone.files, 'Load your measurement files, and save or reopen a project.'],
-                  ['data', 'Your cabinet', guidedDone.cabinet, 'The box and how you measured it. Do this before the drivers: it fixes the reference point everything else is measured from.'],
-                  ['drivers', 'Your drivers', guidedDone.drivers, 'Where each driver sits in that box, what is behind it, and its cone area and travel from the datasheet.'],
-                  ['filters', 'Design it', guidedDone.design, 'One button. The app picks the crossover points, the filter shapes and the parts, and shows what it chose.'],
-                  ['network', 'Your build', guidedDone.build, 'The schematic and the shopping list.'],
-                ] as const
-              ).map(([id, label, done, tip], i) => (
-                <button
-                  key={id}
-                  type="button"
-                  className={`${designTab === id ? 'active' : ''}${done ? ' step-done' : ''}`}
-                  onClick={() => setDesignTab(id)}
-                  title={tip}
-                >
-                  <span className="step-num" aria-hidden="true">
-                    {done ? '✓' : i + 1}
-                  </span>
-                  {label}
-                </button>
-              ))}
-            </nav>
-          ) : (
-          <nav className="pane-tabs" aria-label="Design panels">
+          {uiMode === 'guided' ? null : (
+<nav className="pane-tabs" aria-label="Design panels">
               {(
               [
                 ['import', 'Project', 'Load measurements, catalogs and projects; save your work'],
@@ -8666,7 +8670,11 @@ export default function App() {
             ))}
             </nav>
           )}
-          <div className="pane-body">
+          {/* Keyed per step in guided mode so the eased entry actually fires
+              (@starting-style needs an insertion); expert keeps one stable
+              element — tab switching is frequent there, and frequent actions
+              earn no animation. */}
+          <div className="pane-body" key={uiMode === 'guided' ? designTab : 'expert'}>
             {designTab === 'import' && (
               <>
       <div className="panel">
@@ -11333,7 +11341,10 @@ export default function App() {
           }}
         />
 
-        <main className="analysis-pane">
+        <main
+          className="analysis-pane"
+          key={uiMode === 'guided' ? designTab : 'expert'}
+        >
       {!woofer && !tweeter ? (
         <p className="sub pane-hint">
           Load driver measurements (Import tab) to start simulating — one driver is enough

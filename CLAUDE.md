@@ -1856,6 +1856,16 @@ de 🧙-knop opent bij threeWay daarom óók op stap 0. Demo-knop alleen bij 2-w
 
 ## Workspace-layout (UI-fase B, jul 2026)
 
+- **Guided: de stappenbalk is WAYFINDING en staat daarom VAST (aug 2026, Sanders "in het
+  midden, en bij Design it weer links")**: de stepper zat ín de design-pane en versprong
+  daardoor mee met de layout — gecentreerd op de formulier-stappen, links op de
+  grafiek-stappen. Het element dat zegt wáár je bent was het enige element dat telkens
+  verplaatste (apple-design: wayfinding + familiarity). Nu één `.step-bar` boven de hele
+  workspace, elke stap exact dezelfde plek; expert houdt zijn pane-tabs ongewijzigd.
+  Stapwissels zijn incidenteel, dus de INHOUD mag zacht binnenkomen (180ms opacity + 4px,
+  `@starting-style`, alleen `.mode-guided`, uit onder prefers-reduced-motion) — de panes
+  krijgen daarvoor een key per stap (een @starting-style vuurt alleen bij insertion);
+  expert houdt een stabiele key, want frequente acties verdienen geen animatie.
 - **Guided: kast- en driverstap zijn FORMULIER-stappen (aug 2026, Sanders "daar hebben we
   nog geen grafieken nodig")**: `.workspace.focus-form` (uiMode guided + tab data/drivers)
   verbergt het analysepaneel + de splitter en geeft het formulier één gecentreerde kolom
