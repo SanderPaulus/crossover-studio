@@ -2364,6 +2364,61 @@ button:disabled {
 /* Cabinet & drivers: one block per loaded driver inside the Setup fieldset.
    Indented and rule-marked so a column of x/y/Sd fields reads as belonging to
    its driver rather than to the cabinet above it. */
+/* Import step: one file card per driver — the same identity system as the
+   driver cards, the drawing and every chart. The title bar carries a live
+   completion status so "what is still missing" needs no hunting. */
+.drv-section {
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--drv-color, var(--border));
+  border-radius: 10px;
+  background: var(--bg);
+}
+.drv-section-head {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.45rem 0.8rem;
+  font-weight: 600;
+  background: color-mix(in srgb, var(--fg) 3.5%, transparent);
+  border-bottom: 1px solid var(--border);
+  border-radius: 9px 9px 0 0;
+}
+.drv-section-head::before {
+  content: '';
+  display: inline-block;
+  width: 0.62rem;
+  height: 0.62rem;
+  border-radius: 3px;
+  background: var(--drv-color, var(--muted));
+  flex: 0 0 auto;
+}
+.drv-section-status {
+  margin-left: auto;
+  font-weight: 400;
+  font-size: 0.78rem;
+  color: var(--muted);
+}
+.drv-section-body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  padding: 0.55rem 0.8rem 0.6rem;
+}
+/* The near-field slot inside a file card: its own quiet sub-block. */
+.nf-slot {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem 0.7rem;
+  border-top: 1px dashed var(--border);
+  padding-top: 0.45rem;
+  margin-top: 0.2rem;
+}
+.nf-slot > strong {
+  flex-basis: 100%;
+  font-size: 0.82rem;
+}
+
 /* Each driver is its OWN card (Sanders): the house card idiom (border +
    radius + title bar, like .cab-card), plus a 3px accent in the colour the
    driver's curve wears in every chart — one identity across the app. */

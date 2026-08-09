@@ -8725,55 +8725,91 @@ export default function App() {
           <div className="tool-group">
             <span className="tool-group-label">Measurements</span>
             <div className="tool-group-body files">
-              <label title="FRD = frequency response (SPL + phase), ZMA = measured impedance. Select the 0° file plus all horizontal angle files and the .ZMA in one go — angles are recognised by filename.">
-                Tweeter FRD + ZMA (multi-select all hor angles + impedance)
-                <input type="file" accept=".frd,.txt,.zma,.ZMA,.lim" multiple onChange={loadDriverFiles('tweeter')} />
-              </label>
-              <label title="FRD = frequency response (SPL + phase), ZMA = measured impedance. Select the 0° file plus all horizontal angle files and the .ZMA in one go — angles are recognised by filename.">
-                {hasMidBranch ? 'Woofer' : 'Woofer / mid'} FRD + ZMA (multi-select all hor angles + impedance)
-                <input type="file" accept=".frd,.txt,.zma,.ZMA,.lim" multiple onChange={loadDriverFiles('woofer')} />
-              </label>
-              <label title="3-way: the MIDDLE branch. FRD = frequency response (SPL + phase), ZMA = measured impedance — select the 0° file plus angle files and the .ZMA in one go. Needs a woofer AND a tweeter loaded to join the sum.">
-                Midrange (3-way) FRD + ZMA (multi-select all hor angles + impedance)
-                <input type="file" accept=".frd,.txt,.zma,.ZMA,.lim" multiple onChange={loadDriverFiles('mid')} />
-                {midDrv && (
-                  <span className="derived">
-                    {' '}✓ {midDrv.name}{' '}
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setMidDrv(null);
-                        setZStandalone((prev) => {
-                          const next = { ...prev };
-                          delete next.mid;
-                          return next;
-                        });
-                        setAngleSets((prev) => {
-                          if (!prev) return prev;
-                          const { mid: _drop, ...rest } = prev;
-                          return rest.woofer.length + rest.tweeter.length > 0 ? rest : null;
-                        });
-                      }}
-                      title="Remove the midrange branch (back to 2-way)"
-                      aria-label="Remove the midrange branch"
-                    >
-                      ✕
-                    </button>
-                  </span>
-                )}
-              </label>
-              {(['mid', 'low'] as BranchRole[])
-                .filter((r) => (r === 'low' ? !!woofer : !!midDrv))
-                .map((role) => {
-                  const slot = nearField[role];
-                  const title = role === 'low' ? (hasMidBranch ? 'Woofer' : 'Woofer / mid') : 'Midrange';
-                  const set = (patch: Partial<NearFieldSlot>) =>
-                    setNearField((n) => ({ ...n, [role]: { ...n[role], ...patch } }));
-                  const nfMax = nearFieldMaxHz(Number(sdCm2[role]));
-                  const rep = merged[role];
-                  return (
-                    <div key={role} className="cabinet-driver">
-                      <strong>{title} — near field</strong>
+              {/* One card per driver, same colour identity as the charts,
+                  the drawing and the driver step — and a completion status in
+                  the title bar so "what is still missing" needs no hunting. */}
+              {(
+                [
+                  ['high', 'Tweeter', 'tweeter', tweeter, 'var(--viz-tweeter)'],
+                  ['mid', 'Midrange (3-way)', 'mid', midDrv, 'var(--viz-mid)'],
+                  ['low', hasMidBranch ? 'Woofer' : 'Woofer / mid', 'woofer', woofer, 'var(--viz-woofer)'],
+                ] as const
+              ).map(([role, title, slotKey, loadedDrv, color]) => {
+                const angleCount =
+                  (role === 'high'
+                    ? angleSets?.tweeter
+                    : role === 'mid'
+                      ? angleSets?.mid
+                      : angleSets?.woofer
+                  )?.length ?? 0;
+                const hasZ = !!withSlotAliasesN(impedances)[canonicalModelForRole(role, threeWay)];
+                return (
+                  <div
+                    key={role}
+                    className="drv-section"
+                    style={{ '--drv-color': color } as CSSProperties}
+                  >
+                    <div className="drv-section-head">
+                      {title}
+                      <span className="drv-section-status">
+                        {loadedDrv
+                          ? `✓ response${angleCount > 1 ? ` · ${angleCount} angles` : ''}${hasZ ? ' · Z' : ' · no impedance yet'}`
+                          : 'no files yet'}
+                      </span>
+                    </div>
+                    <div className="drv-section-body">
+                      <label
+                        title={
+                          role === 'mid'
+                            ? '3-way: the MIDDLE branch. FRD = frequency response (SPL + phase), ZMA = measured impedance — select the 0° file plus angle files and the .ZMA in one go. Needs a woofer AND a tweeter loaded to join the sum.'
+                            : 'FRD = frequency response (SPL + phase), ZMA = measured impedance. Select the 0° file plus all horizontal angle files and the .ZMA in one go — angles are recognised by filename.'
+                        }
+                      >
+                        FRD + ZMA (multi-select all hor angles + impedance)
+                        <input
+                          type="file"
+                          accept=".frd,.txt,.zma,.ZMA,.lim"
+                          multiple
+                          onChange={loadDriverFiles(slotKey)}
+                        />
+                        {role === 'mid' && midDrv && (
+                          <span className="derived">
+                      {' '}✓ {midDrv.name}{' '}
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setMidDrv(null);
+                          setZStandalone((prev) => {
+                            const next = { ...prev };
+                            delete next.mid;
+                            return next;
+                          });
+                          setAngleSets((prev) => {
+                            if (!prev) return prev;
+                            const { mid: _drop, ...rest } = prev;
+                            return rest.woofer.length + rest.tweeter.length > 0 ? rest : null;
+                          });
+                        }}
+                        title="Remove the midrange branch (back to 2-way)"
+                        aria-label="Remove the midrange branch"
+                      >
+                        ✕
+                      </button>
+                          </span>
+                        )}
+                      </label>
+                      {role !== 'high' &&
+                        !!loadedDrv &&
+                        (() => {
+                          const slot = nearField[role];
+                          const set = (patch: Partial<NearFieldSlot>) =>
+                            setNearField((n) => ({ ...n, [role]: { ...n[role], ...patch } }));
+                          const nfMax = nearFieldMaxHz(Number(sdCm2[role]));
+                          const rep = merged[role];
+                          return (
+                            <div className="nf-slot">
+                              <strong>Near field — the low end the gate cannot reach</strong>
+
                       <label
                         className="file-button"
                         title="Near-field measurement of the CONE: microphone 5 mm from the centre of the dust cap. This is what gives the branch a low end the gate cannot reach. Export with phase."
@@ -8871,9 +8907,13 @@ export default function App() {
                           )}
                         </>
                       )}
+                            </div>
+                          );
+                        })()}
                     </div>
-                  );
-                })}
+                  </div>
+                );
+              })}
               <label title="Optional: import a VituixCAD project to simulate Stefan's crossover variants. Select the .vxp together with its .ZMA and response .txt files.">
                 VituixCAD project (.vxp + .ZMA + response .txt — select together)
                 <input

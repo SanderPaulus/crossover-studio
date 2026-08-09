@@ -1856,6 +1856,12 @@ de 🧙-knop opent bij threeWay daarom óók op stap 0. Demo-knop alleen bij 2-w
 
 ## Workspace-layout (UI-fase B, jul 2026)
 
+- **Import-stap: bestandskaarten per driver (aug 2026, Sanders "pas dat ook toe bij Your
+  project")**: `.drv-section` — zelfde kaartidioom + kleuridentiteit als de driverkaarten,
+  met een LIVE completeness-status in de titelbalk ("✓ response · 6 angles · Z" /
+  "no impedance yet" / "no files yet") zodat "wat mist er nog" geen zoekwerk is. Het
+  nabij-veld-slot verhuisde als sub-blok (`.nf-slot`, gestippelde topline) ín de kaart van
+  zijn eigen driver; vxp/fase-referentie/verificatie blijven losse regels eronder.
 - **Elke driver zijn eigen KAART (aug 2026, Sanders "elk een eigen sectie in de sectie")**:
   `.cabinet-driver` draagt nu het huis-kaartidioom (rand + radius + titelbalk à la
   `.cab-card`) met een 3px-accentrand én kleurchip in de kleur die de driver in élke
