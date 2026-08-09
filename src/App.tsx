@@ -2796,24 +2796,57 @@ export default function App() {
    * panel keep nagging about quality (timing, far field, gate). A tick that
    * demands perfection would just stop a beginner at step one.
    */
-  const guidedDone = useMemo(
-    () => ({
-      // A driver is only useful with a response; impedance and datasheet
-      // numbers unlock extra criteria and are checked inside the step.
-      // Step 1 is about getting files in; step 2 about what you know of them.
-      files: !!(woofer || tweeter),
-      drivers: (['low', 'mid', 'high'] as BranchRole[]).some(
-        (r) => Number(sdCm2[r]) > 0 || !!cabinet.drivers[r].xMm || !!cabinet.drivers[r].yMm,
+  const guidedDone = useMemo(() => {
+    /* A tick answers "did this step's PURPOSE happen", not "was a field
+       touched" (Sanders: ticks that come for free say nothing — the old
+       criteria turned the whole route green on load, because `result` exists
+       the moment measurements do). Still deliberately achievable: the step
+       stays open and the checks inside keep nagging about quality. */
+    const roles: BranchRole[] = ['low', 'mid', 'high'];
+    const loaded: Record<BranchRole, boolean> = { low: !!woofer, mid: !!midDrv, high: !!tweeter };
+    const zAliased = withSlotAliasesN(impedances);
+    return {
+      // Files: every loaded driver has BOTH a response and an impedance — the
+      // route ends in a passive build, and without Z nothing can be built.
+      files:
+        !!(woofer || tweeter) &&
+        roles.every((r) => !loaded[r] || !!zAliased[canonicalModelForRole(r, threeWay)]),
+      // Cabinet: the numbers that anchor everything else — mic distance
+      // (honest range, rig split), the front panel (drawing, edges, step)
+      // and the height above the floor (floor bounce).
+      cabinet:
+        Number(cabinet.micDistanceMm) > 0 &&
+        Number(cabinet.baffleWidthMm) > 0 &&
+        Number(cabinet.baffleHeightMm) > 0 &&
+        Number(cabinet.refHeightMm) > 0,
+      // Drivers: every loaded driver has a position (the reference driver is
+      // 0,0 by definition). Datasheet numbers stay optional — the card says
+      // so — but geometry is what this step exists for.
+      drivers:
+        !!(woofer || tweeter) &&
+        roles.every(
+          (r) =>
+            !loaded[r] ||
+            cabinet.refDriver === r ||
+            cabinet.drivers[r].xMm.trim() !== '' ||
+            cabinet.drivers[r].yMm.trim() !== '',
+        ),
+      // Design: a network with real filter parts exists — a bare template
+      // (generator + drivers) has not designed anything yet.
+      design: designs.some(
+        (d) => d.parts.filter((p) => /Inductor|Capacitor|Resistor/.test(p.type)).length > 0,
       ),
-      // Mic distance is the one number that unlocks the honest-range advice —
-      // without it the app cannot tell you what your measurement supports.
-      cabinet: Number(cabinet.micDistanceMm) > 0,
-      // Something has been designed: virtual filters or a built network.
-      design: !!result,
-      build: designs.some((d) => d.parts.length > 2),
-    }),
-    [woofer, tweeter, cabinet, sdCm2, result, designs],
-  );
+      // Build: the ACTIVE design is buyable — every part finds a catalog
+      // value (single or stack). An unmatched value is the honest nag: that
+      // shopping list cannot be ordered yet.
+      build: (() => {
+        const act = designs.find((d) => d.id === activeDesignId);
+        if (!act || act.parts.length <= 2) return false;
+        const rows = bomFor(act.parts).rows;
+        return rows.length > 0 && rows.every((r) => r.match || r.stackMatch);
+      })(),
+    };
+  }, [woofer, midDrv, tweeter, threeWay, impedances, cabinet, designs, activeDesignId]);
 
 
   /** Single-driver mode, floor control: the driver's own median level over the
@@ -6990,7 +7023,7 @@ export default function App() {
                                 ? Math.abs(typed - t.hz) / Math.max(typed, t.hz)
                                 : null;
                             return (
-                              <span className="derived" style={{ gridColumn: '1 / -1' }}>
+                              <span className="derived">
                                 your impedance measurement suggests {t.kind} ≈{' '}
                                 {Math.round(t.hz)} Hz (valid if the ZMA was taken in this box).
                                 {off !== null && (
@@ -11308,6 +11341,29 @@ export default function App() {
           </div>
         </>
             )}
+            {uiMode === 'guided' &&
+              designTab !== 'network' &&
+              (() => {
+                /* Wayfinding's second question — "where can I go?" — answered
+                   at the place you arrive when the step is filled in: the
+                   bottom. Named, not generic: "Next" alone predicts nothing. */
+                const order = ['import', 'data', 'drivers', 'filters', 'network'] as const;
+                const labels: Record<(typeof order)[number], string> = {
+                  import: 'Your project',
+                  data: 'Your cabinet',
+                  drivers: 'Your drivers',
+                  filters: 'Design it',
+                  network: 'Your build',
+                };
+                const next = order[order.indexOf(designTab) + 1];
+                return (
+                  <div className="step-next-row">
+                    <button type="button" className="step-next" onClick={() => setDesignTab(next)}>
+                      Next: {labels[next]} →
+                    </button>
+                  </div>
+                );
+              })()}
           </div>
         </aside>
 

@@ -2847,6 +2847,57 @@ details.cabinet-driver .derived {
   display: block;
   margin-top: 0.15rem;
 }
+/* Form hierarchy: the inputs are the subject, derived prose is commentary.
+   The derived lines move into the FIELDS column — the same vertical line the
+   inputs read down — and a step quieter; <strong> stays at full colour so the
+   actionable facts (measured depth, the Fc suggestion) still lead. */
+details.cabinet-driver > .derived {
+  margin-left: 6.2rem; /* 5.5rem label column + 0.7rem gap */
+  font-size: 0.78rem;
+  line-height: 1.5;
+  padding-bottom: 0.35rem;
+}
+details.cabinet-driver > .derived strong,
+.cd-grid > .derived strong {
+  color: var(--fg);
+}
+.cd-grid > .derived {
+  grid-column: 2 / -1;
+  font-size: 0.78rem;
+  line-height: 1.5;
+}
+@container (max-width: 480px) {
+  details.cabinet-driver > .derived {
+    margin-left: 0;
+  }
+  .cd-grid > .derived {
+    grid-column: 1;
+  }
+}
+
+/* "Where can I go?" answered where you end up: the bottom of the step. */
+.step-next-row {
+  display: flex;
+  justify-content: flex-end;
+  padding: 0.6rem 0.9rem 1.4rem;
+}
+.step-next {
+  background: var(--accent);
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  padding: 0.55rem 1.1rem;
+  font-weight: 600;
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: transform 120ms ease-out, filter 150ms ease;
+}
+.step-next:hover {
+  filter: brightness(1.12);
+}
+.step-next:active {
+  transform: scale(0.97);
+}
 
 /* Driver step: fields on the left, the baffle drawn beside them. The drawing
    is sticky because the cards scroll past it — the point is to check a number

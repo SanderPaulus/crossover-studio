@@ -1856,6 +1856,21 @@ de 🧙-knop opent bij threeWay daarom óók op stap 0. Demo-knop alleen bij 2-w
 
 ## Workspace-layout (UI-fase B, jul 2026)
 
+- **Guided-ronde 2 (aug 2026, Sanders "ik wil alle 3")**: (1) elke stap eindigt met een
+  benoemde **"Next: {stap} →"**-knop rechtsonder — wayfindings tweede vraag ("waar kan ik
+  heen?") beantwoord op de plek waar je aankomt als het formulier af is; laatste stap heeft
+  er geen. (2) **Eerlijke vinkjes**: de oude criteria kleurden de hele route groen bij het
+  laden (`!!result` bestaat zodra er metingen zijn — "Design it" stond op done vóór er
+  ontworpen was). Nu betekent een vinkje dat het DOEL van de stap gebeurd is: files = élke
+  geladen driver heeft responsie ÉN impedantie; cabinet = meetafstand + frontpaneel + hoogte
+  boven de vloer; drivers = élke geladen driver heeft een positie (ref telt); design = een
+  netwerk met echte filterdelen; build = de actieve tab is KOOPBAAR (elke part vindt een
+  cataloguswaarde, single of stack) — een niet-matchende waarde is de eerlijke zeur.
+  (3) **Formulier-hiërarchie**: de derived-regels staan nu in de VELDKOLOM (zelfde verticale
+  leeslijn als de inputs, `margin-left` = labelkolom + gap; in-grid-varianten via
+  `grid-column: 2 / -1` i.p.v. inline `1 / -1`) en een stap stiller (0.78rem), met `strong`
+  op volle kleur zodat de meetregels (measured depth, Fc-suggestie) blijven leiden; onder
+  de 480px-container valt de inspringing weg.
 - **Guided: de stappenbalk is WAYFINDING en staat daarom VAST (aug 2026, Sanders "in het
   midden, en bij Design it weer links")**: de stepper zat ín de design-pane en versprong
   daardoor mee met de layout — gecentreerd op de formulier-stappen, links op de

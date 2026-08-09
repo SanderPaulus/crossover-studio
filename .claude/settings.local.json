@@ -183,7 +183,8 @@
       "WebFetch(domain:www.bliesma.de)",
       "WebFetch(domain:loudspeakerdatabase.com)",
       "WebFetch(domain:www.madisoundspeakerstore.com)",
-      "Bash(grep -n \"className={\\\\`workspace\\\\|className=\\\\\"workspace\" src/App.tsx)"
+      "Bash(grep -n \"className={\\\\`workspace\\\\|className=\\\\\"workspace\" src/App.tsx)",
+      "Bash(awk 'NR>=11290 && NR<=11316' src/App.tsx)"
     ]
   }
 }
