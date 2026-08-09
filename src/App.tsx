@@ -8600,7 +8600,11 @@ export default function App() {
 
       <div
         ref={workspaceRef}
-        className={`workspace${designTab === 'network' ? ' wide-left' : ''}`}
+        className={`workspace${designTab === 'network' ? ' wide-left' : ''}${
+          uiMode === 'guided' && (designTab === 'data' || designTab === 'drivers')
+            ? ' focus-form'
+            : ''
+        }`}
         style={
           paneFrac != null
             ? ({ '--pane-w': `${(paneFrac * 100).toFixed(3)}%` } as CSSProperties)

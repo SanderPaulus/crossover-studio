@@ -1856,6 +1856,14 @@ de 🧙-knop opent bij threeWay daarom óók op stap 0. Demo-knop alleen bij 2-w
 
 ## Workspace-layout (UI-fase B, jul 2026)
 
+- **Guided: kast- en driverstap zijn FORMULIER-stappen (aug 2026, Sanders "daar hebben we
+  nog geen grafieken nodig")**: `.workspace.focus-form` (uiMode guided + tab data/drivers)
+  verbergt het analysepaneel + de splitter en geeft het formulier één gecentreerde kolom
+  (max 1100 px). De grafieken beantwoorden ontwerpvragen die deze stappen nog niet stellen,
+  en de helft van het scherm die ze innamen is precies de ruimte die de driverkaarten en de
+  baffle-tekening nodig hebben. Alleen guided — de expert-tabs houden de split (die
+  dichtheid is daar het punt), en Design it / Your build / Your project houden de grafieken.
+
 - App = `.app-shell`: topbar (titel + status-chips: timing-verdict/integratie/overlap/fase-P95 +
   layout-toggle + theme) boven een 2-koloms `.workspace`. Links `.design-pane` met tabs
   **Import | Setup | Filters | Network** (persistent in localStorage 'ads-ui-tab'; intern id

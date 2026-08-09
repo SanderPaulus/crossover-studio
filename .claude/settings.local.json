@@ -182,7 +182,8 @@
       "WebFetch(domain:sbacoustics.com)",
       "WebFetch(domain:www.bliesma.de)",
       "WebFetch(domain:loudspeakerdatabase.com)",
-      "WebFetch(domain:www.madisoundspeakerstore.com)"
+      "WebFetch(domain:www.madisoundspeakerstore.com)",
+      "Bash(grep -n \"className={\\\\`workspace\\\\|className=\\\\\"workspace\" src/App.tsx)"
     ]
   }
 }

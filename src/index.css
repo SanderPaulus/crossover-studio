@@ -159,6 +159,25 @@ body {
     minmax(0, 1fr);
 }
 
+/* GUIDED cabinet & drivers steps are pure FORM steps: the charts answer
+   design questions those steps are not asking yet, and the half-screen they
+   would occupy is exactly the room the driver cards and the baffle drawing
+   need. One column, capped for readability — the charts return on Design it.
+   Guided only: the expert tabs keep the split, that density is their point. */
+.workspace.focus-form {
+  grid-template-columns: minmax(0, 1fr);
+}
+.workspace.focus-form .pane-splitter,
+.workspace.focus-form .analysis-pane {
+  display: none;
+}
+.workspace.focus-form .design-pane {
+  width: 100%;
+  max-width: 1100px;
+  margin: 0 auto;
+  border-right: none;
+}
+
 /* The schematic editor needs elbow room — widen the pane on the Network tab. */
 .workspace.wide-left {
   grid-template-columns:
