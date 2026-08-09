@@ -6904,6 +6904,36 @@ export default function App() {
                           </span>
                           )}
 
+                        {angles && (
+                          <span className="derived">
+                            your sweep really covers{' '}
+                            {angles
+                              .map((a) =>
+                                a.opposed
+                                  ? `${a.nominal}°→${a.opposed.nearDeg.toFixed(0)}°/${a.opposed.farDeg.toFixed(0)}°`
+                                  : `${a.nominal}°→${a.actual!.toFixed(0)}°`,
+                              )
+                              .join(', ')}
+                            {angles.some((a) => a.opposed) &&
+                              ' — two figures because the pair fires both ways; a sweep measures their sum'}
+                          </span>
+                        )}
+                        {edge !== null && (
+                          <span className="derived">nearest baffle edge {Math.round(edge)} mm</span>
+                        )}
+                        {Number(d.count) > 1 && (
+                          <span className="derived">
+                            {'excursion floor drops ×'}
+                            {(1 / Math.sqrt(Number(d.count))).toFixed(2)}
+                            {arrayLobe[role]
+                              ? ` · array lobing from ${Math.round(arrayLobe[role]!)} Hz${
+                                  Number(cabinet.baffleWidthMm) > Number(cabinet.baffleHeightMm)
+                                    ? ' — ACROSS the seats: this baffle is wider than tall'
+                                    : ' — vertically, and you sit on that axis'
+                                }`
+                              : ' · enter the spacing for the array lobing ceiling'}
+                          </span>
+                        )}
                           <span className="cd-label">Mounting</span>
                           <span
                             className="cd-fields"
@@ -6963,6 +6993,78 @@ export default function App() {
                             </span>
                           </span>
 
+                        {measuredDepth?.depths[role] !== undefined && (
+                          <span className="derived">
+                            {/* The derivation lives under the timing panel on the
+                                cabinet step, which is the wrong place to read it:
+                                the field it answers is HERE. Same complaint as
+                                having to go and look up the reference height. */}
+                            {(() => {
+                              const m = measuredDepth.depths[role]!;
+                              const typed = d.depthMm.trim() !== '' ? Number(d.depthMm) : null;
+                              const off = typed !== null ? Math.abs(typed - m) : null;
+                              // Always phrase it as a RELATION between two named
+                              // drivers. Anchoring one at 0 and calling it "the
+                              // shallowest" reads as "unknown" — Sander expected
+                              // the tweeter's own number and found a bare 0.
+                              const anchor = measuredDepth.shallowest;
+                              const anchorName =
+                                anchor === 'high'
+                                  ? 'the tweeter'
+                                  : anchor === 'mid'
+                                    ? 'the midrange'
+                                    : hasMidBranch
+                                      ? 'the woofer'
+                                      : 'the woofer/mid';
+                              const deepest = measuredDepth.spread;
+                              return (
+                                <>
+                                  {role === anchor ? (
+                                    <>
+                                      <strong>measured: this is the shallowest driver</strong>, so it
+                                      is the 0 the others are counted from
+                                      {deepest >= 0.05
+                                        ? ` — they sit up to ${deepest.toFixed(1)} mm behind it.`
+                                        : '.'}
+                                    </>
+                                  ) : (
+                                    <>
+                                      <strong>measured depth {m.toFixed(1)} mm</strong> behind{' '}
+                                      {anchorName}, from the delay with the rig removed.
+                                    </>
+                                  )}
+                                  {off !== null && (
+                                    <>
+                                      {' '}
+                                      {off <= Math.max(1, 0.1 * Math.max(typed!, m))
+                                        ? `Your ${typed!.toFixed(1)} mm agrees.`
+                                        : `You typed ${typed!.toFixed(1)} mm — one of the two is wrong.`}
+                                    </>
+                                  )}{' '}
+                                  <button
+                                    type="button"
+                                    className="link-btn"
+                                    onClick={() => set({ depthMm: m.toFixed(1) })}
+                                    title="Write the measured depth into the field above. It fixes the geometry (true off-axis angle, centre-to-centre spacing), but note that the timing split then explains itself by construction and stops being an independent check."
+                                  >
+                                    use it
+                                  </button>
+                                </>
+                              );
+                            })()}
+                          </span>
+                        )}
+                        {d.facing !== 'front' && (
+                          <span className="derived alert">
+                            {d.facing}-firing: a front turntable sweep cannot measure this
+                            driver&rsquo;s own directivity — the numbers above are the SYSTEM
+                            turning, not the cone. Near-field is the honest route for its
+                            response, and its baffle is the{' '}
+                            {d.facing === 'left' || d.facing === 'right' ? 'side' : 'top/bottom'}{' '}
+                            panel
+                            {baffleFor !== null ? `, step around ${Math.round(baffleFor)} Hz` : ''}.
+                          </span>
+                        )}
                           {role === 'high' ? (
                             <>
                               <span className="cd-label">Chamber</span>
@@ -7047,6 +7149,16 @@ export default function App() {
                             </>
                           )}
 
+                        {role !== 'high' && box.note && (
+                          <span className="derived">{box.note}</span>
+                        )}
+                        {role !== 'high' && cabinetInfo.unloadOf(role) === 'high' && (
+                          <span className="derived alert">
+                            ported: excursion runs away below Fb
+                            {Number(d.fbHz) > 0 ? ` ≈ ${Math.round(Number(d.fbHz))} Hz` : ''} —
+                            worth a steeper electrical high-pass than a sealed box would need
+                          </span>
+                        )}
                           <span className="cd-label">Datasheet</span>
                           <span
                             className="cd-fields"
@@ -7070,128 +7182,8 @@ export default function App() {
                             />
                             {' mm'}
                           </span>
-                        </div>
-                        {Number(d.count) > 1 && (
-                          <span className="derived">
-                            {'excursion floor drops ×'}
-                            {(1 / Math.sqrt(Number(d.count))).toFixed(2)}
-                            {arrayLobe[role]
-                              ? ` · array lobing from ${Math.round(arrayLobe[role]!)} Hz${
-                                  Number(cabinet.baffleWidthMm) > Number(cabinet.baffleHeightMm)
-                                    ? ' — ACROSS the seats: this baffle is wider than tall'
-                                    : ' — vertically, and you sit on that axis'
-                                }`
-                              : ' · enter the spacing for the array lobing ceiling'}
-                          </span>
-                        )}
-                        {cabinetInfo.place[role] &&
-                          cabinetInfo.place[role]!.xMm === 0 &&
-                          cabinetInfo.place[role]!.yMm === 0 && (
-                            <span className="derived">
-                              this driver IS the reference point — the mic was aimed here
-                            </span>
-                          )}
                         {dia && (
                           <span className="derived">effective Ø {Math.round(dia)} mm</span>
-                        )}
-                        {angles && (
-                          <span className="derived">
-                            your sweep really covers{' '}
-                            {angles
-                              .map((a) =>
-                                a.opposed
-                                  ? `${a.nominal}°→${a.opposed.nearDeg.toFixed(0)}°/${a.opposed.farDeg.toFixed(0)}°`
-                                  : `${a.nominal}°→${a.actual!.toFixed(0)}°`,
-                              )
-                              .join(', ')}
-                            {angles.some((a) => a.opposed) &&
-                              ' — two figures because the pair fires both ways; a sweep measures their sum'}
-                          </span>
-                        )}
-                        {measuredDepth?.depths[role] !== undefined && (
-                          <span className="derived">
-                            {/* The derivation lives under the timing panel on the
-                                cabinet step, which is the wrong place to read it:
-                                the field it answers is HERE. Same complaint as
-                                having to go and look up the reference height. */}
-                            {(() => {
-                              const m = measuredDepth.depths[role]!;
-                              const typed = d.depthMm.trim() !== '' ? Number(d.depthMm) : null;
-                              const off = typed !== null ? Math.abs(typed - m) : null;
-                              // Always phrase it as a RELATION between two named
-                              // drivers. Anchoring one at 0 and calling it "the
-                              // shallowest" reads as "unknown" — Sander expected
-                              // the tweeter's own number and found a bare 0.
-                              const anchor = measuredDepth.shallowest;
-                              const anchorName =
-                                anchor === 'high'
-                                  ? 'the tweeter'
-                                  : anchor === 'mid'
-                                    ? 'the midrange'
-                                    : hasMidBranch
-                                      ? 'the woofer'
-                                      : 'the woofer/mid';
-                              const deepest = measuredDepth.spread;
-                              return (
-                                <>
-                                  {role === anchor ? (
-                                    <>
-                                      <strong>measured: this is the shallowest driver</strong>, so it
-                                      is the 0 the others are counted from
-                                      {deepest >= 0.05
-                                        ? ` — they sit up to ${deepest.toFixed(1)} mm behind it.`
-                                        : '.'}
-                                    </>
-                                  ) : (
-                                    <>
-                                      <strong>measured depth {m.toFixed(1)} mm</strong> behind{' '}
-                                      {anchorName}, from the delay with the rig removed.
-                                    </>
-                                  )}
-                                  {off !== null && (
-                                    <>
-                                      {' '}
-                                      {off <= Math.max(1, 0.1 * Math.max(typed!, m))
-                                        ? `Your ${typed!.toFixed(1)} mm agrees.`
-                                        : `You typed ${typed!.toFixed(1)} mm — one of the two is wrong.`}
-                                    </>
-                                  )}{' '}
-                                  <button
-                                    type="button"
-                                    className="link-btn"
-                                    onClick={() => set({ depthMm: m.toFixed(1) })}
-                                    title="Write the measured depth into the field above. It fixes the geometry (true off-axis angle, centre-to-centre spacing), but note that the timing split then explains itself by construction and stops being an independent check."
-                                  >
-                                    use it
-                                  </button>
-                                </>
-                              );
-                            })()}
-                          </span>
-                        )}
-                        {d.facing !== 'front' && (
-                          <span className="derived alert">
-                            {d.facing}-firing: a front turntable sweep cannot measure this
-                            driver&rsquo;s own directivity — the numbers above are the SYSTEM
-                            turning, not the cone. Near-field is the honest route for its
-                            response, and its baffle is the{' '}
-                            {d.facing === 'left' || d.facing === 'right' ? 'side' : 'top/bottom'}{' '}
-                            panel
-                            {baffleFor !== null ? `, step around ${Math.round(baffleFor)} Hz` : ''}.
-                          </span>
-                        )}
-                        {role !== 'high' && box.note && (
-                          <span className="derived">{box.note}</span>
-                        )}
-                        {role !== 'high' && cabinetInfo.unloadOf(role) === 'high' && (
-                          <span className="derived alert">
-                            ported: excursion runs away below Fb
-                            {Number(d.fbHz) > 0 ? ` ≈ ${Math.round(Number(d.fbHz))} Hz` : ''} —
-                            worth a steeper electrical high-pass than a sealed box would need
-                          </span>
-                        )}
-                        {edge !== null && (
-                          <span className="derived">nearest baffle edge {Math.round(edge)} mm</span>
                         )}
                         {uit.length > 0 && (
                           <span className="derived">
@@ -7199,6 +7191,7 @@ export default function App() {
                             {uit.join(' · ')}
                           </span>
                         )}
+                        </div>
                       </details>
                     );
                   })}

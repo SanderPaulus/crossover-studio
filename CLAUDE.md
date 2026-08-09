@@ -1856,6 +1856,17 @@ de 🧙-knop opent bij threeWay daarom óók op stap 0. Demo-knop alleen bij 2-w
 
 ## Workspace-layout (UI-fase B, jul 2026)
 
+- **Driverkaart = MAPPING (aug 2026, Sanders "ik vind de driver section onduidelijk")**: de
+  kaart was een net formulier met een MUUR losse feiten eronder — vijf derived-regels op een
+  stapel, losgezongen van de velden waar ze bij horen. Apple-designs mapping-regel ("plaats
+  een feit naast wat hem veroorzaakt"): elke regel staat nu ÍN het grid direct onder zijn
+  eigen rij — sweep-dekking + randafstand + array-lobing onder Position, gemeten diepte +
+  off-baffle-waarschuwing onder Mounting, kastnotitie + poortwaarschuwing onder Chamber,
+  effectieve Ø + "blank is fine" onder Datasheet. De gedupliceerde "this driver IS the
+  reference point"-regel is geschrapt (de Position-rij zei het al, woordelijk). LES bij de
+  verbouwing: een substring-anker ("{Number(d.count) > 1 && (") matchte óók in de
+  summary-regel met diepere inspringing — regel-verankerd zoeken (\n + exacte indent) en de
+  asserts hielden de schade tegen.
 - **Guided-ronde 2 (aug 2026, Sanders "ik wil alle 3")**: (1) elke stap eindigt met een
   benoemde **"Next: {stap} →"**-knop rechtsonder — wayfindings tweede vraag ("waar kan ik
   heen?") beantwoord op de plek waar je aankomt als het formulier af is; laatste stap heeft
