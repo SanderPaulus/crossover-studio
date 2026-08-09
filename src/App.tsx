@@ -48,6 +48,7 @@ import {
 import {
   baffleStepHz,
   boxRolloff,
+  boxTuningFromZ,
   C_AIR_MM_S,
   centreToCentreMm,
   depthForExcessMm,
@@ -1333,6 +1334,18 @@ export default function App() {
    * off-axis during the sweep.
    */
   const [cabinet, setCabinet] = useState<CabinetState>(() => emptyCabinet());
+  /** Box corner read from the measured Z, per branch — the Fc/Fb field's
+   *  answer is already in the ZMA when the driver was measured in its box
+   *  (sealed: the in-box resonance peak; ported: the saddle between the twin
+   *  peaks). A suggestion and a cross-check, never silently applied. */
+  const boxTuneFromZ = useMemo(() => {
+    const aliased = withSlotAliasesN(impedances);
+    const of = (role: BranchRole) => {
+      const z = aliased[canonicalModelForRole(role, threeWay)];
+      return z ? boxTuningFromZ(z.freq, z.magnitude, cabinet.drivers[role].enclosure) : null;
+    };
+    return { low: of('low'), mid: of('mid'), high: of('high') };
+  }, [impedances, threeWay, cabinet]);
   /**
    * Near-field low-end merge, per branch. A gated indoor far field runs out
    * around 200–290 Hz and a three-way's woofer-mid crossover lives at
@@ -2343,7 +2356,11 @@ export default function App() {
         Number(cabinet.listenEarHeightMm),
         Number(cabinet.listenDistanceM),
       ),
-      boxOf: (role: BranchRole) => boxRolloff(cabinet.drivers[role].enclosure),
+      boxOf: (role: BranchRole) =>
+        boxRolloff(
+          cabinet.drivers[role].enclosure,
+          Number(cabinet.drivers[role].fbHz) > 0 ? Number(cabinet.drivers[role].fbHz) : undefined,
+        ),
       unloadOf: (role: BranchRole) => unloadingRisk(cabinet.drivers[role].enclosure),
     };
   }, [cabinet, sdCm2, angleSets, threeWay]);
@@ -6910,13 +6927,13 @@ export default function App() {
                             </span>
                           </span>
 
-                          <span className="cd-label">Enclosure</span>
+                          <span className="cd-label">Chamber</span>
                           <span className="cd-fields">
                             <span className="cd-pre" />
                             <select
                               value={d.enclosure}
                               onChange={(e) => set({ enclosure: e.target.value as Enclosure })}
-                              title="Enclosure behind THIS driver. A sealed box is already a 2nd-order acoustic high-pass at its corner, so a 2nd-order electrical filter yields a 4th-order acoustic slope — on a low crossover that is the difference between one ~30 µF capacitor and a pair adding to ~90 µF. A port also means the box can radiate its own midrange through a pipe resonance."
+                              title="The volume behind THIS driver — per driver on purpose: a 3-way routinely runs a sealed mid chamber inside a ported cabinet, so one answer for the whole box would be wrong. A sealed chamber is already a 2nd-order acoustic high-pass at its corner, so a 2nd-order electrical filter yields a 4th-order acoustic slope — on a low crossover that is the difference between one ~30 µF capacitor and a pair adding to ~90 µF. A port also means the box can radiate its own midrange through a pipe resonance."
                             >
                               <option value="unknown">unknown</option>
                               <option value="sealed">sealed</option>
@@ -6936,7 +6953,46 @@ export default function App() {
                                 {' Hz'}
                               </>
                             )}
+                            <span className="cd-hint">
+                              the volume behind THIS driver — one cabinet can hold different
+                              chambers
+                            </span>
                           </span>
+                          {(() => {
+                            // The measurement already carries the corner: an in-box
+                            // ZMA's resonance IS Fc (sealed) and the saddle between
+                            // its twin peaks IS Fb (ported). Offer it, never apply it
+                            // silently — and with a value typed it turns into the
+                            // cross-check role this panel prefers.
+                            const t = boxTuneFromZ[role];
+                            if (!t) return null;
+                            const typed = d.fbHz.trim() !== '' ? Number(d.fbHz) : null;
+                            const off =
+                              typed !== null && typed > 0
+                                ? Math.abs(typed - t.hz) / Math.max(typed, t.hz)
+                                : null;
+                            return (
+                              <span className="derived">
+                                your impedance measurement suggests {t.kind} ≈{' '}
+                                {Math.round(t.hz)} Hz (valid if the ZMA was taken in this box).
+                                {off !== null && (
+                                  <>
+                                    {' '}
+                                    {off <= 0.15
+                                      ? `Your ${typed} Hz agrees.`
+                                      : `You typed ${typed} Hz — one of the two is wrong.`}
+                                  </>
+                                )}{' '}
+                                <button
+                                  type="button"
+                                  className="link-btn"
+                                  onClick={() => set({ fbHz: String(Math.round(t.hz)) })}
+                                >
+                                  use it
+                                </button>
+                              </span>
+                            );
+                          })()}
   
                           <span className="cd-label">Datasheet</span>
                           <span
@@ -7074,8 +7130,9 @@ export default function App() {
                         {box.note && <span className="derived">{box.note}</span>}
                         {cabinetInfo.unloadOf(role) === 'high' && (
                           <span className="derived alert">
-                            ported: excursion runs away below Fb — worth a steeper electrical
-                            high-pass than a sealed box would need
+                            ported: excursion runs away below Fb
+                            {Number(d.fbHz) > 0 ? ` ≈ ${Math.round(Number(d.fbHz))} Hz` : ''} —
+                            worth a steeper electrical high-pass than a sealed box would need
                           </span>
                         )}
                         {edge !== null && (

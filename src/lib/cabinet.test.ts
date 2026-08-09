@@ -8,6 +8,7 @@ import {
   floorBounceGate,
   gateLimitHz,
   boxRolloff,
+  boxTuningFromZ,
   centreToCentreMm,
   farFieldVerdict,
   listeningAngleDeg,
@@ -446,5 +447,60 @@ describe('working the mounting depth out of the measurement', () => {
     // baffle plane — that is a measurement to question, not a zero to report.
     const rig = geometricPathExcessMm(drv, 500)!;
     expect(depthForExcessMm(drv, 500, rig - 5)).toBeNull();
+  });
+});
+
+describe('box tuning read from the measured impedance', () => {
+  // The Fc/Fb field's answer is already IN the ZMA when the driver was
+  // measured in its box: sealed = the in-box resonance peak, ported = the
+  // saddle between the twin peaks. Synthetic curves with known corners.
+  const grid = () => {
+    const f: number[] = [];
+    for (let i = 0; i < 240; i++) f.push(10 * Math.pow(2000, i / 239)); // 10..20k log
+    return f;
+  };
+  const bump = (f: number[], f0: number, h: number, w = 0.35) =>
+    f.map((x) => h * Math.exp(-((Math.log(x / f0) / w) ** 2)));
+  const add = (...seq: number[][]) => seq[0].map((_, i) => seq.reduce((a, s) => a + s[i], 0));
+  const flat = (f: number[], v: number) => f.map(() => v);
+
+  it('sealed: the in-box resonance peak is Fc', () => {
+    const f = grid();
+    const z = add(flat(f, 6), bump(f, 388, 18, 0.25));
+    const t = boxTuningFromZ(f, z, 'sealed')!;
+    expect(t.kind).toBe('Fc');
+    expect(t.hz).toBeGreaterThan(360);
+    expect(t.hz).toBeLessThan(420);
+  });
+
+  it('ported: the saddle between the twin peaks is Fb', () => {
+    const f = grid();
+    const z = add(flat(f, 6), bump(f, 24, 20, 0.2), bump(f, 62, 16, 0.2));
+    const t = boxTuningFromZ(f, z, 'ported')!;
+    expect(t.kind).toBe('Fb');
+    expect(t.hz).toBeGreaterThan(30);
+    expect(t.hz).toBeLessThan(52);
+  });
+
+  it('ported with a single peak refuses — a guess would defeat the cross-check', () => {
+    const f = grid();
+    const z = add(flat(f, 6), bump(f, 45, 20, 0.25));
+    expect(boxTuningFromZ(f, z, 'ported')).toBeNull();
+  });
+
+  it('no resonance in band, or no box type, yields nothing', () => {
+    const f = grid();
+    expect(boxTuningFromZ(f, flat(f, 6), 'sealed')).toBeNull();
+    const z = add(flat(f, 6), bump(f, 388, 18, 0.25));
+    expect(boxTuningFromZ(f, z, 'unknown')).toBeNull();
+    expect(boxTuningFromZ(f, z, 'open')).toBeNull();
+  });
+
+  it('the note names the corner once it is known, and only then', () => {
+    expect(boxRolloff('sealed').note).toContain('at Fc —');
+    expect(boxRolloff('sealed', 388).note).toContain('at Fc ≈ 388 Hz');
+    expect(boxRolloff('ported', 31.6).note).toContain('at Fb ≈ 32 Hz');
+    // No number = the exact historical strings (bit-compat with old readouts).
+    expect(boxRolloff('ported').note).toContain('at Fb,');
   });
 });

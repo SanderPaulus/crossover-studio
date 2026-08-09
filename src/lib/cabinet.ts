@@ -675,19 +675,23 @@ export interface BoxRolloff {
  * off-axis response shows interference that the impedance does not explain,
  * this is the field that decides whether a port is even a candidate.
  */
-export function boxRolloff(enclosure: Enclosure): BoxRolloff {
+export function boxRolloff(enclosure: Enclosure, fbHz?: number): BoxRolloff {
+  // With the corner known the note names it — "2nd-order at Fc" is a rule,
+  // "2nd-order at ≈388 Hz" is a fact about THIS box. Same text otherwise.
+  const at = (label: string) =>
+    fbHz !== undefined && fbHz > 0 ? `${label} ≈ ${Math.round(fbHz)} Hz` : label;
   switch (enclosure) {
     case 'sealed':
       return {
         order: 2,
         canRadiate: false,
-        note: 'sealed: 2nd-order acoustic HP at Fc — an LR2 electrical filter already gives an LR4 acoustic slope',
+        note: `sealed: 2nd-order acoustic HP at ${at('Fc')} — an LR2 electrical filter already gives an LR4 acoustic slope`,
       };
     case 'ported':
       return {
         order: 4,
         canRadiate: true,
-        note: 'ported: 4th-order acoustic HP at Fb, and the port can radiate its own midrange (pipe resonance)',
+        note: `ported: 4th-order acoustic HP at ${at('Fb')}, and the port can radiate its own midrange (pipe resonance)`,
       };
     case 'open':
       return {
@@ -698,6 +702,63 @@ export function boxRolloff(enclosure: Enclosure): BoxRolloff {
     default:
       return { order: 0, canRadiate: false, note: '' };
   }
+}
+
+/**
+ * Read the box corner out of a measured impedance curve — the measurement
+ * already contains the answer the Fc/Fb field asks for, PROVIDED the ZMA was
+ * taken with the driver in its box (which is the normal way this app's users
+ * measure). Litres could not do this: volume alone needs Vas, Qts and free-air
+ * Fs from a datasheet to become a corner frequency, three fields to compute
+ * what one number states.
+ *
+ *  - sealed: the in-box resonance IS the corner — the single |Z| peak.
+ *  - ported: the port splits the resonance into two peaks, and the tuning Fb
+ *    is the SADDLE between them. One peak only ⇒ null: this is a suggestion
+ *    for a cross-check, and guessing would defeat that purpose.
+ *
+ * Peaks must be true local maxima with some prominence; a curve that only
+ * rises into the band edge yields null rather than an edge sample.
+ */
+export function boxTuningFromZ(
+  freq: readonly number[],
+  magnitude: readonly number[],
+  enclosure: Enclosure,
+): { hz: number; kind: 'Fc' | 'Fb' } | null {
+  if (enclosure !== 'sealed' && enclosure !== 'ported') return null;
+  const LO = 15;
+  const HI = 2500;
+  const n = freq.length;
+  if (n < 5 || magnitude.length !== n) return null;
+  // Local maxima inside the band (strictly above the left neighbour, at least
+  // level with the right — plateau-tolerant), with the band minimum for a
+  // prominence reference.
+  const peaks: { i: number; mag: number }[] = [];
+  let bandMin = Infinity;
+  for (let i = 1; i < n - 1; i++) {
+    if (freq[i] < LO || freq[i] > HI) continue;
+    bandMin = Math.min(bandMin, magnitude[i]);
+    if (magnitude[i] > magnitude[i - 1] && magnitude[i] >= magnitude[i + 1]) {
+      peaks.push({ i, mag: magnitude[i] });
+    }
+  }
+  if (peaks.length === 0 || !Number.isFinite(bandMin)) return null;
+  peaks.sort((a, b) => b.mag - a.mag);
+  const main = peaks[0];
+  if (main.mag < 1.25 * bandMin) return null; // no real resonance in band
+  if (enclosure === 'sealed') return { hz: freq[main.i], kind: 'Fc' };
+  // Ported: the second peak must be a distinct resonance, not a ripple on the
+  // first — at least 1/3 octave away and clearly proud of the saddle.
+  const second = peaks.find(
+    (p) => Math.abs(Math.log2(freq[p.i] / freq[main.i])) > 1 / 3 && p.mag >= 1.1 * bandMin,
+  );
+  if (!second) return null;
+  const [a, b] = [Math.min(main.i, second.i), Math.max(main.i, second.i)];
+  let si = a;
+  for (let i = a; i <= b; i++) if (magnitude[i] < magnitude[si]) si = i;
+  const saddle = magnitude[si];
+  if (saddle > 0.8 * Math.min(main.mag, second.mag)) return null; // no real dip between
+  return { hz: freq[si], kind: 'Fb' };
 }
 
 /**

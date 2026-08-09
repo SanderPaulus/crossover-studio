@@ -351,6 +351,23 @@ minimum phase reconstrueert. Voertaal met Sander: **Nederlands**; code/comments 
   hart-op-hart) wordt er wél scherper van en die hangt niet van de delay af. Met een al
   ingevulde diepte leest de regel juist als KRUISCONTROLE ("als die twee niet overeenkomen
   is één van beide fout") — dat is de rol die dit bestand het liefst speelt.
+  **HET KASTTYPE-VELD AFGEMAAKT (aug 2026, Sanders "moet enclosure niet bij Your cabinet
+  staan, en moet Fc geen liters zijn?")**: drie dingen in één ronde, en de eerlijke vondst
+  eronder was dat het Fc/Fb-GETAL tot dan toe niets voedde — een documentatieveld, in strijd
+  met de eigen veldregel. (1) Het veld heet nu **Chamber** met de uitleg erbij: het staat
+  bewust bij de DRIVER, want het is de kamer achter díe tak (gesloten mid-kamer in gepoorte
+  kast is de normale 3-weg-bouw; op de kastpagina zou dezelfde per-driver-lijst nóg een keer
+  moeten staan). (2) Geen liters: liters → knik vergt Vas + Qts + vrije-lucht-Fs, drie velden
+  voor wat één getal zegt, en een poort-bouwer kent zijn Fb al. In plaats daarvan
+  **`boxTuningFromZ`** (cabinet.ts, unit-getest): de gemeten Z bevat het antwoord als de ZMA
+  in de kast gemeten is — gesloten: de Z-piek ís Fc; gepoort: Fb = het zadel tussen de twee
+  pieken (één piek ⇒ null, raden zou de kruiscontrole-rol slopen). De app toont het als
+  voorstel + "use it" naast het veld (zelfde patroon als de gemeten montagediepte), mét de
+  kanttekening "valid if the ZMA was taken in this box"; met een ingevulde waarde wordt het
+  een kruiscontrole. Op de KOAN-mid-ZMA: Fc ≈ 89 Hz. (3) Het getal DOET nu iets:
+  `boxRolloff(enclosure, fbHz?)` maakt de kastnotitie concreet ("sealed: 2nd-order acoustic
+  HP at Fc ≈ 89 Hz") en de poort-excursiewaarschuwing noemt zijn Fb; zonder getal
+  byte-identiek aan de oude teksten (test-gepind).
   Bewust NIET gemodelleerd, wel geweten: een ACHTERPOORT wordt in `sumRadiators` als
   samenvallend met de conus gesommeerd (Keele's methode is zo gedefinieerd). Onder ~100 Hz is
   de golflengte metersgroot en is dat prima; erboven draagt een poort nauwelijks. Een
