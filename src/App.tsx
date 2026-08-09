@@ -6810,7 +6810,24 @@ export default function App() {
                       .filter(Boolean)
                       .join(' · ');
                     return (
-                      <details key={role} className="cabinet-driver" open>
+                      <details
+                        key={role}
+                        className="cabinet-driver"
+                        open
+                        style={
+                          {
+                            /* The same colour the driver's curve wears in every
+                               chart and in the drawing — one identity across
+                               the app. Colour reinforces, the name carries. */
+                            '--drv-color':
+                              role === 'high'
+                                ? 'var(--viz-tweeter)'
+                                : role === 'mid'
+                                  ? 'var(--viz-mid)'
+                                  : 'var(--viz-woofer)',
+                          } as CSSProperties
+                        }
+                      >
                         {/* Was één doorlopende regel met invoervelden ertussen
                             ("Woofer x [ ] right, y [ ] up (mm ...)"), wat leest
                             als een zin met gaten in plaats van als een formulier

@@ -1856,6 +1856,12 @@ de 🧙-knop opent bij threeWay daarom óók op stap 0. Demo-knop alleen bij 2-w
 
 ## Workspace-layout (UI-fase B, jul 2026)
 
+- **Elke driver zijn eigen KAART (aug 2026, Sanders "elk een eigen sectie in de sectie")**:
+  `.cabinet-driver` draagt nu het huis-kaartidioom (rand + radius + titelbalk à la
+  `.cab-card`) met een 3px-accentrand én kleurchip in de kleur die de driver in élke
+  grafiek draagt (`--drv-color` = viz-tweeter/mid/woofer) — één identiteit door de hele
+  app; kleur versterkt, de naam draagt. Titelbalk = de summary (heel de kop klikbaar,
+  eigen achtergrond, border-bottom bij open), body ademt binnen het kader.
 - **Driverkaart = MAPPING (aug 2026, Sanders "ik vind de driver section onduidelijk")**: de
   kaart was een net formulier met een MUUR losse feiten eronder — vijf derived-regels op een
   stapel, losgezongen van de velden waar ze bij horen. Apple-designs mapping-regel ("plaats

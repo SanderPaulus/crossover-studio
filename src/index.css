@@ -2364,14 +2364,17 @@ button:disabled {
 /* Cabinet & drivers: one block per loaded driver inside the Setup fieldset.
    Indented and rule-marked so a column of x/y/Sd fields reads as belonging to
    its driver rather than to the cabinet above it. */
+/* Each driver is its OWN card (Sanders): the house card idiom (border +
+   radius + title bar, like .cab-card), plus a 3px accent in the colour the
+   driver's curve wears in every chart — one identity across the app. */
 .cabinet-driver {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 0.4rem 0.7rem;
+  display: block;
   width: 100%;
-  padding: 0.35rem 0 0.35rem 0.6rem;
-  border-left: 2px solid var(--border);
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--drv-color, var(--border));
+  border-radius: 10px;
+  background: var(--bg);
+  margin-bottom: 0.85rem;
 }
 .cabinet-driver > strong {
   min-width: 6.5rem;
@@ -2791,15 +2794,37 @@ details.cabinet-driver > summary {
   cursor: pointer;
   list-style: none;
   /* A caret alone was too small to see and too small to hit (Sanders). The
-     whole head is the target now: full-width row, its own padding, and a
-     hover/focus background so it reads as something you can click. */
-  margin: -0.15rem -0.4rem 0;
-  padding: 0.3rem 0.4rem;
-  border-radius: 6px;
+     whole head is the TITLE BAR now: full-width, its own background, and a
+     hover state so it reads as something you can click. */
+  margin: 0;
+  padding: 0.5rem 0.8rem;
+  border-radius: 9px 9px 0 0;
+  background: color-mix(in srgb, var(--fg) 3.5%, transparent);
   transition: background 120ms ease;
+}
+details.cabinet-driver[open] > summary {
+  border-bottom: 1px solid var(--border);
+}
+details.cabinet-driver:not([open]) > summary {
+  border-radius: 9px;
 }
 details.cabinet-driver > summary:hover {
   background: color-mix(in srgb, var(--fg) 7%, transparent);
+}
+/* The colour chip on the name — the identity link to the charts. */
+.cd-head > strong::before {
+  content: '';
+  display: inline-block;
+  width: 0.62rem;
+  height: 0.62rem;
+  border-radius: 3px;
+  background: var(--drv-color, var(--muted));
+  margin-right: 0.45rem;
+}
+/* Body breathes inside the card frame. */
+.cabinet-driver > .cd-grid {
+  padding: 0.45rem 0.85rem 0.5rem;
+  width: auto;
 }
 details.cabinet-driver > summary::-webkit-details-marker {
   display: none;
