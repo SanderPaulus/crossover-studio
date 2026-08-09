@@ -1905,7 +1905,7 @@ de 🧙-knop opent bij threeWay daarom óók op stap 0. Demo-knop alleen bij 2-w
   krijgen daarvoor een key per stap (een @starting-style vuurt alleen bij insertion);
   expert houdt een stabiele key, want frequente acties verdienen geen animatie.
 - **Guided: kast- en driverstap zijn FORMULIER-stappen (aug 2026, Sanders "daar hebben we
-  nog geen grafieken nodig")**: `.workspace.focus-form` (uiMode guided + tab data/drivers)
+  nog geen grafieken nodig")**: `.workspace.focus-form` (uiMode guided + tab import/data/drivers — óók de project-stap, Sanders nalevering)
   verbergt het analysepaneel + de splitter en geeft het formulier één gecentreerde kolom
   (max 1100 px). De grafieken beantwoorden ontwerpvragen die deze stappen nog niet stellen,
   en de helft van het scherm die ze innamen is precies de ruimte die de driverkaarten en de

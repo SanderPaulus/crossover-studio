@@ -8679,7 +8679,8 @@ export default function App() {
       <div
         ref={workspaceRef}
         className={`workspace${designTab === 'network' ? ' wide-left' : ''}${
-          uiMode === 'guided' && (designTab === 'data' || designTab === 'drivers')
+          uiMode === 'guided' &&
+          (designTab === 'import' || designTab === 'data' || designTab === 'drivers')
             ? ' focus-form'
             : ''
         }`}
