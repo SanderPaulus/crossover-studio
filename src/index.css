@@ -2833,6 +2833,34 @@ details.cabinet-driver .derived {
     max-width: 210px;
   }
 }
+/* The same rules keyed on the PANE instead of the viewport: in split layout a
+   wide window holds a narrow design pane, where the media queries above never
+   fire and the cards were crushed to a 214 px tower (Sanders screenshot). */
+.driver-facts-wrap {
+  container-type: inline-size;
+  /* Inline-size containment sizes the element as if it were empty, and as a
+     flex/grid item that computes to 0 — the width must come from the parent
+     explicitly or the whole card tower collapses. */
+  width: 100%;
+}
+@container (max-width: 640px) {
+  .driver-facts {
+    grid-template-columns: 1fr;
+  }
+  .driver-facts-draw {
+    position: static;
+    max-width: 210px;
+  }
+}
+@container (max-width: 480px) {
+  .cd-grid {
+    grid-template-columns: 1fr;
+    gap: 0.1rem;
+  }
+  .cd-label {
+    margin-top: 0.35rem;
+  }
+}
 
 /* ---- Cabinet panel: Cards (guided) ----------------------------------------
    Promoted from the prototype round. Leads with the ANSWER, not the input:

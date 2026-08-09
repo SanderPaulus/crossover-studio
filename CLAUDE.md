@@ -368,6 +368,21 @@ minimum phase reconstrueert. Voertaal met Sander: **Nederlands**; code/comments 
   `boxRolloff(enclosure, fbHz?)` maakt de kastnotitie concreet ("sealed: 2nd-order acoustic
   HP at Fc ≈ 89 Hz") en de poort-excursiewaarschuwing noemt zijn Fb; zonder getal
   byte-identiek aan de oude teksten (test-gepind).
+  Vervolg (Sanders screenshot + "de meeste tweeters komen in hun eigen metalen behuizing"):
+  (a) de suggestieregel stond ÍN `.cd-grid` en viel daardoor in de smalle labelkolom —
+  `gridColumn: '1 / -1'`, zoals de tegenspraak-alert al deed. Dieper: de kaart-layout hing
+  aan VIEWPORT-media-queries terwijl in split-layout een 1600px-venster een 420px-paneel kan
+  dragen — de query vuurt nooit en de kaarten werden tot een 214px-toren geplet. Nu een
+  **container query** op `.driver-facts-wrap` (pane-breedte i.p.v. vensterbreedte; <640 =
+  tekening eronder, <480 = labels boven de velden). HARD GELEERD: `container-type:
+  inline-size` maakt de breedte content-onafhankelijk en als flex-item wordt dat 0 px —
+  expliciete `width: 100%` erbij of de hele toren klapt in.
+  (b) De TWEETER-kaart vraagt het kasttype niet meer: een dome ís zijn eigen gesloten
+  achterkamer, dus de kaart stelt vast i.p.v. vraagt — "a dome is its own sealed rear
+  chamber — nothing to choose; resonance ≈ 898 Hz from your impedance (the 2×Fs crossover
+  floor reads this)". `boxTuneFromZ` rekent de high-tak daarom altijd als sealed, en de
+  generieke kastnotitie + poortwaarschuwing zijn op de tweeter-kaart onderdrukt (een
+  restore met een oud opgeslagen type toont geen onzin).
   Bewust NIET gemodelleerd, wel geweten: een ACHTERPOORT wordt in `sumRadiators` als
   samenvallend met de conus gesommeerd (Keele's methode is zo gedefinieerd). Onder ~100 Hz is
   de golflengte metersgroot en is dat prima; erboven draagt een poort nauwelijks. Een

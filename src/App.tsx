@@ -1342,7 +1342,10 @@ export default function App() {
     const aliased = withSlotAliasesN(impedances);
     const of = (role: BranchRole) => {
       const z = aliased[canonicalModelForRole(role, threeWay)];
-      return z ? boxTuningFromZ(z.freq, z.magnitude, cabinet.drivers[role].enclosure) : null;
+      // A dome tweeter is its own sealed rear chamber — the card states it
+      // instead of asking, so the derivation must not wait for a dropdown.
+      const enc = role === 'high' ? 'sealed' : cabinet.drivers[role].enclosure;
+      return z ? boxTuningFromZ(z.freq, z.magnitude, enc) : null;
     };
     return { low: of('low'), mid: of('mid'), high: of('high') };
   }, [impedances, threeWay, cabinet]);
@@ -6927,6 +6930,21 @@ export default function App() {
                             </span>
                           </span>
 
+                          {role === 'high' ? (
+                            <>
+                              <span className="cd-label">Chamber</span>
+                              <span className="cd-fields">
+                                <span className="cd-pre" />
+                                <em>
+                                  a dome is its own sealed rear chamber — nothing to choose
+                                  {boxTuneFromZ.high
+                                    ? `; resonance ≈ ${Math.round(boxTuneFromZ.high.hz)} Hz from your impedance (the 2×Fs crossover floor reads this)`
+                                    : ''}
+                                </em>
+                              </span>
+                            </>
+                          ) : (
+                            <>
                           <span className="cd-label">Chamber</span>
                           <span className="cd-fields">
                             <span className="cd-pre" />
@@ -6972,7 +6990,7 @@ export default function App() {
                                 ? Math.abs(typed - t.hz) / Math.max(typed, t.hz)
                                 : null;
                             return (
-                              <span className="derived">
+                              <span className="derived" style={{ gridColumn: '1 / -1' }}>
                                 your impedance measurement suggests {t.kind} ≈{' '}
                                 {Math.round(t.hz)} Hz (valid if the ZMA was taken in this box).
                                 {off !== null && (
@@ -6993,7 +7011,9 @@ export default function App() {
                               </span>
                             );
                           })()}
-  
+                            </>
+                          )}
+
                           <span className="cd-label">Datasheet</span>
                           <span
                             className="cd-fields"
@@ -7127,8 +7147,10 @@ export default function App() {
                             {baffleFor !== null ? `, step around ${Math.round(baffleFor)} Hz` : ''}.
                           </span>
                         )}
-                        {box.note && <span className="derived">{box.note}</span>}
-                        {cabinetInfo.unloadOf(role) === 'high' && (
+                        {role !== 'high' && box.note && (
+                          <span className="derived">{box.note}</span>
+                        )}
+                        {role !== 'high' && cabinetInfo.unloadOf(role) === 'high' && (
                           <span className="derived alert">
                             ported: excursion runs away below Fb
                             {Number(d.fbHz) > 0 ? ` ≈ ${Math.round(Number(d.fbHz))} Hz` : ''} —
@@ -9067,9 +9089,15 @@ export default function App() {
                 "staan mijn drivers waar ik denk", en dat zijn de getallen die
                 je op dit scherm intypt. Een verwisselde x/y of een komma-slip
                 zie je meteen; teruglezen van "y = -380" helpt daar niet. */}
-            <div className="driver-facts">
-              <div className="driver-facts-fields">{driverFacts}</div>
-              {baffleDrawing}
+            {/* The WRAPPER is the container-query anchor: in split layout a
+                1600 px window can hold a 420 px design pane, so a viewport
+                media query never fires while the cards are being crushed —
+                the pane, not the window, is the width that matters here. */}
+            <div className="driver-facts-wrap">
+              <div className="driver-facts">
+                <div className="driver-facts-fields">{driverFacts}</div>
+                {baffleDrawing}
+              </div>
             </div>
           </fieldset>
         )}
