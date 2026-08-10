@@ -160,6 +160,31 @@ let custom: CatalogSeries[] = [];
  *  SHADOWS any generated grid for that series — exact beats estimated. */
 let customParts: CatalogPart[] = [];
 
+/**
+ * Series the designer has switched OFF — stock he is not willing to buy
+ * (Sander: "de Jantzen Bipolar caps wil ik niet gebruiken"). It is a
+ * preference, not catalog data: it is kept out of the catalog file so a
+ * re-import cannot resurrect a series you rejected, and so an exported
+ * catalog stays a description of what EXISTS rather than of what one person
+ * happens to like.
+ *
+ * Filtered in `catalogParts()` — the single pool every consumer draws from —
+ * so "off" means the same thing to the snap, the inspector suggestions and
+ * the BOM. Splitting that into per-consumer rules is the two-definitions trap
+ * this codebase keeps paying for: a part the BOM prices but the snap refuses
+ * (or the reverse) is worse than either answer alone.
+ */
+let disabled: ReadonlySet<string> = new Set();
+
+export function setDisabledSeries(ids: readonly string[]): void {
+  disabled = new Set(ids);
+  cache = null;
+}
+
+export function disabledSeries(): string[] {
+  return [...disabled];
+}
+
 export function setCustomSeries(series: CatalogSeries[], parts: CatalogPart[] = []): void {
   // An imported series with a built-in id OVERRIDES the built-in: that is
   // how a catalog update (prices, tiers, refined grids) lands. Re-importing
@@ -221,13 +246,30 @@ export function allSeries(): CatalogSeries[] {
 }
 
 export function catalogParts(): CatalogPart[] {
-  cache ??= [...buildCatalog(), ...customParts];
+  if (cache === null) {
+    const all = [...buildCatalog(), ...customParts];
+    if (disabled.size === 0) {
+      cache = all;
+    } else {
+      // Resolve ids to brand+series once: a part carries names, a series
+      // carries an id, and built-in ids are not guaranteed to be the slug.
+      const off = new Set(
+        allSeries()
+          .filter((s) => disabled.has(s.id))
+          .map((s) => seriesKey(s.brand, s.series)),
+      );
+      cache = all.filter((p) => !off.has(seriesKey(p.brand, p.series)));
+    }
+  }
   return cache;
 }
 
-/** The product series available for a component kind (the brand choice). */
+/** The product series available for a component kind (the brand choice).
+ *  Switched-off series are gone here too — you cannot bind to stock you have
+ *  told the app you will not buy. `allSeries()` stays complete, because the
+ *  catalog manager has to list them to switch them back on. */
 export function catalogSeries(kind: CatalogKind): CatalogSeries[] {
-  return allSeries().filter((s) => s.kind === kind);
+  return allSeries().filter((s) => s.kind === kind && !disabled.has(s.id));
 }
 
 /** Nearest parts by |log ratio| where `count` counts DISTINCT VALUES, but

@@ -200,3 +200,42 @@ describe('catalog manager: display units', () => {
     expect(formatSkuValue('C', 330e-6)).toBe('330 µF');
   });
 });
+
+describe('series that exist only through their SKUs', () => {
+  // Sanders imported catalog carries 32 "Jantzen Electrolytic Bipolar" SKUs
+  // and no series record — and that is exactly the series he wants to switch
+  // off, so leaving it out of the list made the switch unreachable.
+  const sku = (v: number) => ({
+    id: `JAZ-ELCO-${v}`,
+    brand: 'Jantzen',
+    series: 'Electrolytic Bipolar',
+    kind: 'C' as const,
+    value: v,
+    seriesR: 0.08,
+  });
+
+  it('is listed, with the value range gathered from its SKUs', () => {
+    const rows = managedSeries([], [sku(22), sku(100), sku(47)]);
+    const row = rows.find((r) => r.series.series === 'Electrolytic Bipolar');
+    expect(row).toBeDefined();
+    expect(row!.source).toBe('skus');
+    expect(row!.series.range).toEqual([22, 100]);
+    // The id must be the one catalog.ts derives, or switching it off would
+    // resolve to nothing.
+    expect(row!.series.id).toBe('jantzen-electrolytic-bipolar');
+    expect(row!.shadowedBy).toBe(3);
+  });
+
+  it('does not duplicate a series that already has a record', () => {
+    const real = {
+      id: 'jantzen-crosscap',
+      brand: 'Jantzen',
+      series: 'Cross-Cap',
+      kind: 'C' as const,
+      range: [1, 10] as [number, number],
+    };
+    const rows = managedSeries([real], [{ ...sku(10), series: 'Cross-Cap' }]);
+    expect(rows.filter((r) => r.series.series === 'Cross-Cap')).toHaveLength(1);
+    expect(rows.find((r) => r.series.series === 'Cross-Cap')!.source).not.toBe('skus');
+  });
+});

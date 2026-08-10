@@ -101,6 +101,8 @@ import {
   bomFor,
   catalogSeries,
   customCatalogParts,
+  disabledSeries,
+  setDisabledSeries,
   formatCatalogPart,
   hasImportedCatalog,
   setCustomSeries,
@@ -5303,14 +5305,27 @@ export default function App() {
 
   /** User-imported catalog series survive across sessions and projects. */
   const CUSTOM_CATALOG_KEY = 'ads-custom-catalog';
+  /** Series switched OFF — a preference, so it lives beside the catalog
+   *  rather than inside it: re-importing a catalog must not resurrect stock
+   *  you rejected, and an exported catalog stays a description of what
+   *  exists rather than of what one person happens to like. */
+  const CATALOG_OFF_KEY = 'ads-catalog-off';
   useEffect(() => {
+    // Order matters: the off-list is resolved against the loaded series.
     const stored = localStorage.getItem(CUSTOM_CATALOG_KEY);
-    if (!stored) return;
+    if (stored) {
+      try {
+        const imp = deserializeCatalog(stored);
+        setCustomSeries(imp.series, imp.parts);
+      } catch {
+        // Unreadable custom catalog: leave it in place, run with built-ins.
+      }
+    }
     try {
-      const imp = deserializeCatalog(stored);
-      setCustomSeries(imp.series, imp.parts);
+      const off = JSON.parse(localStorage.getItem(CATALOG_OFF_KEY) ?? '[]');
+      if (Array.isArray(off)) setDisabledSeries(off.filter((x) => typeof x === 'string'));
     } catch {
-      // Unreadable custom catalog: leave it in place, run with built-ins.
+      // Unreadable preference: everything stays in use.
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -5354,8 +5369,11 @@ export default function App() {
 
   /** Commit the catalog manager's edited catalog (custom series + exact
    *  SKUs): same persistence path as a file import. */
-  function saveCatalogParts(series: CatalogSeries[], parts: CatalogPart[]) {
+  function saveCatalogParts(series: CatalogSeries[], parts: CatalogPart[], off: string[] = []) {
     setCustomSeries(series, parts);
+    setDisabledSeries(off);
+    if (off.length > 0) localStorage.setItem(CATALOG_OFF_KEY, JSON.stringify(off));
+    else localStorage.removeItem(CATALOG_OFF_KEY);
     if (series.length === 0 && parts.length === 0) {
       // An empty custom catalog would be rejected on the next load — built-ins
       // take over, so drop the stored blob instead of persisting an invalid one.
@@ -5364,7 +5382,9 @@ export default function App() {
       localStorage.setItem(CUSTOM_CATALOG_KEY, serializeCatalog(series, parts));
     }
     setPersistNote(
-      `Catalog updated — ${parts.length} exact SKUs active (snap, BOM and inspector use them)`,
+      `Catalog updated — ${parts.length} exact SKUs active` +
+        (off.length > 0 ? ` · ${off.length} series switched off` : '') +
+        ' (snap, BOM and inspector use them)',
     );
     setCatalogMgrOpen(false);
   }
@@ -9149,6 +9169,13 @@ export default function App() {
                   ? 'A catalog is loaded — it lives outside the project, so Reset keeps it. '
                   : 'Built-in library only — import one, or take the demo catalog, to unlock snapping and real prices. '}
                 {allSeries().length} series
+                {disabledSeries().length > 0 && (
+                  <>
+                    {' ('}
+                    <strong>{disabledSeries().length} switched off</strong>
+                    {')'}
+                  </>
+                )}
                 {customCatalogParts().length > 0 && ` · ${customCatalogParts().length} exact parts`}
                 {allSeries().some((s) => s.basePrice !== undefined) ||
                 customCatalogParts().some((p) => p.priceEur !== undefined)

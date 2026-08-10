@@ -928,6 +928,28 @@ minimum phase reconstrueert. Voertaal met Sander: **Nederlands**; code/comments 
   al geladen catalogus vraagt hij eerst (vervangen is verlies van eigen werk). Gemeten
   end-to-end: catalogus gewist ⇒ "Built-in library only … 12 series · no prices yet" ⇒ één
   klik ⇒ "19 series · 182 exact parts · prices loaded".
+  **SERIES UITZETTEN (aug 2026, Sanders "de Jantzen Bipolar caps wil ik niet gebruiken")**:
+  de ontbrekende tussenweg — je kon alleen aan ÉÉN serie BINDEN (wizard) of alles vrijlaten.
+  `setDisabledSeries`/`disabledSeries` in catalog.ts + een **Use**-schakelaar per serie in de
+  manager (gestaged, commit op Save, samen met de rest zodat Save één ding blijft betekenen).
+  Gefilterd in **`catalogParts()` — de ENE pool** waar snap, inspector-suggesties én BOM uit
+  putten, dus "uit" betekent overal hetzelfde; per-consument regels zouden precies de
+  twee-definities-val zijn (een part dat de BOM prijst maar de snap weigert is erger dan
+  beide antwoorden apart). `catalogSeries(kind)` filtert ook (je kunt niet binden aan
+  voorraad die je hebt afgewezen), `allSeries()` NIET — anders kan de manager hem nooit meer
+  aanzetten. Opslag: eigen sleutel `ads-catalog-off`, bewust NIET in het catalogusbestand —
+  een her-import mag een afgewezen serie niet terugbrengen, en een geëxporteerde catalogus
+  beschrijft wat er BESTAAT, niet wat één iemand mooi vindt. Statusregel telt ze
+  ("19 series (1 switched off)"). Test-gepind incl. het echte pad (geïmporteerde serie) en
+  dat een onbekend id ongevaarlijk is.
+  **DIRECT GAT ERNA (Sanders "Jantzen Electrolytic Bipolar zie ik niet staan")**: de
+  serie-tabel liet PART-DERIVED series bewust weg ("die bewerk je via hun SKU's") — maar dat
+  maakte de schakelaar onbereikbaar voor precies de series die je wilt uitzetten: zijn
+  catalogus draagt 32 Bipolar-SKU's en géén serie-record. `managedSeries` voegt ze nu toe met
+  bron `'skus'` (bereik verzameld uit de SKU's, id via dezelfde slug als `partSeries()` —
+  anders zou uitzetten naar niets resolven), de UI toont "from SKUs" en verbergt de
+  bewerk-knop (er is geen record om te bewerken). De SKU's blijven gewoon in de SKU-tabel
+  staan: ze BESTAAN nog, je wilt ze alleen niet aangeboden krijgen.
   **🗂 Catalog manager (jul 2026, Sanders "beheer tool voor het catalogus-bestand")**:
   in-app SKU-beheer — toevoegen/bewerken/verwijderen zonder de export→handmatig-editen→import-
   lus (de bron van de losse-quote/decade-gat/schattingsprijs-incidenten). `catalogManager.ts`

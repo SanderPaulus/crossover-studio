@@ -94,7 +94,10 @@ export function gridShadowNote(
  *  built-in id (the import semantics: same id replaces the built-in — remove
  *  it and the built-in returns). 'fromParts' = synthesized from exact SKUs;
  *  its data IS the SKU list, so the grid editor leaves it alone. */
-export type SeriesSource = 'builtin' | 'override' | 'custom';
+/** 'skus' = the series exists only because exact SKUs name it — there is no
+ *  series record to edit, so it is listed for switching on and off but not
+ *  for editing (you change it through its SKUs). */
+export type SeriesSource = 'builtin' | 'override' | 'custom' | 'skus';
 
 export interface ManagedSeries {
   series: CatalogSeries;
@@ -127,6 +130,34 @@ export function managedSeries(
   for (const c of custom) {
     if (builtinIds.has(c.id)) continue; // already shown as override
     out.push({ series: c, source: 'custom', shadowedBy: shadow.get(key(c.brand, c.series)) ?? 0 });
+  }
+  /* Series that exist ONLY through their exact SKUs. They used to be left out
+     entirely — you edit them through their SKUs, so there was nothing to show.
+     But that also made them unreachable for switching off, and they are
+     exactly the ones a designer wants to exclude: Sanders imported catalog
+     carries 32 "Jantzen Electrolytic Bipolar" SKUs and no series record. They
+     are listed now, marked so the edit buttons stay away. */
+  const shown = new Set(out.map((r) => key(r.series.brand, r.series.series)));
+  const derived = new Map<string, CatalogSeries>();
+  for (const p of parts) {
+    const k = key(p.brand, p.series);
+    if (shown.has(k)) continue;
+    const cur = derived.get(k);
+    if (!cur) {
+      derived.set(k, {
+        id: `${p.brand}-${p.series}`.toLowerCase().replace(/[^a-z0-9]+/g, '-'),
+        brand: p.brand,
+        series: p.series,
+        kind: p.kind,
+        range: [p.value, p.value],
+        ...(p.tier !== undefined ? { tier: p.tier } : {}),
+      });
+    } else {
+      cur.range = [Math.min(cur.range[0], p.value), Math.max(cur.range[1], p.value)];
+    }
+  }
+  for (const [k, s] of derived) {
+    out.push({ series: s, source: 'skus', shadowedBy: shadow.get(k) ?? 0 });
   }
   return out;
 }

@@ -9,6 +9,9 @@ import {
   nearestParts,
   stackCandidates,
   pickCandidates,
+  allSeries,
+  disabledSeries,
+  setDisabledSeries,
 } from './catalog.ts';
 
 describe('component catalog', () => {
@@ -311,5 +314,81 @@ describe('real SKUs beat generated grids (imported catalog)', () => {
     // The real 1 µF is nowhere near 470 µF, so the grid must still be offered.
     expect(picks.some((p) => p.parts.some((x) => x.brand === 'Ghost'))).toBe(true);
     setCustomSeries([]);
+  });
+});
+
+describe('switching a series off', () => {
+  // "The Jantzen Bipolar caps are in there but I do not want to use them."
+  // Off means off for EVERY consumer — one pool, one meaning.
+  const BIPOLAR = {
+    id: 'jantzen-bipolar',
+    brand: 'Jantzen',
+    series: 'Bipolar',
+    kind: 'C' as const,
+    range: [10, 100] as [number, number],
+  };
+  const bipolarParts = [22, 47, 82].map((v) => ({
+    id: `JAZ-BIP-${v}`,
+    brand: 'Jantzen',
+    series: 'Bipolar',
+    kind: 'C' as const,
+    value: v,
+    seriesR: 0.05,
+    priceEur: 3 + v / 10,
+  }));
+  const isBipolar = (x: { series: string }) => /bipolar/i.test(x.series);
+
+  it('an imported series disappears from the pool, the dropdown and the snap', () => {
+    setCustomSeries([BIPOLAR], bipolarParts);
+    try {
+      expect(catalogParts().some(isBipolar)).toBe(true);
+      expect(catalogSeries('C').some(isBipolar)).toBe(true);
+
+      setDisabledSeries([BIPOLAR.id]);
+      expect(catalogParts().some(isBipolar)).toBe(false);
+      // You cannot bind to stock you have said you will not buy.
+      expect(catalogSeries('C').some(isBipolar)).toBe(false);
+      // But the manager still lists it, or you could never switch it back on.
+      expect(allSeries().some(isBipolar)).toBe(true);
+      expect(disabledSeries()).toEqual([BIPOLAR.id]);
+
+      // The snap must not hand back a switched-off part at a value it covers.
+      const picks = pickCandidates('C', 47, 8);
+      expect(picks.flatMap((c) => c.parts).some(isBipolar)).toBe(false);
+      // Excluding stock must never empty the shortlist.
+      expect(picks.length).toBeGreaterThan(0);
+    } finally {
+      setDisabledSeries([]);
+      setCustomSeries([], []);
+    }
+  });
+
+  it('switching it back on restores the pool exactly', () => {
+    setCustomSeries([BIPOLAR], bipolarParts);
+    try {
+      const n = catalogParts().length;
+      setDisabledSeries([BIPOLAR.id]);
+      expect(catalogParts().length).toBe(n - bipolarParts.length);
+      setDisabledSeries([]);
+      expect(catalogParts().length).toBe(n);
+    } finally {
+      setDisabledSeries([]);
+      setCustomSeries([], []);
+    }
+  });
+
+  it('works on a built-in series too, and an unknown id is harmless', () => {
+    const first = catalogSeries('C')[0];
+    const n = catalogParts().length;
+    setDisabledSeries([first.id]);
+    try {
+      expect(catalogParts().length).toBeLessThan(n);
+      expect(catalogSeries('C').some((x) => x.id === first.id)).toBe(false);
+    } finally {
+      setDisabledSeries([]);
+    }
+    setDisabledSeries(['no-such-series']);
+    expect(catalogParts().length).toBe(n);
+    setDisabledSeries([]);
   });
 });

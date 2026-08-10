@@ -2347,6 +2347,17 @@ button:disabled {
   display: flex;
   gap: 0.25rem;
 }
+/* Per-series in-use switch: a checkbox that reads as a word, so the column
+   scans as "use / off" rather than as a grid of empty boxes. */
+.catmgr-use {
+  display: inline-flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 0.3rem;
+  font-size: 0.8rem;
+  white-space: nowrap;
+}
+.catmgr-use input { margin: 0; }
 .catmgr-views button {
   padding: 0.3rem 0.7rem;
   border: 1px solid var(--border);

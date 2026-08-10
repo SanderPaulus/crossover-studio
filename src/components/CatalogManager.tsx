@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { Modal } from './Modal';
 import type { CatalogKind, CatalogPart, CatalogSeries, CatalogTier } from '../lib/catalog';
-import { customCatalogParts, customSeries } from '../lib/catalog';
+import { customCatalogParts, customSeries, disabledSeries } from '../lib/catalog';
 import {
   formatSkuValue,
   fromDisplayValue,
@@ -19,8 +19,11 @@ import {
 
 interface Props {
   onClose: () => void;
-  /** Commit the edited catalog (App persists + activates it). */
-  onSave: (series: CatalogSeries[], parts: CatalogPart[]) => void;
+  /** Commit the edited catalog (App persists + activates it). The third
+   *  argument is the set of series switched OFF — a preference rather than
+   *  catalog data, but it is staged and committed with the rest so Save
+   *  still means one thing. */
+  onSave: (series: CatalogSeries[], parts: CatalogPart[], off: string[]) => void;
 }
 
 /** SKU form state: numerics as strings so typing "0." works. */
@@ -193,6 +196,19 @@ export function CatalogManager({ onClose, onSave }: Props) {
   const [parts, setParts] = useState<CatalogPart[]>(() => [...customCatalogParts()]);
   const [custom, setCustom] = useState<CatalogSeries[]>(() => [...customSeries()]);
   const [dirty, setDirty] = useState(false);
+  /* Series the designer will not buy from. Staged like everything else here:
+     nothing changes until Save (Sanders: "de Jantzen Bipolar caps wil ik niet
+     gebruiken"). */
+  const [off, setOff] = useState<ReadonlySet<string>>(() => new Set(disabledSeries()));
+  const toggleOff = (id: string) => {
+    setOff((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+    setDirty(true);
+  };
   const [view, setView] = useState<'skus' | 'series'>('skus');
   const [filterKind, setFilterKind] = useState<'all' | CatalogKind>('all');
   const [query, setQuery] = useState('');
@@ -454,6 +470,7 @@ export function CatalogManager({ onClose, onSave }: Props) {
                 <th title="Price model: € = base + factor × value (SI)">€ model</th>
                 <th>Tier</th>
                 <th title="built-in = as shipped · override = your edit of a built-in · custom = your own series">Source</th>
+                <th title="Stock you are willing to buy. Switching a series off keeps the optimizer, the suggestions and the BOM away from it entirely.">Use</th>
                 <th />
               </tr>
             </thead>
@@ -481,21 +498,52 @@ export function CatalogManager({ onClose, onSave }: Props) {
                     </td>
                     <td>{s.tier ?? ''}</td>
                     <td>
-                      {r.source}
+                      {r.source === 'skus' ? (
+                        <span title="No series record — this exists through its exact SKUs. Edit it via the SKUs tab; here you can switch it on or off.">
+                          from SKUs
+                        </span>
+                      ) : (
+                        r.source
+                      )}
                       {r.shadowedBy > 0 && (
                         <span title={`${r.shadowedBy} exact SKUs cover this series — they shadow the grid, so grid edits only matter once those SKUs are gone`}>
                           {' '}· ⛱{r.shadowedBy}
                         </span>
                       )}
                     </td>
-                    <td className="catmgr-actions">
-                      <button
-                        type="button"
-                        onClick={() => openSeriesForm(toSeriesDraft(s))}
-                        title={r.source === 'builtin' ? 'Edit — saves as an override of the built-in' : 'Edit this series'}
+                    <td>
+                      {/* Stock you will not buy. Off is off for everything —
+                          the snap, the inspector suggestions and the BOM all
+                          draw from one pool. */}
+                      <label
+                        className="catmgr-use"
+                        title={
+                          off.has(s.id)
+                            ? 'Switched off — the optimizer, the suggestions and the BOM all ignore this series'
+                            : 'In use. Switch off to keep the optimizer away from this series entirely'
+                        }
                       >
-                        ✎
-                      </button>
+                        <input
+                          type="checkbox"
+                          checked={!off.has(s.id)}
+                          onChange={() => toggleOff(s.id)}
+                        />
+                        {off.has(s.id) ? 'off' : 'use'}
+                      </label>
+                    </td>
+                    <td className="catmgr-actions">
+                      {/* A SKU-derived series has no record to edit — you
+                          change it through its SKUs. It is listed so it can
+                          be switched off, which is the whole point. */}
+                      {r.source !== 'skus' && (
+                        <button
+                          type="button"
+                          onClick={() => openSeriesForm(toSeriesDraft(s))}
+                          title={r.source === 'builtin' ? 'Edit — saves as an override of the built-in' : 'Edit this series'}
+                        >
+                          ✎
+                        </button>
+                      )}
                       {r.source === 'override' && (
                         <button type="button" onClick={() => deleteSeries(s.id)} title="Revert to the built-in definition">
                           ↩
@@ -512,7 +560,7 @@ export function CatalogManager({ onClose, onSave }: Props) {
               })}
               {seriesRows.length === 0 && (
                 <tr>
-                  <td colSpan={10} className="sub">
+                  <td colSpan={11} className="sub">
                     Nothing matches the filter.
                   </td>
                 </tr>
@@ -763,7 +811,7 @@ export function CatalogManager({ onClose, onSave }: Props) {
       <div className="catmgr-footer">
         <button
           type="button"
-          onClick={() => onSave(custom, parts)}
+          onClick={() => onSave(custom, parts, [...off])}
           disabled={!dirty}
           title="Persist the edited catalog — it becomes the active one (snap, BOM, inspector) and survives restarts"
         >
