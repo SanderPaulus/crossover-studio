@@ -1923,6 +1923,15 @@ de 🧙-knop opent bij threeWay daarom óók op stap 0. Demo-knop alleen bij 2-w
   verbouwing: een substring-anker ("{Number(d.count) > 1 && (") matchte óók in de
   summary-regel met diepere inspringing — regel-verankerd zoeken (\n + exacte indent) en de
   asserts hielden de schade tegen.
+- **De wizard mag niet LIEGEN over de prioriteit (aug 2026, Sanders "zet 45/55 in expert,
+  ga terug naar guided en hij onthoudt dat")**: onthouden is hier CORRECT — de wizard zet
+  dezelfde state (één bron), dus resetten zou betekenen dat de wizard z'n eigen keuze niet
+  vasthoudt. De echte fout zat in de weergave: de radio's stonden op een BUCKET
+  (<40 / 40–60 / >60), dus 45/55 toonde "Balanced — equal weight" terwijl er 45/55 liep —
+  het scherm zei iets anders dan de optimizer deed. Nu: `checked` alleen bij een EXACTE
+  match, elke preset noemt zijn eigen verdeling (75/25 · 50/50 · 25/75), en een
+  tussenwaarde selecteert niets én krijgt een regel "Currently response 45% · phase 55% —
+  set on the slider in ⚙ Settings". Een preset kiezen vervangt hem gewoon.
 - **Guided zoekt BREDER, niet smaller (aug 2026, Sanders "in guided maakt ie maar 3 runs,
   maar juist daar zijn het geen experts")**: guided gebruikte stilzwijgend `xoScanSteps = 3`
   én verbergt de instelling (⚙ Settings is expert-only) — dus geen pin én geen knop. Precies

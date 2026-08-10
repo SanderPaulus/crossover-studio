@@ -7680,21 +7680,33 @@ export default function App() {
                       'best driver phase-tracking / vertical spread (often near-free)',
                     ],
                   ] as const
-                ).map(([key, val, label, hint]) => {
-                  const bucket =
-                    phasePriority < 40 ? 'flat' : phasePriority > 60 ? 'phase' : 'bal';
-                  return (
-                    <label key={key} style={{ display: 'block' }}>
-                      <input
-                        type="radio"
-                        name="wiz-priority"
-                        checked={bucket === key}
-                        onChange={() => setPhasePriority(val)}
-                      />{' '}
-                      {label} <span className="sub">— {hint}</span>
-                    </label>
-                  );
-                })}
+                ).map(([key, val, label, hint]) => (
+                  /* Checked only on an EXACT match. The old version bucketed
+                     (<40 / 40-60 / >60), so a slider left at 45/55 in expert
+                     showed "Balanced — equal weight" while 45/55 is what
+                     actually ran: the screen said one thing and the optimizer
+                     did another. A value between the presets now selects
+                     nothing, and the line below states it. */
+                  <label key={key} style={{ display: 'block' }}>
+                    <input
+                      type="radio"
+                      name="wiz-priority"
+                      checked={phasePriority === val}
+                      onChange={() => setPhasePriority(val)}
+                    />{' '}
+                    {label}{' '}
+                    <span className="sub">
+                      — {hint} ({100 - val}/{val})
+                    </span>
+                  </label>
+                ))}
+              {!soloDriver && ![25, 50, 75].includes(phasePriority) && (
+                <p className="sub">
+                  Currently <strong>response {100 - phasePriority}% · phase {phasePriority}%</strong>{' '}
+                  — set on the slider in ⚙ Settings, so none of the three above is selected. Pick
+                  one to replace it.
+                </p>
+              )}
               {!soloDriver && (
               <p className="sub">
                 On real measurements a smooth response already buys most of the phase, so
