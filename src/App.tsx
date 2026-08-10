@@ -5315,6 +5315,32 @@ export default function App() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  /**
+   * Load the priced demo catalog on its own. It used to arrive ONLY with
+   * "Load KOAN demo data", so anyone who cleared it, or who loaded their own
+   * project, had no way back to a priced library — and the catalog is what
+   * makes snapping and the BOM mean anything. Replacing an imported one is a
+   * real loss of the user's own work, so that case asks first.
+   */
+  function loadDemoCatalog() {
+    if (
+      hasImportedCatalog() &&
+      !window.confirm('Replace the catalog now loaded with the demo catalog?')
+    ) {
+      return;
+    }
+    try {
+      const imp = deserializeCatalog(demoCatalog);
+      setCustomSeries(imp.series, imp.parts);
+      localStorage.setItem(CUSTOM_CATALOG_KEY, serializeCatalog(imp.series, imp.parts));
+      setPersistNote(
+        `Demo catalog loaded — ${imp.parts.length} priced SKUs (snap, BOM and inspector use them)`,
+      );
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
+    }
+  }
+
   function exportCatalog() {
     const blob = new Blob([serializeCatalog(allSeries(), customCatalogParts())], {
       type: 'application/json',
@@ -9077,7 +9103,12 @@ export default function App() {
               </button>
             </div>
           </div>
-          <div className={`tool-group${uiMode === 'guided' ? ' expert-only' : ''}`}>
+          {/* NOT expert-only (Sanders "ook na een reset moet dit makkelijk te
+              vinden zijn"): guided mode hid this group entirely, and guided is
+              exactly where you land after a Reset. The catalog is also the one
+              thing a Reset does NOT clear, which is worth saying out loud
+              right next to the Reset button. */}
+          <div className="tool-group">
             <span className="tool-group-label">Component catalog</span>
             <div className="tool-group-body">
               <label
@@ -9106,7 +9137,17 @@ export default function App() {
               >
                 🗂 Manage…
               </button>
-              <span className="derived">
+              <button
+                type="button"
+                onClick={loadDemoCatalog}
+                title="Load the priced Jantzen/Mundorf demo catalog on its own — without the KOAN measurements. Snapping and the BOM need a priced catalog to mean anything, and this is the quickest way back to one."
+              >
+                🎧 Demo catalog
+              </button>
+              <span className="derived" style={{ flexBasis: '100%' }}>
+                {hasImportedCatalog()
+                  ? 'A catalog is loaded — it lives outside the project, so Reset keeps it. '
+                  : 'Built-in library only — import one, or take the demo catalog, to unlock snapping and real prices. '}
                 {allSeries().length} series
                 {customCatalogParts().length > 0 && ` · ${customCatalogParts().length} exact parts`}
                 {allSeries().some((s) => s.basePrice !== undefined) ||

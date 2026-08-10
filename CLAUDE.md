@@ -917,6 +917,17 @@ minimum phase reconstrueert. Voertaal met Sander: **Nederlands**; code/comments 
   behouden); MRES-3R3-fixturetest bijgewerkt 14,50→24,90. Het BOM-totaal wordt gedomineerd door
   de premium-spoelen/-caps (nu accuraat); de tail is indicatief. Reprice-script staat in de
   scratchpad, niet in de repo.
+  **DE CATALOGUS MOET VINDBAAR ZIJN, ook na een Reset (aug 2026, Sanders wens)**: de hele
+  "Component catalog"-groep op de Project-stap was `expert-only` — onzichtbaar in guided, en
+  guided is precies waar je NA een Reset landt. Nu altijd zichtbaar, met een statusregel die
+  de relatie uitspreekt die niemand kon weten: **Reset wist de catalogus NIET** (hij leeft
+  buiten het project, in `ads-custom-catalog`; resetProject haalt alleen de autosave weg).
+  Plus **🎧 Demo catalog**: de geprijsde set was tot nu toe alléén te krijgen via "Load KOAN
+  demo data", dus wie hem wiste of een eigen project laadde kon niet meer terug naar een
+  geprijsde bibliotheek — en zonder prijzen zeggen snap en BOM niets. Losse knop, en met een
+  al geladen catalogus vraagt hij eerst (vervangen is verlies van eigen werk). Gemeten
+  end-to-end: catalogus gewist ⇒ "Built-in library only … 12 series · no prices yet" ⇒ één
+  klik ⇒ "19 series · 182 exact parts · prices loaded".
   **🗂 Catalog manager (jul 2026, Sanders "beheer tool voor het catalogus-bestand")**:
   in-app SKU-beheer — toevoegen/bewerken/verwijderen zonder de export→handmatig-editen→import-
   lus (de bron van de losse-quote/decade-gat/schattingsprijs-incidenten). `catalogManager.ts`
