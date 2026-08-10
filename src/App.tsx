@@ -1266,6 +1266,21 @@ export default function App() {
    *  Independent of the crossover pin — every candidate is caged in its own
    *  slice either way, so "how many" is always a meaningful cost knob. */
   const [xo3Steps, setXo3Steps] = useState(2);
+  /**
+   * How many crossover candidates the scan actually explores.
+   *
+   * GUIDED gets the thorough setting regardless (Sanders point, and it is the
+   * right way round): a beginner will not pin a crossover point and has no
+   * knobs to improve the result afterwards, so the one thing the app CAN do
+   * for him is search wider. It also matches what was measured — the pre-build
+   * ranking does not predict the final one (xo 1900 looked worst before the
+   * build and came back best), which is exactly why breadth pays. The cost is
+   * runtime, and a run already shows a live per-candidate table with a Cancel.
+   *
+   * Expert keeps its dropdown: there, the designer can pin, re-run and judge.
+   */
+  const scanSteps2 = uiMode === 'guided' ? 9 : xoScanSteps;
+  const scanSteps3 = uiMode === 'guided' ? 3 : xo3Steps;
   /** Staged design ("trapmethode"): HP/LP first, every next layer (EQ,
    *  Zobel/LCR, bypass-C) only while the targets are unmet — fewest
    *  components that reach the goal. */
@@ -4162,7 +4177,7 @@ export default function App() {
         sim.base.t,
         pins,
         tweeterHpFloor ?? undefined,
-        xo3Steps,
+        scanSteps3,
         lowWin3,
         highWin3,
       );
@@ -4637,7 +4652,7 @@ export default function App() {
       // it explores 3× wider. Give the free run the same breadth automatically.
       // No band at all (no impedance floor) → one truly-free chain (+ rescue).
       const variants: { label: string; xoRange?: [number, number] }[] =
-        crossoverVariants(userXo ?? saneFree, xoScanSteps);
+        crossoverVariants(userXo ?? saneFree, scanSteps2);
       const adjust = branchAdj.tweeter;
       // The whole scan runs in the optimizer WORKER (variants loop + the
       // truly-free rescue logic live there): the UI stays responsive, the
@@ -10065,8 +10080,11 @@ export default function App() {
               <p className="sub">
                 One button. The app works out where the drivers should hand over to each other,
                 what shape each filter needs and which real parts to buy — using your measurements,
-                not rules of thumb. It tries several crossover points and keeps the best one. Expect
-                a few minutes.
+                not rules of thumb. It builds and measures{' '}
+                <strong>nine complete designs</strong> across the crossover range
+                your drivers allow and keeps the best — the widest search it offers, because here
+                you are not going to hand-tune one. Expect several minutes; you can watch each
+                candidate come in, and cancel at any time.
               </p>
             )}
             <div className="tool-groups" style={{ marginBottom: '1rem' }}>

@@ -1923,6 +1923,17 @@ de 🧙-knop opent bij threeWay daarom óók op stap 0. Demo-knop alleen bij 2-w
   verbouwing: een substring-anker ("{Number(d.count) > 1 && (") matchte óók in de
   summary-regel met diepere inspringing — regel-verankerd zoeken (\n + exacte indent) en de
   asserts hielden de schade tegen.
+- **Guided zoekt BREDER, niet smaller (aug 2026, Sanders "in guided maakt ie maar 3 runs,
+  maar juist daar zijn het geen experts")**: guided gebruikte stilzwijgend `xoScanSteps = 3`
+  én verbergt de instelling (⚙ Settings is expert-only) — dus geen pin én geen knop. Precies
+  omgekeerd: een beginner pint geen kruispunt en kan het resultaat achteraf niet bijstellen,
+  dus het enige dat de app vóór hem kan doen is breder zoeken. `scanSteps2`/`scanSteps3`
+  forceren in guided 9 kandidaten (2-weg) resp. xo3Steps 3 (= 9 in 3-weg); expert houdt zijn
+  dropdown, want daar kun je pinnen, herdraaien en oordelen. Onderbouwing staat al in dit
+  bestand: de vf-ranking voorspelt de EINDranking niet (xo 1900 leek vf-slechtst en werd
+  assembled-best), dus breedte betaalt zich uit. Kosten = runtime, en de busy-kaart toont per
+  kandidaat een rij mét Cancel. De guided-tekst zegt het getal hardop ("nine complete
+  designs … the widest search it offers").
 - **Guided-ronde 2 (aug 2026, Sanders "ik wil alle 3")**: (1) elke stap eindigt met een
   benoemde **"Next: {stap} →"**-knop rechtsonder — wayfindings tweede vraag ("waar kan ik
   heen?") beantwoord op de plek waar je aankomt als het formulier af is; laatste stap heeft
