@@ -1881,10 +1881,14 @@ export default function App() {
        the honest low limit, the baffle step, the lobing ceiling and the
        rig/driver split of the delay all need these numbers, and a new user
        cannot invent them. Facts only: everything here is the real KOAN
-       prototype. Deliberately left blank are the listening position (that is
-       Sander's room, not the speaker) and the mounting depths — the app
-       DERIVES those from the delay, and pre-filling them would hide the
-       cross-check that makes the derivation worth having. */
+       prototype.
+
+       The mounting depths ARE filled in (Sanders call, and the better one):
+       leaving them blank to "protect the cross-check" only showed a gap,
+       while filling them makes the card demonstrate the check passing —
+       "measured depth 17.3 mm … Your 17.3 mm agrees" says more about how
+       this app thinks than an empty field ever could. The listening
+       position stays blank: that is Sanders room, not the loudspeaker. */
     setCabinet({
       ...emptyCabinet(),
       micDistanceMm: '500',
@@ -1898,11 +1902,17 @@ export default function App() {
       refHeightMm: '980',
       drivers: {
         ...emptyCabinet().drivers,
-        high: { ...emptyCabinetDriver(), xMm: '0', yMm: '65' },
+        // Depth 0 is not "unknown" here: the tweeter is the shallowest of
+        // the two, so it is the zero the other is measured from.
+        high: { ...emptyCabinetDriver(), xMm: '0', yMm: '65', depthMm: '0' },
         low: {
           ...emptyCabinetDriver(),
           xMm: '0',
           yMm: '-65',
+          // What the measurement itself derives once the rig's share is
+          // removed — a 5" cone's acoustic centre sits at its voice coil,
+          // well behind the flange, so the mid is the deeper of the two.
+          depthMm: '17.3',
           // Its own sealed chamber; 89 Hz is what its measured impedance says,
           // and the app proposes exactly that from the ZMA.
           enclosure: 'sealed',
