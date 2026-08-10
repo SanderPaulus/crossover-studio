@@ -1923,6 +1923,16 @@ de 🧙-knop opent bij threeWay daarom óók op stap 0. Demo-knop alleen bij 2-w
   verbouwing: een substring-anker ("{Number(d.count) > 1 && (") matchte óók in de
   summary-regel met diepere inspringing — regel-verankerd zoeken (\n + exacte indent) en de
   asserts hielden de schade tegen.
+- **"Guided moet standaard zijn" (aug 2026, Sanders)**: guided is NIET knoploos — de wizard
+  schrijft dezelfde state, dus defaults forceren zou betekenen dat de wizard z'n eigen keuze
+  niet vasthoudt. De eerlijke vorm is dus geen stille override maar ZICHTBAARHEID:
+  `nonStandard` verzamelt élke instelling die een run stuurt en niet op zijn standaardwaarde
+  staat (prioriteit, staged+targets, xo-pin, alignment, breakup-guard, in-room-gewicht,
+  ka-tier, lobing-k, EQ-banden, snap-profiel/series/stacks) en de guided ontwerpstap noemt ze
+  bij naam met één knop "use the standard settings". Dat vangt óók de instellingen die de
+  wizard NIET toont (breakup-guard, dirWeight, kaTier): een expert-experiment kan een
+  guided-run niet meer van achter het gordijn sturen. Gemeten: prioriteit 55 + guard uit in
+  expert ⇒ guided meldt "priority 45/55 · breakup guard off", één klik zet beide terug.
 - **De wizard mag niet LIEGEN over de prioriteit (aug 2026, Sanders "zet 45/55 in expert,
   ga terug naar guided en hij onthoudt dat")**: onthouden is hier CORRECT — de wizard zet
   dezelfde state (één bron), dus resetten zou betekenen dat de wizard z'n eigen keuze niet

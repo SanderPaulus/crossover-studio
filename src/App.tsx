@@ -3734,6 +3734,41 @@ export default function App() {
   const [dirWeight, setDirWeight] = useState(25); // % of amplitude budget on the energy average
   const [ampTarget, setAmpTarget] = useState<'onAxis' | 'listeningWindow'>('onAxis');
 
+  /**
+   * Guided is meant to BE the standard setting (Sanders point). It is not
+   * knob-free — the wizard writes these same values, and forcing defaults
+   * would mean the wizard's own choice does not stick — so the honest form is
+   * not a silent override but VISIBILITY: anything steering the run that is
+   * not at its standard value is named on the guided design step, in plain
+   * language, one click from being put back.
+   *
+   * That also covers the settings the wizard does NOT show (breakup guard,
+   * directivity weight, ka tier): an expert experiment can no longer steer a
+   * guided run from behind the curtain.
+   */
+  const nonStandard = (
+    [
+      ['priority', phasePriority !== 50, `priority ${100 - phasePriority}/${phasePriority}`, () => setPhasePriority(50)],
+      ['staged', !stagedOn, 'staged targets off', () => setStagedOn(true)],
+      ['ripple', targetRipple !== '1.5', `ripple target ${targetRipple} dB`, () => setTargetRipple('1.5')],
+      ['phase', targetPhase !== '10', `phase target ${targetPhase}°`, () => setTargetPhase('10')],
+      ['pin', xoRangeOn, `crossover pinned at ${xoFreqHz} ± ${xoMarginHz} Hz`, () => setXoRangeOn(false)],
+      ['align', hpLpPref !== 'auto', `alignment forced to ${hpLpPref}`, () => setHpLpPref('auto')],
+      ['alignLow', hpLpPrefLow !== 'auto', `low alignment forced to ${hpLpPrefLow}`, () => setHpLpPrefLow('auto')],
+      ['guard', !breakupGuard, 'breakup guard off', () => setBreakupGuard(true)],
+      ['dir', dirWeight !== 25, `in-room weight ${dirWeight}%`, () => setDirWeight(25)],
+      ['ka', kaTier !== 'measured', `beaming tier ${kaTier}`, () => setKaTier('measured')],
+      ['ctc', ctcK !== 'auto', `lobing k ${ctcK}`, () => setCtcK('auto')],
+      ['eq', vfEqBands !== 2, `${vfEqBands} EQ bands per driver`, () => setVfEqBands(2)],
+      ['profile', snapProfile !== 'auto', `component profile ${snapProfile}`, () => setSnapProfile('auto')],
+      ['stacks', !snapStacks, 'stacking off', () => setSnapStacks(true)],
+      ['sL', snapSeriesL !== 'auto', 'coil series bound', () => setSnapSeriesL('auto')],
+      ['sC', snapSeriesC !== 'auto', 'cap series bound', () => setSnapSeriesC('auto')],
+      ['sR', snapSeriesR !== 'auto', 'resistor series bound', () => setSnapSeriesR('auto')],
+    ] as const
+  ).filter(([, off]) => off);
+  const resetToStandard = () => nonStandard.forEach(([, , , undo]) => undo());
+
   /* ---- Project persistence (step 8) ---- */
 
   const AUTOSAVE_KEY = 'ads-autosave';
@@ -10097,6 +10132,21 @@ export default function App() {
                 your drivers allow and keeps the best — the widest search it offers, because here
                 you are not going to hand-tune one. Expect several minutes; you can watch each
                 candidate come in, and cancel at any time.
+              </p>
+            )}
+            {uiMode === 'guided' && nonStandard.length > 0 && (
+              /* Guided should BE the standard setting. It is not knob-free —
+                 the wizard writes these same values — so the honest form is
+                 not a silent override but naming what deviates, one click
+                 from being put back. This also catches the settings the
+                 wizard never shows, which could otherwise steer a guided run
+                 from behind the curtain. */
+              <p className="sub" style={{ marginTop: '-0.4rem' }}>
+                <strong>Not at the standard settings:</strong>{' '}
+                {nonStandard.map(([, , label]) => label).join(' · ')}.{' '}
+                <button type="button" className="link-btn" onClick={resetToStandard}>
+                  use the standard settings
+                </button>
               </p>
             )}
             <div className="tool-groups" style={{ marginBottom: '1rem' }}>
