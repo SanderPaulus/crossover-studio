@@ -6777,6 +6777,11 @@ export default function App() {
                       }));
                     const angles = cabinetInfo.trueAngles(role);
                     const baffleFor = cabinetInfo.baffleStepOf(role);
+                    /* Distance from the top of the front panel down to the
+                       measurement reference point: the offset that turns a
+                       ruler reading into this app's y. Null = not known yet. */
+                    const fromTopBase =
+                      Number(cabinet.refFromTopMm) > 0 ? Number(cabinet.refFromTopMm) : null;
                     const box = cabinetInfo.boxOf(role);
                     const edge = cabinetInfo.edgeOf(role);
                     const dia = cabinetInfo.diaOf(role);
@@ -6898,7 +6903,7 @@ export default function App() {
                           ) : (
                           <span
                             className="cd-fields"
-                            title="Position of this driver's centre relative to the measurement reference point: x to the right, y UP (so a driver below the reference has a negative y). Centre-to-centre spacing per pair — and with it the vertical-lobing ceiling — is derived from these, so you never type the same fact twice."
+                            title="Where this driver's centre sits on the front panel, measured the way a ruler measures it: across from the centre line, and DOWN from the top. The app converts to its internal origin (the measurement reference point) using the reference height you gave on the cabinet step, so you never type the same fact twice — and centre-to-centre spacing per pair, with it the vertical-lobing ceiling, is derived from these."
                           >
                             <span className="cd-pre">x</span>
                             <input
@@ -6908,16 +6913,47 @@ export default function App() {
                               value={d.xMm}
                               onChange={(e) => set({ xMm: e.target.value })}
                             />
-                            {' mm · y '}
+                            {fromTopBase !== null ? ' mm from the centre line · ' : ' mm · y '}
+                            {/* Measured from the TOP of the front panel, because that
+                                is where a ruler starts (Sanders). Storage keeps the
+                                reference-point origin — every geometry function, the
+                                project format and the tests are written in it — so
+                                this is a pure input conversion: down-from-top =
+                                refFromTop − y. Without a reference height there is
+                                nothing to convert with, and the field falls back to
+                                the raw y with the unit text saying so. */}
                             <input
                               type="number"
                               step={5}
                               placeholder="0"
-                              value={d.yMm}
-                              onChange={(e) => set({ yMm: e.target.value })}
+                              value={
+                                fromTopBase !== null
+                                  ? d.yMm.trim() === ''
+                                    ? ''
+                                    : String(
+                                        Math.round((fromTopBase - Number(d.yMm)) * 10) / 10,
+                                      )
+                                  : d.yMm
+                              }
+                              onChange={(e) => {
+                                if (fromTopBase === null) {
+                                  set({ yMm: e.target.value });
+                                  return;
+                                }
+                                const v = e.target.value;
+                                if (v.trim() === '' || !Number.isFinite(Number(v))) {
+                                  set({ yMm: v.trim() === '' ? '' : d.yMm });
+                                  return;
+                                }
+                                set({ yMm: String(Math.round((fromTopBase - Number(v)) * 10) / 10) });
+                              }}
                             />
-                            {' mm'}
-                            <span className="cd-hint">from the reference point · y up</span>
+                            {fromTopBase !== null ? ' mm below the top' : ' mm'}
+                            <span className="cd-hint">
+                              {fromTopBase !== null
+                                ? 'as a ruler measures it — across from the centre line, down from the top of the front panel'
+                                : 'from the reference point · y up — add the reference height on the cabinet step to measure from the top instead'}
+                            </span>
                           </span>
                           )}
 

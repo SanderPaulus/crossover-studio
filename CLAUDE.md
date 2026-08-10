@@ -235,6 +235,17 @@ minimum phase reconstrueert. Voertaal met Sander: **Nederlands**; code/comments 
   nooit de meetdata zelf**, anders modelleer je waar je meet.
   Coördinaten: baffle-vlak, oorsprong op het MEETREFERENTIEPUNT (waar de mic op gericht stond /
   de draai-as), +x rechts, +y omhoog, mm.
+  **INVOER meet vanaf de TOP (aug 2026, Sanders "ik wil de afstand van top meten en niet van
+  reference")**: een liniaal begint bij de bovenkant van het front, niet bij een abstract
+  referentiepunt — en negatieve y's bedenken is geen ontwerpwerk. Het VELD vraagt daarom
+  "mm below the top" en de app rekent om met `refFromTopMm` van de kaststap
+  (y = refFromTop − vanTop). Bewust alleen de INVOERLAAG: opslag, project-formaat, élke
+  geometriefunctie en alle tests blijven in de referentiepunt-conventie, dus nul migratie en
+  nul risico op de rekenkant. Zonder referentiehoogte valt het veld terug op de rauwe y en
+  zegt de unit-tekst dát ook ("from the reference point · y up — add the reference height…"),
+  want twee betekenissen voor één veld mogen nooit stil zijn. Browser-geverifieerd op de
+  KOAN-set: refFromTop 150 ⇒ tweeter y 0 leest 150, woofer y −90 leest 240, en 260 intypen
+  slaat −110 op.
   **NIET ELKE DRIVER ZIT OP HET FRONT (aug 2026, Sanders vriend met zij-woofers)**: `depthMm`
   (akoestisch centrum achter het baffle-vlak) + `facing` ('front'|'left'|'right'|'up'|'down')
   op `DriverPlacement`, plus `cabinetDepthMm` op de kast. NB de aanleiding was een VRAAG
