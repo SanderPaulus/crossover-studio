@@ -2315,3 +2315,16 @@ Overige kandidaten (belangrijkste eerst):
 - genormaliseerde hoekcurves, verticale metingen (lobing) als Sander die doet.
 
 Dev-server draait doorgaans al; demo-knop "Load KOAN demo data" laadt alles incl. hoeken + de geprijsde demo-catalogus (guarded: nooit over een eigen import heen).
+**De demo is een hele MEETSESSIE (aug 2026, Sanders "breid de demo uit met de dimensies en
+hoe we gemeten hebben")**: naast de curves nu ook de echte KOAN-kast en -rig, want zonder
+die getallen heeft de halve app niets om mee te rekenen (ware sweep-hoeken, eerlijke
+ondergrens, baffle-step, lobing-plafond, rig/driver-splitsing van de delay) en een nieuwe
+gebruiker kan ze niet verzinnen. Front 260×1150, referentiepunt 238 mm onder de top /
+980 mm boven de vloer, mic 500 mm, tweeter y +65 en woofer y −65 (mic MIDDEN tussen de
+drivers gericht, dus refDriver='' en de rig-term valt exact weg in het paar-verschil),
+Sd/Xmax 5,7/1 (BlieSMa T25T-6) en 70/5 (Satori MW13TX-4, ÉÉN kant — beide datasheets geven
+p-p), mid-kamer sealed Fc 89 (wat zijn eigen ZMA voorstelt). Bewust LEEG: de luisterpositie
+(Sanders kamer, niet de luidspreker) en de montagediepten — die LEIDT de app af, en
+voorinvullen zou juist de kruiscontrole verbergen die de afleiding waarde geeft.
+Geverifieerd tegen Sanders eigen screenshot: "honest down to ≈ 225 Hz", "baffle step around
+442 Hz", randafstand 130 mm, gemeten diepte 17,3 mm, effectieve Ø 27/94 mm.

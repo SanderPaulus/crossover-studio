@@ -1875,6 +1875,47 @@ export default function App() {
         tweeter: { name: 'tweeter.ZMA', raw: demoTweetZma },
       },
     });
+    /* The demo is a whole MEASUREMENT SESSION, not just two curves: the
+       cabinet it was measured on and how the mic stood belong to it. Without
+       them half the app has nothing to reason with — the true sweep angles,
+       the honest low limit, the baffle step, the lobing ceiling and the
+       rig/driver split of the delay all need these numbers, and a new user
+       cannot invent them. Facts only: everything here is the real KOAN
+       prototype. Deliberately left blank are the listening position (that is
+       Sander's room, not the speaker) and the mounting depths — the app
+       DERIVES those from the delay, and pre-filling them would hide the
+       cross-check that makes the derivation worth having. */
+    setCabinet({
+      ...emptyCabinet(),
+      micDistanceMm: '500',
+      baffleWidthMm: '260',
+      baffleHeightMm: '1150',
+      // The mic was aimed midway between the two drivers, so neither is the
+      // reference: they sit symmetrically at ±65 mm, and the rig's share of
+      // the inter-driver delay cancels exactly.
+      refDriver: '',
+      refFromTopMm: '238',
+      refHeightMm: '980',
+      drivers: {
+        ...emptyCabinet().drivers,
+        high: { ...emptyCabinetDriver(), xMm: '0', yMm: '65' },
+        low: {
+          ...emptyCabinetDriver(),
+          xMm: '0',
+          yMm: '-65',
+          // Its own sealed chamber; 89 Hz is what its measured impedance says,
+          // and the app proposes exactly that from the ZMA.
+          enclosure: 'sealed',
+          fbHz: '89',
+        },
+      },
+    });
+    // Datasheet numbers: BlieSMa T25T-6 and SB Acoustics Satori MW13TX-4.
+    // Xmax is the ONE-WAY figure — both datasheets quote peak-to-peak (2 mm
+    // and 10 mm), and entering those would make the excursion floor read a
+    // factor √2 too optimistic.
+    setSdCm2({ low: '70', mid: '', high: '5.7' });
+    setXmaxMm({ low: '5', mid: '', high: '1' });
     // The demo playground ships the priced Jantzen/Mundorf catalog too, so
     // Snap to catalog and the BOM work out of the box — but NEVER overwrite
     // a catalog the user imported or edited themselves.
