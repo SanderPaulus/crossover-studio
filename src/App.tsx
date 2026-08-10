@@ -1492,7 +1492,15 @@ export default function App() {
   /** Value window: a bound series also HARD-bounds the continuous fit of
    *  series-path slots of that kind to the series' value range. */
   const [snapBoundToSeries, setSnapBoundToSeries] = useState(false);
-  const [targetRipple, setTargetRipple] = useState('1.5');
+  /* Reachable on ORDINARY drivers, on purpose. The target is the escalation
+     ladder's STOP condition, not a ceiling: EQ bands are added only while it
+     is unmet, and the prune sweep runs only when it IS met. So a target the
+     drivers cannot reach gives the opposite of what tightening it suggests —
+     the ladder keeps adding parts, nothing is ever pruned, and the goal is
+     missed anyway. 1.5 dB was calibrated on the KOAN's top-tier drivers
+     (0.88 dB / 3.6° delivered); anything less than that would be priced out
+     of its own default. */
+  const [targetRipple, setTargetRipple] = useState('2.5');
   /** Single-driver mode: sensitivity a correction may spend for flatness. */
   const [soloSensDb, setSoloSensDb] = useState('6');
   /** Single-driver mode: absolute target level instead of the relative budget
@@ -1500,7 +1508,7 @@ export default function App() {
    *  and it sets how far the correctable band reaches in one number). */
   const [soloFloorOn, setSoloFloorOn] = useState(false);
   const [soloFloorDb, setSoloFloorDb] = useState('');
-  const [targetPhase, setTargetPhase] = useState('10');
+  const [targetPhase, setTargetPhase] = useState('15');
 
   /** Editable schematic networks (step 6), as TABS: every design lives in its
    *  own tab (imports and passive builds open a new one), the active tab is
@@ -3750,8 +3758,8 @@ export default function App() {
     [
       ['priority', phasePriority !== 50, `priority ${100 - phasePriority}/${phasePriority}`, () => setPhasePriority(50)],
       ['staged', !stagedOn, 'staged targets off', () => setStagedOn(true)],
-      ['ripple', targetRipple !== '1.5', `ripple target ${targetRipple} dB`, () => setTargetRipple('1.5')],
-      ['phase', targetPhase !== '10', `phase target ${targetPhase}°`, () => setTargetPhase('10')],
+      ['ripple', targetRipple !== '2.5', `ripple target ${targetRipple} dB`, () => setTargetRipple('2.5')],
+      ['phase', targetPhase !== '15', `phase target ${targetPhase}°`, () => setTargetPhase('15')],
       ['pin', xoRangeOn, `crossover pinned at ${xoFreqHz} ± ${xoMarginHz} Hz`, () => setXoRangeOn(false)],
       ['align', hpLpPref !== 'auto', `alignment forced to ${hpLpPref}`, () => setHpLpPref('auto')],
       ['alignLow', hpLpPrefLow !== 'auto', `low alignment forced to ${hpLpPrefLow}`, () => setHpLpPrefLow('auto')],
@@ -4044,11 +4052,11 @@ export default function App() {
     setSnapStacks(d.snapStacks ?? true);
     setSnapBoundToSeries(d.snapBoundToSeries ?? false);
     setStagedOn(d.stagedOn ?? true);
-    setTargetRipple(d.targetRipple ?? '1.5');
+    setTargetRipple(d.targetRipple ?? '2.5');
     setSoloSensDb(d.soloSensDb ?? '6');
     setSoloFloorOn(d.soloFloorOn ?? false);
     setSoloFloorDb(d.soloFloorDb ?? '');
-    setTargetPhase(d.targetPhase ?? '10');
+    setTargetPhase(d.targetPhase ?? '15');
   }
 
   function saveProject() {
@@ -7702,6 +7710,21 @@ export default function App() {
                   )}
                 </p>
               )}
+              {stagedOn && (
+                <p className="sub" style={{ marginTop: '-0.3rem' }}>
+                  {/* The trade in one place, in the direction that actually
+                      surprises people: tighter does NOT cap complexity, it
+                      raises it (Sanders). */}
+                  These are a <strong>stopping point</strong>, not a limit. Tighter numbers make
+                  a <strong>more complex and more expensive</strong> filter — the app keeps
+                  adding EQ bands and parts while the target is unmet, and it only strips the
+                  parts it does not need once the target IS met. Looser numbers stop sooner and
+                  build simpler, but may leave performance on the table that a band or two would
+                  have been free to take. For reference, on top-tier drivers this engine
+                  delivers about 0.9 dB / 4°; on ordinary drivers or a rough cabinet, 2–3 dB is
+                  a realistic place to stop.
+                </p>
+              )}
               {soloDriver ? (
                 <p className="sub">
                   Single-driver mode: relative phase does not exist, so the priority trade-off
@@ -10519,6 +10542,13 @@ export default function App() {
                         °
                       </>
                     )}
+                  </span>
+                )}
+                {stagedOn && (
+                  <span className="derived" style={{ flexBasis: '100%' }}>
+                    a stopping point, not a limit — tighter means more parts and more money
+                    (it keeps escalating while unmet, and only prunes once met); looser stops
+                    sooner and builds simpler, but may leave performance on the table
                   </span>
                 )}
                 <span className="opt-group-cap">Safety nets</span>

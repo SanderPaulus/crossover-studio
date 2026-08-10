@@ -1923,6 +1923,20 @@ de 🧙-knop opent bij threeWay daarom óók op stap 0. Demo-knop alleen bij 2-w
   verbouwing: een substring-anker ("{Number(d.count) > 1 && (") matchte óók in de
   summary-regel met diepere inspringing — regel-verankerd zoeken (\n + exacte indent) en de
   asserts hielden de schade tegen.
+- **STAGED-DOELEN: de richting die iedereen verkeerd gokt (aug 2026, Sanders "1,5 dB en 10°
+  is toch erg streng voor mindere drivers — ik wil juist voorkomen dat het filter meteen
+  complex en duur wordt")**: zijn intentie was goed maar het mechanisme werkt ómgekeerd. Een
+  doel is het STOPPUNT van de escalatieladder, geen plafond — vfOptimizer: "EQ bands are only
+  added while the targets are unmet", en de prune-pass zit achter `if (meets(...))`. Strakker
+  ⇒ blijft toevoegen én snoeit nooit ⇒ complexer en duurder, en het doel wordt alsnog gemist
+  (de gemeten 6,8 mH dode tweeterspoel bij doel 1 dB / geleverd 2,22). Ruimer ⇒ ladder stopt
+  vroeg + snoei draait ⇒ eenvoudiger, met als eerlijke prijs dat je performance kunt laten
+  liggen. Kalibratie: 1,5 dB was afgestemd op de KOAN, en dat zijn TOP-drivers (T25T-6 +
+  Satori, geleverd 0,88 dB / 3,6°) — alles daaronder werd door zijn eigen default de dure
+  kant op geduwd. **Default nu 2,5 dB / 15°** (haalbaar op gewone drivers), en de ruil staat
+  op alle drie de plekken waar het veld leeft: wizard-notitie, ⚙-tooltip + regel, en de
+  help-sectie (die het nog verkeerd om uitlegde: "strakkere doelen = zwaardere netwerken"
+  zónder te zeggen dat je dat dus juist NIET wilt als ze onhaalbaar zijn).
 - **"Guided moet standaard zijn" (aug 2026, Sanders)**: guided is NIET knoploos — de wizard
   schrijft dezelfde state, dus defaults forceren zou betekenen dat de wizard z'n eigen keuze
   niet vasthoudt. De eerlijke vorm is dus geen stille override maar ZICHTBAARHEID:
