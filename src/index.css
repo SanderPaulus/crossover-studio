@@ -2250,11 +2250,26 @@ button:disabled {
 }
 
 /* Catalog manager: wide overlay card — staged SKU table + edit form. */
+/* Wider than the other dialogs on purpose: this is a data TABLE, and at
+   62rem the range, id and series columns each wrapped to two lines, which
+   turns a scannable list into a wall (Sanders). The columns that are single
+   tokens — a value range, a gauge list, a tier — never wrap now; only the
+   free-text ones may. */
 .catmgr-card {
-  width: min(62rem, 94vw);
+  width: min(86rem, 96vw);
   max-width: none;
   height: min(84vh, 48rem);
   gap: 0.5rem;
+}
+.catmgr-table td,
+.catmgr-table th {
+  white-space: nowrap;
+}
+/* Brand and series are the two that can legitimately get long; let them
+   wrap rather than push the table into a horizontal scroll. */
+.catmgr-table td:nth-child(2),
+.catmgr-table td:nth-child(3) {
+  white-space: normal;
 }
 .catmgr-card .help-head select {
   padding: 0.3rem 0.4rem;
