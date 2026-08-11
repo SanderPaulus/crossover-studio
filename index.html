@@ -3,10 +3,364 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>SD Acoustics - Crossover Studio</title>
+    <title>Crossover Studio — from driver measurements to a filter you can build</title>
+    <meta
+      name="description"
+      content="A free, browser-based crossover design tool for DIY speaker builders. Load your driver measurements and it works out the crossover, the filter shapes and the parts to order."
+    />
+    <meta name="color-scheme" content="dark" />
+    <meta property="og:title" content="Crossover Studio" />
+    <meta
+      property="og:description"
+      content="From driver measurements to a passive crossover you can order and solder. Free, runs in your browser."
+    />
+    <meta property="og:type" content="website" />
+    <link rel="stylesheet" href="./landing/landing.css" />
   </head>
   <body>
-    <div id="root"></div>
-    <script type="module" src="/src/main.tsx"></script>
+    <a class="skip" href="#main">Skip to content</a>
+
+    <header class="topbar">
+      <span class="wordmark"><b>SD Acoustics</b> Crossover Studio</span>
+      <a class="btn btn-small" href="./app/">Open the studio</a>
+    </header>
+
+    <main id="main">
+      <!-- ─────────────────────────── hero ─────────────────────────── -->
+      <section class="hero">
+        <div class="wrap">
+          <h1>
+            You measured your drivers.<br />
+            <span class="grad">Now let something else do the filter.</span>
+          </h1>
+          <p class="lede">
+            Crossover Studio turns driver measurements into a passive crossover: the crossover
+            points, the filter shapes, the component values, and a parts list you can actually
+            order. Built for people who can measure a driver but have never designed a filter.
+          </p>
+          <div class="cta">
+            <a class="btn btn-primary" href="./app/">Open the studio</a>
+            <a class="btn" href="./app/">Or try it with the demo measurements</a>
+          </div>
+          <p class="fineprint">
+            Free · runs in the browser on any machine — Mac, Windows or Linux · nothing is
+            uploaded, your measurements stay with you
+          </p>
+
+          <figure class="shot hero-shot reveal">
+            <img
+              src="./shots/design.jpg"
+              alt="The studio showing a combined SPL response, with the summed curve coloured by how well the two drivers' phase lines up."
+              width="2240"
+              height="1260"
+              loading="eager"
+            />
+          </figure>
+        </div>
+      </section>
+
+      <!-- ────────────────────────── the story ─────────────────────── -->
+      <section class="band">
+        <div class="wrap narrow">
+          <h2 class="reveal">Why this exists</h2>
+          <div class="story reveal">
+            <p>
+              I am in the middle of building my next pair of speakers. The cabinet design is in its
+              final stages — which is exactly where a build stops being woodwork and becomes a
+              decision: go active with an FA253, or filter it passively.
+            </p>
+            <p>
+              A friend was going to help me with the passive network, but he ran out of time — and
+              he didn't have years of experience to fall back on either. So I went looking for
+              software, and found nothing that did what I needed.
+            </p>
+            <p>
+              So I asked an AI to design me a filter. Then I spent evenings rebuilding it by hand,
+              part by part, in another program, just to find out whether it was any good.
+            </p>
+            <p>
+              The SPL curve I could read. The phase curve I could not — a tangle of lines that
+              clearly meant something, and I couldn't tell what. And the software that might have
+              helped me runs on Windows, which I don't own.
+            </p>
+            <p>
+              It felt like walking into a wall — and I couldn't shake the feeling that something
+              better had to be possible. So I built it.
+            </p>
+            <p class="sig">— Sander Somers</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- ────────────────────────── the bridge ────────────────────── -->
+      <section class="band alt">
+        <div class="wrap narrow">
+          <h2 class="reveal">If you stopped in the same place</h2>
+          <p class="big reveal">
+            There are a lot of half-finished speakers in the world, and a lot of builds that never
+            started at all, for one reason: the crossover.
+          </p>
+          <p class="reveal">
+            You can cut the wood. You can choose the drivers. You can even learn to measure them.
+            And then you reach the part where you are supposed to already know what a filter should
+            look like — or spend an evening rebuilding someone else's suggestion in another program
+            just to find out whether it works. That is where projects stall.
+          </p>
+          <p class="reveal">
+            This is a bridge over that wall. It does not expect you to already know which
+            alignment your tweeter wants or what order the filter should be. You bring the
+            measurements;
+            it decides, builds, simulates — and then tells you what it decided and why, so you can
+            disagree with it once you know enough to.
+          </p>
+        </div>
+      </section>
+
+      <!-- ────────────────────────── how it works ──────────────────── -->
+      <section class="band">
+        <div class="wrap">
+          <h2 class="reveal">How it goes</h2>
+
+          <ol class="steps">
+            <li class="step reveal">
+              <div class="step-text">
+                <span class="num">1</span>
+                <h3>Measure</h3>
+                <p>
+                  The hardest part is the measuring, so the app has a guide that draws
+                  <em>your</em> rig: how far back to stand, how high the mic sits, what a turntable
+                  sweep actually covers. The drawings and the numbers move as you change the
+                  distance, because they run on the same maths the design engine uses.
+                </p>
+                <p class="aside">
+                  It will tell you, for instance, that a woofer 380&nbsp;mm below the microphone at
+                  half a metre is not at 0° — it is at 37°, and its "0° curve" was never on axis.
+                </p>
+              </div>
+              <figure class="shot">
+                <img
+                  src="./shots/measure.jpg"
+                  alt="The built-in measuring guide, drawing the cabinet, the microphone position and the true off-axis angle of each driver."
+                  width="1600"
+                  height="900"
+                  loading="lazy"
+                />
+              </figure>
+            </li>
+
+            <li class="step reveal">
+              <div class="step-text">
+                <span class="num">2</span>
+                <h3>Load what you measured</h3>
+                <p>
+                  A frequency response and an impedance sweep per driver, plus any angled
+                  measurements you took. One, two or three ways. No measurements yet? There is a
+                  complete real measurement set built in, so you can see the whole thing work
+                  before you own a microphone.
+                </p>
+              </div>
+              <figure class="shot">
+                <img
+                  src="./shots/import.jpg"
+                  alt="The import step, with a card per driver showing which files are loaded and what is still missing."
+                  width="1600"
+                  height="900"
+                  loading="lazy"
+                />
+              </figure>
+            </li>
+
+            <li class="step reveal">
+              <div class="step-text">
+                <span class="num">3</span>
+                <h3>Let it design</h3>
+                <p>
+                  One button. It works out where the drivers should hand over to each other, picks
+                  the filter shape for each one, builds the result as a real passive network, tunes
+                  every component value against your measurements and keeps the best of nine
+                  complete designs.
+                </p>
+                <p class="aside">
+                  You can watch each candidate come in, and stop it at any time. Nothing is
+                  hidden behind the button: every choice it made is written out afterwards.
+                </p>
+              </div>
+              <figure class="shot">
+                <img
+                  src="./shots/scan.jpg"
+                  alt="The optimizer running, with a row per candidate design showing its stage and its measured result."
+                  width="1600"
+                  height="900"
+                  loading="lazy"
+                />
+              </figure>
+            </li>
+
+            <li class="step reveal">
+              <div class="step-text">
+                <span class="num">4</span>
+                <h3>Go and buy the parts</h3>
+                <p>
+                  You end up with a schematic, the simulated response of the exact thing you are
+                  about to solder, and a parts list of real components — actual Jantzen and Mundorf
+                  items with their real resistance and their real price, not idealised values you
+                  then have to go and find.
+                </p>
+                <p class="aside">
+                  It also shows what happens to your speaker if every part is 5% off, and which
+                  parts are worth buying to tighter tolerance.
+                </p>
+              </div>
+              <figure class="shot">
+                <img
+                  src="./shots/build.jpg"
+                  alt="The finished crossover drawn as a schematic with real component values, next to the simulated response of the network it describes."
+                  width="1600"
+                  height="900"
+                  loading="lazy"
+                />
+              </figure>
+            </li>
+          </ol>
+        </div>
+      </section>
+
+      <!-- ───────────────────── what it works out ──────────────────── -->
+      <section class="band alt">
+        <div class="wrap">
+          <h2 class="reveal">It works out what your drivers can't do</h2>
+          <p class="big reveal">
+            A crossover point isn't a matter of taste. It is the overlap of several hard limits,
+            and most of them come out of your own measurements.
+          </p>
+
+          <ul class="cards">
+            <li class="card reveal" style="--tint: var(--viz-woofer)">
+              <h3>Where the woofer starts beaming</h3>
+              <p>
+                Read from your own angled sweeps — how far the response has fallen off-axis and
+                whether it keeps falling — instead of from the nominal size on the box.
+              </p>
+            </li>
+            <li class="card reveal" style="--tint: var(--viz-mid)">
+              <h3>Where two drivers start cancelling</h3>
+              <p>
+                Pure geometry: once they sit further apart than half a wavelength, a null exists
+                off-axis. This is the real reason three-ways cross low.
+              </p>
+            </li>
+            <li class="card reveal" style="--tint: var(--viz-null)">
+              <h3>Where a cone resonance gets excited</h3>
+              <p>
+                A breakup at 5&nbsp;kHz is fed by everything you send it at 1.7&nbsp;kHz. The price
+                lands well over an octave below the peak, where a notch can't reach it.
+              </p>
+            </li>
+            <li class="card reveal" style="--tint: var(--viz-tweeter)">
+              <h3>How low it can play at your level</h3>
+              <p>
+                From cone area and excursion: the same one-inch dome that survives 587&nbsp;Hz at
+                90&nbsp;dB needs 829&nbsp;Hz at 96&nbsp;dB.
+              </p>
+            </li>
+          </ul>
+
+          <p class="reveal note">
+            The usable window is where all of them overlap — and the app names which limit is
+            binding, so you know what to change. If there is no window at all, it says that too,
+            instead of quietly designing something impossible.
+          </p>
+        </div>
+      </section>
+
+      <!-- ────────────────────── the core idea ─────────────────────── -->
+      <section class="band">
+        <div class="wrap">
+          <div class="split">
+            <div class="reveal">
+              <h2>The idea underneath all of it</h2>
+              <p>
+                Two drivers only sum properly if their phase lines up where they overlap — and part
+                of that phase is simply the fact that one driver's acoustic centre sits a couple of
+                centimetres deeper in the cabinet than the other's.
+              </p>
+              <p>
+                This tool designs on the phase you actually measured, that real time difference
+                included. It checks first whether your two sweeps even share a clock, and says so
+                plainly if they don't, because that single mistake silently ruins every phase
+                number downstream.
+              </p>
+              <p>
+                A phase plot is also the one graph most people cannot read, so the app does not
+                just draw it. It scores it, and it colours the summed response by it: green where
+                the two drivers are within 15° of each other, red where they are fighting. You can
+                see whether the crossover works before you understand why.
+              </p>
+            </div>
+            <figure class="shot reveal">
+              <img
+                src="./shots/phase.jpg"
+                alt="The phase panel, showing the relative phase between the two drivers across the crossover region."
+                width="1600"
+                height="900"
+                loading="lazy"
+              />
+            </figure>
+          </div>
+        </div>
+      </section>
+
+      <!-- ───────────────────────── honesty ────────────────────────── -->
+      <section class="band alt">
+        <div class="wrap narrow">
+          <h2 class="reveal">Before you get your hopes up</h2>
+          <ul class="plain reveal">
+            <li>
+              <b>You do need measurements.</b> This turns measurements into a crossover; it can't
+              conjure them. A measurement microphone and REW will get you there, and the guide in
+              the app walks through the rig.
+            </li>
+            <li>
+              <b>It is a test version, and it is being worked on.</b> Things move. If something
+              looks wrong, it probably is, and I'd like to hear about it.
+            </li>
+            <li>
+              <b>The written manual is currently in Dutch</b>, even though the app itself is in
+              English. Translation is on the list.
+            </li>
+            <li>
+              <b>Nothing leaves your browser.</b> No account, no upload, no server. Your work is
+              saved locally; save a project file to keep or share it.
+            </li>
+            <li>
+              <b>Designs export to VituixCAD</b>, so nothing you do in here is locked in.
+            </li>
+            <li>
+              <b>There is nothing to install, and no Windows required.</b> It is a web page: it
+              runs on whatever you already have. Chrome or Edge if you want the folder export;
+              everything else works in any modern browser.
+            </li>
+          </ul>
+
+          <div class="cta center reveal">
+            <a class="btn btn-primary" href="./app/">Open the studio</a>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <footer class="foot">
+      <div class="wrap">
+        <p>
+          Built by Sander Somers · SD Acoustics ·
+          <a href="https://github.com/SanderPaulus/crossover-studio">source on GitHub</a> ·
+          <a href="https://github.com/SanderPaulus/crossover-studio/issues"
+            >tell me what's broken</a
+          >
+        </p>
+      </div>
+    </footer>
+
+    <script type="module" src="./landing/landing.js"></script>
   </body>
 </html>

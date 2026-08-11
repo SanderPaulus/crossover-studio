@@ -2060,6 +2060,41 @@ de 🧙-knop opent bij threeWay daarom óók op stap 0. Demo-knop alleen bij 2-w
   filters bewerken die niet in de sim zitten). Handle-drag wint van pan; wheel-op-handle wint
   van zoom.
 
+## Landing page (aug 2026, Sanders idee)
+
+Twee pagina's uit ÉÉN Vite-build (`build.rollupOptions.input`): `index.html` = de landing
+page, `app/index.html` = de studio op `/app/`. Eén deploy, gedeelde assets, geen tweede host;
+`base: './'` maakt de relatieve paden (`../assets/` vanuit de app) vanzelf goed.
+Bron: `landing/landing.css` + `landing/landing.js`, screenshots in `public/shots/`.
+**Bewust GEEN import van de app-`index.css`**: dat is een gereedschapsstylesheet mét
+theme-switcher, terwijl de landing bewust op één look vastzit — dark, omdat élke screenshot
+erop dark is en een lichte pagina rond donkere screenshots als twee producten leest. De
+kleur-tokens zijn wél gekopieerd uit het dark thema, en de kaarten dragen de
+chart-seriekleuren (woofer/mid/tweeter/null), zodat de pagina dezelfde luidspreker is als
+de plaatjes erop.
+**Inhoud (Sanders brief)**: DIY-bouwers breed, en nadrukkelijk **zonder vergelijking met
+andere producten** — alleen waar het wél voor is. Opent met zijn echte aanleiding, en die is
+door hemzelf gecorrigeerd (de eerste versie beweerde een afgebouwde KOAN — NIET waar):
+kastontwerp in de eindfase, keuze tussen een FA253 actief of passief filteren; zijn vriend
+had geen tijd en geen jarenlange ervaring; geen software gevonden die deed wat hij wilde;
+AI een filter laten maken en dat daarna met de hand nabouwen in een ander programma om te
+kunnen simuleren; de SPL-curve snapte hij, **de fase-curve ging zijn verbeelding voorbij**;
+en de software die er wél was wilde Windows, dat hij niet heeft. Dat verhaal stuurt drie
+dingen op de pagina: de fase-sectie zegt expliciet dat een fase-plot de grafiek is die
+niemand kan lezen (dus scoren + kleuren i.p.v. alleen tekenen), "geen Windows nodig" staat
+in de hero-fineprint én de eerlijkheidslijst, en de brug-sectie gaat over vastlopen op het
+GEREEDSCHAP, niet alleen op onwetendheid. Eerlijkheidssectie hoort erbij: je hebt metingen
+nodig, het is een testversie, en de handleiding is nog Nederlands.
+**Twee bugs die alleen de browser liet zien**: (1) de placeholder voor een ontbrekende
+screenshot las `img.width`/`img.height`, en dat is op een KAPOT plaatje de gerenderde
+glyph-maat (gemeten 72×449) i.p.v. het attribuut — een 16:9-kader werd 6685 px hoog; lees
+`getAttribute`. (2) De reveal-observer negeerde blokken die je VOORBIJ scrollt (herstelde
+scrollpositie, jump-link): die melden nooit meer `isIntersecting` en bleven permanent
+onzichtbaar. NB de zwarte screenshots tijdens het bouwen waren géén paginafout maar een
+verborgen Browser-pane: `document.visibilityState === 'hidden'` levert geen
+IntersectionObserver-callbacks én zwarte captures — eerst de zichtbaarheid controleren
+voordat je een layoutbug gaat jagen.
+
 ## Fysica-conventies & kernfeiten (KOAN-data)
 
 - Gemeten bulk delays: mid 1,708 ms / tweeter 1,755 ms → **Δ47 µs ≈ 16,2 mm** (tweeter dieper),

@@ -1,0 +1,503 @@
+/*
+ * Landing page styles.
+ *
+ * Deliberately standalone: this page must not import the app's index.css. That
+ * file is a tool's stylesheet (dense, high-information, tuned for panels and
+ * charts) and it carries the theme switcher. The landing page commits to ONE
+ * look — dark — because every screenshot on it is dark, and a light page around
+ * dark screenshots reads as two products.
+ *
+ * The colour tokens below are copied from the app's dark theme on purpose, so
+ * the page and the screenshots on it are the same speaker. Chart-series colours
+ * (woofer blue, mid amber, tweeter teal, null red) do the accent work, which is
+ * why the limit cards are tinted with them: it is the product's own palette.
+ */
+
+:root {
+  color-scheme: dark;
+
+  --bg: #0f1115;
+  --fg: #e5e7eb;
+  --muted: #9ca3af;
+  --border: #262b36;
+  --panel: #171a21;
+  --accent: #60a5fa;
+
+  --viz-woofer: #3987e5;
+  --viz-tweeter: #14b8a6;
+  --viz-mid: #f59e0b;
+  --viz-combined: #9085e9;
+  --viz-null: #e66767;
+  --ok: #4ade80;
+
+  /* Matches the app: the built-in easings are too weak to read as intentional. */
+  --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
+  --press: 160ms;
+
+  --wrap: 1120px;
+  --wrap-narrow: 680px;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--fg);
+  font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  font-size: 17px;
+  line-height: 1.65;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* A keyboard user's first Tab should reach a way past the header. */
+.skip {
+  position: absolute;
+  left: -9999px;
+  top: 0;
+  padding: 0.6rem 1rem;
+  background: var(--accent);
+  color: #06101f;
+  font-weight: 600;
+  border-radius: 0 0 8px 0;
+  z-index: 100;
+}
+.skip:focus {
+  left: 0;
+}
+
+/* One designed focus ring everywhere, like the app has. */
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
+  border-radius: 6px;
+}
+
+a {
+  color: var(--accent);
+  text-decoration-thickness: 1px;
+  text-underline-offset: 3px;
+}
+
+.wrap {
+  width: 100%;
+  max-width: var(--wrap);
+  margin: 0 auto;
+  padding: 0 24px;
+}
+.wrap.narrow {
+  max-width: var(--wrap-narrow);
+}
+
+/* ───────────────────────────── top bar ───────────────────────────── */
+
+.topbar {
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 12px 24px;
+  background: color-mix(in srgb, var(--bg) 82%, transparent);
+  backdrop-filter: blur(12px);
+  border-bottom: 1px solid var(--border);
+}
+
+.wordmark {
+  font-size: 0.95rem;
+  letter-spacing: 0.01em;
+  color: var(--muted);
+}
+.wordmark b {
+  color: var(--fg);
+  font-weight: 650;
+}
+
+/* ───────────────────────────── buttons ───────────────────────────── */
+
+.btn {
+  display: inline-block;
+  padding: 0.7rem 1.25rem;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--panel);
+  color: var(--fg);
+  font-size: 0.98rem;
+  font-weight: 550;
+  text-decoration: none;
+  /* Name the properties; never `all`. */
+  transition:
+    transform var(--press) var(--ease-out),
+    border-color var(--press) ease,
+    background var(--press) ease;
+}
+.btn:active {
+  transform: scale(0.97);
+}
+
+/* Hover is a pointer idea; a tap must not leave a stuck hover state. */
+@media (hover: hover) and (pointer: fine) {
+  .btn:hover {
+    border-color: color-mix(in srgb, var(--accent) 55%, var(--border));
+  }
+}
+
+.btn-primary {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #06101f;
+  font-weight: 650;
+}
+@media (hover: hover) and (pointer: fine) {
+  .btn-primary:hover {
+    background: color-mix(in srgb, var(--accent) 88%, white);
+    border-color: color-mix(in srgb, var(--accent) 88%, white);
+  }
+}
+
+.btn-small {
+  padding: 0.45rem 0.9rem;
+  font-size: 0.9rem;
+}
+
+.cta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin: 28px 0 14px;
+}
+.cta.center {
+  justify-content: center;
+  margin-top: 36px;
+}
+
+/* ────────────────────────────── hero ─────────────────────────────── */
+
+.hero {
+  padding: clamp(56px, 9vw, 104px) 0 clamp(40px, 6vw, 72px);
+  /* A wash in the two main series colours — the product's own identity, not
+     a generic gradient. Sits behind everything and never darkens the text. */
+  background:
+    radial-gradient(900px 420px at 12% -8%, color-mix(in srgb, var(--viz-woofer) 17%, transparent), transparent 70%),
+    radial-gradient(760px 380px at 88% 2%, color-mix(in srgb, var(--viz-tweeter) 13%, transparent), transparent 68%);
+}
+
+h1 {
+  margin: 0;
+  font-size: clamp(2.1rem, 5.2vw, 3.7rem);
+  line-height: 1.08;
+  letter-spacing: -0.025em;
+  font-weight: 700;
+  max-width: 17ch;
+}
+
+.grad {
+  background: linear-gradient(96deg, var(--viz-tweeter), var(--accent) 55%, var(--viz-combined));
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.lede {
+  margin: 22px 0 0;
+  font-size: clamp(1.05rem, 1.6vw, 1.22rem);
+  color: var(--muted);
+  max-width: 62ch;
+}
+
+.fineprint {
+  margin: 0;
+  font-size: 0.88rem;
+  color: var(--muted);
+}
+
+/* ──────────────────────────── screenshots ────────────────────────── */
+
+.shot {
+  margin: 0;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  overflow: hidden;
+  background: var(--panel);
+  box-shadow:
+    0 1px 0 color-mix(in srgb, white 6%, transparent) inset,
+    0 24px 60px -24px rgb(0 0 0 / 0.75);
+}
+.shot img {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+.hero-shot {
+  margin-top: clamp(36px, 6vw, 64px);
+}
+
+/* Stand-in for a screenshot that isn't in public/shots/ yet. Holds the real
+   aspect ratio so the page never reflows once the picture lands. */
+.shot-missing {
+  display: grid;
+  place-items: center;
+  aspect-ratio: var(--ratio, 16 / 9);
+  padding: 24px;
+  background:
+    repeating-linear-gradient(
+      -45deg,
+      transparent 0 10px,
+      color-mix(in srgb, var(--border) 45%, transparent) 10px 11px
+    ),
+    var(--panel);
+}
+/* Specific enough to beat the generic `.band p` width rule, which would
+   otherwise stretch this centred caption to 68ch. */
+.shot .shot-note {
+  margin: 0;
+  max-width: 44ch;
+  text-align: center;
+  font-size: 0.9rem;
+  color: var(--muted);
+}
+
+/* ───────────────────────────── sections ──────────────────────────── */
+
+.band {
+  padding: clamp(56px, 8vw, 96px) 0;
+  border-top: 1px solid var(--border);
+}
+.band.alt {
+  background: color-mix(in srgb, var(--panel) 55%, var(--bg));
+}
+
+h2 {
+  margin: 0 0 22px;
+  font-size: clamp(1.55rem, 3.1vw, 2.2rem);
+  line-height: 1.18;
+  letter-spacing: -0.02em;
+  font-weight: 680;
+}
+
+h3 {
+  margin: 0 0 8px;
+  font-size: 1.13rem;
+  font-weight: 640;
+  letter-spacing: -0.01em;
+}
+
+p {
+  margin: 0 0 1em;
+}
+p:last-child {
+  margin-bottom: 0;
+}
+
+.big {
+  font-size: clamp(1.1rem, 1.9vw, 1.3rem);
+  color: var(--fg);
+  max-width: 58ch;
+}
+
+.band p:not(.big):not(.aside):not(.fineprint):not(.sig) {
+  color: var(--muted);
+  max-width: 68ch;
+}
+
+/* Secondary detail: the specific, checkable number under a claim. Set apart by
+   a rule rather than by colour alone. */
+.aside {
+  margin-top: 0.9em;
+  padding-left: 14px;
+  border-left: 2px solid color-mix(in srgb, var(--accent) 45%, var(--border));
+  font-size: 0.94rem;
+  color: var(--muted);
+}
+
+.note {
+  margin-top: 28px;
+}
+
+/* ────────────────────────────── story ────────────────────────────── */
+
+.story {
+  font-size: clamp(1.05rem, 1.7vw, 1.16rem);
+  border-left: 3px solid color-mix(in srgb, var(--viz-mid) 70%, transparent);
+  padding-left: clamp(18px, 3vw, 28px);
+}
+.story p {
+  color: var(--fg) !important;
+  max-width: 60ch;
+}
+.sig {
+  margin-top: 1.2em !important;
+  color: var(--muted) !important;
+  font-size: 0.95rem;
+}
+
+/* ────────────────────────────── steps ────────────────────────────── */
+
+.steps {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: clamp(48px, 7vw, 84px);
+}
+
+.step {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.25fr);
+  gap: clamp(24px, 4vw, 48px);
+  align-items: center;
+}
+/* Alternate sides so the eye zig-zags down the page instead of scanning a column. */
+.step:nth-child(even) .step-text {
+  order: 2;
+}
+
+.num {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  margin-bottom: 12px;
+  border-radius: 50%;
+  border: 1px solid color-mix(in srgb, var(--accent) 50%, var(--border));
+  color: var(--accent);
+  font-size: 0.9rem;
+  font-weight: 650;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ────────────────────────────── cards ────────────────────────────── */
+
+.cards {
+  list-style: none;
+  margin: 32px 0 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(248px, 1fr));
+  gap: 16px;
+}
+
+.card {
+  padding: 20px;
+  border: 1px solid var(--border);
+  /* Colour is never the only carrier: the heading says which limit it is. The
+     tint just groups them at a glance. */
+  border-top: 3px solid var(--tint, var(--accent));
+  border-radius: 12px;
+  background: var(--bg);
+}
+.card p {
+  margin: 0;
+  font-size: 0.95rem;
+  color: var(--muted);
+}
+
+/* ────────────────────────────── split ───────────────────────────── */
+
+.split {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.15fr);
+  gap: clamp(24px, 4vw, 52px);
+  align-items: center;
+}
+
+/* ───────────────────────────── plain list ────────────────────────── */
+
+.plain {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 14px;
+}
+.plain li {
+  padding-left: 18px;
+  border-left: 2px solid var(--border);
+  color: var(--muted);
+  max-width: 66ch;
+}
+.plain b {
+  color: var(--fg);
+  font-weight: 620;
+}
+
+/* ────────────────────────────── footer ───────────────────────────── */
+
+.foot {
+  padding: 32px 0 48px;
+  border-top: 1px solid var(--border);
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+/* ────────────────────────────── motion ───────────────────────────── */
+
+/*
+ * This page is seen once or twice, not a hundred times a day, so entrances are
+ * allowed here in a way they are not in the app. They stay short and they only
+ * fade + lift: nothing scales in from nothing.
+ */
+.reveal {
+  opacity: 0;
+  transform: translateY(12px);
+  transition:
+    opacity 420ms var(--ease-out),
+    transform 420ms var(--ease-out);
+}
+.reveal.in {
+  opacity: 1;
+  transform: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .reveal {
+    opacity: 1;
+    transform: none;
+    transition: none;
+  }
+}
+
+/* ───────────────────────────── responsive ────────────────────────── */
+
+@media (max-width: 860px) {
+  .step,
+  .split {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  /* Text before picture on every step once stacked, whatever the desktop order. */
+  .step:nth-child(even) .step-text {
+    order: 0;
+  }
+}
+
+@media (max-width: 520px) {
+  body {
+    font-size: 16px;
+  }
+  .cta .btn {
+    width: 100%;
+    text-align: center;
+  }
+  .wordmark b + span,
+  .wordmark {
+    font-size: 0.85rem;
+  }
+}

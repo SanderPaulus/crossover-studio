@@ -4,7 +4,8 @@ Ontwerptool voor passieve luidspreker-crossovers, gebouwd rond één kernidee:
 ontwerpen op **gemeten fase** (inclusief het echte inter-driver-tijdverschil),
 waar klassieke tools zoals VituixCAD minimum-fase reconstrueren.
 
-**▶ De app draait hier: <https://sanderpaulus.github.io/crossover-studio/>**
+**▶ De app draait hier: <https://sanderpaulus.github.io/crossover-studio/app/>**
+(de landing page staat op <https://sanderpaulus.github.io/crossover-studio/>)
 
 ## Voor testers
 
@@ -33,10 +34,14 @@ waar klassieke tools zoals VituixCAD minimum-fase reconstrueren.
 
 ```bash
 npm install
-npm run dev        # dev-server op :5173
+npm run dev        # dev-server op :5173 (landing op /, app op /app/)
 npx vitest run     # testsuite
 npm run build      # productie-build in dist/
 ```
+
+Twee pagina's uit één Vite-build (`build.rollupOptions.input`): `index.html` is de
+landing page (statisch, eigen CSS/JS in `landing/`, screenshots in `public/shots/`),
+`app/index.html` is de studio. Eén deploy, gedeelde assets, geen tweede host.
 
 Elke push naar `main` draait automatisch de tests en publiceert de app naar
 GitHub Pages (zie `.github/workflows/deploy.yml`).
