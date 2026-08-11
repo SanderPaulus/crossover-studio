@@ -275,6 +275,23 @@ type PanelKey = 'directivity' | 'sonogram' | 'transfer' | 'impedance' | 'phase' 
 
 const PANEL_KEYS: PanelKey[] = ['directivity', 'sonogram', 'transfer', 'impedance', 'phase', 'time'];
 
+/* Labels the command palette and the 1–5 shortcuts share with the step bar and
+ * the expert tabs — one naming, or the palette becomes a second map. */
+const GUIDED_STEP_LABEL: Record<'import' | 'drivers' | 'data' | 'filters' | 'network', string> = {
+  import: 'Your project',
+  data: 'Your cabinet',
+  drivers: 'Your drivers',
+  filters: 'Design it',
+  network: 'Your build',
+};
+const EXPERT_TAB_LABEL: Record<'import' | 'drivers' | 'data' | 'filters' | 'network', string> = {
+  import: 'Import',
+  data: 'Setup',
+  drivers: 'Setup (drivers)',
+  filters: 'Filters',
+  network: 'Network',
+};
+
 const PANEL_LABEL: Record<PanelKey, string> = {
   directivity: 'Directivity',
   sonogram: 'Sonogram',
@@ -1180,15 +1197,24 @@ export default function App() {
    * these). SPL and the integration score always stay on. Persisted.
    */
   const [showPanels, setShowPanels] = useState<Record<PanelKey, boolean>>(() => {
+    /* Fresh users start with a CALM set: SPL (always on) + phase + impedance —
+     * the three that answer "is this design good?". Directivity, sonogram,
+     * transfer and time domain stay one visible, clickable chip away; seven
+     * dense panels at once was the single biggest first-impression overload.
+     * A stored choice (ANY stored choice) wins completely — existing users
+     * see exactly what they left behind. */
+    const FRESH_DEFAULT: Record<PanelKey, boolean> = Object.fromEntries(
+      PANEL_KEYS.map((k) => [k, k === 'phase' || k === 'impedance']),
+    ) as Record<PanelKey, boolean>;
     try {
-      const raw = JSON.parse(localStorage.getItem('ads-ui-panels') ?? '{}') as Partial<
-        Record<PanelKey, boolean>
-      >;
+      const stored = localStorage.getItem('ads-ui-panels');
+      if (stored === null) return FRESH_DEFAULT;
+      const raw = JSON.parse(stored) as Partial<Record<PanelKey, boolean>>;
       return Object.fromEntries(
         PANEL_KEYS.map((k) => [k, raw[k] ?? true]),
       ) as Record<PanelKey, boolean>;
     } catch {
-      return Object.fromEntries(PANEL_KEYS.map((k) => [k, true])) as Record<PanelKey, boolean>;
+      return FRESH_DEFAULT;
     }
   });
   useEffect(() => {
@@ -1465,6 +1491,35 @@ export default function App() {
     if (threeWay) setWizardWaysRaw(3);
     else if (woofer && tweeter && !midDrv) setWizardWaysRaw(2);
   }, [wizardOpen, threeWay, woofer, tweeter, midDrv]);
+
+  /* First-run welcome card. Keyed on "no autosave AND never dismissed": an
+   * existing autosave means a returning user, and the flag means they chose to
+   * look around — either way the card must never nag twice. */
+  const [welcomeOpen, setWelcomeOpen] = useState(
+    () => !localStorage.getItem('ads-autosave') && !localStorage.getItem('ads-welcomed'),
+  );
+
+  /* Keyboard-first layer (Linear/Figma): command palette, shortcuts overlay,
+   * issues list, held reference trace. The key listener binds ONCE and routes
+   * through a ref so it always sees fresh closures. */
+  const [paletteOpen, setPaletteOpen] = useState(false);
+  const [palQuery, setPalQuery] = useState('');
+  const [palIx, setPalIx] = useState(0);
+  const [shortcutsOpen, setShortcutsOpen] = useState(false);
+  const [issuesOpen, setIssuesOpen] = useState(false);
+  const [heldTrace, setHeldTrace] = useState<{ x: number[]; y: number[] } | null>(null);
+  const keyRef = useRef<(e: KeyboardEvent) => void>(() => {});
+  useEffect(() => {
+    const h = (e: KeyboardEvent) => keyRef.current(e);
+    window.addEventListener('keydown', h);
+    return () => window.removeEventListener('keydown', h);
+  }, []);
+  function dismissWelcome(next?: 'demo' | 'wizard') {
+    localStorage.setItem('ads-welcomed', '1');
+    setWelcomeOpen(false);
+    if (next === 'demo') loadDemo();
+    else if (next === 'wizard') setWizardOpen(true);
+  }
   /** The declared set's measurement checklist; Next blocks while incomplete. */
   const wizardMissing: string[] = (() => {
     if (wizardWays === 1) return woofer || tweeter ? [] : ['driver response (FRD)'];
@@ -1530,6 +1585,41 @@ export default function App() {
     () => (activeDesign ? { name: activeDesign.name, parts: activeDesign.parts } : null),
     [activeDesign],
   );
+
+  /* Is anything actually SHAPING the summed response — an active editor
+   * network, a vxp variant, or live virtual filters? One definition, shared by
+   * the topbar chips and the raw-drivers verdict panel (two consumers with two
+   * private definitions is the bug family this codebase keeps paying for).
+   * Raw drivers score terribly on every design metric by nature, and a red
+   * alarm the user did nothing to cause reads as "the app is broken" instead
+   * of "get started" — so pre-design, the chips go neutral, values intact. */
+  const designShaped = useMemo(
+    () =>
+      networkActive ||
+      (project != null && xoName !== 'none') ||
+      (!vfBypass &&
+        (isActive(vFilters.woofer) ||
+          isActive(vFilters.tweeter) ||
+          (threeWay && isActive(vFilters.mid)))),
+    [networkActive, project, xoName, vfBypass, vFilters, threeWay],
+  );
+
+  /* One visible answer to "which crossover am I looking at right now?" — the
+   * single most confusing thing about the virtual/passive split. Mirrors the
+   * actual sim precedence (editor network > vxp variant > virtual filters >
+   * raw drivers) so it can never disagree with the charts. */
+  const simSource: string = useMemo(() => {
+    if (networkActive && activeDesign) return `passive network “${activeDesign.name}”`;
+    if (project && xoName !== 'none') return `VituixCAD variant “${xoName}”`;
+    if (
+      !vfBypass &&
+      (isActive(vFilters.woofer) ||
+        isActive(vFilters.tweeter) ||
+        (threeWay && isActive(vFilters.mid)))
+    )
+      return 'the virtual filter design (Filters tab)';
+    return 'raw drivers — no crossover yet';
+  }, [networkActive, activeDesign, project, xoName, vfBypass, vFilters, threeWay]);
 
   function commitSchematic(parts: VxpPart[]) {
     if (!activeDesign) return;
@@ -1770,9 +1860,18 @@ export default function App() {
    * directivity view. A fresh selection replaces that driver's previous set.
    */
   function loadDriverFiles(side: 'woofer' | 'mid' | 'tweeter') {
-    return async (e: React.ChangeEvent<HTMLInputElement>) => {
+    return (e: React.ChangeEvent<HTMLInputElement>) => {
       const files = [...(e.target.files ?? [])];
       e.target.value = '';
+      void loadDriverFileList(side, files);
+    };
+  }
+
+  /* Shared by the file input AND drag-and-drop on the driver card: an OS
+   * multi-select dialog is the most error-prone picker there is, and dropping
+   * the files you already have open in a folder is how people actually work. */
+  async function loadDriverFileList(side: 'woofer' | 'mid' | 'tweeter', files: File[]) {
+    {
       if (files.length === 0) return;
       setError(null);
       // Content-vs-extension sanity (roadmap jul 2026): the parser is chosen
@@ -1865,6 +1964,36 @@ export default function App() {
         return;
       }
       if (warnings.length > 0) setError(warnings.join(' '));
+    }
+  }
+
+  /* Drop-target plumbing for the driver cards. dragenter/leave fire for every
+   * child crossed, so a counter — not a boolean — tracks "still inside". */
+  const [dropSide, setDropSide] = useState<'woofer' | 'mid' | 'tweeter' | null>(null);
+  const dropDepth = useRef(0);
+  function dropHandlers(side: 'woofer' | 'mid' | 'tweeter') {
+    return {
+      onDragEnter: (e: React.DragEvent) => {
+        if (!e.dataTransfer.types.includes('Files')) return;
+        e.preventDefault();
+        dropDepth.current += 1;
+        setDropSide(side);
+      },
+      onDragOver: (e: React.DragEvent) => {
+        if (!e.dataTransfer.types.includes('Files')) return;
+        e.preventDefault();
+        e.dataTransfer.dropEffect = 'copy';
+      },
+      onDragLeave: () => {
+        dropDepth.current = Math.max(0, dropDepth.current - 1);
+        if (dropDepth.current === 0) setDropSide(null);
+      },
+      onDrop: (e: React.DragEvent) => {
+        e.preventDefault();
+        dropDepth.current = 0;
+        setDropSide(null);
+        void loadDriverFileList(side, [...e.dataTransfer.files]);
+      },
     };
   }
 
@@ -4087,7 +4216,12 @@ export default function App() {
     // Blank slate (fresh visit or after Reset) — guide the user in: auto-open
     // the wizard on its import step so the first thing they see is "load your
     // measurements", not an empty canvas. Cancel dismisses it.
+    // TRUE first contact is the exception: there the welcome card is the
+    // conductor (it routes INTO the wizard on request) — opening both at once
+    // stacks two dialogs, which is exactly the four-onboarding-surfaces-and-
+    // no-regie problem the card exists to solve.
     const openWizardForEmpty = () => {
+      if (!localStorage.getItem('ads-welcomed')) return;
       setWizardStep(0);
       setWizardOpen(true);
     };
@@ -5588,7 +5722,7 @@ export default function App() {
         title:
           `Bill of materials — ${bom.rows.length} components` +
           (bom.totalEur !== null
-            ? ` · ≥ €${bom.totalEur.toFixed(2)} (${bom.pricedCount}/${bom.rows.length} priced)`
+            ? ` · ${bom.pricedCount < bom.rows.length ? '≥ ' : ''}€${bom.totalEur.toFixed(2)} (${bom.pricedCount}/${bom.rows.length} priced)`
             : ''),
         rows: bom.rows.map((row) => ({
           label: row.partId,
@@ -6243,6 +6377,22 @@ export default function App() {
       : undefined;
     return [
       ...tabGhosts.spl,
+      // Held reference (REW "hold trace"): a frozen copy of the combined
+      // curve from the moment the user pressed Hold — the honest before/after
+      // while hand-tuning. Drawn early so the live curves stay on top.
+      ...(heldTrace
+        ? ([
+            {
+              id: 'held',
+              label: 'Held reference',
+              color: 'var(--viz-tick)',
+              dash: '8 4',
+              width: 1.6,
+              x: heldTrace.x,
+              y: heldTrace.y,
+            },
+          ] as Series[])
+        : []),
       // Build-tolerance envelope hugs the combined curve — drawn first so the
       // live curves stay on top.
       ...(tolBand
@@ -6342,7 +6492,7 @@ export default function App() {
         : []),
     ];
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [result, sim, threeWay, maskSilent, integration, tabGhosts, networkActive, activeDesign, tolBand, targetSeries, soloDriver, verifyCompare, verify]);
+  }, [result, sim, threeWay, maskSilent, integration, tabGhosts, networkActive, activeDesign, tolBand, targetSeries, soloDriver, verifyCompare, verify, heldTrace]);
 
   /**
    * Design handles ON the SPL chart (UI-fase D): drag the crossover knees and
@@ -7414,6 +7564,141 @@ export default function App() {
     </>
   );
 
+  /* ─── Command palette, shortcuts overlay, issues list, held trace ─────────
+   * Keyboard-first layer (Linear/Figma pattern): ⌘K reaches every action,
+   * "?" teaches every key, and the issues chip is a DRC-style single list of
+   * everything currently wrong (KiCad pattern). All UI-layer — each action
+   * calls the same handlers the buttons call. */
+
+  const issues: { text: string; where: string }[] = [];
+  if (error) issues.push({ text: error, where: 'Import tab — the banner above the file slots' });
+  if (midIgnored)
+    issues.push({
+      text: 'Midrange files are loaded but the set is not a full 3-way — the mid is NOT in the summed response.',
+      where: 'Import tab — load a woofer AND a tweeter as well, or clear the mid slot',
+    });
+  if (!threeWay && timing && timing.ref.verdict !== 'plausible')
+    issues.push({
+      text: `Timing ${timing.ref.verdict}: the two sweeps may not share a time reference, which silently ruins every phase number.`,
+      where: 'Topbar Timing chip — hover it for the full verdict; 📐 Measure explains the shared-clock rig',
+    });
+  if (threeWay && timing3) {
+    for (const p of [timing3.low, timing3.high]) {
+      if (p && p.verdict !== 'plausible')
+        issues.push({
+          text: `Pair time-base ${p.verdict}: ${p.message.split('\n')[0]}`,
+          where: 'Topbar Timing chip — hover for both pairs',
+        });
+    }
+  }
+  if (systemZInfo && systemZInfo.minOhm < Z_FLOOR_OHM)
+    issues.push({
+      text: `System impedance dips to ${systemZInfo.minOhm.toFixed(1)} Ω — below the ${Z_FLOOR_OHM} Ω amplifier floor.`,
+      where: 'System impedance panel — the Z min marker shows where; the optimizer repairs this when it can',
+    });
+
+  const canQuickSave = !!activeDesignId && !!lastSavedId && lastSavedId !== activeDesignId;
+
+  function holdCurrentTrace() {
+    if (!result) return;
+    setHeldTrace({ x: [...result.freq], y: [...result.combinedSpl] });
+  }
+
+  const gotoKeys: (typeof designTab)[] =
+    uiMode === 'guided'
+      ? ['import', 'data', 'drivers', 'filters', 'network']
+      : ['import', 'data', 'filters', 'network'];
+
+  type PaletteAction = { id: string; label: string; hint?: string; run: () => void };
+  const paletteActions: PaletteAction[] = [
+    ...gotoKeys.map((t, i) => ({
+      id: `go-${t}`,
+      label: `Go to: ${uiMode === 'guided' ? GUIDED_STEP_LABEL[t] : EXPERT_TAB_LABEL[t]}`,
+      hint: `${i + 1}`,
+      run: () => setDesignTab(t),
+    })),
+    {
+      id: 'optimize',
+      label: soloDriver ? 'Optimize — flatten driver' : 'Optimize — design for me',
+      hint: 'the one-button designer',
+      run: () => {
+        setDesignTab('filters');
+        runVfOptimize();
+      },
+    },
+    { id: 'wizard', label: 'Open the design wizard', run: () => setWizardOpen(true) },
+    { id: 'measure', label: 'Open the measuring guide', hint: 'rig, distances, angles', run: () => setMeasureGuideOpen(true) },
+    { id: 'help', label: 'Open the manual', run: () => setHelpOpen(true) },
+    { id: 'targets', label: 'Show design targets', hint: 'what the last build was fitted against', run: () => setShowTargets(true) },
+    { id: 'catalog', label: 'Open the catalog manager', hint: 'SKUs, prices, series', run: () => setCatalogMgrOpen(true) },
+    { id: 'demo', label: 'Load the KOAN demo measurements', run: () => loadDemo() },
+    {
+      id: 'hold',
+      label: heldTrace ? 'Clear the held reference curve' : 'Hold the combined curve as reference',
+      hint: 'freeze a copy in the SPL chart to compare against (REW: hold trace)',
+      run: () => (heldTrace ? setHeldTrace(null) : holdCurrentTrace()),
+    },
+    ...PANEL_KEYS.map((k) => ({
+      id: `panel-${k}`,
+      label: `${showPanels[k] ? 'Hide' : 'Show'} chart: ${PANEL_LABEL[k]}`,
+      run: () => setShowPanels((p) => ({ ...p, [k]: !p[k] })),
+    })),
+    {
+      id: 'theme',
+      label: `Theme: switch to ${theme === 'dark' ? 'light' : 'dark'}`,
+      run: () => setTheme(theme === 'dark' ? 'light' : 'dark'),
+    },
+    { id: 'save', label: '💾 Save (overwrite last saved filter)', hint: '⌘S', run: () => { if (canQuickSave) overwriteLastSaved(); } },
+    { id: 'shortcuts', label: 'Keyboard shortcuts', hint: '?', run: () => setShortcutsOpen(true) },
+    ...(issues.length > 0
+      ? [{ id: 'issues', label: `Show current issues (${issues.length})`, run: () => setIssuesOpen(true) }]
+      : []),
+  ];
+  const palFiltered = paletteActions.filter((a) => {
+    const q = palQuery.trim().toLowerCase();
+    return !q || a.label.toLowerCase().includes(q) || (a.hint ?? '').toLowerCase().includes(q);
+  });
+  function runPaletteAction(a: PaletteAction) {
+    setPaletteOpen(false);
+    setPalQuery('');
+    setPalIx(0);
+    a.run();
+  }
+
+  /* Global keys, bound once via a ref so the listener always sees the latest
+   * closures (the Chart wheel pattern). Typing fields and open dialogs are
+   * left alone — digits in a value field must stay digits. */
+  keyRef.current = (e: KeyboardEvent) => {
+    const t = e.target as HTMLElement | null;
+    const typing =
+      t instanceof HTMLInputElement ||
+      t instanceof HTMLTextAreaElement ||
+      t instanceof HTMLSelectElement ||
+      (t?.isContentEditable ?? false);
+    if ((e.metaKey || e.ctrlKey) && !e.altKey && e.key.toLowerCase() === 'k') {
+      e.preventDefault();
+      setPaletteOpen((o) => !o);
+      return;
+    }
+    if ((e.metaKey || e.ctrlKey) && !e.altKey && !e.shiftKey && e.key.toLowerCase() === 's') {
+      // Always swallow ⌘S: the browser's save-page dialog is never what a
+      // user of this app means by "save".
+      e.preventDefault();
+      if (canQuickSave) overwriteLastSaved();
+      return;
+    }
+    if (typing || document.querySelector('[role="dialog"]')) return;
+    if (e.key === '?') {
+      e.preventDefault();
+      setShortcutsOpen(true);
+      return;
+    }
+    if (!e.metaKey && !e.ctrlKey && !e.altKey && /^[1-5]$/.test(e.key)) {
+      const target = gotoKeys[Number(e.key) - 1];
+      if (target) setDesignTab(target);
+    }
+  };
+
   return (
     <div className={`app-shell layout-${layoutMode} mode-${uiMode}`}>
       {overlayVisible && (
@@ -7430,6 +7715,144 @@ export default function App() {
       <MeasuringGuide open={measureGuideOpen} onClose={() => setMeasureGuideOpen(false)} />
       {catalogMgrOpen && (
         <CatalogManager onClose={() => setCatalogMgrOpen(false)} onSave={saveCatalogParts} />
+      )}
+      {paletteOpen && (
+        <Modal
+          open
+          onClose={() => {
+            setPaletteOpen(false);
+            setPalQuery('');
+            setPalIx(0);
+          }}
+          label="Command palette"
+          cardClass="palette-card"
+        >
+          <input
+            autoFocus
+            className="palette-input"
+            placeholder="Type a command… (navigate, optimize, toggle charts, theme)"
+            value={palQuery}
+            onChange={(e) => {
+              setPalQuery(e.target.value);
+              setPalIx(0);
+            }}
+            onKeyDown={(e) => {
+              if (e.key === 'ArrowDown') {
+                e.preventDefault();
+                setPalIx((i) => Math.min(i + 1, palFiltered.length - 1));
+              } else if (e.key === 'ArrowUp') {
+                e.preventDefault();
+                setPalIx((i) => Math.max(i - 1, 0));
+              } else if (e.key === 'Enter' && palFiltered[palIx]) {
+                runPaletteAction(palFiltered[palIx]);
+              } else if (e.key === 'Escape') {
+                setPaletteOpen(false);
+                setPalQuery('');
+                setPalIx(0);
+              }
+            }}
+          />
+          <ul className="palette-list">
+            {palFiltered.length === 0 && <li className="palette-none">No matching command</li>}
+            {palFiltered.map((a, i) => (
+              <li key={a.id}>
+                <button
+                  type="button"
+                  className={i === palIx ? 'sel' : ''}
+                  onMouseEnter={() => setPalIx(i)}
+                  onClick={() => runPaletteAction(a)}
+                >
+                  <span>{a.label}</span>
+                  {a.hint && <small>{a.hint}</small>}
+                </button>
+              </li>
+            ))}
+          </ul>
+        </Modal>
+      )}
+      {shortcutsOpen && (
+        <Modal open onClose={() => setShortcutsOpen(false)} label="Keyboard shortcuts" cardClass="shortcuts-card">
+          <div className="busy-title">Keyboard shortcuts</div>
+          <div className="shortcut-cols">
+            <dl>
+              <dt>Everywhere</dt>
+              <dd><kbd>⌘K</kbd> command palette — every action, searchable</dd>
+              <dd><kbd>?</kbd> this overview</dd>
+              <dd><kbd>1</kbd>–<kbd>5</kbd> jump between the steps / tabs</dd>
+              <dd><kbd>⌘S</kbd> save (overwrite the last-saved filter)</dd>
+              <dd><kbd>Esc</kbd> close any popup</dd>
+            </dl>
+            <dl>
+              <dt>Charts</dt>
+              <dd><kbd>scroll</kbd> zoom · <kbd>⇧scroll</kbd> vertical zoom</dd>
+              <dd><kbd>drag</kbd> pan · <kbd>double-click</kbd> reset</dd>
+              <dd><kbd>click legend chip</kbd> show / hide that curve</dd>
+              <dd><kbd>drag dot</kbd> move a filter knee or EQ band · <kbd>scroll on dot</kbd> its Q</dd>
+            </dl>
+            <dl>
+              <dt>Network editor</dt>
+              <dd><kbd>Esc</kbd> cancel tool · <kbd>Del</kbd> remove part · <kbd>R</kbd> rotate</dd>
+              <dd><kbd>⌘Z</kbd> undo · <kbd>⇧⌘Z</kbd> / <kbd>⌘Y</kbd> redo</dd>
+              <dd><kbd>↑</kbd>/<kbd>↓</kbd> in a value field: step through E12 values</dd>
+            </dl>
+          </div>
+        </Modal>
+      )}
+      {issuesOpen && (
+        <Modal open onClose={() => setIssuesOpen(false)} label="Current issues" cardClass="shortcuts-card">
+          <div className="busy-title">⚠ Current issues</div>
+          {issues.length === 0 ? (
+            <p className="sub">Nothing wrong right now.</p>
+          ) : (
+            <ul className="issues-list">
+              {issues.map((it, i) => (
+                <li key={i}>
+                  <p>{it.text}</p>
+                  <p className="sub">→ {it.where}</p>
+                </li>
+              ))}
+            </ul>
+          )}
+        </Modal>
+      )}
+      {/* First-run welcome: the app already HAS four onboarding surfaces
+          (demo, wizard, help, measuring guide) — this card is the missing
+          conductor. It only ever shows when there is no autosave and it has
+          never been dismissed, so returning users never see it. */}
+      {welcomeOpen && (
+        <Modal
+          open
+          onClose={() => dismissWelcome()}
+          label="Welcome"
+          cardClass="targets-card welcome-card"
+        >
+          <div className="busy-title">Design a crossover from measurements</div>
+          <p className="sub" style={{ width: '100%', margin: 0 }}>
+            Load a frequency response and impedance per driver, and the app works out the
+            crossover: filter shapes, component values, and a parts list you can order. No filter
+            knowledge needed to start.
+          </p>
+          <div className="welcome-choices">
+            <button
+              type="button"
+              className="welcome-primary"
+              onClick={() => dismissWelcome('demo')}
+            >
+              🎧 Explore with the demo speaker
+              <small>
+                A complete real measurement set (responses, impedances, angles, cabinet) — see the
+                whole flow work before you own a microphone.
+              </small>
+            </button>
+            <button type="button" onClick={() => dismissWelcome('wizard')}>
+              📁 I have measurements
+              <small>The wizard walks you through loading them and checks nothing is missing.</small>
+            </button>
+          </div>
+          <button type="button" className="welcome-skip" onClick={() => dismissWelcome()}>
+            Just let me look around
+          </button>
+        </Modal>
       )}
       {wizardOpen && (
         <Modal
@@ -8748,15 +9171,20 @@ export default function App() {
           {combinedFlat && (
             <span
               className={`status-chip ${
-                combinedFlat.score >= 85 ? 'chip-ok' : combinedFlat.score >= 70 ? 'chip-warn' : 'chip-bad'
+                !designShaped
+                  ? 'chip-neutral'
+                  : combinedFlat.score >= 85 ? 'chip-ok' : combinedFlat.score >= 70 ? 'chip-warn' : 'chip-bad'
               }`}
-              title="Whole-range flatness of the combined response, 0–100 — from the AVERAGE deviation over the visible range, so one narrow dip can't dominate the verdict (the peak ±dB in the SPL strip still shows it)"
+              title={`${!designShaped ? 'RAW DRIVERS — no crossover is shaping the sum yet, so this is just where you start from, not a problem. It colours once a design exists.\n\n' : ''}Whole-range flatness of the combined response, 0–100 — from the AVERAGE deviation over the visible range, so one narrow dip can't dominate the verdict (the peak ±dB in the SPL strip still shows it)`}
             >
               Response <strong>{combinedFlat.score.toFixed(0)}</strong>
             </span>
           )}
           {integration?.overlapCentreHz != null && (
-            <span className="status-chip" title="Where the driver levels meet">
+            <span
+              className="status-chip"
+              title="Where the two drivers' levels meet in the current sim — the acoustic crossover point. Neutral by design: a location, not a verdict."
+            >
               Overlap <strong>{Math.round(integration.overlapCentreHz)} Hz</strong>
             </span>
           )}
@@ -8777,11 +9205,13 @@ export default function App() {
           {phaseStats && (
             <span
               className={`status-chip ${
-                phaseStats.p95ErrorDeg <= 45 ? 'chip-ok' : phaseStats.p95ErrorDeg <= 90 ? 'chip-warn' : 'chip-bad'
+                !designShaped
+                  ? 'chip-neutral'
+                  : phaseStats.p95ErrorDeg <= 45 ? 'chip-ok' : phaseStats.p95ErrorDeg <= 90 ? 'chip-warn' : 'chip-bad'
               }`}
-              title="95th-percentile phase error in the driver overlap — ≤45° sums fully, ≤90° still gains ≥3 dB, beyond that the drivers stop helping each other"
+              title={`${!designShaped ? 'RAW DRIVERS — no crossover yet, so this is the starting point, not a fault. It colours once a design exists.\n\n' : ''}95th-percentile phase error in the driver overlap — ≤45° sums fully, ≤90° still gains ≥3 dB, beyond that the drivers stop helping each other`}
             >
-              Fase P95 <strong>{phaseStats.p95ErrorDeg.toFixed(0)}°</strong>
+              Phase P95 <strong>{phaseStats.p95ErrorDeg.toFixed(0)}°</strong>
             </span>
           )}
           {pairScores && (pairScores.low.stats || pairScores.high.stats) && (() => {
@@ -8792,14 +9222,29 @@ export default function App() {
             return (
               <span
                 className={`status-chip ${
-                  worst <= 45 ? 'chip-ok' : worst <= 90 ? 'chip-warn' : 'chip-bad'
+                  !designShaped
+                    ? 'chip-neutral'
+                    : worst <= 45 ? 'chip-ok' : worst <= 90 ? 'chip-warn' : 'chip-bad'
                 }`}
-                title="Worst pair's 95th-percentile phase error (woofer-mid vs mid-tweeter overlap windows)"
+                title={`${!designShaped ? 'RAW DRIVERS — no crossover yet, so this is the starting point, not a fault. It colours once a design exists.\n\n' : ''}Worst pair's 95th-percentile phase error (woofer-mid vs mid-tweeter overlap windows)`}
               >
-                Fase P95 <strong>{worst.toFixed(0)}°</strong>
+                Phase P95 <strong>{worst.toFixed(0)}°</strong>
               </span>
             );
           })()}
+          {issues.length > 0 && (
+            /* DRC pattern (KiCad): everything currently wrong, one list, with
+               a "where to look" per item — instead of warnings scattered
+               across four panels. */
+            <button
+              type="button"
+              className="status-chip chip-warn chip-issues"
+              onClick={() => setIssuesOpen(true)}
+              title="Everything the app is currently warning about, in one list — click"
+            >
+              ⚠ <strong>{issues.length} issue{issues.length === 1 ? '' : 's'}</strong>
+            </button>
+          )}
         </div>
         <div className="theme-switch" role="group" aria-label="Mode">
           {(
@@ -8853,15 +9298,22 @@ export default function App() {
         </div>
         <button
           type="button"
+          onClick={() => setPaletteOpen(true)}
+          title="Command palette — every action, searchable (⌘K / Ctrl+K); press ? for all shortcuts"
+        >
+          ⌘K
+        </button>
+        <button
+          type="button"
           onClick={() => setMeasureGuideOpen(true)}
-          title="Meetgids: waar richt je de mic op, hoe ver moet je erbij vandaan, en wat legt een hoeksweep werkelijk vast. De illustraties draaien op dezelfde geometrie als de optimizer."
+          title="Measuring guide: where to aim the mic, how far back to stand, and what a turntable sweep really captures. The illustrations run on the same geometry the optimizer uses."
         >
           📐 Measure
         </button>
         <button
           type="button"
           onClick={() => setHelpOpen(true)}
-          title="Handleiding: doorzoekbare uitleg van elke tab, de optimizer, de scores en de VituixCAD-uitwisseling"
+          title="Manual: searchable explanation of every tab, the optimizer, the scores and the VituixCAD exchange (currently written in Dutch — translation is on the list)"
         >
           ❓ Help
         </button>
@@ -8973,15 +9425,18 @@ export default function App() {
                 return (
                   <div
                     key={role}
-                    className="drv-section"
+                    className={`drv-section${dropSide === slotKey ? ' drop-armed' : ''}`}
                     style={{ '--drv-color': color } as CSSProperties}
+                    {...dropHandlers(slotKey)}
                   >
                     <div className="drv-section-head">
                       {title}
                       <span className="drv-section-status">
-                        {loadedDrv
-                          ? `✓ response${angleCount > 1 ? ` · ${angleCount} angles` : ''}${hasZ ? ' · Z' : ' · no impedance yet'}`
-                          : 'no files yet'}
+                        {dropSide === slotKey
+                          ? '⬇ drop to load'
+                          : loadedDrv
+                            ? `✓ response${angleCount > 1 ? ` · ${angleCount} angles` : ''}${hasZ ? ' · Z' : ' · no impedance yet'}`
+                            : 'no files yet — or drop them here'}
                       </span>
                     </div>
                     <div className="drv-section-body">
@@ -10154,6 +10609,12 @@ export default function App() {
         <>
           <div className="panel">
             <h2>{uiMode === 'guided' ? 'Design the filter' : 'Virtual filters (target design)'}</h2>
+            <p
+              className="sub sim-source"
+              title="The sim's precedence: an active editor network wins over a vxp variant, which wins over the virtual filters, which win over raw drivers. Every chart on the right shows THIS."
+            >
+              Charts show: <strong>{simSource}</strong>
+            </p>
             {uiMode === 'guided' && (
               <p className="sub">
                 One button. The app works out where the drivers should hand over to each other,
@@ -10858,6 +11319,15 @@ export default function App() {
               </div>
             )}
             {vfError && <p className="error">{vfError}</p>}
+            {vfOpt && uiMode === 'guided' && (
+              /* Success register for the guided flow: after minutes of
+                 optimizing, the first line must say it worked and where to go
+                 next — the technical summary below stays for the curious. */
+              <p className="result-good">
+                ✓ Design ready — the charts on the right show it now.{' '}
+                <strong>Next: Your build</strong> has the schematic and the parts list.
+              </p>
+            )}
             {vfOpt && (
               <p className="vf-opt-summary">
                 Optimizer chose: LP {vfOpt.structure.wooferLpKind}
@@ -11081,6 +11551,12 @@ export default function App() {
         <>
           <div className="panel">
             <h2>Network editor (passive)</h2>
+            <p
+              className="sub sim-source"
+              title="The sim's precedence: an active editor network wins over a vxp variant, which wins over the virtual filters, which win over raw drivers. Every chart on the right shows THIS."
+            >
+              Charts show: <strong>{simSource}</strong>
+            </p>
             <p className="sub" style={{ marginBottom: '0.8rem' }}>
               Drag parts, draw wires, edit values — the schematic IS the network: parts connect
               where their points touch, and every change re-solves live on the measured
@@ -11354,6 +11830,17 @@ export default function App() {
               </details>
             )}
             {chainScan && (
+              /* The success moment of a multi-minute run deserves its own
+                 visual register — one green line that says it worked, where
+                 the result lives, and that the table below is a MENU, before
+                 the eye hits eight columns of numbers. */
+              <p className="result-good">
+                ✓ Design ready — the winner is loaded in the <strong>Working</strong> tab and
+                every chart shows it. The rows below are the full candidates: click one to try it,
+                💾 Save keeps the one you trust.
+              </p>
+            )}
+            {chainScan && (
               <table
                 className="scan-table scan-table-pick"
                 title="Full-chain crossover scan — click a row to load that candidate's complete design (filters + tuned network) into Working; click a header to sort"
@@ -11548,13 +12035,22 @@ export default function App() {
                       disabled={!activeDesignId || !lastSavedId || lastSavedId === activeDesignId}
                       title={
                         lastSavedId && lastSavedId !== activeDesignId
-                          ? `Overwrite "${designs.find((d) => d.id === lastSavedId)?.name ?? ''}" with the active design and switch to it`
+                          ? `Overwrite "${designs.find((d) => d.id === lastSavedId)?.name ?? ''}" with the active design and switch to it (⌘S)`
                           : lastSavedId === activeDesignId && lastSavedId !== null
                             ? 'This IS the saved filter — edits are live, nothing to save'
                             : 'No saved filter yet — use Save as new first'
                       }
                     >
                       💾 Save
+                      {lastSavedId && lastSavedId !== activeDesignId && (
+                        /* The overwrite TARGET, visible without hovering: a
+                           save button whose destination is a secret reads as
+                           dangerous, and users route around dangerous. */
+                        <span className="save-target">
+                          {' → '}
+                          {(designs.find((d) => d.id === lastSavedId)?.name ?? '').slice(0, 14)}
+                        </span>
+                      )}
                     </button>
                     <button
                       type="button"
@@ -11617,7 +12113,10 @@ export default function App() {
                       <summary>
                         BOM — {bom.rows.length} components ·{' '}
                         {bom.totalEur !== null
-                          ? `≥ €${bom.totalEur.toFixed(2)} (${bom.pricedCount}/${bom.rows.length} priced)`
+                          ? // "≥" only when rows are missing a price — with
+                            // everything priced the total is exact, and a
+                            // hedge on an exact number reads as doubt.
+                            `${bom.pricedCount < bom.rows.length ? '≥ ' : ''}€${bom.totalEur.toFixed(2)} (${bom.pricedCount}/${bom.rows.length} priced)`
                           : 'no prices in catalog yet'}
                         {bom.unmatchedCount > 0 && ` · ${bom.unmatchedCount} without exact catalog match`}
                       </summary>
@@ -11746,6 +12245,26 @@ export default function App() {
         </div>
       )}
 
+      {!result && (
+        /* The biggest empty surface in the app deserves the Linear treatment:
+           say what will appear here, and offer exactly the two actions that
+           make it appear. */
+        <div className="panel panel-empty pane-welcome">
+          <h2>The charts appear here</h2>
+          <p className="sub">
+            Load a frequency response per driver and this pane fills with the summed SPL, the
+            phase alignment between the drivers, and everything else the design needs.
+          </p>
+          <div className="row">
+            <button type="button" className="empty-cta" onClick={() => loadDemo()}>
+              🎧 Load the demo measurements
+            </button>
+            <button type="button" className="empty-cta" onClick={() => setWizardOpen(true)}>
+              📁 Load your own (wizard) →
+            </button>
+          </div>
+        </div>
+      )}
       {result && (
         <>
           <div className="panel-toggles">
@@ -11770,16 +12289,11 @@ export default function App() {
           </div>
 
           {/* Only when the sim TRULY shows raw drivers: no active editor
-              network, no live virtual filters, no vxp variant. The old
-              vxp-only check kept shouting "RAW drivers" straight over an
-              active Working network. */}
-          {result &&
-            !networkActive &&
-            !(project && xoName !== 'none') &&
-            (vfBypass ||
-              (!isActive(vFilters.woofer) &&
-                !isActive(vFilters.tweeter) &&
-                !(threeWay && isActive(vFilters.mid)))) && (
+              network, no live virtual filters, no vxp variant. Shares the
+              designShaped definition with the topbar chips — the old inline
+              copy of this condition is exactly the two-consumers-two-
+              definitions trap. */}
+          {result && !designShaped && (
               <div className="panel">
                 <div className="verdict no-reference">
                   <strong>No filter in the simulation — you are looking at the RAW drivers.</strong>{' '}
@@ -11792,6 +12306,20 @@ export default function App() {
           <div className={`panel${splPinned ? ' spl-sticky' : ''}`}>
             <div className="panel-head">
               <h2>SPL</h2>
+              <button
+                type="button"
+                className={`pin-btn${heldTrace ? ' on' : ''}`}
+                aria-pressed={!!heldTrace}
+                aria-label={heldTrace ? 'Clear the held reference curve' : 'Hold the combined curve as a reference'}
+                onClick={() => (heldTrace ? setHeldTrace(null) : holdCurrentTrace())}
+                title={
+                  heldTrace
+                    ? 'A frozen copy of the combined curve is drawn as a grey dashed reference. Click to clear it.'
+                    : 'Freeze a copy of the current combined curve in the chart — the honest before/after while you tune. (REW calls this hold trace.)'
+                }
+              >
+                ⭯
+              </button>
               <button
                 type="button"
                 className={`pin-btn${splPinned ? ' on' : ''}`}
@@ -12073,6 +12601,26 @@ export default function App() {
             </div>
           )}
 
+          {/* Empty states: a ticked panel with no data used to vanish without a
+              trace — the user can't tell a missing feature from a missing
+              prerequisite. An empty panel is free teaching space: what appears
+              here, and what it needs. */}
+          {(showPanels.directivity || showPanels.sonogram) && !directivity && result && (
+            <div className="panel panel-empty">
+              <h2>Directivity{showPanels.sonogram ? ' & sonogram' : ''} (horizontal)</h2>
+              <p className="sub">
+                Appears once angle measurements are loaded — select the 15/30/45°… sweeps together
+                with each driver's 0° file on the Import tab
+                {threeWay ? ' (all three drivers need a set)' : ''}. It shows how the design
+                behaves off-axis: the sound that reaches you via the walls. The demo set includes
+                a full set of angles.
+              </p>
+              <button type="button" className="empty-cta" onClick={() => setDesignTab('import')}>
+                Open {uiMode === 'guided' ? 'Your project' : 'the Import tab'} →
+              </button>
+            </div>
+          )}
+
           {showPanels.transfer && sim?.transfers && result && (
             <div className="panel">
               <h2>Filter transfer (driver voltage vs source)</h2>
@@ -12107,6 +12655,34 @@ export default function App() {
                 yUnit="dB"
                 height={260}
               />
+            </div>
+          )}
+
+          {showPanels.transfer && !sim?.transfers && result && (
+            <div className="panel panel-empty">
+              <h2>Filter transfer (driver voltage vs source)</h2>
+              <p className="sub">
+                Appears once a crossover network runs in the sim — build one (Optimize, or Build
+                passive filter on the Filters tab), draw one on the Network tab, or pick a
+                VituixCAD variant. It shows the electrical filter each driver actually receives.
+              </p>
+              <button type="button" className="empty-cta" onClick={() => setDesignTab('filters')}>
+                Open {uiMode === 'guided' ? 'Design it' : 'the Filters tab'} →
+              </button>
+            </div>
+          )}
+
+          {showPanels.impedance && !systemZInfo && result && (
+            <div className="panel panel-empty">
+              <h2>System impedance (amplifier load)</h2>
+              <p className="sub">
+                Appears once a passive network with measured impedances runs in the sim. It shows
+                the load your amplifier sees — the side of a design a response chart cannot show,
+                and the reason a "flat" crossover can still be a bad one.
+              </p>
+              <button type="button" className="empty-cta" onClick={() => setDesignTab('filters')}>
+                Open {uiMode === 'guided' ? 'Design it' : 'the Filters tab'} →
+              </button>
             </div>
           )}
 

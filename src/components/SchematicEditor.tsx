@@ -505,6 +505,11 @@ function ParamField({
   onChange: (parts: VxpPart[]) => void;
 }) {
   const value = partParam(parts[index], name) ?? 0;
+  // Main component values step through the E12 grid on ↑/↓ (the VituixCAD
+  // scroll-nudge pattern): hand-tuning walks the values a builder can BUY,
+  // not an arbitrary +0.1. Parasitics (DCR/ESR/Rg) keep the linear step —
+  // those are measurements, not purchases.
+  const eSeries = name === 'L' || name === 'C' || name === 'R';
   return (
     <label className="inline-num">
       {label}
@@ -513,6 +518,17 @@ function ParamField({
         min={0}
         step={name === 'DCR' || name === 'ESR' || name === 'Rg' ? 0.01 : 0.1}
         value={value}
+        title={eSeries ? '↑/↓ steps through E12 values (1.0, 1.2, 1.5, 1.8, 2.2 …)' : undefined}
+        onKeyDown={
+          eSeries
+            ? (e) => {
+                if (e.key !== 'ArrowUp' && e.key !== 'ArrowDown') return;
+                e.preventDefault(); // the native +step would fight the E12 walk
+                const next = e12Step(value, e.key === 'ArrowUp' ? 1 : -1);
+                onChange(setPartParam(parts, index, name, next, unit));
+              }
+            : undefined
+        }
         onChange={(e) => {
           const v = Number(e.target.value);
           if (Number.isFinite(v) && v >= 0) onChange(setPartParam(parts, index, name, v, unit));
@@ -520,4 +536,41 @@ function ParamField({
       />
     </label>
   );
+}
+
+const E12 = [1, 1.2, 1.5, 1.8, 2.2, 2.7, 3.3, 3.9, 4.7, 5.6, 6.8, 8.2];
+
+/** Next/previous E12 value from an arbitrary starting point, decade-aware.
+ *  From a value BETWEEN grid points, up goes to the nearest E12 above and
+ *  down to the nearest below, so the first press always lands on the grid. */
+function e12Step(v: number, dir: 1 | -1): number {
+  if (!(v > 0)) return dir > 0 ? 0.1 : 0;
+  const exp = Math.floor(Math.log10(v));
+  const m = v / 10 ** exp;
+  let idx = 0;
+  let best = Infinity;
+  E12.forEach((e, i) => {
+    const d = Math.abs(Math.log(e / m));
+    if (d < best) {
+      best = d;
+      idx = i;
+    }
+  });
+  const onGrid = Math.abs(E12[idx] - m) / m < 0.02;
+  if (!onGrid) {
+    // Off-grid: snap toward the requested direction instead of skipping a step.
+    if (dir > 0 && E12[idx] < m) idx += 1;
+    if (dir < 0 && E12[idx] > m) idx -= 1;
+  } else {
+    idx += dir;
+  }
+  let ex = exp;
+  if (idx < 0) {
+    idx = E12.length - 1;
+    ex -= 1;
+  } else if (idx >= E12.length) {
+    idx = 0;
+    ex += 1;
+  }
+  return Number((E12[idx] * 10 ** ex).toPrecision(3));
 }

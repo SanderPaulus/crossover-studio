@@ -507,6 +507,17 @@ body {
   color: var(--bad);
 }
 
+/* Pre-design state: raw drivers score terribly on every design metric by
+   nature, and alarm colour the user did nothing to cause reads as "broken",
+   not "get started". Values stay visible (experts lose nothing) — only the
+   verdict colour waits for an actual design. */
+.status-chip.chip-neutral {
+  border-style: dashed;
+}
+.status-chip.chip-neutral strong {
+  color: var(--muted);
+}
+
 /* Narrow screens: fall back to the classic single-column stack — unless the
    topbar layout toggle forces "Split".
    Threshold raised 760 → 1000 px after measuring what "it fits" actually
@@ -1120,6 +1131,196 @@ svg.legend-key-dash {
 
 .design-tab-close:hover {
   color: var(--bad);
+}
+
+/* ── Command palette (⌘K) ─────────────────────────────────────────── */
+.palette-card {
+  max-width: 34rem;
+  width: min(34rem, 92vw);
+  gap: 0.5rem;
+}
+.palette-input {
+  width: 100%;
+  font-size: 1rem;
+  padding: 0.6rem 0.75rem;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg);
+  color: var(--fg);
+}
+.palette-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  max-height: 20rem;
+  overflow-y: auto;
+  display: grid;
+  gap: 2px;
+}
+.palette-list button {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.75rem;
+  width: 100%;
+  text-align: left;
+  border: none;
+  background: none;
+  padding: 0.45rem 0.6rem;
+  border-radius: 6px;
+  color: var(--fg);
+  font-size: 0.9rem;
+  cursor: pointer;
+}
+.palette-list button.sel {
+  background: color-mix(in srgb, var(--accent) 16%, transparent);
+}
+.palette-list button small {
+  color: var(--muted);
+  font-size: 0.75rem;
+  white-space: nowrap;
+}
+.palette-none {
+  padding: 0.5rem 0.6rem;
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+/* ── Shortcuts overlay + issues list ──────────────────────────────── */
+.shortcuts-card {
+  max-width: 44rem;
+  width: min(44rem, 92vw);
+}
+.shortcut-cols {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr));
+  gap: 1rem;
+  width: 100%;
+}
+.shortcut-cols dl {
+  margin: 0;
+}
+.shortcut-cols dt {
+  font-weight: 650;
+  margin-bottom: 0.4rem;
+}
+.shortcut-cols dd {
+  margin: 0 0 0.35rem;
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+.shortcut-cols kbd {
+  display: inline-block;
+  padding: 0.05rem 0.35rem;
+  border: 1px solid var(--border);
+  border-bottom-width: 2px;
+  border-radius: 4px;
+  background: var(--panel);
+  color: var(--fg);
+  font-size: 0.78rem;
+  font-family: inherit;
+}
+.issues-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  display: grid;
+  gap: 0.75rem;
+}
+.issues-list li {
+  border-left: 3px solid var(--warn);
+  padding-left: 0.75rem;
+}
+.issues-list p {
+  margin: 0;
+}
+
+/* The issues chip is a BUTTON among span chips — same look, plus a hand. */
+button.chip-issues {
+  cursor: pointer;
+  background: var(--warn-bg);
+  font: inherit;
+  font-size: 0.75rem;
+}
+
+/* Empty-state call to action: one obvious next step per empty panel. */
+.empty-cta {
+  margin-top: 0.5rem;
+  border-color: var(--accent);
+}
+.pane-welcome .row {
+  gap: 0.6rem;
+  flex-wrap: wrap;
+}
+
+/* Driver card armed as a drop target. */
+.drv-section.drop-armed {
+  border-color: var(--accent);
+  border-style: dashed;
+  background: color-mix(in srgb, var(--accent) 8%, transparent);
+}
+
+/* One-time chart gesture hint (SPL chart only, gone after first zoom). */
+.chart-hint {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  margin: 0.3rem 0 0;
+  font-size: 0.7rem;
+  color: var(--muted);
+}
+.chart-hint button {
+  border: none;
+  background: none;
+  color: var(--muted);
+  cursor: pointer;
+  padding: 0 0.2rem;
+  font-size: 0.7rem;
+}
+
+/* Empty chart panels: dashed frame so "waiting for a prerequisite" can never
+   be mistaken for a loaded, working panel. */
+.panel.panel-empty {
+  border-style: dashed;
+}
+.panel.panel-empty h2 {
+  color: var(--muted);
+}
+.panel.panel-empty .sub {
+  max-width: 60ch;
+}
+
+/* Optimizer success line: green register for "it worked", distinct from the
+   technical note prose below it. */
+.result-good {
+  margin: 0 0 0.6rem;
+  padding: 0.5rem 0.75rem;
+  border-left: 3px solid var(--ok);
+  background: var(--ok-bg);
+  border-radius: 6px;
+  font-size: 0.85rem;
+  color: var(--fg);
+}
+
+/* The Save button's visible overwrite target. */
+.save-target {
+  font-weight: 400;
+  color: var(--muted);
+  max-width: 9rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* "Charts show: X" — the standing answer to which crossover the sim renders. */
+.sim-source {
+  margin-top: -0.35rem;
+}
+.sim-source strong {
+  color: var(--accent);
+  font-weight: 600;
 }
 
 .design-tab-dup {
@@ -2194,6 +2395,49 @@ button:disabled {
   .help-toc {
     display: none;
   }
+}
+
+/* First-run welcome: the conductor over the four onboarding surfaces. Two big
+   labelled choices (demo / own measurements) and a quiet way out — never more,
+   because the whole point is fewer decisions on first contact. */
+.welcome-card {
+  max-width: 34rem;
+  width: min(34rem, 92vw);
+}
+.welcome-choices {
+  display: grid;
+  gap: 0.6rem;
+  width: 100%;
+  margin-top: 0.4rem;
+}
+.welcome-choices button {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.25rem;
+  text-align: left;
+  padding: 0.75rem 0.9rem;
+  font-size: 0.95rem;
+  font-weight: 600;
+}
+.welcome-choices button small {
+  font-weight: 400;
+  font-size: 0.78rem;
+  color: var(--muted);
+  line-height: 1.4;
+}
+.welcome-choices .welcome-primary {
+  border-color: var(--accent);
+}
+.welcome-skip {
+  align-self: center;
+  border: none;
+  background: none;
+  color: var(--muted);
+  font-size: 0.8rem;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
 }
 
 /* Design wizard: guided narrative with a progress bar and a fixed action bar

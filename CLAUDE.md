@@ -928,6 +928,20 @@ minimum phase reconstrueert. Voertaal met Sander: **Nederlands**; code/comments 
   al geladen catalogus vraagt hij eerst (vervangen is verlies van eigen werk). Gemeten
   end-to-end: catalogus gewist ⇒ "Built-in library only … 12 series · no prices yet" ⇒ één
   klik ⇒ "19 series · 182 exact parts · prices loaded".
+  **DE UITGESCHAKELDE SERIES MOETEN MEE NAAR DE WORKER (aug 2026, Sanders "de winnaar kost 94,
+  maar de echte bom laat een ander bedrag zien")**: de worker hydrateert zijn catalogus per
+  request (`CatalogPayload` series+parts, localStorage bestaat er niet) maar de
+  disabled-lijst reisde NIET mee — de worker-snap koos en prijsde dus gewoon uit series die
+  de ontwerper had uitgezet. Scan-tabel: winnaar "€94" incl. verboden elco's; main-thread-BOM
+  kon die SKU-ids niet meer resolven (weggefilterd), viel terug op waarde-match en prijsde
+  toegestane vervangers: €114,38. Twee gevolgen, allebei fout: de RANKING (goedkoopste-BOM-
+  tiebreak) vergeleek op fictieve prijzen, en het geleverde ontwerp was gesnapt tegen
+  geweigerde voorraad. Fix: `disabled` in de payload; hydratie samengetrokken in
+  `applyCatalogPayload` (catalog.ts — testbaar, de worker-onmessage is dat niet), en een
+  AFWEZIGE lijst wist expliciet (worker-module-state overleeft requests binnen één spawn).
+  Regressietest in catalog.test.ts. Bijvangst: de BOM-kop toont "≥" alleen nog als er
+  ongeprijs­de regels zijn — een hedge op een exact getal leest als twijfel.
+  NB: scan-rijen van vóór de fix dragen de oude totalen; een her-run prijst eerlijk.
   **SERIES UITZETTEN (aug 2026, Sanders "de Jantzen Bipolar caps wil ik niet gebruiken")**:
   de ontbrekende tussenweg — je kon alleen aan ÉÉN serie BINDEN (wizard) of alles vrijlaten.
   `setDisabledSeries`/`disabledSeries` in catalog.ts + een **Use**-schakelaar per serie in de
@@ -2121,6 +2135,61 @@ voordat je een layoutbug gaat jagen.
   lowShelf-cut (pad+bypass-C). Synthese normaliseert positieve gains naar relatieve attenuatie
 - Spoel-DCR: VituixCAD default 280 mΩ; luchtspoel 1,4 mm ≈ 0,29·(L/mH)^0,65 Ω; serie-woofer-L is
   DCR-kritisch; notch-R absorbeert spoel-DCR
+
+## UX-ronde "beginner sneller succesvol" (aug 2026, Sanders opdracht — alles UI-laag, engine onaangeroerd)
+
+- **First-run welkomstkaart** (`welcomeOpen`, key `ads-welcomed`): bij géén autosave één kaart
+  met twee keuzes (demo / eigen metingen → wizard) + "just look around". De bestaande
+  auto-wizard-bij-lege-autosave WIJKT bij echt eerste contact (`openWizardForEmpty` checkt
+  ads-welcomed) — anders stapelen twee dialogen, gemeten in headless. Na een Reset (welcomed
+  gezet) opent de wizard zoals voorheen.
+- **`designShaped`** (App-memo): één gedeelde definitie van "vormt iets de som" (netwerk actief
+  ∨ vxp-variant ∨ live virtuele filters) voor topbar-chips ÉN de raw-drivers-banner. Chips
+  Response/Phase P95 zijn vóór een ontwerp `chip-neutral` (gestippelde rand, waarde zichtbaar,
+  tooltip legt uit) — rauwe drivers scoren per definitie slecht en rood-zonder-schuld leest als
+  "app kapot". "Fase P95" heet nu "Phase P95" (was half NL).
+- **`simSource`-regel "Charts show: …"** op Filters- én Network-tab: hét antwoord op "welk
+  filter kijk ik naar" (netwerk > vxp-variant > virtuele filters > raw). Loste direct een echt
+  raadsel op: Sanders rode chips bleken een actief "2-way · 4th order"-netwerk.
+- **Succes-registers** (`.result-good`): groene regel na een guided run ("Design ready — Next:
+  Your build") en boven de scan-tabel ("winner is loaded in Working; rows below are a menu").
+- **Empty-state-panelen** (`.panel-empty`, gestippeld): Directivity/Sonogram zonder hoekdata,
+  Filter transfer & System impedance zonder netwerk — zeggen wat er komt en wat het nodig heeft.
+- **Drag & drop op driverkaarten**: `loadDriverFiles` gesplitst in change-handler +
+  `loadDriverFileList(side, File[])`; `dropHandlers` met dragenter-TELLER (enter/leave vuren per
+  kind-element). Kaartstatus toont "⬇ drop to load" / "no files yet — or drop them here".
+- **Gesture-hint** onder de SPL-chart (Chart.tsx, key `ads-hint-chart`): scroll/shift/drag/
+  dubbelklik/legend-klik — verdwijnt permanent bij de eerste echte zoom (bewijs van kennis) of ✕.
+- **Kalme standaard-panelenset voor NIEUWE gebruikers**: ads-ui-panels afwezig ⇒ alleen
+  Phase + Impedance aan (SPL staat altijd aan); élke opgeslagen keuze wint volledig. Zeven
+  panelen tegelijk was dé eerste-indruk-overload; de uitgevinkte chips blijven de vindbaarheid.
+- **💾 Save toont zijn doel** (`.save-target`): "Save → {tabnaam}" — een knop met een geheim
+  overschrijfdoel leest als gevaarlijk.
+- **Verificatie-les**: de guided 9-kandidaten-run duurt headless op de DEV-server >10 min; een
+  poll-loop die na zijn max stilletjes "done" zegt rapporteert dan een niet-bestaande fout.
+  E2e-checks tegen de production-build draaien, en een timeout-val benoemen als timeout.
+
+## Keyboard-first-laag (aug 2026, "leer van VituixCAD/REW/KiCad/Figma/Linear"-ronde)
+
+Alles UI-laag; élke palette-actie roept dezelfde handlers aan als de knoppen (geen tweede pad).
+- **⌘K command palette** (`paletteOpen`/`palQuery`/`palIx`, Linear/Figma): navigatie (stap/tab,
+  labels uit gedeelde `GUIDED_STEP_LABEL`/`EXPERT_TAB_LABEL` — één naamgeving), optimize, alle
+  dialogen, panel-toggles, theme, save, demo. Topbar-knop "⌘K" als zichtbare ingang — een
+  palette zonder ingang bestaat niet voor wie de toets niet kent.
+- **"?" sneltoetsen-overzicht** (`shortcutsOpen`): global/charts/editor in drie kolommen.
+- **Cijfers 1–5** wisselen stap/tab (mode-bewust: guided 5, expert 4); **⌘S** = overwrite-save
+  (altijd preventDefault — de browser-save-dialoog is nooit wat "save" hier betekent). Global
+  listener één keer gebonden via ref (Chart-wheelRef-patroon); typende velden en open dialogen
+  worden overgeslagen.
+- **Hold trace** (REW): `heldTrace` bevriest result.freq/combinedSpl als gestreepte grijze
+  referentie in de SPL-chart (⭯-knop naast 📌 + palette) — het eerlijke voor/na bij handtunen.
+- **Issues-chip** (KiCad-DRC-lite): App verzamelt actieve waarschuwingen (error-banner,
+  midIgnored, timing-verdict per paar, Z-min < vloer) in één lijst-modal mét "waar te kijken";
+  chip alleen zichtbaar bij ≥1 issue — geen vals alarm (Sanders sessie: 0 issues, correct).
+- **E12-stappen** op ↑/↓ in de inspector-waardevelden L/C/R (VituixCAD-nudge): decade-bewust,
+  off-grid snapt éérst naar het rooster; parasieten (DCR/ESR/Rg) houden de lineaire step.
+- **Empty-state-CTA's** (Linear): elke lege paneel-staat één knop naar de juiste stap; de hele
+  lege analyse-pane (geen metingen) kreeg demo/wizard-knoppen.
 
 ## UI-lessen (hard geleerd, niet regresseren)
 

@@ -233,6 +233,25 @@ export default function Chart({
     onVisibleXChange?.(vx[0], vx[1]);
   }, [vx[0], vx[1], onVisibleXChange]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  /* One-time gesture hint, primary (SPL) chart only. Dismissed forever by the
+   * first real zoom — proof the user knows — or the ✕. */
+  const [gestureHintGone, setGestureHintGone] = useState(() => {
+    try {
+      return localStorage.getItem('ads-hint-chart') === '1';
+    } catch {
+      return true;
+    }
+  });
+  const dismissGestureHint = () => {
+    try {
+      localStorage.setItem('ads-hint-chart', '1');
+    } catch {
+      // Private mode: hide for this session only.
+    }
+    setGestureHintGone(true);
+  };
+  const showGestureHint = storageKey === 'spl' && !gestureHintGone;
+
   // Seed each series' initial visibility ONCE per id — new ids may appear
   // later (data loads async), and a user's explicit toggle must never be
   // overridden afterwards. A remembered choice wins over `defaultOff`; without
@@ -353,6 +372,7 @@ export default function Chart({
     const py = ((e.clientY - rect.top) / rect.height) * H;
     if (px < PAD.l || px > W - PAD.r || py < PAD.t || py > H - PAD.b) return;
     e.preventDefault();
+    if (!gestureHintGone) dismissGestureHint(); // a real zoom is proof of knowledge
     const k = Math.exp(e.deltaY * 0.0016); // >1 zooms out
     if (e.shiftKey) {
       const frac = 1 - (py - PAD.t) / plotH;
@@ -869,6 +889,21 @@ export default function Chart({
         </div>
       )}
       </div>
+      {showGestureHint && (
+        /* One-time gesture teacher, on the primary chart only: zoom, pan and
+           legend-toggle are invisible affordances — whoever doesn't know them
+           doesn't have them. Gone forever after the first real zoom (proof of
+           knowledge) or an explicit dismiss. */
+        <p className="chart-hint">
+          <span>
+            scroll = zoom · Shift+scroll = vertical · drag = pan · double-click = reset · click a
+            legend chip to show/hide its curve
+          </span>
+          <button type="button" onClick={dismissGestureHint} aria-label="Dismiss chart gesture hint">
+            ✕
+          </button>
+        </p>
+      )}
     </div>
   );
 }
