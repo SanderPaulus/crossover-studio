@@ -185,6 +185,24 @@ export function disabledSeries(): string[] {
   return [...disabled];
 }
 
+/**
+ * Hydrate the catalog from a serialized payload — the worker's whole view of
+ * the catalog. Lives HERE, not in the worker, so the invariant is unit-
+ * testable: the disabled list must be applied, and an ABSENT list must clear
+ * a previous one (worker module state survives between requests of one
+ * spawn). Regression: the payload used to carry only series+parts, so the
+ * worker's snap priced switched-off stock — the scan table showed a winner
+ * at €94 that the real BOM re-priced to €114.
+ */
+export function applyCatalogPayload(c: {
+  series: CatalogSeries[];
+  parts: CatalogPart[];
+  disabled?: string[];
+}): void {
+  setCustomSeries(c.series, c.parts);
+  setDisabledSeries(c.disabled ?? []);
+}
+
 export function setCustomSeries(series: CatalogSeries[], parts: CatalogPart[] = []): void {
   // An imported series with a built-in id OVERRIDES the built-in: that is
   // how a catalog update (prices, tiers, refined grids) lands. Re-importing

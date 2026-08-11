@@ -31,7 +31,7 @@ import {
   type ChainResult,
   type ChainStageProgress,
 } from './designChain.ts';
-import { customCatalogParts, customSeries } from './catalog.ts';
+import { customCatalogParts, customSeries, disabledSeries } from './catalog.ts';
 
 export class CancelledError extends Error {
   constructor() {
@@ -79,9 +79,12 @@ function workerAt(slot: number): Worker {
 }
 
 /** Current user-imported catalog, shipped with every request so the worker's
- *  module state matches the main thread's (stateless across respawns). */
+ *  module state matches the main thread's (stateless across respawns). The
+ *  disabled-series list MUST ride along: the worker has no localStorage, and
+ *  without it the snap prices stock the designer switched off — the scan
+ *  table then shows a BOM total the real BOM cannot reproduce. */
 function catalogPayload(): CatalogPayload {
-  return { series: customSeries(), parts: customCatalogParts() };
+  return { series: customSeries(), parts: customCatalogParts(), disabled: disabledSeries() };
 }
 
 function run<T>(

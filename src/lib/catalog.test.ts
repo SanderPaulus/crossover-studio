@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  applyCatalogPayload,
   bomFor,
   setCustomSeries,
   catalogParts,
@@ -371,6 +372,26 @@ describe('switching a series off', () => {
       expect(catalogParts().length).toBe(n - bipolarParts.length);
       setDisabledSeries([]);
       expect(catalogParts().length).toBe(n);
+    } finally {
+      setDisabledSeries([]);
+      setCustomSeries([], []);
+    }
+  });
+
+  it('worker hydration (applyCatalogPayload) carries the disabled list — and an absent list clears it', () => {
+    // Regression (Sanders scan, aug 2026): the worker payload carried only
+    // series+parts, so the worker's disabled-set stayed empty and the snap
+    // PRICED switched-off stock — scan table said €94, the real BOM €114.
+    try {
+      applyCatalogPayload({ series: [BIPOLAR], parts: bipolarParts, disabled: [BIPOLAR.id] });
+      expect(catalogParts().some(isBipolar)).toBe(false);
+      const picks = pickCandidates('C', 47, 8);
+      expect(picks.flatMap((c) => c.parts).some(isBipolar)).toBe(false);
+
+      // Worker module state survives between requests of one spawn: a payload
+      // WITHOUT the field must mean "none disabled", never "keep the last".
+      applyCatalogPayload({ series: [BIPOLAR], parts: bipolarParts });
+      expect(catalogParts().some(isBipolar)).toBe(true);
     } finally {
       setDisabledSeries([]);
       setCustomSeries([], []);

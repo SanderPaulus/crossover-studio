@@ -24,11 +24,17 @@ import {
 } from './vfOptimizer.ts';
 import { optimizeNetworkValues, type NetOptimizeOptions } from './netOptimizer.ts';
 import { runThreeWayChain, type Chain3Input } from './threeWayChain.ts';
-import { setCustomSeries, type CatalogPart, type CatalogSeries } from './catalog.ts';
+import { applyCatalogPayload, type CatalogPart, type CatalogSeries } from './catalog.ts';
 
 export interface CatalogPayload {
   series: CatalogSeries[];
   parts: CatalogPart[];
+  /** Series the designer switched OFF. Must travel with every request: the
+   *  worker has no localStorage, so without this its disabled-set is empty
+   *  and the snap prices REJECTED stock — measured (Sanders scan): winner
+   *  "€94" priced with switched-off electrolytics, the real BOM read €114
+   *  after the main thread re-matched against the filtered pool. */
+  disabled?: string[];
 }
 
 export interface ChainOnePayload {
@@ -150,7 +156,7 @@ function runVfRounds(p: VfRoundsPayload, progress: (d: VfProgressMsg) => void): 
 self.onmessage = (e: MessageEvent<OptimRequest>) => {
   const req = e.data;
   try {
-    if (req.catalog) setCustomSeries(req.catalog.series, req.catalog.parts);
+    if (req.catalog) applyCatalogPayload(req.catalog);
     let data: unknown;
     switch (req.kind) {
       case 'chainOne': {
