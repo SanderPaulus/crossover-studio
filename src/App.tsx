@@ -1499,6 +1499,53 @@ export default function App() {
     () => !localStorage.getItem('ads-autosave') && !localStorage.getItem('ads-welcomed'),
   );
 
+  /* Reference-height edits must not move the DRIVERS (Sanders report: "als ik
+   * die aanpas zie ik ook de drivers verplaatsen"). Driver y is STORED
+   * relative to the reference point (the whole engine speaks that
+   * convention), but the fields ASK for mm-below-top — physical, ruler-
+   * measured facts. Correcting where the reference sits therefore shifts the
+   * stored offsets by the same delta, so every driver keeps the below-top
+   * position the user actually typed; only the reference marker moves.
+   * Commit-on-blur (the view-range focus-freeze pattern) so the delta is
+   * computed ONCE between two stable values — per-keystroke shifting would
+   * make the outcome depend on how you type ("260" vs clear-then-type).
+   * First-time entry (old field empty) shifts nothing: the offsets were
+   * entered reference-relative back then, and are already the truth. */
+  const [refTopDraft, setRefTopDraft] = useState<string | null>(null);
+  function commitRefTop() {
+    if (refTopDraft === null) return;
+    const v = refTopDraft;
+    setRefTopDraft(null);
+    setCabinet((c) => {
+      if (v === c.refFromTopMm) return c;
+      const oldTop = Number(c.refFromTopMm);
+      const newTop = Number(v);
+      const delta =
+        c.refFromTopMm.trim() !== '' &&
+        v.trim() !== '' &&
+        Number.isFinite(oldTop) &&
+        Number.isFinite(newTop)
+          ? newTop - oldTop
+          : 0;
+      const shift = (d: CabinetDriver, role: BranchRole): CabinetDriver =>
+        delta === 0 ||
+        role === c.refDriver || // the reference driver IS the point: stays 0,0
+        d.yMm.trim() === '' ||
+        !Number.isFinite(Number(d.yMm))
+          ? d
+          : { ...d, yMm: String(Math.round((Number(d.yMm) + delta) * 10) / 10) };
+      return {
+        ...c,
+        refFromTopMm: v,
+        drivers: {
+          low: shift(c.drivers.low, 'low'),
+          mid: shift(c.drivers.mid, 'mid'),
+          high: shift(c.drivers.high, 'high'),
+        },
+      };
+    });
+  }
+
   /* Keyboard-first layer (Linear/Figma): command palette, shortcuts overlay,
    * issues list, held reference trace. The key listener binds ONCE and routes
    * through a ref so it always sees fresh closures. */
@@ -10003,6 +10050,26 @@ export default function App() {
                 );
                 const cab = (k: keyof CabinetState) => (v: string) =>
                   setCabinet((c) => ({ ...c, [k]: v }));
+                /* Reference height: draft while focused, commit on blur/Enter
+                   (Esc discards). See commitRefTop for why this field must
+                   not write through per keystroke like the others. */
+                const refTopVeld = () => (
+                  <input
+                    type="number"
+                    step={5}
+                    value={refTopDraft ?? cabinet.refFromTopMm}
+                    onChange={(e) => setRefTopDraft(e.target.value)}
+                    onBlur={commitRefTop}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') e.currentTarget.blur();
+                      if (e.key === 'Escape') {
+                        setRefTopDraft(null);
+                        e.currentTarget.blur();
+                      }
+                    }}
+                    title="How far below the top of the front panel the reference point sits. Correcting this moves the REFERENCE MARKER only — drivers keep the below-top positions you typed."
+                  />
+                );
                 const eerlijk = cabinetInfo.reliable;
                 const teLaag =
                   eerlijk && Number(fMin) > 0 && Number(fMin) < eerlijk.fromHz * 0.95;
@@ -10119,7 +10186,7 @@ export default function App() {
                           </span>
                           <span className="cd-label">Reference point</span>
                           <span className="cd-fields">
-                            {veld(cabinet.refFromTopMm, cab('refFromTopMm'))} mm below the top ·{' '}
+                            {refTopVeld()} mm below the top ·{' '}
                             {veld(cabinet.refHeightMm, cab('refHeightMm'))} mm above the floor
                           </span>
                           {mis && (
@@ -10215,7 +10282,7 @@ export default function App() {
                     )}
                     {rij(
                       'Reference point, below top',
-                      <>{veld(cabinet.refFromTopMm, cab('refFromTopMm'))} mm</>,
+                      <>{refTopVeld()} mm</>,
                       mis ? (
                         <strong className="alert">deeper than the baffle is tall</strong>
                       ) : (

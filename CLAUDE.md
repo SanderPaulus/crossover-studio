@@ -246,6 +246,19 @@ minimum phase reconstrueert. Voertaal met Sander: **Nederlands**; code/comments 
   want twee betekenissen voor één veld mogen nooit stil zijn. Browser-geverifieerd op de
   KOAN-set: refFromTop 150 ⇒ tweeter y 0 leest 150, woofer y −90 leest 240, en 260 intypen
   slaat −110 op.
+  **REFERENTIEHOOGTE CORRIGEREN VERPLAATST DE DRIVERS NIET (aug 2026, Sanders "als ik die
+  aanpas zie ik ook de drivers verplaatsen")**: y is ref-relatief opgeslagen, dus een
+  refFromTop-edit herinterpreteerde alle vanaf-de-top-posities — de drivers schoven mee in
+  de tekening terwijl ze fysiek vastgeschroefd zitten. Het veld committet nu bij blur/Enter
+  (focus-freeze-patroon; Esc verwerpt) via `commitRefTop`: bij een correctie van een
+  BESTAANDE waarde schuiven alle niet-ref-driver-y's met dezelfde Δ mee zodat elke driver
+  zijn ingetypte onder-de-top-positie houdt — alleen het merkteken beweegt. Eerste keer
+  invullen (veld was leeg) verschuift niets: toen wáren de offsets ref-relatief ingevoerd.
+  Commit-op-blur is essentieel: per-toetsaanslag schuiven maakt de uitkomst afhankelijk van
+  hóé je typt (selecteer-en-vervang telescopeert goed, leegmaken-en-typen niet). NB dit
+  verandert de engine-geometrie (rig-paden, ware hoeken) — correct: het richtpunt zat
+  elders tussen vaste drivers. Headless geverifieerd op de KOAN-demo: 238→260 ⇒
+  onder-de-top blijft 303/173, y −65→−43 en +65→+87.
   **NIET ELKE DRIVER ZIT OP HET FRONT (aug 2026, Sanders vriend met zij-woofers)**: `depthMm`
   (akoestisch centrum achter het baffle-vlak) + `facing` ('front'|'left'|'right'|'up'|'down')
   op `DriverPlacement`, plus `cabinetDepthMm` op de kast. NB de aanleiding was een VRAAG
