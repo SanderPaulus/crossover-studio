@@ -2195,6 +2195,44 @@ voordat je een layoutbug gaat jagen.
   poll-loop die na zijn max stilletjes "done" zegt rapporteert dan een niet-bestaande fout.
   E2e-checks tegen de production-build draaien, en een timeout-val benoemen als timeout.
 
+## Meertaligheid (aug 2026, Sanders "multi language, en makkelijk een taal toevoegen")
+
+- **Architectuur: gettext-stijl, Engels-als-sleutel** (`src/lib/i18n.ts`, unit-getest). Geen
+  verzonnen sleutelnamen: `t('Measuring guide: …')` — de Engelse tekst ÍS de sleutel, een
+  ontbrekende vertaling valt automatisch terug op Engels, dus een onvolledig woordenboek
+  breekt nooit iets en migratie kan string-voor-string. `{placeholders}` worden ná vertaling
+  gesubstitueerd (woordvolgorde per taal vrij). Module-level store + `useSyncExternalStore`
+  in App (hele app her-rendert op een switch — dat hóórt bij een taalwissel); keuze in
+  localStorage `ads-lang`, eerste bezoek volgt `navigator.language`.
+- **TAAL TOEVOEGEN = drie mechanische stappen**: (1) kopieer `src/i18n/nl.ts` → `de.ts` en
+  vertaal de waarden, (2) voeg de taal toe aan `LANGS` in lib/i18n.ts (id + eigen naam,
+  géén vlag — vlaggen zijn landen), (3) registreer in main.tsx. Switcher rendert uit LANGS.
+- **Dekking tranche 1 (de chrome)**: topbar (chips/mode/layout/theme/knoppen), stappenbalk +
+  expert-tabs, welkomstkaart, ⌘K-palette, sneltoetsen-overzicht, meldingenlijst,
+  driverkaarten + drop-UI (de page-drop-overlay-tekst verhuisde van CSS `content:` naar
+  `attr(data-drop-hint)` — CSS-content is onvertaalbaar), panel-chips/-titels, empty states,
+  succesregels, "Charts show". NL-gebruikers zien "Fase P95" nu bewust wél (het was
+  half-NL in de Engelse UI; als vertáling is het correct).
+- **De WIZARD is volledig vertaald** (Sanders "waarom hebben we de wizard niet vertaald?" —
+  terecht: het beginnersoppervlak hoort in tranche 1). Alle vijf stappen, de navigatie, de
+  timing-check en de catalogus-sectie; 317 sleutels totaal, dekking 0 ontbrekend. Onderweg
+  een echte flow-fout gevonden: welkomstkaart-"I have measurements" opende de wizard op zijn
+  DEFAULT-stap (1, Doelen) i.p.v. op de meetbestanden-poort (stap 0) — een formulier over
+  niets voor wie nog niets geladen heeft; dismissWelcome zet nu setWizardStep(0).
+- **Nog niet vertaald** (bewust incrementeel): guided-proza op de stappen zelf, de ~160
+  overige tooltips, Filters/Network-tab-internals, Chart.tsx-strings, de Compare-wizard,
+  MeasuringGuide (Engels), HelpPanel-content (Nederlands — heeft t.z.t. een EN-versie nodig
+  via hetzelfde patroon, content per taal), en de ENGINE-notes (scan/safety/optimizer-teksten
+  uit src/lib) — die blijven Engels tot daar een bewuste ronde voor komt; lib vertaalt NIET
+  zelf.
+- **Shadow-valkuil**: App.tsx heeft her en der lokale `const t = …` — de theme-map en de
+  keyRef-handler zijn al hernoemd (`th`/`tgt`/`tab`); binnen zo'n scope `t()` aanroepen is
+  een typecheck-fout, dus tsc vangt het, maar hernoem bij twijfel.
+- **Dekkingscontrole** (geen test — een hard falen zou incrementeel wrappen blokkeren): de
+  extractie-one-liner in de sessie-notities vergelijkt alle `t('…')`-sleutels in App.tsx met
+  nl.ts; bij deze ronde 171 sleutels, alle gedekt. Headless geverifieerd: ads-lang=nl ⇒
+  welkomstkaart/stappen/chips/palette Nederlands, live terug naar EN werkt.
+
 ## Keyboard-first-laag (aug 2026, "leer van VituixCAD/REW/KiCad/Figma/Linear"-ronde)
 
 Alles UI-laag; élke palette-actie roept dezelfde handlers aan als de knoppen (geen tweede pad).

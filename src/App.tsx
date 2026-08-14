@@ -4,10 +4,12 @@ import {
   useMemo,
   useRef,
   useState,
+  useSyncExternalStore,
   type CSSProperties,
   type PointerEvent as ReactPointerEvent,
   type ReactNode,
 } from 'react';
+import { t, setLang, currentLang, subscribeLang, LANGS } from './lib/i18n.ts';
 import { parseFrd } from './lib/parsers/frd.ts';
 import { parseZma } from './lib/parsers/zma.ts';
 import { parseLim, limToZmaText } from './lib/parsers/lim.ts';
@@ -897,6 +899,10 @@ function driverHotPoint(
 
 export default function App() {
   const [theme, setTheme] = useTheme();
+  /* Language: module-level store (registered dictionaries, english-as-key
+   * t()); subscribing HERE re-renders the whole app on a switch, which is
+   * exactly what a language switch should do. */
+  const uiLang = useSyncExternalStore(subscribeLang, currentLang);
   const [woofer, setWoofer] = useState<Loaded | null>(null);
   const [tweeter, setTweeter] = useState<Loaded | null>(null);
   /** 3-way: the MIDDLE branch's response. The `woofer`/`tweeter` states are
@@ -1565,7 +1571,13 @@ export default function App() {
     localStorage.setItem('ads-welcomed', '1');
     setWelcomeOpen(false);
     if (next === 'demo') loadDemo();
-    else if (next === 'wizard') setWizardOpen(true);
+    else if (next === 'wizard') {
+      // "I have measurements" means "help me load them": open on the
+      // measurements GATE (step 0), not on the default Goals step — a fresh
+      // user has nothing loaded yet, so Goals would be a form about nothing.
+      setWizardStep(0);
+      setWizardOpen(true);
+    }
   }
   /** The declared set's measurement checklist; Next blocks while incomplete. */
   const wizardMissing: string[] = (() => {
@@ -1656,17 +1668,21 @@ export default function App() {
    * actual sim precedence (editor network > vxp variant > virtual filters >
    * raw drivers) so it can never disagree with the charts. */
   const simSource: string = useMemo(() => {
-    if (networkActive && activeDesign) return `passive network “${activeDesign.name}”`;
-    if (project && xoName !== 'none') return `VituixCAD variant “${xoName}”`;
+    if (networkActive && activeDesign)
+      return t('passive network “{name}”', { name: activeDesign.name });
+    if (project && xoName !== 'none') return t('VituixCAD variant “{name}”', { name: xoName });
     if (
       !vfBypass &&
       (isActive(vFilters.woofer) ||
         isActive(vFilters.tweeter) ||
         (threeWay && isActive(vFilters.mid)))
     )
-      return 'the virtual filter design (Filters tab)';
-    return 'raw drivers — no crossover yet';
-  }, [networkActive, activeDesign, project, xoName, vfBypass, vFilters, threeWay]);
+      return t('the virtual filter design (Filters tab)');
+    return t('raw drivers — no crossover yet');
+    // uiLang is a real dependency: t() reads the module-level language, and a
+    // cached memo would otherwise keep serving the previous language.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [networkActive, activeDesign, project, xoName, vfBypass, vFilters, threeWay, uiLang]);
 
   function commitSchematic(parts: VxpPart[]) {
     if (!activeDesign) return;
@@ -7703,30 +7719,31 @@ export default function App() {
    * calls the same handlers the buttons call. */
 
   const issues: { text: string; where: string }[] = [];
-  if (error) issues.push({ text: error, where: 'Import tab — the banner above the file slots' });
+  if (error)
+    issues.push({ text: error, where: t('Import tab — the banner above the file slots') });
   if (midIgnored)
     issues.push({
-      text: 'Midrange files are loaded but the set is not a full 3-way — the mid is NOT in the summed response.',
-      where: 'Import tab — load a woofer AND a tweeter as well, or clear the mid slot',
+      text: t('Midrange files are loaded but the set is not a full 3-way — the mid is NOT in the summed response.'),
+      where: t('Import tab — load a woofer AND a tweeter as well, or clear the mid slot'),
     });
   if (!threeWay && timing && timing.ref.verdict !== 'plausible')
     issues.push({
-      text: `Timing ${timing.ref.verdict}: the two sweeps may not share a time reference, which silently ruins every phase number.`,
-      where: 'Topbar Timing chip — hover it for the full verdict; 📐 Measure explains the shared-clock rig',
+      text: t('Timing {verdict}: the two sweeps may not share a time reference, which silently ruins every phase number.', { verdict: timing.ref.verdict }),
+      where: t('Topbar Timing chip — hover it for the full verdict; 📐 Measure explains the shared-clock rig'),
     });
   if (threeWay && timing3) {
     for (const p of [timing3.low, timing3.high]) {
       if (p && p.verdict !== 'plausible')
         issues.push({
-          text: `Pair time-base ${p.verdict}: ${p.message.split('\n')[0]}`,
-          where: 'Topbar Timing chip — hover for both pairs',
+          text: `${t('Pair time-base {verdict}:', { verdict: p.verdict })} ${p.message.split('\n')[0]}`,
+          where: t('Topbar Timing chip — hover for both pairs'),
         });
     }
   }
   if (systemZInfo && systemZInfo.minOhm < Z_FLOOR_OHM)
     issues.push({
-      text: `System impedance dips to ${systemZInfo.minOhm.toFixed(1)} Ω — below the ${Z_FLOOR_OHM} Ω amplifier floor.`,
-      where: 'System impedance panel — the Z min marker shows where; the optimizer repairs this when it can',
+      text: t('System impedance dips to {z} Ω — below the {floor} Ω amplifier floor.', { z: systemZInfo.minOhm.toFixed(1), floor: Z_FLOOR_OHM }),
+      where: t('System impedance panel — the Z min marker shows where; the optimizer repairs this when it can'),
     });
 
   const canQuickSave = !!activeDesignId && !!lastSavedId && lastSavedId !== activeDesignId;
@@ -7743,47 +7760,51 @@ export default function App() {
 
   type PaletteAction = { id: string; label: string; hint?: string; run: () => void };
   const paletteActions: PaletteAction[] = [
-    ...gotoKeys.map((t, i) => ({
-      id: `go-${t}`,
-      label: `Go to: ${uiMode === 'guided' ? GUIDED_STEP_LABEL[t] : EXPERT_TAB_LABEL[t]}`,
+    ...gotoKeys.map((tab, i) => ({
+      id: `go-${tab}`,
+      label: t('Go to: {step}', {
+        step: t(uiMode === 'guided' ? GUIDED_STEP_LABEL[tab] : EXPERT_TAB_LABEL[tab]),
+      }),
       hint: `${i + 1}`,
-      run: () => setDesignTab(t),
+      run: () => setDesignTab(tab),
     })),
     {
       id: 'optimize',
-      label: soloDriver ? 'Optimize — flatten driver' : 'Optimize — design for me',
-      hint: 'the one-button designer',
+      label: soloDriver ? t('Optimize — flatten driver') : t('Optimize — design for me'),
+      hint: t('the one-button designer'),
       run: () => {
         setDesignTab('filters');
         runVfOptimize();
       },
     },
-    { id: 'wizard', label: 'Open the design wizard', run: () => setWizardOpen(true) },
-    { id: 'measure', label: 'Open the measuring guide', hint: 'rig, distances, angles', run: () => setMeasureGuideOpen(true) },
-    { id: 'help', label: 'Open the manual', run: () => setHelpOpen(true) },
-    { id: 'targets', label: 'Show design targets', hint: 'what the last build was fitted against', run: () => setShowTargets(true) },
-    { id: 'catalog', label: 'Open the catalog manager', hint: 'SKUs, prices, series', run: () => setCatalogMgrOpen(true) },
-    { id: 'demo', label: 'Load the KOAN demo measurements', run: () => loadDemo() },
+    { id: 'wizard', label: t('Open the design wizard'), run: () => setWizardOpen(true) },
+    { id: 'measure', label: t('Open the measuring guide'), hint: t('rig, distances, angles'), run: () => setMeasureGuideOpen(true) },
+    { id: 'help', label: t('Open the manual'), run: () => setHelpOpen(true) },
+    { id: 'targets', label: t('Show design targets'), hint: t('what the last build was fitted against'), run: () => setShowTargets(true) },
+    { id: 'catalog', label: t('Open the catalog manager'), hint: t('SKUs, prices, series'), run: () => setCatalogMgrOpen(true) },
+    { id: 'demo', label: t('Load the KOAN demo measurements'), run: () => loadDemo() },
     {
       id: 'hold',
-      label: heldTrace ? 'Clear the held reference curve' : 'Hold the combined curve as reference',
-      hint: 'freeze a copy in the SPL chart to compare against (REW: hold trace)',
+      label: heldTrace ? t('Clear the held reference curve') : t('Hold the combined curve as reference'),
+      hint: t('freeze a copy in the SPL chart to compare against (REW: hold trace)'),
       run: () => (heldTrace ? setHeldTrace(null) : holdCurrentTrace()),
     },
     ...PANEL_KEYS.map((k) => ({
       id: `panel-${k}`,
-      label: `${showPanels[k] ? 'Hide' : 'Show'} chart: ${PANEL_LABEL[k]}`,
+      label: t(showPanels[k] ? 'Hide chart: {name}' : 'Show chart: {name}', {
+        name: t(PANEL_LABEL[k]),
+      }),
       run: () => setShowPanels((p) => ({ ...p, [k]: !p[k] })),
     })),
     {
       id: 'theme',
-      label: `Theme: switch to ${theme === 'dark' ? 'light' : 'dark'}`,
+      label: theme === 'dark' ? t('Theme: switch to light') : t('Theme: switch to dark'),
       run: () => setTheme(theme === 'dark' ? 'light' : 'dark'),
     },
-    { id: 'save', label: '💾 Save (overwrite last saved filter)', hint: '⌘S', run: () => { if (canQuickSave) overwriteLastSaved(); } },
-    { id: 'shortcuts', label: 'Keyboard shortcuts', hint: '?', run: () => setShortcutsOpen(true) },
+    { id: 'save', label: t('💾 Save (overwrite last saved filter)'), hint: '⌘S', run: () => { if (canQuickSave) overwriteLastSaved(); } },
+    { id: 'shortcuts', label: t('Keyboard shortcuts'), hint: '?', run: () => setShortcutsOpen(true) },
     ...(issues.length > 0
-      ? [{ id: 'issues', label: `Show current issues (${issues.length})`, run: () => setIssuesOpen(true) }]
+      ? [{ id: 'issues', label: t('Show current issues ({n})', { n: issues.length }), run: () => setIssuesOpen(true) }]
       : []),
   ];
   const palFiltered = paletteActions.filter((a) => {
@@ -7801,12 +7822,12 @@ export default function App() {
    * closures (the Chart wheel pattern). Typing fields and open dialogs are
    * left alone — digits in a value field must stay digits. */
   keyRef.current = (e: KeyboardEvent) => {
-    const t = e.target as HTMLElement | null;
+    const tgt = e.target as HTMLElement | null;
     const typing =
-      t instanceof HTMLInputElement ||
-      t instanceof HTMLTextAreaElement ||
-      t instanceof HTMLSelectElement ||
-      (t?.isContentEditable ?? false);
+      tgt instanceof HTMLInputElement ||
+      tgt instanceof HTMLTextAreaElement ||
+      tgt instanceof HTMLSelectElement ||
+      (tgt?.isContentEditable ?? false);
     if ((e.metaKey || e.ctrlKey) && !e.altKey && e.key.toLowerCase() === 'k') {
       e.preventDefault();
       setPaletteOpen((o) => !o);
@@ -7862,7 +7883,7 @@ export default function App() {
           <input
             autoFocus
             className="palette-input"
-            placeholder="Type a command… (navigate, optimize, toggle charts, theme)"
+            placeholder={t('Type a command… (navigate, optimize, toggle charts, theme)')}
             value={palQuery}
             onChange={(e) => {
               setPalQuery(e.target.value);
@@ -7885,7 +7906,9 @@ export default function App() {
             }}
           />
           <ul className="palette-list">
-            {palFiltered.length === 0 && <li className="palette-none">No matching command</li>}
+            {palFiltered.length === 0 && (
+              <li className="palette-none">{t('No matching command')}</li>
+            )}
             {palFiltered.map((a, i) => (
               <li key={a.id}>
                 <button
@@ -7904,37 +7927,37 @@ export default function App() {
       )}
       {shortcutsOpen && (
         <Modal open onClose={() => setShortcutsOpen(false)} label="Keyboard shortcuts" cardClass="shortcuts-card">
-          <div className="busy-title">Keyboard shortcuts</div>
+          <div className="busy-title">{t('Keyboard shortcuts')}</div>
           <div className="shortcut-cols">
             <dl>
-              <dt>Everywhere</dt>
-              <dd><kbd>⌘K</kbd> command palette — every action, searchable</dd>
-              <dd><kbd>?</kbd> this overview</dd>
-              <dd><kbd>1</kbd>–<kbd>5</kbd> jump between the steps / tabs</dd>
-              <dd><kbd>⌘S</kbd> save (overwrite the last-saved filter)</dd>
-              <dd><kbd>Esc</kbd> close any popup</dd>
+              <dt>{t('Everywhere')}</dt>
+              <dd><kbd>⌘K</kbd> {t('command palette — every action, searchable')}</dd>
+              <dd><kbd>?</kbd> {t('this overview')}</dd>
+              <dd><kbd>1</kbd>–<kbd>5</kbd> {t('jump between the steps / tabs')}</dd>
+              <dd><kbd>⌘S</kbd> {t('save (overwrite the last-saved filter)')}</dd>
+              <dd><kbd>Esc</kbd> {t('close any popup')}</dd>
             </dl>
             <dl>
-              <dt>Charts</dt>
-              <dd><kbd>scroll</kbd> zoom · <kbd>⇧scroll</kbd> vertical zoom</dd>
-              <dd><kbd>drag</kbd> pan · <kbd>double-click</kbd> reset</dd>
-              <dd><kbd>click legend chip</kbd> show / hide that curve</dd>
-              <dd><kbd>drag dot</kbd> move a filter knee or EQ band · <kbd>scroll on dot</kbd> its Q</dd>
+              <dt>{t('Charts')}</dt>
+              <dd><kbd>scroll</kbd> {t('zoom')} · <kbd>⇧scroll</kbd> {t('vertical zoom')}</dd>
+              <dd><kbd>drag</kbd> {t('pan')} · <kbd>double-click</kbd> {t('reset')}</dd>
+              <dd><kbd>{t('click legend chip')}</kbd> {t('show / hide that curve')}</dd>
+              <dd><kbd>{t('drag dot')}</kbd> {t('move a filter knee or EQ band')} · <kbd>{t('scroll on dot')}</kbd> {t('its Q')}</dd>
             </dl>
             <dl>
-              <dt>Network editor</dt>
-              <dd><kbd>Esc</kbd> cancel tool · <kbd>Del</kbd> remove part · <kbd>R</kbd> rotate</dd>
-              <dd><kbd>⌘Z</kbd> undo · <kbd>⇧⌘Z</kbd> / <kbd>⌘Y</kbd> redo</dd>
-              <dd><kbd>↑</kbd>/<kbd>↓</kbd> in a value field: step through E12 values</dd>
+              <dt>{t('Network editor')}</dt>
+              <dd><kbd>Esc</kbd> {t('cancel tool')} · <kbd>Del</kbd> {t('remove part')} · <kbd>R</kbd> {t('rotate')}</dd>
+              <dd><kbd>⌘Z</kbd> {t('undo')} · <kbd>⇧⌘Z</kbd> / <kbd>⌘Y</kbd> {t('redo')}</dd>
+              <dd><kbd>↑</kbd>/<kbd>↓</kbd> {t('in a value field: step through E12 values')}</dd>
             </dl>
           </div>
         </Modal>
       )}
       {issuesOpen && (
         <Modal open onClose={() => setIssuesOpen(false)} label="Current issues" cardClass="shortcuts-card">
-          <div className="busy-title">⚠ Current issues</div>
+          <div className="busy-title">⚠ {t('Current issues')}</div>
           {issues.length === 0 ? (
-            <p className="sub">Nothing wrong right now.</p>
+            <p className="sub">{t('Nothing wrong right now.')}</p>
           ) : (
             <ul className="issues-list">
               {issues.map((it, i) => (
@@ -7957,13 +7980,13 @@ export default function App() {
           label="Which driver are these measurements for?"
           cardClass="targets-card welcome-card"
         >
-          <div className="busy-title">Which driver are these for?</div>
+          <div className="busy-title">{t('Which driver are these for?')}</div>
           <p className="sub" style={{ width: '100%', margin: 0 }}>
-            {dropPick.length} file{dropPick.length === 1 ? '' : 's'}:{' '}
+            {dropPick.length === 1 ? t('1 file') : t('{n} files', { n: dropPick.length })}:{' '}
             {dropPick.map((f) => f.name).join(', ').slice(0, 140)}
             {dropPick.map((f) => f.name).join(', ').length > 140 ? '…' : ''}
             <br />
-            (Tip: drop directly on a driver card to skip this question.)
+            {t('(Tip: drop directly on a driver card to skip this question.)')}
           </p>
           <div className="welcome-choices">
             {(
@@ -7982,7 +8005,7 @@ export default function App() {
                   void loadDriverFileList(side, files);
                 }}
               >
-                {label}
+                {t(label)}
               </button>
             ))}
             {dropPick.length === 1 && /\.(frd|txt)$/i.test(dropPick[0].name) && (
@@ -7994,8 +8017,8 @@ export default function App() {
                   void loadVerificationFile(f);
                 }}
               >
-                Verification measurement
-                <small>the measured response of the BUILT system, for the model-vs-measurement overlay</small>
+                {t('Verification measurement')}
+                <small>{t('the measured response of the BUILT system, for the model-vs-measurement overlay')}</small>
               </button>
             )}
           </div>
@@ -8012,11 +8035,9 @@ export default function App() {
           label="Welcome"
           cardClass="targets-card welcome-card"
         >
-          <div className="busy-title">Design a crossover from measurements</div>
+          <div className="busy-title">{t('Design a crossover from measurements')}</div>
           <p className="sub" style={{ width: '100%', margin: 0 }}>
-            Load a frequency response and impedance per driver, and the app works out the
-            crossover: filter shapes, component values, and a parts list you can order. No filter
-            knowledge needed to start.
+            {t('Load a frequency response and impedance per driver, and the app works out the crossover: filter shapes, component values, and a parts list you can order. No filter knowledge needed to start.')}
           </p>
           <div className="welcome-choices">
             <button
@@ -8024,19 +8045,18 @@ export default function App() {
               className="welcome-primary"
               onClick={() => dismissWelcome('demo')}
             >
-              🎧 Explore with the demo speaker
+              🎧 {t('Explore with the demo speaker')}
               <small>
-                A complete real measurement set (responses, impedances, angles, cabinet) — see the
-                whole flow work before you own a microphone.
+                {t('A complete real measurement set (responses, impedances, angles, cabinet) — see the whole flow work before you own a microphone.')}
               </small>
             </button>
             <button type="button" onClick={() => dismissWelcome('wizard')}>
-              📁 I have measurements
-              <small>The wizard walks you through loading them and checks nothing is missing.</small>
+              📁 {t('I have measurements')}
+              <small>{t('The wizard walks you through loading them and checks nothing is missing.')}</small>
             </button>
           </div>
           <button type="button" className="welcome-skip" onClick={() => dismissWelcome()}>
-            Just let me look around
+            {t('Just let me look around')}
           </button>
         </Modal>
       )}
@@ -8047,7 +8067,7 @@ export default function App() {
           label="Design wizard"
           cardClass="targets-card wizard-card"
         >
-          <div className="busy-title">🧙 Design wizard</div>
+          <div className="busy-title">🧙 {t('Design wizard')}</div>
           <div className="wizard-steps">
             {wizardSteps.map((s, i) => (
               <span key={s.id} className={wizardPos >= 0 && i <= wizardPos ? 'done' : ''} />
@@ -8055,16 +8075,16 @@ export default function App() {
           </div>
           <p className="sub" style={{ width: '100%', margin: 0 }}>
             {wizardPos < 0
-              ? 'First — load your measurements'
-              : `Step ${wizardPos + 1} of ${wizardSteps.length} · ${wizardSteps[wizardPos].label}`}
+              ? t('First — load your measurements')
+              : `${t('Step {x} of {y}', { x: wizardPos + 1, y: wizardSteps.length })} · ${t(wizardSteps[wizardPos].label)}`}
           </p>
 
           <div className="wizard-body">
           {wizardStep === 0 && (
             <>
               <p>
-                <strong>System type</strong> — what are we designing? The wizard then shows only
-                the measurement slots that apply, and Next unlocks once the set is complete.
+                <strong>{t('System type')}</strong>{' '}
+                {t('— what are we designing? The wizard then shows only the measurement slots that apply, and Next unlocks once the set is complete.')}
               </p>
               <div className="row" style={{ marginBottom: '0.5rem' }}>
                 {([
@@ -8080,39 +8100,38 @@ export default function App() {
                     onClick={() => setWizardWays(w)}
                     title={
                       w === 1
-                        ? 'Flatten one driver (series traps, shelf groups, Zobel) — the validation flow'
+                        ? t('Flatten one driver (series traps, shelf groups, Zobel) — the validation flow')
                         : w === 2
-                          ? 'Classic two-driver crossover design — the full optimizer chain'
-                          : 'Three branches: sim, filters and network editor work; the 3-way optimizer is a later step'
+                          ? t('Classic two-driver crossover design — the full optimizer chain')
+                          : t('Three branches: sim, filters and network editor work; the 3-way optimizer is a later step')
                     }
                   >
-                    {label}
+                    {t(label)}
                   </button>
                 ))}
               </div>
               <p className="sub" style={{ marginBottom: '0.4rem' }}>
-                <strong>Measurements</strong> — load a 0° FRD per driver; include the .ZMA
-                impedance and any angle files in the SAME pick to unlock more (recognised by
-                extension and filename).
+                <strong>{t('Measurements')}</strong>{' '}
+                {t('— load a 0° FRD per driver; include the .ZMA impedance and any angle files in the SAME pick to unlock more (recognised by extension and filename).')}
               </p>
               {wizardWays === 2 && (
                 <button
                   type="button"
                   className="primary"
                   onClick={loadDemo}
-                  title="Load the bundled KOAN measurements (all angles + impedances + vxp variants) — instant playground"
+                  title={t('Load the bundled KOAN measurements (all angles + impedances + vxp variants) — instant playground')}
                 >
-                  🎧 Load KOAN demo data
+                  🎧 {t('Load KOAN demo data')}
                 </button>
               )}
               <p className="sub" style={{ marginBottom: '0.2rem' }}>
-                {wizardWays === 2 ? '…or load your own:' : 'Load your measurements:'}
+                {wizardWays === 2 ? t('…or load your own:') : t('Load your measurements:')}
               </p>
               {wizardWays === 1 ? (
                 <label className="file-button" style={{ display: 'block' }}>
                   {woofer || tweeter
-                    ? `✓ Driver — ${(woofer ?? tweeter)!.name}`
-                    : 'Driver — FRD (+ ZMA/LIMP, + angle files)'}
+                    ? `✓ ${t('Driver')} — ${(woofer ?? tweeter)!.name}`
+                    : t('Driver — FRD (+ ZMA/LIMP, + angle files)')}
                   <input
                     type="file"
                     accept=".frd,.txt,.zma,.ZMA,.lim"
@@ -8125,8 +8144,8 @@ export default function App() {
                 <>
                   <label className="file-button" style={{ display: 'block', marginBottom: '0.3rem' }}>
                     {woofer
-                      ? `✓ ${wizardWays === 3 ? 'Woofer' : 'Woofer / mid'} — ${woofer.name}`
-                      : `${wizardWays === 3 ? 'Woofer' : 'Woofer / mid'} — FRD (+ ZMA/LIMP, + angle files)`}
+                      ? `✓ ${t(wizardWays === 3 ? 'Woofer' : 'Woofer / mid')} — ${woofer.name}`
+                      : `${t(wizardWays === 3 ? 'Woofer' : 'Woofer / mid')} — ${t('FRD (+ ZMA/LIMP, + angle files)')}`}
                     <input
                       type="file"
                       accept=".frd,.txt,.zma,.ZMA,.lim"
@@ -8138,8 +8157,8 @@ export default function App() {
                   {wizardWays === 3 && (
                     <label className="file-button" style={{ display: 'block', marginBottom: '0.3rem' }}>
                       {midDrv
-                        ? `✓ Midrange — ${midDrv.name}`
-                        : 'Midrange — FRD (+ ZMA/LIMP, + angle files)'}
+                        ? `✓ ${t('Midrange')} — ${midDrv.name}`
+                        : `${t('Midrange')} — ${t('FRD (+ ZMA/LIMP, + angle files)')}`}
                       <input
                         type="file"
                         accept=".frd,.txt,.zma,.ZMA,.lim"
@@ -8150,7 +8169,9 @@ export default function App() {
                     </label>
                   )}
                   <label className="file-button" style={{ display: 'block' }}>
-                    {tweeter ? `✓ Tweeter — ${tweeter.name}` : 'Tweeter — FRD (+ ZMA/LIMP, + angle files)'}
+                    {tweeter
+                      ? `✓ ${t('Tweeter')} — ${tweeter.name}`
+                      : `${t('Tweeter')} — ${t('FRD (+ ZMA/LIMP, + angle files)')}`}
                     <input
                       type="file"
                       accept=".frd,.txt,.zma,.ZMA,.lim"
@@ -8163,28 +8184,25 @@ export default function App() {
               )}
               {wizardMissing.length > 0 && (
                 <p className="sub" style={{ marginTop: '0.4rem' }}>
-                  Still needed for a {wizardWays}-way: <strong>{wizardMissing.join(', ')}</strong>.
+                  {t('Still needed for a {n}-way:', { n: wizardWays })}{' '}
+                  <strong>{wizardMissing.map((m) => t(m)).join(', ')}</strong>.
                 </p>
               )}
               {wizardOverloaded && (
                 <p className="nl-warning" style={{ marginTop: '0.4rem' }}>
-                  ⚠ More is loaded than a {wizardWays}-way — the app follows what is actually
-                  loaded, never the declared choice. Switch the system type above, or remove the
-                  extra driver in the Import tab (✕).
+                  {t('⚠ More is loaded than a {n}-way — the app follows what is actually loaded, never the declared choice. Switch the system type above, or remove the extra driver in the Import tab (✕).', { n: wizardWays })}
                 </p>
               )}
               {wizardWays === 3 && wizardMissing.length === 0 && (
                 <p className="sub" style={{ marginTop: '0.4rem' }}>
-                  ✓ 3-way set complete — continue to Goals. Optimize runs the staged 2D scan:
-                  LR4 targets + measured level trims per handover candidate, per-branch
-                  synthesis, assembled two-pair tune (amp-load verdict gates the ranking).
+                  {t('✓ 3-way set complete — continue to Goals. Optimize runs the staged 2D scan: LR4 targets + measured level trims per handover candidate, per-branch synthesis, assembled two-pair tune (amp-load verdict gates the ranking).')}
                 </p>
               )}
               <p className="sub">
-                <strong>Impedances (.ZMA)</strong> unlock the passive build &amp; component tune;{' '}
-                <strong>angle files</strong> unlock the amplitude target &amp; in-room weight in
-                the Goals step. The full importer (VituixCAD projects, save/load) lives in the
-                Import tab.
+                <strong>{t('Impedances (.ZMA)')}</strong>{' '}
+                {t('unlock the passive build & component tune;')}{' '}
+                <strong>{t('angle files')}</strong>{' '}
+                {t('unlock the amplitude target & in-room weight in the Goals step. The full importer (VituixCAD projects, save/load) lives in the Import tab.')}
               </p>
               {timing && (
                 <div
@@ -8195,17 +8213,15 @@ export default function App() {
                   }}
                 >
                   <p style={{ margin: '0 0 0.2rem' }}>
-                    <strong>Timing check</strong>{' '}
+                    <strong>{t('Timing check')}</strong>{' '}
                     <span className="sub">
-                      — do the two phase measurements share a time reference? (Wrong timing
-                      silently ruins the phase sum — it's the whole reason this tool exists.)
+                      {t("— do the two phase measurements share a time reference? (Wrong timing silently ruins the phase sum — it's the whole reason this tool exists.)")}
                     </span>
                   </p>
                   {timing.ref.verdict === 'plausible' ? (
                     <p className="sub" style={{ margin: 0 }}>
-                      ✓ <strong>Plausible</strong> — the measured phase carries the real
-                      inter-driver delay (Δ {timing.ref.deltaUs.toFixed(0)} µs ≈{' '}
-                      {timing.ref.deltaMm.toFixed(1)} mm). Offset stays 0; nothing to enter.
+                      ✓ <strong>{t('Plausible')}</strong>{' '}
+                      {t('— the measured phase carries the real inter-driver delay (Δ {us} µs ≈ {mm} mm). Offset stays 0; nothing to enter.', { us: timing.ref.deltaUs.toFixed(0), mm: timing.ref.deltaMm.toFixed(1) })}
                     </p>
                   ) : (
                     <>
@@ -8213,8 +8229,7 @@ export default function App() {
                         ⚠ <strong>{timing.ref.verdict}</strong> — {timing.ref.message}
                       </p>
                       <p style={{ margin: 0 }}>
-                        Physical offset between the drivers' acoustic centres (tweeter deeper =
-                        positive){' '}
+                        {t("Physical offset between the drivers' acoustic centres (tweeter deeper = positive)")}{' '}
                         <input
                           type="number"
                           step={1}
@@ -8222,13 +8237,13 @@ export default function App() {
                           onChange={(e) => setOffsetMm(e.target.value)}
                           style={{ width: '5rem' }}
                         />{' '}
-                        mm <span className="sub">= {delayUs.toFixed(0)} µs delay</span>
+                        mm{' '}
+                        <span className="sub">
+                          {t('= {us} µs delay', { us: delayUs.toFixed(0) })}
+                        </span>
                       </p>
                       <p className="sub" style={{ margin: '0.2rem 0 0' }}>
-                        Enter it from the physical driver spacing (the measured Δ ≈{' '}
-                        {timing.ref.deltaMm.toFixed(1)} mm looks off, so don't trust it blindly).
-                        The full timing sanity check + the measured/minimum phase toggle live in
-                        the Setup tab.
+                        {t("Enter it from the physical driver spacing (the measured Δ ≈ {mm} mm looks off, so don't trust it blindly). The full timing sanity check + the measured/minimum phase toggle live in the Setup tab.", { mm: timing.ref.deltaMm.toFixed(1) })}
                       </p>
                     </>
                   )}
@@ -8242,27 +8257,26 @@ export default function App() {
                 }}
               >
                 <p style={{ margin: '0 0 0.2rem' }}>
-                  <strong>Component catalog</strong>{' '}
+                  <strong>{t('Component catalog')}</strong>{' '}
                   <span className="sub">
-                    — powers catalog snapping &amp; the BOM. It lives OUTSIDE the project, so it
-                    persists across a Reset (that's why the optimizer can still use one).
+                    {t("— powers catalog snapping & the BOM. It lives OUTSIDE the project, so it persists across a Reset (that's why the optimizer can still use one).")}
                   </span>
                 </p>
                 <p className="sub" style={{ margin: '0 0 0.3rem' }}>
                   {hasImportedCatalog()
-                    ? `✓ An imported catalog is still loaded — ${allSeries().length} series` +
+                    ? t('✓ An imported catalog is still loaded — {n} series', { n: allSeries().length }) +
                       (customCatalogParts().length
-                        ? ` · ${customCatalogParts().length} exact parts`
+                        ? ` · ${t('{n} exact parts', { n: customCatalogParts().length })}`
                         : '') +
                       (allSeries().some((sr) => sr.basePrice !== undefined) ||
                       customCatalogParts().some((pp) => pp.priceEur !== undefined)
-                        ? ' · prices'
+                        ? ` · ${t('prices')}`
                         : '') +
-                      '. Snap-to-catalog is available.'
-                    : `No imported catalog — only the built-in library (${allSeries().length} series) for BOM matching & inspector suggestions. Import one to unlock catalog snapping + real prices.`}
+                      t('. Snap-to-catalog is available.')
+                    : t('No imported catalog — only the built-in library ({n} series) for BOM matching & inspector suggestions. Import one to unlock catalog snapping + real prices.', { n: allSeries().length })}
                 </p>
                 <label className="file-button" style={{ display: 'inline-block' }}>
-                  {hasImportedCatalog() ? 'Replace catalog' : 'Import catalog (optional)'}
+                  {hasImportedCatalog() ? t('Replace catalog') : t('Import catalog (optional)')}
                   <input
                     type="file"
                     accept=".json,.adscatalog"
@@ -8277,9 +8291,8 @@ export default function App() {
           {wizardStep === 1 && (
             <>
               <p>
-                <strong>Goals</strong> — start with what "done" means. How simple should the
-                filter be, and how do you weigh a flat response against tight phase? (Shared
-                with ⚙ Settings — this is just the guided path.)
+                <strong>{t('Goals')}</strong>{' '}
+                {t('— start with what "done" means. How simple should the filter be, and how do you weigh a flat response against tight phase? (Shared with ⚙ Settings — this is just the guided path.)')}
               </p>
               <label style={{ display: 'block' }}>
                 <input
@@ -8287,11 +8300,11 @@ export default function App() {
                   checked={stagedOn}
                   onChange={(e) => setStagedOn(e.target.checked)}
                 />{' '}
-                Staged design — stop escalating once the targets are met (fewest components)
+                {t('Staged design — stop escalating once the targets are met (fewest components)')}
               </label>
               {stagedOn && (
                 <p>
-                  Targets: ripple ≤{' '}
+                  {t('Targets: ripple ≤')}{' '}
                   <input
                     type="number"
                     min={0.1}
@@ -8301,10 +8314,10 @@ export default function App() {
                     onChange={(e) => setTargetRipple(e.target.value)}
                     style={{ width: '4.5rem' }}
                   />{' '}
-                  ±dB peak (as in the SPL strip)
+                  {t('±dB peak (as in the SPL strip)')}
                   {!soloDriver && (
                     <>
-                      {' '}· phase ≤{' '}
+                      {' '}· {t('phase ≤')}{' '}
                       <input
                         type="number"
                         min={1}
@@ -8324,24 +8337,18 @@ export default function App() {
                   {/* The trade in one place, in the direction that actually
                       surprises people: tighter does NOT cap complexity, it
                       raises it (Sanders). */}
-                  These are a <strong>stopping point</strong>, not a limit. Tighter numbers make
-                  a <strong>more complex and more expensive</strong> filter — the app keeps
-                  adding EQ bands and parts while the target is unmet, and it only strips the
-                  parts it does not need once the target IS met. Looser numbers stop sooner and
-                  build simpler, but may leave performance on the table that a band or two would
-                  have been free to take. For reference, on top-tier drivers this engine
-                  delivers about 0.9 dB / 4°; on ordinary drivers or a rough cabinet, 2–3 dB is
-                  a realistic place to stop.
+                  {t('These are a')} <strong>{t('stopping point')}</strong>
+                  {t(', not a limit. Tighter numbers make a')}{' '}
+                  <strong>{t('more complex and more expensive')}</strong>{' '}
+                  {t('filter — the app keeps adding EQ bands and parts while the target is unmet, and it only strips the parts it does not need once the target IS met. Looser numbers stop sooner and build simpler, but may leave performance on the table that a band or two would have been free to take. For reference, on top-tier drivers this engine delivers about 0.9 dB / 4°; on ordinary drivers or a rough cabinet, 2–3 dB is a realistic place to stop.')}
                 </p>
               )}
               {soloDriver ? (
                 <p className="sub">
-                  Single-driver mode: relative phase does not exist, so the priority trade-off
-                  doesn't apply — the solo engine optimises response flatness with cut-only
-                  EQ/shelves.
+                  {t("Single-driver mode: relative phase does not exist, so the priority trade-off doesn't apply — the solo engine optimises response flatness with cut-only EQ/shelves.")}
                 </p>
               ) : (
-              <p style={{ marginBottom: '0.1rem' }}>What should the optimizer favour?</p>
+              <p style={{ marginBottom: '0.1rem' }}>{t('What should the optimizer favour?')}</p>
               )}
               {!soloDriver &&
                 (
@@ -8369,23 +8376,24 @@ export default function App() {
                       checked={phasePriority === val}
                       onChange={() => setPhasePriority(val)}
                     />{' '}
-                    {label}{' '}
+                    {t(label)}{' '}
                     <span className="sub">
-                      — {hint} ({100 - val}/{val})
+                      — {t(hint)} ({100 - val}/{val})
                     </span>
                   </label>
                 ))}
               {!soloDriver && ![25, 50, 75].includes(phasePriority) && (
                 <p className="sub">
-                  Currently <strong>response {100 - phasePriority}% · phase {phasePriority}%</strong>{' '}
-                  — set on the slider in ⚙ Settings, so none of the three above is selected. Pick
-                  one to replace it.
+                  {t('Currently')}{' '}
+                  <strong>
+                    {t('response {r}% · phase {p}%', { r: 100 - phasePriority, p: phasePriority })}
+                  </strong>{' '}
+                  {t('— set on the slider in ⚙ Settings, so none of the three above is selected. Pick one to replace it.')}
                 </p>
               )}
               {!soloDriver && (
               <p className="sub">
-                On real measurements a smooth response already buys most of the phase, so
-                these differ less than you'd expect — fine control (any %) lives in ⚙ Settings.
+                {t("On real measurements a smooth response already buys most of the phase, so these differ less than you'd expect — fine control (any %) lives in ⚙ Settings.")}
               </p>
               )}
               {angleSets ? (
@@ -8399,8 +8407,8 @@ export default function App() {
                     }}
                   >
                     <p style={{ margin: '0 0 0.3rem' }}>
-                      <strong>Amplitude target</strong>{' '}
-                      <span className="sub">— which curve the optimizer flattens</span>
+                      <strong>{t('Amplitude target')}</strong>{' '}
+                      <span className="sub">{t('— which curve the optimizer flattens')}</span>
                     </p>
                     <div style={{ display: 'flex', gap: '0.9rem', alignItems: 'center', flexWrap: 'wrap' }}>
                       <div style={{ flex: '0 0 auto', textAlign: 'center' }}>
@@ -8447,8 +8455,8 @@ export default function App() {
                         })()}
                         <p className="sub" style={{ margin: '0.1rem 0 0' }}>
                           {ampTarget === 'listeningWindow'
-                            ? 'flattening the 0–30° average'
-                            : 'flattening the 0° axis'}
+                            ? t('flattening the 0–30° average')
+                            : t('flattening the 0° axis')}
                         </p>
                       </div>
                       <div style={{ flex: '1 1 12rem' }}>
@@ -8459,10 +8467,9 @@ export default function App() {
                             checked={ampTarget === 'onAxis'}
                             onChange={() => setAmpTarget('onAxis')}
                           />{' '}
-                          On-axis (0°){' '}
+                          {t('On-axis (0°)')}{' '}
                           <span className="sub">
-                            — flattest response dead ahead; off-axis falls where it falls. Best
-                            for near-field or a fixed seat.
+                            {t('— flattest response dead ahead; off-axis falls where it falls. Best for near-field or a fixed seat.')}
                           </span>
                         </label>
                         <label style={{ display: 'block', marginTop: '0.3rem' }}>
@@ -8472,10 +8479,9 @@ export default function App() {
                             checked={ampTarget === 'listeningWindow'}
                             onChange={() => setAmpTarget('listeningWindow')}
                           />{' '}
-                          Listening window (0–30°){' '}
+                          {t('Listening window (0–30°)')}{' '}
                           <span className="sub">
-                            — averages the front arc, so a hair of on-axis flatness buys a
-                            smoother tone across a normal seating spread.
+                            {t('— averages the front arc, so a hair of on-axis flatness buys a smoother tone across a normal seating spread.')}
                           </span>
                         </label>
                       </div>
@@ -8490,8 +8496,8 @@ export default function App() {
                     }}
                   >
                     <p style={{ margin: '0 0 0.2rem' }}>
-                      <strong>Weight for in-room sound: {dirWeight}%</strong>{' '}
-                      <span className="sub">(energy average)</span>
+                      <strong>{t('Weight for in-room sound: {pct}%', { pct: dirWeight })}</strong>{' '}
+                      <span className="sub">{t('(energy average)')}</span>
                     </p>
                     <input
                       type="range"
@@ -8503,18 +8509,14 @@ export default function App() {
                       style={{ width: '11rem', accentColor: 'var(--accent)', verticalAlign: 'middle' }}
                     />
                     <p className="sub" style={{ margin: '0.2rem 0 0' }}>
-                      How much it ALSO smooths the energy average (the power response: every angle
-                      summed ≈ the room's tonal balance). Higher = more even directivity /
-                      smoother in-room sound, trading a little on-axis flatness. 0% = on-axis
-                      only.
+                      {t("How much it ALSO smooths the energy average (the power response: every angle summed ≈ the room's tonal balance). Higher = more even directivity / smoother in-room sound, trading a little on-axis flatness. 0% = on-axis only.")}
                     </p>
                   </div>
                 </>
               ) : (
                 <p className="sub" style={{ marginTop: '0.7rem' }}>
-                  <strong>Amplitude target &amp; in-room weight</strong> unlock once you load
-                  angle measurements (Import → per-driver angle FRDs). With only a 0° measurement
-                  there is nothing off-axis to optimise, so these stay inert.
+                  <strong>{t('Amplitude target & in-room weight')}</strong>{' '}
+                  {t('unlock once you load angle measurements (Import → per-driver angle FRDs). With only a 0° measurement there is nothing off-axis to optimise, so these stay inert.')}
                 </p>
               )}
             </>
@@ -8523,9 +8525,8 @@ export default function App() {
           {wizardStep === 2 && (
             <>
               <p>
-                <strong>Crossover</strong> — where the drivers hand over, and how steep the
-                ACOUSTIC slopes are. On real measurements Auto usually wins; force a slope only
-                when you have a reason — a placeholder driver, or a house alignment.
+                <strong>{t('Crossover')}</strong>{' '}
+                {t('— where the drivers hand over, and how steep the ACOUSTIC slopes are. On real measurements Auto usually wins; force a slope only when you have a reason — a placeholder driver, or a house alignment.')}
               </p>
               {suggestedBand && (
                 <div
@@ -8536,9 +8537,9 @@ export default function App() {
                   }}
                 >
                   <p style={{ margin: '0 0 0.2rem' }}>
-                    <strong>Tuning range</strong>{' '}
+                    <strong>{t('Tuning range')}</strong>{' '}
                     <span className="sub">
-                      — the band the optimizer flattens &amp; scores over (the design scope)
+                      {t('— the band the optimizer flattens & scores over (the design scope)')}
                     </span>
                   </p>
                   <p style={{ margin: 0 }}>
@@ -8564,7 +8565,7 @@ export default function App() {
                     Hz{' '}
                     {fMin !== String(suggestedBand[0]) || fMax !== String(suggestedBand[1]) ? (
                       <>
-                        · suggested{' '}
+                        · {t('suggested')}{' '}
                         <strong>
                           {suggestedBand[0]}–{suggestedBand[1]} Hz
                         </strong>{' '}
@@ -8575,23 +8576,21 @@ export default function App() {
                             setFMax(String(suggestedBand[1]));
                           }}
                         >
-                          Use suggested
+                          {t('Use suggested')}
                         </button>
                       </>
                     ) : (
-                      <span className="sub">✓ = your usable measured range</span>
+                      <span className="sub">{t('✓ = your usable measured range')}</span>
                     )}
                   </p>
                   <p className="sub" style={{ margin: '0.1rem 0 0' }}>
-                    Wider = the whole speaker is judged; narrower = focus the tuning on the
-                    crossover (a full-band safety check still guards the rest).
+                    {t('Wider = the whole speaker is judged; narrower = focus the tuning on the crossover (a full-band safety check still guards the rest).')}
                   </p>
                   {systemLevelDb && (
                     <p style={{ margin: '0.3rem 0 0' }}>
-                      <strong>Target level ≈ {systemLevelDb.level} dB</strong>{' '}
+                      <strong>{t('Target level ≈ {db} dB', { db: systemLevelDb.level })}</strong>{' '}
                       <span className="sub">
-                        — the passive system level, set by the {systemLevelDb.limiter} (the louder
-                        driver is padded down to match; passive can't boost above this).
+                        {t("— the passive system level, set by the {limiter} (the louder driver is padded down to match; passive can't boost above this).", { limiter: systemLevelDb.limiter })}
                       </span>
                     </p>
                   )}
@@ -8603,7 +8602,7 @@ export default function App() {
                   checked={xoRangeOn}
                   onChange={(e) => setXoRangeOn(e.target.checked)}
                 />{' '}
-                Pin the acoustic crossover point
+                {t('Pin the acoustic crossover point')}
               </label>
               {xoRangeOn && (
                 <p>
@@ -8631,17 +8630,20 @@ export default function App() {
               )}
               <p className="sub">
                 {xoRangeOn
-                  ? 'Pinned: the optimizer aims for this acoustic crossover (± margin) and picks the best design there.'
+                  ? t('Pinned: the optimizer aims for this acoustic crossover (± margin) and picks the best design there.')
                   : tweeterHpFloor !== null && midXoCeiling !== null
-                    ? `Free: the optimizer aims for the CENTRE of your driver window — ≈${Math.round(
-                        Math.sqrt(tweeterHpFloor * Math.max(midXoCeiling, tweeterHpFloor * 1.2)),
-                      )} Hz, the geometric mean of the 2×Fs tweeter floor (${tweeterHpFloor} Hz) and the ${midXoCeiling} Hz mid beaming ceiling. Pin only to override.`
-                    : 'Free: the optimizer stays within a sensible band (≈2×Fs up to the mid beaming limit) and picks the best crossover there. Set the mid size below for a physically-exact window; pin only for a specific point.'}
+                    ? t('Free: the optimizer aims for the CENTRE of your driver window — ≈{mid} Hz, the geometric mean of the 2×Fs tweeter floor ({floor} Hz) and the {ceil} Hz mid beaming ceiling. Pin only to override.', {
+                        mid: Math.round(
+                          Math.sqrt(tweeterHpFloor * Math.max(midXoCeiling, tweeterHpFloor * 1.2)),
+                        ),
+                        floor: tweeterHpFloor,
+                        ceil: midXoCeiling,
+                      })
+                    : t('Free: the optimizer stays within a sensible band (≈2×Fs up to the mid beaming limit) and picks the best crossover there. Set the mid size below for a physically-exact window; pin only for a specific point.')}
               </p>
               {tweeterHpFloor !== null && (
                 <p className="sub">
-                  The tweeter is kept above {tweeterHpFloor} Hz automatically — twice its own
-                  resonance, read from your impedance measurement.
+                  {t('The tweeter is kept above {floor} Hz automatically — twice its own resonance, read from your impedance measurement.', { floor: tweeterHpFloor })}
                 </p>
               )}
               {(() => {
@@ -8652,19 +8654,18 @@ export default function App() {
                 if (dia !== null && midXoCeiling !== null) {
                   return (
                     <p>
-                      Beaming ceiling ≈ {midXoCeiling} Hz{' '}
+                      {t('Beaming ceiling ≈ {hz} Hz', { hz: midXoCeiling })}{' '}
                       <span className="sub">
-                        — from the Sd you entered (effective piston Ø {Math.round(dia)} mm); no
-                        need to pick a nominal size
+                        {t('— from the Sd you entered (effective piston Ø {mm} mm); no need to pick a nominal size', { mm: Math.round(dia) })}
                       </span>
                     </p>
                   );
                 }
                 return (
                   <p>
-                    Mid size (sets the beaming ceiling){' '}
+                    {t('Mid size (sets the beaming ceiling)')}{' '}
                     <select value={midSizeInch} onChange={(e) => setMidSizeInch(e.target.value)}>
-                      <option value="">unknown</option>
+                      <option value="">{t('unknown')}</option>
                       {['3', '4', '5', '5.25', '6.5', '8'].map((v) => (
                         <option key={v} value={v}>
                           {v}"
@@ -8672,20 +8673,19 @@ export default function App() {
                       ))}
                     </select>
                     {midXoCeiling !== null && (
-                      <span className="sub"> · beaming ceiling ≈ {midXoCeiling} Hz</span>
+                      <span className="sub"> · {t('beaming ceiling ≈ {hz} Hz', { hz: midXoCeiling })}</span>
                     )}
                   </p>
                 );
               })()}
               <p className="sub" style={{ marginBottom: '0.15rem' }}>
-                The next two look alike but are NOT the same thing — one is how you build it,
-                the other is what comes out:
+                {t('The next two look alike but are NOT the same thing — one is how you build it, the other is what comes out:')}
               </p>
               <p style={{ margin: '0 0 0.1rem' }}>
-                <strong>HP/LP alignment</strong>{' '}
-                <span className="sub">— the ELECTRICAL filter you build (topology &amp; part count; binding)</span>{' '}
+                <strong>{t('HP/LP alignment')}</strong>{' '}
+                <span className="sub">{t('— the ELECTRICAL filter you build (topology & part count; binding)')}</span>{' '}
                 <select value={hpLpPref} onChange={(e) => setHpLpPref(e.target.value)}>
-                  <option value="auto">Auto (library)</option>
+                  <option value="auto">{t('Auto (library)')}</option>
                   {['LR2', 'LR4', 'BW2', 'BW3', 'BW4', 'BS2', 'BS3', 'BS4'].map((v) => (
                     <option key={v} value={v}>
                       {v}
@@ -8694,21 +8694,21 @@ export default function App() {
                 </select>
               </p>
               <p style={{ margin: '0 0 0.1rem' }}>
-                <strong>Acoustic slopes</strong>{' '}
-                <span className="sub">— the MEASURED roll-off of driver + filter together (the result)</span>
+                <strong>{t('Acoustic slopes')}</strong>{' '}
+                <span className="sub">{t('— the MEASURED roll-off of driver + filter together (the result)')}</span>
                 <br />
-                mid{' '}
+                {t('mid')}{' '}
                 <select value={acSlopeMid} onChange={(e) => setAcSlopeMid(e.target.value)}>
-                  <option value="auto">Auto</option>
+                  <option value="auto">{t('Auto')}</option>
                   {['12', '18', '24', '30', '36'].map((v) => (
                     <option key={v} value={v}>
                       {v} dB/oct
                     </option>
                   ))}
                 </select>{' '}
-                · tweeter{' '}
+                · {t('tweeter')}{' '}
                 <select value={acSlopeTweeter} onChange={(e) => setAcSlopeTweeter(e.target.value)}>
-                  <option value="auto">Auto</option>
+                  <option value="auto">{t('Auto')}</option>
                   {['12', '18', '24', '30', '36'].map((v) => (
                     <option key={v} value={v}>
                       {v} dB/oct
@@ -8717,11 +8717,7 @@ export default function App() {
                 </select>
               </p>
               <p className="sub">
-                Electrical order ≠ acoustic order: the driver already rolls off, so an electrical
-                LR2 can MEASURE as an acoustic 4th order. Set the alignment when you care about the
-                build (part count / a house alignment); set the acoustic slopes when you care about
-                the summation result; leave either on Auto to let the measurement decide (often a
-                touch better). Pinning both can over-constrain.
+                {t('Electrical order ≠ acoustic order: the driver already rolls off, so an electrical LR2 can MEASURE as an acoustic 4th order. Set the alignment when you care about the build (part count / a house alignment); set the acoustic slopes when you care about the summation result; leave either on Auto to let the measurement decide (often a touch better). Pinning both can over-constrain.')}
               </p>
             </>
           )}
@@ -8729,15 +8725,15 @@ export default function App() {
           {wizardStep === 3 && (
             <>
               <p>
-                <strong>Components</strong> — now turn the ideal design into parts you can buy:
-                snap to your catalog, then choose quality tiers and brands.
+                <strong>{t('Components')}</strong>{' '}
+                {t('— now turn the ideal design into parts you can buy: snap to your catalog, then choose quality tiers and brands.')}
               </p>
               <label
                 style={{ display: 'block', opacity: hasImportedCatalog() ? 1 : 0.5 }}
                 title={
                   hasImportedCatalog()
-                    ? 'Snap the build + tuner to purchasable catalog values'
-                    : 'Import a catalog first — without one there are no real parts to snap to, so the design keeps theoretically ideal (continuous) values'
+                    ? t('Snap the build + tuner to purchasable catalog values')
+                    : t('Import a catalog first — without one there are no real parts to snap to, so the design keeps theoretically ideal (continuous) values')
                 }
               >
                 <input
@@ -8746,16 +8742,17 @@ export default function App() {
                   disabled={!hasImportedCatalog()}
                   onChange={(e) => setCatalogSnap(e.target.checked)}
                 />{' '}
-                Use real catalog parts (build + tuner end on purchasable values)
-                {!hasImportedCatalog() && ' — import a catalog first'}
+                {t('Use real catalog parts (build + tuner end on purchasable values)')}
+                {!hasImportedCatalog() && t(' — import a catalog first')}
               </label>
               <p className="sub">
-                Catalog: {allSeries().length} series
-                {customCatalogParts().length > 0 && ` · ${customCatalogParts().length} exact parts`}
+                {t('Catalog: {n} series', { n: allSeries().length })}
+                {customCatalogParts().length > 0 &&
+                  ` · ${t('{n} exact parts', { n: customCatalogParts().length })}`}
                 {allSeries().some((sr) => sr.basePrice !== undefined) ||
                 customCatalogParts().some((pp) => pp.priceEur !== undefined)
-                  ? ' · prices loaded'
-                  : ' · no prices yet'}
+                  ? ` · ${t('prices loaded')}`
+                  : ` · ${t('no prices yet')}`}
               </p>
               {(
                 [
@@ -8773,7 +8770,7 @@ export default function App() {
                     checked={snapProfile === v}
                     onChange={() => setSnapProfile(v)}
                   />{' '}
-                  {label}
+                  {t(label)}
                 </label>
               ))}
               {(
@@ -8784,9 +8781,9 @@ export default function App() {
                 ] as const
               ).map(([kind, label, value, set]) => (
                 <label key={kind} style={{ display: 'block' }}>
-                  {label}{' '}
+                  {t(label)}{' '}
                   <select value={value} onChange={(e) => set(e.target.value)}>
-                    <option value="auto">Auto (all series)</option>
+                    <option value="auto">{t('Auto (all series)')}</option>
                     {catalogSeries(kind).map((sr) => (
                       <option key={sr.id} value={sr.id}>
                         {sr.brand} {sr.series}
@@ -8804,8 +8801,8 @@ export default function App() {
                     style={{ display: 'block', opacity: anySeries ? 1 : 0.5 }}
                     title={
                       anySeries
-                        ? "Bound series also HARD-limit the fit to their value range (series-path slots only), so the optimizer works within e.g. Alumen 1–10 µF and the rest of the network adapts. The result reports what the constraint cost vs an unconstrained fit."
-                        : 'Pick a specific series above first — this constrains the fit to that series’ values.'
+                        ? t('Bound series also HARD-limit the fit to their value range (series-path slots only), so the optimizer works within e.g. Alumen 1–10 µF and the rest of the network adapts. The result reports what the constraint cost vs an unconstrained fit.')
+                        : t('Pick a specific series above first — this constrains the fit to that series’ values.')
                     }
                   >
                     <input
@@ -8814,8 +8811,7 @@ export default function App() {
                       disabled={!anySeries}
                       onChange={(e) => setSnapBoundToSeries(e.target.checked)}
                     />{' '}
-                    Constrain the fit to the chosen series’ values (series-path only) — e.g.
-                    dead-set on Alumen ⇒ the tweeter cap stays 1–10 µF and the network adapts
+                    {t('Constrain the fit to the chosen series’ values (series-path only) — e.g. dead-set on Alumen ⇒ the tweeter cap stays 1–10 µF and the network adapts')}
                   </label>
                 );
               })()}
@@ -8825,12 +8821,10 @@ export default function App() {
                   checked={snapStacks}
                   onChange={(e) => setSnapStacks(e.target.checked)}
                 />{' '}
-                Allow 2-part stacks — a preferred tier/series stacks WITHIN itself before
-                falling back; the result reports what stacking bought (fit % / €)
+                {t('Allow 2-part stacks — a preferred tier/series stacks WITHIN itself before falling back; the result reports what stacking bought (fit % / €)')}
               </label>
               <p className="sub">
-                Series choices are binding per type; a series that cannot cover a value falls
-                back rather than breaking the fit.
+                {t('Series choices are binding per type; a series that cannot cover a value falls back rather than breaking the fit.')}
               </p>
             </>
           )}
@@ -8838,48 +8832,52 @@ export default function App() {
           {wizardStep === 4 && (
             <>
               <p>
-                <strong>Review &amp; run</strong> — here's the plan. Optimize designs, builds and
-                tunes the whole chain in one go.
+                <strong>{t('Review & run')}</strong>{' '}
+                {t("— here's the plan. Optimize designs, builds and tunes the whole chain in one go.")}
               </p>
               {soloDriver ? (
                 <p>
-                  <strong>Single-driver mode</strong> — flatten the{' '}
-                  {soloDriver === 'woofer' ? 'woofer/mid' : 'tweeter'} with cut-only EQ/shelves
-                  (≤ {vfEqBands} bands), built as series traps / shelf groups (+ Zobel when the
-                  impedance rises) and component-tuned against the measurement.
+                  <strong>{t('Single-driver mode')}</strong>{' '}
+                  {t('— flatten the {drv} with cut-only EQ/shelves (≤ {n} bands), built as series traps / shelf groups (+ Zobel when the impedance rises) and component-tuned against the measurement.', { drv: soloDriver === 'woofer' ? t('woofer/mid') : t('tweeter'), n: vfEqBands })}
                   <br />
-                  {stagedOn ? `Staged: target ≤ ${targetRipple} dB peak ripple` : 'Classic full-budget run'}
+                  {stagedOn
+                    ? t('Staged: target ≤ {r} dB peak ripple', { r: targetRipple })
+                    : t('Classic full-budget run')}
                   {soloFloorOn && soloFloorInfo
-                    ? ` · flat at ${soloFloorInfo.floor} dB (reaches ${hz(soloFloorInfo.reach[0])}–${hz(soloFloorInfo.reach[1])})`
-                    : ` · sensitivity budget ${soloSensDb} dB`}
+                    ? ` · ${t('flat at {db} dB (reaches {lo}–{hi})', { db: soloFloorInfo.floor, lo: hz(soloFloorInfo.reach[0]), hi: hz(soloFloorInfo.reach[1]) })}`
+                    : ` · ${t('sensitivity budget {db} dB', { db: soloSensDb })}`}
                   <br />
                   {catalogSnap && hasImportedCatalog()
-                    ? `catalog parts · profile ${snapProfile}`
-                    : 'Theoretically ideal (continuous) component values — no snap'}
+                    ? t('catalog parts · profile {p}', { p: snapProfile })
+                    : t('Theoretically ideal (continuous) component values — no snap')}
                 </p>
               ) : (
               <p>
                 {stagedOn
-                  ? `Staged: targets ≤ ${targetRipple} dB / ${targetPhase}°`
-                  : 'Classic full-budget run'}{' '}
-                · priority {100 - phasePriority}/{phasePriority}
+                  ? t('Staged: targets ≤ {r} dB / {p}°', { r: targetRipple, p: targetPhase })
+                  : t('Classic full-budget run')}{' '}
+                · {t('priority {r}/{p}', { r: 100 - phasePriority, p: phasePriority })}
                 <br />
-                {xoRangeOn ? `Crossover pinned at ${xoFreqHz} ± ${xoMarginHz} Hz` : 'Crossover free'}
-                {tweeterHpFloor !== null && ` · HP floor ${tweeterHpFloor} Hz`}
+                {xoRangeOn
+                  ? t('Crossover pinned at {f} ± {m} Hz', { f: xoFreqHz, m: xoMarginHz })
+                  : t('Crossover free')}
+                {tweeterHpFloor !== null && ` · ${t('HP floor {f} Hz', { f: tweeterHpFloor })}`}
                 <br />
-                Alignment {hpLpPref === 'auto' ? 'Auto' : hpLpPref} · slopes mid{' '}
-                {acSlopeMid === 'auto' ? 'Auto' : `${acSlopeMid} dB/oct`} / tweeter{' '}
-                {acSlopeTweeter === 'auto' ? 'Auto' : `${acSlopeTweeter} dB/oct`}
+                {t('Alignment {a} · slopes mid {m} / tweeter {tw}', {
+                  a: hpLpPref === 'auto' ? t('Auto') : hpLpPref,
+                  m: acSlopeMid === 'auto' ? t('Auto') : `${acSlopeMid} dB/oct`,
+                  tw: acSlopeTweeter === 'auto' ? t('Auto') : `${acSlopeTweeter} dB/oct`,
+                })}
                 <br />
                 {catalogSnap && hasImportedCatalog()
-                  ? `catalog parts · profile ${snapProfile}`
-                  : 'Theoretically ideal (continuous) component values — no snap'}
+                  ? t('catalog parts · profile {p}', { p: snapProfile })
+                  : t('Theoretically ideal (continuous) component values — no snap')}
               </p>
               )}
               <p className="sub">
-                Optimize runs the full chain: design →{' '}
-                {soloDriver ? 'solo topology build' : 'passive build'} → component tune
-                {catalogSnap && hasImportedCatalog() ? ' → catalog snap' : ''}.
+                {t('Optimize runs the full chain: design →')}{' '}
+                {soloDriver ? t('solo topology build') : t('passive build')} → {t('component tune')}
+                {catalogSnap && hasImportedCatalog() ? ` → ${t('catalog snap')}` : ''}.
               </p>
             </>
           )}
@@ -8895,11 +8893,11 @@ export default function App() {
                   // property of the design (solo has no crossover step).
                   onClick={() => setWizardStep(wizardSteps[wizardPos - 1].id)}
                 >
-                  ← Back
+                  ← {t('Back')}
                 </button>
               ) : (
                 <button type="button" onClick={() => setWizardOpen(false)}>
-                  Cancel
+                  {t('Cancel')}
                 </button>
               )}
             </div>
@@ -8912,11 +8910,11 @@ export default function App() {
                   disabled={wizardStep === 0 && wizardMissing.length > 0}
                   title={
                     wizardStep === 0 && wizardMissing.length > 0
-                      ? `Still needed for a ${wizardWays}-way: ${wizardMissing.join(', ')}`
+                      ? `${t('Still needed for a {n}-way:', { n: wizardWays })} ${wizardMissing.map((m) => t(m)).join(', ')}`
                       : ''
                   }
                 >
-                  Next →
+                  {t('Next')} →
                 </button>
               ) : (
                 <button
@@ -8933,7 +8931,7 @@ export default function App() {
                   }}
                   disabled={vfBusy || !result}
                 >
-                  🚀 Optimize — design for me
+                  🚀 {t('Optimize — design for me')}
                 </button>
               )}
             </div>
@@ -9341,7 +9339,7 @@ export default function App() {
                   title={`Time base per adjacent pair, judged on EXCESS phase (measured − minimum-phase) over a band where both drivers play — the raw-phase check absorbs each driver's own rolloff and misreads a healthy set as broken.\n\n${pairs.map((p) => p.message).join('\n\n')}`}
                 >
                   <span className="chip-dot" />
-                  Timing <strong>{worst.verdict}</strong>
+                  {t('Timing')} <strong>{worst.verdict}</strong>
                 </span>
               );
             })()
@@ -9351,7 +9349,7 @@ export default function App() {
               title={timing.ref.message}
             >
               <span className="chip-dot" />
-              Timing <strong>{timing.ref.verdict}</strong>
+              {t('Timing')} <strong>{timing.ref.verdict}</strong>
             </span>
           ) : null}
           {combinedFlat && (
@@ -9361,17 +9359,17 @@ export default function App() {
                   ? 'chip-neutral'
                   : combinedFlat.score >= 85 ? 'chip-ok' : combinedFlat.score >= 70 ? 'chip-warn' : 'chip-bad'
               }`}
-              title={`${!designShaped ? 'RAW DRIVERS — no crossover is shaping the sum yet, so this is just where you start from, not a problem. It colours once a design exists.\n\n' : ''}Whole-range flatness of the combined response, 0–100 — from the AVERAGE deviation over the visible range, so one narrow dip can't dominate the verdict (the peak ±dB in the SPL strip still shows it)`}
+              title={`${!designShaped ? t('RAW DRIVERS — no crossover is shaping the sum yet, so this is just where you start from, not a problem. It colours once a design exists.') + '\n\n' : ''}${t("Whole-range flatness of the combined response, 0–100 — from the AVERAGE deviation over the visible range, so one narrow dip can't dominate the verdict (the peak ±dB in the SPL strip still shows it)")}`}
             >
-              Response <strong>{combinedFlat.score.toFixed(0)}</strong>
+              {t('Response')} <strong>{combinedFlat.score.toFixed(0)}</strong>
             </span>
           )}
           {integration?.overlapCentreHz != null && (
             <span
               className="status-chip"
-              title="Where the two drivers' levels meet in the current sim — the acoustic crossover point. Neutral by design: a location, not a verdict."
+              title={t("Where the two drivers' levels meet in the current sim — the acoustic crossover point. Neutral by design: a location, not a verdict.")}
             >
-              Overlap <strong>{Math.round(integration.overlapCentreHz)} Hz</strong>
+              {t('Overlap')} <strong>{Math.round(integration.overlapCentreHz)} Hz</strong>
             </span>
           )}
           {pairScores &&
@@ -9395,9 +9393,9 @@ export default function App() {
                   ? 'chip-neutral'
                   : phaseStats.p95ErrorDeg <= 45 ? 'chip-ok' : phaseStats.p95ErrorDeg <= 90 ? 'chip-warn' : 'chip-bad'
               }`}
-              title={`${!designShaped ? 'RAW DRIVERS — no crossover yet, so this is the starting point, not a fault. It colours once a design exists.\n\n' : ''}95th-percentile phase error in the driver overlap — ≤45° sums fully, ≤90° still gains ≥3 dB, beyond that the drivers stop helping each other`}
+              title={`${!designShaped ? t('RAW DRIVERS — no crossover yet, so this is the starting point, not a fault. It colours once a design exists.') + '\n\n' : ''}${t('95th-percentile phase error in the driver overlap — ≤45° sums fully, ≤90° still gains ≥3 dB, beyond that the drivers stop helping each other')}`}
             >
-              Phase P95 <strong>{phaseStats.p95ErrorDeg.toFixed(0)}°</strong>
+              {t('Phase P95')} <strong>{phaseStats.p95ErrorDeg.toFixed(0)}°</strong>
             </span>
           )}
           {pairScores && (pairScores.low.stats || pairScores.high.stats) && (() => {
@@ -9426,9 +9424,12 @@ export default function App() {
               type="button"
               className="status-chip chip-warn chip-issues"
               onClick={() => setIssuesOpen(true)}
-              title="Everything the app is currently warning about, in one list — click"
+              title={t('Everything the app is currently warning about, in one list — click')}
             >
-              ⚠ <strong>{issues.length} issue{issues.length === 1 ? '' : 's'}</strong>
+              ⚠{' '}
+              <strong>
+                {issues.length === 1 ? t('1 issue') : t('{n} issues', { n: issues.length })}
+              </strong>
             </button>
           )}
         </div>
@@ -9444,9 +9445,9 @@ export default function App() {
               type="button"
               className={uiMode === m ? 'active' : ''}
               onClick={() => setUiMode(m)}
-              title={tip}
+              title={t(tip)}
             >
-              {label}
+              {t(label)}
             </button>
           ))}
         </div>
@@ -9463,45 +9464,64 @@ export default function App() {
               type="button"
               className={layoutMode === m ? 'active' : ''}
               onClick={() => setLayoutMode(m)}
-              title={tip}
+              title={t(tip)}
             >
-              {label}
+              {t(label)}
+            </button>
+          ))}
+        </div>
+        <div className="theme-switch" role="group" aria-label="Language">
+          {LANGS.map((l) => (
+            <button
+              key={l.id}
+              type="button"
+              className={uiLang === l.id ? 'active' : ''}
+              onClick={() => setLang(l.id)}
+              title={t('Interface language — anything not translated yet falls back to English')}
+            >
+              {l.label}
             </button>
           ))}
         </div>
         <div className="theme-switch" role="group" aria-label="Theme">
-          {(['system', 'light', 'dark'] as const).map((t) => (
+          {(['system', 'light', 'dark'] as const).map((th) => (
             <button
-              key={t}
+              key={th}
               type="button"
-              className={theme === t ? 'active' : ''}
-              onClick={() => setTheme(t)}
-              title={`Theme: ${t === 'system' ? 'follow the OS' : t}`}
+              className={theme === th ? 'active' : ''}
+              onClick={() => setTheme(th)}
+              title={
+                th === 'system'
+                  ? t('Theme: follow the OS')
+                  : th === 'light'
+                    ? t('Theme: light')
+                    : t('Theme: dark')
+              }
             >
-              {t === 'system' ? 'Auto' : t === 'light' ? 'Light' : 'Dark'}
+              {th === 'system' ? t('Auto') : th === 'light' ? t('Light') : t('Dark')}
             </button>
           ))}
         </div>
         <button
           type="button"
           onClick={() => setPaletteOpen(true)}
-          title="Command palette — every action, searchable (⌘K / Ctrl+K); press ? for all shortcuts"
+          title={t('Command palette — every action, searchable (⌘K / Ctrl+K); press ? for all shortcuts')}
         >
           ⌘K
         </button>
         <button
           type="button"
           onClick={() => setMeasureGuideOpen(true)}
-          title="Measuring guide: where to aim the mic, how far back to stand, and what a turntable sweep really captures. The illustrations run on the same geometry the optimizer uses."
+          title={t('Measuring guide: where to aim the mic, how far back to stand, and what a turntable sweep really captures. The illustrations run on the same geometry the optimizer uses.')}
         >
-          📐 Measure
+          📐 {t('Measure')}
         </button>
         <button
           type="button"
           onClick={() => setHelpOpen(true)}
-          title="Manual: searchable explanation of every tab, the optimizer, the scores and the VituixCAD exchange (currently written in Dutch — translation is on the list)"
+          title={t('Manual: searchable explanation of every tab, the optimizer, the scores and the VituixCAD exchange (currently written in Dutch — translation is on the list)')}
         >
-          ❓ Help
+          ❓ {t('Help')}
         </button>
       </header>
 
@@ -9529,12 +9549,12 @@ export default function App() {
               type="button"
               className={`${designTab === id ? 'active' : ''}${done ? ' step-done' : ''}`}
               onClick={() => setDesignTab(id)}
-              title={tip}
+              title={t(tip)}
             >
               <span className="step-num" aria-hidden="true">
                 {done ? '✓' : i + 1}
               </span>
-              {label}
+              {t(label)}
             </button>
           ))}
         </nav>
@@ -9556,6 +9576,7 @@ export default function App() {
       >
         <aside
           className={`design-pane${pageDropArmed && !dropSide ? ' drop-page-armed' : ''}`}
+          data-drop-hint={t('⬇ Drop files — measurements go to a driver of your choice; a .vxp set, saved project, catalog or filter file loads straight away')}
           {...pageDropHandlers()}
         >
           {uiMode === 'guided' ? null : (
@@ -9574,9 +9595,9 @@ export default function App() {
                 type="button"
                 className={designTab === id ? 'active' : ''}
                 onClick={() => setDesignTab(id)}
-                title={tip}
+                title={t(tip)}
               >
-                {label}
+                {t(label)}
               </button>
             ))}
             </nav>
@@ -9591,7 +9612,7 @@ export default function App() {
       <div className="panel">
         <div className="tool-groups">
           <div className="tool-group">
-            <span className="tool-group-label">Measurements</span>
+            <span className="tool-group-label">{t('Measurements')}</span>
             <div className="tool-group-body files">
               {/* One card per driver, same colour identity as the charts,
                   the drawing and the driver step — and a completion status in
@@ -9619,56 +9640,66 @@ export default function App() {
                     {...dropHandlers(slotKey)}
                   >
                     <div className="drv-section-head">
-                      {title}
+                      {t(title)}
                       <span className="drv-section-status">
                         {dropSide === slotKey
-                          ? '⬇ drop to load'
+                          ? t('⬇ drop to load')
                           : loadedDrv
-                            ? `✓ response${angleCount > 1 ? ` · ${angleCount} angles` : ''}${hasZ ? ' · Z' : ' · no impedance yet'}`
-                            : 'no files yet — or drop them here'}
+                            ? `${t('✓ response')}${angleCount > 1 ? ` · ${t('{n} angles', { n: angleCount })}` : ''}${hasZ ? ' · Z' : ` · ${t('no impedance yet')}`}`
+                            : t('no files yet — or drop them here')}
                       </span>
                     </div>
                     <div className="drv-section-body">
+                      {/* The drop target must be SEEN, not discovered (Sander):
+                          the zone IS the browse button — one affordance, two
+                          entries (drag or click). */}
                       <label
+                        className="dropzone"
                         title={
                           role === 'mid'
-                            ? '3-way: the MIDDLE branch. FRD = frequency response (SPL + phase), ZMA = measured impedance — select the 0° file plus angle files and the .ZMA in one go. Needs a woofer AND a tweeter loaded to join the sum.'
-                            : 'FRD = frequency response (SPL + phase), ZMA = measured impedance. Select the 0° file plus all horizontal angle files and the .ZMA in one go — angles are recognised by filename.'
+                            ? t('3-way: the MIDDLE branch. FRD = frequency response (SPL + phase), ZMA = measured impedance — select the 0° file plus angle files and the .ZMA in one go. Needs a woofer AND a tweeter loaded to join the sum.')
+                            : t('FRD = frequency response (SPL + phase), ZMA = measured impedance. Select the 0° file plus all horizontal angle files and the .ZMA in one go — angles are recognised by filename.')
                         }
                       >
-                        FRD + ZMA (multi-select all hor angles + impedance)
+                        <span className="dz-icon" aria-hidden="true">⬇</span>
+                        <span className="dz-text">
+                          <strong>{t('Drop FRD + ZMA files here')}</strong>
+                          <span>
+                            {t('response + all horizontal angles + impedance in one go — or click to browse')}
+                          </span>
+                        </span>
                         <input
                           type="file"
                           accept=".frd,.txt,.zma,.ZMA,.lim"
                           multiple
                           onChange={loadDriverFiles(slotKey)}
                         />
-                        {role === 'mid' && midDrv && (
-                          <span className="derived">
-                      {' '}✓ {midDrv.name}{' '}
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setMidDrv(null);
-                          setZStandalone((prev) => {
-                            const next = { ...prev };
-                            delete next.mid;
-                            return next;
-                          });
-                          setAngleSets((prev) => {
-                            if (!prev) return prev;
-                            const { mid: _drop, ...rest } = prev;
-                            return rest.woofer.length + rest.tweeter.length > 0 ? rest : null;
-                          });
-                        }}
-                        title="Remove the midrange branch (back to 2-way)"
-                        aria-label="Remove the midrange branch"
-                      >
-                        ✕
-                      </button>
-                          </span>
-                        )}
                       </label>
+                      {role === 'mid' && midDrv && (
+                        <span className="derived">
+                          ✓ {midDrv.name}{' '}
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setMidDrv(null);
+                              setZStandalone((prev) => {
+                                const next = { ...prev };
+                                delete next.mid;
+                                return next;
+                              });
+                              setAngleSets((prev) => {
+                                if (!prev) return prev;
+                                const { mid: _drop, ...rest } = prev;
+                                return rest.woofer.length + rest.tweeter.length > 0 ? rest : null;
+                              });
+                            }}
+                            title={t('Remove the midrange branch (back to 2-way)')}
+                            aria-label={t('Remove the midrange branch (back to 2-way)')}
+                          >
+                            ✕
+                          </button>
+                        </span>
+                      )}
                       {role !== 'high' &&
                         !!loadedDrv &&
                         (() => {
@@ -9679,13 +9710,13 @@ export default function App() {
                           const rep = merged[role];
                           return (
                             <div className="nf-slot">
-                              <strong>Near field — the low end the gate cannot reach</strong>
+                              <strong>{t('Near field — the low end the gate cannot reach')}</strong>
 
                       <label
                         className="file-button"
-                        title="Near-field measurement of the CONE: microphone 5 mm from the centre of the dust cap. This is what gives the branch a low end the gate cannot reach. Export with phase."
+                        title={t('Near-field measurement of the CONE: microphone 5 mm from the centre of the dust cap. This is what gives the branch a low end the gate cannot reach. Export with phase.')}
                       >
-                        {slot.cone ? `Cone: ${slot.cone.name}` : 'Load cone near field…'}
+                        {slot.cone ? `${t('Cone:')} ${slot.cone.name}` : t('Load cone near field…')}
                         <input
                           type="file"
                           accept=".frd,.txt"
@@ -9706,9 +9737,9 @@ export default function App() {
                         <>
                           <label
                             className="file-button"
-                            title="Optional: near-field measurement at the PORT mouth (or passive radiator). It is summed with the cone COMPLEX and weighted by its diameter — below the box tuning the two largely cancel, which a magnitude-only sum cannot represent."
+                            title={t('Optional: near-field measurement at the PORT mouth (or passive radiator). It is summed with the cone COMPLEX and weighted by its diameter — below the box tuning the two largely cancel, which a magnitude-only sum cannot represent.')}
                           >
-                            {slot.port ? `Port: ${slot.port.name}` : 'Load port near field…'}
+                            {slot.port ? `${t('Port:')} ${slot.port.name}` : t('Load port near field…')}
                             <input
                               type="file"
                               accept=".frd,.txt"
@@ -9716,8 +9747,8 @@ export default function App() {
                             />
                           </label>
                           {slot.port && (
-                            <span className="inline-num" title="Effective diameter of the port mouth, mm. A rectangular vent: the diameter of a circle with the same area. This is its weight in the sum.">
-                              {'port Ø '}
+                            <span className="inline-num" title={t('Effective diameter of the port mouth, mm. A rectangular vent: the diameter of a circle with the same area. This is its weight in the sum.')}>
+                              {t('port Ø') + ' '}
                               <input
                                 type="number"
                                 min={0}
@@ -9736,8 +9767,8 @@ export default function App() {
                               </button>
                             </span>
                           )}
-                          <span className="inline-num" title="Splice centre and how wide the crossfade is. Leave the frequency empty and the app proposes one that sits inside both validity limits: above what the gate supports, below where the cone stops being a simple source (ka = 1).">
-                            {'splice at '}
+                          <span className="inline-num" title={t('Splice centre and how wide the crossfade is. Leave the frequency empty and the app proposes one that sits inside both validity limits: above what the gate supports, below where the cone stops being a simple source (ka = 1).')}>
+                            {t('splice at') + ' '}
                             <input
                               type="number"
                               min={0}
@@ -9746,7 +9777,7 @@ export default function App() {
                               value={slot.transitionHz}
                               onChange={(e) => set({ transitionHz: e.target.value })}
                             />
-                            {' Hz, blend '}
+                            {' ' + t('Hz, blend') + ' '}
                             <input
                               type="number"
                               min={0.25}
@@ -9757,20 +9788,20 @@ export default function App() {
                             />
                             {' oct'}
                           </span>
-                          <label title="A near-field measurement is a half-space result throughout, but a real cabinet loses up to 6 dB at low frequency as it radiates into full space. Without this the spliced low end reads too high. Deliberately an adjustable shelf rather than a diffraction model: the published formulas disagree by about 3x and measurement disagrees with all of them.">
+                          <label title={t('A near-field measurement is a half-space result throughout, but a real cabinet loses up to 6 dB at low frequency as it radiates into full space. Without this the spliced low end reads too high. Deliberately an adjustable shelf rather than a diffraction model: the published formulas disagree by about 3x and measurement disagrees with all of them.')}>
                             <input
                               type="checkbox"
                               checked={slot.stepOn}
                               onChange={(e) => set({ stepOn: e.target.checked })}
                             />
-                            {' baffle step back in'}
+                            {' ' + t('baffle step back in')}
                           </label>
                           {nfMax !== null && (
                             <span className="derived">
-                              near field valid below ≈ {Math.round(nfMax)} Hz (ka = 1)
+                              {t('near field valid below ≈ {hz} Hz (ka = 1)', { hz: Math.round(nfMax) })}
                               {cabinetInfo.reliable
-                                ? ` · far field above ≈ ${Math.round(cabinetInfo.reliable.fromHz)} Hz`
-                                : ' · enter the mic distance and reference height for the far-field limit'}
+                                ? ` · ${t('far field above ≈ {hz} Hz', { hz: Math.round(cabinetInfo.reliable.fromHz) })}`
+                                : ` · ${t('enter the mic distance and reference height for the far-field limit')}`}
                             </span>
                           )}
                           {rep && (
@@ -9785,8 +9816,11 @@ export default function App() {
                   </div>
                 );
               })}
-              <label title="Optional: import a VituixCAD project to simulate Stefan's crossover variants. Select the .vxp together with its .ZMA and response .txt files.">
-                VituixCAD project (.vxp + .ZMA + response .txt — select together)
+              <p className="drop-anywhere-hint">
+                {t('⬇ Dropping works on this whole step — a .vxp set, saved project, catalog or filter file lands in the right place by itself; measurements ask which driver they belong to.')}
+              </p>
+              <label title={t("Optional: import a VituixCAD project to simulate crossover variants. Select the .vxp together with its .ZMA and response .txt files.")}>
+                {t('VituixCAD project (.vxp + .ZMA + response .txt — select together)')}
                 <input
                   type="file"
                   accept=".vxp,.zma,.ZMA,.txt,.frd"
@@ -9794,13 +9828,13 @@ export default function App() {
                   onChange={loadVituixFiles}
                 />
               </label>
-              <label title="Phase peer-comparison: in VituixCAD export the FILTERED woofer and tweeter responses (crossover applied), select BOTH here. The Phase chart then draws VituixCAD's relative phase (tweeter − woofer) in our convention as a dashed reference.">
-                VituixCAD phase reference (filtered woofer + tweeter — select both)
+              <label title={t("Phase peer-comparison: in VituixCAD export the FILTERED woofer and tweeter responses (crossover applied), select BOTH here. The Phase chart then draws VituixCAD's relative phase (tweeter − woofer) in our convention as a dashed reference.")}>
+                {t('VituixCAD phase reference (filtered woofer + tweeter — select both)')}
                 <input type="file" accept=".frd,.txt" multiple onChange={loadReference} />
                 {refResp && <span className="derived"> ✓ {refResp.names}</span>}
               </label>
-              <label title="Model vs measurement (the validation loop): measure the BUILT system, load that FRD here, and the SPL chart overlays it against the simulated combined — level-aligned, with the deviation numbers in the SPL strip. Load again to replace.">
-                Verification measurement (built system, FRD)
+              <label title={t('Model vs measurement (the validation loop): measure the BUILT system, load that FRD here, and the SPL chart overlays it against the simulated combined — level-aligned, with the deviation numbers in the SPL strip. Load again to replace.')}>
+                {t('Verification measurement (built system, FRD)')}
                 <input type="file" accept=".frd,.txt" onChange={loadVerification} />
                 {verify && (
                   <span className="derived">
@@ -9808,8 +9842,8 @@ export default function App() {
                     <button
                       type="button"
                       onClick={() => setVerify(null)}
-                      title="Remove the verification measurement"
-                      aria-label="Remove the verification measurement"
+                      title={t('Remove the verification measurement')}
+                      aria-label={t('Remove the verification measurement')}
                     >
                       ✕
                     </button>
@@ -9822,32 +9856,32 @@ export default function App() {
                   setCmpStep(1);
                   setCmpOpen(true);
                 }}
-                title="Guided model-vs-measurement check: design, drivers, measurement, verdict — step by step"
+                title={t('Guided model-vs-measurement check: design, drivers, measurement, verdict — step by step')}
               >
-                🔬 Compare wizard
+                🔬 {t('Compare wizard')}
               </button>
               <button
                 type="button"
                 onClick={loadDemo}
-                title="Load the bundled KOAN measurements (all angles + impedances + vxp variants) — instant playground"
+                title={t('Load the bundled KOAN measurements (all angles + impedances + vxp variants) — instant playground')}
               >
-                Load KOAN demo data
+                {t('Load KOAN demo data')}
               </button>
             </div>
           </div>
           <div className="tool-group">
-            <span className="tool-group-label">Project</span>
+            <span className="tool-group-label">{t('Project')}</span>
             <div className="tool-group-body">
               <button
                 type="button"
                 onClick={saveProject}
                 disabled={!woofer && !tweeter}
-                title="Download everything (raw measurement files + design state) as one project file"
+                title={t('Download everything (raw measurement files + design state) as one project file')}
               >
-                Save project
+                {t('Save project')}
               </button>
-              <label className="file-button" title="Restore a previously saved project file">
-                Load project
+              <label className="file-button" title={t('Restore a previously saved project file')}>
+                {t('Load project')}
                 <input
                   type="file"
                   accept=".json,.adsproj"
@@ -9855,8 +9889,8 @@ export default function App() {
                   style={{ display: 'none' }}
                 />
               </label>
-              <button type="button" onClick={resetProject} title="Clear autosave and start fresh">
-                Reset
+              <button type="button" onClick={resetProject} title={t('Clear autosave and start fresh')}>
+                {t('Reset')}
               </button>
             </div>
           </div>
@@ -9866,13 +9900,13 @@ export default function App() {
               thing a Reset does NOT clear, which is worth saying out loud
               right next to the Reset button. */}
           <div className="tool-group">
-            <span className="tool-group-label">Component catalog</span>
+            <span className="tool-group-label">{t('Component catalog')}</span>
             <div className="tool-group-body">
               <label
                 className="file-button"
-                title="Import a component catalog (brands, series, E-grids, tiers, prices) — the optimizer's catalog snapping and the BOM use it. A series with a built-in id overrides the built-in."
+                title={t("Import a component catalog (brands, series, E-grids, tiers, prices) — the optimizer's catalog snapping and the BOM use it. A series with a built-in id overrides the built-in.")}
               >
-                Import catalog
+                {t('Import catalog')}
                 <input
                   type="file"
                   accept=".json,.adscatalog.json"
@@ -9883,41 +9917,42 @@ export default function App() {
               <button
                 type="button"
                 onClick={exportCatalog}
-                title="Download the current catalog as an editable JSON template"
+                title={t('Download the current catalog as an editable JSON template')}
               >
-                Export catalog
+                {t('Export catalog')}
               </button>
               <button
                 type="button"
                 onClick={() => setCatalogMgrOpen(true)}
-                title="Add, edit or remove exact SKUs (values, DCR/ESR, prices, tiers) without leaving the app — saved to the same catalog the optimizer and BOM use"
+                title={t('Add, edit or remove exact SKUs (values, DCR/ESR, prices, tiers) without leaving the app — saved to the same catalog the optimizer and BOM use')}
               >
-                🗂 Manage…
+                🗂 {t('Manage…')}
               </button>
               <button
                 type="button"
                 onClick={loadDemoCatalog}
-                title="Load the priced Jantzen/Mundorf demo catalog on its own — without the KOAN measurements. Snapping and the BOM need a priced catalog to mean anything, and this is the quickest way back to one."
+                title={t('Load the priced Jantzen/Mundorf demo catalog on its own — without the KOAN measurements. Snapping and the BOM need a priced catalog to mean anything, and this is the quickest way back to one.')}
               >
-                🎧 Demo catalog
+                🎧 {t('Demo catalog')}
               </button>
               <span className="derived" style={{ flexBasis: '100%' }}>
                 {hasImportedCatalog()
-                  ? 'A catalog is loaded — it lives outside the project, so Reset keeps it. '
-                  : 'Built-in library only — import one, or take the demo catalog, to unlock snapping and real prices. '}
-                {allSeries().length} series
+                  ? t('A catalog is loaded — it lives outside the project, so Reset keeps it.') + ' '
+                  : t('Built-in library only — import one, or take the demo catalog, to unlock snapping and real prices.') + ' '}
+                {t('{n} series', { n: allSeries().length })}
                 {disabledSeries().length > 0 && (
                   <>
                     {' ('}
-                    <strong>{disabledSeries().length} switched off</strong>
+                    <strong>{t('{n} switched off', { n: disabledSeries().length })}</strong>
                     {')'}
                   </>
                 )}
-                {customCatalogParts().length > 0 && ` · ${customCatalogParts().length} exact parts`}
+                {customCatalogParts().length > 0 &&
+                  ` · ${t('{n} exact parts', { n: customCatalogParts().length })}`}
                 {allSeries().some((s) => s.basePrice !== undefined) ||
                 customCatalogParts().some((p) => p.priceEur !== undefined)
-                  ? ' · prices loaded'
-                  : ' · no prices yet'}
+                  ? ` · ${t('prices loaded')}`
+                  : ` · ${t('no prices yet')}`}
               </span>
             </div>
           </div>
@@ -9925,7 +9960,7 @@ export default function App() {
         {/* De bestandsINVENTARIS gaat over bestanden, dus hij hoort bij
             "Your project" -- niet bij wat je van een driver weet (Sander). */}
       <div className="panel">
-        <h2>Imported files</h2>
+        <h2>{t('Imported files')}</h2>
         {(() => {
           interface Row {
             key: string;
@@ -9950,7 +9985,7 @@ export default function App() {
               rows.push({
                 key: `${slot}:${loaded.name}`,
                 name: loaded.name,
-                detail: 'FRD — SPL response (0°)',
+                detail: t('FRD — SPL response (0°)'),
               });
             }
             for (const a of angleSets?.[slot] ?? []) {
@@ -9959,31 +9994,35 @@ export default function App() {
             }
             const z = zStandalone[zKey];
             if (z) {
-              rows.push({ key: `${slot}:${z.file.name}`, name: z.file.name, detail: 'ZMA — impedance' });
+              rows.push({ key: `${slot}:${z.file.name}`, name: z.file.name, detail: t('ZMA — impedance') });
             }
             if (rows.length > 0) groups.push({ title, colorVar, rows });
           };
           // Top-down everywhere (Sanders rule): tweeter, mid, woofers.
-          driverGroup('tweeter', tweeter, 'high', 'Tweeter', '--viz-tweeter');
-          driverGroup('mid', midDrv, 'mid', 'Midrange', '--viz-mid');
-          driverGroup('woofer', woofer, 'low', hasMidBranch ? 'Woofer' : 'Woofer / mid', '--viz-woofer');
+          driverGroup('tweeter', tweeter, 'high', t('Tweeter'), '--viz-tweeter');
+          driverGroup('mid', midDrv, 'mid', t('Midrange'), '--viz-mid');
+          driverGroup('woofer', woofer, 'low', t(hasMidBranch ? 'Woofer' : 'Woofer / mid'), '--viz-woofer');
           if (project) {
             const rows: Row[] = [
               {
                 key: `vxp:${project.vxpFile.name}`,
                 name: project.vxpFile.name,
-                detail: `.vxp — ${project.vxp.crossovers.length} crossover variants`,
+                detail: t('.vxp — {n} crossover variants', { n: project.vxp.crossovers.length }),
               },
             ];
             for (const [model, f] of Object.entries(project.impedanceFiles)) {
-              rows.push({ key: `vxp:${f.name}`, name: f.name, detail: `ZMA — impedance (${model})` });
+              rows.push({
+                key: `vxp:${f.name}`,
+                name: f.name,
+                detail: t('ZMA — impedance ({model})', { model }),
+              });
             }
-            groups.push({ title: 'VituixCAD project', rows });
+            groups.push({ title: t('VituixCAD project'), rows });
           }
           if (groups.length === 0) {
             return (
               <p className="sub" style={{ margin: 0 }}>
-                Nothing imported yet — load driver files above, or hit "Load KOAN demo data".
+                {t('Nothing imported yet — load driver files above, or hit "Load KOAN demo data".')}
               </p>
             );
           }
@@ -10003,7 +10042,7 @@ export default function App() {
                   </div>
                   <input
                     className="file-note"
-                    placeholder="Add a note… (mic distance, smoothing, gate, which prototype)"
+                    placeholder={t('Add a note… (mic distance, smoothing, gate, which prototype)')}
                     value={fileNotes[r.key] ?? ''}
                     onChange={(e) => {
                       const v = e.target.value;
@@ -10820,9 +10859,9 @@ export default function App() {
             <h2>{uiMode === 'guided' ? 'Design the filter' : 'Virtual filters (target design)'}</h2>
             <p
               className="sub sim-source"
-              title="The sim's precedence: an active editor network wins over a vxp variant, which wins over the virtual filters, which win over raw drivers. Every chart on the right shows THIS."
+              title={t("The sim's precedence: an active editor network wins over a vxp variant, which wins over the virtual filters, which win over raw drivers. Every chart on the right shows THIS.")}
             >
-              Charts show: <strong>{simSource}</strong>
+              {t('Charts show:')} <strong>{simSource}</strong>
             </p>
             {uiMode === 'guided' && (
               <p className="sub">
@@ -11533,8 +11572,8 @@ export default function App() {
                  optimizing, the first line must say it worked and where to go
                  next — the technical summary below stays for the curious. */
               <p className="result-good">
-                ✓ Design ready — the charts on the right show it now.{' '}
-                <strong>Next: Your build</strong> has the schematic and the parts list.
+                ✓ {t('Design ready — the charts on the right show it now.')}{' '}
+                <strong>{t('Next: Your build')}</strong> {t('has the schematic and the parts list.')}
               </p>
             )}
             {vfOpt && (
@@ -11762,9 +11801,9 @@ export default function App() {
             <h2>Network editor (passive)</h2>
             <p
               className="sub sim-source"
-              title="The sim's precedence: an active editor network wins over a vxp variant, which wins over the virtual filters, which win over raw drivers. Every chart on the right shows THIS."
+              title={t("The sim's precedence: an active editor network wins over a vxp variant, which wins over the virtual filters, which win over raw drivers. Every chart on the right shows THIS.")}
             >
-              Charts show: <strong>{simSource}</strong>
+              {t('Charts show:')} <strong>{simSource}</strong>
             </p>
             <p className="sub" style={{ marginBottom: '0.8rem' }}>
               Drag parts, draw wires, edit values — the schematic IS the network: parts connect
@@ -12044,9 +12083,8 @@ export default function App() {
                  the result lives, and that the table below is a MENU, before
                  the eye hits eight columns of numbers. */
               <p className="result-good">
-                ✓ Design ready — the winner is loaded in the <strong>Working</strong> tab and
-                every chart shows it. The rows below are the full candidates: click one to try it,
-                💾 Save keeps the one you trust.
+                ✓ {t('Design ready — the winner is loaded in the')} <strong>Working</strong>{' '}
+                {t('tab and every chart shows it. The rows below are the full candidates: click one to try it, 💾 Save keeps the one you trust.')}
               </p>
             )}
             {chainScan && (
@@ -12391,7 +12429,7 @@ export default function App() {
                 return (
                   <div className="step-next-row">
                     <button type="button" className="step-next" onClick={() => setDesignTab(next)}>
-                      Next: {labels[next]} →
+                      {t('Next: {step} →', { step: t(labels[next]) })}
                     </button>
                   </div>
                 );
@@ -12459,17 +12497,16 @@ export default function App() {
            say what will appear here, and offer exactly the two actions that
            make it appear. */
         <div className="panel panel-empty pane-welcome">
-          <h2>The charts appear here</h2>
+          <h2>{t('The charts appear here')}</h2>
           <p className="sub">
-            Load a frequency response per driver and this pane fills with the summed SPL, the
-            phase alignment between the drivers, and everything else the design needs.
+            {t('Load a frequency response per driver and this pane fills with the summed SPL, the phase alignment between the drivers, and everything else the design needs.')}
           </p>
           <div className="row">
             <button type="button" className="empty-cta" onClick={() => loadDemo()}>
-              🎧 Load the demo measurements
+              🎧 {t('Load the demo measurements')}
             </button>
             <button type="button" className="empty-cta" onClick={() => setWizardOpen(true)}>
-              📁 Load your own (wizard) →
+              📁 {t('Load your own (wizard) →')}
             </button>
           </div>
         </div>
@@ -12477,7 +12514,7 @@ export default function App() {
       {result && (
         <>
           <div className="panel-toggles">
-            <span className="toggles-cap">Charts</span>
+            <span className="toggles-cap">{t('Charts')}</span>
             {PANEL_KEYS.map((k) => (
               <button
                 key={k}
@@ -12486,13 +12523,13 @@ export default function App() {
                 aria-pressed={showPanels[k]}
                 title={
                   showPanels[k]
-                    ? 'Hide this panel (skips its computation too)'
-                    : 'Show this panel'
+                    ? t('Hide this panel (skips its computation too)')
+                    : t('Show this panel')
                 }
                 onClick={() => setShowPanels((p) => ({ ...p, [k]: !p[k] }))}
               >
                 {showPanels[k] ? '✓ ' : ''}
-                {PANEL_LABEL[k]}
+                {t(PANEL_LABEL[k])}
               </button>
             ))}
           </div>
@@ -12716,7 +12753,7 @@ export default function App() {
 
           {directivity && (
             <div className="panel">
-              <h2>Directivity (horizontal)</h2>
+              <h2>{t('Directivity (horizontal)')}</h2>
               <p className="sub" style={{ marginBottom: '0.8rem' }}>
                 Same filter at every measured angle ({directivity.angles.join('/')}° hor, one side).
                 {Number(cabinet.baffleWidthMm) > Number(cabinet.baffleHeightMm)
@@ -12816,23 +12853,25 @@ export default function App() {
               here, and what it needs. */}
           {(showPanels.directivity || showPanels.sonogram) && !directivity && result && (
             <div className="panel panel-empty">
-              <h2>Directivity{showPanels.sonogram ? ' & sonogram' : ''} (horizontal)</h2>
+              <h2>
+                {showPanels.sonogram
+                  ? t('Directivity & sonogram (horizontal)')
+                  : t('Directivity (horizontal)')}
+              </h2>
               <p className="sub">
-                Appears once angle measurements are loaded — select the 15/30/45°… sweeps together
-                with each driver's 0° file on the Import tab
-                {threeWay ? ' (all three drivers need a set)' : ''}. It shows how the design
-                behaves off-axis: the sound that reaches you via the walls. The demo set includes
-                a full set of angles.
+                {t("Appears once angle measurements are loaded — select the 15/30/45°… sweeps together with each driver's 0° file on the Import tab")}
+                {threeWay ? t(' (all three drivers need a set)') : ''}
+                {t('. It shows how the design behaves off-axis: the sound that reaches you via the walls. The demo set includes a full set of angles.')}
               </p>
               <button type="button" className="empty-cta" onClick={() => setDesignTab('import')}>
-                Open {uiMode === 'guided' ? 'Your project' : 'the Import tab'} →
+                {t('Open {place} →', { place: uiMode === 'guided' ? t('Your project') : t('the Import tab') })}
               </button>
             </div>
           )}
 
           {showPanels.transfer && sim?.transfers && result && (
             <div className="panel">
-              <h2>Filter transfer (driver voltage vs source)</h2>
+              <h2>{t('Filter transfer (driver voltage vs source)')}</h2>
               <Chart
                 storageKey="transfer"
                 series={[
@@ -12869,35 +12908,31 @@ export default function App() {
 
           {showPanels.transfer && !sim?.transfers && result && (
             <div className="panel panel-empty">
-              <h2>Filter transfer (driver voltage vs source)</h2>
+              <h2>{t('Filter transfer (driver voltage vs source)')}</h2>
               <p className="sub">
-                Appears once a crossover network runs in the sim — build one (Optimize, or Build
-                passive filter on the Filters tab), draw one on the Network tab, or pick a
-                VituixCAD variant. It shows the electrical filter each driver actually receives.
+                {t('Appears once a crossover network runs in the sim — build one (Optimize, or Build passive filter on the Filters tab), draw one on the Network tab, or pick a VituixCAD variant. It shows the electrical filter each driver actually receives.')}
               </p>
               <button type="button" className="empty-cta" onClick={() => setDesignTab('filters')}>
-                Open {uiMode === 'guided' ? 'Design it' : 'the Filters tab'} →
+                {t('Open {place} →', { place: uiMode === 'guided' ? t('Design it') : t('the Filters tab') })}
               </button>
             </div>
           )}
 
           {showPanels.impedance && !systemZInfo && result && (
             <div className="panel panel-empty">
-              <h2>System impedance (amplifier load)</h2>
+              <h2>{t('System impedance (amplifier load)')}</h2>
               <p className="sub">
-                Appears once a passive network with measured impedances runs in the sim. It shows
-                the load your amplifier sees — the side of a design a response chart cannot show,
-                and the reason a "flat" crossover can still be a bad one.
+                {t('Appears once a passive network with measured impedances runs in the sim. It shows the load your amplifier sees — the side of a design a response chart cannot show, and the reason a "flat" crossover can still be a bad one.')}
               </p>
               <button type="button" className="empty-cta" onClick={() => setDesignTab('filters')}>
-                Open {uiMode === 'guided' ? 'Design it' : 'the Filters tab'} →
+                {t('Open {place} →', { place: uiMode === 'guided' ? t('Design it') : t('the Filters tab') })}
               </button>
             </div>
           )}
 
           {systemZInfo && result && (
             <div className="panel">
-              <h2>System impedance (amplifier load)</h2>
+              <h2>{t('System impedance (amplifier load)')}</h2>
               <div className="score-strip">
                 <span className="strip-label">Z min</span>
                 <span

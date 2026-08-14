@@ -1262,6 +1262,83 @@ button.chip-issues {
   background: color-mix(in srgb, var(--accent) 8%, transparent);
 }
 
+/* Visible drop targets on the import step (Sander: the drag & drop must be
+   SEEN, not discovered). The label wraps a visually-hidden file input, so the
+   whole zone doubles as the click-to-browse button. Tinted per driver via
+   --drv-color — the same identity the card, the drawing and the charts wear. */
+.tool-group-body.files label.dropzone {
+  flex-direction: row;
+  align-items: center;
+}
+.dropzone {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  padding: 0.6rem 0.8rem;
+  border: 1.5px dashed color-mix(in srgb, var(--drv-color, var(--muted)) 55%, var(--border));
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--drv-color, var(--muted)) 4%, transparent);
+  cursor: pointer;
+  transition:
+    border-color 120ms ease,
+    background-color 120ms ease;
+}
+.dropzone:hover,
+.drv-section.drop-armed .dropzone {
+  border-color: var(--drv-color, var(--accent));
+  background: color-mix(in srgb, var(--drv-color, var(--accent)) 10%, transparent);
+}
+.dropzone:has(input:focus-visible) {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+.dz-icon {
+  display: grid;
+  place-items: center;
+  width: 2rem;
+  height: 2rem;
+  flex: 0 0 auto;
+  border-radius: 50%;
+  border: 1.5px dashed color-mix(in srgb, var(--drv-color, var(--muted)) 65%, var(--border));
+  color: var(--drv-color, var(--fg));
+  font-size: 1rem;
+}
+.dz-text {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  min-width: 0;
+}
+.dz-text strong {
+  color: var(--fg);
+  font-size: 0.85rem;
+}
+.dz-text > span {
+  font-size: 0.75rem;
+  color: var(--muted);
+}
+/* The zone replaces the native control; the input stays focusable so the
+   keyboard still opens the picker (Enter/Space), invisible but not display:
+   none — that would drop it from the tab order. */
+.dropzone input[type='file'] {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  border: 0;
+}
+/* The page-wide drop exists too — say so, once, under the cards. */
+.drop-anywhere-hint {
+  flex-basis: 100%;
+  margin: 0;
+  font-size: 0.78rem;
+  color: var(--muted);
+}
+
 /* Page-wide drop on the import step: one overlay that says the app will sort
    whatever lands. pointer-events: none so the drop still reaches the pane
    (and the driver cards keep their own, more precise, target). */
@@ -1269,7 +1346,8 @@ button.chip-issues {
   position: relative;
 }
 .design-pane.drop-page-armed::after {
-  content: '⬇ Drop files — measurements go to a driver of your choice; a .vxp set, saved project, catalog or filter file loads straight away';
+  /* Text comes from the element so it can be translated — CSS content can't. */
+  content: attr(data-drop-hint);
   position: absolute;
   inset: 8px;
   z-index: 5;
