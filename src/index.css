@@ -2744,6 +2744,12 @@ button:disabled {
   border-left: 3px solid var(--drv-color, var(--border));
   border-radius: 10px;
   background: var(--bg);
+  /* One shared width for all three cards. Without it each card sizes to its
+     own widest unwrappable line, and the woofer card's near-field row makes
+     it visibly wider than its siblings on a wide screen (Sanders' question).
+     The near-field row wraps fine inside — .nf-slot is flex-wrap already. */
+  width: 100%;
+  max-width: 640px;
 }
 .drv-section-head {
   display: flex;
