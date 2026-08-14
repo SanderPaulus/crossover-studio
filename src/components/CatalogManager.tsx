@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react';
 import { Modal } from './Modal';
+import { t } from '../lib/i18n';
 import type { CatalogKind, CatalogPart, CatalogSeries, CatalogTier } from '../lib/catalog';
 import { customCatalogParts, customSeries, disabledSeries } from '../lib/catalog';
 import {
@@ -219,7 +220,7 @@ export function CatalogManager({ onClose, onSave }: Props) {
   // Every dismissal route (Esc, backdrop, Cancel) lands here, so the
   // unsaved-changes guard cannot be walked around.
   const close = () => {
-    if (dirty && !window.confirm('Discard unsaved catalog changes?')) return;
+    if (dirty && !window.confirm(t('Discard unsaved catalog changes?'))) return;
     onClose();
   };
 
@@ -335,15 +336,15 @@ export function CatalogManager({ onClose, onSave }: Props) {
     `${toDisplayValue(s.kind, s.range[0])}–${toDisplayValue(s.kind, s.range[1])} ${unitFor(s.kind)}`;
 
   return (
-    <Modal open onClose={close} label="Catalog manager" cardClass="targets-card catmgr-card">
+    <Modal open onClose={close} label={t('Catalog manager')} cardClass="targets-card catmgr-card">
       <div className="help-head">
-        <div className="busy-title">🗂 Catalog manager</div>
+        <div className="busy-title">🗂 {t('Catalog manager')}</div>
         <div className="catmgr-views">
           <button
             type="button"
             className={view === 'skus' ? 'active' : ''}
             onClick={() => setView('skus')}
-            title="Exact purchasable parts (values, DCR/ESR, prices)"
+            title={t('Exact purchasable parts (values, DCR/ESR, prices)')}
           >
             SKUs
           </button>
@@ -351,15 +352,15 @@ export function CatalogManager({ onClose, onSave }: Props) {
             type="button"
             className={view === 'series' ? 'active' : ''}
             onClick={() => setView('series')}
-            title="Product-series definitions: value range, E-grid, gauges, price model — the generated grids"
+            title={t('Product-series definitions: value range, E-grid, gauges, price model — the generated grids')}
           >
-            Series
+            {t('Series')}
           </button>
         </div>
         <input
           type="search"
           className="help-search"
-          placeholder={view === 'skus' ? 'Search SKU / brand / series…' : 'Search series / brand…'}
+          placeholder={view === 'skus' ? t('Search SKU / brand / series…') : t('Search series / brand…')}
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           // Esc pressed inside a type=search field never reaches the dialog
@@ -373,14 +374,14 @@ export function CatalogManager({ onClose, onSave }: Props) {
         <select
           value={filterKind}
           onChange={(e) => setFilterKind(e.target.value as 'all' | CatalogKind)}
-          title="Filter by component kind"
+          title={t('Filter by component kind')}
         >
-          <option value="all">All kinds</option>
-          <option value="L">L — coils</option>
-          <option value="C">C — caps</option>
-          <option value="R">R — resistors</option>
+          <option value="all">{t('All kinds')}</option>
+          <option value="L">{t('L — coils')}</option>
+          <option value="C">{t('C — caps')}</option>
+          <option value="R">{t('R — resistors')}</option>
         </select>
-        <button type="button" onClick={close} title="Close (Esc)" aria-label="Close the catalog manager">
+        <button type="button" onClick={close} title={t('Close (Esc)')} aria-label={t('Close the catalog manager')}>
           ✕
         </button>
       </div>
@@ -388,15 +389,13 @@ export function CatalogManager({ onClose, onSave }: Props) {
       <p className="sub">
         {view === 'skus' ? (
           <>
-            {parts.length} exact SKUs · {priced} priced — edits stay in this panel until you save.
+            {t('{n} exact SKUs · {p} priced — edits stay in this panel until you save.', { n: parts.length, p: priced })}
             {parts.length === 0 &&
-              ' No imported catalog yet: add SKUs here or import a catalog file first.'}
+              ` ${t('No imported catalog yet: add SKUs here or import a catalog file first.')}`}
           </>
         ) : (
           <>
-            {seriesRows.length} series shown · {overrideCount} custom/override — a series is a value
-            GRID (range × E-steps); editing a built-in saves an override with the same id, removing
-            the override brings the built-in back.
+            {t('{n} series shown · {o} custom/override — a series is a value GRID (range × E-steps); editing a built-in saves an override with the same id, removing the override brings the built-in back.', { n: seriesRows.length, o: overrideCount })}
           </>
         )}
       </p>
@@ -407,11 +406,11 @@ export function CatalogManager({ onClose, onSave }: Props) {
             <thead>
               <tr>
                 <th>SKU</th>
-                <th>Brand</th>
-                <th>Series</th>
-                <th>Value</th>
-                <th title="Coil DCR / cap ESR (Ω)">DCR/ESR</th>
-                <th title="Coil wire gauge (mm)">⌀ mm</th>
+                <th>{t('Brand')}</th>
+                <th>{t('Series')}</th>
+                <th>{t('Value')}</th>
+                <th title={t('Coil DCR / cap ESR (Ω)')}>DCR/ESR</th>
+                <th title={t('Coil wire gauge (mm)')}>⌀ mm</th>
                 <th>W</th>
                 <th>€</th>
                 <th>Tier</th>
@@ -438,11 +437,11 @@ export function CatalogManager({ onClose, onSave }: Props) {
                     <button
                       type="button"
                       onClick={() => openSkuForm(toSkuDraft(p))}
-                      title="Edit this SKU (or double-click the row)"
+                      title={t('Edit this SKU (or double-click the row)')}
                     >
                       ✎
                     </button>
-                    <button type="button" onClick={() => deleteSku(p.id)} title="Remove this SKU">
+                    <button type="button" onClick={() => deleteSku(p.id)} title={t('Remove this SKU')}>
                       🗑
                     </button>
                   </td>
@@ -451,7 +450,7 @@ export function CatalogManager({ onClose, onSave }: Props) {
               {skuRows.length === 0 && (
                 <tr>
                   <td colSpan={10} className="sub">
-                    {parts.length === 0 ? 'No SKUs yet.' : 'Nothing matches the filter.'}
+                    {parts.length === 0 ? t('No SKUs yet.') : t('Nothing matches the filter.')}
                   </td>
                 </tr>
               )}
@@ -462,15 +461,15 @@ export function CatalogManager({ onClose, onSave }: Props) {
             <thead>
               <tr>
                 <th>Id</th>
-                <th>Brand</th>
-                <th>Series</th>
-                <th title="Value range of the generated grid">Range</th>
-                <th title="Value grid steps">E</th>
-                <th title="Coil gauges (mm) / cap ESR (Ω) / resistor power (W)">Phys</th>
-                <th title="Price model: € = base + factor × value (SI)">€ model</th>
+                <th>{t('Brand')}</th>
+                <th>{t('Series')}</th>
+                <th title={t('Value range of the generated grid')}>{t('Range')}</th>
+                <th title={t('Value grid steps')}>E</th>
+                <th title={t('Coil gauges (mm) / cap ESR (Ω) / resistor power (W)')}>{t('Phys')}</th>
+                <th title={t('Price model: € = base + factor × value (SI)')}>{t('€ model')}</th>
                 <th>Tier</th>
-                <th title="built-in = as shipped · override = your edit of a built-in · custom = your own series">Source</th>
-                <th title="Stock you are willing to buy. Switching a series off keeps the optimizer, the suggestions and the BOM away from it entirely.">Use</th>
+                <th title={t('built-in = as shipped · override = your edit of a built-in · custom = your own series')}>{t('Source')}</th>
+                <th title={t('Stock you are willing to buy. Switching a series off keeps the optimizer, the suggestions and the BOM away from it entirely.')}>{t('Use')}</th>
                 <th />
               </tr>
             </thead>
@@ -499,14 +498,14 @@ export function CatalogManager({ onClose, onSave }: Props) {
                     <td>{s.tier ?? ''}</td>
                     <td>
                       {r.source === 'skus' ? (
-                        <span title="No series record — this exists through its exact SKUs. Edit it via the SKUs tab; here you can switch it on or off.">
-                          from SKUs
+                        <span title={t('No series record — this exists through its exact SKUs. Edit it via the SKUs tab; here you can switch it on or off.')}>
+                          {t('from SKUs')}
                         </span>
                       ) : (
                         r.source
                       )}
                       {r.shadowedBy > 0 && (
-                        <span title={`${r.shadowedBy} exact SKUs cover this series — they shadow the grid, so grid edits only matter once those SKUs are gone`}>
+                        <span title={t('{n} exact SKUs cover this series — they shadow the grid, so grid edits only matter once those SKUs are gone', { n: r.shadowedBy })}>
                           {' '}· ⛱{r.shadowedBy}
                         </span>
                       )}
@@ -519,8 +518,8 @@ export function CatalogManager({ onClose, onSave }: Props) {
                         className="catmgr-use"
                         title={
                           off.has(s.id)
-                            ? 'Switched off — the optimizer, the suggestions and the BOM all ignore this series'
-                            : 'In use. Switch off to keep the optimizer away from this series entirely'
+                            ? t('Switched off — the optimizer, the suggestions and the BOM all ignore this series')
+                            : t('In use. Switch off to keep the optimizer away from this series entirely')
                         }
                       >
                         <input
@@ -528,7 +527,7 @@ export function CatalogManager({ onClose, onSave }: Props) {
                           checked={!off.has(s.id)}
                           onChange={() => toggleOff(s.id)}
                         />
-                        {off.has(s.id) ? 'off' : 'use'}
+                        {off.has(s.id) ? t('off') : t('use')}
                       </label>
                     </td>
                     <td className="catmgr-actions">
@@ -539,18 +538,18 @@ export function CatalogManager({ onClose, onSave }: Props) {
                         <button
                           type="button"
                           onClick={() => openSeriesForm(toSeriesDraft(s))}
-                          title={r.source === 'builtin' ? 'Edit — saves as an override of the built-in' : 'Edit this series'}
+                          title={r.source === 'builtin' ? t('Edit — saves as an override of the built-in') : t('Edit this series')}
                         >
                           ✎
                         </button>
                       )}
                       {r.source === 'override' && (
-                        <button type="button" onClick={() => deleteSeries(s.id)} title="Revert to the built-in definition">
+                        <button type="button" onClick={() => deleteSeries(s.id)} title={t('Revert to the built-in definition')}>
                           ↩
                         </button>
                       )}
                       {r.source === 'custom' && (
-                        <button type="button" onClick={() => deleteSeries(s.id)} title="Remove this series">
+                        <button type="button" onClick={() => deleteSeries(s.id)} title={t('Remove this series')}>
                           🗑
                         </button>
                       )}
@@ -561,7 +560,7 @@ export function CatalogManager({ onClose, onSave }: Props) {
               {seriesRows.length === 0 && (
                 <tr>
                   <td colSpan={11} className="sub">
-                    Nothing matches the filter.
+                    {t('Nothing matches the filter.')}
                   </td>
                 </tr>
               )}
@@ -580,7 +579,7 @@ export function CatalogManager({ onClose, onSave }: Props) {
         >
           <div className="catmgr-grid">
             <label>
-              SKU id
+              {t('SKU id')}
               <input
                 value={skuForm.id}
                 onChange={(e) => setSkuForm({ ...skuForm, id: e.target.value })}
@@ -588,54 +587,54 @@ export function CatalogManager({ onClose, onSave }: Props) {
               />
             </label>
             <label>
-              Brand
+              {t('Brand')}
               <input value={skuForm.brand} onChange={(e) => setSkuForm({ ...skuForm, brand: e.target.value })} />
             </label>
             <label>
-              Series
+              {t('Series')}
               <input value={skuForm.series} onChange={(e) => setSkuForm({ ...skuForm, series: e.target.value })} />
             </label>
             <label>
-              Kind
+              {t('Kind')}
               <select
                 value={skuForm.kind}
                 onChange={(e) => setSkuForm({ ...skuForm, kind: e.target.value as CatalogKind })}
               >
-                <option value="L">L — coil</option>
-                <option value="C">C — cap</option>
-                <option value="R">R — resistor</option>
+                <option value="L">{t('L — coil')}</option>
+                <option value="C">{t('C — cap')}</option>
+                <option value="R">{t('R — resistor')}</option>
               </select>
             </label>
             <label>
-              Value ({unitFor(skuForm.kind)})
+              {t('Value')} ({unitFor(skuForm.kind)})
               <input value={skuForm.value} onChange={(e) => setSkuForm({ ...skuForm, value: e.target.value })} />
             </label>
             <label>
-              {skuForm.kind === 'L' ? 'DCR (Ω)' : skuForm.kind === 'C' ? 'ESR (Ω)' : 'R note (Ω, 0)'}
+              {skuForm.kind === 'L' ? 'DCR (Ω)' : skuForm.kind === 'C' ? 'ESR (Ω)' : t('R note (Ω, 0)')}
               <input
                 value={skuForm.seriesR}
                 onChange={(e) => setSkuForm({ ...skuForm, seriesR: e.target.value })}
-                placeholder={skuForm.kind === 'L' ? 'estimated if blank' : skuForm.kind === 'C' ? '0.02' : '0'}
+                placeholder={skuForm.kind === 'L' ? t('estimated if blank') : skuForm.kind === 'C' ? '0.02' : '0'}
               />
             </label>
             {skuForm.kind === 'L' && (
               <label>
-                Wire ⌀ (mm)
+                {t('Wire ⌀ (mm)')}
                 <input value={skuForm.wireMm} onChange={(e) => setSkuForm({ ...skuForm, wireMm: e.target.value })} />
               </label>
             )}
             {skuForm.kind === 'R' && (
               <label>
-                Power (W)
+                {t('Power (W)')}
                 <input value={skuForm.powerW} onChange={(e) => setSkuForm({ ...skuForm, powerW: e.target.value })} />
               </label>
             )}
             <label>
-              Price (€)
+              {t('Price (€)')}
               <input
                 value={skuForm.priceEur}
                 onChange={(e) => setSkuForm({ ...skuForm, priceEur: e.target.value })}
-                placeholder="blank = no price"
+                placeholder={t('blank = no price')}
               />
             </label>
             <label>
@@ -654,9 +653,9 @@ export function CatalogManager({ onClose, onSave }: Props) {
           {formError && <p className="error">{formError}</p>}
           {shadow && !formError && <p className="sub catmgr-shadow">⚠ {shadow}</p>}
           <div className="catmgr-formbtns">
-            <button type="submit">{skuForm.originalId ? 'Apply changes' : 'Add SKU'}</button>
+            <button type="submit">{skuForm.originalId ? t('Apply changes') : t('Add SKU')}</button>
             <button type="button" onClick={() => setSkuForm(null)}>
-              Close form
+              {t('Close form')}
             </button>
           </div>
         </form>
@@ -672,7 +671,7 @@ export function CatalogManager({ onClose, onSave }: Props) {
         >
           <div className="catmgr-grid">
             <label>
-              Series id
+              {t('Series id')}
               <input
                 value={seriesForm.id}
                 onChange={(e) => setSeriesForm({ ...seriesForm, id: e.target.value })}
@@ -680,47 +679,47 @@ export function CatalogManager({ onClose, onSave }: Props) {
               />
             </label>
             <label>
-              Brand
+              {t('Brand')}
               <input value={seriesForm.brand} onChange={(e) => setSeriesForm({ ...seriesForm, brand: e.target.value })} />
             </label>
             <label>
-              Series name
+              {t('Series name')}
               <input value={seriesForm.series} onChange={(e) => setSeriesForm({ ...seriesForm, series: e.target.value })} />
             </label>
             <label>
-              Kind
+              {t('Kind')}
               <select
                 value={seriesForm.kind}
                 onChange={(e) => setSeriesForm({ ...seriesForm, kind: e.target.value as CatalogKind })}
               >
-                <option value="L">L — coil</option>
-                <option value="C">C — cap</option>
-                <option value="R">R — resistor</option>
+                <option value="L">{t('L — coil')}</option>
+                <option value="C">{t('C — cap')}</option>
+                <option value="R">{t('R — resistor')}</option>
               </select>
             </label>
             <label>
-              Range min ({unitFor(seriesForm.kind)})
+              {t('Range min')} ({unitFor(seriesForm.kind)})
               <input value={seriesForm.rangeMin} onChange={(e) => setSeriesForm({ ...seriesForm, rangeMin: e.target.value })} />
             </label>
             <label>
-              Range max ({unitFor(seriesForm.kind)})
+              {t('Range max')} ({unitFor(seriesForm.kind)})
               <input value={seriesForm.rangeMax} onChange={(e) => setSeriesForm({ ...seriesForm, rangeMax: e.target.value })} />
             </label>
             <label>
-              E-grid
+              {t('E-grid')}
               <select
                 value={seriesForm.eSeries}
                 onChange={(e) => setSeriesForm({ ...seriesForm, eSeries: e.target.value as 'E12' | 'E24' | '' })}
-                title="Value steps the series is stocked in — default E12 for coils, E24 for caps/resistors"
+                title={t('Value steps the series is stocked in — default E12 for coils, E24 for caps/resistors')}
               >
-                <option value="">default</option>
+                <option value="">{t('default')}</option>
                 <option value="E12">E12</option>
                 <option value="E24">E24</option>
               </select>
             </label>
             {seriesForm.kind === 'L' && (
               <label>
-                Gauges (mm, comma)
+                {t('Gauges (mm, comma)')}
                 <input
                   value={seriesForm.gauges}
                   onChange={(e) => setSeriesForm({ ...seriesForm, gauges: e.target.value })}
@@ -730,11 +729,11 @@ export function CatalogManager({ onClose, onSave }: Props) {
             )}
             {seriesForm.kind === 'L' && (
               <label>
-                DCR factor
+                {t('DCR factor')}
                 <input
                   value={seriesForm.dcrFactor}
                   onChange={(e) => setSeriesForm({ ...seriesForm, dcrFactor: e.target.value })}
-                  placeholder="1 = air core, ~0.35 iron"
+                  placeholder={t('1 = air core, ~0.35 iron')}
                 />
               </label>
             )}
@@ -750,24 +749,24 @@ export function CatalogManager({ onClose, onSave }: Props) {
             )}
             {seriesForm.kind === 'R' && (
               <label>
-                Power (W)
+                {t('Power (W)')}
                 <input value={seriesForm.powerW} onChange={(e) => setSeriesForm({ ...seriesForm, powerW: e.target.value })} />
               </label>
             )}
             <label>
-              Base price (€)
+              {t('Base price (€)')}
               <input
                 value={seriesForm.basePrice}
                 onChange={(e) => setSeriesForm({ ...seriesForm, basePrice: e.target.value })}
-                placeholder="blank = no prices"
+                placeholder={t('blank = no prices')}
               />
             </label>
             <label>
-              Cost factor (€/SI)
+              {t('Cost factor (€/SI)')}
               <input
                 value={seriesForm.costFactor}
                 onChange={(e) => setSeriesForm({ ...seriesForm, costFactor: e.target.value })}
-                title="Price = base + factor × value in SI units (H / F / Ω)"
+                title={t('Price = base + factor × value in SI units (H / F / Ω)')}
               />
             </label>
             <label>
@@ -785,9 +784,9 @@ export function CatalogManager({ onClose, onSave }: Props) {
           </div>
           {formError && <p className="error">{formError}</p>}
           <div className="catmgr-formbtns">
-            <button type="submit">{seriesForm.originalId ? 'Apply changes' : 'Add series'}</button>
+            <button type="submit">{seriesForm.originalId ? t('Apply changes') : t('Add series')}</button>
             <button type="button" onClick={() => setSeriesForm(null)}>
-              Close form
+              {t('Close form')}
             </button>
           </div>
         </form>
@@ -803,7 +802,7 @@ export function CatalogManager({ onClose, onSave }: Props) {
                 : openSeriesForm(emptySeriesDraft(filterKind === 'all' ? 'C' : filterKind))
             }
           >
-            {view === 'skus' ? '➕ Add SKU' : '➕ Add series'}
+            {view === 'skus' ? `➕ ${t('Add SKU')}` : `➕ ${t('Add series')}`}
           </button>
         </div>
       )}
@@ -813,14 +812,14 @@ export function CatalogManager({ onClose, onSave }: Props) {
           type="button"
           onClick={() => onSave(custom, parts, [...off])}
           disabled={!dirty}
-          title="Persist the edited catalog — it becomes the active one (snap, BOM, inspector) and survives restarts"
+          title={t('Persist the edited catalog — it becomes the active one (snap, BOM, inspector) and survives restarts')}
         >
-          💾 Save to catalog
+          💾 {t('Save to catalog')}
         </button>
         <button type="button" onClick={close}>
-          Cancel
+          {t('Cancel')}
         </button>
-        {dirty && <span className="sub">unsaved changes</span>}
+        {dirty && <span className="sub">{t('unsaved changes')}</span>}
       </div>
     </Modal>
   );

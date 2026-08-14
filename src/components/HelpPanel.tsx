@@ -1,7 +1,9 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
 import { Modal } from './Modal';
-import { HELP_SECTIONS, searchHelp } from '../lib/help';
+import { helpSections, searchHelp } from '../lib/help';
+import { currentLang, subscribeLang, t } from '../lib/i18n';
+import { useSyncExternalStore } from 'react';
 import type { HelpBlock } from '../lib/help';
 
 /** Render the manual's tiny inline markup: **bold** and `code`. */
@@ -50,8 +52,10 @@ interface Props {
  */
 export function HelpPanel({ initialId, onClose }: Props) {
   const [query, setQuery] = useState('');
+  const lang = useSyncExternalStore(subscribeLang, currentLang);
+  const sections = useMemo(() => helpSections(lang), [lang]);
   const bodyRef = useRef<HTMLDivElement | null>(null);
-  const visible = useMemo(() => searchHelp(query), [query]);
+  const visible = useMemo(() => searchHelp(query, sections), [query, sections]);
 
   // Jump to the contextual section once, on mount.
   useEffect(() => {
@@ -66,13 +70,13 @@ export function HelpPanel({ initialId, onClose }: Props) {
   };
 
   return (
-    <Modal open onClose={onClose} label="Handleiding" cardClass="targets-card help-card">
+    <Modal open onClose={onClose} label={t('Manual')} cardClass="targets-card help-card">
       <div className="help-head">
-        <div className="busy-title">❓ Handleiding</div>
+        <div className="busy-title">❓ {t('Manual')}</div>
         <input
           type="search"
           className="help-search"
-          placeholder="Zoeken… (bv. fase, export, notch)"
+          placeholder={t('Search… (e.g. phase, export, notch)')}
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           // Verified: Esc pressed inside this type=search field never reaches
@@ -84,13 +88,13 @@ export function HelpPanel({ initialId, onClose }: Props) {
           }}
           autoFocus
         />
-        <button type="button" onClick={onClose} title="Sluiten (Esc)" aria-label="Handleiding sluiten">
+        <button type="button" onClick={onClose} title={t('Close (Esc)')} aria-label={t('Close the manual')}>
           ✕
         </button>
       </div>
       <div className="help-layout">
-        <nav className="help-toc" aria-label="Inhoudsopgave">
-          {HELP_SECTIONS.map((s) => {
+        <nav className="help-toc" aria-label={t('Table of contents')}>
+          {sections.map((s) => {
             const hit = visible.some((v) => v.id === s.id);
             return (
               <button
@@ -107,7 +111,7 @@ export function HelpPanel({ initialId, onClose }: Props) {
         </nav>
         <div className="help-body" ref={bodyRef}>
           {visible.length === 0 && (
-            <p className="sub">Niets gevonden voor “{query}” — probeer een ander woord.</p>
+            <p className="sub">{t('Nothing found for “{q}” — try another word.', { q: query })}</p>
           )}
           {visible.map((s) => (
             <section key={s.id} data-help-id={s.id}>

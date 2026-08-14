@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { HELP_SECTIONS, helpSectionForTab, searchHelp, sectionText } from './help';
+import { HELP_SECTIONS, helpSectionForTab, helpSections, searchHelp, sectionText } from './help';
+import { HELP_SECTIONS_EN } from './helpEn';
 
 describe('help content integrity', () => {
   it('has unique ids and non-empty sections', () => {
@@ -29,6 +30,27 @@ describe('help content integrity', () => {
       // No stray single asterisks outside ** pairs — the renderer ignores them.
       expect(t.replace(/\*\*/g, ''), t).not.toContain('*');
     }
+  });
+
+  it('keeps the English edition structurally in sync with the Dutch source', () => {
+    // Same ids in the same order: contextual opening (helpSectionForTab) and
+    // scroll targets key on the id, so a language switch may never strand one.
+    expect(HELP_SECTIONS_EN.map((s) => s.id)).toEqual(HELP_SECTIONS.map((s) => s.id));
+    for (const s of HELP_SECTIONS_EN) {
+      expect(s.title.length).toBeGreaterThan(0);
+      expect(s.blocks.length).toBeGreaterThan(0);
+      for (const b of s.blocks) {
+        const texts = b.t === 'ul' || b.t === 'steps' ? b.items : [b.text];
+        for (const t of texts) {
+          expect((t.match(/\*\*/g) ?? []).length % 2, t).toBe(0);
+          expect((t.match(/`/g) ?? []).length % 2, t).toBe(0);
+        }
+      }
+    }
+    expect(helpSections('nl')).toBe(HELP_SECTIONS);
+    expect(helpSections('en')).toBe(HELP_SECTIONS_EN);
+    // Unknown language falls back to English, the key language.
+    expect(helpSections('de')).toBe(HELP_SECTIONS_EN);
   });
 
   it('covers every design tab with a valid section id', () => {

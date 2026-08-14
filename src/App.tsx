@@ -1822,10 +1822,10 @@ export default function App() {
     commitSchematic(tidied ?? ps);
     setTrapOpen(false);
     setNetOptNote(
-      `Added LCR trap @ ${Math.round(numOf(trapFreq, 0))} Hz on ${trapModel}: ${Lmh} mH · ${Cuf} µF · ${R} Ω. ` +
+      t('Added LCR trap @ {hz} Hz on {model}: {l} mH · {c} µF · {r} Ω.', { hz: Math.round(numOf(trapFreq, 0)), model: trapModel, l: Lmh, c: Cuf, r: R }) + ' ' +
         (tidied
-          ? 'Layout tidied — notches sorted by frequency. Fine-tune with ⚙ Optimize components.'
-          : 'Fine-tune with ⚙ Optimize components; layout kept as-is (topology too exotic for the auto-placer).'),
+          ? t('Layout tidied — notches sorted by frequency. Fine-tune with ⚙ Optimize components.')
+          : t('Fine-tune with ⚙ Optimize components; layout kept as-is (topology too exotic for the auto-placer).')),
     );
   }
 
@@ -2068,7 +2068,7 @@ export default function App() {
       if (text.includes('acoustic-design-studio-catalog')) return importCatalogFile(f);
       if (text.includes('acoustic-design-studio-filter')) return importFilterFile(f);
       setError(
-        `"${f.name}" carries no Crossover Studio format marker — not a saved project, catalog or filter file.`,
+        t('"{name}" carries no Crossover Studio format marker — not a saved project, catalog or filter file.', { name: f.name }),
       );
       return;
     }
@@ -2077,7 +2077,7 @@ export default function App() {
       return;
     }
     setError(
-      'Mixed drop — drop measurement files (FRD/ZMA/LIM), or a .vxp set, or ONE project/catalog/filter file at a time.',
+      t('Mixed drop — drop measurement files (FRD/ZMA/LIM), or a .vxp set, or ONE project/catalog/filter file at a time.'),
     );
   }
   function pageDropHandlers() {
@@ -2229,7 +2229,7 @@ export default function App() {
         setCustomSeries(imp.series, imp.parts);
         localStorage.setItem(CUSTOM_CATALOG_KEY, serializeCatalog(imp.series, imp.parts));
         setPersistNote(
-          `Demo catalog loaded — ${imp.parts.length} priced SKUs (snap, BOM and inspector use them)`,
+          t('Demo catalog loaded — {n} priced SKUs (snap, BOM and inspector use them)', { n: imp.parts.length }),
         );
       } catch {
         // Demo catalog fixture unreadable: run with built-ins.
@@ -2252,8 +2252,7 @@ export default function App() {
       // A change event with zero files: either a cancel, or the browser
       // failed to hand over the selection (seen on network/virtual volumes).
       setVxpNote(
-        'File dialog returned no files. If you did select files, copy them to a local folder ' +
-          '(e.g. Downloads) and try again.',
+        t('File dialog returned no files. If you did select files, copy them to a local folder (e.g. Downloads) and try again.'),
       );
       return;
     }
@@ -2264,7 +2263,7 @@ export default function App() {
   async function loadVituixFileList(files: File[]) {
     if (files.length === 0) return;
     setError(null);
-    setVxpNote(`Reading ${files.length} file(s): ${files.map((f) => f.name).join(', ')}…`);
+    setVxpNote(t('Reading {n} file(s): {names}…', { n: files.length, names: files.map((f) => f.name).join(', ') }));
     try {
       let vxpFile: StoredFile | null = project?.vxpFile ?? null;
       const zmaFiles: StoredFile[] = [];
@@ -2381,7 +2380,7 @@ export default function App() {
         setPhaseMode('minimum');
       }
       setVxpNote(
-        `${vxpFile.name} — ${vxp.crossovers.length} crossover variant(s) · ` +
+        `${vxpFile.name} — ${t('{n} crossover variant(s)', { n: vxp.crossovers.length })} · ` +
           status.join(' · ') +
           applied,
       );
@@ -2397,7 +2396,7 @@ export default function App() {
     const files = [...(e.target.files ?? [])];
     e.target.value = '';
     if (files.length < 2) {
-      setError("Pick VituixCAD's FILTERED woofer AND tweeter response (2 files) to compare phase.");
+      setError(t("Pick VituixCAD's FILTERED woofer AND tweeter response (2 files) to compare phase."));
       return;
     }
     setError(null);
@@ -2430,9 +2429,7 @@ export default function App() {
       setVerify({ name: file.name, raw, frd });
       if (frd.hasPhase && cls.kind === 'impedance') {
         setError(
-          `"${file.name}" was loaded as the verification measurement, but its levels look ` +
-            `like an impedance file (median ≈ ${cls.medianLevel.toFixed(1)} Ω) — the ` +
-            `comparison below will be meaningless.`,
+          t('"{name}" was loaded as the verification measurement, but its levels look like an impedance file (median ≈ {z} Ω) — the comparison below will be meaningless.', { name: file.name, z: cls.medianLevel.toFixed(1) }),
         );
       }
     } catch (err) {
@@ -2456,15 +2453,13 @@ export default function App() {
       const frd = parseFrd(raw);
       if (!frd.hasPhase) {
         setError(
-          `"${file.name}" carries no phase. A near-field splice without phase would plant an ` +
-            `unknown delay step at the crossover — measure it with a timing reference.`,
+          t('"{name}" carries no phase. A near-field splice without phase would plant an unknown delay step at the crossover — measure it with a timing reference.', { name: file.name }),
         );
       }
       const cls = classifyLevelProfile(frd.spl);
       if (cls.kind === 'impedance') {
         setError(
-          `"${file.name}" looks like an impedance file (median ≈ ${cls.medianLevel.toFixed(1)} Ω), ` +
-            `not a response.`,
+          t('"{name}" looks like an impedance file (median ≈ {z} Ω), not a response.', { name: file.name, z: cls.medianLevel.toFixed(1) }),
         );
       }
       setNearField((n) => ({ ...n, [role]: { ...n[role], [which]: { name: file.name, raw } } }));
@@ -4356,7 +4351,7 @@ export default function App() {
     setError(null);
     try {
       applyProject(deserializeProject(await file.text()));
-      setPersistNote(`Loaded ${file.name}`);
+      setPersistNote(t('Loaded {name}', { name: file.name }));
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
     }
@@ -4384,7 +4379,7 @@ export default function App() {
     }
     try {
       applyProject(deserializeProject(stored));
-      setPersistNote('Restored from autosave');
+      setPersistNote(t('Restored from autosave'));
     } catch {
       try {
         localStorage.setItem(`${AUTOSAVE_KEY}-unreadable`, stored);
@@ -4393,7 +4388,7 @@ export default function App() {
         return;
       }
       localStorage.removeItem(AUTOSAVE_KEY);
-      setPersistNote('Autosave could not be restored — kept aside as backup');
+      setPersistNote(t('Autosave could not be restored — kept aside as backup'));
       openWizardForEmpty();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -5701,7 +5696,7 @@ export default function App() {
       setCustomSeries(imp.series, imp.parts);
       localStorage.setItem(CUSTOM_CATALOG_KEY, serializeCatalog(imp.series, imp.parts));
       setPersistNote(
-        `Demo catalog loaded — ${imp.parts.length} priced SKUs (snap, BOM and inspector use them)`,
+        t('Demo catalog loaded — {n} priced SKUs (snap, BOM and inspector use them)', { n: imp.parts.length }),
       );
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
@@ -5734,9 +5729,9 @@ export default function App() {
       localStorage.setItem(CUSTOM_CATALOG_KEY, serializeCatalog(series, parts));
     }
     setPersistNote(
-      `Catalog updated — ${parts.length} exact SKUs active` +
-        (off.length > 0 ? ` · ${off.length} series switched off` : '') +
-        ' (snap, BOM and inspector use them)',
+      t('Catalog updated — {n} exact SKUs active', { n: parts.length }) +
+        (off.length > 0 ? ` · ${t('{n} series switched off', { n: off.length })}` : '') +
+        ` ${t('(snap, BOM and inspector use them)')}`,
     );
     setCatalogMgrOpen(false);
   }
@@ -5753,7 +5748,7 @@ export default function App() {
       const imp = deserializeCatalog(await file.text());
       setCustomSeries(imp.series, imp.parts);
       localStorage.setItem(CUSTOM_CATALOG_KEY, serializeCatalog(imp.series, imp.parts));
-      setPersistNote(`Imported catalog ${file.name} — series available in the editor inspector`);
+      setPersistNote(t('Imported catalog {name} — series available in the editor inspector', { name: file.name }));
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
     }
@@ -5910,7 +5905,7 @@ export default function App() {
     a.click();
     URL.revokeObjectURL(a.href);
     setPersistNote(
-      `Report exported — printable (A4), and it is also a filter file: Import filter accepts it back.`,
+      t('Report exported — printable (A4), and it is also a filter file: Import filter accepts it back.'),
     );
   }
 
@@ -5975,8 +5970,7 @@ export default function App() {
     const skipped = designs.filter((d) => genCount(d) !== 1).map((d) => d.name);
     if (exportable.length === 0) {
       setPersistNote(
-        `Nothing to export: a VituixCAD variant needs exactly one generator (source), and no tab ` +
-          `qualifies${skipped.length ? ` (${skipped.join(', ')})` : ''}. Add a generator to the network first.`,
+        t('Nothing to export: a VituixCAD variant needs exactly one generator (source), and no tab qualifies{skipped}. Add a generator to the network first.', { skipped: skipped.length ? ` (${skipped.join(', ')})` : '' }),
       );
       return;
     }
@@ -6126,10 +6120,9 @@ export default function App() {
           await w.close();
         }
         setPersistNote(
-          `Exported folder “${base}/” — ${vxpName} + ${dataFiles.length} measurement file` +
-            `${dataFiles.length === 1 ? '' : 's'} (${variants}). ${bridge}. Open ${vxpName} in VituixCAD.` +
+          t('Exported folder “{base}/” — {vxp} + {n} measurement file(s) ({variants}). {bridge}. Open {vxp} in VituixCAD.', { base, vxp: vxpName, n: dataFiles.length, variants, bridge }) +
             skippedNote +
-            (missing.length ? ` Note: no ${missing.join(', ')} on record.` : ''),
+            (missing.length ? ` ${t('Note: no {list} on record.', { list: missing.join(', ') })}` : ''),
         );
         return;
       } catch (err) {
@@ -6148,9 +6141,8 @@ export default function App() {
     a.click();
     URL.revokeObjectURL(a.href);
     setPersistNote(
-      `Exported ${vxpName} (${variants}). ${bridge}.${skippedNote} This browser can’t write folders — place the ` +
-        `measurement files next to it manually: ${dataFiles.join(', ')}. ` +
-        `(Chrome/Edge export the whole folder in one go.)`,
+      `${t('Exported {vxp} ({variants}).', { vxp: vxpName, variants })} ${bridge}.${skippedNote} ` +
+        t('This browser can’t write folders — place the measurement files next to it manually: {list}. (Chrome/Edge export the whole folder in one go.)', { list: dataFiles.join(', ') }),
     );
   }
 
@@ -6169,7 +6161,7 @@ export default function App() {
       // (electrically identical); exotic topologies keep their own drawing.
       const tidied = tidySchematic(f.parts);
       addDesign(f.name, tidied ?? f.parts); // new tab — imports never cost work
-      setPersistNote(`Imported filter ${file.name}${tidied ? ' (layout tidied)' : ''}`);
+      setPersistNote(t('Imported filter {name}', { name: file.name }) + (tidied ? ` ${t('(layout tidied)')}` : ''));
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
     }
@@ -7135,9 +7127,9 @@ export default function App() {
           type="button"
           className="busy-cancel"
           onClick={cancelOptimTasks}
-          title="Stop the run — nothing is committed, your design stays as it was"
+          title={t('Stop the run — nothing is committed, your design stays as it was')}
         >
-          Cancel
+          {t('Cancel')}
         </button>
       )}
     </>
@@ -8966,10 +8958,10 @@ export default function App() {
         // that does things for you: every step reads live app state, so a
         // step you completed elsewhere is simply already green.
         const steps = [
-          { id: 1, label: 'Design' },
-          { id: 2, label: 'Drivers' },
-          { id: 3, label: 'Measurement' },
-          { id: 4, label: 'Verdict' },
+          { id: 1, label: t('Design') },
+          { id: 2, label: t('Drivers') },
+          { id: 3, label: t('Measurement') },
+          { id: 4, label: t('Verdict') },
         ];
         const pos = steps.findIndex((st) => st.id === cmpStep);
         const zLow = !!impedances[canonicalModelForRole('low', threeWay)];
@@ -8984,76 +8976,70 @@ export default function App() {
           <Modal
             open
             onClose={() => setCmpOpen(false)}
-            label="Compare wizard — model vs measurement"
+            label={t('Compare wizard — model vs measurement')}
             cardClass="targets-card wizard-card"
           >
-            <div className="busy-title">🔬 Compare — model vs measurement</div>
+            <div className="busy-title">🔬 {t('Compare — model vs measurement')}</div>
             <div className="wizard-steps">
               {steps.map((st, i) => (
                 <span key={st.id} className={i <= pos ? 'done' : ''} />
               ))}
             </div>
             <p className="sub" style={{ width: '100%', margin: 0 }}>
-              Step {pos + 1} of {steps.length} · {steps[pos].label}
+              {t('Step {a} of {b}', { a: pos + 1, b: steps.length })} · {steps[pos].label}
             </p>
             <div className="wizard-body">
               {cmpStep === 1 && (
                 <>
                   <p>
-                    <strong>Design</strong> — the comparison judges the simulated Combined of the
-                    ACTIVE network tab, so that tab must be the design you actually built.
+                    <strong>{t('Design')}</strong>{' '}
+                    {t('— the comparison judges the simulated Combined of the ACTIVE network tab, so that tab must be the design you actually built.')}
                   </p>
                   <Ok ok={designs.length > 0}>
-                    A network design exists{activeDesign ? <> — active: <strong>{activeDesign.name}</strong></> : null}.
-                    Import one (Network → Import filter / Import variant) or rebuild the physical
-                    build with New from template + the editor.
+                    {t('A network design exists')}{activeDesign ? <> — {t('active:')} <strong>{activeDesign.name}</strong></> : null}.{' '}
+                    {t('Import one (Network → Import filter / Import variant) or rebuild the physical build with New from template + the editor.')}
                   </Ok>
                   <Ok ok={networkActive}>
-                    "Use in simulation" is on — otherwise the sim shows the virtual filters, not
-                    your network.
+                    {t('"Use in simulation" is on — otherwise the sim shows the virtual filters, not your network.')}
                   </Ok>
                   <p className="sub">
-                    Rebuilding what is physically on the bench? Enter the MEASURED component values
-                    in the inspector — that difference (design vs solder) is often the first thing
-                    this comparison exposes.
+                    {t('Rebuilding what is physically on the bench? Enter the MEASURED component values in the inspector — that difference (design vs solder) is often the first thing this comparison exposes.')}
                   </p>
                 </>
               )}
               {cmpStep === 2 && (
                 <>
                   <p>
-                    <strong>Drivers</strong> — the simulation is measured drivers × your network,
-                    so the driver files must be the same measurements the design was made with.
+                    <strong>{t('Drivers')}</strong>{' '}
+                    {t('— the simulation is measured drivers × your network, so the driver files must be the same measurements the design was made with.')}
                   </p>
-                  <Ok ok={!!woofer}>{threeWay ? 'Woofer' : 'Woofer/mid'} response (FRD){woofer ? ` — ${woofer.name}` : ''}</Ok>
-                  <Ok ok={zLow}>{threeWay ? 'Woofer' : 'Woofer/mid'} impedance (ZMA/LIMP)</Ok>
+                  <Ok ok={!!woofer}>{threeWay ? t('Woofer') : t('Woofer/mid')} {t('response (FRD)')}{woofer ? ` — ${woofer.name}` : ''}</Ok>
+                  <Ok ok={zLow}>{threeWay ? t('Woofer') : t('Woofer/mid')} {t('impedance (ZMA/LIMP)')}</Ok>
                   {threeWay && (
                     <>
-                      <Ok ok={!!midDrv}>Midrange response (FRD){midDrv ? ` — ${midDrv.name}` : ''}</Ok>
-                      <Ok ok={zMidBr}>Midrange impedance (ZMA/LIMP)</Ok>
+                      <Ok ok={!!midDrv}>{t('Midrange')} {t('response (FRD)')}{midDrv ? ` — ${midDrv.name}` : ''}</Ok>
+                      <Ok ok={zMidBr}>{t('Midrange')} {t('impedance (ZMA/LIMP)')}</Ok>
                     </>
                   )}
-                  <Ok ok={!!tweeter}>Tweeter response (FRD){tweeter ? ` — ${tweeter.name}` : ''}</Ok>
-                  <Ok ok={zTw}>Tweeter impedance (ZMA/LIMP)</Ok>
+                  <Ok ok={!!tweeter}>{t('Tweeter')} {t('response (FRD)')}{tweeter ? ` — ${tweeter.name}` : ''}</Ok>
+                  <Ok ok={zTw}>{t('Tweeter')} {t('impedance (ZMA/LIMP)')}</Ok>
                   <p className="sub">
-                    Single-driver validation (one driver through its network) is fine: load just
-                    that driver and the app runs in solo mode.
+                    {t('Single-driver validation (one driver through its network) is fine: load just that driver and the app runs in solo mode.')}
                   </p>
                 </>
               )}
               {cmpStep === 3 && (
                 <>
                   <p>
-                    <strong>Measurement</strong> — measure the BUILT system with the same rig as
-                    the driver measurements (same gate, same mic position discipline), export as
-                    FRD with phase, and load it here.
+                    <strong>{t('Measurement')}</strong>{' '}
+                    {t('— measure the BUILT system with the same rig as the driver measurements (same gate, same mic position discipline), export as FRD with phase, and load it here.')}
                   </p>
                   <Ok ok={!!verify}>
-                    Verification measurement{verify ? ` — ${verify.name}` : ''}
+                    {t('Verification measurement')}{verify ? ` — ${verify.name}` : ''}
                   </Ok>
                   <p>
                     <label className="file-button">
-                      {verify ? 'Replace measurement…' : 'Load measurement (FRD)…'}
+                      {verify ? t('Replace measurement…') : t('Load measurement (FRD)…')}
                       <input type="file" accept=".frd,.txt" onChange={loadVerification} />
                     </label>
                     {verify && (
@@ -9062,52 +9048,49 @@ export default function App() {
                         onClick={() => setVerify(null)}
                         style={{ marginLeft: '0.5rem' }}
                       >
-                        Remove
+                        {t('Remove')}
                       </button>
                     )}
                   </p>
                   <p className="sub">
-                    Level and mic distance do NOT need to match the sim — the comparison aligns
-                    level (median) and fits the mic delay out of the phase, and shows both numbers
-                    instead of hiding them.
+                    {t('Level and mic distance do NOT need to match the sim — the comparison aligns level (median) and fits the mic delay out of the phase, and shows both numbers instead of hiding them.')}
                   </p>
                 </>
               )}
               {cmpStep === 4 && (
                 <>
                   <p>
-                    <strong>Verdict</strong> — judged over the visible SPL range (zoom the chart to
-                    change the band being graded).
+                    <strong>{t('Verdict')}</strong>{' '}
+                    {t('— judged over the visible SPL range (zoom the chart to change the band being graded).')}
                   </p>
                   {!verifyCompare ? (
                     <p className="sub">
-                      No comparison yet — {verify ? 'the simulation has no result (check steps 1–2).' : 'load a verification measurement in step 3.'}
+                      {t('No comparison yet —')} {verify ? t('the simulation has no result (check steps 1–2).') : t('load a verification measurement in step 3.')}
                     </p>
                   ) : (
                     <>
                       <p>
-                        <strong>Magnitude</strong>: avg ±{verifyCompare.avgAbsDb.toFixed(2)} dB ·
-                        P95 ±{verifyCompare.p95AbsDb.toFixed(2)} dB · worst{' '}
-                        {verifyCompare.maxAt.deltaDb.toFixed(1)} dB at {hz(verifyCompare.maxAt.freqHz)}
-                        {' '}(band {Math.round(verifyCompare.band[0])}–{Math.round(verifyCompare.band[1])} Hz,
-                        level-aligned {verifyCompare.offsetDb >= 0 ? '+' : ''}
+                        <strong>{t('Magnitude')}</strong>: {t('avg')} ±{verifyCompare.avgAbsDb.toFixed(2)} dB ·
+                        P95 ±{verifyCompare.p95AbsDb.toFixed(2)} dB · {t('worst')}{' '}
+                        {verifyCompare.maxAt.deltaDb.toFixed(1)} dB {t('at')} {hz(verifyCompare.maxAt.freqHz)}
+                        {' '}({t('band')} {Math.round(verifyCompare.band[0])}–{Math.round(verifyCompare.band[1])} Hz,
+                        {t('level-aligned')} {verifyCompare.offsetDb >= 0 ? '+' : ''}
                         {verifyCompare.offsetDb.toFixed(1)} dB)
                       </p>
                       {verifyCompare.phase ? (
                         <p>
-                          <strong>Phase</strong>: residual avg {verifyCompare.phase.avgAbsDeg.toFixed(1)}° ·
-                          P95 {verifyCompare.phase.p95AbsDeg.toFixed(0)}° · fitted mic delay{' '}
+                          <strong>{t('Phase')}</strong>: {t('residual avg')} {verifyCompare.phase.avgAbsDeg.toFixed(1)}° ·
+                          P95 {verifyCompare.phase.p95AbsDeg.toFixed(0)}° · {t('fitted mic delay')}{' '}
                           {verifyCompare.phase.fittedDelayUs.toFixed(0)} µs
                           {verifyCompare.phase.looksInverted && (
-                            <> · <strong>⚠ offset ≈ 180° — the build is likely wired INVERTED vs the sim</strong></>
+                            <> · <strong>⚠ {t('offset ≈ 180° — the build is likely wired INVERTED vs the sim')}</strong></>
                           )}
                         </p>
                       ) : (
-                        <p className="sub">Measurement carries no phase column — magnitude verdict only.</p>
+                        <p className="sub">{t('Measurement carries no phase column — magnitude verdict only.')}</p>
                       )}
                       <p className="sub">
-                        The overlay lives in the SPL chart, the phase residual in the Phase chart —
-                        flat at 0° means the model's phase is right where it matters.
+                        {t("The overlay lives in the SPL chart, the phase residual in the Phase chart — flat at 0° means the model's phase is right where it matters.")}
                       </p>
                     </>
                   )}
@@ -9118,18 +9101,18 @@ export default function App() {
               <div className="row">
                 {pos > 0 ? (
                   <button type="button" onClick={() => setCmpStep(steps[pos - 1].id)}>
-                    ← Back
+                    ← {t('Back')}
                   </button>
                 ) : (
                   <button type="button" onClick={() => setCmpOpen(false)}>
-                    Cancel
+                    {t('Cancel')}
                   </button>
                 )}
               </div>
               <div className="row">
                 {pos < steps.length - 1 ? (
                   <button type="button" className="primary" onClick={() => setCmpStep(steps[pos + 1].id)}>
-                    Next →
+                    {t('Next')} →
                   </button>
                 ) : (
                   <button
@@ -9152,7 +9135,7 @@ export default function App() {
                       }, 60);
                     }}
                   >
-                    Done — show the charts
+                    {t('Done — show the charts')}
                   </button>
                 )}
               </div>
@@ -9164,18 +9147,17 @@ export default function App() {
         <Modal
           open
           onClose={() => setTrapOpen(false)}
-          label="Add LCR notch (trap)"
+          label={t('Add LCR notch (trap)')}
           cardClass="targets-card"
         >
-          <div className="busy-title">➕ Add LCR notch (trap)</div>
+          <div className="busy-title">➕ {t('Add LCR notch (trap)')}</div>
           <p className="sub">
-            A series L–C–R across the driver — a low-impedance path at the centre frequency that
-            sucks out a peak. <strong>Depth</strong> sets R, <strong>Q</strong> sets the L/C ratio;
-            the values follow from the measured impedance. It goes in live — fine-tune afterwards
-            with ⚙ Optimize components.
+            {t('A series L–C–R across the driver — a low-impedance path at the centre frequency that sucks out a peak.')}{' '}
+            <strong>{t('Depth')}</strong> {t('sets R,')} <strong>Q</strong>{' '}
+            {t('sets the L/C ratio; the values follow from the measured impedance. It goes in live — fine-tune afterwards with ⚙ Optimize components.')}
           </p>
           <p>
-            Driver{' '}
+            {t('Driver')}{' '}
             <select value={trapModel} onChange={(e) => setTrapModel(e.target.value)}>
               {zModels.map((m) => (
                 <option key={m} value={m}>
@@ -9185,7 +9167,7 @@ export default function App() {
             </select>
           </p>
           <p>
-            Centre{' '}
+            {t('Centre')}{' '}
             <input
               type="number"
               min={100}
@@ -9195,7 +9177,7 @@ export default function App() {
               onChange={(e) => setTrapFreq(e.target.value)}
               style={{ width: '6rem' }}
             />{' '}
-            Hz · depth{' '}
+            Hz · {t('depth')}{' '}
             <input
               type="number"
               max={0}
@@ -9221,18 +9203,18 @@ export default function App() {
                 {trapCompute.Lmh} mH · {trapCompute.Cuf} µF · {trapCompute.R} Ω
               </strong>{' '}
               <span className="sub">
-                (|Z| ≈ {trapCompute.zmag} Ω at {trapFreq} Hz)
+                (|Z| ≈ {trapCompute.zmag} Ω {t('at')} {trapFreq} Hz)
               </span>
             </p>
           ) : (
             <p className="sub">
-              Enter a centre frequency and a <strong>negative</strong> depth (a cut) — passive can
-              only notch a peak, not boost.
+              {t('Enter a centre frequency and a')} <strong>{t('negative')}</strong>{' '}
+              {t('depth (a cut) — passive can only notch a peak, not boost.')}
             </p>
           )}
           <div className="row" style={{ justifyContent: 'space-between', marginTop: '0.6rem' }}>
             <button type="button" onClick={() => setTrapOpen(false)}>
-              Cancel
+              {t('Cancel')}
             </button>
             <button
               type="button"
@@ -9240,7 +9222,7 @@ export default function App() {
               disabled={!trapCompute}
               onClick={addNotchTrap}
             >
-              Add trap
+              {t('Add trap')}
             </button>
           </div>
         </Modal>
@@ -9249,26 +9231,25 @@ export default function App() {
         <Modal
           open
           onClose={() => setShowTargets(false)}
-          label="Design targets — virtual to acoustic"
+          label={t('Design targets — virtual to acoustic')}
           cardClass="targets-card"
         >
-          <div className="busy-title">🎯 Design targets — virtual → acoustic</div>
+          <div className="busy-title">🎯 {t('Design targets — virtual → acoustic')}</div>
           <p className="sub">
-            The virtual target design the last passive build was fitted to (acoustic mode fits
-            measured driver × filter against these ideal shapes).
+            {t('The virtual target design the last passive build was fitted to (acoustic mode fits measured driver × filter against these ideal shapes).')}
           </p>
           <p>
-            <strong>Woofer / mid target:</strong>{' '}
+            <strong>{t('Woofer / mid target:')}</strong>{' '}
             {vFilters.woofer.lp.enabled
               ? `LP ${vFilters.woofer.lp.kind}${vFilters.woofer.lp.order} (${
                   vFilters.woofer.lp.order * 6
                 } dB/oct electrical) @ ${Math.round(vFilters.woofer.lp.freq)} Hz`
-              : 'no LP'}
+              : t('no LP')}
             {vFilters.woofer.hp.enabled &&
               ` · HP ${vFilters.woofer.hp.kind}${vFilters.woofer.hp.order} @ ${Math.round(
                 vFilters.woofer.hp.freq,
               )} Hz`}
-            {vFilters.woofer.gainDb !== 0 && ` · gain ${vFilters.woofer.gainDb.toFixed(1)} dB`}
+            {vFilters.woofer.gainDb !== 0 && ` · ${t('gain')} ${vFilters.woofer.gainDb.toFixed(1)} dB`}
             {vFilters.woofer.eq.filter((b) => b.enabled).length > 0 && (
               <>
                 <br />
@@ -9284,18 +9265,18 @@ export default function App() {
             )}
           </p>
           <p>
-            <strong>Tweeter target:</strong>{' '}
+            <strong>{t('Tweeter target:')}</strong>{' '}
             {vFilters.tweeter.hp.enabled
               ? `HP ${vFilters.tweeter.hp.kind}${vFilters.tweeter.hp.order} (${
                   vFilters.tweeter.hp.order * 6
                 } dB/oct electrical) @ ${Math.round(vFilters.tweeter.hp.freq)} Hz`
-              : 'no HP'}
+              : t('no HP')}
             {vFilters.tweeter.lp.enabled &&
               ` · LP ${vFilters.tweeter.lp.kind}${vFilters.tweeter.lp.order} @ ${Math.round(
                 vFilters.tweeter.lp.freq,
               )} Hz`}
-            {vFilters.tweeter.gainDb !== 0 && ` · gain ${vFilters.tweeter.gainDb.toFixed(1)} dB`}
-            {inverted && ' · polarity inverted'}
+            {vFilters.tweeter.gainDb !== 0 && ` · ${t('gain')} ${vFilters.tweeter.gainDb.toFixed(1)} dB`}
+            {inverted && ` · ${t('polarity inverted')}`}
             {vFilters.tweeter.eq.filter((b) => b.enabled).length > 0 && (
               <>
                 <br />
@@ -9312,38 +9293,31 @@ export default function App() {
           </p>
           {acousticSlopes && (
             <p>
-              <strong>Measured on the current sim:</strong> acoustic crossover ≈{' '}
+              <strong>{t('Measured on the current sim:')}</strong> {t('acoustic crossover')} ≈{' '}
               {Math.round(acousticSlopes.xo)} Hz
               {acousticSlopes.wooferDbPerOct !== null && (
                 <>
                   {' '}
-                  · mid falls ≈ {Math.abs(acousticSlopes.wooferDbPerOct).toFixed(0)} dB/oct above
-                  it (≈ {ordinal(Math.max(1, Math.round(Math.abs(acousticSlopes.wooferDbPerOct) / 6)))}
-                  -order acoustic)
+                  · {t('mid falls ≈ {n} dB/oct above it (≈ {ord}-order acoustic)', { n: Math.abs(acousticSlopes.wooferDbPerOct).toFixed(0), ord: ordinal(Math.max(1, Math.round(Math.abs(acousticSlopes.wooferDbPerOct) / 6))) })}
                 </>
               )}
               {acousticSlopes.tweeterDbPerOct !== null && (
                 <>
                   {' '}
-                  · tweeter falls ≈ {Math.abs(acousticSlopes.tweeterDbPerOct).toFixed(0)} dB/oct
-                  below it (≈{' '}
-                  {ordinal(Math.max(1, Math.round(Math.abs(acousticSlopes.tweeterDbPerOct) / 6)))}
-                  -order acoustic)
+                  · {t('tweeter falls ≈ {n} dB/oct below it (≈ {ord}-order acoustic)', { n: Math.abs(acousticSlopes.tweeterDbPerOct).toFixed(0), ord: ordinal(Math.max(1, Math.round(Math.abs(acousticSlopes.tweeterDbPerOct) / 6))) })}
                 </>
               )}
             </p>
           )}
           <p className="sub">
-            Electrical component count ≠ acoustic order: the driver's own rolloff and impedance
-            stack on top of the network, and acoustic-mode synthesis exploits that. The measured
-            slopes above are the real (acoustic) orders.
+            {t("Electrical component count ≠ acoustic order: the driver's own rolloff and impedance stack on top of the network, and acoustic-mode synthesis exploits that. The measured slopes above are the real (acoustic) orders.")}
           </p>
           <button type="button" onClick={() => setShowTargets(false)}>
-            Close
+            {t('Close')}
           </button>
         </Modal>
       )}
-      <header className="topbar" title="Combined SPL & relative phase — woofer normalised to 0°, tweeter shown against it.">
+      <header className="topbar" title={t('Combined SPL & relative phase — woofer normalised to 0°, tweeter shown against it.')}>
         <h1>SD Acoustics - Crossover Studio</h1>
         <div className="status-chips">
           {/* 3-way: the PER-PAIR excess-phase verdict (see timing3) — the
@@ -9400,9 +9374,9 @@ export default function App() {
             pairScores.high.integ.overlapCentreHz != null && (
               <span
                 className="status-chip"
-                title="Where the driver levels meet, per adjacent pair: woofer-mid / mid-tweeter"
+                title={t('Where the driver levels meet, per adjacent pair: woofer-mid / mid-tweeter')}
               >
-                Overlap{' '}
+                {t('Overlap')}{' '}
                 <strong>
                   {Math.round(pairScores.low.integ.overlapCentreHz)} /{' '}
                   {Math.round(pairScores.high.integ.overlapCentreHz)} Hz
@@ -9456,7 +9430,7 @@ export default function App() {
             </button>
           )}
         </div>
-        <div className="theme-switch" role="group" aria-label="Mode">
+        <div className="theme-switch" role="group" aria-label={t('Mode')}>
           {(
             [
               ['guided', 'Guided', 'A numbered route from measurements to a shopping list. The app decides the crossover, the filter shapes and the parts; you supply the facts about your speaker. Every check and warning stays visible.'],
@@ -9474,7 +9448,7 @@ export default function App() {
             </button>
           ))}
         </div>
-        <div className="theme-switch" role="group" aria-label="Layout">
+        <div className="theme-switch" role="group" aria-label={t('Layout')}>
           {(
             [
               ['auto', 'Auto', 'Follow window width: split when it fits, stacked when narrow'],
@@ -9493,7 +9467,7 @@ export default function App() {
             </button>
           ))}
         </div>
-        <div className="theme-switch" role="group" aria-label="Language">
+        <div className="theme-switch" role="group" aria-label={t('Language')}>
           {LANGS.map((l) => (
             <button
               key={l.id}
@@ -9506,7 +9480,7 @@ export default function App() {
             </button>
           ))}
         </div>
-        <div className="theme-switch" role="group" aria-label="Theme">
+        <div className="theme-switch" role="group" aria-label={t('Theme')}>
           {(['system', 'light', 'dark'] as const).map((th) => (
             <button
               key={th}
@@ -9557,7 +9531,7 @@ export default function App() {
            element that kept moving. Later steps stay clickable on purpose:
            blocking them would hide what is coming, and a locked button
            teaches nothing about why. */
-        <nav className="pane-steps step-bar" aria-label="Design steps">
+        <nav className="pane-steps step-bar" aria-label={t('Design steps')}>
           {(
             [
               ['import', 'Your project', guidedDone.files, 'Load your measurement files, and save or reopen a project.'],
@@ -9603,7 +9577,7 @@ export default function App() {
           {...pageDropHandlers()}
         >
           {uiMode === 'guided' ? null : (
-<nav className="pane-tabs" aria-label="Design panels">
+<nav className="pane-tabs" aria-label={t('Design panels')}>
               {(
               [
                 ['import', 'Project', 'Load measurements, catalogs and projects; save your work'],
@@ -9750,7 +9724,7 @@ export default function App() {
                         <button
                           type="button"
                           className="icon"
-                          aria-label={`Remove the ${title} cone near-field measurement`}
+                          aria-label={t('Remove the {title} cone near-field measurement', { title })}
                           onClick={() => set({ cone: null })}
                         >
                           ✕
@@ -9783,7 +9757,7 @@ export default function App() {
                               <button
                                 type="button"
                                 className="icon"
-                                aria-label={`Remove the ${title} port near-field measurement`}
+                                aria-label={t('Remove the {title} port near-field measurement', { title })}
                                 onClick={() => set({ port: null })}
                               >
                                 ✕
@@ -10101,7 +10075,7 @@ export default function App() {
                         return next;
                       });
                     }}
-                    title="Free note for this file — autosaved and included in the project file"
+                    title={t('Free note for this file — autosaved and included in the project file')}
                   />
                 </div>
               ))}
@@ -10109,7 +10083,7 @@ export default function App() {
           ));
         })()}
       </div>
-        {persistNote && <p className="filenames">{persistNote} · autosaves locally on every change</p>}
+        {persistNote && <p className="filenames">{persistNote} · {t('autosaves locally on every change')}</p>}
         {vxpNote && <p className="filenames">{vxpNote}</p>}
         {/* One banner for parse failures AND content warnings — the old
             hardcoded "Parse error:" prefix lied for anything that wasn't one
@@ -10651,11 +10625,11 @@ export default function App() {
             )}
             {project && project.vxp.crossovers.length > 0 && (
               <fieldset>
-                <legend>Crossover (VituixCAD project)</legend>
-                <label title="Simulate one of the crossover variants from the imported VituixCAD project (solved on the measured impedances). 'None' shows the raw drivers.">
-                  Variant
+                <legend>{t('Crossover (VituixCAD project)')}</legend>
+                <label title={t("Simulate one of the crossover variants from the imported VituixCAD project (solved on the measured impedances). 'None' shows the raw drivers.")}>
+                  {t('Variant')}
                   <select value={xoName} onChange={(e) => setXoName(e.target.value)}>
-                    <option value="none">None (raw drivers)</option>
+                    <option value="none">{t('None (raw drivers)')}</option>
                     {project.vxp.crossovers.map((c) => (
                       <option key={c.name} value={c.name}>
                         {c.name}
@@ -10666,39 +10640,39 @@ export default function App() {
               </fieldset>
             )}
           </div>
-          {sim?.xoError && <p className="error">Crossover error: {sim.xoError}</p>}
+          {sim?.xoError && <p className="error">{t('Crossover error:')} {sim.xoError}</p>}
         </>
       )}
 
       {timing && (
         <div className="panel timing">
-          <h2>Timing sanity check</h2>
+          <h2>{t('Timing sanity check')}</h2>
           <div className={`verdict ${verdictClass(timing.ref.verdict)}`}>
             <strong>{verdictHeading(timing.ref.verdict)}</strong>
             <div style={{ marginTop: '0.4rem' }}>{timing.ref.message}</div>
           </div>
           <div className="stats">
             <Stat
-              k="Woofer delay"
+              k={t('Woofer delay')}
               v={`${timing.w.delayMs.toFixed(3)} ms`}
               sub={`R² ${timing.w.rSquared.toFixed(3)}`}
             />
             <Stat
-              k="Tweeter delay"
+              k={t('Tweeter delay')}
               v={`${timing.t.delayMs.toFixed(3)} ms`}
               sub={`R² ${timing.t.rSquared.toFixed(3)}`}
             />
             <Stat
-              k="Apparent mic distance"
+              k={t('Apparent mic distance')}
               v={`${(timing.ref.apparentDistanceM.woofer * 100).toFixed(1)} / ${(
                 timing.ref.apparentDistanceM.tweeter * 100
               ).toFixed(1)} cm`}
-              sub="woofer / tweeter — incl. common latency"
+              sub={t('woofer / tweeter — incl. common latency')}
             />
             <Stat
-              k="Acoustic-centre Δ"
+              k={t('Acoustic-centre Δ')}
               v={`${timing.ref.deltaUs.toFixed(0)} µs ≈ ${timing.ref.deltaMm.toFixed(1)} mm`}
-              sub="tweeter later = positive"
+              sub={t('tweeter later = positive')}
             />
           </div>
           {delayGeometry?.pair && (
@@ -10714,39 +10688,35 @@ export default function App() {
                 const p = delayGeometry.pair!;
                 const acUs = totalUs - p.us;
                 const mm = Math.abs(p.rigMm);
-                const dir = p.rigMm >= 0 ? 'further from' : 'closer to';
+                const dir = p.rigMm >= 0 ? t('further from') : t('closer to');
                 // Mounting depth only earns a sentence when there IS one: on a
                 // normal flush-mounted pair it is 0 and would be noise.
                 const mounted = Math.abs(p.mountUs) >= 1;
                 return (
                   <>
-                    <strong>Split of that Δ:</strong> {p.rigUs.toFixed(1)} µs is the measuring
-                    RIG — at {Math.round(delayGeometry.distanceMm)} mm the upper driver sits{' '}
-                    {mm.toFixed(2)} mm {dir} the microphone than the lower one, purely because
-                    they are at different heights.
+                    <strong>{t('Split of that Δ:')}</strong>{' '}
+                    {t('{us} µs is the measuring RIG — at {dist} mm the upper driver sits {mm} mm {dir} the microphone than the lower one, purely because they are at different heights.', { us: p.rigUs.toFixed(1), dist: Math.round(delayGeometry.distanceMm), mm: mm.toFixed(2), dir })}
                     {mounted && (
                       <>
                         {' '}
-                        Another <strong>{p.mountUs.toFixed(1)} µs</strong> is MOUNTING DEPTH:
-                        the cabinet puts one cone further back
+                        {t('Another')} <strong>{p.mountUs.toFixed(1)} µs</strong>{' '}
+                        {t('is MOUNTING DEPTH: the cabinet puts one cone further back')}
                         {delayGeometry.offBaffle.length > 0
-                          ? ` (${delayGeometry.offBaffle.join(', ')} does not radiate from the front baffle)`
+                          ? ` ${t('({drivers} does not radiate from the front baffle)', { drivers: delayGeometry.offBaffle.join(', ') })}`
                           : ''}
-                        , which the drawing already explains and the drivers should not be
-                        blamed for.
+                        {t(', which the drawing already explains and the drivers should not be blamed for.')}
                       </>
                     )}{' '}
-                    The remaining <strong>{acUs.toFixed(1)} µs</strong> is the acoustic
-                    centres, and only that part is a property of the drivers.
+                    {t('The remaining')} <strong>{acUs.toFixed(1)} µs</strong>{' '}
+                    {t('is the acoustic centres, and only that part is a property of the drivers.')}
                     {excessBridge
-                      ? ' (Taken from the excess-phase Δ, the honest one for depth.)'
+                      ? ` ${t('(Taken from the excess-phase Δ, the honest one for depth.)')}`
                       : ''}{' '}
-                    The rig share shrinks with distance — which is why a sum aligned at the
-                    microphone is not aligned at the seat.
+                    {t('The rig share shrinks with distance — which is why a sum aligned at the microphone is not aligned at the seat.')}
                     {delayGeometry.lowMid && (
-                      <> Woofer→mid rig share: {delayGeometry.lowMid.rigUs.toFixed(1)} µs
+                      <> {t('Woofer→mid rig share:')} {delayGeometry.lowMid.rigUs.toFixed(1)} µs
                       {Math.abs(delayGeometry.lowMid.mountUs) >= 1
-                        ? `, mounting ${delayGeometry.lowMid.mountUs.toFixed(1)} µs`
+                        ? `, ${t('mounting')} ${delayGeometry.lowMid.mountUs.toFixed(1)} µs`
                         : ''}
                       .</>
                     )}
@@ -10757,14 +10727,13 @@ export default function App() {
           )}
           {measuredDepth && measuredDepth.unexplained.length > 0 && (
             <p className="sub alert" style={{ margin: '0.35rem 0 0' }}>
-              <strong>⚠ Position and measurement disagree.</strong> For{' '}
-              {measuredDepth.unexplained
-                .map((r) => (r === 'high' ? 'the tweeter' : r === 'mid' ? 'the midrange' : 'the woofer'))
-                .join(' and ')}
-              , the oblique path from a mic at {Math.round(Number(cabinet.micDistanceMm))} mm to a
-              driver at that height already accounts for MORE delay than the measurement found —
-              no mounting depth can explain the rest, because that would put the cone in front of
-              the baffle. Check the height you typed, or the time reference of the sweeps.
+              <strong>⚠ {t('Position and measurement disagree.')}</strong>{' '}
+              {t('For {drivers}, the oblique path from a mic at {dist} mm to a driver at that height already accounts for MORE delay than the measurement found — no mounting depth can explain the rest, because that would put the cone in front of the baffle. Check the height you typed, or the time reference of the sweeps.', {
+                drivers: measuredDepth.unexplained
+                  .map((r) => (r === 'high' ? t('the tweeter') : r === 'mid' ? t('the midrange') : t('the woofer')))
+                  .join(` ${t('and')} `),
+                dist: Math.round(Number(cabinet.micDistanceMm)),
+              })}
             </p>
           )}
           {measuredDepth && measuredDepth.spread >= 1 && (
@@ -10772,24 +10741,22 @@ export default function App() {
               {/* The inverse of the split above: the measurement can tell you
                   the depth instead of you measuring it with a ruler — and it
                   finds the ACOUSTIC centre, which a ruler cannot. */}
-              <strong>Measured mounting depth:</strong>{' '}
+              <strong>{t('Measured mounting depth:')}</strong>{' '}
               {(['high', 'mid', 'low'] as BranchRole[])
                 .filter((r) => measuredDepth.depths[r] !== undefined)
                 .map((r) => {
                   const naam =
                     r === 'high'
-                      ? 'tweeter'
+                      ? t('tweeter')
                       : r === 'mid'
-                        ? 'midrange'
+                        ? t('midrange')
                         : hasMidBranch
-                          ? 'woofer'
-                          : 'woofer/mid';
+                          ? t('woofer')
+                          : t('woofer/mid');
                   return `${naam} ${measuredDepth.depths[r]!.toFixed(1)} mm`;
                 })
                 .join(' · ')}{' '}
-              behind the shallowest. Derived from the excess-phase delay with the
-              rig&rsquo;s own geometry removed, so it is what the drivers actually do
-              rather than what the drawing says.{' '}
+              {t("behind the shallowest. Derived from the excess-phase delay with the rig's own geometry removed, so it is what the drivers actually do rather than what the drawing says.")}{' '}
               <button
                 type="button"
                 className="link-btn"
@@ -10806,17 +10773,16 @@ export default function App() {
                     ) as Record<BranchRole, CabinetDriver>,
                   }))
                 }
-                title="Write these into the Mounting depth fields. Note what it costs: the timing split then explains itself by construction, so the residual stops being an independent check on your measurement. It still sharpens the geometry — true off-axis angle, centre-to-centre spacing — which does not depend on the delay at all."
+                title={t('Write these into the Mounting depth fields. Note what it costs: the timing split then explains itself by construction, so the residual stops being an independent check on your measurement. It still sharpens the geometry — true off-axis angle, centre-to-centre spacing — which does not depend on the delay at all.')}
               >
-                use as mounting depth
+                {t('use as mounting depth')}
               </button>
               {(['low', 'mid', 'high'] as BranchRole[]).some(
                 (r) => Number(cabinet.drivers[r].depthMm) > 0,
               ) && (
                 <>
                   {' '}
-                  With a depth already entered this is a CROSS-CHECK: if the two
-                  disagree, either the drawing or the measurement is wrong.
+                  {t('With a depth already entered this is a CROSS-CHECK: if the two disagree, either the drawing or the measurement is wrong.')}
                 </>
               )}
             </p>
@@ -10825,38 +10791,38 @@ export default function App() {
             <p
               className="sub"
               style={{ margin: '0.35rem 0 0' }}
-              title="The residual the seat correction would remove, expressed in degrees at the highest handover — a time shift is only as harmful as the frequency it lands on. Same 1/R geometry as the far-field rule, so measuring far enough away fixes both at once."
+              title={t('The residual the seat correction would remove, expressed in degrees at the highest handover — a time shift is only as harmful as the frequency it lands on. Same 1/R geometry as the far-field rule, so measuring far enough away fixes both at once.')}
             >
               <strong>
                 {measureVerdict.verdict === 'fine'
-                  ? '✓ Measuring distance is far enough'
+                  ? t('✓ Measuring distance is far enough')
                   : measureVerdict.verdict === 'marginal'
-                    ? '△ Measuring distance is borderline'
-                    : '⚠ Measuring distance is shaping the design'}
+                    ? t('△ Measuring distance is borderline')
+                    : t('⚠ Measuring distance is shaping the design')}
               </strong>{' '}
-              — moving from the microphone to the listening seat would shift the branches by{' '}
-              {measureVerdict.worstUs.toFixed(1)} µs, which is{' '}
-              <strong>{measureVerdict.deg.toFixed(1)}°</strong> at the{' '}
-              {Math.round(measureVerdict.hz)} Hz handover.{' '}
+              {t('— moving from the microphone to the listening seat would shift the branches by')}{' '}
+              {measureVerdict.worstUs.toFixed(1)} µs, {t('which is')}{' '}
+              <strong>{measureVerdict.deg.toFixed(1)}°</strong> {t('at the')}{' '}
+              {Math.round(measureVerdict.hz)} Hz {t('handover')}.{' '}
               {measureVerdict.verdict === 'fine'
-                ? 'Nothing to correct — leave the re-timing off.'
-                : 'Measuring further away fixes this at the source (it is the same geometry the far-field rule describes); the re-timing below is the fallback when the room or a tall cabinet will not allow it.'}
+                ? t('Nothing to correct — leave the re-timing off.')
+                : t('Measuring further away fixes this at the source (it is the same geometry the far-field rule describes); the re-timing below is the fallback when the room or a tall cabinet will not allow it.')}
             </p>
           )}
           {seatShiftMm && (
             <p className="sub" style={{ margin: '0.35rem 0 0' }}>
-              Seat re-timing ACTIVE: branches shifted by{' '}
+              {t('Seat re-timing ACTIVE: branches shifted by')}{' '}
               {(['low', 'mid', 'high'] as const)
                 .filter((r) => threeWay || r !== 'mid')
                 .map((r) => `${r} ${(seatShiftMm.us[r] ?? 0).toFixed(1)} µs`)
                 .join(' · ')}{' '}
-              — the sum now shows the listening position, not the microphone.
+              {t('— the sum now shows the listening position, not the microphone.')}
             </p>
           )}
           <label
             className="check"
             style={{ margin: '0.5rem 0 0' }}
-            title="Re-time each branch from the MEASURING distance to the LISTENING distance. The oblique path from a mic at close range to a driver at a different height is longer than it will be at the seat, so a sum aligned at the microphone drifts. Needs driver positions, mic distance and listening distance; measured phase only (minimum phase has already discarded the arrival times)."
+            title={t('Re-time each branch from the MEASURING distance to the LISTENING distance. The oblique path from a mic at close range to a driver at a different height is longer than it will be at the seat, so a sum aligned at the microphone drifts. Needs driver positions, mic distance and listening distance; measured phase only (minimum phase has already discarded the arrival times).')}
           >
             <input
               type="checkbox"
@@ -10864,12 +10830,12 @@ export default function App() {
               onChange={(e) => setSeatTiming(e.target.checked)}
               disabled={phaseMode !== 'measured'}
             />{' '}
-            Re-time to the listening distance
-            {phaseMode !== 'measured' && ' (measured phase only)'}
+            {t('Re-time to the listening distance')}
+            {phaseMode !== 'measured' && ` ${t('(measured phase only)')}`}
             {seatTiming && !seatShiftMm && phaseMode === 'measured' && (
               <span className="derived">
                 {' '}
-                — needs driver positions, mic distance and listening distance (Cabinet)
+                {t('— needs driver positions, mic distance and listening distance (Cabinet)')}
               </span>
             )}
           </label>
@@ -10877,19 +10843,15 @@ export default function App() {
             <p className="sub" style={{ margin: '0.75rem 0 0' }}>
               {excessBridge ? (
                 <>
-                  VituixCAD equivalent (Minimum phase ON): give the{' '}
-                  <strong>{excessBridge.deltaUs >= 0 ? 'tweeter' : 'woofer/mid'}</strong> a Delay
-                  of <strong>{Math.abs(excessBridge.deltaUs).toFixed(0)} µs</strong>, the other
-                  driver 0 — this is the EXCESS-phase Δ (measured − minimum phase), the value a
-                  minimum-phase reconstruction needs. NB: it can differ from the raw Δ above in
-                  size AND sign (the raw fit absorbs each driver&apos;s minimum-phase slope).
-                  The .vxp export fills this in automatically.
+                  {t('VituixCAD equivalent (Minimum phase ON): give the')}{' '}
+                  <strong>{excessBridge.deltaUs >= 0 ? t('tweeter') : t('woofer/mid')}</strong>{' '}
+                  {t('a Delay of')} <strong>{Math.abs(excessBridge.deltaUs).toFixed(0)} µs</strong>
+                  {t(', the other driver 0 — this is the EXCESS-phase Δ (measured − minimum phase), the value a minimum-phase reconstruction needs. NB: it can differ from the raw Δ above in size AND sign (the raw fit absorbs each driver’s minimum-phase slope). The .vxp export fills this in automatically.')}
                 </>
               ) : (
-                <>VituixCAD equivalent: use the .vxp export — it derives the bridge delays.</>
+                <>{t('VituixCAD equivalent: use the .vxp export — it derives the bridge delays.')}</>
               )}{' '}
-              Only the DIFFERENCE matters — never enter the shared ~
-              {(Math.min(timing.w.delayMs, timing.t.delayMs) * 1000).toFixed(0)} µs bulk delay.
+              {t('Only the DIFFERENCE matters — never enter the shared ~{us} µs bulk delay.', { us: (Math.min(timing.w.delayMs, timing.t.delayMs) * 1000).toFixed(0) })}
             </p>
           )}
         </div>
@@ -10899,7 +10861,7 @@ export default function App() {
 
             {designTab === 'filters' && !result && (
               <p className="sub pane-hint">
-                Nothing to design yet — load measurements in the Import tab first.
+                {t('Nothing to design yet — load measurements in the Import tab first.')}
               </p>
             )}
             {designTab === 'filters' && result && (
@@ -11489,7 +11451,7 @@ export default function App() {
                   </label>
                 )}
                 {threeWay && (
-                  <label title="Directivity philosophy for the MEASURED beaming ceiling — the on-axis minus 30° difference at which a driver counts as beaming. Default is the empirical 4 dB, NOT the theoretically stricter ka = 2, and that is deliberate: the ka figures come from an ideal piston in an infinite baffle, while a real measured 0−30° difference at low frequency is mostly baffle diffraction. Measured on a real 3-way set, ka = 2 puts the woofer&apos;s ceiling at 304 Hz — below the mid&apos;s own 2×Fs floor — declaring an ordinary design impossible; 4 dB gives 628 Hz. The strict tiers stay available for a conservative philosophy or clean anechoic data. (For reference: &apos;−6 dB at 30°&apos; is ka = 4.43, past every published limit — that defines BEAMWIDTH, not a crossover ceiling.)">
+                  <label title={t("Directivity philosophy for the MEASURED beaming ceiling — the on-axis minus 30° difference at which a driver counts as beaming. Default is the empirical 4 dB, NOT the theoretically stricter ka = 2, and that is deliberate: the ka figures come from an ideal piston in an infinite baffle, while a real measured 0−30° difference at low frequency is mostly baffle diffraction. Measured on a real 3-way set, ka = 2 puts the woofer's ceiling at 304 Hz — below the mid's own 2×Fs floor — declaring an ordinary design impossible; 4 dB gives 628 Hz. The strict tiers stay available for a conservative philosophy or clean anechoic data. (For reference: '−6 dB at 30°' is ka = 4.43, past every published limit — that defines BEAMWIDTH, not a crossover ceiling.)")}>
                     {t('When a cone counts as beaming')}
                     <select value={kaTier} onChange={(e) => setKaTier(e.target.value as KaTier)}>
                       {(Object.keys(KA_TIERS) as KaTier[]).map((k) => (
@@ -11931,7 +11893,7 @@ export default function App() {
                     type="button"
                     onClick={exportActiveVxp}
                     disabled={designs.length === 0}
-                    title="Export ALL network tabs as a VituixCAD project folder — the .vxp (each tab a crossover variant CROSSOVER, CROSSOVER1, …) PLUS every measurement/impedance file, written together so VituixCAD opens it without hunting. Pick a folder when asked (Chrome/Edge). VituixCAD reconstructs the phase itself (MinimumPhase=True) and every driver carries its measured excess-phase delay (earliest driver 0), so its simulation matches ours — two-way and three-way alike."
+                    title={t('Export ALL network tabs as a VituixCAD project folder — the .vxp (each tab a crossover variant CROSSOVER, CROSSOVER1, …) PLUS every measurement/impedance file, written together so VituixCAD opens it without hunting. Pick a folder when asked (Chrome/Edge). VituixCAD reconstructs the phase itself (MinimumPhase=True) and every driver carries its measured excess-phase delay (earliest driver 0), so its simulation matches ours — two-way and three-way alike.')}
                   >
                     {t('Export .vxp')}
                   </button>
@@ -12011,12 +11973,12 @@ export default function App() {
                       const tidied = tidySchematic(activeDesign.parts);
                       if (!tidied) {
                         setNetOptNote(
-                          'Layout not tidied: topology too exotic for the auto-placer (bridge, shared series section, or open/shorted parts).',
+                          t('Layout not tidied: topology too exotic for the auto-placer (bridge, shared series section, or open/shorted parts).'),
                         );
                         return;
                       }
                       commitSchematic(tidied); // undo-able
-                      setNetOptNote('Layout tidied — same netlist, fresh placement (Undo to revert).');
+                      setNetOptNote(t('Layout tidied — same netlist, fresh placement (Undo to revert).'));
                     }}
                     disabled={!activeDesign}
                     title={t('Redraw this schematic from its netlist: series path as a bus, chains hanging down, branches stacked with air — electrically identical, undo-able. Fixes cramped layouts from older exports.')}
@@ -12127,17 +12089,17 @@ export default function App() {
             {chainScan && (
               <table
                 className="scan-table scan-table-pick"
-                title="Full-chain crossover scan — click a row to load that candidate's complete design (filters + tuned network) into Working; click a header to sort"
+                title={t("Full-chain crossover scan — click a row to load that candidate's complete design (filters + tuned network) into Working; click a header to sort")}
               >
                 <thead>
                   <tr>
                     {(
                       [
-                        ['xo', 'crossover'],
-                        ['ripple', 'peak'],
-                        ['avg', 'avg'],
-                        ['phase', 'phase'],
-                        ['ovl', 'overlap'],
+                        ['xo', t('crossover')],
+                        ['ripple', t('peak')],
+                        ['avg', t('avg')],
+                        ['phase', t('phase')],
+                        ['ovl', t('overlap')],
                         ['zmin', 'Z min'],
                         ['bom', 'BOM'],
                       ] as const
@@ -12146,7 +12108,7 @@ export default function App() {
                         key={key}
                         className={scanSort?.key === key ? 'sorted' : ''}
                         onClick={() => toggleScanSort(key)}
-                        title="Sort by this column — ascending, descending, then back to the ranking order (🏆 first)"
+                        title={t('Sort by this column — ascending, descending, then back to the ranking order (🏆 first)')}
                       >
                         {caption}
                         {scanSort?.key === key ? (scanSort.dir === 1 ? ' ▲' : ' ▼') : ''}
@@ -12183,8 +12145,8 @@ export default function App() {
                       onClick={() => applyScanCandidate(r)}
                       title={
                         chainScan.active === r.label
-                          ? 'This candidate is loaded in Working'
-                          : `Load the ${r.label} design into Working (undo-able)`
+                          ? t('This candidate is loaded in Working')
+                          : t('Load the {label} design into Working (undo-able)', { label: r.label })
                       }
                     >
                       <td>
@@ -12192,10 +12154,10 @@ export default function App() {
                         {r.label}
                         {chainScan.active === r.label ? ' ◂' : ''}
                       </td>
-                      <td title="Peak ±dB — the worst single spot (what the staged targets gate on)">
+                      <td title={t('Peak ±dB — the worst single spot (what the staged targets gate on)')}>
                         {r.rippleDb.toFixed(2)} dB
                       </td>
-                      <td title="Whole-range average |deviation| — the number the ranking judges on: one narrow dip doesn't decide the winner">
+                      <td title={t("Whole-range average |deviation| — the number the ranking judges on: one narrow dip doesn't decide the winner")}>
                         {r.avgDevDb !== null ? `${r.avgDevDb.toFixed(2)} dB` : '—'}
                       </td>
                       <td>{r.phaseDeg.toFixed(1)}°</td>
@@ -12203,10 +12165,10 @@ export default function App() {
                         className={r.xoWindowOk === false ? 'scan-z-low' : undefined}
                         title={
                           r.pairOverlapOct === null
-                            ? 'Delivered overlap width per pair (2-way rows do not carry it)'
+                            ? t('Delivered overlap width per pair (2-way rows do not carry it)')
                             : r.xoWindowOk === false
-                              ? 'A delivered crossing sits OUTSIDE its physics window (pin or measured beaming/lobing bound) — off-axis this is a different loudspeaker, so it ranks below every candidate inside the window'
-                              : 'Delivered overlap width per pair, octaves (W-M / M-T) — how long both cones carry a region together; the phase-coherent integration bandwidth'
+                              ? t('A delivered crossing sits OUTSIDE its physics window (pin or measured beaming/lobing bound) — off-axis this is a different loudspeaker, so it ranks below every candidate inside the window')
+                              : t('Delivered overlap width per pair, octaves (W-M / M-T) — how long both cones carry a region together; the phase-coherent integration bandwidth')
                         }
                       >
                         {r.pairOverlapOct !== null
@@ -12221,10 +12183,10 @@ export default function App() {
                         }
                         title={
                           r.zMinOhm === null
-                            ? 'Minimum system impedance was not measured for this candidate'
+                            ? t('Minimum system impedance was not measured for this candidate')
                             : r.zMinOhm < Z_FLOOR_OHM
-                              ? `The amplifier sees ${r.zMinOhm.toFixed(1)} Ω at its worst — below the ${Z_FLOOR_OHM} Ω floor, so this candidate ranks below every one with a sane load, however flat it is`
-                              : `Minimum system impedance the amplifier sees (floor ${Z_FLOOR_OHM} Ω)`
+                              ? t('The amplifier sees {z} Ω at its worst — below the {floor} Ω floor, so this candidate ranks below every one with a sane load, however flat it is', { z: r.zMinOhm.toFixed(1), floor: Z_FLOOR_OHM })
+                              : t('Minimum system impedance the amplifier sees (floor {floor} Ω)', { floor: Z_FLOOR_OHM })
                         }
                       >
                         {r.zMinOhm !== null
@@ -12240,20 +12202,20 @@ export default function App() {
             {tabCompare && tabCompare.length > 1 && (
               <details className="tab-compare">
                 <summary>
-                  Compare {tabCompare.length} designs — score · phase · Z · parts · BOM
+                  {t('Compare {n} designs — score · phase · Z · parts · BOM', { n: tabCompare.length })}
                 </summary>
                 <table
                   className="scan-table scan-table-pick"
-                  title="Every saved design measured through the same pipeline as the live simulation. The ghost curves show shape; this shows the numbers. Click a row to switch to that design."
+                  title={t('Every saved design measured through the same pipeline as the live simulation. The ghost curves show shape; this shows the numbers. Click a row to switch to that design.')}
                 >
                   <thead>
                     <tr>
-                      <th>design</th>
-                      <th>response</th>
-                      <th>avg / peak</th>
-                      <th>phase</th>
+                      <th>{t('design')}</th>
+                      <th>{t('response')}</th>
+                      <th>{t('avg / peak')}</th>
+                      <th>{t('phase')}</th>
                       <th>Z min</th>
-                      <th>parts</th>
+                      <th>{t('parts')}</th>
                       <th>BOM</th>
                     </tr>
                   </thead>
@@ -12263,7 +12225,7 @@ export default function App() {
                         key={r.id}
                         className={r.active ? 'active' : ''}
                         onClick={() => selectDesign(r.id)}
-                        title={r.active ? 'This design is open' : `Switch to ${r.name}`}
+                        title={r.active ? t('This design is open') : t('Switch to {name}', { name: r.name })}
                       >
                         <td>
                           {r.name}
@@ -12275,7 +12237,7 @@ export default function App() {
                             ? `±${r.avgDb.toFixed(2)} / ±${r.peakDb.toFixed(2)} dB`
                             : r.error ?? '—'}
                         </td>
-                        <td title={threeWay ? 'Worst of the two handovers' : undefined}>
+                        <td title={threeWay ? t('Worst of the two handovers') : undefined}>
                           {r.phaseDeg !== null
                             ? `${r.phaseDeg.toFixed(1)}° · P95 ${Math.round(r.p95Deg ?? 0)}°`
                             : '—'}
@@ -12284,7 +12246,7 @@ export default function App() {
                           className={
                             r.zMinOhm !== null && r.zMinOhm < Z_FLOOR_OHM ? 'scan-z-low' : undefined
                           }
-                          title={`Minimum system impedance (amplifier floor ${Z_FLOOR_OHM} Ω)`}
+                          title={t('Minimum system impedance (amplifier floor {floor} Ω)', { floor: Z_FLOOR_OHM })}
                         >
                           {r.zMinOhm !== null
                             ? `${r.zMinOhm < Z_FLOOR_OHM ? '⚠ ' : ''}${r.zMinOhm.toFixed(1)} Ω`
@@ -12319,13 +12281,13 @@ export default function App() {
                       disabled={!activeDesignId || !lastSavedId || lastSavedId === activeDesignId}
                       title={
                         lastSavedId && lastSavedId !== activeDesignId
-                          ? `Overwrite "${designs.find((d) => d.id === lastSavedId)?.name ?? ''}" with the active design and switch to it (⌘S)`
+                          ? t('Overwrite "{name}" with the active design and switch to it (⌘S)', { name: designs.find((d) => d.id === lastSavedId)?.name ?? '' })
                           : lastSavedId === activeDesignId && lastSavedId !== null
-                            ? 'This IS the saved filter — edits are live, nothing to save'
-                            : 'No saved filter yet — use Save as new first'
+                            ? t('This IS the saved filter — edits are live, nothing to save')
+                            : t('No saved filter yet — use Save as new first')
                       }
                     >
-                      💾 Save
+                      💾 {t('Save')}
                       {lastSavedId && lastSavedId !== activeDesignId && (
                         /* The overwrite TARGET, visible without hovering: a
                            save button whose destination is a secret reads as
@@ -12341,9 +12303,9 @@ export default function App() {
                       className="design-tab-dup"
                       onClick={() => setSaveNameDraft(uniqueDesignName('Filter', designs))}
                       disabled={!activeDesignId}
-                      title="Save the active design under a NEW name and switch to that saved tab — the tab you came from stays as a ghost to compare against"
+                      title={t('Save the active design under a NEW name and switch to that saved tab — the tab you came from stays as a ghost to compare against')}
                     >
-                      Save as new
+                      {t('Save as new')}
                     </button>
                   </>
                 ) : (
@@ -12351,17 +12313,17 @@ export default function App() {
                     <input
                       autoFocus
                       value={saveNameDraft}
-                      placeholder="Filter name"
+                      placeholder={t('Filter name')}
                       onChange={(e) => setSaveNameDraft(e.target.value)}
                       onKeyDown={(e) => {
                         if (e.key === 'Enter') saveActiveDesign(saveNameDraft);
                         if (e.key === 'Escape') setSaveNameDraft(null);
                       }}
                     />
-                    <button type="button" onClick={() => saveActiveDesign(saveNameDraft)} title="Save (Enter)">
+                    <button type="button" onClick={() => saveActiveDesign(saveNameDraft)} title={t('Save (Enter)')}>
                       ✓
                     </button>
-                    <button type="button" onClick={() => setSaveNameDraft(null)} title="Cancel (Esc)">
+                    <button type="button" onClick={() => setSaveNameDraft(null)} title={t('Cancel (Esc)')}>
                       ×
                     </button>
                   </span>
@@ -12395,14 +12357,14 @@ export default function App() {
                   return (
                     <details className="bom">
                       <summary>
-                        BOM — {bom.rows.length} components ·{' '}
+                        BOM — {t('{n} components', { n: bom.rows.length })} ·{' '}
                         {bom.totalEur !== null
                           ? // "≥" only when rows are missing a price — with
                             // everything priced the total is exact, and a
                             // hedge on an exact number reads as doubt.
-                            `${bom.pricedCount < bom.rows.length ? '≥ ' : ''}€${bom.totalEur.toFixed(2)} (${bom.pricedCount}/${bom.rows.length} priced)`
-                          : 'no prices in catalog yet'}
-                        {bom.unmatchedCount > 0 && ` · ${bom.unmatchedCount} without exact catalog match`}
+                            `${bom.pricedCount < bom.rows.length ? '≥ ' : ''}€${bom.totalEur.toFixed(2)} (${bom.pricedCount}/${bom.rows.length} ${t('priced')})`
+                          : t('no prices in catalog yet')}
+                        {bom.unmatchedCount > 0 && ` · ${t('{n} without exact catalog match', { n: bom.unmatchedCount })}`}
                       </summary>
                       <table>
                         <tbody>
@@ -12421,7 +12383,7 @@ export default function App() {
                                   ? `${row.match.brand} ${row.match.series} — ${formatCatalogPart(row.match)}`
                                   : row.stackMatch
                                     ? row.stackMatch.label
-                                    : 'no exact catalog value'}
+                                    : t('no exact catalog value')}
                               </td>
                               <td className="synth-value">
                                 {row.match?.priceEur !== undefined
@@ -12478,9 +12440,9 @@ export default function App() {
           className="pane-splitter"
           role="separator"
           aria-orientation="vertical"
-          aria-label="Resize the design and chart panes — arrow keys adjust, Home resets"
+          aria-label={t('Resize the design and chart panes — arrow keys adjust, Home resets')}
           tabIndex={0}
-          title="Drag to resize the panes — double-click to reset to automatic width"
+          title={t('Drag to resize the panes — double-click to reset to automatic width')}
           onPointerDown={startPaneDrag}
           onDoubleClick={() => setPaneFrac(null)}
           onKeyDown={(e) => {
@@ -12609,7 +12571,7 @@ export default function App() {
                 aria-pressed={splPinned}
                 // Icon-only: a tooltip is hover-only, so it is no label at all
                 // for a keyboard or a screen reader.
-                aria-label="Pin the SPL chart to the top"
+                aria-label={t('Pin the SPL chart to the top')}
                 onClick={() => setSplPinned((p) => !p)}
                 title={
                   splPinned
@@ -12858,11 +12820,11 @@ export default function App() {
               {sonogram && (
                 <>
                   <div className="row" style={{ margin: '1rem 0 0.4rem' }}>
-                    <h3 style={{ margin: 0 }}>Sonogram</h3>
+                    <h3 style={{ margin: 0 }}>{t('Sonogram')}</h3>
                     <label>
                       {t('Scale')}{' '}
                       <select
-                        title="Normalized: each frequency relative to its own 0° level (pure beamwidth). Absolute: relative to the loudest point (level and directivity together)."
+                        title={t('Normalized: each frequency relative to its own 0° level (pure beamwidth). Absolute: relative to the loudest point (level and directivity together).')}
                         value={sonogramMode}
                         onChange={(e) => setSonogramMode(e.target.value as SonogramMode)}
                       >
@@ -13410,7 +13372,7 @@ function DesignTab({
             setDraft(design.name);
             setEditing(true);
           }}
-          title="Click to activate, double-click to rename"
+          title={t('Click to activate, double-click to rename')}
         >
           {design.name}
         </button>
@@ -13419,10 +13381,10 @@ function DesignTab({
         type="button"
         className="design-tab-close"
         onClick={() => {
-          if (window.confirm(`Delete tab "${design.name}"?`)) onDelete();
+          if (window.confirm(t('Delete tab "{name}"?', { name: design.name }))) onDelete();
         }}
-        title={`Delete "${design.name}"`}
-        aria-label={`Delete tab "${design.name}"`}
+        title={t('Delete "{name}"', { name: design.name })}
+        aria-label={t('Delete tab "{name}"', { name: design.name })}
       >
         ×
       </button>
@@ -13447,10 +13409,10 @@ function verdictClass(v: 'plausible' | 'suspect' | 'unreliable'): string {
 function verdictHeading(v: 'plausible' | 'suspect' | 'unreliable'): string {
   switch (v) {
     case 'plausible':
-      return '✓ Shared time reference plausible';
+      return t('✓ Shared time reference plausible');
     case 'suspect':
-      return '✗ Time bases disagree';
+      return t('✗ Time bases disagree');
     case 'unreliable':
-      return '⚠ Cannot judge (fit not delay-like)';
+      return t('⚠ Cannot judge (fit not delay-like)');
   }
 }

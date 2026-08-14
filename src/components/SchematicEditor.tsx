@@ -14,6 +14,7 @@ import {
   type Pt,
 } from '../lib/schematicEdit.ts';
 import { estimateCoilDcr } from '../lib/netlistEdit.ts';
+import { t } from '../lib/i18n.ts';
 import {
   catalogSeries,
   formatCatalogPart,
@@ -184,45 +185,45 @@ export default function SchematicEditor({ parts, models, onChange, onUndo, canUn
   return (
     <div className="sch-editor" tabIndex={0} onKeyDown={onKeyDown}>
       <div className="row sch-toolbar">
-        {toolBtn('Select / drag', { kind: 'select' }, 'Click to select, drag to move (wires follow)')}
-        {toolBtn('Draw wire', { kind: 'wire' }, 'Click two points; wires connect at their points')}
+        {toolBtn(t('Select / drag'), { kind: 'select' }, t('Click to select, drag to move (wires follow)'))}
+        {toolBtn(t('Draw wire'), { kind: 'wire' }, t('Click two points; wires connect at their points'))}
         <span className="sch-toolbar-sep" />
-        {toolBtn('+ L', { kind: 'place', type: 'Inductor' }, 'Place an inductor (with DCR)')}
-        {toolBtn('+ C', { kind: 'place', type: 'Capacitor' }, 'Place a capacitor (with ESR)')}
-        {toolBtn('+ R', { kind: 'place', type: 'Resistor' }, 'Place a resistor')}
-        {toolBtn('+ Driver', { kind: 'place', type: 'Driver' }, 'Place a driver (measured Z)')}
-        {toolBtn('+ Gen', { kind: 'place', type: 'Generator' }, 'Place a generator')}
-        {toolBtn('+ Gnd', { kind: 'place', type: 'Ground' }, 'Place a ground symbol')}
+        {toolBtn('+ L', { kind: 'place', type: 'Inductor' }, t('Place an inductor (with DCR)'))}
+        {toolBtn('+ C', { kind: 'place', type: 'Capacitor' }, t('Place a capacitor (with ESR)'))}
+        {toolBtn('+ R', { kind: 'place', type: 'Resistor' }, t('Place a resistor'))}
+        {toolBtn(`+ ${t('Driver')}`, { kind: 'place', type: 'Driver' }, t('Place a driver (measured Z)'))}
+        {toolBtn('+ Gen', { kind: 'place', type: 'Generator' }, t('Place a generator'))}
+        {toolBtn('+ Gnd', { kind: 'place', type: 'Ground' }, t('Place a ground symbol'))}
         <span className="sch-toolbar-sep" />
         <button
           type="button"
           onClick={() => onChange(setAllLocks(parts, true))}
-          title="Lock every component — the component optimizer may change none of them"
+          title={t('Lock every component — the component optimizer may change none of them')}
         >
-          🔒 all
+          🔒 {t('all')}
         </button>
         <button
           type="button"
           onClick={() => onChange(setAllLocks(parts, false))}
-          title="Unlock every component — the component optimizer may change all of them"
+          title={t('Unlock every component — the component optimizer may change all of them')}
         >
-          🔓 all
+          🔓 {t('all')}
         </button>
         <span className="sch-toolbar-sep" />
-        <button type="button" onClick={onUndo} disabled={!canUndo} title="Undo the last edit (Cmd/Ctrl+Z)">
-          Undo
+        <button type="button" onClick={onUndo} disabled={!canUndo} title={t('Undo the last edit (Cmd/Ctrl+Z)')}>
+          {t('Undo')}
         </button>
-        <button type="button" onClick={onRedo} disabled={!canRedo} title="Redo the undone edit (Cmd/Ctrl+Shift+Z)">
-          Redo
+        <button type="button" onClick={onRedo} disabled={!canRedo} title={t('Redo the undone edit (Cmd/Ctrl+Shift+Z)')}>
+          {t('Redo')}
         </button>
         <span className="derived">
           {tool.kind === 'wire'
             ? wireStart
-              ? 'click the end point'
-              : 'click the start point'
+              ? t('click the end point')
+              : t('click the start point')
             : tool.kind === 'place'
-              ? 'click to place'
-              : 'Esc = cancel · Del = remove · R = rotate'}
+              ? t('click to place')
+              : t('Esc = cancel · Del = remove · R = rotate')}
         </span>
       </div>
       <div className="schematic-scroll">
@@ -236,7 +237,7 @@ export default function SchematicEditor({ parts, models, onChange, onUndo, canUn
           onPointerMove={onMove}
           onPointerUp={onUp}
           role="application"
-          aria-label="Schematic editor"
+          aria-label={t('Schematic editor')}
         >
           <defs>
             <pattern id="sch-grid" width={S} height={S} patternUnits="userSpaceOnUse" x={PADDING} y={PADDING}>
@@ -300,7 +301,7 @@ export default function SchematicEditor({ parts, models, onChange, onUndo, canUn
               <ParamField parts={parts} index={sel!} name="DCR" unit="Ω" label="DCR (Ω)" onChange={onChange} />
               <button
                 type="button"
-                title="Estimate DCR for a 1.4 mm air-core coil of this value"
+                title={t('Estimate DCR for a 1.4 mm air-core coil of this value')}
                 onClick={() =>
                   onChange(
                     setPartParam(
@@ -313,7 +314,7 @@ export default function SchematicEditor({ parts, models, onChange, onUndo, canUn
                   )
                 }
               >
-                auto DCR
+                {t('auto DCR')}
               </button>
             </>
           )}
@@ -335,7 +336,7 @@ export default function SchematicEditor({ parts, models, onChange, onUndo, canUn
           {selPart.type === 'Driver' && (
             <>
               <label>
-                model{' '}
+                {t('model')}{' '}
                 <select
                   value={selPart.model ?? ''}
                   onChange={(e) => onChange(setPartProps(parts, sel!, { model: e.target.value }))}
@@ -353,7 +354,7 @@ export default function SchematicEditor({ parts, models, onChange, onUndo, canUn
                   checked={selPart.inverted ?? false}
                   onChange={(e) => onChange(setPartProps(parts, sel!, { inverted: e.target.checked }))}
                 />{' '}
-                invert
+                {t('invert')}
               </label>
             </>
           )}
@@ -364,9 +365,9 @@ export default function SchematicEditor({ parts, models, onChange, onUndo, canUn
                 onChange={(e) =>
                   setPrefSeries((prev) => ({ ...prev, [catKind]: e.target.value }))
                 }
-                title="Product series (brand choice) — suggestions come from this series"
+                title={t('Product series (brand choice) — suggestions come from this series')}
               >
-                <option value="all">All series</option>
+                <option value="all">{t('All series')}</option>
                 {catalogSeries(catKind).map((s) => (
                   <option key={s.id} value={s.id}>
                     {s.brand} {s.series}
@@ -419,10 +420,10 @@ export default function SchematicEditor({ parts, models, onChange, onUndo, canUn
                         const p = candidates.find((c) => c.id === e.target.value);
                         if (p) applyCatalogPart(p);
                       }}
-                      title="Every nearby catalog part in this scope — all values, gauge variants and prices; picking one applies it"
+                      title={t('Every nearby catalog part in this scope — all values, gauge variants and prices; picking one applies it')}
                     >
                       <option value="" disabled>
-                        all {candidates.length} parts…
+                        {t('all {n} parts…', { n: candidates.length })}
                       </option>
                       {candidates.map((p) => (
                         <option key={p.id} value={p.id}>
@@ -434,7 +435,7 @@ export default function SchematicEditor({ parts, models, onChange, onUndo, canUn
                       <button
                         key={p.id}
                         type="button"
-                        title={`${p.brand} ${p.series}${p.kind === 'R' ? '' : ` — apply value + ${p.kind === 'L' ? 'DCR' : 'ESR'}`}`}
+                        title={`${p.brand} ${p.series}${p.kind === 'R' ? '' : ` — ${t('apply value +')} ${p.kind === 'L' ? 'DCR' : 'ESR'}`}`}
                         onClick={() => applyCatalogPart(p)}
                       >
                         {formatCatalogPart(p)}
@@ -446,22 +447,22 @@ export default function SchematicEditor({ parts, models, onChange, onUndo, canUn
             </span>
           )}
           {catKind && (
-            <label title="Locked: the component optimizer keeps this value (e.g. a part you already own)">
+            <label title={t('Locked: the component optimizer keeps this value (e.g. a part you already own)')}>
               <input
                 type="checkbox"
                 checked={selPart.locked ?? false}
                 onChange={(e) => onChange(setPartProps(parts, sel!, { locked: e.target.checked }))}
               />{' '}
-              🔒 lock
+              🔒 {t('lock')}
             </label>
           )}
           {canRotate(selPart) && (
             <button
               type="button"
               onClick={() => onChange(rotatePart(parts, sel!))}
-              title="Rotate 90° (shortcut: R) — terminals get stub wires, connections never break"
+              title={t('Rotate 90° (shortcut: R) — terminals get stub wires, connections never break')}
             >
-              Rotate
+              {t('Rotate')}
             </button>
           )}
           <button
@@ -471,9 +472,9 @@ export default function SchematicEditor({ parts, models, onChange, onUndo, canUn
               onChange(deletePart(parts, sel!));
               setSel(null);
             }}
-            title="Remove this part (shortcut: Del) — its wires stay"
+            title={t('Remove this part (shortcut: Del) — its wires stay')}
           >
-            Delete
+            {t('Delete')}
           </button>
         </div>
       )}
@@ -518,7 +519,7 @@ function ParamField({
         min={0}
         step={name === 'DCR' || name === 'ESR' || name === 'Rg' ? 0.01 : 0.1}
         value={value}
-        title={eSeries ? '↑/↓ steps through E12 values (1.0, 1.2, 1.5, 1.8, 2.2 …)' : undefined}
+        title={eSeries ? t('↑/↓ steps through E12 values (1.0, 1.2, 1.5, 1.8, 2.2 …)') : undefined}
         onKeyDown={
           eSeries
             ? (e) => {

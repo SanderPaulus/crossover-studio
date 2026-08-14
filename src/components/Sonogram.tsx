@@ -1,4 +1,5 @@
 import { useEffect, useId, useMemo, useRef, useState } from 'react';
+import { t } from '../lib/i18n.ts';
 import type { SonogramData } from '../lib/sonogram.ts';
 import { SONOGRAM_BAND_DB, sonogramBandT, sonogramColor } from '../lib/sonogram.ts';
 import { FREQ_TICKS, fmtHz } from './Chart.tsx';
@@ -273,12 +274,12 @@ export default function Sonogram({
                 </div>
                 <div className="tooltip-row">
                   <span className="tooltip-label">
-                    {data.mode === 'normalized' ? 'Rel. on-axis' : 'Rel. max'}
+                    {data.mode === 'normalized' ? t('Rel. on-axis') : t('Rel. max')}
                   </span>
                   <span className="tooltip-val">{hoverInfo.v.toFixed(1)} dB</span>
                 </div>
                 <div className="tooltip-row">
-                  <span className="tooltip-label">−6 dB beamwidth</span>
+                  <span className="tooltip-label">{t('−6 dB beamwidth')}</span>
                   <span className="tooltip-val">
                     {hoverInfo.widthDeg !== null ? `${hoverInfo.widthDeg.toFixed(0)}°` : `>${2 * aMax}°`}
                   </span>

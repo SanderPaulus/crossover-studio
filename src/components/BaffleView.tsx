@@ -1,4 +1,5 @@
 import { pistonDiameterMm } from '../lib/cabinet.ts';
+import { t } from '../lib/i18n.ts';
 import type { BranchRole } from '../lib/driverSlots.ts';
 
 export interface BaffleDriver {
@@ -78,7 +79,7 @@ export function BaffleView({ widthMm, heightMm, refFromTopMm, drivers, horizonta
       className="baffle-view"
       viewBox={`0 0 ${bw + pad * 2} ${bh + pad * 2}`}
       role="img"
-      aria-label={`Scale drawing of a ${widthMm} by ${heightMm} mm baffle with ${cones.length} driver${cones.length === 1 ? '' : 's'} and the measurement reference point`}
+      aria-label={t('Scale drawing of a {w} by {h} mm baffle with {n} driver(s) and the measurement reference point', { w: widthMm, h: heightMm, n: cones.length })}
     >
       <rect
         x={pad}

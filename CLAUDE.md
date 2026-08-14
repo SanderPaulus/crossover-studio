@@ -2281,13 +2281,30 @@ voordat je een layoutbug gaat jagen.
   Chart.tsx + FilterControls.tsx); browser-geverifieerd op de Filters-tab met ⚙ open.
   LES: curly apostrofs (’) in een dict-key matchen de straight quotes (') van de bron
   niet — drie lange tooltips vielen stil terug op Engels tot de keys byte-gelijk waren.
-- **Nog niet vertaald** (bewust incrementeel): rest van de Netwerk-tab (BOM-regels,
-  scan-tabel-koppen, netOptNote/scan-notes, tab-beheer Save/Save as new), het timing-paneel
-  (Split of that Δ / Measured mounting depth), de Compare-wizard, MeasuringGuide (Engels),
-  HelpPanel-content (Nederlands — heeft t.z.t. een EN-versie nodig via hetzelfde patroon,
-  content per taal), transient persistNote/foutmelding-strings, en de ENGINE-notes
-  (scan/safety/optimizer-teksten uit src/lib) — die blijven Engels tot daar een bewuste
-  ronde voor komt; lib vertaalt NIET zelf.
+- **DE REST IS AF (zesde ronde, Sanders "doorpakken, niet meer stoppen totdat alles klaar
+  is")**: het timing-paneel compleet (verdict-koppen, de Δ-splitsing als sjabloon-zinnen,
+  gemeten montagediepte, meetafstand-oordeel, stoel-re-timing, VituixCAD-brug), de
+  scan-tabel + tabCompare + Save/Save as new + BOM-regels + DesignTab (hernoemen/sluiten),
+  de notch- en 🎯 Targets-modals, de volledige Compare-wizard, de transient
+  persistNote/setError-strings (export-mappen, drop-weigeringen, catalogus-meldingen —
+  samengestelde zinnen als sjabloon met placeholders), SchematicEditor.tsx (tools,
+  inspector, catalogus-suggesties), CatalogManager.tsx (tabellen, beide formulieren,
+  Use-schakelaar), Sonogram/BaffleView-labels, en MeasuringGuide.tsx integraal (de zeven
+  secties, tabellen, sliders, figuur-bijschriften). Dekking **1292 sleutels / 0
+  ontbrekend**; de extractie loopt nu over App.tsx + alle componenten. LES (3e keer): de
+  shadow-valkuil zat nu in MeasuringGuide's TopView (`const t = (deg*π)/180`) — hernoemd
+  naar `rad`; tsc vangt hem, maar controleer élke file die t importeert op lokale `t`'s.
+- **De HANDLEIDING bestaat nu in twee talen** (`src/lib/helpEn.ts`): HELP_SECTIONS blijft
+  de Nederlandse BRON, HELP_SECTIONS_EN is de Engelse editie, en `helpSections(lang)` in
+  help.ts kiest (onbekende taal ⇒ Engels, de sleuteltaal). De sectie-IDs MOETEN 1-op-1
+  gelijk zijn — contextueel openen (helpSectionForTab) en scroll-targets sleutelen op id,
+  nooit op titel — en de test pint dat vast (plus gebalanceerde markup in beide edities).
+  HelpPanel leest de taal via useSyncExternalStore en zoekt in de actieve editie
+  (searchHelp kreeg de secties al als parameter — geen wijziging nodig). Browser-bewezen:
+  NL toont "🚀 Snelstart", EN toont "🚀 Quick start", geen lekkage in beide richtingen.
+- **Bewust Engels gebleven**: de ENGINE-notes (scan/safety/optimizer-teksten uit src/lib)
+  — lib vertaalt NIET zelf (de notes zijn samengestelde data uit de solvers; vertalen zou
+  i18n de engine in trekken), en ghost-labels zijn tabnamen (gebruikersdata).
 - **Shadow-valkuil**: App.tsx heeft her en der lokale `const t = …` — de theme-map en de
   keyRef-handler zijn al hernoemd (`th`/`tgt`/`tab`); binnen zo'n scope `t()` aanroepen is
   een typecheck-fout, dus tsc vangt het, maar hernoem bij twijfel.

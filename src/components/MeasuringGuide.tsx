@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { Modal } from './Modal';
+import { t } from '../lib/i18n';
 import { farFieldVerdict, floorBounceGate, trueOffAxisDeg } from '../lib/cabinet';
 
 /**
@@ -77,7 +78,7 @@ function SideView({ micMm }: { micMm: number }) {
       viewBox={`0 0 ${W} ${viewH}`}
       className="mg-svg"
       role="img"
-      aria-label="Side view: microphone distance versus each driver's true angle"
+      aria-label={t("Side view: microphone distance versus each driver's true angle")}
     >
       <rect
         x={refX - cabW}
@@ -102,14 +103,14 @@ function SideView({ micMm }: { micMm: number }) {
               className="mg-lbl"
               style={{ fill: d.color }}
             >
-              {d.name} {ang.toFixed(0)}°
+              {t(d.name)} {ang.toFixed(0)}°
             </text>
           </g>
         );
       })}
       <circle cx={micX} cy={refY} r={5} className="mg-mic" />
       <text x={micX} y={refY - 12} className="mg-lbl mg-mic-lbl">
-        mic
+        {t('mic')}
       </text>
       {/* The reference point is marked, not labelled: a caption under the
           drawing reads better than text competing with the driver labels. */}
@@ -130,18 +131,18 @@ function TopView({ micMm, deg }: { micMm: number; deg: number }) {
   const cx = 46;
   const cy = 150;
   const s = (W - cx - 40) / micMm;
-  const t = (deg * Math.PI) / 180;
-  const micX = cx + micMm * s * Math.cos(t);
-  const micY = cy - micMm * s * Math.sin(t);
+  const rad = (deg * Math.PI) / 180;
+  const micX = cx + micMm * s * Math.cos(rad);
+  const micY = cy - micMm * s * Math.sin(rad);
   const depth = Math.max(14, 260 * s);
   const half = Math.max(8, 150 * s);
   return (
-    <svg viewBox={`0 0 ${W} ${H}`} className="mg-svg" role="img" aria-label="Top view: the turntable rotates the cabinet, the microphone stays put">
+    <svg viewBox={`0 0 ${W} ${H}`} className="mg-svg" role="img" aria-label={t('Top view: the turntable rotates the cabinet, the microphone stays put')}>
       <line x1={cx} y1={cy} x2={cx + micMm * s} y2={cy} className="mg-axis" />
       <path
         d={`M ${cx} ${cy} L ${cx + 46} ${cy} A 46 46 0 0 ${deg >= 0 ? 0 : 1} ${
-          cx + 46 * Math.cos(t)
-        } ${cy - 46 * Math.sin(t)} Z`}
+          cx + 46 * Math.cos(rad)
+        } ${cy - 46 * Math.sin(rad)} Z`}
         className="mg-arc"
       />
       <g transform={`rotate(${-deg} ${cx} ${cy})`}>
@@ -152,7 +153,7 @@ function TopView({ micMm, deg }: { micMm: number; deg: number }) {
       <line x1={cx} y1={cy} x2={micX} y2={micY} className="mg-ray" />
       <circle cx={micX} cy={micY} r={5} className="mg-mic" />
       <text x={cx + 52} y={cy - 10} className="mg-lbl mg-ref-lbl">
-        {deg}° (the cabinet)
+        {deg}° {t('(the cabinet)')}
       </text>
     </svg>
   );
@@ -195,53 +196,40 @@ export function MeasuringGuide({ open, onClose }: { open: boolean; onClose: () =
   }));
 
   return (
-    <Modal open={open} onClose={onClose} label="How to measure" cardClass="help-card mg-card">
+    <Modal open={open} onClose={onClose} label={t('How to measure')} cardClass="help-card mg-card">
       <div className="mg-head">
-        <h2>📐 How to measure</h2>
-        <button type="button" className="icon" aria-label="Close the measuring guide" onClick={onClose}>
+        <h2>📐 {t('How to measure')}</h2>
+        <button type="button" className="icon" aria-label={t('Close the measuring guide')} onClick={onClose}>
           ✕
         </button>
       </div>
 
       <p>
-        Every window and warning this tool derives rests on one thing: what your angle
-        measurements actually captured. That is decided before you touch the software — by where
-        you aimed the microphone and how far away it stood. The illustrations below run on the
-        app&apos;s own geometry, so what you see here is exactly what the optimizer will use.
+        {t("Every window and warning this tool derives rests on one thing: what your angle measurements actually captured. That is decided before you touch the software — by where you aimed the microphone and how far away it stood. The illustrations below run on the app's own geometry, so what you see here is exactly what the optimizer will use.")}
       </p>
 
-      <h3>1 · Choose a reference point, and aim at it</h3>
+      <h3>1 · {t('Choose a reference point, and aim at it')}</h3>
       <p>
-        Pick one spot on the baffle — the tweeter is the usual choice — and treat it as the origin
-        of everything: the mic points at it, the turntable turns around it, and every driver
-        position you enter is measured from it. Write it down; a measurement whose reference you
-        cannot name is a measurement you cannot interpret later.
+        {t('Pick one spot on the baffle — the tweeter is the usual choice — and treat it as the origin of everything: the mic points at it, the turntable turns around it, and every driver position you enter is measured from it. Write it down; a measurement whose reference you cannot name is a measurement you cannot interpret later.')}
       </p>
 
-      <h3>2 · Stand far enough back</h3>
+      <h3>2 · {t('Stand far enough back')}</h3>
       <p>
-        You sweep <em>horizontally</em> — but there is a second angle you never chose. A driver
-        sitting below the reference point has the microphone somewhere above it, so the line from
-        that driver to the mic already runs at an angle{' '}
-        <strong>before the turntable moves at all</strong>. It is there at every horizontal step,
-        it is set purely by how far back you stand, and it is invisible in the files.
+        {t('You sweep')} <em>{t('horizontally')}</em>{t(' — but there is a second angle you never chose. A driver sitting below the reference point has the microphone somewhere above it, so the line from that driver to the mic already runs at an angle')}{' '}
+        <strong>{t('before the turntable moves at all')}</strong>{t('. It is there at every horizontal step, it is set purely by how far back you stand, and it is invisible in the files.')}
       </p>
       <p>
-        The side view below shows only that unavoidable part. Drag the microphone and watch it
-        shrink:
+        {t('The side view below shows only that unavoidable part. Drag the microphone and watch it shrink:')}
       </p>
       <figure className="mg-stage">
         <SideView micMm={micMm} />
         <figcaption>
-          <strong>Side view — the angle you did not choose.</strong> The crosshair is the
-          reference point and the dashed line is where the mic is aimed; every driver below it
-          looks up at the microphone. This is not a measurement you take — it is where the driver
-          sits. Drawn to scale, so the cabinet genuinely shrinks as you back away, and with it
-          this angle.
+          <strong>{t('Side view — the angle you did not choose.')}</strong>{' '}
+          {t('The crosshair is the reference point and the dashed line is where the mic is aimed; every driver below it looks up at the microphone. This is not a measurement you take — it is where the driver sits. Drawn to scale, so the cabinet genuinely shrinks as you back away, and with it this angle.')}
         </figcaption>
       </figure>
       <label className="mg-slider">
-        Mic distance
+        {t('Mic distance')}
         <input
           type="range"
           min={300}
@@ -256,21 +244,20 @@ export function MeasuringGuide({ open, onClose }: { open: boolean; onClose: () =
         <output>{micMm} mm</output>
       </label>
       <p className="mg-tablenote">
-        Put the two together — your horizontal sweep on top of the vertical offset above — and
-        this is the angle each driver was <em>actually</em> measured at:
+        {t('Put the two together — your horizontal sweep on top of the vertical offset above — and this is the angle each driver was')} <em>{t('actually')}</em> {t('measured at:')}
       </p>
       <table className="mg-table">
         <thead>
           <tr>
-            <th>driver</th>
-            <th>you turned to 0°, it saw</th>
-            <th>you turned to 30°, it saw</th>
+            <th>{t('driver')}</th>
+            <th>{t('you turned to 0°, it saw')}</th>
+            <th>{t('you turned to 30°, it saw')}</th>
           </tr>
         </thead>
         <tbody>
           {rows.map((r) => (
             <tr key={r.name}>
-              <td style={{ color: r.color }}>{r.name}</td>
+              <td style={{ color: r.color }}>{t(r.name)}</td>
               <td>{r.at0.toFixed(0)}°</td>
               <td>{r.at30.toFixed(0)}°</td>
             </tr>
@@ -280,23 +267,19 @@ export function MeasuringGuide({ open, onClose }: { open: boolean; onClose: () =
       {ff && (
         <p className={ff.ok ? 'mg-ok' : 'mg-warn'}>
           {ff.ok
-            ? `At ${micMm} mm the mic is ${ff.ratio.toFixed(1)}× the source size — far field, the curves mean what they say.`
-            : `At ${micMm} mm the mic is only ${ff.ratio.toFixed(1)}× the source size (a 300 mm baffle). Directivity read from this is indicative at best.`}
+            ? t('At {d} mm the mic is {r}× the source size — far field, the curves mean what they say.', { d: micMm, r: ff.ratio.toFixed(1) })
+            : t('At {d} mm the mic is only {r}× the source size (a 300 mm baffle). Directivity read from this is indicative at best.', { d: micMm, r: ff.ratio.toFixed(1) })}
         </p>
       )}
       <p>
-        For a full-size three-way, <strong>measure at 1.5–2 m</strong>, and never below 1 m. The
-        &ldquo;three times the baffle&rdquo; figure is a rule of thumb its own sources label as
-        one; the argument that actually settles it is <em>relative timing</em>. Design at one
-        distance and listen at another, and every driver&apos;s path length changes by a different
-        amount — which lands directly in the crossover phase:
+        {t('For a full-size three-way,')} <strong>{t('measure at 1.5–2 m')}</strong>{t(', and never below 1 m. The "three times the baffle" figure is a rule of thumb its own sources label as one; the argument that actually settles it is')} <em>{t('relative timing')}</em>{t(". Design at one distance and listen at another, and every driver's path length changes by a different amount — which lands directly in the crossover phase:")}
       </p>
       <table className="mg-table">
         <thead>
           <tr>
-            <th>designed at</th>
-            <th>woofer–mid error @300 Hz</th>
-            <th>mid–tweeter error @2.5 kHz</th>
+            <th>{t('designed at')}</th>
+            <th>{t('woofer–mid error @300 Hz')}</th>
+            <th>{t('mid–tweeter error @2.5 kHz')}</th>
           </tr>
         </thead>
         <tbody>
@@ -315,32 +298,26 @@ export function MeasuringGuide({ open, onClose }: { open: boolean; onClose: () =
         </tbody>
       </table>
       <p>
-        (Relative to a 3 m listening position, for a tower with the mid 180 mm and the woofer
-        450 mm below the tweeter.) Sixty-eight degrees at the mid–tweeter is the difference between
-        a flat sum and a visible suck-out — in a tool that otherwise lands within a few degrees.
-        Backing away does cost gate length, so measure <strong>high</strong> — around half your
-        room height — and put something soft on the floor and ceiling along the reflection path.
+        {t('(Relative to a 3 m listening position, for a tower with the mid 180 mm and the woofer 450 mm below the tweeter.) Sixty-eight degrees at the mid–tweeter is the difference between a flat sum and a visible suck-out — in a tool that otherwise lands within a few degrees. Backing away does cost gate length, so measure')}{' '}
+        <strong>{t('high')}</strong>{t(' — around half your room height — and put something soft on the floor and ceiling along the reflection path.')}
       </p>
 
-      <h3>3 · The floor decides how low your measurement is worth anything</h3>
+      <h3>3 · {t('The floor decides how low your measurement is worth anything')}</h3>
       <p>
-        Indoors you are not measuring a response, you are measuring the first few milliseconds of
-        one. The gate has to close before the floor bounce arrives, and whatever window you get,
-        the measurement is only trustworthy above roughly <strong>1 / gate</strong>: a 5 ms window
-        means 200 Hz, and it is already a couple of dB out by the time it gets there.
+        {t('Indoors you are not measuring a response, you are measuring the first few milliseconds of one. The gate has to close before the floor bounce arrives, and whatever window you get, the measurement is only trustworthy above roughly')}{' '}
+        <strong>{t('1 / gate')}</strong>{t(': a 5 ms window means 200 Hz, and it is already a couple of dB out by the time it gets there.')}
       </p>
       <p>
-        Here is the trap, and it is the reason step 2 is not free. Backing away lengthens the
-        direct path more than it lengthens the bounce, so the window <em>shrinks</em> exactly as
-        you fix the far-field problem. Height is what buys it back — these are your slider&apos;s
-        distance against three stand heights, computed by the same function the app uses:
+        {t('Here is the trap, and it is the reason step 2 is not free. Backing away lengthens the direct path more than it lengthens the bounce, so the window')}{' '}
+        <em>{t('shrinks')}</em>{' '}
+        {t("exactly as you fix the far-field problem. Height is what buys it back — these are your slider's distance against three stand heights, computed by the same function the app uses:")}
       </p>
       <table className="mg-table">
         <thead>
           <tr>
-            <th>speaker + mic at</th>
-            <th>gate</th>
-            <th>valid above</th>
+            <th>{t('speaker + mic at')}</th>
+            <th>{t('gate')}</th>
+            <th>{t('valid above')}</th>
           </tr>
         </thead>
         <tbody>
@@ -357,77 +334,57 @@ export function MeasuringGuide({ open, onClose }: { open: boolean; onClose: () =
         </tbody>
       </table>
       <p>
-        So: <strong>get everything up in the air</strong> — a metre and a half beats a metre by
-        more than backing away costs you — and put the stand out in the room rather than against a
-        wall. Below the gate limit there are two honest ways out, and guessing is not one of them:
-        splice in a <strong>near-field</strong> measurement (Import → near-field slot; the app
-        matches level and delay and crossfades in the complex domain), or measure the low end{' '}
-        <strong>ground plane</strong> — speaker and microphone both on the floor, so the
-        reflection merges with the direct sound and there is no bounce left to gate. Ground plane
-        costs you a known +6 dB and needs the cabinet laid over, but it hands back the 100–500 Hz
-        region that a stand measurement cannot reach.
+        {t('So:')} <strong>{t('get everything up in the air')}</strong>{t(' — a metre and a half beats a metre by more than backing away costs you — and put the stand out in the room rather than against a wall. Below the gate limit there are two honest ways out, and guessing is not one of them: splice in a')}{' '}
+        <strong>{t('near-field')}</strong>{t(' measurement (Import → near-field slot; the app matches level and delay and crossfades in the complex domain), or measure the low end')}{' '}
+        <strong>{t('ground plane')}</strong>{t(' — speaker and microphone both on the floor, so the reflection merges with the direct sound and there is no bounce left to gate. Ground plane costs you a known +6 dB and needs the cabinet laid over, but it hands back the 100–500 Hz region that a stand measurement cannot reach.')}
       </p>
 
-      <h3>4 · One clock for every sweep</h3>
+      <h3>4 · {t('One clock for every sweep')}</h3>
       <p>
-        This is the step the whole tool stands on. Designing on measured phase only works if all
-        your driver files share <em>one</em> time origin — then the difference between their
-        arrival times is real, and it is the 40–50 µs that decides whether your crossover sums or
-        cancels. Break it and nothing downstream can tell.
+        {t('This is the step the whole tool stands on. Designing on measured phase only works if all your driver files share')}{' '}
+        <em>{t('one')}</em>{' '}
+        {t('time origin — then the difference between their arrival times is real, and it is the 40–50 µs that decides whether your crossover sums or cancels. Break it and nothing downstream can tell.')}
       </p>
       <ul>
         <li>
-          <strong>Do not move the microphone</strong> between driver sweeps, and do not move the
-          speaker either. One position, every driver.
+          <strong>{t('Do not move the microphone')}</strong>{' '}
+          {t('between driver sweeps, and do not move the speaker either. One position, every driver.')}
         </li>
         <li>
-          <strong>Never re-zero the time axis</strong> per file — no &ldquo;set t=0 at the
-          peak&rdquo;, no per-file offset removal on export. That throws away exactly the number
-          you came for.
+          <strong>{t('Never re-zero the time axis')}</strong>{' '}
+          {t('per file — no "set t=0 at the peak", no per-file offset removal on export. That throws away exactly the number you came for.')}
         </li>
         <li>
-          <strong>Give the rig a shared reference.</strong> With an audio interface, a{' '}
-          <em>loopback</em> channel is the strongest form. With a USB microphone there is no
-          loopback, so use your software&apos;s <em>acoustic timing reference</em>: a second
-          speaker that plays on every sweep and stays put relative to the mic (it has to reach
-          5 kHz — a sub cannot do this job).
+          <strong>{t('Give the rig a shared reference.')}</strong>{' '}
+          {t('With an audio interface, a')} <em>loopback</em>{t("-channel is the strongest form. With a USB microphone there is no loopback, so use your software's")}{' '}
+          <em>{t('acoustic timing reference')}</em>{t(': a second speaker that plays on every sweep and stays put relative to the mic (it has to reach 5 kHz — a sub cannot do this job).')}
         </li>
       </ul>
       <p>
-        The app checks your work: load the drivers and the topbar reports a{' '}
-        <strong>timing verdict</strong>. &ldquo;Plausible&rdquo; means the arrival-time difference
-        is within what driver geometry can explain; anything else means the clock moved, and the
-        honest response is to re-measure rather than to design on it.
+        {t('The app checks your work: load the drivers and the topbar reports a')}{' '}
+        <strong>{t('timing verdict')}</strong>{t('. "Plausible" means the arrival-time difference is within what driver geometry can explain; anything else means the clock moved, and the honest response is to re-measure rather than to design on it.')}
       </p>
 
-      <h3>5 · Keep the radius constant, centred on the reference point</h3>
+      <h3>5 · {t('Keep the radius constant, centred on the reference point')}</h3>
       <p>
-        The angle in a file name belongs to the <strong>box</strong>. What matters is that every
-        angle is taken at the <em>same distance</em> from the same reference point — swing the
-        microphone on an arc around it, or turn the speaker beneath it; for a vertically stacked
-        cabinet the two are geometrically identical, and the distance to every driver stays
-        exactly constant either way.
+        {t('The angle in a file name belongs to the')} <strong>{t('box')}</strong>{t('. What matters is that every angle is taken at the')}{' '}
+        <em>{t('same distance')}</em>{' '}
+        {t('from the same reference point — swing the microphone on an arc around it, or turn the speaker beneath it; for a vertically stacked cabinet the two are geometrically identical, and the distance to every driver stays exactly constant either way.')}
       </p>
       <p>
-        Turning the <strong>speaker</strong> is still the safer habit, for a reason that has
-        nothing to do with angles: the microphone then stays in one spot in the room, so every
-        curve carries the same reflections. A microphone that travels meets a different floor,
-        wall and ceiling path at each step, and whatever your gate does not remove ends up looking
-        like directivity. The one case where the geometry itself bites is a driver mounted{' '}
-        <em>off-centre horizontally</em> — 90 mm to one side already shifts its level by half a
-        decibel across a 30° sweep.
+        {t('Turning the')} <strong>{t('speaker')}</strong>{' '}
+        {t('is still the safer habit, for a reason that has nothing to do with angles: the microphone then stays in one spot in the room, so every curve carries the same reflections. A microphone that travels meets a different floor, wall and ceiling path at each step, and whatever your gate does not remove ends up looking like directivity. The one case where the geometry itself bites is a driver mounted')}{' '}
+        <em>{t('off-centre horizontally')}</em>{t(' — 90 mm to one side already shifts its level by half a decibel across a 30° sweep.')}
       </p>
       <figure className="mg-stage">
         <TopView micMm={micMm} deg={Math.round(deg)} />
         <figcaption>
-          <strong>Top view — the angle you do choose.</strong> The microphone never moves; the
-          cabinet turns about the reference point. This is the number in your file names, and it
-          belongs to the box: every driver turns through it together, on top of whatever vertical
-          offset it already had.
+          <strong>{t('Top view — the angle you do choose.')}</strong>{' '}
+          {t('The microphone never moves; the cabinet turns about the reference point. This is the number in your file names, and it belongs to the box: every driver turns through it together, on top of whatever vertical offset it already had.')}
         </figcaption>
       </figure>
       <label className="mg-slider">
-        Sweep angle
+        {t('Sweep angle')}
         <input
           type="range"
           min={0}
@@ -442,44 +399,42 @@ export function MeasuringGuide({ open, onClose }: { open: boolean; onClose: () =
         <output>{Math.round(deg)}°</output>
         {!reduced && (
           <button type="button" onClick={() => setPlaying((p) => !p)}>
-            {playing ? 'pause' : 'play'}
+            {playing ? t('pause') : t('play')}
           </button>
         )}
       </label>
 
-      <h3>6 · Measure the impedance separately</h3>
+      <h3>6 · {t('Measure the impedance separately')}</h3>
       <p>
-        Impedance is electrical: distance, angle and room do not enter into it. Measure each driver
-        <em> in its finished cabinet</em> though — the box is what puts the resonance where it is,
-        and this tool reads the driver&apos;s Fs straight off that peak to set a crossover floor.
-        ARTA/LIMP <code>.lim</code> files import directly.
+        {t('Impedance is electrical: distance, angle and room do not enter into it. Measure each driver')}
+        <em> {t('in its finished cabinet')}</em>{' '}
+        {t("though — the box is what puts the resonance where it is, and this tool reads the driver's Fs straight off that peak to set a crossover floor. ARTA/LIMP")}{' '}
+        <code>.lim</code>{t('-files import directly.')}
       </p>
 
-      <h3>7 · Note these down while you are still at the speaker</h3>
+      <h3>7 · {t('Note these down while you are still at the speaker')}</h3>
       <ul>
         <li>
-          <strong>Reference point</strong> — which driver or spot, and how far below the top of the
-          baffle it sits.
+          <strong>{t('Reference point')}</strong>{' '}
+          {t('— which driver or spot, and how far below the top of the baffle it sits.')}
         </li>
         <li>
-          <strong>Mic distance</strong>, in mm.
+          <strong>{t('Mic distance')}</strong>, {t('in mm.')}
         </li>
         <li>
-          <strong>Each driver&apos;s centre</strong> relative to the reference point: x to the
-          right, y up (so a driver below it is negative).
+          <strong>{t("Each driver's centre")}</strong>{' '}
+          {t('relative to the reference point: x to the right, y up (so a driver below it is negative).')}
         </li>
         <li>
-          <strong>Baffle width and height</strong>, and the enclosure behind each driver — sealed,
-          ported (with its tuning), or open.
+          <strong>{t('Baffle width and height')}</strong>{' '}
+          {t(', and the enclosure behind each driver — sealed, ported (with its tuning), or open.')}
         </li>
         <li>
-          <strong>Sd and Xmax</strong> from the datasheets, once per driver.
+          <strong>Sd {t('and')} Xmax</strong> {t('from the datasheets, once per driver.')}
         </li>
       </ul>
       <p>
-        All of it goes into <strong>Setup → Cabinet &amp; drivers</strong>. Nothing there changes
-        your measurements — it lets the app work out what those measurements captured, and say so
-        instead of guessing.
+        {t('All of it goes into')} <strong>Setup → {t('Cabinet & drivers')}</strong>{t('. Nothing there changes your measurements — it lets the app work out what those measurements captured, and say so instead of guessing.')}
       </p>
     </Modal>
   );

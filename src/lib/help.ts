@@ -8,6 +8,8 @@
  * `code` — nothing else, the renderer is deliberately tiny.
  */
 
+import { HELP_SECTIONS_EN } from './helpEn.ts';
+
 export type HelpBlock =
   | { t: 'p'; text: string }
   | { t: 'h'; text: string }
@@ -430,6 +432,13 @@ export const HELP_SECTIONS: HelpSection[] = [
     ],
   },
 ];
+
+/** The manual per UI language. The Dutch HELP_SECTIONS above is the authored
+ *  source; helpEn.ts carries the English edition with matching section ids
+ *  (contextual opening and the tab mapping key on the id, never the title). */
+export function helpSections(lang: string): HelpSection[] {
+  return lang === 'nl' ? HELP_SECTIONS : HELP_SECTIONS_EN;
+}
 
 /** Flatten a section to plain lowercase text for searching (markup stripped). */
 export function sectionText(s: HelpSection): string {
