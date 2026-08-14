@@ -2171,6 +2171,19 @@ voordat je een layoutbug gaat jagen.
 - **Drag & drop op driverkaarten**: `loadDriverFiles` gesplitst in change-handler +
   `loadDriverFileList(side, File[])`; `dropHandlers` met dragenter-TELLER (enter/leave vuren per
   kind-element). Kaartstatus toont "⬇ drop to load" / "no files yet — or drop them here".
+- **Page-brede dropzone op "Your Project" (aug 2026, Sanders idee)**: drop wat dan ook op de
+  import-stap en `routeDroppedFiles` sorteert het. Eenduidige types gaan direct: een batch mét
+  .vxp → `loadVituixFileList` (de drop ÍS de select-together-semantiek), één JSON/HTML met
+  format-marker → project/catalog/filter-loader (marker-sniff op de tekst — routing bewijst
+  zich doordat de eigen validator-fout van de juiste loader verschijnt). Meetbestanden zijn
+  NIET te routen zonder de driver te raden → één-vraag-kiezer (Modal, incl. verificatie-optie
+  bij één enkele FRD); gemengde drops worden geweigerd mét reden — één stille misplaatsing
+  kost meer dan de vraag ooit doet. Kaart-drop wint van de page-drop via `e.defaultPrevented`
+  (kaart-handler draait eerst in de bubble); overlay (`.drop-page-armed::after`,
+  pointer-events none) verbergt zichzelf zodra een kaart armed is. Alle vier de loaders
+  (vituix/project/catalog/filter/verification) zijn gesplitst in event-wrapper +
+  file-gebaseerde kern. Headless geverifieerd: batch→kiezer→"✓ response · Z",
+  marker-JSON→project-loader-fout (routing correct), mixed→weigering, kaart-drop→géén kiezer.
 - **Gesture-hint** onder de SPL-chart (Chart.tsx, key `ads-hint-chart`): scroll/shift/drag/
   dubbelklik/legend-klik — verdwijnt permanent bij de eerste echte zoom (bewijs van kennis) of ✕.
 - **Kalme standaard-panelenset voor NIEUWE gebruikers**: ads-ui-panels afwezig ⇒ alleen

@@ -2014,6 +2014,73 @@ export default function App() {
     }
   }
 
+  /* Page-wide drop on the import step (Sanders idee): drop ANYTHING on "Your
+   * Project" and the app sorts it. Unambiguous types route straight to their
+   * loader — a .vxp batch, or one JSON/HTML with a Crossover Studio format
+   * marker (project / catalog / filter). Measurement files cannot be routed
+   * without guessing WHICH driver they belong to, so those open a one-question
+   * chooser instead — dropping on a driver card directly skips the question.
+   * A mixed batch is refused with a reason: one wrong guess that silently
+   * lands in the wrong slot costs more than the question ever will. */
+  const [dropPick, setDropPick] = useState<File[] | null>(null);
+  const [pageDropArmed, setPageDropArmed] = useState(false);
+  const pageDropDepth = useRef(0);
+  async function routeDroppedFiles(files: File[]) {
+    if (files.length === 0) return;
+    setError(null);
+    const isMeas = (f: File) => /\.(frd|zma|lim|txt)$/i.test(f.name);
+    if (files.some((f) => f.name.toLowerCase().endsWith('.vxp'))) {
+      // The vxp loader WANTS the whole set at once (.vxp + .ZMA + .txt) —
+      // a folder-contents drop is exactly its select-together semantics.
+      await loadVituixFileList(files);
+      return;
+    }
+    if (files.length === 1 && /\.(json|adsfilter|html?)$/i.test(files[0].name)) {
+      const f = files[0];
+      const text = await f.text();
+      if (text.includes('acoustic-design-studio-project')) return loadProjectFile(f);
+      if (text.includes('acoustic-design-studio-catalog')) return importCatalogFile(f);
+      if (text.includes('acoustic-design-studio-filter')) return importFilterFile(f);
+      setError(
+        `"${f.name}" carries no Crossover Studio format marker — not a saved project, catalog or filter file.`,
+      );
+      return;
+    }
+    if (files.every(isMeas)) {
+      setDropPick(files);
+      return;
+    }
+    setError(
+      'Mixed drop — drop measurement files (FRD/ZMA/LIM), or a .vxp set, or ONE project/catalog/filter file at a time.',
+    );
+  }
+  function pageDropHandlers() {
+    return {
+      onDragEnter: (e: React.DragEvent) => {
+        if (designTab !== 'import' || !e.dataTransfer.types.includes('Files')) return;
+        e.preventDefault();
+        pageDropDepth.current += 1;
+        setPageDropArmed(true);
+      },
+      onDragOver: (e: React.DragEvent) => {
+        if (designTab !== 'import' || !e.dataTransfer.types.includes('Files')) return;
+        e.preventDefault();
+      },
+      onDragLeave: () => {
+        pageDropDepth.current = Math.max(0, pageDropDepth.current - 1);
+        if (pageDropDepth.current === 0) setPageDropArmed(false);
+      },
+      onDrop: (e: React.DragEvent) => {
+        const handledByCard = e.defaultPrevented; // a driver card took it first
+        pageDropDepth.current = 0;
+        setPageDropArmed(false);
+        if (designTab !== 'import' || handledByCard) return;
+        e.preventDefault();
+        void routeDroppedFiles([...e.dataTransfer.files]);
+      },
+    };
+  }
+
   /* Drop-target plumbing for the driver cards. dragenter/leave fire for every
    * child crossed, so a counter — not a boolean — tracks "still inside". */
   const [dropSide, setDropSide] = useState<'woofer' | 'mid' | 'tweeter' | null>(null);
@@ -2164,6 +2231,12 @@ export default function App() {
       );
       return;
     }
+    await loadVituixFileList(files);
+  }
+
+  /** Shared by the file input and the page-wide drop on the import step. */
+  async function loadVituixFileList(files: File[]) {
+    if (files.length === 0) return;
     setError(null);
     setVxpNote(`Reading ${files.length} file(s): ${files.map((f) => f.name).join(', ')}…`);
     try {
@@ -2319,7 +2392,10 @@ export default function App() {
   async function loadVerification(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     e.target.value = '';
-    if (!file) return;
+    if (file) await loadVerificationFile(file);
+  }
+
+  async function loadVerificationFile(file: File) {
     setError(null);
     try {
       const raw = await file.text();
@@ -4246,7 +4322,11 @@ export default function App() {
 
   async function loadProjectFromFile(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
-    if (!file) return;
+    e.target.value = '';
+    if (file) await loadProjectFile(file);
+  }
+
+  async function loadProjectFile(file: File) {
     setError(null);
     try {
       applyProject(deserializeProject(await file.text()));
@@ -4254,7 +4334,6 @@ export default function App() {
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
     }
-    e.target.value = '';
   }
 
   // Restore autosave once on mount. A blob that fails to restore is moved
@@ -5638,7 +5717,11 @@ export default function App() {
 
   async function importCatalogFromFile(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
-    if (!file) return;
+    e.target.value = '';
+    if (file) await importCatalogFile(file);
+  }
+
+  async function importCatalogFile(file: File) {
     setError(null);
     try {
       const imp = deserializeCatalog(await file.text());
@@ -5648,7 +5731,6 @@ export default function App() {
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
     }
-    e.target.value = '';
   }
 
   /**
@@ -6048,7 +6130,11 @@ export default function App() {
 
   async function importFilterFromFile(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
-    if (!file) return;
+    e.target.value = '';
+    if (file) await importFilterFile(file);
+  }
+
+  async function importFilterFile(file: File) {
     setError(null);
     try {
       const f = deserializeFilter(await file.text());
@@ -6061,7 +6147,6 @@ export default function App() {
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
     }
-    e.target.value = '';
   }
 
   // SPL y-domain: top from the loudest visible trace; bottom anchored to the
@@ -7862,6 +7947,60 @@ export default function App() {
           )}
         </Modal>
       )}
+      {dropPick && (
+        /* Page-wide drop of measurement files: the one question the app
+           cannot answer itself. Never guess the driver — a response that
+           silently lands in the wrong slot is the classic silent failure. */
+        <Modal
+          open
+          onClose={() => setDropPick(null)}
+          label="Which driver are these measurements for?"
+          cardClass="targets-card welcome-card"
+        >
+          <div className="busy-title">Which driver are these for?</div>
+          <p className="sub" style={{ width: '100%', margin: 0 }}>
+            {dropPick.length} file{dropPick.length === 1 ? '' : 's'}:{' '}
+            {dropPick.map((f) => f.name).join(', ').slice(0, 140)}
+            {dropPick.map((f) => f.name).join(', ').length > 140 ? '…' : ''}
+            <br />
+            (Tip: drop directly on a driver card to skip this question.)
+          </p>
+          <div className="welcome-choices">
+            {(
+              [
+                ['tweeter', 'Tweeter'],
+                ['mid', 'Midrange (3-way)'],
+                ['woofer', hasMidBranch ? 'Woofer' : 'Woofer / mid'],
+              ] as const
+            ).map(([side, label]) => (
+              <button
+                key={side}
+                type="button"
+                onClick={() => {
+                  const files = dropPick;
+                  setDropPick(null);
+                  void loadDriverFileList(side, files);
+                }}
+              >
+                {label}
+              </button>
+            ))}
+            {dropPick.length === 1 && /\.(frd|txt)$/i.test(dropPick[0].name) && (
+              <button
+                type="button"
+                onClick={() => {
+                  const f = dropPick[0];
+                  setDropPick(null);
+                  void loadVerificationFile(f);
+                }}
+              >
+                Verification measurement
+                <small>the measured response of the BUILT system, for the model-vs-measurement overlay</small>
+              </button>
+            )}
+          </div>
+        </Modal>
+      )}
       {/* First-run welcome: the app already HAS four onboarding surfaces
           (demo, wizard, help, measuring guide) — this card is the missing
           conductor. It only ever shows when there is no autosave and it has
@@ -9415,7 +9554,10 @@ export default function App() {
             : undefined
         }
       >
-        <aside className="design-pane">
+        <aside
+          className={`design-pane${pageDropArmed && !dropSide ? ' drop-page-armed' : ''}`}
+          {...pageDropHandlers()}
+        >
           {uiMode === 'guided' ? null : (
 <nav className="pane-tabs" aria-label="Design panels">
               {(
