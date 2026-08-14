@@ -557,4 +557,747 @@ export const nl: Record<string, string> = {
   'Add a note… (mic distance, smoothing, gate, which prototype)':
     'Voeg een notitie toe… (mic-afstand, smoothing, gate, welk prototype)',
   'Next: {step} →': 'Volgende: {step} →',
+  'Choose files…': 'Kies bestanden…',
+  'Choose file…': 'Kies bestand…',
+
+  // ── Kaststap (Je kast) ───────────────────────────────────────────────
+  'No measurements yet — load them in the Import tab first.':
+    'Nog geen metingen — laad ze eerst op de Import-stap.',
+  'View range': 'Weergavebereik',
+  '— simulation paused while editing': '— simulatie gepauzeerd tijdens het bewerken',
+  "Lower edge of the simulation grid AND the optimizer/metrics evaluation band. The sim pauses while you type; commits on Enter/blur. Zooming a chart and clicking 'use as view range' writes back here.":
+    "Onderrand van het simulatiegrid ÉN de evaluatieband van optimizer/scores. De sim pauzeert terwijl je typt; commit op Enter/blur. Zoomen in een grafiek en 'use as view range' klikken schrijft hierheen terug.",
+  'Upper edge of the simulation grid AND the optimizer/metrics evaluation band. The sim pauses while you type; commits on Enter/blur.':
+    'Bovenrand van het simulatiegrid ÉN de evaluatieband van optimizer/scores. De sim pauzeert terwijl je typt; commit op Enter/blur.',
+  'Y-axis floor of the SPL charts — empty = automatic':
+    'Ondergrens van de y-as van de SPL-grafieken — leeg = automatisch',
+  'Y-axis ceiling of the SPL charts — empty = automatic':
+    'Bovengrens van de y-as van de SPL-grafieken — leeg = automatisch',
+  'Cabinet & measurement': 'Kast & meting',
+  '— the box and how you measured it (the drivers themselves are the next step)':
+    '— de kast en hoe je gemeten hebt (de drivers zelf zijn de volgende stap)',
+  'Everything below is measured from the': 'Alles hieronder wordt gemeten vanaf het',
+  'reference point': 'referentiepunt',
+  ': the spot the microphone was aimed at during the sweeps, and — on a turntable — the axis the cabinet turned around. Most people aim at the tweeter, so the tweeter sits at':
+    ': de plek waar de microfoon tijdens de sweeps op gericht stond, en — op een draaitafel — de as waar de kast om draaide. De meeste mensen richten op de tweeter, dus die staat op',
+  'and anything lower gets a': 'en alles daaronder krijgt een',
+  'negative y': 'negatieve y',
+  '. Nothing here changes your measurements; it lets the app work out what those measurements actually captured.':
+    '. Niets hier verandert je metingen; het laat de app uitrekenen wat die metingen werkelijk hebben vastgelegd.',
+  'How far below the top of the front panel the reference point sits. Correcting this moves the REFERENCE MARKER only — drivers keep the below-top positions you typed.':
+    'Hoe ver onder de bovenkant van het front het referentiepunt zit. Een correctie verplaatst alleen het MERKTEKEN — drivers houden de onder-de-top-posities die je intypte.',
+  'use {hz} Hz as f min': 'gebruik {hz} Hz als f min',
+  'honest down to ≈ {hz} Hz': 'eerlijk tot ≈ {hz} Hz',
+  'enter the mic distance to find out how low this measurement carries':
+    'vul de mic-afstand in om te zien hoe laag deze meting draagt',
+  'baffle step ≈ {hz} Hz': 'baffle step ≈ {hz} Hz',
+  'you sit {deg}° {dir} the reference axis': 'je zit {deg}° {dir} de referentie-as',
+  below: 'onder',
+  above: 'boven',
+  'change the numbers': 'pas de getallen aan',
+  'How far the mic stood': 'Hoe ver de mic stond',
+  '— your view range starts lower than that.': '— je weergavebereik begint lager dan dat.',
+  Distance: 'Afstand',
+  Elevation: 'Elevatie',
+  'Gate used': 'Gebruikte gate',
+  predict: 'voorspel',
+  'The box': 'De kast',
+  'A {mm} mm wide baffle puts its step around': 'Een {mm} mm breed front legt zijn step rond',
+  '— that broad tilt in your measurement is the cabinet, not the driver.':
+    '— die brede helling in je meting is de kast, niet de driver.',
+  'Add the baffle size and the app can tell the cabinet apart from the driver — and draw your front panel on the next step.':
+    'Vul de frontmaat in en de app kan de kast van de driver onderscheiden — en je front op de volgende stap tekenen.',
+  'Mic aimed at': 'Mic gericht op',
+  'another spot on the baffle': 'een andere plek op het front',
+  'that driver becomes 0,0 — you never type its own offset':
+    'die driver wordt 0,0 — zijn eigen offset typ je nooit',
+  'Front panel': 'Frontpaneel',
+  width: 'breedte',
+  height: 'hoogte',
+  'Reference point': 'Referentiepunt',
+  'mm below the top': 'mm onder de bovenkant',
+  'mm above the floor': 'mm boven de vloer',
+  '{mm} mm below the top': '{mm} mm onder de bovenkant',
+  '{mm} mm above the floor': '{mm} mm boven de vloer',
+  'the reference point cannot sit {ref} mm below the top of a {h} mm front panel — one of the two is the other field':
+    'het referentiepunt kan niet {ref} mm onder de bovenkant van een front van {h} mm zitten — één van de twee is het andere veld',
+  'Where you listen': 'Waar je luistert',
+  'Add your seat and ear height, and a driver-spacing rule becomes a statement about YOUR room.':
+    'Vul je luisterplek en oorhoogte in, en een driverafstand-regel wordt een uitspraak over JOUW kamer.',
+  'Ear height': 'Oorhoogte',
+
+  // ── Drivers-stap (Je drivers) ────────────────────────────────────────
+  'Load a driver in step 1 first — then this is where you tell the app what you know about it.':
+    'Laad eerst een driver in stap 1 — daarna vertel je hier wat je over hem weet.',
+  'What you know about them': 'Wat je over ze weet',
+  '— from the datasheet and a ruler': '— uit het datasheet en met een liniaal',
+  'single-driver mode': 'één-driver-modus',
+  '3-way mode': '3-weg-modus',
+  "How many IDENTICAL drivers make up this branch. Dual woofers displace twice the air, so the excursion floor drops by √2 — but each cone still beams as itself, so Sd below stays the SINGLE driver's datasheet number. With more than one, their centre-to-centre spacing sets where the array's own vertical lobing starts, which is usually a lower ceiling than cone beaming.":
+    'Hoeveel IDENTIEKE drivers deze tak vormen. Dubbele woofers verplaatsen twee keer zoveel lucht, dus de excursievloer zakt met √2 — maar elke conus bundelt nog als zichzelf, dus Sd hieronder blijft het datasheet-getal van ÉÉN driver. Bij meer dan één bepaalt hun hart-op-hart-afstand waar de eigen verticale lobing van de array begint, meestal een lager plafond dan conusbundeling.',
+  'drivers, spaced': 'drivers, afstand',
+  driver: 'driver',
+  'mm apart': 'mm uit elkaar',
+  Position: 'Positie',
+  '0, 0 — the mic was aimed here, so this driver defines the origin':
+    '0, 0 — de mic was hierop gericht, dus deze driver definieert de oorsprong',
+  "Where this driver's centre sits on the front panel, measured the way a ruler measures it: across from the centre line, and DOWN from the top. The app converts to its internal origin (the measurement reference point) using the reference height you gave on the cabinet step, so you never type the same fact twice — and centre-to-centre spacing per pair, with it the vertical-lobing ceiling, is derived from these.":
+    'Waar het centrum van deze driver op het front zit, gemeten zoals een liniaal meet: opzij vanaf de middenlijn, en OMLAAG vanaf de bovenkant. De app rekent om naar zijn interne oorsprong (het meetreferentiepunt) met de referentiehoogte van de kaststap, dus je typt hetzelfde feit nooit twee keer — en hart-op-hart per paar, en daarmee het verticale-lobing-plafond, wordt hieruit afgeleid.',
+  'mm from the centre line': 'mm vanaf de middenlijn',
+  'as a ruler measures it — across from the centre line, down from the top of the front panel':
+    'zoals een liniaal meet — opzij vanaf de middenlijn, omlaag vanaf de bovenkant van het front',
+  'from the reference point · y up — add the reference height on the cabinet step to measure from the top instead':
+    'vanaf het referentiepunt · y omhoog — vul de referentiehoogte op de kaststap in om vanaf de bovenkant te meten',
+  'your sweep really covers': 'je sweep dekt in werkelijkheid',
+  '— two figures because the pair fires both ways; a sweep measures their sum':
+    '— twee getallen omdat het paar beide kanten op vuurt; een sweep meet hun som',
+  'nearest baffle edge {mm} mm': 'dichtstbijzijnde frontrand {mm} mm',
+  'excursion floor drops ×{f}': 'excursievloer zakt ×{f}',
+  'array lobing from {hz} Hz': 'array-lobing vanaf {hz} Hz',
+  '— ACROSS the seats: this baffle is wider than tall':
+    '— DWARS over de zitplaatsen: dit front is breder dan hoog',
+  '— vertically, and you sit on that axis': '— verticaal, en jij zit op die as',
+  'enter the spacing for the array lobing ceiling':
+    'vul de afstand in voor het array-lobing-plafond',
+  Mounting: 'Montage',
+  "Which panel this driver radiates from, and how far its acoustic centre sits behind the baffle plane. Side-firing woofers are an ordinary design, and without this the app judges the driver against a front baffle it is not on: it would read ~0° off-axis when it is really 90°, take the baffle step from the wrong panel width, and charge half a cabinet of mounting depth (hundreds of µs) to the driver's acoustic centre — which is what makes a perfectly normal speaker trip the timing check.":
+    'Uit welk paneel deze driver straalt, en hoe ver zijn akoestisch centrum achter het baffle-vlak zit. Zij-woofers zijn een gewoon ontwerp, en zonder dit beoordeelt de app de driver tegen een front waar hij niet op zit: hij zou ~0° off-axis lezen waar het echt 90° is, de baffle step van de verkeerde paneelbreedte nemen, en een halve kastdiepte aan montagediepte (honderden µs) op het akoestisch centrum boeken — precies wat een volstrekt normale luidspreker de timing-controle laat struikelen.',
+  'fires forward': 'vuurt naar voren',
+  'fires backward': 'vuurt naar achteren',
+  'fires left': 'vuurt naar links',
+  'fires right': 'vuurt naar rechts',
+  'fires up': 'vuurt omhoog',
+  'fires down': 'vuurt omlaag',
+  depth: 'diepte',
+  tilt: 'kanteling',
+  'These drivers sit on BOTH opposing panels, firing away from each other — the force-cancelling arrangement side-mounted woofers are normally built in. They then have two different true angles, and a sweep measures their sum.':
+    'Deze drivers zitten op BEIDE tegenover elkaar liggende panelen en vuren van elkaar af — de krachtcompenserende opstelling waarin zij-woofers normaal gebouwd worden. Ze hebben dan twee verschillende ware hoeken, en een sweep meet hun som.',
+  'opposed pair': 'tegenover elkaar',
+  'acoustic centre behind the baffle — a flush-mounted cone still sits its cone depth back · tilt + = aimed up':
+    'akoestisch centrum achter het front — een verzonken conus zit alsnog zijn conusdiepte naar achteren · kanteling + = omhoog gericht',
+  'acoustic centre from the front, along the cabinet · tilt + = aimed up':
+    'akoestisch centrum vanaf het front, langs de kast · kanteling + = omhoog gericht',
+  'the tweeter': 'de tweeter',
+  'the midrange': 'de midrange',
+  'the woofer': 'de woofer',
+  'the woofer/mid': 'de woofer/mid',
+  'measured: this is the shallowest driver': 'gemeten: dit is de ondiepste driver',
+  ', so it is the 0 the others are counted from':
+    ', dus dit is de 0 waar de anderen vanaf geteld worden',
+  '— they sit up to {mm} mm behind it.': '— zij zitten tot {mm} mm erachter.',
+  'measured depth {mm} mm': 'gemeten diepte {mm} mm',
+  'behind {anchor}, from the delay with the rig removed.':
+    'achter {anchor}, uit de delay met de opstelling eruit gerekend.',
+  'Your {mm} mm agrees.': 'Jouw {mm} mm komt overeen.',
+  'You typed {mm} mm — one of the two is wrong.':
+    'Jij typte {mm} mm — één van de twee is fout.',
+  'Write the measured depth into the field above. It fixes the geometry (true off-axis angle, centre-to-centre spacing), but note that the timing split then explains itself by construction and stops being an independent check.':
+    'Schrijf de gemeten diepte in het veld hierboven. Het maakt de geometrie scherper (ware hoek, hart-op-hart), maar let op: de timing-splitsing verklaart zichzelf dan per constructie en is geen onafhankelijke controle meer.',
+  'use it': 'gebruik dit',
+  "{facing}: a front turntable sweep cannot measure this driver's own directivity — the numbers above are the SYSTEM turning, not the cone. Near-field is the honest route for its response, and its baffle is the {panel} panel":
+    '{facing}: een front-draaitafelsweep kan de eigen directiviteit van deze driver niet meten — de getallen hierboven zijn het SYSTEEM dat draait, niet de conus. Nabij-veld is de eerlijke route voor zijn respons, en zijn front is het {panel}paneel',
+  side: 'zij',
+  'top/bottom': 'boven-/onder',
+  'step around {hz} Hz': 'step rond {hz} Hz',
+  Chamber: 'Kamer',
+  'a dome is its own sealed rear chamber — nothing to choose':
+    'een dome is zijn eigen gesloten achterkamer — niets te kiezen',
+  'resonance ≈ {hz} Hz from your impedance (the 2×Fs crossover floor reads this)':
+    'resonantie ≈ {hz} Hz uit je impedantie (de 2×Fs-crossovervloer leest dit)',
+  'The volume behind THIS driver — per driver on purpose: a 3-way routinely runs a sealed mid chamber inside a ported cabinet, so one answer for the whole box would be wrong. A sealed chamber is already a 2nd-order acoustic high-pass at its corner, so a 2nd-order electrical filter yields a 4th-order acoustic slope — on a low crossover that is the difference between one ~30 µF capacitor and a pair adding to ~90 µF. A port also means the box can radiate its own midrange through a pipe resonance.':
+    'Het volume achter DEZE driver — bewust per driver: een 3-weg draait geregeld een gesloten mid-kamer in een gepoorte kast, dus één antwoord voor de hele kast zou fout zijn. Een gesloten kamer is bij zijn knik al een 2e-orde akoestische hoogdoorlaat, dus een 2e-orde elektrisch filter geeft een 4e-orde akoestische flank — op een lage overname is dat het verschil tussen één ~30 µF-cap en een paar dat optelt tot ~90 µF. Een poort betekent bovendien dat de kast zijn eigen midden kan uitstralen via een pijpresonantie.',
+  sealed: 'gesloten',
+  ported: 'gepoort',
+  'open / dipole': 'open / dipool',
+  'the volume behind THIS driver — one cabinet can hold different chambers':
+    'het volume achter DEZE driver — één kast kan verschillende kamers bevatten',
+  'your impedance measurement suggests {kind} ≈ {hz} Hz (valid if the ZMA was taken in this box).':
+    'je impedantiemeting suggereert {kind} ≈ {hz} Hz (geldig als de ZMA in deze kast gemeten is).',
+  'Your {hz} Hz agrees.': 'Jouw {hz} Hz komt overeen.',
+  'You typed {hz} Hz — one of the two is wrong.':
+    'Jij typte {hz} Hz — één van de twee is fout.',
+  'ported: excursion runs away below Fb': 'gepoort: excursie loopt weg onder Fb',
+  '— worth a steeper electrical high-pass than a sealed box would need':
+    '— een steilere elektrische hoogdoorlaat waard dan een gesloten kast nodig had',
+  Datasheet: 'Datasheet',
+  'Cone area and linear excursion from the datasheet, for ONE driver. Sd gives the effective piston diameter (the honest one for every beaming rule — nominal size includes a surround that does not radiate); Sd and Xmax together give the level-aware excursion floor.':
+    'Conusoppervlak en lineaire slag uit het datasheet, voor ÉÉN driver. Sd geeft de effectieve zuigerdiameter (de eerlijke voor elke bundelregel — de nominale maat telt een rand mee die niet straalt); Sd en Xmax samen geven de niveaubewuste excursievloer.',
+  'effective Ø {mm} mm': 'effectieve Ø {mm} mm',
+  'leaving these blank is fine — it switches off:':
+    'leeg laten is prima — het schakelt uit:',
+  'excursion floor': 'excursievloer',
+  'cone size for the beaming rules': 'conusmaat voor de bundelregels',
+  'driver spacing, lobing and edge distance': 'driverafstand, lobing en randafstand',
+  'what the box itself already filters': 'wat de kast zelf al filtert',
+  'at {x}, {y} mm': 'op {x}, {y} mm',
+  'no position': 'geen positie',
+  pair: 'paar',
+  'tilt {deg}°': 'kanteling {deg}°',
+  'no datasheet numbers': 'geen datasheet-getallen',
+  'front-firing': 'naar voren vurend',
+  'rear-firing': 'naar achteren vurend',
+  'left-firing': 'naar links vurend',
+  'right-firing': 'naar rechts vurend',
+  'up-firing': 'omhoog vurend',
+  'down-firing': 'omlaag vurend',
+
+  // ── Tekening-bijschrift ──────────────────────────────────────────────
+  '{n} Sd yet — those cones are dashed placeholders':
+    '{n} Sd nog — die conussen zijn gestreepte plaatshouders',
+  no: 'geen',
+  'the other driver has no offset yet, so it sits on the reference point':
+    'de andere driver heeft nog geen offset, dus hij ligt op het referentiepunt',
+  'those offsets are still 0, so they sit on the reference point':
+    'die offsets staan nog op 0, dus ze liggen op het referentiepunt',
+  '{n} without a position': '{n} zonder positie',
+  'drawn to scale from the numbers on the left':
+    'op schaal getekend uit de getallen links',
+  'to scale —': 'op schaal —',
+
+  // ── Ontwerp-het-stap (guided intro + Design-groep) ───────────────────
+  'Design the filter': 'Ontwerp het filter',
+  'Virtual filters (target design)': 'Virtuele filters (doelontwerp)',
+  'One button. The app works out where the drivers should hand over to each other, what shape each filter needs and which real parts to buy — using your measurements, not rules of thumb. It builds and measures':
+    'Eén knop. De app rekent uit waar de drivers aan elkaar moeten overdragen, welke vorm elk filter nodig heeft en welke echte onderdelen je koopt — op basis van jouw metingen, niet van vuistregels. Hij bouwt en meet',
+  'nine complete designs': 'negen complete ontwerpen',
+  'across the crossover range your drivers allow and keeps the best — the widest search it offers, because here you are not going to hand-tune one. Expect several minutes; you can watch each candidate come in, and cancel at any time.':
+    'over het crossoverbereik dat je drivers toelaten en houdt de beste — de breedste zoektocht die hij biedt, want hier ga je er niet zelf één handtunen. Reken op enkele minuten; je kunt elke kandidaat zien binnenkomen, en op elk moment annuleren.',
+  'Not at the standard settings:': 'Niet op de standaardinstellingen:',
+  'use the standard settings': 'gebruik de standaardinstellingen',
+  Design: 'Ontwerp',
+  '3-way: staged 2D scan — LR4 targets + measured level trims per (low, high) handover candidate, per-branch synthesis, assembled two-pair tune; the amp-load verdict gates the ranking. Winner lands in the Working tab.':
+    '3-weg: getrapte 2D-scan — LR4-doelen + gemeten niveautrims per (laag, hoog)-overnamekandidaat, synthese per tak, geassembleerde twee-paar-tune; het versterkerlast-oordeel poort de ranking. De winnaar landt in de Working-tab.',
+  'Single-driver mode: flatten this driver — cut-only EQ/shelf design, built as series traps / shelf groups (+ gated Zobel) and component-tuned against the measurement (lands in the Working tab)':
+    'Eén-driver-modus: maak deze driver vlak — alleen-verzwakkend EQ/shelf-ontwerp, gebouwd als serie-traps / shelf-groepen (+ gepoorte Zobel) en component-getuned tegen de meting (landt in de Working-tab)',
+  'Design the crossover, build it as a passive network and simulate it — all in one go (lands in the Working tab)':
+    'Ontwerp de crossover, bouw hem als passief netwerk en simuleer hem — alles in één keer (landt in de Working-tab)',
+  'Optimizing + building…': 'Optimaliseren + bouwen…',
+  'Design wizard: load measurements, then goals, priority, crossover point, acoustic slopes and component choices in one guided flow — ends with Optimize':
+    'Ontwerpwizard: laad metingen, dan doelen, prioriteit, overnamepunt, akoestische flanken en componentkeuzes in één begeleide flow — eindigt met Optimize',
+  'Walk me through it': 'Neem me mee',
+  Wizard: 'Wizard',
+
+  // ── Score-strips & grafiekpanelen ────────────────────────────────────
+  'Response flatness': 'Responsvlakheid',
+  'Whole-range flatness of the combined SPL over the currently VISIBLE range (zoom the SPL chart and this follows): 0–100 from the AVERAGE |deviation| vs the median level. Judges the entire range — one narrow dip barely moves it; the peak ±dB next to it still exposes that dip.':
+    'Vlakheid van de gezamenlijke SPL over het nu ZICHTBARE bereik (zoom de SPL-grafiek en dit volgt): 0–100 uit de GEMIDDELDE |afwijking| t.o.v. het mediaanniveau. Beoordeelt het hele bereik — één smalle dip beweegt hem nauwelijks; de piek ±dB ernaast laat die dip nog steeds zien.',
+  'Deviation from the median level over the visible range: average (the whole-range number), 95th percentile, and the classic single-spot peak ±dB — a big gap between avg and peak means the trouble is local, not everywhere.':
+    'Afwijking van het mediaanniveau over het zichtbare bereik: gemiddelde (het hele-bereik-getal), 95e percentiel, en de klassieke piek ±dB op één plek — een groot gat tussen gemiddelde en piek betekent dat het probleem lokaal is, niet overal.',
+  'Share of the visible range within ±0.5 / ±1 / ±2 dB of the median level: {a}% · {b}% · {c}%.':
+    'Aandeel van het zichtbare bereik binnen ±0,5 / ±1 / ±2 dB van het mediaanniveau: {a}% · {b}% · {c}%.',
+  'designed from {hz} Hz': 'ontworpen vanaf {hz} Hz',
+  "The optimizer designs from {hz} Hz up; the score above judges everything you SEE. Below that floor the woofer runs into its own rolloff, and a cut-only passive network cannot lift it — it could only match it by throwing away sensitivity everywhere else (baffle-step territory, a deliberate designer's choice). Zoom the SPL chart to the design band to read the score the optimizer actually worked on.":
+    'De optimizer ontwerpt vanaf {hz} Hz; de score hierboven beoordeelt alles wat je ZIET. Onder die vloer loopt de woofer in zijn eigen afval, en een alleen-verzwakkend passief netwerk kan die niet optillen — hij zou hem alleen kunnen evenaren door overal elders gevoeligheid weg te gooien (baffle-step-terrein, een bewuste ontwerperskeuze). Zoom de SPL-grafiek naar de ontwerpband om de score te lezen waar de optimizer echt aan werkte.',
+  'How far the combined response can drift when every physical R/L/C lands ±{pct}% off its value. Worst = all errors aligned against you (the guarantee before soldering); RSS = statistically realistic with independent part errors. Most sensitive parts: {parts} — tight-tolerance (or measured) parts pay off there first.':
+    'Hoe ver de gezamenlijke respons kan verschuiven als élke fysieke R/L/C ±{pct}% naast zijn waarde landt. Worst = alle fouten tegen je in (de garantie vóór het solderen); RSS = statistisch realistisch bij onafhankelijke fouten. Gevoeligste onderdelen: {parts} — strakke-tolerantie- (of gemeten) onderdelen lonen daar het eerst.',
+  'build ±{pct}%: worst ±{w} · RSS ±{r} dB · sensitive {parts}':
+    'bouw ±{pct}%: worst ±{w} · RSS ±{r} dB · gevoelig {parts}',
+  'Model vs measurement over {lo}–{hi} Hz. The measurement was level-aligned by {off} dB (median — absolute calibration differs by nature). Worst deviation {d} dB at {f} Hz':
+    'Model vs meting over {lo}–{hi} Hz. De meting is {off} dB niveau-uitgelijnd (mediaan — absolute kalibratie verschilt van nature). Grootste afwijking {d} dB op {f} Hz',
+  '. Phase: fitted mic delay {us} µs removed, residual avg {a}° / P95 {p}°':
+    '. Fase: gefitte mic-delay {us} µs verwijderd, residu gem. {a}° / P95 {p}°',
+  ' — offset near 180°: the build is likely wired INVERTED vs the sim':
+    ' — offset rond 180°: de bouw is waarschijnlijk OMGEKEERD aangesloten t.o.v. de sim',
+  'Summing sanity 0–100: overlap-weighted cos(ε/2) — how well the drivers add up as ONE source. High is NORMAL (45° error still scores 92); it only drops when the drivers actively fight: wrong polarity, a timing fault, or a crossover in a phase null. Deliberately in the background — steer the design on Response flatness and Phase flatness.':
+    'Optel-gezondheid 0–100: overlap-gewogen cos(ε/2) — hoe goed de drivers als ÉÉN bron optellen. Hoog is NORMAAL (45° fout scoort nog 92); hij zakt pas als de drivers elkaar echt tegenwerken: verkeerde polariteit, een timingfout, of een crossover in een fasenul. Bewust op de achtergrond — stuur het ontwerp op responsvlakheid en fasevlakheid.',
+  integration: 'integratie',
+  'Overlap centre — the frequency where the driver levels meet (≈ the acoustic crossover point).':
+    'Overlapcentrum — de frequentie waar de driverniveaus elkaar kruisen (≈ het akoestische overnamepunt).',
+  overlap: 'overname',
+  'Integration bandwidth — contiguous band around the overlap centre where the phase error stays ≤90°. Also drawn as the shaded zone in the phase chart.':
+    'Integratiebandbreedte — aaneengesloten band rond het overlapcentrum waar de fasefout ≤90° blijft. Ook getekend als de gearceerde zone in de fasegrafiek.',
+  'bandwidth {lo}–{hi} Hz · {oct} oct': 'bandbreedte {lo}–{hi} Hz · {oct} oct',
+  'bandwidth none (>90° at the overlap centre)': 'bandbreedte geen (>90° op het overlapcentrum)',
+  'no overlap within 20 dB — the drivers never meet, nothing to integrate':
+    'geen overlap binnen 20 dB — de drivers ontmoeten elkaar nooit, niets te integreren',
+  'Adjacent pair {pair}: summing score (overlap-weighted cos(ε/2)) and where the levels meet':
+    'Aangrenzend paar {pair}: optelscore (overlap-gewogen cos(ε/2)) en waar de niveaus elkaar kruisen',
+  'woofer-mid': 'woofer-mid',
+  'mid-tweeter': 'mid-tweeter',
+  'no overlap': 'geen overlap',
+  'Combined-curve color = phase alignment:': 'Kleur van de som-curve = fase-uitlijning:',
+  '≤15° — tight': '≤15° — strak',
+  '≤45° — full summing': '≤45° — telt volledig op',
+  '≤90° — ≥3 dB gain': '≤90° — ≥3 dB winst',
+  '≤120° — no gain': '≤120° — geen winst',
+  '>120° — cancelling': '>120° — dooft uit',
+  'Same filter at every measured angle ({angles}° hor, one side).':
+    'Hetzelfde filter op elke gemeten hoek ({angles}° hor, één kant).',
+  'Horizontal only — but this baffle is wider than tall, so that IS the plane its drivers lobe in: this data captures it.':
+    'Alleen horizontaal — maar dit front is breder dan hoog, dus dat ÍS het vlak waarin zijn drivers loberen: deze data legt het vast.',
+  'Horizontal only — vertical lobing is not in this data.':
+    'Alleen horizontaal — verticale lobing zit niet in deze data.',
+  Scale: 'Schaal',
+  'Normalized (0° = 0 dB per frequency)': 'Genormaliseerd (0° = 0 dB per frequentie)',
+  'Absolute (rel. loudest point)': 'Absoluut (t.o.v. het luidste punt)',
+  'Negative angles mirror the measured side (symmetry assumed). Dashed contour = −6 dB beamwidth; gaps mean wider than the measured {deg}°.':
+    'Negatieve hoeken spiegelen de gemeten kant (symmetrie aangenomen). Gestreepte contour = −6 dB-bundelbreedte; gaten betekenen breder dan de gemeten {deg}°.',
+  "Lowest system impedance the amplifier sees — the only side that can hurt it (current/heat). IEC 60268-5: minimum ≥ 0.8× the rated impedance. Green ≥ 6.4 Ω (safe as an '8 Ω' speaker), orange ≥ 3.2 Ω ('4 Ω' territory — fine for most solid-state amps), red below that.":
+    "Laagste systeemimpedantie die de versterker ziet — de enige kant die hem pijn kan doen (stroom/warmte). IEC 60268-5: minimum ≥ 0,8× de nominale impedantie. Groen ≥ 6,4 Ω (veilig als '8 Ω'-luidspreker), oranje ≥ 3,2 Ω ('4 Ω'-terrein — prima voor de meeste transistorversterkers), rood daaronder.",
+  'Load character AT the impedance minimum: arg(Z), negative = capacitive, positive = inductive. Low |Z| alone costs current/heat; low AND strongly capacitive (≲ −45°) is the combination marginal amplifiers (tube, some class-D) dislike most.':
+    'Lastkarakter OP het impedantieminimum: arg(Z), negatief = capacitief, positief = inductief. Laag |Z| alleen kost stroom/warmte; laag ÉN sterk capacitief (≲ −45°) is de combinatie waar krappe versterkers (buizen, sommige klasse-D) het meest van balen.',
+  '(resistive)': '(resistief)',
+  '(capacitive)': '(capacitief)',
+  '(inductive)': '(inductief)',
+  'Highest system impedance. High is HARMLESS — the amp simply delivers less current there. It only becomes audible with a high-output-impedance amplifier (tube amps): the response then follows this curve.':
+    'Hoogste systeemimpedantie. Hoog is ONSCHADELIJK — de versterker levert daar simpelweg minder stroom. Het wordt pas hoorbaar met een versterker met hoge uitgangsimpedantie (buizen): de respons volgt dan deze curve.',
+  '{drv} phase (total)': '{drv}-fase (totaal)',
+  'Woofer/mid': 'Woofer/mid',
+  'Relative phase per driver pair': 'Relatieve fase per driverpaar',
+  'Tweeter phase relative to woofer': 'Tweeterfase t.o.v. de woofer',
+  'Phase flatness': 'Fasevlakheid',
+  'Flatness score 0–100 over the driver overlap (overlap-weighted) — how flat the relative phase stays where both drivers play.':
+    'Vlakheidsscore 0–100 over het driveroverlap (overlap-gewogen) — hoe vlak de relatieve fase blijft waar beide drivers spelen.',
+  'Average |relative phase| in the overlap region.':
+    'Gemiddelde |relatieve fase| in het overlapgebied.',
+  '95th-percentile phase error — the worst 5% excluded.':
+    '95e-percentiel fasefout — de slechtste 5% uitgesloten.',
+  'Standard deviation of the phase error — the wobble.':
+    'Standaarddeviatie van de fasefout — de wiebel.',
+  'Share of the overlap region with the phase error within ±5 / ±10 / ±15°.':
+    'Aandeel van het overlapgebied met de fasefout binnen ±5 / ±10 / ±15°.',
+  'Relative-phase flatness over the {pair} overlap window: score 0–100, average and P95 |phase error|.':
+    'Relatieve-fase-vlakheid over het {pair}-overlapvenster: score 0–100, gemiddelde en P95 |fasefout|.',
+  'Excess group delay (combined)': 'Excess group delay (som)',
+  'Step response & ETC (IFFT of combined response)': 'Staprespons & ETC (IFFT van de som)',
+  'Sanity check, not a measurement — band edges are tapered. t = 0 at the impulse peak (arrival {ms} ms).':
+    'Plausibiliteitscheck, geen meting — de bandranden zijn afgevlakt. t = 0 op de impulspiek (aankomst {ms} ms).',
+  'Zones & line color = distance from 0°:': 'Zones & lijnkleur = afstand tot 0°:',
+
+  // ── Serie-labels (chart-legenda's; memos dragen een uiLang-dep) ──────
+  'Woofer target': 'Woofer-doel',
+  'Midrange target': 'Midrange-doel',
+  'Tweeter target': 'Tweeter-doel',
+  'Held reference': 'Vastgezette referentie',
+  '±{pct}% build tolerance ↑': '±{pct}% bouwtolerantie ↑',
+  '±{pct}% build tolerance ↓': '±{pct}% bouwtolerantie ↓',
+  'Measured — {name} ({db} dB)': 'Gemeten — {name} ({db} dB)',
+  'Combined — {name}': 'Som — {name}',
+  Combined: 'Som',
+  'Combined, tweeter inverted (null check M-T)': 'Som, tweeter omgekeerd (nulcheck M-T)',
+  'Combined, tweeter inverted (null check)': 'Som, tweeter omgekeerd (nulcheck)',
+  'Combined, woofer inverted (null check W-M)': 'Som, woofer omgekeerd (nulcheck W-M)',
+  '{name} high-pass · {hz} Hz — drag to move the knee':
+    '{name} hoogdoorlaat · {hz} Hz — sleep om de knie te verplaatsen',
+  '{name} low-pass · {hz} Hz — drag to move the knee':
+    '{name} laagdoorlaat · {hz} Hz — sleep om de knie te verplaatsen',
+  '{name} EQ {type} · {hz} Hz · {db} dB · Q {q} — drag = freq/gain, scroll = Q':
+    '{name} EQ {type} · {hz} Hz · {db} dB · Q {q} — slepen = freq/gain, scrollen = Q',
+  'Woofer filter phase': 'Woofer-filterfase',
+  'Mid filter phase': 'Mid-filterfase',
+  'Tweeter filter phase': 'Tweeter-filterfase',
+  'Relative phase — raw drivers': 'Relatieve fase — rauwe drivers',
+  'Woofer phase (total)': 'Wooferfase (totaal)',
+  'Mid phase (total)': 'Midfase (totaal)',
+  'Tweeter phase (total)': 'Tweeterfase (totaal)',
+  'Relative phase — active pair': 'Relatieve fase — actief paar',
+  'Mid phase relative to woofer': 'Midfase t.o.v. de woofer',
+  'Tweeter phase relative to mid': 'Tweeterfase t.o.v. de mid',
+  'VituixCAD (timing removed)': 'VituixCAD (timing verwijderd)',
+  'Measured phase residual (vs model)': 'Gemeten fase-residu (vs model)',
+  'Energy average (hor)': 'Energiegemiddelde (hor)',
+  'Directivity index (on-axis − energy average)':
+    'Directiviteitsindex (on-axis − energiegemiddelde)',
+  'Mid filter': 'Mid-filter',
+  'Tweeter filter': 'Tweeter-filter',
+  'System |Z|': 'Systeem-|Z|',
+  'Z phase (− = capacitive, + = inductive)': 'Z-fase (− = capacitief, + = inductief)',
+  'integration bandwidth {oct} oct': 'integratiebandbreedte {oct} oct',
+  'W-M bandwidth {oct} oct': 'W-M-bandbreedte {oct} oct',
+  'M-T bandwidth {oct} oct': 'M-T-bandbreedte {oct} oct',
+  'overlap {hz} Hz': 'overname {hz} Hz',
+  'Excess group delay (bulk {ms} ms removed)': 'Excess group delay (bulk {ms} ms verwijderd)',
+  'Step response (normalized)': 'Staprespons (genormaliseerd)',
+  'Impulse (normalized)': 'Impuls (genormaliseerd)',
+  'ETC — energy-time curve': 'ETC — energie-tijdcurve',
+
+  // ── Expert-Setup: ledger + fase/adjustment-fieldsets ─────────────────
+  'How you measured': 'Hoe je gemeten hebt',
+  'Mic distance': 'Mic-afstand',
+  '{ratio}× the source — {verdict}': '{ratio}× de bron — {verdict}',
+  'far field': 'verre veld',
+  close: 'dichtbij',
+  'Mic elevation': 'Mic-elevatie',
+  'The cabinet': 'De kast',
+  'Mic was aimed at': 'Mic gericht op',
+  'that driver is 0,0 — you do not type its offset':
+    'die driver is 0,0 — zijn offset typ je niet',
+  'Front panel width': 'Frontbreedte',
+  'Front panel height': 'Fronthoogte',
+  'Cabinet depth': 'Kastdiepte',
+  'the panel a side-firing driver radiates from':
+    'het paneel waar een zij-stralende driver uit straalt',
+  'only needed for side-firing drivers': 'alleen nodig voor zij-stralende drivers',
+  'Reference point, below top': 'Referentiepunt, onder de bovenkant',
+  'deeper than the baffle is tall': 'dieper dan het front hoog is',
+  'Reference point, above floor': 'Referentiepunt, boven de vloer',
+  'Driver phase': 'Driverfase',
+  'Measured = the real measured phase incl. the true inter-driver time offset — the whole point of this tool. Minimum phase = reconstructed from magnitude (offsets discarded), only for apples-to-apples VituixCAD comparison.':
+    'Measured = de echte gemeten fase incl. het ware inter-driver-tijdverschil — hét bestaansrecht van deze tool. Minimum phase = gereconstrueerd uit de magnitude (offsets weggegooid), alleen voor een eerlijke VituixCAD-vergelijking.',
+  Convention: 'Conventie',
+  'Measured (real timing)': 'Gemeten (echte timing)',
+  'Minimum phase (VituixCAD-style)': 'Minimum-fase (VituixCAD-stijl)',
+  'measured inter-driver timing discarded — comparison mode':
+    'gemeten inter-driver-timing weggegooid — vergelijkmodus',
+  'auto: shared time reference plausible — real timing in use':
+    'auto: gedeelde tijdreferentie plausibel — echte timing in gebruik',
+  'Tweeter adjustment': 'Tweeter-correctie',
+  'Simulate moving the tweeter physically (mm depth, + = recessed = extra delay). With measured phase and a shared time reference the real timing is already in the data — leave 0.':
+    'Simuleer het fysiek verplaatsen van de tweeter (mm diepte, + = verzonken = extra vertraging). Met gemeten fase en een gedeelde tijdreferentie zit de echte timing al in de data — laat op 0.',
+  'Offset (mm, + = recessed)': 'Offset (mm, + = verzonken)',
+  'Level adjustment on the tweeter branch, dB': 'Niveaucorrectie op de tweetertak, dB',
+  'Level trim (dB)': 'Niveautrim (dB)',
+  'Flip the tweeter 180° (swap + and −) — the classic move around an LR2 crossover':
+    'Keer de tweeter 180° om (wissel + en −) — de klassieke zet rond een LR2-crossover',
+  'Invert polarity': 'Keer polariteit om',
+  'The mm offset expressed as time delay': 'De mm-offset uitgedrukt als tijdvertraging',
+  'measured phase already carries the real timing — leave 0 unless you are simulating a physical move':
+    'de gemeten fase draagt de echte timing al — laat op 0 tenzij je een fysieke verplaatsing simuleert',
+  'Midrange adjustment': 'Midrange-correctie',
+  'Simulate moving the midrange physically (mm depth, + = recessed = extra delay). With measured phase and a shared time reference the real timing is already in the data — leave 0.':
+    'Simuleer het fysiek verplaatsen van de midrange (mm diepte, + = verzonken = extra vertraging). Met gemeten fase en een gedeelde tijdreferentie zit de echte timing al in de data — laat op 0.',
+  'Level adjustment on the midrange branch, dB': 'Niveaucorrectie op de midrangetak, dB',
+  'Flip the midrange 180° (swap + and −)': 'Keer de midrange 180° om (wissel + en −)',
+
+  // ── Netwerk-tab: editor + toolbars ───────────────────────────────────
+  Configure: 'Instellen',
+  State: 'Status',
+  'Network editor (passive)': 'Netwerk-editor (passief)',
+  'Drag parts, draw wires, edit values — the schematic IS the network: parts connect where their points touch, and every change re-solves live on the measured impedances. Inductors carry DCR, capacitors ESR.':
+    'Sleep onderdelen, teken draden, bewerk waarden — het schema ÍS het netwerk: onderdelen verbinden waar hun punten elkaar raken, en elke wijziging lost live op tegen de gemeten impedanties. Spoelen dragen DCR, condensatoren ESR.',
+  Start: 'Start',
+  'Open the selected crossover variant in a new tab':
+    'Open de geselecteerde crossover-variant in een nieuwe tab',
+  'Load a vxp project first': 'Laad eerst een vxp-project',
+  'Import variant': 'Importeer variant',
+  'Open an exported .adsfilter.json in a new tab':
+    'Open een geëxporteerde .adsfilter.json in een nieuwe tab',
+  'Import filter': 'Importeer filter',
+  'Start a fresh network in a new tab from a generic template — plausible starting values you tune from, the counterpart to Import and the optimizer':
+    'Begin een vers netwerk in een nieuwe tab vanuit een generiek sjabloon — plausibele startwaarden om vanaf te tunen, de tegenhanger van Importeren en de optimizer',
+  '3-way mode: the template follows the loaded branch set (a 2-way template would silently skip the mid)':
+    '3-weg-modus: het sjabloon volgt de geladen takken (een 2-weg-sjabloon zou de mid stil overslaan)',
+  'Number of ways — 3-way templates need all three branches loaded':
+    'Aantal wegen — 3-weg-sjablonen hebben alle drie de takken nodig',
+  '3-way (load three drivers)': '3-weg (laad drie drivers)',
+  'Single-driver mode — only the blank scaffold applies (LP/HP templates need two branches)':
+    'Eén-driver-modus — alleen het lege raamwerk is van toepassing (LP/HP-sjablonen hebben twee takken nodig)',
+  'Filter order / slope per branch (mid = bandpass, twice the parts) — generic Butterworth-style seed values at 600 / 3000 Hz':
+    'Filterorde / flank per tak (mid = banddoorlaat, dubbel zoveel onderdelen) — generieke Butterworth-achtige startwaarden op 600 / 3000 Hz',
+  'Filter order / slope for both branches — generic Butterworth-style seed values':
+    'Filterorde / flank voor beide takken — generieke Butterworth-achtige startwaarden',
+  'New from template': 'Nieuw uit sjabloon',
+  'Blank (drivers only)': 'Leeg (alleen drivers)',
+  '1st order · 6 dB/oct': '1e orde · 6 dB/oct',
+  '2nd order · 12 dB/oct': '2e orde · 12 dB/oct',
+  '3rd order · 18 dB/oct': '3e orde · 18 dB/oct',
+  '4th order · 24 dB/oct': '4e orde · 24 dB/oct',
+  Export: 'Exporteren',
+  'Download the active tab as a standalone .adsfilter.json — share it or bring it into another project':
+    'Download de actieve tab als losstaande .adsfilter.json — deel hem of neem hem mee naar een ander project',
+  'Export filter': 'Exporteer filter',
+  'Export .vxp': 'Exporteer .vxp',
+  'Export this design as a printable HTML report (A4): summary, the charts you have open, the schematic and the BOM with prices. The file is ALSO a filter file — Import filter reads it back, so a report can be mailed, printed and compared.':
+    'Exporteer dit ontwerp als printbaar HTML-rapport (A4): samenvatting, de grafieken die je open hebt, het schema en de stuklijst met prijzen. Het bestand is ÓÓK een filterbestand — Importeer filter leest het terug, dus een rapport kan gemaild, geprint en vergeleken worden.',
+  'Export report': 'Exporteer rapport',
+  Catalog: 'Catalogus',
+  'Download the component catalog as an editable JSON template — add your own brands/series and import it back':
+    'Download de componentcatalogus als bewerkbaar JSON-sjabloon — voeg je eigen merken/series toe en importeer hem terug',
+  'Import a component-catalog JSON: your series appear in the inspector next to the built-in ones (persisted across sessions)':
+    'Importeer een componentcatalogus-JSON: jouw series verschijnen in de inspector naast de ingebouwde (blijft bewaard over sessies)',
+  'Add, edit or remove exact SKUs (values, DCR/ESR, prices, tiers) without leaving the app':
+    "Voeg exacte SKU's toe, bewerk of verwijder ze (waarden, DCR/ESR, prijzen, tiers) zonder de app te verlaten",
+  Tools: 'Gereedschap',
+  '3-way: re-fit the UNLOCKED component values against the measured three-branch sum — both adjacent crossings are guarded (valley, protection, dead-branch), phase is judged per pair':
+    '3-weg: her-fit de ONVERGRENDELDE componentwaarden tegen de gemeten drie-takken-som — beide aangrenzende overnames worden bewaakt (vallei, bescherming, dode tak), fase wordt per paar beoordeeld',
+  'Single-driver mode: re-fit the UNLOCKED component values against the measured driver — objective is branch flatness (+ amp-load floor); crossover terms do not apply':
+    'Eén-driver-modus: her-fit de ONVERGRENDELDE componentwaarden tegen de gemeten driver — doel is takvlakheid (+ versterkerlast-vloer); crossover-termen zijn niet van toepassing',
+  'Re-fit the UNLOCKED component values of the active tab against the measured response — 🔒 parts keep their value':
+    'Her-fit de ONVERGRENDELDE componentwaarden van de actieve tab tegen de gemeten respons — 🔒-onderdelen houden hun waarde',
+  'Tuning…': 'Tunen…',
+  'Optimize components': 'Optimaliseer componenten',
+  'Add an LCR notch (series trap across a driver) to tame a peak — enter frequency, depth and Q; values follow from the measured impedance and the result shows live':
+    'Voeg een LCR-notch toe (serie-trap over een driver) om een piek te temmen — vul frequentie, diepte en Q in; de waarden volgen uit de gemeten impedantie en het resultaat toont live',
+  'Add notch': 'Notch toevoegen',
+  'Redraw this schematic from its netlist: series path as a bus, chains hanging down, branches stacked with air — electrically identical, undo-able. Fixes cramped layouts from older exports.':
+    'Herteken dit schema vanuit zijn netlijst: serie-pad als bus, ketens hangend, takken gestapeld met lucht — elektrisch identiek, ongedaan te maken. Repareert krappe layouts uit oudere exports.',
+  'Tidy layout': 'Layout opruimen',
+  'What was this network built FOR? The virtual target design (HP/LP kind, order, knees, EQ bands) plus the MEASURED acoustic slopes beside the crossing — electrical component count never equals acoustic order.':
+    'Waar is dit netwerk VOOR gebouwd? Het virtuele doelontwerp (HP/LP-soort, orde, knieën, EQ-banden) plus de GEMETEN akoestische flanken naast de overname — elektrisch aantal onderdelen is nooit gelijk aan akoestische orde.',
+  Targets: 'Doelen',
+  Simulation: 'Simulatie',
+  "Feed the active tab's network into the simulation instead of the selected vxp variant — every edit re-solves live":
+    'Voer het netwerk van de actieve tab aan de simulatie in plaats van de gekozen vxp-variant — elke bewerking lost live opnieuw op',
+  'Use in simulation': 'Gebruik in simulatie',
+  "Show the other tabs' summed responses as dashed ghost curves in the SPL chart":
+    'Toon de sommen van de andere tabs als gestreepte ghost-curves in de SPL-grafiek',
+  'Compare tabs': 'Vergelijk tabs',
+  'Worst-case envelope around the combined curve when every physical R/L/C lands within its tolerance — what building with real parts can do to this design. Numbers in the SPL strip; the tooltip there ranks the most sensitive parts.':
+    'Worst-case-envelop om de som-curve als élke fysieke R/L/C binnen zijn tolerantie landt — wat bouwen met echte onderdelen met dit ontwerp kan doen. Cijfers in de SPL-strip; de tooltip daar rangschikt de gevoeligste onderdelen.',
+  'Tolerance band': 'Tolerantieband',
+  'Component tolerance class: 2% (measured/selected parts), 5% (good film caps & air coils), 10% (electrolytics, budget parts)':
+    'Tolerantieklasse: 2% (gemeten/geselecteerde onderdelen), 5% (goede filmcaps & luchtspoelen), 10% (elco’s, budget-onderdelen)',
+  '{n} value changes — old → new': '{n} waardewijzigingen — oud → nieuw',
+  part: 'onderdeel',
+  old: 'oud',
+  new: 'nieuw',
+
+  // ── Chart.tsx ────────────────────────────────────────────────────────
+  'Show series': 'Toon curve',
+  'Hide series': 'Verberg curve',
+  'Fold the supporting curves back up': 'Vouw de ondersteunende curves weer op',
+  'Show ghosts, tolerance band and target shapes in the legend (they are drawn either way)':
+    'Toon ghosts, tolerantieband en doelvormen in de legenda (getekend worden ze sowieso)',
+  '− fewer': '− minder',
+  '+{n} more': '+{n} meer',
+  'Make this the committed view range (evaluation band)':
+    'Maak dit het vaste weergavebereik (evaluatieband)',
+  'use as view range': 'gebruik als weergavebereik',
+  'Reset zoom (or double-click the chart)': 'Zet de zoom terug (of dubbelklik de grafiek)',
+  'scroll = zoom · Shift+scroll = vertical · drag = pan · double-click = reset · click a legend chip to show/hide its curve':
+    'scroll = zoomen · Shift+scroll = verticaal · slepen = verschuiven · dubbelklik = terugzetten · klik een legenda-chip om zijn curve te tonen/verbergen',
+  'Dismiss chart gesture hint': 'Verberg de grafiek-hint',
+  'No filter in the simulation — you are looking at the RAW drivers.':
+    'Geen filter in de simulatie — je kijkt naar de RAUWE drivers.',
+  'Design one in the Filters tab (Optimize — design for me), activate a network in the Network tab':
+    'Ontwerp er een op de Filters-tab (Optimize — design for me), activeer een netwerk op de Netwerk-tab',
+  ', or pick a vxp variant in the Setup tab': ', of kies een vxp-variant op de Setup-tab',
+
+  // ── Filters-tab: Design/Configure/State ──────────────────────────────
+  'What the passive build optimises for: the acoustic result on the measured driver, or an exact reproduction of the filter curve':
+    'Waar de passieve bouw voor optimaliseert: het akoestische resultaat op de gemeten driver, of een exacte reproductie van de filtercurve',
+  'Acoustic result (flatten measured driver)': 'Akoestisch resultaat (gemeten driver vlak)',
+  'Filter curve (reproduce target exactly)': 'Filtercurve (doel exact reproduceren)',
+  'Optimizer settings: priority, amplitude target, in-room weight, EQ bands':
+    'Optimizer-instellingen: prioriteit, amplitudedoel, in-kamer-gewicht, EQ-banden',
+  Settings: 'Instellingen',
+  'Filters back to the clean starting point — measurements and crossover selection stay':
+    'Filters terug naar het schone startpunt — metingen en crossover-keuze blijven',
+  'Reset filters': 'Reset filters',
+  'Take the virtual filters out of the simulation, keeping their settings — auto-on when a built passive network replaces them':
+    'Haal de virtuele filters uit de simulatie, met behoud van hun instellingen — gaat automatisch aan als een gebouwd passief netwerk ze vervangt',
+  Bypass: 'Bypass',
+  'scan {a}/{b}': 'scan {a}/{b}',
+  'round {n}': 'ronde {n}',
+  'network sims': 'netwerk-sims',
+  'virtual filters muted — passive network / raw drivers only':
+    'virtuele filters gedempt — alleen passief netwerk / rauwe drivers',
+
+  // ── ⚙ Optimizer-instellingen ────────────────────────────────────────
+  'Optimizer settings': 'Optimizer-instellingen',
+  "Single-driver mode — crossover settings (priority, phase, slopes, crossover point, HP/LP) don't apply and are disabled; the solo engine designs cut-only EQ/shelves within the EQ-band budget and the targets' ripple.":
+    'Eén-driver-modus — crossover-instellingen (prioriteit, fase, flanken, crossover-punt, HP/LP) zijn niet van toepassing en staan uit; de solo-engine ontwerpt cut-only EQ/shelves binnen het EQ-bandbudget en de doel-rimpel.',
+  "How much LEVEL the correction may give up. Passive filters can only cut, so flatness is paid for in efficiency — this is the budget for that payment. 6 dB ≈ a baffle-step's worth, right for a driver that will still get a crossover. A fullranger carrying the whole range is usually worth 10–20 dB: the further it may drop, the further up the band it can pull things flat.":
+    'Hoeveel NIVEAU de correctie mag opgeven. Passieve filters kunnen alleen verzwakken, dus vlakheid wordt betaald in rendement — dit is het budget voor die betaling. 6 dB ≈ een baffle-step, goed voor een driver die nog een crossover krijgt. Een breedbander die het hele bereik draagt is meestal 10–20 dB waard: hoe verder hij mag zakken, hoe hoger in de band hij vlak kan trekken.',
+  'May drop by': 'Mag zakken met',
+  "What that budget means in absolute terms: the driver's own median level over the evaluation band, and the level the correction may sink to.":
+    'Wat dat budget absoluut betekent: het eigen mediaanniveau van de driver over de evaluatieband, en het niveau waarnaar de correctie mag zakken.',
+  '→ down to {a} dB (driver sits at {b})': '→ tot {a} dB (driver zit op {b})',
+  "Instead of 'may drop by N dB', name the level itself: the engine flattens everything down TO that level. Better-posed (a fixed target cannot be met by moving the average) and it tells you directly how far up the band the correction can reach.":
+    "In plaats van 'mag N dB zakken' noem je het niveau zelf: de engine vlakt alles af TOT dat niveau. Beter gesteld (een vast doel is niet te halen door het gemiddelde te verplaatsen) en het vertelt direct hoe hoog in de band de correctie kan reiken.",
+  'or flatten to a fixed level': 'of vlak af op een vast niveau',
+  "Flatten down TO this level (dB, in your own measurement's scale — check the SPL chart). A lower target reaches further up the band but costs efficiency. Anything already below this level cannot be lifted and stays out of scope.":
+    'Vlak af TOT dit niveau (dB, in de schaal van je eigen meting — check de SPL-grafiek). Een lager doel reikt hoger in de band maar kost rendement. Alles wat al onder dit niveau zit is niet op te tillen en valt buiten bereik.',
+  'Flat at': 'Vlak op',
+  "The driver's own median level over the evaluation band, and how far a cut-only correction can reach at the target level you entered.":
+    'Het eigen mediaanniveau van de driver over de evaluatieband, en hoe ver een cut-only correctie kan reiken op het doelniveau dat je invulde.',
+  'driver sits at {a} dB · reaches {b}–{c}': 'driver zit op {a} dB · reikt {b}–{c}',
+  'Goals & weighting': 'Doelen & weging',
+  'Single-driver mode: relative phase does not exist — the solo objective is response flatness only':
+    'Eén-driver-modus: relatieve fase bestaat niet — het solo-doel is alleen responsvlakheid',
+  'The big trade-off: budget split between a flat response and flat phase. More phase = flatter phase but more amplitude ripple. Both ends are anchored (100% phase = 90/10 internally): with the response weight at true zero the optimizer would trade a wrecked response for a phase metric it can then game.':
+    'Dé grote afweging: budgetverdeling tussen een vlakke respons en vlakke fase. Meer fase = vlakkere fase maar meer amplitude-rimpel. Beide uiteinden zijn verankerd (100% fase = intern 90/10): met het responsgewicht op echt nul zou de optimizer een gesloopte respons inruilen voor een fasemetriek die hij dan kan bespelen.',
+  'Priority: response {a}% · phase {b}%': 'Prioriteit: respons {a}% · fase {b}%',
+  'Phase metric': 'Fasemetriek',
+  "How phase error is judged. Integration band = the panel's average + excursions over the WHOLE overlap window (flat across the handover, matches the numbers you read). Classic = overlap-weighted mean, centre-heavy (the old behaviour, kept as fallback).":
+    'Hoe fasefout beoordeeld wordt. Integratieband = het paneelgemiddelde + uitschieters over het HELE overlapvenster (vlak over de overname, komt overeen met de cijfers die je leest). Klassiek = overlap-gewogen gemiddelde, centrum-zwaar (het oude gedrag, als terugval).',
+  'Integration band (avg + P95)': 'Integratieband (gem + P95)',
+  'Classic (overlap-weighted)': 'Klassiek (overlap-gewogen)',
+  'Single-driver mode: directivity terms pair both drivers — on-axis only for now':
+    'Eén-driver-modus: directiviteitstermen koppelen beide drivers — voorlopig alleen on-axis',
+  'Load angle measurements to enable': 'Laad hoekmetingen om dit aan te zetten',
+  'Single-driver mode: directivity terms pair both drivers — disabled for now':
+    'Eén-driver-modus: directiviteitstermen koppelen beide drivers — voorlopig uit',
+  'Weight for in-room sound: {n}% (energy average)':
+    'Gewicht voor in-kamer-klank: {n}% (energiegemiddelde)',
+  'Filter shape': 'Filtervorm',
+  'Hard cap on EQ bands per driver the optimizer may spend — more bands = finer correction but a bigger search (and more passive components later)':
+    'Harde limiet op EQ-banden per driver die de optimizer mag uitgeven — meer banden = fijnere correctie maar een grotere zoektocht (en later meer passieve onderdelen)',
+  'Correction bands per driver (max)': 'Correctiebanden per driver (max)',
+  'Preferred alignment for the LOW (woofer-mid) handover — binding: the designer picks the foundation, the optimizer keeps knees, level and polarity free. Auto = free choice from the library.':
+    'Voorkeurs-alignment voor de LAGE (woofer-mid) overname — bindend: de ontwerper kiest het fundament, de optimizer houdt knieën, niveau en polariteit vrij. Auto = vrije keuze uit de bibliotheek.',
+  'HP/LP preference (low xo)': 'HP/LP-voorkeur (lage xo)',
+  'Preferred HP/LP alignment — binding: the designer picks the foundation, the optimizer designs the best crossover on it (knees, level, polarity and EQ stay free). Auto = free choice from the library.':
+    'HP/LP-voorkeurs-alignment — bindend: de ontwerper kiest het fundament, de optimizer ontwerpt daarop de beste crossover (knieën, niveau, polariteit en EQ blijven vrij). Auto = vrije keuze uit de bibliotheek.',
+  'HP/LP preference (high xo)': 'HP/LP-voorkeur (hoge xo)',
+  'HP/LP preference': 'HP/LP-voorkeur',
+  'Target ACOUSTIC slope of the mid above the crossing — the measured rolloff (driver + filter), not the electrical order. Falling short costs more than being steeper. Auto = free.':
+    'Doel voor de AKOESTISCHE flank van de mid boven de overname — de gemeten afval (driver + filter), niet de elektrische orde. Tekortschieten kost meer dan steiler zijn. Auto = vrij.',
+  'Acoustic slope mid LP (high xo)': 'Akoestische flank mid LP (hoge xo)',
+  'Acoustic slope mid': 'Akoestische flank mid',
+  "Target ACOUSTIC slope of the tweeter below the crossing — the classic 'acoustic 4th order at the tweeter' rule is 24 dB/oct. Check the result in 🎯 Targets. Auto = free.":
+    "Doel voor de AKOESTISCHE flank van de tweeter onder de overname — de klassieke regel 'akoestisch 4e orde bij de tweeter' is 24 dB/oct. Controleer het resultaat in 🎯 Doelen. Auto = vrij.",
+  'Acoustic slope tweeter': 'Akoestische flank tweeter',
+  '3-way: target ACOUSTIC slope of the WOOFER above the low crossing (its LP flank). Auto = free.':
+    '3-weg: doel voor de AKOESTISCHE flank van de WOOFER boven de lage overname (zijn LP-flank). Auto = vrij.',
+  'Acoustic slope woofer (low xo)': 'Akoestische flank woofer (lage xo)',
+  "3-way: target ACOUSTIC slope of the MID below the low crossing (its HP flank) — the mid's second flank.":
+    '3-weg: doel voor de AKOESTISCHE flank van de MID onder de lage overname (zijn HP-flank) — de tweede flank van de mid.',
+  'Acoustic slope mid HP (low xo)': 'Akoestische flank mid HP (lage xo)',
+  'Staged design (step method): HP/LP structure first; EQ bands, Zobel/LCR networks and bypass caps are only added while the targets below are unmet — the fewest components that reach the goal, with a per-stage report.':
+    'Getrapt ontwerpen (trapmethode): eerst de HP/LP-structuur; EQ-banden, Zobel/LCR-netwerken en bypass-caps komen er alleen bij zolang de doelen hieronder niet gehaald zijn — de minste onderdelen die het doel halen, met een rapport per trede.',
+  'Use as few components as possible': 'Gebruik zo min mogelijk onderdelen',
+  "'Good enough' targets: stop escalating once ripple (peak ±dB, the same number the SPL strip shows) AND average phase error (°) are both met — variable per project, this is the designer's call":
+    "'Goed genoeg'-doelen: stop met escaleren zodra rimpel (piek ±dB, hetzelfde getal als in de SPL-strip) ÉN gemiddelde fasefout (°) beide gehaald zijn — variabel per project, dit is de keuze van de ontwerper",
+  'a stopping point, not a limit — tighter means more parts and more money (it keeps escalating while unmet, and only prunes once met); looser stops sooner and builds simpler, but may leave performance on the table':
+    'een stoppunt, geen plafond — strakker betekent meer onderdelen en meer geld (hij blijft escaleren zolang het doel niet gehaald is, en snoeit pas als het wél gehaald is); ruimer stopt eerder en bouwt eenvoudiger, maar kan prestatie laten liggen',
+  'Safety nets': 'Vangnetten',
+  'Stopband leakage beside the crossover must stay ≥20 dB below the combined — cone-breakup phase cannot be filtered away, it can only be made irrelevant in level':
+    'Stopband-lekkage naast de crossover moet ≥20 dB onder de som blijven — conus-breakup-fase is niet weg te filteren, alleen in niveau irrelevant te maken',
+  'Keep cone breakup ≥20 dB down': 'Houd conus-breakup ≥20 dB onderdrukt',
+  'Snap the passive build to purchasable catalog values, simulated with their real DCR/ESR — the fit error against real parts becomes visible instead of assumed away':
+    'Snap de passieve bouw op koopbare cataloguswaarden, gesimuleerd met hun echte DCR/ESR — de fit-fout tegen echte onderdelen wordt zichtbaar in plaats van weggenomen aangenomen',
+  'Use real catalog parts': 'Gebruik echte catalogus-onderdelen',
+  '(needs import)': '(vereist import)',
+  'Pin the ACOUSTIC crossover: the frequency where the filtered drivers actually cross must land within frequency ± margin — in the design optimizer AND the component tuner. Margin 0 = exactly there (±2% search room remains).':
+    'Pin de AKOESTISCHE crossover: de frequentie waar de gefilterde drivers elkaar écht kruisen moet binnen frequentie ± marge landen — in de ontwerp-optimizer ÉN de componenttuner. Marge 0 = precies daar (±2% zoekruimte blijft).',
+  'Crossover points (low + high)': 'Crossover-punten (laag + hoog)',
+  'Crossover point': 'Crossover-punt',
+  "Hard floor for the tweeter's electrical HP knee: the classic ≥2×Fs rule, read from the measured impedance peak. Knee-domain — coexists with the crossover point.":
+    'Harde vloer voor de elektrische HP-knie van de tweeter: de klassieke ≥2×Fs-regel, afgelezen uit de gemeten impedantiepiek. Knie-domein — bestaat naast het crossover-punt.',
+  'tweeter kept above {n} Hz (2× its measured resonance)':
+    'tweeter blijft boven {n} Hz (2× zijn gemeten resonantie)',
+  'How many handover candidates the 3-way scan simulates PER crossing. Each candidate runs the full design chain inside its own slice of the search range, so the count is squared: 2 steps = 4 chains. Works pinned or unpinned — without a pin the range is the neighbourhood of the raw crossings.':
+    'Hoeveel overname-kandidaten de 3-weg-scan PER overgang simuleert. Elke kandidaat draait de volledige ontwerpketen binnen zijn eigen deel van het zoekbereik, dus het aantal kwadrateert: 2 stappen = 4 ketens. Werkt gepind én vrij — zonder pin is het bereik de omgeving van de rauwe kruisingen.',
+  'Handover candidates to try': 'Overname-kandidaten om te proberen',
+  "The free scan derives both handover windows from the measurements themselves: floor = 2×Fs (measured impedance) and where the upper driver reaches its own level; ceiling = the lower driver's MEASURED beaming onset from the angle files (size-formula fallback without them). A pin is the designer's explicit override of its axis — the scan then searches the pin, not this window, and warns loudly when the physics cannot deliver it.":
+    'De vrije scan leidt beide overname-vensters af uit de metingen zelf: vloer = 2×Fs (gemeten impedantie) en waar de bovenste driver zijn eigen niveau bereikt; plafond = het GEMETEN bundelpunt van de onderste driver uit de hoekbestanden (maat-formule als terugval). Een pin is de expliciete override van die as door de ontwerper — de scan doorzoekt dan de pin, niet dit venster, en waarschuwt luid als de fysica hem niet kan leveren.',
+  'pinned — your pin overrides the derived window':
+    'gepind — jouw pin overschrijft het afgeleide venster',
+  'no room — these two cannot meet': 'geen ruimte — deze twee kunnen elkaar niet ontmoeten',
+  '3-way: the LOW handover (woofer→mid) — the acoustic crossing must land within frequency ± margin, in the design chain AND the component tuner.':
+    '3-weg: de LAGE overname (woofer→mid) — de akoestische kruising moet binnen frequentie ± marge landen, in de ontwerpketen ÉN de componenttuner.',
+  low: 'laag',
+  'The ACOUSTIC handover — where the filtered drivers actually cross — must land within frequency ± margin. The electrical knees stay free (with a hot tweeter they sit far above the acoustic crossing).':
+    'De AKOESTISCHE overname — waar de gefilterde drivers elkaar écht kruisen — moet binnen frequentie ± marge landen. De elektrische knieën blijven vrij (met een hete tweeter liggen die ver boven de akoestische kruising).',
+  high: 'hoog',
+  'How many crossover candidates the scan simulates across the pinned range (evenly spaced, your pin always included). Every candidate runs the FULL design chain, so compute grows about linearly — the worker pool runs several at once, but 9 steps still takes a multiple of 3. More steps = a finer sweep of the handover region.':
+    'Hoeveel crossover-kandidaten de scan over het gepinde bereik simuleert (gelijkmatig verdeeld, jouw pin doet altijd mee). Elke kandidaat draait de VOLLEDIGE ontwerpketen, dus rekentijd groeit ongeveer lineair — de worker-pool draait er meerdere tegelijk, maar 9 stappen kost nog steeds een veelvoud van 3. Meer stappen = een fijnere doorloop van het overnamegebied.',
+  '{n} steps': '{n} stappen',
+  runtime: 'runtime',
+  'Driver limits': 'Drivergrenzen',
+  "Woofer nominal size — sets the W-M handover's beaming CEILING (a cone is practically usable to ~3× its beaming onset), the mirror of the mid-size rule for the high crossing. With the 2×Fs floor from the measured mid impedance this gives the free scan a physics window instead of a guess.":
+    'Nominale woofermaat — zet het bundel-PLAFOND van de W-M-overname (een conus is praktisch bruikbaar tot ~3× zijn bundelpunt), het spiegelbeeld van de mid-maat-regel voor de hoge overgang. Met de 2×Fs-vloer uit de gemeten mid-impedantie krijgt de vrije scan zo een fysica-venster in plaats van een gok.',
+  'Woofer size (W-M ceiling)': 'Woofermaat (W-M-plafond)',
+  'When a cone counts as beaming': 'Wanneer een conus als bundelend telt',
+  "How many wavelengths of DRIVER SPACING the design tolerates. The spacing itself is derived from the driver positions you enter under Setup → Cabinet & drivers; two drivers half a wavelength apart already put a null in the vertical response. The sources genuinely disagree here and they optimise different things, so this is the designer's call.":
+    'Hoeveel golflengten DRIVER-AFSTAND het ontwerp tolereert. De afstand zelf volgt uit de driverposities die je invult onder Setup → Kast & drivers; twee drivers een halve golflengte uiteen zetten al een nul in de verticale respons. De bronnen zijn het hier echt oneens en optimaliseren verschillende dingen, dus dit is de keuze van de ontwerper.',
+  'Lobing: how strict': 'Lobing: hoe streng',
+  'auto — from driver geometry': 'auto — uit de drivergeometrie',
+  '0.25 — point source': '0,25 — puntbron',
+  '0.5 — no forward null': '0,5 — geen voorwaartse nul',
+  '1.2 — Saunisto (power response)': '1,2 — Saunisto (power response)',
+  "Resolved per pair from the positions you entered: horizontally separated drivers lobe ACROSS the seats (strict, k 0.5 — no forward null); vertically separated ones lobe toward floor and ceiling, where Dickason's k 1.0 is the published anchor. Mixed axes interpolate. The explicit values remain as overrides.":
+    'Per paar bepaald uit de posities die je invulde: horizontaal gescheiden drivers loberen ÓVER de zitplaatsen (streng, k 0,5 — geen voorwaartse nul); verticaal gescheiden drivers loberen naar vloer en plafond, waar Dickasons k 1,0 het gepubliceerde anker is. Gemengde assen interpoleren. De expliciete waarden blijven als overrides.',
+  vertical: 'verticaal',
+  horizontal: 'horizontaal',
+  'enter driver positions to resolve': 'vul driverposities in om dit te bepalen',
+  'enter driver positions to apply': 'vul driverposities in om dit toe te passen',
+  'Cone breakup as an upper limit. A resonance at f_b is excited as the THIRD harmonic of a fundamental at f_b/3 (Purifi measured exactly this: breakups at 5 and 10 kHz produce HD3 peaks at 1.6 and 3.3 kHz), so the distortion penalty lands more than an octave BELOW the peak. A notch does not repair it — it attenuates the fundamental at the breakup, not the harmonics arriving there from lower fundamentals. NOTE: no published algorithm exists for finding breakup in an SPL curve; this is our own criterion, which is why it is switchable and the detected frequency is shown.':
+    'Conus-breakup als bovengrens. Een resonantie op f_b wordt aangeslagen als DERDE harmonische van een grondtoon op f_b/3 (Purifi mat precies dit: breakups op 5 en 10 kHz geven HD3-pieken op 1,6 en 3,3 kHz), dus de vervormingsprijs landt ruim een octaaf ONDER de piek. Een notch repareert het niet — die dempt de grondtoon op de breakup, niet de harmonischen die er vanaf lagere grondtonen landen. NB: er bestaat geen gepubliceerd algoritme om breakup in een SPL-curve te vinden; dit is ons eigen criterium, en daarom is het uitschakelbaar en wordt de gevonden frequentie getoond.',
+  'Stay this far below cone breakup': 'Blijf zo ver onder conus-breakup',
+  off: 'uit',
+  'f_b / 5 (HD5, hard cones)': 'f_b / 5 (HD5, harde conussen)',
+  "The LEVEL this design must reach — the level-aware version of 'cross a tweeter at 2-3x Fs'. SPL = 108.4 + 20log(f²·Sd·Xmax) in half space, so a driver runs out of linear travel below f = sqrt(10^((L-108.4)/20)/(Sd·Xmax)) and the crossover floor moves up with the level you ask for. Sd and Xmax themselves are DRIVER FACTS and live on the Setup tab; this is the only part of the criterion that is a design decision.":
+    "Het NIVEAU dat dit ontwerp moet halen — de niveau-bewuste versie van 'kruis een tweeter op 2-3× Fs'. SPL = 108,4 + 20log(f²·Sd·Xmax) in halve ruimte, dus een driver raakt door zijn lineaire slag heen onder f = √(10^((L−108,4)/20)/(Sd·Xmax)) en de crossover-vloer schuift omhoog met het niveau dat je vraagt. Sd en Xmax zelf zijn DRIVER-FEITEN en leven op de Setup-tab; dit is het enige deel van het criterium dat een ontwerpkeuze is.",
+  'Design for': 'Ontwerp voor',
+  'excursion floor: mid': 'excursievloer: mid',
+  'Hz — from the Sd/Xmax on the Setup tab': 'Hz — uit de Sd/Xmax op de Setup-tab',
+  'enter Sd and Xmax per driver on the Setup tab to use this criterion':
+    'vul Sd en Xmax per driver in op de Setup-tab om dit criterium te gebruiken',
+  '{a} bands = {b} search dimensions — slower, may need a second run':
+    '{a} banden = {b} zoekdimensies — trager, heeft mogelijk een tweede run nodig',
+
+  // ── Optimizer-samenvatting + Filter bands ────────────────────────────
+  'Optimizer chose:': 'Optimizer koos:',
+  polarity: 'polariteit',
+  inverted: 'omgekeerd',
+  normal: 'normaal',
+  'EQ used:': 'EQ gebruikt:',
+  ripple: 'rimpel',
+  'phase error': 'fasefout',
+  score: 'score',
+  'power ripple': 'power-rimpel',
+  rounds: 'rondes',
+  sims: 'sims',
+  'What each escalation stage of the staged design bought (ripple / phase after that stage)':
+    'Wat elke escalatietrede van het getrapte ontwerp opleverde (rimpel / fase na die trede)',
+  'Stages:': 'Treden:',
+  'Show the per-driver filter bands (HP/LP/EQ)': 'Toon de filterbanden per driver (HP/LP/EQ)',
+  'Hide the per-driver filter bands': 'Verberg de filterbanden per driver',
+  'Filter bands': 'Filterbanden',
+  muted: 'gedempt',
+  Mid: 'Mid',
+  flat: 'vlak',
+  "Build mode is “Acoustic result”: EQ values here are seeds — a passive build re-tunes each enabled band's freq/gain/Q to flatten the measured driver. Switch to “Filter curve” to build exactly what you draw.":
+    'Bouwmodus is "Akoestisch resultaat": EQ-waarden hier zijn startpunten — een passieve bouw hertuned freq/gain/Q van elke ingeschakelde band om de gemeten driver vlak te maken. Wissel naar "Filtercurve" om exact te bouwen wat je tekent.',
+
+  // ── Passive synthesis ────────────────────────────────────────────────
+  'Passive synthesis': 'Passieve synthese',
+  'Builds YOUR drawn curve: the HP/LP knees and EQ bands above are the target, reproduced with real components on the measured impedances.':
+    'Bouwt JOUW getekende curve: de HP/LP-knieën en EQ-banden hierboven zijn het doel, gereproduceerd met echte componenten op de gemeten impedanties.',
+  'Re-designs while building: real components are fitted so the MEASURED driver comes out flat against the ideal HP/LP shape. Enabled EQ bands only grant correction slots (their freq/gain/Q are re-tuned) — the result deliberately differs from the virtual sim above.':
+    'Herontwerpt tijdens het bouwen: echte componenten worden gefit zodat de GEMETEN driver vlak uitkomt tegen de ideale HP/LP-vorm. Ingeschakelde EQ-banden geven alleen correctiesloten (hun freq/gain/Q worden hertuned) — het resultaat wijkt bewust af van de virtuele sim hierboven.',
+  'What this build optimises for — same setting as the dropdown next to Optimize':
+    'Waar deze bouw voor optimaliseert — dezelfde instelling als de dropdown naast Optimize',
+  "3-way: fits three branches on the measured impedances — woofer LP, mid BANDPASS (hp+lp), tweeter HP — and lands them as one network in a new 'Passive build' tab. Per-branch fits only: the assembled component tune (pairs) is a later step.":
+    "3-weg: fit drie takken op de gemeten impedanties — woofer LP, mid BANDDOORLAAT (hp+lp), tweeter HP — en zet ze als één netwerk in een nieuwe 'Passive build'-tab. Alleen per-tak-fits: de componenttune op het geheel (paren) is een latere stap.",
+  "Single-driver mode: build the solo topology from the enabled cut bands (series traps / shelf groups + gated Zobel) with textbook seed values — lands in a new 'Solo build' tab; ⚙ Optimize components fits the values":
+    "Eén-driver-modus: bouw de solo-topologie uit de ingeschakelde cut-banden (serie-traps / shelf-groepen + gated Zobel) met textbook-startwaarden — landt in een nieuwe 'Solo build'-tab; ⚙ Optimaliseer componenten fit de waarden",
+  "Fit real components and simulate the result — lands in a new 'Passive build' tab on the Network page. Follow up with ⚙ Optimize components there to tune the assembled sum (phase!).":
+    "Fit echte componenten en simuleer het resultaat — landt in een nieuwe 'Passive build'-tab op de Netwerk-pagina. Ga daar verder met ⚙ Optimaliseer componenten om de opgebouwde som te tunen (fase!).",
+  'Build passive filter': 'Bouw passief filter',
+  'uses the priority setting from ⚙ Settings': 'gebruikt de prioriteit uit ⚙ Instellingen',
+  'Midrange (bandpass)': 'Midrange (banddoorlaat)',
+  branch: 'tak',
+  'fit:': 'fit:',
+  '(not converged — treat as rough)': '(niet geconvergeerd — beschouw als ruw)',
+  'No network to edit yet — load measurements in the Import tab first.':
+    'Nog geen netwerk om te bewerken — laad eerst metingen op de Import-tab.',
+  'Hold the combined curve as a reference': 'Houd de som-curve vast als referentie',
+
+  // ── FilterControls.tsx ───────────────────────────────────────────────
+  'High-pass': 'Hoogdoorlaat',
+  'Low-pass': 'Laagdoorlaat',
+  'passes everything above': 'laat alles boven',
+  'passes everything below': 'laat alles onder',
+  'Enable the {filter} — {what} the corner frequency':
+    'Schakel de {filter} in — {what} de kniefrequentie door',
+  'Alignment: Linkwitz-Riley (−6 dB at the knee, sums flat with its mirror), Butterworth (−3 dB at the knee) or Bessel (−3 dB, maximally flat group delay — the gentle-phase choice)':
+    'Alignment: Linkwitz-Riley (−6 dB op de knie, somt vlak met zijn spiegelbeeld), Butterworth (−3 dB op de knie) of Bessel (−3 dB, maximaal vlakke groepsvertraging — de zachte-fase-keuze)',
+  'Steepness of the slope beyond the knee (order × 6 dB per octave)':
+    'Steilheid van de flank voorbij de knie (orde × 6 dB per octaaf)',
+  'Corner (knee) frequency — also draggable as the hollow dot on the SPL chart':
+    'Kniefrequentie — ook te slepen als de holle stip in de SPL-grafiek',
+  'Enable this EQ band — cut only (≤ 0 dB): a passive network cannot boost':
+    'Schakel deze EQ-band in — alleen verzwakken (≤ 0 dB): een passief netwerk kan niet versterken',
+  Peak: 'Piek',
+  'Low shelf': 'Low shelf',
+  'High shelf': 'High shelf',
+  "Peak cuts around the frequency; shelves apply the cut below (low) or above (high) it — lowering everything except a band is how passive 'lifts' it":
+    "Piek verzwakt rond de frequentie; shelves verzwakken eronder (low) of erboven (high) — alles verlagen behalve een band is hoe passief hem 'optilt'",
+  'Centre frequency of this band — also draggable as the solid dot on the SPL chart':
+    'Centrumfrequentie van deze band — ook te slepen als de volle stip in de SPL-grafiek',
+  'Gain (cut only): a passive network cannot boost, so EQ bands may only attenuate (≤ 0 dB). Lower the level of the rest to lift a band.':
+    'Gain (alleen verzwakken): een passief netwerk kan niet versterken, dus EQ-banden mogen alleen dempen (≤ 0 dB). Verlaag het niveau van de rest om een band op te tillen.',
+  'Q = width: higher is narrower (1 ≈ 1.4 octave, 5 ≈ 0.3 octave) — scroll on the chart dot also adjusts this':
+    'Q = breedte: hoger is smaller (1 ≈ 1,4 octaaf, 5 ≈ 0,3 octaaf) — scrollen op de grafiekstip past dit ook aan',
+  'Remove this EQ band': 'Verwijder deze EQ-band',
+  'Remove EQ band {n}': 'Verwijder EQ-band {n}',
+  'Add another parametric EQ band for this driver':
+    'Voeg nog een parametrische EQ-band toe voor deze driver',
+  'Add EQ band': 'EQ-band toevoegen',
+  'Overall level of this driver branch (attenuation only, ≤ 0 dB — passive networks cannot amplify): pad the louder driver down to balance':
+    'Totaalniveau van deze drivertak (alleen verzwakking, ≤ 0 dB — passieve netwerken kunnen niet versterken): pad de luidste driver omlaag om te balanceren',
+  Gain: 'Gain',
 };

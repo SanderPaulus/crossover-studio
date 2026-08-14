@@ -294,6 +294,16 @@ const EXPERT_TAB_LABEL: Record<'import' | 'drivers' | 'data' | 'filters' | 'netw
   network: 'Network',
 };
 
+/* Facing directions as short summary labels — t()-keys, one place. */
+const FACING_LABEL: Record<string, string> = {
+  front: 'front-firing',
+  rear: 'rear-firing',
+  left: 'left-firing',
+  right: 'right-firing',
+  up: 'up-firing',
+  down: 'down-firing',
+};
+
 const PANEL_LABEL: Record<PanelKey, string> = {
   directivity: 'Directivity',
   sonogram: 'Sonogram',
@@ -583,13 +593,13 @@ function diffTunedParts(
 
 /** One-line summary of a driver's virtual filter, for the collapsed header. */
 function filterSummaryLine(spec: DriverFilterSpec, side: 'woofer' | 'mid' | 'tweeter'): string {
-  const name = side === 'woofer' ? 'Woofer/mid' : side === 'mid' ? 'Mid' : 'Tweeter';
+  const name = side === 'woofer' ? t('Woofer/mid') : side === 'mid' ? t('Mid') : t('Tweeter');
   const parts: string[] = [];
   if (spec.hp.enabled) parts.push(`HP ${spec.hp.kind}${spec.hp.order} @${Math.round(spec.hp.freq)}`);
   if (spec.lp.enabled) parts.push(`LP ${spec.lp.kind}${spec.lp.order} @${Math.round(spec.lp.freq)}`);
   const nEq = spec.eq.filter((b) => b.enabled).length;
   if (nEq > 0) parts.push(`${nEq} EQ`);
-  return `${name}: ${parts.length > 0 ? parts.join(', ') : 'flat'}`;
+  return `${name}: ${parts.length > 0 ? parts.join(', ') : t('flat')}`;
 }
 
 /** One branch's near-field material: the cone measurement, an optional port or
@@ -6456,13 +6466,13 @@ export default function App() {
   const targetSeries: Series[] = useMemo(() => {
     if (!result) return [];
     const defs = [
-      { id: 'wtarget', label: 'Woofer target', spec: vFilters.woofer, drv: result.woofer, color: 'var(--viz-woofer)', trim: 0, loaded: !!woofer },
+      { id: 'wtarget', label: t('Woofer target'), spec: vFilters.woofer, drv: result.woofer, color: 'var(--viz-woofer)', trim: 0, loaded: !!woofer },
       // The mid rides on the same rule: its target is the bandpass SHAPE, and
       // its trim is part of it because `sim.mid` already carries the adjust.
       ...(threeWay && sim?.mid
-        ? [{ id: 'mtarget', label: 'Midrange target', spec: vFilters.mid, drv: sim.mid, color: 'var(--viz-mid)', trim: num(midTrimDb, 0), loaded: !!midDrv }]
+        ? [{ id: 'mtarget', label: t('Midrange target'), spec: vFilters.mid, drv: sim.mid, color: 'var(--viz-mid)', trim: num(midTrimDb, 0), loaded: !!midDrv }]
         : []),
-      { id: 'ttarget', label: 'Tweeter target', spec: vFilters.tweeter, drv: result.tweeter, color: 'var(--viz-tweeter)', trim: num(trimDb, 0), loaded: !!tweeter },
+      { id: 'ttarget', label: t('Tweeter target'), spec: vFilters.tweeter, drv: result.tweeter, color: 'var(--viz-tweeter)', trim: num(trimDb, 0), loaded: !!tweeter },
     ].filter((d) => d.loaded && isActive(d.spec));
     if (defs.length === 0) return [];
     const shapes = defs.map((d) => {
@@ -6505,7 +6515,7 @@ export default function App() {
       defaultOff: true,
       secondary: true,
     }));
-  }, [result, sim, threeWay, vFilters, trimDb, midTrimDb, woofer, midDrv, tweeter]);
+  }, [result, sim, threeWay, vFilters, trimDb, midTrimDb, woofer, midDrv, tweeter, uiLang]);
 
   /** Mask silent-ghost regions (per-branch bands, 3-way) to chart gaps. A
    *  real branch never sits below −300 dB; the ghost lives at −400 and a
@@ -6532,7 +6542,7 @@ export default function App() {
         ? ([
             {
               id: 'held',
-              label: 'Held reference',
+              label: t('Held reference'),
               color: 'var(--viz-tick)',
               dash: '8 4',
               width: 1.6,
@@ -6547,7 +6557,7 @@ export default function App() {
         ? ([
             {
               id: 'tolhi',
-              label: `±${tolBand.tolPct}% build tolerance ↑`,
+              label: t('±{pct}% build tolerance ↑', { pct: tolBand.tolPct }),
               color: 'var(--viz-tick)',
               dash: '3 3',
               width: 1.2,
@@ -6557,7 +6567,7 @@ export default function App() {
             },
             {
               id: 'tollo',
-              label: `±${tolBand.tolPct}% build tolerance ↓`,
+              label: t('±{pct}% build tolerance ↓', { pct: tolBand.tolPct }),
               color: 'var(--viz-tick)',
               dash: '3 3',
               width: 1.2,
@@ -6574,7 +6584,7 @@ export default function App() {
         ? [
             {
               id: 'verify',
-              label: `Measured — ${verify.name} (${verifyCompare.offsetDb >= 0 ? '+' : ''}${verifyCompare.offsetDb.toFixed(1)} dB)`,
+              label: t('Measured — {name} ({db} dB)', { name: verify.name, db: `${verifyCompare.offsetDb >= 0 ? '+' : ''}${verifyCompare.offsetDb.toFixed(1)}` }),
               color: 'var(--viz-ghost3)',
               dash: '9 3',
               width: 2.2,
@@ -6588,20 +6598,20 @@ export default function App() {
       // 3-way per-branch bands: outside its own measured range a branch sits
       // at the silent ghost — masked to a gap instead of a −400 dB cliff.
       ...(woofer
-        ? [{ id: 'w', label: threeWay ? 'Woofer' : 'Woofer/mid', color: 'var(--viz-woofer)', x: result.freq, y: maskSilent(result.woofer.spl) } satisfies Series]
+        ? [{ id: 'w', label: t(threeWay ? 'Woofer' : 'Woofer/mid'), color: 'var(--viz-woofer)', x: result.freq, y: maskSilent(result.woofer.spl) } satisfies Series]
         : []),
       ...(sim?.mid
-        ? [{ id: 'm', label: 'Midrange', color: 'var(--viz-mid)', x: result.freq, y: maskSilent(sim.mid.spl) } satisfies Series]
+        ? [{ id: 'm', label: t('Midrange'), color: 'var(--viz-mid)', x: result.freq, y: maskSilent(sim.mid.spl) } satisfies Series]
         : []),
       ...(tweeter
-        ? [{ id: 't', label: 'Tweeter', color: 'var(--viz-tweeter)', x: result.freq, y: maskSilent(result.tweeter.spl) } satisfies Series]
+        ? [{ id: 't', label: t('Tweeter'), color: 'var(--viz-tweeter)', x: result.freq, y: maskSilent(result.tweeter.spl) } satisfies Series]
         : []),
       {
         id: 'c',
         // The active tab IS the live combined curve (never a ghost) — name it
         // so the count in the legend adds up against the design tabs.
         label:
-          networkActive && activeDesign ? `Combined — ${activeDesign.name}` : 'Combined',
+          networkActive && activeDesign ? t('Combined — {name}', { name: activeDesign.name }) : t('Combined'),
         color: 'var(--viz-combined)',
         x: result.freq,
         y: result.combinedSpl,
@@ -6616,8 +6626,8 @@ export default function App() {
               // 3-way: this flip only nulls the M-T handover — say so, and add
               // the W-M twin below (woofer flipped; the shared mid stays put).
               label: threeWay
-                ? 'Combined, tweeter inverted (null check M-T)'
-                : 'Combined, tweeter inverted (null check)',
+                ? t('Combined, tweeter inverted (null check M-T)')
+                : t('Combined, tweeter inverted (null check)'),
               color: 'var(--viz-null)',
               x: result.freq,
               y: result.invertedSpl,
@@ -6628,7 +6638,7 @@ export default function App() {
         ? [
             {
               id: 'nlow',
-              label: 'Combined, woofer inverted (null check W-M)',
+              label: t('Combined, woofer inverted (null check W-M)'),
               color: 'var(--viz-null)',
               x: result.freq,
               y: sim.combined.invertedLowSpl,
@@ -6640,7 +6650,7 @@ export default function App() {
         : []),
     ];
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [result, sim, threeWay, maskSilent, integration, tabGhosts, networkActive, activeDesign, tolBand, targetSeries, soloDriver, verifyCompare, verify, heldTrace]);
+  }, [result, sim, threeWay, maskSilent, integration, tabGhosts, networkActive, activeDesign, tolBand, targetSeries, soloDriver, verifyCompare, verify, heldTrace, uiLang]);
 
   /**
    * Design handles ON the SPL chart (UI-fase D): drag the crossover knees and
@@ -6673,7 +6683,7 @@ export default function App() {
             ? (sim?.mid?.spl ?? result.woofer.spl)
             : result.tweeter.spl;
       const color = `var(--viz-${slot})`;
-      const name = slot === 'woofer' ? (threeWay ? 'Woofer' : 'Woofer/mid') : slot === 'mid' ? 'Midrange' : 'Tweeter';
+      const name = t(slot === 'woofer' ? (threeWay ? 'Woofer' : 'Woofer/mid') : slot === 'mid' ? 'Midrange' : 'Tweeter');
       if (spec.hp.enabled) {
         out.push({
           id: `${slot}:hp`,
@@ -6681,7 +6691,7 @@ export default function App() {
           y: yAt(curve, spec.hp.freq),
           color,
           kind: 'x',
-          label: `${name} high-pass · ${Math.round(spec.hp.freq)} Hz — drag to move the knee`,
+          label: t('{name} high-pass · {hz} Hz — drag to move the knee', { name, hz: Math.round(spec.hp.freq) }),
         });
       }
       if (spec.lp.enabled) {
@@ -6691,7 +6701,7 @@ export default function App() {
           y: yAt(curve, spec.lp.freq),
           color,
           kind: 'x',
-          label: `${name} low-pass · ${Math.round(spec.lp.freq)} Hz — drag to move the knee`,
+          label: t('{name} low-pass · {hz} Hz — drag to move the knee', { name, hz: Math.round(spec.lp.freq) }),
         });
       }
       spec.eq.forEach((band, i) => {
@@ -6702,12 +6712,12 @@ export default function App() {
           y: yAt(curve, band.freq),
           color,
           kind: 'xy',
-          label: `${name} EQ ${band.type ?? 'peak'} · ${Math.round(band.freq)} Hz · ${band.gainDb.toFixed(1)} dB · Q ${band.q} — drag = freq/gain, scroll = Q`,
+          label: t('{name} EQ {type} · {hz} Hz · {db} dB · Q {q} — drag = freq/gain, scroll = Q', { name, type: band.type ?? 'peak', hz: Math.round(band.freq), db: band.gainDb.toFixed(1), q: band.q }),
         });
       });
     }
     return out.length > 0 ? out : undefined;
-  }, [result, sim, threeWay, vFilters, vfBypass]);
+  }, [result, sim, threeWay, vFilters, vfBypass, uiLang]);
 
   const moveSplHandle = (id: string, x: number, dyUnits: number) => {
     const [slot, part] = id.split(':') as ['woofer' | 'mid' | 'tweeter', string];
@@ -6772,7 +6782,7 @@ export default function App() {
     if (fw) {
       out.push({
         id: 'fw',
-        label: 'Woofer filter phase',
+        label: t('Woofer filter phase'),
         color: 'var(--viz-woofer)',
         x: result.freq,
         y: breakWraps(fw),
@@ -6784,7 +6794,7 @@ export default function App() {
     if (fm) {
       out.push({
         id: 'fm',
-        label: 'Mid filter phase',
+        label: t('Mid filter phase'),
         color: 'var(--viz-mid)',
         x: result.freq,
         y: breakWraps(fm),
@@ -6796,7 +6806,7 @@ export default function App() {
     if (ft) {
       out.push({
         id: 'ft',
-        label: 'Tweeter filter phase',
+        label: t('Tweeter filter phase'),
         color: 'var(--viz-tweeter)',
         x: result.freq,
         y: breakWraps(ft),
@@ -6813,7 +6823,7 @@ export default function App() {
       const raw = combine(sim.base.w, sim.base.t, branchAdj.tweeter);
       out.push({
         id: 'raw',
-        label: 'Relative phase — raw drivers',
+        label: t('Relative phase — raw drivers'),
         color: 'var(--viz-tick)',
         x: result.freq,
         y: breakWraps(raw.relativePhaseDeg.map(wrapDeg)),
@@ -6860,7 +6870,7 @@ export default function App() {
       if (woofer) {
         out.push({
           id: 'wtot',
-          label: 'Woofer phase (total)',
+          label: t('Woofer phase (total)'),
           color: 'var(--viz-woofer)',
           x: result.freq,
           y: breakWraps(disp(result.woofer).map(wrapDeg)),
@@ -6872,7 +6882,7 @@ export default function App() {
       if (sim?.mid) {
         out.push({
           id: 'mtot',
-          label: 'Mid phase (total)',
+          label: t('Mid phase (total)'),
           color: 'var(--viz-mid)',
           x: result.freq,
           y: breakWraps(disp(sim.mid).map(wrapDeg)),
@@ -6884,7 +6894,7 @@ export default function App() {
       if (tweeter) {
         out.push({
           id: 'ttot',
-          label: 'Tweeter phase (total)',
+          label: t('Tweeter phase (total)'),
           color: 'var(--viz-tweeter)',
           x: result.freq,
           y: breakWraps(disp(result.tweeter).map(wrapDeg)),
@@ -6926,7 +6936,7 @@ export default function App() {
         );
         out.push({
           id: 'pairalign',
-          label: 'Relative phase — active pair',
+          label: t('Relative phase — active pair'),
           color: 'var(--viz-combined)',
           x: result.freq,
           y: breakWraps(st.y),
@@ -6936,7 +6946,7 @@ export default function App() {
       }
       out.push({
         id: 'relmw',
-        label: 'Mid phase relative to woofer',
+        label: t('Mid phase relative to woofer'),
         color: 'var(--viz-mid)',
         x: result.freq,
         y: breakWraps(
@@ -6951,7 +6961,7 @@ export default function App() {
       });
       out.push({
         id: 'reltm',
-        label: 'Tweeter phase relative to mid',
+        label: t('Tweeter phase relative to mid'),
         color: 'var(--viz-tweeter)',
         x: result.freq,
         y: breakWraps(
@@ -6967,7 +6977,7 @@ export default function App() {
     } else if (!soloDriver) {
       out.push({
         id: 'rel',
-        label: 'Tweeter phase relative to woofer',
+        label: t('Tweeter phase relative to woofer'),
         color: 'var(--viz-tweeter)',
         x: result.freq,
         y: breakWraps(result.relativePhaseDeg.slice()),
@@ -6985,7 +6995,7 @@ export default function App() {
       const rt = resample(refResp.tweeter.freq, refResp.tweeter.spl, refResp.tweeter.phase, result.freq);
       out.push({
         id: 'refphase',
-        label: 'VituixCAD (timing removed)',
+        label: t('VituixCAD (timing removed)'),
         color: 'var(--viz-tick)',
         x: result.freq,
         y: breakWraps(rt.phaseDeg.map((p, i) => wrapDeg(p - rw.phaseDeg[i]))),
@@ -7000,7 +7010,7 @@ export default function App() {
     if (verifyCompare?.phase) {
       out.push({
         id: 'verifres',
-        label: 'Measured phase residual (vs model)',
+        label: t('Measured phase residual (vs model)'),
         color: 'var(--viz-ghost3)',
         x: result.freq,
         y: verifyCompare.phase.residualDeg,
@@ -7009,7 +7019,7 @@ export default function App() {
       });
     }
     return out;
-  }, [result, integration, pairScores, sim, threeWay, branchAdj, showPanels.phase, refResp, tabGhosts, woofer, tweeter, soloDriver, verifyCompare]);
+  }, [result, integration, pairScores, sim, threeWay, branchAdj, showPanels.phase, refResp, tabGhosts, woofer, tweeter, soloDriver, verifyCompare, uiLang]);
 
   /** "How far off is the phase" zones behind the relative-phase curve. */
   const phaseBands = useMemo(
@@ -7153,9 +7163,9 @@ export default function App() {
       );
     }
     const roles: [BranchRole, string][] = [
-      ['high', 'Tweeter'],
-      ['mid', 'Midrange'],
-      ['low', hasMidBranch ? 'Woofer' : 'Woofer / mid'],
+      ['high', t('Tweeter')],
+      ['mid', t('Midrange')],
+      ['low', t(hasMidBranch ? 'Woofer' : 'Woofer / mid')],
     ];
     return (
       <div className="driver-facts-draw">
@@ -7194,20 +7204,24 @@ export default function App() {
             (r) => !cabinet.drivers[r].xMm && !cabinet.drivers[r].yMm,
           ).length;
           const mist = [
-            zonderSd > 0 ? `${zonderSd === rollen.length ? 'no' : `${zonderSd}`} Sd yet — those cones are dashed placeholders` : '',
+            zonderSd > 0
+              ? t('{n} Sd yet — those cones are dashed placeholders', {
+                  n: zonderSd === rollen.length ? t('no') : `${zonderSd}`,
+                })
+              : '',
             zonderPos > 0 && zonderPos === teTypen.length
               ? teTypen.length === 1
-                ? 'the other driver has no offset yet, so it sits on the reference point'
-                : 'those offsets are still 0, so they sit on the reference point'
+                ? t('the other driver has no offset yet, so it sits on the reference point')
+                : t('those offsets are still 0, so they sit on the reference point')
               : zonderPos > 0
-                ? `${zonderPos} without a position`
+                ? t('{n} without a position', { n: zonderPos })
                 : '',
           ].filter(Boolean);
           return (
             <p className="derived">
               {mist.length === 0
-                ? 'drawn to scale from the numbers on the left'
-                : `to scale — ${mist.join(' · ')}`}
+                ? t('drawn to scale from the numbers on the left')
+                : `${t('to scale —')} ${mist.join(' · ')}`}
             </p>
           );
         })()}
@@ -7223,9 +7237,9 @@ export default function App() {
                     them and as the cabinet itself. */}
                 {(
                   [
-                    ['high', 'Tweeter', tweeter],
-                    ['mid', 'Midrange', midDrv],
-                    ['low', hasMidBranch ? 'Woofer' : 'Woofer / mid', woofer],
+                    ['high', t('Tweeter'), tweeter],
+                    ['mid', t('Midrange'), midDrv],
+                    ['low', t(hasMidBranch ? 'Woofer' : 'Woofer / mid'), woofer],
                   ] as [BranchRole, string, unknown][]
                 )
                   .filter(([, , loaded]) => !!loaded)
@@ -7257,21 +7271,25 @@ export default function App() {
                     // later je afvragen waarom een criterium nooit vuurt.
                     const uit: string[] = [];
                     if (!(Number(sdCm2[role]) > 0) || !(Number(xmaxMm[role]) > 0)) {
-                      uit.push('excursion floor');
+                      uit.push(t('excursion floor'));
                     }
-                    if (!(Number(sdCm2[role]) > 0)) uit.push('cone size for the beaming rules');
+                    if (!(Number(sdCm2[role]) > 0)) uit.push(t('cone size for the beaming rules'));
                     if (cabinet.refDriver !== role && !d.xMm && !d.yMm)
-                    uit.push('driver spacing, lobing and edge distance');
-                    if (d.enclosure === 'unknown') uit.push('what the box itself already filters');
+                    uit.push(t('driver spacing, lobing and edge distance'));
+                    if (d.enclosure === 'unknown') uit.push(t('what the box itself already filters'));
                     const samenvatting = [
                       Number(d.count) > 1 ? `${d.count}×` : '',
-                      d.xMm || d.yMm ? `at ${d.xMm || 0}, ${d.yMm || 0} mm` : 'no position',
+                      d.xMm || d.yMm
+                        ? t('at {x}, {y} mm', { x: d.xMm || 0, y: d.yMm || 0 })
+                        : t('no position'),
                       d.facing !== 'front'
-                        ? `${d.facing}-firing${d.opposed && Number(d.count) > 1 ? ' pair' : ''}`
+                        ? `${t(FACING_LABEL[d.facing])}${d.opposed && Number(d.count) > 1 ? ` (${t('pair')})` : ''}`
                         : '',
-                      Number(d.tiltDeg) ? `tilt ${d.tiltDeg}°` : '',
-                      d.enclosure !== 'unknown' ? d.enclosure : '',
-                      Number(sdCm2[role]) > 0 ? `Sd ${sdCm2[role]} cm²` : 'no datasheet numbers',
+                      Number(d.tiltDeg) ? t('tilt {deg}°', { deg: d.tiltDeg }) : '',
+                      d.enclosure !== 'unknown' ? t(d.enclosure) : '',
+                      Number(sdCm2[role]) > 0
+                        ? `Sd ${sdCm2[role]} cm²`
+                        : t('no datasheet numbers'),
                     ]
                       .filter(Boolean)
                       .join(' · ');
@@ -7309,7 +7327,7 @@ export default function App() {
                           <strong>{title}</strong>
                           <span
                             className="inline-num"
-                            title="How many IDENTICAL drivers make up this branch. Dual woofers displace twice the air, so the excursion floor drops by √2 — but each cone still beams as itself, so Sd below stays the SINGLE driver's datasheet number. With more than one, their centre-to-centre spacing sets where the array's own vertical lobing starts, which is usually a lower ceiling than cone beaming."
+                            title={t("How many IDENTICAL drivers make up this branch. Dual woofers displace twice the air, so the excursion floor drops by √2 — but each cone still beams as itself, so Sd below stays the SINGLE driver's datasheet number. With more than one, their centre-to-centre spacing sets where the array's own vertical lobing starts, which is usually a lower ceiling than cone beaming.")}
                           >
                             {'× '}
                             <input
@@ -7320,7 +7338,7 @@ export default function App() {
                               value={d.count}
                               onChange={(e) => set({ count: e.target.value })}
                             />
-                            {Number(d.count) > 1 ? ' drivers, spaced ' : ' driver'}
+                            {Number(d.count) > 1 ? ' ' + t('drivers, spaced') + ' ' : ' ' + t('driver')}
                             {Number(d.count) > 1 && (
                               <>
                                 <input
@@ -7330,14 +7348,14 @@ export default function App() {
                                   value={d.spacingMm}
                                   onChange={(e) => set({ spacingMm: e.target.value })}
                                 />
-                                {' mm apart'}
+                                {' ' + t('mm apart')}
                               </>
                             )}
                           </span>
                           <span className="cd-summary">{samenvatting}</span>
                         </summary>
                         <div className="cd-grid">
-                          <span className="cd-label">Position</span>
+                          <span className="cd-label">{t('Position')}</span>
                           {cabinet.refDriver === role ? (
                             /* Deze driver ÍS het referentiepunt, dus 0,0 is
                                geen invoer maar een gevolg. Ernaar vragen
@@ -7347,15 +7365,15 @@ export default function App() {
                             <span className="cd-fields">
                               <span className="cd-pre" />
                               <em>
-                                0, 0 — the mic was aimed here, so this driver defines the origin
+                                {t('0, 0 — the mic was aimed here, so this driver defines the origin')}
                                 {(() => {
                                   // Its height is not unknown, it was fixed on the cabinet
                                   // step. Saying so beats making the designer go and look.
                                   const top = Number(cabinet.refFromTopMm);
                                   const floor = Number(cabinet.refHeightMm);
                                   const bits = [
-                                    top > 0 ? `${Math.round(top)} mm below the top` : '',
-                                    floor > 0 ? `${Math.round(floor)} mm above the floor` : '',
+                                    top > 0 ? t('{mm} mm below the top', { mm: Math.round(top) }) : '',
+                                    floor > 0 ? t('{mm} mm above the floor', { mm: Math.round(floor) }) : '',
                                   ].filter(Boolean);
                                   return bits.length > 0 ? ` (${bits.join(', ')})` : '';
                                 })()}
@@ -7364,7 +7382,7 @@ export default function App() {
                           ) : (
                           <span
                             className="cd-fields"
-                            title="Where this driver's centre sits on the front panel, measured the way a ruler measures it: across from the centre line, and DOWN from the top. The app converts to its internal origin (the measurement reference point) using the reference height you gave on the cabinet step, so you never type the same fact twice — and centre-to-centre spacing per pair, with it the vertical-lobing ceiling, is derived from these."
+                            title={t("Where this driver's centre sits on the front panel, measured the way a ruler measures it: across from the centre line, and DOWN from the top. The app converts to its internal origin (the measurement reference point) using the reference height you gave on the cabinet step, so you never type the same fact twice — and centre-to-centre spacing per pair, with it the vertical-lobing ceiling, is derived from these.")}
                           >
                             <span className="cd-pre">x</span>
                             <input
@@ -7374,7 +7392,7 @@ export default function App() {
                               value={d.xMm}
                               onChange={(e) => set({ xMm: e.target.value })}
                             />
-                            {fromTopBase !== null ? ' mm from the centre line · ' : ' mm · y '}
+                            {fromTopBase !== null ? ' ' + t('mm from the centre line') + ' · ' : ' mm · y '}
                             {/* Measured from the TOP of the front panel, because that
                                 is where a ruler starts (Sanders). Storage keeps the
                                 reference-point origin — every geometry function, the
@@ -7409,18 +7427,18 @@ export default function App() {
                                 set({ yMm: String(Math.round((fromTopBase - Number(v)) * 10) / 10) });
                               }}
                             />
-                            {fromTopBase !== null ? ' mm below the top' : ' mm'}
+                            {fromTopBase !== null ? ' ' + t('mm below the top') : ' mm'}
                             <span className="cd-hint">
                               {fromTopBase !== null
-                                ? 'as a ruler measures it — across from the centre line, down from the top of the front panel'
-                                : 'from the reference point · y up — add the reference height on the cabinet step to measure from the top instead'}
+                                ? t('as a ruler measures it — across from the centre line, down from the top of the front panel')
+                                : t('from the reference point · y up — add the reference height on the cabinet step to measure from the top instead')}
                             </span>
                           </span>
                           )}
 
                         {angles && (
                           <span className="derived">
-                            your sweep really covers{' '}
+                            {t('your sweep really covers')}{' '}
                             {angles
                               .map((a) =>
                                 a.opposed
@@ -7429,43 +7447,44 @@ export default function App() {
                               )
                               .join(', ')}
                             {angles.some((a) => a.opposed) &&
-                              ' — two figures because the pair fires both ways; a sweep measures their sum'}
+                              ' ' + t('— two figures because the pair fires both ways; a sweep measures their sum')}
                           </span>
                         )}
                         {edge !== null && (
-                          <span className="derived">nearest baffle edge {Math.round(edge)} mm</span>
+                          <span className="derived">
+                            {t('nearest baffle edge {mm} mm', { mm: Math.round(edge) })}
+                          </span>
                         )}
                         {Number(d.count) > 1 && (
                           <span className="derived">
-                            {'excursion floor drops ×'}
-                            {(1 / Math.sqrt(Number(d.count))).toFixed(2)}
+                            {t('excursion floor drops ×{f}', { f: (1 / Math.sqrt(Number(d.count))).toFixed(2) })}
                             {arrayLobe[role]
-                              ? ` · array lobing from ${Math.round(arrayLobe[role]!)} Hz${
+                              ? ` · ${t('array lobing from {hz} Hz', { hz: Math.round(arrayLobe[role]!) })}${
                                   Number(cabinet.baffleWidthMm) > Number(cabinet.baffleHeightMm)
-                                    ? ' — ACROSS the seats: this baffle is wider than tall'
-                                    : ' — vertically, and you sit on that axis'
+                                    ? ' ' + t('— ACROSS the seats: this baffle is wider than tall')
+                                    : ' ' + t('— vertically, and you sit on that axis')
                                 }`
-                              : ' · enter the spacing for the array lobing ceiling'}
+                              : ` · ${t('enter the spacing for the array lobing ceiling')}`}
                           </span>
                         )}
-                          <span className="cd-label">Mounting</span>
+                          <span className="cd-label">{t('Mounting')}</span>
                           <span
                             className="cd-fields"
-                            title="Which panel this driver radiates from, and how far its acoustic centre sits behind the baffle plane. Side-firing woofers are an ordinary design, and without this the app judges the driver against a front baffle it is not on: it would read ~0° off-axis when it is really 90°, take the baffle step from the wrong panel width, and charge half a cabinet of mounting depth (hundreds of µs) to the driver's acoustic centre — which is what makes a perfectly normal speaker trip the timing check."
+                            title={t("Which panel this driver radiates from, and how far its acoustic centre sits behind the baffle plane. Side-firing woofers are an ordinary design, and without this the app judges the driver against a front baffle it is not on: it would read ~0° off-axis when it is really 90°, take the baffle step from the wrong panel width, and charge half a cabinet of mounting depth (hundreds of µs) to the driver's acoustic centre — which is what makes a perfectly normal speaker trip the timing check.")}
                           >
                             <span className="cd-pre" />
                             <select
                               value={d.facing}
                               onChange={(e) => set({ facing: e.target.value as DriverFacing })}
                             >
-                              <option value="front">fires forward</option>
-                              <option value="rear">fires backward</option>
-                              <option value="left">fires left</option>
-                              <option value="right">fires right</option>
-                              <option value="up">fires up</option>
-                              <option value="down">fires down</option>
+                              <option value="front">{t('fires forward')}</option>
+                              <option value="rear">{t('fires backward')}</option>
+                              <option value="left">{t('fires left')}</option>
+                              <option value="right">{t('fires right')}</option>
+                              <option value="up">{t('fires up')}</option>
+                              <option value="down">{t('fires down')}</option>
                             </select>
-                            {' · depth '}
+                            {' · ' + t('depth') + ' '}
                             <input
                               type="number"
                               min={0}
@@ -7474,7 +7493,7 @@ export default function App() {
                               value={d.depthMm}
                               onChange={(e) => set({ depthMm: e.target.value })}
                             />
-                            {' mm · tilt '}
+                            {' mm · ' + t('tilt') + ' '}
                             <input
                               type="number"
                               step={1}
@@ -7486,14 +7505,14 @@ export default function App() {
                             {Number(d.count) > 1 && d.facing !== 'front' && (
                               <label
                                 className="cd-inline-check"
-                                title="These drivers sit on BOTH opposing panels, firing away from each other — the force-cancelling arrangement side-mounted woofers are normally built in. They then have two different true angles, and a sweep measures their sum."
+                                title={t('These drivers sit on BOTH opposing panels, firing away from each other — the force-cancelling arrangement side-mounted woofers are normally built in. They then have two different true angles, and a sweep measures their sum.')}
                               >
                                 <input
                                   type="checkbox"
                                   checked={d.opposed}
                                   onChange={(e) => set({ opposed: e.target.checked })}
                                 />{' '}
-                                opposed pair
+                                {t('opposed pair')}
                               </label>
                             )}
                             <span className="cd-hint">
@@ -7502,8 +7521,8 @@ export default function App() {
                                   cone's centre still sits its cone depth back, which is
                                   exactly what confused the measured-depth readout. */}
                               {d.facing === 'front'
-                                ? 'acoustic centre behind the baffle — a flush-mounted cone still sits its cone depth back · tilt + = aimed up'
-                                : 'acoustic centre from the front, along the cabinet · tilt + = aimed up'}
+                                ? t('acoustic centre behind the baffle — a flush-mounted cone still sits its cone depth back · tilt + = aimed up')
+                                : t('acoustic centre from the front, along the cabinet · tilt + = aimed up')}
                             </span>
                           </span>
 
@@ -7524,44 +7543,44 @@ export default function App() {
                               const anchor = measuredDepth.shallowest;
                               const anchorName =
                                 anchor === 'high'
-                                  ? 'the tweeter'
+                                  ? t('the tweeter')
                                   : anchor === 'mid'
-                                    ? 'the midrange'
+                                    ? t('the midrange')
                                     : hasMidBranch
-                                      ? 'the woofer'
-                                      : 'the woofer/mid';
+                                      ? t('the woofer')
+                                      : t('the woofer/mid');
                               const deepest = measuredDepth.spread;
                               return (
                                 <>
                                   {role === anchor ? (
                                     <>
-                                      <strong>measured: this is the shallowest driver</strong>, so it
-                                      is the 0 the others are counted from
+                                      <strong>{t('measured: this is the shallowest driver')}</strong>
+                                      {t(', so it is the 0 the others are counted from')}
                                       {deepest >= 0.05
-                                        ? ` — they sit up to ${deepest.toFixed(1)} mm behind it.`
+                                        ? ` ${t('— they sit up to {mm} mm behind it.', { mm: deepest.toFixed(1) })}`
                                         : '.'}
                                     </>
                                   ) : (
                                     <>
-                                      <strong>measured depth {m.toFixed(1)} mm</strong> behind{' '}
-                                      {anchorName}, from the delay with the rig removed.
+                                      <strong>{t('measured depth {mm} mm', { mm: m.toFixed(1) })}</strong>{' '}
+                                      {t('behind {anchor}, from the delay with the rig removed.', { anchor: anchorName })}
                                     </>
                                   )}
                                   {off !== null && (
                                     <>
                                       {' '}
                                       {off <= Math.max(1, 0.1 * Math.max(typed!, m))
-                                        ? `Your ${typed!.toFixed(1)} mm agrees.`
-                                        : `You typed ${typed!.toFixed(1)} mm — one of the two is wrong.`}
+                                        ? t('Your {mm} mm agrees.', { mm: typed!.toFixed(1) })
+                                        : t('You typed {mm} mm — one of the two is wrong.', { mm: typed!.toFixed(1) })}
                                     </>
                                   )}{' '}
                                   <button
                                     type="button"
                                     className="link-btn"
                                     onClick={() => set({ depthMm: m.toFixed(1) })}
-                                    title="Write the measured depth into the field above. It fixes the geometry (true off-axis angle, centre-to-centre spacing), but note that the timing split then explains itself by construction and stops being an independent check."
+                                    title={t('Write the measured depth into the field above. It fixes the geometry (true off-axis angle, centre-to-centre spacing), but note that the timing split then explains itself by construction and stops being an independent check.')}
                                   >
-                                    use it
+                                    {t('use it')}
                                   </button>
                                 </>
                               );
@@ -7570,42 +7589,46 @@ export default function App() {
                         )}
                         {d.facing !== 'front' && (
                           <span className="derived alert">
-                            {d.facing}-firing: a front turntable sweep cannot measure this
-                            driver&rsquo;s own directivity — the numbers above are the SYSTEM
-                            turning, not the cone. Near-field is the honest route for its
-                            response, and its baffle is the{' '}
-                            {d.facing === 'left' || d.facing === 'right' ? 'side' : 'top/bottom'}{' '}
-                            panel
-                            {baffleFor !== null ? `, step around ${Math.round(baffleFor)} Hz` : ''}.
+                            {t("{facing}: a front turntable sweep cannot measure this driver's own directivity — the numbers above are the SYSTEM turning, not the cone. Near-field is the honest route for its response, and its baffle is the {panel} panel", {
+                              facing: t(FACING_LABEL[d.facing]),
+                              panel:
+                                d.facing === 'left' || d.facing === 'right'
+                                  ? t('side')
+                                  : t('top/bottom'),
+                            })}
+                            {baffleFor !== null
+                              ? `, ${t('step around {hz} Hz', { hz: Math.round(baffleFor) })}`
+                              : ''}
+                            .
                           </span>
                         )}
                           {role === 'high' ? (
                             <>
-                              <span className="cd-label">Chamber</span>
+                              <span className="cd-label">{t('Chamber')}</span>
                               <span className="cd-fields">
                                 <span className="cd-pre" />
                                 <em>
-                                  a dome is its own sealed rear chamber — nothing to choose
+                                  {t('a dome is its own sealed rear chamber — nothing to choose')}
                                   {boxTuneFromZ.high
-                                    ? `; resonance ≈ ${Math.round(boxTuneFromZ.high.hz)} Hz from your impedance (the 2×Fs crossover floor reads this)`
+                                    ? `; ${t('resonance ≈ {hz} Hz from your impedance (the 2×Fs crossover floor reads this)', { hz: Math.round(boxTuneFromZ.high.hz) })}`
                                     : ''}
                                 </em>
                               </span>
                             </>
                           ) : (
                             <>
-                          <span className="cd-label">Chamber</span>
+                          <span className="cd-label">{t('Chamber')}</span>
                           <span className="cd-fields">
                             <span className="cd-pre" />
                             <select
                               value={d.enclosure}
                               onChange={(e) => set({ enclosure: e.target.value as Enclosure })}
-                              title="The volume behind THIS driver — per driver on purpose: a 3-way routinely runs a sealed mid chamber inside a ported cabinet, so one answer for the whole box would be wrong. A sealed chamber is already a 2nd-order acoustic high-pass at its corner, so a 2nd-order electrical filter yields a 4th-order acoustic slope — on a low crossover that is the difference between one ~30 µF capacitor and a pair adding to ~90 µF. A port also means the box can radiate its own midrange through a pipe resonance."
+                              title={t('The volume behind THIS driver — per driver on purpose: a 3-way routinely runs a sealed mid chamber inside a ported cabinet, so one answer for the whole box would be wrong. A sealed chamber is already a 2nd-order acoustic high-pass at its corner, so a 2nd-order electrical filter yields a 4th-order acoustic slope — on a low crossover that is the difference between one ~30 µF capacitor and a pair adding to ~90 µF. A port also means the box can radiate its own midrange through a pipe resonance.')}
                             >
-                              <option value="unknown">unknown</option>
-                              <option value="sealed">sealed</option>
-                              <option value="ported">ported</option>
-                              <option value="open">open / dipole</option>
+                              <option value="unknown">{t('unknown')}</option>
+                              <option value="sealed">{t('sealed')}</option>
+                              <option value="ported">{t('ported')}</option>
+                              <option value="open">{t('open / dipole')}</option>
                             </select>
                             {d.enclosure !== 'unknown' && d.enclosure !== 'open' && (
                               <>
@@ -7621,8 +7644,7 @@ export default function App() {
                               </>
                             )}
                             <span className="cd-hint">
-                              the volume behind THIS driver — one cabinet can hold different
-                              chambers
+                              {t('the volume behind THIS driver — one cabinet can hold different chambers')}
                             </span>
                           </span>
                           {(() => {
@@ -7631,31 +7653,30 @@ export default function App() {
                             // its twin peaks IS Fb (ported). Offer it, never apply it
                             // silently — and with a value typed it turns into the
                             // cross-check role this panel prefers.
-                            const t = boxTuneFromZ[role];
-                            if (!t) return null;
+                            const bt = boxTuneFromZ[role];
+                            if (!bt) return null;
                             const typed = d.fbHz.trim() !== '' ? Number(d.fbHz) : null;
                             const off =
                               typed !== null && typed > 0
-                                ? Math.abs(typed - t.hz) / Math.max(typed, t.hz)
+                                ? Math.abs(typed - bt.hz) / Math.max(typed, bt.hz)
                                 : null;
                             return (
                               <span className="derived">
-                                your impedance measurement suggests {t.kind} ≈{' '}
-                                {Math.round(t.hz)} Hz (valid if the ZMA was taken in this box).
+                                {t('your impedance measurement suggests {kind} ≈ {hz} Hz (valid if the ZMA was taken in this box).', { kind: bt.kind, hz: Math.round(bt.hz) })}
                                 {off !== null && (
                                   <>
                                     {' '}
                                     {off <= 0.15
-                                      ? `Your ${typed} Hz agrees.`
-                                      : `You typed ${typed} Hz — one of the two is wrong.`}
+                                      ? t('Your {hz} Hz agrees.', { hz: typed! })
+                                      : t('You typed {hz} Hz — one of the two is wrong.', { hz: typed! })}
                                   </>
                                 )}{' '}
                                 <button
                                   type="button"
                                   className="link-btn"
-                                  onClick={() => set({ fbHz: String(Math.round(t.hz)) })}
+                                  onClick={() => set({ fbHz: String(Math.round(bt.hz)) })}
                                 >
-                                  use it
+                                  {t('use it')}
                                 </button>
                               </span>
                             );
@@ -7668,15 +7689,15 @@ export default function App() {
                         )}
                         {role !== 'high' && cabinetInfo.unloadOf(role) === 'high' && (
                           <span className="derived alert">
-                            ported: excursion runs away below Fb
-                            {Number(d.fbHz) > 0 ? ` ≈ ${Math.round(Number(d.fbHz))} Hz` : ''} —
-                            worth a steeper electrical high-pass than a sealed box would need
+                            {t('ported: excursion runs away below Fb')}
+                            {Number(d.fbHz) > 0 ? ` ≈ ${Math.round(Number(d.fbHz))} Hz` : ''}{' '}
+                            {t('— worth a steeper electrical high-pass than a sealed box would need')}
                           </span>
                         )}
-                          <span className="cd-label">Datasheet</span>
+                          <span className="cd-label">{t('Datasheet')}</span>
                           <span
                             className="cd-fields"
-                            title="Cone area and linear excursion from the datasheet, for ONE driver. Sd gives the effective piston diameter (the honest one for every beaming rule — nominal size includes a surround that does not radiate); Sd and Xmax together give the level-aware excursion floor."
+                            title={t('Cone area and linear excursion from the datasheet, for ONE driver. Sd gives the effective piston diameter (the honest one for every beaming rule — nominal size includes a surround that does not radiate); Sd and Xmax together give the level-aware excursion floor.')}
                           >
                             <span className="cd-pre">Sd</span>
                             <input
@@ -7697,11 +7718,13 @@ export default function App() {
                             {' mm'}
                           </span>
                         {dia && (
-                          <span className="derived">effective Ø {Math.round(dia)} mm</span>
+                          <span className="derived">
+                            {t('effective Ø {mm} mm', { mm: Math.round(dia) })}
+                          </span>
                         )}
                         {uit.length > 0 && (
                           <span className="derived">
-                            {'leaving these blank is fine — it switches off: '}
+                            {t('leaving these blank is fine — it switches off:') + ' '}
                             {uit.join(' · ')}
                           </span>
                         )}
@@ -9819,23 +9842,48 @@ export default function App() {
               <p className="drop-anywhere-hint">
                 {t('⬇ Dropping works on this whole step — a .vxp set, saved project, catalog or filter file lands in the right place by itself; measurements ask which driver they belong to.')}
               </p>
+              {/* Hidden-input labels (the Load-project pattern), NOT bare native
+                  inputs: the browser's own "Choose files / No file chosen" text
+                  follows the BROWSER language and is untranslatable — the one
+                  string t() can never reach. */}
               <label title={t("Optional: import a VituixCAD project to simulate crossover variants. Select the .vxp together with its .ZMA and response .txt files.")}>
-                {t('VituixCAD project (.vxp + .ZMA + response .txt — select together)')}
-                <input
-                  type="file"
-                  accept=".vxp,.zma,.ZMA,.txt,.frd"
-                  multiple
-                  onChange={loadVituixFiles}
-                />
+                {t('VituixCAD project (.vxp + .ZMA + response .txt — select together)')}{' '}
+                <span className="file-button">
+                  {t('Choose files…')}
+                  <input
+                    type="file"
+                    accept=".vxp,.zma,.ZMA,.txt,.frd"
+                    multiple
+                    onChange={loadVituixFiles}
+                    style={{ display: 'none' }}
+                  />
+                </span>
               </label>
               <label title={t("Phase peer-comparison: in VituixCAD export the FILTERED woofer and tweeter responses (crossover applied), select BOTH here. The Phase chart then draws VituixCAD's relative phase (tweeter − woofer) in our convention as a dashed reference.")}>
-                {t('VituixCAD phase reference (filtered woofer + tweeter — select both)')}
-                <input type="file" accept=".frd,.txt" multiple onChange={loadReference} />
+                {t('VituixCAD phase reference (filtered woofer + tweeter — select both)')}{' '}
+                <span className="file-button">
+                  {t('Choose files…')}
+                  <input
+                    type="file"
+                    accept=".frd,.txt"
+                    multiple
+                    onChange={loadReference}
+                    style={{ display: 'none' }}
+                  />
+                </span>
                 {refResp && <span className="derived"> ✓ {refResp.names}</span>}
               </label>
               <label title={t('Model vs measurement (the validation loop): measure the BUILT system, load that FRD here, and the SPL chart overlays it against the simulated combined — level-aligned, with the deviation numbers in the SPL strip. Load again to replace.')}>
-                {t('Verification measurement (built system, FRD)')}
-                <input type="file" accept=".frd,.txt" onChange={loadVerification} />
+                {t('Verification measurement (built system, FRD)')}{' '}
+                <span className="file-button">
+                  {t('Choose file…')}
+                  <input
+                    type="file"
+                    accept=".frd,.txt"
+                    onChange={loadVerification}
+                    style={{ display: 'none' }}
+                  />
+                </span>
                 {verify && (
                   <span className="derived">
                     {' '}✓ {verify.name}{' '}
@@ -10085,8 +10133,8 @@ export default function App() {
           <p className="filenames">
             {[woofer?.name, midDrv?.name, tweeter?.name].filter(Boolean).join(' · ')}
             {zModels.length > 0 && ` · Z ✓ (${zModels.join(', ')})`}
-            {soloDriver && ' · single-driver mode'}
-            {threeWay && ' · 3-way mode'}
+            {soloDriver && ` · ${t('single-driver mode')}`}
+            {threeWay && ` · ${t('3-way mode')}`}
           </p>
         )}
       </div>
@@ -10100,7 +10148,9 @@ export default function App() {
             Laden en bewaren is stap 1 "Your project", de kast is stap 3.
             Ze stonden alle drie op één tab en dat werd een zootje. */}
         {!woofer && !tweeter && (
-          <p className="pane-hint">Load a driver in step 1 first — then this is where you tell the app what you know about it.</p>
+          <p className="pane-hint">
+            {t('Load a driver in step 1 first — then this is where you tell the app what you know about it.')}
+          </p>
         )}
         {/* De feiten over de DRIVERS staan bij de drivers: dit is stap 1,
             waar hun metingen ook binnenkomen. De kast, het referentiepunt en
@@ -10109,8 +10159,8 @@ export default function App() {
         {(woofer || midDrv || tweeter) && (
           <fieldset className="cabinet-block">
             <legend>
-              What you know about them
-              <span className="legend-sub"> — from the datasheet and a ruler</span>
+              {t('What you know about them')}
+              <span className="legend-sub"> {t('— from the datasheet and a ruler')}</span>
             </legend>
             {/* De tekening staat HIER en niet bij de kast: hij beantwoordt
                 "staan mijn drivers waar ik denk", en dat zijn de getallen die
@@ -10132,7 +10182,7 @@ export default function App() {
             )}
             {designTab === 'data' && !woofer && !tweeter && (
               <p className="sub pane-hint">
-                No measurements yet — load them in the Import tab first.
+                {t('No measurements yet — load them in the Import tab first.')}
               </p>
             )}
             {designTab === 'data' && (
@@ -10142,10 +10192,12 @@ export default function App() {
           <div className="panel controls">
             <fieldset>
               <legend>
-                View range
-                {rangeEditing && <span className="derived"> — simulation paused while editing</span>}
+                {t('View range')}
+                {rangeEditing && (
+                  <span className="derived"> {t('— simulation paused while editing')}</span>
+                )}
               </legend>
-              <label title="Lower edge of the simulation grid AND the optimizer/metrics evaluation band. The sim pauses while you type; commits on Enter/blur. Zooming a chart and clicking 'use as view range' writes back here.">
+              <label title={t("Lower edge of the simulation grid AND the optimizer/metrics evaluation band. The sim pauses while you type; commits on Enter/blur. Zooming a chart and clicking 'use as view range' writes back here.")}>
                 f min (Hz)
                 <input
                   type="number"
@@ -10156,7 +10208,7 @@ export default function App() {
                   onKeyDown={(e) => e.key === 'Enter' && e.currentTarget.blur()}
                 />
               </label>
-              <label title="Upper edge of the simulation grid AND the optimizer/metrics evaluation band. The sim pauses while you type; commits on Enter/blur.">
+              <label title={t('Upper edge of the simulation grid AND the optimizer/metrics evaluation band. The sim pauses while you type; commits on Enter/blur.')}>
                 f max (Hz)
                 <input
                   type="number"
@@ -10167,7 +10219,7 @@ export default function App() {
                   onKeyDown={(e) => e.key === 'Enter' && e.currentTarget.blur()}
                 />
               </label>
-              <label title="Y-axis floor of the SPL charts — empty = automatic">
+              <label title={t('Y-axis floor of the SPL charts — empty = automatic')}>
                 SPL min (dB)
                 <input
                   type="number"
@@ -10176,7 +10228,7 @@ export default function App() {
                   onChange={(e) => setSplMin(e.target.value)}
                 />
               </label>
-              <label title="Y-axis ceiling of the SPL charts — empty = automatic">
+              <label title={t('Y-axis ceiling of the SPL charts — empty = automatic')}>
                 SPL max (dB)
                 <input
                   type="number"
@@ -10188,19 +10240,18 @@ export default function App() {
             </fieldset>
             <fieldset>
               <legend>
-                Cabinet &amp; measurement
+                {t('Cabinet & measurement')}
                 <span className="derived">
                   {' '}
-                  — the box and how you measured it (the drivers themselves are the next step)
+                  {t('— the box and how you measured it (the drivers themselves are the next step)')}
                 </span>
               </legend>
               <p className="cabinet-note">
-                Everything below is measured from the <strong>reference point</strong>: the spot
-                the microphone was aimed at during the sweeps, and — on a turntable — the axis the
-                cabinet turned around. Most people aim at the tweeter, so the tweeter sits at{' '}
-                <strong>x 0, y 0</strong> and anything lower gets a <strong>negative y</strong>.
-                Nothing here changes your measurements; it lets the app work out what those
-                measurements actually captured.
+                {t('Everything below is measured from the')} <strong>{t('reference point')}</strong>
+                {t(': the spot the microphone was aimed at during the sweeps, and — on a turntable — the axis the cabinet turned around. Most people aim at the tweeter, so the tweeter sits at')}{' '}
+                <strong>x 0, y 0</strong> {t('and anything lower gets a')}{' '}
+                <strong>{t('negative y')}</strong>
+                {t('. Nothing here changes your measurements; it lets the app work out what those measurements actually captured.')}
               </p>
               {/* Gepromoveerd uit de prototype-ronde (Sanders keuze):
                   CARDS in guided, LEDGER in expert.
@@ -10248,7 +10299,7 @@ export default function App() {
                         e.currentTarget.blur();
                       }
                     }}
-                    title="How far below the top of the front panel the reference point sits. Correcting this moves the REFERENCE MARKER only — drivers keep the below-top positions you typed."
+                    title={t('How far below the top of the front panel the reference point sits. Correcting this moves the REFERENCE MARKER only — drivers keep the below-top positions you typed.')}
                   />
                 );
                 const eerlijk = cabinetInfo.reliable;
@@ -10256,20 +10307,21 @@ export default function App() {
                   eerlijk && Number(fMin) > 0 && Number(fMin) < eerlijk.fromHz * 0.95;
                 const knop = eerlijk ? (
                   <button type="button" onClick={() => setFMin(String(Math.round(eerlijk.fromHz)))}>
-                    use {Math.round(eerlijk.fromHz)} Hz as f min
+                    {t('use {hz} Hz as f min', { hz: Math.round(eerlijk.fromHz) })}
                   </button>
                 ) : null;
                 const micUit = eerlijk
-                  ? `honest down to ≈ ${Math.round(eerlijk.fromHz)} Hz`
-                  : 'enter the mic distance to find out how low this measurement carries';
+                  ? t('honest down to ≈ {hz} Hz', { hz: Math.round(eerlijk.fromHz) })
+                  : t('enter the mic distance to find out how low this measurement carries');
                 const stapUit = cabinetInfo.baffleStep
-                  ? `baffle step ≈ ${Math.round(cabinetInfo.baffleStep)} Hz`
+                  ? t('baffle step ≈ {hz} Hz', { hz: Math.round(cabinetInfo.baffleStep) })
                   : '';
                 const zitUit =
                   cabinetInfo.listenAngle !== null
-                    ? `you sit ${Math.abs(cabinetInfo.listenAngle).toFixed(1)}° ${
-                        cabinetInfo.listenAngle >= 0 ? 'below' : 'above'
-                      } the reference axis`
+                    ? t('you sit {deg}° {dir} the reference axis', {
+                        deg: Math.abs(cabinetInfo.listenAngle).toFixed(1),
+                        dir: cabinetInfo.listenAngle >= 0 ? t('below') : t('above'),
+                      })
                     : '';
                 const mis =
                   Number(cabinet.baffleHeightMm) > 0 &&
@@ -10291,7 +10343,7 @@ export default function App() {
                           <span className="cab-card-title">{titel}</span>
                           <span className="cab-card-answer">{antwoord}</span>
                         </span>
-                        <span className="cab-card-more">change the numbers</span>
+                        <span className="cab-card-more">{t('change the numbers')}</span>
                       </summary>
                       <div className="cab-card-fields">{velden}</div>
                     </details>
@@ -10300,45 +10352,45 @@ export default function App() {
                     <div className="cab-cards">
                       {kaart(
                         '📏',
-                        'How far the mic stood',
+                        t('How far the mic stood'),
                         <>
                           {micUit}
                           {teLaag && (
                             <>
-                              {' — your view range starts lower than that. '}
+                              {' ' + t('— your view range starts lower than that.') + ' '}
                               {knop}
                             </>
                           )}
                         </>,
                         <>
-                          <span className="cd-label">Distance</span>
+                          <span className="cd-label">{t('Distance')}</span>
                           <span className="cd-fields">
                             {veld(cabinet.micDistanceMm, cab('micDistanceMm'))} mm
                           </span>
-                          <span className="cd-label">Elevation</span>
+                          <span className="cd-label">{t('Elevation')}</span>
                           <span className="cd-fields">
                             {veld(cabinet.micElevationDeg, cab('micElevationDeg'), 1, '0')} °
                           </span>
-                          <span className="cd-label">Gate used</span>
+                          <span className="cd-label">{t('Gate used')}</span>
                           <span className="cd-fields">
-                            {veld(cabinet.gateMs, cab('gateMs'), 0.1, 'predict')} ms
+                            {veld(cabinet.gateMs, cab('gateMs'), 0.1, t('predict'))} ms
                           </span>
                         </>,
                       )}
                       {kaart(
                         '▭',
-                        'The box',
+                        t('The box'),
                         stapUit ? (
                           <>
-                            A {cabinet.baffleWidthMm} mm wide baffle puts its step around{' '}
-                            <b>{Math.round(cabinetInfo.baffleStep!)} Hz</b> — that broad tilt in
-                            your measurement is the cabinet, not the driver.
+                            {t('A {mm} mm wide baffle puts its step around', { mm: cabinet.baffleWidthMm })}{' '}
+                            <b>{Math.round(cabinetInfo.baffleStep!)} Hz</b>{' '}
+                            {t('— that broad tilt in your measurement is the cabinet, not the driver.')}
                           </>
                         ) : (
-                          'Add the baffle size and the app can tell the cabinet apart from the driver — and draw your front panel on the next step.'
+                          t('Add the baffle size and the app can tell the cabinet apart from the driver — and draw your front panel on the next step.')
                         ),
                         <>
-                          <span className="cd-label">Mic aimed at</span>
+                          <span className="cd-label">{t('Mic aimed at')}</span>
                           <span className="cd-fields">
                             <select
                               value={cabinet.refDriver}
@@ -10349,47 +10401,45 @@ export default function App() {
                                 }))
                               }
                             >
-                              <option value="">another spot on the baffle</option>
-                              <option value="high">the tweeter</option>
-                              <option value="mid">the midrange</option>
-                              <option value="low">the woofer</option>
+                              <option value="">{t('another spot on the baffle')}</option>
+                              <option value="high">{t('the tweeter')}</option>
+                              <option value="mid">{t('the midrange')}</option>
+                              <option value="low">{t('the woofer')}</option>
                             </select>
                             <span className="cd-hint">
-                              that driver becomes 0,0 — you never type its own offset
+                              {t('that driver becomes 0,0 — you never type its own offset')}
                             </span>
                           </span>
-                          <span className="cd-label">Front panel</span>
+                          <span className="cd-label">{t('Front panel')}</span>
                           <span className="cd-fields">
-                            {'width '}
+                            {t('width') + ' '}
                             {veld(cabinet.baffleWidthMm, cab('baffleWidthMm'))}
-                            {' × height '}
+                            {' × ' + t('height') + ' '}
                             {veld(cabinet.baffleHeightMm, cab('baffleHeightMm'))} mm
                           </span>
-                          <span className="cd-label">Reference point</span>
+                          <span className="cd-label">{t('Reference point')}</span>
                           <span className="cd-fields">
-                            {refTopVeld()} mm below the top ·{' '}
-                            {veld(cabinet.refHeightMm, cab('refHeightMm'))} mm above the floor
+                            {refTopVeld()} {t('mm below the top')} ·{' '}
+                            {veld(cabinet.refHeightMm, cab('refHeightMm'))} {t('mm above the floor')}
                           </span>
                           {mis && (
                             <span className="derived alert" style={{ gridColumn: '1 / -1' }}>
-                              the reference point cannot sit {cabinet.refFromTopMm} mm below the top
-                              of a {cabinet.baffleHeightMm} mm front panel — one of the two is the
-                              other field
+                              {t('the reference point cannot sit {ref} mm below the top of a {h} mm front panel — one of the two is the other field', { ref: cabinet.refFromTopMm, h: cabinet.baffleHeightMm })}
                             </span>
                           )}
                         </>,
                       )}
                       {kaart(
                         '🪑',
-                        'Where you listen',
+                        t('Where you listen'),
                         zitUit ||
-                          'Add your seat and ear height, and a driver-spacing rule becomes a statement about YOUR room.',
+                          t('Add your seat and ear height, and a driver-spacing rule becomes a statement about YOUR room.'),
                         <>
-                          <span className="cd-label">Distance</span>
+                          <span className="cd-label">{t('Distance')}</span>
                           <span className="cd-fields">
                             {veld(cabinet.listenDistanceM, cab('listenDistanceM'), 0.1)} m
                           </span>
-                          <span className="cd-label">Ear height</span>
+                          <span className="cd-label">{t('Ear height')}</span>
                           <span className="cd-fields">
                             {veld(cabinet.listenEarHeightMm, cab('listenEarHeightMm'))} mm
                           </span>
@@ -10408,80 +10458,78 @@ export default function App() {
                 );
                 return (
                   <div className="lg">
-                    <div className="lg-sec">How you measured</div>
+                    <div className="lg-sec">{t('How you measured')}</div>
                     {rij(
-                      'Mic distance',
+                      t('Mic distance'),
                       <>{veld(cabinet.micDistanceMm, cab('micDistanceMm'))} mm</>,
                       cabinetInfo.farField
-                        ? `${cabinetInfo.farField.ratio.toFixed(1)}× the source — ${
-                            cabinetInfo.farField.ok ? 'far field' : 'close'
-                          }`
+                        ? t('{ratio}× the source — {verdict}', { ratio: cabinetInfo.farField.ratio.toFixed(1), verdict: cabinetInfo.farField.ok ? t('far field') : t('close') })
                         : '',
                     )}
                     {rij(
-                      'Mic elevation',
+                      t('Mic elevation'),
                       <>{veld(cabinet.micElevationDeg, cab('micElevationDeg'), 1, '0')} °</>,
                     )}
                     {rij(
-                      'Gate used',
+                      t('Gate used'),
                       <>{veld(cabinet.gateMs, cab('gateMs'), 0.1, 'predict')} ms</>,
                       <>
                         {micUit} {teLaag && knop}
                       </>,
                     )}
-                    <div className="lg-sec">The cabinet</div>
+                    <div className="lg-sec">{t('The cabinet')}</div>
                     {rij(
-                      'Mic was aimed at',
+                      t('Mic was aimed at'),
                       <select
                         value={cabinet.refDriver}
                         onChange={(e) =>
                           setCabinet((c) => ({ ...c, refDriver: e.target.value as '' | BranchRole }))
                         }
                       >
-                        <option value="">another spot on the baffle</option>
-                        <option value="high">the tweeter</option>
-                        <option value="mid">the midrange</option>
-                        <option value="low">the woofer</option>
+                        <option value="">{t('another spot on the baffle')}</option>
+                        <option value="high">{t('the tweeter')}</option>
+                        <option value="mid">{t('the midrange')}</option>
+                        <option value="low">{t('the woofer')}</option>
                       </select>,
-                      cabinet.refDriver ? 'that driver is 0,0 — you do not type its offset' : '',
+                      cabinet.refDriver ? t('that driver is 0,0 — you do not type its offset') : '',
                     )}
                     {rij(
-                      'Front panel width',
+                      t('Front panel width'),
                       <>{veld(cabinet.baffleWidthMm, cab('baffleWidthMm'))} mm</>,
                       stapUit,
                     )}
                     {rij(
-                      'Front panel height',
+                      t('Front panel height'),
                       <>{veld(cabinet.baffleHeightMm, cab('baffleHeightMm'))} mm</>,
                     )}
                     {rij(
-                      'Cabinet depth',
+                      t('Cabinet depth'),
                       <>{veld(cabinet.cabinetDepthMm, cab('cabinetDepthMm'))} mm</>,
                       cabinetInfo.offBaffle.length > 0
-                        ? 'the panel a side-firing driver radiates from'
-                        : 'only needed for side-firing drivers',
+                        ? t('the panel a side-firing driver radiates from')
+                        : t('only needed for side-firing drivers'),
                     )}
                     {rij(
-                      'Reference point, below top',
+                      t('Reference point, below top'),
                       <>{refTopVeld()} mm</>,
                       mis ? (
-                        <strong className="alert">deeper than the baffle is tall</strong>
+                        <strong className="alert">{t('deeper than the baffle is tall')}</strong>
                       ) : (
                         ''
                       ),
                     )}
                     {rij(
-                      'Reference point, above floor',
+                      t('Reference point, above floor'),
                       <>{veld(cabinet.refHeightMm, cab('refHeightMm'))} mm</>,
                     )}
-                    <div className="lg-sec">Where you listen</div>
+                    <div className="lg-sec">{t('Where you listen')}</div>
                     {rij(
-                      'Distance',
+                      t('Distance'),
                       <>{veld(cabinet.listenDistanceM, cab('listenDistanceM'), 0.1)} m</>,
                       zitUit,
                     )}
                     {rij(
-                      'Ear height',
+                      t('Ear height'),
                       <>{veld(cabinet.listenEarHeightMm, cab('listenEarHeightMm'))} mm</>,
                     )}
                   </div>
@@ -10493,25 +10541,25 @@ export default function App() {
                   stapnamen zeiden dat al; alleen de indeling niet (Sander). */}
             </fieldset>
             <fieldset className={uiMode === 'guided' ? 'expert-only' : undefined}>
-              <legend>Driver phase</legend>
-              <label title="Measured = the real measured phase incl. the true inter-driver time offset — the whole point of this tool. Minimum phase = reconstructed from magnitude (offsets discarded), only for apples-to-apples VituixCAD comparison.">
-                Convention
+              <legend>{t('Driver phase')}</legend>
+              <label title={t('Measured = the real measured phase incl. the true inter-driver time offset — the whole point of this tool. Minimum phase = reconstructed from magnitude (offsets discarded), only for apples-to-apples VituixCAD comparison.')}>
+                {t('Convention')}
                 <select
                   value={phaseMode}
                   onChange={(e) => setPhaseMode(e.target.value as 'measured' | 'minimum')}
                 >
-                  <option value="measured">Measured (real timing)</option>
-                  <option value="minimum">Minimum phase (VituixCAD-style)</option>
+                  <option value="measured">{t('Measured (real timing)')}</option>
+                  <option value="minimum">{t('Minimum phase (VituixCAD-style)')}</option>
                 </select>
               </label>
               {phaseMode === 'minimum' && (
                 <span className="derived">
-                  measured inter-driver timing discarded — comparison mode
+                  {t('measured inter-driver timing discarded — comparison mode')}
                 </span>
               )}
               {phaseMode === 'measured' && timing?.ref.verdict === 'plausible' && (
                 <span className="derived">
-                  auto: shared time reference plausible — real timing in use
+                  {t('auto: shared time reference plausible — real timing in use')}
                 </span>
               )}
             </fieldset>
@@ -10519,9 +10567,9 @@ export default function App() {
                 single-driver mode, so the whole fieldset hides. */}
             {!soloDriver && (
             <fieldset className={uiMode === 'guided' ? 'expert-only' : undefined}>
-              <legend>Tweeter adjustment</legend>
-              <label title="Simulate moving the tweeter physically (mm depth, + = recessed = extra delay). With measured phase and a shared time reference the real timing is already in the data — leave 0.">
-                Offset (mm, + = recessed)
+              <legend>{t('Tweeter adjustment')}</legend>
+              <label title={t('Simulate moving the tweeter physically (mm depth, + = recessed = extra delay). With measured phase and a shared time reference the real timing is already in the data — leave 0.')}>
+                {t('Offset (mm, + = recessed)')}
                 <input
                   type="number"
                   step="0.5"
@@ -10529,8 +10577,8 @@ export default function App() {
                   onChange={(e) => setOffsetMm(e.target.value)}
                 />
               </label>
-              <label title="Level adjustment on the tweeter branch, dB">
-                Level trim (dB)
+              <label title={t('Level adjustment on the tweeter branch, dB')}>
+                {t('Level trim (dB)')}
                 <input
                   type="number"
                   step="0.5"
@@ -10540,22 +10588,23 @@ export default function App() {
               </label>
               <label
                 className="check"
-                title="Flip the tweeter 180° (swap + and −) — the classic move around an LR2 crossover"
+                title={t('Flip the tweeter 180° (swap + and −) — the classic move around an LR2 crossover')}
               >
                 <input
                   type="checkbox"
                   checked={inverted}
                   onChange={(e) => setInverted(e.target.checked)}
                 />
-                Invert polarity
+                {t('Invert polarity')}
               </label>
-              <span className="derived" title="The mm offset expressed as time delay">= {delayUs.toFixed(0)} µs delay</span>
+              <span className="derived" title={t('The mm offset expressed as time delay')}>
+                {t('= {us} µs delay', { us: delayUs.toFixed(0) })}
+              </span>
               {phaseMode === 'measured' &&
                 timing?.ref.verdict === 'plausible' &&
                 num(offsetMm, 0) !== 0 && (
                   <span className="nl-warning">
-                    measured phase already carries the real timing — leave 0 unless you are
-                    simulating a physical move
+                    {t('measured phase already carries the real timing — leave 0 unless you are simulating a physical move')}
                   </span>
                 )}
               {phaseMode === 'minimum' && timing?.ref.verdict === 'plausible' && (
@@ -10571,9 +10620,9 @@ export default function App() {
             )}
             {threeWay && (
               <fieldset className={uiMode === 'guided' ? 'expert-only' : undefined}>
-                <legend>Midrange adjustment</legend>
-                <label title="Simulate moving the midrange physically (mm depth, + = recessed = extra delay). With measured phase and a shared time reference the real timing is already in the data — leave 0.">
-                  Offset (mm, + = recessed)
+                <legend>{t('Midrange adjustment')}</legend>
+                <label title={t('Simulate moving the midrange physically (mm depth, + = recessed = extra delay). With measured phase and a shared time reference the real timing is already in the data — leave 0.')}>
+                  {t('Offset (mm, + = recessed)')}
                   <input
                     type="number"
                     step="0.5"
@@ -10581,8 +10630,8 @@ export default function App() {
                     onChange={(e) => setMidOffsetMm(e.target.value)}
                   />
                 </label>
-                <label title="Level adjustment on the midrange branch, dB">
-                  Level trim (dB)
+                <label title={t('Level adjustment on the midrange branch, dB')}>
+                  {t('Level trim (dB)')}
                   <input
                     type="number"
                     step="0.5"
@@ -10590,13 +10639,13 @@ export default function App() {
                     onChange={(e) => setMidTrimDb(e.target.value)}
                   />
                 </label>
-                <label className="check" title="Flip the midrange 180° (swap + and −)">
+                <label className="check" title={t('Flip the midrange 180° (swap + and −)')}>
                   <input
                     type="checkbox"
                     checked={midInverted}
                     onChange={(e) => setMidInverted(e.target.checked)}
                   />
-                  Invert polarity
+                  {t('Invert polarity')}
                 </label>
               </fieldset>
             )}
@@ -10856,7 +10905,7 @@ export default function App() {
             {designTab === 'filters' && result && (
         <>
           <div className="panel">
-            <h2>{uiMode === 'guided' ? 'Design the filter' : 'Virtual filters (target design)'}</h2>
+            <h2>{uiMode === 'guided' ? t('Design the filter') : t('Virtual filters (target design)')}</h2>
             <p
               className="sub sim-source"
               title={t("The sim's precedence: an active editor network wins over a vxp variant, which wins over the virtual filters, which win over raw drivers. Every chart on the right shows THIS.")}
@@ -10865,13 +10914,9 @@ export default function App() {
             </p>
             {uiMode === 'guided' && (
               <p className="sub">
-                One button. The app works out where the drivers should hand over to each other,
-                what shape each filter needs and which real parts to buy — using your measurements,
-                not rules of thumb. It builds and measures{' '}
-                <strong>nine complete designs</strong> across the crossover range
-                your drivers allow and keeps the best — the widest search it offers, because here
-                you are not going to hand-tune one. Expect several minutes; you can watch each
-                candidate come in, and cancel at any time.
+                {t('One button. The app works out where the drivers should hand over to each other, what shape each filter needs and which real parts to buy — using your measurements, not rules of thumb. It builds and measures')}{' '}
+                <strong>{t('nine complete designs')}</strong>{' '}
+                {t('across the crossover range your drivers allow and keeps the best — the widest search it offers, because here you are not going to hand-tune one. Expect several minutes; you can watch each candidate come in, and cancel at any time.')}
               </p>
             )}
             {uiMode === 'guided' && nonStandard.length > 0 && (
@@ -10882,16 +10927,16 @@ export default function App() {
                  wizard never shows, which could otherwise steer a guided run
                  from behind the curtain. */
               <p className="sub" style={{ marginTop: '-0.4rem' }}>
-                <strong>Not at the standard settings:</strong>{' '}
+                <strong>{t('Not at the standard settings:')}</strong>{' '}
                 {nonStandard.map(([, , label]) => label).join(' · ')}.{' '}
                 <button type="button" className="link-btn" onClick={resetToStandard}>
-                  use the standard settings
+                  {t('use the standard settings')}
                 </button>
               </p>
             )}
             <div className="tool-groups" style={{ marginBottom: '1rem' }}>
               <div className="tool-group">
-                <span className="tool-group-label">Design</span>
+                <span className="tool-group-label">{t('Design')}</span>
                 <div className="tool-group-body">
                   <button
                     type="button"
@@ -10899,13 +10944,17 @@ export default function App() {
                     disabled={vfBusy}
                     title={
                       threeWay
-                        ? '3-way: staged 2D scan — LR4 targets + measured level trims per (low, high) handover candidate, per-branch synthesis, assembled two-pair tune; the amp-load verdict gates the ranking. Winner lands in the Working tab.'
+                        ? t('3-way: staged 2D scan — LR4 targets + measured level trims per (low, high) handover candidate, per-branch synthesis, assembled two-pair tune; the amp-load verdict gates the ranking. Winner lands in the Working tab.')
                         : soloDriver
-                          ? 'Single-driver mode: flatten this driver — cut-only EQ/shelf design, built as series traps / shelf groups (+ gated Zobel) and component-tuned against the measurement (lands in the Working tab)'
-                          : 'Design the crossover, build it as a passive network and simulate it — all in one go (lands in the Working tab)'
+                          ? t('Single-driver mode: flatten this driver — cut-only EQ/shelf design, built as series traps / shelf groups (+ gated Zobel) and component-tuned against the measurement (lands in the Working tab)')
+                          : t('Design the crossover, build it as a passive network and simulate it — all in one go (lands in the Working tab)')
                     }
                   >
-                    {vfBusy ? 'Optimizing + building…' : soloDriver ? 'Optimize — flatten driver' : 'Optimize — design for me'}
+                    {vfBusy
+                      ? t('Optimizing + building…')
+                      : soloDriver
+                        ? t('Optimize — flatten driver')
+                        : t('Optimize — design for me')}
                   </button>
                   <button
                     type="button"
@@ -10917,52 +10966,52 @@ export default function App() {
                       setWizardStep(!woofer && !tweeter ? 0 : 1);
                       setWizardOpen(true);
                     }}
-                    title="Design wizard: load measurements, then goals, priority, crossover point, acoustic slopes and component choices in one guided flow — ends with Optimize"
+                    title={t('Design wizard: load measurements, then goals, priority, crossover point, acoustic slopes and component choices in one guided flow — ends with Optimize')}
                   >
-                    {uiMode === 'guided' ? '🧙 Walk me through it' : '🧙 Wizard'}
+                    {uiMode === 'guided' ? `🧙 ${t('Walk me through it')}` : `🧙 ${t('Wizard')}`}
                   </button>
                   <select
                     className={uiMode === 'guided' ? 'expert-only' : undefined}
                     value={synthMode}
                     onChange={(e) => setSynthMode(e.target.value as 'filter' | 'acoustic')}
-                    title="What the passive build optimises for: the acoustic result on the measured driver, or an exact reproduction of the filter curve"
+                    title={t('What the passive build optimises for: the acoustic result on the measured driver, or an exact reproduction of the filter curve')}
                   >
-                    <option value="acoustic">Acoustic result (flatten measured driver)</option>
-                    <option value="filter">Filter curve (reproduce target exactly)</option>
+                    <option value="acoustic">{t('Acoustic result (flatten measured driver)')}</option>
+                    <option value="filter">{t('Filter curve (reproduce target exactly)')}</option>
                   </select>
                 </div>
               </div>
               <div className={`tool-group${uiMode === 'guided' ? ' expert-only' : ''}`}>
-                <span className="tool-group-label">Configure</span>
+                <span className="tool-group-label">{t('Configure')}</span>
                 <div className="tool-group-body">
                   <button
                     type="button"
                     className={showOptSettings ? 'active-toggle' : ''}
                     onClick={() => setShowOptSettings((s) => !s)}
-                    title="Optimizer settings: priority, amplitude target, in-room weight, EQ bands"
+                    title={t('Optimizer settings: priority, amplitude target, in-room weight, EQ bands')}
                   >
-                    ⚙ Settings
+                    ⚙ {t('Settings')}
                   </button>
                 </div>
               </div>
               <div className={`tool-group${uiMode === 'guided' ? ' expert-only' : ''}`}>
-                <span className="tool-group-label">State</span>
+                <span className="tool-group-label">{t('State')}</span>
                 <div className="tool-group-body">
                   <button
                     type="button"
                     onClick={resetVirtualFilters}
                     disabled={vfBusy}
-                    title="Filters back to the clean starting point — measurements and crossover selection stay"
+                    title={t('Filters back to the clean starting point — measurements and crossover selection stay')}
                   >
-                    Reset filters
+                    {t('Reset filters')}
                   </button>
-                  <label title="Take the virtual filters out of the simulation, keeping their settings — auto-on when a built passive network replaces them">
+                  <label title={t('Take the virtual filters out of the simulation, keeping their settings — auto-on when a built passive network replaces them')}>
                     <input
                       type="checkbox"
                       checked={vfBypass}
                       onChange={(e) => setVfBypass(e.target.checked)}
                     />{' '}
-                    Bypass
+                    {t('Bypass')}
                   </label>
                 </div>
               </div>
@@ -10970,9 +11019,9 @@ export default function App() {
             {vfBusy && vfProgress && (
               <p className="derived" style={{ margin: '0 0 1rem' }}>
                 {vfProgress.items
-                  ? `scan ${vfProgress.round}/${vfProgress.items.length}`
-                  : (vfProgress.label ?? `round ${vfProgress.round}`)}{' '}
-                · {vfProgress.evals.toLocaleString('nl-NL')} network sims ·{' '}
+                  ? t('scan {a}/{b}', { a: vfProgress.round, b: vfProgress.items.length })
+                  : (vfProgress.label ?? t('round {n}', { n: vfProgress.round }))}{' '}
+                · {vfProgress.evals.toLocaleString('nl-NL')} {t('network sims')} ·{' '}
                 {vfProgress.rippleDb !== undefined && vfProgress.phaseDeg !== undefined
                   ? `${vfProgress.rippleDb.toFixed(2)} dB / ${vfProgress.phaseDeg.toFixed(1)}°`
                   : '…'}
@@ -10980,18 +11029,16 @@ export default function App() {
             )}
             {vfBypass && uiMode === 'expert' && (
               <p className="derived" style={{ margin: '0 0 1rem' }}>
-                virtual filters muted — passive network / raw drivers only
+                {t('virtual filters muted — passive network / raw drivers only')}
               </p>
             )}
             {showOptSettings && (
               <div className="row opt-settings" style={{ marginBottom: '1rem' }}>
-                <span className="opt-settings-cap">Optimizer settings</span>
+                <span className="opt-settings-cap">{t('Optimizer settings')}</span>
                 {soloDriver && (
                   <>
                     <span className="derived" style={{ flexBasis: '100%' }}>
-                      Single-driver mode — crossover settings (priority, phase, slopes, crossover
-                      point, HP/LP) don't apply and are disabled; the solo engine designs cut-only
-                      EQ/shelves within the EQ-band budget and the targets' ripple.
+                      {t("Single-driver mode — crossover settings (priority, phase, slopes, crossover point, HP/LP) don't apply and are disabled; the solo engine designs cut-only EQ/shelves within the EQ-band budget and the targets' ripple.")}
                     </span>
                     {/* HOW FAR MAY IT DROP — the one control that decides how
                         much this engine can do. It used to be called
@@ -11002,9 +11049,9 @@ export default function App() {
                         absolute level it works out to. */}
                     <label
                       className="inline-num"
-                      title="How much LEVEL the correction may give up. Passive filters can only cut, so flatness is paid for in efficiency — this is the budget for that payment. 6 dB ≈ a baffle-step's worth, right for a driver that will still get a crossover. A fullranger carrying the whole range is usually worth 10–20 dB: the further it may drop, the further up the band it can pull things flat."
+                      title={t("How much LEVEL the correction may give up. Passive filters can only cut, so flatness is paid for in efficiency — this is the budget for that payment. 6 dB ≈ a baffle-step's worth, right for a driver that will still get a crossover. A fullranger carrying the whole range is usually worth 10–20 dB: the further it may drop, the further up the band it can pull things flat.")}
                     >
-                      May drop by
+                      {t('May drop by')}
                       <input
                         type="number"
                         min={0}
@@ -11019,15 +11066,14 @@ export default function App() {
                     {!soloFloorOn && soloFloorInfo && (
                       <span
                         className="derived"
-                        title="What that budget means in absolute terms: the driver's own median level over the evaluation band, and the level the correction may sink to."
+                        title={t("What that budget means in absolute terms: the driver's own median level over the evaluation band, and the level the correction may sink to.")}
                       >
-                        → down to {(soloFloorInfo.median - num(soloSensDb, 6)).toFixed(0)} dB
-                        (driver sits at {soloFloorInfo.median.toFixed(0)})
+                        {t('→ down to {a} dB (driver sits at {b})', { a: (soloFloorInfo.median - num(soloSensDb, 6)).toFixed(0), b: soloFloorInfo.median.toFixed(0) })}
                       </span>
                     )}
                     <label
                       className="check"
-                      title="Instead of 'may drop by N dB', name the level itself: the engine flattens everything down TO that level. Better-posed (a fixed target cannot be met by moving the average) and it tells you directly how far up the band the correction can reach."
+                      title={t("Instead of 'may drop by N dB', name the level itself: the engine flattens everything down TO that level. Better-posed (a fixed target cannot be met by moving the average) and it tells you directly how far up the band the correction can reach.")}
                     >
                       <input
                         type="checkbox"
@@ -11039,15 +11085,15 @@ export default function App() {
                           }
                         }}
                       />{' '}
-                      or flatten to a fixed level
+                      {t('or flatten to a fixed level')}
                     </label>
                     {soloFloorOn && (
                       <>
                         <label
                           className="inline-num"
-                          title="Flatten down TO this level (dB, in your own measurement's scale — check the SPL chart). A lower target reaches further up the band but costs efficiency. Anything already below this level cannot be lifted and stays out of scope."
+                          title={t("Flatten down TO this level (dB, in your own measurement's scale — check the SPL chart). A lower target reaches further up the band but costs efficiency. Anything already below this level cannot be lifted and stays out of scope.")}
                         >
-                          Flat at
+                          {t('Flat at')}
                           <input
                             type="number"
                             step={1}
@@ -11060,19 +11106,18 @@ export default function App() {
                         {soloFloorInfo && (
                           <span
                             className="derived"
-                            title="The driver's own median level over the evaluation band, and how far a cut-only correction can reach at the target level you entered."
+                            title={t("The driver's own median level over the evaluation band, and how far a cut-only correction can reach at the target level you entered.")}
                           >
-                            driver sits at {soloFloorInfo.median.toFixed(0)} dB · reaches{' '}
-                            {hz(soloFloorInfo.reach[0])}–{hz(soloFloorInfo.reach[1])}
+                            {t('driver sits at {a} dB · reaches {b}–{c}', { a: soloFloorInfo.median.toFixed(0), b: hz(soloFloorInfo.reach[0]), c: hz(soloFloorInfo.reach[1]) })}
                           </span>
                         )}
                       </>
                     )}
                   </>
                 )}
-                <span className="opt-group-cap">Goals &amp; weighting</span>
-                <label title={soloDriver ? 'Single-driver mode: relative phase does not exist — the solo objective is response flatness only' : "The big trade-off: budget split between a flat response and flat phase. More phase = flatter phase but more amplitude ripple. Both ends are anchored (100% phase = 90/10 internally): with the response weight at true zero the optimizer would trade a wrecked response for a phase metric it can then game."}>
-                  Priority: response {100 - phasePriority}% · phase {phasePriority}%
+                <span className="opt-group-cap">{t('Goals & weighting')}</span>
+                <label title={soloDriver ? t('Single-driver mode: relative phase does not exist — the solo objective is response flatness only') : t('The big trade-off: budget split between a flat response and flat phase. More phase = flatter phase but more amplitude ripple. Both ends are anchored (100% phase = 90/10 internally): with the response weight at true zero the optimizer would trade a wrecked response for a phase metric it can then game.')}>
+                  {t('Priority: response {a}% · phase {b}%', { a: 100 - phasePriority, b: phasePriority })}
                   <input
                     type="range"
                     min={0}
@@ -11084,31 +11129,31 @@ export default function App() {
                     style={{ width: '14rem', accentColor: 'var(--accent)' }}
                   />
                 </label>
-                <label title="How phase error is judged. Integration band = the panel's average + excursions over the WHOLE overlap window (flat across the handover, matches the numbers you read — Sanders keuze). Classic = overlap-weighted mean, centre-heavy (the old behaviour, kept as fallback).">
-                  Phase metric
+                <label title={t("How phase error is judged. Integration band = the panel's average + excursions over the WHOLE overlap window (flat across the handover, matches the numbers you read). Classic = overlap-weighted mean, centre-heavy (the old behaviour, kept as fallback).")}>
+                  {t('Phase metric')}
                   <select
                     value={phaseMetricMode}
                     onChange={(e) => setPhaseMetricMode(e.target.value as 'band' | 'overlap')}
                     disabled={!!soloDriver}
                   >
-                    <option value="band">Integration band (avg + P95)</option>
-                    <option value="overlap">Classic (overlap-weighted)</option>
+                    <option value="band">{t('Integration band (avg + P95)')}</option>
+                    <option value="overlap">{t('Classic (overlap-weighted)')}</option>
                   </select>
                 </label>
                 <label>
-                  Amplitude target
+                  {t('Amplitude target')}
                   <select
                     value={ampTarget}
                     onChange={(e) => setAmpTarget(e.target.value as 'onAxis' | 'listeningWindow')}
                     disabled={!angleSets || !!soloDriver}
-                    title={soloDriver ? 'Single-driver mode: directivity terms pair both drivers — on-axis only for now' : angleSets ? '' : 'Load angle measurements to enable'}
+                    title={soloDriver ? t('Single-driver mode: directivity terms pair both drivers — on-axis only for now') : angleSets ? '' : t('Load angle measurements to enable')}
                   >
-                    <option value="onAxis">On-axis (0°)</option>
-                    <option value="listeningWindow">Listening window (0–30°)</option>
+                    <option value="onAxis">{t('On-axis (0°)')}</option>
+                    <option value="listeningWindow">{t('Listening window (0–30°)')}</option>
                   </select>
                 </label>
-                <label title={soloDriver ? 'Single-driver mode: directivity terms pair both drivers — disabled for now' : angleSets ? '' : 'Load angle measurements to enable'}>
-                  Weight for in-room sound: {dirWeight}% (energy average)
+                <label title={soloDriver ? t('Single-driver mode: directivity terms pair both drivers — disabled for now') : angleSets ? '' : t('Load angle measurements to enable')}>
+                  {t('Weight for in-room sound: {n}% (energy average)', { n: dirWeight })}
                   <input
                     type="range"
                     min={0}
@@ -11120,12 +11165,12 @@ export default function App() {
                     style={{ width: '11rem', accentColor: 'var(--accent)' }}
                   />
                 </label>
-                <span className="opt-group-cap">Filter shape</span>
+                <span className="opt-group-cap">{t('Filter shape')}</span>
                 <label
                   className="inline-num"
-                  title="Hard cap on EQ bands per driver the optimizer may spend — more bands = finer correction but a bigger search (and more passive components later)"
+                  title={t('Hard cap on EQ bands per driver the optimizer may spend — more bands = finer correction but a bigger search (and more passive components later)')}
                 >
-                  Correction bands per driver (max)
+                  {t('Correction bands per driver (max)')}
                   <input
                     type="number"
                     min={0}
@@ -11138,10 +11183,10 @@ export default function App() {
                   />
                 </label>
                 {threeWay && (
-                  <label title="Preferred alignment for the LOW (woofer-mid) handover — binding: the designer picks the foundation, the optimizer keeps knees, level and polarity free. Auto = free choice from the library.">
-                    HP/LP preference (low xo)
+                  <label title={t('Preferred alignment for the LOW (woofer-mid) handover — binding: the designer picks the foundation, the optimizer keeps knees, level and polarity free. Auto = free choice from the library.')}>
+                    {t('HP/LP preference (low xo)')}
                     <select value={hpLpPrefLow} onChange={(e) => setHpLpPrefLow(e.target.value)}>
-                      <option value="auto">Auto (library)</option>
+                      <option value="auto">{t('Auto (library)')}</option>
                       <option value="LR2">LR2 (12 dB/oct)</option>
                       <option value="LR4">LR4 (24 dB/oct)</option>
                       <option value="BW2">BW2 (12 dB/oct)</option>
@@ -11153,10 +11198,10 @@ export default function App() {
                     </select>
                   </label>
                 )}
-                <label title="Preferred HP/LP alignment — binding: the designer picks the foundation, the optimizer designs the best crossover on it (knees, level, polarity and EQ stay free). Auto = free choice from the library.">
-                  {threeWay ? 'HP/LP preference (high xo)' : 'HP/LP preference'}
+                <label title={t('Preferred HP/LP alignment — binding: the designer picks the foundation, the optimizer designs the best crossover on it (knees, level, polarity and EQ stay free). Auto = free choice from the library.')}>
+                  {threeWay ? t('HP/LP preference (high xo)') : t('HP/LP preference')}
                   <select value={hpLpPref} onChange={(e) => setHpLpPref(e.target.value)} disabled={!!soloDriver}>
-                    <option value="auto">Auto (library)</option>
+                    <option value="auto">{t('Auto (library)')}</option>
                     <option value="LR2">LR2 (12 dB/oct)</option>
                     <option value="LR4">LR4 (24 dB/oct)</option>
                     <option value="BW2">BW2 (12 dB/oct)</option>
@@ -11167,8 +11212,8 @@ export default function App() {
                     <option value="BS4">Bessel 4 (24 dB/oct)</option>
                   </select>
                 </label>
-                <label title="Target ACOUSTIC slope of the mid above the crossing — the measured rolloff (driver + filter), not the electrical order. Falling short costs more than being steeper. Auto = free.">
-                  {threeWay ? 'Acoustic slope mid LP (high xo)' : 'Acoustic slope mid'}
+                <label title={t('Target ACOUSTIC slope of the mid above the crossing — the measured rolloff (driver + filter), not the electrical order. Falling short costs more than being steeper. Auto = free.')}>
+                  {threeWay ? t('Acoustic slope mid LP (high xo)') : t('Acoustic slope mid')}
                   <select value={acSlopeMid} onChange={(e) => setAcSlopeMid(e.target.value)} disabled={!!soloDriver}>
                     <option value="auto">Auto</option>
                     {['12', '18', '24', '30', '36'].map((v) => (
@@ -11178,8 +11223,8 @@ export default function App() {
                     ))}
                   </select>
                 </label>
-                <label title="Target ACOUSTIC slope of the tweeter below the crossing — the classic 'acoustic 4th order at the tweeter' rule is 24 dB/oct. Check the result in 🎯 Targets. Auto = free.">
-                  Acoustic slope tweeter
+                <label title={t("Target ACOUSTIC slope of the tweeter below the crossing — the classic 'acoustic 4th order at the tweeter' rule is 24 dB/oct. Check the result in 🎯 Targets. Auto = free.")}>
+                  {t('Acoustic slope tweeter')}
                   <select value={acSlopeTweeter} onChange={(e) => setAcSlopeTweeter(e.target.value)} disabled={!!soloDriver}>
                     <option value="auto">Auto</option>
                     {['12', '18', '24', '30', '36'].map((v) => (
@@ -11191,8 +11236,8 @@ export default function App() {
                 </label>
                 {threeWay && (
                   <>
-                    <label title="3-way: target ACOUSTIC slope of the WOOFER above the low crossing (its LP flank). Auto = free.">
-                      Acoustic slope woofer (low xo)
+                    <label title={t('3-way: target ACOUSTIC slope of the WOOFER above the low crossing (its LP flank). Auto = free.')}>
+                      {t('Acoustic slope woofer (low xo)')}
                       <select value={acSlopeWoofer} onChange={(e) => setAcSlopeWoofer(e.target.value)}>
                         <option value="auto">Auto</option>
                         {['12', '18', '24', '30', '36'].map((v) => (
@@ -11202,8 +11247,8 @@ export default function App() {
                         ))}
                       </select>
                     </label>
-                    <label title="3-way: target ACOUSTIC slope of the MID below the low crossing (its HP flank) — the mid's second flank.">
-                      Acoustic slope mid HP (low xo)
+                    <label title={t("3-way: target ACOUSTIC slope of the MID below the low crossing (its HP flank) — the mid's second flank.")}>
+                      {t('Acoustic slope mid HP (low xo)')}
                       <select value={acSlopeMidHp} onChange={(e) => setAcSlopeMidHp(e.target.value)}>
                         <option value="auto">Auto</option>
                         {['12', '18', '24', '30', '36'].map((v) => (
@@ -11215,17 +11260,17 @@ export default function App() {
                     </label>
                   </>
                 )}
-                <span className="opt-group-cap">Targets</span>
-                <label title="Staged design (trapmethode): HP/LP structure first; EQ bands, Zobel/LCR networks and bypass caps are only added while the targets below are unmet — the fewest components that reach the goal, with a per-stage report.">
+                <span className="opt-group-cap">{t('Targets')}</span>
+                <label title={t('Staged design (step method): HP/LP structure first; EQ bands, Zobel/LCR networks and bypass caps are only added while the targets below are unmet — the fewest components that reach the goal, with a per-stage report.')}>
                   <input
                     type="checkbox"
                     checked={stagedOn}
                     onChange={(e) => setStagedOn(e.target.checked)}
                   />{' '}
-                  Use as few components as possible
+                  {t('Use as few components as possible')}
                 </label>
                 {stagedOn && (
-                  <span className="inline-num" title="'Good enough' targets: stop escalating once ripple (peak ±dB, the same number the SPL strip shows) AND average phase error (°) are both met — variable per project, this is the designer's call">
+                  <span className="inline-num" title={t("'Good enough' targets: stop escalating once ripple (peak ±dB, the same number the SPL strip shows) AND average phase error (°) are both met — variable per project, this is the designer's call")}>
                     ≤{' '}
                     <input
                       type="number"
@@ -11255,28 +11300,26 @@ export default function App() {
                 )}
                 {stagedOn && (
                   <span className="derived" style={{ flexBasis: '100%' }}>
-                    a stopping point, not a limit — tighter means more parts and more money
-                    (it keeps escalating while unmet, and only prunes once met); looser stops
-                    sooner and builds simpler, but may leave performance on the table
+                    {t('a stopping point, not a limit — tighter means more parts and more money (it keeps escalating while unmet, and only prunes once met); looser stops sooner and builds simpler, but may leave performance on the table')}
                   </span>
                 )}
-                <span className="opt-group-cap">Safety nets</span>
-                <label title="Stopband leakage beside the crossover must stay ≥20 dB below the combined — cone-breakup phase cannot be filtered away, it can only be made irrelevant in level">
+                <span className="opt-group-cap">{t('Safety nets')}</span>
+                <label title={t('Stopband leakage beside the crossover must stay ≥20 dB below the combined — cone-breakup phase cannot be filtered away, it can only be made irrelevant in level')}>
                   <input
                     type="checkbox"
                     checked={breakupGuard}
                     onChange={(e) => setBreakupGuard(e.target.checked)}
                     disabled={!!soloDriver}
                   />{' '}
-                  Keep cone breakup ≥20 dB down
+                  {t('Keep cone breakup ≥20 dB down')}
                 </label>
-                <span className="opt-group-cap">Components</span>
+                <span className="opt-group-cap">{t('Components')}</span>
                 <label
                   style={{ opacity: hasImportedCatalog() ? 1 : 0.5 }}
                   title={
                     hasImportedCatalog()
-                      ? 'Snap the passive build to purchasable catalog values, simulated with their real DCR/ESR — the fit error against real parts becomes visible instead of assumed away'
-                      : 'Import a catalog first — without one there are no real parts to snap to, so the design keeps theoretically ideal (continuous) values'
+                      ? t('Snap the passive build to purchasable catalog values, simulated with their real DCR/ESR — the fit error against real parts becomes visible instead of assumed away')
+                      : t('Import a catalog first — without one there are no real parts to snap to, so the design keeps theoretically ideal (continuous) values')
                   }
                 >
                   <input
@@ -11285,29 +11328,29 @@ export default function App() {
                     disabled={!hasImportedCatalog()}
                     onChange={(e) => setCatalogSnap(e.target.checked)}
                   />{' '}
-                  Use real catalog parts{!hasImportedCatalog() && ' (needs import)'}
+                  {t('Use real catalog parts')}{!hasImportedCatalog() && ` ${t('(needs import)')}`}
                 </label>
-                <span className="opt-group-cap">Crossover</span>
-                <label title="Pin the ACOUSTIC crossover: the frequency where the filtered drivers actually cross must land within frequency ± margin — in the design optimizer AND the component tuner. Margin 0 = exactly there (±2% search room remains).">
+                <span className="opt-group-cap">{t('Crossover')}</span>
+                <label title={t('Pin the ACOUSTIC crossover: the frequency where the filtered drivers actually cross must land within frequency ± margin — in the design optimizer AND the component tuner. Margin 0 = exactly there (±2% search room remains).')}>
                   <input
                     type="checkbox"
                     checked={xoRangeOn}
                     onChange={(e) => setXoRangeOn(e.target.checked)}
                     disabled={!!soloDriver}
                   />{' '}
-                  {threeWay ? 'Crossover points (low + high)' : 'Crossover point'}
+                  {threeWay ? t('Crossover points (low + high)') : t('Crossover point')}
                 </label>
                 {tweeterHpFloor !== null && (
                   <span
                     className="derived"
-                    title="Hard floor for the tweeter's electrical HP knee: the classic ≥2×Fs rule, read from the measured impedance peak. Knee-domain — coexists with the crossover point."
+                    title={t("Hard floor for the tweeter's electrical HP knee: the classic ≥2×Fs rule, read from the measured impedance peak. Knee-domain — coexists with the crossover point.")}
                   >
-                    tweeter kept above {tweeterHpFloor} Hz (2× its measured resonance)
+                    {t('tweeter kept above {n} Hz (2× its measured resonance)', { n: tweeterHpFloor })}
                   </span>
                 )}
                 {threeWay && (
-                  <label title="How many handover candidates the 3-way scan simulates PER crossing. Each candidate runs the full design chain inside its own slice of the search range, so the count is squared: 2 steps = 4 chains. Works pinned or unpinned — without a pin the range is the neighbourhood of the raw crossings.">
-                    Handover candidates to try
+                  <label title={t('How many handover candidates the 3-way scan simulates PER crossing. Each candidate runs the full design chain inside its own slice of the search range, so the count is squared: 2 steps = 4 chains. Works pinned or unpinned — without a pin the range is the neighbourhood of the raw crossings.')}>
+                    {t('Handover candidates to try')}
                     <select value={xo3Steps} onChange={(e) => setXo3Steps(Number(e.target.value))}>
                       {[1, 2, 3].map((n) => (
                         <option key={n} value={n}>
@@ -11321,7 +11364,7 @@ export default function App() {
                   <span
                     className="derived"
                     style={{ flexBasis: '100%' }}
-                    title="The free scan derives both handover windows from the measurements themselves: floor = 2×Fs (measured impedance) and where the upper driver reaches its own level; ceiling = the lower driver's MEASURED beaming onset from the angle files (size-formula fallback without them). A pin is the designer's explicit override of its axis — the scan then searches the pin, not this window, and warns loudly when the physics cannot deliver it."
+                    title={t("The free scan derives both handover windows from the measurements themselves: floor = 2×Fs (measured impedance) and where the upper driver reaches its own level; ceiling = the lower driver's MEASURED beaming onset from the angle files (size-formula fallback without them). A pin is the designer's explicit override of its axis — the scan then searches the pin, not this window, and warns loudly when the physics cannot deliver it.")}
                   >
                     {/* One line per handover, each naming the criterion that
                         BINDS. The old single dense line hid exactly that: a
@@ -11334,7 +11377,7 @@ export default function App() {
                       if (xoRangeOn) {
                         return (
                           <span key={side} style={{ display: 'block' }}>
-                            {naam}: pinned — your pin overrides the derived window
+                            {naam}: {t('pinned — your pin overrides the derived window')}
                           </span>
                         );
                       }
@@ -11350,7 +11393,7 @@ export default function App() {
                             // W-M's ceiling comes from the woofer, M-T's from the mid.
                             cabinetInfo.offBaffle.includes(side === 'low' ? 'low' : 'mid'),
                           )}
-                          {geen && <strong> ⚠ no room — these two cannot meet</strong>}
+                          {geen && <strong> ⚠ {t('no room — these two cannot meet')}</strong>}
                         </span>
                       );
                     })}
@@ -11359,9 +11402,9 @@ export default function App() {
                 {xoRangeOn && threeWay && (
                   <span
                     className="inline-num"
-                    title="3-way: the LOW handover (woofer→mid) — the acoustic crossing must land within frequency ± margin, in the design chain AND the component tuner."
+                    title={t('3-way: the LOW handover (woofer→mid) — the acoustic crossing must land within frequency ± margin, in the design chain AND the component tuner.')}
                   >
-                    {'low '}
+                    {t('low') + ' '}
                     <input
                       type="number"
                       min={150}
@@ -11385,9 +11428,9 @@ export default function App() {
                 {xoRangeOn && (
                   <span
                     className="inline-num"
-                    title="The ACOUSTIC handover — where the filtered drivers actually cross — must land within frequency ± margin. The electrical knees stay free (with a hot tweeter they sit far above the acoustic crossing)."
+                    title={t('The ACOUSTIC handover — where the filtered drivers actually cross — must land within frequency ± margin. The electrical knees stay free (with a hot tweeter they sit far above the acoustic crossing).')}
                   >
-                    {threeWay ? 'high ' : ''}
+                    {threeWay ? t('high') + ' ' : ''}
                     <input
                       type="number"
                       min={300}
@@ -11415,28 +11458,28 @@ export default function App() {
                         <select
                           value={xoScanSteps}
                           onChange={(e) => setXoScanSteps(Number(e.target.value))}
-                          title="How many crossover candidates the scan simulates across the pinned range (evenly spaced, your pin always included). Every candidate runs the FULL design chain, so compute grows about linearly — the worker pool runs several at once, but 9 steps still takes a multiple of 3. More steps = a finer sweep of the handover region."
+                          title={t('How many crossover candidates the scan simulates across the pinned range (evenly spaced, your pin always included). Every candidate runs the FULL design chain, so compute grows about linearly — the worker pool runs several at once, but 9 steps still takes a multiple of 3. More steps = a finer sweep of the handover region.')}
                         >
                           {[3, 5, 7, 9].map((n) => (
                             <option key={n} value={n}>
-                              {n} steps
+                              {t('{n} steps', { n })}
                             </option>
                           ))}
                         </select>
                         {xoScanSteps > 3 && (
-                          <span className="derived"> ⏱ ~{Math.ceil(xoScanSteps / 3)}× runtime</span>
+                          <span className="derived"> ⏱ ~{Math.ceil(xoScanSteps / 3)}× {t('runtime')}</span>
                         )}
                       </>
                     )}
                   </span>
                 )}
-                <span className="opt-group-cap">Driver limits</span>
+                <span className="opt-group-cap">{t('Driver limits')}</span>
                 {threeWay && !physWin3?.lowCeilMeasured &&
                   pistonDiameterMm(Number(sdCm2.low)) === null && (
-                  <label title="Woofer nominal size — sets the W-M handover's beaming CEILING (a cone is practically usable to ~3× its beaming onset), the mirror of the mid-size rule for the high crossing. With the 2×Fs floor from the measured mid impedance this gives the free scan a physics window instead of a guess.">
-                    Woofer size (W-M ceiling)
+                  <label title={t("Woofer nominal size — sets the W-M handover's beaming CEILING (a cone is practically usable to ~3× its beaming onset), the mirror of the mid-size rule for the high crossing. With the 2×Fs floor from the measured mid impedance this gives the free scan a physics window instead of a guess.")}>
+                    {t('Woofer size (W-M ceiling)')}
                     <select value={wooferSizeInch} onChange={(e) => setWooferSizeInch(e.target.value)}>
-                      <option value="">unknown</option>
+                      <option value="">{t('unknown')}</option>
                       {['5', '6.5', '8', '10', '12', '15'].map((v) => (
                         <option key={v} value={v}>
                           {v}"
@@ -11447,7 +11490,7 @@ export default function App() {
                 )}
                 {threeWay && (
                   <label title="Directivity philosophy for the MEASURED beaming ceiling — the on-axis minus 30° difference at which a driver counts as beaming. Default is the empirical 4 dB, NOT the theoretically stricter ka = 2, and that is deliberate: the ka figures come from an ideal piston in an infinite baffle, while a real measured 0−30° difference at low frequency is mostly baffle diffraction. Measured on a real 3-way set, ka = 2 puts the woofer&apos;s ceiling at 304 Hz — below the mid&apos;s own 2×Fs floor — declaring an ordinary design impossible; 4 dB gives 628 Hz. The strict tiers stay available for a conservative philosophy or clean anechoic data. (For reference: &apos;−6 dB at 30°&apos; is ka = 4.43, past every published limit — that defines BEAMWIDTH, not a crossover ceiling.)">
-                    When a cone counts as beaming
+                    {t('When a cone counts as beaming')}
                     <select value={kaTier} onChange={(e) => setKaTier(e.target.value as KaTier)}>
                       {(Object.keys(KA_TIERS) as KaTier[]).map((k) => (
                         <option key={k} value={k}>
@@ -11460,20 +11503,20 @@ export default function App() {
                 {threeWay && (
                   <span
                     className="inline-num"
-                    title="How many wavelengths of DRIVER SPACING the design tolerates. The spacing itself is derived from the driver positions you enter under Setup → Cabinet & drivers; two drivers half a wavelength apart already put a null in the vertical response. The sources genuinely disagree here and they optimise different things, so this is the designer's call."
+                    title={t("How many wavelengths of DRIVER SPACING the design tolerates. The spacing itself is derived from the driver positions you enter under Setup → Cabinet & drivers; two drivers half a wavelength apart already put a null in the vertical response. The sources genuinely disagree here and they optimise different things, so this is the designer's call.")}
                   >
-                    {'Lobing: how strict '}
+                    {t('Lobing: how strict') + ' '}
                     <select value={ctcK} onChange={(e) => setCtcK(e.target.value)}>
-                      <option value="auto">auto — from driver geometry</option>
-                      <option value="0.25">0.25 — point source</option>
-                      <option value="0.5">0.5 — no forward null</option>
+                      <option value="auto">{t('auto — from driver geometry')}</option>
+                      <option value="0.25">{t('0.25 — point source')}</option>
+                      <option value="0.5">{t('0.5 — no forward null')}</option>
                       <option value="1">1.0 — Dickason</option>
-                      <option value="1.2">1.2 — Saunisto (power response)</option>
+                      <option value="1.2">{t('1.2 — Saunisto (power response)')}</option>
                     </select>
                     {ctcK === 'auto' && (
                       <span
                         className="derived"
-                        title="Resolved per pair from the positions you entered: horizontally separated drivers lobe ACROSS the seats (strict, k 0.5 — no forward null); vertically separated ones lobe toward floor and ceiling, where Dickason's k 1.0 is the published anchor. Mixed axes interpolate. The explicit values remain as overrides."
+                        title={t("Resolved per pair from the positions you entered: horizontally separated drivers lobe ACROSS the seats (strict, k 0.5 — no forward null); vertically separated ones lobe toward floor and ceiling, where Dickason's k 1.0 is the published anchor. Mixed axes interpolate. The explicit values remain as overrides.")}
                       >
                         {' '}
                         {(
@@ -11486,10 +11529,10 @@ export default function App() {
                           .map(([naam, v]) => {
                             const k2 = lobingKFor(v!.dxMm, v!.dyMm);
                             const as2 =
-                              Math.abs(v!.dyMm) >= Math.abs(v!.dxMm) ? 'vertical' : 'horizontal';
+                              Math.abs(v!.dyMm) >= Math.abs(v!.dxMm) ? t('vertical') : t('horizontal');
                             return `${naam} k ${k2.toFixed(2)} (${as2})`;
                           })
-                          .join(' · ') || 'enter driver positions to resolve'}
+                          .join(' · ') || t('enter driver positions to resolve')}
                       </span>
                     )}
                     {cabinetInfo.ctcLow !== null || cabinetInfo.ctcHigh !== null ? (
@@ -11503,13 +11546,13 @@ export default function App() {
                         mm
                       </span>
                     ) : (
-                      <span className="derived"> — enter driver positions to apply</span>
+                      <span className="derived"> — {t('enter driver positions to apply')}</span>
                     )}
                   </span>
                 )}
                 {threeWay && (
-                  <label title="Cone breakup as an upper limit. A resonance at f_b is excited as the THIRD harmonic of a fundamental at f_b/3 (Purifi measured exactly this: breakups at 5 and 10 kHz produce HD3 peaks at 1.6 and 3.3 kHz), so the distortion penalty lands more than an octave BELOW the peak. A notch does not repair it — it attenuates the fundamental at the breakup, not the harmonics arriving there from lower fundamentals. NOTE: no published algorithm exists for finding breakup in an SPL curve; this is our own criterion, which is why it is switchable and the detected frequency is shown.">
-                    Stay this far below cone breakup
+                  <label title={t('Cone breakup as an upper limit. A resonance at f_b is excited as the THIRD harmonic of a fundamental at f_b/3 (Purifi measured exactly this: breakups at 5 and 10 kHz produce HD3 peaks at 1.6 and 3.3 kHz), so the distortion penalty lands more than an octave BELOW the peak. A notch does not repair it — it attenuates the fundamental at the breakup, not the harmonics arriving there from lower fundamentals. NOTE: no published algorithm exists for finding breakup in an SPL curve; this is our own criterion, which is why it is switchable and the detected frequency is shown.')}>
+                    {t('Stay this far below cone breakup')}
                     <select
                       value={breakupLimitOn ? breakupHarmonic : 'off'}
                       onChange={(e) => {
@@ -11520,18 +11563,18 @@ export default function App() {
                         }
                       }}
                     >
-                      <option value="off">off</option>
+                      <option value="off">{t('off')}</option>
                       <option value="3">f_b / 3 (HD3)</option>
-                      <option value="5">f_b / 5 (HD5, hard cones)</option>
+                      <option value="5">{t('f_b / 5 (HD5, hard cones)')}</option>
                     </select>
                   </label>
                 )}
                 {threeWay && (
                   <span
                     className="inline-num"
-                    title="The LEVEL this design must reach — the level-aware version of 'cross a tweeter at 2-3x Fs'. SPL = 108.4 + 20log(f²·Sd·Xmax) in half space, so a driver runs out of linear travel below f = sqrt(10^((L-108.4)/20)/(Sd·Xmax)) and the crossover floor moves up with the level you ask for. Sd and Xmax themselves are DRIVER FACTS and live on the Setup tab; this is the only part of the criterion that is a design decision."
+                    title={t("The LEVEL this design must reach — the level-aware version of 'cross a tweeter at 2-3x Fs'. SPL = 108.4 + 20log(f²·Sd·Xmax) in half space, so a driver runs out of linear travel below f = sqrt(10^((L-108.4)/20)/(Sd·Xmax)) and the crossover floor moves up with the level you ask for. Sd and Xmax themselves are DRIVER FACTS and live on the Setup tab; this is the only part of the criterion that is a design decision.")}
                   >
-                    {'Design for '}
+                    {t('Design for') + ' '}
                     <input
                       type="number"
                       min={70}
@@ -11546,22 +11589,21 @@ export default function App() {
                 {threeWay && (
                   <span className="derived" style={{ flexBasis: '100%' }}>
                     {sdCm2.mid && sdCm2.high
-                      ? `excursion floor: mid ${Math.round(
+                      ? `${t('excursion floor: mid')} ${Math.round(
                           excursionFloorHz(Number(sdCm2.mid), Number(xmaxMm.mid), Number(excursionSpl), {
                             count: Number(cabinet.drivers.mid.count) || 1,
                           }) ?? 0,
-                        )} Hz · tweeter ${Math.round(
+                        )} Hz · ${t('tweeter')} ${Math.round(
                           excursionFloorHz(Number(sdCm2.high), Number(xmaxMm.high), Number(excursionSpl), {
                             count: Number(cabinet.drivers.high.count) || 1,
                           }) ?? 0,
-                        )} Hz — from the Sd/Xmax on the Setup tab`
-                      : 'enter Sd and Xmax per driver on the Setup tab to use this criterion'}
+                        )} ${t('Hz — from the Sd/Xmax on the Setup tab')}`
+                      : t('enter Sd and Xmax per driver on the Setup tab to use this criterion')}
                   </span>
                 )}
                 {vfEqBands > 4 && (
                   <span className="derived">
-                    {vfEqBands} bands = {3 + 6 * vfEqBands} search dimensions — slower, may need a
-                    second run
+                    {t('{a} bands = {b} search dimensions — slower, may need a second run', { a: vfEqBands, b: 3 + 6 * vfEqBands })}
                   </span>
                 )}
               </div>
@@ -11578,30 +11620,30 @@ export default function App() {
             )}
             {vfOpt && (
               <p className="vf-opt-summary">
-                Optimizer chose: LP {vfOpt.structure.wooferLpKind}
+                {t('Optimizer chose:')} LP {vfOpt.structure.wooferLpKind}
                 {vfOpt.structure.wooferLpOrder} ({vfOpt.structure.wooferLpOrder * 6} dB/oct) @{' '}
                 {Math.round(vfOpt.specs.woofer.lp.freq)} Hz · HP {vfOpt.structure.tweeterHpKind}
                 {vfOpt.structure.tweeterHpOrder} ({vfOpt.structure.tweeterHpOrder * 6} dB/oct) @{' '}
-                {Math.round(vfOpt.specs.tweeter.hp.freq)} Hz · tweeter{' '}
-                {vfOpt.specs.tweeter.gainDb.toFixed(1)} dB · polarity{' '}
-                {vfOpt.inverted ? 'inverted' : 'normal'} · EQ used:{' '}
-                {vfOpt.bandsUsed.woofer}+{vfOpt.bandsUsed.tweeter} — ripple{' '}
+                {Math.round(vfOpt.specs.tweeter.hp.freq)} Hz · {t('tweeter')}{' '}
+                {vfOpt.specs.tweeter.gainDb.toFixed(1)} dB · {t('polarity')}{' '}
+                {vfOpt.inverted ? t('inverted') : t('normal')} · {t('EQ used:')}{' '}
+                {vfOpt.bandsUsed.woofer}+{vfOpt.bandsUsed.tweeter} — {t('ripple')}{' '}
                 {vfOpt.before.responseStdDb.toFixed(2)} →{' '}
-                <strong>{vfOpt.after.responseStdDb.toFixed(2)} dB</strong> · phase error{' '}
+                <strong>{vfOpt.after.responseStdDb.toFixed(2)} dB</strong> · {t('phase error')}{' '}
                 {vfOpt.before.avgPhaseErrDeg.toFixed(0)}° →{' '}
-                <strong>{vfOpt.after.avgPhaseErrDeg.toFixed(1)}°</strong> · score{' '}
+                <strong>{vfOpt.after.avgPhaseErrDeg.toFixed(1)}°</strong> · {t('score')}{' '}
                 {vfOpt.before.integrationScore?.toFixed(0)} →{' '}
                 <strong>{vfOpt.after.integrationScore?.toFixed(0)}</strong>
                 {vfOpt.after.powerStdDb !== null && vfOpt.before.powerStdDb !== null && (
                   <>
-                    {' '}· power ripple {vfOpt.before.powerStdDb.toFixed(2)} →{' '}
+                    {' '}· {t('power ripple')} {vfOpt.before.powerStdDb.toFixed(2)} →{' '}
                     <strong>{vfOpt.after.powerStdDb.toFixed(2)} dB</strong>
                   </>
                 )}
                 {vfRunStats && (
                   <>
-                    {' '}· {vfRunStats.rounds} rounds ·{' '}
-                    {vfRunStats.evals.toLocaleString('nl-NL')} sims
+                    {' '}· {vfRunStats.rounds} {t('rounds')} ·{' '}
+                    {vfRunStats.evals.toLocaleString('nl-NL')} {t('sims')}
                   </>
                 )}
               </p>
@@ -11609,9 +11651,9 @@ export default function App() {
             {vfOpt && vfOpt.stages.length > 0 && (
               <p
                 className="vf-opt-summary sub"
-                title="What each escalation stage of the staged design bought (ripple / phase after that stage)"
+                title={t('What each escalation stage of the staged design bought (ripple / phase after that stage)')}
               >
-                Stages:{' '}
+                {t('Stages:')}{' '}
                 {vfOpt.stages
                   .map((s) => `${s.label} → ${s.rippleDb.toFixed(2)} dB / ${s.phaseDeg.toFixed(1)}°`)
                   .join('  ·  ')}
@@ -11629,15 +11671,15 @@ export default function App() {
                 onClick={() => setVfCollapsed((c) => !c)}
                 title={
                   vfCollapsed
-                    ? 'Show the per-driver filter bands (HP/LP/EQ)'
-                    : 'Hide the per-driver filter bands'
+                    ? t('Show the per-driver filter bands (HP/LP/EQ)')
+                    : t('Hide the per-driver filter bands')
                 }
               >
                 <span className="vf-collapse-caret">{vfCollapsed ? '▸' : '▾'}</span>
-                <span>Filter bands</span>
+                <span>{t('Filter bands')}</span>
                 {vfCollapsed && (
                   <span className="derived vf-collapse-summary">
-                    {vfBypass ? 'muted · ' : ''}
+                    {vfBypass ? t('muted') + ' · ' : ''}
                     {soloDriver
                       ? filterSummaryLine(vFilters[soloDriver], soloDriver)
                       : [
@@ -11652,9 +11694,7 @@ export default function App() {
               </button>
               {!vfCollapsed && synthMode === 'acoustic' && (
                 <p className="derived vf-mode-hint">
-                  Build mode is “Acoustic result”: EQ values here are seeds — a passive build
-                  re-tunes each enabled band's freq/gain/Q to flatten the measured driver.
-                  Switch to “Filter curve” to build exactly what you draw.
+                  {t("Build mode is “Acoustic result”: EQ values here are seeds — a passive build re-tunes each enabled band's freq/gain/Q to flatten the measured driver. Switch to “Filter curve” to build exactly what you draw.")}
                 </p>
               )}
               {!vfCollapsed && (
@@ -11663,7 +11703,7 @@ export default function App() {
                       would edit a silent ghost. */}
                   {soloDriver !== 'tweeter' && (
                     <DriverFilterControls
-                      title={threeWay ? 'Woofer' : 'Woofer / mid'}
+                      title={threeWay ? t('Woofer') : t('Woofer / mid')}
                       accentVar="--viz-woofer"
                       spec={vFilters.woofer}
                       onChange={(woofer) => setVFilters((p) => ({ ...p, woofer }))}
@@ -11671,7 +11711,7 @@ export default function App() {
                   )}
                   {threeWay && (
                     <DriverFilterControls
-                      title="Midrange"
+                      title={t('Midrange')}
                       accentVar="--viz-mid"
                       spec={vFilters.mid}
                       onChange={(mid) => setVFilters((p) => ({ ...p, mid }))}
@@ -11679,7 +11719,7 @@ export default function App() {
                   )}
                   {soloDriver !== 'woofer' && (
                     <DriverFilterControls
-                      title="Tweeter"
+                      title={t('Tweeter')}
                       accentVar="--viz-tweeter"
                       spec={vFilters.tweeter}
                       onChange={(tweeter) => setVFilters((p) => ({ ...p, tweeter }))}
@@ -11692,20 +11732,20 @@ export default function App() {
 
           {zModels.length > 0 && (
             <div className={`panel${uiMode === 'guided' ? ' expert-only' : ''}`}>
-              <h2>Passive synthesis</h2>
+              <h2>{t('Passive synthesis')}</h2>
               <p className="sub" style={{ marginBottom: '0.8rem' }}>
                 {synthMode === 'filter'
-                  ? 'Builds YOUR drawn curve: the HP/LP knees and EQ bands above are the target, reproduced with real components on the measured impedances.'
-                  : 'Re-designs while building: real components are fitted so the MEASURED driver comes out flat against the ideal HP/LP shape. Enabled EQ bands only grant correction slots (their freq/gain/Q are re-tuned) — the result deliberately differs from the virtual sim above.'}
+                  ? t('Builds YOUR drawn curve: the HP/LP knees and EQ bands above are the target, reproduced with real components on the measured impedances.')
+                  : t('Re-designs while building: real components are fitted so the MEASURED driver comes out flat against the ideal HP/LP shape. Enabled EQ bands only grant correction slots (their freq/gain/Q are re-tuned) — the result deliberately differs from the virtual sim above.')}
               </p>
               <div className="row" style={{ marginBottom: '0.9rem' }}>
                 <select
                   value={synthMode}
                   onChange={(e) => setSynthMode(e.target.value as 'filter' | 'acoustic')}
-                  title="What this build optimises for — same setting as the dropdown next to Optimize"
+                  title={t('What this build optimises for — same setting as the dropdown next to Optimize')}
                 >
-                  <option value="acoustic">Acoustic result (flatten measured driver)</option>
-                  <option value="filter">Filter curve (reproduce target exactly)</option>
+                  <option value="acoustic">{t('Acoustic result (flatten measured driver)')}</option>
+                  <option value="filter">{t('Filter curve (reproduce target exactly)')}</option>
                 </select>
                 <button
                   type="button"
@@ -11724,16 +11764,16 @@ export default function App() {
                   disabled={synthBusy}
                   title={
                     threeWay
-                      ? "3-way: fits three branches on the measured impedances — woofer LP, mid BANDPASS (hp+lp), tweeter HP — and lands them as one network in a new 'Passive build' tab. Per-branch fits only: the assembled component tune (pairs) is a later step."
+                      ? t("3-way: fits three branches on the measured impedances — woofer LP, mid BANDPASS (hp+lp), tweeter HP — and lands them as one network in a new 'Passive build' tab. Per-branch fits only: the assembled component tune (pairs) is a later step.")
                       : soloDriver
-                        ? "Single-driver mode: build the solo topology from the enabled cut bands (series traps / shelf groups + gated Zobel) with textbook seed values — lands in a new 'Solo build' tab; ⚙ Optimize components fits the values"
-                        : "Fit real components and simulate the result — lands in a new 'Passive build' tab on the Network page. Follow up with ⚙ Optimize components there to tune the assembled sum (phase!)."
+                        ? t("Single-driver mode: build the solo topology from the enabled cut bands (series traps / shelf groups + gated Zobel) with textbook seed values — lands in a new 'Solo build' tab; ⚙ Optimize components fits the values")
+                        : t("Fit real components and simulate the result — lands in a new 'Passive build' tab on the Network page. Follow up with ⚙ Optimize components there to tune the assembled sum (phase!).")
                   }
                 >
-                  Build passive filter
+                  {t('Build passive filter')}
                 </button>
                 <span className="derived">
-                  uses the priority setting from ⚙ Settings
+                  {t('uses the priority setting from ⚙ Settings')}
                 </span>
               </div>
               {synth?.error && <p className="error">{synth.error}</p>}
@@ -11751,12 +11791,12 @@ export default function App() {
                           />
                           {slot === 'woofer'
                             ? synth.mid
-                              ? 'Woofer'
-                              : 'Woofer / mid'
+                              ? t('Woofer')
+                              : t('Woofer / mid')
                             : slot === 'mid'
-                              ? 'Midrange (bandpass)'
-                              : 'Tweeter'}{' '}
-                          branch
+                              ? t('Midrange (bandpass)')
+                              : t('Tweeter')}{' '}
+                          {t('branch')}
                         </h3>
                         <table>
                           <tbody>
@@ -11774,8 +11814,8 @@ export default function App() {
                           </tbody>
                         </table>
                         <p className="synth-fit">
-                          fit: {r.rmsDb.toFixed(2)} dB / {r.rmsDeg.toFixed(1)}° RMS
-                          {r.converged ? '' : ' (not converged — treat as rough)'}
+                          {t('fit:')} {r.rmsDb.toFixed(2)} dB / {r.rmsDeg.toFixed(1)}° RMS
+                          {r.converged ? '' : ` ${t('(not converged — treat as rough)')}`}
                         </p>
                       </div>
                     );
@@ -11792,13 +11832,13 @@ export default function App() {
 
             {designTab === 'network' && !result && (
               <p className="sub pane-hint">
-                No network to edit yet — load measurements in the Import tab first.
+                {t('No network to edit yet — load measurements in the Import tab first.')}
               </p>
             )}
             {designTab === 'network' && result && (
         <>
           <div className="panel">
-            <h2>Network editor (passive)</h2>
+            <h2>{t('Network editor (passive)')}</h2>
             <p
               className="sub sim-source"
               title={t("The sim's precedence: an active editor network wins over a vxp variant, which wins over the virtual filters, which win over raw drivers. Every chart on the right shows THIS.")}
@@ -11806,25 +11846,22 @@ export default function App() {
               {t('Charts show:')} <strong>{simSource}</strong>
             </p>
             <p className="sub" style={{ marginBottom: '0.8rem' }}>
-              Drag parts, draw wires, edit values — the schematic IS the network: parts connect
-              where their points touch, and every change re-solves live on the measured
-              impedances. Inductors carry DCR, capacitors ESR. Drivers are a list (N-way ready);
-              the summed result uses the mid/tweeter slots for now.
+              {t('Drag parts, draw wires, edit values — the schematic IS the network: parts connect where their points touch, and every change re-solves live on the measured impedances. Inductors carry DCR, capacitors ESR.')}
             </p>
             <div className="tool-groups" style={{ marginBottom: '0.8rem' }}>
               <div className={`tool-group${uiMode === 'guided' ? ' expert-only' : ''}`}>
-                <span className="tool-group-label">Start</span>
+                <span className="tool-group-label">{t('Start')}</span>
                 <div className="tool-group-body">
                   <button
                     type="button"
                     onClick={importNetworkFromVariant}
                     disabled={!project || xoName === 'none'}
-                    title={project ? 'Open the selected crossover variant in a new tab' : 'Load a vxp project first'}
+                    title={project ? t('Open the selected crossover variant in a new tab') : t('Load a vxp project first')}
                   >
-                    Import variant {xoName !== 'none' ? `(${xoName})` : ''}
+                    {t('Import variant')} {xoName !== 'none' ? `(${xoName})` : ''}
                   </button>
-                  <label className="file-button" title="Open an exported .adsfilter.json in a new tab">
-                    Import filter
+                  <label className="file-button" title={t('Open an exported .adsfilter.json in a new tab')}>
+                    {t('Import filter')}
                     <input
                       type="file"
                       accept=".json,.adsfilter"
@@ -11834,7 +11871,7 @@ export default function App() {
                   </label>
                   <span
                     className="template-picker"
-                    title="Start a fresh network in a new tab from a generic template — plausible starting values you tune from, the counterpart to Import and the optimizer"
+                    title={t('Start a fresh network in a new tab from a generic template — plausible starting values you tune from, the counterpart to Import and the optimizer')}
                   >
                     <select
                       value={threeWay ? 3 : templateWays}
@@ -11842,13 +11879,13 @@ export default function App() {
                       disabled={threeWay}
                       title={
                         threeWay
-                          ? '3-way mode: the template follows the loaded branch set (a 2-way template would silently skip the mid)'
-                          : 'Number of ways — 3-way templates need all three branches loaded'
+                          ? t('3-way mode: the template follows the loaded branch set (a 2-way template would silently skip the mid)')
+                          : t('Number of ways — 3-way templates need all three branches loaded')
                       }
                     >
-                      <option value={2}>2-way</option>
+                      <option value={2}>{t('2-way')}</option>
                       <option value={3} disabled={!threeWay}>
-                        {threeWay ? '3-way' : '3-way (load three drivers)'}
+                        {threeWay ? t('3-way') : t('3-way (load three drivers)')}
                       </option>
                     </select>
                     <select
@@ -11857,15 +11894,15 @@ export default function App() {
                       disabled={!supportsWayCount(templateWays) || !!soloDriver}
                       title={
                         soloDriver
-                          ? 'Single-driver mode — only the blank scaffold applies (LP/HP templates need two branches)'
+                          ? t('Single-driver mode — only the blank scaffold applies (LP/HP templates need two branches)')
                           : threeWay
-                            ? 'Filter order / slope per branch (mid = bandpass, twice the parts) — generic Butterworth-style seed values at 600 / 3000 Hz'
-                            : 'Filter order / slope for both branches — generic Butterworth-style seed values'
+                            ? t('Filter order / slope per branch (mid = bandpass, twice the parts) — generic Butterworth-style seed values at 600 / 3000 Hz')
+                            : t('Filter order / slope for both branches — generic Butterworth-style seed values')
                       }
                     >
-                      {TEMPLATE_ORDERS.map((t) => (
-                        <option key={t.order} value={t.order}>
-                          {t.label}
+                      {TEMPLATE_ORDERS.map((tp) => (
+                        <option key={tp.order} value={tp.order}>
+                          {t(tp.label)}
                         </option>
                       ))}
                     </select>
@@ -11874,21 +11911,21 @@ export default function App() {
                       onClick={startNetworkFromTemplate}
                       disabled={!supportsWayCount(templateWays)}
                     >
-                      New from template
+                      {t('New from template')}
                     </button>
                   </span>
                 </div>
               </div>
               <div className={`tool-group${uiMode === 'guided' ? ' expert-only' : ''}`}>
-                <span className="tool-group-label">Export</span>
+                <span className="tool-group-label">{t('Export')}</span>
                 <div className="tool-group-body">
                   <button
                     type="button"
                     onClick={exportActiveFilter}
                     disabled={!activeDesign}
-                    title="Download the active tab as a standalone .adsfilter.json — share it or bring it into another project"
+                    title={t('Download the active tab as a standalone .adsfilter.json — share it or bring it into another project')}
                   >
-                    Export filter
+                    {t('Export filter')}
                   </button>
                   <button
                     type="button"
@@ -11896,33 +11933,33 @@ export default function App() {
                     disabled={designs.length === 0}
                     title="Export ALL network tabs as a VituixCAD project folder — the .vxp (each tab a crossover variant CROSSOVER, CROSSOVER1, …) PLUS every measurement/impedance file, written together so VituixCAD opens it without hunting. Pick a folder when asked (Chrome/Edge). VituixCAD reconstructs the phase itself (MinimumPhase=True) and every driver carries its measured excess-phase delay (earliest driver 0), so its simulation matches ours — two-way and three-way alike."
                   >
-                    Export .vxp
+                    {t('Export .vxp')}
                   </button>
                   <button
                     type="button"
                     onClick={exportReport}
                     disabled={!activeDesign}
-                    title="Export this design as a printable HTML report (A4): summary, the charts you have open, the schematic and the BOM with prices. The file is ALSO a filter file — Import filter reads it back, so a report can be mailed, printed and compared."
+                    title={t('Export this design as a printable HTML report (A4): summary, the charts you have open, the schematic and the BOM with prices. The file is ALSO a filter file — Import filter reads it back, so a report can be mailed, printed and compared.')}
                   >
-                    Export report
+                    {t('Export report')}
                   </button>
                 </div>
               </div>
               <div className={`tool-group${uiMode === 'guided' ? ' expert-only' : ''}`}>
-                <span className="tool-group-label">Catalog</span>
+                <span className="tool-group-label">{t('Catalog')}</span>
                 <div className="tool-group-body">
                   <button
                     type="button"
                     onClick={exportCatalog}
-                    title="Download the component catalog as an editable JSON template — add your own brands/series and import it back"
+                    title={t('Download the component catalog as an editable JSON template — add your own brands/series and import it back')}
                   >
-                    Export
+                    {t('Export')}
                   </button>
                   <label
                     className="file-button"
-                    title="Import a component-catalog JSON: your series appear in the inspector next to the built-in ones (persisted across sessions)"
+                    title={t('Import a component-catalog JSON: your series appear in the inspector next to the built-in ones (persisted across sessions)')}
                   >
-                    Import
+                    {t('Import')}
                     <input
                       type="file"
                       accept=".json,.adscatalog"
@@ -11933,14 +11970,14 @@ export default function App() {
                   <button
                     type="button"
                     onClick={() => setCatalogMgrOpen(true)}
-                    title="Add, edit or remove exact SKUs (values, DCR/ESR, prices, tiers) without leaving the app"
+                    title={t('Add, edit or remove exact SKUs (values, DCR/ESR, prices, tiers) without leaving the app')}
                   >
-                    🗂 Manage…
+                    🗂 {t('Manage…')}
                   </button>
                 </div>
               </div>
               <div className={`tool-group${uiMode === 'guided' ? ' expert-only' : ''}`}>
-                <span className="tool-group-label">Tools</span>
+                <span className="tool-group-label">{t('Tools')}</span>
                 <div className="tool-group-body">
                   <button
                     type="button"
@@ -11948,13 +11985,13 @@ export default function App() {
                     disabled={!activeDesign || netOptBusy || !sim || zModels.length === 0}
                     title={
                       threeWay
-                        ? '3-way: re-fit the UNLOCKED component values against the measured three-branch sum — both adjacent crossings are guarded (valley, protection, dead-branch), phase is judged per pair'
+                        ? t('3-way: re-fit the UNLOCKED component values against the measured three-branch sum — both adjacent crossings are guarded (valley, protection, dead-branch), phase is judged per pair')
                         : soloDriver
-                          ? 'Single-driver mode: re-fit the UNLOCKED component values against the measured driver — objective is branch flatness (+ amp-load floor); crossover terms do not apply'
-                          : 'Re-fit the UNLOCKED component values of the active tab against the measured response — 🔒 parts keep their value'
+                          ? t('Single-driver mode: re-fit the UNLOCKED component values against the measured driver — objective is branch flatness (+ amp-load floor); crossover terms do not apply')
+                          : t('Re-fit the UNLOCKED component values of the active tab against the measured response — 🔒 parts keep their value')
                     }
                   >
-                    {netOptBusy ? 'Tuning…' : '⚙ Optimize components'}
+                    {netOptBusy ? t('Tuning…') : `⚙ ${t('Optimize components')}`}
                   </button>
                   <button
                     type="button"
@@ -11963,9 +12000,9 @@ export default function App() {
                       setTrapOpen(true);
                     }}
                     disabled={!activeDesign || zModels.length === 0}
-                    title="Add an LCR notch (series trap across a driver) to tame a peak — enter frequency, depth and Q; values follow from the measured impedance and the result shows live"
+                    title={t('Add an LCR notch (series trap across a driver) to tame a peak — enter frequency, depth and Q; values follow from the measured impedance and the result shows live')}
                   >
-                    ➕ Add notch
+                    ➕ {t('Add notch')}
                   </button>
                   <button
                     type="button"
@@ -11982,52 +12019,52 @@ export default function App() {
                       setNetOptNote('Layout tidied — same netlist, fresh placement (Undo to revert).');
                     }}
                     disabled={!activeDesign}
-                    title="Redraw this schematic from its netlist: series path as a bus, chains hanging down, branches stacked with air — electrically identical, undo-able. Fixes cramped layouts from older exports."
+                    title={t('Redraw this schematic from its netlist: series path as a bus, chains hanging down, branches stacked with air — electrically identical, undo-able. Fixes cramped layouts from older exports.')}
                   >
-                    Tidy layout
+                    {t('Tidy layout')}
                   </button>
                   <button
                     type="button"
                     onClick={() => setShowTargets(true)}
-                    title="What was this network built FOR? The virtual target design (HP/LP kind, order, knees, EQ bands) plus the MEASURED acoustic slopes beside the crossing — electrical component count never equals acoustic order."
+                    title={t('What was this network built FOR? The virtual target design (HP/LP kind, order, knees, EQ bands) plus the MEASURED acoustic slopes beside the crossing — electrical component count never equals acoustic order.')}
                   >
-                    🎯 Targets
+                    🎯 {t('Targets')}
                   </button>
                 </div>
               </div>
               <div className={`tool-group${uiMode === 'guided' ? ' expert-only' : ''}`}>
-                <span className="tool-group-label">Simulation</span>
+                <span className="tool-group-label">{t('Simulation')}</span>
                 <div className="tool-group-body">
-                  <label title="Feed the active tab's network into the simulation instead of the selected vxp variant — every edit re-solves live">
+                  <label title={t("Feed the active tab's network into the simulation instead of the selected vxp variant — every edit re-solves live")}>
                     <input
                       type="checkbox"
                       checked={networkActive}
                       disabled={!schematic}
                       onChange={(e) => setNetworkActive(e.target.checked)}
                     />{' '}
-                    Use in simulation
+                    {t('Use in simulation')}
                   </label>
                   {designs.length > 1 && (
-                    <label title="Show the other tabs' summed responses as dashed ghost curves in the SPL chart">
+                    <label title={t("Show the other tabs' summed responses as dashed ghost curves in the SPL chart")}>
                       <input
                         type="checkbox"
                         checked={compareTabs}
                         onChange={(e) => setCompareTabs(e.target.checked)}
                       />{' '}
-                      Compare tabs
+                      {t('Compare tabs')}
                     </label>
                   )}
-                  <label title="Worst-case envelope around the combined curve when every physical R/L/C lands within its tolerance — what building with real parts can do to this design. Numbers in the SPL strip; the tooltip there ranks the most sensitive parts.">
+                  <label title={t('Worst-case envelope around the combined curve when every physical R/L/C lands within its tolerance — what building with real parts can do to this design. Numbers in the SPL strip; the tooltip there ranks the most sensitive parts.')}>
                     <input
                       type="checkbox"
                       checked={tolOn}
                       onChange={(e) => setTolOn(e.target.checked)}
                     />{' '}
-                    Tolerance band ±
+                    {t('Tolerance band')} ±
                     <select
                       value={tolPct}
                       onChange={(e) => setTolPct(Number(e.target.value))}
-                      title="Component tolerance class: 2% (measured/selected parts), 5% (good film caps & air coils), 10% (electrolytics, budget parts)"
+                      title={t('Component tolerance class: 2% (measured/selected parts), 5% (good film caps & air coils), 10% (electrolytics, budget parts)')}
                     >
                       <option value={2}>2%</option>
                       <option value={5}>5%</option>
@@ -12044,13 +12081,13 @@ export default function App() {
             )}
             {netOptDiff && netOptDiff.length > 0 && (
               <details className="tune-diff">
-                <summary>{netOptDiff.length} value changes — old → new</summary>
+                <summary>{t('{n} value changes — old → new', { n: netOptDiff.length })}</summary>
                 <table className="scan-table">
                   <thead>
                     <tr>
-                      <th>part</th>
-                      <th>old</th>
-                      <th>new</th>
+                      <th>{t('part')}</th>
+                      <th>{t('old')}</th>
+                      <th>{t('new')}</th>
                       <th>Δ</th>
                     </tr>
                   </thead>
@@ -12542,9 +12579,9 @@ export default function App() {
           {result && !designShaped && (
               <div className="panel">
                 <div className="verdict no-reference">
-                  <strong>No filter in the simulation — you are looking at the RAW drivers.</strong>{' '}
-                  Design one in the Filters tab (Optimize — design for me), activate a network in
-                  the Network tab{project ? ', or pick a vxp variant in the Setup tab' : ''}.
+                  <strong>{t('No filter in the simulation — you are looking at the RAW drivers.')}</strong>{' '}
+                  {t('Design one in the Filters tab (Optimize — design for me), activate a network in the Network tab')}
+                  {project ? t(', or pick a vxp variant in the Setup tab') : ''}.
                 </div>
               </div>
             )}
@@ -12556,7 +12593,7 @@ export default function App() {
                 type="button"
                 className={`pin-btn${heldTrace ? ' on' : ''}`}
                 aria-pressed={!!heldTrace}
-                aria-label={heldTrace ? 'Clear the held reference curve' : 'Hold the combined curve as a reference'}
+                aria-label={heldTrace ? t('Clear the held reference curve') : t('Hold the combined curve as a reference')}
                 onClick={() => (heldTrace ? setHeldTrace(null) : holdCurrentTrace())}
                 title={
                   heldTrace
@@ -12587,18 +12624,18 @@ export default function App() {
               <div className="score-strip">
                 {combinedFlat && (
                   <>
-                    <span className="strip-label">Response flatness</span>
+                    <span className="strip-label">{t('Response flatness')}</span>
                     <span
                       className={`strip-score ${
                         combinedFlat.score >= 85 ? 'ok' : combinedFlat.score >= 70 ? 'warn' : 'bad'
                       }`}
-                      title="Whole-range flatness of the combined SPL over the currently VISIBLE range (zoom the SPL chart and this follows): 0–100 from the AVERAGE |deviation| vs the median level. Judges the entire range — one narrow dip barely moves it; the peak ±dB next to it still exposes that dip."
+                      title={t('Whole-range flatness of the combined SPL over the currently VISIBLE range (zoom the SPL chart and this follows): 0–100 from the AVERAGE |deviation| vs the median level. Judges the entire range — one narrow dip barely moves it; the peak ±dB next to it still exposes that dip.')}
                     >
                       {combinedFlat.score.toFixed(0)}
                     </span>
                     <span
                       className="strip-item"
-                      title="Deviation from the median level over the visible range: average (the whole-range number), 95th percentile, and the classic single-spot peak ±dB — a big gap between avg and peak means the trouble is local, not everywhere."
+                      title={t('Deviation from the median level over the visible range: average (the whole-range number), 95th percentile, and the classic single-spot peak ±dB — a big gap between avg and peak means the trouble is local, not everywhere.')}
                     >
                       avg ±{combinedFlat.avgDevDb.toFixed(2)} · P95 ±
                       {combinedFlat.p95DevDb.toFixed(1)} · peak ±{combinedFlat.rippleDb.toFixed(1)}{' '}
@@ -12606,7 +12643,7 @@ export default function App() {
                     </span>
                     <span
                       className="strip-item"
-                      title={`Share of the visible range within ±0.5 / ±1 / ±2 dB of the median level: ${combinedFlat.withinPct[0.5].toFixed(0)}% · ${combinedFlat.withinPct[1].toFixed(0)}% · ${combinedFlat.withinPct[2].toFixed(0)}%.`}
+                      title={t('Share of the visible range within ±0.5 / ±1 / ±2 dB of the median level: {a}% · {b}% · {c}%.', { a: combinedFlat.withinPct[0.5].toFixed(0), b: combinedFlat.withinPct[1].toFixed(0), c: combinedFlat.withinPct[2].toFixed(0) })}
                     >
                       ±1 dB {combinedFlat.withinPct[1].toFixed(0)}%
                     </span>
@@ -12621,9 +12658,9 @@ export default function App() {
                     {optimizerFloorHz !== null && (
                       <span
                         className="strip-item"
-                        title={`The optimizer designs from ${Math.round(optimizerFloorHz)} Hz up; the score above judges everything you SEE. Below that floor the woofer runs into its own rolloff, and a cut-only passive network cannot lift it — it could only match it by throwing away sensitivity everywhere else (baffle-step territory, a deliberate designer's choice). Zoom the SPL chart to the design band to read the score the optimizer actually worked on.`}
+                        title={t("The optimizer designs from {hz} Hz up; the score above judges everything you SEE. Below that floor the woofer runs into its own rolloff, and a cut-only passive network cannot lift it — it could only match it by throwing away sensitivity everywhere else (baffle-step territory, a deliberate designer's choice). Zoom the SPL chart to the design band to read the score the optimizer actually worked on.", { hz: Math.round(optimizerFloorHz) })}
                       >
-                        designed from {Math.round(optimizerFloorHz)} Hz
+                        {t('designed from {hz} Hz', { hz: Math.round(optimizerFloorHz) })}
                       </span>
                     )}
                   </>
@@ -12631,17 +12668,20 @@ export default function App() {
                 {tolBand && (
                   <span
                     className="strip-item"
-                    title={`How far the combined response can drift when every physical R/L/C lands ±${tolBand.tolPct}% off its value. Worst = all errors aligned against you (the guarantee before soldering); RSS = statistically realistic with independent part errors. Most sensitive parts: ${tolBand.perPart.slice(0, 5).map((p) => `${p.id} (±${p.maxAbsDb.toFixed(2)} dB)`).join(', ')} — tight-tolerance (or measured) parts pay off there first.`}
+                    title={t('How far the combined response can drift when every physical R/L/C lands ±{pct}% off its value. Worst = all errors aligned against you (the guarantee before soldering); RSS = statistically realistic with independent part errors. Most sensitive parts: {parts} — tight-tolerance (or measured) parts pay off there first.', { pct: tolBand.tolPct, parts: tolBand.perPart.slice(0, 5).map((p) => `${p.id} (±${p.maxAbsDb.toFixed(2)} dB)`).join(', ') })}
                   >
-                    build ±{tolBand.tolPct}%: worst ±{tolBand.worstHalfDb.toFixed(2)} · RSS ±
-                    {tolBand.rssHalfDb.toFixed(2)} dB · sensitive{' '}
-                    {tolBand.perPart.slice(0, 3).map((p) => p.id).join(', ')}
+                    {t('build ±{pct}%: worst ±{w} · RSS ±{r} dB · sensitive {parts}', {
+                      pct: tolBand.tolPct,
+                      w: tolBand.worstHalfDb.toFixed(2),
+                      r: tolBand.rssHalfDb.toFixed(2),
+                      parts: tolBand.perPart.slice(0, 3).map((p) => p.id).join(', '),
+                    })}
                   </span>
                 )}
                 {verifyCompare && (
                   <span
                     className={`strip-item${verifyCompare.maxAbsDb > 3 ? ' alert' : ''}`}
-                    title={`Model vs measurement over ${Math.round(verifyCompare.band[0])}–${Math.round(verifyCompare.band[1])} Hz. The measurement was level-aligned by ${verifyCompare.offsetDb.toFixed(1)} dB (median — absolute calibration differs by nature). Worst deviation ${verifyCompare.maxAt.deltaDb.toFixed(1)} dB at ${Math.round(verifyCompare.maxAt.freqHz)} Hz${verifyCompare.phase ? `. Phase: fitted mic delay ${verifyCompare.phase.fittedDelayUs.toFixed(0)} µs removed, residual avg ${verifyCompare.phase.avgAbsDeg.toFixed(1)}° / P95 ${verifyCompare.phase.p95AbsDeg.toFixed(0)}°${verifyCompare.phase.looksInverted ? ' — offset near 180°: the build is likely wired INVERTED vs the sim' : ''}` : ''}`}
+                    title={t('Model vs measurement over {lo}–{hi} Hz. The measurement was level-aligned by {off} dB (median — absolute calibration differs by nature). Worst deviation {d} dB at {f} Hz', { lo: Math.round(verifyCompare.band[0]), hi: Math.round(verifyCompare.band[1]), off: verifyCompare.offsetDb.toFixed(1), d: verifyCompare.maxAt.deltaDb.toFixed(1), f: Math.round(verifyCompare.maxAt.freqHz) }) + (verifyCompare.phase ? t('. Phase: fitted mic delay {us} µs removed, residual avg {a}° / P95 {p}°', { us: verifyCompare.phase.fittedDelayUs.toFixed(0), a: verifyCompare.phase.avgAbsDeg.toFixed(1), p: verifyCompare.phase.p95AbsDeg.toFixed(0) }) + (verifyCompare.phase.looksInverted ? t(' — offset near 180°: the build is likely wired INVERTED vs the sim') : '') : '')}
                   >
                     meas Δ avg ±{verifyCompare.avgAbsDb.toFixed(2)} · P95 ±
                     {verifyCompare.p95AbsDb.toFixed(2)} · worst {verifyCompare.maxAt.deltaDb.toFixed(1)} dB @{' '}
@@ -12657,33 +12697,31 @@ export default function App() {
                     <>
                       <span
                         className={`strip-item${integration.score < 75 ? ' alert' : ''}`}
-                        title="Summing sanity 0–100: overlap-weighted cos(ε/2) — how well the drivers add up as ONE source. High is NORMAL (45° error still scores 92); it only drops when the drivers actively fight: wrong polarity, a timing fault, or a crossover in a phase null. Deliberately in the background — steer the design on Response flatness and Phase flatness."
+                        title={t('Summing sanity 0–100: overlap-weighted cos(ε/2) — how well the drivers add up as ONE source. High is NORMAL (45° error still scores 92); it only drops when the drivers actively fight: wrong polarity, a timing fault, or a crossover in a phase null. Deliberately in the background — steer the design on Response flatness and Phase flatness.')}
                       >
-                        integration {integration.score.toFixed(0)}
+                        {t('integration')} {integration.score.toFixed(0)}
                       </span>
                       <span
                         className="strip-item"
-                        title="Overlap centre — the frequency where the driver levels meet (≈ the acoustic crossover point)."
+                        title={t('Overlap centre — the frequency where the driver levels meet (≈ the acoustic crossover point).')}
                       >
-                        overlap{' '}
+                        {t('overlap')}{' '}
                         {integration.overlapCentreHz !== null
                           ? `${Math.round(integration.overlapCentreHz)} Hz`
                           : '—'}
                       </span>
                       <span
                         className="strip-item"
-                        title="Integration bandwidth — contiguous band around the overlap centre where the phase error stays ≤90°. Also drawn as the shaded zone in the phase chart."
+                        title={t('Integration bandwidth — contiguous band around the overlap centre where the phase error stays ≤90°. Also drawn as the shaded zone in the phase chart.')}
                       >
                         {integration.bandwidth
-                          ? `bandwidth ${Math.round(integration.bandwidth.fLo)}–${Math.round(
-                              integration.bandwidth.fHi,
-                            )} Hz · ${integration.bandwidth.octaves.toFixed(1)} oct`
-                          : 'bandwidth none (>90° at the overlap centre)'}
+                          ? t('bandwidth {lo}–{hi} Hz · {oct} oct', { lo: Math.round(integration.bandwidth.fLo), hi: Math.round(integration.bandwidth.fHi), oct: integration.bandwidth.octaves.toFixed(1) })
+                          : t('bandwidth none (>90° at the overlap centre)')}
                       </span>
                     </>
                   ) : (
                     <span className="strip-item alert">
-                      no overlap within 20 dB — the drivers never meet, nothing to integrate
+                      {t('no overlap within 20 dB — the drivers never meet, nothing to integrate')}
                     </span>
                   ))}
                 {pairScores &&
@@ -12698,7 +12736,7 @@ export default function App() {
                       className={`strip-item${
                         ps.integ.score !== null && ps.integ.score < 75 ? ' alert' : ''
                       }`}
-                      title={`Adjacent pair ${label === 'W-M' ? 'woofer-mid' : 'mid-tweeter'}: summing score (overlap-weighted cos(ε/2)) and where the levels meet`}
+                      title={t('Adjacent pair {pair}: summing score (overlap-weighted cos(ε/2)) and where the levels meet', { pair: label === 'W-M' ? t('woofer-mid') : t('mid-tweeter') })}
                     >
                       {label}{' '}
                       {ps.integ.score !== null
@@ -12711,7 +12749,7 @@ export default function App() {
                               ? ` · ${ps.integ.bandwidth.octaves.toFixed(1)} oct`
                               : ''
                           }`
-                        : 'no overlap'}
+                        : t('no overlap')}
                     </span>
                   ))}
               </div>
@@ -12740,11 +12778,11 @@ export default function App() {
             {/* Alignment coloring compares two drivers — nothing to color solo. */}
             {!soloDriver && (
             <div className="align-legend">
-              <span className="align-title">Combined-curve color = phase alignment:</span>
+              <span className="align-title">{t('Combined-curve color = phase alignment:')}</span>
               {TIER_ORDER.map((c) => (
                 <span key={c} className="legend-item">
                   <span className="legend-key" style={{ background: TIER_COLOR[c] }} />
-                  {TIER_LABEL[c]}
+                  {t(TIER_LABEL[c])}
                 </span>
               ))}
             </div>
@@ -12755,10 +12793,10 @@ export default function App() {
             <div className="panel">
               <h2>{t('Directivity (horizontal)')}</h2>
               <p className="sub" style={{ marginBottom: '0.8rem' }}>
-                Same filter at every measured angle ({directivity.angles.join('/')}° hor, one side).
+                {t('Same filter at every measured angle ({angles}° hor, one side).', { angles: directivity.angles.join('/') })}{' '}
                 {Number(cabinet.baffleWidthMm) > Number(cabinet.baffleHeightMm)
-                  ? 'Horizontal only — but this baffle is wider than tall, so that IS the plane its drivers lobe in: this data captures it.'
-                  : 'Horizontal only — vertical lobing is not in this data.'}
+                  ? t('Horizontal only — but this baffle is wider than tall, so that IS the plane its drivers lobe in: this data captures it.')
+                  : t('Horizontal only — vertical lobing is not in this data.')}
               </p>
               {showPanels.directivity && (
               <>
@@ -12775,7 +12813,7 @@ export default function App() {
                   })),
                   {
                     id: 'lw',
-                    label: 'Listening window (0–30°)',
+                    label: t('Listening window (0–30°)'),
                     color: 'var(--viz-tweeter)',
                     dash: '2 3',
                     width: 2,
@@ -12784,7 +12822,7 @@ export default function App() {
                   },
                   {
                     id: 'pwr',
-                    label: 'Energy average (hor)',
+                    label: t('Energy average (hor)'),
                     color: 'var(--viz-woofer)',
                     dash: '6 4',
                     width: 2.5,
@@ -12802,7 +12840,7 @@ export default function App() {
                 series={[
                   {
                     id: 'di',
-                    label: 'Directivity index (on-axis − energy average)',
+                    label: t('Directivity index (on-axis − energy average)'),
                     color: 'var(--viz-tweeter)',
                     x: directivity.freq,
                     y: directivity.diDb,
@@ -12822,20 +12860,19 @@ export default function App() {
                   <div className="row" style={{ margin: '1rem 0 0.4rem' }}>
                     <h3 style={{ margin: 0 }}>Sonogram</h3>
                     <label>
-                      Scale{' '}
+                      {t('Scale')}{' '}
                       <select
                         title="Normalized: each frequency relative to its own 0° level (pure beamwidth). Absolute: relative to the loudest point (level and directivity together)."
                         value={sonogramMode}
                         onChange={(e) => setSonogramMode(e.target.value as SonogramMode)}
                       >
-                        <option value="normalized">Normalized (0° = 0 dB per frequency)</option>
-                        <option value="absolute">Absolute (rel. loudest point)</option>
+                        <option value="normalized">{t('Normalized (0° = 0 dB per frequency)')}</option>
+                        <option value="absolute">{t('Absolute (rel. loudest point)')}</option>
                       </select>
                     </label>
                   </div>
                   <p className="sub" style={{ marginBottom: '0.6rem' }}>
-                    Negative angles mirror the measured side (symmetry assumed). Dashed contour =
-                    −6 dB beamwidth; gaps mean wider than the measured {Math.max(...directivity.angles)}°.
+                    {t('Negative angles mirror the measured side (symmetry assumed). Dashed contour = −6 dB beamwidth; gaps mean wider than the measured {deg}°.', { deg: Math.max(...directivity.angles) })}
                   </p>
                   <Sonogram
                     data={sonogram.data}
@@ -12884,14 +12921,14 @@ export default function App() {
                   },
                   (sim.transfers.mid ?? null) && {
                     id: 'hm',
-                    label: 'Mid filter',
+                    label: t('Mid filter'),
                     color: 'var(--viz-mid)',
                     x: result.freq,
                     y: sim.transfers.mid!.map((h) => 20 * Math.log10(cAbs(h) || Number.MIN_VALUE)),
                   },
                   sim.transfers.tweeter && {
                     id: 'ht',
-                    label: 'Tweeter filter',
+                    label: t('Tweeter filter'),
                     color: 'var(--viz-tweeter)',
                     x: result.freq,
                     y: sim.transfers.tweeter.map((h) => 20 * Math.log10(cAbs(h) || Number.MIN_VALUE)),
@@ -12939,26 +12976,26 @@ export default function App() {
                   className={`strip-score ${
                     systemZInfo.minOhm >= 6.4 ? 'ok' : systemZInfo.minOhm >= 3.2 ? 'warn' : 'bad'
                   }`}
-                  title="Lowest system impedance the amplifier sees — the only side that can hurt it (current/heat). IEC 60268-5: minimum ≥ 0.8× the rated impedance. Green ≥ 6.4 Ω (safe as an '8 Ω' speaker), orange ≥ 3.2 Ω ('4 Ω' territory — fine for most solid-state amps), red below that."
+                  title={t("Lowest system impedance the amplifier sees — the only side that can hurt it (current/heat). IEC 60268-5: minimum ≥ 0.8× the rated impedance. Green ≥ 6.4 Ω (safe as an '8 Ω' speaker), orange ≥ 3.2 Ω ('4 Ω' territory — fine for most solid-state amps), red below that.")}
                 >
                   {systemZInfo.minOhm.toFixed(1)} Ω
                 </span>
                 <span className="strip-item">@ {Math.round(systemZInfo.minHz)} Hz</span>
                 <span
                   className="strip-item"
-                  title="Load character AT the impedance minimum: arg(Z), negative = capacitive, positive = inductive. Low |Z| alone costs current/heat; low AND strongly capacitive (≲ −45°) is the combination marginal amplifiers (tube, some class-D) dislike most."
+                  title={t('Load character AT the impedance minimum: arg(Z), negative = capacitive, positive = inductive. Low |Z| alone costs current/heat; low AND strongly capacitive (≲ −45°) is the combination marginal amplifiers (tube, some class-D) dislike most.')}
                 >
                   {systemZInfo.minPhaseDeg > 0 ? '+' : ''}
                   {systemZInfo.minPhaseDeg.toFixed(0)}°{' '}
                   {Math.abs(systemZInfo.minPhaseDeg) < 15
-                    ? '(resistive)'
+                    ? t('(resistive)')
                     : systemZInfo.minPhaseDeg < 0
-                      ? '(capacitive)'
-                      : '(inductive)'}
+                      ? t('(capacitive)')
+                      : t('(inductive)')}
                 </span>
                 <span
                   className="strip-item"
-                  title="Highest system impedance. High is HARMLESS — the amp simply delivers less current there. It only becomes audible with a high-output-impedance amplifier (tube amps): the response then follows this curve."
+                  title={t('Highest system impedance. High is HARMLESS — the amp simply delivers less current there. It only becomes audible with a high-output-impedance amplifier (tube amps): the response then follows this curve.')}
                 >
                   max {systemZInfo.maxOhm >= 1000 ? '≥1k' : systemZInfo.maxOhm.toFixed(0)} Ω @{' '}
                   {Math.round(systemZInfo.maxHz)} Hz
@@ -12969,7 +13006,7 @@ export default function App() {
                 series={[
                   {
                     id: 'zin',
-                    label: 'System |Z|',
+                    label: t('System |Z|'),
                     color: 'var(--viz-combined)',
                     width: 2.5,
                     x: result.freq,
@@ -12989,7 +13026,7 @@ export default function App() {
                 series={[
                   {
                     id: 'zphase',
-                    label: 'Z phase (− = capacitive, + = inductive)',
+                    label: t('Z phase (− = capacitive, + = inductive)'),
                     color: 'var(--viz-combined)',
                     dash: '5 3',
                     width: 2,
@@ -13011,42 +13048,42 @@ export default function App() {
           <div className="panel">
             <h2>
               {soloDriver
-                ? `${soloDriver === 'woofer' ? 'Woofer/mid' : 'Tweeter'} phase (total)`
+                ? t('{drv} phase (total)', { drv: soloDriver === 'woofer' ? t('Woofer/mid') : t('Tweeter') })
                 : threeWay
-                  ? 'Relative phase per driver pair'
-                  : 'Tweeter phase relative to woofer'}
+                  ? t('Relative phase per driver pair')
+                  : t('Tweeter phase relative to woofer')}
             </h2>
             {phaseStats && (
               <div className="score-strip">
-                <span className="strip-label">Phase flatness</span>
+                <span className="strip-label">{t('Phase flatness')}</span>
                 <span
                   className="strip-score"
-                  title="Flatness score 0–100 over the driver overlap (overlap-weighted) — how flat the relative phase stays where both drivers play."
+                  title={t('Flatness score 0–100 over the driver overlap (overlap-weighted) — how flat the relative phase stays where both drivers play.')}
                 >
                   {phaseStats.score}
                 </span>
                 <span className="strip-item">{phaseStats.label}</span>
                 <span
                   className="strip-item"
-                  title="Average |relative phase| in the overlap region."
+                  title={t('Average |relative phase| in the overlap region.')}
                 >
                   avg {phaseStats.avgErrorDeg.toFixed(1)}°
                 </span>
                 <span
                   className="strip-item"
-                  title="95th-percentile phase error — the worst 5% excluded."
+                  title={t('95th-percentile phase error — the worst 5% excluded.')}
                 >
                   P95 {phaseStats.p95ErrorDeg.toFixed(0)}°
                 </span>
                 <span
                   className="strip-item"
-                  title="Standard deviation of the phase error — the wobble."
+                  title={t('Standard deviation of the phase error — the wobble.')}
                 >
                   σ {phaseStats.stdDevDeg.toFixed(1)}°
                 </span>
                 <span
                   className="strip-item"
-                  title="Share of the overlap region with the phase error within ±5 / ±10 / ±15°."
+                  title={t('Share of the overlap region with the phase error within ±5 / ±10 / ±15°.')}
                 >
                   ±5° {phaseStats.withinPct[5].toFixed(0)}% · ±10°{' '}
                   {phaseStats.withinPct[10].toFixed(0)}% · ±15°{' '}
@@ -13056,7 +13093,7 @@ export default function App() {
             )}
             {pairScores && (
               <div className="score-strip">
-                <span className="strip-label">Phase flatness</span>
+                <span className="strip-label">{t('Phase flatness')}</span>
                 {(
                   [
                     ['woofer-mid', pairScores.low.stats] as const,
@@ -13066,12 +13103,12 @@ export default function App() {
                   <span
                     key={label}
                     className="strip-item"
-                    title={`Relative-phase flatness over the ${label} overlap window: score 0–100, average and P95 |phase error|.`}
+                    title={t('Relative-phase flatness over the {pair} overlap window: score 0–100, average and P95 |phase error|.', { pair: t(label) })}
                   >
-                    {label}{' '}
+                    {t(label)}{' '}
                     {st
                       ? `${st.score} · avg ${st.avgErrorDeg.toFixed(1)}° · P95 ${st.p95ErrorDeg.toFixed(0)}°`
-                      : 'no overlap'}
+                      : t('no overlap')}
                   </span>
                 ))}
               </div>
@@ -13095,7 +13132,7 @@ export default function App() {
                         to: integration.bandwidth.fHi,
                         color: 'var(--viz-combined)',
                         opacity: 0.08,
-                        label: `integration bandwidth ${integration.bandwidth.octaves.toFixed(1)} oct`,
+                        label: t('integration bandwidth {oct} oct', { oct: integration.bandwidth.octaves.toFixed(1) }),
                       },
                     ]
                   : pairScores
@@ -13107,7 +13144,7 @@ export default function App() {
                                 to: pairScores.low.integ.bandwidth.fHi,
                                 color: 'var(--viz-mid)',
                                 opacity: 0.08,
-                                label: `W-M bandwidth ${pairScores.low.integ.bandwidth.octaves.toFixed(1)} oct`,
+                                label: t('W-M bandwidth {oct} oct', { oct: pairScores.low.integ.bandwidth.octaves.toFixed(1) }),
                               },
                             ]
                           : []),
@@ -13118,7 +13155,7 @@ export default function App() {
                                 to: pairScores.high.integ.bandwidth.fHi,
                                 color: 'var(--viz-tweeter)',
                                 opacity: 0.08,
-                                label: `M-T bandwidth ${pairScores.high.integ.bandwidth.octaves.toFixed(1)} oct`,
+                                label: t('M-T bandwidth {oct} oct', { oct: pairScores.high.integ.bandwidth.octaves.toFixed(1) }),
                               },
                             ]
                           : []),
@@ -13130,7 +13167,7 @@ export default function App() {
                   ? [
                       {
                         x: integration.overlapCentreHz,
-                        label: `overlap ${Math.round(integration.overlapCentreHz)} Hz`,
+                        label: t('overlap {hz} Hz', { hz: Math.round(integration.overlapCentreHz) }),
                       },
                     ]
                   : pairScores
@@ -13159,11 +13196,11 @@ export default function App() {
             {/* Tier zones read the RELATIVE phase — hidden with it in solo mode. */}
             {!soloDriver && (
             <div className="align-legend">
-              <span className="align-title">Zones &amp; line color = distance from 0°:</span>
+              <span className="align-title">{t('Zones & line color = distance from 0°:')}</span>
               {TIER_ORDER.map((c) => (
                 <span key={c} className="legend-item">
                   <span className="legend-key" style={{ background: TIER_COLOR[c] }} />
-                  {TIER_LABEL[c]}
+                  {t(TIER_LABEL[c])}
                 </span>
               ))}
             </div>
@@ -13176,12 +13213,12 @@ export default function App() {
       {timeDomain && result && (
         <>
           <div className="panel">
-            <h2>Excess group delay (combined)</h2>
+            <h2>{t('Excess group delay (combined)')}</h2>
             <Chart
               series={[
                 {
                   id: 'egd',
-                  label: `Excess group delay (bulk ${timeDomain.egd.minDelayMs.toFixed(2)} ms removed)`,
+                  label: t('Excess group delay (bulk {ms} ms removed)', { ms: timeDomain.egd.minDelayMs.toFixed(2) }),
                   color: 'var(--viz-combined)',
                   x: timeDomain.egd.freq,
                   y: timeDomain.egd.egdMs,
@@ -13203,23 +13240,22 @@ export default function App() {
           </div>
 
           <div className="panel">
-            <h2>Step response &amp; ETC (IFFT of combined response)</h2>
+            <h2>{t('Step response & ETC (IFFT of combined response)')}</h2>
             <p className="sub" style={{ marginBottom: '0.8rem' }}>
-              Sanity check, not a measurement — band edges are tapered. t = 0 at the impulse peak
-              (arrival {timeDomain.td.peakTimeMs.toFixed(2)} ms).
+              {t('Sanity check, not a measurement — band edges are tapered. t = 0 at the impulse peak (arrival {ms} ms).', { ms: timeDomain.td.peakTimeMs.toFixed(2) })}
             </p>
             <Chart
               series={[
                 {
                   id: 'step',
-                  label: 'Step response (normalized)',
+                  label: t('Step response (normalized)'),
                   color: 'var(--viz-combined)',
                   x: timeDomain.td.timeMs,
                   y: timeDomain.td.step,
                 },
                 {
                   id: 'imp',
-                  label: 'Impulse (normalized)',
+                  label: t('Impulse (normalized)'),
                   color: 'var(--viz-tweeter)',
                   dash: '4 4',
                   x: timeDomain.td.timeMs,
@@ -13239,7 +13275,7 @@ export default function App() {
               series={[
                 {
                   id: 'etc',
-                  label: 'ETC — energy-time curve',
+                  label: t('ETC — energy-time curve'),
                   color: 'var(--viz-woofer)',
                   x: timeDomain.td.timeMs,
                   y: timeDomain.td.etcDb,

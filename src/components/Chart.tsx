@@ -1,3 +1,4 @@
+import { t } from '../lib/i18n.ts';
 import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
 
 /**
@@ -602,7 +603,7 @@ export default function Chart({
             className={`legend-item${hidden.has(s.id) ? ' off' : ''}`}
             onClick={() => toggle(s.id)}
             aria-pressed={!hidden.has(s.id)}
-            title={hidden.has(s.id) ? 'Show series' : 'Hide series'}
+            title={hidden.has(s.id) ? t('Show series') : t('Hide series')}
           >
             {s.dash ? (
               // Dashed series show their actual dash pattern — with several
@@ -624,11 +625,11 @@ export default function Chart({
             aria-expanded={showSecondary}
             title={
               showSecondary
-                ? 'Fold the supporting curves back up'
-                : 'Show ghosts, tolerance band and target shapes in the legend (they are drawn either way)'
+                ? t('Fold the supporting curves back up')
+                : t('Show ghosts, tolerance band and target shapes in the legend (they are drawn either way)')
             }
           >
-            {showSecondary ? '− fewer' : `+${foldedCount} more`}
+            {showSecondary ? t('− fewer') : t('+{n} more', { n: foldedCount })}
           </button>
         )}
       </div>
@@ -639,13 +640,13 @@ export default function Chart({
             <button
               type="button"
               onClick={() => onXRangeCommit(vx[0], vx[1])}
-              title="Make this the committed view range (evaluation band)"
+              title={t('Make this the committed view range (evaluation band)')}
             >
-              use as view range
+              {t('use as view range')}
             </button>
           )}
-          <button type="button" onClick={() => setView(null)} title="Reset zoom (or double-click the chart)">
-            reset
+          <button type="button" onClick={() => setView(null)} title={t('Reset zoom (or double-click the chart)')}>
+            {t('reset')}
           </button>
         </div>
       )}
@@ -896,10 +897,9 @@ export default function Chart({
            knowledge) or an explicit dismiss. */
         <p className="chart-hint">
           <span>
-            scroll = zoom · Shift+scroll = vertical · drag = pan · double-click = reset · click a
-            legend chip to show/hide its curve
+            {t('scroll = zoom · Shift+scroll = vertical · drag = pan · double-click = reset · click a legend chip to show/hide its curve')}
           </span>
-          <button type="button" onClick={dismissGestureHint} aria-label="Dismiss chart gesture hint">
+          <button type="button" onClick={dismissGestureHint} aria-label={t('Dismiss chart gesture hint')}>
             ✕
           </button>
         </p>

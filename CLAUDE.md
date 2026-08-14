@@ -2219,12 +2219,75 @@ voordat je een layoutbug gaat jagen.
   een echte flow-fout gevonden: welkomstkaart-"I have measurements" opende de wizard op zijn
   DEFAULT-stap (1, Doelen) i.p.v. op de meetbestanden-poort (stap 0) — een formulier over
   niets voor wie nog niets geladen heeft; dismissWelcome zet nu setWizardStep(0).
-- **Nog niet vertaald** (bewust incrementeel): guided-proza op de stappen zelf, de ~160
-  overige tooltips, Filters/Network-tab-internals, Chart.tsx-strings, de Compare-wizard,
-  MeasuringGuide (Engels), HelpPanel-content (Nederlands — heeft t.z.t. een EN-versie nodig
-  via hetzelfde patroon, content per taal), en de ENGINE-notes (scan/safety/optimizer-teksten
-  uit src/lib) — die blijven Engels tot daar een bewuste ronde voor komt; lib vertaalt NIET
-  zelf.
+- **De IMPORT-STAP is volledig vertaald** (Sanders screenshot-klacht "Hoe is dit Nederlands?
+  Wees eens grondig!"): groeplabels, dropzones + tooltips, near-field-blok, vxp/fasereferentie/
+  verificatie-slots, projectknoppen, catalogusgroep + statusregel, bestandsinventaris
+  (incl. detailregels en notitie-placeholder) en de "Volgende: {stap} →"-knoppen. HARD
+  GELEERD: **"Choose files / No file chosen" is BROWSER-tekst** (volgt de browsertaal, niet
+  de app) — de drie kale native inputs zijn vervangen door het verborgen-input-label-patroon
+  dat Load project al gebruikte ("Kies bestanden…"), de enige string die t() anders nooit
+  kan bereiken.
+- **De KAST- en DRIVERS-stappen + de guided Ontwerp-intro zijn vertaald** (Sanders "ga
+  door"): View range, kastkaarten (mic/kast/luisterplek incl. alle derived-regels en de
+  mis-match-waarschuwing), de volledige driverkaarten (Positie/Montage/Kamer/Datasheet,
+  ware-hoeken-regel, gemeten-diepte-relaas incl. "gebruik dit", Fc/Fb-kruiscontrole,
+  facing-opties, array-regels), het tekening-bijschrift, en de Design-groep (Optimize-knop,
+  "Neem me mee", nonStandard-regel). Dekking 492 sleutels / 0 ontbrekend. LES: lokale
+  variabelen die `t` heten (boxTuneFromZ-IIFE) schaduwen de vertaalfunctie — hernoemd naar
+  `bt`; tsc vangt het (object niet aanroepbaar), maar hernoem meteen bij het wrappen.
+  `FACING_LABEL` (module-level) mapt facing-ids naar t()-sleutels voor samenvatting én
+  zij-straler-waarschuwing.
+- **De SCORE-STRIPS en grafiekpanelen zijn vertaald** (tweede "ga door"): Response-strip
+  (score, avg/P95/piek, ±1 dB, "ontworpen vanaf", tolerantie-band, meting-Δ, integratie/
+  overname/bandbreedte, paar-items), Z-min-strip, fase-strip(s) incl. per-paar, béíde
+  tier-legenda's (SPL "Kleur van de som-curve" én fase "Zones & lijnkleur" — de tweede was
+  bijna gemist: TIER_LABEL werd op twee plekken kaal gerenderd), Directivity/Sonogram-subs
+  + Schaal-select, tijddomein-panelen. Dekking 549 sleutels / 0 ontbrekend; charts-pane
+  headless op nul Engelse reststrings geverifieerd.
+- **De SERIE-LABELS in alle chart-legenda's zijn vertaald** (derde "ga door", ~45 labels):
+  SPL (Som/nulchecks/doelvormen/tolerantieband/vastgezette referentie/meting-overlay),
+  fase (alle filter-/totaal-/relatieve-fase-lijnen), directivity/transfer/impedantie/
+  tijddomein, de xBand-labels (integratie-/paar-bandbreedtes, overname-markers) én de
+  sleep-handle-labels. DE KERN: deze labels leven in useMemo's (splSeries, phaseSeries,
+  targetSeries, splHandles) — elk kreeg **uiLang als dependency**, anders serveert de cache
+  de vorige taal (zelfde les als simSource). Live-switch headless bewezen: "Som, tweeter
+  omgekeerd (nulcheck)" ↔ "Combined, tweeter inverted (null check)". Legend-persistentie is
+  ID-gebaseerd, dus opgeslagen keuzes overleven een taalwissel per constructie. Ghost-labels
+  zijn TABNAMEN (gebruikersdata) en blijven bewust onvertaald. Dekking 579 sleutels / 0.
+- **Expert-Setup + Netwerk-toolbars + Chart.tsx vertaald** (vierde "ga door"):
+  de expert-Setup-fieldsets (Driverfase/conventie incl. de auto-regel-notes,
+  Tweeter-/Midrange-correctie compleet), het kast-ledger (Hoe je gemeten hebt / De kast /
+  luisterregels, far-field-oordeel als `{ratio}× de bron — {verdict}`), álle zeven
+  tool-group-labels, de volledige Netwerk-toolbar (Start/Exporteren/Catalogus/Gereedschap/
+  Simulatie: elke knop mét zijn lange tooltip, de sjabloon-kiezer incl. TEMPLATE_ORDERS-
+  labels — de `(t)`-map-param daar hernoemd naar `tp`, de shadow-valkuil nogmaals), de
+  editor-intro, de tune-diff-tabel ("{n} waardewijzigingen") en de rauwe-drivers-banner.
+  Chart.tsx importeert nu zélf t: zoom-tools, fold-knop ("+{n} meer"), gesture-hint,
+  Show/Hide-series-titles. Dekking 686 sleutels / 0 ontbrekend (extractie dekt nu App.tsx
+  ÉN Chart.tsx); browser-geverifieerd op de Netwerk- en Setup-tab (tool-group-labels
+  zitten in CSS/attrs, dus innerText-checks missen ze — DOM-check gebruiken).
+- **⚙ Settings + Filters-tab-internals vertaald** (vijfde "ga door"): het complete
+  Optimizer-instellingen-blok (solo-budget/bodem-modus, Doelen & weging incl. de
+  prioriteit-slider als sjabloon, Fasemetriek, Filtervorm met alle HP/LP-voorkeuren en
+  flank-doelen, Doelen/staged, Vangnetten, Componenten, Crossover incl. pin-velden en
+  physWin3-uitlezing, Drivergrenzen incl. lobing/breakup/excursie) — élke control mét zijn
+  lange tooltip; de Design/Instellen/Status-groepen, vfProgress/vfOpt-samenvatting,
+  Stages-regel, Filter bands-collapse (incl. `filterSummaryLine` — 'Woofer/mid' vertaalt
+  naar zichzelf zodat de `.replace(/^Woofer\/mid/)`-regex in beide talen blijft werken),
+  het Passieve synthese-paneel + Build-knop, en heel FilterControls.tsx (HP/LP-rijen,
+  EQ-rijen, Gain — de 'High-pass'/'Low-pass'-labels gaan als ENGELSE key de props in en
+  HpLpRow vertaalt ze bij weergave, dus de dekkingscontrole moet die twee dynamische keys
+  handmatig meetellen). Dekking 850 sleutels / 0 ontbrekend (extractie dekt App.tsx +
+  Chart.tsx + FilterControls.tsx); browser-geverifieerd op de Filters-tab met ⚙ open.
+  LES: curly apostrofs (’) in een dict-key matchen de straight quotes (') van de bron
+  niet — drie lange tooltips vielen stil terug op Engels tot de keys byte-gelijk waren.
+- **Nog niet vertaald** (bewust incrementeel): rest van de Netwerk-tab (BOM-regels,
+  scan-tabel-koppen, netOptNote/scan-notes, tab-beheer Save/Save as new), het timing-paneel
+  (Split of that Δ / Measured mounting depth), de Compare-wizard, MeasuringGuide (Engels),
+  HelpPanel-content (Nederlands — heeft t.z.t. een EN-versie nodig via hetzelfde patroon,
+  content per taal), transient persistNote/foutmelding-strings, en de ENGINE-notes
+  (scan/safety/optimizer-teksten uit src/lib) — die blijven Engels tot daar een bewuste
+  ronde voor komt; lib vertaalt NIET zelf.
 - **Shadow-valkuil**: App.tsx heeft her en der lokale `const t = …` — de theme-map en de
   keyRef-handler zijn al hernoemd (`th`/`tgt`/`tab`); binnen zo'n scope `t()` aanroepen is
   een typecheck-fout, dus tsc vangt het, maar hernoem bij twijfel.

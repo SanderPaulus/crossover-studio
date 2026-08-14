@@ -5,6 +5,7 @@ import type {
   EqBandType,
   FilterKind,
 } from '../lib/filters.ts';
+import { t } from '../lib/i18n.ts';
 
 /**
  * Live controls for one driver's virtual filter chain: gain, HP, LP and
@@ -65,19 +66,19 @@ function HpLpRow({
   onChange: (next: HpLpSpec) => void;
 }) {
   const orders = spec.kind === 'LR' ? [2, 4] : spec.kind === 'BS' ? [2, 3, 4] : [1, 2, 3, 4];
-  const what = label === 'High-pass' ? 'passes everything above' : 'passes everything below';
+  const what = label === 'High-pass' ? t('passes everything above') : t('passes everything below');
   return (
     <div className="vf-row">
       <label
         className="check vf-enable"
-        title={`Enable the ${label.toLowerCase()} — ${what} the corner frequency`}
+        title={t('Enable the {filter} — {what} the corner frequency', { filter: t(label).toLowerCase(), what })}
       >
         <input
           type="checkbox"
           checked={spec.enabled}
           onChange={(e) => onChange({ ...spec, enabled: e.target.checked })}
         />
-        {label}
+        {t(label)}
       </label>
       <select
         value={spec.kind}
@@ -92,7 +93,7 @@ function HpLpRow({
                 : spec.order;
           onChange({ ...spec, kind, order });
         }}
-        title="Alignment: Linkwitz-Riley (−6 dB at the knee, sums flat with its mirror), Butterworth (−3 dB at the knee) or Bessel (−3 dB, maximally flat group delay — the gentle-phase choice)"
+        title={t('Alignment: Linkwitz-Riley (−6 dB at the knee, sums flat with its mirror), Butterworth (−3 dB at the knee) or Bessel (−3 dB, maximally flat group delay — the gentle-phase choice)')}
       >
         <option value="LR">Linkwitz-Riley</option>
         <option value="BW">Butterworth</option>
@@ -101,7 +102,7 @@ function HpLpRow({
       <select
         value={spec.order}
         onChange={(e) => onChange({ ...spec, order: Number(e.target.value) as 1 | 2 | 3 | 4 })}
-        title="Steepness of the slope beyond the knee (order × 6 dB per octave)"
+        title={t('Steepness of the slope beyond the knee (order × 6 dB per octave)')}
       >
         {orders.map((o) => (
           <option key={o} value={o}>
@@ -112,7 +113,7 @@ function HpLpRow({
       <FreqSlider
         value={spec.freq}
         onChange={(freq) => onChange({ ...spec, freq })}
-        help="Corner (knee) frequency — also draggable as the hollow dot on the SPL chart"
+        help={t('Corner (knee) frequency — also draggable as the hollow dot on the SPL chart')}
       />
     </div>
   );
@@ -133,7 +134,7 @@ function EqRow({
     <div className="vf-row">
       <label
         className="check vf-enable"
-        title="Enable this EQ band — cut only (≤ 0 dB): a passive network cannot boost"
+        title={t('Enable this EQ band — cut only (≤ 0 dB): a passive network cannot boost')}
       >
         <input
           type="checkbox"
@@ -145,18 +146,18 @@ function EqRow({
       <select
         value={band.type ?? 'peak'}
         onChange={(e) => onChange({ ...band, type: e.target.value as EqBandType })}
-        title="Peak cuts around the frequency; shelves apply the cut below (low) or above (high) it — lowering everything except a band is how passive 'lifts' it"
+        title={t("Peak cuts around the frequency; shelves apply the cut below (low) or above (high) it — lowering everything except a band is how passive 'lifts' it")}
       >
-        <option value="peak">Peak</option>
-        <option value="lowShelf">Low shelf</option>
-        <option value="highShelf">High shelf</option>
+        <option value="peak">{t('Peak')}</option>
+        <option value="lowShelf">{t('Low shelf')}</option>
+        <option value="highShelf">{t('High shelf')}</option>
       </select>
       <FreqSlider
         value={band.freq}
         onChange={(freq) => onChange({ ...band, freq })}
-        help="Centre frequency of this band — also draggable as the solid dot on the SPL chart"
+        help={t('Centre frequency of this band — also draggable as the solid dot on the SPL chart')}
       />
-      <label className="inline-num" title="Gain (cut only): a passive network cannot boost, so EQ bands may only attenuate (≤ 0 dB). Lower the level of the rest to lift a band.">
+      <label className="inline-num" title={t('Gain (cut only): a passive network cannot boost, so EQ bands may only attenuate (≤ 0 dB). Lower the level of the rest to lift a band.')}>
         <input
           type="number"
           step={0.5}
@@ -169,7 +170,7 @@ function EqRow({
       </label>
       <label
         className="inline-num"
-        title="Q = width: higher is narrower (1 ≈ 1.4 octave, 5 ≈ 0.3 octave) — scroll on the chart dot also adjusts this"
+        title={t('Q = width: higher is narrower (1 ≈ 1.4 octave, 5 ≈ 0.3 octave) — scroll on the chart dot also adjusts this')}
       >
         Q
         <input
@@ -185,8 +186,8 @@ function EqRow({
         type="button"
         className="vf-remove"
         onClick={onRemove}
-        title="Remove this EQ band"
-        aria-label={`Remove EQ band ${index + 1}`}
+        title={t('Remove this EQ band')}
+        aria-label={t('Remove EQ band {n}', { n: index + 1 })}
       >
         ×
       </button>
@@ -203,6 +204,7 @@ export default function DriverFilterControls({ title, accentVar, spec, onChange 
       </legend>
       <HpLpRow label="High-pass" spec={spec.hp} onChange={(hp) => onChange({ ...spec, hp })} />
       <HpLpRow label="Low-pass" spec={spec.lp} onChange={(lp) => onChange({ ...spec, lp })} />
+      {/* label stays the English key; HpLpRow translates it for display */}
       {spec.eq.map((band, i) => (
         <EqRow
           key={i}
@@ -224,15 +226,15 @@ export default function DriverFilterControls({ title, accentVar, spec, onChange 
               eq: [...spec.eq, { enabled: true, freq: 2000, gainDb: 0, q: 1 }],
             })
           }
-          title="Add another parametric EQ band for this driver"
+          title={t('Add another parametric EQ band for this driver')}
         >
-          + Add EQ band
+          + {t('Add EQ band')}
         </button>
         <label
           className="inline-num"
-          title="Overall level of this driver branch (attenuation only, ≤ 0 dB — passive networks cannot amplify): pad the louder driver down to balance"
+          title={t('Overall level of this driver branch (attenuation only, ≤ 0 dB — passive networks cannot amplify): pad the louder driver down to balance')}
         >
-          Gain
+          {t('Gain')}
           <input
             type="number"
             step={0.5}
