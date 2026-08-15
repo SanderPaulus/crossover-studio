@@ -2231,6 +2231,13 @@ voordat je een layoutbug gaat jagen.
   Your build") en boven de scan-tabel ("winner is loaded in Working; rows below are a menu").
 - **Empty-state-panelen** (`.panel-empty`, gestippeld): Directivity/Sonogram zonder hoekdata,
   Filter transfer & System impedance zonder netwerk — zeggen wat er komt en wat het nodig heeft.
+- **Drag & drop óók in de wizard** (aug 2026, Sanders screenshot "de wizard kent geen drag &
+  drop"): de meetslots op wizard-stap 0 waren nog kale file-labels terwijl de Import-stap al
+  dropzones had — en de wizard is juist het beginnersoppervlak. Nu hetzelfde `.dropzone`-
+  idioom (`.wiz-slot`, per driver de viz-kleur, ✓ respons · Z-status, "⬇ drop to load" bij
+  armen) op DEZELFDE `dropHandlers`/`loadDriverFiles` als de kaarten — één laadpad. LES
+  (dezelfde als de meetgids-slider): de globale `label`-regel is een KOLOM, dus een
+  dropzone-label moet expliciet `flex-direction: row` zeggen of icoon en tekst stapelen.
 - **Drag & drop op driverkaarten**: `loadDriverFiles` gesplitst in change-handler +
   `loadDriverFileList(side, File[])`; `dropHandlers` met dragenter-TELLER (enter/leave vuren per
   kind-element). Kaartstatus toont "⬇ drop to load" / "no files yet — or drop them here".

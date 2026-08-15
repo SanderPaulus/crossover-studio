@@ -3701,3 +3701,22 @@ details.cabinet-driver > .derived strong,
 .compare-pane .sub.alert {
   color: var(--warn, #d9822b);
 }
+
+/* Wizard measurement slots: the Import step's dropzones, stacked. */
+.wiz-slots {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+.wiz-slot {
+  width: 100%;
+  /* The global label rule stacks children in a column; a dropzone is a row
+     (icon beside text) — the same override the Import step's zones carry. */
+  flex-direction: row;
+  align-items: center;
+  text-align: left;
+}
+.wiz-slot.drop-armed {
+  border-color: var(--drv-color, var(--accent));
+  background: color-mix(in srgb, var(--drv-color, var(--accent)) 10%, transparent);
+}

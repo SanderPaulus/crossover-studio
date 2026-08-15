@@ -1775,4 +1775,5 @@ export const nl: Record<string, string> = {
   "Manual: searchable explanation of every tab, the optimizer, the scores and the VituixCAD exchange": "Handleiding: doorzoekbare uitleg van elke tab, de optimizer, de scores en de VituixCAD-uitwisseling",
   "Preferences: layout, language, theme": "Voorkeuren: layout, taal, thema",
   "Preferences": "Voorkeuren",
+  "Drop FRD + ZMA files here — or click to browse": "Sleep FRD + ZMA-bestanden hierheen — of klik om te bladeren",
 };

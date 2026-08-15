@@ -8382,61 +8382,57 @@ export default function App() {
               <p className="sub" style={{ marginBottom: '0.2rem' }}>
                 {wizardWays === 2 ? t('…or load your own:') : t('Load your measurements:')}
               </p>
-              {wizardWays === 1 ? (
-                <label className="file-button" style={{ display: 'block' }}>
-                  {woofer || tweeter
-                    ? `✓ ${t('Driver')} — ${(woofer ?? tweeter)!.name}`
-                    : t('Driver — FRD (+ ZMA/LIMP, + angle files)')}
-                  <input
-                    type="file"
-                    accept=".frd,.txt,.zma,.ZMA,.lim"
-                    multiple
-                    onChange={loadDriverFiles('woofer')}
-                    style={{ display: 'none' }}
-                  />
-                </label>
-              ) : (
-                <>
-                  <label className="file-button" style={{ display: 'block', marginBottom: '0.3rem' }}>
-                    {woofer
-                      ? `✓ ${t(wizardWays === 3 ? 'Woofer' : 'Woofer / mid')} — ${woofer.name}`
-                      : `${t(wizardWays === 3 ? 'Woofer' : 'Woofer / mid')} — ${t('FRD (+ ZMA/LIMP, + angle files)')}`}
-                    <input
-                      type="file"
-                      accept=".frd,.txt,.zma,.ZMA,.lim"
-                      multiple
-                      onChange={loadDriverFiles('woofer')}
-                      style={{ display: 'none' }}
-                    />
-                  </label>
-                  {wizardWays === 3 && (
-                    <label className="file-button" style={{ display: 'block', marginBottom: '0.3rem' }}>
-                      {midDrv
-                        ? `✓ ${t('Midrange')} — ${midDrv.name}`
-                        : `${t('Midrange')} — ${t('FRD (+ ZMA/LIMP, + angle files)')}`}
+              {/* Same dropzone idiom as the Import step's driver cards — the
+                  wizard is the beginner's surface, so it must not be the one
+                  place where dragging a file does nothing (Sanders screenshot).
+                  Same handlers, same colour identity, same status line. */}
+              <div className="wiz-slots">
+                {(
+                  wizardWays === 1
+                    ? ([['woofer', 'Driver', woofer ?? tweeter, 'var(--viz-woofer)']] as const)
+                    : ([
+                        ['woofer', wizardWays === 3 ? 'Woofer' : 'Woofer / mid', woofer, 'var(--viz-woofer)'],
+                        ...(wizardWays === 3 ? ([['mid', 'Midrange', midDrv, 'var(--viz-mid)']] as const) : []),
+                        ['tweeter', 'Tweeter', tweeter, 'var(--viz-tweeter)'],
+                      ] as const)
+                ).map(([slot, label, drv, color]) => {
+                  const hasZ =
+                    slot === 'woofer'
+                      ? !!withSlotAliasesN(impedances)[canonicalModelForRole('low', threeWay)]
+                      : slot === 'mid'
+                        ? !!impedances['mid']
+                        : !!impedances['tweeter'];
+                  return (
+                    <label
+                      key={slot}
+                      className={`dropzone wiz-slot${dropSide === slot ? ' drop-armed' : ''}`}
+                      style={{ '--drv-color': color } as CSSProperties}
+                      {...dropHandlers(slot)}
+                    >
+                      <span className="dz-icon" aria-hidden="true">{drv ? '✓' : '⬇'}</span>
+                      <span className="dz-text">
+                        <strong>
+                          {t(label)}
+                          {drv ? ` — ${drv.name}` : ''}
+                        </strong>
+                        <span>
+                          {dropSide === slot
+                            ? t('⬇ drop to load')
+                            : drv
+                              ? `${t('✓ response')}${hasZ ? ' · Z' : ` · ${t('no impedance yet')}`}`
+                              : t('Drop FRD + ZMA files here — or click to browse')}
+                        </span>
+                      </span>
                       <input
                         type="file"
                         accept=".frd,.txt,.zma,.ZMA,.lim"
                         multiple
-                        onChange={loadDriverFiles('mid')}
-                        style={{ display: 'none' }}
+                        onChange={loadDriverFiles(slot)}
                       />
                     </label>
-                  )}
-                  <label className="file-button" style={{ display: 'block' }}>
-                    {tweeter
-                      ? `✓ ${t('Tweeter')} — ${tweeter.name}`
-                      : `${t('Tweeter')} — ${t('FRD (+ ZMA/LIMP, + angle files)')}`}
-                    <input
-                      type="file"
-                      accept=".frd,.txt,.zma,.ZMA,.lim"
-                      multiple
-                      onChange={loadDriverFiles('tweeter')}
-                      style={{ display: 'none' }}
-                    />
-                  </label>
-                </>
-              )}
+                  );
+                })}
+              </div>
               {wizardMissing.length > 0 && (
                 <p className="sub" style={{ marginTop: '0.4rem' }}>
                   {t('Still needed for a {n}-way:', { n: wizardWays })}{' '}
