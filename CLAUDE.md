@@ -107,7 +107,41 @@ minimum phase reconstrueert. Voertaal met Sander: **Nederlands**; code/comments 
   de gebruiker plaatst die files zelf naast de .vxp (of gebruikt de map-export hieronder).
   NB: de minimum-modus-AUTOFILL (offsetMm = rauwe deltaMm) draagt dezelfde rauwe-Δ-besmetting —
   bewust nog niet omgezet naar de excess-Δ (raakt de sim-weergave; Sanders keuze)
-- `timing.ts` — HET fundament: bulk-delay-fit uit unwrapped fase + `assessSharedReference`
+- **Fase-audit (aug 2026, Sanders opdracht "fase-afhandeling verifiëren en corrigeren")** —
+  de gemeten fase moet end-to-end bewaard blijven; bevindingen + wat er veranderde:
+  (1) OFFSETS: `offsetMm`/`midOffsetMm` default 0 (leeg), auto-fill zet in measured-modus 0;
+  géén optimizer varieert ze (lib gebruikt overal `zeroAdj`, de worker geeft de UI-waarde
+  vast door); UI-waarschuwing bij ≠ 0 in measured-modus stond alleen op de tweeter én
+  alleen bij raw-verdict 'plausible' (in 3-weg het valse alarm) — nu onvoorwaardelijk in
+  measured-modus, en ook op de mid. Stoel-re-timing is de enige bewuste extra delay
+  (opt-in checkbox, meldt zichzelf). (2) MINIMUM-FASE: alleen in `phaseMode === 'minimum'`
+  (expliciete keuze, VituixCAD-vergelijking); default measured; geen smoothing in de keten;
+  `resample` interpoleert dB én ge-UNWRAPTE fase apart in log-f — dat is voor een
+  delay-dragende respons complex-exact (test: 2,5 ms op een 600-pt log grid reproduceert
+  op <0,05°), waar re/im-interpolatie tussen twee punten 90° uiteen −3 dB zou geven
+  (test pint dat). Unwrap gebeurt op het DICHTE bronrooster (1,465 Hz ARTA-stap: max
+  wrapped stap 11° > 10 kHz op Sanders files) — nooit op het grove grid. WÉL GEVONDEN EN
+  GEFIXT: `combine`/`combineN` unwrapten de SOM-fase op het grove grid (600 pt) — bij
+  20 Hz–20 kHz stapt dat 231 Hz aan de top en 2,5 ms delay draait dan 207° per stap →
+  valse 360°-naden boven ~14 kHz in de getoonde somfase / verificatie-residu / groepsvertraging
+  (gemeten: 8 naden bij 2,5 ms, 20 bij 3 ms). Nu `unwrapGuided`: magnitude-gewogen
+  gemiddelde van de (al ge-unwrapte) tak-fases als gids, alleen het VERSCHIL raw−gids wordt
+  ge-unwrapt (bulk-delay valt weg), de gehele omwentelingen worden op raw gezet — waar het
+  oude unwrap geldig was zijn de integers gelijk en het resultaat bit-identiek (frozen
+  KOAN-test bewaakt dat). (3) SOMMATIE: complex per punt (`sumBranches`), filter F(f) uit
+  de MNA-solver op de GEMETEN complexe Z (network.ts weigert zonder Z). (4) ASSEN: FRD
+  13640 pt lineair, LIMP 161–264 pt log; `resampleImpedance` (nieuw, dsp.ts) interpoleert
+  |Z| LOG-LOG + fase lineair (was lineair-in-Ω; verschil klein, maar een inductieve stijging
+  en de Fs-piek zijn in log-log rechte lijnen); randen flat geklemd (de solver heeft op elk
+  gridpunt een last nodig; Sanders tweeter.lim begint pas op 200 Hz — daaronder wordt de
+  tweeter-Z dus vlak vastgehouden, gemeld als `clamped`). Alle zes App-Z-sites gebruiken hem.
+  ACCEPTATIETEST: `sumCheck.ts` `checkPredictedSum(drivers[], measuredSum)` — complexe som
+  van losse metingen tegen een gemeten som (zelfde mic/klok, drivers direct parallel), GEEN
+  niveau- of delay-uitlijning (superpositie onder spanningssturing maakt de rauwe getallen
+  vergelijkbaar), max/RMS dB en graden over 200–5000 Hz, pass < 1 dB en < 10°;
+  `npm run sum-check <d1.frd> <d2.frd> … <som.frd>`. Tests in `phasePath.test.ts`
+  (offset-0 bit-identiek, 100 mm-kamfilter op 1715/5145/8575 Hz + piek 3430, complex ≠ dB-som,
+  gids-unwrap zonder naden bij 3 ms, log-log Z, sumCheck pass/fail).
   (gedeelde-tijdreferentie-verdict). Silent-failure-risico van verkeerde timing is de bestaansreden
 - `dsp.ts` — logspace/resample (unwrapped-fase-interpolatie, `clampEdges` voor Z), `combine`
   (complexe som; exporteert ook `combinedPhaseDeg`), `applyTransfer`.

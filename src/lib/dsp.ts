@@ -68,6 +68,32 @@ export function resample(
   return { freq: [...grid], spl: outSpl, phaseDeg: outPhase };
 }
 
+/**
+ * Resample a measured IMPEDANCE onto `grid`: |Z| interpolated log-log
+ * (log|Z| linear in log f — a resonance peak and the inductive rise are
+ * straight lines there, where linear-in-ohms bows between two coarse LIMP
+ * points), phase unwrapped and linear in log f. Out-of-range points take the
+ * nearest edge value (flat): the solver needs a load on every grid point, and
+ * a flat hold is the only extrapolation that cannot invent a resonance. The
+ * returned `clamped` says whether any point WAS held, so a caller can say so.
+ */
+export function resampleImpedance(
+  freq: readonly number[],
+  magnitude: readonly number[],
+  phaseDeg: readonly number[],
+  grid: readonly number[],
+): { z: Complex[]; clamped: boolean } {
+  const logMag = magnitude.map((m) => Math.log10(Math.max(m, 1e-9)));
+  const g = resample(freq, logMag, phaseDeg, grid, { clampEdges: true });
+  const clamped = grid[0] < freq[0] || grid[grid.length - 1] > freq[freq.length - 1];
+  const z = g.spl.map((lm, i) => {
+    const mag = 10 ** lm;
+    const ph = (g.phaseDeg[i] * Math.PI) / 180;
+    return { re: mag * Math.cos(ph), im: mag * Math.sin(ph) };
+  });
+  return { z, clamped };
+}
+
 /** Complex pressure at one grid point from SPL (dB re arbitrary) + phase (deg). */
 export function toComplex(splDb: number, phaseDeg: number): Complex {
   const mag = 10 ** (splDb / 20);
@@ -126,6 +152,66 @@ function prepareBranch(g: GriddedResponse, adj?: BranchAdjust): GriddedResponse 
   };
 }
 
+/**
+ * Unwrap the wrapped phase of a SUM using the branches as a guide.
+ *
+ * Plain unwrapping of the sum's own phase assumes successive grid points
+ * differ by less than 180°. On a log grid that fails at the top end once the
+ * measured phase carries enough bulk delay: 600 points over 20 Hz–20 kHz step
+ * ~230 Hz at 20 kHz, and 2.5 ms of delay (an ARTA reference time) rotates
+ * 207° per step — a spurious 360° jump above 10 kHz in the displayed sum
+ * phase, the residual of a verification measurement and the group delay.
+ * The branch phases are safe: they were unwrapped on the dense measurement
+ * grid before resampling. So: take the magnitude-weighted mean of the
+ * (unwrapped) branch phases as a guide, unwrap only the DIFFERENCE between
+ * the raw sum phase and that guide (it varies slowly — the bulk delay has
+ * cancelled), and lift the raw phase by the resulting integer turns.
+ * Where plain unwrapping was valid the two lifts coincide, so the result is
+ * bit-identical to before there (the integer turns are the same integers).
+ */
+function unwrapGuided(raw: readonly number[], guide: readonly number[]): number[] {
+  const n = raw.length;
+  const turns = new Array<number>(n);
+  let k = 0;
+  let prev = raw[0] - guide[0];
+  turns[0] = 0;
+  for (let i = 1; i < n; i++) {
+    const d = raw[i] - guide[i];
+    let delta = d - prev;
+    while (delta > 180) {
+      delta -= 360;
+      k -= 1;
+    }
+    while (delta <= -180) {
+      delta += 360;
+      k += 1;
+    }
+    prev = d;
+    turns[i] = k;
+  }
+  // Anchor like unwrapPhaseDeg does: the first point keeps its raw value.
+  return raw.map((v, i) => (turns[i] === 0 ? v : v + 360 * turns[i]));
+}
+
+/** Magnitude-weighted mean of the branches' unwrapped phases — the guide for
+ *  unwrapGuided. Weights are linear pressure magnitudes, so a silent ghost
+ *  (−400 dB) contributes nothing and a filtered-out branch almost nothing. */
+function guidePhase(prepared: GriddedResponse[]): number[] {
+  const n = prepared[0].freq.length;
+  const out = new Array<number>(n);
+  for (let i = 0; i < n; i++) {
+    let wsum = 0;
+    let acc = 0;
+    for (const b of prepared) {
+      const w = 10 ** (b.spl[i] / 20);
+      wsum += w;
+      acc += w * b.phaseDeg[i];
+    }
+    out[i] = wsum > 0 ? acc / wsum : 0;
+  }
+  return out;
+}
+
 /** Shared summation core. Accumulation starts AT the first branch (not at
  *  zero) so the K=2 arithmetic is bit-identical to the historical fused
  *  woofer+tweeter loop — the 2-way regression suite depends on that. */
@@ -171,7 +257,7 @@ export function combineN(
     freq: prepared[0].freq,
     branches: prepared,
     combinedSpl,
-    combinedPhaseDeg: unwrapPhaseDeg(combinedPhaseRaw),
+    combinedPhaseDeg: unwrapGuided(combinedPhaseRaw, guidePhase(prepared)),
   };
 }
 
@@ -235,7 +321,7 @@ export function combine(
     woofer,
     tweeter,
     combinedSpl,
-    combinedPhaseDeg: unwrapPhaseDeg(combinedPhaseRaw),
+    combinedPhaseDeg: unwrapGuided(combinedPhaseRaw, guidePhase([woofer, tweeter])),
     invertedSpl,
     relativePhaseDeg,
   };

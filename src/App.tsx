@@ -17,7 +17,7 @@ import { classifyLevelProfile } from './lib/parsers/classify.ts';
 import { compareMeasurement } from './lib/verification.ts';
 import { parseVxp, type VxpCrossover, type VxpPart, type VxpProject } from './lib/parsers/vxp.ts';
 import { estimateBulkDelay, assessSharedReference, assessPairTimeBase } from './lib/timing.ts';
-import { logspace, resample, combine, combineN, offsetMmToDelayS, applyTransfer, type GriddedResponse } from './lib/dsp.ts';
+import { logspace, resample, resampleImpedance, combine, combineN, offsetMmToDelayS, applyTransfer, type GriddedResponse } from './lib/dsp.ts';
 import { computeIntegration } from './lib/integration.ts';
 import { crossoverToNetlist } from './lib/vxpNetwork.ts';
 import { solveNetwork } from './lib/network.ts';
@@ -441,8 +441,7 @@ function zGridWithSlots(
 ): Record<string, Complex[]> {
   const out: Record<string, Complex[]> = {};
   for (const [model, z] of Object.entries(impedances)) {
-    const g = resample(z.freq, z.magnitude, z.phase, [...grid], { clampEdges: true });
-    out[model] = g.spl.map((mag, i) => fromPolar(mag, (g.phaseDeg[i] * Math.PI) / 180));
+    out[model] = resampleImpedance(z.freq, z.magnitude, z.phase, grid).z;
   }
   return withSlotAliasesN(out);
 }
@@ -3132,8 +3131,7 @@ export default function App() {
         const netlist = crossoverToNetlist(useEditor ? schematic! : xo!).netlist;
         const zOnGrid = Object.fromEntries(
           Object.entries(impedances).map(([model, z]) => {
-            const g = resample(z.freq, z.magnitude, z.phase, grid, { clampEdges: true });
-            return [model, g.spl.map((mag, i) => fromPolar(mag, (g.phaseDeg[i] * Math.PI) / 180))];
+            return [model, resampleImpedance(z.freq, z.magnitude, z.phase, grid).z];
           }),
         );
         const sol = solveNetwork(netlist, grid, zOnGrid);
@@ -4972,18 +4970,16 @@ export default function App() {
         return;
       }
       const d = resample(solo.frd.freq, solo.frd.spl, solo.frd.phase, grid);
-      const zg = resample(z.freq, z.magnitude, z.phase, grid, { clampEdges: true });
-      const zOnGrid = zg.spl.map((m, i) => fromPolar(m, (zg.phaseDeg[i] * Math.PI) / 180));
+      const zOnGrid = resampleImpedance(z.freq, z.magnitude, z.phase, grid).z;
       const safety = (() => {
         const lo = Math.max(200, solo.frd.freq[0]);
         const hi = Math.min(20000, solo.frd.freq[solo.frd.freq.length - 1]);
         if (!(hi > lo * 1.5)) return undefined;
         const sGrid = logspace(lo, hi, 240);
-        const sz = resample(z.freq, z.magnitude, z.phase, sGrid, { clampEdges: true });
         return {
           freqs: sGrid,
           d: resample(solo.frd.freq, solo.frd.spl, solo.frd.phase, sGrid),
-          z: sz.spl.map((m, i) => fromPolar(m, (sz.phaseDeg[i] * Math.PI) / 180)),
+          z: resampleImpedance(z.freq, z.magnitude, z.phase, sGrid).z,
         };
       })();
       runSoloChainTask(
@@ -5394,8 +5390,7 @@ export default function App() {
         return;
       }
       const grid = result.freq;
-      const zg = resample(z.freq, z.magnitude, z.phase, grid, { clampEdges: true });
-      const zOnGrid = zg.spl.map((m, i) => fromPolar(m, (zg.phaseDeg[i] * Math.PI) / 180));
+      const zOnGrid = resampleImpedance(z.freq, z.magnitude, z.phase, grid).z;
       const spec = {
         ...vFilters[soloDriver],
         eq: vFilters[soloDriver].eq.map((b) => ({ ...b, gainDb: Math.min(0, b.gainDb) })),
@@ -5422,8 +5417,7 @@ export default function App() {
       const zFor = (model: string) => {
         const z = impedances[model];
         if (!z) throw new Error(`No measured impedance for "${model}".`);
-        const g = resample(z.freq, z.magnitude, z.phase, grid, { clampEdges: true });
-        return g.spl.map((m, i) => fromPolar(m, (g.phaseDeg[i] * Math.PI) / 180));
+        return resampleImpedance(z.freq, z.magnitude, z.phase, grid).z;
       };
       // RAW driver responses (no filters applied) for acoustic-mode targets.
       // 3-way: the grid spans the UNION of the branch ranges, so a branch's
@@ -11144,13 +11138,11 @@ export default function App() {
               <span className="derived" title={t('The mm offset expressed as time delay')}>
                 {t('= {us} µs delay', { us: delayUs.toFixed(0) })}
               </span>
-              {phaseMode === 'measured' &&
-                timing?.ref.verdict === 'plausible' &&
-                num(offsetMm, 0) !== 0 && (
-                  <span className="nl-warning">
-                    {t('measured phase already carries the real timing — leave 0 unless you are simulating a physical move')}
-                  </span>
-                )}
+              {phaseMode === 'measured' && num(offsetMm, 0) !== 0 && (
+                <span className="nl-warning">
+                  {t('measured phase already carries the real timing — leave 0 unless you are simulating a physical move')}
+                </span>
+              )}
               {phaseMode === 'minimum' && timing?.ref.verdict === 'plausible' && (
                 <span className="derived">
                   auto-filled from the excess-phase Δ (
@@ -11174,6 +11166,11 @@ export default function App() {
                     onChange={(e) => setMidOffsetMm(e.target.value)}
                   />
                 </label>
+                {phaseMode === 'measured' && num(midOffsetMm, 0) !== 0 && (
+                  <span className="nl-warning">
+                    {t('measured phase already carries the real timing — leave 0 unless you are simulating a physical move')}
+                  </span>
+                )}
                 <label title={t('Level adjustment on the midrange branch, dB')}>
                   {t('Level trim (dB)')}
                   <input

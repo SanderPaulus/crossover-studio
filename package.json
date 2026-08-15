@@ -9,7 +9,8 @@
     "preview": "vite preview",
     "typecheck": "tsc -b --noEmit",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "sum-check": "vite-node scripts/sum-check.ts"
   },
   "dependencies": {
     "@base-ui-components/react": "^1.0.0-rc.0",
