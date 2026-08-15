@@ -3725,3 +3725,18 @@ details.cabinet-driver > .derived strong,
   opacity: 0.72;
   border-style: dotted;
 }
+
+/* Per-file remove in the imported-files inventory */
+.file-row-head .file-remove {
+  margin-left: 0.5rem;
+  padding: 0 0.45rem;
+  line-height: 1.4;
+  font-size: 0.8rem;
+  color: var(--muted);
+  background: transparent;
+  border-color: transparent;
+}
+.file-row-head .file-remove:hover {
+  color: var(--bad);
+  border-color: var(--border);
+}

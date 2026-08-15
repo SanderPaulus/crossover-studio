@@ -10405,6 +10405,9 @@ export default function App() {
             key: string;
             name: string;
             detail: string;
+            /** Take this one file out again (Sanders: a wrong .lim came back
+             *  with a restored backup and there was no way to remove it). */
+            remove?: () => void;
           }
           interface Group {
             title: string;
@@ -10420,16 +10423,36 @@ export default function App() {
             colorVar: string,
           ) => {
             const rows: Row[] = [];
+            const setLoaded = slot === 'woofer' ? setWoofer : slot === 'mid' ? setMidDrv : setTweeter;
+            const dropAngles = (keep: (a: AngleEntry) => boolean) =>
+              setAngleSets((prev) => {
+                if (!prev) return prev;
+                const next = { ...prev, [slot]: (prev[slot] ?? []).filter(keep) };
+                if (slot === 'mid' && next.mid && next.mid.length === 0) delete next.mid;
+                return next.woofer.length + next.tweeter.length + (next.mid?.length ?? 0) > 0 ? next : null;
+              });
             if (loaded) {
               rows.push({
                 key: `${slot}:${loaded.name}`,
                 name: loaded.name,
                 detail: t('FRD — SPL response (0°)'),
+                // The 0° file IS the driver: removing it removes the branch's
+                // response and, with it, its angle set (angles without an axis
+                // have nothing to be relative to).
+                remove: () => {
+                  setLoaded(null);
+                  dropAngles(() => false);
+                },
               });
             }
             for (const a of angleSets?.[slot] ?? []) {
               if (loaded && a.name === loaded.name) continue;
-              rows.push({ key: `${slot}:${a.name}`, name: a.name, detail: `FRD — ${a.hor}° hor` });
+              rows.push({
+                key: `${slot}:${a.name}`,
+                name: a.name,
+                detail: `FRD — ${a.hor}° hor`,
+                remove: () => dropAngles((e) => e.name !== a.name),
+              });
             }
             const z = zStandalone[zKey];
             if (z) {
@@ -10446,6 +10469,12 @@ export default function App() {
                 detail: lim
                   ? t('LIMP .lim — impedance (stored as {name})', { name: z.file.name })
                   : t('ZMA — impedance'),
+                remove: () =>
+                  setZStandalone((prev) => {
+                    const next = { ...prev };
+                    delete next[zKey];
+                    return next;
+                  }),
               });
             }
             if (rows.length > 0) groups.push({ title, colorVar, rows });
@@ -10491,6 +10520,17 @@ export default function App() {
                   <div className="file-row-head">
                     <span className="file-name">{r.name}</span>
                     <span className="file-kind">{r.detail}</span>
+                    {r.remove && (
+                      <button
+                        type="button"
+                        className="file-remove"
+                        onClick={r.remove}
+                        title={t('Remove this file from the project (drop the right one on the driver card to replace it)')}
+                        aria-label={t('Remove {name}', { name: r.name })}
+                      >
+                        ✕
+                      </button>
+                    )}
                   </div>
                   <input
                     className="file-note"

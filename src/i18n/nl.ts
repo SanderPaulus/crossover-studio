@@ -1804,4 +1804,5 @@ export const nl: Record<string, string> = {
   "Download backup (.json)": "Download back-up (.json)",
   "Discard the backup? This cannot be undone.": "Back-up weggooien? Dit kan niet ongedaan gemaakt worden.",
   "Discard": "Weggooien",
+  "Remove this file from the project (drop the right one on the driver card to replace it)": "Verwijder dit bestand uit het project (sleep het juiste op de driverkaart om te vervangen)",
 };

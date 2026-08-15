@@ -2105,7 +2105,11 @@ krijgen — de UI blijft bewust op de SVG.
   'data' = Setup-label); rechts `.analysis-pane` met alle charts, SPL optioneel sticky
   (📌-knop, 'ads-ui-splpin'). Beide panes scrollen onafhankelijk.
 - Import-tab = file-dialogen + project-save/load + **"Imported files"-inventaris**: per driver
-  (0°-FRD, hoek-FRD's, ZMA) en vxp-project elke file met een vrije notitie (`fileNotes` in
+  (0°-FRD, hoek-FRD's, ZMA) en vxp-project elke file met een vrije notitie én een ✕ per bestand
+  (aug 2026, Sanders "hoe kan ik deze verwijderen" na een verkeerd .lim uit een herstelde
+  back-up): impedantie = zStandalone[rol] weg, hoekbestand = uit de set, het 0°-bestand ÍS de
+  driver dus dat verwijdert de tak + zijn hoekset; vervangen kan ook door gewoon het juiste
+  bestand op de kaart te droppen (`fileNotes` in
   ProjectState, key "group:filename", mee in autosave én projectfile). Setup-tab = view range/
   driver phase/tweeter adjustment/vxp-variant + timing sanity; Filters-tab = virtual filters +
   passive synthesis; Network-tab = netwerk-editor (workspace krijgt dan `wide-left` — de
