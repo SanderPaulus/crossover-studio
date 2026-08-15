@@ -2614,6 +2614,11 @@ export default function App() {
   const wizardSteps = useMemo(
     () =>
       [
+        // The facts the optimizer's physics windows run on (mic distance,
+        // front, reference height, driver positions, Sd/Xmax, chamber). The
+        // wizard used to jump from the files straight to Goals and skip them
+        // (Sanders: "maar de kast en de driver specs dan?").
+        { id: 5, label: 'Cabinet & drivers' },
         { id: 1, label: 'Goals' },
         // Solo has nothing to cross; 3-way derives its 2D candidates from the
         // measured pair crossings (the Crossover step is 2-way vocabulary).
@@ -8559,6 +8564,80 @@ export default function App() {
             </>
           )}
 
+          {wizardStep === 5 && (() => {
+            const Ok = ({ ok, children }: { ok: boolean; children: ReactNode }) => (
+              <p style={{ margin: '0.15rem 0' }}>
+                {ok ? '✅' : '⬜'} {children}
+              </p>
+            );
+            const roles = (
+              [
+                { role: 'high', label: 'Tweeter', on: !!tweeter },
+                { role: 'mid', label: 'Midrange', on: !!midDrv },
+                { role: 'low', label: hasMidBranch ? 'Woofer' : 'Woofer / mid', on: !!woofer },
+              ] as { role: BranchRole; label: string; on: boolean }[]
+            ).filter((r) => r.on);
+            const goTo = (tab: 'data' | 'drivers') => {
+              setWizardOpen(false);
+              setDesignTab(tab);
+            };
+            const num = (v: string) => Number(v) > 0;
+            return (
+              <>
+                <p>
+                  <strong>{t('Cabinet & drivers')}</strong>{' '}
+                  {t('— what you already know about the speaker. None of this touches the measurements: it feeds the windows the optimizer searches in (beaming, lobing, excursion), the true angle each driver was measured at, and the split of the timing between rig and driver. Without it the app falls back to size formulas and a guessed 500 mm — it still designs, it just knows less.')}
+                </p>
+                <p className="sub" style={{ margin: '0.4rem 0 0.2rem' }}>
+                  <strong>{t('The cabinet and how you measured')}</strong>
+                </p>
+                <Ok ok={num(cabinet.micDistanceMm)}>
+                  {t('Mic distance')}{num(cabinet.micDistanceMm) ? ` — ${cabinet.micDistanceMm} mm` : ''} —{' '}
+                  <span className="sub">{t('honest low limit, far-field verdict, rig share of the timing')}</span>
+                </Ok>
+                <Ok ok={num(cabinet.baffleWidthMm) && num(cabinet.baffleHeightMm)}>
+                  {t('Front panel width and height')}{num(cabinet.baffleWidthMm) && num(cabinet.baffleHeightMm) ? ` — ${cabinet.baffleWidthMm} × ${cabinet.baffleHeightMm} mm` : ''} —{' '}
+                  <span className="sub">{t('baffle step, edge distances, the drawing')}</span>
+                </Ok>
+                <Ok ok={num(cabinet.refHeightMm)}>
+                  {t('Reference point above the floor')}{num(cabinet.refHeightMm) ? ` — ${cabinet.refHeightMm} mm` : ''} —{' '}
+                  <span className="sub">{t('floor bounce: how low the measurement is worth anything')}</span>
+                </Ok>
+                <Ok ok={num(cabinet.refFromTopMm)}>
+                  {t('Reference point below the top')}{num(cabinet.refFromTopMm) ? ` — ${cabinet.refFromTopMm} mm` : ''} —{' '}
+                  <span className="sub">{t('so driver positions can be entered as measured from the top')}</span>
+                </Ok>
+                <p style={{ margin: '0.3rem 0 0.6rem' }}>
+                  <button type="button" onClick={() => goTo('data')}>
+                    {t('Open Your cabinet →')}
+                  </button>
+                </p>
+                <p className="sub" style={{ margin: '0.4rem 0 0.2rem' }}>
+                  <strong>{t('Per driver')}</strong>
+                </p>
+                {roles.map(({ role, label }) => {
+                  const d = cabinet.drivers[role];
+                  const posOk = cabinet.refDriver === role || d.xMm.trim() !== '' || d.yMm.trim() !== '';
+                  const dataOk = num(sdCm2[role]) && num(xmaxMm[role]);
+                  return (
+                    <Ok key={role} ok={posOk}>
+                      <strong>{t(label)}</strong>: {t('position')} {posOk ? '✓' : '—'}
+                      {' · '}Sd/Xmax {dataOk ? '✓' : `— (${t('optional; unlocks the level-aware excursion floor')})`}
+                    </Ok>
+                  );
+                })}
+                <p style={{ margin: '0.3rem 0 0' }}>
+                  <button type="button" onClick={() => goTo('drivers')}>
+                    {t('Open Your drivers →')}
+                  </button>
+                </p>
+                <p className="sub" style={{ marginTop: '0.6rem' }}>
+                  {t('Filling these in closes the wizard; come back with "Walk me through it" on the Design step — it reopens here until the list is green, then at Goals.')}
+                </p>
+              </>
+            );
+          })()}
+
           {wizardStep === 1 && (
             <>
               <p>
@@ -11217,7 +11296,9 @@ export default function App() {
                       // data yet — the wizard should take you from nothing to a
                       // built crossover, not assume measurements exist. One
                       // loaded driver is enough (single-driver mode).
-                      setWizardStep(!woofer && !tweeter ? 0 : 1);
+                      setWizardStep(
+                        !woofer && !tweeter ? 0 : guidedDone.cabinet && guidedDone.drivers ? 1 : 5,
+                      );
                       setWizardOpen(true);
                     }}
                     title={t('Design wizard: load measurements, then goals, priority, crossover point, acoustic slopes and component choices in one guided flow — ends with Optimize')}

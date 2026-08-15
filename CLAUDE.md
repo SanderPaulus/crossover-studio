@@ -2238,6 +2238,17 @@ voordat je een layoutbug gaat jagen.
   armen) op DEZELFDE `dropHandlers`/`loadDriverFiles` als de kaarten — één laadpad. LES
   (dezelfde als de meetgids-slider): de globale `label`-regel is een KOLOM, dus een
   dropzone-label moet expliciet `flex-direction: row` zeggen of icoon en tekst stapelen.
+- **Wizard-stap "Kast & drivers" (aug 2026, Sanders "maar de kast en de driver specs dan?")**:
+  de wizard sprong van de metingen direct naar Doelen en sloeg precies de stap over die de
+  optimizer zijn fysica-vensters geeft. Nu `{ id: 5, label: 'Cabinet & drivers' }` als eerste
+  lijst-item ná de metingen-poort: een CHECKLIST die live state leest (Ok-patroon van de
+  Compare-wizard) — mic-afstand, front, referentiepunt boven de vloer / onder de top, per
+  driver positie + Sd/Xmax — mét per item waarom het telt, en twee knoppen die de wizard
+  sluiten en naar "Je kast" / "Je drivers" springen (de volledige formulieren mét tekening
+  blijven de ene plek waar je invult; de modal dupliceert ze niet). Niet blokkerend: zonder
+  valt de app terug op maat-formules — de tekst zegt dat. Openen vanuit de Ontwerp-stap landt
+  op 5 tot `guidedDone.cabinet && guidedDone.drivers`, daarna op Doelen. Kamer-vinkje bewust
+  weggelaten: `enclosure` heeft een default en zou altijd groen zijn.
 - **De wizard toont ALTIJD drie slots, top-down (aug 2026, Sanders "mid en tweeter hebben
   dezelfde bestanden")**: de wizard liet alleen de slots van het gekózen systeemtype zien,
   bottom-up (Woofer/mid, Tweeter). In 2-weg was het TWEEDE slot dus de tweeter, en
