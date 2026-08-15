@@ -4159,6 +4159,42 @@ export default function App() {
   /* ---- Project persistence (step 8) ---- */
 
   const AUTOSAVE_KEY = 'ads-autosave';
+  /** A set-aside autosave that failed to restore once. Surfaced with a retry
+   *  and a download instead of living silently in localStorage — a backup
+   *  nobody can reach is not a backup (Sanders: "alles is ineens weg"). */
+  const [unreadableBackup, setUnreadableBackup] = useState<string | null>(() => {
+    try {
+      return localStorage.getItem('ads-autosave-unreadable');
+    } catch {
+      return null;
+    }
+  });
+  const retryUnreadableBackup = () => {
+    const raw = localStorage.getItem('ads-autosave-unreadable');
+    if (!raw) return;
+    try {
+      applyProject(deserializeProject(raw));
+      localStorage.removeItem('ads-autosave-unreadable');
+      setUnreadableBackup(null);
+      setPersistNote(t('Backup restored — it is your live session again and autosaves from here.'));
+    } catch (err) {
+      setError(
+        t('The backup still cannot be loaded ({reason}). Download it and send it along — the file itself is a normal project file.', {
+          reason: err instanceof Error ? err.message : String(err),
+        }),
+      );
+    }
+  };
+  const downloadUnreadableBackup = () => {
+    const raw = localStorage.getItem('ads-autosave-unreadable');
+    if (!raw) return;
+    const blob = new Blob([raw], { type: 'application/json' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'crossover-studio-autosave-backup.json';
+    a.click();
+    URL.revokeObjectURL(a.href);
+  };
   const [persistNote, setPersistNote] = useState<string | null>(null);
 
   function snapshot(): ProjectState {
@@ -4498,6 +4534,7 @@ export default function App() {
         return;
       }
       localStorage.removeItem(AUTOSAVE_KEY);
+      setUnreadableBackup(stored);
       setPersistNote(t('Autosave could not be restored — kept aside as backup'));
       openWizardForEmpty();
     }
@@ -10476,6 +10513,32 @@ export default function App() {
           ));
         })()}
       </div>
+        {unreadableBackup && (
+          <div className="verdict mismatch" style={{ margin: '0.6rem 0' }}>
+            <strong>{t('There is a saved backup of an earlier session that could not be loaded automatically')}</strong>{' '}
+            ({Math.round(unreadableBackup.length / 1024)} kB).{' '}
+            {t('It holds everything that was in the app at the time — measurements, filters, networks. Try loading it again (a temporary glitch during a code update is the usual cause), or download it as a project file.')}
+            <div className="row" style={{ marginTop: '0.4rem' }}>
+              <button type="button" className="primary" onClick={retryUnreadableBackup}>
+                {t('Load the backup')}
+              </button>
+              <button type="button" onClick={downloadUnreadableBackup}>
+                {t('Download backup (.json)')}
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  if (window.confirm(t('Discard the backup? This cannot be undone.'))) {
+                    localStorage.removeItem('ads-autosave-unreadable');
+                    setUnreadableBackup(null);
+                  }
+                }}
+              >
+                {t('Discard')}
+              </button>
+            </div>
+          </div>
+        )}
         {persistNote && <p className="filenames">{persistNote} · {t('autosaves locally on every change')}</p>}
         {vxpNote && <p className="filenames">{vxpNote}</p>}
         {/* One banner for parse failures AND content warnings — the old

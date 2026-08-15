@@ -1796,4 +1796,12 @@ export const nl: Record<string, string> = {
   "Open Your drivers →": "Open Je drivers →",
   "Filling these in closes the wizard; come back with \"Walk me through it\" on the Design step — it reopens here until the list is green, then at Goals.": "Invullen sluit de wizard; kom terug via \"Neem me mee\" op de Ontwerp-stap — hij opent hier weer tot de lijst groen is, daarna bij Doelen.",
   "LIMP .lim — impedance (stored as {name})": "LIMP .lim — impedantie (opgeslagen als {name})",
+  "Backup restored — it is your live session again and autosaves from here.": "Back-up hersteld — dit is weer je live sessie en hij autosavet vanaf hier.",
+  "The backup still cannot be loaded ({reason}). Download it and send it along — the file itself is a normal project file.": "De back-up kan nog steeds niet geladen worden ({reason}). Download hem en stuur hem mee — het bestand zelf is een gewoon projectbestand.",
+  "There is a saved backup of an earlier session that could not be loaded automatically": "Er staat een back-up van een eerdere sessie die niet automatisch geladen kon worden",
+  "It holds everything that was in the app at the time — measurements, filters, networks. Try loading it again (a temporary glitch during a code update is the usual cause), or download it as a project file.": "Hij bevat alles wat toen in de app stond — metingen, filters, netwerken. Probeer hem opnieuw te laden (een tijdelijke hapering tijdens een code-update is de gebruikelijke oorzaak), of download hem als projectbestand.",
+  "Load the backup": "Laad de back-up",
+  "Download backup (.json)": "Download back-up (.json)",
+  "Discard the backup? This cannot be undone.": "Back-up weggooien? Dit kan niet ongedaan gemaakt worden.",
+  "Discard": "Weggooien",
 };
