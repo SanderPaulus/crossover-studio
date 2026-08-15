@@ -348,6 +348,20 @@ minimum phase reconstrueert. Voertaal met Sander: **Nederlands**; code/comments 
   woofer (woofer ondiepst — het paar staat 471 mm onder de ref op 1 m, rig-aandeel 105 mm).
   Les: een half-Hz kortere meting mag nooit een hele feature stil uitzetten — grenzen uit het
   bestand halen, niet hardcoden.
+  **DE FIT MOET IN DE EIGEN BAND (zelfde dag, Sanders "ik kan me niet voorstellen dat de mid
+  34,6 mm achter de woofer zit" — terecht)**: `excessDelayMsOf` fit over een VASTE 500–5000 Hz,
+  en dat is voor een woofer grotendeels buiten zijn band. Gemeten op zijn paar: 675 µs over
+  500–5000 tegen ~700 µs in de eigen band (300–1000/600–1500), 27 µs = 9 mm — genoeg om de
+  woofer 21–35 mm "vóór" de anderen te zetten en de mid 34,6 mm "erachter". `excessDelayInBand`
+  (module-level, náást de oude functie — de VituixCAD-brug houdt `excessDelayMsOf`, zijn
+  KOAN-waarden zijn gepind en op normale drivers schelen de twee µs's) fit in de eigen
+  passband (10 dB onder het bovenste kwartiel, geklemd 200–10 000, ×1,2/×0,85 randen) en
+  levert R². `measuredDepth` draait erop; uitkomst op zijn set: tweeter 0,7 mm en mid
+  16,1 mm achter de woofer — fysiek gewoon. Plus een PLAUSIBILITEITSVLAG (`suspicious`): leest
+  de woofer >10 mm ondieper dan de tweeter, dan zegt de kaart "fysiek ongewoon — controleer
+  woofer-positie, mic-afstand, en of de mic bij de woofer-sweep bleef staan; gebruik deze
+  dieptes niet" i.p.v. het anker als waarheid te presenteren (een dome is normaal het
+  ondiepst). `weakFit` (R² < 0,98) wordt erbij genoemd.
   **De uitkomst staat bij het VELD, niet alleen onder het timing-paneel** (Sanders "maar het
   getal wordt niet ingevuld bij de tweeter?"): de afleiding hoorde op de cabinet-stap en het
   veld dat hij beantwoordt staat op de drivers-stap — dezelfde blader-klacht als bij de

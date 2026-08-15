@@ -859,6 +859,47 @@ function excessDelayMsOf(frd: Parsed): number | null {
   }
 }
 
+/** A driver's own PASSBAND: where it plays within 10 dB of its upper-quartile
+ *  level. File extent is useless (FRDs run from 5 Hz), and a delay fitted
+ *  through octaves with no output is not a delay. */
+function passBandOf(frd: Parsed): [number, number] | null {
+  const sorted = [...frd.spl].sort((x, y) => x - y);
+  const ref = sorted[Math.floor(sorted.length * 0.75)] - 10;
+  let lo = -1;
+  let hi = -1;
+  for (let i = 0; i < frd.freq.length; i++) {
+    if (frd.spl[i] >= ref) {
+      if (lo < 0) lo = i;
+      hi = i;
+    }
+  }
+  return lo >= 0 && hi > lo ? [frd.freq[lo], frd.freq[hi]] : null;
+}
+
+/** Excess-phase bulk delay fitted INSIDE the driver's own passband (clamped
+ *  to 200–10 000 Hz where the FFT minimum-phase reconstruction is trustworthy),
+ *  with the fit's R². Used for the measured mounting depth: a woofer fitted over
+ *  500–5000 Hz is judged mostly outside its band (Sanders pair: 675 µs there
+ *  vs ~700 µs in band). The VituixCAD bridge keeps `excessDelayMsOf` — its
+ *  KOAN values are pinned and the two agree within a few µs on normal drivers. */
+function excessDelayInBand(frd: Parsed): { delayMs: number; rSquared: number; band: [number, number] } | null {
+  try {
+    const pb = passBandOf(frd);
+    if (!pb) return null;
+    const lo = Math.max(pb[0], 200, frd.freq[0] * 1.05) * 1.2;
+    const hi = Math.min(pb[1], 10000, frd.freq[frd.freq.length - 1] * 0.95) * 0.85;
+    if (hi <= lo * 1.5) return null;
+    const top = Math.min(20000, frd.freq[frd.freq.length - 1]);
+    const g = resample(frd.freq, frd.spl, frd.phase, logspace(Math.max(frd.freq[0] * 1.05, lo / 4), top, 400));
+    const mp = minimumPhaseDeg(g.freq, g.spl);
+    const excess = g.phaseDeg.map((p, i) => p - mp[i]);
+    const r = estimateBulkDelay(g.freq, excess, [lo, hi]);
+    return { delayMs: r.delayMs, rSquared: r.rSquared, band: [lo, hi] };
+  } catch {
+    return null;
+  }
+}
+
 /** Parse a numeric field, falling back when blank/invalid (module-level twin
  *  of the component's `num`, usable before that const is initialised). */
 function numOf(s: string, fallback: number): number {
@@ -3509,14 +3550,17 @@ export default function App() {
     // Measured arrival path per driver, and the share the tripod explains.
     const arrival: Partial<Record<BranchRole, number>> = {};
     const rig: Partial<Record<BranchRole, number>> = {};
+    let weakFit: BranchRole | null = null;
     for (const r of roles) {
       const frd = src[r];
       const pl = cabinetInfo.place[r];
       if (!frd || !pl) return null;
-      const ms = excessDelayMsOf(frd);
+      // In-band fit: a delay is only a delay where the driver plays.
+      const fit = excessDelayInBand(frd);
       const geo = pathBreakdownMm(pl, R, elev);
-      if (ms === null || geo === null) return null;
-      arrival[r] = ms * 1e-3 * C_AIR_MM_S;
+      if (fit === null || geo === null) return null;
+      if (fit.rSquared < 0.98 && weakFit === null) weakFit = r;
+      arrival[r] = fit.delayMs * 1e-3 * C_AIR_MM_S;
       rig[r] = geo.rigMm;
     }
     // A delay measurement carries one unknown constant (electronic latency),
@@ -3553,7 +3597,18 @@ export default function App() {
       (best, r) => (depths[r]! < depths[best]! ? r : best),
       (Object.keys(depths) as BranchRole[])[0],
     );
-    return { depths, spread, unexplained, shallowest };
+    // Plausibility: a dome tweeter is normally the SHALLOWEST driver (a
+    // cone's acoustic centre sits at the voice coil, centimetres back). A
+    // woofer reading shallower than the tweeter by more than a centimetre
+    // is far more often a rig error than a fact — the woofer's typed
+    // position, the mic distance, or a mic that was re-aimed for the woofer
+    // sweep (Sanders: "ik kan me niet voorstellen dat de mid 34,6 mm achter
+    // de woofer zit"). Say so instead of presenting the anchor as truth.
+    const suspicious =
+      depths.high !== undefined &&
+      shallowest === 'low' &&
+      depths.high - depths.low! > 10;
+    return { depths, spread, unexplained, shallowest, suspicious, weakFit };
   }, [cabinet, timing, timing3, threeWay, woofer, midDrv, tweeter, cabinetInfo]);
 
   /**
@@ -7732,6 +7787,17 @@ export default function App() {
                                 </>
                               );
                             })()}
+                          </span>
+                        )}
+                        {measuredDepth?.depths[role] !== undefined && measuredDepth.suspicious && (
+                          <span className="derived alert">
+                            ⚠{' '}
+                            {t('Physically unusual: the woofer reads as the shallowest driver, {mm} mm in front of the tweeter — a dome is normally the shallowest, a cone’s acoustic centre sits at the voice coil. This is a rig reading far more often than a fact: check the woofer’s position and the mic distance, and that the mic stayed put and aimed at the same point for the woofer sweep. Until then, do not use these depths.', {
+                              mm: (measuredDepth.depths.high! - measuredDepth.depths.low!).toFixed(1),
+                            })}
+                            {measuredDepth.weakFit !== null
+                              ? ` ${t('(The delay fit of the {drv} is also not cleanly delay-like.)', { drv: measuredDepth.weakFit === 'low' ? t('woofer') : measuredDepth.weakFit === 'mid' ? t('midrange') : t('tweeter') })}`
+                              : ''}
                           </span>
                         )}
                         {d.facing !== 'front' && (
