@@ -845,7 +845,12 @@ function excessDelayMsOf(frd: Parsed): number | null {
     const lo = Math.max(500, frd.freq[0] * 1.05);
     const hi = Math.min(5000, frd.freq[frd.freq.length - 1] * 0.95);
     if (hi <= lo * 1.5) return null;
-    const g = resample(frd.freq, frd.spl, frd.phase, logspace(lo, 20000, 400));
+    // The reconstruction grid must stay INSIDE the file: resample refuses to
+    // extrapolate, and an ARTA export ending at 19 999.5 Hz made a fixed
+    // 20 000 Hz top throw — caught, returned null, and every consumer
+    // (measured depth, VituixCAD bridge) silently had nothing (Sanders set).
+    const top = Math.min(20000, frd.freq[frd.freq.length - 1]);
+    const g = resample(frd.freq, frd.spl, frd.phase, logspace(lo, top, 400));
     const mp = minimumPhaseDeg(g.freq, g.spl);
     const excess = g.phaseDeg.map((p, i) => p - mp[i]);
     return estimateBulkDelay(g.freq, excess, [lo, hi]).delayMs;
@@ -3326,7 +3331,10 @@ export default function App() {
     if (!threeWay || !woofer || !midDrv || !tweeter) return null;
     /** Excess-phase bulk-delay fit of one driver over [lo, hi]. */
     const fit = (frd: Parsed, lo: number, hi: number) => {
-      const g = resample(frd.freq, frd.spl, frd.phase, logspace(frd.freq[0] * 1.05, 20000, 400));
+      // Grid top clamped to the file (an ARTA export ends at 19 999.5 Hz and
+      // resample refuses to extrapolate — same trap as excessDelayMsOf).
+      const top = Math.min(20000, frd.freq[frd.freq.length - 1]);
+      const g = resample(frd.freq, frd.spl, frd.phase, logspace(frd.freq[0] * 1.05, top, 400));
       const mp = minimumPhaseDeg(g.freq, g.spl);
       const excess = g.phaseDeg.map((p, i) => p - mp[i]);
       return estimateBulkDelay(g.freq, excess, [lo, hi]);

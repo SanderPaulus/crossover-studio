@@ -339,6 +339,15 @@ minimum phase reconstrueert. Voertaal met Sander: **Nederlands**; code/comments 
   aanwezig paar plausibel). Geverifieerd: KOAN + synthetische mid ⇒ mid "13,9 mm achter de
   tweeter", woofer "17,3 mm — jouw 17,3 mm komt overeen". NB de regel verschijnt pas als
   ÁLLE geladen drivers x én y hebben (het anker is het minimum over de rollen).
+  **HARD GELEERD op Sanders eigen set (aug 2026, "ik zie geen voorstel van hoe diep")**: zijn
+  ARTA-exports eindigen op 19 999,51 Hz en `excessDelayMsOf` én de `timing3`-fit
+  resamplen op een grid met een VASTE top van 20 000 Hz — `resample` weigert te extrapoleren,
+  gooit, de catch maakte er stil `null` van, en élke consument (gemeten diepte, VituixCAD-
+  brug, per-paar-timing) had zonder enige melding niets. Grid-top nu geklemd op het einde van
+  het bestand. Gemeten op zijn project daarna: tweeter 20,9 mm en mid 34,6 mm achter de
+  woofer (woofer ondiepst — het paar staat 471 mm onder de ref op 1 m, rig-aandeel 105 mm).
+  Les: een half-Hz kortere meting mag nooit een hele feature stil uitzetten — grenzen uit het
+  bestand halen, niet hardcoden.
   **De uitkomst staat bij het VELD, niet alleen onder het timing-paneel** (Sanders "maar het
   getal wordt niet ingevuld bij de tweeter?"): de afleiding hoorde op de cabinet-stap en het
   veld dat hij beantwoordt staat op de drivers-stap — dezelfde blader-klacht als bij de
