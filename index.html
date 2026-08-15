@@ -3,6 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="icon" type="image/svg+xml" href="./favicon.svg" />
     <title>Crossover Studio — from driver measurements to a filter you can build</title>
     <meta
       name="description"
@@ -21,7 +22,13 @@
     <a class="skip" href="#main">Skip to content</a>
 
     <header class="topbar">
-      <span class="wordmark"><b>SD Acoustics</b> Crossover Studio</span>
+      <span class="wordmark">
+        <svg class="mark" viewBox="0 0 120 48" fill="none" aria-hidden="true" width="40" height="16">
+          <path d="M4 14 C12 14 20 4 30 4 C40 4 50 24 60 24 C70 24 80 4 90 4 C100 4 108 14 116 14" stroke="#4d8df0" stroke-width="5.5" stroke-linecap="round" stroke-linejoin="round"/>
+          <path d="M4 34 C12 34 20 44 30 44 C40 44 50 24 60 24 C70 24 80 44 90 44 C100 44 108 34 116 34" stroke="#2fc542" stroke-width="5.5" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+        <span><b>SD Acoustics</b> Cross<span class="over">over</span> Studio</span>
+      </span>
       <a class="btn btn-small" href="./app/">Open the studio</a>
     </header>
 
@@ -29,6 +36,17 @@
       <!-- ─────────────────────────── hero ─────────────────────────── -->
       <section class="hero">
         <div class="wrap">
+          <!-- The logo lockup: the mark, then CROSSOVER (OVER in the logo blue)
+               and STUDIO between two rules — after Sander's design. Inline SVG
+               so it stays crisp and weighs nothing. -->
+          <div class="logo-lockup" aria-label="Crossover Studio">
+            <svg class="logo-mark" viewBox="0 0 120 48" fill="none" aria-hidden="true">
+              <path d="M4 14 C12 14 20 4 30 4 C40 4 50 24 60 24 C70 24 80 4 90 4 C100 4 108 14 116 14" stroke="#4d8df0" stroke-width="5.5" stroke-linecap="round" stroke-linejoin="round"/>
+              <path d="M4 34 C12 34 20 44 30 44 C40 44 50 24 60 24 C70 24 80 44 90 44 C100 44 108 34 116 34" stroke="#2fc542" stroke-width="5.5" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+            <div class="logo-word">CROSS<span class="over">OVER</span></div>
+            <div class="logo-studio"><span class="rule"></span>STUDIO<span class="rule"></span></div>
+          </div>
           <h1>
             You measured your drivers.<br />
             <span class="grad">Now let something else do the filter.</span>

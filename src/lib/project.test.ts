@@ -132,6 +132,40 @@ describe('v2 role-keyed storage + v1 migration (phase-4 trede 2b)', () => {
   });
 });
 
+describe('verification measurements (Compare mode)', () => {
+  it('round-trips the list + active index and keeps verifyFile as the active one', () => {
+    const base: ProjectState = { design: state.design };
+    const files = [
+      { name: 'build-v1.frd', raw: '100 90 0\n1000 91 0\n' },
+      { name: 'build-v2.frd', raw: '100 90.5 0\n1000 90.8 0\n' },
+    ];
+    const st = { ...base, verifyFile: files[1], verifyFiles: files, verifyActive: 1 };
+    const back = deserializeProject(serializeProject(st));
+    expect(back.verifyFiles).toEqual(files);
+    expect(back.verifyActive).toBe(1);
+    expect(back.verifyFile).toEqual(files[1]);
+  });
+
+  it('reads a pre-Compare file (verifyFile only) without inventing a list', () => {
+    const base: ProjectState = { design: state.design };
+    const st = { ...base, verifyFile: { name: 'old.frd', raw: '100 90 0\n' } };
+    const back = deserializeProject(serializeProject(st));
+    expect(back.verifyFile?.name).toBe('old.frd');
+    expect(back.verifyFiles).toBeUndefined();
+    expect(back.verifyActive).toBeUndefined();
+  });
+
+  it('drops malformed entries from the list and rejects a bogus active index', () => {
+    const base: ProjectState = { design: state.design };
+    const json = JSON.parse(serializeProject(base));
+    json.verifyFiles = [{ name: 'ok.frd', raw: 'x' }, { nope: 1 }, 'junk'];
+    json.verifyActive = -3;
+    const back = deserializeProject(JSON.stringify(json));
+    expect(back.verifyFiles).toEqual([{ name: 'ok.frd', raw: 'x' }]);
+    expect(back.verifyActive).toBeUndefined();
+  });
+});
+
 describe('angle-file persistence', () => {
   it('round-trips per-driver angle sets', () => {
     const withAngles: ProjectState = {

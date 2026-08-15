@@ -153,6 +153,7 @@ import {
 import { minimumPhaseDeg } from './lib/minphase.ts';
 import Chart, { type ChartHandle, type Series } from './components/Chart.tsx';
 import DriverFilterControls from './components/FilterControls.tsx';
+import { LogoMark, LogoWord } from './components/Logo.tsx';
 import demoMid from './lib/parsers/fixtures/mid_hor0_mettape.txt?raw';
 import demoTweet from './lib/parsers/fixtures/tweet_hor0_mettape.txt?raw';
 import { beamingCeilingHz, computeDirectivity, computeDirectivityN, type AngleResponse } from './lib/directivity.ts';
@@ -276,6 +277,11 @@ const TIER_LABEL: Record<PhaseTier, string> = {
 type PanelKey = 'directivity' | 'sonogram' | 'transfer' | 'impedance' | 'phase' | 'time';
 
 const PANEL_KEYS: PanelKey[] = ['directivity', 'sonogram', 'transfer', 'impedance', 'phase', 'time'];
+/** What Compare mode shows: the SPL overlay (always on) and the phase residual. */
+const COMPARE_PANELS: Record<PanelKey, boolean> = {
+  directivity: false, sonogram: false, transfer: false, impedance: false, phase: true, time: false,
+};
+type VerifyEntry = { name: string; raw: string; frd: Parsed & { hasPhase: boolean } };
 
 /* Labels the command palette and the 1–5 shortcuts share with the step bar and
  * the expert tabs — one naming, or the palette becomes a second map. */
@@ -924,7 +930,33 @@ export default function App() {
    *  can draw its relative phase (tweeter − woofer) in OUR convention. */
   /** Measured response of the BUILT system, for the model-vs-measurement
    *  overlay (VALIDATIE.md loop). Persisted with the project. */
-  const [verify, setVerify] = useState<{ name: string; raw: string; frd: Parsed & { hasPhase: boolean } } | null>(null);
+  /** Verification measurements of the BUILT system. Compare mode keeps a
+   *  LIST (build v1, build v2, …) so "did it get better?" is one click; the
+   *  active entry is what every chart and verdict reads. Same-named file
+   *  reloads replace in place — "reload replaces" was the single-slot rule
+   *  and it still holds per name. */
+  const [verifyList, setVerifyList] = useState<VerifyEntry[]>([]);
+  const [verifyIx, setVerifyIx] = useState(0);
+  const verify: VerifyEntry | null =
+    verifyList.length > 0 ? verifyList[Math.min(verifyIx, verifyList.length - 1)] : null;
+  const setVerify = (v: VerifyEntry | null) => {
+    if (v === null) {
+      setVerifyList([]);
+      setVerifyIx(0);
+      return;
+    }
+    setVerifyList((l) => {
+      const i = l.findIndex((e) => e.name === v.name);
+      const next = i >= 0 ? l.map((e, j) => (j === i ? v : e)) : [...l, v];
+      // Idempotent side effect: the same result under a StrictMode double call.
+      setVerifyIx(i >= 0 ? i : next.length - 1);
+      return next;
+    });
+  };
+  const removeVerify = (ix: number) => {
+    setVerifyList((l) => l.filter((_, j) => j !== ix));
+    setVerifyIx((cur) => (cur > ix ? cur - 1 : cur === ix ? Math.max(0, cur - 1) : cur));
+  };
   const [refResp, setRefResp] = useState<{ woofer: Parsed; tweeter: Parsed; names: string } | null>(
     null,
   );
@@ -1115,6 +1147,25 @@ export default function App() {
     else localStorage.setItem('ads-ui-panefrac', paneFrac.toFixed(4));
   }, [paneFrac]);
   const workspaceRef = useRef<HTMLDivElement | null>(null);
+  /** ⚙ preferences popover: a plain <details>, closed on any click outside
+   *  and on Esc — the cheap disclosure pattern; it holds three switches, not a
+   *  dialog's worth of focus management. */
+  const prefsRef = useRef<HTMLDetailsElement>(null);
+  useEffect(() => {
+    const onDown = (e: PointerEvent) => {
+      const el = prefsRef.current;
+      if (el?.open && !el.contains(e.target as Node)) el.open = false;
+    };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && prefsRef.current?.open) prefsRef.current.open = false;
+    };
+    document.addEventListener('pointerdown', onDown);
+    document.addEventListener('keydown', onKey);
+    return () => {
+      document.removeEventListener('pointerdown', onDown);
+      document.removeEventListener('keydown', onKey);
+    };
+  }, []);
   const startPaneDrag = (e: ReactPointerEvent<HTMLDivElement>) => {
     const ws = workspaceRef.current;
     if (!ws) return;
@@ -1175,9 +1226,9 @@ export default function App() {
    * work in it (changing a working setup out from under someone is its own
    * kind of bug).
    */
-  const [uiMode, setUiMode] = useState<'guided' | 'expert'>(() => {
+  const [uiMode, setUiMode] = useState<'guided' | 'expert' | 'compare'>(() => {
     const m = localStorage.getItem('ads-ui-mode');
-    if (m === 'guided' || m === 'expert') return m;
+    if (m === 'guided' || m === 'expert' || m === 'compare') return m;
     return localStorage.getItem('ads-autosave') ? 'expert' : 'guided';
   });
   useEffect(() => {
@@ -1212,7 +1263,7 @@ export default function App() {
    * whatever is OFF is not computed either (the heavy memos below gate on
    * these). SPL and the integration score always stay on. Persisted.
    */
-  const [showPanels, setShowPanels] = useState<Record<PanelKey, boolean>>(() => {
+  const [showPanelsPref, setShowPanels] = useState<Record<PanelKey, boolean>>(() => {
     /* Fresh users start with a CALM set: SPL (always on) + phase + impedance —
      * the three that answer "is this design good?". Directivity, sonogram,
      * transfer and time domain stay one visible, clickable chip away; seven
@@ -1234,8 +1285,13 @@ export default function App() {
     }
   });
   useEffect(() => {
-    localStorage.setItem('ads-ui-panels', JSON.stringify(showPanels));
-  }, [showPanels]);
+    localStorage.setItem('ads-ui-panels', JSON.stringify(showPanelsPref));
+  }, [showPanelsPref]);
+  /* Compare mode shows only what the comparison is about — SPL with the
+     overlay and the phase residual — regardless of the stored preference; the
+     preference itself is left alone so leaving the mode restores it. */
+  const showPanels: Record<PanelKey, boolean> =
+    uiMode === 'compare' ? COMPARE_PANELS : showPanelsPref;
 
   // Tweeter adjustment
   const [offsetMm, setOffsetMm] = useState('0');
@@ -2110,6 +2166,7 @@ export default function App() {
   /* Drop-target plumbing for the driver cards. dragenter/leave fire for every
    * child crossed, so a counter — not a boolean — tracks "still inside". */
   const [dropSide, setDropSide] = useState<'woofer' | 'mid' | 'tweeter' | null>(null);
+  const [cmpDropArmed, setCmpDropArmed] = useState(false);
   const dropDepth = useRef(0);
   function dropHandlers(side: 'woofer' | 'mid' | 'tweeter') {
     return {
@@ -3800,6 +3857,22 @@ export default function App() {
     return compareMeasurement(result.freq, result.combinedSpl, result.combinedPhaseDeg, verify.frd, [lo, hi]);
   }, [result, verify, splViewX]);
 
+  /** Every loaded measurement against the same sim and band — Compare mode's
+   *  "did v2 beat v1" table. Same function, same band as the active overlay,
+   *  so a row cannot flatter itself with a different yardstick. */
+  const verifyAll = useMemo(() => {
+    if (!result || verifyList.length === 0) return null;
+    const lo = splViewX ? splViewX[0] : result.freq[0];
+    const hi = splViewX ? splViewX[1] : result.freq[result.freq.length - 1];
+    return verifyList.map((v) => {
+      try {
+        return compareMeasurement(result.freq, result.combinedSpl, result.combinedPhaseDeg, v.frd, [lo, hi]);
+      } catch {
+        return null;
+      }
+    });
+  }, [result, verifyList, splViewX]);
+
   /** The loudest and quietest spot of the combined curve, marked in the chart.
    *  Straight from `combinedFlat`, so the dots sit exactly where the peak ±dB
    *  in the strip comes from and follow the same band (and the same zoom).
@@ -4089,6 +4162,9 @@ export default function App() {
         : undefined,
       fileNotes: Object.keys(fileNotes).length > 0 ? fileNotes : undefined,
       verifyFile: verify ? { name: verify.name, raw: verify.raw } : undefined,
+      verifyFiles:
+        verifyList.length > 0 ? verifyList.map((v) => ({ name: v.name, raw: v.raw })) : undefined,
+      verifyActive: verifyList.length > 0 ? Math.min(verifyIx, verifyList.length - 1) : undefined,
       nearField: (() => {
         const out: NonNullable<ProjectState['nearField']> = {};
         for (const r of ['low', 'mid', 'high'] as BranchRole[]) {
@@ -4216,11 +4292,20 @@ export default function App() {
       setAngleSets(null);
     }
     setFileNotes(state.fileNotes ?? {});
-    setVerify(
-      state.verifyFile
-        ? { name: state.verifyFile.name, raw: state.verifyFile.raw, frd: parseFrd(state.verifyFile.raw) }
-        : null,
-    );
+    {
+      // The list is authoritative when present; older files carry one slot.
+      const files = state.verifyFiles ?? (state.verifyFile ? [state.verifyFile] : []);
+      const parsed: VerifyEntry[] = [];
+      for (const f of files) {
+        try {
+          parsed.push({ name: f.name, raw: f.raw, frd: parseFrd(f.raw) });
+        } catch {
+          // A measurement that no longer parses is dropped, not fatal.
+        }
+      }
+      setVerifyList(parsed);
+      setVerifyIx(Math.min(state.verifyActive ?? 0, Math.max(0, parsed.length - 1)));
+    }
     setNearField(() => {
       const base: Record<BranchRole, NearFieldSlot> = {
         low: emptyNearField(),
@@ -4409,7 +4494,7 @@ export default function App() {
     }, 800);
     return () => clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [woofer, midDrv, tweeter, project, zStandalone, angleSets, fileNotes, verify, vFilters, xoName, offsetMm, trimDb, inverted, midOffsetMm, midTrimDb, midInverted, fMin, fMax, splMin, splMax, phasePriority, vfEqBands, phaseMode, dirWeight, ampTarget, sonogramMode, designs, activeDesignId, lastSavedId, networkActive, vfBypass, catalogSnap, breakupGuard, xoRangeOn, xoFreqHz, xoMarginHz, xoScanSteps, xo3Steps, hpLpPref, hpLpPrefLow, phaseMetricMode, acSlopeMid, acSlopeTweeter, acSlopeWoofer, acSlopeMidHp, xoLowFreqHz, xoLowMarginHz, midSizeInch, wooferSizeInch, kaTier, cabinet, nearField, ctcK, seatTiming, breakupLimitOn, breakupHarmonic, sdCm2, xmaxMm, excursionSpl, snapProfile, snapSeriesL, snapSeriesC, snapSeriesR, snapStacks, snapBoundToSeries, stagedOn, targetRipple, targetPhase, soloSensDb, soloFloorOn, soloFloorDb]);
+  }, [woofer, midDrv, tweeter, project, zStandalone, angleSets, fileNotes, verifyList, verifyIx, vFilters, xoName, offsetMm, trimDb, inverted, midOffsetMm, midTrimDb, midInverted, fMin, fMax, splMin, splMax, phasePriority, vfEqBands, phaseMode, dirWeight, ampTarget, sonogramMode, designs, activeDesignId, lastSavedId, networkActive, vfBypass, catalogSnap, breakupGuard, xoRangeOn, xoFreqHz, xoMarginHz, xoScanSteps, xo3Steps, hpLpPref, hpLpPrefLow, phaseMetricMode, acSlopeMid, acSlopeTweeter, acSlopeWoofer, acSlopeMidHp, xoLowFreqHz, xoLowMarginHz, midSizeInch, wooferSizeInch, kaTier, cabinet, nearField, ctcK, seatTiming, breakupLimitOn, breakupHarmonic, sdCm2, xmaxMm, excursionSpl, snapProfile, snapSeriesL, snapSeriesC, snapSeriesR, snapStacks, snapBoundToSeries, stagedOn, targetRipple, targetPhase, soloSensDb, soloFloorOn, soloFloorDb]);
 
   function resetProject() {
     localStorage.removeItem(AUTOSAVE_KEY);
@@ -7793,6 +7878,7 @@ export default function App() {
       },
     },
     { id: 'wizard', label: t('Open the design wizard'), run: () => setWizardOpen(true) },
+    { id: 'compare', label: t('Compare mode: model vs measurement'), hint: t('load the built speaker’s response'), run: () => setUiMode('compare') },
     { id: 'measure', label: t('Open the measuring guide'), hint: t('rig, distances, angles'), run: () => setMeasureGuideOpen(true) },
     { id: 'help', label: t('Open the manual'), run: () => setHelpOpen(true) },
     { id: 'targets', label: t('Show design targets'), hint: t('what the last build was fitted against'), run: () => setShowTargets(true) },
@@ -7866,6 +7952,160 @@ export default function App() {
       if (target) setDesignTab(target);
     }
   };
+
+  /* COMPARE MODE — the VALIDATIE.md loop as a workspace instead of a popup.
+     Three things, top to bottom, each reading live state: the design the
+     charts simulate, the measurements of the built speaker (a list — v1, v2 —
+     because "did it get better?" is the question), and the verdict. The
+     charts on the right are the SPL overlay and the phase residual only. */
+  const comparePane = (
+    <div className="panel compare-pane">
+      <h2>🔬 {t('Compare — model vs measurement')}</h2>
+      <p className="sub">
+        {t('Open the project you designed with, load the measured response of the BUILT speaker, and read where the two differ. Level and mic distance are aligned for you and shown as numbers — the shape is what you judge.')}
+      </p>
+
+      <div className="cmp-step">
+        <h3>1 · {t('Design')}</h3>
+        {!result ? (
+          <p className="sub">{t('No project open yet.')}</p>
+        ) : (
+          <p className="sub sim-source">
+            {t('Charts show:')} <strong>{simSource}</strong>
+            {activeDesign && networkActive
+              ? ` — ${t('{n} parts', { n: activeDesign.parts.filter((pp) => pp.type === 'Inductor' || pp.type === 'Capacitor' || pp.type === 'Resistor').length })}`
+              : ''}
+          </p>
+        )}
+        {result && designs.length > 0 && !networkActive && (
+          <p className="sub alert">
+            {t('The network is not in the simulation — switch it on, or the charts compare against the virtual filters.')}{' '}
+            <button type="button" className="link-btn" onClick={() => setNetworkActive(true)}>
+              {t('Use in simulation')}
+            </button>
+          </p>
+        )}
+        <div className="row">
+          <label className="file-button">
+            {t('Load project')}
+            <input type="file" accept=".json,.adsproj" onChange={loadProjectFromFile} style={{ display: 'none' }} />
+          </label>
+          {designs.length > 1 && (
+            <select value={activeDesignId ?? ''} onChange={(e) => selectDesign(e.target.value)} title={t('Which saved design the charts simulate')}>
+              {designs.map((d) => (
+                <option key={d.id} value={d.id}>{d.name}</option>
+              ))}
+            </select>
+          )}
+        </div>
+      </div>
+
+      {error && <p className="error">⚠ {error}</p>}
+      <div className="cmp-step">
+        <h3>2 · {t('Measurements of the built speaker')}</h3>
+        <label
+          className={`dropzone${cmpDropArmed ? ' drop-armed' : ''}`}
+          onDragEnter={(e) => { if (e.dataTransfer.types.includes('Files')) { e.preventDefault(); setCmpDropArmed(true); } }}
+          onDragOver={(e) => { if (e.dataTransfer.types.includes('Files')) { e.preventDefault(); e.dataTransfer.dropEffect = 'copy'; } }}
+          onDragLeave={(e) => { if (!e.currentTarget.contains(e.relatedTarget as Node | null)) setCmpDropArmed(false); }}
+          onDrop={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            setCmpDropArmed(false);
+            for (const f of [...e.dataTransfer.files]) void loadVerificationFile(f);
+          }}
+        >
+          <span className="dz-icon" aria-hidden="true">⬇</span>
+          <span className="dz-text">
+            <strong>{t('Drop FRD files here')}</strong>
+            <span>{t('the measured response of the BUILT speaker, with phase, same rig as the driver files — or click to browse; several at once is fine')}</span>
+          </span>
+          <input
+            type="file"
+            accept=".frd,.txt"
+            multiple
+            onChange={(e) => {
+              const files = [...(e.target.files ?? [])];
+              e.target.value = '';
+              for (const f of files) void loadVerificationFile(f);
+            }}
+          />
+        </label>
+        {verifyList.length > 0 && (
+          <div className="design-tabs cmp-tabs">
+            {verifyList.map((v, i) => (
+              <span key={v.name} className={`design-tab${i === Math.min(verifyIx, verifyList.length - 1) ? ' active' : ''}`}>
+                <button type="button" className="design-tab-name" onClick={() => setVerifyIx(i)} title={t('Show this measurement in the charts')}>
+                  {v.name}
+                </button>
+                <button type="button" className="design-tab-close" onClick={() => removeVerify(i)} title={t('Remove this measurement')} aria-label={t('Remove {name}', { name: v.name })}>
+                  ×
+                </button>
+              </span>
+            ))}
+          </div>
+        )}
+      </div>
+
+      <div className="cmp-step">
+        <h3>3 · {t('Verdict')}</h3>
+        {!verifyCompare ? (
+          <p className="sub">
+            {t('No comparison yet —')} {verify ? t('the simulation has no result (open a project first).') : t('load a measurement above.')}
+          </p>
+        ) : (
+          <>
+            <div className="stats">
+              <Stat k={t('Level offset')} v={`${verifyCompare.offsetDb >= 0 ? '+' : ''}${verifyCompare.offsetDb.toFixed(1)} dB`} sub={t('added to the measurement — absolute calibration differs, the shape does not')} />
+              <Stat k={t('Magnitude')} v={`±${verifyCompare.avgAbsDb.toFixed(2)} dB`} sub={`P95 ±${verifyCompare.p95AbsDb.toFixed(2)} · ${t('worst')} ${verifyCompare.maxAt.deltaDb.toFixed(1)} dB ${t('at')} ${hz(verifyCompare.maxAt.freqHz)}`} />
+              {verifyCompare.phase ? (
+                <Stat k={t('Phase residual')} v={`${verifyCompare.phase.avgAbsDeg.toFixed(1)}°`} sub={`P95 ${verifyCompare.phase.p95AbsDeg.toFixed(0)}° · ${t('fitted mic delay')} ${verifyCompare.phase.fittedDelayUs.toFixed(0)} µs`} />
+              ) : (
+                <Stat k={t('Phase residual')} v="—" sub={t('measurement carries no phase column')} />
+              )}
+              <Stat k={t('Band')} v={`${Math.round(verifyCompare.band[0])}–${Math.round(verifyCompare.band[1])} Hz`} sub={t('the visible SPL range — zoom the chart to change it')} />
+            </div>
+            {verifyCompare.phase?.looksInverted && (
+              <p className="sub alert">⚠ {t('offset ≈ 180° — the build is likely wired INVERTED vs the sim')}</p>
+            )}
+            {verifyAll && verifyList.length > 1 && (
+              <table className="scan-table scan-table-pick" title={t('Every measurement against the same simulation and band; click a row to show it')}>
+                <thead>
+                  <tr>
+                    <th>{t('measurement')}</th>
+                    <th>{t('avg')}</th>
+                    <th>P95</th>
+                    <th>{t('worst')}</th>
+                    <th>{t('phase')}</th>
+                    <th>{t('level')}</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {verifyList.map((v, i) => {
+                    const c = verifyAll[i];
+                    const active = i === Math.min(verifyIx, verifyList.length - 1);
+                    return (
+                      <tr key={v.name} className={active ? 'active' : ''} onClick={() => setVerifyIx(i)}>
+                        <td>{v.name}{active ? ' ◂' : ''}</td>
+                        <td>{c ? `±${c.avgAbsDb.toFixed(2)} dB` : '—'}</td>
+                        <td>{c ? `±${c.p95AbsDb.toFixed(2)}` : '—'}</td>
+                        <td>{c ? `${c.maxAt.deltaDb.toFixed(1)} @ ${hz(c.maxAt.freqHz)}` : '—'}</td>
+                        <td>{c?.phase ? `${c.phase.avgAbsDeg.toFixed(1)}°` : '—'}</td>
+                        <td>{c ? `${c.offsetDb >= 0 ? '+' : ''}${c.offsetDb.toFixed(1)} dB` : '—'}</td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            )}
+            <p className="sub">
+              {t("The overlay lives in the SPL chart, the phase residual in the Phase chart — flat at 0° means the model's phase is right where it matters.")}
+            </p>
+          </>
+        )}
+      </div>
+    </div>
+  );
 
   return (
     <div className={`app-shell layout-${layoutMode} mode-${uiMode}`}>
@@ -9045,7 +9285,7 @@ export default function App() {
                     {verify && (
                       <button
                         type="button"
-                        onClick={() => setVerify(null)}
+                        onClick={() => removeVerify(Math.min(verifyIx, verifyList.length - 1))}
                         style={{ marginLeft: '0.5rem' }}
                       >
                         {t('Remove')}
@@ -9318,7 +9558,43 @@ export default function App() {
         </Modal>
       )}
       <header className="topbar" title={t('Combined SPL & relative phase — woofer normalised to 0°, tweeter shown against it.')}>
-        <h1>SD Acoustics - Crossover Studio</h1>
+        <div className="tb-left">
+          <h1 className="brand">
+            <LogoMark size={40} className="brand-mark" />
+            <span className="brand-text">
+              <span className="brand-sub">SD Acoustics</span>
+              <LogoWord />
+            </span>
+          </h1>
+          {/* THE primary choice of the app — where am I? — so it sits first,
+              reads as one segmented control and is visibly heavier than the
+              utility buttons on the right. Preferences (layout, language,
+              theme) moved behind ⚙: they are set once, and as eight permanent
+              buttons they gave the mode switch the same weight as a theme
+              toggle. */}
+          <div className="mode-switch" role="tablist" aria-label={t('Mode')}>
+            {(
+              [
+                ['guided', '🧭', 'Guided', 'A numbered route from measurements to a shopping list. The app decides the crossover, the filter shapes and the parts; you supply the facts about your speaker. Every check and warning stays visible.'],
+                ['expert', '🛠', 'Expert', 'Everything: alignment preference, acoustic slopes, phase metric, crossover pins, component tiers, the network editor. Overrides on top of the same engine.'],
+                ['compare', '🔬', 'Compare', 'Model versus measurement: open the project you designed with, load the response of the BUILT speaker, and see where the two differ — level and mic distance are aligned for you, the shape is what you judge.'],
+              ] as const
+            ).map(([m, icon, label, tip]) => (
+              <button
+                key={m}
+                type="button"
+                role="tab"
+                aria-selected={uiMode === m}
+                className={uiMode === m ? 'active' : ''}
+                onClick={() => setUiMode(m)}
+                title={t(tip)}
+              >
+                <span className="mode-icon" aria-hidden="true">{icon}</span>
+                {t(label)}
+              </button>
+            ))}
+          </div>
+        </div>
         <div className="status-chips">
           {/* 3-way: the PER-PAIR excess-phase verdict (see timing3) — the
               2-way woofer↔tweeter/raw-phase check is a false alarm here. The
@@ -9430,96 +9706,94 @@ export default function App() {
             </button>
           )}
         </div>
-        <div className="theme-switch" role="group" aria-label={t('Mode')}>
-          {(
-            [
-              ['guided', 'Guided', 'A numbered route from measurements to a shopping list. The app decides the crossover, the filter shapes and the parts; you supply the facts about your speaker. Every check and warning stays visible.'],
-              ['expert', 'Expert', 'Everything: alignment preference, acoustic slopes, phase metric, crossover pins, component tiers, the network editor. Overrides on top of the same engine.'],
-            ] as const
-          ).map(([m, label, tip]) => (
-            <button
-              key={m}
-              type="button"
-              className={uiMode === m ? 'active' : ''}
-              onClick={() => setUiMode(m)}
-              title={t(tip)}
-            >
-              {t(label)}
-            </button>
-          ))}
+        <div className="tb-right">
+          <button
+            type="button"
+            onClick={() => setPaletteOpen(true)}
+            title={t('Command palette — every action, searchable (⌘K / Ctrl+K); press ? for all shortcuts')}
+          >
+            ⌘K
+          </button>
+          <button
+            type="button"
+            onClick={() => setMeasureGuideOpen(true)}
+            title={t('Measuring guide: where to aim the mic, how far back to stand, and what a turntable sweep really captures. The illustrations run on the same geometry the optimizer uses.')}
+          >
+            📐 {t('Measure')}
+          </button>
+          <button
+            type="button"
+            onClick={() => setHelpOpen(true)}
+            title={t('Manual: searchable explanation of every tab, the optimizer, the scores and the VituixCAD exchange')}
+          >
+            ❓ {t('Help')}
+          </button>
+          <details className="prefs-menu" ref={prefsRef}>
+            <summary title={t('Preferences: layout, language, theme')} aria-label={t('Preferences')}>⚙</summary>
+            <div className="prefs-pop">
+              <div className="prefs-row">
+                <span>{t('Layout')}</span>
+                <div className="theme-switch" role="group" aria-label={t('Layout')}>
+                  {(
+                    [
+                      ['auto', 'Auto', 'Follow window width: split when it fits, stacked when narrow'],
+                      ['split', 'Split', 'Always two panes: design left, charts right'],
+                      ['stacked', 'Stacked', 'Always the classic single-column stack'],
+                    ] as const
+                  ).map(([m, label, tip]) => (
+                    <button
+                      key={m}
+                      type="button"
+                      className={layoutMode === m ? 'active' : ''}
+                      onClick={() => setLayoutMode(m)}
+                      title={t(tip)}
+                    >
+                      {t(label)}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <div className="prefs-row">
+                <span>{t('Language')}</span>
+                <div className="theme-switch" role="group" aria-label={t('Language')}>
+                  {LANGS.map((l) => (
+                    <button
+                      key={l.id}
+                      type="button"
+                      className={uiLang === l.id ? 'active' : ''}
+                      onClick={() => setLang(l.id)}
+                      title={t('Interface language — anything not translated yet falls back to English')}
+                    >
+                      {l.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <div className="prefs-row">
+                <span>{t('Theme')}</span>
+                <div className="theme-switch" role="group" aria-label={t('Theme')}>
+                  {(['system', 'light', 'dark'] as const).map((th) => (
+                    <button
+                      key={th}
+                      type="button"
+                      className={theme === th ? 'active' : ''}
+                      onClick={() => setTheme(th)}
+                      title={
+                        th === 'system'
+                          ? t('Theme: follow the OS')
+                          : th === 'light'
+                            ? t('Theme: light')
+                            : t('Theme: dark')
+                      }
+                    >
+                      {th === 'system' ? t('Auto') : th === 'light' ? t('Light') : t('Dark')}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </details>
         </div>
-        <div className="theme-switch" role="group" aria-label={t('Layout')}>
-          {(
-            [
-              ['auto', 'Auto', 'Follow window width: split when it fits, stacked when narrow'],
-              ['split', 'Split', 'Always two panes: design left, charts right'],
-              ['stacked', 'Stacked', 'Always the classic single-column stack'],
-            ] as const
-          ).map(([m, label, tip]) => (
-            <button
-              key={m}
-              type="button"
-              className={layoutMode === m ? 'active' : ''}
-              onClick={() => setLayoutMode(m)}
-              title={t(tip)}
-            >
-              {t(label)}
-            </button>
-          ))}
-        </div>
-        <div className="theme-switch" role="group" aria-label={t('Language')}>
-          {LANGS.map((l) => (
-            <button
-              key={l.id}
-              type="button"
-              className={uiLang === l.id ? 'active' : ''}
-              onClick={() => setLang(l.id)}
-              title={t('Interface language — anything not translated yet falls back to English')}
-            >
-              {l.label}
-            </button>
-          ))}
-        </div>
-        <div className="theme-switch" role="group" aria-label={t('Theme')}>
-          {(['system', 'light', 'dark'] as const).map((th) => (
-            <button
-              key={th}
-              type="button"
-              className={theme === th ? 'active' : ''}
-              onClick={() => setTheme(th)}
-              title={
-                th === 'system'
-                  ? t('Theme: follow the OS')
-                  : th === 'light'
-                    ? t('Theme: light')
-                    : t('Theme: dark')
-              }
-            >
-              {th === 'system' ? t('Auto') : th === 'light' ? t('Light') : t('Dark')}
-            </button>
-          ))}
-        </div>
-        <button
-          type="button"
-          onClick={() => setPaletteOpen(true)}
-          title={t('Command palette — every action, searchable (⌘K / Ctrl+K); press ? for all shortcuts')}
-        >
-          ⌘K
-        </button>
-        <button
-          type="button"
-          onClick={() => setMeasureGuideOpen(true)}
-          title={t('Measuring guide: where to aim the mic, how far back to stand, and what a turntable sweep really captures. The illustrations run on the same geometry the optimizer uses.')}
-        >
-          📐 {t('Measure')}
-        </button>
-        <button
-          type="button"
-          onClick={() => setHelpOpen(true)}
-          title={t('Manual: searchable explanation of every tab, the optimizer, the scores and the VituixCAD exchange (currently written in Dutch — translation is on the list)')}
-        >
-          ❓ {t('Help')}
-        </button>
       </header>
 
       {uiMode === 'guided' && (
@@ -9559,7 +9833,7 @@ export default function App() {
 
       <div
         ref={workspaceRef}
-        className={`workspace${designTab === 'network' ? ' wide-left' : ''}${
+        className={`workspace${designTab === 'network' && uiMode !== 'compare' ? ' wide-left' : ''}${
           uiMode === 'guided' &&
           (designTab === 'import' || designTab === 'data' || designTab === 'drivers')
             ? ' focus-form'
@@ -9576,7 +9850,7 @@ export default function App() {
           data-drop-hint={t('⬇ Drop files — measurements go to a driver of your choice; a .vxp set, saved project, catalog or filter file loads straight away')}
           {...pageDropHandlers()}
         >
-          {uiMode === 'guided' ? null : (
+          {uiMode !== 'expert' ? null : (
 <nav className="pane-tabs" aria-label={t('Design panels')}>
               {(
               [
@@ -9603,7 +9877,9 @@ export default function App() {
               (@starting-style needs an insertion); expert keeps one stable
               element — tab switching is frequent there, and frequent actions
               earn no animation. */}
-          <div className="pane-body" key={uiMode === 'guided' ? designTab : 'expert'}>
+          <div className="pane-body" key={uiMode === 'guided' ? designTab : uiMode}>
+            {uiMode === 'compare' ? comparePane : (
+            <>
             {designTab === 'import' && (
               <>
       <div className="panel">
@@ -9863,7 +10139,7 @@ export default function App() {
                     {' '}✓ {verify.name}{' '}
                     <button
                       type="button"
-                      onClick={() => setVerify(null)}
+                      onClick={() => removeVerify(Math.min(verifyIx, verifyList.length - 1))}
                       title={t('Remove the verification measurement')}
                       aria-label={t('Remove the verification measurement')}
                     >
@@ -12402,13 +12678,13 @@ export default function App() {
               </>
             ) : (
               <p className="sub">
-                No network yet — "Build passive filter" drops the synthesised design here as a tab,
-                or import the selected variant / start from a template (generator + drivers,
-                unfiltered).
+                {t('No network yet — "Build passive filter" drops the synthesised design here as a tab, or import the selected variant / start from a template (generator + drivers, unfiltered).')}
               </p>
             )}
           </div>
         </>
+            )}
+            </>
             )}
             {uiMode === 'guided' &&
               designTab !== 'network' &&
@@ -12512,6 +12788,7 @@ export default function App() {
       )}
       {result && (
         <>
+          {uiMode !== 'compare' && (
           <div className="panel-toggles">
             <span className="toggles-cap">{t('Charts')}</span>
             {PANEL_KEYS.map((k) => (
@@ -12532,6 +12809,7 @@ export default function App() {
               </button>
             ))}
           </div>
+          )}
 
           {/* Only when the sim TRULY shows raw drivers: no active editor
               network, no live virtual filters, no vxp variant. Shares the

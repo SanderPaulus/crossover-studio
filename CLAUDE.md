@@ -1925,6 +1925,68 @@ Goals/Crossover/Components-stappen zijn optimizer-gebonden en die optimizer is t
 de 🧙-knop opent bij threeWay daarom óók op stap 0. Demo-knop alleen bij 2-weg (KOAN ís
 2-weg).
 
+## Compare-modus (aug 2026, Sanders "zullen we er een modus Compare bij zetten?")
+
+De VALIDATIE-lus als eigen WERKRUIMTE, derde knop naast Begeleid/Expert (`uiMode:
+'compare'`, gepersisteerd in `ads-ui-mode`). Zijn redenering klopte: het projectbestand
+draagt álles (rauwe metingen, filters, netwerk-tabs, instellingen), dus na "Load project"
+hoeft alleen de gemeten FRD van de gebouwde speaker erbij — en het niveau MAG afwijken,
+de vorm moet kloppen; precies wat `compareMeasurement` al doet (mediaan-offset + delay-fit,
+beide GETOOND). Links één kaart, drie stappen die live state lezen: (1) Ontwerp —
+"Grafieken tonen: …" + parts-aantal, Load project, ontwerp-select bij meerdere tabs, en een
+alert + knop als het netwerk niet in de sim zit; (2) Metingen — een dropzone in het
+huis-idioom (`.dz-icon/.dz-text`, multi-file) en de geladen metingen als TABS; (3) Oordeel —
+Stat-tegels (niveau-offset, magnitude avg/P95/slechtste@Hz, faseresidu + gefitte mic-delay,
+band) + de omgekeerd-aangesloten-vlag + bij ≥2 metingen een vergelijkingstabel (`verifyAll`:
+elke meting door DEZELFDE functie en band als de actieve overlay — een rij kan zichzelf niet
+vleien met een andere meetlat). Rechts alleen SPL-overlay + faseresidu: `showPanels` is nu
+een AFGELEIDE (`COMPARE_PANELS` in compare, anders `showPanelsPref`), de voorkeur blijft
+onaangeroerd zodat de mode verlaten hem terugbrengt; de chips-balk is in compare verborgen.
+**Meerdere metingen** (Sanders "build v1, v2 — werd het beter?"): `verify` werd een LIJST
+(`verifyList` + `verifyIx`, `verify` = de actieve; `setVerify` = add-or-replace op naam
+zodat "herladen vervangt" per naam blijft gelden; `removeVerify` — de ✕ op de Import-tab en
+in de Compare-wizard verwijderen nu alleen de ACTIEVE, niet alles). Persistentie in
+project.ts v2: `verifyFiles[]` + `verifyActive`, en `verifyFile` blijft = de actieve zodat
+een oudere lezer hem nog vindt; lezen zonder lijst valt terug op de ene slot; test pint
+round-trip, pre-Compare-bestand en malformed entries. HARD GELEERD bij de verificatie: een
+`fetch('/app/demo/…')` op de dev-server geeft de SPA-fallback-HTML met status 200 — parseFrd
+gooide, en de foutbanner stond alleen op de Import-tab, dus de drop leek stil te falen.
+De banner staat nu óók in het Compare-paneel, en Vite serveert de fixture wél op
+`/src/lib/parsers/fixtures/….txt?raw`. Headless bewezen: twee synthetische builds gedropt
+⇒ tabs, offset +4,5 dB gevonden op een −4,3 dB-verschuiving (+0,2 basis), tabel per meting;
+tab-klik wisselt de overlay; autosave + reload houdt lijst, actieve index én mode.
+Palette-actie "Compare mode: model vs measurement"; handleiding (NL+EN) heeft een bullet.
+
+## Topbar-hiërarchie (aug 2026, Sanders "de navigatiebalk mag wat duidelijker")
+
+De balk droeg ~18 elementen van drie soorten door elkaar — status-chips (uitlezing),
+de modus-keuze (dé hoofdnavigatie) en voorkeuren (layout/taal/thema, zet je één keer) —
+en allemaal met hetzelfde gewicht: de modus-knop zag eruit als de thema-knop ernaast.
+Nu: **links** merk (klein "SD ACOUSTICS" boven "Crossover Studio") + `.mode-switch`
+als échte segmented control (🧭 Begeleid · 🛠 Expert · 🔬 Vergelijk; `role="tablist"`,
+groter, actieve tab in accentkleur op paneel-achtergrond); **midden** de status-chips als
+stille uitleesstrip (rand transparant, faint achtergrond — het zijn geen knoppen; alleen de
+⚠-issues-chip houdt een rand omdat hij er wél een is); **rechts** ⌘K · 📐 Meten · ❓ Help
++ één **⚙-popover** (`<details class="prefs-menu">`, sluit op klik-buiten en Esc via een
+document-listener — een `<details>` sluit zichzelf niet) met drie rijen: Layout, Taal,
+Thema — dezelfde `.theme-switch`-groepen als voorheen, alleen verhuisd. Van twee wikkelende
+rijen naar één rij van 54 px op 1280 breed; onder 720 px verdwijnen brand-sub en
+modus-iconen en vult de mode-switch de breedte (op 375 gemeten: past, geen overflow).
+Alle keyboard-/palette-routes ongewijzigd (zelfde setters).
+
+**Logo (aug 2026, Sanders eigen ontwerp)**: twee kruisende flanken — blauw boven, groen
+onder, één kruispunt in het midden — plus wordmark "CROSS·OVER STUDIO" met OVER in blauw.
+In de app als INLINE SVG nagetekend (`components/Logo.tsx`: `LogoMark` + `LogoWord`), niet
+als raster: scherp op elke maat, ~1 kB, en `--logo-blue/--logo-green` als vaste merkkleuren
+(géén UI-accenten; op donker iets lichter blauw voor contrast). Zit in de topbar naast de
+brand-tekst, als `public/favicon.svg` (gelinkt vanuit beide index.html's — de app relatief
+`../favicon.svg` vanwege `base: './'`) en in de landing-wordmark. HARD GELEERD: de topbar
+wikkelde na het toevoegen van het merk naar twee rijen omdat `.status-chips` `flex: 1 1 auto`
+had — de max-content van vier chips telde mee in de regelbreking (1283 px op 1280). Met
+`flex-basis: 0` telt hij niet mee en wikkelen de chips bínnen hun strip. Het originele
+logobestand heeft Sander zelf; als hij het aanlevert kan de landing-hero het echte beeld
+krijgen — de UI blijft bewust op de SVG.
+
 ## Workspace-layout (UI-fase B, jul 2026)
 
 - **Import-stap: bestandskaarten per driver (aug 2026, Sanders "pas dat ook toe bij Your
@@ -2042,7 +2104,8 @@ de 🧙-knop opent bij threeWay daarom óók op stap 0. Demo-knop alleen bij 2-w
   phase flatness in het fase-paneel — Sanders wens jul 2026: geen losse sectie onder de chart)
   — de grafiek is de hoofdzaak; vrijwel elk control heeft een title-tooltip (helpers — maar een
   tooltip is hover-only, dus icoon-only knoppen hebben daarnáást een `aria-label`).
-- **Layout-toggle in de topbar** (naast thema, localStorage 'ads-ui-layout'): Auto (volgt
+- **Layout-toggle in de topbar** (sinds aug 2026 in de ⚙-popover, naast taal en thema;
+  localStorage 'ads-ui-layout'): Auto (volgt
   vensterbreedte, **split ≥1000 px**) / Split (altijd twee panes, ook smal) / Stacked (altijd de
   klassieke stapeling, gecentreerd op max 920 px). CSS: media query gegate op
   `:not(.layout-split)`, geforceerd-stacked blok op `.layout-stacked`, `#root:has(...)` voor de

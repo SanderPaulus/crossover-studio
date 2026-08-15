@@ -501,3 +501,48 @@ p:last-child {
     font-size: 0.85rem;
   }
 }
+
+/* Brand mark in the wordmark */
+.wordmark { display: inline-flex; align-items: center; gap: 0.55rem; }
+.wordmark .mark { flex: none; }
+.wordmark .over { color: #4d8df0; }
+
+/* ─────────────────────────── logo lockup (hero) ─────────────────────── */
+.logo-lockup {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: clamp(28px, 4vw, 44px);
+}
+.logo-lockup .logo-mark {
+  width: clamp(150px, 20vw, 220px);
+  height: auto;
+}
+.logo-lockup .logo-word {
+  font-size: clamp(1.5rem, 3.2vw, 2.3rem);
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  line-height: 1;
+  color: var(--fg);
+}
+.logo-lockup .logo-word .over {
+  color: #4d8df0;
+}
+.logo-lockup .logo-studio {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: clamp(0.72rem, 1.4vw, 0.95rem);
+  font-weight: 500;
+  letter-spacing: 0.42em;
+  text-indent: 0.42em; /* balances the trailing tracking */
+  color: var(--muted);
+}
+.logo-lockup .logo-studio .rule {
+  display: block;
+  width: clamp(28px, 4vw, 44px);
+  height: 2px;
+  background: currentColor;
+  opacity: 0.7;
+}

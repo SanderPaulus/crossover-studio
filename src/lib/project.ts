@@ -216,8 +216,14 @@ export interface ProjectState {
   /** Free-text notes per imported file, keyed "group:filename" (optional). */
   fileNotes?: Record<string, string>;
   /** Optional: measured response of the BUILT system, overlaid against the
-   *  simulation (the VALIDATIE.md loop). One file; reloading replaces it. */
+   *  simulation (the VALIDATIE.md loop). Kept as the ACTIVE one of the list
+   *  below so an older reader still finds it. */
   verifyFile?: StoredFile;
+  /** Every loaded verification measurement (Compare mode keeps several —
+   *  build v1, build v2 — as tabs). `verifyActive` indexes into it. Absent on
+   *  files from before Compare mode: `verifyFile` alone is then the list. */
+  verifyFiles?: StoredFile[];
+  verifyActive?: number;
   /** Optional: near-field measurements per branch role, plus their splice
    *  settings. The files are stored raw like every other measurement so a
    *  project stays self-contained. */
@@ -357,6 +363,13 @@ export function deserializeProject(text: string): ProjectState {
     vxp: file(d['vxp']),
     fileNotes,
     verifyFile: file(d['verifyFile']),
+    verifyFiles: Array.isArray(d['verifyFiles'])
+      ? (d['verifyFiles'] as unknown[]).map(file).filter((f): f is StoredFile => f !== undefined)
+      : undefined,
+    verifyActive:
+      typeof d['verifyActive'] === 'number' && Number.isInteger(d['verifyActive']) && d['verifyActive'] >= 0
+        ? d['verifyActive']
+        : undefined,
     nearField: (d['nearField'] as ProjectState['nearField']) ?? undefined,
     design,
   };
