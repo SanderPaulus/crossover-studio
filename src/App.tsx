@@ -1558,11 +1558,22 @@ export default function App() {
   };
   // Data wins over a stale stored choice: opening the wizard with a full
   // 3-way loaded declares 3-way, with exactly the two outer branches 2-way.
+  // Only when the wizard OPENS — never on data changes while it is open.
+  // Live re-evaluation flipped the choice under the user's hands: with 3-way
+  // chosen, dropping the woofer before the mid made "woofer+tweeter, no mid"
+  // true for a moment, the wizard snapped to 2-way and the Midrange slot
+  // vanished mid-session (Sanders report). Loading a midrange while 2-way is
+  // chosen still promotes to 3-way: data may add a slot, never take one away.
   useEffect(() => {
     if (!wizardOpen) return;
     if (threeWay) setWizardWaysRaw(3);
     else if (woofer && tweeter && !midDrv) setWizardWaysRaw(2);
-  }, [wizardOpen, threeWay, woofer, tweeter, midDrv]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [wizardOpen]);
+  useEffect(() => {
+    if (wizardOpen && midDrv && wizardWays !== 3) setWizardWaysRaw(3);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [wizardOpen, midDrv]);
 
   /* First-run welcome card. Keyed on "no autosave AND never dismissed": an
    * existing autosave means a returning user, and the flag means they chose to
@@ -8386,16 +8397,23 @@ export default function App() {
                   wizard is the beginner's surface, so it must not be the one
                   place where dragging a file does nothing (Sanders screenshot).
                   Same handlers, same colour identity, same status line. */}
+              {/* Always the same three slots, TOP-DOWN like the Import cards
+                  and the cabinet drawing (tweeter, midrange, woofer). Showing
+                  only the declared set was the trap: in 2-way the second slot
+                  was the tweeter, and midrange files dropped "in the middle"
+                  landed on it (Sanders: mid and tweeter ended up identical).
+                  The system choice now only decides which slots are REQUIRED;
+                  a slot the choice does not need says so instead of hiding. */}
               <div className="wiz-slots">
                 {(
                   wizardWays === 1
-                    ? ([['woofer', 'Driver', woofer ?? tweeter, 'var(--viz-woofer)']] as const)
+                    ? ([['woofer', 'Driver', woofer ?? tweeter, 'var(--viz-woofer)', true]] as const)
                     : ([
-                        ['woofer', wizardWays === 3 ? 'Woofer' : 'Woofer / mid', woofer, 'var(--viz-woofer)'],
-                        ...(wizardWays === 3 ? ([['mid', 'Midrange', midDrv, 'var(--viz-mid)']] as const) : []),
-                        ['tweeter', 'Tweeter', tweeter, 'var(--viz-tweeter)'],
+                        ['tweeter', 'Tweeter', tweeter, 'var(--viz-tweeter)', true],
+                        ['mid', 'Midrange', midDrv, 'var(--viz-mid)', wizardWays === 3],
+                        ['woofer', wizardWays === 3 ? 'Woofer' : 'Woofer / mid', woofer, 'var(--viz-woofer)', true],
                       ] as const)
-                ).map(([slot, label, drv, color]) => {
+                ).map(([slot, label, drv, color, required]) => {
                   const hasZ =
                     slot === 'woofer'
                       ? !!withSlotAliasesN(impedances)[canonicalModelForRole('low', threeWay)]
@@ -8405,7 +8423,7 @@ export default function App() {
                   return (
                     <label
                       key={slot}
-                      className={`dropzone wiz-slot${dropSide === slot ? ' drop-armed' : ''}`}
+                      className={`dropzone wiz-slot${dropSide === slot ? ' drop-armed' : ''}${required || drv ? '' : ' wiz-slot-optional'}`}
                       style={{ '--drv-color': color } as CSSProperties}
                       {...dropHandlers(slot)}
                     >
@@ -8413,14 +8431,16 @@ export default function App() {
                       <span className="dz-text">
                         <strong>
                           {t(label)}
-                          {drv ? ` — ${drv.name}` : ''}
+                          {drv ? ` — ${drv.name}` : required ? '' : ` (${t('3-way only')})`}
                         </strong>
                         <span>
                           {dropSide === slot
                             ? t('⬇ drop to load')
                             : drv
                               ? `${t('✓ response')}${hasZ ? ' · Z' : ` · ${t('no impedance yet')}`}`
-                              : t('Drop FRD + ZMA files here — or click to browse')}
+                              : required
+                                ? t('Drop FRD + ZMA files here — or click to browse')
+                                : t('Not needed for a 2-way — drop a midrange here and it becomes a 3-way')}
                         </span>
                       </span>
                       <input

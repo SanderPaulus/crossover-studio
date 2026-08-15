@@ -3720,3 +3720,8 @@ details.cabinet-driver > .derived strong,
   border-color: var(--drv-color, var(--accent));
   background: color-mix(in srgb, var(--drv-color, var(--accent)) 10%, transparent);
 }
+
+.wiz-slot-optional {
+  opacity: 0.72;
+  border-style: dotted;
+}

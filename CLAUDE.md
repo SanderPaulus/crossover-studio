@@ -2238,6 +2238,20 @@ voordat je een layoutbug gaat jagen.
   armen) op DEZELFDE `dropHandlers`/`loadDriverFiles` als de kaarten — één laadpad. LES
   (dezelfde als de meetgids-slider): de globale `label`-regel is een KOLOM, dus een
   dropzone-label moet expliciet `flex-direction: row` zeggen of icoon en tekst stapelen.
+- **De wizard toont ALTIJD drie slots, top-down (aug 2026, Sanders "mid en tweeter hebben
+  dezelfde bestanden")**: de wizard liet alleen de slots van het gekózen systeemtype zien,
+  bottom-up (Woofer/mid, Tweeter). In 2-weg was het TWEEDE slot dus de tweeter, en
+  midrange-bestanden die "in het midden" gedropt werden landden op de tweeter — daarna
+  zag de auto-regel woofer+tweeter-zonder-mid en klapte de wizard naar 2-weg met een leeg
+  mid-slot: precies zijn melding. Nu Tweeter/Midrange/Woofer altijd zichtbaar en in
+  dezelfde volgorde als de Import-kaarten en de kasttekening (Sanders top-down-regel); het
+  systeemtype bepaalt alleen welke slots VERPLICHT zijn (niet-verplicht = gestippeld,
+  "alleen 3-weg — sleep hier een midrange en het wordt een 3-weg"). De data-wint-regel
+  draait bovendien alleen bij het OPENEN van de wizard (niet meer live op elke drop —
+  woofer vóór mid droppen maakte "woofer+tweeter, geen mid" een moment waar en het
+  mid-slot verdween onder je handen), plus één opwaartse regel: een geladen mid promoveert
+  naar 3-weg. Data mag een slot toevoegen, nooit wegnemen. Gemeten in zijn volgorde
+  (tweeter → mid → woofer vanuit 2-weg): alle drie goed, wizard eindigt op 3-weg.
 - **Drag & drop op driverkaarten**: `loadDriverFiles` gesplitst in change-handler +
   `loadDriverFileList(side, File[])`; `dropHandlers` met dragenter-TELLER (enter/leave vuren per
   kind-element). Kaartstatus toont "⬇ drop to load" / "no files yet — or drop them here".

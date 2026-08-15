@@ -1776,4 +1776,6 @@ export const nl: Record<string, string> = {
   "Preferences: layout, language, theme": "Voorkeuren: layout, taal, thema",
   "Preferences": "Voorkeuren",
   "Drop FRD + ZMA files here — or click to browse": "Sleep FRD + ZMA-bestanden hierheen — of klik om te bladeren",
+  "3-way only": "alleen 3-weg",
+  "Not needed for a 2-way — drop a midrange here and it becomes a 3-way": "Niet nodig voor een 2-weg — sleep hier een midrange en het wordt een 3-weg",
 };
