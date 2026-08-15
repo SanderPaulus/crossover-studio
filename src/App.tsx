@@ -10387,7 +10387,20 @@ export default function App() {
             }
             const z = zStandalone[zKey];
             if (z) {
-              rows.push({ key: `${slot}:${z.file.name}`, name: z.file.name, detail: t('ZMA — impedance') });
+              // A LIMP .lim is converted to ZMA text once, at import, and
+              // stored under a .zma name (everything downstream — autosave,
+              // project file, VituixCAD folder export — is text). The
+              // converter writes its provenance as the first comment line;
+              // read it back so the inventory says what was actually loaded
+              // (Sanders: "in werkelijkheid is dit een lim-bestand").
+              const lim = /^\* Converted from LIMP binary "([^"]+)"/.exec(z.file.raw);
+              rows.push({
+                key: `${slot}:${z.file.name}`,
+                name: lim ? lim[1] : z.file.name,
+                detail: lim
+                  ? t('LIMP .lim — impedance (stored as {name})', { name: z.file.name })
+                  : t('ZMA — impedance'),
+              });
             }
             if (rows.length > 0) groups.push({ title, colorVar, rows });
           };

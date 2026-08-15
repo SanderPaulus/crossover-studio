@@ -32,7 +32,10 @@ minimum phase reconstrueert. Voertaal met Sander: **Nederlands**; code/comments 
   eerste twee reproduceert de derde op ~0,1 Ω (regressietest; verwisselde kolommen slaan
   complexe parallelrekening volledig stuk, dus de test bewijst de kolomtoewijzing).
   Integratie: `limToZmaText` converteert op de IMPORTGRENS naar canonieke ZMA-tekst (met
-  herkomst-comment) en de app slaat DIE op — alles stroomafwaarts (autosave, project,
+  herkomst-comment — en de bestandsinventaris LEEST die comment terug en toont "tweeter1.lim ·
+  LIMP .lim — impedantie (opgeslagen als tweeter1.zma)", Sanders "in werkelijkheid is dit een
+  lim-bestand"; de opslagnaam blijft .zma zodat de VituixCAD-export leesbaar blijft) en de app
+  slaat DIE op — alles stroomafwaarts (autosave, project,
   VituixCAD-map-export) blijft tekst en VituixCAD kan het resultaat wél lezen. |Z| ≤ 0
   wordt hard afgewezen: een mis-gedecodeerd bestand faalt luid i.p.v. als waanzinnige
   driver-load te solven.

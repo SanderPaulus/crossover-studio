@@ -1795,4 +1795,5 @@ export const nl: Record<string, string> = {
   "sealed/ported: the box order the filter can lean on": "gesloten/gepoort: de kastorde waar het filter op mag leunen",
   "Open Your drivers →": "Open Je drivers →",
   "Filling these in closes the wizard; come back with \"Walk me through it\" on the Design step — it reopens here until the list is green, then at Goals.": "Invullen sluit de wizard; kom terug via \"Neem me mee\" op de Ontwerp-stap — hij opent hier weer tot de lijst groen is, daarna bij Doelen.",
+  "LIMP .lim — impedance (stored as {name})": "LIMP .lim — impedantie (opgeslagen als {name})",
 };
