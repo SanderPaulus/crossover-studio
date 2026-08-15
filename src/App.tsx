@@ -3481,7 +3481,16 @@ export default function App() {
    */
   const measuredDepth = useMemo(() => {
     const R = Number(cabinet.micDistanceMm);
-    if (!(R > 0) || !timing || timing.ref.verdict !== 'plausible') return null;
+    // Trust gate: the time base must be shared. In 3-way that is the
+    // per-pair EXCESS-phase verdict (timing3) — the raw woofer↔tweeter check
+    // is the documented false alarm there, and gating on it hid the measured
+    // depth on every 3-way set (Sanders: "ik zie nergens de z offset").
+    const timeBaseOk = threeWay
+      ? !!timing3 &&
+        [timing3.low, timing3.high].some((p) => p !== null) &&
+        [timing3.low, timing3.high].every((p) => p === null || p.verdict === 'plausible')
+      : !!timing && timing.ref.verdict === 'plausible';
+    if (!(R > 0) || !timing || !timeBaseOk) return null;
     const elev = Number(cabinet.micElevationDeg) || 0;
     const roles: BranchRole[] = threeWay ? ['low', 'mid', 'high'] : ['low', 'high'];
     const src: Record<BranchRole, Parsed | null> = {
@@ -3537,7 +3546,7 @@ export default function App() {
       (Object.keys(depths) as BranchRole[])[0],
     );
     return { depths, spread, unexplained, shallowest };
-  }, [cabinet, timing, threeWay, woofer, midDrv, tweeter, cabinetInfo]);
+  }, [cabinet, timing, timing3, threeWay, woofer, midDrv, tweeter, cabinetInfo]);
 
   /**
    * Auto phase convention: freshly loaded measurements that pass the shared-

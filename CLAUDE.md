@@ -332,6 +332,13 @@ minimum phase reconstrueert. Voertaal met Sander: **Nederlands**; code/comments 
   NB de getallen verschillen per set: dezelfde functie gaf 9,3 op de KOAN-autosave en 12,2 op
   Sanders eigen project — andere hoogte, andere meting. Dat is geen bug maar precies de
   gevoeligheid die hieronder staat.
+  **De poort was 2-weg (aug 2026, Sanders "ik zie nergens de z offset")**: `measuredDepth`
+  gate'te op `timing.ref.verdict === 'plausible'` — de rauwe woofer↔tweeter-check, die in 3-weg
+  het gedocumenteerde valse alarm is — dus op élke 3-weg-set verdween de gemeten diepte
+  stilletjes van de kaarten. Nu in 3-weg gepoort op `timing3` (per paar op excess-fase, elk
+  aanwezig paar plausibel). Geverifieerd: KOAN + synthetische mid ⇒ mid "13,9 mm achter de
+  tweeter", woofer "17,3 mm — jouw 17,3 mm komt overeen". NB de regel verschijnt pas als
+  ÁLLE geladen drivers x én y hebben (het anker is het minimum over de rollen).
   **De uitkomst staat bij het VELD, niet alleen onder het timing-paneel** (Sanders "maar het
   getal wordt niet ingevuld bij de tweeter?"): de afleiding hoorde op de cabinet-stap en het
   veld dat hij beantwoordt staat op de drivers-stap — dezelfde blader-klacht als bij de
