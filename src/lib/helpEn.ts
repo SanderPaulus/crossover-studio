@@ -353,6 +353,62 @@ export const HELP_SECTIONS_EN: HelpSection[] = [
     ],
   },
   {
+    id: 'validation',
+    title: '🎯 How well does the simulation predict? (validation)',
+    keywords: [
+      'validation', 'accuracy', 'deviation', 'measurement versus model', 'compare',
+      'cancellation', 'dip', 'interference', 'sensitivity', 'uncertainty',
+      'rg', 'source resistance', 'amplifier', 'cables', 'drawing error', 'schematic',
+    ],
+    blocks: [
+      {
+        t: 'p',
+        text: 'In Aug 2026 the simulation was put against real measurements (KOAN mid and tweeter, each measured bare and with a scratch filter, plus both together; same mic, same clock). This is what came out and what it tells you about the numbers you see in **🔬 Compare** mode.',
+      },
+      { t: 'h', text: 'What was measured' },
+      {
+        t: 'ul',
+        items: [
+          '**Single branch (mid with 1.8 mH + 6.8 µF)**: model and measurement within **±0.25 dB average and 2.4° phase** over 200 Hz–20 kHz. That is the accuracy of the solver on the measured impedance once the schematic is what was actually built.',
+          '**Single branch (tweeter)**: ~±1 dB — but only after the schematic was drawn as it sat on the bench (the coil was across the amplifier terminals, not across the tweeter) and with the source resistance filled in. Drawn "as intended" the model was 8 dB off. That was not a simulation error: the app computed exactly what was drawn.',
+          '**Both together**: ±0.6 dB average, 2° phase; the interference dip near 1 kHz sat at the right frequency (984 Hz computed, 971 measured), but at the bottom of that dip ~2 dB remained — see below for why that is not a code error, and why you never want such a dip in a design anyway.',
+          'The whole computation path (parsing, resample, phase unwrap, solver, complex sum) was also checked against an independent hand calculation on the raw measurement data: equal to 0.1 dB, dip included. That check runs as a test in every build.',
+        ],
+      },
+      { t: 'h', text: 'Why a cancellation is sensitive — and a good crossover is not' },
+      {
+        t: 'p',
+        text: 'Where two drivers nearly cancel, the sum sits dBs below each branch, and every small error in one branch is magnified. Two equally loud branches, an error of **10°** in one of them (unit spread, mic position, an estimated coil DCR):',
+      },
+      {
+        t: 'ul',
+        items: [
+          'phase difference **15°** → error in the sum **0.13 dB**',
+          'phase difference **45°** → **0.3 dB**',
+          'phase difference **90°** → **0.8 dB**',
+          'phase difference **140°** → **2.4 dB** (the test case above)',
+          'phase difference **160°** → **more than 4 dB**',
+          'A 1 dB level error in one branch: at ≤ 45° ~0.5 dB in the sum (halved), at 160° double.',
+        ],
+      },
+      {
+        t: 'p',
+        text: 'That is the physics of two vectors nearly cancelling — every simulator (VituixCAD, LEAP, LspCAD too) has the same sensitivity; the difference is whether the tool tells you. That is why the colour ladder sits at 15/45/90/120°: **green and yellow (≤ 45°) does not just mean "sounds right" but also "is predictable"** — a measurement error is halved there instead of doubled. Red (> 120°) means: here you lean on cancellation, and the SPL curve at that spot is a guess of a few dB whatever you do. A design that is flat thanks to a cancellation is flat on paper and a lottery in the cabinet; the optimizer deliberately steers away from it.',
+      },
+      { t: 'h', text: 'Rules for an honest comparison' },
+      {
+        t: 'ul',
+        items: [
+          '**Draw what you built, not what you meant.** Coil before or after the cap, cap before or after the coil — both arrived in the test as an "8 dB model error" and were drawing errors. The app shows that difference hard; that is the point.',
+          '**Rg on the generator is your bench**: amplifier + leads + clips (~1.2 Ω in the test). Fill it in for a comparison against a measurement; put it back to ~0 for the design. And never hang anything low-impedance across the amplifier input — then you measure your amplifier, not your filter.',
+          '**Measure the coil DCR** and enter it on the coil; an estimated DCR is the largest unknown in a single branch.',
+          '**Compare where the branches add, not where they cancel.** If you want a summed measurement as proof: measure it twice, tweeter normal and inverted. The variant without the dip is the honest reference (10° = 0.1 dB there); the variant with the dip tells you how large your unknowns are.',
+          'The single-branch comparisons cannot, by construction, check two things: the relative timing between the branches (the phase comparison fits the mic distance away per measurement) and the level ratio between sweeps (each sweep gets its own offset). Exactly those two set the depth of a dip — one more reason to do the summed measurement.',
+        ],
+      },
+    ],
+  },
+  {
     id: 'vituixcad',
     title: '🔁 VituixCAD exchange',
     keywords: [

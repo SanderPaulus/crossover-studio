@@ -374,6 +374,62 @@ export const HELP_SECTIONS: HelpSection[] = [
     ],
   },
   {
+    id: 'validation',
+    title: '🎯 Hoe goed voorspelt de simulatie? (validatie)',
+    keywords: [
+      'validatie', 'nauwkeurigheid', 'afwijking', 'meting versus model', 'compare', 'vergelijk',
+      'uitdoving', 'cancellation', 'dip', 'interferentie', 'gevoeligheid', 'onzekerheid',
+      'rg', 'bronweerstand', 'versterker', 'kabels', 'tekenfout', 'schema', 'accuracy',
+    ],
+    blocks: [
+      {
+        t: 'p',
+        text: 'De simulatie is in aug 2026 tegen échte metingen gelegd (KOAN-mid en -tweeter, elk kaal en met een grabbelton-filter gemeten, plus beide samen; dezelfde mic, dezelfde klok). Dit is wat daar uitkwam en wat het je leert over de cijfers die je in de **🔬 Vergelijk**-modus ziet.',
+      },
+      { t: 'h', text: 'Wat er gemeten is' },
+      {
+        t: 'ul',
+        items: [
+          '**Losse tak (mid met 1,8 mH + 6,8 µF)**: model en meting binnen **±0,25 dB gemiddeld en 2,4° fase** over 200 Hz–20 kHz. Dat is de nauwkeurigheid van de solver op de gemeten impedantie zodra het schema is wat er gebouwd is.',
+          '**Losse tak (tweeter)**: ~±1 dB — maar alléén nadat het schema was getekend zoals het op tafel lag (de spoel stond over de versterkerklemmen, niet over de tweeter) én met de bronweerstand ingevuld. Zoals "bedoeld" getekend zat het model 8 dB naast de meting. Dat was geen simulatiefout: de app rekende precies uit wat er getekend stond.',
+          '**Beide samen**: ±0,6 dB gemiddeld, 2° fase; de interferentiedip op ~1 kHz zat op de juiste frequentie (984 Hz berekend, 971 gemeten), maar in de bódem van die dip bleef ~2 dB verschil over — zie hieronder waarom dat geen codefout is en waarom je zo\'n dip toch nooit in een ontwerp wilt.',
+          'De hele rekenweg (inlezen, resample, fase-unwrap, solver, complexe som) is daarnaast tegen een onafhankelijke handberekening op de rauwe meetdata gelegd: gelijk op 0,1 dB, inclusief de dip. Die controle draait als test mee in elke build.',
+        ],
+      },
+      { t: 'h', text: 'Waarom een uitdoving gevoelig is — en een goede overname niet' },
+      {
+        t: 'p',
+        text: 'Waar twee drivers elkaar bijna opheffen ligt de som dB\'s ónder elk van de takken, en dan wordt élke kleine fout in één tak uitvergroot. Twee even luide takken, een fout van **10°** in één ervan (bv. exemplaarspreiding, mic-positie, een geschatte spoel-DCR):',
+      },
+      {
+        t: 'ul',
+        items: [
+          'faseverschil **15°** → fout in de som **0,13 dB**',
+          'faseverschil **45°** → **0,3 dB**',
+          'faseverschil **90°** → **0,8 dB**',
+          'faseverschil **140°** → **2,4 dB** (de testsituatie hierboven)',
+          'faseverschil **160°** → **meer dan 4 dB**',
+          'Een niveaufout van 1 dB in één tak: bij ≤ 45° ~0,5 dB in de som (gehalveerd), bij 160° het dubbele.',
+        ],
+      },
+      {
+        t: 'p',
+        text: 'Dat is de fysica van twee vectoren die elkaar bijna opheffen — élke simulator (ook VituixCAD, LEAP, LspCAD) heeft dezelfde gevoeligheid; het verschil is of de tool het je vertelt. Daarom staat de kleurladder op 15/45/90/120°: **groen en geel (≤ 45°) is niet alleen "klinkt goed" maar ook "is voorspelbaar"** — een meetfout wordt daar gehalveerd i.p.v. verdubbeld. Rood (> 120°) betekent: hier leun je op uitdoving, en de SPL-curve op die plek is een gok van een paar dB, wat je ook doet. Een ontwerp dat vlak is dánkzij een uitdoving is op papier vlak en in de kast een loterij; de optimizer stuurt daar bewust van weg.',
+      },
+      { t: 'h', text: 'Regels voor een eerlijke vergelijking' },
+      {
+        t: 'ul',
+        items: [
+          '**Teken wat je gebouwd hebt, niet wat je bedoelde.** Spoel vóór of achter de cap, cap vóór of achter de spoel — beide zijn in de test als "8 dB modelfout" binnengekomen en waren tekenfouten. De app laat dat verschil hard zien; dat is de functie.',
+          '**Rg op de generator is je meetopstelling**: versterker + kabels + klemmen (in de test ~1,2 Ω). Vul hem in voor een vergelijking met de meting; zet hem terug op ~0 voor het ontwerp. En hang niets met een lage impedantie over de versterkeringang — dan meet je je versterker, niet je filter.',
+          '**Meet de spoel-DCR** en vul hem in bij de spoel; een geschatte DCR is de grootste onbekende in een losse tak.',
+          '**Vergelijk waar de takken optellen, niet waar ze uitdoven.** Wil je een som-meting als bewijs: meet hem twee keer, met de tweeter normaal én omgekeerd. De variant zonder dip is de eerlijke referentie (10° = 0,1 dB daar); de variant mét dip vertelt je hoe groot je onbekenden zijn.',
+          'De losse-tak-vergelijkingen kunnen twee dingen per constructie níét controleren: de relatieve timing tussen de takken (de fase-vergelijking fit per meting de mic-afstand weg) en de niveauverhouding tussen sweeps (per sweep een eigen offset). Precies die twee bepalen de diepte van een dip — nog een reden om de som-meting te doen.',
+        ],
+      },
+    ],
+  },
+  {
     id: 'vituixcad',
     title: '🔁 VituixCAD-uitwisseling',
     keywords: [
