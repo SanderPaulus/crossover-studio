@@ -10179,26 +10179,38 @@ export default function App() {
                           onChange={loadDriverFiles(slotKey)}
                         />
                       </label>
-                      {role === 'mid' && midDrv && (
+                      {/* Same summary line on EVERY card — a name and a ✕
+                          that removes the whole branch (response, angles,
+                          impedance). It used to exist on the mid card only,
+                          which made the tweeter card look collapsed next to
+                          it (Sanders question). */}
+                      {loadedDrv && (
                         <span className="derived">
-                          ✓ {midDrv.name}{' '}
+                          ✓ {loadedDrv.name}{' '}
                           <button
                             type="button"
                             onClick={() => {
-                              setMidDrv(null);
+                              if (slotKey === 'woofer') setWoofer(null);
+                              else if (slotKey === 'mid') setMidDrv(null);
+                              else setTweeter(null);
                               setZStandalone((prev) => {
                                 const next = { ...prev };
-                                delete next.mid;
+                                delete next[role];
                                 return next;
                               });
                               setAngleSets((prev) => {
                                 if (!prev) return prev;
-                                const { mid: _drop, ...rest } = prev;
-                                return rest.woofer.length + rest.tweeter.length > 0 ? rest : null;
+                                const next = { ...prev, [slotKey]: [] as AngleEntry[] };
+                                if (slotKey === 'mid') delete next.mid;
+                                return next.woofer.length + next.tweeter.length + (next.mid?.length ?? 0) > 0 ? next : null;
                               });
                             }}
-                            title={t('Remove the midrange branch (back to 2-way)')}
-                            aria-label={t('Remove the midrange branch (back to 2-way)')}
+                            title={
+                              slotKey === 'mid'
+                                ? t('Remove the midrange branch (back to 2-way)')
+                                : t('Remove this branch — its response, angle files and impedance')
+                            }
+                            aria-label={t('Remove {name}', { name: loadedDrv.name })}
                           >
                             ✕
                           </button>
