@@ -881,12 +881,19 @@ function passBandOf(frd: Parsed): [number, number] | null {
  *  500–5000 Hz is judged mostly outside its band (Sanders pair: 675 µs there
  *  vs ~700 µs in band). The VituixCAD bridge keeps `excessDelayMsOf` — its
  *  KOAN values are pinned and the two agree within a few µs on normal drivers. */
-function excessDelayInBand(frd: Parsed): { delayMs: number; rSquared: number; band: [number, number] } | null {
+function excessDelayInBand(
+  frd: Parsed,
+  /** Optional ceiling on the fit band, Hz — a multi-driver branch measured
+   *  off its own axis interferes with itself above c/(2·Δpath), and excess
+   *  phase through a comb is not a delay (Sanders woofer pair: 674–785 µs
+   *  depending on how much of 1.5–7 kHz the band included). */
+  maxHz = Infinity,
+): { delayMs: number; rSquared: number; band: [number, number] } | null {
   try {
     const pb = passBandOf(frd);
     if (!pb) return null;
     const lo = Math.max(pb[0], 200, frd.freq[0] * 1.05) * 1.2;
-    const hi = Math.min(pb[1], 10000, frd.freq[frd.freq.length - 1] * 0.95) * 0.85;
+    const hi = Math.min(pb[1], 10000, maxHz, frd.freq[frd.freq.length - 1] * 0.95) * 0.85;
     if (hi <= lo * 1.5) return null;
     const top = Math.min(20000, frd.freq[frd.freq.length - 1]);
     const g = resample(frd.freq, frd.spl, frd.phase, logspace(Math.max(frd.freq[0] * 1.05, lo / 4), top, 400));
@@ -3553,8 +3560,23 @@ export default function App() {
       const frd = src[r];
       const pl = cabinetInfo.place[r];
       if (!frd || !pl) return null;
-      // In-band fit: a delay is only a delay where the driver plays.
-      const fit = excessDelayInBand(frd);
+      // In-band fit: a delay is only a delay where the driver plays. For a
+      // branch of several drivers, also stay below the frequency where the
+      // units start to interfere at the microphone (their paths differ by
+      // Δ = |d(y+s/2) − d(y−s/2)|; first null at c/(2Δ)) — above it the pair's
+      // excess phase is comb structure, not arrival time. Vertical stacking
+      // is assumed (a horizontal pair on the reference axis has Δ ≈ 0 and the
+      // cap vanishes by itself).
+      const cnt = Number(cabinet.drivers[r].count) || 1;
+      const sp = Number(cabinet.drivers[r].spacingMm) || 0;
+      let cap = Infinity;
+      if (cnt >= 2 && sp > 0) {
+        const dUp = Math.hypot(R, pl.yMm + sp / 2, pl.xMm);
+        const dDn = Math.hypot(R, pl.yMm - sp / 2, pl.xMm);
+        const dPath = Math.abs(dUp - dDn);
+        if (dPath > 1) cap = 0.7 * (C_AIR_MM_S / (2 * dPath));
+      }
+      const fit = excessDelayInBand(frd, cap);
       const geo = pathBreakdownMm(pl, R, elev);
       if (fit === null || geo === null) return null;
       if (fit.rSquared < 0.98 && weakFit === null) weakFit = r;

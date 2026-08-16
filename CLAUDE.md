@@ -396,6 +396,29 @@ minimum phase reconstrueert. Voertaal met Sander: **Nederlands**; code/comments 
   woofer-positie, mic-afstand, en of de mic bij de woofer-sweep bleef staan; gebruik deze
   dieptes niet" i.p.v. het anker als waarheid te presenteren (een dome is normaal het
   ondiepst). `weakFit` (R² < 0,98) wordt erbij genoemd.
+  **PAAR-TAK: FITBAND ONDER DE INTERFERENTIE-NUL (aug 2026, Sanders diepte-verificatie)**:
+  een tak van 2 drivers (count ≥ 2, spacing) gemeten naast zijn as heeft twee padlengtes
+  naar de mic; zijn woofer-paar (276 mm, y −471, R 1000): Δpad 117 mm ⇒ eerste nul 1468 Hz.
+  Boven die frequentie is de excess-fase van het paar kamstructuur, geen aankomsttijd —
+  gemeten 674–785 µs afhankelijk van hoeveel 1,5–7 kHz de fitband meenam (38 mm!).
+  `excessDelayInBand(frd, maxHz)` krijgt van `measuredDepth` daarom een plafond van
+  0,7·c/(2Δ) voor zulke takken (verticale stapeling aangenomen; horizontaal op de as heeft
+  Δ≈0 en het plafond verdwijnt vanzelf). Uitkomst op zijn set: tweeter 9,9 en mid 25,3 mm
+  achter de woofer; de M–T-relatie (~15 mm) is over élke fitkeuze stabiel, de wooferplaats
+  hangt aan zijn rig-aannames. TRACE-SCRIPT voor de hele routine (fitband, raw vs excess,
+  rig-aandeel, anker, oplossing per driver): scratchpad `depth-trace.ts`-patroon.
+  **Waarom "1,0786 ms ⇒ 138,7 mm" (Sanders verwachting) niet is wat de app rekent**: dat
+  getal is de RAUWE impuls-aankomst incl. ARTA's 2,5 ms-referentie, absoluut omgerekend; de
+  app werkt (a) op EXCESS-fase (minimum-fase-groepsvertraging van de driver zelf eraf — een
+  groepsvertraging is geen positie: raw 803–971 µs vs excess ~711 µs op het paar), (b) op
+  een helling-fit in de passband i.p.v. de impulspiek (een bandbegrensde woofer-impuls piekt
+  ná zijn onset: 1079 vs 803 µs), en (c) RELATIEF t.o.v. de ondiepste driver zodat de
+  onbekende gemeenschappelijke latency (incl. of het referentiemarker exact t=0 is) wegvalt.
+  **DUBBELTELLINGSTEST (browser, zijn project)**: diepteveld 0 / 5,6 / 40 / 138,7 mm in
+  measured-modus ⇒ SPL-chart-paden byte-identiek (hash gelijk) — het diepteveld raakt de som
+  NIET. Alléén met "Her-time naar de luisterafstand" AAN (opt-in, default uit, meldt
+  "ACTIEF") verandert de som mee — dat is de bedoelde stoel-geometrie, geen dubbeltelling.
+  (Bijna-vals-alarm onderweg: mijn eigen testscript had die checkbox aangezet.)
   **De uitkomst staat bij het VELD, niet alleen onder het timing-paneel** (Sanders "maar het
   getal wordt niet ingevuld bij de tweeter?"): de afleiding hoorde op de cabinet-stap en het
   veld dat hij beantwoordt staat op de drivers-stap — dezelfde blader-klacht als bij de
