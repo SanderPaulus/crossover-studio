@@ -269,7 +269,7 @@ export function runDesignChain(
       snapPrefs: s.snapPrefs,
       band: s.band,
       safety: s.safety,
-      onStage: (detail) => onProgress?.({ stage: 'tune', evals: evaluations, detail }),
+      onStage: (detail, ev) => onProgress?.({ stage: 'tune', evals: evaluations + (ev ?? 0), detail }),
     },
   );
   const zOk =

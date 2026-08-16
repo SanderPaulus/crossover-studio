@@ -68,7 +68,11 @@ export interface NetOptimizeOptions {
   /** Coarse stage callback (value tune, prune, snap, …) for live progress.
    *  NOT structured-cloneable — callers across a worker boundary inject it
    *  on the worker side, never in the posted payload. */
-  onStage?: (label: string) => void;
+  /** Coarse stage label, plus the running evaluation count. Called at every
+   *  stage switch and, as a heartbeat, every 2000 objective evaluations —
+   *  a live sim counter is the only proof of life a multi-minute prune sweep
+   *  can give (Sanders: "ik heb het idee dat ie blijft hangen"). */
+  onStage?: (label: string, evaluations?: number) => void;
   /** Snap the TUNED network to purchasable catalog values as the final step
    *  (discrete coordinate descent with real DCR/ESR, stacks allowed, budget
    *  pressure via costWeight). Without this the tuner un-snaps whatever the
@@ -590,6 +594,15 @@ export function optimizeNetworkValues(
   };
 
   let evaluations = 0;
+  let stageLabel = 'value tune';
+  const stage = (label: string) => {
+    stageLabel = label;
+    onStage?.(label, evaluations);
+  };
+  const tick = () => {
+    evaluations++;
+    if (evaluations % 2000 === 0) onStage?.(stageLabel, evaluations);
+  };
   const metricsOn = (
     net: { nodeCount: number; elements: NetElement[] },
     freqs: readonly number[],
@@ -1242,7 +1255,7 @@ export function optimizeNetworkValues(
   /** One objective evaluation of a parts array as-is (no value tuning). */
   const quickFx = (ps: readonly VxpPart[]): number => {
     const { work } = buildWork(ps);
-    evaluations++;
+    tick();
     return fxOf(metricsOn(work, optW.freq, optW, optT, optM, optZ, optAngles));
   };
   /** Same evaluation, but keeping the impedance minimum the metrics already
@@ -1250,7 +1263,7 @@ export function optimizeNetworkValues(
    *  waste. */
   const quickFxZ = (ps: readonly VxpPart[]): { fx: number; zMin: number } => {
     const { work } = buildWork(ps);
-    evaluations++;
+    tick();
     const m = metricsOn(work, optW.freq, optW, optT, optM, optZ, optAngles);
     return { fx: fxOf(m), zMin: m.zMinOhm };
   };
@@ -1329,7 +1342,7 @@ export function optimizeNetworkValues(
       }
     }
     const objective = (logVals: readonly number[]): number => {
-      evaluations++;
+      tick();
       let penalty = 0;
       for (let i = 0; i < free.length; i++) {
         if (hard[i]) {
@@ -1496,7 +1509,7 @@ export function optimizeNetworkValues(
 
   if (solo) soloLossCap = Math.max(soloSensBudgetDb, rawMedianRef - before.medianDb);
 
-  onStage?.('value tune');
+  stage('value tune');
   /* ---- Stage: value tuning (always) — MULTI-START. The response landscape
    * is multimodal and under-determined: many value-sets sum equally flat,
    * and from an arbitrary seed the tuner may converge into a low-impedance
@@ -1655,7 +1668,7 @@ export function optimizeNetworkValues(
       (!breakupGuard || m.leakSqDb <= ref.leakSqDb + 4);
 
     if (meets(curFull)) {
-      onStage?.('prune sweep');
+      stage('prune sweep');
       /* ---- PRUNE: shed parts whose removal is (nearly) FREE ----
        * Every unlocked part gets two removal variants: `open` (a shunt part
        * simply disappears) and `shorted` (a series part becomes a wire). The
@@ -1737,7 +1750,7 @@ export function optimizeNetworkValues(
         if (!accepted) break;
       }
     } else {
-      onStage?.('escalation');
+      stage('escalation');
       /* ---- ESCALATE (rule 3): bypass-C across series resistors ---- */
       for (let round = 0; round < 2 && !meets(curFull); round++) {
         let best: { id: string; t: TuneOut } | null = null;
@@ -1761,7 +1774,7 @@ export function optimizeNetworkValues(
     if (removed.length + added.length > 0) cur = tune(cur.parts, 1, tgt);
   }
 
-  onStage?.('drift check');
+  stage('drift check');
   /* ---- LATE drift catch: staged retunes (barrier tune, prune/escalation
    * settles) walk values back into the big-cap basin AFTER the early
    * challenges — measured on the 1900-chain: the early challenge moved to
@@ -1770,7 +1783,7 @@ export function optimizeNetworkValues(
    * before the snap freezes values onto purchasable parts. ---- */
   cur = driftCatch(cur);
 
-  onStage?.('cap shrink ladder');
+  stage('cap shrink ladder');
   /* ---- Cap SHRINK LADDER (Sanders: "met B·C1 laag beginnen en langzaam
    * opvoeren om te vergelijken" — implemented as the equivalent warm-started
    * walk DOWN, and extended to C2/every free cap on Sanders' request):
@@ -1916,7 +1929,7 @@ export function optimizeNetworkValues(
     const mCur = fullOf(cur.parts);
     const zCur = worstZ(mCur, cur.parts);
     if (zCur.short > 0.15) {
-      onStage?.('amp-load floor');
+      stage('amp-load floor');
       // A dipping SEED (user network already below the floor) moves the bar:
       // the safety gate judges against the seed, so "as healthy as the seed"
       // is repaired enough there.
@@ -1993,7 +2006,7 @@ export function optimizeNetworkValues(
   }
 
   let snapNote: string | undefined;
-  onStage?.('catalog snap');
+  stage('catalog snap');
   /* ---- Catalog snap (final step): land every free part on purchasable
    * values, judged on the ASSEMBLED network with real DCR/ESR riding along.
    * Runs last on purpose — any later value tune would un-snap it. ---- */

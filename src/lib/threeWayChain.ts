@@ -280,7 +280,7 @@ export function runThreeWayChain(
     snapPrefs: s.snapPrefs,
     band: s.band,
     safety: s.safety,
-    onStage: (detail: string) => onProgress?.({ stage: 'tune', evals: 0, detail }),
+    onStage: (detail: string, ev?: number) => onProgress?.({ stage: 'tune', evals: ev ?? 0, detail }),
   };
   let net = optimizeNetworkValues(merged, grid, w, t, driverZ, tAdjust, tuneOpts);
 

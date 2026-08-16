@@ -78,6 +78,9 @@ function workerAt(slot: number): Worker {
   return workers[slot]!;
 }
 
+import { poolSize, runPooled } from './pool.ts';
+export { poolSize, runPooled };
+
 /** Current user-imported catalog, shipped with every request so the worker's
  *  module state matches the main thread's (stateless across respawns). The
  *  disabled-series list MUST ride along: the worker has no localStorage, and
@@ -153,10 +156,7 @@ export function runChainScan(
   input: ChainScanInput,
   onProgress?: (d: ScanProgress) => void,
 ): Promise<ChainScanResult> {
-  const poolSize = Math.max(
-    1,
-    Math.min(4, (typeof navigator !== 'undefined' ? navigator.hardwareConcurrency : 4) - 1 || 1),
-  );
+  const size = poolSize();
   const state = new Map<string, { evals: number; text: string; done: boolean; warn?: string }>();
   let lastRipple: number | undefined;
   let lastPhase: number | undefined;
@@ -182,7 +182,8 @@ export function runChainScan(
     }, 80);
   };
   const runOne = (v: { label: string; xoRange?: [number, number] }, slot: number) => {
-    state.set(v.label, { evals: 0, text: 'queued', done: false });
+    state.set(v.label, { evals: 0, text: 'starting', done: false });
+    emit();
     return run<ChainResult>(
       slot,
       'chainOne',
@@ -238,12 +239,14 @@ export function runChainScan(
         first.net.after.rippleDb <= targets.rippleDb && first.net.after.phaseDeg <= targets.phaseDeg;
       if (met || !first.net.after.xoHz) return finish([first]);
       const follow = followupVariantsFor(first.net.after.xoHz);
-      return Promise.all(follow.map((v, i) => runOne(v, i % poolSize))).then((rest) =>
+      return runPooled(follow, size, (v, slot) => runOne(v, slot)).then((rest) =>
         finish([first, ...rest]),
       );
     });
   }
-  return Promise.all(vs.map((v, i) => runOne(v, i % poolSize))).then(finish);
+  // Mark every candidate queued up front so the progress card lists them all.
+  for (const v of vs) state.set(v.label, { evals: 0, text: 'queued', done: false });
+  return runPooled(vs, size, (v, slot) => runOne(v, slot)).then(finish);
 }
 
 /** 3-way 2D crossover scan (trede 4c): every (low, high) candidate runs a
@@ -253,10 +256,7 @@ export function runChain3Scan(
   inputs: Chain3Input[],
   onProgress?: (d: ScanProgress) => void,
 ): Promise<Chain3Result[]> {
-  const poolSize = Math.max(
-    1,
-    Math.min(4, (typeof navigator !== 'undefined' ? navigator.hardwareConcurrency : 4) - 1 || 1),
-  );
+  const size = poolSize();
   const state = new Map<string, { evals: number; text: string; done: boolean; warn?: string }>();
   let emitQueued = false;
   const emit = () => {
@@ -275,13 +275,19 @@ export function runChain3Scan(
       onProgress({ round: done, evals, items });
     }, 80);
   };
-  return Promise.all(
-    inputs.map((input, i) => {
-      state.set(input.label, { evals: 0, text: 'queued', done: false });
-      return run<Chain3Result>(i % poolSize, 'chain3One', { input }, (d) => {
+  for (const input of inputs) state.set(input.label, { evals: 0, text: 'queued', done: false });
+  emit();
+  return runPooled(inputs, size, (input, slot) => {
+      const st0 = state.get(input.label);
+      if (st0) st0.text = 'starting';
+      emit();
+      return run<Chain3Result>(slot, 'chain3One', { input }, (d) => {
         const p = d as ChainOneProgress;
         const st = state.get(input.label);
         if (!st) return;
+        // Live evaluation count from the tuner's heartbeat — the only proof
+        // of life a long prune sweep gives.
+        if (p.evals > st.evals) st.evals = p.evals;
         st.text = stageText(p);
         emit();
       }).then((r) => {
@@ -295,8 +301,7 @@ export function runChain3Scan(
         emit();
         return r;
       });
-    }),
-  );
+  });
 }
 
 export function runVfRoundsTask(

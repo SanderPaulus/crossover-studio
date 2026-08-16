@@ -120,6 +120,7 @@ import {
   runSoloChainTask,
   runVfRoundsTask,
   runChain3Scan,
+  poolSize,
 } from './lib/optimClient.ts';
 import { crossover3Variants, rankChain3Results } from './lib/threeWayChain.ts';
 import { Z_FLOOR_OHM } from './lib/netOptimizer.ts';
@@ -12032,7 +12033,7 @@ export default function App() {
                           ))}
                         </select>
                         {xoScanSteps > 3 && (
-                          <span className="derived"> ⏱ ~{Math.ceil(xoScanSteps / 3)}× {t('runtime')}</span>
+                          <span className="derived"> ⏱ ~{Math.max(1, Math.ceil(xoScanSteps / poolSize()))}× {t('runtime')}</span>
                         )}
                       </>
                     )}

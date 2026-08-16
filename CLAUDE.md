@@ -2602,9 +2602,20 @@ Alles UI-laag; élke palette-actie roept dezelfde handlers aan als de knoppen (g
   bleef bewust synchroon. Gemeten: tijdens een 50s-tune-run antwoordt de main thread direct
   (vroeger: 30s-timeout op élke call), resultaat landt netjes, cancel laat het ontwerp intact.
   **Parallelle scan + fijnmazige voortgang (Sanders "alive gevoel", jul 2026)**: de
-  crossover-kandidaten draaien CONCURRENT over een worker-POOL (max 4, cores−1; client
+  crossover-kandidaten draaien CONCURRENT over een worker-POOL (sinds aug 2026 `pool.ts`:
+  **cores−2, max 16** i.p.v. het oude plafond van 4 — Sanders "de tune gebruikt de volle
+  rekenkracht niet"; en een ECHTE WACHTRIJ `runPooled`: de eerstvolgende vrije lane pakt het
+  volgende item — de oude vaste toewijzing `i % poolSize` zette kandidaat 8 achter kandidaat 0
+  in dezelfde lane, dus die stond "queued" terwijl drie andere lanes klaar waren en niets deden,
+  precies Sanders screenshot; unit-test pint volgorde, max-in-flight en de lane-overname; client
   orkestreert per 'chainOne'-request, rescue-semantiek behouden: vrije keten eerst, follow-ups
-  parallel) — bit-identieke uitslag, gemeten ~3× sneller (3m47 vs ~10+ min sequentieel).
+  parallel). NB Apple Silicon: efficiency-cores rekenen 2–3× trager, dus 8 workers ≠ 2× vier;
+  de scan-fase wint ~1,5×, de staart (één kandidaat alleen) en een losse tune niets — de
+  tuner zelf parallel maken (multi-start over workers, bit-identiek bewijzen) is de volgende
+  stap. **Live sim-teller ook in 3-weg**: `optimizeNetworkValues.onStage(label, evaluations)`
+  vuurt nu ook als HEARTBEAT elke 2000 evaluaties (een prune-sweep van tientallen minuten gaf
+  anders geen enkel levensteken — Sanders "ik heb het idee dat ie blijft hangen"; de 3-weg-keten
+  gaf bovendien altijd `evals: 0` door) — bit-identieke uitslag, gemeten ~3× sneller (3m47 vs ~10+ min sequentieel).
   `runDesignChain` kreeg een `onProgress`-callback (per design-ronde + stage-switches) en
   `optimizeNetworkValues` een `onStage` (value tune/prune/escalation/drift check/shrink
   ladder/snap) — callbacks worden WORKER-ZIJDIG geïnjecteerd (functies kunnen niet door
