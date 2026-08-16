@@ -14,6 +14,45 @@ excess-fase-brug, integration-score, directivity-som. Daarvoor is een tweede dri
 
 ---
 
+## ✅ Uitgevoerd: KOAN test-filter-sessie (15–16 aug 2026)
+
+Twee échte drivers (KOAN-mid en -tweeter), componenten "wat er lag": mid 1,8 mH serie +
+6,8 µF parallel; tweeter 8,2 µF serie + 0,33 mH — die spoel bleek **over de ingang** te
+staan (vóór de cap), niet over de tweeter. Vijf sweeps, één mic, één klok: mid kaal, tweeter
+kaal, mid+filter, tweeter+filter, beide samen. Bestanden staan als fixture in
+`src/lib/parsers/fixtures/koan-testfilter/` (elk 8e punt), test `validation.koan.test.ts`.
+
+| test | model vs meting (niveau uitgelijnd, 300 Hz–20 kHz) |
+|---|---|
+| mid + filter | **±0,25 dB avg · P95 0,6 · fase 2,4°** |
+| tweeter + filter (zoals bedraad, Rg 1,2 Ω) | ±1,1 dB · fase 2,9° |
+| beide samen | ±0,6 dB avg · fase 2,1°; interferentiedip op 984 Hz (gemeten 971), buiten het overlapgebied 0,05–0,65 dB, **in de dip ~2 dB te ondiep (open)** |
+
+Wat het bewijst en wat niet:
+- **Solver + gemeten Z**: klopt op een kwart dB zodra het schema is wat er gebouwd is.
+- **Complexe som met gemeten fase**: de dip staat op de juiste frequentie — dat is het
+  kernidee van de app (fase mét looptijdverschil) en het staat.
+- **Code ≡ handberekening**: de app-pijplijn en een volledig onafhankelijke rekensom op het
+  rauwe rooster (eigen parser, eigen complexe rekenkunde, geen dsp/solver) geven hetzelfde op
+  0,1 dB, inclusief de dip — dat pint de test A voor altijd vast.
+- **Open**: ~2 dB in de bodem van een cancellation. Geen codefout (zie hierboven) maar een
+  meetopstelling-effect: met de 0,33 mH over de versterker zag die 1–2 Ω; "Rg = 1,2 Ω" is
+  daar een benadering van een begrenzende versterker, en in een nul wordt elke takfout
+  (1 dB niveau, 10° fase) uitvergroot. De losse tak-tests kunnen precies die twee dingen
+  (relatieve timing, niveauverhouding tussen sweeps) niet controleren — de fase-vergelijking
+  fit per meting de mic-afstand weg.
+
+Drie lessen voor de volgende meetdag:
+1. **Teken wat je bouwt, niet wat je bedoelt.** Spoel vóór/achter de cap, cap vóór/achter de
+   spoel — beide zijn vandaag als "8 dB modelfout" binnengekomen en waren tekenfouten.
+2. **Rg is je meetopstelling.** Versterker + kabels + klemmen; vul hem in bij G1 voor een
+   testvergelijking, zet hem terug op ~0 voor het ontwerp.
+3. **Meet de som twee keer: normaal én tweeter omgekeerd**, en zet de spoel niet over de
+   ingang. De omgekeerde som is dip-vrij (10° = 0,1 dB) en beslist of het restant fysica of
+   meting is.
+
+---
+
 ## 0b. Model-vs-meting-overlay (in de app ingebouwd, aug 2026)
 
 De vergelijkstap van dit protocol zit nu ín de app: **Import-tab →

@@ -142,6 +142,23 @@ minimum phase reconstrueert. Voertaal met Sander: **Nederlands**; code/comments 
   `npm run sum-check <d1.frd> <d2.frd> … <som.frd>`. Tests in `phasePath.test.ts`
   (offset-0 bit-identiek, 100 mm-kamfilter op 1715/5145/8575 Hz + piek 3430, complex ≠ dB-som,
   gids-unwrap zonder naden bij 3 ms, log-log Z, sumCheck pass/fail).
+  **END-TO-END GEVALIDEERD OP ECHTE METINGEN (aug 2026, Sanders test-filter-sessie —
+  `validation.koan.test.ts`, fixtures `parsers/fixtures/koan-testfilter/`)**: mid + tweeter
+  elk kaal en met een grabbelton-filter gemeten, plus beide samen; zie VALIDATIE.md voor de
+  tabel. Uitkomst: mid-tak ±0,25 dB/2,4°, tweeter-tak ±1,1 dB (zoals bedraad), som ±0,6 dB
+  met de interferentiedip op de juiste frequentie (984 vs 971 Hz) en ~2 dB te ondiep. De
+  test pint TWEE dingen los van elkaar: (A) app-pijplijn ≡ onafhankelijke handberekening op
+  het rauwe rooster (eigen parser, eigen complexe rekenkunde, geen dsp/solver) op 0,1 dB/1°
+  per punt — dát is de regressie; (B) de meetcijfers als data-beschrijving. HARD GELEERD:
+  (1) beide "8 dB modelfouten" van die dag waren TEKENFOUTEN — spoel vóór i.p.v. achter de
+  cap (tweeter), cap vóór i.p.v. achter de spoel (mid); de app liet het verschil hard zien,
+  en dat is de functie. (2) `Rg` op de generator ís de meetopstelling (versterker + kabels
+  + klemmen ≈ 1,2 Ω bij Sander); met een 0,33 mH over de versterkerklemmen zag die 1–2 Ω en
+  een begrenzende versterker is geen nette weerstand — daar zit het open ~2 dB-restant, niet
+  in de code. (3) Een NUL vergroot elke tak-fout uit (som zit dB's onder de kleinste tak),
+  en de losse tak-vergelijkingen kunnen relatieve timing én niveauverhouding tussen sweeps
+  per constructie niet controleren (compareMeasurement fit per meting delay + offset weg).
+  Beslissende vervolgtest: som normaal + tweeter omgekeerd, spoel niet over de ingang.
   (gedeelde-tijdreferentie-verdict). Silent-failure-risico van verkeerde timing is de bestaansreden
 - `dsp.ts` — logspace/resample (unwrapped-fase-interpolatie, `clampEdges` voor Z), `combine`
   (complexe som; exporteert ook `combinedPhaseDeg`), `applyTransfer`.
