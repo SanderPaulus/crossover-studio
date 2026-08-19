@@ -2148,6 +2148,34 @@ stoppunt + snoei-voorwaarde; 1,5/10 was KOAN-topdriver-ijk); (6c) overdracht gec
 corridor koppelt indirect terug"); (6d) `sumGroupDelay` (excess GD 500/2k/8k, bulk = in-band-mediaan)
 + "mid band x oct" (△ < 2,3) als strip-items, alleen weergave. Alle nieuwe knoppen zijn
 localStorage-voorkeuren, geen projectdata.
+**FIXES NA DE EERSTE VOLLE AXES-RUN (aug 2026, Sanders "winnaar 539/1789, rSource 7,15 Ω, Qes
+×3,24 wint alsnog")**: (fix 2) fysische vloeren gelden voor de LEVERING — `xoFloorPairs` (fs·K /
+excursie / reach, NIET de datavloer) als stijve 1200·oct²-barrière in `fxOf` én ondergrens van de
+ontwerp-knievensters (`floorBound`); na de tune `xoFloorVerdict` per paar ok/warn (≤5 % onder)/fail
+→ `disqualified[]` met reden. (fix 1) bron-R getrapt: △ ≥ ½ grens, klasse ≥ `rSourceLimitOhm`
+(1,0), DISKWALIFICATIE ≥ `rSourceDisqualifyOhm` (2,0, 'ads-rsource-disq') — klasse 10 in beide
+rankers, rij blijft zichtbaar/klikbaar maar doorgestreept (`tr.disqualified`), "R src"-kolom in de
+scan-tabel. (fix 3a) dissipatieterm `wDiss·(Rs/Re)²` vóór de LAAGSTE tak (`dissipationWeight` 0,05,
+'ads-diss-weight', 0 = legacy; Rs via `seenImpedance` op Fb/Z-piek, één 1-punts solve per eval,
+`after.dissRatio`). (fix 3b) niveau-match via filtercomponenten: ONDERZOCHT, NIET GEBOUWD (vraagt een
+topologiekeuze in de tune) — staat in de overdracht. BUG ONDERWEG: `seenImpedance` kreeg de volle
+driverZ-arrays met een 1-punts freqs-lijst → andere drivers geladen met hun Z op grid[0]; nu
+`sliceDriverZ` (raakte ook de audit-R_bron — alle eerdere R_bron-getallen waren licht vertekend
+door de mid/tweeter-takken op de verkeerde frequentie; op Fb zijn die hoog-ohmig, dus klein effect).
+A1/A2 (pre-merge-checks op c28ffd9 vs c4699f5, harness `refrun.ts`, 3 identieke kandidaten): met
+legacy power + smoothing uit + wDI 0 + R_bron-grens 0 is de nieuwe boom BIT-IDENTIEK aan c4699f5
+(fx, parts, evals, ranking); defaults: winnaar zelfde kandidaat, beter (peak 1,15 vs 1,45, avg 0,40
+vs 0,48) maar R_bron 2,82 vs 0,0 — precies het patroon dat fix 1–3 aanpakken. A3 geverifieerd:
+gezond −1,3 dB/dec zonder ⚠; +10 dB op een tak → "⚠ power slope +5,9 dB/dec — rising: check
+levels/files (no fx influence)". **B1 (wDI-omslagkromme, gemeten)**: on-axis-optimum op de vloer
+1849; anker 3149: wDI ≤3 → 1849, 5 → 1925 (+2,9 %), 8+ → 3111 (+30 %, structuurwissel) — een klif;
+anker 2400: ≤8 → 1849, 15 → 1965 (+4,7 %), 30 → 2188 (+14,7 %). Geen wDI wint het anker tegen
+< 5 % on-axis-prijs ⇒ fx-term blijft tiebreak (0,3), B2 (kooi-versmaller) is het aangewezen
+mechanisme (nog niet gebouwd). M1/M2 uit de spec konden niet op Sanders sessie-rijen (niet
+gepersisteerd — zijn tab stond op de landing page); vervangen door de harness-voor/na-meting:
+dissipatie 0,05 vs 0 ⇒ R_bron 2,85/1,17/0,00 vs 2,48/1,05/0,00 — GEEN effect (tiebreak-sterkte,
+(Rs/Re)²·0,05 ≈ 0,01 op fx ~12); de winnaar met R_bron 0,00 (514/1849 → 627/1942, peak 1,70 vs de
+gediskwalificeerde 1,27) komt van fix 1. Open: gewicht kalibreren zoals B1.
 **Wizard-systeemkeuze (Sanders voorstel, aug 2026)**: stap 0 begint met 1-weg/2-weg/3-weg
 (`wizardWays`, localStorage 'ads-wizard-ways'; data wint bij openen — volle 3-weg forceert 3,
 exact twee buitentakken 2) en toont alléén de bijbehorende slots; **Next blokkeert op

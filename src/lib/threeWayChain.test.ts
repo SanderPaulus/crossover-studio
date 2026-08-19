@@ -341,6 +341,8 @@ describe('threeWayChain (phase-4 trede 4c, staged v1)', () => {
         pairOverlapOct: null,
         midInverted: false,
         tweeterInverted: false,
+        xoFloorVerdict: [null, null],
+        disqualified: [],
         structureLabel: 'LR4 @400 · LR4 @3000',
       }) as Chain3Result;
     // A flatter result that cooks the amp ranks BELOW a healthy one.
@@ -414,6 +416,8 @@ describe('threeWayChain (phase-4 trede 4c, staged v1)', () => {
         pairOverlapOct: null,
         midInverted: false,
         tweeterInverted: false,
+        xoFloorVerdict: [null, null],
+        disqualified: [],
         structureLabel: 'x',
       }) as Chain3Result;
     // 3.3 Ω series R in the woofer branch (Rs 3.4) vs the same flatness without.
@@ -423,6 +427,48 @@ describe('threeWayChain (phase-4 trede 4c, staged v1)', () => {
     // Unknown (no audit) is never punished; limit 0 switches the class off.
     expect(rankChain3Results([mk('unknown', null, 0.45), without], undefined, 0.5, 0, 1.0)[0].label).toBe('unknown');
     expect(rankChain3Results([withR, without], undefined, 0.5, 0, 0)[0].label).toBe('3.3 Ω pad');
+  });
+
+  it('fix 1: source-R tiers — 0.8 Ω beats an equally flat 1.5 Ω; ≥ 2 Ω (disqualified) ranks last however flat', () => {
+    const mk = (label: string, rs: number, avgDev: number, dq: string[] = []): Chain3Result =>
+      ({
+        label,
+        xoLow: 539,
+        xoHigh: 1789,
+        specs: {} as Chain3Result['specs'],
+        synthWoofer: {} as Chain3Result['synthWoofer'],
+        synthMid: {} as Chain3Result['synthMid'],
+        synthTweeter: {} as Chain3Result['synthTweeter'],
+        parts: [],
+        net: {
+          after: { rippleDb: avgDev, avgDevDb: avgDev, phaseDeg: 5, zMinOhm: 6 },
+          audit: { rSourceOhm: rs, entries: [] },
+        } as unknown as Chain3Result['net'],
+        bomTotalEur: 300,
+        zOk: true,
+        zMinOhm: 6,
+        xoWindowOk: null,
+        pairOverlapOct: null,
+        midInverted: false,
+        tweeterInverted: false,
+        xoFloorVerdict: [null, null],
+        disqualified: dq,
+        structureLabel: 'x',
+      }) as Chain3Result;
+    // The 19 Aug winner: 7.15 Ω, flattest of all — disqualified, last.
+    const winner19 = mk('539/1789 rs 7.15', 7.15, 0.40, ['source resistance at the low driver 7.15 Ω ≥ 2.0 Ω']);
+    const a = mk('rs 0.8', 0.8, 0.60);
+    const b = mk('rs 1.5', 1.5, 0.60);
+    const ranked = rankChain3Results([winner19, b, a], undefined, 0.5, 0, 1.0);
+    expect(ranked.map((r) => r.label)).toEqual(['rs 0.8', 'rs 1.5', '539/1789 rs 7.15']);
+  });
+
+  it('fix 2: a delivery under its physics floor disqualifies the candidate (reason carried), within 5 % only warns', () => {
+    // Mirrors the chain's floorVerdict logic on the result shape.
+    const fv = (xo: number, fl: number, slack = 0.05) => (xo >= fl ? 'ok' : xo >= fl * (1 - slack) ? 'warn' : 'fail');
+    expect(fv(1789, 1902)).toBe('fail'); // −6 %
+    expect(fv(1830, 1902)).toBe('warn'); // −3.8 %
+    expect(fv(1902, 1902)).toBe('ok');
   });
 
   it('rule 9: the in-room weight lets a flatter POWER response beat a flatter on-axis one', () => {
@@ -446,6 +492,8 @@ describe('threeWayChain (phase-4 trede 4c, staged v1)', () => {
         pairOverlapOct: null,
         midInverted: false,
         tweeterInverted: false,
+        xoFloorVerdict: [null, null],
+        disqualified: [],
         structureLabel: 'x',
       }) as Chain3Result;
     const onAxis = mk('on-axis flat', 0.4, 3.0); // beams at the handover: power steps
@@ -481,6 +529,8 @@ describe('threeWayChain (phase-4 trede 4c, staged v1)', () => {
         pairOverlapOct: null,
         midInverted: false,
         tweeterInverted: false,
+        xoFloorVerdict: [null, null],
+        disqualified: [],
         structureLabel: 'LR4 @400 · LR4 @3000',
       }) as Chain3Result;
     // Sander's case: the tune never WORSENED the dip, so zOk is true — but the
@@ -534,6 +584,8 @@ describe('threeWayChain (phase-4 trede 4c, staged v1)', () => {
         pairOverlapOct: null,
         midInverted: false,
         tweeterInverted: false,
+        xoFloorVerdict: [null, null],
+        disqualified: [],
         structureLabel: 'LR4 @400 · LR4 @3000',
       }) as Chain3Result;
     const ranked = rankChain3Results(

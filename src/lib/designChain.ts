@@ -39,6 +39,8 @@ export interface ChainSettings {
   powerFoldWeight?: number;
   /** Error smoothing width for the search objectives (oct); 0 = off. */
   errorSmoothOct?: number;
+  /** Dissipation term weight in front of the lowest branch (fix 3a); 0 = off. */
+  dissipationWeight?: number;
   /** Part-audit options (thresholds incl. the source-R limit, Fb) — forwarded to the tuner. */
   audit?: { enabled?: boolean; thresholds?: { rSourceOhm?: number }; fbHz?: number };
   ampTarget?: 'onAxis' | 'listeningWindow';
@@ -134,6 +136,7 @@ export function runDesignChain(
     powerMetric: s.powerMetric,
     powerFoldWeight: s.powerFoldWeight,
     errorSmoothOct: s.errorSmoothOct,
+    dissipationWeight: s.dissipationWeight,
     audit: s.audit,
     ampTarget: s.ampTarget,
     cutOnly: s.cutOnly,
@@ -385,11 +388,15 @@ export function rankChainResults(
   hpFloorHz?: number,
   /** Source-resistance limit at the low driver (Ω, point 4) — class loss above it. */
   rSourceLimitOhm = 1.0,
+  /** Hard tier (fix 1): at/above this the candidate is disqualified (ranks last). */
+  rSourceDisqualifyOhm = 2.0,
 ): ChainResult[] {
   const p = 0.15 + 0.7 * Math.min(Math.max(phasePriority, 0), 1);
   const rsClass = (r: ChainResult): number => {
     const rs = r.net.audit?.rSourceOhm;
-    return rs != null && rSourceLimitOhm > 0 && rs > rSourceLimitOhm ? 1 : 0;
+    if (rs == null) return 0;
+    if (rSourceDisqualifyOhm > 0 && rs >= rSourceDisqualifyOhm) return 10;
+    return rSourceLimitOhm > 0 && rs > rSourceLimitOhm ? 1 : 0;
   };
   // Whole-range verdict in the ripple slot (Sanders doctrine, jul 2026): rank
   // on the AVERAGE |deviation|, scaled by π/2 so a smooth ±A dB wobble scores

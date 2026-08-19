@@ -252,7 +252,16 @@
       "Bash(mv src/lib/demo3way.ts src/demo3way.ts)",
       "Bash(sed -i '' \"s#'./parsers/fixtures/koan-3way/#'./lib/parsers/fixtures/koan-3way/#g\" src/demo3way.ts)",
       "Bash(sed -i '' \"s#import\\('./lib/demo3way.ts'\\)#import\\('./demo3way.ts'\\)#; s#typeof import\\('./lib/demo3way.ts'\\)#typeof import\\('./demo3way.ts'\\)#\" src/App.tsx)",
-      "Bash(awk 'NR>=805 && NR<=870 && /^}/ {print NR; exit}' src/App.tsx)"
+      "Bash(awk 'NR>=805 && NR<=870 && /^}/ {print NR; exit}' src/App.tsx)",
+      "Bash(git worktree *)",
+      "Bash([ -f \"$S/ref-new-default.json\" ])",
+      "Bash([ -f \"$S/ref-old-default.json\" ])",
+      "Bash([ -f \"$S/ref-new-neutral.json\" ])",
+      "Bash([ -f \"$S/ref-old-neutral.json\" ])",
+      "Bash(python3 refcmp.py)",
+      "Bash(grep -n \"slopePen$\\\\|2·corridorSq\" Optimizer_overdracht.md)",
+      "Bash([ -f \"$S/ref-fix3.json\" ])",
+      "Bash([ -f \"$S/ref-nodiss.json\" ])"
     ]
   }
 }

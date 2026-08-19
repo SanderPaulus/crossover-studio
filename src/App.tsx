@@ -4232,9 +4232,8 @@ export default function App() {
     }
   }
 
-  const directivity = useMemo(() => {
+  const directivityCore = useMemo(() => {
     // À-la-carte: skip the per-angle solve entirely when neither consumer shows.
-    if (!showPanels.directivity && !showPanels.sonogram) return null;
     if (!angleSets || !result || !sim) return null;
     const sets = angleResponsesOn(result.freq);
     if (!sets) return null;
@@ -4261,7 +4260,23 @@ export default function App() {
       tAdj,
     );
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [angleSets, result, sim, threeWay, phaseMode, offsetMm, trimDb, inverted, midOffsetMm, midTrimDb, midInverted, showPanels.directivity, showPanels.sonogram]);
+  }, [angleSets, result, sim, threeWay, phaseMode, offsetMm, trimDb, inverted, midOffsetMm, midTrimDb, midInverted]);
+  /** Panels only: same result, gated on the chips (a hidden panel is not computed twice). */
+  const directivity = showPanels.directivity || showPanels.sonogram ? directivityCore : null;
+  /** Power-response trend of the LIVE design (point A3): slope in dB/decade,
+   *  smoothness and fold — shown in the SPL strip whatever panels are on,
+   *  with a warning when the slope RISES (> +1 dB/dec): that is almost always
+   *  a level or measurement error (a swapped file, a +10 dB tweeter), not a
+   *  design choice — and it carries no fx weight, the slope is free. */
+  const powerTrend = useMemo(() => {
+    if (!directivityCore) return null;
+    const xs = threeWay
+      ? [pairScores?.low?.integ.overlapCentreHz ?? null, pairScores?.high?.integ.overlapCentreHz ?? null]
+      : [integration?.overlapCentreHz ?? null];
+    const f = directivityCore.freq;
+    return powerShape(f, directivityCore.powerDb, [Number(fMin) || f[0], Number(fMax) || f[f.length - 1]], xs);
+  }, [directivityCore, threeWay, pairScores, integration, fMin, fMax]);
+
 
   const [sonogramMode, setSonogramMode] = useState<SonogramMode>('normalized');
   const sonogram = useMemo(
@@ -4362,6 +4377,20 @@ export default function App() {
   /** Source-resistance limit at the low driver (Ω): above it a candidate
    *  loses a ranking class and a staged structure move is not "safe" (point
    *  4). Yellow from half the limit in the strip. Default 1.0. */
+  /** Hard tier (fix 1): a candidate with this much source resistance in front
+   *  of the low driver is DISQUALIFIED (visible, struck through). Default 2 Ω. */
+  /** Dissipation weight (fix 3a): soft fx penalty on series resistance in
+   *  front of the lowest branch, (Rs/Re)² × weight. Default 0.05, 0 = legacy. */
+  const [dissipationWeight, setDissipationWeight] = useState<number>(() => {
+    const raw = localStorage.getItem('ads-diss-weight');
+    const v = raw === null ? NaN : Number(raw);
+    return Number.isFinite(v) && v >= 0 ? v : 0.05;
+  });
+  const [rSourceDisqOhm, setRSourceDisqOhm] = useState<number>(() => {
+    const raw = localStorage.getItem('ads-rsource-disq');
+    const v = raw === null ? NaN : Number(raw);
+    return Number.isFinite(v) && v >= 0 ? v : 2.0;
+  });
   const [rSourceLimitOhm, setRSourceLimitOhm] = useState<number>(() => {
     const raw = localStorage.getItem('ads-rsource-limit');
     const v = raw === null ? NaN : Number(raw);
@@ -4918,10 +4947,22 @@ export default function App() {
         // structure choice stays on-axis and the ⚙ readout says so.
         diAnchorHz: physWin3?.angleSets ? physWin3.diAnchor : undefined,
         diWeight,
+        // (fix 2) PHYSICS floors per handover — fs·K / excursion / reach of
+        // the upper driver, never the data floor: bound for design + tune,
+        // and the delivery is judged against them (warn ≤5 % under, else
+        // disqualified).
+        xoFloorPairs: (['low', 'high'] as const).map((side) => {
+          const w = physWin3?.win[side];
+          if (!w) return null;
+          const fl = w.limits.filter((l) => l.side === 'floor' && (l.rule === 'fs' || l.rule === 'excursion' || l.rule === 'reach') && !l.overridden);
+          return fl.length ? Math.max(...fl.map((l) => l.hz)) : null;
+        }),
+        rSourceDisqualifyOhm: rSourceDisqOhm,
         directivityWeight: dirWeight / 100,
         powerMetric,
         powerFoldWeight,
         errorSmoothOct,
+        dissipationWeight,
         audit: {
           thresholds: { rSourceOhm: rSourceLimitOhm },
           fbHz: Number(cabinet.drivers.low.fbHz) > 0 ? Number(cabinet.drivers.low.fbHz) : undefined,
@@ -5166,6 +5207,10 @@ export default function App() {
                       unrealisable: dl.unrealisable,
                       rippleDb: rr.net.after.rippleDb,
                       peakSmoothedDb: rr.net.after.ripplePeakSmoothedDb ?? null,
+                      powerSlopeDbDec: rr.net.after.powerSlopeDbDec ?? null,
+                      rSourceOhm: rr.net.audit?.rSourceOhm ?? null,
+                      disqualified: rr.disqualified ?? [],
+                      xoFloorVerdict: rr.xoFloorVerdict ?? null,
                       avgDevDb: rr.net.after.avgDevDb ?? null,
                       phaseDeg: rr.net.after.phaseDeg,
                       zMinOhm: rr.net.after.zMinOhm ?? null,
@@ -5437,6 +5482,7 @@ export default function App() {
       powerMetric,
       powerFoldWeight,
       errorSmoothOct,
+      dissipationWeight,
       audit: {
         thresholds: { rSourceOhm: rSourceLimitOhm },
         fbHz: Number(cabinet.drivers.low.fbHz) > 0 ? Number(cabinet.drivers.low.fbHz) : undefined,
@@ -5494,6 +5540,7 @@ export default function App() {
         powerMetric,
         powerFoldWeight,
         errorSmoothOct,
+        dissipationWeight,
         audit: {
           thresholds: { rSourceOhm: rSourceLimitOhm },
           fbHz: Number(cabinet.drivers.low.fbHz) > 0 ? Number(cabinet.drivers.low.fbHz) : undefined,
@@ -5594,6 +5641,7 @@ export default function App() {
             phasePriority / 100,
             tweeterHpFloor ?? undefined,
             rSourceLimitOhm,
+            rSourceDisqOhm,
           );
           const win = ranked[0];
           setVFilters((p) => ({ ...p, ...win.vf.specs }));
@@ -5619,6 +5667,13 @@ export default function App() {
                       unrealisable: dl.unrealisable,
                       rippleDb: rr.net.after.rippleDb,
                       peakSmoothedDb: rr.net.after.ripplePeakSmoothedDb ?? null,
+                      powerSlopeDbDec: rr.net.after.powerSlopeDbDec ?? null,
+                      rSourceOhm: rr.net.audit?.rSourceOhm ?? null,
+                      disqualified:
+                        rr.net.audit?.rSourceOhm != null && rSourceDisqOhm > 0 && rr.net.audit.rSourceOhm >= rSourceDisqOhm
+                          ? [`source resistance at the low driver ${rr.net.audit.rSourceOhm.toFixed(2)} Ω ≥ ${rSourceDisqOhm.toFixed(1)} Ω`]
+                          : [],
+                      xoFloorVerdict: null,
                       avgDevDb: rr.net.after.avgDevDb ?? null,
                       phaseDeg: rr.net.after.phaseDeg,
                       zMinOhm: rr.net.after.zMinOhm ?? null,
@@ -6021,6 +6076,14 @@ export default function App() {
       /** Peak of the error-smoothed sum (what the search judged); shown in the
        *  column, the raw rippleDb in the tooltip. */
       peakSmoothedDb: number | null;
+      /** Fitted power-response slope of the delivered design (dB/decade). */
+      powerSlopeDbDec: number | null;
+      /** Source resistance at the low driver (Ω) from the part audit; null = unknown. */
+      rSourceOhm: number | null;
+      /** Disqualification reasons (fix 1/2); empty = in the race. */
+      disqualified: string[];
+      /** Per-pair physics-floor verdict (3-way). */
+      xoFloorVerdict: ('ok' | 'warn' | 'fail' | null)[] | null;
       /** Whole-range avg |deviation| — the number the ranking judges on. */
       avgDevDb: number | null;
       phaseDeg: number;
@@ -6053,11 +6116,11 @@ export default function App() {
   /** Scan-table sort: click a header to sort by that column (asc → desc →
    *  back to the RANKING order, which is the default and keeps 🏆 on top). */
   const [scanSort, setScanSort] = useState<{
-    key: 'xo' | 'ripple' | 'avg' | 'phase' | 'ovl' | 'zmin' | 'bom';
+    key: 'xo' | 'ripple' | 'avg' | 'phase' | 'ovl' | 'zmin' | 'rs' | 'bom';
     dir: 1 | -1;
   } | null>(null);
 
-  function toggleScanSort(key: 'xo' | 'ripple' | 'avg' | 'phase' | 'ovl' | 'zmin' | 'bom') {
+  function toggleScanSort(key: 'xo' | 'ripple' | 'avg' | 'phase' | 'ovl' | 'zmin' | 'rs' | 'bom') {
     setScanSort((s0) =>
       s0?.key !== key ? { key, dir: 1 } : s0.dir === 1 ? { key, dir: -1 } : null,
     );
@@ -6185,6 +6248,7 @@ export default function App() {
         powerMetric,
         powerFoldWeight,
         errorSmoothOct,
+        dissipationWeight,
         ampTarget,
         breakupGuard,
         staged: stagedOn
@@ -12243,6 +12307,42 @@ export default function App() {
                     }}
                     style={{ width: '3.6rem' }}
                   />{' '}Ω
+                  {' · '}{t('disqualify ≥')}
+                  <input
+                    type="number"
+                    min={0}
+                    max={10}
+                    step={0.1}
+                    value={rSourceDisqOhm}
+                    onChange={(e) => {
+                      const v = Number(e.target.value);
+                      const nv = Number.isFinite(v) && v >= 0 ? v : 2.0;
+                      setRSourceDisqOhm(nv);
+                      localStorage.setItem('ads-rsource-disq', String(nv));
+                    }}
+                    style={{ width: '3.6rem' }}
+                    title={t('Hard tier: a candidate with at least this much source resistance in front of the low driver is disqualified from the ranking — it stays in the table, struck through, with the reason. 0 = off.')}
+                  />{' '}Ω
+                </label>
+                <label
+                  className="inline-num"
+                  title={t('Dissipation term: a soft objective penalty on series resistance in front of the LOWEST branch — weight × (Rs/Re)² at the level reference (Fb or the Z peak). Steers the tuner away from matching levels by burning power in the woofer branch (efficiency and damping), before the hard tiers have to act. 0 = off (legacy).')}
+                >
+                  {t('Dissipation weight')}
+                  <input
+                    type="number"
+                    min={0}
+                    max={2}
+                    step={0.01}
+                    value={dissipationWeight}
+                    onChange={(e) => {
+                      const v = Number(e.target.value);
+                      const nv = Number.isFinite(v) && v >= 0 ? v : 0.05;
+                      setDissipationWeight(nv);
+                      localStorage.setItem('ads-diss-weight', String(nv));
+                    }}
+                    style={{ width: '3.6rem' }}
+                  />
                 </label>
                 {threeWay && (
                   <label
@@ -13395,6 +13495,7 @@ export default function App() {
                         ['phase', t('phase')],
                         ['ovl', t('overlap')],
                         ['zmin', 'Z min'],
+                        ['rs', 'R src'],
                         ['bom', 'BOM'],
                       ] as const
                     ).map(([key, caption]) => (
@@ -13429,13 +13530,15 @@ export default function App() {
                                       : Number.POSITIVE_INFINITY)
                                   : scanSort.key === 'zmin'
                                   ? -(r.zMinOhm ?? Number.NEGATIVE_INFINITY) // higher is better
-                                  : (r.bomEur ?? Number.POSITIVE_INFINITY);
+                                  : scanSort.key === 'rs'
+                                    ? (r.rSourceOhm ?? Number.POSITIVE_INFINITY)
+                                    : (r.bomEur ?? Number.POSITIVE_INFINITY);
                       return (v(a) - v(b)) * scanSort.dir;
                     })
                     .map((r) => (
                     <tr
                       key={r.label}
-                      className={`${r.winner ? 'winner' : ''}${chainScan.active === r.label ? ' active' : ''}`}
+                      className={`${r.winner ? 'winner' : ''}${chainScan.active === r.label ? ' active' : ''}${r.disqualified.length > 0 ? ' disqualified' : ''}`}
                       onClick={() => applyScanCandidate(r)}
                       title={
                         chainScan.active === r.label
@@ -13448,11 +13551,17 @@ export default function App() {
                         title={
                           (r.unrealisable
                             ? t('Target not realisable: the tuned network crosses more than ⅓ octave from the candidate it aimed at — the window or the topology binds. ')
-                            : '') + t('Named after the DELIVERED acoustic crossing; aimed at {target}', { target: r.target })
+                            : '') +
+                          (r.disqualified.length > 0 ? `${t('DISQUALIFIED')}: ${r.disqualified.join('; ')}. ` : '') +
+                          (r.xoFloorVerdict?.some((v) => v === 'warn') ? t('Delivered within 5 % under a physics floor (fs·K / excursion / reach). ') : '') +
+                          t('Named after the DELIVERED acoustic crossing; aimed at {target}', { target: r.target }) +
+                          (r.powerSlopeDbDec !== null
+                            ? ` · ${t('power slope {s} dB/dec', { s: (r.powerSlopeDbDec >= 0 ? '+' : '') + r.powerSlopeDbDec.toFixed(1) })}${r.powerSlopeDbDec > 1 ? ' ⚠' : ''}`
+                            : '')
                         }
                       >
                         {r.winner ? '🏆 ' : ''}
-                        {r.unrealisable ? '⚠ ' : ''}
+                        {r.disqualified.length > 0 ? '✗ ' : r.unrealisable ? '⚠ ' : r.xoFloorVerdict?.some((v) => v === 'warn') ? '△ ' : ''}
                         {r.delivered}
                         <span style={{ opacity: 0.6 }}> {t('(aim')} {r.target.replace(/ Hz$/, '')})</span>
                         {chainScan.active === r.label ? ' ◂' : ''}
@@ -13500,6 +13609,18 @@ export default function App() {
                       >
                         {r.zMinOhm !== null
                           ? `${r.zMinOhm < Z_FLOOR_OHM ? '⚠ ' : ''}${r.zMinOhm.toFixed(1)} Ω`
+                          : '—'}
+                      </td>
+                      <td
+                        className={r.rSourceOhm !== null && r.rSourceOhm >= rSourceLimitOhm ? 'scan-z-low' : undefined}
+                        title={
+                          r.rSourceOhm === null
+                            ? t('Source resistance at the low driver — not measured for this candidate')
+                            : t('Source resistance the low driver sees at its box tuning (real part, model estimate outside the measured band). Tiers: yellow ≥ {w} Ω, ranking class lost ≥ {l} Ω, disqualified ≥ {d} Ω', { w: (0.5 * rSourceLimitOhm).toFixed(1), l: rSourceLimitOhm.toFixed(1), d: rSourceDisqOhm.toFixed(1) })
+                        }
+                      >
+                        {r.rSourceOhm !== null
+                          ? `${r.rSourceOhm >= rSourceDisqOhm ? '✗ ' : r.rSourceOhm >= rSourceLimitOhm ? '⚠ ' : r.rSourceOhm >= 0.5 * rSourceLimitOhm ? '△ ' : ''}${r.rSourceOhm.toFixed(2)} Ω`
                           : '—'}
                       </td>
                       <td>{r.bomEur !== null ? `€${Math.round(r.bomEur)}` : '—'}</td>
@@ -13946,6 +14067,16 @@ export default function App() {
                     {t('excess GD')} 500 Hz {sumGroupDelay.at500 !== null ? `${(sumGroupDelay.at500 * 1000).toFixed(0)} µs` : '—'} · 2 kHz{' '}
                     {sumGroupDelay.at2k !== null ? `${(sumGroupDelay.at2k * 1000).toFixed(0)} µs` : '—'} · 8 kHz{' '}
                     {sumGroupDelay.at8k !== null ? `${(sumGroupDelay.at8k * 1000).toFixed(0)} µs` : '—'}
+                  </span>
+                )}
+                {powerTrend && (
+                  <span
+                    className={`strip-item${powerTrend.slopeDbPerDecade > 1 ? ' alert' : ''}`}
+                    title={t('Trend of the horizontal energy average over the visible band (dB per decade). Reported only — the slope carries NO weight in the optimizer (a rising DI makes it fall; the slope is your room correction\'s business). A RISING slope (> +1 dB/dec) almost always means a level or measurement error — a swapped driver file, a tweeter measured too hot — not a design choice.')}
+                  >
+                    {powerTrend.slopeDbPerDecade > 1 ? '⚠ ' : ''}
+                    {t('power slope {s} dB/dec', { s: (powerTrend.slopeDbPerDecade >= 0 ? '+' : '') + powerTrend.slopeDbPerDecade.toFixed(1) })}
+                    {powerTrend.slopeDbPerDecade > 1 ? ` — ${t('rising: check levels/files (no fx influence)')}` : ''}
                   </span>
                 )}
                 {threeWay && pairScores?.low?.integ.overlapCentreHz != null && pairScores?.high?.integ.overlapCentreHz != null && (() => {

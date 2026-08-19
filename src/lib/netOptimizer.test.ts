@@ -209,6 +209,18 @@ describe('staged mode (trapmethode on the assembled network)', () => {
     expect(r.parts.some((p) => p.partId === 'C9')).toBe(true);
   });
 
+  it('fix 2c: xoFloorPairs pushes a delivered crossing up to (or within 5 % of) the floor', () => {
+    const plain = optimizeNetworkValues(paddedNetwork(), grid, wBase, tBase, driverZ, NO_ADJ, { phasePriority: 0.5 });
+    const xo0 = plain.after.xoHz!;
+    expect(xo0).toBeGreaterThan(0);
+    const floor = xo0 * 1.3;
+    const r = optimizeNetworkValues(paddedNetwork(), grid, wBase, tBase, driverZ, NO_ADJ, {
+      phasePriority: 0.5,
+      xoFloorPairs: [floor],
+    });
+    expect(r.after.xoHz!).toBeGreaterThanOrEqual(floor * 0.95);
+  });
+
   /** Tweeter behind HP cap + series pad R: the raw tweeter's top-octave droop
    *  is invisible to pure level/value moves — the bypass-C is the tool. */
   function paddedNetwork(): VxpPart[] {

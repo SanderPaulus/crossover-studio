@@ -70,11 +70,24 @@ export interface Chain3Settings {
   powerFoldWeight?: number;
   /** Error smoothing width for the search objectives (oct); 0 = off. */
   errorSmoothOct?: number;
+  /** Dissipation term weight in front of the lowest branch (fix 3a); 0 = off. */
+  dissipationWeight?: number;
   /** Part-audit options (thresholds incl. the source-R limit, Fb) — forwarded to the tuner. */
   audit?: { enabled?: boolean; thresholds?: { rSourceOhm?: number }; fbHz?: number };
   /** DI anchors per handover for the structure search (threeWayDesign) + weight. */
   diAnchorHz?: { low?: number | null; high?: number | null };
   diWeight?: number;
+  /** PHYSICS floors per handover [low, high] (Hz): fs·K / excursion / reach of
+   *  the upper driver — NOT the data floor. Bound for the design knees and the
+   *  tuner (stiff barrier), and the delivered crossing is judged against them:
+   *  within `xoFloorSlack` (default 5 %) below = warning, further below =
+   *  DISQUALIFIED (visible, struck through, with reason). */
+  xoFloorPairs?: (number | null)[];
+  xoFloorSlack?: number;
+  /** Source-resistance tiers at the low driver (Ω): warn ≥ rSourceWarnOhm
+   *  (default 0.5), class loss ≥ rSourceLimitOhm (1.0, see the ranker),
+   *  DISQUALIFIED ≥ rSourceDisqualifyOhm (default 2.0). */
+  rSourceDisqualifyOhm?: number;
   ampTarget?: 'onAxis' | 'listeningWindow';
   phaseMetric?: 'band' | 'overlap';
   synthMode: 'filter' | 'acoustic';
@@ -149,6 +162,13 @@ export interface Chain3Result {
    *  Sander's set: W-M delivered at 1069 Hz with a 3.2-octave overlap against
    *  a 629 Hz measured ceiling, and the ranking had no opinion. */
   xoWindowOk: boolean | null;
+  /** Delivered crossing vs the PHYSICS floor per pair (fix 2): 'ok' | 'warn'
+   *  (within slack below) | 'fail' (further below) | null (no floor/no
+   *  crossing). */
+  xoFloorVerdict: ('ok' | 'warn' | 'fail' | null)[];
+  /** Disqualification reasons (fix 1/2): empty = in the race. A disqualified
+   *  candidate stays in the table, struck through, with these reasons. */
+  disqualified: string[];
   /** Delivered overlap width per pair, octaves (null per pair when unknown). */
   pairOverlapOct: (number | null)[] | null;
   /** Minimum system |Zin| the amplifier actually sees, ohms. The absolute
@@ -172,6 +192,16 @@ export interface Chain3Result {
 const ALIVE_DB = -300;
 
 /** One full chain for one (xoLow, xoHigh) candidate. */
+/** Raise a knee window's lower edge to a physics floor (never below it). */
+function floorBound(
+  win: [number, number] | undefined,
+  floor: number | null | undefined,
+): [number, number] | undefined {
+  if (!win || floor == null || !(floor > 0)) return win;
+  const lo = Math.max(win[0], floor);
+  return [lo, Math.max(win[1], lo * 1.02)];
+}
+
 export function runThreeWayChain(
   input: Chain3Input,
   onProgress?: (p: ChainStageProgress) => void,
@@ -199,8 +229,10 @@ export function runThreeWayChain(
     // The candidate's cage IS the knee window — the design step and the tune
     // must agree on where this candidate's handovers live, or the tune spends
     // its budget undoing the design.
-    xoLowWindow: input.xoLowRange,
-    xoHighWindow: input.xoHighRange,
+    // (fix 2c) the physics floor bounds the knee windows of the design step
+    // too, so the refinement cannot put a knee where the delivery must not go.
+    xoLowWindow: floorBound(input.xoLowRange, s.xoFloorPairs?.[0]),
+    xoHighWindow: floorBound(input.xoHighRange, s.xoFloorPairs?.[1]),
     hpFloorHz: s.hpFloorHz,
     structureLow: s.structureLow,
     structureHigh: s.structureHigh,
@@ -286,10 +318,12 @@ export function runThreeWayChain(
     powerMetric: s.powerMetric,
     powerFoldWeight: s.powerFoldWeight,
     errorSmoothOct: s.errorSmoothOct,
+    dissipationWeight: s.dissipationWeight,
     audit: s.audit,
     ampTarget: s.ampTarget,
     acousticSlopes: s.acousticSlopes,
     xoRangePairs: [lowCage, highCage],
+    xoFloorPairs: s.xoFloorPairs,
     staged: s.targets,
     phaseMetric: s.phaseMetric,
     catalogSnap: s.catalogSnap,
@@ -367,6 +401,35 @@ export function runThreeWayChain(
     judge(pairsXoDel[1], input.judgeWindows?.high),
   ].filter((v): v is boolean => v !== null);
   const xoWindowOk = verdicts.length === 0 ? null : verdicts.every(Boolean);
+  // (fix 2b) Delivered crossing vs the PHYSICS floor: tiered.
+  const slack = s.xoFloorSlack ?? 0.05;
+  const floorVerdict = (xo: number | null | undefined, fl: number | null | undefined): 'ok' | 'warn' | 'fail' | null => {
+    if (xo == null || fl == null || !(fl > 0)) return null;
+    if (xo >= fl) return 'ok';
+    return xo >= fl * (1 - slack) ? 'warn' : 'fail';
+  };
+  const xoFloorVerdict = [
+    floorVerdict(pairsXoDel[0], s.xoFloorPairs?.[0]),
+    floorVerdict(pairsXoDel[1], s.xoFloorPairs?.[1]),
+  ];
+  const disqualified: string[] = [];
+  xoFloorVerdict.forEach((v, i) => {
+    if (v === 'fail') {
+      const fl = s.xoFloorPairs![i]!;
+      const xo = pairsXoDel[i]!;
+      disqualified.push(
+        `${i === 0 ? 'W-M' : 'M-T'} delivered ${Math.round(xo)} Hz under its physics floor ${Math.round(fl)} Hz (${Math.round((xo / fl - 1) * 100)} %)`,
+      );
+    }
+  });
+  // (fix 1a) Source resistance at the low driver: hard tier.
+  const rsDisq = s.rSourceDisqualifyOhm ?? 2.0;
+  const rsNow = net.audit?.rSourceOhm ?? null;
+  if (rsNow !== null && rsDisq > 0 && rsNow >= rsDisq) {
+    disqualified.push(
+      `source resistance at the low driver ${rsNow.toFixed(2)} Ω ≥ ${rsDisq.toFixed(1)} Ω (Qes ×${(net.audit?.qesFactor ?? 1).toFixed(2)}) — model estimate outside the measured band`,
+    );
+  }
 
   return {
     label: input.label,
@@ -382,6 +445,8 @@ export function runThreeWayChain(
     zOk,
     zMinOhm,
     xoWindowOk,
+    xoFloorVerdict,
+    disqualified,
     pairOverlapOct: net.after.pairOverlapOct ?? null,
     midInverted: design.midInverted,
     tweeterInverted: design.tweeterInverted,
@@ -884,7 +949,11 @@ export function rankChain3Results(
    * refuse to ship must not be purchasable with a tenth of a dB. */
   const zFloorOk = (r: Chain3Result): boolean =>
     r.zMinOhm === null || r.zMinOhm >= Z_FLOOR_OHM;
-  const zClass = (r: Chain3Result): number => (r.zOk ? 0 : 2) + (zFloorOk(r) ? 0 : 1) + rsClass(r);
+  // Disqualified (fix 1/2: rSource ≥ hard tier, delivery under a physics
+  // floor) ranks below EVERYTHING — visible, struck through, with reasons.
+  const dqClass = (r: Chain3Result): number => (r.disqualified && r.disqualified.length > 0 ? 10 : 0);
+  const zClass = (r: Chain3Result): number =>
+    dqClass(r) + (r.zOk ? 0 : 2) + (zFloorOk(r) ? 0 : 1) + rsClass(r);
   /* Delivered-handover physics, as a class between the amplifier and the
    * flatness targets. Above targets on purpose: a crossing past the measured
    * beaming/lobing bound is a different (worse) loudspeaker off-axis however

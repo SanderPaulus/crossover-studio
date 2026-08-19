@@ -17,7 +17,7 @@ import {
   type SnapPrefs,
 } from './catalog.ts';
 import type { AngleResponse } from './directivity.ts';
-import { auditNetwork, type AuditThresholds, type NetworkAudit, sourceResistanceOhm } from './partAudit.ts';
+import { auditNetwork, type AuditThresholds, type NetworkAudit, sourceResistanceOhm, seenImpedance, sliceDriverZ } from './partAudit.ts';
 
 /**
  * Passive-in-the-loop component optimizer: re-fit the VALUES of a schematic's
@@ -109,6 +109,24 @@ export interface NetOptimizeOptions {
   /** 3-way: pin the ACOUSTIC crossing PER adjacent pair [low, high] — the
    *  two-pair counterpart of xoRange (which stays 2-way vocabulary). */
   xoRangePairs?: ([number, number] | null)[];
+  /** DISSIPATION term (fix 3a): soft penalty on series resistance in front of
+   *  the LOWEST branch, as the power it wastes relative to the driver at the
+   *  level-reference frequency (Fb, or the low driver's Z peak):
+   *  fx += dissipationWeight · (Rs/Re)². Default 0.05, 0 = legacy off. Why
+   *  only the lowest branch: efficiency and damping (Qes) live there; why a
+   *  term at all: the tuner has no level anchor and a series R in the woofer
+   *  branch is otherwise the cheapest way to match levels (19 Aug: Rs 7.15 Ω,
+   *  Qes ×3.24 won the ranking). Fix 1 disqualifies the worst; this steers
+   *  away before it gets there. */
+  dissipationWeight?: number;
+  /** PHYSICS FLOORS per adjacent pair (Hz, [low, high]; null = none): the
+   *  delivered acoustic crossing may not sink below the upper driver's
+   *  resonance/excursion/reach floor. Unlike the soft cage this is a STIFF
+   *  barrier (1200·oct² below the floor, 0 above) — the data floor is NOT in
+   *  here (measurement reliability, not driver physics). Added after the
+   *  19 Aug axes run delivered 1789 Hz under a 1902 Hz fs floor: the cage
+   *  clamps candidate CENTRES, the tuner still drifted the delivery under. */
+  xoFloorPairs?: (number | null)[];
   /** REPAIR-pass only: stiff (1200·oct²) xo-pin barrier instead of the soft
    *  adaptive weight. Set exclusively by the chain's hold-the-pin retune,
    *  seeded from an already-tuned point — never on a cold seed (the barrier
@@ -238,6 +256,8 @@ export interface NetOptimizeResult {
      *  slope of the energy average (dB/decade; > +1 is suspicious). */
     powerFoldDb?: number;
     powerSlopeDbDec?: number;
+    /** Rs/Re in front of the lowest branch at the level reference (fix 3a). */
+    dissRatio?: number;
     /** 3-way: uniform-average phase error per adjacent pair [low, high] —
      *  the coupled-pairs verdict (gates judge the worst of these). */
     pairPhaseDeg?: number[];
@@ -522,6 +542,8 @@ export function optimizeNetworkValues(
   const p = 0.15 + 0.7 * Math.min(Math.max(phasePriority, 0), 1);
   const dW = angleData ? Math.min(Math.max(opts.directivityWeight ?? 0, 0), 1) : 0;
   const powerMode: PowerMetricMode = opts.powerMetric ?? 'smooth';
+  const dissW = Math.max(0, opts.dissipationWeight ?? 0.05);
+  const dissRefHz: number | null = opts.audit?.fbHz && opts.audit.fbHz > 0 ? opts.audit.fbHz : null;
   /** Source-resistance limit at the low driver (Ω) — shared with the audit. */
   const rSourceLimit = opts.audit?.thresholds?.rSourceOhm ?? 1.0;
   const foldW = Math.max(0, opts.powerFoldWeight ?? 0.5);
@@ -709,8 +731,40 @@ export function optimizeNetworkValues(
      *  sensitivity budget. Median so a deep narrow notch doesn't read as lost
      *  sensitivity while broad attenuation does. */
     medianDb: number;
+    /** Source resistance in front of the LOWEST branch over its Re at the
+     *  level-reference frequency (dissipation ratio); null when unknown. */
+    dissRatio: number | null;
   } => {
     const sol = solveNetwork(net, freqs, z);
+    // Dissipation ratio of the LOWEST branch (fix 3a): Rs/Re at the level
+    // reference — one extra 1-frequency solve per evaluation.
+    let dissRatio: number | null = null;
+    if (dissW > 0) {
+      const lowDrv = (() => {
+        const slots = pickSlotsN(sol.drivers);
+        return slots.woofer ?? slots.mid ?? slots.tweeter ?? null;
+      })();
+      if (lowDrv && z[lowDrv.model]) {
+        const zl = z[lowDrv.model];
+        let k = 0;
+        if (dissRefHz !== null) {
+          k = freqs.reduce((b, f, i) => (Math.abs(f - dissRefHz) < Math.abs(freqs[b] - dissRefHz) ? i : b), 0);
+        } else {
+          let bestZ = -Infinity;
+          for (let i = 0; i < freqs.length; i++) {
+            if (freqs[i] > Math.max(400, freqs[Math.floor(freqs.length / 4)])) break;
+            const mm = Math.hypot(zl[i].re, zl[i].im);
+            if (mm > bestZ) {
+              bestZ = mm;
+              k = i;
+            }
+          }
+        }
+        const re = Math.max(0.5, zl[k].re);
+        const zs = seenImpedance(net, [lowDrv.id], lowDrv.nodes, [freqs[k]], sliceDriverZ(z, [k]));
+        if (zs) dissRatio = Math.max(0, zs[0].re) / re;
+      }
+    }
     const hFor = (model: string) => {
       const d = sol.drivers.find((x) => x.model === model);
       return d ? sol.transfers[d.id] : null;
@@ -1193,6 +1247,7 @@ export function optimizeNetworkValues(
       zMinOhm,
       zShortOhm,
       medianDb: medianOf(r.freq, r.combinedSpl),
+      dissRatio,
     };
   };
 
@@ -1286,10 +1341,20 @@ export function optimizeNetworkValues(
         (a: number, x, i) => a + xoPenaltyFor(x, opts.xoRangePairs?.[i] ?? xoR),
         0,
       ) +
+      // Physics floors (fix 2): a delivered crossing under its floor pays a
+      // stiff barrier — the floor is a bound, not a preference.
+      m.xoHzPairs.reduce((a: number, x, i) => {
+        const fl = opts.xoFloorPairs?.[i];
+        if (x == null || fl == null || !(fl > 0) || x >= fl) return a;
+        const oct = Math.log2(fl / x);
+        return a + 1200 * oct * oct;
+      }, 0) +
       // Repair mode: the continuous window-edge barrier (see xoEdgeSq) —
       // 3 dB short at an edge costs 180, dominant. Zero outside repair.
       (opts.xoPinHard ? 20 * m.xoEdgeSq.reduce((a: number, v: number) => a + v, 0) : 0) +
-      slopePen
+      slopePen +
+      // Dissipation in front of the lowest branch (fix 3a): soft, (Rs/Re)².
+      (dissW > 0 && m.dissRatio !== null ? dissW * m.dissRatio * m.dissRatio : 0)
     );
   };
 
@@ -2459,6 +2524,7 @@ export function optimizeNetworkValues(
     // the on-axis curve (window spec rule 9).
     ...(m.powerStdDb !== null ? { powerStdDb: m.powerStdDb } : {}),
     ...(m.powerFoldDb !== null ? { powerFoldDb: m.powerFoldDb } : {}),
+    ...(m.dissRatio !== null ? { dissRatio: m.dissRatio } : {}),
     ...(m.powerSlopeDbDec !== null ? { powerSlopeDbDec: m.powerSlopeDbDec } : {}),
     ...(m.pairPhaseDeg.length > 1 ? { pairPhaseDeg: m.pairPhaseDeg } : {}),
     ...(m.xoHzPairs.length > 1 ? { xoHzPairs: m.xoHzPairs } : {}),

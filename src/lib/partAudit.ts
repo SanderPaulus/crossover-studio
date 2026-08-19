@@ -291,6 +291,18 @@ function probeOf(parts: readonly VxpPart[], ctx: AuditContext): Probe | null {
  * their measured Z — stays. solveNetwork's inputZ (its own Rg excluded) is
  * exactly the impedance the probed terminals see.
  */
+/** Driver impedances restricted to the given GRID INDICES — solveNetwork
+ *  indexes driverZ by position in `freqs`, so a probe at a subset of the grid
+ *  must hand over the matching subset (the first version passed the full
+ *  arrays with a 1-point freqs list and silently loaded the other drivers with
+ *  their Z at grid[0]). */
+export function sliceDriverZ(
+  driverZ: Record<string, readonly Complex[]>,
+  idx: readonly number[],
+): Record<string, readonly Complex[]> {
+  return Object.fromEntries(Object.entries(driverZ).map(([m, z]) => [m, idx.map((i) => z[i])]));
+}
+
 export function seenImpedance(
   net: { nodeCount: number; elements: NetElement[] },
   removeIds: readonly string[],
@@ -436,7 +448,7 @@ export function sourceResistanceOhm(
   }
   if (idx === null) return null;
   try {
-    const zs = seenImpedance(net, [low.id], low.nodes, [grid[idx]], ctx.driverZ);
+    const zs = seenImpedance(net, [low.id], low.nodes, [grid[idx]], sliceDriverZ(ctx.driverZ, [idx]));
     return zs ? Math.max(0, zs[0].re) : null;
   } catch {
     return null;
@@ -497,7 +509,7 @@ export function auditNetwork(parts: readonly VxpPart[], ctx: AuditContext): Netw
   // reported separately as |Z| but does not damp like a resistor.
   const rSourceOf = (net: Probe['net'], drv: typeof lowDrv): number | null => {
     if (!drv || fbIdx === null) return null;
-    const zs = seenImpedance(net, [drv.id], drv.nodes, [grid[fbIdx]], ctx.driverZ);
+    const zs = seenImpedance(net, [drv.id], drv.nodes, [grid[fbIdx]], sliceDriverZ(ctx.driverZ, [fbIdx]));
     return zs ? Math.max(0, zs[0].re) : null;
   };
   const rSourceFull = rSourceOf(full.net, lowDrv);
@@ -633,7 +645,7 @@ export function auditNetwork(parts: readonly VxpPart[], ctx: AuditContext): Netw
         const el = full.net.elements.find((e) => e.id === cand.ids[0]);
         const nodes: [number, number] | null = cand.ends ?? (el ? el.nodes : null);
         if (zPart && nodes && nodes[0] !== nodes[1]) {
-          const zSeen = seenImpedance(full.net, cand.ids, nodes, freqs, ctx.driverZ);
+          const zSeen = seenImpedance(full.net, cand.ids, nodes, freqs, sliceDriverZ(ctx.driverZ, liveIdx));
           if (zSeen) {
             const rs = zPart
               .map((a, k) => {

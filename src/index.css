@@ -3759,3 +3759,7 @@ details.cabinet-driver > .derived strong,
   color: var(--bad);
   border-color: var(--border);
 }
+
+/* Disqualified scan candidates (fix 1/2): visible, struck through, reason in the tooltip. */
+.scan-table tr.disqualified td { text-decoration: line-through; opacity: 0.55; }
+.scan-table tr.disqualified td:first-child { text-decoration: line-through; }

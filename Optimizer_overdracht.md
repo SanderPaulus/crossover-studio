@@ -80,11 +80,17 @@ als verwijderen < 0.5 % kost op het volle grid (r. 1044). Cut-only altijd aan.
 ```
 fx = 2(1−p)·amp + 2p·[(φ/15)² + 0.5·(P95/45)²] + 0.02·leakSq + 0.02·protSq + 0.5·xoDip²
      + 2·corridorSq + Σ_paren xoPenalty + (repair: 20·ΣxoEdgeSq) + slopePen
+     + Σ_paren 1200·log2(floor/xo)²⁺   (fix 2c: fysische vloer `xoFloorPairs` als STIJVE bound onder de vloer)
+     + wDiss·(Rs/Re)²                   (fix 3a: dissipatie vóór de LAAGSTE tak, `dissipationWeight` 0,05; 0 = legacy)
 amp = (1−dW)·bandStd² + dW·(powerStd² + wF·fold²)   (bandStd = one-pass std; powerStd = residu-std van de
                                                       gedetrende EA in 'smooth'; solo: fx = 2·amp)
 ```
 `m.powerFoldDb`/`m.powerSlopeDbDec` in de metrics en `after.powerFoldDb`/`after.powerSlopeDbDec` in het
-rapport (`netOptimizer.ts → report`).
+rapport (`netOptimizer.ts → report`). `Rs` = reëel deel van de Thevenin-impedantie vóór de laagste
+driver op Fb (of zijn Z-piek), `Re` = reëel deel van zijn Z dáár (`seenImpedance`, één extra
+1-punts solve per evaluatie; `after.dissRatio`). HARD GELEERD onderweg: `seenImpedance` kreeg de
+VOLLE driverZ-arrays met een 1-punts freqs-lijst en laadde de andere drivers stil met hun Z op
+grid[0] — nu `sliceDriverZ` (zelfde bug zat in de audit-R_bron).
 `protSq` = gemiddelde (|H_boven| + 15 dB)²⁺ voor f ≤ xo/3 (bovenste tak ≥ 15 dB gedempt);
 `corridorSq` = gemiddelde (|tak − doel| − 3 dB)²⁺ tegen de branchTargets van de ontwerpstap
 (alleen in de keten). φ = uniform gemiddelde over de overlapvensters van álle paren; poorten oordelen
@@ -114,11 +120,25 @@ akoestische flanken (opt-in); in-room energy-average (dW, default 0.25 alleen m�
 `rankChain3Results`) en als kostendruk in de snap (`costWeight` 0.0015); excursie/lobing/breakup/fs
 alleen in het VENSTER (§4), nooit in fx.
 **Sinds aug 2026 óók meegewogen**: DI-afstand in de structuurzoeker (`diWeight`, §2); bron-R aan de
-lage driver als KLASSE in `rankChainResults`/`rankChain3Results` (`rSourceLimitOhm` 1,0 Ω, `rsClass`
-naast `zClass`) én als staged-safe-poort (`netOptimizer.ts → rsSafe`: een snoei-/escalatiezet die
+lage driver GETRAPT (fix 1): geel ≥ 0,5 Ω (strip/kolom), KLASSE-verlies ≥ `rSourceLimitOhm` 1,0 Ω
+(`rsClass` naast `zClass`), DISKWALIFICATIE ≥ `rSourceDisqualifyOhm` 2,0 Ω (klasse 10: zichtbaar,
+doorgestreept, reden in `Chain3Result.disqualified`) — alles op Fb met de gemeten ZMA, gelabeld
+"modelschatting buiten meetband"; én als staged-safe-poort (`netOptimizer.ts → rsSafe`: een snoei-/escalatiezet die
 R_bron van ≤ grens naar > grens duwt wordt geweigerd; `partAudit.sourceResistanceOhm`); helling van
 de EA gerapporteerd (nooit gestuurd); excess-GD van de som op 500/2k/8k en mid-band-octaven (alleen
 weergave, App `sumGroupDelay`).
+**Fix 3a GEMETEN (harness, 3 kandidaten, dissipatie 0,05 vs 0)**: R_bron per kandidaat 2,85/1,17/0,00
+mét term tegen 2,48/1,05/0,00 zonder — ruis, geen effect: (Rs/Re)²·0,05 ≈ 0,01 tegen fx ~12. De
+winnaar met R_bron < 1 Ω (514/1849 → 627/1942, peak 1,70) komt uit de HARDE trap van fix 1 (de
+2,85 Ω-kandidaat is gediskwalificeerd), niet uit de zachte term. Open: gewicht kalibreren (orde 1–2)
+zoals B1. **Fix 3b — niveau-match via filtercomponenten i.p.v. dissipatie: [ONDERZOCHT, NIET GEBOUWD]**. De
+tuner heeft geen niveau-route: hij verzet waardes op een vaste topologie en de synthese realiseert
+trims als L-pad/serie-R (`synthesis.ts`, rol 'pad'). "Verzwak de luidere tak via haar eigen
+filtercomponenten" vraagt een topologie-keuze IN de tune (grotere serie-L / kleinere shunt-C
+binnen de flank-doelen, pad als laatste) — dat is een structuurzoeker-feature, geen waarde-tune; met
+de dissipatieterm (3a) + de harde R_bron-trap (fix 1) is de prikkel weggehaald, de alternatieve
+route niet gebouwd. Feitelijke route nu: trims uit `trimsFor` landen als pads; de tuner mag ze
+vrij verzetten en betaalt sinds 3a voor een pad vóór de laagste tak.
 **NIET meegewogen**: power response in `designThreeWay` behalve via het DI-anker (de EA-term zelf
 zit alleen in vf/net/ranking); bronimpedantie is klasse+poort, geen fx-term (bewust); gedrag onder de datavloer/view-range (bewust: band =
 ontwerp-scope, alleen de safety-gate kijkt op het volle meetgrid naar fundamentals); breakup buiten
@@ -168,6 +188,15 @@ punt 5b; `threeWayChain.deliveredLabel`). Vóór die wijziging was het label het
 bekende "label 4028 / header 3335"-discrepantie: het label was het doel, de strip-"Overlap x Hz" de
 levering. In een sweep-ronde is de vaste as een anker, geen doel.
 
+**B1 — wDI-omslagkromme (GEMETEN, KOAN-3-weg-fixture, M-T-venster 1849–3149, `designThreeWay`,
+eqBands 0)**: on-axis-optimum zit op de VLOER (1849; fx 12,34). Anker 3149 (= het echte DI-match
+3,5 kHz, in het venster geklemd): wDI 0,3/1/2/3 → 1849 (+0 %); 5 → 1925 (+2,9 % on-axis); 8/15/30 →
+**3111 (+30 % on-axis, structuur wisselt naar BW3@615)** — een klif, geen omslagpunt. Anker 2400: wDI
+≤ 8 → 1849; 15 → 1965 (+4,7 %); 30 → 2188 (+14,7 %). Conclusie: er is GEEN wDI die het anker laat
+winnen tegen < 5 % on-axis-prijs; het gedrag is een sprong tussen twee bekkens. De fx-term blijft
+dus op tiebreak-sterkte (0,3) en de spec-regel wijst naar **B2 (kooi-versmaller op het DI-anker)** —
+nog niet gebouwd, aparte branch na de merge.
+
 ## 5. De poorten (LCR-levenscyclus)
 
 Poort 1 — ontwerp (`vfOptimizer` greedy): band alleen bij ≥ 1 % fx-winst (`minBandImprovement`
@@ -181,7 +210,12 @@ worst-pair φ ≤ doel op het VOLLE grid. Doel gehaald → **desnoei**: elk vrij
 (0.6 budget), houden als `meets` én `safe` (prot +0.5, dip +1, zShort +0.1, leak +4) én fx ≤ 1.10×
 huidig én ≤ 1.35× start; max 8 kandidaten per ronde, rondes = clamp(vrij/2, 8..20). Doel NIET
 gehaald → **escalatie** (bypass-C over serieweerstanden, ≥ 3 % of doel) — **geen snoei**. Beide
-zetten moeten sinds punt 4 óók `rsSafe` passeren (R_bron aan de lage driver niet van ≤ naar > grens). Locked
+zetten moeten sinds punt 4 óók `rsSafe` passeren (R_bron aan de lage driver niet van ≤ naar > grens).
+**Fix 2 (na de axes-run van 19 aug: levering 1789 Hz onder de 2×fs-vloer 1902)**: de fysische
+vloeren (fs·K / excursie / reach — NIET de datavloer) gelden nu voor de LEVERING: (a) `xoFloorPairs`
+→ stijve barrière in `fxOf` + ondergrens van de ontwerp-knievensters (`floorBound`); (b) na de tune
+`xoFloorVerdict` per paar: 'ok' / 'warn' (≤ `xoFloorSlack` 5 % eronder) / 'fail' → diskwalificatie
+met reden; (c) App levert de vloeren uit `physWin3.win[side].limits` (regels fs/excursion/reach). Locked
 parts (`locked`) worden nooit verzet/verwijderd. Krimpladder: E12-stappen omlaag per vrije cap, poort
 = staged doelen + fundamentals, anders ≤ 1 %/stap, ≤ 2 % cumulatief.
 Poort 4 — `partAudit.ts → auditNetwork` (aug 2026, ALTIJD, twee keer: seed en getuned): per part en
@@ -228,7 +262,10 @@ least-squares op de fase, ~180° ⇒ "likely inverted").
 - **Nulcheck** "Combined, tweeter inverted" = dezelfde som met de tweeter geïnverteerd; diep gat =
   goede uitlijning van het normale ontwerp.
 - **Scan-tabel**: peak (±dB), avg (|dev| hele band), phase (avg over paren; 3-weg-poorten op worst),
-  overlap (oct per paar; ⚠ = buiten venster met 6 % slack `judge`), Z min (⚠ < 2.5), BOM.
+  overlap (oct per paar; ⚠ = buiten venster met 6 % slack `judge`), Z min (⚠ < 2.5), **R src** (△ ≥ ½
+  grens · ⚠ ≥ grens · ✗ ≥ diskwalificatie), BOM. Een gediskwalificeerde rij is doorgestreept
+  (`tr.disqualified`), reden in de tooltip van de kruising-cel; △ in die cel = levering ≤ 5 % onder
+  een fysische vloer.
 - **Part audit**: kop = tellingen + R_bron; per rij dA/dP/dZ/ratio/€/verdict.
 - **Nieuwe strip-items (aug 2026)**: "source R at the low driver x Ω (Qes ×y) — R5, L1" (△ vanaf ½
   grens, ⚠ erboven; onderdelen = grootste |ΔR_bron| bij verwijdering); "excess GD 500 Hz/2 kHz/8 kHz"
@@ -245,7 +282,8 @@ least-squares op de fase, ~180° ⇒ "likely inverted").
 | Response 87 vs 66 | avg |dev| ≈ 0.55 vs 1.2 dB (formule §7); check of de zichtbare band onder de optimizer-vloer duikt ("designed from X Hz"-stripitem) |
 | "no room … pin it, or relax a threshold" | twee venstergrenzen botsen; kandidaten collapsen op de vloer — kijk welke regel (label) |
 | Veel onderdelen bij gehaalde doelen | poort 3 mag alleen ≤ 10 %/part snoeien; poort 4 vond niets inert → alles "doet iets", niet per se rendabel |
-| `rSourceWarn` (R_bron ≥ 1 Ω, Qes ×) | serie-R/DCR vóór de lage driver: demping/rendementsverlies dat geen responsmetriek ziet |
+| `rSourceWarn` (R_bron ≥ 1 Ω, Qes ×) | serie-R/DCR vóór de lage driver: demping/rendementsverlies dat geen responsmetriek ziet; ≥ 2 Ω = gediskwalificeerd (✗, doorgestreept) |
+| ✗ doorgestreepte rij | gediskwalificeerd: R_bron ≥ 2 Ω óf levering > 5 % onder een fysische vloer — reden in de tooltip; rij blijft klikbaar |
 | overlap-oct groot (> 2.5) | brede overlap: beide conussen dragen samen — voor een 2-weg-som prima, voor een overname vaak ongewenst |
 Bekende gaten: inert-part-bij-onhaalbaar-doel → **opgelost** (poort 4, c4699f5); ontbrekend fysisch
 criterium → **opgelost** (idem); bronimpedantie → **klasse + safe-poort** (punt 4, na c4699f5),
@@ -271,11 +309,12 @@ lobing-k 'auto'; **twee breakup-marges, bewust** (punt 6a, naast elkaar onder Dr
 card & limits (harmonic)" f_b/3 = waar de vervormingsprijs landt; "candidate window" /1.8 = hoe dicht
 een overgang bij de breakup mag; **power response** 'smooth' + fold 0.5 (localStorage 'ads-power-*');
 **error smoothing** 1/12 oct ('ads-err-smooth'); **DI anchor weight** 0.3 ('ads-di-weight'); **source
-R limit** 1.0 Ω ('ads-rsource-limit'); excursie-ref 96 dB; catalog-snap AAN, profiel
+R limit** 1.0 Ω ('ads-rsource-limit') + **disqualify ≥** 2.0 Ω ('ads-rsource-disq'); **dissipation weight**
+0.05 ('ads-diss-weight', 0 = legacy); vloer-slack 5 % (`xoFloorSlack`, nog geen UI-knop); excursie-ref 96 dB; catalog-snap AAN, profiel
 'position', stacks uit, costWeight 0.0015; corrections 'lean' bij staged; solo-budget 6 dB; Z-vloer
 2.5 Ω (constante); tolerantieband uit; seat re-timing uit; fasemodus measured (auto bij plausible).
 
 ## Changelog
-Laatst geverifieerd tegen commit **c4699f5** + de werkkopie van 19 aug 2026 (punten 0–6 van de
-directiviteits-opdracht: powerShape, DI-anker, error smoothing, R_bron-klasse, 5a/5b, 6a/6d).
+Laatst geverifieerd tegen commit **c28ffd9** + de werkkopie van 19 aug 2026 (pre-merge-checks A1–A3,
+B1-kromme, fixes 1–3 na de eerste volle axes-run).
 Herzie §2–§5/§8 wanneer `fxOf`/`objValue`/`deriveXoWindow`/`rankChain*` wijzigt.
