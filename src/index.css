@@ -2513,6 +2513,25 @@ button:disabled {
 .tune-diff .scan-table {
   margin-top: 0.4rem;
 }
+/* Gate-4 part audit: the verdict is a WORD in its own column; colour only
+   reinforces (never the sole carrier). Rows are hoverable for the reasons. */
+.part-audit tr.audit-inert td:last-child {
+  color: var(--ok);
+  font-weight: 600;
+}
+.part-audit tr.audit-earned td:last-child {
+  color: var(--muted);
+}
+.part-audit tr.audit-grey td:last-child {
+  color: var(--warn);
+}
+.part-audit .audit-warn {
+  color: var(--bad);
+  font-weight: 600;
+}
+.part-audit .audit-ok {
+  color: var(--muted);
+}
 .busy-title {
   font-weight: 600;
   font-size: 1rem;

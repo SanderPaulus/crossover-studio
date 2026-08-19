@@ -453,6 +453,16 @@ export function crossover3Variants(
    *  raw-overlap anchor is weak evidence on this axis too — a hot tweeter's
    *  raw level-crossing sits far below any sensible handover. */
   highWindow?: { floorHz?: number | null; ceilHz?: number | null },
+  /** WARM START: an existing design's delivered crossings (Hz). When one
+   *  falls inside its axis' window it becomes an extra candidate — the scan
+   *  then always tries "what the designer already has" next to the corners
+   *  and the log-midpoint, instead of only the grid it invents itself. */
+  warm?: { low?: number | null; high?: number | null },
+  /** DIRECTIVITY-MATCH anchor (rule 9): where the lower driver's DI meets the
+   *  upper's (diMatchHz). Seeded as an extra candidate when inside the
+   *  window — the point where the room hears no power-response step; the
+   *  in-room weight in tuner and ranking then keeps pulling that way. */
+  diAnchor?: { low?: number | null; high?: number | null },
 ): Chain3Variant[] {
   /* ---- LEVEL FIRST (the designer sequence, step 2 — Sanders' own example:
    * "meestal is de tweeter veel gevoeliger dan de rest, laten we eerst die
@@ -596,9 +606,17 @@ export function crossover3Variants(
       // from the bound instead of discarding it.
       if (floor !== null && ceil === null) hi = Math.min(rail[1], lo * 2);
       else if (ceil !== null && floor === null) lo = Math.max(rail[0], hi / 2);
-      else return anchorSpan;
+      else {
+        // BOTH bounds known and in conflict: the physics say the two drivers
+        // cannot meet here. The candidates COLLAPSE onto that point (±2%) —
+        // never a silent hop to the level-anchor neighbourhood, which is how
+        // Sanders' scan once ended up at 4028–7000 Hz through a 5660 Hz
+        // breakup. The window readout carries the banner that says why.
+        const pt = Math.sqrt(Math.min(lo, hi) * Math.max(lo, hi));
+        return [Math.max(rail[0], pt * 0.98), Math.min(rail[1], pt * 1.02)];
+      }
     }
-    return hi > lo * 1.05 ? [lo, hi] : anchorSpan;
+    return hi > lo * 1.05 ? [lo, hi] : [Math.max(rail[0], lo * 0.98), Math.min(rail[1], hi * 1.02)];
   };
   const freeLow = freeSpan(
     lowWindow,
@@ -703,6 +721,90 @@ export function crossover3Variants(
       });
     }
   }
+  // Warm start (see the parameter): one extra candidate at the existing
+  // design's crossings, each axis only when it lies inside that axis' span;
+  // a missing/outside axis takes the middle slice. Folded into an existing
+  // candidate when both axes sit within 2% of one (no duplicate chain).
+  const extras: [{ low?: number | null; high?: number | null } | undefined, string][] = [
+    [warm, 'warm start'],
+    [diAnchor, 'DI match'],
+  ];
+  for (const [pt, tag] of extras) {
+    if (!pt || out.length === 0) continue;
+    const inside = (v: number | null | undefined, lo: number, hi: number) =>
+      typeof v === 'number' && Number.isFinite(v) && v >= lo && v <= hi ? v : null;
+    const wl = inside(pt.low, lLo, lHi);
+    const wh = inside(pt.high, hLo, hHi);
+    if (wl !== null || wh !== null) {
+      const midOf = (sl: { centre: number; range: [number, number] }[]) => sl[Math.floor(sl.length / 2)];
+      const sliceFor = (sl: { centre: number; range: [number, number] }[], v: number) =>
+        sl.find((x) => v >= x.range[0] && v <= x.range[1]) ?? midOf(sl);
+      const xoLow = Math.round(wl ?? midOf(lowSlices).centre);
+      const xoHigh = Math.round(Math.max(xoLow * 2.5, wh ?? midOf(highSlices).centre));
+      const dup = out.some(
+        (o) => Math.abs(o.xoLow / xoLow - 1) < 0.02 && Math.abs(o.xoHigh / xoHigh - 1) < 0.02,
+      );
+      if (!dup) {
+        const fl = sliceFor(lowSlices, xoLow);
+        const fh = sliceFor(highSlices, xoHigh);
+        out.push({
+          label: `W-M ${xoLow} · M-T ${xoHigh} Hz (${tag})`,
+          xoLow,
+          xoHigh,
+          xoLowRange: [Math.max(fl.range[0], xoLow * 0.98), Math.min(fl.range[1], xoLow * 1.02)].map(
+            (v, k) => (k === 0 ? Math.min(v, xoLow) : Math.max(v, xoLow)),
+          ) as [number, number],
+          xoHighRange: [Math.max(fh.range[0], xoHigh * 0.98), Math.min(fh.range[1], xoHigh * 1.02)].map(
+            (v, k) => (k === 0 ? Math.min(v, xoHigh) : Math.max(v, xoHigh)),
+          ) as [number, number],
+        });
+      }
+    }
+  }
+  return out;
+}
+
+/**
+ * Candidates from EXPLICIT points per axis (the axis-by-axis scan): every
+ * combination of the low and high points, each caged in its own tile — tile
+ * edges at the geometric midpoints between neighbouring points, clamped to the
+ * axis span; a single-point axis gets the whole span as its cage (that axis is
+ * being held, not searched, and the tuner may still settle it inside the
+ * window). Duplicates (same low & high) collapse. `tag` rides in the label so
+ * the scan table can say which round produced a row.
+ */
+export function variantsFromPoints(
+  lowPts: readonly number[],
+  highPts: readonly number[],
+  lowSpan: [number, number],
+  highSpan: [number, number],
+  tag?: string,
+): Chain3Variant[] {
+  const tiles = (pts: readonly number[], span: [number, number]): { centre: number; range: [number, number] }[] => {
+    const p = [...new Set(pts.map((v) => Math.round(v)))].filter((v) => v > 0).sort((a, b) => a - b);
+    if (p.length === 0) return [];
+    if (p.length === 1) return [{ centre: p[0], range: [Math.min(span[0], p[0]), Math.max(span[1], p[0])] }];
+    return p.map((c, i) => {
+      const lo = i === 0 ? Math.min(span[0], c) : Math.sqrt(p[i - 1] * c);
+      const hi = i === p.length - 1 ? Math.max(span[1], c) : Math.sqrt(c * p[i + 1]);
+      return { centre: c, range: [Math.min(lo, c * 0.98), Math.max(hi, c * 1.02)] };
+    });
+  };
+  const out: Chain3Variant[] = [];
+  for (const fl of tiles(lowPts, lowSpan)) {
+    for (const fh of tiles(highPts, highSpan)) {
+      const xoLow = fl.centre;
+      const xoHigh = Math.max(Math.round(xoLow * 2.5), fh.centre);
+      if (out.some((o) => o.xoLow === xoLow && o.xoHigh === xoHigh)) continue;
+      out.push({
+        label: `W-M ${xoLow} · M-T ${xoHigh} Hz${tag ? ` (${tag})` : ''}`,
+        xoLow,
+        xoHigh,
+        xoLowRange: fl.range,
+        xoHighRange: [Math.max(fh.range[0], xoLow * 2.5), Math.max(fh.range[1], xoLow * 2.5 * 1.02)],
+      });
+    }
+  }
   return out;
 }
 
@@ -716,10 +818,20 @@ export function rankChain3Results(
   results: readonly Chain3Result[],
   targets: { rippleDb: number; phaseDeg: number } | undefined,
   phasePriority: number,
+  /** In-room weight 0..1 (rule 9 of the window spec): the ripple slot of the
+   *  score blends the on-axis avg |deviation| with the delivered ENERGY-AVERAGE
+   *  flatness (powerStdDb) at this share, when the candidate carries it.
+   *  Without angle data nothing changes. Decision level only — the tuner's
+   *  own objective already carries the same weight. */
+  directivityWeight = 0,
 ): Chain3Result[] {
   const p = 0.15 + 0.7 * Math.min(Math.max(phasePriority, 0), 1);
-  const rippleOf = (r: Chain3Result): number =>
-    r.net.after.avgDevDb != null ? (Math.PI / 2) * r.net.after.avgDevDb : r.net.after.rippleDb;
+  const dW = Math.min(Math.max(directivityWeight, 0), 1);
+  const rippleOf = (r: Chain3Result): number => {
+    const on = r.net.after.avgDevDb != null ? (Math.PI / 2) * r.net.after.avgDevDb : r.net.after.rippleDb;
+    const pw = r.net.after.powerStdDb;
+    return dW > 0 && pw != null ? Math.sqrt((1 - dW) * on * on + dW * pw * pw) : on;
+  };
   const score = (r: Chain3Result): number =>
     2 * (1 - p) * rippleOf(r) ** 2 + 2 * p * (r.net.after.phaseDeg / 15) ** 2;
   // Coupled pairs: the target must hold at the WORST pair — averaging would

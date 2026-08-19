@@ -48,6 +48,14 @@ import {
   type KaTier,
 } from './lib/driverLimits.ts';
 import {
+  candidateCentres,
+  deriveXoWindow,
+  gateMsFromHeader,
+  dataFloorFromGateMs,
+  DEFAULT_XO_WINDOW_THRESHOLDS,
+  type XoWindowThresholds,
+} from './lib/xoWindow.ts';
+import {
   baffleStepHz,
   boxRolloff,
   boxTuningFromZ,
@@ -122,8 +130,9 @@ import {
   runChain3Scan,
   poolSize,
 } from './lib/optimClient.ts';
-import { crossover3Variants, rankChain3Results } from './lib/threeWayChain.ts';
+import { crossover3Variants, rankChain3Results, variantsFromPoints, type Chain3Variant } from './lib/threeWayChain.ts';
 import { Z_FLOOR_OHM } from './lib/netOptimizer.ts';
+import type { NetworkAudit } from './lib/partAudit.ts';
 import type { Chain3Result } from './lib/threeWayChain.ts';
 import { buildSoloNetwork, optimizeSoloFilter, reachableBandFor } from './lib/soloOptimizer.ts';
 import { crossoverVariants, rankChainResults, type ChainResult, type ChainSettings } from './lib/designChain.ts';
@@ -157,7 +166,7 @@ import DriverFilterControls from './components/FilterControls.tsx';
 import { LogoMark, LogoWord } from './components/Logo.tsx';
 import demoMid from './lib/parsers/fixtures/mid_hor0_mettape.txt?raw';
 import demoTweet from './lib/parsers/fixtures/tweet_hor0_mettape.txt?raw';
-import { beamingCeilingHz, computeDirectivity, computeDirectivityN, type AngleResponse } from './lib/directivity.ts';
+import { beamingCeilingHz, computeDirectivity, computeDirectivityN, type AngleResponse, diMatchHz } from './lib/directivity.ts';
 import { reachesLevelHz } from './lib/bandMetrics.ts';
 import { beamwidth6dBHalfAngle, buildSonogram, type SonogramMode } from './lib/sonogram.ts';
 import Sonogram from './components/Sonogram.tsx';
@@ -695,6 +704,25 @@ interface CabinetState {
   refDriver: '' | BranchRole;
   drivers: Record<BranchRole, CabinetDriver>;
 }
+/** Rule 8 (scan table): name a candidate after its DELIVERED crossings and
+ *  flag a delivery more than ⅓ octave off its aim. Pairs are [low, high];
+ *  a missing delivery reads "—" and never flags. */
+function deliveredLabel(
+  target: (number | null | undefined)[],
+  delivered: (number | null | undefined)[],
+  names: string[],
+): { text: string; unrealisable: boolean } {
+  let off = false;
+  const bits = names.map((n, i) => {
+    const d = delivered[i];
+    const tg = target[i];
+    const has = typeof d === 'number' && Number.isFinite(d) && d > 0;
+    if (has && typeof tg === 'number' && tg > 0 && Math.abs(Math.log2(d / tg)) > 1 / 3) off = true;
+    return `${n} ${has ? Math.round(d) : '—'}`;
+  });
+  return { text: `${bits.join(' · ')} Hz`, unrealisable: off };
+}
+
 const emptyCabinetDriver = (): CabinetDriver => ({
   xMm: '',
   yMm: '',
@@ -793,52 +821,6 @@ function placementOf(d: CabinetDriver): DriverPlacement | null {
   };
 }
 
-/**
- * Name the criterion that actually SETS a handover ceiling. A window the
- * designer cannot attribute is a window he cannot act on: "572 Hz" invites
- * an argument, "572 Hz (lobing, 300 mm spacing)" invites a decision — move
- * the drivers closer, or accept the null and raise k.
- */
-function bindingCeil(
-  lim: {
-    beam: number | null;
-    lobe: number | null;
-    /** Lobing of a MULTI-driver branch on its own spacing — a separate
-     *  criterion from lobing against the neighbouring branch, and usually
-     *  the lower of the two once a branch holds more than one driver. */
-    arrayLobe: number | null;
-    breakup: { hz: number; corroboratedByZ: boolean } | null;
-    excursion: number | null;
-  },
-  beamMeasured: boolean,
-  /** The driver this ceiling came from does not radiate from the front. The
-   *  NUMBER still stands — a front sweep measures how fast the system falls
-   *  off-axis, and that is a real reason to hand over below it — but calling
-   *  it cone beaming would be wrong: most of it is the cabinet shadowing a
-   *  driver that points elsewhere. Name what it is, do not drop the bound. */
-  beamOffBaffle = false,
-): string {
-  const cands: Array<[number, string]> = [];
-  if (lim.beam !== null)
-    cands.push([
-      lim.beam,
-      beamMeasured
-        ? beamOffBaffle
-          ? 'measured directivity, off-baffle driver'
-          : 'measured beaming'
-        : 'beaming',
-    ]);
-  if (lim.lobe !== null) cands.push([lim.lobe, 'lobing']);
-  if (lim.arrayLobe !== null) cands.push([lim.arrayLobe, 'array lobing']);
-  if (lim.breakup)
-    cands.push([
-      lim.breakup.hz / 3,
-      `breakup ${Math.round(lim.breakup.hz)} Hz${lim.breakup.corroboratedByZ ? '+Z' : ''}`,
-    ]);
-  if (cands.length === 0) return '';
-  cands.sort((a, b) => a[0] - b[0]);
-  return ` (${cands[0][1]})`;
-}
 
 function excessDelayMsOf(frd: Parsed): number | null {
   try {
@@ -1417,6 +1399,13 @@ export default function App() {
    *  Independent of the crossover pin — every candidate is caged in its own
    *  slice either way, so "how many" is always a meaningful cost knob. */
   const [xo3Steps, setXo3Steps] = useState(2);
+  /** 3-way scan strategy: 'axes' = sweep W-M (M-T held at its anchor), then
+   *  M-T with the best W-M, then a local 3×3 refinement (skipped when the two
+   *  sweeps show no coupling) — finer per axis for far fewer chains than a
+   *  grid of the same resolution; 'grid' = the classic corners grid. */
+  const [scan3Mode, setScan3Mode] = useState<'axes' | 'grid'>(() =>
+    localStorage.getItem('ads-scan3-mode') === 'grid' ? 'grid' : 'axes',
+  );
   /**
    * How many crossover candidates the scan actually explores.
    *
@@ -1535,6 +1524,38 @@ export default function App() {
   // 'auto' resolves the strictness per pair from the driver geometry
   // (lobingKFor); restores of older projects keep their stored numeric value.
   const [ctcK, setCtcK] = useState('auto');
+  /** Physics-window thresholds for the free "Design for me" scan (xoWindow.ts,
+   *  rules 2–5): array k, centre-to-centre λ-divisor, breakup divisor, fs·K.
+   *  A preference, not project data — stored beside the UI preferences. */
+  const [xoWinThr, setXoWinThr] = useState<XoWindowThresholds>(() => {
+    try {
+      const raw = localStorage.getItem('ads-xo-window');
+      if (raw) {
+        const o = JSON.parse(raw) as Partial<XoWindowThresholds>;
+        // The first cut shipped λ/1.5 as the default (hours, one session);
+        // it is now axis-aware 'auto'. A stored 1.5 was never a choice.
+        if (o.ctcLambdaDiv === 1.5) o.ctcLambdaDiv = 'auto';
+        return { ...DEFAULT_XO_WINDOW_THRESHOLDS, ...o };
+      }
+    } catch {
+      /* corrupt preference: defaults */
+    }
+    return DEFAULT_XO_WINDOW_THRESHOLDS;
+  });
+  const setXoWinThrField = (k: keyof XoWindowThresholds, v: number | 'auto') => {
+    setXoWinThr((prev) => {
+      const next = {
+        ...prev,
+        [k]: v === 'auto' ? 'auto' : Number.isFinite(v) && v > 0 ? v : DEFAULT_XO_WINDOW_THRESHOLDS[k],
+      };
+      try {
+        localStorage.setItem('ads-xo-window', JSON.stringify(next));
+      } catch {
+        /* quota */
+      }
+      return next;
+    });
+  };
   /** Opt-in: re-time the branches from the MEASURING distance to the LISTENING
    *  distance (see listeningDelayShiftUs). Off by default — it changes the sum,
    *  and "measured phase is the truth" stays the default reading of the data. */
@@ -2258,7 +2279,8 @@ export default function App() {
     };
   }
 
-  function loadDemo() {
+  /** The classic 2-way demo: the 2023 KOAN prototype (mid + tweeter, vxp variants). */
+  function loadDemo2Way() {
     setError(null);
     setWoofer({ name: 'mid_hor0_mettape.txt (demo)', raw: demoMid, frd: parseFrd(demoMid) });
     // The demo is the 2-way KOAN set — a leftover mid branch would turn it
@@ -2356,6 +2378,90 @@ export default function App() {
         // Demo catalog fixture unreadable: run with built-ins.
       }
     }
+  }
+
+  /**
+   * The 3-WAY demo (KOAN 2951, Aug 2026 — Sander's finished cabinet: woofer
+   * pair, mid, tweeter, angles, near fields, LIMP impedances, and the cabinet/
+   * rig he entered). Same speaker as the classic KOAN demo, three years on.
+   * The measurement module is a dynamic import so its ~300 kB only loads on
+   * click.
+   */
+  async function loadDemo3Way() {
+    setError(null);
+    setPersistNote(t('Loading the 3-way demo…'));
+    let mod: typeof import('./demo3way.ts');
+    try {
+      mod = await import('./demo3way.ts');
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
+      return;
+    }
+    const D = mod.KOAN_3WAY_DEMO;
+    const loaded = (f: { name: string; raw: string }): Loaded => ({
+      name: `${f.name} (demo)`,
+      raw: f.raw,
+      frd: parseFrd(f.raw),
+    });
+    const entries = (b: { angles: readonly { hor: number; file: { name: string; raw: string } }[] }): AngleEntry[] =>
+      b.angles.map((a) => ({ hor: a.hor, name: `${a.file.name} (demo)`, raw: a.file.raw, frd: parseFrd(a.file.raw) }));
+    setWoofer(loaded(D.low.angles[0].file));
+    setMidDrv(loaded(D.mid.angles[0].file));
+    setTweeter(loaded(D.high.angles[0].file));
+    setAngleSets({ woofer: entries(D.low), tweeter: entries(D.high), mid: entries(D.mid) });
+    // No VituixCAD project here — the impedances are standalone, by role.
+    setProject(null);
+    setZStandalone({
+      low: { file: { name: D.low.impedance.name, raw: D.low.impedance.raw }, zma: parseZma(D.low.impedance.raw) },
+      mid: { file: { name: D.mid.impedance.name, raw: D.mid.impedance.raw }, zma: parseZma(D.mid.impedance.raw) },
+      high: { file: { name: D.high.impedance.name, raw: D.high.impedance.raw }, zma: parseZma(D.high.impedance.raw) },
+    });
+    // Near fields: cones on the two low branches, the port next to the
+    // woofers. The port DIAMETER is deliberately left blank — Sander has not
+    // entered it, and a guessed number would silently shape the low end;
+    // without it the cone alone is spliced and the port file simply waits.
+    setNearField({
+      low: {
+        ...emptyNearField(),
+        cone: D.low.nearCone ? { name: D.low.nearCone.name, raw: D.low.nearCone.raw } : null,
+        port: D.low.nearPort ? { name: D.low.nearPort.name, raw: D.low.nearPort.raw } : null,
+      },
+      mid: {
+        ...emptyNearField(),
+        cone: D.mid.nearCone ? { name: D.mid.nearCone.name, raw: D.mid.nearCone.raw } : null,
+      },
+      high: emptyNearField(),
+    });
+    setCabinet({
+      ...emptyCabinet(),
+      ...D.cabinet,
+      drivers: {
+        low: { ...emptyCabinetDriver(), ...D.cabinet.drivers.low },
+        mid: { ...emptyCabinetDriver(), ...D.cabinet.drivers.mid },
+        high: { ...emptyCabinetDriver(), ...D.cabinet.drivers.high },
+      },
+    });
+    setSdCm2({ ...D.sdCm2 });
+    setXmaxMm({ ...D.xmaxMm });
+    setVerifyList([]);
+    setVerifyIx(0);
+    setFileNotes({});
+    if (!localStorage.getItem(CUSTOM_CATALOG_KEY)) {
+      try {
+        const imp = deserializeCatalog(demoCatalog);
+        setCustomSeries(imp.series, imp.parts);
+        localStorage.setItem(CUSTOM_CATALOG_KEY, serializeCatalog(imp.series, imp.parts));
+      } catch {
+        // Demo catalog fixture unreadable: run with built-ins.
+      }
+    }
+    setPersistNote(t('3-way demo loaded — {label}: woofer pair, mid, tweeter, 0–60°, near fields and the measured cabinet', { label: D.label }));
+  }
+
+  /** "The demo" = the 3-way (Sanders' finished KOAN, Aug 2026). The 2023
+   *  2-way prototype stays reachable as its own button. */
+  function loadDemo() {
+    void loadDemo3Way();
   }
 
   /**
@@ -2881,7 +2987,7 @@ export default function App() {
    * where its low end came from. The merged FRD simply reaches lower.
    */
   const merged = useMemo(() => {
-    const out: Partial<Record<BranchRole, { frd: Parsed; report: string; ok: boolean }>> = {};
+    const out: Partial<Record<BranchRole, { frd: Parsed; report: string; ok: boolean; spliceHz?: number }>> = {};
     const src: [BranchRole, Loaded | null][] = [
       ['low', woofer],
       ['mid', midDrv],
@@ -2975,6 +3081,7 @@ export default function App() {
       out[role] = {
         ok: check.ok,
         report: bits.join(' · '),
+        spliceHz: proposed,
         frd: { freq: [...g], spl: m.spl, phase: m.phaseDeg, hasPhase: true, meta: loaded.frd.meta },
       };
     }
@@ -3691,14 +3798,6 @@ export default function App() {
       ad?.mid && ad.mid.length > 0
         ? { woofer: ad.woofer, mid: ad.mid, tweeter: ad.tweeter }
         : undefined;
-    const maxOpt = (...vs: (number | null | undefined)[]): number | null => {
-      const xs = vs.filter((v): v is number => typeof v === 'number' && v > 0);
-      return xs.length ? Math.max(...xs) : null;
-    };
-    const minOpt = (...vs: (number | null | undefined)[]): number | null => {
-      const xs = vs.filter((v): v is number => typeof v === 'number' && v > 0);
-      return xs.length ? Math.min(...xs) : null;
-    };
 
     // --- upper limits of the LOWER driver of each pair ---------------------
     // Beaming, MEASURED, at the chosen ka tier (see KA_TIERS).
@@ -3721,9 +3820,6 @@ export default function App() {
           : 0.5;
     const wLobe = lobingCeilingHz(cabinetInfo.ctcLow ?? 0, kOf(cabinetInfo.ctcLowVec));
     const mLobe = lobingCeilingHz(cabinetInfo.ctcHigh ?? 0, kOf(cabinetInfo.ctcHighVec));
-    // Cone breakup: a resonance at f_b is excited as the Nth harmonic of f_b/N,
-    // so the penalty lands more than an octave BELOW the peak.
-    const harm = Number(breakupHarmonic) > 0 ? Number(breakupHarmonic) : 3;
     const zMagOf = (role: BranchRole): number[] | undefined => {
       try {
         const z = zGridWithSlots(impedances, grid)[canonicalModelForRole(role, threeWay)];
@@ -3773,30 +3869,99 @@ export default function App() {
       Number(cabinet.drivers[role].count) > 1
         ? lobingCeilingHz(Number(cabinet.drivers[role].spacingMm), kArr2)
         : null;
-    const lowCeil = minOpt(
-      wBeam ?? wooferXoCeiling,
-      wLobe,
-      arrayOf('low'),
-      wBreak && breakupCeilingHz(wBreak.hz, harm),
+    /* ---- The window is the INTERSECTION of every limiter (xoWindow.ts) ----
+     * Rule 1 (data floor) from each branch's gate — the FRD header when the
+     * exporter wrote one, else the cabinet's gate field — or its near-field
+     * splice when the branch is spliced; the pair takes the least reliable of
+     * its two branches. Rules 2–6 as measured/derived above; rule 7 (a pin)
+     * replaces 2–6 but never 1. Every rule keeps its number for the readout. */
+    const gateOf = (l: Loaded | null): number | null =>
+      (l ? gateMsFromHeader(l.raw) : null) ?? (Number(cabinet.gateMs) > 0 ? Number(cabinet.gateMs) : null);
+    const dataFloorOf = (role: BranchRole, l: Loaded | null): { hz: number | null; label: string } => {
+      // A spliced branch carries its own low end from the near field, so the
+      // gate no longer limits it — but a handover must not sit INSIDE the
+      // splice blend, where the sum hangs on the merge's level and delay
+      // fit. Its floor is the TOP of the blend: splice × 2^(blend/2)
+      // (Sanders: "skip wat niet betrouwbaar is" — 300 Hz / 1 oct → 424 Hz).
+      const sp = merged[role]?.ok ? merged[role]!.spliceHz : undefined;
+      if (sp) {
+        const blend = Number(nearField[role].blendOctaves) || 1;
+        const hz = sp * Math.pow(2, blend / 2);
+        return { hz, label: `above the near-field splice blend (${Math.round(sp)} Hz ± ${blend / 2} oct) = ${Math.round(hz)} Hz` };
+      }
+      const g = gateOf(l);
+      const hz = dataFloorFromGateMs(g);
+      return { hz, label: g ? `data floor 2/${g.toFixed(1)} ms gate = ${Math.round(hz ?? 0)} Hz` : 'data floor' };
+    };
+    const pairFloor = (a: { hz: number | null; label: string }, b: { hz: number | null; label: string }) => {
+      const xs = [a, b].filter((x) => x.hz !== null) as { hz: number; label: string }[];
+      if (xs.length === 0) return { hz: null, label: '' };
+      return xs.reduce((m, x) => (x.hz > m.hz ? x : m));
+    };
+    const dfLow = pairFloor(dataFloorOf('low', woofer), dataFloorOf('mid', midDrv));
+    const dfHigh = pairFloor(dataFloorOf('mid', midDrv), dataFloorOf('high', tweeter));
+    const pinsNow = xoPinsValue();
+    const userWin = (pin?: { freq: number; margin: number }): [number, number] | null =>
+      pin ? [pin.freq - Math.max(0, pin.margin), pin.freq + Math.max(0, pin.margin)] : null;
+    const midFsHz = midHpFloor ? midHpFloor / 2 : null;
+    const twFsHz = tweeterHpFloor ? tweeterHpFloor / 2 : null;
+    const spacingOf = (role: BranchRole) =>
+      Number(cabinet.drivers[role].count) > 1 ? Number(cabinet.drivers[role].spacingMm) || null : null;
+    const winLow = deriveXoWindow(
+      {
+        dataFloorHz: dfLow.hz,
+        dataFloorLabel: dfLow.label,
+        arraySpacingMm: spacingOf('low'),
+        ctcMm: cabinetInfo.ctcLow ?? null,
+        ctcVec: cabinetInfo.ctcLowVec ?? null,
+        breakupHz: wBreak?.hz ?? null,
+        fsHz: midFsHz,
+        excursionHz: midEx,
+        reachHz: reachesLevelHz(grid, sim.base.m.spl),
+        beamingHz: wBeam ?? wooferXoCeiling,
+        beamingMeasured: wBeam !== null,
+        userWindow: userWin(pinsNow.low),
+        rails: [150, 2000],
+      },
+      xoWinThr,
     );
-    const highCeil = minOpt(
-      mBeam ?? midXoCeiling,
-      mLobe,
-      arrayOf('mid'),
-      mBreak && breakupCeilingHz(mBreak.hz, harm),
+    const winHigh = deriveXoWindow(
+      {
+        dataFloorHz: dfHigh.hz,
+        dataFloorLabel: dfHigh.label,
+        arraySpacingMm: spacingOf('mid'),
+        ctcMm: cabinetInfo.ctcHigh ?? null,
+        ctcVec: cabinetInfo.ctcHighVec ?? null,
+        breakupHz: mBreak?.hz ?? null,
+        fsHz: twFsHz,
+        excursionHz: twtEx,
+        reachHz: reachesLevelHz(grid, sim.base.t.spl),
+        beamingHz: mBeam ?? midXoCeiling,
+        beamingMeasured: mBeam !== null,
+        userWindow: userWin(pinsNow.high),
+        rails: [1200, 12000],
+      },
+      xoWinThr,
     );
+    // Rule 9: the directivity-match anchor per pair (null without angle sets).
+    const diAnchor = angleSets
+      ? {
+          low: diMatchHz(angleSets.woofer, angleSets.mid, [150, 2000]),
+          high: diMatchHz(angleSets.mid, angleSets.tweeter, [1200, 12000]),
+        }
+      : { low: null, high: null };
     return {
       angleSets,
-      low: {
-        floorHz: maxOpt(midHpFloor, reachesLevelHz(grid, sim.base.m.spl), midEx),
-        ceilHz: lowCeil,
-      },
+      low: { floorHz: winLow.floorHz, ceilHz: winLow.ceilHz },
       lowCeilMeasured: wBeam !== null,
-      high: {
-        floorHz: maxOpt(tweeterHpFloor, reachesLevelHz(grid, sim.base.t.spl), twtEx),
-        ceilHz: highCeil,
-      },
+      high: { floorHz: winHigh.floorHz, ceilHz: winHigh.ceilHz },
       highCeilMeasured: mBeam !== null,
+      /** The full derivation per handover: every limiter, the binding one,
+       *  data-floor clamps and the banner text. */
+      win: { low: winLow, high: winHigh },
+      /** Where the lower driver's DI meets the upper's (Hz) — seeded as a
+       *  candidate when inside the window, shown either way. */
+      diAnchor,
       /** Every criterion's own number, so the panel can say WHICH one binds —
        *  a window the designer cannot attribute is a window he cannot act on. */
       limits: {
@@ -3807,7 +3972,8 @@ export default function App() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [threeWay, sim, result, phaseMode, angleSets, midHpFloor, wooferXoCeiling, midXoCeiling,
       tweeterHpFloor, kaTier, cabinetInfo, ctcK, breakupLimitOn, breakupHarmonic,
-      sdCm2, xmaxMm, excursionSpl, impedances, cabinet]);
+      sdCm2, xmaxMm, excursionSpl, impedances, cabinet, xoWinThr, merged, nearField, woofer, midDrv, tweeter,
+      xoRangeOn, xoLowFreqHz, xoLowMarginHz, xoFreqHz, xoMarginHz]);
 
   /* The SAME physics window for the TWO-WAY pair (woofer↔tweeter). The
    * three-way scan has derived its search space from the measurements since
@@ -4704,7 +4870,23 @@ export default function App() {
           z: zGridWithSlots(impedances, sGrid),
         };
       })();
-      const pins = xoPinsValue();
+      // Rule 1 beats rule 7 (xoWindow.ts): a pin that dips under the data
+      // floor is clamped to it — the physWin3 banner already says so — and the
+      // clamped pin is what the chain cages and judges against.
+      const pinsRaw = xoPinsValue();
+      const clampPin = (
+        pin: { freq: number; margin: number } | undefined,
+        win: { floorHz: number | null; ceilHz: number | null; userClampedByData: boolean } | undefined,
+      ) => {
+        if (!pin || !win || !win.userClampedByData || win.floorHz === null) return pin;
+        const lo = win.floorHz;
+        const hi = Math.max(win.ceilHz ?? lo, lo * 1.02);
+        return { freq: (lo + hi) / 2, margin: (hi - lo) / 2 };
+      };
+      const pins = {
+        low: clampPin(pinsRaw.low, physWin3?.win.low),
+        high: clampPin(pinsRaw.high, physWin3?.win.high),
+      };
       const settings = {
         phasePriority: phasePriority / 100,
         targets: stagedOn
@@ -4734,6 +4916,15 @@ export default function App() {
       const angleSets3 = physWin3?.angleSets;
       const lowWin3 = physWin3?.low ?? { floorHz: midHpFloor, ceilHz: wooferXoCeiling };
       const highWin3 = physWin3?.high ?? { floorHz: tweeterHpFloor, ceilHz: midXoCeiling };
+      // Warm start: the crossings of whatever design is in the sim right now
+      // (the pair chips' overlap centres) — tried as an extra candidate when
+      // they fall inside the windows.
+      const warm3 = designShaped && pairScores
+        ? {
+            low: pairScores.low?.integ.overlapCentreHz ?? null,
+            high: pairScores.high?.integ.overlapCentreHz ?? null,
+          }
+        : undefined;
       const variants = crossover3Variants(
         sim.base.w,
         sim.base.m!,
@@ -4743,6 +4934,8 @@ export default function App() {
         scanSteps3,
         lowWin3,
         highWin3,
+        warm3,
+        physWin3?.diAnchor,
       );
       // What the DELIVERED crossings are judged against in the ranking: a pin
       // is the designer's promise; a measured physics window is the drivers'.
@@ -4803,11 +4996,98 @@ export default function App() {
       setVfProgress(null);
       setChainScan(null);
       setNetOptDiff(null);
-      runChain3Scan(inputs, (d) =>
+      /* ---- Axis-by-axis scan (Sanders' proposal): W-M sweep with M-T held
+       * at its anchor → M-T sweep with the best W-M → local 3×3 refinement
+       * around the pair. Finer per axis than the corners grid for a
+       * fraction of the chains (7+7+9 vs 49), and the refinement MEASURES
+       * the coupling through the shared mid instead of assuming it away —
+       * skipped when the two sweeps land within half a step of their aims.
+       * Progress rows from finished rounds stay in the busy table. */
+      const inputOf = (v: Chain3Variant) => ({
+        grid: [...grid],
+        w: sim.base.w,
+        m: sim.base.m!,
+        t: sim.base.t,
+        driverZ: zOnGrid,
+        angleData: angleSets3,
+        tAdjust: tAdj,
+        midAdjust: mAdj,
+        xoLow: v.xoLow,
+        xoHigh: v.xoHigh,
+        xoLowRange: v.xoLowRange,
+        xoHighRange: v.xoHighRange,
+        judgeWindows,
+        label: v.label,
+        settings,
+      });
+      const rankAll = (rs: Chain3Result[]) =>
+        rankChain3Results(rs, settings.targets, settings.phasePriority, angleSets3 ? settings.directivityWeight : 0);
+      const runAxes = async (): Promise<Chain3Result[]> => {
+        const nPts = 1 + 2 * Math.max(1, Math.min(3, scanSteps3)); // 3/5/7
+        const clampSpan = (w: { floorHz: number | null; ceilHz: number | null } | null | undefined, rail: [number, number]): [number, number] => {
+          const lo = Math.max(rail[0], w?.floorHz ?? rail[0]);
+          const hi = Math.min(rail[1], w?.ceilHz ?? rail[1]);
+          return hi > lo * 1.03 ? [lo, hi] : [lo, lo * 1.03];
+        };
+        const lowSpan = pins.low
+          ? ([pins.low.freq - pins.low.margin, pins.low.freq + pins.low.margin] as [number, number])
+          : clampSpan(lowWin3, [250, 2000]);
+        const highSpan0 = pins.high
+          ? ([pins.high.freq - pins.high.margin, pins.high.freq + pins.high.margin] as [number, number])
+          : clampSpan(highWin3, [Math.max(1200, tweeterHpFloor ?? 0), 12000]);
+        const highSpan: [number, number] = [Math.max(highSpan0[0], lowSpan[0] * 2.5), Math.max(highSpan0[1], lowSpan[0] * 2.5 * 1.03)];
+        const pts = (span: [number, number], warm?: number | null) => candidateCentres(span[0], span[1], nPts, warm);
+        const inside = (v: number | null | undefined, sp: [number, number]) =>
+          typeof v === 'number' && v >= sp[0] && v <= sp[1] ? v : null;
+        const midOf = (sp: [number, number]) => Math.sqrt(sp[0] * sp[1]);
+        // Anchors for the axis being HELD: pin → DI match → warm start → log-mid.
+        const highAnchor = pins.high ? pins.high.freq : inside(physWin3?.diAnchor.high, highSpan) ?? inside(warm3?.high, highSpan) ?? midOf(highSpan);
+        const merged: Chain3Result[] = [];
+        const doneItems: { label: string; text: string; done: boolean; warn?: string }[] = [];
+        let doneEvals = 0;
+        const runRound = async (vs: Chain3Variant[]) => {
+          const rs = await runChain3Scan(vs.map(inputOf), (d) =>
+            setVfProgress({ round: doneItems.filter((x) => x.done).length + d.round, evals: doneEvals + d.evals, items: [...doneItems, ...d.items] }),
+          );
+          for (const r of rs) doneItems.push({ label: r.label, text: `✓ ${r.net.after.rippleDb.toFixed(2)} dB/${r.net.after.phaseDeg.toFixed(1)}°`, done: true, warn: r.zOk ? undefined : '⚠Z' });
+          doneEvals += rs.reduce((a, r) => a + r.net.evaluations, 0);
+          merged.push(...rs);
+          return rs;
+        };
+        const stepRatio = (sp: [number, number]) => Math.pow(sp[1] / sp[0], 1 / Math.max(1, nPts - 1));
+        // Round 1 — W-M sweep.
+        const r1 = await runRound(variantsFromPoints(pts(lowSpan, warm3?.low), [highAnchor], lowSpan, highSpan, 'W-M sweep'));
+        if (r1.length === 0) return merged;
+        const w1 = rankAll(r1)[0];
+        const bestLow = w1.net.after.xoHzPairs?.[0] ?? w1.xoLow;
+        // Round 2 — M-T sweep with the best W-M held (delivered value, not aim).
+        const r2 = await runRound(variantsFromPoints([bestLow], pts(highSpan, warm3?.high), lowSpan, highSpan, 'M-T sweep'));
+        const w2 = rankAll(r2.length ? r2 : r1)[0];
+        const bestHigh = w2.net.after.xoHzPairs?.[1] ?? w2.xoHigh;
+        // Round 3 — local refinement, only if the sweeps show coupling: did
+        // the M-T sweep move the W-M off round 1's best, or its own delivery
+        // off its aim, by more than half a step?
+        const rL = Math.sqrt(stepRatio(lowSpan));
+        const rH = Math.sqrt(stepRatio(highSpan));
+        const dLow = w2.net.after.xoHzPairs?.[0] ?? w2.xoLow;
+        const drift = Math.abs(Math.log(dLow / bestLow)) > Math.log(rL) || Math.abs(Math.log(bestHigh / w2.xoHigh)) > Math.log(rH);
+        if (drift && nPts >= 5) {
+          const around = (c: number, r: number, sp: [number, number]) =>
+            [c / r, c, c * r].map((v) => Math.min(sp[1], Math.max(sp[0], v)));
+          await runRound(variantsFromPoints(around(bestLow, rL, lowSpan), around(bestHigh, rH, highSpan), lowSpan, highSpan, 'refine'));
+        }
+        return merged;
+      };
+      (scan3Mode === 'axes' ? runAxes() : runChain3Scan(inputs, (d) =>
         setVfProgress({ round: d.round, evals: d.evals, items: d.items }),
-      )
+      ))
         .then((results) => {
-          const ranked = rankChain3Results(results, settings.targets, settings.phasePriority);
+          const ranked = rankChain3Results(
+            results,
+            settings.targets,
+            settings.phasePriority,
+            angleSets3 ? settings.directivityWeight : 0,
+          );
           const win = ranked[0];
           setVFilters((prev) => ({ ...prev, ...win.specs }));
           // The design step CHOSE the polarities; the sim must sum the design
@@ -4821,6 +5101,7 @@ export default function App() {
             tweeter: win.synthTweeter,
           });
           setWorkingDesign(win.parts);
+          setNetOptAudit(win.net.audit ?? null);
           setNetworkActive(true);
           setVfBypass(true);
           setVfOpt(null);
@@ -4834,18 +5115,32 @@ export default function App() {
           setChainScan(
             results.length > 1
               ? {
-                  rows: ranked.map((rr) => ({
-                    label: rr.label,
-                    rippleDb: rr.net.after.rippleDb,
-                    avgDevDb: rr.net.after.avgDevDb ?? null,
-                    phaseDeg: rr.net.after.phaseDeg,
-                    zMinOhm: rr.net.after.zMinOhm ?? null,
-                    xoWindowOk: rr.xoWindowOk,
-                    pairOverlapOct: rr.pairOverlapOct,
-                    bomEur: rr.bomTotalEur,
-                    winner: rr === win,
-                    result: rr,
-                  })),
+                  rows: ranked.map((rr) => {
+                    // In a sweep round the HELD axis is an anchor, not an aim:
+                    // only the swept axis can be "not realisable".
+                    const heldLow = /\(M-T sweep\)/.test(rr.label);
+                    const heldHigh = /\(W-M sweep\)/.test(rr.label);
+                    const dl = deliveredLabel(
+                      [heldLow ? null : rr.xoLow, heldHigh ? null : rr.xoHigh],
+                      rr.net.after.xoHzPairs ?? [null, null],
+                      ['W-M', 'M-T'],
+                    );
+                    return {
+                      label: rr.label,
+                      delivered: dl.text,
+                      target: rr.label,
+                      unrealisable: dl.unrealisable,
+                      rippleDb: rr.net.after.rippleDb,
+                      avgDevDb: rr.net.after.avgDevDb ?? null,
+                      phaseDeg: rr.net.after.phaseDeg,
+                      zMinOhm: rr.net.after.zMinOhm ?? null,
+                      xoWindowOk: rr.xoWindowOk,
+                      pairOverlapOct: rr.pairOverlapOct,
+                      bomEur: rr.bomTotalEur,
+                      winner: rr === win,
+                      result: rr,
+                    };
+                  }),
                   active: win.label,
                 }
               : null,
@@ -5258,23 +5553,31 @@ export default function App() {
           synthFresh.current = true;
           setSynth({ mode: synthMode, woofer: win.synthWoofer, tweeter: win.synthTweeter });
           setWorkingDesign(win.parts);
+          setNetOptAudit(win.net.audit ?? null);
           setVfBypass(true); // the BUILT network is the result on screen
           setScanSort(null);
           setChainScan(
             results.length > 1
               ? {
-                  rows: ranked.map((rr) => ({
-                    label: rr.label,
-                    rippleDb: rr.net.after.rippleDb,
-                    avgDevDb: rr.net.after.avgDevDb ?? null,
-                    phaseDeg: rr.net.after.phaseDeg,
-                    zMinOhm: rr.net.after.zMinOhm ?? null,
-                    xoWindowOk: rr.xoWindowOk,
-                    pairOverlapOct: rr.overlapOct != null ? [rr.overlapOct] : null,
-                    bomEur: rr.bomTotalEur,
-                    winner: rr === win,
-                    result: rr,
-                  })),
+                  rows: ranked.map((rr) => {
+                    const aim = rr.xoRange ? Math.sqrt(rr.xoRange[0] * rr.xoRange[1]) : null;
+                    const dl = deliveredLabel([aim], [rr.net.after.xoHz ?? null], ['xo']);
+                    return {
+                      label: rr.label,
+                      delivered: dl.text,
+                      target: rr.label,
+                      unrealisable: dl.unrealisable,
+                      rippleDb: rr.net.after.rippleDb,
+                      avgDevDb: rr.net.after.avgDevDb ?? null,
+                      phaseDeg: rr.net.after.phaseDeg,
+                      zMinOhm: rr.net.after.zMinOhm ?? null,
+                      xoWindowOk: rr.xoWindowOk,
+                      pairOverlapOct: rr.overlapOct != null ? [rr.overlapOct] : null,
+                      bomEur: rr.bomTotalEur,
+                      winner: rr === win,
+                      result: rr,
+                    };
+                  }),
                   active: win.label,
                 }
               : null,
@@ -5651,6 +5954,10 @@ export default function App() {
   const [netOptDiff, setNetOptDiff] = useState<
     { id: string; from: number; to: number; unit: string }[] | null
   >(null);
+  /** GATE 4 report of the last component tune (partAudit.ts): per part the
+   *  absolute deltas without it and the verdict — the physical answer to
+   *  "does this part do anything", including for parts the tune kept. */
+  const [netOptAudit, setNetOptAudit] = useState<NetworkAudit | null>(null);
   /** Crossover-scan results as STRUCTURED rows — rendered as a small table
    *  instead of one long note line (readability; Sanders UX-ronde). Each row
    *  carries its FULL chain result: clicking a row loads that candidate's
@@ -5673,6 +5980,14 @@ export default function App() {
       xoWindowOk: boolean | null;
       pairOverlapOct: (number | null)[] | null;
       winner: boolean;
+      /** LABEL = MEASURED HANDOVER (Sanders' rule 8): the row is named after
+       *  the crossing the tuned network actually DELIVERS, not after the
+       *  candidate it aimed at. `target` keeps the aim (and stays the row key);
+       *  `unrealisable` marks a delivery more than ⅓ octave off its aim — a
+       *  diagnosis (the window or the topology binds), not cosmetics. */
+      delivered: string;
+      target: string;
+      unrealisable: boolean;
       /** 2-way and 3-way scans produce different result shapes; the table only
        *  displays numbers, so it carries either and the loader branches. */
       result: ChainResult | Chain3Result;
@@ -5726,6 +6041,9 @@ export default function App() {
     setWorkingDesign(r.parts);
     setVfBypass(true);
     setNetOptDiff(null);
+    // The candidate's own part audit (poort 4) travels with it: which parts
+    // earned their place, which are inert — the "why 23 parts" question.
+    setNetOptAudit(r.net.audit ?? null);
     setChainScan((c) => (c ? { ...c, active: row.label } : c));
   }
   /** One-click chain: after Optimize→Build lands in Working, auto-run the
@@ -5846,6 +6164,11 @@ export default function App() {
         snapPrefs: snapPrefsValue(),
         band: [Math.max(300, grid[0]), Math.min(grid[grid.length - 1] * 0.975, num(fMax, 20000))],
         safety,
+        // Gate 4: the source-resistance verdict is taken at the low branch's
+        // box tuning when the designer entered one; otherwise at its Z peak.
+        audit: {
+          fbHz: Number(cabinet.drivers.low.fbHz) > 0 ? Number(cabinet.drivers.low.fbHz) : undefined,
+        },
       },
     }, (stage) => setNetOptStages((p) => [...p, stage]))
       .then((r) => {
@@ -5854,6 +6177,7 @@ export default function App() {
           setNetworkActive(true);
           setNetOptDiff(diffTunedParts(seedParts, r.parts));
         }
+        setNetOptAudit(r.audit ?? null);
         setNetOptNote(
           r.safetyNote
             ? `⚠ ${r.safetyNote}` + (r.ampFloorNote ? ` · ${r.ampFloorNote}` : '')
@@ -5865,6 +6189,12 @@ export default function App() {
                 // Solo: relative phase does not exist — don't report a fake 0°.
                 (soloDriver ? '' : ` · phase ${r.before.phaseDeg.toFixed(1)}° → ${r.after.phaseDeg.toFixed(1)}°`) +
                 (r.removed.length > 0 ? ` · pruned: ${r.removed.join(', ')}` : '') +
+                (r.audit && r.audit.entries.some((e) => e.applied)
+                  ? ` · audit removed inert: ${r.audit.entries.filter((e) => e.applied).map((e) => e.label).join(', ')}`
+                  : '') +
+                (r.audit?.rSourceWarn && r.audit.rSourceOhm !== null
+                  ? ` · ⚠ source R at the low driver ${r.audit.rSourceOhm.toFixed(2)} Ω @ ${Math.round(r.audit.rSourceAtHz ?? 0)} Hz (Qes ×${(r.audit.qesFactor ?? 1).toFixed(2)})`
+                  : '') +
                 (r.added.length > 0 ? ` · bypass-C added: ${r.added.join(', ')}` : '') +
                 (r.snapNote ? ` · ${r.snapNote}` : '') +
                 (r.valueWindowNote ? ` · ${r.valueWindowNote}` : '') +
@@ -8036,7 +8366,8 @@ export default function App() {
     { id: 'help', label: t('Open the manual'), run: () => setHelpOpen(true) },
     { id: 'targets', label: t('Show design targets'), hint: t('what the last build was fitted against'), run: () => setShowTargets(true) },
     { id: 'catalog', label: t('Open the catalog manager'), hint: t('SKUs, prices, series'), run: () => setCatalogMgrOpen(true) },
-    { id: 'demo', label: t('Load the KOAN demo measurements'), run: () => loadDemo() },
+    { id: 'demo', label: t('Load the KOAN demo measurements'), hint: t('3-way, Aug 2026: woofer pair + mid + tweeter, angles, near fields, cabinet'), run: () => loadDemo() },
+    { id: 'demo2', label: t('Load the 2-way demo (KOAN prototype 2023)'), hint: t('mid + tweeter, angles, VituixCAD variants'), run: () => loadDemo2Way() },
     {
       id: 'hold',
       label: heldTrace ? t('Clear the held reference curve') : t('Hold the combined curve as reference'),
@@ -8522,18 +8853,28 @@ export default function App() {
                 <strong>{t('Measurements')}</strong>{' '}
                 {t('— load a 0° FRD per driver; include the .ZMA impedance and any angle files in the SAME pick to unlock more (recognised by extension and filename).')}
               </p>
-              {wizardWays === 2 && (
+              {wizardWays === 3 && (
                 <button
                   type="button"
                   className="primary"
                   onClick={loadDemo}
-                  title={t('Load the bundled KOAN measurements (all angles + impedances + vxp variants) — instant playground')}
+                  title={t('Load the 3-way KOAN 2951 session of Aug 2026: woofer pair (measured together), mid and tweeter at 0–60°, near-field cones + port, LIMP impedances, and the cabinet/rig as entered — the full three-branch flow, no VituixCAD project needed')}
                 >
                   🎧 {t('Load KOAN demo data')}
                 </button>
               )}
+              {wizardWays === 2 && (
+                <button
+                  type="button"
+                  className="primary"
+                  onClick={loadDemo2Way}
+                  title={t('Load the bundled 2023 KOAN prototype measurements (mid + tweeter, all angles + impedances + vxp variants) — instant playground')}
+                >
+                  🎧 {t('Load 2-way demo (KOAN prototype 2023)')}
+                </button>
+              )}
               <p className="sub" style={{ marginBottom: '0.2rem' }}>
-                {wizardWays === 2 ? t('…or load your own:') : t('Load your measurements:')}
+                {wizardWays !== 1 ? t('…or load your own:') : t('Load your measurements:')}
               </p>
               {/* Same dropzone idiom as the Import step's driver cards — the
                   wizard is the beginner's surface, so it must not be the one
@@ -10405,9 +10746,16 @@ export default function App() {
               <button
                 type="button"
                 onClick={loadDemo}
-                title={t('Load the bundled KOAN measurements (all angles + impedances + vxp variants) — instant playground')}
+                title={t('Load the 3-way KOAN 2951 session of Aug 2026: woofer pair (measured together), mid and tweeter at 0–60°, near-field cones + port, LIMP impedances, and the cabinet/rig as entered — the full three-branch flow, no VituixCAD project needed')}
               >
                 {t('Load KOAN demo data')}
+              </button>
+              <button
+                type="button"
+                onClick={loadDemo2Way}
+                title={t('Load the bundled 2023 KOAN prototype measurements (mid + tweeter, all angles + impedances + vxp variants) — instant playground')}
+              >
+                {t('Load 2-way demo (KOAN prototype 2023)')}
               </button>
             </div>
           </div>
@@ -11915,12 +12263,32 @@ export default function App() {
                   </span>
                 )}
                 {threeWay && (
-                  <label title={t('How many handover candidates the 3-way scan simulates PER crossing. Each candidate runs the full design chain inside its own slice of the search range, so the count is squared: 2 steps = 4 chains. Works pinned or unpinned — without a pin the range is the neighbourhood of the raw crossings.')}>
-                    {t('Handover candidates to try')}
+                  <label title={t('How the 3-way scan searches the two handovers. Axis by axis: sweep W-M (M-T held at its anchor), then M-T with the best W-M, then a local 3×3 refinement around the pair (skipped when the sweeps show no coupling) — finer per axis for far fewer chains than a grid of the same resolution. Grid: every corner combination.')}>
+                    {t('Scan strategy')}
+                    <select
+                      value={scan3Mode}
+                      onChange={(e) => {
+                        const v = e.target.value === 'grid' ? 'grid' : 'axes';
+                        setScan3Mode(v);
+                        localStorage.setItem('ads-scan3-mode', v);
+                      }}
+                    >
+                      <option value="axes">{t('axis by axis (W-M sweep → M-T sweep → refine)')}</option>
+                      <option value="grid">{t('grid (corners)')}</option>
+                    </select>
+                  </label>
+                )}
+                {threeWay && (
+                  <label title={scan3Mode === 'axes'
+                    ? t('Points per axis for the sweeps: 3/5/7 — the W-M sweep runs that many chains, the M-T sweep as many again, the refinement up to 9 more.')
+                    : t('How many handover candidates the 3-way scan simulates PER crossing. Each candidate runs the full design chain inside its own slice of the search range, so the count is squared: 2 steps = 4 chains. Works pinned or unpinned — without a pin the range is the neighbourhood of the raw crossings.')}>
+                    {scan3Mode === 'axes' ? t('Points per axis') : t('Handover candidates to try')}
                     <select value={xo3Steps} onChange={(e) => setXo3Steps(Number(e.target.value))}>
                       {[1, 2, 3].map((n) => (
                         <option key={n} value={n}>
-                          {n} ({n * n} sim{n * n > 1 ? 's' : ''})
+                          {scan3Mode === 'axes'
+                            ? `${1 + 2 * n} (${2 * (1 + 2 * n)}–${2 * (1 + 2 * n) + 9} sims)`
+                            : `${n} (${n * n} sim${n * n > 1 ? 's' : ''})`}
                         </option>
                       ))}
                     </select>
@@ -11930,39 +12298,78 @@ export default function App() {
                   <span
                     className="derived"
                     style={{ flexBasis: '100%' }}
-                    title={t("The free scan derives both handover windows from the measurements themselves: floor = 2×Fs (measured impedance) and where the upper driver reaches its own level; ceiling = the lower driver's MEASURED beaming onset from the angle files (size-formula fallback without them). A pin is the designer's explicit override of its axis — the scan then searches the pin, not this window, and warns loudly when the physics cannot deliver it.")}
+                    title={t('The free scan searches the INTERSECTION of every physical limit: data floor (2/gate, or the near-field splice), array lobing of a multi-driver branch, centre-to-centre spacing (λ/N), the lower driver\'s breakup / N and its measured beaming, K× the upper driver\'s in-situ fs, its excursion floor, and where it reaches level. Each edge names the rule that set it. A pin replaces the physics rules but never the data floor.')}
                   >
-                    {/* One line per handover, each naming the criterion that
-                        BINDS. The old single dense line hid exactly that: a
-                        window you cannot attribute is a window you cannot act
-                        on, and it is the binding rule that tells you which
-                        knob (or which driver) to change. */}
                     {(['low', 'high'] as const).map((side) => {
-                      const w = physWin3[side];
+                      const w = physWin3.win[side];
                       const naam = side === 'low' ? 'W-M' : 'M-T';
-                      if (xoRangeOn) {
-                        return (
-                          <span key={side} style={{ display: 'block' }}>
-                            {naam}: {t('pinned — your pin overrides the derived window')}
-                          </span>
-                        );
-                      }
-                      const geen =
-                        w.ceilHz !== null && w.floorHz !== null && w.ceilHz <= w.floorHz;
+                      const fmt = (l: { hz: number; label: string } | null) =>
+                        l ? `${l.label} → ${Math.round(l.hz)} Hz` : t('rail');
+                      const others = w.limits.filter(
+                        (l) => l !== w.floorBy && l !== w.ceilBy && l.rule !== 'user',
+                      );
                       return (
                         <span key={side} style={{ display: 'block' }}>
-                          {naam} {Math.round(w.floorHz ?? (side === 'low' ? 250 : 1200))}–
-                          {Math.round(w.ceilHz ?? (side === 'low' ? 1200 : 7000))} Hz
-                          {bindingCeil(
-                            physWin3.limits[side],
-                            side === 'low' ? physWin3.lowCeilMeasured : physWin3.highCeilMeasured,
-                            // W-M's ceiling comes from the woofer, M-T's from the mid.
-                            cabinetInfo.offBaffle.includes(side === 'low' ? 'low' : 'mid'),
+                          <strong>
+                            {naam} {Math.round(w.floorHz ?? 0)}–{Math.round(w.ceilHz ?? 0)} Hz
+                          </strong>
+                          {' · '}
+                          {t('floor')}: {fmt(w.floorBy)} · {t('ceiling')}: {fmt(w.ceilBy)}
+                          {others.length > 0 && (
+                            <span style={{ opacity: 0.75 }}>
+                              {' · '}
+                              {t('also')}:{' '}
+                              {others
+                                .map((l) => `${l.label} ${Math.round(l.hz)}${l.overridden ? ` (${t('overridden by your pin')})` : ''}`)
+                                .join(' · ')}
+                            </span>
                           )}
-                          {geen && <strong> ⚠ {t('no room — these two cannot meet')}</strong>}
+                          {physWin3.diAnchor[side] !== null && (
+                            <span style={{ display: 'block', opacity: 0.85 }}>
+                              {t('DI match')} ≈ {Math.round(physWin3.diAnchor[side]!)} Hz
+                              {' — '}
+                              {w.floorHz !== null && w.ceilHz !== null &&
+                              physWin3.diAnchor[side]! >= w.floorHz &&
+                              physWin3.diAnchor[side]! <= w.ceilHz
+                                ? t('inside the window, seeded as a candidate')
+                                : t('outside the window (shown, not seeded)')}
+                            </span>
+                          )}
+                          {w.banner && (
+                            <strong style={{ display: 'block' }}>
+                              ⚠ {w.banner}
+                            </strong>
+                          )}
                         </span>
                       );
                     })}
+                    <span style={{ display: 'block', marginTop: '0.2rem' }}>
+                      {t('thresholds')}:{' '}
+                      <span className="inline-num" title={t('Rule 2 — array lobing ceiling = k · c / spacing of a multi-driver branch. 0.5 = the spacing reaches λ/2 (first forward null).')}>
+                        {t('array k')}{' '}
+                        <input type="number" min={0.25} max={1.5} step={0.05} value={xoWinThr.arrayK} onChange={(e) => setXoWinThrField('arrayK', Number(e.target.value))} style={{ width: '3.6rem' }} />
+                      </span>{' '}
+                      <span className="inline-num" title={t('Rule 3 — centre-to-centre ceiling: the spacing between the two drivers of a handover may not exceed λ/N. Auto = by axis: a vertical stack λ/1 (its first null lands at ±30° vertical — floor and ceiling, not the listening plane), side by side λ/2 (the null would sit in the listening plane), mixed in between.')}>
+                        λ/
+                        <select
+                          value={xoWinThr.ctcLambdaDiv === 'auto' ? 'auto' : String(xoWinThr.ctcLambdaDiv)}
+                          onChange={(e) => setXoWinThrField('ctcLambdaDiv', e.target.value === 'auto' ? 'auto' : Number(e.target.value))}
+                        >
+                          <option value="auto">{t('auto (by axis)')}</option>
+                          {['1', '1.2', '1.5', '2', '3'].map((v) => (
+                            <option key={v} value={v}>{v}</option>
+                          ))}
+                        </select>
+                      </span>{' '}
+                      <span className="inline-num" title={t('Rule 4 — breakup margin: the ceiling of a handover and of every low-pass sits at the lower driver\'s first breakup / N.')}>
+                        {t('breakup')} /
+                        <input type="number" min={1} max={4} step={0.1} value={xoWinThr.breakupDiv} onChange={(e) => setXoWinThrField('breakupDiv', Number(e.target.value))} style={{ width: '3.6rem' }} />
+                      </span>{' '}
+                      <span className="inline-num" title={t('Rule 5 — resonance floor: the upper driver\'s handover sits at least K × its in-situ fs (from the ZMA). 2 with an Fs LCR trap in the design, 3 without.')}>
+                        fs ×
+                        <input type="number" min={1} max={5} step={0.5} value={xoWinThr.fsK} onChange={(e) => setXoWinThrField('fsK', Number(e.target.value))} style={{ width: '3.6rem' }} />
+                      </span>
+                    </span>
                   </span>
                 )}
                 {xoRangeOn && threeWay && (
@@ -12680,6 +13087,80 @@ export default function App() {
                 </table>
               </details>
             )}
+            {netOptAudit && netOptAudit.entries.length > 0 && (
+              <details className="tune-diff part-audit">
+                <summary>
+                  {t('Part audit — {n} parts: {i} inert · {e} earned · {g} grey', {
+                    n: netOptAudit.entries.length,
+                    i: netOptAudit.entries.filter((e) => e.verdict === 'inert').length,
+                    e: netOptAudit.entries.filter((e) => e.verdict === 'earned').length,
+                    g: netOptAudit.entries.filter((e) => e.verdict === 'grey').length,
+                  })}
+                  {netOptAudit.rSourceOhm !== null && (
+                    <span className={netOptAudit.rSourceWarn ? 'audit-warn' : 'audit-ok'}>
+                      {' · '}
+                      {t('source R at the low driver {r} Ω @ {f} Hz', {
+                        r: netOptAudit.rSourceOhm.toFixed(2),
+                        f: Math.round(netOptAudit.rSourceAtHz ?? 0),
+                      })}
+                      {netOptAudit.qesFactor !== null ? ` (Qes ×${netOptAudit.qesFactor.toFixed(2)})` : ''}
+                      {netOptAudit.rSourceAtGridEdge ? ` — ${t('taken at the grid edge — the box tuning lies below the view range; widen it for the value at resonance')}` : ''}
+                    </span>
+                  )}
+                </summary>
+                <p className="derived" style={{ margin: '0.3rem 0 0.5rem' }}>
+                  {t('Each part opened/shorted WITHOUT retuning, measured against the full network: max |ΔSPL| of the sum (200 Hz–15 kHz, 1/6-oct smoothed), the P95 change of the relative phase where the drivers hand over, and the change of the system Z minimum. Inert = removable whether or not the targets are met (locked parts are only reported); earned = it demonstrably works; grey = the numbers are yours to judge. The ratio is |Z of the part| against |Z it sees| over the band where its branch is within 12 dB of the sum — a shunt part is inert when ≫ 1, a series part when ≪ 1.')}
+                </p>
+                <table className="scan-table">
+                  <thead>
+                    <tr>
+                      <th>{t('part')}</th>
+                      <th>{t('function')}</th>
+                      <th>ΔSPL</th>
+                      <th>Δφ</th>
+                      <th>ΔZmin</th>
+                      <th>{t('ratio')}</th>
+                      <th>€</th>
+                      <th>{t('verdict')}</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {netOptAudit.entries.map((e) => (
+                      <tr key={e.ids.join('+')} className={`audit-${e.verdict}`} title={e.reasons.join('\n')}>
+                        <td>
+                          {e.label}
+                          {e.locked ? ' 🔒' : ''}
+                        </td>
+                        <td>{e.role}</td>
+                        <td>{e.dA.toFixed(2)} dB</td>
+                        <td>{e.dP.toFixed(1)}°</td>
+                        <td>
+                          {e.dZmin >= 0 ? '+' : ''}
+                          {e.dZmin.toFixed(2)} Ω
+                        </td>
+                        <td>
+                          {e.ratio
+                            ? `${e.ratio.median >= 100 ? e.ratio.median.toFixed(0) : e.ratio.median >= 10 ? e.ratio.median.toFixed(1) : e.ratio.median.toFixed(2)}× (${e.ratio.kind})`
+                            : '—'}
+                        </td>
+                        <td>{e.costEur !== null ? `€${e.costEur.toFixed(2)}` : '—'}</td>
+                        <td>
+                          {e.applied
+                            ? t('inert — removed')
+                            : e.verdict === 'inert'
+                              ? e.locked
+                                ? t('inert (locked)')
+                                : t('inert')
+                              : e.verdict === 'earned'
+                                ? t('earned')
+                                : t('grey')}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </details>
+            )}
             {chainScan && (
               /* The success moment of a multi-minute run deserves its own
                  visual register — one green line that says it worked, where
@@ -12726,7 +13207,7 @@ export default function App() {
                       if (!scanSort) return 0; // ranking order (stable sort)
                       const v = (r: typeof a): number =>
                         scanSort.key === 'xo'
-                          ? parseFloat(r.label)
+                          ? parseFloat(r.delivered.replace(/^[^\d]*/, ''))
                           : scanSort.key === 'ripple'
                             ? r.rippleDb
                             : scanSort.key === 'avg'
@@ -12753,9 +13234,18 @@ export default function App() {
                           : t('Load the {label} design into Working (undo-able)', { label: r.label })
                       }
                     >
-                      <td>
+                      <td
+                        className={r.unrealisable ? 'scan-z-low' : undefined}
+                        title={
+                          (r.unrealisable
+                            ? t('Target not realisable: the tuned network crosses more than ⅓ octave from the candidate it aimed at — the window or the topology binds. ')
+                            : '') + t('Named after the DELIVERED acoustic crossing; aimed at {target}', { target: r.target })
+                        }
+                      >
                         {r.winner ? '🏆 ' : ''}
-                        {r.label}
+                        {r.unrealisable ? '⚠ ' : ''}
+                        {r.delivered}
+                        <span style={{ opacity: 0.6 }}> {t('(aim')} {r.target.replace(/ Hz$/, '')})</span>
                         {chainScan.active === r.label ? ' ◂' : ''}
                       </td>
                       <td title={t('Peak ±dB — the worst single spot (what the staged targets gate on)')}>

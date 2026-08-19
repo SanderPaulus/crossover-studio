@@ -1,0 +1,197 @@
+import { describe, expect, it } from 'vitest';
+import { readFileSync } from 'node:fs';
+import { join, dirname } from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { parseFrd } from './parsers/frd.ts';
+import { parseZma } from './parsers/zma.ts';
+import { logspace, resample } from './dsp.ts';
+import { breakupHz } from './driverLimits.ts';
+import { beamingCeilingHz, diMatchHz } from './directivity.ts';
+import {
+  candidateCentres,
+  dataFloorFromGateMs,
+  deriveXoWindow,
+  DEFAULT_XO_WINDOW_THRESHOLDS,
+  gateMsFromHeader,
+} from './xoWindow.ts';
+
+// The KOAN 2951 3-way session (Aug 2026) as the fixture — see demo3way.
+const DIR = join(dirname(fileURLToPath(import.meta.url)), 'parsers', 'fixtures', 'koan-3way');
+const read = (n: string) => readFileSync(join(DIR, n), 'utf8');
+const grid = logspace(200, 19990, 600);
+const onGrid = (n: string) => {
+  const p = parseFrd(read(n));
+  return resample(p.freq, p.spl, p.phase, grid);
+};
+const zPeakHz = (n: string, lo: number, hi: number): number => {
+  const z = parseZma(read(n));
+  let f = 0;
+  let m = 0;
+  for (let i = 0; i < z.freq.length; i++) {
+    if (z.freq[i] < lo || z.freq[i] > hi) continue;
+    if (z.magnitude[i] > m) {
+      m = z.magnitude[i];
+      f = z.freq[i];
+    }
+  }
+  return f;
+};
+
+describe('xoWindow — the physics window is the intersection of every limiter (KOAN 3-way fixture)', () => {
+  const mid = onGrid('mid-hor0.txt');
+  const midBreak = breakupHz(grid, mid.spl, { searchFromHz: 300 })!;
+  const tweeterFs = zPeakHz('tweeter.zma', 300, 3000);
+
+  it('(a) two woofers 275.75 mm apart cap the W-M window at ≤ 620 Hz, and the array rule is named as the reason', () => {
+    const w = deriveXoWindow({
+      arraySpacingMm: 275.75,
+      ctcMm: 382, // woofer-pair centre (−448) to mid (−66)
+      beamingHz: 1500,
+      fsHz: 89, // mid in its sealed chamber
+      reachHz: 200,
+      rails: [150, 2000],
+    });
+    // The spec's "≤ ~620 Hz": 0.5 · 343 m/s / 0.27575 m = 621.9 Hz.
+    expect(w.ceilHz!).toBeLessThanOrEqual(622);
+    const arr = w.limits.find((l) => l.rule === 'array')!;
+    expect(arr.hz).toBeLessThanOrEqual(622);
+    expect(w.ceilBy?.rule).toBe('array');
+    expect(w.conflict).toBe(false);
+  });
+
+  it('(b) gate 5.021 ms → no candidate below ~400 Hz; a user window 280–420 is clamped and gets the "measure lower" banner', () => {
+    const gate = gateMsFromHeader(read('woofer-pair-hor0.frd'));
+    expect(gate).toBeCloseTo(5.021, 3);
+    const df = dataFloorFromGateMs(gate)!;
+    expect(df).toBeGreaterThan(395);
+    expect(df).toBeLessThan(400);
+    const w = deriveXoWindow({
+      dataFloorHz: df,
+      userWindow: [280, 420],
+      arraySpacingMm: 275.75,
+      rails: [150, 2000],
+    });
+    expect(w.floorHz!).toBeGreaterThanOrEqual(df);
+    expect(w.userClampedByData).toBe(true);
+    expect(w.banner).toMatch(/measure lower/);
+    // No candidate below the floor.
+    for (const c of candidateCentres(w.floorHz!, w.ceilHz!, 3)) expect(c).toBeGreaterThanOrEqual(df - 1e-9);
+    // Rule 7 without rule 1: the user window stands as typed.
+    const free = deriveXoWindow({ userWindow: [280, 420], arraySpacingMm: 275.75, rails: [150, 2000] });
+    expect(free.floorHz).toBe(280);
+    expect(free.ceilHz).toBe(420);
+    expect(free.limits.find((l) => l.rule === 'array')?.overridden).toBe(true);
+  });
+
+  it('(c) mid breakup ≈ 5660 Hz → M-T ceiling ≤ 3.2 kHz; a 7000 Hz candidate no longer exists', () => {
+    expect(midBreak.hz).toBeGreaterThan(5500);
+    expect(midBreak.hz).toBeLessThan(5800);
+    const w = deriveXoWindow({
+      breakupHz: midBreak.hz,
+      beamingHz: 8000,
+      fsHz: tweeterFs,
+      reachHz: 730,
+      rails: [1200, 12000],
+    });
+    expect(w.ceilHz!).toBeLessThanOrEqual(3200);
+    expect(w.ceilBy?.rule).toBe('breakup');
+    const cs = candidateCentres(w.floorHz!, w.ceilHz!, 3);
+    expect(Math.max(...cs)).toBeLessThanOrEqual(3200);
+    expect(cs.some((c) => c > 6900)).toBe(false);
+    // With the old /3 rule the fs floor (2×951 = 1902) and breakup/3 (1887)
+    // collided and the whole window used to vanish; now it is a named
+    // conflict, never a silent fallback.
+    const old = deriveXoWindow(
+      { breakupHz: midBreak.hz, fsHz: tweeterFs, rails: [1200, 12000] },
+      { ...DEFAULT_XO_WINDOW_THRESHOLDS, breakupDiv: 3 },
+    );
+    expect(old.conflict).toBe(true);
+    expect(old.banner).toMatch(/no room/);
+  });
+
+  it('(d) tweeter fs in situ ≈ 924 Hz from the ZMA (not the 600 Hz datasheet) → M-T floor ≥ 1.8 kHz', () => {
+    expect(tweeterFs).toBeGreaterThan(900);
+    expect(tweeterFs).toBeLessThan(1000);
+    const w = deriveXoWindow({ fsHz: tweeterFs, breakupHz: midBreak.hz, rails: [1200, 12000] });
+    expect(w.floorHz!).toBeGreaterThanOrEqual(1800);
+    expect(w.floorHz!).toBeGreaterThan(2 * 600 + 500); // far above what a datasheet fs would give
+    expect(w.floorBy?.rule).toBe('fs');
+    // K = 3 without an LCR trap.
+    const noTrap = deriveXoWindow(
+      { fsHz: tweeterFs, breakupHz: midBreak.hz, rails: [1200, 12000] },
+      { ...DEFAULT_XO_WINDOW_THRESHOLDS, fsK: 3 },
+    );
+    expect(noTrap.floorHz!).toBeGreaterThanOrEqual(2700);
+  });
+
+  it("(3-auto) rule 3 is axis-aware by default: Sanders' 141 mm mid–tweeter (vertical) allows his 2200–2400 Hz handover", () => {
+    const vertical = deriveXoWindow({ ctcMm: 141, ctcVec: { dxMm: 0, dyMm: 140 }, fsHz: tweeterFs, breakupHz: midBreak.hz, rails: [1200, 12000] });
+    expect(vertical.ceilBy?.rule).toBe('ctc');
+    expect(vertical.ceilHz!).toBeGreaterThan(2400); // λ/1.0 at 141 mm = 2433 Hz
+    expect(vertical.conflict).toBe(false);
+    // The same spacing side by side (a centre channel) halves it: λ/2.
+    const horizontal = deriveXoWindow({ ctcMm: 141, ctcVec: { dxMm: 141, dyMm: 0 }, fsHz: tweeterFs, breakupHz: midBreak.hz, rails: [1200, 12000] });
+    expect(horizontal.limits.find((l) => l.rule === 'ctc')!.hz).toBeCloseTo(vertical.limits.find((l) => l.rule === 'ctc')!.hz / 2, 0);
+    // A fixed λ/1.5 forbids the known-good region — and says so.
+    const strict = deriveXoWindow(
+      { ctcMm: 141, ctcVec: { dxMm: 0, dyMm: 140 }, fsHz: tweeterFs, breakupHz: midBreak.hz, rails: [1200, 12000] },
+      { ...DEFAULT_XO_WINDOW_THRESHOLDS, ctcLambdaDiv: 1.5 },
+    );
+    expect(strict.conflict).toBe(true);
+  });
+
+  it('(e) every limiter logs its contribution and the binding one is identified', () => {
+    const w = deriveXoWindow({
+      dataFloorHz: 398,
+      arraySpacingMm: 275.75,
+      ctcMm: 382,
+      breakupHz: 17400,
+      fsHz: 89,
+      excursionHz: 83,
+      reachHz: 200,
+      beamingHz: 1500,
+      beamingMeasured: true,
+      rails: [150, 2000],
+    });
+    const rules = w.limits.map((l) => l.rule).sort();
+    expect(rules).toEqual(['array', 'beaming', 'breakup', 'ctc', 'data', 'excursion', 'fs', 'reach']);
+    expect(w.floorBy?.rule).toBe('data'); // 398 > 2×89, 83, 200
+    // ctc: 343000/(1.5·382) = 599 Hz vs array 622 Hz — the smaller binds:
+    const ctc = w.limits.find((l) => l.rule === 'ctc')!;
+    const arr = w.limits.find((l) => l.rule === 'array')!;
+    expect(w.ceilBy?.rule).toBe(ctc.hz < arr.hz ? 'ctc' : 'array');
+    for (const l of w.limits) expect(l.label.length).toBeGreaterThan(3);
+  });
+
+  it('rule 9: the DI-match anchor per pair, from the measured angle sets; beaming judged at 30°, not the widest angle', () => {
+    const set = (pre: string, ext: string) =>
+      [0, 15, 30, 45, 60].map((a) => ({ hor: a, response: onGrid(`${pre}${a}${ext}`) }));
+    const W = set('woofer-pair-hor', '.frd');
+    const M = set('mid-hor', '.txt');
+    const T = set('tweeter-hor', '.txt');
+    const wm = diMatchHz(W, M, [150, 2000]);
+    const mt = diMatchHz(M, T, [1200, 12000]);
+    expect(wm).not.toBeNull();
+    expect(mt).not.toBeNull();
+    expect(mt!).toBeGreaterThan(2500); // the mid only narrows past ~3 kHz
+    expect(mt!).toBeLessThan(5000);
+    expect(wm!).toBeLessThan(mt!);
+    // The 94 mm mid's 0–30° difference is 0.3–0.6 dB up to 3 kHz: its 4 dB
+    // beaming onset must sit well above that — judged at 60° it read 1569 Hz.
+    const beam = beamingCeilingHz(M, 4);
+    expect(beam).not.toBeNull();
+    expect(beam!).toBeGreaterThan(4000);
+  });
+
+  it('candidate placement: corners + log-mid + warm start inside the window', () => {
+    const cs = candidateCentres(400, 620, 3, 560);
+    expect(cs[0]).toBeCloseTo(400, 6);
+    expect(cs[cs.length - 1]).toBeCloseTo(620, 6);
+    expect(cs).toContain(560);
+    // A warm start within 2% of a grid point is folded into it (no duplicate chain).
+    expect(candidateCentres(400, 620, 3, 499)).toHaveLength(3);
+    expect(cs.some((c) => Math.abs(c - Math.sqrt(400 * 620)) < 1)).toBe(true);
+    // A warm start outside the window is ignored.
+    expect(candidateCentres(400, 620, 2, 900)).toHaveLength(2);
+  });
+});

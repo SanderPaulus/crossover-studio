@@ -9,6 +9,7 @@ import { parseZma } from './parsers/zma.ts';
 import {
   crossover3Variants,
   rankChain3Results,
+  variantsFromPoints,
   runThreeWayChain,
   type Chain3Result,
 } from './threeWayChain.ts';
@@ -355,6 +356,53 @@ describe('threeWayChain (phase-4 trede 4c, staged v1)', () => {
       0.5,
     );
     expect(tied[0].label).toBe('b');
+  });
+
+  it('variantsFromPoints: tiles at geometric midpoints, held axis gets the whole span, 2.5× rule, tags', () => {
+    const vs = variantsFromPoints([300, 400, 600], [2200], [250, 700], [1800, 2500], 'W-M sweep');
+    expect(vs.map((v) => v.xoLow)).toEqual([300, 400, 600]);
+    expect(vs.every((v) => v.xoHigh === 2200)).toBe(true);
+    expect(vs[1].xoLowRange[0]).toBeCloseTo(Math.sqrt(300 * 400), 3);
+    expect(vs[1].xoLowRange[1]).toBeCloseTo(Math.sqrt(400 * 600), 3);
+    expect(vs[0].xoLowRange[0]).toBe(250);
+    expect(vs[2].xoLowRange[1]).toBe(700);
+    // The held axis keeps its whole span as cage — it is not being searched.
+    expect(vs[0].xoHighRange).toEqual([1800, 2500]);
+    expect(vs[0].label).toMatch(/W-M sweep/);
+    // xoHigh ≥ 2.5 × xoLow, and duplicates collapse.
+    const dup = variantsFromPoints([1000], [2000, 2100], [900, 1100], [1800, 2600]);
+    expect(dup).toHaveLength(1);
+    expect(dup[0].xoHigh).toBe(2500);
+  });
+
+  it('rule 9: the in-room weight lets a flatter POWER response beat a flatter on-axis one', () => {
+    const mk = (label: string, avgDev: number, powerStd: number): Chain3Result =>
+      ({
+        label,
+        xoLow: 400,
+        xoHigh: 3000,
+        specs: {} as Chain3Result['specs'],
+        synthWoofer: {} as Chain3Result['synthWoofer'],
+        synthMid: {} as Chain3Result['synthMid'],
+        synthTweeter: {} as Chain3Result['synthTweeter'],
+        parts: [],
+        net: {
+          after: { rippleDb: avgDev, avgDevDb: avgDev, phaseDeg: 5, powerStdDb: powerStd, zMinOhm: 6 },
+        } as Chain3Result['net'],
+        bomTotalEur: 300,
+        zOk: true,
+        zMinOhm: 6,
+        xoWindowOk: null,
+        pairOverlapOct: null,
+        midInverted: false,
+        tweeterInverted: false,
+        structureLabel: 'x',
+      }) as Chain3Result;
+    const onAxis = mk('on-axis flat', 0.4, 3.0); // beams at the handover: power steps
+    const inRoom = mk('in-room flat', 0.7, 0.8);
+    expect(rankChain3Results([onAxis, inRoom], undefined, 0.5)[0].label).toBe('on-axis flat');
+    expect(rankChain3Results([onAxis, inRoom], undefined, 0.5, 0)[0].label).toBe('on-axis flat');
+    expect(rankChain3Results([onAxis, inRoom], undefined, 0.5, 0.5)[0].label).toBe('in-room flat');
   });
 
   it('an amp-hostile impedance minimum loses even when every gate stayed green', () => {

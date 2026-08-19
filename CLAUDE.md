@@ -1728,6 +1728,39 @@ criterium moet FYSISCH zijn (impedantie van dít element tegen de tak waar het i
 band waar die tak werkelijk bijdraagt) i.p.v. een delta op de gemengde objective — een
 onderdeel dat écht inert is kan de stroomafwaartse stappen niet verplaatsen en heeft dus geen
 terugdraai nodig.
+**GEBOUWD (aug 2026, Sanders spec "Poort 4 — absolute fysische audit", `partAudit.ts`)**:
+precies dat criterium. Per vrij part én per serie-LCR-keten als geheel: open/short ZONDER
+retune, drie ABSOLUTE delta's tegen het volle netwerk — dA = max |ΔSPL| van de som (200 Hz–
+15 kHz, 1/6-oct gesmoothed), dP = P95 van de PUNTSGEWIJZE verandering van de relatieve
+paar-fase in de overname-KERN (drivers binnen 6 dB van elkaar, bínnen de integratie-
+bandbreedte), dZ = ΔZmin + Δ Thevenin-bronweerstand (REËEL deel, `seenImpedance`: het part/
+de driver vervangen door een meetbron, de generator door zijn Rg — de solver zelf levert
+Zth) aan de lage driver op Fb (kastveld) of de Z-piek. Verdicten: INERT (dA<0,15 · dP<1,5° ·
+dZ verwaarloosbaar) → verwijderd ONGEACHT de doelen; VERDIEND (dA≥1 · dP≥3° · Zmin zakt
+onder de vloer · Rbron kruist zijn grens 1 Ω) → blijft mét reden; GRIJS → alleen cijfers.
+Elke verwijdering wordt op het volle grid hergecheckt (piek +0,1, fase +1°, fundamentals);
+regressie = terugdraaien + GRIJS. 🔒 = wel meten, nooit verwijderen. Rapport = `audit` op
+`NetOptimizeResult`, tabel onder de tune-diff (functie-gok, dA/dP/dZ, |Z_part|/|Z_gezien|-
+verhouding als didactiek, €, oordeel) + netwerk-oordeel "source R aan de lage driver … Qes ×"
+(onafhankelijk van de part-oordelen; test (d)). Draait in ELKE modus, `opts.audit.enabled:
+false` zet hem uit.
+HARD GELEERD, drie dingen: (1) **hij draait TWEE keer — op de SEED en op het getunede net**.
+Een vrije waarde-tune laat een dood part namelijk niet dood: gemeten werd een 6,8 mH/68 µF-trap
+op 232 Hz over de tweeter (0,10 dB op de som) door de tuner omgebouwd tot een 0,78 mH-shunt,
+en met de cap gelockt op 0,1 µF tot een 14,5 mH/0,1 µF-NOTCH op de kruising — geen van beide
+gevraagd door de ontwerpstap. Wat op de seed niets doet is een ontwerpstap-artefact en gaat
+weg vóór de tuner er een ongevraagd extra element van maakt; de eindpas vangt wat de tune dood
+liet (Sanders echte geval). (2) **dP-definitie is drie keer bijgesteld op metingen**: Δ van
+de P95-statistiek springt graden bij één punt dat de band in/uit gaat; over het hele 20 dB-
+venster draait een shunt-spoel de fase van een tak die 20 dB onder de andere ligt met graden
+zonder iets aan de som te doen; ook in de volle integratie-bandbreedte nog 2°. Kern (≤6 dB
+verschil) + puntsgewijs = de eerlijke maat, en zelfs dán leest de textbook-dode 6,8 mH-shunt
+over een 6 Ω-tweeter 1,07° (hij ÍS ~4% van de tweeter op 3 kHz) — vandaar inertDeg 1,5 i.p.v.
+de 1° uit de spec; een levende shunt-spoel leest ~100°, twee ordes verschil. (3) **Rbron =
+reëel deel**: |Zth| telde de reactantie van een serie-spoel mee (8,67 Ω "bronweerstand" op
+200 Hz, Qes ×3,4 — onzin); resistief 0,31 Ω. Ligt Fb onder het weergavebereik dan zegt de
+tabel dat de waarde op de roosterrand genomen is. Tests (a)–(d) uit de spec in
+partAudit.test.ts, plus locked/uit/determinisme; volle suite 596 groen.
 **DE ONTWERPERS-SEQUENCE (aug 2026, Sanders "mijn gevoel zegt dat de huidige sequence niet
 klopt" — en dat gevoel was juist)**: drie omkeringen t.o.v. hoe een topontwerper werkt, in één
 ronde rechtgezet. De toetssteen: bij een ontwerper stuurt de som nooit de structuur — de som
@@ -2022,7 +2055,66 @@ en met de kooi-klem is de reparatie de terugval i.p.v. het pad. `xoPinNote` rapp
 eerlijk beide uitkomsten ("pinned crossing held: … → …" / "could not hold … consider
 widening the pin") en de App-note toont hem. Plain paths bit-compat: xoEdgeSq is overal 0
 buiten repair-mode.
-**Wizard-systeemkeuze (Sanders voorstel, aug 2026)**: stap 0 begint met 1-weg/2-weg/3-weg
+**FYSISCH BEGRENSDE KANDIDAAT-VENSTERS (aug 2026, Sanders spec "kandidaat-vensters van Design
+for me fysisch begrenzen" — `xoWindow.ts`, `deriveXoWindow`)**: zijn scan zocht W-M [250,756] ×
+M-T [4028,7000] op een set met array-lobing 622, mid-breakup 5660 en gate 5 ms. OORZAAK GEVONDEN:
+niet dat de grenzen ontbraken, maar dat `freeSpan` een DEGENERATIEF venster (2×fs 1902 vs
+breakup/3 1887 — 15 Hz uit elkaar) STIL weggooide en terugviel op de level-anker-buurt
+(rawHigh·0,75…1,4 = 4028…7000). Nu: het venster is de DOORSNEDE van elke begrenzer, élke
+begrenzer levert zijn getal + label, de UI toont per rand welke regel hem zette, en een botsing
+is een BANNER ("no room … pin it, or relax a threshold") + collapse op de VLOER-kant (vloeren
+beschermen een driver, plafonds beschermen kwaliteit) — nooit meer een stille sprong. Regels:
+(1) DATAVLOER 2/T_gate (gate uit de FRD-header, `gateMsFromHeader` — de woofer_pair-files van
+Sander dragen "ARTA gated 5.021 ms" — anders het kast-gate-veld; een nabij-veld-gesplicete tak
+krijgt de BOVENKANT van zijn splice-blend als vloer — splice × 2^(blend/2), bij Sander 300 Hz/1 oct
+→ 424 Hz: geen overname ín de merge; eerst had ik hem géén vloer gegeven en liep het venster tot
+200 Hz door, Sanders "skip wat niet betrouwbaar is"), wint van alles incl. een pin
+(pin wordt geklemd + banner "measure lower"); (2) array-lobing k·c/d (k 0,5); (3) hart-op-hart
+c/(1,5·d); (4) breakup/1,8; (5) K×fs IN SITU uit de ZMA (2 met LCR-trap, 3 zonder); (6)
+excursievloer; + reach + gemeten bundeling. Drempels in ⚙ (`xoWinThr`, localStorage
+'ads-xo-window', géén project-data). Kandidaten: hoeken + log-midden (steps 3) + WARME START
+(de overlap-centra van het huidige ontwerp, `crossover3Variants(..., warm)`, alleen binnen het
+venster, gededupliceerd op 2%). Tests (a)–(e) uit de spec op de koan-3way-fixture in
+`xoWindow.test.ts`. TWEE BIJVANGSTEN: (i) `beamingCeilingHz` nam de BREEDSTE gemeten hoek
+(60° op Sanders set) terwijl KA_TIERS op 30° geijkt zijn — zijn 94 mm-mid "bundelde" daardoor
+op 1569 Hz waar het 0–30°-verschil tot 3 kHz 0,3–0,6 dB is; nu de KLEINSTE hoek ≥30° (Robberts
+sets stoppen op 30°, ongewijzigd) → mid 4786, wooferpaar 2794. (ii) Sanders eigen regel 3 op zijn
+eigen geometrie: mid–tweeter 141 mm ⇒ λ/1,5 = 1621 Hz < 2×fs 1849 ⇒ M-T botst per constructie
+(een 3-weg met 94 mm-mid + dome haalt λ/1,5 op 2,5 kHz nooit: dat is 91 mm); de app zegt het nu
+hardop en λ/1,0 (Dickason, 2432 Hz) lost het op. **GEFIXT (Sanders "ik weet dat mid/tweeter op
+2200–2400 erg goed gaat — zoek uit wat de beperkende factor is")**: het was uitsluitend regel 3;
+alle andere begrenzers lieten 2200–2400 toe. Regel 3 is nu AS-BEWUST met default `'auto'`
+(`ctcDivisorFor`): verticaal gestapeld λ/1,0 (eerste nul op ±30° verticaal — vloer/plafond, niet het
+luistervlak), zij-aan-zij λ/2 (nul in het luistervlak), gemengd ertussen — 1/k van `lobingKFor`,
+dus dezelfde doctrine als de oude lobing-regel; getal blijft kiesbaar (select 1/1,2/1,5/2/3). Een
+opgeslagen 1,5 (de eerste-uur-default) migreert naar auto. Op zijn set: M-T 1849–2432 (2200–2400
+erin), W-M 200–622 (array-k 0,5 bindt, zoals spec (a)); test "(3-auto)" pint verticaal/horizontaal/
+strikt.
+**Aanvulling regel 8+9 (zelfde dag)**: (8) de scan-tabel noemt een rij naar de GEREALISEERDE
+akoestische kruising (`after.xoHzPairs`, 2-weg `after.xoHz`) met het doel er gedimd achter, en
+markeert "⚠ doel niet realiseerbaar" bij >⅓ octaaf afwijking — diagnostiek (venster of topologie
+knelt), `deliveredLabel` in App; de rij-key blijft het doel-label. (9) `diMatchHz` (directivity.ts):
+per paar de frequentie waar de DI van de onderste driver die van de bovenste inhaalt (energy
+average over de GEDEELDE gemeten hoeken, ⅙-oct mediaan, onderste DI ≥ 2 dB anders is "gelijk op
+0 dB" geen overname-punt) — als kandidaat gezaaid wanneer hij binnen het venster valt, altijd
+getoond in de ⚙-uitlezing; op de demo W-M ≈1,1–1,4 kHz / M-T ≈3,5 kHz (beide buiten het venster,
+dus alleen getoond). Plus: `after.powerStdDb` in het netOptimizer-rapport en `rankChain3Results(…,
+directivityWeight)` blendt de rimpel-slot met de energy-average-vlakheid op het in-room-gewicht
+(alleen mét hoekdata; test pint dat een vlakkere power response dan wint) — de tuner droeg die
+term al, de RANKING nu ook.
+**AS-VOOR-AS-SCAN (aug 2026, Sanders "eerst een sweep W/M, dan M/T, en predicten hoeveel invloed ze
+op elkaar hebben")**: `scan3Mode` ('axes' default | 'grid', localStorage 'ads-scan3-mode') in App
+`runVfOptimize`: ronde 1 = W-M-sweep (3/5/7 log-punten via `candidateCentres`, M-T VAST op zijn
+anker: pin → DI-aansluiting → warme start → log-midden; de vaste as krijgt het hele venster als kooi,
+dus de tuner mag hem wel settelen), ronde 2 = M-T-sweep met de GELEVERDE beste W-M vast, ronde 3 =
+lokale 3×3 rond (beste, beste) op halve stapgrootte — alleen als de sweeps KOPPELING tonen (de
+M-T-sweep verschoof de W-M of zijn eigen levering >½ stap) en bij ≥5 punten. `variantsFromPoints`
+(threeWayChain.ts, unit-getest) maakt de kandidaten met tegels op meetkundige middens; alle rondes
+samen worden gerankt en gevuld in de scan-tabel (label draagt de ronde-tag). Aanleiding: het
+hoekenrooster (2 stappen = 200/622) bevatte Sanders bekende-goede 492 gewoon niet; 7+7+9 = 23 ketens
+vindt hem tegen 49 voor een even fijn rooster; kost ~3× de wandkloktijd van het 4-rooster omdat de
+rondes op elkaar wachten. Voortgangsrijen van afgeronde rondes blijven in de busy-tabel staan.
+
 (`wizardWays`, localStorage 'ads-wizard-ways'; data wint bij openen — volle 3-weg forceert 3,
 exact twee buitentakken 2) en toont alléén de bijbehorende slots; **Next blokkeert op
 `wizardMissing`** (tooltip + regel noemen wat mist), meer-geladen-dan-gedeclareerd geeft een
@@ -2873,3 +2965,28 @@ meer over hoe deze app denkt dan een leeg veld. Bewust nog wél leeg: de luister
 dat is Sanders kamer, niet de luidspreker.
 Geverifieerd tegen Sanders eigen screenshot: "honest down to ≈ 225 Hz", "baffle step around
 442 Hz", randafstand 130 mm, gemeten diepte 17,3 mm, effectieve Ø 27/94 mm.
+**3-WEG-DEMO (aug 2026, Sanders "kan je de laatste 3-weg data als demo gaan gebruiken")**:
+`src/demo3way.ts` (bewust BUITEN src/lib — `?raw`-imports typen niet onder tsconfig.test) +
+fixtures `parsers/fixtures/koan-3way/` (21 bestanden, 308 KB): dezelfde KOAN 2951, nu afgebouwd
+en gemeten op 15 aug 2026 — wooferpaar (W1+W2 door ARTA complex gesommeerd, `woofer_pair_hor_*`),
+mid, tweeter op 0/15/30/45/60° op 1 m, nabij-veld woofer/mid/poort, LIMP-Z (woofers parallel,
+mid, tweeter → op de importgrens naar ZMA-tekst). De ARTA-exports (13 640 lineaire punten,
+400 KB elk) zijn via `resample` op een LOG-grid gezet (500 pt 20 Hz–20 kHz ver-veld, 250 pt
+10–2000 Hz nabij-veld; dB + ge-unwrapte fase in log-f, daarna teruggewikkeld) — een FRD op een
+log-rooster is gewoon een FRD, en zo blijft de bundel klein; generator-script in de scratchpad
+(`make-3way-demo.ts`-patroon). `loadDemo3Way` in App laadt via DYNAMIC IMPORT (eigen chunk 256 KB
+/ 94 KB gzip, pas bij de klik), zet drie takken + hoeksets + `zStandalone` per rol + nabij-veld
+(poort-Ø bewust LEEG: onbekend, en een gok vormt stil het laag) + de kast/rig uit zijn project van
+16 aug (mic 1 m, gate 4,5 ms, front 260×1124, ref 244 onder top / 900 boven vloer, tweeter +74,
+mid −66, wooferpaar −448 met 276 mm spacing, gepoort Fb 31, mid sealed Fc 89, luisterplek 3,4 m)
++ Sd 255/69/5,6 (per stuk) en Xmax 8,5/5/1. Diepten tweeter 0 / mid 17 ("Your 17.0 mm agrees")
+en woofers 50 (Sanders feit: "de woofers hebben een diepte van 50mm") — de delay-afleiding op
+deze set leest voor het paar ~0 mm achter de tweeter, dus de wooferkaart opent op de eerlijke
+kruiscontrole "one of the two is wrong". OPEN VRAAG (niet wegpoetsen): het paar (twee conussen
+276 mm uiteen, door ARTA complex gesommeerd, 448 mm onder de mic-as op 1 m) krijgt zijn rig-pad
+op het paar-CENTRUM gerekend; de echte aankomst is een som van twee paden en de fitband is
+gekapt onder de interferentie-nul — waar de 50 mm blijft is nog niet verklaard. Knop "Load 3-way demo" naast de KOAN-knop (Project-stap) + ⌘K; de
+KOAN-2-weg-demo blijft (welkomstkaart/wizard blijven daarop). Browser-geverifieerd: drie kaarten
+"✓ response · 5 angles · Z", nabij-veld-splices op 300 Hz (residu 0,6°/3,1°), Timing plausible.
+Test `demo3way.fixtures.test.ts` pint 18 responsies mét fase op log-grid + 3 ZMA's + niveau-
+volgorde/off-axis-afval.

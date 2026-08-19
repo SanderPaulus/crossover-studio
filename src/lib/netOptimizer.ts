@@ -17,6 +17,7 @@ import {
   type SnapPrefs,
 } from './catalog.ts';
 import type { AngleResponse } from './directivity.ts';
+import { auditNetwork, type AuditThresholds, type NetworkAudit } from './partAudit.ts';
 
 /**
  * Passive-in-the-loop component optimizer: re-fit the VALUES of a schematic's
@@ -190,6 +191,13 @@ export interface NetOptimizeOptions {
    *  2-way path is byte-for-byte the historical one. Directivity terms are
    *  ignored in 3-way (they pair exactly two angle sets). */
   midBranch?: { response: GriddedResponse; adjust: BranchAdjust };
+  /** GATE 4 — the absolute physical part audit (partAudit.ts). Runs on the
+   *  tuned network BEFORE the shrink ladder and snap, in every mode, targets
+   *  met or not: parts that measure INERT (sum < 0.15 dB, pair phase < 1°,
+   *  Z unchanged, without any retune) are removed and re-checked; everything
+   *  else is only REPORTED with its numbers. Locked parts are never removed.
+   *  Omit for defaults; `enabled: false` skips it entirely. */
+  audit?: { enabled?: boolean; thresholds?: Partial<AuditThresholds>; fbHz?: number };
 }
 
 export interface NetOptimizeResult {
@@ -207,6 +215,9 @@ export interface NetOptimizeResult {
      *  tune that WORSENS the dip, so this is the only place the absolute
      *  number becomes visible to a caller. See Z_FLOOR_OHM. */
     zMinOhm?: number;
+    /** Std-dev flatness of the horizontal ENERGY AVERAGE over the band, when
+     *  angle data was given (else absent) — the in-room verdict. */
+    powerStdDb?: number;
     /** 3-way: uniform-average phase error per adjacent pair [low, high] —
      *  the coupled-pairs verdict (gates judge the worst of these). */
     pairPhaseDeg?: number[];
@@ -238,6 +249,11 @@ export interface NetOptimizeResult {
   /** Value-window (boundToSeries) report: which series-path slots were bound
    *  to a series' range, and what the constraint cost vs an unconstrained fit. */
   valueWindowNote?: string;
+  /** GATE 4 report: per part/chain the absolute deltas and verdict, plus the
+   *  network-level source-resistance verdict at the low driver's tuning.
+   *  INERT entries that were removed carry `applied: true`; the ids are also
+   *  in `removed`. */
+  audit?: NetworkAudit;
 }
 
 export class NetOptimizeError extends Error {}
@@ -1618,7 +1634,111 @@ export function optimizeNetworkValues(
     return out;
   };
 
-  let cur = tune(parts);
+  /* ---- GATE 4: absolute physical part audit (partAudit.ts) ----
+   * Runs in EVERY mode, targets met or not — that is its whole reason to
+   * exist: the staged prune is gated on meets(), so an unreachable target
+   * leaves demonstrably dead parts in place (Sanders' 6.8 mH tweeter-branch
+   * shunt). INERT = the sum, the pair phase and the impedance do not move
+   * when the part is opened/shorted WITHOUT any retune, so removing it cannot
+   * shift the downstream stages (the lesson of the reverted fx-delta sweep,
+   * which removed live parts and landed the snap elsewhere). Each removal is
+   * still re-checked on the full grid; a regression reverts it and marks the
+   * entry GREY with the reason.
+   *
+   * It runs TWICE: on the SEED before the first value tune, and on the tuned
+   * network before the shrink ladder. The seed pass exists because an
+   * unlocked value tune RE-PURPOSES a dead part rather than leaving it dead
+   * (measured: a 6.8 mH/68 µF trap at 232 Hz across the tweeter — 0.10 dB on
+   * the sum — came out of the tune as a 0.78 mH shunt, and with its cap
+   * locked at 0.1 µF as a 14.5 mH/0.1 µF NOTCH at the crossing). Neither is
+   * what the design step asked for; a part that does nothing on the seed is a
+   * design-step artifact and goes before the tuner can turn it into an
+   * unasked-for extra element. The end pass catches what the tune left dead
+   * (Sanders' real case: the staged tune kept his coil at 6.8 mH). */
+  const removed: string[] = [];
+  const added: string[] = [];
+  let auditReport: NetworkAudit | undefined;
+  const auditOn = opts.audit?.enabled !== false;
+  const auditCostOf = (q: VxpPart): number | null => {
+    if (!hasImportedCatalog()) return null;
+    const kind = q.type === 'Inductor' ? 'L' : q.type === 'Capacitor' ? 'C' : q.type === 'Resistor' ? 'R' : null;
+    if (!kind) return null;
+    const u = PARAM_OF[kind];
+    const v = q.params.find((p) => p.name === u.name)?.value;
+    if (!v || !(v > 0)) return null;
+    const near = nearestParts(kind, v / u.factor, 1)[0];
+    return near?.priceEur ?? null;
+  };
+  const runAudit = (
+    ps: readonly VxpPart[],
+    label: string,
+  ): { parts: VxpPart[]; metrics: Metrics; applied: boolean; report: NetworkAudit } | null => {
+    if (!auditOn) return null;
+    stage(label);
+    const rep = auditNetwork(ps, {
+      grid,
+      wBase,
+      tBase,
+      midBase: midFull,
+      driverZ,
+      adjust,
+      midAdjust: midAdj,
+      thresholds: opts.audit?.thresholds,
+      fbHz: opts.audit?.fbHz,
+      zFloorOhm: Z_FLOOR_OHM,
+      costOf: auditCostOf,
+    });
+    if (!rep) return null;
+    const fullOf = (qs: readonly VxpPart[]): Metrics =>
+      metricsOn(buildWork(qs).work, grid, wBase, tBase, midFull, driverZ, angleData ?? null);
+    let partsNow: VxpPart[] = [...ps];
+    let ref = fullOf(partsNow);
+    let anyApplied = false;
+    // Chains first (a dead trap goes as a whole), then singles.
+    const order = [...rep.entries].sort((a, b) => b.ids.length - a.ids.length);
+    for (const e of order) {
+      if (e.verdict !== 'inert' || e.locked) continue;
+      if (e.ids.some((id) => removed.includes(id))) continue;
+      const trial = partsNow.map((q) => (q.partId && e.ids.includes(q.partId) ? { ...q, [e.mode]: true } : q));
+      let m: Metrics;
+      try {
+        m = fullOf(trial);
+      } catch {
+        e.reasons.push('re-check failed to solve — kept');
+        e.verdict = 'grey';
+        continue;
+      }
+      // Re-check: targets not regressed beyond the inert margin, fundamentals intact.
+      const ok =
+        m.ripplePeakDb <= ref.ripplePeakDb + 0.1 &&
+        phaseGate(m) <= phaseGate(ref) + 1 &&
+        m.protSqDb <= ref.protSqDb + 0.5 &&
+        m.xoDipDb <= ref.xoDipDb + 1 &&
+        m.zShortOhm <= ref.zShortOhm + 0.1 &&
+        soloSensOk(m) &&
+        (!breakupGuard || m.leakSqDb <= ref.leakSqDb + 4);
+      if (!ok) {
+        e.reasons.push(
+          `re-check after removal regressed (peak ${ref.ripplePeakDb.toFixed(2)} → ${m.ripplePeakDb.toFixed(2)} dB, ` +
+            `phase ${phaseGate(ref).toFixed(1)} → ${phaseGate(m).toFixed(1)}°) — kept`,
+        );
+        e.verdict = 'grey';
+        continue;
+      }
+      partsNow = trial;
+      ref = m;
+      removed.push(...e.ids);
+      e.applied = true;
+      anyApplied = true;
+    }
+    return { parts: partsNow, metrics: ref, applied: anyApplied, report: rep };
+  };
+
+  // Seed pass: what is dead on the seed goes before the tune can re-purpose it.
+  const seedAudit = runAudit(parts, 'part audit (seed)');
+  const seedParts: readonly VxpPart[] = seedAudit ? seedAudit.parts : parts;
+
+  let cur = tune(seedParts);
   {
     const s1 = reseedOutliers(parts, textbook);
     if (s1) cur = challenge(cur, s1);
@@ -1628,9 +1748,6 @@ export function optimizeNetworkValues(
     // check never sees it. Challenge the tuned RESULT as well.
     cur = driftCatch(cur);
   }
-  const removed: string[] = [];
-  const added: string[] = [];
-
   const RLC = new Set(['Resistor', 'Inductor', 'Capacitor']);
 
   if (opts.staged) {
@@ -1782,6 +1899,22 @@ export function optimizeNetworkValues(
    * again. One more result-challenge on the assembled survivor, right
    * before the snap freezes values onto purchasable parts. ---- */
   cur = driftCatch(cur);
+
+  /* ---- GATE 4 (end): the same audit on the tuned network, before the
+   * shrink ladder and the snap. Its report is what the caller shows. ---- */
+  const endAudit = runAudit(cur.parts, 'part audit');
+  if (endAudit) {
+    if (endAudit.applied) {
+      cur = { ...cur, parts: endAudit.parts, metrics: endAudit.metrics, fx: fxOf(endAudit.metrics) };
+      cur = tune(cur.parts, 1, opts.staged ?? null);
+    }
+    auditReport = endAudit.report;
+    if (seedAudit) {
+      // Seed removals are already gone from the parts; carry their entries
+      // into the shown report so the user sees WHY they went.
+      auditReport.entries.unshift(...seedAudit.report.entries.filter((e) => e.applied));
+    }
+  } else if (seedAudit) auditReport = seedAudit.report;
 
   stage('cap shrink ladder');
   /* ---- Cap SHRINK LADDER (Sanders: "met B·C1 laag beginnen en langzaam
@@ -2200,7 +2333,7 @@ export function optimizeNetworkValues(
   // wires/grounds whose net touches no component — the debris this run
   // created AND leftovers from earlier runs. commitSchematic is undo-able,
   // so an accidentally swept sketch is one Undo away.
-  if (opts.staged) {
+  if (opts.staged || removed.length > 0) {
     const un = unanchoredKeys(outParts);
     outParts = outParts.filter((q) => !un.has(debrisKey(q)));
     outParts = trimStubs(outParts);
@@ -2243,6 +2376,10 @@ export function optimizeNetworkValues(
     avgDevDb: m.avgDevDb,
     phaseDeg: m.phaseDeg,
     zMinOhm: zMinOf(m, ps),
+    // Energy-average (in-room) flatness of the delivered sum, when angle
+    // data armed it — so a ranking can weigh the power response, not only
+    // the on-axis curve (window spec rule 9).
+    ...(m.powerStdDb !== null ? { powerStdDb: m.powerStdDb } : {}),
     ...(m.pairPhaseDeg.length > 1 ? { pairPhaseDeg: m.pairPhaseDeg } : {}),
     ...(m.xoHzPairs.length > 1 ? { xoHzPairs: m.xoHzPairs } : {}),
     ...(m.pairOverlapOct.length > 1 ? { pairOverlapOct: m.pairOverlapOct } : {}),
@@ -2392,6 +2529,7 @@ export function optimizeNetworkValues(
     ...(snapNote ? { snapNote } : {}),
     ...(ampFloorNote ? { ampFloorNote } : {}),
     ...(valueWindowNote ? { valueWindowNote } : {}),
+    ...(auditReport ? { audit: auditReport } : {}),
   };
 }
 
