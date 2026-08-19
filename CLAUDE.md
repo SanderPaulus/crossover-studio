@@ -2176,6 +2176,23 @@ gepersisteerd — zijn tab stond op de landing page); vervangen door de harness-
 dissipatie 0,05 vs 0 ⇒ R_bron 2,85/1,17/0,00 vs 2,48/1,05/0,00 — GEEN effect (tiebreak-sterkte,
 (Rs/Re)²·0,05 ≈ 0,01 op fx ~12); de winnaar met R_bron 0,00 (514/1849 → 627/1942, peak 1,70 vs de
 gediskwalificeerde 1,27) komt van fix 1. Open: gewicht kalibreren zoals B1.
+**MINIMAAL NETWERK / KOSTENPARETO (aug 2026, Sanders "winnaar €642 vs regel 10 €273 voor 0,16 dB")**:
+Deel A (harness, demo-catalogus): élk onderdeel van de winnaar-achtige kandidaat is VERDIEND, de mid-tak
+draagt €89–101 van €165–177, en de €273–642-spreiding uit zijn sessie is TIER/SKU (Positie-profiel +
+v8-catalogus), geen topologie. B1 `bomCapEur` = klasse in beide rankers + strip "BOM €y / cap €x" (+
+[NO PRICE]-telling). B2: **`costWeight` was NERGENS aangesloten** — de kromme 0,005…0,15 was
+byte-identiek tot het plumben; daarna 165 → 160 € bij 0,015 (beste peak), default 0,015 ('ads-cost-weight').
+B3 Pareto-scatter boven de scan-tabel (`paretoY` peak/avg/fase, front gevuld, ✗ DQ, klik laadt).
+C `minimize.ts → minimizeNetwork` (worker 'minimize', knop "✂ Minimize network"): duurste niet-
+VERDIENDE part weg + retune zolang doelen/fundamentals/R_bron staan; C2 goedkopere catalogus-buren
+±25 % per slot (re-solve); C3 twee-voor-een als suggestie; C4 rapport + "Apply as new tab" (nooit stil).
+HARD GELEERD: een vrij "dood" onderdeel bestaat zelden — de tuner hergebruikt een 6,8 mH-shunt als
+filterelement; de test gebruikt daarom REDUNDANTIE (parallelle cap); de baseline-tune verwijdert
+zelf al INERT (poort 4) + staged-snoei, dat staat in het rapport. D "Room correction present": rimpel-
+doel max(doel, 3,5 dB), FASE-doel onaangeroerd (amplitude corrigeert de kamer, driver-integratie
+niet) — D3 besparing per run NIET gemeten (vergt dubbele run). Acceptatie (≤ €300 + alle grenzen) in
+de harness niet door één kandidaat gehaald: bindend zijn snap-Z (demo-rooster dipt naar 0,5 Ω) en de
+woofer-pad (R_bron 1,69), niet de prijs.
 **Wizard-systeemkeuze (Sanders voorstel, aug 2026)**: stap 0 begint met 1-weg/2-weg/3-weg
 (`wizardWays`, localStorage 'ads-wizard-ways'; data wint bij openen — volle 3-weg forceert 3,
 exact twee buitentakken 2) en toont alléén de bijbehorende slots; **Next blokkeert op

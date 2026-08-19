@@ -22,6 +22,7 @@ import {
   type VfOptimizeResult,
   type VfSpecs,
 } from './vfOptimizer.ts';
+import { minimizeNetwork, type MinimizeOptions } from './minimize.ts';
 import { optimizeNetworkValues, type NetOptimizeOptions } from './netOptimizer.ts';
 import { runThreeWayChain, type Chain3Input } from './threeWayChain.ts';
 import { applyCatalogPayload, type CatalogPart, type CatalogSeries } from './catalog.ts';
@@ -69,6 +70,16 @@ export interface VfRoundsResult {
   totalEvals: number;
 }
 
+export interface MinimizePayload {
+  parts: VxpPart[];
+  grid: number[];
+  w: GriddedResponse;
+  t: GriddedResponse;
+  z: Record<string, Complex[]>;
+  adjust: TweeterAdjust;
+  opts: Omit<MinimizeOptions, 'onStage'>;
+}
+
 export interface NetOptimizePayload {
   parts: VxpPart[];
   grid: number[];
@@ -92,6 +103,7 @@ export type OptimRequest = { id: number; catalog?: CatalogPayload | null } & (
   | { kind: 'chain3One'; payload: Chain3OnePayload }
   | { kind: 'vfRounds'; payload: VfRoundsPayload }
   | { kind: 'netOptimize'; payload: NetOptimizePayload }
+  | { kind: 'minimize'; payload: MinimizePayload }
   | { kind: 'soloChain'; payload: SoloChainInput }
 );
 
@@ -181,6 +193,14 @@ self.onmessage = (e: MessageEvent<OptimRequest>) => {
         // onStage is injected HERE (functions cannot cross the postMessage
         // boundary): coarse tune-stage labels flow back as progress.
         data = optimizeNetworkValues(p.parts, p.grid, p.w, p.t, p.z, p.adjust, {
+          ...p.opts,
+          onStage: (label) => post({ id: req.id, kind: 'progress', data: { netStage: label } }),
+        });
+        break;
+      }
+      case 'minimize': {
+        const p = req.payload;
+        data = minimizeNetwork(p.parts, p.grid, p.w, p.t, p.z, p.adjust, {
           ...p.opts,
           onStage: (label) => post({ id: req.id, kind: 'progress', data: { netStage: label } }),
         });

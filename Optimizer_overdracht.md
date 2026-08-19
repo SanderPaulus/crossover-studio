@@ -139,6 +139,10 @@ binnen de flank-doelen, pad als laatste) — dat is een structuurzoeker-feature,
 de dissipatieterm (3a) + de harde R_bron-trap (fix 1) is de prikkel weggehaald, de alternatieve
 route niet gebouwd. Feitelijke route nu: trims uit `trimsFor` landen als pads; de tuner mag ze
 vrij verzetten en betaalt sinds 3a voor een pad vóór de laagste tak.
+**Kosten als ontwerpas (aug 2026, "minimaal netwerk")**: `bomCapEur` (B1, 0 = uit) = KLASSE-verlies
+in beide rankers boven het plafond (`rankChain*Results(…, bomCapEur)`), strip toont "BOM €y / cap €x"
+en het aantal [NO PRICE]-regels; `costWeight` (snap-druk) blijft een tiebreak in de snap — herijking
+zie §8/B2; het Pareto-front (B3, App `paretoY`) laat de gebruiker het knikpunt kiezen.
 **NIET meegewogen**: power response in `designThreeWay` behalve via het DI-anker (de EA-term zelf
 zit alleen in vf/net/ranking); bronimpedantie is klasse+poort, geen fx-term (bewust); gedrag onder de datavloer/view-range (bewust: band =
 ontwerp-scope, alleen de safety-gate kijkt op het volle meetgrid naar fundamentals); breakup buiten
@@ -218,6 +222,16 @@ vloeren (fs·K / excursie / reach — NIET de datavloer) gelden nu voor de LEVER
 met reden; (c) App levert de vloeren uit `physWin3.win[side].limits` (regels fs/excursion/reach). Locked
 parts (`locked`) worden nooit verzet/verwijderd. Krimpladder: E12-stappen omlaag per vrije cap, poort
 = staged doelen + fundamentals, anders ≤ 1 %/stap, ≤ 2 % cumulatief.
+**Afslank-pass (C, `minimize.ts → minimizeNetwork`, op verzoek, nooit stil)**: (C1) verwijder
+iteratief het DUURSTE niet-VERDIENDE onderdeel (poort 4), retune (staged op de doelen), houden zolang
+doelen + fundamentals + R_bron-grens (≤ max(grens, voor)) + Z-min (≥ min(2,5, voor−0,05)) staan;
+(C2) per resterend R/L/C de GOEDKOPERE catalogusonderdelen binnen ±25 % (re-solve, geen retune),
+goedkoopste dat blijft voldoen; (C3) twee-voor-een als SUGGESTIE (serie-L + serie-R in één tak → één
+spoel met hogere DCR, met R_bron-waarschuwing); (C4) rapport BOM vóór/na, besparing per stap,
+kwaliteitsdelta's, "Apply as new tab" — het opgeslagen ontwerp wordt niet aangeraakt. De baseline-
+tune zelf verwijdert al wat poort 4 INERT vindt en wat de staged-snoei afstoot; die stappen staan in
+het rapport. HARD GELEERD in de test: een "dood" vrij onderdeel bestaat zelden — de tuner hergebruikt
+een 6,8 mH-shunt gewoon als filterelement; REDUNDANTIE (parallelle cap) is het eerlijke fixture.
 Poort 4 — `partAudit.ts → auditNetwork` (aug 2026, ALTIJD, twee keer: seed en getuned): per part en
 serie-LCR-keten open/short zonder retune; dA = max|ΔSPL| 200 Hz–15 kHz (1/6-oct), dP = P95 van de
 puntsgewijze Δ relatieve paar-fase in de overname-kern (≤ 6 dB verschil), dZ = ΔZmin/ΔR_bron.
@@ -267,6 +281,10 @@ least-squares op de fase, ~180° ⇒ "likely inverted").
   (`tr.disqualified`), reden in de tooltip van de kruising-cel; △ in die cel = levering ≤ 5 % onder
   een fysische vloer.
 - **Part audit**: kop = tellingen + R_bron; per rij dA/dP/dZ/ratio/€/verdict.
+- **Pareto-scatter** (B3, boven de scan-tabel, ≥ 2 geprijsde rijen): x = BOM, y = piek/avg/fase
+  (keuze), gevuld = niet-gedomineerd, ✗ = gediskwalificeerd, ◂ = geladen; klik laadt.
+- **Minimaal-netwerk-rapport** (✂ Minimize network, Network-tab): BOM vóór → na, piek/fase/R_bron
+  vóór → na, per stap verwijderd/vervangen + €, twee-voor-een-suggesties, "Apply as new tab".
 - **Nieuwe strip-items (aug 2026)**: "source R at the low driver x Ω (Qes ×y) — R5, L1" (△ vanaf ½
   grens, ⚠ erboven; onderdelen = grootste |ΔR_bron| bij verwijdering); "excess GD 500 Hz/2 kHz/8 kHz"
   (bulk = in-band-mediaan afgetrokken); 3-weg "mid band x oct" (△ < 2,3). Directivity-paneel: "Power
@@ -285,6 +303,29 @@ least-squares op de fase, ~180° ⇒ "likely inverted").
 | `rSourceWarn` (R_bron ≥ 1 Ω, Qes ×) | serie-R/DCR vóór de lage driver: demping/rendementsverlies dat geen responsmetriek ziet; ≥ 2 Ω = gediskwalificeerd (✗, doorgestreept) |
 | ✗ doorgestreepte rij | gediskwalificeerd: R_bron ≥ 2 Ω óf levering > 5 % onder een fysische vloer — reden in de tooltip; rij blijft klikbaar |
 | overlap-oct groot (> 2.5) | brede overlap: beide conussen dragen samen — voor een 2-weg-som prima, voor een overname vaak ongewenst |
+**Deel A gemeten (harness, KOAN-3-weg-fixture, demo-catalogus v6, snap AAN, costWeight 0,0015, 4
+kandidaten)**: A1 — in de winnaar-achtige kandidaat (591/2415) is ÉLK onderdeel VERDIEND behalve één
+inert (ongeprijsd); niet-verdiend draagt €0 van €165. A2 — BOM's 143–220 € bij peak 1,7–3,5 dB: de
+goedkoopste (€143) is ook de slechtste; er zijn in DEZE harness géén kandidaten binnen 0,3 dB/3° voor
+< 60 % — de €273–€642-spreiding uit Sanders sessie komt niet uit de topologie maar uit de SNAP-TIER
+(profiel 'position' + zijn v8-catalogus: premium caps/spoelen in het seriepad). A3 — de MID-tak
+draagt het meeste (€89–101 van €165–177: bandpass = twee ladders + shunts), woofer €34–38, tweeter
+€38–41. Conclusie: het BOM-verschil is een tier-/SKU-keuze, en daarom zit de hefboom in costWeight/
+profiel + de afslank-pass (C2-substitutie), niet in componenten schrappen. Bijvangst: met deze
+catalogus snapt de keten naar Z-min 0,46–0,52 Ω op de twee beste kandidaten (demo-SKU-roosters) —
+in de app-ranking verliest dat de Z-klasse; in Sanders sessie stond Z op 2,6–3,4 Ω.
+**B2 gemeten (costWeight-kromme, kandidaat 591/2415, demo-catalogus)**: eerste meting op {0,005 …
+0,15} was BYTE-IDENTIEK — `costWeight` was NERGENS aangesloten (ketens noch App gaven hem door; de tuner
+draaide stil 0,0015). Na het plumben: 0,0015 → €165/peak 1,90 · 0,005 → €163/1,77 · **0,015 → €160/1,74**
+· 0,05 → €165/1,78 · 0,15 → €165/1,78 (fase 9,4–10,3°, R_bron 0,63 overal). Default nu 0,015 (App
+'ads-cost-weight'; tuner-default blijft 0,0015). De hefboom is klein (±3 %) omdat de snap per slot
+alleen ±25 %-waarde-buren ziet; tier-profiel en de afslank-pass zijn de echte kostenknoppen.
+**Acceptatie "≤ €300 met peak ≤ 2,5 / fase ≤ 12° / R_bron ≤ 1,2 / Z ≥ 2,5"**: in de harness NIET
+gehaald door één kandidaat tegelijk — 591/2415 en 552/2288 halen alles behalve Z-min (0,46/0,52 Ω, een
+demo-catalogus-snap-artefact: de roosterdelen dippen de ingangsimpedantie), 424/2432 haalt alles
+behalve R_bron (1,69 Ω); bindend zijn dus de SNAP-Z en de woofer-pad, niet de prijs (alle vier ≤ €220).
+Op Sanders eigen catalogus/profiel liggen de BOM's 2–4× hoger en ís prijs de as — daar hoort het
+Pareto-front het knikpunt te tonen.
 Bekende gaten: inert-part-bij-onhaalbaar-doel → **opgelost** (poort 4, c4699f5); ontbrekend fysisch
 criterium → **opgelost** (idem); bronimpedantie → **klasse + safe-poort** (punt 4, na c4699f5),
 schatting buiten de meetband blijft gelabeld; ontwerpstap 3-weg on-axis → **DI-anker in de
@@ -309,12 +350,15 @@ lobing-k 'auto'; **twee breakup-marges, bewust** (punt 6a, naast elkaar onder Dr
 card & limits (harmonic)" f_b/3 = waar de vervormingsprijs landt; "candidate window" /1.8 = hoe dicht
 een overgang bij de breakup mag; **power response** 'smooth' + fold 0.5 (localStorage 'ads-power-*');
 **error smoothing** 1/12 oct ('ads-err-smooth'); **DI anchor weight** 0.3 ('ads-di-weight'); **source
-R limit** 1.0 Ω ('ads-rsource-limit') + **disqualify ≥** 2.0 Ω ('ads-rsource-disq'); **dissipation weight**
+R limit** 1.0 Ω ('ads-rsource-limit') + **disqualify ≥** 2.0 Ω ('ads-rsource-disq'); **BOM cap per
+channel** 0 = uit ('ads-bom-cap'); **Room correction present** uit ('ads-room-corr', rimpeldoel 3.5 dB
+'ads-room-ripple' — fase-doel ONGEWIJZIGD: amplitude corrigeert de kamer, driver-integratie niet);
+**snap cost pressure** 0.015 ('ads-cost-weight'); **dissipation weight**
 0.05 ('ads-diss-weight', 0 = legacy); vloer-slack 5 % (`xoFloorSlack`, nog geen UI-knop); excursie-ref 96 dB; catalog-snap AAN, profiel
 'position', stacks uit, costWeight 0.0015; corrections 'lean' bij staged; solo-budget 6 dB; Z-vloer
 2.5 Ω (constante); tolerantieband uit; seat re-timing uit; fasemodus measured (auto bij plausible).
 
 ## Changelog
-Laatst geverifieerd tegen commit **c28ffd9** + de werkkopie van 19 aug 2026 (pre-merge-checks A1–A3,
-B1-kromme, fixes 1–3 na de eerste volle axes-run).
+Laatst geverifieerd tegen commit **ddca34b** + de werkkopie van 19 aug 2026 (minimaal netwerk: Deel A
+meting, BOM-plafond, costWeight geplumbed + kromme, Pareto-scatter, afslank-pass, kamercorrectie).
 Herzie §2–§5/§8 wanneer `fxOf`/`objValue`/`deriveXoWindow`/`rankChain*` wijzigt.

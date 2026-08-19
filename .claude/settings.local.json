@@ -261,7 +261,18 @@
       "Bash(python3 refcmp.py)",
       "Bash(grep -n \"slopePen$\\\\|2·corridorSq\" Optimizer_overdracht.md)",
       "Bash([ -f \"$S/ref-fix3.json\" ])",
-      "Bash([ -f \"$S/ref-nodiss.json\" ])"
+      "Bash([ -f \"$S/ref-nodiss.json\" ])",
+      "Bash(sed -i '' \"s/console.log\\('plain', plain.after.rippleDb, plain.after.phaseDeg, 'removed', plain.removed, 'audit', plain.audit?.entries.map\\(e=>\\\\`\\\\${e.label}:\\\\${e.verdict}:\\\\${e.applied}\\\\`\\).join\\(' '\\)\\);/console.log\\('plain', plain.after.rippleDb, plain.after.phaseDeg, 'removed', plain.removed, 'audit', JSON.stringify\\(plain.audit?.entries.map\\(e=>\\({l:e.label,v:e.verdict,dA:e.dA,dP:e.dP,dZ:e.dZmin,dRs:e.dRsource,r:e.reasons}\\)\\)\\)\\);/\" \"/private/tmp/claude-501/-Users-sandersomers-SD-Acoustics-Design-Studio/5a2ca9ba-ed0d-4ddc-b9c1-751365661bc4/scratchpad/min-probe.test.ts\")",
+      "Bash(cp \"/private/tmp/claude-501/-Users-sandersomers-SD-Acoustics-Design-Studio/5a2ca9ba-ed0d-4ddc-b9c1-751365661bc4/scratchpad/min-probe.test.ts\" src/lib/zz-min-probe.test.ts)",
+      "Bash([ -f \"$S/cw-0.005.json\" ])",
+      "Bash([ -f \"$S/cw-0.015.json\" ])",
+      "Bash([ -f \"$S/cw-0.05.json\" ])",
+      "Bash([ -f \"$S/cw-0.15.json\" ])",
+      "Bash(pkill -f \"cw-0\\\\.\")",
+      "Bash([ -f \"$S/cw2-0.005.json\" ])",
+      "Bash([ -f \"$S/cw2-0.015.json\" ])",
+      "Bash([ -f \"$S/cw2-0.05.json\" ])",
+      "Bash([ -f \"$S/cw2-0.15.json\" ])"
     ]
   }
 }

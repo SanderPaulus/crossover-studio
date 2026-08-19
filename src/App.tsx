@@ -125,13 +125,15 @@ import {
   CancelledError,
   runChainScan,
   runNetOptimizeTask,
+  runMinimizeTask,
   runSoloChainTask,
   runVfRoundsTask,
   runChain3Scan,
   poolSize,
 } from './lib/optimClient.ts';
 import { crossover3Variants, rankChain3Results, variantsFromPoints, type Chain3Variant, deliveredLabel } from './lib/threeWayChain.ts';
-import { Z_FLOOR_OHM } from './lib/netOptimizer.ts';
+import { Z_FLOOR_OHM, type NetOptimizeOptions } from './lib/netOptimizer.ts';
+import type { MinimizeResult } from './lib/minimize.ts';
 import type { NetworkAudit } from './lib/partAudit.ts';
 import type { Chain3Result } from './lib/threeWayChain.ts';
 import { buildSoloNetwork, optimizeSoloFilter, reachableBandFor } from './lib/soloOptimizer.ts';
@@ -4396,6 +4398,38 @@ export default function App() {
     const v = raw === null ? NaN : Number(raw);
     return Number.isFinite(v) && v >= 0 ? v : 1.0;
   });
+  /** B1 — BOM cap per channel (EUR; 0 = off): class loss in the ranking above
+   *  it, shown in the strip. A design decision, not a weight. */
+  const [bomCapEur, setBomCapEur] = useState<number>(() => {
+    const raw = localStorage.getItem('ads-bom-cap');
+    const v = raw === null ? NaN : Number(raw);
+    return Number.isFinite(v) && v >= 0 ? v : 0;
+  });
+  /** D — room correction present (Dirac etc.): the RIPPLE target may widen
+   *  (default 2.5 → 3.5 dB) because on-axis residual ripple is corrected by
+   *  the room system; PHASE targets stay — driver integration across a
+   *  handover is set passively and no room correction repairs it. */
+  const [roomCorrection, setRoomCorrection] = useState<boolean>(() => localStorage.getItem('ads-room-corr') === '1');
+  const [roomRippleDb, setRoomRippleDb] = useState<number>(() => {
+    const v = Number(localStorage.getItem('ads-room-ripple'));
+    return Number.isFinite(v) && v > 0 ? v : 3.5;
+  });
+  /** Effective staged RIPPLE target: widened to roomRippleDb when room
+   *  correction is present (never narrowed); phase target untouched. */
+  const rippleTargetEff = (): number => {
+    const base = num(targetRipple, 2.5);
+    return roomCorrection ? Math.max(base, roomRippleDb) : base;
+  };
+  /** Catalog-snap cost pressure (B2). Was NEVER wired from the UI/chains
+   *  before aug 2026 — the tuner silently ran its 0.0015 default. */
+  const [costWeight, setCostWeight] = useState<number>(() => {
+    const raw = localStorage.getItem('ads-cost-weight');
+    const v = raw === null ? NaN : Number(raw);
+    // Default 0.015 (B2 curve on the KOAN set: BOM 165 → 160 € with the best
+    // peak; 0.05+ lands in another basin at 165 €). The tuner's own default
+    // stays 0.0015 for legacy callers.
+    return Number.isFinite(v) && v >= 0 ? v : 0.015;
+  });
   const [powerMetric, setPowerMetric] = useState<'smooth' | 'legacy'>(() =>
     localStorage.getItem('ads-power-metric') === 'legacy' ? 'legacy' : 'smooth',
   );
@@ -4932,7 +4966,7 @@ export default function App() {
       const settings = {
         phasePriority: phasePriority / 100,
         targets: stagedOn
-          ? { rippleDb: num(targetRipple, 1.5), phaseDeg: num(targetPhase, 10) }
+          ? { rippleDb: rippleTargetEff(), phaseDeg: num(targetPhase, 10) }
           : undefined,
         acousticSlopes: acousticSlopesValue(),
         xoLowPin: pins.low,
@@ -4962,6 +4996,7 @@ export default function App() {
         powerMetric,
         powerFoldWeight,
         errorSmoothOct,
+      costWeight,
         dissipationWeight,
         audit: {
           thresholds: { rSourceOhm: rSourceLimitOhm },
@@ -5087,7 +5122,7 @@ export default function App() {
         settings,
       });
       const rankAll = (rs: Chain3Result[]) =>
-        rankChain3Results(rs, settings.targets, settings.phasePriority, angleSets3 ? settings.directivityWeight : 0, rSourceLimitOhm);
+        rankChain3Results(rs, settings.targets, settings.phasePriority, angleSets3 ? settings.directivityWeight : 0, rSourceLimitOhm, bomCapEur);
       const runAxes = async (): Promise<Chain3Result[]> => {
         const nPts = 1 + 2 * Math.max(1, Math.min(3, scanSteps3)); // 3/5/7
         const clampSpan = (w: { floorHz: number | null; ceilHz: number | null } | null | undefined, rail: [number, number]): [number, number] => {
@@ -5159,6 +5194,7 @@ export default function App() {
             settings.phasePriority,
             angleSets3 ? settings.directivityWeight : 0,
             rSourceLimitOhm,
+            bomCapEur,
           );
           const win = ranked[0];
           setVFilters((prev) => ({ ...prev, ...win.specs }));
@@ -5340,7 +5376,7 @@ export default function App() {
             const r = optimizeSoloFilter(grid, d, spec, {
               eqBands: vfEqBands,
               band,
-              targets: stagedOn ? { rippleDb: num(targetRipple, 1.5) } : undefined,
+              targets: stagedOn ? { rippleDb: rippleTargetEff() } : undefined,
               ...soloLevelGoal(),
             });
             setVFilters((p) => ({ ...p, [soloDriver]: r.spec }));
@@ -5390,7 +5426,7 @@ export default function App() {
           settings: {
             eqBands: vfEqBands,
             band,
-            targets: stagedOn ? { rippleDb: num(targetRipple, 1.5) } : undefined,
+            targets: stagedOn ? { rippleDb: rippleTargetEff() } : undefined,
             ...soloLevelGoal(),
             catalogSnap: catalogSnap && hasImportedCatalog(),
             snapPrefs: snapPrefsValue(),
@@ -5482,6 +5518,7 @@ export default function App() {
       powerMetric,
       powerFoldWeight,
       errorSmoothOct,
+      costWeight,
       dissipationWeight,
       audit: {
         thresholds: { rSourceOhm: rSourceLimitOhm },
@@ -5492,7 +5529,7 @@ export default function App() {
       breakupGuard,
       structurePreference: parseHpLpPref(hpLpPref),
       targets: stagedOn
-        ? { rippleDb: num(targetRipple, 1.5), phaseDeg: num(targetPhase, 10) }
+        ? { rippleDb: rippleTargetEff(), phaseDeg: num(targetPhase, 10) }
         : undefined,
       hpFloorHz: tweeterHpFloor ?? undefined,
       phaseMetric: phaseMetricMode,
@@ -5530,7 +5567,7 @@ export default function App() {
         };
       })();
       const targets = stagedOn
-        ? { rippleDb: num(targetRipple, 1.5), phaseDeg: num(targetPhase, 10) }
+        ? { rippleDb: rippleTargetEff(), phaseDeg: num(targetPhase, 10) }
         : undefined;
       const settings: ChainSettings = {
         phasePriority: phasePriority / 100,
@@ -5540,6 +5577,7 @@ export default function App() {
         powerMetric,
         powerFoldWeight,
         errorSmoothOct,
+      costWeight,
         dissipationWeight,
         audit: {
           thresholds: { rSourceOhm: rSourceLimitOhm },
@@ -5642,6 +5680,7 @@ export default function App() {
             tweeterHpFloor ?? undefined,
             rSourceLimitOhm,
             rSourceDisqOhm,
+            bomCapEur,
           );
           const win = ranked[0];
           setVFilters((p) => ({ ...p, ...win.vf.specs }));
@@ -6064,6 +6103,61 @@ export default function App() {
    *  absolute deltas without it and the verdict — the physical answer to
    *  "does this part do anything", including for parts the tune kept. */
   const [netOptAudit, setNetOptAudit] = useState<NetworkAudit | null>(null);
+  /** C — the minimize ("afslank") pass report for the active design. Never
+   *  applied silently: the user reads BOM before/after + deltas and chooses
+   *  "Apply as new tab". */
+  const [minimizeReport, setMinimizeReport] = useState<{ base: string; r: MinimizeResult } | null>(null);
+  const [minimizeBusy, setMinimizeBusy] = useState(false);
+  function runMinimize() {
+    if (minimizeBusy || !activeDesign || !sim || Object.keys(impedances).length === 0) return;
+    const grid = sim.combined.freq;
+    const zOnGrid = zGridWithSlots(impedances, grid);
+    const present = [woofer, threeWay ? midDrv : null, tweeter].filter((d): d is Loaded => d !== null);
+    const safety = (() => {
+      if (present.length === 0) return undefined;
+      const lo = Math.max(200, ...present.map((d) => d.frd.freq[0]));
+      const hi = Math.min(20000, ...present.map((d) => d.frd.freq[d.frd.freq.length - 1]));
+      if (!(hi > lo * 1.5)) return undefined;
+      const sGrid = logspace(lo, hi, 240);
+      const silent = { freq: sGrid, spl: sGrid.map(() => -400), phaseDeg: sGrid.map(() => 0) };
+      return {
+        freqs: sGrid,
+        w: woofer ? resample(woofer.frd.freq, woofer.frd.spl, woofer.frd.phase, sGrid) : silent,
+        t: tweeter ? resample(tweeter.frd.freq, tweeter.frd.spl, tweeter.frd.phase, sGrid) : silent,
+        m: threeWay && midDrv ? resample(midDrv.frd.freq, midDrv.frd.spl, midDrv.frd.phase, sGrid) : undefined,
+        z: zGridWithSlots(impedances, sGrid),
+      };
+    })();
+    const tuneOpts = buildNetOptOpts(grid, safety);
+    const targets = { rippleDb: rippleTargetEff(), phaseDeg: soloDriver ? 3600 : num(targetPhase, 10) };
+    setMinimizeBusy(true);
+    setNetOptStages([]);
+    setNetOptPlan(['minimize: baseline', 'minimize: removal rounds', 'minimize: substitution']);
+    setNetOptBusy(true);
+    runMinimizeTask(
+      {
+        parts: [...activeDesign.parts],
+        grid: [...grid],
+        w: sim.base.w,
+        t: sim.base.t,
+        z: zOnGrid,
+        adjust: branchAdj.tweeter,
+        opts: {
+          targets,
+          rSourceLimitOhm,
+          fbHz: Number(cabinet.drivers.low.fbHz) > 0 ? Number(cabinet.drivers.low.fbHz) : undefined,
+          tuneOpts,
+        },
+      },
+      (stage) => setNetOptStages((p) => [...p, stage]),
+    )
+      .then((r) => setMinimizeReport({ base: activeDesign.name, r }))
+      .catch((e) => setNetOptNote(e instanceof Error ? e.message : String(e)))
+      .finally(() => {
+        setMinimizeBusy(false);
+        setNetOptBusy(false);
+      });
+  }
   /** Crossover-scan results as STRUCTURED rows — rendered as a small table
    *  instead of one long note line (readability; Sanders UX-ronde). Each row
    *  carries its FULL chain result: clicking a row loads that candidate's
@@ -6115,6 +6209,10 @@ export default function App() {
 
   /** Scan-table sort: click a header to sort by that column (asc → desc →
    *  back to the RANKING order, which is the default and keeps 🏆 on top). */
+  /** B3 — Pareto view of the scan: BOM on x, a quality measure on y, the
+   *  non-dominated candidates marked; click loads. The knee is a human
+   *  decision, not a weight. */
+  const [paretoY, setParetoY] = useState<'peak' | 'avg' | 'phase'>('peak');
   const [scanSort, setScanSort] = useState<{
     key: 'xo' | 'ripple' | 'avg' | 'phase' | 'ovl' | 'zmin' | 'rs' | 'bom';
     dir: 1 | -1;
@@ -6175,6 +6273,71 @@ export default function App() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pendingNetTune, sim, activeDesign, netOptBusy]);
 
+  /** The tuner options as the ⚙ settings define them — shared by Optimize
+   *  components and the minimize pass so the two judge the same way. */
+  const buildNetOptOpts = (grid: readonly number[], safety: NetOptimizeOptions['safety']): NetOptimizeOptions => ({
+        // Single-driver mode: "0 driver pairs" — the tuner drops every
+        // crossing-anchored term and judges branch flatness (+ amp floor).
+        solo: !!soloDriver,
+        // Floor mode: the tuner may spend down to the target level, no further.
+        soloSensitivityDb:
+          soloFloorOn && soloFloorInfo
+            ? Math.max(0, soloFloorInfo.median - soloFloorInfo.floor)
+            : num(soloSensDb, 6),
+        soloTargetLevelDb: soloFloorOn && soloFloorInfo ? soloFloorInfo.floor : undefined,
+        phasePriority: phasePriority / 100,
+        angleData: angleResponsesOn(grid) ?? undefined,
+        directivityWeight: dirWeight / 100,
+        powerMetric,
+        powerFoldWeight,
+        errorSmoothOct,
+      costWeight,
+        dissipationWeight,
+        ampTarget,
+        breakupGuard,
+        staged: stagedOn
+          ? { rippleDb: rippleTargetEff(), phaseDeg: soloDriver ? 3600 : num(targetPhase, 10) }
+          : undefined,
+        // 3-way (trede 4a): the middle branch turns on the two-pair path.
+        // The crossover pin and directivity terms are 2-way vocabulary and
+        // stay off; acoustic slopes steer the TOP pair (mid/tweeter).
+        midBranch:
+          threeWay && sim?.mid && midDrv
+            ? {
+                response: sim.base.m!,
+                adjust: branchAdj.mid,
+              }
+            : undefined,
+        xoRange: soloDriver || threeWay ? undefined : xoRangeValue() ?? undefined,
+        xoRangePairs:
+          threeWay && xoRangeOn
+            ? (() => {
+                const pr = (pin?: { freq: number; margin: number }): [number, number] | null =>
+                  pin
+                    ? [
+                        pin.freq - Math.max(pin.margin, pin.freq * 0.02),
+                        pin.freq + Math.max(pin.margin, pin.freq * 0.02),
+                      ]
+                    : null;
+                const pins = xoPinsValue();
+                return [pr(pins.low), pr(pins.high)];
+              })()
+            : undefined,
+        phaseMetric: phaseMetricMode,
+        acousticSlopes: soloDriver ? undefined : acousticSlopesValue() ?? undefined,
+        catalogSnap: catalogSnap && hasImportedCatalog(),
+        snapPrefs: snapPrefsValue(),
+        band: [Math.max(300, grid[0]), Math.min(grid[grid.length - 1] * 0.975, num(fMax, 20000))],
+        safety,
+        // Gate 4: the source-resistance verdict is taken at the low branch's
+        // box tuning when the designer entered one; otherwise at its Z peak.
+        audit: {
+          thresholds: { rSourceOhm: rSourceLimitOhm },
+          fbHz: Number(cabinet.drivers.low.fbHz) > 0 ? Number(cabinet.drivers.low.fbHz) : undefined,
+        },
+      
+  });
+
   function runNetOptimize() {
     // Guard against programmatic double-starts (the button is disabled while
     // busy, but a second overlapping run would interleave stage labels).
@@ -6232,66 +6395,7 @@ export default function App() {
       t: sim.base.t,
       z: zOnGrid,
       adjust: branchAdj.tweeter,
-      opts: {
-        // Single-driver mode: "0 driver pairs" — the tuner drops every
-        // crossing-anchored term and judges branch flatness (+ amp floor).
-        solo: !!soloDriver,
-        // Floor mode: the tuner may spend down to the target level, no further.
-        soloSensitivityDb:
-          soloFloorOn && soloFloorInfo
-            ? Math.max(0, soloFloorInfo.median - soloFloorInfo.floor)
-            : num(soloSensDb, 6),
-        soloTargetLevelDb: soloFloorOn && soloFloorInfo ? soloFloorInfo.floor : undefined,
-        phasePriority: phasePriority / 100,
-        angleData: angleResponsesOn(grid) ?? undefined,
-        directivityWeight: dirWeight / 100,
-        powerMetric,
-        powerFoldWeight,
-        errorSmoothOct,
-        dissipationWeight,
-        ampTarget,
-        breakupGuard,
-        staged: stagedOn
-          ? { rippleDb: num(targetRipple, 1.5), phaseDeg: soloDriver ? 3600 : num(targetPhase, 10) }
-          : undefined,
-        // 3-way (trede 4a): the middle branch turns on the two-pair path.
-        // The crossover pin and directivity terms are 2-way vocabulary and
-        // stay off; acoustic slopes steer the TOP pair (mid/tweeter).
-        midBranch:
-          threeWay && sim.mid && midDrv
-            ? {
-                response: sim.base.m!,
-                adjust: branchAdj.mid,
-              }
-            : undefined,
-        xoRange: soloDriver || threeWay ? undefined : xoRangeValue() ?? undefined,
-        xoRangePairs:
-          threeWay && xoRangeOn
-            ? (() => {
-                const pr = (pin?: { freq: number; margin: number }): [number, number] | null =>
-                  pin
-                    ? [
-                        pin.freq - Math.max(pin.margin, pin.freq * 0.02),
-                        pin.freq + Math.max(pin.margin, pin.freq * 0.02),
-                      ]
-                    : null;
-                const pins = xoPinsValue();
-                return [pr(pins.low), pr(pins.high)];
-              })()
-            : undefined,
-        phaseMetric: phaseMetricMode,
-        acousticSlopes: soloDriver ? undefined : acousticSlopesValue() ?? undefined,
-        catalogSnap: catalogSnap && hasImportedCatalog(),
-        snapPrefs: snapPrefsValue(),
-        band: [Math.max(300, grid[0]), Math.min(grid[grid.length - 1] * 0.975, num(fMax, 20000))],
-        safety,
-        // Gate 4: the source-resistance verdict is taken at the low branch's
-        // box tuning when the designer entered one; otherwise at its Z peak.
-        audit: {
-          thresholds: { rSourceOhm: rSourceLimitOhm },
-          fbHz: Number(cabinet.drivers.low.fbHz) > 0 ? Number(cabinet.drivers.low.fbHz) : undefined,
-        },
-      },
+      opts: buildNetOptOpts(grid, safety),
     }, (stage) => setNetOptStages((p) => [...p, stage]))
       .then((r) => {
         if (!r.safetyNote) {
@@ -12510,6 +12614,84 @@ export default function App() {
                     {t('a stopping point, not a limit — tighter means more parts and more money (it keeps escalating while unmet, and only prunes once met); looser stops sooner and builds simpler, but may leave performance on the table')}
                   </span>
                 )}
+                <label
+                  title={t('This system plays behind room correction (Dirac Live etc.). The RIPPLE target may then be wider — on-axis residual ripple is corrected by the room system — while the PHASE targets stay exactly as they are: phase tracking across a handover is set passively and no room correction repairs it. Amplitude corrects the room; driver integration does not.')}
+                >
+                  <input
+                    type="checkbox"
+                    checked={roomCorrection}
+                    onChange={(e) => {
+                      setRoomCorrection(e.target.checked);
+                      localStorage.setItem('ads-room-corr', e.target.checked ? '1' : '0');
+                    }}
+                  />{' '}
+                  {t('Room correction present')}
+                  {roomCorrection && (
+                    <>
+                      {' · '}{t('ripple target')}{' '}
+                      <input
+                        type="number"
+                        min={1}
+                        max={8}
+                        step={0.5}
+                        value={roomRippleDb}
+                        onChange={(e) => {
+                          const v = Number(e.target.value);
+                          const nv = Number.isFinite(v) && v > 0 ? v : 3.5;
+                          setRoomRippleDb(nv);
+                          localStorage.setItem('ads-room-ripple', String(nv));
+                        }}
+                        style={{ width: '4rem' }}
+                      />{' '}dB
+                    </>
+                  )}
+                </label>
+                {roomCorrection && (
+                  <span className="derived" style={{ flexBasis: '100%' }}>
+                    {t('amplitude corrects the room, driver integration does not — ripple target now {r} dB, phase target unchanged', { r: rippleTargetEff().toFixed(1) })}
+                  </span>
+                )}
+                <label
+                  className="inline-num"
+                  title={t('B2 — cost pressure in the catalog snap: candidate score ×(1 + w·ΣEUR). A tiebreak between near-equal purchasable realisations, never a quality trade. Until Aug 2026 this knob was not wired from the UI — the tuner silently ran 0.0015.')}
+                >
+                  {t('Snap cost pressure')}
+                  <input
+                    type="number"
+                    min={0}
+                    max={1}
+                    step={0.0005}
+                    value={costWeight}
+                    onChange={(e) => {
+                      const v = Number(e.target.value);
+                      const nv = Number.isFinite(v) && v >= 0 ? v : 0.015;
+                      setCostWeight(nv);
+                      localStorage.setItem('ads-cost-weight', String(nv));
+                    }}
+                    style={{ width: '5rem' }}
+                  />
+                </label>
+                <label
+                  className="inline-num"
+                  title={t('B1 — BOM cap per channel. Above it a scan candidate loses a ranking class (same mechanism as the Z floor and the source-R limit) — a decision, not a weight. 0 = off. Unpriced candidates are never punished; missing prices show as [NO PRICE].')}
+                >
+                  {t('BOM cap per channel')} €
+                  <input
+                    type="number"
+                    min={0}
+                    max={5000}
+                    step={10}
+                    value={bomCapEur}
+                    onChange={(e) => {
+                      const v = Number(e.target.value);
+                      const nv = Number.isFinite(v) && v >= 0 ? v : 0;
+                      setBomCapEur(nv);
+                      localStorage.setItem('ads-bom-cap', String(nv));
+                    }}
+                    style={{ width: '5rem' }}
+                  />
+                  {bomCapEur === 0 && <span className="derived"> {t('off')}</span>}
+                </label>
                 <span className="opt-group-cap">{t('Safety nets')}</span>
                 <label title={t('Stopband leakage beside the crossover must stay ≥20 dB below the combined — cone-breakup phase cannot be filtered away, it can only be made irrelevant in level')}>
                   <input
@@ -13277,6 +13459,14 @@ export default function App() {
                   </button>
                   <button
                     type="button"
+                    onClick={runMinimize}
+                    disabled={!activeDesign || !sim || netOptBusy || Object.keys(impedances).length === 0}
+                    title={t("Minimal network: remove the most expensive part poort 4 did not mark EARNED, retune, keep while the staged targets, the fundamentals (crossing, valley, tweeter protection, leak, Z floor) and the source-R limit hold; then try cheaper catalog parts within 25 % of each value. Reports BOM before/after and the quality deltas — nothing is applied until you say so.")}
+                  >
+                    {minimizeBusy ? t('Minimizing…') : `✂ ${t('Minimize network')}`}
+                  </button>
+                  <button
+                    type="button"
                     onClick={() => {
                       setTrapModel(zModels[0] ?? 'mid');
                       setTrapOpen(true);
@@ -13396,6 +13586,64 @@ export default function App() {
                 </table>
               </details>
             )}
+            {minimizeReport && (() => {
+              const r = minimizeReport.r;
+              const eur = (v: number | null) => (v === null ? t('[NO PRICE]') : `€${Math.round(v)}`);
+              const saved = r.bomBeforeEur !== null && r.bomAfterEur !== null ? r.bomBeforeEur - r.bomAfterEur : null;
+              return (
+                <details className="tune-audit" open>
+                  <summary>
+                    ✂ {t('Minimal network for "{name}": BOM {b} → {a} ({s}) · peak {p0} → {p1} dB · phase {q0} → {q1}° · R src {r0} → {r1} Ω', {
+                      name: minimizeReport.base,
+                      b: eur(r.bomBeforeEur),
+                      a: eur(r.bomAfterEur),
+                      s: saved !== null ? `−€${Math.round(saved)}` : '—',
+                      p0: r.before.peakDb.toFixed(2),
+                      p1: r.after.peakDb.toFixed(2),
+                      q0: r.before.phaseDeg.toFixed(1),
+                      q1: r.after.phaseDeg.toFixed(1),
+                      r0: r.before.rSourceOhm?.toFixed(2) ?? '—',
+                      r1: r.after.rSourceOhm?.toFixed(2) ?? '—',
+                    })}
+                  </summary>
+                  <p className="sub">{t('Stopped: {why}. Targets {r} dB / {p}° kept at every step; nothing has been applied to the design.', { why: r.stop, r: rippleTargetEff().toFixed(1), p: num(targetPhase, 10) })}</p>
+                  {r.steps.length > 0 ? (
+                    <table className="scan-table">
+                      <thead><tr><th>{t('step')}</th><th>{t('part')}</th><th>€</th><th>{t('peak')}</th><th>{t('phase')}</th><th>R src</th><th>{t('why')}</th></tr></thead>
+                      <tbody>
+                        {r.steps.map((st, i) => (
+                          <tr key={i}>
+                            <td>{st.kind === 'remove' ? t('removed') : t('substituted')}</td>
+                            <td>{st.label}</td>
+                            <td>{st.savingEur !== null ? `−€${st.savingEur.toFixed(2)}` : t('[NO PRICE]')}</td>
+                            <td>{st.after.peakDb.toFixed(2)} dB</td>
+                            <td>{st.after.phaseDeg.toFixed(1)}°</td>
+                            <td>{st.after.rSourceOhm?.toFixed(2) ?? '—'} Ω</td>
+                            <td>{st.note}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  ) : (
+                    <p className="sub">{t('No part could be removed or swapped without breaking a target or a fundamental — this network is already minimal for these goals.')}</p>
+                  )}
+                  {r.suggestions.length > 0 && (
+                    <p className="sub">💡 {t('Two-for-one suggestions (not applied):')} {r.suggestions.join(' · ')}</p>
+                  )}
+                  {r.steps.length > 0 && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        addDesign(`${minimizeReport.base} · minimal`, r.parts);
+                        setMinimizeReport(null);
+                      }}
+                    >
+                      {t('Apply as new tab')}
+                    </button>
+                  )}
+                </details>
+              );
+            })()}
             {netOptAudit && netOptAudit.entries.length > 0 && (
               <details className="tune-diff part-audit">
                 <summary>
@@ -13480,6 +13728,67 @@ export default function App() {
                 {t('tab and every chart shows it. The rows below are the full candidates: click one to try it, 💾 Save keeps the one you trust.')}
               </p>
             )}
+            {chainScan && chainScan.rows.filter((r) => r.bomEur !== null).length >= 2 && (() => {
+              // B3 — Pareto scatter. y = chosen quality (lower is better), x = BOM.
+              const yOf = (r: (typeof chainScan.rows)[number]): number | null =>
+                paretoY === 'peak' ? r.rippleDb : paretoY === 'avg' ? r.avgDevDb : r.phaseDeg;
+              const pts = chainScan.rows
+                .map((r) => ({ r, x: r.bomEur!, y: yOf(r) }))
+                .filter((p): p is { r: (typeof chainScan.rows)[number]; x: number; y: number } => p.r.bomEur !== null && p.y !== null && Number.isFinite(p.y));
+              if (pts.length < 2) return null;
+              const dominated = (p: typeof pts[number]) =>
+                pts.some((q) => q !== p && q.x <= p.x && q.y <= p.y && (q.x < p.x || q.y < p.y));
+              const front = pts.filter((p) => !dominated(p) && !p.r.disqualified?.length);
+              const W = 520, H = 200, ml = 44, mr = 12, mt = 10, mb = 28;
+              const xs = pts.map((p) => p.x), ys = pts.map((p) => p.y);
+              const x0 = Math.min(...xs) * 0.95, x1 = Math.max(...xs) * 1.05;
+              const y0 = Math.min(...ys) * 0.9, y1 = Math.max(...ys) * 1.08;
+              const X = (v: number) => ml + ((v - x0) / (x1 - x0 || 1)) * (W - ml - mr);
+              const Y = (v: number) => mt + (1 - (v - y0) / (y1 - y0 || 1)) * (H - mt - mb);
+              const frontSorted = [...front].sort((a, b) => a.x - b.x);
+              const yLabel = paretoY === 'peak' ? t('peak ±dB') : paretoY === 'avg' ? t('avg dev dB') : t('phase °');
+              return (
+                <div className="pareto" style={{ margin: '0.4rem 0' }}>
+                  <div className="row" style={{ alignItems: 'center', gap: '0.6rem', marginBottom: '0.2rem' }}>
+                    <strong>{t('Cost vs quality — the knee is yours to pick')}</strong>
+                    <select value={paretoY} onChange={(e) => setParetoY(e.target.value as 'peak' | 'avg' | 'phase')} title={t('Quality measure on the vertical axis')}>
+                      <option value="peak">{t('peak ±dB')}</option>
+                      <option value="avg">{t('avg dev dB')}</option>
+                      <option value="phase">{t('phase °')}</option>
+                    </select>
+                    <span className="derived">{t('{n} non-dominated of {m} priced — filled = Pareto front, ◂ = loaded, ✗ = disqualified; click a point to load it', { n: front.length, m: pts.length })}</span>
+                  </div>
+                  <svg viewBox={`0 0 ${W} ${H}`} style={{ width: '100%', maxWidth: `${W}px`, height: 'auto', display: 'block' }} role="img" aria-label={t('Pareto scatter of BOM versus quality')}>
+                    <line x1={ml} y1={H - mb} x2={W - mr} y2={H - mb} stroke="var(--viz-axis, #888)" />
+                    <line x1={ml} y1={mt} x2={ml} y2={H - mb} stroke="var(--viz-axis, #888)" />
+                    <text x={W - mr} y={H - 8} textAnchor="end" fontSize="10" fill="var(--muted, #999)">BOM €</text>
+                    <text x={ml + 4} y={mt + 10} fontSize="10" fill="var(--muted, #999)">{yLabel}</text>
+                    {[0, 0.5, 1].map((f) => (
+                      <text key={`x${f}`} x={X(x0 + f * (x1 - x0))} y={H - 10} textAnchor="middle" fontSize="9" fill="var(--muted, #999)">{Math.round(x0 + f * (x1 - x0))}</text>
+                    ))}
+                    {[0, 0.5, 1].map((f) => (
+                      <text key={`y${f}`} x={ml - 4} y={Y(y0 + f * (y1 - y0)) + 3} textAnchor="end" fontSize="9" fill="var(--muted, #999)">{(y0 + f * (y1 - y0)).toFixed(paretoY === 'phase' ? 0 : 2)}</text>
+                    ))}
+                    {frontSorted.length > 1 && (
+                      <polyline points={frontSorted.map((p) => `${X(p.x)},${Y(p.y)}`).join(' ')} fill="none" stroke="var(--accent, #4d8df0)" strokeDasharray="3 3" />
+                    )}
+                    {pts.map((p) => {
+                      const onFront = front.includes(p);
+                      const dq = !!p.r.disqualified?.length;
+                      const active = chainScan.active === p.r.label;
+                      return (
+                        <g key={p.r.label} style={{ cursor: 'pointer' }} onClick={() => applyScanCandidate(p.r)}>
+                          <title>{`${p.r.delivered} · €${Math.round(p.x)} · ${yLabel} ${p.y.toFixed(2)}${dq ? ' · ✗' : ''}${onFront ? ' · Pareto' : ''}`}</title>
+                          <circle cx={X(p.x)} cy={Y(p.y)} r={onFront ? 6 : 4.5} fill={onFront ? 'var(--accent, #4d8df0)' : 'transparent'} stroke={dq ? 'var(--bad, #d55)' : 'var(--accent, #4d8df0)'} strokeWidth={active ? 2.5 : 1.2} />
+                          {dq && <text x={X(p.x)} y={Y(p.y) + 3.5} textAnchor="middle" fontSize="9" fill="var(--bad, #d55)">✗</text>}
+                          {active && <text x={X(p.x) + 8} y={Y(p.y) + 3.5} fontSize="10" fill="var(--fg, #ddd)">◂</text>}
+                        </g>
+                      );
+                    })}
+                  </svg>
+                </div>
+              );
+            })()}
             {chainScan && (
               <table
                 className="scan-table scan-table-pick"
@@ -14069,6 +14378,20 @@ export default function App() {
                     {sumGroupDelay.at8k !== null ? `${(sumGroupDelay.at8k * 1000).toFixed(0)} µs` : '—'}
                   </span>
                 )}
+                {bomCapEur > 0 && (() => {
+                  const bom = schematic ? bomFor(schematic.parts) : null;
+                  const tot = bom?.totalEur ?? null;
+                  const over = tot !== null && tot > bomCapEur;
+                  return (
+                    <span
+                      className={`strip-item${over ? ' alert' : ''}`}
+                      title={t('BOM cap per channel (B1): above it a candidate loses a ranking class. Priced rows only; unpriced parts are listed as [NO PRICE] in the BOM.')}
+                    >
+                      {over ? '⚠ ' : ''}BOM {tot !== null ? `€${Math.round(tot)}` : '[NO PRICE]'} / {t('cap')} €{bomCapEur}
+                      {bom && bom.unmatchedCount > 0 ? ` · ${bom.unmatchedCount} [NO PRICE]` : ''}
+                    </span>
+                  );
+                })()}
                 {powerTrend && (
                   <span
                     className={`strip-item${powerTrend.slopeDbPerDecade > 1 ? ' alert' : ''}`}

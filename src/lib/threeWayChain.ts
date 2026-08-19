@@ -70,6 +70,8 @@ export interface Chain3Settings {
   powerFoldWeight?: number;
   /** Error smoothing width for the search objectives (oct); 0 = off. */
   errorSmoothOct?: number;
+  /** Catalog-snap cost pressure (score ×(1 + w·ΣEUR)). Default 0.0015 in the tuner. */
+  costWeight?: number;
   /** Dissipation term weight in front of the lowest branch (fix 3a); 0 = off. */
   dissipationWeight?: number;
   /** Part-audit options (thresholds incl. the source-R limit, Fb) — forwarded to the tuner. */
@@ -318,6 +320,7 @@ export function runThreeWayChain(
     powerMetric: s.powerMetric,
     powerFoldWeight: s.powerFoldWeight,
     errorSmoothOct: s.errorSmoothOct,
+    costWeight: s.costWeight,
     dissipationWeight: s.dissipationWeight,
     audit: s.audit,
     ampTarget: s.ampTarget,
@@ -914,6 +917,10 @@ export function rankChain3Results(
    *  a class — same mechanism as the Z floor, never a score term. null/absent
    *  audit is never punished. */
   rSourceLimitOhm = 1.0,
+  /** B1 — BOM cap per channel (EUR, 0 = off): a candidate whose priced BOM
+   *  exceeds it loses a CLASS — same mechanism as the Z floor and R_src, never
+   *  a soft term. An unpriced BOM (null) is never punished. */
+  bomCapEur = 0,
 ): Chain3Result[] {
   const p = 0.15 + 0.7 * Math.min(Math.max(phasePriority, 0), 1);
   const dW = Math.min(Math.max(directivityWeight, 0), 1);
@@ -952,8 +959,10 @@ export function rankChain3Results(
   // Disqualified (fix 1/2: rSource ≥ hard tier, delivery under a physics
   // floor) ranks below EVERYTHING — visible, struck through, with reasons.
   const dqClass = (r: Chain3Result): number => (r.disqualified && r.disqualified.length > 0 ? 10 : 0);
+  const bomClass = (r: Chain3Result): number =>
+    bomCapEur > 0 && r.bomTotalEur !== null && r.bomTotalEur > bomCapEur ? 1 : 0;
   const zClass = (r: Chain3Result): number =>
-    dqClass(r) + (r.zOk ? 0 : 2) + (zFloorOk(r) ? 0 : 1) + rsClass(r);
+    dqClass(r) + (r.zOk ? 0 : 2) + (zFloorOk(r) ? 0 : 1) + rsClass(r) + bomClass(r);
   /* Delivered-handover physics, as a class between the amplifier and the
    * flatness targets. Above targets on purpose: a crossing past the measured
    * beaming/lobing bound is a different (worse) loudspeaker off-axis however

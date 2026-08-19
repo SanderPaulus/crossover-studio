@@ -13,10 +13,12 @@
  * independent and deterministic, so parallel execution returns bit-identical
  * results in the same order as the old sequential loop.
  */
+import type { MinimizeResult } from './minimize.ts';
 import type {
   CatalogPayload,
   ChainOneProgress,
   NetOptimizePayload,
+  MinimizePayload,
   OptimResponse,
   VfProgressMsg,
   VfRoundsPayload,
@@ -92,7 +94,7 @@ function catalogPayload(): CatalogPayload {
 
 function run<T>(
   slot: number,
-  kind: 'chainOne' | 'chain3One' | 'vfRounds' | 'netOptimize' | 'soloChain',
+  kind: 'chainOne' | 'chain3One' | 'vfRounds' | 'netOptimize' | 'soloChain' | 'minimize',
   payload: unknown,
   onProgress?: (d: unknown) => void,
 ): Promise<T> {
@@ -317,6 +319,16 @@ export function runSoloChainTask(
   onProgress?: (p: ChainStageProgress) => void,
 ): Promise<SoloChainResult> {
   return run<SoloChainResult>(0, 'soloChain', payload, onProgress as (d: unknown) => void);
+}
+
+export function runMinimizeTask(
+  payload: MinimizePayload,
+  onStage?: (label: string) => void,
+): Promise<MinimizeResult> {
+  return run<MinimizeResult>(0, 'minimize', payload, (d) => {
+    const m = d as { netStage?: string };
+    if (m.netStage) onStage?.(m.netStage);
+  });
 }
 
 export function runNetOptimizeTask(

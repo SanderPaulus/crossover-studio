@@ -39,6 +39,8 @@ export interface ChainSettings {
   powerFoldWeight?: number;
   /** Error smoothing width for the search objectives (oct); 0 = off. */
   errorSmoothOct?: number;
+  /** Catalog-snap cost pressure (score ×(1 + w·ΣEUR)). Default 0.0015 in the tuner. */
+  costWeight?: number;
   /** Dissipation term weight in front of the lowest branch (fix 3a); 0 = off. */
   dissipationWeight?: number;
   /** Part-audit options (thresholds incl. the source-R limit, Fb) — forwarded to the tuner. */
@@ -136,6 +138,7 @@ export function runDesignChain(
     powerMetric: s.powerMetric,
     powerFoldWeight: s.powerFoldWeight,
     errorSmoothOct: s.errorSmoothOct,
+    costWeight: s.costWeight,
     dissipationWeight: s.dissipationWeight,
     audit: s.audit,
     ampTarget: s.ampTarget,
@@ -276,6 +279,7 @@ export function runDesignChain(
     powerMetric: s.powerMetric,
     powerFoldWeight: s.powerFoldWeight,
     errorSmoothOct: s.errorSmoothOct,
+    costWeight: s.costWeight,
       ampTarget: s.ampTarget,
       breakupGuard: s.breakupGuard,
       staged: s.targets,
@@ -390,6 +394,8 @@ export function rankChainResults(
   rSourceLimitOhm = 1.0,
   /** Hard tier (fix 1): at/above this the candidate is disqualified (ranks last). */
   rSourceDisqualifyOhm = 2.0,
+  /** B1 — BOM cap per channel (EUR, 0 = off): class loss above it. */
+  bomCapEur = 0,
 ): ChainResult[] {
   const p = 0.15 + 0.7 * Math.min(Math.max(phasePriority, 0), 1);
   const rsClass = (r: ChainResult): number => {
@@ -423,7 +429,8 @@ export function rankChainResults(
   const zFloorOk = (r: ChainResult): boolean =>
     r.zMinOhm == null || r.zMinOhm >= Z_FLOOR_OHM;
   const zClass = (r: ChainResult): number =>
-    (r.zOk === false ? 2 : 0) + (zFloorOk(r) ? 0 : 1) + rsClass(r);
+    (r.zOk === false ? 2 : 0) + (zFloorOk(r) ? 0 : 1) + rsClass(r) +
+    (bomCapEur > 0 && r.bomTotalEur != null && r.bomTotalEur > bomCapEur ? 1 : 0);
   const xoClass = (r: ChainResult): number => (r.xoWindowOk === false ? 1 : 0);
   const ranked = [...results].sort((a, b) => {
     const za = zClass(a);
