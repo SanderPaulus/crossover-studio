@@ -391,6 +391,58 @@ function roleGuess(members: VxpPart[], pos: 'series' | 'shunt'): string {
   return `${pos} chain (${kinds.join('+')})`;
 }
 
+/**
+ * Source RESISTANCE the LOW driver sees at its box tuning (Fb) — or, without a
+ * tuning, at its impedance peak on the grid: the real part of the Thevenin
+ * impedance looking back from the driver terminals with the generator at its
+ * Rg. This is what adds to Re in Qes' = Qes·(Re+Rs)/Re — the damping and
+ * efficiency loss no response metric sees. Cheap (one netlist, one frequency);
+ * used by the ranking class and the staged safe-gates (aug 2026, point 4).
+ * null when the network has no low driver, no impedance for it, or does not
+ * solve.
+ */
+export function sourceResistanceOhm(
+  parts: readonly VxpPart[],
+  ctx: { grid: readonly number[]; driverZ: Record<string, readonly Complex[]>; fbHz?: number },
+): number | null {
+  let net: { nodeCount: number; elements: NetElement[] };
+  try {
+    const { netlist } = crossoverToNetlist({ name: 'rsource', parts: [...parts] });
+    net = { nodeCount: netlist.nodeCount, elements: netlist.elements.map((e) => ({ ...e })) };
+  } catch {
+    return null;
+  }
+  const drivers = net.elements.filter((e): e is Extract<NetElement, { kind: 'driver' }> => e.kind === 'driver');
+  if (drivers.length === 0) return null;
+  const slots = pickSlotsN(drivers);
+  const low = slots.woofer ?? slots.mid ?? slots.tweeter ?? null;
+  if (!low) return null;
+  const z = ctx.driverZ[low.model];
+  if (!z) return null;
+  const grid = ctx.grid;
+  let idx: number | null = null;
+  if (ctx.fbHz !== undefined && ctx.fbHz > 0) {
+    idx = grid.reduce((b, f, i) => (Math.abs(f - ctx.fbHz!) < Math.abs(grid[b] - ctx.fbHz!) ? i : b), 0);
+  } else {
+    let bestZ = -Infinity;
+    for (let i = 0; i < grid.length; i++) {
+      if (grid[i] > Math.max(400, grid[Math.floor(grid.length / 4)])) break;
+      const m = Math.hypot(z[i].re, z[i].im);
+      if (m > bestZ) {
+        bestZ = m;
+        idx = i;
+      }
+    }
+  }
+  if (idx === null) return null;
+  try {
+    const zs = seenImpedance(net, [low.id], low.nodes, [grid[idx]], ctx.driverZ);
+    return zs ? Math.max(0, zs[0].re) : null;
+  } catch {
+    return null;
+  }
+}
+
 export function auditNetwork(parts: readonly VxpPart[], ctx: AuditContext): NetworkAudit | null {
   const thr: AuditThresholds = { ...DEFAULT_AUDIT_THRESHOLDS, ...(ctx.thresholds ?? {}) };
   const zFloor = ctx.zFloorOhm ?? 2.5;

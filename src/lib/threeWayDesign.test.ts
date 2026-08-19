@@ -166,3 +166,68 @@ describe('threeWayDesign — alignment × polarity structure search', () => {
     });
   });
 });
+
+describe('threeWayDesign — directivity in the structure search (KOAN 3-way fixture)', () => {
+  const D = join(FIXTURES, 'koan-3way');
+  const grid = logspace(210, 19000, 240);
+  const g = (name: string): GriddedResponse => {
+    const f = parseFrd(readFileSync(join(D, name), 'utf-8'));
+    return resample(f.freq, f.spl, f.phase, grid);
+  };
+  const w = g('woofer-pair-hor0.frd');
+  const m = g('mid-hor0.txt');
+  const t = g('tweeter-hor0.txt');
+  const base = {
+    w,
+    m,
+    t,
+    tAdjust: { offsetMm: 0, trimDb: 0, inverted: false },
+    midAdjust: {},
+    xoLow: 500,
+    xoHigh: 3000,
+    band: [250, 18000] as [number, number],
+    phasePriority: 0.5,
+    xoLowWindow: [424, 622] as [number, number],
+    xoHighWindow: [2000, 3400] as [number, number],
+    breakupGuard: true,
+    eqBandsPerBranch: 0,
+  };
+
+  it('the DI term is exactly wDI·log2(knee/anchor)² on top of the on-axis fx (window collapsed to one knee)', () => {
+    const at3300 = { ...base, xoHigh: 3300, xoHighWindow: [3300, 3300] as [number, number] };
+    const plain = designThreeWay(at3300);
+    const anchored = designThreeWay({ ...at3300, diAnchorHz: { high: 2400 }, diWeight: 0.3 });
+    expect(anchored.xoHigh).toBe(plain.xoHigh);
+    expect(anchored.diDistanceOct[1]!).toBeGreaterThan(0.4); // ≈ log2(3300/2400) = 0.46 (the delivered knee may sit a hair off the collapsed window)
+    expect(anchored.diDistanceOct[1]!).toBeLessThan(0.6);
+    // ±0.05: the collapsed window still lets NM settle a hair off 3300 and pick a
+    // marginally different structure, so this is the term to within a few %.
+    expect(Math.abs(anchored.fx - plain.fx - 0.3 * Math.log2(3300 / 2400) ** 2)).toBeLessThan(0.06);
+    expect(plain.diDistanceOct).toEqual([null, null]);
+  });
+
+  it('with the anchor the chosen knee never sits FURTHER from it than without; a heavy weight pulls it onto the anchor', () => {
+    // On this set the on-axis optimum sits at the LOW edge of the M-T window
+    // (the tuner's known preference for ~1.85–2 kHz), so wDI 0.3 (spec) is a
+    // tie-breaker here — measured: 0.3·log2(2000/2400)² ≈ 0.02 against an fx
+    // of order 1. The mechanism is what is pinned: monotone toward the anchor.
+    const plain = designThreeWay(base);
+    const light = designThreeWay({ ...base, diAnchorHz: { high: 2400 }, diWeight: 0.3 });
+    const heavy = designThreeWay({ ...base, diAnchorHz: { high: 2400 }, diWeight: 30 });
+    const d = (x: number) => Math.abs(Math.log2(x / 2400));
+    expect(d(light.xoHigh)).toBeLessThanOrEqual(d(plain.xoHigh) + 1e-9);
+    expect(d(heavy.xoHigh)).toBeLessThanOrEqual(d(light.xoHigh) + 1e-9);
+    expect(heavy.xoHigh).toBeGreaterThanOrEqual(2150);
+    expect(heavy.xoHigh).toBeLessThanOrEqual(2650);
+  });
+
+  it('without angle data (no anchor) the search is byte-identical to weight 0', () => {
+    const a = designThreeWay(base);
+    const b = designThreeWay({ ...base, diWeight: 0 });
+    const c = designThreeWay({ ...base, diWeight: 0.3 }); // weight without anchor: no term
+    expect(a.fx).toBe(b.fx);
+    expect(a.fx).toBe(c.fx);
+    expect(a.xoHigh).toBe(c.xoHigh);
+    expect(a.label).toBe(c.label);
+  });
+});

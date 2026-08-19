@@ -1,5 +1,5 @@
 import { nelderMead } from './optimize.ts';
-import { bandMedian } from './bandMetrics.ts';
+import { bandMedian, powerShape, smoothDbGaussian, type PowerMetricMode } from './bandMetrics.ts';
 import { crossoverToNetlist } from './vxpNetwork.ts';
 import { solveNetwork, type NetElement, type PassiveElement } from './network.ts';
 import { applyTransfer, combine, combineN, type BranchAdjust, type GriddedResponse, type TweeterAdjust } from './dsp.ts';
@@ -17,7 +17,7 @@ import {
   type SnapPrefs,
 } from './catalog.ts';
 import type { AngleResponse } from './directivity.ts';
-import { auditNetwork, type AuditThresholds, type NetworkAudit } from './partAudit.ts';
+import { auditNetwork, type AuditThresholds, type NetworkAudit, sourceResistanceOhm } from './partAudit.ts';
 
 /**
  * Passive-in-the-loop component optimizer: re-fit the VALUES of a schematic's
@@ -50,6 +50,19 @@ export interface NetOptimizeOptions {
   angleData?: { woofer: AngleResponse[]; tweeter: AngleResponse[]; mid?: AngleResponse[] };
   /** 0..1: share of the amplitude budget on the energy average. Default 0. */
   directivityWeight?: number;
+  /** How the energy average is judged (bandMetrics.powerShape): 'smooth'
+   *  (default) = std of the DETRENDED power response + a fold term near each
+   *  crossing, slope free; 'legacy' = std of the raw power (flatness) — the
+   *  pre-aug-2026 behaviour, kept for A/B on existing projects. */
+  powerMetric?: PowerMetricMode;
+  /** Weight of the DI-fold term (max |residual| within ×/÷1.6 of a crossing),
+   *  as a share of dW: amp += dW·powerFoldWeight·fold². Default 0.5. */
+  powerFoldWeight?: number;
+  /** Error smoothing for the SEARCH objective: driver magnitudes are Gaussian-
+   *  smoothed in log-f by this width BEFORE decimation to the inner grid
+   *  (bandMetrics.smoothDbGaussian). 0 = off (legacy). Default 1/12 oct. Phase
+   *  untouched; gates/targets/safety/report stay on the raw full grid. */
+  errorSmoothOct?: number;
   /** Which curve the amplitude term flattens. Default 'onAxis'. */
   ampTarget?: 'onAxis' | 'listeningWindow';
   /** Penalize stopband leakage beside the crossing (< 20 dB margin) — the
@@ -208,6 +221,9 @@ export interface NetOptimizeResult {
    *  crossing (used by the no-pin scan to derive follow-up candidates). */
   after: {
     rippleDb: number;
+    /** Peak ±dB of the ERROR-SMOOTHED sum (what the search judged); equals
+     *  rippleDb when smoothing is off. Display beside the raw peak. */
+    ripplePeakSmoothedDb?: number;
     avgDevDb?: number;
     phaseDeg: number;
     /** Delivered minimum system |Zin| in ohms — the amplifier's view of this
@@ -218,6 +234,10 @@ export interface NetOptimizeResult {
     /** Std-dev flatness of the horizontal ENERGY AVERAGE over the band, when
      *  angle data was given (else absent) — the in-room verdict. */
     powerStdDb?: number;
+    /** Smooth power metric: DI fold near the crossings (dB) and the fitted
+     *  slope of the energy average (dB/decade; > +1 is suspicious). */
+    powerFoldDb?: number;
+    powerSlopeDbDec?: number;
     /** 3-way: uniform-average phase error per adjacent pair [low, high] —
      *  the coupled-pairs verdict (gates judge the worst of these). */
     pairPhaseDeg?: number[];
@@ -501,6 +521,10 @@ export function optimizeNetworkValues(
   // guard is supposed to protect, judged by its own degenerate objective.
   const p = 0.15 + 0.7 * Math.min(Math.max(phasePriority, 0), 1);
   const dW = angleData ? Math.min(Math.max(opts.directivityWeight ?? 0, 0), 1) : 0;
+  const powerMode: PowerMetricMode = opts.powerMetric ?? 'smooth';
+  /** Source-resistance limit at the low driver (Ω) — shared with the audit. */
+  const rSourceLimit = opts.audit?.thresholds?.rSourceOhm ?? 1.0;
+  const foldW = Math.max(0, opts.powerFoldWeight ?? 0.5);
   const useLw = ampTarget === 'listeningWindow' && !!angleData;
   const band: [number, number] = opts.band ?? [grid[0] * 1.02, grid[grid.length - 1] * 0.975];
 
@@ -513,16 +537,21 @@ export function optimizeNetworkValues(
     spl: idx.map((i) => g.spl[i]),
     phaseDeg: idx.map((i) => g.phaseDeg[i]),
   });
-  const optW = pick(wBase);
-  const optT = pick(tBase);
-  const optM = midB ? pick(midB.response) : null;
+  // Error smoothing BEFORE decimation (see errorSmoothOct): magnitudes only,
+  // search grid only — fullM/after/safety keep the raw responses.
+  const errSm = Math.max(0, opts.errorSmoothOct ?? 1 / 12);
+  const smoothMag = (g: GriddedResponse): GriddedResponse =>
+    errSm > 0 ? { ...g, spl: smoothDbGaussian(g.freq, g.spl, errSm) } : g;
+  const optW = pick(smoothMag(wBase));
+  const optT = pick(smoothMag(tBase));
+  const optM = midB ? pick(smoothMag(midB.response)) : null;
   /** Full-grid middle branch for the report/gate call sites. */
   const midFull = midB ? midB.response : null;
   const optZ = Object.fromEntries(
     Object.entries(driverZ).map(([m, z]) => [m, idx.map((i) => z[i])]),
   );
   const pickAngles = (set: AngleResponse[]): AngleResponse[] =>
-    set.map((a) => ({ hor: a.hor, response: pick(a.response) }));
+    set.map((a) => ({ hor: a.hor, response: pick(smoothMag(a.response)) }));
   const optAngles = angleData
     ? {
         woofer: pickAngles(angleData.woofer),
@@ -639,6 +668,10 @@ export function optimizeNetworkValues(
     phaseDeg: number;
     phaseP95Deg: number;
     powerStdDb: number | null;
+    /** Smooth mode: fold of the detrended power response near the crossings
+     *  (max |residual|, dB); slope of the fitted trend, dB/decade. */
+    powerFoldDb: number | null;
+    powerSlopeDbDec: number | null;
     leakSqDb: number;
     protSqDb: number;
     /** Acoustic crossing of the filtered drivers (Hz), null if none.
@@ -826,6 +859,7 @@ export function optimizeNetworkValues(
     // handing to a still-wide mid — shows up here as energy-average wobble
     // even when the on-axis sum is dead flat.
     let powerStdDb: number | null = null;
+    let powerDbArr: number[] | null = null;
     let lwStd: number | null = null;
     if (angles) {
       const n = r.freq.length;
@@ -862,7 +896,8 @@ export function optimizeNetworkValues(
           lwCount++;
         }
       }
-      powerStdDb = bandStd(r.freq, powerAcc.map((v) => 10 * Math.log10(v / shared.length)));
+      powerDbArr = powerAcc.map((v) => 10 * Math.log10(v / shared.length));
+      powerStdDb = bandStd(r.freq, powerDbArr);
       if (lwCount > 0) {
         lwStd = bandStd(r.freq, lwAcc.map((v) => 10 * Math.log10(v / lwCount)));
       }
@@ -1098,6 +1133,19 @@ export function optimizeNetworkValues(
       return acc;
     });
     const xoF = pm.length > 0 ? pm[0].xoF : null;
+    // Power-response SHAPE (aug 2026): the crossover owns the SMOOTHNESS of
+    // the energy average, not its slope — detrend, judge the residual and the
+    // fold near each crossing, report the slope. 'legacy' keeps std-of-raw.
+    let powerFoldDb: number | null = null;
+    let powerSlopeDbDec: number | null = null;
+    if (powerDbArr && powerMode === 'smooth') {
+      const shp = powerShape(r.freq, powerDbArr, band, pm.map((x) => x.xoF));
+      powerStdDb = shp.residualStdDb;
+      powerFoldDb = shp.foldDb;
+      powerSlopeDbDec = shp.slopeDbPerDecade;
+    } else if (powerDbArr) {
+      powerSlopeDbDec = powerShape(r.freq, powerDbArr, band).slopeDbPerDecade;
+    }
     const xoDipDb = pm.reduce((a, x) => a + x.xoDipDb, 0);
     const leakSqDb = pm.reduce((a, x) => a + x.leakSqDb, 0);
     const protSqDb = pm.reduce((a, x) => a + x.protSqDb, 0);
@@ -1128,6 +1176,8 @@ export function optimizeNetworkValues(
         : phaseMetric === 'band' ? (uN > 0 ? uSum / uN : 180) : wSum > 0 ? eSum / wSum : 180,
       phaseP95Deg: solo ? 0 : phaseP95Deg,
       powerStdDb,
+      powerFoldDb,
+      powerSlopeDbDec,
       leakSqDb,
       protSqDb,
       xoHz: xoF,
@@ -1180,7 +1230,8 @@ export function optimizeNetworkValues(
   const fxOf = (m: Metrics): number => {
     const amp =
       dW > 0 && m.powerStdDb !== null
-        ? (1 - dW) * m.rippleDb ** 2 + dW * m.powerStdDb ** 2
+        ? (1 - dW) * m.rippleDb ** 2 +
+          dW * (m.powerStdDb ** 2 + (m.powerFoldDb !== null ? foldW * m.powerFoldDb ** 2 : 0))
         : m.rippleDb ** 2;
     // Solo ("0 driver pairs"): flatness of the branch is the whole story —
     // every crossing-anchored term is pair-defined and the phase metric is 0
@@ -1774,6 +1825,17 @@ export function optimizeNetworkValues(
       m.zShortOhm <= ref.zShortOhm + 0.1 &&
       soloSensOk(m) &&
       (!breakupGuard || m.leakSqDb <= ref.leakSqDb + 4);
+    /** Point 4: a structure move may not push the source resistance the LOW
+     *  driver sees at Fb over the limit (a series R in the woofer branch is
+     *  the classic way to "win" flatness while doubling Qes). Crossing from
+     *  at/under to over is unsafe; already over stays judged by the audit. */
+    const rsSafe = (candParts: readonly VxpPart[], refParts: readonly VxpPart[]): boolean => {
+      if (!(rSourceLimit > 0)) return true;
+      const rsRef = sourceResistanceOhm(refParts, { grid, driverZ, fbHz: opts.audit?.fbHz });
+      if (rsRef === null || rsRef > rSourceLimit) return true;
+      const rsCand = sourceResistanceOhm(candParts, { grid, driverZ, fbHz: opts.audit?.fbHz });
+      return rsCand === null || rsCand <= rSourceLimit;
+    };
     /** Escalation adds a part + full retune: protection shifts a little by
      *  nature (the fx already prices it at 0.02·protSqDb). The prune-strict
      *  +0.5 slack blocked every legitimate bypass-C; +3 (~1.7 dB RMS above
@@ -1854,6 +1916,7 @@ export function optimizeNetworkValues(
           if (
             meets(tFull) &&
             safe(tFull, curFull) &&
+            rsSafe(t.parts, cur.parts) &&
             t.fx <= cur.fx * 1.1 &&
             t.fx <= fx0 * 1.35
           ) {
@@ -1879,7 +1942,7 @@ export function optimizeNetworkValues(
         if (!best) break;
         const bestFull = fullM(best.t.parts);
         // The new part must EARN its place: reach the targets or pay ≥3%.
-        if (safeEsc(bestFull, curFull) && (meets(bestFull) || best.t.fx < cur.fx * 0.97)) {
+        if (safeEsc(bestFull, curFull) && rsSafe(best.t.parts, cur.parts) && (meets(bestFull) || best.t.fx < cur.fx * 0.97)) {
           cur = best.t;
           curFull = bestFull;
           added.push(best.id);
@@ -2339,6 +2402,21 @@ export function optimizeNetworkValues(
     outParts = trimStubs(outParts);
   }
   const after = metricsOn(buildWork(outParts).work, grid, wBase, tBase, midFull, driverZ, angleData ?? null);
+  // The peak the SEARCH saw (error-smoothed magnitudes on the full grid) —
+  // reported beside the raw peak so a scan row does not look worse than the
+  // loudspeaker is; targets and gates keep judging the raw number.
+  const afterSmoothPeak =
+    errSm > 0
+      ? metricsOn(
+          buildWork(outParts).work,
+          grid,
+          smoothMag(wBase),
+          smoothMag(tBase),
+          midFull ? smoothMag(midFull) : null,
+          driverZ,
+          null,
+        ).ripplePeakDb
+      : after.ripplePeakDb;
 
   // before/after report the PEAK ±dB (the strip's unit, matching the target)
   // plus the whole-range avg |deviation| for the chain ranking / scan table.
@@ -2380,6 +2458,8 @@ export function optimizeNetworkValues(
     // data armed it — so a ranking can weigh the power response, not only
     // the on-axis curve (window spec rule 9).
     ...(m.powerStdDb !== null ? { powerStdDb: m.powerStdDb } : {}),
+    ...(m.powerFoldDb !== null ? { powerFoldDb: m.powerFoldDb } : {}),
+    ...(m.powerSlopeDbDec !== null ? { powerSlopeDbDec: m.powerSlopeDbDec } : {}),
     ...(m.pairPhaseDeg.length > 1 ? { pairPhaseDeg: m.pairPhaseDeg } : {}),
     ...(m.xoHzPairs.length > 1 ? { xoHzPairs: m.xoHzPairs } : {}),
     ...(m.pairOverlapOct.length > 1 ? { pairOverlapOct: m.pairOverlapOct } : {}),
@@ -2521,7 +2601,7 @@ export function optimizeNetworkValues(
   return {
     parts: outParts,
     before: report(before, parts),
-    after: { ...report(after, outParts), xoHz: after.xoHz },
+    after: { ...report(after, outParts), xoHz: after.xoHz, ripplePeakSmoothedDb: afterSmoothPeak },
     tuned: cur.freeCount,
     evaluations,
     removed,

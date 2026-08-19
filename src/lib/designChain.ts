@@ -34,6 +34,13 @@ export interface ChainSettings {
   eqBandsPerDriver: number;
   angleData?: { woofer: AngleResponse[]; tweeter: AngleResponse[] };
   directivityWeight?: number;
+  /** Power-response metric (bandMetrics.powerShape) and fold weight — see netOptimizer opts. */
+  powerMetric?: 'smooth' | 'legacy';
+  powerFoldWeight?: number;
+  /** Error smoothing width for the search objectives (oct); 0 = off. */
+  errorSmoothOct?: number;
+  /** Part-audit options (thresholds incl. the source-R limit, Fb) — forwarded to the tuner. */
+  audit?: { enabled?: boolean; thresholds?: { rSourceOhm?: number }; fbHz?: number };
   ampTarget?: 'onAxis' | 'listeningWindow';
   cutOnly?: boolean;
   breakupGuard?: boolean;
@@ -124,6 +131,10 @@ export function runDesignChain(
     eqBandsPerDriver: s.eqBandsPerDriver,
     angleData: s.angleData,
     directivityWeight: s.directivityWeight,
+    powerMetric: s.powerMetric,
+    powerFoldWeight: s.powerFoldWeight,
+    errorSmoothOct: s.errorSmoothOct,
+    audit: s.audit,
     ampTarget: s.ampTarget,
     cutOnly: s.cutOnly,
     breakupGuard: s.breakupGuard,
@@ -259,6 +270,9 @@ export function runDesignChain(
       zFloorStrict: true,
       angleData: s.angleData,
       directivityWeight: s.directivityWeight,
+    powerMetric: s.powerMetric,
+    powerFoldWeight: s.powerFoldWeight,
+    errorSmoothOct: s.errorSmoothOct,
       ampTarget: s.ampTarget,
       breakupGuard: s.breakupGuard,
       staged: s.targets,
@@ -369,8 +383,14 @@ export function rankChainResults(
   targets: { rippleDb: number; phaseDeg: number } | undefined,
   phasePriority: number,
   hpFloorHz?: number,
+  /** Source-resistance limit at the low driver (Ω, point 4) — class loss above it. */
+  rSourceLimitOhm = 1.0,
 ): ChainResult[] {
   const p = 0.15 + 0.7 * Math.min(Math.max(phasePriority, 0), 1);
+  const rsClass = (r: ChainResult): number => {
+    const rs = r.net.audit?.rSourceOhm;
+    return rs != null && rSourceLimitOhm > 0 && rs > rSourceLimitOhm ? 1 : 0;
+  };
   // Whole-range verdict in the ripple slot (Sanders doctrine, jul 2026): rank
   // on the AVERAGE |deviation|, scaled by π/2 so a smooth ±A dB wobble scores
   // exactly A — the same value the old peak number gave it. Which NUMBER is
@@ -396,7 +416,7 @@ export function rankChainResults(
   const zFloorOk = (r: ChainResult): boolean =>
     r.zMinOhm == null || r.zMinOhm >= Z_FLOOR_OHM;
   const zClass = (r: ChainResult): number =>
-    (r.zOk === false ? 2 : 0) + (zFloorOk(r) ? 0 : 1);
+    (r.zOk === false ? 2 : 0) + (zFloorOk(r) ? 0 : 1) + rsClass(r);
   const xoClass = (r: ChainResult): number => (r.xoWindowOk === false ? 1 : 0);
   const ranked = [...results].sort((a, b) => {
     const za = zClass(a);

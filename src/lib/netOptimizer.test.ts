@@ -272,9 +272,13 @@ describe('staged mode (trapmethode on the assembled network)', () => {
     const plain = optimizeNetworkValues(paddedNetwork(), grid, wBase, tBase, driverZ, NO_ADJ, {
       phasePriority: 0,
     });
-    // Just beyond what value tuning alone achieved → escalation mode.
+    // Beyond what value tuning alone achieves → escalation mode. 0.65, not
+    // the historical 0.8: with the error-smoothed objective (aug 2026) the
+    // staged barrier tune alone already reached 0.75× (4.36 vs 5.81 dB,
+    // better than the legacy bypass-C result of 5.00), so at 0.8 the targets
+    // were simply MET and rule 3 never had to fire.
     const staged = {
-      rippleDb: Math.max(plain.after.rippleDb * 0.8, 0.05),
+      rippleDb: Math.max(plain.after.rippleDb * 0.65, 0.05),
       phaseDeg: plain.after.phaseDeg + 15,
     };
     const r = optimizeNetworkValues(paddedNetwork(), grid, wBase, tBase, driverZ, NO_ADJ, {

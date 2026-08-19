@@ -7,6 +7,7 @@ import {
 } from './filters.ts';
 import { applyTransfer, combine, type GriddedResponse, type TweeterAdjust } from './dsp.ts';
 import { computeIntegration } from './integration.ts';
+import { powerShape, smoothDbGaussian, type PowerMetricMode } from './bandMetrics.ts';
 import type { AngleResponse } from './directivity.ts';
 
 /**
@@ -66,6 +67,10 @@ export interface VfMetrics {
   /** Std dev of the horizontal energy average (in-room proxy), dB — null
    *  when no angle data was provided. */
   powerStdDb: number | null;
+  /** Smooth power metric: DI fold near the crossing (dB) and trend slope
+   *  (dB/decade); null without angle data or in legacy mode. */
+  powerFoldDb?: number | null;
+  powerSlopeDbDec?: number | null;
   /** Breakup guard: mean squared 20 dB-margin deficit of stopband leakage
    *  beside the crossover (dB²). 0 = every leak ≥ 20 dB down. */
   leakSqDb?: number;
@@ -143,6 +148,19 @@ export interface VfOptimizeOptions {
   /** 0..1: share of the AMPLITUDE budget spent on the energy average
    *  (in-room proxy) instead of the target curve. Default 0. */
   directivityWeight?: number;
+  /** How the energy average is judged (bandMetrics.powerShape): 'smooth'
+   *  (default) = std of the DETRENDED power response + a fold term near the
+   *  crossing, slope free; 'legacy' = std of the raw power (flatness). */
+  powerMetric?: PowerMetricMode;
+  /** Weight of the DI-fold term as a share of dW. Default 0.5. */
+  powerFoldWeight?: number;
+  /** Error smoothing for the SEARCH objective (bandMetrics.smoothDbGaussian):
+   *  the driver magnitudes are Gaussian-smoothed in log-f by this width
+   *  BEFORE decimation to the ~150-point inner grid, so diffraction ripple
+   *  and measurement noise no filter can fix stop steering the search. 0 =
+   *  off (legacy, raw points). Default 1/12 oct. Phase is never smoothed;
+   *  gates, staged targets and the full-grid audit stay raw. */
+  errorSmoothOct?: number;
   /** Which curve the amplitude term flattens. Default 'onAxis'.
    *  'listeningWindow' needs angleData (falls back to on-axis without). */
   ampTarget?: 'onAxis' | 'listeningWindow';
@@ -339,6 +357,9 @@ export function optimizeVirtualFilters(
     minBandImprovement = 0.01,
     angleData,
     directivityWeight = 0,
+    powerMetric = 'smooth',
+    powerFoldWeight = 0.5,
+    errorSmoothOct = 1 / 12,
     ampTarget = 'onAxis',
     cutOnly = false,
     breakupGuard = false,
@@ -398,10 +419,13 @@ export function optimizeVirtualFilters(
     spl: idx.map((i) => g.spl[i]),
     phaseDeg: idx.map((i) => g.phaseDeg[i]),
   });
-  const optW = pick(wooferRaw);
-  const optT = pick(tweeterRaw);
+  // Error smoothing BEFORE decimation (see errorSmoothOct): magnitudes only.
+  const smoothMag = (g: GriddedResponse): GriddedResponse =>
+    errorSmoothOct > 0 ? { ...g, spl: smoothDbGaussian(g.freq, g.spl, errorSmoothOct) } : g;
+  const optW = pick(smoothMag(wooferRaw));
+  const optT = pick(smoothMag(tweeterRaw));
   const pickAngles = (set: AngleResponse[]): AngleResponse[] =>
-    set.map((a) => ({ hor: a.hor, response: pick(a.response) }));
+    set.map((a) => ({ hor: a.hor, response: pick(smoothMag(a.response)) }));
   const optAngles = angleData
     ? { woofer: pickAngles(angleData.woofer), tweeter: pickAngles(angleData.tweeter) }
     : null;
@@ -454,6 +478,7 @@ export function optimizeVirtualFilters(
     const integ = computeIntegration(r);
 
     let powerStdDb: number | null = null;
+    let powerDbArr: number[] | null = null;
     let lwStd: number | null = null;
     if (angles) {
       // Energy averages over the measured angles (transfers are the same at
@@ -479,6 +504,7 @@ export function optimizeVirtualFilters(
       }
       const powerDb = powerAcc.map((v) => 10 * Math.log10(v / shared.length));
       powerStdDb = bandStd(r.freq, powerDb);
+      powerDbArr = powerDb;
       if (lwCount > 0) {
         lwStd = bandStd(r.freq, lwAcc.map((v) => 10 * Math.log10(v / lwCount)));
       }
@@ -601,6 +627,17 @@ export function optimizeVirtualFilters(
       }
     }
 
+    // Power-response SHAPE (aug 2026): smoothness owned, slope free.
+    let powerFoldDb: number | null = null;
+    let powerSlopeDbDec: number | null = null;
+    if (powerDbArr && powerMetric === 'smooth') {
+      const shp = powerShape(r.freq, powerDbArr, band, [xoHz]);
+      powerStdDb = shp.residualStdDb;
+      powerFoldDb = shp.foldDb;
+      powerSlopeDbDec = shp.slopeDbPerDecade;
+    } else if (powerDbArr) {
+      powerSlopeDbDec = powerShape(r.freq, powerDbArr, band).slopeDbPerDecade;
+    }
     return {
       responseStdDb,
       responseRipplePeakDb: bandPeak(r.freq, r.combinedSpl),
@@ -608,6 +645,8 @@ export function optimizeVirtualFilters(
       phaseP95Deg,
       integrationScore: integ.score,
       powerStdDb,
+      powerFoldDb,
+      powerSlopeDbDec,
       xoHz,
       xoDipDb,
       midSlopeDbOct,
@@ -662,7 +701,8 @@ export function optimizeVirtualFilters(
     const m = metricsOn(optW, optT, cand, inverted, optAngles);
     const amp =
       dW > 0 && m.powerStdDb !== null
-        ? (1 - dW) * m.responseStdDb ** 2 + dW * m.powerStdDb ** 2
+        ? (1 - dW) * m.responseStdDb ** 2 +
+          dW * (m.powerStdDb ** 2 + (m.powerFoldDb != null ? powerFoldWeight * m.powerFoldDb ** 2 : 0))
         : m.responseStdDb ** 2;
     // Guard scale: 9 dB average margin deficit ≈ the cost of ~0.9 dB ripple.
     return (
@@ -1047,7 +1087,8 @@ export function optimizeVirtualFilters(
     const m = metricsOn(wooferRaw, tweeterRaw, cand, inverted, angleData ?? null);
     const amp =
       dW > 0 && m.powerStdDb !== null
-        ? (1 - dW) * m.responseStdDb ** 2 + dW * m.powerStdDb ** 2
+        ? (1 - dW) * m.responseStdDb ** 2 +
+          dW * (m.powerStdDb ** 2 + (m.powerFoldDb != null ? powerFoldWeight * m.powerFoldDb ** 2 : 0))
         : m.responseStdDb ** 2;
     return (
       2 * (1 - pw) * amp +

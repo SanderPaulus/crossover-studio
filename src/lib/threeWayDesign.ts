@@ -86,6 +86,15 @@ export interface Design3Input {
    *  default ON — matching the app-wide default. See the leak term below for
    *  why the DESIGN step must carry it. */
   breakupGuard?: boolean;
+  /** DIRECTIVITY anchors (Hz) per handover — where the lower driver's DI meets
+   *  the upper's (directivity.diMatchHz), from measured angle sets. When
+   *  present, the structure search pays wDI·log2(xo/anchor)² per axis: in the
+   *  literature directivity match is the FIRST crossover criterion, not an
+   *  afterthought of the tuner. Absent (no angle data / no match) → term off
+   *  and the search is on-axis, exactly as before. */
+  diAnchorHz?: { low?: number | null; high?: number | null };
+  /** Weight of the DI-distance term. Default 0.3. */
+  diWeight?: number;
 }
 
 export interface Design3Result {
@@ -99,6 +108,9 @@ export interface Design3Result {
   fx: number;
   /** Per-pair uniform mean phase error (deg) of the winner: [low, high]. */
   pairPhaseDeg: [number, number];
+  /** Octaves between each delivered knee and its DI anchor [low, high]
+   *  (null = no anchor) — the trade the designer should see. */
+  diDistanceOct: [number | null, number | null];
   /** Human-readable structure summary for the chain note. */
   label: string;
   /** How many structures were evaluated (honest reporting). */
@@ -196,11 +208,18 @@ export function designThreeWay(input: Design3Input): Design3Result {
   let evaluated = 0;
 
   /** Filtered branches + the three-way sum, then the two PAIR scores. */
+  const wDI = Math.max(0, input.diWeight ?? 0.3);
+  const diLow = input.diAnchorHz?.low ?? null;
+  const diHigh = input.diAnchorHz?.high ?? null;
+  const diDist = (specs: Design3Specs): [number | null, number | null] => [
+    diLow && diLow > 0 ? Math.log2(specs.mid.hp.freq / diLow) : null,
+    diHigh && diHigh > 0 ? Math.log2(specs.mid.lp.freq / diHigh) : null,
+  ];
   const evaluate = (
     specs: Design3Specs,
     midInverted: boolean,
     tweeterInverted: boolean,
-  ): { fx: number; pairPhaseDeg: [number, number] } => {
+  ): { fx: number; pairPhaseDeg: [number, number]; diDistanceOct: [number | null, number | null] } => {
     evaluated++;
     const apply = (g: GriddedResponse, spec: DriverFilterSpec): GriddedResponse =>
       isActive(spec) ? applyTransfer(g, evalDriverFilter(spec, g.freq)) : g;
@@ -218,7 +237,7 @@ export function designThreeWay(input: Design3Input): Design3Result {
         { response: tF, adjust: tweetAdj },
       ]);
     } catch {
-      return { fx: 1e9, pairPhaseDeg: [180, 180] };
+      return { fx: 1e9, pairPhaseDeg: [180, 180], diDistanceOct: diDist(specs) };
     }
 
     /* Amplitude: whole-range flatness of the three-way sum, PEAK-AWARE.
@@ -320,9 +339,14 @@ export function designThreeWay(input: Design3Input): Design3Result {
     const avg = (low.avg + high.avg) / 2;
     const p95 = (low.p95 + high.p95) / 2;
     const phaseTerm = (avg / 15) ** 2 + 0.5 * (p95 / 45) ** 2;
+    // Directivity distance (rule 9 of the window spec, moved INTO the
+    // structure search): wDI · log2(knee / DI anchor)² per axis with an anchor.
+    const dd = diDist(specs);
+    const diTerm = wDI * ((dd[0] ?? 0) ** 2 + (dd[1] ?? 0) ** 2);
     return {
-      fx: 2 * (1 - pw) * amp + 2 * pw * phaseTerm + 0.02 * leakSq,
+      fx: 2 * (1 - pw) * amp + 2 * pw * phaseTerm + 0.02 * leakSq + diTerm,
       pairPhaseDeg: [low.avg, high.avg],
+      diDistanceOct: dd,
     };
   };
 
@@ -426,6 +450,7 @@ export function designThreeWay(input: Design3Input): Design3Result {
         xoHigh: Math.round(xoHigh),
         fx: scored.fx,
         pairPhaseDeg: scored.pairPhaseDeg,
+        diDistanceOct: scored.diDistanceOct,
         label:
           `${structLabel(c.alignLow)} @${Math.round(xoLow)} · ` +
           `${structLabel(c.alignHigh)} @${Math.round(xoHigh)}` +
@@ -610,6 +635,7 @@ export function designThreeWay(input: Design3Input): Design3Result {
         specs,
         fx,
         pairPhaseDeg: bestCand.pair,
+        diDistanceOct: diDist(specs),
         label: `${best.label.replace(/ · \d+ EQ$/, '')} · ${placed} EQ`,
       };
     }

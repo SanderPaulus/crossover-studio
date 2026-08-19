@@ -20,8 +20,10 @@ worker `chainOne` → `designChain.ts → runDesignChain` per kandidaat):
    **netTune** `optimizeNetworkValues` op het geassembleerde netwerk (incl. staged, drift-catch,
    krimpladder, amp-repair, snap, part-audit) → `rankChainResults` (§8).
 2. Wat NIET wordt geherevalueerd: de vf-specs (knieën/EQ) worden na de synthese niet meer
-   aangepast — de tuner verzet alleen componentwaardes op een vaste topologie; de synthese-fout
-   per tak wordt niet teruggekoppeld naar de vf-stap.
+   aangepast — de tuner verzet alleen componentwaardes op een vaste topologie. Er is wél een
+   INDIRECTE terugkoppeling: de keten geeft per tak het akoestische doel als **bevroren corridor**
+   mee (`branchTargets`, ±3 dB doodband, `corridorSq` in `fxOf`), dus de tuner mag de takken niet
+   verder van het vf-ontwerp weglopen dan 3 dB; de vf-stap zelf ziet de synthese-fout niet.
 
 **"Design for me", 3-weg** (App `runVfOptimize` 3-weg-pad → `optimClient.runChain3Scan` →
 worker `chain3One` → `threeWayChain.ts → runThreeWayChain`): per kandidaat (xoLow, xoHigh)
@@ -45,14 +47,25 @@ staged-poorten (§5), krimpladder tot 6 stappen/slot, snap = discrete coördinaa
 `step = max(1, floor(n/150))` → ~150 punten (`vfOptimizer.ts` r. 393, `netOptimizer.ts` r. 507);
 poorten en rapport op het VOLLE grid (`fullM`, `after`). Band = view-range, default
 `[grid[0]·1.02, grid[last]·0.975]`. Geen smoothing in de objective (alle termen op rauwe gridpunten);
-alleen `partAudit` smootht 1/6 oct vóór de Δ.
+alleen `partAudit` smootht 1/6 oct vóór de Δ. **Sinds punt 3 (aug 2026)**: de MAGNITUDES van de
+takken (en hoeksets) die de zoektocht ziet worden vóór de decimatie Gaussisch gesmootht in log-f
+(`bandMetrics.smoothDbGaussian`, σ = breedte/2; setting `errorSmoothOct` uit / 1/24 / **1/12** / 1/6,
+0 = legacy). Fase nooit; poorten/doelen/safety/rapport blijven rauw; `after.ripplePeakSmoothedDb`
+naast `rippleDb` (scan-tabel toont smoothed, rauw in tooltip). GEMETEN (synthetisch ±1 dB/1/20-oct):
+knieën blijven binnen 2–3 % van het schone geval, maar het aantal evaluaties daalt NIET (7703 → 8449;
+de NM-budgetten zijn per stap vast) — de "≥30 % minder iteraties" uit de spec is niet gehaald en
+niet geclaimd.
 
 **vfOptimizer** (`vfOptimizer.ts → objValue`, `pw = 0.15 + 0.7·p`, p = prioriteit 0..1):
 ```
 fx = 2(1−pw)·amp + 2pw·[(avgφ/15)² + 0.5·(P95φ/45)²]      (phaseMetric 'band'; 'overlap': alleen 1e term)
      + 0.02·leakSq (breakupGuard) + 0.5·xoDip² + xoPenalty(xo) + slopePen
-amp = (1−dW)·std(SPL_som)² + dW·std(energy-average)²      (dW = in-room-gewicht, alleen met hoekdata)
+amp = (1−dW)·std(SPL_som)² + dW·(std(residu EA)² + wF·fold²)   (dW = in-room-gewicht, alleen met hoekdata)
 ```
+`residu EA` = energy average minus zijn 1e-orde trend in (log f, dB) (`bandMetrics.powerShape`,
+setting `powerMetric` 'smooth' default; 'legacy' = std van de rauwe EA = vlakheid), `fold` = max
+|residu| binnen ×/÷1,6 van de kruising, wF = `powerFoldWeight` 0,5. De HELLING is vrij en wordt
+gerapporteerd (dB/dec; > +1 ⇒ waarschuwing, geen term).
 `avgφ` = uniform gemiddelde |Δφ| over het overlapvenster (|ΔdB| ≤ 20, `integration.ts`), P95 uit
 1°-buckets. `leakSq` = gemiddelde (20 − marge)²⁺ waar de niet-dominante tak in
 [xo/4, xo/1.6] ∪ [xo·1.6, xo·4] minder dan 20 dB onder de som zit. `xoDip` = max(0, min(max links,
@@ -67,8 +80,11 @@ als verwijderen < 0.5 % kost op het volle grid (r. 1044). Cut-only altijd aan.
 ```
 fx = 2(1−p)·amp + 2p·[(φ/15)² + 0.5·(P95/45)²] + 0.02·leakSq + 0.02·protSq + 0.5·xoDip²
      + 2·corridorSq + Σ_paren xoPenalty + (repair: 20·ΣxoEdgeSq) + slopePen
-amp = (1−dW)·bandStd² + dW·powerStd²   (bandStd = one-pass std over de band; solo: fx = 2·amp)
+amp = (1−dW)·bandStd² + dW·(powerStd² + wF·fold²)   (bandStd = one-pass std; powerStd = residu-std van de
+                                                      gedetrende EA in 'smooth'; solo: fx = 2·amp)
 ```
+`m.powerFoldDb`/`m.powerSlopeDbDec` in de metrics en `after.powerFoldDb`/`after.powerSlopeDbDec` in het
+rapport (`netOptimizer.ts → report`).
 `protSq` = gemiddelde (|H_boven| + 15 dB)²⁺ voor f ≤ xo/3 (bovenste tak ≥ 15 dB gedempt);
 `corridorSq` = gemiddelde (|tak − doel| − 3 dB)²⁺ tegen de branchTargets van de ontwerpstap
 (alleen in de keten). φ = uniform gemiddelde over de overlapvensters van álle paren; poorten oordelen
@@ -78,9 +94,14 @@ Z-vloer 2.5 Ω (`Z_FLOOR_OHM`, repair-pass + poorten), serie-pad-plafond `series
 (C 0.33–100 µF, L 0.05–15 mH, R 0.22–47 Ω), solo-gevoeligheidscap, DCR-plafond in de snap
 (`catalog.dcrCeilingOhms`, 0.5 dB serie / 2 dB shunt).
 
-**threeWayDesign** (`threeWayDesign.ts → evaluate`): `fx = 2(1−pw)·amp + 2pw·φterm + 0.02·leakSq`,
+**threeWayDesign** (`threeWayDesign.ts → evaluate`): `fx = 2(1−pw)·amp + 2pw·φterm + 0.02·leakSq
++ wDI·[log2(xoLow/DI_low)² + log2(xoHigh/DI_high)²]` (punt 2: DI-ankers uit `directivity.diMatchHz`,
+`diWeight` default 0,3, alleen mét hoekdata; `diDistanceOct` in het resultaat en in `structureLabel`),
 `amp = std² + 0.35·peakExcess²` (positief boven de mediaan), φ = gemiddelde van de twee paren; NM
-op (log xoLow, log xoHigh) met +12·penalty buiten de kooi en `xoHigh ≥ 2·xoLow`.
+op (log xoLow, log xoHigh) met +12·penalty buiten de kooi en `xoHigh ≥ 2·xoLow`. GEMETEN op de
+KOAN-3-weg-fixture: wDI 0,3 = tiebreak (0,3·log2(2000/2400)² ≈ 0,02 tegen fx ~1; het on-axis-optimum
+zit aan de onderrand van het M-T-venster) — de spec-eis "verkiest [2,25k, 2,6k] boven 3,3k bij verder
+gelijke fx" geldt bij gelijke fx; bij wDI 30 landt de knie op 2215 Hz. Zonder hoekdata bit-identiek.
 
 ## 3. Meegewogen — en niet
 
@@ -92,13 +113,32 @@ akoestische flanken (opt-in); in-room energy-average (dW, default 0.25 alleen m�
 `rankChain3Results` sinds aug 2026); BOM alleen als tiebreak ≤ 5 % (`rankChainResults`,
 `rankChain3Results`) en als kostendruk in de snap (`costWeight` 0.0015); excursie/lobing/breakup/fs
 alleen in het VENSTER (§4), nooit in fx.
-**NIET meegewogen**: directiviteit/power response in `designThreeWay` (on-axis; bewust, comment
-"nog on-axis"); bronimpedantie op fb — alleen gerapporteerd door `partAudit` (`rSourceWarn` ≥ 1 Ω),
-geen poort, geen fx (nooit gebouwd als sturing); gedrag onder de datavloer/view-range (bewust: band =
+**Sinds aug 2026 óók meegewogen**: DI-afstand in de structuurzoeker (`diWeight`, §2); bron-R aan de
+lage driver als KLASSE in `rankChainResults`/`rankChain3Results` (`rSourceLimitOhm` 1,0 Ω, `rsClass`
+naast `zClass`) én als staged-safe-poort (`netOptimizer.ts → rsSafe`: een snoei-/escalatiezet die
+R_bron van ≤ grens naar > grens duwt wordt geweigerd; `partAudit.sourceResistanceOhm`); helling van
+de EA gerapporteerd (nooit gestuurd); excess-GD van de som op 500/2k/8k en mid-band-octaven (alleen
+weergave, App `sumGroupDelay`).
+**NIET meegewogen**: power response in `designThreeWay` behalve via het DI-anker (de EA-term zelf
+zit alleen in vf/net/ranking); bronimpedantie is klasse+poort, geen fx-term (bewust); gedrag onder de datavloer/view-range (bewust: band =
 ontwerp-scope, alleen de safety-gate kijkt op het volle meetgrid naar fundamentals); breakup buiten
 de as (nooit gebouwd); groepsvertraging van de som (nooit gebouwd — alleen weergave); spoel-DCR
 als rendementsverlies (alleen via DCR-plafond in de snap); vermogens/thermisch (nooit gebouwd);
 verticale lobing (geen verticale metingen; alleen de geometrieregels).
+
+**Niveau-anker — wie wordt naar wie verzwakt** (vraag 0b): passief is cut-only, dus het anker is de
+STILSTE tak. 3-weg: `threeWayDesign.ts → trimsFor` — per (xoLow, xoHigh) de mediaan van elke tak
+over zijn fysica-gesplitste passband; `floor = min(medianen)`; elke tak krijgt `gainDb = min(0,
+floor − eigen mediaan)` (per knie herleid, dus het anker kan per kandidaat een andere tak zijn); de
+scan-ankers gebruiken dezelfde regel vooraf (`threeWayChain.ts → crossover3Variants`, "level first").
+2-weg: `vfOptimizer.ts` tuned alléén `tweeter.gainDb` (handle `dbP(−24, +6)`, r. 281), woofer vast
+op 0 — de woofer is het anker, met tot +6 dB tweeter-BOOST toegestaan in de virtuele fase; bij de
+bouw schuift App (`gShift`, r. 5826) alle gains als paar omlaag zodat de luidste op 0 staat en de
+synthese alleen verzwakking realiseert. netOptimizer: GEEN niveau-anker — pads en DCR zijn vrije
+componentwaardes binnen `BOUNDS`; alleen `partAudit.rSourceWarn` (§5) meldt een serie-R vóór de
+lage driver achteraf. Gevolg: een luidere woofertak dan de mid wordt in 3-weg door `trimsFor` gepad
+(serie-R in de woofertak; zie Qes-waarschuwing) — dat is de plek waar punt 4 van de vervolgopdracht
+ingrijpt.
 
 ## 4. Kandidaat-generatie
 
@@ -113,13 +153,18 @@ KA-tier default 4 dB). Botsing → banner + collapse op de vloer (`ceil = floor�
 1200–12000. Pin = regel 7: vervangt 2–6, niet 1.
 **Plaatsing**: rooster `crossover3Variants` (hoeken + log-midden bij steps 3, warme start = huidige
 overlap-centra, DI-anker `directivity.diMatchHz` als hij binnen het venster valt); as-voor-as (App
-`runAxes`): `candidateCentres` (3/5/7 log-punten), vaste as = pin → DI → warm → log-midden, kooi van
-de vaste as = hele venster (`variantsFromPoints`). Kooi = tegel op meetkundige middens; xo-penalty
+`runAxes`): `candidateCentres` (3/5/7 log-punten), vaste as = pin → DI-anker (in het venster geklemd,
+punt 5a) → warm → log-midden, kooi van de vaste as = hele venster (`variantsFromPoints`). Volgorde =
+eerst de as met de mid als gedeelde driver stabiliseren (W-M-sweep met M-T op het DI-anker), dan M-T,
+dan de 3×3. Punt 5c (vf-fase 3-weg "mid eerst, dan woofer, dan tweeter, dan globaal"): **[NIET ZO
+GEÏMPLEMENTEERD]** — `designThreeWay` is een GEZAMENLIJKE enumeratie van 64 structuren + NM op beide
+knieën tegelijk; er is geen per-tak-fase. Niet gemeten op 3 referentieprojecten (één set in huis). Kooi = tegel op meetkundige middens; xo-penalty
 adaptief (§2). 2-weg: `crossoverVariants` (pin onderverdeeld, 3/5/7/9 slices) of vrije keten +
 rescue-followups (`followupVariantsFor` ±12 %).
 **Label**: sinds aug 2026 = GEREALISEERDE kruising (`after.xoHzPairs` / `after.xoHz`, App
 `deliveredLabel`) met "(aim …)" erachter; **⚠** bij > ⅓ oct afwijking op een bemonsterde as (de
-vaste as van een sweep telt niet). Vóór die wijziging was het label het slice-CENTRUM — vandaar de
+vaste as van een sweep telt niet — behalve voor de WINNAAR, die op beide assen wordt beoordeeld,
+punt 5b; `threeWayChain.deliveredLabel`). Vóór die wijziging was het label het slice-CENTRUM — vandaar de
 bekende "label 4028 / header 3335"-discrepantie: het label was het doel, de strip-"Overlap x Hz" de
 levering. In een sweep-ronde is de vaste as een anker, geen doel.
 
@@ -135,7 +180,8 @@ Poort 3 — tuner staged (`optimizeNetworkValues`, alleen `opts.staged`): `meets
 worst-pair φ ≤ doel op het VOLLE grid. Doel gehaald → **desnoei**: elk vrij part open/shorted, retune
 (0.6 budget), houden als `meets` én `safe` (prot +0.5, dip +1, zShort +0.1, leak +4) én fx ≤ 1.10×
 huidig én ≤ 1.35× start; max 8 kandidaten per ronde, rondes = clamp(vrij/2, 8..20). Doel NIET
-gehaald → **escalatie** (bypass-C over serieweerstanden, ≥ 3 % of doel) — **geen snoei**. Locked
+gehaald → **escalatie** (bypass-C over serieweerstanden, ≥ 3 % of doel) — **geen snoei**. Beide
+zetten moeten sinds punt 4 óók `rsSafe` passeren (R_bron aan de lage driver niet van ≤ naar > grens). Locked
 parts (`locked`) worden nooit verzet/verwijderd. Krimpladder: E12-stappen omlaag per vrije cap, poort
 = staged doelen + fundamentals, anders ≤ 1 %/stap, ≤ 2 % cumulatief.
 Poort 4 — `partAudit.ts → auditNetwork` (aug 2026, ALTIJD, twee keer: seed en getuned): per part en
@@ -184,6 +230,10 @@ least-squares op de fase, ~180° ⇒ "likely inverted").
 - **Scan-tabel**: peak (±dB), avg (|dev| hele band), phase (avg over paren; 3-weg-poorten op worst),
   overlap (oct per paar; ⚠ = buiten venster met 6 % slack `judge`), Z min (⚠ < 2.5), BOM.
 - **Part audit**: kop = tellingen + R_bron; per rij dA/dP/dZ/ratio/€/verdict.
+- **Nieuwe strip-items (aug 2026)**: "source R at the low driver x Ω (Qes ×y) — R5, L1" (△ vanaf ½
+  grens, ⚠ erboven; onderdelen = grootste |ΔR_bron| bij verwijdering); "excess GD 500 Hz/2 kHz/8 kHz"
+  (bulk = in-band-mediaan afgetrokken); 3-weg "mid band x oct" (△ < 2,3). Directivity-paneel: "Power
+  response: slope … dB/dec · smoothness … · fold …" met ⚠ bij stijgende helling.
 
 ## 8. Beoordelingskader
 
@@ -197,25 +247,35 @@ least-squares op de fase, ~180° ⇒ "likely inverted").
 | Veel onderdelen bij gehaalde doelen | poort 3 mag alleen ≤ 10 %/part snoeien; poort 4 vond niets inert → alles "doet iets", niet per se rendabel |
 | `rSourceWarn` (R_bron ≥ 1 Ω, Qes ×) | serie-R/DCR vóór de lage driver: demping/rendementsverlies dat geen responsmetriek ziet |
 | overlap-oct groot (> 2.5) | brede overlap: beide conussen dragen samen — voor een 2-weg-som prima, voor een overname vaak ongewenst |
-Bekende gaten: inert-part-bij-onhaalbaar-doel → **opgelost** (poort 4, aug 2026, sessie na
-d4bba97, nog niet gecommit); ontbrekend fysisch criterium → **opgelost** (idem); bronimpedantie
-onder de meetband → **gerapporteerd**, geen sturing (open); ontwerpstap 3-weg on-axis → **open**;
-W-M-geometrie (rig 56° op 1 m vs 30° op 3.4 m; wooferdiepte-anker) → **open** (data, geen code).
+Bekende gaten: inert-part-bij-onhaalbaar-doel → **opgelost** (poort 4, c4699f5); ontbrekend fysisch
+criterium → **opgelost** (idem); bronimpedantie → **klasse + safe-poort** (punt 4, na c4699f5),
+schatting buiten de meetband blijft gelabeld; ontwerpstap 3-weg on-axis → **DI-anker in de
+structuurzoeker** (punt 2), de EA-term zelf niet; power "vlak"→"glad" → **opgelost** (punt 1, legacy-
+toggle); objective op rauwe punten → **smoothing 1/12 vóór decimatie** (punt 3, legacy-toggle),
+iteratiewinst NIET gemeten; W-M-geometrie (rig 56° op 1 m vs 30° op 3,4 m; wooferdiepte-anker) →
+**open** (data, geen code); ranking-verschuiving op bestaande projecten door punt 1/3 → **[NIET
+GELOGD]** (vergt dubbele run; A/B via de legacy-toggles).
 
 ## 9. Instellingen & defaults
 
 ⚙ Settings (Filters-tab) tenzij anders: prioriteit 50 % (`phasePriority`); staged AAN met doelen
-2.5 dB / 15° (`targetRipple`/`targetPhase`); EQ-banden per driver 2 (`vfEqBands`); in-room-gewicht
+2.5 dB / 15° (`targetRipple`/`targetPhase`) — **bewust ruimer dan 1.5/10** (punt 6b): een doel is het
+STOPPUNT van de escalatieladder én de voorwaarde voor de desnoei-pass; 1.5/10 was geijkt op de
+KOAN-topdrivers en duwde elk gewoon ontwerp de dure kant op (banden blijven komen, snoei draait nooit)
+terwijl het doel toch gemist werd. Wie het haalt kan het aanscherpen; de default mag niet; EQ-banden per driver 2 (`vfEqBands`); in-room-gewicht
 25 % (`dirWeight`, alleen mét hoekdata; 3-weg mid-set verplicht); phaseMetric 'band'; breakup-guard
 AAN; HP/LP-voorkeur auto (laag+hoog); flank-doelen leeg; xo-pin uit; 2-weg scan-stappen 3 (guided 9);
 3-weg `scan3Mode` axes (localStorage) + punten 5 (guided 7); venster-drempels (`xoWinThr`,
 localStorage 'ads-xo-window'): array-k 0.5, λ/N auto, breakup/1.8, fs×2; KA-tier 'measured' (4 dB);
-lobing-k 'auto'; breakup-limiet aan, harmonic 3 (⚡ let op: kaart/driverLimits gebruiken /3, het
-venster /1.8 — twee betekenissen naast elkaar); excursie-ref 96 dB; catalog-snap AAN, profiel
+lobing-k 'auto'; **twee breakup-marges, bewust** (punt 6a, naast elkaar onder Driver limits): "driver
+card & limits (harmonic)" f_b/3 = waar de vervormingsprijs landt; "candidate window" /1.8 = hoe dicht
+een overgang bij de breakup mag; **power response** 'smooth' + fold 0.5 (localStorage 'ads-power-*');
+**error smoothing** 1/12 oct ('ads-err-smooth'); **DI anchor weight** 0.3 ('ads-di-weight'); **source
+R limit** 1.0 Ω ('ads-rsource-limit'); excursie-ref 96 dB; catalog-snap AAN, profiel
 'position', stacks uit, costWeight 0.0015; corrections 'lean' bij staged; solo-budget 6 dB; Z-vloer
 2.5 Ω (constante); tolerantieband uit; seat re-timing uit; fasemodus measured (auto bij plausible).
 
 ## Changelog
-Laatst geverifieerd tegen commit **d4bba97** + de niet-gecommitte werkkopie van 19 aug 2026
-(part-audit, 3-weg-demo, xoWindow, as-voor-as-scan, regels 8/9). Herzie §4/§5/§8 zodra die
-werkkopie is gemerged (hash invullen) of wanneer `fxOf`/`objValue`/`deriveXoWindow` wijzigt.
+Laatst geverifieerd tegen commit **c4699f5** + de werkkopie van 19 aug 2026 (punten 0–6 van de
+directiviteits-opdracht: powerShape, DI-anker, error smoothing, R_bron-klasse, 5a/5b, 6a/6d).
+Herzie §2–§5/§8 wanneer `fxOf`/`objValue`/`deriveXoWindow`/`rankChain*` wijzigt.

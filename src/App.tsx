@@ -130,7 +130,7 @@ import {
   runChain3Scan,
   poolSize,
 } from './lib/optimClient.ts';
-import { crossover3Variants, rankChain3Results, variantsFromPoints, type Chain3Variant } from './lib/threeWayChain.ts';
+import { crossover3Variants, rankChain3Results, variantsFromPoints, type Chain3Variant, deliveredLabel } from './lib/threeWayChain.ts';
 import { Z_FLOOR_OHM } from './lib/netOptimizer.ts';
 import type { NetworkAudit } from './lib/partAudit.ts';
 import type { Chain3Result } from './lib/threeWayChain.ts';
@@ -167,7 +167,7 @@ import { LogoMark, LogoWord } from './components/Logo.tsx';
 import demoMid from './lib/parsers/fixtures/mid_hor0_mettape.txt?raw';
 import demoTweet from './lib/parsers/fixtures/tweet_hor0_mettape.txt?raw';
 import { beamingCeilingHz, computeDirectivity, computeDirectivityN, type AngleResponse, diMatchHz } from './lib/directivity.ts';
-import { reachesLevelHz } from './lib/bandMetrics.ts';
+import { reachesLevelHz, powerShape } from './lib/bandMetrics.ts';
 import { beamwidth6dBHalfAngle, buildSonogram, type SonogramMode } from './lib/sonogram.ts';
 import Sonogram from './components/Sonogram.tsx';
 import { angleFromFilename } from './lib/angles.ts';
@@ -704,25 +704,6 @@ interface CabinetState {
   refDriver: '' | BranchRole;
   drivers: Record<BranchRole, CabinetDriver>;
 }
-/** Rule 8 (scan table): name a candidate after its DELIVERED crossings and
- *  flag a delivery more than ⅓ octave off its aim. Pairs are [low, high];
- *  a missing delivery reads "—" and never flags. */
-function deliveredLabel(
-  target: (number | null | undefined)[],
-  delivered: (number | null | undefined)[],
-  names: string[],
-): { text: string; unrealisable: boolean } {
-  let off = false;
-  const bits = names.map((n, i) => {
-    const d = delivered[i];
-    const tg = target[i];
-    const has = typeof d === 'number' && Number.isFinite(d) && d > 0;
-    if (has && typeof tg === 'number' && tg > 0 && Math.abs(Math.log2(d / tg)) > 1 / 3) off = true;
-    return `${n} ${has ? Math.round(d) : '—'}`;
-  });
-  return { text: `${bits.join(' · ')} Hz`, unrealisable: off };
-}
-
 const emptyCabinetDriver = (): CabinetDriver => ({
   xMm: '',
   yMm: '',
@@ -4361,6 +4342,38 @@ export default function App() {
   const [vfRunStats, setVfRunStats] = useState<{ rounds: number; evals: number } | null>(null);
   const [vfEqBands, setVfEqBands] = useState(2); // EQ bands the optimizer may use per driver
   const [dirWeight, setDirWeight] = useState(25); // % of amplitude budget on the energy average
+  /** Power-response metric: 'smooth' (detrended residual + DI fold, slope
+   *  free — the crossover owns smoothness, the room owns the slope) or
+   *  'legacy' (std of the raw energy average, pre-aug-2026, for A/B). Both
+   *  a preference: localStorage. */
+  /** DI-distance weight in the 3-way structure search (threeWayDesign):
+   *  wDI · log2(knee / DI anchor)² per handover with an anchor. Default 0.3. */
+  const [diWeight, setDiWeight] = useState<number>(() => {
+    const v = Number(localStorage.getItem('ads-di-weight'));
+    return Number.isFinite(v) && v >= 0 && localStorage.getItem('ads-di-weight') !== null ? v : 0.3;
+  });
+  /** Error smoothing for the search objectives (oct): 0 = off (legacy raw
+   *  points), 1/24, 1/12 (default), 1/6. Preference (localStorage). */
+  const [errorSmoothOct, setErrorSmoothOct] = useState<number>(() => {
+    const raw = localStorage.getItem('ads-err-smooth');
+    const v = raw === null ? NaN : Number(raw);
+    return Number.isFinite(v) && v >= 0 ? v : 1 / 12;
+  });
+  /** Source-resistance limit at the low driver (Ω): above it a candidate
+   *  loses a ranking class and a staged structure move is not "safe" (point
+   *  4). Yellow from half the limit in the strip. Default 1.0. */
+  const [rSourceLimitOhm, setRSourceLimitOhm] = useState<number>(() => {
+    const raw = localStorage.getItem('ads-rsource-limit');
+    const v = raw === null ? NaN : Number(raw);
+    return Number.isFinite(v) && v >= 0 ? v : 1.0;
+  });
+  const [powerMetric, setPowerMetric] = useState<'smooth' | 'legacy'>(() =>
+    localStorage.getItem('ads-power-metric') === 'legacy' ? 'legacy' : 'smooth',
+  );
+  const [powerFoldWeight, setPowerFoldWeight] = useState<number>(() => {
+    const v = Number(localStorage.getItem('ads-power-fold'));
+    return Number.isFinite(v) && v > 0 ? v : 0.5;
+  });
   const [ampTarget, setAmpTarget] = useState<'onAxis' | 'listeningWindow'>('onAxis');
 
   /**
@@ -4900,7 +4913,19 @@ export default function App() {
         structureHigh: parseHpLpPref(hpLpPref),
         breakupGuard,
         eqBands: vfEqBands,
+        // Directivity into the structure search (3-way): anchors from the
+        // measured angle sets, weight from settings; without angle data the
+        // structure choice stays on-axis and the ⚙ readout says so.
+        diAnchorHz: physWin3?.angleSets ? physWin3.diAnchor : undefined,
+        diWeight,
         directivityWeight: dirWeight / 100,
+        powerMetric,
+        powerFoldWeight,
+        errorSmoothOct,
+        audit: {
+          thresholds: { rSourceOhm: rSourceLimitOhm },
+          fbHz: Number(cabinet.drivers.low.fbHz) > 0 ? Number(cabinet.drivers.low.fbHz) : undefined,
+        },
         ampTarget,
         phaseMetric: phaseMetricMode,
         synthMode,
@@ -5021,7 +5046,7 @@ export default function App() {
         settings,
       });
       const rankAll = (rs: Chain3Result[]) =>
-        rankChain3Results(rs, settings.targets, settings.phasePriority, angleSets3 ? settings.directivityWeight : 0);
+        rankChain3Results(rs, settings.targets, settings.phasePriority, angleSets3 ? settings.directivityWeight : 0, rSourceLimitOhm);
       const runAxes = async (): Promise<Chain3Result[]> => {
         const nPts = 1 + 2 * Math.max(1, Math.min(3, scanSteps3)); // 3/5/7
         const clampSpan = (w: { floorHz: number | null; ceilHz: number | null } | null | undefined, rail: [number, number]): [number, number] => {
@@ -5041,7 +5066,12 @@ export default function App() {
           typeof v === 'number' && v >= sp[0] && v <= sp[1] ? v : null;
         const midOf = (sp: [number, number]) => Math.sqrt(sp[0] * sp[1]);
         // Anchors for the axis being HELD: pin → DI match → warm start → log-mid.
-        const highAnchor = pins.high ? pins.high.freq : inside(physWin3?.diAnchor.high, highSpan) ?? inside(warm3?.high, highSpan) ?? midOf(highSpan);
+        // (point 5a) The held M-T sits on the DI anchor — clamped INTO the
+        // window when the match lies just outside it (Sanders' set: DI match
+        // 3.5 kHz vs breakup ceiling 3.1 kHz) — then warm start, then log-mid.
+        const clampIn = (v: number | null | undefined, sp: [number, number]) =>
+          typeof v === 'number' && Number.isFinite(v) && v > 0 ? Math.min(sp[1], Math.max(sp[0], v)) : null;
+        const highAnchor = pins.high ? pins.high.freq : clampIn(physWin3?.diAnchor.high, highSpan) ?? inside(warm3?.high, highSpan) ?? midOf(highSpan);
         const merged: Chain3Result[] = [];
         const doneItems: { label: string; text: string; done: boolean; warn?: string }[] = [];
         let doneEvals = 0;
@@ -5087,6 +5117,7 @@ export default function App() {
             settings.targets,
             settings.phasePriority,
             angleSets3 ? settings.directivityWeight : 0,
+            rSourceLimitOhm,
           );
           const win = ranked[0];
           setVFilters((prev) => ({ ...prev, ...win.specs }));
@@ -5118,8 +5149,11 @@ export default function App() {
                   rows: ranked.map((rr) => {
                     // In a sweep round the HELD axis is an anchor, not an aim:
                     // only the swept axis can be "not realisable".
-                    const heldLow = /\(M-T sweep\)/.test(rr.label);
-                    const heldHigh = /\(W-M sweep\)/.test(rr.label);
+                    // (point 5b) The WINNER is judged on BOTH axes regardless of
+                    // the round it came from — a missed delivery on the held
+                    // axis must not stay invisible on the design you get.
+                    const heldLow = rr !== win && /\(M-T sweep\)/.test(rr.label);
+                    const heldHigh = rr !== win && /\(W-M sweep\)/.test(rr.label);
                     const dl = deliveredLabel(
                       [heldLow ? null : rr.xoLow, heldHigh ? null : rr.xoHigh],
                       rr.net.after.xoHzPairs ?? [null, null],
@@ -5131,6 +5165,7 @@ export default function App() {
                       target: rr.label,
                       unrealisable: dl.unrealisable,
                       rippleDb: rr.net.after.rippleDb,
+                      peakSmoothedDb: rr.net.after.ripplePeakSmoothedDb ?? null,
                       avgDevDb: rr.net.after.avgDevDb ?? null,
                       phaseDeg: rr.net.after.phaseDeg,
                       zMinOhm: rr.net.after.zMinOhm ?? null,
@@ -5399,6 +5434,13 @@ export default function App() {
       eqBandsPerDriver: vfEqBands,
       angleData,
       directivityWeight: dirWeight / 100,
+      powerMetric,
+      powerFoldWeight,
+      errorSmoothOct,
+      audit: {
+        thresholds: { rSourceOhm: rSourceLimitOhm },
+        fbHz: Number(cabinet.drivers.low.fbHz) > 0 ? Number(cabinet.drivers.low.fbHz) : undefined,
+      },
       ampTarget,
       cutOnly: true, // passive-only: EQ may never boost
       breakupGuard,
@@ -5449,6 +5491,13 @@ export default function App() {
         eqBandsPerDriver: vfEqBands,
         angleData,
         directivityWeight: dirWeight / 100,
+        powerMetric,
+        powerFoldWeight,
+        errorSmoothOct,
+        audit: {
+          thresholds: { rSourceOhm: rSourceLimitOhm },
+          fbHz: Number(cabinet.drivers.low.fbHz) > 0 ? Number(cabinet.drivers.low.fbHz) : undefined,
+        },
         ampTarget,
         cutOnly: true, // passive-only: EQ may never boost
         breakupGuard,
@@ -5544,6 +5593,7 @@ export default function App() {
             targets,
             phasePriority / 100,
             tweeterHpFloor ?? undefined,
+            rSourceLimitOhm,
           );
           const win = ranked[0];
           setVFilters((p) => ({ ...p, ...win.vf.specs }));
@@ -5568,6 +5618,7 @@ export default function App() {
                       target: rr.label,
                       unrealisable: dl.unrealisable,
                       rippleDb: rr.net.after.rippleDb,
+                      peakSmoothedDb: rr.net.after.ripplePeakSmoothedDb ?? null,
                       avgDevDb: rr.net.after.avgDevDb ?? null,
                       phaseDeg: rr.net.after.phaseDeg,
                       zMinOhm: rr.net.after.zMinOhm ?? null,
@@ -5967,6 +6018,9 @@ export default function App() {
     rows: {
       label: string;
       rippleDb: number;
+      /** Peak of the error-smoothed sum (what the search judged); shown in the
+       *  column, the raw rippleDb in the tooltip. */
+      peakSmoothedDb: number | null;
       /** Whole-range avg |deviation| — the number the ranking judges on. */
       avgDevDb: number | null;
       phaseDeg: number;
@@ -6128,6 +6182,9 @@ export default function App() {
         phasePriority: phasePriority / 100,
         angleData: angleResponsesOn(grid) ?? undefined,
         directivityWeight: dirWeight / 100,
+        powerMetric,
+        powerFoldWeight,
+        errorSmoothOct,
         ampTarget,
         breakupGuard,
         staged: stagedOn
@@ -6167,6 +6224,7 @@ export default function App() {
         // Gate 4: the source-resistance verdict is taken at the low branch's
         // box tuning when the designer entered one; otherwise at its Z peak.
         audit: {
+          thresholds: { rSourceOhm: rSourceLimitOhm },
           fbHz: Number(cabinet.drivers.low.fbHz) > 0 ? Number(cabinet.drivers.low.fbHz) : undefined,
         },
       },
@@ -6962,6 +7020,36 @@ export default function App() {
    *  source, virtual-filter stacking and adjustment the sim uses, so the band
    *  hugs the exact combined curve on screen. Null while off or without a
    *  solvable network. */
+  /** Group delay of the SUM at three fixed points (500 Hz / 2 kHz / 8 kHz),
+   *  bulk (mic flight) removed by subtracting the in-band median — display
+   *  only, never an objective term (point 6d). Central difference of the
+   *  unwrapped combined phase: GD = −(dφ/360)/df. */
+  const sumGroupDelay = useMemo(() => {
+    if (!result || !result.combinedPhaseDeg) return null;
+    const f = result.freq;
+    const ph = result.combinedPhaseDeg;
+    const n = f.length;
+    if (n < 5) return null;
+    const lo = Number(fMin) || f[0];
+    const hi = Number(fMax) || f[n - 1];
+    const gd = new Array<number>(n).fill(NaN);
+    for (let i = 1; i < n - 1; i++) {
+      const df = f[i + 1] - f[i - 1];
+      if (!(df > 0)) continue;
+      gd[i] = (-(ph[i + 1] - ph[i - 1]) / 360 / df) * 1000; // ms
+    }
+    const inBand = gd.filter((v, i) => Number.isFinite(v) && f[i] >= lo && f[i] <= hi).sort((a, b) => a - b);
+    if (inBand.length < 3) return null;
+    const med = inBand[Math.floor(inBand.length / 2)];
+    const at = (hz: number): number | null => {
+      if (hz < lo || hz > hi) return null;
+      let b = -1;
+      for (let i = 1; i < n - 1; i++) if (Number.isFinite(gd[i]) && (b < 0 || Math.abs(f[i] - hz) < Math.abs(f[b] - hz))) b = i;
+      return b >= 0 ? gd[b] - med : null;
+    };
+    return { at500: at(500), at2k: at(2000), at8k: at(8000), medianMs: med };
+  }, [result, fMin, fMax]);
+
   const tolBand = useMemo(() => {
     // 3-weg mag hier NIET meer uit: de tolerantieband is dé check die een
     // rekenkundig optimum scheidt van een bouwbaar filter, en juist een
@@ -12079,6 +12167,111 @@ export default function App() {
                     style={{ width: '11rem', accentColor: 'var(--accent)' }}
                   />
                 </label>
+                <label
+                  className="inline-num"
+                  title={t("How the energy average is judged. Smooth (default): the trend of the power response (dB/decade) is fitted and left FREE — a rising DI makes it fall, and the slope is your room correction's business — and only the RESIDUAL counts: its std plus a fold term near each crossing (a DI step no room EQ can undo). Legacy: std of the raw power response (flatness), the pre-Aug-2026 behaviour, for A/B on existing projects.")}
+                >
+                  {t('Power response')}
+                  <select
+                    value={powerMetric}
+                    onChange={(e) => {
+                      const v = e.target.value === 'legacy' ? 'legacy' : 'smooth';
+                      setPowerMetric(v);
+                      localStorage.setItem('ads-power-metric', v);
+                    }}
+                    disabled={!angleSets || !!soloDriver}
+                  >
+                    <option value="smooth">{t('smooth (slope free, fold penalised)')}</option>
+                    <option value="legacy">{t('legacy (flat)')}</option>
+                  </select>
+                  {powerMetric === 'smooth' && (
+                    <>
+                      {' '}{t('fold ×')}
+                      <input
+                        type="number"
+                        min={0}
+                        max={3}
+                        step={0.1}
+                        value={powerFoldWeight}
+                        onChange={(e) => {
+                          const v = Number(e.target.value);
+                          const nv = Number.isFinite(v) && v >= 0 ? v : 0.5;
+                          setPowerFoldWeight(nv);
+                          localStorage.setItem('ads-power-fold', String(nv));
+                        }}
+                        style={{ width: '3.6rem' }}
+                        title={t('Weight of the DI-fold term (max |residual| within ×/÷1.6 of a crossing) as a share of the in-room weight. Default 0.5.')}
+                      />
+                    </>
+                  )}
+                </label>
+                <label
+                  className="inline-num"
+                  title={t('Smoothing of the on-axis and energy-average magnitudes the SEARCH judges (Gaussian in log-f, applied before decimation to the inner grid). Diffraction ripple and measurement noise no filter can fix stop steering the search. Off = legacy raw points. Gates, staged targets and the safety gate always judge the raw full grid; the scan table shows the smoothed peak with the raw peak as tooltip.')}
+                >
+                  {t('Error smoothing')}
+                  <select
+                    value={String(errorSmoothOct)}
+                    onChange={(e) => {
+                      const v = Number(e.target.value);
+                      setErrorSmoothOct(v);
+                      localStorage.setItem('ads-err-smooth', String(v));
+                    }}
+                  >
+                    <option value="0">{t('off (legacy)')}</option>
+                    <option value={String(1 / 24)}>1/24 oct</option>
+                    <option value={String(1 / 12)}>1/12 oct</option>
+                    <option value={String(1 / 6)}>1/6 oct</option>
+                  </select>
+                </label>
+                <label
+                  className="inline-num"
+                  title={t("Source resistance the LOW driver sees at its box tuning (real part of the Thevenin impedance looking back from its terminals): series R and coil DCR in the woofer branch add to Re and raise Qes — damping and efficiency lost, invisible to every response metric. Above this limit a scan candidate loses a ranking class (same mechanism as the Z floor) and a staged prune/escalation move that pushes it over is not accepted. Yellow from half the limit. Model estimate outside the measured band.")}
+                >
+                  {t('Source R limit')}
+                  <input
+                    type="number"
+                    min={0}
+                    max={5}
+                    step={0.1}
+                    value={rSourceLimitOhm}
+                    onChange={(e) => {
+                      const v = Number(e.target.value);
+                      const nv = Number.isFinite(v) && v >= 0 ? v : 1.0;
+                      setRSourceLimitOhm(nv);
+                      localStorage.setItem('ads-rsource-limit', String(nv));
+                    }}
+                    style={{ width: '3.6rem' }}
+                  />{' '}Ω
+                </label>
+                {threeWay && (
+                  <label
+                    className="inline-num"
+                    title={t("Directivity in the STRUCTURE search (3-way): each handover pays weight × log2(knee / DI anchor)², the anchor being where the lower driver's DI meets the upper's (from the angle sets). In the literature directivity match is the first crossover criterion, not an afterthought of the tuner. 0 = off.")}
+                  >
+                    {t('DI anchor weight')}
+                    <input
+                      type="number"
+                      min={0}
+                      max={3}
+                      step={0.1}
+                      value={diWeight}
+                      onChange={(e) => {
+                        const v = Number(e.target.value);
+                        const nv = Number.isFinite(v) && v >= 0 ? v : 0.3;
+                        setDiWeight(nv);
+                        localStorage.setItem('ads-di-weight', String(nv));
+                      }}
+                      style={{ width: '3.6rem' }}
+                    />
+                    {!physWin3?.angleSets && (
+                      <span className="derived"> {t('structure choice on-axis — load angle data for directivity steering')}</span>
+                    )}
+                    {physWin3?.angleSets && physWin3.diAnchor.low === null && physWin3.diAnchor.high === null && (
+                      <span className="derived"> {t('no DI match found in the measured band — structure choice on-axis')}</span>
+                    )}
+                  </label>
+                )}
                 <span className="opt-group-cap">{t('Filter shape')}</span>
                 <label
                   className="inline-num"
@@ -12361,9 +12554,8 @@ export default function App() {
                           ))}
                         </select>
                       </span>{' '}
-                      <span className="inline-num" title={t('Rule 4 — breakup margin: the ceiling of a handover and of every low-pass sits at the lower driver\'s first breakup / N.')}>
-                        {t('breakup')} /
-                        <input type="number" min={1} max={4} step={0.1} value={xoWinThr.breakupDiv} onChange={(e) => setXoWinThrField('breakupDiv', Number(e.target.value))} style={{ width: '3.6rem' }} />
+                      <span className="inline-num" title={t('Rule 4 — breakup margin: set under Driver limits ("Breakup margin — candidate window").')}>
+                        {t('breakup')} /{xoWinThr.breakupDiv}
                       </span>{' '}
                       <span className="inline-num" title={t('Rule 5 — resonance floor: the upper driver\'s handover sits at least K × its in-situ fs (from the ZMA). 2 with an Fs LCR trap in the design, 3 without.')}>
                         fs ×
@@ -12525,7 +12717,7 @@ export default function App() {
                 )}
                 {threeWay && (
                   <label title={t('Cone breakup as an upper limit. A resonance at f_b is excited as the THIRD harmonic of a fundamental at f_b/3 (Purifi measured exactly this: breakups at 5 and 10 kHz produce HD3 peaks at 1.6 and 3.3 kHz), so the distortion penalty lands more than an octave BELOW the peak. A notch does not repair it — it attenuates the fundamental at the breakup, not the harmonics arriving there from lower fundamentals. NOTE: no published algorithm exists for finding breakup in an SPL curve; this is our own criterion, which is why it is switchable and the detected frequency is shown.')}>
-                    {t('Stay this far below cone breakup')}
+                    {t('Breakup margin — driver card & limits (harmonic)')}
                     <select
                       value={breakupLimitOn ? breakupHarmonic : 'off'}
                       onChange={(e) => {
@@ -12540,6 +12732,23 @@ export default function App() {
                       <option value="3">f_b / 3 (HD3)</option>
                       <option value="5">{t('f_b / 5 (HD5, hard cones)')}</option>
                     </select>
+                  </label>
+                )}
+                {threeWay && (
+                  <label
+                    className="inline-num"
+                    title={t("Breakup margin — candidate WINDOW (3-way scan): the ceiling of a handover sits at the lower driver's first breakup / N. This is a second, deliberately milder margin than the harmonic one above: the card/limits margin (f_b/3) says where the distortion penalty of a breakup lands (third harmonic), the window margin (default 1.8) says how close a handover may come to the breakup itself. Two numbers, two questions.")}
+                  >
+                    {t('Breakup margin — candidate window')} /
+                    <input
+                      type="number"
+                      min={1}
+                      max={4}
+                      step={0.1}
+                      value={xoWinThr.breakupDiv}
+                      onChange={(e) => setXoWinThrField('breakupDiv', Number(e.target.value))}
+                      style={{ width: '3.6rem' }}
+                    />
                   </label>
                 )}
                 {threeWay && (
@@ -13248,8 +13457,14 @@ export default function App() {
                         <span style={{ opacity: 0.6 }}> {t('(aim')} {r.target.replace(/ Hz$/, '')})</span>
                         {chainScan.active === r.label ? ' ◂' : ''}
                       </td>
-                      <td title={t('Peak ±dB — the worst single spot (what the staged targets gate on)')}>
-                        {r.rippleDb.toFixed(2)} dB
+                      <td
+                        title={
+                          r.peakSmoothedDb !== null && Math.abs(r.peakSmoothedDb - r.rippleDb) > 0.005
+                            ? t('Peak ±dB of the error-smoothed sum (what the search judged); raw peak {raw} dB — the worst single raw spot, what the staged targets gate on', { raw: r.rippleDb.toFixed(2) })
+                            : t('Peak ±dB — the worst single spot (what the staged targets gate on)')
+                        }
+                      >
+                        {(r.peakSmoothedDb ?? r.rippleDb).toFixed(2)} dB
                       </td>
                       <td title={t("Whole-range average |deviation| — the number the ranking judges on: one narrow dip doesn't decide the winner")}>
                         {r.avgDevDb !== null ? `${r.avgDevDb.toFixed(2)} dB` : '—'}
@@ -13723,6 +13938,51 @@ export default function App() {
                     )}
                   </>
                 )}
+                {sumGroupDelay && (
+                  <span
+                    className="strip-item"
+                    title={t('Group delay of the summed response at three fixed points, with the bulk delay (mic flight, {m} ms median) removed — display only, never optimised. Literature reads a passive multi-way at ~0.5–1.5 ms excess GD in the crossover region; large steps between the three points mean phase rotation across a handover.', { m: sumGroupDelay.medianMs.toFixed(2) })}
+                  >
+                    {t('excess GD')} 500 Hz {sumGroupDelay.at500 !== null ? `${(sumGroupDelay.at500 * 1000).toFixed(0)} µs` : '—'} · 2 kHz{' '}
+                    {sumGroupDelay.at2k !== null ? `${(sumGroupDelay.at2k * 1000).toFixed(0)} µs` : '—'} · 8 kHz{' '}
+                    {sumGroupDelay.at8k !== null ? `${(sumGroupDelay.at8k * 1000).toFixed(0)} µs` : '—'}
+                  </span>
+                )}
+                {threeWay && pairScores?.low?.integ.overlapCentreHz != null && pairScores?.high?.integ.overlapCentreHz != null && (() => {
+                  const oct = Math.log2(pairScores.high!.integ.overlapCentreHz! / pairScores.low!.integ.overlapCentreHz!);
+                  const narrow = oct < 2.3;
+                  return (
+                    <span
+                      className={`strip-item${narrow ? ' alert' : ''}`}
+                      title={t('Mid band = log2(M-T crossing / W-M crossing). Below ~2.3 octaves the midrange carries too little of the spectrum for its filters to settle: consider a lower W-M or a higher M-T.')}
+                    >
+                      {narrow ? '△ ' : ''}{t('mid band {o} oct', { o: oct.toFixed(1) })}
+                      {narrow ? ` — ${t('narrow: consider a lower W-M or a higher M-T')}` : ''}
+                    </span>
+                  );
+                })()}
+                {netOptAudit && netOptAudit.rSourceOhm !== null && netOptAudit.rSourceOhm >= 0.5 * rSourceLimitOhm && (() => {
+                  // Point 4: source resistance at the low driver as a strip item,
+                  // naming the parts that carry it (largest |ΔR_source| when
+                  // removed). Yellow from half the limit, red over it.
+                  const rs = netOptAudit.rSourceOhm;
+                  const culprits = [...netOptAudit.entries]
+                    .filter((e) => e.dRsource !== null && Math.abs(e.dRsource) >= 0.1 && e.ids.length === 1)
+                    .sort((a, b) => Math.abs(b.dRsource!) - Math.abs(a.dRsource!))
+                    .slice(0, 3)
+                    .map((e) => `${e.label} (${e.dRsource! >= 0 ? '−' : '+'}${Math.abs(e.dRsource!).toFixed(2)} Ω)`);
+                  const over = rs > rSourceLimitOhm;
+                  return (
+                    <span
+                      className={`strip-item${over ? ' alert' : ''}`}
+                      title={t("Real part of the impedance the LOW driver sees looking back into the network at its box tuning ({hz} Hz) — a model estimate outside the measured band. It adds to Re: Qes × {q}. Above the limit ({lim} Ω) a scan candidate loses a ranking class and structure moves that push it over are refused. Parts listed: the largest change in this number when the part is removed.", { hz: Math.round(netOptAudit.rSourceAtHz ?? 0), q: (netOptAudit.qesFactor ?? 1).toFixed(2), lim: rSourceLimitOhm.toFixed(1) })}
+                    >
+                      {over ? '⚠ ' : '△ '}
+                      {t('source R at the low driver {r} Ω (Qes ×{q})', { r: rs.toFixed(2), q: (netOptAudit.qesFactor ?? 1).toFixed(2) })}
+                      {culprits.length > 0 ? ` — ${culprits.join(', ')}` : ''}
+                    </span>
+                  );
+                })()}
                 {tolBand && (
                   <span
                     className="strip-item"
@@ -13856,6 +14116,33 @@ export default function App() {
                   ? t('Horizontal only — but this baffle is wider than tall, so that IS the plane its drivers lobe in: this data captures it.')
                   : t('Horizontal only — vertical lobing is not in this data.')}
               </p>
+              {(() => {
+                // Power-response SHAPE readout (aug 2026): slope is reported,
+                // never steered; a RISING slope is flagged — that is almost
+                // always a level/measurement error, not a design choice.
+                const xs = threeWay
+                  ? [pairScores?.low?.integ.overlapCentreHz ?? null, pairScores?.high?.integ.overlapCentreHz ?? null]
+                  : [integration?.overlapCentreHz ?? null];
+                const shp = powerShape(
+                  directivity.freq,
+                  directivity.powerDb,
+                  [Number(fMin) || directivity.freq[0], Number(fMax) || directivity.freq[directivity.freq.length - 1]],
+                  xs,
+                );
+                const rising = shp.slopeDbPerDecade > 1;
+                return (
+                  <p className="sub" style={{ marginBottom: '0.6rem' }} title={t('Fitted 1st-order trend of the energy average over the visible band (dB per decade) — reported, not optimised: the slope is room/taste territory (a rising DI makes it fall). The residual after detrending is what the in-room weight judges: its std, plus the largest fold within ×/÷1.6 of each crossing.')}>
+                    {t('Power response: slope {s} dB/dec · smoothness (residual std) {r} dB · fold at crossings {f} dB', {
+                      s: (shp.slopeDbPerDecade >= 0 ? '+' : '') + shp.slopeDbPerDecade.toFixed(1),
+                      r: shp.residualStdDb.toFixed(2),
+                      f: shp.foldDb.toFixed(2),
+                    })}
+                    {rising && (
+                      <strong> ⚠ {t('rising power response — almost always a level or measurement error, not a design choice')}</strong>
+                    )}
+                  </p>
+                );
+              })()}
               {showPanels.directivity && (
               <>
               <Chart

@@ -10,6 +10,7 @@ import {
   crossover3Variants,
   rankChain3Results,
   variantsFromPoints,
+  deliveredLabel,
   runThreeWayChain,
   type Chain3Result,
 } from './threeWayChain.ts';
@@ -373,6 +374,55 @@ describe('threeWayChain (phase-4 trede 4c, staged v1)', () => {
     const dup = variantsFromPoints([1000], [2000, 2100], [900, 1100], [1800, 2600]);
     expect(dup).toHaveLength(1);
     expect(dup[0].xoHigh).toBe(2500);
+  });
+
+  it('point 5b / rule 8: deliveredLabel flags either axis > ⅓ oct off its aim, names delivered values, ignores nulls', () => {
+    const ok = deliveredLabel([435, 1849], [440, 1900], ['W-M', 'M-T']);
+    expect(ok.unrealisable).toBe(false);
+    expect(ok.text).toBe('W-M 440 · M-T 1900 Hz');
+    // Held axis passed as null: never flags. Swept axis off by 0.45 oct: flags.
+    const swept = deliveredLabel([null, 1849], [596, 1849], ['W-M', 'M-T']);
+    expect(swept.unrealisable).toBe(false);
+    const both = deliveredLabel([435, 1849], [596, 1849], ['W-M', 'M-T']);
+    expect(both.unrealisable).toBe(true);
+    const highOff = deliveredLabel([435, 1849], [440, 2500], ['W-M', 'M-T']);
+    expect(highOff.unrealisable).toBe(true);
+    const missing = deliveredLabel([435, 1849], [null, null], ['W-M', 'M-T']);
+    expect(missing.text).toBe('W-M — · M-T — Hz');
+    expect(missing.unrealisable).toBe(false);
+  });
+
+  it('point 4: a candidate whose network puts > 1 Ω of source resistance in front of the woofer loses the class to an equally flat one', () => {
+    const mk = (label: string, rSourceOhm: number | null, avgDev = 0.5): Chain3Result =>
+      ({
+        label,
+        xoLow: 400,
+        xoHigh: 3000,
+        specs: {} as Chain3Result['specs'],
+        synthWoofer: {} as Chain3Result['synthWoofer'],
+        synthMid: {} as Chain3Result['synthMid'],
+        synthTweeter: {} as Chain3Result['synthTweeter'],
+        parts: [],
+        net: {
+          after: { rippleDb: avgDev, avgDevDb: avgDev, phaseDeg: 5, zMinOhm: 6 },
+          audit: rSourceOhm === null ? undefined : { rSourceOhm, entries: [] },
+        } as unknown as Chain3Result['net'],
+        bomTotalEur: 300,
+        zOk: true,
+        zMinOhm: 6,
+        xoWindowOk: null,
+        pairOverlapOct: null,
+        midInverted: false,
+        tweeterInverted: false,
+        structureLabel: 'x',
+      }) as Chain3Result;
+    // 3.3 Ω series R in the woofer branch (Rs 3.4) vs the same flatness without.
+    const withR = mk('3.3 Ω pad', 3.4, 0.45); // even a touch flatter
+    const without = mk('no pad', 0.4, 0.5);
+    expect(rankChain3Results([withR, without], undefined, 0.5, 0, 1.0)[0].label).toBe('no pad');
+    // Unknown (no audit) is never punished; limit 0 switches the class off.
+    expect(rankChain3Results([mk('unknown', null, 0.45), without], undefined, 0.5, 0, 1.0)[0].label).toBe('unknown');
+    expect(rankChain3Results([withR, without], undefined, 0.5, 0, 0)[0].label).toBe('3.3 Ω pad');
   });
 
   it('rule 9: the in-room weight lets a flatter POWER response beat a flatter on-axis one', () => {

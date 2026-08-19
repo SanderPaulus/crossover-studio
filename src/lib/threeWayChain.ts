@@ -65,6 +65,16 @@ export interface Chain3Settings {
    *  flatness into the amplitude term — the 2-way recipe, now three-branch.
    *  Needs angleData on the input (with the mid's own set) to do anything. */
   directivityWeight?: number;
+  /** Power-response metric (bandMetrics.powerShape) and fold weight — see netOptimizer opts. */
+  powerMetric?: 'smooth' | 'legacy';
+  powerFoldWeight?: number;
+  /** Error smoothing width for the search objectives (oct); 0 = off. */
+  errorSmoothOct?: number;
+  /** Part-audit options (thresholds incl. the source-R limit, Fb) — forwarded to the tuner. */
+  audit?: { enabled?: boolean; thresholds?: { rSourceOhm?: number }; fbHz?: number };
+  /** DI anchors per handover for the structure search (threeWayDesign) + weight. */
+  diAnchorHz?: { low?: number | null; high?: number | null };
+  diWeight?: number;
   ampTarget?: 'onAxis' | 'listeningWindow';
   phaseMetric?: 'band' | 'overlap';
   synthMode: 'filter' | 'acoustic';
@@ -196,6 +206,8 @@ export function runThreeWayChain(
     structureHigh: s.structureHigh,
     breakupGuard: s.breakupGuard,
     eqBandsPerBranch: s.eqBands,
+    diAnchorHz: s.diAnchorHz,
+    diWeight: s.diWeight,
   });
   const specs = design.specs;
   // The chosen polarities become the branch adjustments everything downstream
@@ -271,6 +283,10 @@ export function runThreeWayChain(
     breakupGuard: s.breakupGuard,
     angleData: input.angleData,
     directivityWeight: s.directivityWeight,
+    powerMetric: s.powerMetric,
+    powerFoldWeight: s.powerFoldWeight,
+    errorSmoothOct: s.errorSmoothOct,
+    audit: s.audit,
     ampTarget: s.ampTarget,
     acousticSlopes: s.acousticSlopes,
     xoRangePairs: [lowCage, highCage],
@@ -369,7 +385,11 @@ export function runThreeWayChain(
     pairOverlapOct: net.after.pairOverlapOct ?? null,
     midInverted: design.midInverted,
     tweeterInverted: design.tweeterInverted,
-    structureLabel: design.label,
+    structureLabel:
+      design.label +
+      (design.diDistanceOct.some((d) => d !== null)
+        ? ` · DI Δ ${design.diDistanceOct.map((d) => (d === null ? '—' : `${d >= 0 ? '+' : ''}${d.toFixed(2)} oct`)).join('/')}`
+        : ''),
     xoPinNote,
   };
 }
@@ -824,13 +844,24 @@ export function rankChain3Results(
    *  Without angle data nothing changes. Decision level only — the tuner's
    *  own objective already carries the same weight. */
   directivityWeight = 0,
+  /** Source-resistance limit at the low driver (Ω, point 4): a candidate whose
+   *  delivered network puts more than this in front of the woofer at Fb loses
+   *  a class — same mechanism as the Z floor, never a score term. null/absent
+   *  audit is never punished. */
+  rSourceLimitOhm = 1.0,
 ): Chain3Result[] {
   const p = 0.15 + 0.7 * Math.min(Math.max(phasePriority, 0), 1);
   const dW = Math.min(Math.max(directivityWeight, 0), 1);
+  const rsClass = (r: Chain3Result): number => {
+    const rs = r.net.audit?.rSourceOhm;
+    return rs != null && rSourceLimitOhm > 0 && rs > rSourceLimitOhm ? 1 : 0;
+  };
   const rippleOf = (r: Chain3Result): number => {
     const on = r.net.after.avgDevDb != null ? (Math.PI / 2) * r.net.after.avgDevDb : r.net.after.rippleDb;
     const pw = r.net.after.powerStdDb;
-    return dW > 0 && pw != null ? Math.sqrt((1 - dW) * on * on + dW * pw * pw) : on;
+    const fold = r.net.after.powerFoldDb ?? 0;
+    // Same shape as the tuner's amp term: smoothness + 0.5·fold² (slope free).
+    return dW > 0 && pw != null ? Math.sqrt((1 - dW) * on * on + dW * (pw * pw + 0.5 * fold * fold)) : on;
   };
   const score = (r: Chain3Result): number =>
     2 * (1 - p) * rippleOf(r) ** 2 + 2 * p * (r.net.after.phaseDeg / 15) ** 2;
@@ -853,7 +884,7 @@ export function rankChain3Results(
    * refuse to ship must not be purchasable with a tenth of a dB. */
   const zFloorOk = (r: Chain3Result): boolean =>
     r.zMinOhm === null || r.zMinOhm >= Z_FLOOR_OHM;
-  const zClass = (r: Chain3Result): number => (r.zOk ? 0 : 2) + (zFloorOk(r) ? 0 : 1);
+  const zClass = (r: Chain3Result): number => (r.zOk ? 0 : 2) + (zFloorOk(r) ? 0 : 1) + rsClass(r);
   /* Delivered-handover physics, as a class between the amplifier and the
    * flatness targets. Above targets on purpose: a crossing past the measured
    * beaming/lobing bound is a different (worse) loudspeaker off-axis however
@@ -891,3 +922,23 @@ export function rankChain3Results(
   }
   return ranked;
 }
+
+/** Rule 8 (scan table): name a candidate after its DELIVERED crossings and
+ *  flag a delivery more than ⅓ octave off its aim. Pairs are [low, high];
+ *  a missing delivery reads "—" and never flags. */
+export function deliveredLabel(
+  target: (number | null | undefined)[],
+  delivered: (number | null | undefined)[],
+  names: string[],
+): { text: string; unrealisable: boolean } {
+  let off = false;
+  const bits = names.map((n, i) => {
+    const d = delivered[i];
+    const tg = target[i];
+    const has = typeof d === 'number' && Number.isFinite(d) && d > 0;
+    if (has && typeof tg === 'number' && tg > 0 && Math.abs(Math.log2(d / tg)) > 1 / 3) off = true;
+    return `${n} ${has ? Math.round(d) : '—'}`;
+  });
+  return { text: `${bits.join(' · ')} Hz`, unrealisable: off };
+}
+

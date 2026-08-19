@@ -224,3 +224,115 @@ export function reachableBand(
   const hi = Math.min(band[1], freq[alive[alive.length - 1]]);
   return hi > lo * 2 ? [lo, hi] : [band[0], band[1]];
 }
+
+/* ------------------------------------------------------------------ *
+ * Power-response SHAPE (aug 2026, "van vlak naar glad")
+ * ------------------------------------------------------------------ */
+
+export type PowerMetricMode = 'smooth' | 'legacy';
+
+export interface PowerShape {
+  /** Std-dev of the DETRENDED energy average over the band (dB) — smoothness. */
+  residualStdDb: number;
+  /** Fitted 1st-order trend, dB per decade of frequency (negative = falling). */
+  slopeDbPerDecade: number;
+  /** Per-point residual after detrending (NaN outside the band). */
+  residualDb: number[];
+  /** Largest |residual| within [xo/ratio, xo·ratio] of each requested crossing
+   *  — the DI "fold" a room EQ cannot undo; 0 when no crossing given. */
+  foldDb: number;
+  /** Per crossing, same order as `crossingsHz`. */
+  foldPerXoDb: number[];
+}
+
+/**
+ * The energy average (power response) of a correct loudspeaker is NOT flat:
+ * a rising DI makes it fall with frequency. What the crossover owns is its
+ * SMOOTHNESS — a fold at a handover (DI step) is passively unfixable and no
+ * room EQ can repair it either — while the SLOPE is room/taste territory that
+ * a room-correction system sets. So: fit a 1st-order line in (log10 f, dB)
+ * over the band, judge the RESIDUAL (std + a fold term near each crossing),
+ * report the slope, never penalise it. `legacy` reproduces the historical
+ * std-of-the-raw-power (flatness) for A/B on existing projects.
+ */
+export function powerShape(
+  freq: readonly number[],
+  powerDb: readonly number[],
+  band: [number, number],
+  crossingsHz: readonly (number | null | undefined)[] = [],
+  foldRatio = 1.6,
+): PowerShape {
+  const n = freq.length;
+  const residualDb = new Array<number>(n).fill(NaN);
+  let sx = 0, sy = 0, sxx = 0, sxy = 0, cnt = 0;
+  for (let i = 0; i < n; i++) {
+    if (freq[i] < band[0] || freq[i] > band[1] || !Number.isFinite(powerDb[i])) continue;
+    const x = Math.log10(freq[i]);
+    const y = powerDb[i];
+    sx += x; sy += y; sxx += x * x; sxy += x * y; cnt++;
+  }
+  if (cnt < 3) return { residualStdDb: 0, slopeDbPerDecade: 0, residualDb, foldDb: 0, foldPerXoDb: crossingsHz.map(() => 0) };
+  const den = cnt * sxx - sx * sx;
+  const slope = den > 0 ? (cnt * sxy - sx * sy) / den : 0;
+  const icpt = (sy - slope * sx) / cnt;
+  let ss = 0;
+  for (let i = 0; i < n; i++) {
+    if (freq[i] < band[0] || freq[i] > band[1] || !Number.isFinite(powerDb[i])) continue;
+    const r = powerDb[i] - (icpt + slope * Math.log10(freq[i]));
+    residualDb[i] = r;
+    ss += r * r;
+  }
+  const residualStdDb = Math.sqrt(ss / cnt);
+  const foldPerXoDb = crossingsHz.map((xo) => {
+    if (xo == null || !(xo > 0)) return 0;
+    let mx = 0;
+    for (let i = 0; i < n; i++) {
+      if (freq[i] < xo / foldRatio || freq[i] > xo * foldRatio || Number.isNaN(residualDb[i])) continue;
+      mx = Math.max(mx, Math.abs(residualDb[i]));
+    }
+    return mx;
+  });
+  return { residualStdDb, slopeDbPerDecade: slope, residualDb, foldDb: foldPerXoDb.length ? Math.max(...foldPerXoDb) : 0, foldPerXoDb };
+}
+
+/* ------------------------------------------------------------------ *
+ * Error smoothing for the search objectives (aug 2026)
+ * ------------------------------------------------------------------ */
+
+/**
+ * Gaussian smoothing of a dB curve in log-frequency: sigma = `octaves`/2 so
+ * that ±1σ spans the named width (1/12 oct ⇒ σ = 1/24 oct). Non-finite points
+ * are skipped; the output keeps them as they were. Applied to MAGNITUDES only
+ * — never to phase — and, in the optimizers, to the driver responses BEFORE
+ * decimation to the ~150-point search grid: the diffraction ripple and
+ * measurement noise a filter cannot fix would otherwise alias into the
+ * objective through the decimated samples. Gates, staged targets and the
+ * safety gate keep judging the raw full grid.
+ */
+export function smoothDbGaussian(
+  freq: readonly number[],
+  db: readonly number[],
+  octaves: number,
+): number[] {
+  const n = freq.length;
+  if (!(octaves > 0) || n < 3) return [...db];
+  const sigma = octaves / 2;
+  const reach = 3 * sigma;
+  const lf = freq.map((f) => Math.log2(f));
+  const out = new Array<number>(n);
+  let lo = 0;
+  for (let i = 0; i < n; i++) {
+    while (lo < n && lf[lo] < lf[i] - reach) lo++;
+    let s = 0;
+    let w = 0;
+    for (let j = lo; j < n && lf[j] <= lf[i] + reach; j++) {
+      if (!Number.isFinite(db[j])) continue;
+      const d = (lf[j] - lf[i]) / sigma;
+      const g = Math.exp(-0.5 * d * d);
+      s += g * db[j];
+      w += g;
+    }
+    out[i] = w > 0 ? s / w : db[i];
+  }
+  return out;
+}

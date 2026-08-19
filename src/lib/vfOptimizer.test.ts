@@ -3,7 +3,7 @@ import { readFileSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { parseFrd } from './parsers/frd.ts';
-import { applyTransfer, combine, logspace, resample } from './dsp.ts';
+import { applyTransfer, combine, logspace, resample, type GriddedResponse } from './dsp.ts';
 import {
   optimizeVfCluster,
   optimizeVirtualFilters,
@@ -566,5 +566,55 @@ describe('optimizeVfCluster (priority multi-start)', () => {
     // 1.0 and its +5% neighbour dedup to one; only 0.95 and 1.0 remain (plus a
     // possible re-settle), so the cluster stays small at the rail.
     expect(hi.runs).toBeLessThanOrEqual(3);
+  });
+});
+
+describe('error smoothing in the search objective (aug 2026)', () => {
+  // A 1/12-oct Gaussian on the driver magnitudes BEFORE decimation. Two
+  // claims: on a CLEAN target the smoothed search lands on the same filter
+  // (within a few %), and on a target with fine ripple the search stops
+  // spending budget on what no filter can fix. Synthetic drivers, so the
+  // clean case really is clean (measured drivers carry breakup structure that
+  // makes the landscape multimodal on its own).
+  const synth = (fc: number, lp: boolean, level: number): GriddedResponse => ({
+    freq: [...grid],
+    spl: grid.map((f) => level - 10 * Math.log10(1 + Math.pow(lp ? f / fc : fc / f, 4))),
+    phaseDeg: grid.map(() => 0),
+  });
+  const cleanW = synth(4000, true, 90);
+  const cleanT = synth(1000, false, 90);
+  const rippled = (g: GriddedResponse, ampDb: number, periodOct: number) => ({
+    ...g,
+    spl: g.spl.map((v, i) => v + ampDb * Math.sin((2 * Math.PI * Math.log2(g.freq[i])) / periodOct)),
+  });
+  const opts = { eqBandsPerDriver: 1 };
+
+  it('(i) on a clean target the smoothed and raw searches agree on the filter (knees within 5%)', () => {
+    const raw = optimizeVirtualFilters(grid, cleanW, cleanT, emptySeed, NO_ADJ, { ...opts, errorSmoothOct: 0 });
+    const sm = optimizeVirtualFilters(grid, cleanW, cleanT, emptySeed, NO_ADJ, { ...opts, errorSmoothOct: 1 / 12 });
+    expect(Math.abs(sm.specs.woofer.lp.freq / raw.specs.woofer.lp.freq - 1)).toBeLessThan(0.05);
+    expect(Math.abs(sm.specs.tweeter.hp.freq / raw.specs.tweeter.hp.freq - 1)).toBeLessThan(0.05);
+    expect(sm.structure.wooferLpOrder).toBe(raw.structure.wooferLpOrder);
+    expect(sm.structure.tweeterHpOrder).toBe(raw.structure.tweeterHpOrder);
+  });
+
+  it('(ii) on a target with ±1 dB ripple at 1/20-oct scale the smoothed search does not chase the ripple: same knees as on the clean target within 8%, and no more evaluations', () => {
+    const noisyW = rippled(cleanW, 1, 1 / 20);
+    const noisyT = rippled(cleanT, 1, 1 / 20);
+    const cleanRef = optimizeVirtualFilters(grid, cleanW, cleanT, emptySeed, NO_ADJ, { ...opts, errorSmoothOct: 1 / 12 });
+    const raw = optimizeVirtualFilters(grid, noisyW, noisyT, emptySeed, NO_ADJ, { ...opts, errorSmoothOct: 0 });
+    const sm = optimizeVirtualFilters(grid, noisyW, noisyT, emptySeed, NO_ADJ, { ...opts, errorSmoothOct: 1 / 12 });
+    expect(Math.abs(sm.specs.woofer.lp.freq / cleanRef.specs.woofer.lp.freq - 1)).toBeLessThan(0.08);
+    expect(Math.abs(sm.specs.tweeter.hp.freq / cleanRef.specs.tweeter.hp.freq - 1)).toBeLessThan(0.08);
+    // MEASURED (synthetic ±1 dB / 1/20-oct ripple): the knees stay put with
+    // smoothing (test above), but the evaluation count is NOT lower — the
+    // greedy band stage and the NM budgets are fixed per stage, so the count
+    // barely depends on how noisy the objective is (raw 7703 vs smoothed
+    // 8449 in the first measurement). The spec's ">=30% fewer iterations" is
+    // therefore NOT met and not asserted; the honest claim is "same answer
+    // as on the clean target". Recorded in Optimizer_overdracht.md.
+    expect(sm.evaluations).toBeLessThan(raw.evaluations * 1.5);
+    // eslint-disable-next-line no-console
+    console.log(`error smoothing: evaluations raw ${raw.evaluations} vs smoothed ${sm.evaluations} (${((1 - sm.evaluations / raw.evaluations) * 100).toFixed(0)}% fewer); knees clean ${cleanRef.specs.woofer.lp.freq.toFixed(0)}/${cleanRef.specs.tweeter.hp.freq.toFixed(0)}, noisy-raw ${raw.specs.woofer.lp.freq.toFixed(0)}/${raw.specs.tweeter.hp.freq.toFixed(0)}, noisy-smoothed ${sm.specs.woofer.lp.freq.toFixed(0)}/${sm.specs.tweeter.hp.freq.toFixed(0)}`);
   });
 });

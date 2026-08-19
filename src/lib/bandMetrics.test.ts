@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { logspace } from './dsp.ts';
-import { bandIndices, bandMedian, bandStats, flatnessObjective, reachableBand, reachesLevelHz } from './bandMetrics.ts';
+import { bandIndices, bandMedian, bandStats, flatnessObjective, powerShape, reachableBand, reachesLevelHz } from './bandMetrics.ts';
 
 const grid = logspace(100, 20000, 400);
 const flat = (level: number) => grid.map(() => level);
@@ -150,5 +150,54 @@ describe('reachesLevelHz — the handover floor made measurable', () => {
     const hz = reachesLevelHz(logGrid, spl, 6);
     expect(hz).not.toBeNull();
     expect(hz!).toBeGreaterThanOrEqual(300);
+  });
+});
+
+describe('powerShape — the crossover owns the SMOOTHNESS of the power response, not its slope', () => {
+  const grid = logspace(200, 20000, 400);
+  const line = (dbPerDec: number, offset = 100) => grid.map((f) => offset + dbPerDec * Math.log10(f / 200));
+  const amp = (onStd: number, shp: ReturnType<typeof powerShape>, dW = 0.25, foldW = 0.5) =>
+    (1 - dW) * onStd ** 2 + dW * (shp.residualStdDb ** 2 + foldW * shp.foldDb ** 2);
+  const legacyStd = (y: number[]) => {
+    const m = y.reduce((a, v) => a + v, 0) / y.length;
+    return Math.sqrt(y.reduce((a, v) => a + (v - m) ** 2, 0) / y.length);
+  };
+
+  it('(i) flat axis + textbook-falling power beats flat power + hanging axis (smooth), the reverse in legacy', () => {
+    const A = powerShape(grid, line(-4), [200, 20000], [2000]); // falling, perfectly smooth
+    const B = powerShape(grid, line(0), [200, 20000], [2000]); // flat power
+    const onA = 0; // flat on-axis
+    const onB = 1; // hanging on-axis, 1 dB std
+    expect(A.residualStdDb).toBeLessThan(0.01);
+    expect(A.slopeDbPerDecade).toBeCloseTo(-4, 2);
+    expect(amp(onA, A)).toBeLessThan(amp(onB, B));
+    // Legacy flatness would have preferred B: the −4 dB/dec line reads as ~2.3 dB std.
+    const legacyA = 0.25 * legacyStd(line(-4)) ** 2;
+    const legacyB = 0.75 * onB ** 2;
+    expect(legacyA).toBeGreaterThan(legacyB);
+  });
+
+  it('(ii) a 2 dB DI fold around the crossing measurably worsens the amplitude term', () => {
+    const smooth = line(-3);
+    const folded = smooth.map((v, i) => v + (grid[i] > 2000 / 1.3 && grid[i] < 2000 * 1.3 ? 2 : 0));
+    const S = powerShape(grid, smooth, [200, 20000], [2000]);
+    const F = powerShape(grid, folded, [200, 20000], [2000]);
+    expect(F.foldDb).toBeGreaterThan(1.5);
+    expect(S.foldDb).toBeLessThan(0.05);
+    expect(amp(0.5, F)).toBeGreaterThan(amp(0.5, S) * 1.5);
+  });
+
+  it('(iii) two designs that differ only in power slope (−2 vs −6 dB/dec, both smooth) score EQUAL', () => {
+    const a = powerShape(grid, line(-2), [200, 20000], [2000]);
+    const b = powerShape(grid, line(-6), [200, 20000], [2000]);
+    expect(Math.abs(amp(0.5, a) - amp(0.5, b))).toBeLessThan(1e-9);
+    expect(a.slopeDbPerDecade).toBeCloseTo(-2, 2);
+    expect(b.slopeDbPerDecade).toBeCloseTo(-6, 2);
+  });
+
+  it('a rising slope is reported (the UI warns above +1 dB/dec); no crossing → fold 0', () => {
+    const r = powerShape(grid, line(+2.5), [200, 20000]);
+    expect(r.slopeDbPerDecade).toBeGreaterThan(1);
+    expect(r.foldDb).toBe(0);
   });
 });

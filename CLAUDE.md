@@ -2114,7 +2114,41 @@ samen worden gerankt en gevuld in de scan-tabel (label draagt de ronde-tag). Aan
 hoekenrooster (2 stappen = 200/622) bevatte Sanders bekende-goede 492 gewoon niet; 7+7+9 = 23 ketens
 vindt hem tegen 49 voor een even fijn rooster; kost ~3× de wandkloktijd van het 4-rooster omdat de
 rondes op elkaar wachten. Voortgangsrijen van afgeronde rondes blijven in de busy-tabel staan.
-
+**DIRECTIVITEITS-KLASSE-RONDE (aug 2026, Sanders spec "6 verbeterpunten + literatuur-upgrades",
+volgend op `Optimizer_overdracht.md`)**: (1) **power response van "vlak" naar "glad"** —
+`bandMetrics.powerShape`: 1e-orde-trend in (log f, dB) gefit en VRIJ gelaten (helling = kamer/Dirac-
+domein, alleen gerapporteerd; > +1 dB/dec = ⚠ meet-/niveaufout), de term is std(residu)² + wF·fold²
+(fold = max |residu| binnen ×/÷1,6 van elk kruispunt, wF 0,5) in `fxOf`, `objValue` én
+`rankChain3Results`; setting `powerMetric` 'smooth'|'legacy' (A/B), Directivity-paneel toont
+slope/smoothness/fold. Tests (i)–(iii): vlakke as + dalende power wint van vlakke power + hangende
+as, 2 dB plooi kost aantoonbaar, −2 vs −6 dB/dec scoren gelijk. (2) **DI in de structuurzoeker**:
+`threeWayDesign` betaalt `wDI·log2(knie/DI-anker)²` per as (`diAnchorHz` uit `diMatchHz`, `diWeight`
+0,3), `diDistanceOct` in resultaat + structureLabel, ⚙-regel "structuurkeuze on-axis — laad hoekdata"
+zonder hoeksets. GEMETEN: op de KOAN-3-weg-fixture is 0,3 een tiebreak (0,02 tegen fx ~1; het
+on-axis-optimum zit aan de M-T-onderrand); mechanisme monotoon (wDI 30 → 2215 Hz) — test pint dat,
+niet de spec-eis "[2,25k, 2,6k] bij 0,3". (3) **fout-smoothing** `smoothDbGaussian` (σ = breedte/2)
+op de tak-magnitudes VÓÓR de decimatie naar ~150 pt (`errorSmoothOct` uit/1/24/**1/12**/1/6, 0 =
+legacy), fase nooit, poorten/doelen/safety/rapport rauw; `after.ripplePeakSmoothedDb` naast de rauwe
+piek (scan-tabel smoothed, rauw in tooltip). GEMETEN (synthetisch ±1 dB/1/20-oct): knieën binnen 2–3 %
+van het schone geval, evaluaties dalen NIET (7703 → 8449, NM-budgetten vast) — de "≥30 % minder
+iteraties" is niet gehaald en niet geclaimd. Bijvangst: de staged-escalatietest (bypass-C) moest naar
+doel ×0,65 — met smoothing haalt de barrier-tune alléén al 0,75× (4,36 vs 5,81 dB, beter dan legacy
+mét bypass-C 5,00). (4) **bron-R als klasse**: `partAudit.sourceResistanceOhm` (één netlist, één
+frequentie), `rsClass` naast `zClass` in beide rankers (`rSourceLimitOhm` 1,0 Ω, App-setting
+'ads-rsource-limit'), `rsSafe` in de staged snoei/escalatie (van ≤ naar > grens = niet safe), audit-
+drempel gedeeld via `opts.audit.thresholds.rSourceOhm`; SPL-strip noemt de onderdelen met de grootste
+|ΔR_bron| (△ vanaf ½ grens, ⚠ erboven), Qes-schatting blijft "modelschatting buiten meetband".
+(5a) vaste M-T-as = DI-anker IN het venster geklemd (was: buiten venster ⇒ log-midden), (5b) de
+WINNAAR krijgt ⚠ op BEIDE assen (`deliveredLabel` naar threeWayChain.ts, unit-getest), (5c) vf-fase
+3-weg per tak: NIET zo geïmplementeerd (gezamenlijke 64-enumeratie), niet gemeten (één referentieset).
+(6a) twee breakup-marges NAAST elkaar onder Driver limits met uitleg (kaart f_b/3 = waar de
+vervormingsprijs landt; venster /1,8 = hoe dicht een overgang bij de breakup mag) — de venster-input
+verhuisde uit de venster-uitlezing; (6b) staged-defaults 2,5/15 BLIJVEN, gedocumenteerd (doel =
+stoppunt + snoei-voorwaarde; 1,5/10 was KOAN-topdriver-ijk); (6c) overdracht gecorrigeerd ("bevroren
+corridor koppelt indirect terug"); (6d) `sumGroupDelay` (excess GD 500/2k/8k, bulk = in-band-mediaan)
++ "mid band x oct" (△ < 2,3) als strip-items, alleen weergave. Alle nieuwe knoppen zijn
+localStorage-voorkeuren, geen projectdata.
+**Wizard-systeemkeuze (Sanders voorstel, aug 2026)**: stap 0 begint met 1-weg/2-weg/3-weg
 (`wizardWays`, localStorage 'ads-wizard-ways'; data wint bij openen — volle 3-weg forceert 3,
 exact twee buitentakken 2) en toont alléén de bijbehorende slots; **Next blokkeert op
 `wizardMissing`** (tooltip + regel noemen wat mist), meer-geladen-dan-gedeclareerd geeft een
