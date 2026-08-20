@@ -13,6 +13,7 @@ import {
   allSeries,
   disabledSeries,
   setDisabledSeries,
+  branchDcrBudgetOhms,
 } from './catalog.ts';
 
 describe('component catalog', () => {
@@ -233,6 +234,84 @@ describe('coil tier exemption (DCR is a position property, not a tier)', () => {
     );
     expect(bound.every((p) => p.parts.every((x) => x.brand === 'Gold'))).toBe(true);
     setCustomSeries([]);
+  });
+});
+
+describe('per-branch coil DCR budget (aug 2026 — the source-resistance round)', () => {
+  const coil = (id: string, value: number, seriesR: number, priceEur: number) => ({
+    id,
+    brand: 'X',
+    series: 'Air',
+    kind: 'L' as const,
+    value,
+    seriesR,
+    priceEur,
+    tier: 'standard' as const,
+  });
+
+  it('splits one branch budget over its coils and keeps stacks under the SAME ceiling', () => {
+    // A 1.0 mH slot with three gauges: thin/cheap, medium, thick/dear — plus
+    // two 0.5 mH parts a stack could be built from, whose SUMMED DCR is what
+    // the amplifier sees. That summed value is exactly what slipped through
+    // before: each half cleared the budget on its own.
+    setCustomSeries(
+      [],
+      [
+        coil('THIN-10', 1.0e-3, 0.9, 4),
+        coil('MED-10', 1.0e-3, 0.42, 9),
+        coil('THICK-10', 1.0e-3, 0.18, 30),
+        coil('HALF-A', 0.5e-3, 0.35, 3),
+        coil('HALF-B', 0.5e-3, 0.35, 3),
+      ],
+    );
+    try {
+      // Budget 0.20 Ω for this slot: only the thick coil clears it.
+      const tight = pickCandidates('L', 1.0e-3, 3, { profile: 'auto' }, 'series', 0.2);
+      expect(tight.length).toBeGreaterThan(0);
+      for (const p of tight) expect(p.seriesR).toBeLessThanOrEqual(0.2 + 1e-9);
+      // 0.5 Ω lets the medium one in as well, and the thin one still not.
+      const loose = pickCandidates('L', 1.0e-3, 3, { profile: 'auto' }, 'series', 0.5);
+      const ids = loose.flatMap((p) => p.parts.map((x) => x.id));
+      expect(ids).toContain('MED-10');
+      expect(ids).not.toContain('THIN-10');
+      // A stack of two halves is 0.70 Ω and must NOT survive a 0.5 Ω ceiling.
+      for (const p of loose) expect(p.seriesR).toBeLessThanOrEqual(0.5 + 1e-9);
+      // AN IMPOSSIBLE BUDGET BUYS THE MOST COPPER, NOT THE LEAST. Two failure
+      // modes were measured while building this and both are pinned here:
+      // (a) falling back to "lowest DCR at any value" handed a 0.047 mH coil
+      //     to a 1.0 mH slot — a 20x value error to save a tenth of an ohm;
+      // (b) falling back to the UNFILTERED pool let the cost term decide, and
+      //     cheap coil = thin wire, so the impossible budget produced the
+      //     WORST DCR in the catalog (measured on the KOAN scan: R_source did
+      //     not move at all).
+      const impossible = pickCandidates('L', 1.0e-3, 3, { profile: 'auto' }, 'series', 0.01);
+      expect(impossible.length).toBeGreaterThan(0);
+      expect(impossible[0].value).toBeCloseTo(1.0e-3, 9); // (a)
+      const poor = impossible.flatMap((p) => p.parts.map((x) => x.id));
+      expect(poor).toContain('THICK-10'); // (b)
+      expect(poor).not.toContain('THIN-10');
+      // Capacitors are untouched by the coil budget.
+      const caps = pickCandidates('C', 10e-6, 3, { profile: 'auto' }, 'series', 0.01);
+      expect(caps.length).toBeGreaterThan(0);
+    } finally {
+      setCustomSeries([]);
+    }
+  });
+
+  it('branchDcrBudgetOhms reads the branch Re, not a pooled median, and honours the source-R limit', () => {
+    // KOAN numbers: the woofer pair sits at 3.22 Ω, the pooled median over all
+    // three drivers is 5.66 Ω. The pooled figure is what the guard used to get.
+    const pair = branchDcrBudgetOhms(3.22);
+    const pooled = branchDcrBudgetOhms(5.66);
+    expect(pair).toBeLessThan(pooled);
+    expect(pair).toBeCloseTo(3.22 * (10 ** 0.05 - 1), 6);
+    // Sanders own hand-built filter: 0.24 + 0.19 Ω into that pair — right at
+    // the budget, which is what it is calibrated on.
+    expect(0.24 + 0.19).toBeGreaterThan(pair);
+    expect(0.24 + 0.19).toBeLessThan(pair * 1.2);
+    // The hard source-R ceiling wins when it is the stricter of the two.
+    expect(branchDcrBudgetOhms(20, 1.0)).toBeCloseTo(0.7, 6);
+    expect(branchDcrBudgetOhms(0)).toBe(Infinity);
   });
 });
 

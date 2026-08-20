@@ -272,7 +272,8 @@
       "Bash([ -f \"$S/cw2-0.005.json\" ])",
       "Bash([ -f \"$S/cw2-0.015.json\" ])",
       "Bash([ -f \"$S/cw2-0.05.json\" ])",
-      "Bash([ -f \"$S/cw2-0.15.json\" ])"
+      "Bash([ -f \"$S/cw2-0.15.json\" ])",
+      "Bash([ -f \"$S/sander-before.json\" ])"
     ]
   }
 }

@@ -1926,4 +1926,7 @@ export const nl: Record<string, string> = {
   "Apply as new tab": "Toepassen als nieuwe tab",
   "B2 — cost pressure in the catalog snap: candidate score ×(1 + w·ΣEUR). A tiebreak between near-equal purchasable realisations, never a quality trade. Until Aug 2026 this knob was not wired from the UI — the tuner silently ran 0.0015.": "B2 — kostendruk in de catalogus-snap: kandidaatscore ×(1 + w·ΣEUR). Een tiebreak tussen bijna-gelijke koopbare realisaties, nooit een kwaliteitsruil. Tot aug 2026 was deze knop niet aangesloten vanuit de UI — de tuner draaide stil 0,0015.",
   "Snap cost pressure": "Snap-kostendruk",
+  "◆ your design before this run": "◆ je ontwerp vóór deze run",
+  "The design that was on screen when the scan started, measured through the same pipeline. It does not compete — it is the bar every candidate has to clear.": "Het ontwerp dat op het scherm stond toen de scan begon, gemeten via dezelfde pijplijn. Het doet niet mee in de race — het is de lat waar elke kandidaat overheen moet.",
+  "No candidate beat the design you already had ({name}: {peak} dB · {phase}° · R src {rs}). Keep it — or widen the search (crossover window, more steps, targets), because this run found nothing better.": "Geen enkele kandidaat verslaat het ontwerp dat je al had ({name}: {peak} dB · {phase}° · R bron {rs}). Houd dat — of zoek breder (kruispuntvenster, meer stappen, doelen), want deze run vond niets beters.",
 };

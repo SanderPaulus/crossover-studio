@@ -7,7 +7,14 @@ import { parseZma } from './parsers/zma.ts';
 import { logspace, resample } from './dsp.ts';
 import { fromPolar } from './complex.ts';
 import type { VxpPart } from './parsers/vxp.ts';
-import { auditNetwork, smoothOctave, DEFAULT_AUDIT_THRESHOLDS } from './partAudit.ts';
+import {
+  auditNetwork,
+  smoothOctave,
+  DEFAULT_AUDIT_THRESHOLDS,
+  sourceProbeIndex,
+  seriesPathResistanceOhm,
+  sourceResistanceOhm,
+} from './partAudit.ts';
 import { optimizeNetworkValues } from './netOptimizer.ts';
 
 const FIXTURES = join(dirname(fileURLToPath(import.meta.url)), 'parsers', 'fixtures');
@@ -278,5 +285,66 @@ describe('part audit — gate 4 (absolute physical audit)', () => {
     const a = auditNetwork(parts, ctx)!;
     const b = auditNetwork(parts, ctx)!;
     expect(JSON.stringify(a)).toBe(JSON.stringify(b));
+  });
+});
+
+describe('source resistance is only read where it was measured (aug 2026)', () => {
+  // Sanders' case, exactly: a port tuned to 31 Hz and measurements that start
+  // at 200 Hz. The nearest-grid-point rule handed back grid[0] = 210 Hz, which
+  // on his woofer low-pass sits on the parallel resonance of L1 and C2
+  // (3.3 mH ‖ 136 µF = 237 Hz). His own hand-built filter — the best design in
+  // the room — read 7.40 Ω that way against 0.23 Ω in band, and fifteen of
+  // nineteen scan candidates were disqualified on that reading.
+  const grid = Array.from({ length: 240 }, (_, i) => 210 * (19000 / 210) ** (i / 239));
+  const z = grid.map(() => ({ re: 6, im: 0 }));
+
+  it('refuses a tuning frequency below the grid and falls back to the DC limit', () => {
+    // A KNOWN tuning below the grid gives no usable probe at all — probing
+    // elsewhere would hide a resistor the shunt cap short-circuits there.
+    expect(sourceProbeIndex(grid, z, 31)).toBeNull();
+    const inside = sourceProbeIndex(grid, z, 500);
+    expect(inside?.inBand).toBe(true);
+    expect(grid[inside!.idx]).toBeGreaterThan(450);
+    expect(grid[inside!.idx]).toBeLessThan(560);
+  });
+
+  it('the DC limit is the series-path resistance to the low driver', () => {
+    const P = (x: number, y: number) => ({ x, y });
+    const parts: VxpPart[] = [
+      { type: 'Generator', partId: 'G1', params: [{ name: 'Eg', value: 2.83, unit: 'V' }], wires: [P(3, 4), P(3, 11)] },
+      { type: 'Ground', params: [], wires: [P(3, 11)] },
+      // series path to the woofer: 0.24 + 0.19 Ω of coil DCR (his own filter)
+      { type: 'Inductor', partId: 'L1', params: [{ name: 'L', value: 3.3, unit: 'mH' }, { name: 'DCR', value: 0.24, unit: 'Ω' }], wires: [P(3, 4), P(9, 4)] },
+      { type: 'Capacitor', partId: 'C2', params: [{ name: 'C', value: 136, unit: 'uF' }], wires: [P(9, 4), P(9, 11)] },
+      { type: 'Ground', params: [], wires: [P(9, 11)] },
+      { type: 'Inductor', partId: 'L3', params: [{ name: 'L', value: 0.68, unit: 'mH' }, { name: 'DCR', value: 0.19, unit: 'Ω' }], wires: [P(9, 4), P(15, 4)] },
+      { type: 'Driver', partId: 'D1', model: 'woofer', inverted: false, params: [], wires: [P(15, 4), P(15, 11)] },
+      { type: 'Ground', params: [], wires: [P(15, 11)] },
+      // the tweeter branch must not count toward the woofer's series path
+      { type: 'Capacitor', partId: 'C5', params: [{ name: 'C', value: 5.6, unit: 'uF' }], wires: [P(3, 20), P(9, 20)] },
+      { type: 'Wire', params: [], wires: [P(3, 4), P(3, 20)] },
+      { type: 'Resistor', partId: 'R6', params: [{ name: 'R', value: 8.2, unit: 'Ω' }], wires: [P(9, 20), P(15, 20)] },
+      { type: 'Driver', partId: 'D2', model: 'tweeter', inverted: false, params: [], wires: [P(15, 20), P(15, 27)] },
+      { type: 'Ground', params: [], wires: [P(15, 27)] },
+    ];
+    expect(seriesPathResistanceOhm(parts)).toBeCloseTo(0.43, 6);
+    // And that is what the out-of-band probe reports, NOT the resonance peak.
+    const driverZ = { woofer: z, tweeter: z };
+    const out = sourceResistanceOhm(parts, { grid, driverZ, fbHz: 31 });
+    expect(out).toBeCloseTo(0.43, 6);
+    // In band the Thevenin reading stands.
+    const inBand = sourceResistanceOhm(parts, { grid, driverZ, fbHz: 250 });
+    expect(inBand).not.toBeNull();
+    expect(inBand!).toBeGreaterThan(0);
+    // And the DC limit catches what an in-band probe can hide: a resistor in
+    // the series path that the shunt cap short-circuits at the probe frequency
+    // (Sanders' Working(5): 3.63 Ω of series path, reported as 0.48 Ω).
+    const padded = parts.map((p) =>
+      p.partId === 'L3'
+        ? { ...p, type: 'Resistor' as const, params: [{ name: 'R', value: 3.3, unit: 'Ω' }] }
+        : p,
+    );
+    expect(seriesPathResistanceOhm(padded)).toBeCloseTo(3.54, 6);
+    expect(sourceResistanceOhm(padded, { grid, driverZ, fbHz: 31 })).toBeCloseTo(3.54, 6);
   });
 });

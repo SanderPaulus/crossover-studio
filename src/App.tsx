@@ -132,9 +132,13 @@ import {
   poolSize,
 } from './lib/optimClient.ts';
 import { crossover3Variants, rankChain3Results, variantsFromPoints, type Chain3Variant, deliveredLabel } from './lib/threeWayChain.ts';
-import { Z_FLOOR_OHM, type NetOptimizeOptions } from './lib/netOptimizer.ts';
+import {
+  optimizeNetworkValues,
+  Z_FLOOR_OHM,
+  type NetOptimizeOptions,
+} from './lib/netOptimizer.ts';
 import type { MinimizeResult } from './lib/minimize.ts';
-import type { NetworkAudit } from './lib/partAudit.ts';
+import { sourceResistanceOhm, type NetworkAudit } from './lib/partAudit.ts';
 import type { Chain3Result } from './lib/threeWayChain.ts';
 import { buildSoloNetwork, optimizeSoloFilter, reachableBandFor } from './lib/soloOptimizer.ts';
 import { crossoverVariants, rankChainResults, type ChainResult, type ChainSettings } from './lib/designChain.ts';
@@ -4946,6 +4950,13 @@ export default function App() {
           z: zGridWithSlots(impedances, sGrid),
         };
       })();
+      // The design on screen is the bar: measure it BEFORE the scan overwrites
+      // Working, so the table can say "no candidate beat what you had".
+      setScanReference(
+        activeDesign && networkActive
+          ? measureReferenceDesign([...activeDesign.parts], grid, zOnGrid, safety)
+          : null,
+      );
       // Rule 1 beats rule 7 (xoWindow.ts): a pin that dips under the data
       // floor is clamped to it — the physWin3 banner already says so — and the
       // clamped pin is what the chain cages and judges against.
@@ -6207,6 +6218,20 @@ export default function App() {
     active: string;
   } | null>(null);
 
+  /** The design that was on screen when the scan started — the row every
+   *  candidate has to beat. Measured, never ranked. */
+  type ScanReference = {
+    name: string;
+    peakDb: number;
+    avgDevDb: number | null;
+    phaseDeg: number;
+    zMinOhm: number | null;
+    rSourceOhm: number | null;
+    bomEur: number | null;
+    partCount: number;
+  };
+  const [scanReference, setScanReference] = useState<ScanReference | null>(null);
+
   /** Scan-table sort: click a header to sort by that column (asc → desc →
    *  back to the RANKING order, which is the default and keeps 🏆 on top). */
   /** B3 — Pareto view of the scan: BOM on x, a quality measure on y, the
@@ -6275,6 +6300,65 @@ export default function App() {
 
   /** The tuner options as the ⚙ settings define them — shared by Optimize
    *  components and the minimize pass so the two judge the same way. */
+  /** What the design you ALREADY HAVE scores, on the scan's own yardstick.
+   *
+   *  WHY (aug 2026, Sanders: "van alle pogingen hebben we maar 1 goede… ik vind
+   *  dit een kwalijke zaak"): a scan that ranks only its own candidates will
+   *  always crown one, even when every single one is worse than the network
+   *  the designer already built. His hand-made filter beat all nineteen rows
+   *  on source resistance and price, and nothing on screen said so — he had to
+   *  find that out by hand. So the table carries a REFERENCE row, measured
+   *  through the same pipeline (one solve, no tuning: the metrics come from
+   *  `before`, so the reference cannot flatter itself with another yardstick).
+   *
+   *  Measured only, never ranked: it does not compete, it judges the winner. */
+  function measureReferenceDesign(
+    parts: readonly VxpPart[],
+    grid: readonly number[],
+    zOnGrid: Record<string, readonly Complex[]>,
+    safety: NetOptimizeOptions['safety'],
+  ): ScanReference | null {
+    if (!sim) return null;
+    const rlc = parts.filter((p) => /^(Resistor|Inductor|Capacitor)$/.test(p.type));
+    if (rlc.length === 0) return null;
+    try {
+      const fb = Number(cabinet.drivers.low.fbHz) > 0 ? Number(cabinet.drivers.low.fbHz) : undefined;
+      const r = optimizeNetworkValues(
+        // One free part so the tuner accepts the network; maxIterations 1 plus
+        // reading `before` means nothing it does can reach the numbers.
+        parts.map((p, i) => (p === rlc[rlc.length - 1] && i >= 0 ? { ...p, locked: false } : p)),
+        grid,
+        sim.base.w,
+        sim.base.t,
+        zOnGrid,
+        branchAdj.tweeter,
+        {
+          ...buildNetOptOpts(grid, safety),
+          maxIterations: 1,
+          catalogSnap: false,
+          staged: undefined,
+          audit: { enabled: false },
+        },
+      );
+      const bom = bomFor([...parts]);
+      return {
+        name: activeDesign?.name ?? 'current design',
+        peakDb: r.before.rippleDb,
+        avgDevDb: r.before.avgDevDb ?? null,
+        phaseDeg:
+          r.before.pairPhaseDeg && r.before.pairPhaseDeg.length > 0
+            ? Math.max(...r.before.pairPhaseDeg)
+            : r.before.phaseDeg,
+        zMinOhm: r.before.zMinOhm ?? null,
+        rSourceOhm: sourceResistanceOhm([...parts], { grid, driverZ: zOnGrid, fbHz: fb }),
+        bomEur: bom.totalEur,
+        partCount: rlc.length,
+      };
+    } catch {
+      return null;
+    }
+  }
+
   const buildNetOptOpts = (grid: readonly number[], safety: NetOptimizeOptions['safety']): NetOptimizeOptions => ({
         // Single-driver mode: "0 driver pairs" — the tuner drops every
         // crossing-anchored term and judges branch flatness (+ amp floor).
@@ -13728,6 +13812,37 @@ export default function App() {
                 {t('tab and every chart shows it. The rows below are the full candidates: click one to try it, 💾 Save keeps the one you trust.')}
               </p>
             )}
+            {chainScan && scanReference && (() => {
+              /* THE HONEST VERDICT. A scan always crowns one of its own rows —
+                 so it must also be able to say that none of them was worth the
+                 run. Judged on the axes a designer would not trade away: peak,
+                 worst-pair phase, and the source resistance the amplifier
+                 sees. Only candidates still in the race count. */
+              const live = chainScan.rows.filter((r) => r.disqualified.length === 0);
+              const beats = live.filter(
+                (r) =>
+                  r.rippleDb <= scanReference.peakDb + 0.05 &&
+                  r.phaseDeg <= scanReference.phaseDeg + 0.5 &&
+                  (r.rSourceOhm === null ||
+                    scanReference.rSourceOhm === null ||
+                    r.rSourceOhm <= scanReference.rSourceOhm + 0.1),
+              );
+              if (beats.length > 0) return null;
+              return (
+                <p className="result-warn">
+                  ⚠{' '}
+                  {t(
+                    'No candidate beat the design you already had ({name}: {peak} dB · {phase}° · R src {rs}). Keep it — or widen the search (crossover window, more steps, targets), because this run found nothing better.',
+                    {
+                      name: scanReference.name,
+                      peak: scanReference.peakDb.toFixed(2),
+                      phase: scanReference.phaseDeg.toFixed(1),
+                      rs: scanReference.rSourceOhm !== null ? `${scanReference.rSourceOhm.toFixed(2)} Ω` : '—',
+                    },
+                  )}
+                </p>
+              );
+            })()}
             {chainScan && chainScan.rows.filter((r) => r.bomEur !== null).length >= 2 && (() => {
               // B3 — Pareto scatter. y = chosen quality (lower is better), x = BOM.
               const yOf = (r: (typeof chainScan.rows)[number]): number | null =>
@@ -13821,6 +13936,24 @@ export default function App() {
                   </tr>
                 </thead>
                 <tbody>
+                  {scanReference && (
+                    <tr
+                      className="scan-reference"
+                      title={t('The design that was on screen when the scan started, measured through the same pipeline. It does not compete — it is the bar every candidate has to clear.')}
+                    >
+                      <td>
+                        {t('◆ your design before this run')}
+                        <span style={{ opacity: 0.6 }}> ({scanReference.name})</span>
+                      </td>
+                      <td>{scanReference.peakDb.toFixed(2)} dB</td>
+                      <td>{scanReference.avgDevDb !== null ? `${scanReference.avgDevDb.toFixed(2)} dB` : '—'}</td>
+                      <td>{scanReference.phaseDeg.toFixed(1)}°</td>
+                      <td>—</td>
+                      <td>{scanReference.zMinOhm !== null ? `${scanReference.zMinOhm.toFixed(1)} Ω` : '—'}</td>
+                      <td>{scanReference.rSourceOhm !== null ? `${scanReference.rSourceOhm.toFixed(2)} Ω` : '—'}</td>
+                      <td>{scanReference.bomEur !== null ? `€${Math.round(scanReference.bomEur)}` : '—'}</td>
+                    </tr>
+                  )}
                   {[...chainScan.rows]
                     .sort((a, b) => {
                       if (!scanSort) return 0; // ranking order (stable sort)

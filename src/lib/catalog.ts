@@ -552,6 +552,42 @@ export type SnapPosition = 'series' | 'shunt';
  */
 export const DCR_BUDGET_DB: Record<SnapPosition, number> = { series: 0.5, shunt: 2.0 };
 
+/**
+ * How much series DCR one BRANCH may carry in total, in dB of level.
+ *
+ * WHY A SECOND CONSTANT (aug 2026, Sanders "19 simulaties en we kunnen niets
+ * beters verzinnen"): `DCR_BUDGET_DB` is a per-PART allowance, and R_source is
+ * a per-BRANCH property. A woofer low-pass has two or three series elements;
+ * each one cleared its own 0.5 dB and together they handed the amplifier
+ * 1.7 Ohm — measured on the KOAN 3-way scan, where 15 of 19 candidates were
+ * disqualified on source resistance while Sanders' own hand-built filter sat
+ * at 0.23 Ohm. The reference was wrong too (see reOhms below).
+ *
+ * 1.0 dB is calibrated on that hand-built filter: 0.24 + 0.19 Ohm of series
+ * DCR into a 3.2 Ohm woofer pair = 1.1 dB, Qts up ~13%. Published passive
+ * designs sit in that region; twice that is where a bass alignment starts to
+ * read as "slow".
+ */
+export const BRANCH_SERIES_DCR_DB = 1.0;
+
+/**
+ * Total series-DCR budget for one branch, in ohms.
+ *
+ * `reOhms` must be the MINIMUM |Z| of that branch's driver, not a median over
+ * every driver: DCR competes with the resistance the driver actually shows in
+ * its passband, and the pooled median (5.66 Ohm on the KOAN set, pulled up by
+ * the tweeter and by every coil's inductive rise) is nearly twice the woofer
+ * pair's 3.2 Ohm — so the guard was ~2x too generous exactly where it matters
+ * most. `limitOhms` is the hard source-resistance ceiling the ranking uses,
+ * with margin: designing right up against a disqualification line is what the
+ * scan was doing.
+ */
+export function branchDcrBudgetOhms(reOhms: number, limitOhms?: number): number {
+  if (!(reOhms > 0)) return Infinity;
+  const level = reOhms * (10 ** (BRANCH_SERIES_DCR_DB / 20) - 1);
+  return limitOhms && limitOhms > 0 ? Math.min(level, limitOhms * 0.7) : level;
+}
+
 export function dcrCeilingOhms(position: SnapPosition | undefined, refOhms: number): number {
   if (!(refOhms > 0)) return Infinity;
   const db = DCR_BUDGET_DB[position ?? 'shunt'];
@@ -647,6 +683,10 @@ export function pickCandidates(
   count = 3,
   prefs: SnapPrefs | null = null,
   position?: SnapPosition,
+  /** Absolute DCR ceiling for THIS slot (Ω), from the caller's per-branch
+   *  budget. Wins over the refOhms-derived per-part allowance; omitted = the
+   *  historical behaviour. */
+  dcrCeilOhms?: number,
 ): CatalogPick[] {
   const stacksOk = prefs?.allowStacks !== false;
   // Coil DCR guard (see dcrCeilingOhms): drop gauges whose resistance costs
@@ -655,13 +695,41 @@ export function pickCandidates(
   // of being spent on wire that is too thin. Never empties the pool: if every
   // variant of a value is over budget the thickest survives, so a slot always
   // has something to snap to and the caller still sees the honest DCR.
+  const coilCeil =
+    kind === 'L'
+      ? Math.min(
+          dcrCeilOhms !== undefined && dcrCeilOhms > 0 ? dcrCeilOhms : Infinity,
+          dcrCeilingOhms(position, prefs?.refOhms ?? 0),
+        )
+      : Infinity;
   const withinDcr = (parts: readonly CatalogPart[]) => {
-    const ceil = kind === 'L' ? dcrCeilingOhms(position, prefs?.refOhms ?? 0) : Infinity;
+    const ceil = coilCeil;
     if (!isFinite(ceil)) return parts;
     const ok = parts.filter((p) => (p.seriesR ?? 0) <= ceil);
-    if (ok.length > 0) return ok;
-    const best = [...parts].sort((a, b) => (a.seriesR ?? 0) - (b.seriesR ?? 0))[0];
-    return best ? [best] : parts;
+    /* VALUE BEATS DCR when the two collide. Measured while building this:
+     * with a budget nothing could meet, the "keep the lowest-DCR part" escape
+     * handed back a 0.047 mH coil for a 1.0 mH slot — a 20x value error to
+     * save a tenth of an ohm, which is a far worse network than an honest
+     * over-budget coil. Same value-aware fallback the tier pools use (25%):
+     * the guard only applies while the filtered pool can still cover the
+     * value; otherwise the pool stands and the real DCR stays visible. */
+    const near = (p: CatalogPart) => Math.abs(Math.log(p.value / value)) <= Math.log(1.25);
+    if (ok.length > 0 && ok.some(near)) return ok;
+    /* BUDGET UNREACHABLE FOR THIS VALUE — and this is where the first version
+     * of this guard went wrong, measured: handing back the UNFILTERED pool
+     * means the cost term decides, and cheap coil = thin wire, so an
+     * impossible budget produced the very worst DCR in the catalog. When the
+     * budget cannot be met, the answer is the most copper available at the
+     * right value, not the least. Keep everything within 1.5x of the lowest
+     * achievable DCR (buying a neighbouring value stays possible); the caller
+     * reports the shortfall so it never passes silently. */
+    const covering = parts.filter(near);
+    if (covering.length === 0) return ok.length > 0 ? ok : parts;
+    let minR = Infinity;
+    for (const p of covering) minR = Math.min(minR, p.seriesR ?? 0);
+    const room = Math.max(ceil, minR * 1.5);
+    const kept = parts.filter((p) => (p.seriesR ?? 0) <= room);
+    return kept.length > 0 ? kept : parts;
   };
   /* Real SKUs beat generated grids WHEN THEY CAN COVER THE VALUE. With a real
    * database imported, a grid entry is fictional inventory: Sander's 3-way
@@ -682,6 +750,18 @@ export function pickCandidates(
   };
   const usable = (parts: readonly CatalogPart[]) =>
     preferReal(withinDcr(parts.filter((p) => p.kind === kind)));
+  /* STACKS CARRY THE SUM. Two coils in series add their DCR, and the pool
+   * filter above only sees the parts one at a time — so a stack of two coils
+   * that each cleared the budget handed over twice it. That is literally the
+   * 2.59 mH stack in the KOAN scan's woofer path. Same never-empty rule as
+   * withinDcr: if no stack clears, keep the lowest-resistance one so the slot
+   * still has a fallback and the honest DCR stays visible. */
+  const stacksWithinDcr = (picks: CatalogPick[]): CatalogPick[] => {
+    if (kind !== 'L' || !isFinite(coilCeil)) return picks;
+    const ok = picks.filter((p) => p.seriesR <= coilCeil);
+    if (ok.length > 0 || picks.length === 0) return ok;
+    return [[...picks].sort((a, b) => a.seriesR - b.seriesR)[0]];
+  };
   const singlesFrom = (parts: readonly CatalogPart[]) =>
     nearestWithVariants(usable(parts), value, count).map(singlePick);
   // Walk the preference pools: a pool covers the value when a SINGLE part is
@@ -691,7 +771,9 @@ export function pickCandidates(
     const singles = singlesFrom(pool);
     const bestErr = singles.length > 0 ? Math.abs(Math.log(singles[0].value / value)) : Infinity;
     if (bestErr <= Math.log(1.03)) return singles;
-    const poolStacks = stacksOk ? stackCandidates(kind, value, count, usable(pool)) : [];
+    const poolStacks = stacksOk
+      ? stacksWithinDcr(stackCandidates(kind, value, count, usable(pool)))
+      : [];
     const stackErr =
       poolStacks.length > 0 ? Math.abs(Math.log(poolStacks[0].value / value)) : Infinity;
     if (bestErr <= Math.log(1.25) || stackErr <= Math.log(1.05)) {
@@ -704,7 +786,7 @@ export function pickCandidates(
   const singles = nearestWithVariants(full, value, count).map(singlePick);
   const bestErr = singles.length > 0 ? Math.abs(Math.log(singles[0].value / value)) : Infinity;
   if (bestErr <= Math.log(1.03) || !stacksOk) return singles;
-  return [...singles, ...stackCandidates(kind, value, count, full)];
+  return [...singles, ...stacksWithinDcr(stackCandidates(kind, value, count, full))];
 }
 
 export interface BomRow {

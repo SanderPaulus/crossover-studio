@@ -2176,6 +2176,41 @@ gepersisteerd — zijn tab stond op de landing page); vervangen door de harness-
 dissipatie 0,05 vs 0 ⇒ R_bron 2,85/1,17/0,00 vs 2,48/1,05/0,00 — GEEN effect (tiebreak-sterkte,
 (Rs/Re)²·0,05 ≈ 0,01 op fx ~12); de winnaar met R_bron 0,00 (514/1849 → 627/1942, peak 1,70 vs de
 gediskwalificeerde 1,27) komt van fix 1. Open: gewicht kalibreren zoals B1.
+**⚡ DE R_BRON-KOLOM MAT DE VERKEERDE FREQUENTIE (aug 2026, Sanders "19 simulaties en we kunnen
+niets beters verzinnen… ik vind dit een kwalijke zaak")**: `sourceResistanceOhm` + `auditNetwork`
+pakten het gridpunt NAAST `fbHz` zonder te toetsen of Fb ín het grid lag. Zijn poort: 31 Hz; zijn
+meetbereik: vanaf 200 Hz. Élke kandidaat werd dus geprobed op grid[0] = 210 Hz, en dáár zit op zijn
+woofer-LP de parallelresonantie van L1‖C2 (3,3 mH ‖ 136 µF = 237 Hz) — de "bronweerstand" was de
+resonantiepiek van het filter zelf. GEMETEN op zijn eigen opgeslagen ontwerpen: zijn handgebouwde
+filter (het BESTE ontwerp) las 7,40 Ω, Working(5) 8,62 Ω; 15 van 19 scan-rijen sneuvelden op dat
+getal. Na de fix 0,43 vs 3,63 Ω — Working(5) draagt een 3,3 Ω weerstand in het woofer-seriepad en
+hoort te sneuvelen, zijn eigen filter niet. `sourceProbeIndex` (fb buiten grid ⇒ null, géén probe
+elders) + `seriesPathResistanceOhm` (DC-limiet: DCR + weerstanden op het bus-pad naar de lage
+driver) als terugval + `rSourceOutOfBand` in het rapport zodat de tekst zegt wélk getal je ziet.
+HARD GELEERD in dezelfde fix: terugvallen op de impedantiePIEK in de band is óók fout — daar
+shuntet de cap de serieweerstand weg (0,48 Ω voor een 3,63 Ω serie-pad) terwijl juist bij Fb die
+weerstand de conus dempt. De DC-limiet is een ONDERGRENS: veroordelen mag, vrijpleiten niet.
+Elke scan van vóór deze fix moet opnieuw: de meetlat was stuk.
+**PER-TAK DCR-BUDGET (zelfde ronde)**: het oude plafond faalde drievoudig — referentie = gepoolde
+mediaan over álle drivers (5,66 Ω) i.p.v. de Re van de tak zelf (wooferpaar 3,22 Ω); per ONDERDEEL
+terwijl R_bron een TAKSOM is; en STAPELS ontsnapten volledig (twee spoelen elk binnen budget tellen
+in serie op). `branchDcrBudgetOhms(reOhms, limit)` = 1,0 dB per tak (geijkt op Sanders handfilter:
+0,24 + 0,19 Ω in 3,22 Ω = 1,1 dB, Qts +13%), verdeeld over de serie-spoelen naar L^0,65 (dezelfde
+exponent als `estimateCoilDcr`); `busTopology.driversOf` levert de tak-toewijzing; `pickCandidates`
+kreeg een absoluut `dcrCeilOhms` en toetst nu óók de stapels. HARD GELEERD: bij een ONHAALBAAR
+budget mag je niet de hele pool vrijgeven — dan kiest de kostenterm het dunste draad (gemeten: in
+Sanders v8-catalogus is 1,6 mH te koop voor €4,13 bij 5,4 Ω of €27,90 bij 0,31 Ω, en R_bron bewoog
+geen millimeter). Nu wint het DIKSTE koper op de juiste waarde, en de snap meldt de overschrijding
+met de getallen erbij. Waarde blijft wél boven DCR gaan (eerste versie gaf een 0,047 mH-spoel voor
+een 1,0 mH-slot om een tiende ohm te sparen).
+**REFERENTIERIJ IN DE SCAN-TABEL (zelfde ronde)**: een scan die alleen zijn eigen kandidaten
+rangschikt kroont altijd een winnaar — ook als ze allemaal slechter zijn dan wat er al lag; Sander
+moest met de hand ontdekken dat zijn oude filter alle 19 rijen versloeg. `measureReferenceDesign`
+meet het ontwerp dat op het scherm stond vóór de run door DEZELFDE pijplijn (één solve, metrics uit
+`before` — geen tweede meetlat), toont het als "◆ je ontwerp vóór deze run", en als geen enkele
+LEVENDE kandidaat het verslaat op piek én fase én R_bron verschijnt een luide regel "houd dat — of
+zoek breder". Bijvangst: `NetOptimizeResult.before` droeg zMinOhm/pairPhaseDeg allang, alleen het
+TYPE was te smal.
 **MINIMAAL NETWERK / KOSTENPARETO (aug 2026, Sanders "winnaar €642 vs regel 10 €273 voor 0,16 dB")**:
 Deel A (harness, demo-catalogus): élk onderdeel van de winnaar-achtige kandidaat is VERDIEND, de mid-tak
 draagt €89–101 van €165–177, en de €273–642-spreiding uit zijn sessie is TIER/SKU (Positie-profiel +

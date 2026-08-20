@@ -9,6 +9,7 @@ import type { Complex } from './complex.ts';
 import type { VxpPart } from './parsers/vxp.ts';
 import {
   allSeries,
+  branchDcrBudgetOhms,
   hasImportedCatalog,
   nearestParts,
   pickCandidates,
@@ -234,7 +235,19 @@ export interface NetOptimizeOptions {
 export interface NetOptimizeResult {
   /** The schematic parts with re-fitted values (locked ones untouched). */
   parts: VxpPart[];
-  before: { rippleDb: number; avgDevDb?: number; phaseDeg: number };
+  /** Full-grid metrics of the SEED. Same `report()` shape as `after` — it
+   *  always carried these fields, the type just under-declared them, which
+   *  made "measure this design without tuning it" (the scan's reference row)
+   *  look impossible. */
+  before: {
+    rippleDb: number;
+    avgDevDb?: number;
+    phaseDeg: number;
+    zMinOhm?: number | null;
+    pairPhaseDeg?: number[];
+    xoHzPairs?: (number | null)[];
+    powerStdDb?: number;
+  };
   /** Full-grid metrics of the delivered network; `xoHz` = its acoustic
    *  crossing (used by the no-pin scan to derive follow-up candidates). */
   after: {
@@ -419,12 +432,25 @@ export function reseedOutliers(
   return hits > 0 ? out : null;
 }
 
-/** Bus-path position per element: BOTH nodes on a source→driver path =
- *  series-path, anything else hangs toward ground (shunt). Shared by the
- *  discrete snap (tier doctrine) and the tuner's series-path realism ceiling. */
-export function busPositions(parts: readonly VxpPart[]): (partId: string) => 'series' | 'shunt' {
+/**
+ * Bus-path topology: which elements sit ON a source→driver path (series) and,
+ * for those, WHICH driver they feed.
+ *
+ * The driver attribution is what makes a per-BRANCH budget possible: source
+ * resistance, level loss and Qts damage are properties of the path into one
+ * driver, not of a part in isolation. An element on a shared section (before
+ * the branches split) is attributed to every driver behind it, and the caller
+ * takes the strictest of those budgets.
+ */
+export function busTopology(parts: readonly VxpPart[]): {
+  positionOf: (partId: string) => 'series' | 'shunt';
+  /** Driver models this element sits in the series path of (empty = shunt or unknown). */
+  driversOf: (partId: string) => string[];
+} {
   const busNodes = new Set<number>();
   const elNodes = new Map<string, [number, number]>();
+  /** driver model → the set of bus nodes on ITS path */
+  const perDriver = new Map<string, Set<number>>();
   try {
     const { netlist } = crossoverToNetlist({ name: 'pos', parts: [...parts] });
     const els = netlist.elements;
@@ -458,25 +484,49 @@ export function busPositions(parts: readonly VxpPart[]): (partId: string) => 'se
           }
         }
         if (seen.has(target)) {
+          const mine = new Set<number>();
           let cur2 = target;
           busNodes.add(target);
+          mine.add(target);
           while (cur2 !== hot) {
             const p2 = prev.get(cur2);
             if (p2 === undefined) break;
             busNodes.add(p2);
+            mine.add(p2);
             cur2 = p2;
           }
+          const model = 'model' in drv && typeof drv.model === 'string' ? drv.model : drv.id;
+          perDriver.set(model, mine);
         }
       }
     }
   } catch {
     // Position stays unknown → every part is treated as shunt (wide bounds).
   }
-  return (partId) => {
+  const positionOf = (partId: string): 'series' | 'shunt' => {
     const nodes = elNodes.get(partId);
     if (!nodes) return 'shunt';
     return busNodes.has(nodes[0]) && busNodes.has(nodes[1]) ? 'series' : 'shunt';
   };
+  return {
+    positionOf,
+    driversOf: (partId) => {
+      const nodes = elNodes.get(partId);
+      if (!nodes || positionOf(partId) !== 'series') return [];
+      const out: string[] = [];
+      for (const [model, ns] of perDriver) {
+        if (ns.has(nodes[0]) && ns.has(nodes[1])) out.push(model);
+      }
+      return out;
+    },
+  };
+}
+
+/** Bus-path position per element: BOTH nodes on a source→driver path =
+ *  series-path, anything else hangs toward ground (shunt). Shared by the
+ *  discrete snap (tier doctrine) and the tuner's series-path realism ceiling. */
+export function busPositions(parts: readonly VxpPart[]): (partId: string) => 'series' | 'shunt' {
+  return busTopology(parts).positionOf;
 }
 
 export function optimizeNetworkValues(
@@ -2298,14 +2348,75 @@ export function optimizeNetworkValues(
     const snapables = cur.parts
       .map((q, i) => ({ q, i }))
       .filter(({ q }) => KIND_OF[q.type] && !q.locked && !q.open && !q.shorted && q.partId);
-    // Position per part: shared bus-path BFS (see busPositions) — the same
-    // classification the tuner's realism anchor uses.
-    const posOfPart = busPositions(cur.parts);
+    // Position per part: shared bus-path BFS (see busTopology) — the same
+    // classification the tuner's realism anchor uses, plus which driver each
+    // series element feeds.
+    const bus = busTopology(cur.parts);
+    const posOfPart = bus.positionOf;
+    /* PER-BRANCH COIL DCR BUDGET (aug 2026 — Sanders "19 simulaties en we
+     * kunnen niets beters verzinnen"). Two things were wrong at once, and
+     * together they handed the amplifier 1.7 Ω where his own hand-built filter
+     * sits at 0.23 Ω:
+     *
+     *  (1) the reference was the median |Z| POOLED over every driver (5.66 Ω
+     *      on the KOAN set, lifted by the tweeter and by every coil's
+     *      inductive rise) while the coil in question feeds a woofer pair
+     *      whose Re is 3.2 Ω — the guard was twice as generous as it should be
+     *      exactly in the branch that carries the current;
+     *  (2) the allowance was PER PART while source resistance is PER BRANCH,
+     *      so two or three series elements each cleared their own 0.5 dB and
+     *      the branch total was never looked at.
+     *
+     * So: reference = the MINIMUM |Z| of that branch's own driver (Re-like:
+     * the dip above resonance, before the inductive rise), budget = one branch
+     * allowance (branchDcrBudgetOhms), split over the branch's series coils in
+     * proportion to L^0.65 — the same exponent estimateCoilDcr uses, because a
+     * big coil legitimately needs more copper than a small one. An element on
+     * a shared section belongs to several drivers and takes the strictest.
+     *
+     * Feasibility, not preference: it applies at every profile, it never
+     * empties a pool (pickCandidates keeps the lowest-DCR part), and it is a
+     * bound on the SEARCH SPACE — it is never a term in the objective. */
+    const reOf = (model: string): number => {
+      const z = driverZ[model];
+      if (!z || z.length === 0) return 0;
+      let lo = Infinity;
+      for (const c of z) lo = Math.min(lo, Math.hypot(c.re, c.im));
+      return isFinite(lo) ? lo : 0;
+    };
+    const rSrcLimit = opts.audit?.thresholds?.rSourceOhm ?? 1.0;
+    const coilWeight = (q: VxpPart): number => {
+      const v = q.params.find((p) => p.name === 'L')?.value ?? 0;
+      return v > 0 ? v ** 0.65 : 0;
+    };
+    /** Per-branch series-coil weight totals, for the proportional split. */
+    const branchCoilWeight = new Map<string, number>();
+    for (const { q } of snapables) {
+      if (q.type !== 'Inductor') continue;
+      for (const m of bus.driversOf(q.partId!)) {
+        branchCoilWeight.set(m, (branchCoilWeight.get(m) ?? 0) + coilWeight(q));
+      }
+    }
+    const dcrCeilFor = (q: VxpPart): number | undefined => {
+      if (q.type !== 'Inductor') return undefined;
+      const models = bus.driversOf(q.partId!);
+      if (models.length === 0) return undefined;
+      const w = coilWeight(q);
+      if (!(w > 0)) return undefined;
+      let ceil = Infinity;
+      for (const m of models) {
+        const total = branchCoilWeight.get(m) ?? 0;
+        if (!(total > 0)) continue;
+        const budget = branchDcrBudgetOhms(reOf(m), rSrcLimit);
+        ceil = Math.min(ceil, (budget * w) / total);
+      }
+      return isFinite(ceil) ? ceil : undefined;
+    };
     const cands = snapables.map(({ q }) => {
       const kind = KIND_OF[q.type];
       const u = PARAM_OF[kind];
       const raw = q.params.find((p) => p.name === u.name)?.value ?? 0;
-      return pickCandidates(kind, raw / u.factor, 3, snapPrefs, posOfPart(q.partId!));
+      return pickCandidates(kind, raw / u.factor, 3, snapPrefs, posOfPart(q.partId!), dcrCeilFor(q));
     });
     const applied = (ch: (CatalogPick | null)[]): VxpPart[] => {
       const out = cloneParts(cur.parts);
@@ -2378,7 +2489,14 @@ export function optimizeNetworkValues(
         const kind = KIND_OF[q.type];
         const u = PARAM_OF[kind];
         const raw = q.params.find((p) => p.name === u.name)?.value ?? 0;
-        return pickCandidates(kind, raw / u.factor, 3, noStackPrefs, posOfPart(q.partId!));
+        return pickCandidates(
+          kind,
+          raw / u.factor,
+          3,
+          noStackPrefs,
+          posOfPart(q.partId!),
+          dcrCeilFor(q),
+        );
       });
       const singlesOnly = descend(singleCands);
       const costOf = (ch: (CatalogPick | null)[]) =>
@@ -2435,6 +2553,44 @@ export function optimizeNetworkValues(
           `⚠ catalog range: ${short.join('; ')} — the fit is limited by what the ` +
           `catalog stocks, not by the design. Add those values (🗂 Manage…) or ` +
           `switch Snap to catalog off to see what the design can really do.`;
+      }
+    }
+    /* ---- Same rule for the coil DCR budget. A branch budget the catalog
+     * cannot meet is exactly as invisible as a value it cannot cover: the
+     * network works, the response is flat, and the price is paid in
+     * efficiency and bass damping where no response metric looks. Name it,
+     * with the number, so it reads as a stock problem and not as a design
+     * that mysteriously landed on thin wire. ---- */
+    {
+      const over: string[] = [];
+      let branchTotal = 0;
+      let branchBudget = Infinity;
+      snapables.forEach(({ q }, j) => {
+        const p = picks[j];
+        if (!p || q.type !== 'Inductor') return;
+        const ceil = dcrCeilFor(q);
+        if (ceil === undefined || !isFinite(ceil)) return;
+        branchTotal += p.seriesR;
+        if (p.seriesR > ceil * 1.05) {
+          over.push(`${q.partId} ${p.seriesR.toFixed(2)} Ω (budget ${ceil.toFixed(2)} Ω)`);
+        }
+      });
+      for (const { q } of snapables) {
+        if (q.type !== 'Inductor') continue;
+        for (const mo of bus.driversOf(q.partId!)) {
+          branchBudget = Math.min(branchBudget, branchDcrBudgetOhms(reOf(mo), rSrcLimit));
+        }
+      }
+      if (over.length > 0) {
+        snapNote =
+          (snapNote ? `${snapNote} · ` : '') +
+          `⚠ coil DCR over budget: ${over.join('; ')}` +
+          (isFinite(branchBudget)
+            ? ` — the series path totals ${branchTotal.toFixed(2)} Ω against a ` +
+              `${branchBudget.toFixed(2)} Ω branch budget`
+            : '') +
+          `. That is source resistance the amplifier sees: thicker wire (or a ` +
+          `core coil) at these values, or fewer series elements.`;
       }
     }
     cur = { ...cur, parts: applied(picks) };

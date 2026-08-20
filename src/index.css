@@ -1411,6 +1411,30 @@ button.chip-issues {
   color: var(--fg);
 }
 
+/* The verdict a scan owes the designer when none of its own candidates was
+   worth the run — same register as .result-good, opposite conclusion. */
+.result-warn {
+  margin: 0 0 0.6rem;
+  padding: 0.5rem 0.75rem;
+  border-left: 3px solid var(--warn);
+  background: var(--warn-bg);
+  border-radius: 6px;
+  font-size: 0.85rem;
+  color: var(--fg);
+}
+
+/* The scan's reference row: the design that was on screen before the run.
+   It is data, not a candidate — no hover-to-load affordance, and set apart
+   from the ranked rows above it. */
+.scan-table tr.scan-reference {
+  cursor: default;
+  opacity: 0.9;
+  border-bottom: 1px solid var(--line);
+}
+.scan-table tr.scan-reference td {
+  font-style: italic;
+}
+
 /* The Save button's visible overwrite target. */
 .save-target {
   font-weight: 400;

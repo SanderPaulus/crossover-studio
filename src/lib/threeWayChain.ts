@@ -429,8 +429,15 @@ export function runThreeWayChain(
   const rsDisq = s.rSourceDisqualifyOhm ?? 2.0;
   const rsNow = net.audit?.rSourceOhm ?? null;
   if (rsNow !== null && rsDisq > 0 && rsNow >= rsDisq) {
+    // Out of band the figure is the DC limit — a lower bound, so exceeding it
+    // is still a real verdict; say WHICH number it is (Sanders' scan read the
+    // filter's own parallel resonance off the grid edge and disqualified 15 of
+    // 19 candidates on it, his own best filter included).
+    const how = net.audit?.rSourceOutOfBand
+      ? 'series-path DC resistance (the box tuning lies below the measured band)'
+      : `Thevenin at the box tuning (Qes ×${(net.audit?.qesFactor ?? 1).toFixed(2)})`;
     disqualified.push(
-      `source resistance at the low driver ${rsNow.toFixed(2)} Ω ≥ ${rsDisq.toFixed(1)} Ω (Qes ×${(net.audit?.qesFactor ?? 1).toFixed(2)}) — model estimate outside the measured band`,
+      `source resistance at the low driver ${rsNow.toFixed(2)} Ω ≥ ${rsDisq.toFixed(1)} Ω — ${how}`,
     );
   }
 

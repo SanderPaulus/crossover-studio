@@ -51,7 +51,7 @@ import {
 } from './dsp.ts';
 import { computeIntegration } from './integration.ts';
 import { pickSlotsN } from './driverSlots.ts';
-import { busPositions } from './netOptimizer.ts';
+import { busPositions, busTopology } from './netOptimizer.ts';
 
 export interface AuditThresholds {
   /** INERT: max |ΔSPL| below this (dB). */
@@ -126,6 +126,10 @@ export interface NetworkAudit {
    *  Qes multiplier (Re + Rs)/Re — the low-end damping cost of the network. */
   reOhm: number | null;
   qesFactor: number | null;
+  /** The box tuning fell outside the measured grid, so rSourceOhm is the DC
+   *  limit (series-path resistance) rather than a Thevenin reading. A LOWER
+   *  BOUND: it may condemn, it may not exonerate. */
+  rSourceOutOfBand?: boolean;
   /** rSourceOhm exceeds the limit — independent of any per-part verdict. */
   rSourceWarn: boolean;
   /** The tuning frequency fell on the grid's first point (Fb below the grid,
@@ -413,6 +417,112 @@ function roleGuess(members: VxpPart[], pos: 'series' | 'shunt'): string {
  * null when the network has no low driver, no impedance for it, or does not
  * solve.
  */
+/**
+ * Which grid point to read the source impedance at — and whether that point is
+ * MEANINGFUL.
+ *
+ * THE BUG THIS EXISTS FOR (aug 2026, Sanders' 19-candidate scan): the code took
+ * the grid point NEAREST to Fb, with no check that Fb was inside the grid at
+ * all. His port is tuned to 31 Hz and his measurements start at 200 Hz, so
+ * every candidate was probed at grid[0] = 210 Hz — which on his woofer low-pass
+ * is right on the parallel resonance of L1 and C2 (3.3 mH ‖ 136 µF = 237 Hz).
+ * The number reported as "source resistance" was the filter's own resonance
+ * peak. Measured: his own hand-built filter, the best design in the room, reads
+ * 7.40 Ω that way and 0.23 Ω in band. Fifteen of nineteen candidates were
+ * disqualified on that reading.
+ */
+export function sourceProbeIndex(
+  grid: readonly number[],
+  z: readonly Complex[],
+  fbHz?: number,
+): { idx: number; inBand: boolean } | null {
+  if (grid.length === 0) return null;
+  const lo = grid[0];
+  const hi = grid[grid.length - 1];
+  if (fbHz !== undefined && fbHz > 0) {
+    if (fbHz < lo || fbHz > hi) {
+      // A KNOWN tuning frequency outside the grid is not a reason to probe
+      // somewhere else — it is a reason to stop probing. Measured on Sanders'
+      // saved designs: substituting the in-band impedance peak reported 0.48 Ω
+      // for a network carrying a 3.3 Ω resistor in the woofer's series path,
+      // because at that frequency the shunt cap short-circuits the resistor.
+      // At Fb that resistor is exactly what damps the cone. The DC limit is
+      // the honest answer here, and the caller is told which one it got.
+      return null;
+    }
+    let best = 0;
+    for (let i = 0; i < grid.length; i++) {
+      if (Math.abs(grid[i] - fbHz) < Math.abs(grid[best] - fbHz)) best = i;
+    }
+    return { idx: best, inBand: true };
+  }
+  // No usable tuning frequency: the impedance peak on the low part of the grid.
+  // Only counts as in-band when it is a real PEAK (an interior maximum) — a
+  // maximum sitting on the first grid point is the edge again, not a resonance.
+  let best = -1;
+  let bestZ = -Infinity;
+  const stop = Math.max(400, grid[Math.floor(grid.length / 4)]);
+  for (let i = 0; i < grid.length; i++) {
+    if (grid[i] > stop) break;
+    const m = Math.hypot(z[i].re, z[i].im);
+    if (m > bestZ) {
+      bestZ = m;
+      best = i;
+    }
+  }
+  if (best < 0) return null;
+  return { idx: best, inBand: best > 0 };
+}
+
+/**
+ * DC limit of the source resistance: the resistance in the series path to the
+ * low driver (coil DCR + resistors). At f → 0 every coil is wire and every cap
+ * is open, so this is exactly what the Thevenin resistance converges to — and
+ * it needs no impedance data, which is why it is the honest fallback when the
+ * box tuning lies outside the measured band.
+ *
+ * It is a LOWER BOUND on the real thing (parallel paths can only be judged with
+ * data), so it may disqualify but never exonerate: over the limit here is over
+ * the limit for certain; under it merely means "not shown to be bad".
+ */
+export function seriesPathResistanceOhm(parts: readonly VxpPart[]): number | null {
+  let bus: ReturnType<typeof busTopology>;
+  try {
+    bus = busTopology(parts);
+  } catch {
+    return null;
+  }
+  let low: string | null = null;
+  try {
+    const { netlist } = crossoverToNetlist({ name: 'dcr', parts: [...parts] });
+    const drivers = netlist.elements.filter(
+      (e): e is Extract<NetElement, { kind: 'driver' }> => e.kind === 'driver',
+    );
+    if (drivers.length === 0) return null;
+    const slots = pickSlotsN(drivers);
+    low = (slots.woofer ?? slots.mid ?? slots.tweeter)?.model ?? null;
+  } catch {
+    return null;
+  }
+  if (!low) return null;
+  let sum = 0;
+  let seen = false;
+  for (const p of parts) {
+    if (!p.partId || p.open || p.shorted) continue;
+    const r =
+      p.type === 'Inductor'
+        ? (p.params.find((q) => q.name === 'DCR')?.value ?? 0)
+        : p.type === 'Resistor'
+          ? (p.params.find((q) => q.name === 'R')?.value ?? 0)
+          : 0;
+    if (!(r > 0)) continue;
+    if (!bus.driversOf(p.partId).includes(low)) continue;
+    sum += r;
+    seen = true;
+  }
+  return seen ? sum : 0;
+}
+
 export function sourceResistanceOhm(
   parts: readonly VxpPart[],
   ctx: { grid: readonly number[]; driverZ: Record<string, readonly Complex[]>; fbHz?: number },
@@ -432,23 +542,12 @@ export function sourceResistanceOhm(
   const z = ctx.driverZ[low.model];
   if (!z) return null;
   const grid = ctx.grid;
-  let idx: number | null = null;
-  if (ctx.fbHz !== undefined && ctx.fbHz > 0) {
-    idx = grid.reduce((b, f, i) => (Math.abs(f - ctx.fbHz!) < Math.abs(grid[b] - ctx.fbHz!) ? i : b), 0);
-  } else {
-    let bestZ = -Infinity;
-    for (let i = 0; i < grid.length; i++) {
-      if (grid[i] > Math.max(400, grid[Math.floor(grid.length / 4)])) break;
-      const m = Math.hypot(z[i].re, z[i].im);
-      if (m > bestZ) {
-        bestZ = m;
-        idx = i;
-      }
-    }
-  }
-  if (idx === null) return null;
+  const probe = sourceProbeIndex(grid, z, ctx.fbHz);
+  // Out of band: the DC limit (series-path resistance), never a reading off
+  // the grid edge — see sourceProbeIndex.
+  if (!probe || !probe.inBand) return seriesPathResistanceOhm(parts);
   try {
-    const zs = seenImpedance(net, [low.id], low.nodes, [grid[idx]], sliceDriverZ(ctx.driverZ, [idx]));
+    const zs = seenImpedance(net, [low.id], low.nodes, [grid[probe.idx]], sliceDriverZ(ctx.driverZ, [probe.idx]));
     return zs ? Math.max(0, zs[0].re) : null;
   } catch {
     return null;
@@ -472,25 +571,15 @@ export function auditNetwork(parts: readonly VxpPart[], ctx: AuditContext): Netw
   })();
   let fbIdx: number | null = null;
   let reOhm: number | null = null;
+  /** The probe frequency was not measurable — R_source is the DC limit, and
+   *  callers must not disqualify on a number that was never measured. */
+  let rSourceOutOfBand = false;
   if (lowDrv) {
     const z = ctx.driverZ[lowDrv.model];
     if (z) {
-      if (ctx.fbHz !== undefined && ctx.fbHz > 0) {
-        fbIdx = grid.reduce((b, f, i) => (Math.abs(f - ctx.fbHz!) < Math.abs(grid[b] - ctx.fbHz!) ? i : b), 0);
-      } else {
-        // Impedance peak on the low half of the grid (≤ 400 Hz, else lowest 1/4).
-        let best = -1;
-        let bestZ = -Infinity;
-        for (let i = 0; i < grid.length; i++) {
-          if (grid[i] > Math.max(400, grid[Math.floor(grid.length / 4)])) break;
-          const m = Math.hypot(z[i].re, z[i].im);
-          if (m > bestZ) {
-            bestZ = m;
-            best = i;
-          }
-        }
-        fbIdx = best >= 0 ? best : null;
-      }
+      const probe = sourceProbeIndex(grid, z, ctx.fbHz);
+      fbIdx = probe ? probe.idx : null;
+      rSourceOutOfBand = !probe || !probe.inBand;
       if (fbIdx !== null) {
         // Re ≈ the |Z| minimum just below resonance, or in the dip right above
         // it when the grid starts at/near the peak — never the whole-grid min
@@ -509,10 +598,11 @@ export function auditNetwork(parts: readonly VxpPart[], ctx: AuditContext): Netw
   // reported separately as |Z| but does not damp like a resistor.
   const rSourceOf = (net: Probe['net'], drv: typeof lowDrv): number | null => {
     if (!drv || fbIdx === null) return null;
+    if (rSourceOutOfBand) return null; // measured below; see rSourceFull
     const zs = seenImpedance(net, [drv.id], drv.nodes, [grid[fbIdx]], sliceDriverZ(ctx.driverZ, [fbIdx]));
     return zs ? Math.max(0, zs[0].re) : null;
   };
-  const rSourceFull = rSourceOf(full.net, lowDrv);
+  const rSourceFull = rSourceOutOfBand ? seriesPathResistanceOhm(parts) : rSourceOf(full.net, lowDrv);
 
   // ---- Candidates: single free R/L/C parts + series chains ----
   const partById = new Map<string, VxpPart>();
@@ -699,6 +789,7 @@ export function auditNetwork(parts: readonly VxpPart[], ctx: AuditContext): Netw
   return {
     entries,
     rSourceOhm: rSourceFull,
+    rSourceOutOfBand,
     rSourceAtHz: fbIdx !== null ? grid[fbIdx] : null,
     reOhm,
     qesFactor,

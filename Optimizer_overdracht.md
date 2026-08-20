@@ -326,6 +326,33 @@ demo-catalogus-snap-artefact: de roosterdelen dippen de ingangsimpedantie), 424/
 behalve R_bron (1,69 Ω); bindend zijn dus de SNAP-Z en de woofer-pad, niet de prijs (alle vier ≤ €220).
 Op Sanders eigen catalogus/profiel liggen de BOM's 2–4× hoger en ís prijs de as — daar hoort het
 Pareto-front het knikpunt te tonen.
+**⚡ DE R_BRON-KOLOM WAS KAPOT (aug 2026, Sanders "van 19 pogingen hebben we maar 1 goede")** —
+de belangrijkste vondst van deze ronde. `sourceResistanceOhm`/`auditNetwork` namen het gridpunt
+NAAST `fbHz` zonder te toetsen of Fb ÍN het grid lag. Sanders poort staat op 31 Hz en zijn meting
+begint op 200 Hz, dus élke kandidaat werd geprobed op grid[0] = 210 Hz — op zijn woofer-LP precies
+de parallelresonantie van L1‖C2 (3,3 mH ‖ 136 µF = 237 Hz). Wat als "bronweerstand" in de tabel
+stond was de resonantiepiek van het filter zelf. GEMETEN op zijn opgeslagen ontwerpen: zijn eigen
+handgebouwde filter (het beste ontwerp in de kamer) las 7,40 Ω, een ontwerp mét een 3,3 Ω-weerstand
+in het woofer-seriepad 8,62 Ω — 15 van de 19 rijen werden op dat getal gediskwalificeerd, het goede
+ontwerp incluis. Fix: `sourceProbeIndex` (fb buiten het grid ⇒ géén probe) + `seriesPathResistanceOhm`
+(DC-limiet: spoel-DCR + weerstanden op het bus-pad naar de lage driver, `busTopology.driversOf`) als
+terugval, met `rSourceOutOfBand` in het rapport zodat de tekst zegt WELK getal je ziet. Na de fix:
+0,43 vs 3,63 Ω — precies de scheiding die de bewaker moest maken. HARD GELEERD binnen dezelfde fix:
+terugvallen op de impedantiePIEK binnen de band is óók fout — daar shuntet de cap de serieweerstand
+weg (0,48 Ω gerapporteerd voor 3,63 Ω serie-pad), terwijl juist bij Fb die weerstand de conus dempt.
+De DC-limiet is een ONDERGRENS: hij mag veroordelen, nooit vrijpleiten.
+**Per-tak DCR-budget in de snap (zelfde ronde)**: `branchDcrBudgetOhms` (1,0 dB per TAK, referentie =
+min |Z| van de eigen driver) + `BRANCH_SERIES_DCR_DB`; `pickCandidates(..., dcrCeilOhms)` filtert de
+pool én de STAPELS (twee spoelen die elk binnen budget zitten tellen in serie op — de 2,59 mH-stapel
+uit de scan). Verdeling over de serie-spoelen van een tak naar L^0,65. Bij een onhaalbaar budget wint
+het DIKSTE koper op de juiste waarde (de eerste versie gaf de pool vrij, en dan koos de kostenterm
+het dunste draad — gemeten: R_bron bewoog geen millimeter); de snap MELDT de overschrijding.
+**Referentierij in de scan-tabel** (App `measureReferenceDesign` + `scanReference`): het ontwerp dat
+op het scherm stond vóór de run, door dezelfde pijplijn gemeten (`before`-metrics, één solve), plus
+een luide regel als geen enkele levende kandidaat het verslaat op piek/fase/R_bron. Een scan die
+alleen zijn eigen rijen rangschikt kroont altijd een winnaar — ook als ze allemaal slechter zijn dan
+wat de ontwerper al had. Bijvangst: `NetOptimizeResult.before` DROEG de velden al (zMinOhm,
+pairPhaseDeg, …), het TYPE was te smal.
 Bekende gaten: inert-part-bij-onhaalbaar-doel → **opgelost** (poort 4, c4699f5); ontbrekend fysisch
 criterium → **opgelost** (idem); bronimpedantie → **klasse + safe-poort** (punt 4, na c4699f5),
 schatting buiten de meetband blijft gelabeld; ontwerpstap 3-weg on-axis → **DI-anker in de
