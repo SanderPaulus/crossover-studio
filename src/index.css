@@ -3787,3 +3787,27 @@ details.cabinet-driver > .derived strong,
 /* Disqualified scan candidates (fix 1/2): visible, struck through, reason in the tooltip. */
 .scan-table tr.disqualified td { text-decoration: line-through; opacity: 0.55; }
 .scan-table tr.disqualified td:first-child { text-decoration: line-through; }
+
+/* In-app confirmation (replaces window.confirm, which a browser can switch
+   off for the page — see App.tsx askConfirm). Narrow: it is one sentence. */
+.confirm-card { max-width: 30rem; }
+.confirm-card p { margin: 0 0 1rem; }
+.confirm-card button.danger {
+  border-color: var(--bad);
+  color: var(--bad);
+}
+.confirm-card button.danger:hover { background: color-mix(in srgb, var(--bad) 14%, transparent); }
+
+/* Unsaved-changes guard inside the catalog manager (see CatalogManager.close). */
+.cm-discard {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.5rem 0.75rem;
+  margin-bottom: 0.75rem;
+  border: 1px solid var(--bad);
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--bad) 10%, transparent);
+}
+.cm-discard span { flex: 1; }
+.cm-discard button.danger { border-color: var(--bad); color: var(--bad); }

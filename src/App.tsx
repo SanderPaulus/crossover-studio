@@ -1696,6 +1696,20 @@ export default function App() {
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [palQuery, setPalQuery] = useState('');
   const [palIx, setPalIx] = useState(0);
+  /* IN-APP CONFIRMATION, never window.confirm (aug 2026, Sanders "ik kan geen
+   * netwerken meer verwijderen"). A browser dialog can be switched off for the
+   * page — Chrome offers "prevent this page from creating additional dialogs"
+   * after a few in a row — and from then on confirm() returns false with
+   * nothing shown, so the action silently stops working. Exactly the class of
+   * silent failure this codebase keeps paying for; and the app already owns a
+   * modal every other popup goes through. */
+  const [confirmAsk, setConfirmAsk] = useState<{
+    text: string;
+    confirmLabel: string;
+    onYes: () => void;
+  } | null>(null);
+  const askConfirm = (text: string, confirmLabel: string, onYes: () => void) =>
+    setConfirmAsk({ text, confirmLabel, onYes });
   const [shortcutsOpen, setShortcutsOpen] = useState(false);
   const [issuesOpen, setIssuesOpen] = useState(false);
   const [heldTrace, setHeldTrace] = useState<{ x: number[]; y: number[] } | null>(null);
@@ -6552,12 +6566,17 @@ export default function App() {
    * real loss of the user's own work, so that case asks first.
    */
   function loadDemoCatalog() {
-    if (
-      hasImportedCatalog() &&
-      !window.confirm('Replace the catalog now loaded with the demo catalog?')
-    ) {
+    if (hasImportedCatalog()) {
+      askConfirm(
+        t('Replace the catalog now loaded with the demo catalog?'),
+        t('Replace'),
+        () => loadDemoCatalogNow(),
+      );
       return;
     }
+    loadDemoCatalogNow();
+  }
+  function loadDemoCatalogNow() {
     try {
       const imp = deserializeCatalog(demoCatalog);
       setCustomSeries(imp.series, imp.parts);
@@ -9004,6 +9023,33 @@ export default function App() {
           </ul>
         </Modal>
       )}
+      {confirmAsk && (
+        <Modal
+          open
+          onClose={() => setConfirmAsk(null)}
+          label={confirmAsk.text}
+          cardClass="shortcuts-card confirm-card"
+        >
+          <p>{confirmAsk.text}</p>
+          <div className="row" style={{ justifyContent: 'flex-end', gap: '0.5rem' }}>
+            <button type="button" onClick={() => setConfirmAsk(null)}>
+              {t('Cancel')}
+            </button>
+            <button
+              type="button"
+              className="danger"
+              autoFocus
+              onClick={() => {
+                const go = confirmAsk.onYes;
+                setConfirmAsk(null);
+                go();
+              }}
+            >
+              {confirmAsk.confirmLabel}
+            </button>
+          </div>
+        </Modal>
+      )}
       {shortcutsOpen && (
         <Modal open onClose={() => setShortcutsOpen(false)} label="Keyboard shortcuts" cardClass="shortcuts-card">
           <div className="busy-title">{t('Keyboard shortcuts')}</div>
@@ -11358,12 +11404,12 @@ export default function App() {
               </button>
               <button
                 type="button"
-                onClick={() => {
-                  if (window.confirm(t('Discard the backup? This cannot be undone.'))) {
+                onClick={() =>
+                  askConfirm(t('Discard the backup? This cannot be undone.'), t('Discard'), () => {
                     localStorage.removeItem('ads-autosave-unreadable');
                     setUnreadableBackup(null);
-                  }
-                }}
+                  })
+                }
               >
                 {t('Discard')}
               </button>
@@ -14141,7 +14187,13 @@ export default function App() {
                     active={d.id === activeDesignId}
                     onSelect={() => selectDesign(d.id)}
                     onRename={(name) => renameDesign(d.id, name)}
-                    onDelete={() => deleteDesign(d.id)}
+                    onDelete={() =>
+                      askConfirm(
+                        t('Delete tab "{name}"? This cannot be undone.', { name: d.name }),
+                        t('Delete'),
+                        () => deleteDesign(d.id),
+                      )
+                    }
                   />
                 ))}
                 {saveNameDraft === null ? (
@@ -15350,9 +15402,7 @@ function DesignTab({
       <button
         type="button"
         className="design-tab-close"
-        onClick={() => {
-          if (window.confirm(t('Delete tab "{name}"?', { name: design.name }))) onDelete();
-        }}
+        onClick={() => onDelete()}
         title={t('Delete "{name}"', { name: design.name })}
         aria-label={t('Delete tab "{name}"', { name: design.name })}
       >

@@ -14,6 +14,7 @@ import {
   disabledSeries,
   setDisabledSeries,
   branchDcrBudgetOhms,
+  nearestRealisations,
 } from './catalog.ts';
 
 describe('component catalog', () => {
@@ -490,5 +491,81 @@ describe('switching a series off', () => {
     setDisabledSeries(['no-such-series']);
     expect(catalogParts().length).toBe(n);
     setDisabledSeries([]);
+  });
+});
+
+describe('purchasable realisations — singles and stacks in one list (aug 2026)', () => {
+  const cap = (id: string, value: number, series: string, priceEur?: number) => ({
+    id,
+    brand: 'Jantzen',
+    series,
+    kind: 'C' as const,
+    value,
+    seriesR: 0.02,
+    ...(priceEur !== undefined ? { priceEur } : {}),
+  });
+
+  it('offers a bank when no single covers the value, and keeps SINGLE FIRST when one does', () => {
+    // Sanders' case: premium film stops at 10 µF, so a 13.6 µF slot bound to
+    // Alumen is only reachable as 2× 6.80 µF. Binding used to offer the 10 µF
+    // — 26% off his value, i.e. a different filter.
+    setCustomSeries(
+      [],
+      [
+        cap('ALU-47', 4.7e-6, 'Alumen Z-Cap', 69.6),
+        cap('ALU-68', 6.8e-6, 'Alumen Z-Cap', 88.6),
+        cap('ALU-82', 8.2e-6, 'Alumen Z-Cap', 98.3),
+        cap('ALU-100', 10e-6, 'Alumen Z-Cap', 111.4),
+      ],
+    );
+    try {
+      const alu = allSeries().find((x) => /Alumen/.test(x.series));
+      expect(alu).toBeTruthy();
+      const picks = nearestRealisations('C', 13.6e-6, 6, alu!.id);
+      expect(picks.length).toBeGreaterThan(0);
+      const best = picks[0];
+      expect(best.parts).toHaveLength(2);
+      expect(best.parts.every((p) => p.id === 'ALU-68')).toBe(true);
+      expect(best.value).toBeCloseTo(13.6e-6, 12);
+      expect(best.priceEur).toBeCloseTo(177.2, 2);
+      // A value a single DOES cover keeps the single on top even when a stack
+      // lands marginally closer — "single where it can" (Sanders' doctrine).
+      const single = nearestRealisations('C', 10e-6, 6, alu!.id)[0];
+      expect(single.parts).toHaveLength(1);
+      expect(single.parts[0].id).toBe('ALU-100');
+    } finally {
+      setCustomSeries([]);
+    }
+  });
+
+  it('the BOM prefers a buyable realisation over an unpriced grid ghost, at the same value', () => {
+    // His 43 µF slot matched a generated "Standard Z-Cap 43 µF" — an E24 grid
+    // value from a series absent from his own catalog, with no price — while
+    // 33 + 10 µF sat in the catalog for €3.40. Unpriced means unbuyable AND
+    // free to the cost term, which is the worst of both.
+    setCustomSeries(
+      [],
+      [cap('REAL-33', 33e-6, 'Electrolytic Bipolar', 2.08), cap('REAL-10', 10e-6, 'Electrolytic Bipolar', 1.32)],
+    );
+    try {
+      const parts = [
+        {
+          type: 'Capacitor',
+          partId: 'C1',
+          // the stale stamp from an older snap, pointing at a grid ghost
+          catalog: 'jantzen-zstd-43.00',
+          params: [{ name: 'C', value: 43, unit: 'uF' }],
+          wires: [{ x: 0, y: 0 }, { x: 6, y: 0 }],
+        },
+      ];
+      const bom = bomFor(parts);
+      const row = bom.rows[0];
+      const price = row.match?.priceEur ?? row.stackMatch?.priceEur;
+      expect(price).toBeCloseTo(3.4, 2);
+      expect(row.stackMatch?.parts.map((p) => p.id).sort()).toEqual(['REAL-10', 'REAL-33']);
+      expect(bom.totalEur).toBeCloseTo(3.4, 2);
+    } finally {
+      setCustomSeries([]);
+    }
   });
 });

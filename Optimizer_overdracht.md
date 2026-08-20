@@ -285,6 +285,10 @@ least-squares op de fase, ~180° ⇒ "likely inverted").
   (keuze), gevuld = niet-gedomineerd, ✗ = gediskwalificeerd, ◂ = geladen; klik laadt.
 - **Minimaal-netwerk-rapport** (✂ Minimize network, Network-tab): BOM vóór → na, piek/fase/R_bron
   vóór → na, per stap verwijderd/vervangen + €, twee-voor-een-suggesties, "Apply as new tab".
+- **BOM/inspector koopbaarheid (aug 2026)**: `nearestRealisations` (singles + stapels, single-first
+  binnen 3%) voedt de inspector; `bomFor` negeert een prijsloos `catalog`-stempel (rooster-ghost uit
+  een oudere snap) en zoekt een geprijsde realisatie op DEZELFDE waarde (1%-venster). Een ongeprijsde
+  regel is onbestelbaar én las als gratis voor de kostenterm.
 - **Nieuwe strip-items (aug 2026)**: "source R at the low driver x Ω (Qes ×y) — R5, L1" (△ vanaf ½
   grens, ⚠ erboven; onderdelen = grootste |ΔR_bron| bij verwijdering); "excess GD 500 Hz/2 kHz/8 kHz"
   (bulk = in-band-mediaan afgetrokken); 3-weg "mid band x oct" (△ < 2,3). Directivity-paneel: "Power

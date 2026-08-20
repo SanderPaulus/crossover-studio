@@ -1929,4 +1929,9 @@ export const nl: Record<string, string> = {
   "◆ your design before this run": "◆ je ontwerp vóór deze run",
   "The design that was on screen when the scan started, measured through the same pipeline. It does not compete — it is the bar every candidate has to clear.": "Het ontwerp dat op het scherm stond toen de scan begon, gemeten via dezelfde pijplijn. Het doet niet mee in de race — het is de lat waar elke kandidaat overheen moet.",
   "No candidate beat the design you already had ({name}: {peak} dB · {phase}° · R src {rs}). Keep it — or widen the search (crossover window, more steps, targets), because this run found nothing better.": "Geen enkele kandidaat verslaat het ontwerp dat je al had ({name}: {peak} dB · {phase}° · R bron {rs}). Houd dat — of zoek breder (kruispuntvenster, meer stappen, doelen), want deze run vond niets beters.",
+  "Delete tab \"{name}\"? This cannot be undone.": "Tab \"{name}\" verwijderen? Dit kan niet ongedaan worden gemaakt.",
+  "Replace the catalog now loaded with the demo catalog?": "De nu geladen catalogus vervangen door de demo-catalogus?",
+  "Replace": "Vervangen",
+  "Every nearby catalog part in this scope — single parts and stacks (caps in parallel, coils in series), with prices; picking one applies it": "Elk nabijgelegen catalogusonderdeel binnen dit bereik — losse onderdelen én stapels (caps parallel, spoelen in serie), met prijzen; klikken past het toe",
+  "Keep editing": "Verder bewerken",
 };

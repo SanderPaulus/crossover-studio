@@ -217,10 +217,18 @@ export function CatalogManager({ onClose, onSave }: Props) {
   const [seriesForm, setSeriesForm] = useState<SeriesDraft | null>(null);
   const [formError, setFormError] = useState<string | null>(null);
 
-  // Every dismissal route (Esc, backdrop, Cancel) lands here, so the
-  // unsaved-changes guard cannot be walked around.
+  /* Every dismissal route (Esc, backdrop, Cancel) lands here, so the
+   * unsaved-changes guard cannot be walked around. The guard is an in-panel
+   * question, NOT window.confirm: a browser dialog can be switched off for
+   * the page ("prevent this page from creating additional dialogs"), after
+   * which confirm() answers false without showing anything — for a guard that
+   * means the panel silently refuses to close, with no way to find out why. */
+  const [askDiscard, setAskDiscard] = useState(false);
   const close = () => {
-    if (dirty && !window.confirm(t('Discard unsaved catalog changes?'))) return;
+    if (dirty) {
+      setAskDiscard(true);
+      return;
+    }
     onClose();
   };
 
@@ -337,6 +345,24 @@ export function CatalogManager({ onClose, onSave }: Props) {
 
   return (
     <Modal open onClose={close} label={t('Catalog manager')} cardClass="targets-card catmgr-card">
+      {askDiscard && (
+        <div className="cm-discard" role="alertdialog" aria-label={t('Discard unsaved catalog changes?')}>
+          <span>{t('Discard unsaved catalog changes?')}</span>
+          <button type="button" onClick={() => setAskDiscard(false)}>
+            {t('Keep editing')}
+          </button>
+          <button
+            type="button"
+            className="danger"
+            onClick={() => {
+              setAskDiscard(false);
+              onClose();
+            }}
+          >
+            {t('Discard')}
+          </button>
+        </div>
+      )}
       <div className="help-head">
         <div className="busy-title">🗂 {t('Catalog manager')}</div>
         <div className="catmgr-views">

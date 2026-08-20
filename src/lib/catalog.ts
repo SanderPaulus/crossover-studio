@@ -432,7 +432,11 @@ export function stackCandidates(
       });
     }
   }
-  for (const f of [0.5, 0.33, 0.7]) {
+  /* Split points to try. 0.25 and 0.2 were added Aug 2026: with only ½, ⅓ and
+   * 0.7 an UNEVEN pair like 10 + 33 µF for a 43 µF slot was unreachable, so
+   * the row fell back to a generated-grid ghost with no price — measured on
+   * Sanders' B·C1. Each factor costs one nearest-value lookup. */
+  for (const f of [0.5, 0.33, 0.7, 0.25, 0.2]) {
     for (const a of nearestIn(value * f, 2)) {
       if (!(a.value < value)) continue;
       const rest = value - a.value;
@@ -468,7 +472,15 @@ export function stackCandidates(
       // Near-ties go to the realisation with FEWER physical parts — "single
       // where it can" applies inside the stack shortlist too.
       if (Math.abs(d) > 1e-6) return d;
-      return x.parts.length - y.parts.length;
+      if (x.parts.length !== y.parts.length) return x.parts.length - y.parts.length;
+      /* Then BUYABLE before fictional. Six unpriced grid variants of the same
+       * 30 + 13 µF pair used to fill the shortlist and push the real, priced
+       * 33 + 10 µF off the end of it (measured on Sanders' 43 µF slot), which
+       * left the BOM with no price for a row a builder can simply order. */
+      const px = x.priceEur !== undefined ? 0 : 1;
+      const py = y.priceEur !== undefined ? 0 : 1;
+      if (px !== py) return px - py;
+      return (x.priceEur ?? 0) - (y.priceEur ?? 0);
     })
     .slice(0, count);
 }
@@ -677,6 +689,48 @@ function preferredPools(
  * Wizard prefs restrict the single-part pool (binding series per kind, tier
  * per position); stacks stay unrestricted — they are the fallback anyway.
  */
+/**
+ * Every purchasable realisation of a slot value, singles and stacks together,
+ * nearest first — what the inspector offers the designer.
+ *
+ * Why stacks belong in that list (aug 2026, Sanders "maar het moet Jantzen
+ * Alumen Z zijn"): premium film stops around 10 µF, so binding a 13.6 µF slot
+ * to Alumen used to offer only the 10 µF — 26% off his value, i.e. a different
+ * filter. The bank (2× 6.80 µF) is the realisation a builder actually uses,
+ * the machinery already existed for the snap, and `VxpPart.catalog` already
+ * carries the `SKU+SKU` form the BOM reads back.
+ */
+export function nearestRealisations(
+  kind: CatalogKind,
+  value: number,
+  count = 8,
+  seriesId?: string,
+): CatalogPick[] {
+  if (!(value > 0)) return [];
+  const wanted = seriesId ? allSeries().find((s) => s.id === seriesId) : undefined;
+  const pool = catalogParts().filter(
+    (p) => p.kind === kind && (!wanted || (p.brand === wanted.brand && p.series === wanted.series)),
+  );
+  const singles = nearestWithVariants(pool, value, count).map(singlePick);
+  const stacks = stackCandidates(kind, value, Math.max(2, Math.ceil(count / 2)), pool);
+  const err = (v: number) => Math.abs(Math.log(v / value));
+  /* SINGLE WHERE IT CAN (Sanders' doctrine, and what pickCandidates already
+   * does for the snap): anything inside 3% counts as hitting the value, so a
+   * 2-part stack must not outrank a single 22 µF just because 15 + 6.8 lands
+   * 0.5% closer. Below that band the stack is the only way to reach the value
+   * and it comes first on merit. */
+  const band = (v: number) => (err(v) <= Math.log(1.03) ? 0 : 1);
+  return [...singles, ...stacks]
+    .sort((a, b) => {
+      if (band(a.value) !== band(b.value)) return band(a.value) - band(b.value);
+      if (a.parts.length !== b.parts.length) return a.parts.length - b.parts.length;
+      const d = err(a.value) - err(b.value);
+      if (Math.abs(d) > 1e-9) return d;
+      return (a.priceEur ?? Infinity) - (b.priceEur ?? Infinity);
+    })
+    .slice(0, count);
+}
+
 export function pickCandidates(
   kind: CatalogKind,
   value: number,
@@ -852,6 +906,16 @@ export function bomFor(parts: readonly VxpPart[]): Bom {
         }
       }
     }
+    /* A STAMP FOR SOMETHING THAT DOES NOT EXIST IS NOT A CHOICE. Generated
+     * grid entries never carry a price, and the inspector only ever offers
+     * priced parts — so an unpriced stamp is always a grid ghost from an
+     * older snap, never a decision the designer made. Sanders' saved design
+     * carried `jantzen-zstd-43.00` (an E24 grid value from a series absent
+     * from his own catalog) and a 68+68 grid stack, while the identical pair
+     * of real electrolytics sat in the catalog at €5.28. Drop the stamp and
+     * let the value search below find something buyable. */
+    if (match && match.priceEur === undefined) match = null;
+    if (stackMatch && stackMatch.priceEur === undefined) stackMatch = undefined;
     // 2. Fallback: match by value; among same-value ties prefer the part
     //    whose DCR/ESR agrees with the schematic params — a 10 µF exists in
     //    five series, and showing the wrong sibling reads as "the wizard
@@ -874,9 +938,31 @@ export function bomFor(parts: readonly VxpPart[]): Bom {
           return Math.abs(a.seriesR - paramR) - Math.abs(b.seriesR - paramR);
         });
       match = close[0] ?? null;
-      if (!match) {
-        const st = stackCandidates(meta.kind, value, 1)[0];
-        if (st && Math.abs(Math.log(st.value / value)) < 0.01) stackMatch = st;
+      /* A BOM IS A SHOPPING LIST — a row you cannot buy is a gap, not a
+       * choice (aug 2026, Sanders' 43 µF and 136 µF). Two ways an unbuyable
+       * row got in: a generated-grid value that no real product comes in
+       * (his "Standard Z-Cap 43 µF" — an E24 grid entry from a series absent
+       * from his 2388-SKU import), and a stack built from those same unpriced
+       * grid parts (68 + 68) while the identical pair of real electrolytics
+       * sat in the catalog at €5.28. Both read as free to the cost term and
+       * as available to the builder.
+       *
+       * So when nothing PRICED was found at this value, look for a priced
+       * realisation before settling — but inside the SAME 1% window. Value
+       * stays king: buying a 10% different part to get a price tag would be
+       * the same mistake in the other direction. */
+      if (!match || match.priceEur === undefined) {
+        const sts = stackCandidates(meta.kind, value, 6);
+        const priced = sts.find(
+          (st) => st.priceEur !== undefined && Math.abs(Math.log(st.value / value)) < 0.01,
+        );
+        if (priced) {
+          stackMatch = priced;
+          match = null; // the priced stack IS the answer for this row
+        } else if (!match) {
+          const st = sts[0];
+          if (st && Math.abs(Math.log(st.value / value)) < 0.01) stackMatch = st;
+        }
       }
     }
     rows.push({

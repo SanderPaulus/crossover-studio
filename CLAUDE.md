@@ -2176,6 +2176,33 @@ gepersisteerd — zijn tab stond op de landing page); vervangen door de harness-
 dissipatie 0,05 vs 0 ⇒ R_bron 2,85/1,17/0,00 vs 2,48/1,05/0,00 — GEEN effect (tiebreak-sterkte,
 (Rs/Re)²·0,05 ≈ 0,01 op fx ~12); de winnaar met R_bron 0,00 (514/1849 → 627/1942, peak 1,70 vs de
 gediskwalificeerde 1,27) komt van fix 1. Open: gewicht kalibreren zoals B1.
+**DE BOM MAG GEEN FICTIE KOPEN (aug 2026, Sanders "hoe zit het dan met de BOM")**: zijn twee
+grootste caps kwamen ongeprijsd uit de BOM (136 µF en 43 µF) terwijl beide gewoon te koop zijn.
+Drie oorzaken op een rij, alle drie dezelfde ziekte: (1) het `catalog`-STEMPEL van een oudere snap
+wees naar een gegenereerde roosterwaarde (`jantzen-zstd-43.00` — een E24-waarde uit een serie die
+niet in zijn 2388-SKU-import zit); een stempel zonder prijs is nooit een keuze van de ontwerper
+(de inspector toont alleen geprijsde onderdelen), dus die wordt nu genegeerd en de waarde-zoektocht
+draait alsnog. (2) `stackCandidates` probeerde alleen de splitsingen ½/⅓/0,7 — een ONEVEN paar als
+10 + 33 voor 43 µF was onbereikbaar; 0,25 en 0,2 erbij. (3) de shortlist werd gevuld door zes
+prijsloze roostervarianten van hetzelfde 30+13-paar en duwde de echte 33+10 eruit: de sortering
+zet nu KOOPBAAR vóór fictief (en daarna goedkoper), na waarde-afstand en aantal onderdelen.
+Gemeten op zijn eigen filter: 21/23 geprijsd, "≥ €213,29" → **23/23, €221,97** (68+68 = €5,28,
+33+10 = €3,40). NB ongeprijsd las voor de kostenterm bovendien als GRATIS — onbestelbaar én
+kunstmatig aantrekkelijk.
+**STAPELS IN DE INSPECTOR (`nearestRealisations`)**: `nearestParts` gaf alleen singles, dus een
+13,6 µF-slot gebonden aan Alumen kreeg de 10 µF aangeboden — 26% eraf, een ander filter. Premium
+film stopt rond 10 µF, dus de bank ÍS daar de realisatie. Singles + stapels in één lijst, en de
+sortering handhaaft "enkelvoudig waar het kan": alles binnen 3% telt als raak, daarbinnen wint het
+minste aantal fysieke onderdelen (anders verslaat 15+6,8 een enkele 22 µF op 0,5% nauwkeuriger).
+Het schema houdt ÉÉN symbool met de somwaarde (de elektrische waarheid); `VxpPart.catalog` droeg
+het `SKU+SKU`-formaat al, dus de BOM benoemt en prijst beide delen. Knop-label gefixt: een gemengd
+paar las als "2× 15 µF" — dat liegt over wat je koopt; uniform = "N× waarde", gemengd = "a + b".
+**GEEN `window.confirm` MEER (Sanders "ik kan geen netwerken meer verwijderen")**: geen bug in de
+app — Chrome biedt na een paar dialogen "voorkom dat deze pagina extra dialoogvensters maakt" aan,
+en daarna antwoordt `confirm()` stil `false`. Voor de tab-sluitknop betekende dat: klik komt aan,
+er gebeurt niets, geen spoor. Alle vier de plekken (tab verwijderen, back-up wissen,
+demo-catalogus vervangen, catalogusbeheer-afsluitgarde) gaan nu via de eigen Modal (`askConfirm`
+in App, `askDiscard` in CatalogManager) — dezelfde regel als alle andere popups.
 **⚡ DE R_BRON-KOLOM MAT DE VERKEERDE FREQUENTIE (aug 2026, Sanders "19 simulaties en we kunnen
 niets beters verzinnen… ik vind dit een kwalijke zaak")**: `sourceResistanceOhm` + `auditNetwork`
 pakten het gridpunt NAAST `fbHz` zonder te toetsen of Fb ín het grid lag. Zijn poort: 31 Hz; zijn

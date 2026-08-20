@@ -18,9 +18,9 @@ import { t } from '../lib/i18n.ts';
 import {
   catalogSeries,
   formatCatalogPart,
-  nearestParts,
+  nearestRealisations,
   type CatalogKind,
-  type CatalogPart,
+  type CatalogPick,
 } from '../lib/catalog.ts';
 
 /** Display-unit ↔ SI mapping per catalog kind (part params store display units). */
@@ -377,25 +377,35 @@ export default function SchematicEditor({ parts, models, onChange, onUndo, canUn
               {(() => {
                 const si = (partParam(selPart, catKind) ?? 0) * CAT_UNIT[catKind].toSi;
                 const scope = prefSeries[catKind] === 'all' ? undefined : prefSeries[catKind];
-                const applyCatalogPart = (p: CatalogPart) => {
-                  const u = CAT_UNIT[p.kind];
+                /* Apply one purchasable REALISATION: a single part, or a
+                 * stack the builder wires up as one component (caps in
+                 * parallel, coils in series). The schematic keeps ONE symbol
+                 * carrying the summed value — that is the electrical truth —
+                 * and the `catalog` stamp carries every SKU so the BOM can
+                 * name and price them (Sanders: "maar het moet Jantzen
+                 * Alumen Z zijn" — premium film stops around 10 µF, so a
+                 * 13.6 µF slot is only reachable as 2× 6.80 µF). */
+                const applyRealisation = (pick: CatalogPick) => {
+                  const u = CAT_UNIT[catKind];
                   const withVal = setPartParam(
                     parts,
                     sel!,
-                    p.kind,
-                    Number((p.value / u.toSi).toPrecision(6)),
+                    catKind,
+                    Number((pick.value / u.toSi).toPrecision(6)),
                     u.unit,
                   );
                   const withRes =
-                    p.kind === 'R'
+                    catKind === 'R'
                       ? withVal
-                      : setPartParam(withVal, sel!, p.kind === 'L' ? 'DCR' : 'ESR', p.seriesR, 'Ω');
-                  // Stamp the chosen SKU so the BOM attributes THIS part —
+                      : setPartParam(withVal, sel!, catKind === 'L' ? 'DCR' : 'ESR', pick.seriesR, 'Ω');
+                  // Stamp the chosen SKU(s) so the BOM attributes THIS part —
                   // otherwise it falls back to value/ESR and a same-value
                   // series swap (or any resistor swap) stays invisible.
-                  onChange(setPartProps(withRes, sel!, { catalog: p.id }));
+                  onChange(
+                    setPartProps(withRes, sel!, { catalog: pick.parts.map((x: { id: string }) => x.id).join('+') }),
+                  );
                 };
-                const candidates = nearestParts(catKind, si, 8, scope);
+                const candidates = nearestRealisations(catKind, si, 8, scope);
                 // Quick-pick buttons: one per DISTINCT value (first = best
                 // variant), max 3 — the full variant list (gauges, brands,
                 // prices) lives in the dropdown so the row never grows wide
@@ -403,7 +413,7 @@ export default function SchematicEditor({ parts, models, onChange, onUndo, canUn
                 // Dedupe on the DISPLAY precision: catalog parts of the same
                 // nominal value can differ in float dust across series.
                 const seen = new Set<number>();
-                const quick: CatalogPart[] = [];
+                const quick: CatalogPick[] = [];
                 for (const p of candidates) {
                   const key = Number(p.value.toPrecision(3));
                   if (seen.has(key)) continue;
@@ -411,34 +421,53 @@ export default function SchematicEditor({ parts, models, onChange, onUndo, canUn
                   quick.push(p);
                   if (quick.length === 3) break;
                 }
+                const idOf = (pick: CatalogPick) => pick.parts.map((x: { id: string }) => x.id).join('+');
+                /* Quick-button label. A stack of IDENTICAL parts reads as
+                 * "3× 22 µF"; a mixed pair must name both values, or the
+                 * button lies about what you are buying (measured: a 15 + 6.8
+                 * pair rendered as "2× 15 µF"). */
+                const short = (pick: CatalogPick) => {
+                  if (pick.parts.length === 1) return formatCatalogPart(pick.parts[0]);
+                  const uniform = pick.parts.every((x: { id: string }) => x.id === pick.parts[0].id);
+                  const val = (x: { value: number }) =>
+                    catKind === 'C'
+                      ? `${Number((x.value * 1e6).toPrecision(3))} µF`
+                      : `${Number((x.value * 1e3).toPrecision(3))} mH`;
+                  return uniform
+                    ? `${pick.parts.length}× ${val(pick.parts[0])}`
+                    : pick.parts.map(val).join(' + ');
+                };
                 return (
                   <>
                     <select
                       className="cat-parts"
                       value=""
                       onChange={(e) => {
-                        const p = candidates.find((c) => c.id === e.target.value);
-                        if (p) applyCatalogPart(p);
+                        const p = candidates.find((c) => idOf(c) === e.target.value);
+                        if (p) applyRealisation(p);
                       }}
-                      title={t('Every nearby catalog part in this scope — all values, gauge variants and prices; picking one applies it')}
+                      title={t('Every nearby catalog part in this scope — single parts and stacks (caps in parallel, coils in series), with prices; picking one applies it')}
                     >
                       <option value="" disabled>
                         {t('all {n} parts…', { n: candidates.length })}
                       </option>
                       {candidates.map((p) => (
-                        <option key={p.id} value={p.id}>
-                          {p.brand} · {formatCatalogPart(p)}
+                        <option key={idOf(p)} value={idOf(p)}>
+                          {p.label}
+                          {p.priceEur !== undefined ? ` · €${p.priceEur.toFixed(2)}` : ''}
                         </option>
                       ))}
                     </select>
                     {quick.map((p) => (
                       <button
-                        key={p.id}
+                        key={idOf(p)}
                         type="button"
-                        title={`${p.brand} ${p.series}${p.kind === 'R' ? '' : ` — ${t('apply value +')} ${p.kind === 'L' ? 'DCR' : 'ESR'}`}`}
-                        onClick={() => applyCatalogPart(p)}
+                        title={`${p.label}${p.priceEur !== undefined ? ` · €${p.priceEur.toFixed(2)}` : ''}${
+                          catKind === 'R' ? '' : ` — ${t('apply value +')} ${catKind === 'L' ? 'DCR' : 'ESR'}`
+                        }`}
+                        onClick={() => applyRealisation(p)}
                       >
-                        {formatCatalogPart(p)}
+                        {short(p)}
                       </button>
                     ))}
                   </>
