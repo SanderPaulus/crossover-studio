@@ -104,6 +104,7 @@ import {
 import { deserializeFilter, serializeFilter } from './lib/filterFile.ts';
 import { buildReportHtml, type ReportRow, type ReportSection } from './lib/report.ts';
 import { serializeVxp } from './lib/parsers/vxpExport.ts';
+import { zipStore } from './lib/zip.ts';
 import type { VxpDriver } from './lib/parsers/vxp.ts';
 import { tidySchematic } from './lib/tidyLayout.ts';
 import {
@@ -7018,17 +7019,23 @@ export default function App() {
       }
     }
 
-    // Fallback (Firefox/Safari): download just the .vxp; the user places the
-    // measurement files beside it manually.
-    const blob = new Blob([xml], { type: 'application/xml' });
+    // Fallback (Safari/Firefox have no directory picker, or the folder write
+    // failed): ONE ZIP that unpacks into exactly the same folder. The
+    // measurement files have to travel with the .vxp — without them
+    // VituixCAD opens with "N/N frequency response files not found", which is
+    // the whole reason the folder export exists. Handing over a bare .vxp plus
+    // a list of files to copy by hand is that chore, not a fallback.
+    const zip = zipStore([...files].map(([name, data]) => ({ name: `${base}/${name}`, data })));
+    const blob = new Blob([zip as BlobPart], { type: 'application/zip' });
     const a = document.createElement('a');
     a.href = URL.createObjectURL(blob);
-    a.download = vxpName;
+    a.download = `${base}.zip`;
     a.click();
     URL.revokeObjectURL(a.href);
     setPersistNote(
-      `${t('Exported {vxp} ({variants}).', { vxp: vxpName, variants })} ${bridge}.${skippedNote} ` +
-        t('This browser can’t write folders — place the measurement files next to it manually: {list}. (Chrome/Edge export the whole folder in one go.)', { list: dataFiles.join(', ') }),
+      t('Exported {zip} — {vxp} + {n} measurement file(s) ({variants}). {bridge}. Unpack it and open {vxp} in VituixCAD.', { zip: `${base}.zip`, vxp: vxpName, n: dataFiles.length, variants, bridge }) +
+        skippedNote +
+        (missing.length ? ` ${t('Note: no {list} on record.', { list: missing.join(', ') })}` : ''),
     );
   }
 
@@ -13525,7 +13532,7 @@ export default function App() {
                     type="button"
                     onClick={exportActiveVxp}
                     disabled={designs.length === 0}
-                    title={t('Export ALL network tabs as a VituixCAD project folder — the .vxp (each tab a crossover variant CROSSOVER, CROSSOVER1, …) PLUS every measurement/impedance file, written together so VituixCAD opens it without hunting. Pick a folder when asked (Chrome/Edge). VituixCAD reconstructs the phase itself (MinimumPhase=True) and every driver carries its measured excess-phase delay (earliest driver 0), so its simulation matches ours — two-way and three-way alike.')}
+                    title={t('Export ALL network tabs as a VituixCAD project folder — the .vxp (each tab a crossover variant CROSSOVER, CROSSOVER1, …) PLUS every measurement/impedance file, written together so VituixCAD opens it without hunting. Chrome/Edge ask for a folder and write it there; Safari/Firefox download the same folder as one .zip. VituixCAD reconstructs the phase itself (MinimumPhase=True) and every driver carries its measured excess-phase delay (earliest driver 0), so its simulation matches ours — two-way and three-way alike.')}
                   >
                     {t('Export .vxp')}
                   </button>

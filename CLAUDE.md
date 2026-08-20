@@ -61,8 +61,18 @@ minimum phase reconstrueert. Voertaal met Sander: **Nederlands**; code/comments 
   Bestandsnamen worden één keer geschoond (demo-suffix eraf, response krijgt .txt) en identiek
   in de .vxp-referentie én op schijf gebruikt; een `place`-helper dedupliceert gelijke files maar
   hernoemt een botsing tussen VERSCHILLENDE files (…_2) zodat twee drivers nooit stil dezelfde
-  response delen. Firefox/Safari (geen API) vallen terug op alleen de .vxp-download + een note
-  met de handmatig te plaatsen bestandsnamen. **`<Variant>` = het 0-BASED SLOT-NUMMER van de
+  response delen. Safari/Firefox (geen API) krijgen sinds aug 2026 DEZELFDE map als één **.zip**
+  (`lib/zip.ts` — eigen store-only ZIP-schrijver, ~130 regels, geen dependency;
+  deterministisch: vaste DOS-timestamp 1980-01-01, dus geen wall-clock zoals de rest
+  van src/lib). Aanleiding: Sanders "wanneer ik exporteer .vxp dan verwacht ik ook dat
+  daar de gebruikte frd en zma bestanden bij zit" — hij werkt op macOS, dus hij zág de
+  mappen-export nooit; de oude terugval was de .vxp + een LIJSTJE bestanden om met de
+  hand te kopiëren, en dat is precies de klus waarvoor de mappen-export bestaat. Store
+  i.p.v. deflate: een compressor meesturen voor een handvol tekstbestanden is niet de
+  moeite, en een gestoorde ZIP is byte-exact te testen. Geverifieerd met het ECHTE
+  `unzip` (CRC's OK, mapstructuur, BOM + CRLF intact) én in de browser met
+  `delete window.showDirectoryPicker` op de 3-weg-demo: 18 meetbestanden + de .vxp in
+  één archief. **`<Variant>` = het 0-BASED SLOT-NUMMER van de
   actieve variant** (CROSSOVER=0, CROSSOVER1=1, … CROSSOVER7=7) — DÉ oorzaak van Sanders
   hardnekkige "Amount of sources must be one": bewezen met zijn 2023-referentiebestand
   (`<Variant>0</Variant>` met alle 8 slots vol) + de KOAN-fixture (`<Variant>2</Variant>` →
