@@ -20,16 +20,23 @@ export function poolSize(): number {
  * candidate could sit "queued" behind a slow one while other slots had already
  * finished and stood idle (Sanders: "staat er 1 queued terwijl deze gewoon
  * bezig had kunnen zijn"). Results keep the input order.
+ *
+ * `shouldStop` lets a lane stop TAKING work — "stop and keep what finished".
+ * It is checked before each item, never mid-item: whatever is already running
+ * is the caller's business (the scan aborts those through the worker), and a
+ * queued item that never starts leaves its slot in the result array untouched.
  */
 export function runPooled<T, R>(
   items: readonly T[],
   size: number,
   fn: (item: T, slot: number, index: number) => Promise<R>,
+  shouldStop?: () => boolean,
 ): Promise<R[]> {
   const results = new Array<R>(items.length);
   let next = 0;
   const lane = async (slot: number): Promise<void> => {
     for (;;) {
+      if (shouldStop?.()) return;
       const i = next++;
       if (i >= items.length) return;
       results[i] = await fn(items[i], slot, i);

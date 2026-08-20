@@ -35,4 +35,19 @@ describe('runPooled', () => {
     expect(await runPooled([1, 2], 8, async (x) => x * 2)).toEqual([2, 4]);
     expect(await runPooled([], 4, async (x: number) => x)).toEqual([]);
   });
+
+  it('shouldStop keeps finished results and never starts the rest', async () => {
+    // "Stop and keep what finished": the lanes stop TAKING work, so the items
+    // that already ran keep their slots and the queued ones stay untouched.
+    let stop = false;
+    const started: number[] = [];
+    const out = await runPooled([0, 1, 2, 3, 4, 5], 1, async (x, _slot, i) => {
+      started.push(i);
+      if (i === 1) stop = true; // the designer presses the button here
+      return `r${x}`;
+    }, () => stop);
+    expect(started).toEqual([0, 1]);
+    expect(out.filter(Boolean)).toEqual(['r0', 'r1']);
+    expect(out).toHaveLength(6); // order preserved, the rest simply absent
+  });
 });

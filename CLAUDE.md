@@ -2857,6 +2857,24 @@ Alles UI-laag; élke palette-actie roept dezelfde handlers aan als de knoppen (g
   `cancelOptimTasks()` TERMINATE't de worker (geen coöperatieve vlaggen in de solvers nodig;
   volgende run spawnt vers, elke request hydrateert de catalogus zelf via `setCustomSeries`,
   want worker-module-state overleeft een terminate niet en localStorage bestaat er niet).
+  **"Use the N finished results" (aug 2026, Sanders "stel dat ik al door wil gaan met de 3
+  complete uitkomsten ipv alles te annuleren")**: Cancel gooit een half uur rekenwerk weg
+  omdat er nog kandidaten lopen, en dat is de verkeerde prijs voor "ik heb genoeg gezien".
+  `stopKeepingResults()` doodt dezelfde workers, maar de lopende taken rejecten met een EIGEN
+  `StoppedEarlyError` die de scan-functies OPSLIKKEN: de promise RESOLVET met de kandidaten
+  die al geland waren i.p.v. te rejecten. Twee fouttypes, twee betekenissen — cancel legt
+  niets vast, deze legt het deelveld vast; ze mogen nooit samenvallen (test pint dat een hard
+  cancel nog steeds rejecteert). `runPooled` kreeg `shouldStop`: lanes stoppen met WERK
+  PAKKEN (nooit midden in een item — wat draait wordt via de worker afgebroken), dus
+  wachtende kandidaten starten niet meer. In 3-weg leest de axes-orkestrator `scanStopped()`
+  TUSSEN de rondes — zonder die check zou ronde 2 gewoon de workers respawnen die je net
+  stopte. Nul afgeronde kandidaten = niets vastleggen én het zeggen (een leeg veld ranken
+  crasht, en "je ontwerp is precies zoals het was" is het eerlijke bericht). De note leidt
+  met "⏹ STOPPED EARLY: de beste van de N die klaar zijn, de rest is niet uitgerekend" — een
+  ranking uit een deelveld mag zich nooit voordoen als de hele scan. Knop staat naast Cancel
+  en verschijnt pas zodra ≥1 rij ✓ is. GEMETEN op de 3-weg-demo (5 kandidaten, W-M sweep):
+  bij 2/5 klaar geklikt ⇒ scan-tabel met precies die twee rijen, winnaar in Working, ronde 2
+  nooit gestart, renderer-CPU van 580% naar 32% (de workers waren echt dood).
   Alles over de boundary is plain structured-cloneable data; CancelledError wordt stil
   geslikt (busy reset, ontwerp onaangeroerd). Handmatige "Build passive filter" (seconden)
   bleef bewust synchroon. Gemeten: tijdens een 50s-tune-run antwoordt de main thread direct

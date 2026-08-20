@@ -2560,13 +2560,27 @@ button:disabled {
   font-weight: 600;
   font-size: 1rem;
 }
-.busy-cancel {
+/* Two ways out of a running scan, side by side: keep what already finished
+   (green — it produces a design) or drop the whole field (red). */
+.busy-actions {
+  display: flex;
+  gap: 0.5rem;
+  align-self: flex-end;
   margin-top: 0.2rem;
+}
+.busy-cancel {
   border-color: var(--bad);
   color: var(--bad);
 }
 .busy-cancel:hover {
   background: var(--bad-bg);
+}
+.busy-keep {
+  border-color: var(--ok);
+  color: var(--ok);
+}
+.busy-keep:hover {
+  background: var(--ok-bg);
 }
 .busy-detail {
   color: var(--muted);

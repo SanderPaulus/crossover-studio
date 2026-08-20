@@ -10,6 +10,10 @@ import {
   type ReactNode,
 } from 'react';
 import { t, setLang, currentLang, subscribeLang, LANGS } from './lib/i18n.ts';
+/** Same translator under a name nothing shadows: inside the optimizer
+ *  handlers `t` is the TWEETER response (a long-standing local), so a
+ *  t('…') there is a type error waiting to happen. */
+const tx = t;
 import { parseFrd } from './lib/parsers/frd.ts';
 import { parseZma } from './lib/parsers/zma.ts';
 import { parseLim, limToZmaText } from './lib/parsers/lim.ts';
@@ -130,6 +134,8 @@ import {
   runSoloChainTask,
   runVfRoundsTask,
   runChain3Scan,
+  stopKeepingResults,
+  scanStopped,
   poolSize,
 } from './lib/optimClient.ts';
 import { crossover3Variants, rankChain3Results, variantsFromPoints, type Chain3Variant, deliveredLabel } from './lib/threeWayChain.ts';
@@ -5189,12 +5195,15 @@ export default function App() {
         const stepRatio = (sp: [number, number]) => Math.pow(sp[1] / sp[0], 1 / Math.max(1, nPts - 1));
         // Round 1 — W-M sweep.
         const r1 = await runRound(variantsFromPoints(pts(lowSpan, warm3?.low), [highAnchor], lowSpan, highSpan, 'W-M sweep'));
-        if (r1.length === 0) return merged;
+        // "Stop and keep what finished" must not be undone by the next round:
+        // starting one respawns the workers this just killed.
+        if (r1.length === 0 || scanStopped()) return merged;
         const w1 = rankAll(r1)[0];
         const bestLow = w1.net.after.xoHzPairs?.[0] ?? w1.xoLow;
         // Round 2 — M-T sweep with the best W-M held (delivered value, not aim).
         const r2 = await runRound(variantsFromPoints([bestLow], pts(highSpan, warm3?.high), lowSpan, highSpan, 'M-T sweep'));
         const w2 = rankAll(r2.length ? r2 : r1)[0];
+        if (scanStopped()) return merged;
         const bestHigh = w2.net.after.xoHzPairs?.[1] ?? w2.xoHigh;
         // Round 3 — local refinement, only if the sweeps show coupling: did
         // the M-T sweep move the W-M off round 1's best, or its own delivery
@@ -5214,6 +5223,16 @@ export default function App() {
         setVfProgress({ round: d.round, evals: d.evals, items: d.items }),
       ))
         .then((results) => {
+          // "Stop and use what finished" can land before the first candidate
+          // does. Ranking an empty field would crash; committing nothing and
+          // saying why is the honest outcome — the design stays as it was.
+          const partial = scanStopped();
+          if (results.length === 0) {
+            setNetOptNote(
+              tx('Stopped before any candidate finished — nothing was changed. Your design is exactly as it was.'),
+            );
+            return;
+          }
           const ranked = rankChain3Results(
             results,
             settings.targets,
@@ -5352,8 +5371,13 @@ export default function App() {
           ].filter(Boolean);
           setNetOptNote(
             [
-              `3-way scan — ${variants.length} candidate${variants.length > 1 ? 's' : ''} ` +
-                `(alignment × polarity design step, two-pair tune)`,
+              // Honest count: in axis mode (and after an early stop) the number
+              // that RAN is not the number that was planned.
+              `3-way scan — ${results.length} candidate${results.length > 1 ? 's' : ''} ` +
+                `(alignment × polarity design step, two-pair tune)` +
+                (partial
+                  ? ` — ⏹ STOPPED EARLY: this is the best of the ${results.length} that finished, the rest was never computed`
+                  : ''),
               `winner  xo ${win.label} · ${win.structureLabel}` +
                 (win.net.after.avgDevDb !== undefined
                   ? ` · avg ${win.net.after.avgDevDb.toFixed(2)} dB`
@@ -5697,7 +5721,15 @@ export default function App() {
         },
         (d) => setVfProgress(d),
       )
-        .then(({ results, totalRounds, totalSims }) => {
+        .then(({ results, totalRounds, totalSims, stoppedEarly, requested }) => {
+          // Stopped before anything landed: commit nothing and say so (same
+          // rule as the three-way scan) — the design stays as it was.
+          if (results.length === 0) {
+            setNetOptNote(
+              tx('Stopped before any candidate finished — nothing was changed. Your design is exactly as it was.'),
+            );
+            return;
+          }
           // Winner: targets met first, then blended score at the priority.
           const ranked = rankChainResults(
             results,
@@ -5774,6 +5806,9 @@ export default function App() {
                 (ranked.some((r) => r.xoWindowOk !== false)
                   ? ' — an in-window candidate exists in the table; it ranks lower on flatness.'
                   : ' — no candidate stayed inside; check the Driver limits or pin the crossing.');
+          const partialNote = stoppedEarly
+            ? `\n⏹ stopped early — ranked the ${results.length} candidate${results.length > 1 ? 's' : ''} that finished, of ${requested}; the rest was never computed`
+            : '';
           setNetOptNote(
             (results.length > 1
               ? `crossover scan — winner xo ${win.label}`
@@ -5788,7 +5823,8 @@ export default function App() {
               (win.net.safetyNote ? ` · ⚠ ${win.net.safetyNote}` : '') +
               (win.net.ampFloorNote ? ` · ⚠ ${win.net.ampFloorNote}` : '') +
               zNote2 +
-              xoNote2,
+              xoNote2 +
+              partialNote,
           );
         })
         .catch((e) => {
@@ -7954,6 +7990,10 @@ export default function App() {
 
   const delayUs = offsetMmToDelayS(num(offsetMm, 0)) * 1e6;
 
+  /** Candidates that already produced a result in the running scan — the
+   *  number the "use what finished" button offers to keep. */
+  const scanDoneCount = vfProgress?.items?.filter((i) => i.done).length ?? 0;
+
   // Busy-card body, built during render and snapshotted for the close-linger.
   const busyCardBody = (
     <>
@@ -8046,14 +8086,33 @@ export default function App() {
         </div>
       )}
       {(vfBusy || netOptBusy) && (
-        <button
-          type="button"
-          className="busy-cancel"
-          onClick={cancelOptimTasks}
-          title={t('Stop the run — nothing is committed, your design stays as it was')}
-        >
-          {t('Cancel')}
-        </button>
+        <div className="busy-actions">
+          {/* A scan with finished candidates has something worth keeping.
+              Cancel throws the whole field away, which is the wrong price for
+              "I have seen enough" (Sander: "stel dat ik door wil met de 3
+              complete uitkomsten"). This stops the compute and ranks what
+              landed; the note says it was a partial field. */}
+          {vfBusy && scanDoneCount > 0 && (
+            <button
+              type="button"
+              className="busy-keep"
+              onClick={stopKeepingResults}
+              title={t('Stop searching and rank the candidates that already finished — the best of those is loaded, the rest is never computed. The scan table shows which ones ran.')}
+            >
+              {scanDoneCount === 1
+                ? t('Use the 1 finished result')
+                : t('Use the {n} finished results', { n: scanDoneCount })}
+            </button>
+          )}
+          <button
+            type="button"
+            className="busy-cancel"
+            onClick={cancelOptimTasks}
+            title={t('Stop the run — nothing is committed, your design stays as it was')}
+          >
+            {t('Cancel')}
+          </button>
+        </div>
       )}
     </>
   );

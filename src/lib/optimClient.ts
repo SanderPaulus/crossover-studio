@@ -42,6 +42,46 @@ export class CancelledError extends Error {
   }
 }
 
+/**
+ * Stop-but-keep: the task was killed on purpose and its scan should resolve
+ * with the candidates that already landed. Separate from CancelledError
+ * because the two mean opposite things to the caller — cancel commits
+ * nothing, this one commits the partial field.
+ */
+class StoppedEarlyError extends Error {
+  constructor() {
+    super('stopped early');
+    this.name = 'StoppedEarlyError';
+  }
+}
+
+/** Set by stopKeepingResults(), cleared when a scan starts (or a hard cancel). */
+let stoppedEarly = false;
+
+/** Did the designer stop the running scan and ask to keep what finished?
+ *  The axis-by-axis orchestrator reads this between rounds — without it the
+ *  next round would just respawn the workers it was meant to stop. */
+export function scanStopped(): boolean {
+  return stoppedEarly;
+}
+
+/**
+ * "I have enough — rank what finished." Kills the compute exactly like
+ * Cancel does, but every in-flight task rejects with StoppedEarlyError, which
+ * the scans swallow: the promise resolves with the candidates that completed
+ * instead of rejecting. A scan where nothing finished yet resolves empty, and
+ * the caller decides (it commits nothing).
+ */
+export function stopKeepingResults(): void {
+  stoppedEarly = true;
+  for (let i = 0; i < workers.length; i++) {
+    workers[i]?.terminate();
+    workers[i] = null;
+  }
+  for (const p of pending.values()) p.reject(new StoppedEarlyError());
+  pending.clear();
+}
+
 interface Pending {
   resolve: (v: unknown) => void;
   reject: (e: Error) => void;
@@ -116,6 +156,11 @@ export interface ChainScanResult {
   results: ChainResult[];
   totalRounds: number;
   totalSims: number;
+  /** The designer pressed "stop and use what finished" — `results` is the
+   *  partial field, not the whole scan. */
+  stoppedEarly: boolean;
+  /** How many candidates the scan set out to run. */
+  requested: number;
 }
 
 /** Aggregated live view over concurrently running candidates. */
@@ -158,6 +203,7 @@ export function runChainScan(
   input: ChainScanInput,
   onProgress?: (d: ScanProgress) => void,
 ): Promise<ChainScanResult> {
+  stoppedEarly = false;
   const size = poolSize();
   const state = new Map<string, { evals: number; text: string; done: boolean; warn?: string }>();
   let lastRipple: number | undefined;
@@ -225,30 +271,46 @@ export function runChainScan(
       return r;
     });
   };
+  /* A candidate that was killed by "stop and keep" is not a failure — it just
+   * has no result. Drop it and let the finished ones through. */
+  const runOneOrDropped = (v: { label: string; xoRange?: [number, number] }, slot: number) =>
+    runOne(v, slot).catch((e: unknown) => {
+      if (e instanceof StoppedEarlyError) return null;
+      throw e;
+    });
 
-  const finish = (results: ChainResult[]): ChainScanResult => ({
-    results,
-    totalRounds: results.reduce((a, r) => a + r.rounds, 0),
-    totalSims: results.reduce((a, r) => a + r.evaluations, 0),
-  });
+  const finish = (results: (ChainResult | null | undefined)[]): ChainScanResult => {
+    const done = results.filter((r): r is ChainResult => !!r);
+    return {
+      results: done,
+      totalRounds: done.reduce((a, r) => a + r.rounds, 0),
+      totalSims: done.reduce((a, r) => a + r.evaluations, 0),
+      stoppedEarly,
+      requested: input.variants.length,
+    };
+  };
 
   const vs = input.variants;
   // Truly-free single run with rescue semantics (see designChain doc).
   if (vs.length === 1 && !vs[0].xoRange && input.targets) {
     const targets = input.targets;
-    return runOne(vs[0], 0).then((first) => {
+    return runOneOrDropped(vs[0], 0).then((first) => {
+      if (!first) return finish([]);
       const met =
         first.net.after.rippleDb <= targets.rippleDb && first.net.after.phaseDeg <= targets.phaseDeg;
-      if (met || !first.net.after.xoHz) return finish([first]);
+      if (met || !first.net.after.xoHz || stoppedEarly) return finish([first]);
       const follow = followupVariantsFor(first.net.after.xoHz);
-      return runPooled(follow, size, (v, slot) => runOne(v, slot)).then((rest) =>
-        finish([first, ...rest]),
-      );
+      return runPooled(
+        follow,
+        size,
+        (v, slot) => runOneOrDropped(v, slot),
+        () => stoppedEarly,
+      ).then((rest) => finish([first, ...rest]));
     });
   }
   // Mark every candidate queued up front so the progress card lists them all.
   for (const v of vs) state.set(v.label, { evals: 0, text: 'queued', done: false });
-  return runPooled(vs, size, (v, slot) => runOne(v, slot)).then(finish);
+  return runPooled(vs, size, (v, slot) => runOneOrDropped(v, slot), () => stoppedEarly).then(finish);
 }
 
 /** 3-way 2D crossover scan (trede 4c): every (low, high) candidate runs a
@@ -258,6 +320,7 @@ export function runChain3Scan(
   inputs: Chain3Input[],
   onProgress?: (d: ScanProgress) => void,
 ): Promise<Chain3Result[]> {
+  stoppedEarly = false;
   const size = poolSize();
   const state = new Map<string, { evals: number; text: string; done: boolean; warn?: string }>();
   let emitQueued = false;
@@ -302,8 +365,12 @@ export function runChain3Scan(
         }
         emit();
         return r;
+      }).catch((e: unknown) => {
+        // Killed by "stop and keep": no result, not a failure (see runChainScan).
+        if (e instanceof StoppedEarlyError) return null;
+        throw e;
       });
-  });
+  }, () => stoppedEarly).then((rs) => rs.filter((r): r is Chain3Result => !!r));
 }
 
 export function runVfRoundsTask(
@@ -343,6 +410,7 @@ export function runNetOptimizeTask(
 
 /** Hard cancel: kill every worker, reject all pending with CancelledError. */
 export function cancelOptimTasks(): void {
+  stoppedEarly = false;
   for (let i = 0; i < workers.length; i++) {
     workers[i]?.terminate();
     workers[i] = null;
