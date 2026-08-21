@@ -90,6 +90,9 @@ export interface Chain3Settings {
    *  (default 0.5), class loss ≥ rSourceLimitOhm (1.0, see the ranker),
    *  DISQUALIFIED ≥ rSourceDisqualifyOhm (default 2.0). */
   rSourceDisqualifyOhm?: number;
+  /** A3i-2 — derived amplifier-load floor (IEC 80 % of what the DRIVERS
+   *  support). Forwarded to the tuner as a constraint; absent = off. */
+  loadFloor?: { nominalOhm: number };
   ampTarget?: 'onAxis' | 'listeningWindow';
   phaseMetric?: 'band' | 'overlap';
   synthMode: 'filter' | 'acoustic';
@@ -325,6 +328,7 @@ export function runThreeWayChain(
     // A3e: the ranking's hard tier becomes a constraint in the search, so the
     // tuner cannot spend its time in ground the ranking will throw away.
     rSourceDisqualifyOhm: s.rSourceDisqualifyOhm,
+    loadFloor: s.loadFloor,
     audit: s.audit,
     ampTarget: s.ampTarget,
     acousticSlopes: s.acousticSlopes,

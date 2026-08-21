@@ -44,6 +44,9 @@ export interface ChainSettings {
   /** Source resistance past which a design is infeasible (A3e) — the same
    *  number the ranking disqualifies on. */
   rSourceDisqualifyOhm?: number;
+  /** A3i-2 — derived amplifier-load floor (IEC 80 % of what the DRIVERS
+   *  support). Forwarded to the tuner as a constraint; absent = off. */
+  loadFloor?: { nominalOhm: number };
   /** Dissipation term weight in front of the lowest branch (fix 3a); 0 = off. */
   dissipationWeight?: number;
   /** Part-audit options (thresholds incl. the source-R limit, Fb) — forwarded to the tuner. */
@@ -146,6 +149,7 @@ export function runDesignChain(
     // A3e: the ranking's hard tier becomes a constraint in the search, so the
     // tuner cannot spend its time in ground the ranking will throw away.
     rSourceDisqualifyOhm: s.rSourceDisqualifyOhm,
+    loadFloor: s.loadFloor,
     audit: s.audit,
     ampTarget: s.ampTarget,
     cutOnly: s.cutOnly,
