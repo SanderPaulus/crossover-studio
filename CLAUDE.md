@@ -2224,9 +2224,13 @@ werd NIET eenvoudiger maar complexer (29 → 37 parts, €134 → €169) bij ge
 R_bron sprong 0,23 → 3,42 Ω. Oorzaak: het afgesneden gebied droeg ook de enige DRUK op het gedrag
 daar — van 204 tot 508 Hz strafte de amplitudeterm een wegzakkende woofertak; zonder die term is een
 4 mH seriespoel + 14 mH shunt ineens gratis. De kruising schoof naar 509 Hz, **één Hz boven de
-vloer**: een optimizer die tegen de rand van zijn zichtbare gebied gaat liggen zegt dat het optimum
-eronder ligt — dat is een MEETconclusie, geen codeconclusie, en de remedie is een groundplane-meting
-onder 400 Hz.
+vloer**. ⚠ **DE CONCLUSIE DIE HIER STOND IS INGETROKKEN** (aug 2026, A3h): ik schreef dat een
+optimizer die tegen zijn bandrand gaat liggen zegt dat het optimum eronder ligt, en dat de remedie
+een groundplane-meting is. De REDENERING klopt; de VLOER waar hij tegenaan lag niet. Die 508 Hz kwam
+uit `design.cabinet.gateMs` (een 4,5 ms die Sander in een eerdere sessie op 935 mm bij de mid had
+gemeten) en niet uit enige meting in dat project — de app kon ARTA's `Right window = 5,021 ms` niet
+lezen en viel stil terug op dat globale veld. De echte vloer is 455 Hz. Zie de A3h-meting hieronder
+voor waar de kruising tegen de gecorrigeerde vloer landt.
 **A3e — DISKWALIFICATIES WORDEN RANDVOORWAARDEN IN DE TUNE**: R_bron ≥ 2,0 Ω was al diskwalificerend
 in de ranking maar onzichtbaar in de zoektocht, dus de tuner optimaliseerde zich netjes een ontwerp
 in dat daarna werd weggegooid. Nu `rSourceDisqualifyOhm` als CONSTRAINT in `fxOf`: binnen de grens

@@ -63,7 +63,8 @@ import {
   candidateCentres,
   deriveXoWindow,
   gateMsFromHeader,
-  gateHeaderOf,
+  readGateHeader,
+  type GateHeaderResult,
   dataFloorFromGateMs,
   DEFAULT_GATE_TAPER_ALPHA,
   DEFAULT_XO_WINDOW_THRESHOLDS,
@@ -705,8 +706,15 @@ interface CabinetState {
    *  plane. Usually 0 (mic level with the reference point). Signed on purpose:
    *  on a driver 380 mm low at 500 mm, ±10° swings the true angle 31°↔43°. */
   micElevationDeg: string;
-  /** The reflection-free window the operator ACTUALLY used, ms. Ground truth
-   *  when known — it beats any prediction from geometry. '' = predict it. */
+  /** The reflection-free window the operator used, ms — a claim about the RIG,
+   *  for the cabinet ledger's "honest down to" line.
+   *
+   *  A3h: it no longer stands in for a file that states no window. A window
+   *  belongs to a sweep, not to a project — Sanders 4.5 ms was the mid gate
+   *  from an earlier session at 935 mm and silently became the data floor for
+   *  two branches measured at 1 m through a 5.021 ms window. The files decide
+   *  their own validity now, and where they all agree the ledger reads them
+   *  rather than this field. '' = predict from geometry. */
   gateMs: string;
   baffleWidthMm: string;
   baffleHeightMm: string;
@@ -2908,12 +2916,24 @@ export default function App() {
     // How low the measurement can honestly claim to reach. A stated gate wins
     // over the predicted floor bounce — the operator knows what window was used.
     const predicted = floorBounceGate(micMm, Number(cabinet.refHeightMm), micElev);
-    const statedHz = gateLimitHz(Number(cabinet.gateMs));
+    /* A3h: the FILES know their own window, and when they agree that beats
+     * anything typed into this form — the ledger describes the measurements,
+     * so it should read them. The typed field is the fallback, and it is only
+     * a claim about the rig; it no longer feeds any validity band. */
+    const fileGates = [woofer, midDrv, tweeter]
+      .map((x) => (x ? readGateHeader(x.raw) : null))
+      .filter((g): g is Extract<GateHeaderResult, { kind: 'parsed' }> => g?.kind === 'parsed')
+      .map((g) => g.gateMs);
+    const agreed =
+      fileGates.length > 0 && Math.max(...fileGates) - Math.min(...fileGates) < 0.01 * Math.max(...fileGates)
+        ? fileGates[0]
+        : null;
+    const statedHz = gateLimitHz(agreed ?? Number(cabinet.gateMs));
     const reliable =
       statedHz !== null
-        ? { fromHz: statedHz, gateMs: Number(cabinet.gateMs), stated: true }
+        ? { fromHz: statedHz, gateMs: agreed ?? Number(cabinet.gateMs), stated: true, fromFiles: agreed !== null }
         : predicted
-          ? { fromHz: predicted.fromHz, gateMs: predicted.gateMs, stated: false }
+          ? { fromHz: predicted.fromHz, gateMs: predicted.gateMs, stated: false, fromFiles: false }
           : null;
     const ctc = (a: BranchRole, b: BranchRole) =>
       place[a] && place[b] ? centreToCentreMm(place[a]!, place[b]!) : null;
@@ -3217,10 +3237,14 @@ export default function App() {
        * typed into the cabinet stood in for a measured 5.021 and put the
        * evaluation band 53 Hz too high. The header names the TAPER too, so
        * stop assuming that as well. */
-      const gh = gateHeaderOf(l.raw);
-      const gateMs = gh?.gateMs ?? (Number(cabinet.gateMs) > 0 ? Number(cabinet.gateMs) : null);
-      const gateAlpha = gh?.alpha ?? DEFAULT_GATE_TAPER_ALPHA;
-      if (gateMs === null) {
+      /* A3h — A GLOBAL FIELD MAY NOT STAND IN FOR A FILE'S OWN PROPERTY.
+       * The window belongs to the sweep, not to the project: Sanders 4.5 ms
+       * was the mid gate from a first session at 935 mm, and it silently
+       * became the floor for two branches measured at 1 m with a 5.021 ms
+       * window. So the file wins when it states one, and when it does not the
+       * app ASKS instead of substituting something reasonable. */
+      const gr = readGateHeader(l.raw);
+      if (gr.kind !== 'parsed') {
         out[role] = {
           name: role,
           meta: {
@@ -3228,13 +3252,20 @@ export default function App() {
             validity: { fromHz: null, toHz: topOf(l), reason: 'gate length unknown' },
             verified: false,
             unverifiedReason:
-              `${role}: no gate length. The exporter did not write one into "${l.name}", and the ` +
-              `cabinet's "Gate" field is empty — so there is no way to know how low this ` +
-              `measurement is honest. Fill in the gate you measured with (Your cabinet → Gate).`,
+              gr.kind === 'unparseable'
+                ? `${role}: the window in "${l.name}" could not be read — ${gr.why}. The line is: ` +
+                  `"${gr.line}". This is an import problem, not a property of your measurement; ` +
+                  `send me this header and it can be read.`
+                : `${role}: "${l.name}" states no measurement window, so there is no way to know ` +
+                  `how low it is honest. Re-export it with the window in the header (ARTA writes ` +
+                  `"Right window = … ms" by itself), or measure ground plane, where the question ` +
+                  `does not arise.`,
           },
         };
         continue;
       }
+      const gateMs = gr.gateMs;
+      const gateAlpha = gr.alpha ?? DEFAULT_GATE_TAPER_ALPHA;
       const band = gatedFarFieldValidity(gateMs, topOf(l), gateAlpha)!;
       out[role] = {
         name: role,
@@ -3243,7 +3274,7 @@ export default function App() {
     }
     return out;
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [woofer, midDrv, tweeter, merged, sdCm2, cabinet.gateMs]);
+  }, [woofer, midDrv, tweeter, merged, sdCm2, nearField]);
 
   /** Sources that cannot be judged — they display, but they may not be fitted on. */
   const unverifiedSources = useMemo(
@@ -4079,16 +4110,17 @@ export default function App() {
       // has to keep a room reflection out. The file's own header wins over the
       // cabinet's global field, and it names its taper — the effective
       // (coherent) duration sets the floor, not the nominal gate length.
-      const gh = l ? gateHeaderOf(l.raw) : null;
-      const g = gh?.gateMs ?? (Number(cabinet.gateMs) > 0 ? Number(cabinet.gateMs) : null);
-      const alpha = gh?.alpha ?? DEFAULT_GATE_TAPER_ALPHA;
+      // A3h: the file's own window or nothing — no global stand-in.
+      const gr = l ? readGateHeader(l.raw) : null;
+      const g = gr?.kind === 'parsed' ? gr.gateMs : null;
+      const alpha = (gr?.kind === 'parsed' ? gr.alpha : null) ?? DEFAULT_GATE_TAPER_ALPHA;
       const hz = dataFloorFromGateMs(g, alpha);
       return {
         hz,
         label: g
           ? `data floor 2/${((1 - alpha / 2) * g).toFixed(1)} ms ` +
-            `(${g.toFixed(1)} ms ${gh ? 'from the file header' : 'cabinet gate'}, Tukey ${alpha}) = ${Math.round(hz ?? 0)} Hz`
-          : 'data floor',
+            `(${g.toFixed(1)} ms from the file header, Tukey ${alpha}) = ${Math.round(hz ?? 0)} Hz`
+          : 'data floor (this measurement states no window)',
       };
     };
     const pairFloor = (a: { hz: number | null; label: string }, b: { hz: number | null; label: string }) => {
@@ -12058,8 +12090,16 @@ export default function App() {
                     {t('use {hz} Hz as f min', { hz: Math.round(eerlijk.fromHz) })}
                   </button>
                 ) : null;
+                /* Say where the number came from. The whole 508-vs-455 episode
+                 * was invisible because this line quoted a figure without ever
+                 * naming its source (A3h). */
                 const micUit = eerlijk
-                  ? t('honest down to ≈ {hz} Hz', { hz: Math.round(eerlijk.fromHz) })
+                  ? t('honest down to ≈ {hz} Hz', { hz: Math.round(eerlijk.fromHz) }) +
+                    (eerlijk.fromFiles
+                      ? ' ' + t("(the {ms} ms window your files state)", { ms: eerlijk.gateMs.toFixed(2) })
+                      : eerlijk.stated
+                        ? ' ' + t('(the Gate you typed here — your files state none)')
+                        : ' ' + t('(predicted from the geometry — no window stated anywhere)'))
                   : t('enter the mic distance to find out how low this measurement carries');
                 const stapUit = cabinetInfo.baffleStep
                   ? t('baffle step ≈ {hz} Hz', { hz: Math.round(cabinetInfo.baffleStep) })

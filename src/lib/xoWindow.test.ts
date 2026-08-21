@@ -14,6 +14,7 @@ import {
   DEFAULT_XO_WINDOW_THRESHOLDS,
   gateMsFromHeader,
   gateHeaderOf,
+  readGateHeader,
   DEFAULT_GATE_TAPER_ALPHA,
 } from './xoWindow.ts';
 
@@ -298,5 +299,105 @@ describe('gate header — what the exporter actually writes', () => {
   it('gateMsFromHeader stays a thin wrapper', () => {
     expect(gateMsFromHeader(arta)).toBeCloseTo(5.021, 6);
     expect(gateMsFromHeader('no window here')).toBeNull();
+  });
+});
+
+describe('A3h — "states nothing" and "I could not read it" are different answers', () => {
+  /* REAL HEADERS ONLY. Regex work against invented examples is how this was
+   * introduced: the pattern matched everything I thought of and none of what
+   * ARTA writes. Each string below is copied from a file in this repository or
+   * from Sanders project. */
+  const REAL = {
+    // src/lib/parsers/fixtures/koan-3way/mid-hor0.txt (and his mid/tweeter .txt)
+    arta: [
+      '* Source file = mid hor 0.pir',
+      '* Impulse length = 65536',
+      '* Left window = 0 ms, Rectangular',
+      '* Reference time = 2,5 ms',
+      '* Right window = 5,021 ms, Tukey 0.25',
+      '* Smoothing = None',
+      '20.50781  84.11  -12.03',
+    ].join('\n'),
+    // src/lib/parsers/fixtures/koan-3way/woofer-pair-hor0.frd — Sanders own comment
+    gateWord: [
+      '* Koan 2951 - woofers W1+W2 complex gesommeerd, hor 0 graden',
+      '* bron: ARTA gated 5.021 ms, ref time 2.5 ms - GELDIG BOVEN ~400 Hz',
+      '20.5078  91.2  -44.1',
+    ].join('\n'),
+    // src/lib/parsers/fixtures/koan-3way/woofer-near.txt — near field, 1 s window
+    nearField: [
+      '* Left window = 5,813 ms, Rectangular',
+      '* Right window = 1000 ms, Tukey 0.50',
+      '10.0  110.4  -3.2',
+    ].join('\n'),
+    // A ZMA converted from LIMP: carries provenance, no window at all.
+    none: [
+      '* Converted from LIMP binary "mid.lim" by SD Acoustics Crossover Studio',
+      '* freq(Hz) |Z|(ohm) phase(deg)',
+      '19.95  6.71  12.4',
+    ].join('\n'),
+  };
+
+  it('parsed: the ARTA form, with its taper', () => {
+    const r = readGateHeader(REAL.arta);
+    expect(r.kind).toBe('parsed');
+    if (r.kind !== 'parsed') return;
+    expect(r.gateMs).toBeCloseTo(5.021, 6);
+    expect(r.alpha).toBeCloseTo(0.25, 6);
+  });
+
+  it('parsed: the form that does use the word "gate"', () => {
+    const r = readGateHeader(REAL.gateWord);
+    expect(r.kind).toBe('parsed');
+    if (r.kind !== 'parsed') return;
+    expect(r.gateMs).toBeCloseTo(5.021, 6);
+    expect(r.alpha).toBeNull(); // it states no taper, and does not pretend to
+  });
+
+  it('parsed: a near-field 1000 ms window is read, and is simply not a floor', () => {
+    // Read, reported, and then ignored by nearFieldMergedValidity — which has
+    // no gate parameter at all. Even applied it would bound at 2.7 Hz.
+    const r = readGateHeader(REAL.nearField);
+    expect(r.kind).toBe('parsed');
+    if (r.kind !== 'parsed') return;
+    expect(r.gateMs).toBeCloseTo(1000, 6);
+  });
+
+  it('absent: a file that demonstrably says nothing about a window', () => {
+    expect(readGateHeader(REAL.none).kind).toBe('absent');
+    // A LEFT window alone is not a gate — and is not an error either.
+    expect(readGateHeader('* Left window = 0 ms, Rectangular\n20 84 -12').kind).toBe('absent');
+  });
+
+  it('unparseable: something window-shaped that cannot be read, with the line', () => {
+    const r = readGateHeader('* Right window = auto, Tukey 0.25\n20 84 -12');
+    expect(r.kind).toBe('unparseable');
+    if (r.kind !== 'unparseable') return;
+    // The offending line travels with the verdict: a user cannot act on
+    // "could not read your file", only on "this line, here".
+    expect(r.line).toContain('Right window = auto');
+    expect(r.why).toMatch(/no length|could not be read/);
+  });
+
+  it('the three kinds are exhaustive over every fixture in the repo', () => {
+    for (const raw of Object.values(REAL)) {
+      expect(['parsed', 'absent', 'unparseable']).toContain(readGateHeader(raw).kind);
+    }
+  });
+
+  it('a global number can no longer stand in — and that is the point', () => {
+    /* THE ARGUMENT FOR NEVER GUESSING, in numbers. Sanders cabinet field held
+     * 4.5 ms (the mid gate from an earlier session at 935 mm). Substituted for
+     * a measured 5.021 it produced 508 Hz instead of 455 — wrong, and entirely
+     * plausible, so it survived five rounds of scrutiny. Had the field held
+     * 12 ms the floor would have been 167 Hz and it would have been obvious
+     * immediately. A plausibly wrong number is the dangerous one. */
+    expect(dataFloorFromGateMs(5.021, 0.25)!).toBeCloseTo(455.2, 1);
+    expect(dataFloorFromGateMs(4.5, 0.25)!).toBeCloseTo(507.9, 1);
+    expect(dataFloorFromGateMs(12, 0.25)!).toBeCloseTo(190.5, 1);
+    // And the file always wins: the ARTA header parses, so nothing else is
+    // consulted for it.
+    const r = readGateHeader(REAL.arta);
+    expect(r.kind === 'parsed' && r.gateMs).not.toBe(4.5);
   });
 });

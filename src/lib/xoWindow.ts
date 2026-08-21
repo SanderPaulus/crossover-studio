@@ -318,6 +318,56 @@ export interface GateHeader {
  *   - `Gate = 4.5 ms` / `gate length: 5ms` / `gate time = 5 ms`
  * The LEFT window line is never matched — it is anchored on "Right".
  */
+export type GateHeaderResult =
+  /** A window was found and read. */
+  | ({ kind: 'parsed' } & GateHeader)
+  /** The header demonstrably says nothing about a window. A FACT ABOUT THE
+   *  MEASUREMENT. */
+  | { kind: 'absent' }
+  /** Something that looks like a window statement is there and could not be
+   *  read. A FACT ABOUT THIS APP — an import error, never a fallback. */
+  | { kind: 'unparseable'; line: string; why: string };
+
+/**
+ * The two answers that used to be the same answer.
+ *
+ * `gateMsFromHeader` returned null both for "this file states no window" and
+ * for "there is a window here I failed to read", and the caller then fell back
+ * to a global field. The first is a fact about the measurement, the second a
+ * bug in this parser — and the app could not tell them apart, so five of
+ * Sanders files quietly borrowed a number typed in a cabinet form.
+ *
+ * The same shape as two fields both called `rSourceOhm`: one name, two
+ * meanings, and no way to notice.
+ *
+ * WHY THIS WENT UNSEEN FOR SO LONG, and it is the argument for never guessing:
+ * the cabinet field happened to hold 4.5 ms, so the floor came out at 508 Hz
+ * against a true 455 Hz — wrong, and completely plausible. Had it held 12 ms
+ * the floor would have been 167 Hz and it would have been obvious within
+ * seconds. A plausibly wrong number is more dangerous than an absurd one,
+ * which is why the answer to "I don't know" is to ask rather than to
+ * substitute something reasonable.
+ */
+export function readGateHeader(text: string): GateHeaderResult {
+  const head = text.slice(0, 4000);
+  const parsed = gateHeaderOf(text);
+  if (parsed) return { kind: 'parsed', ...parsed };
+  /* Nothing parsed. Does the header CLAIM to state a window? Only lines that
+   * could carry the gate count — "Left window = 0 ms" is not a gate and its
+   * absence of a right window is a genuine 'absent'. */
+  const claim = head
+    .split(/\r?\n/)
+    .find((l) => /\bright\s+window\b/i.test(l) || /\bgate[d]?\b/i.test(l));
+  if (!claim) return { kind: 'absent' };
+  return {
+    kind: 'unparseable',
+    line: claim.trim(),
+    why: /\bms\b/i.test(claim)
+      ? 'a window line is present but its length could not be read as a number of ms'
+      : 'a window line is present but states no length in ms',
+  };
+}
+
 export function gateHeaderOf(text: string): GateHeader | null {
   const head = text.slice(0, 4000);
   const num = (raw: string): number => Number(raw.replace(',', '.'));
