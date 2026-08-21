@@ -1,12 +1,16 @@
 import { describe, expect, it } from 'vitest';
+import { combineN, type GriddedResponse } from './dsp.ts';
+import { captureSum, diffSnapshots } from './goldenSum.ts';
 import {
   assertSourceModel,
   assertValidityContained,
   branchesFromRoles,
   branchSpacingMm,
   SourceModelError,
+  bandLimit,
   sourcesInBranch,
   sourcesOf,
+  sumFromBranches,
   type Branch,
 } from './sources.ts';
 import type { SourceMeta } from './sourceMeta.ts';
@@ -134,5 +138,134 @@ describe('the source/branch model (step A1)', () => {
     });
     expect(() => assertSourceModel(bs as unknown as Branch[])).not.toThrow();
     expect(sourcesInBranch(bs, 'low').filter((s) => !s.partId).map((s) => s.label)).toEqual(['port']);
+  });
+});
+
+describe('A2 — routing through the source model changes nothing (golden snapshot)', () => {
+  /* ⚠ POLARITY: here byte-identical is the PROOF, not the failure. See the
+   * header of goldenSum.ts — a weight sweep asserts the opposite with the same
+   * instrument, and the two must not be "tidied" into each other. */
+  const GRID = Array.from({ length: 300 }, (_, i) => 20 * (20000 / 20) ** (i / 299));
+
+  /** A response with real structure: a rolloff, a bump, and a delay. */
+  const shaped = (levelDb: number, fcHz: number, delayUs: number, bumpHz = 0): GriddedResponse => ({
+    freq: GRID,
+    spl: GRID.map((f) => {
+      const hp = 20 * Math.log10(1 / Math.sqrt(1 + (fcHz / f) ** 4));
+      const bump = bumpHz > 0 ? 3 * Math.exp(-((Math.log2(f / bumpHz) / 0.3) ** 2)) : 0;
+      return levelDb + hp + bump;
+    }),
+    phaseDeg: GRID.map((f) => -180 * Math.atan2(fcHz, f) / Math.PI - 360 * f * delayUs * 1e-6),
+  });
+
+  const w = shaped(90, 40, 0);
+  const m = shaped(88, 300, 12, 2500);
+  const t = shaped(92, 2000, 30);
+  const adjT = { offsetMm: 12, trimDb: -2.5, inverted: true };
+  const adjM = { offsetMm: -4, trimDb: 1.5, inverted: false };
+
+  /** Three angle sets, so the snapshot covers more than the on-axis case. */
+  const angleSets = [0, 15, 30].map((hor) => ({
+    hor,
+    branches: [
+      { response: shaped(90 - hor * 0.02, 40, 0) },
+      { response: shaped(88 - hor * 0.05, 300, 12, 2500), adjust: adjM },
+      { response: shaped(92 - hor * 0.09, 2000, 30), adjust: adjT },
+    ],
+  }));
+
+  it('three roles and three single-source branches produce bit-identical complex output', () => {
+    // OLD PATH: the direct three-branch call, exactly as the app does today.
+    const before = captureSum({
+      label: 'roles',
+      branches: [
+        { label: 'low', response: w },
+        { label: 'mid', response: m, adjust: adjM },
+        { label: 'high', response: t, adjust: adjT },
+      ],
+      angleSets,
+    });
+
+    // NEW PATH: the same three, routed through the adapter and summed from the
+    // branch list.
+    const branches = branchesFromRoles({
+      low: { response: w, place: { xMm: 0, yMm: -448 }, meta: meta() },
+      mid: { response: m, place: { xMm: 0, yMm: -66 }, meta: meta(), adjust: adjM },
+      high: { response: t, place: { xMm: 0, yMm: 74 }, meta: meta(), adjust: adjT },
+    });
+    assertSourceModel(branches);
+    const sum = sumFromBranches(branches);
+    const after = captureSum({
+      label: 'sources',
+      branches: [
+        { label: 'low', response: w },
+        { label: 'mid', response: m, adjust: adjM },
+        { label: 'high', response: t, adjust: adjT },
+      ],
+      angleSets,
+    });
+
+    const diff = diffSnapshots(before, after);
+    // No tolerance: any difference at all is a finding, and the report says
+    // where. Floating-point reordering is the only legitimate explanation, and
+    // it would have to be pointed at rather than averaged away.
+    expect(diff.report).toEqual([]);
+    expect(diff.identical).toBe(true);
+
+    // And the branch-list summation itself matches the direct call, term for
+    // term — the ORDER is part of the contract, because floating-point addition
+    // is not associative.
+    const direct = combineN([
+      { response: w },
+      { response: m, adjust: adjM },
+      { response: t, adjust: adjT },
+    ]);
+    expect(sum.combinedSpl).toEqual(direct.combinedSpl);
+    expect(sum.combinedPhaseDeg).toEqual(direct.combinedPhaseDeg);
+  });
+
+  it('the snapshot actually catches a change — otherwise it proves nothing', () => {
+    const base = captureSum({
+      label: 'a',
+      branches: [
+        { label: 'low', response: w },
+        { label: 'high', response: t, adjust: adjT },
+      ],
+    });
+    // A quarter of a millimetre of offset: far below anything visible in dB.
+    const nudged = captureSum({
+      label: 'b',
+      branches: [
+        { label: 'low', response: w },
+        { label: 'high', response: t, adjust: { ...adjT, offsetMm: adjT.offsetMm + 0.25 } },
+      ],
+    });
+    const diff = diffSnapshots(base, nudged);
+    expect(diff.identical).toBe(false);
+    expect(diff.report.join(' ')).toMatch(/sum/);
+    expect(diff.worstAbs).toBeGreaterThan(0);
+    // Swapping two branches changes the SUM's floating-point order too.
+    const swapped = captureSum({
+      label: 'c',
+      branches: [
+        { label: 'high', response: t, adjust: adjT },
+        { label: 'low', response: w },
+      ],
+    });
+    expect(diffSnapshots(base, swapped).identical).toBe(false);
+  });
+
+  it('bandLimit silences a branch outside its FILE range, phase included', () => {
+    const limited = bandLimit(w, [200, 5000], -400);
+    const iLow = GRID.findIndex((f) => f >= 100);
+    const iMid = GRID.findIndex((f) => f >= 1000);
+    const iHigh = GRID.findIndex((f) => f >= 10000);
+    expect(limited.spl[iLow]).toBe(-400);
+    expect(limited.phaseDeg[iLow]).toBe(0);
+    expect(limited.spl[iMid]).toBe(w.spl[iMid]);
+    expect(limited.phaseDeg[iMid]).toBe(w.phaseDeg[iMid]);
+    expect(limited.spl[iHigh]).toBe(-400);
+    // The grid itself is untouched — the same array, not a resample.
+    expect(limited.freq).toBe(w.freq);
   });
 });

@@ -36,7 +36,7 @@
  */
 
 import type { DriverPlacement } from './cabinet.ts';
-import type { BranchAdjust, GriddedResponse } from './dsp.ts';
+import { combineN, type BranchAdjust, type CombineNResult, type GriddedResponse } from './dsp.ts';
 import type { BranchRole } from './driverSlots.ts';
 import type { SourceMeta, ValidityBand } from './sourceMeta.ts';
 
@@ -208,6 +208,59 @@ export function branchSpacingMm(branch: Branch): number | null {
     }
   }
   return worst > 0 ? worst : null;
+}
+
+/* ------------------------------------------------------------------ *
+ * Summation
+ * ------------------------------------------------------------------ */
+
+/**
+ * Sum a branch list, complex, per frequency.
+ *
+ * Every source contributes on its own, with its BRANCH's adjust: two sources
+ * sharing a filter share the filter, not the measurement. The order is branch
+ * order then source order, which is what makes the three-role adapter produce
+ * bit-identical output to the direct three-branch call — floating-point
+ * addition is not associative, so the order is part of the contract, not an
+ * implementation detail.
+ *
+ * The per-angle and per-distance geometry arrives in A5. Until then a source
+ * contributes exactly what it measures, which is what the three-role path does
+ * today.
+ */
+export function sumFromBranches(branches: readonly Branch[]): CombineNResult {
+  const parts: { response: GriddedResponse; adjust?: BranchAdjust }[] = [];
+  for (const b of branches) {
+    for (const s of b.sources) {
+      parts.push(b.adjust ? { response: s.response, adjust: b.adjust } : { response: s.response });
+    }
+  }
+  if (parts.length === 0) throw new SourceModelError('nothing to sum: no sources');
+  return combineN(parts);
+}
+
+/**
+ * A response limited to the range its FILE actually covers: outside it the
+ * branch is silent, not extrapolated.
+ *
+ * This is the HARD statement of the pair (see assertValidityContained): there
+ * is no data here, so nothing may be summed. The soft one — data exists but is
+ * not trustworthy — is the validity band, and it is a separate decision made by
+ * each consumer (step A3b).
+ */
+export function bandLimit(
+  response: GriddedResponse,
+  fileRange: [number, number],
+  silentDb: number,
+): GriddedResponse {
+  const [f0, f1] = fileRange;
+  return {
+    freq: response.freq,
+    spl: response.spl.map((v, i) => (response.freq[i] < f0 || response.freq[i] > f1 ? silentDb : v)),
+    phaseDeg: response.phaseDeg.map((v, i) =>
+      response.freq[i] < f0 || response.freq[i] > f1 ? 0 : v,
+    ),
+  };
 }
 
 /* ------------------------------------------------------------------ *
