@@ -12,6 +12,7 @@ import { sourceResistanceOhm } from './partAudit.ts';
 import { solveNetwork } from './network.ts';
 import { allSeries, bomFor, setCustomSeries } from './catalog.ts';
 import { deserializeCatalog } from './catalogFile.ts';
+import { floorCurve } from './impedanceFloor.ts';
 import {
   busPositions,
   optimizeNetworkValues,
@@ -1147,6 +1148,63 @@ describe('A3f — a constraint survives the passes that run after the search', (
     // And `before` is the seed's, measured on the seed's parts.
     const seedRs = sourceResistanceOhm(net(), { grid, driverZ })!;
     expect(r.before.rSourceOhm!).toBeCloseTo(seedRs, 9);
+  });
+});
+
+describe('A3i-2 — the derived load floor is a constraint, not a weight', () => {
+  const P = (x: number, y: number) => ({ x, y });
+  /* A shunt resistor across the terminals: a load the tuner cannot filter its
+   * way out of, so the constraint has something real to bite on. */
+  const net = (shuntOhm: number): VxpPart[] => [
+    { type: 'Generator', partId: 'G1', params: [{ name: 'Eg', value: 2.83, unit: 'V' }], wires: [P(3, 4), P(3, 11)] },
+    { type: 'Ground', params: [], wires: [P(3, 11)] },
+    { type: 'Resistor', partId: 'R9', locked: true, params: [{ name: 'R', value: shuntOhm, unit: 'Ω' }], wires: [P(3, 4), P(3, 11)] },
+    { type: 'Inductor', partId: 'L1', params: [{ name: 'L', value: 0.6, unit: 'mH' }, { name: 'DCR', value: 0.2, unit: 'Ω' }], wires: [P(3, 4), P(9, 4)] },
+    { type: 'Driver', partId: 'D1', model: 'mid', inverted: false, params: [], wires: [P(9, 4), P(9, 11)] },
+    { type: 'Ground', params: [], wires: [P(9, 11)] },
+    { type: 'Capacitor', partId: 'C2', params: [{ name: 'C', value: 5.6, unit: 'uF' }], wires: [P(3, 14), P(9, 14)] },
+    { type: 'Wire', params: [], wires: [P(3, 4), P(3, 14)] },
+    { type: 'Driver', partId: 'D2', model: 'tweeter', inverted: false, params: [], wires: [P(9, 14), P(9, 21)] },
+    { type: 'Ground', params: [], wires: [P(9, 21)] },
+  ];
+  const run = (parts: VxpPart[], loadFloor?: { nominalOhm: number }) =>
+    optimizeNetworkValues(parts, grid, wBase, tBase, driverZ, NO_ADJ, {
+      phasePriority: 0.5,
+      maxIterations: 40,
+      catalogSnap: false,
+      audit: { enabled: false as const },
+      ...(loadFloor ? { loadFloor } : {}),
+    });
+
+  it('OFF by default — every existing path stays bit-identical', () => {
+    /* The anchor lesson, tested rather than asserted: a term that is supposed
+     * to contribute exactly zero has to be shown to contribute exactly zero,
+     * because "small" is not "none" for a deterministic simplex. */
+    const a = run(net(8));
+    const b = run(net(8), { nominalOhm: 2 }); // 1.6 Ω floor, comfortably clear
+    expect(b.after.rippleDb).toBeCloseTo(a.after.rippleDb, 12);
+    expect(b.evaluations).toBe(a.evaluations);
+    expect(b.infeasible).toBeUndefined();
+  });
+
+  it('a load the filter cannot lift is declared INFEASIBLE, with the numbers', () => {
+    const r = run(net(1.2), { nominalOhm: 4 }); // 3.2 Ω floor, 1.2 Ω shunt
+    expect(r.infeasible).toBeDefined();
+    expect(r.infeasible!).toMatch(/against a floor of/);
+    expect(r.infeasible!).toMatch(/4 Ω nominal, IEC 60268-5/);
+    // Never "silently worse": the one forbidden outcome.
+    expect(r.after.zMinOhm!).toBeLessThan(3.2);
+  });
+
+  it('the floor is frequency-dependent, and that changes the verdict', () => {
+    /* The same dip judged twice. A shunt that breaches a 3.2 Ω floor in the
+     * bass clears the relaxed floor above 4 kHz, because the limit is on
+     * CURRENT and programme voltage falls there. A flat threshold cannot make
+     * that distinction, which is the whole reason the curve has a shape. */
+    const flatLow = floorCurve(grid, 4).floorOhm[0];
+    const top = floorCurve(grid, 4).floorOhm[grid.length - 1];
+    expect(flatLow).toBeCloseTo(3.2, 6);
+    expect(top).toBeCloseTo(1.6, 6);
   });
 });
 

@@ -18,6 +18,7 @@ import {
   type SnapPrefs,
 } from './catalog.ts';
 import type { AngleResponse } from './directivity.ts';
+import { floorCurve, type FloorShape } from './impedanceFloor.ts';
 import { auditNetwork, type AuditThresholds, type NetworkAudit, sourceResistanceOhm, seenImpedance, sliceDriverZ, sourceProbeIndex } from './partAudit.ts';
 
 /**
@@ -76,6 +77,15 @@ export interface NetOptimizeOptions {
    * off, which is the pre-A3e behaviour.
    */
   rSourceDisqualifyOhm?: number;
+  /**
+   * A3i-2 — the DERIVED amplifier-load floor, as a CONSTRAINT.
+   *
+   * `nominalOhm` is what the DRIVERS support (impedanceFloor.nominalFromDrivers),
+   * never what the delivered design happens to reach: a limit derived from the
+   * thing it judges grades its own homework. Absent = the constraint is off and
+   * every path is bit-identical to before.
+   */
+  loadFloor?: { nominalOhm: number; shape?: FloorShape };
   /**
    * Evaluation band, Hz. Default full grid minus edges.
    *
@@ -713,6 +723,9 @@ export function optimizeNetworkValues(
    *  the ranking's disqualification so the search cannot spend its time in
    *  ground that will be thrown away. 0 = off. */
   const rsHardOhm = Math.max(0, opts.rSourceDisqualifyOhm ?? 0);
+  const loadNominalOhm = opts.loadFloor?.nominalOhm && opts.loadFloor.nominalOhm > 0
+    ? opts.loadFloor.nominalOhm
+    : null;
   /* THE DC LIMIT, PRECOMPUTED. When the Thevenin probe has no usable frequency
    * — the low driver's impedance peak lies below the grid, which is the normal
    * case for a woofer measured from 200 Hz — the audit falls back to the
@@ -768,13 +781,56 @@ export function optimizeNetworkValues(
     sourceResistanceOhm(ps, { grid, driverZ, fbHz: opts.audit?.fbHz });
 
   const constraintViolation = (ps: readonly VxpPart[]): string | null => {
-    if (rsHardOhm <= 0) return null;
-    const rs = rSourceOf(ps);
-    if (rs === null || rs < rsHardOhm) return null;
-    return (
-      `source resistance at the low driver ${rs.toFixed(2)} Ω ≥ the ${rsHardOhm.toFixed(1)} Ω ` +
-      `limit — this design is infeasible, not merely worse`
-    );
+    if (rsHardOhm > 0) {
+      const rs = rSourceOf(ps);
+      if (rs !== null && rs >= rsHardOhm) {
+        return (
+          `source resistance at the low driver ${rs.toFixed(2)} Ω ≥ the ${rsHardOhm.toFixed(1)} Ω ` +
+          `limit — this design is infeasible, not merely worse`
+        );
+      }
+    }
+    /* The load floor, checked on the FULL grid and the safety grid — a narrow
+     * dip outside a zoomed view range reaches the amplifier all the same
+     * (the BandScope 'disqualification' rule). */
+    if (loadNominalOhm) {
+      const worst = loadShortOf(ps);
+      if (worst && worst.shortOhm > 0) {
+        return (
+          `the load falls to ${worst.minOhm.toFixed(2)} Ω at ${Math.round(worst.atHz)} Hz, against a ` +
+          `floor of ${worst.floorOhm.toFixed(2)} Ω there (${loadNominalOhm} Ω nominal, IEC 60268-5) — ` +
+          `this design is infeasible, not merely worse`
+        );
+      }
+    }
+    return null;
+  };
+
+  /** Worst breach of the derived floor on the parts given, over the full grid
+   *  and the safety grid. */
+  const loadShortOf = (
+    ps: readonly VxpPart[],
+  ): { shortOhm: number; atHz: number; minOhm: number; floorOhm: number } | null => {
+    if (!loadNominalOhm) return null;
+    let out = { shortOhm: 0, atHz: 0, minOhm: Infinity, floorOhm: 0 };
+    const scan = (freqs: readonly number[], zz: Record<string, readonly Complex[]>) => {
+      const fl = floorFor(freqs);
+      if (!fl) return;
+      try {
+        const { netlist } = crossoverToNetlist({ name: 'load', parts: [...ps] });
+        const sol = solveNetwork(netlist, freqs, zz);
+        for (let i = 0; i < freqs.length; i++) {
+          const zm = Math.hypot(sol.inputZ[i].re, sol.inputZ[i].im);
+          const d = fl[i] - zm;
+          if (d > out.shortOhm) out = { shortOhm: d, atHz: freqs[i], minOhm: zm, floorOhm: fl[i] };
+        }
+      } catch {
+        /* unsolvable: other guards report that */
+      }
+    };
+    scan(grid, driverZ);
+    if (opts.safety) scan(opts.safety.freqs, opts.safety.z);
+    return out;
   };
 
   const dcSeriesR = (net: { elements: NetElement[] }): number | null => {
@@ -916,6 +972,20 @@ export function optimizeNetworkValues(
     evaluations++;
     if (evaluations % 2000 === 0) onStage?.(stageLabel, evaluations);
   };
+  /* The derived load floor, per grid. metricsOn runs on three different grids
+   * (evaluation, full, safety) and the floor is frequency-dependent, so it is
+   * resolved per grid and memoised on the array identity — the grids are stable
+   * objects, and recomputing a pow() per point per evaluation is not free. */
+  const floorCache = new WeakMap<readonly number[], number[]>();
+  const floorFor = (freqs: readonly number[]): number[] | null => {
+    if (!loadNominalOhm) return null;
+    const hit = floorCache.get(freqs);
+    if (hit) return hit;
+    const curve = floorCurve(freqs, loadNominalOhm, opts.loadFloor?.shape);
+    floorCache.set(freqs, curve.floorOhm);
+    return curve.floorOhm;
+  };
+
   const metricsOn = (
     net: { nodeCount: number; elements: NetElement[] },
     freqs: readonly number[],
@@ -973,6 +1043,9 @@ export function optimizeNetworkValues(
     zMinOhm: number;
     /** How far that minimum sits BELOW the amp-load floor (0 when healthy). */
     zShortOhm: number;
+    /** How far below the DERIVED (IEC, driver-based) floor the load falls;
+     *  0 when clear or when no nominal was supplied. See metricsOn. */
+    loadShortOhm: number;
     /** MEDIAN combined level over the band — the reference for the SOLO
      *  sensitivity budget. Median so a deep narrow notch doesn't read as lost
      *  sensitivity while broad attenuation does. */
@@ -1492,6 +1565,28 @@ export function optimizeNetworkValues(
       if (zm < zMinOhm) zMinOhm = zm;
     }
     const zShortOhm = Math.max(0, Z_FLOOR_OHM - zMinOhm);
+    /* A3i-2 — THE DERIVED FLOOR, ALONGSIDE Z_FLOOR_OHM AND NOT INSTEAD OF IT.
+     *
+     * Two different things, so two names (the A3g rule). Z_FLOOR_OHM is the
+     * internal repair target this tuner has always worked to: a fixed, roughly
+     * calibrated line that the amp-load repair aims at and the staged gates
+     * compare against. `loadShortOhm` is a FEASIBILITY line derived from the
+     * drivers and IEC 60268-5 — 80 % of the nominal those drivers can support,
+     * relaxed above 1 kHz because the limit is on CURRENT and programme voltage
+     * falls there (impedanceFloor.ts).
+     *
+     * They can disagree in both directions and that is fine: the first says
+     * "this tune made the dip worse than I aim for", the second says "this
+     * design cannot be sold". Collapsing them would make one of the two answers
+     * unavailable. */
+    const floorOnGrid = floorFor(freqs);
+    let loadShortOhm = 0;
+    if (floorOnGrid) {
+      for (let i = 0; i < sol.inputZ.length && i < floorOnGrid.length; i++) {
+        const d = floorOnGrid[i] - Math.hypot(sol.inputZ[i].re, sol.inputZ[i].im);
+        if (d > loadShortOhm) loadShortOhm = d;
+      }
+    }
 
     return {
       rippleDb: targetStd,
@@ -1522,6 +1617,7 @@ export function optimizeNetworkValues(
       tweeterSlopeDbOct,
       zMinOhm,
       zShortOhm,
+      loadShortOhm,
       medianDb: medianOf(r.freq, r.combinedSpl),
       dissRatio,
       rSourceOhm,
@@ -1650,7 +1746,12 @@ export function optimizeNetworkValues(
        * use one comparison. */
       (rsHardOhm > 0 && m.rSourceOhm !== null && m.rSourceOhm >= rsHardOhm
         ? INFEASIBLE + (m.rSourceOhm - rsHardOhm)
-        : 0)
+        : 0) +
+      /* A3i-2, the same shape as the R_source constraint above: exactly ZERO
+       * inside the limit so the search path through healthy ground is
+       * untouched, and outside it a finite wall that still slopes home so a
+       * simplex starting in forbidden ground can climb back out. */
+      (loadNominalOhm && m.loadShortOhm > 0 ? INFEASIBLE + m.loadShortOhm : 0)
     );
   };
 
