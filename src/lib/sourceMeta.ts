@@ -1,0 +1,189 @@
+/**
+ * What a measurement IS, and where it may be believed.
+ *
+ * Every response in this app arrives as bare numbers, and the app then has to
+ * remember three things about it that the numbers cannot say: how it was taken
+ * (gated far field, near-field merge, ground plane), the band over which it
+ * means anything, and — if it was derived rather than measured — what it was
+ * derived from.
+ *
+ * WHY IT NEEDS TO BE WRITTEN DOWN (Sanders, aug 2026): the near-field merge is
+ * a STAGING POST. Ground-plane measurements are meant to replace the low end
+ * below 400 Hz later. Without a flag travelling with the data, three sessions
+ * from now nobody can see which filter work still rests on the older
+ * assumption — and the answer will look like a mystery instead of a fact.
+ *
+ * This module is deliberately DATA ONLY: types, constants and pure derivations
+ * of a band from a measurement condition. Nothing here refuses anything yet;
+ * enforcement is a separate step, so that adding the vocabulary carries no
+ * behavioural risk of its own.
+ */
+
+const C_AIR = 343;
+
+/* ------------------------------------------------------------------ *
+ * How a response was obtained
+ * ------------------------------------------------------------------ */
+
+export type DataSource =
+  /** A single gated far-field sweep. Honest only above the gate's own limit. */
+  | 'gated-farfield'
+  /** Gated far field with a near-field low end spliced onto it. */
+  | 'nearfield-merged'
+  /** Cabinet and mic on the floor: no floor bounce, +6 dB, good low down. */
+  | 'groundplane';
+
+export const DATA_SOURCE_LABEL: Record<DataSource, string> = {
+  'gated-farfield': 'gated far field',
+  'nearfield-merged': 'near-field merged',
+  groundplane: 'ground plane',
+};
+
+/* ------------------------------------------------------------------ *
+ * Validity
+ * ------------------------------------------------------------------ */
+
+export interface ValidityBand {
+  /** Lowest frequency this response may be believed at; null = unknown. */
+  fromHz: number | null;
+  /** Highest; null = unknown (or "up to the file's own end"). */
+  toHz: number | null;
+  /** Why those numbers — shown to the designer, never just asserted. */
+  reason: string;
+}
+
+export interface SourceMeta {
+  dataSource: DataSource;
+  validity: ValidityBand;
+  /** Present when this response was computed rather than measured: the merge,
+   *  the parallel-impedance derivation, a summed pair. Human-readable, and
+   *  meant to survive into the project file. */
+  derivation?: string;
+  /** Free-form notes that belong to the dataset rather than to the app — e.g.
+   *  a known inconsistency that is documented on purpose and not corrected. */
+  notes?: string[];
+}
+
+/**
+ * The near-field piston limit, as ONE named constant.
+ *
+ * f_max = c / (2·π·a) is ka = 1, with `a` the effective radiating radius. For
+ * the WO24P-8 (Sd 220 cm² effective, a = 83.7 mm) that is 652 Hz — Sanders' note says 651,
+ * which is the same number rounded off a slightly different c or a.
+ *
+ * Why 1 and not something looser: the near-field pressure is only proportional
+ * to cone velocity while the cone is acoustically small, and the piston error
+ * grows fast. Measured off sinc(ka/2):
+ *
+ *     ka = 1.00  →  652 Hz  →  −0.36 dB
+ *     ka = 1.60  → 1070 Hz  →  −0.95 dB
+ *     ka = 2.55  → 1659 Hz  →  −2.50 dB
+ *
+ * The last of those is the "10950/d_inch" rule that circulates; it is too
+ * generous, and on a driver like the WO24 non-uniform cone behaviour lands on
+ * top of it — which no analytic correction can undo. So: ka = 1 everywhere,
+ * and the warning states the computed error in dB instead of a bare verdict.
+ *
+ * Cross-check from two directions: Klippel writes the same limit as 5475/a[cm],
+ * Keele as 4311/D[inch], and 4311/(2/2.54) = 5475.0 exactly.
+ */
+export const NEARFIELD_KA_LIMIT = 1.0;
+
+/** Effective piston radius from cone area, metres. */
+export function pistonRadiusM(sdCm2: number): number | null {
+  if (!(sdCm2 > 0)) return null;
+  return Math.sqrt((sdCm2 * 1e-4) / Math.PI);
+}
+
+/** ka at a frequency, for a piston of this area. */
+export function kaAt(fHz: number, sdCm2: number): number | null {
+  const a = pistonRadiusM(sdCm2);
+  if (a === null || !(fHz > 0)) return null;
+  return (2 * Math.PI * fHz * a) / C_AIR;
+}
+
+/**
+ * On-axis piston error at ka, in dB: 20·log10(sinc(ka/2)).
+ *
+ * This is what the near-field limit is really about — a number, not a
+ * threshold. Reported alongside every splice so "above the limit" reads as
+ * "costs you 0.95 dB" rather than as a rule you might argue with.
+ */
+export function pistonErrorDb(ka: number): number {
+  if (!(ka > 0)) return 0;
+  const x = ka / 2;
+  return 20 * Math.log10(Math.sin(x) / x);
+}
+
+/** Near-field validity for a cone of this area: 15 Hz up to ka = 1. */
+export function nearFieldValidity(sdCm2: number, fromHz = 15): ValidityBand | null {
+  const a = pistonRadiusM(sdCm2);
+  if (a === null) return null;
+  const toHz = (NEARFIELD_KA_LIMIT * C_AIR) / (2 * Math.PI * a);
+  return {
+    fromHz,
+    toHz,
+    reason:
+      `near field: valid to ka = ${NEARFIELD_KA_LIMIT} (${Math.round(toHz)} Hz for ` +
+      `a = ${(a * 1000).toFixed(1)} mm); piston error there ` +
+      `${pistonErrorDb(NEARFIELD_KA_LIMIT).toFixed(2)} dB`,
+  };
+}
+
+/**
+ * Far-field validity from the gate.
+ *
+ * The gate sets the floor: a window of T seconds cannot resolve anything whose
+ * period needs longer, and the working rule this codebase already uses for
+ * crossover windows is 2/T. The ceiling is the file's own top.
+ */
+export function gatedFarFieldValidity(gateMs: number, topHz: number | null = null): ValidityBand | null {
+  if (!(gateMs > 0)) return null;
+  const fromHz = 2 / (gateMs / 1000);
+  return {
+    fromHz,
+    toHz: topHz,
+    reason: `gated ${gateMs.toFixed(2)} ms → honest above ${Math.round(fromHz)} Hz (2/T)`,
+  };
+}
+
+/** Ground plane: no floor bounce, so the gate is long; the low end is real. */
+export function groundPlaneValidity(fromHz = 20, toHz: number | null = null): ValidityBand {
+  return {
+    fromHz,
+    toHz,
+    reason: 'ground plane: cabinet and mic on the floor, reflection coincides with the direct sound',
+  };
+}
+
+/**
+ * Does a band of interest fall inside a source's validity?
+ *
+ * Returns the part that does NOT, so a caller can say which end is the problem
+ * instead of returning a bare boolean.
+ */
+export function outsideValidity(
+  band: ValidityBand,
+  fromHz: number,
+  toHz: number,
+): { belowHz: number | null; aboveHz: number | null; ok: boolean } {
+  const belowHz = band.fromHz !== null && fromHz < band.fromHz ? band.fromHz : null;
+  const aboveHz = band.toHz !== null && toHz > band.toHz ? band.toHz : null;
+  return { belowHz, aboveHz, ok: belowHz === null && aboveHz === null };
+}
+
+/**
+ * The Koan 2951 dataset carries a known inconsistency, on purpose:
+ *
+ * the far-field SPL was taken with the other woofer left OPEN (so it acts as a
+ * passive radiator), while the impedance was measured with both cones driven.
+ * Above ~200 Hz the difference is negligible, and below it the near field takes
+ * over — so it is documented rather than corrected. A correction here would be
+ * a model laid on top of measured data, which is exactly what this app does not
+ * do.
+ */
+export const KOAN_DATASET_NOTES: string[] = [
+  'Far-field SPL measured with the other woofer open-circuit (passive radiator); ' +
+    'impedance measured with both cones driven. Negligible above ~200 Hz, and below ' +
+    'that the near field is used. Documented, not corrected.',
+];
