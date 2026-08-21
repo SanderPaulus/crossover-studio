@@ -40,9 +40,42 @@ import { auditNetwork, type AuditThresholds, type NetworkAudit, sourceResistance
  *    improvement to stay.
  */
 
+/** A value no feasible design can reach, but finite so a simplex can still
+ *  compare two infeasible points and walk back toward the allowed region. */
+const INFEASIBLE = 1e6;
+
+/**
+ * WHAT A TERM'S BAND MEANS — a term must CHOOSE, never inherit from whatever
+ * sits next to it.
+ *
+ *  'ranking'         — strictly inside the evaluation band. Comparing
+ *                      candidates on noise is invalid, so anything that ranks
+ *                      one design against another lives here: amplitude, phase,
+ *                      power response.
+ *  'disqualification'— deliberately wider, anchored to the CROSSING rather than
+ *                      to the view range. Broken is broken, also outside the
+ *                      measurement's validity: a dead crossing, a leaking
+ *                      stopband, an undriven-tweeter hazard and an amplifier
+ *                      load are all things a design can be condemned for
+ *                      wherever they happen. A zoomed-in band must not hide
+ *                      them (the 0.68 µF dead tweeter this rule was written
+ *                      for).
+ *
+ * Written down because it existed only as behaviour in two tests, which is not
+ * where a principle belongs.
+ */
+export type BandScope = 'ranking' | 'disqualification';
+
 export interface NetOptimizeOptions {
   /** 0..1 share of the budget on phase (same scale as everywhere). Default 0.5. */
   phasePriority?: number;
+  /**
+   * Source resistance at the lowest driver past which a design is INFEASIBLE,
+   * ohms. The same number the ranking disqualifies on; passing it here moves
+   * the decision from "thrown away afterwards" to "never searched". 0/absent =
+   * off, which is the pre-A3e behaviour.
+   */
+  rSourceDisqualifyOhm?: number;
   /**
    * Evaluation band, Hz. Default full grid minus edges.
    *
@@ -611,6 +644,52 @@ export function optimizeNetworkValues(
   const dW = angleData ? Math.min(Math.max(opts.directivityWeight ?? 0, 0), 1) : 0;
   const powerMode: PowerMetricMode = opts.powerMetric ?? 'smooth';
   const dissW = Math.max(0, opts.dissipationWeight ?? 0.05);
+  /** Hard source-resistance tier: past this a candidate is infeasible. Mirrors
+   *  the ranking's disqualification so the search cannot spend its time in
+   *  ground that will be thrown away. 0 = off. */
+  const rsHardOhm = Math.max(0, opts.rSourceDisqualifyOhm ?? 0);
+  /* THE DC LIMIT, PRECOMPUTED. When the Thevenin probe has no usable frequency
+   * — the low driver's impedance peak lies below the grid, which is the normal
+   * case for a woofer measured from 200 Hz — the audit falls back to the
+   * series-path resistance, and the constraint has to use the same fallback or
+   * it is inert exactly where it is needed.
+   *
+   * The PATH is fixed for the whole tune (values move, topology does not), so
+   * it is resolved once here; per evaluation this is a lookup and a sum. That
+   * matters: seriesPathResistanceOhm rebuilds the netlist, which is far too
+   * expensive for a hot loop. */
+  const seriesPathIds = (() => {
+    if (rsHardOhm <= 0) return null;
+    try {
+      const bus = busTopology(parts);
+      const { netlist } = crossoverToNetlist({ name: 'rs', parts: [...parts] });
+      const drivers = netlist.elements.filter(
+        (e): e is Extract<NetElement, { kind: 'driver' }> => e.kind === 'driver',
+      );
+      const slots = pickSlotsN(drivers);
+      const low = (slots.woofer ?? slots.mid ?? slots.tweeter)?.model ?? null;
+      if (!low) return null;
+      const ids = new Set<string>();
+      for (const q of parts) {
+        if (q.partId && bus.driversOf(q.partId).includes(low)) ids.add(q.partId);
+      }
+      return ids;
+    } catch {
+      return null;
+    }
+  })();
+  const dcSeriesR = (net: { elements: NetElement[] }): number | null => {
+    if (!seriesPathIds) return null;
+    let sum = 0;
+    for (const e of net.elements) {
+      if (!seriesPathIds.has(e.id)) continue;
+      // R contributes its value; L contributes its DCR. A capacitor is an open
+      // circuit at DC and contributes nothing.
+      if (e.kind === 'R') sum += e.value;
+      else if (e.kind === 'L') sum += e.seriesR ?? 0;
+    }
+    return sum;
+  };
   const dissRefHz: number | null = opts.audit?.fbHz && opts.audit.fbHz > 0 ? opts.audit.fbHz : null;
   /** Source-resistance limit at the low driver (Ω) — shared with the audit. */
   const rSourceLimit = opts.audit?.thresholds?.rSourceOhm ?? 1.0;
@@ -802,12 +881,35 @@ export function optimizeNetworkValues(
     /** Source resistance in front of the LOWEST branch over its Re at the
      *  level-reference frequency (dissipation ratio); null when unknown. */
     dissRatio: number | null;
+    /** The same probe's Thevenin resistance in ohms — what the ranking
+     *  disqualifies on. Null when it could not be measured. */
+    rSourceOhm: number | null;
   } => {
     const sol = solveNetwork(net, freqs, z);
     // Dissipation ratio of the LOWEST branch (fix 3a): Rs/Re at the level
     // reference — one extra 1-frequency solve per evaluation.
     let dissRatio: number | null = null;
-    if (dissW > 0) {
+    let rSourceOhm: number | null = null;
+    /* R_SOURCE IS A CONSTRAINT, NOT A WEIGHT (A3e).
+     *
+     * Above the hard tier a candidate is INFEASIBLE: the ranking throws it away
+     * afterwards anyway, so letting the search wander there only wastes the
+     * search — and worse, it lets the tuner "improve" its way into a design
+     * that will be discarded. Rejecting it during the search costs nothing and
+     * keeps the feasible region and the acceptable region the same shape.
+     *
+     * This is not a new objective term and does not collide with the anchor
+     * lesson: inside the limit it contributes EXACTLY zero, so the search path
+     * through healthy ground is untouched. Outside it returns a large value
+     * that still slopes back toward feasibility, so a simplex that steps out
+     * can climb back rather than getting stuck on a plateau.
+     *
+     * And it is always answerable, unlike an acoustic criterion: R_source is
+     * computed FROM THE NETWORK — no gate, no validity band, no noise floor.
+     * It is exactly known at every frequency the network is solved at, which is
+     * why this one can be a constraint while a flatness bound could not. */
+    const needRs = dissW > 0 || rsHardOhm > 0;
+    if (needRs) {
       const lowDrv = (() => {
         const slots = pickSlotsN(sol.drivers);
         return slots.woofer ?? slots.mid ?? slots.tweeter ?? null;
@@ -830,8 +932,14 @@ export function optimizeNetworkValues(
           const k = probe.idx;
           const re = Math.max(0.5, zl[k].re);
           const zs = seenImpedance(net, [lowDrv.id], lowDrv.nodes, [freqs[k]], sliceDriverZ(z, [k]));
-          if (zs) dissRatio = Math.max(0, zs[0].re) / re;
+          if (zs) {
+            rSourceOhm = Math.max(0, zs[0].re);
+            if (dissW > 0) dissRatio = rSourceOhm / re;
+          }
         }
+        // Same fallback as the audit: the DC limit is a LOWER bound on the real
+        // source resistance, so it may condemn but never exonerate.
+        if (rSourceOhm === null) rSourceOhm = dcSeriesR(net);
       }
     }
     const hFor = (model: string) => {
@@ -1317,6 +1425,7 @@ export function optimizeNetworkValues(
       zShortOhm,
       medianDb: medianOf(r.freq, r.combinedSpl),
       dissRatio,
+      rSourceOhm,
     };
   };
 
@@ -1432,7 +1541,17 @@ export function optimizeNetworkValues(
        * ranking would be comparing different objectives. netOptimizer.test.ts
        * pins this by requiring an unprobeable run to be identical to one with
        * the weight switched off. */
-      (dissW > 0 && m.dissRatio !== null ? dissW * m.dissRatio * m.dissRatio : 0)
+      (dissW > 0 && m.dissRatio !== null ? dissW * m.dissRatio * m.dissRatio : 0) +
+      /* The constraint itself: zero inside the limit, a wall outside it that
+       * still slopes home. See the note where rSourceOhm is measured. */
+      /* >= , NOT > . The ranking disqualifies on `rs >= limit`, and a
+       * constraint that stops at `>` delivers exactly the value the ranking
+       * then throws away — measured on Sander's project, which landed on
+       * R_source = 2.00 against a 2.0 limit. Two guards for one rule have to
+       * use one comparison. */
+      (rsHardOhm > 0 && m.rSourceOhm !== null && m.rSourceOhm >= rsHardOhm
+        ? INFEASIBLE + (m.rSourceOhm - rsHardOhm)
+        : 0)
     );
   };
 

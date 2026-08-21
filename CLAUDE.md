@@ -2213,6 +2213,44 @@ en daarna antwoordt `confirm()` stil `false`. Voor de tab-sluitknop betekende da
 er gebeurt niets, geen spoor. Alle vier de plekken (tab verwijderen, back-up wissen,
 demo-catalogus vervangen, catalogusbeheer-afsluitgarde) gaan nu via de eigen Modal (`askConfirm`
 in App, `askDiscard` in CatalogManager) — dezelfde regel als alle andere popups.
+**DE OPTIMIZER LEEFDE OP EEN ANDERE BAND DAN ZIJN KANDIDATEN (aug 2026, A3d/A3e)**: kandidaten
+werden gegenereerd vanaf de datavloer (508 Hz op Sanders set) terwijl de kostfunctie vanaf 204 Hz
+rekende — **19,9 % van de logaritmische bandbreedte** aan rangschikgewicht op data die de gate niet
+draagt. VIER plekken haalden hun band uit het grid (3-weg-keten, solo-keten, 2-weg-keten,
+componenttuner); alle vier nu `evalBand` uit `sourceMeta`. De `Math.max(300, …)`-klemmen zijn weg:
+die waren een proxy voor "hieronder is de meting niet te vertrouwen", en dat zegt de geldigheidsband
+exact. GEMETEN A/B op Sanders project (zelfde kandidaat/seed, band de enige variabele): het filter
+werd NIET eenvoudiger maar complexer (29 → 37 parts, €134 → €169) bij gelijke on-axis kwaliteit, en
+R_bron sprong 0,23 → 3,42 Ω. Oorzaak: het afgesneden gebied droeg ook de enige DRUK op het gedrag
+daar — van 204 tot 508 Hz strafte de amplitudeterm een wegzakkende woofertak; zonder die term is een
+4 mH seriespoel + 14 mH shunt ineens gratis. De kruising schoof naar 509 Hz, **één Hz boven de
+vloer**: een optimizer die tegen de rand van zijn zichtbare gebied gaat liggen zegt dat het optimum
+eronder ligt — dat is een MEETconclusie, geen codeconclusie, en de remedie is een groundplane-meting
+onder 400 Hz.
+**A3e — DISKWALIFICATIES WORDEN RANDVOORWAARDEN IN DE TUNE**: R_bron ≥ 2,0 Ω was al diskwalificerend
+in de ranking maar onzichtbaar in de zoektocht, dus de tuner optimaliseerde zich netjes een ontwerp
+in dat daarna werd weggegooid. Nu `rSourceDisqualifyOhm` als CONSTRAINT in `fxOf`: binnen de grens
+exact 0 (anker-les: het zoekpad in gezond gebied blijft onaangeroerd), erbuiten een eindige wal die
+nog terugloopt zodat een simplex kan terugklimmen. Geen nieuwe objective-term — R_bron komt uit het
+NETWERK (geen gate, geen geldigheidsband, exact bekend), en dat is precies waarom dit criterium wél
+een constraint kan zijn en een vlakheidsgrens niet. Met dezelfde DC-limiet-terugval als de audit,
+want de Thevenin-probe heeft vaak geen bruikbare frequentie (wooferpiek onder het grid).
+GEMETEN op Sanders project: R_bron 3,42 → 2,00 Ω, BOM €169 → €133, 3,5× sneller (905 s vs 3221 s),
+kruising 509 → 549 Hz (los van de bandrand) — geprijsd in fase: 6,5 → 11,0°, slechtste paar
+9,1 → 16,8°. Die ruil bestond al; de vorige versie betaalde hem alleen met een bronweerstand die de
+ranking daarna afkeurde. HARD GELEERD, tweemaal: (1) bij een vaste topologie ZONDER serieweerstand
+beweegt R_bron helemaal niet tijdens de waarde-tune (het is de spoel-DCR) — gemeten 0,5 Ω bij elke
+limiet van 0,001 tot 2,0; de constraint bijt alleen waar R_bron kan bewegen (serieweerstand, snoei/
+escalatie, snap). (2) De ranking vergelijkt met `>=` en de constraint eerst met `>`, dus de tune
+leverde exact 2,00 af — precies de waarde die de ranking weggooit. Twee bewakers voor één regel
+moeten één vergelijking gebruiken. NB de constraint DUWT maar garandeert niet in alle gevallen
+(synthetische test: 7,17 → 5,47 tegen een limiet van 1,0): de passes ná de waarde-tune — met name de
+versterker-vloer-reparatie, die juist weerstand verhóógt — kennen hem niet. Vastgepind als GEMETEN
+gedrag i.p.v. als gehoopt, zodat het gat zichtbaar blijft.
+**`BandScope` (benoemd principe)**: élke term kiest expliciet tussen `'ranking'` (strikt binnen de
+evaluatieband — kandidaten vergelijken op ruis is ongeldig) en `'disqualification'` (bewust breder,
+kruising-verankerd — kapot is kapot, ook buiten de meetgeldigheid; de dode-tweeter-bewaker). Erven
+van wat er toevallig naast staat mag niet.
 **⚡ DE R_BRON-KOLOM MAT DE VERKEERDE FREQUENTIE (aug 2026, Sanders "19 simulaties en we kunnen
 niets beters verzinnen… ik vind dit een kwalijke zaak")**: `sourceResistanceOhm` + `auditNetwork`
 pakten het gridpunt NAAST `fbHz` zonder te toetsen of Fb ín het grid lag. Zijn poort: 31 Hz; zijn

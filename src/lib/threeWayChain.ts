@@ -322,6 +322,9 @@ export function runThreeWayChain(
     errorSmoothOct: s.errorSmoothOct,
     costWeight: s.costWeight,
     dissipationWeight: s.dissipationWeight,
+    // A3e: the ranking's hard tier becomes a constraint in the search, so the
+    // tuner cannot spend its time in ground the ranking will throw away.
+    rSourceDisqualifyOhm: s.rSourceDisqualifyOhm,
     audit: s.audit,
     ampTarget: s.ampTarget,
     acousticSlopes: s.acousticSlopes,

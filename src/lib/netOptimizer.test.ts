@@ -8,6 +8,7 @@ import { applyTransfer, logspace, resample } from './dsp.ts';
 import { fromPolar } from './complex.ts';
 import type { VxpPart } from './parsers/vxp.ts';
 import { crossoverToNetlist } from './vxpNetwork.ts';
+import { sourceResistanceOhm } from './partAudit.ts';
 import { solveNetwork } from './network.ts';
 import { allSeries, bomFor, setCustomSeries } from './catalog.ts';
 import { deserializeCatalog } from './catalogFile.ts';
@@ -969,5 +970,88 @@ describe('A3d — the quality terms live on the band; the fundamentals deliberat
      * spike even though the quality terms cannot see it. */
     expect(clean.after.xoHz! / 4).toBeLessThan(band[0]);
     expect(dirty.after.rippleDb).not.toBeCloseTo(clean.after.rippleDb, 6);
+  });
+});
+
+describe('A3e — the ranking\'s hard tier is a CONSTRAINT during the search', () => {
+  it('a network forced past the source-resistance limit is rejected, and inside it nothing changes', () => {
+    /* Two halves, and both matter.
+     *
+     * INSIDE the limit the constraint must contribute EXACTLY zero — otherwise
+     * it is a weight in disguise and the anchor lesson applies: every added
+     * term moves the search path, however small. So the same run with the
+     * constraint on and off must be bit-identical when nothing violates it.
+     *
+     * OUTSIDE it the search must refuse to go there rather than optimising its
+     * way into a design the ranking will discard anyway. */
+    const opts = {
+      phasePriority: 0.5,
+      maxIterations: 60,
+      catalogSnap: false,
+      audit: { enabled: false as const },
+    };
+    /* The network needs a SERIES RESISTOR in the low branch for this to be
+     * testable at all, and finding that out is itself the finding: with a fixed
+     * topology and no series resistor, R_source is just the coil DCR, which the
+     * value tuner does not move. Measured: 0.5 ohm at every limit from 0.001 to
+     * 2.0, identical values throughout. So the constraint bites exactly where
+     * R_source can move — a series resistor (Sander's Working(5) carried a
+     * 3.3 ohm one), a pruned or escalated element, or the catalog snap picking
+     * thinner wire. */
+    const P = (x: number, y: number) => ({ x, y });
+    const withPad = (): VxpPart[] => [
+      { type: 'Generator', partId: 'G1', params: [{ name: 'Eg', value: 2.83, unit: 'V' }], wires: [P(3, 4), P(3, 11)] },
+      { type: 'Ground', params: [], wires: [P(3, 11)] },
+      { type: 'Resistor', partId: 'R1', params: [{ name: 'R', value: 3.3, unit: 'Ω' }], wires: [P(3, 4), P(9, 4)] },
+      { type: 'Inductor', partId: 'L1', params: [{ name: 'L', value: 0.6, unit: 'mH' }, { name: 'DCR', value: 0.2, unit: 'Ω' }], wires: [P(9, 4), P(15, 4)] },
+      { type: 'Driver', partId: 'D1', model: 'mid', inverted: false, params: [], wires: [P(15, 4), P(15, 11)] },
+      { type: 'Ground', params: [], wires: [P(15, 11)] },
+      { type: 'Capacitor', partId: 'C2', params: [{ name: 'C', value: 5.6, unit: 'uF' }], wires: [P(3, 14), P(9, 14)] },
+      { type: 'Wire', params: [], wires: [P(3, 4), P(3, 14)] },
+      { type: 'Driver', partId: 'D2', model: 'tweeter', inverted: false, params: [], wires: [P(9, 14), P(9, 21)] },
+      { type: 'Ground', params: [], wires: [P(9, 21)] },
+    ];
+    const values = (r: { parts: VxpPart[] }) =>
+      r.parts
+        .filter((p) => /Inductor|Capacitor|Resistor/.test(p.type))
+        .map((p) => p.params.map((q) => q.value).join('/'));
+
+    /* And the low branch has to NEED its pad, or the amplitude term simply
+     * tunes the resistor away for free — measured: 3.3 -> 0.19 ohm with no
+     * constraint at all. A branch that is 12 dB hotter than the other cannot do
+     * that: the level term holds the pad in place, so R_source and flatness
+     * genuinely compete. That is Sander's case (his low branch ended at
+     * 3.42 ohm while every flatness number looked fine), and it is the only
+     * situation in which this constraint has anything to decide. */
+    const hot: typeof wBase = { ...wBase, spl: wBase.spl.map((v) => v + 12) };
+    const free = optimizeNetworkValues(withPad(), grid, hot, tBase, driverZ, NO_ADJ, opts);
+    // INSIDE the limit: exactly zero contribution, so bit-identical.
+    const loose = optimizeNetworkValues(withPad(), grid, hot, tBase, driverZ, NO_ADJ, {
+      ...opts,
+      rSourceDisqualifyOhm: 50,
+    });
+    expect(loose.after.rippleDb).toBeCloseTo(free.after.rippleDb, 12);
+    expect(loose.evaluations).toBe(free.evaluations);
+    expect(values(loose)).toEqual(values(free));
+
+    /* OUTSIDE it the search moves substantially — but MEASURED, it does not
+     * yet guarantee. On this fixture the delivered network goes from 7.17 to
+     * 5.47 ohm against a 1.0 limit: a large push, not a wall.
+     *
+     * The likely reason, and it is the failure shape this codebase keeps
+     * paying for: a guard enforced at step N and undone at step N+1. The
+     * value search does respect the constraint, but the passes that run AFTER
+     * it — the amplifier-floor repair in particular, which raises resistance
+     * to lift an impedance dip — know nothing about it. Pinned as measured
+     * rather than as hoped, so the gap is visible instead of asserted away. */
+    const held = optimizeNetworkValues(withPad(), grid, hot, tBase, driverZ, NO_ADJ, {
+      ...opts,
+      rSourceDisqualifyOhm: 1.0,
+    });
+    expect(values(held)).not.toEqual(values(free));
+    const rsFree = sourceResistanceOhm(free.parts, { grid, driverZ })!;
+    const rsHeld = sourceResistanceOhm(held.parts, { grid, driverZ })!;
+    expect(rsFree).toBeGreaterThan(6);
+    expect(rsHeld).toBeLessThan(rsFree - 1);
   });
 });

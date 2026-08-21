@@ -41,6 +41,9 @@ export interface ChainSettings {
   errorSmoothOct?: number;
   /** Catalog-snap cost pressure (score ×(1 + w·ΣEUR)). Default 0.0015 in the tuner. */
   costWeight?: number;
+  /** Source resistance past which a design is infeasible (A3e) — the same
+   *  number the ranking disqualifies on. */
+  rSourceDisqualifyOhm?: number;
   /** Dissipation term weight in front of the lowest branch (fix 3a); 0 = off. */
   dissipationWeight?: number;
   /** Part-audit options (thresholds incl. the source-R limit, Fb) — forwarded to the tuner. */
@@ -140,6 +143,9 @@ export function runDesignChain(
     errorSmoothOct: s.errorSmoothOct,
     costWeight: s.costWeight,
     dissipationWeight: s.dissipationWeight,
+    // A3e: the ranking's hard tier becomes a constraint in the search, so the
+    // tuner cannot spend its time in ground the ranking will throw away.
+    rSourceDisqualifyOhm: s.rSourceDisqualifyOhm,
     audit: s.audit,
     ampTarget: s.ampTarget,
     cutOnly: s.cutOnly,
