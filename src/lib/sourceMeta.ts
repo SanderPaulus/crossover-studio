@@ -351,6 +351,29 @@ export const KOAN_DATASET_NOTES: string[] = [
    * recovered from the numbers afterwards. It changes how every impedance
    * result on this set must be read, and there is no way to see it in the
    * file. */
+  /* THE FINDING THAT DECIDES WHETHER COMPONENTS GET ORDERED, so it lives here
+   * and not in a commit message. Measured 2026-08-21 on 20260820.2 with the
+   * 2026-08-16 LIMP data:
+   *
+   *     bare branches in parallel, no filter   1.43 ohm
+   *     delivered network                      2.62 ohm  (at 84 Hz)
+   *     best combination of every lever        +0.26 ohm  (10 % of the minimum)
+   *
+   * The filter is already LIFTING the load by 1.19 ohm, and neutralising the
+   * biggest levers together reaches a tenth of the minimum. So on this driver
+   * set, wired this way, Z-min is not a filter problem — it is the drivers and
+   * their parallel wiring, and no crossover change reaches it.
+   *
+   * Read together with the break-in note below: the upper impedance peak is
+   * still at 52.4 Hz and moves DOWN with use, toward where this minimum sits,
+   * so the number itself is provisional even though the attribution is not. */
+  'Z-MIN IS NOT A FILTER PROBLEM ON THIS SET (measured 2026-08-21). Bare branches ' +
+    'in parallel present 1.43 ohm; the delivered network presents 2.62 ohm at 84 Hz, ' +
+    'so the crossover already lifts the load by 1.19 ohm. Neutralising the biggest ' +
+    'levers together buys 0.26 ohm — 10 % of the minimum. What remains is the two ' +
+    '8-ohm woofers in parallel, not the filter. Provisional while the drivers are ' +
+    'not broken in (see below), but the ATTRIBUTION is not: filter work cannot ' +
+    'reach this number.',
   'WOOFERS NOT BROKEN IN — impedance measured 2026-08-16 on new drivers. Fs reads ' +
     '~31 Hz against 24.5 Hz on the datasheet and Vas ~74 L against 88 L, so the ' +
     'suspension is still stiff. The upper impedance peak sits at 52.4 Hz and will ' +
