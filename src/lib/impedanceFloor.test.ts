@@ -7,6 +7,7 @@ import {
   claimableNominalOhm,
   floorCurve,
   nominalFromDrivers,
+  nominalVerdict,
   relaxAt,
   requiredMinOhm,
 } from './impedanceFloor.ts';
@@ -47,6 +48,33 @@ describe('the floor is derived, and the derivation is what is pinned', () => {
     // The weakest branch decides — the system can be no better than it.
     expect(nominalFromDrivers([7.0, 7.5, 3.3])).toBe(4);
     expect(nominalFromDrivers([])).toBeNull();
+  });
+
+  it('drivers below the lowest standard value support NO nominal, explicitly', () => {
+    /* A 4 Ω driver measuring 1.5 Ω, or four in parallel — these sets exist and
+     * someone will load one. 2 Ω nominal already demands 1.6 Ω, so there is no
+     * standard value to hold the design to, and NULL is the answer rather than
+     * a quiet fallback to the smallest one. Falling back would hand the design
+     * a floor its drivers can never meet and then blame the filter for it. */
+    expect(nominalFromDrivers([1.5])).toBeNull();
+    const v = nominalVerdict([1.5, 6.0, 8.0]);
+    expect(v.nominalOhm).toBeNull();
+    expect(v.weakestOhm).toBeCloseTo(1.5, 9);
+    expect(v.line).toMatch(/NO standard nominal/);
+    // And it names the mechanism, because the remedy is not a filter change.
+    expect(v.line).toMatch(/wiring decision, not a filter one/);
+    // Exactly at the boundary it flips, with no gap in between.
+    expect(nominalVerdict([1.6]).nominalOhm).toBe(2);
+    expect(nominalVerdict([1.5999]).nominalOhm).toBeNull();
+    // No data is a different answer again, and says so.
+    expect(nominalVerdict([]).line).toMatch(/nothing to derive/);
+  });
+
+  it('a healthy set states the nominal it will be held to, and why', () => {
+    const v = nominalVerdict([3.17, 3.64, 5.63]);
+    expect(v.nominalOhm).toBe(2);
+    expect(v.line).toMatch(/IEC 60268-5/);
+    expect(v.line).toMatch(/1\.6 Ω/);
   });
 
   it('the floor is FLAT where programme energy is flat per octave', () => {

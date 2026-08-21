@@ -166,6 +166,49 @@ export function nominalFromDrivers(branchMinOhm: readonly number[]): number | nu
   return claimableNominalOhm(Math.min(...usable));
 }
 
+export interface NominalVerdict {
+  /** The nominal to hold the design to; null when the drivers support none. */
+  nominalOhm: number | null;
+  /** The weakest branch minimum the answer came from. */
+  weakestOhm: number | null;
+  line: string;
+}
+
+/**
+ * The nominal AND what to say when there is none.
+ *
+ * ⚠ NULL IS AN ANSWER, NOT A MISSING VALUE. A set whose weakest branch sits
+ * below 1.6 Ω supports no standard nominal at all — 2 Ω already demands 1.6 —
+ * and the honest output is "these drivers cannot be sold as any standard
+ * impedance", not a quiet fallback to the smallest one. Such sets exist (four
+ * 4 Ω drivers in parallel is 1 Ω) and someone will load one; falling back
+ * would hand them a floor of 1.6 Ω that their drivers can never meet, and the
+ * design would then be blamed for the wiring.
+ *
+ * The same reasoning as everywhere else in this round: when the answer is
+ * "this cannot be done", say that, rather than substituting the nearest thing
+ * that computes.
+ */
+export function nominalVerdict(branchMinOhm: readonly number[]): NominalVerdict {
+  const usable = branchMinOhm.filter((x) => Number.isFinite(x) && x > 0);
+  if (usable.length === 0) {
+    return { nominalOhm: null, weakestOhm: null, line: 'no impedance data — nothing to derive a nominal from' };
+  }
+  const weakestOhm = Math.min(...usable);
+  const nominalOhm = claimableNominalOhm(weakestOhm);
+  return {
+    nominalOhm,
+    weakestOhm,
+    line:
+      nominalOhm === null
+        ? `weakest branch ${weakestOhm.toFixed(2)} Ω — below ${requiredMinOhm(NOMINAL_SERIES[0]).toFixed(1)} Ω, ` +
+          `so these drivers support NO standard nominal impedance (${NOMINAL_SERIES[0]} Ω already ` +
+          `requires ${requiredMinOhm(NOMINAL_SERIES[0]).toFixed(1)} Ω). That is a wiring decision, not a filter one.`
+        : `weakest branch ${weakestOhm.toFixed(2)} Ω → hold this design to ${nominalOhm} Ω nominal ` +
+          `(minimum ${requiredMinOhm(nominalOhm).toFixed(1)} Ω, IEC 60268-5)`,
+  };
+}
+
 export interface FloorVerdict {
   ok: boolean;
   /** Worst shortfall in ohms (0 when clear), and where. */
