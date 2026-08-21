@@ -847,3 +847,48 @@ describe('catalog snap gating', () => {
     expect(r.parts.every((p) => !p.catalog)).toBe(true);
   });
 });
+
+describe('4D(a) — an unmeasurable dissipation term must DROP OUT, not score zero', () => {
+  it('a box tuning outside the grid gives the same result as switching the term off', () => {
+    /* The distinction matters when candidates are compared: if a candidate
+     * whose tuning cannot be probed simply adds 0 while another pays
+     * w·(Rs/Re)², the first gets a free bonus and the comparison is invalid.
+     *
+     * Today the availability is a property of the RUN, not of the candidate —
+     * it depends on (grid, fbHz), both fixed across a scan — so adding 0 is a
+     * constant offset and the ranking is sound. This test pins that: with the
+     * probe unavailable the optimiser must land on exactly what it lands on
+     * with the term disabled. If a future change ever makes the band
+     * per-candidate, this test is what fails.
+     */
+    const base = {
+      phasePriority: 0.5,
+      maxIterations: 60,
+      catalogSnap: false,
+      audit: { enabled: false as const },
+    };
+    // fbHz = 31 lies below the grid, so the probe refuses and the term drops.
+    const unprobeable = optimizeNetworkValues(crudeNetwork('none'), grid, wBase, tBase, driverZ, NO_ADJ, {
+      ...base,
+      dissipationWeight: 0.05,
+      audit: { enabled: false as const, fbHz: 31 },
+    });
+    // The same run with the term explicitly off.
+    const off = optimizeNetworkValues(crudeNetwork('none'), grid, wBase, tBase, driverZ, NO_ADJ, {
+      ...base,
+      dissipationWeight: 0,
+      audit: { enabled: false as const, fbHz: 31 },
+    });
+    expect(unprobeable.after.rippleDb).toBeCloseTo(off.after.rippleDb, 12);
+    expect(unprobeable.evaluations).toBe(off.evaluations);
+    expect(unprobeable.after.dissRatio).toBeUndefined();
+    // And with a tuning INSIDE the grid the term is real again: it reports a
+    // ratio, so the two runs are no longer interchangeable.
+    const probeable = optimizeNetworkValues(crudeNetwork('none'), grid, wBase, tBase, driverZ, NO_ADJ, {
+      ...base,
+      dissipationWeight: 0.05,
+      audit: { enabled: false as const, fbHz: 800 },
+    });
+    expect(probeable.after.dissRatio).toBeGreaterThanOrEqual(0);
+  });
+});

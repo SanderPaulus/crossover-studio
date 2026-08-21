@@ -1423,6 +1423,15 @@ export function optimizeNetworkValues(
       (opts.xoPinHard ? 20 * m.xoEdgeSq.reduce((a: number, v: number) => a + v, 0) : 0) +
       slopePen +
       // Dissipation in front of the lowest branch (fix 3a): soft, (Rs/Re)².
+      /* An UNMEASURABLE dissipation ratio adds nothing — the term drops out
+       * rather than scoring zero. That is only sound because availability is a
+       * property of the RUN and not of the candidate: it depends on (grid,
+       * fbHz), both fixed across a scan, so the missing term is a constant
+       * offset shared by every candidate. Were it ever to vary per candidate,
+       * the ones that cannot be probed would collect a free bonus and the
+       * ranking would be comparing different objectives. netOptimizer.test.ts
+       * pins this by requiring an unprobeable run to be identical to one with
+       * the weight switched off. */
       (dissW > 0 && m.dissRatio !== null ? dissW * m.dissRatio * m.dissRatio : 0)
     );
   };
