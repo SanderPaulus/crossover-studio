@@ -168,13 +168,24 @@ export function nearFieldValidity(sdCm2: number, fromHz = 15): ValidityBand | nu
  * period needs longer, and the working rule this codebase already uses for
  * crossover windows is 2/T. The ceiling is the file's own top.
  */
-export function gatedFarFieldValidity(gateMs: number, topHz: number | null = null): ValidityBand | null {
+export function gatedFarFieldValidity(
+  gateMs: number,
+  topHz: number | null = null,
+  /** Window taper (Tukey α on the right flank). See dataFloorFromGateMs for
+   *  why the effective duration, not the nominal one, sets the floor. */
+  alpha = 0.25,
+): ValidityBand | null {
   if (!(gateMs > 0)) return null;
-  const fromHz = 2 / (gateMs / 1000);
+  const a = Math.min(Math.max(alpha, 0), 1);
+  const effMs = (1 - a / 2) * gateMs;
+  const fromHz = 2 / (effMs / 1000);
   return {
     fromHz,
     toHz: topHz,
-    reason: `gated ${gateMs.toFixed(2)} ms → honest above ${Math.round(fromHz)} Hz (2/T)`,
+    reason:
+      `gated ${gateMs.toFixed(2)} ms` +
+      (a > 0 ? ` with a Tukey ${a} right taper → ${effMs.toFixed(2)} ms effective` : ' (rectangular)') +
+      ` → honest above ${Math.round(fromHz)} Hz (2/T)`,
   };
 }
 

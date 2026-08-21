@@ -292,11 +292,44 @@ export function gateMsFromHeader(text: string): number | null {
   return Number.isFinite(v) && v > 0 ? v : null;
 }
 
-/** Rule 1: the frequency below which a gated measurement is not to be
- *  trusted for design — TWO gate periods (one period is where it starts to
- *  resolve; design wants margin). */
-export function dataFloorFromGateMs(gateMs: number | null | undefined): number | null {
-  return gateMs && gateMs > 0 ? 2000 / gateMs : null;
+/**
+ * Default window taper: ARTA applies a Tukey with α = 0.25 on the RIGHT flank,
+ * so the last quarter of the gate is a cosine ramp rather than full weight.
+ * α = 0 is a rectangular window.
+ */
+export const DEFAULT_GATE_TAPER_ALPHA = 0.25;
+
+/**
+ * Rule 1: the frequency below which a gated measurement is not to be trusted
+ * for design.
+ *
+ *     f_floor = 2 / T_effective,   T_effective = (1 − α/2)·T
+ *
+ * TWO CONSERVATIVE MARGINS ARE STACKED HERE, on purpose, and it is worth being
+ * explicit that this is a choice rather than a law:
+ *
+ *  - 2/T rather than 1/T. One period is where a window starts to resolve a
+ *    frequency at all; designing on it leaves nothing over.
+ *  - the taper. The Tukey sits INSIDE the window, so a nominal 5.021 ms gate
+ *    weights its last 1.26 ms progressively less, and its coherent duration is
+ *    4.39 ms. Treating the nominal length as if it were rectangular would
+ *    claim resolution the measurement does not have.
+ *
+ * The asymmetry that justifies stacking them: a floor set too LOW lets you fit
+ * on data that is not there, and the error is invisible — it looks like a
+ * response. A floor set too HIGH costs bandwidth you can count. On Sander's
+ * woofer the taper moves the floor 398 → 455 Hz, which costs 0.19 octave of
+ * splice window and leaves 0.34 — still comfortably above the 0.2 threshold
+ * where a gain fit starts to get thin.
+ */
+export function dataFloorFromGateMs(
+  gateMs: number | null | undefined,
+  alpha: number = DEFAULT_GATE_TAPER_ALPHA,
+): number | null {
+  if (!gateMs || !(gateMs > 0)) return null;
+  const a = Math.min(Math.max(alpha, 0), 1);
+  const effectiveMs = (1 - a / 2) * gateMs;
+  return effectiveMs > 0 ? 2000 / effectiveMs : null;
 }
 
 /**

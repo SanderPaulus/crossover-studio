@@ -13,6 +13,7 @@ import {
   deriveXoWindow,
   DEFAULT_XO_WINDOW_THRESHOLDS,
   gateMsFromHeader,
+  DEFAULT_GATE_TAPER_ALPHA,
 } from './xoWindow.ts';
 
 // The KOAN 2951 3-way session (Aug 2026) as the fixture — see demo3way.
@@ -59,12 +60,17 @@ describe('xoWindow — the physics window is the intersection of every limiter (
     expect(w.conflict).toBe(false);
   });
 
-  it('(b) gate 5.021 ms → no candidate below ~400 Hz; a user window 280–420 is clamped and gets the "measure lower" banner', () => {
+  it('(b) gate 5.021 ms → no candidate below ~455 Hz; a user window 280–420 is clamped and gets the "measure lower" banner', () => {
     const gate = gateMsFromHeader(read('woofer-pair-hor0.frd'));
     expect(gate).toBeCloseTo(5.021, 3);
+    /* CHANGED aug 2026 (4D b): this used to expect 398 Hz, which reads the
+     * nominal gate as if the window were rectangular. ARTA tapers the right
+     * flank with a Tukey α = 0.25, so the coherent duration is 4.39 ms and the
+     * floor is 455 Hz. The old number claimed resolution the measurement does
+     * not have. */
     const df = dataFloorFromGateMs(gate)!;
-    expect(df).toBeGreaterThan(395);
-    expect(df).toBeLessThan(400);
+    expect(df).toBeGreaterThan(450);
+    expect(df).toBeLessThan(460);
     const w = deriveXoWindow({
       dataFloorHz: df,
       userWindow: [280, 420],
@@ -193,5 +199,32 @@ describe('xoWindow — the physics window is the intersection of every limiter (
     expect(cs.some((c) => Math.abs(c - Math.sqrt(400 * 620)) < 1)).toBe(true);
     // A warm start outside the window is ignored.
     expect(candidateCentres(400, 620, 2, 900)).toHaveLength(2);
+  });
+});
+
+describe('the gate floor accounts for the window taper (4D b)', () => {
+  it('the same gate reads 398 Hz rectangular and 455 Hz with ARTA\'s Tukey 0.25', () => {
+    // Sander's woofer sweep: "ARTA gated 5.021 ms, ref time 2.5 ms".
+    const T = 5.021;
+    expect(dataFloorFromGateMs(T, 0)!).toBeCloseTo(398, 0);
+    expect(dataFloorFromGateMs(T, 0.25)!).toBeCloseTo(455, 0);
+    // The default IS the Tukey, because that is what the measurement used.
+    expect(DEFAULT_GATE_TAPER_ALPHA).toBe(0.25);
+    expect(dataFloorFromGateMs(T)).toBeCloseTo(dataFloorFromGateMs(T, 0.25)!, 9);
+    // Monotone: more taper, less effective window, higher floor.
+    expect(dataFloorFromGateMs(T, 0.5)!).toBeGreaterThan(dataFloorFromGateMs(T, 0.25)!);
+    expect(dataFloorFromGateMs(null)).toBeNull();
+    expect(dataFloorFromGateMs(0)).toBeNull();
+  });
+
+  it('costs 0.19 octave of splice window and leaves 0.34 — the trade this is worth making', () => {
+    const kaCeil = 0.95 * (343 / (2 * Math.PI * Math.sqrt(255e-4 / Math.PI)));
+    const rect = Math.log2(kaCeil / dataFloorFromGateMs(5.021, 0)!);
+    const tukey = Math.log2(kaCeil / dataFloorFromGateMs(5.021, 0.25)!);
+    expect(rect).toBeCloseTo(0.532, 2);
+    expect(tukey).toBeCloseTo(0.339, 2);
+    expect(rect - tukey).toBeCloseTo(0.19, 2);
+    // Still clear of the threshold where a gain fit gets thin.
+    expect(tukey).toBeGreaterThan(0.2);
   });
 });

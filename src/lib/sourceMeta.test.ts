@@ -41,10 +41,16 @@ describe('source metadata — where a measurement may be believed', () => {
   });
 
   it('a gate sets the far-field floor at 2/T, and ground plane does not', () => {
+    // Taper-aware since 4D(b): ARTA's Tukey 0.25 right flank makes the
+    // coherent duration 4.39 ms, so the floor is 455 Hz, not the 398 Hz the
+    // nominal length would claim.
     const gated = gatedFarFieldValidity(5.021)!;
-    expect(gated.fromHz!).toBeGreaterThan(395);
-    expect(gated.fromHz!).toBeLessThan(400);
+    expect(gated.fromHz!).toBeGreaterThan(450);
+    expect(gated.fromHz!).toBeLessThan(460);
     expect(gated.reason).toMatch(/2\/T/);
+    expect(gated.reason).toMatch(/Tukey 0\.25/);
+    // A rectangular window still reads the nominal length.
+    expect(gatedFarFieldValidity(5.021, null, 0)!.fromHz!).toBeCloseTo(398, 0);
     const gp = groundPlaneValidity();
     expect(gp.fromHz).toBe(20);
     expect(gp.reason).toMatch(/floor/);

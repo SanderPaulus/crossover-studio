@@ -62,6 +62,7 @@ import {
   deriveXoWindow,
   gateMsFromHeader,
   dataFloorFromGateMs,
+  DEFAULT_GATE_TAPER_ALPHA,
   DEFAULT_XO_WINDOW_THRESHOLDS,
   type XoWindowThresholds,
 } from './lib/xoWindow.ts';
@@ -4019,8 +4020,16 @@ export default function App() {
         return { hz, label: `above the near-field splice blend (${Math.round(sp)} Hz ± ${blend / 2} oct) = ${Math.round(hz)} Hz` };
       }
       const g = gateOf(l);
+      // The taper is inside the window (ARTA: Tukey 0.25 right), so the
+      // COHERENT duration sets the floor, not the nominal gate length.
       const hz = dataFloorFromGateMs(g);
-      return { hz, label: g ? `data floor 2/${g.toFixed(1)} ms gate = ${Math.round(hz ?? 0)} Hz` : 'data floor' };
+      return {
+        hz,
+        label: g
+          ? `data floor 2/${((1 - DEFAULT_GATE_TAPER_ALPHA / 2) * g).toFixed(1)} ms ` +
+            `(${g.toFixed(1)} ms gate, Tukey ${DEFAULT_GATE_TAPER_ALPHA}) = ${Math.round(hz ?? 0)} Hz`
+          : 'data floor',
+      };
     };
     const pairFloor = (a: { hz: number | null; label: string }, b: { hz: number | null; label: string }) => {
       const xs = [a, b].filter((x) => x.hz !== null) as { hz: number; label: string }[];
@@ -4836,6 +4845,26 @@ export default function App() {
     };
   }
 
+  /**
+   * 4D(b): the gate floor became taper-aware, which moves the xo windows of
+   * every project made before it. Say so on open rather than applying it
+   * silently — the numbers a designer remembers should not change without a
+   * sentence explaining why.
+   */
+  function gateFloorShiftNote(gateMs: number | null): string | null {
+    if (!gateMs || !(gateMs > 0)) return null;
+    const before = 2000 / gateMs;
+    const after = dataFloorFromGateMs(gateMs) ?? before;
+    if (Math.abs(after - before) < 1) return null;
+    return (
+      `Gate floor moved ${Math.round(before)} → ${Math.round(after)} Hz: the ` +
+      `${gateMs.toFixed(2)} ms gate is tapered (Tukey ${DEFAULT_GATE_TAPER_ALPHA} on the right), ` +
+      `so its coherent duration is ${((1 - DEFAULT_GATE_TAPER_ALPHA / 2) * gateMs).toFixed(2)} ms. ` +
+      `Crossover windows below that frequency were resting on resolution the measurement does ` +
+      `not have.`
+    );
+  }
+
   function applyProject(state: ProjectState) {
     phaseAutoSkip.current = true; // restored phaseMode wins over the auto-switch
     offsetAutoSkip.current = true; // restored offset wins over the auto-fill
@@ -5022,8 +5051,15 @@ export default function App() {
   async function loadProjectFile(file: File) {
     setError(null);
     try {
-      applyProject(deserializeProject(await file.text()));
-      setPersistNote(t('Loaded {name}', { name: file.name }));
+      const state = deserializeProject(await file.text());
+      applyProject(state);
+      // 4D(b): if this project's crossover windows move because the gate floor
+      // is now taper-aware, say so on open. Never silently.
+      const gm = Number(state.design?.cabinet?.gateMs);
+      const shift = gateFloorShiftNote(Number.isFinite(gm) && gm > 0 ? gm : null);
+      setPersistNote(
+        `${t('Loaded {name}', { name: file.name })}${shift ? ` · ⚠ ${shift}` : ''}`,
+      );
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
     }
