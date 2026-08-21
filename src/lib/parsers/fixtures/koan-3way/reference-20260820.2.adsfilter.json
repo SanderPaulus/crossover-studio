@@ -1,0 +1,1026 @@
+{
+ "format": "acoustic-design-studio-filter",
+ "version": 1,
+ "savedAt": "2026-08-20T15:30:14.415Z",
+ "name": "20260820.2",
+ "parts": [
+  {
+   "type": "Generator",
+   "partId": "G",
+   "params": [
+    {
+     "name": "Eg",
+     "value": 2.83,
+     "unit": "V"
+    }
+   ],
+   "wires": [
+    {
+     "x": 3,
+     "y": 6
+    },
+    {
+     "x": 3,
+     "y": 13
+    }
+   ]
+  },
+  {
+   "type": "Ground",
+   "params": [],
+   "wires": [
+    {
+     "x": 3,
+     "y": 13
+    }
+   ]
+  },
+  {
+   "type": "Inductor",
+   "partId": "L1",
+   "params": [
+    {
+     "name": "L",
+     "value": 3.3,
+     "unit": "mH"
+    },
+    {
+     "name": "DCR",
+     "value": 0.24,
+     "unit": "Ω"
+    }
+   ],
+   "wires": [
+    {
+     "x": 3,
+     "y": 6
+    },
+    {
+     "x": 10,
+     "y": 6
+    }
+   ],
+   "catalog": "JAZ-PCORE-10-330"
+  },
+  {
+   "type": "Capacitor",
+   "partId": "C3",
+   "params": [
+    {
+     "name": "C",
+     "value": 100,
+     "unit": "uF"
+    },
+    {
+     "name": "ESR",
+     "value": 0.02,
+     "unit": "Ω"
+    }
+   ],
+   "wires": [
+    {
+     "x": 10,
+     "y": 6
+    },
+    {
+     "x": 10,
+     "y": 11
+    }
+   ],
+   "catalog": "jantzen-zstd-100.00"
+  },
+  {
+   "type": "Ground",
+   "params": [],
+   "wires": [
+    {
+     "x": 10,
+     "y": 11
+    }
+   ]
+  },
+  {
+   "type": "Wire",
+   "params": [],
+   "wires": [
+    {
+     "x": 10,
+     "y": 6
+    },
+    {
+     "x": 16,
+     "y": 6
+    }
+   ]
+  },
+  {
+   "type": "Capacitor",
+   "partId": "C2",
+   "params": [
+    {
+     "name": "C",
+     "value": 36,
+     "unit": "uF"
+    },
+    {
+     "name": "ESR",
+     "value": 0.02,
+     "unit": "Ω"
+    }
+   ],
+   "wires": [
+    {
+     "x": 16,
+     "y": 6
+    },
+    {
+     "x": 16,
+     "y": 11
+    }
+   ],
+   "catalog": "jantzen-zstd-36.00"
+  },
+  {
+   "type": "Ground",
+   "params": [],
+   "wires": [
+    {
+     "x": 16,
+     "y": 11
+    }
+   ]
+  },
+  {
+   "type": "Inductor",
+   "partId": "L3",
+   "params": [
+    {
+     "name": "L",
+     "value": 0.68,
+     "unit": "mH"
+    },
+    {
+     "name": "DCR",
+     "value": 0.19,
+     "unit": "Ω"
+    }
+   ],
+   "wires": [
+    {
+     "x": 16,
+     "y": 6
+    },
+    {
+     "x": 23,
+     "y": 6
+    }
+   ],
+   "catalog": "JAZ-WAX-16-068"
+  },
+  {
+   "type": "Inductor",
+   "partId": "L5",
+   "params": [
+    {
+     "name": "L",
+     "value": 4.7,
+     "unit": "mH"
+    },
+    {
+     "name": "DCR",
+     "value": 1.34,
+     "unit": "Ω"
+    }
+   ],
+   "wires": [
+    {
+     "x": 23,
+     "y": 6
+    },
+    {
+     "x": 23,
+     "y": 11
+    }
+   ],
+   "catalog": "JAZ-AIR-10-470"
+  },
+  {
+   "type": "Capacitor",
+   "partId": "C6",
+   "params": [
+    {
+     "name": "C",
+     "value": 5.6,
+     "unit": "uF"
+    },
+    {
+     "name": "ESR",
+     "value": 0.023,
+     "unit": "Ω"
+    }
+   ],
+   "wires": [
+    {
+     "x": 23,
+     "y": 11
+    },
+    {
+     "x": 23,
+     "y": 16
+    }
+   ],
+   "locked": false,
+   "catalog": "AUD-QS-56"
+  },
+  {
+   "type": "Resistor",
+   "partId": "R7",
+   "params": [
+    {
+     "name": "R",
+     "value": 8.2,
+     "unit": "Ω"
+    }
+   ],
+   "wires": [
+    {
+     "x": 23,
+     "y": 16
+    },
+    {
+     "x": 23,
+     "y": 21
+    }
+   ],
+   "catalog": "JAZ-MOX-10-8R2"
+  },
+  {
+   "type": "Ground",
+   "params": [],
+   "wires": [
+    {
+     "x": 23,
+     "y": 21
+    }
+   ]
+  },
+  {
+   "type": "Wire",
+   "params": [],
+   "wires": [
+    {
+     "x": 23,
+     "y": 6
+    },
+    {
+     "x": 30,
+     "y": 6
+    }
+   ]
+  },
+  {
+   "type": "Driver",
+   "partId": "D",
+   "model": "woofer",
+   "inverted": false,
+   "params": [],
+   "wires": [
+    {
+     "x": 30,
+     "y": 6
+    },
+    {
+     "x": 30,
+     "y": 13
+    }
+   ]
+  },
+  {
+   "type": "Ground",
+   "params": [],
+   "wires": [
+    {
+     "x": 30,
+     "y": 13
+    }
+   ]
+  },
+  {
+   "type": "Capacitor",
+   "partId": "B·C1",
+   "params": [
+    {
+     "name": "C",
+     "value": 43,
+     "unit": "uF"
+    },
+    {
+     "name": "ESR",
+     "value": 0.02,
+     "unit": "Ω"
+    }
+   ],
+   "wires": [
+    {
+     "x": 3,
+     "y": 27
+    },
+    {
+     "x": 10,
+     "y": 27
+    }
+   ],
+   "locked": false,
+   "catalog": "jantzen-zstd-43.00"
+  },
+  {
+   "type": "Inductor",
+   "partId": "B·L2",
+   "params": [
+    {
+     "name": "L",
+     "value": 1.5,
+     "unit": "mH"
+    },
+    {
+     "name": "DCR",
+     "value": 0.68,
+     "unit": "Ω"
+    }
+   ],
+   "wires": [
+    {
+     "x": 10,
+     "y": 27
+    },
+    {
+     "x": 10,
+     "y": 32
+    }
+   ],
+   "catalog": "JAZ-AIR-10-150"
+  },
+  {
+   "type": "Ground",
+   "params": [],
+   "wires": [
+    {
+     "x": 10,
+     "y": 32
+    }
+   ]
+  },
+  {
+   "type": "Capacitor",
+   "partId": "B·C3",
+   "params": [
+    {
+     "name": "C",
+     "value": 33,
+     "unit": "uF"
+    },
+    {
+     "name": "ESR",
+     "value": 0.011,
+     "unit": "Ω"
+    }
+   ],
+   "wires": [
+    {
+     "x": 10,
+     "y": 27
+    },
+    {
+     "x": 17,
+     "y": 27
+    }
+   ],
+   "locked": false,
+   "catalog": "AUD-QS-330"
+  },
+  {
+   "type": "Inductor",
+   "partId": "B·L4",
+   "params": [
+    {
+     "name": "L",
+     "value": 15,
+     "unit": "mH"
+    },
+    {
+     "name": "DCR",
+     "value": 0.68,
+     "unit": "Ω"
+    }
+   ],
+   "wires": [
+    {
+     "x": 17,
+     "y": 27
+    },
+    {
+     "x": 17,
+     "y": 32
+    }
+   ],
+   "catalog": "JAZ-PCORE-10-1500"
+  },
+  {
+   "type": "Ground",
+   "params": [],
+   "wires": [
+    {
+     "x": 17,
+     "y": 32
+    }
+   ]
+  },
+  {
+   "type": "Inductor",
+   "partId": "B·L5",
+   "params": [
+    {
+     "name": "L",
+     "value": 1.8,
+     "unit": "mH"
+    },
+    {
+     "name": "DCR",
+     "value": 0.36,
+     "unit": "Ω"
+    }
+   ],
+   "wires": [
+    {
+     "x": 17,
+     "y": 27
+    },
+    {
+     "x": 24,
+     "y": 27
+    }
+   ],
+   "locked": true,
+   "catalog": "JAZ-WAX-16-180"
+  },
+  {
+   "type": "Capacitor",
+   "partId": "B·C6",
+   "params": [
+    {
+     "name": "C",
+     "value": 8.2,
+     "unit": "uF"
+    },
+    {
+     "name": "ESR",
+     "value": 0.02,
+     "unit": "Ω"
+    }
+   ],
+   "wires": [
+    {
+     "x": 24,
+     "y": 27
+    },
+    {
+     "x": 24,
+     "y": 32
+    }
+   ],
+   "locked": false,
+   "catalog": "AUD-QS-82"
+  },
+  {
+   "type": "Ground",
+   "params": [],
+   "wires": [
+    {
+     "x": 24,
+     "y": 32
+    }
+   ]
+  },
+  {
+   "type": "Inductor",
+   "partId": "B·L7",
+   "params": [
+    {
+     "name": "L",
+     "value": 0.33,
+     "unit": "mH"
+    },
+    {
+     "name": "DCR",
+     "value": 0.28,
+     "unit": "Ω"
+    }
+   ],
+   "wires": [
+    {
+     "x": 24,
+     "y": 27
+    },
+    {
+     "x": 31,
+     "y": 27
+    }
+   ],
+   "catalog": "JAZ-AIR-10-033"
+  },
+  {
+   "type": "Resistor",
+   "partId": "B·R9",
+   "params": [
+    {
+     "name": "R",
+     "value": 4.7,
+     "unit": "Ω"
+    }
+   ],
+   "wires": [
+    {
+     "x": 31,
+     "y": 27
+    },
+    {
+     "x": 38,
+     "y": 27
+    }
+   ],
+   "catalog": "JAZ-MOX-10-4R7"
+  },
+  {
+   "type": "Inductor",
+   "partId": "B·L14",
+   "params": [
+    {
+     "name": "L",
+     "value": 0.57,
+     "unit": "mH"
+    },
+    {
+     "name": "DCR",
+     "value": 0.71,
+     "unit": "Ω"
+    }
+   ],
+   "wires": [
+    {
+     "x": 38,
+     "y": 27
+    },
+    {
+     "x": 38,
+     "y": 32
+    }
+   ],
+   "catalog": "JAZ-AIR-07-047+JAZ-AIR-10-010"
+  },
+  {
+   "type": "Capacitor",
+   "partId": "B·C15",
+   "params": [
+    {
+     "name": "C",
+     "value": 2.2,
+     "unit": "uF"
+    },
+    {
+     "name": "ESR",
+     "value": 0.032,
+     "unit": "Ω"
+    }
+   ],
+   "wires": [
+    {
+     "x": 38,
+     "y": 32
+    },
+    {
+     "x": 38,
+     "y": 37
+    }
+   ],
+   "locked": false,
+   "catalog": "AUD-QS-22"
+  },
+  {
+   "type": "Resistor",
+   "partId": "B·R16",
+   "params": [
+    {
+     "name": "R",
+     "value": 2.2,
+     "unit": "Ω"
+    }
+   ],
+   "wires": [
+    {
+     "x": 38,
+     "y": 37
+    },
+    {
+     "x": 38,
+     "y": 42
+    }
+   ],
+   "catalog": "JAZ-MOX-10-2R2"
+  },
+  {
+   "type": "Ground",
+   "params": [],
+   "wires": [
+    {
+     "x": 38,
+     "y": 42
+    }
+   ]
+  },
+  {
+   "type": "Wire",
+   "params": [],
+   "wires": [
+    {
+     "x": 38,
+     "y": 27
+    },
+    {
+     "x": 45,
+     "y": 27
+    }
+   ]
+  },
+  {
+   "type": "Driver",
+   "partId": "B·D",
+   "model": "mid",
+   "inverted": false,
+   "params": [],
+   "wires": [
+    {
+     "x": 45,
+     "y": 27
+    },
+    {
+     "x": 45,
+     "y": 34
+    }
+   ]
+  },
+  {
+   "type": "Ground",
+   "params": [],
+   "wires": [
+    {
+     "x": 45,
+     "y": 34
+    }
+   ]
+  },
+  {
+   "type": "Wire",
+   "params": [],
+   "wires": [
+    {
+     "x": 3,
+     "y": 6
+    },
+    {
+     "x": 1,
+     "y": 6
+    },
+    {
+     "x": 1,
+     "y": 27
+    },
+    {
+     "x": 3,
+     "y": 27
+    }
+   ]
+  },
+  {
+   "type": "Capacitor",
+   "partId": "C·C1",
+   "params": [
+    {
+     "name": "C",
+     "value": 2.2,
+     "unit": "uF"
+    },
+    {
+     "name": "ESR",
+     "value": 0.013,
+     "unit": "Ω"
+    }
+   ],
+   "wires": [
+    {
+     "x": 3,
+     "y": 52
+    },
+    {
+     "x": 10,
+     "y": 52
+    }
+   ],
+   "locked": true,
+   "catalog": "MUN-SUP-22"
+  },
+  {
+   "type": "Inductor",
+   "partId": "C·L2",
+   "params": [
+    {
+     "name": "L",
+     "value": 0.39,
+     "unit": "mH"
+    },
+    {
+     "name": "DCR",
+     "value": 0.14,
+     "unit": "Ω"
+    }
+   ],
+   "wires": [
+    {
+     "x": 10,
+     "y": 52
+    },
+    {
+     "x": 10,
+     "y": 57
+    }
+   ],
+   "catalog": "JAZ-WAX-16-039"
+  },
+  {
+   "type": "Ground",
+   "params": [],
+   "wires": [
+    {
+     "x": 10,
+     "y": 57
+    }
+   ]
+  },
+  {
+   "type": "Capacitor",
+   "partId": "C·C3",
+   "params": [
+    {
+     "name": "C",
+     "value": 6.8,
+     "unit": "uF"
+    },
+    {
+     "name": "ESR",
+     "value": 0.008,
+     "unit": "Ω"
+    }
+   ],
+   "wires": [
+    {
+     "x": 10,
+     "y": 52
+    },
+    {
+     "x": 17,
+     "y": 52
+    }
+   ],
+   "locked": true,
+   "catalog": "JAZ-ALU-68"
+  },
+  {
+   "type": "Wire",
+   "params": [],
+   "wires": [
+    {
+     "x": 10,
+     "y": 52
+    },
+    {
+     "x": 10,
+     "y": 48
+    }
+   ]
+  },
+  {
+   "type": "Capacitor",
+   "partId": "C1",
+   "params": [
+    {
+     "name": "C",
+     "value": 8.2,
+     "unit": "uF"
+    },
+    {
+     "name": "ESR",
+     "value": 0.008,
+     "unit": "Ω"
+    }
+   ],
+   "wires": [
+    {
+     "x": 10,
+     "y": 48
+    },
+    {
+     "x": 17,
+     "y": 48
+    }
+   ],
+   "catalog": "JAZ-ALU-82",
+   "locked": true
+  },
+  {
+   "type": "Wire",
+   "params": [],
+   "wires": [
+    {
+     "x": 17,
+     "y": 48
+    },
+    {
+     "x": 17,
+     "y": 52
+    }
+   ]
+  },
+  {
+   "type": "Inductor",
+   "partId": "C·L10",
+   "params": [
+    {
+     "name": "L",
+     "value": 1,
+     "unit": "mH"
+    },
+    {
+     "name": "DCR",
+     "value": 0.51,
+     "unit": "Ω"
+    }
+   ],
+   "wires": [
+    {
+     "x": 17,
+     "y": 52
+    },
+    {
+     "x": 17,
+     "y": 57
+    }
+   ],
+   "catalog": "JAZ-AIR-10-100"
+  },
+  {
+   "type": "Ground",
+   "params": [],
+   "wires": [
+    {
+     "x": 17,
+     "y": 57
+    }
+   ]
+  },
+  {
+   "type": "Wire",
+   "params": [],
+   "wires": [
+    {
+     "x": 17,
+     "y": 52
+    },
+    {
+     "x": 23,
+     "y": 52
+    }
+   ]
+  },
+  {
+   "type": "Inductor",
+   "partId": "C·L13",
+   "params": [
+    {
+     "name": "L",
+     "value": 1,
+     "unit": "mH"
+    },
+    {
+     "name": "DCR",
+     "value": 0.92,
+     "unit": "Ω"
+    }
+   ],
+   "wires": [
+    {
+     "x": 23,
+     "y": 52
+    },
+    {
+     "x": 23,
+     "y": 57
+    }
+   ],
+   "catalog": "JAZ-AIR-07-100"
+  },
+  {
+   "type": "Resistor",
+   "partId": "C·R15",
+   "params": [
+    {
+     "name": "R",
+     "value": 22,
+     "unit": "Ω"
+    }
+   ],
+   "wires": [
+    {
+     "x": 23,
+     "y": 57
+    },
+    {
+     "x": 23,
+     "y": 62
+    }
+   ],
+   "catalog": "JAZ-MOX-10-22R"
+  },
+  {
+   "type": "Ground",
+   "params": [],
+   "wires": [
+    {
+     "x": 23,
+     "y": 62
+    }
+   ]
+  },
+  {
+   "type": "Wire",
+   "params": [],
+   "wires": [
+    {
+     "x": 23,
+     "y": 52
+    },
+    {
+     "x": 30,
+     "y": 52
+    }
+   ]
+  },
+  {
+   "type": "Driver",
+   "partId": "C·D",
+   "model": "tweeter",
+   "inverted": false,
+   "params": [],
+   "wires": [
+    {
+     "x": 30,
+     "y": 52
+    },
+    {
+     "x": 30,
+     "y": 59
+    }
+   ]
+  },
+  {
+   "type": "Ground",
+   "params": [],
+   "wires": [
+    {
+     "x": 30,
+     "y": 59
+    }
+   ]
+  },
+  {
+   "type": "Wire",
+   "params": [],
+   "wires": [
+    {
+     "x": 3,
+     "y": 6
+    },
+    {
+     "x": 1,
+     "y": 6
+    },
+    {
+     "x": 1,
+     "y": 52
+    },
+    {
+     "x": 3,
+     "y": 52
+    }
+   ]
+  }
+ ]
+}
