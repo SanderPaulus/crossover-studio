@@ -3055,12 +3055,28 @@ export default function App() {
       // Half-space scaling to the far-field distance.
       nearSpl = nearSpl.map((v) => v + scaleDb);
       const farMin = cabinetInfo.reliable?.fromHz ?? null;
+      /* PROPOSED SPLICE. Aim just under the near field's ka = 1 limit and
+       * comfortably above the gate's own floor, because the useful overlap
+       * between the two is narrow by nature.
+       *
+       * The floor used to be a flat 300 Hz (`Math.max(farMin * 1.3, 300)`).
+       * Two reasons it moved to 500 (Sanders, aug 2026): below 500 Hz a gated
+       * indoor far field is gate-limited, so a fit down there is fitting the
+       * gate; and the baffle step sits at 380–440 Hz on this cabinet, which
+       * would then land INSIDE the fit band — where it is exactly the
+       * difference the diffraction step is supposed to account for, and would
+       * be absorbed into the level instead.
+       *
+       * On the 3-way demo this changes nothing in practice: Sd 255 cm² puts
+       * ka = 1 at 606 Hz, so the proposal was already 0.8 × 606 = 485 Hz, not
+       * 300. The 300 only ever bound on drivers with a much lower ka limit. */
+      const SPLICE_FLOOR_HZ = 500;
       const proposed =
         Number(slot.transitionHz) > 0
           ? Number(slot.transitionHz)
           : farMin !== null
-            ? Math.min(nearMax * 0.8, Math.max(farMin * 1.3, 300))
-            : 300;
+            ? Math.min(nearMax * 0.8, Math.max(farMin * 1.3, SPLICE_FLOOR_HZ))
+            : SPLICE_FLOOR_HZ;
       const check = checkTransition(proposed, nearMax, farMin);
       const m = mergeNearFar({
         freq: g,

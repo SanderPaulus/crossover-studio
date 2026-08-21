@@ -79,10 +79,11 @@ export interface SourceMeta {
  *     ka = 1.60  → 1070 Hz  →  −0.95 dB
  *     ka = 2.55  → 1659 Hz  →  −2.50 dB
  *
- * The last of those is the "10950/d_inch" rule that circulates; it is too
- * generous, and on a driver like the WO24 non-uniform cone behaviour lands on
- * top of it — which no analytic correction can undo. So: ka = 1 everywhere,
- * and the warning states the computed error in dB instead of a bare verdict.
+ * — and those are LOWER BOUNDS (see pistonErrorDb). The last of them is the
+ * "10950/d_inch" rule that circulates; it is too generous, and on a driver like
+ * the WO24 non-uniform cone behaviour lands on top of it, which no analytic
+ * correction can undo. So: ka = 1 everywhere, and the warning states the
+ * computed floor in dB instead of a bare verdict.
  *
  * Cross-check from two directions: Klippel writes the same limit as 5475/a[cm],
  * Keele as 4311/D[inch], and 4311/(2/2.54) = 5475.0 exactly.
@@ -103,11 +104,26 @@ export function kaAt(fHz: number, sdCm2: number): number | null {
 }
 
 /**
- * On-axis piston error at ka, in dB: 20·log10(sinc(ka/2)).
+ * IDEAL-PISTON part of the near-field error at ka, in dB — a LOWER BOUND on the
+ * real error, never the whole of it.
  *
- * This is what the near-field limit is really about — a number, not a
- * threshold. Reported alongside every splice so "above the limit" reads as
- * "costs you 0.95 dB" rather than as a rule you might argue with.
+ * Derivation, with the mic on the axis at distance z from a rigid piston of
+ * radius a:
+ *
+ *     |p(z)| = 2·ρ·c·u·|sin( k·(√(z² + a²) − z) / 2 )|
+ *     at z = 0:            2·ρ·c·u·sin(ka/2)
+ *
+ * The standard near-to-far scaling p_far = p_nf · a/(2r) assumes the
+ * low-frequency limit ρ·c·u·ka, so the ratio between what the mic sees and what
+ * that scaling assumes is
+ *
+ *     2·sin(ka/2) / ka  =  sinc(ka/2)
+ *
+ * Two things sit on top of this and neither is analytic: a real cone stops
+ * moving as one piece well before ka = 1 (on a WO24 that is the dominant term),
+ * and the mic is at a finite z, not at 0. So the number below is the floor of
+ * the error — phrase every warning as "at least X dB", never as "the error is
+ * X dB".
  */
 export function pistonErrorDb(ka: number): number {
   if (!(ka > 0)) return 0;
@@ -125,8 +141,9 @@ export function nearFieldValidity(sdCm2: number, fromHz = 15): ValidityBand | nu
     toHz,
     reason:
       `near field: valid to ka = ${NEARFIELD_KA_LIMIT} (${Math.round(toHz)} Hz for ` +
-      `a = ${(a * 1000).toFixed(1)} mm); piston error there ` +
-      `${pistonErrorDb(NEARFIELD_KA_LIMIT).toFixed(2)} dB`,
+      `a = ${(a * 1000).toFixed(1)} mm); ideal-piston error there at least ` +
+      `${pistonErrorDb(NEARFIELD_KA_LIMIT).toFixed(2)} dB, plus non-uniform cone ` +
+      `behaviour and the real mic distance, neither of which is analytic`,
   };
 }
 

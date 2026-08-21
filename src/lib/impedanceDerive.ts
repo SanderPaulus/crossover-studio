@@ -117,6 +117,8 @@ export interface ReCheck {
   atHz: number;
   /** Deviation from the stated Re, percent of Re (signed: + = measured higher). */
   deviationPct: number;
+  /** 'ok' | 'high' (suspicious, warn) | 'impossible' (below Re — hard error). */
+  verdict: 'ok' | 'high' | 'impossible';
   ok: boolean;
   note: string;
 }
@@ -139,9 +141,9 @@ export function checkReAgainstZ(
   freq: readonly number[],
   magnitude: readonly number[],
   reOhm: number,
-  opts: { tolPct?: number; fromHz?: number } = {},
+  opts: { highPct?: number; fromHz?: number } = {},
 ): ReCheck | null {
-  const { tolPct = 5, fromHz = 100 } = opts;
+  const { highPct = 20, fromHz = 100 } = opts;
   if (!(reOhm > 0) || freq.length === 0 || freq.length !== magnitude.length) return null;
   let minOhm = Infinity;
   let atHz = 0;
@@ -154,14 +156,25 @@ export function checkReAgainstZ(
   }
   if (!isFinite(minOhm)) return null;
   const deviationPct = ((minOhm - reOhm) / reOhm) * 100;
-  const ok = Math.abs(deviationPct) <= tolPct;
-  const note = ok
-    ? `min |Z| ${minOhm.toFixed(2)} Ω at ${Math.round(atHz)} Hz vs Re ${reOhm.toFixed(2)} Ω ` +
-      `(${deviationPct >= 0 ? '+' : ''}${deviationPct.toFixed(1)} %)`
-    : `⚠ min |Z| ${minOhm.toFixed(2)} Ω at ${Math.round(atHz)} Hz is ` +
-      `${deviationPct >= 0 ? '+' : ''}${deviationPct.toFixed(1)} % off the stated Re ` +
-      `${reOhm.toFixed(2)} Ω — check the leads and the clip, the LIMP calibration, ` +
-      `or whether the parallel-derivation factor is right ` +
-      `(a missing or doubled n reads as exactly ±100 % / ∓50 % here)`;
-  return { minOhm, atHz, deviationPct, ok, note };
+  /* ASYMMETRIC ON PURPOSE. A voice coil cannot present less than its own DC
+   * resistance, so min |Z| BELOW Re is not a tolerance question — it is
+   * physically impossible, and it is exactly what a forgotten or doubled factor
+   * N produces (−50 % / +100 %). Above Re there is legitimate room: residual
+   * damping and the start of the inductive rise put a WO24's minimum typically
+   * 5–15 % above Re, so a symmetric 5 % band would fire on healthy data. */
+  const verdict: ReCheck['verdict'] =
+    minOhm < reOhm ? 'impossible' : deviationPct > highPct ? 'high' : 'ok';
+  const where = `min |Z| ${minOhm.toFixed(2)} Ω at ${Math.round(atHz)} Hz vs Re ${reOhm.toFixed(2)} Ω ` +
+    `(${deviationPct >= 0 ? '+' : ''}${deviationPct.toFixed(1)} %)`;
+  const note =
+    verdict === 'ok'
+      ? where
+      : verdict === 'impossible'
+        ? `⚠ ${where} — a voice coil cannot go below its own DC resistance. Either the ` +
+          `parallel-derivation factor is wrong (a forgotten n reads as −50 %), the stated ` +
+          `Re is wrong, or the LIMP calibration is off`
+        : `⚠ ${where} — higher than a healthy minimum usually sits (5–15 % above Re). ` +
+          `Check the leads and the clip, the LIMP calibration, or whether n was applied ` +
+          `twice (that reads as +100 %)`;
+  return { minOhm, atHz, deviationPct, verdict, ok: verdict === 'ok', note };
 }

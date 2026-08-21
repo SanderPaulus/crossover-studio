@@ -112,23 +112,31 @@ describe('parallel impedance → one driver (Sanders Koan woofers)', () => {
     }
   });
 
-  it('the Re sanity check catches a missing or doubled factor as ±100 % / ∓50 %', () => {
+  it('the Re check is asymmetric: below Re is impossible, well above Re is merely suspicious', () => {
     const single = magOf(Z_SINGLE);
     const good = checkReAgainstZ(FREQ, single, 6.2)!;
+    expect(good.verdict).toBe('ok');
     expect(good.ok).toBe(true);
-    expect(Math.abs(good.deviationPct)).toBeLessThan(5);
-    // Forgot to scale: the pair's impedance read as one driver → half of Re.
+    // A healthy minimum sits a few percent ABOVE Re (residual damping, the
+    // start of the inductive rise) — a symmetric 5 % band would fire here.
+    expect(good.deviationPct).toBeGreaterThan(0);
+    expect(good.deviationPct).toBeLessThan(20);
+    // Forgot to scale: the pair read as one driver → below Re, which no voice
+    // coil can do. Hard error, not a tolerance.
     const forgot = checkReAgainstZ(FREQ, parallelFromSingleMagnitude(single, 2)!, 6.2)!;
-    expect(forgot.ok).toBe(false);
-    // −50 % of Re, give or take the gap between min|Z| and Re itself.
+    expect(forgot.verdict).toBe('impossible');
     expect(forgot.deviationPct).toBeGreaterThan(-51);
     expect(forgot.deviationPct).toBeLessThan(-49);
-    // Scaled twice → double.
+    expect(forgot.note).toMatch(/cannot go below its own DC resistance/);
+    // Scaled twice → +100 %: possible in principle (bad leads look like this),
+    // so it warns rather than errors.
     const twice = checkReAgainstZ(FREQ, singleFromParallelMagnitude(single, 2)!, 6.2)!;
-    expect(twice.ok).toBe(false);
+    expect(twice.verdict).toBe('high');
     expect(twice.deviationPct).toBeGreaterThan(99);
-    expect(twice.deviationPct).toBeLessThan(103);
     expect(twice.note).toMatch(/⚠/);
+    // 15 % above Re is still healthy; 25 % is not.
+    expect(checkReAgainstZ(FREQ, single.map((v) => v * 1.1), 6.2)!.verdict).toBe('ok');
+    expect(checkReAgainstZ(FREQ, single.map((v) => v * 1.3), 6.2)!.verdict).toBe('high');
     // The search ignores the resonance peak: it starts above fromHz.
     expect(good.atHz).toBeGreaterThan(100);
   });
