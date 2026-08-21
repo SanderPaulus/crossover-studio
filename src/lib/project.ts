@@ -7,6 +7,17 @@ export interface NetworkDesign {
   id: string;
   name: string;
   parts: VxpPart[];
+  /**
+   * The evaluation band this design was produced on, Hz (step B2).
+   *
+   * ABSENT means one of two things, and they read the same to the user for the
+   * same reason: either the design predates validity bands, or it was made on
+   * a source whose band was unknown. Both were computed against an unknown
+   * band, so both stay visible and both carry the mark. A result that was
+   * derived under an assumption nobody can name must not pass silently as
+   * valid just because it is already on the screen.
+   */
+  bandAtDesign?: { fromHz: number; toHz: number };
 }
 
 /**

@@ -195,3 +195,44 @@ describe('angle-file persistence', () => {
     });
   });
 });
+
+describe('B2 migration — a pre-B2 project must still open', () => {
+  it('a design without bandAtDesign round-trips and stays loadable', () => {
+    /* The rule: refusing to open a project is worse than a weak band. So a
+     * pre-B2 tab loads, keeps its parts, and simply has no band stamp — which
+     * is what the UI marks it on. Refusals apply to new runs, never to
+     * loading. */
+    const pre = {
+      format: PROJECT_FORMAT,
+      version: 2,
+      design: {
+        ...state.design,
+        networkDesigns: [{ id: 'working', name: 'Working', parts: [] }],
+        activeDesignId: 'working',
+      },
+    };
+    const loaded = deserializeProject(JSON.stringify(pre));
+    expect(loaded.design.networkDesigns).toHaveLength(1);
+    expect(loaded.design.networkDesigns![0].name).toBe('Working');
+    expect(loaded.design.networkDesigns![0].bandAtDesign).toBeUndefined();
+    // And it survives a save/load cycle without acquiring a band it never had.
+    const again = deserializeProject(serializeProject(loaded));
+    expect(again.design.networkDesigns![0].bandAtDesign).toBeUndefined();
+  });
+
+  it('a band stamp survives the round trip once a run has produced one', () => {
+    const withBand = {
+      format: PROJECT_FORMAT,
+      version: 2,
+      design: {
+        ...state.design,
+        networkDesigns: [
+          { id: 'working', name: 'Working', parts: [], bandAtDesign: { fromHz: 398, toHz: 18000 } },
+        ],
+        activeDesignId: 'working',
+      },
+    };
+    const again = deserializeProject(serializeProject(deserializeProject(JSON.stringify(withBand))));
+    expect(again.design.networkDesigns![0].bandAtDesign).toEqual({ fromHz: 398, toHz: 18000 });
+  });
+});

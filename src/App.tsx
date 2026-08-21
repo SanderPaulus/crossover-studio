@@ -43,6 +43,12 @@ import {
   sumRadiators,
 } from './lib/nearField.ts';
 import {
+  gatedFarFieldValidity,
+  intersectValidity,
+  nearFieldValidity,
+  type SourceMeta,
+} from './lib/sourceMeta.ts';
+import {
   KA_TIERS,
   breakupCeilingHz,
   breakupHz,
@@ -1981,6 +1987,8 @@ export default function App() {
   /** The scratch tab that Optimize / Build always writes into. Saving a
    *  filter snapshots it into a normal tab; Working keeps being overwritten. */
   const WORKING_ID = 'working';
+  /** Current evaluation band, readable from writers declared above the memo. */
+  const evalBandRef = useRef<{ fromHz: number; toHz: number } | null>(null);
 
   function setWorkingDesign(parts: VxpPart[]) {
     const existing = designs.find((d) => d.id === WORKING_ID);
@@ -1990,10 +1998,15 @@ export default function App() {
       setSchHistory([]);
     setSchFuture([]);
     }
+    // B2: stamp the band this design was produced on. A tab without the stamp
+    // was computed against a band nobody can name any more, and says so.
+    const stamp = evalBandRef.current
+      ? { bandAtDesign: { fromHz: evalBandRef.current.fromHz, toHz: evalBandRef.current.toHz } }
+      : {};
     setDesigns((ds) =>
       ds.some((d) => d.id === WORKING_ID)
-        ? ds.map((d) => (d.id === WORKING_ID ? { ...d, parts } : d))
-        : [...ds, { id: WORKING_ID, name: 'Working', parts }],
+        ? ds.map((d) => (d.id === WORKING_ID ? { ...d, parts, ...stamp } : d))
+        : [...ds, { id: WORKING_ID, name: 'Working', parts, ...stamp }],
     );
     setActiveDesignId(WORKING_ID);
     setNetworkActive(true);
@@ -3112,6 +3125,98 @@ export default function App() {
     return out;
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [woofer, midDrv, tweeter, nearField, sdCm2, cabinet.micDistanceMm, cabinetInfo]);
+
+  /**
+   * WHAT EACH BRANCH'S RESPONSE IS, AND WHERE IT MAY BE BELIEVED (step B2).
+   *
+   * Derived, never stored: everything needed is already in the project, so
+   * there is nothing to migrate and nothing that can go stale. Near-field bands
+   * follow from Sd (always in the driver definition) and impedance is valid
+   * throughout, so in practice the ONLY thing that can be missing is the gate
+   * length of a gated far field — and that is the one source of 'unverified'.
+   *
+   * A derived flag also cannot quietly disappear when some other field is
+   * edited: it clears exactly when the gate becomes known, which is the point.
+   */
+  const sourceMeta = useMemo(() => {
+    const out: Partial<Record<BranchRole, { name: string; meta: SourceMeta }>> = {};
+    const src: [BranchRole, Loaded | null][] = [
+      ['low', woofer],
+      ['mid', midDrv],
+      ['high', tweeter],
+    ];
+    const topOf = (l: Loaded) => l.frd.freq[l.frd.freq.length - 1];
+    for (const [role, l] of src) {
+      if (!l) continue;
+      const m = merged[role];
+      if (m?.ok && m.spliceHz) {
+        // Spliced: the low end comes from the near field, which is valid from
+        // well below anything the gate could reach.
+        const near = nearFieldValidity(Number(sdCm2[role]));
+        out[role] = {
+          name: role,
+          meta: {
+            dataSource: 'nearfield-merged',
+            validity: {
+              fromHz: near?.fromHz ?? 15,
+              toHz: topOf(l),
+              reason: `near field below ${Math.round(m.spliceHz)} Hz, gated far field above it`,
+            },
+            derivation: m.report,
+            verified: true,
+          },
+        };
+        continue;
+      }
+      const gateMs = gateMsFromHeader(l.raw) ?? (Number(cabinet.gateMs) > 0 ? Number(cabinet.gateMs) : null);
+      if (gateMs === null) {
+        out[role] = {
+          name: role,
+          meta: {
+            dataSource: 'gated-farfield',
+            validity: { fromHz: null, toHz: topOf(l), reason: 'gate length unknown' },
+            verified: false,
+            unverifiedReason:
+              `${role}: no gate length. The exporter did not write one into "${l.name}", and the ` +
+              `cabinet's "Gate" field is empty — so there is no way to know how low this ` +
+              `measurement is honest. Fill in the gate you measured with (Your cabinet → Gate).`,
+          },
+        };
+        continue;
+      }
+      const band = gatedFarFieldValidity(gateMs, topOf(l))!;
+      out[role] = {
+        name: role,
+        meta: { dataSource: 'gated-farfield', validity: band, verified: true },
+      };
+    }
+    return out;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [woofer, midDrv, tweeter, merged, sdCm2, cabinet.gateMs]);
+
+  /** Sources that cannot be judged — they display, but they may not be fitted on. */
+  const unverifiedSources = useMemo(
+    () => Object.values(sourceMeta).filter((v) => v && v.meta.verified === false),
+    [sourceMeta],
+  );
+
+  /**
+   * The band a run may be judged on: the intersection of every contributing
+   * source's validity, narrowed by the view range — never the data's extent
+   * (issue #14).
+   */
+  const evalBand = useMemo(() => {
+    const list = Object.values(sourceMeta).filter(
+      (v): v is { name: string; meta: SourceMeta } => !!v,
+    );
+    if (list.length === 0) return null;
+    const req: [number, number] | undefined =
+      num(fMinDeb, 0) > 0 && num(fMaxDeb, 0) > 0 ? [num(fMinDeb, 200), num(fMaxDeb, 20000)] : undefined;
+    return intersectValidity(list, req);
+  }, [sourceMeta, fMinDeb, fMaxDeb]);
+  useEffect(() => {
+    evalBandRef.current = evalBand ? { fromHz: evalBand.fromHz, toHz: evalBand.toHz } : null;
+  }, [evalBand]);
 
   /** A branch as the rest of the app should see it: merged when a near-field
    *  splice is configured and worked, untouched otherwise. */
@@ -5007,7 +5112,24 @@ export default function App() {
    * UI paints a live counter (round + total network simulations), so a long
    * run reads as work, not a hang.
    */
+  /**
+   * B2 ENFORCEMENT. Loading and showing data whose band is unknown is fine —
+   * refusing to open a project is worse than a weak band. Fitting on it is
+   * not: there the band is the difference between a measurement and a number.
+   *
+   * Returns the message to show, or null when the run may proceed.
+   */
+  function refuseIfUnverified(): string | null {
+    if (unverifiedSources.length === 0) return null;
+    return unverifiedSources.map((s) => s!.meta.unverifiedReason).join(' · ');
+  }
+
   function runVfOptimize() {
+    const refusal = refuseIfUnverified();
+    if (refusal) {
+      setVfError(`Cannot optimise yet — ${refusal}`);
+      return;
+    }
     // THREE-WAY path (trede 4c): the staged 2D chain — textbook LR4 targets
     // + measured level trims per (low, high) handover candidate, per-branch
     // synthesis on each branch's own band, assembled TWO-PAIR tune, and the
@@ -6550,6 +6672,16 @@ export default function App() {
   });
 
   function runNetOptimize() {
+    const refusal = refuseIfUnverified();
+    if (refusal) {
+      // Shown WHERE THE BUTTON IS. setError paints the banner on the import
+      // step, so a refusal raised from the Network tab would look like a
+      // button that does nothing — the exact silent failure this whole step
+      // exists to remove.
+      setNetOptNote(`⚠ ${t('Cannot tune yet')} — ${refusal}`);
+      setError(`Cannot tune yet — ${refusal}`);
+      return;
+    }
     // Guard against programmatic double-starts (the button is disabled while
     // busy, but a second overlapping run would interleave stage labels).
     if (netOptBusy) return;
@@ -11023,6 +11155,16 @@ export default function App() {
                           : loadedDrv
                             ? `${t('✓ response')}${angleCount > 1 ? ` · ${t('{n} angles', { n: angleCount })}` : ''}${hasZ ? ' · Z' : ` · ${t('no impedance yet')}`}`
                             : t('no files yet — or drop them here')}
+                        {/* B2: a source whose validity band could not be
+                            established is marked HERE, where the file is, not
+                            only where a run refuses. It still loads and
+                            displays — refusing to open a project is worse than
+                            a weak band — but it cannot be fitted on. */}
+                        {sourceMeta[role]?.meta.verified === false && (
+                          <span className="src-unverified" title={sourceMeta[role]!.meta.unverifiedReason}>
+                            {' '}⚠ {t('unverified')}
+                          </span>
+                        )}
                       </span>
                     </div>
                     <div className="drv-section-body">
@@ -14703,6 +14845,23 @@ export default function App() {
                         {t('designed from {hz} Hz', { hz: Math.round(optimizerFloorHz) })}
                       </span>
                     )}
+                    {/* B2: the band a run may be judged on, and where each edge
+                        came from. An optimiser that cannot say which band it
+                        worked on is not auditable (issue #14) — and an
+                        unverified source is named here rather than quietly
+                        included. */}
+                    {evalBand && (
+                      <span
+                        className={`strip-item${evalBand.unverified.length > 0 ? ' alert' : ''}`}
+                        title={evalBand.describe}
+                      >
+                        {evalBand.unverified.length > 0 ? '⚠ ' : ''}
+                        {t('valid {lo}–{hi} Hz', {
+                          lo: String(Math.round(evalBand.fromHz)),
+                          hi: String(Math.round(evalBand.toHz)),
+                        })}
+                      </span>
+                    )}
                   </>
                 )}
                 {sumGroupDelay && (
@@ -15540,13 +15699,22 @@ function DesignTab({
       ) : (
         <button
           type="button"
-          className="design-tab-name"
+          className={`design-tab-name${design.bandAtDesign ? '' : ' band-unknown'}`}
           onClick={onSelect}
           onDoubleClick={() => {
             setDraft(design.name);
             setEditing(true);
           }}
-          title={t('Click to activate, double-click to rename')}
+          title={
+            `${t('Click to activate, double-click to rename')} · ` +
+            (design.bandAtDesign
+              ? `computed on ${Math.round(design.bandAtDesign.fromHz)}–${Math.round(
+                  design.bandAtDesign.toHz,
+                )} Hz`
+              : 'computed against an unknown validity band — it predates validity bands, or the ' +
+                'source it was made on had no gate length. It stays visible, but do not read it ' +
+                'as verified.')
+          }
         >
           {design.name}
         </button>

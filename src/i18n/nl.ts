@@ -1944,4 +1944,7 @@ export const nl: Record<string, string> = {
   "{what} could not be stored — this browser's storage is full ({mb} MB of data). Your work is safe in this tab, but it will NOT survive a reload: save the project to a file.": "{what} kon niet worden opgeslagen — de opslag van deze browser is vol ({mb} MB aan data). Je werk staat veilig in dit tabblad, maar het overleeft een herlaadbeurt NIET: sla het project op als bestand.",
   "Autosave": "De autosave",
   "The catalog": "De catalogus",
+  "valid {lo}–{hi} Hz": "geldig {lo}–{hi} Hz",
+  "Cannot tune yet": "Kan nog niet tunen",
+  "unverified": "ongeverifieerd",
 };

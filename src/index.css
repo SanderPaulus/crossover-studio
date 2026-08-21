@@ -3836,3 +3836,9 @@ details.cabinet-driver > .derived strong,
   color: var(--muted);
 }
 .cat-now::before { content: ''; }
+
+/* B2: a design computed against an unknown validity band. It loads, it shows,
+   and it says so — refusing to open a project is worse than a weak band, but
+   passing silently as verified is worse than either. */
+.design-tab-name.band-unknown::after { content: ' ◌'; opacity: 0.7; }
+.src-unverified { color: var(--warn); }
