@@ -278,7 +278,8 @@
       "Bash(awk '{printf \"%8.2f MB  %s\\\\n\", $5/1048576, $9}')",
       "Bash(awk '{printf \"%.2f MB %s\\\\n\", $5/1048576, $9}')",
       "Bash(awk 'NR>=2540 && NR<=2620 && \\(/nearField/ || /transitionHz/\\)' src/App.tsx)",
-      "Bash(grep -n \"className={\\\\`design-tab\" src/App.tsx)"
+      "Bash(grep -n \"className={\\\\`design-tab\" src/App.tsx)",
+      "Bash(sort -t: -k2 -rn)"
     ]
   }
 }
