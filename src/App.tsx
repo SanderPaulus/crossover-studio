@@ -2378,7 +2378,7 @@ export default function App() {
       try {
         const imp = deserializeCatalog(demoCatalog);
         setCustomSeries(imp.series, imp.parts);
-        localStorage.setItem(CUSTOM_CATALOG_KEY, serializeCatalog(imp.series, imp.parts));
+        void storeCompressed(CUSTOM_CATALOG_KEY, serializeCatalog(imp.series, imp.parts), t('The catalog'));
         setPersistNote(
           t('Demo catalog loaded — {n} priced SKUs (snap, BOM and inspector use them)', { n: imp.parts.length }),
         );
@@ -2458,7 +2458,7 @@ export default function App() {
       try {
         const imp = deserializeCatalog(demoCatalog);
         setCustomSeries(imp.series, imp.parts);
-        localStorage.setItem(CUSTOM_CATALOG_KEY, serializeCatalog(imp.series, imp.parts));
+        void storeCompressed(CUSTOM_CATALOG_KEY, serializeCatalog(imp.series, imp.parts), t('The catalog'));
       } catch {
         // Demo catalog fixture unreadable: run with built-ins.
       }
@@ -4510,6 +4510,60 @@ export default function App() {
   /* ---- Project persistence (step 8) ---- */
 
   const AUTOSAVE_KEY = 'ads-autosave';
+  /* BROWSER STORAGE IS SMALL, AND IT USED TO FAIL IN SILENCE (aug 2026,
+   * Sanders "de selectie van de catalogus bestanden werken niet meer").
+   *
+   * His project autosaves to 7.8 MB — three ARTA exports of 13 640 points
+   * each, five angle sets per driver, plus impedances — and Chrome hands a
+   * site about 5 MB of localStorage. So the write threw QuotaExceededError,
+   * the catch was empty ("autosave silently unavailable"), and from then on
+   * NOTHING persisted: the catalog import lived in memory until the next
+   * reload and then vanished, which reads exactly like a broken importer.
+   *
+   * Two changes. Storing COMPRESSED (gzip, ~8x on measurement text) puts a
+   * project of this size back inside the budget, and a failed write now says
+   * so instead of being swallowed. */
+  const STORE_GZIP_PREFIX = 'gz:';
+  const canCompress = typeof CompressionStream !== 'undefined';
+  async function packForStorage(text: string): Promise<string> {
+    if (!canCompress) return text;
+    const cs = new CompressionStream('gzip');
+    const blob = await new Response(
+      new Blob([text]).stream().pipeThrough(cs),
+    ).blob();
+    const bytes = new Uint8Array(await blob.arrayBuffer());
+    let bin = '';
+    // Chunked: String.fromCharCode(...bytes) blows the argument limit on MBs.
+    for (let i = 0; i < bytes.length; i += 0x8000) {
+      bin += String.fromCharCode(...bytes.subarray(i, i + 0x8000));
+    }
+    return STORE_GZIP_PREFIX + btoa(bin);
+  }
+  async function unpackFromStorage(raw: string): Promise<string> {
+    if (!raw.startsWith(STORE_GZIP_PREFIX)) return raw;
+    const bin = atob(raw.slice(STORE_GZIP_PREFIX.length));
+    const bytes = new Uint8Array(bin.length);
+    for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+    const ds = new DecompressionStream('gzip');
+    return await new Response(new Blob([bytes]).stream().pipeThrough(ds)).text();
+  }
+  /** True when the browser refused to store something — surfaced, never swallowed. */
+  const [storageFull, setStorageFull] = useState<string | null>(null);
+  async function storeCompressed(key: string, text: string, what: string): Promise<boolean> {
+    try {
+      localStorage.setItem(key, await packForStorage(text));
+      setStorageFull((f) => (f && f.includes(what) ? null : f));
+      return true;
+    } catch {
+      setStorageFull(
+        t(
+          '{what} could not be stored — this browser\'s storage is full ({mb} MB of data). Your work is safe in this tab, but it will NOT survive a reload: save the project to a file.',
+          { what, mb: (text.length / 1048576).toFixed(1) },
+        ),
+      );
+      return false;
+    }
+  }
   /** A set-aside autosave that failed to restore once. Surfaced with a retry
    *  and a download instead of living silently in localStorage — a backup
    *  nobody can reach is not a backup (Sanders: "alles is ineens weg"). */
@@ -4874,38 +4928,44 @@ export default function App() {
       openWizardForEmpty();
       return;
     }
-    try {
-      applyProject(deserializeProject(stored));
-      setPersistNote(t('Restored from autosave'));
-    } catch {
+    // Async because the payload may be gzipped (see packForStorage); plain
+    // text from before that change still reads through unchanged.
+    void (async () => {
+      let text: string;
       try {
-        localStorage.setItem(`${AUTOSAVE_KEY}-unreadable`, stored);
+        text = await unpackFromStorage(stored);
       } catch {
-        // No room to keep it aside; leave the original in place instead.
-        return;
+        text = stored;
       }
-      localStorage.removeItem(AUTOSAVE_KEY);
-      setUnreadableBackup(stored);
-      setPersistNote(t('Autosave could not be restored — kept aside as backup'));
-      openWizardForEmpty();
-    }
+      try {
+        applyProject(deserializeProject(text));
+        setPersistNote(t('Restored from autosave'));
+      } catch {
+        try {
+          localStorage.setItem(`${AUTOSAVE_KEY}-unreadable`, stored);
+        } catch {
+          // No room to keep it aside; leave the original in place instead.
+          return;
+        }
+        localStorage.removeItem(AUTOSAVE_KEY);
+        setUnreadableBackup(text);
+        setPersistNote(t('Autosave could not be restored — kept aside as backup'));
+        openWizardForEmpty();
+      }
+    })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Debounced autosave on every meaningful change.
   useEffect(() => {
-    const t = setTimeout(() => {
+    const timer = setTimeout(() => {
       // Never overwrite a real autosave with an EMPTY session (e.g. a mount
       // where restore failed): only save once something is actually loaded.
       const s = snapshot();
       if (!s.woofer && !s.tweeter && !s.vxp && !s.impedances && (s.design.networkDesigns?.length ?? 0) === 0) return;
-      try {
-        localStorage.setItem(AUTOSAVE_KEY, serializeProject(s));
-      } catch {
-        // Quota exceeded — autosave silently unavailable; explicit save still works.
-      }
+      void storeCompressed(AUTOSAVE_KEY, serializeProject(s), t('Autosave'));
     }, 800);
-    return () => clearTimeout(t);
+    return () => clearTimeout(timer);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [woofer, midDrv, tweeter, project, zStandalone, angleSets, fileNotes, verifyList, verifyIx, vFilters, xoName, offsetMm, trimDb, inverted, midOffsetMm, midTrimDb, midInverted, fMin, fMax, splMin, splMax, phasePriority, vfEqBands, phaseMode, dirWeight, ampTarget, sonogramMode, designs, activeDesignId, lastSavedId, networkActive, vfBypass, catalogSnap, breakupGuard, xoRangeOn, xoFreqHz, xoMarginHz, xoScanSteps, xo3Steps, hpLpPref, hpLpPrefLow, phaseMetricMode, acSlopeMid, acSlopeTweeter, acSlopeWoofer, acSlopeMidHp, xoLowFreqHz, xoLowMarginHz, midSizeInch, wooferSizeInch, kaTier, cabinet, nearField, ctcK, seatTiming, breakupLimitOn, breakupHarmonic, sdCm2, xmaxMm, excursionSpl, snapProfile, snapSeriesL, snapSeriesC, snapSeriesR, snapStacks, snapBoundToSeries, stagedOn, targetRipple, targetPhase, soloSensDb, soloFloorOn, soloFloorDb]);
 
@@ -6579,12 +6639,14 @@ export default function App() {
     // Order matters: the off-list is resolved against the loaded series.
     const stored = localStorage.getItem(CUSTOM_CATALOG_KEY);
     if (stored) {
-      try {
-        const imp = deserializeCatalog(stored);
-        setCustomSeries(imp.series, imp.parts);
-      } catch {
-        // Unreadable custom catalog: leave it in place, run with built-ins.
-      }
+      void (async () => {
+        try {
+          const imp = deserializeCatalog(await unpackFromStorage(stored));
+          setCustomSeries(imp.series, imp.parts);
+        } catch {
+          // Unreadable custom catalog: leave it in place, run with built-ins.
+        }
+      })();
     }
     try {
       const off = JSON.parse(localStorage.getItem(CATALOG_OFF_KEY) ?? '[]');
@@ -6617,7 +6679,7 @@ export default function App() {
     try {
       const imp = deserializeCatalog(demoCatalog);
       setCustomSeries(imp.series, imp.parts);
-      localStorage.setItem(CUSTOM_CATALOG_KEY, serializeCatalog(imp.series, imp.parts));
+      void storeCompressed(CUSTOM_CATALOG_KEY, serializeCatalog(imp.series, imp.parts), t('The catalog'));
       setPersistNote(
         t('Demo catalog loaded — {n} priced SKUs (snap, BOM and inspector use them)', { n: imp.parts.length }),
       );
@@ -6649,7 +6711,7 @@ export default function App() {
       // take over, so drop the stored blob instead of persisting an invalid one.
       localStorage.removeItem(CUSTOM_CATALOG_KEY);
     } else {
-      localStorage.setItem(CUSTOM_CATALOG_KEY, serializeCatalog(series, parts));
+      void storeCompressed(CUSTOM_CATALOG_KEY, serializeCatalog(series, parts), t('The catalog'));
     }
     setPersistNote(
       t('Catalog updated — {n} exact SKUs active', { n: parts.length }) +
@@ -6670,7 +6732,7 @@ export default function App() {
     try {
       const imp = deserializeCatalog(await file.text());
       setCustomSeries(imp.series, imp.parts);
-      localStorage.setItem(CUSTOM_CATALOG_KEY, serializeCatalog(imp.series, imp.parts));
+      void storeCompressed(CUSTOM_CATALOG_KEY, serializeCatalog(imp.series, imp.parts), t('The catalog'));
       setPersistNote(t('Imported catalog {name} — series available in the editor inspector', { name: file.name }));
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
@@ -11456,6 +11518,14 @@ export default function App() {
           ));
         })()}
       </div>
+        {storageFull && (
+          <div className="verdict mismatch" style={{ margin: '0.6rem 0' }}>
+            <strong>⚠ {storageFull}</strong>{' '}
+            <button type="button" onClick={saveProject}>
+              {t('Save project')}
+            </button>
+          </div>
+        )}
         {unreadableBackup && (
           <div className="verdict mismatch" style={{ margin: '0.6rem 0' }}>
             <strong>{t('There is a saved backup of an earlier session that could not be loaded automatically')}</strong>{' '}

@@ -3825,3 +3825,14 @@ details.cabinet-driver > .derived strong,
 }
 .cm-discard span { flex: 1; }
 .cm-discard button.danger { border-color: var(--bad); color: var(--bad); }
+
+/* Inspector: how many physical parts one component is built from, and what it
+   currently IS. Stacking used to be implicit — see SchematicEditor stackN. */
+.cat-count { display: inline-flex; flex-direction: row; align-items: center; gap: 0.25rem; }
+.cat-count select { min-width: 4.5rem; }
+.cat-now {
+  flex-basis: 100%;
+  font-size: 0.78rem;
+  color: var(--muted);
+}
+.cat-now::before { content: ''; }

@@ -1937,4 +1937,11 @@ export const nl: Record<string, string> = {
   "Replace": "Vervangen",
   "Every nearby catalog part in this scope — single parts and stacks (caps in parallel, coils in series), with prices; picking one applies it": "Elk nabijgelegen catalogusonderdeel binnen dit bereik — losse onderdelen én stapels (caps parallel, spoelen in serie), met prijzen; klikken past het toe",
   "Keep editing": "Verder bewerken",
+  "How many physical parts to build this one component from. 2× means two parts of half the value — capacitors in parallel, coils in series (their DCR adds). The schematic keeps one symbol carrying the total; the BOM lists what you buy.": "Uit hoeveel fysieke onderdelen dit ene component wordt opgebouwd. 2× betekent twee onderdelen van de halve waarde — caps parallel, spoelen in serie (hun DCR telt op). Het schema houdt één symbool met de totaalwaarde; de BOM toont wat je koopt.",
+  "any": "vrij",
+  "now:": "nu:",
+  "The catalog parts this component is built from": "De catalogusonderdelen waaruit dit component is opgebouwd",
+  "{what} could not be stored — this browser's storage is full ({mb} MB of data). Your work is safe in this tab, but it will NOT survive a reload: save the project to a file.": "{what} kon niet worden opgeslagen — de opslag van deze browser is vol ({mb} MB aan data). Je werk staat veilig in dit tabblad, maar het overleeft een herlaadbeurt NIET: sla het project op als bestand.",
+  "Autosave": "De autosave",
+  "The catalog": "De catalogus",
 };

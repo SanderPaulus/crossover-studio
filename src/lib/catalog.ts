@@ -700,18 +700,88 @@ function preferredPools(
  * the machinery already existed for the snap, and `VxpPart.catalog` already
  * carries the `SKU+SKU` form the BOM reads back.
  */
+/**
+ * Human label for one realisation: what you buy, and what it comes to.
+ *
+ * The point (Sanders "het is vooral onduidelijk wat er nu gebeurt"): a list
+ * that reads "Jantzen Electrolytic Bipolar · €1.74" tells you the series and
+ * the price and leaves out the one number the designer is choosing. A bank
+ * has to state its arithmetic — 2× 6.80 µF = 13.6 µF — or the schematic value
+ * seems to change by itself.
+ */
+export function describeRealisation(pick: CatalogPick, kind: CatalogKind): string {
+  const val = (v: number) =>
+    kind === 'L'
+      ? `${trim3(v * 1e3)} mH`
+      : kind === 'C'
+        ? `${trim3(v * 1e6)} µF`
+        : `${trim3(v)} Ω`;
+  const price = pick.priceEur !== undefined ? ` · €${pick.priceEur.toFixed(2)}` : '';
+  const p0 = pick.parts[0];
+  if (pick.parts.length === 1) {
+    const extra =
+      kind === 'L' && p0.wireMm !== undefined
+        ? ` · ${p0.wireMm.toFixed(1)} mm · ${trim3(p0.seriesR)} Ω`
+        : '';
+    return `${val(p0.value)} · ${p0.series}${extra}${price}`;
+  }
+  const uniform = pick.parts.every((x) => x.id === p0.id);
+  const how = kind === 'L' ? 'in series' : 'in parallel';
+  const sum = `= ${val(pick.value)}`;
+  return uniform
+    ? `${pick.parts.length}× ${val(p0.value)} ${sum} · ${p0.series} (${how})${price}`
+    : `${pick.parts.map((x) => val(x.value)).join(' + ')} ${sum} · ${p0.series} (${how})${price}`;
+}
+
 export function nearestRealisations(
   kind: CatalogKind,
   value: number,
   count = 8,
   seriesId?: string,
+  /** Only realisations built from exactly this many physical parts (the
+   *  inspector's count field). Omitted = every shape, nearest first. */
+  partCount?: number,
 ): CatalogPick[] {
   if (!(value > 0)) return [];
   const wanted = seriesId ? allSeries().find((s) => s.id === seriesId) : undefined;
   const pool = catalogParts().filter(
     (p) => p.kind === kind && (!wanted || (p.brand === wanted.brand && p.series === wanted.series)),
   );
+  /* With a count asked for, the value each PART must carry changes: N caps in
+   * parallel (or N coils in series) each hold value/N. Searching the pool
+   * around value/N is what makes "give me 2×" find 6.80 µF for a 13.6 µF slot
+   * instead of reporting that nothing near 13.6 exists in this series. */
+  if (partCount !== undefined && partCount > 1) {
+    const per = value / partCount;
+    const out: CatalogPick[] = [];
+    for (const a of nearestWithVariants(pool, per, count)) {
+      const v = a.value * partCount;
+      out.push({
+        value: v,
+        seriesR: kind === 'L' ? a.seriesR * partCount : a.seriesR / partCount,
+        label: `${partLabel(a)} ${fmtVal(kind, a.value)} (${partCount}× ${
+          kind === 'L' ? 'in series' : 'in parallel'
+        })`,
+        parts: Array(partCount).fill(a),
+        ...(a.priceEur !== undefined
+          ? { priceEur: Number((a.priceEur * partCount).toFixed(2)) }
+          : {}),
+      });
+    }
+    // Mixed pairs are a two-part shape too, and often land closer.
+    if (partCount === 2) {
+      out.push(...stackCandidates(kind, value, count, pool).filter((p) => p.parts.length === 2));
+    }
+    return out
+      .sort((a, b) => {
+        const d = Math.abs(Math.log(a.value / value)) - Math.abs(Math.log(b.value / value));
+        if (Math.abs(d) > 1e-9) return d;
+        return (a.priceEur ?? Infinity) - (b.priceEur ?? Infinity);
+      })
+      .slice(0, count);
+  }
   const singles = nearestWithVariants(pool, value, count).map(singlePick);
+  if (partCount === 1) return singles.slice(0, count);
   const stacks = stackCandidates(kind, value, Math.max(2, Math.ceil(count / 2)), pool);
   const err = (v: number) => Math.abs(Math.log(v / value));
   /* SINGLE WHERE IT CAN (Sanders' doctrine, and what pickCandidates already

@@ -18,6 +18,7 @@ import { t } from '../lib/i18n.ts';
 import {
   catalogSeries,
   formatCatalogPart,
+  describeRealisation,
   nearestRealisations,
   type CatalogKind,
   type CatalogPick,
@@ -56,6 +57,11 @@ const MIN_H = 24;
 export default function SchematicEditor({ parts, models, onChange, onUndo, canUndo, onRedo, canRedo }: Props) {
   const svgRef = useRef<SVGSVGElement>(null);
   const [tool, setTool] = useState<Tool>({ kind: 'select' });
+  /* How many physical parts the selected slot should be built from (Sanders:
+   * "kan je niet een invoerveld erbij maken met het aantal"). Stacking used to
+   * be implicit — a suggestion silently turned one symbol into a bank — and
+   * you could not ask for one either. 0 = "any shape, nearest first". */
+  const [stackN, setStackN] = useState(0);
   const [sel, setSel] = useState<number | null>(null);
   const [wireStart, setWireStart] = useState<Pt | null>(null);
   const [hoverPt, setHoverPt] = useState<Pt | null>(null);
@@ -374,6 +380,24 @@ export default function SchematicEditor({ parts, models, onChange, onUndo, canUn
                   </option>
                 ))}
               </select>
+              <label
+                className="cat-count"
+                title={t(
+                  'How many physical parts to build this one component from. 2× means two parts of half the value — capacitors in parallel, coils in series (their DCR adds). The schematic keeps one symbol carrying the total; the BOM lists what you buy.',
+                )}
+              >
+                ×
+                <select
+                  value={String(stackN)}
+                  onChange={(e) => setStackN(Number(e.target.value))}
+                >
+                  <option value="0">{t('any')}</option>
+                  <option value="1">1</option>
+                  <option value="2">2</option>
+                  <option value="3">3</option>
+                  <option value="4">4</option>
+                </select>
+              </label>
               {(() => {
                 const si = (partParam(selPart, catKind) ?? 0) * CAT_UNIT[catKind].toSi;
                 const scope = prefSeries[catKind] === 'all' ? undefined : prefSeries[catKind];
@@ -405,7 +429,25 @@ export default function SchematicEditor({ parts, models, onChange, onUndo, canUn
                     setPartProps(withRes, sel!, { catalog: pick.parts.map((x: { id: string }) => x.id).join('+') }),
                   );
                 };
-                const candidates = nearestRealisations(catKind, si, 8, scope);
+                const candidates = nearestRealisations(
+                  catKind,
+                  si,
+                  8,
+                  scope,
+                  stackN > 0 ? stackN : undefined,
+                );
+                /* What this slot IS right now, spelled out. The `catalog`
+                 * stamp carries every SKU, so a bank can say so instead of
+                 * leaving the reader to wonder why one symbol costs €177. */
+                const stampIds = (selPart.catalog ?? '').split('+').filter(Boolean);
+                const stamped =
+                  stampIds.length > 0
+                    ? candidates.find(
+                        (c) =>
+                          c.parts.length === stampIds.length &&
+                          c.parts.every((x: { id: string }, i: number) => x.id === stampIds[i]),
+                      )
+                    : undefined;
                 // Quick-pick buttons: one per DISTINCT value (first = best
                 // variant), max 3 — the full variant list (gauges, brands,
                 // prices) lives in the dropdown so the row never grows wide
@@ -453,8 +495,7 @@ export default function SchematicEditor({ parts, models, onChange, onUndo, canUn
                       </option>
                       {candidates.map((p) => (
                         <option key={idOf(p)} value={idOf(p)}>
-                          {p.label}
-                          {p.priceEur !== undefined ? ` · €${p.priceEur.toFixed(2)}` : ''}
+                          {describeRealisation(p, catKind)}
                         </option>
                       ))}
                     </select>
@@ -462,7 +503,7 @@ export default function SchematicEditor({ parts, models, onChange, onUndo, canUn
                       <button
                         key={idOf(p)}
                         type="button"
-                        title={`${p.label}${p.priceEur !== undefined ? ` · €${p.priceEur.toFixed(2)}` : ''}${
+                        title={`${describeRealisation(p, catKind)}${
                           catKind === 'R' ? '' : ` — ${t('apply value +')} ${catKind === 'L' ? 'DCR' : 'ESR'}`
                         }`}
                         onClick={() => applyRealisation(p)}
@@ -470,6 +511,11 @@ export default function SchematicEditor({ parts, models, onChange, onUndo, canUn
                         {short(p)}
                       </button>
                     ))}
+                    {stamped && (
+                      <span className="cat-now" title={t('The catalog parts this component is built from')}>
+                        {t('now:')} {describeRealisation(stamped, catKind)}
+                      </span>
+                    )}
                   </>
                 );
               })()}
