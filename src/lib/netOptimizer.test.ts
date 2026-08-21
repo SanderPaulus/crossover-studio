@@ -1182,7 +1182,14 @@ describe('A3g — every judged quantity describes the network that ships', () =>
     });
 
   it('re-solving the delivered parts reproduces every number in `after`', () => {
-    const r = run();
+    /* WITH A SAFETY GRID ARMED, because zMinOf takes the worst of the eval grid
+     * and the safety grid — and the safety half re-solves from `ps`. If that
+     * argument were ever dropped for a captured variable, Z-min would silently
+     * describe a different network than R_source does, which is the question
+     * Sander asked before trusting any Z number in the scan table. */
+    const r = run({
+      safety: { freqs: grid, w: wBase, t: tBase, z: driverZ },
+    });
     /* The independent check: take the parts that came out, run them through
      * the SAME optimiser with nothing free to move, and read its `before`.
      * If any field in `after` belonged to an earlier network, this disagrees. */
@@ -1197,6 +1204,7 @@ describe('A3g — every judged quantity describes the network that ships', () =>
       maxIterations: 1, // and `before` is read, so nothing it does can reach it
       catalogSnap: false,
       audit: { enabled: false as const },
+      safety: { freqs: grid, w: wBase, t: tBase, z: driverZ },
     });
     expect(re.before.rippleDb).toBeCloseTo(r.after.rippleDb, 9);
     expect(re.before.avgDevDb!).toBeCloseTo(r.after.avgDevDb!, 9);
