@@ -700,7 +700,26 @@ interface CabinetDriver {
   opposed: boolean;
 }
 interface CabinetState {
-  /** Microphone distance during the FRD sweeps, mm. */
+  /**
+   * Microphone distance during the FRD sweeps, mm.
+   *
+   * ⚠ ONE GLOBAL NUMBER FOR EVERY SWEEP, AND THAT IS NOT WHAT A DATASET LOOKS
+   * LIKE. Sanders Koan measurements were taken in two sessions with different
+   * geometry — session 1 with the mic 935 mm high, session 2 at 1000 mm
+   * distance and 1387 mm high — and this field can only hold one of them. It
+   * surfaced through the gate: the 4.5 ms sitting in `gateMs` was session 1's
+   * mid window, standing in for branches measured in session 2 (see A3h).
+   *
+   * The gate half is fixed — a file states its own window. This half cannot be
+   * fixed the same way: ARTA writes no distance into the export, so it needs a
+   * field PER SOURCE rather than a better parser. It is not cosmetic — mic
+   * distance feeds `trueOffAxisDeg`, the rig path excess, the derived mounting
+   * depth and the far-field verdict, so getting it wrong moves physics and not
+   * just a band.
+   *
+   * Deliberately left as is until A5 (positions per source), where the per-
+   * source record exists to put it on. Written down here so A5 meets it.
+   */
   micDistanceMm: string;
   /** Fixed VERTICAL angle of the rig, degrees; + = mic above the reference
    *  plane. Usually 0 (mic level with the reference point). Signed on purpose:

@@ -2231,6 +2231,16 @@ uit `design.cabinet.gateMs` (een 4,5 ms die Sander in een eerdere sessie op 935 
 gemeten) en niet uit enige meting in dat project — de app kon ARTA's `Right window = 5,021 ms` niet
 lezen en viel stil terug op dat globale veld. De echte vloer is 455 Hz. Zie de A3h-meting hieronder
 voor waar de kruising tegen de gecorrigeerde vloer landt.
+**EEN GLOBAAL VELD KAN TWEE MEETSESSIES NIET DRAGEN (aug 2026, Sanders notitie voor A5)**: zijn
+KOAN-set is in TWEE sessies gemeten met verschillende geometrie — sessie 1 met de mic op 935 mm
+hoog, sessie 2 op 1000 mm afstand en 1387 mm hoog — en `cabinet.micDistanceMm`/`micElevationDeg`
+kunnen er maar één van bevatten. Het kwam via de GATE boven water: de 4,5 ms in `cabinet.gateMs`
+was het mid-venster van sessie 1 en viel in voor takken uit sessie 2 (A3h). De gate-helft is
+gefixt — een bestand draagt zijn eigen venster. De AFSTAND kan dat niet: ARTA schrijft geen
+afstand in de export, dus dit vraagt een veld PER BRON en geen betere parser. Niet cosmetisch:
+mic-afstand voedt `trueOffAxisDeg`, het rig-pad, de afgeleide montagediepte en het
+ver-veld-oordeel — fout betekent verschoven fysica, niet alleen een verschoven band. Bewust
+blijven staan tot A5 (posities per bron), waar het per-bron-record bestaat om het op te hangen.
 **A3e — DISKWALIFICATIES WORDEN RANDVOORWAARDEN IN DE TUNE**: R_bron ≥ 2,0 Ω was al diskwalificerend
 in de ranking maar onzichtbaar in de zoektocht, dus de tuner optimaliseerde zich netjes een ontwerp
 in dat daarna werd weggegooid. Nu `rSourceDisqualifyOhm` als CONSTRAINT in `fxOf`: binnen de grens
