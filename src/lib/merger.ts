@@ -34,6 +34,22 @@
  * cone (propagation negligible), the far-field mic at the measuring distance
  * plus the driver's acoustic centre. This is a deliberate choice, not a missing
  * feature.
+ *
+ * THE DIVISION OF LABOUR, and it explains what is absent here as much as what
+ * is present: THE NEAR FIELD SUPPLIES THE SHAPE, THE FAR FIELD SUPPLIES THE
+ * LEVEL. That is why there is no a/(2r) near-to-far scaling in this module —
+ * the gain is fitted, so any constant factor is absorbed and computing one
+ * first would be arithmetic with no consequence. The √(S_i/S_ref) scaling
+ * BETWEEN radiators is a different matter: it is a ratio inside the near-field
+ * sum, it changes the shape, and nothing absorbs it.
+ *
+ * THE SPLICE WINDOW IS DERIVED, NOT CONFIGURED. Its top is a fixed margin under
+ * the driver's own ka = 1, its bottom is the far field's gate-determined
+ * validity floor. Hard-coded numbers sitting next to a derived limit collide
+ * sooner or later — a 500–600 Hz default sits 1 % under a 606 Hz ka limit, so a
+ * small refinement of Sd would have the refusal reject the project's own demo.
+ * A manual override may only narrow the window; one that reaches outside the
+ * derived bounds is refused, not honoured.
  */
 
 import type { Complex } from './complex.ts';
@@ -50,6 +66,21 @@ import {
 
 const C_AIR = 343; // m/s
 const C_MM_PER_S = C_AIR * 1000;
+
+/**
+ * How far under ka = 1 the splice may reach, as a fraction.
+ *
+ * 0.95 rather than 1.0 because the piston error is not the only thing waiting
+ * at the limit: a real cone stops moving as one piece before ka = 1, and that
+ * part is not analytic. A margin also stops the derived ceiling from sitting
+ * within rounding distance of the refusal that guards it.
+ *
+ * WO24P-8 (Sd 255 cm²): ka = 1 at 606 Hz, so the ceiling is 576 Hz.
+ */
+export const SPLICE_KA_MARGIN = 0.95;
+
+/** Below this the gain fit has too few points to mean much. */
+const THIN_WINDOW_OCT = 0.2;
 
 /* ------------------------------------------------------------------ *
  * Inputs
@@ -130,7 +161,13 @@ export interface MergerInput {
   port?: PortInput;
   /** Reference area for the √(S/S_ref) scaling, cm². Default: woofer 1's Sd. */
   sdRefCm2?: number;
-  /** Splice window, Hz. Default 500–600 (see the module docstring). */
+  /**
+   * Optional NARROWING of the derived splice window, Hz. The window itself
+   * comes from physics (see the module docstring): its top is
+   * SPLICE_KA_MARGIN × ka=1 for the strictest driver, its bottom is
+   * `farValidFromHz`. An override that reaches OUTSIDE those bounds is refused
+   * rather than honoured — otherwise the derivation is decoration.
+   */
   spliceFromHz?: number;
   spliceToHz?: number;
   /** Crossfade width in octaves. Default 1/3. */
@@ -144,8 +181,12 @@ export interface MergerInput {
   acousticCentreMm?: number;
   /** How far the near-field mic stood off the cone, mm. */
   nearMicMm?: number;
-  /** Far-field validity floor, Hz — from the gate. Used to police the splice. */
-  farValidFromHz?: number;
+  /**
+   * Far-field validity floor, Hz — the gate's own limit (2/T), from the
+   * measurement's SourceMeta. REQUIRED: it is the bottom of the splice window,
+   * and guessing it would mean fitting the gate instead of the driver.
+   */
+  farValidFromHz: number;
   /**
    * TEST HOOK ONLY: run the diffraction step AFTER the gain fit, which is the
    * wrong order. Exists so the order test can demonstrate the error instead of
@@ -208,6 +249,8 @@ export interface MergerResult {
   summedSpl: number[];
   summedPhaseDeg: number[];
   spliceBand: [number, number];
+  /** Width of the fit window, octaves — reported on every merge. */
+  spliceWidthOct: number;
   warnings: string[];
 }
 
@@ -349,8 +392,6 @@ export function mergeSources(input: MergerInput): MergerResult | null {
     freq,
     woofers,
     port,
-    spliceFromHz = 500,
-    spliceToHz = 600,
     blendOctaves = 1 / 3,
     baffleStepHz = 0,
     baffleStepDepthDb = 6,
@@ -363,8 +404,7 @@ export function mergeSources(input: MergerInput): MergerResult | null {
 
   const n = freq.length;
   if (n < 8 || woofers.length === 0) return null;
-  if (!(spliceToHz > spliceFromHz)) return null;
-  if (!(micDistanceMm > 0)) return null;
+  if (!(micDistanceMm > 0) || !(farValidFromHz > 0)) return null;
   for (const w of woofers) {
     if (w.spl.length !== n || w.farSpl.length !== n || !(w.sdCm2 > 0)) return null;
   }
@@ -379,37 +419,90 @@ export function mergeSources(input: MergerInput): MergerResult | null {
 
   const warnings: string[] = [];
 
-  /* ---- Splice band policing ----------------------------------------
-   * Above ka = 1 the near field is no longer proportional to cone velocity, so
-   * a splice up there is not "slightly worse" — the data being fitted does not
-   * mean what the fit assumes. That is a REFUSAL, not a warning. The strictest
-   * driver decides, because one splice band serves them all. */
+  /* ---- The splice window, derived ------------------------------------
+   * Top: a margin under the strictest driver's ka = 1 — above that the near
+   * field is not proportional to cone velocity, so the data does not mean what
+   * the fit assumes. Bottom: the far field's gate-determined floor — below that
+   * a fit is fitting the gate. Neither is a preference, so neither is a
+   * default. */
   const nearBand = nearFieldValidity(woofers[0].sdCm2);
+  // The STRICTEST cone sets the ceiling — one window serves them all — and it
+  // is that cone the messages must name, not whichever happens to be first.
   let kaHi: number | null = null;
+  let strictSd = woofers[0].sdCm2;
   for (const w of woofers) {
     const b = nearFieldValidity(w.sdCm2);
-    if (b?.toHz != null) kaHi = kaHi === null ? b.toHz : Math.min(kaHi, b.toHz);
+    if (b?.toHz != null && (kaHi === null || b.toHz < kaHi)) {
+      kaHi = b.toHz;
+      strictSd = w.sdCm2;
+    }
   }
-  if (kaHi !== null && spliceToHz > kaHi) {
-    const ka = kaAt(spliceToHz, woofers[0].sdCm2) ?? 0;
-    return {
-      perWoofer: [],
-      summedSpl: [],
-      summedPhaseDeg: [],
-      spliceBand: [spliceFromHz, spliceToHz],
-      warnings: [
-        `✖ REFUSED: splice top ${Math.round(spliceToHz)} Hz is above the near field's ka = 1 ` +
-          `limit (${Math.round(kaHi)} Hz). At ka = ${ka.toFixed(2)} the ideal-piston error is ` +
-          `at least ${pistonErrorDb(ka).toFixed(2)} dB and a real cone adds more that is not ` +
-          `analytic — the near field simply is not proportional to cone velocity up there. ` +
-          `Lower the splice, or measure the low end another way (ground plane).`,
-      ],
-    };
+  const refuse = (why: string): MergerResult => ({
+    perWoofer: [],
+    summedSpl: [],
+    summedPhaseDeg: [],
+    spliceBand: [0, 0],
+    spliceWidthOct: 0,
+    warnings: [why],
+  });
+  if (kaHi === null) return refuse('✖ REFUSED: no Sd, so the near field has no validity limit');
+  const derivedHi = SPLICE_KA_MARGIN * kaHi;
+  const derivedLo = farValidFromHz;
+  if (derivedLo >= derivedHi) {
+    /* WHICH of the two closed it is not an objective question — both bounds
+     * move, and calling one of them "the" cause would need a notion of a
+     * normal gate or a normal cone that this module has no business holding.
+     * What IS objective is how far each would have to shift to open the
+     * window, so say both, with the number attached to each remedy. */
+    const needGateHz = derivedHi; // the far field would have to be honest down to here
+    const needGateMs = 2000 / needGateHz;
+    const needKaHz = derivedLo / SPLICE_KA_MARGIN; // ka = 1 would have to sit here
+    const needA = C_AIR / (2 * Math.PI * needKaHz);
+    const needSdCm2 = Math.PI * needA * needA * 1e4;
+    const kaAtFloor = kaAt(derivedLo, strictSd) ?? 0;
+    return refuse(
+      `✖ REFUSED: no honest splice window exists. The far field is only valid above ` +
+        `${Math.round(derivedLo)} Hz (its gate), and the near field only below ` +
+        `${Math.round(derivedHi)} Hz (${SPLICE_KA_MARGIN.toFixed(2)} × ka = 1 at ` +
+        `${Math.round(kaHi)} Hz) — at that gate floor this cone is already at ka = ` +
+        `${kaAtFloor.toFixed(2)}, an ideal-piston error of at least ` +
+        `${pistonErrorDb(kaAtFloor).toFixed(2)} dB. Either end can open it: the far field would ` +
+        `have to reach down to ${Math.round(needGateHz)} Hz (a gate of ` +
+        `${needGateMs.toFixed(1)} ms — further from walls, higher up, or outdoors), or the cone ` +
+        `would have to be small enough to keep ka = 1 above ${Math.round(needKaHz)} Hz ` +
+        `(Sd ≤ ${Math.round(needSdCm2)} cm², against ${Math.round(strictSd)} here). ` +
+        `A ground-plane measurement of the low end avoids the splice altogether.`,
+    );
   }
-  if (farValidFromHz !== undefined && spliceFromHz < farValidFromHz) {
+
+  /* An override may only NARROW. Letting it reach outside would make the
+   * derivation decoration — the number a designer types would silently outrank
+   * the physics it was derived from. */
+  const wantLo = input.spliceFromHz ?? derivedLo;
+  const wantHi = input.spliceToHz ?? derivedHi;
+  if (wantLo < derivedLo - 1e-9 || wantHi > derivedHi + 1e-9) {
+    return refuse(
+      `✖ REFUSED: the splice override ${Math.round(wantLo)}–${Math.round(wantHi)} Hz reaches ` +
+        `outside the derived window ${Math.round(derivedLo)}–${Math.round(derivedHi)} Hz. ` +
+        `An override may narrow the window, never widen it: outside these bounds one half of ` +
+        `the data does not support a fit at all` +
+        (wantHi > derivedHi
+          ? ` — at ${Math.round(wantHi)} Hz this cone is at ka = ` +
+            `${(kaAt(wantHi, strictSd) ?? 0).toFixed(2)}, an ideal-piston error of at ` +
+            `least ${pistonErrorDb(kaAt(wantHi, strictSd) ?? 0).toFixed(2)} dB.`
+          : ` — below ${Math.round(derivedLo)} Hz the far field is gate-limited, so the fit ` +
+            `would be fitting the gate.`),
+    );
+  }
+  if (!(wantHi > wantLo)) return refuse('✖ REFUSED: the splice window is empty');
+  const spliceFromHz = wantLo;
+  const spliceToHz = wantHi;
+  const spliceWidthOct = Math.log2(spliceToHz / spliceFromHz);
+  if (spliceWidthOct < THIN_WINDOW_OCT) {
     warnings.push(
-      `⚠ splice bottom ${Math.round(spliceFromHz)} Hz is below the far field's own limit ` +
-        `of ${Math.round(farValidFromHz)} Hz — the gate cannot support a fit down there`,
+      `⚠ the fit window is only ${spliceWidthOct.toFixed(2)} octave ` +
+        `(${Math.round(spliceFromHz)}–${Math.round(spliceToHz)} Hz) — thin for a gain fit; the ` +
+        `level it returns rests on few points, so check the residual before trusting it`,
     );
   }
 
@@ -424,6 +517,7 @@ export function mergeSources(input: MergerInput): MergerResult | null {
       summedSpl: [],
       summedPhaseDeg: [],
       spliceBand: [spliceFromHz, spliceToHz],
+      spliceWidthOct,
       warnings,
     };
   }
@@ -592,9 +686,12 @@ export function mergeSources(input: MergerInput): MergerResult | null {
     summedSpl,
     summedPhaseDeg,
     spliceBand: [spliceFromHz, spliceToHz],
+    spliceWidthOct,
     warnings: warnings.concat(
-      `merged at ${Math.round(centre)} Hz; the summed curve is a visual check only and is ` +
-        `never model input (the pair's interference must stay out of the source data)`,
+      `merged at ${Math.round(centre)} Hz over a ${spliceWidthOct.toFixed(2)} octave window ` +
+        `(${Math.round(spliceFromHz)}–${Math.round(spliceToHz)} Hz, derived: gate floor to ` +
+        `${SPLICE_KA_MARGIN.toFixed(2)} × ka = 1); the summed curve is a visual check only and ` +
+        `is never model input (the pair's interference must stay out of the source data)`,
     ),
   };
 }

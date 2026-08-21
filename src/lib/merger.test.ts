@@ -178,8 +178,10 @@ describe('merger — one response per source, near field spliced onto far field'
     const w = [wooferInput('W1', 0, rippled)];
     // Both windows must stay under ka = 1 (606 Hz for Sd 255) or the merge
     // refuses — which is test 6's job, not this one's.
-    const a = mergeSources(baseInput({ woofers: w, spliceFromHz: 500, spliceToHz: 540 }))!;
-    const b = mergeSources(baseInput({ woofers: w, spliceFromHz: 560, spliceToHz: 600 }))!;
+    // Both must stay INSIDE the derived window (500 … 576 Hz here) — an
+    // override may only narrow it, which is test 6's job to prove.
+    const a = mergeSources(baseInput({ woofers: w, spliceFromHz: 500, spliceToHz: 535 }))!;
+    const b = mergeSources(baseInput({ woofers: w, spliceFromHz: 540, spliceToHz: 575 }))!;
     for (const hz of [25, 50, 100, 250, 1500, 5000, 15000]) {
       const i = atHz(hz);
       expect(Math.abs(a.perWoofer[0].spl[i] - b.perWoofer[0].spl[i])).toBeLessThan(0.2);
@@ -204,34 +206,60 @@ describe('merger — one response per source, near field spliced onto far field'
     expect(right.residualDb).toBeLessThan(wrong.residualDb);
   });
 
-  it('(6) a splice at 300 Hz warns; one above ka = 1 is REFUSED, not warned', () => {
-    const low = mergeSources(baseInput({ spliceFromHz: 280, spliceToHz: 320 }))!;
-    expect(low.warnings.join(' ')).toMatch(/below the far field's own limit of 500 Hz/);
-    expect(low.perWoofer).toHaveLength(1); // a warning still produces a result
+  it('(6) the window is DERIVED, and an override may only narrow it', () => {
+    /* Physics decides the window: top = 0.95 × ka=1 of the strictest cone,
+     * bottom = the far field's gate floor. For Sd 255 with a 500 Hz gate that
+     * is 500 … 576 Hz — 0.203 octave, which the result reports. */
+    const ok = mergeSources(baseInput())!;
+    expect(ok.spliceBand[0]).toBeCloseTo(500, 6);
+    expect(ok.spliceBand[1]).toBeCloseTo(0.95 * 605.9, 0);
+    expect(ok.spliceWidthOct).toBeCloseTo(0.203, 2);
+    expect(ok.warnings.join(' ')).toMatch(/derived: gate floor to 0.95 × ka = 1/);
 
-    // Above ka = 1 (606 Hz for Sd 255) the near field is no longer proportional
-    // to cone velocity: the data does not mean what the fit assumes, so there is
-    // nothing to hand back.
+    // Reaching BELOW the gate floor: refused, and it names the reason.
+    const low = mergeSources(baseInput({ spliceFromHz: 280, spliceToHz: 320 }))!;
+    expect(low.perWoofer).toHaveLength(0);
+    expect(low.warnings.join(' ')).toMatch(/may narrow the window, never widen it/);
+    expect(low.warnings.join(' ')).toMatch(/fitting the gate/);
+
+    // Reaching ABOVE ka = 1: refused, with the piston error stated.
     const high = mergeSources(baseInput({ spliceFromHz: 620, spliceToHz: 700 }))!;
     expect(high.perWoofer).toHaveLength(0);
     const text = high.warnings.join(' ');
     expect(text).toMatch(/✖ REFUSED/);
-    expect(text).toMatch(/ka = 1 limit \(606 Hz\)/);
+    expect(text).toMatch(/ka = 1\.\d\d/);
     expect(text).toMatch(/at least -\d\.\d\d dB/);
 
-    /* The STRICTEST driver decides, because one splice band serves them all.
-     * A 400 cm² cone puts ka = 1 at 484 Hz, so the default 500–600 window that
-     * is fine for the 255 cm² pair must be refused as soon as it joins. */
-    const bigger = [wooferInput('W1'), { ...wooferInput('W2'), sdCm2: 400 }];
-    expect(mergeSources(baseInput({ woofers: bigger }))!.perWoofer).toHaveLength(0);
-    // Move the window under the stricter limit and both go through.
-    const lower = mergeSources(
-      baseInput({ woofers: bigger, spliceFromHz: 400, spliceToHz: 450 }),
-    )!;
-    expect(lower.perWoofer).toHaveLength(2);
+    // Narrowing is allowed.
+    const narrow = mergeSources(baseInput({ spliceFromHz: 520, spliceToHz: 560 }))!;
+    expect(narrow.perWoofer).toHaveLength(1);
+    expect(narrow.spliceBand).toEqual([520, 560]);
 
-    // A healthy splice says nothing alarming.
-    expect(mergeSources(baseInput())!.warnings.join(' ')).not.toMatch(/[⚠✖]/);
+    /* The STRICTEST driver sets the ceiling. A 400 cm² cone puts ka = 1 at
+     * 484 Hz, which is BELOW the 500 Hz gate floor — so no honest window
+     * exists at all, and the refusal says which of the two closed it. */
+    const bigger = [wooferInput('W1'), { ...wooferInput('W2'), sdCm2: 400 }];
+    const none = mergeSources(baseInput({ woofers: bigger }))!;
+    expect(none.perWoofer).toHaveLength(0);
+    /* The refusal does not pick a culprit — both bounds move, so it states what
+     * each end would have to become, with the number attached. */
+    const why = none.warnings.join(' ');
+    expect(why).toMatch(/no honest splice window exists/);
+    expect(why).toMatch(/a gate of \d+\.\d ms/);
+    expect(why).toMatch(/Sd ≤ \d+ cm², against 400 here/);
+    // With a longer gate the same pair does have a window.
+    const withGate = mergeSources(baseInput({ woofers: bigger, farValidFromHz: 300 }))!;
+    expect(withGate.perWoofer).toHaveLength(2);
+    expect(withGate.spliceBand[1]).toBeCloseTo(0.95 * 484, -1);
+
+    // A bad gate on a normal cone gets the same even-handed treatment.
+    const gateBound = mergeSources(baseInput({ farValidFromHz: 900 }))!;
+    expect(gateBound.warnings.join(' ')).toMatch(/a gate of \d+\.\d ms/);
+    expect(gateBound.warnings.join(' ')).toMatch(/Sd ≤ \d+ cm², against 255 here/);
+
+    // A healthy splice says nothing alarming — but this window IS thin, so the
+    // thin-window note is expected and is not an alarm about the data.
+    expect(ok.warnings.join(' ')).not.toMatch(/✖/);
   });
 
   it('(2c) the residual phase reports a delay error the gain fit would otherwise hide as level', () => {
@@ -286,7 +314,7 @@ describe('merger — one response per source, near field spliced onto far field'
     expect(differs({ blendOctaves: 1 })).toBe(true);
     expect(differs({ acousticCentreMm: 120 })).toBe(true);
     expect(differs({ nearMicMm: 40 })).toBe(true);
-    expect(differs({ spliceFromHz: 520, spliceToHz: 600 })).toBe(true);
+    expect(differs({ spliceFromHz: 520, spliceToHz: 570 })).toBe(true);
     /* sdRefCm2 is deliberately NOT in this list. It is a normalisation, not a
      * weight: every radiator is scaled by sqrt(S_i/S_ref), so changing S_ref
      * multiplies the whole near-field sum by a constant — which the gain fit
