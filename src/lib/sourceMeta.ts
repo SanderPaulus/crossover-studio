@@ -347,4 +347,14 @@ export const KOAN_DATASET_NOTES: string[] = [
   'Far-field SPL measured with the other woofer open-circuit (passive radiator); ' +
     'impedance measured with both cones driven. Negligible above ~200 Hz, and below ' +
     'that the near field is used. Documented, not corrected.',
+  /* Same category as dataSource: a fact about the measurement that cannot be
+   * recovered from the numbers afterwards. It changes how every impedance
+   * result on this set must be read, and there is no way to see it in the
+   * file. */
+  'WOOFERS NOT BROKEN IN — impedance measured 2026-08-16 on new drivers. Fs reads ' +
+    '~31 Hz against 24.5 Hz on the datasheet and Vas ~74 L against 88 L, so the ' +
+    'suspension is still stiff. The upper impedance peak sits at 52.4 Hz and will ' +
+    'MOVE DOWN with use, toward the region where the system minimum lives. Every ' +
+    'Z-min figure derived from this set is therefore provisional: building the ' +
+    'machinery on it is fine, concluding "2.5 ohm is what is achievable" is not.',
 ];

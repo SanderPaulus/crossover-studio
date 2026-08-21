@@ -252,6 +252,16 @@ export interface BranchRatio {
   deliveredOhm: number;
   bareOhm: number;
   flagged: boolean;
+  /**
+   * What this reading cannot tell you, carried IN THE OUTPUT.
+   *
+   * The limitation belongs next to the number and not only in a comment: a
+   * diagnosis that does not state its own reliability gets read as a verdict
+   * after three sessions. Measured (see RATIO_FLAG): a plain low-pass inductor
+   * reaches 0.62 on its own, so a low ratio is not proof of a misbehaving
+   * filter.
+   */
+  caveat: string | null;
 }
 
 /**
@@ -313,6 +323,7 @@ export function branchImpedanceRatios(
         bareOhm = b;
       }
     }
+    const flagged = worst < RATIO_FLAG;
     out.push({
       name: model,
       ratio,
@@ -320,7 +331,13 @@ export function branchImpedanceRatios(
       worstAtHz,
       deliveredOhm,
       bareOhm,
-      flagged: worst < RATIO_FLAG,
+      flagged,
+      caveat: flagged
+        ? 'a low ratio can also be benign: a series inductor cancels part of the ' +
+          "driver's reactance and reaches 0.62 on its own, with nothing wrong. " +
+          'This says WHICH branch runs low, not that its filter is at fault — the ' +
+          'sensitivity list is what settles that.'
+        : null,
     });
   }
   return out;
@@ -462,4 +479,124 @@ export function zMinCulprits(
     });
   }
   return out.sort((a, b) => b.liftOhm - a.liftOhm).slice(0, topN);
+}
+
+export interface ZLiftProfile {
+  /** Delivered system Z-min, the number everything is measured against. */
+  baseOhm: number;
+  /** The ranked individual levers. */
+  top: ZCulprit[];
+  /** Every individual positive lift added up — what a naive reading of the
+   *  list suggests is available. */
+  sumOfIndividualOhm: number;
+  /** What actually happens when the N biggest are neutralised TOGETHER,
+   *  for N = 1..top.length. Superposition does not hold here, so this is the
+   *  only honest answer to "how much is on the table". */
+  jointOhm: number[];
+  /** The reading, in a sentence. */
+  verdict: 'collective' | 'fundamental' | 'single-element';
+  line: string;
+}
+
+/**
+ * How the dip is DISTRIBUTED — because "which component" can be the wrong
+ * question.
+ *
+ * On Sanders filter no single element lifts the minimum by more than 0.204 Ω
+ * against a 2.62 Ω minimum. A top-3 list alone invites the reader to pick the
+ * biggest and change it, which would move almost nothing. The distinction that
+ * matters is whether the levers ADD UP:
+ *
+ *   - they do  → a COLLECTIVE effect, and restructuring the branch is the
+ *                remedy rather than swapping a part;
+ *   - they do not → the branch is fundamentally low, and no filter change
+ *                reaches it. Then it is the driver wiring — series instead of
+ *                parallel, or a different nominal impedance — and that is a
+ *                purchase decision, not a tuning one.
+ *
+ * Both are useful answers and neither is visible from a ranked list.
+ */
+export function zMinLiftProfile(
+  parts: readonly VxpPart[],
+  freq: readonly number[],
+  driverZ: Record<string, readonly Complex[]>,
+  band: [number, number] = [20, 20000],
+  topN = 4,
+): ZLiftProfile | null {
+  const bus = busTopology([...parts]);
+  const zMinOf = (ps: readonly VxpPart[]): number | null => {
+    try {
+      const { netlist } = crossoverToNetlist({ name: 'z', parts: [...ps] });
+      const sol = solveNetwork(netlist, freq, driverZ);
+      let lo = Infinity;
+      for (let i = 0; i < freq.length; i++) {
+        if (freq[i] < band[0] || freq[i] > band[1]) continue;
+        const m = mag(sol.inputZ[i]);
+        if (m < lo) lo = m;
+      }
+      return Number.isFinite(lo) ? lo : null;
+    } catch {
+      return null;
+    }
+  };
+  const baseOhm = zMinOf(parts);
+  if (baseOhm === null) return null;
+  const top = zMinCulprits(parts, freq, driverZ, band, topN);
+  if (top.length === 0) return null;
+
+  const neutralise = (ps: readonly VxpPart[], ids: Set<string>): VxpPart[] => {
+    const out: VxpPart[] = [];
+    for (const q of ps) {
+      if (!q.partId || !ids.has(q.partId)) {
+        out.push(q);
+        continue;
+      }
+      if (bus.positionOf(q.partId) === 'series') {
+        out.push({ type: 'Wire', params: [], wires: q.wires } as VxpPart);
+      }
+      // shunt: dropped
+    }
+    return out;
+  };
+  const jointOhm: number[] = [];
+  for (let n = 1; n <= top.length; n++) {
+    const ids = new Set(top.slice(0, n).map((c) => c.partId));
+    const z = zMinOf(neutralise(parts, ids));
+    jointOhm.push(z === null ? baseOhm : z - baseOhm);
+  }
+  const sumOfIndividualOhm = top.reduce((a, c) => a + Math.max(0, c.liftOhm), 0);
+  /* The best JOINT lift, not the last one: neutralising more parts is not
+   * monotonically better. Measured on Sanders filter the top two give +0.259 Ω
+   * and the top five +0.253 — taking out a third element lets the load fall
+   * again. Superposition does not hold, which is the whole reason this
+   * function exists next to the ranked list. */
+  const best = Math.max(...jointOhm);
+
+  /* RELATIVE TO THE MINIMUM ITSELF, not to the distance to some floor.
+   *
+   * My first version measured "substantial" against the gap to 2.5 Ω, which
+   * degenerates the moment a design already clears it: on Sanders filter the
+   * gap is zero, so every lever looked decisive and the verdict came out
+   * "single-element" for a filter that cannot move its own minimum by 10 %.
+   * A fraction of the minimum is scale-free and says the useful thing —
+   * whether the crossover can reach this number at all. */
+  const share = best / Math.max(baseOhm, 1e-9);
+  const verdict: ZLiftProfile['verdict'] =
+    share < 0.15
+      ? 'fundamental'
+      : top[0].liftOhm > 0.6 * best
+        ? 'single-element'
+        : 'collective';
+  const line =
+    `minimum ${baseOhm.toFixed(2)} Ω; biggest single lever ${top[0].partId} ` +
+    `${top[0].liftOhm >= 0 ? '+' : ''}${top[0].liftOhm.toFixed(2)} Ω, ` +
+    `best combination ${best >= 0 ? '+' : ''}${best.toFixed(2)} Ω (${(share * 100).toFixed(0)} % of the minimum) — ` +
+    (verdict === 'single-element'
+      ? 'one element dominates; change that part'
+      : verdict === 'collective'
+        ? 'no single part explains it but together they do: restructure the branch'
+        : 'neutralising the biggest levers together barely moves it, so the ' +
+          'crossover is not what sets this minimum — that is the drivers and ' +
+          'how they are wired, and no filter change reaches it');
+  return { baseOhm, top, sumOfIndividualOhm, jointOhm, verdict, line };
 }

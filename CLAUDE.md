@@ -2241,6 +2241,17 @@ afstand in de export, dus dit vraagt een veld PER BRON en geen betere parser. Ni
 mic-afstand voedt `trueOffAxisDeg`, het rig-pad, de afgeleide montagediepte en het
 ver-veld-oordeel — fout betekent verschoven fysica, niet alleen een verschoven band. Bewust
 blijven staan tot A5 (posities per bron), waar het per-bron-record bestaat om het op te hangen.
+**DE WOOFERS ZIJN NIET INGESPEELD (aug 2026, Sanders dataset-notitie — `KOAN_DATASET_NOTES`)**:
+de impedantie van 16 aug is gemeten op gloednieuwe drivers. Fs leest ~31 Hz tegen 24,5 op het
+blad en Vas ~74 L tegen 88 — de ophanging is nog stijf. De bovenste impedantiepiek zit op
+52,4 Hz en schuift bij inspelen OMLAAG, richting het gebied waar het systeemminimum ligt. Élk
+Z-min-getal uit deze set is daarmee voorlopig: de machinerie erop bouwen is juist, de conclusie
+"2,5 Ω is het haalbare" nog niet. Zelfde categorie als `dataSource` — een feit over de meting
+dat later niet meer uit de data af te lezen is. **Er komt bovendien een meting in een
+reflectievrije kamer aan (betrouwbaar tot ~50 Hz), die de hele gate-vloer van 455 Hz vervangt;
+A4/A5 worden daar bewust NIET tegen ingepland** — een grote refactor tegen data die op het punt
+staat te veranderen is precies de situatie waarin je achteraf niet meer kunt toewijzen wat wat
+deed.
 **A3e — DISKWALIFICATIES WORDEN RANDVOORWAARDEN IN DE TUNE**: R_bron ≥ 2,0 Ω was al diskwalificerend
 in de ranking maar onzichtbaar in de zoektocht, dus de tuner optimaliseerde zich netjes een ontwerp
 in dat daarna werd weggegooid. Nu `rSourceDisqualifyOhm` als CONSTRAINT in `fxOf`: binnen de grens

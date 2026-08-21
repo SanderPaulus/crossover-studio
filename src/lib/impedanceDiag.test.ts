@@ -17,6 +17,7 @@ import {
   branchImpedanceRatios,
   systemZFacts,
   zMinCulprits,
+  zMinLiftProfile,
 } from './impedanceDiag.ts';
 
 const grid = logspace(20, 20000, 500);
@@ -234,5 +235,68 @@ describe('impedance diagnosis — read-only, and it must add up', () => {
       { type: 'Ground', params: [], wires: [P(15, 12)] },
     ];
     expect(branchImpedance(shared, 'woofer', grid, driverZ)).toBeNull();
+  });
+});
+
+describe('the diagnosis states its own limits and its own distribution', () => {
+  /** A resistor straight across the amplifier terminals. */
+  const busShunt = (id: string, ohm: number): VxpPart => ({
+    type: 'Resistor', partId: id, params: [{ name: 'R', value: ohm, unit: 'Ω' }],
+    wires: [P(3, 4), P(3, 30)],
+  });
+
+  it('a flagged branch carries the caveat IN THE OUTPUT, not only in a comment', () => {
+    const parts = [...gen(), ...wooferBranch(16), ...tweeterBranch(4.7)];
+    const r = branchImpedanceRatios(parts, grid, driverZ).find((x) => x.name === 'woofer')!;
+    expect(r.flagged).toBe(true);
+    /* And this one IS the benign case — a 16 mH low-pass with no shunt at all.
+     * The flag is right that the branch runs low and wrong about why, which is
+     * exactly what the caveat has to say. A diagnosis that does not state its
+     * own reliability is read as a verdict within three sessions. */
+    expect(r.caveat).not.toBeNull();
+    expect(r.caveat!).toMatch(/can also be benign/);
+    expect(r.caveat!).toMatch(/sensitivity list/);
+    // Not flagged means no caveat to carry.
+    const ok = branchImpedanceRatios([...gen(), ...wooferBranch(1)], grid, driverZ)
+      .find((x) => x.name === 'woofer')!;
+    expect(ok.flagged).toBe(false);
+    expect(ok.caveat).toBeNull();
+  });
+
+  it('FUNDAMENTAL: when the filter cannot reach the minimum, it says so', () => {
+    /* Sanders real case, and the reading that matters most: neutralising the
+     * five biggest levers on his filter buys 0.26 Ω on a 2.62 Ω minimum — 10 %.
+     * The crossover is not what sets that number, so no amount of filter work
+     * reaches it; it is the drivers and their wiring. */
+    const parts = [...gen(), ...wooferBranch(2.2), ...tweeterBranch(4.7)];
+    const prof = zMinLiftProfile(parts, grid, driverZ)!;
+    expect(prof.verdict).toBe('fundamental');
+    expect(prof.line).toMatch(/drivers and how they are wired/);
+  });
+
+  it('SINGLE-ELEMENT: one dominant part is named as such', () => {
+    const parts = [...gen(), busShunt('R9', 2.0), ...wooferBranch(2.2), ...tweeterBranch(4.7)];
+    const prof = zMinLiftProfile(parts, grid, driverZ)!;
+    expect(prof.verdict).toBe('single-element');
+    expect(prof.top[0].partId).toBe('R9');
+    expect(prof.line).toMatch(/change that part/);
+  });
+
+  it('the joint lift is not the sum of the individual ones, and may not be monotone', () => {
+    /* Measured on his filter: individual lifts sum to 0.369 Ω while the best
+     * combination gives 0.26, and the top TWO (+0.259) beat the top five
+     * (+0.253) — taking out a third element lets the load fall again.
+     * Superposition does not hold, which is why a ranked list alone invites
+     * the reader to add up numbers that do not add up. */
+    const parts = [...gen(), busShunt('R9', 4), busShunt('R8', 4), ...wooferBranch(2.2), ...tweeterBranch(4.7)];
+    const prof = zMinLiftProfile(parts, grid, driverZ)!;
+    expect(prof.jointOhm.length).toBe(prof.top.length);
+    const bestJoint = Math.max(...prof.jointOhm);
+    // Two 4 Ω shunts: each alone leaves the other still loading, so neither
+    // individual lift comes close to what removing both does.
+    expect(bestJoint).toBeGreaterThan(prof.top[0].liftOhm);
+    // And the naive sum overstates nothing here, but the two are different
+    // quantities and the profile reports both rather than one.
+    expect(prof.sumOfIndividualOhm).not.toBeCloseTo(bestJoint, 6);
   });
 });
