@@ -236,3 +236,36 @@ describe('B2 migration — a pre-B2 project must still open', () => {
     expect(again.design.networkDesigns![0].bandAtDesign).toEqual({ fromHz: 398, toHz: 18000 });
   });
 });
+
+describe('A3 — sourceMode rides inside v2, so a project stays openable both ways', () => {
+  it('a file carrying sourceMode still declares version 2, and an older app can read it', () => {
+    /* THE QUESTION THIS ANSWERS: is v3 a one-way door? It does not have to be
+     * one, so it was not made one. deserializeProject refuses any file whose
+     * version is HIGHER than it knows ("update the app"), so bumping the
+     * version is what would lock older builds out. `sourceMode` is an optional
+     * field an older build simply ignores — and ignoring it means treating the
+     * branch as an array, which is exactly what that build would have done
+     * anyway. The version moves at A7, where the netlist genuinely cannot be
+     * read by an older app, and there the refusal is honest. */
+    const withMode: ProjectState = {
+      design: {
+        ...state.design,
+        cabinet: {
+          ...(state.design.cabinet ?? {}),
+          drivers: { low: { count: '1', sourceMode: 'discrete' } },
+        },
+      },
+    };
+    const text = serializeProject(withMode);
+    expect(JSON.parse(text).version).toBe(2);
+    const back = deserializeProject(text);
+    expect(back.design.cabinet?.drivers?.low?.sourceMode).toBe('discrete');
+    // A build that predates the field drops it and keeps the rest — simulated
+    // by stripping the key, which is what an old reader's typed parse does.
+    const oldReader = JSON.parse(text);
+    delete oldReader.design.cabinet.drivers.low.sourceMode;
+    const asOld = deserializeProject(JSON.stringify(oldReader));
+    expect(asOld.design.cabinet?.drivers?.low?.count).toBe('1');
+    expect(asOld.design.cabinet?.drivers?.low?.sourceMode).toBeUndefined();
+  });
+});

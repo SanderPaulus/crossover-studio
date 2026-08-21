@@ -181,6 +181,25 @@ export interface ProjectDesign {
           tiltDeg?: string;
           /** count > 1 drivers on both opposing panels (force cancelling). */
           opposed?: boolean;
+          /**
+           * How this branch's drivers are described (step A3).
+           *
+           * 'array' (or ABSENT, which means the same thing) — one measurement
+           * stands for `count` identical drivers at `spacingMm`. Everything
+           * written before this field existed is this, so the absence of the
+           * field IS the migration: nothing to rewrite, nothing to interpret.
+           *
+           * 'discrete' — each driver is its own source with its own measurement
+           * and position; `count` must be 1 and `spacingMm` is meaningless
+           * (the positions carry it).
+           *
+           * DELIBERATELY NOT A VERSION BUMP. An older app reading a file that
+           * carries this field simply ignores it, and 'array' is exactly what
+           * it would have done anyway — so a project stays openable in both
+           * directions. The version only has to move when a file genuinely
+           * cannot be read by an older app, which is step A7 (the netlist).
+           */
+          sourceMode?: 'array' | 'discrete';
         }
       >
     >;

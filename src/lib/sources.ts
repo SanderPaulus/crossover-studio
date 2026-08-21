@@ -132,7 +132,17 @@ export function assertSourceModel(branches: readonly Branch[]): void {
         throw new SourceModelError(
           `branch "${b.role}" is discrete but carries count = ${b.count}. In discrete mode each ` +
             `driver is its own source and the spacing comes from the positions; an array count ` +
-            `would describe the same physics a second time.`,
+            `would describe the same physics a second time. ` +
+            /* ⚠ UPDATE THIS SENTENCE IN A4. Right now no UI can create a second
+             * source, so reaching this line means the code built the branch
+             * list wrongly — it is a programming error and the message says so.
+             * From A4 a designer CAN add sources, and then the same condition
+             * becomes an input error that needs an instruction ("switch this
+             * branch to discrete, or remove the extra source") instead of this
+             * note. The reminder lives here rather than in an issue because
+             * this is the line that has to change. */
+            `As of step A3 no interface can create a second source, so this is a programming ` +
+            `error rather than something you did — the branch list was built wrongly.`,
         );
       }
     } else if (b.sources.length > 1) {
@@ -263,6 +273,21 @@ export function bandLimit(
   };
 }
 
+/**
+ * The stored source mode of a branch.
+ *
+ * ABSENT IS THE MIGRATION. Everything written before the field existed
+ * describes one measurement standing for n drivers, which is precisely
+ * 'array' — so reading an old project needs no rewrite step, no version bump
+ * and no interpretation. That also makes the transformation idempotent for
+ * free: applying it to an already-migrated project reads back the same value.
+ */
+export function sourceModeOf(
+  stored: { sourceMode?: string; [k: string]: unknown } | undefined,
+): SourceMode {
+  return stored?.sourceMode === 'discrete' ? 'discrete' : 'array';
+}
+
 /* ------------------------------------------------------------------ *
  * The adapter
  * ------------------------------------------------------------------ */
@@ -277,6 +302,8 @@ export interface RoleInput<R = GriddedResponse> {
   adjust?: BranchAdjust;
   /** The model name the netlist knows this branch's driver by. */
   partId?: string;
+  /** Absent = 'array', which is what every pre-A3 project means. */
+  mode?: SourceMode;
 }
 
 /**
@@ -298,7 +325,7 @@ export function branchesFromRoles<R>(
     if (!r) continue;
     out.push({
       role,
-      mode: 'array',
+      mode: r.mode ?? 'array',
       ...(r.count !== undefined ? { count: r.count } : {}),
       ...(r.spacingMm !== undefined ? { spacingMm: r.spacingMm } : {}),
       ...(r.adjust ? { adjust: r.adjust } : {}),

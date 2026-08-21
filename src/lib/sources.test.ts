@@ -8,6 +8,7 @@ import {
   branchSpacingMm,
   SourceModelError,
   bandLimit,
+  sourceModeOf,
   sourcesInBranch,
   sourcesOf,
   sumFromBranches,
@@ -267,5 +268,119 @@ describe('A2 — routing through the source model changes nothing (golden snapsh
     expect(limited.spl[iHigh]).toBe(-400);
     // The grid itself is untouched — the same array, not a resample.
     expect(limited.freq).toBe(w.freq);
+  });
+});
+
+describe('A3 — the source mode, and a migration that provably changes nothing', () => {
+  const GRID = Array.from({ length: 200 }, (_, i) => 20 * (20000 / 20) ** (i / 199));
+  const tone = (levelDb: number, fcHz: number, delayUs: number): GriddedResponse => ({
+    freq: GRID,
+    spl: GRID.map((f) => levelDb + 20 * Math.log10(1 / Math.sqrt(1 + (fcHz / f) ** 4))),
+    phaseDeg: GRID.map((f) => (-180 * Math.atan2(fcHz, f)) / Math.PI - 360 * f * delayUs * 1e-6),
+  });
+  const W = tone(90, 45, 0);
+  const M = tone(88, 350, 10);
+  const T = tone(92, 2200, 28);
+  const adjT = { offsetMm: 9, trimDb: -1.5, inverted: false };
+
+  /** A stored project's driver block, as it comes out of the project file. */
+  const stored = (extra: Record<string, unknown> = {}): Record<string, unknown> => ({
+    count: '2',
+    spacingMm: '275.75',
+    ...extra,
+  });
+
+  const build = (mode: 'array' | 'discrete' | undefined, threeWay: boolean) =>
+    branchesFromRoles({
+      low: { response: W, place: at(-448), meta: meta(), count: 2, spacingMm: 275.75, mode },
+      ...(threeWay ? { mid: { response: M, place: at(-66), meta: meta() } } : {}),
+      high: { response: T, place: at(74), meta: meta(), adjust: adjT },
+    });
+
+  const snap = (label: string, threeWay: boolean) =>
+    captureSum({
+      label,
+      branches: threeWay
+        ? [
+            { label: 'low', response: W },
+            { label: 'mid', response: M },
+            { label: 'high', response: T, adjust: adjT },
+          ]
+        : [
+            { label: 'low', response: W },
+            { label: 'high', response: T, adjust: adjT },
+          ],
+    });
+
+  it('an absent sourceMode reads as array — that IS the migration, for 2-way and 3-way alike', () => {
+    // Nothing is rewritten and no version moves: the absence of the field means
+    // exactly what every pre-A3 project meant.
+    expect(sourceModeOf(undefined)).toBe('array');
+    expect(sourceModeOf(stored())).toBe('array');
+    expect(sourceModeOf(stored({ sourceMode: 'array' }))).toBe('array');
+    expect(sourceModeOf(stored({ sourceMode: 'discrete' }))).toBe('discrete');
+    // An unknown value is not a third mode; it reads as the safe one.
+    expect(sourceModeOf(stored({ sourceMode: 'nonsense' }))).toBe('array');
+
+    for (const threeWay of [false, true]) {
+      const before = build(undefined, threeWay); // pre-A3 project
+      const after = build(sourceModeOf(stored()), threeWay); // through the migration
+      expect(after.map((b) => b.mode)).toEqual(before.map((b) => b.mode));
+      assertSourceModel(before);
+      assertSourceModel(after);
+      // And the physics is bit-identical, which is the point: a migration is by
+      // definition a behaviour-free transformation, so it is testable rather
+      // than merely plausible.
+      const d = diffSnapshots(
+        captureSum({ label: 'pre', branches: snapBranches(threeWay) }),
+        captureSum({ label: 'post', branches: snapBranches(threeWay) }),
+      );
+      expect(d.report).toEqual([]);
+      const sumBefore = sumFromBranches(before);
+      const sumAfter = sumFromBranches(after);
+      expect(sumAfter.combinedSpl).toEqual(sumBefore.combinedSpl);
+      expect(sumAfter.combinedPhaseDeg).toEqual(sumBefore.combinedPhaseDeg);
+      expect(snap('x', threeWay).sum.re.length).toBe(GRID.length);
+    }
+  });
+
+  function snapBranches(threeWay: boolean) {
+    return threeWay
+      ? [
+          { label: 'low', response: W },
+          { label: 'mid', response: M },
+          { label: 'high', response: T, adjust: adjT },
+        ]
+      : [
+          { label: 'low', response: W },
+          { label: 'high', response: T, adjust: adjT },
+        ];
+  }
+
+  it('is idempotent: migrating something already migrated is a no-op', () => {
+    // The failure this catches only shows up after someone has opened a project
+    // three times — each pass must read the same value back out.
+    let doc = stored();
+    for (let pass = 0; pass < 3; pass++) {
+      const mode = sourceModeOf(doc);
+      expect(mode).toBe('array');
+      doc = stored({ sourceMode: mode }); // as it would be written back
+    }
+    expect(doc.sourceMode).toBe('array');
+    // Same for a branch that really is discrete.
+    let disc = stored({ count: '1', sourceMode: 'discrete' });
+    for (let pass = 0; pass < 3; pass++) {
+      const mode = sourceModeOf(disc);
+      expect(mode).toBe('discrete');
+      disc = stored({ count: '1', sourceMode: mode });
+    }
+  });
+
+  it('the refusal explains what to do, and says this cannot be user-caused yet', () => {
+    const bad = build('discrete', true);
+    bad[0].count = 2;
+    expect(() => assertSourceModel(bad)).toThrow(/describe the same physics a second time/);
+    expect(() => assertSourceModel(bad)).toThrow(/no interface can create a second source/);
+    expect(() => assertSourceModel(bad)).toThrow(/programming error/);
   });
 });
