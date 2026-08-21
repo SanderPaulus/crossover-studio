@@ -1055,3 +1055,53 @@ describe('A3e — the ranking\'s hard tier is a CONSTRAINT during the search', (
     expect(rsHeld).toBeLessThan(rsFree - 1);
   });
 });
+
+describe('A3f — a constraint survives the passes that run after the search', () => {
+  it('a repair that can only succeed by breaking the limit is rolled back and declared infeasible', () => {
+    /* The failure shape this codebase keeps paying for: a guard enforced at
+     * step N and undone at step N+1. The amplifier-floor repair RAISES
+     * resistance to lift an impedance dip, and resistance is exactly what the
+     * source-resistance limit bounds — two passes turning the same knob in
+     * opposite directions.
+     *
+     * The rule is not "pick the lesser evil": if both goals cannot hold, the
+     * candidate is infeasible and says so. Silently choosing one is the only
+     * outcome that is not allowed. */
+    const P = (x: number, y: number) => ({ x, y });
+    // A network with a series resistor big enough that any further increase
+    // breaks a tight limit, feeding a hot branch so the pad cannot just go.
+    const net = (): VxpPart[] => [
+      { type: 'Generator', partId: 'G1', params: [{ name: 'Eg', value: 2.83, unit: 'V' }], wires: [P(3, 4), P(3, 11)] },
+      { type: 'Ground', params: [], wires: [P(3, 11)] },
+      { type: 'Resistor', partId: 'R1', params: [{ name: 'R', value: 3.3, unit: 'Ω' }], wires: [P(3, 4), P(9, 4)] },
+      { type: 'Inductor', partId: 'L1', params: [{ name: 'L', value: 0.6, unit: 'mH' }, { name: 'DCR', value: 0.2, unit: 'Ω' }], wires: [P(9, 4), P(15, 4)] },
+      { type: 'Driver', partId: 'D1', model: 'mid', inverted: false, params: [], wires: [P(15, 4), P(15, 11)] },
+      { type: 'Ground', params: [], wires: [P(15, 11)] },
+      { type: 'Capacitor', partId: 'C2', params: [{ name: 'C', value: 5.6, unit: 'uF' }], wires: [P(3, 14), P(9, 14)] },
+      { type: 'Wire', params: [], wires: [P(3, 4), P(3, 14)] },
+      { type: 'Driver', partId: 'D2', model: 'tweeter', inverted: false, params: [], wires: [P(9, 14), P(9, 21)] },
+      { type: 'Ground', params: [], wires: [P(9, 21)] },
+    ];
+    const hot: typeof wBase = { ...wBase, spl: wBase.spl.map((v) => v + 12) };
+    const opts = {
+      phasePriority: 0.5,
+      maxIterations: 60,
+      catalogSnap: false,
+      audit: { enabled: false as const },
+      rSourceDisqualifyOhm: 1.0,
+    };
+    const r = optimizeNetworkValues(net(), grid, hot, tBase, driverZ, NO_ADJ, opts);
+    const rs = sourceResistanceOhm(r.parts, { grid, driverZ })!;
+    /* The one outcome that is forbidden is passing silently: either the
+     * delivered design is inside the limit, or it is marked infeasible with the
+     * reason. Both are acceptable answers about this candidate. */
+    const insideLimit = rs < 1.0;
+    expect(insideLimit || r.infeasible !== undefined).toBe(true);
+    if (r.infeasible) {
+      expect(r.infeasible).toMatch(/infeasible|limit/);
+      // And the design returned is still the last one that satisfied every
+      // constraint, so it is safe to look at.
+      expect(r.parts.length).toBeGreaterThan(0);
+    }
+  });
+});

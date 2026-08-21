@@ -428,6 +428,10 @@ export function runThreeWayChain(
       );
     }
   });
+  /* A3f: a tune that had to roll a pass back is INFEASIBLE, not merely worse.
+   * The design handed over is the last one that satisfied every constraint, so
+   * it is safe to look at — but it never got what that pass was for. */
+  if (net.infeasible) disqualified.push(net.infeasible);
   // (fix 1a) Source resistance at the low driver: hard tier.
   const rsDisq = s.rSourceDisqualifyOhm ?? 2.0;
   const rsNow = net.audit?.rSourceOhm ?? null;

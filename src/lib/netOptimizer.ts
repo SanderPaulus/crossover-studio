@@ -342,6 +342,15 @@ export interface NetOptimizeResult {
   /** The band the run actually optimised on — an optimiser that cannot say
    *  which band it worked on is not auditable (issue #14). */
   bandNote: string;
+  /**
+   * Set when a pass after the value search had to be rolled back because it
+   * could not reach its goal without breaking a hard constraint (A3f).
+   *
+   * The design returned is the last one that DID satisfy every constraint, so
+   * it is safe to look at — but it did not get what that pass was for, and a
+   * ranker should treat it as disqualified rather than merely worse.
+   */
+  infeasible?: string;
   snapNote?: string;
   /** Amp-load floor (system |Z| ≥ 2.5 Ω): set when the tuned result dipped
    *  below the floor — either "lifted a → b Ω" (repair accepted) or a
@@ -678,6 +687,34 @@ export function optimizeNetworkValues(
       return null;
     }
   })();
+  /**
+   * THE HARD CONSTRAINT, IN ONE PLACE (A3f).
+   *
+   * The value search already refuses to enter forbidden ground, but the passes
+   * that run AFTER it can walk back into it — the amplifier-floor repair RAISES
+   * resistance to lift an impedance dip, and the catalog snap picks real parts
+   * whose DCR is whatever the catalogue stocks. Two passes turning the same
+   * knob in opposite directions, with no shared bound, is the arrangement that
+   * creates the problem.
+   *
+   * So the bound lives here and every pass that can move it asks THIS function.
+   * The same lesson as the >= / > slip one level up: not a value re-tested in
+   * several places, but one definition everything has to go through.
+   *
+   * When both goals cannot hold at once the candidate is INFEASIBLE, and that
+   * is an honest answer. What may not happen is a pass silently choosing one of
+   * the two.
+   */
+  const constraintViolation = (ps: readonly VxpPart[]): string | null => {
+    if (rsHardOhm <= 0) return null;
+    const rs = sourceResistanceOhm(ps, { grid, driverZ, fbHz: opts.audit?.fbHz });
+    if (rs === null || rs < rsHardOhm) return null;
+    return (
+      `source resistance at the low driver ${rs.toFixed(2)} Ω ≥ the ${rsHardOhm.toFixed(1)} Ω ` +
+      `limit — this design is infeasible, not merely worse`
+    );
+  };
+
   const dcSeriesR = (net: { elements: NetElement[] }): number | null => {
     if (!seriesPathIds) return null;
     let sum = 0;
@@ -2364,6 +2401,9 @@ export function optimizeNetworkValues(
    * (prune-doctrine 10%) with the fundamentals intact; otherwise the result
    * stands and the note tells the truth (the Impedance panel shows it too). */
   let ampFloorNote: string | undefined;
+  /** Set when a post-search pass had to be rolled back because it could not
+   *  reach its goal without violating a hard constraint. */
+  let infeasible: string | undefined;
   {
     const fullOf = (ps: readonly VxpPart[]): Metrics =>
       metricsOn(buildWork(ps).work, grid, wBase, tBase, midFull, driverZ, angleData ?? null);
@@ -2448,7 +2488,23 @@ export function optimizeNetworkValues(
           mRep.protSqDb <= mCur.protSqDb + 3 &&
           (nc(rep) <= nc(cur) || armsOk)) ||
         strictOk;
-      if (ok) {
+      /* A3f: the repair may not buy its impedance lift with forbidden ground.
+       * Raising resistance is exactly how this pass works, and R_source is
+       * exactly what that raises — so it asks the one constraint definition
+       * before committing. Violation means the whole pass is rolled back and
+       * the candidate is declared infeasible; NOT partially applied, and not
+       * "the better of two evils". Both goals unreachable at once is an honest
+       * answer about this candidate. */
+      const repViolation = ok ? constraintViolation(rep.parts) : null;
+      if (ok && repViolation) {
+        infeasible =
+          `the amplifier-load repair would lift the impedance minimum to ` +
+          `${zRep.min.toFixed(1)} Ω, but only by pushing ${repViolation}. Rolled back: ` +
+          `lifting the load and staying under the source-resistance limit cannot both hold here`;
+        ampFloorNote =
+          `amp-load floor: repair REFUSED — it would have lifted ${zCur.min.toFixed(1)} → ` +
+          `${zRep.min.toFixed(1)} Ω at the cost of the source-resistance limit`;
+      } else if (ok) {
         ampFloorNote =
           `amp-load floor: system impedance minimum lifted ` +
           `${zCur.min.toFixed(1)} → ${zRep.min.toFixed(1)} Ω (floor ${Z_FLOOR_OHM} Ω)` +
@@ -2740,7 +2796,29 @@ export function optimizeNetworkValues(
           `core coil) at these values, or fewer series elements.`;
       }
     }
-    cur = { ...cur, parts: applied(picks) };
+    /* A3f: same rule for the snap. Real parts carry whatever DCR the catalogue
+     * stocks, so landing on purchasable values can push R_source past the
+     * limit — and this pass runs LAST, after everything that respected it.
+     * There is precedent for the shape of this failure a few lines below: the
+     * snap already gives back part of the amplifier-floor repair, which went
+     * unnoticed for a long time.
+     *
+     * Rolled back whole. Continuous values that cannot be bought are a worse
+     * answer than "this candidate does not work", but they are an HONEST one,
+     * and the note says which it is. */
+    const snapped = applied(picks);
+    const snapViolation = constraintViolation(snapped);
+    if (snapViolation) {
+      infeasible =
+        `the catalog snap would land on purchasable parts whose ${snapViolation}. Rolled back to ` +
+        `the continuous values — those are not buyable, so this candidate cannot be built as it ` +
+        `stands: give the low branch thicker wire to choose from, or fewer series elements`;
+      snapNote =
+        (snapNote ? `${snapNote} · ` : '') +
+        `⚠ snap REFUSED: purchasable parts would break the source-resistance limit`;
+    } else {
+      cur = { ...cur, parts: snapped };
+    }
   }
 
   /* ---- Finish: materialise removals, report on the full grid ---- */
@@ -2809,6 +2887,23 @@ export function optimizeNetworkValues(
    * against what actually ships. A note reading "lifted 2.1 → 2.4 Ω" on a
    * network delivering 1.9 Ω is worse than no note at all — it is the reason
    * the give-back went unnoticed for as long as it did. */
+  /* A3f, THE BACKSTOP. Rolling individual passes back covers the ones that were
+   * inventoried; this covers the rest, including the case where there is
+   * nothing to roll back at all — when EVERY point in the search violates the
+   * constraint, the minimum still violates it. A branch that needs its pad to
+   * make level, on a limit its pad cannot meet, is simply a candidate that does
+   * not work.
+   *
+   * One final check on what is actually being handed over, so the flag cannot
+   * depend on having thought of every pass. */
+  {
+    const finalViolation = constraintViolation(outParts);
+    if (finalViolation && !infeasible) {
+      infeasible =
+        `${finalViolation}. Nothing was rolled back — no arrangement of these values met the ` +
+        `limit, so the constraint is not what this candidate failed on, the candidate is`;
+    }
+  }
   if (ampFloorNote !== undefined && ampFloorNote.includes('lifted')) {
     const zFinal = zMinOf(after, outParts);
     const claimed = /→ ([\d.]+) Ω/.exec(ampFloorNote);
@@ -2985,6 +3080,7 @@ export function optimizeNetworkValues(
       `optimised on ${Math.round(band[0])}–${Math.round(band[1])} Hz` +
       (opts.band ? '' : ' (full grid minus edges — no validity band supplied)'),
     ...(snapNote ? { snapNote } : {}),
+    ...(infeasible ? { infeasible } : {}),
     ...(ampFloorNote ? { ampFloorNote } : {}),
     ...(valueWindowNote ? { valueWindowNote } : {}),
     ...(auditReport ? { audit: auditReport } : {}),
