@@ -823,6 +823,19 @@ function placementOf(d: CabinetDriver): DriverPlacement | null {
 }
 
 
+/**
+ * Source resistance of the network a candidate would ACTUALLY build.
+ *
+ * `audit.rSourceOhm` is frozen at gate 4, before the shrink ladder and the
+ * catalog snap — and both of those still move this number. Measured on Sanders
+ * 562/2270 candidate: the audit reads 2.0002 Ω (and the row was struck through)
+ * while the delivered network measures 1.64 Ω, inside the 2.0 Ω limit. Column,
+ * glyph and ranking all read this one so they cannot disagree about a row.
+ */
+const rSrcDelivered = (r: {
+  net: { rSourceDeliveredOhm?: number | null; audit?: { rSourceOhm?: number | null } | null };
+}): number | null => r.net.rSourceDeliveredOhm ?? r.net.audit?.rSourceOhm ?? null;
+
 function excessDelayMsOf(frd: Parsed): number | null {
   try {
     const lo = Math.max(500, frd.freq[0] * 1.05);
@@ -5547,7 +5560,10 @@ export default function App() {
                       rippleDb: rr.net.after.rippleDb,
                       peakSmoothedDb: rr.net.after.ripplePeakSmoothedDb ?? null,
                       powerSlopeDbDec: rr.net.after.powerSlopeDbDec ?? null,
-                      rSourceOhm: rr.net.audit?.rSourceOhm ?? null,
+                      // The DELIVERED figure — the audit's is frozen before the
+                      // shrink ladder and the snap, so the column and the
+                      // ranking would disagree about the same row.
+                      rSourceOhm: rr.net.rSourceDeliveredOhm ?? rr.net.audit?.rSourceOhm ?? null,
                       disqualified: rr.disqualified ?? [],
                       xoFloorVerdict: rr.xoFloorVerdict ?? null,
                       avgDevDb: rr.net.after.avgDevDb ?? null,
@@ -6031,10 +6047,10 @@ export default function App() {
                       rippleDb: rr.net.after.rippleDb,
                       peakSmoothedDb: rr.net.after.ripplePeakSmoothedDb ?? null,
                       powerSlopeDbDec: rr.net.after.powerSlopeDbDec ?? null,
-                      rSourceOhm: rr.net.audit?.rSourceOhm ?? null,
+                      rSourceOhm: rSrcDelivered(rr),
                       disqualified:
-                        rr.net.audit?.rSourceOhm != null && rSourceDisqOhm > 0 && rr.net.audit.rSourceOhm >= rSourceDisqOhm
-                          ? [`source resistance at the low driver ${rr.net.audit.rSourceOhm.toFixed(2)} Ω ≥ ${rSourceDisqOhm.toFixed(1)} Ω`]
+                        rSrcDelivered(rr) != null && rSourceDisqOhm > 0 && rSrcDelivered(rr)! >= rSourceDisqOhm
+                          ? [`source resistance at the low driver ${rSrcDelivered(rr)!.toFixed(2)} Ω ≥ ${rSourceDisqOhm.toFixed(1)} Ω`]
                           : [],
                       xoFloorVerdict: null,
                       avgDevDb: rr.net.after.avgDevDb ?? null,

@@ -1104,4 +1104,48 @@ describe('A3f — a constraint survives the passes that run after the search', (
       expect(r.parts.length).toBeGreaterThan(0);
     }
   });
+
+  it('the figure a ranking judges on is the one the delivered network measures', () => {
+    /* Found by measuring A3f on Sanders project, and it is the same disease as
+     * the bug that started this round: the number in the table was not the
+     * number of the thing delivered. `audit.rSourceOhm` is frozen at gate 4 —
+     * the code there says so, "before the shrink ladder and the snap" — and
+     * both of those passes still move source resistance. His 562/2270 candidate
+     * was struck through on the audit's 2.0002 Ω while the network that would
+     * actually be built measures 1.64 Ω, inside the 2.0 Ω limit.
+     *
+     * So the constraint was doing its job and the RANKING was reading a stale
+     * number. The rule is the A3f rule one level up: one definition, asked by
+     * everything that judges. */
+    const P = (x: number, y: number) => ({ x, y });
+    const net = (): VxpPart[] => [
+      { type: 'Generator', partId: 'G1', params: [{ name: 'Eg', value: 2.83, unit: 'V' }], wires: [P(3, 4), P(3, 11)] },
+      { type: 'Ground', params: [], wires: [P(3, 11)] },
+      { type: 'Resistor', partId: 'R1', params: [{ name: 'R', value: 2.2, unit: 'Ω' }], wires: [P(3, 4), P(9, 4)] },
+      { type: 'Inductor', partId: 'L1', params: [{ name: 'L', value: 0.6, unit: 'mH' }, { name: 'DCR', value: 0.2, unit: 'Ω' }], wires: [P(9, 4), P(15, 4)] },
+      { type: 'Driver', partId: 'D1', model: 'mid', inverted: false, params: [], wires: [P(15, 4), P(15, 11)] },
+      { type: 'Ground', params: [], wires: [P(15, 11)] },
+      { type: 'Capacitor', partId: 'C2', params: [{ name: 'C', value: 5.6, unit: 'uF' }], wires: [P(3, 14), P(9, 14)] },
+      { type: 'Wire', params: [], wires: [P(3, 4), P(3, 14)] },
+      { type: 'Driver', partId: 'D2', model: 'tweeter', inverted: false, params: [], wires: [P(9, 14), P(9, 21)] },
+      { type: 'Ground', params: [], wires: [P(9, 21)] },
+    ];
+    const hot: typeof wBase = { ...wBase, spl: wBase.spl.map((v) => v + 12) };
+    const r = optimizeNetworkValues(net(), grid, hot, tBase, driverZ, NO_ADJ, {
+      phasePriority: 0.5,
+      maxIterations: 60,
+      catalogSnap: false,
+      audit: { enabled: true as const, thresholds: { rSourceOhm: 1.0 } },
+      rSourceDisqualifyOhm: 2.0,
+    });
+    // Armed by the hard tier, and it is the delivered parts that were measured.
+    expect(r.rSourceDeliveredOhm).not.toBeNull();
+    const measured = sourceResistanceOhm(r.parts, { grid, driverZ })!;
+    expect(r.rSourceDeliveredOhm!).toBeCloseTo(measured, 9);
+    /* The audit may legitimately differ — it describes the tuned network, which
+     * is a real thing worth reporting — but a ranking may not judge on it. This
+     * pins that the delivered reading exists and is the delivered one; whether
+     * the two happen to coincide on this fixture is not the point. */
+    expect(Number.isFinite(r.rSourceDeliveredOhm!)).toBe(true);
+  });
 });

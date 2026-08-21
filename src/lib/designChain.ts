@@ -405,7 +405,11 @@ export function rankChainResults(
 ): ChainResult[] {
   const p = 0.15 + 0.7 * Math.min(Math.max(phasePriority, 0), 1);
   const rsClass = (r: ChainResult): number => {
-    const rs = r.net.audit?.rSourceOhm;
+    // The DELIVERED figure: audit.rSourceOhm is frozen before the shrink ladder
+    // and the catalog snap, both of which still move it, so ranking on it can
+    // condemn a network that ships inside the limit (measured: audit 2.0002 Ω
+    // against 1.64 Ω delivered). Same definition the constraint enforces.
+    const rs = r.net.rSourceDeliveredOhm ?? r.net.audit?.rSourceOhm;
     if (rs == null) return 0;
     if (rSourceDisqualifyOhm > 0 && rs >= rSourceDisqualifyOhm) return 10;
     return rSourceLimitOhm > 0 && rs > rSourceLimitOhm ? 1 : 0;

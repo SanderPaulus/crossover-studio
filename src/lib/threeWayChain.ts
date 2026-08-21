@@ -434,7 +434,12 @@ export function runThreeWayChain(
   if (net.infeasible) disqualified.push(net.infeasible);
   // (fix 1a) Source resistance at the low driver: hard tier.
   const rsDisq = s.rSourceDisqualifyOhm ?? 2.0;
-  const rsNow = net.audit?.rSourceOhm ?? null;
+  /* The DELIVERED figure, not the audit's: audit.rSourceOhm is frozen before
+   * the shrink ladder and the catalog snap, and both still move it. Measured on
+   * Sanders 562/2270 candidate: audit 2.0002 Ω (disqualified) against 1.64 Ω
+   * for the network that actually ships. Falls back to the audit only when no
+   * hard tier armed the delivered reading. */
+  const rsNow = net.rSourceDeliveredOhm ?? net.audit?.rSourceOhm ?? null;
   if (rsNow !== null && rsDisq > 0 && rsNow >= rsDisq) {
     // Out of band the figure is the DC limit — a lower bound, so exceeding it
     // is still a real verdict; say WHICH number it is (Sanders' scan read the

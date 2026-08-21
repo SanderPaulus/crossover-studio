@@ -351,6 +351,14 @@ export interface NetOptimizeResult {
    * ranker should treat it as disqualified rather than merely worse.
    */
   infeasible?: string;
+  /**
+   * Source resistance at the low driver OF THE DELIVERED PARTS, by the same
+   * definition the constraint uses. A ranking must judge on this and not on
+   * `audit.rSourceOhm`: the audit report is frozen before the shrink ladder
+   * and the catalog snap, and both still move this number. null when no hard
+   * tier was set (nothing asked the question) or no reading was possible.
+   */
+  rSourceDeliveredOhm?: number | null;
   snapNote?: string;
   /** Amp-load floor (system |Z| ≥ 2.5 Ω): set when the tuned result dipped
    *  below the floor — either "lifted a → b Ω" (repair accepted) or a
@@ -705,9 +713,15 @@ export function optimizeNetworkValues(
    * is an honest answer. What may not happen is a pass silently choosing one of
    * the two.
    */
+  /** Source resistance the way the constraint and the ranking must both read
+   *  it: on the parts handed over, with the audit's fbHz so the two cannot
+   *  drift apart. */
+  const rSourceOf = (ps: readonly VxpPart[]): number | null =>
+    sourceResistanceOhm(ps, { grid, driverZ, fbHz: opts.audit?.fbHz });
+
   const constraintViolation = (ps: readonly VxpPart[]): string | null => {
     if (rsHardOhm <= 0) return null;
-    const rs = sourceResistanceOhm(ps, { grid, driverZ, fbHz: opts.audit?.fbHz });
+    const rs = rSourceOf(ps);
     if (rs === null || rs < rsHardOhm) return null;
     return (
       `source resistance at the low driver ${rs.toFixed(2)} Ω ≥ the ${rsHardOhm.toFixed(1)} Ω ` +
@@ -2896,6 +2910,22 @@ export function optimizeNetworkValues(
    *
    * One final check on what is actually being handed over, so the flag cannot
    * depend on having thought of every pass. */
+  /* THE NUMBER A RANKING MAY JUDGE ON IS THE DELIVERED ONE.
+   *
+   * auditReport is frozen at gate 4 — "before the shrink ladder and the snap",
+   * as the comment there says — so audit.rSourceOhm describes the network as it
+   * was several passes ago. Measured on Sander's 562/2270 candidate: the audit
+   * reads 2.0002 Ω and the ranking disqualifies on it, while the network that
+   * actually ships measures 1.64 Ω and is comfortably inside the 2.0 Ω limit.
+   *
+   * That is the same disease as the bug that started this round (R_source read
+   * off the grid edge): the figure in the table is not the figure of the thing
+   * delivered. The audit keeps its own number — it is an honest diagnostic OF
+   * THE TUNED NETWORK, and its per-part verdicts belong to that network — but
+   * the ranking reads this one, computed by the same function the constraint
+   * uses so a candidate cannot be refused by one definition and accepted by
+   * another. */
+  const rSourceDeliveredOhm = rsHardOhm > 0 ? rSourceOf(outParts) : null;
   {
     const finalViolation = constraintViolation(outParts);
     if (finalViolation && !infeasible) {
@@ -3084,6 +3114,7 @@ export function optimizeNetworkValues(
     ...(ampFloorNote ? { ampFloorNote } : {}),
     ...(valueWindowNote ? { valueWindowNote } : {}),
     ...(auditReport ? { audit: auditReport } : {}),
+    ...(rSourceDeliveredOhm !== null ? { rSourceDeliveredOhm } : {}),
   };
 }
 
