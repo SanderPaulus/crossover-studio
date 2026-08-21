@@ -250,20 +250,42 @@ export function sumFromBranches(branches: readonly Branch[]): CombineNResult {
 }
 
 /**
- * A response limited to the range its FILE actually covers: outside it the
- * branch is silent, not extrapolated.
+ * WHICH BAND A CONSUMER MEANS. There is no default, and the type system is what
+ * enforces that — not a lint rule and not a comment.
  *
- * This is the HARD statement of the pair (see assertValidityContained): there
- * is no data here, so nothing may be summed. The soft one — data exists but is
- * not trustworthy — is the validity band, and it is a separate decision made by
- * each consumer (step A3b).
+ *  'file-range' — where DATA EXISTS. Hard: you cannot sum what is not there.
+ *                 Summation uses this.
+ *  'validity'   — where data exists AND may be believed. Soft: the numbers are
+ *                 present but the gate (or ka, or a splice) says they do not
+ *                 mean what they appear to. Fitting, optimising, concluding and
+ *                 ghost curves use this.
+ *
+ * The two are different statements and collapsing them would throw one away.
+ * `assertValidityContained` guarantees validity ⊆ file-range, so choosing
+ * 'validity' can only ever narrow — never claim ground the file does not cover.
  */
-export function bandLimit(
+export type BandBasis = 'file-range' | 'validity';
+
+/**
+ * A response limited to one of the two bands, chosen explicitly by the caller.
+ *
+ * Outside the chosen band the branch is silent rather than extrapolated: phase
+ * goes to 0 and level to `silentDb`, which downstream code already treats as
+ * "contributes nothing".
+ */
+export function limitToBand(
   response: GriddedResponse,
-  fileRange: [number, number],
+  basis: BandBasis,
+  bands: { fileRange: [number, number]; validity: ValidityBand },
   silentDb: number,
 ): GriddedResponse {
-  const [f0, f1] = fileRange;
+  const [f0, f1] =
+    basis === 'file-range'
+      ? bands.fileRange
+      : [
+          Math.max(bands.fileRange[0], bands.validity.fromHz ?? bands.fileRange[0]),
+          Math.min(bands.fileRange[1], bands.validity.toHz ?? bands.fileRange[1]),
+        ];
   return {
     freq: response.freq,
     spl: response.spl.map((v, i) => (response.freq[i] < f0 || response.freq[i] > f1 ? silentDb : v)),
@@ -271,6 +293,24 @@ export function bandLimit(
       response.freq[i] < f0 || response.freq[i] > f1 ? 0 : v,
     ),
   };
+}
+
+/**
+ * Shorthand for the hard band, kept because summation is the one caller that
+ * can never mean anything else — but it still says which band it is choosing,
+ * in its own name.
+ */
+export function bandLimit(
+  response: GriddedResponse,
+  fileRange: [number, number],
+  silentDb: number,
+): GriddedResponse {
+  return limitToBand(
+    response,
+    'file-range',
+    { fileRange, validity: { fromHz: null, toHz: null, reason: 'unused' } },
+    silentDb,
+  );
 }
 
 /**

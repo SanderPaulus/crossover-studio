@@ -3151,16 +3151,31 @@ export default function App() {
       if (!l) continue;
       const m = merged[role];
       if (m?.ok && m.spliceHz) {
-        // Spliced: the low end comes from the near field, which is valid from
-        // well below anything the gate could reach.
+        /* Spliced: the low end comes from the near field, which is valid well
+         * below anything the gate could reach.
+         *
+         * THE RANGE TO MEASURE AGAINST IS THE MERGED RESPONSE, not the raw
+         * far-field file. Found by the containment check on the 3-way demo: the
+         * near field is honest from 15 Hz while the far-field FRD starts at
+         * 20.5, so testing the band against the far-field file made a
+         * legitimate band look like a contradiction — and would have LENGTHENED
+         * the ghost past its own data, which is the one direction that must
+         * never happen.
+         *
+         * Clamped at construction rather than checked afterwards: a band that
+         * cannot leave its data is better than one that is caught leaving it
+         * (same reasoning as the single pistonRadiusM). */
         const near = nearFieldValidity(Number(sdCm2[role]));
+        const mf = m.frd.freq;
+        const mergedLo = mf[0];
+        const mergedHi = mf[mf.length - 1];
         out[role] = {
           name: role,
           meta: {
             dataSource: 'nearfield-merged',
             validity: {
-              fromHz: near?.fromHz ?? 15,
-              toHz: topOf(l),
+              fromHz: Math.max(near?.fromHz ?? 15, mergedLo),
+              toHz: Math.min(topOf(l), mergedHi),
               reason: `near field below ${Math.round(m.spliceHz)} Hz, gated far field above it`,
             },
             derivation: m.report,
@@ -7370,6 +7385,17 @@ export default function App() {
   // Distinct muted hue per ghost: with identical grays the legend chips were
   // indistinguishable — dash patterns only help inside the chart itself.
   const GHOST_COLORS = ['var(--viz-ghost1)', 'var(--viz-ghost2)', 'var(--viz-ghost3)', 'var(--viz-ghost4)'];
+  /**
+   * NaN outside the intersection of every source's validity — the chart draws
+   * a gap rather than a line, which is the honest shape for "we do not know".
+   */
+  function maskOutsideValidity(y: readonly number[], grid: readonly number[]): number[] {
+    const lo = evalBandRef.current?.fromHz ?? null;
+    const hi = evalBandRef.current?.toHz ?? null;
+    if (lo === null || hi === null) return [...y];
+    return y.map((v, i) => (grid[i] < lo || grid[i] > hi ? NaN : v));
+  }
+
   const tabGhosts: { spl: Series[]; phase: Series[]; z: Series[] } = useMemo(() => {
     if (!compareTabs || !networkActive || !sim || designs.length < 2)
       return { spl: [], phase: [], z: [] };
@@ -7410,7 +7436,17 @@ export default function App() {
             // Comparison curves, not the subject — fold them in the legend.
             secondary: true,
           };
-          spl.push({ ...style, id: `ghost:${d.id}`, y: combined.combinedSpl });
+          /* A3b — A GHOST IS DRAWN ON ITS VALIDITY, not on its file range.
+           *
+           * The live curve can carry a mark saying "this part is outside the
+           * band"; a muted dashed comparison line cannot, and a ghost that
+           * looks authoritative where the measurement is not is exactly what
+           * step 4 forbids. So a ghost simply stops where the design's own
+           * sources stop being believable. It can only ever get SHORTER:
+           * validity ⊆ file range is an invariant (assertValidityContained),
+           * and a ghost growing past its data would mean that broke. */
+          const ghostY = maskOutsideValidity(combined.combinedSpl, grid);
+          spl.push({ ...style, id: `ghost:${d.id}`, y: ghostY });
           // Phase ghost: in 3-way the headline is the stitched active-pair
           // line, and each tab gets its OWN overlap windows — a tab that hands
           // over elsewhere should show that, not borrow the live design's

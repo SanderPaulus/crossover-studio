@@ -8,6 +8,7 @@ import {
   branchSpacingMm,
   SourceModelError,
   bandLimit,
+  limitToBand,
   sourceModeOf,
   sourcesInBranch,
   sourcesOf,
@@ -382,5 +383,50 @@ describe('A3 — the source mode, and a migration that provably changes nothing'
     expect(() => assertSourceModel(bad)).toThrow(/describe the same physics a second time/);
     expect(() => assertSourceModel(bad)).toThrow(/no interface can create a second source/);
     expect(() => assertSourceModel(bad)).toThrow(/programming error/);
+  });
+});
+
+describe('A3b — the band a consumer means is a required choice, not a default', () => {
+  const GRID = Array.from({ length: 100 }, (_, i) => 10 * (20000 / 10) ** (i / 99));
+  const flat: GriddedResponse = { freq: GRID, spl: GRID.map(() => 90), phaseDeg: GRID.map(() => 30) };
+  const bands = {
+    fileRange: [20, 20000] as [number, number],
+    validity: { fromHz: 455, toHz: 18000, reason: 'gate + taper' },
+  };
+  const at = (hz: number) => GRID.findIndex((f) => f >= hz);
+
+  it("'file-range' keeps everything the file covers; 'validity' narrows, never widens", () => {
+    const hard = limitToBand(flat, 'file-range', bands, -400);
+    const soft = limitToBand(flat, 'validity', bands, -400);
+    // 100 Hz: real data, but below the gate's honest floor.
+    expect(hard.spl[at(100)]).toBe(90);
+    expect(soft.spl[at(100)]).toBe(-400);
+    // 1 kHz: inside both.
+    expect(hard.spl[at(1000)]).toBe(90);
+    expect(soft.spl[at(1000)]).toBe(90);
+    // 19 kHz: file has it, validity stops at 18k.
+    expect(hard.spl[at(19000)]).toBe(90);
+    expect(soft.spl[at(19000)]).toBe(-400);
+    // 15 Hz: outside the file — silent under BOTH, because validity can only
+    // narrow (assertValidityContained guarantees it).
+    expect(hard.spl[at(10)]).toBe(-400);
+    expect(soft.spl[at(10)]).toBe(-400);
+  });
+
+  it('a validity band that reaches past the file cannot widen the result', () => {
+    // Should be impossible (the assert), but if it ever happened the clamp
+    // means the ghost still cannot claim ground the file does not cover — the
+    // one direction Sander named as a finding.
+    const bad = { fileRange: [200, 5000] as [number, number], validity: { fromHz: 20, toHz: 20000, reason: 'wrong' } };
+    const soft = limitToBand(flat, 'validity', bad, -400);
+    expect(soft.spl[at(100)]).toBe(-400);
+    expect(soft.spl[at(10000)]).toBe(-400);
+    expect(soft.spl[at(1000)]).toBe(90);
+  });
+
+  it('phase is silenced with the level, so a masked region cannot leak into a phase curve', () => {
+    const soft = limitToBand(flat, 'validity', bands, -400);
+    expect(soft.phaseDeg[at(100)]).toBe(0);
+    expect(soft.phaseDeg[at(1000)]).toBe(30);
   });
 });
