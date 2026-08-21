@@ -280,16 +280,78 @@ export function deriveXoWindow(
   return { floorHz: floor, ceilHz: ceil, floorBy, ceilBy, limits, conflict, dataClamped, userClampedByData, banner };
 }
 
+/** What an exporter wrote about its time window. */
+export interface GateHeader {
+  /** Gate length, ms. */
+  gateMs: number;
+  /** Tukey α on the right flank when the header names the taper; null when it
+   *  does not, so the caller can say it is assuming DEFAULT_GATE_TAPER_ALPHA
+   *  rather than quoting the file for a number the file never gave. */
+  alpha: number | null;
+  /** The line it was read from — so a readout can show its own evidence. */
+  quote: string;
+}
+
 /**
- * Gate length in ms from an FRD's header, when the exporter wrote one
- * ("gated 5.021 ms", "Gate = 4.5 ms", "gate: 5ms"). Null when absent.
+ * The time window an FRD was exported with, from its header.
+ *
+ * ⚠ THE WORD "GATE" DOES NOT APPEAR IN AN ARTA EXPORT. It writes
+ *
+ *     * Right window = 5,021 ms, Tukey 0.25
+ *
+ * — "Right window", not "gate", and a COMMA decimal separator on a European
+ * locale. The first version of this function required the literal word "gate",
+ * so it returned null for every ARTA .txt file and the app fell back to the
+ * cabinet's single global Gate field. Measured on Sanders project: ten mid and
+ * tweeter exports each stating 5,021 ms were read as "no gate", the 4.5 ms in
+ * the cabinet field stood in for them, and the evaluation band started at
+ * 508 Hz instead of 455 Hz — a floor derived from a number no measurement had.
+ * The header even names the taper, which the app was assuming.
+ *
+ * A parser that silently finds nothing is worse than one that fails loudly:
+ * nothing downstream could tell "this file has no gate" from "I could not read
+ * this file's gate". Hence the `quote` — the readout shows the line it used.
+ *
+ * Forms accepted (all case-insensitive, '.' or ',' decimal):
+ *   - `Right window = 5,021 ms, Tukey 0.25`   (ARTA export)
+ *   - `ARTA gated 5.021 ms`                   (our own comment, and Sanders')
+ *   - `Gate = 4.5 ms` / `gate length: 5ms` / `gate time = 5 ms`
+ * The LEFT window line is never matched — it is anchored on "Right".
+ */
+export function gateHeaderOf(text: string): GateHeader | null {
+  const head = text.slice(0, 4000);
+  const num = (raw: string): number => Number(raw.replace(',', '.'));
+  const right = head.match(
+    /^[^\n]*\bright\s+window\s*[=:]\s*([\d]+(?:[.,]\d+)?)\s*ms\s*(?:,\s*([^\n]*))?/im,
+  );
+  if (right) {
+    const v = num(right[1]);
+    if (Number.isFinite(v) && v > 0) {
+      const taper = (right[2] ?? '').trim();
+      // Only tapers whose effective duration is unambiguous are honoured. A
+      // named window we do not model leaves alpha null: assuming is what the
+      // default is for, and it must be visible that we assumed.
+      let alpha: number | null = null;
+      const tuk = taper.match(/tukey\s*([\d]*\.?[\d]+)/i);
+      if (tuk) alpha = Math.min(1, Math.max(0, Number(tuk[1])));
+      else if (/rectangular|uniform|none/i.test(taper)) alpha = 0;
+      return { gateMs: v, alpha, quote: right[0].trim() };
+    }
+  }
+  const m = head.match(
+    /^[^\n]*\bgate[d]?\s*(?:length|time|window)?\s*[=:]?\s*([\d]+(?:[.,]\d+)?)\s*ms/im,
+  );
+  if (!m) return null;
+  const v = num(m[1]);
+  return Number.isFinite(v) && v > 0 ? { gateMs: v, alpha: null, quote: m[0].trim() } : null;
+}
+
+/**
+ * Gate length in ms from an FRD's header. Thin wrapper over
+ * {@link gateHeaderOf} for callers that only need the number.
  */
 export function gateMsFromHeader(text: string): number | null {
-  const head = text.slice(0, 4000);
-  const m = head.match(/gate[d]?\s*(?:length|time|window)?\s*[=:]?\s*([\d]+(?:[.,]\d+)?)\s*ms/i);
-  if (!m) return null;
-  const v = Number(m[1].replace(',', '.'));
-  return Number.isFinite(v) && v > 0 ? v : null;
+  return gateHeaderOf(text)?.gateMs ?? null;
 }
 
 /**

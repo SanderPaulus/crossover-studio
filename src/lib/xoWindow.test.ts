@@ -13,6 +13,7 @@ import {
   deriveXoWindow,
   DEFAULT_XO_WINDOW_THRESHOLDS,
   gateMsFromHeader,
+  gateHeaderOf,
   DEFAULT_GATE_TAPER_ALPHA,
 } from './xoWindow.ts';
 
@@ -226,5 +227,76 @@ describe('the gate floor accounts for the window taper (4D b)', () => {
     expect(rect - tukey).toBeCloseTo(0.19, 2);
     // Still clear of the threshold where a gain fit gets thin.
     expect(tukey).toBeGreaterThan(0.2);
+  });
+});
+
+describe('gate header — what the exporter actually writes', () => {
+  /* THE BUG THIS PINS. ARTA never writes the word "gate". Its .txt export says
+   *
+   *     * Right window = 5,021 ms, Tukey 0.25
+   *
+   * with a comma decimal on a European locale. The first parser required the
+   * literal "gate", so it returned null for every ARTA export — and the app
+   * fell back to the cabinet's single global Gate field without anything
+   * downstream being able to tell "this file has no gate" from "I could not
+   * read this file's gate". Measured on Sanders project: ten mid and tweeter
+   * files each stating 5.021 ms read as stating nothing, a typed 4.5 stood in,
+   * and the evaluation band started 53 Hz too high. */
+  const arta = [
+    '* Source file = mid hor 0.pir',
+    '* Left window = 0 ms, Rectangular',
+    '* Reference time = 2,5 ms',
+    '* Right window = 5,021 ms, Tukey 0.25',
+    '* FFT length = 32768',
+    '20.5  84.1  -12.0',
+  ].join('\n');
+
+  it('reads ARTAs "Right window", comma decimal and all', () => {
+    const h = gateHeaderOf(arta)!;
+    expect(h.gateMs).toBeCloseTo(5.021, 6);
+    // The header names the taper, so it is not assumed.
+    expect(h.alpha).toBeCloseTo(0.25, 6);
+    expect(h.quote).toMatch(/Right window/);
+  });
+
+  it('never mistakes the LEFT window for the gate', () => {
+    // "Left window = 0 ms" sits above it in every ARTA header, and a 0 ms gate
+    // would put the data floor at infinity.
+    expect(gateHeaderOf(arta)!.gateMs).not.toBe(0);
+    const leftOnly = '* Left window = 0 ms, Rectangular\n20.5 84.1 -12.0';
+    expect(gateHeaderOf(leftOnly)).toBeNull();
+  });
+
+  it('still reads the older forms, including our own comment', () => {
+    expect(gateHeaderOf('* bron: ARTA gated 5.021 ms, ref time 2.5 ms')!.gateMs).toBeCloseTo(5.021, 6);
+    expect(gateHeaderOf('# Gate = 4.5 ms')!.gateMs).toBeCloseTo(4.5, 6);
+    expect(gateHeaderOf('; gate length: 5ms')!.gateMs).toBeCloseTo(5, 6);
+    // Those forms do not state a taper, and say so rather than inventing one.
+    expect(gateHeaderOf('* bron: ARTA gated 5.021 ms')!.alpha).toBeNull();
+  });
+
+  it('honours only tapers whose effective duration is unambiguous', () => {
+    expect(gateHeaderOf('* Right window = 5 ms, Rectangular')!.alpha).toBe(0);
+    // A window we do not model leaves alpha null: assuming is what the default
+    // is for, and it has to be visible that we assumed.
+    expect(gateHeaderOf('* Right window = 5 ms, Blackman-Harris')!.alpha).toBeNull();
+  });
+
+  it('the two forms in Sanders own project agree with each other', () => {
+    // His woofer files carry a hand-written "ARTA gated 5.021 ms"; the mid and
+    // tweeter exports carry ARTA's own "Right window = 5,021 ms". Same session,
+    // same window — so reading both has to give the same number, and that
+    // agreement is what made the 4.5 ms stand out as not belonging to any file.
+    const a = gateHeaderOf('* bron: ARTA gated 5.021 ms, ref time 2.5 ms')!.gateMs;
+    const b = gateHeaderOf('* Right window = 5,021 ms, Tukey 0.25')!.gateMs;
+    expect(a).toBe(b);
+    expect(dataFloorFromGateMs(a, 0.25)!).toBeCloseTo(455.2, 1);
+    // What the cabinet's 4.5 ms produced instead:
+    expect(dataFloorFromGateMs(4.5, 0.25)!).toBeCloseTo(507.9, 1);
+  });
+
+  it('gateMsFromHeader stays a thin wrapper', () => {
+    expect(gateMsFromHeader(arta)).toBeCloseTo(5.021, 6);
+    expect(gateMsFromHeader('no window here')).toBeNull();
   });
 });

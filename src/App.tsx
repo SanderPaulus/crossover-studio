@@ -46,6 +46,8 @@ import {
   gatedFarFieldValidity,
   intersectValidity,
   nearFieldValidity,
+  nearFieldMergedValidity,
+  NEARFIELD_MERGED_FLOOR_HZ,
   type SourceMeta,
 } from './lib/sourceMeta.ts';
 import {
@@ -61,6 +63,7 @@ import {
   candidateCentres,
   deriveXoWindow,
   gateMsFromHeader,
+  gateHeaderOf,
   dataFloorFromGateMs,
   DEFAULT_GATE_TAPER_ALPHA,
   DEFAULT_XO_WINDOW_THRESHOLDS,
@@ -3182,22 +3185,41 @@ export default function App() {
         const mf = m.frd.freq;
         const mergedLo = mf[0];
         const mergedHi = mf[mf.length - 1];
+        /* A near-field branch gets NO gate floor: at ~5 mm the direct sound is
+         * tens of dB above anything the room returns, so 2/T does not describe
+         * this measurement. `nearFieldMergedValidity` has no gate parameter at
+         * all, so that cannot be wired in later by accident; a window stated in
+         * the near-field header is reported as ignored instead of used. */
+        const nfCone = nearField[role]?.cone;
+        const nfGate = nfCone ? gateMsFromHeader(nfCone.raw) : null;
+        const nfv = nearFieldMergedValidity({
+          spliceHz: m.spliceHz,
+          fromHz: Math.max(near?.fromHz ?? NEARFIELD_MERGED_FLOOR_HZ, mergedLo),
+          toHz: Math.min(topOf(l), mergedHi),
+          ignoredGateMs: nfGate,
+        });
         out[role] = {
           name: role,
           meta: {
             dataSource: 'nearfield-merged',
-            validity: {
-              fromHz: Math.max(near?.fromHz ?? 15, mergedLo),
-              toHz: Math.min(topOf(l), mergedHi),
-              reason: `near field below ${Math.round(m.spliceHz)} Hz, gated far field above it`,
-            },
+            validity: nfv.validity,
             derivation: m.report,
             verified: true,
+            ...(nfv.notes.length > 0 ? { notes: nfv.notes } : {}),
           },
         };
         continue;
       }
-      const gateMs = gateMsFromHeader(l.raw) ?? (Number(cabinet.gateMs) > 0 ? Number(cabinet.gateMs) : null);
+      /* The file's own header wins over the cabinet's single global field —
+       * and it can finally be read: ARTA writes "Right window = 5,021 ms,
+       * Tukey 0.25", never the word "gate". Ten of Sanders far-field exports
+       * stated their window and were read as stating nothing, so a 4.5 ms
+       * typed into the cabinet stood in for a measured 5.021 and put the
+       * evaluation band 53 Hz too high. The header names the TAPER too, so
+       * stop assuming that as well. */
+      const gh = gateHeaderOf(l.raw);
+      const gateMs = gh?.gateMs ?? (Number(cabinet.gateMs) > 0 ? Number(cabinet.gateMs) : null);
+      const gateAlpha = gh?.alpha ?? DEFAULT_GATE_TAPER_ALPHA;
       if (gateMs === null) {
         out[role] = {
           name: role,
@@ -3213,7 +3235,7 @@ export default function App() {
         };
         continue;
       }
-      const band = gatedFarFieldValidity(gateMs, topOf(l))!;
+      const band = gatedFarFieldValidity(gateMs, topOf(l), gateAlpha)!;
       out[role] = {
         name: role,
         meta: { dataSource: 'gated-farfield', validity: band, verified: true },
@@ -4033,29 +4055,39 @@ export default function App() {
      * splice when the branch is spliced; the pair takes the least reliable of
      * its two branches. Rules 2–6 as measured/derived above; rule 7 (a pin)
      * replaces 2–6 but never 1. Every rule keeps its number for the readout. */
-    const gateOf = (l: Loaded | null): number | null =>
-      (l ? gateMsFromHeader(l.raw) : null) ?? (Number(cabinet.gateMs) > 0 ? Number(cabinet.gateMs) : null);
     const dataFloorOf = (role: BranchRole, l: Loaded | null): { hz: number | null; label: string } => {
+      /* WHICH RULE APPLIES IS THE BRANCH'S dataSource, read from the one place
+       * that decides it (sourceMeta) rather than re-derived here. Two sites
+       * answering "is this branch spliced?" separately is how the same fact
+       * ends up with two values — the family of bug A3g exists to close. */
+      const src = sourceMeta[role]?.meta.dataSource;
       // A spliced branch carries its own low end from the near field, so the
       // gate no longer limits it — but a handover must not sit INSIDE the
       // splice blend, where the sum hangs on the merge's level and delay
       // fit. Its floor is the TOP of the blend: splice × 2^(blend/2)
       // (Sanders: "skip wat niet betrouwbaar is" — 300 Hz / 1 oct → 424 Hz).
-      const sp = merged[role]?.ok ? merged[role]!.spliceHz : undefined;
-      if (sp) {
+      // NB this is a different number from the branch's VALIDITY floor (15 Hz):
+      // where a response may be believed and where a crossover may sit are two
+      // questions, and the merge is honest ground for the first, not the second.
+      const sp = src === 'nearfield-merged' && merged[role]?.ok ? merged[role]!.spliceHz : undefined;
+      if (sp !== undefined) {
         const blend = Number(nearField[role].blendOctaves) || 1;
         const hz = sp * Math.pow(2, blend / 2);
         return { hz, label: `above the near-field splice blend (${Math.round(sp)} Hz ± ${blend / 2} oct) = ${Math.round(hz)} Hz` };
       }
-      const g = gateOf(l);
-      // The taper is inside the window (ARTA: Tukey 0.25 right), so the
-      // COHERENT duration sets the floor, not the nominal gate length.
-      const hz = dataFloorFromGateMs(g);
+      // Gated far field, and ONLY here: 2/T is a statement about a window that
+      // has to keep a room reflection out. The file's own header wins over the
+      // cabinet's global field, and it names its taper — the effective
+      // (coherent) duration sets the floor, not the nominal gate length.
+      const gh = l ? gateHeaderOf(l.raw) : null;
+      const g = gh?.gateMs ?? (Number(cabinet.gateMs) > 0 ? Number(cabinet.gateMs) : null);
+      const alpha = gh?.alpha ?? DEFAULT_GATE_TAPER_ALPHA;
+      const hz = dataFloorFromGateMs(g, alpha);
       return {
         hz,
         label: g
-          ? `data floor 2/${((1 - DEFAULT_GATE_TAPER_ALPHA / 2) * g).toFixed(1)} ms ` +
-            `(${g.toFixed(1)} ms gate, Tukey ${DEFAULT_GATE_TAPER_ALPHA}) = ${Math.round(hz ?? 0)} Hz`
+          ? `data floor 2/${((1 - alpha / 2) * g).toFixed(1)} ms ` +
+            `(${g.toFixed(1)} ms ${gh ? 'from the file header' : 'cabinet gate'}, Tukey ${alpha}) = ${Math.round(hz ?? 0)} Hz`
           : 'data floor',
       };
     };

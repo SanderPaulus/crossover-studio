@@ -189,6 +189,64 @@ export function gatedFarFieldValidity(
   };
 }
 
+/**
+ * The low end of a near-field / merged branch, in Hz.
+ *
+ * A NEAR-FIELD MEASUREMENT HAS NO GATE FLOOR, and that is the whole reason we
+ * take one. The mic sits ~5 mm from the cone: the direct pressure is tens of
+ * dB above anything the room sends back, so the window is not what limits how
+ * low the result may be believed — the noise floor and the mic calibration
+ * are. 2/T describes a far-field sweep, where the reflection arrives at
+ * comparable level and the window is the only thing keeping it out.
+ *
+ * So the floor is an explicit stated bound, not a derived one. 15 Hz is below
+ * anything these drivers do and above where a measurement mic's calibration
+ * stops meaning much.
+ */
+export const NEARFIELD_MERGED_FLOOR_HZ = 15;
+
+/**
+ * Validity of a branch whose low end came from a near-field splice.
+ *
+ * NOTE THE SIGNATURE: there is no gate parameter that could set a floor. That
+ * is deliberate and it is the point of the function existing at all — the data
+ * floor 2/T belongs to `dataSource === 'gated-farfield'` and to nothing else,
+ * and a signature that cannot accept a gate cannot be wired to one later by
+ * someone who does not know that. `ignoredGateMs` exists ONLY to report a gate
+ * that was present in the near-field file and deliberately not used; it can
+ * never reach the numbers.
+ */
+export function nearFieldMergedValidity(opts: {
+  /** Where the near field hands over to the gated far field. */
+  spliceHz: number;
+  /** Top of the merged response (the far-field file's own end). */
+  toHz: number | null;
+  /** Stated lower bound; defaults to {@link NEARFIELD_MERGED_FLOOR_HZ}. */
+  fromHz?: number | null;
+  /** A gate length found in the near-field header — NOT used, only reported. */
+  ignoredGateMs?: number | null;
+}): { validity: ValidityBand; notes: string[] } {
+  const fromHz = opts.fromHz ?? NEARFIELD_MERGED_FLOOR_HZ;
+  const notes: string[] = [];
+  if (opts.ignoredGateMs && opts.ignoredGateMs > 0) {
+    notes.push(
+      `the near-field file states a ${opts.ignoredGateMs.toFixed(2)} ms window; it is NOT used as a ` +
+        `data floor. At ~5 mm the direct sound is far above anything the room returns, so the ` +
+        `window is not what limits the low end — the noise floor and the mic calibration are.`,
+    );
+  }
+  return {
+    validity: {
+      fromHz,
+      toHz: opts.toHz,
+      reason:
+        `near field below ${Math.round(opts.spliceHz)} Hz, gated far field above it; ` +
+        `honest down to a stated ${Math.round(fromHz)} Hz (a near-field measurement has no gate floor)`,
+    },
+    notes,
+  };
+}
+
 /** Ground plane: no floor bounce, so the gate is long; the low end is real. */
 export function groundPlaneValidity(fromHz = 20, toHz: number | null = null): ValidityBand {
   return {
