@@ -17,6 +17,7 @@ import {
   optimizeNetworkValues,
   reseedOutliers,
   NetOptimizeError,
+  Z_FLOOR_OHM,
 } from './netOptimizer.ts';
 
 const FIXTURES = join(dirname(fileURLToPath(import.meta.url)), 'parsers', 'fixtures');
@@ -1138,14 +1139,116 @@ describe('A3f — a constraint survives the passes that run after the search', (
       audit: { enabled: true as const, thresholds: { rSourceOhm: 1.0 } },
       rSourceDisqualifyOhm: 2.0,
     });
-    // Armed by the hard tier, and it is the delivered parts that were measured.
-    expect(r.rSourceDeliveredOhm).not.toBeNull();
+    // The judged figure lives in `after`, which report() builds from the parts
+    // handed over — so it is delivered BY CONSTRUCTION (A3g).
+    expect(r.after.rSourceOhm).not.toBeNull();
     const measured = sourceResistanceOhm(r.parts, { grid, driverZ })!;
-    expect(r.rSourceDeliveredOhm!).toBeCloseTo(measured, 9);
-    /* The audit may legitimately differ — it describes the tuned network, which
-     * is a real thing worth reporting — but a ranking may not judge on it. This
-     * pins that the delivered reading exists and is the delivered one; whether
-     * the two happen to coincide on this fixture is not the point. */
-    expect(Number.isFinite(r.rSourceDeliveredOhm!)).toBe(true);
+    expect(r.after.rSourceOhm!).toBeCloseTo(measured, 9);
+    // And `before` is the seed's, measured on the seed's parts.
+    const seedRs = sourceResistanceOhm(net(), { grid, driverZ })!;
+    expect(r.before.rSourceOhm!).toBeCloseTo(seedRs, 9);
+  });
+});
+
+describe('A3g — every judged quantity describes the network that ships', () => {
+  /* These tests are boring on purpose. Four times now a number that looked
+   * like it described what was happening described something else, with green
+   * tests around it — because nothing ever asserted the one property that
+   * matters: the figure a caller judges on belongs to the parts it was handed.
+   *
+   * `after` is built by report(metrics, parts) from `outParts`, so the
+   * property holds BY CONSTRUCTION. What these pin is that the construction is
+   * real, for every quantity in the inventory, so a future pass appended after
+   * the reporting cannot quietly break it again. */
+  const P = (x: number, y: number) => ({ x, y });
+  const seedNet = (): VxpPart[] => [
+    { type: 'Generator', partId: 'G1', params: [{ name: 'Eg', value: 2.83, unit: 'V' }], wires: [P(3, 4), P(3, 11)] },
+    { type: 'Ground', params: [], wires: [P(3, 11)] },
+    { type: 'Inductor', partId: 'L1', params: [{ name: 'L', value: 0.6, unit: 'mH' }, { name: 'DCR', value: 0.2, unit: 'Ω' }], wires: [P(3, 4), P(9, 4)] },
+    { type: 'Driver', partId: 'D1', model: 'mid', inverted: false, params: [], wires: [P(9, 4), P(9, 11)] },
+    { type: 'Ground', params: [], wires: [P(9, 11)] },
+    { type: 'Capacitor', partId: 'C1', params: [{ name: 'C', value: 5.6, unit: 'uF' }], wires: [P(3, 14), P(9, 14)] },
+    { type: 'Wire', params: [], wires: [P(3, 4), P(3, 14)] },
+    { type: 'Driver', partId: 'D2', model: 'tweeter', inverted: false, params: [], wires: [P(9, 14), P(9, 21)] },
+    { type: 'Ground', params: [], wires: [P(9, 21)] },
+  ];
+  const run = (extra: Record<string, unknown> = {}) =>
+    optimizeNetworkValues(seedNet(), grid, wBase, tBase, driverZ, NO_ADJ, {
+      phasePriority: 0.5,
+      maxIterations: 40,
+      catalogSnap: false,
+      audit: { enabled: true as const, thresholds: { rSourceOhm: 1.0 } },
+      ...extra,
+    });
+
+  it('re-solving the delivered parts reproduces every number in `after`', () => {
+    const r = run();
+    /* The independent check: take the parts that came out, run them through
+     * the SAME optimiser with nothing free to move, and read its `before`.
+     * If any field in `after` belonged to an earlier network, this disagrees. */
+    let leftOne = false;
+    const locked = r.parts.map((p) => {
+      if (!/Resistor|Inductor|Capacitor/.test(p.type) || leftOne) return { ...p, locked: true };
+      leftOne = true;
+      return { ...p, locked: false }; // one free part, else the tuner refuses
+    });
+    const re = optimizeNetworkValues(locked, grid, wBase, tBase, driverZ, NO_ADJ, {
+      phasePriority: 0.5,
+      maxIterations: 1, // and `before` is read, so nothing it does can reach it
+      catalogSnap: false,
+      audit: { enabled: false as const },
+    });
+    expect(re.before.rippleDb).toBeCloseTo(r.after.rippleDb, 9);
+    expect(re.before.avgDevDb!).toBeCloseTo(r.after.avgDevDb!, 9);
+    expect(re.before.phaseDeg).toBeCloseTo(r.after.phaseDeg, 9);
+    expect(re.before.zMinOhm!).toBeCloseTo(r.after.zMinOhm!, 9);
+    expect(re.before.rSourceOhm!).toBeCloseTo(r.after.rSourceOhm!, 9);
+  });
+
+  it('the audit is a diagnostic of the tuned network and cannot be mistaken for the verdict', () => {
+    const r = run();
+    // The name says which network it describes; the old `rSourceOhm` on the
+    // audit is gone, so a ranking cannot reach for it by muscle memory.
+    expect(r.audit).toBeDefined();
+    expect('rSourceOhm' in (r.audit as object)).toBe(false);
+    expect(r.audit!.rSourceTunedOhm === null || Number.isFinite(r.audit!.rSourceTunedOhm)).toBe(true);
+    // The judged figure exists independently and is the delivered one.
+    expect(r.after.rSourceOhm).not.toBeNull();
+    expect(r.after.rSourceOhm!).toBeCloseTo(sourceResistanceOhm(r.parts, { grid, driverZ })!, 9);
+  });
+
+  it('the amplifier-load outcome is a value, and an unrepaired floor disqualifies', () => {
+    /* A shunt resistor straight across the generator is a load no filter can
+     * fix: the tuner may not remove it (it is a free VALUE, not a topology
+     * choice) and no value of the others lifts the minimum off the floor.
+     * Before A3g this shipped with a warning; Sanders NAD M10 V2 drops into
+     * protection below 2 Ω, so that is not a worse design, it is one the
+     * amplifier refuses. */
+    const shorted = (): VxpPart[] => [
+      ...seedNet(),
+      { type: 'Resistor', partId: 'R9', locked: true, params: [{ name: 'R', value: 0.5, unit: 'Ω' }], wires: [P(3, 4), P(3, 11)] },
+    ];
+    const r = optimizeNetworkValues(shorted(), grid, wBase, tBase, driverZ, NO_ADJ, {
+      phasePriority: 0.5,
+      maxIterations: 30,
+      catalogSnap: false,
+      zFloorStrict: true,
+      audit: { enabled: false as const },
+    });
+    expect(r.after.zMinOhm!).toBeLessThan(Z_FLOOR_OHM);
+    // A typed outcome — no caller has to read prose to learn what happened.
+    expect(['failed', 'refused']).toContain(r.ampFloorRepair);
+    expect(r.infeasible).toBeDefined();
+    expect(r.infeasible!).toMatch(/amplifier/);
+    // And the number in the sentence is the delivered one, not the pass's.
+    const stated = /presents ([\d.]+) Ω/.exec(r.infeasible!);
+    expect(stated).not.toBeNull();
+    expect(parseFloat(stated![1])).toBeCloseTo(r.after.zMinOhm!, 1);
+  });
+
+  it('a healthy design says so with the same machinery', () => {
+    const r = run();
+    expect(r.ampFloorRepair).toBe('none');
+    expect(r.infeasible).toBeUndefined();
   });
 });

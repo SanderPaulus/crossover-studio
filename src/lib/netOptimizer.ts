@@ -280,6 +280,37 @@ export interface NetOptimizeOptions {
   audit?: { enabled?: boolean; thresholds?: Partial<AuditThresholds>; fbHz?: number };
 }
 
+/**
+ * A3g — THE RULE ABOUT WHICH NETWORK A NUMBER DESCRIBES.
+ *
+ * Four times now the same shape of bug has cost a day: a figure that looks
+ * like it describes what is happening and describes something else, with green
+ * tests around it (costWeight never wired; the dissipation probe on the grid
+ * edge; four cost-function bands taken from the grid instead of the validity
+ * band; a ranking judging a network from before the shrink ladder and the
+ * snap). It is not four unrelated bugs, it is a property of how this file
+ * grew: passes were appended after the point where the reporting was written.
+ *
+ * The rule, and it is enforced by CONSTRUCTION rather than by discipline:
+ *
+ *   Every quantity a caller may JUDGE on lives in `before` or `after`, and
+ *   those two are the ONLY things built by `report(metrics, parts)` — a
+ *   function that cannot produce a number without being handed the parts it
+ *   belongs to. `after` is built from `outParts`, so any field added to
+ *   report() is delivered by construction and cannot silently fall the wrong
+ *   way.
+ *
+ * Everything outside those two blocks is a DIAGNOSTIC of some intermediate
+ * state and is named for it — `audit.rSourceTunedOhm`, not `rSourceOhm`. Two
+ * fields with the same name describing different networks is this bug in its
+ * smallest form, so the names are not allowed to collide.
+ *
+ * Notes (`ampFloorNote`, `snapNote`, `safetyNote`) are PROSE FOR A HUMAN. No
+ * verdict may be derived from their text: `zOk` used to be a string match on
+ * "could not be repaired", which made a ranking depend on wording written
+ * three passes earlier. Pass outcomes are typed (`ampFloorRepair`) precisely
+ * so nothing has to read a sentence to find out what happened.
+ */
 export interface NetOptimizeResult {
   /** The schematic parts with re-fitted values (locked ones untouched). */
   parts: VxpPart[];
@@ -295,6 +326,8 @@ export interface NetOptimizeResult {
     pairPhaseDeg?: number[];
     xoHzPairs?: (number | null)[];
     powerStdDb?: number;
+    /** Source resistance at the low driver of THESE parts (the seed). */
+    rSourceOhm?: number | null;
   };
   /** Full-grid metrics of the delivered network; `xoHz` = its acoustic
    *  crossing (used by the no-pin scan to derive follow-up candidates). */
@@ -330,6 +363,17 @@ export interface NetOptimizeResult {
     xoHzPairs?: (number | null)[];
     /** 3-way: delivered overlap width per pair, octaves. */
     pairOverlapOct?: (number | null)[];
+    /**
+     * Source resistance at the low driver OF THE DELIVERED PARTS — the figure
+     * every ranking judges on.
+     *
+     * Deliberately here and not on the audit: `audit.rSourceTunedOhm` is frozen
+     * at gate 4, before the shrink ladder and the catalog snap, and both of
+     * those still move this number. Measured on Sanders 562/2270 candidate:
+     * the audit read 2.0002 Ω and the row was struck through, while the network
+     * that would actually be built measures 1.64 Ω — inside the 2.0 Ω limit.
+     */
+    rSourceOhm?: number | null;
   };
   /** How many component values were free to move (final network). */
   tuned: number;
@@ -352,13 +396,17 @@ export interface NetOptimizeResult {
    */
   infeasible?: string;
   /**
-   * Source resistance at the low driver OF THE DELIVERED PARTS, by the same
-   * definition the constraint uses. A ranking must judge on this and not on
-   * `audit.rSourceOhm`: the audit report is frozen before the shrink ladder
-   * and the catalog snap, and both still move this number. null when no hard
-   * tier was set (nothing asked the question) or no reading was possible.
+   * Outcome of the amplifier-load repair pass, as a VALUE (A3g).
+   *
+   * 'none' = the delivered network never dipped far enough to need it.
+   * 'lifted' = repaired. 'refused' = it could only have succeeded by breaking
+   * a hard constraint, so it was rolled back (A3f). 'failed' = attempted and
+   * could not reach the floor.
+   *
+   * Exists so no caller has to read `ampFloorNote` to find out what happened:
+   * both chains used to derive `zOk` from `.includes('could not be repaired')`.
    */
-  rSourceDeliveredOhm?: number | null;
+  ampFloorRepair?: 'none' | 'lifted' | 'refused' | 'failed';
   snapNote?: string;
   /** Amp-load floor (system |Z| ≥ 2.5 Ω): set when the tuned result dipped
    *  below the floor — either "lifted a → b Ω" (repair accepted) or a
@@ -2418,26 +2466,39 @@ export function optimizeNetworkValues(
   /** Set when a post-search pass had to be rolled back because it could not
    *  reach its goal without violating a hard constraint. */
   let infeasible: string | undefined;
+  /* A3g: the OUTCOME of this pass as a value, not as a sentence. Both chains
+   * used to derive `zOk` with `ampFloorNote.includes('could not be repaired')`
+   * — a ranking depending on the wording of prose written three passes
+   * earlier, and on prose describing a network the snap had since changed. */
+  let ampFloorRepair: 'none' | 'lifted' | 'refused' | 'failed' = 'none';
+  /** How far the SEED sat below the floor, for the relative bar (a user network
+   *  that already dipped keeps its own reference). Hoisted so the delivered
+   *  check at the end can use the same predicate. */
+  let ampFloorSeedShort = 0;
+  const fullOf = (ps: readonly VxpPart[]): Metrics =>
+    metricsOn(buildWork(ps).work, grid, wBase, tBase, midFull, driverZ, angleData ?? null);
+  /** Worst dip over the evaluation grid AND the safety grid — hoisted for the
+   *  same reason: detection, acceptance and the delivered verdict must all use
+   *  the one measure. */
+  const worstZOf = (m: Metrics, ps: readonly VxpPart[]): { short: number; min: number } => {
+    let short = m.zShortOhm;
+    let min = m.zMinOhm;
+    if (opts.safety) {
+      const sg = opts.safety;
+      const ms = metricsOn(buildWork(ps).work, sg.freqs, sg.w, sg.t, sg.m ?? null, sg.z, null);
+      if (ms.zShortOhm > short) {
+        short = ms.zShortOhm;
+        min = ms.zMinOhm;
+      }
+    }
+    return { short, min };
+  };
   {
-    const fullOf = (ps: readonly VxpPart[]): Metrics =>
-      metricsOn(buildWork(ps).work, grid, wBase, tBase, midFull, driverZ, angleData ?? null);
     // Judge the dip on the evaluation grid AND the safety grid (when given):
     // the safety gate rejects on ITS grid, and a narrow resonant dip — or one
-    // outside a zoomed view range — only shows up there. Detection and
-    // acceptance must use the same measure the gate will.
-    const worstZ = (m: Metrics, ps: readonly VxpPart[]): { short: number; min: number } => {
-      let short = m.zShortOhm;
-      let min = m.zMinOhm;
-      if (opts.safety) {
-        const s = opts.safety;
-        const ms = metricsOn(buildWork(ps).work, s.freqs, s.w, s.t, s.m ?? null, s.z, null);
-        if (ms.zShortOhm > short) {
-          short = ms.zShortOhm;
-          min = ms.zMinOhm;
-        }
-      }
-      return { short, min };
-    };
+    // outside a zoomed view range — only shows up there. Detection, acceptance
+    // and the delivered verdict all use `worstZOf` for that reason.
+    const worstZ = worstZOf;
     const mCur = fullOf(cur.parts);
     const zCur = worstZ(mCur, cur.parts);
     if (zCur.short > 0.15) {
@@ -2446,6 +2507,7 @@ export function optimizeNetworkValues(
       // the safety gate judges against the seed, so "as healthy as the seed"
       // is repaired enough there.
       const zSeed = worstZ(fullOf(parts), parts);
+      ampFloorSeedShort = zSeed.short;
       const repairedEnough = (s: number): boolean =>
         opts.zFloorStrict ? s <= 0.15 : s <= Math.max(0.15, zSeed.short + 0.15);
       // Iterate the barrier retune (max 3 warm-started rounds): one round's
@@ -2511,6 +2573,7 @@ export function optimizeNetworkValues(
        * answer about this candidate. */
       const repViolation = ok ? constraintViolation(rep.parts) : null;
       if (ok && repViolation) {
+        ampFloorRepair = 'refused';
         infeasible =
           `the amplifier-load repair would lift the impedance minimum to ` +
           `${zRep.min.toFixed(1)} Ω, but only by pushing ${repViolation}. Rolled back: ` +
@@ -2519,12 +2582,14 @@ export function optimizeNetworkValues(
           `amp-load floor: repair REFUSED — it would have lifted ${zCur.min.toFixed(1)} → ` +
           `${zRep.min.toFixed(1)} Ω at the cost of the source-resistance limit`;
       } else if (ok) {
+        ampFloorRepair = 'lifted';
         ampFloorNote =
           `amp-load floor: system impedance minimum lifted ` +
           `${zCur.min.toFixed(1)} → ${zRep.min.toFixed(1)} Ω (floor ${Z_FLOOR_OHM} Ω)` +
           (zRep.short > 0.15 ? ' — still under the floor, but no longer a short' : '');
         cur = { ...rep, freeCount: cur.freeCount };
       } else {
+        ampFloorRepair = 'failed';
         ampFloorNote =
           `amp-load floor: system impedance dips to ${zCur.min.toFixed(1)} Ω ` +
           `(floor ${Z_FLOOR_OHM} Ω) and could not be repaired without losing response quality — ` +
@@ -2925,7 +2990,6 @@ export function optimizeNetworkValues(
    * the ranking reads this one, computed by the same function the constraint
    * uses so a candidate cannot be refused by one definition and accepted by
    * another. */
-  const rSourceDeliveredOhm = rsHardOhm > 0 ? rSourceOf(outParts) : null;
   {
     const finalViolation = constraintViolation(outParts);
     if (finalViolation && !infeasible) {
@@ -2934,11 +2998,45 @@ export function optimizeNetworkValues(
         `limit, so the constraint is not what this candidate failed on, the candidate is`;
     }
   }
-  if (ampFloorNote !== undefined && ampFloorNote.includes('lifted')) {
-    const zFinal = zMinOf(after, outParts);
-    const claimed = /→ ([\d.]+) Ω/.exec(ampFloorNote);
-    if (claimed && zFinal < parseFloat(claimed[1]) - 0.05) {
-      ampFloorNote += `; the catalog snap gave part of that back — delivered ${zFinal.toFixed(1)} Ω`;
+  /* A3g — THE AMP LOAD, JUDGED ON WHAT SHIPS.
+   *
+   * This pass runs BEFORE the catalog snap, so every number it wrote describes
+   * a network that no longer exists. Measured on Sanders 562/2270 candidate:
+   * the note said "dips to 0.4 Ω" while the delivered network measures 0.70 Ω.
+   * Same quantity, two values, and the verdict hung on the wrong one.
+   *
+   * And the ASYMMETRY he named: A3f made a pass that would break a constraint
+   * roll itself back and declare the candidate infeasible, but a pass that
+   * simply COULD NOT REACH ITS GOAL still shipped a design with a warning
+   * attached. Those are the same situation. His NAD M10 V2 is class-D and
+   * drops into protection below 2 Ω: 0.70 Ω is not a demanding load, it is a
+   * short circuit. A design that lands there is not worse, it is unusable —
+   * so an unrepaired floor is a disqualification, decided on the DELIVERED
+   * minimum and with the same predicate the repair itself used (a seed that
+   * already dipped keeps its own reference, so a user's own network is never
+   * condemned for a dip this run did not cause). */
+  if (ampFloorRepair !== 'none') {
+    const zDel = worstZOf(after, outParts);
+    const repairedEnough = (x: number): boolean =>
+      opts.zFloorStrict ? x <= 0.15 : x <= Math.max(0.15, ampFloorSeedShort + 0.15);
+    if (ampFloorRepair === 'lifted') {
+      const claimed = /→ ([\d.]+) Ω/.exec(ampFloorNote ?? '');
+      if (claimed && zDel.min < parseFloat(claimed[1]) - 0.05) {
+        ampFloorNote += `; the catalog snap gave part of that back — delivered ${zDel.min.toFixed(1)} Ω`;
+      }
+    } else if (ampFloorRepair === 'failed') {
+      // Restate the headline number on the network handed over, not on the
+      // one this pass was looking at.
+      ampFloorNote =
+        `amp-load floor: system impedance dips to ${zDel.min.toFixed(1)} Ω ` +
+        `(floor ${Z_FLOOR_OHM} Ω) and could not be repaired without losing response quality — ` +
+        `check the Impedance panel`;
+    }
+    if (!repairedEnough(zDel.short) && !infeasible) {
+      infeasible =
+        `the delivered network presents ${zDel.min.toFixed(2)} Ω to the amplifier ` +
+        `(floor ${Z_FLOOR_OHM} Ω) and the load could not be repaired — this is not a ` +
+        `worse design, it is one a class-D amplifier will refuse to drive`;
     }
   }
 
@@ -2947,6 +3045,9 @@ export function optimizeNetworkValues(
     avgDevDb: m.avgDevDb,
     phaseDeg: m.phaseDeg,
     zMinOhm: zMinOf(m, ps),
+    // Measured on the parts this report is ABOUT — that is the whole point of
+    // report() taking them (A3g). One extra solve per call, twice per run.
+    rSourceOhm: rSourceOf(ps),
     // Energy-average (in-room) flatness of the delivered sum, when angle
     // data armed it — so a ranking can weigh the power response, not only
     // the on-axis curve (window spec rule 9).
@@ -2990,7 +3091,9 @@ export function optimizeNetworkValues(
           `rejected, your values are unchanged. Flattening by pulling everything down is not ` +
           `a filter; check for oversized series resistors, or narrow the view range to the ` +
           `band this driver should actually cover.`,
-        ...(ampFloorNote ? { ampFloorNote } : {}),
+        // Same rule as the full-band gate below: the seed is what is returned,
+        // so the repair note has to say which network it is about (A3g).
+        ...(ampFloorNote ? { ampFloorNote: `the rejected tune — ${ampFloorNote}` } : {}),
       };
     }
   }
@@ -3052,9 +3155,11 @@ export function optimizeNetworkValues(
         `optimised on ${Math.round(band[0])}–${Math.round(band[1])} Hz` +
         (opts.band ? '' : ' (full grid minus edges — no validity band supplied)'),
       safetyNote: `safety gate: tune rejected on the full measurement band — ${reasons.join('; ')}. ${tail}`,
-        // What the repair pass tried/achieved — the note explains WHY the
-        // gate still saw a dip (repair refused, or never reached the floor).
-        ...(ampFloorNote ? { ampFloorNote } : {}),
+        // What the repair pass tried/achieved on the REJECTED tune — it
+        // explains why the gate saw a dip. Prefixed because the network being
+        // returned is the seed, not the one this sentence is about (A3g: a
+        // note may never be read as describing the delivered design).
+        ...(ampFloorNote ? { ampFloorNote: `the rejected tune — ${ampFloorNote}` } : {}),
       };
     }
   }
@@ -3112,9 +3217,9 @@ export function optimizeNetworkValues(
     ...(snapNote ? { snapNote } : {}),
     ...(infeasible ? { infeasible } : {}),
     ...(ampFloorNote ? { ampFloorNote } : {}),
+    ampFloorRepair,
     ...(valueWindowNote ? { valueWindowNote } : {}),
     ...(auditReport ? { audit: auditReport } : {}),
-    ...(rSourceDeliveredOhm !== null ? { rSourceDeliveredOhm } : {}),
   };
 }
 

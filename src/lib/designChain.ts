@@ -299,9 +299,11 @@ export function runDesignChain(
       onStage: (detail, ev) => onProgress?.({ stage: 'tune', evals: evaluations + (ev ?? 0), detail }),
     },
   );
-  const zOk =
-    !net.safetyNote &&
-    !(net.ampFloorNote !== undefined && net.ampFloorNote.includes('could not be repaired'));
+  /* A3g: the pass OUTCOME, not a string match on its prose. `zOk` stays
+   * RELATIVE (the tune did not make the load worse); the absolute verdict is
+   * `zMinOhm` against the floor, ranked as its own class, and an unrepaired
+   * floor now disqualifies via `net.infeasible`. */
+  const zOk = !net.safetyNote && net.ampFloorRepair !== 'failed' && net.ampFloorRepair !== 'refused';
   const win = input.judgeWindow;
   const xoDel = net.after.xoHz;
   const xoWindowOk = ((): boolean | null => {
@@ -409,7 +411,7 @@ export function rankChainResults(
     // and the catalog snap, both of which still move it, so ranking on it can
     // condemn a network that ships inside the limit (measured: audit 2.0002 Ω
     // against 1.64 Ω delivered). Same definition the constraint enforces.
-    const rs = r.net.rSourceDeliveredOhm ?? r.net.audit?.rSourceOhm;
+    const rs = r.net.after.rSourceOhm;
     if (rs == null) return 0;
     if (rSourceDisqualifyOhm > 0 && rs >= rSourceDisqualifyOhm) return 10;
     return rSourceLimitOhm > 0 && rs > rSourceLimitOhm ? 1 : 0;
@@ -438,7 +440,12 @@ export function rankChainResults(
    * and unwindowed runs rank exactly as before. */
   const zFloorOk = (r: ChainResult): boolean =>
     r.zMinOhm == null || r.zMinOhm >= Z_FLOOR_OHM;
+  /* A3g: a design a pass had to give up on — a constraint it could only have
+   * met by breaking another, or an amplifier load it could not lift off the
+   * floor — is DISQUALIFIED, the same tier the three-way chain uses. It stays
+   * visible and clickable; it just cannot win. */
   const zClass = (r: ChainResult): number =>
+    (r.net.infeasible ? 10 : 0) +
     (r.zOk === false ? 2 : 0) + (zFloorOk(r) ? 0 : 1) + rsClass(r) +
     (bomCapEur > 0 && r.bomTotalEur != null && r.bomTotalEur > bomCapEur ? 1 : 0);
   const xoClass = (r: ChainResult): number => (r.xoWindowOk === false ? 1 : 0);

@@ -102,7 +102,9 @@ export function minimizeNetwork(
   const measure = (r: NetOptimizeResult) => ({
     peakDb: r.after.rippleDb,
     phaseDeg: r.after.pairPhaseDeg && r.after.pairPhaseDeg.length > 0 ? Math.max(...r.after.pairPhaseDeg) : r.after.phaseDeg,
-    rSourceOhm: r.audit?.rSourceOhm ?? sourceResistanceOhm(r.parts, { grid, driverZ, fbHz: opts.fbHz }),
+    // A3g: the DELIVERED reading, never the audit's (which describes the
+    // network as it stood at gate 4, before the shrink ladder and the snap).
+    rSourceOhm: r.after.rSourceOhm ?? sourceResistanceOhm(r.parts, { grid, driverZ, fbHz: opts.fbHz }),
     zMinOhm: r.after.zMinOhm ?? null,
   });
   const ok = (m: ReturnType<typeof measure>, ref: ReturnType<typeof measure>): boolean =>

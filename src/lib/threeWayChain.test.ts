@@ -406,8 +406,11 @@ describe('threeWayChain (phase-4 trede 4c, staged v1)', () => {
         synthTweeter: {} as Chain3Result['synthTweeter'],
         parts: [],
         net: {
-          after: { rippleDb: avgDev, avgDevDb: avgDev, phaseDeg: 5, zMinOhm: 6 },
-          audit: rSourceOhm === null ? undefined : { rSourceOhm, entries: [] },
+          // A3g: the judged figure lives in `after` — measured on the parts
+          // that ship. The audit's own reading describes the network as it
+          // stood at gate 4 and is no longer a verdict.
+          after: { rippleDb: avgDev, avgDevDb: avgDev, phaseDeg: 5, zMinOhm: 6, rSourceOhm },
+          audit: rSourceOhm === null ? undefined : { rSourceTunedOhm: rSourceOhm, entries: [] },
         } as unknown as Chain3Result['net'],
         bomTotalEur: 300,
         zOk: true,
@@ -441,8 +444,8 @@ describe('threeWayChain (phase-4 trede 4c, staged v1)', () => {
         synthTweeter: {} as Chain3Result['synthTweeter'],
         parts: [],
         net: {
-          after: { rippleDb: avgDev, avgDevDb: avgDev, phaseDeg: 5, zMinOhm: 6 },
-          audit: { rSourceOhm: rs, entries: [] },
+          after: { rippleDb: avgDev, avgDevDb: avgDev, phaseDeg: 5, zMinOhm: 6, rSourceOhm: rs },
+          audit: { rSourceTunedOhm: rs, entries: [] },
         } as unknown as Chain3Result['net'],
         bomTotalEur: 300,
         zOk: true,

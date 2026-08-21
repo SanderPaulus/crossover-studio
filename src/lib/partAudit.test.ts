@@ -251,13 +251,13 @@ describe('part audit — gate 4 (absolute physical audit)', () => {
     expect(e.dA).toBeGreaterThan(0.5); // a 3.3 Ω pad on a ~6 Ω mid is a level change
     // The network-level source-resistance verdict is independent of the part
     // verdicts: 3.3 Ω in front of the low driver is a red flag at Fs/Fb.
-    expect(audit.rSourceOhm).not.toBeNull();
-    expect(audit.rSourceOhm!).toBeGreaterThan(3);
+    expect(audit.rSourceTunedOhm).not.toBeNull();
+    expect(audit.rSourceTunedOhm!).toBeGreaterThan(3);
     expect(audit.rSourceWarn).toBe(true);
     expect(audit.qesFactor!).toBeGreaterThan(1.3);
     // Without the resistor the same network reads clean.
     const clean = auditNetwork(parts, ctx)!;
-    expect(clean.rSourceOhm!).toBeLessThan(1);
+    expect(clean.rSourceTunedOhm!).toBeLessThan(1);
     expect(clean.rSourceWarn).toBe(false);
   });
 

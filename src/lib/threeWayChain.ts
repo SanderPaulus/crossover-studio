@@ -387,9 +387,11 @@ export function runThreeWayChain(
     }
   }
 
-  const zOk =
-    !net.safetyNote &&
-    !(net.ampFloorNote !== undefined && net.ampFloorNote.includes('could not be repaired'));
+  /* A3g: the pass OUTCOME, not a string match on its prose. `zOk` stays
+   * RELATIVE (the tune did not make the load worse); the absolute verdict is
+   * `zMinOhm` against the floor, ranked as its own class, and an unrepaired
+   * floor now disqualifies via `net.infeasible`. */
+  const zOk = !net.safetyNote && net.ampFloorRepair !== 'failed' && net.ampFloorRepair !== 'refused';
   const zMinOhm = net.after.zMinOhm ?? null;
   const judge = (
     xo: number | null | undefined,
@@ -439,7 +441,7 @@ export function runThreeWayChain(
    * Sanders 562/2270 candidate: audit 2.0002 Ω (disqualified) against 1.64 Ω
    * for the network that actually ships. Falls back to the audit only when no
    * hard tier armed the delivered reading. */
-  const rsNow = net.rSourceDeliveredOhm ?? net.audit?.rSourceOhm ?? null;
+  const rsNow = net.after.rSourceOhm ?? null;
   if (rsNow !== null && rsDisq > 0 && rsNow >= rsDisq) {
     // Out of band the figure is the DC limit — a lower bound, so exceeding it
     // is still a real verdict; say WHICH number it is (Sanders' scan read the
@@ -944,7 +946,7 @@ export function rankChain3Results(
   const p = 0.15 + 0.7 * Math.min(Math.max(phasePriority, 0), 1);
   const dW = Math.min(Math.max(directivityWeight, 0), 1);
   const rsClass = (r: Chain3Result): number => {
-    const rs = r.net.audit?.rSourceOhm;
+    const rs = r.net.after.rSourceOhm;
     return rs != null && rSourceLimitOhm > 0 && rs > rSourceLimitOhm ? 1 : 0;
   };
   const rippleOf = (r: Chain3Result): number => {

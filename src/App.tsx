@@ -833,8 +833,8 @@ function placementOf(d: CabinetDriver): DriverPlacement | null {
  * glyph and ranking all read this one so they cannot disagree about a row.
  */
 const rSrcDelivered = (r: {
-  net: { rSourceDeliveredOhm?: number | null; audit?: { rSourceOhm?: number | null } | null };
-}): number | null => r.net.rSourceDeliveredOhm ?? r.net.audit?.rSourceOhm ?? null;
+  net: { after: { rSourceOhm?: number | null } };
+}): number | null => r.net.after.rSourceOhm ?? null;
 
 function excessDelayMsOf(frd: Parsed): number | null {
   try {
@@ -5563,7 +5563,7 @@ export default function App() {
                       // The DELIVERED figure — the audit's is frozen before the
                       // shrink ladder and the snap, so the column and the
                       // ranking would disagree about the same row.
-                      rSourceOhm: rr.net.rSourceDeliveredOhm ?? rr.net.audit?.rSourceOhm ?? null,
+                      rSourceOhm: rSrcDelivered(rr),
                       disqualified: rr.disqualified ?? [],
                       xoFloorVerdict: rr.xoFloorVerdict ?? null,
                       avgDevDb: rr.net.after.avgDevDb ?? null,
@@ -6048,10 +6048,15 @@ export default function App() {
                       peakSmoothedDb: rr.net.after.ripplePeakSmoothedDb ?? null,
                       powerSlopeDbDec: rr.net.after.powerSlopeDbDec ?? null,
                       rSourceOhm: rSrcDelivered(rr),
-                      disqualified:
-                        rSrcDelivered(rr) != null && rSourceDisqOhm > 0 && rSrcDelivered(rr)! >= rSourceDisqOhm
+                      disqualified: [
+                        // A3g: whatever the tuner itself gave up on (a rolled-back
+                        // pass, an unrepairable amplifier load) comes first — the
+                        // table may not be gentler than the engine.
+                        ...(rr.net.infeasible ? [rr.net.infeasible] : []),
+                        ...(rSrcDelivered(rr) != null && rSourceDisqOhm > 0 && rSrcDelivered(rr)! >= rSourceDisqOhm
                           ? [`source resistance at the low driver ${rSrcDelivered(rr)!.toFixed(2)} Ω ≥ ${rSourceDisqOhm.toFixed(1)} Ω`]
-                          : [],
+                          : []),
+                      ],
                       xoFloorVerdict: null,
                       avgDevDb: rr.net.after.avgDevDb ?? null,
                       phaseDeg: rr.net.after.phaseDeg,
@@ -6850,8 +6855,8 @@ export default function App() {
                 (r.audit && r.audit.entries.some((e) => e.applied)
                   ? ` · audit removed inert: ${r.audit.entries.filter((e) => e.applied).map((e) => e.label).join(', ')}`
                   : '') +
-                (r.audit?.rSourceWarn && r.audit.rSourceOhm !== null
-                  ? ` · ⚠ source R at the low driver ${r.audit.rSourceOhm.toFixed(2)} Ω @ ${Math.round(r.audit.rSourceAtHz ?? 0)} Hz (Qes ×${(r.audit.qesFactor ?? 1).toFixed(2)})`
+                (r.audit?.rSourceWarn && r.audit.rSourceTunedOhm !== null
+                  ? ` · ⚠ source R at the low driver ${r.audit.rSourceTunedOhm.toFixed(2)} Ω @ ${Math.round(r.audit.rSourceAtHz ?? 0)} Hz (Qes ×${(r.audit.qesFactor ?? 1).toFixed(2)})`
                   : '') +
                 (r.added.length > 0 ? ` · bypass-C added: ${r.added.join(', ')}` : '') +
                 (r.snapNote ? ` · ${r.snapNote}` : '') +
@@ -14187,11 +14192,11 @@ export default function App() {
                     e: netOptAudit.entries.filter((e) => e.verdict === 'earned').length,
                     g: netOptAudit.entries.filter((e) => e.verdict === 'grey').length,
                   })}
-                  {netOptAudit.rSourceOhm !== null && (
+                  {netOptAudit.rSourceTunedOhm !== null && (
                     <span className={netOptAudit.rSourceWarn ? 'audit-warn' : 'audit-ok'}>
                       {' · '}
                       {t('source R at the low driver {r} Ω @ {f} Hz', {
-                        r: netOptAudit.rSourceOhm.toFixed(2),
+                        r: netOptAudit.rSourceTunedOhm.toFixed(2),
                         f: Math.round(netOptAudit.rSourceAtHz ?? 0),
                       })}
                       {netOptAudit.qesFactor !== null ? ` (Qes ×${netOptAudit.qesFactor.toFixed(2)})` : ''}
@@ -15021,11 +15026,11 @@ export default function App() {
                     </span>
                   );
                 })()}
-                {netOptAudit && netOptAudit.rSourceOhm !== null && netOptAudit.rSourceOhm >= 0.5 * rSourceLimitOhm && (() => {
+                {netOptAudit && netOptAudit.rSourceTunedOhm !== null && netOptAudit.rSourceTunedOhm >= 0.5 * rSourceLimitOhm && (() => {
                   // Point 4: source resistance at the low driver as a strip item,
                   // naming the parts that carry it (largest |ΔR_source| when
                   // removed). Yellow from half the limit, red over it.
-                  const rs = netOptAudit.rSourceOhm;
+                  const rs = netOptAudit.rSourceTunedOhm;
                   const culprits = [...netOptAudit.entries]
                     .filter((e) => e.dRsource !== null && Math.abs(e.dRsource) >= 0.1 && e.ids.length === 1)
                     .sort((a, b) => Math.abs(b.dRsource!) - Math.abs(a.dRsource!))

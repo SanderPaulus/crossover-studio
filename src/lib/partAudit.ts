@@ -119,18 +119,28 @@ export interface PartAuditEntry {
 
 export interface NetworkAudit {
   entries: PartAuditEntry[];
-  /** Thevenin source impedance |Z| the low driver sees at `rSourceAtHz`. */
-  rSourceOhm: number | null;
+  /**
+   * Thevenin source resistance the low driver sees at `rSourceAtHz`, MEASURED
+   * ON THE NETWORK THIS AUDIT WAS RUN ON.
+   *
+   * Named for that network on purpose (A3g). The audit runs at gate 4, before
+   * the shrink ladder and the catalog snap, and both of those still move this
+   * number — so it is a diagnostic, not a verdict. Anything that RANKS must
+   * read `NetOptimizeResult.after.rSourceOhm`, which is measured on the parts
+   * handed over. Two fields called `rSourceOhm` describing different networks
+   * is exactly the bug this rename exists to prevent.
+   */
+  rSourceTunedOhm: number | null;
   rSourceAtHz: number | null;
   /** Estimated voice-coil Re (min |Z| below resonance) and the resulting
    *  Qes multiplier (Re + Rs)/Re — the low-end damping cost of the network. */
   reOhm: number | null;
   qesFactor: number | null;
-  /** The box tuning fell outside the measured grid, so rSourceOhm is the DC
+  /** The box tuning fell outside the measured grid, so rSourceTunedOhm is the DC
    *  limit (series-path resistance) rather than a Thevenin reading. A LOWER
    *  BOUND: it may condemn, it may not exonerate. */
   rSourceOutOfBand?: boolean;
-  /** rSourceOhm exceeds the limit — independent of any per-part verdict. */
+  /** rSourceTunedOhm exceeds the limit — independent of any per-part verdict. */
   rSourceWarn: boolean;
   /** The tuning frequency fell on the grid's first point (Fb below the grid,
    *  or no Fb and the Z peak lies below it): the number is taken at the grid
@@ -788,7 +798,7 @@ export function auditNetwork(parts: readonly VxpPart[], ctx: AuditContext): Netw
   const qesFactor = rSourceFull !== null && reOhm !== null && reOhm > 0 ? (reOhm + rSourceFull) / reOhm : null;
   return {
     entries,
-    rSourceOhm: rSourceFull,
+    rSourceTunedOhm: rSourceFull,
     rSourceOutOfBand,
     rSourceAtHz: fbIdx !== null ? grid[fbIdx] : null,
     reOhm,
