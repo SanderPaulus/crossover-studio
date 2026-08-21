@@ -892,3 +892,82 @@ describe('4D(a) — an unmeasurable dissipation term must DROP OUT, not score ze
     expect(probeable.after.dissRatio).toBeGreaterThanOrEqual(0);
   });
 });
+
+describe('A3d — the quality terms live on the band; the fundamentals deliberately do not', () => {
+  it('SOLO: an absurd peak outside the band changes nothing at all', () => {
+    /* The assertion Sander asked for, as behaviour rather than a runtime check:
+     * if the objective never reads outside `band`, corrupting the response out
+     * there must be invisible. A +40 dB spike is not subtle.
+     *
+     * SOLO is where the claim is exactly true, and that is not a dodge — it is
+     * the definition. In solo there are zero driver PAIRS, so every
+     * crossing-anchored guard drops out (documented in netOptimizer's `solo`
+     * option) and the objective IS branch flatness. What remains is the pure
+     * question: does the quality term respect its band? */
+    const band: [number, number] = [500, 10000];
+    const spike = (base: typeof wBase): typeof wBase => ({
+      freq: base.freq,
+      spl: base.spl.map((v, i) => (base.freq[i] < 400 || base.freq[i] > 12000 ? v + 40 : v)),
+      phaseDeg: base.phaseDeg.map((v, i) =>
+        base.freq[i] < 400 || base.freq[i] > 12000 ? v + 180 : v,
+      ),
+    });
+    const opts = {
+      phasePriority: 0.5,
+      maxIterations: 80,
+      band,
+      solo: true,
+      catalogSnap: false,
+      audit: { enabled: false as const },
+    };
+    const clean = optimizeNetworkValues(crudeNetwork('none'), grid, wBase, tBase, driverZ, NO_ADJ, opts);
+    const dirty = optimizeNetworkValues(crudeNetwork('none'), grid, spike(wBase), spike(tBase), driverZ, NO_ADJ, opts);
+    expect(dirty.evaluations).toBe(clean.evaluations);
+    expect(dirty.after.rippleDb).toBeCloseTo(clean.after.rippleDb, 12);
+    const values = (r: typeof clean) =>
+      r.parts
+        .filter((p) => /Inductor|Capacitor|Resistor/.test(p.type))
+        .map((p) => p.params.map((q) => q.value).join('/'));
+    expect(values(dirty)).toEqual(values(clean));
+    // The run says which band it worked on, so this is auditable afterwards
+    // rather than only inside a test.
+    expect(clean.bandNote).toMatch(/optimised on 500–10000 Hz/);
+  });
+
+  it('TWO-WAY: the fundamentals DO read outside the band, and that is the point of them', () => {
+    /* Measured while writing the test above: with a crossing at 295 Hz and a
+     * band of 500–10000, spiking the response outside the band moved both the
+     * search and the landing point. The reason is not a leak — it is the
+     * safety doctrine. xoDip spans [xo/4, xo·4], the leak guard
+     * [xo/4, xo/1.6] ∪ [xo·1.6, xo·4] and driver protection f ≤ xo/3, all
+     * anchored to the CROSSING rather than to the view range, precisely because
+     * a zoomed-in band otherwise hides whole-design degeneration (the 0.68 µF
+     * dead tweeter that this guard was built for).
+     *
+     * So the invariant is not "nothing outside the band" but:
+     *   quality terms  — amplitude, phase, power — strictly inside;
+     *   fundamentals   — deliberately wider, and documented as such.
+     * This test pins the second half so nobody later "fixes" it into the first
+     * and quietly removes the guard. */
+    const band: [number, number] = [500, 10000];
+    const spike = (base: typeof wBase): typeof wBase => ({
+      freq: base.freq,
+      spl: base.spl.map((v, i) => (base.freq[i] < 400 || base.freq[i] > 12000 ? v + 40 : v)),
+      phaseDeg: base.phaseDeg,
+    });
+    const opts = {
+      phasePriority: 0.5,
+      maxIterations: 40,
+      band,
+      catalogSnap: false,
+      audit: { enabled: false as const },
+    };
+    const clean = optimizeNetworkValues(crudeNetwork('none'), grid, wBase, tBase, driverZ, NO_ADJ, opts);
+    const dirty = optimizeNetworkValues(crudeNetwork('none'), grid, spike(wBase), spike(tBase), driverZ, NO_ADJ, opts);
+    /* The crossing lands near the bottom of the band (measured: ~890 Hz), so
+     * its guards reach well below it — xo/4 is ~220 Hz — and they notice the
+     * spike even though the quality terms cannot see it. */
+    expect(clean.after.xoHz! / 4).toBeLessThan(band[0]);
+    expect(dirty.after.rippleDb).not.toBeCloseTo(clean.after.rippleDb, 6);
+  });
+});

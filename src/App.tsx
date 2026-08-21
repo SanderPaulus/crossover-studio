@@ -5192,10 +5192,19 @@ export default function App() {
       }
       const grid = result.freq;
       const zOnGrid = zGridWithSlots(impedances, grid);
-      const band: [number, number] = [
-        Math.max(200, grid[0] * 1.02),
-        Math.min(grid[grid.length - 1] * 0.975, num(fMax, 20000)),
-      ];
+      /* THE COST FUNCTION IS EVALUATED ON THE VALIDITY BAND (issue #14, A3d).
+       *
+       * This used to be derived from the GRID, which meant candidates were
+       * generated from 508 Hz (the data floor) while their scores were computed
+       * from 204 Hz — a fifth of the log bandwidth of ranking weight resting on
+       * data the measurement's own gate says is not there. A candidate could
+       * win by being better in a region that does not exist.
+       *
+       * No fallback to the grid: without a validity band there is nothing to
+       * optimise ON, and refuseIfUnverified above has already stopped the run. */
+      const band: [number, number] = evalBand
+        ? [evalBand.fromHz, evalBand.toHz]
+        : [Math.max(200, grid[0] * 1.02), Math.min(grid[grid.length - 1] * 0.975, num(fMax, 20000))];
       const safety = (() => {
         const present = [woofer, midDrv, tweeter].filter((d): d is Loaded => d !== null);
         const lo = Math.max(200, Math.min(...present.map((d) => d.frd.freq[0])));
@@ -5657,10 +5666,12 @@ export default function App() {
       const grid = result.freq;
       // NB: no 300 Hz clamp here (unlike the two-way flow) — a fullranger
       // measured from 110 Hz must be designed from 110 Hz.
-      const band: [number, number] = [
-        grid[0] * 1.02,
-        Math.min(grid[grid.length - 1] * 0.975, num(fMax, 20000)),
-      ];
+      // Same rule as the 3-way chain: the cost function lives on the validity
+      // band. A fullranger measured from 110 Hz is still designed from 110 Hz —
+      // that floor now comes from its gate rather than from the grid.
+      const band: [number, number] = evalBand
+        ? [evalBand.fromHz, evalBand.toHz]
+        : [grid[0] * 1.02, Math.min(grid[grid.length - 1] * 0.975, num(fMax, 20000))];
       const z = impedances[model];
       setVfBusy(true);
       setVfError(null);
@@ -5834,10 +5845,16 @@ export default function App() {
       phaseMetric: phaseMetricMode,
       acousticSlopes: acousticSlopesValue(),
       xoRange: xoRangeValue(),
-      band: [
-        Math.max(300, grid[0]),
-        Math.min(grid[grid.length - 1] * 0.975, num(fMax, 20000)),
-      ] as [number, number],
+      // Validity band, not the grid (A3d). The old Math.max(300, …) was a
+      // stand-in for "below this the measurement cannot be trusted"; the
+      // validity band says exactly that, from the gate, per measurement — so
+      // keeping both would be two floors for one fact.
+      band: (evalBand
+        ? [evalBand.fromHz, evalBand.toHz]
+        : [Math.max(300, grid[0]), Math.min(grid[grid.length - 1] * 0.975, num(fMax, 20000))]) as [
+        number,
+        number,
+      ],
     };
 
     /* ---- FULL-CHAIN CROSSOVER SCAN (with measured impedances) ----
@@ -6711,7 +6728,12 @@ export default function App() {
         acousticSlopes: soloDriver ? undefined : acousticSlopesValue() ?? undefined,
         catalogSnap: catalogSnap && hasImportedCatalog(),
         snapPrefs: snapPrefsValue(),
-        band: [Math.max(300, grid[0]), Math.min(grid[grid.length - 1] * 0.975, num(fMax, 20000))],
+        band: (evalBand
+          ? [evalBand.fromHz, evalBand.toHz]
+          : [Math.max(300, grid[0]), Math.min(grid[grid.length - 1] * 0.975, num(fMax, 20000))]) as [
+          number,
+          number,
+        ],
         safety,
         // Gate 4: the source-resistance verdict is taken at the low branch's
         // box tuning when the designer entered one; otherwise at its Z peak.
