@@ -18,7 +18,7 @@ import {
   type SnapPrefs,
 } from './catalog.ts';
 import type { AngleResponse } from './directivity.ts';
-import { auditNetwork, type AuditThresholds, type NetworkAudit, sourceResistanceOhm, seenImpedance, sliceDriverZ } from './partAudit.ts';
+import { auditNetwork, type AuditThresholds, type NetworkAudit, sourceResistanceOhm, seenImpedance, sliceDriverZ, sourceProbeIndex } from './partAudit.ts';
 
 /**
  * Passive-in-the-loop component optimizer: re-fit the VALUES of a schematic's
@@ -43,7 +43,22 @@ import { auditNetwork, type AuditThresholds, type NetworkAudit, sourceResistance
 export interface NetOptimizeOptions {
   /** 0..1 share of the budget on phase (same scale as everywhere). Default 0.5. */
   phasePriority?: number;
-  /** Evaluation band, Hz. Default full grid minus edges. */
+  /**
+   * Evaluation band, Hz. Default full grid minus edges.
+   *
+   * SHOULD COME FROM MEASUREMENT VALIDITY, not from data extent (issue #14):
+   * `sourceMeta.intersectValidity` over every source that feeds the cost
+   * function. A response that happens to reach lower — a near-field merge runs
+   * to 15 Hz — is not the same statement as "this design is now judged down
+   * there". The tuner reports the band it used in `bandNote` so a run can be
+   * audited after the fact.
+   *
+   * NB the amplifier-load floor and its repair pass deliberately keep working
+   * on the FULL grid regardless: they are impedance criteria, and an impedance
+   * measurement has no gate — it is valid across the whole band. A dip the
+   * amplifier has to drive does not stop mattering because the response above
+   * it was measured through a window.
+   */
   band?: [number, number];
   maxIterations?: number;
   /** Per-driver angle responses (same grid) — enables the directivity-aware
@@ -291,6 +306,9 @@ export interface NetOptimizeResult {
   /** Staged mode: partIds of bypass capacitors added (rule 3). */
   added: string[];
   /** Catalog snap: singles-vs-stacks comparison ("bewust stapelen"). */
+  /** The band the run actually optimised on — an optimiser that cannot say
+   *  which band it worked on is not auditable (issue #14). */
+  bandNote: string;
   snapNote?: string;
   /** Amp-load floor (system |Z| ≥ 2.5 Ω): set when the tuned result dipped
    *  below the floor — either "lifted a → b Ω" (repair accepted) or a
@@ -796,23 +814,24 @@ export function optimizeNetworkValues(
       })();
       if (lowDrv && z[lowDrv.model]) {
         const zl = z[lowDrv.model];
-        let k = 0;
-        if (dissRefHz !== null) {
-          k = freqs.reduce((b, f, i) => (Math.abs(f - dissRefHz) < Math.abs(freqs[b] - dissRefHz) ? i : b), 0);
-        } else {
-          let bestZ = -Infinity;
-          for (let i = 0; i < freqs.length; i++) {
-            if (freqs[i] > Math.max(400, freqs[Math.floor(freqs.length / 4)])) break;
-            const mm = Math.hypot(zl[i].re, zl[i].im);
-            if (mm > bestZ) {
-              bestZ = mm;
-              k = i;
-            }
-          }
+        /* ISSUE #14. This used to take the grid point NEAREST fbHz with no
+         * check that fbHz was inside the grid at all. On Sander's set the port
+         * is tuned to 31 Hz and the view range starts at 200, so every
+         * candidate was probed at grid[0] = 210 Hz — which on his woofer
+         * low-pass is the parallel resonance of L1 ‖ C2 (237 Hz). The
+         * dissipation term was being evaluated on the filter's own resonance.
+         *
+         * `sourceProbeIndex` refuses a tuning frequency that lies outside the
+         * grid, and here the honest response to that refusal is to DROP the
+         * term: a weight applied at an arbitrary frequency is worse than a
+         * weight not applied. dissRatio stays null and fxOf adds nothing. */
+        const probe = sourceProbeIndex(freqs, zl, dissRefHz ?? undefined);
+        if (probe && probe.inBand) {
+          const k = probe.idx;
+          const re = Math.max(0.5, zl[k].re);
+          const zs = seenImpedance(net, [lowDrv.id], lowDrv.nodes, [freqs[k]], sliceDriverZ(z, [k]));
+          if (zs) dissRatio = Math.max(0, zs[0].re) / re;
         }
-        const re = Math.max(0.5, zl[k].re);
-        const zs = seenImpedance(net, [lowDrv.id], lowDrv.nodes, [freqs[k]], sliceDriverZ(z, [k]));
-        if (zs) dissRatio = Math.max(0, zs[0].re) / re;
       }
     }
     const hFor = (model: string) => {
@@ -2709,7 +2728,10 @@ export function optimizeNetworkValues(
         evaluations,
         removed: [],
         added: [],
-        safetyNote:
+        bandNote:
+        `optimised on ${Math.round(band[0])}–${Math.round(band[1])} Hz` +
+        (opts.band ? '' : ' (full grid minus edges — no validity band supplied)'),
+      safetyNote:
           `sensitivity gate: the tune reached its flatness by attenuating the driver ` +
           `${resLoss.toFixed(1)} dB below its own level (budget ${soloSensBudgetDb} dB) — ` +
           `rejected, your values are unchanged. Flattening by pulling everything down is not ` +
@@ -2773,7 +2795,10 @@ export function optimizeNetworkValues(
         evaluations,
         removed: [],
         added: [],
-        safetyNote: `safety gate: tune rejected on the full measurement band — ${reasons.join('; ')}. ${tail}`,
+        bandNote:
+        `optimised on ${Math.round(band[0])}–${Math.round(band[1])} Hz` +
+        (opts.band ? '' : ' (full grid minus edges — no validity band supplied)'),
+      safetyNote: `safety gate: tune rejected on the full measurement band — ${reasons.join('; ')}. ${tail}`,
         // What the repair pass tried/achieved — the note explains WHY the
         // gate still saw a dip (repair refused, or never reached the floor).
         ...(ampFloorNote ? { ampFloorNote } : {}),
@@ -2828,6 +2853,9 @@ export function optimizeNetworkValues(
     evaluations,
     removed,
     added,
+    bandNote:
+      `optimised on ${Math.round(band[0])}–${Math.round(band[1])} Hz` +
+      (opts.band ? '' : ' (full grid minus edges — no validity band supplied)'),
     ...(snapNote ? { snapNote } : {}),
     ...(ampFloorNote ? { ampFloorNote } : {}),
     ...(valueWindowNote ? { valueWindowNote } : {}),

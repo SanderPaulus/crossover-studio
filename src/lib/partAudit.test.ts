@@ -348,3 +348,20 @@ describe('source resistance is only read where it was measured (aug 2026)', () =
     expect(sourceResistanceOhm(padded, { grid, driverZ, fbHz: 31 })).toBeCloseTo(3.54, 6);
   });
 });
+
+describe('issue #14 — the dissipation term is not evaluated at an arbitrary frequency', () => {
+  it('a box tuning outside the grid yields no probe, so the term is dropped rather than misplaced', () => {
+    // Sander's case: port at 31 Hz, view range from 200 Hz. The old code took
+    // the nearest grid point (210 Hz), which on his woofer low-pass is the
+    // parallel resonance of L1 ‖ C2 — so the "dissipation ratio" was measuring
+    // the filter's own resonance.
+    const grid = Array.from({ length: 240 }, (_, i) => 210 * (19000 / 210) ** (i / 239));
+    const z = grid.map(() => ({ re: 6, im: 0 }));
+    expect(sourceProbeIndex(grid, z, 31)).toBeNull();
+    // Inside the grid it resolves normally.
+    const inside = sourceProbeIndex(grid, z, 800);
+    expect(inside?.inBand).toBe(true);
+    expect(grid[inside!.idx]).toBeGreaterThan(700);
+    expect(grid[inside!.idx]).toBeLessThan(900);
+  });
+});

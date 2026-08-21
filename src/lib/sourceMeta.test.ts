@@ -8,6 +8,8 @@ import {
   outsideValidity,
   pistonErrorDb,
   pistonRadiusM,
+  intersectValidity,
+  type SourceMeta,
 } from './sourceMeta.ts';
 
 describe('source metadata — where a measurement may be believed', () => {
@@ -62,5 +64,68 @@ describe('source metadata — where a measurement may be believed', () => {
     const fb = outsideValidity(gated, 25, 40);
     expect(fb.ok).toBe(false);
     expect(fb.belowHz).toBeCloseTo(gated.fromHz!, 6);
+  });
+});
+
+describe('the evaluation band is an intersection of validity, never the data extent (issue #14)', () => {
+  const src = (name: string, fromHz: number | null, toHz: number | null, extra: Partial<SourceMeta> = {}) => ({
+    name,
+    meta: {
+      dataSource: 'gated-farfield' as const,
+      validity: { fromHz, toHz, reason: 'test' },
+      ...extra,
+    },
+  });
+
+  it('takes the strictest end from each side and names which source set it', () => {
+    const b = intersectValidity([
+      src('woofer', 398, 20000),
+      src('mid', 250, 18000),
+      src('tweeter', 700, 22000),
+    ])!;
+    expect(b.fromHz).toBe(700);
+    expect(b.toHz).toBe(18000);
+    expect(b.limitedBy.low).toMatch(/tweeter/);
+    expect(b.limitedBy.high).toMatch(/mid/);
+    expect(b.describe).toMatch(/700–18000 Hz/);
+  });
+
+  it('a source reaching lower does NOT drag the band down — that is the whole point', () => {
+    /* The failure this prevents: a near-field merge runs to 15 Hz, the sim grid
+     * is built from data extent, and the dissipation probe, the amplifier-load
+     * floor and the repair pass all change band at once, silently, in the same
+     * release as a refactor. */
+    const before = intersectValidity([src('woofer', 398, 20000), src('mid', 400, 18000)])!;
+    const after = intersectValidity([
+      { name: 'woofer', meta: { dataSource: 'nearfield-merged', validity: { fromHz: 15, toHz: 20000, reason: 'merged' } } },
+      src('mid', 400, 18000),
+    ])!;
+    // The merged woofer reaches to 15 Hz, but the mid still does not.
+    expect(before.fromHz).toBe(400);
+    expect(after.fromHz).toBe(400);
+    expect(after.limitedBy.low).toMatch(/mid/);
+  });
+
+  it('a requested range can narrow the band but never widen it', () => {
+    const narrow = intersectValidity([src('woofer', 200, 20000)], [500, 5000])!;
+    expect(narrow.fromHz).toBe(500);
+    expect(narrow.toHz).toBe(5000);
+    const wide = intersectValidity([src('woofer', 400, 15000)], [20, 40000])!;
+    expect(wide.fromHz).toBe(400);
+    expect(wide.toHz).toBe(15000);
+  });
+
+  it('carries unverified sources through instead of quietly including them', () => {
+    const b = intersectValidity([
+      src('woofer', 400, 20000),
+      src('mid', 400, 20000, { verified: false, unverifiedReason: 'no gate length recorded' }),
+    ])!;
+    expect(b.unverified).toEqual(['mid']);
+    expect(b.describe).toMatch(/unverified: mid/);
+  });
+
+  it('returns null rather than an empty band when the sources cannot agree', () => {
+    expect(intersectValidity([src('a', 5000, 20000), src('b', 100, 400)])).toBeNull();
+    expect(intersectValidity([])).toBeNull();
   });
 });

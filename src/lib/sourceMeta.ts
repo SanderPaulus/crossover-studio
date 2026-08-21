@@ -55,6 +55,20 @@ export interface ValidityBand {
 export interface SourceMeta {
   dataSource: DataSource;
   validity: ValidityBand;
+  /**
+   * False when the validity band could not be established from what the
+   * project holds — in practice always a gated far field whose gate length is
+   * unknown, since near-field bands follow from Sd and impedance is valid
+   * throughout.
+   *
+   * An unverified source LOADS and DISPLAYS, with a visible mark. What it may
+   * not do is take part in a new fit or optimiser run: there the band is what
+   * separates a measurement from a number. The flag stays until it is
+   * resolved, and it never clears as a side effect of editing something else.
+   */
+  verified?: boolean;
+  /** What is missing, phrased as the question the designer has to answer. */
+  unverifiedReason?: string;
   /** Present when this response was computed rather than measured: the merge,
    *  the parallel-impedance derivation, a summed pair. Human-readable, and
    *  meant to survive into the project file. */
@@ -187,6 +201,67 @@ export function outsideValidity(
   const belowHz = band.fromHz !== null && fromHz < band.fromHz ? band.fromHz : null;
   const aboveHz = band.toHz !== null && toHz > band.toHz ? band.toHz : null;
   return { belowHz, aboveHz, ok: belowHz === null && aboveHz === null };
+}
+
+/**
+ * The band on which a design may actually be judged: the INTERSECTION of the
+ * validity of everything that feeds the number.
+ *
+ * WHY AN INTERSECTION AND NOT A UNION, AND WHY NOT THE DATA'S EXTENT (issue
+ * #14): a cost function mixes its inputs, so it is only as trustworthy as its
+ * weakest one at any frequency. Taking the extent of the data instead means the
+ * evaluation band moves whenever a file happens to reach lower — and once
+ * near-field merged responses arrive that reach 15 Hz, the impedance probe, the
+ * amplifier-load floor and the repair pass would all change band at once,
+ * silently, in the same release as a refactor. A response reaching lower is not
+ * the same statement as "this design is now judged lower".
+ *
+ * `limitedBy` names which source set each edge, because an optimiser that
+ * cannot say what band it worked on is not auditable.
+ */
+export interface EvaluationBand {
+  fromHz: number;
+  toHz: number;
+  /** Which source decided the bottom and the top. */
+  limitedBy: { low: string; high: string };
+  /** Sources that could not be judged at all — a refusal, not a narrowing. */
+  unverified: string[];
+  /** One line, ready for the run report. */
+  describe: string;
+}
+
+export function intersectValidity(
+  sources: readonly { name: string; meta: SourceMeta }[],
+  requested?: [number, number],
+): EvaluationBand | null {
+  if (sources.length === 0) return null;
+  const unverified = sources.filter((s) => s.meta.verified === false).map((s) => s.name);
+  let fromHz = requested ? requested[0] : -Infinity;
+  let toHz = requested ? requested[1] : Infinity;
+  let low = requested ? 'the requested range' : '';
+  let high = requested ? 'the requested range' : '';
+  for (const s of sources) {
+    const b = s.meta.validity;
+    if (b.fromHz !== null && b.fromHz > fromHz) {
+      fromHz = b.fromHz;
+      low = `${s.name} (${DATA_SOURCE_LABEL[s.meta.dataSource]})`;
+    }
+    if (b.toHz !== null && b.toHz < toHz) {
+      toHz = b.toHz;
+      high = `${s.name} (${DATA_SOURCE_LABEL[s.meta.dataSource]})`;
+    }
+  }
+  if (!isFinite(fromHz) || !isFinite(toHz) || !(toHz > fromHz)) return null;
+  return {
+    fromHz,
+    toHz,
+    limitedBy: { low, high },
+    unverified,
+    describe:
+      `evaluated on ${Math.round(fromHz)}–${Math.round(toHz)} Hz ` +
+      `(bottom set by ${low || 'nothing'}, top by ${high || 'nothing'})` +
+      (unverified.length > 0 ? ` · unverified: ${unverified.join(', ')}` : ''),
+  };
 }
 
 /**
