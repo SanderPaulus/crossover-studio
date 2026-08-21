@@ -24,11 +24,12 @@
  * wrong and nothing anywhere reports a problem. `merger.test.ts` pins this with
  * a test that runs the same data in the wrong order and shows the gain moving.
  *
- * GAIN IS FITTED, DELAY IS NOT. With ka = 1 (652 Hz for these cones) and a
- * gated far field honest from ~500 Hz, the usable overlap is 500–640 Hz: about
- * 0.4 octave. That is plenty for a level fit and far too little for a delay
- * fit — fitting a slope across 0.4 octave is exactly where merges go wrong,
- * because a small phase error over a short baseline becomes a large delay. So
+ * GAIN IS FITTED, DELAY IS NOT. With ka = 1 (606 Hz for these cones — Sd is
+ * 255 cm², see below) and a gated far field honest from ~500 Hz, the usable
+ * overlap is 500–600 Hz: 0.26 octave. That is plenty for a level fit and far
+ * too little for a delay fit — fitting a slope across a quarter of an octave is
+ * exactly where merges go wrong, because a small phase error over a short
+ * baseline becomes a large delay. So
  * the delay is COMPUTED from geometry: the near-field mic sits ~5 mm from the
  * cone (propagation negligible), the far-field mic at the measuring distance
  * plus the driver's acoustic centre. This is a deliberate choice, not a missing
@@ -105,6 +106,19 @@ export interface PortInput extends RadiatorMeasurement {
    * from the impedance. If fb and the dip land right, the delay is right.
    */
   pathExcessMm: number;
+  /**
+   * Vertical position of the port MOUTH relative to the measurement axis, mm
+   * (negative = below it). The Ultraflare fires down, so its mouth sits at the
+   * floor: about −880 mm, against −325.9 and −601.6 mm for the two woofers.
+   *
+   * Recorded but NOT used by the even split below, which treats the port as a
+   * share of each woofer. At 31 Hz the difference between −880 and the cone
+   * positions is not negligible, so this is the field the multi-source refactor
+   * will read when the port becomes a source of its own with its own position
+   * and its own path to every observation angle. Writing it down now means the
+   * dataset does not have to be re-entered then.
+   */
+  mouthZMm?: number;
 }
 
 export interface MergerInput {
@@ -116,7 +130,7 @@ export interface MergerInput {
   port?: PortInput;
   /** Reference area for the √(S/S_ref) scaling, cm². Default: woofer 1's Sd. */
   sdRefCm2?: number;
-  /** Splice window, Hz. Default 500–640 (see the module docstring). */
+  /** Splice window, Hz. Default 500–600 (see the module docstring). */
   spliceFromHz?: number;
   spliceToHz?: number;
   /** Crossfade width in octaves. Default 1/3. */
@@ -165,6 +179,16 @@ export interface MergedSource {
   /** RMS phase disagreement across the splice band after the geometric delay,
    *  degrees. This is a CHECK on the geometry, not a fitted quantity. */
   residualDeg: number;
+  /**
+   * Linear trend in the residual phase, expressed as the path error that would
+   * cause it, mm. Near zero means the computed delay was right.
+   *
+   * This exists because the complex gain fit converts a delay error into a
+   * level error: a wrong acoustic centre shows up as less gain, not as a phase
+   * problem, and nothing else in this result would notice. ±10 mm costs
+   * 0.05 dB; 50 mm costs 0.7 dB and is invisible without this number.
+   */
+  delayErrorMm: number;
   meta: SourceMeta;
   segments: ValiditySegment[];
   warnings: string[];
@@ -246,7 +270,15 @@ function fitGain(
   near: readonly Complex[],
   far: readonly Complex[],
   idx: readonly number[],
-): { gain: number; residualDb: number; residualDeg: number } {
+  freq: readonly number[],
+): {
+  gain: number;
+  residualDb: number;
+  residualDeg: number;
+  /** Slope of the residual phase across the fit band, expressed as the path
+   *  error that would produce it, mm. See `delayErrorMm` on MergedSource. */
+  delayErrorMm: number;
+} {
   let num = 0;
   let den = 0;
   for (const i of idx) {
@@ -264,10 +296,51 @@ function fitGain(
     sqDeg += d * d;
   }
   const n = Math.max(1, idx.length);
+  /* RESIDUAL-PHASE TREND — the diagnosis a complex least-squares gain hides.
+   *
+   * Fitting a real gain against a complex ratio means a phase error does not
+   * come out as a phase error: it comes out as a SMALLER GAIN, i.e. as a level
+   * mistake. With the acoustic centre known to ±10 mm that is 0.05 dB and
+   * harmless. If the CAD value is 50 mm off the truth it is 0.7 dB — a real
+   * error, and completely invisible in every number above.
+   *
+   * A LINEAR TREND in the residual phase is the direct diagnosis: a pure delay
+   * error is a straight line in (f, φ). So fit that line and report the path
+   * length it corresponds to, in millimetres, which is the unit the mistake was
+   * made in. */
+  let sumF = 0;
+  let sumP = 0;
+  const phases: number[] = [];
+  let prev = 0;
+  idx.forEach((i, k) => {
+    const scaled = cplx(near[i].re * gain, near[i].im * gain);
+    let d = degOf(far[i]) - degOf(scaled);
+    if (k === 0) d = (((d + 180) % 360) + 360) % 360 - 180;
+    else {
+      while (d - prev > 180) d -= 360;
+      while (d - prev < -180) d += 360;
+    }
+    prev = d;
+    phases.push(d);
+    sumF += freq[i];
+    sumP += d;
+  });
+  const mf = sumF / n;
+  const mp = sumP / n;
+  let num2 = 0;
+  let den2 = 0;
+  idx.forEach((i, k) => {
+    num2 += (freq[i] - mf) * (phases[k] - mp);
+    den2 += (freq[i] - mf) ** 2;
+  });
+  const slopeDegPerHz = den2 > 0 ? num2 / den2 : 0;
+  // φ = −360·f·τ  ⇒  τ = −slope/360, and a path is τ·c.
+  const delayErrorMm = (-slopeDegPerHz / 360) * C_MM_PER_S;
   return {
     gain: gain > 0 ? gain : 1e-6,
     residualDb: Math.sqrt(sqDb / n),
     residualDeg: Math.sqrt(sqDeg / n),
+    delayErrorMm,
   };
 }
 
@@ -277,7 +350,7 @@ export function mergeSources(input: MergerInput): MergerResult | null {
     woofers,
     port,
     spliceFromHz = 500,
-    spliceToHz = 640,
+    spliceToHz = 600,
     blendOctaves = 1 / 3,
     baffleStepHz = 0,
     baffleStepDepthDb = 6,
@@ -306,16 +379,32 @@ export function mergeSources(input: MergerInput): MergerResult | null {
 
   const warnings: string[] = [];
 
-  /* ---- Splice band policing (never a silent result) ---- */
+  /* ---- Splice band policing ----------------------------------------
+   * Above ka = 1 the near field is no longer proportional to cone velocity, so
+   * a splice up there is not "slightly worse" — the data being fitted does not
+   * mean what the fit assumes. That is a REFUSAL, not a warning. The strictest
+   * driver decides, because one splice band serves them all. */
   const nearBand = nearFieldValidity(woofers[0].sdCm2);
-  const kaHi = nearBand?.toHz ?? null;
+  let kaHi: number | null = null;
+  for (const w of woofers) {
+    const b = nearFieldValidity(w.sdCm2);
+    if (b?.toHz != null) kaHi = kaHi === null ? b.toHz : Math.min(kaHi, b.toHz);
+  }
   if (kaHi !== null && spliceToHz > kaHi) {
     const ka = kaAt(spliceToHz, woofers[0].sdCm2) ?? 0;
-    warnings.push(
-      `⚠ splice top ${Math.round(spliceToHz)} Hz is above the near field's ka = 1 limit ` +
-        `(${Math.round(kaHi)} Hz): at ka = ${ka.toFixed(2)} the ideal-piston error is at ` +
-        `least ${pistonErrorDb(ka).toFixed(2)} dB, and a real cone adds more`,
-    );
+    return {
+      perWoofer: [],
+      summedSpl: [],
+      summedPhaseDeg: [],
+      spliceBand: [spliceFromHz, spliceToHz],
+      warnings: [
+        `✖ REFUSED: splice top ${Math.round(spliceToHz)} Hz is above the near field's ka = 1 ` +
+          `limit (${Math.round(kaHi)} Hz). At ka = ${ka.toFixed(2)} the ideal-piston error is ` +
+          `at least ${pistonErrorDb(ka).toFixed(2)} dB and a real cone adds more that is not ` +
+          `analytic — the near field simply is not proportional to cone velocity up there. ` +
+          `Lower the splice, or measure the low end another way (ground plane).`,
+      ],
+    };
   }
   if (farValidFromHz !== undefined && spliceFromHz < farValidFromHz) {
     warnings.push(
@@ -385,7 +474,7 @@ export function mergeSources(input: MergerInput): MergerResult | null {
 
     const far = toComplex(w.farSpl, w.farPhaseDeg);
     // STEP 2 — gain, and only now.
-    const fit = fitGain(nearTimed, far, idx);
+    const fit = fitGain(nearTimed, far, idx, freq);
     let nearFinal = nearTimed.map((z) => cplx(z.re * fit.gain, z.im * fit.gain));
     // The wrong order, for the test that proves it is wrong: applying the step
     // AFTER the fit leaves the fit blind to it.
@@ -426,6 +515,14 @@ export function mergeSources(input: MergerInput): MergerResult | null {
           `baffle step, or the splice window`,
       );
     }
+    if (Math.abs(fit.delayErrorMm) > 15) {
+      wWarn.push(
+        `⚠ ${w.name}: the residual phase slopes like a ${fit.delayErrorMm.toFixed(0)} mm path ` +
+          `error — the computed delay is off, most likely the acoustic-centre depth ` +
+          `(${acousticCentreMm} mm) or the measuring distance. The gain fit turns this into a ` +
+          `LEVEL error rather than a phase one, so it would otherwise pass unnoticed`,
+      );
+    }
     if (fit.residualDeg > 25) {
       wWarn.push(
         `⚠ ${w.name}: ${fit.residualDeg.toFixed(0)}° RMS phase disagreement after the geometric ` +
@@ -452,7 +549,10 @@ export function mergeSources(input: MergerInput): MergerResult | null {
         `${Math.round(spliceToHz)} Hz, blend ${blendOctaves.toFixed(2)} oct); ` +
         `gain ${(20 * Math.log10(fit.gain)).toFixed(2)} dB fitted, ` +
         `delay ${delayUs.toFixed(0)} µs computed from geometry` +
-        (port ? `; port area ${port.areaCm2} cm² at the ${port.plane}, path +${port.pathExcessMm} mm` : ''),
+        (port
+          ? `; port area ${port.areaCm2} cm² at the ${port.plane}, path +${port.pathExcessMm} mm` +
+            (port.mouthZMm !== undefined ? `, mouth at z = ${port.mouthZMm} mm` : '')
+          : ''),
     };
 
     perWoofer.push({
@@ -463,6 +563,7 @@ export function mergeSources(input: MergerInput): MergerResult | null {
       delayUs,
       residualDb: fit.residualDb,
       residualDeg: fit.residualDeg,
+      delayErrorMm: fit.delayErrorMm,
       meta,
       segments,
       warnings: wWarn,

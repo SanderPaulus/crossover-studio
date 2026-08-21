@@ -21,7 +21,7 @@ function sealedBox(fHz: number, fcHz: number, q: number): { db: number; deg: num
   return { db: 20 * Math.log10(Math.hypot(re, im)), deg: (Math.atan2(im, re) * 180) / Math.PI };
 }
 
-const SD = 220; // cm², WO24P-8 effective
+const SD = 255; // cm², Satori WO24P-8 effective (his project + the demo agree)
 const MIC_MM = 1000;
 const AC_MM = 50;
 const NEAR_MM = 5;
@@ -135,13 +135,13 @@ describe('merger — one response per source, near field spliced onto far field'
     const port: PortInput = { ...near, areaCm2: 110, plane: 'waist', pathExcessMm: 0 };
     const without = mergeSources(baseInput())!.perWoofer[0];
     const half = mergeSources(baseInput({ port }))!.perWoofer[0];
-    expect(without.gainDb - half.gainDb).toBeCloseTo(20 * Math.log10(1 + Math.sqrt(110 / 220)), 6);
+    expect(without.gainDb - half.gainDb).toBeCloseTo(20 * Math.log10(1 + Math.sqrt(110 / SD)), 6);
     // Same area as the cone: two equal radiators, so exactly +6.02 dB — the
     // same number test 1 checks on the sum, arrived at from the other side.
-    const full = mergeSources(baseInput({ port: { ...port, areaCm2: 220 } }))!.perWoofer[0];
+    const full = mergeSources(baseInput({ port: { ...port, areaCm2: SD } }))!.perWoofer[0];
     expect(without.gainDb - full.gainDb).toBeCloseTo(6.0206, 4);
     // And a quarter of the area is half the pressure.
-    const quarter = mergeSources(baseInput({ port: { ...port, areaCm2: 55 } }))!.perWoofer[0];
+    const quarter = mergeSources(baseInput({ port: { ...port, areaCm2: SD / 4 } }))!.perWoofer[0];
     expect(without.gainDb - quarter.gainDb).toBeCloseTo(20 * Math.log10(1.5), 6);
 
     // Mandatory fields: no area, no plane, no guess.
@@ -176,8 +176,10 @@ describe('merger — one response per source, near field spliced onto far field'
     // On rippled data, so the window genuinely has something to disagree about.
     const rippled = farOf({ rippleDb: 0.5 });
     const w = [wooferInput('W1', 0, rippled)];
+    // Both windows must stay under ka = 1 (606 Hz for Sd 255) or the merge
+    // refuses — which is test 6's job, not this one's.
     const a = mergeSources(baseInput({ woofers: w, spliceFromHz: 500, spliceToHz: 540 }))!;
-    const b = mergeSources(baseInput({ woofers: w, spliceFromHz: 600, spliceToHz: 640 }))!;
+    const b = mergeSources(baseInput({ woofers: w, spliceFromHz: 560, spliceToHz: 600 }))!;
     for (const hz of [25, 50, 100, 250, 1500, 5000, 15000]) {
       const i = atHz(hz);
       expect(Math.abs(a.perWoofer[0].spl[i] - b.perWoofer[0].spl[i])).toBeLessThan(0.2);
@@ -202,17 +204,67 @@ describe('merger — one response per source, near field spliced onto far field'
     expect(right.residualDb).toBeLessThan(wrong.residualDb);
   });
 
-  it('(6) a splice at 300 Hz and one above ka = 1 both warn explicitly', () => {
+  it('(6) a splice at 300 Hz warns; one above ka = 1 is REFUSED, not warned', () => {
     const low = mergeSources(baseInput({ spliceFromHz: 280, spliceToHz: 320 }))!;
     expect(low.warnings.join(' ')).toMatch(/below the far field's own limit of 500 Hz/);
-    // Above ka = 1 (652 Hz for these cones) the warning states the floor of the
-    // piston error, not a bare verdict.
-    const high = mergeSources(baseInput({ spliceFromHz: 900, spliceToHz: 1100 }))!;
+    expect(low.perWoofer).toHaveLength(1); // a warning still produces a result
+
+    // Above ka = 1 (606 Hz for Sd 255) the near field is no longer proportional
+    // to cone velocity: the data does not mean what the fit assumes, so there is
+    // nothing to hand back.
+    const high = mergeSources(baseInput({ spliceFromHz: 620, spliceToHz: 700 }))!;
+    expect(high.perWoofer).toHaveLength(0);
     const text = high.warnings.join(' ');
-    expect(text).toMatch(/above the near field's ka = 1 limit/);
+    expect(text).toMatch(/✖ REFUSED/);
+    expect(text).toMatch(/ka = 1 limit \(606 Hz\)/);
     expect(text).toMatch(/at least -\d\.\d\d dB/);
+
+    /* The STRICTEST driver decides, because one splice band serves them all.
+     * A 400 cm² cone puts ka = 1 at 484 Hz, so the default 500–600 window that
+     * is fine for the 255 cm² pair must be refused as soon as it joins. */
+    const bigger = [wooferInput('W1'), { ...wooferInput('W2'), sdCm2: 400 }];
+    expect(mergeSources(baseInput({ woofers: bigger }))!.perWoofer).toHaveLength(0);
+    // Move the window under the stricter limit and both go through.
+    const lower = mergeSources(
+      baseInput({ woofers: bigger, spliceFromHz: 400, spliceToHz: 450 }),
+    )!;
+    expect(lower.perWoofer).toHaveLength(2);
+
     // A healthy splice says nothing alarming.
-    expect(mergeSources(baseInput())!.warnings.join(' ')).not.toMatch(/⚠/);
+    expect(mergeSources(baseInput())!.warnings.join(' ')).not.toMatch(/[⚠✖]/);
+  });
+
+  it('(2c) the residual phase reports a delay error the gain fit would otherwise hide as level', () => {
+    /* A wrong acoustic centre does not show up as a phase problem: the complex
+     * least-squares gain turns it into LESS GAIN, i.e. a level mistake. So the
+     * check is the linear trend in the residual phase, reported as the path
+     * error that would cause it. */
+    const right = mergeSources(baseInput())!.perWoofer[0];
+    expect(Math.abs(right.delayErrorMm)).toBeLessThan(1);
+    expect(right.warnings.join(' ')).not.toMatch(/path error/);
+
+    // Tell the merger the acoustic centre is 50 mm deeper than it really is.
+    const wrong = mergeSources(baseInput({ acousticCentreMm: AC_MM + 50 }))!.perWoofer[0];
+    expect(Math.abs(wrong.delayErrorMm)).toBeGreaterThan(40);
+    expect(Math.abs(wrong.delayErrorMm)).toBeLessThan(60);
+    expect(wrong.warnings.join(' ')).toMatch(/path error/);
+    // And this is the point: the mistake landed in the LEVEL.
+    expect(Math.abs(wrong.gainDb - right.gainDb)).toBeGreaterThan(0.2);
+
+    // ±10 mm is harmless and must not cry wolf.
+    const small = mergeSources(baseInput({ acousticCentreMm: AC_MM + 10 }))!.perWoofer[0];
+    expect(small.warnings.join(' ')).not.toMatch(/path error/);
+    expect(Math.abs(small.gainDb - right.gainDb)).toBeLessThan(0.1);
+  });
+
+  it('records the port mouth position for the multi-source refactor, even though the even split ignores it', () => {
+    const near = nearOf();
+    const r = mergeSources(
+      baseInput({
+        port: { ...near, areaCm2: 110, plane: 'waist', pathExcessMm: 300, mouthZMm: -880 },
+      }),
+    )!;
+    expect(r.perWoofer[0].meta.derivation).toMatch(/mouth at z = -880 mm/);
   });
 
   it('(10) every new weight actually moves the output — byte-identical would mean it is not wired', () => {

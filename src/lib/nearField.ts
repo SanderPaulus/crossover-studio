@@ -23,6 +23,7 @@
 
 import type { Complex } from './complex.ts';
 import { cplx, fromPolar } from './complex.ts';
+import { NEARFIELD_KA_LIMIT, pistonRadiusM } from './sourceMeta.ts';
 
 const C_AIR = 343;
 
@@ -39,14 +40,21 @@ const C_AIR = 343;
  * baffle may be slightly lower than this.
  */
 export function nearFieldMaxHz(sdCm2: number): number | null {
-  const a = effectiveRadiusM(sdCm2);
-  return a === null ? null : C_AIR / (2 * Math.PI * a);
+  const a = pistonRadiusM(sdCm2);
+  return a === null ? null : (NEARFIELD_KA_LIMIT * C_AIR) / (2 * Math.PI * a);
 }
 
-/** Effective piston radius from cone area, metres. */
+/**
+ * Effective piston radius from cone area, metres.
+ *
+ * ONE derivation, in sourceMeta.ts — this delegates. `a` is never entered by
+ * hand anywhere: it always comes from Sd, and Sd lives in the driver
+ * definition. Three copies of √(Sd/π) used to sit in the tree (here,
+ * sourceMeta, cabinet), which is not a divergence you detect — it is one you
+ * remove.
+ */
 export function effectiveRadiusM(sdCm2: number): number | null {
-  if (!(sdCm2 > 0)) return null;
-  return Math.sqrt((sdCm2 * 1e-4) / Math.PI);
+  return pistonRadiusM(sdCm2);
 }
 
 /**
