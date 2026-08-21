@@ -181,6 +181,46 @@ describe('impedance diagnosis — read-only, and it must add up', () => {
     expect(f.line).toMatch(f.nearCrossing ? /overlap may explain/ : /not an overlap effect/);
   });
 
+  it('reports the phase at the minimum, the worst angle, and the worst PAIRING', () => {
+    /* Sanders point, and the measurement that makes it: on his filter the
+     * modulus minimum is 2.62 Ω at a mild -16°, the largest angle is +72° where
+     * the modulus is a comfortable 11 Ω — and the hardest place is NEITHER of
+     * those. It is 70 Hz, where 3.11 Ω meets -41.5°. A report that gives only
+     * the minimum, or only the worst angle, misses the point that matters. */
+    const parts = [...gen(), ...wooferBranch(2.2, 160), ...tweeterBranch(4.7)];
+    const f = systemZFacts(grid, sysZ(parts), [500, 2500])!;
+    expect(Number.isFinite(f.minPhaseDeg)).toBe(true);
+    expect(Math.abs(f.worstPhaseDeg)).toBeGreaterThanOrEqual(Math.abs(f.minPhaseDeg));
+    // The combined measure is the real part, so it can never exceed |Z|...
+    expect(f.hardestOhm).toBeLessThanOrEqual(f.hardestZOhm + 1e-9);
+    // ...and it is at least as harsh as the plain minimum read at its own angle.
+    expect(f.hardestOhm).toBeLessThanOrEqual(f.minOhm + 1e-9);
+    expect(f.phaseLine).toMatch(/worst TOGETHER/);
+  });
+
+  it('states that a dissipation rating is about a PAIRING, not about the speaker', () => {
+    /* The reason enforcement stays on the modulus. A peak-dissipation figure
+     * contains the modulation depth Vp/Vcc — the amplifier's rails and the
+     * listening level — so it describes an amp-and-speaker pair. Turning it
+     * into a limit means assuming someone's rails without saying so, and this
+     * codebase does not implement physics it cannot check. */
+    const parts = [...gen(), ...wooferBranch(2.2, 160), ...tweeterBranch(4.7)];
+    const f = systemZFacts(grid, sysZ(parts), [500, 2500])!;
+    expect(f.phaseLine).toMatch(/Reported, never enforced/);
+    expect(f.phaseLine).toMatch(/amplifier's rails/);
+  });
+
+  it('a purely resistive load has no phase story to tell', () => {
+    // The degenerate check: with zero angle everywhere the combined measure
+    // collapses onto the modulus, so the extra machinery adds nothing and says
+    // nothing — which is the correct behaviour, not a special case.
+    const flat = grid.map(() => ({ re: 6, im: 0 }));
+    const f = systemZFacts(grid, flat, [])!;
+    expect(f.worstPhaseDeg).toBeCloseTo(0, 9);
+    expect(f.hardestOhm).toBeCloseTo(f.minOhm, 9);
+    expect(f.hardestOhm).toBeCloseTo(6, 9);
+  });
+
   it('a dip in the passband is correctly reported as NOT an overlap effect', () => {
     // Crossings deliberately far from the shunt cap's region.
     const parts = [...gen(), ...wooferBranch(2.2, 160), ...tweeterBranch(4.7)];

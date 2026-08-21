@@ -347,9 +347,59 @@ export function branchImpedanceRatios(
  * (a) where the minimum is, and whether a crossing explains it
  * ------------------------------------------------------------------ */
 
+/**
+ * THE PHASE HALF OF THE LOAD, AND WHY IT IS REPORTED RATHER THAN ENFORCED.
+ *
+ * Modulus alone is an incomplete description. 2.6 Ω at −16° is a mild load;
+ * the same 2.6 Ω at −60° is not, because the output device is passing current
+ * while the voltage across it is still high. That is DISSIPATION, not merely
+ * current, and dissipation is what actually destroys amplifiers.
+ *
+ * WHAT I CAN DERIVE, and it is worth stating because it decides whether such a
+ * measure can be a limit at all. For a class-AB stage on rails ±Vcc driving
+ * Z = |Z|∠φ with output v(t) = Vp·sin(ωt), the conducting device dissipates
+ * (Vcc − v)·i with i = (Vp/|Z|)·sin(ωt − φ). At φ = 0 the peak lands near
+ * v = Vcc/2; as |φ| grows, current still flows while v is large and the peak
+ * rises. So an "equivalent resistance" — the resistive load giving the same
+ * PEAK device dissipation — is genuinely lower than |Z|.
+ *
+ * ⚠ BUT IT DEPENDS ON THE AMPLIFIER. That expression contains Vp/Vcc, the
+ * modulation depth, which is a property of the amp and the listening level and
+ * not of the loudspeaker. Any peak-dissipation figure is therefore a statement
+ * about a PAIRING, not a property of the speaker, and turning it into a limit
+ * means quietly assuming someone's rails.
+ *
+ * ON EPDR SPECIFICALLY: that is the published name for this idea, associated
+ * with Eric Benjamin's AES work on amplifier–loudspeaker interaction and
+ * popularised in the UK press by Keith Howard. I am NOT confident of the exact
+ * formula or of the citation details, and this codebase does not implement
+ * physics it cannot check — so nothing here claims to BE EPDR. Before any of
+ * this becomes a constraint, the source has to be read.
+ *
+ * What is reported instead is deliberately transparent: |Z|·cos|φ| — the real
+ * part of the impedance, i.e. the component actually absorbing power. It falls
+ * with both a small modulus and a large angle, needs no assumption about any
+ * amplifier, and can be checked by hand. It is a POINTER to the hardest place
+ * on the curve, not a rating.
+ */
 export interface SystemZFacts {
   minOhm: number;
   atHz: number;
+  /** Phase at the minimum — half the description, and it changes the reading. */
+  minPhaseDeg: number;
+  /** Largest |phase| anywhere in band, and the modulus there. */
+  worstPhaseDeg: number;
+  worstPhaseAtHz: number;
+  worstPhaseZOhm: number;
+  /** Lowest |Z|·cos|phi| — where modulus and angle are worst TOGETHER. Often
+   *  neither of the two extremes above; on Sanders filter it is 70 Hz, while
+   *  the modulus minimum is at 84 Hz and the worst angle at 2535 Hz. */
+  hardestOhm: number;
+  hardestAtHz: number;
+  hardestZOhm: number;
+  hardestPhaseDeg: number;
+  /** The phase picture, in a sentence. */
+  phaseLine: string;
   /** Octaves to the nearest acoustic crossing; null when none was given. */
   octFromCrossing: number | null;
   /** True when the minimum sits within half an octave of a crossing — i.e.
@@ -375,12 +425,54 @@ export function systemZFacts(
     }
   }
   if (!Number.isFinite(minOhm)) return null;
+  const degOf = (z: Complex) => (Math.atan2(z.im, z.re) * 180) / Math.PI;
+  let minPhaseDeg = 0;
+  let worstPhaseDeg = 0;
+  let worstPhaseAtHz = 0;
+  let worstPhaseZOhm = 0;
+  let hardestOhm = Infinity;
+  let hardestAtHz = 0;
+  let hardestZOhm = 0;
+  let hardestPhaseDeg = 0;
+  for (let i = 0; i < freq.length; i++) {
+    if (freq[i] < band[0] || freq[i] > band[1]) continue;
+    const m = mag(inputZ[i]);
+    const d = degOf(inputZ[i]);
+    if (freq[i] === atHz) minPhaseDeg = d;
+    if (Math.abs(d) > Math.abs(worstPhaseDeg)) {
+      worstPhaseDeg = d;
+      worstPhaseAtHz = freq[i];
+      worstPhaseZOhm = m;
+    }
+    const eq = m * Math.cos((Math.abs(d) * Math.PI) / 180);
+    if (eq < hardestOhm) {
+      hardestOhm = eq;
+      hardestAtHz = freq[i];
+      hardestZOhm = m;
+      hardestPhaseDeg = d;
+    }
+  }
   const xs = crossingsHz.filter((x): x is number => typeof x === 'number' && x > 0);
   const octFromCrossing = xs.length > 0 ? Math.min(...xs.map((x) => Math.abs(Math.log2(atHz / x)))) : null;
   const nearCrossing = octFromCrossing !== null && octFromCrossing <= 0.5;
   return {
     minOhm,
     atHz,
+    minPhaseDeg,
+    worstPhaseDeg,
+    worstPhaseAtHz,
+    worstPhaseZOhm,
+    hardestOhm,
+    hardestAtHz,
+    hardestZOhm,
+    hardestPhaseDeg,
+    phaseLine:
+      `${minOhm.toFixed(2)} Ω at ${Math.round(atHz)} Hz sits at ${minPhaseDeg.toFixed(0)}°; ` +
+      `the largest angle is ${worstPhaseDeg.toFixed(0)}° at ${Math.round(worstPhaseAtHz)} Hz ` +
+      `(a comfortable ${worstPhaseZOhm.toFixed(1)} Ω there); the two are worst TOGETHER at ` +
+      `${Math.round(hardestAtHz)} Hz — ${hardestZOhm.toFixed(2)} Ω at ${hardestPhaseDeg.toFixed(0)}°, ` +
+      `a real part of ${hardestOhm.toFixed(2)} Ω. Reported, never enforced: a peak-dissipation ` +
+      `rating needs the amplifier's rails, which are not a property of this loudspeaker`,
     octFromCrossing,
     nearCrossing,
     line:

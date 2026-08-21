@@ -1,7 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import {
   gatedFarFieldValidity,
+  DATA_SOURCE_LABEL,
   groundPlaneValidity,
+  anechoicValidity,
   kaAt,
   NEARFIELD_KA_LIMIT,
   nearFieldValidity,
@@ -51,9 +53,47 @@ describe('source metadata — where a measurement may be believed', () => {
     expect(gated.reason).toMatch(/Tukey 0\.25/);
     // A rectangular window still reads the nominal length.
     expect(gatedFarFieldValidity(5.021, null, 0)!.fromHz!).toBeCloseTo(398, 0);
-    const gp = groundPlaneValidity();
-    expect(gp.fromHz).toBe(20);
+    const gp = groundPlaneValidity({ fromHz: 30 });
+    expect(gp.fromHz).toBe(30);
     expect(gp.reason).toMatch(/floor/);
+  });
+
+  it('ground plane has no defensible default low end, so it demands one', () => {
+    /* Reviewed before first use: this function was written when no ground-plane
+     * data existed and carried a bare `fromHz = 20` with nothing behind it.
+     * A ground-plane low end comes from the SITE — distance to the nearest wall,
+     * and the ambient noise floor — neither of which is in the file. A default
+     * would have been the cabinet-Gate mistake again: plausible, invisible, and
+     * wrong by however much the site actually allowed. */
+    const gp = groundPlaneValidity({ fromHz: 35 });
+    expect(gp.fromHz).toBe(35);
+    expect(gp.reason).toMatch(/stated 35 Hz/);
+    expect(gp.reason).toMatch(/site size and noise floor/);
+    // It reads +6 dB, and says so where an absolute level might be read off.
+    expect(gp.reason).toMatch(/\+6 dB/);
+    // Mic off the floor combs: c/(4h) = 8575 Hz at 10 mm, and that becomes the
+    // ceiling rather than being left as "unknown".
+    const raised = groundPlaneValidity({ fromHz: 35, micHeightMm: 10 });
+    expect(raised.toHz!).toBeCloseTo(8575, 0);
+    expect(groundPlaneValidity({ fromHz: 35 }).toHz).toBeNull();
+    // The file's own end wins when it is lower.
+    expect(groundPlaneValidity({ fromHz: 35, micHeightMm: 10, toHz: 6000 }).toHz).toBe(6000);
+  });
+
+  it('an anechoic chamber is NOT ground plane, and gets its own low end', () => {
+    /* Kept apart deliberately. Ground plane ADDS a coincident reflection (+6 dB,
+     * low end set by the site); a chamber ABSORBS it (no bonus, honest only
+     * above the wedge cutoff). One label for both would put the wrong floor on
+     * whichever measurement arrived second — the dataSource-must-steer failure
+     * that A3h was about, arriving in advance this time. */
+    const an = anechoicValidity(50);
+    expect(an.fromHz).toBe(50);
+    expect(an.reason).toMatch(/stated 50 Hz cutoff/);
+    expect(an.reason).toMatch(/wedges stop absorbing/);
+    // No gate floor, and explicitly no +6 dB.
+    expect(an.reason).toMatch(/No gate floor applies and no \+6 dB/);
+    expect(DATA_SOURCE_LABEL.anechoic).toBe('anechoic chamber');
+    expect(DATA_SOURCE_LABEL.groundplane).not.toBe(DATA_SOURCE_LABEL.anechoic);
   });
 
   it('outsideValidity says WHICH end is the problem, not just yes or no', () => {

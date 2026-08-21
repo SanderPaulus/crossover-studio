@@ -31,12 +31,24 @@ export type DataSource =
   /** Gated far field with a near-field low end spliced onto it. */
   | 'nearfield-merged'
   /** Cabinet and mic on the floor: no floor bounce, +6 dB, good low down. */
-  | 'groundplane';
+  | 'groundplane'
+  /**
+   * An anechoic chamber. NOT the same thing as ground plane, and kept apart
+   * for the reason this whole round exists: ground plane is a reflection that
+   * arrives coincident with the direct sound (so it adds, +6 dB, and the low
+   * end is limited by site size and noise floor), while an anechoic chamber
+   * ABSORBS instead, gives no level bonus, and is honest only above the
+   * frequency where its wedges stop working. Two different measurements with
+   * two different low-end limits; folding them into one label would put the
+   * wrong floor on whichever arrived second.
+   */
+  | 'anechoic';
 
 export const DATA_SOURCE_LABEL: Record<DataSource, string> = {
   'gated-farfield': 'gated far field',
   'nearfield-merged': 'near-field merged',
   groundplane: 'ground plane',
+  anechoic: 'anechoic chamber',
 };
 
 /* ------------------------------------------------------------------ *
@@ -247,12 +259,72 @@ export function nearFieldMergedValidity(opts: {
   };
 }
 
-/** Ground plane: no floor bounce, so the gate is long; the low end is real. */
-export function groundPlaneValidity(fromHz = 20, toHz: number | null = null): ValidityBand {
+/**
+ * Ground plane: cabinet and mic on a hard floor, so the reflection arrives
+ * coincident with the direct sound instead of after it.
+ *
+ * ⚠ REVIEWED BEFORE FIRST USE (aug 2026). This function was written when no
+ * ground-plane data existed anywhere in the project, and it showed: it took a
+ * bare `fromHz = 20` default with nothing behind it. There is no such number.
+ * A ground-plane measurement's low end is set by the SITE — how far the
+ * nearest wall or building is, and where the ambient noise floor sits — and
+ * neither is knowable from the file. So the low end must be STATED, exactly as
+ * the gate had to be after A3h. A default of 20 Hz would have been the same
+ * mistake as a cabinet Gate field standing in for a measurement: plausible,
+ * invisible, and wrong by however much the site actually allowed.
+ *
+ * Two more things that belong with the measurement and were missing:
+ *
+ *  - IT READS +6 dB. The coincident reflection doubles the pressure. Level is
+ *    fitted out wherever this app compares curves, but a designer reading an
+ *    absolute SPL off a ground-plane file needs to know, so it is said here.
+ *  - The mic has to lie ON the floor. Raised by h, the direct and reflected
+ *    paths differ and comb above roughly c/(4h) — 8.6 kHz at 10 mm. Reported
+ *    as the ceiling when a height is given.
+ */
+export function groundPlaneValidity(opts: {
+  /** Lowest trustworthy frequency, from site size and noise floor. REQUIRED —
+   *  there is no defensible default. */
+  fromHz: number;
+  /** Mic capsule height above the floor, mm. 0 / absent = lying on it. */
+  micHeightMm?: number;
+  /** The file's own top, when narrower than the comb limit. */
+  toHz?: number | null;
+}): ValidityBand {
+  const combHz = opts.micHeightMm && opts.micHeightMm > 0
+    ? (C_AIR * 1000) / (4 * opts.micHeightMm)
+    : null;
+  const tops = [opts.toHz ?? null, combHz].filter((x): x is number => x !== null && x > 0);
+  const toHz = tops.length > 0 ? Math.min(...tops) : null;
   return {
-    fromHz,
+    fromHz: opts.fromHz,
     toHz,
-    reason: 'ground plane: cabinet and mic on the floor, reflection coincides with the direct sound',
+    reason:
+      `ground plane: cabinet and mic on the floor, the reflection coincides with the direct ` +
+      `sound (so the file reads +6 dB); honest from a stated ${Math.round(opts.fromHz)} Hz ` +
+      `(site size and noise floor, not derivable from the file)` +
+      (combHz ? `, and up to ${Math.round(combHz)} Hz — the mic sits ${opts.micHeightMm} mm off the floor` : ''),
+  };
+}
+
+/**
+ * An anechoic chamber: honest above the frequency where its wedges stop
+ * absorbing, and no level bonus.
+ *
+ * The cutoff is a property of the FACILITY and is always quoted by whoever
+ * runs it — it is stated, never derived, and never defaulted. Below it the
+ * chamber behaves like a small room and the measurement is worth no more than
+ * a gated one taken there.
+ */
+export function anechoicValidity(cutoffHz: number, toHz: number | null = null): ValidityBand {
+  return {
+    fromHz: cutoffHz,
+    toHz,
+    reason:
+      `anechoic chamber: honest above its stated ${Math.round(cutoffHz)} Hz cutoff, where the ` +
+      `wedges stop absorbing — below that it is a small room and the data is worth no more ` +
+      `than a gated measurement. No gate floor applies and no +6 dB: the reflection is ` +
+      `absorbed, not added`,
   };
 }
 
@@ -374,6 +446,17 @@ export const KOAN_DATASET_NOTES: string[] = [
     '8-ohm woofers in parallel, not the filter. Provisional while the drivers are ' +
     'not broken in (see below), but the ATTRIBUTION is not: filter work cannot ' +
     'reach this number.',
+  /* THE SECOND PURCHASE-RELEVANT FINDING, and it is about the cabinet rather
+   * than the crossover. Measured 2026-08-21 across the six-candidate zscan and
+   * the hand-built filter. */
+  'TWO 8-OHM WOOFERS IN PARALLEL CANNOT CARRY A 4-OHM PLATE IN THIS CABINET ' +
+    '(measured 2026-08-21). IEC 60268-5 asks 3.2 ohm for a 4-ohm rating. Not one ' +
+    'of the six scan candidates reaches it, nor does the hand-built 20260820.2; ' +
+    'the highest anywhere is 2.63 ohm. The BARE woofer pair measures 3.17 ohm, so ' +
+    'even a filter that lowers the load not at all falls short — there is no ' +
+    'design in this space that closes the gap. This is not a filter or optimiser ' +
+    'problem. Provisional in two ways: the drivers are not broken in (see below), ' +
+    'and the 3.17 misses the requirement by 1 %.',
   'WOOFERS NOT BROKEN IN — impedance measured 2026-08-16 on new drivers. Fs reads ' +
     '~31 Hz against 24.5 Hz on the datasheet and Vas ~74 L against 88 L, so the ' +
     'suspension is still stiff. The upper impedance peak sits at 52.4 Hz and will ' +
