@@ -198,7 +198,87 @@ slechtste score. Alignment-kwaliteit en vensterbreedte zijn met deze opzet
 niet te scheiden. Een vaste breedte (bv. één octaaf aan weerszijden) is de
 voor de hand liggende toets.
 
-**Het systematische synthese-verlies — DE HOOFDVERDACHTE.** Sinds de correctie
+### Het synthese-verlies onderzocht (aug 2026) — hypothese WEERLEGD, en de reden is leerzaam
+
+De hypothese was: *de ontwerpstap modelleert zijn EQ-banden als fase-vrij,
+terwijl de passieve realisatie dat niet is.* Drie metingen, en het antwoord is
+nee — maar er ligt iets anders onder dat wél klopt.
+
+**(1) De ideale band draagt gewoon fase.** `evalEqBand` (filters.ts) is een
+complexe analoge biquad uit het audio-EQ-cookbook — peak, lowShelf en
+highShelf allemaal — dus de ontwerpstap rekent met volledige minimum-fase. De
+hypothese in zijn letterlijke vorm is fout.
+
+**(2) Maar de passieve realisatie van een band ís die band niet.** Per band
+gemeten door hem uit de spec te halen en de gerealiseerde tak-transfers te
+delen (±2 octaven om de bandfrequentie):
+
+```
+mid      peak @1576 Hz −2,7 dB Q2,70   gem |Δmag| 3,07 dB   gem |Δφ| 15,6°   worst 77,9°
+tweeter  peak @3545 Hz −3,4 dB Q2,47   gem |Δmag| 0,96 dB   gem |Δφ|  8,0°   worst 16,0°
+tweeter  peak @5041 Hz −2,2 dB Q5,28   gem |Δmag| 0,48 dB   gem |Δφ|  3,7°   worst 12,4°
+woofer   lowShelf @904 −2,3 dB Q0,71   gem |Δmag| 1,51 dB   gem |Δφ| 11,0°   worst 26,8°
+```
+
+De mid-band is het duidelijkst: het IDEAAL is −0,03 dB op 414 Hz (een
+peak-band is ver weg unity), de realisatie doet daar −2,94 dB. Wat de synthese
+bouwde is geen piek-cut maar een breedbandige niveauverschuiving. (Kanttekening
+die erbij hoort: de synthese her-fit álle waardes als je een band weghaalt,
+dus dit meet "wat deze band met de tak gedaan heeft", niet een geïsoleerde
+band. Dat is ook precies de vraag die de ontwerpstap stelt.)
+
+**(3) En het verlies schaalt monotoon met het EQ-budget.** Ontwerp → synthese
+(ongetuned), zelfde kandidaten, alleen `eqBandsPerBranch` verschilt:
+
+```
+kandidaat A (W-M 514 · M-T 2432)      kandidaat B (W-M 424 · M-T 1849)
+eq  ontwerp  synth   Δ M-T            eq  ontwerp  synth   Δ M-T
+ 0   20,1°   14,1°   −6,0             0   26,9°   20,2°   −6,7
+ 1   15,3°   12,9°   −2,4             1   11,6°   15,0°   +3,4
+ 2   10,4°   28,8°  +18,4             2    7,7°   14,2°   +6,5
+ 4    5,6°   39,3°  +33,6             4    7,6°   13,2°   +5,6
+```
+
+**Zonder EQ-banden bestaat het synthese-verlies niet** — de synthese maakt de
+M-T-fase dan zelfs BETER. Het "systematische 7–9 graden verlies" is dus geen
+eigenschap van de synthese; het is een eigenschap van de EQ-trede.
+
+**(4) MAAR — en dit is de vondst die de remedie omdraait — de TUNE haalt het
+volledig terug, en de ontwerpstap voorspelde de levering al goed.** Dezelfde
+kandidaat A, hele keten:
+
+```
+                    ontwerp   synth (ongetuned)   GELEVERD
+eq = 0   M-T          20,1°         14,1°          20,9°     piek 2,887  avg 1,406  36 parts
+eq = 2   M-T          10,4°         28,8°           9,9°     piek 2,447  avg 0,692  59 parts
+```
+
+Het ONTWERP voorspelt de LEVERING op ~1° nauwkeurig, in beide gevallen. Het
+gesynthetiseerde ongetunede netwerk voorspelt geen van beide — het ligt niet
+eens tússen de twee in.
+
+**Daarmee is de "5,2 → 16,7 → 9,6"-lezing uit de vorige ronde verkeerd
+geframed.** Dat is geen keten waarin de synthese 7–9° verliest en de tune een
+deel terughaalt. Het gesynthetiseerde netwerk is een SEED, geen tussenstand:
+het draagt geen claim over wat er geleverd wordt, en het verschil met het
+ontwerp meten is een getal over een tussenproduct.
+
+**Gevolg voor de prioriteitenlijst.** De voorgestelde remedie — "de ontwerpstap
+moet de fase van de passieve realisatie meenemen" — is NIET gerechtvaardigd
+door deze meting: de ontwerpstap voorspelt de levering al goed, en de EQ-banden
+verdienen hun plek ruimschoots (geleverd 9,9° tegen 20,9° zonder, en avg 0,692
+tegen 1,406 dB). Wie de geleverde M-T wil verbeteren moet de KEUZE van de
+ontwerpstap sturen, niet de synthese — en dat is precies de knop uit stap 1.
+Wat het EQ-budget zelf betreft: 4 banden is op beide kandidaten slechter dan 2
+op zowel vlakheid als fase; dat omslagpunt staat als issue in ROADMAP.md.
+
+**En de 4,5° M-T die bij hoog fasegewicht bleef staan?** Die komt hier NIET uit
+voort. Dat was een SPREIDING op de ontwerpstap, en de volle ketenmeting van
+stap 1 laat zien dat de spreiding met gewicht wegvalt (M-T-veld 3,3–14,6 bij
+0,50 tegen 3,4–6,6 bij 0,70). Twee symptomen, twee oorzaken.
+
+**Het systematische synthese-verlies — DE HOOFDVERDACHTE (achterhaald door de
+meting hierboven; de tekst blijft staan omdat de cijfers erin kloppen).** Sinds de correctie
 hierboven is dit de eerste inhoudelijke stap en niet de tweede: de weging stond
 al goed, dus wat de achterstand draagt is dít.
 

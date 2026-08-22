@@ -185,10 +185,20 @@ Volgorde binnen een blok = aanbevolen prioriteit. Inschattingen zijn grof:
 2. **EPDR-curve** in het Impedance-paneel (S/M) — |Z| en fase gecombineerd tot
    "equivalent peak dissipation resistance": zo zwaar voelt de belasting écht.
    Verfijning van de nieuwe fase-chart.
+3. **Het EQ-budget-omslagpunt op ándere driversets** (S, WACHT OP DATA) — het
+   budget "EQ bands/driver" heeft een optimum en dat optimum is geen constante:
+   op de KOAN-3-weg-fixtures haalt 4 banden zowel de vlakheid als de M-T-fase
+   ONDERUIT ten opzichte van 2 (gemeten, ongetuned: kandidaat A piek 4,12 →
+   9,82 dB en M-T 28,8 → 39,3°; kandidaat B piek 3,24 → 5,03 dB), terwijl 1
+   band op kandidaat B juist het beste vlakheidsresultaat gaf. Eén set kan dat
+   omslagpunt niet vaststellen — het hangt af van hoeveel er ín de driver te
+   corrigeren valt — en een default op één set ijken is precies de fout die de
+   ka-tier-ronde al een keer gemaakt heeft. Meten zodra er een tweede volledige
+   3-weg-set is (de reflectievrije meting brengt die mee).
 
 ## Middel — meer werk, duidelijke winst
 
-3. **BOUWEN EN METEN — de lus sluiten** (M, en het belangrijkste open punt) —
+4. **BOUWEN EN METEN — de lus sluiten** (M, en het belangrijkste open punt) —
    alles hierboven is een getrouwe simulatie van de meetdata; of de kéten klopt
    weten we pas als een gebouwd filter over zijn simulatie ligt. Het gereedschap
    staat er (verificatie-slot + 🔬 Compare wizard) en is nog nooit op een echte
@@ -196,7 +206,7 @@ Volgorde binnen een blok = aanbevolen prioriteit. Inschattingen zijn grof:
    verdiend; wijkt het af, dan wéét je dat het aan de meetopstelling ligt en niet
    aan het filter. Zolang dit open staat, is elke verdere optimizer-verfijning
    sleutelen aan de verkeerde kant van het probleem.
-4. **Dood gewicht fysisch herkennen** (M — gebouwd, gemeten, TERUGGEDRAAID)
+5. **Dood gewicht fysisch herkennen** (M — gebouwd, gemeten, TERUGGEDRAAID)
    — een tak kan onderdelen dragen die elektrisch niet bestaan (een 6,8 mH
    shunt-spoel = 186 Ω op de kruising; twee valstrikken op 232 en 411 Hz in een
    TWEETER-tak). Een veeg op "verwijderen kost <0,5% van de objective" maakte
@@ -208,10 +218,10 @@ Volgorde binnen een blok = aanbevolen prioriteit. Inschattingen zijn grof:
    de band waar die tak werkelijk bijdraagt — een onderdeel dat écht inert is
    kan de stroomafwaartse stappen niet verplaatsen en heeft dus geen terugdraai
    nodig. Zie CLAUDE.md voor de volledige meting.
-5. **Catalogus-onderhoud** (doorlopend) — nieuwe Gemini/SKU-updates blijven
+6. **Catalogus-onderhoud** (doorlopend) — nieuwe Gemini/SKU-updates blijven
    importeerbaar; prijzen periodiek herijken op echte NL/EU-ankers (zie de
    prijsverificatie-ronde in CLAUDE.md).
-6. **Gradiënt-warmstart voor de componenttuner** (M/L) — het vervolg op
+7. **Gradiënt-warmstart voor de componenttuner** (M/L) — het vervolg op
    `adjoint.ts`. De synthese draait nu op exacte gradiënten; `netOptimizer.tune`
    nog niet, en dáár zit de meeste rekentijd van een scan (een 3-weg-net draagt
    16–25 vrije waardes). Kan niet één-op-één: zijn objective bevat termen die
@@ -223,7 +233,7 @@ Volgorde binnen een blok = aanbevolen prioriteit. Inschattingen zijn grof:
    de VOLLE objective — puur seeding, het enige mechanisme dat hier
    herhaaldelijk veilig is gebleken. De anker-les blijft leidend: de objective
    zelf blijft af.
-7. **Run-logboek als dataset** (S, dan doorlopend) — elke optimizer-run
+8. **Run-logboek als dataset** (S, dan doorlopend) — elke optimizer-run
     produceert al (instellingen → resultaat); die paren wegschrijven kost bijna
     niets en levert over maanden de enige data waarmee je een voorspellend model
     voor kandidaat-snoei kunt BEOORDELEN in plaats van hopen. Eerst meten, dan
