@@ -21,7 +21,8 @@ import { classifyLevelProfile } from './lib/parsers/classify.ts';
 import { compareMeasurement } from './lib/verification.ts';
 import { parseVxp, type VxpCrossover, type VxpPart, type VxpProject } from './lib/parsers/vxp.ts';
 import { estimateBulkDelay, assessSharedReference, assessPairTimeBase } from './lib/timing.ts';
-import { logspace, resample, resampleImpedance, combine, combineN, offsetMmToDelayS, applyTransfer, type GriddedResponse } from './lib/dsp.ts';
+import { logspace, resample, resampleImpedance, combine, combineN, offsetMmToDelayS, applyTransfer, type GriddedResponse, type CombineResult, type CombineNResult } from './lib/dsp.ts';
+import { solveDesign } from './lib/designSolve.ts';
 import { computeIntegration } from './lib/integration.ts';
 import { crossoverToNetlist } from './lib/vxpNetwork.ts';
 import { solveNetwork } from './lib/network.ts';
@@ -7564,24 +7565,21 @@ export default function App() {
       .filter((d) => d.id !== activeDesignId)
       .forEach((d, i) => {
         try {
-          const { netlist } = crossoverToNetlist({ name: d.name, parts: d.parts });
-          const sol = solveNetwork(netlist, grid, zOnGrid);
-          const { hW, hM, hT, ambiguous } = slotTransfersN(sol);
-          if (ambiguous) return; // no guessing which branch is which
-          const w = hW ? applyTransfer(sim.base.w, hW) : sim.base.w;
-          const t = hT ? applyTransfer(sim.base.t, hT) : sim.base.t;
-          // Three-way ghosts sum all three branches — same pipeline as the
-          // live simulation, so a ghost cannot differ from the curve that tab
-          // would draw if you switched to it.
-          const n3 =
-            threeWay && sim.base.m
-              ? combineN([
-                  { response: w },
-                  { response: hM ? applyTransfer(sim.base.m, hM) : sim.base.m, adjust: branchAdj.mid },
-                  { response: t, adjust: branchAdj.tweeter },
-                ])
-              : null;
-          const combined = n3 ?? combine(w, t, branchAdj.tweeter);
+          // Three-way ghosts sum all three branches — the SAME solve the
+          // compare table runs (solveDesign, A6b), so a ghost cannot differ
+          // from the row that describes it, nor from the curve that tab would
+          // draw if you switched to it.
+          const solved = solveDesign({
+            design: d,
+            grid,
+            driverZ: zOnGrid,
+            base: sim.base,
+            threeWay,
+            adjust: { mid: branchAdj.mid, tweeter: branchAdj.tweeter },
+          });
+          if (solved.ambiguous || !solved.sum) return; // no guessing which branch is which
+          const n3 = threeWay && sim.base.m ? (solved.sum as CombineNResult) : null;
+          const combined = solved.sum;
           const style = {
             label: d.name,
             color: GHOST_COLORS[i % GHOST_COLORS.length],
@@ -7631,7 +7629,7 @@ export default function App() {
           z.push({
             ...style,
             id: `ghostz:${d.id}`,
-            y: sol.inputZ.map((c) => Math.min(cAbs(c), 1e4)),
+            y: solved.inputZ.map((c) => Math.min(cAbs(c), 1e4)),
           });
         } catch {
           // Unsolvable tab (work in progress) — simply no ghost for it.
@@ -7678,20 +7676,20 @@ export default function App() {
       try {
         const bom = bomFor(d.parts);
         base.bomEur = bom.totalEur;
-        const { netlist } = crossoverToNetlist({ name: d.name, parts: d.parts });
-        const sol = solveNetwork(netlist, grid, zOnGrid);
-        base.zMinOhm = Math.min(...sol.inputZ.map((c) => cAbs(c)));
-        const { hW, hM, hT, ambiguous } = slotTransfersN(sol);
-        if (ambiguous) return { ...base, error: 'driver names ambiguous' };
-        const w = hW ? applyTransfer(sim.base.w, hW) : sim.base.w;
-        const t = hT ? applyTransfer(sim.base.t, hT) : sim.base.t;
+        // ONE solve, shared with the ghost overlay (solveDesign, A6b) — a row
+        // and the curve it describes cannot be measured differently.
+        const solved = solveDesign({
+          design: d,
+          grid,
+          driverZ: zOnGrid,
+          base: sim.base,
+          threeWay,
+          adjust: { mid: mAdj, tweeter: tAdj },
+        });
+        base.zMinOhm = Math.min(...solved.inputZ.map((c) => cAbs(c)));
+        if (solved.ambiguous || !solved.sum) return { ...base, error: 'driver names ambiguous' };
         if (threeWay && sim.base.m) {
-          const m = hM ? applyTransfer(sim.base.m, hM) : sim.base.m;
-          const n3 = combineN([
-            { response: w },
-            { response: m, adjust: mAdj },
-            { response: t, adjust: tAdj },
-          ]);
+          const n3 = solved.sum as CombineNResult;
           const st = computeResponseStats(grid, n3.combinedSpl, lo, hi);
           if (st) {
             base.score = st.score;
@@ -7712,7 +7710,7 @@ export default function App() {
             base.p95Deg = Math.max(...ps.map((x) => x.p95ErrorDeg));
           }
         } else {
-          const r2 = combine(w, t, tAdj);
+          const r2 = solved.sum as CombineResult;
           const st = computeResponseStats(grid, r2.combinedSpl, lo, hi);
           if (st) {
             base.score = st.score;

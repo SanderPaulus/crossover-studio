@@ -924,6 +924,24 @@ minimum phase reconstrueert. Voertaal met Sander: **Nederlands**; code/comments 
   fase (een gemiddelde verbergt één slechte overgang). Werkt dus óók in 3-weg — anders dan de
   ghost-overlay, die 2-weg-only bleef. Een tab die naar een niet-geladen driver verwijst meldt
   "not solvable" i.p.v. een getal te verzinnen.
+  **`designSolve.ts` — ÉÉN SOLVE, TWEE AANROEPERS (aug 2026, A6b)**: `tabCompare` en
+  `tabGhosts` beantwoorden dezelfde fysische vraag ("wat levert deze tab") en deden dat met
+  elk hun eigen kopie van dezelfde acht stappen (netlist → solve → slot-resolutie →
+  tak-transfer → som). Twee kopieën van één vraag is exact de bugfamilie waar deze codebase
+  telkens voor betaalt: een rij die een andere meetlat gebruikt dan de curve die hij
+  beschrijft. `solveDesign` is nu de ene implementatie; de tabel leest zijn `sum`/`inputZ`,
+  de ghost zijn `sum`/`branches`/`inputZ`. **Extractie, geen synchronisatie** — twee
+  implementaties die op gelijkheid getest worden kunnen tussen tests door alsnog uit elkaar
+  lopen, één implementatie kan dat niet; het migratiebewijs (`designSolve.test.ts`) draagt
+  een BEVROREN kopie van de oude inline-code en eist Object.is-gelijkheid op élk element
+  (inputZ, combinedSpl, combinedPhaseDeg, per-tak spl/fase, relatieve fase) over 2-weg × 3-weg
+  × wel/geen tak-adjust — precies zoals `dsp.nway.test.ts` dat voor de N-weg-kern doet, en
+  net zo goed een eenmalig bewijs en geen staande sync-test. Ambiguïteit levert de
+  IMPEDANTIE nog steeds op (|Z| hangt niet af van welke tak welke is) — de tabel toont een
+  Z-min voor een tab waarvan hij de drivernamen niet kan resolven, en dat verzwijgen zou
+  doen alsof je iets niet weet dat de solve al berekend heeft. Bewust NIET meegenomen: het
+  live-sim-pad, dat zijn transfers in een lopende pijplijn met virtuele filters erbovenop
+  toepast — dat erin vouwen zou een gedragswijziging in refactor-kleren zijn.
 - `report.ts` + "Export report" (Network-toolbar, aug 2026, Sanders "printbaar, en
   misschien ook als import als we gaan vergelijken") — ÉÉN ontwerp als zelfstandige HTML
   die drie dingen tegelijk is: printbare bouwdocumentatie (A4, `@page`, geen paginabreuk
