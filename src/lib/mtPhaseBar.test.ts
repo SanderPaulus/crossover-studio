@@ -13,6 +13,27 @@ import { computeIntegration } from './integration.ts';
 import { computePhaseStats } from './phaseStats.ts';
 
 /**
+ * ⚠ THERE WAS NO REGRESSION. This file was written as one and the premise did
+ * not survive its own measurement, so the correction lives here rather than in
+ * a commit nobody will read again.
+ *
+ * The report was "18 components, worse phase, higher BOM against the design of
+ * 2026-08-20". Measured: the file holds 25 components, not 18; current
+ * candidates deliver BETTER flatness; and the quoted 12 and 14 degrees were
+ * P95 values set beside a uniform average — two different statistics. What
+ * looked like the last survivor was VARIANCE ACROSS CANDIDATES, not decline.
+ * Running the scan's candidates on the repaired tree delivers M-T 7.3, 12.3 and
+ * 15.0 degrees, and the 7.3 one carries 18 components — essentially the
+ * reference, and the source of the remembered "18".
+ *
+ * One real defect did come out of the search, for a different reason than we
+ * were looking for: an INFEASIBLE wall in fxOf cost 17 degrees of M-T phase
+ * (see the note at the end of fxOf in netOptimizer.ts). That finding stands.
+ *
+ * So this is a BAR, not a regression guard: a phase figure this optimiser has
+ * demonstrably produced, kept so a future change cannot quietly move away from
+ * it. The interesting quantity now is the spread, not the mean.
+ *
  * THE BAR IS NOT INVENTED — THIS OPTIMIZER REACHED IT ITSELF.
  *
  * 20260820.2 came out of this app on 2026-08-20 (all 25 of its components
@@ -99,7 +120,7 @@ function measure(parts: Parameters<typeof crossoverToNetlist>[0]['parts']) {
   };
 }
 
-describe('M-T phase regression — a bar this optimizer has already cleared', () => {
+describe('M-T phase bar — a figure this optimizer has already produced', () => {
   const ref = deserializeFilter(
     readFileSync(join(FIXTURES, 'reference-20260820.2.adsfilter.json'), 'utf-8'),
   );
