@@ -27,6 +27,30 @@ import { bandStats } from './bandMetrics.ts';
  * decisions to luck which the component tuner can NEVER repair, because it
  * only moves values on a FIXED topology and a FIXED polarity:
  *
+ * ⚠ A CHOICE MAY NOT BE MADE ON A QUANTITY A LATER STAGE STILL CHANGES.
+ *
+ * Three times in one week the same defect, in three unrelated places:
+ *
+ *   Merger  the baffle step had to be applied BEFORE the gain fit, or the fit
+ *           removes a difference that belongs there.
+ *   Ranker  had to judge AFTER the shrink ladder and the snap, or it grades a
+ *           network that does not exist.
+ *   Knee    has to be chosen AFTER the EQ stage, or it is chosen on a score
+ *           the EQ then washes out.
+ *
+ * MEASURED here, which is what turned it from a tidiness argument into a
+ * defect. Without EQ the design step's mid-to-tweeter phase is 21.7 degrees;
+ * with it, 5-9. Picking the knee on the pre-EQ number chose 1930 Hz (M-T 8.9,
+ * fx 3.000) while 2100 Hz sat inside the same cage at M-T 6.1 and fx 2.703 —
+ * better on the objective the step optimises AND 2.8 degrees better on phase.
+ * The reference design this optimiser produced on 2026-08-20 crosses at
+ * 2101 Hz.
+ *
+ * So where a stage can be reordered, it is. Where it cannot — the EQ stage is
+ * greedy and discrete, the knee refine is continuous — the choice is REVISED
+ * after the later stage has run, and the revision repeats until it stops
+ * paying. See the revision loop after stage 3.
+ *
  *   - ALIGNMENT per crossing (LR2 / LR4 / BW3 / Bessel4). The two-way lesson
  *     that "EQ washes out alignment differences" does not transfer: the 3-way
  *     chain has no EQ stage, so the alignment IS the design.
@@ -406,8 +430,31 @@ export function designThreeWay(input: Design3Input): Design3Result {
     12000,
   );
 
-  let best: Design3Result | null = null;
-  for (const c of cands.slice(0, 4)) {
+  /**
+   * Refine the two knees for one structure, with any EQ already designed kept
+   * in place so the objective sees the sum the design actually has.
+   *
+   * `carry` supplies those bands. In stage 2 there are none and this is the
+   * original pre-EQ refine, bit for bit; in stage 4 it is what makes the knee
+   * a post-EQ choice. The bands travel at their own frequencies while the knee
+   * moves — they are re-derived straight afterwards, so what matters is that
+   * the objective is no longer blind to them.
+   */
+  const refineKnees = (
+    alignLow: Struct3Choice,
+    alignHigh: Struct3Choice,
+    midInverted: boolean,
+    tweeterInverted: boolean,
+    carry?: Design3Specs,
+  ): Design3Result | null => {
+    const withCarry = (sp: Design3Specs): Design3Specs =>
+      carry
+        ? {
+            woofer: { ...sp.woofer, eq: carry.woofer.eq.map((e) => ({ ...e })) },
+            mid: { ...sp.mid, eq: carry.mid.eq.map((e) => ({ ...e })) },
+            tweeter: { ...sp.tweeter, eq: carry.tweeter.eq.map((e) => ({ ...e })) },
+          }
+        : sp;
     const objective = (x: readonly number[]): number => {
       let penalty = 0;
       const clampLog = (v: number, win: [number, number]): number => {
@@ -419,45 +466,78 @@ export function designThreeWay(input: Design3Input): Design3Result {
       };
       let xoLow = clampLog(x[0], lowWin);
       let xoHigh = clampLog(x[1], highWin);
-      // A three-way needs real branch bands: keep the crossings apart.
       if (xoHigh < xoLow * 2) {
         penalty += (Math.log10(xoLow * 2) - Math.log10(xoHigh)) ** 2;
         xoHigh = xoLow * 2;
       }
-      const specs = specsFor(c.alignLow, c.alignHigh, xoLow, xoHigh, trimsFor(xoLow, xoHigh));
-      return (
-        evaluate(specs, c.midInverted, c.tweeterInverted).fx + 12 * penalty
-      );
+      const sp = withCarry(specsFor(alignLow, alignHigh, xoLow, xoHigh, trimsFor(xoLow, xoHigh)));
+      return evaluate(sp, midInverted, tweeterInverted).fx + 12 * penalty;
     };
-    const x0 = [Math.log10(input.xoLow), Math.log10(input.xoHigh)];
-    const fit = nelderMead(objective, x0, { maxIterations: 260, tolerance: 1e-6, step: 0.04 });
-    // Read the refined point back through the same clamps the objective used.
+    /* MULTI-START ACROSS THE CAGE, because the knee landscape is multimodal
+     * and a local simplex cannot see past a hump.
+     *
+     * Measured on Sanders set with the EQ in place: fx runs 3.00 at 1930 Hz,
+     * 3.78 at 2000, 2.57 at 2100. The candidate is seeded at 1930 and the
+     * better basin at 2100 sits behind that ridge, so refining alone — even
+     * with the stage order fixed — still returned 1930. Same reason the
+     * synthesis fits from five scattered starts and the component tuner runs
+     * multi-start: nothing here promises a convex landscape.
+     *
+     * Deterministic seeds: the candidate's own point plus the ends and the
+     * geometric middle of the high window, which is the axis with the room to
+     * be wrong on. Stage 2 is pure filter maths — no MNA solve — so four
+     * starts cost little. */
+    const seedLow = carry ? (best?.xoLow ?? input.xoLow) : input.xoLow;
+    const seedHigh = carry ? (best?.xoHigh ?? input.xoHigh) : input.xoHigh;
+    const highSeeds = [
+      seedHigh,
+      highWin[0] * 1.02,
+      Math.sqrt(highWin[0] * highWin[1]),
+      highWin[1] * 0.98,
+    ].filter((v, i, a2) => v > 0 && a2.findIndex((u) => Math.abs(Math.log2(u / v)) < 0.02) === i);
+    let fit: { x: number[]; fx: number } | null = null;
+    for (const hs of highSeeds) {
+      const f2 = nelderMead(objective, [Math.log10(seedLow), Math.log10(hs)], {
+        maxIterations: 260,
+        tolerance: 1e-6,
+        step: 0.04,
+      });
+      if (!fit || f2.fx < fit.fx) fit = { x: [...f2.x], fx: f2.fx };
+    }
+    if (!fit) return null;
     const clamp = (v: number, win: [number, number]): number =>
       Math.min(Math.max(10 ** v, win[0]), win[1]);
     const xoLow = clamp(fit.x[0], lowWin);
     const xoHigh = Math.max(clamp(fit.x[1], highWin), xoLow * 2);
-    const trims = trimsFor(xoLow, xoHigh);
-    const specs = specsFor(c.alignLow, c.alignHigh, xoLow, xoHigh, trims);
-    const scored = evaluate(specs, c.midInverted, c.tweeterInverted);
-    if (!best || scored.fx < best.fx) {
-      best = {
-        specs,
-        midInverted: c.midInverted,
-        tweeterInverted: c.tweeterInverted,
-        alignLow: c.alignLow,
-        alignHigh: c.alignHigh,
-        xoLow: Math.round(xoLow),
-        xoHigh: Math.round(xoHigh),
-        fx: scored.fx,
-        pairPhaseDeg: scored.pairPhaseDeg,
-        diDistanceOct: scored.diDistanceOct,
-        label:
-          `${structLabel(c.alignLow)} @${Math.round(xoLow)} · ` +
-          `${structLabel(c.alignHigh)} @${Math.round(xoHigh)}` +
-          `${c.midInverted ? ' · mid inv' : ''}${c.tweeterInverted ? ' · tweeter inv' : ''}`,
-        evaluated: 0,
-      };
-    }
+    const specs = withCarry(
+      specsFor(alignLow, alignHigh, xoLow, xoHigh, trimsFor(xoLow, xoHigh)),
+    );
+    const scored = evaluate(specs, midInverted, tweeterInverted);
+    return {
+      specs,
+      midInverted,
+      tweeterInverted,
+      alignLow,
+      alignHigh,
+      xoLow: Math.round(xoLow),
+      xoHigh: Math.round(xoHigh),
+      fx: scored.fx,
+      pairPhaseDeg: scored.pairPhaseDeg,
+      diDistanceOct: scored.diDistanceOct,
+      label:
+        `${structLabel(alignLow)} @${Math.round(xoLow)} · ` +
+        `${structLabel(alignHigh)} @${Math.round(xoHigh)}` +
+        `${midInverted ? ' · mid inv' : ''}${tweeterInverted ? ' · tweeter inv' : ''}`,
+      evaluated: 0,
+    };
+  };
+
+  let best: Design3Result | null = null;
+  for (const c of cands.slice(0, 4)) {
+    // ONE knee refine, used here without EQ and again in stage 4 with it —
+    // the same function, so the two cannot drift into different objectives.
+    const r = refineKnees(c.alignLow, c.alignHigh, c.midInverted, c.tweeterInverted);
+    if (r && (!best || r.fx < best.fx)) best = r;
   }
 
   /* ---- Stage 3: greedy CUT-ONLY EQ per branch (2-way parity) -------------
@@ -472,6 +552,7 @@ export function designThreeWay(input: Design3Input): Design3Result {
    * honest floor. Budget is per branch, from the same "EQ bands/driver"
    * setting the 2-way uses. ---- */
   const eqBudget = Math.max(0, Math.floor(input.eqBandsPerBranch ?? 0));
+  const runEqStage = () => {
   if (eqBudget > 0 && best) {
     const clone = (s: Design3Specs): Design3Specs => ({
       woofer: { ...s.woofer, eq: s.woofer.eq.map((b) => ({ ...b })) },
@@ -639,6 +720,112 @@ export function designThreeWay(input: Design3Input): Design3Result {
         label: `${best.label.replace(/ · \d+ EQ$/, '')} · ${placed} EQ`,
       };
     }
+  }
+
+  };
+  /** Run the EQ stage on a given design and hand back the result, leaving the
+   *  outer `best` where it was. The stage itself reads and writes `best`, so
+   *  it is borrowed rather than rewritten — a smaller change than turning a
+   *  greedy 150-line block inside out, and contained to these five lines. */
+  const placeEq = (seed: Design3Result): Design3Result => {
+    const save = best;
+    best = seed;
+    runEqStage();
+    const out = best!;
+    best = save;
+    return out;
+  };
+  runEqStage();
+
+  /* ---- Stage 4: REVISE the knee now that the EQ exists --------------------
+   *
+   * The knee was refined in stage 2 against a sum with no EQ in it, and the EQ
+   * stage then changes that sum by a factor of four in phase error. A choice
+   * made on the earlier number is a choice made on a quantity that no longer
+   * describes the design — the principle at the top of this file.
+   *
+   * The ideal is to refine the knee INSIDE the EQ stage, so it is chosen on
+   * the post-EQ objective directly. That is not available here: the EQ stage
+   * is greedy and discrete (bands are placed one at a time, each kept on a
+   * ≥1 % gain), while the knee refine is a continuous simplex, and there is no
+   * single objective both can descend. So the choice is REVISED instead —
+   * refine the knee with the EQ in place, re-derive the EQ at the new knee,
+   * and repeat while it keeps paying.
+   *
+   * Bounded at three rounds and gated on a ≥0.5 % gain, and it keeps the best
+   * point seen rather than the last: a greedy re-derivation is not guaranteed
+   * to be monotone, and a loop that can oscillate must not be able to end on
+   * the down-swing. */
+  if (eqBudget > 0 && best) {
+    /* THE KNEE IS RE-CHOSEN WITH THE EQ RE-DERIVED AT EACH TRIAL, and that
+     * detail is the whole fix.
+     *
+     * Carrying the bands designed at the old knee to a new one is not the same
+     * measurement: those bands were placed against a different sum. Measured —
+     * carrying them, 2100 Hz scores no better than 1930 and the refine stays
+     * put; re-deriving them there, 2100 scores 2.57 against 3.00 and is 2.8
+     * degrees better in M-T phase. So each trial knee gets its own EQ pass.
+     *
+     * A handful of discrete trials rather than a continuous search, because
+     * the EQ stage is greedy: there is no gradient to follow through it. The
+     * trials span the cage, which is where the alternative basins were
+     * measured to be, and the incumbent is always among them so this can only
+     * improve on what stage 2 chose. Pure filter maths throughout — no MNA
+     * solve — so the cost is a few hundred evaluations, not a scan. */
+    const incumbent: Design3Result = best;
+    const [hLo, hHi] = highWin;
+    const trials = [
+      incumbent.xoHigh,
+      hLo * 1.02,
+      Math.sqrt(hLo * Math.sqrt(hLo * hHi)),
+      Math.sqrt(hLo * hHi),
+      Math.sqrt(hHi * Math.sqrt(hLo * hHi)),
+      hHi * 0.98,
+    ].filter(
+      (v, i, a2) =>
+        v >= hLo &&
+        v <= hHi &&
+        a2.findIndex((u) => Math.abs(Math.log2(u / v)) < 0.03) === i,
+    );
+    for (const hz of trials) {
+      if (Math.abs(Math.log2(hz / incumbent.xoHigh)) < 0.03) continue;
+      const trims = trimsFor(incumbent.xoLow, hz);
+      const trialSpecs = specsFor(incumbent.alignLow, incumbent.alignHigh, incumbent.xoLow, hz, trims);
+      /* SCORE THE SEED AS ITSELF. Carrying the incumbent's post-EQ fx onto a
+       * no-EQ design makes the EQ stage's own acceptance gate meaningless — it
+       * asks each band to beat a number this design never had, so nothing is
+       * ever placed and every trial comes back identical. Measured exactly
+       * that way before the fix: four different knees, one fx, to three
+       * decimals. The same disease as everything else this week — a figure
+       * describing something other than what it is attached to. */
+      const trialScore = evaluate(trialSpecs, incumbent.midInverted, incumbent.tweeterInverted);
+      const seed: Design3Result = {
+        ...incumbent,
+        specs: trialSpecs,
+        fx: trialScore.fx,
+        pairPhaseDeg: trialScore.pairPhaseDeg,
+        diDistanceOct: trialScore.diDistanceOct,
+        xoHigh: Math.round(hz),
+        label:
+          `${structLabel(incumbent.alignLow)} @${incumbent.xoLow} · ` +
+          `${structLabel(incumbent.alignHigh)} @${Math.round(hz)}` +
+          `${incumbent.midInverted ? ' · mid inv' : ''}` +
+          `${incumbent.tweeterInverted ? ' · tweeter inv' : ''}`,
+      };
+      const withEq = placeEq(seed);
+      if (process.env.D3DEBUG) console.log('  trial', Math.round(hz), 'fx', withEq.fx.toFixed(3), 'M-T', withEq.pairPhaseDeg[1].toFixed(1));
+      if (withEq.fx < best.fx) best = withEq;
+    }
+    /* NO CONTINUOUS POLISH AFTERWARDS, and that is deliberate — it was tried
+     * and it made things worse in exactly the way this whole stage exists to
+     * prevent. A refine that CARRIES the winning EQ while moving the knee is
+     * scoring a design against bands placed for a different one: measured, it
+     * walked from 2095 Hz (fx 2.93, M-T 5.2°) to 2358 Hz (fx 2.66, M-T 13.0°)
+     * — an apparent gain of 0.27 bought with 8 degrees of phase, on a number
+     * that did not describe the design it was attached to.
+     *
+     * The discrete trials already span the cage and each is scored with its
+     * own EQ, so there is nothing left for a polish to find that is real. */
   }
 
   // Enumeration always produces at least one candidate (the libraries are

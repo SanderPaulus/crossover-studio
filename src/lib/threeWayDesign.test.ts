@@ -33,6 +33,54 @@ describe('threeWayDesign — alignment × polarity structure search', () => {
     phasePriority: 0.5,
   };
 
+  it('ORDER: the knee is chosen AFTER the EQ stage, and before is worse', () => {
+    /* The ordering test, in the shape of Merger test 5: a later refactor must
+     * not be able to quietly swap these stages back.
+     *
+     * A choice may not be made on a quantity a later stage still changes.
+     * Without EQ this design step reports a mid-to-tweeter phase around 20
+     * degrees; with EQ, single digits. Choosing the knee on the first number
+     * picks a different knee — measured on Sanders set, 1930 Hz (M-T 9.5) over
+     * 2100 Hz (M-T 5.2), while 2100 also scored BETTER on the objective the
+     * step is minimising. The design this optimiser produced on 2026-08-20,
+     * the one that set the phase bar, crosses at 2101 Hz.
+     *
+     * "Before" is reconstructed through the public API rather than by keeping
+     * dead code: run with no EQ budget to get the pre-EQ knee, pin it, then
+     * allow EQ. That is exactly the old sequence. */
+    const withEq = { ...base, eqBandsPerBranch: 4 };
+    const after = designThreeWay(withEq);
+
+    const preEqKnee = designThreeWay({ ...base, eqBandsPerBranch: 0 });
+    const before = designThreeWay({
+      ...withEq,
+      xoHigh: preEqKnee.xoHigh,
+      xoHighWindow: [preEqKnee.xoHigh * 0.999, preEqKnee.xoHigh * 1.001],
+    });
+
+    // The stages disagree about where the knee belongs — if they ever stop
+    // disagreeing on this fixture the test is no longer testing anything, so
+    // that is asserted too.
+    expect(Math.abs(Math.log2(after.xoHigh / preEqKnee.xoHigh))).toBeGreaterThan(0.02);
+    // And choosing it before the EQ stage costs the objective the step exists
+    // to minimise.
+    expect(after.fx).toBeLessThan(before.fx);
+  });
+
+  it('the revision cannot end on a down-swing', () => {
+    /* The revision re-derives a GREEDY stage at each trial knee, so it is not
+     * guaranteed to be monotone. The loop therefore keeps the best point it
+     * has seen rather than the last, and never returns something worse than
+     * the design it started from. */
+    const plain = designThreeWay({ ...base, eqBandsPerBranch: 4 });
+    const noEq = designThreeWay({ ...base, eqBandsPerBranch: 0 });
+    expect(plain.fx).toBeLessThanOrEqual(noEq.fx);
+    // Deterministic across repeats, which a loop with an accept/revert rule
+    // is an easy way to get wrong.
+    expect(designThreeWay({ ...base, eqBandsPerBranch: 4 }).fx).toBe(plain.fx);
+    expect(designThreeWay({ ...base, eqBandsPerBranch: 4 }).xoHigh).toBe(plain.xoHigh);
+  });
+
   it('returns a complete, self-consistent three-way target design', () => {
     const d = designThreeWay(base);
     // Both handovers are real and ordered, and the mid is a true bandpass.
@@ -197,7 +245,14 @@ describe('threeWayDesign — directivity in the structure search (KOAN 3-way fix
     const at3300 = { ...base, xoHigh: 3300, xoHighWindow: [3300, 3300] as [number, number] };
     const plain = designThreeWay(at3300);
     const anchored = designThreeWay({ ...at3300, diAnchorHz: { high: 2400 }, diWeight: 0.3 });
-    expect(anchored.xoHigh).toBe(plain.xoHigh);
+    /* WITHIN 1 %, not exactly equal. The window here is not really collapsed:
+     * kneeWindow falls back to ±5 % when it is handed a zero-width one, so the
+     * refine has room and the two runs landing on the identical integer was a
+     * coincidence. Since the knee refine became multi-start (it has to be —
+     * the knee landscape is multimodal, see threeWayDesign.ts) they settle
+     * 8 Hz apart. The claim being tested is that the DI term does not MOVE the
+     * knee, and 0.2 % is that claim. */
+    expect(Math.abs(Math.log2(anchored.xoHigh / plain.xoHigh))).toBeLessThan(0.015);
     expect(anchored.diDistanceOct[1]!).toBeGreaterThan(0.4); // ≈ log2(3300/2400) = 0.46 (the delivered knee may sit a hair off the collapsed window)
     expect(anchored.diDistanceOct[1]!).toBeLessThan(0.6);
     // ±0.05: the collapsed window still lets NM settle a hair off 3300 and pick a
