@@ -116,6 +116,70 @@ voor +0,10 dB vlakheid, maar gemeten op drie kandidaten, één driverset en de
 ONTWERPSTAP. Te dun om een globale default op te verzetten; vergt twee
 volledige ketenruns voordat er iets verandert.
 
+### De weging op de VOLLE keten gemeten (aug 2026) — en de premisse klopte niet
+
+De opdracht was "de default staat nog onder het omslagpunt van 0,35, zet hem
+omhoog". Dat is niet zo: `phasePriority` staat op **50** en dat is de goede
+kant van 0,35 (de correctie hierboven). De vraag die overbleef is de enige die
+de sweep openliet — is **0,70** beter dan 0,50 — en die is nu beantwoord op
+zes VOLLEDIGE ketenruns in plaats van op de ontwerpstap.
+
+Zelfde drie kandidaten, zelfde seeds, alles behalve `phasePriority` gelijk
+(KOAN-3-weg-fixtures, doelen 2,5 dB / 15°, in-room 25 %):
+
+```
+kandidaat            pp     piek dB  avg dB   W-M °   M-T °  onderdelen
+W-M 424 · M-T 2432   0,50    1,702    0,383    4,2     3,3      47
+                     0,70    1,619    0,445    4,0     3,4      47
+W-M 622 · M-T 2432   0,50    2,389    0,583    5,5    14,6      59
+                     0,70    2,306    0,653    3,5     6,5      44
+W-M 514 · M-T 1849   0,50    1,327    0,408    5,9     8,9      52   ← winnaar
+                     0,70    2,351    0,701    3,8     4,3      46   ← winnaar
+```
+
+**De sweep hield stand, en sterker dan op de ontwerpstap.** De M-T-SPREIDING
+over het veld gaat van 11,3° (3,3–14,6) naar 3,1° (3,4–6,6); W-M van 1,7°
+naar 0,5°. Dat is precies wat de weging hoort te doen: de vlakke fase-richting
+in de doelfunctie dichttrekken zodat het startpunt niet meer bepaalt waar een
+kandidaat landt.
+
+**De mtPhaseBar-lat (M-T gem. 7,1° op het referentieontwerp), op DEZELFDE
+meetlat als de test (455 Hz–16 kHz, 500 pt):**
+
+```
+pp 0,50   3,3° · 14,6° · 8,8°   → 1 van 3 haalt de lat; de WINNAAR (8,8°) niet
+pp 0,70   3,4° ·  6,6° · 4,3°   → alle drie halen hem; de winnaar op 4,3°
+```
+
+Dat is het scherpste resultaat van de ronde: op 0,50 levert de scan een
+winnaar die de lat mist, op 0,70 haalt élke kandidaat hem.
+
+**Wat het kost.** Op de winnaar: piek +1,02 dB (1,327 → 2,351) en avg
++0,293 dB (0,408 → 0,701), bij 6 onderdelen MINDER (52 → 46). Over het hele
+veld gemiddeld: piek +0,29 dB, avg +0,14 dB, 7 onderdelen minder.
+
+⚠ **DAAROM IS DE DEFAULT NIET VERZET — maar de balans is niet symmetrisch.** Sanders drempel was "meer dan ~0,3 dB
+vlakheid inleveren → melden en wachten". Op de winnaar wordt die drempel
+gehaald op avg (0,29) en ruim overschreden op piek (1,02). De keuze is
+0,3–1,0 dB vlakheid tegen 4,5° M-T, een derde van de fase-spreiding, zes
+onderdelen minder, €144 minder en een lat die anders niet gehaald wordt — dat
+is een ontwerpersafweging, geen meetresultaat, en hij hoort bij Sander.
+
+**En de BOM gaat de andere kant op, hard.** De winnende kandidaat is opnieuw
+gedraaid met de demo-catalogus geladen (alléén om te PRIJZEN — `catalogSnap`
+bleef uit, en de run reproduceerde piek/avg/onderdelen exact, dus het is
+hetzelfde ontwerp):
+
+```
+pp 0,50   52 onderdelen   € 227
+pp 0,70   46 onderdelen   €  83
+```
+
+**€144 minder** voor hetzelfde paar drivers. Dat is geen bijzaak: het is
+dezelfde beweging als de spreiding — met meer fasegewicht landt de keten in
+een bekken dat minder correctiewerk nodig heeft, en dat scheelt zowel
+onderdelen als dure onderdelen.
+
 **Het overlapvenster.** Het 20 dB-venster wordt smaller bij steilere filters,
 en een smaller venster is makkelijker goed te scoren. Gemeten op twee sets:
 
