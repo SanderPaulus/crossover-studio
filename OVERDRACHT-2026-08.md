@@ -258,9 +258,14 @@ diskwalificatie-teksten zijn ontstaan in een run mét de 2,5 Ω opgegeven.)
 
 **Conclusie: de wegingsvraag is op dit veld niet te beantwoorden.** Alles wat
 er te kiezen valt is onbouwbaar, om een reden die niets met de weging te maken
-heeft. De default blijft 50 — niet omdat 0,70 verloor, maar omdat er geen
-geldige meting ligt om hem op te verzetten. Eerst de serie-cap-kortsluiting,
-dan opnieuw meten.
+heeft.
+
+**STAP 1 IS DAARMEE VERVALLEN (Sanders besluit).** `phasePriority` blijft
+**50** — niet omdat 0,70 verloor, maar omdat er geen geldige meting ligt om
+hem op te verzetten. De sweep (ontwerpstap) en de zes ketenruns staan hierboven
+en blijven bruikbaar als achtergrond; als bewijs voor een default-wijziging
+tellen ze niet. Opnieuw meten kan pas op een veld dat bouwbare kandidaten
+oplevert, en dat vraagt eerst de ingangsimpedantie-vondst hieronder.
 
 **Het overlapvenster.** Het 20 dB-venster wordt smaller bij steilere filters,
 en een smaller venster is makkelijker goed te scoren. Gemeten op twee sets:
@@ -357,6 +362,28 @@ Dat is het generieke deel dat het onthouden waard is: alleen twee getallen die
 allebei een CLAIM dragen mogen met een pijl verbonden worden. Ontwerp en
 levering doen dat (het ontwerp voorspelt de levering hier op ~1°); de seed
 ertussen doet dat niet.
+
+**En de tweede uit dezelfde familie, één ronde later: een TIE-BREAK TUSSEN
+GEDISKWALIFICEERDE ONTWERPEN GEPRESENTEERD ALS DE LEVERING.** De stap-1-scan
+rangschikte zes kandidaten die allemaal waren afgekeurd — twee met een
+kortsluiting aan de versterker — en de kop van die lijst is als "wat de app
+levert" voorgelegd. Sander vormde zich er een oordeel over: hij woog 0,3 dB
+vlakheid tegen 4,5° fase op ontwerpen die geen van beide gebouwd konden
+worden.
+
+Het is dezelfde fout als de pijlen: **een getal beoordeeld zonder de status
+ernaast.** De ranking DEED wat hij moest doen — hij zette alle zes in klasse
+10 en brak de gelijkstand op de blend — maar een gerangschikte lijst ziet er
+hetzelfde uit of de bovenste rij nu bouwbaar is of niet. `disqualified` stond
+in het resultaat en werd niet gelezen.
+
+De regel die hieruit volgt, en die breder geldt dan deze twee gevallen: **een
+kwaliteitsgetal is pas een uitspraak als de status erbij staat.** Rangschikken
+is geen keuren. Elk rapport dat een winnaar noemt hoort te zeggen of er
+überhaupt een geldige kandidaat in het veld zat — de scan-note doet dat al in
+de app ("er ís een gezonde kandidaat, hij scoort alleen minder vlak" tegen
+"geen enkele kandidaat haalde het"), en een meetrapportage hoort dat na te
+doen.
 
 **Gevolg voor de prioriteitenlijst.** De voorgestelde remedie — "de ontwerpstap
 moet de fase van de passieve realisatie meenemen" — is NIET gerechtvaardigd
