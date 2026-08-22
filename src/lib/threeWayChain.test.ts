@@ -359,6 +359,15 @@ describe('threeWayChain (phase-4 trede 4c, staged v1)', () => {
       0.5,
     );
     expect(tied[0].label).toBe('b');
+    /* THE ABSOLUTE FLOOR IS THE DESIGNER'S AMPLIFIER (aug 2026). `zOk` above
+     * is relative — "this tune did not worsen the dip" — and it still gates
+     * without any rating. The absolute class does not exist until someone
+     * says what drives the speaker, and then it is THEIR number. */
+    const AMP = 2.5;
+    const cands = [mk('flat-2ohm', true, 0.2, 2, 300, 2.0), mk('sane-load', true, 0.5, 5, 300, 3.2)];
+    expect(rankChain3Results(cands, undefined, 0.5, 0, 1.0, 0, AMP)[0].label).toBe('sane-load');
+    // No rating: the 2.0 Ω is measured and shown, and ranks on nothing.
+    expect(rankChain3Results(cands, undefined, 0.5)[0].label).toBe('flat-2ohm');
   });
 
   it('variantsFromPoints: tiles at geometric midpoints, held axis gets the whole span, 2.5× rule, tags', () => {
@@ -536,29 +545,38 @@ describe('threeWayChain (phase-4 trede 4c, staged v1)', () => {
         disqualified: [],
         structureLabel: 'LR4 @400 · LR4 @3000',
       }) as Chain3Result;
-    // Sander's case: the tune never WORSENED the dip, so zOk is true — but the
-    // delivered load is 2.2 Ohm, under the amplifier floor. A flatter result
-    // must not be able to buy that with a tenth of a dB.
-    const ranked = rankChain3Results(
+    /* Sander's case: the tune never WORSENED the dip, so zOk is true — but the
+     * delivered load is 2.2 Ω, under what his amplifier is rated for. A flatter
+     * result must not be able to buy that with a tenth of a dB.
+     *
+     * aug 2026: "what his amplifier is rated for" is now a number he types, so
+     * this test states it (2.5 Ω, a NAD M10 V2) instead of inheriting one that
+     * every other owner would have inherited too. */
+    const AMP = 2.5;
+    const rank = (rs: Chain3Result[]) => rankChain3Results(rs, undefined, 0.5, 0, 1.0, 0, AMP);
+    const ranked = rank(
       [mk('flat-but-2.2ohm', true, 0.2, 2, 300, 2.2), mk('sane-load', true, 0.5, 5, 300, 3.4)],
-      undefined,
-      0.5,
     );
     expect(ranked[0].label).toBe('sane-load');
+    // And with no amplifier named there is no class to lose: the 2.2 Ω is
+    // measured and shown, and the flatter design wins on flatness.
+    expect(
+      rankChain3Results(
+        [mk('flat-but-2.2ohm', true, 0.2, 2, 300, 2.2), mk('sane-load', true, 0.5, 5, 300, 3.4)],
+        undefined,
+        0.5,
+      )[0].label,
+    ).toBe('flat-but-2.2ohm');
     // A failed tune (zOk false) is still worse than merely sitting low: the
     // first says the numbers cannot be trusted, the second is an honest load.
-    const both = rankChain3Results(
+    const both = rank(
       [mk('rejected', false, 0.2, 2, 300, 6), mk('low-but-tuned', true, 0.5, 5, 300, 2.2)],
-      undefined,
-      0.5,
     );
     expect(both[0].label).toBe('low-but-tuned');
     // Unknown impedance (older results, 2-way-shaped nets) must not be
     // punished for a number nobody measured.
-    const unknown = rankChain3Results(
+    const unknown = rank(
       [mk('known-low', true, 0.2, 2, 300, 2.2), mk('unknown', true, 0.5, 5, 300, null)],
-      undefined,
-      0.5,
     );
     expect(unknown[0].label).toBe('unknown');
   });
@@ -599,6 +617,8 @@ describe('threeWayChain (phase-4 trede 4c, staged v1)', () => {
     expect(ranked[0].label).toBe('inside-window');
     // The amplifier still outranks it: a sane load with a drifted crossing
     // beats a dead short with a perfect one.
+    // (aug 2026: the amplifier class only exists once one is named — 2.5 Ω
+    // here, stated rather than assumed.)
     const withZ = rankChain3Results(
       [
         { ...mk('short-but-in-window', true, 0.2, 2), zMinOhm: 1.0 },
@@ -606,6 +626,10 @@ describe('threeWayChain (phase-4 trede 4c, staged v1)', () => {
       ],
       undefined,
       0.5,
+      0,
+      1.0,
+      0,
+      2.5,
     );
     expect(withZ[0].label).toBe('sane-load-outside');
     // Unjudged (no pins, no measured windows) is never punished.

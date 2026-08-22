@@ -27,7 +27,6 @@ import {
   optimizeNetworkValues,
   type NetOptimizeOptions,
   type NetOptimizeResult,
-  Z_FLOOR_OHM,
 } from './netOptimizer.ts';
 import { auditNetwork, sourceResistanceOhm, type NetworkAudit } from './partAudit.ts';
 import { bomFor, nearestParts, type CatalogPart } from './catalog.ts';
@@ -107,10 +106,20 @@ export function minimizeNetwork(
     rSourceOhm: r.after.rSourceOhm ?? sourceResistanceOhm(r.parts, { grid, driverZ, fbHz: opts.fbHz }),
     zMinOhm: r.after.zMinOhm ?? null,
   });
+  /* The amplifier's rated minimum load, when the designer stated one. No
+   * default: minimisation removes parts, and without a stated rating there is
+   * nothing to hold the load to — the delivered minimum is reported on every
+   * step instead. */
+  const ampFloor = opts.tuneOpts?.ampMinLoadOhm;
+  const loadOk = (m: ReturnType<typeof measure>, ref: ReturnType<typeof measure>): boolean => {
+    if (!(ampFloor !== undefined && ampFloor > 0)) return true;
+    if (m.zMinOhm === null) return true;
+    return m.zMinOhm >= Math.min(ampFloor, (ref.zMinOhm ?? ampFloor) - 0.05);
+  };
   const ok = (m: ReturnType<typeof measure>, ref: ReturnType<typeof measure>): boolean =>
     m.peakDb <= opts.targets.rippleDb + 1e-9 &&
     m.phaseDeg <= opts.targets.phaseDeg + 1e-9 &&
-    (m.zMinOhm === null || m.zMinOhm >= Math.min(Z_FLOOR_OHM, (ref.zMinOhm ?? Z_FLOOR_OHM) - 0.05)) &&
+    loadOk(m, ref) &&
     (m.rSourceOhm === null || m.rSourceOhm <= Math.max(rsLimit, (ref.rSourceOhm ?? 0) + 1e-6));
 
   opts.onStage?.('minimize: baseline');
@@ -149,7 +158,7 @@ export function minimizeNetwork(
   for (let round = 0; round < maxRem; round++) {
     opts.onStage?.(`minimize: removal round ${round + 1}`);
     const audit: NetworkAudit | null = cur.audit ?? auditNetwork(cur.parts, {
-      grid, wBase, tBase, driverZ, adjust, fbHz: opts.fbHz, zFloorOhm: Z_FLOOR_OHM,
+      grid, wBase, tBase, driverZ, adjust, fbHz: opts.fbHz, zFloorOhm: ampFloor,
       thresholds: { rSourceOhm: rsLimit },
     } as Parameters<typeof auditNetwork>[1]);
     if (!audit) { stop = 'no audit (network does not solve)'; break; }

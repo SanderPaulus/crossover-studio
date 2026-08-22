@@ -713,6 +713,8 @@ export interface SoloChainSettings {
   maxIterations?: number;
   /** Full-measurement-band safety data (amp-load floor on the whole grid). */
   safety?: { freqs: readonly number[]; d: GriddedResponse; z: readonly Complex[] };
+  /** The amplifier's rated minimum load (Ω); absent = no floor anywhere. */
+  ampMinLoadOhm?: number;
 }
 
 export interface SoloChainInput {
@@ -821,6 +823,7 @@ function runSoloChainOnce(
       // has nothing to respect (see zFloorStrict). A solo network can dip
       // just as hard — a trap's damping R sits straight across the input.
       zFloorStrict: true,
+      ampMinLoadOhm: s.ampMinLoadOhm,
       soloSensitivityDb: s.sensitivityBudgetDb,
       soloTargetLevelDb: s.targetLevelDb,
       // Solo staged: the phase target is trivially met (phase metric is 0);

@@ -178,8 +178,8 @@ export const nl: Record<string, string> = {
     'Timing-chip in de topbar — hover voor het volledige oordeel; 📐 Meten legt de gedeelde-klok-opstelling uit',
   'Pair time-base {verdict}:': 'Tijdbasis per paar {verdict}:',
   'Topbar Timing chip — hover for both pairs': 'Timing-chip in de topbar — hover voor beide paren',
-  'System impedance dips to {z} Ω — below the {floor} Ω amplifier floor.':
-    'De systeemimpedantie zakt naar {z} Ω — onder de versterkervloer van {floor} Ω.',
+  'System impedance dips to {z} Ω — below the {floor} Ω your amplifier is rated for.':
+    'De systeemimpedantie zakt naar {z} Ω — onder de {floor} Ω waarvoor jouw versterker is opgegeven.',
   'System impedance panel — the Z min marker shows where; the optimizer repairs this when it can':
     'Paneel systeemimpedantie — de Z-min-markering toont waar; de optimizer repareert dit waar hij kan',
 
@@ -1482,8 +1482,9 @@ export const nl: Record<string, string> = {
   "A delivered crossing sits OUTSIDE its physics window (pin or measured beaming/lobing bound) — off-axis this is a different loudspeaker, so it ranks below every candidate inside the window": "Een geleverde kruising ligt BUITEN zijn fysica-venster (pin of gemeten bundel-/lobing-grens) — off-axis is dit een andere luidspreker, dus hij rankt onder élke kandidaat binnen het venster",
   "Delivered overlap width per pair, octaves (W-M / M-T) — how long both cones carry a region together; the phase-coherent integration bandwidth": "Geleverde overlapbreedte per paar, octaven (W-M / M-T) — hoe lang beide conussen een gebied samen dragen; de fase-coherente integratie-bandbreedte",
   "Minimum system impedance was not measured for this candidate": "Minimale systeemimpedantie is voor deze kandidaat niet gemeten",
-  "The amplifier sees {z} Ω at its worst — below the {floor} Ω floor, so this candidate ranks below every one with a sane load, however flat it is": "De versterker ziet op zijn slechtst {z} Ω — onder de {floor} Ω-vloer, dus deze kandidaat rankt onder élke kandidaat met een gezonde last, hoe vlak hij ook is",
-  "Minimum system impedance the amplifier sees (floor {floor} Ω)": "Minimale systeemimpedantie die de versterker ziet (vloer {floor} Ω)",
+  "The amplifier sees {z} Ω at its worst — below the {floor} Ω you entered for it, so this candidate ranks below every one with a load it can drive, however flat it is": "De versterker ziet op zijn slechtst {z} Ω — onder de {floor} Ω die jij voor hem hebt ingevuld, dus deze kandidaat rankt onder élke kandidaat met een last die hij wél aankan, hoe vlak hij ook is",
+  "Minimum system impedance the amplifier sees (you rated it to {floor} Ω)": "Minimale systeemimpedantie die de versterker ziet (jij gaf {floor} Ω op)",
+  "Minimum system impedance the amplifier sees. No rating entered, so nothing is ranked on it — put your amplifier’s minimum load in ⚙ Settings to have candidates judged on it.": "Minimale systeemimpedantie die de versterker ziet. Geen opgave ingevuld, dus er wordt niets op gerangschikt — zet de minimale belasting van je versterker in ⚙ Settings om kandidaten erop te laten beoordelen.",
   "Compare {n} designs — score · phase · Z · parts · BOM": "Vergelijk {n} ontwerpen — score · fase · Z · onderdelen · stuklijst",
   "Every saved design measured through the same pipeline as the live simulation. The ghost curves show shape; this shows the numbers. Click a row to switch to that design.": "Elk opgeslagen ontwerp gemeten door dezelfde pijplijn als de live simulatie. De ghost-curves tonen vorm; dit toont de cijfers. Klik een rij om naar dat ontwerp te wisselen.",
   "design": "ontwerp",
@@ -1493,7 +1494,7 @@ export const nl: Record<string, string> = {
   "This design is open": "Dit ontwerp staat open",
   "Switch to {name}": "Wissel naar {name}",
   "Worst of the two handovers": "Slechtste van de twee overnames",
-  "Minimum system impedance (amplifier floor {floor} Ω)": "Minimale systeemimpedantie (versterkervloer {floor} Ω)",
+  "Minimum system impedance (you rated your amplifier to {floor} Ω)": "Minimale systeemimpedantie (jij gaf je versterker op als {floor} Ω)",
   "Overwrite \"{name}\" with the active design and switch to it (⌘S)": "Overschrijf \"{name}\" met het actieve ontwerp en spring ernaartoe (⌘S)",
   "This IS the saved filter — edits are live, nothing to save": "Dit ÍS het opgeslagen filter — bewerkingen zijn live, niets op te slaan",
   "No saved filter yet — use Save as new first": "Nog geen opgeslagen filter — gebruik eerst Opslaan als nieuw",
@@ -1877,6 +1878,11 @@ export const nl: Record<string, string> = {
   "Peak ±dB of the error-smoothed sum (what the search judged); raw peak {raw} dB — the worst single raw spot, what the staged targets gate on": "Piek ±dB van de fout-gesmoothde som (wat de zoektocht beoordeelde); rauwe piek {raw} dB — de slechtste rauwe plek, waar de staged-doelen op poorten",
   "Source resistance the LOW driver sees at its box tuning (real part of the Thevenin impedance looking back from its terminals): series R and coil DCR in the woofer branch add to Re and raise Qes — damping and efficiency lost, invisible to every response metric. Above this limit a scan candidate loses a ranking class (same mechanism as the Z floor) and a staged prune/escalation move that pushes it over is not accepted. Yellow from half the limit. Model estimate outside the measured band.": "Bronweerstand die de LAGE driver ziet op zijn kastafstemming (reëel deel van de Thevenin-impedantie terugkijkend vanaf zijn klemmen): serie-R en spoel-DCR in de woofertak tellen op bij Re en verhogen Qes — demping en rendement kwijt, onzichtbaar voor elke responsmetriek. Boven deze grens verliest een scan-kandidaat een ranking-klasse (zelfde mechanisme als de Z-vloer) en wordt een staged snoei-/escalatiezet die eroverheen duwt niet geaccepteerd. Geel vanaf de helft. Modelschatting buiten de meetband.",
   "Source R limit": "Bron-R-grens",
+  "Amplifier min load": "Min. belasting versterker",
+  "not set": "niet ingevuld",
+  "— empty: no floor is applied, the minimum is only reported": "— leeg: er geldt geen vloer, het minimum wordt alleen gerapporteerd",
+  "— designs below it are repaired, or lose a ranking class": "— ontwerpen eronder worden gerepareerd, of verliezen een ranking-klasse",
+  "The minimum load your AMPLIFIER is rated for, from its own spec sheet. Leave EMPTY and the engine holds the design to nothing — the delivered impedance minimum is still measured and shown, it just does not decide anything. Filled: a design that dips below it is repaired if that is possible, loses a ranking class if it is not, and every refusal says the number came from you. There is deliberately no default: a tube amp, a PA amp and a class-D module want different answers and this app cannot see which one you own.": "De minimale belasting waarvoor JOUW VERSTERKER is opgegeven, van zijn eigen specificatieblad. Laat LEEG en de engine houdt het ontwerp nergens aan — het geleverde impedantieminimum wordt nog steeds gemeten en getoond, het beslist alleen niets. Ingevuld: een ontwerp dat eronder duikt wordt gerepareerd als dat kan, verliest een ranking-klasse als dat niet kan, en elke weigering zegt dat het getal van jou komt. Bewust geen default: een buizenversterker, een PA-amp en een klasse-D-module willen verschillende antwoorden en deze app kan niet zien welke jij hebt.",
   "Real part of the impedance the LOW driver sees looking back into the network at its box tuning ({hz} Hz) — a model estimate outside the measured band. It adds to Re: Qes × {q}. Above the limit ({lim} Ω) a scan candidate loses a ranking class and structure moves that push it over are refused. Parts listed: the largest change in this number when the part is removed.": "Reëel deel van de impedantie die de LAGE driver ziet terugkijkend in het netwerk op zijn kastafstemming ({hz} Hz) — een modelschatting buiten de meetband. Telt op bij Re: Qes × {q}. Boven de grens ({lim} Ω) verliest een scan-kandidaat een ranking-klasse en worden structuurzetten die eroverheen duwen geweigerd. Genoemde onderdelen: de grootste verandering van dit getal als het onderdeel wegvalt.",
   "source R at the low driver {r} Ω (Qes ×{q})": "bron-R aan de lage driver {r} Ω (Qes ×{q})",
   "Breakup margin — driver card & limits (harmonic)": "Breakup-marge — driverkaart & limieten (harmonische)",

@@ -152,7 +152,6 @@ import {
 import { crossover3Variants, rankChain3Results, variantsFromPoints, type Chain3Variant, deliveredLabel } from './lib/threeWayChain.ts';
 import {
   optimizeNetworkValues,
-  Z_FLOOR_OHM,
   type NetOptimizeOptions,
 } from './lib/netOptimizer.ts';
 import type { MinimizeResult } from './lib/minimize.ts';
@@ -4664,6 +4663,23 @@ export default function App() {
     const v = raw === null ? NaN : Number(raw);
     return Number.isFinite(v) && v >= 0 ? v : 1.0;
   });
+  /** THE MINIMUM LOAD YOUR AMPLIFIER IS RATED FOR (Ω) — null until you say.
+   *
+   *  There used to be a built-in 2.5 Ω here, and it came from one amplifier
+   *  (a NAD M10 V2). A tube amp, a PA amp and a Purifi module want three
+   *  different answers, and the app cannot see which one is on the other end
+   *  of the cable — so it asks, and a blank means the engine holds the design
+   *  to nothing. The delivered minimum is measured and shown either way.
+   *
+   *  A PREFERENCE, not project data: it describes the owner's rack, not this
+   *  loudspeaker, so it lives in localStorage next to the other engine
+   *  thresholds and survives Reset. */
+  const [ampMinLoadOhm, setAmpMinLoadOhm] = useState<number | null>(() => {
+    const raw = localStorage.getItem('ads-amp-min-load');
+    if (raw === null || raw === '') return null;
+    const v = Number(raw);
+    return Number.isFinite(v) && v > 0 ? v : null;
+  });
   /** B1 — BOM cap per channel (EUR; 0 = off): class loss in the ranking above
    *  it, shown in the strip. A design decision, not a weight. */
   const [bomCapEur, setBomCapEur] = useState<number>(() => {
@@ -5384,6 +5400,7 @@ export default function App() {
         errorSmoothOct,
       costWeight,
         dissipationWeight,
+        ampMinLoadOhm: ampMinLoadOhm ?? undefined,
         audit: {
           thresholds: { rSourceOhm: rSourceLimitOhm },
           fbHz: Number(cabinet.drivers.low.fbHz) > 0 ? Number(cabinet.drivers.low.fbHz) : undefined,
@@ -5508,7 +5525,7 @@ export default function App() {
         settings,
       });
       const rankAll = (rs: Chain3Result[]) =>
-        rankChain3Results(rs, settings.targets, settings.phasePriority, angleSets3 ? settings.directivityWeight : 0, rSourceLimitOhm, bomCapEur);
+        rankChain3Results(rs, settings.targets, settings.phasePriority, angleSets3 ? settings.directivityWeight : 0, rSourceLimitOhm, bomCapEur, ampMinLoadOhm ?? 0);
       const runAxes = async (): Promise<Chain3Result[]> => {
         const nPts = 1 + 2 * Math.max(1, Math.min(3, scanSteps3)); // 3/5/7
         const clampSpan = (w: { floorHz: number | null; ceilHz: number | null } | null | undefined, rail: [number, number]): [number, number] => {
@@ -5594,6 +5611,7 @@ export default function App() {
             angleSets3 ? settings.directivityWeight : 0,
             rSourceLimitOhm,
             bomCapEur,
+            ampMinLoadOhm ?? 0,
           );
           const win = ranked[0];
           setVFilters((prev) => ({ ...prev, ...win.specs }));
@@ -5695,12 +5713,15 @@ export default function App() {
            * EVERY candidate sits under the floor the gate reorders nothing and
            * the designer silently gets an amp-hostile load anyway. Say it, and
            * say whether it was the only option. */
-          const zLow = win.zMinOhm !== null && win.zMinOhm < Z_FLOOR_OHM;
-          const anySane = ranked.some((r) => r.zMinOhm !== null && r.zMinOhm >= Z_FLOOR_OHM);
+          const zLow =
+            ampMinLoadOhm !== null && win.zMinOhm !== null && win.zMinOhm < ampMinLoadOhm;
+          const anySane = ranked.some(
+            (r) => r.zMinOhm !== null && ampMinLoadOhm !== null && r.zMinOhm >= ampMinLoadOhm,
+          );
           const zNote = !zLow
             ? ''
             : `⚠ amplifier load: the winner dips to ${win.zMinOhm!.toFixed(1)} Ω ` +
-              `(floor ${Z_FLOOR_OHM} Ω)` +
+              `(your amplifier is rated to ${ampMinLoadOhm!.toFixed(1)} Ω)` +
               (anySane
                 ? ' — a candidate with a sane load exists in the table; it ranks lower on flatness.'
                 : ' — no candidate in this scan stayed above it, so this is a design-level ' +
@@ -5840,6 +5861,7 @@ export default function App() {
             catalogSnap: catalogSnap && hasImportedCatalog(),
             snapPrefs: snapPrefsValue(),
             safety,
+            ampMinLoadOhm: ampMinLoadOhm ?? undefined,
           },
         },
         (p) =>
@@ -5929,6 +5951,7 @@ export default function App() {
       errorSmoothOct,
       costWeight,
       dissipationWeight,
+      ampMinLoadOhm: ampMinLoadOhm ?? undefined,
       audit: {
         thresholds: { rSourceOhm: rSourceLimitOhm },
         fbHz: Number(cabinet.drivers.low.fbHz) > 0 ? Number(cabinet.drivers.low.fbHz) : undefined,
@@ -5994,6 +6017,7 @@ export default function App() {
         errorSmoothOct,
       costWeight,
         dissipationWeight,
+        ampMinLoadOhm: ampMinLoadOhm ?? undefined,
         audit: {
           thresholds: { rSourceOhm: rSourceLimitOhm },
           fbHz: Number(cabinet.drivers.low.fbHz) > 0 ? Number(cabinet.drivers.low.fbHz) : undefined,
@@ -6104,6 +6128,7 @@ export default function App() {
             rSourceLimitOhm,
             rSourceDisqOhm,
             bomCapEur,
+            ampMinLoadOhm ?? 0,
           );
           const win = ranked[0];
           setVFilters((p) => ({ ...p, ...win.vf.specs }));
@@ -6158,12 +6183,15 @@ export default function App() {
           setNetOptDiff(null); // fresh design — an old tune-diff would lie
           // Same visibility rule as the three-way scan: a class the designer
           // cannot read reorders silently.
-          const zLow2 = win.zMinOhm !== null && win.zMinOhm < Z_FLOOR_OHM;
-          const anySane2 = ranked.some((r) => r.zMinOhm !== null && r.zMinOhm >= Z_FLOOR_OHM);
+          const zLow2 =
+            ampMinLoadOhm !== null && win.zMinOhm !== null && win.zMinOhm < ampMinLoadOhm;
+          const anySane2 = ranked.some(
+            (r) => r.zMinOhm !== null && ampMinLoadOhm !== null && r.zMinOhm >= ampMinLoadOhm,
+          );
           const zNote2 = !zLow2
             ? ''
             : `\n⚠ amplifier load: the winner dips to ${win.zMinOhm!.toFixed(1)} Ω ` +
-              `(floor ${Z_FLOOR_OHM} Ω)` +
+              `(your amplifier is rated to ${ampMinLoadOhm!.toFixed(1)} Ω)` +
               (anySane2
                 ? ' — a candidate with a sane load exists in the table; it ranks lower on flatness.'
                 : ' — no candidate stayed above it; check the Impedance panel.');
@@ -6839,6 +6867,7 @@ export default function App() {
           number,
         ],
         safety,
+        ampMinLoadOhm: ampMinLoadOhm ?? undefined,
         // Gate 4: the source-resistance verdict is taken at the low branch's
         // box tuning when the designer entered one; otherwise at its Z peak.
         audit: {
@@ -9156,9 +9185,11 @@ export default function App() {
         });
     }
   }
-  if (systemZInfo && systemZInfo.minOhm < Z_FLOOR_OHM)
+  /* Only an amplifier the designer named can be "too low for": without a
+   * stated rating the minimum is a fact on the Impedance panel, not a fault. */
+  if (ampMinLoadOhm !== null && systemZInfo && systemZInfo.minOhm < ampMinLoadOhm)
     issues.push({
-      text: t('System impedance dips to {z} Ω — below the {floor} Ω amplifier floor.', { z: systemZInfo.minOhm.toFixed(1), floor: Z_FLOOR_OHM }),
+      text: t('System impedance dips to {z} Ω — below the {floor} Ω your amplifier is rated for.', { z: systemZInfo.minOhm.toFixed(1), floor: ampMinLoadOhm.toFixed(1) }),
       where: t('System impedance panel — the Z min marker shows where; the optimizer repairs this when it can'),
     });
 
@@ -13060,6 +13091,39 @@ export default function App() {
                 </label>
                 <label
                   className="inline-num"
+                  title={t("The minimum load your AMPLIFIER is rated for, from its own spec sheet. Leave EMPTY and the engine holds the design to nothing — the delivered impedance minimum is still measured and shown, it just does not decide anything. Filled: a design that dips below it is repaired if that is possible, loses a ranking class if it is not, and every refusal says the number came from you. There is deliberately no default: a tube amp, a PA amp and a class-D module want different answers and this app cannot see which one you own.")}
+                >
+                  {t('Amplifier min load')}
+                  <input
+                    type="number"
+                    min={0}
+                    max={16}
+                    step={0.1}
+                    placeholder={t('not set')}
+                    value={ampMinLoadOhm ?? ''}
+                    onChange={(e) => {
+                      const raw = e.target.value.trim();
+                      if (raw === '') {
+                        setAmpMinLoadOhm(null);
+                        localStorage.removeItem('ads-amp-min-load');
+                        return;
+                      }
+                      const v = Number(raw);
+                      const nv = Number.isFinite(v) && v > 0 ? v : null;
+                      setAmpMinLoadOhm(nv);
+                      if (nv === null) localStorage.removeItem('ads-amp-min-load');
+                      else localStorage.setItem('ads-amp-min-load', String(nv));
+                    }}
+                    style={{ width: '3.6rem' }}
+                  />{' '}Ω
+                  <span style={{ fontSize: '0.72rem', color: 'var(--muted)' }}>
+                    {ampMinLoadOhm === null
+                      ? t('— empty: no floor is applied, the minimum is only reported')
+                      : t('— designs below it are repaired, or lose a ranking class')}
+                  </span>
+                </label>
+                <label
+                  className="inline-num"
                   title={t('Dissipation term: a soft objective penalty on series resistance in front of the LOWEST branch — weight × (Rs/Re)² at the level reference (Fb or the Z peak). Steers the tuner away from matching levels by burning power in the woofer branch (efficiency and damping), before the hard tiers have to act. 0 = off (legacy).')}
                 >
                   {t('Dissipation weight')}
@@ -14585,18 +14649,22 @@ export default function App() {
                       </td>
                       <td
                         className={
-                          r.zMinOhm !== null && r.zMinOhm < Z_FLOOR_OHM ? 'scan-z-low' : undefined
+                          ampMinLoadOhm !== null && r.zMinOhm !== null && r.zMinOhm < ampMinLoadOhm
+                            ? 'scan-z-low'
+                            : undefined
                         }
                         title={
                           r.zMinOhm === null
                             ? t('Minimum system impedance was not measured for this candidate')
-                            : r.zMinOhm < Z_FLOOR_OHM
-                              ? t('The amplifier sees {z} Ω at its worst — below the {floor} Ω floor, so this candidate ranks below every one with a sane load, however flat it is', { z: r.zMinOhm.toFixed(1), floor: Z_FLOOR_OHM })
-                              : t('Minimum system impedance the amplifier sees (floor {floor} Ω)', { floor: Z_FLOOR_OHM })
+                            : ampMinLoadOhm === null
+                              ? t('Minimum system impedance the amplifier sees. No rating entered, so nothing is ranked on it — put your amplifier’s minimum load in ⚙ Settings to have candidates judged on it.')
+                              : r.zMinOhm < ampMinLoadOhm
+                                ? t('The amplifier sees {z} Ω at its worst — below the {floor} Ω you entered for it, so this candidate ranks below every one with a load it can drive, however flat it is', { z: r.zMinOhm.toFixed(1), floor: ampMinLoadOhm.toFixed(1) })
+                                : t('Minimum system impedance the amplifier sees (you rated it to {floor} Ω)', { floor: ampMinLoadOhm.toFixed(1) })
                         }
                       >
                         {r.zMinOhm !== null
-                          ? `${r.zMinOhm < Z_FLOOR_OHM ? '⚠ ' : ''}${r.zMinOhm.toFixed(1)} Ω`
+                          ? `${ampMinLoadOhm !== null && r.zMinOhm < ampMinLoadOhm ? '⚠ ' : ''}${r.zMinOhm.toFixed(1)} Ω`
                           : '—'}
                       </td>
                       <td
@@ -14662,12 +14730,18 @@ export default function App() {
                         </td>
                         <td
                           className={
-                            r.zMinOhm !== null && r.zMinOhm < Z_FLOOR_OHM ? 'scan-z-low' : undefined
+                            ampMinLoadOhm !== null && r.zMinOhm !== null && r.zMinOhm < ampMinLoadOhm
+                              ? 'scan-z-low'
+                              : undefined
                           }
-                          title={t('Minimum system impedance (amplifier floor {floor} Ω)', { floor: Z_FLOOR_OHM })}
+                          title={
+                            ampMinLoadOhm === null
+                              ? t('Minimum system impedance the amplifier sees. No rating entered, so nothing is ranked on it — put your amplifier’s minimum load in ⚙ Settings to have candidates judged on it.')
+                              : t('Minimum system impedance (you rated your amplifier to {floor} Ω)', { floor: ampMinLoadOhm.toFixed(1) })
+                          }
                         >
                           {r.zMinOhm !== null
-                            ? `${r.zMinOhm < Z_FLOOR_OHM ? '⚠ ' : ''}${r.zMinOhm.toFixed(1)} Ω`
+                            ? `${ampMinLoadOhm !== null && r.zMinOhm < ampMinLoadOhm ? '⚠ ' : ''}${r.zMinOhm.toFixed(1)} Ω`
                             : '—'}
                         </td>
                         <td>{r.parts}</td>

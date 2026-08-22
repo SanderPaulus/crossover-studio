@@ -11,7 +11,7 @@ import { computeIntegration } from './integration.ts';
 import { designThreeWay, type Struct3Choice } from './threeWayDesign.ts';
 import { synthesize, type SynthesisResult } from './synthesis.ts';
 import { mergeSynthesizedSchematics } from './schematicEdit.ts';
-import { optimizeNetworkValues, Z_FLOOR_OHM, type NetOptimizeResult } from './netOptimizer.ts';
+import { optimizeNetworkValues, type NetOptimizeResult } from './netOptimizer.ts';
 import type { SnapPrefs } from './catalog.ts';
 import { bomFor } from './catalog.ts';
 import type { VxpPart } from './parsers/vxp.ts';
@@ -93,6 +93,8 @@ export interface Chain3Settings {
   /** A3i-2 — derived amplifier-load floor (IEC 80 % of what the DRIVERS
    *  support). Forwarded to the tuner as a constraint; absent = off. */
   loadFloor?: { nominalOhm: number };
+  /** The amplifier's rated minimum load (Ω); absent = no floor anywhere. */
+  ampMinLoadOhm?: number;
   ampTarget?: 'onAxis' | 'listeningWindow';
   phaseMetric?: 'band' | 'overlap';
   synthMode: 'filter' | 'acoustic';
@@ -329,6 +331,7 @@ export function runThreeWayChain(
     // tuner cannot spend its time in ground the ranking will throw away.
     rSourceDisqualifyOhm: s.rSourceDisqualifyOhm,
     loadFloor: s.loadFloor,
+    ampMinLoadOhm: s.ampMinLoadOhm,
     audit: s.audit,
     ampTarget: s.ampTarget,
     acousticSlopes: s.acousticSlopes,
@@ -946,6 +949,11 @@ export function rankChain3Results(
    *  exceeds it loses a CLASS — same mechanism as the Z floor and R_src, never
    *  a soft term. An unpriced BOM (null) is never punished. */
   bomCapEur = 0,
+  /** The amplifier's rated minimum load (Ω), when the user stated one: a
+   *  delivered minimum under it loses a class. 0/absent = nothing is ranked
+   *  on it — there is deliberately no default (see the amplifier-load note in
+   *  netOptimizer.ts). */
+  ampMinLoadOhm = 0,
 ): Chain3Result[] {
   const p = 0.15 + 0.7 * Math.min(Math.max(phasePriority, 0), 1);
   const dW = Math.min(Math.max(directivityWeight, 0), 1);
@@ -976,11 +984,12 @@ export function rankChain3Results(
    * under the floor passed it and won with an amp-hostile load — measured on
    * Sander's 3-way, which shipped a 2.2 Ohm minimum while every gate stayed
    * green. A published design always states its impedance minimum; ours must
-   * therefore be able to lose on it. Class, not a score term: the anchor
+   * therefore be able to lose on it — against the amplifier the designer
+   * actually owns, which is why the number arrives from outside. Class, not a score term: the anchor
    * lesson says physics belongs at decision points, and a load you would
    * refuse to ship must not be purchasable with a tenth of a dB. */
   const zFloorOk = (r: Chain3Result): boolean =>
-    r.zMinOhm === null || r.zMinOhm >= Z_FLOOR_OHM;
+    !(ampMinLoadOhm > 0) || r.zMinOhm === null || r.zMinOhm >= ampMinLoadOhm;
   // Disqualified (fix 1/2: rSource ≥ hard tier, delivery under a physics
   // floor) ranks below EVERYTHING — visible, struck through, with reasons.
   const dqClass = (r: Chain3Result): number => (r.disqualified && r.disqualified.length > 0 ? 10 : 0);

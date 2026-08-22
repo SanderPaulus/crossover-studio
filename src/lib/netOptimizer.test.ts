@@ -17,8 +17,13 @@ import {
   optimizeNetworkValues,
   reseedOutliers,
   NetOptimizeError,
-  Z_FLOOR_OHM,
 } from './netOptimizer.ts';
+
+/** The amplifier these tests are written against — 2.5 Ω is what a NAD M10 V2
+ *  will still drive, and it used to be hard-coded in netOptimizer as
+ *  `Z_FLOOR_OHM`. It lives HERE now, because it was always a statement about
+ *  one amplifier, and a test that needs a floor should say which one. */
+const AMP_2R5 = 2.5;
 
 const FIXTURES = join(dirname(fileURLToPath(import.meta.url)), 'parsers', 'fixtures');
 const load = (name: string) => readFileSync(join(FIXTURES, name), 'utf-8');
@@ -657,7 +662,7 @@ describe('dead-branch fundamentals & full-band safety gate', () => {
   });
 });
 
-describe('amplifier-load floor (system Z ≥ 2.5 Ω fundamental)', () => {
+describe('amplifier-load floor (only against a STATED amplifier rating)', () => {
   /** System |Zin| minimum of a parts array, straight from the solver. */
   const zMinOf = (parts: readonly VxpPart[]): number => {
     const { netlist } = crossoverToNetlist({ name: 'zmin', parts: [...parts] });
@@ -672,7 +677,7 @@ describe('amplifier-load floor (system Z ≥ 2.5 Ω fundamental)', () => {
     // only the amp-load floor REPAIR pass can rescue the amplifier. The
     // silent-failure case this fundamental exists for. (The floor lives at
     // decision level only — an fx term was tried and reverted, see
-    // Z_FLOOR_OHM in netOptimizer.ts.)
+    // the amplifier-load note in netOptimizer.ts.)
     const seed: VxpPart[] = [
       ...crudeNetwork('none'),
       {
@@ -686,8 +691,9 @@ describe('amplifier-load floor (system Z ≥ 2.5 Ω fundamental)', () => {
     expect(zMinOf(seed)).toBeLessThan(2.1); // the seed really is amp-hostile
     const r = optimizeNetworkValues(seed, grid, wBase, tBase, driverZ, NO_ADJ, {
       phasePriority: 0.3,
+      ampMinLoadOhm: AMP_2R5,
     });
-    // The repair must lift the dip (essentially) back to the 2.5 Ω floor;
+    // The repair must lift the dip (essentially) back to the stated 2.5 Ω;
     // 2.3 allows the barrier's soft tail plus the 0.15 acceptance tolerance.
     expect(zMinOf(r.parts)).toBeGreaterThan(2.3);
     expect(r.ampFloorNote).toContain('lifted');
@@ -714,10 +720,12 @@ describe('amplifier-load floor (system Z ≥ 2.5 Ω fundamental)', () => {
     expect(zMinOf(seed)).toBeLessThan(0.5);
     const lax = optimizeNetworkValues(seed, grid, wBase, tBase, driverZ, NO_ADJ, {
       phasePriority: 0.3,
+      ampMinLoadOhm: AMP_2R5,
     });
     const strict = optimizeNetworkValues(seed, grid, wBase, tBase, driverZ, NO_ADJ, {
       phasePriority: 0.3,
       zFloorStrict: true,
+      ampMinLoadOhm: AMP_2R5,
     });
     // THE INVARIANT, not a number: under strict the pass either reaches the
     // floor or says out loud that it could not. The relative bar has no such
@@ -738,6 +746,71 @@ describe('amplifier-load floor (system Z ≥ 2.5 Ω fundamental)', () => {
     expect(strict.after.zMinOhm).toBeGreaterThan(2.3);
   });
 
+  it('WITHOUT a stated amplifier there is no floor: nothing is repaired, and the dip is reported', () => {
+    /* The point of removing `Z_FLOOR_OHM` (aug 2026). The 2 Ω shunt below is
+     * the same response-invariant, amp-hostile seed the first test repairs —
+     * only nobody has said what amplifier is on the other end of the cable.
+     * So the engine does not invent one: the minimum is measured, reported and
+     * left exactly where the tune put it.
+     *
+     * That the dip stays is the WHOLE behaviour change, and it is deliberate:
+     * 2.5 Ω came from one NAD, and a PA amp specified into 2 Ω would have been
+     * refused a perfectly good design by it. */
+    const seed: VxpPart[] = [
+      ...crudeNetwork('none'),
+      {
+        type: 'Resistor',
+        partId: 'RS1',
+        params: [{ name: 'R', value: 2.0, unit: 'Ω' }],
+        wires: [{ x: 3, y: 4 }, { x: 5, y: 11 }],
+      },
+      { type: 'Ground', params: [], wires: [{ x: 5, y: 11 }] },
+    ];
+    const r = optimizeNetworkValues(seed, grid, wBase, tBase, driverZ, NO_ADJ, {
+      phasePriority: 0.3,
+    });
+    expect(r.ampFloorRepair).toBe('none');
+    expect(r.ampFloorNote).toBeUndefined();
+    expect(r.infeasible).toBeUndefined();
+    // Measured and handed over all the same — the panels and the ranking
+    // still get the number, it just does not decide anything.
+    expect(r.after.zMinOhm).not.toBeNull();
+    expect(r.after.zMinOhm!).toBeLessThan(2.1);
+    // And with the SAME seed and an amplifier named, it is repaired.
+    const stated = optimizeNetworkValues(seed, grid, wBase, tBase, driverZ, NO_ADJ, {
+      phasePriority: 0.3,
+      ampMinLoadOhm: AMP_2R5,
+    });
+    expect(stated.after.zMinOhm!).toBeGreaterThan(2.3);
+  });
+
+  it('a refusal says where the number came from', () => {
+    /* A limit whose provenance is invisible reads as a law of nature, which is
+     * exactly how one amplifier's 2.5 Ω survived in the engine for a month. */
+    const shorted: VxpPart[] = [
+      ...crudeNetwork('none'),
+      {
+        type: 'Resistor',
+        partId: 'R9',
+        locked: true,
+        params: [{ name: 'R', value: 0.5, unit: 'Ω' }],
+        wires: [{ x: 3, y: 4 }, { x: 3, y: 11 }],
+      },
+      { type: 'Ground', params: [], wires: [{ x: 3, y: 11 }] },
+    ];
+    const r = optimizeNetworkValues(shorted, grid, wBase, tBase, driverZ, NO_ADJ, {
+      phasePriority: 0.5,
+      maxIterations: 30,
+      catalogSnap: false,
+      zFloorStrict: true,
+      ampMinLoadOhm: 3.0,
+      audit: { enabled: false as const },
+    });
+    const said = `${r.ampFloorNote ?? ''} ${r.infeasible ?? ''}`;
+    expect(said).toMatch(/rated minimum load/);
+    expect(said).toMatch(/3\.0 Ω/);
+  });
+
   it('a healthy network never enters the repair pass', () => {
     // The crude network's own system minimum sits ABOVE the floor (KOAN mid
     // 3.66 Ω + series L) — the repair must not trigger and the tune must
@@ -745,6 +818,7 @@ describe('amplifier-load floor (system Z ≥ 2.5 Ω fundamental)', () => {
     // safety net at decision level, never a steering term).
     const r = optimizeNetworkValues(crudeNetwork('none'), grid, wBase, tBase, driverZ, NO_ADJ, {
       phasePriority: 0.3,
+      ampMinLoadOhm: AMP_2R5,
     });
     expect(zMinOf(r.parts)).toBeGreaterThan(3);
     expect(r.ampFloorNote).toBeUndefined();
@@ -811,6 +885,8 @@ describe('branch-target corridor (the leash, designer sequence 3/3)', () => {
     // BOMs). The floor is non-negotiable; branch fidelity yields to it. This
     // pins the regression: strict repair WITH targets present must still
     // reach the floor.
+    // (aug 2026: the floor is now the amplifier the designer named, so this
+    // test names one — the hierarchy it pins is unchanged.)
     const seed: VxpPart[] = [
       ...crudeNetwork('none'),
       {
@@ -830,6 +906,7 @@ describe('branch-target corridor (the leash, designer sequence 3/3)', () => {
     const r = optimizeNetworkValues(seed, grid, wBase, tBase, driverZ, NO_ADJ, {
       phasePriority: 0.3,
       zFloorStrict: true,
+      ampMinLoadOhm: AMP_2R5,
       branchTargets: { freq: [...grid], low: [...tgt.low], high: [...tgt.high] },
     });
     expect(zMinOf(r.parts)).toBeGreaterThan(2.3);
@@ -995,7 +1072,7 @@ describe('the objective carries NO hard-limit walls, and that is measured', () =
    * it escapes and lands wherever it happens to. "Exactly zero inside the
    * limit" is true and beside the point: the search does not start inside.
    *
-   * The lesson was already in netOptimizer.ts, in the Z_FLOOR_OHM note —
+   * The lesson was already in netOptimizer.ts, in the amplifier-load note —
    * enforcement DECISION-LEVEL ONLY, because an always-on fx penalty had been
    * tried and reverted once before, at a cost of 6 dB. */
   const P = (x: number, y: number) => ({ x, y });
@@ -1133,9 +1210,10 @@ describe('A3g — every judged quantity describes the network that ships', () =>
       maxIterations: 30,
       catalogSnap: false,
       zFloorStrict: true,
+      ampMinLoadOhm: AMP_2R5,
       audit: { enabled: false as const },
     });
-    expect(r.after.zMinOhm!).toBeLessThan(Z_FLOOR_OHM);
+    expect(r.after.zMinOhm!).toBeLessThan(AMP_2R5);
     // A typed outcome — no caller has to read prose to learn what happened.
     expect(['failed', 'refused']).toContain(r.ampFloorRepair);
     expect(r.infeasible).toBeDefined();

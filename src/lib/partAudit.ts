@@ -165,7 +165,12 @@ export interface AuditContext {
   /** Box tuning (ported: Fb; sealed: Fc) of the low driver, Hz. Without it
    *  the audit uses the impedance peak of the low driver on the grid. */
   fbHz?: number;
-  /** Amp-load floor (ohms) — the Z minimum "tipping over" it earns a part. */
+  /** The amplifier's rated minimum load (ohms), when the user stated one: a
+   *  removal that tips the Z minimum across it EARNS the part. Absent = no
+   *  floor exists, so nothing can cross it — there is deliberately no
+   *  default (see the amplifier-load note in netOptimizer.ts). The
+   *  floor-free Z criterion survives either way: a removal that moves the
+   *  minimum by more than `zMinStepOhm` still earns the part. */
   zFloorOhm?: number;
   /** Cost of one part, EUR (nearest catalog part), or null. */
   costOf?: (p: VxpPart) => number | null;
@@ -566,7 +571,7 @@ export function sourceResistanceOhm(
 
 export function auditNetwork(parts: readonly VxpPart[], ctx: AuditContext): NetworkAudit | null {
   const thr: AuditThresholds = { ...DEFAULT_AUDIT_THRESHOLDS, ...(ctx.thresholds ?? {}) };
-  const zFloor = ctx.zFloorOhm ?? 2.5;
+  const zFloor = ctx.zFloorOhm !== undefined && ctx.zFloorOhm > 0 ? ctx.zFloorOhm : null;
   const full = probeOf(parts, ctx);
   if (!full) return null;
   const grid = ctx.grid;
@@ -676,8 +681,10 @@ export function auditNetwork(parts: readonly VxpPart[], ctx: AuditContext): Netw
     // a part that drags the minimum under the floor is a liability the
     // amp-floor repair owns, and its removal LIFTS the minimum (reported, never
     // "earned").
-    const dropsUnderFloor = full.zMinOhm >= zFloor && v.probe.zMinOhm < zFloor;
-    const liftsOverFloor = full.zMinOhm < zFloor && v.probe.zMinOhm >= zFloor;
+    const dropsUnderFloor =
+      zFloor !== null && full.zMinOhm >= zFloor && v.probe.zMinOhm < zFloor;
+    const liftsOverFloor =
+      zFloor !== null && full.zMinOhm < zFloor && v.probe.zMinOhm >= zFloor;
     const crossesFloor = dropsUnderFloor;
     const rsFull = rSourceFull;
     const rsVar = rsFull !== null && v.dRs !== null ? rsFull + v.dRs : null;
@@ -687,9 +694,9 @@ export function auditNetwork(parts: readonly VxpPart[], ctx: AuditContext): Netw
     if (v.dA >= thr.earnedDb) reasons.push(`sum moves ${v.dA.toFixed(2)} dB without it`);
     if (v.dP >= thr.earnedDeg) reasons.push(`pair phase P95 worsens ${v.dP.toFixed(1)}° without it`);
     const liftNote = liftsOverFloor
-      ? `removal LIFTS Z min ${full.zMinOhm.toFixed(2)} → ${v.probe.zMinOhm.toFixed(2)} Ω over the ${zFloor} Ω floor`
+      ? `removal LIFTS Z min ${full.zMinOhm.toFixed(2)} → ${v.probe.zMinOhm.toFixed(2)} Ω over your amplifier's ${zFloor} Ω minimum`
       : null;
-    if (crossesFloor) reasons.push(`Z min ${full.zMinOhm.toFixed(2)} → ${v.probe.zMinOhm.toFixed(2)} Ω crosses the ${zFloor} Ω floor`);
+    if (crossesFloor) reasons.push(`Z min ${full.zMinOhm.toFixed(2)} → ${v.probe.zMinOhm.toFixed(2)} Ω crosses your amplifier's ${zFloor} Ω minimum`);
     else if (v.dZmin <= -thr.zMinStepOhm) reasons.push(`Z min ${full.zMinOhm.toFixed(2)} → ${v.probe.zMinOhm.toFixed(2)} Ω`);
     if (crossesRs && rsVar !== null && rsFull !== null)
       reasons.push(`source R at the low driver ${rsFull.toFixed(2)} → ${rsVar.toFixed(2)} Ω crosses the ${thr.rSourceOhm} Ω limit`);

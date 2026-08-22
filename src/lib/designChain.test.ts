@@ -194,12 +194,31 @@ describe('designChain', () => {
         xoWindowOk: extra.xoWindowOk ?? null,
         net: { after: { rippleDb, phaseDeg: 5 } },
       }) as never;
+    /* THE FLOOR IS THE DESIGNER'S AMPLIFIER, NOT A CONSTANT (aug 2026). The
+     * class only exists once someone has said what drives this speaker; the
+     * 2.5 Ω below is a NAD M10 V2 and it is stated here rather than assumed
+     * for everybody. */
+    const AMP = 2.5;
     const flatterButLow = rankChainResults(
       [mk('flat-2ohm', 0.3, { zMinOhm: 2.0 }), mk('sane-load', 0.6, { zMinOhm: 3.2 })],
       undefined,
       0.5,
+      undefined,
+      1.0,
+      2.0,
+      0,
+      AMP,
     );
     expect(flatterButLow[0].label).toBe('sane-load');
+    // Without a rating the same two candidates rank on flatness alone — the
+    // 2.0 Ω is measured and shown, it simply is not a verdict about an
+    // amplifier nobody named.
+    const noRating = rankChainResults(
+      [mk('flat-2ohm', 0.3, { zMinOhm: 2.0 }), mk('sane-load', 0.6, { zMinOhm: 3.2 })],
+      undefined,
+      0.5,
+    );
+    expect(noRating[0].label).toBe('flat-2ohm');
     const outsideWindow = rankChainResults(
       [mk('flat-outside', 0.3, { xoWindowOk: false }), mk('inside', 0.6, { xoWindowOk: true })],
       undefined,
@@ -212,6 +231,11 @@ describe('designChain', () => {
        mk('sane-outside', 0.6, { xoWindowOk: false })],
       undefined,
       0.5,
+      undefined,
+      1.0,
+      2.0,
+      0,
+      AMP,
     );
     expect(both[0].label).toBe('sane-outside');
     // Unmeasured fields (older results, unwindowed runs) are never punished:

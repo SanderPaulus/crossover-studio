@@ -25,7 +25,7 @@ import {
 } from './vfOptimizer.ts';
 import { synthesize, type SynthesisResult } from './synthesis.ts';
 import { mergeSynthesizedSchematics } from './schematicEdit.ts';
-import { optimizeNetworkValues, Z_FLOOR_OHM, type NetOptimizeResult } from './netOptimizer.ts';
+import { optimizeNetworkValues, type NetOptimizeResult } from './netOptimizer.ts';
 import { bomFor, type SnapPrefs } from './catalog.ts';
 import { evalDriverFilter, type DriverFilterSpec } from './filters.ts';
 
@@ -47,6 +47,8 @@ export interface ChainSettings {
   /** A3i-2 — derived amplifier-load floor (IEC 80 % of what the DRIVERS
    *  support). Forwarded to the tuner as a constraint; absent = off. */
   loadFloor?: { nominalOhm: number };
+  /** The amplifier's rated minimum load (Ω); absent = no floor anywhere. */
+  ampMinLoadOhm?: number;
   /** Dissipation term weight in front of the lowest branch (fix 3a); 0 = off. */
   dissipationWeight?: number;
   /** Part-audit options (thresholds incl. the source-R limit, Fb) — forwarded to the tuner. */
@@ -150,6 +152,7 @@ export function runDesignChain(
     // tuner cannot spend its time in ground the ranking will throw away.
     rSourceDisqualifyOhm: s.rSourceDisqualifyOhm,
     loadFloor: s.loadFloor,
+    ampMinLoadOhm: s.ampMinLoadOhm,
     audit: s.audit,
     ampTarget: s.ampTarget,
     cutOnly: s.cutOnly,
@@ -408,6 +411,12 @@ export function rankChainResults(
   rSourceDisqualifyOhm = 2.0,
   /** B1 — BOM cap per channel (EUR, 0 = off): class loss above it. */
   bomCapEur = 0,
+  /** The amplifier's rated minimum load (Ω), when the user stated one:
+   *  a delivered minimum under it loses a class. 0/absent = the designer
+   *  never told us what drives this speaker, so nothing is ranked on it —
+   *  there is deliberately no default (see the amplifier-load note in
+   *  netOptimizer.ts). */
+  ampMinLoadOhm = 0,
 ): ChainResult[] {
   const p = 0.15 + 0.7 * Math.min(Math.max(phasePriority, 0), 1);
   const rsClass = (r: ChainResult): number => {
@@ -443,7 +452,7 @@ export function rankChainResults(
    * sums on-axis. Unknown (null / absent) is never punished, so older results
    * and unwindowed runs rank exactly as before. */
   const zFloorOk = (r: ChainResult): boolean =>
-    r.zMinOhm == null || r.zMinOhm >= Z_FLOOR_OHM;
+    !(ampMinLoadOhm > 0) || r.zMinOhm == null || r.zMinOhm >= ampMinLoadOhm;
   /* A3g: a design a pass had to give up on — a constraint it could only have
    * met by breaking another, or an amplifier load it could not lift off the
    * floor — is DISQUALIFIED, the same tier the three-way chain uses. It stays

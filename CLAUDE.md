@@ -1388,7 +1388,7 @@ vrijstelling, DCR-plafond, snap-Z-bewaking) liftte al gratis mee.
   gekalibreerde DISPLAY-score op dezelfde definities.
   **BEWUSTE UITZONDERING**: `bandStd` ín `netOptimizer` blijft zijn eigen (one-pass) rekenwijze
   houden. Die functie ÍS de 2-weg-zoek-objective; de vormen zijn wiskundig gelijk maar niet
-  bit-identiek, en de anker-les (zie `Z_FLOOR_OHM`) is dat élke verstoring de deterministische
+  bit-identiek, en de anker-les (zie de versterker-vloer-notitie) is dat élke verstoring de deterministische
   simplex een ander bekken in stuurt. Cosmetische netheid is dat risico niet waard.
 - **Kruising-termen zijn PAAR-eigenschappen** (`pairMetrics` in netOptimizer): akoestisch
   kruispunt, vallei-check, akoestische hellingen, breakup-guard en bescherming van de bovenste
@@ -1701,7 +1701,10 @@ ontwerpfysica in 3-weg, nooit een objective-term), dan targets, dan de blend, ti
 goedkoopste BOM. Worker 'chain3One' + `runChain3Scan` (pool). App: 3-weg-pad in
 runVfOptimize (winnaar → Working + specs → vFilters + synth-state), wizard zonder
 Crossover-stap. Gemeten op Robbert: 411/2520 Hz → 0,79 dB avg/9,7°, paren 99/99.
-**ABSOLUTE Z-vloer in de ranking (aug 2026, Sanders "het filter moet echt sensible zijn")**:
+**ABSOLUTE Z-vloer in de ranking (aug 2026, Sanders "het filter moet echt sensible zijn"
+— NB de vloer is sinds de `ampMinLoadOhm`-ronde het GETAL VAN DE GEBRUIKER; zonder ingevulde
+versterker bestaat deze klasse niet en rangschikt niets op Z. De redenering eronder is
+onveranderd)**:
 `zOk` is RELATIEF — het zegt alleen dat de tune de dip niet erger maakte dan de seed waar hij
 mee begon. Een kandidaat wiens seed al ónder de vloer zat passeerde daarmee élke poort en won
 de scan met een versterker-vijandige last. GEMETEN op Sanders 3-weg: geleverd Z-minimum
@@ -3026,7 +3029,34 @@ wordt puur een import-optie, niets hangt er meer van af. Gefaseerd:
   NB: het kale crude-testnet zónder pad is een ander geval — daar is starven de enige
   niveauregeling van de 5–10 dB hetere tweeter en bestaat er geen beter waardenbekken; de
   vallei-metric vuurt daar terecht niet (vlak-op-mid-niveau = trap noch vallei).
-  **Versterker-vloer (jul 2026, Robbert→Sanders "niet onder de 3 Ω"; `Z_FLOOR_OHM` = 2,5)**:
+  **Versterker-vloer — GEEN INGEBOUWDE MEER (aug 2026, Sanders besluit; `ampMinLoadOhm`)**.
+  De constante `Z_FLOOR_OHM = 2,5` is WEG en er is niets voor in de plaats gekomen dan een
+  optioneel veld ⚙ **"Amplifier min load"** (localStorage `ads-amp-min-load`, GEEN default,
+  leeg = geen vloer). Reden: 2,5 kwam uit één versterker (NAD M10 V2) op één driverset, en
+  daarna gold hij voor iedereen — een buizenversterker met een 4 Ω-tap, een PA-amp die op
+  2 Ω gespecificeerd is en een Purifi-module willen drie verschillende antwoorden, en de app
+  kan niet zien wat er aan de andere kant van de kabel hangt. Een default is dezelfde
+  aanname, alleen onzichtbaar. **INGEVULD** = de reparatiepas, de structuurpoorten, de
+  safety-gate en de ranking-klasse werken naar DAT getal, en élke weigering noemt de
+  herkomst ("your amplifier's rated minimum load, X Ω"). **LEEG** = nergens een vloer;
+  `zShortOhm` is per constructie 0, dus élke poort die erop stond valt rekenkundig weg, en
+  de geleverde `zMinOhm` wordt nog steeds gemeten, gerapporteerd en getoond — hij beslist
+  alleen niets. Wat WEL floor-vrij overleeft: de snap mag niet teruggeven wat de waarde-tune
+  won (relatief, `zSnapTarget` = het pre-snap minimum), en de part-audit blijft een
+  onderdeel VERDIEND noemen op een Z-min-STAP (`zMinStepOhm`) — beide hebben geen absoluut
+  getal nodig. `claimableNominalOhm` (impedanceFloor.ts) blijft bestaan en RAPPORTEERT
+  (welk typeplaatje dit ontwerp mag dragen); hij diskwalificeert niet meer.
+  Handhaving blijft, ingevuld of niet, UITSLUITEND op beslisniveau — nooit in `fxOf`; dat is
+  twee keer gemeten en twee keer duur geweest (6 dB rimpel als fx-term, 17° M-T-fase onder
+  de naam "constraint", A3e).
+  Tests: de bestaande amp-vloer-tests noemen nu hun eigen versterker (`AMP_2R5 = 2.5`) i.p.v.
+  er een te erven, plus twee nieuwe — "zonder rating wordt niets gerepareerd en de dip wordt
+  gerapporteerd" en "een weigering noemt waar het getal vandaan komt" — en beide rankers
+  krijgen een floorless-tegenhanger.
+
+  *Hieronder de oorspronkelijke notitie, die de FYSICA beschrijft en onverkort geldt zodra
+  er wél een getal staat:*
+  **(jul 2026, Robbert→Sanders "niet onder de 3 Ω")**:
   systeem-|Zin| onder de vloer is een stille fout (spanningssturing: onzichtbaar in élke
   responsmetriek, alleen de versterker voelt hem — bv. een trap/Zobel-R vlak bij de ingang;
   gemeten: staged-tune op het kale template dreef naar 1,5 Ω). Handhaving UITSLUITEND op
@@ -3038,7 +3068,7 @@ wordt puur een import-optie, niets hangt er meer van af. Gefaseerd:
   targets + tweeter-prot onvoorwaardelijk, en dan strikt-betere fx (kortsluit de dip/leak-
   armen — hard geleerd: repFx 4,8 < 5,7 werd op een +7-leak-arm geweigerd en de gate gooide
   daarna 100% van de tune weg) ÓF de 10%/seed-window mét die armen; anders `ampFloorNote`-
-  waarschuwing, UI toont hem naast de snap-notes). **VLOER = 2,5, niet Sanders 3,0 (gemeten)**: een textbook 2e-orde
+  waarschuwing, UI toont hem naast de snap-notes). **DE TOENMALIGE VLOER WAS 2,5, niet Sanders 3,0 (gemeten — en dit is precies waarom het getal nu van de gebruiker komt)**: een textbook 2e-orde
   LP op de KOAN-mid (zelf 3,66 Ω) dipt bij de knie onvermijdelijk naar ~2,7 Ω — een 3,0-vloer
   keurt élk correct filter op een 4Ω-klasse driver af en de reparatie kan fysica niet "fixen";
   1,5 (gedegenereerd) vs 2,7 (eerlijk) scheidt op 2,5 schoon. Het Impedance-paneel blijft

@@ -10,7 +10,7 @@
  *
  * Everything here is DECISION-LEVEL: these bound the search windows and are
  * reported to the designer. None of it belongs in an optimiser objective —
- * the anchor lesson (see Z_FLOOR_OHM in netOptimizer) is that objective terms
+ * the anchor lesson (see the amplifier-load note in netOptimizer) is that objective terms
  * perturb the deterministic search path even when they are physically right.
  */
 

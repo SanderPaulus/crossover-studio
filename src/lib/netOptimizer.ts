@@ -85,6 +85,22 @@ export interface NetOptimizeOptions {
    */
   loadFloor?: { nominalOhm: number; shape?: FloorShape };
   /**
+   * THE MINIMUM LOAD THE USER'S AMPLIFIER IS RATED FOR, in ohms. Optional,
+   * and there is NO DEFAULT — see THE AMPLIFIER-LOAD FLOOR note below.
+   *
+   * Filled: the amp-load repair pass, the structure gates, the safety gate and
+   * the disqualification all work to THIS number, and every refusal quotes
+   * where it came from. Absent: no floor anywhere; the delivered minimum is
+   * still measured and reported (`after.zMinOhm`), it simply does not decide
+   * anything.
+   *
+   * DECISION LEVEL ONLY, filled or not — never a term in `fxOf`. That is not a
+   * detail of this option but the rule the whole file is built on; the two
+   * times a hard limit was put in the objective it cost 6 dB of ripple and 17°
+   * of phase respectively (see the note at the end of `fxOf`).
+   */
+  ampMinLoadOhm?: number;
+  /**
    * Evaluation band, Hz. Default full grid minus edges.
    *
    * SHOULD COME FROM MEASUREMENT VALIDITY, not from data extent (issue #14):
@@ -349,7 +365,7 @@ export interface NetOptimizeResult {
     /** Delivered minimum system |Zin| in ohms — the amplifier's view of this
      *  design. Reported (never optimised for): the safety gate only refuses a
      *  tune that WORSENS the dip, so this is the only place the absolute
-     *  number becomes visible to a caller. See Z_FLOOR_OHM. */
+     *  number becomes visible to a caller. See the amplifier-load note. */
     zMinOhm?: number;
     /** Std-dev flatness of the horizontal ENERGY AVERAGE over the band, when
      *  angle data was given (else absent) — the in-room verdict. */
@@ -418,7 +434,7 @@ export interface NetOptimizeResult {
   snapNote?: string;
   /** Amp-load floor (system |Z| ≥ 2.5 Ω): set when the tuned result dipped
    *  below the floor — either "lifted a → b Ω" (repair accepted) or a
-   *  could-not-repair warning. See Z_FLOOR_OHM. */
+   *  could-not-repair warning. See the amplifier-load note. */
   ampFloorNote?: string;
   /** Set when the full-band safety gate rejected the tuned result and the
    *  seed was returned unchanged (see NetOptimizeOptions.safety). */
@@ -441,27 +457,36 @@ const PARAM_OF: Record<'R' | 'L' | 'C', { name: string; factor: number }> = {
   C: { name: 'C', factor: 1e6 }, // … and µF
 };
 
-/** FUNDAMENTAL — amplifier-load floor (Sanders, jul 2026): the system input
- *  impedance should not dip below this. Voltage drive makes a low-Z
- *  realisation INVISIBLE to every response metric (the sim holds the voltage,
- *  only the amplifier feels the current), so a shunt trap/Zobel with a small
- *  R near the input can quietly buy response quality with an amp-hostile dip.
- *  Enforcement is DECISION-LEVEL ONLY (structure gates, safety gate, and a
- *  locally-seeded repair retune before the snap) — an always-on fx penalty
- *  was tried and REVERTED: on the notch-torture net the term cost a mere
- *  0.065 at the relevant optimum (system min 2.93 Ω) yet rerouted the
- *  deterministic simplex into a basin 6 dB worse in ripple (8.0 → 14.5 dB).
- *  The textbook-anchor lesson, again: ANY objective add-on perturbs the
- *  search path through a multimodal landscape, however small its value.
+/* THE AMPLIFIER-LOAD FLOOR — it used to be a constant here (2.5 Ω).
+ * IT IS GONE, AND NOTHING REPLACED IT BY DEFAULT.
  *
- *  The VALUE is 2.5, not the requested 3.0 — measured: a textbook 2nd-order
- *  LP on the KOAN mid (itself 3.66 Ω) necessarily dips to ~2.7 Ω at the
- *  knee, so a 3.0 floor flags every correct filter on a 4 Ω-class driver as
- *  degenerate (and the repair rightly refuses to "fix" physics). The real
- *  degenerate case measured 1.5 Ω; 2.5 — the classic "4 Ω-capable amp"
- *  tolerance — separates the two cleanly. The Impedance panel's stricter
- *  IEC tiers (3.2/6.4 Ω) keep informing the designer either way. */
-export const Z_FLOOR_OHM = 2.5;
+ * The PHYSICS it guarded is real and unchanged: voltage drive makes a low-Z
+ * realisation INVISIBLE to every response metric (the sim holds the voltage,
+ * only the amplifier feels the current), so a shunt trap or Zobel with a small
+ * R near the input can quietly buy response quality with an amp-hostile dip.
+ * That is why `zMinOhm` is still measured on the evaluation grid AND the
+ * safety grid, still reported in `after`, and still shown in every panel.
+ *
+ * What was wrong was the NUMBER. 2.5 came from one amplifier — a NAD M10 V2 —
+ * calibrated against one driver set, and it was then applied to everybody. An
+ * app cannot know what is on the other end of the cable: a tube amp with a
+ * 4 Ω tap browns out where a Purifi module does not notice, a PA amp is
+ * specified into 2 Ω all day, and a vintage receiver is not happy below 6.
+ * A default here is the same assumption as a constant, only invisible — so
+ * there is none, and `ampMinLoadOhm` is filled in by the person who owns the
+ * amplifier or by nobody.
+ *
+ * Enforcement, when a value IS given, is DECISION-LEVEL ONLY: structure gates,
+ * the safety gate, a locally-seeded repair retune before the snap, and the
+ * ranking. Never a term in `fxOf`. That has been measured twice, both times
+ * expensive: as an fx penalty the floor cost 6 dB of ripple on the
+ * notch-torture net (0.065 of objective at the relevant optimum was enough to
+ * reroute the deterministic simplex into another basin), and the same shape
+ * under the name "constraint" cost 17° of M-T phase in A3e.
+ *
+ * The IEC-derived report (`loadShortOhm`, impedanceFloor.ts) is exactly that —
+ * a report about what the finished design may be SOLD as. It does not
+ * disqualify. */
 
 /** Soft buildability bounds, as in synthesis. */
 const BOUNDS: Record<'C' | 'L' | 'R', [number, number]> = {
@@ -724,6 +749,16 @@ export function optimizeNetworkValues(
   const loadNominalOhm = opts.loadFloor?.nominalOhm && opts.loadFloor.nominalOhm > 0
     ? opts.loadFloor.nominalOhm
     : null;
+  /** The user's amplifier rating, or null. THE one place this file decides
+   *  whether an amplifier-load floor exists at all — everything downstream
+   *  asks this, so "no floor" cannot mean two different things in two
+   *  passes. */
+  const ampFloorOhm =
+    opts.ampMinLoadOhm !== undefined && opts.ampMinLoadOhm > 0 ? opts.ampMinLoadOhm : null;
+  /** Origin, quoted in every refusal: a limit whose provenance is invisible
+   *  reads as a law of nature, which is exactly how 2.5 Ω survived so long. */
+  const ampFloorSource = (): string =>
+    `your amplifier's rated minimum load, ${ampFloorOhm!.toFixed(1)} Ω`;
   /* THE DC LIMIT, PRECOMPUTED. When the Thevenin probe has no usable frequency
    * — the low driver's impedance peak lies below the grid, which is the normal
    * case for a woofer measured from 200 Hz — the audit falls back to the
@@ -890,7 +925,7 @@ export function optimizeNetworkValues(
    * one-pass way (E[x²] − E[x]²) where bandMetrics uses the two-pass form;
    * the results agree mathematically but not bit-for-bit, and this optimizer
    * is a deterministic simplex through a multimodal landscape — the anchor
-   * lesson (see Z_FLOOR_OHM) is that ANY perturbation, however small, reroutes
+   * lesson (see the amplifier-load note) is that ANY perturbation, however small, reroutes
    * the search into a different basin. Swapping it for cosmetic sharing would
    * risk real, unmeasured quality changes across every existing two-way
    * design. It stays until there is a reason to change it, and then it gets
@@ -1555,28 +1590,31 @@ export function optimizeNetworkValues(
     const midSlopeDbOct = pm.length > 0 ? pm[pm.length - 1].lowerSlopeDbOct : null;
     const tweeterSlopeDbOct = pm.length > 0 ? pm[pm.length - 1].upperSlopeDbOct : null;
 
-    // FUNDAMENTAL — amplifier-load floor: min |Zin| below Z_FLOOR_OHM is a
-    // silent failure (voltage drive hides it from every response metric).
+    // The delivered load: ALWAYS measured and reported (voltage drive hides a
+    // low-Z realisation from every response metric, so a number nobody
+    // computes is a number nobody can see). Whether it DECIDES anything is a
+    // separate question, and the answer is `ampFloorOhm` — no rating given,
+    // no shortfall, and every gate below it goes inert by arithmetic.
     let zMinOhm = Infinity;
     for (const c of sol.inputZ) {
       const zm = Math.hypot(c.re, c.im);
       if (zm < zMinOhm) zMinOhm = zm;
     }
-    const zShortOhm = Math.max(0, Z_FLOOR_OHM - zMinOhm);
-    /* A3i-2 — THE DERIVED FLOOR, ALONGSIDE Z_FLOOR_OHM AND NOT INSTEAD OF IT.
+    const zShortOhm = ampFloorOhm === null ? 0 : Math.max(0, ampFloorOhm - zMinOhm);
+    /* A3i-2 — THE DERIVED FLOOR, ALONGSIDE THE AMPLIFIER RATING, NOT INSTEAD.
      *
-     * Two different things, so two names (the A3g rule). Z_FLOOR_OHM is the
-     * internal repair target this tuner has always worked to: a fixed, roughly
-     * calibrated line that the amp-load repair aims at and the staged gates
-     * compare against. `loadShortOhm` is a FEASIBILITY line derived from the
-     * drivers and IEC 60268-5 — 80 % of the nominal those drivers can support,
-     * relaxed above 1 kHz because the limit is on CURRENT and programme voltage
-     * falls there (impedanceFloor.ts).
+     * Two different things, so two names (the A3g rule). `ampMinLoadOhm` is
+     * what the user's amplifier is rated for: the repair target, and the only
+     * thing that decides. `loadShortOhm` is a FEASIBILITY line derived from
+     * the drivers and IEC 60268-5 — 80 % of the nominal those drivers can
+     * support, relaxed above 1 kHz because the limit is on CURRENT and
+     * programme voltage falls there (impedanceFloor.ts).
      *
      * They can disagree in both directions and that is fine: the first says
-     * "this tune made the dip worse than I aim for", the second says "this
-     * design cannot be sold". Collapsing them would make one of the two answers
-     * unavailable. */
+     * "this load is under what the amplifier is rated for", the second says
+     * "this design cannot be sold as any standard impedance". Collapsing them
+     * would make one of the two answers unavailable — and the second one
+     * REPORTS, it does not disqualify. */
     const floorOnGrid = floorFor(freqs);
     let loadShortOhm = 0;
     if (floorOnGrid) {
@@ -1697,7 +1735,7 @@ export function optimizeNetworkValues(
       0.02 * m.protSqDb +
       // Dead-spot crossing (always on): a 19 dB-deep crossing hole costs
       // ~180 — dominant, as it should be; a healthy design pays 0.
-      // NB: the amp-load floor is deliberately NOT here (see Z_FLOOR_OHM) —
+      // NB: the amp-load floor is deliberately NOT here (see the note above fxOf) —
       // it lives in the gates and the repair pass, never in the objective.
       0.5 * m.xoDipDb * m.xoDipDb +
       // Branch-target corridor (0 without targets and for any in-corridor
@@ -1773,7 +1811,7 @@ export function optimizeNetworkValues(
        * past the rule.
        *
        * And the lesson was already written, forty lines above this one, in the
-       * Z_FLOOR_OHM note: enforcement is DECISION-LEVEL ONLY, because an
+       * amplifier-load note: enforcement is DECISION-LEVEL ONLY, because an
        * always-on fx penalty had been tried and reverted once before, for the
        * same reason, at a cost of 6 dB. I put the same shape back anyway, and
        * A3i-2 copied it. Hard limits belong in the ranking and in the
@@ -1858,7 +1896,7 @@ export function optimizeNetworkValues(
     barrier: { rippleDb: number; phaseDeg: number } | null = null,
     applyWindow = true,
     /** Amp-load floor REPAIR barrier — only the repair pass sets this; the
-     *  normal tune objective must stay clean (see Z_FLOOR_OHM). */
+     *  normal tune objective must stay clean (see the amplifier-load note). */
     zFloorBarrier = false,
   ): TuneOut => {
     const { work, free } = buildWork(ps);
@@ -1948,7 +1986,10 @@ export function optimizeNetworkValues(
         // Stiff on purpose — the quadratic is weak near the floor (a 2.7 Ω
         // residue at weight 120 cost a negligible 1.2 and the repair stalled
         // there; the gate then rejected the whole tune anyway).
-        barr += 1200 * (m.zShortOhm / Z_FLOOR_OHM) ** 2;
+        // ampFloorOhm is non-null whenever this barrier is armed: only the
+        // repair pass sets zFloorBarrier, and that pass runs only with a
+        // rating given.
+        barr += 1200 * (m.zShortOhm / ampFloorOhm!) ** 2;
         // THE HIERARCHY: the amplifier floor is non-negotiable, branch
         // fidelity yields to it. With the corridor still counting, the
         // repair paid corridor tax on exactly the branch shifts the lift
@@ -2225,7 +2266,7 @@ export function optimizeNetworkValues(
       midAdjust: midAdj,
       thresholds: opts.audit?.thresholds,
       fbHz: opts.audit?.fbHz,
-      zFloorOhm: Z_FLOOR_OHM,
+      zFloorOhm: ampFloorOhm ?? undefined,
       costOf: auditCostOf,
     });
     if (!rep) return null;
@@ -2583,13 +2624,18 @@ export function optimizeNetworkValues(
     }
   }
 
-  /* ---- Amp-load floor repair (decision-level, see Z_FLOOR_OHM). When the
-   * tuned result dips below the floor — a shunt trap/Zobel R near the input,
-   * or an amp-hostile value the response metrics cannot see — a locally
-   * seeded barrier retune walks the values up out of the dip. Accepted only
-   * when it genuinely lifts the minimum AND the response stays in class
-   * (prune-doctrine 10%) with the fundamentals intact; otherwise the result
-   * stands and the note tells the truth (the Impedance panel shows it too). */
+  /* ---- Amp-load floor repair (decision-level; ONLY with a stated amplifier
+   * rating). When the tuned result dips below what the user's amplifier is
+   * rated for — a shunt trap/Zobel R near the input, or an amp-hostile value
+   * the response metrics cannot see — a locally seeded barrier retune walks
+   * the values up out of the dip. Accepted only when it genuinely lifts the
+   * minimum AND the response stays in class (prune-doctrine 10%) with the
+   * fundamentals intact; otherwise the result stands and the note tells the
+   * truth (the Impedance panel shows it too).
+   *
+   * Without a rating this pass does not run at all: `zShortOhm` is 0 by
+   * construction, so there is nothing to detect and nothing to repair. The
+   * minimum is still measured and reported. */
   let ampFloorNote: string | undefined;
   /** Set when a post-search pass had to be rolled back because it could not
    *  reach its goal without violating a hard constraint. */
@@ -2629,7 +2675,7 @@ export function optimizeNetworkValues(
     const worstZ = worstZOf;
     const mCur = fullOf(cur.parts);
     const zCur = worstZ(mCur, cur.parts);
-    if (zCur.short > 0.15) {
+    if (ampFloorOhm !== null && zCur.short > 0.15) {
       stage('amp-load floor');
       // A dipping SEED (user network already below the floor) moves the bar:
       // the safety gate judges against the seed, so "as healthy as the seed"
@@ -2713,14 +2759,14 @@ export function optimizeNetworkValues(
         ampFloorRepair = 'lifted';
         ampFloorNote =
           `amp-load floor: system impedance minimum lifted ` +
-          `${zCur.min.toFixed(1)} → ${zRep.min.toFixed(1)} Ω (floor ${Z_FLOOR_OHM} Ω)` +
+          `${zCur.min.toFixed(1)} → ${zRep.min.toFixed(1)} Ω (${ampFloorSource()})` +
           (zRep.short > 0.15 ? ' — still under the floor, but no longer a short' : '');
         cur = { ...rep, freeCount: cur.freeCount };
       } else {
         ampFloorRepair = 'failed';
         ampFloorNote =
           `amp-load floor: system impedance dips to ${zCur.min.toFixed(1)} Ω ` +
-          `(floor ${Z_FLOOR_OHM} Ω) and could not be repaired without losing response quality — ` +
+          `(${ampFloorSource()}) and could not be repaired without losing response quality — ` +
           `check the Impedance panel`;
       }
     }
@@ -2843,7 +2889,7 @@ export function optimizeNetworkValues(
       return out;
     };
     /* AMP LOAD SURVIVES THE SNAP. The snap judges on fxOf(), and the amp-load
-     * floor is deliberately absent there (see Z_FLOOR_OHM) — so the discrete
+     * floor is deliberately absent there (see the amplifier-load note) — so the discrete
      * pass happily undid the repair that ran two steps earlier. Measured on
      * Sander's 3-way: "minimum lifted 2.1 → 2.4 Ω" in the note while the
      * delivered network sat at 1.9 Ω, because the catalog values that fit best
@@ -2855,7 +2901,12 @@ export function optimizeNetworkValues(
      * must still rank the least-bad ones instead of collapsing to "first
      * candidate in every slot". Asking for more than the floor is pointless,
      * and a pre-snap network already under it only has to not get worse. */
-    const zSnapTarget = Math.min(Z_FLOOR_OHM, quickFxZ(cur.parts).zMin);
+    /* With a rating: aim at it, and never worse than the network already is.
+     * WITHOUT one: purely RELATIVE — "do not give back what the value tune
+     * achieved". That needs no assumption about anybody's amplifier and is
+     * the only part of the old floor's job that survives its removal. */
+    const zPre = quickFxZ(cur.parts).zMin;
+    const zSnapTarget = ampFloorOhm === null ? zPre : Math.min(ampFloorOhm, zPre);
     const snapScore = (ch: (CatalogPick | null)[]): number => {
       const extra = ch.reduce((a, p) => a + (p ? p.parts.length - 1 : 0), 0);
       const cost = ch.reduce((a, p) => a + (p?.priceEur ?? 0), 0);
@@ -3157,14 +3208,14 @@ export function optimizeNetworkValues(
       // one this pass was looking at.
       ampFloorNote =
         `amp-load floor: system impedance dips to ${zDel.min.toFixed(1)} Ω ` +
-        `(floor ${Z_FLOOR_OHM} Ω) and could not be repaired without losing response quality — ` +
+        `(${ampFloorSource()}) and could not be repaired without losing response quality — ` +
         `check the Impedance panel`;
     }
     if (!repairedEnough(zDel.short) && !infeasible) {
       infeasible =
-        `the delivered network presents ${zDel.min.toFixed(2)} Ω to the amplifier ` +
-        `(floor ${Z_FLOOR_OHM} Ω) and the load could not be repaired — this is not a ` +
-        `worse design, it is one a class-D amplifier will refuse to drive`;
+        `the delivered network presents ${zDel.min.toFixed(2)} Ω to the amplifier, ` +
+        `under ${ampFloorSource()}, and the load could not be repaired — this is not a ` +
+        `worse design, it is one you told this app your amplifier will refuse to drive`;
     }
   }
 
@@ -3260,7 +3311,7 @@ export function optimizeNetworkValues(
         seedS.zShortOhm > 0 ? ` — the seed already sat at ${seedS.zMinOhm.toFixed(1)} Ω` : '';
       reasons.push(
         `the system impedance dips to ${resS.zMinOhm.toFixed(1)} Ω ` +
-          `(amplifier-load floor ${Z_FLOOR_OHM} Ω)${seedTail}`,
+          `(${ampFloorSource()})${seedTail}`,
       );
     }
     if (reasons.length > 0) {
