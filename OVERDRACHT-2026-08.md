@@ -267,6 +267,78 @@ en blijven bruikbaar als achtergrond; als bewijs voor een default-wijziging
 tellen ze niet. Opnieuw meten kan pas op een veld dat bouwbare kandidaten
 oplevert, en dat vraagt eerst de ingangsimpedantie-vondst hieronder.
 
+### De drie vragen vóór de ingangsimpedantie-check (aug 2026), beantwoord
+
+Sanders voorkeur: de check op de ingangsimpedantie, niet het waarde-plafond —
+`seriesCeilFor` is een PROXY voor "dit onderdeel is een draadje", en hier is
+het probleem niet de 102 µF maar de resonantie erachter. Afleiden in plaats van
+schatten, zoals bij de gate-vloer. Voor er code kwam wilde hij drie dingen
+weten. Gemeten op ontwerp + synthese, zónder tune.
+
+**(1) KAN de synthese het zien? JA — en er is geen assemblage voor nodig.**
+
+De bijna-kortsluiting is in élk gemeten geval een eigenschap van ÉÉN TAK OP
+ZICHZELF. Het geassembleerde minimum is gelijk aan het minimum van de slechtste
+tak alléén, tot op drie decimalen:
+
+```
+                            geassembleerd    slechtste tak alleen
+W-M 514 · M-T 1849 · eq 2      0,005 Ω           0,005 Ω  (mid)
+W-M 424 · M-T 2432 · eq 2      0,692 Ω           0,693 Ω  (mid)
+2-weg xo 2400 · eq 2           0,787 Ω           0,787 Ω  (laag)
+2-weg xo 3000 · eq 2           0,982 Ω           0,983 Ω  (laag)
+W-M 622 · M-T 2432 · eq 2      1,078 Ω           1,084 Ω  (mid)
+```
+
+Dat is geen toeval maar de topologie: de takken staan PARALLEL over één
+generator, dus Z_in van het systeem is de parallelschakeling van de
+tak-ingangsimpedanties, en één tak die naar nul zakt domineert die
+parallelschakeling volledig. Het geassembleerde getal ligt consequent een paar
+promille ONDER het slechtste tak-getal — dus een tak-check heeft een kleine
+marge nodig, geen factor N.
+
+Structureel: `synthesize` bouwt zijn tak al mét generator (`EG`/`RG`,
+synthesis.ts:334) en lost hem op met `solveNetwork` (regel 646 in de fitlus,
+974 op het eind) — en `solveNetwork` geeft `inputZ` gewoon terug. **De
+grootheid ligt er al; er wordt alleen niet naar gekeken.** Geen terugkoppeling
+na de assemblage nodig.
+
+**(2) HOE VAAK? Breed, en NIET eigen aan deze driverset of aan 3-weg.**
+
+```
+SET A  koan-3way (Sanders gemeten 3-weg, 12 seeds)     3 van 12  < 1 Ω
+SET B  KOAN 2-weg (andere set ÉN het 2-weg-codepad)    2 van  6  < 1 Ω
+                                                      ─────────
+                                                       5 van 18  (28 %)
+```
+
+En er zit een scherp patroon in: **het gebeurt uitsluitend mét EQ-banden.**
+Alle negen seeds met `eqBands = 0` zijn schoon (laagste 1,014 Ω); vijf van de
+negen met `eqBands = 2` duiken onder 1 Ω. De traps en shelf-realisaties die de
+EQ-trap toevoegt zijn wat de bijna-kortsluiting maakt.
+
+Dit is dus geen randgeval van één meetset maar een structureel gat in de
+synthese — het treft beide driversets en beide codepaden.
+
+**(3) WAAR IN FREQUENTIE? Gemengd — en daarmee vervalt de goedkope check.**
+
+Sanders hoop was: alleen buiten de doorlaatband van elke tak kijken. Dat zou
+3 van de 5 gevallen MISSEN:
+
+```
+                            Z min            doorlaatband tak    ligging
+W-M 514 · M-T 1849 · eq 2   0,005 Ω @ 4799   mid  472–2301 Hz    BUITEN
+W-M 622 · M-T 1849 · eq 2   0,005 Ω @ 4799   mid  472–2301 Hz    BUITEN
+W-M 424 · M-T 2432 · eq 2   0,692 Ω @ 1004   mid  422–2625 Hz    binnen
+2-weg xo 2400 · eq 2        0,787 Ω @ 1639   laag 210–2625 Hz    binnen
+2-weg xo 3000 · eq 2        0,983 Ω @ 2134   laag 210–2996 Hz    binnen
+```
+
+De check moet dus over de hele band. Wat wél opvalt is dat de twee gevallen
+BUITEN de doorlaatband van een andere orde zijn — 0,005 Ω is een echte
+kortsluiting, de drie binnen de band zijn 0,7–1,0 Ω: een zware maar niet
+onmogelijke last. Twee verschijnselen, één maat die ze allebei vangt.
+
 **Het overlapvenster.** Het 20 dB-venster wordt smaller bij steilere filters,
 en een smaller venster is makkelijker goed te scoren. Gemeten op twee sets:
 
