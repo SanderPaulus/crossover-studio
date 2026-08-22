@@ -97,7 +97,24 @@ prioriteit   spreiding M-T   spreiding W-M
 ```
 
 W-M is grotendeels op te lossen met gewicht; M-T halveert maar blijft op
-4,5°. **De weging is een echte bron, niet de enige.**
+4,5°.
+
+⚠ **CORRECTIE (aug 2026) — DE DEFAULT STOND AL GOED, dus dit verklaart minder
+dan hierboven werd aangenomen.** `phasePriority` heeft default **50**
+(`App.tsx:4586`), niet iets onder het omslagpunt van 0,35. De app draait dus
+al aan de goede kant daarvan, en — dit is het punt — **de gemeten spreiding
+van 7,3–15,0° M-T is ontstaan MÉT die weging.** Ook Sanders eigen project
+draaide op 50.
+
+De vlakke fase-richting is daarmee een echte maar SECUNDAIRE bron. De sweep
+toont dat W-M-spreiding met gewicht koopbaar is (12,0 → 2,6 tussen 0,35 en
+0,50, en de app zit al voorbij die stap); wat hij niet verklaart is de
+M-T-spreiding die overblijft.
+
+Verhoging naar 0,70 blijft een OPEN OPTIE, geen aanbeveling: −1,1° W-M-spreiding
+voor +0,10 dB vlakheid, maar gemeten op drie kandidaten, één driverset en de
+ONTWERPSTAP. Te dun om een globale default op te verzetten; vergt twee
+volledige ketenruns voordat er iets verandert.
 
 **Het overlapvenster.** Het 20 dB-venster wordt smaller bij steilere filters,
 en een smaller venster is makkelijker goed te scoren. Gemeten op twee sets:
@@ -117,13 +134,23 @@ slechtste score. Alignment-kwaliteit en vensterbreedte zijn met deze opzet
 niet te scheiden. Een vaste breedte (bv. één octaaf aan weerszijden) is de
 voor de hand liggende toets.
 
-**Het systematische synthese-verlies.** Ontwerp → gesynthetiseerd ongetuned →
+**Het systematische synthese-verlies — DE HOOFDVERDACHTE.** Sinds de correctie
+hierboven is dit de eerste inhoudelijke stap en niet de tweede: de weging stond
+al goed, dus wat de achterstand draagt is dít.
+
+Ontwerp → gesynthetiseerd ongetuned →
 geleverd, op M-T: 5,2 → 16,7 → 9,6. De synthese kost consequent 7–9 graden,
 de tune haalt een deel terug. Gemeten over drie kandidaten liggen de
 ongetunede netwerken binnen 1,8° van elkaar terwijl het geleverde 7,7° spant
 — **de synthese is het gemiddelde verlies, de tune is de variantiebron.** De
 ideale EQ-banden worden passieve traps die fase dragen die het ontwerp niet
 modelleert.
+
+**Te onderzoeken vóór er code verandert**: vergelijk per EQ-band de fase van de
+ideale band met die van zijn passieve realisatie. Bevestigt dat de hypothese,
+dan is de remedie dat de ONTWERPSTAP die fase meeneemt — niet dat de tune het
+achteraf goedmaakt. Toets meteen of het ook de 4,5° M-T verklaart die bij hoog
+fasegewicht blijft staan: twee symptomen, mogelijk één oorzaak.
 
 **Z_FLOOR_OHM = 2,5** zit nog in de gates, de reparatiepas en de
 diskwalificatie. Die waarde komt uit één versterker (NAD M10 V2) en hoort
