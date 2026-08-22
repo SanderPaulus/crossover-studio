@@ -286,7 +286,24 @@
       "Bash(awk '{print \"  looptijd \" $1}')",
       "Bash(awk '{print $9, $5\" bytes\"}')",
       "Bash([ -f \"$S/a3e-after.json\" ])",
-      "Bash(awk '{print \"nog bezig, looptijd \" $1}')"
+      "Bash(awk '{print \"nog bezig, looptijd \" $1}')",
+      "Bash(grep -n \"cur = { ...cur, parts: applied\\(picks\\) };\" src/lib/netOptimizer.ts)",
+      "Bash([ -f \"$S/a3f-after.json\" ])",
+      "Bash([ -f \"$S/a3f-flag.json\" ])",
+      "Bash(grep -n 'infeasible\\\\|rsDelivered\\\\|sourceResistanceOhm' __TRACKED_VAR__/sanderrun.ts)",
+      "Bash([ -f \"$S/a3f-flag2.json\" ])",
+      "Bash(grep -n \"infeasible?: string\\\\|...\\(auditReport ? { audit: auditReport }\" src/lib/netOptimizer.ts)",
+      "Bash(curl -s \"http://localhost:5173/src/App.tsx\")",
+      "Bash([ -f \"$S/a3h-455.json\" ])",
+      "Bash(grep -n 'zProfile\\\\|partsDump' __TRACKED_VAR__/sanderrun.ts)",
+      "Bash(awk '{print $NF, $5}')",
+      "Bash(grep -n rSourceDisqualifyOhm __TRACKED_VAR__/sanderrun.ts)",
+      "Bash(grep -c writeFileSync __TRACKED_VAR__/probe.ts)",
+      "Bash(sed -i '' 's/import { writeFileSync, readFileSync, writeFileSync }/import { writeFileSync, readFileSync }/' __TRACKED_VAR__/probe.ts)",
+      "Bash(grep -n 'loadFloor\\\\|rSourceDeliveredOhm\\\\|busTopology\\\\|zProfile' __TRACKED_VAR__/probe.ts)",
+      "Bash(awk 'NR>=520 && NR<=560' src/lib/threeWayDesign.ts)",
+      "Bash([ -f \"$S/twin-A.json\" ])",
+      "Bash([ -f \"$S/twin-B.json\" ])"
     ]
   }
 }
