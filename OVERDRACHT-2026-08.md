@@ -258,10 +258,23 @@ gesynthetiseerde ongetunede netwerk voorspelt geen van beide — het ligt niet
 eens tússen de twee in.
 
 **Daarmee is de "5,2 → 16,7 → 9,6"-lezing uit de vorige ronde verkeerd
-geframed.** Dat is geen keten waarin de synthese 7–9° verliest en de tune een
-deel terughaalt. Het gesynthetiseerde netwerk is een SEED, geen tussenstand:
-het draagt geen claim over wat er geleverd wordt, en het verschil met het
-ontwerp meten is een getal over een tussenproduct.
+geframed, en de reden hoort erbij: die drie getallen zijn als een KETEN gelezen
+terwijl er geen keten is.** Drie getallen achter elkaar met pijlen ertussen
+lezen als een verhaal — verlies hier, herstel daar — en dat verhaal is
+verzonnen door de opmaak, niet gemeten. Het middelste getal is geen tussenstand
+maar een SEED: het gesynthetiseerde netwerk draagt geen claim over wat er
+geleverd wordt, en het ligt op deze meting niet eens tússen de twee andere in
+(ontwerp 20,1 → synth 14,1 → geleverd 20,9 bij nul EQ-banden; ontwerp 10,4 →
+synth 28,8 → geleverd 9,9 bij twee). Het verschil ontwerp↔synthese meten is dus
+een getal over een tussenproduct, en er een oorzaak uit afleiden is de
+gedocumenteerde bugfamilie van dit project in een nieuwe vermomming: **een
+beslissing genomen op een grootheid die een latere trap nog verandert** — hier
+zelfs een DIAGNOSE genomen op zo'n grootheid.
+
+Dat is het generieke deel dat het onthouden waard is: alleen twee getallen die
+allebei een CLAIM dragen mogen met een pijl verbonden worden. Ontwerp en
+levering doen dat (het ontwerp voorspelt de levering hier op ~1°); de seed
+ertussen doet dat niet.
 
 **Gevolg voor de prioriteitenlijst.** De voorgestelde remedie — "de ontwerpstap
 moet de fase van de passieve realisatie meenemen" — is NIET gerechtvaardigd
@@ -277,8 +290,10 @@ voort. Dat was een SPREIDING op de ontwerpstap, en de volle ketenmeting van
 stap 1 laat zien dat de spreiding met gewicht wegvalt (M-T-veld 3,3–14,6 bij
 0,50 tegen 3,4–6,6 bij 0,70). Twee symptomen, twee oorzaken.
 
-**Het systematische synthese-verlies — DE HOOFDVERDACHTE (achterhaald door de
-meting hierboven; de tekst blijft staan omdat de cijfers erin kloppen).** Sinds de correctie
+**Het systematische synthese-verlies — DE HOOFDVERDACHTE.**
+⚠ ACHTERHAALD door de meting hierboven: de CIJFERS in deze alinea kloppen, de
+CONCLUSIE eruit niet — ze verbindt een seed met een levering. Blijft staan
+omdat de meting anders niet meer te controleren is. Sinds de correctie
 hierboven is dit de eerste inhoudelijke stap en niet de tweede: de weging stond
 al goed, dus wat de achterstand draagt is dít.
 
