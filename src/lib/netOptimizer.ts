@@ -1752,11 +1752,25 @@ export function optimizeNetworkValues(
        * flatness, and switching it off at HEAD restored the earlier result
        * exactly. Everything committed after A3e changed nothing on this task.
        *
-       * WHY: with INFEASIBLE = 1e6, every point in violation sits on a plateau
-       * whose only gradient is a linear overshoot term. A deterministic simplex
-       * seeded in that region navigates blind until it escapes, and lands in
-       * whatever basin it happens to fall into. "Exactly zero inside the limit"
-       * is true and beside the point — the search does not start inside.
+       * AND THE REASON IS GENERAL, not something about source resistance.
+       *
+       * ANY hard wall in a gradient-free search behaves this way whenever the
+       * search can begin outside the allowed region. The forbidden ground is a
+       * plateau whose only gradient is the overshoot itself, so the simplex
+       * carries no information about the objective while it is there: it
+       * wanders until it escapes and then lands in whichever basin it happened
+       * to reach. The wall does not merely forbid, it DELETES the landscape it
+       * covers.
+       *
+       * "Exactly zero inside the limit" is true and beside the point, and that
+       * is the part worth remembering — it is the sentence that made both of
+       * these look safe. A term that contributes nothing inside the allowed
+       * region is still decisive if the search does not start there, and a
+       * seeded optimiser usually does not.
+       *
+       * So a constraint is not a safer kind of objective term. It is the same
+       * thing with a different name, and calling it a constraint is what let it
+       * past the rule.
        *
        * And the lesson was already written, forty lines above this one, in the
        * Z_FLOOR_OHM note: enforcement is DECISION-LEVEL ONLY, because an
