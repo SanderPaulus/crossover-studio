@@ -180,6 +180,88 @@ dezelfde beweging als de spreiding — met meer fasegewicht landt de keten in
 een bekken dat minder correctiewerk nodig heeft, en dat scheelt zowel
 onderdelen als dure onderdelen.
 
+### ⚠ CORRECTIE OP DE METING HIERBOVEN — het veld bestond uit AFGEKEURDE ontwerpen
+
+Sander vroeg door: "je zet de winnaar bij 0,50 naast DEZELFDE kandidaat bij
+0,70, maar de ranking gebruikt de weging, dus bij 0,70 kan een ander winnen."
+De vraag was terecht en het antwoord is erger dan een ranking-detail.
+
+**Wat er wél klopte**: de ranking is bij beide gewichten gedraaid en levert
+BEIDE KEREN dezelfde kandidaat (514 × 1849). De vergelijking was dus toevallig
+winnaar-tegen-winnaar. Dat had ik moeten TONEN in plaats van laten geloven.
+
+**Wat er niet klopte**: alle zes de runs waren GEDISKWALIFICEERD. De ranking
+die ik rapporteerde was een tie-break tussen afgekeurde ontwerpen.
+
+```
+kandidaat            Z min      reden
+424 × 2432         1,66–1,70 Ω  bron-R 2,60–2,67 Ω ≥ 2,0 grens
+622 × 2432         0,03 Ω       last kon niet gerepareerd worden
+514 × 1849  (win)  0,00 Ω       idem
+```
+
+De "winnaar" die als levering werd voorgelegd presenteert een KORTSLUITING aan
+de versterker. Precies daarom is hij zo vlak: spanningssturing verbergt dat
+voor élke responsmetriek — de fout waarvoor de amp-vloer ooit is gebouwd, nu
+in de meting zelf.
+
+**Mijn eerste diagnose was FOUT en die correctie hoort hier ook.** Ik schreef
+dat de harness `safety` niet meegaf (waar) en dat het de oorzaak was (niet
+waar). Overgedaan mét de safety-grid, op de huidige boom, met 2,5 Ω als
+opgegeven versterker: kandidaat 2 en 3 reproduceren tot op het cijfer
+(piek 2,389 / 1,327 bij 0,50), alleen kandidaat 1 bij 0,70 verschuift
+(1,619 → 1,739). **De safety-gate wijst deze netwerken niet af.**
+
+**De echte oorzaak zit vóór de tuner, in de SYNTHESE.** Het gesynthetiseerde,
+ONGETUNEDE netwerk presenteert al 0,039 Ω @ 5905 Hz. Eén onderdeel eruit halen
+tilt hem terug:
+
+```
+B·C1 verwijderen:  Z min 0,039 → 2,360 Ω
+B·C1 = 102 µF, SERIE-pad van de mid-tak
+```
+
+Bij 5905 Hz is 102 µF nog 0,26 Ω — een draadje. Daardoor kijkt de versterker
+via die cap recht op de interne resonantie van de mid-ladder (B·L5 0,104 mH
+serie + B·C6 10,5 µF shunt), en die presenteert bijna nul.
+
+Het mechanisme is bekend en de bewaker bestaat al — alleen op de verkeerde
+trap. `seriesCeilFor` (het serie-pad-realisme-plafond, "een 91 µF seriecap is
+een draadje met extra stappen") leeft in de netOptimizer-TUNE. De per-tak
+SYNTHESE heeft hem niet, en die synthese fit elke tak in ISOLATIE tegen zijn
+eigen driver-impedantie — er is in die trap geen enkele grootheid die de
+systeem-INGANGSIMPEDANTIE ziet. Een tak kan dus intern volkomen gezond zijn en
+tóch, ver buiten zijn passband, een bijna-kortsluiting aan de versterker
+aanbieden.
+
+En de amp-vloer-reparatie kan dat niet meer redden: hij verzet alleen WAARDES,
+en om deze last te tillen heeft hij 2,77–3,00 Ω serieweerstand nodig — boven
+de 2,0 Ω-diskwalificatiegrens. Vandaar de nette maar dodelijke melding "beide
+doelen kunnen hier niet tegelijk waar zijn".
+
+**De winnaar per gewicht, wat Sander vroeg** (zelfde kandidaat, 514 × 1849):
+
+```
+                piek dB   avg dB   W-M °   M-T °   parts   BOM    Z min
+pp 0,50          1,327    0,408     5,9     8,9     52    €227   0,00 Ω  ✗ afgekeurd
+pp 0,70          2,351    0,701     3,8     4,3     46    € 83   0,00 Ω  ✗ afgekeurd
+```
+
+Sanders hypothese dat 0,70 op 424 × 2432 zou uitkomen (en de ruil dan
++0,29 dB / −5,5° zou zijn) gaat NIET op: die kandidaat wordt bij 0,70 LAATSTE,
+ondanks betere piek (1,739) én betere M-T (3,5°). Niet door de blend maar door
+een KLASSE: hij verliest er één extra op bron-R (2,67 Ω tegen de 1,0 Ω-grens).
+De rangorde is bovendien identiek mét en zónder opgegeven versterker — met
+alles gediskwalificeerd domineert `dqClass` toch. (Kanttekening: die
+floorless-herrangschikking is geen getrouwe floorless RUN — de
+diskwalificatie-teksten zijn ontstaan in een run mét de 2,5 Ω opgegeven.)
+
+**Conclusie: de wegingsvraag is op dit veld niet te beantwoorden.** Alles wat
+er te kiezen valt is onbouwbaar, om een reden die niets met de weging te maken
+heeft. De default blijft 50 — niet omdat 0,70 verloor, maar omdat er geen
+geldige meting ligt om hem op te verzetten. Eerst de serie-cap-kortsluiting,
+dan opnieuw meten.
+
 **Het overlapvenster.** Het 20 dB-venster wordt smaller bij steilere filters,
 en een smaller venster is makkelijker goed te scoren. Gemeten op twee sets:
 
