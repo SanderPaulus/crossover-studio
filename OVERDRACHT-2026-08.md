@@ -339,6 +339,58 @@ BUITEN de doorlaatband van een andere orde zijn — 0,005 Ω is een echte
 kortsluiting, de drie binnen de band zijn 0,7–1,0 Ω: een zware maar niet
 onmogelijke last. Twee verschijnselen, één maat die ze allebei vangt.
 
+### De weiger-drempel uit de verdeling (aug 2026), vóór er een getal vastligt
+
+Sanders keuze: de bestaande maat uit `impedanceDiag` — tak-ingangsimpedantie
+gedeeld door de KALE driverimpedantie (`branchImpedanceRatios`). Driver- en
+apparatuuronafhankelijk, en hij bestaat al: geen nieuwe constante. Twee
+populaties, twee gevolgen — kapot wordt geweigerd, zwaar wordt gerapporteerd.
+
+De ratio over alle 18 seeds (48 tak-metingen), gesorteerd:
+
+```
+  0,0011    0,005 Ω /  5,01 Ω @  4799 Hz   mid   BUITEN  W-M 514 · M-T 1849 · eq 2
+  0,0011    0,005 Ω /  5,01 Ω @  4799 Hz   mid   BUITEN  W-M 622 · M-T 1849 · eq 2
+  ───────────────────────────────── KLOOF ×159 ─────────────────────────────────
+  0,1746    0,693 Ω /  3,97 Ω @  1004 Hz   mid   binnen  W-M 424 · M-T 2432 · eq 2
+  0,1839    0,789 Ω /  4,29 Ω @  1670 Hz   mid   binnen  2-weg xo 2400 · eq 2
+  0,2148    0,984 Ω /  4,58 Ω @  2174 Hz   mid   binnen  2-weg xo 3000 · eq 2
+  0,2570 … 0,8942   (39 metingen, aaneengesloten)
+  1,6421   23,672 Ω / 14,42 Ω @  1124 Hz   tweeter       (serie-element, onschuldig)
+```
+
+**De kloof is een factor 159 en er ligt niets in.** Sanders schatting klopte
+aan beide kanten: de kapotte populatie zit rond 0,001 (hij gokte 0,002 — de
+kale mid meet op 4799 Hz 5,01 Ω, niet 3,4, vandaar het verschil) en de zware
+last rond 0,18–0,21 (hij gokte 0,20).
+
+**Voorstel: weigeren onder ratio 0,01.** Het meetkundig midden van de kloof is
+0,0139; 0,01 is het ronde getal ernaast — "één procent van wat de driver zelf
+aanbiedt". Marges: **9× boven** de kapotte populatie, **17× onder** de laagste
+gezonde meting. Beide meer dan een orde.
+
+Twee eerlijkheden die erbij horen:
+
+1. **De verre kant van de kloof is DUN.** Er zijn twee metingen onder 0,01 en
+   het is twee keer HETZELFDE verschijnsel (mid-tak, 4799 Hz, twee kandidaten
+   die op hetzelfde ontwerp uitkwamen) — één fenomeen, twee waarnemingen, geen
+   twee onafhankelijke steekproeven. De drempel is juist daarom op 0,01 gezet
+   en niet dichter tegen de data aan: met 9× marge doet één extra waarneming er
+   niet toe.
+2. **De gezonde populatie is AANEENGESLOTEN vanaf 0,1746.** Er is dus geen
+   tweede kloof die "zware last" van "normaal" zou scheiden — precies waarom
+   die band gerapporteerd wordt en niet geweigerd.
+
+**Verhouding tot `RATIO_FLAG = 0,7` in hetzelfde bestand.** Die notitie zegt
+uitdrukkelijk dat de ratio GEEN schone scheider is en dat alles in de module
+read-only is, want "een getal dat goed genoeg is om een ontwerper te tonen is
+niet automatisch goed genoeg om een ontwerp op te weigeren". Dat blijft staan
+en wordt hier niet overtreden: het gemeten tegenvoorbeeld is een serie-spoel
+die op eigen kracht 0,62 haalt, en de weiger-drempel ligt **62× lager**. Op
+0,7 scheidt de maat niet; op 0,01 scheidt hij met twee ordes marge. Eén maat,
+twee drempels, twee gevolgen — en dat verschil hoort in de module te staan
+zodra de check er komt.
+
 **Het overlapvenster.** Het 20 dB-venster wordt smaller bij steilere filters,
 en een smaller venster is makkelijker goed te scoren. Gemeten op twee sets:
 
