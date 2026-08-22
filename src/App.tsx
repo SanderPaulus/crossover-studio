@@ -6158,10 +6158,17 @@ export default function App() {
                       powerSlopeDbDec: rr.net.after.powerSlopeDbDec ?? null,
                       rSourceOhm: rSrcDelivered(rr),
                       disqualified: [
-                        // A3g: whatever the tuner itself gave up on (a rolled-back
-                        // pass, an unrepairable amplifier load) comes first — the
-                        // table may not be gentler than the engine.
-                        ...(rr.net.infeasible ? [rr.net.infeasible] : []),
+                        /* A3g: whatever the CHAIN gave up on comes first — the
+                         * table may not be gentler than the engine. Read from
+                         * `rr.disqualified` and not from `net.infeasible`
+                         * alone: since the degenerate-load refusal the chain
+                         * carries reasons the tuner never saw (a branch that
+                         * shorts the amplifier is refused at the synthesis
+                         * output, before any tune), and rebuilding the list
+                         * here would silently drop them — a candidate ranked
+                         * last with no reason on screen is the exact failure
+                         * this column exists to prevent. */
+                        ...(rr.disqualified ?? (rr.net.infeasible ? [rr.net.infeasible] : [])),
                         ...(rSrcDelivered(rr) != null && rSourceDisqOhm > 0 && rSrcDelivered(rr)! >= rSourceDisqOhm
                           ? [`source resistance at the low driver ${rSrcDelivered(rr)!.toFixed(2)} Ω ≥ ${rSourceDisqOhm.toFixed(1)} Ω`]
                           : []),
