@@ -838,7 +838,6 @@ export function designThreeWay(input: Design3Input): Design3Result {
           `${incumbent.tweeterInverted ? ' · tweeter inv' : ''}`,
       };
       const withEq = placeEq(seed);
-      if (process.env.D3DEBUG) console.log('  trial', Math.round(hz), 'fx', withEq.fx.toFixed(3), 'M-T', withEq.pairPhaseDeg[1].toFixed(1));
       /* THE SAME RULE AS INSIDE THE EQ STAGE, and this is where it actually
        * bites. Guarding only the band acceptance changed nothing: measured,
        * the phase degradation at larger budgets does not come from a band
