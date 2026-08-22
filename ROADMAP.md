@@ -196,9 +196,31 @@ Volgorde binnen een blok = aanbevolen prioriteit. Inschattingen zijn grof:
    ka-tier-ronde al een keer gemaakt heeft. Meten zodra er een tweede volledige
    3-weg-set is (de reflectievrije meting brengt die mee).
 
+4. **De weiger-drempel voor degeneratie hertoetsen** (S, WACHT OP DATA) —
+   `RATIO_DEGENERATE = 0,01` in impedanceDiag.ts staat in een LEGE kloof van
+   ×159 tussen de kapotte metingen (0,0011) en de laagste gezonde (0,1746),
+   gemeten over 18 seeds op twee driversets. Maar de verre kant van die kloof
+   is twee waarnemingen van ÉÉN fenomeen (mid-tak, 4799 Hz, twee kandidaten op
+   hetzelfde ontwerp). Genoeg om nu op te beslissen, te weinig om er nooit meer
+   naar te kijken. De drempel heeft 9×/17× marge en `degenerateLoad.test.ts`
+   pint de kloof, dus een synthese-wijziging die hem verschuift faalt zichtbaar
+   — maar bij een derde driverset hoort de verdeling opnieuw gedraaid te
+   worden. Zelfde behandeling als het EQ-budget-omslagpunt hierboven.
+5. **Waarom de EQ-realisatie degenereert** (M, ONDERZOEK) — de weigering vangt
+   het symptoom; de oorzaak staat open. Gemeten: negen van de negen
+   `eqBands = 0`-seeds zijn schoon (laagste ratio 0,257), vijf van de negen met
+   `eqBands = 2` duiken onder 1 Ω en twee ervan naar 0,005 Ω. **De EQ-trap
+   maakt het.** De per-tak synthese realiseert de banden als traps en
+   shelf-pads en fit ze tegen de DRIVER-impedantie in isolatie; niets in die
+   trap kijkt naar wat de tak aan de versterker aanbiedt. Wat nog niet bekend
+   is: of het een specifieke realisatievorm is (de shunt-trap tussen
+   laddersecties is de eerste verdachte), of een waardebereik, of de
+   wisselwerking met de serie-cap ervoor. Dit staat los van de reparatie en
+   verdient een eigen meting.
+
 ## Middel — meer werk, duidelijke winst
 
-4. **BOUWEN EN METEN — de lus sluiten** (M, en het belangrijkste open punt) —
+6. **BOUWEN EN METEN — de lus sluiten** (M, en het belangrijkste open punt) —
    alles hierboven is een getrouwe simulatie van de meetdata; of de kéten klopt
    weten we pas als een gebouwd filter over zijn simulatie ligt. Het gereedschap
    staat er (verificatie-slot + 🔬 Compare wizard) en is nog nooit op een echte
@@ -206,7 +228,7 @@ Volgorde binnen een blok = aanbevolen prioriteit. Inschattingen zijn grof:
    verdiend; wijkt het af, dan wéét je dat het aan de meetopstelling ligt en niet
    aan het filter. Zolang dit open staat, is elke verdere optimizer-verfijning
    sleutelen aan de verkeerde kant van het probleem.
-5. **Dood gewicht fysisch herkennen** (M — gebouwd, gemeten, TERUGGEDRAAID)
+7. **Dood gewicht fysisch herkennen** (M — gebouwd, gemeten, TERUGGEDRAAID)
    — een tak kan onderdelen dragen die elektrisch niet bestaan (een 6,8 mH
    shunt-spoel = 186 Ω op de kruising; twee valstrikken op 232 en 411 Hz in een
    TWEETER-tak). Een veeg op "verwijderen kost <0,5% van de objective" maakte
@@ -218,10 +240,10 @@ Volgorde binnen een blok = aanbevolen prioriteit. Inschattingen zijn grof:
    de band waar die tak werkelijk bijdraagt — een onderdeel dat écht inert is
    kan de stroomafwaartse stappen niet verplaatsen en heeft dus geen terugdraai
    nodig. Zie CLAUDE.md voor de volledige meting.
-6. **Catalogus-onderhoud** (doorlopend) — nieuwe Gemini/SKU-updates blijven
+8. **Catalogus-onderhoud** (doorlopend) — nieuwe Gemini/SKU-updates blijven
    importeerbaar; prijzen periodiek herijken op echte NL/EU-ankers (zie de
    prijsverificatie-ronde in CLAUDE.md).
-7. **Gradiënt-warmstart voor de componenttuner** (M/L) — het vervolg op
+9. **Gradiënt-warmstart voor de componenttuner** (M/L) — het vervolg op
    `adjoint.ts`. De synthese draait nu op exacte gradiënten; `netOptimizer.tune`
    nog niet, en dáár zit de meeste rekentijd van een scan (een 3-weg-net draagt
    16–25 vrije waardes). Kan niet één-op-één: zijn objective bevat termen die
@@ -233,7 +255,7 @@ Volgorde binnen een blok = aanbevolen prioriteit. Inschattingen zijn grof:
    de VOLLE objective — puur seeding, het enige mechanisme dat hier
    herhaaldelijk veilig is gebleken. De anker-les blijft leidend: de objective
    zelf blijft af.
-8. **Run-logboek als dataset** (S, dan doorlopend) — elke optimizer-run
+10. **Run-logboek als dataset** (S, dan doorlopend) — elke optimizer-run
     produceert al (instellingen → resultaat); die paren wegschrijven kost bijna
     niets en levert over maanden de enige data waarmee je een voorspellend model
     voor kandidaat-snoei kunt BEOORDELEN in plaats van hopen. Eerst meten, dan

@@ -563,6 +563,73 @@ eigen bewijs, om een andere reden dan waarvoor we zochten.
 
 ---
 
+### GEBOUWD: de degeneratie-weigering (aug 2026)
+
+`RATIO_DEGENERATE = 0,01` in impedanceDiag.ts, met de gemeten verdeling in de
+comment ernaast. `worstImpedanceRatio` is de ENE definitie — `branchImpedanceRatios`
+rapporteert ermee, `synthesize` weigert ermee, geen tweede kopie van dezelfde
+formule.
+
+**Vorm: weigeren, geen strafterm.** De fit is onaangeroerd; het oordeel valt
+één keer, op de afgeronde tak, aan de uitgang van `synthesize`
+(`SynthesisResult.degenerateLoad`). Beide ketens zetten het in `disqualified`,
+dus de kandidaat blijft zichtbaar en doorgestreept in de scan-tabel en kan
+nooit winnen. Een eindige wal wist het landschap dat hij bedekt, óók als hij
+exact nul is binnen de grens — dat heeft 17° M-T-fase gekost (A3e) en daarvóór
+6 dB rimpel. **Een constraint is geen veiliger soort objective-term.**
+
+De melding noemt tak, frequentie, ratio en beide impedanties, en zegt
+uitdrukkelijk dat het een DEGENERATIE is en geen zware last, met "reach niet
+naar de versterker- of impedantie-instellingen; de topologie van deze kandidaat
+moet veranderen". Anders draait de gebruiker aan de verkeerde knop.
+
+Ook het 2-weg-pad kreeg hem (`ChainResult.disqualified`, nieuw): 2 van de 6
+2-weg-seeds in de census zaten onder 1 Ω, dus dit is geen 3-weg-verschijnsel.
+
+**De doctrine in impedanceDiag is verfijnd, niet overtreden.** De oude zin
+blijft waar en heeft zijn onderwerp terug: een getal dat goed genoeg is om een
+ontwerper te tonen is niet automatisch goed genoeg om een ontwerp op te
+weigeren — **maar dat hangt aan de DREMPEL, niet aan de maat.** Op 0,7 scheidt
+de ratio niet (een serie-spoel haalt op eigen kracht 0,62); op 0,01 scheidt hij
+met de gemeten kloof van ×159. Eén maat, twee drempels, twee gevolgen.
+
+`degenerateLoad.test.ts` pint de KLOOF, niet de constante: de kapotte kant, de
+dichtstbijzijnde gezonde kant, het EQ-patroon, de afstand tussen de twee
+drempels en de gedeelde definitie. Een synthese-wijziging die een van beide
+populaties verschuift faalt zichtbaar, met het getal dat bewoog.
+
+### EIGEN BEVINDING, LOS VAN DE REPARATIE: het is de EQ-trap
+
+De weigering vangt het symptoom. De oorzaak staat open, en het patroon is
+scherp genoeg om apart te noteren:
+
+```
+eqBands = 0    9 van de 9 seeds schoon      laagste ratio 0,257
+eqBands = 2    5 van de 9 onder 1 Ω         twee ervan op 0,005 Ω (ratio 0,0011)
+```
+
+**De EQ-trap maakt het**, op beide driversets en in beide codepaden. De per-tak
+synthese realiseert de banden als traps en shelf-pads en fit ze tegen de
+DRIVER-impedantie in isolatie; niets in die trap kijkt naar wat de tak aan de
+versterker aanbiedt. Wat nog niet bekend is: of het aan een specifieke
+realisatievorm ligt (de shunt-trap tussen laddersecties is de eerste
+verdachte), aan een waardebereik, of aan de wisselwerking met de seriecap
+ervoor. Dat verdient een eigen meting — zie ROADMAP.
+
+---
+
+## Wat er open blijft
+
+1. **Waarom de EQ-realisatie degenereert** (hierboven). De weigering is een
+   vangnet, geen verklaring.
+2. **Stap 1 opnieuw meten** — de fase-weging (0,50 tegen 0,70) is niet te
+   beslissen zolang de kandidaten onbouwbaar zijn. Zodra er bouwbare uit de
+   scan komen: winnaar tegen winnaar, mét de status ernaast.
+3. **Het EQ-budget-omslagpunt** op een tweede driverset (ROADMAP).
+4. **De weiger-drempel hertoetsen** bij een derde driverset (ROADMAP).
+5. **A4/A5/A7/A8 en de venstertoets** — wachtend op de nieuwe metingen, om de
+   reden hieronder.
+
 ## De refactor A4–A8
 
 Wacht op de reflectievrije meting. Die vervangt de gate-vloer van 455 Hz

@@ -265,22 +265,102 @@ export interface BranchRatio {
 }
 
 /**
- * Ratio below which a branch is worth looking at.
+ * Ratio below which a branch is worth LOOKING AT. Reporting only.
  *
- * ⚠ NOT A CLEAN SEPARATOR, and measured to be so rather than assumed. A plain
- * low-pass inductor crosses it on its own: on the ported test woofer the worst
- * ratio runs 0.98 / 0.93 / 0.85 / 0.76 / 0.66 / 0.62 for 0.5 / 1 / 2.2 / 4 / 8
- * / 16 mH, because a series +jX cancels the driver's -jX above resonance and
- * |Z_branch| legitimately falls below |Z_driver|.
+ * ⚠ AT THIS VALUE THE RATIO DOES NOT SEPARATE, and that is measured rather
+ * than assumed. A plain low-pass inductor crosses it on its own: on the ported
+ * test woofer the worst ratio runs 0.98 / 0.93 / 0.85 / 0.76 / 0.66 / 0.62 for
+ * 0.5 / 1 / 2.2 / 4 / 8 / 16 mH, because a series +jX cancels the driver's -jX
+ * above resonance and |Z_branch| legitimately falls below |Z_driver|.
  *
  * So this flags "which branch runs low", which is what the ratio is FOR and
  * what it does correctly on Sanders filter (woofer 0.58, mid 0.75, tweeter
  * 0.98). It does not separate a loading shunt from a cancelling series
- * element. That is why everything in this module is read-only: a number good
- * enough to show a designer is not automatically good enough to refuse a
- * design on, and the difference is exactly the anchor lesson.
+ * element — hence reporting, never a verdict.
+ *
+ * THE OLD SENTENCE STILL HOLDS, WITH ITS SUBJECT CORRECTED (aug 2026): a
+ * number good enough to show a designer is not automatically good enough to
+ * refuse a design on — but that hangs on the THRESHOLD, not on the measure.
+ * See {@link RATIO_DEGENERATE}, two orders further down, where the same
+ * measure does separate and refusing is justified.
  */
 export const RATIO_FLAG = 0.7;
+
+/**
+ * Ratio below which a branch is BROKEN, not merely a hard load — the one
+ * threshold in this module that carries a consequence.
+ *
+ * MEASURED, aug 2026: 18 synthesised seeds (design + per-branch synthesis, no
+ * tune) across two real driver sets and both code paths — Sanders measured
+ * three-way and the KOAN two-way — giving 48 branch readings. Sorted, the
+ * whole distribution:
+ *
+ *     0.0011   0.005 / 5.01 Ω @ 4799 Hz  mid  OUTSIDE its passband
+ *     0.0011   0.005 / 5.01 Ω @ 4799 Hz  mid  OUTSIDE its passband
+ *     ─────────────────────── GAP ×159, EMPTY ───────────────────────
+ *     0.1746   0.693 / 3.97 Ω @ 1004 Hz  mid    inside
+ *     0.1839   0.789 / 4.29 Ω @ 1670 Hz  mid    inside
+ *     0.2148   0.984 / 4.58 Ω @ 2174 Hz  mid    inside
+ *     0.2570 … 0.8942   (39 readings, continuous, no further gap)
+ *     1.6421   a series element lifting the branch above the bare driver
+ *
+ * The distribution is here rather than the conclusion so a later reader can
+ * see the gap and judge it, instead of taking this note's word for it. It is
+ * pinned by a test (impedanceDiag.test.ts) so a synthesis change that moves
+ * the gap fails visibly.
+ *
+ * WHY 0.01. The geometric middle of the gap is 0.0139; 0.01 is the round
+ * number beside it — one per cent of what the driver itself offers. Margins:
+ * 9× above the broken population, 17× below the lowest healthy reading, and
+ * 62× below the series-inductor counterexample that defeats RATIO_FLAG.
+ *
+ * TWO HONESTIES. (1) The far side of the gap is THIN: two readings, and they
+ * are the same phenomenon twice (mid branch, 4799 Hz, two candidates landing
+ * on the same design) — one phenomenon, two observations. The line sits at
+ * 0.01 rather than snug against the data precisely so one more observation
+ * cannot move it. (2) The healthy population is CONTINUOUS from 0.1746, so
+ * there is no second gap separating "heavy load" from "normal" — which is why
+ * that band is reported and never refused. A measure that catches both
+ * populations is useful; a consequence that refuses both would be wrong.
+ *
+ * Re-test when a third driver set exists (see ROADMAP).
+ */
+export const RATIO_DEGENERATE = 0.01;
+
+export interface WorstRatio {
+  /** |Z_branch| / |Z_bare| at its lowest point in band. */
+  ratio: number;
+  atHz: number;
+  branchOhm: number;
+  bareOhm: number;
+}
+
+/**
+ * Worst (lowest) ratio of a branch impedance against its bare driver.
+ *
+ * THE ONE DEFINITION. `branchImpedanceRatios` below reports with it, and
+ * `synthesize` refuses with it — two consumers of one function rather than
+ * two copies of one formula, which is the mistake this codebase keeps paying
+ * for. Returns null when nothing in the band is usable.
+ */
+export function worstImpedanceRatio(
+  branchZ: readonly Complex[],
+  bareZ: readonly Complex[],
+  freq: readonly number[],
+  band: [number, number] = [20, 20000],
+): WorstRatio | null {
+  let out: WorstRatio | null = null;
+  const n = Math.min(freq.length, branchZ.length, bareZ.length);
+  for (let i = 0; i < n; i++) {
+    if (freq[i] < band[0] || freq[i] > band[1]) continue;
+    const b = mag(bareZ[i]);
+    const d = mag(branchZ[i]);
+    if (!(b > 0) || !Number.isFinite(d)) continue;
+    const r = d / b;
+    if (out === null || r < out.ratio) out = { ratio: r, atHz: freq[i], branchOhm: d, bareOhm: b };
+  }
+  return out;
+}
 
 /**
  * Ratio of delivered branch impedance to bare driver impedance, whole band.
@@ -302,27 +382,19 @@ export function branchImpedanceRatios(
     const br = branchImpedance(parts, model, freq, driverZ);
     if (!bare || !br) continue;
     const ratio: number[] = [];
-    let worst = Infinity;
-    let worstAtHz = 0;
-    let deliveredOhm = 0;
-    let bareOhm = 0;
     for (let i = 0; i < freq.length; i++) {
       const b = mag(bare[i]);
       const d = mag(br.z[i]);
-      if (!(b > 0) || !Number.isFinite(d)) {
-        ratio.push(NaN);
-        continue;
-      }
-      const r = d / b;
-      ratio.push(r);
-      if (freq[i] < band[0] || freq[i] > band[1]) continue;
-      if (r < worst) {
-        worst = r;
-        worstAtHz = freq[i];
-        deliveredOhm = d;
-        bareOhm = b;
-      }
+      ratio.push(!(b > 0) || !Number.isFinite(d) ? NaN : d / b);
     }
+    // The worst point comes from the ONE definition (worstImpedanceRatio), so
+    // the number this panel shows and the number the synthesis refuses on
+    // cannot drift apart.
+    const w = worstImpedanceRatio(br.z, bare, freq, band);
+    const worst = w?.ratio ?? Infinity;
+    const worstAtHz = w?.atHz ?? 0;
+    const deliveredOhm = w?.branchOhm ?? 0;
+    const bareOhm = w?.bareOhm ?? 0;
     const flagged = worst < RATIO_FLAG;
     out.push({
       name: model,

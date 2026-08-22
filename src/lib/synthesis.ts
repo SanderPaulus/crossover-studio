@@ -5,6 +5,7 @@ import { evalDriverFilter, ladderElementSeeds } from './filters.ts';
 import type { Netlist, NetElement, PassiveElement } from './network.ts';
 import { solveNetwork } from './network.ts';
 import { lbfgs } from './lbfgs.ts';
+import { RATIO_DEGENERATE, worstImpedanceRatio } from './impedanceDiag.ts';
 import { dbPhaseGradient, solveWithSensitivities } from './adjoint.ts';
 import { coilDcr, hasImportedCatalog, pickCandidates, type CatalogPick, type SnapPrefs } from './catalog.ts';
 import { wrapDeg } from './dsp.ts';
@@ -50,6 +51,23 @@ export interface SynthesisResult {
   /** Weighted RMS phase error, degrees. */
   rmsDeg: number;
   converged: boolean;
+  /**
+   * Set when this branch presents a DEGENERATE load: |Z_branch| falls below
+   * {@link RATIO_DEGENERATE} of the bare driver's own impedance somewhere in
+   * band. Absent on a healthy branch.
+   *
+   * REPORTED HERE, ENFORCED BY THE CALLER. The chains turn it into a
+   * disqualification with this reason attached; nothing in the fit sees it —
+   * see the note at the refusal for why it is not a penalty term.
+   */
+  degenerateLoad?: {
+    ratio: number;
+    atHz: number;
+    branchOhm: number;
+    bareOhm: number;
+    /** Ready-made sentence: names the frequency, the ratio, and what it IS. */
+    reason: string;
+  };
   /** Acoustic mode only: resulting driver SPL (FRD + filter), dB. */
   acousticAchievedDb?: number[];
   /** Acoustic mode only: the ideal acoustic target it was fitted to, dB. */
@@ -409,6 +427,9 @@ export interface SynthesizeOptions {
    * 1 = phase only, 0.5 = balanced (the previous fixed behaviour).
    */
   phasePriority?: number;
+  /** Branch name for the degenerate-load message ('woofer' / 'mid' / …). A
+   *  refusal that cannot name the branch sends the reader hunting. */
+  label?: string;
   /**
    * 'filter'   — fit the ELECTRICAL transfer to the target filter curve.
    * 'acoustic' — fit the resulting ACOUSTIC response (measured FRD × filter)
@@ -971,8 +992,57 @@ export function synthesize(
     seriesRsFinal = srsOf(pick);
   }
 
-  const achieved = solveNetwork(topo.build(values, seriesRsFinal), freq, { drv: [...driverZ] })
-    .transfers['D'];
+  const finalSol = solveNetwork(topo.build(values, seriesRsFinal), freq, { drv: [...driverZ] });
+  const achieved = finalSol.transfers['D'];
+
+  /* ---- DEGENERATE-LOAD REFUSAL (aug 2026) ---------------------------------
+   *
+   * A branch can fit its acoustic target perfectly and still offer the
+   * amplifier a near short circuit somewhere outside its passband. Measured on
+   * Sanders three-way: the mid branch came out of here at 0.005 Ω at 4799 Hz —
+   * a 102 µF series cap is 0.26 Ω up there, so the amplifier looks straight
+   * through it at the ladder's own resonance. Voltage drive hides that from
+   * every response metric this stage computes, so nothing in the fit could
+   * ever notice, and downstream the amp-load repair cannot undo it either (it
+   * moves values; lifting this load needed 2.77–3.00 Ω of source resistance,
+   * above the disqualification tier).
+   *
+   * The quantity was already here — `solveNetwork` returns `inputZ` and the
+   * bare driver impedance is the argument — it simply was never read.
+   *
+   * MEASURED, NOT ASSUMED: over 18 seeds on two driver sets there is an empty
+   * gap of ×159 between the broken readings (0.0011) and the lowest healthy
+   * one (0.1746); the line sits at 0.01 with 9× and 17× of margin. The full
+   * distribution is in the RATIO_DEGENERATE note.
+   *
+   * ⚠ WHY THIS IS A REFUSAL AND NOT A PENALTY TERM. A finite wall erases the
+   * landscape it covers even when it is exactly zero inside the limit, because
+   * the search does not start inside — that cost 17° of M-T phase in A3e and
+   * 6 dB of ripple before that. So the fit is untouched and the verdict is
+   * taken once, on the finished branch. A constraint is not a safer kind of
+   * objective term.
+   *
+   * AND IT IS DELIBERATELY NOT THE `RATIO_FLAG` BAND. 0.7 is reporting: a
+   * plain series inductor reaches 0.62 on its own with nothing wrong, and the
+   * 0.17–0.21 readings in the census are a hard load, which is a designer's
+   * choice to make. Refusing those would be refusing the design instead of the
+   * defect. */
+  const worstRatio = worstImpedanceRatio(finalSol.inputZ, driverZ, freq);
+  const degenerateLoad =
+    worstRatio && worstRatio.ratio < RATIO_DEGENERATE
+      ? {
+          ...worstRatio,
+          reason:
+            `${opts.label ? `the ${opts.label} branch` : 'this branch'} presents ` +
+            `${worstRatio.branchOhm.toFixed(3)} Ω to the amplifier at ` +
+            `${Math.round(worstRatio.atHz)} Hz — ${(worstRatio.ratio * 100).toFixed(2)}% of the ` +
+            `${worstRatio.bareOhm.toFixed(2)} Ω the bare driver offers there. That is a ` +
+            `DEGENERATION in the filter, not a heavy load: a healthy branch never goes below ` +
+            `${(RATIO_DEGENERATE * 100).toFixed(0)}% (measured floor over two driver sets: 17%). ` +
+            `Nothing downstream can repair it — do not reach for the amplifier or the impedance ` +
+            `settings; this candidate's topology is what has to change.`,
+        }
+      : undefined;
 
   // Report errors on the full grid with the same weighting and mode.
   const fullWeights = target.map((t) => Math.max(abs(t), 0.03) ** wExp);
@@ -1017,6 +1087,7 @@ export function synthesize(
     rmsDb: Math.sqrt(accDb / fullWSum),
     rmsDeg: Math.sqrt(accDeg / fullWSum),
     converged: fit.converged || stationary,
+    ...(degenerateLoad ? { degenerateLoad } : {}),
     ...(splFit
       ? {
           acousticAchievedDb: achieved.map((c, i) => splFit[i] + dbOf(c)),

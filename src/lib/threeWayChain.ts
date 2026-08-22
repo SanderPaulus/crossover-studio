@@ -272,6 +272,7 @@ export function runThreeWayChain(
       catalogSnap: s.catalogSnap,
       corrections: (s.targets ? 'lean' : 'auto') as 'lean' | 'auto',
       leanTargetDb: s.targets?.rippleDb,
+      label: zKey,
       snapPrefs: s.snapPrefs?.profile === 'position' ? { ...s.snapPrefs, profile: 'premium' as const } : s.snapPrefs,
       ...(s.synthMode === 'acoustic' ? { driverSplDb: idxs.map((i) => resp.spl[i]) } : {}),
     });
@@ -279,6 +280,14 @@ export function runThreeWayChain(
   const synthWoofer = synthOne(specs.woofer, w, 'woofer');
   const synthMid = synthOne(specs.mid, m, 'mid');
   const synthTweeter = synthOne(specs.tweeter, t, 'tweeter');
+  /* Degenerate-load refusal (see synthesis.ts): a branch that offers the
+   * amplifier a near short cannot be repaired by anything downstream, so the
+   * candidate is out of the race here — with the branch, the frequency and
+   * the ratio in the reason. It still gets tuned and still shows its numbers
+   * in the scan table, struck through: a row that vanishes teaches nothing. */
+  const degenerate = [synthWoofer, synthMid, synthTweeter]
+    .map((r) => r.degenerateLoad?.reason)
+    .filter((x): x is string => typeof x === 'string');
   const merged = mergeSynthesizedSchematics([
     { components: synthWoofer.components, model: 'woofer' },
     { components: synthMid.components, model: 'mid' },
@@ -441,6 +450,7 @@ export function runThreeWayChain(
    * The design handed over is the last one that satisfied every constraint, so
    * it is safe to look at — but it never got what that pass was for. */
   if (net.infeasible) disqualified.push(net.infeasible);
+  disqualified.push(...degenerate);
   // (fix 1a) Source resistance at the low driver: hard tier.
   const rsDisq = s.rSourceDisqualifyOhm ?? 2.0;
   /* The DELIVERED figure, not the audit's: audit.rSourceOhm is frozen before

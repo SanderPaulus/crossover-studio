@@ -106,6 +106,10 @@ export interface ChainResult {
   net: NetOptimizeResult;
   /** Catalog BOM total (€) of the tuned network; null without priced catalog. */
   bomTotalEur: number | null;
+  /** Disqualification reasons; empty = in the race. Same shape and same
+   *  meaning as the three-way chain: a disqualified candidate stays visible
+   *  and clickable, it just cannot win. */
+  disqualified: string[];
   /** Amplifier-load verdict of the DELIVERED network: false when the tune was
    *  rejected on the Z floor or the dip could not be repaired. RELATIVE — it
    *  says the tune did not make things worse, NOT that the load is sane. */
@@ -242,8 +246,14 @@ export function runDesignChain(
     snapPrefs: fitPrefs,
     ...(s.synthMode === 'acoustic' ? { driverSplDb: [...raw.spl] } : {}),
   });
-  const synthWoofer = synthesize(shifted(b.specs.woofer), grid, driverZ.mid, synthOpts(w));
-  const synthTweeter = synthesize(shifted(b.specs.tweeter), grid, driverZ.tweeter, synthOpts(t));
+  const synthWoofer = synthesize(shifted(b.specs.woofer), grid, driverZ.mid, { ...synthOpts(w), label: 'low' });
+  const synthTweeter = synthesize(shifted(b.specs.tweeter), grid, driverZ.tweeter, { ...synthOpts(t), label: 'high' });
+  /* Degenerate-load refusal (see synthesis.ts) — the two-way path needs it as
+   * much as the three-way one: 2 of the 6 two-way seeds in the census went
+   * under 1 Ω, so this is not a three-way phenomenon. */
+  const degenerate = [synthWoofer, synthTweeter]
+    .map((r) => r.degenerateLoad?.reason)
+    .filter((x): x is string => typeof x === 'string');
   const merged = mergeSynthesizedSchematics([
     { components: synthWoofer.components, model: 'mid' },
     { components: synthTweeter.components, model: 'tweeter' },
@@ -323,6 +333,7 @@ export function runDesignChain(
   return {
     label,
     xoRange: input.xoRange,
+    disqualified: [...(net.infeasible ? [net.infeasible] : []), ...degenerate],
     zOk,
     zMinOhm: net.after.zMinOhm ?? null,
     xoWindowOk,
@@ -458,7 +469,9 @@ export function rankChainResults(
    * floor — is DISQUALIFIED, the same tier the three-way chain uses. It stays
    * visible and clickable; it just cannot win. */
   const zClass = (r: ChainResult): number =>
-    (r.net.infeasible ? 10 : 0) +
+    // `disqualified` carries net.infeasible AND the synthesis refusals; older
+    // results without the field fall back to the one reason that existed.
+    ((r.disqualified?.length ?? 0) > 0 || r.net.infeasible ? 10 : 0) +
     (r.zOk === false ? 2 : 0) + (zFloorOk(r) ? 0 : 1) + rsClass(r) +
     (bomCapEur > 0 && r.bomTotalEur != null && r.bomTotalEur > bomCapEur ? 1 : 0);
   const xoClass = (r: ChainResult): number => (r.xoWindowOk === false ? 1 : 0);
