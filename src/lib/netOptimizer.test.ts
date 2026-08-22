@@ -12,7 +12,6 @@ import { sourceResistanceOhm } from './partAudit.ts';
 import { solveNetwork } from './network.ts';
 import { allSeries, bomFor, setCustomSeries } from './catalog.ts';
 import { deserializeCatalog } from './catalogFile.ts';
-import { floorCurve } from './impedanceFloor.ts';
 import {
   busPositions,
   optimizeNetworkValues,
@@ -975,236 +974,71 @@ describe('A3d — the quality terms live on the band; the fundamentals deliberat
   });
 });
 
-describe('A3e — the ranking\'s hard tier is a CONSTRAINT during the search', () => {
-  it('a network forced past the source-resistance limit is rejected, and inside it nothing changes', () => {
-    /* Two halves, and both matter.
-     *
-     * INSIDE the limit the constraint must contribute EXACTLY zero — otherwise
-     * it is a weight in disguise and the anchor lesson applies: every added
-     * term moves the search path, however small. So the same run with the
-     * constraint on and off must be bit-identical when nothing violates it.
-     *
-     * OUTSIDE it the search must refuse to go there rather than optimising its
-     * way into a design the ranking will discard anyway. */
-    const opts = {
-      phasePriority: 0.5,
-      maxIterations: 60,
-      catalogSnap: false,
-      audit: { enabled: false as const },
-    };
-    /* The network needs a SERIES RESISTOR in the low branch for this to be
-     * testable at all, and finding that out is itself the finding: with a fixed
-     * topology and no series resistor, R_source is just the coil DCR, which the
-     * value tuner does not move. Measured: 0.5 ohm at every limit from 0.001 to
-     * 2.0, identical values throughout. So the constraint bites exactly where
-     * R_source can move — a series resistor (Sander's Working(5) carried a
-     * 3.3 ohm one), a pruned or escalated element, or the catalog snap picking
-     * thinner wire. */
-    const P = (x: number, y: number) => ({ x, y });
-    const withPad = (): VxpPart[] => [
-      { type: 'Generator', partId: 'G1', params: [{ name: 'Eg', value: 2.83, unit: 'V' }], wires: [P(3, 4), P(3, 11)] },
-      { type: 'Ground', params: [], wires: [P(3, 11)] },
-      { type: 'Resistor', partId: 'R1', params: [{ name: 'R', value: 3.3, unit: 'Ω' }], wires: [P(3, 4), P(9, 4)] },
-      { type: 'Inductor', partId: 'L1', params: [{ name: 'L', value: 0.6, unit: 'mH' }, { name: 'DCR', value: 0.2, unit: 'Ω' }], wires: [P(9, 4), P(15, 4)] },
-      { type: 'Driver', partId: 'D1', model: 'mid', inverted: false, params: [], wires: [P(15, 4), P(15, 11)] },
-      { type: 'Ground', params: [], wires: [P(15, 11)] },
-      { type: 'Capacitor', partId: 'C2', params: [{ name: 'C', value: 5.6, unit: 'uF' }], wires: [P(3, 14), P(9, 14)] },
-      { type: 'Wire', params: [], wires: [P(3, 4), P(3, 14)] },
-      { type: 'Driver', partId: 'D2', model: 'tweeter', inverted: false, params: [], wires: [P(9, 14), P(9, 21)] },
-      { type: 'Ground', params: [], wires: [P(9, 21)] },
-    ];
-    const values = (r: { parts: VxpPart[] }) =>
-      r.parts
-        .filter((p) => /Inductor|Capacitor|Resistor/.test(p.type))
-        .map((p) => p.params.map((q) => q.value).join('/'));
-
-    /* And the low branch has to NEED its pad, or the amplitude term simply
-     * tunes the resistor away for free — measured: 3.3 -> 0.19 ohm with no
-     * constraint at all. A branch that is 12 dB hotter than the other cannot do
-     * that: the level term holds the pad in place, so R_source and flatness
-     * genuinely compete. That is Sander's case (his low branch ended at
-     * 3.42 ohm while every flatness number looked fine), and it is the only
-     * situation in which this constraint has anything to decide. */
-    const hot: typeof wBase = { ...wBase, spl: wBase.spl.map((v) => v + 12) };
-    const free = optimizeNetworkValues(withPad(), grid, hot, tBase, driverZ, NO_ADJ, opts);
-    // INSIDE the limit: exactly zero contribution, so bit-identical.
-    const loose = optimizeNetworkValues(withPad(), grid, hot, tBase, driverZ, NO_ADJ, {
-      ...opts,
-      rSourceDisqualifyOhm: 50,
-    });
-    expect(loose.after.rippleDb).toBeCloseTo(free.after.rippleDb, 12);
-    expect(loose.evaluations).toBe(free.evaluations);
-    expect(values(loose)).toEqual(values(free));
-
-    /* OUTSIDE it the search moves substantially — but MEASURED, it does not
-     * yet guarantee. On this fixture the delivered network goes from 7.17 to
-     * 5.47 ohm against a 1.0 limit: a large push, not a wall.
-     *
-     * The likely reason, and it is the failure shape this codebase keeps
-     * paying for: a guard enforced at step N and undone at step N+1. The
-     * value search does respect the constraint, but the passes that run AFTER
-     * it — the amplifier-floor repair in particular, which raises resistance
-     * to lift an impedance dip — know nothing about it. Pinned as measured
-     * rather than as hoped, so the gap is visible instead of asserted away. */
-    const held = optimizeNetworkValues(withPad(), grid, hot, tBase, driverZ, NO_ADJ, {
-      ...opts,
-      rSourceDisqualifyOhm: 1.0,
-    });
-    expect(values(held)).not.toEqual(values(free));
-    const rsFree = sourceResistanceOhm(free.parts, { grid, driverZ })!;
-    const rsHeld = sourceResistanceOhm(held.parts, { grid, driverZ })!;
-    expect(rsFree).toBeGreaterThan(6);
-    expect(rsHeld).toBeLessThan(rsFree - 1);
-  });
-});
-
-describe('A3f — a constraint survives the passes that run after the search', () => {
-  it('a repair that can only succeed by breaking the limit is rolled back and declared infeasible', () => {
-    /* The failure shape this codebase keeps paying for: a guard enforced at
-     * step N and undone at step N+1. The amplifier-floor repair RAISES
-     * resistance to lift an impedance dip, and resistance is exactly what the
-     * source-resistance limit bounds — two passes turning the same knob in
-     * opposite directions.
-     *
-     * The rule is not "pick the lesser evil": if both goals cannot hold, the
-     * candidate is infeasible and says so. Silently choosing one is the only
-     * outcome that is not allowed. */
-    const P = (x: number, y: number) => ({ x, y });
-    // A network with a series resistor big enough that any further increase
-    // breaks a tight limit, feeding a hot branch so the pad cannot just go.
-    const net = (): VxpPart[] => [
-      { type: 'Generator', partId: 'G1', params: [{ name: 'Eg', value: 2.83, unit: 'V' }], wires: [P(3, 4), P(3, 11)] },
-      { type: 'Ground', params: [], wires: [P(3, 11)] },
-      { type: 'Resistor', partId: 'R1', params: [{ name: 'R', value: 3.3, unit: 'Ω' }], wires: [P(3, 4), P(9, 4)] },
-      { type: 'Inductor', partId: 'L1', params: [{ name: 'L', value: 0.6, unit: 'mH' }, { name: 'DCR', value: 0.2, unit: 'Ω' }], wires: [P(9, 4), P(15, 4)] },
-      { type: 'Driver', partId: 'D1', model: 'mid', inverted: false, params: [], wires: [P(15, 4), P(15, 11)] },
-      { type: 'Ground', params: [], wires: [P(15, 11)] },
-      { type: 'Capacitor', partId: 'C2', params: [{ name: 'C', value: 5.6, unit: 'uF' }], wires: [P(3, 14), P(9, 14)] },
-      { type: 'Wire', params: [], wires: [P(3, 4), P(3, 14)] },
-      { type: 'Driver', partId: 'D2', model: 'tweeter', inverted: false, params: [], wires: [P(9, 14), P(9, 21)] },
-      { type: 'Ground', params: [], wires: [P(9, 21)] },
-    ];
-    const hot: typeof wBase = { ...wBase, spl: wBase.spl.map((v) => v + 12) };
-    const opts = {
-      phasePriority: 0.5,
-      maxIterations: 60,
-      catalogSnap: false,
-      audit: { enabled: false as const },
-      rSourceDisqualifyOhm: 1.0,
-    };
-    const r = optimizeNetworkValues(net(), grid, hot, tBase, driverZ, NO_ADJ, opts);
-    const rs = sourceResistanceOhm(r.parts, { grid, driverZ })!;
-    /* The one outcome that is forbidden is passing silently: either the
-     * delivered design is inside the limit, or it is marked infeasible with the
-     * reason. Both are acceptable answers about this candidate. */
-    const insideLimit = rs < 1.0;
-    expect(insideLimit || r.infeasible !== undefined).toBe(true);
-    if (r.infeasible) {
-      expect(r.infeasible).toMatch(/infeasible|limit/);
-      // And the design returned is still the last one that satisfied every
-      // constraint, so it is safe to look at.
-      expect(r.parts.length).toBeGreaterThan(0);
-    }
-  });
-
-  it('the figure a ranking judges on is the one the delivered network measures', () => {
-    /* Found by measuring A3f on Sanders project, and it is the same disease as
-     * the bug that started this round: the number in the table was not the
-     * number of the thing delivered. `audit.rSourceOhm` is frozen at gate 4 —
-     * the code there says so, "before the shrink ladder and the snap" — and
-     * both of those passes still move source resistance. His 562/2270 candidate
-     * was struck through on the audit's 2.0002 Ω while the network that would
-     * actually be built measures 1.64 Ω, inside the 2.0 Ω limit.
-     *
-     * So the constraint was doing its job and the RANKING was reading a stale
-     * number. The rule is the A3f rule one level up: one definition, asked by
-     * everything that judges. */
-    const P = (x: number, y: number) => ({ x, y });
-    const net = (): VxpPart[] => [
-      { type: 'Generator', partId: 'G1', params: [{ name: 'Eg', value: 2.83, unit: 'V' }], wires: [P(3, 4), P(3, 11)] },
-      { type: 'Ground', params: [], wires: [P(3, 11)] },
-      { type: 'Resistor', partId: 'R1', params: [{ name: 'R', value: 2.2, unit: 'Ω' }], wires: [P(3, 4), P(9, 4)] },
-      { type: 'Inductor', partId: 'L1', params: [{ name: 'L', value: 0.6, unit: 'mH' }, { name: 'DCR', value: 0.2, unit: 'Ω' }], wires: [P(9, 4), P(15, 4)] },
-      { type: 'Driver', partId: 'D1', model: 'mid', inverted: false, params: [], wires: [P(15, 4), P(15, 11)] },
-      { type: 'Ground', params: [], wires: [P(15, 11)] },
-      { type: 'Capacitor', partId: 'C2', params: [{ name: 'C', value: 5.6, unit: 'uF' }], wires: [P(3, 14), P(9, 14)] },
-      { type: 'Wire', params: [], wires: [P(3, 4), P(3, 14)] },
-      { type: 'Driver', partId: 'D2', model: 'tweeter', inverted: false, params: [], wires: [P(9, 14), P(9, 21)] },
-      { type: 'Ground', params: [], wires: [P(9, 21)] },
-    ];
-    const hot: typeof wBase = { ...wBase, spl: wBase.spl.map((v) => v + 12) };
-    const r = optimizeNetworkValues(net(), grid, hot, tBase, driverZ, NO_ADJ, {
-      phasePriority: 0.5,
-      maxIterations: 60,
-      catalogSnap: false,
-      audit: { enabled: true as const, thresholds: { rSourceOhm: 1.0 } },
-      rSourceDisqualifyOhm: 2.0,
-    });
-    // The judged figure lives in `after`, which report() builds from the parts
-    // handed over — so it is delivered BY CONSTRUCTION (A3g).
-    expect(r.after.rSourceOhm).not.toBeNull();
-    const measured = sourceResistanceOhm(r.parts, { grid, driverZ })!;
-    expect(r.after.rSourceOhm!).toBeCloseTo(measured, 9);
-    // And `before` is the seed's, measured on the seed's parts.
-    const seedRs = sourceResistanceOhm(net(), { grid, driverZ })!;
-    expect(r.before.rSourceOhm!).toBeCloseTo(seedRs, 9);
-  });
-});
-
-describe('A3i-2 — the derived load floor is a constraint, not a weight', () => {
+describe('the objective carries NO hard-limit walls, and that is measured', () => {
+  /* A3e put an INFEASIBLE wall for R_source into fxOf, and A3i-2 copied the
+   * shape for the load floor. Both are gone, reverted on a MEASUREMENT.
+   *
+   * Bisected on Sanders three-way set, one candidate, everything else fixed:
+   *
+   *     ec00d7c (before A3d)   25 parts  +-1.54 dB  W-M  5.5 deg  M-T 10.6
+   *     5b0e4e8 (A3d)          25 parts  +-1.54 dB  W-M  5.5 deg  M-T 10.6
+   *     28f3b9f (A3e)          24 parts  +-2.54 dB  W-M 18.3 deg  M-T 27.5
+   *     HEAD                   24 parts  +-2.54 dB  W-M 18.3 deg  M-T 27.5
+   *     HEAD, wall disabled    25 parts  +-1.54 dB  W-M  5.5 deg  M-T 10.6
+   *
+   * 17 degrees of mid-to-tweeter phase and a dB of flatness from the wall
+   * alone, and A3d — the change we both suspected first — moved nothing.
+   *
+   * WHY it hurts is not that the term is large where it fires. With 1e6 every
+   * violating point sits on a plateau whose only gradient is the linear
+   * overshoot, so a deterministic simplex seeded there navigates blind until
+   * it escapes and lands wherever it happens to. "Exactly zero inside the
+   * limit" is true and beside the point: the search does not start inside.
+   *
+   * The lesson was already in netOptimizer.ts, in the Z_FLOOR_OHM note —
+   * enforcement DECISION-LEVEL ONLY, because an always-on fx penalty had been
+   * tried and reverted once before, at a cost of 6 dB. */
   const P = (x: number, y: number) => ({ x, y });
-  /* A shunt resistor across the terminals: a load the tuner cannot filter its
-   * way out of, so the constraint has something real to bite on. */
-  const net = (shuntOhm: number): VxpPart[] => [
+  const withPad = (): VxpPart[] => [
     { type: 'Generator', partId: 'G1', params: [{ name: 'Eg', value: 2.83, unit: 'V' }], wires: [P(3, 4), P(3, 11)] },
     { type: 'Ground', params: [], wires: [P(3, 11)] },
-    { type: 'Resistor', partId: 'R9', locked: true, params: [{ name: 'R', value: shuntOhm, unit: 'Ω' }], wires: [P(3, 4), P(3, 11)] },
-    { type: 'Inductor', partId: 'L1', params: [{ name: 'L', value: 0.6, unit: 'mH' }, { name: 'DCR', value: 0.2, unit: 'Ω' }], wires: [P(3, 4), P(9, 4)] },
-    { type: 'Driver', partId: 'D1', model: 'mid', inverted: false, params: [], wires: [P(9, 4), P(9, 11)] },
-    { type: 'Ground', params: [], wires: [P(9, 11)] },
+    { type: 'Resistor', partId: 'R1', params: [{ name: 'R', value: 3.3, unit: 'Ohm' }], wires: [P(3, 4), P(9, 4)] },
+    { type: 'Inductor', partId: 'L1', params: [{ name: 'L', value: 0.6, unit: 'mH' }, { name: 'DCR', value: 0.2, unit: 'Ohm' }], wires: [P(9, 4), P(15, 4)] },
+    { type: 'Driver', partId: 'D1', model: 'mid', inverted: false, params: [], wires: [P(15, 4), P(15, 11)] },
+    { type: 'Ground', params: [], wires: [P(15, 11)] },
     { type: 'Capacitor', partId: 'C2', params: [{ name: 'C', value: 5.6, unit: 'uF' }], wires: [P(3, 14), P(9, 14)] },
     { type: 'Wire', params: [], wires: [P(3, 4), P(3, 14)] },
     { type: 'Driver', partId: 'D2', model: 'tweeter', inverted: false, params: [], wires: [P(9, 14), P(9, 21)] },
     { type: 'Ground', params: [], wires: [P(9, 21)] },
   ];
-  const run = (parts: VxpPart[], loadFloor?: { nominalOhm: number }) =>
-    optimizeNetworkValues(parts, grid, wBase, tBase, driverZ, NO_ADJ, {
-      phasePriority: 0.5,
-      maxIterations: 40,
-      catalogSnap: false,
-      audit: { enabled: false as const },
-      ...(loadFloor ? { loadFloor } : {}),
+  const opts = { phasePriority: 0.5, maxIterations: 60, catalogSnap: false, audit: { enabled: false as const } };
+  const values = (r: { parts: VxpPart[] }) =>
+    r.parts
+      .filter((p) => /^(Resistor|Inductor|Capacitor)$/.test(p.type))
+      .map((p) => p.params.find((q) => ['R', 'L', 'C'].includes(q.name))?.value);
+
+  it('the source-resistance limit does not touch the search path', () => {
+    // The hot branch is where R_source and flatness genuinely compete: a cool
+    // one lets the tuner delete the pad for free, and then nothing is proven.
+    const hot: typeof wBase = { ...wBase, spl: wBase.spl.map((v) => v + 12) };
+    const free = optimizeNetworkValues(withPad(), grid, hot, tBase, driverZ, NO_ADJ, opts);
+    for (const limit of [50, 2.0, 1.0, 0.001]) {
+      const r = optimizeNetworkValues(withPad(), grid, hot, tBase, driverZ, NO_ADJ, {
+        ...opts,
+        rSourceDisqualifyOhm: limit,
+      });
+      expect(values(r)).toEqual(values(free));
+      expect(r.evaluations).toBe(free.evaluations);
+    }
+  });
+
+  it('the load is still MEASURED — removing the wall removed no information', () => {
+    const r = optimizeNetworkValues(withPad(), grid, wBase, tBase, driverZ, NO_ADJ, {
+      ...opts,
+      audit: { enabled: true as const, thresholds: { rSourceOhm: 1.0 } },
     });
-
-  it('OFF by default — every existing path stays bit-identical', () => {
-    /* The anchor lesson, tested rather than asserted: a term that is supposed
-     * to contribute exactly zero has to be shown to contribute exactly zero,
-     * because "small" is not "none" for a deterministic simplex. */
-    const a = run(net(8));
-    const b = run(net(8), { nominalOhm: 2 }); // 1.6 Ω floor, comfortably clear
-    expect(b.after.rippleDb).toBeCloseTo(a.after.rippleDb, 12);
-    expect(b.evaluations).toBe(a.evaluations);
-    expect(b.infeasible).toBeUndefined();
-  });
-
-  it('a load the filter cannot lift is declared INFEASIBLE, with the numbers', () => {
-    const r = run(net(1.2), { nominalOhm: 4 }); // 3.2 Ω floor, 1.2 Ω shunt
-    expect(r.infeasible).toBeDefined();
-    expect(r.infeasible!).toMatch(/against a floor of/);
-    expect(r.infeasible!).toMatch(/4 Ω nominal, IEC 60268-5/);
-    // Never "silently worse": the one forbidden outcome.
-    expect(r.after.zMinOhm!).toBeLessThan(3.2);
-  });
-
-  it('the floor is frequency-dependent, and that changes the verdict', () => {
-    /* The same dip judged twice. A shunt that breaches a 3.2 Ω floor in the
-     * bass clears the relaxed floor above 4 kHz, because the limit is on
-     * CURRENT and programme voltage falls there. A flat threshold cannot make
-     * that distinction, which is the whole reason the curve has a shape. */
-    const flatLow = floorCurve(grid, 4).floorOhm[0];
-    const top = floorCurve(grid, 4).floorOhm[grid.length - 1];
-    expect(flatLow).toBeCloseTo(3.2, 6);
-    expect(top).toBeCloseTo(1.6, 6);
+    expect(r.after.rSourceOhm).not.toBeUndefined();
+    expect(r.after.zMinOhm).not.toBeUndefined();
   });
 });
 

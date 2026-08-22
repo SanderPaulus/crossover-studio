@@ -41,9 +41,7 @@ import { auditNetwork, type AuditThresholds, type NetworkAudit, sourceResistance
  *    improvement to stay.
  */
 
-/** A value no feasible design can reach, but finite so a simplex can still
- *  compare two infeasible points and walk back toward the allowed region. */
-const INFEASIBLE = 1e6;
+
 
 /**
  * WHAT A TERM'S BAND MEANS — a term must CHOOSE, never inherit from whatever
@@ -1736,22 +1734,37 @@ export function optimizeNetworkValues(
        * ranking would be comparing different objectives. netOptimizer.test.ts
        * pins this by requiring an unprobeable run to be identical to one with
        * the weight switched off. */
-      (dissW > 0 && m.dissRatio !== null ? dissW * m.dissRatio * m.dissRatio : 0) +
-      /* The constraint itself: zero inside the limit, a wall outside it that
-       * still slopes home. See the note where rSourceOhm is measured. */
-      /* >= , NOT > . The ranking disqualifies on `rs >= limit`, and a
-       * constraint that stops at `>` delivers exactly the value the ranking
-       * then throws away — measured on Sander's project, which landed on
-       * R_source = 2.00 against a 2.0 limit. Two guards for one rule have to
-       * use one comparison. */
-      (rsHardOhm > 0 && m.rSourceOhm !== null && m.rSourceOhm >= rsHardOhm
-        ? INFEASIBLE + (m.rSourceOhm - rsHardOhm)
-        : 0) +
-      /* A3i-2, the same shape as the R_source constraint above: exactly ZERO
-       * inside the limit so the search path through healthy ground is
-       * untouched, and outside it a finite wall that still slopes home so a
-       * simplex starting in forbidden ground can climb back out. */
-      (loadNominalOhm && m.loadShortOhm > 0 ? INFEASIBLE + m.loadShortOhm : 0)
+      (dissW > 0 && m.dissRatio !== null ? dissW * m.dissRatio * m.dissRatio : 0)
+      /* ⚠ NOTHING ELSE GOES HERE. Two constraint walls used to sit at this
+       * spot — R_source (A3e) and the derived load floor (A3i-2) — and they
+       * were REVERTED after a measurement, not after an argument.
+       *
+       * BISECTED ON SANDERS THREE-WAY SET, one candidate, everything else
+       * held fixed:
+       *
+       *     ec00d7c (before)      25 parts  ±1.54 dB  W-M  5.5°  M-T 10.6°
+       *     5b0e4e8 (A3d)         25 parts  ±1.54 dB  W-M  5.5°  M-T 10.6°
+       *     28f3b9f (A3e)         24 parts  ±2.54 dB  W-M 18.3°  M-T 27.5°
+       *     HEAD                  24 parts  ±2.54 dB  W-M 18.3°  M-T 27.5°
+       *     HEAD, wall disabled   25 parts  ±1.54 dB  W-M  5.5°  M-T 10.6°
+       *
+       * The wall alone cost 17° of mid-to-tweeter phase and a full dB of
+       * flatness, and switching it off at HEAD restored the earlier result
+       * exactly. Everything committed after A3e changed nothing on this task.
+       *
+       * WHY: with INFEASIBLE = 1e6, every point in violation sits on a plateau
+       * whose only gradient is a linear overshoot term. A deterministic simplex
+       * seeded in that region navigates blind until it escapes, and lands in
+       * whatever basin it happens to fall into. "Exactly zero inside the limit"
+       * is true and beside the point — the search does not start inside.
+       *
+       * And the lesson was already written, forty lines above this one, in the
+       * Z_FLOOR_OHM note: enforcement is DECISION-LEVEL ONLY, because an
+       * always-on fx penalty had been tried and reverted once before, for the
+       * same reason, at a cost of 6 dB. I put the same shape back anyway, and
+       * A3i-2 copied it. Hard limits belong in the ranking and in the
+       * post-search gates, where they refuse a result without steering the
+       * path that produces it. */
     );
   };
 
