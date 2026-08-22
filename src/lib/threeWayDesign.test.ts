@@ -37,34 +37,63 @@ describe('threeWayDesign — alignment × polarity structure search', () => {
     /* The ordering test, in the shape of Merger test 5: a later refactor must
      * not be able to quietly swap these stages back.
      *
-     * A choice may not be made on a quantity a later stage still changes.
-     * Without EQ this design step reports a mid-to-tweeter phase around 20
-     * degrees; with EQ, single digits. Choosing the knee on the first number
-     * picks a different knee — measured on Sanders set, 1930 Hz (M-T 9.5) over
-     * 2100 Hz (M-T 5.2), while 2100 also scored BETTER on the objective the
-     * step is minimising. The design this optimiser produced on 2026-08-20,
-     * the one that set the phase bar, crosses at 2101 Hz.
+     * ON THE THREE-WAY FIXTURE, not the artificial one above — there the
+     * greedy places a single band and the two stages agree, so the test would
+     * pass without testing anything. Here they disagree: choosing the knee on
+     * the pre-EQ score picks 1930 Hz, choosing it after picks ~2095, and the
+     * design this optimiser produced on 2026-08-20 crosses at 2101.
      *
      * "Before" is reconstructed through the public API rather than by keeping
      * dead code: run with no EQ budget to get the pre-EQ knee, pin it, then
      * allow EQ. That is exactly the old sequence. */
-    const withEq = { ...base, eqBandsPerBranch: 4 };
-    const after = designThreeWay(withEq);
-
-    const preEqKnee = designThreeWay({ ...base, eqBandsPerBranch: 0 });
+    const g3 = (name: string, gr: number[]) => {
+      const f = parseFrd(load(join('koan-3way', name)));
+      const r = resample(f.freq, f.spl, f.phase, gr, { clampEdges: true });
+      const f0 = f.freq[0];
+      const f1 = f.freq[f.freq.length - 1];
+      return {
+        freq: gr,
+        spl: r.spl.map((v, i) => (gr[i] < f0 || gr[i] > f1 ? -400 : v)),
+        phaseDeg: r.phaseDeg,
+      };
+    };
+    // 500 points: the revision's trial knees are ~5 % apart and a coarser grid
+    // blurs them together, which made this test see no disagreement at all.
+    const gr = logspace(455, 16000, 500);
+    const three = {
+      w: g3('woofer-pair-hor0.frd', gr),
+      m: g3('mid-hor0.txt', gr),
+      t: g3('tweeter-hor0.txt', gr),
+      tAdjust: { offsetMm: 0, trimDb: 0, inverted: false },
+      midAdjust: {},
+      xoLow: 492,
+      xoHigh: 2270,
+      band: [455, 16000] as [number, number],
+      phasePriority: 0.5,
+      xoLowWindow: [418, 580] as [number, number],
+      xoHighWindow: [1930, 2679] as [number, number],
+    };
+    const after = designThreeWay({ ...three, eqBandsPerBranch: 4 });
+    const preEqKnee = designThreeWay({ ...three, eqBandsPerBranch: 0 });
     const before = designThreeWay({
-      ...withEq,
+      ...three,
+      eqBandsPerBranch: 4,
       xoHigh: preEqKnee.xoHigh,
       xoHighWindow: [preEqKnee.xoHigh * 0.999, preEqKnee.xoHigh * 1.001],
     });
 
-    // The stages disagree about where the knee belongs — if they ever stop
-    // disagreeing on this fixture the test is no longer testing anything, so
-    // that is asserted too.
+    // The stages disagree about where the knee belongs — if that ever stops
+    // being true here, the test is no longer testing anything.
     expect(Math.abs(Math.log2(after.xoHigh / preEqKnee.xoHigh))).toBeGreaterThan(0.02);
-    // And choosing it before the EQ stage costs the objective the step exists
-    // to minimise.
-    expect(after.fx).toBeLessThan(before.fx);
+    /* AND IT COSTS PHASE, which is the claim — not fx.
+     *
+     * fx is deliberately NOT compared here. Since the stage refuses a knee or
+     * a band that worsens the worst pair, it no longer minimises fx alone: it
+     * minimises fx subject to holding phase. The pinned-early run has no such
+     * restraint and can reach a lower fx by trading phase away (measured:
+     * 2.73 against 3.65), so comparing raw fx across the two orders compares
+     * two different objectives. The phase is what both are being judged on. */
+    expect(Math.max(...after.pairPhaseDeg)).toBeLessThan(Math.max(...before.pairPhaseDeg));
   });
 
   it('the revision cannot end on a down-swing', () => {

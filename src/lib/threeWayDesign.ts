@@ -578,6 +578,7 @@ export function designThreeWay(input: Design3Input): Design3Result {
     const keys = ['woofer', 'mid', 'tweeter'] as const;
     let specs = clone(best.specs);
     let fx = best.fx;
+    let pairNow: readonly [number, number] = best.pairPhaseDeg;
     let placed = 0;
     for (let round = 0; round < eqBudget * 3; round++) {
       const info = sumInfo(specs);
@@ -703,11 +704,35 @@ export function designThreeWay(input: Design3Input): Design3Result {
         });
         objective(fit.x); // write the winning params back into bandRef
         const scored = evaluate(trial, mi, ti);
+        /* A BAND MAY NOT BE BOUGHT WITH PHASE.
+         *
+         * The acceptance gate below is on fx, which BLENDS flatness and phase,
+         * so a band that flattens more than it costs in phase is accepted —
+         * and measured on Sanders set that is exactly what happens once the
+         * budget grows: fx improves from 3.066 to 2.415 while the worst pair
+         * goes from 5.3 to 12.9 degrees. A user who types a larger number gets
+         * a worse filter and a better score, which is the worst combination a
+         * tool can have.
+         *
+         * So the budget stops being a target and becomes a cap: bands are
+         * added while BOTH measures hold, and the stage stops on its own when
+         * the next one would cost phase. The tolerance is 0.25 deg — enough
+         * that numerical wobble does not end the loop, far below anything
+         * audible or actionable.
+         *
+         * This also answers "what is the right default budget": there isn't
+         * one. Measured, the turning point is 4 bands on his three-way and the
+         * greedy stops by itself at 1 on the KOAN pair, so a constant would be
+         * wrong on one of them. An outcome-driven stop needs no such number. */
+        const worstNow = Math.max(pairNow[0], pairNow[1]);
+        const worstNew = Math.max(scored.pairPhaseDeg[0], scored.pairPhaseDeg[1]);
+        if (worstNew > worstNow + 0.25) continue;
         if (!bestCand || scored.fx < bestCand.fx) {
           bestCand = { specs: trial, fx: scored.fx, pair: scored.pairPhaseDeg };
         }
       }
       if (!bestCand || bestCand.fx > fx * 0.99) break;
+      pairNow = bestCand.pair;
       specs = bestCand.specs;
       fx = bestCand.fx;
       placed++;
@@ -814,7 +839,18 @@ export function designThreeWay(input: Design3Input): Design3Result {
       };
       const withEq = placeEq(seed);
       if (process.env.D3DEBUG) console.log('  trial', Math.round(hz), 'fx', withEq.fx.toFixed(3), 'M-T', withEq.pairPhaseDeg[1].toFixed(1));
-      if (withEq.fx < best.fx) best = withEq;
+      /* THE SAME RULE AS INSIDE THE EQ STAGE, and this is where it actually
+       * bites. Guarding only the band acceptance changed nothing: measured,
+       * the phase degradation at larger budgets does not come from a band
+       * being accepted, it comes from THIS loop choosing a different knee on
+       * fx. At budget 5 the winner moves and the worst pair goes 5.3 -> 12.9
+       * degrees while fx improves 3.066 -> 2.415.
+       *
+       * A knee is not worth taking if it costs phase, however flat it sums —
+       * the same statement the band gate makes, one stage up. */
+      const worstHere = Math.max(best.pairPhaseDeg[0], best.pairPhaseDeg[1]);
+      const worstTrial = Math.max(withEq.pairPhaseDeg[0], withEq.pairPhaseDeg[1]);
+      if (withEq.fx < best.fx && worstTrial <= worstHere + 0.25) best = withEq;
     }
     /* NO CONTINUOUS POLISH AFTERWARDS, and that is deliberate — it was tried
      * and it made things worse in exactly the way this whole stage exists to
