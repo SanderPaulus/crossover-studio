@@ -814,3 +814,170 @@ Staan in `KOAN_DATASET_NOTES` (`sourceMeta.ts`):
 - **Twee 8-ohm woofers parallel dragen in deze kast geen 4-ohm typeplaatje.**
   IEC vraagt 3,2 Ω; geen enkele kandidaat haalt het, hoogste 2,63 Ω, en het
   kále paar meet 3,17 Ω.
+
+---
+
+## Wat andere ontwerpers doen, en wat daarvan hier geldt
+
+Gelezen op verzoek van Sander (22 aug 2026): *"de methodieken van de betere
+engineers... Maar beredeneren niet zo maar aannemen voor waar."* Elke bevinding
+staat hier als HYPOTHESE met, waar mogelijk, een meting op zijn eigen data
+ernaast. Wat ik niet kon hermeten staat als onbevestigd gemarkeerd.
+
+Het voorbehoud dat overal geldt: vrijwel alle gepubliceerde praktijk gaat uit
+van een MENS in de lus die handmatig itereert. Onze keten is volautomatisch.
+Dat verschil is geen detail — het bepaalt bij twee van de vier vragen het
+antwoord.
+
+### 1. Impedantie: ontwerpvariabele of nabewerking? (B1/B2)
+
+**Bevinding.** VituixCAD heeft de minimale impedantie ALS OPTIMIZER-TERM:
+*"Check 'Minimum impedance' ... Squared error is increased with penalty
+function if minimum impedance/EPDR drops below the setting."* Dat is precies
+de vorm die wij bewust hebben verworpen (de anker-les: harde grenzen op
+beslispunten, nooit in `fxOf`).
+
+**Waarom die twee elkaar niet tegenspreken — en dit is de bruikbare les.**
+Dezelfde handleiding waarschuwt: *"Optimization could end up to bad result if
+initial parameter values are too far from good solution. Adjust parameters
+manually closer to acceptable solution and restart solver."* Hun optimizer is
+een VERFIJNING vanaf een punt dat een mens al goed heeft gezet. Een strafterm
+kan het zoekpad dan niet verleggen, want het pad is kort. Onze anker-les is
+gemeten op het omgekeerde geval: een wal die bijt terwijl je er nog vanaf
+moet klimmen. Beide kloppen; de variabele is het STARTPUNT.
+
+Gevolg voor ons: de strafterm hoort niet in `fxOf` thuis, maar de EIS hoort
+naar voren — de seed moet de last al halen vóór de waarde-zoektocht begint.
+Dat is stap 3 van het plan, en dit is er onafhankelijke steun voor.
+
+**De klassieke leerboekvolgorde zegt hetzelfde, sterker.** Impedantie-egalisatie
+(Zobel/conjugaat) wordt beschreven als iets dat je EERST doet: een filter dat
+tegen een vlakke last is ontworpen verschuift zijn hoekfrequentie niet. De
+gangbare vuistregel is dat de spoelinductie een 2e-orde laagdoorlaat zijn knie
+tot ~0,4 octaaf kan verschuiven. Onze keten doet Zobel gated en achteraf.
+
+*Onbevestigd:* die 0,4 octaaf is een gepubliceerd getal dat ik niet op zijn
+drivers heb nagemeten.
+
+### 2. De volgorde (topologie eerst of iteratief?)
+
+**Bevinding, letterlijk uit de handleiding:** ontwerp de crossover → plaats de
+filterblokken → zet de waarden HANDMATIG → *"Play with circuit topologies and
+parameter/component values until reference axis response, listening window,
+predicted in-room, power response, directivity index, individual off-axis
+responses and impedance response meet your targets"* → en PAS DAARNA de
+optimizer.
+
+Twee dingen vallen op. (a) De impedantierespons staat in dat rijtje doelen die
+de MENS haalt vóór er geoptimaliseerd wordt — nogmaals B1. (b) Topologie en
+waarden worden samen gevarieerd, niet in twee gescheiden trappen zoals bij ons
+(`designThreeWay` kiest structuur, `synthesize` + `optimizeNetworkValues`
+kiezen waarden, en die twee praten alleen via de doelspecs).
+
+Onze gelaagdheid is dus geen kopie van de praktijk maar een noodzaak van
+automatisering. Dat is verdedigbaar — maar het verklaart wel waarom wij een
+probleem hebben dat zij niet kennen (zie 4).
+
+### 3. Hoe voorkomt men onbouwbare waarden? (B3/B4)
+
+**Bevinding.** Harde grenzen per parameter: *"Min and Max fields limit parameter
+value while manual adjustment and optimizing."* Geen zachte penalty, geen
+schaalregel — een klem. E-reeks-afronding gebeurt NA de optimalisatie, met de
+expliciete waarschuwing dat dat de fout vergroot.
+
+Wij zijn hier de uitzondering: ons serie-pad-plafond is een zachte term die op
+Sanders set 0,0002 aan de kostfunctie bijdraagt en dus niets kan tegenhouden.
+De praktijk klemt. Dat is directe steun voor stap 2 van het plan, en het maakt
+de keuze eenvoudiger dan ik hem had opgeschreven: geen slimmer gewicht, maar
+een grens.
+
+Onze catalogus-snap (discrete afdaling mét echte DCR/ESR) is aantoonbaar beter
+dan hun na-afloop-afronden. Dat is een plek waar wij niets te leren hebben.
+
+### 4. Hoe blijft de akoestische kruising staan? (B6)
+
+**Bevinding: de vraag bestaat daar niet.** Een ontwerper die met de hand
+waarden zet, kijkt uitsluitend naar de akoestische som; hij benoemt nooit een
+"ontworpen kruising" die daarna zou kunnen weglopen. Het verschil dat wij meten
+(ontworpen 341/1844 → geleverd 363/2776) is een artefact van onze twee trappen,
+niet van de fysica.
+
+Dat is geen vrijbrief — het betekent dat het geen bekend opgelost probleem is
+en dat we het zelf moeten oplossen. Het bevestigt wel dat B6 de stap is
+waarvan ik als enige niet weet of hij werkt: er is geen praktijk om van af te
+kijken.
+
+De praktijk-verificatie die er WEL is, is de omgekeerde-polariteit-nulcheck.
+Wij tekenen die al (legend-serie "Som, tweeter omgekeerd"), maar geen enkele
+poort of ranking kijkt ernaar. Een diepe nul op de kruising is het bewijs dat
+de takken daar in fase optellen — precies wat bij Sanders 1775 Hz-inzinking
+misging.
+
+### 5. De vondst die ik niet zocht: EPDR — en |Z|min rangschikt anders
+
+VituixCAD biedt naast "Minimum impedance" ook **EPDR** als optimizer-grens.
+EPDR (Equivalent Peak Dissipation Resistance, Benjamin JAES 1994, populair
+gemaakt door Keith Howard) is de weerstandswaarde die dezelfde PIEK-dissipatie
+in de eindtrap veroorzaakt als deze belasting. Het combineert |Z| ÉN de
+fasehoek; de literatuur stelt dat de EPDR-minima duidelijk lager liggen dan het
+|Z|-minimum en **op andere frequenties** vallen.
+
+**Niet aangenomen — zelf afgeleid en getoetst.** Klasse-B eindtrap, sinus, voeding
+precies op de piekuitsturing: p = (V²/|Z|)·(1−sinθ)·sin(θ−φ), en voor een
+weerstand is de piek V²/4R, dus
+
+    EPDR = |Z| / (4 · max_θ[(1 − sinθ)·sin(θ − φ)])
+
+Die reduceert per constructie tot EPDR = |Z| bij φ = 0. Toets tegen het
+gepubliceerde ankerpunt (4 Ω bij 60° wordt als ~1 Ω genoemd): mijn formule geeft
+**1,11 Ω**. Bij 0°: 4,00 Ω. De afleiding staat.
+
+**Gemeten op Sanders eigen opgeslagen ontwerpen** (`epdr.mts` in de scratchpad):
+
+| ontwerp | \|Z\|min | EPDR-min | verhouding |
+|---|---|---|---|
+| 20260822.1 | 0,84 Ω @ 1204 Hz | 0,43 Ω @ 1300 Hz | 0,51 |
+| 20260822.1-Zopt | **3,46 Ω @ 218 Hz** | **1,55 Ω @ 1290 Hz** | 0,45 |
+| 20260822.4-optA | 3,40 Ω @ 288 Hz | 1,73 Ω @ 1936 Hz | 0,51 |
+| 20260822.4-optB | **3,81 Ω @ 900 Hz** | **1,63 Ω @ 1951 Hz** | 0,43 |
+
+Drie dingen, alle drie gemeten en geen van drieën aangenomen:
+
+1. **De frequentie klopt niet.** Bij `-Zopt` beoordelen wij 218 Hz; de eindtrap
+   werkt het hardst op 1290 Hz, waar |Z| 4,24 Ω is (ruim boven elke vloer) maar
+   de fasehoek 43°. Het punt dat onze hele lastdoctrine bewaakt is niet het punt
+   dat de versterker pijn doet.
+2. **De verhouding is stelselmatig ~0,45–0,51.** Een 3,1 Ω-typeplaatje op de
+   versterker is een |Z|-getal; de last die hij feitelijk ziet is ongeveer de
+   helft daarvan zodra er fasehoek bij komt.
+3. **De rangschikking KEERT OM.** Op |Z|min: optB (3,81) > Zopt (3,46) >
+   optA (3,40). Op EPDR: optA (1,73) > optB (1,63) > Zopt (1,55). Het getal
+   waarop wij rangschikken én diskwalificeren kiest een andere winnaar dan het
+   getal dat de versterkerbelasting beschrijft.
+
+**Eerlijke voorbehouden.** (a) De afleiding neemt de versterker op het randje van
+klippen — dat is de juiste aanname voor een grens, maar het is een worst case.
+(b) EPDR zegt hoe zwaar de last op DAT moment is, niet hoeveel muziekvermogen er
+op die frequentie staat; een EPDR-minimum op 1,3 kHz is minder erg dan hetzelfde
+minimum op 100 Hz. Wie EPDR als grens invoert, moet dat erbij zeggen.
+(c) Vier ontwerpen van één luidspreker is geen verdeling.
+
+**Wat dit voor het plan betekent.** Niet: "EPDR erin als extra term" — dat is de
+fout die dit document al drie keer heeft opgeschreven. Wel: het getal hoort
+ZICHTBAAR te zijn naast |Z|min (strip + scan-tabel), zodat een ontwerp dat op
+|Z| slaagt en op EPDR zakt niet stil als gezond geleverd wordt. Rangschikken op
+EPDR is pas te verdedigen als het op een tweede driverset is nagemeten.
+
+### Wat we NIET blijken te missen
+
+- De catalogus-snap met echte parasieten (zij ronden af).
+- Ontwerpen op de gemeten akoestische som in plaats van op elektrische doelen.
+- De gedeelde tijdreferentie en de excess-fase-brug.
+
+### Bronnen
+
+- VituixCAD help 2.0 (Kimmo Saunisto) — optimizer, min-impedantie/EPDR-penalty,
+  parametergrenzen, aanbevolen werkvolgorde.
+- Benjamin, "Audio Power Amplifiers for Loudspeaker Loads", JAES 42/9 (1994);
+  Keith Howard, "Heavy Load: How Loudspeakers Torture Amplifiers" — EPDR.
+- Zobel/impedantie-egalisatie: gangbare leerboekpraktijk, meerdere bronnen.
