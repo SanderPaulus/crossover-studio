@@ -447,6 +447,48 @@ function slotTransfers(sol: {
 /** 3-way variant: resolve the solved network's drivers to low/mid/high via
  *  pickSlotsN. Ambiguous names refuse with the message (surfaced as the sim's
  *  crossover error) rather than guessing which branch is which. */
+/**
+ * How a finished scan row reads — and it may not read like a success when it
+ * is not one.
+ *
+ * TWO THINGS WENT WRONG HERE AT ONCE (Sanders run, aug 2026, "de resultaten
+ * begrijp ik niet omwille alle meldingen van de amp load"):
+ *
+ * 1. Every rejected candidate was flagged `⚠Z`, because `zOk` is not an
+ *    impedance verdict at all — it is `!safetyNote && the repair did not
+ *    fail`, and the safety gate rejects on FOUR different physical failures.
+ *    A vanished crossing reported itself as an amplifier-load problem and
+ *    sent the designer to the wrong panel. The category now comes from
+ *    `safetyKinds`, recorded by the engine where the decision is made.
+ *
+ * 2. A rejected tune returns the SEED (`tuned: 0`, `after` = `before`), and
+ *    the row showed those seed numbers behind a green ✓. Five of five in his
+ *    run — so the whole scan read as five finished designs when not one of
+ *    them had a tune that survived. It says "seed" now, because that is what
+ *    the numbers describe.
+ */
+function scanRowVerdict(r: Chain3Result): { text: string; warn?: string } {
+    const nums = `${r.net.after.rippleDb.toFixed(2)} dB/${r.net.after.phaseDeg.toFixed(1)}°`;
+    const kinds = r.net.safetyKinds ?? [];
+    const LABEL: Record<string, string> = {
+      crossing: t('⚠ crossing lost'),
+      valley: t('⚠ crossing hole'),
+      protection: t('⚠ tweeter'),
+      load: t('⚠ amp load'),
+    };
+    if (kinds.length > 0) {
+      // The tune was thrown away: these are the seed's numbers.
+      return { text: `${t('seed')} ${nums}`, warn: kinds.map((k) => LABEL[k]).join(' ') };
+    }
+    if (r.net.ampFloorRepair === 'failed' || r.net.ampFloorRepair === 'refused') {
+      return { text: `✓ ${nums}`, warn: t('⚠ amp load') };
+    }
+    // zOk false with no kinds and no repair verdict should not happen; say
+    // so rather than inventing a category.
+    if (!r.zOk) return { text: `✓ ${nums}`, warn: t('⚠ rejected') };
+    return { text: `✓ ${nums}` };
+}
+
 function slotTransfersN(sol: {
   drivers: { id: string; model: string }[];
   transfers: Record<string, Complex[]>;
@@ -5559,7 +5601,7 @@ export default function App() {
           const rs = await runChain3Scan(vs.map(inputOf), (d) =>
             setVfProgress({ round: doneItems.filter((x) => x.done).length + d.round, evals: doneEvals + d.evals, items: [...doneItems, ...d.items] }),
           );
-          for (const r of rs) doneItems.push({ label: r.label, text: `✓ ${r.net.after.rippleDb.toFixed(2)} dB/${r.net.after.phaseDeg.toFixed(1)}°`, done: true, warn: r.zOk ? undefined : '⚠Z' });
+          for (const r of rs) doneItems.push({ label: r.label, ...scanRowVerdict(r), done: true });
           doneEvals += rs.reduce((a, r) => a + r.net.evaluations, 0);
           merged.push(...rs);
           return rs;

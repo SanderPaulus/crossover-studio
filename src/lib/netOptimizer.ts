@@ -439,6 +439,17 @@ export interface NetOptimizeResult {
   /** Set when the full-band safety gate rejected the tuned result and the
    *  seed was returned unchanged (see NetOptimizeOptions.safety). */
   safetyNote?: string;
+  /**
+   * WHY the safety gate rejected the tune, as VALUES — the prose in
+   * `safetyNote` is for a human and must never be parsed to decide anything
+   * (the A3g rule: a caller reading a sentence written three passes earlier
+   * is how `zOk` came to mean four different things at once).
+   *
+   * Empty/absent = the tune was accepted. A rejected tune returns the SEED,
+   * so `tuned` is 0 and `after` equals `before`: whoever shows these numbers
+   * owes the reader that they are the seed's, not a finished design's.
+   */
+  safetyKinds?: SafetyKind[];
   /** Value-window (boundToSeries) report: which series-path slots were bound
    *  to a series' range, and what the constraint cost vs an unconstrained fit. */
   valueWindowNote?: string;
@@ -456,6 +467,14 @@ const PARAM_OF: Record<'R' | 'L' | 'C', { name: string; factor: number }> = {
   L: { name: 'L', factor: 1e3 }, // schematic params store mH
   C: { name: 'C', factor: 1e6 }, // … and µF
 };
+
+/**
+ * The categories the full-band safety gate can reject a tune on. Four
+ * different physical failures that used to arrive at the UI as one boolean
+ * called `zOk`, rendered as a "⚠Z" glyph — so a vanished crossing reported
+ * itself as an impedance problem and sent the designer to the wrong panel.
+ */
+export type SafetyKind = 'crossing' | 'valley' | 'protection' | 'load';
 
 /* THE AMPLIFIER-LOAD FLOOR — it used to be a constant here (2.5 Ω).
  * IT IS GONE, AND NOTHING REPLACED IT BY DEFAULT.
@@ -3286,6 +3305,10 @@ export function optimizeNetworkValues(
     const seedS = metricsOn(buildWork(parts).work, s.freqs, s.w, s.t, s.m ?? null, s.z, null);
     const resS = metricsOn(buildWork(outParts).work, s.freqs, s.w, s.t, s.m ?? null, s.z, null);
     const reasons: string[] = [];
+    /* The CATEGORY is recorded where the reason is decided, never re-derived
+     * from the sentence afterwards — the sentence is for a human and may be
+     * reworded; the category is what a caller may act on. */
+    const kinds: SafetyKind[] = [];
     // Per PAIR: in a 3-way losing EITHER crossing is the same degeneration
     // (with one pair this is exactly the old xoHz check).
     for (let pi = 0; pi < Math.max(seedS.xoHzPairs.length, resS.xoHzPairs.length); pi++) {
@@ -3295,15 +3318,21 @@ export function optimizeNetworkValues(
             ? `the ${pi === 0 ? 'low' : 'high'} acoustic crossing disappeared`
             : 'the acoustic crossing disappeared',
         );
+        kinds.push('crossing');
       }
     }
     if (resS.xoDipDb > seedS.xoDipDb + 2) {
       reasons.push(`the crossing sank into a ${resS.xoDipDb.toFixed(0)} dB hole`);
+      kinds.push('valley');
     }
-    if (resS.protSqDb > seedS.protSqDb + 3) reasons.push('tweeter protection got worse');
+    if (resS.protSqDb > seedS.protSqDb + 3) {
+      reasons.push('tweeter protection got worse');
+      kinds.push('protection');
+    }
     let zReason = false;
     if (resS.zShortOhm > seedS.zShortOhm + 0.2) {
       zReason = true;
+      kinds.push('load');
       // Honest attribution: a seed that already sits under the floor is a
       // DESIGN property (three parallel branches around a crossover often
       // are), not something the tuner broke — say so.
@@ -3334,6 +3363,7 @@ export function optimizeNetworkValues(
         `optimised on ${Math.round(band[0])}–${Math.round(band[1])} Hz` +
         (opts.band ? '' : ' (full grid minus edges — no validity band supplied)'),
       safetyNote: `safety gate: tune rejected on the full measurement band — ${reasons.join('; ')}. ${tail}`,
+      safetyKinds: kinds,
         // What the repair pass tried/achieved on the REJECTED tune — it
         // explains why the gate saw a dip. Prefixed because the network being
         // returned is the seed, not the one this sentence is about (A3g: a
