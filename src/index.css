@@ -2498,6 +2498,12 @@ button:disabled {
 }
 
 /* Scan view inside the busy card: stable row per candidate + totals line. */
+.busy-round {
+  margin: 0 0 0.5rem;
+  font-size: 0.85rem;
+  color: var(--muted);
+  letter-spacing: 0.02em;
+}
 .busy-scan {
   border-collapse: collapse;
   font-size: 0.85rem;

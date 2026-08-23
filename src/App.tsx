@@ -4669,6 +4669,18 @@ export default function App() {
     label?: string;
     /** Scan path: one STABLE row per candidate — rendered as a fixed table. */
     items?: { label: string; text: string; done: boolean; warn?: string }[];
+    /**
+     * Which ROUND of an axis-by-axis scan is running.
+     *
+     * `total` is a STRING because the number of rounds is not fixed: the third
+     * (a local refinement) runs only when the two axes turn out coupled, so it
+     * reads "2–3" until that is decided and "3" once it is. Printing "1/3"
+     * would be a promise the scan cannot keep — and the alternative the user
+     * actually hit is worse: the candidate counter's denominator grows 7 → 14
+     * → 23 as rounds are earned, which without this line reads as a target
+     * running away from you.
+     */
+    round3?: { label: string; n: number; total: string };
   } | null>(null);
   /** Coarse stage of a standalone component tune ("value tune", "snap", …). */
   /** Component-tune progress à la the scan card (Sanders wens): the PLANNED
@@ -5638,9 +5650,9 @@ export default function App() {
         const merged: Chain3Result[] = [];
         const doneItems: { label: string; text: string; done: boolean; warn?: string }[] = [];
         let doneEvals = 0;
-        const runRound = async (vs: Chain3Variant[]) => {
+        const runRound = async (vs: Chain3Variant[], phase?: { label: string; n: number; total: string }) => {
           const rs = await runChain3Scan(vs.map(inputOf), (d) =>
-            setVfProgress({ round: doneItems.filter((x) => x.done).length + d.round, evals: doneEvals + d.evals, items: [...doneItems, ...d.items] }),
+            setVfProgress({ round: doneItems.filter((x) => x.done).length + d.round, evals: doneEvals + d.evals, items: [...doneItems, ...d.items], round3: phase }),
           );
           for (const r of rs) doneItems.push({ label: r.label, ...scanRowVerdict(r), done: true });
           /* Each finished candidate goes to disk NOW. A sleeping laptop cost
@@ -5654,14 +5666,14 @@ export default function App() {
         };
         const stepRatio = (sp: [number, number]) => Math.pow(sp[1] / sp[0], 1 / Math.max(1, nPts - 1));
         // Round 1 — W-M sweep.
-        const r1 = await runRound(variantsFromPoints(pts(lowSpan, warm3?.low), [highAnchor], lowSpan, highSpan, 'W-M sweep'));
+        const r1 = await runRound(variantsFromPoints(pts(lowSpan, warm3?.low), [highAnchor], lowSpan, highSpan, 'W-M sweep'), { label: 'W-M sweep', n: 1, total: '2–3' });
         // "Stop and keep what finished" must not be undone by the next round:
         // starting one respawns the workers this just killed.
         if (r1.length === 0 || scanStopped()) return merged;
         const w1 = rankAll(r1)[0];
         const bestLow = w1.net.after.xoHzPairs?.[0] ?? w1.xoLow;
         // Round 2 — M-T sweep with the best W-M held (delivered value, not aim).
-        const r2 = await runRound(variantsFromPoints([bestLow], pts(highSpan, warm3?.high), lowSpan, highSpan, 'M-T sweep'));
+        const r2 = await runRound(variantsFromPoints([bestLow], pts(highSpan, warm3?.high), lowSpan, highSpan, 'M-T sweep'), { label: 'M-T sweep', n: 2, total: '2–3' });
         const w2 = rankAll(r2.length ? r2 : r1)[0];
         if (scanStopped()) return merged;
         const bestHigh = w2.net.after.xoHzPairs?.[1] ?? w2.xoHigh;
@@ -5675,7 +5687,7 @@ export default function App() {
         if (drift && nPts >= 5) {
           const around = (c: number, r: number, sp: [number, number]) =>
             [c / r, c, c * r].map((v) => Math.min(sp[1], Math.max(sp[0], v)));
-          await runRound(variantsFromPoints(around(bestLow, rL, lowSpan), around(bestHigh, rH, highSpan), lowSpan, highSpan, 'refine'));
+          await runRound(variantsFromPoints(around(bestLow, rL, lowSpan), around(bestHigh, rH, highSpan), lowSpan, highSpan, 'refine'), { label: 'refine', n: 3, total: '3' });
         }
         return merged;
       };
@@ -8583,6 +8595,17 @@ export default function App() {
         // Scan view: one STABLE row per candidate + a totals line — the
         // card never changes size while stages tick underneath.
         <>
+          {vfProgress.round3 && (
+            /* WHICH ROUND, and how many there are. Without it the candidate
+               counter's denominator grows underneath you (7 → 14 → 23) as
+               rounds are earned, which reads as a target running away. The
+               total stays "2–3" until the third round is decided: it runs only
+               when the two axes prove coupled, so a fixed "of 3" would be a
+               promise the scan cannot keep. */
+            <p className="busy-round" title={t('The third round is a local refinement and runs only when the two axes turn out coupled — until then the total is 2 or 3.')}>
+              {vfProgress.round3.label} — {t('round {n} of {total}', { n: String(vfProgress.round3.n), total: vfProgress.round3.total })}
+            </p>
+          )}
           <table className="busy-scan">
             <tbody>
               {vfProgress.items.map((it) => (

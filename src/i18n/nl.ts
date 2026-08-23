@@ -1880,6 +1880,8 @@ export const nl: Record<string, string> = {
   "Source R limit": "Bron-R-grens",
   "{n} candidates survived from a scan that was interrupted ({label}). They are complete designs — nothing was lost but the one still running.": "{n} kandidaten zijn bewaard uit een scan die is afgebroken ({label}). Het zijn volledige ontwerpen — alleen de kandidaat die op dat moment draaide is verloren.",
   "Show them": "Laat zien",
+  "round {n} of {total}": "ronde {n} van {total}",
+  "The third round is a local refinement and runs only when the two axes turn out coupled — until then the total is 2 or 3.": "De derde ronde is een lokale verfijning en draait alleen als de twee assen gekoppeld blijken — tot dat beslist is zijn het er 2 of 3.",
   "⚠ crossing lost": "⚠ kruising weg",
   "⚠ crossing hole": "⚠ gat in kruising",
   "⚠ tweeter": "⚠ tweeter",
