@@ -630,6 +630,152 @@ ervoor. Dat verdient een eigen meting — zie ROADMAP.
 5. **A4/A5/A7/A8 en de venstertoets** — wachtend op de nieuwe metingen, om de
    reden hieronder.
 
+## INTERNE AUDIT VAN DE ONTWERPKETEN (23 aug 2026)
+
+Aanleiding, in Sanders woorden: *"het doel van elke iteratie is dat het beter
+wordt. We zijn nu een tijd bezig geweest voor een achteruitgang."* Dat klopt,
+en dit hoofdstuk zegt waarom en wat eraan moet.
+
+Alles hieronder is gemeten op ZIJN project (KOAN 3-weg, 16 aug) met zijn eigen
+catalogus, tenzij er "onbekend" staat. Waar een getal staat is er een run
+achter.
+
+### De keten zoals hij nu is
+
+```
+1  kandidaten     xo-vensters uit gemeten fysica → (xoLow, xoHigh)-paren met kooien
+2  ontwerpstap    64 structuren (alignment × polariteit), knie-verfijning, EQ-trede
+                  → doelspecs.  ZIET GEEN IMPEDANTIE (geverifieerd)
+3  synthese       per tak apart gefit tegen de EIGEN driver-Z; ziet de andere takken niet
+4  merge          drie takken op één generator
+5  tune           waarde-tune → staged snoei/escalatie → drift-catch → part-audit
+                  → krimpladder → amp-vloer-reparatie → catalogus-snap
+6  ranking        klassen (dq, zOk, Z-vloer, bron-R, BOM) → gemengde score
+```
+
+### Wat er per trap gemeten is
+
+| trap | gemeten | oordeel |
+|---|---|---|
+| 2 | mikt 472/2432, levert 542/1791 — mid geknepen tot 1,7 oct | drift niet vastgehouden |
+| 3 | seed Z-min **0,01–0,07 Ω**, op HEAD, op origin/main én op 20 aug | structureel kapot |
+| 3 | eq0 0/3 mislukt · eq1 2/3 · eq2 3/3 | de EQ-trede is de motor |
+| 5 | 2,62 → 2,62 · 3,36 → 3,18 | de tuner behoudt, redt niet |
+| 5 | reparatie tilt 1,2 → 3,0 Ω; faalt vanaf seed 0,02 | enig Z-mechanisme |
+| 5 | 100 µF over het serie-plafond kost **0,0002** strafterm | bewaker kan niet bijten |
+| 5 | 3 inerte onderdelen meegeleverd | verdict zonder gevolg |
+| 6 | winnaar ±1,53 dB / 34,6° tegen referentie ±0,60 / 8,8° | kroont het beste van een slecht veld |
+
+### De bottlenecks
+
+**B1 — De synthese is impedantie-blind, en zij bepaalt alles.** Elke tak wordt
+in isolatie gefit; niets in die trap kent de systeem-ingangsimpedantie.
+Resultaat: seeds van 0,01–0,07 Ω. Omdat de tuner behoudt in plaats van redt is
+dat meteen het plafond van al het latere werk. **Hoofdoorzaak; de rest is
+gevolg.**
+
+**B2 — Z is nergens een ontwerpvariabele, alleen een reparatie achteraf.** De
+amp-vloer-reparatie is het enige dat Z optilt. Lukt dat niet, dan ligt de last
+vast op wat de synthese toevallig deed — een loterij in plaats van een keuze.
+
+**B3 — Bewakers die niet kunnen bijten.** `seriesCeilFor` is een zachte
+strafterm: 100 µF eroverheen kost 0,0002 in een objective van orde 1. Een
+bewaker die geen uitkomst kan veranderen is erger dan geen: hij wekt de indruk
+dat het geval gedekt is.
+
+**B4 — Bewakers die op het verkeerde getal rekenen.** Datzelfde plafond
+gebruikt ÉÉN anker voor drie takken (978 Hz = meetkundig gemiddelde van 535 en
+1789). De tweeter kruist op 1789 en krijgt 96,6 µF waar 47,1 hoort.
+
+**B5 — Verdicten zonder gevolg, door volgorde.** De eind-audit staat op
+netOptimizer.ts:2517; dáárna komen de krimpladder (2531), de amp-reparatie
+(2627) en de catalogus-snap (2880). Drie waarde-passes ná de laatste keuring.
+Alles wat door hen inert wordt, wordt nooit gezien. Exact het patroon dat dit
+document al vijf keer beschrijft: **een beslissing genomen op een grootheid die
+een latere trap nog verandert.**
+
+**B6 — De geleverde kruising ontsnapt aan het ontwerp.** Structuur en
+polariteit gekozen voor 2432 Hz, geleverd op 1791. M-T-fase zwaait dan
+−59…+36° waar de referentie binnen ±13° blijft.
+
+**B7 — De EQ-trede is een voetzoeker.** Hij maakt de kortsluitingen,
+verdubbelt het onderdeelaantal, en zijn fasewinst wordt niet geleverd (ontwerp
+claimt −14,5°, levering +14,7° slechter).
+
+**B8 — De ranking kroont altijd**, ook als geen kandidaat bouwbaar is.
+
+**B9 — Kosten zijn alleen een tie-break.** €149 tegen €568 werd gekocht met
+±0,93 dB en 26° fase; niets zegt dat de ontwerper die ruil niet wil.
+
+### Wat eruit moet
+
+1. Het zachte serie-plafond — harde klem per tak, of weg. Deze vorm misleidt.
+2. EQ-banden standaard aan — default 0; aanzetten als bewuste keuze met prijs.
+3. De reparatie als Z-mechanisme — vangnet mag, bepalend niet.
+4. De audit vóór drie waarde-passes — die volgorde is onhoudbaar.
+5. Ranking zonder bouwbaarheidspoort.
+
+### De sequence die het moet worden
+
+Leidend principe, één stap verder dan de ontwerpers-sequence van augustus:
+**geen enkele trap mag de fysica van een eerdere trap hoeven repareren.**
+
+```
+1  vensters     ongewijzigd
+2  niveau       ongewijzigd
+3  structuur    + tak-ingangsimpedantie als KEUZECRITERIUM, niet alleen SPL/fase
+4  synthese     + assemblage-check aan de uitgang, harde klem per tak, retry
+5  tune         Z blijft uit de objective (anker-les) — maar hoeft niets te redden
+6  audit        NA krimpladder, reparatie én snap; op wat verscheept wordt
+7  ranking      eerst bouwbaar/niet-bouwbaar, dan kwaliteit
+```
+
+### Het stappenplan
+
+**Stap 0 — een meetlat, vóór er iets verandert.** Er IS geen benchmark, en dat
+is de reden dat 23 augustus een achteruitgang werd: vier verklaringen op rij
+sneuvelden op meten, en een wijziging kon "af" heten zonder dat iemand wist of
+hij won. Vaste harness: zijn project + zijn catalogus + drie vaste kandidaten,
+met `20260820.2` als lat —
+
+```
+±0,60 dB avg · ±2,11 piek · 8,8° fase (P95 19°) · Z 3,4 Ω · 18 parts · €568
+```
+
+Eén regel per kandidaat, vijf getallen, onder tien minuten. **Elke stap hierna
+wordt hierop gemeten, vóór en ná, en gaat terug als hij niet wint.** Dit is de
+enige structurele garantie dat elke iteratie beter wordt.
+
+**Stap 1 — de audit als laatste woord** (laag risico). Verplaats de eind-audit
+naar ná krimpladder, reparatie en snap. Verwacht: inerte onderdelen weg,
+minder parts, lagere BOM, kwaliteit gelijk.
+
+**Stap 2 — het plafond laten bijten** (midden risico). Per tak op zijn eigen
+kruising, en voor serie-pad-elementen een harde klem. Verlegt het zoekpad — de
+anker-les — dus A/B op stap 0 en terug als het verliest.
+
+**Stap 3 — de assemblage-check aan de synthesegrens** (het echte werk, lost B1
+op). Na de merge de systeem-Zin meten; onder de grens niet doorschuiven maar
+opnieuw fitten met de schuldige tak vast, of weigeren met reden. Dit is wat
+Sander bij aanvang voorstelde en waar ik hem van afhield op een meting die op
+de fixtures gold en op zijn luidspreker niet.
+
+**Stap 4 — de kruising vasthouden** (gericht op de fase). De geleverde overname
+mag niet een halve octaaf van het ontwerp liggen. **Van deze stap weet ik niet
+of hij gaat werken.**
+
+**Stap 5 — de ranking eerlijk maken.** Bouwbaarheid als poort vóór kwaliteit;
+"geen kandidaat is bouwbaar" als geldige uitkomst.
+
+### Wat nog steeds onbekend is
+
+Waarom `20260820.2` ±0,60 dB en 8,8° haalt met 18 onderdelen terwijl geen
+enkele kandidaat van de scan in de buurt komt. De EQ-trede verklaart de
+IMPEDANTIE (eq0 geeft ~3 Ω), maar niet de vlakheid en de fase: ook met eq0
+levert de scan ±1,53 dB en 34,6°. Er zit dus meer tussen "wat de app op 20
+augustus deed" en "wat hij nu doet". Stap 0 is het gereedschap om dat uit te
+zoeken zonder opnieuw te gokken.
+
 ## De refactor A4–A8
 
 Wacht op de reflectievrije meting. Die vervangt de gate-vloer van 455 Hz
