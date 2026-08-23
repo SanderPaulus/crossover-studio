@@ -732,7 +732,8 @@ Leidend principe, één stap verder dan de ontwerpers-sequence van augustus:
 
 ### Het stappenplan
 
-**Stap 0 — een meetlat, vóór er iets verandert.** Er IS geen benchmark, en dat
+**Stap 0 — een meetlat, vóór er iets verandert.** (Vertrekpunt ligt klaar:
+`tools/bench/refrun.ts`, zie `tools/bench/README.md` voor draaien en data.) Er IS geen benchmark, en dat
 is de reden dat 23 augustus een achteruitgang werd: vier verklaringen op rij
 sneuvelden op meten, en een wijziging kon "af" heten zonder dat iemand wist of
 hij won. Vaste harness: zijn project + zijn catalogus + drie vaste kandidaten,
@@ -932,7 +933,7 @@ Die reduceert per constructie tot EPDR = |Z| bij φ = 0. Toets tegen het
 gepubliceerde ankerpunt (4 Ω bij 60° wordt als ~1 Ω genoemd): mijn formule geeft
 **1,11 Ω**. Bij 0°: 4,00 Ω. De afleiding staat.
 
-**Gemeten op Sanders eigen opgeslagen ontwerpen** (`epdr.mts` in de scratchpad):
+**Gemeten op Sanders eigen opgeslagen ontwerpen** (`tools/bench/epdr.mts`):
 
 | ontwerp | \|Z\|min | EPDR-min | verhouding |
 |---|---|---|---|
