@@ -481,9 +481,30 @@ function slotTransfers(sol: {
  *
  * Two frames rather than one: the first lets React commit, the second lets the
  * compositor put it on screen.
+ *
+ * ⚠ AND A TIMEOUT BESIDE THEM, because requestAnimationFrame DOES NOT FIRE IN
+ * A HIDDEN OR UNFOCUSED WINDOW. Without it this helper made things worse than
+ * the delay it was written for: click Optimize, switch to another window to
+ * say "nothing is happening" — and nothing was, because the scan was parked on
+ * a frame that would never arrive until you came back. A late card is a
+ * cosmetic complaint; a run that does not start is not.
+ *
+ * (The same lesson is already written down for the landing page: a hidden page
+ * delivers no IntersectionObserver callbacks either. I rebuilt it anyway.)
+ *
+ * Whichever comes first wins: paint when visible, 250 ms when not.
  */
 const nextPaint = (): Promise<void> =>
-  new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve())));
+  new Promise((resolve) => {
+    let settled = false;
+    const finish = () => {
+      if (settled) return;
+      settled = true;
+      resolve();
+    };
+    setTimeout(finish, 250);
+    requestAnimationFrame(() => requestAnimationFrame(finish));
+  });
 
 function scanRowVerdict(r: Chain3Result): { text: string; warn?: string } {
     const nums = `${r.net.after.rippleDb.toFixed(2)} dB/${r.net.after.phaseDeg.toFixed(1)}°`;
