@@ -23,6 +23,7 @@ import { parseVxp, type VxpCrossover, type VxpPart, type VxpProject } from './li
 import { estimateBulkDelay, assessSharedReference, assessPairTimeBase } from './lib/timing.ts';
 import { logspace, resample, resampleImpedance, combine, combineN, offsetMmToDelayS, applyTransfer, type GriddedResponse, type CombineResult, type CombineNResult } from './lib/dsp.ts';
 import { solveDesign } from './lib/designSolve.ts';
+import { beginScanRun, endScanRun, putScanRow, listScanRuns, listScanRows, dropScanRun, pickResumable } from './lib/scanStore.ts';
 import { computeIntegration } from './lib/integration.ts';
 import { crossoverToNetlist } from './lib/vxpNetwork.ts';
 import { solveNetwork } from './lib/network.ts';
@@ -5596,6 +5597,19 @@ export default function App() {
       });
       const rankAll = (rs: Chain3Result[]) =>
         rankChain3Results(rs, settings.targets, settings.phasePriority, angleSets3 ? settings.directivityWeight : 0, rSourceLimitOhm, bomCapEur, ampMinLoadOhm ?? 0);
+      /* This run's identity for the crash store (scanStore.ts). Marked
+       * `running` here and `done` only once the results are committed, so a
+       * run that never gets there is recognisable afterwards as interrupted —
+       * which is precisely the run worth offering back. */
+      const runId = `scan-${Date.now()}`;
+      let scanSeq = 0;
+      void beginScanRun({
+        runId,
+        at: Date.now(),
+        status: 'running',
+        planned: scan3Mode === 'axes' ? null : inputs.length,
+        label: scan3Mode === 'axes' ? 'axis-by-axis scan' : `${inputs.length}-candidate scan`,
+      });
       const runAxes = async (): Promise<Chain3Result[]> => {
         const nPts = 1 + 2 * Math.max(1, Math.min(3, scanSteps3)); // 3/5/7
         const clampSpan = (w: { floorHz: number | null; ceilHz: number | null } | null | undefined, rail: [number, number]): [number, number] => {
@@ -5629,6 +5643,11 @@ export default function App() {
             setVfProgress({ round: doneItems.filter((x) => x.done).length + d.round, evals: doneEvals + d.evals, items: [...doneItems, ...d.items] }),
           );
           for (const r of rs) doneItems.push({ label: r.label, ...scanRowVerdict(r), done: true });
+          /* Each finished candidate goes to disk NOW. A sleeping laptop cost
+           * Sander 18 of these once; from here on an interruption costs the
+           * chain that was in flight and nothing behind it. Never awaited on
+           * the critical path — a failing store may not stall a scan. */
+          for (const r of rs) void putScanRow(runId, scanSeq++, r);
           doneEvals += rs.reduce((a, r) => a + r.net.evaluations, 0);
           merged.push(...rs);
           return rs;
@@ -5660,9 +5679,14 @@ export default function App() {
         }
         return merged;
       };
-      (scan3Mode === 'axes' ? runAxes() : runChain3Scan(inputs, (d) =>
-        setVfProgress({ round: d.round, evals: d.evals, items: d.items }),
-      ))
+      (scan3Mode === 'axes'
+        ? runAxes()
+        : runChain3Scan(inputs, (d) =>
+            setVfProgress({ round: d.round, evals: d.evals, items: d.items }),
+          ).then((rs) => {
+            for (const r of rs) void putScanRow(runId, scanSeq++, r);
+            return rs;
+          }))
         .then((results) => {
           // "Stop and use what finished" can land before the first candidate
           // does. Ranking an empty field would crash; committing nothing and
@@ -5710,47 +5734,16 @@ export default function App() {
           setChainScan(
             results.length > 1
               ? {
-                  rows: ranked.map((rr) => {
-                    // In a sweep round the HELD axis is an anchor, not an aim:
-                    // only the swept axis can be "not realisable".
-                    // (point 5b) The WINNER is judged on BOTH axes regardless of
-                    // the round it came from — a missed delivery on the held
-                    // axis must not stay invisible on the design you get.
-                    const heldLow = rr !== win && /\(M-T sweep\)/.test(rr.label);
-                    const heldHigh = rr !== win && /\(W-M sweep\)/.test(rr.label);
-                    const dl = deliveredLabel(
-                      [heldLow ? null : rr.xoLow, heldHigh ? null : rr.xoHigh],
-                      rr.net.after.xoHzPairs ?? [null, null],
-                      ['W-M', 'M-T'],
-                    );
-                    return {
-                      label: rr.label,
-                      delivered: dl.text,
-                      target: rr.label,
-                      unrealisable: dl.unrealisable,
-                      rippleDb: rr.net.after.rippleDb,
-                      peakSmoothedDb: rr.net.after.ripplePeakSmoothedDb ?? null,
-                      powerSlopeDbDec: rr.net.after.powerSlopeDbDec ?? null,
-                      // The DELIVERED figure — the audit's is frozen before the
-                      // shrink ladder and the snap, so the column and the
-                      // ranking would disagree about the same row.
-                      rSourceOhm: rSrcDelivered(rr),
-                      disqualified: rr.disqualified ?? [],
-                      xoFloorVerdict: rr.xoFloorVerdict ?? null,
-                      avgDevDb: rr.net.after.avgDevDb ?? null,
-                      phaseDeg: rr.net.after.phaseDeg,
-                      zMinOhm: rr.net.after.zMinOhm ?? null,
-                      xoWindowOk: rr.xoWindowOk,
-                      pairOverlapOct: rr.pairOverlapOct,
-                      bomEur: rr.bomTotalEur,
-                      winner: rr === win,
-                      result: rr,
-                    };
-                  }),
+                  rows: ranked.map((rr) => chain3ScanRow(rr, win)),
                   active: win.label,
                 }
               : null,
           );
+          /* Committed — so this run is history, not a rescue. Everything the
+           * store holds for it can go: the results now live in the design
+           * tabs and the scan table, and keeping a second copy would make the
+           * next crash offer back something the user already has. */
+          void endScanRun(runId);
           // DELIVERED handovers, not just the candidate label: a design can
           // meet every flatness target while its crossings sit an octave off
           // the knees it was built on, and that is invisible in the numbers.
@@ -6744,6 +6737,32 @@ export default function App() {
     active: string;
   } | null>(null);
 
+  /**
+   * Candidates recovered from a scan that never finished (scanStore.ts).
+   *
+   * Offered rather than applied: they are somebody's interrupted work, and
+   * silently repopulating a table the user did not ask for would be a second
+   * surprise on top of the crash. Null = nothing to offer.
+   */
+  const [rescued, setRescued] = useState<{ runId: string; label: string; rows: Chain3Result[] } | null>(null);
+  useEffect(() => {
+    let alive = true;
+    void (async () => {
+      const runs = await listScanRuns();
+      if (runs.length === 0) return;
+      const counts: Record<string, number> = {};
+      for (const r of runs) counts[r.runId] = (await listScanRows<Chain3Result>(r.runId)).length;
+      const { resume, drop } = pickResumable(runs, counts);
+      for (const id of drop) void dropScanRun(id);
+      if (!resume || !alive) return;
+      const rows = await listScanRows<Chain3Result>(resume.runId);
+      if (alive && rows.length > 0) setRescued({ runId: resume.runId, label: resume.label, rows });
+    })();
+    return () => {
+      alive = false;
+    };
+  }, []);
+
   /** The design that was on screen when the scan started — the row every
    *  candidate has to beat. Measured, never ranked. */
   type ScanReference = {
@@ -6774,6 +6793,50 @@ export default function App() {
       s0?.key !== key ? { key, dir: 1 } : s0.dir === 1 ? { key, dir: -1 } : null,
     );
   }
+
+  /**
+   * One scan row from one candidate — ONE mapping, two callers (the commit
+   * after a scan, and the rescue of an interrupted one). Two copies of this
+   * would be the A6b mistake again: a rescued row measured differently from
+   * the row it replaces.
+   */
+  const chain3ScanRow = (rr: Chain3Result, win: Chain3Result | null) => {
+                    // In a sweep round the HELD axis is an anchor, not an aim:
+                    // only the swept axis can be "not realisable".
+                    // (point 5b) The WINNER is judged on BOTH axes regardless of
+                    // the round it came from — a missed delivery on the held
+                    // axis must not stay invisible on the design you get.
+                    const heldLow = rr !== win && /\(M-T sweep\)/.test(rr.label);
+                    const heldHigh = rr !== win && /\(W-M sweep\)/.test(rr.label);
+                    const dl = deliveredLabel(
+                      [heldLow ? null : rr.xoLow, heldHigh ? null : rr.xoHigh],
+                      rr.net.after.xoHzPairs ?? [null, null],
+                      ['W-M', 'M-T'],
+                    );
+                    return {
+                      label: rr.label,
+                      delivered: dl.text,
+                      target: rr.label,
+                      unrealisable: dl.unrealisable,
+                      rippleDb: rr.net.after.rippleDb,
+                      peakSmoothedDb: rr.net.after.ripplePeakSmoothedDb ?? null,
+                      powerSlopeDbDec: rr.net.after.powerSlopeDbDec ?? null,
+                      // The DELIVERED figure — the audit's is frozen before the
+                      // shrink ladder and the snap, so the column and the
+                      // ranking would disagree about the same row.
+                      rSourceOhm: rSrcDelivered(rr),
+                      disqualified: rr.disqualified ?? [],
+                      xoFloorVerdict: rr.xoFloorVerdict ?? null,
+                      avgDevDb: rr.net.after.avgDevDb ?? null,
+                      phaseDeg: rr.net.after.phaseDeg,
+                      zMinOhm: rr.net.after.zMinOhm ?? null,
+                      xoWindowOk: rr.xoWindowOk,
+                      pairOverlapOct: rr.pairOverlapOct,
+                      bomEur: rr.bomTotalEur,
+                      winner: rr === win,
+                      result: rr,
+                    };
+  };
 
   /** Load a scan candidate's complete design (specs + synth + tuned network)
    *  into Working — same application as the winner gets, undo-able. */
@@ -14491,6 +14554,51 @@ export default function App() {
                   </tbody>
                 </table>
               </details>
+            )}
+            {rescued && !chainScan && !vfBusy && (
+              /* A scan that died with finished candidates in it. Offered, not
+                 applied: the user did not ask for this table to come back, and
+                 quietly repopulating it would be a second surprise after the
+                 first one. */
+              <p className="result-good">
+                ⭯{' '}
+                {t('{n} candidates survived from a scan that was interrupted ({label}). They are complete designs — nothing was lost but the one still running.', {
+                  n: String(rescued.rows.length),
+                  label: rescued.label,
+                })}{' '}
+                <button
+                  type="button"
+                  onClick={() => {
+                    const ranked = rankChain3Results(
+                      rescued.rows,
+                      stagedOn ? { rippleDb: rippleTargetEff(), phaseDeg: num(targetPhase, 10) } : undefined,
+                      phasePriority / 100,
+                      dirWeight / 100,
+                      rSourceLimitOhm,
+                      bomCapEur,
+                      ampMinLoadOhm ?? 0,
+                    );
+                    // No winner crown: this field is partial, and a crown on a
+                    // partial field is the "ranking is not approving" mistake
+                    // this session already wrote down twice.
+                    setScanSort(null);
+                    setChainScan({ rows: ranked.map((rr) => chain3ScanRow(rr, null)), active: '' });
+                    void dropScanRun(rescued.runId);
+                    setRescued(null);
+                  }}
+                >
+                  {t('Show them')}
+                </button>{' '}
+                <button
+                  type="button"
+                  onClick={() => {
+                    void dropScanRun(rescued.runId);
+                    setRescued(null);
+                  }}
+                >
+                  {t('Discard')}
+                </button>
+              </p>
             )}
             {chainScan && (
               /* The success moment of a multi-minute run deserves its own
