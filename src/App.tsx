@@ -467,6 +467,23 @@ function slotTransfers(sol: {
  *    them had a tune that survived. It says "seed" now, because that is what
  *    the numbers describe.
  */
+/**
+ * Hand the browser two frames so a state change actually reaches the screen
+ * before a long synchronous block starts.
+ *
+ * WHY IT IS NEEDED (Sander, aug 2026: "ik klikte op Optimize en er gebeurt
+ * niets… oh nu pas"): a click handler runs to completion before React paints.
+ * The three-way setup — grids, banded angle sets, the safety grid, one input
+ * object per candidate — is hundreds of milliseconds to ten seconds of work,
+ * and every bit of it used to run BEFORE `setVfBusy(true)` could show the busy
+ * card. The button looked dead for exactly as long as the machine was busiest.
+ *
+ * Two frames rather than one: the first lets React commit, the second lets the
+ * compositor put it on screen.
+ */
+const nextPaint = (): Promise<void> =>
+  new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve())));
+
 function scanRowVerdict(r: Chain3Result): { text: string; warn?: string } {
     const nums = `${r.net.after.rippleDb.toFixed(2)} dB/${r.net.after.phaseDeg.toFixed(1)}°`;
     const kinds = r.net.safetyKinds ?? [];
@@ -5330,7 +5347,7 @@ export default function App() {
     return unverifiedSources.map((s) => s!.meta.unverifiedReason).join(' · ');
   }
 
-  function runVfOptimize() {
+  async function runVfOptimize() {
     const refusal = refuseIfUnverified();
     if (refusal) {
       setVfError(`Cannot optimise yet — ${refusal}`);
@@ -5345,6 +5362,16 @@ export default function App() {
         setVfError('3-way design needs all three measured impedances (.ZMA per driver).');
         return;
       }
+      /* SHOW THE CARD BEFORE THE SETUP, not after it. Everything below this
+       * line is synchronous main-thread work, and until it finishes React
+       * cannot paint — so the busy card used to appear only once the heavy
+       * part was already done. Every cheap refusal above has already run, so
+       * nothing can strand the overlay here; a throw further down is caught at
+       * the call site, which clears it. */
+      setVfBusy(true);
+      setVfError(null);
+      setVfProgress(null);
+      await nextPaint();
       const grid = result.freq;
       const zOnGrid = zGridWithSlots(impedances, grid);
       /* THE COST FUNCTION IS EVALUATED ON THE VALIDITY BAND (issue #14, A3d).
@@ -9268,7 +9295,10 @@ export default function App() {
       hint: t('the one-button designer'),
       run: () => {
         setDesignTab('filters');
-        runVfOptimize();
+        void runVfOptimize().catch((e) => {
+          setVfBusy(false);
+          setVfError(e instanceof Error ? e.message : String(e));
+        });
       },
     },
     { id: 'wizard', label: t('Open the design wizard'), run: () => setWizardOpen(true) },
@@ -10693,7 +10723,10 @@ export default function App() {
                     // "Optimizer chose…" summary + curves; Network is one click
                     // away for the built schematic + BOM.
                     setDesignTab('filters');
-                    runVfOptimize();
+                    void runVfOptimize().catch((e) => {
+                      setVfBusy(false);
+                      setVfError(e instanceof Error ? e.message : String(e));
+                    });
                   }}
                   disabled={vfBusy || !result}
                 >
