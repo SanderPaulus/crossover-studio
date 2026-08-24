@@ -1,0 +1,157 @@
+{
+ "pinned": {
+  "grid": 240,
+  "band": [
+   455,
+   16000
+  ],
+  "cands": [
+   {
+    "xoLow": 400,
+    "xoHigh": 2100,
+    "lo": [
+     340,
+     460
+    ],
+    "hi": [
+     1900,
+     2300
+    ]
+   },
+   {
+    "xoLow": 455,
+    "xoHigh": 2432,
+    "lo": [
+     400,
+     520
+    ],
+    "hi": [
+     2200,
+     2600
+    ]
+   },
+   {
+    "xoLow": 500,
+    "xoHigh": 1900,
+    "lo": [
+     440,
+     570
+    ],
+    "hi": [
+     1750,
+     2100
+    ]
+   }
+  ],
+  "settings": {
+   "phasePriority": 0.5,
+   "targets": {
+    "rippleDb": 2.5,
+    "phaseDeg": 15
+   },
+   "eqBands": 2,
+   "breakupGuard": true,
+   "directivityWeight": 0.25,
+   "ampTarget": "onAxis",
+   "phaseMetric": "band",
+   "synthMode": "acoustic",
+   "catalogSnap": true,
+   "ampMinLoadOhm": 3.2,
+   "rSourceDisqualifyOhm": 2,
+   "hpFloorHz": 1849,
+   "xoFloorPairs": [
+    200,
+    1849
+   ],
+   "diAnchorHz": {
+    "low": 1399,
+    "high": 3149
+   },
+   "band": [
+    455,
+    16000
+   ]
+  }
+ },
+ "ref": {
+  "label": "20260820.2 2",
+  "avg": 0.4778825462011582,
+  "peak": 1.2896973927508384,
+  "phase": 8.626214155639609,
+  "pairs": [
+   7.356904599317677,
+   8.626214155639609
+  ],
+  "zmin": 3.3633782903756115,
+  "rs": 0.29803376585346514,
+  "parts": 18,
+  "bom": 567.69
+ },
+ "rows": [
+  {
+   "label": "W-M 400 · M-T 2100",
+   "avg": 0.3865914002551219,
+   "peak": 1.2912886408631863,
+   "phase": 4.6561968101349125,
+   "pairs": [
+    4.362432412648521,
+    4.6561968101349125
+   ],
+   "zmin": 0.6543744760683102,
+   "rs": 0.40122370398060975,
+   "parts": 22,
+   "bom": 195.63,
+   "xo": [
+    428.5778898720412,
+    2005.8769580159465
+   ],
+   "dq": [
+    "the delivered network presents 0.65 Ω to the amplifier, under your amplifier's rated minimum load, 3.2 Ω, and the load could not be repaired — this is not a worse design, it is one you told this app your amplifier will refuse to drive"
+   ],
+   "secs": 509.85
+  },
+  {
+   "label": "W-M 455 · M-T 2432",
+   "avg": 0.7007616637500848,
+   "peak": 1.9111508065814746,
+   "phase": 23.8674809966758,
+   "pairs": [
+    23.8674809966758,
+    9.587951831970637
+   ],
+   "zmin": 3.472797622782763,
+   "rs": 0.8067908573019755,
+   "parts": 18,
+   "bom": 84.98,
+   "xo": [
+    462.51917135858537,
+    2381.1087833285187
+   ],
+   "dq": [],
+   "secs": 466.144
+  },
+  {
+   "label": "W-M 500 · M-T 1900",
+   "avg": 0.34807069818345604,
+   "peak": 1.3267880253388995,
+   "phase": 6.41608924127128,
+   "pairs": [
+    4.349208292022932,
+    6.41608924127128
+   ],
+   "zmin": 0.6382610531910853,
+   "rs": 0.8292168292114344,
+   "parts": 22,
+   "bom": 153.26,
+   "xo": [
+    559.6025444865747,
+    1930.8756298710782
+   ],
+   "dq": [
+    "the delivered network presents 0.64 Ω to the amplifier, under your amplifier's rated minimum load, 3.2 Ω, and the load could not be repaired — this is not a worse design, it is one you told this app your amplifier will refuse to drive"
+   ],
+   "secs": 524.55
+  }
+ ],
+ "wall": 525.218
+}

@@ -1026,6 +1026,46 @@ gridfijnheid en een ander zichtbaar bereik. Vandaar de regel die hierbij hoort:
 harnas van zijn filter meet, niet een getal dat uit een ander venster is
 overgeschreven.
 
+### DE NULLIJN (24 aug 2026, commit c59db52)
+
+Vastgelegd in `tools/bench/baseline.json`. Twee runs, **identiek tot op het
+cijfer** incl. de geleverde kruisingen — de meetlat is deterministisch.
+
+```
+ontwerp                   avg    piek    fase   Zmin  Rbron  parts     BOM
+20260820.2 (de lat)      0,48    1,29     8,6°  3,36   0,30     18    €568
+W-M 400 · M-T 2100       0,39    1,29     4,7°  0,65   0,40     22    €196  ✗ last
+W-M 455 · M-T 2432       0,70    1,91    23,9°  3,47   0,81     18     €85
+W-M 500 · M-T 1900       0,35    1,33     6,4°  0,64   0,83     22    €153  ✗ last
+```
+(8 min 45 wandklok; geleverde kruisingen 428/2006 · 463/2381 · 560/1931)
+
+**Wat deze tabel bewijst, en het is B1/B2 in één beeld.** Twee van de drie
+kandidaten verslaan zijn handgebouwde filter op vlakheid ÉN fase, voor een
+derde van de prijs — en presenteren 0,65 Ω aan de versterker. De enige
+kandidaat met een gezonde last heeft 23,9° fase (volledig het W-M-paar:
+23,9/9,6), bijna drie keer die van hem.
+
+De optimizer is dus niet stuk. Hij kan het niveau van zijn handwerk halen, maar
+uitsluitend langs een weg die de versterker kortsluit; zodra hij een gezonde
+last moet leveren stort de fase in. Impedantie is geen ontwerpvariabele in de
+keten, dus de goede ontwerpen zijn precies de onbouwbare.
+
+Twee dingen die de tabel ook uitsluit: de kooien HOUDEN op deze drie (geleverd
+ligt dicht bij ontworpen), dus B6 bijt hier niet en de fase-instorting van
+kandidaat 2 heeft een andere oorzaak dan wegdrijven; en R_bron blijft overal
+onder de waarschuwingsgrens van 1,0 Ω, dus die klasse bindt hier evenmin. Wat
+bindt is de LAST.
+
+**Twee weeffouten in het harnas zelf, gevonden en gerepareerd voordat de
+nullijn vastlag:** een lege `disqualified`-array is truthy in JavaScript (een
+kandidaat kreeg een ✗ die hij niet verdiende), en de bronweerstand werd uit
+`audit.rSourceOhm` gelezen terwijl het geleverde netwerk in
+`after.rSourceOhm` zit — `partAudit.ts:129` waarschuwt letterlijk dat er twee
+velden met die naam bestaan die verschillende netwerken beschrijven.
+`refrun.ts` leest nog steeds het verkeerde veld; elk R_bron-getal dat daaruit
+komt is dat van een ander netwerk.
+
 ### Het protocol voor stap 1 t/m 5
 
 1. Draai de meetlat op de HUIDIGE boom, bewaar `OUT` als `bench-<commit>.json`.

@@ -109,7 +109,7 @@ const row = (r: any) => ({
   label: r.label, avg: r.net.after.avgDevDb ?? null, peak: r.net.after.rippleDb,
   phase: r.net.after.pairPhaseDeg?.length ? Math.max(...r.net.after.pairPhaseDeg) : r.net.after.phaseDeg,
   pairs: r.net.after.pairPhaseDeg ?? null, zmin: r.net.after.zMinOhm ?? null,
-  rs: r.net.audit?.rSourceOhm ?? null, parts: r.parts.filter((p: any) => /^(Resistor|Inductor|Capacitor)$/.test(p.type)).length,
+  rs: r.net.after.rSourceOhm ?? r.net.audit?.rSourceOhm ?? null, parts: r.parts.filter((p: any) => /^(Resistor|Inductor|Capacitor)$/.test(p.type)).length,
   bom: r.bomTotalEur, xo: r.net.after.xoHzPairs ?? null, dq: r.disqualified ?? null,
 });
 
@@ -161,12 +161,12 @@ const wall = (Date.now() - t0) / 1000;
 const f2 = (v: number | null, d = 2) => (v === null || !Number.isFinite(v) ? '   —' : v.toFixed(d));
 const line = (r: any) =>
   `${String(r.label).padEnd(22)} ${f2(r.avg).padStart(6)} ${f2(r.peak).padStart(7)} ${f2(r.phase, 1).padStart(7)} ` +
-  `${f2(r.zmin).padStart(6)} ${String(r.parts).padStart(6)} ${(r.bom === null ? '—' : '€' + Math.round(r.bom)).padStart(7)}` +
-  `${r.dq ? '  ✗ ' + r.dq : ''}`;
+  `${f2(r.zmin).padStart(6)} ${f2(r.rs).padStart(6)} ${String(r.parts).padStart(6)} ${(r.bom === null ? '—' : '€' + Math.round(r.bom)).padStart(7)}` +
+  `${r.dq?.length ? '  ✗ ' + r.dq : ''}`;
 console.log('');
-console.log(`${'ontwerp'.padEnd(22)} ${'avg'.padStart(6)} ${'piek'.padStart(7)} ${'fase'.padStart(7)} ${'Zmin'.padStart(6)} ${'parts'.padStart(6)} ${'BOM'.padStart(7)}`);
-console.log('─'.repeat(80));
-if (ref) { console.log(line(ref) + '   ◆ de lat'); console.log('─'.repeat(80)); }
+console.log(`${'ontwerp'.padEnd(22)} ${'avg'.padStart(6)} ${'piek'.padStart(7)} ${'fase'.padStart(7)} ${'Zmin'.padStart(6)} ${'Rbron'.padStart(6)} ${'parts'.padStart(6)} ${'BOM'.padStart(7)}`);
+console.log('─'.repeat(87));
+if (ref) { console.log(line(ref) + '   ◆ de lat'); console.log('─'.repeat(87)); }
 for (const r of rows) console.log(line(r));
 console.log('');
 console.log(`grid ${GRID.length} pt · band ${BAND[0]}–${BAND[1]} Hz · eq ${SETTINGS.eqBands} · snap ${SETTINGS.catalogSnap} · amp ${SETTINGS.ampMinLoadOhm} Ω · ${wall.toFixed(0)}s wandklok`);
