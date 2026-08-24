@@ -1396,3 +1396,43 @@ Wat nog niet gemeten is: waarom de fit MET parasieten in een 0,018 Ω-bekken
 landt en zonder parasieten op 1,54 Ω. Dat verschil is de scherpste aanwijzing
 die er nu ligt, en het is één meting: dezelfde tak, dezelfde structuur, alleen
 de parasieten aan/uit, met de gekozen waardes ernaast.
+
+### De 0,48 Ω ontleed tot op de bodem (24 aug 2026)
+
+Vier verdachten, alle vier uitgesloten MET een meting:
+
+| verdachte | test | uitkomst |
+|---|---|---|
+| notch-demping | R van 0,22 → 1 → 2 → 4 → 8 Ω | Zmin 0,510 → 0,582; dip blijft op 2619 Hz — **niet de oorzaak** |
+| catalogus-snap | continue fit vs gesnapt, één proces | 0,018 → 0,510 Ω: de snap VERBETERT 28× — **niet de oorzaak** |
+| merge naar schema | `topo.build` vs `netlistFromSynthesis` | byte-gelijke netlijsten incl. knopen en parasieten — **niet de oorzaak** |
+| structuurkeuze | 16 alignment-paren doorgemeten | LR4/LR4 is de beste fit ÉN met 1,54 Ω een van de gezondste — **niet de oorzaak** |
+
+**Wat het wel is.** De dip verschuift mee met ZOWEL de HP-seriecaps als de
+LP-shuntcap:
+
+```
+C6 (LP-shunt)     ×0,5 → 0,624 @ 3292    ×1 → 0,510 @ 2619    ×2 → 0,465 @ 2206    ×4 → 0,431 @ 1968
+C1+C3 (HP-serie)  ×0,5 → 0,462 @ 3109    ×1 → 0,510 @ 2619    ×2 → 0,585 @ 2381
+```
+
+Dat is de bandpass-ladder zelf: boven de LP-knie vormen seriespoel en shuntcap
+een serie-resonant pad naar massa (hun reactanties heffen elkaar deels op), en
+dat pad staat direct over de versterkerklemmen. Over een bereik van 16× in de
+waardes blijft de last tussen 0,43 en 0,80 Ω — **er is geen naburige
+instelling die hem gezond maakt.**
+
+**Gevolg voor de aanpak.** De tak-synthese kan dit niet met beter fitten
+oplossen; het is geen slecht gekozen waarde maar een eigenschap van de
+topologie op deze bandbreedte (400 → 1993 Hz, 2,3 octaven). Wat de last wél
+optilt is de GEZAMENLIJKE tune, die alle takken tegelijk ziet — gemeten:
+0,72 → 3,47 Ω op kandidaat 455/2432. Dat is ook de enige plek waar de
+parallelschakeling bestaat, en de last is een eigenschap van de
+parallelschakeling.
+
+**Openstaand, en dit is nu de scherpste vraag:** waarom lukt die redding bij
+455/2432 wel en bij 400/2100 en 500/1900 niet? Niet de seed-hoogte (0,72 vs
+0,48/0,49 is klein), niet de structuur (alle drie LR4/LR4-achtig). Het meest
+waarschijnlijke verschil is de BANDBREEDTE van de middentak: 455→2432 is 2,4
+octaven tegen 400→2100 (2,4) en 500→1900 (1,9). Dat is geen groot verschil,
+dus dit moet gemeten worden en niet beredeneerd.
