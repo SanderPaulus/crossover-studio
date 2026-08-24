@@ -749,7 +749,8 @@ enige structurele garantie dat elke iteratie beter wordt.
 
 **Stap 1 — de audit als laatste woord** (laag risico). Verplaats de eind-audit
 naar ná krimpladder, reparatie en snap. Verwacht: inerte onderdelen weg,
-minder parts, lagere BOM, kwaliteit gelijk.
+minder parts, lagere BOM, kwaliteit gelijk. **GEDAAN 24 aug — en de
+verwachting was FOUT; zie hieronder.**
 
 **Stap 2 — het plafond laten bijten** (midden risico). Per tak op zijn eigen
 kruising, en voor serie-pad-elementen een harde klem. Verlegt het zoekpad — de
@@ -1078,3 +1079,72 @@ komt is dat van een ander netwerk.
 
 Een stap mag verliezen op één getal als hij op een ander duidelijk wint, maar
 dan staat die ruil in de commit — expliciet, met beide getallen.
+
+
+---
+
+## Stap 1 gedaan: de audit als laatste woord (24 aug 2026)
+
+De eind-audit stond op `netOptimizer.ts:2517`, met de krimpladder, de
+amp-reparatie en de catalogus-snap eráchter. Nu draait hij als laatste, vlak
+voor het materialiseren. **Zonder hertune**: die zou elke waarde weer van zijn
+catalogusonderdeel af trekken en de snap ongedaan maken. Dat kost niets, want
+`inert` betekent per definitie dA < 0,15 dB en dP < 1,5°, en de audit
+hercontroleert elke verwijdering op het volle grid en draait hem terug bij
+regressie.
+
+### De meting: precies nul verschil
+
+Drie kandidaten, alle zeven assen, tot op het cijfer gelijk aan de nullijn.
+De lat bewoog niet mee (die meet met de audit uit, dus dat hoort ook zo).
+Wandklok 525 → 518 s.
+
+**En de audit stond niet stil** — dat is apart nagemeten, want "geen verschil"
+en "hij draaide niet" zien er hetzelfde uit. Op kandidaat 1, in BEIDE
+volgordes (nieuwe boom en een worktree op 5d9c679):
+
+```
+28 posten · 2 inert · 26 verdiend · 0 grijs · 2 verwijderd: C6 en B·R14
+```
+
+Identiek. Zelfde aantallen, zelfde onderdelen, zelfde verdicten.
+
+### Wat dat betekent, en waarom de voorspelling fout was
+
+De audit voorspelde "inerte onderdelen weg, minder parts, lagere BOM". Dat was
+gebaseerd op de aanname dat de drie latere passes ONDERDELEN INERT MAKEN die
+de audit op zijn oude plek nog niet kon zien. Op deze set gebeurt dat niet: de
+twee inerte onderdelen zijn óók vóór de krimpladder al inert, en de 22 die
+overblijven zijn alle 22 verdiend.
+
+Achteraf is dat ook de logische uitkomst, en dat had ik vooraf kunnen
+beredeneren: een onderdeel dat de som met < 0,15 dB verandert, kan de
+beslissingen van de krimpladder, de reparatie en de snap over de ándere
+onderdelen ook nauwelijks sturen. De volgorde kán daarom weinig uitmaken —
+tenzij een latere pass een LEVEND onderdeel dood maakt, en dat is wat hier
+niet blijkt te gebeuren.
+
+**B5 was dus een echte volgordefout in de code, maar op deze set zonder
+gevolg.** Dat is iets anders dan wat de audit ervan maakte, en het staat hier
+zo omdat de gecorrigeerde voorspelling meer waard is dan de oorspronkelijke.
+
+### Waarom hij tóch blijft staan
+
+Het protocol zegt "wint hij niet, dan gaat hij terug". Toegepast op stap 1 is
+dat de verkeerde lezing van mijn eigen regel, en de regel is daarom
+aangescherpt:
+
+> **Een KWALITEITSwijziging moet winnen op de meetlat. Een CORRECTHEIDSfix mag
+> niet verliezen.** De meetlat meet ontwerpkwaliteit; hij kan per constructie
+> niet zien of het getal dat je LEEST over het geleverde netwerk gaat.
+
+Stap 1 is het tweede soort. Wat hij koopt is een garantie: geen enkele pass
+die later achteraan wordt geplakt kan nog aan de audit ontsnappen — precies de
+ziekte die dit bestand vier keer heeft opgeschreven ("passes were appended
+after the point where the reporting was written"). Eerlijk erbij: op déze
+kandidaten verandert zelfs het RAPPORT niet, dus de winst is structureel en
+niet waargenomen.
+
+Vier commentaarblokken die de oude volgorde beschreven zijn bijgewerkt; het
+historische lijstje van vier bugs op `netOptimizer.ts:310` blijft staan, want
+als geschiedenis klopt het.

@@ -111,6 +111,16 @@ const row = (r: any) => ({
   pairs: r.net.after.pairPhaseDeg ?? null, zmin: r.net.after.zMinOhm ?? null,
   rs: r.net.after.rSourceOhm ?? r.net.audit?.rSourceOhm ?? null, parts: r.parts.filter((p: any) => /^(Resistor|Inductor|Capacitor)$/.test(p.type)).length,
   bom: r.bomTotalEur, xo: r.net.after.xoHzPairs ?? null, dq: r.disqualified ?? null,
+  // Wat de part-audit ZAG en DEED — zonder dit is "geen verschil" niet te
+  // onderscheiden van "de audit draaide niet".
+  audit: r.net.audit ? {
+    entries: r.net.audit.entries.length,
+    inert: r.net.audit.entries.filter((e: any) => e.verdict === 'inert').length,
+    earned: r.net.audit.entries.filter((e: any) => e.verdict === 'earned').length,
+    grey: r.net.audit.entries.filter((e: any) => e.verdict === 'grey').length,
+    applied: r.net.audit.entries.filter((e: any) => e.applied).length,
+    appliedIds: r.net.audit.entries.filter((e: any) => e.applied).map((e: any) => e.ids.join('+')),
+  } : null,
 });
 
 if (ONLY !== null) {

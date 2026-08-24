@@ -295,9 +295,9 @@ export interface NetOptimizeOptions {
    *  2-way path is byte-for-byte the historical one. Directivity terms are
    *  ignored in 3-way (they pair exactly two angle sets). */
   midBranch?: { response: GriddedResponse; adjust: BranchAdjust };
-  /** GATE 4 — the absolute physical part audit (partAudit.ts). Runs on the
-   *  tuned network BEFORE the shrink ladder and snap, in every mode, targets
-   *  met or not: parts that measure INERT (sum < 0.15 dB, pair phase < 1°,
+  /** GATE 4 — the absolute physical part audit (partAudit.ts). Runs LAST, on
+   *  the network as delivered — after the shrink ladder, the amp-load repair
+   *  and the catalog snap — in every mode, targets met or not: parts that measure INERT (sum < 0.15 dB, pair phase < 1°,
    *  Z unchanged, without any retune) are removed and re-checked; everything
    *  else is only REPORTED with its numbers. Locked parts are never removed.
    *  Omit for defaults; `enabled: false` skips it entirely. */
@@ -391,11 +391,14 @@ export interface NetOptimizeResult {
      * Source resistance at the low driver OF THE DELIVERED PARTS — the figure
      * every ranking judges on.
      *
-     * Deliberately here and not on the audit: `audit.rSourceTunedOhm` is frozen
-     * at gate 4, before the shrink ladder and the catalog snap, and both of
-     * those still move this number. Measured on Sanders 562/2270 candidate:
-     * the audit read 2.0002 Ω and the row was struck through, while the network
-     * that would actually be built measures 1.64 Ω — inside the 2.0 Ω limit.
+     * Deliberately here and not on the audit. Gate 4 now runs last, so the gap
+     * has closed to the removals of the audit pass itself plus the debris
+     * sweep — but the rule stands BY CONSTRUCTION rather than by the current
+     * pass order, which is the whole point: a caller must never have to know
+     * which pass ran last. Measured back when the audit was frozen several
+     * passes early, on Sanders 562/2270 candidate: the audit read 2.0002 Ω and
+     * the row was struck through, while the network that would actually be
+     * built measures 1.64 Ω — inside the 2.0 Ω limit.
      */
     rSourceOhm?: number | null;
   };
@@ -2245,8 +2248,11 @@ export function optimizeNetworkValues(
    * still re-checked on the full grid; a regression reverts it and marks the
    * entry GREY with the reason.
    *
-   * It runs TWICE: on the SEED before the first value tune, and on the tuned
-   * network before the shrink ladder. The seed pass exists because an
+   * It runs TWICE: on the SEED before the first value tune, and on the
+   * DELIVERED network, after every pass that can still move a value. The
+   * second used to sit before the shrink ladder, the repair and the snap, so
+   * anything those three made inert was never looked at. The seed pass exists
+   * because an
    * unlocked value tune RE-PURPOSES a dead part rather than leaving it dead
    * (measured: a 6.8 mH/68 µF trap at 232 Hz across the tweeter — 0.10 dB on
    * the sum — came out of the tune as a 0.78 mH shunt, and with its cap
@@ -2511,22 +2517,6 @@ export function optimizeNetworkValues(
    * again. One more result-challenge on the assembled survivor, right
    * before the snap freezes values onto purchasable parts. ---- */
   cur = driftCatch(cur);
-
-  /* ---- GATE 4 (end): the same audit on the tuned network, before the
-   * shrink ladder and the snap. Its report is what the caller shows. ---- */
-  const endAudit = runAudit(cur.parts, 'part audit');
-  if (endAudit) {
-    if (endAudit.applied) {
-      cur = { ...cur, parts: endAudit.parts, metrics: endAudit.metrics, fx: fxOf(endAudit.metrics) };
-      cur = tune(cur.parts, 1, opts.staged ?? null);
-    }
-    auditReport = endAudit.report;
-    if (seedAudit) {
-      // Seed removals are already gone from the parts; carry their entries
-      // into the shown report so the user sees WHY they went.
-      auditReport.entries.unshift(...seedAudit.report.entries.filter((e) => e.applied));
-    }
-  } else if (seedAudit) auditReport = seedAudit.report;
 
   stage('cap shrink ladder');
   /* ---- Cap SHRINK LADDER (Sanders: "met B·C1 laag beginnen en langzaam
@@ -3098,6 +3088,29 @@ export function optimizeNetworkValues(
     }
   }
 
+  /* ---- GATE 4 (end): the same audit, and it runs LAST — after the shrink
+   * ladder, the amplifier-load repair and the catalog snap. It used to sit
+   * before all three, which meant the report the designer reads described a
+   * network that three later passes then changed, and anything those passes
+   * made inert was never looked at. That is the same shape as every other bug
+   * in this file: a decision taken on a quantity a later stage still moves.
+   *
+   * NO RETUNE after this one, unlike the old call site. A retune would pull
+   * every value back off its catalog part and undo the snap. It costs nothing
+   * to skip: `inert` means dA < 0.15 dB and dP < 1.5°, and the audit re-checks
+   * every removal on the full grid and reverts on regression, so what leaves
+   * here could not have been worth tuning around. ---- */
+  const endAudit = runAudit(cur.parts, 'part audit');
+  if (endAudit) {
+    if (endAudit.applied) cur = { ...cur, parts: endAudit.parts, metrics: endAudit.metrics, fx: fxOf(endAudit.metrics) };
+    auditReport = endAudit.report;
+    if (seedAudit) {
+      // Seed removals are already gone from the parts; carry their entries
+      // into the shown report so the user sees WHY they went.
+      auditReport.entries.unshift(...seedAudit.report.entries.filter((e) => e.applied));
+    }
+  } else if (seedAudit) auditReport = seedAudit.report;
+
   /* ---- Finish: materialise removals, report on the full grid ---- */
   let outParts: VxpPart[] = [];
   for (const q of cur.parts) {
@@ -3175,11 +3188,14 @@ export function optimizeNetworkValues(
    * depend on having thought of every pass. */
   /* THE NUMBER A RANKING MAY JUDGE ON IS THE DELIVERED ONE.
    *
-   * auditReport is frozen at gate 4 — "before the shrink ladder and the snap",
-   * as the comment there says — so audit.rSourceOhm describes the network as it
-   * was several passes ago. Measured on Sander's 562/2270 candidate: the audit
-   * reads 2.0002 Ω and the ranking disqualifies on it, while the network that
+   * auditReport used to be frozen at gate 4 while three value-moving passes
+   * ran after it, so audit.rSourceOhm described the network as it was several
+   * passes ago. Measured then, on Sander's 562/2270 candidate: the audit reads
+   * 2.0002 Ω and the ranking disqualifies on it, while the network that
    * actually ships measures 1.64 Ω and is comfortably inside the 2.0 Ω limit.
+   * Gate 4 has since moved to the end; this number stays the one to judge on
+   * anyway, because it is computed on the parts handed over and therefore
+   * cannot go stale if another pass is appended later.
    *
    * That is the same disease as the bug that started this round (R_source read
    * off the grid edge): the figure in the table is not the figure of the thing
