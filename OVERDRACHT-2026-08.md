@@ -1226,3 +1226,95 @@ de vorm is `hasParallelCompanion`: deelt dit element zijn knopenpaar met een
 ander R/L/C, dan is het geen signaalpad-onderdeel. (Bijvangst van de meting: op
 dit testnet was díe misclassificatie NIET de oorzaak van de rode test — de
 getallen bleven identiek na de reparatie. Ook dat is gemeten, niet aangenomen.)
+
+---
+
+## Stap 3 GEMETEN EN TERUGGEDRAAID — en de premisse van het plan klopte niet
+(24 aug 2026)
+
+### Eerst: het plan zelf was weerlegd voordat er code was
+
+Stap 3 zoals opgeschreven: "na de merge de systeem-Zin meten; onder de grens
+niet doorschuiven maar opnieuw fitten of weigeren met reden". De meetlat, met
+de seed-Z er nu permanent in:
+
+```
+kandidaat              seed-Z   geleverd-Z
+W-M 400 · M-T 2100       0,48         0,65   ✗
+W-M 455 · M-T 2432       0,72         3,47   ok
+W-M 500 · M-T 1900       0,49         0,64   ✗
+```
+
+**B1 bevestigd**: de synthese overhandigt in álle drie de gevallen 0,5–0,7 Ω.
+Zij is volledig impedantie-blind, en de bestaande weigering (ratio < 0,01 tegen
+de kale driver) vuurt hier terecht niet — die vangt catastrofale degeneratie,
+geen halve ohm.
+
+**Maar "weigeren onder de grens" had alle drie geweigerd, inclusief de enige
+die gezond eindigt.** 0,72 wordt 3,47 Ω: de reparatie tilt een seed soms met
+een factor 4,8 op, en soms helemaal niet (0,48 → 0,65). "De tuner behoudt in
+plaats van te redden" is dus te absoluut; hij rédt soms. Een seed onder de
+vloer is niet gedoemd, en een poort daar had de winnaar weggegooid.
+
+### Wat er wel gebouwd is, en waarom het terugging
+
+Een TIE-BREAK op impedantie tussen gelijkwaardige startpunten van de
+multi-start: binnen 1 % van de beste fit de hoogste tak-impedantie kiezen, en
+alleen bij ≥ 2× winst. Vorm bewust gelijk aan de goedkoopste-BOM-tiebreak in
+de tuner — een beslispunt, geen objective-term (stap 2 liet zien wat die kost).
+
+Op de meetlat: **alle zeven assen identiek, seed-Z identiek, wandklok
+519 → 520 s.** Volstrekt inert. Teruggedraaid.
+
+### De fout die eronder zat, en het is een herhaling
+
+Ik bouwde hem op bewijs uit `tools/bench/seedz.ts`, dat een ANDER grid (600 vs
+240 punten), een andere band (tot 20 kHz vs 16 kHz) en andere kooien gebruikt
+dan de meetlat. In díe configuratie stort de mid in tot 0,02 Ω en ligt er een
+alternatief op 1,58 Ω — 69× beter voor 0,63 % fitfout, en de tie-break haalde
+de seed daar van 0,02 naar 1,58.
+
+In de configuratie die telt bestaat die keuze niet. Zelfde luidspreker, andere
+instellingen. Dit is dezelfde fout als eerder in deze reeks (toen: fixtures in
+plaats van zijn luidspreker, zichtbaar geworden aan piek 6,49 vs 1,4) in een
+nieuwe vermomming. **Regel die daaruit volgt: een diagnose telt alleen als hij
+in de configuratie van de meetlat is gedaan.** `seedz.ts` en `bench.mts` hebben
+elk hun eigen config, en dat is een val die opnieuw zal toeslaan.
+
+### De echte bevinding — en die wijst één laag hoger
+
+De startpunten in de MEETLAT-configuratie, mid-tak van kandidaat 400/2100:
+
+```
+  #2        fx 0,3781   Zmin 0,018 Ω   <- winnaar
+  #0/1/3/5  fx 0,4454   Zmin 0,047 Ω
+  #4        fx 0,8770   Zmin 1,650 Ω
+```
+
+Er is een startpunt met 92× betere impedantie, maar het kost **132 % meer
+fitfout** — geen gelijkstand, en geen enkele tie-break mag dat kopen. Fit en
+last zijn hier een ECHTE RUIL binnen de gekozen topologie, geen ongelukje in
+de selectie.
+
+Daarmee ligt de hefboom niet bij de waardefit maar bij de STRUCTUUR:
+`designThreeWay` kiest uit 64 structuren (alignment × alignment × twee
+polariteiten) en is net zo impedantie-blind als de synthese. Op kandidaat
+400/2100 kan geen enkele fit binnen de gekozen structuur een gezonde last
+leveren; kandidaat 455/2432 haalt met een ándere structuur wél 3,47 Ω.
+
+Dat sluit aan op wat de literatuurronde zei, van de andere kant: de gangbare
+volgorde is topologie ÉN waarden variëren tot óók de impedantierespons het
+doel haalt — niet waarden fitten en dan hopen.
+
+**Voorstel voor de volgende poging** (niet gebouwd, niet gemeten): laat de
+structuurzoeker zijn 64 kandidaten niet alleen op de akoestische som
+beoordelen maar de winnaar kiezen uit de structuren die binnen een marge van
+de beste liggen, op geassembleerde impedantie. Zelfde tie-break-vorm, één laag
+hoger, en dáár is aantoonbaar iets te kiezen. Meten vóór bouwen, in de
+configuratie van de meetlat.
+
+### Wat er blijft staan
+
+De meetlat draagt nu `seedZ` en `seedPeak` per kandidaat — wat de synthese de
+tuner aanreikt, en daarmee het plafond van al het latere werk. Zonder dat
+getal was geen van bovenstaande conclusies te trekken geweest.

@@ -111,6 +111,10 @@ const row = (r: any) => ({
   pairs: r.net.after.pairPhaseDeg ?? null, zmin: r.net.after.zMinOhm ?? null,
   rs: r.net.after.rSourceOhm ?? r.net.audit?.rSourceOhm ?? null, parts: r.parts.filter((p: any) => /^(Resistor|Inductor|Capacitor)$/.test(p.type)).length,
   bom: r.bomTotalEur, xo: r.net.after.xoHzPairs ?? null, dq: r.disqualified ?? null,
+  // Wat de SYNTHESE de tuner aanreikt. De tuner behoudt eerder dan hij redt,
+  // dus dit getal is het plafond van al het latere werk (B1).
+  seedZ: r.net.before.zMinOhm ?? null,
+  seedPeak: r.net.before.rippleDb ?? null,
   // Wat de part-audit ZAG en DEED — zonder dit is "geen verschil" niet te
   // onderscheiden van "de audit draaide niet".
   audit: r.net.audit ? {
