@@ -1436,3 +1436,83 @@ parallelschakeling.
 waarschijnlijke verschil is de BANDBREEDTE van de middentak: 455→2432 is 2,4
 octaven tegen 400→2100 (2,4) en 500→1900 (1,9). Dat is geen groot verschil,
 dus dit moet gemeten worden en niet beredeneerd.
+
+---
+
+## De versterker-vloer: de reparatie mocht niet leveren wat ze vond
+(24 aug 2026, Sanders "dat is een bug in de optimizer" — terecht)
+
+### Wat de diagnose liet zien
+
+De reparatiepas is gemeten met een tijdelijke sonde op haar eigen poort,
+kandidaat 400/2100:
+
+```
+zCur.short 2,698 (min 0,50 Ω) → zRep.short 0,004 (min 3,20 Ω)   repairedEnough = TRUE
+prot 0,00→0,00   dip 0,00→0,00   leak 1,55→0,10        (fundamentals intact)
+PIEK 1,24→2,44 dB   FASE 5,0→16,4°   (doel 2,5 dB / 15°)
+fx 0,299→9,316 (ratio 31, cap 1,5)   →  OK = false
+```
+
+**De reparatie slaagde.** Ze vond exact 3,20 Ω, met alle fundamentals intact en
+de rimpeldoelstelling gehaald — 1,4° buiten het fasedoel. Ze werd geweigerd op
+een fx-verhouding van 31, en die 31 is misleidend: in de eenheden die de
+ontwerper leest kostte het 1,2 dB en 11°, voor een factor 6 op de last.
+
+Daarna diskwalificeerde de ranking de kandidaat op 0,65 Ω. **De gebruiker kreeg
+niets terwijl er een bouwbaar filter lag.**
+
+### De fout, en de correctie
+
+Twee bewakers, twee definities van dezelfde ruil. De reparatie vergeleek
+zichzelf met NIET-repareren; het echte alternatief is WEGGEGOOID WORDEN.
+
+`feasibilityOk`: staat er een versterkerwaarde en zit het huidige netwerk
+eronder, dan is de reparatie geaccepteerd zodra ze de vloer haalt zonder een
+fundamental op te geven (tweeter-bescherming, vallei, lekkage). De fx-prijs is
+GEEN veto meer. Doelen ook niet: die zijn het stoppunt van de escalatieladder,
+geen bestaansrecht-eis.
+
+De rolverdeling is daarmee dezelfde als elders in dit bestand: de reparatie
+gaat over HAALBAARHEID, de ranking over KWALITEIT. Een duur uitgevallen
+reparatie wordt niet verstopt — hij concurreert op zijn eigen cijfers en
+verliest van een betere kandidaat, wat iets anders is dan gewist worden.
+
+### Gemeten, met de controles vooraf vastgelegd
+
+```
+kandidaat     VOOR                                  NA
+400/2100      Z 0,65 · piek 1,29 · fase 4,7 · failed   →  Z 3,36 · piek 3,18 · fase 34,8 · lifted   dq 1→0
+455/2432      Z 3,47 · piek 1,91 · fase 23,9 · lifted  →  identiek                                  dq 0→0
+500/1900      Z 0,64 · piek 1,33 · fase 6,4 · failed   →  identiek                                  dq 1→1
+```
+
+Controle 1 (455/2432 mag niet bewegen): GESLAAGD, geen cijfer veranderd.
+Controle 3 (de lat mag niet meebewegen): GESLAAGD.
+Controle 2 (geleverd ≈ wat de reparatie vond): **GEFAALD** — zie hieronder.
+
+500/1900 blijft onbouwbaar: daar haalt de reparatie de vloer niet, dus
+`feasibilityOk` vuurt terecht niet. Dat is een eerlijk antwoord over die
+kandidaat, geen bug.
+
+### NIEUWE BEVINDING uit de gefaalde controle: de snap eet de winst op
+
+Voorspeld op grond van de diagnose: 2,44 dB / 16,4°. Geleverd: **3,18 dB /
+34,8°** — 0,74 dB en 18 graden slechter. Tussen de reparatie en de levering
+staan alleen de catalogus-snap en de eind-audit.
+
+De snap bewaakt de IMPEDANTIE wel (`zSnapTarget`, 3,20 → 3,36 Ω) maar rimpel
+en fase niet: zijn score is fit × onderdelen × kosten × zShort. Hij mag dus
+vlakheid en fase vrij uitgeven. Dat is exact de vorm van elk probleem in dit
+document — een latere trap geeft weg wat een eerdere won — en het is nu
+gekwantificeerd. **Volgende meting: wat kost de snap op de andere kandidaten,
+en is een nooit-slechter-bewaker op rimpel/fase daar verdedigbaar?**
+
+### Nog open (Sanders tweede punt)
+
+Het ingevulde getal is een MINIMUM, en de reparatie behandelt het als een
+DOEL: ze stopt zodra `zShort ≤ 0,15`, dus ze landt OP de grens (gemeten:
+exact 3,20). Twee gevolgen: geen marge voor bouwtolerantie (±5 % op de
+onderdelen beweegt de som ±1,67 dB, en de impedantie navenant), en geen zicht
+op de mogelijkheid dat een HOGERE last minder vlakheid kost dan de grens zelf.
+Aparte wijziging, aparte meting.

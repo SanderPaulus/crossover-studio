@@ -2741,12 +2741,52 @@ export function optimizeNetworkValues(
         mRep.protSqDb <= mCur.protSqDb + 3 &&
         mRep.xoDipDb <= mCur.xoDipDb + 1 &&
         nc(rep) <= nc(cur) * 1.5;
+      /* FEASIBILITY BEATS QUALITY WHEN THE ALTERNATIVE IS DISQUALIFICATION.
+       *
+       * Both paths above compare the repair against the UNREPAIRED network and
+       * refuse to pay much response quality for the lift. That is the wrong
+       * comparison whenever a stated amplifier floor is in play: a network
+       * below it is struck through by the ranking, so the real alternative is
+       * not "a flatter design", it is NO design. Measured on Sanders 400/2100
+       * candidate, which is exactly this case:
+       *
+       *     Z    0.50 → 3.20 Ω   (his rating, reached exactly)
+       *     peak 1.24 → 2.44 dB  (his target: 2.5 — still met)
+       *     phase 5.0 → 16.4°    (his target: 15 — missed by 1.4°)
+       *     fx   0.299 → 9.316   (×31 — which is why both paths refused)
+       *
+       * The ×31 on fx reads as a catastrophe and is not one: in the units a
+       * designer reads it is 1.2 dB and 11°, bought with a factor 6 on the
+       * load. The app threw that away, delivered 0.65 Ω, and the ranking then
+       * discarded the whole candidate — so the user got nothing while a
+       * buildable design existed.
+       *
+       * So the repair stops judging quality here. Its job is feasibility:
+       * clear the floor without surrendering a fundamental. Whether the price
+       * was worth paying is the RANKING's question, and the ranking already
+       * compares candidates on ripple and phase — this is the same "decisions
+       * at decision points" split the rest of this file runs on. A repair that
+       * comes out genuinely bad is not hidden: it competes on its own numbers
+       * and loses to better candidates, which is different from being deleted.
+       *
+       * Targets are deliberately NOT required. They are the escalation's
+       * stopping criterion, not a limit a design must clear to be allowed to
+       * exist — missing 15° by 1.4° is not grounds to ship an unbuildable
+       * network instead. */
+      const feasibilityOk =
+        ampFloorOhm !== null &&
+        repairedEnough(zRep.short) &&
+        zCur.short > 0.15 &&
+        mRep.protSqDb <= mCur.protSqDb + 3 &&
+        mRep.xoDipDb <= mCur.xoDipDb + 1 &&
+        (!breakupGuard || mRep.leakSqDb <= mCur.leakSqDb + 4);
       const ok =
         (repairedEnough(zRep.short) &&
           targetsKept &&
           mRep.protSqDb <= mCur.protSqDb + 3 &&
           (nc(rep) <= nc(cur) || armsOk)) ||
-        strictOk;
+        strictOk ||
+        feasibilityOk;
       /* A3f: the repair may not buy its impedance lift with forbidden ground.
        * Raising resistance is exactly how this pass works, and R_source is
        * exactly what that raises — so it asks the one constraint definition

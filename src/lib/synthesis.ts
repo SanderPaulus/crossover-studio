@@ -925,20 +925,6 @@ export function synthesize(
   let seriesRsFinal: (number | undefined)[] | undefined;
   let chosen: (CatalogPick | null)[] | null = null;
 
-  if (process.env.PARPROBE) {
-    const zOf = (vs: readonly number[], srs?: readonly (number | undefined)[]) => {
-      try {
-        const sol = solveNetwork(topo.build(vs, srs), freq, { drv: [...driverZ] });
-        let mn = Infinity, at = 0;
-        sol.inputZ.forEach((c, i) => { const v = Math.hypot(c.re, c.im); if (v < mn) { mn = v; at = freq[i]; } });
-        return `${mn.toFixed(3)} @ ${Math.round(at)}`;
-      } catch { return 'n/a'; }
-    };
-    // eslint-disable-next-line no-console
-    console.log(`PAR ${opts.label ?? '?'} snap=${catalogSnap ? 1 : 0} Zcont=${zOf(values)} slots=${topo.slots.length}`);
-    // eslint-disable-next-line no-console
-    console.log(`PARVALS ${opts.label ?? '?'} ${topo.slots.map((sl, i) => `${sl.kind}:${values[i].toPrecision(4)}`).join(' ')}`);
-  }
   if (catalogSnap && hasImportedCatalog()) {
     // Discrete pass: per slot the nearest purchasable candidates — single
     // parts first, 2-part STACKS (series coils / parallel caps) only where

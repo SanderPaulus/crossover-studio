@@ -115,6 +115,12 @@ const row = (r: any) => ({
   // dus dit getal is het plafond van al het latere werk (B1).
   seedZ: r.net.before.zMinOhm ?? null,
   seedPeak: r.net.before.rippleDb ?? null,
+  // Wat de versterker-vloer-reparatie DEED, als waarde (A3g) plus haar eigen
+  // uitleg — de enige pas die de last kan optillen.
+  repair: r.net.ampFloorRepair ?? null,
+  repairNote: r.net.ampFloorNote ?? null,
+  safetyNote: r.net.safetyNote ?? null,
+  snapNote: r.net.snapNote ?? null,
   // Wat de part-audit ZAG en DEED — zonder dit is "geen verschil" niet te
   // onderscheiden van "de audit draaide niet".
   audit: r.net.audit ? {
