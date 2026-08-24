@@ -127,6 +127,17 @@ const row = (r: any) => ({
   } : null,
 });
 
+/* Eén bron van configuratie. De diagnose-scripts LADEN deze dump in plaats van
+ * hun eigen grid/band/kooien te kiezen — dat verschil kostte stap 3: een
+ * bevinding op een andere configuratie van dezelfde luidspreker is geen
+ * bevinding over de meetlat. */
+if (process.env.DUMPINPUT) {
+  const i = ONLY ?? 0;
+  writeFileSync(process.env.DUMPINPUT, JSON.stringify(inputFor(i)));
+  console.log(`configuratie van kandidaat ${i} weggeschreven naar ${process.env.DUMPINPUT}`);
+  process.exit(0);
+}
+
 if (ONLY !== null) {
   const t0 = Date.now();
   const r = runThreeWayChain(inputFor(ONLY));

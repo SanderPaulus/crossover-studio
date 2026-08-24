@@ -1318,3 +1318,81 @@ configuratie van de meetlat.
 De meetlat draagt nu `seedZ` en `seedPeak` per kandidaat — wat de synthese de
 tuner aanreikt, en daarmee het plafond van al het latere werk. Zonder dat
 getal was geen van bovenstaande conclusies te trekken geweest.
+
+---
+
+## Waar de 0,48 Ω vandaan komt — en een conclusie die ik moest intrekken
+(24 aug 2026, vervolg op stap 3)
+
+### De dissectie
+
+`tools/bench/structz.mts` (nieuw) dwingt elk van de 16 alignment-paren af,
+synthetiseert, mergt en meet — op de invoer die `bench.mts` zelf wegschrijft.
+Voor de winnende structuur op kandidaat 400/2100:
+
+```
+DISSECTIE LR4/LR4 — geassembleerde dip 0,48 Ω @ 2619 Hz
+  woofer    41,21 Ω     eigen minimum 3,57 @  310 Hz
+  mid        0,51 Ω     eigen minimum 0,51 @ 2619 Hz
+  tweeter    4,85 Ω     eigen minimum 2,10 @ 10327 Hz
+  parallelsom van die drie: 0,48 Ω   (controle op 0,48)
+```
+
+De parallelsom reproduceert de geassembleerde waarde exact, dus dit is geen
+schatting: **de mid-tak ÍS de last.** Woofer en tweeter zijn onschuldig.
+
+### De conclusie die ik moest intrekken
+
+Ik rapporteerde eerst dat de CATALOGUS-SNAP de impedantie sloopte, op grond van
+1,54 Ω zonder snap tegen 0,48 Ω met snap. **Dat was een ongeldige
+vergelijking.** Met `catalogSnap` aan rekent de continue fit al mét
+gemodelleerde parasieten (staat zo in CLAUDE.md), dus die twee runs
+verschilden in méér dan de snap alleen. Twee dingen tegelijk veranderd en het
+verschil aan één ervan toegeschreven.
+
+In één proces gemeten, zelfde structuur, zelfde grid:
+
+```
+  continue fit (mét snap-parasieten)   0,018 Ω
+  na de catalogus-snap                 0,510 Ω  @ 2619 Hz
+```
+
+De snap VERBETERT de last hier met een factor 28. De schuld ligt bij de
+continue fit, niet bij de snap. De bewaker die ik erop bouwde (relatief, "de
+snap mag niet teruggeven wat de fit won" — de vorm die de tuner al heeft) is
+daarmee zinloos op dit pad en is teruggedraaid.
+
+### Wat er wél vaststaat
+
+1. **De continue tak-fit landt op 0,018 Ω.** Impedantie-blind, en met
+   parasieten erbij kiest hij een bijna-kortsluitend bekken. Dit is B1, exact
+   zoals oorspronkelijk gesteld — alleen nu met de tak en de frequentie erbij.
+2. **`mergeSynthesizedSchematics` is onschuldig.** Beide bouwpaden
+   (`topo.build` en `netlistFromSynthesis`) leveren byte-gelijke netlijsten,
+   incl. knopen en parasieten. Die verdenking is weerlegd en hoeft niet
+   opnieuw onderzocht te worden.
+3. **De bestaande degeneratie-weigering kan dit niet vangen.** Zij oordeelt op
+   de EINDwaarde (0,51 Ω ≈ 9 % van de kale driver) en haar drempel is 1 %. Het
+   getal dat een versterker pijn doet is absoluut, niet relatief — maar een
+   absolute drempel bestaat hier bewust niet zonder versterkerwaarde van de
+   gebruiker.
+4. **De invariant-test dekt alleen de TRANSFER.** `synthesis.test.ts` "the
+   rebuilt schematic is electrically IDENTICAL" vergelijkt dB-verloop, niet
+   ingangsimpedantie. Dat is hier goed afgelopen (punt 2), maar de test belooft
+   minder dan zijn naam suggereert.
+
+### Voor de volgende poging
+
+De hefboom zit in de continue fit van de mid-tak, niet in de snap, niet in de
+merge en niet in de structuurkeuze (LR4/LR4 is óók qua last een van de betere:
+1,54 Ω zonder parasieten, tegen 0,02 voor BW3/LR4).
+
+Wat NIET meer geprobeerd hoeft te worden, want gemeten en teruggedraaid:
+een tie-break tussen de multi-start-startpunten (inert op de meetlat), een
+harde klem op serie-waardes (verplaatst de schade), een relatieve snap-bewaker
+(beschermt tegen iets wat de snap niet doet).
+
+Wat nog niet gemeten is: waarom de fit MET parasieten in een 0,018 Ω-bekken
+landt en zonder parasieten op 1,54 Ω. Dat verschil is de scherpste aanwijzing
+die er nu ligt, en het is één meting: dezelfde tak, dezelfde structuur, alleen
+de parasieten aan/uit, met de gekozen waardes ernaast.
