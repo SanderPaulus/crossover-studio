@@ -982,3 +982,59 @@ EPDR is pas te verdedigen als het op een tweede driverset is nagemeten.
 - Benjamin, "Audio Power Amplifiers for Loudspeaker Loads", JAES 42/9 (1994);
   Keith Howard, "Heavy Load: How Loudspeakers Torture Amplifiers" — EPDR.
 - Zobel/impedantie-egalisatie: gangbare leerboekpraktijk, meerdere bronnen.
+
+---
+
+## Stap 0 is gebouwd: de meetlat (24 aug 2026)
+
+`tools/bench/bench.mts`. Zijn project, zijn catalogus, drie vaste kandidaten,
+en zijn eigen `20260820.2` als lat — door DEZELFDE pijplijn gemeten, zodat een
+rij zichzelf niet kan vleien met een andere meetlat.
+
+```bash
+ROOT="$PWD" PROJ=<project.json> CAT=<catalog.json> REF=<x.adsfilter.json> \
+  OUT=<uit.json> npx tsx tools/bench/bench.mts
+```
+
+**Wat er hard in staat, en waarom.** Grid (240 pt, 200–19 000 Hz), band
+(455–16 000 Hz = zijn gate-geldigheidsband), de drie kandidaten mét hun kooien,
+en alle instellingen. Een meetlat die meebeweegt met de code die hij moet
+beoordelen meet niets. Verander hier alleen iets als je bewust een NIEUWE lat
+begint, en schrijf dat dan hier op.
+
+De kandidaten zijn (400, 2100), (455, 2432), (500, 1900) — het gebied waar zijn
+scan leeft (W-M-venster 200–622, M-T 1849–2432). De instellingen zijn de
+DEFAULTS die een gebruiker krijgt, inclusief `eqBands: 2`. Dat is bewust: bij
+eq 0 haalt de reparatiepas alle drie de kandidaten naar ~3,0 Ω en is het gat dat
+we repareren onzichtbaar; bij eq 2 valt hij open. De meetlat moet de fout kunnen
+zien.
+
+Elke kandidaat draait als eigen proces, parallel — één keten is minuten, drie op
+een rij is geen meting van tien minuten.
+
+**De lat meet zichzelf** (gecontroleerd 24 aug):
+
+```
+20260820.2      avg 0,48 · piek 1,29 · fase 8,63° (paren 7,4/8,6) · Z 3,36 Ω · 18 parts · €567,69
+```
+
+Vier van de zes reproduceren de audit exact (fase 8,8 → 8,63; Z 3,4 → 3,36;
+18 parts; €568). **Avg en piek niet** (0,60/2,11 in de audit tegen 0,48/1,29
+hier), en dat is geen fout: die audit-getallen komen uit de APP, op een andere
+gridfijnheid en een ander zichtbaar bereik. Vandaar de regel die hierbij hoort:
+**harnas-getallen vergelijk je alleen met harnas-getallen.** De lat is wat dit
+harnas van zijn filter meet, niet een getal dat uit een ander venster is
+overgeschreven.
+
+### Het protocol voor stap 1 t/m 5
+
+1. Draai de meetlat op de HUIDIGE boom, bewaar `OUT` als `bench-<commit>.json`.
+2. Bouw de wijziging.
+3. Draai de meetlat opnieuw, zelfde PROJ/CAT/REF.
+4. Vergelijk de vijf getallen per kandidaat. **Wint hij niet, dan gaat hij
+   terug** — niet "verklaard waarom het toch goed is". Dat verklaren is precies
+   wat 23 augustus een achteruitgang maakte.
+5. Zet de voor/na-tabel in de commit-boodschap.
+
+Een stap mag verliezen op één getal als hij op een ander duidelijk wint, maar
+dan staat die ruil in de commit — expliciet, met beide getallen.
