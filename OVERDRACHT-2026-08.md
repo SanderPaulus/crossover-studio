@@ -1148,3 +1148,81 @@ niet waargenomen.
 Vier commentaarblokken die de oude volgorde beschreven zijn bijgewerkt; het
 historische lijstje van vier bugs op `netOptimizer.ts:310` blijft staan, want
 als geschiedenis klopt het.
+
+---
+
+## Stap 2 GEMETEN EN TERUGGEDRAAID: het plafond laten bijten (24 aug 2026)
+
+Gebouwd zoals de audit hem beschreef: per tak zijn eigen anker (een seriecap
+antwoordt aan de kruising onder zijn band, een seriespoel aan die erboven; de
+referentie-impedantie is de EIGEN driver van die tak), plus een harde klem
+in plaats van de strafterm van 0,0002.
+
+### De meting — verlies, en niet marginaal
+
+Tegen stap 1, zelfde drie kandidaten:
+
+```
+                    avg    piek    fase    Zmin  Rbron  parts   BOM
+400/2100    0,39 → 0,39   1,29 → 1,22   4,7 → 5,7   0,65 → 0,63   0,40 → 1,48   22 → 31   €196 → €274
+455/2432    0,70 → 0,40   1,91 → 1,11  23,9 → 6,5   3,47 → 0,76   0,81 → 2,80   18 → 30    €85 → €220   ok → GEDISKWALIFICEERD
+500/1900    0,35 → 0,42   1,33 → 1,47   6,4 → 5,7   0,64 → 0,95   0,83 → 0,87   22 → 21   €153 → €108
+```
+
+Het beslissende getal staat op de middelste rij. Kandidaat 455/2432 was de
+ENIGE in het veld met een gezonde last (3,47 Ω). Hij wint fors op vlakheid en
+fase — en verliest precies datgene wat hem als enige bouwbaar maakte: 0,76 Ω,
+bronweerstand 2,80 Ω (boven de diskwalificatiegrens van 2,0), 30 onderdelen in
+plaats van 18, €220 in plaats van €85. Hij wordt nu gediskwalificeerd.
+
+Wandklok 518 → 1090 s, ruim het dubbele.
+
+### Wat het mechanisme is, en waarom dit stap 3 versterkt
+
+Een klem neemt de tuner een vrijheidsgraad af, maar niet zijn doel. Hij koopt
+dezelfde vlakheid dus langs een andere weg: **meer onderdelen en een lagere
+impedantie**. Alle drie de kandidaten laten dat zien (+9, +12, −1 parts; twee
+van de drie een hogere bronweerstand). De schade wordt niet voorkómen maar
+VERPLAATST.
+
+Dat is precies het argument voor stap 3. Een waardeplafond is een indirecte
+poging om de last te beschermen; zolang de last zelf geen ontwerpvariabele is,
+duwt elke beperking de schade naar de eerstvolgende vrijheidsgraad. De les uit
+de literatuurronde zei hetzelfde van de andere kant: bij VituixCAD staat de
+minimum-impedantie ALS DOEL in de optimizer, en de waardegrenzen zijn daar een
+aanvulling op — niet een vervanging ervan.
+
+### Twee eerlijkheden
+
+**(1) Er is een lezing waarin de klem gelijk had.** De oude kandidaat 455/2432
+haalde zijn gezonde 3,47 Ω met 18 onderdelen en 23,9° fase — dat is het profiel
+van een netwerk dat nauwelijks filtert, en een last die je koopt door niet te
+filteren is geen verdienste. De klem legde dat bloot. Maar wat er dan uit komt
+is nog steeds onbouwbaar, en "de oude winnaar was ook niet best" is geen reden
+om een slechtere te leveren.
+
+**(2) De synthetische escalatietest waarschuwde vooraf, en ik heb hem terecht
+niet weggerepareerd.** `netOptimizer.test.ts` "escalates with a bypass-C" viel
+om: rimpel 5,08 → 5,40 dB en de bypass-C verdween (12 → 9 onderdelen). De klem
+bleek daar te bijten op C1, de seriecap van de tweeter, die de tuner op 57,9 µF
+wilde zetten tegen een plafond van 33. Dat is exact het geval waarvoor het
+plafond bestaat (58 µF in 6 Ω is 1,4 Ω bij 2 kHz — de hoogdoorlaat is dan weg),
+dus de bewaker deed wat hij moest. Hij maakte het resultaat alleen slechter.
+Eén rode test op een kunstmatig netwerk was hier het VROEGE signaal van wat de
+meetlat daarna op echte data bevestigde.
+
+### Bewaard omdat het echt is: een misclassificatie in `positionOf`
+
+Tijdens de bouw gevonden: `busTopology.positionOf` noemt élk element met beide
+knopen op de bus 'series' — dus ook een condensator die PARALLEL OVER een
+serieweerstand hangt. Elektrisch is dat het tegenovergestelde: de één draagt
+het signaalpad, de ander vormt eroverheen. Als strafterm van 0,0002 was die
+verwarring onzichtbaar; zodra er een klem op staat verbiedt hij een volkomen
+legitiem onderdeel (een bypass-C over een pad).
+
+Meegeteruggedraaid met de rest, want zonder klem heeft het geen consument.
+**Wie een volgende bewaker op `positionOf` bouwt moet dit eerst repareren** —
+de vorm is `hasParallelCompanion`: deelt dit element zijn knopenpaar met een
+ander R/L/C, dan is het geen signaalpad-onderdeel. (Bijvangst van de meting: op
+dit testnet was díe misclassificatie NIET de oorzaak van de rode test — de
+getallen bleven identiek na de reparatie. Ook dat is gemeten, niet aangenomen.)
