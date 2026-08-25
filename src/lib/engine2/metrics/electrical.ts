@@ -254,20 +254,18 @@ export interface DriveVoltageResult {
  *      in the sweep. A cone mode shows a genuine phase zero crossing and is
  *      still not f_s (see `classifyImpedance.fundamentalHz`).
  *
- * ⚠ THIS CONVENTION DOES NOT REPRODUCE THE 25-08 REFERENCE ANALYSIS, and it is
- * the last open item of the casus-1 reconciliation. The engine reads
- * −25.08 / −34.54 / −35.18 dB against a reference of −24.6 / −33.3 / −34.5.
- * The SPREAD between candidates reproduces to within 0.2 dB, so the two
- * analyses agree about what the filters do and disagree about the common
- * reference level by 0.3–0.9 dB. Searched and rejected: both passband edges,
- * mean-of-dB / mean-of-|V| / median / RMS, grid densities from 400 to 3200
- * points, an acoustic instead of an electrical passband, and a
- * single-frequency reference — none matches all three candidates.
+ * WHY THE CASUS-1 REFERENCE MOVED. The 25-08 analysis reported −24.6 / −33.3 /
+ * −34.5 dB against this engine's −25.08 / −34.54 / −35.18. It was not a
+ * disagreement about the filters: that analysis used HARD-CODED SESSION BANDS
+ * (4–10 kHz for the tweeter, 0.7–1.5 kHz for the mid) where A4 asks for the
+ * passband the crossings imply. Fed those bands, this engine reproduces the
+ * old numbers to within 0.05 dB, which is the whole explanation — the
+ * golden suite keeps that reproduction as a standing test, with the session
+ * parameters recorded in the reference file rather than in the test.
  *
- * TODO(casus 1, M-C): revisit once the 25-08 working method can be
- * reconstructed. Until then the deviation is pinned in `goldenCasus1.test.ts`
- * (`KNOWN_DEVIATIONS`) rather than tolerated silently, and this comment is the
- * definition anyone comparing against it needs.
+ * A band belonging to one measurement session, baked into a reference, is the
+ * same P6 mistake as a hard-coded frequency in the engine — one level up. See
+ * V15 in the casebook.
  */
 export function driveVoltageOnResonance(
   analysis: NetworkAnalysis,

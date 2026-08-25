@@ -37,10 +37,11 @@
 - `src/lib/engine2/toggleRegression.test.ts` — bewijst de toggle-invariant drie kanten op:
   een referentie-optimalisatierun byte-identiek met en zonder de v2-modules geladen, geen
   enkele import van `engine2/` buiten de UI-instappunten, en `undefined` = `false` in de vlag.
-- `src/lib/engine2/goldenCasus1.test.ts` — de acceptatie-autoriteit (casus 1). Bevat een
-  expliciete lijst `KNOWN_DEVIATIONS` met zes referenties die deze build niet reproduceert;
-  de geproduceerde waarden zijn er óók vastgepind, en de lengte van de lijst wordt geassert
-  zodat hij niet stilletjes kan groeien.
+- `src/lib/engine2/goldenCasus1.test.ts` — de acceptatie-autoriteit (casus 1). Alle referenties
+  reproduceren; `KNOWN_DEVIATIONS` is leeg en die lengte wordt geassert, zodat een nieuwe
+  afwijking een bewuste daad is en niet iets wat erin sluipt. Tolerantieklassen komen uit het
+  referentiebestand, niet uit de test — een tolerantie hoort bij de referentie, en een test die
+  zijn eigen meedraagt kan er ongemerkt eentje oprekken.
 - `src/lib/browserSafe.test.ts` — kent nu ook `*.fixture.ts` (test-only loaders die van
   schijf lezen) als uitzondering, met een tweede test die pint dat niets uit de bundel er
   een importeert.

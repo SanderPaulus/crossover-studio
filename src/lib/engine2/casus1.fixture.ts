@@ -56,11 +56,31 @@ export interface GoldenRefs {
     procentpunten: number;
   };
   toleranties_toelichting: Record<string, string>;
-  /** Why four references were revised at F1 — see V13/V15 in the casebook. */
+  /** Why five references were revised at F1 — see V13/V14/V15 in the casebook. */
   herziening_F1_toelichting: string[];
   afgeleide_parameters: Record<string, Record<string, unknown>>;
   verankerde_gaps_dB: Record<string, unknown>;
-  kandidaten: Record<string, Record<string, unknown>>;
+  kandidaten: Record<string, Record<string, unknown>> & {
+    /**
+     * The WITHDRAWN 25-08 M-C values, together with the session parameters
+     * they were computed with.
+     *
+     * Typed rather than left as loose JSON because the golden suite runs a
+     * standing test off it: reproducing those values from those parameters is
+     * the evidence that the band choice was the whole explanation, and the
+     * evidence has to stay checkable. This is also the process rule the case
+     * produced — a reference that depends on a band, an average or a grid
+     * records them, or it is not reproducible and therefore not a reference.
+     */
+    _V_tweeter_op_fs_dB_sessie_25_08: {
+      waarden: Record<string, number>;
+      band_hz: { tweeter: [number, number]; mid: [number, number] };
+      middeling: string;
+      grid: { van_hz: number; tot_hz: number; punten: number; verdeling: string };
+      fs_hz: { tweeter: number; mid: number };
+      fs_afronding: string;
+    };
+  };
   kruisvensters: Record<string, Record<string, unknown>>;
   grens_inversies: Record<string, number>;
   vensterinteractie: Record<string, unknown>;

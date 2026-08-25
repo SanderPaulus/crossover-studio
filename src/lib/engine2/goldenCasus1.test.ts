@@ -34,6 +34,10 @@ import {
 } from './casus1.fixture.ts';
 import { buildReport, type EngineV2Report } from './report.ts';
 import { ctcKey } from './metrics/types.ts';
+import { buildAnalysis } from './metrics/analysis.ts';
+import { logspace, resampleImpedance } from '../dsp.ts';
+import { dbAmp } from './util.ts';
+import type { Complex } from '../complex.ts';
 
 const golden = loadGolden();
 const TOL = golden.toleranties;
@@ -79,30 +83,32 @@ const driver = (r: EngineV2Report, name: string) =>
  * here is that the divergence is a fact about this build, so it belongs
  * somewhere a reader trips over rather than in a commit message.
  */
-const KNOWN_DEVIATIONS = [
-  {
-    what: 'M-C, tweeter voltage on f_s',
-    reference: '-24.6 / -33.3 / -34.5 dB',
-    produced: '-25.08 / -34.54 / -35.18 dB',
-    why:
-      'A4 defines the reference level as "V_passband" without saying how the passband average is ' +
-      'taken, and the 25-08 convention could not be reconstructed. The candidate SPREAD reproduces ' +
-      'to within 0.2 dB - it is the COMMON reference level that sits 0.3-0.9 dB apart, which is ' +
-      'what an averaging or band-edge convention moves. Searched and rejected: both passband ' +
-      'edges, mean-of-dB / mean-of-|V| / median / RMS, grid density from 400 to 3200 points, an ' +
-      'acoustic rather than electrical passband, and a single-frequency reference. None matches ' +
-      'all three candidates. The convention this engine uses is documented on ' +
-      'driveVoltageOnResonance. TODO: revisit if the 25-08 working method can be recovered.',
-  },
-] as const;
+/**
+ * EMPTY, and it is worth saying why rather than deleting the mechanism.
+ *
+ * Six references did not reproduce when F1 was first assembled. Every one of
+ * them turned out to be the REFERENCE rather than the engine: a band, an
+ * averaging convention or a grid belonging to one measurement session, baked
+ * into a number that then could not be reproduced from anything the file
+ * recorded. They are reconciled in `golden_refs_casus1.json`, which now states
+ * those parameters wherever a reference depends on them.
+ *
+ * The list stays because the next divergence deserves the same treatment:
+ * written down with the value this engine produces, not quietly tolerated and
+ * not quietly deleted.
+ */
+const KNOWN_DEVIATIONS: readonly {
+  what: string;
+  reference: string;
+  produced: string;
+  why: string;
+}[] = [];
 
 describe('golden references - casus 1 (Koan 2951)', () => {
-  it('pins exactly ONE known deviation from the reference analysis', () => {
-    // If this number moves, the list above has to move with it - which is the
-    // point: a deviation may be added or removed deliberately, never quietly.
-    // It went from six to one when the reference file was reconciled at F1;
-    // the remaining one is M-C and it carries a TODO.
-    expect(KNOWN_DEVIATIONS).toHaveLength(1);
+  it('has NO known deviations left - every reference reproduces', () => {
+    // Six at the start of F1, all six traced to the reference rather than the
+    // engine. A new entry here is a deliberate act, and so is removing one.
+    expect(KNOWN_DEVIATIONS).toHaveLength(0);
     for (const d of KNOWN_DEVIATIONS) expect(d.why.length).toBeGreaterThan(80);
   });
 
@@ -285,6 +291,15 @@ describe('golden references - casus 1 (Koan 2951)', () => {
       expect(t.reSource).toContain('measured DC resistance');
     });
 
+    it('M-C: tweeter voltage on its own resonance', () => {
+      const c = r.metrics.driveVoltage.find((x) => x.driver === 'tweeter')!;
+      expect(Math.abs(c.db - ref.V_tweeter_op_fs_dB)).toBeLessThanOrEqual(TOL.dB);
+      // Both halves derived: f_s off the loaded impedance, the passband off
+      // the crossings the filtered responses actually produce.
+      expect(pct(c.fsHz, 924.32)).toBeLessThanOrEqual(TOL.frequenties_pct);
+      expect(c.passbandHz[0]).toBeGreaterThan(1500);
+    });
+
     it('M-D: extra low-frequency lift over the bare box', () => {
       const b = r.metrics.lfBump.find((x) => x.driver === 'woofer')!.result;
       expect(Math.abs(b.extraDb - ref.lf_bult_extra_dB)).toBeLessThanOrEqual(TOL.dB);
@@ -326,6 +341,43 @@ describe('golden references - casus 1 (Koan 2951)', () => {
     // A4 requires the point-source limitation to travel with the number.
     expect(l.pointSourceAssumptionSafe).toBe(false);
     expect(l.limitations.join(' ')).toContain('point source');
+  });
+
+  it('V15: the withdrawn 25-08 M-C values are reproduced by their OWN session bands', () => {
+    // The evidence that the band choice was the WHOLE explanation, kept as a
+    // standing test rather than a sentence in a commit message. The session
+    // parameters come out of the reference file — which is the process rule
+    // this case produced: a reference that depends on a band, an average or a
+    // grid records them, or it cannot be reproduced and is not a reference.
+    const sess = golden.kandidaten._V_tweeter_op_fs_dB_sessie_25_08;
+    const grid = logspace(sess.grid.van_hz, sess.grid.tot_hz, sess.grid.punten);
+    const band = sess.band_hz.tweeter;
+    for (const [key, cand] of [
+      ['HUIDIG_2e', 'HUIDIG'],
+      ['KAND_A_2e', 'KAND_A'],
+      ['KAND_B_3e', 'KAND_B'],
+    ] as const) {
+      const f = casus1Filter(cand, manifest, files, golden);
+      const z: Record<string, Complex[]> = {};
+      for (const m of Object.keys(f.driverZ)) {
+        const raw = f.driverZ[m];
+        z[m] = resampleImpedance(raw.freq, raw.magnitude, raw.phaseDeg, grid).z;
+      }
+      const dB = buildAnalysis(f.netlist, grid, z).transferByModel.tweeter.map((v) =>
+        dbAmp(Math.hypot(v.re, v.im)),
+      );
+      const iFs = grid.reduce(
+        (b, v, i) =>
+          Math.abs(Math.log(v / sess.fs_hz.tweeter)) < Math.abs(Math.log(grid[b] / sess.fs_hz.tweeter))
+            ? i
+            : b,
+        0,
+      );
+      const inBand: number[] = [];
+      for (let i = 0; i < grid.length; i++) if (grid[i] >= band[0] && grid[i] <= band[1]) inBand.push(i);
+      const mean = inBand.reduce((s, i) => s + dB[i], 0) / inBand.length;
+      expect(Math.abs(dB[iFs] - mean - sess.waarden[key])).toBeLessThanOrEqual(TOL.dB);
+    }
   });
 
   /* ================= pre-design (A5d) ================= */
