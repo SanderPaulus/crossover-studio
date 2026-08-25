@@ -1516,3 +1516,72 @@ exact 3,20). Twee gevolgen: geen marge voor bouwtolerantie (±5 % op de
 onderdelen beweegt de som ±1,67 dB, en de impedantie navenant), en geen zicht
 op de mogelijkheid dat een HOGERE last minder vlakheid kost dan de grens zelf.
 Aparte wijziging, aparte meting.
+
+---
+
+## De versterkervloer is een MINIMUM, op één plek (25 aug 2026)
+
+Sanders formulering: *"alles boven het minimum is goed. Alles eronder, maar
+binnen x procent, vind ik ok."*
+
+### Wat er fout was
+
+Drie plekken stelden dezelfde vraag met een eigen drempel:
+
+- de reparatiepas: `zShort ≤ 0,15 Ω` speling — dus een geleverd netwerk van
+  **3,05 Ω passeerde als "gerepareerd"** bij een opgegeven 3,2. Onder het
+  minimum leveren én goedkeuren.
+- het eindoordeel: dezelfde 0,15.
+- de rankers en de scan-tabel (9 plekken): **strikte** vergelijking.
+
+Een netwerk kon dus bij de ene poort gerepareerd heten en bij de volgende
+doorgestreept worden. En 0,15 Ω is absoluut: 4,7 % op een 3,2 Ω-versterker,
+1,9 % op een 8 Ω-versterker — één getal, twee betekenissen.
+
+### De regel, nu één keer
+
+`AMP_FLOOR_TOLERANCE = 0,02` + `acceptedAmpFloor()` + `meetsAmpFloor()` in
+`impedanceFloor.ts`, gelezen door de reparatie, beide rankers en de UI.
+
+2 % is een CONVENTIE, geen afgeleide waarheid: gekozen op de strakste
+tolerantieklasse die de app zelf aanbiedt (±2 % onderdelen), zodat een tekort
+daaronder in de bouwspreiding verdwijnt en geen ontwerpfout kan verbergen die
+je in de praktijk zou merken. Bij 3,2 Ω telt alles vanaf 3,136 Ω als gehaald.
+Eén constante om te verzetten.
+
+Marge BOVEN de rating wordt bewust niet verzonnen: dat is de keuze van de
+ontwerper en het invoerveld is waar hij hem maakt (wie speling wil typt 3,5).
+Zelf marge optellen kost responsiekwaliteit — gemeten op 1,2 dB en 11° voor
+één zo'n verhoging — aan een beslissing die niemand nam.
+
+**Gemeten: volledige no-op op de meetlat** (alle assen, alle drie de
+kandidaten, de lat onveranderd). Geleverd werd 3,36 · 3,47 · 0,64 Ω, geen
+daarvan valt in het nieuwe grensgebied. Correctheidsfix die pas bijt op een
+ontwerp dat vlak onder de rating landt — precies het geval dat er stil
+doorheen glipte.
+
+### En een A/B die zijn eigen vraag NIET kon beantwoorden
+
+Om te meten wat de catalogus-snap kost, dezelfde meetlat met `SNAP=0`:
+
+```
+                ZONDER snap                     MET snap
+400/2100   piek 5,21 · fase 32,1 · Z 1,54    piek 3,18 · fase 34,8 · Z 3,36
+455/2432   piek 1,82 · fase 15,6 · Z 0,01    piek 1,91 · fase 23,9 · Z 3,47
+500/1900   piek 1,34 · fase  5,0 · Z 0,02    piek 1,33 · fase  6,4 · Z 0,64
+```
+
+De snap kost geen rimpel (op de zwaarste kandidaat verbetert hij hem 2 dB) en
+tilt de last overal op; wat hij kost is fase (+1,4 tot +8,3°).
+
+**Maar deze vergelijking isoleert de snap niet**, en dat is dezelfde val als
+eerder vandaag: met `catalogSnap` aan draagt de continue fit al parasieten, dus
+"zonder snap" is een ANDERE KETEN en niet dezelfde keten minus één stap. Twee
+keer op één dag in dezelfde valkuil gelopen, in twee vermommingen.
+
+De kloof tussen wat de reparatie vond (2,44 dB / 16,4°) en wat geleverd wordt
+(3,18 / 34,8°) blijft dus ECHT maar NIET TOEGESCHREVEN. Tussen die twee staan
+alleen de snap en de eind-audit; de audit kan hooguit 0,1 dB en 1° per
+verwijdering kosten (zijn eigen hercontrole-marge, 2 verwijderingen gemeten),
+dus het meeste moet van de snap komen — maar "moet" is geen meting. Eén
+geïnstrumenteerde run rond de snapgrens sluit het af.

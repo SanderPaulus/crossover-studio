@@ -52,7 +52,10 @@ const SETTINGS = {
   ampTarget: 'onAxis' as const,
   phaseMetric: 'band' as const,
   synthMode: 'acoustic' as const,
-  catalogSnap: true,
+  // SNAP=0 draait dezelfde meetlat met de catalogus-snap uit. Geen tweede lat:
+  // een verkennende variant om te meten wat die pas kost, altijd tegen zijn
+  // eigen tegenhanger vergelijken en nooit tegen de gepinde run.
+  catalogSnap: process.env.SNAP !== '0',
   ampMinLoadOhm: 3.2,
   rSourceDisqualifyOhm: 2.0,
   hpFloorHz: 1849,

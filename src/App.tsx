@@ -10,6 +10,7 @@ import {
   type ReactNode,
 } from 'react';
 import { t, setLang, currentLang, subscribeLang, LANGS } from './lib/i18n.ts';
+import { meetsAmpFloor } from './lib/impedanceFloor.ts';
 /** Same translator under a name nothing shadows: inside the optimizer
  *  handlers `t` is the TWEETER response (a long-standing local), so a
  *  t('…') there is a type error waiting to happen. */
@@ -5810,9 +5811,9 @@ export default function App() {
            * the designer silently gets an amp-hostile load anyway. Say it, and
            * say whether it was the only option. */
           const zLow =
-            ampMinLoadOhm !== null && win.zMinOhm !== null && win.zMinOhm < ampMinLoadOhm;
+            ampMinLoadOhm !== null && win.zMinOhm !== null && !meetsAmpFloor(win.zMinOhm, ampMinLoadOhm);
           const anySane = ranked.some(
-            (r) => r.zMinOhm !== null && ampMinLoadOhm !== null && r.zMinOhm >= ampMinLoadOhm,
+            (r) => r.zMinOhm !== null && ampMinLoadOhm !== null && meetsAmpFloor(r.zMinOhm, ampMinLoadOhm),
           );
           const zNote = !zLow
             ? ''
@@ -6287,9 +6288,9 @@ export default function App() {
           // Same visibility rule as the three-way scan: a class the designer
           // cannot read reorders silently.
           const zLow2 =
-            ampMinLoadOhm !== null && win.zMinOhm !== null && win.zMinOhm < ampMinLoadOhm;
+            ampMinLoadOhm !== null && win.zMinOhm !== null && !meetsAmpFloor(win.zMinOhm, ampMinLoadOhm);
           const anySane2 = ranked.some(
-            (r) => r.zMinOhm !== null && ampMinLoadOhm !== null && r.zMinOhm >= ampMinLoadOhm,
+            (r) => r.zMinOhm !== null && ampMinLoadOhm !== null && meetsAmpFloor(r.zMinOhm, ampMinLoadOhm),
           );
           const zNote2 = !zLow2
             ? ''
@@ -14881,7 +14882,7 @@ export default function App() {
                       </td>
                       <td
                         className={
-                          ampMinLoadOhm !== null && r.zMinOhm !== null && r.zMinOhm < ampMinLoadOhm
+                          ampMinLoadOhm !== null && r.zMinOhm !== null && !meetsAmpFloor(r.zMinOhm, ampMinLoadOhm)
                             ? 'scan-z-low'
                             : undefined
                         }
@@ -14890,13 +14891,13 @@ export default function App() {
                             ? t('Minimum system impedance was not measured for this candidate')
                             : ampMinLoadOhm === null
                               ? t('Minimum system impedance the amplifier sees. No rating entered, so nothing is ranked on it — put your amplifier’s minimum load in ⚙ Settings to have candidates judged on it.')
-                              : r.zMinOhm < ampMinLoadOhm
+                              : !meetsAmpFloor(r.zMinOhm, ampMinLoadOhm)
                                 ? t('The amplifier sees {z} Ω at its worst — below the {floor} Ω you entered for it, so this candidate ranks below every one with a load it can drive, however flat it is', { z: r.zMinOhm.toFixed(1), floor: ampMinLoadOhm.toFixed(1) })
                                 : t('Minimum system impedance the amplifier sees (you rated it to {floor} Ω)', { floor: ampMinLoadOhm.toFixed(1) })
                         }
                       >
                         {r.zMinOhm !== null
-                          ? `${ampMinLoadOhm !== null && r.zMinOhm < ampMinLoadOhm ? '⚠ ' : ''}${r.zMinOhm.toFixed(1)} Ω`
+                          ? `${ampMinLoadOhm !== null && !meetsAmpFloor(r.zMinOhm, ampMinLoadOhm) ? '⚠ ' : ''}${r.zMinOhm.toFixed(1)} Ω`
                           : '—'}
                       </td>
                       <td
@@ -14962,7 +14963,7 @@ export default function App() {
                         </td>
                         <td
                           className={
-                            ampMinLoadOhm !== null && r.zMinOhm !== null && r.zMinOhm < ampMinLoadOhm
+                            ampMinLoadOhm !== null && r.zMinOhm !== null && !meetsAmpFloor(r.zMinOhm, ampMinLoadOhm)
                               ? 'scan-z-low'
                               : undefined
                           }
@@ -14973,7 +14974,7 @@ export default function App() {
                           }
                         >
                           {r.zMinOhm !== null
-                            ? `${ampMinLoadOhm !== null && r.zMinOhm < ampMinLoadOhm ? '⚠ ' : ''}${r.zMinOhm.toFixed(1)} Ω`
+                            ? `${ampMinLoadOhm !== null && !meetsAmpFloor(r.zMinOhm, ampMinLoadOhm) ? '⚠ ' : ''}${r.zMinOhm.toFixed(1)} Ω`
                             : '—'}
                         </td>
                         <td>{r.parts}</td>

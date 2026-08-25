@@ -19,6 +19,7 @@ import {
 } from './catalog.ts';
 import type { AngleResponse } from './directivity.ts';
 import { floorCurve, type FloorShape } from './impedanceFloor.ts';
+import { acceptedAmpFloor } from './impedanceFloor.ts';
 import { auditNetwork, type AuditThresholds, type NetworkAudit, sourceResistanceOhm, seenImpedance, sliceDriverZ, sourceProbeIndex } from './partAudit.ts';
 
 /**
@@ -781,6 +782,30 @@ export function optimizeNetworkValues(
    *  reads as a law of nature, which is exactly how 2.5 Ω survived so long. */
   const ampFloorSource = (): string =>
     `your amplifier's rated minimum load, ${ampFloorOhm!.toFixed(1)} Ω`;
+  /**
+   * NUMERICAL slack on the rating — explicitly not a design margin.
+   *
+   * A minimum is a minimum: what the designer typed is the load the amplifier
+   * is rated for, so a network that lands under it has not been repaired, it
+   * has been rounded past the requirement. The old allowance was a flat
+   * 0.15 Ω, which let a 3.2 Ω rating ship at 3.05 Ω and call it fixed. It was
+   * also absolute, so it meant 4.7 % on a 3.2 Ω amplifier and 1.9 % on an 8 Ω
+   * one — one number cannot mean the same thing on both.
+   *
+   * 1 % of the rating instead: enough to absorb where a barrier search
+   * actually stops (measured: 0.004 Ω short of 3.2), far too little to hide a
+   * design that misses. Detection, acceptance and the delivered verdict all
+   * read this one value, for the same reason `worstZOf` is shared — three
+   * thresholds for one question is how a network gets repaired by one gate
+   * and condemned by the next.
+   *
+   * Margin ABOVE the rating stays the designer's call, and the field is where
+   * they make it: someone who wants headroom for build tolerance enters 3.5
+   * rather than 3.2. Inventing that headroom here would spend response
+   * quality — measured at 1.2 dB and 11° for one such lift — on a decision
+   * nobody asked for.
+   */
+  const zSlackOhm = ampFloorOhm === null ? 0 : Math.max(1e-3, ampFloorOhm - acceptedAmpFloor(ampFloorOhm));
   /* THE DC LIMIT, PRECOMPUTED. When the Thevenin probe has no usable frequency
    * — the low driver's impedance peak lies below the grid, which is the normal
    * case for a woofer measured from 200 Hz — the audit falls back to the
@@ -2684,7 +2709,7 @@ export function optimizeNetworkValues(
     const worstZ = worstZOf;
     const mCur = fullOf(cur.parts);
     const zCur = worstZ(mCur, cur.parts);
-    if (ampFloorOhm !== null && zCur.short > 0.15) {
+    if (ampFloorOhm !== null && zCur.short > zSlackOhm) {
       stage('amp-load floor');
       // A dipping SEED (user network already below the floor) moves the bar:
       // the safety gate judges against the seed, so "as healthy as the seed"
@@ -2692,7 +2717,7 @@ export function optimizeNetworkValues(
       const zSeed = worstZ(fullOf(parts), parts);
       ampFloorSeedShort = zSeed.short;
       const repairedEnough = (s: number): boolean =>
-        opts.zFloorStrict ? s <= 0.15 : s <= Math.max(0.15, zSeed.short + 0.15);
+        opts.zFloorStrict ? s <= zSlackOhm : s <= Math.max(zSlackOhm, zSeed.short + zSlackOhm);
       // Iterate the barrier retune (max 3 warm-started rounds): one round's
       // simplex budget regularly stalls short (measured in the app chain:
       // 1.2 → 2.14 Ω in round one, threshold 2.5).
@@ -2776,7 +2801,7 @@ export function optimizeNetworkValues(
       const feasibilityOk =
         ampFloorOhm !== null &&
         repairedEnough(zRep.short) &&
-        zCur.short > 0.15 &&
+        zCur.short > zSlackOhm &&
         mRep.protSqDb <= mCur.protSqDb + 3 &&
         mRep.xoDipDb <= mCur.xoDipDb + 1 &&
         (!breakupGuard || mRep.leakSqDb <= mCur.leakSqDb + 4);
@@ -2809,7 +2834,7 @@ export function optimizeNetworkValues(
         ampFloorNote =
           `amp-load floor: system impedance minimum lifted ` +
           `${zCur.min.toFixed(1)} → ${zRep.min.toFixed(1)} Ω (${ampFloorSource()})` +
-          (zRep.short > 0.15 ? ' — still under the floor, but no longer a short' : '');
+          (zRep.short > zSlackOhm ? ' — still under the floor, but no longer a short' : '');
         cur = { ...rep, freeCount: cur.freeCount };
       } else {
         ampFloorRepair = 'failed';
@@ -3272,7 +3297,7 @@ export function optimizeNetworkValues(
   if (ampFloorRepair !== 'none') {
     const zDel = worstZOf(after, outParts);
     const repairedEnough = (x: number): boolean =>
-      opts.zFloorStrict ? x <= 0.15 : x <= Math.max(0.15, ampFloorSeedShort + 0.15);
+      opts.zFloorStrict ? x <= zSlackOhm : x <= Math.max(zSlackOhm, ampFloorSeedShort + zSlackOhm);
     if (ampFloorRepair === 'lifted') {
       const claimed = /→ ([\d.]+) Ω/.exec(ampFloorNote ?? '');
       if (claimed && zDel.min < parseFloat(claimed[1]) - 0.05) {

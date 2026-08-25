@@ -12,6 +12,7 @@
  * inputs → identical outputs, every run, every machine.
  */
 import type { Complex } from './complex.ts';
+import { meetsAmpFloor } from './impedanceFloor.ts';
 import { applyTransfer, type GriddedResponse, type TweeterAdjust } from './dsp.ts';
 import type { VxpPart } from './parsers/vxp.ts';
 import type { AngleResponse } from './directivity.ts';
@@ -463,7 +464,7 @@ export function rankChainResults(
    * sums on-axis. Unknown (null / absent) is never punished, so older results
    * and unwindowed runs rank exactly as before. */
   const zFloorOk = (r: ChainResult): boolean =>
-    !(ampMinLoadOhm > 0) || r.zMinOhm == null || r.zMinOhm >= ampMinLoadOhm;
+    meetsAmpFloor(r.zMinOhm, ampMinLoadOhm);
   /* A3g: a design a pass had to give up on — a constraint it could only have
    * met by breaking another, or an amplifier load it could not lift off the
    * floor — is DISQUALIFIED, the same tier the three-way chain uses. It stays

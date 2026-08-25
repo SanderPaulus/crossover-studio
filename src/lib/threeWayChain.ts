@@ -1,4 +1,5 @@
 import type { Complex } from './complex.ts';
+import { meetsAmpFloor } from './impedanceFloor.ts';
 import { evalDriverFilter, type DriverFilterSpec } from './filters.ts';
 import {
   applyTransfer,
@@ -999,7 +1000,7 @@ export function rankChain3Results(
    * lesson says physics belongs at decision points, and a load you would
    * refuse to ship must not be purchasable with a tenth of a dB. */
   const zFloorOk = (r: Chain3Result): boolean =>
-    !(ampMinLoadOhm > 0) || r.zMinOhm === null || r.zMinOhm >= ampMinLoadOhm;
+    meetsAmpFloor(r.zMinOhm, ampMinLoadOhm);
   // Disqualified (fix 1/2: rSource ≥ hard tier, delivery under a physics
   // floor) ranks below EVERYTHING — visible, struck through, with reasons.
   const dqClass = (r: Chain3Result): number => (r.disqualified && r.disqualified.length > 0 ? 10 : 0);

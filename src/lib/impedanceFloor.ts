@@ -52,6 +52,49 @@
  */
 
 /** IEC 60268-5: the minimum modulus may not fall below this fraction. */
+/**
+ * SANDERS REGEL, op één plek.
+ *
+ *   "Alles boven het minimum is goed. Alles eronder, maar binnen x procent,
+ *    vind ik ok."  (25 aug 2026)
+ *
+ * Het getal dat de ontwerper intypt is wat zijn versterker aankan; erboven is
+ * per definitie in orde. Eronder is het niet meteen fout — een geleverde last
+ * die een paar tienden procent onder de rating landt is niet te onderscheiden
+ * van een die er precies op zit zodra je hem bouwt.
+ *
+ * 2 %, en dat is een CONVENTIE en geen afgeleide waarheid. Gekozen op de
+ * strakste tolerantieklasse die de app zelf aanbiedt (±2 % onderdelen): een
+ * tekort kleiner dan dat verdwijnt in de bouwspreiding, dus het kan geen
+ * ontwerpfout verbergen die je in de praktijk zou merken. Eén constante om te
+ * verzetten als de ontwerper er anders over denkt.
+ *
+ * WAAROM HIER EN NIET DRIE KEER: de reparatiepas, de ranking en de scan-tabel
+ * stelden alle drie dezelfde vraag met een eigen drempel — de reparatie met
+ * 0,15 Ω speling, de ranking met een strikte vergelijking. Dat betekende dat
+ * een netwerk gerepareerd kon heten en vervolgens doorgestreept worden. Eén
+ * definitie, één plek.
+ *
+ * Marge BOVEN de rating blijft de keuze van de ontwerper, en het invoerveld is
+ * waar hij die maakt: wie speling wil voor bouwtolerantie typt 3,5 in plaats
+ * van 3,2. Die marge hier verzinnen zou responsiekwaliteit uitgeven — gemeten
+ * op 1,2 dB en 11° voor één zo'n verhoging — aan een beslissing die niemand
+ * heeft gevraagd.
+ */
+export const AMP_FLOOR_TOLERANCE = 0.02;
+
+/** De laagste last die nog als "haalt de rating" telt. */
+export function acceptedAmpFloor(ratedOhm: number): number {
+  return ratedOhm * (1 - AMP_FLOOR_TOLERANCE);
+}
+
+/** Haalt dit geleverde minimum de rating? Absent/0 = geen rating, dus geen oordeel. */
+export function meetsAmpFloor(zMinOhm: number | null | undefined, ratedOhm: number | null | undefined): boolean {
+  if (!(typeof ratedOhm === 'number' && ratedOhm > 0)) return true;
+  if (zMinOhm === null || zMinOhm === undefined) return true;
+  return zMinOhm >= acceptedAmpFloor(ratedOhm);
+}
+
 export const IEC_MIN_FRACTION = 0.8;
 
 /** The nominal values a loudspeaker is actually sold as. */
