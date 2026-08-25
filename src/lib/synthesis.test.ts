@@ -10,7 +10,7 @@ import { nelderMead } from './optimize.ts';
 import { synthesize } from './synthesis.ts';
 import { parseZma } from './parsers/zma.ts';
 import { parseFrd } from './parsers/frd.ts';
-import { logspace, resample } from './dsp.ts';
+import { logspace, resample, wrapDeg} from './dsp.ts';
 import { fromPolar, abs } from './complex.ts';
 import { defaultHpLp, defaultEq, type DriverFilterSpec } from './filters.ts';
 
@@ -158,12 +158,46 @@ describe('synthesize on measured KOAN impedances', () => {
       eq: [{ ...defaultEq(5500, -8, 2), enabled: true }],
     };
     const r = synthesize(spec, grid, midZ);
-    const rebuilt = solveNetwork(netlistFromSynthesis(r.components, 'mid'), grid, {
-      mid: midZ,
-    }).transfers['D'];
+    const sol = solveNetwork(netlistFromSynthesis(r.components, 'mid'), grid, { mid: midZ });
+    const rebuilt = sol.transfers['D'];
     for (let i = 0; i < grid.length; i++) {
       expect(Math.abs(db(rebuilt[i]) - db(r.achieved[i]))).toBeLessThan(0.1);
     }
+    // ...and the PHASE, which "electrically identical" plainly includes. A
+    // rebuild that reproduces the magnitude while rotating the phase would
+    // pass the loop above and wreck the sum, since this branch is summed
+    // complex with two others.
+    for (let i = 0; i < grid.length; i++) {
+      const d = Math.abs(
+        wrapDeg(
+          ((Math.atan2(rebuilt[i].im, rebuilt[i].re) -
+            Math.atan2(r.achieved[i].im, r.achieved[i].re)) *
+            180) /
+            Math.PI,
+        ),
+      );
+      expect(d).toBeLessThan(0.5);
+    }
+    // ...and the INPUT IMPEDANCE. This test named itself "electrically
+    // IDENTICAL" while comparing one transfer, and a whole day (25 aug 2026)
+    // went into suspecting the schematic builder of losing 3× the amplifier
+    // load — it was cleared by hand-comparing the two netlists element by
+    // element, which is exactly the work a test is supposed to have already
+    // done. Two networks with the same transfer can present very different
+    // loads: move a shunt one node along and the driver still sees the same
+    // voltage while the amplifier sees something else entirely.
+    let worst = 0;
+    for (let i = 0; i < grid.length; i++) {
+      const z = sol.inputZ[i];
+      const mag = Math.hypot(z.re, z.im);
+      if (mag > worst) worst = mag;
+    }
+    expect(worst).toBeGreaterThan(0); // solvable at all
+    const rebuiltMin = Math.min(...sol.inputZ.map((z) => Math.hypot(z.re, z.im)));
+    expect(rebuiltMin).toBeGreaterThan(0);
+    // The synthesis reports the branch it fitted; the rebuild must agree on
+    // the load it presents, not merely on what the driver hears.
+    expect(Math.abs(rebuiltMin - r.inputZMinOhm)).toBeLessThan(0.01);
   });
 
   it('adds a Zobel when the impedance rises through the LP band', () => {

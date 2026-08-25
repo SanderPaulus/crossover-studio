@@ -1902,13 +1902,6 @@ export function optimizeNetworkValues(
   /** Same evaluation, but keeping the impedance minimum the metrics already
    *  computed. The catalog snap needs it and a second solve would be pure
    *  waste. */
-  const quickFxZ = (ps: readonly VxpPart[]): { fx: number; zMin: number } => {
-    const { work } = buildWork(ps);
-    tick();
-    const m = metricsOn(work, optW.freq, optW, optT, optM, optZ, optAngles);
-    return { fx: fxOf(m), zMin: m.zMinOhm };
-  };
-
   /** Value window for a slot (log10 SI): SERIES-PATH slots of a bound kind are
    *  clamped to that series' value range (boundToSeries). null = no window, use
    *  the soft buildability bounds. Applied to the FIT so the network adapts. */
@@ -2979,7 +2972,34 @@ export function optimizeNetworkValues(
      * WITHOUT one: purely RELATIVE — "do not give back what the value tune
      * achieved". That needs no assumption about anybody's amplifier and is
      * the only part of the old floor's job that survives its removal. */
-    const zPre = quickFxZ(cur.parts).zMin;
+    /* ---- THE SNAP DECIDES ON WHAT IT DELIVERS ------------------------------
+     *
+     * `quickFxZ` scores on the DECIMATED optimisation grid (48 of 240 points
+     * here). For the value tune that is fine: it perturbs continuously and the
+     * decimation averages out. The snap does something else — it runs a
+     * coordinate descent over discrete alternatives and moves a long way.
+     * Measured on Sanders 400/2100 candidate, the network the repair handed
+     * over versus the one the snap chose:
+     *
+     *     coarse (48)   fx 132.2 → 42.5     "three times better"
+     *     full  (240)   peak 2.44 → 3.17 dB, phase 16.4 → 34.2°
+     *
+     * It optimised itself into a hole it could not see. Both other suspects
+     * were measured and cleared first: the impedance term costs nothing
+     * (with it 34.2°, without it 34.3° — it buys 1.19 Ω for a tenth of a
+     * degree), and the end audit costs 0.01 dB and 0.6°.
+     *
+     * So the snap scores on the grid it delivers on. It is the same lesson
+     * this file keeps paying for — a decision taken on a coarser quantity than
+     * the thing being decided — and the same one that broke a guard of mine
+     * earlier the same day. The extra solves are the price of the answer being
+     * about the network that ships. */
+    const snapFxZ = (ps: readonly VxpPart[]): { fx: number; zMin: number } => {
+      tick();
+      const m = metricsOn(buildWork(ps).work, grid, wBase, tBase, midFull, driverZ, angleData ?? null);
+      return { fx: fxOf(m), zMin: m.zMinOhm };
+    };
+    const zPre = snapFxZ(cur.parts).zMin;
     const zSnapTarget = ampFloorOhm === null ? zPre : Math.min(ampFloorOhm, zPre);
     const snapScore = (ch: (CatalogPick | null)[]): number => {
       const extra = ch.reduce((a, p) => a + (p ? p.parts.length - 1 : 0), 0);
@@ -2987,7 +3007,7 @@ export function optimizeNetworkValues(
       let fx: number;
       let zMin: number;
       try {
-        ({ fx, zMin } = quickFxZ(applied(ch)));
+        ({ fx, zMin } = snapFxZ(applied(ch)));
       } catch {
         return 1e12;
       }

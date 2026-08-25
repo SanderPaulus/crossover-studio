@@ -51,6 +51,12 @@ export interface SynthesisResult {
   /** Weighted RMS phase error, degrees. */
   rmsDeg: number;
   converged: boolean;
+  /** The lowest |Z| this branch presents at its own terminals (Ω), over the
+   *  grid it was fitted on. What the DRIVER hears is `achieved`; this is what
+   *  the AMPLIFIER meets, and the two are different questions — a rebuild can
+   *  reproduce one and not the other. Reported so a caller (and a test) can
+   *  check that the network it rebuilds is the network that was fitted. */
+  inputZMinOhm: number;
   /**
    * Set when this branch presents a DEGENERATE load: |Z_branch| falls below
    * {@link RATIO_DEGENERATE} of the bare driver's own impedance somewhere in
@@ -1027,6 +1033,12 @@ export function synthesize(
    * 0.17–0.21 readings in the census are a hard load, which is a designer's
    * choice to make. Refusing those would be refusing the design instead of the
    * defect. */
+  let inputZMinOhm = Infinity;
+  for (const c of finalSol.inputZ) {
+    const v = Math.hypot(c.re, c.im);
+    if (v < inputZMinOhm) inputZMinOhm = v;
+  }
+  if (!Number.isFinite(inputZMinOhm)) inputZMinOhm = 0;
   const worstRatio = worstImpedanceRatio(finalSol.inputZ, driverZ, freq);
   const degenerateLoad =
     worstRatio && worstRatio.ratio < RATIO_DEGENERATE
@@ -1087,6 +1099,7 @@ export function synthesize(
     rmsDb: Math.sqrt(accDb / fullWSum),
     rmsDeg: Math.sqrt(accDeg / fullWSum),
     converged: fit.converged || stationary,
+    inputZMinOhm,
     ...(degenerateLoad ? { degenerateLoad } : {}),
     ...(splFit
       ? {

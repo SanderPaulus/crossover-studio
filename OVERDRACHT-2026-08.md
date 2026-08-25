@@ -1585,3 +1585,80 @@ alleen de snap en de eind-audit; de audit kan hooguit 0,1 dB en 1° per
 verwijdering kosten (zijn eigen hercontrole-marge, 2 verwijderingen gemeten),
 dus het meeste moet van de snap komen — maar "moet" is geen meting. Eén
 geïnstrumenteerde run rond de snapgrens sluit het af.
+
+---
+
+## De snap besliste op 48 punten en leverde op 240 (25 aug 2026)
+
+### Isoleren, eindelijk goed
+
+Twee eerdere pogingen konden de snap niet isoleren (SNAP=0 vergelijkt twee
+ketens, want met snap aan draagt de continue fit al parasieten). De werkende
+vorm: DRIE aflezingen binnen ÉÉN run, op hetzelfde netwerk.
+
+```
+voor-snap   piek 2,44   fase 16,4°   Z 3,20   32 parts
+na-snap     piek 3,17   fase 34,2°   Z 3,36   32 parts
+na-audit    piek 3,18   fase 34,8°   Z 3,36   32 parts
+```
+
+De snap kost 0,73 dB en 17,8°; de eind-audit 0,01 dB en 0,6°.
+
+### Twee verdachten gemeten en vrijgesproken
+
+```
+                      grof(48)              vol(240)
+voor-snap        fx 132,2  Z 3,20     piek 2,44  fase 16,4  Z 3,20
+Z-term aan       fx  42,5  Z 3,36     piek 3,17  fase 34,2  Z 3,36
+Z-term uit       fx  35,5  Z 2,17     piek 3,17  fase 34,3  Z 2,17
+```
+
+De impedantieterm kost NIETS (34,2 vs 34,3°) en koopt 1,19 Ω — vrijgesproken.
+De eind-audit idem. Maar de snap "verbetert" zichzelf een factor 3 op zijn
+eigen rooster (fx 132 → 42) terwijl het geleverde netwerk verslechtert. Een
+beslissing op een grover getal dan het ding dat beslist wordt — de ziekte van
+deze hele dag, nu in de productiecode.
+
+### De fix, en wat hij WERKELIJK opleverde
+
+`snapFxZ` op het volle grid; het grove `quickFxZ` had daarna geen consument
+meer en is verwijderd (geen tweede definitie die later uiteen kan lopen).
+
+```
+400/2100   fase 34,8 → 31,7°   piek 3,18 → 3,17
+455/2432   ongewijzigd (23,9°)
+500/1900   ongewijzigd
+wandklok   522 → 688 s  (+32 %)
+```
+
+**3,1° van de 17,8°.** Het grove rooster was dus NIET de hoofdoorzaak, en mijn
+attributie zat voor de vierde keer die dag deels naast.
+
+### DE ECHTE BEVINDING: het gerepareerde netwerk is FRAGIEL
+
+Ook met volle-rooster-scoring kost de snap ~15°. De koopbare waardes kunnen dat
+netwerk niet reproduceren. De reparatie duwt met een stijve barrière (gewicht
+1200) naar een scherp optimum, en een paar procent waardeverandering sloopt de
+fase met 15 graden.
+
+Dat is Sanders tolerantiepunt met een getal erbij: zo'n ontwerp is niet alleen
+lastig te snappen, het is in de praktijk **niet reproduceerbaar** — ±5 %
+bouwtolerantie doet hetzelfde. `tolerance.ts` bestaat en kan dit meten.
+
+**Volgende meting (niet gebouwd, niet aangenomen):** de tolerantieband op het
+gerepareerde netwerk vs op een gewoon getuned netwerk. Is de fase-gevoeligheid
+een eigenschap van de barrière-reparatie, dan is de eerlijke conclusie dat een
+ontwerp dat alleen op exacte waardes zijn last haalt, geen bouwbaar ontwerp is —
+en dan hoort dat in het oordeel, niet in de BOM.
+
+### Survey: waar rekent welke poort op welk rooster (na de fix)
+
+- zoekpad (objective, barrière-referentie): GEDECIMEERD — correct en bedoeld
+- doelen, veiligheidspoort, reparatie-acceptatie: VOL — eerder duur geleerd
+- snoei-shortlist: grof, maar alleen een VOLGORDE; elke kandidaat daarna
+  hertuned en op het volle grid gepoort — verdedigbaar
+- catalogus-snap: was grof, is nu vol
+- **`TuneOut.metrics` is grof.** Alle vergelijkingen die eruit lezen zijn
+  onderling consistent (beide kanten grof), dus vandaag geen bug — maar wel een
+  openstaande val: wie er een volle-rooster-getal naast zet krijgt stil een
+  appels-en-perenvergelijking. Precies zo ontstond de snap-bug.
