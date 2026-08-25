@@ -27,7 +27,7 @@ import { solveDesign } from './lib/designSolve.ts';
 import { beginScanRun, endScanRun, putScanRow, listScanRuns, listScanRows, dropScanRun, pickResumable } from './lib/scanStore.ts';
 import { computeIntegration } from './lib/integration.ts';
 import { crossoverToNetlist } from './lib/vxpNetwork.ts';
-import { solveNetwork } from './lib/network.ts';
+import { solveNetwork, type Netlist } from './lib/network.ts';
 import {
   canonicalModelForRole,
   isTweeterModel,
@@ -108,6 +108,17 @@ import NumberFlow from '@number-flow/react';
 import { Modal } from './components/Modal.tsx';
 import { HelpPanel } from './components/HelpPanel.tsx';
 import { MeasuringGuide } from './components/MeasuringGuide.tsx';
+import { EngineV2Panel } from './components/EngineV2Panel.tsx';
+import { selectEngine } from './lib/engine2/facade.ts';
+import { buildReport } from './lib/engine2/report.ts';
+import {
+  buildEngineV2Input,
+  resolveDriverIds,
+  type AdapterBranch,
+  type AdapterImpedance,
+  type AdapterResponse,
+} from './lib/engine2/appAdapter.ts';
+import { ctcKey } from './lib/engine2/metrics/types.ts';
 import { BaffleView } from './components/BaffleView.tsx';
 import { CatalogManager } from './components/CatalogManager.tsx';
 import { helpSectionForTab } from './lib/help.ts';
@@ -1504,6 +1515,21 @@ export default function App() {
   /** Breakup guard: stopband leakage beside the crossover must stay ≥20 dB
    *  down — resonance phase can't be filtered, only made irrelevant. */
   const [breakupGuard, setBreakupGuard] = useState(true);
+  /**
+   * ENGINE V2 (experimental) — off unless the designer turns it on (P4).
+   *
+   * One flag, read in exactly one place (`selectEngine`). F1 switches on the
+   * reporting panel and nothing else, and `engine2/toggleRegression.test.ts`
+   * proves a reference optimisation run is byte-identical with and without the
+   * v2 modules loaded. F2+ will hook the optimiser onto the SAME flag through
+   * the same façade, so this stays one decision rather than a dozen.
+   */
+  const [engineV2Enabled, setEngineV2Enabled] = useState(false);
+  /** The two v2 project settings. Empty = the metric that needs it stays off. */
+  const [engineV2Settings, setEngineV2Settings] = useState<{
+    verticalWindowDeg: string;
+    amplifierPowerW: string;
+  }>({ verticalWindowDeg: '', amplifierPowerW: '' });
   /** Optional crossover-range constraint for the optimizer (Hz). */
   const [xoRangeOn, setXoRangeOn] = useState(false);
   /** Crossover point the designer picks: centre frequency ± margin (Hz).
@@ -2877,6 +2903,174 @@ export default function App() {
     const low = lowLower || lowUpper ? { lower: lowLower, upper: lowUpper } : undefined;
     return mid || tweeter || low ? { mid, tweeter, ...(low ? { low } : {}) } : undefined;
   };
+
+  /* ------------------------------------------------------------------ *
+   * ENGINE V2 (experimental) — the F1 reporting layer.
+   *
+   * One flag, read once, through the façade. Everything below is inert while
+   * `reporting` is false: the memo returns null and no engine2 code runs at
+   * all, which is the app-level half of the byte-identity guarantee that
+   * `engine2/toggleRegression.test.ts` proves on the library side.
+   *
+   * The measurement set is handed over exactly as the project holds it —
+   * nothing is filled in. A branch without an impedance file simply has none,
+   * and the capability matrix says which metrics that switches off (P4).
+   * ------------------------------------------------------------------ */
+  const engineSelection = useMemo(() => selectEngine(engineV2Enabled), [engineV2Enabled]);
+
+  const engineV2Report = useMemo(() => {
+    if (!engineSelection.reporting) return null;
+    try {
+      const asResponse = (name: string, frd: Parsed): AdapterResponse => ({
+        name,
+        freq: frd.freq,
+        spl: frd.spl,
+        phaseDeg: frd.phase,
+        comments: frd.meta.rawComments,
+      });
+      const parseStored = (f: StoredFile | null): AdapterResponse | null => {
+        if (!f) return null;
+        try {
+          return asResponse(f.name, parseFrd(f.raw));
+        } catch {
+          return null;
+        }
+      };
+      const zFor = (role: BranchRole): AdapterImpedance | null => {
+        const standalone = zStandalone[role];
+        const model = canonicalModelForRole(role, threeWay);
+        const zma = standalone?.zma ?? impedances[model];
+        if (!zma) return null;
+        return {
+          name: standalone?.file.name ?? `${model} impedance`,
+          freq: zma.freq,
+          magnitude: zma.magnitude,
+          phaseDeg: zma.phase,
+        };
+      };
+      const sizeInch = (role: BranchRole): number | undefined => {
+        const raw = role === 'low' ? wooferSizeInch : role === 'mid' ? midSizeInch : '';
+        const v = Number(raw);
+        return raw !== '' && Number.isFinite(v) && v > 0 ? v : undefined;
+      };
+      const loadedFor = (role: BranchRole): Loaded | null =>
+        role === 'low' ? woofer : role === 'mid' ? midDrv : tweeter;
+      const anglesFor = (role: BranchRole): AngleEntry[] =>
+        (role === 'low' ? angleSets?.woofer : role === 'mid' ? angleSets?.mid : angleSets?.tweeter) ?? [];
+
+      const roles: BranchRole[] = threeWay ? ['low', 'mid', 'high'] : ['low', 'high'];
+      const branches: AdapterBranch[] = [];
+      for (const role of roles) {
+        const loaded = loadedFor(role);
+        const nf = parseStored(nearField[role]?.cone ?? null);
+        const z = zFor(role);
+        if (!loaded && !z && !nf) continue;
+        branches.push({
+          role,
+          onAxis: loaded ? asResponse(loaded.name, loaded.frd) : null,
+          offAxis: anglesFor(role).map((a) => ({ hor: a.hor, response: asResponse(a.name, a.frd) })),
+          nearField: nf ? [nf] : [],
+          impedance: z,
+          diameterInch: sizeInch(role),
+        });
+      }
+      if (branches.length === 0) return null;
+
+      const active = designs.find((d) => d.id === activeDesignId);
+      let filter: { name: string; netlist: Netlist } | null = null;
+      if (active && active.parts.length > 0) {
+        try {
+          const { netlist } = crossoverToNetlist({ name: active.name, parts: active.parts } as VxpCrossover);
+          filter = { name: active.name, netlist };
+        } catch {
+          filter = null;
+        }
+      }
+
+      const mm = (v: string | undefined): number | undefined => {
+        if (!v) return undefined;
+        const n = Number(v);
+        return Number.isFinite(n) ? n : undefined;
+      };
+      const geometry = {
+        verticalMm: {
+          low: mm(cabinet.drivers.low?.yMm),
+          mid: mm(cabinet.drivers.mid?.yMm),
+          high: mm(cabinet.drivers.high?.yMm),
+        },
+        arraySpacingMm: {
+          low: Number(cabinet.drivers.low?.count ?? '') > 1 ? mm(cabinet.drivers.low?.spacingMm) : undefined,
+          mid: Number(cabinet.drivers.mid?.count ?? '') > 1 ? mm(cabinet.drivers.mid?.spacingMm) : undefined,
+          high: Number(cabinet.drivers.high?.count ?? '') > 1 ? mm(cabinet.drivers.high?.spacingMm) : undefined,
+        },
+        baffleWidthMm: mm(cabinet.baffleWidthMm),
+      };
+
+      // The assumed acoustic order per handover, from the slope settings the
+      // project already carries: order = slope / 6 dB per octave. 'auto' means
+      // the designer has not chosen, so the window drops its f_s floor and
+      // says so rather than assuming one.
+      const orderFrom = (a: string, b: string): number | undefined => {
+        const vals = [a, b].filter((x) => x !== 'auto').map(Number).filter((x) => Number.isFinite(x) && x > 0);
+        if (vals.length === 0) return undefined;
+        return Math.max(1, Math.min(4, Math.round(Math.max(...vals) / 6)));
+      };
+      const ids = resolveDriverIds(branches, filter?.netlist ?? null).ids;
+      const orderByPair: Record<string, number> = {};
+      if (threeWay) {
+        const lowOrder = orderFrom(acSlopeWoofer, acSlopeMidHp);
+        if (lowOrder !== undefined) orderByPair[ctcKey(ids.low ?? 'low', ids.mid ?? 'mid')] = lowOrder;
+      }
+      const highOrder = orderFrom(acSlopeMid, acSlopeTweeter);
+      if (highOrder !== undefined) {
+        orderByPair[ctcKey(threeWay ? ids.mid ?? 'mid' : ids.low ?? 'low', ids.high ?? 'high')] = highOrder;
+      }
+
+      const angles = engineV2Settings.verticalWindowDeg
+        .split(/[,;\s]+/)
+        .map(Number)
+        .filter((v) => Number.isFinite(v));
+      const power = Number(engineV2Settings.amplifierPowerW);
+
+      const built = buildEngineV2Input({
+        sessionId: xoName || t('unnamed session'),
+        branches,
+        filter,
+        geometry,
+        settings: {
+          ...(angles.length > 0 ? { verticalWindowDeg: angles } : {}),
+          ...(engineV2Settings.amplifierPowerW !== '' && Number.isFinite(power) && power > 0
+            ? { amplifierPowerW: power }
+            : {}),
+          ...(Object.keys(orderByPair).length > 0 ? { orderByPair } : {}),
+        },
+      });
+      return { report: buildReport(built.input), ambiguous: built.ambiguous, error: null as string | null };
+    } catch (e) {
+      return { report: null, ambiguous: null, error: (e as Error).message };
+    }
+  }, [
+    engineSelection,
+    woofer,
+    midDrv,
+    tweeter,
+    threeWay,
+    angleSets,
+    nearField,
+    zStandalone,
+    impedances,
+    designs,
+    activeDesignId,
+    cabinet,
+    midSizeInch,
+    wooferSizeInch,
+    acSlopeMid,
+    acSlopeTweeter,
+    acSlopeWoofer,
+    acSlopeMidHp,
+    engineV2Settings,
+    xoName,
+  ]);
 
   /** 3-way pins for the design chain (freq ± margin per handover). */
   const xoPinsValue = (): {
@@ -5058,6 +5252,11 @@ export default function App() {
         snapStacks,
         snapBoundToSeries,
         stagedOn,
+        engineV2Enabled,
+        engineV2: {
+          verticalWindowDeg: engineV2Settings.verticalWindowDeg,
+          amplifierPowerW: engineV2Settings.amplifierPowerW,
+        },
         targetRipple,
         soloSensDb,
         soloFloorOn,
@@ -5205,6 +5404,14 @@ export default function App() {
     // d.vfCutOnly is ignored: the tool is passive-only, cut-only is not optional.
     setCatalogSnap(d.catalogSnap ?? true);
     setBreakupGuard(d.breakupGuard ?? true);
+    // Absent means OFF, and it always will: the experimental engine is an
+    // opt-in, so a project that never mentions it must open exactly as it did
+    // before the flag existed.
+    setEngineV2Enabled(d.engineV2Enabled === true);
+    setEngineV2Settings({
+      verticalWindowDeg: d.engineV2?.verticalWindowDeg ?? '',
+      amplifierPowerW: d.engineV2?.amplifierPowerW ?? '',
+    });
     setXoRangeOn(d.xoRangeOn ?? false);
     // Legacy lo/hi range migrates to centre ± margin.
     if (d.xoFreqHz !== undefined) {
@@ -5346,7 +5553,7 @@ export default function App() {
     }, 800);
     return () => clearTimeout(timer);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [woofer, midDrv, tweeter, project, zStandalone, angleSets, fileNotes, verifyList, verifyIx, vFilters, xoName, offsetMm, trimDb, inverted, midOffsetMm, midTrimDb, midInverted, fMin, fMax, splMin, splMax, phasePriority, vfEqBands, phaseMode, dirWeight, ampTarget, sonogramMode, designs, activeDesignId, lastSavedId, networkActive, vfBypass, catalogSnap, breakupGuard, xoRangeOn, xoFreqHz, xoMarginHz, xoScanSteps, xo3Steps, hpLpPref, hpLpPrefLow, phaseMetricMode, acSlopeMid, acSlopeTweeter, acSlopeWoofer, acSlopeMidHp, xoLowFreqHz, xoLowMarginHz, midSizeInch, wooferSizeInch, kaTier, cabinet, nearField, ctcK, seatTiming, breakupLimitOn, breakupHarmonic, sdCm2, xmaxMm, excursionSpl, snapProfile, snapSeriesL, snapSeriesC, snapSeriesR, snapStacks, snapBoundToSeries, stagedOn, targetRipple, targetPhase, soloSensDb, soloFloorOn, soloFloorDb]);
+  }, [woofer, midDrv, tweeter, project, zStandalone, angleSets, fileNotes, verifyList, verifyIx, vFilters, xoName, offsetMm, trimDb, inverted, midOffsetMm, midTrimDb, midInverted, fMin, fMax, splMin, splMax, phasePriority, vfEqBands, phaseMode, dirWeight, ampTarget, sonogramMode, designs, activeDesignId, lastSavedId, networkActive, vfBypass, catalogSnap, breakupGuard, xoRangeOn, xoFreqHz, xoMarginHz, xoScanSteps, xo3Steps, hpLpPref, hpLpPrefLow, phaseMetricMode, acSlopeMid, acSlopeTweeter, acSlopeWoofer, acSlopeMidHp, xoLowFreqHz, xoLowMarginHz, midSizeInch, wooferSizeInch, kaTier, cabinet, nearField, ctcK, seatTiming, breakupLimitOn, breakupHarmonic, sdCm2, xmaxMm, excursionSpl, snapProfile, snapSeriesL, snapSeriesC, snapSeriesR, snapStacks, snapBoundToSeries, stagedOn, engineV2Enabled, engineV2Settings, targetRipple, targetPhase, soloSensDb, soloFloorOn, soloFloorDb]);
 
   function resetProject() {
     localStorage.removeItem(AUTOSAVE_KEY);
@@ -13584,6 +13791,44 @@ export default function App() {
                   />{' '}
                   {t('Keep cone breakup ≥20 dB down')}
                 </label>
+                <span className="opt-group-cap">{t('Engine')}</span>
+                <label title={t('Engine v2 (experimental) — spec F1. Switches on a REPORTING panel: the measurement-ingest pass, the metric library and the pre-design blocks. It changes nothing about the optimizer, the simulation or any saved design, and with it off the app behaves exactly as it always has.')}>
+                  <input
+                    type="checkbox"
+                    checked={engineV2Enabled}
+                    onChange={(e) => setEngineV2Enabled(e.target.checked)}
+                  />{' '}
+                  {t('Engine v2 (experimental) — report only')}
+                </label>
+                {engineV2Enabled && (
+                  <>
+                    <label title={t('Observation angles the vertical-lobing synthesis (M-F) evaluates, in degrees off the reference axis. Comma separated, e.g. "-15, 15". Empty = the metric stays off and says so.')}>
+                      {t('Vertical window °')}
+                      <input
+                        type="text"
+                        value={engineV2Settings.verticalWindowDeg}
+                        placeholder="-15, 15"
+                        onChange={(e) =>
+                          setEngineV2Settings((v) => ({ ...v, verticalWindowDeg: e.target.value }))
+                        }
+                        style={{ width: '6rem' }}
+                      />
+                    </label>
+                    <label title={t('Amplifier power the dissipation metric (M-A) converts its fraction into watts with. Empty = only the fraction is reported, which is scale-free anyway.')}>
+                      {t('Amplifier power W')}
+                      <input
+                        type="number"
+                        min={0}
+                        value={engineV2Settings.amplifierPowerW}
+                        placeholder="100"
+                        onChange={(e) =>
+                          setEngineV2Settings((v) => ({ ...v, amplifierPowerW: e.target.value }))
+                        }
+                        style={{ width: '5rem' }}
+                      />
+                    </label>
+                  </>
+                )}
                 <span className="opt-group-cap">{t('Components')}</span>
                 <label
                   style={{ opacity: hasImportedCatalog() ? 1 : 0.5 }}
@@ -16099,6 +16344,33 @@ export default function App() {
             />
           </div>
         </>
+      )}
+
+      {engineSelection.reporting && engineV2Report && (
+        engineV2Report.report ? (
+          <EngineV2Panel report={engineV2Report.report} ambiguous={engineV2Report.ambiguous} />
+        ) : (
+          <div className="panel v2-panel">
+            <div className="v2-head">
+              <h3>{engineSelection.label}</h3>
+              <div className="v2-stamp">{engineSelection.version}</div>
+            </div>
+            <p className="v2-problem">
+              {t('The v2 report could not be built: {msg}', { msg: engineV2Report.error ?? '' })}
+            </p>
+          </div>
+        )
+      )}
+      {engineSelection.reporting && !engineV2Report && (
+        <div className="panel v2-panel">
+          <div className="v2-head">
+            <h3>{engineSelection.label}</h3>
+            <div className="v2-stamp">{engineSelection.version}</div>
+          </div>
+          <p className="v2-muted">
+            {t('Load at least one driver measurement or impedance sweep — the v2 pass derives everything from the files, so with none there is nothing to derive.')}
+          </p>
+        </div>
       )}
 
         </main>

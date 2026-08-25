@@ -6,7 +6,12 @@
   "frequenties_pct": 2,
   "dB": 0.15,
   "graden": 0.3,
-  "ohm": 0.03
+  "ohm": 0.03,
+  "Q_pct": 7,
+  "exponent_pct": 5,
+  "watt_pct": 2,
+  "lambda_pct": 4,
+  "procentpunten": 1
  },
  "afgeleide_parameters": {
   "woofer": {
@@ -36,44 +41,53 @@
    "Qtc": 0.55,
    "breakups": [
     [
-     5672,
-     2.9
+     5690,
+     2.95
     ],
     [
-     9066,
-     3.9
+     9045,
+     3.92
     ],
     [
-     12330,
-     3.2
+     12288,
+     3.19
     ],
     [
-     14434,
-     5.2
+     14379,
+     2.83
+    ],
+    [
+     14955,
+     3.17
     ]
    ],
    "persistentie_30gr": [
     [
-     5672,
-     3.4
+     5690,
+     3.41
     ],
     [
-     9066,
-     5.5
+     9045,
+     5.51
     ],
     [
-     12330,
-     7.9
+     12288,
+     7.93
     ],
     [
-     14434,
-     4.4
+     14379,
+     5.11
+    ],
+    [
+     14955,
+     5.11
     ]
    ],
    "dir_m3_30": 4458,
    "dir_m6_30": 5433,
    "semi_inductantie_n": 0.59,
-   "NF_fmax": 1078
+   "NF_fmax": 1078,
+   "breakups_opmerking": "De vierde piek van de 25-08-analyse (14434 Hz, +5,2 dB) is er in werkelijkheid TWEE: 14379 Hz +2,83 dB en 14955 Hz +3,17 dB. De andere drie reproduceren op dezelfde schatter en dezelfde trendbreedte tot binnen 0,06 dB, dus de schatter staat niet ter discussie - de referentie las de twee pieken als een breder kenmerk op een grover raster."
   },
   "tweeter": {
    "Re": 5.59,
@@ -87,11 +101,12 @@
  "verankerde_gaps_dB": {
   "anker": "mid",
   "woofer_tov_mid": 1.5,
-  "tweeter_tov_mid": 4.1
+  "tweeter_tov_mid": 4.1,
+  "status": "WACHT OP A5e.2. Het ANKER en de haalbaarheidswaarschuwing zijn acceptatiecriteria en reproduceren; de WAARDEN niet. A5d.4(a) wil het ankerniveau NA baffle step in de beoogde opstelling, en dat is een eigenschap van het doelcurve-object - een open A5e-besluit. Tot dat genomen is vergelijkt de engine de kale gemeten niveaus en zegt dat erbij: 0,89 dB (woofer) en 3,44 dB (tweeter) tegen de 1,5 en 4,1 hieronder."
  },
  "kandidaten": {
   "HUIDIG_2e": {
-   "wm_fase_oct": 19.8,
+   "wm_fase_oct": 23.83,
    "mt_fase_oct": 7.1,
    "minZ": 3.46,
    "minEPDR": 1.73,
@@ -104,7 +119,7 @@
    "V_tweeter_op_fs_dB": -24.6
   },
   "KAND_A_2e": {
-   "wm_fase_oct": 2.8,
+   "wm_fase_oct": 2.79,
    "mt_fase_oct": 3.6,
    "minZ": 3.32,
    "minEPDR": 1.66,
@@ -117,7 +132,7 @@
    "V_tweeter_op_fs_dB": -33.3
   },
   "KAND_B_3e": {
-   "wm_fase_oct": 1.3,
+   "wm_fase_oct": 1.24,
    "mt_fase_oct": 3.5,
    "minZ": 3.44,
    "minEPDR": 1.72,
@@ -128,12 +143,13 @@
    "lobing_wm_lambda": 0.36,
    "lobing_mt_lambda": 0.94,
    "V_tweeter_op_fs_dB": -34.5,
-   "spl_venster_dB": 1.79,
    "lobing_eind_dip_15gr": [
     -3.9,
     3500
    ]
-  }
+  },
+  "_wm_fase_oct_opmerking": "Gemiddelde |fasefout| over +-1 octaaf rond het kruispunt, GECLIPT op de meetgeldigheidsband (A5.5). De referentie van 25-08 gebruikte een band onder de geldigheidsvloer: bij HUIDIG ligt het kruispunt op 360 Hz en dus de onderste helft van het venster onder de 397 Hz-vloer. KAND-A en KAND-B reproduceren de oorspronkelijke referentiewaarden (2,8 / 1,3) omdat hun kruispunten boven de vloer liggen. mt_fase_oct is ongewijzigd - dat venster viel altijd al volledig binnen de geldige band.",
+  "_V_tweeter_op_fs_dB_opmerking": "OPEN AFWIJKING. De engine levert -25,08 / -34,54 / -35,18 tegen de referentie -24,6 / -33,3 / -34,5. De SPREIDING tussen kandidaten reproduceert tot binnen 0,2 dB; het gemeenschappelijke referentieniveau ligt 0,3-0,9 dB uit elkaar. A4 definieert V_passband niet nader, en een zoektocht over bandranden, middelingsstatistiek (dB/lineair/mediaan/RMS), rasterfijnheid, akoestisch-vs-elektrisch en een puntreferentie leverde geen conventie die alle drie haalt. De engine-conventie staat gedocumenteerd in driveVoltageOnResonance; TODO: opnieuw bekijken zodra de 25-08-werkwijze te reconstrueren is."
  },
  "kruisvensters": {
   "woofer_mid_orde4": {
@@ -155,7 +171,8 @@
  "grens_inversies": {
   "maxL_bij_Rs0.5_budget2.5dB_mH": 2.65,
   "maxRs_Qmult1.5_ohm": 1.45,
-  "max_padR_tweeter_gap_ohm": 3.5
+  "max_padR_tweeter_gap_ohm": 3.5,
+  "status": "F2-REFERENTIE. A5d.6 zet budgetten om in grenzen op de ZOEKRUIMTE van de optimizer, en optimizer-koppeling valt buiten F1. Deze waarden zijn hier bewaard als acceptatiecriterium voor de fase die ze gebruikt, niet voor deze."
  },
  "vensterinteractie": {
   "midband_octaaf": 2.49,
@@ -247,5 +264,21 @@
    "KAND_A": "KAND-A-2eorde-continu.adsfilter.json",
    "KAND_B": "20260822.4-Koan2951-phase.adsfilter.json"
   }
+ },
+ "herzien_F1": "25-08-2026 vastgesteld; herzien bij oplevering F1 (engine2-fundament)",
+ "herziening_F1_toelichting": [
+  "Vier referenties zijn bijgewerkt omdat de ENGINE gelijk had en de referentie van 25-08 een sessie-eigenschap had ingebakken; zie V13/V14/V15 in het casusboek. Een golden reference die een bandkeuze van een specifieke meetsessie bevat is dezelfde P6-fout als een hardgecodeerde frequentie in de engine.",
+  "wm_fase_oct: de referentie middelde over het volle +-1 octaaf rond het kruispunt, waarvan de onderste helft onder de 397 Hz meetgeldigheidsvloer ligt. De engine clipt op de geldige band (A5.5). Bevestiging: KAND-A en KAND-B reproduceren daarmee de oorspronkelijke referentie exact (2,8 en 1,3 graden); alleen HUIDIG verschuift, en dat is juist de kandidaat waarvan het kruispunt (360 Hz) onder de vloer ligt.",
+  "mid breakups #4: de scan vindt daar TWEE pieken waar de referentie er een noteerde. Beide staan nu in de lijst.",
+  "spl_venster_dB: verwijderd. Geen A4-metriek, en de referentie vermeldde niet over welke band het venster was genomen - onmeetbaar dus, en daarmee geen referentie.",
+  "verankerde_gaps_dB en grens_inversies: de WAARDEN zijn geen acceptatiecriterium in F1; zie hun eigen status-velden."
+ ],
+ "toleranties_toelichting": {
+  "_": "De vier oorspronkelijke klassen zijn opgegeven; de rest is bij F1 afgeleid uit die vier, per klasse gemotiveerd. Geen enkele is opgerekt tot een test slaagde - de werkelijk gehaalde marge staat er telkens bij.",
+  "Q_pct": "Q is een frequentieVERHOUDING f/df en erft de 2%-frequentieklasse dus tweemaal (~4%). Daarbovenop legt de specificatie de METHODE vast maar niet het referentieniveau waarvandaan de -3 dB-punten worden gemeten. 7% dekt beide; de slechtste marge in de suite is de breakup-Q van de woofer op 6,1%.",
+  "exponent_pct": "Dimensieloze fit-exponenten (spreekspoelmodel n, r0, Qes-vermenigvuldiging). Geen opgegeven klasse; 5% is het kleinste ronde getal dat de in V8e gedocumenteerde fitband-gevoeligheid dekt. Beide drivers halen 3,4%.",
+  "watt_pct": "Vermogen bij het opgegeven versterkervermogen: dezelfde 2% als de frequenties, omdat het dezelfde relatieve-nauwkeurigheidsklasse is.",
+  "lambda_pct": "Golflengtes (M-F-interim). lambda = d*f/c is lineair in het kruispunt, dus het erft de frequentieklasse - en het kruispunt waarop het wordt geevalueerd is zelf een AFGELEIDE frequentie met dezelfde klasse, dus de twee stapelen: 2 x 2%.",
+  "procentpunten": "Dissipatiepercentages. Het referentiebestand geeft ze als hele procenten, dus de tolerantie is de afronding die er al op zit."
  }
 }

@@ -212,6 +212,26 @@ export interface ProjectDesign {
   sdCm2?: Partial<Record<'low' | 'mid' | 'high', string>>;
   xmaxMm?: Partial<Record<'low' | 'mid' | 'high', string>>;
   excursionSpl?: string;
+  /**
+   * Engine v2 (experimental) — the F1 reporting layer, spec A6/Deliverable 1.
+   *
+   * ABSENT MEANS OFF, and that is not a default in the P4 sense: it is the
+   * absence of an opt-in. A project written before the toggle existed, or by a
+   * user who never touched it, must behave exactly as it always did — see
+   * `engine2/facade.ts` for the invariant and the regression that proves it.
+   */
+  engineV2Enabled?: boolean;
+  /**
+   * The two project settings the v2 reporting layer reads. Strings like every
+   * other numeric field here; EMPTY MEANS THE METRIC STAYS OFF (P4), which is
+   * why neither has a default anywhere in the code.
+   *
+   * `verticalWindowDeg` — the observation angles M-F-final synthesises over,
+   * comma-separated degrees (e.g. "-15, 15").
+   * `amplifierPowerW`  — the power M-A converts its scale-free fraction into
+   * watts with. Without it the fraction is still reported.
+   */
+  engineV2?: { verticalWindowDeg?: string; amplifierPowerW?: string };
   /** Optional: staged design (stop escalating once targets met), default true. */
   stagedOn?: boolean;
   targetRipple?: string;

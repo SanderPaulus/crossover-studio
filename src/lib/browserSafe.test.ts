@@ -47,6 +47,12 @@ function sourceFiles(dir: string, out: string[] = []): string[] {
     }
     if (!/\.tsx?$/.test(e)) continue;
     if (/\.test\.tsx?$/.test(e)) continue; // tests DO run in Node
+    // ...and so do FIXTURE LOADERS, which exist only to feed them. They read
+    // from disk on purpose, they are excluded from the app's tsconfig for the
+    // same reason (tsconfig.app.json), and nothing in the app's import graph
+    // reaches them — which the test below pins, so this exemption cannot be
+    // used to smuggle a Node import into the bundle.
+    if (/\.fixture\.tsx?$/.test(e)) continue;
     out.push(p);
   }
   return out;
@@ -67,5 +73,22 @@ describe('the shipped source stays browser-safe', () => {
       }
     }
     expect(offenders, `Node-only globals reach the browser bundle:\n${offenders.join('\n')}`).toEqual([]);
+  });
+
+  it('nothing shipped imports a .fixture file (the exemption above has a floor)', () => {
+    // A fixture loader may use Node because it never reaches the browser. That
+    // is only true while no shipped module imports one, so the exemption and
+    // this assertion belong together.
+    const offenders: string[] = [];
+    for (const file of sourceFiles(ROOT)) {
+      readFileSync(file, 'utf-8')
+        .split('\n')
+        .forEach((line, i) => {
+          if (/from\s+['"][^'"]*\.fixture(\.tsx?)?['"]/.test(line)) {
+            offenders.push(`${relative(ROOT, file)}:${i + 1}  ${line.trim().slice(0, 90)}`);
+          }
+        });
+    }
+    expect(offenders, `a shipped module imports a test fixture:\n${offenders.join('\n')}`).toEqual([]);
   });
 });

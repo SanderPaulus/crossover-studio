@@ -68,6 +68,36 @@ export interface SolveResult {
    * This is the amplifier-load curve (VituixCAD's Impedance chart).
    */
   inputZ: Complex[];
+  /**
+   * NODE VOLTAGES, one array per grid frequency, indexed by node number
+   * (index 0 is ground and is always 0). PRESENT ONLY when the caller asked
+   * for internals — see `SolveOptions`.
+   */
+  nodeVoltages?: Complex[][];
+  /**
+   * ELEMENT CURRENTS, per element id, one entry per grid frequency, taken
+   * POSITIVE from `nodes[0]` towards `nodes[1]`. For the generator it is the
+   * current delivered into the external network, i.e. (Eg − V_terminals)/Rg.
+   * PRESENT ONLY when the caller asked for internals.
+   */
+  elementCurrents?: Record<string, Complex[]>;
+}
+
+/**
+ * Extra outputs from the SAME MNA solution (engine v2, spec F1: "solver
+ * uitbreiden met elementstromen").
+ *
+ * WHY AN OPTION AND NOT ALWAYS. The nodal solve already knows every node
+ * voltage — the currents are one multiply each — but building and returning
+ * them allocates two more arrays per grid point, and this solver runs inside
+ * the optimiser's inner loop tens of thousands of times per run. More
+ * importantly, the engine-v2 toggle has to be byte-identical when it is off:
+ * an absent option adds no field to the result, so a caller that does not ask
+ * gets exactly the object it got before this existed.
+ */
+export interface SolveOptions {
+  /** Return `nodeVoltages` and `elementCurrents` alongside the usual result. */
+  withInternals?: boolean;
 }
 
 export class NetworkError extends Error {}
@@ -83,7 +113,9 @@ export function solveNetwork(
   netlist: Netlist,
   freq: readonly number[],
   driverZ: DriverImpedances,
+  options: SolveOptions = {},
 ): SolveResult {
+  const withInternals = options.withInternals === true;
   const n = netlist.nodeCount - 1; // unknowns (ground eliminated)
   if (n < 1) throw new NetworkError('Network has no non-ground nodes.');
 
@@ -99,6 +131,11 @@ export function solveNetwork(
   const transfers: Record<string, Complex[]> = {};
   for (const d of drivers) transfers[d.id] = new Array<Complex>(freq.length);
   const inputZ = new Array<Complex>(freq.length);
+  const nodeVoltages: Complex[][] | null = withInternals ? new Array<Complex[]>(freq.length) : null;
+  const elementCurrents: Record<string, Complex[]> | null = withInternals ? {} : null;
+  if (elementCurrents) {
+    for (const e of netlist.elements) elementCurrents[e.id] = new Array<Complex>(freq.length);
+  }
 
   // Reusable matrix/vector buffers.
   const G: Complex[][] = Array.from({ length: n }, () => new Array<Complex>(n));
@@ -165,9 +202,43 @@ export function solveNetwork(
     const vs = sub(nodeV(src.nodes[0]), nodeV(src.nodes[1]));
     const iIn = scale(sub(cplx(src.volts), vs), 1 / src.seriesR);
     inputZ[k] = div(vs, iIn);
+
+    // Internals, from the SAME solution — no second solve, no second model.
+    // Every current is (V_a − V_b)·Y with exactly the admittance that was
+    // stamped above, so a current can never describe a different element than
+    // the one the transfer function saw.
+    if (nodeVoltages && elementCurrents) {
+      const vAll = new Array<Complex>(netlist.nodeCount);
+      for (let i = 0; i < netlist.nodeCount; i++) vAll[i] = nodeV(i);
+      nodeVoltages[k] = vAll;
+      for (const e of netlist.elements) {
+        const [a, b] = e.nodes;
+        const dv = sub(nodeV(a), nodeV(b));
+        switch (e.kind) {
+          case 'R':
+            elementCurrents[e.id][k] = scale(dv, 1 / e.value);
+            break;
+          case 'L':
+            elementCurrents[e.id][k] = mulc(dv, inv(cplx(e.seriesR ?? 0, w * e.value)));
+            break;
+          case 'C':
+            elementCurrents[e.id][k] = mulc(dv, inv(cplx(e.seriesR ?? 0, -1 / (w * e.value))));
+            break;
+          case 'driver':
+            elementCurrents[e.id][k] = mulc(dv, inv(driverZ[e.model][k]));
+            break;
+          case 'source':
+            // The generator's own branch: what it delivers to the network.
+            elementCurrents[e.id][k] = scale(sub(cplx(e.volts), dv), 1 / e.seriesR);
+            break;
+        }
+      }
+    }
   }
 
-  return { transfers, drivers, inputZ };
+  return withInternals
+    ? { transfers, drivers, inputZ, nodeVoltages: nodeVoltages!, elementCurrents: elementCurrents! }
+    : { transfers, drivers, inputZ };
 }
 
 /**

@@ -1,0 +1,236 @@
+/**
+ * THE ADAPTER: app state -> engine-v2 report input.
+ *
+ * The engine speaks manifests, driver ids and validity intervals. The app
+ * speaks branches, roles and loaded files. Something has to translate, and
+ * this is the only place that does — a second translation, however small,
+ * would let the panel and the metrics disagree about which measurement
+ * belongs to which driver, which is the one mistake this whole layer exists
+ * to make impossible.
+ *
+ * THE DRIVER VOCABULARY IS THE NETLIST'S. A manifest driver id must be the
+ * same string the netlist calls its Driver part's model, because that is what
+ * lets a metric hold a driver's measurement and its branch of the circuit at
+ * once. So the ids are resolved from the netlist through the app's existing
+ * slot picker, and only fall back to role names when no filter is loaded.
+ *
+ * NOTHING HERE INVENTS DATA. A branch without an impedance file gets no
+ * impedance entry, and the capability matrix says so; it does not get a
+ * nominal 8 ohm. Same for angles, near fields and geometry: absent stays
+ * absent all the way to the screen (P4).
+ */
+
+import { pickSlotsN, type BranchRole } from '../driverSlots.ts';
+import type { Netlist } from '../network.ts';
+import { parseArtaHeader, type Manifest, type ManifestEntry } from './ingest/manifest.ts';
+import type { MeasurementFile } from './ingest/derive.ts';
+import type { FilterInput, EngineV2ReportInput, ReportSettings } from './report.ts';
+import { ctcKey, type Geometry } from './metrics/types.ts';
+
+/** A response file as the app holds it after parsing. */
+export interface AdapterResponse {
+  name: string;
+  freq: readonly number[];
+  spl: readonly number[];
+  phaseDeg: readonly number[];
+  /** The file's own comment lines — where the ARTA window fields live. */
+  comments: readonly string[];
+}
+
+/** An impedance file as the app holds it after parsing. */
+export interface AdapterImpedance {
+  name: string;
+  freq: readonly number[];
+  magnitude: readonly number[];
+  phaseDeg: readonly number[];
+}
+
+/** Everything the app knows about one branch. */
+export interface AdapterBranch {
+  role: BranchRole;
+  onAxis: AdapterResponse | null;
+  /** Off-axis responses, each with its horizontal angle. */
+  offAxis: readonly { hor: number; response: AdapterResponse }[];
+  /** Near-field responses (one per cone; several are summed by the engine). */
+  nearField: readonly AdapterResponse[];
+  impedance: AdapterImpedance | null;
+  /** Effective radiating diameter in inches — Keele's ceiling needs it. */
+  diameterInch?: number;
+  /** Microphone distance of the near field in mm, when it was recorded. */
+  nearFieldMicMm?: number;
+}
+
+/** Cabinet geometry, already parsed to numbers by the caller. */
+export interface AdapterGeometry {
+  /** Vertical position of each branch's acoustic centre, mm. */
+  verticalMm: Partial<Record<BranchRole, number>>;
+  /** Internal spacing of an array inside a branch, mm. */
+  arraySpacingMm: Partial<Record<BranchRole, number>>;
+  /** Whether a branch radiates rotationally symmetrically. */
+  rotationallySymmetric?: Partial<Record<BranchRole, boolean>>;
+  baffleWidthMm?: number;
+}
+
+export interface AdapterInput {
+  /** Identifies the measurement session these files belong to (A5.2/F5). */
+  sessionId: string;
+  branches: readonly AdapterBranch[];
+  /** The active filter tab, already converted to a netlist; null = none loaded. */
+  filter: { name: string; netlist: Netlist } | null;
+  geometry: AdapterGeometry;
+  settings: ReportSettings;
+}
+
+/**
+ * Resolve each branch's driver id.
+ *
+ * With a filter loaded the ids come from the netlist, through the same slot
+ * picker the rest of the app uses — so a project whose low driver is literally
+ * named "mid" (which one of them is) lands in the right place. Without a
+ * filter the role name is used, which is only ever consumed by the ingest pass
+ * and the capability matrix, neither of which cares what a driver is called.
+ */
+export function resolveDriverIds(
+  branches: readonly AdapterBranch[],
+  netlist: Netlist | null,
+): { ids: Partial<Record<BranchRole, string>>; ambiguous: string | null } {
+  const ids: Partial<Record<BranchRole, string>> = {};
+  for (const b of branches) ids[b.role] = b.role;
+  if (!netlist) return { ids, ambiguous: null };
+
+  const drivers = netlist.elements.filter(
+    (e): e is Extract<typeof e, { kind: 'driver' }> => e.kind === 'driver',
+  );
+  const slots = pickSlotsN(drivers);
+  if (slots.ambiguous) return { ids, ambiguous: slots.ambiguous };
+  if (slots.woofer) ids.low = slots.woofer.model;
+  if (slots.mid) ids.mid = slots.mid.model;
+  if (slots.tweeter) ids.high = slots.tweeter.model;
+  return { ids, ambiguous: null };
+}
+
+const responseFile = (
+  entry: Omit<ManifestEntry, 'header'>,
+  r: AdapterResponse,
+): MeasurementFile => ({
+  entry: { ...entry, header: parseArtaHeader([...r.comments]) },
+  response: { freq: r.freq, spl: r.spl, phaseDeg: r.phaseDeg },
+});
+
+export interface AdapterResult {
+  input: EngineV2ReportInput;
+  /** Driver id per branch — the panel labels rows with these. */
+  driverIds: Partial<Record<BranchRole, string>>;
+  /** Set when the netlist's drivers could not be told apart (surfaced, not guessed). */
+  ambiguous: string | null;
+}
+
+export function buildEngineV2Input(args: AdapterInput): AdapterResult {
+  const { ids, ambiguous } = resolveDriverIds(args.branches, args.filter?.netlist ?? null);
+
+  const entries: ManifestEntry[] = [];
+  const files: MeasurementFile[] = [];
+  const push = (e: ManifestEntry, f: MeasurementFile) => {
+    entries.push(e);
+    files.push(f);
+  };
+
+  for (const b of args.branches) {
+    const driver = ids[b.role] ?? b.role;
+    if (b.impedance) {
+      const entry: ManifestEntry = { file: b.impedance.name, driver, kind: 'Z' };
+      push(entry, {
+        entry,
+        impedance: {
+          freq: b.impedance.freq,
+          magnitude: b.impedance.magnitude,
+          phaseDeg: b.impedance.phaseDeg,
+        },
+      });
+    }
+    if (b.onAxis) {
+      const entry: ManifestEntry = { file: b.onAxis.name, driver, kind: 'FF', angleDeg: 0 };
+      push(entry, responseFile(entry, b.onAxis));
+    }
+    for (const off of b.offAxis) {
+      // 0 degrees in the angle set IS the on-axis file; adding it twice would
+      // sum the same measurement into itself and gain 6 dB.
+      if (off.hor === 0) continue;
+      const entry: ManifestEntry = {
+        file: off.response.name,
+        driver,
+        kind: 'FF',
+        angleDeg: off.hor,
+      };
+      push(entry, responseFile(entry, off.response));
+    }
+    for (const nf of b.nearField) {
+      const entry: ManifestEntry = {
+        file: nf.name,
+        driver,
+        kind: 'NF',
+        ...(b.diameterInch !== undefined ? { diameterInch: b.diameterInch } : {}),
+        ...(b.nearFieldMicMm !== undefined ? { micDistanceMm: b.nearFieldMicMm } : {}),
+      };
+      push(entry, responseFile(entry, nf));
+    }
+  }
+
+  const manifest: Manifest = { sessionId: args.sessionId, entries };
+
+  let filter: FilterInput | null = null;
+  if (args.filter) {
+    const driverZ: FilterInput['driverZ'] = {};
+    for (const b of args.branches) {
+      const driver = ids[b.role] ?? b.role;
+      if (!b.impedance) continue;
+      driverZ[driver] = {
+        freq: b.impedance.freq,
+        magnitude: b.impedance.magnitude,
+        phaseDeg: b.impedance.phaseDeg,
+      };
+    }
+    filter = { name: args.filter.name, netlist: args.filter.netlist, driverZ };
+  }
+
+  // Geometry, keyed by DRIVER ID rather than role, and only where the app
+  // actually holds a number.
+  const geometry: Geometry = {};
+  const z: Record<string, number> = {};
+  const arrays: Record<string, number> = {};
+  const symmetric: Record<string, boolean> = {};
+  for (const b of args.branches) {
+    const driver = ids[b.role] ?? b.role;
+    const v = args.geometry.verticalMm[b.role];
+    if (v !== undefined) z[driver] = v;
+    const a = args.geometry.arraySpacingMm[b.role];
+    if (a !== undefined && a > 0) arrays[driver] = a;
+    const s = args.geometry.rotationallySymmetric?.[b.role];
+    if (s !== undefined) symmetric[driver] = s;
+  }
+  if (Object.keys(z).length) geometry.zOffsetMm = z;
+  if (Object.keys(arrays).length) geometry.arraySpacingMm = arrays;
+  if (Object.keys(symmetric).length) geometry.rotationallySymmetric = symmetric;
+  if (args.geometry.baffleWidthMm !== undefined) geometry.baffleWidthMm = args.geometry.baffleWidthMm;
+
+  // Centre-to-centre between ADJACENT branches, from the vertical positions.
+  // Derived rather than entered: the positions are already in the project, and
+  // asking for the same distance twice is how the two end up disagreeing.
+  const ordered: BranchRole[] = (['low', 'mid', 'high'] as const).filter((r) =>
+    args.branches.some((b) => b.role === r),
+  );
+  const ctc: Record<string, number> = {};
+  for (let i = 0; i + 1 < ordered.length; i++) {
+    const a = args.geometry.verticalMm[ordered[i]];
+    const b = args.geometry.verticalMm[ordered[i + 1]];
+    if (a === undefined || b === undefined) continue;
+    ctc[ctcKey(ids[ordered[i]] ?? ordered[i], ids[ordered[i + 1]] ?? ordered[i + 1])] = Math.abs(b - a);
+  }
+  if (Object.keys(ctc).length) geometry.ctcMm = ctc;
+
+  return {
+    input: { manifest, files, filter, geometry, settings: args.settings },
+    driverIds: ids,
+    ambiguous,
+  };
+}

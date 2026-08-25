@@ -3858,3 +3858,193 @@ details.cabinet-driver > .derived strong,
    passing silently as verified is worse than either. */
 .design-tab-name.band-unknown::after { content: ' ◌'; opacity: 0.7; }
 .src-unverified { color: var(--warn); }
+
+/* ------------------------------------------------------------------ *
+ * Engine v2 (experimental) report panel
+ *
+ * Deliberately plainer than the rest of the app. Everything on it is
+ * experimental and reporting-only, and it sits on the same screen as the
+ * shipping engine's numbers — so it reads as a report rather than as another
+ * set of results with the same visual weight.
+ * ------------------------------------------------------------------ */
+
+.v2-panel {
+  border-color: var(--accent, #6a8);
+}
+
+.v2-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.6rem;
+  margin-bottom: 0.35rem;
+}
+
+.v2-head h3 {
+  margin: 0;
+  font-size: 1.05rem;
+}
+
+.v2-badge {
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  border: 1px solid currentColor;
+  border-radius: 999px;
+  padding: 0.05rem 0.45rem;
+  vertical-align: middle;
+}
+
+.v2-stamp,
+.v2-foot {
+  font-size: 0.78rem;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.v2-foot {
+  margin: 1.25rem 0 0;
+  border-top: 1px solid var(--border);
+  padding-top: 0.6rem;
+}
+
+.v2-section {
+  margin-top: 1.4rem;
+}
+
+.v2-section > h4 {
+  margin: 0 0 0.5rem;
+  font-size: 0.95rem;
+  display: flex;
+  align-items: baseline;
+  gap: 0.5rem;
+}
+
+.v2-spec {
+  font-size: 0.72rem;
+  color: var(--muted);
+  font-weight: 400;
+}
+
+.v2-muted {
+  font-size: 0.82rem;
+  color: var(--muted);
+}
+
+.v2-scroll {
+  overflow-x: auto;
+}
+
+.v2-table {
+  border-collapse: collapse;
+  font-size: 0.82rem;
+  width: 100%;
+  font-variant-numeric: tabular-nums;
+}
+
+.v2-table th,
+.v2-table td {
+  border: 1px solid var(--border);
+  padding: 0.25rem 0.5rem;
+  text-align: left;
+  vertical-align: top;
+}
+
+.v2-table thead th {
+  color: var(--muted);
+  font-weight: 500;
+}
+
+.v2-on {
+  color: #0ca30c;
+}
+
+.v2-off {
+  color: var(--muted);
+}
+
+.v2-na {
+  color: var(--border);
+}
+
+.v2-metric {
+  border-left: 2px solid var(--border);
+  padding: 0.35rem 0 0.35rem 0.6rem;
+  margin: 0.55rem 0;
+}
+
+.v2-metric-head {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+  align-items: baseline;
+  font-size: 0.88rem;
+}
+
+.v2-metric-head b {
+  font-variant-numeric: tabular-nums;
+}
+
+.v2-id {
+  font-size: 0.72rem;
+  color: var(--muted);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 0 0.3rem;
+}
+
+.v2-coverage {
+  font-size: 0.76rem;
+  color: var(--muted);
+  margin-top: 0.15rem;
+}
+
+.v2-coverage.v2-flag {
+  color: #ec835a;
+}
+
+.v2-warn {
+  font-size: 0.8rem;
+  color: #ec835a;
+}
+
+/* An uncalibrated number is marked where it is READ, not in a footnote. */
+.v2-uncal {
+  font-size: 0.68rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #fab219;
+  border: 1px dashed currentColor;
+  border-radius: 3px;
+  padding: 0 0.25rem;
+}
+
+.v2-problem {
+  font-size: 0.85rem;
+  color: #ec835a;
+  margin: 0.25rem 0;
+}
+
+.v2-details {
+  font-size: 0.82rem;
+  margin: 0.4rem 0;
+}
+
+.v2-details summary {
+  cursor: pointer;
+  color: var(--muted);
+}
+
+.v2-limits {
+  margin: 0.3rem 0;
+  padding-left: 1.1rem;
+  font-size: 0.82rem;
+}
+
+.v2-limits .v2-binding {
+  color: inherit;
+}
+
+.v2-empty-window {
+  border-left-color: #ec835a;
+}

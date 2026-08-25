@@ -30,6 +30,21 @@
   runtime samengesteld, zodat de guard zichzelf niet matcht. Een tweede test controleert dat de
   walker de boom echt afloopt — een stille lege scan zou anders eeuwig groen blijven.
 
+- `src/lib/engine2/p6Lint.test.ts` — P6 als test, niet als reviewregel: elk numeriek
+  literal ≥ 20 in `src/lib/engine2/` moet in `constants.ts` staan (met een `@p6`-tag uit
+  een gesloten set) of een `P6-OK`-markering op zijn regel dragen. Plus: geen constante
+  met `_HZ` in de naam mag als `unit` of `rule` getagd zijn.
+- `src/lib/engine2/toggleRegression.test.ts` — bewijst de toggle-invariant drie kanten op:
+  een referentie-optimalisatierun byte-identiek met en zonder de v2-modules geladen, geen
+  enkele import van `engine2/` buiten de UI-instappunten, en `undefined` = `false` in de vlag.
+- `src/lib/engine2/goldenCasus1.test.ts` — de acceptatie-autoriteit (casus 1). Bevat een
+  expliciete lijst `KNOWN_DEVIATIONS` met zes referenties die deze build niet reproduceert;
+  de geproduceerde waarden zijn er óók vastgepind, en de lengte van de lijst wordt geassert
+  zodat hij niet stilletjes kan groeien.
+- `src/lib/browserSafe.test.ts` — kent nu ook `*.fixture.ts` (test-only loaders die van
+  schijf lezen) als uitzondering, met een tweede test die pint dat niets uit de bundel er
+  een importeert.
+
 De vloer is sinds F0 uitsluitend het getal dat de ONTWERPER invult (`ampMinLoadOhm`, geen default):
 leeg veld = geen oordeel. Eén regel, één plek: `meetsAmpFloor` in `src/lib/impedanceFloor.ts`.
 Wie een vloer nodig heeft roept die aan en verzint geen eigen drempel.
