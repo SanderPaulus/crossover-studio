@@ -1,0 +1,973 @@
+{
+ "format": "acoustic-design-studio-filter",
+ "version": 1,
+ "savedAt": "2026-08-22T00:00:00.000Z",
+ "name": "20260822.4-Koan2951-phase",
+ "parts": [
+  {
+   "type": "Generator",
+   "partId": "G",
+   "params": [
+    {
+     "name": "Eg",
+     "value": 2.83,
+     "unit": "V"
+    }
+   ],
+   "wires": [
+    {
+     "x": 3,
+     "y": 6
+    },
+    {
+     "x": 3,
+     "y": 13
+    }
+   ]
+  },
+  {
+   "type": "Ground",
+   "params": [],
+   "wires": [
+    {
+     "x": 3,
+     "y": 13
+    }
+   ]
+  },
+  {
+   "type": "Inductor",
+   "partId": "L1",
+   "params": [
+    {
+     "name": "L",
+     "value": 2.47,
+     "unit": "mH"
+    },
+    {
+     "name": "DCR",
+     "value": 0.5175,
+     "unit": "Ω"
+    }
+   ],
+   "wires": [
+    {
+     "x": 3,
+     "y": 6
+    },
+    {
+     "x": 10,
+     "y": 6
+    }
+   ],
+   "catalog": "0.27+2.20",
+   "locked": false
+  },
+  {
+   "type": "Capacitor",
+   "partId": "C2",
+   "params": [
+    {
+     "name": "C",
+     "value": 120.0,
+     "unit": "uF"
+    },
+    {
+     "name": "ESR",
+     "value": 0.032,
+     "unit": "Ω"
+    }
+   ],
+   "wires": [
+    {
+     "x": 10,
+     "y": 6
+    },
+    {
+     "x": 10,
+     "y": 11
+    }
+   ],
+   "locked": false,
+   "catalog": "120uF"
+  },
+  {
+   "type": "Ground",
+   "params": [],
+   "wires": [
+    {
+     "x": 10,
+     "y": 11
+    }
+   ]
+  },
+  {
+   "type": "Wire",
+   "params": [],
+   "wires": [
+    {
+     "x": 10,
+     "y": 6
+    },
+    {
+     "x": 16,
+     "y": 6
+    }
+   ]
+  },
+  {
+   "type": "Capacitor",
+   "partId": "C4",
+   "params": [
+    {
+     "name": "C",
+     "value": 5.6,
+     "unit": "uF"
+    },
+    {
+     "name": "ESR",
+     "value": 0.1479,
+     "unit": "Ω"
+    }
+   ],
+   "wires": [
+    {
+     "x": 16,
+     "y": 6
+    },
+    {
+     "x": 16,
+     "y": 11
+    }
+   ],
+   "locked": false,
+   "catalog": "5.6uF"
+  },
+  {
+   "type": "Ground",
+   "params": [],
+   "wires": [
+    {
+     "x": 16,
+     "y": 11
+    }
+   ]
+  },
+  {
+   "type": "Resistor",
+   "partId": "R8",
+   "params": [
+    {
+     "name": "R",
+     "value": 1.6071,
+     "unit": "Ω"
+    }
+   ],
+   "wires": [
+    {
+     "x": 16,
+     "y": 6
+    },
+    {
+     "x": 19,
+     "y": 6
+    }
+   ],
+   "catalog": "1.8||15"
+  },
+  {
+   "type": "Inductor",
+   "partId": "L10",
+   "params": [
+    {
+     "name": "L",
+     "value": 0.32,
+     "unit": "mH"
+    },
+    {
+     "name": "DCR",
+     "value": 0.6092,
+     "unit": "Ω"
+    }
+   ],
+   "wires": [
+    {
+     "x": 23,
+     "y": 6
+    },
+    {
+     "x": 23,
+     "y": 11
+    }
+   ],
+   "catalog": "0.10+0.22"
+  },
+  {
+   "type": "Capacitor",
+   "partId": "C11",
+   "params": [
+    {
+     "name": "C",
+     "value": 112.0,
+     "unit": "uF"
+    },
+    {
+     "name": "ESR",
+     "value": 0.026,
+     "unit": "Ω"
+    }
+   ],
+   "wires": [
+    {
+     "x": 23,
+     "y": 11
+    },
+    {
+     "x": 23,
+     "y": 16
+    }
+   ],
+   "locked": false,
+   "catalog": "12+100"
+  },
+  {
+   "type": "Ground",
+   "params": [],
+   "wires": [
+    {
+     "x": 23,
+     "y": 16
+    }
+   ]
+  },
+  {
+   "type": "Wire",
+   "params": [],
+   "wires": [
+    {
+     "x": 23,
+     "y": 6
+    },
+    {
+     "x": 30,
+     "y": 6
+    }
+   ]
+  },
+  {
+   "type": "Driver",
+   "partId": "D",
+   "model": "woofer",
+   "inverted": false,
+   "params": [],
+   "wires": [
+    {
+     "x": 30,
+     "y": 6
+    },
+    {
+     "x": 30,
+     "y": 13
+    }
+   ]
+  },
+  {
+   "type": "Ground",
+   "params": [],
+   "wires": [
+    {
+     "x": 30,
+     "y": 13
+    }
+   ]
+  },
+  {
+   "type": "Capacitor",
+   "partId": "B·C1",
+   "params": [
+    {
+     "name": "C",
+     "value": 42.0,
+     "unit": "uF"
+    },
+    {
+     "name": "ESR",
+     "value": 0.0386,
+     "unit": "Ω"
+    }
+   ],
+   "wires": [
+    {
+     "x": 3,
+     "y": 22
+    },
+    {
+     "x": 10,
+     "y": 22
+    }
+   ],
+   "locked": false,
+   "catalog": "15+27"
+  },
+  {
+   "type": "Inductor",
+   "partId": "B·L2",
+   "params": [
+    {
+     "name": "L",
+     "value": 1.72,
+     "unit": "mH"
+    },
+    {
+     "name": "DCR",
+     "value": 0.4296,
+     "unit": "Ω"
+    }
+   ],
+   "wires": [
+    {
+     "x": 10,
+     "y": 22
+    },
+    {
+     "x": 10,
+     "y": 27
+    }
+   ],
+   "catalog": "0.22+1.50",
+   "locked": false
+  },
+  {
+   "type": "Ground",
+   "params": [],
+   "wires": [
+    {
+     "x": 10,
+     "y": 27
+    }
+   ]
+  },
+  {
+   "type": "Capacitor",
+   "partId": "B·C3",
+   "params": [
+    {
+     "name": "C",
+     "value": 43.0,
+     "unit": "uF"
+    },
+    {
+     "name": "ESR",
+     "value": 0.0393,
+     "unit": "Ω"
+    }
+   ],
+   "wires": [
+    {
+     "x": 10,
+     "y": 22
+    },
+    {
+     "x": 17,
+     "y": 22
+    }
+   ],
+   "locked": false,
+   "catalog": "10+33"
+  },
+  {
+   "type": "Inductor",
+   "partId": "B·L4",
+   "params": [
+    {
+     "name": "L",
+     "value": 23.2,
+     "unit": "mH"
+    },
+    {
+     "name": "DCR",
+     "value": 1.1119,
+     "unit": "Ω"
+    }
+   ],
+   "wires": [
+    {
+     "x": 17,
+     "y": 22
+    },
+    {
+     "x": 17,
+     "y": 27
+    }
+   ],
+   "catalog": "8.20+15.00"
+  },
+  {
+   "type": "Ground",
+   "params": [],
+   "wires": [
+    {
+     "x": 17,
+     "y": 27
+    }
+   ]
+  },
+  {
+   "type": "Inductor",
+   "partId": "B·L5",
+   "params": [
+    {
+     "name": "L",
+     "value": 1.18,
+     "unit": "mH"
+    },
+    {
+     "name": "DCR",
+     "value": 0.3543,
+     "unit": "Ω"
+    }
+   ],
+   "wires": [
+    {
+     "x": 17,
+     "y": 22
+    },
+    {
+     "x": 24,
+     "y": 22
+    }
+   ],
+   "catalog": "0.18+1.00"
+  },
+  {
+   "type": "Capacitor",
+   "partId": "B·C6",
+   "params": [
+    {
+     "name": "C",
+     "value": 7.27,
+     "unit": "uF"
+    },
+    {
+     "name": "ESR",
+     "value": 0.1063,
+     "unit": "Ω"
+    }
+   ],
+   "wires": [
+    {
+     "x": 24,
+     "y": 22
+    },
+    {
+     "x": 24,
+     "y": 27
+    }
+   ],
+   "locked": false,
+   "catalog": "0.47+6.8"
+  },
+  {
+   "type": "Ground",
+   "params": [],
+   "wires": [
+    {
+     "x": 24,
+     "y": 27
+    }
+   ]
+  },
+  {
+   "type": "Inductor",
+   "partId": "B·L7",
+   "params": [
+    {
+     "name": "L",
+     "value": 0.37,
+     "unit": "mH"
+    },
+    {
+     "name": "DCR",
+     "value": 0.4014,
+     "unit": "Ω"
+    }
+   ],
+   "wires": [
+    {
+     "x": 24,
+     "y": 22
+    },
+    {
+     "x": 31,
+     "y": 22
+    }
+   ],
+   "catalog": "0.15+0.22"
+  },
+  {
+   "type": "Resistor",
+   "partId": "B·R9",
+   "params": [
+    {
+     "name": "R",
+     "value": 6.5,
+     "unit": "Ω"
+    }
+   ],
+   "wires": [
+    {
+     "x": 31,
+     "y": 22
+    },
+    {
+     "x": 38,
+     "y": 22
+    }
+   ],
+   "catalog": "1.8+4.7 ser"
+  },
+  {
+   "type": "Inductor",
+   "partId": "B·L14",
+   "params": [
+    {
+     "name": "L",
+     "value": 1.53,
+     "unit": "mH"
+    },
+    {
+     "name": "DCR",
+     "value": 0.3957,
+     "unit": "Ω"
+    }
+   ],
+   "wires": [
+    {
+     "x": 38,
+     "y": 22
+    },
+    {
+     "x": 38,
+     "y": 27
+    }
+   ],
+   "catalog": "0.33+1.20"
+  },
+  {
+   "type": "Capacitor",
+   "partId": "B·C15",
+   "params": [
+    {
+     "name": "C",
+     "value": 0.68,
+     "unit": "uF"
+    },
+    {
+     "name": "ESR",
+     "value": 0.4244,
+     "unit": "Ω"
+    }
+   ],
+   "wires": [
+    {
+     "x": 38,
+     "y": 27
+    },
+    {
+     "x": 38,
+     "y": 32
+    }
+   ],
+   "locked": false,
+   "catalog": "0.68uF"
+  },
+  {
+   "type": "Resistor",
+   "partId": "B·R16",
+   "params": [
+    {
+     "name": "R",
+     "value": 4.638,
+     "unit": "Ω"
+    }
+   ],
+   "wires": [
+    {
+     "x": 38,
+     "y": 32
+    },
+    {
+     "x": 38,
+     "y": 37
+    }
+   ],
+   "catalog": "5.6||27"
+  },
+  {
+   "type": "Ground",
+   "params": [],
+   "wires": [
+    {
+     "x": 38,
+     "y": 37
+    }
+   ]
+  },
+  {
+   "type": "Wire",
+   "params": [],
+   "wires": [
+    {
+     "x": 38,
+     "y": 22
+    },
+    {
+     "x": 45,
+     "y": 22
+    }
+   ]
+  },
+  {
+   "type": "Driver",
+   "partId": "B·D",
+   "model": "mid",
+   "inverted": false,
+   "params": [],
+   "wires": [
+    {
+     "x": 45,
+     "y": 22
+    },
+    {
+     "x": 45,
+     "y": 29
+    }
+   ]
+  },
+  {
+   "type": "Ground",
+   "params": [],
+   "wires": [
+    {
+     "x": 45,
+     "y": 29
+    }
+   ]
+  },
+  {
+   "type": "Wire",
+   "params": [],
+   "wires": [
+    {
+     "x": 3,
+     "y": 6
+    },
+    {
+     "x": 1,
+     "y": 6
+    },
+    {
+     "x": 1,
+     "y": 22
+    },
+    {
+     "x": 3,
+     "y": 22
+    }
+   ]
+  },
+  {
+   "type": "Capacitor",
+   "partId": "C·C1",
+   "params": [
+    {
+     "name": "C",
+     "value": 1.97,
+     "unit": "uF"
+    },
+    {
+     "name": "ESR",
+     "value": 0.1832,
+     "unit": "Ω"
+    }
+   ],
+   "wires": [
+    {
+     "x": 3,
+     "y": 43
+    },
+    {
+     "x": 10,
+     "y": 43
+    }
+   ],
+   "locked": false,
+   "catalog": "0.47+1.5"
+  },
+  {
+   "type": "Inductor",
+   "partId": "C·L2",
+   "params": [
+    {
+     "name": "L",
+     "value": 0.34,
+     "unit": "mH"
+    },
+    {
+     "name": "DCR",
+     "value": 0.1791,
+     "unit": "Ω"
+    }
+   ],
+   "wires": [
+    {
+     "x": 10,
+     "y": 43
+    },
+    {
+     "x": 10,
+     "y": 48
+    }
+   ],
+   "catalog": "0.12+0.22"
+  },
+  {
+   "type": "Ground",
+   "params": [],
+   "wires": [
+    {
+     "x": 10,
+     "y": 48
+    }
+   ]
+  },
+  {
+   "type": "Capacitor",
+   "partId": "C·C3",
+   "params": [
+    {
+     "name": "C",
+     "value": 11.5,
+     "unit": "uF"
+    },
+    {
+     "name": "ESR",
+     "value": 0.0733,
+     "unit": "Ω"
+    }
+   ],
+   "wires": [
+    {
+     "x": 10,
+     "y": 43
+    },
+    {
+     "x": 17,
+     "y": 43
+    }
+   ],
+   "locked": false,
+   "catalog": "4.7+6.8"
+  },
+  {
+   "type": "Inductor",
+   "partId": "C·L10",
+   "params": [
+    {
+     "name": "L",
+     "value": 2.36,
+     "unit": "mH"
+    },
+    {
+     "name": "DCR",
+     "value": 1.0754,
+     "unit": "Ω"
+    }
+   ],
+   "wires": [
+    {
+     "x": 17,
+     "y": 43
+    },
+    {
+     "x": 17,
+     "y": 48
+    }
+   ],
+   "catalog": "0.56+1.80"
+  },
+  {
+   "type": "Ground",
+   "params": [],
+   "wires": [
+    {
+     "x": 17,
+     "y": 48
+    }
+   ]
+  },
+  {
+   "type": "Wire",
+   "params": [],
+   "wires": [
+    {
+     "x": 17,
+     "y": 43
+    },
+    {
+     "x": 23,
+     "y": 43
+    }
+   ]
+  },
+  {
+   "type": "Inductor",
+   "partId": "C·L13",
+   "params": [
+    {
+     "name": "L",
+     "value": 0.39,
+     "unit": "mH"
+    },
+    {
+     "name": "DCR",
+     "value": 0.5064,
+     "unit": "Ω"
+    }
+   ],
+   "wires": [
+    {
+     "x": 23,
+     "y": 43
+    },
+    {
+     "x": 23,
+     "y": 48
+    }
+   ],
+   "catalog": "0.39mH"
+  },
+  {
+   "type": "Resistor",
+   "partId": "C·R15",
+   "params": [
+    {
+     "name": "R",
+     "value": 4.46,
+     "unit": "Ω"
+    }
+   ],
+   "wires": [
+    {
+     "x": 23,
+     "y": 48
+    },
+    {
+     "x": 23,
+     "y": 53
+    }
+   ],
+   "catalog": "0.56+3.9 ser"
+  },
+  {
+   "type": "Ground",
+   "params": [],
+   "wires": [
+    {
+     "x": 23,
+     "y": 53
+    }
+   ]
+  },
+  {
+   "type": "Wire",
+   "params": [],
+   "wires": [
+    {
+     "x": 23,
+     "y": 43
+    },
+    {
+     "x": 30,
+     "y": 43
+    }
+   ]
+  },
+  {
+   "type": "Driver",
+   "partId": "C·D",
+   "model": "tweeter",
+   "inverted": false,
+   "params": [],
+   "wires": [
+    {
+     "x": 30,
+     "y": 43
+    },
+    {
+     "x": 30,
+     "y": 50
+    }
+   ]
+  },
+  {
+   "type": "Ground",
+   "params": [],
+   "wires": [
+    {
+     "x": 30,
+     "y": 50
+    }
+   ]
+  },
+  {
+   "type": "Wire",
+   "params": [],
+   "wires": [
+    {
+     "x": 3,
+     "y": 6
+    },
+    {
+     "x": 1,
+     "y": 6
+    },
+    {
+     "x": 1,
+     "y": 43
+    },
+    {
+     "x": 3,
+     "y": 43
+    }
+   ]
+  },
+  {
+   "type": "Inductor",
+   "params": [
+    {
+     "name": "L",
+     "value": 0.66,
+     "unit": "mH"
+    },
+    {
+     "name": "DCR",
+     "value": 0.2273,
+     "unit": "Ω"
+    }
+   ],
+   "wires": [
+    {
+     "x": 19,
+     "y": 6
+    },
+    {
+     "x": 23,
+     "y": 6
+    }
+   ],
+   "partId": "LW2",
+   "catalog": "0.27+0.39"
+  }
+ ]
+}

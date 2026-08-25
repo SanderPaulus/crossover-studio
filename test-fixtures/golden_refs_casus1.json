@@ -1,0 +1,251 @@
+{
+ "casus": "Koan 2951 — casusboek casus 1",
+ "meetdata": "22-08-2026 (.lim x3, ver-veld hor_0 x4, mid_hor_30, nabij-veld x3)",
+ "vastgesteld": "25-08-2026",
+ "toleranties": {
+  "frequenties_pct": 2,
+  "dB": 0.15,
+  "graden": 0.3,
+  "ohm": 0.03
+ },
+ "afgeleide_parameters": {
+  "woofer": {
+   "Re_naief": 3.81,
+   "Re_werkelijk_ca": 2.9,
+   "fL": 16.5,
+   "fb": 31.3,
+   "fH": 52.4,
+   "Zdip": 3.93,
+   "Q_bovenpiek": 4.97,
+   "breakup": {
+    "f": 1395,
+    "dB": 3.2,
+    "Q": 7.1
+   },
+   "semi_inductantie_n": 0.83,
+   "NF_fmax": 567,
+   "FF_vloer_header": 397
+  },
+  "mid": {
+   "Re": 3.38,
+   "fc": 88.8,
+   "Zmax": 44.2,
+   "r0": 13.1,
+   "Qmc": 7.19,
+   "Qec": 0.6,
+   "Qtc": 0.55,
+   "breakups": [
+    [
+     5672,
+     2.9
+    ],
+    [
+     9066,
+     3.9
+    ],
+    [
+     12330,
+     3.2
+    ],
+    [
+     14434,
+     5.2
+    ]
+   ],
+   "persistentie_30gr": [
+    [
+     5672,
+     3.4
+    ],
+    [
+     9066,
+     5.5
+    ],
+    [
+     12330,
+     7.9
+    ],
+    [
+     14434,
+     4.4
+    ]
+   ],
+   "dir_m3_30": 4458,
+   "dir_m6_30": 5433,
+   "semi_inductantie_n": 0.59,
+   "NF_fmax": 1078
+  },
+  "tweeter": {
+   "Re": 5.59,
+   "fs": 924.3,
+   "Zmax": 16.6,
+   "r0": 2.98,
+   "diffractie_rimpel_rms_dB": 0.39,
+   "dominante_omweg_mm": 236
+  }
+ },
+ "verankerde_gaps_dB": {
+  "anker": "mid",
+  "woofer_tov_mid": 1.5,
+  "tweeter_tov_mid": 4.1
+ },
+ "kandidaten": {
+  "HUIDIG_2e": {
+   "wm_fase_oct": 19.8,
+   "mt_fase_oct": 7.1,
+   "minZ": 3.46,
+   "minEPDR": 1.73,
+   "dissipatie_pct": 46,
+   "R8_W_bij_100W": 25.5,
+   "Qes_mult": 2.31,
+   "lf_bult_extra_dB": 3.78,
+   "lobing_wm_lambda": 0.29,
+   "lobing_mt_lambda": 0.84,
+   "V_tweeter_op_fs_dB": -24.6
+  },
+  "KAND_A_2e": {
+   "wm_fase_oct": 2.8,
+   "mt_fase_oct": 3.6,
+   "minZ": 3.32,
+   "minEPDR": 1.66,
+   "dissipatie_pct": 53,
+   "R8_W_bij_100W": 30.9,
+   "Qes_mult": 2.5,
+   "lf_bult_extra_dB": 4.3,
+   "lobing_wm_lambda": 0.36,
+   "lobing_mt_lambda": 0.92,
+   "V_tweeter_op_fs_dB": -33.3
+  },
+  "KAND_B_3e": {
+   "wm_fase_oct": 1.3,
+   "mt_fase_oct": 3.5,
+   "minZ": 3.44,
+   "minEPDR": 1.72,
+   "dissipatie_pct": 39,
+   "grootste_R_W_bij_100W": 19.7,
+   "Qes_mult": 1.84,
+   "lf_bult_extra_dB": 3.36,
+   "lobing_wm_lambda": 0.36,
+   "lobing_mt_lambda": 0.94,
+   "V_tweeter_op_fs_dB": -34.5,
+   "spl_venster_dB": 1.79,
+   "lobing_eind_dip_15gr": [
+    -3.9,
+    3500
+   ]
+  }
+ },
+ "kruisvensters": {
+  "woofer_mid_orde4": {
+   "venster": [
+    397,
+    551
+   ],
+   "vloer_bindend": "meetgeldigheid",
+   "plafond_bindend": "breakup_ernst"
+  },
+  "mid_tweeter_orde4": {
+   "venster": [
+    1294,
+    2284
+   ],
+   "spanning": "lobing-goed boven breakup-plafond"
+  }
+ },
+ "grens_inversies": {
+  "maxL_bij_Rs0.5_budget2.5dB_mH": 2.65,
+  "maxRs_Qmult1.5_ohm": 1.45,
+  "max_padR_tweeter_gap_ohm": 3.5
+ },
+ "vensterinteractie": {
+  "midband_octaaf": 2.49,
+  "drie_bronnen_zone": null,
+  "fase_doorkoppeling_onderkruispunt_gr_per_okt": -121
+ },
+ "let_op": "Meetbestanden zelf horen als fixtures in de repo; deze referenties zijn zinloos zonder. Schatter-versies: zie V8a-h in het casusboek voor bekende afwijkingen van naieve schatters.",
+ "manifest_en_geometrie": {
+  "opmerking": "Vereist om de referenties te reproduceren; behoort bij meetsessie 22-08-2026.",
+  "bestanden": {
+   "woofers_parallel__1_.lim": {
+    "drv": "woofer",
+    "typ": "Z"
+   },
+   "mid.lim": {
+    "drv": "mid",
+    "typ": "Z"
+   },
+   "tweeter.lim": {
+    "drv": "tweeter",
+    "typ": "Z"
+   },
+   "woofer_up_near.txt": {
+    "drv": "woofer",
+    "typ": "NF"
+   },
+   "woofer_down_near.txt": {
+    "drv": "woofer",
+    "typ": "NF"
+   },
+   "mid_near.txt": {
+    "drv": "mid",
+    "typ": "NF"
+   },
+   "woofer_up_hor_0.txt": {
+    "drv": "woofer",
+    "typ": "FF",
+    "hoek": 0
+   },
+   "woofer_down_hor_0.txt": {
+    "drv": "woofer",
+    "typ": "FF",
+    "hoek": 0
+   },
+   "mid_hor_0.txt": {
+    "drv": "mid",
+    "typ": "FF",
+    "hoek": 0
+   },
+   "mid_hor_30.txt": {
+    "drv": "mid",
+    "typ": "FF",
+    "hoek": 30
+   },
+   "tweeter_hor_0.txt": {
+    "drv": "tweeter",
+    "typ": "FF",
+    "hoek": 0
+   }
+  },
+  "ff_headers": {
+   "referentietijd_ms": 2.5,
+   "rechter_venster_ms": 5.021,
+   "effectieve_venstertijd_ms": 2.521
+  },
+  "geometrie": {
+   "D_inch": {
+    "woofer": 7.6,
+    "mid": 4.0
+   },
+   "z_offset_mm": {
+    "tweeter": 64.6,
+    "mid": -64.6,
+    "woofer_boven": -325.9,
+    "woofer_onder": -601.6
+   },
+   "ctc_mm": {
+    "woofer_woofer": 275.8,
+    "woofer_mid": 261,
+    "mid_tweeter": 129.2
+   },
+   "rotatiesymmetrisch": {
+    "mid": true,
+    "tweeter": true
+   }
+  },
+  "netlists": {
+   "HUIDIG": "20260822_3-Zopt_adsfilter.json",
+   "KAND_A": "KAND-A-2eorde-continu.adsfilter.json",
+   "KAND_B": "20260822.4-Koan2951-phase.adsfilter.json"
+  }
+ }
+}
