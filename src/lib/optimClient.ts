@@ -34,6 +34,7 @@ import {
   type ChainStageProgress,
 } from './designChain.ts';
 import { customCatalogParts, customSeries, disabledSeries } from './catalog.ts';
+import { meetsAmpFloor } from './impedanceFloor.ts';
 
 export class CancelledError extends Error {
   constructor() {
@@ -256,10 +257,16 @@ export function runChainScan(
       // Same live warning the three-way scan shows: a candidate whose
       // amplifier load or delivered handover failed is flagged while it
       // lands, not only in the final table.
+      //
+      // The floor is the one the DESIGNER stated, via the same single rule the
+      // ranking and the scan table use. This badge used to carry its own
+      // hard-coded 2.5 Ω instead, which meant it could flag a candidate the
+      // final table then passed — and it judged at all even when no amplifier
+      // had been named. No rating stated = no badge, same as everywhere else.
       const st2 = state.get(v.label);
       if (st2) {
         st2.warn =
-          !r.zOk || (r.zMinOhm != null && r.zMinOhm < 2.5)
+          !r.zOk || !meetsAmpFloor(r.zMinOhm, input.base.settings.ampMinLoadOhm)
             ? '⚠Z'
             : r.xoWindowOk === false
               ? '⚠xo'

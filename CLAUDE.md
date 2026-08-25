@@ -18,4 +18,18 @@
 - Golden-reference-suite is de acceptatie-autoriteit; falen = niet af, ongeacht hoe plausibel de code oogt.
 
 ## Commando's
-<!-- invullen na F0/F1: test-, typecheck- en lint-commando's van dit project -->
+
+- `npx tsc -b` — typecheck. Draait vóór elke oplevering, zonder uitzondering.
+- `npx vitest run` — volledige testsuite (77 bestanden, 790 tests, ~4,5 min). Alles groen houden.
+- `npx vitest run <pad>` — gerichte run tijdens het werk; de volle suite blijft de acceptatie.
+- `npm run build` — productiebuild (draait ook de typecheck via `tsc -b`).
+
+### Guards in de suite
+- `src/lib/noAppWideFloor.test.ts` — bewaakt dat de verwijderde app-brede versterkervloer niet
+  terugkeert: scant heel `src/` op de identifier en faalt bij één treffer. De identifier wordt op
+  runtime samengesteld, zodat de guard zichzelf niet matcht. Een tweede test controleert dat de
+  walker de boom echt afloopt — een stille lege scan zou anders eeuwig groen blijven.
+
+De vloer is sinds F0 uitsluitend het getal dat de ONTWERPER invult (`ampMinLoadOhm`, geen default):
+leeg veld = geen oordeel. Eén regel, één plek: `meetsAmpFloor` in `src/lib/impedanceFloor.ts`.
+Wie een vloer nodig heeft roept die aan en verzint geen eigen drempel.

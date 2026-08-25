@@ -20,9 +20,10 @@ import {
 } from './netOptimizer.ts';
 
 /** The amplifier these tests are written against — 2.5 Ω is what a NAD M10 V2
- *  will still drive, and it used to be hard-coded in netOptimizer as
- *  `Z_FLOOR_OHM`. It lives HERE now, because it was always a statement about
- *  one amplifier, and a test that needs a floor should say which one. */
+ *  will still drive. It used to be the app-wide load floor, hard-coded inside
+ *  netOptimizer and applied to every design (removed in 18adfe4). It lives
+ *  HERE now, because it was always a statement about ONE amplifier, and a test
+ *  that needs a floor should say which one it means. */
 const AMP_2R5 = 2.5;
 
 const FIXTURES = join(dirname(fileURLToPath(import.meta.url)), 'parsers', 'fixtures');
@@ -747,11 +748,11 @@ describe('amplifier-load floor (only against a STATED amplifier rating)', () => 
   });
 
   it('WITHOUT a stated amplifier there is no floor: nothing is repaired, and the dip is reported', () => {
-    /* The point of removing `Z_FLOOR_OHM` (aug 2026). The 2 Ω shunt below is
-     * the same response-invariant, amp-hostile seed the first test repairs —
-     * only nobody has said what amplifier is on the other end of the cable.
-     * So the engine does not invent one: the minimum is measured, reported and
-     * left exactly where the tune put it.
+    /* The point of removing the app-wide floor (18adfe4, aug 2026). The 2 Ω
+     * shunt below is the same response-invariant, amp-hostile seed the first
+     * test repairs — only nobody has said what amplifier is on the other end
+     * of the cable. So the engine does not invent one: the minimum is
+     * measured, reported and left exactly where the tune put it.
      *
      * That the dip stays is the WHOLE behaviour change, and it is deliberate:
      * 2.5 Ω came from one NAD, and a PA amp specified into 2 Ω would have been
