@@ -12,6 +12,27 @@
  * (multi-core: three chains in the time of one). Each candidate is fully
  * independent and deterministic, so parallel execution returns bit-identical
  * results in the same order as the old sequential loop.
+ *
+ * ------------------------------------------------------------------
+ * F2b — THE SECOND WORKER, AND WHY THIS FILE KNOWS ABOUT IT
+ * ------------------------------------------------------------------
+ * With engine v2 selected the scan runs on a DIFFERENT worker entry
+ * (`engine2/optimizer/worker.ts`), because gate enforcement has to happen
+ * inside the polish and only a module that may import `engine2/` can evaluate
+ * the gates. `optimWorker.ts` may not — the toggle invariant rests on that
+ * arrow — so the v1 worker is left byte-untouched and a second one is added.
+ *
+ * The CLIENT is shared rather than duplicated, and that is not tidiness: the
+ * Cancel and Stop buttons call `cancelOptimTasks()` / `stopKeepingResults()`
+ * here, and a second pool owned by another module would survive both. A cancel
+ * that does not cancel is the one failure this route may not have (A5e.4 asks
+ * for an explicit "aborted" status precisely so a partial field can never pass
+ * for a whole one). So both pools live in this file, both are killed by the
+ * same two functions, and `pending` is one map.
+ *
+ * The v2 worker is reached through `new Worker(new URL(...))`, which Vite
+ * emits as its own chunk: with the toggle off it is never constructed and its
+ * code never enters the page.
  */
 import type { MinimizeResult } from './minimize.ts';
 import type {
@@ -35,6 +56,21 @@ import {
 } from './designChain.ts';
 import { customCatalogParts, customSeries, disabledSeries } from './catalog.ts';
 import { meetsAmpFloor } from './impedanceFloor.ts';
+/* F2b — this file is on the engine2 allow-list; see the note at the top and
+ * the reason recorded in `toggleRegression.test.ts`. */
+import {
+  resolveDeterminism,
+  stableJson,
+  stampRun,
+  type V2RunStamp,
+} from './engine2/optimizer/determinism.ts';
+import { gateSettingsKey } from './engine2/optimizer/gates.ts';
+import { budgetSettingsKey } from './engine2/optimizer/bounds.ts';
+import type {
+  V2CandidateResult,
+  V2Response,
+  V2RunSettings,
+} from './engine2/optimizer/worker.ts';
 
 export class CancelledError extends Error {
   constructor() {
@@ -75,12 +111,21 @@ export function scanStopped(): boolean {
  */
 export function stopKeepingResults(): void {
   stoppedEarly = true;
+  killAllWorkers();
+  for (const p of pending.values()) p.reject(new StoppedEarlyError());
+  pending.clear();
+}
+
+/** Terminate BOTH pools. One cancel path — see the F2b note at the top. */
+function killAllWorkers(): void {
   for (let i = 0; i < workers.length; i++) {
     workers[i]?.terminate();
     workers[i] = null;
   }
-  for (const p of pending.values()) p.reject(new StoppedEarlyError());
-  pending.clear();
+  for (let i = 0; i < v2Workers.length; i++) {
+    v2Workers[i]?.terminate();
+    v2Workers[i] = null;
+  }
 }
 
 interface Pending {
@@ -90,6 +135,16 @@ interface Pending {
 }
 
 const workers: (Worker | null)[] = [];
+/**
+ * The v2 pool, beside the v1 one and killed by the same two functions.
+ *
+ * A SEPARATE ARRAY rather than a flag on the existing slots: a v1 worker and a
+ * v2 worker are different programs, and reusing a slot would mean terminating
+ * and respawning on every toggle change. Both arrays are swept by
+ * `cancelOptimTasks` and `stopKeepingResults`, so there is still exactly one
+ * cancel path.
+ */
+const v2Workers: (Worker | null)[] = [];
 let seq = 0;
 const pending = new Map<number, Pending>();
 
@@ -119,6 +174,54 @@ function workerAt(slot: number): Worker {
   while (workers.length <= slot) workers.push(null);
   if (!workers[slot]) workers[slot] = spawn();
   return workers[slot]!;
+}
+
+/**
+ * The v2 worker entry. Constructed ONLY from `runChain3ScanV2`, which the app
+ * calls once the façade has said `optimizer: 'v2'` — so with the toggle off
+ * this URL is never resolved and the chunk never loads.
+ */
+function spawnV2(): Worker {
+  const wk = new Worker(new URL('./engine2/optimizer/worker.ts', import.meta.url), {
+    type: 'module',
+  });
+  wk.onmessage = (e: MessageEvent<V2Response>) => {
+    const m = e.data;
+    const pd = pending.get(m.id);
+    if (!pd) return;
+    if (m.kind === 'progress') {
+      pd.onProgress?.(m.data);
+      return;
+    }
+    pending.delete(m.id);
+    if (m.kind === 'done') pd.resolve(m.data);
+    else pd.reject(new Error(m.message));
+  };
+  wk.onerror = (e) => {
+    for (const pd of pending.values()) pd.reject(new Error(e.message || 'engine v2 worker error'));
+    pending.clear();
+  };
+  return wk;
+}
+
+function workerAtV2(slot: number): Worker {
+  while (v2Workers.length <= slot) v2Workers.push(null);
+  if (!v2Workers[slot]) v2Workers[slot] = spawnV2();
+  return v2Workers[slot]!;
+}
+
+function runV2<T>(
+  slot: number,
+  kind: 'v2Chain3One' | 'v2ChainOne',
+  payload: unknown,
+  onProgress?: (d: unknown) => void,
+): Promise<T> {
+  const wk = workerAtV2(slot);
+  const id = ++seq;
+  return new Promise<T>((resolve, reject) => {
+    pending.set(id, { resolve: resolve as (v: unknown) => void, reject, onProgress });
+    wk.postMessage({ id, kind, catalog: catalogPayload(), payload });
+  });
 }
 
 import { poolSize, runPooled } from './pool.ts';
@@ -380,6 +483,177 @@ export function runChain3Scan(
   }, () => stoppedEarly).then((rs) => rs.filter((r): r is Chain3Result => !!r));
 }
 
+/* ================================================================== *
+ * F2b — the v2 scan route
+ * ================================================================== */
+
+/** One v2 candidate: the chain result the v1 route also produces, plus verdicts. */
+export type V2Chain3Candidate = V2CandidateResult<Chain3Result>;
+
+export interface V2ScanResult<C> {
+  /** The candidates that finished. */
+  candidates: C[];
+  /**
+   * How the run ended, with the fingerprint that says so.
+   *
+   * A5e.4: an ABORTED run must never be mistaken for a completed one, so the
+   * status is an ingredient of the fingerprint rather than a label beside it.
+   * A caller that shows numbers from an aborted run owes the reader that word.
+   */
+  stamp: V2RunStamp;
+  /** How many candidates the scan set out to run. */
+  requested: number;
+}
+
+/** What a v2 scan needs beyond the per-candidate chain inputs. */
+export interface V2ScanSettings extends V2RunSettings {
+  /** Stable identity of the design the run started from, for the fingerprint. */
+  designKey: string;
+  /** Stable identity of the measurement set, for the fingerprint. */
+  measurementKey: string;
+  /** Stable identity of the search-steering settings, for the fingerprint. */
+  tuningKey: string;
+}
+
+/**
+ * Did this v2 scan COMPLETE, and if not, why not.
+ *
+ * One rule for both routes, and it is deliberately not "did the designer press
+ * Stop": a scan can also come up short because a candidate threw, and a field
+ * that is short for any reason is a partial field. A5e.4 wants that word to be
+ * unambiguous, so the predicate is here rather than written twice.
+ */
+export function v2ScanOutcome(
+  finished: number,
+  requested: number,
+  stopped: boolean,
+): { status: 'completed' | 'aborted'; reason?: string } {
+  if (!stopped && finished >= requested) return { status: 'completed' };
+  return {
+    status: 'aborted',
+    reason:
+      `stopped with ${finished} of ${requested} candidates finished — these numbers describe a ` +
+      'partial field, not the scan that was asked for',
+  };
+}
+
+function v2Stamp(
+  v2: V2ScanSettings,
+  status: 'completed' | 'aborted',
+  reason?: string,
+): V2RunStamp {
+  return stampRun(
+    {
+      determinism: resolveDeterminism(v2.determinism),
+      design: v2.designKey,
+      measurements: v2.measurementKey,
+      gates: stableJson(gateSettingsKey(v2.gates)),
+      bounds: stableJson(budgetSettingsKey(v2.budgets)),
+      tuning: v2.tuningKey,
+    },
+    status,
+    reason,
+  );
+}
+
+/**
+ * The 3-way scan on the v2 worker.
+ *
+ * Same pool discipline, same throttled progress and the same stop semantics as
+ * the v1 route — with ONE difference that A5e.4 requires: a run that was
+ * stopped resolves with `status: 'aborted'` and a fingerprint that says so.
+ * The v1 route reports its partial field through a module-global flag the
+ * caller has to remember to ask about; here it is in the result.
+ */
+export function runChain3ScanV2(
+  inputs: Chain3Input[],
+  v2: V2ScanSettings,
+  onProgress?: (d: ScanProgress) => void,
+): Promise<V2ScanResult<V2Chain3Candidate>> {
+  stoppedEarly = false;
+  const size = poolSize();
+  const state = new Map<string, { evals: number; text: string; done: boolean; warn?: string }>();
+  let emitQueued = false;
+  const emit = () => {
+    if (!onProgress || emitQueued) return;
+    emitQueued = true;
+    setTimeout(() => {
+      emitQueued = false;
+      let evals = 0;
+      let done = 0;
+      const items: { label: string; text: string; done: boolean; warn?: string }[] = [];
+      for (const [label, st] of state) {
+        evals += st.evals;
+        if (st.done) done++;
+        items.push({ label, text: st.text, done: st.done, warn: st.warn });
+      }
+      onProgress({ round: done, evals, items });
+    }, 80);
+  };
+  for (const input of inputs) state.set(input.label, { evals: 0, text: 'queued', done: false });
+  emit();
+
+  return runPooled(
+    inputs,
+    size,
+    (input, slot) => {
+      const st0 = state.get(input.label);
+      if (st0) st0.text = 'starting';
+      emit();
+      return runV2<V2Chain3Candidate>(slot, 'v2Chain3One', { input, v2 }, (d) => {
+        const pr = d as ChainOneProgress;
+        const st = state.get(input.label);
+        if (!st) return;
+        if (pr.evals > st.evals) st.evals = pr.evals;
+        st.text = stageText(pr);
+        emit();
+      })
+        .then((c) => {
+          const st = state.get(input.label);
+          if (st) {
+            st.evals = c.result.net.evaluations;
+            st.text = `✓ ${c.result.net.after.rippleDb.toFixed(2)} dB/${c.result.net.after.phaseDeg.toFixed(1)}°`;
+            // THE SAME WARNING FAMILY, and deliberately not a second rule: the
+            // gate glyph is derived from the verdicts the metric library
+            // produced, exactly as ⚠Z is derived from the one floor rule. A
+            // failed gate outranks a load warning because it is the harder
+            // statement — the design is outside a limit the designer stated.
+            st.warn = c.violation ? '⚠gate' : c.result.zOk ? undefined : '⚠Z';
+            st.done = true;
+          }
+          emit();
+          return c;
+        })
+        .catch((e: unknown) => {
+          if (e instanceof StoppedEarlyError) return null;
+          throw e;
+        });
+    },
+    () => stoppedEarly,
+  ).then((rs) => {
+    const candidates = rs.filter((r): r is V2Chain3Candidate => !!r);
+    const outcome = v2ScanOutcome(candidates.length, inputs.length, stoppedEarly);
+    return {
+      candidates,
+      requested: inputs.length,
+      stamp: v2Stamp(v2, outcome.status, outcome.reason),
+    };
+  });
+}
+
+/*
+ * NO `runChainScanV2` HERE, and that is deliberate.
+ *
+ * The two-way scan route is not wired to v2 yet (TODO(F2c) at the façade): it
+ * carries its own rescue semantics — a truly-free single candidate runs first
+ * and only then appends pinned follow-ups — and porting those is a
+ * behavioural change to a path F2b promised not to touch. The WORKER side is
+ * ready and tested (`v2ChainOne` in `engine2/optimizer/worker.ts`), which is
+ * the half that had to exist; writing the client half now would ship an
+ * untested function whose only caller is a future phase, and an untested
+ * export that claims to work is worse than an absent one.
+ */
+
 export function runVfRoundsTask(
   payload: VfRoundsPayload,
   onProgress?: (d: VfProgressMsg) => void,
@@ -418,10 +692,7 @@ export function runNetOptimizeTask(
 /** Hard cancel: kill every worker, reject all pending with CancelledError. */
 export function cancelOptimTasks(): void {
   stoppedEarly = false;
-  for (let i = 0; i < workers.length; i++) {
-    workers[i]?.terminate();
-    workers[i] = null;
-  }
+  killAllWorkers();
   for (const p of pending.values()) p.reject(new CancelledError());
   pending.clear();
 }

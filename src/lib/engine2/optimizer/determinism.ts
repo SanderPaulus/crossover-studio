@@ -136,9 +136,25 @@ export interface FingerprintComponent {
   describe: string;
 }
 
+/**
+ * How a run ENDED, and it is part of the fingerprint on purpose.
+ *
+ * A5e.4 asks for reproducibility, and a partial field is not a reproduction of
+ * a whole one however identical its inputs were. The failure this closes is
+ * specific and was easy to walk into: the scan's "stop and keep what finished"
+ * resolves with the candidates that landed, so an aborted run and a completed
+ * run of the same input used to be indistinguishable once the results were on
+ * screen — same seed, same design, same numbers, and one of them had looked at
+ * a third of the field. Making the status an INGREDIENT rather than a label
+ * beside the fingerprint means the two can never compare equal.
+ */
+export type V2RunStatus = 'completed' | 'aborted';
+
 /** Everything a v2 run's fingerprint is made of. */
 export interface FingerprintInput {
   determinism: ResolvedDeterminism;
+  /** How the run ended. Absent is treated as 'completed'. */
+  status?: V2RunStatus;
   /** Stable serialisation of the seed design (parts, values, topology). */
   design: string;
   /** Stable serialisation of the measurement set the run was judged on. */
@@ -167,6 +183,11 @@ export function fingerprintComponents(input: FingerprintInput): FingerprintCompo
       describe: `evaluations per start (${d.budgetSource})`,
     },
     { name: 'starts', value: String(d.starts), describe: `starting points (${d.startsSource})` },
+    {
+      name: 'status',
+      value: input.status ?? 'completed',
+      describe: 'how the run ended — an aborted run never matches a completed one',
+    },
     { name: 'design', value: digest(input.design), describe: 'the seed network' },
     { name: 'measurements', value: digest(input.measurements), describe: 'the measurement set' },
     { name: 'gates', value: digest(input.gates), describe: 'the active gates and their limits' },
@@ -206,4 +227,48 @@ export function stableJson(value: unknown): string {
     return v;
   };
   return JSON.stringify(walk(value));
+}
+
+/* ================================================================== *
+ * The run stamp
+ * ================================================================== */
+
+/**
+ * What every v2 run hands back beside its results.
+ *
+ * Separate from `V2OptimizeResult` because the SCAN route produces its
+ * candidates through the design chain rather than through
+ * `runV2Optimization`, and both routes owe the reader the same three things:
+ * which seed was used, how the run ended, and one string that changes when any
+ * of that changes.
+ */
+export interface V2RunStamp {
+  status: V2RunStatus;
+  fingerprint: string;
+  components: FingerprintComponent[];
+  determinism: ResolvedDeterminism;
+  /**
+   * Set when the run did NOT complete, in words a designer can act on. Never
+   * empty for an aborted run: "aborted" without a reason is the silent
+   * best-so-far this field exists to prevent.
+   */
+  abortReason?: string;
+}
+
+/** Build the stamp. `status` is an ingredient, not a decoration — see above. */
+export function stampRun(
+  input: Omit<FingerprintInput, 'status'>,
+  status: V2RunStatus,
+  abortReason?: string,
+): V2RunStamp {
+  const components = fingerprintComponents({ ...input, status });
+  return {
+    status,
+    fingerprint: fingerprintOf(components),
+    components,
+    determinism: input.determinism,
+    ...(status === 'aborted'
+      ? { abortReason: abortReason ?? 'the run was stopped before every candidate finished' }
+      : {}),
+  };
 }

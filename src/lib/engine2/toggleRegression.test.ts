@@ -145,11 +145,43 @@ function walk(dir: string, out: string[] = []): string[] {
 }
 
 /**
- * The only files allowed to reach into engine2 — the UI entry points whose
- * whole job is to render the v2 panel behind the flag. Anything else on this
- * list in future is a design decision, not a convenience.
+ * The only files allowed to reach into engine2. Anything on this list is a
+ * DESIGN DECISION, not a convenience, and each one carries its reason here.
+ *
+ *  · `App.tsx` and `components/EngineV2Panel.tsx` — the UI entry points whose
+ *    whole job is to render the v2 panel behind the flag (F1).
+ *
+ *  · `optimClient.ts` — added at F2b, and this is the decision.
+ *
+ *    THE REASON: gate enforcement belongs INSIDE the loop. A3 is explicit —
+ *    "grenshandhaving zit in de kern" — because a limit that is only checked
+ *    after a search has finished is a limit the search spent its whole budget
+ *    ignoring, and the casebook's V2 pathology is what that looks like. The
+ *    only legitimate evaluator of M-A/M-B/M-C is the F1 metric library, so the
+ *    module that hosts the tuner during a v2 run must be able to see
+ *    `engine2/`.
+ *
+ *    WHAT WAS NOT DONE, and why the invariant is still intact: `optimWorker.ts`
+ *    was NOT taught to import engine2. It is byte-untouched, and the test below
+ *    pins that permanently. A SECOND worker entry
+ *    (`engine2/optimizer/worker.ts`) hosts the v2 route, and it lives inside
+ *    engine2 where the import needs no exception at all. What is left over is
+ *    the CLIENT: something has to construct that worker, type its messages and
+ *    — the part that decided it — kill it. Cancel and Stop run through
+ *    `cancelOptimTasks()` / `stopKeepingResults()` in this one file, and a
+ *    second pool owned by another module would survive both. A cancel that
+ *    does not cancel is the one failure this route may not have, since A5e.4
+ *    asks for an explicit "aborted" status precisely so a partial field can
+ *    never pass for a whole one.
+ *
+ *    So the arrow still points one way, the v1 worker still cannot see
+ *    engine2, and exactly one client module knows that two engines exist.
  */
-const ALLOWED_IMPORTERS = ['App.tsx', join('components', 'EngineV2Panel.tsx')];
+const ALLOWED_IMPORTERS = [
+  'App.tsx',
+  join('components', 'EngineV2Panel.tsx'),
+  join('lib', 'optimClient.ts'),
+];
 
 describe('engine v2 toggle — off means unchanged', () => {
   it('a reference optimisation run is byte-identical with and without the v2 modules loaded', async () => {
@@ -178,6 +210,24 @@ describe('engine v2 toggle — off means unchanged', () => {
         });
     }
     expect(hits, `pre-v2 code reaches into engine2:\n${hits.join('\n')}`).toEqual([]);
+  });
+
+  it('the v1 worker still imports NOTHING from engine2 (F2b, permanent)', () => {
+    // The allow-list above grew by one at F2b, and this test is the floor
+    // under that decision: whatever else changes, the module that runs the v1
+    // optimiser may not see engine2. If it ever does, the byte-identity claim
+    // of the run above stops being a property of the code and becomes a hope
+    // about what those imports happen to do.
+    const worker = readFileSync(join(LIB, 'optimWorker.ts'), 'utf-8');
+    const hits = worker
+      .split('\n')
+      .map((line, i) => ({ line: line.trim(), n: i + 1 }))
+      .filter((x) => /engine2/.test(x.line));
+    expect(hits, `optimWorker.ts reaches into engine2:\n${hits.map((h) => `${h.n}: ${h.line}`).join('\n')}`)
+      .toEqual([]);
+    // ...and the file really was read, so an empty result means "no hits"
+    // rather than "no file".
+    expect(worker).toContain('optimizeNetworkValues');
   });
 
   it('the import scan actually walks the tree', () => {

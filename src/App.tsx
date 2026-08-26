@@ -120,6 +120,9 @@ import {
 } from './lib/engine2/appAdapter.ts';
 import { ctcKey } from './lib/engine2/metrics/types.ts';
 import { DEFAULT_RUN_SEED } from './lib/engine2/constants.ts';
+import { stableJson, type V2RunStamp } from './lib/engine2/optimizer/determinism.ts';
+import type { GateVerdict } from './lib/engine2/optimizer/gates.ts';
+import { gateCellState } from './lib/engine2/optimizer/gateCell.ts';
 import { BaffleView } from './components/BaffleView.tsx';
 import { CatalogManager } from './components/CatalogManager.tsx';
 import { helpSectionForTab } from './lib/help.ts';
@@ -160,11 +163,13 @@ import {
   runSoloChainTask,
   runVfRoundsTask,
   runChain3Scan,
+  runChain3ScanV2,
   stopKeepingResults,
+  type ScanProgress,
   scanStopped,
   poolSize,
 } from './lib/optimClient.ts';
-import { crossover3Variants, rankChain3Results, variantsFromPoints, type Chain3Variant, deliveredLabel } from './lib/threeWayChain.ts';
+import { crossover3Variants, rankChain3Results, variantsFromPoints, type Chain3Input, type Chain3Variant, deliveredLabel } from './lib/threeWayChain.ts';
 import {
   optimizeNetworkValues,
   type NetOptimizeOptions,
@@ -539,6 +544,41 @@ function scanRowVerdict(r: Chain3Result): { text: string; warn?: string } {
     // so rather than inventing a category.
     if (!r.zOk) return { text: `✓ ${nums}`, warn: t('⚠ rejected') };
     return { text: `✓ ${nums}` };
+}
+
+/**
+ * F2b — the scan table's GATE cell, as text.
+ *
+ * The DECISION lives in `gateCellState` (pure, tested, and free of any
+ * comparison of its own); this wrapper only chooses words and a glyph. The
+ * same family as the ⚠Z column beside it, and deliberately not a second
+ * warning rule.
+ */
+function gateCell(entry?: { verdicts: GateVerdict[]; violation: string | null }): {
+  text: string;
+  title: string;
+  bad: boolean;
+} {
+  const st = gateCellState(entry);
+  const detail = st.detail.join('\n');
+  switch (st.kind) {
+    case 'absent':
+      return {
+        text: '—',
+        title: t('This candidate did not come from an engine-v2 run, so no gate judged it.'),
+        bad: false,
+      };
+    case 'noLimit':
+      return {
+        text: t('no limit'),
+        title: `${t('Engine v2 ran this candidate, but no gate limit is set — every gate reports its value and judges nothing (P4).')}\n${detail}`,
+        bad: false,
+      };
+    case 'fail':
+      return { text: `⚠ ${st.failed.join(' ')}`, title: `${st.violation ?? ''}\n${detail}`, bad: true };
+    default:
+      return { text: `✓ ${st.activeCount}`, title: `${t('Inside every stated gate.')}\n${detail}`, bad: false };
+  }
 }
 
 function slotTransfersN(sol: {
@@ -2966,6 +3006,39 @@ export default function App() {
    * ------------------------------------------------------------------ */
   const engineSelection = useMemo(() => selectEngine(engineV2Enabled), [engineV2Enabled]);
 
+  /**
+   * The v2 gate limits and budgets, parsed ONCE.
+   *
+   * EMPTY IS ABSENT (P4). Not "empty is zero", and not "empty is a sensible
+   * default": a gate whose field is blank must reach the engine as a MISSING
+   * KEY, so the report can say "no limit set" rather than render a limit
+   * nobody typed. `undefined` is the only value that carries that meaning
+   * through, so every field goes through here.
+   *
+   * One memo rather than one parse per consumer: the report panel and the
+   * scan must judge a design against the same numbers, and two parsers of the
+   * same text field is how they come to disagree about a decimal comma.
+   */
+  const engineV2Gates = useMemo(() => {
+    const stated = (raw: string, scale = 1): number | undefined => {
+      if (raw.trim() === '') return undefined;
+      const v = Number(raw);
+      return Number.isFinite(v) ? v * scale : undefined;
+    };
+    return {
+      // M-A is entered as a percentage and held as a fraction: the field
+      // speaks the designer's language, the engine speaks A4's.
+      maxDissipationFraction: stated(engineV2Settings.maxDissipationPct, 1 / 100),
+      minEpdrOhm: stated(engineV2Settings.minEpdrOhm),
+      maxDriveOnFsDb: stated(engineV2Settings.maxDriveOnFsDb),
+      lfBumpBudgetDb: stated(engineV2Settings.lfBumpBudgetDb),
+      qesMultiplierMax: stated(engineV2Settings.qesMultiplierMax),
+      dampingMarginDb: stated(engineV2Settings.dampingMarginDb),
+      runSeed: stated(engineV2Settings.runSeed),
+      runBudgetEvals: stated(engineV2Settings.runBudgetEvals),
+    };
+  }, [engineV2Settings]);
+
   const engineV2Report = useMemo(() => {
     if (!engineSelection.reporting) return null;
     try {
@@ -3079,28 +3152,16 @@ export default function App() {
         .map(Number)
         .filter((v) => Number.isFinite(v));
       const power = Number(engineV2Settings.amplifierPowerW);
-      /* EMPTY IS ABSENT (P4). Not "empty is zero", and not "empty is a
-       * sensible default": a gate whose field is blank must reach the engine
-       * as a missing key, so the report can say "no limit set" rather than
-       * render a limit nobody typed. `undefined` is the only value that
-       * carries that meaning through, so every field goes through here. */
-      const stated = (raw: string, scale = 1): number | undefined => {
-        if (raw.trim() === '') return undefined;
-        const v = Number(raw);
-        return Number.isFinite(v) ? v * scale : undefined;
-      };
+      /* The parsed limits, from the ONE memo above. The plain |Z| floor is not
+       * duplicated into it: that is the amplifier rating the project already
+       * carries, and one number in two places is how the two come to
+       * disagree. `runSeed`/`runBudgetEvals` belong to the RUN, not to the
+       * report, so they are dropped here rather than rendered as limits. */
+      const { runSeed: _seed, runBudgetEvals: _evals, ...limits } = engineV2Gates;
+      void _seed;
+      void _evals;
       const gateAndBudget = {
-        // M-A is entered as a percentage and held as a fraction: the field
-        // speaks the designer's language, the engine speaks A4's.
-        maxDissipationFraction: stated(engineV2Settings.maxDissipationPct, 1 / 100),
-        minEpdrOhm: stated(engineV2Settings.minEpdrOhm),
-        maxDriveOnFsDb: stated(engineV2Settings.maxDriveOnFsDb),
-        lfBumpBudgetDb: stated(engineV2Settings.lfBumpBudgetDb),
-        qesMultiplierMax: stated(engineV2Settings.qesMultiplierMax),
-        dampingMarginDb: stated(engineV2Settings.dampingMarginDb),
-        // The plain |Z| floor is NOT duplicated here: it is the amplifier
-        // rating the project already carries, and one number in two places is
-        // how the two come to disagree.
+        ...limits,
         ...(ampMinLoadOhm !== null ? { ampMinLoadOhm } : {}),
       };
 
@@ -3144,6 +3205,7 @@ export default function App() {
     acSlopeWoofer,
     acSlopeMidHp,
     engineV2Settings,
+    engineV2Gates,
     ampMinLoadOhm,
     xoName,
   ]);
@@ -5876,6 +5938,8 @@ export default function App() {
       setVfProgress(null);
       setChainScan(null);
       setNetOptDiff(null);
+      // A stamp on a table the run did not produce is worse than none.
+      setV2Run(null);
       /* ---- Axis-by-axis scan (Sanders' proposal): W-M sweep with M-T held
        * at its anchor → M-T sweep with the best W-M → local 3×3 refinement
        * around the pair. Finer per axis than the corners grid for a
@@ -5902,6 +5966,80 @@ export default function App() {
       });
       const rankAll = (rs: Chain3Result[]) =>
         rankChain3Results(rs, settings.targets, settings.phasePriority, angleSets3 ? settings.directivityWeight : 0, rSourceLimitOhm, bomCapEur, ampMinLoadOhm ?? 0);
+
+      /* ---- F2b: WHICH ENGINE THIS SCAN RUNS ON --------------------------
+       * The façade decides, once, here. With v2 selected the candidates go to
+       * the v2 worker, which enforces the gates inside the polish and hands
+       * back a verdict per candidate; with v1 selected this is the call the
+       * app has always made, unchanged and unwrapped.
+       *
+       * The gate verdicts and the run stamp are collected as the rounds land,
+       * so a partial field still carries the status that says it is partial. */
+      const useV2 = engineSelection.optimizer === 'v2';
+      const v2GatesByLabel: Record<string, { verdicts: GateVerdict[]; violation: string | null }> = {};
+      let v2Stamp: V2RunStamp | null = null;
+      const v2ScanSettings = useV2
+        ? {
+            gates: {
+              ...(engineV2Gates.maxDissipationFraction !== undefined
+                ? { maxDissipationFraction: engineV2Gates.maxDissipationFraction }
+                : {}),
+              ...(engineV2Gates.minEpdrOhm !== undefined ? { minEpdrOhm: engineV2Gates.minEpdrOhm } : {}),
+              ...(engineV2Gates.maxDriveOnFsDb !== undefined
+                ? { maxDriveOnFsDb: engineV2Gates.maxDriveOnFsDb }
+                : {}),
+              ...(ampMinLoadOhm !== null ? { ampMinLoadOhm } : {}),
+            },
+            budgets: {
+              ...(engineV2Gates.lfBumpBudgetDb !== undefined
+                ? { lfBumpBudgetDb: engineV2Gates.lfBumpBudgetDb }
+                : {}),
+              ...(engineV2Gates.qesMultiplierMax !== undefined
+                ? { qesMultiplierMax: engineV2Gates.qesMultiplierMax }
+                : {}),
+              ...(engineV2Gates.dampingMarginDb !== undefined
+                ? { dampingMarginDb: engineV2Gates.dampingMarginDb }
+                : {}),
+            },
+            determinism: {
+              ...(engineV2Gates.runSeed !== undefined ? { seed: engineV2Gates.runSeed } : {}),
+              ...(engineV2Gates.runBudgetEvals !== undefined
+                ? { budgetEvaluations: engineV2Gates.runBudgetEvals }
+                : {}),
+            },
+            // Stable identities for the fingerprint. Each is a hash INPUT, so
+            // what matters is that it changes when the thing it names changes
+            // — never that a human can read it.
+            designKey: stableJson({ variants: variants.map((v) => [v.label, v.xoLow, v.xoHigh]) }),
+            measurementKey: stableJson({
+              grid: [grid[0], grid[grid.length - 1], grid.length],
+              w: sim.base.w.spl,
+              m: sim.base.m!.spl,
+              t: sim.base.t.spl,
+            }),
+            tuningKey: stableJson({
+              phasePriority: settings.phasePriority,
+              targets: settings.targets,
+              band: settings.band,
+              catalogSnap: settings.catalogSnap,
+              acousticSlopes: settings.acousticSlopes,
+            }),
+          }
+        : null;
+
+      const scan3 = (ins: Chain3Input[], onProgress: (d: ScanProgress) => void): Promise<Chain3Result[]> => {
+        if (!useV2 || !v2ScanSettings) return runChain3Scan(ins, onProgress);
+        return runChain3ScanV2(ins, v2ScanSettings, onProgress).then((r) => {
+          for (const c of r.candidates) {
+            v2GatesByLabel[c.result.label] = { verdicts: c.gates, violation: c.violation };
+          }
+          // The LAST stamp wins, and for the axis-by-axis scan that is the
+          // right one: a run that was stopped in round two is aborted, whatever
+          // round one reported.
+          v2Stamp = r.stamp;
+          return r.candidates.map((c) => c.result);
+        });
+      };
       /* This run's identity for the crash store (scanStore.ts). Marked
        * `running` here and `done` only once the results are committed, so a
        * run that never gets there is recognisable afterwards as interrupted —
@@ -5944,7 +6082,7 @@ export default function App() {
         const doneItems: { label: string; text: string; done: boolean; warn?: string }[] = [];
         let doneEvals = 0;
         const runRound = async (vs: Chain3Variant[], phase?: { label: string; n: number; total: string }) => {
-          const rs = await runChain3Scan(vs.map(inputOf), (d) =>
+          const rs = await scan3(vs.map(inputOf), (d) =>
             setVfProgress({ round: doneItems.filter((x) => x.done).length + d.round, evals: doneEvals + d.evals, items: [...doneItems, ...d.items], round3: phase }),
           );
           for (const r of rs) doneItems.push({ label: r.label, ...scanRowVerdict(r), done: true });
@@ -5986,13 +6124,19 @@ export default function App() {
       };
       (scan3Mode === 'axes'
         ? runAxes()
-        : runChain3Scan(inputs, (d) =>
+        : scan3(inputs, (d) =>
             setVfProgress({ round: d.round, evals: d.evals, items: d.items }),
           ).then((rs) => {
             for (const r of rs) void putScanRow(runId, scanSeq++, r);
             return rs;
           }))
         .then((results) => {
+          /* F2b: the run stamp lands with the results, or not at all. An
+           * ABORTED run keeps its status here — A5e.4 asks for it explicitly
+           * so a partial field can never read as a whole one, and the status
+           * is an ingredient of the fingerprint rather than a label beside
+           * it, so the two can never compare equal either. */
+          if (v2Stamp) setV2Run({ stamp: v2Stamp, gatesByLabel: { ...v2GatesByLabel } });
           // "Stop and use what finished" can land before the first candidate
           // does. Ranking an empty field would crash; committing nothing and
           // saying why is the honest outcome — the design stays as it was.
@@ -6927,6 +7071,18 @@ export default function App() {
   }, [anyBusy]);
 
   const [netOptNote, setNetOptNote] = useState<string | null>(null);
+  /**
+   * F2b — the last v2 scan's run stamp and its per-candidate gate verdicts.
+   *
+   * Null whenever the last scan ran on v1, which is the honest default: a
+   * fingerprint on a table that was not produced by the run it names is worse
+   * than no fingerprint. Cleared at the start of every scan.
+   */
+  const [v2Run, setV2Run] = useState<{
+    stamp: V2RunStamp;
+    /** Keyed by candidate label — the same labels the scan table rows carry. */
+    gatesByLabel: Record<string, { verdicts: GateVerdict[]; violation: string | null }>;
+  } | null>(null);
   /** Old → new component values of the last tune run ("⚙ Optimize
    *  components" / auto-tune) — makes the tuner inspectable: you see WHERE
    *  it found its gains instead of just "N components tuned" (Sanders wens,
@@ -15214,6 +15370,17 @@ export default function App() {
                         {scanSort?.key === key ? (scanSort.dir === 1 ? ' ▲' : ' ▼') : ''}
                       </th>
                     ))}
+                    {/* F2b — the gate column exists ONLY for a table an
+                        engine-v2 run produced. Not "empty when off": absent,
+                        so with the toggle off the table is the one the app
+                        always drew. Not sortable, on purpose — a hard gate is
+                        a pass/fail, and sorting on it would invite reading it
+                        as a ranking. */}
+                    {v2Run && (
+                      <th title={t('Hard gates (A4 M-A/M-B/M-C) on the delivered network of this candidate. Every candidate is judged, not only the winner.')}>
+                        {t('gate')}
+                      </th>
+                    )}
                   </tr>
                 </thead>
                 <tbody>
@@ -15233,6 +15400,9 @@ export default function App() {
                       <td>{scanReference.zMinOhm !== null ? `${scanReference.zMinOhm.toFixed(1)} Ω` : '—'}</td>
                       <td>{scanReference.rSourceOhm !== null ? `${scanReference.rSourceOhm.toFixed(2)} Ω` : '—'}</td>
                       <td>{scanReference.bomEur !== null ? `€${Math.round(scanReference.bomEur)}` : '—'}</td>
+                      {v2Run && (
+                        <td title={t('The design from before this run — it did not go through the gates.')}>—</td>
+                      )}
                     </tr>
                   )}
                   {[...chainScan.rows]
@@ -15351,10 +15521,45 @@ export default function App() {
                           : '—'}
                       </td>
                       <td>{r.bomEur !== null ? `€${Math.round(r.bomEur)}` : '—'}</td>
+                      {v2Run && (() => {
+                        const g = gateCell(v2Run.gatesByLabel[r.label]);
+                        return (
+                          <td className={g.bad ? 'scan-z-low' : undefined} title={g.title}>
+                            {g.text}
+                          </td>
+                        );
+                      })()}
                     </tr>
                   ))}
                 </tbody>
               </table>
+            )}
+            {/* F2b — when the façade selects v2 but the table came from a v1
+                route, SAY SO. The two-way scan still runs on the v1 worker
+                (see TODO(F2c) below); a table with no gate column and no
+                stamp is already truthful, but silence about WHY invites the
+                reader to assume the gates ran and found nothing. */}
+            {engineSelection.optimizer === 'v2' && chainScan && !v2Run && (
+              <p className="sub">
+                {t('Engine v2 is on, but this scan ran on the v1 engine — so no gate judged these candidates.')}{' '}
+                {t('The gates run on the three-way scan; the two-way route is not wired to them yet.')}
+              </p>
+            )}
+            {/* F2b — the run stamp, under the table it belongs to.
+                A5e.4 asks for the seed and the fingerprint to be visible at
+                the result, and for an ABORTED run to say so rather than let a
+                partial field read as a whole one. */}
+            {v2Run && chainScan && (
+              <p className={`sub${v2Run.stamp.status === 'aborted' ? ' nl-warning' : ''}`}>
+                {v2Run.stamp.status === 'aborted'
+                  ? `⚠ ${t('ABORTED')} — ${v2Run.stamp.abortReason}`
+                  : t('Engine v2 run, completed.')}{' '}
+                {t('seed')} <code>{v2Run.stamp.determinism.seed}</code>
+                {v2Run.stamp.determinism.seedSource === 'default' && ` (${t('default')})`} ·{' '}
+                <code title={v2Run.stamp.components.map((c) => `${c.name}=${c.value} — ${c.describe}`).join('\n')}>
+                  {v2Run.stamp.fingerprint}
+                </code>
+              </p>
             )}
             {tabCompare && tabCompare.length > 1 && (
               <details className="tab-compare">

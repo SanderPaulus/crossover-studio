@@ -27,6 +27,7 @@ import {
 import { synthesize, type SynthesisResult } from './synthesis.ts';
 import { mergeSynthesizedSchematics } from './schematicEdit.ts';
 import { optimizeNetworkValues, type NetOptimizeResult } from './netOptimizer.ts';
+import type { ChainEngineHooks } from './threeWayChain.ts';
 import { bomFor, type SnapPrefs } from './catalog.ts';
 import { evalDriverFilter, type DriverFilterSpec } from './filters.ts';
 
@@ -141,6 +142,8 @@ export function runDesignChain(
   input: ChainInput,
   label = 'chain',
   onProgress?: (p: ChainStageProgress) => void,
+  /** F2b — see `ChainEngineHooks` in `threeWayChain.ts`. Absent = off. */
+  hooks?: ChainEngineHooks,
 ): ChainResult {
   const { grid, w, t, driverZ, adjust, settings: s } = input;
   const vfOpts = {
@@ -315,6 +318,9 @@ export function runDesignChain(
       band: s.band,
       safety: s.safety,
       onStage: (detail, ev) => onProgress?.({ stage: 'tune', evals: evaluations + (ev ?? 0), detail }),
+      // F2b: merged LAST, so a v2 run's gate and bound options cannot be
+      // overwritten by anything above. Absent = byte-identical.
+      ...(hooks?.tuneOptionsFor ? hooks.tuneOptionsFor(merged) : {}),
     },
   );
   /* A3g: the pass OUTCOME, not a string match on its prose. `zOk` stays

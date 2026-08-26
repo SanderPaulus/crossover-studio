@@ -368,6 +368,8 @@ GELOGD]** (vergt dubbele run; A/B via de legacy-toggles).
 
 ## 9. Instellingen & defaults
 
+Engine v2-velden hebben per ontwerp geen defaults (nota P4); leeg = geen oordeel.
+
 ⚙ Settings (Filters-tab) tenzij anders: prioriteit 50 % (`phasePriority`); staged AAN met doelen
 2.5 dB / 15° (`targetRipple`/`targetPhase`) — **bewust ruimer dan 1.5/10** (punt 6b): een doel is het
 STOPPUNT van de escalatieladder én de voorwaarde voor de desnoei-pass; 1.5/10 was geijkt op de

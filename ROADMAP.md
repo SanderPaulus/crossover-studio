@@ -6,6 +6,27 @@ Volgorde binnen een blok = aanbevolen prioriteit. Inschattingen zijn grof:
 
 ## Onlangs afgerond (jul–aug 2026, ter referentie)
 
+- **F2b — de scanknop op engine v2** (26 aug 2026). De poorten stonden er sinds
+  F2, maar de scanknop draaide nog op v1: grenshandhaving hoort ín de lus, en
+  de module die de tuner draait moet daarvoor de metriekbibliotheek kunnen
+  aanroepen — wat `optimWorker.ts` niet mag zonder de toggle-invariant op te
+  geven. Opgelost met een **tweede worker** (`engine2/optimizer/worker.ts`,
+  eigen bundelchunk) naast een byte-onaangeraakte v1-worker, met een blijvende
+  assert dat die laatste nog steeds niets uit `engine2/` importeert.
+  De 3-weg-scan loopt met de toggle aan via die worker: seed en
+  run-vingerafdruk staan onder de tabel, en er is een **poortkolom** per
+  kandidaat — niet alleen voor de winnaar, en afgeleid uit dezelfde ene
+  oordeelsregel als de ⚠Z-kolom ernaast. Cancel levert nu een expliciete
+  status: een afgebroken run draagt "aborted" mét reden, en die status zit ín
+  de vingerafdruk, zodat een partieel veld nooit gelijk kan uitvallen aan een
+  voltooide run. De 2-weg-scan draait nog op v1 en de app zégt dat onder de
+  tabel (TODO(F2c) bij de façade).
+  Poortweigeringen kappen de zoektocht af — een v2-run op de fixture is sneller
+  dan v1 (2,2 vs 3,4 s, 6144 vs 9538 sims, vier poort-evaluaties per run); de
+  trage seed-audit op grote 3-weg-netwerken is bestaand v1-gedrag, gemeten en
+  als TODO gedocumenteerd. Zie V17 in het casusboek voor de mis-attributie die
+  daaraan voorafging.
+
 - **F2 — poorten in de engine** (26 aug 2026). Tien nieuwe projectvelden onder
   Engine v2, alle leeg bij aanvang en leeg betekent overal afwezig: de poort
   oordeelt niet, de budgetgrens versmalt de zoekdoos niet, en het rapport toont

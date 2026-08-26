@@ -12,7 +12,11 @@ import { computeIntegration } from './integration.ts';
 import { designThreeWay, type Struct3Choice } from './threeWayDesign.ts';
 import { synthesize, type SynthesisResult } from './synthesis.ts';
 import { mergeSynthesizedSchematics } from './schematicEdit.ts';
-import { optimizeNetworkValues, type NetOptimizeResult } from './netOptimizer.ts';
+import {
+  optimizeNetworkValues,
+  type NetOptimizeOptions,
+  type NetOptimizeResult,
+} from './netOptimizer.ts';
 import type { SnapPrefs } from './catalog.ts';
 import { bomFor } from './catalog.ts';
 import type { VxpPart } from './parsers/vxp.ts';
@@ -210,9 +214,40 @@ function floorBound(
   return [lo, Math.max(win[1], lo * 1.02)];
 }
 
+
+/**
+ * F2b — THE ENGINE HOOK, and the one shape it may have.
+ *
+ * A v2 run has to enforce the M-A/M-B/M-C gates INSIDE the polish (spec A3:
+ * "grenshandhaving zit in de kern"), and the only legitimate evaluator of
+ * those gates is the F1 metric library. This file may not import it — the
+ * dependency arrow points one way and `toggleRegression.test.ts` pins that —
+ * so the caller supplies the extra tuner options instead, and this chain
+ * simply merges them in.
+ *
+ * IT IS A FACTORY AND NOT A VALUE, and that is the whole design. M-C is
+ * judged against a driver's PASSBAND, which is derived from the crossings the
+ * assembled network produces; a reference re-derived at every polish step
+ * slides along with the design and stops being a limit (casebook V16b). So it
+ * has to be frozen once, on the network the tune starts from — and that
+ * network does not exist until synthesis has run. Handing the caller the
+ * assembled seed at exactly that moment is what lets it freeze the right
+ * thing at the right time.
+ *
+ * ABSENT = OFF, and off means byte-identical: no hook, no merge, no call.
+ */
+export interface ChainEngineHooks {
+  /**
+   * Called ONCE with the assembled seed network, immediately before the tune.
+   * Whatever it returns is merged into the tuner options.
+   */
+  tuneOptionsFor?: (seedParts: readonly VxpPart[]) => Partial<NetOptimizeOptions>;
+}
+
 export function runThreeWayChain(
   input: Chain3Input,
   onProgress?: (p: ChainStageProgress) => void,
+  hooks?: ChainEngineHooks,
 ): Chain3Result {
   const { grid, w, m, t, driverZ, xoLow, xoHigh, settings: s } = input;
 
@@ -354,6 +389,10 @@ export function runThreeWayChain(
     band: s.band,
     safety: s.safety,
     onStage: (detail: string, ev?: number) => onProgress?.({ stage: 'tune', evals: ev ?? 0, detail }),
+    // F2b: the engine hook, merged LAST so a v2 run's gate and bound options
+    // cannot be overwritten by anything above. Absent = nothing is added and
+    // the object is the one this chain always built.
+    ...(hooks?.tuneOptionsFor ? hooks.tuneOptionsFor(merged) : {}),
   };
   let net = optimizeNetworkValues(merged, grid, w, t, driverZ, tAdjust, tuneOpts);
 

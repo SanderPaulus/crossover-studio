@@ -25,6 +25,7 @@ import {
   resolveDeterminism,
   stableJson,
   stream,
+  type FingerprintInput,
 } from './determinism.ts';
 import { DEFAULT_RUN_SEED, DEFAULT_RUN_STARTS } from '../constants.ts';
 import { runV2Optimization, EngineSelectionError, type V2OptimizeResult } from './run.ts';
@@ -169,7 +170,7 @@ describe('A5e.4 - the v2 optimisation path is deterministic', () => {
 
     // Each mutation below has to move the fingerprint. Walked rather than
     // spot-checked: the point is a statement about every ingredient.
-    const mutations: { name: string; input: typeof base }[] = [
+    const mutations: { name: string; input: FingerprintInput }[] = [
       { name: 'seed', input: { ...base, determinism: { ...base.determinism, seed: 2 } } },
       {
         name: 'budget',
@@ -181,6 +182,11 @@ describe('A5e.4 - the v2 optimisation path is deterministic', () => {
       { name: 'gates', input: { ...base, gates: 'gates-B' } },
       { name: 'bounds', input: { ...base, bounds: 'bounds-B' } },
       { name: 'tuning', input: { ...base, tuning: 'tuning-B' } },
+      // F2b: how the run ENDED is an ingredient too — an aborted run must
+      // never fingerprint-match a completed one. This entry exists because the
+      // coverage assert below refused the build without it, which is exactly
+      // what that assert is for.
+      { name: 'status', input: { ...base, status: 'aborted' } },
     ];
     for (const m of mutations) {
       expect(fingerprintOf(fingerprintComponents(m.input)), `${m.name} did not move the fingerprint`)

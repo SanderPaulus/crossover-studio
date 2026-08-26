@@ -333,6 +333,16 @@ export interface NetOptimizeOptions {
    */
   gateViolation?: (parts: readonly VxpPart[]) => string | null;
   /**
+   * INSTRUMENTATION for the gate, and only that.
+   *
+   * Called once per gate QUESTION — not per evaluation — with whether the
+   * run-scoped cache answered it. Exists so a test can assert on a COUNT
+   * rather than on a stopwatch: a timing assert measures the machine that
+   * happens to run CI, a count measures the thing that was actually changed.
+   * Never read by the engine; nothing here may influence a decision.
+   */
+  onGateEvaluated?: (info: { step: string; cached: boolean }) => void;
+  /**
    * F2 / A5d.6 — HARD, MEASUREMENT-DERIVED CEILINGS on individual free values,
    * in SI units (F, H, Ω), keyed by partId.
    *
@@ -534,6 +544,16 @@ export interface NetOptimizeResult {
    * was supplied, which is every v1 run.
    */
   gateRefusals?: string[];
+  /**
+   * How many times the gate was actually EVALUATED, and how many questions the
+   * run-scoped cache answered instead (F2b).
+   *
+   * Diagnostics, not a verdict — but load-bearing diagnostics: "the gate is
+   * asked once per accepted step" is a claim about a search, and a claim about
+   * a search needs a number. Absent on every v1 run, like the refusals.
+   */
+  gateEvaluations?: number;
+  gateCacheHits?: number;
 }
 
 export class NetOptimizeError extends Error {}
@@ -956,9 +976,55 @@ export function optimizeNetworkValues(
    * identical path it always did.
    */
   const gateRefusals: string[] = [];
-  const gateRefusal = (ps: readonly VxpPart[], step: string): string | null => {
+  /**
+   * THE RUN-SCOPED GATE CACHE.
+   *
+   * A gate verdict is a pure function of (parts, gate config, frozen
+   * reference, measurement set). Within ONE run the last three are constant by
+   * construction — the caller freezes the reference before the tune and cannot
+   * change the config half-way — so the parts array alone identifies the
+   * answer, and the passes ask about the same shapes repeatedly.
+   *
+   * RUN-SCOPED, AND THAT IS THE WHOLE DESIGN. The map is created here, inside
+   * the call, and dies with it. A module-level cache would survive into the
+   * next run, where the reference and the limits are different objects — which
+   * is precisely the "gate answers for the wrong network" failure this engine
+   * has already paid for elsewhere. It would also make the run fingerprint
+   * depend on cache invalidation, and a reproducibility claim that rests on
+   * remembering to clear a map is not a claim.
+   */
+  const gateCache = new Map<string, string | null>();
+  let gateEvaluations = 0;
+  let gateCacheHits = 0;
+  /**
+   * THE ONLY PLACE THE GATE HOOK IS CALLED. Everything that wants a verdict —
+   * the accept points, and `constraintViolation`'s backstop — comes through
+   * here, so the cache and the counters describe the whole run rather than the
+   * part of it someone remembered to route.
+   *
+   * (This was not true when the cache was first written: the backstop still
+   * asked the hook directly, which showed up immediately as one evaluation
+   * more than the counter admitted to. The counting test found it, which is
+   * what a counting test is for.)
+   */
+  const cachedGateViolation = (ps: readonly VxpPart[], step: string): string | null => {
     if (!opts.gateViolation) return null;
-    const why = opts.gateViolation(ps);
+    const key = partsKey(ps);
+    const hit = gateCache.has(key);
+    let why: string | null;
+    if (hit) {
+      why = gateCache.get(key)!;
+      gateCacheHits++;
+    } else {
+      why = opts.gateViolation(ps);
+      gateCache.set(key, why);
+      gateEvaluations++;
+    }
+    opts.onGateEvaluated?.({ step, cached: hit });
+    return why;
+  };
+  const gateRefusal = (ps: readonly VxpPart[], step: string): string | null => {
+    const why = cachedGateViolation(ps, step);
     if (why === null) return null;
     const line = `${step} refused: ${why}`;
     // Bounded: a prune sweep can refuse the same shape hundreds of times and a
@@ -976,8 +1042,8 @@ export function optimizeNetworkValues(
     // The gate first: it is the hard requirement the designer stated, and a
     // pass that is about to be rolled back should say WHICH bound stopped it.
     // Only ever consulted when a hook was supplied, so v1 is untouched.
-    if (opts.gateViolation) {
-      const g = opts.gateViolation(ps);
+    {
+      const g = cachedGateViolation(ps, 'constraint backstop');
       if (g) return g;
     }
     if (rsHardOhm > 0) {
@@ -1162,11 +1228,48 @@ export function optimizeNetworkValues(
   };
 
   let evaluations = 0;
+  /**
+   * THE STAGE LABEL every heartbeat is reported under.
+   *
+   * TODO(observability): THREE THINGS, ONE SESSION. Together they make a long
+   * healthy run indistinguishable from a hang, and at F2b that cost four
+   * smoke-test attempts and two confident wrong diagnoses (casebook V17).
+   *
+   *  (a) THE LABEL LIES DURING THE VALUE TUNE. `stage('value tune')` runs
+   *      BEFORE the seed audit; `runAudit` then sets the label to
+   *      "part audit (seed)" and nothing restores it. Every heartbeat for the
+   *      whole value tune — the longest stage there is on a large three-way —
+   *      therefore reports the audit. The UI renders faithfully what it is
+   *      handed; this is the engine telling it the wrong thing.
+   *
+   *  (b) THE HEARTBEAT GOES SILENT DURING THE AUDIT. `auditNetwork` does its
+   *      own full-grid solves without passing through `tick()`, so the sim
+   *      counter freezes exactly where a reader most wants proof of life.
+   *
+   *  (c) FOR THE SESSION THAT FIXES THIS, so it knows what it may touch:
+   *      · give label TRANSITIONS their own test — the labels must appear in
+   *        the order the passes actually run, which is the property that broke
+   *        here and which no existing test looks at;
+   *      · and assert explicitly that PROGRESS MESSAGES ARE NOT PART OF THE
+   *        RESULT BYTE-INVARIANT. `toggleRegression` compares the serialised
+   *        RESULT; `onStage` output is not in it. Writing that down as an
+   *        assert is what lets the fix change labels and heartbeats freely
+   *        without anyone having to re-derive whether the invariant allows it.
+   *
+   * NOT FIXED AT F2b on purpose: this is shared v1 progress code, and F2b
+   * promised to leave that alone.
+   */
   let stageLabel = 'value tune';
   const stage = (label: string) => {
     stageLabel = label;
     onStage?.(label, evaluations);
   };
+  /**
+   * The proof-of-life heartbeat: one progress message every 2000 objective
+   * evaluations, plus one at every stage switch. See TODO(observability) at
+   * `stageLabel` for the two ways this goes quiet or misleading, and for what
+   * the session that fixes it is allowed to touch.
+   */
   const tick = () => {
     evaluations++;
     if (evaluations % 2000 === 0) onStage?.(stageLabel, evaluations);
@@ -2529,6 +2632,18 @@ export function optimizeNetworkValues(
       // the dissipation share, the EPDR minimum or the drive on f_s. A part
       // that is inaudible can still be the reason an active gate is met, so
       // the removal is asked the gate question before it is taken.
+      //
+      // Asked LAST, after the quality re-check has already accepted the
+      // removal: the gate is a veto on a step that is about to be taken, not
+      // a filter over every entry the audit considers.
+      //
+      // ON THE COST, because it was mis-diagnosed once and the record is worth
+      // keeping straight. A v2 run was suspected of being slow HERE. Measured
+      // on the two-way fixture it is not: a whole run asks the gate four
+      // times, and the run finishes FASTER than the same run without gates
+      // (3.4 s -> 2.2 s, 9538 -> 6144 sims) because a refusal ends a search
+      // that would otherwise have kept going. What is slow on a large
+      // three-way is the part audit itself, on v1 and v2 alike.
       if (opts.gateViolation && !gateOk(trial, `audit removal ${e.ids.join('+')}`)) {
         e.reasons.push('removal would cross an active hard gate — kept');
         e.verdict = 'grey';
@@ -2702,11 +2817,17 @@ export function optimizeNetworkValues(
             meets(tFull) &&
             safe(tFull, curFull) &&
             rsSafe(t.parts, cur.parts) &&
+            t.fx <= cur.fx * 1.1 &&
+            t.fx <= fx0 * 1.35 &&
             // F2: a removal is a polish step like any other and may not cross
             // an active gate, however free it looks on the objective.
-            gateOk(t.parts, `prune ${cand.id}`) &&
-            t.fx <= cur.fx * 1.1 &&
-            t.fx <= fx0 * 1.35
+            //
+            // LAST IN THE CHAIN ON PURPOSE (F2b). The gate is a VETO on a step
+            // that is otherwise about to be taken, not a filter over every
+            // trial — and `&&` short-circuits, so a removal that the quality
+            // rules reject never costs a network solve. Semantically identical
+            // either way; the ordering is the whole saving.
+            gateOk(t.parts, `prune ${cand.id}`)
           ) {
             cur = t;
             curFull = tFull;
@@ -2733,9 +2854,10 @@ export function optimizeNetworkValues(
         if (
           safeEsc(bestFull, curFull) &&
           rsSafe(best.t.parts, cur.parts) &&
+          (meets(bestFull) || best.t.fx < cur.fx * 0.97) &&
           // F2: an ADDED part must earn its place inside the gates too.
-          gateOk(best.t.parts, `escalation ${best.id}`) &&
-          (meets(bestFull) || best.t.fx < cur.fx * 0.97)
+          // Veto-last (F2b) — see the prune sweep above.
+          gateOk(best.t.parts, `escalation ${best.id}`)
         ) {
           cur = best.t;
           curFull = bestFull;
@@ -2871,7 +2993,11 @@ export function optimizeNetworkValues(
           // F2: the ladder walks values DOWN, which moves impedance and drive
           // voltage as surely as anything else does. A rung outside an active
           // gate ends the ladder rather than being taken.
-          if (!meetsOk || !safeOk || !gateOk(cand.parts, `cap shrink ${id}`)) break;
+          //
+          // Veto-last (F2b): `||` short-circuits, so a rung the quality rules
+          // already reject never reaches the gate.
+          if (!meetsOk || !safeOk) break;
+          if (!gateOk(cand.parts, `cap shrink ${id}`)) break;
           cur = cand;
         }
       }
@@ -3757,8 +3883,36 @@ export function optimizeNetworkValues(
     ampFloorRepair,
     ...(valueWindowNote ? { valueWindowNote } : {}),
     ...(auditReport ? { audit: auditReport } : {}),
-    ...(opts.gateViolation ? { gateRefusals } : {}),
+    ...(opts.gateViolation ? { gateRefusals, gateEvaluations, gateCacheHits } : {}),
   };
+}
+
+/**
+ * CANONICAL IDENTITY OF A PARTS ARRAY, for the run-scoped gate cache.
+ *
+ * Everything the gate can see has to be in here, and nothing else may be.
+ * The gate solves the network and reads dissipation, EPDR and the drive on
+ * f_s, so it sees: which elements exist, what they are worth (values AND the
+ * DCR/ESR that ride along), whether they are open or shorted, and how they are
+ * wired. It does NOT see the order of the array, so the entries are sorted —
+ * two arrays that describe the same circuit must produce one key, or the cache
+ * simply never hits.
+ *
+ * `locked` is deliberately absent: it constrains the SEARCH, not the network,
+ * and two otherwise identical circuits have the same gate verdict whether or
+ * not the designer pinned a value.
+ */
+function partsKey(parts: readonly VxpPart[]): string {
+  const rows = parts.map((q) => {
+    const params = q.params
+      .map((r) => `${r.name}=${r.value}`)
+      .sort()
+      .join(',');
+    const at = q.wires.map((w) => `${w.x},${w.y}`).join(';');
+    return `${q.type}|${q.partId ?? ''}|${q.model ?? ''}|${params}|${q.open ? 'o' : ''}${q.shorted ? 's' : ''}|${at}`;
+  });
+  rows.sort();
+  return rows.join('\n');
 }
 
 /** Stable identity for wires/grounds across cloning (they carry no partId). */

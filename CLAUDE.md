@@ -70,6 +70,21 @@
   inactief mét waarde en met "no limit set", en de poortwaarde ís de metriekwaarde (geen tweede
   berekening ernaast).
 
+### F2b-guards (tweede worker, scanknop)
+- `src/lib/engine2/toggleRegression.test.ts` — de allowlist telt sinds F2b drie entries; de derde
+  (`optimClient.ts`) draagt haar besluit en reden in het commentaar. Een blijvende assert erbij:
+  **`optimWorker.ts` importeert nog steeds niets uit `engine2/`** — de vloer onder dat besluit.
+- `src/lib/engine2/optimizer/workerRoute.test.ts` — determinisme dóór de échte route: het verzoek
+  gaat via `handleV2Request` (de hele workerbody op drie regels `self.onmessage` na) met de payload
+  eerst door `structuredClone`, precies zoals `postMessage` hem serialiseert. Twee passages met
+  dezelfde seed zijn byte-identiek.
+- `src/lib/engine2/optimizer/runStatus.test.ts` — A5e.4: het statusveld zit ín de vingerafdruk, dus
+  een afgebroken run kan nooit gelijk uitvallen aan een voltooide; en een afgebroken run draagt
+  altijd een reden.
+- `src/lib/engine2/optimizer/gateCell.test.ts` — de poortkolom als regel: een rij die níet uit een
+  v2-run komt leest `absent`, nooit een vinkje, en de cel vergelijkt zelf nooit een waarde met een
+  grens.
+
 De vloer is sinds F0 uitsluitend het getal dat de ONTWERPER invult (`ampMinLoadOhm`, geen default):
 leeg veld = geen oordeel. Eén regel, één plek: `meetsAmpFloor` in `src/lib/impedanceFloor.ts`.
 Wie een vloer nodig heeft roept die aan en verzint geen eigen drempel.

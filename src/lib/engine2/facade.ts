@@ -55,16 +55,21 @@ export interface EngineSelection {
    * The per-project gate limits and budgets the v2 path uses are settings
    * without defaults (P4): turning the engine on arms no limit by itself.
    *
-   * TODO(F2b): v2-worker achter de toggle, eigen entry op de import-allowlist,
-   * v1-worker onaangeraakt. As shipped, the v2 path is reachable through this
-   * selection but the app's SCAN button still runs v1 — and the reason is the
-   * toggle invariant itself. Gate enforcement has to happen inside the polish,
-   * which means the module that runs the tuner must be able to call the metric
-   * library; `optimWorker.ts` may not import `engine2/`, and adding it to
-   * `toggleRegression`'s allow-list is a decision about that invariant rather
-   * than a wiring detail. The fix is a SECOND worker that belongs to v2, on the
-   * allow-list in its own right, with the v1 worker untouched so its
-   * byte-identity claim needs no re-proving.
+   * DONE at F2b — the scan button reads this field. With 'v2' selected the
+   * candidates run on `engine2/optimizer/worker.ts`, a second worker entry
+   * that enforces the gates inside the polish and returns a verdict per
+   * candidate; `optimWorker.ts` is byte-untouched and a standing test pins
+   * that it still imports nothing from `engine2/`. The allow-list entry that
+   * made this possible is `optimClient.ts`, and the reason is recorded beside
+   * it in `toggleRegression.test.ts`: one client, so one cancel path.
+   *
+   * TODO(F2c): the TWO-WAY scan route (`runChainScan`) still runs on v1. The
+   * client half is already there — `runChainScanV2` exists and is typed — but
+   * that route carries its own rescue semantics (a truly-free single candidate
+   * runs first and only then appends pinned follow-ups), and porting them is a
+   * behavioural change to a path this phase promised not to touch. Until it is
+   * wired, the app SAYS so beneath the scan table rather than showing a table
+   * that merely looks unjudged.
    */
   optimizer: EngineId;
   /** Whether the v2 REPORTING layer (ingest pass + metric library) is shown. */
