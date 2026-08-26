@@ -979,6 +979,20 @@ export function variantsFromPoints(
  * not a candidate, however flat), then staged targets, then the two-way
  * blended score on the same doctrine numbers (whole-range avg in the ripple
  * slot); near-equal winners (≤5%) resolve to the cheaper priced BOM.
+ *
+ * ⚠ THIS IS THE v1 RANKING, AND IT IS DELIBERATELY v1-ONLY.
+ *
+ * It is a weighted aggregation: it blends flatness, phase, in-room behaviour
+ * and price into one order using weights the caller supplies. The v2 engine
+ * does not work that way — A5e.1 (F3) settled that there is no weighted sum
+ * and no weight vector anywhere on the satisficing surface, and a shortlist is
+ * a FEASIBLE REGION plus a diversity spread instead. See
+ * `engine2/optimizer/noWeights.test.ts`, which guards that surface and
+ * deliberately excludes this function.
+ *
+ * Both exist on purpose. The v1 path still ranks this way and F3 promised not
+ * to touch it; the v2 path never calls this. If the two ever start sharing
+ * code, this comment is where the next reader should stop and think.
  */
 export function rankChain3Results(
   results: readonly Chain3Result[],

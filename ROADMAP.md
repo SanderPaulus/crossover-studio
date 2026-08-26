@@ -6,6 +6,33 @@ Volgorde binnen een blok = aanbevolen prioriteit. Inschattingen zijn grof:
 
 ## Onlangs afgerond (jul–aug 2026, ter referentie)
 
+- **F3 — eisen in plaats van gewichten** (26 aug 2026). De engine draagt nu zelf
+  ontwerpen aan. Je stelt **eisen** (SPL-venster ±dB t.o.v. de doelcurve, max
+  fase-trackingfout; de Z/EPDR-vloer blijft een poort), en de engine levert
+  álles wat eraan voldoet: een **shortlist** van standaard tien, gespreid over
+  topologie-klassen (orde per flank, polariteit meegerekend) en daarbinnen over
+  genormaliseerde componentruimte. Er is **geen gewogen somscore en geen
+  gewichtsvector** — nergens, en een lint bewaakt dat. Sorteren op een kolom is
+  presentatie: het verandert nooit wélke ontwerpen op de lijst staan.
+  Levert de zoektocht te weinig winnaars, dan verruimt een **relaxatie-ladder**
+  in zichtbare stappen uitsluitend de falende smaak-eisen en draagt de uitkomst
+  het etiket dat zegt waaraan zij wél voldoet ("±2,25 dB — je vroeg ±1,5").
+  Beschermingsgrenzen worden nooit gerelaxeerd; dat is per constructie
+  onmogelijk gemaakt. Levert niets iets op, dan zegt de diagnose wélke eis werd
+  gemist en met hoeveel.
+  Nieuw ook: een **doelcurve per ontwerp** (vlak; tilt en behoud-huidig zijn
+  gedeclareerd en worden geweigerd in plaats van benaderd), en een
+  **tweetraps-stempel** — de eisen raken de zoektocht niet, dus zij zitten niet
+  in de run-vingerafdruk, maar de shortlist krijgt een eigen stempel erbovenop.
+  Smalle pieken krijgen een kolom, smalle dips worden vergeven — een
+  smaakprincipe, met motivering in de nota.
+  Onderweg gevonden door de test die dát principe moest bewaken: het
+  **dip-schouder-artefact** (V18) — een detector op residu-kruinen leest elke
+  smalle dip als twee pieken op zijn schouders. Op de systeemsom opgelost; op
+  de breakup-scan bewust níet, omdat beide kandidaat-remedies daar gemeten
+  echte detecties slopen (waaronder de piek die het hele woofer-mid-plafond
+  van 551 Hz zet).
+
 - **F2b — de scanknop op engine v2** (26 aug 2026). De poorten stonden er sinds
   F2, maar de scanknop draaide nog op v1: grenshandhaving hoort ín de lus, en
   de module die de tuner draait moet daarvoor de metriekbibliotheek kunnen

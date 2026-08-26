@@ -146,7 +146,9 @@
    "lobing_eind_dip_15gr": [
     -3.9,
     3500
-   ]
+   ],
+   "rms_vlakheid_dB": 0.705,
+   "spl_venster_pm_dB": 1.299
   },
   "_wm_fase_oct_opmerking": "Gemiddelde |fasefout| over +-1 octaaf rond het kruispunt, GECLIPT op de meetgeldigheidsband (A5.5). De referentie van 25-08 gebruikte een band onder de geldigheidsvloer: bij HUIDIG ligt het kruispunt op 360 Hz en dus de onderste helft van het venster onder de 397 Hz-vloer. KAND-A en KAND-B reproduceren de oorspronkelijke referentiewaarden (2,8 / 1,3) omdat hun kruispunten boven de vloer liggen. mt_fase_oct is ongewijzigd - dat venster viel altijd al volledig binnen de geldige band.",
   "_V_tweeter_op_fs_dB_opmerking": "20*log10(|V_drv(f_s)| / V_passband), met de doorlaatband AFGELEID uit de gevonden kruispunten (A4 M-C) en het gemiddelde genomen in dB. De referentie van 25-08 gebruikte SESSIE-BANDEN 4-10 kHz (tweeter) en 0,7-1,5 kHz (mid) - tweede V15-geval. Het bandverschil is de volledige verklaring: met exact die banden reproduceert de engine de oude waarden tot binnen 0,05 dB (zie _V_tweeter_op_fs_dB_sessie_25_08, dat als staande test is vastgelegd).",
@@ -179,7 +181,37 @@
     "mid": 88.81
    },
    "fs_afronding": "f_s op het dichtstbijzijnde gridpunt"
-  }
+  },
+  "_F3_respons_oordeel": {
+   "_": "F3/A5e.1: het VENSTER is de acceptatievraag (piek-tot-piek op de 1/6-octaaf-gegladde som t.o.v. de doelcurve, uitgedrukt als ±), de RMS-afwijking is de sorteersleutel (ongegladd, dezelfde band, dezelfde doelcurve). Twee grootheden omdat het twee vragen zijn; één getal voor beide is hoe een piek van 3 dB en een kanteling van 3 dB gelijk gaan scoren.",
+   "doelcurve": "flat (A5e.2) — de neutrale referentie; geen voicing toegepast",
+   "gladding_octaven": 0.16666666666666666,
+   "band_hz": [
+    396.67,
+    19999.51
+   ],
+   "band_herkomst": "de gezamenlijke geldige ver-veldband van alle drie de drivers (A5.5); de ondergrens is de header-gate-vloer van 397 Hz",
+   "referentieniveau": "het bandgemiddelde van de som zelf — venster en RMS gaan over VORM, niet over gevoeligheid",
+   "grid": {
+    "van_hz": 10.07,
+    "tot_hz": 20317,
+    "punten": 1600,
+    "verdeling": "log",
+    "herkomst": "ANALYSIS_GRID_POINTS over de spanwijdte van de geladen impedantiebestanden"
+   },
+   "smalle_pieken": "geen enkele kandidaat vertoont een smalle piek boven de rapportagedrempel op deze meetset; de kolom blijft dus leeg. Smalle DIPS worden per A5e.1 vergeven en verschijnen er nooit in.",
+   "overige_kandidaten": {
+    "HUIDIG_2e": {
+     "rms_vlakheid_dB": 0.599,
+     "spl_venster_pm_dB": 1.335
+    },
+    "KAND_A_2e": {
+     "rms_vlakheid_dB": 0.872,
+     "spl_venster_pm_dB": 1.474
+    }
+   }
+  },
+  "_spl_venster_opmerking": "Het bij F1 VERWIJDERDE spl_venster_dB is niet teruggekeerd: dat was een getal zonder band. Wat er nu staat is een andere grootheid met een andere definitie en volledig vastgelegde parameters (zie _F3_respons_oordeel) — geen herstel van de ingetrokken referentie."
  },
  "kruisvensters": {
   "woofer_mid_orde4": {

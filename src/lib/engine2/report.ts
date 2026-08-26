@@ -75,6 +75,8 @@ import type {
 } from './metrics/types.ts';
 import { ctcKey } from './metrics/types.ts';
 import { anchoredGaps, type AnchoredGaps, type WayLevel } from './predesign/gaps.ts';
+import { judgeResponse, type ResponseJudgement } from './requirements/response.ts';
+import { FLAT_TARGET, type TargetCurve } from './requirements/targetCurve.ts';
 import {
   gateVerdicts,
   isHighPassProtected,
@@ -133,6 +135,12 @@ export interface ReportSettings extends ProjectSettings, GateSettings, BudgetSet
    * trend. Absent = `DEFAULT_SIGNIFICANT_BREAKUP_DB`.
    */
   significantBreakupDb?: number;
+  /**
+   * A5e.2 (F3) — the target curve the SPL window and the RMS deviation are
+   * measured against. Absent = flat, which is what a design that has never
+   * stated one means.
+   */
+  targetCurve?: TargetCurve;
 }
 
 export interface FilterInput {
@@ -170,6 +178,16 @@ export interface PhaseTracking {
 export interface SystemSummary {
   /** Half the peak-to-peak of the summed response over the valid band, dB. */
   splWindowDb: number | null;
+  /**
+   * A5e.1 (F3) — the summed response judged against the target curve: the
+   * WINDOW (smoothed, the acceptance question), the RMS DEVIATION (raw, the
+   * sorting question) and the narrow peaks the smoothing removed.
+   *
+   * Beside `splWindowDb` rather than replacing it: that one is the raw
+   * peak-to-peak this panel has always shown, and the two answer different
+   * questions. Null when no filter is loaded.
+   */
+  response: ResponseJudgement | null;
   splBandHz: [number, number] | null;
   phaseTracking: PhaseTracking[];
   /**
@@ -667,6 +685,7 @@ export function buildReport(input: EngineV2ReportInput): EngineV2Report {
     sum,
     grid,
     analysis?.transferByModel ?? null,
+    input.settings.targetCurve ?? FLAT_TARGET,
   );
 
   return {
@@ -770,6 +789,7 @@ function summarise(
   sum: Complex[] | null,
   grid: number[] | null,
   transfers: Record<string, Complex[]> | null,
+  targetCurve: TargetCurve,
 ): SystemSummary {
   const band = commonBand(ingest);
   const validBand = band;
@@ -784,6 +804,19 @@ function summarise(
       if (v > max) max = v;
     }
     if (Number.isFinite(min) && Number.isFinite(max)) splWindowDb = (max - min) / 2;
+  }
+
+  /* A5e.1 — the window, the RMS and the narrow peaks, on the same sum. */
+  let response: ResponseJudgement | null = null;
+  if (sum && grid && band) {
+    try {
+      response = judgeResponse(grid, sum.map((z) => dbAmp(cabs(z))), targetCurve, band);
+    } catch {
+      // An unimplemented target curve refuses rather than approximating
+      // (A5e.2). The panel says so through `problems`; the summary simply has
+      // no judgement to show.
+      response = null;
+    }
   }
 
   const phaseTracking: PhaseTracking[] = [];
@@ -888,6 +921,7 @@ function summarise(
 
   return {
     splWindowDb,
+    response,
     splBandHz: band,
     phaseTracking,
     midbandOctaves,

@@ -61,6 +61,13 @@ import {
   type InvertedBound,
 } from './bounds.ts';
 import type { DeterminismSettings } from './determinism.ts';
+import { applyTransfer, combineN, type GriddedResponse } from '../../dsp.ts';
+import { solveNetwork } from '../../network.ts';
+import { pickSlotsN } from '../../driverSlots.ts';
+import { judgeResponse, type ResponseJudgement } from '../requirements/response.ts';
+import { FLAT_TARGET, type TargetCurve } from '../requirements/targetCurve.ts';
+import type { CandidateMeasurements } from '../requirements/requirements.ts';
+import type { TopologyDescriptor } from './diversity.ts';
 
 /* ================================================================== *
  * The wire format
@@ -92,6 +99,17 @@ export interface V2RunSettings {
    * absent per driver = the derived estimate is used and the bound says so.
    */
   reOhmByModel?: Record<string, number>;
+  /**
+   * F3 — the design's target curve. Absent = flat (A5e.2), which is what a
+   * project that has never stated one means.
+   */
+  targetCurve?: TargetCurve;
+  /**
+   * The band the SPL window and the RMS deviation are judged on. The caller
+   * clips it to measurement validity (A5.5); this worker does not invent a
+   * lower edge.
+   */
+  judgeBandHz?: [number, number];
 }
 
 export interface V2Chain3Payload {
@@ -118,6 +136,15 @@ export interface V2CandidateResult<R> {
   bounds: InvertedBound[];
   /** Polish steps the gate hook refused during this candidate's tune. */
   gateRefusals: string[];
+  /**
+   * F3 — what the shortlist judges this candidate on. Computed HERE, on the
+   * delivered network, because the worker already holds the solved branches
+   * and the main thread would otherwise have to re-solve every candidate just
+   * to sort a table.
+   */
+  measurements: CandidateMeasurements;
+  /** F3 — the topology class this design belongs to (A5e.1). */
+  topology: TopologyDescriptor;
   notes: string[];
 }
 
@@ -316,6 +343,85 @@ function seriesPathResistance(parts: readonly VxpPart[], model: string): number 
 }
 
 /* ================================================================== *
+ * F3 — what the shortlist judges a candidate on
+ * ================================================================== */
+
+/**
+ * The SUMMED system response of a delivered network, on the measurement grid.
+ *
+ * The same product the simulation shows: measured pressure per way times the
+ * electrical transfer its branch produces. Solved here rather than on the main
+ * thread because this worker already has the netlist and the impedances in
+ * hand, and re-solving every candidate just to sort a table would double the
+ * cost of the scan for a column.
+ */
+function summedResponse(
+  parts: readonly VxpPart[],
+  grid: readonly number[],
+  branches: { model: string; response: GriddedResponse }[],
+  driverZ: Record<string, readonly Complex[]>,
+): GriddedResponse | null {
+  let sol;
+  try {
+    sol = solveNetwork(netlistOf(parts), grid, driverZ);
+  } catch {
+    return null;
+  }
+  const slots = pickSlotsN(sol.drivers);
+  if (slots.ambiguous) return null;
+  const idFor = (model: string): string | null => {
+    const d = sol.drivers.find((x) => x.model === model);
+    return d ? d.id : null;
+  };
+  const filtered: { response: GriddedResponse }[] = [];
+  for (const b of branches) {
+    const id = idFor(b.model);
+    const h = id ? sol.transfers[id] : null;
+    if (!h) continue;
+    filtered.push({ response: applyTransfer(b.response, h) });
+  }
+  if (filtered.length === 0) return null;
+  const combined = combineN(filtered);
+  return {
+    freq: combined.freq,
+    spl: combined.combinedSpl,
+    phaseDeg: combined.combinedPhaseDeg,
+  };
+}
+
+/**
+ * The topology class of a delivered candidate, from the specs the DESIGN step
+ * settled — never from the tuned component values.
+ *
+ * A design is a fourth-order Linkwitz-Riley because that is what was designed;
+ * reading an order back out of tuned values would be inferring the intent from
+ * the execution, and the tuner is allowed to move values as far as the gates
+ * and bounds let it.
+ */
+function topologyOf(
+  specs: Record<string, { hp: FilterFlank; lp: FilterFlank }>,
+  inverted: string[],
+): TopologyDescriptor {
+  const flanks: { way: string; side: 'hp' | 'lp'; kind: string; order: number }[] = [];
+  for (const way of Object.keys(specs).sort()) {
+    for (const side of ['hp', 'lp'] as const) {
+      const f = specs[way][side];
+      // A disabled flank is not a flank: it is its absence, and two designs
+      // that differ by whether a flank exists at all are different shapes.
+      if (!f?.enabled) continue;
+      flanks.push({ way, side, kind: f.kind, order: f.order });
+    }
+  }
+  return { flanks, inverted: [...inverted].sort() };
+}
+
+interface FilterFlank {
+  enabled: boolean;
+  kind: string;
+  order: number;
+}
+
+/* ================================================================== *
  * Running one candidate
  * ================================================================== */
 
@@ -324,6 +430,8 @@ function runCandidate<I, R extends { parts: VxpPart[]; net: { gateRefusals?: str
   v2: V2RunSettings,
   facts: Facts,
   run: (hooks: { tuneOptionsFor: (seed: readonly VxpPart[]) => Partial<NetOptimizeOptions> }) => R,
+  /** F3 — what this candidate is judged on, once it exists. */
+  judge: (r: R) => { measurements: CandidateMeasurements; topology: TopologyDescriptor },
 ): V2CandidateResult<R> {
   const collect: { reference: GateReference | null; bounds: InvertedBound[]; notes: string[] } = {
     reference: null,
@@ -356,6 +464,8 @@ function runCandidate<I, R extends { parts: VxpPart[]; net: { gateRefusals?: str
     }
   }
 
+  const judged = judge(result);
+
   return {
     result,
     gates,
@@ -363,8 +473,15 @@ function runCandidate<I, R extends { parts: VxpPart[]; net: { gateRefusals?: str
     violation,
     bounds: collect.bounds,
     gateRefusals: result.net.gateRefusals ?? [],
+    measurements: judged.measurements,
+    topology: judged.topology,
     notes: collect.notes,
   };
+}
+
+/** The band the response judgement runs on, when the caller states none. */
+function judgeBandOf(v2: V2RunSettings, grid: readonly number[]): [number, number] {
+  return v2.judgeBandHz ?? [grid[0], grid[grid.length - 1]];
 }
 
 /**
@@ -392,12 +509,52 @@ export function handleV2Request(req: V2Request, post: V2Post): void {
           { woofer: input.w.spl, mid: input.m.spl, tweeter: input.t.spl },
           v2.reOhmByModel,
         );
-        data = runCandidate<Chain3Input, Chain3Result>(input, v2, facts, (hooks) =>
-          runThreeWayChain(
-            input,
-            (pr) => post({ id: req.id, kind: 'progress', data: { ...pr, variant: input.label } }),
-            hooks,
-          ),
+        data = runCandidate<Chain3Input, Chain3Result>(
+          input,
+          v2,
+          facts,
+          (hooks) =>
+            runThreeWayChain(
+              input,
+              (pr) => post({ id: req.id, kind: 'progress', data: { ...pr, variant: input.label } }),
+              hooks,
+            ),
+          (r) => {
+            const sum = summedResponse(
+              r.parts,
+              input.grid,
+              [
+                { model: 'woofer', response: input.w },
+                { model: 'mid', response: input.m },
+                { model: 'tweeter', response: input.t },
+              ],
+              input.driverZ,
+            );
+            const band = judgeBandOf(v2, input.grid);
+            const response: ResponseJudgement | null = sum
+              ? judgeResponse(sum.freq, sum.spl, v2.targetCurve ?? FLAT_TARGET, band)
+              : null;
+            // The phase tracking the tuner already delivered, per adjacent
+            // pair — the existing metric, not a second opinion about it.
+            const pairs = r.net.after.pairPhaseDeg ?? [];
+            const labels = ['woofer|mid', 'mid|tweeter'];
+            return {
+              measurements: {
+                response,
+                phaseTracking: pairs
+                  .map((deg, i) => ({ subject: labels[i] ?? `pair ${i}`, meanAbsDeg: deg }))
+                  .filter((x) => Number.isFinite(x.meanAbsDeg)),
+              },
+              topology: topologyOf(
+                {
+                  woofer: r.specs.woofer,
+                  mid: r.specs.mid,
+                  tweeter: r.specs.tweeter,
+                },
+                [...(r.midInverted ? ['mid'] : []), ...(r.tweeterInverted ? ['tweeter'] : [])],
+              ),
+            };
+          },
         );
         break;
       }
@@ -409,13 +566,45 @@ export function handleV2Request(req: V2Request, post: V2Post): void {
           { mid: input.w.spl, tweeter: input.t.spl },
           v2.reOhmByModel,
         );
-        data = runCandidate<ChainInput, ChainResult>(input, v2, facts, (hooks) =>
-          runDesignChain(
-            input,
-            label,
-            (pr) => post({ id: req.id, kind: 'progress', data: { ...pr, variant: label } }),
-            hooks,
-          ),
+        data = runCandidate<ChainInput, ChainResult>(
+          input,
+          v2,
+          facts,
+          (hooks) =>
+            runDesignChain(
+              input,
+              label,
+              (pr) => post({ id: req.id, kind: 'progress', data: { ...pr, variant: label } }),
+              hooks,
+            ),
+          (r) => {
+            const sum = summedResponse(
+              r.parts,
+              input.grid,
+              [
+                { model: 'mid', response: input.w },
+                { model: 'tweeter', response: input.t },
+              ],
+              input.driverZ,
+            );
+            const band = judgeBandOf(v2, input.grid);
+            return {
+              measurements: {
+                response: sum
+                  ? judgeResponse(sum.freq, sum.spl, v2.targetCurve ?? FLAT_TARGET, band)
+                  : null,
+                phaseTracking: Number.isFinite(r.net.after.phaseDeg)
+                  ? [{ subject: 'low|high', meanAbsDeg: r.net.after.phaseDeg }]
+                  : [],
+              },
+              // TODO(F2c/F3): the two-way chain settles its structure inside
+              // `vf`, which does not expose flanks the way the three-way
+              // `specs` do. Until that route is wired to v2 (TODO(F2c)) this
+              // is an empty descriptor rather than a guess — an invented
+              // topology class would silently group unrelated designs.
+              topology: { flanks: [], inverted: [] },
+            };
+          },
         );
         break;
       }

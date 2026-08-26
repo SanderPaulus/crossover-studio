@@ -123,6 +123,12 @@ import { DEFAULT_RUN_SEED } from './lib/engine2/constants.ts';
 import { stableJson, type V2RunStamp } from './lib/engine2/optimizer/determinism.ts';
 import type { GateVerdict } from './lib/engine2/optimizer/gates.ts';
 import { gateCellState } from './lib/engine2/optimizer/gateCell.ts';
+import {
+  buildShortlist,
+  type Shortlist,
+  type ShortlistInput,
+} from './lib/engine2/optimizer/shortlist.ts';
+import { FLAT_TARGET, type TargetCurve } from './lib/engine2/requirements/targetCurve.ts';
 import { BaffleView } from './components/BaffleView.tsx';
 import { CatalogManager } from './components/CatalogManager.tsx';
 import { helpSectionForTab } from './lib/help.ts';
@@ -1606,6 +1612,9 @@ export default function App() {
     dampingMarginDb: string;
     runSeed: string;
     runBudgetEvals: string;
+    splWindowPlusMinusDb: string;
+    maxPhaseTrackingDeg: string;
+    shortlistSize: string;
   }>({
     verticalWindowDeg: '',
     amplifierPowerW: '',
@@ -1617,6 +1626,9 @@ export default function App() {
     dampingMarginDb: '',
     runSeed: '',
     runBudgetEvals: '',
+    splWindowPlusMinusDb: '',
+    maxPhaseTrackingDeg: '',
+    shortlistSize: '',
   });
   /** Optional crossover-range constraint for the optimizer (Hz). */
   const [xoRangeOn, setXoRangeOn] = useState(false);
@@ -3036,6 +3048,12 @@ export default function App() {
       dampingMarginDb: stated(engineV2Settings.dampingMarginDb),
       runSeed: stated(engineV2Settings.runSeed),
       runBudgetEvals: stated(engineV2Settings.runBudgetEvals),
+      // A5e.1 — TASTE requirements. Same absent-means-absent rule, and
+      // deliberately kept apart from the gates above: these filter the
+      // delivered field and the ladder may widen them; a gate never is.
+      splWindowPlusMinusDb: stated(engineV2Settings.splWindowPlusMinusDb),
+      maxPhaseTrackingDeg: stated(engineV2Settings.maxPhaseTrackingDeg),
+      shortlistSize: stated(engineV2Settings.shortlistSize),
     };
   }, [engineV2Settings]);
 
@@ -3157,9 +3175,23 @@ export default function App() {
        * carries, and one number in two places is how the two come to
        * disagree. `runSeed`/`runBudgetEvals` belong to the RUN, not to the
        * report, so they are dropped here rather than rendered as limits. */
-      const { runSeed: _seed, runBudgetEvals: _evals, ...limits } = engineV2Gates;
+      const {
+        runSeed: _seed,
+        runBudgetEvals: _evals,
+        // The taste requirements belong to the SHORTLIST, not to the report:
+        // the panel shows what a design measures, and a requirement judges a
+        // FIELD of designs. Passing them here would put an acceptance limit on
+        // a panel that has no field to apply it to.
+        splWindowPlusMinusDb: _win,
+        maxPhaseTrackingDeg: _phase,
+        shortlistSize: _n,
+        ...limits
+      } = engineV2Gates;
       void _seed;
       void _evals;
+      void _win;
+      void _phase;
+      void _n;
       const gateAndBudget = {
         ...limits,
         ...(ampMinLoadOhm !== null ? { ampMinLoadOhm } : {}),
@@ -5537,6 +5569,9 @@ export default function App() {
       dampingMarginDb: d.engineV2?.dampingMarginDb ?? '',
       runSeed: d.engineV2?.runSeed ?? '',
       runBudgetEvals: d.engineV2?.runBudgetEvals ?? '',
+      splWindowPlusMinusDb: d.engineV2?.splWindowPlusMinusDb ?? '',
+      maxPhaseTrackingDeg: d.engineV2?.maxPhaseTrackingDeg ?? '',
+      shortlistSize: d.engineV2?.shortlistSize ?? '',
     });
     setXoRangeOn(d.xoRangeOn ?? false);
     // Legacy lo/hi range migrates to centre ± margin.
@@ -5940,6 +5975,8 @@ export default function App() {
       setNetOptDiff(null);
       // A stamp on a table the run did not produce is worse than none.
       setV2Run(null);
+      setV2Shortlist(null);
+      setShortlistSort(null);
       /* ---- Axis-by-axis scan (Sanders' proposal): W-M sweep with M-T held
        * at its anchor → M-T sweep with the best W-M → local 3×3 refinement
        * around the pair. Finer per axis than the corners grid for a
@@ -5977,6 +6014,7 @@ export default function App() {
        * so a partial field still carries the status that says it is partial. */
       const useV2 = engineSelection.optimizer === 'v2';
       const v2GatesByLabel: Record<string, { verdicts: GateVerdict[]; violation: string | null }> = {};
+      const v2Field: ShortlistInput<Chain3Result>[] = [];
       let v2Stamp: V2RunStamp | null = null;
       const v2ScanSettings = useV2
         ? {
@@ -6007,6 +6045,16 @@ export default function App() {
                 ? { budgetEvaluations: engineV2Gates.runBudgetEvals }
                 : {}),
             },
+            // A5e.2 — the design's own target curve, or flat when it has
+            // never stated one. On the DESIGN, so two voicings can sit side by
+            // side and be compared.
+            targetCurve:
+              (designs.find((d) => d.id === activeDesignId)?.targetCurve as TargetCurve | undefined) ??
+              FLAT_TARGET,
+            // The band the window and the RMS are judged on: the same
+            // evaluation band the tuner used, which is already clipped to
+            // measurement validity (A5.5).
+            judgeBandHz: settings.band,
             // Stable identities for the fingerprint. Each is a hash INPUT, so
             // what matters is that it changes when the thing it names changes
             // — never that a human can read it.
@@ -6032,6 +6080,18 @@ export default function App() {
         return runChain3ScanV2(ins, v2ScanSettings, onProgress).then((r) => {
           for (const c of r.candidates) {
             v2GatesByLabel[c.result.label] = { verdicts: c.gates, violation: c.violation };
+            // Every candidate the scan produced, feasible or not — the
+            // shortlist decides feasibility, and it cannot decide it over a
+            // field it was never shown.
+            v2Field.push({
+              label: c.result.label,
+              parts: c.result.parts,
+              result: c.result,
+              topology: c.topology,
+              measurements: c.measurements,
+              gates: c.gates,
+              disqualified: c.result.disqualified,
+            });
           }
           // The LAST stamp wins, and for the axis-by-axis scan that is the
           // right one: a run that was stopped in round two is aborted, whatever
@@ -6136,7 +6196,29 @@ export default function App() {
            * so a partial field can never read as a whole one, and the status
            * is an ingredient of the fingerprint rather than a label beside
            * it, so the two can never compare equal either. */
-          if (v2Stamp) setV2Run({ stamp: v2Stamp, gatesByLabel: { ...v2GatesByLabel } });
+          if (v2Stamp) {
+            setV2Run({ stamp: v2Stamp, gatesByLabel: { ...v2GatesByLabel } });
+            /* A5e.1 — the FEASIBLE REGION, built here on the main thread from
+             * the field the workers produced. Deliberately not in the worker:
+             * a shortlist is a statement about a SET of candidates, and every
+             * worker only ever sees one. */
+            setV2Shortlist(
+              buildShortlist(v2Field, v2Stamp.fingerprint, {
+                requirements: {
+                  ...(engineV2Gates.splWindowPlusMinusDb !== undefined
+                    ? { splWindowPlusMinusDb: engineV2Gates.splWindowPlusMinusDb }
+                    : {}),
+                  ...(engineV2Gates.maxPhaseTrackingDeg !== undefined
+                    ? { maxPhaseTrackingDeg: engineV2Gates.maxPhaseTrackingDeg }
+                    : {}),
+                },
+                targetCurve: v2ScanSettings?.targetCurve,
+                ...(engineV2Gates.shortlistSize !== undefined
+                  ? { size: Math.max(1, Math.round(engineV2Gates.shortlistSize)) }
+                  : {}),
+              }),
+            );
+          }
           // "Stop and use what finished" can land before the first candidate
           // does. Ranking an empty field would crash; committing nothing and
           // saying why is the honest outcome — the design stays as it was.
@@ -7083,6 +7165,14 @@ export default function App() {
     /** Keyed by candidate label — the same labels the scan table rows carry. */
     gatesByLabel: Record<string, { verdicts: GateVerdict[]; violation: string | null }>;
   } | null>(null);
+  /**
+   * F3 — the SHORTLIST the last v2 scan produced: the feasible region, spread
+   * over topologies, with its own two-stage stamp. Null when the last scan ran
+   * on v1 or produced nothing.
+   */
+  const [v2Shortlist, setV2Shortlist] = useState<Shortlist<Chain3Result> | null>(null);
+  /** Which shortlist column the table is sorted on. Presentation only. */
+  const [shortlistSort, setShortlistSort] = useState<{ key: string; dir: 1 | -1 } | null>(null);
   /** Old → new component values of the last tune run ("⚙ Optimize
    *  components" / auto-tune) — makes the tuner inspectable: you see WHERE
    *  it found its gains instead of just "N components tuned" (Sanders wens,
@@ -14149,6 +14239,60 @@ export default function App() {
                       />
                     </label>
 
+                    {/* ---- F3: the REQUIREMENTS (spec A5e.1) ----
+                      * Acceptance limits on the OUTCOME, and the third kind of
+                      * number in this panel: a gate protects the hardware and
+                      * is never relaxed, a budget shapes the search box, and a
+                      * requirement decides which finished designs you are
+                      * shown. Blank = not asked. There is no weight here and
+                      * there is none anywhere else either — the engine returns
+                      * everything that qualifies and you pick. */}
+                    <span className="opt-group-cap">{t('Engine v2 — requirements')}</span>
+                    <label title={t('The SPL window you will accept, in ±dB against the target curve, judged peak-to-peak on the 1/6-octave-smoothed system response. Narrow features fall outside this judgement on purpose: narrow peaks are reported in their own column, narrow dips are forgiven. Empty = not asked; the value is still shown.')}>
+                      {t('SPL window ±dB')}
+                      <input
+                        type="number"
+                        min={0}
+                        step={0.1}
+                        value={engineV2Settings.splWindowPlusMinusDb}
+                        placeholder="1.5"
+                        onChange={(e) =>
+                          setEngineV2Settings((v) => ({ ...v, splWindowPlusMinusDb: e.target.value }))
+                        }
+                        style={{ width: '5rem' }}
+                      />
+                    </label>
+                    <label title={t('The largest phase-tracking error you will accept in a crossover region, in degrees — mean |Δφ| over ±1 octave, clipped to measurement validity. Judged PER handover: a three-way that tracks well at one and badly at the other has not met it. Empty = not asked.')}>
+                      {t('Max phase error °')}
+                      <input
+                        type="number"
+                        min={0}
+                        step={0.5}
+                        value={engineV2Settings.maxPhaseTrackingDeg}
+                        placeholder="5"
+                        onChange={(e) =>
+                          setEngineV2Settings((v) => ({ ...v, maxPhaseTrackingDeg: e.target.value }))
+                        }
+                        style={{ width: '5rem' }}
+                      />
+                    </label>
+                    <label title={t('How many designs the shortlist holds. They are spread over topology classes first (order per flank, polarity included) and then over normalised component space — different designs, not variations of one. Empty = 10.')}>
+                      {t('Shortlist size')}
+                      <input
+                        type="number"
+                        min={1}
+                        value={engineV2Settings.shortlistSize}
+                        placeholder="10"
+                        onChange={(e) =>
+                          setEngineV2Settings((v) => ({ ...v, shortlistSize: e.target.value }))
+                        }
+                        style={{ width: '5rem' }}
+                      />
+                    </label>
+                    <span className="derived" style={{ fontSize: '0.85em' }}>
+                      {t('Target curve: flat')} — {t('per design; tilt and hold-current are declared but not implemented (A5e.2)')}
+                    </span>
+
                     {/* ---- F2: determinism (spec A5e.4) ---- */}
                     <span className="opt-group-cap">{t('Engine v2 — run')}</span>
                     <label title={t('The run seed. Same input and same seed give a byte-identical result. This is the ONE setting where blank does not mean off: blank uses the published default and reports it, because "no seed" would mean "not reproducible".')}>
@@ -15544,6 +15688,111 @@ export default function App() {
                 {t('Engine v2 is on, but this scan ran on the v1 engine — so no gate judged these candidates.')}{' '}
                 {t('The gates run on the three-way scan; the two-way route is not wired to them yet.')}
               </p>
+            )}
+            {/* F3 — THE SHORTLIST (A5e.1).
+                The feasible region, spread over topology classes, ordered by
+                RMS flatness. Sorting is presentation: every column re-sorts
+                and none of them changes which designs are in the list. */}
+            {v2Shortlist && (
+              <div className="shortlist">
+                <h4>
+                  {t('Shortlist')}{' '}
+                  <span className="derived">
+                    {t('{n} of {m} candidates qualified', {
+                      n: String(v2Shortlist.feasibleCount),
+                      m: String(v2Shortlist.consideredCount),
+                    })}
+                  </span>
+                </h4>
+                {v2Shortlist.label && (
+                  <p className="sub nl-warning">⚠ {v2Shortlist.label}</p>
+                )}
+                {v2Shortlist.diagnosis.length > 0 && (
+                  <div className="sub">
+                    <strong>{t('Nothing qualified.')}</strong>
+                    <ul style={{ margin: '0.3rem 0 0 1rem' }}>
+                      {v2Shortlist.diagnosis.map((d, i) => (
+                        <li key={i}>{d}</li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+                {v2Shortlist.rows.length > 0 && (() => {
+                  const COLS = [
+                    ['rms', t('RMS'), (r: (typeof v2Shortlist.rows)[number]) => r.measurements.response?.rmsDeviationDb ?? null, (v: number) => `${v.toFixed(2)} dB`],
+                    ['window', t('window'), (r: (typeof v2Shortlist.rows)[number]) => r.measurements.response?.windowPlusMinusDb ?? null, (v: number) => `±${v.toFixed(2)} dB`],
+                    ['phase', t('phase'), (r: (typeof v2Shortlist.rows)[number]) => r.measurements.phaseTracking.reduce((a, b) => Math.max(a, b.meanAbsDeg), 0), (v: number) => `${v.toFixed(1)}°`],
+                    ['zmin', 'Z min', (r: (typeof v2Shortlist.rows)[number]) => r.result.zMinOhm, (v: number) => `${v.toFixed(1)} Ω`],
+                    ['epdr', 'EPDR', (r: (typeof v2Shortlist.rows)[number]) => r.gates.find((g) => g.gate === 'M-B/EPDR')?.value ?? null, (v: number) => `${v.toFixed(2)} Ω`],
+                    ['diss', t('dissipation'), (r: (typeof v2Shortlist.rows)[number]) => r.gates.find((g) => g.gate === 'M-A')?.value ?? null, (v: number) => `${(v * 100).toFixed(0)} %`],
+                    ['vfs', 'V@fs', (r: (typeof v2Shortlist.rows)[number]) => { const mc = r.gates.filter((g) => g.gate === 'M-C' && g.value !== null); return mc.length ? Math.max(...mc.map((g) => g.value!)) : null; }, (v: number) => `${v.toFixed(1)} dB`],
+                    ['peak', t('peak'), (r: (typeof v2Shortlist.rows)[number]) => r.measurements.response?.narrowPeaks[0]?.db ?? null, (v: number) => `+${v.toFixed(1)} dB`],
+                  ] as const;
+                  const sorted = [...v2Shortlist.rows];
+                  if (shortlistSort) {
+                    const col = COLS.find((c) => c[0] === shortlistSort.key);
+                    if (col) {
+                      sorted.sort((a, b) => {
+                        const va = col[2](a) ?? Number.POSITIVE_INFINITY;
+                        const vb = col[2](b) ?? Number.POSITIVE_INFINITY;
+                        return (va - vb) * shortlistSort.dir;
+                      });
+                    }
+                  }
+                  return (
+                    <div className="v2-scroll">
+                      <table className="scan-table">
+                        <thead>
+                          <tr>
+                            <th>{t('design')}</th>
+                            <th title={t('Order per flank, with polarity — the class the spreading kept apart')}>{t('topology')}</th>
+                            {COLS.map(([key, caption]) => (
+                              <th
+                                key={key}
+                                className={shortlistSort?.key === key ? 'sorted' : ''}
+                                onClick={() =>
+                                  setShortlistSort((cur) =>
+                                    cur?.key === key
+                                      ? cur.dir === 1
+                                        ? { key, dir: -1 }
+                                        : null
+                                      : { key, dir: 1 },
+                                  )
+                                }
+                                title={t('Sort by this column. Sorting is presentation — it never changes which designs are on the shortlist.')}
+                              >
+                                {caption}
+                                {shortlistSort?.key === key ? (shortlistSort.dir === 1 ? ' ▲' : ' ▼') : ''}
+                              </th>
+                            ))}
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {sorted.map((r) => (
+                            <tr key={r.label}>
+                              <td>{r.label}</td>
+                              <td title={r.topologyClass} className="derived">{r.orderSignature}</td>
+                              {COLS.map(([key, , read, fmt]) => {
+                                const v = read(r);
+                                return <td key={key}>{v === null ? '—' : fmt(v)}</td>;
+                              })}
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  );
+                })()}
+                <p className="sub">
+                  {t('Everything here meets every requirement and every gate you set. The order is RMS flatness against the target curve — a view, not a verdict. The choice is yours.')}{' '}
+                  <code title={v2Shortlist.stamp.components.map((c) => `${c.name}=${c.value} — ${c.describe}`).join('\n')}>
+                    {v2Shortlist.stamp.shortlistFingerprint}
+                  </code>
+                </p>
+                {v2Shortlist.notes.map((n, i) => (
+                  <p className="v2-muted" key={i}>{n}</p>
+                ))}
+              </div>
             )}
             {/* F2b — the run stamp, under the table it belongs to.
                 A5e.4 asks for the seed and the fingerprint to be visible at

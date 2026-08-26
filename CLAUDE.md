@@ -20,7 +20,7 @@
 ## Commando's
 
 - `npx tsc -b` — typecheck. Draait vóór elke oplevering, zonder uitzondering.
-- `npx vitest run` — volledige testsuite (89 bestanden, 928 tests, ~4,5 min). Alles groen houden.
+- `npx vitest run` — volledige testsuite (99 bestanden, 1003 tests, ~4,5 min). Alles groen houden.
 - `npx vitest run <pad>` — gerichte run tijdens het werk; de volle suite blijft de acceptatie.
 - `npm run build` — productiebuild (draait ook de typecheck via `tsc -b`).
 
@@ -84,6 +84,31 @@
 - `src/lib/engine2/optimizer/gateCell.test.ts` — de poortkolom als regel: een rij die níet uit een
   v2-run komt leest `absent`, nooit een vinkje, en de cel vergelijkt zelf nooit een waarde met een
   grens.
+
+### F3-guards (eisen, shortlist, ladder)
+- `src/lib/engine2/optimizer/noWeights.test.ts` — **A5e.1 als test.** Scant de satisficing-vlakte
+  (`requirements/`, `shortlist.ts`, `relaxation.ts`, `diversity.ts`) op woorden die een gewogen
+  aggregatie benoemen — `weight`, `priorit`, `importance`, `penalt`, `objective` — in CODE, niet in
+  commentaar of strings, want het besluit zelf moet met naam en toenaam besproken kunnen worden.
+  Zonder woordgrenzen, want een gewichtsvector arriveert vaker als `phaseWeight` dan als `weight`.
+  De v1-ranking (`rankChain3Results`) is bewust buiten het lint en draagt daar zelf een
+  verwijzende notitie over.
+- `src/lib/engine2/requirements/response.test.ts` — het smaakprincipe: smalle **piek** krijgt een
+  kolom, smalle **dip** wordt vergeven. De detector eist een lokaal maximum van zowel het residu
+  als de respons — zonder die tweede eis leest een dip als twéé pieken op zijn schouders, precies
+  de asymmetrie omgekeerd.
+- `src/lib/engine2/optimizer/relaxation.test.ts` — de ladder verruimt alleen falende
+  smaak-eisen, in zichtbare stappen, met etiket; en drie asserts dat een beschermingsgrens
+  onbereikbaar is (type, sleutelverzameling, en een ladder die er graag bij zou willen).
+- `src/lib/engine2/optimizer/diversity.test.ts` — de twee canonieke definities van "verschillend":
+  klasse-sleutel (orde per flank, polariteit erin) en genormaliseerde componentafstand, elk apart
+  testbaar zodat een fout zegt wélke definitie fout is.
+- `src/lib/engine2/optimizer/shortlist.test.ts` — het toelaatbaar gebied, de spreiding, en de
+  **tweetraps-stempel**: dezelfde eisen op dezelfde run zijn byte-identiek, andere eisen geven
+  dezelfde run-vingerafdruk en een ander shortlist-stempel.
+- `src/lib/engine2/optimizer/casus1Shortlist.test.ts` — de F3-golden refs op casus 1
+  (RMS-vlakheid en vensterwaarde per kandidaat) mét vastgelegde parameters, plus de shortlist op
+  het casusboekveld.
 
 De vloer is sinds F0 uitsluitend het getal dat de ONTWERPER invult (`ampMinLoadOhm`, geen default):
 leeg veld = geen oordeel. Eén regel, één plek: `meetsAmpFloor` in `src/lib/impedanceFloor.ts`.

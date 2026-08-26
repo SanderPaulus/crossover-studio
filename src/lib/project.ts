@@ -18,6 +18,24 @@ export interface NetworkDesign {
    * valid just because it is already on the screen.
    */
   bandAtDesign?: { fromHz: number; toHz: number };
+  /**
+   * A5e.2 (F3) — the TARGET CURVE this design is voiced against.
+   *
+   * On the DESIGN and not on the project, deliberately: two voicings of the
+   * same loudspeaker have to exist side by side and be compared. A
+   * project-wide curve would turn "which voicing do I want" into a setting you
+   * toggle back and forth, which is the comparison it should have made easy.
+   *
+   * ABSENT MEANS FLAT, and old projects therefore load unchanged. That is not
+   * the P4 absent-means-off rule: a target curve is not a limit that judges a
+   * design, it is the reference the judgement is measured against, and "no
+   * reference" is not a coherent state for a window requirement. Flat is the
+   * neutral reference and it is reported as such.
+   *
+   * `tilt` and `hold-current` exist in the vocabulary and are REFUSED by the
+   * engine rather than approximated — see `engine2/requirements/targetCurve.ts`.
+   */
+  targetCurve?: { type: 'flat' | 'tilt' | 'hold-current'; tiltDbPerDecade?: number; tiltPivotHz?: number };
 }
 
 /**
@@ -264,6 +282,16 @@ export interface ProjectDesign {
   engineV2?: {
     verticalWindowDeg?: string;
     amplifierPowerW?: string;
+    /**
+     * A5e.1 (F3) — the TASTE REQUIREMENTS. Acceptance limits on the outcome,
+     * not weights and not gates: they filter the delivered field, they never
+     * touch the search, and the relaxation ladder may widen them visibly.
+     * Empty = that requirement is not being asked (P4).
+     */
+    splWindowPlusMinusDb?: string;
+    maxPhaseTrackingDeg?: string;
+    /** How many designs the shortlist holds. Empty = the published default. */
+    shortlistSize?: string;
     maxDissipationPct?: string;
     minEpdrOhm?: string;
     maxDriveOnFsDb?: string;

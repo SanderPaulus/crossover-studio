@@ -136,6 +136,38 @@ export interface Peak {
  * breakup peak sits on a response that is going somewhere, and half-power
  * points of the absolute level would measure the slope rather than the
  * resonance.
+ *
+ * ⚠ THE DIP-SHOULDER ARTEFACT, AND WHY IT IS NOT FILTERED HERE (casebook V18).
+ *
+ * A residual is `curve − trend`, and a narrow DIP drags the trend down with
+ * it — so on both flanks of that dip the curve sits above the depressed trend
+ * and the residual goes positive. On a nominally FLAT curve that means one dip
+ * reads as two peaks straddling it: measured on a synthetic 4 dB, 1/20-octave
+ * dip at 5 kHz, this function returned 4485 Hz and 5597 Hz, both +0.95 dB.
+ * The F3 system-response scan does filter them out, because a system sum is
+ * nominally flat and a genuine narrow peak there IS a local maximum of the
+ * curve (`requirements/response.ts`).
+ *
+ * THIS SCAN CANNOT USE THAT TEST, and both candidate remedies were tried and
+ * measured on casus 1 before this comment was written:
+ *
+ *  · "Also require a local maximum of the CURVE." Kills real breakups. A
+ *    breakup sits on a response that is going somewhere — on a woofer's
+ *    rolloff a cone resonance only FLATTENS the descent, it does not reverse
+ *    it. Casus 1's documented +3.2 dB peak at 1395 Hz disappeared.
+ *  · "Reject a crest whose neighbouring residual minimum is deeper than the
+ *    crest is tall." Kills them too, and the data says why: that same 1394 Hz
+ *    crest reads +3.25 dB between minima of −4.54 and −5.74 dB. On a rippling
+ *    driver response a crest between two deep troughs is not an artefact — it
+ *    is what a breakup looks like.
+ *
+ * So the artefact is real here in principle and is left in, deliberately. What
+ * bounds it: a flanking crest is roughly a quarter of the notch's depth, so it
+ * takes a notch of several dB to clear `PEAK_MIN_DB_OVER_TREND` at all, and
+ * M-H's severity weighting — the uncalibrated one, waiting on HD data — is
+ * what decides whether a detected peak constrains anything. A filter that
+ * removed a quarter of the real detections to remove this would be a worse
+ * scan, and the F3 test that found the artefact says so in its own comment.
  */
 export function findResidualPeaks(
   freq: readonly number[],
@@ -147,6 +179,7 @@ export function findResidualPeaks(
   for (let i = 1; i < freq.length - 1; i++) {
     const v = residualDb[i];
     if (!(v > residualDb[i - 1] && v >= residualDb[i + 1] && v >= minDb)) continue;
+
     const target = v - halfDropDb;
     let lo = i;
     while (lo > 0 && residualDb[lo] > target) lo--;

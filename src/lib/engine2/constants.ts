@@ -395,6 +395,66 @@ export const BOUND_BRACKET_DOUBLINGS = 20;
  */
 export const PREBOUND_SLACK_PER_ORDER = 2.0;
 
+/* ------------------------------------------------------------------ *
+ * F3 — requirements, the target curve and the shortlist
+ * ------------------------------------------------------------------ */
+
+/**
+ * A5e.1 — the smoothing the SPL WINDOW requirement is judged on, in octaves.
+ *
+ * The window asks "is this acceptable", and that question is about the shape a
+ * listener hears rather than about every sample the measurement holds. A sixth
+ * of an octave is the width at which a feature stops being a resonance the ear
+ * tracks and starts being ripple; narrower features fall out of this judgement
+ * ON PURPOSE and are reported separately (peaks) or forgiven (dips).
+ *
+ * A resolution choice about a JUDGEMENT, not a band and not a project number:
+ * it moves with no measurement and it is the same for every design. @p6 rule
+ */
+export const WINDOW_SMOOTHING_OCTAVES = 1 / 6;
+
+/**
+ * A5e.1 — how tall a NARROW feature has to be over the smoothed trend before
+ * it is reported as a peak, in dB.
+ *
+ * Deliberately the same convention the breakup scan uses on a driver
+ * (`PEAK_MIN_DB_OVER_TREND`), applied to the system sum: a feature is narrow
+ * when the window smoothing removes it, and it is a peak when what the
+ * smoothing removed points UP. There is no matching constant for dips, and
+ * that absence is the taste principle rather than an oversight — see A5e.1.
+ * @p6 rule
+ */
+export const NARROW_PEAK_MIN_DB = 0.7;
+
+/**
+ * A5e.1 — how many designs the shortlist holds when the project states no
+ * number. A PRESENTATION choice: it changes how many of the feasible designs
+ * are shown, never which ones are feasible. @p6 rule
+ */
+export const DEFAULT_SHORTLIST_SIZE = 10;
+
+/**
+ * A5e.1 — the relaxation ladder's step, as a FRACTION of the stated
+ * requirement per rung.
+ *
+ * Visible steps, and visible means countable: each rung widens a failing taste
+ * requirement by this much of its original value, so the label can say exactly
+ * what the delivered design meets ("±2.25 dB — you asked for ±1.5"). A ratio,
+ * never an absolute dB or degree, because the ladder has to mean the same
+ * thing to a 1 dB window and to a 15° phase requirement. @p6 rule
+ */
+export const RELAXATION_STEP_FRACTION = 0.25;
+
+/**
+ * A5e.1 — how many rungs the ladder may climb before it gives up and reports
+ * that the requirement is out of reach on the scanned field.
+ *
+ * A bound on an admission of failure, not on a search: at this point the
+ * honest answer is "not within what was scanned", and climbing further would
+ * turn a stated requirement into a formality. @p6 rule
+ */
+export const RELAXATION_MAX_RUNGS = 8;
+
 /**
  * Points on the log grid the NETWORK is solved on for the report.
  *
