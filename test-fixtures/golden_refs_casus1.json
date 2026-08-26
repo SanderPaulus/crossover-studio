@@ -199,10 +199,67 @@
   }
  },
  "grens_inversies": {
-  "maxL_bij_Rs0.5_budget2.5dB_mH": 2.65,
-  "maxRs_Qmult1.5_ohm": 1.45,
+  "_": "A5d.6-inversies: budgetten omgezet in grenzen op de ZOEKRUIMTE. Bij F1 bewaard met status F2-REFERENTIE; sinds F2 gewone asserts (src/lib/engine2/optimizer/boundInversions.test.ts). Elke waarde draagt nu haar parameters, conform de V15-procesregel.",
+  "maxRs_Qmult1_3_ohm": 0.87,
+  "maxRs_Qmult1_5_ohm": 1.45,
+  "maxRs_Qmult2_0_ohm": 2.9,
+  "maxL_bij_Rs0_5_budget2_5dB_mH": 2.432,
+  "_maxL_sessie_25_08": {
+   "_": "De INGETROKKEN 25-08-waarde met de parameters waarmee zij berekend is. Bewaard omdat de reproductie ervan het bewijs is dat de bandkeuze de volledige verklaring was; de golden-suite draait hem als staande test.",
+   "waarde": 2.65,
+   "band_hz": [
+    40,
+    110
+   ],
+   "referentie_hz": 150,
+   "pad_R_ohm": 0.5,
+   "budget_dB": 2.5,
+   "herkomst": "docs/prototype/metrics5.py, functie lf_bump: m=(F>40)&(F<110), i150=argmin|F-150|",
+   "reproductie": "Gevoed met precies die band en referentie lost de engine 2.71 mH op, en de M-D-bult bij de genoteerde 2.65 mH ligt binnen de dB-tolerantieklasse van het 2.5 dB-budget. Het restverschil is de rasterkeuze: het prototype evalueerde op zijn eigen 1600-punts log-raster, de engine op het raster van de nabije-veldmeting."
+  },
   "max_padR_tweeter_gap_ohm": 3.5,
-  "status": "F2-REFERENTIE. A5d.6 zet budgetten om in grenzen op de ZOEKRUIMTE van de optimizer, en optimizer-koppeling valt buiten F1. Deze waarden zijn hier bewaard als acceptatiecriterium voor de fase die ze gebruikt, niet voor deze."
+  "parameters": {
+   "_": "V15-PROCESREGEL: elke referentie die een band, een middeling of een grid gebruikt legt die parameters hier vast. Zonder deze parameters is de waarde niet reproduceerbaar en dus geen referentie.",
+   "maxRs_Qmult": {
+    "formule": "Rs <= R_e * (q - 1)",
+    "R_e_ohm": 2.9,
+    "R_e_herkomst": "afgeleide_parameters.woofer.Re_werkelijk_ca — de meterlezing van het parallelle wooferpaar. NIET de door de engine geschatte 3.81 Ohm: V8d documenteert waarom die overschat (de sweep begint minder dan een octaaf onder f_L). Let op dat de M-E-referentie 3.05 Ohm gebruikt (docs/prototype/compare.py, Re_w); dat zijn twee lezingen van dezelfde grootheid in hetzelfde casusboek, en de inversie is met 2.90 berekend.",
+    "q_max": 1.5
+   },
+   "maxL_bult": {
+    "formule": "grootste L waarvoor de M-D-bult <= budget, 1D-oplossing op de gemeten Z-piek en het gemeten nabije veld",
+    "budget_dB": 2.5,
+    "pad_R_ohm": 0.5,
+    "tegenvoorbeeld_pad_R_ohm": 2.0,
+    "band": "A4 M-D: B = [0,7*f_p, 2,2*f_p], f_ref = 3*f_p, geclipt op de NF-geldigheid (A5.5)",
+    "f_p_hz": 52.37,
+    "assert": "op de METRIEK, niet op de mH: de bult bij de genoteerde L moet gelijk zijn aan het budget binnen de dB-klasse. Een geinverteerde grens erft de tolerantie van de metriek die zij inverteert; een eigen componenttolerantieklasse zou die relatie verbergen."
+   },
+   "max_padR": {
+    "formule": "R_max = Z_doorlaatband * (10^(A/20) - 1)",
+    "Z_referentie": "mediaan |Z| over de afgeleide doorlaatband van de weg, op het gemeten raster",
+    "doorlaatband_hz": [
+     2250,
+     20000
+    ],
+    "doorlaatband_herkomst": "afgeleid uit de kruispunten van HUIDIG (A4 M-C-conventie); het bovenste einde is open en valt terug op de meetgeldigheid",
+    "budget_dB": 4.1,
+    "budget_herkomst": "verankerde_gaps_dB.tweeter_tov_mid van 25-08. De engine leest op de kale gemeten niveaus 3,44 dB; A5d.4(a) wil het ankerniveau NA baffle step en dat wacht op A5e.2, dus het budget is hier als PARAMETER vastgelegd in plaats van uit de engine genomen.",
+    "demping_marge_dB": 0.0,
+    "gemeten": 3.4894
+   },
+   "voorbound_serie_C": {
+    "_": "TOPOLOGIE-BEWUSTE VOORBOUND, met speling. Geen acceptatiewaarde: het acceptatiecriterium is dat de voorbound de GEREALISEERDE tak niet uitsluit.",
+    "Z_ohm": 3.99,
+    "Z_herkomst": "mediaan |Z| van de mid over 700-1500 Hz (de sessieband van de 25-08-analyse)",
+    "f_s_hz": 88.81,
+    "verzwakking_dB": 40.0,
+    "gerealiseerd_uF": 42.0,
+    "gerealiseerd_orde": 4,
+    "casusboek": "V12-tegenvoorbeeld: enkelvoudige serie-C-voorbound 5-10 uF tegen een gerealiseerde 4e-orde midtak met 42 uF in serie."
+   }
+  },
+  "herziening_F2": "EEN van de drie is herzien, en het is het derde geval van het V15-patroon. De bult-inversie was berekend op de SESSIEBAND van metrics5.py (40-110 Hz, genormeerd op 150 Hz) waar A4 M-D om een uit f_p afgeleide band vraagt. Op de afgeleide conventie lost de engine 2.43 mH op in plaats van 2.65; gevoed met de sessieparameters reproduceert zij de ingetrokken waarde, en die reproductie staat als staande test. De twee andere inversies reproduceren op hun eigen parameters: de Qes-inversie exact, de pad-R-inversie tot 0,011 Ohm (binnen de ohm-klasse). De VOORBOUND op de serie-C is geen acceptatiewaarde maar een mechanisme-eis: een voorbound met speling mag het ontwerp waar zij op wordt losgelaten nooit zelf uitsluiten."
  },
  "vensterinteractie": {
   "midband_octaaf": 2.49,

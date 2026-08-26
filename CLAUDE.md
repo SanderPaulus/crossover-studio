@@ -20,7 +20,7 @@
 ## Commando's
 
 - `npx tsc -b` — typecheck. Draait vóór elke oplevering, zonder uitzondering.
-- `npx vitest run` — volledige testsuite (77 bestanden, 790 tests, ~4,5 min). Alles groen houden.
+- `npx vitest run` — volledige testsuite (89 bestanden, 928 tests, ~4,5 min). Alles groen houden.
 - `npx vitest run <pad>` — gerichte run tijdens het werk; de volle suite blijft de acceptatie.
 - `npm run build` — productiebuild (draait ook de typecheck via `tsc -b`).
 
@@ -45,6 +45,30 @@
 - `src/lib/browserSafe.test.ts` — kent nu ook `*.fixture.ts` (test-only loaders die van
   schijf lezen) als uitzondering, met een tweede test die pint dat niets uit de bundel er
   een importeert.
+
+### F2-guards (poorten, grenzen, determinisme)
+- `src/lib/engine2/optimizer/determinism.test.ts` — A5e.4: twee runs met dezelfde seed
+  byte-identiek, een andere seed bereikt aantoonbaar de zoektocht (niet alleen de
+  vingerafdruk), en de vingerafdruk beweegt mee met **elke** component waaruit hij bestaat.
+  Die laatste loopt de componentenlijst af in plaats van er drie te prikken, plus een
+  dekkingsassert zodat een nieuwe component niet ongetest kan meeliften.
+- `src/lib/engine2/optimizer/gateEnforcement.test.ts` — de twee acceptatieregressies van F2.
+  V2-pathologie (fasedoel via serie-R die naar de wand drift) en geen-ontwijking (élke
+  opgeleverde kandidaat, niet alleen de winnaar). Beide asserteren óók dat de **ongepoorte**
+  run het gedrag wél vertoont — een poortregressie op een casus die zich altijd gedraagt
+  bewijst niets. Plus P2: een gewapende maar ruime poort levert een byte-identiek netwerk op,
+  wat uitsluit dat een poort als strafterm meedoet.
+- `src/lib/engine2/optimizer/gates.test.ts` — afwezig = uit én zichtbaar, de EPDR-vloer en de
+  |Z|-vloer als twee onafhankelijke grenzen door één regel (de |Z|-vergelijking blijft van
+  `meetsAmpFloor`), en "hoogdoorlaatbeschermd" afgeleid uit de takoverdracht in plaats van uit
+  een lijst wegnamen.
+- `src/lib/engine2/optimizer/boundInversions.test.ts` — de `grens_inversies`-referenties van
+  casus 1, nu gewone asserts. De bult-inversie assert op de **metriek** (de bult bij de
+  genoteerde L is het budget, binnen de dB-klasse) in plaats van op de millihenry: een
+  geïnverteerde grens erft de tolerantie van de metriek die zij inverteert.
+- `src/lib/engine2/gateReport.test.ts` — P4's zichtbare helft: elke poort staat in het rapport,
+  inactief mét waarde en met "no limit set", en de poortwaarde ís de metriekwaarde (geen tweede
+  berekening ernaast).
 
 De vloer is sinds F0 uitsluitend het getal dat de ONTWERPER invult (`ampMinLoadOhm`, geen default):
 leeg veld = geen oordeel. Eén regel, één plek: `meetsAmpFloor` in `src/lib/impedanceFloor.ts`.

@@ -39,14 +39,32 @@ export interface EngineSelection {
   /**
    * The engine the OPTIMISER runs on.
    *
-   * F1 pins this to 'v1' whatever the flag says, because F1 ships no optimiser
-   * changes at all — the toggle switches on reporting and nothing else. The
-   * field exists now so that F2 can start returning 'v2' here without any
-   * caller being rewritten.
+   * F1 pinned this to 'v1' whatever the flag said, because F1 shipped no
+   * optimiser change at all. F2 delivers the v2 optimisation path — gates
+   * M-A/M-B/M-C as feasibility filters and as hard bounds in the polish, a
+   * seeded and budgeted search, measurement-derived search-space bounds — and
+   * this field is now what selects it.
    *
-   * TODO(F2, spec A6): gates M-A/M-B/M-C move into the engine and this becomes
-   * `enabled ? 'v2' : 'v1'`. The per-project gate limits that F2 needs are
-   * settings, not defaults (P4).
+   * IT IS A GUARD, NOT A LABEL. `runV2Optimization` refuses to run on a
+   * selection that says 'v1', so there is no route into the v2 path that does
+   * not pass through the flag. That is what keeps "toggle off = byte-identical"
+   * a claim about code that cannot be reached, rather than about code that
+   * chooses not to act — and it is why this field is worth having at all
+   * instead of reading the boolean at the call site.
+   *
+   * The per-project gate limits and budgets the v2 path uses are settings
+   * without defaults (P4): turning the engine on arms no limit by itself.
+   *
+   * TODO(F2b): v2-worker achter de toggle, eigen entry op de import-allowlist,
+   * v1-worker onaangeraakt. As shipped, the v2 path is reachable through this
+   * selection but the app's SCAN button still runs v1 — and the reason is the
+   * toggle invariant itself. Gate enforcement has to happen inside the polish,
+   * which means the module that runs the tuner must be able to call the metric
+   * library; `optimWorker.ts` may not import `engine2/`, and adding it to
+   * `toggleRegression`'s allow-list is a decision about that invariant rather
+   * than a wiring detail. The fix is a SECOND worker that belongs to v2, on the
+   * allow-list in its own right, with the v1 worker untouched so its
+   * byte-identity claim needs no re-proving.
    */
   optimizer: EngineId;
   /** Whether the v2 REPORTING layer (ingest pass + metric library) is shown. */
@@ -73,7 +91,7 @@ export function engineV2Mark(): string {
 export function selectEngine(engineV2Enabled: boolean | undefined): EngineSelection {
   const enabled = engineV2Enabled === true;
   return {
-    optimizer: 'v1',
+    optimizer: enabled ? 'v2' : 'v1',
     reporting: enabled,
     version: ENGINE_V2_VERSION,
     label: ENGINE_V2_LABEL,

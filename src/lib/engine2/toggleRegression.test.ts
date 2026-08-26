@@ -188,13 +188,17 @@ describe('engine v2 toggle — off means unchanged', () => {
     expect(files.some((f) => f.startsWith(join('lib', 'engine2')))).toBe(true);
   });
 
-  it('absent, false and off are the same selection; F1 never routes the optimiser to v2', () => {
+  it('absent, false and off are the same selection; only ON routes the optimiser to v2', () => {
     expect(selectEngine(undefined)).toEqual(ENGINE_V1_ONLY);
     expect(selectEngine(false)).toEqual(ENGINE_V1_ONLY);
     expect(selectEngine(false).reporting).toBe(false);
+    expect(selectEngine(false).optimizer).toBe('v1');
     const on = selectEngine(true);
     expect(on.reporting).toBe(true);
-    expect(on.optimizer).toBe('v1'); // F1 ships no optimiser change at all.
+    // F1 pinned this to 'v1' because F1 shipped no optimiser change. F2 ships
+    // the v2 optimisation path, and this field is the guard on it: the claim
+    // that matters — off is v1 — is asserted above and is unchanged.
+    expect(on.optimizer).toBe('v2');
     expect(on.version).toBe(ENGINE_V1_ONLY.version);
   });
 });

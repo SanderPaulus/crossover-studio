@@ -74,11 +74,29 @@ export function lfBump(
   hGrid: readonly number[],
   hEl: readonly Complex[],
   fPeakHz: number,
-  opts: { validHz?: [number, number]; belowHz?: number } = {},
+  opts: {
+    validHz?: [number, number];
+    belowHz?: number;
+    /**
+     * EXPLICIT band and normalisation frequency, replacing the derivation from
+     * f_p. Exists for one purpose and it is not an escape hatch: reproducing a
+     * WITHDRAWN reference whose band belonged to one measurement session.
+     *
+     * A4 M-C's function has taken its passband as an argument since F1 for the
+     * same reason, and the V15 process rule is why — a reference that depends
+     * on a band records that band, and a test can only check the record if the
+     * metric can be fed it. Nothing in the engine passes these; the golden
+     * suite does, and says whose numbers it is reproducing.
+     */
+    overrideBandHz?: [number, number];
+    overrideReferenceHz?: number;
+  } = {},
 ): LfBumpResult | null {
   const notes: string[] = [];
-  const band: [number, number] = [MD_BAND_LOW_OVER_FP * fPeakHz, MD_BAND_HIGH_OVER_FP * fPeakHz];
-  let reference = MD_REFERENCE_OVER_FP * fPeakHz;
+  const band: [number, number] = opts.overrideBandHz
+    ? [opts.overrideBandHz[0], opts.overrideBandHz[1]]
+    : [MD_BAND_LOW_OVER_FP * fPeakHz, MD_BAND_HIGH_OVER_FP * fPeakHz];
+  let reference = opts.overrideReferenceHz ?? MD_REFERENCE_OVER_FP * fPeakHz;
 
   const valid = opts.validHz;
   if (valid && reference > valid[1]) {

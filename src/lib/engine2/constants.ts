@@ -308,6 +308,93 @@ export const SPL_SCAN_GRID_POINTS = 500;
  */
 export const DIFFRACTION_DFT_POINTS = 1024;
 
+/* ------------------------------------------------------------------ *
+ * F2 — gates, bounds and the determinism policy
+ * ------------------------------------------------------------------ */
+
+/**
+ * THE RUN SEED a v2 optimisation uses when the project states none.
+ *
+ * Note carefully that this is NOT a P4 violation, and the distinction is the
+ * whole reason it is written down here. P4 forbids a LIMIT or a WEIGHT with a
+ * silent default, because such a default takes part in the answer without the
+ * designer having asked for it. A seed takes part in nothing: it selects which
+ * of several equally valid starting points the search visits, and the
+ * alternative to a default is not "off" but "not reproducible" — which is
+ * exactly the failure A5e.4 exists to prevent. So the seed always has a value,
+ * it is always reported, and the designer may replace it.
+ *
+ * The number itself carries no meaning at all; any fixed value would do.
+ * @p6 rule
+ */
+export const DEFAULT_RUN_SEED = 20260826;
+
+/**
+ * How many independent starting points a v2 run explores when the project
+ * states no number. A SEARCH-DEPTH choice, not a limit: it changes how much
+ * of the landscape is visited, never what counts as acceptable. @p6 rule
+ */
+export const DEFAULT_RUN_STARTS = 3;
+
+/**
+ * How far a seeded start may be jittered from the network it starts at, in
+ * DECADES of component value. Dimensionless (a log-space radius), and clipped
+ * to the search box in every case, so it can never place a start outside the
+ * bounds the budgets and the app agree on. @p6 rule
+ */
+export const RUN_START_JITTER_DECADES = 0.35;
+
+/**
+ * A branch counts as HIGH-PASS PROTECTED (A4 M-C's scope) when its own
+ * electrical transfer sits at least this many dB LOWER half an octave below
+ * its passband floor than inside the passband.
+ *
+ * Any rise at all is in principle a high pass; a measured curve ripples, so
+ * the test asks for a rise that is not ripple. Derived from the network in
+ * every case — never "the driver is not the lowest way", which would count
+ * ways, and never a driver name. @p6 rule
+ */
+export const HP_PROTECTION_MIN_RISE_DB = 1.0;
+
+/** How far below the passband floor that rise is measured, in octaves. @p6 rule */
+export const HP_PROTECTION_PROBE_OCTAVES = 0.5;
+
+/**
+ * Bisection steps for the 1-D budget inversions of A5d.6.
+ *
+ * A resolution choice on a monotone scalar solve, not a physical number: 60
+ * halvings take any bracket this app can pose to far below the precision of
+ * the measurement it is solving on. @p6 rule
+ */
+export const BOUND_INVERSION_STEPS = 60;
+
+/**
+ * How many times a budget inversion may DOUBLE its bracket before giving up.
+ *
+ * A search-procedure bound, not a component limit: it only says how far the
+ * solve is willing to look for the point where the budget is first exceeded,
+ * and 20 doublings span every physically buildable value many times over.
+ * @p6 rule
+ */
+export const BOUND_BRACKET_DOUBLINGS = 20;
+
+/**
+ * A5d.6 — the SLACK on a topology-aware pre-bound, per filter order above the
+ * first.
+ *
+ * The spec is explicit that a pre-bound distributed over several sections is
+ * exact only for a single section and "verruimt per extra filterorde —
+ * toepassen als zoekdoos-vormgeving met speling; de poort blijft de
+ * autoriteit". V12 is the reason the wording is that careful: a single-section
+ * series-C pre-bound of 5–10 µF collides with a realised fourth-order mid
+ * branch carrying 42 µF in series.
+ *
+ * ⚠ UNCALIBRATED, like the breakup severity weighting. It shapes a search box
+ * and decides nothing: every consumer must mark it as slack, and the gate
+ * stays the authority. @p6 rule
+ */
+export const PREBOUND_SLACK_PER_ORDER = 2.0;
+
 /**
  * Points on the log grid the NETWORK is solved on for the report.
  *

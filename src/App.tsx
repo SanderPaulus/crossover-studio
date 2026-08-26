@@ -119,6 +119,7 @@ import {
   type AdapterResponse,
 } from './lib/engine2/appAdapter.ts';
 import { ctcKey } from './lib/engine2/metrics/types.ts';
+import { DEFAULT_RUN_SEED } from './lib/engine2/constants.ts';
 import { BaffleView } from './components/BaffleView.tsx';
 import { CatalogManager } from './components/CatalogManager.tsx';
 import { helpSectionForTab } from './lib/help.ts';
@@ -1524,12 +1525,59 @@ export default function App() {
    * v2 modules loaded. F2+ will hook the optimiser onto the SAME flag through
    * the same façade, so this stays one decision rather than a dozen.
    */
+  /** THE MINIMUM LOAD YOUR AMPLIFIER IS RATED FOR (Ω) — null until you say.
+   *
+   *  There used to be a built-in 2.5 Ω here, and it came from one amplifier
+   *  (a NAD M10 V2). A tube amp, a PA amp and a Purifi module want three
+   *  different answers, and the app cannot see which one is on the other end
+   *  of the cable — so it asks, and a blank means the engine holds the design
+   *  to nothing. The delivered minimum is measured and shown either way.
+   *
+   *  A PREFERENCE, not project data: it describes the owner's rack, not this
+   *  loudspeaker, so it lives in localStorage next to the other engine
+   *  thresholds and survives Reset. */
+  const [ampMinLoadOhm, setAmpMinLoadOhm] = useState<number | null>(() => {
+    const raw = localStorage.getItem('ads-amp-min-load');
+    if (raw === null || raw === '') return null;
+    const v = Number(raw);
+    return Number.isFinite(v) && v > 0 ? v : null;
+  });
+  // DECLARED HERE, above the engine-v2 report memo, because that memo reads it:
+  // the plain |Z| floor is one of M-B's two independently settable limits and
+  // the report has to be able to show it. Moved rather than duplicated — the
+  // same number in two places is how the two come to disagree.
+
   const [engineV2Enabled, setEngineV2Enabled] = useState(false);
-  /** The two v2 project settings. Empty = the metric that needs it stays off. */
+  /**
+   * The v2 project settings. EMPTY = ABSENT, everywhere and always (P4): the
+   * metric that needs it stays off, the gate that needs it is not judging, the
+   * budget that needs it does not narrow the search box. The placeholders in
+   * the fields below are GHOSTS — suggestions a reader can see and the engine
+   * never receives.
+   */
   const [engineV2Settings, setEngineV2Settings] = useState<{
     verticalWindowDeg: string;
     amplifierPowerW: string;
-  }>({ verticalWindowDeg: '', amplifierPowerW: '' });
+    maxDissipationPct: string;
+    minEpdrOhm: string;
+    maxDriveOnFsDb: string;
+    lfBumpBudgetDb: string;
+    qesMultiplierMax: string;
+    dampingMarginDb: string;
+    runSeed: string;
+    runBudgetEvals: string;
+  }>({
+    verticalWindowDeg: '',
+    amplifierPowerW: '',
+    maxDissipationPct: '',
+    minEpdrOhm: '',
+    maxDriveOnFsDb: '',
+    lfBumpBudgetDb: '',
+    qesMultiplierMax: '',
+    dampingMarginDb: '',
+    runSeed: '',
+    runBudgetEvals: '',
+  });
   /** Optional crossover-range constraint for the optimizer (Hz). */
   const [xoRangeOn, setXoRangeOn] = useState(false);
   /** Crossover point the designer picks: centre frequency ± margin (Hz).
@@ -3031,6 +3079,30 @@ export default function App() {
         .map(Number)
         .filter((v) => Number.isFinite(v));
       const power = Number(engineV2Settings.amplifierPowerW);
+      /* EMPTY IS ABSENT (P4). Not "empty is zero", and not "empty is a
+       * sensible default": a gate whose field is blank must reach the engine
+       * as a missing key, so the report can say "no limit set" rather than
+       * render a limit nobody typed. `undefined` is the only value that
+       * carries that meaning through, so every field goes through here. */
+      const stated = (raw: string, scale = 1): number | undefined => {
+        if (raw.trim() === '') return undefined;
+        const v = Number(raw);
+        return Number.isFinite(v) ? v * scale : undefined;
+      };
+      const gateAndBudget = {
+        // M-A is entered as a percentage and held as a fraction: the field
+        // speaks the designer's language, the engine speaks A4's.
+        maxDissipationFraction: stated(engineV2Settings.maxDissipationPct, 1 / 100),
+        minEpdrOhm: stated(engineV2Settings.minEpdrOhm),
+        maxDriveOnFsDb: stated(engineV2Settings.maxDriveOnFsDb),
+        lfBumpBudgetDb: stated(engineV2Settings.lfBumpBudgetDb),
+        qesMultiplierMax: stated(engineV2Settings.qesMultiplierMax),
+        dampingMarginDb: stated(engineV2Settings.dampingMarginDb),
+        // The plain |Z| floor is NOT duplicated here: it is the amplifier
+        // rating the project already carries, and one number in two places is
+        // how the two come to disagree.
+        ...(ampMinLoadOhm !== null ? { ampMinLoadOhm } : {}),
+      };
 
       const built = buildEngineV2Input({
         sessionId: xoName || t('unnamed session'),
@@ -3043,6 +3115,9 @@ export default function App() {
             ? { amplifierPowerW: power }
             : {}),
           ...(Object.keys(orderByPair).length > 0 ? { orderByPair } : {}),
+          ...Object.fromEntries(
+            Object.entries(gateAndBudget).filter(([, v]) => v !== undefined),
+          ),
         },
       });
       return { report: buildReport(built.input), ambiguous: built.ambiguous, error: null as string | null };
@@ -3069,6 +3144,7 @@ export default function App() {
     acSlopeWoofer,
     acSlopeMidHp,
     engineV2Settings,
+    ampMinLoadOhm,
     xoName,
   ]);
 
@@ -4952,23 +5028,6 @@ export default function App() {
     const v = raw === null ? NaN : Number(raw);
     return Number.isFinite(v) && v >= 0 ? v : 1.0;
   });
-  /** THE MINIMUM LOAD YOUR AMPLIFIER IS RATED FOR (Ω) — null until you say.
-   *
-   *  There used to be a built-in 2.5 Ω here, and it came from one amplifier
-   *  (a NAD M10 V2). A tube amp, a PA amp and a Purifi module want three
-   *  different answers, and the app cannot see which one is on the other end
-   *  of the cable — so it asks, and a blank means the engine holds the design
-   *  to nothing. The delivered minimum is measured and shown either way.
-   *
-   *  A PREFERENCE, not project data: it describes the owner's rack, not this
-   *  loudspeaker, so it lives in localStorage next to the other engine
-   *  thresholds and survives Reset. */
-  const [ampMinLoadOhm, setAmpMinLoadOhm] = useState<number | null>(() => {
-    const raw = localStorage.getItem('ads-amp-min-load');
-    if (raw === null || raw === '') return null;
-    const v = Number(raw);
-    return Number.isFinite(v) && v > 0 ? v : null;
-  });
   /** B1 — BOM cap per channel (EUR; 0 = off): class loss in the ranking above
    *  it, shown in the strip. A design decision, not a weight. */
   const [bomCapEur, setBomCapEur] = useState<number>(() => {
@@ -5253,10 +5312,7 @@ export default function App() {
         snapBoundToSeries,
         stagedOn,
         engineV2Enabled,
-        engineV2: {
-          verticalWindowDeg: engineV2Settings.verticalWindowDeg,
-          amplifierPowerW: engineV2Settings.amplifierPowerW,
-        },
+        engineV2: { ...engineV2Settings },
         targetRipple,
         soloSensDb,
         soloFloorOn,
@@ -5411,6 +5467,14 @@ export default function App() {
     setEngineV2Settings({
       verticalWindowDeg: d.engineV2?.verticalWindowDeg ?? '',
       amplifierPowerW: d.engineV2?.amplifierPowerW ?? '',
+      maxDissipationPct: d.engineV2?.maxDissipationPct ?? '',
+      minEpdrOhm: d.engineV2?.minEpdrOhm ?? '',
+      maxDriveOnFsDb: d.engineV2?.maxDriveOnFsDb ?? '',
+      lfBumpBudgetDb: d.engineV2?.lfBumpBudgetDb ?? '',
+      qesMultiplierMax: d.engineV2?.qesMultiplierMax ?? '',
+      dampingMarginDb: d.engineV2?.dampingMarginDb ?? '',
+      runSeed: d.engineV2?.runSeed ?? '',
+      runBudgetEvals: d.engineV2?.runBudgetEvals ?? '',
     });
     setXoRangeOn(d.xoRangeOn ?? false);
     // Legacy lo/hi range migrates to centre ± margin.
@@ -13792,13 +13856,13 @@ export default function App() {
                   {t('Keep cone breakup ≥20 dB down')}
                 </label>
                 <span className="opt-group-cap">{t('Engine')}</span>
-                <label title={t('Engine v2 (experimental) — spec F1. Switches on a REPORTING panel: the measurement-ingest pass, the metric library and the pre-design blocks. It changes nothing about the optimizer, the simulation or any saved design, and with it off the app behaves exactly as it always has.')}>
+                <label title={t('Engine v2 (experimental) — spec F1/F2. Switches on the measurement-ingest pass, the metric library, the pre-design blocks AND the hard gates: M-A dissipation, M-B EPDR beside the plain |Z| floor, M-C drive on a driver’s resonance. Turning it on arms no limit by itself — every gate and every budget below is blank until you state one. With it off the app behaves exactly as it always has.')}>
                   <input
                     type="checkbox"
                     checked={engineV2Enabled}
                     onChange={(e) => setEngineV2Enabled(e.target.checked)}
                   />{' '}
-                  {t('Engine v2 (experimental) — report only')}
+                  {t('Engine v2 (experimental) — metrics + hard gates')}
                 </label>
                 {engineV2Enabled && (
                   <>
@@ -13825,6 +13889,135 @@ export default function App() {
                           setEngineV2Settings((v) => ({ ...v, amplifierPowerW: e.target.value }))
                         }
                         style={{ width: '5rem' }}
+                      />
+                    </label>
+
+                    {/* ---- F2: the GATES (A4 M-A/M-B/M-C, spec A2 P2/P4) ----
+                      * Every one of these is blank by default and blank means
+                      * ABSENT, not zero and not a default: the gate is off,
+                      * the report still shows what the design reads, and it
+                      * says "no limit set" beside it. The `placeholder` text
+                      * is a GHOST — a suggestion the designer can see and the
+                      * engine never receives (P4). Type nothing and nothing
+                      * judges the design. */}
+                    <span className="opt-group-cap">{t('Engine v2 — hard gates')}</span>
+                    <label title={t('M-A — the largest share of the amplifier power that may be burnt in the filter resistors, IEC-weighted. A hard gate: no candidate and no polish step may exceed it, whatever it wins elsewhere. Empty = no limit; the percentage is still reported.')}>
+                      {t('Max dissipation %')}
+                      <input
+                        type="number"
+                        min={0}
+                        max={100}
+                        value={engineV2Settings.maxDissipationPct}
+                        placeholder="35"
+                        onChange={(e) =>
+                          setEngineV2Settings((v) => ({ ...v, maxDissipationPct: e.target.value }))
+                        }
+                        style={{ width: '5rem' }}
+                      />
+                    </label>
+                    <label title={t('M-B — the EPDR floor in ohms: |Z|/(2·cos²φ), the resistance that would cost the output devices the same peak dissipation as this reactive load does. Independent of the amplifier rating above, which stays the plain |Z| floor; both are judged by one rule. Empty = no limit.')}>
+                      {t('Min EPDR Ω')}
+                      <input
+                        type="number"
+                        min={0}
+                        step={0.1}
+                        value={engineV2Settings.minEpdrOhm}
+                        placeholder="1.6"
+                        onChange={(e) =>
+                          setEngineV2Settings((v) => ({ ...v, minEpdrOhm: e.target.value }))
+                        }
+                        style={{ width: '5rem' }}
+                      />
+                    </label>
+                    <label title={t('M-C — the largest drive voltage on a driver’s own resonance, in dB relative to that way’s passband (so −18 means "at least 18 dB down"). Applies to every way the CIRCUIT high-passes, derived from the branch transfers rather than from a list of names. Empty = no limit.')}>
+                      {t('Max drive on f_s dB')}
+                      <input
+                        type="number"
+                        max={0}
+                        value={engineV2Settings.maxDriveOnFsDb}
+                        placeholder="-18"
+                        onChange={(e) =>
+                          setEngineV2Settings((v) => ({ ...v, maxDriveOnFsDb: e.target.value }))
+                        }
+                        style={{ width: '5rem' }}
+                      />
+                    </label>
+
+                    {/* ---- F2: the SEARCH-SPACE BUDGETS (spec A5d.6) ----
+                      * These do not judge a design; they are inverted through
+                      * the measured impedance and near field into ceilings on
+                      * component values, so the search never visits ground the
+                      * budget forbids. Blank = that bound is off and the box
+                      * is exactly the app's own. */}
+                    <span className="opt-group-cap">{t('Engine v2 — search-space budgets')}</span>
+                    <label title={t('How much extra low-frequency lift the filter and the source impedance may add on top of the bare driver-in-box behaviour (M-D). Inverted through the measured impedance peak and near field into a maximum series inductance. Empty = no bound.')}>
+                      {t('LF lift budget dB')}
+                      <input
+                        type="number"
+                        min={0}
+                        step={0.1}
+                        value={engineV2Settings.lfBumpBudgetDb}
+                        placeholder="2.5"
+                        onChange={(e) =>
+                          setEngineV2Settings((v) => ({ ...v, lfBumpBudgetDb: e.target.value }))
+                        }
+                        style={{ width: '5rem' }}
+                      />
+                    </label>
+                    <label title={t('The largest factor the filter’s source resistance may multiply Q_es by (M-E). Inverted exactly into a maximum TOTAL series resistance in the lowest path: R_s ≤ R_e·(q−1). Needs the driver’s measured DC resistance. Empty = no bound.')}>
+                      {t('Max Q_es ×')}
+                      <input
+                        type="number"
+                        min={1}
+                        step={0.1}
+                        value={engineV2Settings.qesMultiplierMax}
+                        placeholder="1.5"
+                        onChange={(e) =>
+                          setEngineV2Settings((v) => ({ ...v, qesMultiplierMax: e.target.value }))
+                        }
+                        style={{ width: '5rem' }}
+                      />
+                    </label>
+                    <label title={t('How much attenuation a way may spend ON TOP OF its measured sensitivity gap to the anchor (A5d.4). Inverted into a maximum pad resistance against that way’s own passband impedance. Empty = no bound.')}>
+                      {t('Damping margin dB')}
+                      <input
+                        type="number"
+                        min={0}
+                        step={0.1}
+                        value={engineV2Settings.dampingMarginDb}
+                        placeholder="0.5"
+                        onChange={(e) =>
+                          setEngineV2Settings((v) => ({ ...v, dampingMarginDb: e.target.value }))
+                        }
+                        style={{ width: '5rem' }}
+                      />
+                    </label>
+
+                    {/* ---- F2: determinism (spec A5e.4) ---- */}
+                    <span className="opt-group-cap">{t('Engine v2 — run')}</span>
+                    <label title={t('The run seed. Same input and same seed give a byte-identical result. This is the ONE setting where blank does not mean off: blank uses the published default and reports it, because "no seed" would mean "not reproducible".')}>
+                      {t('Run seed')}
+                      <input
+                        type="number"
+                        value={engineV2Settings.runSeed}
+                        placeholder={String(DEFAULT_RUN_SEED)}
+                        onChange={(e) =>
+                          setEngineV2Settings((v) => ({ ...v, runSeed: e.target.value }))
+                        }
+                        style={{ width: '7rem' }}
+                      />
+                    </label>
+                    <label title={t('Objective evaluations the search may spend per starting point. Empty = the tuner’s own policy, exactly as a v1 run. A budget bounds effort, never what counts as acceptable.')}>
+                      {t('Budget (evals)')}
+                      <input
+                        type="number"
+                        min={0}
+                        value={engineV2Settings.runBudgetEvals}
+                        placeholder={t('tuner')}
+                        onChange={(e) =>
+                          setEngineV2Settings((v) => ({ ...v, runBudgetEvals: e.target.value }))
+                        }
+                        style={{ width: '6rem' }}
                       />
                     </label>
                   </>

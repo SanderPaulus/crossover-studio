@@ -98,6 +98,20 @@ function CapabilityGrid({ cells, subjects, metrics }: {
   );
 }
 
+/** A gate limit, rendered in the unit the gate speaks. */
+function fmt(limit: number, gate: string): string {
+  if (gate === 'M-A') return `${(limit * 100).toFixed(1)} %`;
+  if (gate === 'M-C') return `${limit.toFixed(1)} dB`;
+  return `${limit.toFixed(2)} Ω`;
+}
+
+/** A bound ceiling, in the unit a designer buys the part in. */
+function boundText(maxSI: number, unit: 'Ω' | 'H' | 'F'): string {
+  if (unit === 'H') return `${(maxSI * 1e3).toFixed(2)} mH`;
+  if (unit === 'F') return `${(maxSI * 1e6).toFixed(1)} µF`;
+  return `${maxSI.toFixed(2)} Ω`;
+}
+
 export interface EngineV2PanelProps {
   report: EngineV2Report;
   /** Set when the netlist's drivers could not be told apart by name. */
@@ -105,7 +119,7 @@ export interface EngineV2PanelProps {
 }
 
 export function EngineV2Panel({ report, ambiguous }: EngineV2PanelProps) {
-  const { ingest, capability, metrics, predesign, system } = report;
+  const { ingest, capability, metrics, predesign, system, gates } = report;
 
   return (
     <div className="panel v2-panel">
@@ -119,8 +133,9 @@ export function EngineV2Panel({ report, ambiguous }: EngineV2PanelProps) {
         </div>
       </div>
       <p className="sub">
-        Reporting only. Nothing here influences the optimizer, the simulation or any saved design —
-        the toggle switches on this layer and nothing else.
+        The metric library, the ingest pass and the pre-design blocks, on the loaded design. The
+        gates below are the ones the v2 optimisation path enforces; a limit you have not stated
+        judges nothing, here or there.
       </p>
 
       {ambiguous && <p className="v2-problem">{ambiguous}</p>}
@@ -129,6 +144,105 @@ export function EngineV2Panel({ report, ambiguous }: EngineV2PanelProps) {
           {p}
         </p>
       ))}
+
+      <Section title="Hard gates" spec="A4 M-A/M-B/M-C · A2 P2/P4">
+        <p className="v2-muted">
+          Hard requirements, not weights: a gate is a feasibility question asked before the soft
+          goals and never a penalty term beside them. A gate with no limit stated is OFF — its
+          value is still shown, because a number you cannot see is a number you cannot judge.
+        </p>
+        <div className="v2-scroll">
+          <table className="v2-table">
+            <thead>
+              <tr>
+                <th>Gate</th>
+                <th>Subject</th>
+                <th>Reads</th>
+                <th>Limit</th>
+                <th>Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              {gates.verdicts.map((v, i) => (
+                <tr key={i}>
+                  <td title={v.title}>
+                    {v.gate} <span className="v2-muted">{v.specRef}</span>
+                  </td>
+                  <td>{v.subject}</td>
+                  <td title={v.parameters ? Object.entries(v.parameters).map(([k, x]) => `${k}: ${x}`).join(' · ') : undefined}>
+                    {v.reason}
+                  </td>
+                  <td>
+                    {v.limit === null ? (
+                      <span className="v2-muted">no limit set</span>
+                    ) : (
+                      `${v.direction === 'max' ? '≤' : '≥'} ${fmt(v.limit, v.gate)}`
+                    )}
+                  </td>
+                  <td className={!v.active ? 'v2-off' : v.pass ? 'v2-on' : 'v2-fail'}>
+                    {!v.active ? 'off' : v.pass ? 'inside' : 'EXCEEDED'}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+        {gates.violation && <p className="v2-problem">{gates.violation}</p>}
+        {gates.highPassProtected.length > 0 && (
+          <p className="v2-muted">
+            M-C applies to {gates.highPassProtected.join(', ')} — derived from each branch&rsquo;s own
+            transfer (a rising flank below its passband), never from a way&rsquo;s name.
+          </p>
+        )}
+      </Section>
+
+      <Section title="Search-space bounds from measured budgets" spec="A5d.6">
+        <p className="v2-muted">
+          A budget you state is inverted through the measured impedance and near field into a
+          ceiling on a component value, so the search never visits ground the budget forbids. State
+          none and the search box is exactly the app&rsquo;s own.
+        </p>
+        {predesign.bounds.length === 0 ? (
+          <p className="v2-muted">No budget stated — no bound.</p>
+        ) : (
+          <div className="v2-scroll">
+            <table className="v2-table">
+              <thead>
+                <tr>
+                  <th>Way</th>
+                  <th>Bounded</th>
+                  <th>Ceiling</th>
+                  <th>From</th>
+                </tr>
+              </thead>
+              <tbody>
+                {predesign.bounds.map((b, i) => (
+                  <tr key={i}>
+                    <td>{b.subject}</td>
+                    <td>
+                      {b.quantity}
+                      {b.slack && (
+                        <span className="v2-uncal" title="A pre-bound: exact for a single section only, widened per order, and never a verdict — the gate is the authority (A5d.6).">
+                          slack
+                        </span>
+                      )}
+                    </td>
+                    <td>{boundText(b.maxSI, b.unit)}</td>
+                    <td title={Object.entries(b.parameters).map(([k, x]) => `${k}: ${x}`).join(' · ')}>
+                      {String(b.parameters.formula ?? b.rule)}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+        {predesign.boundNotes.map((n, i) => (
+          <p className="v2-muted" key={i}>
+            {n}
+          </p>
+        ))}
+      </Section>
 
       <Section title="Capability matrix" spec="A5.3 · P4">
         <p className="v2-muted">

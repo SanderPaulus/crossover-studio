@@ -303,6 +303,68 @@ export interface NetOptimizeOptions {
    *  else is only REPORTED with its numbers. Locked parts are never removed.
    *  Omit for defaults; `enabled: false` skips it entirely. */
   audit?: { enabled?: boolean; thresholds?: Partial<AuditThresholds>; fbHz?: number };
+  /**
+   * F2 / A3 — THE FEASIBILITY BOUND, AS A HOOK.
+   *
+   * Returns a prose reason when the given network violates an ACTIVE hard
+   * gate, null when it does not. Called at every point a pass ACCEPTS a
+   * network, so a polish step that would cross an active gate is refused
+   * whatever it wins elsewhere — which is what A3 means by "grenshandhaving
+   * structureel in de kern" rather than a penalty term beside the objective
+   * (P2).
+   *
+   * DELIBERATELY A CALLBACK AND NOT A SET OF NUMBERS. The gates are M-A/M-B/
+   * M-C and the only legitimate way to evaluate them is the F1 metric library
+   * — which lives in `engine2/` and which this file may not import (the
+   * toggle invariant: `toggleRegression.test.ts` pins that the dependency
+   * arrow never turns around). A closure keeps the evaluation where the
+   * metrics are and leaves this file engine-agnostic: it knows that something
+   * can refuse a network, not what.
+   *
+   * ABSENT = OFF, and off means BYTE-IDENTICAL: every call site below is
+   * guarded on this field being present, so a v1 run never asks the question
+   * and never changes an answer. Note in particular that it is NOT folded
+   * into the existing constraint checks unconditionally — a v1 run with a
+   * source-resistance limit must keep visiting exactly the call sites it
+   * visited before.
+   *
+   * NOT STRUCTURED-CLONEABLE: like `onStage`, it cannot cross a worker
+   * boundary and must be built on the side that runs the tuner.
+   */
+  gateViolation?: (parts: readonly VxpPart[]) => string | null;
+  /**
+   * F2 / A5d.6 — HARD, MEASUREMENT-DERIVED CEILINGS on individual free values,
+   * in SI units (F, H, Ω), keyed by partId.
+   *
+   * These are budget inversions, not taste: a budget the designer stated
+   * (Q_es multiplication, LF lift, damping) is inverted through the measured
+   * impedance and near field into the largest component value that can still
+   * meet it. The search box becomes `existing app bounds ∩ these`, so the
+   * pathology V2 documents — a resistor drifting to extremes to buy phase
+   * rotation — is impossible by construction instead of discouraged by a
+   * penalty.
+   *
+   * Applied as a TRUE BOX (clamp, never penalise out), the same mechanism the
+   * bound-to-series value windows use. Absent = off.
+   */
+  valueCeilings?: Readonly<Record<string, number>>;
+  /**
+   * F2 / A5d.6 — HARD ceilings on the SUM of several elements' values, SI.
+   *
+   * A5d.6's first exact inversion is "max TOTALE serie-R in het laagste pad",
+   * and a total is not something a per-element box can express. Enforced by
+   * PROJECTION inside the objective: when the free members' sum would exceed
+   * the ceiling they are scaled down proportionally before the network is
+   * evaluated, so the search never sees a point outside the set and nothing
+   * is added to the cost. `fixedSI` carries the part of the sum that is not
+   * free to move (a locked resistor, a coil's DCR).
+   */
+  valueSumCeilings?: readonly {
+    ids: readonly string[];
+    maxSI: number;
+    fixedSI?: number;
+    label: string;
+  }[];
 }
 
 /**
@@ -462,9 +524,28 @@ export interface NetOptimizeResult {
    *  INERT entries that were removed carry `applied: true`; the ids are also
    *  in `removed`. */
   audit?: NetworkAudit;
+  /**
+   * F2 — every polish step this run REFUSED because it would have crossed an
+   * active gate (`gateViolation`), in the order they were refused.
+   *
+   * Evidence, not decoration: "no candidate violates an active gate" is a
+   * claim about a search, and a search that never had to refuse anything has
+   * not demonstrated it. Empty (and the field absent) whenever no gate hook
+   * was supplied, which is every v1 run.
+   */
+  gateRefusals?: string[];
 }
 
 export class NetOptimizeError extends Error {}
+
+/**
+ * How many DISTINCT gate refusals a run records (F2).
+ *
+ * A prune sweep can refuse the same shape hundreds of times; the value of the
+ * log is that a reader can see WHICH bounds bit, not how often. Distinct lines
+ * only, and capped — a report nobody can read is a report nobody reads.
+ */
+const GATE_REFUSAL_LOG_MAX = 24;
 
 const PARAM_OF: Record<'R' | 'L' | 'C', { name: string; factor: number }> = {
   R: { name: 'R', factor: 1 },
@@ -860,7 +941,45 @@ export function optimizeNetworkValues(
   const rSourceOf = (ps: readonly VxpPart[]): number | null =>
     sourceResistanceOhm(ps, { grid, driverZ, fbHz: opts.audit?.fbHz });
 
+  /**
+   * F2 / A3 — THE GATE BOUND, asked at every acceptance point.
+   *
+   * One rule, one place, exactly like `constraintViolation` above and for the
+   * same reason: a bound re-tested in several places with slightly different
+   * words is how a network came to be repaired and struck through in the same
+   * run. This one delegates the actual evaluation to the caller's hook, so
+   * the metric library stays the single source of a gate verdict (A4/F1) and
+   * this file stays engine-agnostic.
+   *
+   * WITHOUT A HOOK IT IS A NO-OP AND NOTHING BELOW EVEN ASKS: every call site
+   * is guarded on `opts.gateViolation` being present, so a v1 run walks the
+   * identical path it always did.
+   */
+  const gateRefusals: string[] = [];
+  const gateRefusal = (ps: readonly VxpPart[], step: string): string | null => {
+    if (!opts.gateViolation) return null;
+    const why = opts.gateViolation(ps);
+    if (why === null) return null;
+    const line = `${step} refused: ${why}`;
+    // Bounded: a prune sweep can refuse the same shape hundreds of times and a
+    // report nobody can read is a report nobody reads.
+    if (gateRefusals.length < GATE_REFUSAL_LOG_MAX && !gateRefusals.includes(line)) {
+      gateRefusals.push(line);
+    }
+    return why;
+  };
+  /** True when this network may be accepted — the positive form, for guards. */
+  const gateOk = (ps: readonly VxpPart[], step: string): boolean =>
+    gateRefusal(ps, step) === null;
+
   const constraintViolation = (ps: readonly VxpPart[]): string | null => {
+    // The gate first: it is the hard requirement the designer stated, and a
+    // pass that is about to be rolled back should say WHICH bound stopped it.
+    // Only ever consulted when a hook was supplied, so v1 is untouched.
+    if (opts.gateViolation) {
+      const g = opts.gateViolation(ps);
+      if (g) return g;
+    }
     if (rsHardOhm > 0) {
       const rs = rSourceOf(ps);
       if (rs !== null && rs >= rsHardOhm) {
@@ -1963,6 +2082,54 @@ export function optimizeNetworkValues(
               : BOUNDS[e.kind][1],
           ),
     );
+    /* A5d.6 — THE SEARCH BOX IS THE INTERSECTION.
+     *
+     * "Optimalisatiegrenzen = bestaande app-grenzen ∩ meetafgeleide
+     * budgetgrenzen." A budget ceiling never widens the box (a budget cannot
+     * license a component the app already considers unbuildable) and it turns
+     * the slot HARD, because a budget bound is a box constraint and not a
+     * preference: clamped, never penalised out. Absent = the loop below does
+     * nothing and every number above stands as it did. */
+    if (opts.valueCeilings) {
+      for (let i = 0; i < free.length; i++) {
+        const ceil = opts.valueCeilings[free[i].id];
+        if (ceil === undefined || !(ceil > 0)) continue;
+        const lg = Math.log10(ceil);
+        if (lg < winHi[i]) {
+          winHi[i] = Math.max(lg, winLo[i]);
+          hard[i] = true;
+        }
+      }
+    }
+    /* The SUM ceilings (A5d.6's "max totale serie-R in het laagste pad").
+     *
+     * Enforced by projection rather than by a penalty: when the free members
+     * would together exceed what the budget allows, they are scaled down
+     * proportionally before the network is solved, so no point the search
+     * ever evaluates lies outside the set. `fixedSI` is the part of the sum
+     * this tuner cannot move — a locked resistor, a coil's DCR — and it comes
+     * off the top, so an already-spent budget leaves nothing rather than
+     * quietly allowing more. */
+    const sumGroups = (opts.valueSumCeilings ?? [])
+      .map((g) => ({
+        ...g,
+        idx: free.map((e, i) => (g.ids.includes(e.id) ? i : -1)).filter((i) => i >= 0),
+      }))
+      .filter((g) => g.idx.length > 0);
+    const projectSums = (): void => {
+      for (const g of sumGroups) {
+        const room = g.maxSI - (g.fixedSI ?? 0);
+        let total = 0;
+        for (const i of g.idx) total += free[i].value;
+        if (room <= 0) {
+          for (const i of g.idx) free[i].value = 10 ** winLo[i];
+          continue;
+        }
+        if (total <= room || total <= 0) continue;
+        const k = room / total;
+        for (const i of g.idx) free[i].value = Math.max(free[i].value * k, 10 ** winLo[i]);
+      }
+    };
     // The barrier must not SPEND fundamentals: capture the seed's tweeter
     // protection so target-chasing cannot buy ripple with resonance drive
     // (measured: barrier weight 120 vs protection price 0.02 tripled the
@@ -1988,6 +2155,7 @@ export function optimizeNetworkValues(
           else if (logVals[i] > winHi[i]) penalty += (logVals[i] - winHi[i]) ** 2;
         }
       }
+      projectSums();
       let m;
       try {
         m = metricsOn(work, optW.freq, optW, optT, optM, optZ, optAngles);
@@ -2102,6 +2270,10 @@ export function optimizeNetworkValues(
     free.forEach((e, i) => {
       e.value = 10 ** (hard[i] ? Math.min(Math.max(fit.x[i], winLo[i]), winHi[i]) : fit.x[i]);
     });
+    // The same projection the objective used, so what is WRITTEN OUT is the
+    // point that was scored. Skipping it here is how a box constraint comes to
+    // hold everywhere except in the answer.
+    projectSums();
     const m = metricsOn(work, optW.freq, optW, optT, optM, optZ, optAngles);
     const valueOf = new Map(free.map((e) => [e.id, e.value]));
     const out = cloneParts(ps).map((q) => {
@@ -2214,6 +2386,10 @@ export function optimizeNetworkValues(
    *  only; without a priced catalog nothing changes. */
   const challenge = (base: TuneOut, seedPs: readonly VxpPart[]): TuneOut => {
     const alt = tune(seedPs, 1, opts.staged ?? null);
+    // F2: a basin that crosses an active gate is not an alternative. Checked
+    // before any comparison below, so no branch can return it — the drift
+    // catch runs through here too, which is why one guard covers both.
+    if (opts.gateViolation && !gateOk(alt.parts, 'basin challenge')) return base;
     const cheaper = (): boolean => {
       const cBase = estimateCostEur(base.parts);
       const cAlt = estimateCostEur(alt.parts);
@@ -2349,6 +2525,15 @@ export function optimizeNetworkValues(
         e.verdict = 'grey';
         continue;
       }
+      // F2: "inert" is measured on sum, pair phase and Z — none of which is
+      // the dissipation share, the EPDR minimum or the drive on f_s. A part
+      // that is inaudible can still be the reason an active gate is met, so
+      // the removal is asked the gate question before it is taken.
+      if (opts.gateViolation && !gateOk(trial, `audit removal ${e.ids.join('+')}`)) {
+        e.reasons.push('removal would cross an active hard gate — kept');
+        e.verdict = 'grey';
+        continue;
+      }
       partsNow = trial;
       ref = m;
       removed.push(...e.ids);
@@ -2362,7 +2547,27 @@ export function optimizeNetworkValues(
   const seedAudit = runAudit(parts, 'part audit (seed)');
   const seedParts: readonly VxpPart[] = seedAudit ? seedAudit.parts : parts;
 
+  /**
+   * The network AS IT STANDS, packaged like a tune result — the fallback a
+   * refused step returns to.
+   *
+   * `freeCount` is 0 on purpose: nothing was tuned. That is the same claim
+   * the safety gate's rollback makes, and it matters to whoever reads
+   * `tuned` beside these numbers.
+   */
+  const asIs = (ps: readonly VxpPart[]): TuneOut => {
+    const m = metricsOn(buildWork(ps).work, optW.freq, optW, optT, optM, optZ, optAngles);
+    return { parts: cloneParts(ps), freeCount: 0, fx: fxOf(m), metrics: m };
+  };
+
   let cur = tune(seedParts);
+  /* F2 — the value search is where the V2 pathology is BORN (a phase target
+   * met through an underdamped L/C whose series R drifts to extremes), so the
+   * gate is asked here first. A tuned result that crosses an active gate is
+   * refused and the seed stands — the same doctrine the full-band safety gate
+   * already follows, and the honest one: a design that only reaches its
+   * targets outside the designer's stated limits has not reached them. */
+  if (opts.gateViolation && !gateOk(cur.parts, 'value tune')) cur = asIs(seedParts);
   {
     const s1 = reseedOutliers(parts, textbook);
     if (s1) cur = challenge(cur, s1);
@@ -2386,7 +2591,14 @@ export function optimizeNetworkValues(
     // Steer INTO the target region from the fx-optimum: the barrier is a
     // local refinement — applied from a cold seed it drowns the landscape
     // (learned the hard way: 843 µF caps chasing an unreachable target).
-    cur = tune(cur.parts, 0.6, tgt);
+    {
+      // F2: the barrier chases the STAGED TARGETS, which is precisely the
+      // pressure that buys phase with an underdamped resonance (V2). A
+      // barrier tune that lands outside an active gate is refused whole —
+      // targets are a goal, gates are a limit, and a goal never overrules one.
+      const t = tune(cur.parts, 0.6, tgt);
+      if (gateOk(t.parts, 'target barrier tune')) cur = t;
+    }
     let curFull = fullM(cur.parts);
     /** The targets only speak of ripple/phase — a structure move must ALSO
      *  keep the fundamentals: tweeter protection intact, breakup margin not
@@ -2490,6 +2702,9 @@ export function optimizeNetworkValues(
             meets(tFull) &&
             safe(tFull, curFull) &&
             rsSafe(t.parts, cur.parts) &&
+            // F2: a removal is a polish step like any other and may not cross
+            // an active gate, however free it looks on the objective.
+            gateOk(t.parts, `prune ${cand.id}`) &&
             t.fx <= cur.fx * 1.1 &&
             t.fx <= fx0 * 1.35
           ) {
@@ -2515,7 +2730,13 @@ export function optimizeNetworkValues(
         if (!best) break;
         const bestFull = fullM(best.t.parts);
         // The new part must EARN its place: reach the targets or pay ≥3%.
-        if (safeEsc(bestFull, curFull) && rsSafe(best.t.parts, cur.parts) && (meets(bestFull) || best.t.fx < cur.fx * 0.97)) {
+        if (
+          safeEsc(bestFull, curFull) &&
+          rsSafe(best.t.parts, cur.parts) &&
+          // F2: an ADDED part must earn its place inside the gates too.
+          gateOk(best.t.parts, `escalation ${best.id}`) &&
+          (meets(bestFull) || best.t.fx < cur.fx * 0.97)
+        ) {
           cur = best.t;
           curFull = bestFull;
           added.push(best.id);
@@ -2524,7 +2745,10 @@ export function optimizeNetworkValues(
     }
 
     // Structure changed → one full-budget settle of the survivors.
-    if (removed.length + added.length > 0) cur = tune(cur.parts, 1, tgt);
+    if (removed.length + added.length > 0) {
+      const t = tune(cur.parts, 1, tgt);
+      if (gateOk(t.parts, 'post-structure settle')) cur = t;
+    }
   }
 
   stage('drift check');
@@ -2644,7 +2868,10 @@ export function optimizeNetworkValues(
           // Same lesson as the objective anchor: cost belongs at clean
           // decision points (the snap, the scan ranking), not noisy per-step
           // gates. The final snap + BOM-aware scan handle the money.
-          if (!meetsOk || !safeOk) break;
+          // F2: the ladder walks values DOWN, which moves impedance and drive
+          // voltage as surely as anything else does. A rung outside an active
+          // gate ends the ladder rather than being taken.
+          if (!meetsOk || !safeOk || !gateOk(cand.parts, `cap shrink ${id}`)) break;
           cur = cand;
         }
       }
@@ -3530,6 +3757,7 @@ export function optimizeNetworkValues(
     ampFloorRepair,
     ...(valueWindowNote ? { valueWindowNote } : {}),
     ...(auditReport ? { audit: auditReport } : {}),
+    ...(opts.gateViolation ? { gateRefusals } : {}),
   };
 }
 

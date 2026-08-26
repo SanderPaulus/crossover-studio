@@ -29,7 +29,7 @@ import { fromPolar } from '../complex.ts';
 import { logspace, resampleImpedance, toComplex, wrapDeg } from '../dsp.ts';
 import type { Netlist } from '../network.ts';
 import { unwrapPhaseDeg } from '../timing.ts';
-import { ANALYSIS_GRID_POINTS, MM_PER_M } from './constants.ts';
+import { ANALYSIS_GRID_POINTS, DEG_PER_HALF_TURN, MM_PER_M } from './constants.ts';
 import { buildCapabilityMatrix, isActive, type CapabilityMatrix } from './capability.ts';
 import { runIngest, type IngestResult, type MeasurementFile } from './ingest/derive.ts';
 import { passbandLevel } from './ingest/spl.ts';
@@ -76,6 +76,21 @@ import type {
 import { ctcKey } from './metrics/types.ts';
 import { anchoredGaps, type AnchoredGaps, type WayLevel } from './predesign/gaps.ts';
 import {
+  gateVerdicts,
+  isHighPassProtected,
+  violationText,
+  type GateSettings,
+  type GateVerdict,
+} from './optimizer/gates.ts';
+import {
+  anyBudgetActive,
+  invertBudgets,
+  passbandImpedanceMedian,
+  type BudgetSettings,
+  type BudgetWay,
+  type InvertedBound,
+} from './optimizer/bounds.ts';
+import {
   crossoverWindow,
   DEFAULT_SIGNIFICANT_BREAKUP_DB,
   type XoWindowResult,
@@ -84,8 +99,16 @@ import { cabs, cargDeg, dbAmp, interpLog, octavesBetween } from './util.ts';
 import { ENGINE_V2_LABEL, ENGINE_V2_VERSION } from './version.ts';
 import { engineV2Mark } from './facade.ts';
 
-/** Settings the report needs on top of the metric-level ones. */
-export interface ReportSettings extends ProjectSettings {
+/**
+ * Settings the report needs on top of the metric-level ones.
+ *
+ * Since F2 it also carries the GATE limits and the BUDGETS. They live here
+ * rather than only inside the optimiser because P4 has a visible half: a
+ * designer has to be able to see, on the loaded filter, what each gate reads
+ * and whether anything is judging it. A limit that only existed while an
+ * optimisation was running would be invisible exactly when it matters.
+ */
+export interface ReportSettings extends ProjectSettings, GateSettings, BudgetSettings {
   /**
    * Measured DC resistance per driver, ohms. A4 lists R_e as M-E's DATA NEED,
    * and it is a genuinely different number from the derived R_e: the derived
@@ -196,6 +219,31 @@ export interface EngineV2Report {
   predesign: {
     gaps: AnchoredGaps | null;
     windows: XoWindowResult[];
+    /**
+     * A5d.6 — the bounds the ACTIVE budgets invert to, on this measurement
+     * set. Empty when no budget is stated (P4). Reporting only here: the
+     * search box is built from the same inversion inside the v2 path.
+     */
+    bounds: InvertedBound[];
+    boundNotes: string[];
+  };
+  /**
+   * The GATES on the loaded filter (Deliverable 2).
+   *
+   * Every gate appears, active or not: an inactive one shows its measured
+   * value and says no limit was set. The verdicts come from the same
+   * assembly the optimiser uses, on the numbers the metric section above
+   * already computed — the panel and the search cannot disagree about a
+   * design because they cannot compute it twice.
+   */
+  gates: {
+    verdicts: GateVerdict[];
+    /** Null when nothing active failed. */
+    violation: string | null;
+    /** True when the project stated at least one limit. */
+    anyActive: boolean;
+    /** Ways M-C applies to, DERIVED from the branches' own transfers. */
+    highPassProtected: string[];
   };
   system: SystemSummary;
   /** Everything the report could not do, addressed to the designer. */
@@ -523,6 +571,92 @@ export function buildReport(input: EngineV2ReportInput): EngineV2Report {
   }
   const gaps = anchoredGaps(levels);
 
+  /* ---------------- F2: the gates on the loaded filter ------------------ *
+   * Built from the numbers the metric section above ALREADY produced. No
+   * second solve, and no second opinion: the verdict assembly is the one the
+   * optimiser uses, so a design cannot read one way in the panel and another
+   * way in the search. Every gate appears whether or not a limit was stated —
+   * P4's visible half. */
+  const highPassProtected: string[] = [];
+  const drive: Parameters<typeof gateVerdicts>[1]['driveVoltage'] = [];
+  for (const r of metrics.driveVoltage) {
+    if (!analysis || !isActive(capability, 'M-C', r.driver)) continue;
+    if (!isHighPassProtected(analysis, r.driver, r.passbandHz)) continue;
+    highPassProtected.push(r.driver);
+    drive.push({
+      driver: r.driver,
+      db: r.db,
+      fsHz: r.fsHz,
+      passbandHz: r.passbandHz,
+      bandSource: 'derived from this filter\'s own crossings',
+    });
+  }
+  const verdicts = gateVerdicts(input.settings, {
+    dissipationFraction: metrics.dissipation?.totalFraction ?? null,
+    ...(metrics.dissipation ? { dissipationBandHz: metrics.dissipation.bandHz } : {}),
+    epdrMinOhm: metrics.epdr?.minOhm ?? null,
+    ...(metrics.epdr ? { epdrAtHz: metrics.epdr.atHz, minZAtHz: metrics.epdr.minZAtHz } : {}),
+    minZOhm: metrics.epdr?.minZOhm ?? null,
+    driveVoltage: drive,
+  });
+
+  /* ---------------- F2: the budget inversions (A5d.6) ------------------- */
+  const budgetWays: BudgetWay[] = [];
+  for (let i = 0; i < order.length; i++) {
+    const driver = order[i];
+    const d = ingest.drivers.find((x) => x.driver === driver);
+    if (!d) continue;
+    const raw = input.filter?.driverZ[driver];
+    const fallback: [number, number] = d.onAxis ? d.onAxis.bandHz : [20, 20000]; // P6-OK: only a fallback span when no measurement bounds exist
+    const pass = passbandOf(driver, crossings, fallback);
+    const gapWay = gaps?.ways.find((w) => w.driver === driver);
+    const above = crossings.find((c) => c.lower === driver && Number.isFinite(c.fHz));
+    budgetWays.push({
+      driver,
+      lowest: i === 0,
+      highPassProtected: highPassProtected.includes(driver),
+      reOhm: input.settings.reOhmByDriver?.[driver] ?? d.re?.ohm ?? null,
+      reSource:
+        input.settings.reOhmByDriver?.[driver] !== undefined
+          ? 'measured DC resistance entered for this driver'
+          : 'derived from Re(Z) at the bottom of the impedance sweep',
+      zPassbandMedianOhm: raw ? passbandImpedanceMedian(raw.freq, raw.magnitude, pass) : null,
+      passbandHz: pass,
+      fsHz: d.impedance?.fundamentalHz ?? null,
+      fPeakHz: d.impedance?.fundamentalHz ?? null,
+      gapBudgetDb: gapWay ? gapWay.budgetDb : null,
+      pathROhm: 0,
+      ...(input.settings.orderByPair && above
+        ? { order: input.settings.orderByPair[ctcKey(driver, above.upper)] }
+        : {}),
+      ...(above ? { crossingAboveHz: above.fHz } : {}),
+      ...(d.nearField
+        ? {
+            nearField: {
+              grid: d.nearField.grid,
+              db: d.nearField.db,
+              validHz: d.nearField.bandHz,
+            },
+          }
+        : {}),
+      ...(raw
+        ? {
+            impedance: {
+              grid: raw.freq,
+              z: raw.freq.map((_, k) => {
+                const m = raw.magnitude[k];
+                const ph = (raw.phaseDeg[k] * Math.PI) / DEG_PER_HALF_TURN;
+                return { re: m * Math.cos(ph), im: m * Math.sin(ph) };
+              }),
+            },
+          }
+        : {}),
+    });
+  }
+  const inverted = anyBudgetActive(input.settings)
+    ? invertBudgets(budgetWays, input.settings, input.settings)
+    : { bounds: [], notes: [] };
+
   /* ---------------- system summary ---------------- */
   const system = summarise(
     ingest,
@@ -543,7 +677,13 @@ export function buildReport(input: EngineV2ReportInput): EngineV2Report {
     driversLowToHigh: order,
     analysisGrid: grid,
     metrics,
-    predesign: { gaps, windows },
+    predesign: { gaps, windows, bounds: inverted.bounds, boundNotes: inverted.notes },
+    gates: {
+      verdicts,
+      violation: violationText(verdicts),
+      anyActive: verdicts.some((v) => v.active),
+      highPassProtected,
+    },
     system,
     problems,
   };

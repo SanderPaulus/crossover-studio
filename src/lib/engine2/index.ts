@@ -38,6 +38,11 @@ export * from './metrics/registry.ts';
 export * from './predesign/gaps.ts';
 export * from './predesign/xoWindow.ts';
 
+export * from './optimizer/determinism.ts';
+export * from './optimizer/gates.ts';
+export * from './optimizer/bounds.ts';
+export * from './optimizer/run.ts';
+
 export * from './appAdapter.ts';
 export * from './capability.ts';
 export * from './report.ts';

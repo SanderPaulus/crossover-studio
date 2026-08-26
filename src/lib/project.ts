@@ -222,16 +222,57 @@ export interface ProjectDesign {
    */
   engineV2Enabled?: boolean;
   /**
-   * The two project settings the v2 reporting layer reads. Strings like every
-   * other numeric field here; EMPTY MEANS THE METRIC STAYS OFF (P4), which is
-   * why neither has a default anywhere in the code.
+   * The project settings the v2 layer reads. Strings like every other numeric
+   * field here; EMPTY MEANS THE SETTING IS ABSENT (P4), which is why none of
+   * them has a default anywhere in the code.
    *
+   * REPORTING (F1)
    * `verticalWindowDeg` — the observation angles M-F-final synthesises over,
    * comma-separated degrees (e.g. "-15, 15").
    * `amplifierPowerW`  — the power M-A converts its scale-free fraction into
    * watts with. Without it the fraction is still reported.
+   *
+   * GATES (F2, Deliverable 2). Absent = the gate is OFF: its value is still
+   * shown in the report, with "no limit set" beside it. The suggestion text in
+   * the UI is a GHOST — a placeholder that is never a value.
+   * `maxDissipationPct` — M-A, the largest share of amplifier power that may
+   * be burnt in the filter resistors. Entered as a percentage, held as a
+   * fraction by the engine.
+   * `minEpdrOhm`        — M-B, the EPDR floor. Beside, and independent of,
+   * `ampMinLoadOhm`, which stays the plain |Z| floor (the simple mode A4
+   * keeps). Both are judged by one rule.
+   * `maxDriveOnFsDb`    — M-C, the largest drive voltage on a driver's own
+   * resonance relative to its passband. Applies to every way the CIRCUIT
+   * high-passes, derived from the branch transfers rather than from a list.
+   *
+   * SEARCH-SPACE BUDGETS (F2, Deliverable 4, spec A5d.6). Absent = that bound
+   * is off and the search box is exactly the app's own.
+   * `lfBumpBudgetDb`    — how much extra low-frequency lift the filter may add
+   * over the bare box; inverted into a maximum series inductance.
+   * `qesMultiplierMax`  — the largest factor the source resistance may
+   * multiply Q_es by; inverted into a maximum total series resistance.
+   * `dampingMarginDb`   — how much attenuation a way may spend on top of its
+   * measured sensitivity gap; inverted into a maximum pad resistance.
+   *
+   * DETERMINISM (F2, Deliverable 1, spec A5e.4).
+   * `runSeed`           — absent = the published default, which is REPORTED.
+   * A seed is the one setting where absent-means-off would be wrong: off would
+   * mean "not reproducible".
+   * `runBudgetEvals`    — evaluations per starting point; absent = the tuner's
+   * own policy, i.e. exactly what a v1 run does.
    */
-  engineV2?: { verticalWindowDeg?: string; amplifierPowerW?: string };
+  engineV2?: {
+    verticalWindowDeg?: string;
+    amplifierPowerW?: string;
+    maxDissipationPct?: string;
+    minEpdrOhm?: string;
+    maxDriveOnFsDb?: string;
+    lfBumpBudgetDb?: string;
+    qesMultiplierMax?: string;
+    dampingMarginDb?: string;
+    runSeed?: string;
+    runBudgetEvals?: string;
+  };
   /** Optional: staged design (stop escalating once targets met), default true. */
   stagedOn?: boolean;
   targetRipple?: string;

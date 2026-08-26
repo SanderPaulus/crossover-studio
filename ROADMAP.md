@@ -6,6 +6,21 @@ Volgorde binnen een blok = aanbevolen prioriteit. Inschattingen zijn grof:
 
 ## Onlangs afgerond (jul–aug 2026, ter referentie)
 
+- **F2 — poorten in de engine** (26 aug 2026). Tien nieuwe projectvelden onder
+  Engine v2, alle leeg bij aanvang en leeg betekent overal afwezig: de poort
+  oordeelt niet, de budgetgrens versmalt de zoekdoos niet, en het rapport toont
+  de gemeten waarde met "geen grens gesteld" ernaast. De suggesties in de
+  velden zijn ghost-tekst en bereiken de engine nooit.
+  **Poorten (hard, nooit een strafterm):** max dissipatie %, min EPDR Ω náást
+  de bestaande versterkervloer, en max spanning op f_s in dB — die laatste voor
+  elke weg die de schakeling zélf hoogdoorlaat, afgeleid uit de takoverdracht.
+  **Zoekruimtebudgetten (A5d.6):** LF-bult dB, max Q_es-vermenigvuldiging,
+  demping-marge dB; elk geïnverteerd door de gemeten impedantie en het nabije
+  veld naar een plafond op een componentwaarde.
+  **Run:** seed en evaluatiebudget. De seed is de enige instelling waar leeg
+  níet uit betekent — zie het P4-amendement in de strategienota.
+  De scanknop draait nog op v1; zie TODO(F2b) bij `engine2/facade.ts`.
+
 - **Drivers die niet op het front zitten** (aug 2026, naar aanleiding van
   Sanders vraag of de app zij-woofers aankan — een vraag, geen veldmelding: er
   is geen meting van zo'n kast in huis, de ernst is afgeleid en daarna

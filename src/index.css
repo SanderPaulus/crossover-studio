@@ -3967,6 +3967,13 @@ details.cabinet-driver > .derived strong,
   color: var(--border);
 }
 
+/* A gate that is ARMED and exceeded. Deliberately louder than .v2-off: "off"
+   is a fact about the project, "EXCEEDED" is a fact about the design. */
+.v2-fail {
+  color: #c0392b;
+  font-weight: 600;
+}
+
 .v2-metric {
   border-left: 2px solid var(--border);
   padding: 0.35rem 0 0.35rem 0.6rem;

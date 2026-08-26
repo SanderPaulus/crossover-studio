@@ -82,7 +82,61 @@ export interface GoldenRefs {
     };
   };
   kruisvensters: Record<string, Record<string, unknown>>;
-  grens_inversies: Record<string, number>;
+  /**
+   * A5d.6's bound inversions, with the parameters each one was computed with.
+   *
+   * Typed rather than left as loose JSON for the same reason the withdrawn
+   * M-C block is: the golden suite asserts on these, and the V15 process rule
+   * says a reference that depends on a band, an averaging or a grid records
+   * them. A shape the compiler checks is a record that cannot quietly lose a
+   * field.
+   */
+  grens_inversies: {
+    maxRs_Qmult1_3_ohm: number;
+    maxRs_Qmult1_5_ohm: number;
+    maxRs_Qmult2_0_ohm: number;
+    maxL_bij_Rs0_5_budget2_5dB_mH: number;
+    _maxL_sessie_25_08: {
+      waarde: number;
+      band_hz: [number, number];
+      referentie_hz: number;
+      pad_R_ohm: number;
+      budget_dB: number;
+      herkomst: string;
+      reproductie: string;
+    };
+    max_padR_tweeter_gap_ohm: number;
+    parameters: {
+      maxRs_Qmult: { formule: string; R_e_ohm: number; R_e_herkomst: string; q_max: number };
+      maxL_bult: {
+        formule: string;
+        budget_dB: number;
+        pad_R_ohm: number;
+        tegenvoorbeeld_pad_R_ohm: number;
+        band: string;
+        f_p_hz: number;
+        assert: string;
+      };
+      max_padR: {
+        formule: string;
+        Z_referentie: string;
+        doorlaatband_hz: [number, number];
+        budget_dB: number;
+        budget_herkomst: string;
+        demping_marge_dB: number;
+        gemeten: number;
+      };
+      voorbound_serie_C: {
+        Z_ohm: number;
+        f_s_hz: number;
+        verzwakking_dB: number;
+        gerealiseerd_uF: number;
+        gerealiseerd_orde: number;
+        casusboek: string;
+      };
+    };
+    herziening_F2: string;
+  };
   vensterinteractie: Record<string, unknown>;
   manifest_en_geometrie: {
     bestanden: Record<string, { drv: string; typ: string; hoek?: number }>;
