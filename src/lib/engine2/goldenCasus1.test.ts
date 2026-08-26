@@ -69,6 +69,25 @@ const REPORTS = {
   KAND_B: report('KAND_B'),
 };
 
+/**
+ * The same report with NO entered DC resistance.
+ *
+ * The derived-parameter section asks what the ingest pass DERIVES from the
+ * files, and since F3b an entered DC resistance outranks every derivation (the
+ * A5c.1 hierarchy). Asserting the derivation on a report that was handed the
+ * answer would be asserting the hand-off. The candidate sections keep the
+ * entered value, because the M-E reference of the casebook stands on it —
+ * `Re_werkelijk_ca` 2.90 and `compare.py` 3.05 are two readings of the same
+ * R_e and V16 says which reference uses which.
+ */
+const DERIVED = buildReport({
+  manifest,
+  files,
+  filter: casus1Filter('HUIDIG', manifest, files, golden),
+  geometry,
+  settings: { ...settings, reOhmByDriver: undefined },
+});
+
 const pct = (actual: number, expected: number): number =>
   Math.abs(actual - expected) / Math.abs(expected) * 100;
 
@@ -116,7 +135,14 @@ describe('golden references - casus 1 (Koan 2951)', () => {
     // The revision note and the tolerance motivations are part of the
     // reference now. Losing them would leave numbers nobody can defend.
     expect(golden.herziening_F1_toelichting.length).toBeGreaterThanOrEqual(5);
-    for (const k of ['Q_pct', 'exponent_pct', 'watt_pct', 'lambda_pct', 'procentpunten']) {
+    for (const k of [
+      'Q_pct',
+      'exponent_pct',
+      'watt_pct',
+      'lambda_pct',
+      'procentpunten',
+      'fit_kwaliteit_pct',
+    ]) {
       expect(TOL[k as keyof typeof TOL]).toBeGreaterThan(0);
       expect(golden.toleranties_toelichting[k].length).toBeGreaterThan(60);
     }
@@ -125,18 +151,25 @@ describe('golden references - casus 1 (Koan 2951)', () => {
   /* ================= derived parameters (A5b / A5c) ================= */
 
   describe('derived parameters', () => {
-    const r = REPORTS.HUIDIG;
+    const r = DERIVED;
 
-    it('woofer: R_e, the reflex alignment and the V8d warning', () => {
+    it('woofer: R_e comes from the motional fit, and the direct reading is what it fixed', () => {
       const w = driver(r, 'woofer');
       const ref = golden.afgeleide_parameters.woofer as Record<string, number>;
-      expect(w.re!.ohm).toBeCloseTo(ref.Re_naief, 1);
-      expect(Math.abs(w.re!.ohm - ref.Re_naief)).toBeLessThanOrEqual(TOL.ohm);
-      // V8d: the sweep starts less than an octave under f_L, so the estimate
-      // must come with the overestimate warning - and the reference file's own
-      // "real" value is far outside the tolerance, which is exactly the point.
-      expect(w.re!.motionalProximityWarning).toContain('OVERESTIMATE');
-      expect(w.re!.ohm).toBeGreaterThan(ref.Re_werkelijk_ca);
+      // V8d, THE FIX. The value in use is the fit's DC term, and it lands on
+      // the casebook's own meter reading of the pair.
+      expect(w.re!.source).toBe('motional-fit');
+      expect(Math.abs(w.re!.ohm - ref.Re)).toBeLessThanOrEqual(TOL.ohm);
+      expect(Math.abs(w.re!.ohm - ref.Re_werkelijk_ca)).toBeLessThanOrEqual(TOL.ohm);
+      // The old reading is kept, unchanged, as the comparison value - and it
+      // is still the overestimate the casebook recorded.
+      expect(Math.abs(w.re!.directOhm - ref.Re_naief)).toBeLessThanOrEqual(TOL.ohm);
+      expect(w.re!.directOhm).toBeGreaterThan(ref.Re_werkelijk_ca);
+      // The contamination is QUANTIFIED, in ohms, from the fitted resonance -
+      // not inferred from an octave count. Direct minus skirt must land near
+      // the fitted value, or the two halves of the estimator disagree.
+      expect(Math.abs(w.re!.motionalSkirtOhm! - ref.Re_motionele_rok_ohm)).toBeLessThanOrEqual(TOL.ohm);
+      expect(w.re!.directOhm - w.re!.motionalSkirtOhm!).toBeGreaterThan(w.re!.ohm);
 
       expect(w.impedance!.type).toBe('reflex');
       const x = w.impedance!.reflex!;
@@ -144,6 +177,114 @@ describe('golden references - casus 1 (Koan 2951)', () => {
       expect(pct(x.fbHz, ref.fb)).toBeLessThanOrEqual(TOL.frequenties_pct);
       expect(pct(x.fHHz, ref.fH)).toBeLessThanOrEqual(TOL.frequenties_pct);
       expect(Math.abs(x.zDipOhm - ref.Zdip)).toBeLessThanOrEqual(TOL.ohm);
+    });
+
+    it('R_e hierarchy: an entered meter reading outranks the fit, everywhere at once', () => {
+      // The point is "everywhere at once". R_e is not one metric's input - the
+      // alignment, the loss indicator, M-E and the Q_es bound all divide by it.
+      // Supplying it at a metric would move that metric and leave the rest
+      // quoting a different number, so it is supplied at the PASS and this test
+      // is what pins that.
+      const derived = driver(DERIVED, 'woofer');
+      const entered = driver(REPORTS.HUIDIG, 'woofer');
+      expect(derived.re!.source).toBe('motional-fit');
+      expect(entered.re!.source).toBe('entered');
+      expect(entered.re!.ohm).toBeCloseTo(CASUS1_WOOFER_DC_OHM, 6);
+      // Both sweep derivations survive as comparison values under the entered one.
+      expect(entered.re!.directOhm).toBeCloseTo(derived.re!.directOhm, 6);
+      expect(entered.re!.fit!.reOhm).toBeCloseTo(derived.re!.fit!.reOhm, 6);
+      // ...and the loss indicator, which V8d says inherits every R_e error one
+      // for one, moved with it rather than staying on the derived value.
+      expect(entered.impedance!.reflex!.lossIndicator).not.toBeCloseTo(
+        derived.impedance!.reflex!.lossIndicator,
+        3,
+      );
+      expect(entered.impedance!.reflex!.lossIndicator).toBeCloseTo(
+        derived.impedance!.reflex!.zDipOhm / CASUS1_WOOFER_DC_OHM,
+        6,
+      );
+    });
+
+    it('the motional fit publishes its residual and its band sensitivity, and passes both limits', () => {
+      // The V8e discipline on a second extractor: a fit that cannot abstain
+      // will eventually publish nonsense, so it has to measure itself first.
+      for (const name of ['woofer', 'mid', 'tweeter']) {
+        const f = driver(DERIVED, name).re!.fit!;
+        expect(f.accepted, `${name} fit accepted`).toBe(true);
+        expect(f.refusal).toBeNull();
+        expect(f.relativeResidual).toBeLessThanOrEqual(f.limits.maxRelativeResidual);
+        expect(f.bandSensitivityOhm / f.reOhm).toBeLessThanOrEqual(
+          f.limits.maxBandSensitivityFraction,
+        );
+        // The sensitivity is measured over BOTH comparison bands, or it is not
+        // a sensitivity - a single alternative band cannot show a spread.
+        expect(f.bandSensitivitySamples).toHaveLength(2);
+      }
+    });
+
+    it('the fit QUALITY is a reference too, per driver, on the recorded band', () => {
+      /* V15, one level down.
+       *
+       * A residual and a band sensitivity quoted once in a delivery report are
+       * a calibration figure: they say the estimator behaved when it was
+       * built, and they say nothing ever again. As REFERENCES they do work — a
+       * solver change that alters the fit's quality (a different start list, a
+       * different weighting, a different band) moves these numbers, and a
+       * reference that moves is a test that fails instead of a difference
+       * nobody notices.
+       *
+       * The tolerance is its own class with its own motivation in the
+       * reference file, because it answers a different question from the
+       * REFUSAL limits: those say what is still acceptable, this says what
+       * this measurement set actually produces. */
+      for (const name of ['woofer', 'mid', 'tweeter']) {
+        const d = driver(DERIVED, name);
+        const ref = golden.afgeleide_parameters[name] as Record<string, number | number[]>;
+        const f = d.re!.fit!;
+        expect(pct(f.relativeResidual, ref.Re_fit_residu as number), `${name} residual`)
+          .toBeLessThanOrEqual(TOL.fit_kwaliteit_pct);
+        expect(
+          pct(f.bandSensitivityOhm, ref.Re_fit_bandgevoeligheid_ohm as number),
+          `${name} band sensitivity`,
+        ).toBeLessThanOrEqual(TOL.fit_kwaliteit_pct);
+        // The BAND those two were measured on, because a residual without its
+        // band is not reproducible - the same process rule V15 wrote for the
+        // metrics, applied to the estimator that feeds them.
+        const band = ref.Re_fit_band_hz as [number, number];
+        expect(pct(f.bandHz[0], band[0]), `${name} band floor`).toBeLessThanOrEqual(
+          TOL.frequenties_pct,
+        );
+        expect(pct(f.bandHz[1], band[1]), `${name} band top`).toBeLessThanOrEqual(
+          TOL.frequenties_pct,
+        );
+        // And the skirt, which is what the whole exercise removed.
+        expect(
+          Math.abs(f.skirtAtSweepStartOhm - (ref.Re_motionele_rok_ohm as number)),
+          `${name} skirt`,
+        ).toBeLessThanOrEqual(TOL.ohm);
+        // The one reclassification pass agreed with itself on this set: no
+        // driver here carries the A5e.4 shift flag, and if one starts to, that
+        // is a finding rather than a wobble.
+        expect(d.re!.reclassificationShift, `${name} reclassification`).toBeNull();
+      }
+    });
+
+    it('the fit parameters are in the REFERENCE FILE, not in this test (V15)', () => {
+      const p = golden.re_fit_parameters;
+      expect(p.band_multiple).toBeGreaterThan(1);
+      expect(p.sensitivity_band_multiples).toHaveLength(2);
+      const f = driver(DERIVED, 'woofer').re!.fit!;
+      const fund = driver(DERIVED, 'woofer').impedance!.fundamentalHz!;
+      // The band the engine used IS the band the reference file records.
+      expect(f.bandHz[1]).toBeCloseTo(fund * p.band_multiple, 6);
+      expect(f.limits.maxRelativeResidual).toBeCloseTo(p.kwaliteitsgrenzen.max_relatief_residu, 6);
+      expect(f.limits.maxBandSensitivityFraction).toBeCloseTo(
+        p.kwaliteitsgrenzen.max_bandgevoeligheid_fractie,
+        6,
+      );
+      expect(f.bandSensitivitySamples.map((x) => x.multiple)).toEqual([
+        ...p.sensitivity_band_multiples,
+      ]);
     });
 
     it('woofer: Q of the upper impedance peak, and the voice-coil exponent', () => {
@@ -241,6 +382,11 @@ describe('golden references - casus 1 (Koan 2951)', () => {
       const t = driver(r, 'tweeter');
       const ref = golden.afgeleide_parameters.tweeter as Record<string, number>;
       expect(Math.abs(t.re!.ohm - ref.Re)).toBeLessThanOrEqual(TOL.ohm);
+      // The WITHDRAWN 25-08 value reproduces exactly, from the estimator that
+      // produced it. That is the whole V15 argument in one line: the revision
+      // is a change of estimator, not a change of data.
+      const withdrawn = golden.afgeleide_parameters.tweeter._Re_sessie_25_08 as { waarde: number };
+      expect(Math.abs(t.re!.directOhm - withdrawn.waarde)).toBeLessThanOrEqual(TOL.ohm);
       expect(pct(t.impedance!.sealed!.fcHz, ref.fs)).toBeLessThanOrEqual(TOL.frequenties_pct);
       expect(Math.abs(t.impedance!.sealed!.zMaxOhm - ref.Zmax)).toBeLessThanOrEqual(TOL.ohm * 10);
       expect(pct(t.impedance!.sealed!.r0, ref.r0)).toBeLessThanOrEqual(TOL.exponent_pct);
@@ -288,7 +434,10 @@ describe('golden references - casus 1 (Koan 2951)', () => {
     it('M-E: Q_es multiplication at the woofer resonance', () => {
       const t = r.metrics.thevenin.find((x) => x.driver === 'woofer')!;
       expect(pct(t.qMultiplier!, ref.Qes_mult)).toBeLessThanOrEqual(TOL.exponent_pct);
-      expect(t.reSource).toContain('measured DC resistance');
+      // A5c.1's hierarchy, visible in the metric that consumes it: the entered
+      // meter reading outranks both sweep derivations, and M-E says so.
+      expect(t.reSource).toContain('measured with a meter');
+      expect(t.reOhm).toBeCloseTo(CASUS1_WOOFER_DC_OHM, 6);
     });
 
     it('M-C: tweeter voltage on its own resonance', () => {

@@ -12,15 +12,17 @@
  *   V8b — the rising voice-coil inductance was detected as a "peak", so a peak
  *         is only MOTIONAL when the impedance phase crosses zero there.
  *   V8d — Re(Z) at the lowest bins overestimates when the sweep starts on top
- *         of f_L, so the estimate carries a motional-proximity warning and an
- *         explicitly-advisory extrapolated alternative.
+ *         of f_L, so R_e comes from a MOTIONAL FIT extrapolated to DC
+ *         (`motionalFit.ts`), the direct reading stays available as the
+ *         comparison value, and the contamination is stated in ohms computed
+ *         from the fitted resonance rather than guessed from an octave count.
  *   V8e — the semi-inductance fit produced nonsense on a tweeter, so the fit
  *         validates itself and refuses rather than reporting an exponent.
  */
 
 import {
+  PERCENT,
   RE_LOW_FRACTION_OF_POINTS,
-  RE_MOTIONAL_PROXIMITY_OCTAVES,
   RESONANCE_MIN_Z_OVER_RE,
   RESONANCE_PHASE_ZERO_DEG,
   REFLEX_DIP_FRACTION,
@@ -36,10 +38,10 @@ import {
   degToRad,
   findResidualPeaks,
   octaveTrend,
-  octavesBetween,
   type Peak,
 } from '../util.ts';
 import { stamp, type EstimatorStamp } from '../version.ts';
+import { fitMotionalRe, type MotionalReFit } from './motionalFit.ts';
 
 export const EXTRACTOR_RE = 'z-re' as const;
 export const EXTRACTOR_RESONANCE = 'z-resonance' as const;
@@ -65,88 +67,301 @@ function median(values: readonly number[]): number {
 }
 
 /* ------------------------------------------------------------------ *
- * R_e
+ * R_e — A5c.1, rebuilt at F3b (V8d)
+ *
+ * THREE SOURCES, ONE HIERARCHY, AND THE HIERARCHY IS THE POINT.
+ *
+ *   1. A DC RESISTANCE THE DESIGNER MEASURED. A multimeter reading is a
+ *      measurement OF THE QUANTITY ITSELF. Everything below is inference from
+ *      a sweep, however good. When it is supplied it wins, full stop.
+ *   2. THE MOTIONAL FIT (`motionalFit.ts`). The model's R_e at DC — the
+ *      extrapolation V8d asks for, taken from the fit that produced it rather
+ *      than beside it. It carries its own abstention duty and can refuse.
+ *   3. THE DIRECT READING. Re(Z) over the lowest slice of the sweep. Correct
+ *      wherever the motional impedance has died away, an overestimate where it
+ *      has not — and after F3b the app says HOW MUCH it is carrying, in ohms
+ *      computed from the fitted branch, instead of guessing from an octave
+ *      count.
+ *
+ * All three are always reported. The old reading in particular is never
+ * discarded: it is the comparison value, and on a driver whose sweep starts
+ * far below resonance the two agreeing is the evidence that the fit is sane.
  * ------------------------------------------------------------------ */
+
+/** Where the authoritative R_e came from. */
+export type ReSource = 'entered' | 'motional-fit' | 'direct';
 
 export interface ReEstimate {
   /** The value every downstream metric uses, ohms. */
   ohm: number;
-  /** How many of the lowest points went into it. */
+  /** Which of the three sources produced it. */
+  source: ReSource;
+  /** The sentence the report shows beside the number. */
+  sourceText: string;
+  /** The direct low-frequency reading, always computed. */
+  directOhm: number;
+  /** How many of the lowest points went into that reading. */
   pointsUsed: number;
+  /** The motional fit, when there was anything to fit. */
+  fit: MotionalReFit | null;
   /**
-   * V8d — set when the sweep starts too close to the lowest resonance for the
-   * low-frequency reading to be free of motional impedance. The number is then
-   * an OVERESTIMATE, and the warning says so instead of the app pretending.
+   * V8d — what the DIRECT reading is carrying, in ohms, at the bottom of the
+   * sweep. Set only when the fit could quantify it. Null means "not known",
+   * never "zero".
+   */
+  motionalSkirtOhm: number | null;
+  /**
+   * Set when the value in use is known to be contaminated: the fit refused (or
+   * could not run) and the direct reading is carrying motional impedance. The
+   * text states ohms and percent, not octaves.
    */
   motionalProximityWarning: string | null;
   /**
-   * ADVISORY alternative for the warned case: Re(Z) extrapolated to f → 0
-   * through the sub-resonance points. Explicitly not the primary value — the
-   * refinement V8d asks for is a full motional fit, which is not taken here.
-   * TODO(V8d): replace with a motional-impedance fit once the estimator is
-   * validated against a synthetic ground-truth case (A7).
+   * A5e.4 — set when the ONE reclassification pass found a different set of
+   * motional resonances than the pass that seeded the fit.
+   *
+   * The loop is classify -> fit -> reclassify, and it runs to a FIXED DEPTH of
+   * one reclassification. It could be run to convergence instead, and that is
+   * exactly what must not happen: a determinism policy that says "same input,
+   * same result" cannot rest on a loop whose iteration count depends on how a
+   * threshold happens to fall on one driver. So a peak set that moves is a
+   * REPORTABLE CONDITION, not a reason for a third round.
+   *
+   * What it usually means: a marginal crest crossed the `Z > k·R_e` bar when
+   * R_e came down. The value in use is still the fit's, because the fit
+   * converged and passed both its quality limits; what this says is that the
+   * alignment reported beside it was derived from a slightly different reading
+   * of the same curve, and that a reader comparing the two should know.
    */
-  extrapolatedOhm: number | null;
+  reclassificationShift: string | null;
   estimator: EstimatorStamp;
 }
 
-/**
- * R_e from Re(Z) over the lowest slice of the sweep.
- *
- * `lowestResonanceHz` is optional and only used for the warning: without it
- * the estimate is still produced, it simply cannot be checked for motional
- * contamination, and the warning field says that too.
- */
-export function estimateRe(
-  curve: ImpedanceCurve,
-  lowestResonanceHz?: number | null,
-): ReEstimate {
+/** The direct reading on its own: median of Re(Z) over the lowest slice. */
+export function directRe(curve: ImpedanceCurve): { ohm: number; pointsUsed: number } {
   const n = curve.freq.length;
   const k = Math.max(3, Math.floor(n * RE_LOW_FRACTION_OF_POINTS));
   const lows: number[] = [];
   for (let i = 0; i < k; i++) lows.push(reOf(curve, i));
-  const ohm = median(lows);
+  return { ohm: median(lows), pointsUsed: k };
+}
 
-  let warning: string | null = null;
-  let extrapolated: number | null = null;
-  if (lowestResonanceHz !== undefined && lowestResonanceHz !== null && lowestResonanceHz > 0) {
-    const octaves = octavesBetween(curve.freq[0], lowestResonanceHz);
-    if (octaves < RE_MOTIONAL_PROXIMITY_OCTAVES) {
-      warning =
-        `The sweep starts at ${curve.freq[0].toFixed(1)} Hz, only ${octaves.toFixed(2)} octave ` +
-        `below the lowest resonance at ${lowestResonanceHz.toFixed(1)} Hz. Re(Z) down there still ` +
-        'carries motional impedance, so this R_e is an OVERESTIMATE (V8d). ' +
-        'Measure lower, or treat every R_e-dependent number as a bound rather than a value.';
-      // Advisory extrapolation: Re(Z) below the resonance rises roughly with
-      // f² as the motional term comes in, so a straight line in f² through the
-      // sub-resonance points extrapolates to f = 0. Reported, never used.
-      const xs: number[] = [];
-      const ys: number[] = [];
-      for (let i = 0; i < n && curve.freq[i] < lowestResonanceHz; i++) {
-        xs.push(curve.freq[i] * curve.freq[i]);
-        ys.push(reOf(curve, i));
-      }
-      if (xs.length >= 3) {
-        const m = xs.length;
-        const sx = xs.reduce((s, v) => s + v, 0);
-        const sy = ys.reduce((s, v) => s + v, 0);
-        const sxx = xs.reduce((s, v) => s + v * v, 0);
-        const sxy = xs.reduce((s, v, i) => s + v * ys[i], 0);
-        const det = m * sxx - sx * sx;
-        if (Math.abs(det) > Number.EPSILON) {
-          const slope = (m * sxy - sx * sy) / det;
-          extrapolated = (sy - slope * sx) / m;
-        }
-      }
-    }
+export interface ReEstimateOptions {
+  /** The driver's fundamental in-box resonance — the fit band hangs on it. */
+  fundamentalHz?: number | null;
+  /** Every motional resonance the classification found. */
+  motionalPeaks?: readonly { fHz: number; ohm: number; q: number | null }[];
+  /** A DC resistance the designer measured. Wins over everything. */
+  enteredOhm?: number;
+  /** Quality limits for the fit; absent = the constants. */
+  maxRelativeResidual?: number;
+  maxBandSensitivityFraction?: number;
+}
+
+/**
+ * R_e, through the hierarchy above.
+ *
+ * With no options at all this still produces a value — the direct reading,
+ * with no fit and therefore no skirt figure — which is what the bootstrap pass
+ * needs before the resonances have been classified.
+ */
+export function estimateRe(curve: ImpedanceCurve, opts: ReEstimateOptions = {}): ReEstimate {
+  const direct = directRe(curve);
+
+  const fit =
+    opts.fundamentalHz !== undefined && opts.fundamentalHz !== null && opts.motionalPeaks
+      ? fitMotionalRe({
+          freq: curve.freq,
+          magnitude: curve.magnitude,
+          phaseDeg: curve.phaseDeg,
+          fundamentalHz: opts.fundamentalHz,
+          seeds: opts.motionalPeaks,
+          startReOhm: direct.ohm,
+          ...(opts.maxRelativeResidual !== undefined
+            ? { maxRelativeResidual: opts.maxRelativeResidual }
+            : {}),
+          ...(opts.maxBandSensitivityFraction !== undefined
+            ? { maxBandSensitivityFraction: opts.maxBandSensitivityFraction }
+            : {}),
+        })
+      : null;
+
+  const skirt = fit ? fit.skirtAtSweepStartOhm : null;
+  const skirtText =
+    skirt === null
+      ? ''
+      : `${skirt.toFixed(3)} Ω (${((skirt / direct.ohm) * PERCENT).toFixed(1)} % of the reading) ` +
+        `of motional impedance at ${curve.freq[0].toFixed(1)} Hz, computed from the fitted ` +
+        'resonance itself';
+
+  if (opts.enteredOhm !== undefined && opts.enteredOhm > 0) {
+    return {
+      ohm: opts.enteredOhm,
+      source: 'entered',
+      sourceText:
+        'DC resistance measured with a meter and entered for this driver — a measurement of the ' +
+        'quantity itself, so it outranks both sweep derivations' +
+        (fit?.accepted ? ` (the motional fit reads ${fit.reOhm.toFixed(3)} Ω)` : '') +
+        ` (the direct low-frequency reading is ${direct.ohm.toFixed(3)} Ω)`,
+      directOhm: direct.ohm,
+      pointsUsed: direct.pointsUsed,
+      fit,
+      motionalSkirtOhm: skirt,
+      motionalProximityWarning: null,
+      reclassificationShift: null,
+      estimator: stamp(EXTRACTOR_RE),
+    };
   }
 
+  if (fit?.accepted) {
+    return {
+      ohm: fit.reOhm,
+      source: 'motional-fit',
+      sourceText:
+        `motional fit over ${fit.bandHz[0].toFixed(1)}–${fit.bandHz[1].toFixed(0)} Hz ` +
+        `(${fit.branches.length} resonance${fit.branches.length === 1 ? '' : 's'}, relative RMS ` +
+        `residual ${fit.relativeResidual.toFixed(4)}, band sensitivity ±` +
+        `${fit.bandSensitivityOhm.toFixed(3)} Ω), extrapolated to DC. The direct low-frequency ` +
+        `reading is ${direct.ohm.toFixed(3)} Ω` +
+        (skirt === null ? '' : ` and carries ${skirtText}`),
+      directOhm: direct.ohm,
+      pointsUsed: direct.pointsUsed,
+      fit,
+      motionalSkirtOhm: skirt,
+      motionalProximityWarning: null,
+      reclassificationShift: null,
+      estimator: stamp(EXTRACTOR_RE),
+    };
+  }
+
+  // The fit refused, or there was nothing to fit. The direct reading stands —
+  // and says what it is carrying, when the fit got far enough to say.
+  const because = fit?.refusal
+    ? `The motional fit ABSTAINED: ${fit.refusal}.`
+    : 'No motional fit was possible on this sweep (no classified resonance to seed it).';
+  const warning =
+    skirt !== null && skirt > 0
+      ? `${because} The direct reading is therefore in use, and it is an OVERESTIMATE: it carries ` +
+        `${skirtText}. Treat every R_e-dependent number as a bound rather than a value, or measure ` +
+        'the DC resistance with a meter and enter it.'
+      : fit?.refusal
+        ? `${because} The direct reading is in use and the contamination could not be quantified.`
+        : null;
+
   return {
-    ohm,
-    pointsUsed: k,
+    ohm: direct.ohm,
+    source: 'direct',
+    sourceText:
+      `Re(Z) over the lowest ${direct.pointsUsed} points of the sweep. ` +
+      (fit?.refusal ? because : 'No motional fit was taken.'),
+    directOhm: direct.ohm,
+    pointsUsed: direct.pointsUsed,
+    fit,
+    motionalSkirtOhm: skirt,
     motionalProximityWarning: warning,
-    extrapolatedOhm: extrapolated,
+    reclassificationShift: null,
     estimator: stamp(EXTRACTOR_RE),
+  };
+}
+
+/* ------------------------------------------------------------------ *
+ * The fixed-depth resolution of R_e and the alignment (A5e.4)
+ * ------------------------------------------------------------------ */
+
+export interface ResolvedRe {
+  re: ReEstimate;
+  /** The classification the FINAL R_e implies — what everything downstream reads. */
+  classification: ImpedanceClassification;
+  /**
+   * How many times the peak finder actually ran.
+   *
+   * COUNTED AT THE CALL, not asserted about. V17's lesson in miniature: the
+   * gate counter there disagreed with reality because one call path reached
+   * the hook directly, and no timing measurement would ever have found it. So
+   * every classification in this function goes through one counted helper, and
+   * the number it produces is part of the result rather than a claim in a
+   * comment.
+   *
+   * 2 in the ordinary case (locate, then reclassify on the final R_e). 1 when
+   * R_e did not move at all — the second pass is then PROVABLY identical,
+   * because `classifyImpedance` is a pure function of the curve and R_e, so
+   * skipping it is arithmetic rather than impatience. Never 3.
+   */
+  classificationPasses: number;
+}
+
+/** The peak set as a comparable key: which motional resonances, at what bins. */
+const peakKey = (c: ImpedanceClassification): string =>
+  c.motionalPeaks.map((p) => p.fHz.toFixed(4)).join(',');
+
+/**
+ * R_e and the alignment, resolved together, to a FIXED DEPTH.
+ *
+ * THE LOOP AND WHY IT DOES NOT LOOP.
+ *
+ *   1. BOOTSTRAP. The peak finder needs an R_e to measure "clearly above R_e"
+ *      against, so it gets the direct low-frequency reading. Its job here is
+ *      only to LOCATE the resonances, and a crest does not move with a tenth
+ *      of an ohm.
+ *   2. FIT. Those resonances seed the motional fit, which returns R_e as the
+ *      term surviving at DC — or refuses, in which case the direct reading
+ *      stands with its contamination stated (V8d). A DC resistance the
+ *      designer measured outranks both.
+ *   3. RECLASSIFY, ONCE. r0, the sealed alignment's Q_mc/Q_ec/Q_tc and the
+ *      vented loss indicator Z(f_b)/R_e are all RATIOS TO R_e. Leaving them on
+ *      the bootstrap value would ship a driver whose R_e says one thing and
+ *      whose alignment was computed from another.
+ *
+ * AND THEN IT STOPS. Running to convergence would make the iteration count a
+ * property of how a threshold happens to fall on one particular curve, and
+ * A5e.4 asks for "zelfde invoer + zelfde seed = byte-identiek resultaat" — a
+ * guarantee that cannot rest on a loop nobody can bound. A peak set that moves
+ * between the two passes is therefore REPORTED (`reclassificationShift`) and
+ * the fit keeps its value: it converged and it passed both quality limits, and
+ * what shifted is which crests the finder admits at the new R_e, not whether
+ * the fit describes the curve.
+ */
+export function resolveRe(curve: ImpedanceCurve, opts: ReEstimateOptions = {}): ResolvedRe {
+  let classificationPasses = 0;
+  const classify = (reOhm: number): ImpedanceClassification => {
+    classificationPasses++;
+    return classifyImpedance(curve, reOhm);
+  };
+
+  const bootstrap = estimateRe(curve, {});
+  const located = classify(bootstrap.ohm);
+
+  const re = estimateRe(curve, {
+    ...opts,
+    fundamentalHz: located.fundamentalHz,
+    motionalPeaks: located.motionalPeaks.map((p) => ({ fHz: p.fHz, ohm: p.ohm, q: p.q })),
+  });
+
+  if (re.ohm === bootstrap.ohm) {
+    return { re, classification: located, classificationPasses };
+  }
+
+  const settled = classify(re.ohm);
+  if (peakKey(settled) === peakKey(located)) {
+    return { re, classification: settled, classificationPasses };
+  }
+
+  const before = located.motionalPeaks.map((p) => `${p.fHz.toFixed(0)} Hz`);
+  const after = settled.motionalPeaks.map((p) => `${p.fHz.toFixed(0)} Hz`);
+  return {
+    re: {
+      ...re,
+      reclassificationShift:
+        `The one reclassification pass on the resolved R_e (${re.ohm.toFixed(3)} Ω, from ` +
+        `${bootstrap.ohm.toFixed(3)} Ω) finds a DIFFERENT set of motional resonances than the ` +
+        `pass that seeded the fit: [${before.join(', ')}] became [${after.join(', ')}]. ` +
+        'Almost always a marginal crest crossing the "clearly above R_e" bar. The pass is NOT ' +
+        'repeated - a loop run to convergence would make the iteration count a property of the ' +
+        'curve rather than of the rules (A5e.4) - so the fit keeps its value and this says that ' +
+        'the alignment beside it was derived from a slightly different reading of the same sweep.',
+    },
+    classification: settled,
+    classificationPasses,
   };
 }
 

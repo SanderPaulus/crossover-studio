@@ -176,10 +176,19 @@ function walk(dir: string, out: string[] = []): string[] {
  *
  *    So the arrow still points one way, the v1 worker still cannot see
  *    engine2, and exactly one client module knows that two engines exist.
+ *
+ *  · `components/XoWindowAnnotation.tsx` — added at F3b, and for one reason:
+ *    the toggle invariant claims the dialog RENDERS NOTHING with the engine
+ *    off, and a source scan cannot make that claim. One component with one
+ *    entry condition can be rendered in a test and read, which is what
+ *    `xoWindowAnnotation.test.tsx` does. It imports two TYPES and one
+ *    formatter from engine2 and holds no logic of its own — every verdict it
+ *    draws comes from `xoRangeAdvice.ts`.
  */
 const ALLOWED_IMPORTERS = [
   'App.tsx',
   join('components', 'EngineV2Panel.tsx'),
+  join('components', 'XoWindowAnnotation.tsx'),
   join('lib', 'optimClient.ts'),
 ];
 
@@ -201,6 +210,14 @@ describe('engine v2 toggle — off means unchanged', () => {
     for (const file of walk(SRC)) {
       const rel = relative(SRC, file);
       if (rel.startsWith(join('lib', 'engine2'))) continue;
+      /* TESTS ARE NOT THE IMPORT GRAPH. This scan protects one claim: that
+       * turning the flag off leaves the SHIPPED app unchanged. A test file is
+       * not in the bundle, cannot be reached by the running app, and can no
+       * more change its behaviour than a comment can — while a test that may
+       * not import the module it tests is a test nobody can write. (What is in
+       * the bundle is `browserSafe.test.ts`'s business, and it holds its own
+       * allow-list for exactly this reason.) */
+      if (/\.test\.tsx?$/.test(rel)) continue;
       const allowed = ALLOWED_IMPORTERS.some((a) => rel === a || rel.endsWith(a));
       if (allowed) continue;
       readFileSync(file, 'utf-8')
@@ -230,12 +247,93 @@ describe('engine v2 toggle — off means unchanged', () => {
     expect(worker).toContain('optimizeNetworkValues');
   });
 
+  /* ------------------------------------------------------------------ *
+   * F3b — the toggle invariant for the SCAN DIALOG and the PANEL.
+   *
+   * F3b put three new surfaces into `App.tsx`: the A5d.3 window annotation with
+   * its take-over button, the pre-start estimate, and the A5a measurement
+   * form. All three are v2 reporting, so with the toggle off the dialog must
+   * be what it always was — to the pixel.
+   *
+   * There is no DOM in this suite, so the invariant is pinned where it is
+   * actually decided: every one of those surfaces hangs off a value that is
+   * NULL when reporting is off, and the guard below reads the source to prove
+   * the chain rather than trusting that it was wired that way. Same technique
+   * as `noAppWideFloor.test.ts` and the import scan above — a review rule does
+   * not survive; a test does.
+   * ------------------------------------------------------------------ */
+  describe('F3b - the new dialog and panel surfaces are behind the flag', () => {
+    const app = () => readFileSync(join(SRC, 'App.tsx'), 'utf-8');
+
+    it('the window annotation, the take-over and the estimate all hang off `v2Windows`', () => {
+      const text = app();
+      // The one gate: `v2Windows` is null unless the selection says reporting.
+      expect(text).toMatch(
+        /const v2Windows = useMemo\([\s\S]{0,400}?if \(!engineSelection\.reporting\) return null;/,
+      );
+      // Every consumer reads it, and none of them reaches past it.
+      expect(text).toContain('const v2WindowPairs: XoWindowPair[] | null = !v2Windows');
+      expect(text).toContain('if (v2Windows && !runOpts.acknowledgedWindowNotice)');
+      // `v2Advice` and the take-over both refuse without a window, so a render
+      // path that slipped past the guard would still produce nothing.
+      expect(text).toMatch(/const w = v2Windows\?\.\[side\];\s*\n\s*if \(!w\) return null;/);
+      // The markup is the component's, and App does not spell the class
+      // itself - so the runtime assert in `xoWindowAnnotation.test.tsx` covers
+      // every path that can draw it.
+      expect(text).toContain('<XoWindowAnnotation');
+      expect(text).not.toContain("'v2-xo-window'");
+      expect(text).not.toContain('v2-xo-window"');
+    });
+
+    it('the pre-start notice can only be set from inside that guard', () => {
+      const text = app();
+      const sets = [...text.matchAll(/setV2PreStart\(/g)];
+      // Two: the one that arms it (inside the guard) and the Cancel button
+      // that clears it. A third would be a path worth looking at.
+      expect(sets.length).toBe(3);
+      const armed = text.indexOf('if (v2Windows && !runOpts.acknowledgedWindowNotice)');
+      const arm = text.indexOf('setV2PreStart({');
+      expect(armed).toBeGreaterThan(0);
+      expect(arm).toBeGreaterThan(armed);
+      // ...and it renders behind its own null check, so an unset notice draws
+      // nothing at all.
+      expect(text).toContain('{v2PreStart && (');
+    });
+
+    it('the A5a measurement form is behind `engineSelection.reporting`', () => {
+      const text = app();
+      const form = text.indexOf("t('Engine v2 — measurement')");
+      expect(form).toBeGreaterThan(0);
+      const guard = text.lastIndexOf('{engineSelection.reporting && (', form);
+      expect(guard).toBeGreaterThan(0);
+      // The guard is the nearest opening before the form, and nothing closes
+      // between them - a crude proximity check, but it catches the one way
+      // this breaks: someone moving the fields out of the block.
+      expect(form - guard).toBeLessThan(1200);
+    });
+
+    it('this guard is reading the file it thinks it is', () => {
+      // A scan that quietly read an empty string would keep every assertion
+      // above green.
+      const text = app();
+      expect(text.length).toBeGreaterThan(100000);
+      expect(text).toContain('engineSelection');
+    });
+  });
+
   it('the import scan actually walks the tree', () => {
     // A walker that quietly found nothing would keep the test above green.
     const files = walk(SRC).map((f) => relative(SRC, f));
     expect(files.length).toBeGreaterThan(50);
     expect(files).toContain('App.tsx');
     expect(files.some((f) => f.startsWith(join('lib', 'engine2')))).toBe(true);
+    // The test exemption above must not have swallowed the app: plenty of
+    // non-test files outside engine2 still go through the scan.
+    const scanned = files.filter(
+      (f) => !f.startsWith(join('lib', 'engine2')) && !/\.test\.tsx?$/.test(f),
+    );
+    expect(scanned.length).toBeGreaterThan(30);
+    expect(scanned).toContain('App.tsx');
   });
 
   it('absent, false and off are the same selection; only ON routes the optimiser to v2', () => {

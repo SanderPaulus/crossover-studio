@@ -96,6 +96,35 @@ export interface ManifestEntry {
   driveVoltageV?: number;
   /** Parsed header, when the file carried one. */
   header?: ArtaHeader;
+  /**
+   * WINDOW METADATA THE DESIGNER TYPED (F3b, spec decision 2).
+   *
+   * A5b.1(i) makes the header floor the hard, automatic, binding limit — and
+   * a file that has passed through another tool carries no header at all. The
+   * app's answer used to be "the floor is UNKNOWN and everything that needs it
+   * stays off", which is honest and useless: the designer usually knows the
+   * gate, because they set it.
+   *
+   * SO THIS IS A FALLBACK, NEVER AN OVERRIDE. It applies only where the header
+   * supplies nothing, and `floorProvenance` on the resulting interval says
+   * which of the two spoke. A typed number that could silently replace a
+   * measured one would put A5b.1's "nothing may relax this" in the hands of
+   * whoever last edited a field.
+   *
+   * Two forms, because the designer may know either. Give the two times and
+   * the app derives T exactly as it does from a header; or give the floor
+   * itself, for a measurement whose window is only known through its result.
+   */
+  manualWindow?: {
+    /** The impulse's t=0 reference, ms. */
+    referenceTimeMs?: number;
+    /** Right window edge, ms. */
+    rightWindowMs?: number;
+    /** The hard validity floor itself, Hz — the shortcut form. */
+    validityFloorHz?: number;
+    /** Where the designer got these numbers. Shown with the provenance. */
+    note?: string;
+  };
   /** Which fields were filled by auto-detection rather than typed. */
   autoDetected?: readonly (keyof ManifestEntry)[];
 }
@@ -195,6 +224,68 @@ export function parseArtaHeader(comments: readonly string[]): ArtaHeader {
 export function effectiveWindowSeconds(h: ArtaHeader | undefined): number | null {
   if (!h || h.effectiveWindowMs === undefined) return null;
   return h.effectiveWindowMs / MS_PER_S;
+}
+
+/** Where a window figure came from. The header always outranks the designer. */
+export type WindowProvenance = 'header' | 'manual-window' | 'manual-floor';
+
+export interface EffectiveWindow {
+  /** Effective window length T, ms. Null for the manual-floor form. */
+  windowMs: number | null;
+  /** The hard floor this implies, Hz — set directly by the manual-floor form. */
+  directFloorHz: number | null;
+  provenance: WindowProvenance;
+  /** One sentence, ready for the report. */
+  describe: string;
+}
+
+/**
+ * The effective window for one measurement, and WHO said so.
+ *
+ * Order is the whole content of this function: the header first, because ARTA
+ * wrote it and A5b.1(i) says nothing may relax it; the designer's numbers only
+ * where the header is silent. There is no branch in which a typed value
+ * displaces a measured one.
+ */
+export function effectiveWindowOf(entry: ManifestEntry): EffectiveWindow | null {
+  const fromHeader = entry.header?.effectiveWindowMs;
+  if (fromHeader !== undefined && fromHeader > 0) {
+    return {
+      windowMs: fromHeader,
+      directFloorHz: null,
+      provenance: 'header',
+      describe:
+        `header window ${fromHeader.toFixed(3)} ms ` +
+        `(${entry.header?.rightWindowMs} − ${entry.header?.referenceTimeMs})`,
+    };
+  }
+  const m = entry.manualWindow;
+  if (!m) return null;
+  const note = m.note ? ` — ${m.note}` : '';
+  if (m.referenceTimeMs !== undefined && m.rightWindowMs !== undefined) {
+    const t = m.rightWindowMs - m.referenceTimeMs;
+    if (t > 0) {
+      return {
+        windowMs: t,
+        directFloorHz: null,
+        provenance: 'manual-window',
+        describe:
+          `window ${t.toFixed(3)} ms entered by hand (${m.rightWindowMs} − ${m.referenceTimeMs}); ` +
+          `this file's header carries no window fields${note}`,
+      };
+    }
+  }
+  if (m.validityFloorHz !== undefined && m.validityFloorHz > 0) {
+    return {
+      windowMs: null,
+      directFloorHz: m.validityFloorHz,
+      provenance: 'manual-floor',
+      describe:
+        `validity floor ${m.validityFloorHz.toFixed(0)} Hz entered by hand; this file's header ` +
+        `carries no window fields${note}`,
+    };
+  }
+  return null;
 }
 
 /* ------------------------------------------------------------------ *

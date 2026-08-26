@@ -58,6 +58,25 @@ export interface AdapterBranch {
   diameterInch?: number;
   /** Microphone distance of the near field in mm, when it was recorded. */
   nearFieldMicMm?: number;
+  /**
+   * DC resistance the designer measured with a meter, ohms.
+   *
+   * It travels on the BRANCH rather than in the settings because the app
+   * speaks roles and the engine speaks driver ids; folding it in here is what
+   * keeps the resolution in one place (see the note at the top of this file).
+   */
+  measuredReOhm?: number;
+  /**
+   * Window metadata the designer entered for this branch's GATED far-field
+   * measurements (A5b.1(i) / F3b).
+   *
+   * Per branch rather than per file, because that is the granularity the app's
+   * loader offers today: one on-axis response plus its angle set, all taken in
+   * one session with one window. It reaches the engine per ENTRY, which is
+   * where A5 wants it, and the header still wins wherever a file has one — so
+   * a set where only some files lost their headers behaves correctly.
+   */
+  manualWindow?: ManifestEntry['manualWindow'];
 }
 
 /** Cabinet geometry, already parsed to numbers by the caller. */
@@ -117,6 +136,15 @@ const responseFile = (
   response: { freq: r.freq, spl: r.spl, phaseDeg: r.phaseDeg },
 });
 
+/** Manual window metadata, only where the designer actually stated something. */
+const manualWindowTag = (b: AdapterBranch): Pick<ManifestEntry, 'manualWindow'> => {
+  const m = b.manualWindow;
+  if (!m) return {};
+  const stated =
+    m.referenceTimeMs !== undefined || m.rightWindowMs !== undefined || m.validityFloorHz !== undefined;
+  return stated ? { manualWindow: m } : {};
+};
+
 export interface AdapterResult {
   input: EngineV2ReportInput;
   /** Driver id per branch — the panel labels rows with these. */
@@ -149,7 +177,13 @@ export function buildEngineV2Input(args: AdapterInput): AdapterResult {
       });
     }
     if (b.onAxis) {
-      const entry: ManifestEntry = { file: b.onAxis.name, driver, kind: 'FF', angleDeg: 0 };
+      const entry: ManifestEntry = {
+        file: b.onAxis.name,
+        driver,
+        kind: 'FF',
+        angleDeg: 0,
+        ...manualWindowTag(b),
+      };
       push(entry, responseFile(entry, b.onAxis));
     }
     for (const off of b.offAxis) {
@@ -161,6 +195,7 @@ export function buildEngineV2Input(args: AdapterInput): AdapterResult {
         driver,
         kind: 'FF',
         angleDeg: off.hor,
+        ...manualWindowTag(b),
       };
       push(entry, responseFile(entry, off.response));
     }
@@ -228,8 +263,22 @@ export function buildEngineV2Input(args: AdapterInput): AdapterResult {
   }
   if (Object.keys(ctc).length) geometry.ctcMm = ctc;
 
+  // Measured DC resistances, re-keyed from roles to driver ids. A5c.1's
+  // hierarchy puts them above both sweep derivations, and the derivation pass
+  // is where that is applied — so they belong in the settings the report hands
+  // it, not in a second lookup at the metric that reads R_e.
+  const reByDriver: Record<string, number> = { ...(args.settings.reOhmByDriver ?? {}) };
+  for (const b of args.branches) {
+    if (b.measuredReOhm === undefined || !(b.measuredReOhm > 0)) continue;
+    reByDriver[ids[b.role] ?? b.role] = b.measuredReOhm;
+  }
+  const settings: ReportSettings =
+    Object.keys(reByDriver).length > 0
+      ? { ...args.settings, reOhmByDriver: reByDriver }
+      : args.settings;
+
   return {
-    input: { manifest, files, filter, geometry, settings: args.settings },
+    input: { manifest, files, filter, geometry, settings },
     driverIds: ids,
     ambiguous,
   };

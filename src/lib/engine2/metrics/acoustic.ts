@@ -316,6 +316,21 @@ export function verticalLobing(
   band: [number, number],
 ): VerticalLobingResult | null {
   if (sources.length === 0 || anglesDeg.length === 0) return null;
+  /* THE COPLANAR DEGENERATE (F3b, deliverable 4b).
+   *
+   * This metric is a sum of sources at different heights: the whole content of
+   * the answer is the PATH DIFFERENCE k·z_i·sinθ between them. Give it one
+   * source, or several at the same z, and every angle sees the same sum as the
+   * axis does — so it returns exactly 0.0 dB of deviation, at every angle and
+   * every frequency.
+   *
+   * That number is not a finding. It is the metric reporting the arithmetic of
+   * its own missing input, and it reads like the best possible result: "no
+   * vertical collapse anywhere". Refusing is the only honest answer, and the
+   * refusal has to live HERE rather than in the caller, because a caller that
+   * forgot the check would publish the flattering zero. */
+  const zs = sources.map((s) => s.zM);
+  if (Math.max(...zs) - Math.min(...zs) === 0) return null;
 
   const sumAt = (thetaDeg: number): Complex[] => {
     const s = Math.sin(degToRad(thetaDeg));

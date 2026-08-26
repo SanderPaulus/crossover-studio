@@ -28,6 +28,29 @@
  *
  * If you ever need engine2 to change something the old engine does, that is
  * F2 and it belongs behind `selection.optimizer`, not behind a side effect.
+ *
+ * WHY MEASUREMENT FACTS ALSO SIT BEHIND THE FLAG — A DELIBERATE CHOICE, NOT AN
+ * OVERSIGHT (F3b).
+ *
+ * `reporting` gates two things that do not look like reporting: the A5a
+ * per-branch measurement form (acoustic centre, rotational symmetry, measured
+ * DC resistance, manual window times) and the R_e fields beside it. Those are
+ * FACTS ABOUT A MEASUREMENT SESSION — a meter reading and the window a gate
+ * was taken with stay true whichever engine reads them — so on the face of it
+ * they belong in the main layer.
+ *
+ * They are behind the flag anyway, for one reason: the invariant above says
+ * that with the flag off the app is byte-identical to the app before engine2
+ * existed, and a form that renders is not byte-identical to a form that does
+ * not. Nothing else consumes these fields today, so gating them costs nothing
+ * and keeps the guarantee absolute rather than nearly absolute.
+ *
+ * THE DAY THAT CHANGES IS THE DAY v2 BECOMES THE DEFAULT. When the flag stops
+ * being an opt-in, these fields move to the main layer with it — they will
+ * have consumers outside engine2 by then, and the invariant they are protecting
+ * will no longer exist. Until then, moving them out is a REGRESSION of the
+ * toggle guarantee, not a tidy-up, and `toggleRegression.test.ts` fails if
+ * someone tries.
  */
 
 import { ENGINE_V2_LABEL, ENGINE_V2_VERSION } from './version.ts';

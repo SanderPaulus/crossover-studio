@@ -120,6 +120,14 @@ export interface ReportSettings extends ProjectSettings, GateSettings, BudgetSet
    */
   reOhmByDriver?: Record<string, number>;
   /**
+   * Quality limits the motional R_e fit may abstain on (A5c.1 / V8d). Absent =
+   * the extractor's own published limits in `constants.ts`. Raising one is a
+   * decision about how much inference is allowed to stand in for a
+   * measurement, so it is a setting rather than a hidden threshold.
+   */
+  reFitMaxRelativeResidual?: number;
+  reFitMaxBandSensitivityFraction?: number;
+  /**
    * Assumed acoustic order per pair (key: `ctcKey`), for the crossover-window
    * floor. Absent for a pair = the window omits the f_s floor and says so.
    */
@@ -230,6 +238,16 @@ export interface EngineV2Report {
     thevenin: TheveninResult[];
     lobingInterim: LobingInterimResult[];
     lobingFinal: VerticalLobingResult | null;
+    /**
+     * Why M-F-final produced nothing, when it produced nothing (F3b/4b).
+     *
+     * The capability matrix already says a metric is off when a DECLARED need
+     * is unmet. This is the other half: the cases where the inputs are all
+     * present and the synthesis still cannot answer — one usable source, or
+     * every source at the same height. Both would otherwise reach the panel as
+     * an absent row, which a reader cannot tell from "not computed yet".
+     */
+    lobingFinalOff: string | null;
     directivity: DirectivityMatchResult[];
     breakup: BreakupDistanceResult[];
     groupDelay: GroupDelayResult | null;
@@ -274,7 +292,23 @@ const PHASE_TRACKING_OCTAVES = 1;
 const CONTRIBUTING_WITHIN_DB = 10;
 
 export function buildReport(input: EngineV2ReportInput): EngineV2Report {
-  const ingest = runIngest(input.manifest, input.files, input.ingestOptions);
+  /* R_e's THREE SOURCES resolve inside the derivation pass, not here.
+   * A5c.1's hierarchy — an entered DC resistance beats the motional fit beats
+   * the direct reading — has to be applied where the ALIGNMENT, the loss
+   * indicator and the voice-coil fit are computed, or those keep quoting a
+   * different R_e than M-E does. So the entered values and the fit's quality
+   * limits are handed to the pass, and everything downstream simply reads
+   * `d.re`. */
+  const ingest = runIngest(input.manifest, input.files, {
+    ...input.ingestOptions,
+    ...(input.settings.reOhmByDriver ? { reOhmByDriver: input.settings.reOhmByDriver } : {}),
+    ...(input.settings.reFitMaxRelativeResidual !== undefined
+      ? { reFitMaxRelativeResidual: input.settings.reFitMaxRelativeResidual }
+      : {}),
+    ...(input.settings.reFitMaxBandSensitivityFraction !== undefined
+      ? { reFitMaxBandSensitivityFraction: input.settings.reFitMaxBandSensitivityFraction }
+      : {}),
+  });
   const problems = [...ingest.problems];
 
   /* ---------------- the analysis grid and the solved network ------------- */
@@ -361,6 +395,7 @@ export function buildReport(input: EngineV2ReportInput): EngineV2Report {
     thevenin: [],
     lobingInterim: [],
     lobingFinal: null,
+    lobingFinalOff: null,
     directivity: [],
     breakup: [],
     groupDelay: null,
@@ -401,18 +436,16 @@ export function buildReport(input: EngineV2ReportInput): EngineV2Report {
     }
 
     if (fs !== null && isActive(capability, 'M-E', driver)) {
-      const supplied = input.settings.reOhmByDriver?.[driver];
-      const re =
-        supplied !== undefined
-          ? { ohm: supplied, source: 'measured DC resistance entered for this driver' }
-          : d.re
-            ? {
-                ohm: d.re.ohm,
-                source:
-                  'derived from Re(Z) at the bottom of the impedance sweep' +
-                  (d.re.motionalProximityWarning ? ' - and it carries the V8d overestimate warning' : ''),
-              }
-            : null;
+      // ONE R_e, resolved once, in the pass. M-E reads the same number the
+      // alignment and the Q_es bound read, and quotes the same provenance.
+      const re = d.re
+        ? {
+            ohm: d.re.ohm,
+            source:
+              d.re.sourceText +
+              (d.re.motionalProximityWarning ? ` — ${d.re.motionalProximityWarning}` : ''),
+          }
+        : null;
       const r = thevenin(analysis, driver, fs, re);
       if (r) metrics.thevenin.push(r);
     }
@@ -480,12 +513,42 @@ export function buildReport(input: EngineV2ReportInput): EngineV2Report {
   }
 
   /* ---------------- M-F final and M-J ---------------- */
+  if (analysis && grid && !isActive(capability, 'M-F-final', 'system')) {
+    /* OFF BECAUSE A DECLARED NEED IS UNMET (A5.3 / P4).
+     *
+     * The capability matrix already carries this verdict, and it is the right
+     * place for it — but a reader looking for a lobing number looks at the
+     * METRIC, and an absent row there is indistinguishable from "not computed
+     * yet". So the reason is repeated where the number would have been. */
+    const cell = capability.cells.find((c) => c.metric === 'M-F-final');
+    /* The declaration says WHICH NEED is unmet; only the report knows WHICH
+     * WAYS. A5.3 wants the reason with the verdict, and "offsets are missing
+     * for one or more drivers" leaves the designer to work out which field to
+     * fill — so the ways are named here, where they are known. */
+    const named = order.filter((d) => input.geometry.zOffsetMm?.[d] === undefined);
+    metrics.lobingFinalOff = cell?.reasons.length
+      ? `M-F-final is OFF: ${cell.reasons.join('; ')}` +
+        (named.length ? ` — ${named.join(', ')}` : '') +
+        '. Running it on the ways that DO have an acoustic centre would describe a different ' +
+        'speaker than the one on screen, and running it on one source would report 0.0 dB of ' +
+        'vertical deviation — the arithmetic of the missing input, not a result.'
+      : 'M-F-final is OFF: a declared input is missing.';
+  }
   if (analysis && grid && isActive(capability, 'M-F-final', 'system')) {
     const sources: VerticalSource[] = [];
+    /* A way that has no acoustic centre is DROPPED, and dropping it silently
+     * was the defect. The synthesis would then describe a two-way version of a
+     * three-way speaker and call it the system — and with one way left it
+     * would report the coplanar 0.0 dB. Every drop is recorded and turned into
+     * a stated reason below. */
+    const missing: string[] = [];
     for (const driver of order) {
       const d = ingest.drivers.find((x) => x.driver === driver);
       const h = analysis.transferByModel[driver];
       const z = input.geometry.zOffsetMm?.[driver];
+      if (z === undefined) missing.push(`${driver} (no acoustic-centre offset entered)`);
+      else if (!d?.onAxis) missing.push(`${driver} (no on-axis far-field measurement)`);
+      else if (!h) missing.push(`${driver} (no branch in the loaded filter)`);
       if (!d?.onAxis || !h || z === undefined) continue;
       const pressure = grid.map((f) =>
         toComplex(interpLog(d.onAxis!.grid, d.onAxis!.db, f), interpLog(d.onAxis!.grid, d.onAxis!.phaseDeg, f)),
@@ -505,14 +568,35 @@ export function buildReport(input: EngineV2ReportInput): EngineV2Report {
           Math.max(...crossings.filter((c) => Number.isFinite(c.fHz)).map((c) => c.fHz)) * 2,
         ] as [number, number])
       : null;
-    if (band) {
-      metrics.lobingFinal = verticalLobing(
+    if (!band) {
+      metrics.lobingFinalOff =
+        'M-F-final is OFF: the drivers share no valid band, so there is nothing to synthesise over.';
+    } else if (missing.length > 0) {
+      metrics.lobingFinalOff =
+        'M-F-final is OFF: the vertical synthesis needs the acoustic centre of EVERY way, and ' +
+        `these are missing — ${missing.join(', ')}. Running it on the rest would describe a ` +
+        'different speaker than the one on screen; running it on one source would report 0.0 dB ' +
+        'of vertical deviation, which is the arithmetic of the missing input and not a result.';
+    } else {
+      const r = verticalLobing(
         grid,
         sources,
         input.settings.verticalWindowDeg ?? [],
         xoRegion,
         band,
       );
+      metrics.lobingFinal = r;
+      if (!r) {
+        const zs = sources.map((s) => input.geometry.zOffsetMm?.[s.driver] ?? 0);
+        metrics.lobingFinalOff =
+          sources.length < 2
+            ? 'M-F-final is OFF: fewer than two usable sources, so there is no path difference ' +
+              'to synthesise and the metric would report 0.0 dB.'
+            : 'M-F-final is OFF: every way is entered at the same acoustic centre ' +
+              `(${zs[0].toFixed(1)} mm). A coplanar set has no path difference off axis, so the ` +
+              'synthesis is identically 0.0 dB at every angle — the arithmetic of the entry, not ' +
+              'a property of the speaker. Enter the real vertical positions.';
+      }
     }
   }
 
@@ -585,7 +669,19 @@ export function buildReport(input: EngineV2ReportInput): EngineV2Report {
     const hi = i === order.length - 1 ? d.onAxis.bandHz[1] : boundaries[i] ?? d.onAxis.bandHz[1];
     if (!(hi > lo)) continue;
     const lvl = passbandLevel(d.onAxis.db, d.onAxis.grid, [lo, hi]);
-    if (lvl) levels.push({ driver: d.driver, db: lvl.db, bandHz: lvl.bandHz });
+    if (lvl) {
+      // The floor's provenance travels WITH the level (F3b/4c). Without it the
+      // gap block cannot tell a level averaged from a derived gate floor from
+      // one averaged from wherever a sweep begins, and those two produce the
+      // same-looking number with different meanings.
+      levels.push({
+        driver: d.driver,
+        db: lvl.db,
+        bandHz: lvl.bandHz,
+        bandFloorKnown: d.onAxis.bandFloorKnown,
+        bandFloorProvenance: d.onAxis.bandFloorProvenance,
+      });
+    }
   }
   const gaps = anchoredGaps(levels);
 
@@ -633,11 +729,8 @@ export function buildReport(input: EngineV2ReportInput): EngineV2Report {
       driver,
       lowest: i === 0,
       highPassProtected: highPassProtected.includes(driver),
-      reOhm: input.settings.reOhmByDriver?.[driver] ?? d.re?.ohm ?? null,
-      reSource:
-        input.settings.reOhmByDriver?.[driver] !== undefined
-          ? 'measured DC resistance entered for this driver'
-          : 'derived from Re(Z) at the bottom of the impedance sweep',
+      reOhm: d.re?.ohm ?? null,
+      reSource: d.re?.sourceText ?? 'no impedance measurement, so no R_e',
       zPassbandMedianOhm: raw ? passbandImpedanceMedian(raw.freq, raw.magnitude, pass) : null,
       passbandHz: pass,
       fsHz: d.impedance?.fundamentalHz ?? null,

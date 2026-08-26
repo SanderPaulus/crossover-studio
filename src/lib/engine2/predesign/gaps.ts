@@ -30,6 +30,32 @@ export interface WayLevel {
   db: number;
   /** The band it was measured over — shown, because the number depends on it. */
   bandHz: [number, number];
+  /**
+   * FALSE when no detector could establish a gate floor for the measurement
+   * this level was averaged over (F3b, deliverable 4c).
+   *
+   * WHY THIS FIELD EXISTS AT ALL. The anchor is the QUIETEST way, and a way's
+   * level is an average over a band. When the bottom of that band is not a
+   * derived floor but simply where a sweep happened to start, the average
+   * includes however much rolloff sits below the real gate limit — and that
+   * drags the level DOWN. Drag one way down far enough and it becomes the
+   * anchor: A5d.4(b)'s feasibility warning fires, the block announces that the
+   * system's sensitivity is capped by the wrong way, and every chained budget
+   * behind it is wrong too.
+   *
+   * That is not hypothetical — it happened, and the point of the incident is
+   * that NOTHING IN THE BLOCK SHOWED IT. The anchor, the gaps and the budgets
+   * all looked like ordinary numbers. So the flag travels with the level into
+   * the analysis and out the other side as a caveat on the block itself,
+   * rather than living in a driver table three sections away where a reader
+   * would have to think to go and look.
+   *
+   * Absent = true: a caller that does not know cannot be made to claim it does
+   * not know, but a caller that DOES know must say so.
+   */
+  bandFloorKnown?: boolean;
+  /** Which detector (or none) set that floor — shown with the caveat. */
+  bandFloorProvenance?: string;
 }
 
 export interface AnchoredGaps {
@@ -53,6 +79,18 @@ export interface AnchoredGaps {
    * case.
    */
   anchorSwitchWarning: string | null;
+  /**
+   * The ways whose level rests on a band with NO derived gate floor, with what
+   * that does to this analysis. Empty when every level is on a known floor.
+   */
+  suspectBands: {
+    driver: string;
+    bandHz: [number, number];
+    provenance: string;
+    /** True when this way is the anchor — the case that inverts the block. */
+    isAnchor: boolean;
+    describe: string;
+  }[];
   notes: string[];
 }
 
@@ -118,6 +156,44 @@ export function anchoredGaps(
     });
 
   const switched = anchorIx !== 0;
+
+  /* A5d.4 / F3b — the caveat that was missing.
+   *
+   * Flagged on the LEVELS, not on the outcome, and stated in terms of what it
+   * would do to this block: a level averaged over a band whose bottom is not a
+   * derived floor reads LOW, and reading low is how a way takes the anchor
+   * role away from the way that should have it. The flag is loudest exactly
+   * where it matters most — on the anchor itself. */
+  const suspectBands: AnchoredGaps['suspectBands'] = [];
+  for (const l of levels) {
+    if (l.bandFloorKnown !== false) continue;
+    const isAnchor = l.driver === anchor.driver;
+    // The provenance arrives as the tag the validity pass carries. `none` is
+    // the case this whole flag exists for, and printing the tag verbatim
+    // ("(none)") reads like a missing value rather than like the finding it is.
+    const provenance =
+      l.bandFloorProvenance === undefined || l.bandFloorProvenance === 'none'
+        ? 'no detector could establish one — the file carries no window header and none was entered'
+        : l.bandFloorProvenance;
+    suspectBands.push({
+      driver: l.driver,
+      bandHz: l.bandHz,
+      provenance,
+      isAnchor,
+      describe:
+        `${l.driver}'s level is averaged over ${l.bandHz[0].toFixed(0)}–${l.bandHz[1].toFixed(0)} Hz, ` +
+        'and the bottom of that band is NOT a derived gate floor — it is where the sweep starts ' +
+        `(${provenance}). Everything below the real ` +
+        'gate limit is rolloff, so this level reads LOWER than the way actually is' +
+        (isAnchor
+          ? ', AND THIS WAY IS THE ANCHOR: the reference level of the whole system, and every ' +
+            'chained budget behind it, rests on a number that is biased downwards. Establish this ' +
+            "measurement's window before believing the anchor."
+          : '. Its gap and its budget are overstated by however much of that rolloff is in the ' +
+            'average.'),
+    });
+  }
+
   return {
     anchor: anchor.driver,
     anchorReason: switched
@@ -133,6 +209,7 @@ export function anchoredGaps(
         'where attenuation is most expensive. This is a driver-selection problem, not something ' +
         'the filter can optimise away (A5d.4b).'
       : null,
+    suspectBands,
     notes,
   };
 }

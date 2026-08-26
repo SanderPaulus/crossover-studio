@@ -27,9 +27,8 @@ import { interpLog, octaveTrend } from '../util.ts';
 import type { Manifest, ManifestEntry } from './manifest.ts';
 import { manifestDrivers } from './manifest.ts';
 import {
-  classifyImpedance,
-  estimateRe,
   fitSemiInductance,
+  resolveRe,
   scanImpedanceRipple,
   type ImpedanceClassification,
   type ImpedanceCurve,
@@ -89,6 +88,18 @@ export interface DerivedAngle {
    * entitled to make. Consumers must show which one they are looking at.
    */
   bandFloorKnown: boolean;
+  /**
+   * WHERE that floor came from (F3b): a file header, window metadata the
+   * designer entered, the advisory FF/NF detector, or nowhere at all.
+   *
+   * `bandFloorKnown` answers "is there a floor"; this answers "whose floor is
+   * it", and the two are different questions the moment a number can be typed.
+   * A5d.4's anchored-gap block reads it: a way whose LEVEL was averaged over a
+   * band with no derived floor is carrying a number whose bottom edge is an
+   * accident of where a sweep starts, and that block turned an anchor around
+   * once without anyone being able to see it from the block itself.
+   */
+  bandFloorProvenance: ValidityInterval['floorProvenance'];
   /** Lowest frequency at which fine structure may be believed (2/T). */
   fineDetailFromHz: number | null;
   grid: number[];
@@ -175,10 +186,34 @@ function freqOf(file: MeasurementFile): readonly number[] | null {
  * global: an extractor's settings are part of what produced a number, and a
  * number whose settings are invisible cannot be reproduced.
  */
+/**
+ * Settings the derivation pass reads.
+ *
+ * Every field optional, and absent means the extractor's own documented
+ * behaviour — never a project number smuggled in through a default (P6/P4).
+ */
+export interface IngestOptions {
+  trendOctaveFraction?: number;
+  breakupMinDb?: number;
+  mergeOctaves?: number;
+  /**
+   * DC resistances the designer measured, per driver id.
+   *
+   * It enters HERE rather than at the metric that reads it, because R_e is not
+   * one metric's input: the alignment, the loss indicator, the voice-coil fit,
+   * M-E and the Q_es inversion all hang off it. Supplied at the pass, every
+   * one of them moves together; supplied at a metric, they disagree.
+   */
+  reOhmByDriver?: Record<string, number>;
+  /** Quality limits the motional R_e fit may refuse on (A5c.1). */
+  reFitMaxRelativeResidual?: number;
+  reFitMaxBandSensitivityFraction?: number;
+}
+
 export function runIngest(
   manifest: Manifest,
   files: readonly MeasurementFile[],
-  opts: { trendOctaveFraction?: number; breakupMinDb?: number; mergeOctaves?: number } = {},
+  opts: IngestOptions = {},
 ): IngestResult {
   const problems: string[] = [];
   const byName = new Map(files.map((f) => [f.entry.file, f]));
@@ -224,15 +259,28 @@ export function runIngest(
     const zEntry = entries.find((e) => e.kind === 'Z');
     const zCurve = zEntry ? byName.get(zEntry.file)?.impedance : undefined;
     if (zCurve) {
-      // Two-step on purpose: R_e does not depend on the resonance, but its
-      // WARNING does, so classify with the first estimate and re-derive the
-      // estimate afterwards to attach the proximity check (V8d).
-      const first = estimateRe(zCurve, null);
-      cls = classifyImpedance(zCurve, first.ohm);
-      re = estimateRe(zCurve, cls.lowerResonanceHz);
+      /* R_e AND THE ALIGNMENT, resolved together to a FIXED DEPTH.
+       *
+       * The classify -> fit -> reclassify loop lives in `resolveRe`, in one
+       * place, with its pass counter incremented at the call. It is here as a
+       * single call rather than as three steps inline because a depth is only
+       * fixed if there is exactly one piece of code that can change it. */
+      const entered = opts.reOhmByDriver?.[driver];
+      const resolved = resolveRe(zCurve, {
+        ...(entered !== undefined ? { enteredOhm: entered } : {}),
+        ...(opts.reFitMaxRelativeResidual !== undefined
+          ? { maxRelativeResidual: opts.reFitMaxRelativeResidual }
+          : {}),
+        ...(opts.reFitMaxBandSensitivityFraction !== undefined
+          ? { maxBandSensitivityFraction: opts.reFitMaxBandSensitivityFraction }
+          : {}),
+      });
+      re = resolved.re;
+      cls = resolved.classification;
       semi = fitSemiInductance(zCurve, re.ohm, cls.fundamentalHz);
       zRipple = scanImpedanceRipple(zCurve, { octaveFraction: opts.trendOctaveFraction });
       if (re.motionalProximityWarning) notes.push(re.motionalProximityWarning);
+      if (re.reclassificationShift) notes.push(re.reclassificationShift);
       if (semi && !semi.valid) notes.push(`Voice-coil model: ${semi.reason}`);
     } else {
       notes.push(
@@ -285,6 +333,7 @@ export function runIngest(
         bandHz: [lo, hi],
         bandReason: { low: limits.fromBy, high: limits.toBy },
         bandFloorKnown: clipToValidity && limits.fromHz !== null,
+        bandFloorProvenance: clipToValidity ? limits.fromProvenance : 'none',
         fineDetailFromHz: fine,
         grid,
         db: summed.db,

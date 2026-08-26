@@ -301,6 +301,31 @@ export interface ProjectDesign {
     runSeed?: string;
     runBudgetEvals?: string;
   };
+  /**
+   * A5a (F3b) — per-branch MEASUREMENT metadata for the v2 layer, keyed by
+   * branch role. Strings, empty = absent, additive: a project written before
+   * F3b has no field and loads unchanged.
+   *
+   * It sits beside `engineV2` rather than inside it because these are facts
+   * about the MEASUREMENT SESSION, not settings of an engine — a DC resistance
+   * read off a meter and the window a gate was taken with stay true whichever
+   * engine reads them. They are only consumed by the v2 layer today, and the
+   * form that collects them is behind the same toggle for that reason.
+   */
+  v2Measurement?: Partial<
+    Record<
+      BranchRole,
+      {
+        zMm?: string;
+        rotSym?: string;
+        reOhm?: string;
+        refTimeMs?: string;
+        rightWindowMs?: string;
+        floorHz?: string;
+        windowNote?: string;
+      }
+    >
+  >;
   /** Optional: staged design (stop escalating once targets met), default true. */
   stagedOn?: boolean;
   targetRipple?: string;

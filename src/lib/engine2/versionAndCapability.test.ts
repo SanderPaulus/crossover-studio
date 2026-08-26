@@ -107,6 +107,50 @@ describe('estimator versioning (A5e.5)', () => {
       expect(c.size).toBe(0);
     });
 
+    it('a REAL derivation cached under the pre-F3b table expires, and the new one replaces it', () => {
+      /* THE FIRST PRODUCTION EXERCISE OF A5e.5.
+       *
+       * Every cache test above works on a synthetic value, which proves the
+       * key arithmetic and nothing else. This one runs the actual derivation
+       * pass, stores it under the fingerprint the app carried BEFORE the R_e
+       * estimator was rebuilt, and shows the two things a version bump has to
+       * do: the old entry becomes unreadable, and the fresh derivation is the
+       * NEW number rather than the cached old one.
+       *
+       * "Zonder dit worden V8-verbeteringen stille gedragswijzigingen" — this
+       * is the V8d improvement, so this is the test that says it was not
+       * silent. */
+      const m = casus1Manifest();
+      const fresh = runIngest(m, casus1Files(m));
+      const woofer = fresh.drivers.find((d) => d.driver === 'woofer')!;
+
+      // What the pre-F3b pass would have produced for R_e: the direct reading.
+      const beforeBump = {
+        ...fresh,
+        fingerprint: estimatorFingerprint().replace('z-re@1.1', 'z-re@1.0'),
+        drivers: [{ ...woofer, re: { ...woofer.re!, ohm: woofer.re!.directOhm } }],
+      };
+      expect(beforeBump.fingerprint).not.toBe(estimatorFingerprint());
+
+      const c = new DerivedCache();
+      const staleKey = `casus1 files-v1 ${beforeBump.fingerprint}`;
+      (c as unknown as { store: Map<string, unknown> }).store.set(staleKey, beforeBump);
+
+      // 1. It is gone as far as any reader is concerned.
+      expect(c.get('casus1', 'files-v1')).toBeUndefined();
+      expect(c.stale()).toEqual([staleKey]);
+      expect(c.evictStale()).toBe(1);
+      expect(c.size).toBe(0);
+
+      // 2. And what replaces it is a different number, not the same one under
+      //    a new label — otherwise the bump proved nothing.
+      c.set('casus1', 'files-v1', fresh);
+      const after = c.get('casus1', 'files-v1')!.drivers.find((d) => d.driver === 'woofer')!;
+      expect(after.re!.source).toBe('motional-fit');
+      expect(after.re!.ohm).not.toBeCloseTo(beforeBump.drivers[0].re!.ohm, 2);
+      expect(after.re!.estimator.version).toBe('1.1');
+    });
+
     it('leaves current entries alone when stale ones are evicted', () => {
       const c = new DerivedCache();
       c.set('s1', 'files-abc', value);

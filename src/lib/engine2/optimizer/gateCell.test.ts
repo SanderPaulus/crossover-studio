@@ -27,6 +27,7 @@ const verdict = (over: Partial<GateVerdict>): GateVerdict => ({
   direction: 'max',
   active: false,
   pass: true,
+  withinToleranceOnly: false,
   reason: '20.0 % — no limit set',
   specRef: 'A4 M-A',
   ...over,

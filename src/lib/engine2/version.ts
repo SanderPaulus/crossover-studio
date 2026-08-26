@@ -47,8 +47,19 @@ export const ESTIMATOR_VERSIONS = {
   'validity-nearfield': '1.0',
   /** FF/NF baffle-step model test — A5b.1(ii), advisory. */
   'validity-ffnf': '1.0',
-  /** R_e from Re(Z) with motional-proximity warning — A5c.1 (V8a/V8d). */
-  'z-re': '1.0',
+  /**
+   * R_e — A5c.1.
+   *
+   * 1.0: Re(Z) over the lowest slice of the sweep, with an octave-based
+   *      motional-proximity warning (V8a).
+   * 1.1: F3b — the value is the DC term of a MOTIONAL FIT around the lower
+   *      resonances, the direct reading stays as the comparison value, a
+   *      designer's measured DC resistance outranks both, and the
+   *      contamination warning is computed from the fitted resonance in ohms
+   *      instead of from an octave count (V8d). MINOR: the numbers move, the
+   *      shape of the result grew but nothing was removed from it.
+   */
+  'z-re': '1.1',
   /** Resonance classification by phase zero crossing — A5c.2/3 (V8b). */
   'z-resonance': '1.0',
   /** Semi-inductance fit |Z−Re| = K·ω^n with validity detection — A5c.5 (V8e). */

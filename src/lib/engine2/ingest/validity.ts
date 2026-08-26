@@ -37,12 +37,13 @@ import {
   KEELE_NEARFIELD_HZ_INCH,
   M_PER_INCH,
   MM_PER_M,
+  MS_PER_S,
   PERCENT,
   BAFFLE_STEP_MAX_DEPTH_DB,
 } from '../constants.ts';
 import { interpLog, octavesBetween } from '../util.ts';
 import { stamp, type EstimatorStamp } from '../version.ts';
-import { effectiveWindowSeconds, type ManifestEntry } from './manifest.ts';
+import { effectiveWindowOf, type ManifestEntry, type WindowProvenance } from './manifest.ts';
 
 export const EXTRACTOR_HEADER = 'validity-header' as const;
 export const EXTRACTOR_NEARFIELD = 'validity-nearfield' as const;
@@ -56,6 +57,16 @@ export interface ValidityInterval {
   toHz: number | null;
   /** Which detector set the bottom edge. */
   fromReason: string;
+  /**
+   * WHO supplied the window the floor rests on (F3b).
+   *
+   * `'none'` is the case the app has always had to be careful about: no
+   * detector could establish a floor, so the bottom of the band is simply
+   * where the sweep starts. It is a different claim from a derived floor and
+   * consumers must be able to tell them apart — which is also what the
+   * anchored-gap block needs in order to flag a level computed on such a band.
+   */
+  floorProvenance: WindowProvenance | 'ffnf' | 'not-gated' | 'none';
   /** Which detector set the top edge. */
   toReason: string;
   /**
@@ -74,6 +85,7 @@ const noFloor = (reason: string, top: number | null, topReason: string): Validit
   fromHz: null,
   toHz: top,
   fromReason: reason,
+  floorProvenance: 'not-gated',
   toReason: topReason,
   fineDetailFromHz: null,
   notes: [],
@@ -87,14 +99,34 @@ const noFloor = (reason: string, top: number | null, topReason: string): Validit
 export function headerFloor(entry: ManifestEntry): {
   hardHz: number;
   fineHz: number;
-  windowMs: number;
+  windowMs: number | null;
+  provenance: WindowProvenance;
+  describe: string;
 } | null {
-  const t = effectiveWindowSeconds(entry.header);
-  if (t === null || !(t > 0)) return null;
+  const w = effectiveWindowOf(entry);
+  if (!w) return null;
+  if (w.windowMs !== null) {
+    const t = w.windowMs / MS_PER_S;
+    if (!(t > 0)) return null;
+    return {
+      hardHz: HEADER_FLOOR_ABSOLUTE_OVER_T / t,
+      fineHz: HEADER_FLOOR_TRUSTED_OVER_T / t,
+      windowMs: w.windowMs,
+      provenance: w.provenance,
+      describe: w.describe,
+    };
+  }
+  // The manual-floor form: the designer stated the hard floor itself. Fine
+  // structure keeps the same relation to it that it has to a derived floor,
+  // because that relation is a property of windowing, not of who typed the
+  // number.
+  if (w.directFloorHz === null) return null;
   return {
-    hardHz: HEADER_FLOOR_ABSOLUTE_OVER_T / t,
-    fineHz: HEADER_FLOOR_TRUSTED_OVER_T / t,
-    windowMs: entry.header!.effectiveWindowMs!,
+    hardHz: w.directFloorHz,
+    fineHz: (w.directFloorHz * HEADER_FLOOR_TRUSTED_OVER_T) / HEADER_FLOOR_ABSOLUTE_OVER_T,
+    windowMs: null,
+    provenance: w.provenance,
+    describe: w.describe,
   };
 }
 
@@ -305,6 +337,7 @@ export function validityOf(input: ValidityInput): ValidityInterval {
     const v = noFloor('impedance is gate-free — valid over the whole sweep', extent[1], 'end of sweep');
     v.fromHz = extent[0];
     v.fromReason = 'start of sweep (impedance has no gate)';
+    v.floorProvenance = 'not-gated';
     v.estimators = [];
     return v;
   }
@@ -320,6 +353,7 @@ export function validityOf(input: ValidityInput): ValidityInterval {
     );
     v.fromHz = extent[0];
     v.fromReason = 'start of sweep (near field is not gated)';
+    v.floorProvenance = 'not-gated';
     v.estimators = [stamp(EXTRACTOR_NEARFIELD)];
     if (ceiling === null) {
       v.notes.push(
@@ -344,22 +378,32 @@ export function validityOf(input: ValidityInput): ValidityInterval {
   let fromHz: number | null = null;
   let fromReason: string;
   let fineDetailFromHz: number | null = null;
+  let floorProvenance: ValidityInterval['floorProvenance'] = 'none';
 
   if (hf) {
     estimators.push(stamp(EXTRACTOR_HEADER));
     fromHz = hf.hardHz;
     fineDetailFromHz = hf.fineHz;
+    floorProvenance = hf.provenance;
     fromReason =
-      `header window ${hf.windowMs.toFixed(3)} ms → ` +
-      `${HEADER_FLOOR_ABSOLUTE_OVER_T}/T = ${hf.hardHz.toFixed(0)} Hz ` +
-      `(fine structure from ${HEADER_FLOOR_TRUSTED_OVER_T}/T = ${hf.fineHz.toFixed(0)} Hz)`;
+      hf.windowMs !== null
+        ? `${hf.describe} → ${HEADER_FLOOR_ABSOLUTE_OVER_T}/T = ${hf.hardHz.toFixed(0)} Hz ` +
+          `(fine structure from ${HEADER_FLOOR_TRUSTED_OVER_T}/T = ${hf.fineHz.toFixed(0)} Hz)`
+        : `${hf.describe} (fine structure from ${hf.fineHz.toFixed(0)} Hz)`;
+    if (hf.provenance !== 'header') {
+      notes.push(
+        `The gate floor on this measurement is NOT from its header: ${hf.describe}. It is a ` +
+          'stated number, not a measured one — everything derived from it inherits that.',
+      );
+    }
   } else {
     fromReason =
-      'no window fields in the header — the hard floor is UNKNOWN, not absent; ' +
+      'no window fields in the header and none entered — the hard floor is UNKNOWN, not absent; ' +
       'everything that needs it stays off';
     notes.push(
-      'This measurement carries no window/reference-time header. The gate floor cannot be ' +
-        'derived, so no metric may use it below an unknown limit.',
+      'This measurement carries no window/reference-time header and no window metadata was ' +
+        'entered for it. The gate floor cannot be derived, so no metric may use it below an ' +
+        'unknown limit.',
     );
   }
 
@@ -369,6 +413,7 @@ export function validityOf(input: ValidityInput): ValidityInterval {
     if (fit.breaksBelowHz !== null) {
       if (fromHz === null || fit.breaksBelowHz > fromHz) {
         fromHz = fit.breaksBelowHz;
+        floorProvenance = 'ffnf';
         fromReason =
           `FF/NF baffle-step residual only settles above ${fit.breaksBelowHz.toFixed(0)} Hz ` +
           `(fit f0 ${fit.f0Hz.toFixed(0)} Hz, depth ${fit.depthDb.toFixed(1)} dB, ` +
@@ -399,6 +444,7 @@ export function validityOf(input: ValidityInput): ValidityInterval {
     fromHz,
     toHz: extent[1],
     fromReason,
+    floorProvenance,
     toReason: 'end of sweep',
     fineDetailFromHz,
     notes,
@@ -413,22 +459,31 @@ export function validityOf(input: ValidityInput): ValidityInterval {
 /** Intersection of several intervals; nulls are "no limit from this side". */
 export function intersectIntervals(
   intervals: readonly { name: string; interval: ValidityInterval }[],
-): { fromHz: number | null; toHz: number | null; fromBy: string; toBy: string } {
+): {
+  fromHz: number | null;
+  toHz: number | null;
+  fromBy: string;
+  toBy: string;
+  /** Provenance of the interval that SET the bottom edge (F3b). */
+  fromProvenance: ValidityInterval['floorProvenance'];
+} {
   let fromHz: number | null = null;
   let toHz: number | null = null;
   let fromBy = '';
   let toBy = '';
+  let fromProvenance: ValidityInterval['floorProvenance'] = 'none';
   for (const { name, interval } of intervals) {
     if (interval.fromHz !== null && (fromHz === null || interval.fromHz > fromHz)) {
       fromHz = interval.fromHz;
       fromBy = name;
+      fromProvenance = interval.floorProvenance;
     }
     if (interval.toHz !== null && (toHz === null || interval.toHz < toHz)) {
       toHz = interval.toHz;
       toBy = name;
     }
   }
-  return { fromHz, toHz, fromBy, toBy };
+  return { fromHz, toHz, fromBy, toBy, fromProvenance };
 }
 
 export interface Coverage {

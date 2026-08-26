@@ -319,5 +319,66 @@ Configuratie: 3-weg; 2× SB WO24TX-8 parallel, MR13TX-4 in bolpod, T25T-6 in WG1
 
 **Openstaand in deze casus:** groundplane-metingen onder het onderste kruisgebied vóór onderdelenbestelling; HD-sweep; 30°-meting tweeter voor M-G-compleetheid; verzadigings-/formaatcheck grote P-core shunt-spoel.
 
+## Casus S1 — synthetische grondwaarheid voor de R_e-schatter (F3b, 26-08-2026)
+
+*De eerste casus in dit boek die geen luidspreker is. A7 noemt synthetische grondwaarheid als
+onderdeel van de teststrategie; tot F3b bestond dat onderdeel alleen op papier, en de oude
+`estimateRe` droeg er letterlijk een TODO over: "replace with a motional-impedance fit once the
+estimator is validated against a synthetic ground-truth case (A7)".*
+
+**Waarom een verzonnen kromme naast elf gemeten bestanden.** Casus 1 kan één vraag over R_e niet
+beantwoorden, en het is de enige die telt: wélk getal is goed. Het casusboek draagt twee lezingen
+van dezelfde R_e (2,90 en 3,05 Ω, V16), en beide zijn aflezingen van een meter of van een sweep —
+geen van beide is de waarheid, alleen een andere meting ervan. Twee schatters die het eens worden
+is consensus, geen validatie: als ze dezelfde systematische fout maken, zwijgen ze samen. Een
+kromme die zijn eigen R_e kent, kent hem exact.
+
+**De kromme.** Z(ω) = R_e + jωL_e + één motionele tak, gesampled op 400 logaritmische punten:
+
+| grootheid | waarde |
+|---|---|
+| R_e (bekend, per constructie) | **6,000 Ω** |
+| L_e | 0,3 mH |
+| motionele tak | R 30 Ω, f 40 Hz, Q 6 |
+| sweepbereik | 25 Hz – 4 kHz |
+
+De sweep begint op 25 Hz tegen een resonantie op 40 Hz — 0,68 octaaf eronder, iets krapper dan
+casus 1's woofer (10,07 Hz tegen f_L = 16,5 Hz, 0,71 octaaf). Dat is opzet: dit is die woofer in
+het klein, mét het antwoord erbij.
+
+**Wat de drie schatters lezen:**
+
+| schatter | waarde | fout |
+|---|---|---|
+| directe aflezing (mediaan Re(Z), laagste 2,5 %) | 7,114 Ω | **+18,6 %** |
+| motionele fit, DC-term | **6,000 Ω** | < 0,05 Ω |
+| gerapporteerde motionele rok op 25 Hz | 1,11 Ω | verklaart het verschil |
+
+Directe aflezing − rok = 6,00 Ω. De schatter zegt dus niet alleen een ander getal, hij zegt
+precies hoeveel van het oude getal motionele impedantie was, en dat sluit.
+
+**Wat deze casus sluit.** V8d vroeg om "motionele fit of extrapolatie". Die is er nu, en de
+acceptatie ervan rust op grondwaarheid in plaats van op overeenstemming tussen schatters — het
+verschil tussen "de twee zijn het eens" en "de fit heeft gelijk". De oude adviserende
+f²-extrapolatie is verdwenen; zij las op casus 1's woofer **−2,69 Ω** en was daarmee het soort
+getal dat een schatter publiceert als niemand hem een geval geeft waarvan het antwoord bekend is.
+
+**Wat deze casus verder bewijst (en dat kon casus 1 niet).** De kromme draagt een tweede,
+instelbare kruin op 300 Hz. Op 4 Ω hoogte ligt hij precies tússen de twee detectiedrempels:
+onzichtbaar voor de piekzoeker op de directe aflezing (1,6 × 7,114 = 11,38 Ω), zichtbaar voor de
+piekzoeker op de gefitte R_e (1,6 × 6,004 = 9,61 Ω). Daarmee is de verschuivende piekset
+maakbaar, en dus toetsbaar — op een gemeten set is het een toevalstreffer of hij zich voordoet.
+De lus classificatie → fit → herclassificatie draait op **vaste diepte**: één herclassificatie,
+vlag bij verschil, nooit een derde ronde (A5e.4 — een determinismebelofte kan niet rusten op een
+iteratieteller die van de kromme afhangt). De assert die het werk doet is niet de passenteller
+maar dat de fit ná de verschuiving nog stééds één tak draagt: was er een derde ronde geweest, dan
+was hij opnieuw gezaaid met twee.
+
+**Wat deze casus NIET bewijst, en dat hoort erbij.** De kromme is precies het model dat de fit
+aanneemt, dus zij toetst de lus rond de fit en niet of het model een echte driver beschrijft. Die
+vraag beantwoordt casus 1, op gemeten data: residu 0,013–0,030 en een woofer die op 0,004 Ω van de
+meterlezing van het paar landt. De twee casussen toetsen verschillende dingen en vervangen elkaar
+niet.
+
 ## A9. Startprompts
 Vervangen door het separate document `OptimizerV2_startprompts.md` (25-08): Prompt A = sessie F0 (sanering), Prompt B = sessie F1 inclusief **engine-toggle** (standaard uit, byte-identieke regressie met toggle uit) en de rapporterende metriekbibliotheek. Fixtures: meetbestanden casus 1 + drie netlists + `golden_refs_casus1.json` (bevat nu ook manifest en geometrie).

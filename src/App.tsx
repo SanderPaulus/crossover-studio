@@ -119,6 +119,12 @@ import {
   type AdapterResponse,
 } from './lib/engine2/appAdapter.ts';
 import { ctcKey } from './lib/engine2/metrics/types.ts';
+import {
+  candidatesOutsideWindows,
+  rangeAgainstWindow,
+  type RangeAdvice,
+} from './lib/engine2/predesign/xoRangeAdvice.ts';
+import type { XoWindowResult } from './lib/engine2/predesign/xoWindow.ts';
 import { DEFAULT_RUN_SEED } from './lib/engine2/constants.ts';
 import { stableJson, type V2RunStamp } from './lib/engine2/optimizer/determinism.ts';
 import type { GateVerdict } from './lib/engine2/optimizer/gates.ts';
@@ -130,6 +136,7 @@ import {
 } from './lib/engine2/optimizer/shortlist.ts';
 import { FLAT_TARGET, type TargetCurve } from './lib/engine2/requirements/targetCurve.ts';
 import { BaffleView } from './components/BaffleView.tsx';
+import { XoWindowAnnotation, type XoWindowPair } from './components/XoWindowAnnotation.tsx';
 import { CatalogManager } from './components/CatalogManager.tsx';
 import { helpSectionForTab } from './lib/help.ts';
 import { fileSafeName } from './lib/filenames.ts';
@@ -803,6 +810,40 @@ const emptyNearField = (): NearFieldSlot => ({
   blendOctaves: '1',
   stepOn: true,
   stepDepthDb: '6',
+});
+
+/**
+ * Per-branch measurement metadata for engine v2 (A5a, F3b).
+ *
+ * Strings throughout and '' means ABSENT, exactly like the cabinet form beside
+ * it: these feed a layer whose whole discipline is that a missing input turns
+ * a metric off with a reason rather than substituting a default (P4).
+ */
+interface V2MeasurementMeta {
+  /** Acoustic centre on the vertical axis, mm. '' = use the cabinet position. */
+  zMm: string;
+  /** '', 'yes' or 'no' — three states, because "not stated" is one of them. */
+  rotSym: string;
+  /** DC resistance measured with a meter, Ω. Outranks both sweep derivations. */
+  reOhm: string;
+  /** Manual window: the impulse's t=0 reference, ms. */
+  refTimeMs: string;
+  /** Manual window: the right window edge, ms. */
+  rightWindowMs: string;
+  /** Or the hard validity floor itself, Hz — for a window known by its result. */
+  floorHz: string;
+  /** Where the designer got these numbers. Travels with the provenance. */
+  windowNote: string;
+}
+
+const emptyV2Meas = (): V2MeasurementMeta => ({
+  zMm: '',
+  rotSym: '',
+  reOhm: '',
+  refTimeMs: '',
+  rightWindowMs: '',
+  floorHz: '',
+  windowNote: '',
 });
 
 /** Cabinet geometry + measurement context, as typed (strings so a field can be
@@ -1630,6 +1671,42 @@ export default function App() {
     maxPhaseTrackingDeg: '',
     shortlistSize: '',
   });
+  /**
+   * A5a — PER-MEASUREMENT-SESSION METADATA THE ENGINE NEEDS AND NOBODY COULD
+   * TYPE (F3b).
+   *
+   * Four things the v2 layer declares as inputs and the app had no field for:
+   *
+   *  · `zMm` — the acoustic centre on the vertical axis. The cabinet form
+   *    already carries a driver's baffle position, and that is what M-F-final
+   *    has been using; it is the right number for a flush-mounted set and the
+   *    wrong one the moment a driver sits in a pod or behind a waveguide.
+   *    Empty = fall back to the cabinet position, which is what it did before.
+   *  · `rotSym` — whether the branch radiates rotationally symmetrically.
+   *    M-F-final's point-source assumption rests on it, and the app never
+   *    supplied it, so the metric has been carrying "not rotationally
+   *    symmetric" for every driver on every set — including waveguides the
+   *    designer knows are.
+   *  · `reOhm` — a DC resistance measured with a meter. Above BOTH sweep
+   *    derivations in A5c.1's hierarchy, because it is a measurement of the
+   *    quantity itself.
+   *  · the window fields — reference time and right window, or the validity
+   *    floor directly, for files whose headers carry neither (A5b.1(i)).
+   *    A FALLBACK, never an override: a file with a header ignores them.
+   *
+   * EVERY FIELD IS A STRING AND EMPTY MEANS ABSENT (P4). Nothing here has a
+   * default, and a blank field must reach the engine as a missing key rather
+   * than as a zero — a rotational-symmetry flag defaulting to `false` is
+   * exactly the silent assumption this block exists to remove.
+   */
+  const [v2Meas, setV2Meas] = useState<Record<BranchRole, V2MeasurementMeta>>({
+    low: emptyV2Meas(),
+    mid: emptyV2Meas(),
+    high: emptyV2Meas(),
+  });
+  const setV2MeasField = (role: BranchRole, key: keyof V2MeasurementMeta, value: string) =>
+    setV2Meas((v) => ({ ...v, [role]: { ...v[role], [key]: value } }));
+
   /** Optional crossover-range constraint for the optimizer (Hz). */
   const [xoRangeOn, setXoRangeOn] = useState(false);
   /** Crossover point the designer picks: centre frequency ± margin (Hz).
@@ -3097,6 +3174,29 @@ export default function App() {
       const anglesFor = (role: BranchRole): AngleEntry[] =>
         (role === 'low' ? angleSets?.woofer : role === 'mid' ? angleSets?.mid : angleSets?.tweeter) ?? [];
 
+      /* A5a metadata the designer typed, per branch (F3b). Every field is
+       * optional and '' reaches the engine as a MISSING KEY rather than a
+       * zero — the manual window in particular must be absent, not empty, or
+       * a blank field would look like a stated window of length nothing. */
+      const stated = (raw: string): number | undefined => {
+        if (raw.trim() === '') return undefined;
+        const v = Number(raw);
+        return Number.isFinite(v) ? v : undefined;
+      };
+      const manualWindowFor = (role: BranchRole) => {
+        const m = v2Meas[role];
+        const ref = stated(m.refTimeMs);
+        const right = stated(m.rightWindowMs);
+        const floor = stated(m.floorHz);
+        if (ref === undefined && right === undefined && floor === undefined) return undefined;
+        return {
+          ...(ref !== undefined ? { referenceTimeMs: ref } : {}),
+          ...(right !== undefined ? { rightWindowMs: right } : {}),
+          ...(floor !== undefined && floor > 0 ? { validityFloorHz: floor } : {}),
+          ...(m.windowNote.trim() !== '' ? { note: m.windowNote.trim() } : {}),
+        };
+      };
+
       const roles: BranchRole[] = threeWay ? ['low', 'mid', 'high'] : ['low', 'high'];
       const branches: AdapterBranch[] = [];
       for (const role of roles) {
@@ -3104,6 +3204,8 @@ export default function App() {
         const nf = parseStored(nearField[role]?.cone ?? null);
         const z = zFor(role);
         if (!loaded && !z && !nf) continue;
+        const re = stated(v2Meas[role].reOhm);
+        const mw = manualWindowFor(role);
         branches.push({
           role,
           onAxis: loaded ? asResponse(loaded.name, loaded.frd) : null,
@@ -3111,6 +3213,8 @@ export default function App() {
           nearField: nf ? [nf] : [],
           impedance: z,
           diameterInch: sizeInch(role),
+          ...(re !== undefined && re > 0 ? { measuredReOhm: re } : {}),
+          ...(mw ? { manualWindow: mw } : {}),
         });
       }
       if (branches.length === 0) return null;
@@ -3131,12 +3235,26 @@ export default function App() {
         const n = Number(v);
         return Number.isFinite(n) ? n : undefined;
       };
+      /* The ACOUSTIC CENTRE, when the designer entered one, otherwise the
+       * baffle position the cabinet form already holds. Those are the same
+       * number on a flush-mounted driver and different ones on a pod or a
+       * waveguide, and M-F-final wants the first. */
+      const centreMm = (role: BranchRole): number | undefined =>
+        stated(v2Meas[role].zMm) ?? mm(cabinet.drivers[role]?.yMm);
+      const symOf = (role: BranchRole): boolean | undefined =>
+        v2Meas[role].rotSym === 'yes' ? true : v2Meas[role].rotSym === 'no' ? false : undefined;
+      const symmetric: Partial<Record<BranchRole, boolean>> = {};
+      for (const role of roles) {
+        const v = symOf(role);
+        if (v !== undefined) symmetric[role] = v;
+      }
       const geometry = {
         verticalMm: {
-          low: mm(cabinet.drivers.low?.yMm),
-          mid: mm(cabinet.drivers.mid?.yMm),
-          high: mm(cabinet.drivers.high?.yMm),
+          low: centreMm('low'),
+          mid: centreMm('mid'),
+          high: centreMm('high'),
         },
+        rotationallySymmetric: symmetric,
         arraySpacingMm: {
           low: Number(cabinet.drivers.low?.count ?? '') > 1 ? mm(cabinet.drivers.low?.spacingMm) : undefined,
           mid: Number(cabinet.drivers.mid?.count ?? '') > 1 ? mm(cabinet.drivers.mid?.spacingMm) : undefined,
@@ -3240,6 +3358,7 @@ export default function App() {
     engineV2Gates,
     ampMinLoadOhm,
     xoName,
+    v2Meas,
   ]);
 
   /** 3-way pins for the design chain (freq ± margin per handover). */
@@ -4466,6 +4585,98 @@ export default function App() {
    * derives itself — measured on Robbert: W-M [353…631], M-T [1310…7000
    * (mid beams at 8022)], exactly the hand-derived advice. Also carries the
    * banded angle sets that arm the in-room weight. */
+  /**
+   * A5d.3's FEASIBLE WINDOWS, mapped onto the scan dialog's two handovers.
+   *
+   * `predesign.windows` is one entry per ADJACENT PAIR in low-to-high order —
+   * N-way, nothing counts to three. The dialog names two of them on a 3-way
+   * ("low" = W-M, "high" = M-T) and one on a 2-way, so the mapping is by
+   * position and the last pair is always the one the "high" fields control.
+   *
+   * Null with the toggle off. That is not laziness: this is v2 reporting, and
+   * with the engine off the dialog must be what it always was, to the pixel.
+   */
+  const v2Windows = useMemo((): { low: XoWindowResult | null; high: XoWindowResult | null } | null => {
+    if (!engineSelection.reporting) return null;
+    const ws = engineV2Report?.report?.predesign.windows ?? [];
+    if (ws.length === 0) return null;
+    return threeWay
+      ? { low: ws[0] ?? null, high: ws[1] ?? null }
+      : { low: null, high: ws[ws.length - 1] ?? null };
+  }, [engineSelection.reporting, engineV2Report, threeWay]);
+
+  /** The search range the designer stated for one handover, or null if unpinned. */
+  const v2RangeFor = (side: 'low' | 'high'): [number, number] | null => {
+    if (!xoRangeOn) return null;
+    if (side === 'low') {
+      if (!threeWay) return null;
+      const f = num(xoLowFreqHz, 0);
+      const m = num(xoLowMarginHz, 0);
+      return f > 0 ? [f - m, f + m] : null;
+    }
+    const f = num(xoFreqHz, 0);
+    const m = num(xoMarginHz, 0);
+    return f > 0 ? [f - m, f + m] : null;
+  };
+
+  const v2PairLabel = (side: 'low' | 'high'): string => {
+    const w = v2Windows?.[side];
+    if (w) return `${w.lower} → ${w.upper}`;
+    return side === 'low' ? 'W-M' : threeWay ? 'M-T' : 'crossover';
+  };
+
+  /** One handover's verdict against its window. Null with the toggle off. */
+  const v2Advice = (side: 'low' | 'high'): RangeAdvice | null => {
+    const w = v2Windows?.[side];
+    if (!w) return null;
+    return rangeAgainstWindow(v2RangeFor(side), w, v2PairLabel(side));
+  };
+
+  /**
+   * The annotation's input, or NULL when the reporting layer is off.
+   *
+   * Null and empty are different states and only the first renders nothing:
+   * `v2Windows` null means the engine is off, while a project with fewer than
+   * two loaded branches is on and simply has no adjacent pair yet.
+   */
+  const v2WindowPairs: XoWindowPair[] | null = !v2Windows
+    ? null
+    : (['low', 'high'] as const).flatMap((side) => {
+        const window = v2Windows[side];
+        const advice = v2Advice(side);
+        return window && advice ? [{ key: side, window, advice }] : [];
+      });
+
+  /**
+   * Take the feasible window over as the search range (F3b, deliverable 2).
+   *
+   * An ORDINARY FIELD CHANGE and nothing more: it writes the two numbers the
+   * designer would have typed, and they stay editable afterwards. Nothing
+   * clamps during the run, before it or after it — the app makes the
+   * disagreement visible and then does exactly what it was told.
+   */
+  const takeOverV2Window = (side: 'low' | 'high') => {
+    const t = v2Advice(side)?.takeover;
+    if (!t) return;
+    if (side === 'low') {
+      setXoLowFreqHz(String(t.freqHz));
+      setXoLowMarginHz(String(t.marginHz));
+    } else {
+      setXoFreqHz(String(t.freqHz));
+      setXoMarginHz(String(t.marginHz));
+    }
+  };
+
+  /**
+   * The pre-start estimate (F3b, deliverable 3), when one is pending.
+   *
+   * Held as state rather than computed in the dialog because it is counted on
+   * the ACTUAL candidate list the scan built — a second, reactive construction
+   * of the same grid would be a second opinion about what is about to run, and
+   * the two would eventually disagree.
+   */
+  const [v2PreStart, setV2PreStart] = useState<{ message: string; proceed: () => void } | null>(null);
+
   const physWin3 = useMemo(() => {
     if (!threeWay || !sim?.mid || !result || !sim.base.m) return null;
     const grid = result.freq;
@@ -5407,6 +5618,11 @@ export default function App() {
         stagedOn,
         engineV2Enabled,
         engineV2: { ...engineV2Settings },
+        v2Measurement: {
+          low: { ...v2Meas.low },
+          mid: { ...v2Meas.mid },
+          high: { ...v2Meas.high },
+        },
         targetRipple,
         soloSensDb,
         soloFloorOn,
@@ -5573,6 +5789,14 @@ export default function App() {
       maxPhaseTrackingDeg: d.engineV2?.maxPhaseTrackingDeg ?? '',
       shortlistSize: d.engineV2?.shortlistSize ?? '',
     });
+    // A5a metadata (F3b). Additive: a project from before F3b has no block and
+    // every field falls back to '', which is what "not stated" means (P4).
+    const meas = d.v2Measurement;
+    const restoreMeas = (role: BranchRole): V2MeasurementMeta => ({
+      ...emptyV2Meas(),
+      ...(meas?.[role] ?? {}),
+    });
+    setV2Meas({ low: restoreMeas('low'), mid: restoreMeas('mid'), high: restoreMeas('high') });
     setXoRangeOn(d.xoRangeOn ?? false);
     // Legacy lo/hi range migrates to centre ± margin.
     if (d.xoFreqHz !== undefined) {
@@ -5714,7 +5938,7 @@ export default function App() {
     }, 800);
     return () => clearTimeout(timer);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [woofer, midDrv, tweeter, project, zStandalone, angleSets, fileNotes, verifyList, verifyIx, vFilters, xoName, offsetMm, trimDb, inverted, midOffsetMm, midTrimDb, midInverted, fMin, fMax, splMin, splMax, phasePriority, vfEqBands, phaseMode, dirWeight, ampTarget, sonogramMode, designs, activeDesignId, lastSavedId, networkActive, vfBypass, catalogSnap, breakupGuard, xoRangeOn, xoFreqHz, xoMarginHz, xoScanSteps, xo3Steps, hpLpPref, hpLpPrefLow, phaseMetricMode, acSlopeMid, acSlopeTweeter, acSlopeWoofer, acSlopeMidHp, xoLowFreqHz, xoLowMarginHz, midSizeInch, wooferSizeInch, kaTier, cabinet, nearField, ctcK, seatTiming, breakupLimitOn, breakupHarmonic, sdCm2, xmaxMm, excursionSpl, snapProfile, snapSeriesL, snapSeriesC, snapSeriesR, snapStacks, snapBoundToSeries, stagedOn, engineV2Enabled, engineV2Settings, targetRipple, targetPhase, soloSensDb, soloFloorOn, soloFloorDb]);
+  }, [woofer, midDrv, tweeter, project, zStandalone, angleSets, fileNotes, verifyList, verifyIx, vFilters, xoName, offsetMm, trimDb, inverted, midOffsetMm, midTrimDb, midInverted, fMin, fMax, splMin, splMax, phasePriority, vfEqBands, phaseMode, dirWeight, ampTarget, sonogramMode, designs, activeDesignId, lastSavedId, networkActive, vfBypass, catalogSnap, breakupGuard, xoRangeOn, xoFreqHz, xoMarginHz, xoScanSteps, xo3Steps, hpLpPref, hpLpPrefLow, phaseMetricMode, acSlopeMid, acSlopeTweeter, acSlopeWoofer, acSlopeMidHp, xoLowFreqHz, xoLowMarginHz, midSizeInch, wooferSizeInch, kaTier, cabinet, nearField, ctcK, seatTiming, breakupLimitOn, breakupHarmonic, sdCm2, xmaxMm, excursionSpl, snapProfile, snapSeriesL, snapSeriesC, snapSeriesR, snapStacks, snapBoundToSeries, stagedOn, engineV2Enabled, engineV2Settings, v2Meas, targetRipple, targetPhase, soloSensDb, soloFloorOn, soloFloorDb]);
 
   function resetProject() {
     localStorage.removeItem(AUTOSAVE_KEY);
@@ -5750,7 +5974,11 @@ export default function App() {
     return unverifiedSources.map((s) => s!.meta.unverifiedReason).join(' · ');
   }
 
-  async function runVfOptimize() {
+  /**
+   * `runOpts.acknowledgedWindowNotice` — the designer has already seen the
+   * pre-start estimate for this run and said start anyway (F3b, deliverable 3).
+   */
+  async function runVfOptimize(runOpts: { acknowledgedWindowNotice?: boolean } = {}) {
     const refusal = refuseIfUnverified();
     if (refusal) {
       setVfError(`Cannot optimise yet — ${refusal}`);
@@ -5914,6 +6142,45 @@ export default function App() {
         warm3,
         physWin3?.diAnchor,
       );
+      /* DELIVERABLE 3 — the pre-start estimate.
+       *
+       * Counted on the candidate list that is ABOUT TO RUN, not on a
+       * reactive reconstruction of it: two constructions of the same grid is
+       * two opinions about what is about to happen, and the estimate is only
+       * worth anything if it is about the real thing.
+       *
+       * It STOPS NOTHING. No candidate is skipped, none is clamped, and
+       * "start anyway" is an ordinary button rather than a confirmation of
+       * something dangerous — a crossing outside the window is a design the
+       * measurements say will be fighting its drivers, which is a thing a
+       * designer sometimes does on purpose and always wants to know first.
+       * The setup above runs again on "start anyway"; that is a few hundred
+       * milliseconds, and the alternative is a preview that can drift from
+       * the run it previews. */
+      if (v2Windows && !runOpts.acknowledgedWindowNotice) {
+        const estimate = candidatesOutsideWindows(
+          variants.map((v) => ({ label: v.label, hz: [v.xoLow, v.xoHigh] })),
+          [
+            { pairLabel: v2PairLabel('low'), window: v2Windows.low },
+            { pairLabel: v2PairLabel('high'), window: v2Windows.high },
+          ],
+        );
+        if (estimate.message) {
+          setVfBusy(false);
+          setV2PreStart({
+            message: estimate.message,
+            proceed: () => {
+              setV2PreStart(null);
+              void runVfOptimize({ acknowledgedWindowNotice: true }).catch((e) => {
+                setVfBusy(false);
+                setVfError(String((e as Error).message ?? e));
+              });
+            },
+          });
+          return;
+        }
+      }
+
       // What the DELIVERED crossings are judged against in the ranking: a pin
       // is the designer's promise; a measured physics window is the drivers'.
       // The candidate cage stays bookkeeping — see judgeWindows in the chain.
@@ -9723,6 +9990,116 @@ export default function App() {
                             .
                           </span>
                         )}
+                        {/* A5a — MEASUREMENT metadata for engine v2 (F3b).
+                          *
+                          * Behind the toggle, and that is a deliberate choice
+                          * rather than caution: with the engine off the app
+                          * must be byte-identical, and these fields feed
+                          * nothing else. They are per MEASUREMENT SESSION, so
+                          * they sit in the geometry form beside the cabinet
+                          * facts they belong with rather than in the optimizer
+                          * options, which are settings of a search. */}
+                        {engineSelection.reporting && (
+                          <>
+                            <span className="cd-label">{t('Engine v2 — measurement')}</span>
+                            <span
+                              className="cd-fields"
+                              title={t("Facts about the MEASUREMENT this driver's derived parameters come from (spec A5a). Every field is optional and blank means absent — the metric that needs it then stays off with a reason, which is the whole point of this layer.")}
+                            >
+                              <span className="cd-pre" />
+                              <span
+                                className="inline-num"
+                                title={t("Acoustic centre on the VERTICAL axis, mm — what the vertical lobing synthesis (M-F-final) places this source at. Blank = the baffle position above, which is the same number for a flush-mounted driver and the wrong one for a pod or a waveguide. Without it for EVERY way, M-F-final stays off rather than reporting the coplanar 0.0 dB.")}
+                              >
+                                {t('acoustic centre z') + ' '}
+                                <input
+                                  type="number"
+                                  step={1}
+                                  placeholder={cabinet.drivers[role]?.yMm || '—'}
+                                  value={v2Meas[role].zMm}
+                                  onChange={(e) => setV2MeasField(role, 'zMm', e.target.value)}
+                                  style={{ width: '5rem' }}
+                                />
+                                {' mm'}
+                              </span>{' '}
+                              <span
+                                className="inline-num"
+                                title={t("Does this branch radiate rotationally symmetrically about its axis? M-F-final treats every source as a point at its acoustic centre, and that assumption is weakest where the radiation is not symmetric. Left unstated the metric says so as a limitation — it does not assume either answer.")}
+                              >
+                                {t('rotationally symmetric') + ' '}
+                                <select
+                                  value={v2Meas[role].rotSym}
+                                  onChange={(e) => setV2MeasField(role, 'rotSym', e.target.value)}
+                                >
+                                  <option value="">{t('not stated')}</option>
+                                  <option value="yes">{t('yes')}</option>
+                                  <option value="no">{t('no')}</option>
+                                </select>
+                              </span>{' '}
+                              <span
+                                className="inline-num"
+                                title={t("DC resistance measured with a meter, Ω. This OUTRANKS both sweep derivations: it is a measurement of the quantity itself, while everything read off an impedance sweep is inference. It moves M-E, the Q_es search bound, the vented loss indicator and the sealed alignment together, because all of them divide by it. Blank = the engine derives it and shows which way.")}
+                              >
+                                {t('measured R_e') + ' '}
+                                <input
+                                  type="number"
+                                  min={0}
+                                  step={0.01}
+                                  placeholder={t('derived')}
+                                  value={v2Meas[role].reOhm}
+                                  onChange={(e) => setV2MeasField(role, 'reOhm', e.target.value)}
+                                  style={{ width: '4.5rem' }}
+                                />
+                                {' Ω'}
+                              </span>
+                            </span>
+                            <span className="cd-label">{t('Window (no header)')}</span>
+                            <span
+                              className="cd-fields"
+                              title={t("Window metadata for this branch's GATED far-field files, for measurements whose headers carry none. A FALLBACK, never an override: a file that has the fields in its header uses those, and nothing you type here can relax a measured gate floor (spec A5b.1(i)). Give the two times and the app derives the effective window exactly as it does from a header, or give the validity floor itself. The panel shows which of the two spoke.")}
+                            >
+                              <span className="cd-pre" />
+                              {t('reference time') + ' '}
+                              <input
+                                type="number"
+                                min={0}
+                                step={0.1}
+                                placeholder="—"
+                                value={v2Meas[role].refTimeMs}
+                                onChange={(e) => setV2MeasField(role, 'refTimeMs', e.target.value)}
+                                style={{ width: '4.5rem' }}
+                              />
+                              {' ms · ' + t('right window') + ' '}
+                              <input
+                                type="number"
+                                min={0}
+                                step={0.1}
+                                placeholder="—"
+                                value={v2Meas[role].rightWindowMs}
+                                onChange={(e) => setV2MeasField(role, 'rightWindowMs', e.target.value)}
+                                style={{ width: '4.5rem' }}
+                              />
+                              {' ms · ' + t('or floor') + ' '}
+                              <input
+                                type="number"
+                                min={0}
+                                step={10}
+                                placeholder="—"
+                                value={v2Meas[role].floorHz}
+                                onChange={(e) => setV2MeasField(role, 'floorHz', e.target.value)}
+                                style={{ width: '5rem' }}
+                              />
+                              {' Hz '}
+                              <input
+                                type="text"
+                                placeholder={t('where these came from')}
+                                value={v2Meas[role].windowNote}
+                                onChange={(e) => setV2MeasField(role, 'windowNote', e.target.value)}
+                                style={{ width: '10rem' }}
+                              />
+                            </span>
+                          </>
+                        )}
                           {role === 'high' ? (
                             <>
                               <span className="cd-label">{t('Chamber')}</span>
@@ -13468,13 +13845,33 @@ export default function App() {
                 </button>
               </p>
             )}
+            {/* DELIVERABLE 3 — the pre-start estimate, and it is a NOTICE.
+              * "Start anyway" is an ordinary button, not a confirmation of
+              * something dangerous: a crossing outside the feasible window is
+              * a design the measurements say will be fighting its drivers,
+              * which a designer sometimes chooses on purpose. Nothing is
+              * skipped and nothing is clamped either way. */}
+            {v2PreStart && (
+              <div className="v2-prestart">
+                <b>⚠ {t('Before the scan starts')}</b>
+                <p>{v2PreStart.message}</p>
+                <div className="v2-prestart-actions">
+                  <button type="button" onClick={v2PreStart.proceed}>
+                    {t('Start anyway')}
+                  </button>
+                  <button type="button" onClick={() => setV2PreStart(null)}>
+                    {t('Cancel — let me change the range')}
+                  </button>
+                </div>
+              </div>
+            )}
             <div className="tool-groups" style={{ marginBottom: '1rem' }}>
               <div className="tool-group">
                 <span className="tool-group-label">{t('Design')}</span>
                 <div className="tool-group-body">
                   <button
                     type="button"
-                    onClick={runVfOptimize}
+                    onClick={() => void runVfOptimize()}
                     disabled={vfBusy}
                     title={
                       threeWay
@@ -14540,6 +14937,21 @@ export default function App() {
                     )}
                   </span>
                 )}
+                {/* DELIVERABLES 1 + 2 — the A5d.3 window beside the fields
+                  * it is about.
+                  *
+                  * The markup lives in `XoWindowAnnotation` so the toggle
+                  * invariant is testable at runtime rather than only by
+                  * reading this file: one component, one entry condition, and
+                  * `pairs === null` renders nothing at all. It sits BESIDE the
+                  * physics annotation above rather than replacing it — two
+                  * different derivations of "where may this crossing go", and
+                  * the app has no business quietly picking one. */}
+                <XoWindowAnnotation
+                  pairs={v2WindowPairs}
+                  onTakeOver={(key) => takeOverV2Window(key as 'low' | 'high')}
+                  t={t}
+                />
                 <span className="opt-group-cap">{t('Driver limits')}</span>
                 {threeWay && !physWin3?.lowCeilMeasured &&
                   pistonDiameterMm(Number(sdCm2.low)) === null && (

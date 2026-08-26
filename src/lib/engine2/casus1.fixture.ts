@@ -54,6 +54,13 @@ export interface GoldenRefs {
     watt_pct: number;
     lambda_pct: number;
     procentpunten: number;
+    /**
+     * F3b — the measured quality of the motional R_e fit is itself a reference.
+     * See `toleranties_toelichting.fit_kwaliteit_pct`: a deterministic solver
+     * owes these numbers back, so a change that moves them has to fail loudly
+     * rather than shift quietly.
+     */
+    fit_kwaliteit_pct: number;
   };
   toleranties_toelichting: Record<string, string>;
   /** Why five references were revised at F1 — see V13/V14/V15 in the casebook. */
@@ -138,6 +145,24 @@ export interface GoldenRefs {
     herziening_F2: string;
   };
   vensterinteractie: Record<string, unknown>;
+  /**
+   * A5c.1's motional R_e fit, with the parameters it was computed with.
+   *
+   * Typed for the same reason the withdrawn M-C block and the bound inversions
+   * are: the golden suite asserts on these, and the V15 process rule says a
+   * reference that depends on a BAND, an AVERAGING or a GRID records them. All
+   * three apply here — the fit has a band, a weighting and a fixed start list.
+   */
+  re_fit_parameters: {
+    band_multiple: number;
+    sensitivity_band_multiples: number[];
+    exponent_starts: number[];
+    coefficient_starts: number[];
+    kwaliteitsgrenzen: {
+      max_relatief_residu: number;
+      max_bandgevoeligheid_fractie: number;
+    };
+  };
   manifest_en_geometrie: {
     bestanden: Record<string, { drv: string; typ: string; hoek?: number }>;
     ff_headers: Record<string, number>;

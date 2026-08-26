@@ -179,8 +179,25 @@ export function EngineV2Panel({ report, ambiguous }: EngineV2PanelProps) {
                       `${v.direction === 'max' ? '≤' : '≥'} ${fmt(v.limit, v.gate)}`
                     )}
                   </td>
-                  <td className={!v.active ? 'v2-off' : v.pass ? 'v2-on' : 'v2-fail'}>
-                    {!v.active ? 'off' : v.pass ? 'inside' : 'EXCEEDED'}
+                  <td
+                    className={
+                      !v.active
+                        ? 'v2-off'
+                        : v.withinToleranceOnly
+                          ? 'v2-on v2-tolerance'
+                          : v.pass
+                            ? 'v2-on'
+                            : 'v2-fail'
+                    }
+                    title={v.withinToleranceOnly ? v.reason : undefined}
+                  >
+                    {!v.active
+                      ? 'off'
+                      : v.withinToleranceOnly
+                        ? 'inside, on tolerance'
+                        : v.pass
+                          ? 'inside'
+                          : 'EXCEEDED'}
                   </td>
                 </tr>
               ))}
@@ -284,13 +301,48 @@ export function EngineV2Panel({ report, ambiguous }: EngineV2PanelProps) {
               {ingest.drivers.map((d) => (
                 <tr key={d.driver}>
                   <th scope="row">{d.driver}</th>
-                  <td>
+                  <td title={d.re?.sourceText}>
                     {ohm(d.re?.ohm)}
+                    {d.re && (
+                      <span className="v2-muted">
+                        {' '}
+                        {d.re.source === 'entered'
+                          ? 'entered'
+                          : d.re.source === 'motional-fit'
+                            ? 'fit'
+                            : 'direct'}
+                      </span>
+                    )}
                     {d.re?.motionalProximityWarning && (
                       <span className="v2-warn" title={d.re.motionalProximityWarning}>
                         {' '}
                         overestimate
                       </span>
+                    )}
+                    {d.re?.reclassificationShift && (
+                      <span className="v2-uncal" title={d.re.reclassificationShift}>
+                        peak set moved
+                      </span>
+                    )}
+                    {d.re && d.re.source !== 'direct' && (
+                      <div className="v2-muted">
+                        direct {ohm(d.re.directOhm)}
+                        {d.re.motionalSkirtOhm !== null &&
+                          ` (carries ${d.re.motionalSkirtOhm.toFixed(3)} Ω motional)`}
+                        {d.re.fit && d.re.source === 'entered' && ` · fit ${ohm(d.re.fit.reOhm)}`}
+                      </div>
+                    )}
+                    {d.re?.fit && (
+                      <div className="v2-muted">
+                        fit residual {d.re.fit.relativeResidual.toFixed(4)} · band sensitivity ±
+                        {d.re.fit.bandSensitivityOhm.toFixed(3)} Ω
+                        {d.re.fit.refusal && (
+                          <span className="v2-warn" title={d.re.fit.refusal}>
+                            {' '}
+                            fit abstained
+                          </span>
+                        )}
+                      </div>
                     )}
                   </td>
                   <td title={d.impedance?.reason}>{d.impedance?.type ?? '—'}</td>
@@ -312,6 +364,16 @@ export function EngineV2Panel({ report, ambiguous }: EngineV2PanelProps) {
                     {d.onAxis?.fineDetailFromHz && (
                       <span className="v2-muted"> (detail from {hz(d.onAxis.fineDetailFromHz)})</span>
                     )}
+                    {d.onAxis &&
+                      (d.onAxis.bandFloorProvenance === 'manual-window' ||
+                        d.onAxis.bandFloorProvenance === 'manual-floor') && (
+                        <span
+                          className="v2-uncal"
+                          title={`This floor is NOT from the file's header — it was entered by hand (${d.onAxis.bandFloorProvenance === 'manual-window' ? 'window times' : 'validity floor'}). A stated number, not a measured one; everything derived from it inherits that.`}
+                        >
+                          entered
+                        </span>
+                      )}
                   </td>
                   <td>{hz(d.nearFieldCeilingHz)}</td>
                 </tr>
@@ -511,6 +573,16 @@ export function EngineV2Panel({ report, ambiguous }: EngineV2PanelProps) {
           </div>
         ))}
 
+        {metrics.lobingFinalOff && (
+          <div className="v2-metric">
+            <div className="v2-metric-head">
+              <span className="v2-id">M-F</span> Lobing (synthesised)
+              <b className="v2-off">off</b>
+            </div>
+            <div className="v2-warn">{metrics.lobingFinalOff}</div>
+          </div>
+        )}
+
         {metrics.lobingFinal && (
           <div className="v2-metric">
             <div className="v2-metric-head">
@@ -616,6 +688,16 @@ export function EngineV2Panel({ report, ambiguous }: EngineV2PanelProps) {
             </p>
             {predesign.gaps.anchorSwitchWarning && (
               <p className="v2-warn">{predesign.gaps.anchorSwitchWarning}</p>
+            )}
+            {predesign.gaps.suspectBands.length > 0 && (
+              <div className="v2-suspect">
+                <b>⚠ Read this block with a caveat.</b>
+                {predesign.gaps.suspectBands.map((b) => (
+                  <p className="v2-warn" key={b.driver}>
+                    {b.describe}
+                  </p>
+                ))}
+              </div>
             )}
             <table className="v2-table">
               <thead>

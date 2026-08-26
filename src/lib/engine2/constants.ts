@@ -217,8 +217,86 @@ export const DEFAULT_TREND_OCTAVE_FRACTION = 2;
  * drivers (see the golden-reference test). @p6 rule
  */
 export const RE_LOW_FRACTION_OF_POINTS = 0.025;
-/** A5c.1 / V8d — motional-proximity warning distance, in octaves. @p6 rule */
-export const RE_MOTIONAL_PROXIMITY_OCTAVES = 1.0;
+
+/* ------------------------------------------------------------------ *
+ * A5c.1 / V8d — THE MOTIONAL R_e FIT (F3b).
+ *
+ * The direct reading above is a MEASUREMENT wherever the motional impedance
+ * has died away, and an overestimate wherever it has not. Until F3b the app
+ * decided which case it was on an OCTAVE RULE — "the sweep starts less than
+ * one octave under the lowest resonance". That rule is gone, and V18 is why:
+ * the validity of a detector rule hangs on the shape of the curve it runs on,
+ * and how far a resonance reaches down depends on its Q, not on a fixed
+ * octave count. A Q of 8 is spent within a third of an octave; a Q of 1 still
+ * contributes at three. The skirt is now computed from the FITTED branch
+ * itself, so the warning states ohms rather than octaves.
+ * ------------------------------------------------------------------ */
+
+/**
+ * The fit band runs from the bottom of the sweep to this multiple of the
+ * driver's FUNDAMENTAL in-box resonance.
+ *
+ * Dimensionless, so it moves with the driver and names no frequency. The
+ * value is the compromise the band itself forces: too low and the semi-
+ * inductance term is unconstrained (it has no lever inside the band, and the
+ * exponent runs to its bound); too high and the voice-coil model — which is a
+ * two-parameter approximation of a distributed effect — starts paying for its
+ * own error with R_e. Casus 1 measures that trade directly: the woofer reads
+ * 2.99 / 2.90 / 2.83 Ω at 2x / 3x / 4x. The spread is not noise and is not
+ * hidden — it is reported as `bandSensitivityOhm` and it is one of the two
+ * quality limits the fit can refuse on. @p6 rule
+ */
+export const RE_FIT_BAND_MULTIPLE_OF_FUNDAMENTAL = 3;
+/** The two comparison bands the band sensitivity is measured over. @p6 rule */
+export const RE_FIT_SENSITIVITY_BAND_MULTIPLES = [2, 4] as const;
+/**
+ * Largest relative RMS residual (|model − Z| / |Z|) a believed fit may leave.
+ *
+ * Casus 1 measures 0.030 / 0.013 / 0.018 on woofer / mid / tweeter, so this
+ * sits at roughly twice the worst real case: wide enough that an ordinary
+ * driver is never refused, tight enough that a curve the branch model does
+ * not describe cannot pass. The V8e discipline, applied to a second
+ * extractor — an estimator that cannot abstain will eventually publish
+ * nonsense. @p6 rule
+ */
+export const RE_FIT_MAX_RELATIVE_RESIDUAL = 0.06;
+/**
+ * Largest band sensitivity, as a FRACTION of the fitted R_e, a believed fit
+ * may show. Casus 1 measures 2.7 % / 2.5 % / 0.2 %. @p6 rule
+ */
+export const RE_FIT_MAX_BAND_SENSITIVITY_FRACTION = 0.06;
+/**
+ * Physical range of the semi-inductance exponent inside the R_e fit.
+ *
+ * Wider than `SEMI_INDUCTANCE_N_MIN/MAX` on purpose: here the exponent is a
+ * NUISANCE parameter carrying whatever the coil does inside a band that stops
+ * just above resonance, not a reported model of the coil. Bounding it to the
+ * publishable range would make it absorb its own truncation into R_e, which
+ * is the one parameter that must stay clean. @p6 rule
+ */
+export const RE_FIT_N_MIN = 0.3;
+/** Upper bound of the R_e fit's nuisance exponent. @p6 rule */
+export const RE_FIT_N_MAX = 1.2;
+/**
+ * The fixed, deterministic starting points the fit is tried from.
+ *
+ * A single start is not enough: the residual surface has a local optimum with
+ * the exponent pinned to its bound, and on casus 1's woofer a lone start
+ * lands in it and reads 3.08 Ω instead of 2.90. Multi-start is also what
+ * keeps the estimator DETERMINISTIC (A5e.4) without a seed — the list is
+ * fixed, every start is run, and the lowest residual wins. @p6 rule
+ */
+export const RE_FIT_EXPONENT_STARTS = [0.5, 0.7, 0.9] as const;
+/** Starting values for the fit's semi-inductance coefficient K. @p6 rule */
+export const RE_FIT_COEFFICIENT_STARTS = [1e-4, 5e-3] as const;
+/** Fallback Q for a seed branch whose peak Q could not be read. @p6 rule */
+export const RE_FIT_FALLBACK_SEED_Q = 5;
+/** Largest Levenberg-Marquardt iteration count per start. @p6 rule */
+export const RE_FIT_MAX_ITERATIONS = 300;
+/** Largest number of damping retries within one LM iteration. @p6 rule */
+export const RE_FIT_MAX_DAMPING_STEPS = 80;
+/** Bound on the fit's log-space parameters — keeps exp() finite. @p6 rule */
+export const RE_FIT_PARAMETER_CLAMP = 30;
 
 /**
  * A5c.5 — the semi-inductance fit |Z−R_e| = K·ω^n runs from this many DECADES

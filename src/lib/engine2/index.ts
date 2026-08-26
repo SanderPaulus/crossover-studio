@@ -25,6 +25,7 @@ export * from './util.ts';
 
 export * from './ingest/manifest.ts';
 export * from './ingest/validity.ts';
+export * from './ingest/motionalFit.ts';
 export * from './ingest/impedance.ts';
 export * from './ingest/spl.ts';
 export * from './ingest/derive.ts';
@@ -37,6 +38,7 @@ export * from './metrics/registry.ts';
 
 export * from './predesign/gaps.ts';
 export * from './predesign/xoWindow.ts';
+export * from './predesign/xoRangeAdvice.ts';
 
 export * from './optimizer/determinism.ts';
 export * from './optimizer/gates.ts';

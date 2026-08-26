@@ -6,6 +6,47 @@ Volgorde binnen een blok = aanbevolen prioriteit. Inschattingen zijn grof:
 
 ## Onlangs afgerond (jul–aug 2026, ter referentie)
 
+- **F3b — het scanvenster gekoppeld, en R_e opnieuw gemeten** (26 aug 2026).
+  A5d.3 berekende het haalbare kruisvenster al sinds F1, maar het stond in het
+  rapportpaneel terwijl de beslissing in de scandialoog wordt genomen. Nu staat
+  het **naast de bereikvelden**: per driverpaar de vensterranden met de
+  bindende grens erbij en haar status ("plafond: breakup — ongekalibreerd"), de
+  lobing-zones als tekst, en bij een leeg venster de melding dat dit een
+  driver- of layoutprobleem is en geen filterprobleem. Ligt je zoekbereik
+  (deels) buiten het venster, dan zegt de app dat en biedt één knop **"neem
+  venster over als bereik"** — een gewone veldwijziging, daarna aanpasbaar.
+  Er wordt **nooit geklemd**, niet vóór en niet tijdens de run: het venster is
+  een rapport over je drivers, en jij mag redenen hebben die de meetset niet
+  kent. Vóór de start telt de app hoeveel kandidaten erbuiten vallen ("3 van de
+  3 …"), met start-toch als gewone knop.
+  **Paneel-eerlijkheid**, drie plekken waar het paneel zweeg: een poort die
+  alleen binnen de meettolerantie slaagt (|Z| 3,17 tegen vloer 3,20) leest nu
+  "inside, on tolerance" en noemt die 2 % een projectconventie; M-F-eind staat
+  **uit met reden** wanneer de akoestische centra ontbreken in plaats van het
+  coplanaire "0,0 dB" te rapporteren (mét de casus-1-offsets reproduceert hij
+  −3,9 dB @ ~3,5 kHz); en het verankerde-gaps-blok draagt een kanttekening
+  zodra een wegniveau berekend is op een band zonder afgeleide gate-vloer — dat
+  blok keerde in de praktijk het anker om (mid → woofer) terwijl geen enkel
+  bestaand signaal erin dat liet zien.
+  Nieuw ook: **handmatige venstertijden** per meting voor bestanden zonder
+  header (referentietijd + rechter venster, óf de vloer direct), als fallback
+  die een gemeten gate-vloer nooit kan versoepelen, met de herkomst zichtbaar.
+  **De motionele R_e-fit** sluit V8d. R_e komt niet meer van Re(Z) onderin de
+  sweep maar uit een fit rond de onderste resonanties, geëxtrapoleerd naar DC:
+  op casus 1's wooferpaar **3,81 → 2,90 Ω**, en de zoekgrens die eraan hangt
+  (R_s ≤ R_e·(q−1)) beweegt mee — die stond dus 0,9 Ω te ruim in de onveilige
+  richting. De oude aflezing blijft als vergelijkingswaarde staan, met de
+  motionele rok in ohm erbij (0,787 Ω), berekend uit de gefitte resonantie zelf
+  in plaats van uit de octaafregel die eruit is gehaald. Boven beide staat een
+  **gemeten DC-weerstand** die je zelf invult: een meterlezing is een meting van
+  de grootheid, een sweep-afleiding is inferentie. De hiërarchie wordt in de
+  afleidingspas opgelost, dus M-E, de Qes-grens, de verliesindicator en de
+  gesloten-Q's lezen gegarandeerd hetzelfde getal. Schatter-versiebump met de
+  eerste échte cache-invalidatietest, en een nieuwe casus **S1** in het
+  casusboek: een synthetische kromme met bekende R_e (6,000 Ω), waar de directe
+  aflezing 7,114 leest en de fit 6,000 — grondwaarheid in plaats van
+  overeenstemming tussen twee schatters.
+
 - **F3 — eisen in plaats van gewichten** (26 aug 2026). De engine draagt nu zelf
   ontwerpen aan. Je stelt **eisen** (SPL-venster ±dB t.o.v. de doelcurve, max
   fase-trackingfout; de Z/EPDR-vloer blijft een poort), en de engine levert

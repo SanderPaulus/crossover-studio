@@ -3974,6 +3974,34 @@ details.cabinet-driver > .derived strong,
   font-weight: 600;
 }
 
+/* A gate that passes ONLY because of a measurement tolerance. Still green —
+   it does pass — but it may not read the same as a design that clears the
+   limit outright, because those are two different things to build. */
+.v2-tolerance {
+  color: #7a9a20;
+  border-bottom: 1px dotted currentColor;
+  cursor: help;
+}
+
+/* The caveat that hangs on a whole analysis block rather than on one number:
+   the band a level was averaged over had no derived gate floor, so the block's
+   own conclusion may be inverted (A5d.4 / F4). */
+.v2-suspect {
+  border: 1px dashed #ec835a;
+  border-radius: 4px;
+  padding: 0.4rem 0.6rem;
+  margin: 0.5rem 0;
+}
+
+.v2-suspect > b {
+  font-size: 0.8rem;
+  color: #ec835a;
+}
+
+.v2-suspect p {
+  margin: 0.3rem 0 0;
+}
+
 .v2-metric {
   border-left: 2px solid var(--border);
   padding: 0.35rem 0 0.35rem 0.6rem;
@@ -4054,4 +4082,49 @@ details.cabinet-driver > .derived strong,
 
 .v2-empty-window {
   border-left-color: #ec835a;
+}
+
+
+/* ------------------------------------------------------------------ *
+ * F4 — the A5d.3 window inside the scan dialog.
+ *
+ * It shares the dialog with the v1 physics annotation on purpose: two
+ * derivations of "where may this crossing go", both visible, neither quietly
+ * chosen for the designer.
+ * ------------------------------------------------------------------ */
+
+.v2-xo-window {
+  border-left: 2px solid var(--border);
+  padding-left: 0.6rem;
+  margin-top: 0.3rem;
+}
+
+.v2-xo-warn {
+  display: block;
+  margin-top: 0.2rem;
+  color: #ec835a;
+}
+
+/* The pre-start estimate. Deliberately NOT styled as a modal: it reports a
+   count, it does not ask permission. */
+.v2-prestart {
+  border: 1px solid #ec835a;
+  border-radius: 6px;
+  padding: 0.6rem 0.8rem;
+  margin-bottom: 0.8rem;
+}
+
+.v2-prestart > b {
+  color: #ec835a;
+}
+
+.v2-prestart p {
+  margin: 0.35rem 0 0.6rem;
+  font-size: 0.88rem;
+}
+
+.v2-prestart-actions {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
 }

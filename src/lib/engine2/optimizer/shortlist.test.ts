@@ -63,6 +63,7 @@ const failingGate: GateVerdict = {
   direction: 'min',
   active: true,
   pass: false,
+  withinToleranceOnly: false,
   reason: '0.80 Ω falls below the stated floor of 1.60 Ω',
   specRef: 'A4 M-B',
 };

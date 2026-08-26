@@ -43,7 +43,7 @@
  *    finding, not a rounding difference, and it is reported as one.
  */
 
-import { meetsAmpFloor } from '../../impedanceFloor.ts';
+import { AMP_FLOOR_TOLERANCE, meetsAmpFloor } from '../../impedanceFloor.ts';
 import type { Complex } from '../../complex.ts';
 import type { Netlist } from '../../network.ts';
 import { HP_PROTECTION_MIN_RISE_DB, HP_PROTECTION_PROBE_OCTAVES, PERCENT } from '../constants.ts';
@@ -113,6 +113,19 @@ export interface GateVerdict {
   active: boolean;
   /** True when the gate is inactive OR the value is inside the limit. */
   pass: boolean;
+  /**
+   * TRUE when this gate passes ONLY because of a measurement tolerance — the
+   * plain comparison would have failed (F3b, deliverable 4a).
+   *
+   * The practical case is the |Z| floor: 3.17 Ω against a stated 3.20 Ω reads
+   * "inside", because `meetsAmpFloor` allows 2 % for build spread. That is the
+   * right verdict and the wrong silence. A reader deciding whether to build
+   * this network is entitled to know the difference between a design that
+   * clears the amplifier's rating and one that clears it only once you agree
+   * to a tolerance — and the tolerance is a convention this project chose, not
+   * a fact about the amplifier.
+   */
+  withinToleranceOnly: boolean;
   /** What the report shows: the sentence, including "no limit set". */
   reason: string;
   specRef: string;
@@ -147,6 +160,12 @@ function judge(args: {
   parameters?: Record<string, number | string>;
   /** Overrides the plain comparison. Used only by the |Z| floor. */
   accept?: (value: number, limit: number) => boolean;
+  /**
+   * What to say when `accept` passes a value the plain comparison rejects.
+   * Supplied by the caller that owns the tolerance, because the tolerance
+   * belongs to that comparison and not to this rule.
+   */
+  toleranceText?: string;
   /** Rendering of the number, so a fraction can be shown as a percentage. */
   show?: (value: number) => string;
 }): GateVerdict {
@@ -169,6 +188,7 @@ function judge(args: {
       limit: null,
       active: false,
       pass: true,
+      withinToleranceOnly: false,
       reason:
         value === null
           ? 'not evaluated, and no limit set'
@@ -184,23 +204,28 @@ function judge(args: {
       // Refusing on missing data would turn "we could not look" into "it
       // failed", which is a different claim and the wrong one.
       pass: true,
+      withinToleranceOnly: false,
       reason: `limit ${shown(limit)}, but the metric could not be evaluated on this network`,
     };
   }
-  const ok = args.accept
-    ? args.accept(value, limit)
-    : direction === 'max'
-      ? value <= limit
-      : value >= limit;
+  const strict = direction === 'max' ? value <= limit : value >= limit;
+  const ok = args.accept ? args.accept(value, limit) : strict;
+  // The gate passes, but the plain comparison would not have. That is a
+  // different verdict from an ordinary pass and it is reported as one.
+  const byTolerance = ok && !strict;
   return {
     ...base,
     limit,
     active: true,
     pass: ok,
-    reason: ok
-      ? `${shown(value)} against a ${direction === 'max' ? 'ceiling' : 'floor'} of ${shown(limit)}`
-      : `${shown(value)} ${direction === 'max' ? 'exceeds' : 'falls below'} the stated ` +
-        `${direction === 'max' ? 'ceiling' : 'floor'} of ${shown(limit)}`,
+    withinToleranceOnly: byTolerance,
+    reason: byTolerance
+      ? `${shown(value)} against a ${direction === 'max' ? 'ceiling' : 'floor'} of ` +
+        `${shown(limit)} — inside, but only ${args.toleranceText ?? 'within the accepted tolerance'}`
+      : ok
+        ? `${shown(value)} against a ${direction === 'max' ? 'ceiling' : 'floor'} of ${shown(limit)}`
+        : `${shown(value)} ${direction === 'max' ? 'exceeds' : 'falls below'} the stated ` +
+          `${direction === 'max' ? 'ceiling' : 'floor'} of ${shown(limit)}`,
   };
 }
 
@@ -284,8 +309,14 @@ export function gateVerdicts(
       direction: 'min',
       specRef: 'A4 M-B (simple mode)',
       // The floor's comparison is not this module's to invent. One rule, one
-      // place — see `impedanceFloor.ts`.
+      // place — see `impedanceFloor.ts`. The tolerance SENTENCE comes from the
+      // same place for the same reason: the number and the words about it must
+      // not be able to drift apart.
       accept: (value, limit) => meetsAmpFloor(value, limit),
+      toleranceText:
+        `within the ${(AMP_FLOOR_TOLERANCE * PERCENT).toFixed(0)} % measurement tolerance ` +
+        '(a shortfall smaller than the tightest component class the app offers disappears into ' +
+        'build spread — a project convention, not a property of the amplifier)',
       ...(values.minZAtHz !== undefined
         ? { parameters: { at: `${values.minZAtHz.toFixed(0)} Hz` } }
         : {}),

@@ -11,11 +11,21 @@
   "exponent_pct": 5,
   "watt_pct": 2,
   "lambda_pct": 4,
-  "procentpunten": 1
+  "procentpunten": 1,
+  "fit_kwaliteit_pct": 5
  },
  "afgeleide_parameters": {
   "woofer": {
    "Re_naief": 3.81,
+   "Re": 2.8962,
+   "Re_herkomst": "motionele fit (A5c.1, F3b) — de DC-term van het model, zie re_fit_parameters",
+   "Re_motionele_rok_ohm": 0.787,
+   "Re_fit_residu": 0.0301,
+   "Re_fit_bandgevoeligheid_ohm": 0.0789,
+   "Re_fit_band_hz": [
+    10.07,
+    157.1
+   ],
    "Re_werkelijk_ca": 2.9,
    "fL": 16.5,
    "fb": 31.3,
@@ -29,10 +39,22 @@
    },
    "semi_inductantie_n": 0.83,
    "NF_fmax": 567,
-   "FF_vloer_header": 397
+   "FF_vloer_header": 397,
+   "Re_naief_toelichting": "De DIRECTE aflezing, mediaan van Re(Z) over de laagste 2,5 % van de punten. Blijft staan als VERGELIJKINGSWAARDE, niet als schatting: op deze sweep (start 10,07 Hz naast f_L = 16,5 Hz) draagt zij 0,787 Ω motionele rok, en dat verschil — 3,81 tegen 2,90 — is precies V8d. De rok is berekend uit de gefitte resonantietak zelf, niet uit een octaafregel.",
+   "Re_werkelijk_ca_toelichting": "De meterlezing van het parallelle wooferpaar uit het casusboek (2,90 Ω). De motionele fit landt er op 0,004 Ω vanaf — de onafhankelijke bevestiging dat de fit de grootheid meet die hij claimt te meten, en niet een getal produceert dat toevallig lager is."
   },
   "mid": {
-   "Re": 3.38,
+   "Re": 3.358,
+   "Re_herkomst": "motionele fit (A5c.1, F3b)",
+   "Re_direct": 3.381,
+   "Re_motionele_rok_ohm": 0.04,
+   "Re_fit_residu": 0.0128,
+   "Re_fit_bandgevoeligheid_ohm": 0.0824,
+   "Re_fit_band_hz": [
+    19.96,
+    266.4
+   ],
+   "Re_toelichting": "De 25-08-referentie 3,38 was de directe aflezing; de fit leest 3,358. Het verschil van 0,023 Ω ligt BINNEN de ohm-tolerantieklasse (0,03) en is dus geen herziening maar een BEVESTIGING: op een sweep die 2,2 octaaf onder f_c begint dragen de twee schatters hetzelfde antwoord. Beide waarden staan er, zodat dat controleerbaar blijft.",
    "fc": 88.8,
    "Zmax": 44.2,
    "r0": 13.1,
@@ -90,12 +112,31 @@
    "breakups_opmerking": "De vierde piek van de 25-08-analyse (14434 Hz, +5,2 dB) is er in werkelijkheid TWEE: 14379 Hz +2,83 dB en 14955 Hz +3,17 dB. De andere drie reproduceren op dezelfde schatter en dezelfde trendbreedte tot binnen 0,06 dB, dus de schatter staat niet ter discussie - de referentie las de twee pieken als een breder kenmerk op een grover raster."
   },
   "tweeter": {
-   "Re": 5.59,
+   "Re": 5.2274,
+   "Re_herkomst": "motionele fit (A5c.1, F3b)",
+   "Re_direct": 5.587,
+   "Re_motionele_rok_ohm": 0.26,
+   "Re_fit_residu": 0.018,
+   "Re_fit_bandgevoeligheid_ohm": 0.0102,
+   "Re_fit_band_hz": [
+    199.95,
+    2772.9
+   ],
    "fs": 924.3,
    "Zmax": 16.6,
-   "r0": 2.98,
+   "r0": 3.182,
    "diffractie_rimpel_rms_dB": 0.39,
-   "dominante_omweg_mm": 236
+   "dominante_omweg_mm": 236,
+   "_Re_sessie_25_08": {
+    "_": "V15-STIJL INGETROKKEN WAARDE, mét de parameters waarmee zij berekend is. Bewaard omdat de reproductie ervan het bewijs is dat het schatterverschil de volledige verklaring is.",
+    "waarde": 5.587,
+    "r0": 2.98,
+    "schatter": "z-re@1.0 — mediaan van Re(Z) over de laagste 2,5 % van de punten",
+    "herkomst": "DEZELFDE naïeve schatter die op de woofer 3,81 gaf. Geen onafhankelijke meting: de 25-08-analyse las hem op precies dezelfde manier af.",
+    "waarom_ingetrokken": "De sweep begint op 199,95 Hz, 2,2 octaaf onder f_s = 924 Hz — buiten het bereik van de oude octaafregel, dus de aflezing kreeg geen waarschuwing. De gefitte tak zegt iets anders: bij 200 Hz draagt een resonantie van Q ≈ 1,5 daar nog 0,260 Ω reële motionele impedantie. Dat is exact het mechanisme waarom de octaafregel eruit moest (V18-klasse: hoe ver een resonantie naar beneden reikt hangt aan haar Q, niet aan een vast aantal octaven). 5,587 − 0,260 = 5,327, en de fit leest 5,227 — dezelfde orde, en beide ver onder de ingetrokken waarde.",
+    "reproductie": "De directe aflezing reproduceert 5,587 onveranderd en staat als Re_direct in het bestand; wie de oude waarde wil narekenen leest die kolom.",
+    "gevolg_r0": "r0 = Z_max/R_e beweegt één op één mee: 16,6/5,587 = 2,98 wordt 16,6/5,227 = 3,18. De kwalitatieve conclusie verandert niet — deze tweeter blijft zwaar gedempt."
+   }
   }
  },
  "verankerde_gaps_dB": {
@@ -400,6 +441,39 @@
   "exponent_pct": "Dimensieloze fit-exponenten (spreekspoelmodel n, r0, Qes-vermenigvuldiging). Geen opgegeven klasse; 5% is het kleinste ronde getal dat de in V8e gedocumenteerde fitband-gevoeligheid dekt. Beide drivers halen 3,4%.",
   "watt_pct": "Vermogen bij het opgegeven versterkervermogen: dezelfde 2% als de frequenties, omdat het dezelfde relatieve-nauwkeurigheidsklasse is.",
   "lambda_pct": "Golflengtes (M-F-interim). lambda = d*f/c is lineair in het kruispunt, dus het erft de frequentieklasse - en het kruispunt waarop het wordt geevalueerd is zelf een AFGELEIDE frequentie met dezelfde klasse, dus de twee stapelen: 2 x 2%.",
-  "procentpunten": "Dissipatiepercentages. Het referentiebestand geeft ze als hele procenten, dus de tolerantie is de afronding die er al op zit."
+  "procentpunten": "Dissipatiepercentages. Het referentiebestand geeft ze als hele procenten, dus de tolerantie is de afronding die er al op zit.",
+  "fit_kwaliteit_pct": "De GEMETEN kwaliteit van de motionele R_e-fit — relatief RMS-residu en bandgevoeligheid per driver — is sinds F3b zelf een referentie, niet alleen een ijkgetal in een opleverrapport. Reden: de solver is deterministisch, dus deze getallen horen te reproduceren; verandert een toekomstige solver-wijziging ze, dan is dat een gedragswijziging die zichtbaar moet FALEN in plaats van stil te verschuiven. 5 % is ruim genoeg voor platformverschillen in de laatste cijfers van een LM-iteratie en veel te strak om een andere startpuntenlijst, een andere weging of een andere bandkeuze te overleven. De grenzen waar de fit op WEIGERT staan apart in re_fit_parameters.kwaliteitsgrenzen: die zeggen wat nog aanvaardbaar is, deze zegt wat deze meetset feitelijk oplevert."
+ },
+ "re_fit_parameters": {
+  "_": "V15-PROCESREGEL: een referentie die een BAND, een MIDDELING of een GRID gebruikt legt die parameters hier vast. De motionele R_e-fit gebruikt alle drie, dus staan ze hier — zonder deze regels is Re geen referentie maar een herinnering.",
+  "spec": "A5c.1 / casusboek V8d; implementatie src/lib/engine2/ingest/motionalFit.ts",
+  "model": "Z(w) = R_e + K*(jw)^n + SOM_k R_k / (1 + j*Q_k*(f/f_k - f_k/f)); R_e is de term die bij DC overblijft, want elke tak verdwijnt daar per constructie",
+  "takken": "één per MOTIONELE resonantie die A5c.2 al gevonden heeft, binnen de fitband — gezaaid uit die classificatie, niet opnieuw gezocht",
+  "band": "van de onderste bin van de sweep tot 3x de FUNDAMENTELE in-box resonantie van de driver. Dimensieloos, dus P6-schoon: de band beweegt met de driver en noemt geen frequentie.",
+  "band_multiple": 3,
+  "weging": "relatief: elk residu gedeeld door |Z| op dat punt, reëel en imaginair apart",
+  "bandgevoeligheid": "halve spreiding van R_e over de fitbanden 2x en 4x de fundamentele — gerapporteerd, niet weggemiddeld, en één van de twee weigergronden",
+  "sensitivity_band_multiples": [
+   2,
+   4
+  ],
+  "solver": "Levenberg-Marquardt met voorwaartse-differentie-Jacobiaan, parameters in log-ruimte (exponent door een logistiek), vanaf een VASTE lijst startpunten; laagste residu wint, gelijkspel valt naar het eerdere startpunt. Geen klok, geen entropie (A5e.4).",
+  "exponent_starts": [
+   0.5,
+   0.7,
+   0.9
+  ],
+  "coefficient_starts": [
+   0.0001,
+   0.005
+  ],
+  "kwaliteitsgrenzen": {
+   "max_relatief_residu": 0.06,
+   "max_bandgevoeligheid_fractie": 0.06,
+   "_": "De V8e-discipline op een tweede schatter: een schatter die niet kan abstineren publiceert vroeg of laat onzin. Casus 1 meet 0,030 / 0,013 / 0,018 residu en 2,7 % / 2,5 % / 0,2 % bandgevoeligheid op woofer / mid / tweeter — de grenzen liggen op ruwweg tweemaal het slechtste echte geval."
+  },
+  "hierarchie": "gebruikers-DC (meterlezing van de grootheid zelf) > motionele fit (mits beide kwaliteitsgrenzen gehaald) > directe aflezing (met de rok in ohm erbij). De herkomst staat altijd in het paneel.",
+  "doorwerking": "M-E (Q_es-multiplicatie), de Qes-inversiebound R_s <= R_e*(q-1), de verliesindicator Z(f_b)/R_e, r0 en de gesloten-Q_mc/Q_ec/Q_tc, en de semi-inductantiefit — alle lezen dezelfde R_e, dus alle bewegen mee.",
+  "schatterversie": "z-re@1.1 (was 1.0). MINOR: de getallen bewegen, de vorm van het resultaat is gegroeid maar er is niets uit verdwenen. De versiebump invalideert de afgeleide-parametercache (A5e.5)."
  }
 }

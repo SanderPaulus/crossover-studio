@@ -110,6 +110,69 @@
   (RMS-vlakheid en vensterwaarde per kandidaat) mét vastgelegde parameters, plus de shortlist op
   het casusboekveld.
 
+### F3b-guards (vensters in de dialoog, paneel-eerlijkheid, motionele Re)
+
+> **Bewuste keuze, geen vergissing:** het A5a-meetformulier (akoestisch centrum,
+> rotatiesymmetrie, gemeten R_e, handmatige venstertijden) staat áchter de v2-toggle, ook al
+> zijn het meetfeiten en geen engine-instellingen. Reden: de toggle-invariant eist dat de app
+> met de vlag uit byte-identiek is, en een formulier dat rendert is dat niet. Niets buiten
+> engine2 leest deze velden vandaag, dus het gaten kost niets. Ze verhuizen naar de hoofdlaag
+> op de dag dat v2 de standaard wordt — tot dan is ze eruit halen een regressie van de
+> toggle-garantie, en `toggleRegression.test.ts` faalt erop. Volledige motivering staat bij de
+> invariant zelf, in `engine2/facade.ts`.
+- `src/lib/engine2/predesign/xoRangeAdvice.test.ts` — de scandialoog als pure functies.
+  Overname vult **exact** de vensterranden (en met typbare getallen: `(396,7+549,7)/2` is
+  `473.20000000000005` in binaire drijvende komma, en een veld dat zichzelf daarmee vult
+  zegt tegen de ontwerper dat de app stuk is). Waarschuwing binnen/deels/geheel-buiten,
+  leeg én onbeschikbaar venster, en de raming die **kandidaten** telt in plaats van
+  mislukkingen. Plus de regressie op de randafdruk: een plafond van 549,6 Hz afgedrukt als
+  "550" naast een bereik dat op 550 eindigt levert een zin op die zichzelf tegenspreekt.
+- `src/lib/engine2/optimizer/gateTolerance.test.ts` — P4's derde helft: een poort die
+  alléén binnen de meettolerantie slaagt (3,17 Ω tegen 3,20 Ω) zegt dat, en de zin noemt de
+  tolerantie een **conventie** en geen eigenschap van de versterker. Geschreven tegen de
+  ene vergelijkingsregel, niet tegen de |Z|-poort: `withinToleranceOnly` hoort bij élke
+  poort waarvan de acceptatie van de kale vergelijking afwijkt.
+- `src/lib/engine2/manualWindowAndLobing.test.ts` — (g) M-F-eind reproduceert de
+  casus-1-referentie (−3,9 dB @ ~3,5 kHz) mét de akoestische centra en staat **uit met
+  reden** zonder; het coplanaire degeneraat wordt geweigerd in `verticalLobing` zelf, want
+  een aanroeper die de controle vergat zou het vleiende 0,0 dB publiceren. (h) De
+  handmatige venstertijd: vloer verschijnt, ankerblok herrekent, vlag verdwijnt — en de
+  test legt vast dat een **header altijd wint** (A5b.1(i) mag niet door een invoerveld
+  versoepeld worden). Het ankerblok-geval is de echte inversie: zonder vloer schuift het
+  anker van mid naar woofer terwijl `anchorSwitchWarning` zwijgt, en dat is precies waarom
+  de kanttekening op het blok zelf moest.
+- `src/lib/engine2/ingest/reResolution.test.ts` — **A5e.4 als test.** De lus
+  classificatie → fit → herclassificatie draait op VASTE DIEPTE: één herclassificatiepas,
+  nooit twee. Een synthetische kromme met een kruin die precies tússen de twee
+  detectiedrempels ligt (onzichtbaar voor de pas die de fit zaait, zichtbaar voor de pas
+  erna) toont de vlag — en de diepte-assert die telt is dat de fit dan nog stééds één tak
+  draagt: hij is niet opnieuw gezaaid. De passenteller wordt bij de aanroep opgehoogd, niet
+  achteraf beweerd (V17). Diezelfde kromme is de ground truth die de oude `TODO(V8d)`
+  vroeg: R_e = 6,000 bekend, directe aflezing 7,114, fit 6,000.
+- `src/components/xoWindowAnnotation.test.tsx` — de **runtime**-helft van test (a): de
+  annotatie gerenderd met `renderToStaticMarkup` (geen DOM-library, geen nieuwe
+  dependency). Toggle uit ⇒ de uitvoer is de lege string en bevat nul annotatie-elementen;
+  plus de tegenproef dat dezelfde query wél raak is mét vensters, want een assert op "geen
+  treffers" is niets waard tot hij heeft laten zien dat hij kán treffen.
+- `src/lib/engine2/toggleRegression.test.ts` — de structurele helft: de F3b-oppervlakken
+  hangen alle drie aan `v2Windows` / `engineSelection.reporting`, en `App.tsx` spelt de
+  annotatieklasse nergens zelf — dus de runtime-assert hierboven dekt élk pad dat hem kan
+  tekenen. Testbestanden zijn sinds F3b vrijgesteld van de importscan (een test zit niet in
+  de bundel; wat er wél in zit is de zaak van `browserSafe.test.ts`), met een assert erbij
+  dat die vrijstelling de app niet heeft opgeslokt.
+- `src/lib/engine2/goldenCasus1.test.ts` — de R_e-hiërarchie (gebruikers-DC > fit >
+  directe aflezing) mét de doorwerking, én de **gemeten fit-kwaliteit als referentie**:
+  residu en bandgevoeligheid per driver, op de vastgelegde fitband, in een eigen
+  tolerantieklasse met motivering (`fit_kwaliteit_pct`). Een deterministische solver hoort
+  die getallen terug te geven; een wijziging die ze verschuift moet zichtbaar falen in
+  plaats van stil te schuiven. Verder: de verliesindicator beweegt mee, want R_e wordt in
+  de **pas** opgelost en niet bij de metriek die hem leest. De derived-parameter-asserts
+  draaien nu op een rapport zónder ingevoerde DC — anders assert je het doorgeven.
+- `src/lib/engine2/versionAndCapability.test.ts` — de eerste **productie**-oefening van
+  A5e.5: een échte afleiding gecachet onder de pre-F3b-vingerafdruk vervalt, en wat ervoor
+  in de plaats komt is een ánder getal. Een bump die hetzelfde getal onder een nieuw etiket
+  teruggeeft bewijst niets.
+
 De vloer is sinds F0 uitsluitend het getal dat de ONTWERPER invult (`ampMinLoadOhm`, geen default):
 leeg veld = geen oordeel. Eén regel, één plek: `meetsAmpFloor` in `src/lib/impedanceFloor.ts`.
 Wie een vloer nodig heeft roept die aan en verzint geen eigen drempel.
