@@ -39,6 +39,7 @@ export * from './metrics/registry.ts';
 export * from './predesign/gaps.ts';
 export * from './predesign/xoWindow.ts';
 export * from './predesign/xoRangeAdvice.ts';
+export * from './predesign/recommendedBand.ts';
 
 export * from './optimizer/determinism.ts';
 export * from './optimizer/gates.ts';

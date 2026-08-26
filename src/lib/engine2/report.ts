@@ -640,6 +640,7 @@ export function buildReport(input: EngineV2ReportInput): EngineV2Report {
         lowerMinus6Hz: dir?.minus6Hz ?? null,
         lowerMinus6AngleDeg: dir?.angleDeg ?? null,
         spacingMm: input.geometry.ctcMm?.[key] ?? null,
+        spacingSource: input.geometry.ctcSource?.[key],
       }),
     );
   }

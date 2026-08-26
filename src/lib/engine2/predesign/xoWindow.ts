@@ -75,6 +75,29 @@ export interface XoWindowResult {
   ceilingBy: XoLimit | null;
   limits: XoLimit[];
   zones: XoZone[];
+  /**
+   * Resonance of the UPPER driver, carried through from the input.
+   *
+   * A PASS-THROUGH and nothing else: no limit, no zone and no tension is
+   * computed from this field that was not already computed from the same
+   * number above. It is here because the composition in `recommendedBand.ts`
+   * states its edge reasons in OCTAVES ABOVE f_s, and the alternative was to
+   * invert the fs floor (`k * f_s`) back through `XO_FS_FACTOR_BY_ORDER` —
+   * re-deriving an input from an output, which is exactly the kind of quiet
+   * second derivation this module exists to avoid.
+   */
+  upperFsHz: number | null;
+  /**
+   * The centre-to-centre spacing the ZONES were derived from, and where it
+   * came from. Pass-throughs, on the same footing as `upperFsHz`.
+   *
+   * A zone range on its own is unattributable, and an unattributable zone is
+   * one a reader cannot check: the same pair of drivers at 382 mm and at
+   * 261 mm produces worst-lobing zones an octave apart, and nothing in
+   * "657–920 Hz" says which layout it belongs to.
+   */
+  spacingMm: number | null;
+  spacingSource: string | null;
   /** True when the limits leave no room at all. */
   empty: boolean;
   /** The tensions worth showing: conflicting zones, edge-of-window findings. */
@@ -99,6 +122,8 @@ export interface XoWindowInput {
   lowerMinus6AngleDeg: number | null;
   /** Centre-to-centre spacing of the pair, mm. */
   spacingMm: number | null;
+  /** Where that spacing came from — attribution, exactly as every limit has. */
+  spacingSource?: string;
   /** Significance threshold for a breakup; see the constant above. */
   significantBreakupDb?: number;
 }
@@ -234,6 +259,9 @@ export function crossoverWindow(input: XoWindowInput): XoWindowResult {
     ceilingBy,
     limits,
     zones,
+    upperFsHz: input.upperFsHz,
+    spacingMm: input.spacingMm,
+    spacingSource: input.spacingSource ?? null,
     empty,
     tensions,
   };

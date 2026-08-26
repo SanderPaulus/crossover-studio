@@ -60,6 +60,17 @@ export interface Geometry {
    * an N-way system has N−1 adjacent pairs and nobody should be indexing them.
    */
   ctcMm?: Record<string, number>;
+  /**
+   * Where each spacing CAME FROM, same keys as `ctcMm`.
+   *
+   * Added at F3c after a spacing mix-up cost an afternoon: the app derives
+   * these distances from the cabinet layout while the casebook fixture carries
+   * its own measured pair, and the two disagree by enough to move the worst
+   * lobing zone clean past a crossover ceiling. The number alone cannot say
+   * which of the two a reader is looking at; the number with its source can.
+   * Same discipline the crossover window applies to every limit it reports.
+   */
+  ctcSource?: Record<string, string>;
   /** Acoustic-centre position along the VERTICAL axis, mm, per driver. */
   zOffsetMm?: Record<string, number>;
   /**

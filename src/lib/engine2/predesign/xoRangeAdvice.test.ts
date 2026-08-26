@@ -251,3 +251,93 @@ describe('the edges are PRINTED at the precision they are compared at', () => {
     expect(formatEdge(549.6)).toBe('549.6');
   });
 });
+
+/**
+ * F3c, DELIVERABLE 2 — the estimate counts against the RECOMMENDED band too.
+ *
+ * A second, weaker line beside the window count, and the whole risk is that
+ * the two get muddled: a candidate the measurements forbid outright must not
+ * also be reported as badly lobed (one finding, counted twice), and a
+ * candidate that is merely outside the recommended band must not be reported
+ * as forbidden. Neither of those throws.
+ *
+ * The bands are handed in as PLAIN EDGES here on purpose: this suite is about
+ * the counting rule, and `recommendedBand.test.ts` is about where the edges
+ * come from. Testing both through one call would leave a failure unable to say
+ * which of the two was wrong.
+ */
+describe('(F3c) the pre-start estimate counts against the recommended band as well', () => {
+  const axes = (recLow: [number, number][] | null, recHigh: [number, number][] | null) => [
+    { pairLabel: 'W-M', window: windowFrom(400, 600), recommendedHz: recLow },
+    { pairLabel: 'M-T', window: windowFrom(1300, 2300), recommendedHz: recHigh },
+  ];
+  const grid = (pairs: [number, number][]) =>
+    pairs.map(([lo, hi], i) => ({ label: `c${i}`, hz: [lo, hi] }));
+
+  it('inside the window but outside the band: counted there, and NOT as outside', () => {
+    // 550 Hz is inside 400-600 but outside the recommended 400-500.
+    const e = candidatesOutsideWindows(grid([[550, 1500]]), axes([[400, 500]], null));
+    expect(e.outside).toBe(0);
+    expect(e.outsideRecommended).toBe(1);
+    expect(e.perAxis[0].outsideRecommended).toBe(1);
+    expect(e.message).toContain('1 of 1 candidates lie inside the window but outside the recommended band');
+    expect(e.message).toContain('W-M (recommended 400–500 Hz)');
+    expect(e.message).not.toContain('lie outside the feasible window');
+  });
+
+  it('outside the WINDOW is not additionally counted as outside the band', () => {
+    // 900 Hz is outside 400-600 entirely. One finding, counted once.
+    const e = candidatesOutsideWindows(grid([[900, 1500]]), axes([[400, 500]], null));
+    expect(e.outside).toBe(1);
+    expect(e.outsideRecommended).toBe(0);
+    expect(e.perAxis[0].outsideRecommended).toBe(0);
+  });
+
+  it('counts CANDIDATES: one candidate outside the band on both axes counts once', () => {
+    const e = candidatesOutsideWindows(
+      grid([[550, 2200]]),
+      axes([[400, 500]], [[1300, 1500]]),
+    );
+    expect(e.outsideRecommended).toBe(1);
+    expect(e.perAxis[0].outsideRecommended).toBe(1);
+    expect(e.perAxis[1].outsideRecommended).toBe(1);
+  });
+
+  it('two segments: a candidate in EITHER of them is inside the band', () => {
+    const rec: [number, number][] = [[400, 450], [550, 600]];
+    const e = candidatesOutsideWindows(grid([[420, 1500], [580, 1500], [500, 1500]]), axes(rec, null));
+    // Only the middle one (500 Hz, in the gap the worst zone cut) is outside.
+    expect(e.outsideRecommended).toBe(1);
+    expect(e.message).toContain('recommended 400–450 / 550–600 Hz');
+  });
+
+  it('an axis with no recommended band judges nothing there', () => {
+    const e = candidatesOutsideWindows(grid([[550, 1500]]), axes(null, null));
+    expect(e.outsideRecommended).toBe(0);
+    expect(e.message).toBeNull();
+    expect(e.perAxis[0].recommendedHz).toBeNull();
+  });
+
+  it('an EMPTY band list is "no band", not "no frequency is recommended"', () => {
+    // The fallback case hands the whole window through as the band; a caller
+    // that handed the empty SEGMENT list instead would otherwise turn every
+    // in-window candidate into a finding.
+    const e = candidatesOutsideWindows(grid([[550, 1500]]), axes([], null));
+    expect(e.outsideRecommended).toBe(0);
+    expect(e.message).toBeNull();
+  });
+
+  it('an edge of the band is inside it, exactly as a window edge is', () => {
+    const e = candidatesOutsideWindows(grid([[400, 1500], [500, 1500]]), axes([[400, 500]], null));
+    expect(e.outsideRecommended).toBe(0);
+  });
+
+  it('both findings at once produce both lines, and the run is still not changed', () => {
+    const e = candidatesOutsideWindows(grid([[900, 1500], [550, 1500]]), axes([[400, 500]], null));
+    expect(e.outside).toBe(1);
+    expect(e.outsideRecommended).toBe(1);
+    expect(e.message).toContain('lie outside the feasible window');
+    expect(e.message).toContain('outside the recommended band');
+    expect(e.message).toContain('nothing is skipped and nothing is clamped');
+  });
+});

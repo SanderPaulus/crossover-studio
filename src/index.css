@@ -4105,6 +4105,30 @@ details.cabinet-driver > .derived strong,
   color: #ec835a;
 }
 
+/* F3c — the recommended band, UNDER the window it was carved out of. Indented
+   rather than boxed: it is a reading of that window, not a second finding. */
+.v2-xo-recommended {
+  margin-top: 0.2rem;
+  padding-left: 0.7rem;
+  border-left: 1px dotted var(--border);
+  font-size: 0.86rem;
+}
+
+/* F3c — the spacing the zones came from, printed where the zones are read.
+   Same reflex as .v2-uncal: attribution belongs beside the number, not in a
+   footnote nobody scrolls to. */
+.v2-xo-spacing {
+  font-style: italic;
+}
+
+/* F3c — the tuner-vs-acceptance smoothing line. Muted on purpose: it reports a
+   legitimate difference between two settings, it does not warn about one. */
+.v2-smoothing-note {
+  margin-top: 0.35rem;
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+
 /* The pre-start estimate. Deliberately NOT styled as a modal: it reports a
    count, it does not ask permission. */
 .v2-prestart {

@@ -238,6 +238,14 @@ export function casus1Geometry(golden: GoldenRefs = loadGolden()): Geometry {
       [ctcKey('woofer', 'mid')]: g.ctc_mm['woofer_mid'],
       [ctcKey('mid', 'tweeter')]: g.ctc_mm['mid_tweeter'],
     },
+    // F3c: casus 1's spacings are the CASEBOOK's, not the app project's, and
+    // the two are far enough apart to put the worst lobing zone on opposite
+    // sides of a crossover ceiling. Saying so here is what keeps a reader from
+    // comparing a fixture band against a band the running app produced.
+    ctcSource: {
+      [ctcKey('woofer', 'mid')]: 'casebook geometry (golden_refs_casus1.json)',
+      [ctcKey('mid', 'tweeter')]: 'casebook geometry (golden_refs_casus1.json)',
+    },
     // The two woofers are one way, measured as one source. Their own spacing is
     // still a real source separation, so it is given as an array spacing.
     arraySpacingMm: { woofer: g.ctc_mm['woofer_woofer'] },

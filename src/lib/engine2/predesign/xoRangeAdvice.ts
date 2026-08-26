@@ -55,7 +55,12 @@ export interface RangeAdvice {
  * annotated numbers rather than something a tenth of a hertz away from them.
  */
 const EDGE_DECIMALS = 1;
-const roundEdge = (hz: number): number =>
+/**
+ * Exported since F3c: the recommended band carves its segments out of the SAME
+ * edges, and a segment rounded by a second rule is a segment whose take-over
+ * button lands a tenth of a hertz off the number beside it.
+ */
+export const roundEdge = (hz: number): number =>
   Math.round(hz * 10 ** EDGE_DECIMALS) / 10 ** EDGE_DECIMALS;
 
 /**
@@ -176,8 +181,26 @@ export interface CandidateCrossings {
 export interface OutsideEstimate {
   total: number;
   outside: number;
+  /**
+   * Candidates that land INSIDE the feasible window on every axis they can be
+   * judged on, but outside the recommended band on at least one of them
+   * (F3c, deliverable 2).
+   *
+   * A SECOND, WEAKER STATEMENT than `outside`, and counted separately for that
+   * reason. Outside the window means the measurements forbid the handover;
+   * outside the recommended band means the handover is allowed and sits in the
+   * stretch where the drivers' spacing puts a null off axis. Adding the two
+   * into one number would tell the designer those are the same finding.
+   */
+  outsideRecommended: number;
   /** Per axis: how many candidates land outside that axis' window. */
-  perAxis: { pairLabel: string; outside: number; windowHz: [number, number] | null }[];
+  perAxis: {
+    pairLabel: string;
+    outside: number;
+    outsideRecommended: number;
+    windowHz: [number, number] | null;
+    recommendedHz: readonly (readonly [number, number])[] | null;
+  }[];
   /** The sentence shown before the scan starts. Null when there is nothing to say. */
   message: string | null;
 }
@@ -197,17 +220,38 @@ export interface OutsideEstimate {
  */
 export function candidatesOutsideWindows(
   candidates: readonly CandidateCrossings[],
-  windows: readonly { pairLabel: string; window: XoWindowResult | null | undefined }[],
+  windows: readonly {
+    pairLabel: string;
+    window: XoWindowResult | null | undefined;
+    /**
+     * The recommended band for this axis as PLAIN EDGES (F3c) — normally
+     * `recommendedBand(window).effectiveHz`.
+     *
+     * Edges rather than the result object, and that is the whole reason the
+     * composition module can import this one instead of the other way round.
+     * `effectiveHz` rather than `segments`: on the fallback the recommendation
+     * IS the full window, and an axis handed an empty segment list would
+     * report every candidate on it as outside a band that does not exist.
+     */
+    recommendedHz?: readonly (readonly [number, number])[] | null;
+  }[],
 ): OutsideEstimate {
   const edges = windows.map((w) => windowEdges(w.window));
+  const recommended = windows.map((w) =>
+    w.recommendedHz && w.recommendedHz.length > 0 ? w.recommendedHz : null,
+  );
   const perAxis = windows.map((w, i) => ({
     pairLabel: w.pairLabel,
     outside: 0,
+    outsideRecommended: 0,
     windowHz: edges[i],
+    recommendedHz: recommended[i],
   }));
   let outside = 0;
+  let outsideRecommended = 0;
   for (const c of candidates) {
     let any = false;
+    let anyRec = false;
     for (let i = 0; i < windows.length; i++) {
       const e = edges[i];
       const f = c.hz[i];
@@ -215,27 +259,51 @@ export function candidatesOutsideWindows(
       if (f < e[0] || f > e[1]) {
         perAxis[i].outside++;
         any = true;
+        continue;
+      }
+      // Inside the window. The recommended band is only asked about HERE: a
+      // crossing the measurements already forbid is not additionally reported
+      // as badly lobed, which would be counting one finding twice.
+      const segs = recommended[i];
+      if (segs && !segs.some((seg) => f >= seg[0] && f <= seg[1])) {
+        perAxis[i].outsideRecommended++;
+        anyRec = true;
       }
     }
     if (any) outside++;
+    if (anyRec) outsideRecommended++;
   }
   const total = candidates.length;
-  if (outside === 0 || total === 0) {
-    return { total, outside, perAxis, message: null };
+  if ((outside === 0 && outsideRecommended === 0) || total === 0) {
+    return { total, outside, outsideRecommended, perAxis, message: null };
   }
-  const detail = perAxis
+  const windowDetail = perAxis
     .filter((a) => a.outside > 0 && a.windowHz)
     .map(
       (a) =>
         `${a.outside} on ${a.pairLabel} (window ${formatEdge(a.windowHz![0])}–${formatEdge(a.windowHz![1])} Hz)`,
     )
     .join(', ');
-  return {
-    total,
-    outside,
-    perAxis,
-    message:
-      `${outside} of ${total} candidates lie outside the feasible window: ${detail}. ` +
-      'They will still be simulated and ranked — nothing is skipped and nothing is clamped.',
-  };
+  const recDetail = perAxis
+    .filter((a) => a.outsideRecommended > 0 && a.recommendedHz)
+    .map(
+      (a) =>
+        `${a.outsideRecommended} on ${a.pairLabel} (recommended ` +
+        `${a.recommendedHz!.map((seg) => `${formatEdge(seg[0])}–${formatEdge(seg[1])}`).join(' / ')} Hz)`,
+    )
+    .join(', ');
+  const lines: string[] = [];
+  if (outside > 0) {
+    lines.push(`${outside} of ${total} candidates lie outside the feasible window: ${windowDetail}.`);
+  }
+  if (outsideRecommended > 0) {
+    lines.push(
+      `${outsideRecommended} of ${total} candidates lie inside the window but outside the ` +
+        `recommended band: ${recDetail}.`,
+    );
+  }
+  lines.push(
+    'They will still be simulated and ranked — nothing is skipped and nothing is clamped.',
+  );
+  return { total, outside, outsideRecommended, perAxis, message: lines.join(' ') };
 }

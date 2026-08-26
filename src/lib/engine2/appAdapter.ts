@@ -255,13 +255,22 @@ export function buildEngineV2Input(args: AdapterInput): AdapterResult {
     args.branches.some((b) => b.role === r),
   );
   const ctc: Record<string, number> = {};
+  const ctcSource: Record<string, string> = {};
   for (let i = 0; i + 1 < ordered.length; i++) {
     const a = args.geometry.verticalMm[ordered[i]];
     const b = args.geometry.verticalMm[ordered[i + 1]];
     if (a === undefined || b === undefined) continue;
-    ctc[ctcKey(ids[ordered[i]] ?? ordered[i], ids[ordered[i + 1]] ?? ordered[i + 1])] = Math.abs(b - a);
+    const key = ctcKey(ids[ordered[i]] ?? ordered[i], ids[ordered[i + 1]] ?? ordered[i + 1]);
+    ctc[key] = Math.abs(b - a);
+    // The provenance travels WITH the number (F3c). A spacing read off a
+    // cabinet layout and one carried by a measurement set are different facts
+    // that look identical once they are both just millimetres.
+    ctcSource[key] = 'cabinet layout (vertical driver positions)';
   }
-  if (Object.keys(ctc).length) geometry.ctcMm = ctc;
+  if (Object.keys(ctc).length) {
+    geometry.ctcMm = ctc;
+    geometry.ctcSource = ctcSource;
+  }
 
   // Measured DC resistances, re-keyed from roles to driver ids. A5c.1's
   // hierarchy puts them above both sweep derivations, and the derivation pass

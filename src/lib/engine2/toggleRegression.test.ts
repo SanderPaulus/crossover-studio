@@ -285,6 +285,34 @@ describe('engine v2 toggle — off means unchanged', () => {
       expect(text).not.toContain('v2-xo-window"');
     });
 
+    /* F3c added two more surfaces to the same dialog: the recommended band
+     * under each window (with a second take-over button) and the smoothing
+     * consistency line. Both are v2 reporting, so both must vanish with the
+     * flag — and both must vanish through a value that is NULL rather than
+     * through a `&&` somewhere in the markup, because only the first kind is
+     * provable by the runtime assert in `xoWindowAnnotation.test.tsx`. */
+    it('F3c - the recommended band and the smoothing line hang off the same flag', () => {
+      const text = app();
+      // The band is derived from the WINDOW, so it is null exactly when the
+      // window is - the same guard, not a parallel one that could drift.
+      expect(text).toMatch(
+        /const v2Recommended = \(side: 'low' \| 'high'\): RecommendedBandResult \| null => \{\s*\n\s*const w = v2Windows\?\.\[side\];\s*\n\s*if \(!w\) return null;/,
+      );
+      // The smoothing line reads a v1 preference, so it carries its own copy
+      // of the one gate rather than borrowing a window's.
+      expect(text).toMatch(
+        /const v2Smoothing: SmoothingNotice \| null = !engineSelection\.reporting\s*\n\s*\? null/,
+      );
+      // The take-over refuses without a band, so a render path that slipped
+      // past the guard would still write nothing into the fields.
+      expect(text).toContain('const band = v2Recommended(side)?.effectiveHz[segment];');
+      expect(text).toContain('if (!band) return;');
+      // The markup stays the component's: App spells neither new class, so the
+      // runtime assert covers every path that can draw them.
+      expect(text).not.toContain('v2-xo-recommended');
+      expect(text).not.toContain('v2-smoothing-note');
+    });
+
     it('the pre-start notice can only be set from inside that guard', () => {
       const text = app();
       const sets = [...text.matchAll(/setV2PreStart\(/g)];

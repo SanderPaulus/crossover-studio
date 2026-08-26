@@ -556,6 +556,25 @@ describe('golden references - casus 1 (Koan 2951)', () => {
       expect(w.tensions.join(' ')).toContain('ABOVE the ceiling');
     });
 
+    it('F3c: every window names the SPACING its zones came from, and whose it is', () => {
+      /* The mistake this pins: casus 1 carries the casebook's spacings
+       * (261 / 129.2 mm) while the running app derives its own from the
+       * cabinet layout (382 / 140 mm on the current project). Those put the
+       * worst lobing zone an octave apart — on casus 1 the W-M zone lands
+       * ABOVE the breakup ceiling and leaves the whole window recommended, on
+       * the app project it cuts the window at ~449 Hz. Both compositions are
+       * right; only an unattributed spacing makes them look like a defect. */
+      for (const w of r.predesign.windows) {
+        expect(w.spacingMm, `${w.lower}-${w.upper} has no spacing`).not.toBeNull();
+        expect(w.spacingSource).toContain('casebook geometry');
+        // The zones really were derived from THAT number, not from some other
+        // one: the worst zone's lower edge is 0.5 * c / d by construction.
+        const worst = w.zones.find((z) => z.kind === 'bad');
+        expect(worst).toBeDefined();
+        expect(worst!.hz[0]).toBeCloseTo(0.5 * (343 / (w.spacingMm! / 1000)), 6);
+      }
+    });
+
     it('A5d.4: the mid is the anchor, and that is a feasibility warning', () => {
       const g = r.predesign.gaps!;
       expect(g.anchor).toBe(golden.verankerde_gaps_dB.anker);

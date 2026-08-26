@@ -122,8 +122,17 @@ import { ctcKey } from './lib/engine2/metrics/types.ts';
 import {
   candidatesOutsideWindows,
   rangeAgainstWindow,
+  takeoverFor,
   type RangeAdvice,
 } from './lib/engine2/predesign/xoRangeAdvice.ts';
+import {
+  recommendedBand,
+  type RecommendedBandResult,
+} from './lib/engine2/predesign/recommendedBand.ts';
+import {
+  smoothingConsistency,
+  type SmoothingNotice,
+} from './lib/engine2/requirements/smoothingConsistency.ts';
 import type { XoWindowResult } from './lib/engine2/predesign/xoWindow.ts';
 import { DEFAULT_RUN_SEED } from './lib/engine2/constants.ts';
 import { stableJson, type V2RunStamp } from './lib/engine2/optimizer/determinism.ts';
@@ -4639,13 +4648,30 @@ export default function App() {
    * `v2Windows` null means the engine is off, while a project with fewer than
    * two loaded branches is on and simply has no adjacent pair yet.
    */
+  /**
+   * The recommended band for one handover (F3c, deliverable 1).
+   *
+   * Derived from the SAME window object the annotation draws, so the window
+   * and the band it is carved out of can never describe different windows.
+   * Null with the toggle off, by the same guard as everything else here.
+   */
+  const v2Recommended = (side: 'low' | 'high'): RecommendedBandResult | null => {
+    const w = v2Windows?.[side];
+    if (!w) return null;
+    return recommendedBand(w);
+  };
+
   const v2WindowPairs: XoWindowPair[] | null = !v2Windows
     ? null
     : (['low', 'high'] as const).flatMap((side) => {
         const window = v2Windows[side];
         const advice = v2Advice(side);
-        return window && advice ? [{ key: side, window, advice }] : [];
+        const recommended = v2Recommended(side);
+        return window && advice && recommended
+          ? [{ key: side, window, advice, recommended }]
+          : [];
       });
+
 
   /**
    * Take the feasible window over as the search range (F3b, deliverable 2).
@@ -4664,6 +4690,26 @@ export default function App() {
     } else {
       setXoFreqHz(String(t.freqHz));
       setXoMarginHz(String(t.marginHz));
+    }
+  };
+
+  /**
+   * Take one recommended SEGMENT over as the search range (F3c, deliverable 2).
+   *
+   * The same ordinary field change the window take-over is, and it writes the
+   * band the annotation printed: `effectiveHz` is the segments, or the whole
+   * window on the fallback, so index 0 is always something real.
+   */
+  const takeOverV2Recommended = (side: 'low' | 'high', segment: number) => {
+    const band = v2Recommended(side)?.effectiveHz[segment];
+    if (!band) return;
+    const tk = takeoverFor(band);
+    if (side === 'low') {
+      setXoLowFreqHz(String(tk.freqHz));
+      setXoLowMarginHz(String(tk.marginHz));
+    } else {
+      setXoFreqHz(String(tk.freqHz));
+      setXoMarginHz(String(tk.marginHz));
     }
   };
 
@@ -5311,6 +5357,19 @@ export default function App() {
     const v = raw === null ? NaN : Number(raw);
     return Number.isFinite(v) && v >= 0 ? v : 1 / 12;
   });
+
+  /**
+   * The tuner-vs-acceptance smoothing line (F3c, deliverable 3).
+   *
+   * Behind the SAME flag as every other v2 surface in the dialog, and null
+   * when the two widths agree. It READS `errorSmoothOct` and changes nothing
+   * about it: visibility, not coupling. It sits here rather than beside the
+   * window block because it has to be declared after the state it reads, and
+   * a `useState` moved up the file to please a comment is a worse trade.
+   */
+  const v2Smoothing: SmoothingNotice | null = !engineSelection.reporting
+    ? null
+    : smoothingConsistency(errorSmoothOct);
   /** Source-resistance limit at the low driver (Ω): above it a candidate
    *  loses a ranking class and a staged structure move is not "safe" (point
    *  4). Yellow from half the limit in the strip. Default 1.0. */
@@ -6160,9 +6219,23 @@ export default function App() {
       if (v2Windows && !runOpts.acknowledgedWindowNotice) {
         const estimate = candidatesOutsideWindows(
           variants.map((v) => ({ label: v.label, hz: [v.xoLow, v.xoHigh] })),
+          /* F3c: the estimate counts against the recommended band as well,
+           * as a SECOND and weaker line. `effectiveHz` rather than the
+           * segments, so the fallback (worst zone over the whole window)
+           * counts as "the whole window is recommended" instead of as "no
+           * band exists". Informative either way: "start anyway" stays the
+           * ordinary button it was. */
           [
-            { pairLabel: v2PairLabel('low'), window: v2Windows.low },
-            { pairLabel: v2PairLabel('high'), window: v2Windows.high },
+            {
+              pairLabel: v2PairLabel('low'),
+              window: v2Windows.low,
+              recommendedHz: v2Recommended('low')?.effectiveHz ?? null,
+            },
+            {
+              pairLabel: v2PairLabel('high'),
+              window: v2Windows.high,
+              recommendedHz: v2Recommended('high')?.effectiveHz ?? null,
+            },
           ],
         );
         if (estimate.message) {
@@ -14950,6 +15023,10 @@ export default function App() {
                 <XoWindowAnnotation
                   pairs={v2WindowPairs}
                   onTakeOver={(key) => takeOverV2Window(key as 'low' | 'high')}
+                  onTakeOverRecommended={(key, segment) =>
+                    takeOverV2Recommended(key as 'low' | 'high', segment)
+                  }
+                  smoothing={v2Smoothing}
                   t={t}
                 />
                 <span className="opt-group-cap">{t('Driver limits')}</span>
