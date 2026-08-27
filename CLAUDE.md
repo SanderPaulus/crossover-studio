@@ -20,7 +20,7 @@
 ## Commando's
 
 - `npx tsc -b` — typecheck. Draait vóór elke oplevering, zonder uitzondering.
-- `npx vitest run` — volledige testsuite. **Gemeten 27-08-2026 (F4c): 111 bestanden, 1161 tests, ~4,5 min.**
+- `npx vitest run` — volledige testsuite. **Gemeten 27-08-2026 (F4c): 112 bestanden, 1165 tests, ~4,6 min.**
   Alles groen houden. De telling stond tot F4b op 99/1003 — dat was de stand bij F3 (`61a3ea4`) en zij
   is drie opleveringen lang niet bijgewerkt: F3b bracht 104 bestanden, F3c 106, F4a 107, F4b 108, F4b2 109.
   Vandaar de datum erbij: een telling zonder meetmoment is een telling die stil veroudert.
@@ -231,6 +231,17 @@
   op 200 wordt gelegd. Nagemeten dat hij kán falen: 0,001 dB in het bestand verschuiven zet beide
   seed-asserts op rood. De vingerafdruk beweegt wél, en de test zegt dat dat correct is —
   `choices` is een nieuw ingrediënt.
+- `src/lib/engine2/optimizer/workerRouteRegression.test.ts` + `test-fixtures/f4b2_v2_worker_baseline.json`
+  — dezelfde acceptatie op de route die de app **wél** neemt: `handleV2Request` → `runThreeWayChain`,
+  payload door `structuredClone`. De eerste fixture pint `runV2Optimization`, en dat pad roept
+  niemand in de app aan (erratum audit §2.2). Beide vormen staan in het bestand: **inherited**
+  (geen v2-hook, zuivere overerving uit de keten) en **stated** (de hook zoals hij nu is);
+  poorten en budgetten leeg zodat het énige verschil F4c's herstellen is. Byte-identiek, op geen
+  enkele sleutel afwijking. Bijvangst die is vastgelegd: op deze route bereikt de **seed de
+  zoektocht niet** (de keten draait één keer; de gejitterde start zit in `run.ts`), dus de dekking
+  hangt aan één kandidaat en niet aan twee seeds. Eén live ketenrun per suite (~68 s) — dat is de
+  zoektocht zelf, niet het raster of de onderdelenaudit; beide zijn nagemeten. Nagemeten dat hij
+  kán falen: 0,001 in het bestand verschuiven zet drie van de vier asserts op rood.
 - **De compiler is de derde guard.** `run.ts`'s `tuneOptions` is versmald tot de polish-helft, en
   bij F4c stopten twee bestaande tests meteen met compileren omdat zij `phasePriority` en `staged`
   daardoorheen gaven. Dat is de vangst waarvoor de scheiding bestaat.
