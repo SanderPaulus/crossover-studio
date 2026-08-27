@@ -184,20 +184,18 @@ export const BREAKUP_DIV_MILD = 2.0;
  */
 export const BREAKUP_FULL_SEVERITY_DB = 6.0;
 
-/**
- * A4 M-F-interim — the non-monotone lobing score's knots, in wavelengths of
- * centre-to-centre spacing at the crossover: favourable when small, worst
- * around half a wavelength, favourable again around one to one-and-a-half.
- * Dimensionless (λ), never Hz. @p6 rule
+/*
+ * RETIRED AT V20: `LOBING_LAMBDA_KNOTS`, the non-monotone lobing score.
+ *
+ * It scored ONE λ per driver pair — favourable when small, worst around half a
+ * wavelength, favourable again near one — and V20 established that for a way
+ * with more than one source there is no single λ to score. A curve applied to
+ * a number that cannot be chosen is a judgement resting on an assumption, so
+ * the score went and the four reported fractions took its place (`metrics/
+ * lobing.ts`). The knot table itself and the two field rules it reconciled are
+ * kept in the casebook (Deel B, V5 and V20), which is where retired knowledge
+ * belongs — an unused export is not a record, it is cruft.
  */
-export const LOBING_LAMBDA_KNOTS: readonly (readonly [number, number])[] = [
-  [0.0, 0.0],
-  [0.25, 0.15],
-  [0.6, 1.0],
-  [1.0, 0.25],
-  [1.4, 0.35],
-  [2.0, 1.0],
-];
 
 /**
  * A5b.2 / A5c.4 — default width of the fractional-octave trend a ripple or

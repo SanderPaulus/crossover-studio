@@ -39,15 +39,18 @@ import {
   breakupDistance,
   directivityMatch,
   lfBump,
-  lobingInterim,
   verticalLobing,
   type BreakupDistanceResult,
   type DirectivityMatchResult,
   type LfBumpResult,
-  type LobingInterimResult,
   type VerticalLobingResult,
   type VerticalSource,
 } from './metrics/acoustic.ts';
+import {
+  lobingLambdas,
+  type LobingLambdaResult,
+  type LobingWay,
+} from './metrics/lobing.ts';
 import {
   buildAnalysis,
   deriveCrossings,
@@ -236,7 +239,11 @@ export interface EngineV2Report {
     driveVoltage: DriveVoltageResult[];
     lfBump: { driver: string; result: LfBumpResult }[];
     thevenin: TheveninResult[];
-    lobingInterim: LobingInterimResult[];
+    /**
+     * M-F-interim's four λ fractions per adjacent pair (V20). Reading matter:
+     * nothing in the engine may hang a verdict on one of them.
+     */
+    lobingLambdas: LobingLambdaResult[];
     lobingFinal: VerticalLobingResult | null;
     /**
      * Why M-F-final produced nothing, when it produced nothing (F3b/4b).
@@ -393,7 +400,7 @@ export function buildReport(input: EngineV2ReportInput): EngineV2Report {
     driveVoltage: [],
     lfBump: [],
     thevenin: [],
-    lobingInterim: [],
+    lobingLambdas: [],
     lobingFinal: null,
     lobingFinalOff: null,
     directivity: [],
@@ -460,11 +467,22 @@ export function buildReport(input: EngineV2ReportInput): EngineV2Report {
     const fx = crossing && Number.isFinite(crossing.fHz) ? crossing.fHz : null;
 
     const spacing = input.geometry.ctcMm?.[key];
-    if (spacing !== undefined && fx !== null && isActive(capability, 'M-F-interim', key)) {
-      const arrays = [lower, upper]
-        .map((d) => ({ driver: d, mm: input.geometry.arraySpacingMm?.[d] ?? 0 }))
-        .filter((a) => a.mm > 0);
-      metrics.lobingInterim.push(lobingInterim(lower, upper, spacing, fx, arrays));
+    if (isActive(capability, 'M-F-interim', key)) {
+      metrics.lobingLambdas.push(
+        lobingLambdas(
+          lobingWayOf(input.geometry, lower),
+          lobingWayOf(input.geometry, upper),
+          fx,
+          spacing !== undefined
+            ? {
+                pairDistanceMm: {
+                  mm: spacing,
+                  source: input.geometry.ctcSource?.[key] ?? 'entered centre-to-centre spacing',
+                },
+              }
+            : {},
+        ),
+      );
     }
 
     const dLower = ingest.drivers.find((x) => x.driver === lower);
@@ -842,6 +860,54 @@ export function buildReport(input: EngineV2ReportInput): EngineV2Report {
 /* ------------------------------------------------------------------ *
  * helpers
  * ------------------------------------------------------------------ */
+
+/**
+ * One way, as M-F-interim's fractions need it (V20).
+ *
+ * THE HIERARCHY IS DELIBERATELY SHORT, and what is NOT in it matters most: an
+ * `arraySpacingMm` on its own cannot make a source list, because a spacing
+ * says how far apart two radiators are and says nothing about how many there
+ * are. Turning one spacing into two sources is exactly the N = 2 assumption
+ * V20 forbids. Where the count IS known — the app's cabinet form — the list is
+ * built there (`sourcesFromArray` in the adapter) and arrives here stated.
+ */
+function lobingWayOf(geometry: Geometry, way: string): LobingWay {
+  const stated = geometry.waySources?.[way];
+  if (stated && stated.length > 0) {
+    const anyAmplitude = stated.some((s) => s.amplitude !== undefined);
+    return {
+      way,
+      sources: stated.map((s, i) => ({
+        id: s.id || `${way}#${i + 1}`,
+        zMm: s.zMm,
+        amplitude: s.amplitude ?? 1,
+      })),
+      positionSource:
+        stated.length === 1
+          ? 'one radiator, at the position entered for it'
+          : `${stated.length} radiators, at the positions entered for them`,
+      amplitudeSource: anyAmplitude
+        ? 'Relative drive amplitudes are as entered.'
+        : 'No per-source drive was entered, so the sources are taken as equally driven — which ' +
+          'is what identical drivers in parallel are, and is an assumption for anything else.',
+    };
+  }
+  const z = geometry.zOffsetMm?.[way];
+  if (z !== undefined) {
+    return {
+      way,
+      sources: [{ id: way, zMm: z, amplitude: 1 }],
+      positionSource: "one source, at this way's entered acoustic centre",
+      amplitudeSource: 'A single source carries the whole of this way.',
+    };
+  }
+  return {
+    way,
+    sources: [],
+    positionSource: 'no vertical position was entered for this way',
+    amplitudeSource: '',
+  };
+}
 
 function nearestIx(grid: readonly number[], f: number): number {
   let best = 0;

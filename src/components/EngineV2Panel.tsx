@@ -558,18 +558,34 @@ export function EngineV2Panel({ report, ambiguous }: EngineV2PanelProps) {
           </div>
         ))}
 
-        {metrics.lobingInterim.map((l) => (
+        {/* M-F-interim, V20: FOUR fractions side by side and no verdict on any
+            of them. No colour, no zone word, no threshold — the whole point of
+            the row is that these are four different distances between the same
+            two ways and the reader picks, not the panel. */}
+        {metrics.lobingLambdas.map((l) => (
           <div className="v2-metric" key={`f-${l.lower}`}>
             <div className="v2-metric-head">
               <span className="v2-id">M-F</span> Lobing (geometry) — {l.lower} → {l.upper}
-              <b>
-                {num(l.lambda)} λ at {hz(l.crossingHz)} — {l.zone}
-              </b>
+              <b>{l.crossingHz === null ? 'no crossing' : `at ${hz(l.crossingHz)}`}</b>
             </div>
-            <div className="v2-muted">
-              spacing {l.spacingMm.toFixed(0)} mm: {l.spacingSource}. The score is deliberately
-              non-monotone — small is good, half a wavelength is worst, one wavelength is good again.
+            <div className="v2-fractions">
+              {l.fractions.map((f) => (
+                <div className="v2-fraction" key={f.key} title={f.describe}>
+                  <span className="v2-fraction-label">{f.label}</span>
+                  <b>{f.lambda === null ? '—' : `${num(f.lambda)} λ`}</b>
+                  <span className="v2-muted">
+                    {f.distanceMm === null ? 'not present' : `${f.distanceMm.toFixed(0)} mm`}
+                    {f.between && ` · ${f.between[0]} ↔ ${f.between[1]}`}
+                  </span>
+                </div>
+              ))}
             </div>
+            {l.authorityNote && <div className="v2-muted">{l.authorityNote}</div>}
+            {l.notes.map((n, i) => (
+              <div className="v2-muted" key={i}>
+                {n}
+              </div>
+            ))}
           </div>
         ))}
 

@@ -458,13 +458,46 @@ describe('golden references - casus 1 (Koan 2951)', () => {
       expect(b.bandHz[1] / b.fPeakHz).toBeCloseTo(2.2, 6);
     });
 
-    it('M-F interim: spacing in wavelengths at both crossings', () => {
-      const wm = r.metrics.lobingInterim.find((x) => x.lower === 'woofer')!;
-      const mt = r.metrics.lobingInterim.find((x) => x.lower === 'mid')!;
-      expect(pct(wm.lambda, ref.lobing_wm_lambda)).toBeLessThanOrEqual(TOL.lambda_pct);
-      expect(pct(mt.lambda, ref.lobing_mt_lambda)).toBeLessThanOrEqual(TOL.lambda_pct);
-      // The woofer-mid figure is governed by the woofer ARRAY, not the pair.
-      expect(wm.spacingSource).toContain('array');
+    it('M-F interim: the FOUR wavelength fractions at both crossings (V20)', () => {
+      const wm = r.metrics.lobingLambdas.find((x) => x.lower === 'woofer')!;
+      const mt = r.metrics.lobingLambdas.find((x) => x.lower === 'mid')!;
+      const frac = (l: typeof wm, key: string): number | null =>
+        l.fractions.find((f) => f.key === key)!.lambda;
+
+      // The woofer way has two radiators, so the three between-ways fractions
+      // are three DIFFERENT numbers. That is the whole finding of V20, and
+      // asserting each against its own reference is what keeps a future
+      // "simplification" back to one distance from passing.
+      expect(pct(frac(wm, 'nearest')!, ref.lobing_wm_dichtstbij_lambda)).toBeLessThanOrEqual(TOL.lambda_pct);
+      expect(pct(frac(wm, 'centroid')!, ref.lobing_wm_zwaartepunt_lambda)).toBeLessThanOrEqual(TOL.lambda_pct);
+      expect(pct(frac(wm, 'farthest')!, ref.lobing_wm_verste_lambda)).toBeLessThanOrEqual(TOL.lambda_pct);
+
+      // THE RENAMED REFERENCE, with its value unchanged: what F1 published as
+      // `lobing_wm_lambda` was always the separation INSIDE the woofer way.
+      expect(pct(frac(wm, 'within-way')!, ref.lobing_wm_binnen_weg_lambda)).toBeLessThanOrEqual(TOL.lambda_pct);
+
+      // The mid and the tweeter are one source each, so the three coincide —
+      // and the old `lobing_mt_lambda` is still a correct reference for all
+      // three, which is exactly the case in which F1's single lambda was right.
+      for (const key of ['nearest', 'centroid', 'farthest']) {
+        expect(pct(frac(mt, key)!, ref.lobing_mt_lambda)).toBeLessThanOrEqual(TOL.lambda_pct);
+      }
+      expect(pct(frac(mt, 'nearest')!, ref.lobing_mt_dichtstbij_lambda)).toBeLessThanOrEqual(TOL.lambda_pct);
+      expect(pct(frac(mt, 'centroid')!, ref.lobing_mt_zwaartepunt_lambda)).toBeLessThanOrEqual(TOL.lambda_pct);
+      expect(pct(frac(mt, 'farthest')!, ref.lobing_mt_verste_lambda)).toBeLessThanOrEqual(TOL.lambda_pct);
+      // Null and not zero: neither way has a separation inside itself at all.
+      expect(ref.lobing_mt_binnen_weg_lambda).toBeNull();
+      expect(frac(mt, 'within-way')).toBeNull();
+
+      // The three are ORDERED by construction, and a run in which they are not
+      // has stopped measuring what it says it measures.
+      expect(frac(wm, 'nearest')!).toBeLessThan(frac(wm, 'centroid')!);
+      expect(frac(wm, 'centroid')!).toBeLessThan(frac(wm, 'farthest')!);
+      // No judgement travels with any of them (V20a).
+      expect(wm.multiSource).toBe(true);
+      expect(wm.authorityNote).toContain('M-F final');
+      expect(mt.multiSource).toBe(false);
+      expect(mt.authorityNote).toBeNull();
     });
 
     it('phase tracking over +-1 octave, on the band the measurements support', () => {

@@ -4152,3 +4152,31 @@ details.cabinet-driver > .derived strong,
   gap: 0.5rem;
   flex-wrap: wrap;
 }
+
+/* M-F-interim's four λ fractions (V20).
+   Four equal columns on purpose: nothing here is the headline, because no one
+   of these distances summarises the other three. Deliberately colourless —
+   the fractions carry no verdict, and a highlight would be one. */
+.v2-fractions {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(9rem, 1fr));
+  gap: 0.35rem 0.8rem;
+  margin: 0.3rem 0 0.2rem;
+}
+
+.v2-fraction {
+  display: flex;
+  flex-direction: column;
+  gap: 0.05rem;
+  font-size: 0.8rem;
+}
+
+.v2-fraction b {
+  font-variant-numeric: tabular-nums;
+}
+
+.v2-fraction-label {
+  font-size: 0.72rem;
+  color: var(--muted);
+  text-transform: lowercase;
+}

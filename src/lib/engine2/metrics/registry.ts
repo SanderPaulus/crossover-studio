@@ -54,10 +54,27 @@ const hasOffAxis = (which: 'lower' | 'upper'): DataNeed => ({
   },
 });
 
-const hasSpacing: DataNeed = {
+/**
+ * V20: positions FIRST, spacing as the fallback.
+ *
+ * The fractions are built from where each radiator sits, because that is the
+ * only input from which "nearest", "centroid" and "farthest" are three
+ * different numbers. A project that entered just a centre-to-centre distance
+ * still gets a row — one distance standing for all three, said out loud — so
+ * the need is met by either.
+ */
+const hasLobingGeometry: DataNeed = {
   key: 'spacing',
-  describe: 'no centre-to-centre spacing entered for this driver pair',
-  met: (ctx, subject) => !!(subject && ctx.geometry.ctcMm?.[subject] !== undefined),
+  describe:
+    'no vertical source positions and no centre-to-centre spacing entered for this driver pair',
+  met: (ctx, subject) => {
+    if (!subject) return false;
+    const g = ctx.geometry;
+    const placed = (way: string): boolean =>
+      (g.waySources?.[way]?.length ?? 0) > 0 || g.zOffsetMm?.[way] !== undefined;
+    const [lower, upper] = subject.split('|');
+    return (placed(lower) && placed(upper)) || g.ctcMm?.[subject] !== undefined;
+  },
 };
 
 const hasCrossing: DataNeed = {
@@ -166,12 +183,18 @@ export const METRIC_DECLARATIONS: readonly MetricDeclaration[] = [
   {
     id: 'M-F-interim',
     title: 'Vertical lobing (geometry only)',
-    quantity: 'Centre-to-centre spacing in wavelengths at the crossing, scored non-monotonically',
-    formula: 'lambda = d*f_x/c, scored against the reconciled zone curve',
-    role: 'soft',
+    quantity:
+      'Source separation in wavelengths at the crossing, as FOUR fractions: nearest source, ' +
+      'amplitude-weighted centroid and farthest source between the ways, plus the widest ' +
+      'separation inside a way',
+    formula: 'lambda = d*f_x/c for each of the four d; no score and no threshold (V20)',
+    /* REPORT, not soft, since V20. A soft target is something a candidate can
+     * be ranked on; V20a puts every lobing judgement on the vertical synthesis
+     * and leaves these fractions as reading matter. */
+    role: 'report',
     scope: 'pair',
-    needs: [hasSpacing, hasCrossing],
-    specRef: 'A4 M-F interim',
+    needs: [hasLobingGeometry, hasCrossing],
+    specRef: 'A4 M-F interim / Deel B V20',
   },
   {
     id: 'M-F-final',

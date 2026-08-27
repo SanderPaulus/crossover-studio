@@ -25,7 +25,7 @@ import type { Netlist } from '../network.ts';
 import { parseArtaHeader, type Manifest, type ManifestEntry } from './ingest/manifest.ts';
 import type { MeasurementFile } from './ingest/derive.ts';
 import type { FilterInput, EngineV2ReportInput, ReportSettings } from './report.ts';
-import { ctcKey, type Geometry } from './metrics/types.ts';
+import { ctcKey, sourcesFromArray, type Geometry, type WaySourcePosition } from './metrics/types.ts';
 
 /** A response file as the app holds it after parsing. */
 export interface AdapterResponse {
@@ -85,6 +85,13 @@ export interface AdapterGeometry {
   verticalMm: Partial<Record<BranchRole, number>>;
   /** Internal spacing of an array inside a branch, mm. */
   arraySpacingMm: Partial<Record<BranchRole, number>>;
+  /**
+   * How many radiators the branch has (V20). The cabinet form already holds
+   * it, and it is the field that turns a spacing into POSITIONS: N sources,
+   * `arraySpacingMm` apart, symmetric about the acoustic centre. Absent or 1 =
+   * a single source, which is the ordinary case.
+   */
+  sourceCount?: Partial<Record<BranchRole, number>>;
   /** Whether a branch radiates rotationally symmetrically. */
   rotationallySymmetric?: Partial<Record<BranchRole, boolean>>;
   baffleWidthMm?: number;
@@ -233,6 +240,7 @@ export function buildEngineV2Input(args: AdapterInput): AdapterResult {
   const geometry: Geometry = {};
   const z: Record<string, number> = {};
   const arrays: Record<string, number> = {};
+  const sources: Record<string, WaySourcePosition[]> = {};
   const symmetric: Record<string, boolean> = {};
   for (const b of args.branches) {
     const driver = ids[b.role] ?? b.role;
@@ -240,11 +248,23 @@ export function buildEngineV2Input(args: AdapterInput): AdapterResult {
     if (v !== undefined) z[driver] = v;
     const a = args.geometry.arraySpacingMm[b.role];
     if (a !== undefined && a > 0) arrays[driver] = a;
+    /* THE ARRAY, AS POSITIONS (V20).
+     *
+     * Only built where BOTH the count and the spacing are known, because a
+     * spacing without a count cannot say how many radiators it separates, and
+     * inventing the second one is the N = 2 assumption V20 forbids. A branch
+     * with one source needs no entry at all: the report falls back to its
+     * acoustic centre, which is the same thing said with fewer fields. */
+    const n = args.geometry.sourceCount?.[b.role];
+    if (v !== undefined && a !== undefined && a > 0 && n !== undefined && n > 1) {
+      sources[driver] = sourcesFromArray(driver, v, n, a);
+    }
     const s = args.geometry.rotationallySymmetric?.[b.role];
     if (s !== undefined) symmetric[driver] = s;
   }
   if (Object.keys(z).length) geometry.zOffsetMm = z;
   if (Object.keys(arrays).length) geometry.arraySpacingMm = arrays;
+  if (Object.keys(sources).length) geometry.waySources = sources;
   if (Object.keys(symmetric).length) geometry.rotationallySymmetric = symmetric;
   if (args.geometry.baffleWidthMm !== undefined) geometry.baffleWidthMm = args.geometry.baffleWidthMm;
 

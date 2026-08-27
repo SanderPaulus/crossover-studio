@@ -249,6 +249,28 @@ export function casus1Geometry(golden: GoldenRefs = loadGolden()): Geometry {
     // The two woofers are one way, measured as one source. Their own spacing is
     // still a real source separation, so it is given as an array spacing.
     arraySpacingMm: { woofer: g.ctc_mm['woofer_woofer'] },
+    /* WHERE EACH RADIATOR ACTUALLY IS (V20).
+     *
+     * The golden file has carried the two woofer positions separately all
+     * along — `woofer_boven` and `woofer_onder` — and the fixture used to
+     * average them away before the metrics ever saw them. That average is
+     * still right for the vertical synthesis, which wants one acoustic centre
+     * per branch; it is wrong for the λ fractions, which exist precisely
+     * because a way with two radiators sits at more than one distance from its
+     * neighbour. Both are built from the same block, and neither derives the
+     * other.
+     *
+     * Amplitudes are left unstated on purpose: the pair is wired in parallel,
+     * so equal is right, and the metric says out loud that it took them as
+     * equal rather than quietly writing 1 here. */
+    waySources: {
+      woofer: [
+        { id: 'woofer boven', zMm: g.z_offset_mm['woofer_boven'] },
+        { id: 'woofer onder', zMm: g.z_offset_mm['woofer_onder'] },
+      ],
+      mid: [{ id: 'mid', zMm: g.z_offset_mm['mid'] }],
+      tweeter: [{ id: 'tweeter', zMm: g.z_offset_mm['tweeter'] }],
+    },
     // The woofer is a PAIR measured as one source; its acoustic centre for the
     // vertical synthesis is the midpoint of the two, which is what the golden
     // file's two woofer offsets average to.

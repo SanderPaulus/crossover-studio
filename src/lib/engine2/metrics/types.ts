@@ -76,15 +76,73 @@ export interface Geometry {
   /**
    * Internal centre-to-centre spacing of an ARRAY inside one way, mm, per
    * driver id. A dual-woofer way measured as a single source still radiates
-   * from two places, and the LARGEST source separation involved in a handover
-   * is what sets its first vertical null — so M-F-interim takes the larger of
-   * this and the pair spacing, and says which one governed.
+   * from two places, and that separation makes a lobe of its own.
+   *
+   * SINCE V20 THIS IS NO LONGER WHAT M-F-INTERIM MEASURES DISTANCE WITH — the
+   * fractions are built from `waySources`, which says WHERE each radiator is
+   * rather than only how far apart two of them are. This field stays because
+   * the v1 crossover window reads a spacing of exactly this shape, and because
+   * a project that has entered only a spacing can still have its source
+   * positions derived from it (`sourcesFromArray`).
    */
   arraySpacingMm?: Record<string, number>;
+  /**
+   * THE INDIVIDUAL RADIATORS OF EACH WAY, keyed by driver id (V20).
+   *
+   * A way is not a point. A way with two woofers 276 mm apart sits at three
+   * useful distances from its neighbour at once — nearest source, weighted
+   * centroid, farthest source — and M-F-interim reports all three because no
+   * one of them summarises the other two. Absent for a way = that way is taken
+   * as ONE source at its `zOffsetMm`, which is the ordinary case and not a
+   * degenerate one.
+   *
+   * Positions are on the same vertical axis as `zOffsetMm`. Nothing here
+   * counts sources: N is whatever the list is long.
+   */
+  waySources?: Record<string, readonly WaySourcePosition[]>;
   /** Per driver: is its radiation rotationally symmetric about its axis? */
   rotationallySymmetric?: Record<string, boolean>;
   /** Baffle width in mm — lets the report check the fitted step against c/2W. */
   baffleWidthMm?: number;
+}
+
+/** One radiator inside a way, as the project states it (V20). */
+export interface WaySourcePosition {
+  /** Identifier inside the way — a manifest name, or a position index. */
+  id: string;
+  /** Vertical position of this radiator's acoustic centre, mm. */
+  zMm: number;
+  /**
+   * Relative LINEAR amplitude from the DRIVE, at the handover. Absent = the
+   * sources are equally driven, which is what a parallel pair of identical
+   * drivers is; the metric says so in a note rather than assuming it silently.
+   * There is deliberately no way to derive this from the netlist: an array
+   * measured as one source has one branch, and the wiring inside the cabinet
+   * is a project fact.
+   */
+  amplitude?: number;
+}
+
+/**
+ * The source list an evenly spaced array of `count` radiators makes around a
+ * way's acoustic centre.
+ *
+ * The one derivation allowed to stand in for stated positions, and it is
+ * geometry rather than an assumption about N: `count` sources, `spacingMm`
+ * apart, symmetric about `centreMm`. For count = 1 it is the centre itself.
+ */
+export function sourcesFromArray(
+  way: string,
+  centreMm: number,
+  count: number,
+  spacingMm: number,
+): WaySourcePosition[] {
+  const n = Math.max(1, Math.round(count));
+  const out: WaySourcePosition[] = [];
+  for (let i = 0; i < n; i++) {
+    out.push({ id: `${way}#${i + 1}`, zMm: centreMm + (i - (n - 1) / 2) * spacingMm });
+  }
+  return out;
 }
 
 export const ctcKey = (lower: string, upper: string): string => `${lower}|${upper}`;

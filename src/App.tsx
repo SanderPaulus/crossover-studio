@@ -3302,6 +3302,13 @@ export default function App() {
        * waveguide, and M-F-final wants the first. */
       const centreMm = (role: BranchRole): number | undefined =>
         stated(v2Meas[role].zMm) ?? mm(cabinet.drivers[role]?.yMm);
+      /* How many radiators the branch has, from the cabinet form. Absent or
+       * unparseable = absent, never a default of one: a way whose count was
+       * never entered is a way whose count is unknown (P4). */
+      const countOf = (role: BranchRole): number | undefined => {
+        const n = Number(cabinet.drivers[role]?.count ?? '');
+        return Number.isFinite(n) && n >= 1 ? n : undefined;
+      };
       const symOf = (role: BranchRole): boolean | undefined =>
         v2Meas[role].rotSym === 'yes' ? true : v2Meas[role].rotSym === 'no' ? false : undefined;
       const symmetric: Partial<Record<BranchRole, boolean>> = {};
@@ -3320,6 +3327,14 @@ export default function App() {
           low: Number(cabinet.drivers.low?.count ?? '') > 1 ? mm(cabinet.drivers.low?.spacingMm) : undefined,
           mid: Number(cabinet.drivers.mid?.count ?? '') > 1 ? mm(cabinet.drivers.mid?.spacingMm) : undefined,
           high: Number(cabinet.drivers.high?.count ?? '') > 1 ? mm(cabinet.drivers.high?.spacingMm) : undefined,
+        },
+        /* V20: the same cabinet field the spacing comes from, passed on as a
+         * COUNT. Without it the adapter cannot turn a spacing into positions,
+         * and the lobing fractions fall back to one source per way. */
+        sourceCount: {
+          low: countOf('low'),
+          mid: countOf('mid'),
+          high: countOf('high'),
         },
         baffleWidthMm: mm(cabinet.baffleWidthMm),
       };

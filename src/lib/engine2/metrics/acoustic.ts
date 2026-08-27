@@ -1,10 +1,11 @@
 /**
- * A4 — the metrics that live in the ACOUSTIC domain: M-D, M-F (both levels),
- * M-G and M-H.
+ * A4 — the metrics that live in the ACOUSTIC domain: M-D, M-F final, M-G and
+ * M-H. M-F INTERIM MOVED OUT AT V20, to `lobing.ts`: it stopped being one
+ * scored number and became four reported fractions, and the file it left
+ * behind is about metrics that produce a verdict-shaped answer.
  *
  * Every band in this file is derived from something the ingest pass measured:
- * M-D's evaluation band from the upper impedance peak, M-F's wavelength from
- * the crossing the filtered responses actually produce, M-G's margin from the
+ * M-D's evaluation band from the upper impedance peak, M-G's margin from the
  * measured off-axis pair, M-H's ceiling from the detected breakup. There is no
  * frequency here to hard-code (P6), and nothing counts drivers (N-way).
  *
@@ -21,8 +22,6 @@ import {
   BREAKUP_DIV_MILD,
   BREAKUP_DIV_SEVERE,
   BREAKUP_FULL_SEVERITY_DB,
-  LOBING_LAMBDA_KNOTS,
-  MM_PER_M,
   SPEED_OF_SOUND_M_S,
 } from '../constants.ts';
 import { cabs, dbAmp, degToRad, interpLog, octavesBetween } from '../util.ts';
@@ -173,95 +172,6 @@ const nearest = (grid: readonly number[], f: number): number => {
   }
   return best;
 };
-
-/* ================================================================== *
- * M-F interim — centre-to-centre spacing in wavelengths, scored non-monotonically
- * ================================================================== */
-
-export interface LobingInterimResult {
-  lower: string;
-  upper: string;
-  /** The separation that governed — see `spacingSource`. */
-  spacingMm: number;
-  /** Which separation that was: the pair itself, or an array inside a way. */
-  spacingSource: string;
-  crossingHz: number;
-  /** Spacing in wavelengths at the crossing. */
-  lambda: number;
-  /** 0 = benign, 1 = the worst zone. NON-MONOTONE — see the note. */
-  score: number;
-  /** Which zone the pair landed in, in words. */
-  zone: string;
-}
-
-/**
- * A4 M-F-interim.
- *
- * THE SCORE IS DELIBERATELY NOT MONOTONE, and that is the whole contribution
- * of this metric. Two rules of thumb in the field contradict each other — one
- * says keep the spacing under half a wavelength, the other says a full
- * wavelength is fine and the bad zone is around 0.5–0.7 — and V5 showed both
- * reject the same bad design for different reasons. Encoding the shape rather
- * than either rule is what lets the two be reconciled instead of argued about.
- *
- * It is still only geometry: nothing here knows the filter. M-F-final is the
- * one that decides a ranking.
- */
-export function lobingInterim(
-  lower: string,
-  upper: string,
-  pairSpacingMm: number,
-  crossingHz: number,
-  arraySpacings: readonly { driver: string; mm: number }[] = [],
-): LobingInterimResult {
-  // The largest separation involved wins. An array inside one of the ways
-  // radiates from two places whatever the pair spacing is, and its first
-  // vertical null lands lower than the pair's - so quoting the pair spacing
-  // for a way that is really two drivers understates the lobing.
-  let spacingMm = pairSpacingMm;
-  let spacingSource = `centre-to-centre ${lower} to ${upper}`;
-  for (const a of arraySpacings) {
-    if (a.mm > spacingMm) {
-      spacingMm = a.mm;
-      spacingSource = `the array inside ${a.driver} (${a.mm.toFixed(0)} mm), which is wider than the pair spacing`;
-    }
-  }
-  const lambda = (spacingMm / MM_PER_M) * (crossingHz / SPEED_OF_SOUND_M_S);
-  const score = evalKnotCurveLinear(LOBING_LAMBDA_KNOTS, lambda);
-  return {
-    lower,
-    upper,
-    spacingMm,
-    spacingSource,
-    crossingHz,
-    lambda,
-    score,
-    zone:
-      score < 0.3
-        ? 'favourable'
-        : score < 0.7
-          ? 'transitional'
-          : 'the unfavourable zone (nulls land in the listening plane)',
-  };
-}
-
-/** Piecewise-linear in the ABSCISSA (wavelengths), not in log — λ is a ratio. */
-function evalKnotCurveLinear(
-  knots: readonly (readonly [number, number])[],
-  x: number,
-): number {
-  if (x <= knots[0][0]) return knots[0][1];
-  const last = knots[knots.length - 1];
-  if (x >= last[0]) return last[1];
-  for (let i = 1; i < knots.length; i++) {
-    if (x <= knots[i][0]) {
-      const [x0, y0] = knots[i - 1];
-      const [x1, y1] = knots[i];
-      return y0 + ((x - x0) / (x1 - x0)) * (y1 - y0);
-    }
-  }
-  return last[1];
-}
 
 /* ================================================================== *
  * M-F final — vertical synthesis from the measurements

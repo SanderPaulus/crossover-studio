@@ -293,17 +293,46 @@ describe('F4a — the recorded parameters are the ones the engine used (V15)', (
     expect(mt.floorHz!).toBeCloseTo(fs * (p.fs_factor_bij_orde_4 as number), 6);
   });
 
-  it('M-F interim used the ARRAY spacing for the lower pair, as the file now says', () => {
-    // The parameter that was missing and mattered: the woofer-mid figure is
-    // governed by the spacing INSIDE the woofer way, not by the distance
-    // between the pair and the mid. 0.289 against 0.274 lambda — a different
-    // quantity, not a rounding.
+  it('M-F interim used the FOUR distances the file now records (V20)', () => {
+    // What F4a could only make visible, V20 answers: the woofer way has two
+    // radiators, so there is no single d. The parameter block records all four
+    // and the engine is held to every one of them.
     const p = at('kandidaten._M_F_interim_parameters');
-    const wm = report.metrics.lobingInterim.find((x) => x.lower === 'woofer')!;
-    const mt = report.metrics.lobingInterim.find((x) => x.lower === 'mid')!;
-    expect(wm.spacingSource).toContain('array');
-    expect(wm.spacingMm).toBeCloseTo(p.d_woofer_mid_mm as number, 6);
-    expect(mt.spacingMm).toBeCloseTo(p.d_mid_tweeter_mm as number, 6);
+    const wm = report.metrics.lobingLambdas.find((x) => x.lower === 'woofer')!;
+    const mt = report.metrics.lobingLambdas.find((x) => x.lower === 'mid')!;
+    const mm = (l: typeof wm, key: string): number | null =>
+      l.fractions.find((f) => f.key === key)!.distanceMm;
+
+    expect(mm(wm, 'nearest')).toBeCloseTo(p.d_woofer_mid_dichtstbij_mm as number, 6);
+    expect(mm(wm, 'centroid')).toBeCloseTo(p.d_woofer_mid_zwaartepunt_mm as number, 6);
+    expect(mm(wm, 'farthest')).toBeCloseTo(p.d_woofer_mid_verste_mm as number, 6);
+    expect(mm(wm, 'within-way')).toBeCloseTo(p.d_woofer_mid_binnen_weg_mm as number, 6);
+    for (const key of ['nearest', 'centroid', 'farthest']) {
+      expect(mm(mt, key)).toBeCloseTo(p.d_mid_tweeter_alle_drie_mm as number, 6);
+    }
+    expect(p.d_mid_tweeter_binnen_weg_mm).toBeNull();
+    expect(mm(mt, 'within-way')).toBeNull();
+
+    /* THE CROSS-CHECK the parameter block claims: the nearest-source distance
+     * that falls out of the z offsets IS the pair spacing the casebook writes
+     * down separately, one block higher. Two numbers arrived at independently;
+     * if they ever part company nobody can say which one a reference was
+     * computed with — which is the F3c lesson about provenance, applied to the
+     * one place where the same distance is recorded twice.
+     *
+     * The bound is the casebook's own ROUNDING and not a tolerance class: the
+     * `ctc_mm` block is written to whole millimetres and the offsets to a
+     * tenth, so half a millimetre is the widest the two may honestly differ.
+     * A percentage band here would pass on distances that really disagree. */
+    const CTC_ROUNDING_MM = 0.5;
+    const geo = at('manifest_en_geometrie.geometrie').ctc_mm as Record<string, number>;
+    expect(Math.abs(mm(wm, 'nearest')! - geo.woofer_mid)).toBeLessThanOrEqual(CTC_ROUNDING_MM);
+    expect(Math.abs(mm(mt, 'nearest')! - geo.mid_tweeter)).toBeLessThanOrEqual(CTC_ROUNDING_MM);
+    expect(Math.abs(mm(wm, 'within-way')! - geo.woofer_woofer)).toBeLessThanOrEqual(CTC_ROUNDING_MM);
+
+    // The amplitude weighting is STATED as absent, and the metric says so
+    // rather than writing a silent 1 into the centroid.
+    expect(wm.notes.join(' ')).toContain('equally driven');
   });
 
   it('M-E divided by the R_e the file records, not by one that lives only in code', () => {

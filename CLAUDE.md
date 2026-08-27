@@ -20,10 +20,10 @@
 ## Commando's
 
 - `npx tsc -b` — typecheck. Draait vóór elke oplevering, zonder uitzondering.
-- `npx vitest run` — volledige testsuite. **Gemeten 27-08-2026 (F4c): 112 bestanden, 1165 tests, ~4,6 min.**
+- `npx vitest run` — volledige testsuite. **Gemeten 27-08-2026 (V20): 113 bestanden, 1182 tests, ~4,5 min.**
   Alles groen houden. De telling stond tot F4b op 99/1003 — dat was de stand bij F3 (`61a3ea4`) en zij
-  is drie opleveringen lang niet bijgewerkt: F3b bracht 104 bestanden, F3c 106, F4a 107, F4b 108, F4b2 109.
-  Vandaar de datum erbij: een telling zonder meetmoment is een telling die stil veroudert.
+  is drie opleveringen lang niet bijgewerkt: F3b bracht 104 bestanden, F3c 106, F4a 107, F4b 108, F4b2 109,
+  F4c 112, V20 113. Vandaar de datum erbij: een telling zonder meetmoment is een telling die stil veroudert.
 - `npx vitest run <pad>` — gerichte run tijdens het werk; de volle suite blijft de acceptatie.
 - `npm run build` — productiebuild (draait ook de typecheck via `tsc -b`).
 
@@ -263,6 +263,33 @@
   naam te veranderen, en de dekkingsassert kijkt naar NAMEN. Er staat daarom een tweede assert
   naast: elk van de vijf moet de sleutel apart doen bewegen, met een telling erbij zodat een
   zesde feit niet ongetest kan meeliften.
+
+### V20-guards (lobing bij een weg met N bronnen)
+- `src/lib/engine2/metrics/lobing.ts` — **de vier λ-fracties, en geen keuze ertussen.** Voor lobing
+  tussen twee wegen bestaat geen enkele afstand die een weg met N bronnen samenvat, dus de metriek
+  rapporteert er vier (dichtstbij / amplitudegewogen zwaartepunt / verste — alle drie *tussen* de
+  wegen — plus de grootste scheiding *binnen* een weg) en rangschikt er geen. De niet-monotone
+  zonescore van F1 is vervallen: hij scoorde precies de ene λ die niet te kiezen is. **Blijvend
+  verbod:** geen poort, geen budget, geen shortlist-criterium op een fractie. De autoriteit is de
+  verticale synthese (`verticalLobing`), en die is bij V20 niet aangeraakt.
+- `src/lib/engine2/metrics/lobingLambda.test.ts` — de handberekening op een kruispunt waar λ = 1000 mm
+  (zodat elke afstand in mm zich rechtstreeks als fractie laat lezen), de N-agnostische proef op vijf
+  bronnen, en de **nieuwe-meting-test die de vondst draagt**: één woofer 100 mm omlaag verschuift
+  `nearest` met 0, `centroid` met 50 en `farthest` met 100 mm — drie verschillende bewegingen die één
+  λ alle drie op één had teruggebracht. Met de tegenproef ernaast (de héle weg verschuiven beweegt de
+  drie gelijk en laat binnen-de-weg staan), want zonder die tegenproef bewijst het patroon niets.
+  Plus: de zin over de synthese wordt door de BRONTELLING opgewekt en niet door een wegnaam — de
+  test collabeert de array en eist dat de zin verdwijnt.
+- `src/lib/engine2/goldenCasus1.test.ts` — de vier fracties per kruispunt per netlist als klasse-B-
+  referenties, met een assert dat de drie tussen-de-wegen-fracties op het wooferpaar **geordend en
+  ongelijk** zijn (0,274 / 0,419 / 0,563 λ op HUIDIG). De hernoemde `lobing_wm_binnen_weg_lambda`
+  draagt de waarde van de oude `lobing_wm_lambda` ongewijzigd — de fout zat in de naam, niet in het
+  getal, en een rename die de waarde verschuift zou dat verhullen.
+- `src/lib/engine2/goldenClassification.test.ts` — de V15-parameters volgen mee: alle vier de
+  afstanden staan in `kandidaten._M_F_interim_parameters` en worden tegen de engine gehouden. Plus de
+  **kruiscontrole**: de dichtstbijzijnde-afstand die uit de z-offsets volgt (261,3 mm) ís de
+  paarafstand die het casusboek los noteert (261). Bound op de afronding van het casusboek (0,5 mm)
+  en niet op een tolerantieklasse — een procentband zou hier afstanden doorlaten die echt verschillen.
 
 ### F4a-guard (waar een referentie een functie van is)
 - `src/lib/engine2/goldenClassification.test.ts` — de classificatie als test. Elke referentie in
