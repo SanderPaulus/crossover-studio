@@ -11,8 +11,17 @@
  * and deliberately the same shape.
  *
  * WHAT IS GUARDED: the satisficing surface — `requirements/`, `shortlist.ts`,
- * `relaxation.ts`, `diversity.ts`. These are the modules that decide which
+ * `relaxation.ts`, `diversity.ts`, and since F4d the CANDIDATE GENERATOR
+ * (`predesign/candidates.ts`, `predesign/flankOrder.ts`,
+ * `predesign/candidateField.ts`). These are the modules that decide which
  * designs a human is shown.
+ *
+ * The generator joined the surface because it is now the first place where a
+ * weight could plausibly appear and look reasonable: "spread the positions but
+ * weight the middle of the window a bit more", or "prefer the lower order
+ * slightly". Both would be a scalar preference over a field this layer is
+ * forbidden to rank — A5e.1's decision applies to choosing candidates exactly
+ * as it applies to choosing between their results.
  *
  * WHAT IS NOT, AND WHY: the v1 ranking (`rankChain3Results`) genuinely is a
  * weighted sum, it still serves the v1 path, and F3 promised not to touch that
@@ -35,6 +44,11 @@ const GUARDED = [
   join(OPTIMIZER, 'shortlist.ts'),
   join(OPTIMIZER, 'relaxation.ts'),
   join(OPTIMIZER, 'diversity.ts'),
+  // F4d — choosing which candidates exist is the same decision as choosing
+  // between their results, one stage earlier.
+  join(ENGINE2, 'predesign', 'candidates.ts'),
+  join(ENGINE2, 'predesign', 'flankOrder.ts'),
+  join(ENGINE2, 'predesign', 'candidateField.ts'),
 ];
 
 /**
@@ -112,6 +126,9 @@ describe('A5e.1 - no weights on the satisficing surface', () => {
     expect(rel).toContain(join('optimizer', 'shortlist.ts'));
     expect(rel).toContain(join('optimizer', 'relaxation.ts'));
     expect(rel).toContain(join('optimizer', 'diversity.ts'));
+    expect(rel).toContain(join('predesign', 'candidates.ts'));
+    expect(rel).toContain(join('predesign', 'flankOrder.ts'));
+    expect(rel).toContain(join('predesign', 'candidateField.ts'));
   });
 
   it('no code on that surface names a weight, a priority or an objective', () => {

@@ -20,10 +20,15 @@
 ## Commando's
 
 - `npx tsc -b` — typecheck. Draait vóór elke oplevering, zonder uitzondering.
-- `npx vitest run` — volledige testsuite. **Gemeten 27-08-2026 (V20): 113 bestanden, 1182 tests, ~4,5 min.**
+- `npx vitest run` — volledige testsuite. **Gemeten 27-08-2026 (F4d): 119 bestanden, 1280 tests, ~4,8 min.**
   Alles groen houden. De telling stond tot F4b op 99/1003 — dat was de stand bij F3 (`61a3ea4`) en zij
   is drie opleveringen lang niet bijgewerkt: F3b bracht 104 bestanden, F3c 106, F4a 107, F4b 108, F4b2 109,
-  F4c 112, V20 113. Vandaar de datum erbij: een telling zonder meetmoment is een telling die stil veroudert.
+  F4c 112, V20 113, F4d 119. Vandaar de datum erbij: een telling zonder meetmoment is een telling die stil veroudert.
+  **Waar de tijd zit (F4d-meting):** vijf bestanden draaien echte ketenruns en zijn samen ruim tien van de
+  ~23 CPU-minuten — `threeWayChain` (289 s), `candidateRoute` (117 s), `casus1V2Candidates` (109 s),
+  `designChain` (107 s), `workerRouteRegression` (104 s). Elk van hen draait het minimum aantal live runs
+  dat zijn claim draagt; de rest leest bestanden. Een regressie die niemand draait omdat hij traag is,
+  beschermt niets.
 - `npx vitest run <pad>` — gerichte run tijdens het werk; de volle suite blijft de acceptatie.
 - `npm run build` — productiebuild (draait ook de typecheck via `tsc -b`).
 
@@ -246,6 +251,48 @@
   bij F4c stopten twee bestaande tests meteen met compileren omdat zij `phasePriority` en `staged`
   daardoorheen gaven. Dat is de vangst waarvoor de scheiding bestaat.
 
+### F4d-guards (kandidaatgeneratie in v2)
+- `src/lib/engine2/predesign/flankOrder.test.ts` — A5d.3's orde-afleiding op handberekeningen:
+  frequenties zó gekozen dat de octaafafstanden hele getallen zijn, zodat "verzwakking gedeeld
+  door 6 dB per octaaf per orde" met de hand na te rekenen is. De onthoudings-gevallen wegen
+  even zwaar: geen gestelde M-C-grens ⇒ regel (ii) níet gewapend (P4), en niets gewapend ⇒
+  **elke bouwbare orde is een eigen kandidaat** — niet orde 1, niet orde 4, en vooral geen
+  gemiddelde. Plus: twee flanken die verschillende orden eisen leveren de hoogste op mét de
+  melding dat de uitlijningsbibliotheek symmetrisch is (A5d.3(iv) kan niet uitgedrukt worden),
+  en 2 — het gemiddelde van 1 en 3 — komt nergens voor.
+- `src/lib/engine2/predesign/candidates.test.ts` — de vier regels van de generator, elk als
+  claim: spreiding gelijkmatig in OCTAVEN (de hertz-stappen groeien, wat een lineaire spreiding
+  met een log-naam zou betrappen), het aantal afgeleid uit venster­breedte ÷
+  `WINDOW_SMOOTHING_OCTAVES`, meerdere orden = meerdere KANDIDATEN met unieke labels, en niets
+  buiten het venster — ook niet onder een budget, ook niet wanneer de slechtste lobing-zone de
+  band in tweeën heeft gesneden. Plus: het venster wordt **per orde** opnieuw afgeleid (k·f_s
+  beweegt mee), en het budget dunt posities en **nooit** orden.
+- `src/lib/engine2/predesign/casus1Field.test.ts` — **de acceptatie die audit §6.2 vroeg.**
+  De pre-start-raming meldt **0 van 9** buiten het venster op de casus-1-fixtures, mét de
+  tegenproef dat dezelfde schatter de v1-vensterkruispunten nog steeds als 4-van-4-buiten telt.
+  Verder: het veld is **klasse A** — dezelfde negen kandidaten komen uit rapporten die op alle
+  drie de bevroren netlists gebouwd zijn — en het vergelijkingsblok rangschikt niets (rijvolgorde
+  is de gegeven volgorde, ook omgedraaid).
+- `src/lib/engine2/optimizer/candidateRoute.test.ts` — de kandidaat door de ÉCHTE route
+  (`handleV2Request` → `runThreeWayChain`, payload door `structuredClone`). Vier claims: de noot
+  *"still inherited from the v1 chain"* kan op een payload mét kandidaat niet meer verschijnen;
+  de verklaring BEREIKT de tuner (een kandidaat die een andere oordeelband stelt levert
+  aantoonbaar een ander netwerk — een kanaal zonder effect rapporteert niets, zie V23); twee
+  runs op één seed byte-identiek (beide vers, want uit een cache zou dat een object met zichzelf
+  vergelijken); en de seed bereikt de zoektocht níet, wat sinds F4d een **besluit** is, met de
+  tegenproef dat een andere KANDIDAAT hem wél bereikt.
+- `src/lib/engine2/optimizer/choiceKeyGuard.test.ts` — uitgebreid met de F4d-helft: *stated ∪
+  absent ∪ delegated* is **exact** de keuze-sleutelverzameling, met een gat-detectie die is
+  nagemeten (een sleutel weghalen wordt gezien, een sleutel dubbel filen ook). Een niet-ingevulde
+  ontwerpersinstelling wordt een ABSENT-verklaring met de P4-reden, niet een ontbrekende sleutel.
+- `src/lib/engine2/predesign/floorComparison.test.ts` — audit §6.3 als test: beide vloeren met
+  hun herkomst in één zin, wélke de kandidaten stuurde, en geen enkel veld dat een winnaar
+  aanwijst. Plus de waarschuwing die alleen verschijnt wanneer de tegen-vloer werkelijk een deel
+  van dít veld zou weigeren.
+- `src/lib/engine2/optimizer/noWeights.test.ts` — de scope is uitgebreid naar `predesign/
+  candidates.ts`, `flankOrder.ts` en `candidateField.ts`. Kiezen wélke kandidaten bestaan is
+  dezelfde beslissing als kiezen tussen hun uitkomsten, één stap eerder.
+
 ### F4b2-guard (het vierde gat: de LF-bult-inversie)
 - `src/lib/engine2/optimizer/lfBumpBorder.test.ts` — de vierde A5d.6-inversie, die op de
   workerroute nooit invoer had (V23-bijvangst, dood sinds F2). Vijf asserts op de inversie zelf:
@@ -306,6 +353,18 @@
   gebruikte (scanraster, trendbreedte, fitband, c-t-c, R_e), want een parameterblok dat nergens
   tegen de engine wordt gehouden is decoratie, en decoratie is waar V15 over ging.
   Zie casusboek V19 en `.claude/skills/casus-toevoegen/SKILL.md`.
+
+### De casus-1-fixtures die een SCRIPT opwekt (F4d)
+`test-fixtures/casus1/KAND-V2-*.adsfilter.json` zijn de negen v2-kandidaten, bevroren als bestanden
+op precies dezelfde voet als de drie v1-kandidaten — want F4a stelde vast dat casus 1 géén klasse-C-
+referenties heeft, en "laat de suite de scan draaien en assert op wat eruit komt" zou de eerste maken.
+Twee scripts, twee kosten:
+- `npx vite-node scripts/generate-casus1-v2-candidates.ts` — negen ketenruns, gemeten 45–72 s per
+  kandidaat, ~10 min totaal. Schrijft de netlists en `test-fixtures/casus1_v2_herkomst.json`.
+- `npx vite-node scripts/record-casus1-v2-references.ts` — leest die bestanden en schrijft de
+  klasse-B-blokken in de golden refs. Drie seconden, dus vrij om opnieuw te draaien.
+De acceptatie zit in `casus1V2Candidates.test.ts`: de metrieken reproduceren op alle negen bestanden,
+en **één** kandidaat wordt live door de échte route heen gereproduceerd (~107 s).
 
 De vloer is sinds F0 uitsluitend het getal dat de ONTWERPER invult (`ampMinLoadOhm`, geen default):
 leeg veld = geen oordeel. Eén regel, één plek: `meetsAmpFloor` in `src/lib/impedanceFloor.ts`.

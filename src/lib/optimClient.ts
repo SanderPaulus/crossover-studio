@@ -71,6 +71,7 @@ import type {
   V2CandidateResult,
   V2Response,
   V2RunSettings,
+  V2CandidatePayload,
 } from './engine2/optimizer/worker.ts';
 
 export class CancelledError extends Error {
@@ -442,13 +443,13 @@ export function runChain3Scan(
       emitQueued = false;
       let evals = 0;
       let done = 0;
-      const items: { label: string; text: string; done: boolean; warn?: string }[] = [];
+      const rows: { label: string; text: string; done: boolean; warn?: string }[] = [];
       for (const [label, st] of state) {
         evals += st.evals;
         if (st.done) done++;
-        items.push({ label, text: st.text, done: st.done, warn: st.warn });
+        rows.push({ label, text: st.text, done: st.done, warn: st.warn });
       }
-      onProgress({ round: done, evals, items });
+      onProgress({ round: done, evals, items: rows });
     }, 80);
   };
   for (const input of inputs) state.set(input.label, { evals: 0, text: 'queued', done: false });
@@ -514,6 +515,33 @@ export interface V2ScanSettings extends V2RunSettings {
   measurementKey: string;
   /** Stable identity of the search-steering settings, for the fingerprint. */
   tuningKey: string;
+  /**
+   * F4d — stable identity of the CANDIDATE FIELD A5d generated: every
+   * candidate's handovers and orders, the declaration reasons, and the
+   * generator parameters (spacing, budget, what was thinned).
+   *
+   * The fingerprint has carried a `choices` ingredient since F4c and on this
+   * route it was always empty, because `runV2Optimization` — the function that
+   * fills it — is not the route the app takes. Empty was accurate while the
+   * candidates came from v1; it stops being accurate the moment the field is a
+   * v2 derivation, since two runs over two different fields would otherwise
+   * stamp identically. Absent = no field was generated (the v1 candidate
+   * route), which is itself a fact worth being able to tell apart.
+   */
+  candidateFieldKey?: string;
+}
+
+/**
+ * One item of a v2 scan: a chain input and, when A5d generated it, what it
+ * decided about that candidate.
+ *
+ * A pair rather than a widened `Chain3Input`, because the chain input is v1's
+ * type and adding a v2 field to it would put an engine-2 concept inside the
+ * structure the toggle invariant says must not know about engine 2.
+ */
+export interface V2Chain3Item {
+  input: Chain3Input;
+  candidate?: V2CandidatePayload;
 }
 
 /**
@@ -551,6 +579,10 @@ function v2Stamp(
       gates: stableJson(gateSettingsKey(v2.gates)),
       bounds: stableJson(budgetSettingsKey(v2.budgets)),
       tuning: v2.tuningKey,
+      // F4d — WHAT was searched: the candidate field A5d produced. See
+      // `candidateFieldKey`; before F4d this ingredient was empty on this
+      // route, which was true and is no longer.
+      ...(v2.candidateFieldKey !== undefined ? { choices: v2.candidateFieldKey } : {}),
       // F4b — built from the PAYLOAD, which is what decides the provenance:
       // a model with an entry runs on the resolved fact, a model without one
       // runs on the worker's fallback. Two runs that differ only in that are
@@ -572,10 +604,12 @@ function v2Stamp(
  * caller has to remember to ask about; here it is in the result.
  */
 export function runChain3ScanV2(
-  inputs: Chain3Input[],
+  items: V2Chain3Item[],
   v2: V2ScanSettings,
   onProgress?: (d: ScanProgress) => void,
 ): Promise<V2ScanResult<V2Chain3Candidate>> {
+  const inputs = items.map((i) => i.input);
+  const candidateOf = new Map(items.map((i) => [i.input.label, i.candidate]));
   stoppedEarly = false;
   const size = poolSize();
   const state = new Map<string, { evals: number; text: string; done: boolean; warn?: string }>();
@@ -606,14 +640,20 @@ export function runChain3ScanV2(
       const st0 = state.get(input.label);
       if (st0) st0.text = 'starting';
       emit();
-      return runV2<V2Chain3Candidate>(slot, 'v2Chain3One', { input, v2 }, (d) => {
-        const pr = d as ChainOneProgress;
-        const st = state.get(input.label);
-        if (!st) return;
-        if (pr.evals > st.evals) st.evals = pr.evals;
-        st.text = stageText(pr);
-        emit();
-      })
+      const candidate = candidateOf.get(input.label);
+      return runV2<V2Chain3Candidate>(
+        slot,
+        'v2Chain3One',
+        { input, v2, ...(candidate ? { candidate } : {}) },
+        (d) => {
+          const pr = d as ChainOneProgress;
+          const st = state.get(input.label);
+          if (!st) return;
+          if (pr.evals > st.evals) st.evals = pr.evals;
+          st.text = stageText(pr);
+          emit();
+        },
+      )
         .then((c) => {
           const st = state.get(input.label);
           if (st) {

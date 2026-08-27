@@ -23,7 +23,14 @@ import { describe, expect, it } from 'vitest';
 import { readdirSync, readFileSync, statSync } from 'node:fs';
 import { dirname, join, relative } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { CHOICE_KEYS, GREY_KEYS, POLISH_KEYS } from './choices.ts';
+import {
+  CHOICE_KEYS,
+  GREY_KEYS,
+  POLISH_KEYS,
+  declarationCoverage,
+  declarationKey,
+} from './choices.ts';
+import { declareCandidateChoices } from './candidateDeclaration.ts';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const ENGINE2 = join(HERE, '..');
@@ -157,10 +164,125 @@ describe('F4c — no choice key arrives through a tuneOptions spread', () => {
     // The other half of the same claim, on the route the app actually takes.
     const worker = readFileSync(join(HERE, 'worker.ts'), 'utf-8');
     expect(worker).toContain('const stated: Partial<CandidateChoices>');
+    // The F4c sentence still exists, and since F4d it is reachable ONLY on a
+    // route with no A5d candidate — the two-way chain, which is still v1
+    // (TODO(F2c)). A payload that carries a candidate can never print it.
     expect(worker).toContain('still inherited from the v1 chain, not v2-derived');
     // ...and they are merged into what the hook returns, or naming them would
     // be a comment rather than a mechanism.
     expect(worker).toContain('...stated,');
     expect(worker).toContain('...weights,');
+  });
+});
+
+/* ================================================================== *
+ * F4d — the declaration covers the key set, so nothing can be inherited
+ * ================================================================== */
+
+describe('F4d — a generated candidate declares every choice key', () => {
+  /** A declaration built the way `App.tsx` builds one, with nothing stated. */
+  const bare = () =>
+    declareCandidateChoices({
+      cages: [[400, 500], [1500, 2000]],
+      windowFloorsHz: [397, 1294],
+      multiWay: true,
+      stated: {},
+    });
+
+  /** ...and one with everything the designer can state, filled in. */
+  const full = () =>
+    declareCandidateChoices({
+      cages: [[400, 500], [1500, 2000]],
+      windowFloorsHz: [397, 1294],
+      multiWay: true,
+      stated: {
+        band: [200, 18000],
+        acousticSlopes: { mid: 24 },
+        staged: { rippleDb: 2.5, phaseDeg: 15 },
+        ampTarget: 'onAxis',
+        powerMetric: 'smooth',
+        phaseMetric: 'band',
+        catalogSnap: false,
+        snapPrefs: { profile: 'auto' },
+        breakupGuard: true,
+        audit: {},
+        ampMinLoadOhm: 3.2,
+        rSourceDisqualifyOhm: 2,
+        zFloorStrict: true,
+      },
+    });
+
+  it('stated + absent + delegated is EXACTLY the choice-key set, both ways round', () => {
+    for (const d of [bare(), full()]) {
+      const cover = declarationCoverage(d);
+      expect(cover.missing, `keys nothing declares:\n${cover.missing.join('\n')}`).toEqual([]);
+      expect(cover.duplicated, `keys declared twice:\n${cover.duplicated.join('\n')}`).toEqual([]);
+      expect(cover.complete).toBe(true);
+    }
+  });
+
+  it('the coverage check can actually fail — a hole is detected rather than assumed away', () => {
+    // A guard nobody has watched fail is a guard nobody should trust.
+    const d = bare();
+    const holed = { ...d, absent: d.absent.filter((a) => a.key !== 'xoRange') };
+    expect(declarationCoverage(holed).missing).toEqual(['xoRange']);
+    const doubled = { ...d, delegated: [...d.delegated, { key: 'xoRange' as const, to: 'x', why: 'y' }] };
+    expect(declarationCoverage(doubled).duplicated).toContain('xoRange');
+  });
+
+  it('a setting the designer never filled in becomes an ABSENT declaration with the P4 reason', () => {
+    /* The distinction the whole shape exists for: an omitted key reads as an
+     * oversight, while "you stated no amplifier floor, so nothing judges the
+     * load" is the P4 doctrine said out loud at the border. */
+    const d = bare();
+    const why = (k: string) => d.absent.find((a) => a.key === k)?.why ?? '';
+    expect(why('ampMinLoadOhm')).toMatch(/P4/);
+    expect(why('band')).toMatch(/absent is absent/);
+    expect(d.stated.ampMinLoadOhm).toBeUndefined();
+    // ...and a filled-in one really does land in `stated`.
+    expect(full().stated.ampMinLoadOhm).toBe(3.2);
+    expect(full().absent.some((a) => a.key === 'ampMinLoadOhm')).toBe(false);
+  });
+
+  it('the candidate states its OWN two keys: the cages and the A5d.3 floors', () => {
+    const d = bare();
+    expect(d.stated.xoRangePairs).toEqual([[400, 500], [1500, 2000]]);
+    // Audit §6.3 in one assertion: the floor that steers is the A5d.3 window
+    // floor, not the v1 physics floor.
+    expect(d.stated.xoFloorPairs).toEqual([397, 1294]);
+    const floorWhy = d.absent.find((a) => a.key === 'xoFloorPairs');
+    expect(floorWhy).toBeUndefined();
+  });
+
+  it('every absent and delegated key carries a REASON, and a reason is a sentence', () => {
+    const d = bare();
+    for (const a of d.absent) expect(a.why.length, `${a.key} has a stub reason`).toBeGreaterThan(40);
+    for (const g of d.delegated) {
+      expect(g.why.length, `${g.key} has a stub reason`).toBeGreaterThan(40);
+      expect(g.to.length).toBeGreaterThan(3);
+    }
+  });
+
+  it('branchTargets is DELEGATED to the design step and not re-derived (V21, one layer up)', () => {
+    const d = bare();
+    const bt = d.delegated.find((g) => g.key === 'branchTargets');
+    expect(bt?.to).toMatch(/design step/);
+    expect(bt?.why).toMatch(/second implementation of chain logic/);
+  });
+
+  it('the declaration is a fingerprint ingredient, and the REASONS move it', () => {
+    /* A key that moves from delegated to absent is a different run even when no
+     * value changed, because something else is deciding it now. */
+    const a = JSON.stringify(declarationKey(bare(), {}));
+    const b = JSON.stringify(declarationKey(full(), {}));
+    expect(a).not.toBe(b);
+    const d = bare();
+    const reworded = {
+      ...d,
+      delegated: d.delegated.map((g) =>
+        g.key === 'branchTargets' ? { ...g, to: 'somewhere else entirely' } : g,
+      ),
+    };
+    expect(JSON.stringify(declarationKey(reworded, {}))).not.toBe(a);
   });
 });

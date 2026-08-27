@@ -65,7 +65,9 @@ import type { DeterminismSettings } from './determinism.ts';
 import {
   CHOICE_KEYS,
   GREY_KEYS,
+  declarationCoverage,
   type CandidateChoices,
+  type ChoiceDeclaration,
   type GreyWeights,
 } from './choices.ts';
 import type {
@@ -128,15 +130,51 @@ export interface V2RunSettings extends MeasurementFactsPayload {
   judgeBandHz?: [number, number];
 }
 
+/**
+ * F4d — WHAT A5d DECIDED ABOUT THIS CANDIDATE, crossing the border named.
+ *
+ * Per candidate rather than per run, because that is what it is: a run is a
+ * FIELD of candidates and each of them is its own set of choices. It rides
+ * beside `input` rather than inside `v2` for the same reason — `V2RunSettings`
+ * is shared by every candidate in a scan, and putting a per-candidate object
+ * there would either duplicate the whole field into every payload or force one
+ * candidate's choices onto the rest.
+ *
+ * ABSENT = THE F4c ROUTE, UNCHANGED. A payload with no candidate reads its
+ * choices back out of the chain settings exactly as it did before F4d, and says
+ * in `notes` that fifteen of them are still inherited. That is not a fallback
+ * to be tidied away later: the two-way route is still v1 (TODO(F2c)) and a
+ * caller that has no pre-design layer to generate from must not be handed an
+ * invented candidate.
+ */
+export interface V2CandidatePayload {
+  /** The A5d layer's declaration over every choice key. */
+  declaration: ChoiceDeclaration;
+  /** Where this candidate came from — one clause per handover. */
+  provenance: string;
+  /**
+   * The declared order of each way's HIGH-PASS flank, keyed by driver model.
+   *
+   * Row 39 of the V26 table, closed: on the three-way route the order used to
+   * come from `settings.structureLow?.order`, which is `undefined` at alignment
+   * 'auto' — so `BudgetWay.order` fell back to its own default and "nothing was
+   * declared" became indistinguishable from "order 1". A generated candidate
+   * always knows its order per flank, so it always states it.
+   */
+  orderByModel?: Record<string, number>;
+}
+
 export interface V2Chain3Payload {
   input: Chain3Input;
   v2: V2RunSettings;
+  candidate?: V2CandidatePayload;
 }
 
 export interface V2ChainOnePayload {
   input: ChainInput;
   label: string;
   v2: V2RunSettings;
+  candidate?: V2CandidatePayload;
 }
 
 /** What one v2 candidate returns: the chain's own result, plus the verdicts. */
@@ -394,6 +432,14 @@ interface NetworkFacts {
   choices: Partial<CandidateChoices>;
   /** F4c — the grey weights, likewise stated rather than inherited silently. */
   weights: Partial<GreyWeights>;
+  /**
+   * F4d — the A5d layer's declaration, when the caller has one.
+   *
+   * Present: its `stated` half IS the choice set, and every key it declares
+   * absent or delegated is reported as such. Absent: the F4c read-back above
+   * stands and fifteen keys are still inherited, which the notes say.
+   */
+  declaration?: ChoiceDeclaration;
 }
 
 /** Drop keys whose value is undefined — absent is a state, not a zero. */
@@ -514,18 +560,20 @@ function tuneOptionsFor(
    *
    * TODO(F4d): fill `stated` from the A5d layer instead of from the v1
    * settings. The shape does not change; the source does. */
-  const stated: Partial<CandidateChoices> = pruneUndefinedValues({
-    band: network.choices.band,
-    acousticSlopes: network.choices.acousticSlopes,
-    catalogSnap: network.choices.catalogSnap,
-    ampTarget: network.choices.ampTarget,
-    phaseMetric: network.choices.phaseMetric,
-    powerMetric: network.choices.powerMetric,
-    breakupGuard: network.choices.breakupGuard,
-    xoFloorPairs: network.choices.xoFloorPairs,
-    ampMinLoadOhm: network.choices.ampMinLoadOhm,
-    rSourceDisqualifyOhm: network.choices.rSourceDisqualifyOhm,
-  });
+  const stated: Partial<CandidateChoices> = network.declaration
+    ? pruneUndefinedValues({ ...network.declaration.stated })
+    : pruneUndefinedValues({
+        band: network.choices.band,
+        acousticSlopes: network.choices.acousticSlopes,
+        catalogSnap: network.choices.catalogSnap,
+        ampTarget: network.choices.ampTarget,
+        phaseMetric: network.choices.phaseMetric,
+        powerMetric: network.choices.powerMetric,
+        breakupGuard: network.choices.breakupGuard,
+        xoFloorPairs: network.choices.xoFloorPairs,
+        ampMinLoadOhm: network.choices.ampMinLoadOhm,
+        rSourceDisqualifyOhm: network.choices.rSourceDisqualifyOhm,
+      });
   const weights: Partial<GreyWeights> = pruneUndefinedValues({
     phasePriority: network.weights.phasePriority,
     directivityWeight: network.weights.directivityWeight,
@@ -543,14 +591,50 @@ function tuneOptionsFor(
    * solo family are assembled there too. Re-deriving any of them here would be
    * a second implementation of chain logic, which is how two descriptions of
    * one thing start to disagree (V21's lesson, one layer up). */
-  const inherited = CHOICE_KEYS.filter((k) => stated[k] === undefined);
-  if (inherited.length > 0) {
-    collect.notes.push(
-      `Search choices still inherited from the v1 chain, not v2-derived: ${inherited.join(', ')}. ` +
-        'They are the values that chain built and the run is unchanged by this; they are named ' +
-        'here because an inherited choice that nobody names is indistinguishable from a decision ' +
-        '(audit §2.2, §6.1). F4d moves them to the candidate.',
-    );
+  if (network.declaration) {
+    /* ---- F4d: nothing is inherited any more, and the notes say what each key
+     * IS instead. A key the candidate declares absent or delegated is a
+     * decision with a reason attached; a key nobody mentions is what F4c had
+     * to call "still inherited", and `declarationCoverage` makes that state
+     * unreachable rather than merely discouraged. */
+    const cover = declarationCoverage(network.declaration);
+    if (cover.missing.length > 0) {
+      collect.notes.push(
+        `The candidate's declaration does not cover ${cover.missing.join(', ')}. Those keys fall ` +
+          'back to whatever the v1 chain built, which is exactly the silent inheritance F4d ' +
+          'exists to end — a declaration with a hole in it is worse than no declaration, because ' +
+          'it reads as complete.',
+      );
+    }
+    if (cover.duplicated.length > 0) {
+      collect.notes.push(
+        `The candidate declares ${cover.duplicated.join(', ')} in more than one state at once. ` +
+          'Which one applies is then a matter of evaluation order, and evaluation order is not a ' +
+          'decision anybody took.',
+      );
+    }
+    if (network.declaration.absent.length > 0) {
+      collect.notes.push(
+        'Declared ABSENT by the candidate (no value on this design, not merely unset): ' +
+          network.declaration.absent.map((a) => `${a.key} — ${a.why}`).join(' · '),
+      );
+    }
+    if (network.declaration.delegated.length > 0) {
+      collect.notes.push(
+        'Delegated by the candidate to a named stage: ' +
+          network.declaration.delegated.map((g) => `${g.key} → ${g.to} (${g.why})`).join(' · '),
+      );
+    }
+  } else {
+    const inherited = CHOICE_KEYS.filter((k) => stated[k] === undefined);
+    if (inherited.length > 0) {
+      collect.notes.push(
+        `Search choices still inherited from the v1 chain, not v2-derived: ${inherited.join(', ')}. ` +
+          'They are the values that chain built and the run is unchanged by this; they are named ' +
+          'here because an inherited choice that nobody names is indistinguishable from a decision ' +
+          '(audit §2.2, §6.1). This route has no A5d candidate — see `V2CandidatePayload`.',
+      );
+    }
   }
   const unstatedWeights = GREY_KEYS.filter((k) => weights[k] === undefined);
   if (unstatedWeights.length > 0) {
@@ -724,6 +808,8 @@ function runCandidate<I, R extends { parts: VxpPart[]; net: { gateRefusals?: str
   run: (hooks: { tuneOptionsFor: (seed: readonly VxpPart[]) => Partial<NetOptimizeOptions> }) => R,
   /** F3 — what this candidate is judged on, once it exists. */
   judge: (r: R) => { measurements: CandidateMeasurements; topology: TopologyDescriptor },
+  /** F4d — where the candidate came from, when A5d generated it. */
+  provenance?: string,
 ): V2CandidateResult<R> {
   const collect: {
     reference: GateReference | null;
@@ -744,6 +830,7 @@ function runCandidate<I, R extends { parts: VxpPart[]; net: { gateRefusals?: str
     notes: [...facts.notes],
   };
   void input;
+  if (provenance) collect.notes.push(`Candidate provenance (A5d): ${provenance}`);
   const result = run({
     tuneOptionsFor: (seed) => tuneOptionsFor(seed, facts, network, v2, collect),
   });
@@ -807,7 +894,7 @@ export function handleV2Request(req: V2Request, post: V2Post): void {
     let data: unknown;
     switch (req.kind) {
       case 'v2Chain3One': {
-        const { input, v2 } = req.payload;
+        const { input, v2, candidate } = req.payload;
         const facts = measurementFacts(
           input.grid,
           input.driverZ,
@@ -825,8 +912,15 @@ export function handleV2Request(req: V2Request, post: V2Post): void {
           // arrives as `undefined`: nothing is declared yet, and an absent
           // order is a different statement from order 1.
           orderByModel: pruneUndefined({
-            mid: input.settings.structureLow?.order,
-            tweeter: input.settings.structureHigh?.order,
+            ...{
+              mid: input.settings.structureLow?.order,
+              tweeter: input.settings.structureHigh?.order,
+            },
+            // F4d (V26 row 39): a generated candidate always knows its order
+            // per flank, so it always states it. Merged over the read-back
+            // rather than instead of it, so a payload without a candidate
+            // behaves exactly as it did before.
+            ...(candidate?.orderByModel ?? {}),
           }),
           crossingAboveByModel: pruneUndefined({
             woofer: input.xoLow,
@@ -855,6 +949,7 @@ export function handleV2Request(req: V2Request, post: V2Post): void {
             dissipationWeight: input.settings.dissipationWeight,
             costWeight: input.settings.costWeight,
           }),
+          ...(candidate ? { declaration: candidate.declaration } : {}),
         };
         data = runCandidate<Chain3Input, Chain3Result>(
           input,
@@ -903,11 +998,12 @@ export function handleV2Request(req: V2Request, post: V2Post): void {
               ),
             };
           },
+          candidate?.provenance,
         );
         break;
       }
       case 'v2ChainOne': {
-        const { input, label, v2 } = req.payload;
+        const { input, label, v2, candidate } = req.payload;
         const facts = measurementFacts(
           input.grid,
           input.driverZ,
@@ -924,7 +1020,10 @@ export function handleV2Request(req: V2Request, post: V2Post): void {
             ? Math.sqrt(input.xoRange[0] * input.xoRange[1])
             : undefined;
         const network: NetworkFacts = {
-          orderByModel: pruneUndefined({ tweeter: declaredHpOrder(input.seed.tweeter) }),
+          orderByModel: pruneUndefined({
+            tweeter: declaredHpOrder(input.seed.tweeter),
+            ...(candidate?.orderByModel ?? {}),
+          }),
           crossingAboveByModel: pruneUndefined({ mid: xoCentre }),
           /* F4c — the search choices this candidate carries, read back out of
            * the settings the chain was handed. Nothing is decided here: the
@@ -948,6 +1047,7 @@ export function handleV2Request(req: V2Request, post: V2Post): void {
             dissipationWeight: input.settings.dissipationWeight,
             costWeight: input.settings.costWeight,
           }),
+          ...(candidate ? { declaration: candidate.declaration } : {}),
         };
         data = runCandidate<ChainInput, ChainResult>(
           input,
@@ -989,6 +1089,7 @@ export function handleV2Request(req: V2Request, post: V2Post): void {
               topology: { flanks: [], inverted: [] },
             };
           },
+          candidate?.provenance,
         );
         break;
       }

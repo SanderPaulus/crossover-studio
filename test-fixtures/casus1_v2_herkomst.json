@@ -1,0 +1,787 @@
+{
+ "_": "F4d — DOCUMENTATIE, geen acceptatiewaarde. Zie scripts/generate-casus1-v2-candidates.ts.",
+ "gegenereerd_op_commit": "40bdf23242fd8eba4703b001d2e35834428c60f1",
+ "seed": 20260827,
+ "run_vingerafdruk": "engine=2.0.0-F1 estimators=6087f58a seed=20260827 budget=tuner starts=1 status=completed design=bee336e2 measurements=e97d1bdc gates=5465b825 bounds=5465b825 tuning=99e5b33a facts=7f4da8b5 choices=c300ec46",
+ "grid": {
+  "van_hz": 200,
+  "tot_hz": 20000,
+  "punten": 96
+ },
+ "oordeelband_hz": [
+  397,
+  19500
+ ],
+ "settings": {
+  "phasePriority": 0.5,
+  "synthMode": "acoustic",
+  "band": [
+   397,
+   19500
+  ],
+  "targets": {
+   "rippleDb": 2.5,
+   "phaseDeg": 15
+  },
+  "breakupGuard": true,
+  "ampTarget": "onAxis",
+  "phaseMetric": "band",
+  "powerMetric": "smooth",
+  "catalogSnap": false,
+  "dissipationWeight": 0.05,
+  "powerFoldWeight": 0.5,
+  "costWeight": 0.0015,
+  "directivityWeight": 0,
+  "rSourceDisqualifyOhm": 2,
+  "audit": {
+   "thresholds": {
+    "rSourceOhm": 1
+   }
+  }
+ },
+ "generator_parameters": {
+  "minSpacingOctaves": 0.16666666666666666,
+  "chainBudget": null,
+  "derivedSize": 9,
+  "deliveredSize": 9
+ },
+ "referentie_kruispunt_hz": [
+  466.4275132314875,
+  1718.9821405313487
+ ],
+ "orde_afleiding": [
+  {
+   "paar": "woofer→mid",
+   "orden": [
+    4
+   ],
+   "waarom": [
+    "order 4: the order the designer stated for this handover. Kept beside the demanded one rather than instead of it — \"what the measurements require\" and \"what you asked for\" are two questions, and there is no weighting here that could merge them."
+   ]
+  },
+  {
+   "paar": "mid→tweeter",
+   "orden": [
+    4
+   ],
+   "waarom": [
+    "order 4: the order the designer stated for this handover. Kept beside the demanded one rather than instead of it — \"what the measurements require\" and \"what you asked for\" are two questions, and there is no weighting here that could merge them."
+   ]
+  }
+ ],
+ "bestanden": [
+  {
+   "name": "KAND-V2-1",
+   "label": "woofer→mid 466.5 LR4 · mid→tweeter 1294 LR4"
+  },
+  {
+   "name": "KAND-V2-2",
+   "label": "woofer→mid 396.7 LR4 · mid→tweeter 1294 LR4"
+  },
+  {
+   "name": "KAND-V2-3",
+   "label": "woofer→mid 396.7 LR4 · mid→tweeter 2283.5 LR4"
+  },
+  {
+   "name": "KAND-V2-4",
+   "label": "woofer→mid 396.7 LR4 · mid→tweeter 2033.9 LR4"
+  },
+  {
+   "name": "KAND-V2-5",
+   "label": "woofer→mid 466.5 LR4 · mid→tweeter 2283.5 LR4"
+  },
+  {
+   "name": "KAND-V2-6",
+   "label": "woofer→mid 548.5 LR4 · mid→tweeter 2283.5 LR4"
+  },
+  {
+   "name": "KAND-V2-7",
+   "label": "woofer→mid 466.5 LR4 · mid→tweeter 2033.9 LR4"
+  },
+  {
+   "name": "KAND-V2-8",
+   "label": "woofer→mid 548.5 LR4 · mid→tweeter 2033.9 LR4"
+  },
+  {
+   "name": "KAND-V2-9",
+   "label": "woofer→mid 548.5 LR4 · mid→tweeter 1294 LR4"
+  }
+ ],
+ "kandidaat_herkomst": {
+  "woofer→mid 396.7 LR4 · mid→tweeter 1294 LR4": {
+   "provenance": "woofer→mid at 396.7 Hz, LR4: position 1 of 3 across the recommended band 396.7–548.5 Hz, 0.00 oct above the window floor 396.7 Hz (validity); ceiling 548.5 Hz (breakup); order 4: the order the designer stated for this handover. Kept beside the demanded one rather than instead of it — \"what the measurements require\" and \"what you asked for\" are two questions, and there is no weighting here that could merge them. | mid→tweeter at 1294 Hz, LR4: position 1 of 3 across the recommended band 1294–1327.4 Hz, -0.00 oct above the window floor 1294 Hz (fs); ceiling 2283.5 Hz (breakup); order 4: the order the designer stated for this handover. Kept beside the demanded one rather than instead of it — \"what the measurements require\" and \"what you asked for\" are two questions, and there is no weighting here that could merge them.",
+   "crossings": [
+    {
+     "pairLabel": "woofer→mid",
+     "lower": "woofer",
+     "upper": "mid",
+     "hz": 396.7,
+     "cageHz": [
+      396.7,
+      430.2
+     ],
+     "order": 4,
+     "alignment": {
+      "kind": "LR",
+      "order": 4
+     },
+     "windowHz": [
+      396.7,
+      548.5
+     ],
+     "floorBy": "validity — measurement validity (woofer far field)",
+     "ceilingBy": "breakup — first significant breakup of woofer at 1394 Hz (+3.3 dB) divided by 2.54",
+     "segmentHz": [
+      396.7,
+      548.5
+     ],
+     "position": {
+      "index": 0,
+      "count": 3,
+      "octavesAboveFloor": 0.00011642079228369464
+     },
+     "orderWhy": "order 4: the order the designer stated for this handover. Kept beside the demanded one rather than instead of it — \"what the measurements require\" and \"what you asked for\" are two questions, and there is no weighting here that could merge them.",
+     "uncalibrated": [
+      "The divisor interpolates between the published endpoints (3 severe, 2 mild); the ramp between them is uncalibrated and needs HD data (spec V6/V9). This ceiling moves if that curve does."
+     ],
+     "provenance": "woofer→mid at 396.7 Hz, LR4: position 1 of 3 across the recommended band 396.7–548.5 Hz, 0.00 oct above the window floor 396.7 Hz (validity); ceiling 548.5 Hz (breakup); order 4: the order the designer stated for this handover. Kept beside the demanded one rather than instead of it — \"what the measurements require\" and \"what you asked for\" are two questions, and there is no weighting here that could merge them."
+    },
+    {
+     "pairLabel": "mid→tweeter",
+     "lower": "mid",
+     "upper": "tweeter",
+     "hz": 1294,
+     "cageHz": [
+      1294,
+      1327.4
+     ],
+     "order": 4,
+     "alignment": {
+      "kind": "LR",
+      "order": 4
+     },
+     "windowHz": [
+      1294,
+      2283.5
+     ],
+     "floorBy": "fs — 1.4x f_s of tweeter (924 Hz) at order 4 - a steeper flank may sit closer to the resonance",
+     "ceilingBy": "breakup — first significant breakup of mid at 5690 Hz (+3.0 dB) divided by 2.49",
+     "segmentHz": [
+      1294,
+      1327.4
+     ],
+     "position": {
+      "index": 0,
+      "count": 3,
+      "octavesAboveFloor": -0.000047905543526532006
+     },
+     "orderWhy": "order 4: the order the designer stated for this handover. Kept beside the demanded one rather than instead of it — \"what the measurements require\" and \"what you asked for\" are two questions, and there is no weighting here that could merge them.",
+     "uncalibrated": [
+      "The divisor interpolates between the published endpoints (3 severe, 2 mild); the ramp between them is uncalibrated and needs HD data (spec V6/V9). This ceiling moves if that curve does."
+     ],
+     "provenance": "mid→tweeter at 1294 Hz, LR4: position 1 of 3 across the recommended band 1294–1327.4 Hz, -0.00 oct above the window floor 1294 Hz (fs); ceiling 2283.5 Hz (breakup); order 4: the order the designer stated for this handover. Kept beside the demanded one rather than instead of it — \"what the measurements require\" and \"what you asked for\" are two questions, and there is no weighting here that could merge them."
+    }
+   ]
+  },
+  "woofer→mid 396.7 LR4 · mid→tweeter 2033.9 LR4": {
+   "provenance": "woofer→mid at 396.7 Hz, LR4: position 1 of 3 across the recommended band 396.7–548.5 Hz, 0.00 oct above the window floor 396.7 Hz (validity); ceiling 548.5 Hz (breakup); order 4: the order the designer stated for this handover. Kept beside the demanded one rather than instead of it — \"what the measurements require\" and \"what you asked for\" are two questions, and there is no weighting here that could merge them. | mid→tweeter at 2033.9 Hz, LR4: position 2 of 3 across the recommended band 1858.4–2283.5 Hz, 0.65 oct above the window floor 1294 Hz (fs); ceiling 2283.5 Hz (breakup); order 4: the order the designer stated for this handover. Kept beside the demanded one rather than instead of it — \"what the measurements require\" and \"what you asked for\" are two questions, and there is no weighting here that could merge them.",
+   "crossings": [
+    {
+     "pairLabel": "woofer→mid",
+     "lower": "woofer",
+     "upper": "mid",
+     "hz": 396.7,
+     "cageHz": [
+      396.7,
+      430.2
+     ],
+     "order": 4,
+     "alignment": {
+      "kind": "LR",
+      "order": 4
+     },
+     "windowHz": [
+      396.7,
+      548.5
+     ],
+     "floorBy": "validity — measurement validity (woofer far field)",
+     "ceilingBy": "breakup — first significant breakup of woofer at 1394 Hz (+3.3 dB) divided by 2.54",
+     "segmentHz": [
+      396.7,
+      548.5
+     ],
+     "position": {
+      "index": 0,
+      "count": 3,
+      "octavesAboveFloor": 0.00011642079228369464
+     },
+     "orderWhy": "order 4: the order the designer stated for this handover. Kept beside the demanded one rather than instead of it — \"what the measurements require\" and \"what you asked for\" are two questions, and there is no weighting here that could merge them.",
+     "uncalibrated": [
+      "The divisor interpolates between the published endpoints (3 severe, 2 mild); the ramp between them is uncalibrated and needs HD data (spec V6/V9). This ceiling moves if that curve does."
+     ],
+     "provenance": "woofer→mid at 396.7 Hz, LR4: position 1 of 3 across the recommended band 396.7–548.5 Hz, 0.00 oct above the window floor 396.7 Hz (validity); ceiling 548.5 Hz (breakup); order 4: the order the designer stated for this handover. Kept beside the demanded one rather than instead of it — \"what the measurements require\" and \"what you asked for\" are two questions, and there is no weighting here that could merge them."
+    },
+    {
+     "pairLabel": "mid→tweeter",
+     "lower": "mid",
+     "upper": "tweeter",
+     "hz": 2033.9,
+     "cageHz": [
+      1919.6,
+      2155.1
+     ],
+     "order": 4,
+     "alignment": {
+      "kind": "LR",
+      "order": 4
+     },
+     "windowHz": [
+      1294,
+      2283.5
+     ],
+     "floorBy": "fs — 1.4x f_s of tweeter (924 Hz) at order 4 - a steeper flank may sit closer to the resonance",
+     "ceilingBy": "breakup — first significant breakup of mid at 5690 Hz (+3.0 dB) divided by 2.49",
+     "segmentHz": [
+      1858.4,
+      2283.5
+     ],
+     "position": {
+      "index": 1,
+      "count": 3,
+      "octavesAboveFloor": 0.6523632256180969
+     },
+     "orderWhy": "order 4: the order the designer stated for this handover. Kept beside the demanded one rather than instead of it — \"what the measurements require\" and \"what you asked for\" are two questions, and there is no weighting here that could merge them.",
+     "uncalibrated": [
+      "The divisor interpolates between the published endpoints (3 severe, 2 mild); the ramp between them is uncalibrated and needs HD data (spec V6/V9). This ceiling moves if that curve does."
+     ],
+     "provenance": "mid→tweeter at 2033.9 Hz, LR4: position 2 of 3 across the recommended band 1858.4–2283.5 Hz, 0.65 oct above the window floor 1294 Hz (fs); ceiling 2283.5 Hz (breakup); order 4: the order the designer stated for this handover. Kept beside the demanded one rather than instead of it — \"what the measurements require\" and \"what you asked for\" are two questions, and there is no weighting here that could merge them."
+    }
+   ]
+  },
+  "woofer→mid 396.7 LR4 · mid→tweeter 2283.5 LR4": {
+   "provenance": "woofer→mid at 396.7 Hz, LR4: position 1 of 3 across the recommended band 396.7–548.5 Hz, 0.00 oct above the window floor 396.7 Hz (validity); ceiling 548.5 Hz (breakup); order 4: the order the designer stated for this handover. Kept beside the demanded one rather than instead of it — \"what the measurements require\" and \"what you asked for\" are two questions, and there is no weighting here that could merge them. | mid→tweeter at 2283.5 Hz, LR4: position 3 of 3 across the recommended band 1858.4–2283.5 Hz, 0.82 oct above the window floor 1294 Hz (fs); ceiling 2283.5 Hz (breakup); order 4: the order the designer stated for this handover. Kept beside the demanded one rather than instead of it — \"what the measurements require\" and \"what you asked for\" are two questions, and there is no weighting here that could merge them.",
+   "crossings": [
+    {
+     "pairLabel": "woofer→mid",
+     "lower": "woofer",
+     "upper": "mid",
+     "hz": 396.7,
+     "cageHz": [
+      396.7,
+      430.2
+     ],
+     "order": 4,
+     "alignment": {
+      "kind": "LR",
+      "order": 4
+     },
+     "windowHz": [
+      396.7,
+      548.5
+     ],
+     "floorBy": "validity — measurement validity (woofer far field)",
+     "ceilingBy": "breakup — first significant breakup of woofer at 1394 Hz (+3.3 dB) divided by 2.54",
+     "segmentHz": [
+      396.7,
+      548.5
+     ],
+     "position": {
+      "index": 0,
+      "count": 3,
+      "octavesAboveFloor": 0.00011642079228369464
+     },
+     "orderWhy": "order 4: the order the designer stated for this handover. Kept beside the demanded one rather than instead of it — \"what the measurements require\" and \"what you asked for\" are two questions, and there is no weighting here that could merge them.",
+     "uncalibrated": [
+      "The divisor interpolates between the published endpoints (3 severe, 2 mild); the ramp between them is uncalibrated and needs HD data (spec V6/V9). This ceiling moves if that curve does."
+     ],
+     "provenance": "woofer→mid at 396.7 Hz, LR4: position 1 of 3 across the recommended band 396.7–548.5 Hz, 0.00 oct above the window floor 396.7 Hz (validity); ceiling 548.5 Hz (breakup); order 4: the order the designer stated for this handover. Kept beside the demanded one rather than instead of it — \"what the measurements require\" and \"what you asked for\" are two questions, and there is no weighting here that could merge them."
+    },
+    {
+     "pairLabel": "mid→tweeter",
+     "lower": "mid",
+     "upper": "tweeter",
+     "hz": 2283.5,
+     "cageHz": [
+      2155.1,
+      2283.5
+     ],
+     "order": 4,
+     "alignment": {
+      "kind": "LR",
+      "order": 4
+     },
+     "windowHz": [
+      1294,
+      2283.5
+     ],
+     "floorBy": "fs — 1.4x f_s of tweeter (924 Hz) at order 4 - a steeper flank may sit closer to the resonance",
+     "ceilingBy": "breakup — first significant breakup of mid at 5690 Hz (+3.0 dB) divided by 2.49",
+     "segmentHz": [
+      1858.4,
+      2283.5
+     ],
+     "position": {
+      "index": 2,
+      "count": 3,
+      "octavesAboveFloor": 0.8193612668423201
+     },
+     "orderWhy": "order 4: the order the designer stated for this handover. Kept beside the demanded one rather than instead of it — \"what the measurements require\" and \"what you asked for\" are two questions, and there is no weighting here that could merge them.",
+     "uncalibrated": [
+      "The divisor interpolates between the published endpoints (3 severe, 2 mild); the ramp between them is uncalibrated and needs HD data (spec V6/V9). This ceiling moves if that curve does."
+     ],
+     "provenance": "mid→tweeter at 2283.5 Hz, LR4: position 3 of 3 across the recommended band 1858.4–2283.5 Hz, 0.82 oct above the window floor 1294 Hz (fs); ceiling 2283.5 Hz (breakup); order 4: the order the designer stated for this handover. Kept beside the demanded one rather than instead of it — \"what the measurements require\" and \"what you asked for\" are two questions, and there is no weighting here that could merge them."
+    }
+   ]
+  },
+  "woofer→mid 466.5 LR4 · mid→tweeter 1294 LR4": {
+   "provenance": "woofer→mid at 466.5 Hz, LR4: position 2 of 3 across the recommended band 396.7–548.5 Hz, 0.23 oct above the window floor 396.7 Hz (validity); ceiling 548.5 Hz (breakup); order 4: the order the designer stated for this handover. Kept beside the demanded one rather than instead of it — \"what the measurements require\" and \"what you asked for\" are two questions, and there is no weighting here that could merge them. | mid→tweeter at 1294 Hz, LR4: position 1 of 3 across the recommended band 1294–1327.4 Hz, -0.00 oct above the window floor 1294 Hz (fs); ceiling 2283.5 Hz (breakup); order 4: the order the designer stated for this handover. Kept beside the demanded one rather than instead of it — \"what the measurements require\" and \"what you asked for\" are two questions, and there is no weighting here that could merge them.",
+   "crossings": [
+    {
+     "pairLabel": "woofer→mid",
+     "lower": "woofer",
+     "upper": "mid",
+     "hz": 466.5,
+     "cageHz": [
+      430.2,
+      505.8
+     ],
+     "order": 4,
+     "alignment": {
+      "kind": "LR",
+      "order": 4
+     },
+     "windowHz": [
+      396.7,
+      548.5
+     ],
+     "floorBy": "validity — measurement validity (woofer far field)",
+     "ceilingBy": "breakup — first significant breakup of woofer at 1394 Hz (+3.3 dB) divided by 2.54",
+     "segmentHz": [
+      396.7,
+      548.5
+     ],
+     "position": {
+      "index": 1,
+      "count": 3,
+      "octavesAboveFloor": 0.23394510438612415
+     },
+     "orderWhy": "order 4: the order the designer stated for this handover. Kept beside the demanded one rather than instead of it — \"what the measurements require\" and \"what you asked for\" are two questions, and there is no weighting here that could merge them.",
+     "uncalibrated": [
+      "The divisor interpolates between the published endpoints (3 severe, 2 mild); the ramp between them is uncalibrated and needs HD data (spec V6/V9). This ceiling moves if that curve does."
+     ],
+     "provenance": "woofer→mid at 466.5 Hz, LR4: position 2 of 3 across the recommended band 396.7–548.5 Hz, 0.23 oct above the window floor 396.7 Hz (validity); ceiling 548.5 Hz (breakup); order 4: the order the designer stated for this handover. Kept beside the demanded one rather than instead of it — \"what the measurements require\" and \"what you asked for\" are two questions, and there is no weighting here that could merge them."
+    },
+    {
+     "pairLabel": "mid→tweeter",
+     "lower": "mid",
+     "upper": "tweeter",
+     "hz": 1294,
+     "cageHz": [
+      1294,
+      1327.4
+     ],
+     "order": 4,
+     "alignment": {
+      "kind": "LR",
+      "order": 4
+     },
+     "windowHz": [
+      1294,
+      2283.5
+     ],
+     "floorBy": "fs — 1.4x f_s of tweeter (924 Hz) at order 4 - a steeper flank may sit closer to the resonance",
+     "ceilingBy": "breakup — first significant breakup of mid at 5690 Hz (+3.0 dB) divided by 2.49",
+     "segmentHz": [
+      1294,
+      1327.4
+     ],
+     "position": {
+      "index": 0,
+      "count": 3,
+      "octavesAboveFloor": -0.000047905543526532006
+     },
+     "orderWhy": "order 4: the order the designer stated for this handover. Kept beside the demanded one rather than instead of it — \"what the measurements require\" and \"what you asked for\" are two questions, and there is no weighting here that could merge them.",
+     "uncalibrated": [
+      "The divisor interpolates between the published endpoints (3 severe, 2 mild); the ramp between them is uncalibrated and needs HD data (spec V6/V9). This ceiling moves if that curve does."
+     ],
+     "provenance": "mid→tweeter at 1294 Hz, LR4: position 1 of 3 across the recommended band 1294–1327.4 Hz, -0.00 oct above the window floor 1294 Hz (fs); ceiling 2283.5 Hz (breakup); order 4: the order the designer stated for this handover. Kept beside the demanded one rather than instead of it — \"what the measurements require\" and \"what you asked for\" are two questions, and there is no weighting here that could merge them."
+    }
+   ]
+  },
+  "woofer→mid 466.5 LR4 · mid→tweeter 2033.9 LR4": {
+   "provenance": "woofer→mid at 466.5 Hz, LR4: position 2 of 3 across the recommended band 396.7–548.5 Hz, 0.23 oct above the window floor 396.7 Hz (validity); ceiling 548.5 Hz (breakup); order 4: the order the designer stated for this handover. Kept beside the demanded one rather than instead of it — \"what the measurements require\" and \"what you asked for\" are two questions, and there is no weighting here that could merge them. | mid→tweeter at 2033.9 Hz, LR4: position 2 of 3 across the recommended band 1858.4–2283.5 Hz, 0.65 oct above the window floor 1294 Hz (fs); ceiling 2283.5 Hz (breakup); order 4: the order the designer stated for this handover. Kept beside the demanded one rather than instead of it — \"what the measurements require\" and \"what you asked for\" are two questions, and there is no weighting here that could merge them.",
+   "crossings": [
+    {
+     "pairLabel": "woofer→mid",
+     "lower": "woofer",
+     "upper": "mid",
+     "hz": 466.5,
+     "cageHz": [
+      430.2,
+      505.8
+     ],
+     "order": 4,
+     "alignment": {
+      "kind": "LR",
+      "order": 4
+     },
+     "windowHz": [
+      396.7,
+      548.5
+     ],
+     "floorBy": "validity — measurement validity (woofer far field)",
+     "ceilingBy": "breakup — first significant breakup of woofer at 1394 Hz (+3.3 dB) divided by 2.54",
+     "segmentHz": [
+      396.7,
+      548.5
+     ],
+     "position": {
+      "index": 1,
+      "count": 3,
+      "octavesAboveFloor": 0.23394510438612415
+     },
+     "orderWhy": "order 4: the order the designer stated for this handover. Kept beside the demanded one rather than instead of it — \"what the measurements require\" and \"what you asked for\" are two questions, and there is no weighting here that could merge them.",
+     "uncalibrated": [
+      "The divisor interpolates between the published endpoints (3 severe, 2 mild); the ramp between them is uncalibrated and needs HD data (spec V6/V9). This ceiling moves if that curve does."
+     ],
+     "provenance": "woofer→mid at 466.5 Hz, LR4: position 2 of 3 across the recommended band 396.7–548.5 Hz, 0.23 oct above the window floor 396.7 Hz (validity); ceiling 548.5 Hz (breakup); order 4: the order the designer stated for this handover. Kept beside the demanded one rather than instead of it — \"what the measurements require\" and \"what you asked for\" are two questions, and there is no weighting here that could merge them."
+    },
+    {
+     "pairLabel": "mid→tweeter",
+     "lower": "mid",
+     "upper": "tweeter",
+     "hz": 2033.9,
+     "cageHz": [
+      1919.6,
+      2155.1
+     ],
+     "order": 4,
+     "alignment": {
+      "kind": "LR",
+      "order": 4
+     },
+     "windowHz": [
+      1294,
+      2283.5
+     ],
+     "floorBy": "fs — 1.4x f_s of tweeter (924 Hz) at order 4 - a steeper flank may sit closer to the resonance",
+     "ceilingBy": "breakup — first significant breakup of mid at 5690 Hz (+3.0 dB) divided by 2.49",
+     "segmentHz": [
+      1858.4,
+      2283.5
+     ],
+     "position": {
+      "index": 1,
+      "count": 3,
+      "octavesAboveFloor": 0.6523632256180969
+     },
+     "orderWhy": "order 4: the order the designer stated for this handover. Kept beside the demanded one rather than instead of it — \"what the measurements require\" and \"what you asked for\" are two questions, and there is no weighting here that could merge them.",
+     "uncalibrated": [
+      "The divisor interpolates between the published endpoints (3 severe, 2 mild); the ramp between them is uncalibrated and needs HD data (spec V6/V9). This ceiling moves if that curve does."
+     ],
+     "provenance": "mid→tweeter at 2033.9 Hz, LR4: position 2 of 3 across the recommended band 1858.4–2283.5 Hz, 0.65 oct above the window floor 1294 Hz (fs); ceiling 2283.5 Hz (breakup); order 4: the order the designer stated for this handover. Kept beside the demanded one rather than instead of it — \"what the measurements require\" and \"what you asked for\" are two questions, and there is no weighting here that could merge them."
+    }
+   ]
+  },
+  "woofer→mid 466.5 LR4 · mid→tweeter 2283.5 LR4": {
+   "provenance": "woofer→mid at 466.5 Hz, LR4: position 2 of 3 across the recommended band 396.7–548.5 Hz, 0.23 oct above the window floor 396.7 Hz (validity); ceiling 548.5 Hz (breakup); order 4: the order the designer stated for this handover. Kept beside the demanded one rather than instead of it — \"what the measurements require\" and \"what you asked for\" are two questions, and there is no weighting here that could merge them. | mid→tweeter at 2283.5 Hz, LR4: position 3 of 3 across the recommended band 1858.4–2283.5 Hz, 0.82 oct above the window floor 1294 Hz (fs); ceiling 2283.5 Hz (breakup); order 4: the order the designer stated for this handover. Kept beside the demanded one rather than instead of it — \"what the measurements require\" and \"what you asked for\" are two questions, and there is no weighting here that could merge them.",
+   "crossings": [
+    {
+     "pairLabel": "woofer→mid",
+     "lower": "woofer",
+     "upper": "mid",
+     "hz": 466.5,
+     "cageHz": [
+      430.2,
+      505.8
+     ],
+     "order": 4,
+     "alignment": {
+      "kind": "LR",
+      "order": 4
+     },
+     "windowHz": [
+      396.7,
+      548.5
+     ],
+     "floorBy": "validity — measurement validity (woofer far field)",
+     "ceilingBy": "breakup — first significant breakup of woofer at 1394 Hz (+3.3 dB) divided by 2.54",
+     "segmentHz": [
+      396.7,
+      548.5
+     ],
+     "position": {
+      "index": 1,
+      "count": 3,
+      "octavesAboveFloor": 0.23394510438612415
+     },
+     "orderWhy": "order 4: the order the designer stated for this handover. Kept beside the demanded one rather than instead of it — \"what the measurements require\" and \"what you asked for\" are two questions, and there is no weighting here that could merge them.",
+     "uncalibrated": [
+      "The divisor interpolates between the published endpoints (3 severe, 2 mild); the ramp between them is uncalibrated and needs HD data (spec V6/V9). This ceiling moves if that curve does."
+     ],
+     "provenance": "woofer→mid at 466.5 Hz, LR4: position 2 of 3 across the recommended band 396.7–548.5 Hz, 0.23 oct above the window floor 396.7 Hz (validity); ceiling 548.5 Hz (breakup); order 4: the order the designer stated for this handover. Kept beside the demanded one rather than instead of it — \"what the measurements require\" and \"what you asked for\" are two questions, and there is no weighting here that could merge them."
+    },
+    {
+     "pairLabel": "mid→tweeter",
+     "lower": "mid",
+     "upper": "tweeter",
+     "hz": 2283.5,
+     "cageHz": [
+      2155.1,
+      2283.5
+     ],
+     "order": 4,
+     "alignment": {
+      "kind": "LR",
+      "order": 4
+     },
+     "windowHz": [
+      1294,
+      2283.5
+     ],
+     "floorBy": "fs — 1.4x f_s of tweeter (924 Hz) at order 4 - a steeper flank may sit closer to the resonance",
+     "ceilingBy": "breakup — first significant breakup of mid at 5690 Hz (+3.0 dB) divided by 2.49",
+     "segmentHz": [
+      1858.4,
+      2283.5
+     ],
+     "position": {
+      "index": 2,
+      "count": 3,
+      "octavesAboveFloor": 0.8193612668423201
+     },
+     "orderWhy": "order 4: the order the designer stated for this handover. Kept beside the demanded one rather than instead of it — \"what the measurements require\" and \"what you asked for\" are two questions, and there is no weighting here that could merge them.",
+     "uncalibrated": [
+      "The divisor interpolates between the published endpoints (3 severe, 2 mild); the ramp between them is uncalibrated and needs HD data (spec V6/V9). This ceiling moves if that curve does."
+     ],
+     "provenance": "mid→tweeter at 2283.5 Hz, LR4: position 3 of 3 across the recommended band 1858.4–2283.5 Hz, 0.82 oct above the window floor 1294 Hz (fs); ceiling 2283.5 Hz (breakup); order 4: the order the designer stated for this handover. Kept beside the demanded one rather than instead of it — \"what the measurements require\" and \"what you asked for\" are two questions, and there is no weighting here that could merge them."
+    }
+   ]
+  },
+  "woofer→mid 548.5 LR4 · mid→tweeter 1294 LR4": {
+   "provenance": "woofer→mid at 548.5 Hz, LR4: position 3 of 3 across the recommended band 396.7–548.5 Hz, 0.47 oct above the window floor 396.7 Hz (validity); ceiling 548.5 Hz (breakup); order 4: the order the designer stated for this handover. Kept beside the demanded one rather than instead of it — \"what the measurements require\" and \"what you asked for\" are two questions, and there is no weighting here that could merge them. | mid→tweeter at 1294 Hz, LR4: position 1 of 3 across the recommended band 1294–1327.4 Hz, -0.00 oct above the window floor 1294 Hz (fs); ceiling 2283.5 Hz (breakup); order 4: the order the designer stated for this handover. Kept beside the demanded one rather than instead of it — \"what the measurements require\" and \"what you asked for\" are two questions, and there is no weighting here that could merge them.",
+   "crossings": [
+    {
+     "pairLabel": "woofer→mid",
+     "lower": "woofer",
+     "upper": "mid",
+     "hz": 548.5,
+     "cageHz": [
+      505.8,
+      548.5
+     ],
+     "order": 4,
+     "alignment": {
+      "kind": "LR",
+      "order": 4
+     },
+     "windowHz": [
+      396.7,
+      548.5
+     ],
+     "floorBy": "validity — measurement validity (woofer far field)",
+     "ceilingBy": "breakup — first significant breakup of woofer at 1394 Hz (+3.3 dB) divided by 2.54",
+     "segmentHz": [
+      396.7,
+      548.5
+     ],
+     "position": {
+      "index": 2,
+      "count": 3,
+      "octavesAboveFloor": 0.46755964393755844
+     },
+     "orderWhy": "order 4: the order the designer stated for this handover. Kept beside the demanded one rather than instead of it — \"what the measurements require\" and \"what you asked for\" are two questions, and there is no weighting here that could merge them.",
+     "uncalibrated": [
+      "The divisor interpolates between the published endpoints (3 severe, 2 mild); the ramp between them is uncalibrated and needs HD data (spec V6/V9). This ceiling moves if that curve does."
+     ],
+     "provenance": "woofer→mid at 548.5 Hz, LR4: position 3 of 3 across the recommended band 396.7–548.5 Hz, 0.47 oct above the window floor 396.7 Hz (validity); ceiling 548.5 Hz (breakup); order 4: the order the designer stated for this handover. Kept beside the demanded one rather than instead of it — \"what the measurements require\" and \"what you asked for\" are two questions, and there is no weighting here that could merge them."
+    },
+    {
+     "pairLabel": "mid→tweeter",
+     "lower": "mid",
+     "upper": "tweeter",
+     "hz": 1294,
+     "cageHz": [
+      1294,
+      1327.4
+     ],
+     "order": 4,
+     "alignment": {
+      "kind": "LR",
+      "order": 4
+     },
+     "windowHz": [
+      1294,
+      2283.5
+     ],
+     "floorBy": "fs — 1.4x f_s of tweeter (924 Hz) at order 4 - a steeper flank may sit closer to the resonance",
+     "ceilingBy": "breakup — first significant breakup of mid at 5690 Hz (+3.0 dB) divided by 2.49",
+     "segmentHz": [
+      1294,
+      1327.4
+     ],
+     "position": {
+      "index": 0,
+      "count": 3,
+      "octavesAboveFloor": -0.000047905543526532006
+     },
+     "orderWhy": "order 4: the order the designer stated for this handover. Kept beside the demanded one rather than instead of it — \"what the measurements require\" and \"what you asked for\" are two questions, and there is no weighting here that could merge them.",
+     "uncalibrated": [
+      "The divisor interpolates between the published endpoints (3 severe, 2 mild); the ramp between them is uncalibrated and needs HD data (spec V6/V9). This ceiling moves if that curve does."
+     ],
+     "provenance": "mid→tweeter at 1294 Hz, LR4: position 1 of 3 across the recommended band 1294–1327.4 Hz, -0.00 oct above the window floor 1294 Hz (fs); ceiling 2283.5 Hz (breakup); order 4: the order the designer stated for this handover. Kept beside the demanded one rather than instead of it — \"what the measurements require\" and \"what you asked for\" are two questions, and there is no weighting here that could merge them."
+    }
+   ]
+  },
+  "woofer→mid 548.5 LR4 · mid→tweeter 2033.9 LR4": {
+   "provenance": "woofer→mid at 548.5 Hz, LR4: position 3 of 3 across the recommended band 396.7–548.5 Hz, 0.47 oct above the window floor 396.7 Hz (validity); ceiling 548.5 Hz (breakup); order 4: the order the designer stated for this handover. Kept beside the demanded one rather than instead of it — \"what the measurements require\" and \"what you asked for\" are two questions, and there is no weighting here that could merge them. | mid→tweeter at 2033.9 Hz, LR4: position 2 of 3 across the recommended band 1858.4–2283.5 Hz, 0.65 oct above the window floor 1294 Hz (fs); ceiling 2283.5 Hz (breakup); order 4: the order the designer stated for this handover. Kept beside the demanded one rather than instead of it — \"what the measurements require\" and \"what you asked for\" are two questions, and there is no weighting here that could merge them.",
+   "crossings": [
+    {
+     "pairLabel": "woofer→mid",
+     "lower": "woofer",
+     "upper": "mid",
+     "hz": 548.5,
+     "cageHz": [
+      505.8,
+      548.5
+     ],
+     "order": 4,
+     "alignment": {
+      "kind": "LR",
+      "order": 4
+     },
+     "windowHz": [
+      396.7,
+      548.5
+     ],
+     "floorBy": "validity — measurement validity (woofer far field)",
+     "ceilingBy": "breakup — first significant breakup of woofer at 1394 Hz (+3.3 dB) divided by 2.54",
+     "segmentHz": [
+      396.7,
+      548.5
+     ],
+     "position": {
+      "index": 2,
+      "count": 3,
+      "octavesAboveFloor": 0.46755964393755844
+     },
+     "orderWhy": "order 4: the order the designer stated for this handover. Kept beside the demanded one rather than instead of it — \"what the measurements require\" and \"what you asked for\" are two questions, and there is no weighting here that could merge them.",
+     "uncalibrated": [
+      "The divisor interpolates between the published endpoints (3 severe, 2 mild); the ramp between them is uncalibrated and needs HD data (spec V6/V9). This ceiling moves if that curve does."
+     ],
+     "provenance": "woofer→mid at 548.5 Hz, LR4: position 3 of 3 across the recommended band 396.7–548.5 Hz, 0.47 oct above the window floor 396.7 Hz (validity); ceiling 548.5 Hz (breakup); order 4: the order the designer stated for this handover. Kept beside the demanded one rather than instead of it — \"what the measurements require\" and \"what you asked for\" are two questions, and there is no weighting here that could merge them."
+    },
+    {
+     "pairLabel": "mid→tweeter",
+     "lower": "mid",
+     "upper": "tweeter",
+     "hz": 2033.9,
+     "cageHz": [
+      1919.6,
+      2155.1
+     ],
+     "order": 4,
+     "alignment": {
+      "kind": "LR",
+      "order": 4
+     },
+     "windowHz": [
+      1294,
+      2283.5
+     ],
+     "floorBy": "fs — 1.4x f_s of tweeter (924 Hz) at order 4 - a steeper flank may sit closer to the resonance",
+     "ceilingBy": "breakup — first significant breakup of mid at 5690 Hz (+3.0 dB) divided by 2.49",
+     "segmentHz": [
+      1858.4,
+      2283.5
+     ],
+     "position": {
+      "index": 1,
+      "count": 3,
+      "octavesAboveFloor": 0.6523632256180969
+     },
+     "orderWhy": "order 4: the order the designer stated for this handover. Kept beside the demanded one rather than instead of it — \"what the measurements require\" and \"what you asked for\" are two questions, and there is no weighting here that could merge them.",
+     "uncalibrated": [
+      "The divisor interpolates between the published endpoints (3 severe, 2 mild); the ramp between them is uncalibrated and needs HD data (spec V6/V9). This ceiling moves if that curve does."
+     ],
+     "provenance": "mid→tweeter at 2033.9 Hz, LR4: position 2 of 3 across the recommended band 1858.4–2283.5 Hz, 0.65 oct above the window floor 1294 Hz (fs); ceiling 2283.5 Hz (breakup); order 4: the order the designer stated for this handover. Kept beside the demanded one rather than instead of it — \"what the measurements require\" and \"what you asked for\" are two questions, and there is no weighting here that could merge them."
+    }
+   ]
+  },
+  "woofer→mid 548.5 LR4 · mid→tweeter 2283.5 LR4": {
+   "provenance": "woofer→mid at 548.5 Hz, LR4: position 3 of 3 across the recommended band 396.7–548.5 Hz, 0.47 oct above the window floor 396.7 Hz (validity); ceiling 548.5 Hz (breakup); order 4: the order the designer stated for this handover. Kept beside the demanded one rather than instead of it — \"what the measurements require\" and \"what you asked for\" are two questions, and there is no weighting here that could merge them. | mid→tweeter at 2283.5 Hz, LR4: position 3 of 3 across the recommended band 1858.4–2283.5 Hz, 0.82 oct above the window floor 1294 Hz (fs); ceiling 2283.5 Hz (breakup); order 4: the order the designer stated for this handover. Kept beside the demanded one rather than instead of it — \"what the measurements require\" and \"what you asked for\" are two questions, and there is no weighting here that could merge them.",
+   "crossings": [
+    {
+     "pairLabel": "woofer→mid",
+     "lower": "woofer",
+     "upper": "mid",
+     "hz": 548.5,
+     "cageHz": [
+      505.8,
+      548.5
+     ],
+     "order": 4,
+     "alignment": {
+      "kind": "LR",
+      "order": 4
+     },
+     "windowHz": [
+      396.7,
+      548.5
+     ],
+     "floorBy": "validity — measurement validity (woofer far field)",
+     "ceilingBy": "breakup — first significant breakup of woofer at 1394 Hz (+3.3 dB) divided by 2.54",
+     "segmentHz": [
+      396.7,
+      548.5
+     ],
+     "position": {
+      "index": 2,
+      "count": 3,
+      "octavesAboveFloor": 0.46755964393755844
+     },
+     "orderWhy": "order 4: the order the designer stated for this handover. Kept beside the demanded one rather than instead of it — \"what the measurements require\" and \"what you asked for\" are two questions, and there is no weighting here that could merge them.",
+     "uncalibrated": [
+      "The divisor interpolates between the published endpoints (3 severe, 2 mild); the ramp between them is uncalibrated and needs HD data (spec V6/V9). This ceiling moves if that curve does."
+     ],
+     "provenance": "woofer→mid at 548.5 Hz, LR4: position 3 of 3 across the recommended band 396.7–548.5 Hz, 0.47 oct above the window floor 396.7 Hz (validity); ceiling 548.5 Hz (breakup); order 4: the order the designer stated for this handover. Kept beside the demanded one rather than instead of it — \"what the measurements require\" and \"what you asked for\" are two questions, and there is no weighting here that could merge them."
+    },
+    {
+     "pairLabel": "mid→tweeter",
+     "lower": "mid",
+     "upper": "tweeter",
+     "hz": 2283.5,
+     "cageHz": [
+      2155.1,
+      2283.5
+     ],
+     "order": 4,
+     "alignment": {
+      "kind": "LR",
+      "order": 4
+     },
+     "windowHz": [
+      1294,
+      2283.5
+     ],
+     "floorBy": "fs — 1.4x f_s of tweeter (924 Hz) at order 4 - a steeper flank may sit closer to the resonance",
+     "ceilingBy": "breakup — first significant breakup of mid at 5690 Hz (+3.0 dB) divided by 2.49",
+     "segmentHz": [
+      1858.4,
+      2283.5
+     ],
+     "position": {
+      "index": 2,
+      "count": 3,
+      "octavesAboveFloor": 0.8193612668423201
+     },
+     "orderWhy": "order 4: the order the designer stated for this handover. Kept beside the demanded one rather than instead of it — \"what the measurements require\" and \"what you asked for\" are two questions, and there is no weighting here that could merge them.",
+     "uncalibrated": [
+      "The divisor interpolates between the published endpoints (3 severe, 2 mild); the ramp between them is uncalibrated and needs HD data (spec V6/V9). This ceiling moves if that curve does."
+     ],
+     "provenance": "mid→tweeter at 2283.5 Hz, LR4: position 3 of 3 across the recommended band 1858.4–2283.5 Hz, 0.82 oct above the window floor 1294 Hz (fs); ceiling 2283.5 Hz (breakup); order 4: the order the designer stated for this handover. Kept beside the demanded one rather than instead of it — \"what the measurements require\" and \"what you asked for\" are two questions, and there is no weighting here that could merge them."
+    }
+   ]
+  }
+ }
+}

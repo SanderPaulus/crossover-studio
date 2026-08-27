@@ -200,6 +200,31 @@ Combinaties van reeds afgeleide parameters die ontwerpruimte afbakenen vóórdat
 
 Niet extraheerbaar uit SPL alleen (documenteren in de UI): vervorming (HD-sweep vereist), echte verticale polars per driver, absolute max-SPL/excursiegrenzen (vereist gedocumenteerde meetspanning en -afstand plus Sd/Xmax).
 
+### A5d.8. Kandidaatgeneratie — de pre-design-laag levert het VELD
+
+*Toegevoegd 27-08-2026 (F4d). Algemeen geformuleerd: de regels gelden voor elk aantal wegen, elke meetset en elke topologie-bibliotheek. De uitkomst op één project is een casusboek-entry, geen onderdeel van deze specificatie.*
+
+A5d.1 t/m A5d.7 bakenen de ontwerpruimte af. Zolang die afbakening alleen gerapporteerd wordt, is de engine een **vetorecht met een rapportagelaag**: zij kan een netwerk afkeuren en componentwaarden begrenzen, maar niet voorstellen wáár de overname hoort — terwijl zij dat als enige uit de metingen afleidt. Kandidaatgeneratie sluit die naad. Zij hoort in A5d en nergens anders: A5d is pre-design, A5e is de run, en een kandidaat is per definitie het ding dat vóór de run bestaat.
+
+**De uitvoer.** Per aangrenzend wegenpaar een reeks kandidaat-overnames; als geheel het cartesisch product daarover, plus per kandidaat een volledige verklaring over élke instelling die de zoektocht aanneemt (A3j). Een kandidaat is dus geen frequentie maar een **beschrijving van een zoekvraag**.
+
+**De vijf regels waaraan de reeks moet voldoen.**
+
+1. **Spreiding in OCTAAF-afstand, niet clustering.** De posities dekken de aanbevolen band gelijkmatig in log-frequentie. Een veld dat het midden van een venster fijn bemonstert en de randen niet, heeft al besloten dat het midden beter is — precies het oordeel dat A5e.1 deze laag verbiedt. Waar de aanbevolen band uit meerdere segmenten bestaat (de slechtste lobing-zone is eruit gesneden) loopt de spreiding over de **aaneengeschakelde** octaafafstand van de segmenten, zodat een breed segment naar rato meer posities krijgt en de weggesneden zone er geen consumeert.
+2. **Het AANTAL is afgeleid, niet gekozen.** Twee overnames die dichter bij elkaar liggen dan de gladding waarop de acceptatie oordeelt, leveren ontwerpen op die dat oordeel niet uit elkaar kan houden; die breedte is dus de fijnste zinvolle stap. Het aantal is wat erin past. Een smal venster krijgt daardoor mínder kandidaten — omdat het minder onderscheidbare antwoorden HEEFT, wat informatie is en geen tekortkoming.
+3. **De orde per flank komt uit de orde-afleiding (A5d.3), en meerdere toegestane orden zijn aparte KANDIDATEN.** Nooit een gewogen compromis: er bestaat geen orde drieënhalf. Waar geen enkele regel gewapend is en de ontwerper niets gesteld heeft, ONTHOUDT de afleiding zich — en onthouding betekent niet "orde 1" en niet "orde 4" maar: elke bouwbare orde is een eigen kandidaat. Een engine zonder mening biedt het veld aan; zij kiest niet stilletjes.
+   *Gevolg dat vaak wordt overgeslagen:* het venster is een FUNCTIE van de orde (de vloer is k·f_s met k dalend naarmate de flank steiler wordt), dus het venster wordt **per orde opnieuw afgeleid**. Eén venster met vier orden erin zou drie ervan onder een vloer plaatsen die voor een ander is berekend.
+4. **Niets buiten de meetgeldigheid. Ooit.** De posities worden uit de aanbevolen band gesneden, en die is per constructie een deelverzameling van het haalbare venster. Een kandidaat buiten het venster is daarmee niet iets dat de generator weigert op te leveren, maar iets dat zij niet kan uitdrukken. De relaxatie-ladder (A5e.1) mag later een SMAAK-eis verruimen; zij mag nooit de meetgeldigheid verruimen, en deze laag evenmin.
+5. **Elke kandidaat draagt zijn herkomst.** Uit welk venster, welk segment van de aanbevolen band, de hoeveelste positie daarin, hoeveel octaven boven de vloer, welke limiet die vloer en dat plafond zette, en welke regel de orde bepaalde. Een shortlist-rij die een ontwerper niet kan toeschrijven is een rij waar hij niet naar kan handelen — en het hele argument om kandidaatgeneratie hierheen te halen is dat déze kandidaten kunnen zeggen waar zij vandaan komen.
+
+**Kosten en dunnen.** Het afgeleide veld kan groter zijn dan wat een ontwerper wil betalen. Dan worden **posities** gedund en **orden nooit**: een positie is een steekproef uit een continuüm, een orde is een keuze, en een keuze laten vallen om een budget te halen beantwoordt een vraag die openstond. Wat gedund is wordt gemeld, met beide aantallen erbij — een stilzwijgende afkapping leest als volledige dekking.
+
+**Verhouding tot de tuner.** De generator vervangt geen optimizer. Zij levert het WAT; de bestaande waarde-optimalisatie doet het HOE binnen die keuze (A3j). Dat is ook de reden dat de kandidaat zijn keuzes expliciet meestuurt: zodra twee engines dezelfde tuner delen, trekt een overgeërfde keuze-instelling de kandidaat stil terug naar het ontwerp van de ándere engine.
+
+**Verhouding tot A5e.4.** Een veld van kandidaten is diversiteit die BESLOTEN is. Gejitterde startpunten zijn diversiteit die getrókken is. Onder satisficing is alleen de eerste bruikbaar, want een shortlist spreidt over topologie-klassen en een gejitterde start heeft geen topologie gekozen. Waar beide bestaan is de kandidaat de bron van spreiding en is de seed een reproduceerbaarheids-instelling die aan geen enkel oordeel deelneemt — wat hij volgens A5e.4 sowieso al was.
+
+**Twee vloeren, twee vragen — en geen automatische verzoening.** Een app met een oudere ontwerplaag kan een tweede ondergrens voor dezelfde overname kennen (bijvoorbeeld een splice- of montageregel in plaats van een meetgeldigheidsregel). Die twee beantwoorden verschillende vragen: *waar mag een respons geloofd worden* tegenover *waar mag een overname zitten*. De regel is dat de kandidaatgeneratie op één van beide staat, dat gezegd wordt op wélke, en dat de andere als **tegenoordeel** naast de eerste getoond wordt met zijn herkomst — inclusief de melding welk deel van het veld die andere laag geweigerd zou hebben. Automatisch verzoenen is verboden: de vroegste laag in de pijplijn wint dan, en "eerst" is geen argument.
+
 ## A5e. Openstaande specificatiebesluiten (vóór F1/F2 te nemen)
 
 1. **Aggregatie van zachte doelen — BESLOTEN bij F3 (26-08-2026): SATISFICING, GEEN GEWICHTEN.**
@@ -656,6 +681,146 @@ Configuratie: 3-weg; 2× SB WO24TX-8 parallel, MR13TX-4 in bolpod, T25T-6 in WG1
 | 39 | orde bij uitlijning `'auto'` | `worker.ts` (F4b2) | **keuze zonder declaratie** | `structureLow/High` is `undefined` bij 'auto', dus `drive-series-c` valt terug op zijn default terwijl de rapportroute de echte orde heeft | v2-kandidaat — moet de orde per flank altijd dragen |
 
   **Wat er met rij 38 en 39 gebeurt.** Beide zijn geclassificeerd en geen van beide is in F4c gezet — dat zou kandidaatgeneratie zijn, en die is F4d. Rij 38 blijft op de v1-route byte-identiek; de v2-route mag hem expliciet maken zodra de kandidaat er een heeft. Rij 39 is de scherpste van de twee: het is een keuze-sleutel die op de v2-route soms helemaal niet gedeclareerd is, en het kandidaat-object uit F4d moet de orde per flank áltijd dragen — anders is "geen declaratie" opnieuw niet te onderscheiden van "orde 1".
+
+- V27 (de kandidaatgeneratie verhuist — en wat er onderweg niet meeverhuist) — bij F4d.
+
+  **Wat het was.** Engine v2 leidde de haalbare kruisvensters, de aanbevolen band en de orde-regels af, en gebruikte er niets van: de kandidaten kwamen uit `crossover3Variants`, dat op niveau-ankers en buurten van rauwe snijpunten werkt. De audit zei het scherp (§6.1): *"v2 kan vetoën en rapporteren. Het kan niet voorstellen."* Na F4d doet het dat wel — op de v2-route, en alleen daar.
+
+  ---
+
+  **DEKKINGSTABEL 1 — wat `crossover3Variants` per kandidaat oplevert, veld voor veld.**
+
+  `Chain3Variant` heeft vijf velden. Dat is de hele kandidaat; al het andere dat een keten-invoer draagt is per RUN gedeeld, niet per kandidaat.
+
+| v1-veld | wat het is | v2-bron | gedekt |
+|---|---|---|---|
+| `label` | `"W-M 411 · M-T 2520 Hz"` | `GeneratedCandidate.label` — paar, frequentie **en uitlijning**, want twee orden op één frequentie zijn twee kandidaten en de scan-tabel sleutelt op deze string | ✅ |
+| `xoLow` | centrum van een schijf van de pin of van de buurt van het rauwe snijpunt | `crossings[0].hz` (`predesign/candidates.ts`) — positie *i* van *n*, gelijkmatig in octaafafstand over de aanbevolen band | ✅ |
+| `xoHigh` | idem, bovenste as | `crossings[N-1].hz` — N-weg, niets telt tot twee | ✅ |
+| `xoLowRange` | de kooi: ±halve tussenafstand, geklemd op rails | `crossings[0].cageHz` — ±halve tussenafstand **in octaven**, geklemd op het segment waarin de positie ligt | ✅ |
+| `xoHighRange` | idem | `crossings[N-1].cageHz` | ✅ |
+
+  **En wat `crossover3Variants` gebruikt om die vijf te maken — dáár zitten de niet-gedekte velden.** Elk hieronder is een expliciete ontwerpbeslissing van deze sessie, geen stille terugval.
+
+| v1-mechanisme | v2-bron | besluit F4d |
+|---|---|---|
+| `overlapAnchor` op de NIVEAU-getrimde responsies (waar twee wegen elkaar ontmoeten na een voorlopige padding) | geen | **niet overgenomen.** Het anker is waar de *niveaus* kruisen van een luidspreker die nog niet bestaat — de padding is nog niet gekozen. De audit noemt het zelf zwak bewijs (§6.1), en A5d.3 levert een venster dat op meetgeldigheid, f_s, breakup-ernst en directiviteit staat. Een niveau-anker naast een venster zou een tweede, zwakkere mening zijn over dezelfde vraag. |
+| `warm` (warm start: de kruispunten van het ontwerp dat nu in de sim staat) | geen | **niet overgenomen.** "Wat je al hebt" is geen uit de metingen afgeleid voorstel. De behoefte erachter — het bestaande ontwerp naast het veld kunnen leggen — wordt beantwoord door het vergelijkingsblok (`predesign/comparison.ts`), zonder een v1-kandidaat het v2-veld in te smokkelen. |
+| `diAnchor` (DI-match, regel 9 / M-G) | nog geen | **niet overgenomen, en dit is de enige die spijt doet.** DI-continuïteit is een echte A5d.3-voorkeurszone en hoort in het VENSTER thuis als tweezijdige doelband (A4 M-G: "de snijzone van de twee D(f)-curven wordt dan een tweezijdige doelband"), niet als losse extra kandidaat. `xoWindow.ts` kent die zone nog niet. Openstaand item; tot dan sturen de vensters de generator en wordt de DI-match alleen gerapporteerd. |
+| `hpFloorHz` (tweeter-HP-vloer ≥ 2×Fs) | `XO_FS_FACTOR_BY_ORDER` in het venster | ✅ gedekt, en **strenger**: k daalt met de orde (3,0 / 2,0 / 1,6 / 1,4), dus het venster wordt per kandidaat-orde opnieuw afgeleid in plaats van één vaste factor voor alles. |
+| rails (`[250,1500]`, `[1200,7000]`, plafonds 2000/12000, vloer 150) | geen | **niet overgenomen, met opzet.** Dat zijn projectgetallen (P6, audit §7). Het venster vervangt ze volledig: waar geen venster is, is er geen kandidaat, en dat wordt gemeld in plaats van opgevuld. |
+| `xoHigh ≥ 2,5 × xoLow` | monotonie-eis | **gedeeltelijk.** De generator eist dat de overnames **stijgen** en laat combinaties vallen die dat niet doen (met telling). De factor 2,5 zelf is een v1-getal en is niet overgenomen: als twee aangrenzende vensters elkaar overlappen is dát de bevinding, en die staat in de vensters. |
+| `steps` (kandidaatstappen per as, 1/4/9 ketens) | `chainBudget` | ✅ gedekt, van betekenis veranderd: hij begrenst nu het VELD in plaats van het raster te definiëren. Boven het budget worden **posities** gedund en **orden nooit**, en beide aantallen worden gemeld. |
+| duplicaat-inklapping (twee schijven op hetzelfde punt) | product + monotonie | ✅ gedekt; posities zijn per constructie uniek binnen een as. |
+
+  ---
+
+  **DEKKINGSTABEL 2 — de vijftien keuze-sleutels die F4c bij naam "still inherited" noemde.**
+
+  F4c stelde er tien; de overige vijftien werden in de keten samengesteld en stonden met naam en toenaam in `collect.notes`. Ze zijn nu alle vijftien **verklaard** — en niet alle vijftien met een waarde, want zeven van hen hebben er geen. De drie toestanden zijn *stated*, *absent (met reden)* en *delegated (aan een genoemde stap, met reden)*, en `declarationCoverage` eist dat zij samen de sleutelverzameling **exact** dekken. Een sleutel die in géén van de drie zit, is precies de stille erving die F4d beëindigt, en de build breekt erop.
+
+| sleutel | F4d-toestand | waarom |
+|---|---|---|
+| `xoRangePairs` | **stated** | de kooien van de kandidaat zelf. Hij had ze altijd al; sinds F4d steken ze benoemd over in plaats van via `input.xoLowRange`. |
+| `xoFloorPairs` | **stated** | **de A5d.3-venstervloer**, niet de v1-fysicavloer. Dit is audit §6.3 in één regel: de vloer die stuurt is gesteld, de andere staat ernaast als tegenoordeel. |
+| `staged` | stated | het rimpel/fase-doel van de ontwerper; de keten gaf `s.targets` verbatim door. |
+| `safety` | stated | de volle-band-veiligheidsset; verbatim doorgegeven. |
+| `snapPrefs` | stated | welke serie, welke tier; verbatim. |
+| `audit` | stated | de onderdelenaudit; verbatim. |
+| `loadFloor` | stated of **absent (P4)** | de afgeleide versterkervloer; niet ingevuld = geen oordeel, en dat staat er als reden in plaats van als ontbrekende sleutel. |
+| `zFloorStrict` | stated | de keten zet hem zelf op `true` met een gestelde reden ("de seed is onze eigen synthese"). Dezelfde waarde, nu benoemd — F4c's argument: een waarde die niemand noemt is niet te onderscheiden van een besluit. |
+| `xoRange` | **absent** | pint ÉÉN overname, en dit ontwerp heeft er N. `xoRangePairs` zegt hetzelfde N-weg; één as hier noemen laat de lezer raden welke. |
+| `xoPinHard` | **absent** | de stijve barrière hoort bij de hold-the-pin-reparatiepas, die pas draait nádat een gepinde as ontsnapt is. Vooraf wapenen maakt van elke kooi een muur, en een kooi is boekhouding en geen belofte. |
+| `solo` | **absent** | de solo-familie beschrijft een één-weg-ontwerp. |
+| `soloSensitivityDb` | **absent** | idem. |
+| `soloTargetLevelDb` | **absent** | idem. |
+| `branchTargets` | **delegated** → de ontwerpstap van de keten | de leiband per tak volgt uit de uitlijning en de knieën die díe stap net heeft vastgesteld; hij bestaat niet vóórdat zij gedraaid heeft. Hem hier herleiden zou een tweede implementatie van ketenlogica zijn — V21, één laag hoger. |
+| `angleData` | **delegated** → de keten-invoer | de gemeten hoeksets reizen al mee in de payload. Een tweede kopie is een tweede ding dat het oneens kan zijn met het eerste. |
+| `midBranch` | **delegated** → de keten-invoer | de respons en de bijstelling van de middentak zijn `input.m` en `midAdjust`. Zelfde argument. |
+
+  **De twee vondsten uit V26 (rijen 38 en 39).**
+
+  - **Rij 39 (orde bij uitlijning `'auto'`) is GESLOTEN.** Een gegenereerde kandidaat kent zijn orde per flank altijd, dus hij stelt altijd een uitlijning (`structureLow`/`structureHigh` gebonden aan die orde) én stuurt `orderByModel` mee voor de pre-bound. "Geen declaratie" en "orde 1" zijn op deze route niet langer te verwarren.
+  - **Rij 38 (ketenraster-ondergrens) is GEMETEN EN GESTELD, niet verplaatst.** Op casus 1 begint het analyseraster op 200 Hz terwijl de laagste A5d.3-venstervloer op 397 Hz ligt. Geen enkele kandidaat wordt onder die vloer geplaatst en de oordeelband is al op meetgeldigheid geclipt (audit §5), dus daar wordt niets gescoord. Wat overblijft is geen lek maar een **stilte**: de rasterrand komt uit de meetspanwijdtes en het fMin-veld, niet uit een afgeleide vloer. De v2-route zegt dat nu in de runnotities. *Waarom niet verplaatst:* het raster is `sim`, en daar tekent élke grafiek op dit scherm uit. Hem verzetten zou de rapportage-oppervlakken op de v2-route mee veranderen, en dat is een grotere wijziging dan F4d's opdracht — die zegt dat gedrag uitsluitend op de v2-route verandert, niet dat élk v2-oppervlak mag bewegen. Een lezer die dit betwist heeft een punt; het staat er daarom als afweging en niet als voldongen feit.
+
+  ---
+
+  **A5e.4 op de route die de app neemt.** Zie het tweede erratum onder audit §3 voor de meting per onderdeel. Kort: het **budget** werkt door (`maxIterations`), de **seed** en `starts` niet — de keten draait één keer per kandidaat en er is geen gejitterde start. Bij F4c was dat bijvangst; bij F4d is het een **besluit**: diversiteit komt uit kandidaten, niet uit gejitterde starts. Een kandidaat is een keuze die een ontwerper kan lezen en betwisten; een gejitterde start is toeval, en een veld dat uit toeval bestaat laat zich niet over topologie-klassen spreiden omdat niets zijn topologie koos. `DEFAULT_RUN_STARTS` staat daarom op **1**: de engine jittert niet meer uit zichzelf, een project dat erom vraagt krijgt het nog steeds, en de machinerie blijft getest. De assert *"de seed bereikt de zoektocht niet"* is bewust **bevestigd** in plaats van verwijderd, nu met een reden erbij, en er staat een tegenproef naast dat een andere KANDIDAAT de zoektocht wél bereikt.
+
+  **Wat F4d aan de vingerafdruk toevoegt.** Het `choices`-ingrediënt was op deze route altijd leeg — `runV2Optimization` vult het en dat pad loopt niemand. Leeg was juist zolang v1 de kandidaten koos. `V2ScanSettings.candidateFieldKey` draagt sinds F4d het hele veld: elke kandidaat met kruispunten, kooi, orde en uitlijning, plus de generator-parameters en wat er gedund is.
+
+  ---
+
+  **`clampPin`: waar hij ingreep, en wat er met de A5d.3-vensters gebeurde.**
+
+  Eén plek, `App.tsx` in `runVfOptimize`, direct na `xoPinsValue()` en vóór álles wat de pin gebruikt. Hij vuurt alleen wanneer het v1-venster `userClampedByData` heeft gezet — dat wil zeggen: de ontwerper (of, sinds F4b, de A5d.3-afleiding via `xoPinsValue`) heeft een bereik gesteld dat onder de v1-datavloer duikt. Dan wordt de pin **vervangen** door het midden van het v1-venster.
+
+  De doorwerking is breed, want de geklemde pin gaat vervolgens naar: (a) `crossover3Variants` als zoekruimte, (b) `settings.xoLowPin`/`xoHighPin` en daarmee de kooi in de tune, (c) `judgeWindows`, waartegen het OPGELEVERDE kruispunt geoordeeld wordt, en (d) terug in `physWin3` als gebruikersvenster. Vier plaatsen, één substitutie, en het enige zichtbare spoor was een banner over iets anders. Live op het KOAN-project: aanbevolen band 396,7–448,5 Hz → 707–728 Hz, waarna de pre-start-raming meldde dat 4 van de 4 kandidaten buiten het A5d.3-venster 396,7–549,7 Hz vielen. De raming had gelijk.
+
+  **F4d:** `clampPin` begint met `if (useV2) return pin;`. Op de v1-route byte-identiek. Op de v2-route wordt niets meer geklemd, en de twee vloeren komen naast elkaar te staan met hun herkomst (`predesign/floorComparison.ts`), inclusief de melding welk deel van het veld de ándere laag geweigerd zou hebben. Geen automatische verzoening: de twee beantwoorden verschillende vragen, en dat de v1-waarde won omdat hij eerder in de pijplijn zit is geen argument.
+
+  ---
+
+  **De uitkomst op casus 1.**
+
+  Het veld dat de metingen impliceren, met de orde die het casusboek zelf voor deze vensters noteert (4 op beide overnames):
+
+| as | venster (orde 4) | aanbevolen band | posities | waarom dat aantal |
+|---|---|---|---|---|
+| woofer→mid | 396,7–548,5 Hz | 396,7–548,5 Hz (de slechtste lobing-zone 657–920 Hz ligt boven het plafond) | **396,7 / 466,5 / 548,5 Hz** | 0,47 octaaf band; 1 + ⌊0,47 / (1/6)⌋ = 3 |
+| mid→tweeter | 1294,0–2283,5 Hz | 1294,0–1327,4 **en** 1858,4–2283,5 Hz | **1294,0 / 2033,9 / 2283,5 Hz** | 0,33 octaaf *aanbevolen* band (de slechtste lobing-zone 1327–1858 Hz is eruit gesneden); 1 + ⌊0,33 / (1/6)⌋ = 3 |
+
+  Twee keer drie, om volstrekt verschillende redenen — wat precies het punt is van een aantal dat wordt afgeleid in plaats van gekozen. Product: **9 kandidaten**, en de V9-spanning van dit project (de slechtste lobing-zone ligt binnen het bovenste venster) is nu een **gat in de kandidatenlijst** in plaats van een zin in het paneel.
+
+  **De pre-start-raming meldt 0 van 9 buiten het venster** en 0 van 9 buiten de aanbevolen band, dus de dialoog verschijnt niet. Met de tegenproef ernaast: dezelfde schatter, gevoed met de kruispunten die het v1-venster oplevert (707–728 Hz), meldt **4 van 4 buiten** — de audit-meting, gereproduceerd als uitspraak over de schatter in plaats van over de run.
+
+  **Klasse A, nagemeten.** Het veld is een functie van de METINGEN alleen: dezelfde negen kandidaten komen uit een rapport dat op HUIDIG, op KAND-A en op KAND-B gebouwd is. Dat is de F4a-classificatie op de generator toegepast, en het is de reden dat de gegenereerde netlists als klasse B kunnen worden vastgelegd zonder ergens een klasse C te introduceren.
+
+  ---
+
+  **DE VERGELIJKING — v2-kandidaten naast de v1-baseline.**
+
+  De negen kandidaten zijn door de échte route getuned (`handleV2Request` → `runThreeWayChain`, seed 20260827, raster 96 punten 200–20 kHz, oordeelband 397–19 500 Hz) en als `KAND-V2-*.adsfilter.json` bevroren. Alle getallen hieronder komen uit dezelfde metriekbibliotheek op dezelfde meetset — `predesign/comparison.ts`, dat niets rangschikt en waarin geen kolom een functie van een andere kolom is.
+
+| ontwerp | min \|Z\| (Ω) | min EPDR (Ω) | dissipatie (%) | grootste R (W) | drive @ f_s (dB) | LF-bult (dB) | Q-mult (×) | SPL-venster (±dB) | RMS-afwijking (dB) | fase, slechtste paar (°) |
+|---|---|---|---|---|---|---|---|---|---|---|
+| HUIDIG | 3,46 | 1,73 | 46 | 25,55 | −25,08 | 3,75 | 2,86 | 1,34 | 0,60 | 23,83 |
+| KAND-A | 3,32 | 1,66 | 52 | 30,93 | 10,48 | 4,25 | 3,22 | 1,47 | 0,87 | 3,69 |
+| KAND-B | 3,44 | 1,72 | 39 | 19,57 | 11,13 | 3,41 | 4,10 | 1,30 | 0,70 | 3,41 |
+| KAND-V2-1 | 0,00 | 1,59 | 40 | 37,83 | 19,11 | 3,40 | 1,71 | 1,65 | 1,41 | 84,66 |
+| KAND-V2-2 | 0,01 | 0,02 | 2 | 1,30 | −12,68 | 1,49 | 1,15 | 4,41 | 2,80 | 65,57 |
+| KAND-V2-3 | 1,39 | 0,70 | 0 | 0,34 | −21,61 | 1,49 | 1,12 | 5,09 | 2,91 | 21,51 |
+| KAND-V2-4 | 1,31 | 0,66 | 1 | 0,51 | −19,76 | 1,49 | 1,10 | 5,25 | 3,04 | 18,10 |
+| KAND-V2-5 | 1,24 | 0,62 | 14 | 11,50 | 4,24 | 1,76 | 1,41 | 5,40 | 3,05 | 20,69 |
+| KAND-V2-6 | 1,18 | 0,59 | 15 | 12,53 | 4,13 | 1,71 | 1,45 | 5,54 | 3,12 | 20,20 |
+| KAND-V2-7 | 1,15 | 0,58 | 15 | 11,59 | 4,05 | 1,70 | 1,41 | 5,64 | 3,21 | 18,67 |
+| KAND-V2-8 | 1,08 | 0,54 | 15 | 12,20 | 3,95 | 1,69 | 1,44 | 5,80 | 3,29 | 18,58 |
+| KAND-V2-9 | 0,84 | 0,43 | 16 | 12,01 | 3,28 | 1,68 | 1,44 | 6,16 | 3,53 | 20,74 |
+
+  **De v2-kandidaten verliezen, over vrijwel de hele tabel.** Dat is de uitkomst, hij wordt hier genoteerd zoals hij is, en de vraag die telt is *waarvan* het een uitspraak is.
+
+  **DE CONTROLE, en zij verandert de conclusie.** Dezelfde keten, dezelfde instellingen, dezelfde meetset — maar gestart op de kruispunten van HUIDIG zélf (360 / 2250 Hz, met een ruime kooi): **5,24 dB rimpel, 21,9° fase, min\|Z\| 1,42 Ω.** De negen v2-kandidaten leveren 3,11–9,15 dB en 15,0–27,0°, en de beste van hen (466,5 / 1294 Hz, 3,11 dB) is **beter dan de controle op de kruispunten van de baseline**.
+
+  Daaruit volgt wat deze tabel wél en niet zegt:
+
+  - **Wat zij niet zegt:** dat de v2-kandidaten slechte kruispunten zijn. Op de kruispunten van de baseline levert dezelfde ene ketenpas een even middelmatig netwerk op.
+  - **Wat zij wél zegt:** dat één ketenpas — zonder catalogus-snapping, zonder EQ-banden, zonder ampèrevloer en zonder de iteraties van een ontwerpsessie — geen ontwerp oplevert dat in de buurt komt van de drie bevroren netlists. Die drie zijn geen uitkomst van één pas; ze zijn het resultaat van een lange sessie met een mens erin.
+  - **De v1-tuner faalt dus NIET structureel op een v2-kandidaat.** Dat was de hypothese die getoetst moest worden (de startprompt noemt hem expliciet), en de controle verwerpt hem: de tuner doet op een v2-kandidaat wat hij op een v1-kandidaat doet.
+
+  **Twee dingen die de vergelijking wél blootlegt, en beide zijn echt.**
+
+  1. **`min|Z|` van 0,00–1,4 Ω tegen 3,3–3,5 Ω.** Casus 1 stelt geen versterkervloer, dus `ampMinLoadOhm` is afwezig en niets oordeelt over de belasting — P4, en de F0-doctrine (*leeg veld = geen oordeel*) in werking. De drie baselines dragen de impliciete discipline van een ontwerper die dat getal in zijn hoofd had; de v2-run heeft daar geen gestelde tegenhanger voor. Dat is geen bug maar een **ontbrekende projectinstelling**, en het is precies het soort ding dat zichtbaar hoort te zijn in plaats van vanzelf goed te gaan.
+  2. **De fasetracking van KAND-V2-1 en -2 (84,7° en 65,6°).** Beide kruisen M-T op 1294 Hz, de ondergrens van het bovenste venster, in het segment dat maar 33 Hz breed is (1294–1327 Hz — de slechtste lobing-zone begint erboven). Een kooi van 2,6 % is nauwelijks een zoekruimte, en de tuner heeft er geen ruimte om de fase te repareren. Openstaand: of een segment dat smaller is dan de acceptatie-gladding een kandidaat verdient, of alleen een vermelding. De generator plaatst er nu één, omdat het toegestane band is en niets die keuze voor de ontwerper mag maken.
+
+  ---
+
+  **TWEE FOUTEN IN DE MEETOPSTELLING, en ze staan hier omdat ze allebei bijna als bevinding waren opgeschreven.**
+
+  *Ten eerste: de eerste versie van de fixture wapende de BESCHERMINGEN niet.* Geen `targets` (het doel van de trapmethode), geen `safety` (het volle-band-verbod op degeneratie, V26 rij 31) en geen audit-drempels — met de redenering dat elk extra gewapend mechanisme een tweede verklaring voor een verschil is. Die redenering klopt voor een REGRESSIE en is precies verkeerd om voor een VOORSTEL: het zijn beschermingen, en een tuner zonder beschermingen levert netwerken op die vlak zijn op de oordeelband en degenereren erbuiten. Gemeten: **min\|Z\| = 0,00 Ω** — een dode kortsluiting — terwijl de keten een keurige 1,90 dB rimpel rapporteerde, want de rimpel werd gemeten waar het netwerk nog werkte.
+
+  *Ten tweede, en dit was de duurdere: `synthMode` stond op `'filter'` en de app draait `'acoustic'`.* De controle legde het bloot: op `'filter'`, gestart op de kruispunten van HUIDIG, leverde dezelfde keten **31,4 dB** rimpel, dreef de overnames van 360/2250 naar **856/3848 Hz** en liet 0,00 Ω achter. Op `'acoustic'` werd dat 5,24 dB en 358/2370 Hz. Een fixture die niet de synthese van de app draait, meet de app niet.
+
+  **De procesles is de bekende, één laag verder.** V15 zei het over referenties: een getal zonder zijn parameters is geen referentie. Hier ging het over een RUN, en de parameters die ontbraken waren niet exotisch — het waren de defaults van de app. De regel die hieruit volgt en die in de fixture staat opgeschreven: *een run-fixture die met een vergelijking als doel wordt gebouwd, draait de instellingen van de app en niet een minimale set.* En: **een tabel waarin het nieuwe verliest, verdient een controle vóórdat zij een bevinding wordt.** Zonder de controle zou hier gestaan hebben dat de v1-tuner op v2-kandidaten faalt, en dat was niet waar.
 
 **Openstaand in deze casus:** groundplane-metingen onder het onderste kruisgebied vóór onderdelenbestelling; HD-sweep; 30°-meting tweeter voor M-G-compleetheid; verzadigings-/formaatcheck grote P-core shunt-spoel.
 

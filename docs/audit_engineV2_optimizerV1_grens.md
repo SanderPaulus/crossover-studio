@@ -217,6 +217,54 @@ f_s (V8b).
 Zie casusboek **V23** (waar dit als bijvangst is vastgelegd) en **V25** (de vier-inversies-tabel
 en de reparatie).
 
+
+### Tweede erratum bij §3 — 27-08-2026 (F4d), de rij "Seed, starts, evaluatiebudget"
+
+**De tabel is opnieuw niet gewijzigd.** Wat hieronder staat corrigeert één rij ervan en legt het
+besluit vast dat F4d erover genomen heeft.
+
+**Wat er staat.** *"Seed, starts, evaluatiebudget | **ja** | gejitterde starts + `maxIterations`."*
+Gelezen als: A5e.4 werkt op de route die telt.
+
+**Wat gemeten is, per onderdeel, door `handleV2Request` → `runThreeWayChain`:**
+
+| A5e.4-onderdeel | bereikt de zoektocht op de workerroute? | langs welke weg, of waarom niet |
+|---|---|---|
+| `budgetEvaluations` | **ja** | de hook zet `maxIterations` (`worker.ts`, `tuneOptionsFor`) |
+| seed | **nee** | de keten draait **één keer** per kandidaat; er is geen gejitterde start. De seed stempelt alleen. |
+| `starts` | **nee** | wordt op deze route door niemand gelezen. `jitteredStart` staat in `run.ts`, en `runV2Optimization` roept niemand in de app aan (erratum §2.2). |
+| vingerafdruk | **ja** | elk resultaat draagt hem, en sinds F4d ook het `choices`-ingrediënt (zie hieronder) |
+
+Dat de seed niet doorwerkt is bij F4c gemeten en in `f4b2_v2_worker_baseline.json` vastgelegd
+(*"beide seedrijen zijn identiek"*). Het was daar een **bijvangst**. Bij F4d is het een **besluit**.
+
+**Het besluit (F4d): diversiteit komt uit KANDIDATEN, niet uit gejitterde starts.** Onder
+satisficing zijn die twee niet uitwisselbaar. Een kandidaat is een keuze die een ontwerper kan
+lezen en betwisten — dit kruispunt, deze orde, uit dit venster, om deze reden. Een gejitterde
+start is toeval, en een veld dat uit toeval is samengesteld laat zich niet spreiden over
+topologie-klassen, want niets heeft zijn topologie gekozen. A5e.1 vraagt om een *gediversifieerde
+shortlist*; die kan alleen bestaan als de diversiteit ergens **besloten** is.
+
+**Wat daarmee met de jitter-machinerie gebeurt.** Zij is niet verwijderd en ook niet stil blijven
+staan: `DEFAULT_RUN_STARTS` is **1**. De engine jittert dus uit zichzelf niet meer; een project dat
+het expliciet vraagt krijgt het nog steeds, en `determinism.test.ts` bewijst nog steeds dat de
+trekking reproduceerbaar is. Waarom niet gesloopt: `f4b2_v2_baseline.json` is de acceptatie van een
+eerdere sessie en pint `runV2Optimization` op twee seeds mét `starts: 2`. Die vastlegging weggooien
+om een geteste codeweg te verwijderen kost meer dan het oplevert, en de weg die telt raakt hem
+sinds F4d niet meer aan. Dat is een afweging, en zij staat hier zodat een lezer haar kan betwisten.
+
+**Wat F4d er wél aan toevoegt.** Het `choices`-ingrediënt van de vingerafdruk was op deze route
+altijd leeg — `runV2Optimization` vult het, en dat pad loopt niemand. Leeg was juist zolang v1 de
+kandidaten koos; het houdt op juist te zijn zodra het veld een v2-afleiding is, want twee runs over
+twee verschillende velden zouden dan identiek gestempeld zijn. `V2ScanSettings.candidateFieldKey`
+draagt sinds F4d het veld: elke kandidaat met kruispunten, kooi, orde en uitlijning, plus de
+generator-parameters en wat er gedund is.
+
+**De assert die dit bewaakt** staat in `optimizer/candidateRoute.test.ts` (*"the SEED does not reach
+the search — and after F4d that is a decision"*), met ernaast de tegenproef dat een andere
+KANDIDAAT de zoektocht wél bereikt. Zonder die tweede assert zou de eerste ook waar zijn voor een
+route die niets doet.
+
 ---
 
 ## 4. Drie bevestigde lekken
@@ -368,6 +416,38 @@ diversifiëren over wat die zoektocht toevallig bezocht.
 Aanverwant, en sinds F3c zichtbaar gemaakt in de dialoog: de tuner zoekt op 1/12 oct terwijl
 de acceptatie op 1/6 oct oordeelt (`WINDOW_SMOOTHING_OCTAVES`, A5e.1).
 
+
+### Erratum bij §6 — 27-08-2026 (F4d)
+
+**§6.1 en §6.2 zijn op de v2-route gesloten; §6.3 is gesloten door hem te rapporteren in plaats
+van op te lossen; §6.4 staat.** De tekst hierboven blijft staan zoals zij op 27-08 is opgeschreven.
+
+**§6.1 — "v2 kan niet voorstellen".** Dat is niet langer waar op de v2-route. `predesign/
+candidates.ts` maakt kandidaten uit de haalbare vensters (A5d.3), de aanbevolen band (F3c) en de
+orde-afleiding per flank, en `App.tsx` gebruikt ze in plaats van `crossover3Variants` zodra de
+optimizer op v2 staat. `crossover3Variants` is niet gewijzigd en blijft de bron op de v1-route.
+**Op de v1-route is §6.1 onverkort waar en blijft dat.**
+
+**§6.2 — "de pin overleeft de reis niet altijd".** `clampPin` staat sinds F4d achter `if (useV2)
+return pin;`. Op de v2-route wordt niets meer geklemd; op de v1-route is de functie byte-identiek.
+De 4-van-4-meting die deze paragraaf noteert is op casus 1 gereproduceerd als **0 van 9**
+(`predesign/casus1Field.test.ts`), mét de tegenproef dat dezelfde schatter de v1-vensterkruispunten
+nog steeds als buiten-het-venster telt.
+
+**§6.3 — "twee lagen, twee meetvloeren, geen verzoening".** Er is nu een plek waar zij tegen
+elkaar gehouden worden, en het is met opzet géén verzoening: `predesign/floorComparison.ts` zet
+beide vloeren met hun herkomst naast elkaar, zegt wélke de kandidaten gestuurd heeft (de A5d.3-
+vloer, want die staat sinds F4d in `xoFloorPairs`), en waarschuwt wanneer de andere laag een deel
+van het veld geweigerd zou hebben. Geen van beide wint automatisch. De reden dat er niet verzoend
+wordt staat in het bestand zelf: de twee beantwoorden verschillende vragen — waar een respons
+*geloofd* mag worden, en waar een overname mag *zitten*.
+
+**§6.4 — "satisficing bovenop een gewogen zoektocht" — staat, en is niet kleiner geworden.** De
+zoektocht binnen één kandidaat is nog steeds `optimizeNetworkValues` met zijn gewichten; wat F4d
+verandert is dat het VELD waarover de shortlist spreidt niet langer de toevallige buit van die
+zoektocht is maar een gestelde verzameling keuzes. De vijf grijze sleutels zijn ongewijzigd en
+worden nog steeds expliciet gesteld (F4c).
+
 ---
 
 ## 7. Bijvangst — buiten de grens, wel relevant
@@ -416,6 +496,23 @@ ingebakken is geen referentie; hier zou het een eigenschap van één engine zijn
 
 Uit te zoeken: welke casus-1-referenties leggen eigenschappen van de v1-zoektocht vast, en
 welke echte natuurkunde? Per referentie: behouden, herdefiniëren, of intrekken.
+
+
+### Erratum bij §8 — 27-08-2026 (F4d)
+
+**De voorgestelde werkverdeling is uitgevoerd, en de voorwaarde ervoor was al vervuld.** F4a
+beantwoordde de vraag onderaan §8: casus 1 heeft géén klasse-C-referenties — elke kandidaat-
+referentie is een metriek op een netlist-BESTAND, en die verschuiven niet wanneer v2 eigen
+kandidaten gaat maken. Dat is bij F4a nagemeten in plaats van aangenomen (V19).
+
+F4d heeft de v2-kandidaten daarom op dezelfde manier bevroren als de v1-kandidaten: geëxporteerd
+als `KAND-V2-*.adsfilter.json` in `test-fixtures/casus1/`, opgenomen in
+`manifest_en_geometrie.netlists`, met hun metrieken als klasse B. De herkomst (commit, seed,
+run-vingerafdruk, generator-parameters, kandidaat-herkomst) staat in
+`test-fixtures/casus1_v2_herkomst.json` en is **documentatie, geen acceptatiewaarde**.
+
+De verhouding uit §1 luidt daarmee op de v2-route: **v2 bestuurt keuzes en waarden; v1 polijst.**
+Op de v1-route luidt zij onveranderd: v2 bestuurt waarden, v1 bestuurt keuzes.
 
 ---
 

@@ -26,7 +26,8 @@
    "klasse_A": 123,
    "klasse_B": 71,
    "klasse_C": 0,
-   "sinds_F4a": "V20 (27-08-2026) heeft 21 klasse-B-bladeren toegevoegd: de vier lambda-fracties per kruispunt per netlist, waarvan er een de HERNOEMDE lobing_wm_lambda is. De telling hierboven blijft de F4a-momentopname en wordt niet bijgewerkt - een momentopname die met elke oplevering meebeweegt is geen momentopname. Wat blijft gelden is de bevinding eronder: nog steeds nul klasse C, want ook deze vier zijn functies van meting plus netlist-BESTAND."
+   "sinds_F4a": "V20 (27-08-2026) heeft 21 klasse-B-bladeren toegevoegd: de vier lambda-fracties per kruispunt per netlist, waarvan er een de HERNOEMDE lobing_wm_lambda is. De telling hierboven blijft de F4a-momentopname en wordt niet bijgewerkt - een momentopname die met elke oplevering meebeweegt is geen momentopname. Wat blijft gelden is de bevinding eronder: nog steeds nul klasse C, want ook deze vier zijn functies van meting plus netlist-BESTAND.",
+   "sinds_F4d": "F4d (27-08-2026) heeft 90 klasse-B-bladeren toegevoegd: tien metrieken op elk van de 9 bevroren KAND-V2-netlists. De F4a-momentopname hierboven wordt niet bijgewerkt, om dezelfde reden als bij V20 — een momentopname die met elke oplevering meebeweegt is er geen. De bevinding blijft: nog steeds NUL klasse C. Deze negen netwerken komen uit een v2-run, maar de referenties hangen aan de BESTANDEN, en een volgende run die andere netwerken oplevert verschuift deze getallen dus niet — hij levert andere bestanden op."
   },
   "besluiten": {
    "_": "Drie mogelijke besluiten per referentie, conform de F4a-opdracht. De volledige inventarisatietabel - referentie, klasse, consumerende test met bestand en regel, besluit, reden - staat in het casusboek onder V19.",
@@ -57,50 +58,50 @@
   "fit_kwaliteit_pct": 5
  },
  "afgeleide_parameters": {
- "_re_direct_parameters": {
-  "_": "V15-PROCESREGEL op de DIRECTE aflezing (Re_naief bij de woofer, Re_direct bij mid en tweeter). Dat getal is geen fit maar een venstermiddeling, en het venster stond tot F4a alleen in proza - bij de mid stond het er zelfs helemaal niet. Een middeling zonder haar venster is niet reproduceerbaar en dus geen referentie.",
-  "schatter": "z-re@1.1",
-  "grootheid": "mediaan van Re(Z) over de LAAGSTE fractie van de gemeten punten",
-  "fractie_van_de_punten": 0.025,
-  "waarom_een_fractie": "een fractie van het puntental en geen frequentie: een frequentie zou een P6-overtreding zijn, en hoeveel punten je hoort te middelen is een eigenschap van de sweep en niet van de driver",
-  "middeling": "mediaan en niet gemiddelde - een enkele bin netbrom onderin een impedantiesweep is gewoon en mag de schatting niet meetrekken",
-  "raster": "de punten van het .lim-bestand zelf; er wordt niet geherbemonsterd",
-  "klasse": "A",
-  "afhankelijkheid": "meting"
- },
- "_spl_scan_parameters": {
-  "_": "V15-PROCESREGEL op de SPL-scans (A5b.2 / A5c.4). Breakups, richtings-persistentie, de richtingsverhouding en de diffractierimpel worden alle vier tegen DEZELFDE fractionele-octaaftrend op DEZELFDE band en hetzelfde raster gemeten, en geen van die parameters stond tot F4a in dit bestand - terwijl V8c juist vastlegt dat een en dezelfde conusresonantie +0,7 of +3,2 dB leest naargelang de band waarop de trend is berekend.",
-  "band": "per driver de EIGEN ver-veldgeldigheidsband (A5b.1): de doorsnede van de headergrenzen met de omvang van de bestanden zelf. Zie afgeleide_parameters.<driver>.FF_vloer_header voor de ondergrens van de woofer. DE CLIPPING IS DE METING (V8c).",
-  "raster_punten": 500,
-  "raster_verdeling": "log",
-  "trend_octaaf_deel": 2,
-  "trend_middeling": "rekenkundig gemiddelde van de dB-waarden over een venster van plus en min 1/(2 * trend_octaaf_deel) octaaf rond elk punt",
-  "piek_drempel_dB_boven_trend": 0.7,
-  "piek_samenvoeging_octaven": 0,
-  "persistentie_zoekvenster_octaven": 0.16666666666666666,
-  "richting_gladding": "de VERSCHILcurve (uit-as minus op-as) wordt gegladd, niet de twee curves apart: rimpel die beide gemeen hebben valt in het verschil weg en wat overblijft is de bundelingstrend",
-  "richting_aflezing": "de -3 dB- en -6 dB-frequenties zijn de kruisingen van die gegladde verschilcurve, log-geinterpoleerd tussen twee rasterpunten",
-  "diffractie_rms_raster": "op het LOG-raster hierboven; een lineair raster zou de bovenste octaaf de rest laten overstemmen",
-  "diffractie_transformatie_punten": 1024,
-  "diffractie_transformatie_verdeling": "lineair - een diffractierimpel is periodiek in frequentie, niet in log-frequentie",
-  "diffractie_venster": "Hann; zonder venster rinkelen de bandranden en verzinnen zij een omweglengte",
-  "diffractie_min_rimpelperioden": 4,
-  "klasse": "A",
-  "afhankelijkheid": "meting"
- },
- "_semi_inductantie_parameters": {
-  "_": "V15-PROCESREGEL op de spreekspoelfit (A5c.5 / V8e). De EXPONENT n is een referentie; zijn fitband stond tot F4a alleen in de code.",
-  "model": "|Z - R_e| = K * omega^n, lineair gefit in log-log",
-  "band": "van 10^decaden_boven_resonantie maal de HOOGSTE motionele resonantie van de driver tot de top van de sweep. Dimensieloos, dus P6-schoon: de band beweegt met de driver en noemt geen frequentie.",
-  "decaden_boven_resonantie": 1,
-  "minimum_punten": 8,
-  "n_geldig_van": 0.4,
-  "n_geldig_tot": 1.1,
-  "max_ln_residu": 0.25,
-  "weigering": "buiten dat bereik RAPPORTEERT de extractor dat hij het model niet kan bepalen, in plaats van een exponent te publiceren - precies wat de tweeter van casus 1 nodig heeft (V8e)",
-  "klasse": "A",
-  "afhankelijkheid": "meting"
- },
+  "_re_direct_parameters": {
+   "_": "V15-PROCESREGEL op de DIRECTE aflezing (Re_naief bij de woofer, Re_direct bij mid en tweeter). Dat getal is geen fit maar een venstermiddeling, en het venster stond tot F4a alleen in proza - bij de mid stond het er zelfs helemaal niet. Een middeling zonder haar venster is niet reproduceerbaar en dus geen referentie.",
+   "schatter": "z-re@1.1",
+   "grootheid": "mediaan van Re(Z) over de LAAGSTE fractie van de gemeten punten",
+   "fractie_van_de_punten": 0.025,
+   "waarom_een_fractie": "een fractie van het puntental en geen frequentie: een frequentie zou een P6-overtreding zijn, en hoeveel punten je hoort te middelen is een eigenschap van de sweep en niet van de driver",
+   "middeling": "mediaan en niet gemiddelde - een enkele bin netbrom onderin een impedantiesweep is gewoon en mag de schatting niet meetrekken",
+   "raster": "de punten van het .lim-bestand zelf; er wordt niet geherbemonsterd",
+   "klasse": "A",
+   "afhankelijkheid": "meting"
+  },
+  "_spl_scan_parameters": {
+   "_": "V15-PROCESREGEL op de SPL-scans (A5b.2 / A5c.4). Breakups, richtings-persistentie, de richtingsverhouding en de diffractierimpel worden alle vier tegen DEZELFDE fractionele-octaaftrend op DEZELFDE band en hetzelfde raster gemeten, en geen van die parameters stond tot F4a in dit bestand - terwijl V8c juist vastlegt dat een en dezelfde conusresonantie +0,7 of +3,2 dB leest naargelang de band waarop de trend is berekend.",
+   "band": "per driver de EIGEN ver-veldgeldigheidsband (A5b.1): de doorsnede van de headergrenzen met de omvang van de bestanden zelf. Zie afgeleide_parameters.<driver>.FF_vloer_header voor de ondergrens van de woofer. DE CLIPPING IS DE METING (V8c).",
+   "raster_punten": 500,
+   "raster_verdeling": "log",
+   "trend_octaaf_deel": 2,
+   "trend_middeling": "rekenkundig gemiddelde van de dB-waarden over een venster van plus en min 1/(2 * trend_octaaf_deel) octaaf rond elk punt",
+   "piek_drempel_dB_boven_trend": 0.7,
+   "piek_samenvoeging_octaven": 0,
+   "persistentie_zoekvenster_octaven": 0.16666666666666666,
+   "richting_gladding": "de VERSCHILcurve (uit-as minus op-as) wordt gegladd, niet de twee curves apart: rimpel die beide gemeen hebben valt in het verschil weg en wat overblijft is de bundelingstrend",
+   "richting_aflezing": "de -3 dB- en -6 dB-frequenties zijn de kruisingen van die gegladde verschilcurve, log-geinterpoleerd tussen twee rasterpunten",
+   "diffractie_rms_raster": "op het LOG-raster hierboven; een lineair raster zou de bovenste octaaf de rest laten overstemmen",
+   "diffractie_transformatie_punten": 1024,
+   "diffractie_transformatie_verdeling": "lineair - een diffractierimpel is periodiek in frequentie, niet in log-frequentie",
+   "diffractie_venster": "Hann; zonder venster rinkelen de bandranden en verzinnen zij een omweglengte",
+   "diffractie_min_rimpelperioden": 4,
+   "klasse": "A",
+   "afhankelijkheid": "meting"
+  },
+  "_semi_inductantie_parameters": {
+   "_": "V15-PROCESREGEL op de spreekspoelfit (A5c.5 / V8e). De EXPONENT n is een referentie; zijn fitband stond tot F4a alleen in de code.",
+   "model": "|Z - R_e| = K * omega^n, lineair gefit in log-log",
+   "band": "van 10^decaden_boven_resonantie maal de HOOGSTE motionele resonantie van de driver tot de top van de sweep. Dimensieloos, dus P6-schoon: de band beweegt met de driver en noemt geen frequentie.",
+   "decaden_boven_resonantie": 1,
+   "minimum_punten": 8,
+   "n_geldig_van": 0.4,
+   "n_geldig_tot": 1.1,
+   "max_ln_residu": 0.25,
+   "weigering": "buiten dat bereik RAPPORTEERT de extractor dat hij het model niet kan bepalen, in plaats van een exponent te publiceren - precies wat de tweeter van casus 1 nodig heeft (V8e)",
+   "klasse": "A",
+   "afhankelijkheid": "meting"
+  },
   "woofer": {
    "klasse": "A",
    "afhankelijkheid": "meting",
@@ -250,47 +251,47 @@
   "status": "WACHT OP A5e.2. Het ANKER en de haalbaarheidswaarschuwing zijn acceptatiecriteria en reproduceren; de WAARDEN niet. A5d.4(a) wil het ankerniveau NA baffle step in de beoogde opstelling, en dat is een eigenschap van het doelcurve-object - een open A5e-besluit. Tot dat genomen is vergelijkt de engine de kale gemeten niveaus en zegt dat erbij: 0,89 dB (woofer) en 3,44 dB (tweeter) tegen de 1,5 en 4,1 hieronder."
  },
  "kandidaten": {
- "_M_A_M_B_parameters": {
-  "_": "V15-PROCESREGEL op M-A (dissipatie, grootste weerstand) en M-B (min |Z|, min EPDR). Beide integreren respectievelijk zoeken over een BAND op een RASTER, en beide stonden tot F4a zonder.",
-  "raster": "hetzelfde analyseraster als kandidaten._F3_respons_oordeel.grid - hier niet herhaald, omdat twee kopieen van een raster twee kansen zijn om uiteen te lopen",
-  "band": "het HELE raster, poortvrij. M-A en M-B gaan over wat de VERSTERKER ziet, en die ziet de hele last en niet het stuk waarvan een ver-veldmeting geldig is.",
-  "M_A_weging": "IEC 60268-1 simulated programme noise: roze met een 1e-orde hoogdoorlaat en een 1e-orde laagdoorlaat op de normranden (40 Hz en 5 kHz). Vastgelegd door de norm die M-A definieert, niet door dit project.",
-  "M_A_normalisatie": "fractie van het vermogen dat de luidspreker AANNEEMT - de integraal van Re(1/Z_in) onder dezelfde weging - en niet van het vermogen dat de versterker levert",
-  "M_A_versterkervermogen_W": 100,
-  "M_A_totaal": "dissipatie_pct telt alleen de NIET-parasitaire weerstanden; DCR van spoelen en ESR van condensatoren worden apart bijgehouden",
-  "M_B_EPDR": "|Z| / (2 * cos^2(phi)) - de weerstand die de versterker werkelijk ziet, gezocht over het hele raster",
-  "klasse": "B",
-  "afhankelijkheid": "meting+netlist"
- },
- "_M_E_parameters": {
-  "_": "V15-PROCESREGEL op M-E (Qes_mult). De metriek deelt door R_e, en het casusboek draagt TWEE lezingen van dezelfde R_e van het wooferpaar (V16). Welke van de twee onder Qes_mult ligt stond tot F4a alleen in proza en in een constante in de testfixture - en een parameter die alleen in code staat is precies wat V15 verbiedt.",
-  "R_e_ohm": 3.05,
-  "R_e_herkomst": "docs/prototype/compare.py, Re_w: de meterlezing waarop de M-E-referentie van 25-08 berekend is. De Qes-INVERSIE onder grens_inversies staat op de andere lezing (2,90 Ohm, afgeleide_parameters.woofer.Re_werkelijk_ca). Geen van beide is fout; wat fout was, is dat geen van beide referenties zei welke zij gebruikte.",
-  "R_e_invoerpunt": "ingevoerd bij de PAS en niet bij de metriek. R_e voedt ook de verliesindicator, r0 en de Qes-inversie, en een waarde die bij een metriek wordt ingevoerd laat de rest van het rapport een ander getal citeren.",
-  "f_resonantie": "de FUNDAMENTELE in-box-resonantie van de woofer, afgeleid uit de geladen impedantie - niet uit een lijst",
-  "klasse": "B",
-  "afhankelijkheid": "meting+netlist"
- },
- "_M_F_interim_parameters": {
-  "_": "V15-PROCESREGEL op M-F-interim, HERZIEN BIJ V20 (27-08-2026). lambda = d * f_kruispunt / c, en de vraag was welke d. F4a legde vast dat de engine voor het onderste paar de ARRAY-afstand gebruikte en niet de paarafstand, en liet de vraag welke van de twee juist is open. V20 beantwoordt haar door de vraag te verwerpen: voor een weg met N bronnen bestaat GEEN enkele afstand die het paar samenvat, dus de metriek rapporteert er vier en kiest er geen. De autoriteit voor lobing TUSSEN wegen is de verticale synthese (kandidaten.KAND_B_3e.lobing_eind_dip_15gr), niet een van deze vier.",
-  "formule": "lambda = d * f_kruispunt / c, met vier verschillende d per kruispunt",
-  "bronposities": "manifest_en_geometrie.geometrie.z_offset_mm - ALLE VIER de posities, dus ook woofer_boven en woofer_onder afzonderlijk. Tot V20 werden die twee door de fixture gemiddeld voordat de metriek ze zag; dat gemiddelde blijft juist voor de synthese (een akoestisch centrum per tak) en was fout voor de fracties (die bestaan juist omdat een weg met twee bronnen op meer dan een afstand van zijn buur staat).",
-  "amplitudeweging": "GELIJK, want het wooferpaar is parallel geschakeld. Niet als getal ingevoerd maar als afwezigheid: de metriek meldt zelf dat zij de bronnen als gelijk aangestuurd heeft genomen. Het zwaartepunt is daarmee het meetkundige midden; bij ongelijke aansturing zou het meebewegen en de twee andere fracties niet.",
-  "d_woofer_mid_dichtstbij_mm": 261.3,
-  "d_woofer_mid_zwaartepunt_mm": 399.15,
-  "d_woofer_mid_verste_mm": 537.0,
-  "d_woofer_mid_binnen_weg_mm": 275.7,
-  "d_mid_tweeter_alle_drie_mm": 129.2,
-  "d_mid_tweeter_binnen_weg_mm": null,
-  "waarom_mid_tweeter_drie_gelijke": "mid en tweeter zijn elk EEN bron, en dan vallen dichtstbijzijnde, zwaartepunt en verste samen. Dat is een bewering die het bestand vastlegt en geen vanzelfsprekendheid: zij is precies het geval waarin de oude enkele lambda correct was. De vierde fractie bestaat daar niet - geen van beide wegen heeft een bronscheiding binnen zichzelf - en staat daarom als null en niet als 0.",
-  "kruiscontrole_paarafstand": "de dichtstbijzijnde-afstand die uit de z-offsets volgt (261,3 mm) IS de paarafstand die het casusboek los noteert (manifest_en_geometrie.geometrie.ctc_mm.woofer_mid = 261). Twee onafhankelijk opgeschreven getallen die samenvallen; de suite assert dat, want als zij uit elkaar lopen weet niemand welke van de twee de metriek gebruikt. Idem mid_tweeter: 129,2 uit de offsets tegen 129,2 in ctc_mm.",
-  "hernoeming": "lobing_wm_lambda heet sinds V20 lobing_wm_binnen_weg_lambda. Waarde en klasse ongewijzigd (0,29 / 0,36 / 0,36, klasse B): de engine berekende altijd al de spacing BINNEN de wooferweg, alleen heette de referentie naar het paar. Een afleidingsfout in de naamgeving, geen rekenfout - en daarom is de waarde behouden in plaats van herzien. lobing_mt_lambda is NIET hernoemd: bij twee enkelvoudige bronnen is hij een echte tussen-de-wegen-fractie.",
-  "geen_oordeel": "De niet-monotone zonescore van F1 is bij V20 vervallen en heeft geen vervanger. Hij scoorde precies de ene lambda waarvan V20 vaststelt dat zij niet te kiezen is. Op geen van deze vier fracties staat een poort, een budget of een shortlist-criterium, en dat is een blijvend verbod en geen huidige stand.",
-  "c_m_s": 343,
-  "kruispunt": "het kruispunt dat de netlist zelf oplevert - en daarom is dit klasse B en niet klasse A",
-  "klasse": "B",
-  "afhankelijkheid": "meting+netlist"
- },
+  "_M_A_M_B_parameters": {
+   "_": "V15-PROCESREGEL op M-A (dissipatie, grootste weerstand) en M-B (min |Z|, min EPDR). Beide integreren respectievelijk zoeken over een BAND op een RASTER, en beide stonden tot F4a zonder.",
+   "raster": "hetzelfde analyseraster als kandidaten._F3_respons_oordeel.grid - hier niet herhaald, omdat twee kopieen van een raster twee kansen zijn om uiteen te lopen",
+   "band": "het HELE raster, poortvrij. M-A en M-B gaan over wat de VERSTERKER ziet, en die ziet de hele last en niet het stuk waarvan een ver-veldmeting geldig is.",
+   "M_A_weging": "IEC 60268-1 simulated programme noise: roze met een 1e-orde hoogdoorlaat en een 1e-orde laagdoorlaat op de normranden (40 Hz en 5 kHz). Vastgelegd door de norm die M-A definieert, niet door dit project.",
+   "M_A_normalisatie": "fractie van het vermogen dat de luidspreker AANNEEMT - de integraal van Re(1/Z_in) onder dezelfde weging - en niet van het vermogen dat de versterker levert",
+   "M_A_versterkervermogen_W": 100,
+   "M_A_totaal": "dissipatie_pct telt alleen de NIET-parasitaire weerstanden; DCR van spoelen en ESR van condensatoren worden apart bijgehouden",
+   "M_B_EPDR": "|Z| / (2 * cos^2(phi)) - de weerstand die de versterker werkelijk ziet, gezocht over het hele raster",
+   "klasse": "B",
+   "afhankelijkheid": "meting+netlist"
+  },
+  "_M_E_parameters": {
+   "_": "V15-PROCESREGEL op M-E (Qes_mult). De metriek deelt door R_e, en het casusboek draagt TWEE lezingen van dezelfde R_e van het wooferpaar (V16). Welke van de twee onder Qes_mult ligt stond tot F4a alleen in proza en in een constante in de testfixture - en een parameter die alleen in code staat is precies wat V15 verbiedt.",
+   "R_e_ohm": 3.05,
+   "R_e_herkomst": "docs/prototype/compare.py, Re_w: de meterlezing waarop de M-E-referentie van 25-08 berekend is. De Qes-INVERSIE onder grens_inversies staat op de andere lezing (2,90 Ohm, afgeleide_parameters.woofer.Re_werkelijk_ca). Geen van beide is fout; wat fout was, is dat geen van beide referenties zei welke zij gebruikte.",
+   "R_e_invoerpunt": "ingevoerd bij de PAS en niet bij de metriek. R_e voedt ook de verliesindicator, r0 en de Qes-inversie, en een waarde die bij een metriek wordt ingevoerd laat de rest van het rapport een ander getal citeren.",
+   "f_resonantie": "de FUNDAMENTELE in-box-resonantie van de woofer, afgeleid uit de geladen impedantie - niet uit een lijst",
+   "klasse": "B",
+   "afhankelijkheid": "meting+netlist"
+  },
+  "_M_F_interim_parameters": {
+   "_": "V15-PROCESREGEL op M-F-interim, HERZIEN BIJ V20 (27-08-2026). lambda = d * f_kruispunt / c, en de vraag was welke d. F4a legde vast dat de engine voor het onderste paar de ARRAY-afstand gebruikte en niet de paarafstand, en liet de vraag welke van de twee juist is open. V20 beantwoordt haar door de vraag te verwerpen: voor een weg met N bronnen bestaat GEEN enkele afstand die het paar samenvat, dus de metriek rapporteert er vier en kiest er geen. De autoriteit voor lobing TUSSEN wegen is de verticale synthese (kandidaten.KAND_B_3e.lobing_eind_dip_15gr), niet een van deze vier.",
+   "formule": "lambda = d * f_kruispunt / c, met vier verschillende d per kruispunt",
+   "bronposities": "manifest_en_geometrie.geometrie.z_offset_mm - ALLE VIER de posities, dus ook woofer_boven en woofer_onder afzonderlijk. Tot V20 werden die twee door de fixture gemiddeld voordat de metriek ze zag; dat gemiddelde blijft juist voor de synthese (een akoestisch centrum per tak) en was fout voor de fracties (die bestaan juist omdat een weg met twee bronnen op meer dan een afstand van zijn buur staat).",
+   "amplitudeweging": "GELIJK, want het wooferpaar is parallel geschakeld. Niet als getal ingevoerd maar als afwezigheid: de metriek meldt zelf dat zij de bronnen als gelijk aangestuurd heeft genomen. Het zwaartepunt is daarmee het meetkundige midden; bij ongelijke aansturing zou het meebewegen en de twee andere fracties niet.",
+   "d_woofer_mid_dichtstbij_mm": 261.3,
+   "d_woofer_mid_zwaartepunt_mm": 399.15,
+   "d_woofer_mid_verste_mm": 537,
+   "d_woofer_mid_binnen_weg_mm": 275.7,
+   "d_mid_tweeter_alle_drie_mm": 129.2,
+   "d_mid_tweeter_binnen_weg_mm": null,
+   "waarom_mid_tweeter_drie_gelijke": "mid en tweeter zijn elk EEN bron, en dan vallen dichtstbijzijnde, zwaartepunt en verste samen. Dat is een bewering die het bestand vastlegt en geen vanzelfsprekendheid: zij is precies het geval waarin de oude enkele lambda correct was. De vierde fractie bestaat daar niet - geen van beide wegen heeft een bronscheiding binnen zichzelf - en staat daarom als null en niet als 0.",
+   "kruiscontrole_paarafstand": "de dichtstbijzijnde-afstand die uit de z-offsets volgt (261,3 mm) IS de paarafstand die het casusboek los noteert (manifest_en_geometrie.geometrie.ctc_mm.woofer_mid = 261). Twee onafhankelijk opgeschreven getallen die samenvallen; de suite assert dat, want als zij uit elkaar lopen weet niemand welke van de twee de metriek gebruikt. Idem mid_tweeter: 129,2 uit de offsets tegen 129,2 in ctc_mm.",
+   "hernoeming": "lobing_wm_lambda heet sinds V20 lobing_wm_binnen_weg_lambda. Waarde en klasse ongewijzigd (0,29 / 0,36 / 0,36, klasse B): de engine berekende altijd al de spacing BINNEN de wooferweg, alleen heette de referentie naar het paar. Een afleidingsfout in de naamgeving, geen rekenfout - en daarom is de waarde behouden in plaats van herzien. lobing_mt_lambda is NIET hernoemd: bij twee enkelvoudige bronnen is hij een echte tussen-de-wegen-fractie.",
+   "geen_oordeel": "De niet-monotone zonescore van F1 is bij V20 vervallen en heeft geen vervanger. Hij scoorde precies de ene lambda waarvan V20 vaststelt dat zij niet te kiezen is. Op geen van deze vier fracties staat een poort, een budget of een shortlist-criterium, en dat is een blijvend verbod en geen huidige stand.",
+   "c_m_s": 343,
+   "kruispunt": "het kruispunt dat de netlist zelf oplevert - en daarom is dit klasse B en niet klasse A",
+   "klasse": "B",
+   "afhankelijkheid": "meting+netlist"
+  },
   "HUIDIG_2e": {
    "klasse": "B",
    "afhankelijkheid": "meting+netlist",
@@ -429,29 +430,164 @@
     }
    }
   },
-  "_spl_venster_opmerking": "Het bij F1 VERWIJDERDE spl_venster_dB is niet teruggekeerd: dat was een getal zonder band. Wat er nu staat is een andere grootheid met een andere definitie en volledig vastgelegde parameters (zie _F3_respons_oordeel) — geen herstel van de ingetrokken referentie."
+  "_spl_venster_opmerking": "Het bij F1 VERWIJDERDE spl_venster_dB is niet teruggekeerd: dat was een getal zonder band. Wat er nu staat is een andere grootheid met een andere definitie en volledig vastgelegde parameters (zie _F3_respons_oordeel) — geen herstel van de ingetrokken referentie.",
+  "KAND_V2_1": {
+   "klasse": "B",
+   "afhankelijkheid": "meting+netlist",
+   "klasse_toelichting": "Metrieken op de VASTE netlist manifest_en_geometrie.netlists.KAND_V2_1, een BESTAND in test-fixtures/casus1/. Het netwerk komt uit een v2-run (zie manifest_en_geometrie.v2_herkomst), maar de referentie hangt aan het bestand en niet aan die run — precies zoals de drie v1-kandidaten. Daarom klasse B en geen klasse C.",
+   "minZ": 0,
+   "minEPDR": 1.59,
+   "dissipatie_pct": 40,
+   "Qes_mult": 1.71,
+   "lf_bult_extra_dB": 3.4,
+   "V_tweeter_op_fs_dB": -10.63,
+   "rms_vlakheid_dB": 1.41,
+   "spl_venster_pm_dB": 1.65,
+   "wm_fase_oct": 11.03,
+   "mt_fase_oct": 84.66
+  },
+  "KAND_V2_2": {
+   "klasse": "B",
+   "afhankelijkheid": "meting+netlist",
+   "klasse_toelichting": "Metrieken op de VASTE netlist manifest_en_geometrie.netlists.KAND_V2_2, een BESTAND in test-fixtures/casus1/. Het netwerk komt uit een v2-run (zie manifest_en_geometrie.v2_herkomst), maar de referentie hangt aan het bestand en niet aan die run — precies zoals de drie v1-kandidaten. Daarom klasse B en geen klasse C.",
+   "minZ": 0.01,
+   "minEPDR": 0.02,
+   "dissipatie_pct": 2,
+   "Qes_mult": 1,
+   "lf_bult_extra_dB": 1.49,
+   "V_tweeter_op_fs_dB": -12.68,
+   "rms_vlakheid_dB": 2.8,
+   "spl_venster_pm_dB": 4.41,
+   "wm_fase_oct": 9.32,
+   "mt_fase_oct": 65.57
+  },
+  "KAND_V2_3": {
+   "klasse": "B",
+   "afhankelijkheid": "meting+netlist",
+   "klasse_toelichting": "Metrieken op de VASTE netlist manifest_en_geometrie.netlists.KAND_V2_3, een BESTAND in test-fixtures/casus1/. Het netwerk komt uit een v2-run (zie manifest_en_geometrie.v2_herkomst), maar de referentie hangt aan het bestand en niet aan die run — precies zoals de drie v1-kandidaten. Daarom klasse B en geen klasse C.",
+   "minZ": 1.39,
+   "minEPDR": 0.7,
+   "dissipatie_pct": 0,
+   "Qes_mult": 1,
+   "lf_bult_extra_dB": 1.49,
+   "V_tweeter_op_fs_dB": -21.61,
+   "rms_vlakheid_dB": 2.91,
+   "spl_venster_pm_dB": 5.09,
+   "wm_fase_oct": 21.51,
+   "mt_fase_oct": 21.03
+  },
+  "KAND_V2_4": {
+   "klasse": "B",
+   "afhankelijkheid": "meting+netlist",
+   "klasse_toelichting": "Metrieken op de VASTE netlist manifest_en_geometrie.netlists.KAND_V2_4, een BESTAND in test-fixtures/casus1/. Het netwerk komt uit een v2-run (zie manifest_en_geometrie.v2_herkomst), maar de referentie hangt aan het bestand en niet aan die run — precies zoals de drie v1-kandidaten. Daarom klasse B en geen klasse C.",
+   "minZ": 1.31,
+   "minEPDR": 0.66,
+   "dissipatie_pct": 1,
+   "Qes_mult": 1,
+   "lf_bult_extra_dB": 1.49,
+   "V_tweeter_op_fs_dB": -19.76,
+   "rms_vlakheid_dB": 3.04,
+   "spl_venster_pm_dB": 5.25,
+   "wm_fase_oct": 14.75,
+   "mt_fase_oct": 18.1
+  },
+  "KAND_V2_5": {
+   "klasse": "B",
+   "afhankelijkheid": "meting+netlist",
+   "klasse_toelichting": "Metrieken op de VASTE netlist manifest_en_geometrie.netlists.KAND_V2_5, een BESTAND in test-fixtures/casus1/. Het netwerk komt uit een v2-run (zie manifest_en_geometrie.v2_herkomst), maar de referentie hangt aan het bestand en niet aan die run — precies zoals de drie v1-kandidaten. Daarom klasse B en geen klasse C.",
+   "minZ": 1.24,
+   "minEPDR": 0.62,
+   "dissipatie_pct": 14,
+   "Qes_mult": 1.41,
+   "lf_bult_extra_dB": 1.76,
+   "V_tweeter_op_fs_dB": -21.53,
+   "rms_vlakheid_dB": 3.05,
+   "spl_venster_pm_dB": 5.4,
+   "wm_fase_oct": 19.53,
+   "mt_fase_oct": 20.69
+  },
+  "KAND_V2_6": {
+   "klasse": "B",
+   "afhankelijkheid": "meting+netlist",
+   "klasse_toelichting": "Metrieken op de VASTE netlist manifest_en_geometrie.netlists.KAND_V2_6, een BESTAND in test-fixtures/casus1/. Het netwerk komt uit een v2-run (zie manifest_en_geometrie.v2_herkomst), maar de referentie hangt aan het bestand en niet aan die run — precies zoals de drie v1-kandidaten. Daarom klasse B en geen klasse C.",
+   "minZ": 1.18,
+   "minEPDR": 0.59,
+   "dissipatie_pct": 15,
+   "Qes_mult": 1.45,
+   "lf_bult_extra_dB": 1.71,
+   "V_tweeter_op_fs_dB": -21.58,
+   "rms_vlakheid_dB": 3.12,
+   "spl_venster_pm_dB": 5.54,
+   "wm_fase_oct": 18.95,
+   "mt_fase_oct": 20.2
+  },
+  "KAND_V2_7": {
+   "klasse": "B",
+   "afhankelijkheid": "meting+netlist",
+   "klasse_toelichting": "Metrieken op de VASTE netlist manifest_en_geometrie.netlists.KAND_V2_7, een BESTAND in test-fixtures/casus1/. Het netwerk komt uit een v2-run (zie manifest_en_geometrie.v2_herkomst), maar de referentie hangt aan het bestand en niet aan die run — precies zoals de drie v1-kandidaten. Daarom klasse B en geen klasse C.",
+   "minZ": 1.15,
+   "minEPDR": 0.58,
+   "dissipatie_pct": 15,
+   "Qes_mult": 1.41,
+   "lf_bult_extra_dB": 1.7,
+   "V_tweeter_op_fs_dB": -19.83,
+   "rms_vlakheid_dB": 3.21,
+   "spl_venster_pm_dB": 5.64,
+   "wm_fase_oct": 12.64,
+   "mt_fase_oct": 18.67
+  },
+  "KAND_V2_8": {
+   "klasse": "B",
+   "afhankelijkheid": "meting+netlist",
+   "klasse_toelichting": "Metrieken op de VASTE netlist manifest_en_geometrie.netlists.KAND_V2_8, een BESTAND in test-fixtures/casus1/. Het netwerk komt uit een v2-run (zie manifest_en_geometrie.v2_herkomst), maar de referentie hangt aan het bestand en niet aan die run — precies zoals de drie v1-kandidaten. Daarom klasse B en geen klasse C.",
+   "minZ": 1.08,
+   "minEPDR": 0.54,
+   "dissipatie_pct": 15,
+   "Qes_mult": 1.44,
+   "lf_bult_extra_dB": 1.69,
+   "V_tweeter_op_fs_dB": -19.86,
+   "rms_vlakheid_dB": 3.29,
+   "spl_venster_pm_dB": 5.8,
+   "wm_fase_oct": 12.11,
+   "mt_fase_oct": 18.58
+  },
+  "KAND_V2_9": {
+   "klasse": "B",
+   "afhankelijkheid": "meting+netlist",
+   "klasse_toelichting": "Metrieken op de VASTE netlist manifest_en_geometrie.netlists.KAND_V2_9, een BESTAND in test-fixtures/casus1/. Het netwerk komt uit een v2-run (zie manifest_en_geometrie.v2_herkomst), maar de referentie hangt aan het bestand en niet aan die run — precies zoals de drie v1-kandidaten. Daarom klasse B en geen klasse C.",
+   "minZ": 0.84,
+   "minEPDR": 0.43,
+   "dissipatie_pct": 16,
+   "Qes_mult": 1.44,
+   "lf_bult_extra_dB": 1.68,
+   "V_tweeter_op_fs_dB": -12.37,
+   "rms_vlakheid_dB": 3.53,
+   "spl_venster_pm_dB": 6.16,
+   "wm_fase_oct": 17.12,
+   "mt_fase_oct": 20.74
+  }
  },
  "kruisvensters": {
- "parameters": {
-  "_": "V15-PROCESREGEL. Een kruisvenster is een functie van de ORDE, van de ernst-weging van de breakup en van de c-t-c-afstand, en geen van drieen stond tot F4a in dit bestand. De ordeafhankelijkheid staat wel in de SLEUTELNAAM (\"_orde4\"), en een naam is geen parameter.",
-  "orde": 4,
-  "fs_factor_bij_orde_4": 1.4,
-  "fs_factor_herkomst": "A5d.3 - de vloer is k maal f_s van de BOVENliggende driver, met k dalend naarmate de flank steiler wordt (orde 1: 3,0 | 2: 2,0 | 3: 1,6 | 4: 1,4). Dimensieloos, dus P6-schoon.",
-  "breakup_significant_dB": 2.5,
-  "breakup_significant_herkomst": "de drempel waarboven een breakup het kruisplafond mag binden. Dezelfde drempel als M-H gebruikt, zodat venster en metriek niet van mening kunnen verschillen over welke resonantie deze overname beperkt.",
-  "breakup_divisor_ernstig": 3.0,
-  "breakup_divisor_mild": 2.0,
-  "breakup_volle_ernst_dB": 6.0,
-  "ernst_weging": "ONGEKALIBREERD (V6 / V9: het vergt HD-data). De twee divisors zijn de gepubliceerde eindpunten van de vuistregel; de helling ertussen is een plaatshouder, en elke consument is verplicht hem als zodanig te merken. Het plafond van 551 Hz hangt hier volledig aan.",
-  "c_t_c_mm": {
-   "woofer_mid": 261,
-   "mid_tweeter": 129.2
+  "parameters": {
+   "_": "V15-PROCESREGEL. Een kruisvenster is een functie van de ORDE, van de ernst-weging van de breakup en van de c-t-c-afstand, en geen van drieen stond tot F4a in dit bestand. De ordeafhankelijkheid staat wel in de SLEUTELNAAM (\"_orde4\"), en een naam is geen parameter.",
+   "orde": 4,
+   "fs_factor_bij_orde_4": 1.4,
+   "fs_factor_herkomst": "A5d.3 - de vloer is k maal f_s van de BOVENliggende driver, met k dalend naarmate de flank steiler wordt (orde 1: 3,0 | 2: 2,0 | 3: 1,6 | 4: 1,4). Dimensieloos, dus P6-schoon.",
+   "breakup_significant_dB": 2.5,
+   "breakup_significant_herkomst": "de drempel waarboven een breakup het kruisplafond mag binden. Dezelfde drempel als M-H gebruikt, zodat venster en metriek niet van mening kunnen verschillen over welke resonantie deze overname beperkt.",
+   "breakup_divisor_ernstig": 3,
+   "breakup_divisor_mild": 2,
+   "breakup_volle_ernst_dB": 6,
+   "ernst_weging": "ONGEKALIBREERD (V6 / V9: het vergt HD-data). De twee divisors zijn de gepubliceerde eindpunten van de vuistregel; de helling ertussen is een plaatshouder, en elke consument is verplicht hem als zodanig te merken. Het plafond van 551 Hz hangt hier volledig aan.",
+   "c_t_c_mm": {
+    "woofer_mid": 261,
+    "mid_tweeter": 129.2
+   },
+   "c_t_c_herkomst": "de CASUSBOEK-geometrie (manifest_en_geometrie.geometrie.ctc_mm), niet de kastindeling van een lopend project. Die twee zetten de slechtste lobing-zone een octaaf uit elkaar, en een niet-toegeschreven afstand laat twee juiste composities op een defect lijken.",
+   "breakups": "de pieken waarop het plafond staat komen uit dezelfde SPL-pas; zie afgeleide_parameters._spl_scan_parameters",
+   "klasse": "A",
+   "afhankelijkheid": "meting"
   },
-  "c_t_c_herkomst": "de CASUSBOEK-geometrie (manifest_en_geometrie.geometrie.ctc_mm), niet de kastindeling van een lopend project. Die twee zetten de slechtste lobing-zone een octaaf uit elkaar, en een niet-toegeschreven afstand laat twee juiste composities op een defect lijken.",
-  "breakups": "de pieken waarop het plafond staat komen uit dezelfde SPL-pas; zie afgeleide_parameters._spl_scan_parameters",
-  "klasse": "A",
-  "afhankelijkheid": "meting"
- },
   "woofer_mid_orde4": {
    "klasse": "A",
    "afhankelijkheid": "meting",
@@ -512,7 +648,7 @@
     "formule": "grootste L waarvoor de M-D-bult <= budget, 1D-oplossing op de gemeten Z-piek en het gemeten nabije veld",
     "budget_dB": 2.5,
     "pad_R_ohm": 0.5,
-    "tegenvoorbeeld_pad_R_ohm": 2.0,
+    "tegenvoorbeeld_pad_R_ohm": 2,
     "band": "A4 M-D: B = [0,7*f_p, 2,2*f_p], f_ref = 3*f_p, geclipt op de NF-geldigheid (A5.5)",
     "f_p_hz": 52.37,
     "assert": "op de METRIEK, niet op de mH: de bult bij de genoteerde L moet gelijk zijn aan het budget binnen de dB-klasse. Een geinverteerde grens erft de tolerantie van de metriek die zij inverteert; een eigen componenttolerantieklasse zou die relatie verbergen."
@@ -530,7 +666,7 @@
     "doorlaatband_herkomst": "afgeleid uit de kruispunten van HUIDIG (A4 M-C-conventie); het bovenste einde is open en valt terug op de meetgeldigheid",
     "budget_dB": 4.1,
     "budget_herkomst": "verankerde_gaps_dB.tweeter_tov_mid van 25-08. De engine leest op de kale gemeten niveaus 3,44 dB; A5d.4(a) wil het ankerniveau NA baffle step en dat wacht op A5e.2, dus het budget is hier als PARAMETER vastgelegd in plaats van uit de engine genomen.",
-    "demping_marge_dB": 0.0,
+    "demping_marge_dB": 0,
     "gemeten": 3.4894
    },
    "voorbound_serie_C": {
@@ -541,8 +677,8 @@
     "Z_ohm": 3.99,
     "Z_herkomst": "mediaan |Z| van de mid over 700-1500 Hz (de sessieband van de 25-08-analyse)",
     "f_s_hz": 88.81,
-    "verzwakking_dB": 40.0,
-    "gerealiseerd_uF": 42.0,
+    "verzwakking_dB": 40,
+    "gerealiseerd_uF": 42,
     "gerealiseerd_orde": 4,
     "casusboek": "V12-tegenvoorbeeld: enkelvoudige serie-C-voorbound 5-10 uF tegen een gerealiseerde 4e-orde midtak met 42 uF in serie."
    }
@@ -631,7 +767,7 @@
   "geometrie": {
    "D_inch": {
     "woofer": 7.6,
-    "mid": 4.0
+    "mid": 4
    },
    "z_offset_mm": {
     "tweeter": 64.6,
@@ -652,7 +788,25 @@
   "netlists": {
    "HUIDIG": "20260822_3-Zopt_adsfilter.json",
    "KAND_A": "KAND-A-2eorde-continu.adsfilter.json",
-   "KAND_B": "20260822.4-Koan2951-phase.adsfilter.json"
+   "KAND_B": "20260822.4-Koan2951-phase.adsfilter.json",
+   "KAND_V2_1": "KAND-V2-1.adsfilter.json",
+   "KAND_V2_2": "KAND-V2-2.adsfilter.json",
+   "KAND_V2_3": "KAND-V2-3.adsfilter.json",
+   "KAND_V2_4": "KAND-V2-4.adsfilter.json",
+   "KAND_V2_5": "KAND-V2-5.adsfilter.json",
+   "KAND_V2_6": "KAND-V2-6.adsfilter.json",
+   "KAND_V2_7": "KAND-V2-7.adsfilter.json",
+   "KAND_V2_8": "KAND-V2-8.adsfilter.json",
+   "KAND_V2_9": "KAND-V2-9.adsfilter.json"
+  },
+  "v2_herkomst": {
+   "_": "DOCUMENTATIE, geen acceptatiewaarde. Waar de KAND-V2-netlists vandaan komen, zodat een lezer ze kan herleiden en desgewenst opnieuw kan opwekken. Niets in dit blok wordt geassert als getal; wat WEL acceptatie is, zijn de metrieken op de bestanden zelf (kandidaten.KAND_V2_*, klasse B) en de reproductie door de echte route (casus1V2Candidates.test.ts).",
+   "bestand": "casus1_v2_herkomst.json",
+   "gegenereerd_op_commit": "40bdf23242fd8eba4703b001d2e35834428c60f1",
+   "seed": 20260827,
+   "run_vingerafdruk": "engine=2.0.0-F1 estimators=6087f58a seed=20260827 budget=tuner starts=1 status=completed design=bee336e2 measurements=e97d1bdc gates=5465b825 bounds=5465b825 tuning=99e5b33a facts=7f4da8b5 choices=c300ec46",
+   "generator": "scripts/generate-casus1-v2-candidates.ts",
+   "kosten": "negen ketenruns, gemeten 132-286 s per kandidaat op deze meetset; ongeveer een half uur in totaal. Daarom een script en geen test."
   }
  },
  "herzien_F1": "25-08-2026 vastgesteld; herzien bij oplevering F1 (engine2-fundament)",

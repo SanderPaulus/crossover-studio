@@ -146,8 +146,13 @@ const ALIVE_DB = -300;
 
 /** The alignment library — same four as the two-way enumeration: the two
  *  classic even LR alignments, 18 dB/oct Butterworth, and Bessel-4 as the
- *  gentle-phase option. */
-const AUTO_STRUCTS: Struct3Choice[] = [
+ *  gentle-phase option.
+ *
+ *  EXPORTED SINCE F4d, and only exported: not a line of it changed. The v2
+ *  candidate generator has to know which orders can actually be built before it
+ *  proposes one, and a second list of alignments in engine2 would be a second
+ *  opinion about what this step enumerates. */
+export const AUTO_STRUCTS: Struct3Choice[] = [
   { kind: 'LR', order: 2 },
   { kind: 'LR', order: 4 },
   { kind: 'BW', order: 3 },

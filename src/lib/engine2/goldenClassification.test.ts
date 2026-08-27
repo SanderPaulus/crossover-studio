@@ -96,6 +96,18 @@ const CLASSED_PATHS: readonly string[] = [
   'kandidaten.HUIDIG_2e',
   'kandidaten.KAND_A_2e',
   'kandidaten.KAND_B_3e',
+  /* F4d — the nine frozen v2 candidates. Written out rather than globbed, for
+   * the reason the list itself gives: "discover the blocks that have a klasse
+   * and check that they have one" is a test that passes on an empty file. */
+  'kandidaten.KAND_V2_1',
+  'kandidaten.KAND_V2_2',
+  'kandidaten.KAND_V2_3',
+  'kandidaten.KAND_V2_4',
+  'kandidaten.KAND_V2_5',
+  'kandidaten.KAND_V2_6',
+  'kandidaten.KAND_V2_7',
+  'kandidaten.KAND_V2_8',
+  'kandidaten.KAND_V2_9',
   'kandidaten._V_tweeter_op_fs_dB_sessie_25_08',
   'kandidaten._F3_respons_oordeel',
   'kruisvensters.parameters',
@@ -187,6 +199,13 @@ describe('F4a — every golden reference says what it is a function of', () => {
     expect(String(baseline.v1_commit)).toMatch(/^[0-9a-f]{7,40}$/);
     expect(String(baseline.v1_commit_herleiding).length).toBeGreaterThan(120);
     expect(String(golden.classificatie.bevinding_F4a)).toContain('klasse C');
+    /* F4d — the nine v2 candidates are the first references in this file that
+     * came out of a v2 run, and they are still class B. The distinction is the
+     * one V19 drew: the reference hangs on the netlist FILE, not on the run
+     * that produced it, so a later run delivering different networks writes
+     * different files rather than moving these numbers. */
+    const telling = golden.classificatie.telling as Record<string, unknown>;
+    expect(String(telling.sinds_F4d)).toContain('NUL klasse C');
   });
 
   it('the classification counts are internally consistent and name their baseline', () => {

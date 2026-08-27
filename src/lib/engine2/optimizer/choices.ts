@@ -179,3 +179,93 @@ export function choicesKey(
   put('weights', GREY_KEYS, weights as Record<string, unknown> | undefined);
   return out;
 }
+
+/* ------------------------------------------------------------------ *
+ * F4d — the candidate's DECLARATION over the choice keys
+ * ------------------------------------------------------------------ */
+
+/**
+ * WHY A DECLARATION AND NOT JUST A VALUE BAG.
+ *
+ * F4c stated ten of the twenty-five choice keys and named the other fifteen in
+ * a note that began "still inherited from the v1 chain". That note was the
+ * honest thing to write at the time and it is exactly what F4d has to remove —
+ * but removing it by giving all fifteen a value is not possible, and pretending
+ * otherwise would be worse than the note. Three of them do not HAVE a value on
+ * a three-way handover design (the solo family), one is a repair-pass barrier
+ * nobody sets up front (`xoPinHard`), two carry measurement arrays that are
+ * already in the payload (`angleData`, `midBranch`), and one is computed inside
+ * the design step out of the alignment it just chose (`branchTargets`).
+ *
+ * So a key is in exactly one of three states, and the state itself is the
+ * declaration:
+ *
+ *   STATED    — the candidate carries a value. It wins over whatever the chain
+ *               built, because the hook merges last.
+ *   ABSENT    — the candidate declares that this key has no value on this
+ *               design, WITH THE REASON. Different from undefined: undefined is
+ *               indistinguishable from nobody having thought about it, which is
+ *               the failure mode row 39 of the V26 table records.
+ *   DELEGATED — the candidate declares that another named stage owns this key,
+ *               WITH THE REASON. `branchTargets` is delegated to the design
+ *               step because re-deriving it here would be a second
+ *               implementation of chain logic, and two descriptions of one
+ *               thing is how V21 happened.
+ *
+ * `choiceKeyGuard.test.ts` asserts that the three states together cover
+ * `CHOICE_KEYS` exactly, with no key in two of them and none in none. That is
+ * what makes "no choice is inherited any more" a claim the build can check
+ * rather than a sentence in a commit message.
+ */
+export interface ChoiceDeclaration {
+  /** Keys the candidate carries a value for. */
+  stated: Partial<CandidateChoices>;
+  /** Keys that have no value on this design, each with the reason. */
+  absent: readonly { key: ChoiceKey; why: string }[];
+  /** Keys another named stage owns, each with the stage and the reason. */
+  delegated: readonly { key: ChoiceKey; to: string; why: string }[];
+}
+
+/** What a declaration says about the key set — the guard reads this. */
+export interface DeclarationCoverage {
+  /** Keys in no state at all. Non-empty means something is still inherited. */
+  missing: ChoiceKey[];
+  /** Keys claimed by more than one state. */
+  duplicated: ChoiceKey[];
+  complete: boolean;
+}
+
+export function declarationCoverage(d: ChoiceDeclaration): DeclarationCoverage {
+  const seen = new Map<string, number>();
+  const bump = (k: string) => seen.set(k, (seen.get(k) ?? 0) + 1);
+  for (const k of Object.keys(d.stated)) bump(k);
+  for (const a of d.absent) bump(a.key);
+  for (const g of d.delegated) bump(g.key);
+  const missing = CHOICE_KEYS.filter((k) => !seen.has(k));
+  const duplicated = CHOICE_KEYS.filter((k) => (seen.get(k) ?? 0) > 1);
+  return { missing, duplicated, complete: missing.length === 0 && duplicated.length === 0 };
+}
+
+/**
+ * The declaration as a fingerprint ingredient.
+ *
+ * The REASONS travel too, and not for readability: a key that moves from
+ * delegated to absent is a different run even when no value changed, because
+ * something else is now deciding it. Values go through `choicesKey` so the two
+ * halves are digested the same way.
+ */
+export function declarationKey(
+  d: ChoiceDeclaration | undefined,
+  weights: Partial<GreyWeights> | undefined,
+): Record<string, unknown> {
+  const base = choicesKey(d?.stated, weights);
+  return {
+    ...base,
+    absent: [...(d?.absent ?? [])]
+      .map((a) => [a.key, a.why] as const)
+      .sort((x, y) => (x[0] < y[0] ? -1 : 1)),
+    delegated: [...(d?.delegated ?? [])]
+      .map((g) => [g.key, g.to, g.why] as const)
+      .sort((x, y) => (x[0] < y[0] ? -1 : 1)),
+  };
+}

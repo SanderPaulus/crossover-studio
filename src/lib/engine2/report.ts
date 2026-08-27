@@ -98,6 +98,7 @@ import {
 import {
   crossoverWindow,
   DEFAULT_SIGNIFICANT_BREAKUP_DB,
+  type XoWindowInput,
   type XoWindowResult,
 } from './predesign/xoWindow.ts';
 import { cabs, cargDeg, dbAmp, interpLog, octavesBetween } from './util.ts';
@@ -262,6 +263,20 @@ export interface EngineV2Report {
   predesign: {
     gaps: AnchoredGaps | null;
     windows: XoWindowResult[];
+    /**
+     * F4d — the INPUTS each window above was derived from, one per adjacent
+     * pair and in the same order.
+     *
+     * Exposed because A5d.3's floor is k·f_s with k falling as the flank
+     * steepens, so a window is a function of the ORDER and the candidate
+     * generator needs to re-derive one per candidate order (see
+     * `predesign/candidates.ts`). Handing it the finished window instead would
+     * put every order it generates under a floor computed for a different one.
+     * The alternative — inverting `k·f_s` back through the factor table to
+     * recover f_s — is re-deriving an input from an output, which is the quiet
+     * second derivation `xoWindow.ts` carries `upperFsHz` to avoid.
+     */
+    windowInputs: XoWindowInput[];
     /**
      * A5d.6 — the bounds the ACTIVE budgets invert to, on this measurement
      * set. Empty when no budget is stated (P4). Reporting only here: the
@@ -633,6 +648,7 @@ export function buildReport(input: EngineV2ReportInput): EngineV2Report {
 
   /* ---------------- pre-design ---------------- */
   const windows: XoWindowResult[] = [];
+  const windowInputs: XoWindowInput[] = [];
   for (let i = 0; i + 1 < order.length; i++) {
     const lower = order[i];
     const upper = order[i + 1];
@@ -645,8 +661,7 @@ export function buildReport(input: EngineV2ReportInput): EngineV2Report {
     }
     const worst = floors.length ? floors.reduce((a, b) => (b.hz > a.hz ? b : a)) : null;
     const dir = dLower?.directivity[0] ?? null;
-    windows.push(
-      crossoverWindow({
+    const windowInput: XoWindowInput = {
         lower,
         upper,
         order: input.settings.orderByPair?.[key] ?? NaN,
@@ -659,8 +674,9 @@ export function buildReport(input: EngineV2ReportInput): EngineV2Report {
         lowerMinus6AngleDeg: dir?.angleDeg ?? null,
         spacingMm: input.geometry.ctcMm?.[key] ?? null,
         spacingSource: input.geometry.ctcSource?.[key],
-      }),
-    );
+    };
+    windowInputs.push(windowInput);
+    windows.push(crossoverWindow(windowInput));
   }
 
   /**
@@ -845,7 +861,7 @@ export function buildReport(input: EngineV2ReportInput): EngineV2Report {
     driversLowToHigh: order,
     analysisGrid: grid,
     metrics,
-    predesign: { gaps, windows, bounds: inverted.bounds, boundNotes },
+    predesign: { gaps, windows, windowInputs, bounds: inverted.bounds, boundNotes },
     gates: {
       verdicts,
       violation: violationText(verdicts),

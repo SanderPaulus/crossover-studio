@@ -135,6 +135,14 @@ import {
   type SmoothingNotice,
 } from './lib/engine2/requirements/smoothingConsistency.ts';
 import type { XoWindowResult } from './lib/engine2/predesign/xoWindow.ts';
+import {
+  buildCandidateField,
+  candidateFieldKey,
+} from './lib/engine2/predesign/candidateField.ts';
+import type { GeneratedCandidate } from './lib/engine2/predesign/candidates.ts';
+import { compareFloors, type FloorComparison } from './lib/engine2/predesign/floorComparison.ts';
+import { declareCandidateChoices } from './lib/engine2/optimizer/candidateDeclaration.ts';
+import { AUTO_STRUCTS } from './lib/threeWayDesign.ts';
 import { DEFAULT_RUN_SEED } from './lib/engine2/constants.ts';
 import { stableJson, type V2RunStamp } from './lib/engine2/optimizer/determinism.ts';
 import type { GateVerdict } from './lib/engine2/optimizer/gates.ts';
@@ -187,6 +195,7 @@ import {
   runVfRoundsTask,
   runChain3Scan,
   runChain3ScanV2,
+  type V2Chain3Item,
   stopKeepingResults,
   type ScanProgress,
   scanStopped,
@@ -3420,7 +3429,12 @@ export default function App() {
         driverIds: built.driverIds,
       };
     } catch (e) {
-      return { report: null, ambiguous: null, error: (e as Error).message, driverIds: {} };
+      return {
+        report: null,
+        ambiguous: null,
+        error: (e as Error).message,
+        driverIds: {} as Partial<Record<BranchRole, string>>,
+      };
     }
   }, [
     engineSelection,
@@ -5088,6 +5102,54 @@ export default function App() {
       sdCm2, xmaxMm, excursionSpl, impedances, cabinet, xoWinThr, merged, nearField, woofer, midDrv, tweeter,
       xoRangeOn, xoLowFreqHz, xoLowMarginHz, xoFreqHz, xoMarginHz]);
 
+  /**
+   * AUDIT §6.3 — the two measurement floors, held against each other (F4d).
+   *
+   * Reactive rather than run-scoped, and that is the point: the disagreement is
+   * a property of the MEASUREMENTS and the designer should see it before
+   * pressing scan, not in the notes afterwards. It resolves nothing — see
+   * `floorComparison.ts` for why resolving it would be the mistake.
+   */
+  const v2Floors = useMemo((): FloorComparison[] => {
+    if (!engineSelection.reporting || !v2Windows) return [];
+    return (['low', 'high'] as const).flatMap((side) => {
+      const w2 = v2Windows[side];
+      const w1 = physWin3?.win[side];
+      if (!w2 && !w1) return [];
+      const rec = w2 ? recommendedBand(w2) : null;
+      const band = rec?.effectiveHz.length
+        ? ([
+            Math.min(...rec.effectiveHz.map((seg) => seg[0])),
+            Math.max(...rec.effectiveHz.map((seg) => seg[1])),
+          ] as [number, number])
+        : null;
+      return [
+        compareFloors(
+          w2 ? `${w2.lower} → ${w2.upper}` : side === 'low' ? 'W-M' : 'M-T',
+          w2 && w2.floorHz !== null
+            ? {
+                layer: 'Engine v2 (A5d.3)',
+                hz: w2.floorHz,
+                source: w2.floorBy?.source ?? 'no binding floor limit',
+                subject: w2.floorBy?.rule ?? 'unattributed',
+              }
+            : null,
+          w1 && w1.floorHz !== null
+            ? {
+                layer: 'the v1 physics window',
+                hz: w1.floorHz,
+                source: w1.floorBy?.label ?? 'no binding floor limit',
+                subject: w1.floorBy?.rule ?? 'unattributed',
+              }
+            : null,
+          band,
+        ),
+      ];
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [engineSelection.reporting, v2Windows, physWin3]);
+
+
   /* The SAME physics window for the TWO-WAY pair (woofer↔tweeter). The
    * three-way scan has derived its search space from the measurements since
    * August; the two-way scan never got it and still searches an unbounded
@@ -6272,14 +6334,39 @@ export default function App() {
       // Rule 1 beats rule 7 (xoWindow.ts): a pin that dips under the data
       // floor is clamped to it — the physWin3 banner already says so — and the
       // clamped pin is what the chain cages and judges against.
+      /* WHICH ENGINE THIS SCAN RUNS ON, decided once and read from here down.
+       * It used to be settled two hundred lines lower, which was fine while the
+       * only thing it changed was where the candidates were sent; since F4d it
+       * also decides who MAKES them, and the first thing that depends on it is
+       * the pin two lines below. */
+      const useV2 = engineSelection.optimizer === 'v2';
       const pinsRaw = xoPinsValue();
       // F4b — a substituted or refused pin is a fact about the run, so it is
       // reported rather than left to be inferred from the delivered crossings.
-      setV2RunNotes(engineSelection.optimizer === 'v2' ? pinsRaw.notes : []);
+      setV2RunNotes(useV2 ? pinsRaw.notes : []);
+      /* THE v1 DATA-FLOOR CLAMP, AND WHY IT IS NOW v1-ONLY (F4d, audit §6.3).
+       *
+       * A pin that dips under the v1 data floor is REPLACED here by the v1
+       * window — a substitution the designer sees only as a banner about
+       * something else. Measured live on the KOAN project: a recommended
+       * 396.7–448.5 Hz became 707–728 Hz, after which the pre-start estimate
+       * correctly reported four of four candidates outside the A5d.3 window.
+       * The estimate was right and the cause was here.
+       *
+       * The two floors are both defensible and they answer DIFFERENT questions
+       * — where a response may be believed (A5b.1, the measurement's own
+       * window) and where a handover may sit (the near-field/far-field splice
+       * blend). What was not defensible is one of them winning because it comes
+       * first in the pipeline. So on the v2 route nothing is clamped: the
+       * candidates are generated against the A5d.3 floor and the v1 floor is
+       * reported beside it as a counter-judgement the designer reads
+       * (`floorComparison.ts`, and the block below). On the v1 route this is
+       * byte-identical to what it always did. */
       const clampPin = (
         pin: { freq: number; margin: number } | undefined,
         win: { floorHz: number | null; ceilHz: number | null; userClampedByData: boolean } | undefined,
       ) => {
+        if (useV2) return pin;
         if (!pin || !win || !win.userClampedByData || win.floorHz === null) return pin;
         const lo = win.floorHz;
         const hi = Math.max(win.ceilHz ?? lo, lo * 1.02);
@@ -6353,18 +6440,142 @@ export default function App() {
             high: pairScores.high?.integ.overlapCentreHz ?? null,
           }
         : undefined;
-      const variants = crossover3Variants(
-        sim.base.w,
-        sim.base.m!,
-        sim.base.t,
-        pins,
-        tweeterHpFloor ?? undefined,
-        scanSteps3,
-        lowWin3,
-        highWin3,
-        warm3,
-        physWin3?.diAnchor,
-      );
+      /* ================================================================ *
+       * F4d — WHO MAKES THE CANDIDATES
+       *
+       * On the v1 route: `crossover3Variants`, unchanged, byte for byte.
+       *
+       * On the v2 route: the A5d pre-design layer. The audit's §6.1 said v2
+       * "kan vetoën en rapporteren, het kan niet voorstellen" — this is where
+       * it starts proposing. Positions are spread evenly in OCTAVE distance
+       * across the recommended band (the A5d.3 window minus the worst lobing
+       * zone), their number derived from the band's width and the smoothing the
+       * acceptance judgement runs on, and the order per flank comes from the
+       * A5d.3 derivation. Nothing lands outside a feasible window, which is why
+       * the pre-start estimate below reports 0 of N on this route.
+       *
+       * The budget is the designer's own cost knob — the same "candidate steps
+       * per axis" that means steps² chains on the v1 grid — and when the
+       * derivation offers more than that, POSITIONS are thinned and never
+       * ORDERS, with the thinning reported. A position is a sample; an order is
+       * a choice.
+       * ================================================================ */
+      const v2Generated = (() => {
+        if (!useV2) return null;
+        const wis = engineV2Report?.report?.predesign.windowInputs ?? [];
+        if (wis.length === 0) {
+          /* NO WINDOWS, SO NO FIELD — and the fallback to the v1 generator is
+           * said out loud rather than taken quietly. This is the state where a
+           * designer would otherwise get v1 candidates under a v2 stamp and
+           * have no way to tell: the report could not be built, or it holds
+           * fewer than two branches, and either way A5d has nothing to propose
+           * from. Absence is not a verdict (P4), and neither is it a licence. */
+          setV2RunNotes((prev) => [
+            ...prev,
+            'No A5d.3 windows could be derived, so the v2 candidate generator produced nothing and ' +
+              'the candidates below come from the v1 generator instead. That is a fallback, not a ' +
+              'v2 field: check that the report panel has a window for each adjacent pair.',
+          ]);
+          return null;
+        }
+        const slopes = settings.acousticSlopes;
+        const curveOfDriver = (driver: string) => {
+          const role = (['low', 'mid', 'high'] as const).find(
+            (r) => engineV2Report?.driverIds?.[r] === driver,
+          );
+          const g =
+            role === 'low' ? sim.base.w : role === 'mid' ? sim.base.m : role === 'high' ? sim.base.t : null;
+          return g ? { freq: g.freq, db: g.spl } : null;
+        };
+        return buildCandidateField({
+          windowInputs: wis,
+          alignments: AUTO_STRUCTS,
+          chainBudget: Math.max(1, Math.round(scanSteps3)) ** wis.length,
+          perPair: wis.map((wi, i) => ({
+            /* The order the designer stated for this handover — read from the
+             * SAME place the window already reads it (`orderByPair`, derived
+             * from the acoustic slope settings), not from a second parse of
+             * the alignment fields. A window computed at one order and a
+             * candidate generated at another would be two answers to one
+             * question. `NaN` is what the window treats as "not stated". */
+            statedOrder: Number.isFinite(wi.order) ? wi.order : null,
+            // M-C's stated limit arms A5d.3(ii). Absent = not armed (P4);
+            // nothing here invents a protection budget.
+            maxDriveOnFsDb: engineV2Gates.maxDriveOnFsDb ?? null,
+            lowerTargetSlopeDbPerOct:
+              (i === 0 && wis.length > 1 ? slopes?.low?.lower : slopes?.mid) ?? null,
+            upperTargetSlopeDbPerOct:
+              (i === 0 && wis.length > 1 ? slopes?.low?.upper : slopes?.tweeter) ?? null,
+            lowerCurve: curveOfDriver(wi.lower),
+            upperCurve: curveOfDriver(wi.upper),
+          })),
+        });
+      })();
+      if (useV2) {
+        /* V26 ROW 38 — the chain grid's lower edge, stated instead of silent.
+         *
+         * The grid is built from the measurement extents and the designer's
+         * fMin field, whose fallback is a v1 project number. F4b2 measured what
+         * that cost: the LF-lift inversion, evaluated on that grid, delivered a
+         * ceiling of a thousand henries, and F4b2 closed it by crossing the
+         * driver's own sweep. What is left is not a leak but a silence — the
+         * search still runs on a grid whose bottom edge nobody attributed.
+         *
+         * F4d states it rather than moves it, and the reason is scope: the grid
+         * is `sim`, which every plot on this screen draws from, so moving it
+         * would change the reporting surfaces too. The judged BAND is clipped
+         * to measurement validity already (audit §5), so nothing is scored down
+         * there; this note is about where the search may look. */
+        const gridFloor = grid[0];
+        const lowestWindowFloor = v2Generated
+          ? Math.min(
+              ...v2Generated.field.axes.flatMap((a) =>
+                Object.values(a.window).map((w) => w.floorHz ?? Infinity),
+              ),
+            )
+          : Infinity;
+        const gridNote =
+          Number.isFinite(lowestWindowFloor) && gridFloor < lowestWindowFloor
+            ? [
+                `The analysis grid starts at ${Math.round(gridFloor)} Hz while the lowest A5d.3 ` +
+                  `window floor is ${Math.round(lowestWindowFloor)} Hz. No candidate was placed ` +
+                  'below that floor and the judged band is clipped to measurement validity, so ' +
+                  'nothing is scored down there — but the grid edge itself comes from the ' +
+                  'measurement extents and the fMin field rather than from a derived floor, and ' +
+                  'that is stated here rather than left to be noticed (casebook V26 row 38).',
+              ]
+            : [];
+        const lines = [
+          ...gridNote,
+          ...v2Floors.flatMap((f) => [f.message, f.warning].filter((x): x is string => !!x)),
+          ...(v2Generated?.orders.flatMap((o) => [...o.why, ...o.notes]) ?? []),
+          ...(v2Generated?.field.axes.flatMap((a) => a.notes) ?? []),
+          ...(v2Generated?.field.refusals ?? []),
+          ...(v2Generated?.field.notes ?? []),
+        ];
+        if (lines.length > 0) setV2RunNotes((prev) => [...prev, ...lines]);
+      }
+      const v2Candidates: GeneratedCandidate[] = v2Generated?.field.candidates ?? [];
+      const variants = v2Generated
+        ? v2Candidates.map((c) => ({
+            label: c.label,
+            xoLow: c.crossings[0].hz,
+            xoHigh: c.crossings[c.crossings.length - 1].hz,
+            xoLowRange: c.crossings[0].cageHz,
+            xoHighRange: c.crossings[c.crossings.length - 1].cageHz,
+          }))
+        : crossover3Variants(
+            sim.base.w,
+            sim.base.m!,
+            sim.base.t,
+            pins,
+            tweeterHpFloor ?? undefined,
+            scanSteps3,
+            lowWin3,
+            highWin3,
+            warm3,
+            physWin3?.diAnchor,
+          );
       /* DELIVERABLE 3 — the pre-start estimate.
        *
        * Counted on the candidate list that is ABOUT TO RUN, not on a
@@ -6455,23 +6666,106 @@ export default function App() {
             `Driver limits (the measured 4 dB beaming tier is the default for a reason), ` +
             `or pin this crossing yourself.`,
         );
-      const inputs = variants.map((v) => ({
-        grid: [...grid],
-        w: sim.base.w,
-        m: sim.base.m!,
-        t: sim.base.t,
-        driverZ: zOnGrid,
-        angleData: angleSets3,
-        tAdjust: tAdj,
-        midAdjust: mAdj,
-        xoLow: v.xoLow,
-        xoHigh: v.xoHigh,
-        xoLowRange: v.xoLowRange,
-        xoHighRange: v.xoHighRange,
-        judgeWindows,
-        label: v.label,
-        settings,
-      }));
+      /* ONE CONSTRUCTION OF A CHAIN INPUT, used by both scan modes.
+       *
+       * On the v2 route the candidate overrides two things in `settings` and
+       * nothing else: the ALIGNMENT per handover (its derived order, so the
+       * design step's enumeration is bound to what A5d.3 asked for — V26 row
+       * 39, where 'auto' left the order undeclared) and the handover FLOORS,
+       * which become the A5d.3 window floors instead of the v1 physics floors.
+       * The second is the whole of audit §6.3 in one line: the floor that
+       * steers is stated, and the other one is reported beside it. */
+      const chainInputFor = (v: Chain3Variant, cand?: GeneratedCandidate): Chain3Input => {
+        const alignmentOf = (i: number): StructChoice | undefined => {
+          const x = cand?.crossings[i];
+          return x ? { kind: x.alignment.kind as FilterKind, order: x.alignment.order as 1 | 2 | 3 | 4 } : undefined;
+        };
+        const perCandidate = cand
+          ? {
+              structureLow: alignmentOf(0) ?? settings.structureLow,
+              structureHigh: alignmentOf(cand.crossings.length - 1) ?? settings.structureHigh,
+              xoFloorPairs: cand.crossings.map((x) => x.windowHz[0]),
+            }
+          : {};
+        return {
+          grid: [...grid],
+          w: sim.base.w,
+          m: sim.base.m!,
+          t: sim.base.t,
+          driverZ: zOnGrid,
+          angleData: angleSets3,
+          tAdjust: tAdj,
+          midAdjust: mAdj,
+          xoLow: v.xoLow,
+          xoHigh: v.xoHigh,
+          xoLowRange: v.xoLowRange,
+          xoHighRange: v.xoHighRange,
+          judgeWindows,
+          label: v.label,
+          settings: { ...settings, ...perCandidate },
+        };
+      };
+      /** The A5d declaration that travels beside one generated candidate. */
+      const declarationFor = (cand: GeneratedCandidate, input: Chain3Input) => ({
+        declaration: declareCandidateChoices({
+          cages: cand.crossings.map((x) => x.cageHz),
+          windowFloorsHz: cand.crossings.map((x) => x.windowHz[0]),
+          multiWay: true,
+          stated: {
+            band: input.settings.band,
+            acousticSlopes: input.settings.acousticSlopes,
+            staged: input.settings.targets,
+            ampTarget: input.settings.ampTarget,
+            powerMetric: input.settings.powerMetric,
+            phaseMetric: input.settings.phaseMetric,
+            catalogSnap: input.settings.catalogSnap,
+            snapPrefs: input.settings.snapPrefs,
+            breakupGuard: input.settings.breakupGuard,
+            safety: input.settings.safety,
+            audit: input.settings.audit,
+            loadFloor: input.settings.loadFloor,
+            ampMinLoadOhm: input.settings.ampMinLoadOhm,
+            rSourceDisqualifyOhm: input.settings.rSourceDisqualifyOhm,
+            // The chain sets this itself, with a stated reason ("the seed here
+            // is OUR OWN synthesis"). Restated rather than inherited: the value
+            // is identical, and F4c's whole point is that a value nobody names
+            // is indistinguishable from a decision.
+            zFloorStrict: true,
+          },
+        }),
+        provenance: cand.provenance,
+        // V26 row 39: the HP flank of each way, keyed by model. The mid's high
+        // pass belongs to the low handover and the tweeter's to the high one —
+        // the convention `parseHpLpPref` documents.
+        orderByModel: {
+          mid: cand.crossings[0].order,
+          tweeter: cand.crossings[cand.crossings.length - 1].order,
+        },
+      });
+      const itemFor = (v: Chain3Variant, cand?: GeneratedCandidate) => {
+        const input = chainInputFor(v, cand);
+        return { input, ...(cand ? { candidate: declarationFor(cand, input) } : {}) };
+      };
+      const inputs = variants.map((v, i) => itemFor(v, v2Candidates[i]));
+      /* THE AXIS-BY-AXIS SCAN IS A v1 CANDIDATE STRATEGY (F4d).
+       *
+       * It sweeps one handover with the other held at a level/DI anchor and
+       * then refines around the pair — a way of GENERATING candidates, and on
+       * the v2 route generation belongs to A5d. Running it there would put v1
+       * candidates through the v2 tuner and undo the whole delivery, silently,
+       * because the mode is a remembered UI setting rather than something the
+       * designer picks per run. So it is skipped on the v2 route and said out
+       * loud, rather than quietly producing the v1 field under a v2 stamp. */
+      const axesOnV2 = useV2 && scan3Mode === 'axes' && !!v2Generated;
+      if (axesOnV2) {
+        setV2RunNotes((prev) => [
+          ...prev,
+          'The axis-by-axis scan was not used: it is a v1 way of GENERATING candidates (sweep one ' +
+            'handover against an anchor, then refine), and on the v2 route the field comes from ' +
+            'A5d. The candidates below are the generated field; switch the optimiser to v1 to use ' +
+            'the axis sweep.',
+        ]);
+      }
       setVfBusy(true);
       setVfError(null);
       setVfProgress(null);
@@ -6488,23 +6782,7 @@ export default function App() {
        * the coupling through the shared mid instead of assuming it away —
        * skipped when the two sweeps land within half a step of their aims.
        * Progress rows from finished rounds stay in the busy table. */
-      const inputOf = (v: Chain3Variant) => ({
-        grid: [...grid],
-        w: sim.base.w,
-        m: sim.base.m!,
-        t: sim.base.t,
-        driverZ: zOnGrid,
-        angleData: angleSets3,
-        tAdjust: tAdj,
-        midAdjust: mAdj,
-        xoLow: v.xoLow,
-        xoHigh: v.xoHigh,
-        xoLowRange: v.xoLowRange,
-        xoHighRange: v.xoHighRange,
-        judgeWindows,
-        label: v.label,
-        settings,
-      });
+      const inputOf = (v: Chain3Variant) => chainInputFor(v);
       const rankAll = (rs: Chain3Result[]) =>
         rankChain3Results(rs, settings.targets, settings.phasePriority, angleSets3 ? settings.directivityWeight : 0, rSourceLimitOhm, bomCapEur, ampMinLoadOhm ?? 0);
 
@@ -6516,7 +6794,6 @@ export default function App() {
        *
        * The gate verdicts and the run stamp are collected as the rounds land,
        * so a partial field still carries the status that says it is partial. */
-      const useV2 = engineSelection.optimizer === 'v2';
       /* F4b — THE MEASURED FACTS THAT CROSS THE BORDER (audit §4, leaks 1 and 2).
        *
        * `reOhmByModel` existed in the payload since F2 and was read by the
@@ -6627,11 +6904,23 @@ export default function App() {
               catalogSnap: settings.catalogSnap,
               acousticSlopes: settings.acousticSlopes,
             }),
+            /* F4d — WHAT was searched. The fingerprint has had a `choices`
+             * ingredient since F4c and it was always empty on this route,
+             * because the function that fills it is not the one the app calls.
+             * Empty was accurate while v1 chose the candidates; the moment the
+             * field is a v2 derivation, two runs over two different fields
+             * would stamp identically without this. */
+            ...(v2Generated
+              ? { candidateFieldKey: stableJson(candidateFieldKey(v2Generated.field)) }
+              : {}),
           }
         : null;
 
-      const scan3 = (ins: Chain3Input[], onProgress: (d: ScanProgress) => void): Promise<Chain3Result[]> => {
-        if (!useV2 || !v2ScanSettings) return runChain3Scan(ins, onProgress);
+      const scan3 = (
+        ins: V2Chain3Item[],
+        onProgress: (d: ScanProgress) => void,
+      ): Promise<Chain3Result[]> => {
+        if (!useV2 || !v2ScanSettings) return runChain3Scan(ins.map((i) => i.input), onProgress);
         return runChain3ScanV2(ins, v2ScanSettings, onProgress).then((r) => {
           /* F4b — the worker's own notes get a screen.
            *
@@ -6679,8 +6968,11 @@ export default function App() {
         runId,
         at: Date.now(),
         status: 'running',
-        planned: scan3Mode === 'axes' ? null : inputs.length,
-        label: scan3Mode === 'axes' ? 'axis-by-axis scan' : `${inputs.length}-candidate scan`,
+        planned: scan3Mode === 'axes' && !axesOnV2 ? null : inputs.length,
+        label:
+          scan3Mode === 'axes' && !axesOnV2
+            ? 'axis-by-axis scan'
+            : `${inputs.length}-candidate scan`,
       });
       const runAxes = async (): Promise<Chain3Result[]> => {
         const nPts = 1 + 2 * Math.max(1, Math.min(3, scanSteps3)); // 3/5/7
@@ -6711,7 +7003,7 @@ export default function App() {
         const doneItems: { label: string; text: string; done: boolean; warn?: string }[] = [];
         let doneEvals = 0;
         const runRound = async (vs: Chain3Variant[], phase?: { label: string; n: number; total: string }) => {
-          const rs = await scan3(vs.map(inputOf), (d) =>
+          const rs = await scan3(vs.map((v) => ({ input: inputOf(v) })), (d) =>
             setVfProgress({ round: doneItems.filter((x) => x.done).length + d.round, evals: doneEvals + d.evals, items: [...doneItems, ...d.items], round3: phase }),
           );
           for (const r of rs) doneItems.push({ label: r.label, ...scanRowVerdict(r), done: true });
@@ -6751,7 +7043,7 @@ export default function App() {
         }
         return merged;
       };
-      (scan3Mode === 'axes'
+      (scan3Mode === 'axes' && !axesOnV2
         ? runAxes()
         : scan3(inputs, (d) =>
             setVfProgress({ round: d.round, evals: d.evals, items: d.items }),
@@ -17731,7 +18023,11 @@ export default function App() {
 
       {engineSelection.reporting && engineV2Report && (
         engineV2Report.report ? (
-          <EngineV2Panel report={engineV2Report.report} ambiguous={engineV2Report.ambiguous} />
+          <EngineV2Panel
+            report={engineV2Report.report}
+            ambiguous={engineV2Report.ambiguous}
+            floors={v2Floors}
+          />
         ) : (
           <div className="panel v2-panel">
             <div className="v2-head">

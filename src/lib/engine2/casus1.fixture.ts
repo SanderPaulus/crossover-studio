@@ -299,14 +299,28 @@ export function casus1Geometry(golden: GoldenRefs = loadGolden()): Geometry {
  */
 export const CASUS1_WOOFER_DC_OHM = 3.05;
 
-/** One of the three candidate netlists, with the measured driver impedances. */
+/**
+ * One of the frozen candidate netlists, with the measured driver impedances.
+ *
+ * The key is any entry of `manifest_en_geometrie.netlists`, which since F4d
+ * holds the three v1 baselines AND the nine `KAND-V2-*` files the candidate
+ * generator produced. Widened from a union of three literals rather than
+ * extended with nine more: the reference file is the list, and a second list in
+ * a type is a second thing to keep in step.
+ */
 export function casus1Filter(
-  candidate: 'HUIDIG' | 'KAND_A' | 'KAND_B',
+  candidate: string,
   manifest: Manifest,
   files: readonly MeasurementFile[],
   golden: GoldenRefs = loadGolden(),
 ): FilterInput {
   const name = golden.manifest_en_geometrie.netlists[candidate];
+  if (!name) {
+    throw new Error(
+      `casus 1 has no netlist called ${candidate}; the file lists ` +
+        `${Object.keys(golden.manifest_en_geometrie.netlists).join(', ')}`,
+    );
+  }
   const parsed = deserializeFilter(readFileSync(join(CASUS1_DIR, name), 'utf-8'));
   const { netlist } = crossoverToNetlist({ name: parsed.name, parts: parsed.parts } as VxpCrossover);
   const driverZ: FilterInput['driverZ'] = {};

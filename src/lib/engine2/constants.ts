@@ -408,9 +408,25 @@ export const DEFAULT_RUN_SEED = 20260826;
 /**
  * How many independent starting points a v2 run explores when the project
  * states no number. A SEARCH-DEPTH choice, not a limit: it changes how much
- * of the landscape is visited, never what counts as acceptable. @p6 rule
+ * of the landscape is visited, never what counts as acceptable.
+ *
+ * ONE SINCE F4d, and the change is a decision rather than a tuning. Until F4d
+ * the only spread a v2 run had was this one: several jittered copies of the
+ * same network, differing by a draw from the seed. F4d gives the run a spread
+ * that comes from the MEASUREMENTS instead — a field of candidates, each of
+ * which is a stated choice about where the handover sits and at what order
+ * (A5d, `predesign/candidates.ts`). Under satisficing those two are not
+ * interchangeable: a candidate is a choice a designer can read and disagree
+ * with, a jittered start is chance, and a field assembled out of chance cannot
+ * be diversified over topology classes because nothing decided its topology.
+ *
+ * So the mechanism is not deleted — a project that states `starts` still gets
+ * exactly what it asks for, and `determinism.test.ts` still proves the draw is
+ * reproducible — but the engine no longer does it on its own. Note that on the
+ * route the app takes it never did: the chain runs once per candidate and the
+ * seed reaches nothing but the fingerprint (casebook V26, V27). @p6 rule
  */
-export const DEFAULT_RUN_STARTS = 3;
+export const DEFAULT_RUN_STARTS = 1;
 
 /**
  * How far a seeded start may be jittered from the network it starts at, in
@@ -540,3 +556,40 @@ export const RELAXATION_MAX_RUNGS = 8;
  * two samples. @p6 rule
  */
 export const ANALYSIS_GRID_POINTS = 1600;
+
+/* ------------------------------------------------------------------ *
+ * F4d — the candidate generator (A5d)
+ * ------------------------------------------------------------------ */
+
+/**
+ * How many dB per octave ONE filter order contributes to an asymptotic slope.
+ *
+ * The definition of order, not a project number and not a preference: a
+ * first-order flank rolls off 6 dB per octave, an n-th order flank 6n. Every
+ * A5d.3 order derivation divides a required attenuation by this to answer
+ * "how many orders does that take over this octave distance". @p6 rule
+ */
+export const DB_PER_OCTAVE_PER_ORDER = 6;
+
+/**
+ * Half-width, in octaves, of the stretch a NATURAL flank slope is fitted over.
+ *
+ * A5d.3(i) asks for the slope of the BARE driver response beside a handover so
+ * the required electrical order can be the difference between the acoustic
+ * target and what the driver already does. That slope has to be measured over
+ * something, and the something is stated here rather than at the call site:
+ * wide enough that a fit is not reading ripple, narrow enough that it is still
+ * describing the frequency the handover sits at. Dimensionless — it moves with
+ * the crossing. @p6 rule
+ */
+export const NATURAL_SLOPE_FIT_OCTAVES = 0.5;
+
+/**
+ * Fewest samples a natural-slope fit is believed on.
+ *
+ * A two-point "fit" through a grid that happens to be coarse there is a line
+ * through noise. Below this the derivation ABSTAINS and says the grid was too
+ * coarse — the V8e discipline: an estimator that cannot abstain will eventually
+ * publish nonsense. @p6 rule
+ */
+export const NATURAL_SLOPE_MIN_SAMPLES = 5;

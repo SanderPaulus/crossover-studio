@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react';
 import type { EngineV2Report } from '../lib/engine2/report';
 import type { CapabilityCell } from '../lib/engine2/capability';
+import type { FloorComparison } from '../lib/engine2/predesign/floorComparison';
 
 /**
  * DELIVERABLE 4 — the Engine v2 report panel.
@@ -116,9 +117,19 @@ export interface EngineV2PanelProps {
   report: EngineV2Report;
   /** Set when the netlist's drivers could not be told apart by name. */
   ambiguous?: string | null;
+  /**
+   * F4d — the two measurement floors per handover, side by side (audit §6.3).
+   *
+   * A PROP rather than something the report carries, because one of the two
+   * floors is not this engine's: it belongs to the app's older design layer,
+   * and a report that reached across to fetch it would be reporting on a layer
+   * it does not own. Empty = nothing to compare, which is a different state
+   * from "they agree".
+   */
+  floors?: readonly FloorComparison[];
 }
 
-export function EngineV2Panel({ report, ambiguous }: EngineV2PanelProps) {
+export function EngineV2Panel({ report, ambiguous, floors = [] }: EngineV2PanelProps) {
   const { ingest, capability, metrics, predesign, system, gates } = report;
 
   return (
@@ -791,6 +802,54 @@ export function EngineV2Panel({ report, ambiguous }: EngineV2PanelProps) {
           ))
         )}
       </Section>
+
+      {floors.length > 0 && (
+        <Section title="Pre-design — the two measurement floors, side by side" spec="A5d.3 / audit §6.3">
+          <p className="v2-muted">
+            Two layers of this app derive a lower limit for the same handover, and they answer
+            different questions: where a response may be BELIEVED (the measurement's own window)
+            and where a handover may SIT (the near-field/far-field splice blend). Both are
+            defensible. Nothing here reconciles them — the v2 route generates its candidates
+            against the A5d.3 floor and shows the other one beside it, because the older value
+            winning by being earlier in the pipeline is not the same as it being better.
+          </p>
+          {floors.map((f, i) => (
+            <div className="v2-metric" key={i}>
+              <div className="v2-metric-head">
+                {f.pairLabel}
+                <b>
+                  {f.steering?.hz !== undefined && f.steering?.hz !== null
+                    ? hz(f.steering.hz)
+                    : '—'}
+                  {f.counter?.hz !== undefined && f.counter?.hz !== null
+                    ? ` vs ${hz(f.counter.hz)}`
+                    : ''}
+                </b>
+              </div>
+              <ul className="v2-limits">
+                {f.steering && (
+                  <li className="v2-binding">
+                    ▲ {hz(f.steering.hz)} — {f.steering.layer}: {f.steering.source}
+                    <b> · steered the candidates</b>
+                  </li>
+                )}
+                {f.counter && (
+                  <li>
+                    ▲ {hz(f.counter.hz)} — {f.counter.layer}: {f.counter.source} · reported, not
+                    applied
+                  </li>
+                )}
+              </ul>
+              {f.octavesApart !== null && f.octavesApart > 0 && (
+                <div className="v2-coverage">
+                  {f.octavesApart.toFixed(2)} octaves apart ({f.agreement})
+                </div>
+              )}
+              {f.warning && <div className="v2-warn">{f.warning}</div>}
+            </div>
+          ))}
+        </Section>
+      )}
 
       <Section title="System — window interaction" spec="A5d.3">
         <ul>
