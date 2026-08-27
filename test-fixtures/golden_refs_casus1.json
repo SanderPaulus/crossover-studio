@@ -721,7 +721,7 @@
  "manifest_en_geometrie": {
   "klasse": "A",
   "afhankelijkheid": "meting",
-  "klasse_toelichting": "PROJECTINVOER, niet afgeleid: het meetmanifest, de headertijden, de geometrie en de bestandsnamen van de drie netlists. Zij is klasse A omdat zij nergens een functie van is behalve van de meetsessie zelf - en zij is tegelijk de reden dat de kandidaatmetrieken klasse B kunnen zijn in plaats van C: de kandidaten zijn BESTANDEN.",
+  "klasse_toelichting": "PROJECTINVOER, niet afgeleid: het meetmanifest, de headertijden, de geometrie en de bestandsnamen van de drie netlists. Zij is klasse A omdat zij nergens een functie van is behalve van de meetsessie zelf - en zij is tegelijk de reden dat de kandidaatmetrieken klasse B kunnen zijn in plaats van C: de kandidaten zijn BESTANDEN. Sinds de vloersessie hoort gestelde_eisen er ook bij: gestelde projectinvoer valt onder dezelfde aanduiding als het meetmanifest — zij is nergens een functie van behalve van de persoon die haar invulde, en zij krijgt daarom geen nieuwe klasse maar deze.",
   "opmerking": "Vereist om de referenties te reproduceren; behoort bij meetsessie 22-08-2026.",
   "bestanden": {
    "woofers_parallel__1_.lim": {
@@ -852,8 +852,82 @@
     ],
     "seed": 20260827
    },
+   "gestelde_vloer_ohm": 2.6,
+   "vloeruitzonderingen": [
+    {
+     "netlist": "KAND_V2_1",
+     "minZ_ohm": 0.01,
+     "gestelde_vloer_ohm": 2.6,
+     "reden": "Bevroren VOOR de vloer gesteld werd, en getuned zonder hem. Haalt de gestelde vloer niet. De tuner heeft de vloer bovendien niet als ZOEKDOEL gezien: hij is een veto plus een reparatiepas achteraf (casusboek V30, met bestand:regel). Deze netlist blijft in het casusboek staan als meetobject en mag NIET gebouwd worden; hij verdwijnt zodra V30 een opvolger heeft."
+    },
+    {
+     "netlist": "KAND_V2_2",
+     "minZ_ohm": 0.01,
+     "gestelde_vloer_ohm": 2.6,
+     "reden": "Bevroren VOOR de vloer gesteld werd, en getuned zonder hem. Haalt de gestelde vloer niet. De tuner heeft de vloer bovendien niet als ZOEKDOEL gezien: hij is een veto plus een reparatiepas achteraf (casusboek V30, met bestand:regel). Deze netlist blijft in het casusboek staan als meetobject en mag NIET gebouwd worden; hij verdwijnt zodra V30 een opvolger heeft."
+    },
+    {
+     "netlist": "KAND_V2_3",
+     "minZ_ohm": 1.38,
+     "gestelde_vloer_ohm": 2.6,
+     "reden": "Bevroren VOOR de vloer gesteld werd, en getuned zonder hem. Haalt de gestelde vloer niet. De tuner heeft de vloer bovendien niet als ZOEKDOEL gezien: hij is een veto plus een reparatiepas achteraf (casusboek V30, met bestand:regel). Deze netlist blijft in het casusboek staan als meetobject en mag NIET gebouwd worden; hij verdwijnt zodra V30 een opvolger heeft."
+    },
+    {
+     "netlist": "KAND_V2_4",
+     "minZ_ohm": 1.17,
+     "gestelde_vloer_ohm": 2.6,
+     "reden": "Bevroren VOOR de vloer gesteld werd, en getuned zonder hem. Haalt de gestelde vloer niet. De tuner heeft de vloer bovendien niet als ZOEKDOEL gezien: hij is een veto plus een reparatiepas achteraf (casusboek V30, met bestand:regel). Deze netlist blijft in het casusboek staan als meetobject en mag NIET gebouwd worden; hij verdwijnt zodra V30 een opvolger heeft."
+    },
+    {
+     "netlist": "KAND_V2_5",
+     "minZ_ohm": 1.16,
+     "gestelde_vloer_ohm": 2.6,
+     "reden": "Bevroren VOOR de vloer gesteld werd, en getuned zonder hem. Haalt de gestelde vloer niet. De tuner heeft de vloer bovendien niet als ZOEKDOEL gezien: hij is een veto plus een reparatiepas achteraf (casusboek V30, met bestand:regel). Deze netlist blijft in het casusboek staan als meetobject en mag NIET gebouwd worden; hij verdwijnt zodra V30 een opvolger heeft."
+    },
+    {
+     "netlist": "KAND_V2_6",
+     "minZ_ohm": 1.14,
+     "gestelde_vloer_ohm": 2.6,
+     "reden": "Bevroren VOOR de vloer gesteld werd, en getuned zonder hem. Haalt de gestelde vloer niet. De tuner heeft de vloer bovendien niet als ZOEKDOEL gezien: hij is een veto plus een reparatiepas achteraf (casusboek V30, met bestand:regel). Deze netlist blijft in het casusboek staan als meetobject en mag NIET gebouwd worden; hij verdwijnt zodra V30 een opvolger heeft."
+    },
+    {
+     "netlist": "KAND_V2_7",
+     "minZ_ohm": 1.04,
+     "gestelde_vloer_ohm": 2.6,
+     "reden": "Bevroren VOOR de vloer gesteld werd, en getuned zonder hem. Haalt de gestelde vloer niet. De tuner heeft de vloer bovendien niet als ZOEKDOEL gezien: hij is een veto plus een reparatiepas achteraf (casusboek V30, met bestand:regel). Deze netlist blijft in het casusboek staan als meetobject en mag NIET gebouwd worden; hij verdwijnt zodra V30 een opvolger heeft."
+    },
+    {
+     "netlist": "KAND_V2_8",
+     "minZ_ohm": 0.95,
+     "gestelde_vloer_ohm": 2.6,
+     "reden": "Bevroren VOOR de vloer gesteld werd, en getuned zonder hem. Haalt de gestelde vloer niet. De tuner heeft de vloer bovendien niet als ZOEKDOEL gezien: hij is een veto plus een reparatiepas achteraf (casusboek V30, met bestand:regel). Deze netlist blijft in het casusboek staan als meetobject en mag NIET gebouwd worden; hij verdwijnt zodra V30 een opvolger heeft."
+    },
+    {
+     "netlist": "KAND_V2_9",
+     "minZ_ohm": 0.87,
+     "gestelde_vloer_ohm": 2.6,
+     "reden": "Bevroren VOOR de vloer gesteld werd, en getuned zonder hem. Haalt de gestelde vloer niet. De tuner heeft de vloer bovendien niet als ZOEKDOEL gezien: hij is een veto plus een reparatiepas achteraf (casusboek V30, met bestand:regel). Deze netlist blijft in het casusboek staan als meetobject en mag NIET gebouwd worden; hij verdwijnt zodra V30 een opvolger heeft."
+    },
+    {
+     "netlist": "KAND_V2_10",
+     "minZ_ohm": 0.86,
+     "gestelde_vloer_ohm": 2.6,
+     "reden": "Bevroren VOOR de vloer gesteld werd, en getuned zonder hem. Haalt de gestelde vloer niet. De tuner heeft de vloer bovendien niet als ZOEKDOEL gezien: hij is een veto plus een reparatiepas achteraf (casusboek V30, met bestand:regel). Deze netlist blijft in het casusboek staan als meetobject en mag NIET gebouwd worden; hij verdwijnt zodra V30 een opvolger heeft."
+    }
+   ],
+   "vloeruitzonderingen_regel": "Elke bevroren netlist haalt de gestelde vloer, OF staat in deze lijst met zijn reden. frozenNetlistGates.test.ts dwingt precies dat af: een netlist die hem niet haalt en hier niet staat, breekt de suite. De lijst is dus geen vrijstelling maar een boekhouding, en zij hoort leeg te raken.",
    "kosten": "10 ketenruns, gemeten 44-73 s per kandidaat op deze meetset (F4d-nazorg; de F4d-meting van 132-286 s stond op een tragere machinebezetting). Daarom een script en geen test.",
    "reproduceerbaarheid": "Nagemeten bij de F4d-nazorg: het script opnieuw draaien op dezelfde commit levert de netlists BYTE-IDENTIEK terug, op het `savedAt`-stempel van de serialisatie na. Dat stempel is het enige niet-deterministische veld in deze bestanden, en het staat in de kop en niet in de onderdelen."
+  },
+  "gestelde_eisen": {
+   "_": "PROJECTINVOER — wat de ONTWERPER voor deze casus heeft gesteld. Geen meting en geen afleiding: getallen die iemand heeft ingevuld, met de reden erbij. Zij staan in dit blok en NERGENS anders — niet in src/lib/engine2/, niet als default, niet als constante in een fixture. De fixtures lezen ze hiervandaan, langs hetzelfde pad als de app: het A5a-veld vult de scan-instellingen, en die vullen de poort. Dit blok erft de klasse van manifest_en_geometrie, want het is dezelfde soort invoer als het meetmanifest zelf.",
+   "versterkervloer_ohm": 2.6,
+   "versterkervloer_gesteld_door": "Sander Somers, 27-08-2026",
+   "versterkervloer_motivering": "Het bestaande filter HUIDIG staat op ~2,6 ohm minimum en is qua SPL en fase goed; de v2-kandidaten worden zo op dezelfde voet vergeleken.",
+   "versterkervloer_invoerpunt": "A5a-formulierveld 'Amplifier min load' (App.tsx). Van daar naar twee plaatsen tegelijk, precies zoals in de app: settings.ampMinLoadOhm en v2ScanSettings.gates.ampMinLoadOhm. Wat die twee WEL en NIET doen staat in casusboek V30 — kort: de tweede oordeelt, de eerste wapent alleen een reparatiepas achteraf en is geen zoekdoel.",
+   "versterkervloer_poort": "A4 M-B, eenvoudige modus — poort-id 'M-B/|Z|' in GATE_IDS. NIET M-A: dat is de dissipatiefractie en die is dimensieloos. Een vloer in ohm kan maar een poort wapenen. De vergelijkingsregel is meetsAmpFloor (src/lib/impedanceFloor.ts): geslaagd bij min|Z| >= 0,98 x de vloer, hier 2,548 ohm. Die 2 % is een projectconventie en geen eigenschap van de versterker.",
+   "gemeten_minZ_HUIDIG_ohm": 3.46,
+   "opmerking_bij_dat_verschil": "De motivering noemt ~2,6 ohm voor HUIDIG; de metriek in dit bestand leest 3.46 ohm (kandidaten.HUIDIG_2e.minZ, min |Z| over het hele analyseraster, poortvrij). Beide staan hier omdat zij niet hetzelfde getal zijn en het niet aan dit bestand is om te beslissen welk van de twee de ontwerper bedoelde — de app toont een systeemimpedantie op een eigen raster en band. De GESTELDE vloer is 2,6 en dat is wat er gewapend wordt; het gemeten getal staat ernaast zodat een lezer het verschil ziet in plaats van het te moeten reconstrueren. Gunstig neveneffect: HUIDIG haalt de gestelde vloer met marge, dus de baseline waaraan de motivering refereert valt niet zelf om."
   }
  },
  "herzien_F1": "25-08-2026 vastgesteld; herzien bij oplevering F1 (engine2-fundament)",

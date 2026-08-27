@@ -34,7 +34,7 @@ import { buildCandidateField, type CandidateFieldResult } from './predesign/cand
 import { declareCandidateChoices } from './optimizer/candidateDeclaration.ts';
 import type { GeneratedCandidate } from './predesign/candidates.ts';
 import { AUTO_STRUCTS } from '../threeWayDesign.ts';
-import { loadGolden, type GoldenRefs } from './casus1.fixture.ts';
+import { casus1AmpMinLoadOhm, loadGolden, type GoldenRefs } from './casus1.fixture.ts';
 
 /**
  * How a branch reads OUTSIDE its own measured extent on a union grid.
@@ -93,10 +93,20 @@ export const CASUS1_V2_SEED = 20260827;
  * protections on would have compared the wrong two things.
  *
  * So: the same values the app puts in `settings` on an ordinary three-way run,
- * with the app's own defaults where the designer states nothing. `ampMinLoadOhm`
- * stays absent, and that is P4 rather than an oversight — casus 1 states no
- * amplifier rating, so nothing judges the load, here or in the running app.
+ * with the app's own defaults where the designer states nothing.
+ *
+ * `ampMinLoadOhm` USED TO BE ABSENT HERE, and its absence was correct while the
+ * project stated nothing: P4, and the F0 doctrine that an empty field is not a
+ * judgement. It is stated now (`manifest_en_geometrie.gestelde_eisen`), so it
+ * appears — READ from there rather than written here, because a project number
+ * that exists in two places is a project number that will one day differ
+ * between them. It goes in beside the rest for the same reason the app puts it
+ * in both places: `settings.ampMinLoadOhm` is what the repair pass works
+ * against, and `v2.gates.ampMinLoadOhm` (set by the caller, not here) is what
+ * judges the delivered network. A floor that only judges arrives too late.
  */
+export const CASUS1_AMP_MIN_LOAD_OHM: number | null = casus1AmpMinLoadOhm();
+
 export const CASUS1_V2_SETTINGS = {
   phasePriority: 0.5,
   /* 'acoustic', which is the app's own default — and the second thing the first
@@ -120,6 +130,11 @@ export const CASUS1_V2_SETTINGS = {
   /** The app's own defaults for the source-resistance tiers. */
   rSourceDisqualifyOhm: 2.0,
   audit: { thresholds: { rSourceOhm: 1.0 } },
+  /* Spread rather than assigned, so an unstated floor leaves the KEY absent
+   * instead of present-and-undefined. `declareCandidateChoices` distinguishes
+   * those two: undefined becomes an ABSENT declaration with the P4 reason, and
+   * a missing key is the silent inheritance F4d ended. */
+  ...(CASUS1_AMP_MIN_LOAD_OHM !== null ? { ampMinLoadOhm: CASUS1_AMP_MIN_LOAD_OHM } : {}),
 };
 
 /**
@@ -184,6 +199,9 @@ export function casus1V2Declaration(
         breakupGuard: CASUS1_V2_SETTINGS.breakupGuard,
         rSourceDisqualifyOhm: CASUS1_V2_SETTINGS.rSourceDisqualifyOhm,
         audit: CASUS1_V2_SETTINGS.audit,
+        ...(CASUS1_AMP_MIN_LOAD_OHM !== null
+          ? { ampMinLoadOhm: CASUS1_AMP_MIN_LOAD_OHM }
+          : {}),
         ...(safety ? { safety } : {}),
         zFloorStrict: true,
       },

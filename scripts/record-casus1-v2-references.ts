@@ -30,6 +30,7 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {
   CASUS1_WOOFER_DC_OHM,
+  casus1AmpMinLoadOhm,
   casus1Files,
   casus1Filter,
   casus1Geometry,
@@ -40,6 +41,7 @@ import { buildReport } from '../src/lib/engine2/report.ts';
 import { ctcKey } from '../src/lib/engine2/metrics/types.ts';
 import { FLAT_TARGET } from '../src/lib/engine2/requirements/targetCurve.ts';
 import { compareDesigns } from '../src/lib/engine2/predesign/comparison.ts';
+import { meetsAmpFloor } from '../src/lib/impedanceFloor.ts';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const GOLDEN = join(HERE, '..', 'test-fixtures', 'golden_refs_casus1.json');
@@ -106,7 +108,41 @@ for (const map of [netlists, liveNetlists]) {
 }
 for (const k of Object.keys(raw.kandidaten)) if (k.startsWith('KAND_V2')) delete raw.kandidaten[k];
 const keys = Object.keys(netlists).filter((k) => k.startsWith('KAND_V2'));
-if (keys.length === 0) throw new Error('no KAND_V2 entries in the generator manifest');
+/* AN EMPTY SET IS A RESULT, not a crash.
+ *
+ * It used to throw here, which was right while nothing could refuse a
+ * candidate. With the amplifier floor armed a gate can refuse all of them, and
+ * "every candidate this field implies is unbuildable against the stated floor"
+ * is a finding worth writing down — a script that dies on it leaves the
+ * reference file holding netlists that no longer exist. So: prune, record, and
+ * say so out loud. */
+if (keys.length === 0) {
+  console.warn(
+    'NO candidate survived: the field produced none that passed every armed gate, so every ' +
+      'KAND_V2 entry has been pruned from manifest_en_geometrie.netlists and from kandidaten. ' +
+      'See casus1_v2_herkomst.json → kandidaat_uitkomst for what each one was refused by.',
+  );
+}
+
+/* ---- the stated amplifier floor, against every frozen netlist ----------- *
+ *
+ * V30. The floor was stated after these ten netlists were frozen, and they
+ * were tuned without it. Rather than delete them (a regenerated field with the
+ * floor armed delivered NOTHING — see the entry), each one is measured against
+ * the floor and the ones that miss it are named, with the reason and the entry
+ * number. `frozenNetlistGates.test.ts` reads this list: an entry removed from
+ * it while the netlist still misses the floor turns the suite red.
+ *
+ * The point of writing it down rather than loosening the test: "this case book
+ * contains designs nobody may build, and here is exactly which" is a finding.
+ * A test that simply skipped them would make it disappear. */
+const statedFloorOhm = casus1AmpMinLoadOhm(golden);
+const floorExceptions: {
+  netlist: string;
+  minZ_ohm: number | null;
+  gestelde_vloer_ohm: number;
+  reden: string;
+}[] = [];
 
 let leaves = 0;
 for (const key of keys) {
@@ -135,6 +171,25 @@ for (const key of keys) {
   };
   leaves += Object.keys(block).length - 3; // klasse, afhankelijkheid, toelichting are bookkeeping
   (raw.kandidaten as Record<string, unknown>)[key] = block;
+
+  if (statedFloorOhm !== null) {
+    const zMin = rep.metrics.epdr?.minZOhm ?? null;
+    // The one comparison rule, asked rather than re-implemented — the whole
+    // reason `impedanceFloor.ts` exists (A3g).
+    if (zMin === null || !meetsAmpFloor(zMin, statedFloorOhm)) {
+      floorExceptions.push({
+        netlist: key,
+        minZ_ohm: r2(zMin),
+        gestelde_vloer_ohm: statedFloorOhm,
+        reden:
+          'Bevroren VOOR de vloer gesteld werd, en getuned zonder hem. Haalt de gestelde ' +
+          'vloer niet. De tuner heeft de vloer bovendien niet als ZOEKDOEL gezien: hij is ' +
+          'een veto plus een reparatiepas achteraf (casusboek V30, met bestand:regel). ' +
+          'Deze netlist blijft in het casusboek staan als meetobject en mag NIET gebouwd ' +
+          'worden; hij verdwijnt zodra V30 een opvolger heeft.',
+      });
+    }
+  }
 }
 
 raw.manifest_en_geometrie.v2_herkomst = {
@@ -155,6 +210,17 @@ raw.manifest_en_geometrie.v2_herkomst = {
    * welke budgetten gewapend waren. Een blok dat daarvoor naar een ander
    * bestand wijst, laat de lezer die het niet opent met de aanname zitten. */
   meetopstelling: herkomst.meetopstelling,
+  /* V30 — welke bevroren netlists de GESTELDE vloer niet halen, en waarom ze
+   * er desondanks nog staan. Afgeleid, niet getypt: de lijst volgt uit de
+   * metrieken op de bestanden en uit `meetsAmpFloor`, dus hij kan niet
+   * verouderen zonder dat de metrieken meebewegen. */
+  gestelde_vloer_ohm: statedFloorOhm,
+  vloeruitzonderingen: floorExceptions,
+  vloeruitzonderingen_regel:
+    'Elke bevroren netlist haalt de gestelde vloer, OF staat in deze lijst met zijn reden. ' +
+    'frozenNetlistGates.test.ts dwingt precies dat af: een netlist die hem niet haalt en hier ' +
+    'niet staat, breekt de suite. De lijst is dus geen vrijstelling maar een boekhouding, en ' +
+    'zij hoort leeg te raken.',
   kosten:
     `${keys.length} ketenruns, gemeten 44-73 s per kandidaat op deze meetset (F4d-nazorg; de ` +
     'F4d-meting van 132-286 s stond op een tragere machinebezetting). Daarom een script en ' +
@@ -194,15 +260,34 @@ const table = compareDesigns([
 ]);
 const cell = (v: number | null, key: string) =>
   v === null ? '—' : v.toFixed(key === 'dissipationPct' ? 0 : 2);
+/* THE FLOOR VERDICT AS ITS OWN COLUMN (V30).
+ *
+ * Deliberately a column and not a filter: the whole point of the comparison
+ * block is that it ranks nothing and hides nothing, and a table that silently
+ * dropped every design under the floor would answer a question nobody asked.
+ * The verdict comes from `meetsAmpFloor` — the one comparison rule — so the
+ * column and the gate can never disagree. */
+const floorCell = (row: (typeof table.rows)[number]): string => {
+  if (statedFloorOhm === null) return 'geen vloer gesteld';
+  const z = row.cells.minZ?.value ?? null;
+  if (z === null) return '—';
+  return meetsAmpFloor(z, statedFloorOhm) ? '**ja**' : 'nee';
+};
+const floorTitle =
+  statedFloorOhm === null
+    ? 'vloer'
+    : `haalt de gestelde vloer ${statedFloorOhm} Ω?`;
 console.log(
   [
-    `| ontwerp | ${table.columns.map((c) => `${c.title} (${c.unit})`).join(' | ')} |`,
-    `|---|${table.columns.map(() => '---').join('|')}|`,
+    `| ontwerp | ${table.columns
+      .map((c) => `${c.title} (${c.unit})`)
+      .join(' | ')} | ${floorTitle} |`,
+    `|---|${table.columns.map(() => '---').join('|')}|---|`,
     ...table.rows.map(
       (row) =>
         `| ${row.label} | ${table.columns
           .map((c) => cell(row.cells[c.key].value, c.key))
-          .join(' | ')} |`,
+          .join(' | ')} | ${floorCell(row)} |`,
     ),
   ].join('\n'),
 );

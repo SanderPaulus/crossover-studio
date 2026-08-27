@@ -12,35 +12,42 @@
  * list of its own. A netlist added to the case book joins this test by being
  * added there; there is no second place to remember.
  *
- * ── WHAT THIS TEST CAN AND CANNOT CLAIM, said plainly ──────────────────────
+ * ── THE AMPLIFIER FLOOR IS STATED NOW, AND THAT CHANGES WHAT THIS PROVES ───
  *
- * The brief asked for "een bevroren netlist die een poort niet haalt breekt de
- * suite". On casus 1 that sentence is, today, unfalsifiable — and the reason
- * is the finding rather than an excuse. Casus 1 states NO amplifier rating, NO
- * dissipation ceiling, NO EPDR floor and NO M-C limit, so all four gates are
- * OFF (P4: an absent limit is not a gate that always passes, it is a gate that
- * reports its value and judges nothing). V27 already writes this down as the
- * first of the two things its comparison table exposed: `min |Z|` of 0.00 Ω on
- * KAND-V2-2 is not a bug, it is a missing project setting.
+ * When this file was written casus 1 stated no limits at all, so every gate was
+ * OFF (P4: an absent limit is not a gate that always passes; it is a gate that
+ * reports its value and judges nothing). "A frozen netlist that fails a gate
+ * breaks the suite" was therefore unfalsifiable here, and the file said so
+ * rather than inventing a threshold to make the sentence bite.
  *
- * Adding a threshold here to make the sentence bite would be inventing the
- * project setting that is missing, in a test file, which is the one thing
- * F0/P4 and this session's brief both forbid. So the test is split in two:
+ * The designer has since stated one — `manifest_en_geometrie.gestelde_eisen.
+ * versterkervloer_ohm` — so M-B/|Z| is ARMED on this casus and the sentence is
+ * now a real claim. The floor is read from the reference file, never written
+ * here: it is a project number and it has exactly one home (P6).
  *
- *   1. THE STANDING CLAIM. Every gate runs on every frozen netlist, produces a
- *      VALUE, and reports itself absent with its reason. That can fail — a
- *      netlist whose metric cannot be evaluated returns null and breaks it.
+ * The three remaining gates are still unarmed, and their half of the test is
+ * unchanged and still worth having: M-A, M-B/EPDR and M-C must report a VALUE
+ * and say "no limit set" beside it.
  *
- *   2. THE PROOF THAT IT BITES. The same harness, on the same files, with a
- *      limit taken from the FIELD'S OWN MEASURED VALUES — the least favourable
- *      reading in the set. No number is written in this file. When a project
- *      does state a limit, these netlists are judged by it, and the netlist at
- *      the other extreme fails. Without part 2, part 1 is a test that has never
- *      shown it can go red.
+ * The test is in three parts:
+ *
+ *   1. EVERY GATE IS EVALUABLE on every frozen netlist. Fails when a metric
+ *      returns null.
+ *   2. THE ARMED FLOOR JUDGES, AND EVERY FROZEN NETLIST EITHER CLEARS IT OR IS
+ *      NAMED. The ten `KAND-V2-*` netlists were frozen BEFORE the floor was
+ *      stated and none of them clears it, so each is listed in
+ *      `v2_herkomst.vloeruitzonderingen` with its measured minimum and the
+ *      reason. That list is a bookkeeping entry, not a waiver: remove a name
+ *      while the netlist still misses the floor and this goes red, which is
+ *      exactly what makes it falsifiable. Casebook V30.
+ *   3. THE UNARMED GATES REPORT WITHOUT JUDGING, and the still-useful
+ *      counter-proof that the harness bites when a limit IS given, with limits
+ *      taken from the field's own measured values so no number is written here.
  */
 
 import { describe, expect, it } from 'vitest';
 import {
+  casus1AmpMinLoadOhm,
   casus1Files,
   casus1Filter,
   casus1Geometry,
@@ -61,17 +68,38 @@ const NETLIST_KEYS = Object.keys(
   (golden.manifest_en_geometrie as { netlists: Record<string, string> }).netlists,
 );
 
+/** The floor the DESIGNER stated, read from the reference file (P6, one home). */
+const STATED_FLOOR_OHM = casus1AmpMinLoadOhm(golden);
+
 /**
- * The orders the case book states for casus 1's two handovers.
+ * Frozen netlists that are known NOT to clear the stated floor, with the
+ * reason — `manifest_en_geometrie.v2_herkomst.vloeruitzonderingen`.
  *
- * Needed because M-C's passband is derived from where the branches cross, and
- * the crossover window's floor moves with the order. Stated here for the same
- * reason every other casus-1 test states it: a band without its parameters is
- * not a measurement (V15).
+ * Read from the case book rather than listed here, so the test cannot drift
+ * from the record a human reads. Empty is the goal state and is legal.
+ */
+const EXCEPTIONS: { netlist: string; minZ_ohm: number | null; gestelde_vloer_ohm: number; reden: string }[] =
+  ((golden.manifest_en_geometrie as unknown as {
+    v2_herkomst?: { vloeruitzonderingen?: typeof EXCEPTIONS };
+  }).v2_herkomst?.vloeruitzonderingen ?? []);
+
+/**
+ * The orders the case book states for casus 1's two handovers, plus whatever
+ * limits the project itself states.
+ *
+ * The orders are needed because M-C's passband is derived from where the
+ * branches cross, and the crossover window's floor moves with the order.
+ * Stated here for the same reason every other casus-1 test states it: a band
+ * without its parameters is not a measurement (V15).
+ *
+ * The amplifier floor is SPREAD rather than assigned, so a case book that
+ * states none arms nothing — which is what casus 1 looked like before the
+ * floor was stated, and what this file is still able to describe.
  */
 const BASE: ReportSettings = {
   amplifierPowerW: 100,
   orderByPair: { [ctcKey('woofer', 'mid')]: 4, [ctcKey('mid', 'tweeter')]: 4 },
+  ...(STATED_FLOOR_OHM !== null ? { ampMinLoadOhm: STATED_FLOOR_OHM } : {}),
 };
 
 const report = (key: string, settings: ReportSettings = BASE) =>
@@ -96,8 +124,11 @@ describe('every gate runs on every frozen netlist', () => {
     // A scan over an empty list passes silently, which is how a guard comes to
     // be green for a year without ever having run.
     expect(NETLIST_KEYS.length).toBeGreaterThan(0);
-    expect(NETLIST_KEYS.some((k) => k.startsWith('KAND_V2'))).toBe(true);
-    expect(NETLIST_KEYS).toContain('HUIDIG');
+    // The three v1 baselines are the floor under this scan: they are files in
+    // the repository and no run can remove them. The v2 set is deliberately
+    // NOT asserted to be non-empty — a field in which every candidate is
+    // refused is a legitimate outcome, and V30 records one.
+    for (const key of ['HUIDIG', 'KAND_A', 'KAND_B']) expect(NETLIST_KEYS).toContain(key);
   });
 
   it('each netlist gets a verdict for every gate id A4 declares', () => {
@@ -122,19 +153,87 @@ describe('every gate runs on every frozen netlist', () => {
     }
   });
 
-  it('with casus 1\'s own settings every gate is OFF, and says so rather than passing', () => {
-    /* This is the honest form of "no frozen netlist fails a gate" on this
-     * case: none fails because none is judged. The assertion is on `active`
-     * and on the sentence, NOT on `pass` — a reader who sees only a green
-     * `pass` column cannot tell a design that cleared a limit from a design
-     * nobody measured against one. */
-    for (const { key, verdicts, anyActive } of FIELD) {
-      expect(anyActive, `${key} has an armed gate — casus 1 states none`).toBe(false);
+  it('the gates casus 1 does NOT state are OFF, and say so rather than passing', () => {
+    /* The assertion is on `active` and on the sentence, NOT on `pass` — a
+     * reader who sees only a green `pass` column cannot tell a design that
+     * cleared a limit from a design nobody measured against one. */
+    for (const { key, verdicts } of FIELD) {
       for (const v of verdicts) {
-        expect(v.active).toBe(false);
+        if (v.gate === 'M-B/|Z|' && STATED_FLOOR_OHM !== null) continue;
+        expect(v.active, `${key}: ${v.gate} is armed and casus 1 states no limit for it`).toBe(
+          false,
+        );
         expect(v.limit).toBeNull();
         expect(v.reason, `${key}: ${v.gate}`).toContain('no limit set');
       }
+    }
+  });
+});
+
+describe('the STATED amplifier floor judges every frozen netlist', () => {
+  /* The falsifiable half, and the reason this file was worth writing before it
+   * could be falsified: the machinery was already in place when the number
+   * arrived. Nothing about the gate changed — a project setting did. */
+
+  it('the floor comes from the case book, not from this file', () => {
+    expect(STATED_FLOOR_OHM, 'casus 1 no longer states an amplifier floor').not.toBeNull();
+    const stated = (golden.manifest_en_geometrie as unknown as {
+      gestelde_eisen: { versterkervloer_ohm: number; versterkervloer_motivering: string };
+    }).gestelde_eisen;
+    expect(STATED_FLOOR_OHM).toBe(stated.versterkervloer_ohm);
+    // A stated number without its reason is the thing V15 is about, one layer
+    // up: a requirement nobody can attribute is a requirement nobody can argue
+    // with.
+    expect(stated.versterkervloer_motivering.length).toBeGreaterThan(40);
+  });
+
+  it('M-B/|Z| is ARMED on every frozen netlist and delivers a judgement', () => {
+    for (const { key, verdicts } of FIELD) {
+      const z = verdicts.find((v) => v.gate === 'M-B/|Z|');
+      expect(z, `${key} has no M-B/|Z| verdict`).toBeTruthy();
+      expect(z!.active, `${key}: the stated floor did not reach the gate`).toBe(true);
+      expect(z!.limit).toBe(STATED_FLOOR_OHM);
+      expect(z!.value, `${key}: min |Z| was not computed`).not.toBeNull();
+    }
+  });
+
+  it('every frozen netlist either CLEARS the floor or is NAMED as an exception', () => {
+    /* THE CLAIM THIS FILE EXISTS FOR, and it can go red two ways: a netlist
+     * that misses the floor without being named, and a name that is still
+     * there after its netlist has been fixed. Both are failures of the same
+     * bookkeeping, and neither is a waiver — the list is supposed to empty. */
+    const missing = FIELD.filter(({ verdicts }) =>
+      verdicts.some((v) => v.gate === 'M-B/|Z|' && v.active && !v.pass),
+    ).map(({ key }) => key);
+
+    const named = EXCEPTIONS.map((e) => e.netlist).sort();
+    expect(missing.sort(), 'a frozen netlist misses the stated floor and is not named in ' +
+      'v2_herkomst.vloeruitzonderingen — name it with its reason, or replace the netlist')
+      .toEqual(named);
+
+    // The list is a record of a defect, so it has to carry the defect's size
+    // and its reason. A bare list of keys would be a waiver.
+    for (const e of EXCEPTIONS) {
+      expect(NETLIST_KEYS, `${e.netlist} is named but is not a frozen netlist`).toContain(
+        e.netlist,
+      );
+      expect(e.gestelde_vloer_ohm).toBe(STATED_FLOOR_OHM);
+      expect(e.minZ_ohm, `${e.netlist}: no measured minimum`).not.toBeNull();
+      expect(e.minZ_ohm!).toBeLessThan(STATED_FLOOR_OHM!);
+      expect(e.reden, `${e.netlist}: an exception without a reason is a waiver`).toMatch(/V30/);
+    }
+  });
+
+  it('the three v1 baselines DO clear the stated floor — the floor is not unreachable', () => {
+    /* Without this the exception list above would be indistinguishable from a
+     * floor nothing can meet. The number the designer stated was chosen with
+     * HUIDIG in mind, and HUIDIG has to be able to show it. */
+    for (const key of ['HUIDIG', 'KAND_A', 'KAND_B']) {
+      const z = FIELD.find((f) => f.key === key)!.verdicts.find((v) => v.gate === 'M-B/|Z|')!;
+      expect(z.pass, `${key} does not clear the stated floor`).toBe(true);
+      // ...and clears it outright rather than on the measurement tolerance
+      // (F3b, deliverable 4a): those are different statements about a design.
+      expect(z.withinToleranceOnly, `${key} clears the floor only within tolerance`).toBe(false);
     }
   });
 });

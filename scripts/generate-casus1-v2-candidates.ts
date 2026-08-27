@@ -55,6 +55,7 @@ import type { Chain3Input, Chain3Result } from '../src/lib/threeWayChain.ts';
 import type { GriddedResponse } from '../src/lib/dsp.ts';
 import { serializeFilter } from '../src/lib/filterFile.ts';
 import {
+  CASUS1_AMP_MIN_LOAD_OHM,
   CASUS1_V2_BAND_HZ,
   CASUS1_V2_GRID,
   CASUS1_V2_SEED,
@@ -116,6 +117,15 @@ const perCandidate: Record<string, unknown> = {};
  * record changes with it instead of quietly staying true-sounding.
  */
 let lastPayload: V2Chain3Payload | null = null;
+/** Per candidate: what it delivered and what every gate said about it. */
+const outcomes: {
+  label: string;
+  rimpel_dB: number;
+  fase_graden: number;
+  poorten: { poort: string; onderwerp: string; gewapend: boolean; geslaagd: boolean; waarde: number | null; grens: number | null }[];
+  geweigerd_door: string[];
+  door_de_ketenzelf_gediskwalificeerd: string[];
+}[] = [];
 let n = 0;
 for (const c of field.field.candidates) {
   n++;
@@ -143,7 +153,19 @@ for (const c of field.field.candidates) {
   const payload: V2Chain3Payload = {
     input,
     v2: {
-      gates: {},
+      /* THE GATE SIDE OF THE SAME PATH THE APP TAKES.
+       *
+       * `App.tsx` fills `v2ScanSettings.gates.ampMinLoadOhm` from the A5a field
+       * and `settings.ampMinLoadOhm` from the same state, and this fixture does
+       * both for the same reason: one arms the repair pass, the other arms the
+       * verdict. Spread rather than assigned, so an unstated floor arms nothing
+       * — which is what casus 1 looked like before the floor was stated, and
+       * what any other casus without one still looks like. */
+      gates: {
+        ...(CASUS1_AMP_MIN_LOAD_OHM !== null
+          ? { ampMinLoadOhm: CASUS1_AMP_MIN_LOAD_OHM }
+          : {}),
+      },
       budgets: {},
       determinism: { seed: CASUS1_V2_SEED },
       targetCurve: FLAT_TARGET,
@@ -167,9 +189,36 @@ for (const c of field.field.candidates) {
   });
   if (!out) throw new Error(`candidate ${c.label} produced nothing`);
   const done = out as NonNullable<typeof out>;
+  /* WHAT EACH CANDIDATE DID, gate verdicts included.
+   *
+   * Recorded for every candidate and not only for the survivors, because the
+   * question a reader of a shortlist actually has is about the ones that are
+   * NOT there. Before the floor was stated this block would have been dull —
+   * every gate absent, nothing refused. With a gate armed it is the difference
+   * between "the field was ten" and "the field was fifteen and five were
+   * refused, by this gate, at these ohms". */
+  const armed = done.gates.filter((v) => v.active);
+  const failed = armed.filter((v) => !v.pass);
+  outcomes.push({
+    label: c.label,
+    rimpel_dB: Number(done.result.net.after.rippleDb.toFixed(2)),
+    fase_graden: Number(done.result.net.after.phaseDeg.toFixed(1)),
+    poorten: done.gates.map((v) => ({
+      poort: v.gate,
+      onderwerp: v.subject,
+      gewapend: v.active,
+      geslaagd: v.pass,
+      waarde: v.value === null ? null : Number(v.value.toFixed(3)),
+      grens: v.limit,
+    })),
+    geweigerd_door: failed.map((v) => `${v.gate} (${v.subject})`),
+    door_de_ketenzelf_gediskwalificeerd: [...(done.result.disqualified ?? [])],
+  });
   console.log(
     `  [${n}/${field.field.candidates.length}] ${c.label} → ` +
       `${done.result.net.after.rippleDb.toFixed(2)} dB / ${done.result.net.after.phaseDeg.toFixed(1)}°` +
+      `  min|Z| ${(done.gates.find((v) => v.gate === 'M-B/|Z|')?.value ?? NaN).toFixed(2)} Ω` +
+      `  ${failed.length ? `REFUSED by ${failed.map((v) => v.gate).join(', ')}` : 'gates ok'}` +
       `  (${((Date.now() - t0) / 1000).toFixed(0)} s)`,
   );
   rows.push({
@@ -236,10 +285,31 @@ const meetopstelling = {
     "de eigen standaard van de app. Op 'filter' leverde dezelfde keten 31,4 dB rimpel tegen " +
     "5,2 dB op 'acoustic' (V27); een fixture die niet de synthese van de app draait, meet de app niet.",
   v2_poorten_gewapend: Object.keys(lastPayload.v2.gates ?? {}).sort(),
+  v2_poorten_bron:
+    CASUS1_AMP_MIN_LOAD_OHM !== null
+      ? {
+          'M-B/|Z|': {
+            sleutel: 'ampMinLoadOhm',
+            bron: 'gesteld',
+            waarde_ohm: CASUS1_AMP_MIN_LOAD_OHM,
+            waar:
+              'manifest_en_geometrie.gestelde_eisen.versterkervloer_ohm — het ENIGE ' +
+              'voorkomen van dit getal. Het reist langs het A5a-pad van de app: ' +
+              'settings.ampMinLoadOhm voor de reparatiepas, v2.gates.ampMinLoadOhm voor het ' +
+              'oordeel.',
+            regel:
+              'meetsAmpFloor (src/lib/impedanceFloor.ts), inclusief haar meettolerantie — ' +
+              'een projectconventie, geen eigenschap van de versterker.',
+          },
+        }
+      : {},
   v2_poorten_waarom:
-    'LEEG, en dat is P4 en geen omissie: casus 1 stelt geen versterkervloer (`ampMinLoadOhm`), ' +
-    'geen dissipatieplafond (M-A), geen EPDR-vloer (M-B) en geen M-C-grens. Leeg veld = geen ' +
-    'oordeel. Zie de min|Z|-kolom van de V27-vergelijking: dat is deze afwezigheid, zichtbaar.',
+    (CASUS1_AMP_MIN_LOAD_OHM !== null
+      ? 'M-B/|Z| is GEWAPEND op de gestelde versterkervloer; zie `v2_poorten_bron`. '
+      : 'Geen versterkervloer gesteld, dus M-B/|Z| oordeelt niet. ') +
+    'M-A (dissipatiefractie), M-B/EPDR en M-C blijven ONGEWAPEND: casus 1 stelt daar niets ' +
+    'voor, en leeg veld = geen oordeel (P4). Een afwezige grens is geen poort die altijd ' +
+    'slaagt — hij rapporteert zijn waarde en oordeelt niets.',
   v2_budgetten_gewapend: Object.keys(lastPayload.v2.budgets ?? {}).sort(),
   v2_budgetten_waarom:
     'LEEG. De A5d.6-inversies begrenzen waarden; op deze route is er geen gesteld budget dat ' +
@@ -260,6 +330,14 @@ writeFileSync(
     {
       _: 'F4d — DOCUMENTATIE, geen acceptatiewaarde. Zie scripts/generate-casus1-v2-candidates.ts.',
       gegenereerd_op_commit: commit,
+      gegenereerd_op_commit_betekenis:
+        'De HEAD van de boom waarin dit script DRAAIDE — dus de commit vóór de commit waarin ' +
+        'deze fixtures landen. Dat kan niet anders: het script schrijft de bestanden en de ' +
+        'commit legt ze vast, in die volgorde. Wie wil reproduceren moet dus deze commit ' +
+        'uitchecken PLUS de bronwijzigingen van de eerstvolgende, of eenvoudiger: de commit ' +
+        'nemen waarin de fixtures staan. Bij de F4d-nazorg stond hier 40bdf23 (de V20-commit) ' +
+        'terwijl de fixtures bij d70c67b lagen, en dat leek een fout tot het opnieuw draaien ' +
+        'de netlists byte-identiek teruggaf.',
       seed: CASUS1_V2_SEED,
       run_vingerafdruk: stamp.fingerprint,
       grid: { van_hz: CASUS1_V2_GRID[0], tot_hz: CASUS1_V2_GRID[CASUS1_V2_GRID.length - 1], punten: CASUS1_V2_GRID.length },
@@ -275,9 +353,15 @@ writeFileSync(
        * de bestanden telt zou concluderen dat de generator er tien maakte. */
       shortlist: {
         overwogen: field.field.candidates.length,
+        geweigerd_door_een_poort: outcomes.filter((o) => o.geweigerd_door.length > 0).length,
         bevroren: written.length,
-        _: 'Zie `buildShortlist`: toelaatbaar gebied plus spreiding. Rangschikt niets (A5e.1).',
+        _:
+          'Zie `buildShortlist`: toelaatbaar gebied plus spreiding, en een poortweigering is ' +
+          'een van de twee manieren om buiten het toelaatbaar gebied te vallen (de andere is ' +
+          'een gestelde eis). Rangschikt niets (A5e.1). `bevroren` kan lager zijn dan ' +
+          '`overwogen − geweigerd_door_een_poort`: de spreiding kiest daarna nog.',
       },
+      kandidaat_uitkomst: outcomes,
       referentie_kruispunt_hz: field.referenceCrossingHz,
       orde_afleiding: field.orders.map((o) => ({ paar: o.pairLabel, orden: o.orders, waarom: o.why })),
       bestanden: written,

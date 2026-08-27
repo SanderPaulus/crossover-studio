@@ -278,10 +278,20 @@ punten met een casusboek-entry erachter. Ze staan hier zodat ze niet alleen in D
   zij is opgeschort en het veld dekt nu het hele venster. De drie uitkomsten die openstaan
   (verwerpen / herbouwen op de verticale synthese / behouden als doorsnede van de vier
   V20-fracties) staan in de entry. **Open.**
-- **Casus 1 heeft geen versterkervloer, en dat blokkeert de v2-vergelijking.** Geen
-  specificatiepunt maar een projectinstelling — hij staat hier omdat V27 en V28 er beide op
-  uitkomen en de tweede hem als oorzaak aanwijst van de fasetracking die de eerste aan iets
-  anders toeschreef.
+- **~~Casus 1 heeft geen versterkervloer~~ — GESTELD op 27-08-2026 (2,6 Ω, V30), en wat er
+  onder vandaan kwam is groter dan het punt zelf.** De vloer bereikt de poort en het
+  reparatiepad, maar **niet de zoektocht**: `netOptimizer.ts:2303` is de enige plek waar de
+  vloer een kostenterm wordt en dat blok staat achter `zFloorBarrier`, die alleen door de
+  reparatiepas wordt gezet (`2162`, `3068`, `3073`). Een gestelde vloer is dus een **veto plus
+  een reparatie achteraf, geen zoekdoel** — dezelfde lekklasse als audit §6.1, één laag lager.
+  Gemeten gevolg: van de vijftien A5d.3-kandidaten haalt er nul de gestelde 2,6 Ω, en dertien
+  leveren een BYTE-IDENTIEK netwerk als de run waarin geen vloer bestond. **Open**, en
+  nadrukkelijk een eigen sessie: het is een wijziging in de kostenfunctie op het v1-pad en
+  raakt dus de toggle-invariant.
+- **V29 — mag `safety` een netlist weigeren die vrijwel kortsluit als er géén vloer gesteld is?**
+  Twee verdedigbare houdingen (strikt P4 tegenover een uit de gemeten driverimpedanties
+  afleidbare degeneratiegrens), aanleiding is de V28-shortlist met 0,01 Ω erin. **Open**, geen
+  besluit genomen.
 
 ## A6a. Ontwerp-pijplijn (werkvolgorde per project)
 
@@ -956,6 +966,113 @@ Configuratie: 3-weg; 2× SB WO24TX-8 parallel, MR13TX-4 in bolpod, T25T-6 in WG1
   Optie 2 heeft de voorkeur van de nazorgsessie en is niet uitgevoerd: zij vraagt een gestelde grens die casus 1 niet heeft, en dat is een projectinstelling en geen sessiebesluit. **Open.**
 
   **Wat er in de code veranderde.** `predesign/candidates.ts` (`APPLY_BAND_EXCISIONS`, `BandExcision`, `excisionsFor`, `excisionSentence`, band = venster), `predesign/xoWindow.ts` (`XoZone.derivedFrom`, verplicht). **Onaangeraakt:** `recommendedBand.ts`, `metrics/lobing.ts`, `verticalLobing`, elke poort, elk budget, de v1-route, en `components/XoWindowAnnotation.tsx`. Met de vlag uit verandert er niets; `toggleRegression.test.ts` blijft byte-identiek.
+
+- V29 (**OPEN** — mag `safety` een netlist weigeren die vrijwel kortsluit als er géén versterkervloer is opgegeven?) — opgeworpen bij de vloersessie, 27-08-2026.
+
+  **De aanleiding, en zij is geen gedachte-experiment.** De V28-shortlist bevatte twee bevroren netlists met `min |Z| = 0,01 Ω` (KAND-V2-1 en -2). Nul komma nul één ohm is voor elke versterker die bestaat een kortsluiting. Ze stonden er niet door een fout: casus 1 stelde geen `ampMinLoadOhm`, dus M-B/|Z| oordeelde niet, en `safety` — het volle-band-verbod op degeneratie (V26 rij 31) — was gewapend en liet ze door. De shortlist deed precies wat hem gezegd was en leverde een ontwerp op dat niemand mag bouwen.
+
+  **Wat `safety` vandaag wél doet.** Hij bewaakt het gedrag BUITEN de oordeelband: hij vangt netwerken die vlak zijn waar gemeten wordt en daarbuiten weglopen. Dat is waarom hij bestaat (V27: zonder hem leverde de eerste fixture 0,00 Ω met een keurige 1,90 dB rimpel). Wat hij niet doet is een absolute ondergrens aan de belasting stellen, want die grens is een eigenschap van de versterker en die kent hij niet.
+
+  **De twee houdingen, allebei verdedigbaar.**
+
+  1. **Strikt P4 — nee.** Leeg veld is geen oordeel; dat is de F0-doctrine en zij is er niet voor niets gekomen. Een app die stilletjes een vloer verzint waar de ontwerper er geen stelde, is precies de app die drie plekken met drie drempels had (`impedanceFloor.ts` bestaat om dat op te ruimen). Een buisversterker, een PA-eindtrap en een class-D-module willen verschillende antwoorden, en 0,01 Ω is alleen absurd als je weet welke er staat. Bovendien: de ontwerper ZIET de kolom — `min |Z|` staat in het vergelijkingsblok en in het poortrapport, met de vermelding "no limit set". De informatie wordt niet achtergehouden; er wordt alleen niet voor hem beslist. *Wat er dan wél moet gebeuren:* niets in de code, en een projectinstelling in het casusboek — wat deze sessie voor casus 1 heeft gedaan.
+  2. **Een afleidbare degeneratiegrens — ja, maar niet als versterkervloer.** De gemeten driverimpedanties zetten zelf al een ondergrens: het complement kan niet lager dan de parallelschakeling van de `R_e`'s die de meting oplevert (casus 1: woofer 3,05 Ω gemeten DC, mid en tweeter erbij). Een netwerk dat dáár ver onder duikt, doet dat niet omdat de drivers dat kunnen maar omdat het filter een pad heeft gemaakt dat de drivers omzeilt — een serie-C die tegen een spoel resoneert, een shunt die naar nul loopt. Dat is geen belastingsoordeel maar een DEGENERATIE-detectie, en zij is uit de metingen af te leiden zonder dat iemand een versterker noemt. `safety` is de plek waar die hoort, want dat is wat `safety` is: het verbod op degeneratie. **Het onderscheid dat deze houding draagt:** "te zware belasting voor jouw versterker" is P4 en blijft afwezig-is-afwezig; "dit netwerk is fysisch ontaard" is een uitspraak over het netwerk zelf, en die mag een engine doen die de drivers heeft gemeten.
+
+  **Waar de spanning precies zit.** Houding 2 is aantrekkelijk en heeft een echt risico: elke afgeleide grens is een getal dat niemand heeft gesteld, en dit project heeft (V21, V22, V25) drie keer meegemaakt dat een tweede afleiding náást een gestelde waarde uiteindelijk met haar in strijd was. Een degeneratiegrens uit de `R_e`'s zou bovendien een factor nodig hebben — hoevéél onder de parallelschakeling is "ontaard"? — en die factor is precies het soort getal dat A5e.1 en P6 niet eigenmachtig ingevuld willen zien.
+
+  **Wat het zou beslechten.** Eén meting die er nu niet is: een netwerk dat de detectie zou weigeren, gebouwd en gemeten, zodat blijkt of de gedetecteerde degeneratie zich als degeneratie gedraagt of alleen op papier bestaat. Zonder dat is elke gekozen factor een aanname die zich als meting voordoet — de fout die V20 heeft opgeruimd.
+
+  **Geen besluit.** Deze sessie heeft de vraag alleen gesteld en de aanleiding vastgelegd. Wat zij wél deed is houding 1 volgen voor casus 1: de vloer is GESTELD (`manifest_en_geometrie.gestelde_eisen`), de poort is gewapend, en de 0,01 Ω-netwerken zijn niet meer bevroren omdat de poort ze weigert — niet omdat `safety` iets nieuws doet. `safety`, M-A, M-B, M-C en elke andere poort zijn bij deze sessie byte-onaangeraakt. **Open.**
+
+- V30 (de versterkervloer is GESTELD — en zij blijkt een veto en geen zoekdoel) — bij de vloersessie, 27-08-2026.
+
+  **Wat er gesteld is.** `manifest_en_geometrie.gestelde_eisen.versterkervloer_ohm = 2,6 Ω`, met de motivering van de ontwerper erbij: *"Het bestaande filter HUIDIG staat op ~2,6 Ω minimum en is qua SPL en fase goed; de v2-kandidaten worden zo op dezelfde voet vergeleken."* Het getal staat in dát blok en nergens anders — niet in `src/lib/engine2/`, niet als default, niet als constante in een fixture. De fixtures lezen het via `casus1AmpMinLoadOhm(golden)`, en het reist het pad van de app: het A5a-veld vult `settings.ampMinLoadOhm` én `v2ScanSettings.gates.ampMinLoadOhm`.
+
+  **Twee dingen die bij het opschrijven meteen bijgesteld moesten worden.**
+
+  1. *De poort heet M-B/|Z|, niet M-A.* De opdracht sprak van "de M-A-poort wapenen met de versterkervloer". In het A4-register is M-A de **dissipatiefractie** — dimensieloos — en een vloer in ohm kan maar één poort wapenen: `M-B/|Z|`, de eenvoudige modus van M-B, met `meetsAmpFloor` als vergelijkingsregel. Het register houdt hier de namen; M-A, M-B/EPDR en M-C blijven ongewapend, want casus 1 stelt daar niets voor.
+  2. *HUIDIG meet geen 2,6 Ω maar 3,46 Ω.* `kandidaten.HUIDIG_2e.minZ` = 3,46 (min |Z| over het hele raster, poortvrij). De motivering noemt ~2,6. Het zijn twee grootheden — de app toont een systeemimpedantie op een eigen raster en band — en dit bestand beslist niet welke de ontwerper bedoelde. **Beide staan nu in het manifest**, naast elkaar. De gestelde vloer is 2,6 en dát wordt gewapend; gunstig neveneffect is dat de baseline waaraan de motivering refereert de vloer met marge haalt en dus niet zelf omvalt.
+
+  ---
+
+  **DE UITKOMST: 0 VAN 15.** Het A5d.3-veld (vijftien kandidaten sinds V28) is opnieuw door de échte route getuned mét de vloer gewapend. **Geen enkele kandidaat haalt hem.** De geleverde min |Z| liep van 0,03 tot 1,38 Ω tegen een gestelde 2,6 Ω; alle vijftien werden door `M-B/|Z|` geweigerd, de shortlist kwam op **0 van 15** en er is niets bevroren.
+
+  **En toen begon het eigenlijke werk, want die uitslag betekende niet wat hij leek te betekenen.** Naast de run zonder vloer gelegd:
+
+  | | zonder vloer | met vloer 2,6 Ω |
+  | --- | --- | --- |
+  | kandidaten | 15 | 15 |
+  | shortlist | 10 | **0** |
+  | netwerk BYTE-IDENTIEK aan de run zonder vloer | — | **13 van 15** |
+  | netwerk veranderd | — | 2 van 15 (juist de twee die al op 0,01 Ω stonden) |
+
+  Dertien van de vijftien leverden exact hetzelfde netwerk als de run waarin geen vloer bestond, terwijl zij op 0,86–1,38 Ω stonden en de vloer 2,6 Ω was. "0 van 15" is dus geen uitspraak over wat de tuner kán.
+
+  ---
+
+  **DE HERLEIDING, en de eerste hypothese was fout.**
+
+  *Vermoeden vooraf:* `Z_FLOOR_OHM` — hardgecodeerd in `netOptimizer.ts`, zes locaties, beide ketens — bepaalt wanneer de reparatiepas afgaat, en de gestelde vloer is alleen een poort achteraf.
+
+  *Weerlegd.* `grep -rn "Z_FLOOR_OHM" src/` geeft **nul treffers**: sessie F0 heeft de constante verwijderd, en wat er in `docs/OptimizerV2_startprompts.md:11` staat is de startprompt van díe sessie, geen openstaand item. De trigger van de reparatiepas is de GESTELDE vloer en niets anders:
+
+  - `netOptimizer.ts:880-881` — `ampFloorOhm = opts.ampMinLoadOhm > 0 ? opts.ampMinLoadOhm : null`, met in het commentaar: *"THE one place this file decides whether an amplifier-load floor exists at all"*.
+  - `netOptimizer.ts:909` — `zSlackOhm = ampFloorOhm − acceptedAmpFloor(ampFloorOhm)`, dus de 2 %-meettolerantie: op 2,6 Ω is dat **0,052 Ω**.
+  - `netOptimizer.ts:3058` — `if (ampFloorOhm !== null && zCur.short > zSlackOhm)`. De pas gaat dus af zodra min |Z| onder **2,548 Ω** ligt: bij alle vijftien.
+
+  **Gemeten in plaats van beredeneerd.** Drie kandidaten door de échte route, met de vloer gewapend, en `ampFloorRepair` uitgelezen (dat is een getypt pass-resultaat en geen tekstmatch — A3g):
+
+  | kandidaat | min \|Z\| | `ampFloorRepair` |
+  | --- | --- | --- |
+  | 396,7 · 1294 | 0,035 Ω | `failed` |
+  | 396,7 · 1491,4 | 1,045 Ω | `failed` |
+  | 548,5 · 1294 | 0,859 Ω | `failed` |
+
+  `'failed'` wordt uitsluitend binnen die `if` gezet, dus **de reparatiepas is bij alle drie afgegaan en bij alle drie mislukt**. De tuner heeft het geprobeerd. Dat de dertien byte-identiek terugkwamen komt doordat een mislukte reparatie wordt teruggedraaid: `cur` blijft staan en het netwerk is letterlijk hetzelfde.
+
+  **Waar het vermoeden wél klopte, op een ander adres.** De vloer zit nergens in de hoofdzoektocht. De enige plek waar `zShortOhm` een kostenterm wordt is `netOptimizer.ts:2303` — `barr += 1200 * (m.zShortOhm / ampFloorOhm!) ** 2` — en dat blok staat achter `if (zFloorBarrier)`. `zFloorBarrier` is een parameter van `tune()` die op `false` staat (`netOptimizer.ts:2162`) en alleen door de reparatie-aanroepen op `true` wordt gezet (`3068`, `3073`). Het commentaar zegt het zelf: *"only the repair pass sets zFloorBarrier, and that pass runs only with a rating given."*
+
+  > **De gestelde vloer is een VETO plus een reparatiepas achteraf. Zij is nooit een zoekdoel.** De zoektocht die de topologie en de waarden kiest weet niet dat er een vloer is; pas als zij klaar is wordt gekeken of het resultaat eronder duikt, en dan mag één barrière-retune proberen het op te tillen — vanuit een punt dat al voor iets anders geoptimaliseerd is.
+
+  Dat is dezelfde lekklasse als audit §6.1 (*"v2 kan vetoën en rapporteren. Het kan niet voorstellen."*), één laag lager: **de vloer kan vetoën en repareren; hij kan niet sturen.** En het verklaart de uitslag precies. Een zoektocht die de vloer als doel had meegenomen was elders begonnen; een reparatie die pas achteraf 1,0 Ω naar 2,6 Ω moet tillen, moet een netwerk omgooien dat al ergens anders in vastzit.
+
+  **Niet gerepareerd in deze sessie, met opzet.** Het is een wijziging in de kostenfunctie van `netOptimizer.ts` op het v1-pad, dus zij raakt de toggle-invariant en verdient een eigen schone sessie met eigen regressies. Wat deze sessie doet is het vastleggen met bestand:regel, zodat de volgende niet opnieuw hoeft te zoeken.
+
+  ---
+
+  **WAT ER MET DE BEVROREN NETLISTS GEBEURT — en waarom ze NIET verwijderd zijn.**
+
+  De opdracht zei: netlists die de poort niet halen worden verwijderd, "geen referentie aanpassen maar een netlist die nooit had mogen bestaan". Die redenering staat, maar zij veronderstelt dat de poort een eerlijk oordeel over de kandidaat velt. Na de herleiding hierboven doet hij dat niet: hij velt een oordeel over een zoektocht die de vloer niet kende. Tien netlists weggooien op grond daarvan zou het bewijsmateriaal van V30 vernietigen.
+
+  Dus: **de tien blijven staan, elk met een vlag.** `manifest_en_geometrie.v2_herkomst.vloeruitzonderingen` noemt ze bij naam, met hun gemeten min |Z|, de gestelde vloer en de reden — *"bevroren vóór de vloer gesteld werd, getuned zonder hem; de tuner heeft de vloer niet als zoekdoel gezien (V30); mag niet gebouwd worden."* De klasse-B-referenties blijven ongewijzigd: het zijn metrieken op netlist-BESTANDEN en die bewegen niet omdat er een eis bij is gekomen.
+
+  De lijst is boekhouding en geen vrijstelling, en `frozenNetlistGates.test.ts` maakt dat hard: **élke bevroren netlist haalt de vloer, óf staat in de lijst.** Een naam weghalen terwijl de netlist de vloer nog steeds mist, zet de suite op rood — nagemeten, met `KAND_V2_1` (0,01 Ω): *"a frozen netlist misses the stated floor and is not named in v2_herkomst.vloeruitzonderingen — name it with its reason, or replace the netlist"*. De lijst hoort leeg te raken zodra V30 een opvolger heeft.
+
+  ---
+
+  **DE VERGELIJKING, met de vloer als eigen kolom.**
+
+  | ontwerp | min \|Z\| (Ω) | min EPDR (Ω) | dissipation, total (%) | largest resistor (W) | drive at f_s, worst way (dB) | LF lift added (dB) | Q multiplier, lowest way (×) | SPL window (±dB) | RMS deviation (dB) | phase tracking, worst pair (°) | haalt de gestelde vloer 2.6 Ω? |
+  |---|---|---|---|---|---|---|---|---|---|---|---|
+  | HUIDIG | 3.46 | 1.73 | 46 | 25.55 | -25.08 | 3.75 | 2.86 | 1.34 | 0.60 | 23.83 | **ja** |
+  | KAND-A | 3.32 | 1.66 | 52 | 30.93 | 10.48 | 4.25 | 3.22 | 1.47 | 0.87 | 3.69 | **ja** |
+  | KAND-B | 3.44 | 1.72 | 39 | 19.57 | 11.13 | 3.41 | 4.10 | 1.30 | 0.70 | 3.41 | **ja** |
+  | KAND-V2-1 | 0.01 | 0.53 | 0 | — | 21.10 | 5.20 | 1.00 | 2.67 | 1.87 | 89.93 | nee |
+  | KAND-V2-2 | 0.01 | 1.82 | 31 | 19.11 | 20.66 | 13.74 | 1.43 | 3.81 | 2.40 | 89.17 | nee |
+  | KAND-V2-3 | 1.38 | 0.69 | 1 | 0.46 | -21.26 | 1.49 | 1.13 | 5.15 | 2.96 | 20.63 | nee |
+  | KAND-V2-4 | 1.17 | 0.58 | 15 | 12.49 | 4.13 | 1.71 | 1.45 | 5.59 | 3.17 | 20.06 | nee |
+  | KAND-V2-5 | 1.16 | 0.59 | 1 | 1.18 | -16.45 | 1.49 | 1.13 | 5.48 | 3.24 | 17.17 | nee |
+  | KAND-V2-6 | 1.14 | 0.57 | 15 | 11.78 | 4.17 | 1.84 | 1.43 | 5.67 | 3.24 | 17.89 | nee |
+  | KAND-V2-7 | 1.04 | 0.54 | 2 | 1.35 | -13.76 | 1.49 | 1.15 | 5.57 | 3.35 | 15.98 | nee |
+  | KAND-V2-8 | 0.95 | 0.48 | 16 | 12.35 | 3.75 | 1.76 | 1.46 | 6.15 | 3.48 | 19.99 | nee |
+  | KAND-V2-9 | 0.87 | 0.44 | 16 | 12.05 | 3.42 | 1.68 | 1.44 | 6.21 | 3.53 | 20.42 | nee |
+  | KAND-V2-10 | 0.86 | 0.44 | 16 | 11.74 | -12.30 | 1.71 | 1.44 | 6.16 | 3.58 | 19.90 | nee |
+
+  Een kolom en geen filter: het vergelijkingsblok rangschikt niets en verbergt niets, en een tabel die alles onder de vloer stilletjes had weggelaten, beantwoordt een vraag die niemand stelde. De verdict-kolom komt uit `meetsAmpFloor` — dezelfde ene regel als de poort — dus kolom en poort kunnen niet uit elkaar lopen.
+
+  **Het antwoord op de vraag die de opdracht stelde** (*zit de beste v2-kandidaat nog steeds op ~3,1 dB, of verandert de 0,01 Ω-verwijdering het beeld?*): geen van beide. Er is niets verwijderd, en er is ook geen nieuwe beste kandidaat — het veld mét de vloer leverde er nul. De drie v1-baselines halen de vloer alle drie met marge (3,32–3,46 Ω), de tien v2-netlists geen van alle (0,01–1,38 Ω), en het gat naar HUIDIG op RMS-vlakheid (0,60 dB tegen 1,87–3,58 dB) staat er nog precies zoals V27 het beschreef. **Zolang de vloer geen zoekdoel is, zegt dit gat niets over de kandidaten en alles over de ene ketenpas.** Dat is de opmaat die de opdracht vroeg, en zij wijst nu naar V30 in plaats van naar de kandidaatgeneratie.
+
+  **Wat er in de code veranderde.** `casus1.fixture.ts` (`casus1AmpMinLoadOhm`, een lookup en geen constante), `casus1V2.fixture.ts` (de vloer in `CASUS1_V2_SETTINGS` en in de kandidaatverklaring), de twee scripts (poort wapenen, `kandidaat_uitkomst` per kandidaat, de vloerkolom, de uitzonderingslijst), `frozenNetlistGates.test.ts` en `goldenClassification.test.ts`. **Onaangeraakt:** `safety`, M-A, M-B, M-C, elke andere poort, `netOptimizer.ts`, `threeWayChain.ts` en de v1-route. Met de vlag uit verandert er niets.
 
 **Openstaand in deze casus:** groundplane-metingen onder het onderste kruisgebied vóór onderdelenbestelling; HD-sweep; 30°-meting tweeter voor M-G-compleetheid; verzadigings-/formaatcheck grote P-core shunt-spoel.
 

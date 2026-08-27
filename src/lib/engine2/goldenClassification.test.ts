@@ -96,18 +96,6 @@ const CLASSED_PATHS: readonly string[] = [
   'kandidaten.HUIDIG_2e',
   'kandidaten.KAND_A_2e',
   'kandidaten.KAND_B_3e',
-  /* F4d — the nine frozen v2 candidates. Written out rather than globbed, for
-   * the reason the list itself gives: "discover the blocks that have a klasse
-   * and check that they have one" is a test that passes on an empty file. */
-  'kandidaten.KAND_V2_1',
-  'kandidaten.KAND_V2_2',
-  'kandidaten.KAND_V2_3',
-  'kandidaten.KAND_V2_4',
-  'kandidaten.KAND_V2_5',
-  'kandidaten.KAND_V2_6',
-  'kandidaten.KAND_V2_7',
-  'kandidaten.KAND_V2_8',
-  'kandidaten.KAND_V2_9',
   'kandidaten._V_tweeter_op_fs_dB_sessie_25_08',
   'kandidaten._F3_respons_oordeel',
   'kruisvensters.parameters',
@@ -143,6 +131,33 @@ const UNCLASSED_TOP_LEVEL: readonly string[] = [
   'herziening_F1_toelichting',
 ];
 
+/**
+ * The frozen v2 candidates, DERIVED from the manifest rather than listed.
+ *
+ * Listing them was right at F4d and wrong by the second regeneration. The list
+ * said one to nine; the V28 field delivered ten, and `KAND_V2_10` sat in the
+ * reference file for a whole delivery without ever being checked for a class —
+ * the completeness test only guards TOP-LEVEL keys, and this one lives under
+ * `kandidaten`. Every regeneration can change the set (the amplifier floor can
+ * now refuse candidates outright), so the set is read from the one place that
+ * defines it.
+ *
+ * The objection to deriving is real and is answered rather than ignored:
+ * "discover the blocks that have a class and check they have one" passes on an
+ * empty file. So the source here is `manifest_en_geometrie.netlists` — which is
+ * NOT the thing being checked — and the count is asserted against the netlist
+ * files the manifest names, so an empty or shrunken set fails instead of
+ * passing quietly.
+ */
+const V2_CANDIDATE_PATHS: readonly string[] = Object.keys(
+  (golden.manifest_en_geometrie as unknown as { netlists: Record<string, string> }).netlists,
+)
+  .filter((k) => k.startsWith('KAND_V2'))
+  .map((k) => `kandidaten.${k}`);
+
+/** The full list the scan runs over: the fixed blocks plus every frozen v2 candidate. */
+const ALL_CLASSED_PATHS: readonly string[] = [...CLASSED_PATHS, ...V2_CANDIDATE_PATHS];
+
 const at = (path: string): Record<string, unknown> => {
   let node: unknown = golden;
   for (const key of path.split('.')) {
@@ -155,7 +170,7 @@ const at = (path: string): Record<string, unknown> => {
 
 describe('F4a — every golden reference says what it is a function of', () => {
   it('each classed block carries a klasse and the afhankelijkheid that class implies', () => {
-    for (const path of CLASSED_PATHS) {
+    for (const path of ALL_CLASSED_PATHS) {
       const block = at(path);
       const klasse = block.klasse as string;
       const dep = block.afhankelijkheid as string;
@@ -166,7 +181,17 @@ describe('F4a — every golden reference says what it is a function of', () => {
         DEPENDENCY_OF_CLASS[klasse],
       );
     }
-    expect(CLASSED_PATHS.length).toBeGreaterThan(20);
+    expect(ALL_CLASSED_PATHS.length).toBeGreaterThan(20);
+    /* The derived half cannot be allowed to vanish quietly: every KAND_V2
+     * netlist the manifest names must have produced a path here, and the
+     * netlist list is itself checked against the files on disk by
+     * `casus1V2Candidates.test.ts`. An empty field is a legitimate outcome of a
+     * run — the amplifier floor can refuse every candidate — but it must then
+     * be empty in BOTH places, and that is what this compares. */
+    const named = Object.keys(
+      (golden.manifest_en_geometrie as unknown as { netlists: Record<string, string> }).netlists,
+    ).filter((k) => k.startsWith('KAND_V2'));
+    expect(V2_CANDIDATE_PATHS).toHaveLength(named.length);
   });
 
   it('a NEW top-level block without a class fails here', () => {
@@ -174,7 +199,7 @@ describe('F4a — every golden reference says what it is a function of', () => {
      * this says that every top-level key is either one of those, the parent of
      * one, or on the short list of things that legitimately carry none. Add a
      * block to the file and forget the class, and this is what tells you. */
-    const parents = new Set(CLASSED_PATHS.map((p) => p.split('.')[0]));
+    const parents = new Set(ALL_CLASSED_PATHS.map((p) => p.split('.')[0]));
     const stray = Object.keys(golden).filter(
       (k) => !parents.has(k) && !UNCLASSED_TOP_LEVEL.includes(k),
     );
@@ -186,7 +211,7 @@ describe('F4a — every golden reference says what it is a function of', () => {
   });
 
   it('class C lives ONLY under a baseline block, and the baseline is empty at F4a', () => {
-    for (const path of CLASSED_PATHS) {
+    for (const path of ALL_CLASSED_PATHS) {
       if (path === 'v1_baseline' || path === 'v2_baseline') continue;
       expect(at(path).klasse, `${path} is class C outside a baseline block`).not.toBe('C');
     }

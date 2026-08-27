@@ -11,6 +11,7 @@
 - **Schatter-versionering:** elke extractor exporteert een versiestring; gedragswijziging = versiebump = cache-invalidatie.
 - **A5e-besluiten** (aggregatie, doelcurve, catalogus-schema, determinisme-beleid) zijn geparkeerd: niet eigenmachtig invullen, TODO met verwijzing.
 - N-weg-agnostisch: nergens een aanname van drie wegen.
+- **CLAUDE.md wordt nooit buiten de repo gekopieerd.** Er bestaat geen tweede exemplaar dat gelijk gehouden moet worden; een CLAUDE.md in een bovenliggende map is een ánder bestand met een eigen inhoud. Zie de deny-regels onder Commando's.
 
 ## Werkafspraken
 - Volledige gevalideerde bestanden, nooit losse blokken. Benoemde constanten bovenaan met commentaar.
@@ -20,10 +21,10 @@
 ## Commando's
 
 - `npx tsc -b` — typecheck. Draait vóór elke oplevering, zonder uitzondering.
-- `npx vitest run` — volledige testsuite. **Gemeten 27-08-2026 (F4d-nazorg): 120 bestanden, 1292 tests, ~4,7 min.**
+- `npx vitest run` — volledige testsuite. **Gemeten 27-08-2026 (vloersessie): 120 bestanden, 1296 tests, ~4,6 min.**
   Alles groen houden. De telling stond tot F4b op 99/1003 — dat was de stand bij F3 (`61a3ea4`) en zij
   is drie opleveringen lang niet bijgewerkt: F3b bracht 104 bestanden, F3c 106, F4a 107, F4b 108, F4b2 109,
-  F4c 112, V20 113, F4d 119, de F4d-nazorg 120. Vandaar de datum erbij: een telling zonder meetmoment is
+  F4c 112, V20 113, F4d 119, de F4d-nazorg 120, de vloersessie 120. Vandaar de datum erbij: een telling zonder meetmoment is
   een telling die stil veroudert.
   **Waar de tijd zit (nazorg-meting):** vijf bestanden draaien echte ketenruns en zijn samen ruim elf van de
   ~22 CPU-minuten — `threeWayChain` (282 s), `candidateRoute` (111 s), `designChain` (102 s),
@@ -332,6 +333,26 @@ grotere ingreep — hij raakt élk commando in dit project — en is deze sessie
 - `src/lib/engine2/optimizer/noWeights.test.ts` — de scope is uitgebreid naar `predesign/
   candidates.ts`, `flankOrder.ts` en `candidateField.ts`. Kiezen wélke kandidaten bestaan is
   dezelfde beslissing als kiezen tussen hun uitkomsten, één stap eerder.
+
+### Vloersessie-guards (gestelde versterkervloer, V29/V30)
+- `src/lib/engine2/frozenNetlistGates.test.ts` — sinds casus 1 een versterkervloer STELT
+  (`manifest_en_geometrie.gestelde_eisen`) is `M-B/|Z|` op deze casus gewapend en is dit
+  bestand falsifieerbaar geworden. De vloer wordt uit het referentiebestand GELEZEN, nooit
+  hier geschreven: het is een projectgetal met één huis (P6). De dragende assert is
+  **"élke bevroren netlist haalt de vloer, óf staat met naam en reden in
+  `v2_herkomst.vloeruitzonderingen`"** — een lijst die boekhouding is en geen vrijstelling,
+  en die hoort leeg te raken. Nagemeten dat hij kán falen: één naam weghalen terwijl de
+  netlist de vloer nog steeds mist, zet hem op rood met de sleutel in de melding. Plus de
+  tegenproef dat de drie v1-baselines de vloer wél halen en niet alleen binnen de
+  meettolerantie — zonder die assert is "iedereen staat op de lijst" niet te onderscheiden
+  van een vloer die niets kan halen.
+- `src/lib/engine2/goldenClassification.test.ts` — de KAND_V2-paden worden nu AFGELEID uit
+  `manifest_en_geometrie.netlists` in plaats van uitgeschreven. De uitgeschreven lijst zei
+  één tot en met negen; het V28-veld leverde er tien, en `KAND_V2_10` heeft een hele
+  oplevering lang zonder klassecontrole in het bestand gestaan — de volledigheidstest bewaakt
+  alleen TOP-LEVEL sleutels en deze zit onder `kandidaten`. De bron is bewust een ánder blok
+  dan het gecontroleerde, en het aantal wordt tegen de manifestlijst geassert, zodat een lege
+  of gekrompen verzameling faalt in plaats van stil te slagen.
 
 ### F4d-nazorg-guards (V28-opschorting, poorten op de bevroren netlists)
 - `src/lib/engine2/predesign/candidates.test.ts` — het blok dat tot de nazorg *"de slechtste

@@ -300,6 +300,32 @@ export function casus1Geometry(golden: GoldenRefs = loadGolden()): Geometry {
 export const CASUS1_WOOFER_DC_OHM = 3.05;
 
 /**
+ * The amplifier floor the DESIGNER stated for casus 1, ohms — read from the
+ * reference file, never written here.
+ *
+ * WHY IT IS A LOOKUP AND NOT A CONSTANT. It is a project number: it describes
+ * the rack this loudspeaker will hang on, not the loudspeaker. P6 says such a
+ * number is derived from project data or from an explicit project setting, and
+ * this is the second kind. A `const CASUS1_AMP_MIN_LOAD = 2.6` two lines above
+ * would satisfy the letter of the lint (it is under the ≥ 20 threshold) and
+ * break the rule outright: there would then be two places holding the floor,
+ * and the day the designer changes the manifest the fixture would keep tuning
+ * against the old one. So it lives in `manifest_en_geometrie.gestelde_eisen`
+ * and everything reads it from there.
+ *
+ * Null when the project states none, and that is P4 rather than a fallback:
+ * a casus without a stated floor must arm no gate at all, which is exactly
+ * what casus 1 itself looked like until the floor was stated.
+ */
+export function casus1AmpMinLoadOhm(golden: GoldenRefs = loadGolden()): number | null {
+  const stated = (golden.manifest_en_geometrie as unknown as {
+    gestelde_eisen?: { versterkervloer_ohm?: unknown };
+  }).gestelde_eisen;
+  const v = stated?.versterkervloer_ohm;
+  return typeof v === 'number' && Number.isFinite(v) && v > 0 ? v : null;
+}
+
+/**
  * One of the frozen candidate netlists, with the measured driver impedances.
  *
  * The key is any entry of `manifest_en_geometrie.netlists`, which since F4d
