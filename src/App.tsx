@@ -6945,6 +6945,11 @@ export default function App() {
               measurements: c.measurements,
               gates: c.gates,
               disqualified: c.result.disqualified,
+              /* V31 — a candidate whose tune was refused wholesale carries no
+               * network. It still goes into the field: the shortlist is what
+               * lists it as a refusal, and a field it never saw is a field it
+               * cannot report on. */
+              ...(c.rejection ? { rejection: c.rejection } : {}),
             });
           }
           setV2RunNotes((prev) => {

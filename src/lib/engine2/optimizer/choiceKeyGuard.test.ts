@@ -110,9 +110,14 @@ describe('F4c — every tuner option has a class', () => {
     expect(stale, `classified keys that no longer exist upstream:\n${stale.join('\n')}`).toEqual([]);
 
     // The count is stated so a reader can check it against the casebook table.
-    // 37 at F4c; 38 since V30 added `zFloorBarrier` as a choice.
-    expect(keys.length).toBe(38);
-    expect(CHOICE_KEYS.length + GREY_KEYS.length + POLISH_KEYS.length).toBe(38);
+    // 37 at F4c; 38 since V30 added `zFloorBarrier` as a choice; 39 since V31
+    // added `rejectedTuneReport` as instrumentation.
+    expect(keys.length).toBe(39);
+    expect(CHOICE_KEYS.length + GREY_KEYS.length + POLISH_KEYS.length).toBe(39);
+    // V31: instrumentation, never a choice — the key may not silently migrate
+    // into the class whose values are only allowed to come from a candidate.
+    expect(POLISH_KEYS).toContain('rejectedTuneReport');
+    expect(CHOICE_KEYS as readonly string[]).not.toContain('rejectedTuneReport');
     expect(CHOICE_KEYS).toContain('zFloorBarrier');
   });
 });

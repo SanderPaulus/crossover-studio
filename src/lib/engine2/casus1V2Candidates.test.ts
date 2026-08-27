@@ -48,7 +48,7 @@
  */
 
 import { describe, expect, it } from 'vitest';
-import { readFileSync } from 'node:fs';
+import { readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import {
   CASUS1_DIR,
@@ -67,6 +67,7 @@ import {
   casus1ChainInput,
   casus1Field,
   casus1V2Declaration,
+  casus1V2Facts,
 } from './casus1V2.fixture.ts';
 import { buildReport, type EngineV2Report } from './report.ts';
 import { ctcKey } from './metrics/types.ts';
@@ -89,7 +90,14 @@ const HERKOMST = JSON.parse(
   gegenereerd_op_commit: string;
   bestanden: { name: string; label: string }[];
   generator_parameters: { derivedSize: number; deliveredSize: number };
-  shortlist: { overwogen: number; bevroren: number };
+  shortlist: { overwogen: number; bevroren: number; leverde_geen_netwerk: number };
+  /** V31 — the candidates that delivered no network, and the rule that refused each. */
+  verwerpingen: {
+    label: string;
+    kinds: string[];
+    reason: string;
+    rejectedTune?: Record<string, number | null>;
+  }[];
   meetopstelling: {
     synthMode: string;
     v2_poorten_gewapend: string[];
@@ -101,8 +109,13 @@ const HERKOMST = JSON.parse(
   };
 };
 
+/* THE LIVE CORPUS, anchored. `startsWith('KAND_V2')` was safe while nothing
+ * else began with those letters and is a trap now that the case book holds
+ * dated corpora — the same trap `record-casus1-v2-references.ts` documents at
+ * length. Anchored here too, so the two agree about what "the live corpus"
+ * means. */
 const V2_KEYS = Object.keys(golden.manifest_en_geometrie.netlists).filter((k) =>
-  k.startsWith('KAND_V2'),
+  /^KAND_V2_\d+$/.test(k),
 );
 
 const report = (key: string): EngineV2Report =>
@@ -127,6 +140,31 @@ describe('the frozen v2 candidates are files, and the file says where they came 
       expect(name).toMatch(/^KAND-V2-\d+\.adsfilter\.json$/);
       expect(readFileSync(join(CASUS1_DIR, name), 'utf-8').length).toBeGreaterThan(100);
     }
+  });
+
+  it('NO ORPHANS: every KAND-V2 file on disk is a netlist the case book names', () => {
+    /* THE HOLE A SHRINKING CORPUS OPENED, and it opened it for real.
+     *
+     * Until V32 every regeneration produced the same number of netlists, so
+     * `KAND-V2-8..10` from the previous run were simply overwritten. V32's
+     * field delivers seven where the last one delivered ten, the recorder
+     * prunes the manifest entries — and the three FILES stayed on disk,
+     * unreferenced, byte-identical to a dated corpus under a name that says
+     * they are live. Nothing failed; a reader browsing the directory would
+     * have found three designs the case book has withdrawn.
+     *
+     * So the directory is the assertion, not the manifest: a file that no
+     * entry names is an orphan, and an orphan is deleted rather than
+     * explained. The dated corpora are excluded by having their own prefix —
+     * that is what a dated name is FOR. */
+    const named = new Set(Object.values(golden.manifest_en_geometrie.netlists));
+    const onDisk = readdirSync(CASUS1_DIR).filter((f) => /^KAND-V2-\d+\.adsfilter\.json$/.test(f));
+    expect(onDisk.length, 'no KAND-V2 files on disk at all').toBeGreaterThan(0);
+    for (const f of onDisk) {
+      expect(named, `${f} is on disk but no manifest entry names it — delete it or name it`)
+        .toContain(f);
+    }
+    expect(onDisk.length).toBe(V2_KEYS.length);
   });
 
   it('the provenance block is DOCUMENTATION and says so', () => {
@@ -287,9 +325,17 @@ describe('the run still delivers the frozen netlist', () => {
      * what the provenance block recorded, so the two cannot drift. */
     const armedGates = CASUS1_AMP_MIN_LOAD_OHM !== null ? { ampMinLoadOhm: CASUS1_AMP_MIN_LOAD_OHM } : {};
     expect(Object.keys(armedGates).sort()).toEqual([...HERKOMST.meetopstelling.v2_poorten_gewapend].sort());
+    /* V32 — AND THE MEASURED FACTS MUST BE THE FACTS THE GENERATOR SENT.
+     *
+     * Same argument as the gates one line up, and it became load-bearing for
+     * the same reason: since V32 an electrical gate judges on the drivers' own
+     * impedance sweep and refuses to judge at all without it. A reproduction
+     * run that withheld the sweep would not reproduce a route with a silent
+     * gate — it would run a route with NO gate. */
     const payload: V2Chain3Payload = {
       input,
       v2: {
+        ...casus1V2Facts(rep, manifest, files),
         gates: armedGates,
         budgets: {},
         determinism: { seed: CASUS1_V2_SEED },
@@ -312,5 +358,131 @@ describe('the run still delivers the frozen netlist', () => {
     expect(stableJson((out as unknown as Chain3Result).parts)).toBe(stableJson(stored.parts));
     // ...and the netlist is a real one, so two empty arrays cannot pass.
     expect(stored.parts.length).toBeGreaterThan(6);
+  }, 900_000);
+
+  /* ---------------------------------------------------------------- *
+   * V31 — the candidate the safety gate actually refuses
+   * ---------------------------------------------------------------- */
+
+  it('a candidate the safety gate refuses comes back as a REFUSAL, with no network', () => {
+    /* THE EXPENSIVE HALF OF V31, and it has to be this route.
+     * `wholesaleRejection.test.ts` proves what the shortlist does with a
+     * refusal; only a live run proves that a refusal is what the worker
+     * produces, on a candidate that genuinely trips the full-band safety gate.
+     * Constructing one synthetically would be constructing the answer.
+     *
+     * WHICH candidate comes from the provenance block — documentation, used
+     * here to pick a subject rather than to assert a value. If a regeneration
+     * ever leaves the field with no refusals at all, that is a finding and this
+     * test says so instead of quietly passing on nothing. */
+    expect(
+      HERKOMST.verwerpingen.length,
+      'no candidate in the frozen field was refused wholesale, so this test has no subject — ' +
+        'if that is genuinely the new state, say so in the case book rather than deleting this',
+    ).toBeGreaterThan(0);
+    expect(HERKOMST.shortlist.leverde_geen_netwerk).toBe(HERKOMST.verwerpingen.length);
+
+    const recorded = HERKOMST.verwerpingen[0];
+    const rep = report('HUIDIG');
+    const field = casus1Field(rep);
+    const gridded = casus1ChainInput(manifest, files, golden);
+    const c = field.field.candidates.find((x) => x.label === recorded.label);
+    expect(c, `the field no longer holds ${recorded.label}`).toBeTruthy();
+
+    const input: Chain3Input = {
+      grid: [...gridded.grid],
+      w: gridded.w,
+      m: gridded.m,
+      t: gridded.t,
+      driverZ: gridded.driverZ,
+      tAdjust: { offsetMm: 0, trimDb: 0, inverted: false },
+      midAdjust: {},
+      xoLow: c!.crossings[0].hz,
+      xoHigh: c!.crossings[1].hz,
+      xoLowRange: c!.crossings[0].cageHz,
+      xoHighRange: c!.crossings[1].cageHz,
+      label: c!.label,
+      settings: {
+        ...CASUS1_V2_SETTINGS,
+        safety: gridded.safety,
+        structureLow: { kind: c!.crossings[0].alignment.kind, order: c!.crossings[0].alignment.order },
+        structureHigh: { kind: c!.crossings[1].alignment.kind, order: c!.crossings[1].alignment.order },
+        xoFloorPairs: c!.crossings.map((x) => x.windowHz[0]),
+      } as unknown as Chain3Input['settings'],
+    };
+    const payload: V2Chain3Payload = {
+      input,
+      v2: {
+        ...casus1V2Facts(rep, manifest, files),
+        gates: CASUS1_AMP_MIN_LOAD_OHM !== null ? { ampMinLoadOhm: CASUS1_AMP_MIN_LOAD_OHM } : {},
+        budgets: {},
+        determinism: { seed: CASUS1_V2_SEED },
+        targetCurve: FLAT_TARGET,
+        judgeBandHz: CASUS1_V2_BAND_HZ,
+      },
+      candidate: casus1V2Declaration(c!, gridded.safety),
+    };
+    interface Refused {
+      result: Chain3Result;
+      rejection: {
+        kinds: string[];
+        reason: string;
+        rejectedTune: Record<string, number | null> | null;
+        note: string;
+      } | null;
+      gates: unknown[];
+      measurements: { response: unknown; phaseTracking: unknown[] };
+      notes: string[];
+    }
+    let out: Refused | null = null;
+    handleV2Request(
+      structuredClone({ id: 1, kind: 'v2Chain3One' as const, payload }),
+      (m: V2Response) => {
+        if (m.kind === 'error') throw new Error(m.message);
+        if (m.kind === 'done') out = m.data as Refused;
+      },
+    );
+    expect(out).toBeTruthy();
+    const done = out as unknown as Refused;
+
+    // 1. It comes back AS A REFUSAL, and the reason is the rule that refused it.
+    expect(done.rejection, 'the run delivered a network where a refusal was recorded').toBeTruthy();
+    expect(done.rejection!.kinds).toEqual(recorded.kinds);
+    expect(done.rejection!.kinds.length).toBeGreaterThan(0);
+    expect(done.rejection!.reason).toBe(recorded.reason);
+    // The reason is the tuner's own sentence about its own rule, not ours.
+    expect(done.rejection!.reason).toContain('safety gate');
+
+    // 2. ITS SEED IS IN NO OUTPUT AS A NETWORK. Not in `parts`, not anywhere
+    //    under `net` — a serialisation of the whole result may contain no part
+    //    list at all.
+    expect(done.result.parts).toEqual([]);
+    // `net.parts` is the SECOND copy of the same list — the chain hands its own
+    // up while the tuner keeps the one it built. The first run of this test
+    // found the seed alive there, which is why the assertion below serialises
+    // the whole result instead of checking the field one expects.
+    expect(done.result.net.parts).toEqual([]);
+    expect((done.result.net as { rejectedParts?: unknown }).rejectedParts).toBeUndefined();
+    const everything = JSON.stringify(done);
+    for (const marker of ['"partId"', '"wires"', '"Capacitor"', '"Inductor"']) {
+      expect(everything, `a part list survived: ${marker}`).not.toContain(marker);
+    }
+    // ...and nothing was measured under this candidate's label either: the
+    // numbers would have been the seed's.
+    expect(done.measurements.response).toBeNull();
+    expect(done.measurements.phaseTracking).toEqual([]);
+    expect(done.gates).toEqual([]);
+
+    // 3. What WAS refused is reported, so the cost of the veto is visible.
+    const t = done.rejection!.rejectedTune;
+    expect(t, 'the refused tune was not measured').toBeTruthy();
+    expect(t!.minZOhm).toBeCloseTo(recorded.rejectedTune!.minZOhm as number, 6);
+    expect(t!.windowPlusMinusDb).toBeCloseTo(
+      recorded.rejectedTune!.windowPlusMinusDb as number,
+      6,
+    );
+    // The note says why nothing is delivered, in the F0 terms this rests on.
+    expect(done.rejection!.note).toContain('delivers no network');
+    expect(done.notes.join(' ')).toContain('Refusing rule:');
   }, 900_000);
 });

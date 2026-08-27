@@ -2,7 +2,8 @@
  * F4c — WHAT IS SEARCHED versus HOW IT IS SEARCHED.
  *
  * `NetOptimizeOptions` had 37 top-level keys when F4c classified them — 38
- * since V30 added `zFloorBarrier`, and the count is asserted rather than
+ * since V30 added `zFloorBarrier` and 39 since V31 added `rejectedTuneReport`,
+ * and the count is asserted rather than
  * described (`choiceKeyGuard.test.ts`). Until F4c the v2 route set four of
  * them and inherited the other 33 verbatim from whatever the v1 chain happened
  * to build (`audit §2.2`). That is harmless while v1 also chooses the
@@ -150,6 +151,13 @@ export const POLISH_KEYS = [
   'gateViolation',
   'valueCeilings',
   'valueSumCeilings',
+  /* V31 — instrumentation, and the classification is the argument. It changes
+   * no decision anywhere: the safety gate still rejects exactly what it
+   * rejected, the seed is still what comes back. All it does is make the
+   * rejected tune's metrics and parts readable, so a caller can report a
+   * refusal instead of publishing a seed. A key that cannot alter an outcome
+   * is not a choice about what is searched. */
+  'rejectedTuneReport',
 ] as const;
 
 export type PolishKey = (typeof POLISH_KEYS)[number];

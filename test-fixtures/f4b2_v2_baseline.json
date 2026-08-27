@@ -1688,5 +1688,731 @@
     "valueSumCeilings": []
    }
   }
+ },
+ "verdicts_sinds_V32": {
+  "_": "V32 — DE POORTOORDELEN OVER HETZELFDE NETWERK, opnieuw vastgelegd omdat V32 verplaatste WAAR een elektrische poort meet: van het responsraster van deze fixture (210-19000 Hz) naar de gemeten impedantiesweeps van de drivers zelf. Het NETWERK bewoog niet — dat staat nog steeds in `runs` en wordt daar nog steeds tegen gepind, op twee seeds, byte-identiek. Deze blokken zijn de tweede helft van diezelfde regressie: een volgende wijziging aan de metrieken of aan de referentie moet hier zichtbaar worden en niet stilletjes goedgekeurd. Niet met de hand bewerken.",
+  "stand": "V32",
+  "runs": {
+   "99": [
+    {
+     "label": "seed",
+     "start": 0,
+     "gatesFrozen": [
+      {
+       "gate": "M-A",
+       "metric": "M-A",
+       "title": "Dissipation in the filter resistors",
+       "subject": "system",
+       "value": 0,
+       "unit": "of amplifier power",
+       "direction": "max",
+       "specRef": "A4 M-A",
+       "parameters": {
+        "band": "20-20317 Hz",
+        "weighting": "IEC 60268-1 programme noise",
+        "judged_on": "20-20317 Hz, the drivers' own measured impedance sweeps (an impedance measurement has no gate)"
+       },
+       "limit": null,
+       "active": false,
+       "pass": true,
+       "withinToleranceOnly": false,
+       "reason": "0.0 % — no limit set"
+      },
+      {
+       "gate": "M-B/EPDR",
+       "metric": "M-B",
+       "title": "EPDR of the amplifier load",
+       "subject": "system",
+       "value": 0.6761737323326092,
+       "unit": "Ω",
+       "direction": "min",
+       "specRef": "A4 M-B",
+       "parameters": {
+        "at": "290 Hz",
+        "judged_on": "20-20317 Hz, the drivers' own measured impedance sweeps (an impedance measurement has no gate)"
+       },
+       "limit": null,
+       "active": false,
+       "pass": true,
+       "withinToleranceOnly": false,
+       "reason": "0.68 Ω — no limit set"
+      },
+      {
+       "gate": "M-B/|Z|",
+       "metric": "M-B",
+       "title": "Minimum |Z| the amplifier sees (simple mode)",
+       "subject": "system",
+       "value": 1.3461979669490334,
+       "unit": "Ω",
+       "direction": "min",
+       "specRef": "A4 M-B (simple mode)",
+       "parameters": {
+        "at": "304 Hz",
+        "judged_on": "20-20317 Hz, the drivers' own measured impedance sweeps (an impedance measurement has no gate)"
+       },
+       "limit": null,
+       "active": false,
+       "pass": true,
+       "withinToleranceOnly": false,
+       "reason": "1.35 Ω — no limit set"
+      },
+      {
+       "gate": "M-C",
+       "metric": "M-C",
+       "title": "Drive voltage on the driver resonance",
+       "subject": "tweeter",
+       "value": -1.3502298152846233,
+       "unit": "dB",
+       "direction": "max",
+       "specRef": "A4 M-C",
+       "parameters": {
+        "f_s": "901 Hz",
+        "passband": "5733-19000 Hz (frozen)",
+        "judged_on": "20-20317 Hz, the drivers' own measured impedance sweeps (an impedance measurement has no gate)"
+       },
+       "limit": null,
+       "active": false,
+       "pass": true,
+       "withinToleranceOnly": false,
+       "reason": "-1.4 dB — no limit set"
+      }
+     ],
+     "gatesDerived": [
+      {
+       "gate": "M-A",
+       "metric": "M-A",
+       "title": "Dissipation in the filter resistors",
+       "subject": "system",
+       "value": 0,
+       "unit": "of amplifier power",
+       "direction": "max",
+       "specRef": "A4 M-A",
+       "parameters": {
+        "band": "20-20317 Hz",
+        "weighting": "IEC 60268-1 programme noise",
+        "judged_on": "20-20317 Hz, the drivers' own measured impedance sweeps (an impedance measurement has no gate)"
+       },
+       "limit": null,
+       "active": false,
+       "pass": true,
+       "withinToleranceOnly": false,
+       "reason": "0.0 % — no limit set"
+      },
+      {
+       "gate": "M-B/EPDR",
+       "metric": "M-B",
+       "title": "EPDR of the amplifier load",
+       "subject": "system",
+       "value": 0.6761737323326092,
+       "unit": "Ω",
+       "direction": "min",
+       "specRef": "A4 M-B",
+       "parameters": {
+        "at": "290 Hz",
+        "judged_on": "20-20317 Hz, the drivers' own measured impedance sweeps (an impedance measurement has no gate)"
+       },
+       "limit": null,
+       "active": false,
+       "pass": true,
+       "withinToleranceOnly": false,
+       "reason": "0.68 Ω — no limit set"
+      },
+      {
+       "gate": "M-B/|Z|",
+       "metric": "M-B",
+       "title": "Minimum |Z| the amplifier sees (simple mode)",
+       "subject": "system",
+       "value": 1.3461979669490334,
+       "unit": "Ω",
+       "direction": "min",
+       "specRef": "A4 M-B (simple mode)",
+       "parameters": {
+        "at": "304 Hz",
+        "judged_on": "20-20317 Hz, the drivers' own measured impedance sweeps (an impedance measurement has no gate)"
+       },
+       "limit": null,
+       "active": false,
+       "pass": true,
+       "withinToleranceOnly": false,
+       "reason": "1.35 Ω — no limit set"
+      },
+      {
+       "gate": "M-C",
+       "metric": "M-C",
+       "title": "Drive voltage on the driver resonance",
+       "subject": "mid",
+       "value": -28.52663481806661,
+       "unit": "dB",
+       "direction": "max",
+       "specRef": "A4 M-C",
+       "parameters": {
+        "f_s": "19000 Hz",
+        "passband": "210-614 Hz (derived)",
+        "judged_on": "20-20317 Hz, the drivers' own measured impedance sweeps (an impedance measurement has no gate)"
+       },
+       "limit": null,
+       "active": false,
+       "pass": true,
+       "withinToleranceOnly": false,
+       "reason": "-28.5 dB — no limit set"
+      },
+      {
+       "gate": "M-C",
+       "metric": "M-C",
+       "title": "Drive voltage on the driver resonance",
+       "subject": "tweeter",
+       "value": -0.04302135903168014,
+       "unit": "dB",
+       "direction": "max",
+       "specRef": "A4 M-C",
+       "parameters": {
+        "f_s": "901 Hz",
+        "passband": "614-19000 Hz (derived)",
+        "judged_on": "20-20317 Hz, the drivers' own measured impedance sweeps (an impedance measurement has no gate)"
+       },
+       "limit": null,
+       "active": false,
+       "pass": true,
+       "withinToleranceOnly": false,
+       "reason": "-0.0 dB — no limit set"
+      }
+     ]
+    },
+    {
+     "label": "start 1",
+     "start": 1,
+     "gatesFrozen": [
+      {
+       "gate": "M-A",
+       "metric": "M-A",
+       "title": "Dissipation in the filter resistors",
+       "subject": "system",
+       "value": 0,
+       "unit": "of amplifier power",
+       "direction": "max",
+       "specRef": "A4 M-A",
+       "parameters": {
+        "band": "20-20317 Hz",
+        "weighting": "IEC 60268-1 programme noise",
+        "judged_on": "20-20317 Hz, the drivers' own measured impedance sweeps (an impedance measurement has no gate)"
+       },
+       "limit": null,
+       "active": false,
+       "pass": true,
+       "withinToleranceOnly": false,
+       "reason": "0.0 % — no limit set"
+      },
+      {
+       "gate": "M-B/EPDR",
+       "metric": "M-B",
+       "title": "EPDR of the amplifier load",
+       "subject": "system",
+       "value": 0.7815545119908048,
+       "unit": "Ω",
+       "direction": "min",
+       "specRef": "A4 M-B",
+       "parameters": {
+        "at": "280 Hz",
+        "judged_on": "20-20317 Hz, the drivers' own measured impedance sweeps (an impedance measurement has no gate)"
+       },
+       "limit": null,
+       "active": false,
+       "pass": true,
+       "withinToleranceOnly": false,
+       "reason": "0.78 Ω — no limit set"
+      },
+      {
+       "gate": "M-B/|Z|",
+       "metric": "M-B",
+       "title": "Minimum |Z| the amplifier sees (simple mode)",
+       "subject": "system",
+       "value": 1.5576193990352885,
+       "unit": "Ω",
+       "direction": "min",
+       "specRef": "A4 M-B (simple mode)",
+       "parameters": {
+        "at": "290 Hz",
+        "judged_on": "20-20317 Hz, the drivers' own measured impedance sweeps (an impedance measurement has no gate)"
+       },
+       "limit": null,
+       "active": false,
+       "pass": true,
+       "withinToleranceOnly": false,
+       "reason": "1.56 Ω — no limit set"
+      },
+      {
+       "gate": "M-C",
+       "metric": "M-C",
+       "title": "Drive voltage on the driver resonance",
+       "subject": "tweeter",
+       "value": -1.1735315444965524,
+       "unit": "dB",
+       "direction": "max",
+       "specRef": "A4 M-C",
+       "parameters": {
+        "f_s": "901 Hz",
+        "passband": "5733-19000 Hz (frozen)",
+        "judged_on": "20-20317 Hz, the drivers' own measured impedance sweeps (an impedance measurement has no gate)"
+       },
+       "limit": null,
+       "active": false,
+       "pass": true,
+       "withinToleranceOnly": false,
+       "reason": "-1.2 dB — no limit set"
+      }
+     ],
+     "gatesDerived": [
+      {
+       "gate": "M-A",
+       "metric": "M-A",
+       "title": "Dissipation in the filter resistors",
+       "subject": "system",
+       "value": 0,
+       "unit": "of amplifier power",
+       "direction": "max",
+       "specRef": "A4 M-A",
+       "parameters": {
+        "band": "20-20317 Hz",
+        "weighting": "IEC 60268-1 programme noise",
+        "judged_on": "20-20317 Hz, the drivers' own measured impedance sweeps (an impedance measurement has no gate)"
+       },
+       "limit": null,
+       "active": false,
+       "pass": true,
+       "withinToleranceOnly": false,
+       "reason": "0.0 % — no limit set"
+      },
+      {
+       "gate": "M-B/EPDR",
+       "metric": "M-B",
+       "title": "EPDR of the amplifier load",
+       "subject": "system",
+       "value": 0.7815545119908048,
+       "unit": "Ω",
+       "direction": "min",
+       "specRef": "A4 M-B",
+       "parameters": {
+        "at": "280 Hz",
+        "judged_on": "20-20317 Hz, the drivers' own measured impedance sweeps (an impedance measurement has no gate)"
+       },
+       "limit": null,
+       "active": false,
+       "pass": true,
+       "withinToleranceOnly": false,
+       "reason": "0.78 Ω — no limit set"
+      },
+      {
+       "gate": "M-B/|Z|",
+       "metric": "M-B",
+       "title": "Minimum |Z| the amplifier sees (simple mode)",
+       "subject": "system",
+       "value": 1.5576193990352885,
+       "unit": "Ω",
+       "direction": "min",
+       "specRef": "A4 M-B (simple mode)",
+       "parameters": {
+        "at": "290 Hz",
+        "judged_on": "20-20317 Hz, the drivers' own measured impedance sweeps (an impedance measurement has no gate)"
+       },
+       "limit": null,
+       "active": false,
+       "pass": true,
+       "withinToleranceOnly": false,
+       "reason": "1.56 Ω — no limit set"
+      },
+      {
+       "gate": "M-C",
+       "metric": "M-C",
+       "title": "Drive voltage on the driver resonance",
+       "subject": "mid",
+       "value": -28.617554082095122,
+       "unit": "dB",
+       "direction": "max",
+       "specRef": "A4 M-C",
+       "parameters": {
+        "f_s": "19000 Hz",
+        "passband": "210-609 Hz (derived)",
+        "judged_on": "20-20317 Hz, the drivers' own measured impedance sweeps (an impedance measurement has no gate)"
+       },
+       "limit": null,
+       "active": false,
+       "pass": true,
+       "withinToleranceOnly": false,
+       "reason": "-28.6 dB — no limit set"
+      },
+      {
+       "gate": "M-C",
+       "metric": "M-C",
+       "title": "Drive voltage on the driver resonance",
+       "subject": "tweeter",
+       "value": 0.014612024277967706,
+       "unit": "dB",
+       "direction": "max",
+       "specRef": "A4 M-C",
+       "parameters": {
+        "f_s": "901 Hz",
+        "passband": "609-19000 Hz (derived)",
+        "judged_on": "20-20317 Hz, the drivers' own measured impedance sweeps (an impedance measurement has no gate)"
+       },
+       "limit": null,
+       "active": false,
+       "pass": true,
+       "withinToleranceOnly": false,
+       "reason": "0.0 dB — no limit set"
+      }
+     ]
+    }
+   ],
+   "4242": [
+    {
+     "label": "start 1",
+     "start": 1,
+     "gatesFrozen": [
+      {
+       "gate": "M-A",
+       "metric": "M-A",
+       "title": "Dissipation in the filter resistors",
+       "subject": "system",
+       "value": 0.9211345019328179,
+       "unit": "of amplifier power",
+       "direction": "max",
+       "specRef": "A4 M-A",
+       "parameters": {
+        "band": "20-20317 Hz",
+        "weighting": "IEC 60268-1 programme noise",
+        "judged_on": "20-20317 Hz, the drivers' own measured impedance sweeps (an impedance measurement has no gate)"
+       },
+       "limit": null,
+       "active": false,
+       "pass": true,
+       "withinToleranceOnly": false,
+       "reason": "92.1 % — no limit set"
+      },
+      {
+       "gate": "M-B/EPDR",
+       "metric": "M-B",
+       "title": "EPDR of the amplifier load",
+       "subject": "system",
+       "value": 21.836083039149095,
+       "unit": "Ω",
+       "direction": "min",
+       "specRef": "A4 M-B",
+       "parameters": {
+        "at": "1254 Hz",
+        "judged_on": "20-20317 Hz, the drivers' own measured impedance sweeps (an impedance measurement has no gate)"
+       },
+       "limit": null,
+       "active": false,
+       "pass": true,
+       "withinToleranceOnly": false,
+       "reason": "21.84 Ω — no limit set"
+      },
+      {
+       "gate": "M-B/|Z|",
+       "metric": "M-B",
+       "title": "Minimum |Z| the amplifier sees (simple mode)",
+       "subject": "system",
+       "value": 38.5893569496826,
+       "unit": "Ω",
+       "direction": "min",
+       "specRef": "A4 M-B (simple mode)",
+       "parameters": {
+        "at": "1619 Hz",
+        "judged_on": "20-20317 Hz, the drivers' own measured impedance sweeps (an impedance measurement has no gate)"
+       },
+       "limit": null,
+       "active": false,
+       "pass": true,
+       "withinToleranceOnly": false,
+       "reason": "38.59 Ω — no limit set"
+      },
+      {
+       "gate": "M-C",
+       "metric": "M-C",
+       "title": "Drive voltage on the driver resonance",
+       "subject": "tweeter",
+       "value": -12.10870629135595,
+       "unit": "dB",
+       "direction": "max",
+       "specRef": "A4 M-C",
+       "parameters": {
+        "f_s": "901 Hz",
+        "passband": "5733-19000 Hz (frozen)",
+        "judged_on": "20-20317 Hz, the drivers' own measured impedance sweeps (an impedance measurement has no gate)"
+       },
+       "limit": null,
+       "active": false,
+       "pass": true,
+       "withinToleranceOnly": false,
+       "reason": "-12.1 dB — no limit set"
+      }
+     ],
+     "gatesDerived": [
+      {
+       "gate": "M-A",
+       "metric": "M-A",
+       "title": "Dissipation in the filter resistors",
+       "subject": "system",
+       "value": 0.9211345019328179,
+       "unit": "of amplifier power",
+       "direction": "max",
+       "specRef": "A4 M-A",
+       "parameters": {
+        "band": "20-20317 Hz",
+        "weighting": "IEC 60268-1 programme noise",
+        "judged_on": "20-20317 Hz, the drivers' own measured impedance sweeps (an impedance measurement has no gate)"
+       },
+       "limit": null,
+       "active": false,
+       "pass": true,
+       "withinToleranceOnly": false,
+       "reason": "92.1 % — no limit set"
+      },
+      {
+       "gate": "M-B/EPDR",
+       "metric": "M-B",
+       "title": "EPDR of the amplifier load",
+       "subject": "system",
+       "value": 21.836083039149095,
+       "unit": "Ω",
+       "direction": "min",
+       "specRef": "A4 M-B",
+       "parameters": {
+        "at": "1254 Hz",
+        "judged_on": "20-20317 Hz, the drivers' own measured impedance sweeps (an impedance measurement has no gate)"
+       },
+       "limit": null,
+       "active": false,
+       "pass": true,
+       "withinToleranceOnly": false,
+       "reason": "21.84 Ω — no limit set"
+      },
+      {
+       "gate": "M-B/|Z|",
+       "metric": "M-B",
+       "title": "Minimum |Z| the amplifier sees (simple mode)",
+       "subject": "system",
+       "value": 38.5893569496826,
+       "unit": "Ω",
+       "direction": "min",
+       "specRef": "A4 M-B (simple mode)",
+       "parameters": {
+        "at": "1619 Hz",
+        "judged_on": "20-20317 Hz, the drivers' own measured impedance sweeps (an impedance measurement has no gate)"
+       },
+       "limit": null,
+       "active": false,
+       "pass": true,
+       "withinToleranceOnly": false,
+       "reason": "38.59 Ω — no limit set"
+      },
+      {
+       "gate": "M-C",
+       "metric": "M-C",
+       "title": "Drive voltage on the driver resonance",
+       "subject": "tweeter",
+       "value": -10.184766365954054,
+       "unit": "dB",
+       "direction": "max",
+       "specRef": "A4 M-C",
+       "parameters": {
+        "f_s": "901 Hz",
+        "passband": "3665-19000 Hz (derived)",
+        "judged_on": "20-20317 Hz, the drivers' own measured impedance sweeps (an impedance measurement has no gate)"
+       },
+       "limit": null,
+       "active": false,
+       "pass": true,
+       "withinToleranceOnly": false,
+       "reason": "-10.2 dB — no limit set"
+      }
+     ]
+    },
+    {
+     "label": "seed",
+     "start": 0,
+     "gatesFrozen": [
+      {
+       "gate": "M-A",
+       "metric": "M-A",
+       "title": "Dissipation in the filter resistors",
+       "subject": "system",
+       "value": 0,
+       "unit": "of amplifier power",
+       "direction": "max",
+       "specRef": "A4 M-A",
+       "parameters": {
+        "band": "20-20317 Hz",
+        "weighting": "IEC 60268-1 programme noise",
+        "judged_on": "20-20317 Hz, the drivers' own measured impedance sweeps (an impedance measurement has no gate)"
+       },
+       "limit": null,
+       "active": false,
+       "pass": true,
+       "withinToleranceOnly": false,
+       "reason": "0.0 % — no limit set"
+      },
+      {
+       "gate": "M-B/EPDR",
+       "metric": "M-B",
+       "title": "EPDR of the amplifier load",
+       "subject": "system",
+       "value": 0.6761737323326092,
+       "unit": "Ω",
+       "direction": "min",
+       "specRef": "A4 M-B",
+       "parameters": {
+        "at": "290 Hz",
+        "judged_on": "20-20317 Hz, the drivers' own measured impedance sweeps (an impedance measurement has no gate)"
+       },
+       "limit": null,
+       "active": false,
+       "pass": true,
+       "withinToleranceOnly": false,
+       "reason": "0.68 Ω — no limit set"
+      },
+      {
+       "gate": "M-B/|Z|",
+       "metric": "M-B",
+       "title": "Minimum |Z| the amplifier sees (simple mode)",
+       "subject": "system",
+       "value": 1.3461979669490334,
+       "unit": "Ω",
+       "direction": "min",
+       "specRef": "A4 M-B (simple mode)",
+       "parameters": {
+        "at": "304 Hz",
+        "judged_on": "20-20317 Hz, the drivers' own measured impedance sweeps (an impedance measurement has no gate)"
+       },
+       "limit": null,
+       "active": false,
+       "pass": true,
+       "withinToleranceOnly": false,
+       "reason": "1.35 Ω — no limit set"
+      },
+      {
+       "gate": "M-C",
+       "metric": "M-C",
+       "title": "Drive voltage on the driver resonance",
+       "subject": "tweeter",
+       "value": -1.3502298152846233,
+       "unit": "dB",
+       "direction": "max",
+       "specRef": "A4 M-C",
+       "parameters": {
+        "f_s": "901 Hz",
+        "passband": "5733-19000 Hz (frozen)",
+        "judged_on": "20-20317 Hz, the drivers' own measured impedance sweeps (an impedance measurement has no gate)"
+       },
+       "limit": null,
+       "active": false,
+       "pass": true,
+       "withinToleranceOnly": false,
+       "reason": "-1.4 dB — no limit set"
+      }
+     ],
+     "gatesDerived": [
+      {
+       "gate": "M-A",
+       "metric": "M-A",
+       "title": "Dissipation in the filter resistors",
+       "subject": "system",
+       "value": 0,
+       "unit": "of amplifier power",
+       "direction": "max",
+       "specRef": "A4 M-A",
+       "parameters": {
+        "band": "20-20317 Hz",
+        "weighting": "IEC 60268-1 programme noise",
+        "judged_on": "20-20317 Hz, the drivers' own measured impedance sweeps (an impedance measurement has no gate)"
+       },
+       "limit": null,
+       "active": false,
+       "pass": true,
+       "withinToleranceOnly": false,
+       "reason": "0.0 % — no limit set"
+      },
+      {
+       "gate": "M-B/EPDR",
+       "metric": "M-B",
+       "title": "EPDR of the amplifier load",
+       "subject": "system",
+       "value": 0.6761737323326092,
+       "unit": "Ω",
+       "direction": "min",
+       "specRef": "A4 M-B",
+       "parameters": {
+        "at": "290 Hz",
+        "judged_on": "20-20317 Hz, the drivers' own measured impedance sweeps (an impedance measurement has no gate)"
+       },
+       "limit": null,
+       "active": false,
+       "pass": true,
+       "withinToleranceOnly": false,
+       "reason": "0.68 Ω — no limit set"
+      },
+      {
+       "gate": "M-B/|Z|",
+       "metric": "M-B",
+       "title": "Minimum |Z| the amplifier sees (simple mode)",
+       "subject": "system",
+       "value": 1.3461979669490334,
+       "unit": "Ω",
+       "direction": "min",
+       "specRef": "A4 M-B (simple mode)",
+       "parameters": {
+        "at": "304 Hz",
+        "judged_on": "20-20317 Hz, the drivers' own measured impedance sweeps (an impedance measurement has no gate)"
+       },
+       "limit": null,
+       "active": false,
+       "pass": true,
+       "withinToleranceOnly": false,
+       "reason": "1.35 Ω — no limit set"
+      },
+      {
+       "gate": "M-C",
+       "metric": "M-C",
+       "title": "Drive voltage on the driver resonance",
+       "subject": "mid",
+       "value": -28.52663481806661,
+       "unit": "dB",
+       "direction": "max",
+       "specRef": "A4 M-C",
+       "parameters": {
+        "f_s": "19000 Hz",
+        "passband": "210-614 Hz (derived)",
+        "judged_on": "20-20317 Hz, the drivers' own measured impedance sweeps (an impedance measurement has no gate)"
+       },
+       "limit": null,
+       "active": false,
+       "pass": true,
+       "withinToleranceOnly": false,
+       "reason": "-28.5 dB — no limit set"
+      },
+      {
+       "gate": "M-C",
+       "metric": "M-C",
+       "title": "Drive voltage on the driver resonance",
+       "subject": "tweeter",
+       "value": -0.04302135903168014,
+       "unit": "dB",
+       "direction": "max",
+       "specRef": "A4 M-C",
+       "parameters": {
+        "f_s": "901 Hz",
+        "passband": "614-19000 Hz (derived)",
+        "judged_on": "20-20317 Hz, the drivers' own measured impedance sweeps (an impedance measurement has no gate)"
+       },
+       "limit": null,
+       "active": false,
+       "pass": true,
+       "withinToleranceOnly": false,
+       "reason": "-0.0 dB — no limit set"
+      }
+     ]
+    }
+   ]
+  }
  }
 }

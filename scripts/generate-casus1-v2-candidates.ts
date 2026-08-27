@@ -64,6 +64,7 @@ import {
   casus1ChainInput,
   casus1Field,
   casus1V2Declaration,
+  casus1V2Facts,
 } from '../src/lib/engine2/casus1V2.fixture.ts';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
@@ -85,6 +86,16 @@ const report = buildReport({
     targetCurve: FLAT_TARGET,
   },
 });
+
+/* V32 — THE MEASURED FACTS NOW CROSS THE BORDER, as they do in the app.
+ *
+ * This script used to send an empty `v2` fact payload, and until V32 that was
+ * invisible: the worker fell back, said so in notes nobody read, and every gate
+ * judged on the chain's 200 Hz grid anyway. Since V32 the electrical gates
+ * judge on the drivers' own measured sweeps and refuse to judge at all without
+ * them, so an empty payload would answer V32 by switching `M-B/|Z|` off.
+ * `casus1V2Facts` is `App.tsx`'s own bridge — see the note there. */
+const facts = casus1V2Facts(report, manifest, files);
 
 const field = casus1Field(report);
 console.log(
@@ -144,6 +155,14 @@ const outcomes: {
     ampFloorRepair: string | null;
     vroege_terugkeer: boolean;
   };
+  /* V31 — een kandidaat die niets geleverd heeft, en de regel die hem
+   * weigerde. `null` = hij leverde wél een netwerk. De cijfers eronder gaan
+   * over de tune die geweigerd IS en die niemand gaat bouwen. */
+  verwerping: {
+    regels: string[];
+    reden: string;
+    geweigerde_tune: Record<string, number | null> | null;
+  } | null;
 }[] = [];
 let n = 0;
 for (const c of field.field.candidates) {
@@ -172,6 +191,7 @@ for (const c of field.field.candidates) {
   const payload: V2Chain3Payload = {
     input,
     v2: {
+      ...facts,
       /* THE GATE SIDE OF THE SAME PATH THE APP TAKES.
        *
        * `App.tsx` fills `v2ScanSettings.gates.ampMinLoadOhm` from the A5a field
@@ -200,6 +220,7 @@ for (const c of field.field.candidates) {
     measurements: ShortlistInput<Chain3Result>['measurements'];
     topology: ShortlistInput<Chain3Result>['topology'];
     gates: ShortlistInput<Chain3Result>['gates'];
+    rejection: ShortlistInput<Chain3Result>['rejection'];
     notes: string[];
   } | null = null;
   handleV2Request(wire, (m: V2Response) => {
@@ -241,12 +262,26 @@ for (const c of field.field.candidates) {
       ampFloorRepair: (done.result.net as { ampFloorRepair?: string }).ampFloorRepair ?? null,
       vroege_terugkeer: !('ampFloorRepair' in (done.result.net as object)),
     },
+    verwerping: done.rejection
+      ? {
+          regels: [...done.rejection.kinds],
+          reden: done.rejection.reason,
+          geweigerde_tune: (done.rejection.rejectedTune ?? null) as Record<
+            string,
+            number | null
+          > | null,
+        }
+      : null,
   });
   console.log(
     `  [${n}/${field.field.candidates.length}] ${c.label} → ` +
-      `${done.result.net.after.rippleDb.toFixed(2)} dB / ${done.result.net.after.phaseDeg.toFixed(1)}°` +
-      `  min|Z| ${(done.gates.find((v) => v.gate === 'M-B/|Z|')?.value ?? NaN).toFixed(2)} Ω` +
-      `  ${failed.length ? `REFUSED by ${failed.map((v) => v.gate).join(', ')}` : 'gates ok'}` +
+      (done.rejection
+        ? `NO NETWORK — refused by ${done.rejection.kinds.join(', ') || 'a wholesale gate'}; the ` +
+          `refused tune was at ${done.rejection.rejectedTune?.minZOhm?.toFixed(2) ?? '—'} Ω / ` +
+          `±${done.rejection.rejectedTune?.windowPlusMinusDb?.toFixed(2) ?? '—'} dB`
+        : `${done.result.net.after.rippleDb.toFixed(2)} dB / ${done.result.net.after.phaseDeg.toFixed(1)}°` +
+          `  min|Z| ${(done.gates.find((v) => v.gate === 'M-B/|Z|')?.value ?? NaN).toFixed(2)} Ω` +
+          `  ${failed.length ? `REFUSED by ${failed.map((v) => v.gate).join(', ')}` : 'gates ok'}`) +
       `  (${((Date.now() - t0) / 1000).toFixed(0)} s)`,
   );
   rows.push({
@@ -257,19 +292,23 @@ for (const c of field.field.candidates) {
     measurements: done.measurements,
     gates: done.gates,
     disqualified: done.result.disqualified,
+    rejection: done.rejection,
   });
   perCandidate[c.label] = { provenance: c.provenance, crossings: c.crossings };
 }
 
 /* ---- the run stamp, built exactly as `optimClient.ts` builds it ---------- */
 const lastPayloadForStamp = lastPayload;
-const v2Facts = {};
+const v2Facts = facts;
 const stamp = stampRun(
   {
     determinism: { seed: CASUS1_V2_SEED, seedSource: 'project', budgetEvaluations: null, budgetSource: "the tuner's own policy", starts: 1, startsSource: 'default' },
     design: stableJson({ variants: field.field.candidates.map((c) => [c.label, c.crossings[0].hz, c.crossings[1].hz]) }),
     measurements: stableJson({ grid: [CASUS1_V2_GRID[0], CASUS1_V2_GRID[CASUS1_V2_GRID.length - 1], CASUS1_V2_GRID.length] }),
-    gates: stableJson(gateSettingsKey({})),
+    /* V32 — the ARMED gates, read off the payload. This said `{}` until V32
+     * while the run armed the stated floor: a fingerprint that records "no
+     * gate" for a gated run is the A5e.4 promise broken quietly. */
+    gates: stableJson(gateSettingsKey(lastPayload?.v2.gates ?? {})),
     bounds: stableJson(budgetSettingsKey({})),
     tuning: stableJson(CASUS1_V2_SETTINGS),
     facts: stableJson(measurementFactsKey(v2Facts)),
@@ -415,6 +454,9 @@ writeFileSync(
       shortlist: {
         overwogen: field.field.candidates.length,
         geweigerd_door_een_poort: outcomes.filter((o) => o.geweigerd_door.length > 0).length,
+        /* V31 — de derde uitgang. Een kandidaat die niets leverde is niet
+         * "door een poort geweigerd": er was geen ontwerp om te beoordelen. */
+        leverde_geen_netwerk: outcomes.filter((o) => o.verwerping !== null).length,
         bevroren: written.length,
         _:
           'Zie `buildShortlist`: toelaatbaar gebied plus spreiding, en een poortweigering is ' +
@@ -422,6 +464,7 @@ writeFileSync(
           'een gestelde eis). Rangschikt niets (A5e.1). `bevroren` kan lager zijn dan ' +
           '`overwogen − geweigerd_door_een_poort`: de spreiding kiest daarna nog.',
       },
+      verwerpingen: shortlist.rejected,
       kandidaat_uitkomst: outcomes,
       referentie_kruispunt_hz: field.referenceCrossingHz,
       orde_afleiding: field.orders.map((o) => ({ paar: o.pairLabel, orden: o.orders, waarom: o.why })),

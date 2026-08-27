@@ -1,9 +1,9 @@
 {
  "_": "F4d — DOCUMENTATIE, geen acceptatiewaarde. Zie scripts/generate-casus1-v2-candidates.ts.",
- "gegenereerd_op_commit": "892772d8485bfcd4a757dc2ea96ca7608c488218",
+ "gegenereerd_op_commit": "851c5797cbcb36b95d90d04c282e2c8b4f1fcc9c",
  "gegenereerd_op_commit_betekenis": "De HEAD van de boom waarin dit script DRAAIDE — dus de commit vóór de commit waarin deze fixtures landen. Dat kan niet anders: het script schrijft de bestanden en de commit legt ze vast, in die volgorde. Wie wil reproduceren moet dus deze commit uitchecken PLUS de bronwijzigingen van de eerstvolgende, of eenvoudiger: de commit nemen waarin de fixtures staan. Bij de F4d-nazorg stond hier 40bdf23 (de V20-commit) terwijl de fixtures bij d70c67b lagen, en dat leek een fout tot het opnieuw draaien de netlists byte-identiek teruggaf.",
  "seed": 20260827,
- "run_vingerafdruk": "engine=2.0.0-F1 estimators=6087f58a seed=20260827 budget=tuner starts=1 status=completed design=a7ccf830 measurements=e97d1bdc gates=5465b825 bounds=5465b825 tuning=e5687f86 facts=7f4da8b5 choices=1cfaa800",
+ "run_vingerafdruk": "engine=2.0.0-F1 estimators=6087f58a seed=20260827 budget=tuner starts=1 status=completed design=a7ccf830 measurements=e97d1bdc gates=77e69859 bounds=5465b825 tuning=e5687f86 facts=eafd901a choices=1cfaa800",
  "grid": {
   "van_hz": 200,
   "tot_hz": 20000,
@@ -101,10 +101,41 @@
  },
  "shortlist": {
   "overwogen": 15,
-  "geweigerd_door_een_poort": 4,
-  "bevroren": 10,
+  "geweigerd_door_een_poort": 6,
+  "leverde_geen_netwerk": 2,
+  "bevroren": 7,
   "_": "Zie `buildShortlist`: toelaatbaar gebied plus spreiding, en een poortweigering is een van de twee manieren om buiten het toelaatbaar gebied te vallen (de andere is een gestelde eis). Rangschikt niets (A5e.1). `bevroren` kan lager zijn dan `overwogen − geweigerd_door_een_poort`: de spreiding kiest daarna nog."
  },
+ "verwerpingen": [
+  {
+   "label": "woofer→mid 466.5 LR4 · mid→tweeter 1491.4 LR4",
+   "kinds": [
+    "protection"
+   ],
+   "reason": "safety gate: tune rejected on the full measurement band — tweeter protection got worse. The evaluated band is narrower than the measurement; widen the view range to let the optimizer see the whole design.",
+   "rejectedTune": {
+    "minZOhm": 2.592635564265051,
+    "windowPlusMinusDb": 72.51597655775929,
+    "rmsDeviationDb": 1.6997643122143435,
+    "rippleDb": 3.6410991459183606,
+    "phaseDeg": 28.490511926259614
+   }
+  },
+  {
+   "label": "woofer→mid 548.5 LR4 · mid→tweeter 1294 LR4",
+   "kinds": [
+    "protection"
+   ],
+   "reason": "safety gate: tune rejected on the full measurement band — tweeter protection got worse. The evaluated band is narrower than the measurement; widen the view range to let the optimizer see the whole design.",
+   "rejectedTune": {
+    "minZOhm": 2.5899210687963117,
+    "windowPlusMinusDb": 72.7018094642607,
+    "rmsDeviationDb": 1.4283667242339413,
+    "rippleDb": 3.727542879873468,
+    "phaseDeg": 27.20366853787849
+   }
+  }
+ ],
  "kandidaat_uitkomst": [
   {
    "label": "woofer→mid 396.7 LR4 · mid→tweeter 1294 LR4",
@@ -116,7 +147,7 @@
      "onderwerp": "system",
      "gewapend": false,
      "geslaagd": true,
-     "waarde": 0.031,
+     "waarde": 0.017,
      "grens": null
     },
     {
@@ -124,7 +155,7 @@
      "onderwerp": "system",
      "gewapend": false,
      "geslaagd": true,
-     "waarde": 1.159,
+     "waarde": 0.023,
      "grens": null
     },
     {
@@ -132,15 +163,15 @@
      "onderwerp": "system",
      "gewapend": true,
      "geslaagd": false,
-     "waarde": 0.035,
+     "waarde": 0.009,
      "grens": 2.6
     },
     {
      "poort": "M-C",
-     "onderwerp": "tweeter",
+     "onderwerp": "mid",
      "gewapend": false,
      "geslaagd": true,
-     "waarde": -13.221,
+     "waarde": -52.717,
      "grens": null
     }
    ],
@@ -148,31 +179,31 @@
     "M-B/|Z| (system)"
    ],
    "door_de_ketenzelf_gediskwalificeerd": [
+    "M-B/|Z|: 0.01 Ω falls below the stated floor of 2.60 Ω. Nothing was rolled back — no arrangement of these values met the limit, so the constraint is not what this candidate failed on, the candidate is",
     "the mid branch presents 0.033 Ω to the amplifier at 2611 Hz — 0.71% of the 4.60 Ω the bare driver offers there. That is a DEGENERATION in the filter, not a heavy load: a healthy branch never goes below 1% (measured floor over two driver sets: 17%). Nothing downstream can repair it — do not reach for the amplifier or the impedance settings; this candidate's topology is what has to change."
    ],
    "pas": {
     "tuned": 0,
-    "evaluaties": 87521,
-    "safetyNote": "safety gate: tune rejected on the full measurement band — tweeter protection got worse. The evaluated band is narrower than the measurement; widen the view range to let the optimizer see the whole design.",
-    "safetyKinds": [
-     "protection"
-    ],
-    "ampFloorNote": "the rejected tune — amp-load floor: system impedance dips to 1.8 Ω (your amplifier's rated minimum load, 2.6 Ω) and could not be repaired without losing response quality — check the Impedance panel",
-    "ampFloorRepair": null,
-    "vroege_terugkeer": true
-   }
+    "evaluaties": 88008,
+    "safetyNote": null,
+    "safetyKinds": null,
+    "ampFloorNote": "amp-load floor: system impedance dips to 0.0 Ω (your amplifier's rated minimum load, 2.6 Ω) and could not be repaired without losing response quality — check the Impedance panel",
+    "ampFloorRepair": "failed",
+    "vroege_terugkeer": false
+   },
+   "verwerping": null
   },
   {
    "label": "woofer→mid 396.7 LR4 · mid→tweeter 1491.4 LR4",
-   "rimpel_dB": 3.94,
-   "fase_graden": 18.4,
+   "rimpel_dB": 5.73,
+   "fase_graden": 12.7,
    "poorten": [
     {
      "poort": "M-A",
      "onderwerp": "system",
      "gewapend": false,
      "geslaagd": true,
-     "waarde": 0.02,
+     "waarde": 0.016,
      "grens": null
     },
     {
@@ -180,51 +211,63 @@
      "onderwerp": "system",
      "gewapend": false,
      "geslaagd": true,
-     "waarde": 1.314,
+     "waarde": 0.536,
      "grens": null
     },
     {
      "poort": "M-B/|Z|",
      "onderwerp": "system",
      "gewapend": true,
-     "geslaagd": true,
-     "waarde": 2.606,
+     "geslaagd": false,
+     "waarde": 1.044,
      "grens": 2.6
+    },
+    {
+     "poort": "M-C",
+     "onderwerp": "mid",
+     "gewapend": false,
+     "geslaagd": true,
+     "waarde": -48.379,
+     "grens": null
     },
     {
      "poort": "M-C",
      "onderwerp": "tweeter",
      "gewapend": false,
      "geslaagd": true,
-     "waarde": -16.768,
+     "waarde": -13.761,
      "grens": null
     }
    ],
-   "geweigerd_door": [],
+   "geweigerd_door": [
+    "M-B/|Z| (system)"
+   ],
    "door_de_ketenzelf_gediskwalificeerd": [
-    "the delivered network presents 2.45 Ω to the amplifier, under your amplifier's rated minimum load, 2.6 Ω, and the load could not be repaired — this is not a worse design, it is one you told this app your amplifier will refuse to drive"
+    "W-M delivered 358 Hz under its physics floor 397 Hz (-10 %)",
+    "M-B/|Z|: 1.04 Ω falls below the stated floor of 2.60 Ω. Nothing was rolled back — no arrangement of these values met the limit, so the constraint is not what this candidate failed on, the candidate is"
    ],
    "pas": {
-    "tuned": 18,
-    "evaluaties": 83592,
+    "tuned": 0,
+    "evaluaties": 82807,
     "safetyNote": null,
     "safetyKinds": null,
-    "ampFloorNote": "amp-load floor: system impedance dips to 2.4 Ω (your amplifier's rated minimum load, 2.6 Ω) and could not be repaired without losing response quality — check the Impedance panel",
+    "ampFloorNote": "amp-load floor: system impedance dips to 1.0 Ω (your amplifier's rated minimum load, 2.6 Ω) and could not be repaired without losing response quality — check the Impedance panel",
     "ampFloorRepair": "failed",
     "vroege_terugkeer": false
-   }
+   },
+   "verwerping": null
   },
   {
    "label": "woofer→mid 396.7 LR4 · mid→tweeter 1719 LR4",
-   "rimpel_dB": 4,
-   "fase_graden": 19.2,
+   "rimpel_dB": 5.66,
+   "fase_graden": 16,
    "poorten": [
     {
      "poort": "M-A",
      "onderwerp": "system",
      "gewapend": false,
      "geslaagd": true,
-     "waarde": 0.015,
+     "waarde": 0.014,
      "grens": null
     },
     {
@@ -232,51 +275,63 @@
      "onderwerp": "system",
      "gewapend": false,
      "geslaagd": true,
-     "waarde": 1.3,
+     "waarde": 0.588,
      "grens": null
     },
     {
      "poort": "M-B/|Z|",
      "onderwerp": "system",
      "gewapend": true,
-     "geslaagd": true,
-     "waarde": 2.594,
+     "geslaagd": false,
+     "waarde": 1.157,
      "grens": 2.6
+    },
+    {
+     "poort": "M-C",
+     "onderwerp": "mid",
+     "gewapend": false,
+     "geslaagd": true,
+     "waarde": -49.504,
+     "grens": null
     },
     {
      "poort": "M-C",
      "onderwerp": "tweeter",
      "gewapend": false,
      "geslaagd": true,
-     "waarde": -20.349,
+     "waarde": -16.445,
      "grens": null
     }
    ],
-   "geweigerd_door": [],
+   "geweigerd_door": [
+    "M-B/|Z| (system)"
+   ],
    "door_de_ketenzelf_gediskwalificeerd": [
-    "the delivered network presents 2.36 Ω to the amplifier, under your amplifier's rated minimum load, 2.6 Ω, and the load could not be repaired — this is not a worse design, it is one you told this app your amplifier will refuse to drive"
+    "W-M delivered 376 Hz under its physics floor 397 Hz (-5 %)",
+    "M-B/|Z|: 1.16 Ω falls below the stated floor of 2.60 Ω. Nothing was rolled back — no arrangement of these values met the limit, so the constraint is not what this candidate failed on, the candidate is"
    ],
    "pas": {
-    "tuned": 18,
-    "evaluaties": 85052,
+    "tuned": 0,
+    "evaluaties": 85093,
     "safetyNote": null,
     "safetyKinds": null,
-    "ampFloorNote": "amp-load floor: system impedance dips to 2.4 Ω (your amplifier's rated minimum load, 2.6 Ω) and could not be repaired without losing response quality — check the Impedance panel",
+    "ampFloorNote": "amp-load floor: system impedance dips to 1.2 Ω (your amplifier's rated minimum load, 2.6 Ω) and could not be repaired without losing response quality — check the Impedance panel",
     "ampFloorRepair": "failed",
     "vroege_terugkeer": false
-   }
+   },
+   "verwerping": null
   },
   {
    "label": "woofer→mid 396.7 LR4 · mid→tweeter 1981.2 LR4",
-   "rimpel_dB": 3.87,
-   "fase_graden": 19.4,
+   "rimpel_dB": 5.53,
+   "fase_graden": 17.7,
    "poorten": [
     {
      "poort": "M-A",
      "onderwerp": "system",
      "gewapend": false,
      "geslaagd": true,
-     "waarde": 0.015,
+     "waarde": 0.008,
      "grens": null
     },
     {
@@ -284,51 +339,63 @@
      "onderwerp": "system",
      "gewapend": false,
      "geslaagd": true,
-     "waarde": 1.308,
+     "waarde": 0.645,
      "grens": null
     },
     {
      "poort": "M-B/|Z|",
      "onderwerp": "system",
      "gewapend": true,
-     "geslaagd": true,
-     "waarde": 2.616,
+     "geslaagd": false,
+     "waarde": 1.271,
      "grens": 2.6
+    },
+    {
+     "poort": "M-C",
+     "onderwerp": "mid",
+     "gewapend": false,
+     "geslaagd": true,
+     "waarde": -50.107,
+     "grens": null
     },
     {
      "poort": "M-C",
      "onderwerp": "tweeter",
      "gewapend": false,
      "geslaagd": true,
-     "waarde": -22.75,
+     "waarde": -19.072,
      "grens": null
     }
    ],
-   "geweigerd_door": [],
+   "geweigerd_door": [
+    "M-B/|Z| (system)"
+   ],
    "door_de_ketenzelf_gediskwalificeerd": [
-    "the delivered network presents 2.34 Ω to the amplifier, under your amplifier's rated minimum load, 2.6 Ω, and the load could not be repaired — this is not a worse design, it is one you told this app your amplifier will refuse to drive"
+    "W-M delivered 376 Hz under its physics floor 397 Hz (-5 %)",
+    "M-B/|Z|: 1.27 Ω falls below the stated floor of 2.60 Ω. Nothing was rolled back — no arrangement of these values met the limit, so the constraint is not what this candidate failed on, the candidate is"
    ],
    "pas": {
-    "tuned": 18,
-    "evaluaties": 88408,
+    "tuned": 0,
+    "evaluaties": 86775,
     "safetyNote": null,
     "safetyKinds": null,
-    "ampFloorNote": "amp-load floor: system impedance dips to 2.3 Ω (your amplifier's rated minimum load, 2.6 Ω) and could not be repaired without losing response quality — check the Impedance panel",
+    "ampFloorNote": "amp-load floor: system impedance dips to 1.3 Ω (your amplifier's rated minimum load, 2.6 Ω) and could not be repaired without losing response quality — check the Impedance panel",
     "ampFloorRepair": "failed",
     "vroege_terugkeer": false
-   }
+   },
+   "verwerping": null
   },
   {
    "label": "woofer→mid 396.7 LR4 · mid→tweeter 2283.5 LR4",
-   "rimpel_dB": 3.66,
-   "fase_graden": 18,
+   "rimpel_dB": 5.38,
+   "fase_graden": 25,
    "poorten": [
     {
      "poort": "M-A",
      "onderwerp": "system",
      "gewapend": false,
      "geslaagd": true,
-     "waarde": 0.013,
+     "waarde": 0.006,
      "grens": null
     },
     {
@@ -336,39 +403,50 @@
      "onderwerp": "system",
      "gewapend": false,
      "geslaagd": true,
-     "waarde": 1.303,
+     "waarde": 0.695,
      "grens": null
     },
     {
      "poort": "M-B/|Z|",
      "onderwerp": "system",
      "gewapend": true,
-     "geslaagd": true,
-     "waarde": 2.594,
+     "geslaagd": false,
+     "waarde": 1.377,
      "grens": 2.6
+    },
+    {
+     "poort": "M-C",
+     "onderwerp": "mid",
+     "gewapend": false,
+     "geslaagd": true,
+     "waarde": -52.336,
+     "grens": null
     },
     {
      "poort": "M-C",
      "onderwerp": "tweeter",
      "gewapend": false,
      "geslaagd": true,
-     "waarde": -24.142,
+     "waarde": -21.256,
      "grens": null
     }
    ],
-   "geweigerd_door": [],
+   "geweigerd_door": [
+    "M-B/|Z| (system)"
+   ],
    "door_de_ketenzelf_gediskwalificeerd": [
-    "the delivered network presents 2.39 Ω to the amplifier, under your amplifier's rated minimum load, 2.6 Ω, and the load could not be repaired — this is not a worse design, it is one you told this app your amplifier will refuse to drive"
+    "M-B/|Z|: 1.38 Ω falls below the stated floor of 2.60 Ω. Nothing was rolled back — no arrangement of these values met the limit, so the constraint is not what this candidate failed on, the candidate is"
    ],
    "pas": {
-    "tuned": 18,
-    "evaluaties": 87299,
+    "tuned": 0,
+    "evaluaties": 84654,
     "safetyNote": null,
     "safetyKinds": null,
-    "ampFloorNote": "amp-load floor: system impedance dips to 2.4 Ω (your amplifier's rated minimum load, 2.6 Ω) and could not be repaired without losing response quality — check the Impedance panel",
+    "ampFloorNote": "amp-load floor: system impedance dips to 1.4 Ω (your amplifier's rated minimum load, 2.6 Ω) and could not be repaired without losing response quality — check the Impedance panel",
     "ampFloorRepair": "failed",
     "vroege_terugkeer": false
-   }
+   },
+   "verwerping": null
   },
   {
    "label": "woofer→mid 466.5 LR4 · mid→tweeter 1294 LR4",
@@ -380,7 +458,7 @@
      "onderwerp": "system",
      "gewapend": false,
      "geslaagd": true,
-     "waarde": 0.188,
+     "waarde": 0.254,
      "grens": null
     },
     {
@@ -388,7 +466,7 @@
      "onderwerp": "system",
      "gewapend": false,
      "geslaagd": true,
-     "waarde": 1.303,
+     "waarde": 1.277,
      "grens": null
     },
     {
@@ -396,8 +474,16 @@
      "onderwerp": "system",
      "gewapend": true,
      "geslaagd": true,
-     "waarde": 2.58,
+     "waarde": 2.552,
      "grens": 2.6
+    },
+    {
+     "poort": "M-C",
+     "onderwerp": "mid",
+     "gewapend": false,
+     "geslaagd": true,
+     "waarde": -40.221,
+     "grens": null
     }
    ],
    "geweigerd_door": [],
@@ -410,60 +496,39 @@
     "ampFloorNote": null,
     "ampFloorRepair": "none",
     "vroege_terugkeer": false
-   }
+   },
+   "verwerping": null
   },
   {
    "label": "woofer→mid 466.5 LR4 · mid→tweeter 1491.4 LR4",
    "rimpel_dB": 6.21,
    "fase_graden": 15.2,
-   "poorten": [
-    {
-     "poort": "M-A",
-     "onderwerp": "system",
-     "gewapend": false,
-     "geslaagd": true,
-     "waarde": 0.092,
-     "grens": null
-    },
-    {
-     "poort": "M-B/EPDR",
-     "onderwerp": "system",
-     "gewapend": false,
-     "geslaagd": true,
-     "waarde": 0.47,
-     "grens": null
-    },
-    {
-     "poort": "M-B/|Z|",
-     "onderwerp": "system",
-     "gewapend": true,
-     "geslaagd": false,
-     "waarde": 0.924,
-     "grens": 2.6
-    },
-    {
-     "poort": "M-C",
-     "onderwerp": "tweeter",
-     "gewapend": false,
-     "geslaagd": true,
-     "waarde": -14.337,
-     "grens": null
-    }
-   ],
-   "geweigerd_door": [
-    "M-B/|Z| (system)"
-   ],
+   "poorten": [],
+   "geweigerd_door": [],
    "door_de_ketenzelf_gediskwalificeerd": [],
    "pas": {
     "tuned": 0,
-    "evaluaties": 146180,
+    "evaluaties": 88768,
     "safetyNote": "safety gate: tune rejected on the full measurement band — tweeter protection got worse. The evaluated band is narrower than the measurement; widen the view range to let the optimizer see the whole design.",
     "safetyKinds": [
      "protection"
     ],
-    "ampFloorNote": "the rejected tune — amp-load floor: system impedance dips to 2.0 Ω (your amplifier's rated minimum load, 2.6 Ω) and could not be repaired without losing response quality — check the Impedance panel",
+    "ampFloorNote": null,
     "ampFloorRepair": null,
     "vroege_terugkeer": true
+   },
+   "verwerping": {
+    "regels": [
+     "protection"
+    ],
+    "reden": "safety gate: tune rejected on the full measurement band — tweeter protection got worse. The evaluated band is narrower than the measurement; widen the view range to let the optimizer see the whole design.",
+    "geweigerde_tune": {
+     "minZOhm": 2.592635564265051,
+     "windowPlusMinusDb": 72.51597655775929,
+     "rmsDeviationDb": 1.6997643122143435,
+     "rippleDb": 3.6410991459183606,
+     "phaseDeg": 28.490511926259614
+    }
    }
   },
   {
@@ -476,7 +541,7 @@
      "onderwerp": "system",
      "gewapend": false,
      "geslaagd": true,
-     "waarde": 0.09,
+     "waarde": 0.155,
      "grens": null
     },
     {
@@ -484,7 +549,7 @@
      "onderwerp": "system",
      "gewapend": false,
      "geslaagd": true,
-     "waarde": 0.515,
+     "waarde": 0.512,
      "grens": null
     },
     {
@@ -497,28 +562,37 @@
     },
     {
      "poort": "M-C",
+     "onderwerp": "mid",
+     "gewapend": false,
+     "geslaagd": true,
+     "waarde": -54.562,
+     "grens": null
+    },
+    {
+     "poort": "M-C",
      "onderwerp": "tweeter",
      "gewapend": false,
      "geslaagd": true,
-     "waarde": -16.926,
+     "waarde": -16.489,
      "grens": null
     }
    ],
    "geweigerd_door": [
     "M-B/|Z| (system)"
    ],
-   "door_de_ketenzelf_gediskwalificeerd": [],
+   "door_de_ketenzelf_gediskwalificeerd": [
+    "M-B/|Z|: 1.01 Ω falls below the stated floor of 2.60 Ω. Nothing was rolled back — no arrangement of these values met the limit, so the constraint is not what this candidate failed on, the candidate is"
+   ],
    "pas": {
     "tuned": 0,
-    "evaluaties": 86818,
-    "safetyNote": "safety gate: tune rejected on the full measurement band — tweeter protection got worse. The evaluated band is narrower than the measurement; widen the view range to let the optimizer see the whole design.",
-    "safetyKinds": [
-     "protection"
-    ],
-    "ampFloorNote": null,
-    "ampFloorRepair": null,
-    "vroege_terugkeer": true
-   }
+    "evaluaties": 101634,
+    "safetyNote": null,
+    "safetyKinds": null,
+    "ampFloorNote": "amp-load floor: system impedance dips to 1.0 Ω (your amplifier's rated minimum load, 2.6 Ω) and could not be repaired without losing response quality — check the Impedance panel",
+    "ampFloorRepair": "failed",
+    "vroege_terugkeer": false
+   },
+   "verwerping": null
   },
   {
    "label": "woofer→mid 466.5 LR4 · mid→tweeter 1981.2 LR4",
@@ -530,7 +604,7 @@
      "onderwerp": "system",
      "gewapend": false,
      "geslaagd": true,
-     "waarde": 0.12,
+     "waarde": 0.225,
      "grens": null
     },
     {
@@ -538,7 +612,7 @@
      "onderwerp": "system",
      "gewapend": false,
      "geslaagd": true,
-     "waarde": 1.305,
+     "waarde": 1.295,
      "grens": null
     },
     {
@@ -546,15 +620,23 @@
      "onderwerp": "system",
      "gewapend": true,
      "geslaagd": true,
-     "waarde": 2.596,
+     "waarde": 2.59,
      "grens": 2.6
+    },
+    {
+     "poort": "M-C",
+     "onderwerp": "mid",
+     "gewapend": false,
+     "geslaagd": true,
+     "waarde": -41.526,
+     "grens": null
     },
     {
      "poort": "M-C",
      "onderwerp": "tweeter",
      "gewapend": false,
      "geslaagd": true,
-     "waarde": -22.604,
+     "waarde": -22.03,
      "grens": null
     }
    ],
@@ -568,7 +650,8 @@
     "ampFloorNote": null,
     "ampFloorRepair": "none",
     "vroege_terugkeer": false
-   }
+   },
+   "verwerping": null
   },
   {
    "label": "woofer→mid 466.5 LR4 · mid→tweeter 2283.5 LR4",
@@ -580,7 +663,7 @@
      "onderwerp": "system",
      "gewapend": false,
      "geslaagd": true,
-     "waarde": 0.098,
+     "waarde": 0.191,
      "grens": null
     },
     {
@@ -588,7 +671,7 @@
      "onderwerp": "system",
      "gewapend": false,
      "geslaagd": true,
-     "waarde": 1.3,
+     "waarde": 1.291,
      "grens": null
     },
     {
@@ -596,15 +679,23 @@
      "onderwerp": "system",
      "gewapend": true,
      "geslaagd": true,
-     "waarde": 2.594,
+     "waarde": 2.581,
      "grens": 2.6
+    },
+    {
+     "poort": "M-C",
+     "onderwerp": "mid",
+     "gewapend": false,
+     "geslaagd": true,
+     "waarde": -41.119,
+     "grens": null
     },
     {
      "poort": "M-C",
      "onderwerp": "tweeter",
      "gewapend": false,
      "geslaagd": true,
-     "waarde": -24.844,
+     "waarde": -24.3,
      "grens": null
     }
    ],
@@ -618,60 +709,39 @@
     "ampFloorNote": null,
     "ampFloorRepair": "none",
     "vroege_terugkeer": false
-   }
+   },
+   "verwerping": null
   },
   {
    "label": "woofer→mid 548.5 LR4 · mid→tweeter 1294 LR4",
    "rimpel_dB": 6.33,
    "fase_graden": 16.1,
-   "poorten": [
-    {
-     "poort": "M-A",
-     "onderwerp": "system",
-     "gewapend": false,
-     "geslaagd": true,
-     "waarde": 0.094,
-     "grens": null
-    },
-    {
-     "poort": "M-B/EPDR",
-     "onderwerp": "system",
-     "gewapend": false,
-     "geslaagd": true,
-     "waarde": 0.437,
-     "grens": null
-    },
-    {
-     "poort": "M-B/|Z|",
-     "onderwerp": "system",
-     "gewapend": true,
-     "geslaagd": false,
-     "waarde": 0.859,
-     "grens": 2.6
-    },
-    {
-     "poort": "M-C",
-     "onderwerp": "tweeter",
-     "gewapend": false,
-     "geslaagd": true,
-     "waarde": -12.834,
-     "grens": null
-    }
-   ],
-   "geweigerd_door": [
-    "M-B/|Z| (system)"
-   ],
+   "poorten": [],
+   "geweigerd_door": [],
    "door_de_ketenzelf_gediskwalificeerd": [],
    "pas": {
     "tuned": 0,
-    "evaluaties": 141255,
-    "safetyNote": "safety gate: tune rejected on the full measurement band — the crossing sank into a 11 dB hole. The evaluated band is narrower than the measurement; widen the view range to let the optimizer see the whole design.",
+    "evaluaties": 87057,
+    "safetyNote": "safety gate: tune rejected on the full measurement band — tweeter protection got worse. The evaluated band is narrower than the measurement; widen the view range to let the optimizer see the whole design.",
     "safetyKinds": [
-     "valley"
+     "protection"
     ],
-    "ampFloorNote": "the rejected tune — amp-load floor: system impedance dips to 1.3 Ω (your amplifier's rated minimum load, 2.6 Ω) and could not be repaired without losing response quality — check the Impedance panel",
+    "ampFloorNote": null,
     "ampFloorRepair": null,
     "vroege_terugkeer": true
+   },
+   "verwerping": {
+    "regels": [
+     "protection"
+    ],
+    "reden": "safety gate: tune rejected on the full measurement band — tweeter protection got worse. The evaluated band is narrower than the measurement; widen the view range to let the optimizer see the whole design.",
+    "geweigerde_tune": {
+     "minZOhm": 2.5899210687963117,
+     "windowPlusMinusDb": 72.7018094642607,
+     "rmsDeviationDb": 1.4283667242339413,
+     "rippleDb": 3.727542879873468,
+     "phaseDeg": 27.20366853787849
+    }
    }
   },
   {
@@ -684,7 +754,7 @@
      "onderwerp": "system",
      "gewapend": false,
      "geslaagd": true,
-     "waarde": 0.23,
+     "waarde": 0.315,
      "grens": null
     },
     {
@@ -692,7 +762,7 @@
      "onderwerp": "system",
      "gewapend": false,
      "geslaagd": true,
-     "waarde": 1.317,
+     "waarde": 1.304,
      "grens": null
     },
     {
@@ -700,15 +770,23 @@
      "onderwerp": "system",
      "gewapend": true,
      "geslaagd": true,
-     "waarde": 2.607,
+     "waarde": 2.604,
      "grens": 2.6
+    },
+    {
+     "poort": "M-C",
+     "onderwerp": "mid",
+     "gewapend": false,
+     "geslaagd": true,
+     "waarde": -40.288,
+     "grens": null
     },
     {
      "poort": "M-C",
      "onderwerp": "tweeter",
      "gewapend": false,
      "geslaagd": true,
-     "waarde": -13.961,
+     "waarde": -12.37,
      "grens": null
     }
    ],
@@ -722,7 +800,8 @@
     "ampFloorNote": null,
     "ampFloorRepair": "none",
     "vroege_terugkeer": false
-   }
+   },
+   "verwerping": null
   },
   {
    "label": "woofer→mid 548.5 LR4 · mid→tweeter 1719 LR4",
@@ -734,7 +813,7 @@
      "onderwerp": "system",
      "gewapend": false,
      "geslaagd": true,
-     "waarde": 0.15,
+     "waarde": 0.242,
      "grens": null
     },
     {
@@ -742,7 +821,7 @@
      "onderwerp": "system",
      "gewapend": false,
      "geslaagd": true,
-     "waarde": 1.308,
+     "waarde": 1.287,
      "grens": null
     },
     {
@@ -750,15 +829,23 @@
      "onderwerp": "system",
      "gewapend": true,
      "geslaagd": true,
-     "waarde": 2.596,
+     "waarde": 2.568,
      "grens": 2.6
+    },
+    {
+     "poort": "M-C",
+     "onderwerp": "mid",
+     "gewapend": false,
+     "geslaagd": true,
+     "waarde": -16.43,
+     "grens": null
     },
     {
      "poort": "M-C",
      "onderwerp": "tweeter",
      "gewapend": false,
      "geslaagd": true,
-     "waarde": -16.03,
+     "waarde": -14.84,
      "grens": null
     }
    ],
@@ -772,7 +859,8 @@
     "ampFloorNote": null,
     "ampFloorRepair": "none",
     "vroege_terugkeer": false
-   }
+   },
+   "verwerping": null
   },
   {
    "label": "woofer→mid 548.5 LR4 · mid→tweeter 1981.2 LR4",
@@ -784,7 +872,7 @@
      "onderwerp": "system",
      "gewapend": false,
      "geslaagd": true,
-     "waarde": 0.223,
+     "waarde": 0.375,
      "grens": null
     },
     {
@@ -792,7 +880,7 @@
      "onderwerp": "system",
      "gewapend": false,
      "geslaagd": true,
-     "waarde": 1.324,
+     "waarde": 1.286,
      "grens": null
     },
     {
@@ -800,15 +888,23 @@
      "onderwerp": "system",
      "gewapend": true,
      "geslaagd": true,
-     "waarde": 2.587,
+     "waarde": 2.571,
      "grens": 2.6
+    },
+    {
+     "poort": "M-C",
+     "onderwerp": "mid",
+     "gewapend": false,
+     "geslaagd": true,
+     "waarde": -16.629,
+     "grens": null
     },
     {
      "poort": "M-C",
      "onderwerp": "tweeter",
      "gewapend": false,
      "geslaagd": true,
-     "waarde": -13.984,
+     "waarde": -14.134,
      "grens": null
     }
    ],
@@ -822,7 +918,8 @@
     "ampFloorNote": null,
     "ampFloorRepair": "none",
     "vroege_terugkeer": false
-   }
+   },
+   "verwerping": null
   },
   {
    "label": "woofer→mid 548.5 LR4 · mid→tweeter 2283.5 LR4",
@@ -834,7 +931,7 @@
      "onderwerp": "system",
      "gewapend": false,
      "geslaagd": true,
-     "waarde": 0.172,
+     "waarde": 0.286,
      "grens": null
     },
     {
@@ -842,7 +939,7 @@
      "onderwerp": "system",
      "gewapend": false,
      "geslaagd": true,
-     "waarde": 1.298,
+     "waarde": 1.297,
      "grens": null
     },
     {
@@ -850,15 +947,23 @@
      "onderwerp": "system",
      "gewapend": true,
      "geslaagd": true,
-     "waarde": 2.596,
+     "waarde": 2.592,
      "grens": 2.6
+    },
+    {
+     "poort": "M-C",
+     "onderwerp": "mid",
+     "gewapend": false,
+     "geslaagd": true,
+     "waarde": -44.293,
+     "grens": null
     },
     {
      "poort": "M-C",
      "onderwerp": "tweeter",
      "gewapend": false,
      "geslaagd": true,
-     "waarde": -24.849,
+     "waarde": -24.223,
      "grens": null
     }
    ],
@@ -872,7 +977,8 @@
     "ampFloorNote": null,
     "ampFloorRepair": "none",
     "vroege_terugkeer": false
-   }
+   },
+   "verwerping": null
   }
  ],
  "referentie_kruispunt_hz": [
@@ -902,42 +1008,30 @@
  "bestanden": [
   {
    "name": "KAND-V2-1",
-   "label": "woofer→mid 396.7 LR4 · mid→tweeter 1491.4 LR4"
-  },
-  {
-   "name": "KAND-V2-2",
-   "label": "woofer→mid 396.7 LR4 · mid→tweeter 1719 LR4"
-  },
-  {
-   "name": "KAND-V2-3",
    "label": "woofer→mid 466.5 LR4 · mid→tweeter 1981.2 LR4"
   },
   {
-   "name": "KAND-V2-4",
+   "name": "KAND-V2-2",
    "label": "woofer→mid 466.5 LR4 · mid→tweeter 2283.5 LR4"
   },
   {
-   "name": "KAND-V2-5",
+   "name": "KAND-V2-3",
    "label": "woofer→mid 548.5 LR4 · mid→tweeter 1981.2 LR4"
   },
   {
-   "name": "KAND-V2-6",
-   "label": "woofer→mid 396.7 LR4 · mid→tweeter 2283.5 LR4"
-  },
-  {
-   "name": "KAND-V2-7",
+   "name": "KAND-V2-4",
    "label": "woofer→mid 548.5 LR4 · mid→tweeter 1491.4 LR4"
   },
   {
-   "name": "KAND-V2-8",
+   "name": "KAND-V2-5",
    "label": "woofer→mid 548.5 LR4 · mid→tweeter 2283.5 LR4"
   },
   {
-   "name": "KAND-V2-9",
+   "name": "KAND-V2-6",
    "label": "woofer→mid 548.5 LR4 · mid→tweeter 1719 LR4"
   },
   {
-   "name": "KAND-V2-10",
+   "name": "KAND-V2-7",
    "label": "woofer→mid 466.5 LR4 · mid→tweeter 1294 LR4"
   }
  ],

@@ -32,7 +32,8 @@ import { describe, expect, it } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { handleV2Request, type V2ChainOnePayload, type V2Response } from './worker.ts';
 import { factsForWorker, measurementFactsKey } from './measurementFacts.ts';
-import { v2DriverZ, v2Responses, V2_GRID } from './v2.fixture.ts';
+import { v2DriverZ, v2Responses, v2Sweeps, V2_GRID } from './v2.fixture.ts';
+import type { MeasuredSweep } from './gates.ts';
 import type { ChainInput } from '../../designChain.ts';
 import { defaultHpLp } from '../../filters.ts';
 import type { Complex } from '../../complex.ts';
@@ -289,6 +290,26 @@ describe('F4b leak 2 — a bound does not judge outside the A5b.1 interval', () 
     ]),
   );
 
+  /* V32 — THE SAME CONTAMINATION ON THE SWEEP, because that is where the
+   * median is read now.
+   *
+   * Until V32 the M-C pre-bound took its reference impedance off the chain's
+   * analysis grid while `report.ts` took it off the raw sweep — the same split
+   * verdict the gates had, one layer down. Both read the sweep now, so the
+   * fixture has to contaminate the sweep too. Nothing about V22's claim
+   * changes: the interval still clips what is READ, and the proof is still
+   * that the clipped median is the clean region's. What changed is which
+   * measurement it is a median OF, and the sweep was already the right one. */
+  const sweeps: Record<string, MeasuredSweep> = Object.fromEntries(
+    Object.entries(v2Sweeps()).map(([model, s]) => [
+      model,
+      {
+        ...s,
+        magnitude: s.magnitude.map((m, i) => (s.grid[i] > ceilHz ? m * CONTAMINATION : m)),
+      },
+    ]),
+  );
+
   const interval: [number, number] = [V2_GRID[0], ceilHz];
 
   /** Each case is a full chain run, so each is run ONCE and shared. */
@@ -303,6 +324,14 @@ describe('F4b leak 2 — a bound does not judge outside the A5b.1 interval', () 
         gates: { maxDriveOnFsDb: -20 },
         budgets: {},
         determinism: { seed: 11, starts: 1, budgetEvaluations: 120 },
+        // V32: without the sweep no electrical gate judges and no impedance
+        // median exists, so there would be no bound to make a claim about.
+        impedanceByModel: Object.fromEntries(
+          Object.entries(sweeps).map(([m, sw]) => [
+            m,
+            { grid: sw.grid, magnitude: sw.magnitude, phaseDeg: sw.phaseDeg, validHz: sw.validHz },
+          ]),
+        ),
         ...(validHzByModel ? { validHzByModel } : {}),
       },
     });

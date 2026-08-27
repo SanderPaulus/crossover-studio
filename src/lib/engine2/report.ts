@@ -26,10 +26,10 @@
 
 import type { Complex } from '../complex.ts';
 import { fromPolar } from '../complex.ts';
-import { logspace, resampleImpedance, toComplex, wrapDeg } from '../dsp.ts';
+import { toComplex, wrapDeg } from '../dsp.ts';
 import type { Netlist } from '../network.ts';
 import { unwrapPhaseDeg } from '../timing.ts';
-import { ANALYSIS_GRID_POINTS, DEG_PER_HALF_TURN, MM_PER_M } from './constants.ts';
+import { DEG_PER_HALF_TURN, MM_PER_M } from './constants.ts';
 import { buildCapabilityMatrix, isActive, type CapabilityMatrix } from './capability.ts';
 import { runIngest, type IngestResult, type MeasurementFile } from './ingest/derive.ts';
 import { passbandLevel } from './ingest/spl.ts';
@@ -87,6 +87,11 @@ import {
   type GateSettings,
   type GateVerdict,
 } from './optimizer/gates.ts';
+import {
+  impedanceReferenceFrom,
+  type ImpedanceReference,
+  type MeasuredSweep,
+} from './optimizer/impedanceReference.ts';
 import {
   anyBudgetActive,
   invertBudgets,
@@ -336,35 +341,44 @@ export function buildReport(input: EngineV2ReportInput): EngineV2Report {
   /* ---------------- the analysis grid and the solved network ------------- */
   let analysis: NetworkAnalysis | null = null;
   let grid: number[] | null = null;
+  /** V32 — the impedance half, kept so the gates can name where they judged. */
+  let impedanceRef: ImpedanceReference | null = null;
   if (input.filter) {
     const models = Object.keys(input.filter.driverZ);
     if (models.length === 0) {
       problems.push('The loaded filter carries no driver impedances - nothing to solve.');
     } else {
-      let lo = Infinity;
-      let hi = -Infinity;
+      /* V32 — THE ONE RULE, SHARED WITH THE GATE REFERENCE.
+       *
+       * This grid used to be built here and only here; the v2 worker judged on
+       * the chain's 200 Hz analysis grid instead, and the two disagreed about
+       * three frozen netlists by 0.2 Ω. `impedanceReferenceFrom` is now the
+       * single implementation, so the panel and the search cannot drift apart
+       * by editing one of them. Same extent, same resolution, same clamping,
+       * same sentence about it — see `impedanceReference.ts`. */
+      const sweeps: Record<string, MeasuredSweep> = {};
       for (const m of models) {
         const z = input.filter.driverZ[m];
-        lo = Math.min(lo, z.freq[0]);
-        hi = Math.max(hi, z.freq[z.freq.length - 1]);
+        sweeps[m] = {
+          grid: z.freq,
+          magnitude: z.magnitude,
+          phaseDeg: z.phaseDeg,
+          validHz: [z.freq[0], z.freq[z.freq.length - 1]],
+        };
       }
-      grid = logspace(lo, hi, ANALYSIS_GRID_POINTS);
-      const gridded: Record<string, Complex[]> = {};
-      for (const m of models) {
-        const z = input.filter.driverZ[m];
-        const r = resampleImpedance(z.freq, z.magnitude, z.phaseDeg, grid);
-        gridded[m] = r.z;
-        if (r.clamped) {
-          problems.push(
-            `${m}: its impedance sweep is narrower than the analysis grid, so the edges are held ` +
-              'flat. Every electrical number outside its own sweep is an extrapolation.',
-          );
+      impedanceRef = impedanceReferenceFrom(sweeps);
+      if (!impedanceRef) {
+        problems.push(
+          'The loaded filter carries no usable impedance sweep, so nothing electrical is judged.',
+        );
+      } else {
+        grid = impedanceRef.grid;
+        problems.push(...impedanceRef.notes);
+        try {
+          analysis = buildAnalysis(input.filter.netlist, grid, impedanceRef.driverZ);
+        } catch (e) {
+          problems.push(`The filter could not be solved: ${(e as Error).message}`);
         }
-      }
-      try {
-        analysis = buildAnalysis(input.filter.netlist, grid, gridded);
-      } catch (e) {
-        problems.push(`The filter could not be solved: ${(e as Error).message}`);
       }
     }
   }
@@ -746,6 +760,17 @@ export function buildReport(input: EngineV2ReportInput): EngineV2Report {
     epdrMinOhm: metrics.epdr?.minOhm ?? null,
     ...(metrics.epdr ? { epdrAtHz: metrics.epdr.atHz, minZAtHz: metrics.epdr.minZAtHz } : {}),
     minZOhm: metrics.epdr?.minZOhm ?? null,
+    /* V32 — the same sentence the worker's verdicts carry, from the same
+     * object. The panel has always judged on the measured sweep; saying so is
+     * what makes the two surfaces comparable at a glance. */
+    ...(impedanceRef ? { electricalSpan: impedanceRef.span } : {}),
+    ...(input.filter && !impedanceRef
+      ? {
+          electricalUnavailable:
+            'no usable impedance sweep was loaded with this filter, so no electrical requirement ' +
+            'was judged.',
+        }
+      : {}),
     driveVoltage: drive,
   });
 

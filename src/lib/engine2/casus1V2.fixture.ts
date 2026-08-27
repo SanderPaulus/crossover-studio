@@ -35,6 +35,10 @@ import { declareCandidateChoices } from './optimizer/candidateDeclaration.ts';
 import type { GeneratedCandidate } from './predesign/candidates.ts';
 import { AUTO_STRUCTS } from '../threeWayDesign.ts';
 import { casus1AmpMinLoadOhm, loadGolden, type GoldenRefs } from './casus1.fixture.ts';
+import {
+  factsForWorker,
+  type MeasurementFactsPayload,
+} from './optimizer/measurementFacts.ts';
 
 /**
  * How a branch reads OUTSIDE its own measured extent on a union grid.
@@ -209,6 +213,52 @@ export function casus1V2Declaration(
     provenance: c.provenance,
     orderByModel: { mid: c.crossings[0].order, tweeter: c.crossings[1].order },
   };
+}
+
+/**
+ * V32 — THE MEASURED FACTS, ACROSS THE BORDER, THE WAY THE APP SENDS THEM.
+ *
+ * This fixture used to send NONE. That was invisible while every gate judged on
+ * the chain's analysis grid: the worker fell back to its own R_e, to the whole
+ * grid for validity, and to its own resonance classification, said so in the
+ * notes, and nobody read the notes. V32 makes it load-bearing — with no
+ * impedance sweep in the payload no electrical gate judges at all, so a fixture
+ * that sends nothing would answer V32 by turning `M-B/|Z|` off, which is worse
+ * than the leniency it replaces.
+ *
+ * So the whole payload crosses, through `factsForWorker` — the app's own bridge
+ * (`App.tsx`, `v2Facts`) — and not a hand-picked half of it. Sending only the
+ * sweep while withholding the validity interval that belongs to the same
+ * measurement is exactly the incoherence F4b's leak 2 was about.
+ *
+ * `modelByDriverId` is the IDENTITY on this casus, and it is built rather than
+ * written: the manifest names its drivers `woofer`/`mid`/`tweeter` and the
+ * netlists use the same names as models. On a project where those two
+ * vocabularies differ, `driverSlots.ts` is the bridge and this map is where it
+ * would be used.
+ */
+export function casus1V2Facts(
+  report: EngineV2Report,
+  manifest: Manifest,
+  files: readonly MeasurementFile[],
+): MeasurementFactsPayload {
+  const modelByDriverId: Record<string, string> = {};
+  for (const d of report.ingest.drivers) modelByDriverId[d.driver] = d.driver;
+  const sweepByDriverId: Record<
+    string,
+    { freq: readonly number[]; magnitude: readonly number[]; phaseDeg: readonly number[] }
+  > = {};
+  for (const e of manifest.entries) {
+    if (e.kind !== 'Z') continue;
+    const f = files.find((x) => x.entry.file === e.file);
+    if (!f?.impedance) continue;
+    sweepByDriverId[e.driver] = {
+      freq: f.impedance.freq,
+      magnitude: f.impedance.magnitude,
+      phaseDeg: f.impedance.phaseDeg,
+    };
+  }
+  return factsForWorker(report, modelByDriverId, sweepByDriverId);
 }
 
 /** Band a response to its own measured extent — silence outside it. */

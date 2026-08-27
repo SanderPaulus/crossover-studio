@@ -121,8 +121,21 @@ for (const map of [netlists, liveNetlists]) {
 }
 for (const k of Object.keys(raw.kandidaten)) if (LIVE_V2.test(k)) delete raw.kandidaten[k];
 const keys = Object.keys(netlists).filter((k) => LIVE_V2.test(k));
-/** The dated corpus — the netlists frozen while the floor was still only a veto (V30). */
+/**
+ * THE DATED CORPORA, and there are two of them now.
+ *
+ * `V28_KAND_*` — frozen while the stated floor was still only a veto (V30).
+ * `V30_KAND_*` — frozen while the gate reference was still blind below the
+ * far-field floor (V32), and while a candidate whose tune was refused wholesale
+ * still came back wearing its seed (V31).
+ *
+ * Both are kept for the same reason and neither is written by this script: they
+ * are the "before" halves of two comparisons, byte-identical files under dated
+ * names. The regex is anchored for the reason the live one is — a prefix test
+ * would eat them on the next regeneration and report success.
+ */
 const v28Keys = Object.keys(netlists).filter((k) => /^V28_KAND_\d+$/.test(k));
+const v30Keys = Object.keys(netlists).filter((k) => /^V30_KAND_\d+$/.test(k));
 /* AN EMPTY SET IS A RESULT, not a crash.
  *
  * It used to throw here, which was right while nothing could refuse a
@@ -177,6 +190,16 @@ const CHAIN_GRID_LO_HZ = CASUS1_V2_GRID[0];
  * regeneration and not a footnote to it.
  */
 const exceptionReason = (key: string, atHz: number | null): string => {
+  if (/^V30_KAND_\d+$/.test(key)) {
+    return (
+      'HET GEDATEERDE V30-CORPUS. Bevroren toen de v2-POORTREFERENTIE nog op het ketenraster ' +
+      'oordeelde en dus blind was onder de verre-veldbodem: deze netlists PASSEERDEN M-B/|Z| in ' +
+      'hun eigen run en missen de vloer zodra je ze meet zoals het paneel het doet, over de ' +
+      'volle gemeten impedantiesweep (casusboek V32). Sinds V32 oordeelt elke elektrische poort ' +
+      'op die sweep, dus dit kan niet meer gebeuren; deze tien blijven staan als de ' +
+      '"voor"-helft van die vergelijking. Meetobject, GEEN ontwerp: mag niet gebouwd worden.'
+    );
+  }
   if (/^V28_KAND_\d+$/.test(key)) {
     return (
       'HET GEDATEERDE V28-CORPUS. Bevroren VOOR de vloer een ZOEKDOEL was: de tuner kende hem ' +
@@ -187,24 +210,30 @@ const exceptionReason = (key: string, atHz: number | null): string => {
       'gebouwd worden.'
     );
   }
-  const blind = atHz !== null && atHz < CHAIN_GRID_LO_HZ;
+  /* SINDS V32 IS DIT GEVAL EEN ECHTE TEGENSPRAAK EN GEEN RASTERVERSCHIL MEER.
+   *
+   * Tot V32 stond hier de uitleg dat de poort in de run op het ketenraster
+   * oordeelde (200 Hz en hoger) terwijl deze meting de volle sweep leest, en
+   * dat de twee daarom legitiem konden verschillen. Die uitleg is vervallen:
+   * poort en paneel lezen sinds V32 dezelfde sweep op dezelfde resolutie, uit
+   * dezelfde functie (`impedanceReferenceFrom`). Een LEVENDE netlist die hier
+   * belandt is dus geen twee-rasters-verhaal maar een bevinding die uitgezocht
+   * moet worden — en de zin zegt dat, in plaats van een verklaring aan te
+   * bieden die niet meer klopt. */
+  const belowChainGrid = atHz !== null && atHz < CHAIN_GRID_LO_HZ;
   return (
-    'BEVROREN MET DE VLOER ALS ZOEKDOEL, EN DE POORT IN DE RUN LIET HEM DOOR. Geen ' +
-    'tegenspraak maar twee metingen op twee rasters. De v2-POORTREFERENTIE wordt bevroren op ' +
-    `het analyseraster van de keteninvoer (${CHAIN_GRID_LO_HZ.toFixed(0)} Hz en hoger, want dat ` +
-    'is waar de VERRE-VELDMETINGEN van deze set beginnen); deze referentie leest |Z| over de ' +
-    'volle gemeten impedantiesweep. ' +
-    (blind
-      ? `Het minimum van deze netlist ligt op ${atHz!.toFixed(0)} Hz — ONDER die rasterbodem, ` +
-        'dus M-B/|Z| heeft het nooit gezien. De TUNER zag het wel: zijn eigen ' +
-        'veiligheidsraster loopt tot ruim onder 100 Hz, en `kandidaat_uitkomst.pas.' +
-        'ampFloorRepair` staat bij precies deze netlists op `failed` terwijl de poort ' +
-        'slaagde. Een impedantie-eis heeft geen geldigheidsvenster: de versterker voelt die ' +
-        'dip ook al is de respons daar niet gemeten (zie de band-noot bij `netOptimizer.ts`). ' +
-        'Casusboek V32.'
+    'BEVROREN MET DE VLOER ALS ZOEKDOEL, EN DE POORT IN DE RUN LIET HEM DOOR — en dat hoort ' +
+    'sinds V32 NIET MEER TE KUNNEN. Poort en paneel lezen dezelfde gemeten impedantiesweep, op ' +
+    'dezelfde resolutie, uit dezelfde functie (`impedanceReferenceFrom`); een verschil kan dus ' +
+    'niet meer aan twee rasters liggen. ' +
+    (belowChainGrid
+      ? `Het minimum ligt op ${atHz!.toFixed(0)} Hz, onder de ketenrasterbodem van ` +
+        `${CHAIN_GRID_LO_HZ.toFixed(0)} Hz — precies het gebied waar V32 over ging. Als deze ` +
+        'regel er staat, is de V32-reparatie niet aangekomen op het pad dat deze netlist ' +
+        'opwekte: zoek dat uit voordat je de netlist beoordeelt.'
       : `Het minimum ligt op ${atHz === null ? 'onbekende hoogte' : `${atHz.toFixed(0)} Hz`}, ` +
-        'binnen het raster, dus de twee metingen kijken naar hetzelfde gebied en verschillen ' +
-        'alleen in resolutie. Controleer dit geval apart — het is niet de V32-blindheid.') +
+        'binnen het ketenraster, dus ook de oude V32-verklaring dekt het niet. Zoek dit geval ' +
+        'apart uit.') +
     ' Mag niet gebouwd worden zolang deze regel er staat.'
   );
 };
@@ -300,6 +329,15 @@ raw.manifest_en_geometrie.v2_herkomst = {
 };
 
 const telling = (raw.classificatie as Record<string, Record<string, unknown>>).telling;
+telling.sinds_V32 =
+  'V31/V32 (27-08-2026): het KAND-V2-corpus is opnieuw opgewekt nadat de elektrische poorten op ' +
+  'de gemeten impedantiesweep gingen oordelen in plaats van op het ketenraster (V32), en nadat ' +
+  'een kandidaat wiens tune in zijn geheel geweigerd werd zijn zaad niet meer als ontwerp ' +
+  `aflevert (V31). Het corpus dat het verving is opnieuw NIET weggegooid maar hernoemd: ` +
+  `${v30Keys.length} blokken \`V30_KAND_*\`, byte-identieke bestanden onder een gedateerde naam, ` +
+  'met dezelfde tien metrieken en dezelfde klasse B. Er staan nu dus twee gedateerde corpora ' +
+  'naast het levende: V28 (vóór de vloer een zoekdoel was) en V30 (vóór de poort de volle sweep ' +
+  'las). Nog steeds NUL klasse C: het zijn metrieken op bestanden.';
 telling.sinds_V30 =
   `V30 (27-08-2026): het KAND-V2-corpus is opnieuw opgewekt met de gestelde vloer als ZOEKDOEL, ` +
   `en het corpus dat het vervangt is niet weggegooid maar hernoemd: ${v28Keys.length} blokken ` +
@@ -337,6 +375,11 @@ const table = compareDesigns([
   { label: 'KAND-A', origin: 'baseline', report: report('KAND_A') },
   { label: 'KAND-B', origin: 'baseline', report: report('KAND_B') },
   ...v28Keys.map((k) => ({
+    label: k.replace(/_/g, '-'),
+    origin: 'v2-candidate' as const,
+    report: report(k),
+  })),
+  ...v30Keys.map((k) => ({
     label: k.replace(/_/g, '-'),
     origin: 'v2-candidate' as const,
     report: report(k),

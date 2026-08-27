@@ -41,6 +41,34 @@
  *    delivered candidate is checked BOTH on those frozen bands and on the
  *    bands its own crossings imply. Passing one and failing the other is a
  *    finding, not a rounding difference, and it is reported as one.
+ *
+ * ── V32: TWO GRIDS, AND WHICH QUESTION EACH ONE ANSWERS ───────────────────
+ *
+ * A gate evaluation reads two different kinds of measurement and they do not
+ * live on the same grid:
+ *
+ *   THE RESPONSE GRID (`GateReference.grid`) carries the branch pressures, so
+ *   it is where the CROSSINGS are derived and therefore where the passbands
+ *   come from. Its floor is the far-field measurement span — on casus 1,
+ *   200 Hz — and that floor is correct: a response nobody measured is a
+ *   response nobody may judge.
+ *
+ *   THE IMPEDANCE GRID (`GateReference.impedance`) carries the drivers' own
+ *   measured sweeps over their whole extent. EVERY ELECTRICAL READING comes
+ *   from there — the dissipation integral, EPDR, the bare |Z| minimum, the
+ *   drive voltage on f_s, and whether a branch is high-pass protected.
+ *
+ * Until V32 there was one grid and it was the response grid, so `M-B/|Z|`
+ * passed three frozen netlists at 2.59 Ω whose real minimum sits at 2.36 Ω and
+ * 82 Hz — below the far-field floor and therefore invisible. `netOptimizer.ts`
+ * had the rule right all along ("they are impedance criteria, and an impedance
+ * measurement has no gate"); the reference was simply never held to it.
+ *
+ * WHEN NO SWEEP REACHES THE RUN, NO ELECTRICAL GATE JUDGES. The value is null,
+ * the reason names the missing input, and there is NO fallback to the response
+ * grid — falling back would silently reinstate the verdict this change exists
+ * to withdraw. F4b2's leak 2 established the shape: an evaluation with no data
+ * under it must produce no answer, never a lenient one.
  */
 
 import { AMP_FLOOR_TOLERANCE, meetsAmpFloor } from '../../impedanceFloor.ts';
@@ -49,6 +77,13 @@ import type { Netlist } from '../../network.ts';
 import { HP_PROTECTION_MIN_RISE_DB, HP_PROTECTION_PROBE_OCTAVES, PERCENT } from '../constants.ts';
 import { cabs, dbAmp } from '../util.ts';
 import { buildAnalysis, deriveCrossings, orderDriversLowToHigh, passbandOf } from '../metrics/analysis.ts';
+import {
+  impedanceReferenceFrom,
+  type ImpedanceReference,
+  type MeasuredSweep,
+} from './impedanceReference.ts';
+
+export type { ImpedanceReference, MeasuredSweep };
 import {
   dissipation,
   driveVoltageOnResonance,
@@ -166,6 +201,15 @@ function judge(args: {
    * belongs to that comparison and not to this rule.
    */
   toleranceText?: string;
+  /**
+   * V32 — why `value` is null, when the caller knows.
+   *
+   * "The metric could not be evaluated" is true and useless. A reader who has
+   * to decide whether this design was judged needs to know that the driver's
+   * impedance sweep never reached the run, because that is a thing they can
+   * fix. Used only when the value IS null; a gate with a value ignores it.
+   */
+  whyNull?: string;
   /** Rendering of the number, so a fraction can be shown as a percentage. */
   show?: (value: number) => string;
 }): GateVerdict {
@@ -191,7 +235,7 @@ function judge(args: {
       withinToleranceOnly: false,
       reason:
         value === null
-          ? 'not evaluated, and no limit set'
+          ? `not evaluated${args.whyNull ? ` — ${args.whyNull}` : ''}, and no limit set`
           : `${shown(value)} — no limit set`,
     };
   }
@@ -205,7 +249,9 @@ function judge(args: {
       // failed", which is a different claim and the wrong one.
       pass: true,
       withinToleranceOnly: false,
-      reason: `limit ${shown(limit)}, but the metric could not be evaluated on this network`,
+      reason:
+        `limit ${shown(limit)}, but the metric was NOT JUDGED on this network — ` +
+        (args.whyNull ?? 'the metric could not be evaluated'),
     };
   }
   const strict = direction === 'max' ? value <= limit : value >= limit;
@@ -250,6 +296,21 @@ export interface GateMetricValues {
   epdrAtHz?: number;
   minZOhm: number | null;
   minZAtHz?: number;
+  /**
+   * V32 — the band every electrical reading above was taken over, and where it
+   * came from. Shown in each gate's `parameters`, because "2.61 Ω" and
+   * "2.61 Ω, measured from 200 Hz up" are different claims and this project has
+   * now paid once for not being able to tell them apart.
+   */
+  electricalSpan?: string;
+  /**
+   * V32 — why the electrical values are null, when they are.
+   *
+   * Absent means they are not null, or are null for a reason this caller does
+   * not know. Never a fallback: a run with no measured sweep produces no
+   * electrical verdict at all.
+   */
+  electricalUnavailable?: string;
   driveVoltage: {
     driver: string;
     db: number | null;
@@ -277,11 +338,13 @@ export function gateVerdicts(
       direction: 'max',
       specRef: 'A4 M-A',
       show: (v) => `${(v * PERCENT).toFixed(1)} %`,
+      ...(values.electricalUnavailable ? { whyNull: values.electricalUnavailable } : {}),
       parameters: {
         band: values.dissipationBandHz
           ? `${values.dissipationBandHz[0].toFixed(0)}-${values.dissipationBandHz[1].toFixed(0)} Hz`
           : 'the analysis grid',
         weighting: 'IEC 60268-1 programme noise',
+        ...(values.electricalSpan ? { judged_on: values.electricalSpan } : {}),
       },
     }),
     judge({
@@ -294,8 +357,14 @@ export function gateVerdicts(
       limit: settings.minEpdrOhm,
       direction: 'min',
       specRef: 'A4 M-B',
-      ...(values.epdrAtHz !== undefined
-        ? { parameters: { at: `${values.epdrAtHz.toFixed(0)} Hz` } }
+      ...(values.electricalUnavailable ? { whyNull: values.electricalUnavailable } : {}),
+      ...(values.epdrAtHz !== undefined || values.electricalSpan
+        ? {
+            parameters: {
+              ...(values.epdrAtHz !== undefined ? { at: `${values.epdrAtHz.toFixed(0)} Hz` } : {}),
+              ...(values.electricalSpan ? { judged_on: values.electricalSpan } : {}),
+            },
+          }
         : {}),
     }),
     judge({
@@ -317,8 +386,14 @@ export function gateVerdicts(
         `within the ${(AMP_FLOOR_TOLERANCE * PERCENT).toFixed(0)} % measurement tolerance ` +
         '(a shortfall smaller than the tightest component class the app offers disappears into ' +
         'build spread — a project convention, not a property of the amplifier)',
-      ...(values.minZAtHz !== undefined
-        ? { parameters: { at: `${values.minZAtHz.toFixed(0)} Hz` } }
+      ...(values.electricalUnavailable ? { whyNull: values.electricalUnavailable } : {}),
+      ...(values.minZAtHz !== undefined || values.electricalSpan
+        ? {
+            parameters: {
+              ...(values.minZAtHz !== undefined ? { at: `${values.minZAtHz.toFixed(0)} Hz` } : {}),
+              ...(values.electricalSpan ? { judged_on: values.electricalSpan } : {}),
+            },
+          }
         : {}),
     }),
   ];
@@ -335,9 +410,11 @@ export function gateVerdicts(
         direction: 'max',
         specRef: 'A4 M-C',
         show: (v) => `${v.toFixed(1)} dB`,
+        ...(values.electricalUnavailable ? { whyNull: values.electricalUnavailable } : {}),
         parameters: {
           f_s: `${d.fsHz.toFixed(0)} Hz`,
           passband: `${d.passbandHz[0].toFixed(0)}-${d.passbandHz[1].toFixed(0)} Hz (${d.bandSource})`,
+          ...(values.electricalSpan ? { judged_on: values.electricalSpan } : {}),
         },
       }),
     );
@@ -405,6 +482,12 @@ export function isHighPassProtected(
 
 /** What a gate evaluation needs that does not change during a run. */
 export interface GateReference {
+  /**
+   * The RESPONSE grid — where the branch pressures live and therefore where the
+   * crossings, and only the crossings, are derived. Its floor is the far-field
+   * measurement span. See the V32 note at the top of this file: no electrical
+   * reading is taken here any more.
+   */
   grid: number[];
   /** Measured driver impedance on `grid`, keyed by netlist model. */
   driverZ: Record<string, readonly Complex[]>;
@@ -422,6 +505,16 @@ export interface GateReference {
   frozenPassbandHz: Record<string, [number, number]>;
   /** Which drivers M-C applies to, frozen with the passbands. */
   frozenHighPassProtected: string[];
+  /**
+   * V32 — the IMPEDANCE grid: where every electrical reading is taken.
+   *
+   * Null when no measured sweep reached this run. There is no fallback to
+   * `grid`; the electrical gates then report no value and `impedanceAbsent`
+   * says which input was missing.
+   */
+  impedance: ImpedanceReference | null;
+  /** Why `impedance` is null. Null when it is not. */
+  impedanceAbsent: string | null;
 }
 
 export interface GateEvaluation {
@@ -454,8 +547,26 @@ export function freezeGateReference(args: {
   branchDb: Record<string, readonly number[]>;
   fsHz: Record<string, number>;
   validHz: Record<string, [number, number]>;
+  /**
+   * V32 — the drivers' OWN measured impedance sweeps, per netlist model.
+   *
+   * Absent, or missing a model the netlist needs, and no electrical gate
+   * judges. That is the whole repair: the caller says what the measurement IS,
+   * and a caller with nothing to say gets no verdict rather than a lenient one
+   * taken off the response grid.
+   */
+  sweeps?: Readonly<Record<string, MeasuredSweep>>;
 }): GateReference {
   const analysis = buildAnalysis(args.netlist, args.grid, args.driverZ);
+  const half = impedanceHalf(args.sweeps, Object.keys(args.driverZ));
+  /* Protection is an ELECTRICAL property — it reads the branch's own transfer
+   * half an octave below the passband floor — so it is answered on the
+   * impedance grid whenever there is one. On casus 1's response grid that probe
+   * band starts below 200 Hz for the lowest way and lands on two points; on the
+   * measured sweep it is fully covered. */
+  const probeOn = half.impedance
+    ? buildAnalysisOrNull(args.netlist, half.impedance.grid, half.impedance.driverZ) ?? analysis
+    : analysis;
   const { order, crossings } = crossingsOf(analysis, args.grid, args.branchDb);
   const frozenPassbandHz: Record<string, [number, number]> = {};
   const protectedDrivers: string[] = [];
@@ -463,7 +574,7 @@ export function freezeGateReference(args: {
     const fallback = args.validHz[driver] ?? [args.grid[0], args.grid[args.grid.length - 1]];
     const pass = passbandOf(driver, crossings, fallback);
     frozenPassbandHz[driver] = pass;
-    if (isHighPassProtected(analysis, driver, pass)) protectedDrivers.push(driver);
+    if (isHighPassProtected(probeOn, driver, pass)) protectedDrivers.push(driver);
   }
   return {
     grid: args.grid,
@@ -473,7 +584,60 @@ export function freezeGateReference(args: {
     validHz: args.validHz,
     frozenPassbandHz,
     frozenHighPassProtected: protectedDrivers,
+    impedance: half.impedance,
+    impedanceAbsent: half.impedanceAbsent,
   };
+}
+
+/** Solve, or null — the caller has its own opinion about an unsolvable network. */
+function buildAnalysisOrNull(
+  netlist: Netlist,
+  grid: readonly number[],
+  driverZ: Record<string, readonly Complex[]>,
+): NetworkAnalysis | null {
+  try {
+    return buildAnalysis(netlist, grid, driverZ);
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * The impedance half of a reference, or the reason there is none.
+ *
+ * Every branch of this function is a refusal, and that is deliberate: the only
+ * way to get an electrical verdict is to supply the measurement it is a verdict
+ * about. `models` is what the network needs — a system impedance is not a
+ * per-driver quantity, so one missing sweep is as disqualifying as none at all,
+ * and it is named.
+ */
+function impedanceHalf(
+  sweeps: Readonly<Record<string, MeasuredSweep>> | undefined,
+  models: readonly string[],
+): { impedance: ImpedanceReference | null; impedanceAbsent: string | null } {
+  const absent = (why: string) => ({ impedance: null, impedanceAbsent: why });
+  if (!sweeps || Object.keys(sweeps).length === 0) {
+    return absent(
+      'no measured impedance sweep reached this run, so there is nothing to judge an electrical ' +
+        'requirement on. The response grid is NOT used instead: its floor is the far-field ' +
+        'measurement span, and judging an impedance there is what V32 is about.',
+    );
+  }
+  const missing = [...models].filter((m) => sweeps[m] === undefined).sort();
+  if (missing.length > 0) {
+    return absent(
+      `no measured impedance sweep reached this run for ${missing.join(', ')}. The amplifier sees ` +
+        'the whole network, so one unmeasured branch leaves the system impedance unknown — an ' +
+        'answer from the remaining branches would be about a different loudspeaker.',
+    );
+  }
+  const ref = impedanceReferenceFrom(sweeps);
+  return ref === null
+    ? absent(
+        'the impedance sweeps that reached this run carry no usable extent (fewer than two ' +
+          'points, or a validity interval that is not an interval).',
+      )
+    : { impedance: ref, impedanceAbsent: null };
 }
 
 /** Order and crossings of the FILTERED branches — the same derivation A4 uses. */
@@ -505,6 +669,10 @@ function crossingsOf(
  * the optimiser's feet. `'derived'` is what the delivered candidate is asked
  * as well, on the crossings it actually produces. A candidate is delivered
  * only when both agree it passes.
+ *
+ * V32: `passbands` selects a CONVENTION, never a grid. Both conventions read
+ * their electrical values off `ref.impedance`; what they differ about is the
+ * band M-C averages over.
  */
 export function evaluateGates(
   netlist: Netlist,
@@ -536,10 +704,25 @@ export function evaluateGates(
     };
   }
 
-  /* ---- the metric values, from the F1 library and nowhere else -------- */
-  const diss = dissipation(analysis);
+  /* ---- V32: the ELECTRICAL analysis, on the measured sweep ------------- *
+   * Every reading below comes from here and none of them from `analysis`
+   * above, which now derives crossings and nothing else. `electrical` is null
+   * exactly when no sweep reached this run, and then no electrical gate
+   * judges — see `impedanceHalf` for why there is no fallback. */
+  const electrical = ref.impedance
+    ? buildAnalysisOrNull(netlist, ref.impedance.grid, ref.impedance.driverZ)
+    : null;
+  const electricalUnavailable =
+    electrical !== null
+      ? undefined
+      : (ref.impedanceAbsent ??
+        'the network could not be solved on the measured impedance sweep, so no electrical ' +
+          'requirement was judged.');
+  const electricalSpan = electrical !== null ? ref.impedance?.span : undefined;
+
+  const diss = electrical ? dissipation(electrical) : null;
   metrics.dissipation = diss;
-  const e = epdr(analysis);
+  const e = electrical ? epdr(electrical) : null;
   metrics.epdr = e;
 
   let passbandFor: (driver: string) => [number, number];
@@ -555,7 +738,10 @@ export function evaluateGates(
     for (const driver of derived.order) {
       const fallback = ref.validHz[driver] ?? [ref.grid[0], ref.grid[ref.grid.length - 1]];
       bands[driver] = passbandOf(driver, derived.crossings, fallback);
-      if (isHighPassProtected(analysis, driver, bands[driver])) subjects.push(driver);
+      // Protection reads a branch transfer, so it is answered where the
+      // electrical readings are — see `freezeGateReference` for the same rule
+      // applied to the frozen half.
+      if (isHighPassProtected(electrical ?? analysis, driver, bands[driver])) subjects.push(driver);
     }
     passbandFor = (d) => bands[d] ?? ref.validHz[d];
   }
@@ -565,19 +751,20 @@ export function evaluateGates(
     const fs = ref.fsHz[driver];
     const band = passbandFor(driver);
     if (fs === undefined || !band) continue;
-    const r = driveVoltageOnResonance(analysis, driver, fs, band);
+    const r = electrical ? driveVoltageOnResonance(electrical, driver, fs, band) : null;
     if (r) metrics.driveVoltage.push({ driver, db: r.db, passbandHz: r.passbandHz });
     drive.push({ driver, db: r ? r.db : null, fsHz: fs, passbandHz: band, bandSource: passbands });
   }
 
   verdicts.push(
     ...gateVerdicts(settings, {
-      dissipationFraction: diss.totalFraction,
-      dissipationBandHz: diss.bandHz,
-      epdrMinOhm: e.minOhm,
-      epdrAtHz: e.atHz,
-      minZOhm: e.minZOhm,
-      minZAtHz: e.minZAtHz,
+      dissipationFraction: diss?.totalFraction ?? null,
+      ...(diss ? { dissipationBandHz: diss.bandHz } : {}),
+      epdrMinOhm: e?.minOhm ?? null,
+      ...(e ? { epdrAtHz: e.atHz, minZAtHz: e.minZAtHz } : {}),
+      minZOhm: e?.minZOhm ?? null,
+      ...(electricalSpan ? { electricalSpan } : {}),
+      ...(electricalUnavailable ? { electricalUnavailable } : {}),
       driveVoltage: drive,
     }),
   );

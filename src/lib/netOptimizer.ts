@@ -367,6 +367,27 @@ export interface NetOptimizeOptions {
    */
   gateViolation?: (parts: readonly VxpPart[]) => string | null;
   /**
+   * V31 — REPORT the tune a wholesale gate threw away, instead of leaving the
+   * caller with a seed and no way to know what was lost.
+   *
+   * The finding: four of fifteen v2 candidates came back byte-identical to
+   * their unarmed arm, and the reason was not that the barrier did nothing. The
+   * full-band safety gate rejected the whole tune and this function returned
+   * the SEED — for one candidate a 0.035 Ω load, where the tune it replaced had
+   * reached 1.8 Ω. A network failing two requirements was swapped for one
+   * failing one of them far worse, and nothing said so.
+   *
+   * This flag changes NO decision. The gate still rejects, the seed is still
+   * what `parts` carries, every rule is untouched. It only makes the rejected
+   * tune's metrics and parts available so a caller can say "refused, and here
+   * is what was refused" rather than presenting a seed as a proposal.
+   *
+   * OFF BY DEFAULT, and the default is the toggle invariant: a v1 run's result
+   * object is byte-identical to what it was before V31. The v2 route sets it;
+   * nothing else does.
+   */
+  rejectedTuneReport?: boolean;
+  /**
    * INSTRUMENTATION for the gate, and only that.
    *
    * Called once per gate QUESTION — not per evaluation — with whether the
@@ -560,6 +581,26 @@ export interface NetOptimizeResult {
    * owes the reader that they are the seed's, not a finished design's.
    */
   safetyKinds?: SafetyKind[];
+  /**
+   * V31 — the metrics of the tune that was REJECTED, in the same `report()`
+   * shape as `after`. Present only when `rejectedTuneReport` was asked for.
+   *
+   * It describes a network that is NOT delivered and never will be. Naming it
+   * separately from `after` is the whole point: `after` on a rejected run is
+   * the seed's, and two fields with the same name describing different
+   * networks is the bug this file's header is about.
+   */
+  rejectedTune?: NetOptimizeResult['after'];
+  /**
+   * V31 — the PARTS of that rejected tune, so a caller can measure it with its
+   * own machinery rather than trusting a summary.
+   *
+   * Present only when `rejectedTuneReport` was asked for, and handed over on
+   * the explicit understanding that it is not a proposal: the v2 worker reads
+   * it, computes the SPL window off it, and drops it before returning, so no
+   * output of a rejected candidate contains a network anyone could build.
+   */
+  rejectedParts?: VxpPart[];
   /** Value-window (boundToSeries) report: which series-path slots were bound
    *  to a series' range, and what the constraint cost vs an unconstrained fit. */
   valueWindowNote?: string;
@@ -3843,6 +3884,9 @@ export function optimizeNetworkValues(
         bandNote:
         `optimised on ${Math.round(band[0])}–${Math.round(band[1])} Hz` +
         (opts.band ? '' : ' (full grid minus edges — no validity band supplied)'),
+      ...(opts.rejectedTuneReport
+          ? { rejectedTune: report(after, outParts), rejectedParts: cloneParts(outParts) }
+          : {}),
       safetyNote:
           `sensitivity gate: the tune reached its flatness by attenuating the driver ` +
           `${resLoss.toFixed(1)} dB below its own level (budget ${soloSensBudgetDb} dB) — ` +
@@ -3924,6 +3968,10 @@ export function optimizeNetworkValues(
         (opts.band ? '' : ' (full grid minus edges — no validity band supplied)'),
       safetyNote: `safety gate: tune rejected on the full measurement band — ${reasons.join('; ')}. ${tail}`,
       safetyKinds: kinds,
+      /* V31 — what was thrown away. Reporting only; no rule above reads it. */
+      ...(opts.rejectedTuneReport
+        ? { rejectedTune: report(after, outParts), rejectedParts: cloneParts(outParts) }
+        : {}),
         // What the repair pass tried/achieved on the REJECTED tune — it
         // explains why the gate saw a dip. Prefixed because the network being
         // returned is the seed, not the one this sentence is about (A3g: a

@@ -52,6 +52,7 @@ import {
   type GateReference,
   type GateSettings,
   type GateVerdict,
+  type MeasuredSweep,
 } from './gates.ts';
 import {
   invertBudgets,
@@ -177,6 +178,66 @@ export interface V2ChainOnePayload {
   candidate?: V2CandidatePayload;
 }
 
+/**
+ * V31 — WHAT A CANDIDATE RETURNS WHEN ITS TUNE WAS THROWN AWAY WHOLESALE.
+ *
+ * THE FINDING. Four of fifteen v2 candidates came back byte-identical to their
+ * unarmed arm. Not because the barrier did nothing: the full-band safety gate
+ * refused the whole tune and `optimizeNetworkValues` returned the SEED. On one
+ * candidate the refused tune had lifted the load from 0.035 Ω to 1.8 Ω, and
+ * what the designer was handed was the 0.035 Ω. A network failing two
+ * requirements replaced by one failing a single requirement far worse — and
+ * presented as this candidate's answer, in a shortlist, ready to build.
+ *
+ * THE DOCTRINE THAT SETTLES IT is F0's, one level up. An empty field is not a
+ * judgement; a seed is not empty either. It is a network nobody judged against
+ * anything this candidate asked for, and publishing it as the candidate's
+ * result states something no measurement supports. So a rejected candidate
+ * comes back AS A REJECTION: a status, the rule that refused it, and what the
+ * refused tune had reached — as REPORTING, never as a network.
+ *
+ * WHAT THIS IS NOT. It is not a change to the safety gate, which is right: a
+ * tune that worsens tweeter protection must not be delivered. The arbitration
+ * between "the amplifier must be able to drive this" and "the tweeter must
+ * survive it" is still an all-or-nothing veto, and V31 lists three possible
+ * ways to make it a trade-off. None of them is taken here. What is taken is
+ * the third of V31's options in its narrow form: refuse with name and reason,
+ * rather than fall back onto a seed that reads as a design.
+ */
+export interface CandidateRejection {
+  /**
+   * WHICH rule refused it, as the typed categories the tuner records at the
+   * point the decision is made. Never derived from the sentence below.
+   *
+   * Empty means a wholesale gate fired that carries no category — today only
+   * the solo sensitivity gate, which no multi-way route arms. `note` says so.
+   */
+  kinds: string[];
+  /** The rule's own sentence, for a human. Never parsed to decide anything. */
+  reason: string;
+  /**
+   * What the REJECTED tune had reached, measured on the network that was
+   * thrown away — the "best intermediate result before the rejection".
+   *
+   * Reporting only, and about a design that is not delivered. It exists so a
+   * reader can see what the arbitration cost: "refused, and the thing it
+   * refused was at 1.8 Ω" is a different statement from "refused".
+   */
+  rejectedTune: {
+    /** The amplifier load the refused tune reached, ohms. */
+    minZOhm: number | null;
+    /** A5e.1's SPL window, ±dB against the target curve, on the judged band. */
+    windowPlusMinusDb: number | null;
+    /** RMS deviation from the target curve on the same band. */
+    rmsDeviationDb: number | null;
+    /** The tuner's own peak-to-peak ripple and phase figures, for continuity. */
+    rippleDb: number | null;
+    phaseDeg: number | null;
+  } | null;
+  /** Why this candidate delivers no network at all. */
+  note: string;
+}
+
 /** What one v2 candidate returns: the chain's own result, plus the verdicts. */
 export interface V2CandidateResult<R> {
   result: R;
@@ -199,6 +260,12 @@ export interface V2CandidateResult<R> {
   measurements: CandidateMeasurements;
   /** F3 — the topology class this design belongs to (A5e.1). */
   topology: TopologyDescriptor;
+  /**
+   * V31 — non-null when this candidate's tune was refused wholesale. The
+   * candidate then delivers NO network: `result.parts` is empty, the gates are
+   * empty and `measurements` is the unjudged state. Nothing here is a netlist.
+   */
+  rejection: CandidateRejection | null;
   notes: string[];
 }
 
@@ -249,7 +316,6 @@ function measurementFacts(
   const fsHz: Record<string, number> = {};
   const validHz: Record<string, [number, number]> = {};
   const reOhm: Record<string, { ohm: number; source: string }> = {};
-  const zMagnitude: Record<string, number[]> = {};
   /** Where each fact came from — what the notes report and the stamp records. */
   const provenance: MeasurementProvenance = {
     re: {},
@@ -263,11 +329,19 @@ function measurementFacts(
     { grid: readonly number[]; db: readonly number[]; validHz: [number, number] }
   > = {};
   const impedanceSweep: Record<string, { grid: readonly number[]; z: Complex[] }> = {};
+  /* V32 — the same sweeps in the shape the GATE reference wants them.
+   * `impedanceSweep` above is complex, for `BudgetWay`; this one is magnitude
+   * and phase, because that is what `impedanceReferenceFrom` resamples. One
+   * source, two shapes, and neither of them re-derived from the other's. */
+  const sweeps: Record<string, MeasuredSweep> = {};
   const notes: string[] = [];
   const band: [number, number] = [grid[0], grid[grid.length - 1]];
   for (const model of Object.keys(driverZ).sort()) {
+    /* The driver's impedance ON THE CHAIN GRID. Since V32 it seeds only the
+     * two fallbacks below (R_e and the resonance classification, both of which
+     * announce themselves when they fire) — no bound and no gate reads it any
+     * more. Those come off the measured sweep. */
     const curve = curveOf(grid, driverZ[model]);
-    zMagnitude[model] = curve.magnitude;
 
     /* ---- R_e: the RESOLVED value, or this worker's own last resort ------ *
      * The A5c.1 hierarchy is walked ONCE, in the ingest pass, and what arrives
@@ -374,18 +448,35 @@ function measurementFacts(
           };
         }),
       };
+      sweeps[model] = {
+        grid: sweep.grid,
+        magnitude: sweep.magnitude,
+        phaseDeg: sweep.phaseDeg,
+        validHz: [sweep.validHz[0], sweep.validHz[1]],
+      };
       provenance.impedanceSweep[model] = 'measured';
     } else {
       provenance.impedanceSweep[model] = 'absent';
+      /* V32 — WITHOUT THIS SWEEP NO ELECTRICAL REQUIREMENT IS JUDGED AT ALL.
+       * Before V32 the gates fell back to the chain's analysis grid, whose
+       * floor is the far-field span, and reported a verdict that was 0.2 Ω
+       * too kind on casus 1. There is no fallback any more, so the absence
+       * has to be said out loud rather than shown as a passing gate. */
+      notes.push(
+        `${model}: no measured impedance sweep reached this run, so M-A, M-B and M-C are NOT ` +
+          'judged on this candidate. They are not passing — they were not evaluated. The ' +
+          "chain's analysis grid is deliberately not used instead: its floor is the far-field " +
+          'measurement span, and an impedance measurement has no gate (V32).',
+      );
     }
   }
   return {
     fsHz,
     validHz,
     reOhm,
-    zMagnitude,
     nearField,
     impedanceSweep,
+    sweeps,
     branchDb,
     grid,
     driverZ,
@@ -471,6 +562,10 @@ function tuneOptionsFor(
       branchDb: facts.branchDb,
       fsHz: facts.fsHz,
       validHz: facts.validHz,
+      /* V32 — where every electrical gate judges. The chain's `driverZ` above
+       * is the RESPONSE grid and is used for the crossings only; the ohms come
+       * from the drivers' own sweeps, over their whole measured extent. */
+      sweeps: facts.sweeps,
     });
   } catch (e) {
     // An unsolvable seed is the chain's problem, not the gate's. Adding
@@ -480,6 +575,17 @@ function tuneOptionsFor(
     return {};
   }
   collect.reference = reference;
+  /* V32 — say where the electrical verdicts were taken, or why there are none.
+   * Both are statements a reader needs before reading an ohm. */
+  if (reference.impedanceAbsent) {
+    collect.notes.push(`No electrical gate judged this candidate: ${reference.impedanceAbsent}`);
+  } else if (reference.impedance) {
+    collect.notes.push(
+      `M-A, M-B and M-C were judged on ${reference.impedance.span}, not on the chain's analysis ` +
+        `grid (${facts.grid[0].toFixed(0)}-${facts.grid[facts.grid.length - 1].toFixed(0)} Hz).`,
+    );
+    collect.notes.push(...reference.impedance.notes);
+  }
 
   /* ---- the budget inversions (A5d.6) --------------------------------- */
   const ways: BudgetWay[] = [];
@@ -500,7 +606,23 @@ function tuneOptionsFor(
       highPassProtected: order.includes(model),
       reOhm: facts.reOhm[model]?.ohm ?? null,
       reSource: facts.reOhm[model]?.source ?? 'not available',
-      zPassbandMedianOhm: passbandImpedanceMedian(facts.grid, facts.zMagnitude[model], pass),
+      /* V32 — the way's own impedance level, off its own MEASURED SWEEP.
+       *
+       * It used to be read off the chain's analysis grid while `report.ts`
+       * read it off the raw sweep, which is the same divergence the gates had
+       * and it fed two A5d.6 inversions. The passband happens to sit inside
+       * the chain grid on casus 1, so this one was a resolution difference
+       * rather than a blindness — but two implementations of one quantity is
+       * how they come to disagree, and one of them was already right. No
+       * sweep, no median, and `invertBudgets` then produces no bound and says
+       * which input was missing. */
+      zPassbandMedianOhm: facts.sweeps[model]
+        ? passbandImpedanceMedian(
+            facts.sweeps[model].grid,
+            facts.sweeps[model].magnitude,
+            pass,
+          )
+        : null,
       passbandHz: pass,
       fsHz: facts.fsHz[model] ?? null,
       fPeakHz: facts.fsHz[model] ?? null,
@@ -654,6 +776,10 @@ function tuneOptionsFor(
   return {
     ...stated,
     ...weights,
+    /* V31 — the v2 route asks the tuner to hand back what a wholesale gate
+     * threw away. Instrumentation only: it changes no decision, and with it
+     * unset (every v1 run) the result object is byte-identical to before. */
+    rejectedTuneReport: true,
     ...(armed
       ? {
           gateViolation: (parts: readonly VxpPart[]): string | null => {
@@ -800,6 +926,37 @@ interface FilterFlank {
  * Running one candidate
  * ================================================================== */
 
+/** The wholesale-rejection fields the tuner records, as VALUES (A3g). */
+interface WholesaleRejectionFields {
+  safetyNote?: string;
+  safetyKinds?: string[];
+  rejectedTune?: {
+    zMinOhm?: number;
+    rippleDb?: number;
+    avgDevDb?: number;
+    phaseDeg?: number;
+  };
+  rejectedParts?: VxpPart[];
+}
+
+/**
+ * V31 — was this tune thrown away wholesale, and by which rule?
+ *
+ * Detected STRUCTURALLY: `safetyNote` exists on exactly the two returns that
+ * refuse a whole tune and return the seed, and on no other path. Its PRESENCE
+ * is the signal; its text is never read, because a caller that parsed a
+ * sentence written three passes earlier is how `zOk` came to mean four things
+ * at once (the A3g rule, in `netOptimizer.ts`'s own words).
+ */
+function wholesaleRejection(net: WholesaleRejectionFields): {
+  reason: string;
+  kinds: string[];
+  fields: WholesaleRejectionFields;
+} | null {
+  if (net.safetyNote === undefined) return null;
+  return { reason: net.safetyNote, kinds: [...(net.safetyKinds ?? [])], fields: net };
+}
+
 function runCandidate<I, R extends { parts: VxpPart[]; net: { gateRefusals?: string[] } }>(
   input: I,
   v2: V2RunSettings,
@@ -808,6 +965,8 @@ function runCandidate<I, R extends { parts: VxpPart[]; net: { gateRefusals?: str
   run: (hooks: { tuneOptionsFor: (seed: readonly VxpPart[]) => Partial<NetOptimizeOptions> }) => R,
   /** F3 — what this candidate is judged on, once it exists. */
   judge: (r: R) => { measurements: CandidateMeasurements; topology: TopologyDescriptor },
+  /** V31 — how a REFUSED tune is measured, when the tuner handed its parts back. */
+  measureRejected: (parts: readonly VxpPart[]) => ResponseJudgement | null,
   /** F4d — where the candidate came from, when A5d generated it. */
   provenance?: string,
 ): V2CandidateResult<R> {
@@ -831,14 +990,68 @@ function runCandidate<I, R extends { parts: VxpPart[]; net: { gateRefusals?: str
   };
   void input;
   if (provenance) collect.notes.push(`Candidate provenance (A5d): ${provenance}`);
-  const result = run({
+  const delivered = run({
     tuneOptionsFor: (seed) => tuneOptionsFor(seed, facts, network, v2, collect),
   });
+
+  /* ---- V31: was the whole tune refused? ------------------------------- *
+   * If it was, this candidate delivers NOTHING. The seed the tuner handed
+   * back is withdrawn here — not hidden, withdrawn: it was never judged
+   * against anything this candidate asked for, and a shortlist row is an
+   * offer to build. What replaces it is a rejection with the rule's name, and
+   * the metrics of the tune that was refused so the cost is visible. */
+  const refused = wholesaleRejection(delivered.net as WholesaleRejectionFields);
+  let rejection: CandidateRejection | null = null;
+  let result = delivered;
+  if (refused) {
+    const rt = refused.fields.rejectedTune;
+    const parts = refused.fields.rejectedParts;
+    const judged = parts && parts.length > 0 ? measureRejected(parts) : null;
+    const num = (v: number | null | undefined): number | null =>
+      typeof v === 'number' && Number.isFinite(v) ? v : null;
+    rejection = {
+      kinds: refused.kinds,
+      reason: refused.reason,
+      rejectedTune: rt
+        ? {
+            minZOhm: num(rt.zMinOhm),
+            windowPlusMinusDb: num(judged?.windowPlusMinusDb),
+            rmsDeviationDb: num(judged?.rmsDeviationDb),
+            rippleDb: num(rt.rippleDb),
+            phaseDeg: num(rt.phaseDeg),
+          }
+        : null,
+      note:
+        'The whole tune was refused, so this candidate delivers no network. What the tuner ' +
+        'returned is its SEED — a design nobody judged against anything this candidate asked ' +
+        'for — and it is withdrawn here rather than offered (F0: an empty field is not a ' +
+        'judgement, and a seed is not empty either; casebook V31). The figures under ' +
+        '`rejectedTune` describe the network that was REFUSED and will not be built. ' +
+        (refused.kinds.length === 0
+          ? 'The refusing rule records no category, which today means the solo sensitivity ' +
+            'gate; read `reason`.'
+          : `Refused by: ${refused.kinds.join(', ')}.`),
+    };
+    /* THE SEED GOES — BOTH COPIES OF IT — and so do the rejected parts.
+     *
+     * `parts` and `net.parts` are two lists of the same components: the chain
+     * hands its own copy up while the tuner's result keeps the one it built.
+     * Blanking only the first is what the live V31 test caught on its first
+     * run, and it is the whole reason that test serialises the ENTIRE result
+     * and looks for a part list rather than checking the field it expects to
+     * find one in. Nothing a caller can serialise into a netlist may leave
+     * here for a candidate that delivered nothing. */
+    result = {
+      ...delivered,
+      parts: [],
+      net: { ...(delivered.net as object), parts: [], rejectedParts: undefined },
+    } as R;
+  }
 
   let gates: GateVerdict[] = [];
   let gatesDerived: GateVerdict[] = [];
   let violation: string | null = null;
-  if (collect.reference) {
+  if (!rejection && collect.reference) {
     try {
       const netlist = netlistOf(result.parts);
       const frozen = evaluateGates(netlist, v2.gates, collect.reference, 'frozen');
@@ -856,7 +1069,13 @@ function runCandidate<I, R extends { parts: VxpPart[]; net: { gateRefusals?: str
     }
   }
 
-  const judged = judge(result);
+  /* A rejected candidate is not measured: every number would be the seed's,
+   * wearing this candidate's label. That is the same claim the withdrawn
+   * netlist would have made, in a column instead of a file. */
+  const judged = rejection
+    ? { measurements: { response: null, phaseTracking: [] }, topology: judge(delivered).topology }
+    : judge(result);
+  if (rejection) collect.notes.push(rejection.note, `Refusing rule: ${rejection.reason}`);
 
   return {
     result,
@@ -867,6 +1086,7 @@ function runCandidate<I, R extends { parts: VxpPart[]; net: { gateRefusals?: str
     gateRefusals: result.net.gateRefusals ?? [],
     measurements: judged.measurements,
     topology: judged.topology,
+    rejection,
     notes: collect.notes,
   };
 }
@@ -998,6 +1218,30 @@ export function handleV2Request(req: V2Request, post: V2Post): void {
               ),
             };
           },
+          /* V31 — the SPL window of a tune that was refused, measured with the
+           * same machinery a delivered candidate gets. The parts come in and
+           * do not go out: `runCandidate` drops them, so what a caller sees is
+           * a number about a network it cannot build. */
+          (parts) => {
+            const sum = summedResponse(
+              parts,
+              input.grid,
+              [
+                { model: 'woofer', response: input.w },
+                { model: 'mid', response: input.m },
+                { model: 'tweeter', response: input.t },
+              ],
+              input.driverZ,
+            );
+            return sum
+              ? judgeResponse(
+                  sum.freq,
+                  sum.spl,
+                  v2.targetCurve ?? FLAT_TARGET,
+                  judgeBandOf(v2, input.grid),
+                )
+              : null;
+          },
           candidate?.provenance,
         );
         break;
@@ -1088,6 +1332,26 @@ export function handleV2Request(req: V2Request, post: V2Post): void {
               // topology class would silently group unrelated designs.
               topology: { flanks: [], inverted: [] },
             };
+          },
+          /* V31 — see the three-way branch: measured here, not handed out. */
+          (parts) => {
+            const sum = summedResponse(
+              parts,
+              input.grid,
+              [
+                { model: 'mid', response: input.w },
+                { model: 'tweeter', response: input.t },
+              ],
+              input.driverZ,
+            );
+            return sum
+              ? judgeResponse(
+                  sum.freq,
+                  sum.spl,
+                  v2.targetCurve ?? FLAT_TARGET,
+                  judgeBandOf(v2, input.grid),
+                )
+              : null;
           },
           candidate?.provenance,
         );

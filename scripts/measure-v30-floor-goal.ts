@@ -58,6 +58,7 @@ import {
   casus1ChainInput,
   casus1Field,
   casus1V2Declaration,
+  casus1V2Facts,
 } from '../src/lib/engine2/casus1V2.fixture.ts';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
@@ -89,6 +90,11 @@ const seedReport = buildReport({
   geometry,
   settings: REPORT_SETTINGS,
 });
+
+/* V32 — the measured facts cross, as they do in the app and in the generator.
+ * Without the impedance sweep no electrical gate judges at all since V32, so
+ * both arms of this measurement would otherwise run ungated. */
+const facts = casus1V2Facts(seedReport, manifest, files);
 
 const field = casus1Field(seedReport);
 /** Smoke-run escape hatch: `V30_LIMIT=1` runs one candidate per arm. Not a
@@ -189,6 +195,7 @@ for (const arm of ARMS) {
     const payload: V2Chain3Payload = {
       input,
       v2: {
+        ...facts,
         gates: { ampMinLoadOhm: FLOOR },
         budgets: {},
         determinism: { seed: CASUS1_V2_SEED },
@@ -213,6 +220,11 @@ for (const arm of ARMS) {
     if (!out) throw new Error(`candidate ${c.label} produced nothing`);
     const done = out as NonNullable<typeof out>;
     const zGate = done.gates.find((v) => v.gate === 'M-B/|Z|');
+    /* V31 — a candidate that delivered nothing has no parts to measure. Its
+     * row records the refusal instead; `metricsOfParts` on an empty list would
+     * describe a network that does not exist. */
+    const rejected =
+      (done as { rejection?: { kinds: string[]; reason: string } | null }).rejection ?? null;
     const failed = done.gates.filter((v) => v.active && !v.pass);
     const row: Row = {
       label: c.label,
@@ -249,8 +261,20 @@ for (const arm of ARMS) {
       },
       geweigerd_door: failed.map((v) => `${v.gate} (${v.subject})`),
       gediskwalificeerd: [...(done.result.disqualified ?? [])],
-      metrieken: metricsOfParts(`${c.label} [${arm.naam}]`, done.result.parts),
-      partsHash: partsHash(done.result.parts),
+      metrieken:
+        rejected || done.result.parts.length === 0
+          ? {
+              minZ_ohm: null,
+              minEPDR_ohm: null,
+              spl_venster_pm_dB: null,
+              rms_vlakheid_dB: null,
+              wm_fase_oct: null,
+              mt_fase_oct: null,
+            }
+          : metricsOfParts(`${c.label} [${arm.naam}]`, done.result.parts),
+      partsHash: rejected
+        ? `VERWORPEN:${rejected.kinds.join('+') || 'wholesale'}`
+        : partsHash(done.result.parts),
     };
     rows.push(row);
     console.log(
@@ -271,6 +295,8 @@ for (const arm of ARMS) {
       measurements: done.measurements,
       gates: done.gates,
       disqualified: done.result.disqualified,
+      rejection:
+        (done as { rejection?: ShortlistInput<Chain3Result>['rejection'] }).rejection ?? null,
     });
   }
   const sl = buildShortlist(slInput, `v30-${arm.naam}`, { targetCurve: FLAT_TARGET });

@@ -41,6 +41,21 @@
  * networks from each other first — otherwise "both unchanged" could be
  * satisfied by a search that ignores its seed, and the regression would be
  * measuring nothing.
+ *
+ * ── V32 SPLIT THIS FILE IN TWO, AND KEPT THE STRONGER HALF WHOLE ──────────
+ *
+ * V32 moved WHERE an electrical gate measures: off this fixture's response grid
+ * (210–19 000 Hz) and onto the drivers' own measured impedance sweeps. On THIS
+ * run no gate is armed, so the hook never fires and the search cannot have
+ * moved — and it did not: the delivered network is still byte-identical to the
+ * stored F4b2 one, on both seeds. What did move is the VERDICTS, which now
+ * report a dissipation integral and a |Z| minimum taken over a different span.
+ *
+ * Re-recording the whole file would have thrown away the claim that matters
+ * ("F4c and V32 changed no network") to accommodate a change to a report. So
+ * the comparison is split: `runs` still pins the network and is untouched
+ * F4b2, and `verdicts_sinds_V32` pins the verdicts beside it. Two claims, two
+ * blocks, and neither can be updated by accident while the other is asserted.
  */
 
 import { describe, expect, it } from 'vitest';
@@ -68,6 +83,8 @@ interface Baseline {
   parameters: { starts: number; budgetEvaluations: number };
   seeds: number[];
   runs: Record<string, unknown>;
+  /** V32 — the verdict half, recorded beside the untouched F4b2 network half. */
+  verdicts_sinds_V32?: { stand: string; runs: Record<string, unknown> };
 }
 
 const BASELINE = JSON.parse(readFileSync(BASELINE_PATH, 'utf-8')) as Baseline;
@@ -127,7 +144,14 @@ function newShape(seed: number): V2OptimizeResult {
   return runV2Optimization({ ...base(seed), weights: WEIGHT, choices: CHOICE });
 }
 
-/** Everything about the delivered field that a behaviour change would move. */
+/**
+ * Everything about the delivered NETWORK that a behaviour change would move.
+ *
+ * The gate verdicts are deliberately not in here since V32 — they are a report
+ * ABOUT this network, taken over a span V32 moved, and folding them in would
+ * make "the network is unchanged" untestable without re-recording it. They have
+ * their own comparison below.
+ */
 const delivered = (r: V2OptimizeResult): string =>
   stableJson({
     candidates: r.candidates.map((c) => ({
@@ -140,18 +164,40 @@ const delivered = (r: V2OptimizeResult): string =>
       evaluations: c.net.evaluations,
       removed: c.net.removed,
       added: c.net.added,
-      gatesFrozen: c.gatesFrozen,
-      gatesDerived: c.gatesDerived,
     })),
     rejected: r.rejected,
     searchBox: r.searchBox,
   });
 
+/** The verdict half — V32's own block, pinned separately. */
+const verdictsOf = (r: V2OptimizeResult): string =>
+  stableJson(
+    r.candidates.map((c) => ({
+      label: c.label,
+      start: c.start,
+      gatesFrozen: c.gatesFrozen,
+      gatesDerived: c.gatesDerived,
+    })),
+  );
+
 /** The stored F4b2 network for one seed, serialised the same way. */
 const storedFor = (seed: number): string => {
-  const run = BASELINE.runs[String(seed)];
+  const run = BASELINE.runs[String(seed)] as { candidates: Record<string, unknown>[] };
   expect(run, `the baseline holds no run for seed ${seed}`).toBeTruthy();
-  return stableJson(run);
+  return stableJson({
+    ...run,
+    candidates: run.candidates.map((c) => {
+      const { gatesFrozen: _f, gatesDerived: _d, ...rest } = c as Record<string, unknown>;
+      return rest;
+    }),
+  });
+};
+
+/** The stored V32 verdicts for one seed. */
+const storedVerdictsFor = (seed: number): string => {
+  const v = BASELINE.verdicts_sinds_V32?.runs?.[String(seed)];
+  expect(v, `the baseline holds no V32 verdicts for seed ${seed}`).toBeTruthy();
+  return stableJson(v);
 };
 
 describe('F4c — naming the choices changed no network', () => {
@@ -163,6 +209,12 @@ describe('F4c — naming the choices changed no network', () => {
     expect(BASELINE.stand).toBe('F4b2');
     expect(BASELINE.seeds).toEqual([...seeds]);
     expect(Object.keys(BASELINE.runs).sort()).toEqual([...seeds].map(String).sort());
+    // V32's half is a separate block with its own stand, so a reader can never
+    // mistake a re-recorded verdict for a re-recorded network.
+    expect(BASELINE.verdicts_sinds_V32?.stand).toBe('V32');
+    expect(Object.keys(BASELINE.verdicts_sinds_V32?.runs ?? {}).sort()).toEqual(
+      [...seeds].map(String).sort(),
+    );
   });
 
   it('the two seeds genuinely search different ground', () => {
@@ -183,6 +235,29 @@ describe('F4c — naming the choices changed no network', () => {
      * one of F4c's edits could reach the network through the old call shape,
      * this is where it would show. */
     expect(delivered(oldShape(seed))).toBe(storedFor(seed));
+  });
+
+  it.each(seeds)('seed %i: the VERDICTS reproduce their own V32 block', (seed) => {
+    /* The half V32 moved, pinned so it cannot move again unnoticed. It is a
+     * separate assertion from the network above on purpose: "the design is
+     * unchanged" and "the report about it is unchanged" are two claims, and
+     * V32 is the delivery that made them come apart. */
+    expect(verdictsOf(newShape(seed))).toBe(storedVerdictsFor(seed));
+  });
+
+  it('the verdicts are taken on the MEASURED SWEEP, not on this fixture grid', () => {
+    /* V32's claim, made falsifiable here rather than left to the header. The
+     * fixture's response grid stops at 19 kHz and starts at 210 Hz; the drivers'
+     * own sweeps run wider, and every electrical verdict now says where it was
+     * taken. Without this assertion the block above would keep reproducing even
+     * if the reference quietly fell back to the response grid. */
+    const v = newShape(seeds[0]).candidates[0].gatesFrozen.find((g) => g.gate === 'M-B/|Z|');
+    expect(v, 'no |Z| verdict at all').toBeTruthy();
+    const span = String(v!.parameters?.judged_on ?? '');
+    expect(span).toContain('impedance');
+    const lo = Number(span.split('-')[0]);
+    expect(Number.isFinite(lo)).toBe(true);
+    expect(lo).toBeLessThan(V2_GRID[0]);
   });
 
   it('the FINGERPRINT does move, and that is correct rather than a regression', () => {

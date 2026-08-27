@@ -267,12 +267,16 @@ punten met een casusboek-entry erachter. Ze staan hier zodat ze niet alleen in D
   D(f)-curven wordt dan een tweezijdige doelband"*), niet als losse extra kandidaat naast het
   venster. `xoWindow.ts` kent die zone nog niet; tot dan sturen de vensters de generator en
   wordt de DI-match alleen gerapporteerd. Zie V27, dekkingstabel 1.
-- **Rij 38 — het ketenraster begint op 200 Hz** terwijl de laagste A5d.3-venstervloer op 397 Hz
-  ligt. Gemeten en GESTELD bij F4d, niet verplaatst: het raster is `sim` en daar tekent élke
-  grafiek op dat scherm uit, dus hem verzetten verandert de rapportage-oppervlakken van de
-  v2-route mee. Dat is een grotere wijziging dan F4d's opdracht toestond. De afweging staat
-  voluit in V27; **blijft open**, met de kanttekening die daar ook staat: een lezer die dit
-  betwist heeft een punt.
+- **~~Rij 38 — het ketenraster begint op 200 Hz~~ — GESLOTEN bij V32 (27-08-2026).**
+  Het raster is NIET verplaatst, en dat blijft de juiste keuze: het is `sim`, élke grafiek op dat
+  scherm tekent erop uit, en zijn bodem is waar de VERRE-VELDMETINGEN van deze set beginnen — een
+  respons die niet gemeten is, wordt niet beoordeeld. Wat wél moest veranderen is wie er nog op
+  oordeelde. Sinds V32 geldt: **het raster wordt niet verplaatst; geen poort of inversie oordeelt
+  er nog op.** De inventarisatie die dat hard maakt staat in V32 met bestand:regel — vier poorten
+  (M-A, M-B/EPDR, M-B/|Z|, M-C), de hoogdoorlaatbeschermings-afleiding en de
+  doorlaatband-impedantiemediaan die twee A5d.6-inversies voedt, alle zes verhuisd naar de gemeten
+  impedantiesweep, uit één gedeelde functie die het paneel óók gebruikt. Wat op het ketenraster
+  blijft is precies wat erop hoort: de kruispunten en elk responsoordeel.
 - **V28 — mag een uitsnijding het kandidaatveld vormen, en zo ja op grond waarvan?** De
   F3c-uitsnijding stuurde het veld met een λ-fractie op één c-t-c-afstand, wat V20a verbiedt;
   zij is opgeschort en het veld dekt nu het hele venster. De drie uitkomsten die openstaan
@@ -289,6 +293,19 @@ punten met een casusboek-entry erachter. Ze staan hier zodat ze niet alleen in D
   in plaats van omlaag (RMS 2,96–3,58 → 1,71–1,96 dB). De prijs zit in de fasetracking. Wat
   hieruit openbleef staat als **V31** (vier kandidaten worden door de veiligheidspoort in hun
   geheel verworpen en leveren hun zaad) en **V32** (de v2-poortreferentie is blind onder 200 Hz).
+  **Beide zijn dezelfde dag gerepareerd, in één sessie**: een verworpen kandidaat levert sinds V31
+  een VERWERPING met de regel die hem weigerde in plaats van zijn zaad, en elke elektrische poort
+  oordeelt sinds V32 op de gemeten impedantiesweep in plaats van op het ketenraster. Wat V31 NIET
+  heeft opgelost is de arbitrage zelf — de afruil tussen de versterkervloer en de
+  tweeterbescherming is nog steeds een alles-of-niets-veto, en de meting die daarover zou
+  beslissen is nog steeds niet gedaan.
+- **V33 — de doelfunctie kan niet mikken op wat de poort sinds V32 handhaaft.** De barrièreterm
+  leest `zShortOhm` van het EVALUATIERASTER (200 Hz en hoger op casus 1), de poort oordeelt sinds
+  V32 op de volle gemeten sweep, en op de 396,7 Hz-as weigert de poort daarom een tune die de
+  zoektocht niet had kunnen vermijden — waarna `tune()` op het zaad terugvalt en er iets
+  ongetuneds wordt afgeleverd. Vijf van de vijftien kandidaten. Zelfde vorm als V30, één laag
+  verder; de reparatie (`worstZOf` óók de barrière laten voeden) is bewust niet meegenomen. Zie
+  V33 in Deel B. **Open.**
 - **V29 — mag `safety` een netlist weigeren die vrijwel kortsluit als er géén vloer gesteld is?**
   Twee verdedigbare houdingen (strikt P4 tegenover een uit de gemeten driverimpedanties
   afleidbare degeneratiegrens), aanleiding is de V28-shortlist met 0,01 Ω erin. **Open**, geen
@@ -1139,7 +1156,7 @@ Configuratie: 3-weg; 2× SB WO24TX-8 parallel, MR13TX-4 in bolpod, T25T-6 in WG1
 
   **Wat er in de code veranderde.** `netOptimizer.ts` (de optie, de afleiding `zFloorGoal`, de gesplitste `zFloorRepairPass`, het benoemde gewicht, en de doctrine-noot boven `BOUNDS` die nu zijn eigen uitzondering benoemt), `optimizer/choices.ts` (de sleutel geclassificeerd, `greyValues`), `optimizer/candidateDeclaration.ts` (de afleiding met haar P4-tegenhanger), `casus1.fixture.ts` (`casus1FilterFromParts`, uitgesneden zodat een geweigerde kandidaat óók gemeten kan worden), de twee scripts, het nieuwe meetscript, `floorAsGoal.test.ts`, `choiceKeyGuard.test.ts`, `goldenClassification.test.ts`, `frozenNetlistGates.test.ts`. **Onaangeraakt:** de reparatiepas zelf, `safety`, elke poort, `crossover3Variants`, de logica van beide ketens, en de v1-route — `toggleRegression.test.ts` is byte-identiek, en dát is het bewijs dat de default `false` doet wat hij zegt.
 
-- V31 (**OPEN** — vier kandidaten worden door de veiligheidspoort in hun geheel weggegooid, en wat er dan geleverd wordt is het zaad) — opgeworpen bij de V30-vervolgsessie, 27-08-2026.
+- V31 (**GEREPAREERD** op 27-08-2026 — een verworpen kandidaat levert een VERWERPING in plaats van zijn zaad; de arbitrage zelf blijft open) — opgeworpen bij de V30-vervolgsessie, 27-08-2026.
 
   **De aanleiding, gemeten.** Van de vijftien kandidaten haalden er elf de vloer zodra zij een zoekdoel was. De andere vier leverden een netwerk dat **byte-identiek** is aan hun "vóór"-arm, en de reden is niet dat de barrière niets deed. Alle vier keerden vroeg terug: het getypte pass-resultaat `ampFloorRepair` ontbreekt op het teruggegeven object, wat alleen gebeurt op het pad waar de **volle-band veiligheidspoort de hele tune verwerpt** en `optimizeNetworkValues` het zaad teruggeeft.
 
@@ -1160,7 +1177,43 @@ Configuratie: 3-weg; 2× SB WO24TX-8 parallel, MR13TX-4 in bolpod, T25T-6 in WG1
 
   **Wat het zou beslechten:** één meting die er niet is — een run waarin de barrière en de tweeterbescherming allebei in de doelfunctie zitten, op deze vier kandidaten, naast de huidige. Zolang die er niet is, is elke keuze hierboven een voorkeur. **Open.**
 
-- V32 (**OPEN** — de v2-poortreferentie is blind onder 200 Hz, en de tuner is dat niet) — opgeworpen bij de V30-vervolgsessie, 27-08-2026.
+  ---
+
+  **V31 — VERVOLGSESSIE, 27-08-2026: OPTIE 3 GENOMEN. DE ARBITRAGE BLIJFT OPEN.**
+
+  **DE INVENTARISATIE.** Regelnummers van de boom vóór deze sessie (`851c579`).
+
+  | stap | bestand:regel | wat er gebeurt |
+  | --- | --- | --- |
+  | de veiligheidspoort verwerpt | `netOptimizer.ts:3915` | `return { parts: cloneParts(parts), … }` — het ZAAD, met `tuned: 0`, `safetyNote` en `safetyKinds`, en zónder `ampFloorRepair` |
+  | de gevoeligheidspoort verwerpt (solo) | `netOptimizer.ts:3836` | dezelfde vorm, zonder `safetyKinds` — geen enkele meerwegroute wapent hem |
+  | de worker neemt het over | `worker.ts:834` | `const result = run(…)`, en niets kijkt naar `safetyNote` |
+  | het zaad wordt gemeten | `worker.ts:868` | `judge(result)` op het ZAAD; die getallen dragen het label van de kandidaat |
+  | het bereikt de shortlist | `shortlist.ts:176` | `parts: c.parts` — een rij, dus een aanbod om te bouwen |
+  | en het scherm | `App.tsx:6940` | `v2Field.push({ parts: c.result.parts, … })` |
+
+  Twee dingen die de vorm bepaalden. **De detectie moet STRUCTUREEL zijn, niet tekstueel:** `netOptimizer.ts` zegt zelf bij `safetyKinds` dat de prozanoot nooit gelezen mag worden om iets te beslissen (dat is hoe `zOk` vier dingen tegelijk ging betekenen). `safetyNote` bestáát op precies de twee returns die een hele tune weggooien en nergens anders — dus de AANWEZIGHEID ervan is het signaal, en de tekst blijft voor een mens. **En de veiligheidsregel mocht niet veranderen:** zij heeft gelijk, en de opdracht verbood het.
+
+  **WAT ER GEBOUWD IS — DRIE LAGEN, GEEN ERVAN EEN BESLUIT.**
+
+  1. `netOptimizer.ts` krijgt één instrumentatie-optie, `rejectedTuneReport` (POLISH; sleuteltelling 38 → 39). Aan: de twee wholesale-returns dragen `rejectedTune` (de metrieken van wat werd weggegooid) en `rejectedParts`. Uit — élke v1-run — is het resultaatobject byte-identiek aan voorheen. Geen enkele regel leest deze velden; ze veranderen niets.
+  2. `worker.ts` herkent de verwerping, en **trekt het netwerk in**: `result.parts` wordt leeg, de poorten worden niet geëvalueerd, `measurements` wordt de niet-geoordeelde toestand, en `rejectedParts` wordt gestript vóór de terugreis — het beste tussenresultaat wordt hier gemeten (min \|Z\|, SPL-venster, RMS, fase) en gaat als GETALLEN mee, nooit als onderdelen. Wat een aanroeper krijgt is `rejection: { kinds, reason, rejectedTune, note }`.
+  3. `shortlist.ts` krijgt een DERDE uitgang naast "een eis" en "een poort". Bewust apart: de ladder mag de eerste verruimen, mag de tweede nooit aanraken, en heeft bij de derde niets te verruimen — er ís geen ontwerp. De verwerping verschijnt in `rejected` mét de regel die haar veroorzaakte, nooit als rij; en de diagnose ("wat kwam het dichtst in de buurt") kijkt niet meer naar een kandidaat die niets geleverd heeft, want dat zou het zaad tot beste bijna-misser maken.
+
+  **DE METING, EN ZIJ ZEGT IETS ANDERS DAN V30 VERWACHTTE.** Op het opnieuw opgewekte veld (dezelfde seed, dezelfde vloer, ná V32) leveren er nog **twee** van vijftien geen netwerk, allebei op `protection`:
+
+  | kandidaat (W-M · M-T) | regel | de GEWEIGERDE tune: min \|Z\| | SPL-venster | RMS |
+  | --- | --- | --- | --- | --- |
+  | 466,5 · 1491,4 | `protection` | 2,59 Ω | **±72,52 dB** | 1,70 dB |
+  | 548,5 · 1294 | `protection` | 2,59 Ω | **±72,70 dB** | 1,43 dB |
+
+  **En hier kantelt het oordeel over de arbitrage.** V30 noteerde dat de verworpen tune BETER was (de barrière tilde 0,035 → 1,8 Ω en het resultaat werd weggegooid). Zodra de poort de volle sweep leest, is dat beeld weg: de geweigerde tunes hálen de vloer nu (2,59 Ω) en hebben een SPL-venster van ±72 dB — één diepe uitdovingsnotch, want de RMS is met 1,4–1,7 dB gewoon netjes. Dat is precies wat een verslechterde tweeterbescherming eruit hoort te zien, en het is de metriek die de veiligheidspoort meet (`protSqDb`). **De poort had gelijk, en V31's reparatie is nu juist wat dat laat zien**: vóór V31 kreeg de ontwerper het zaad met de getallen van het zaad; nu krijgt hij "geweigerd wegens tweeterbescherming, en wat geweigerd werd stond op 2,59 Ω met een venster van ±72 dB".
+
+  **WAT DAARMEE OPEN BLIJFT, en het is de kern van V31.** De arbitrage tussen "de versterker moet dit kunnen drijven" en "de tweeter moet dit overleven" is nog steeds een alles-of-niets-veto. Optie 3 uit de lijst hierboven is genomen — weigeren met naam en toenaam — en dat is de kleinste van de drie: hij repareert wat er GERAPPORTEERD wordt, niet wat er GEZOCHT wordt. Optie 1 (beide in de doelfunctie) en optie 2 (terugval op de beste toelaatbare tussenstand) staan onverkort open, en de meting die ertussen zou beslissen is nog steeds niet gedaan. Wat deze sessie wél heeft toegevoegd is dat die meting nu goedkoper is: het `rejectedTune`-blok maakt zichtbaar wat een veto kost, per kandidaat, zonder de run opnieuw te draaien.
+
+  **WAT ER IN DE CODE VERANDERDE.** `netOptimizer.ts` (één optie, twee spreads, nul besluiten), `optimizer/worker.ts` (`CandidateRejection`, de intrekking), `optimizer/shortlist.ts` (de derde uitgang, `rejected`, selectieversie 1.0 → 1.1), `optimizer/choices.ts` (de sleutel geclassificeerd), `App.tsx` (de verwerping reist mee het veld in), plus `wholesaleRejection.test.ts` en de generator. **Onaangeraakt:** de veiligheidspoort zelf, elke veiligheidsregel, de barrière, het gewicht en de reparatiepas.
+
+- V32 (**GESLOTEN** op 27-08-2026 — elke elektrische poort oordeelt op de gemeten impedantiesweep) — opgeworpen bij de V30-vervolgsessie, 27-08-2026.
 
   **De aanleiding.** Drie van de tien nieuw bevroren netlists — `KAND_V2_1`, `_2`, `_6` — passeerden `M-B/|Z|` in hun eigen ketenrun met 2,594–2,606 Ω, en missen dezelfde vloer als je het BESTAND nameet: 2,447 / 2,358 / 2,388 Ω. Geen van beide metingen is fout; zij kijken naar een ander gebied. De minima liggen op **82,5 / 83,7 / 82,1 Hz**, en het analyseraster van de keteninvoer begint op 200 Hz.
 
@@ -1184,6 +1237,83 @@ Configuratie: 3-weg; 2× SB WO24TX-8 parallel, MR13TX-4 in bolpod, T25T-6 in WG1
   **Een vermoeden, niet getoetst.** De vloer als zoekdoel duwt het netwerk naar de laagste \|Z\| die de DOELFUNCTIE ziet, en de doelfunctie leest `zShortOhm` — dus in principe wel het veiligheidsraster. Toch liggen drie van de tien minima nu op ~82 Hz, terwijl de tien V28-netlists (zonder barrière) er geen enkele onder 800 Hz hadden. Of dat verplaatsing is of toeval van drie gevallen, zegt deze sessie niet.
 
   **De richting van de reparatie is duidelijk en bewust niet genomen:** de impedantiekant van de v2-poortreferentie hoort de volle gemeten sweep te dekken, net als het veiligheidsraster, ook waar er geen responsie is. Dat raakt `casus1V2.fixture.ts`, `gates.ts` en de vorm van `GateReference`; het verandert de poortuitslagen van élk bestaand v2-corpus; en het verdient dezelfde behandeling als V30 zelf — een eigen sessie met een vóór/ná-meting, niet een correctie die onderweg meelift. **De drie netlists staan intussen in `vloeruitzonderingen` met deze reden erbij en mogen niet gebouwd worden.** Open.
+
+  ---
+
+  **V32 — VERVOLGSESSIE, 27-08-2026: ELKE ELEKTRISCHE POORT OORDEELT OP DE GEMETEN SWEEP. GESLOTEN.**
+
+  **DE INVENTARISATIE EERST**, want zij bleek breder dan M-B/|Z|. Alle regelnummers zijn die van de boom VÓÓR deze sessie (`851c579`).
+
+  | wie | bestand:regel (vóór) | oordeelde op | hoort te oordelen op |
+  | --- | --- | --- | --- |
+  | de bevroren referentie | `gates.ts:525` (`buildAnalysis(netlist, ref.grid, …)`) | het ketenraster | — (zij is de bron van de vier hieronder) |
+  | M-A, dissipatiefractie | `gates.ts:540` | het ketenraster | de sweep |
+  | M-B/EPDR | `gates.ts:542` | het ketenraster | de sweep |
+  | M-B/\|Z\| | `gates.ts:542` (`minZOhm` uit dezelfde `epdr()`) | het ketenraster | de sweep |
+  | M-C, spanning op f_s | `gates.ts:568` | het ketenraster | de sweep |
+  | "hoogdoorlaatbeschermd" | `gates.ts:466`, `558` | het ketenraster | de sweep |
+  | doorlaatband-\|Z\|-mediaan (voedt twee A5d.6-inversies) | `worker.ts:503` | het ketenraster | de sweep |
+  | dezelfde mediaan, in het rapport | `report.ts:769` | **de ruwe sweep** | — (die was al goed) |
+  | het analyseraster van het rapport | `report.ts:351` | de sweep-unie, 1600 punten | — (die was al goed) |
+
+  Drie dingen vielen daarbij op, en alle drie hebben de vorm van de ingreep bepaald.
+
+  1. **Het is niet één poort maar zes lezers**, en zij lezen allemaal uit dezelfde twee regels: `dissipation(analysis)` en `epdr(analysis)` op `ref.grid`. Eén raster verzetten repareert ze alle zes tegelijk — of vergeet ze alle zes tegelijk.
+  2. **Het rapport deed het al goed.** `report.ts` bouwde zijn analyseraster uit de UNIE van de driversweeps (1600 punten, randen vlak gehouden, met een `problems`-regel erbij) en las de mediaan van de ruwe sweep. De v2-route deed geen van beide. Dit was dus nooit "welk raster is juist" maar "waarom zijn er twee implementaties" — en één ervan had het antwoord al.
+  3. **`netOptimizer.ts` draagt de regel zelf**, bij `band`: *"the amplifier-load floor and its repair pass deliberately keep working on the FULL grid regardless: they are impedance criteria, and an impedance measurement has no gate."* De tuner leefde die na; de poortreferentie is er nooit aan gehouden.
+
+  **WAT ER GEBOUWD IS.** Eén functie, `impedanceReferenceFrom` in het nieuwe `optimizer/impedanceReference.ts`, en twee aanroepers: `report.ts` (voor zijn analyseraster) en `freezeGateReference` (voor de nieuwe helft `GateReference.impedance`). Zelfde uitgestrektheid, zelfde resolutie (`ANALYSIS_GRID_POINTS`), zelfde randbehandeling, zelfde zin erover. "Poort en paneel zeggen hetzelfde" is daarmee een IDENTITEIT geworden in plaats van een toevalligheid die standhoudt tot iemand er één bewerkt.
+
+  `evaluateGates` splitst sindsdien in twee analyses: de RESPONSANALYSE op `ref.grid` leidt nog uitsluitend de kruispunten af (dat is een responsgrootheid en haar bodem hoort de verre-veldspan te zijn), en de ELEKTRISCHE analyse op `ref.impedance.grid` levert élke ohm, elke dB en de beschermingsafleiding.
+
+  **GEEN SWEEP, GEEN OORDEEL, EN GEEN TERUGVAL.** Ontbreekt de sweep — of ontbreekt hij voor één tak, want een systeemimpedantie is geen grootheid per driver — dan levert de poort GEEN waarde, met een zin die de ontbrekende invoer noemt (de lek-2-vorm van F4b). Terugvallen op het responsraster zou precies het oordeel herstellen dat hier wordt ingetrokken, en het stil doen. Dat betekende wel dat de casus-1-fixture voortaan de gemeten feiten móest meesturen: zij stuurde er nul, en `factsForWorker` — het bruggetje dat `App.tsx` al gebruikt — stuurt ze nu alle vijf. Halve feiten sturen (de sweep wél, het geldigheidsinterval van dezelfde meting niet) is de incoherentie waar F4b's lek 2 over ging.
+
+  **DE ENE ZACHTE PLEK, GEMETEN IN PLAATS VAN BEREDENEERD.** Het oordeelraster is de UNIE van de sweeps en niet de doorsnede — de doorsnede is op deze set 200 Hz en dat is de blindheid zelf, van de andere kant benaderd. De prijs: de tweetersweep begint op 199,95 Hz, dus onder die grens wordt de tweeterimpedantie vlak gehouden en rust élk oordeel op 82 Hz deels op extrapolatie. Het fysische antwoord is dat een seriecondensator die tak daar allang uit beeld heeft gehaald. Dat is een argument; hier is de meting: het geëxtrapoleerde gebied maal tien en maal een tiende — een factor honderd — beweegt het systeemminimum op géén enkele bevroren netlist, tot vier decimalen. Vastgelegd in `frozenNetlistGates.test.ts`, zodat het antwoord op een ontwerp dat er ooit wél van afhangt een tweetersweep is die lager reikt, en geen ruimere test.
+
+  ---
+
+  **DE METING: WAT DE REPARATIE MET HET CORPUS DEED.** Zelfde veld, zelfde seed (20260827), zelfde vloer, zelfde beschermingen. De "vóór"-helft is geen tweede run maar het BEVROREN V30-corpus, want V32 is geen optie die je uit kunt zetten; beide helften gaan door hetzelfde `buildReport`-pad. `scripts/compare-v30-v32-corpus.ts`, seconden.
+
+  | | vóór (V30-corpus) | ná (V31/V32-corpus) |
+  | --- | --- | --- |
+  | veld | 15 | 15 |
+  | leverde geen netwerk (V31) | 4 (als zaad afgeleverd) | **2 (als verwerping)** |
+  | netwerk geleverd dat een poort weigert | 0 zichtbaar | **6** |
+  | shortlist / bevroren | 10 | **7** |
+  | haalt de vloer ALS BESTAND | **7 van 10** | **7 van 7** |
+
+  **De drie die uitvallen zijn precies de drie die V32 aanwees**, en niets anders beweegt:
+
+  | kandidaat (W-M · M-T) | min \|Z\| als bestand | @ Hz | vóór → ná |
+  | --- | --- | --- | --- |
+  | 396,7 · 1491,4 | 2,45 | 82,5 | bevroren → **uit de shortlist** |
+  | 396,7 · 1719 | 2,36 | 83,7 | bevroren → **uit de shortlist** |
+  | 396,7 · 2283,5 | 2,39 | 82,1 | bevroren → **uit de shortlist** |
+  | 466,5 · 1294 | 2,55 | 420,2 | bevroren → bevroren |
+  | 466,5 · 1981,2 | 2,59 | 1125,3 | bevroren → bevroren |
+  | 466,5 · 2283,5 | 2,58 | 1231,8 | bevroren → bevroren |
+  | 548,5 · 1491,4 | 2,60 | 1032,9 | bevroren → bevroren |
+  | 548,5 · 1719 | 2,57 | 132,2 | bevroren → bevroren |
+  | 548,5 · 1981,2 | 2,57 | 132,2 | bevroren → bevroren |
+  | 548,5 · 2283,5 | 2,59 | 1243,5 | bevroren → bevroren |
+
+  **De zeven overlevers zijn BYTE-IDENTIEK aan hun V30-voorgangers** — nagemeten, onderdeel voor onderdeel, en het is de scherpste uitspraak die deze sessie kan doen: V32 heeft geen enkel ontwerp veranderd, het heeft er drie ingetrokken die niet gebouwd hadden mogen worden. SPL, RMS en beide fasekolommen staan in de vergelijkingstabel en zijn overal identiek (`compare-v30-v32-corpus.ts`).
+
+  De uitzonderingslijst is daarmee van dertien namen naar dertien namen gegaan en van SOORT veranderd: **geen enkele LEVENDE netlist staat er nog in.** Tien zijn V28 (bevroren vóór de vloer een zoekdoel was) en drie zijn V30 (bevroren toen de poort nog blind was onder 200 Hz) — beide gedateerde corpora, meetobject en geen ontwerp. De lijst hoorde leeg te raken van levende netlists, en dat is gebeurd.
+
+  **WAT DE REPARATIE ZICHTBAAR MAAKTE EN NIET OPLOST — DE 396,7 Hz-AS.** Van de vijftien kandidaten leveren er zes een netwerk dat de vloer mist, en vijf daarvan zitten op de 396,7 Hz-as: 0,01 / 1,04 / 1,16 / 1,27 / 1,38 Ω. Dat zijn exact de "vóór"-waarden van de V30-tabel, en de reden is te lezen in `gateRefusals`: *"value tune refused: M-B/\|Z\|: 2.42 Ω falls below the stated floor of 2.60 Ω"*. De poort weigert nu terecht, `tune()` valt terug op het zaad (`netOptimizer.ts:2791`, `cur = asIs(seedParts)`), en wat er wordt afgeleverd is ongetuned. **De oorzaak is dat de zoektocht niet kan mikken op wat de poort handhaaft:** de barrièreterm leest `m.zShortOhm` van de metriek op het EVALUATIERASTER (`netOptimizer.ts:2401` op `1953`), dus zij ziet de dip op 82 Hz niet, terwijl de poort hem sinds V32 wél ziet. Doelfunctie en poort kijken nu naar twee verschillende gebieden — dezelfde vorm als V30, één laag verder. De reparatie ligt voor de hand (`zShortOhm` van het veiligheidsraster laten meewegen in de barrière) en is deze sessie NIET genomen: de opdracht verbood elke wijziging aan de barrière, en zo'n wijziging verdient dezelfde behandeling als V30 en V32 — een eigen sessie met een vóór/ná-meting. **Staat als V33 open.**
+
+  **WAT ER IN DE CODE VERANDERDE.** Nieuw: `optimizer/impedanceReference.ts`, `optimizer/gateGrid.test.ts`. Gewijzigd: `optimizer/gates.ts` (de tweede helft van de referentie, de gesplitste analyses, `whyNull` en `judged_on`), `report.ts` (rasterbouw via de gedeelde functie), `optimizer/worker.ts` (sweeps in de referentie, de mediaan van de sweep, de noten), `optimizer/v2.fixture.ts` (eigen sweeps), `casus1V2.fixture.ts` (`casus1V2Facts`), de drie scripts, `frozenNetlistGates.test.ts`, `borderFacts.test.ts`, `f4cRegression.test.ts`. **Onaangeraakt:** het ketenraster, de barrière, het gewicht, de reparatiepas, `safety`, en de v1-route — `toggleRegression.test.ts` is byte-identiek.
+
+- V33 (**OPEN** — de doelfunctie kan niet mikken op wat de poort sinds V32 handhaaft) — opgeworpen bij de V31/V32-sessie, 27-08-2026.
+
+  **De aanleiding, gemeten.** Van de vijftien kandidaten leveren er zes een netwerk dat de gestelde vloer mist, en vijf daarvan zitten op de 396,7 Hz-as: 0,01 / 1,04 / 1,16 / 1,27 / 1,38 Ω. Dat zijn exact de "vóór"-waarden uit V30's tabel — dus deze kandidaten leveren wat zij leverden toen de vloer nog géén zoekdoel was.
+
+  **Waarom.** `gateRefusals` zegt het letterlijk: *"value tune refused: M-B/|Z|: 2.42 Ω falls below the stated floor of 2.60 Ω"*. De poort weigert de waardetune, `tune()` valt terug op het zaad (`netOptimizer.ts:2791`), en wat wordt afgeleverd is ongetuned. De barrièreterm die de zoektocht naar de vloer moet duwen leest `m.zShortOhm` van de metriek op het EVALUATIERASTER — 200 Hz en hoger op deze set. Sinds V32 handhaaft de poort op de volle gemeten sweep. **Doelfunctie en poort kijken dus opnieuw naar twee verschillende gebieden, en dat is dezelfde vorm als V30, één laag verder.**
+
+  De voor de hand liggende reparatie is `worstZOf` (die het veiligheidsraster al meeneemt en al bestaat, `netOptimizer.ts:3145`) ook de barrièreterm te laten voeden. **Bewust niet genomen:** de opdracht van deze sessie verbood elke wijziging aan de barrière, aan het gewicht en aan de reparatiepas, en zo'n wijziging verdient dezelfde behandeling als V30 en V32 — een eigen sessie met een vóór/ná-meting op hetzelfde veld met dezelfde seed, niet een correctie die onderweg meelift. Het risico dat gewogen moet worden staat al in de noot boven `BOUNDS`: de vloer als fx-term is twee keer gemeten en beide keren duur geweest, en de barrière is precies de vorm die dat moest omzeilen.
+
+  **Wat er intussen NIET misgaat:** deze vijf worden door de poort geweigerd en komen niet in de shortlist. Er wordt dus niets onbouwbaars aangeboden — het veld is alleen kleiner dan het zou kunnen zijn. **Open.**
 
 **Openstaand in deze casus:** groundplane-metingen onder het onderste kruisgebied vóór onderdelenbestelling; HD-sweep; 30°-meting tweeter voor M-G-compleetheid; verzadigings-/formaatcheck grote P-core shunt-spoel.
 

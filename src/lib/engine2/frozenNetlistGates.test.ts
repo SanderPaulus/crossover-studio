@@ -63,7 +63,17 @@ import {
 } from './casus1.fixture.ts';
 import { buildReport, type ReportSettings } from './report.ts';
 import { ctcKey } from './metrics/types.ts';
-import { GATE_IDS, type GateVerdict } from './optimizer/gates.ts';
+import {
+  GATE_IDS,
+  evaluateGates,
+  freezeGateReference,
+  type GateVerdict,
+} from './optimizer/gates.ts';
+import { CASUS1_V2_GRID, casus1ChainInput, casus1V2Facts } from './casus1V2.fixture.ts';
+import { impedanceReferenceFrom } from './optimizer/impedanceReference.ts';
+import { buildAnalysis } from './metrics/analysis.ts';
+import { epdr } from './metrics/electrical.ts';
+import type { Complex } from '../complex.ts';
 
 const golden = loadGolden();
 const manifest = casus1Manifest(golden);
@@ -249,6 +259,155 @@ describe('the STATED amplifier floor judges every frozen netlist', () => {
       // ...and clears it outright rather than on the measurement tolerance
       // (F3b, deliverable 4a): those are different statements about a design.
       expect(z.withinToleranceOnly, `${key} clears the floor only within tolerance`).toBe(false);
+    }
+  });
+});
+
+/* ------------------------------------------------------------------ *
+ * V32 — the gate and the file must say the SAME thing
+ * ------------------------------------------------------------------ */
+
+describe('V32 — the search gate and the file measurement agree on every frozen netlist', () => {
+  /* THE CONTRADICTION THIS EXISTS FOR. `KAND_V2_1`, `_2` and `_6` passed
+   * `M-B/|Z|` inside their own chain run at 2.594–2.606 Ω, and missed the same
+   * stated floor when the file was measured here at 2.358–2.447 Ω. Their minima
+   * sit at 82.1–83.7 Hz; the chain's analysis grid starts at 200 Hz, because
+   * that is where this set's far field begins. Two verdicts about one
+   * requirement, on two grids, and the printed one was the kinder.
+   *
+   * Since V32 both come out of `impedanceReferenceFrom`, so this test is not
+   * checking arithmetic — it is checking that nothing has grown a second grid
+   * again. It is worth the cost precisely because the previous version of this
+   * disagreement was invisible for a whole delivery.
+   *
+   * NO CHAIN RUN HERE, and that is not a shortcut. What the search is held to
+   * is `evaluateGates` on a reference frozen from the same measurements the
+   * worker freezes from — the worker's own two lines, without the forty seconds
+   * of tuning that sit between them and change nothing about the comparison. */
+  const gridded = casus1ChainInput(manifest, files, golden);
+  const facts = casus1V2Facts(report('HUIDIG'), manifest, files);
+
+  const searchVerdicts = (key: string): GateVerdict[] => {
+    const filter = casus1Filter(key, manifest, files, golden);
+    const ref = freezeGateReference({
+      netlist: filter.netlist,
+      grid: [...gridded.grid],
+      driverZ: gridded.driverZ,
+      branchDb: { woofer: gridded.w.spl, mid: gridded.m.spl, tweeter: gridded.t.spl },
+      fsHz: facts.fundamentalHzByModel ?? {},
+      validHz: facts.validHzByModel ?? {},
+      sweeps: Object.fromEntries(
+        Object.entries(facts.impedanceByModel ?? {}).map(([m, z]) => [
+          m,
+          { grid: z.grid, magnitude: z.magnitude, phaseDeg: z.phaseDeg, validHz: z.validHz },
+        ]),
+      ),
+    });
+    return evaluateGates(
+      filter.netlist,
+      STATED_FLOOR_OHM !== null ? { ampMinLoadOhm: STATED_FLOOR_OHM } : {},
+      ref,
+      'frozen',
+    ).verdicts;
+  };
+
+  it('the two routes are genuinely different grids, so agreeing means something', () => {
+    // The premise: the chain grid really does start above the frequencies where
+    // the disagreement lived. Without this the whole describe could pass because
+    // the two routes were handed the same grid by accident.
+    expect(CASUS1_V2_GRID[0]).toBeGreaterThan(
+      Math.min(
+        ...Object.values(facts.impedanceByModel ?? {}).map((z) => z.validHz[0]),
+      ),
+    );
+  });
+
+  it('min |Z| and its verdict are identical, netlist by netlist', () => {
+    expect(STATED_FLOOR_OHM).not.toBeNull();
+    const tol = (golden.toleranties as { ohm: number }).ohm;
+    for (const key of NETLIST_KEYS) {
+      const fromFile = FIELD.find((f) => f.key === key)!.verdicts.find(
+        (v) => v.gate === 'M-B/|Z|',
+      )!;
+      const fromSearch = searchVerdicts(key).find((v) => v.gate === 'M-B/|Z|')!;
+      expect(fromSearch.value, `${key}: the search route produced no |Z|`).not.toBeNull();
+      expect(fromSearch.value!, `${key}: gate ${fromSearch.value} vs file ${fromFile.value}`)
+        .toBeCloseTo(fromFile.value!, Math.max(0, -Math.log10(tol)));
+      // The verdict, not only the number: a 0.001 Ω difference either side of
+      // the floor would be a disagreement about whether this may be built.
+      expect(fromSearch.pass, `${key}: gate says ${fromSearch.pass}, file says ${fromFile.pass}`)
+        .toBe(fromFile.pass);
+      expect(fromSearch.withinToleranceOnly).toBe(fromFile.withinToleranceOnly);
+    }
+  });
+
+  it('the ONE soft spot of V32 is measured, not argued: the extrapolated branch', () => {
+    /* THE HONEST WEAKNESS, AND ITS MEASUREMENT.
+     *
+     * The judgement grid is the UNION of the drivers' sweeps, because the
+     * intersection on this set is 200 Hz and up — the blindness V32 is about,
+     * reached from the other side. The price is that the tweeter, whose sweep
+     * starts at 199.95 Hz, is READ below that, held flat at its lowest measured
+     * value. Every verdict at 82 Hz therefore rests partly on an extrapolation.
+     *
+     * The physical answer is that a series capacitor has already taken the
+     * tweeter branch out of the picture two octaves below its crossover, so its
+     * impedance there cannot matter. That is an argument. This is the
+     * measurement: multiply the extrapolated region by ten and by a tenth — a
+     * factor of a hundred across — and the system minimum may not move.
+     *
+     * If a design ever DOES depend on it, this goes red, and the right response
+     * is a tweeter sweep that reaches lower, not a looser test. */
+    const lo = Math.min(
+      ...Object.values(facts.impedanceByModel ?? {}).map((z) => z.validHz[0]),
+    );
+    const extrapolated = Object.entries(facts.impedanceByModel ?? {}).filter(
+      ([, z]) => z.validHz[0] > lo,
+    );
+    // The premise: there IS an extrapolated branch. Without one this test would
+    // pass by having nothing to perturb.
+    expect(extrapolated.length).toBeGreaterThan(0);
+
+    for (const key of NETLIST_KEYS) {
+      const filter = casus1Filter(key, manifest, files, golden);
+      const readWith = (mult: number): number => {
+        const sweeps = Object.fromEntries(
+          Object.entries(facts.impedanceByModel ?? {}).map(([m, z]) => [
+            m,
+            { grid: z.grid, magnitude: z.magnitude, phaseDeg: z.phaseDeg, validHz: z.validHz },
+          ]),
+        );
+        const ref = impedanceReferenceFrom(sweeps)!;
+        const driverZ: Record<string, readonly Complex[]> = { ...ref.driverZ };
+        for (const [m, z] of extrapolated) {
+          driverZ[m] = ref.driverZ[m].map((c, i) =>
+            ref.grid[i] < z.validHz[0] ? { re: c.re * mult, im: c.im * mult } : c,
+          );
+        }
+        return epdr(buildAnalysis(filter.netlist, ref.grid, driverZ)).minZOhm;
+      };
+      const asMeasured = readWith(1);
+      // A factor of a hundred across, and the tolerance is the reference
+      // file's own ohm class rather than a number written here.
+      expect(readWith(10), `${key}: a x10 extrapolation moved min |Z|`).toBeCloseTo(
+        asMeasured,
+        Math.max(0, -Math.log10((golden.toleranties as { ohm: number }).ohm)),
+      );
+      expect(readWith(0.1), `${key}: a x0.1 extrapolation moved min |Z|`).toBeCloseTo(
+        asMeasured,
+        Math.max(0, -Math.log10((golden.toleranties as { ohm: number }).ohm)),
+      );
+    }
+  });
+
+  it('and they name the same span — one rule, not two that happen to agree', () => {
+    for (const key of NETLIST_KEYS) {
+      const fromFile = FIELD.find((f) => f.key === key)!.verdicts.find(
+        (v) => v.gate === 'M-B/|Z|',
+      )!;
+      const fromSearch = searchVerdicts(key).find((v) => v.gate === 'M-B/|Z|')!;
+      expect(fromSearch.parameters?.judged_on, `${key}`).toBe(fromFile.parameters?.judged_on);
+      expect(String(fromSearch.parameters?.judged_on)).toContain('impedance');
     }
   });
 });

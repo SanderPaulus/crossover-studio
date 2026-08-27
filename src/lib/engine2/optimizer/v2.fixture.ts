@@ -26,7 +26,7 @@ import { parseZma } from '../../parsers/zma.ts';
 import type { VxpPart } from '../../parsers/vxp.ts';
 import { crossoverToNetlist } from '../../vxpNetwork.ts';
 import type { VxpCrossover } from '../../parsers/vxp.ts';
-import { freezeGateReference, type GateReference } from './gates.ts';
+import { freezeGateReference, type GateReference, type MeasuredSweep } from './gates.ts';
 
 const FIXTURES = join(dirname(fileURLToPath(import.meta.url)), '..', '..', 'parsers', 'fixtures');
 const load = (name: string): string => readFileSync(join(FIXTURES, name), 'utf-8');
@@ -54,6 +54,34 @@ export const v2DriverZ = (): Record<string, Complex[]> => ({
   mid: griddedZ('mid_Backwavecone_sheep75gram.ZMA'),
   tweeter: griddedZ('tweeter.ZMA'),
 });
+
+/**
+ * V32 — THE MEASURED SWEEPS, on the grids the files themselves carry.
+ *
+ * Since V32 the electrical gates judge here rather than on `V2_GRID`, and this
+ * fixture is the reason that distinction had to be made honestly rather than
+ * by giving `evaluateGates` a fallback. `V2_GRID` is 210–19 000 Hz, which is a
+ * choice this fixture made for the RESPONSES; the `.zma` files run wider, and
+ * an amplifier load is a property of the whole sweep. So the sweeps are handed
+ * over unresampled and the gates get the same extent the panel would give them.
+ *
+ * A fixture MAY declare its own curves to be the measurement — that is what
+ * these are. What no caller may do is get a verdict out of a sweep that never
+ * arrived, which is why the fallback lives here as a decision rather than
+ * inside the gate as a default.
+ */
+export const v2Sweeps = (): Record<string, MeasuredSweep> => {
+  const of = (name: string): MeasuredSweep => {
+    const z = parseZma(load(name));
+    return {
+      grid: z.freq,
+      magnitude: z.magnitude,
+      phaseDeg: z.phase,
+      validHz: [z.freq[0], z.freq[z.freq.length - 1]],
+    };
+  };
+  return { mid: of('mid_Backwavecone_sheep75gram.ZMA'), tweeter: of('tweeter.ZMA') };
+};
 
 /**
  * A two-way seed with the ingredients the V2 pathology needs to be possible:
@@ -171,5 +199,6 @@ export function v2GateReference(): GateReference {
     branchDb: { mid: wBase.spl, tweeter: tBase.spl },
     fsHz: fs,
     validHz: { mid: band, tweeter: band },
+    sweeps: v2Sweeps(),
   });
 }

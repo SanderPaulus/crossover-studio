@@ -61,7 +61,10 @@ import { relaxUntil, type RelaxationOptions, type RelaxationOutcome } from './re
  * same discipline as the estimator versions (A5e.5), applied to a selection
  * rather than to a measurement.
  */
-export const SHORTLIST_SELECTION_VERSION = 'shortlist/1.0';
+export const SHORTLIST_SELECTION_VERSION = 'shortlist/1.1';
+/* 1.1 — V31: a candidate whose tune was refused wholesale is no longer eligible
+ * at all. The same field can therefore produce a different list, which is
+ * exactly the condition this constant exists to record. */
 
 /** One candidate offered to the selection. */
 export interface ShortlistInput<T> {
@@ -75,6 +78,21 @@ export interface ShortlistInput<T> {
   gates: readonly GateVerdict[];
   /** Reasons the v1 chain itself disqualified it, if any. */
   disqualified?: readonly string[];
+  /**
+   * V31 — set when this candidate's tune was refused wholesale and it
+   * therefore has no network to offer.
+   *
+   * A THIRD way to be out, kept apart from the other two on purpose. A
+   * requirement the ladder may move; a gate it may never move; and this, which
+   * is not a judgement about a design at all — there IS no design. A rejected
+   * candidate that shared a lane with a gate failure would read as "we looked
+   * at it and it was not good enough", and nobody looked at anything.
+   */
+  rejection?: {
+    kinds: readonly string[];
+    reason: string;
+    rejectedTune?: Readonly<Record<string, number | null>> | null;
+  } | null;
 }
 
 /** One row of the delivered shortlist. */
@@ -100,8 +118,30 @@ export interface ShortlistStamp {
   selectionVersion: string;
 }
 
+/**
+ * V31 — one candidate that delivered nothing, and why.
+ *
+ * Deliberately NOT a `ShortlistRow`: it carries no `parts`, no `result` and no
+ * measurements, because there is no design to carry them about. Presenting a
+ * refused candidate with a seed's numbers in a row is exactly what V31 is.
+ */
+export interface ShortlistRejection {
+  label: string;
+  /** The typed categories of the rule that refused it. */
+  kinds: readonly string[];
+  /** That rule's own sentence, for a human. */
+  reason: string;
+  /** What the REFUSED tune had reached. Reporting; not a design. */
+  rejectedTune?: Readonly<Record<string, number | null>> | null;
+}
+
 export interface Shortlist<T> {
   rows: ShortlistRow<T>[];
+  /**
+   * V31 — the candidates that delivered no network at all, with the rule that
+   * refused each of them. Never rows, and never counted as feasible.
+   */
+  rejected: ShortlistRejection[];
   /** Every candidate that was judged, feasible or not — the field's size. */
   consideredCount: number;
   /** How many met every requirement in force. */
@@ -155,13 +195,18 @@ export function buildShortlist<T>(
    * move the second, and a candidate refused by a gate must not look like one
    * that merely missed a taste limit. */
   const gateFailed = candidates.map((c) => c.gates.some((g) => g.active && !g.pass));
+  /* V31 — the third exit. Applied here, OUTSIDE the ladder's reach, for the
+   * same reason a gate is: the ladder relaxes taste, and there is no taste
+   * limit anyone could relax that would make a candidate with no network
+   * deliverable. */
+  const wasRejected = candidates.map((c) => Boolean(c.rejection));
 
   const evaluateAll = (inForce: RequirementSettings): RequirementEvaluation[] =>
     candidates.map((c, i) => {
       const e = evaluateRequirements(c.measurements, inForce, requirements);
       // A gate failure is not a requirement failure, but it is still an exit.
       // Recorded here so that `feasible` means "may be delivered" everywhere.
-      return gateFailed[i] ? { ...e, feasible: false } : e;
+      return gateFailed[i] || wasRejected[i] ? { ...e, feasible: false } : e;
     });
 
   const relaxation = relaxUntil(requirements, size, evaluateAll, settings.relaxation);
@@ -199,12 +244,42 @@ export function buildShortlist<T>(
     .sort((a, b) => (a.sortKey === b.sortKey ? a.index - b.index : a.sortKey - b.sortKey))
     .map((p) => p.item);
 
+  const rejected: ShortlistRejection[] = candidates
+    .filter((c) => c.rejection)
+    .map((c) => ({
+      label: c.label,
+      kinds: [...c.rejection!.kinds],
+      reason: c.rejection!.reason,
+      ...(c.rejection!.rejectedTune ? { rejectedTune: c.rejection!.rejectedTune } : {}),
+    }));
+  if (rejected.length > 0) {
+    notes.push(
+      `${rejected.length} of ${candidates.length} candidates delivered no network at all: their ` +
+        'tune was refused wholesale and the seed that came back is not a proposal (V31). They ' +
+        'are listed under `rejected` with the rule that refused them, and they are not rows.',
+    );
+  }
+
+  /* The diagnosis answers "what was the closest miss", so it may only look at
+   * candidates that HAVE a measurement. A refused candidate's numbers are its
+   * seed's, and letting them in would make the seed the best near-miss. */
+  const measured = candidates
+    .map((c, i) => ({ c, i }))
+    .filter(({ i }) => !wasRejected[i]);
   const diagnosis =
     relaxation.feasibleCount === 0
-      ? describeBestMisses(
-          relaxation.evaluations,
-          candidates.map((c) => [...c.gates]),
-        )
+      ? [
+          ...describeBestMisses(
+            measured.map(({ i }) => relaxation.evaluations[i]),
+            measured.map(({ c }) => [...c.gates]),
+          ),
+          ...(rejected.length > 0
+            ? [
+                `${rejected.length} candidate(s) delivered nothing to miss with: ` +
+                  rejected.map((r) => `${r.label} — ${r.reason}`).join(' · '),
+              ]
+            : []),
+        ]
       : [];
 
   if (!isImplementedCurve(targetCurve)) {
@@ -251,6 +326,7 @@ export function buildShortlist<T>(
 
   return {
     rows,
+    rejected,
     consideredCount: candidates.length,
     feasibleCount: relaxation.feasibleCount,
     relaxation,
