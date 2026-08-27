@@ -129,6 +129,7 @@ import {
   recommendedBand,
   type RecommendedBandResult,
 } from './lib/engine2/predesign/recommendedBand.ts';
+import { factsForWorker } from './lib/engine2/optimizer/measurementFacts.ts';
 import {
   smoothingConsistency,
   type SmoothingNotice,
@@ -434,6 +435,57 @@ function useTheme(): [Theme, (t: Theme) => void] {
  *  the −60 dB phase-mask and the 20 dB integration-overlap window, so the
  *  ghost never draws a phase line and never counts as overlap. */
 const SILENT_GHOST_DB = -400;
+
+/* ------------------------------------------------------------------ *
+ * V1 PIN DEFAULTS — LEGACY, and the toggle invariant is why they stay
+ * ------------------------------------------------------------------ */
+
+/**
+ * The crossover-pin starting values and load fallbacks the v1 route has always
+ * used. Every one of them is a FREQUENCY that came out of one project.
+ *
+ * WHY THIS IS A P6 VIOLATION. P6 (spec A2) forbids a literal frequency in
+ * engine or metric code: everything is derived from project data or is an
+ * explicit project setting. These steer a design — `xoLowPin` and `xoHighPin`
+ * cage the structure search — and they are neither derived nor stated. The
+ * audit records the sharpest case (`docs/audit_engineV2_optimizerV1_grens.md`
+ * §7): the low default gives 250–550 Hz, while the A5d.3 measurement-validity
+ * floor for that pair on the casebook set is 396.7 Hz, so the range begins
+ * 147 Hz BELOW the lowest frequency the app itself trusts.
+ *
+ * WHY THEY ARE STILL HERE. The toggle invariant says that with `engineV2Enabled`
+ * off the app is byte-identical to the app before engine2 existed, and
+ * `toggleRegression.test.ts` proves it. Deriving these on the v1 route would
+ * change v1 behaviour, which is the one thing this project does not do. So they
+ * are collected, named, and pinned by `p6Lint.test.ts` — which refuses a
+ * frequency literal in a `useState` or fallback position ANYWHERE ELSE in this
+ * file, and snapshots this block so nothing can be added to it quietly.
+ *
+ * They are v1 heritage. They are not a default for anything v2 does: the v2
+ * route takes its pin from the A5d.3 windows and the F3c recommended band, and
+ * where there is no window there is NO pin and the run says so — it does not
+ * fall back to this block.
+ *
+ * THE DAY THIS BLOCK GOES is the day v2 becomes the default and the invariant
+ * it protects stops existing. Until then, removing it is a regression of that
+ * guarantee rather than a tidy-up.
+ *
+ * @p6-legacy v1-pin-defaults
+ */
+const V1_PIN_DEFAULTS_LEGACY = {
+  /** Upper (mid-tweeter on a 3-way) pin centre, Hz, as a field string. */
+  highFreqHz: '2200',
+  /** Upper pin half-width, Hz, as a field string. */
+  highMarginHz: '400',
+  /** Lower (woofer-mid) pin centre, Hz, as a field string. */
+  lowFreqHz: '400',
+  /** Lower pin half-width, Hz, as a field string. */
+  lowMarginHz: '150',
+  /** Migration fallback for a stored design that predates centre ± margin. */
+  legacyRangeLoHz: 1800,
+  /** Migration fallback for a stored design that predates centre ± margin. */
+  legacyRangeHiHz: 3500,
+} as const;
 
 /** Compact frequency label: 9335 → "9.3 kHz", 245 → "245 Hz". */
 const hz = (f: number): string =>
@@ -1720,8 +1772,8 @@ export default function App() {
   const [xoRangeOn, setXoRangeOn] = useState(false);
   /** Crossover point the designer picks: centre frequency ± margin (Hz).
    *  Margin 0 = "exactly there" (a minimal ±2% keeps the search alive). */
-  const [xoFreqHz, setXoFreqHz] = useState('2200');
-  const [xoMarginHz, setXoMarginHz] = useState('400');
+  const [xoFreqHz, setXoFreqHz] = useState<string>(V1_PIN_DEFAULTS_LEGACY.highFreqHz);
+  const [xoMarginHz, setXoMarginHz] = useState<string>(V1_PIN_DEFAULTS_LEGACY.highMarginHz);
   /** Scan candidates across the pinned range (odd, 3..11; Sanders idee):
    *  more steps = a finer sweep, compute grows ~linearly (pool absorbs some). */
   const [xoScanSteps, setXoScanSteps] = useState(3);
@@ -1776,8 +1828,8 @@ export default function App() {
    *  flank at the low crossing AND an LP flank at the high one, and the
    *  woofer's LP flank needs its own knob too). The existing xoFreqHz/
    *  acSlopeMid/acSlopeTweeter keep steering the HIGH (mid-tweeter) pair. */
-  const [xoLowFreqHz, setXoLowFreqHz] = useState('400');
-  const [xoLowMarginHz, setXoLowMarginHz] = useState('150');
+  const [xoLowFreqHz, setXoLowFreqHz] = useState<string>(V1_PIN_DEFAULTS_LEGACY.lowFreqHz);
+  const [xoLowMarginHz, setXoLowMarginHz] = useState<string>(V1_PIN_DEFAULTS_LEGACY.lowMarginHz);
   const [acSlopeWoofer, setAcSlopeWoofer] = useState('24');
   const [acSlopeMidHp, setAcSlopeMidHp] = useState('24');
   /** Datasheet numbers for the excursion floor — the level-aware version of
@@ -3340,9 +3392,20 @@ export default function App() {
           ),
         },
       });
-      return { report: buildReport(built.input), ambiguous: built.ambiguous, error: null as string | null };
+      return {
+        report: buildReport(built.input),
+        ambiguous: built.ambiguous,
+        error: null as string | null,
+        /* F4b — the driver ids the report labels its rows with, per ROLE.
+         * Three vocabularies meet here: storage speaks roles, the report speaks
+         * the netlist's model names, and the worker speaks the canonical model
+         * names its `driverZ` is keyed by. Carrying the map out of the memo is
+         * what lets `factsForWorker` translate between the last two without
+         * anything guessing. */
+        driverIds: built.driverIds,
+      };
     } catch (e) {
-      return { report: null, ambiguous: null, error: (e as Error).message };
+      return { report: null, ambiguous: null, error: (e as Error).message, driverIds: {} };
     }
   }, [
     engineSelection,
@@ -3370,15 +3433,94 @@ export default function App() {
     v2Meas,
   ]);
 
-  /** 3-way pins for the design chain (freq ± margin per handover). */
+  /**
+   * 3-way pins for the design chain (freq ± margin per handover).
+   *
+   * F4b — WHERE A PIN COMES FROM WHEN THE FIELD DOES NOT SAY.
+   *
+   * The designer's typed value always wins; this is only about the case where
+   * a field holds nothing usable. On the v1 route that falls back to
+   * `V1_PIN_DEFAULTS_LEGACY`, which is where it has always fallen back and
+   * where it must keep falling back — the toggle invariant is a claim about
+   * v1 behaviour, not an aspiration.
+   *
+   * On the v2 route it does NOT. Audit §7: those literals are project numbers
+   * that steer a design without being derived or stated, and the low one puts
+   * the range 147 Hz below the measurement-validity floor the same app
+   * computes. So the v2 route falls back to the A5d.3 window through the F3c
+   * recommended band — the number the reporting layer already derived from the
+   * measurements — and where there is no window it produces NO PIN and says
+   * so. A silent 400 Hz is the failure this replaces.
+   *
+   * Reads `v2Recommended`, which is declared further down the component body;
+   * every call site of this function runs after that declaration.
+   */
   const xoPinsValue = (): {
     low?: { freq: number; margin: number };
     high?: { freq: number; margin: number };
+    /** What was substituted, or refused, and why. Empty on the ordinary path. */
+    notes: string[];
   } => {
-    if (!xoRangeOn) return {};
+    if (!xoRangeOn) return { notes: [] };
+    const notes: string[] = [];
+    const useV2Pins = engineSelection.optimizer === 'v2';
+
+    /** The recommended band as a pin, or null when no window could be derived. */
+    const fromWindow = (side: 'low' | 'high'): { freq: number; margin: number } | null => {
+      const rec = v2Recommended(side);
+      const seg = rec?.effectiveHz[0] ?? null;
+      if (!seg || !(seg[1] > seg[0])) return null;
+      return { freq: (seg[0] + seg[1]) / 2, margin: (seg[1] - seg[0]) / 2 };
+    };
+
+    const pinFor = (
+      side: 'low' | 'high',
+      freqField: string,
+      marginField: string,
+      legacyFreq: string,
+      legacyMargin: string,
+    ): { freq: number; margin: number } | undefined => {
+      const f = num(freqField, NaN);
+      const m = num(marginField, NaN);
+      if (Number.isFinite(f) && f > 0 && Number.isFinite(m)) return { freq: f, margin: m };
+      if (!useV2Pins) {
+        return { freq: num(freqField, Number(legacyFreq)), margin: num(marginField, Number(legacyMargin)) };
+      }
+      const derived = fromWindow(side);
+      if (derived) {
+        notes.push(
+          `${side === 'low' ? 'Lower' : 'Upper'} handover: no range stated, so the pin comes from ` +
+            `the A5d.3 window (${Math.round(derived.freq - derived.margin)}–` +
+            `${Math.round(derived.freq + derived.margin)} Hz) rather than from a v1 default.`,
+        );
+        return derived;
+      }
+      notes.push(
+        `${side === 'low' ? 'Lower' : 'Upper'} handover: no range stated and no A5d.3 window could ` +
+          'be derived, so this handover is NOT pinned. The v1 default is deliberately not used ' +
+          'here — it is a frequency from another project (audit §7).',
+      );
+      return undefined;
+    };
+
+    const low = pinFor(
+      'low',
+      xoLowFreqHz,
+      xoLowMarginHz,
+      V1_PIN_DEFAULTS_LEGACY.lowFreqHz,
+      V1_PIN_DEFAULTS_LEGACY.lowMarginHz,
+    );
+    const high = pinFor(
+      'high',
+      xoFreqHz,
+      xoMarginHz,
+      V1_PIN_DEFAULTS_LEGACY.highFreqHz,
+      V1_PIN_DEFAULTS_LEGACY.highMarginHz,
+    );
     return {
-      low: { freq: num(xoLowFreqHz, 400), margin: num(xoLowMarginHz, 150) },
-      high: { freq: num(xoFreqHz, 2200), margin: num(xoMarginHz, 400) },
+      ...(low ? { low } : {}),
+      ...(high ? { high } : {}),
+      notes,
     };
   };
 
@@ -3387,8 +3529,12 @@ export default function App() {
    *  non-degenerate ("exactly there"). Pins the ACOUSTIC crossing. */
   const xoRangeValue = (): [number, number] | undefined => {
     if (!xoRangeOn) return undefined;
-    const f = num(xoFreqHz, 2200);
-    const m = Math.max(num(xoMarginHz, 400), f * 0.02);
+    // Same legacy fallbacks as the 3-way pin, and for the same reason: this is
+    // the TWO-WAY route, which is still v1 in full (TODO(F2c) in `facade.ts`).
+    // The v2 pin derivation lives in `xoPinsValue`; when the two-way route is
+    // wired to v2 this one follows it there.
+    const f = num(xoFreqHz, Number(V1_PIN_DEFAULTS_LEGACY.highFreqHz));
+    const m = Math.max(num(xoMarginHz, Number(V1_PIN_DEFAULTS_LEGACY.highMarginHz)), f * 0.02);
     return [f - m, f + m];
   };
 
@@ -5860,17 +6006,17 @@ export default function App() {
     // Legacy lo/hi range migrates to centre ± margin.
     if (d.xoFreqHz !== undefined) {
       setXoFreqHz(d.xoFreqHz);
-      setXoMarginHz(d.xoMarginHz ?? '400');
+      setXoMarginHz(d.xoMarginHz ?? V1_PIN_DEFAULTS_LEGACY.highMarginHz);
       setXoScanSteps(d.xoScanSteps ?? 3);
       setXo3Steps(d.xo3Steps ?? 2);
     } else if (d.xoRangeLo !== undefined || d.xoRangeHi !== undefined) {
-      const lo = Number(d.xoRangeLo) || 1800;
-      const hi = Number(d.xoRangeHi) || 3500;
+      const lo = Number(d.xoRangeLo) || V1_PIN_DEFAULTS_LEGACY.legacyRangeLoHz;
+      const hi = Number(d.xoRangeHi) || V1_PIN_DEFAULTS_LEGACY.legacyRangeHiHz;
       setXoFreqHz(String(Math.round((lo + hi) / 2)));
       setXoMarginHz(String(Math.round(Math.abs(hi - lo) / 2)));
     } else {
-      setXoFreqHz('2200');
-      setXoMarginHz('400');
+      setXoFreqHz(V1_PIN_DEFAULTS_LEGACY.highFreqHz);
+      setXoMarginHz(V1_PIN_DEFAULTS_LEGACY.highMarginHz);
     }
     setHpLpPref(d.hpLpPref ?? 'auto');
     setHpLpPrefLow(d.hpLpPrefLow ?? 'auto');
@@ -5879,8 +6025,8 @@ export default function App() {
     setAcSlopeTweeter(d.acSlopeTweeter ?? '12');
     setAcSlopeWoofer(d.acSlopeWoofer ?? '24');
     setAcSlopeMidHp(d.acSlopeMidHp ?? '24');
-    setXoLowFreqHz(d.xoLowFreqHz ?? '400');
-    setXoLowMarginHz(d.xoLowMarginHz ?? '150');
+    setXoLowFreqHz(d.xoLowFreqHz ?? V1_PIN_DEFAULTS_LEGACY.lowFreqHz);
+    setXoLowMarginHz(d.xoLowMarginHz ?? V1_PIN_DEFAULTS_LEGACY.lowMarginHz);
     setMidSizeInch(d.midSizeInch ?? '');
     setWooferSizeInch(d.wooferSizeInch ?? '');
     setKaTier((d.kaTier as KaTier) in KA_TIERS ? (d.kaTier as KaTier) : 'measured');
@@ -6112,6 +6258,9 @@ export default function App() {
       // floor is clamped to it — the physWin3 banner already says so — and the
       // clamped pin is what the chain cages and judges against.
       const pinsRaw = xoPinsValue();
+      // F4b — a substituted or refused pin is a fact about the run, so it is
+      // reported rather than left to be inferred from the delivered crossings.
+      setV2RunNotes(engineSelection.optimizer === 'v2' ? pinsRaw.notes : []);
       const clampPin = (
         pin: { freq: number; margin: number } | undefined,
         win: { floorHz: number | null; ceilHz: number | null; userClampedByData: boolean } | undefined,
@@ -6353,6 +6502,54 @@ export default function App() {
        * The gate verdicts and the run stamp are collected as the rounds land,
        * so a partial field still carries the status that says it is partial. */
       const useV2 = engineSelection.optimizer === 'v2';
+      /* F4b — THE MEASURED FACTS THAT CROSS THE BORDER (audit §4, leaks 1 and 2).
+       *
+       * `reOhmByModel` existed in the payload since F2 and was read by the
+       * worker since F2, and nothing ever filled it: the worker fell back to
+       * `estimateRe(curve)` with no options, which cannot run the motional fit
+       * and therefore always produced the direct low-frequency reading. On the
+       * casebook woofer that is 3.81 Ω against a resolved 2.90 Ω, with the
+       * panel showing one number and the bound dividing by the other (V21).
+       * The A5b.1 validity intervals never crossed at all, so the frozen
+       * passbands were the whole analysis grid (V22).
+       *
+       * ONE SOURCE OF TRUTH: the ingest pass resolved both, this hands them
+       * over, and the worker consumes rather than re-derives. The keys are
+       * translated from the report's driver ids to the canonical model names
+       * the worker's `driverZ` uses — the same bridge `driverSlots.ts` is for.
+       * A missing report is not patched over: the worker's fallback is still
+       * there, it says so in the notes, and the run fingerprint records it. */
+      const v2Facts = (() => {
+        const rep = engineV2Report?.report;
+        if (!rep) return {};
+        const modelByDriverId: Record<string, string> = {};
+        /* F4b2 — the raw impedance sweeps, keyed the way the REPORT keys its
+         * drivers. They go with the facts because A4 M-D evaluates around f_p,
+         * which for a woofer sits below the chain's analysis grid entirely:
+         * inverting on that grid does not refuse, it publishes a ceiling of a
+         * thousand henries (V25). The report does not keep the curve — it keeps
+         * the classification of it — so it is handed over from here, where it
+         * was read from disk in the first place. */
+        const sweepByDriverId: Record<
+          string,
+          { freq: readonly number[]; magnitude: readonly number[]; phaseDeg: readonly number[] }
+        > = {};
+        for (const role of ['low', 'mid', 'high'] as const) {
+          const id = engineV2Report?.driverIds?.[role];
+          if (id === undefined) continue;
+          modelByDriverId[id] = canonicalModelForRole(role, threeWay);
+          const zma =
+            zStandalone[role]?.zma ?? impedances[canonicalModelForRole(role, threeWay)];
+          if (zma) {
+            sweepByDriverId[id] = {
+              freq: zma.freq,
+              magnitude: zma.magnitude,
+              phaseDeg: zma.phase,
+            };
+          }
+        }
+        return factsForWorker(rep, modelByDriverId, sweepByDriverId);
+      })();
       const v2GatesByLabel: Record<string, { verdicts: GateVerdict[]; violation: string | null }> = {};
       const v2Field: ShortlistInput<Chain3Result>[] = [];
       let v2Stamp: V2RunStamp | null = null;
@@ -6385,6 +6582,9 @@ export default function App() {
                 ? { budgetEvaluations: engineV2Gates.runBudgetEvals }
                 : {}),
             },
+            // F4b — the resolved R_e per driver with the source that produced
+            // it, and the A5b.1 validity interval per driver. See `v2Facts`.
+            ...v2Facts,
             // A5e.2 — the design's own target curve, or flat when it has
             // never stated one. On the DESIGN, so two voicings can sit side by
             // side and be compared.
@@ -6418,7 +6618,17 @@ export default function App() {
       const scan3 = (ins: Chain3Input[], onProgress: (d: ScanProgress) => void): Promise<Chain3Result[]> => {
         if (!useV2 || !v2ScanSettings) return runChain3Scan(ins, onProgress);
         return runChain3ScanV2(ins, v2ScanSettings, onProgress).then((r) => {
+          /* F4b — the worker's own notes get a screen.
+           *
+           * `collect.notes` has existed since F2 and nothing ever rendered it,
+           * which is precisely how leak 3 survived: a channel with no reader is
+           * a channel that reports nothing. The notes are per candidate and
+           * mostly identical across a field of them (they describe the
+           * MEASUREMENT SET, not the design), so they are de-duplicated —
+           * forty copies of one sentence is a different way of being unread. */
+          const workerNotes = new Set<string>();
           for (const c of r.candidates) {
+            for (const n of c.notes) workerNotes.add(n);
             v2GatesByLabel[c.result.label] = { verdicts: c.gates, violation: c.violation };
             // Every candidate the scan produced, feasible or not — the
             // shortlist decides feasibility, and it cannot decide it over a
@@ -6433,6 +6643,10 @@ export default function App() {
               disqualified: c.result.disqualified,
             });
           }
+          setV2RunNotes((prev) => {
+            const seen = new Set(prev);
+            return [...prev, ...[...workerNotes].filter((n) => !seen.has(n))];
+          });
           // The LAST stamp wins, and for the axis-by-axis scan that is the
           // right one: a run that was stopped in round two is aborted, whatever
           // round one reported.
@@ -7511,6 +7725,15 @@ export default function App() {
    * on v1 or produced nothing.
    */
   const [v2Shortlist, setV2Shortlist] = useState<Shortlist<Chain3Result> | null>(null);
+  /**
+   * F4b — what the v2 run SUBSTITUTED or REFUSED before it started.
+   *
+   * Today that is the pin: on the v2 route an unstated handover is pinned from
+   * the A5d.3 window, or not pinned at all, and neither may happen silently
+   * (audit §7). A run that quietly used a v1 default frequency looks exactly
+   * like a run that was told to use it.
+   */
+  const [v2RunNotes, setV2RunNotes] = useState<string[]>([]);
   /** Which shortlist column the table is sorted on. Presentation only. */
   const [shortlistSort, setShortlistSort] = useState<{ key: string; dir: 1 | -1 } | null>(null);
   /** Old → new component values of the last tune run ("⚙ Optimize
@@ -16177,6 +16400,15 @@ export default function App() {
                 {t('Engine v2 is on, but this scan ran on the v1 engine — so no gate judged these candidates.')}{' '}
                 {t('The gates run on the three-way scan; the two-way route is not wired to them yet.')}
               </p>
+            )}
+            {v2RunNotes.length > 0 && (
+              <div className="sub">
+                {v2RunNotes.map((n, i) => (
+                  <p className="sub" key={i}>
+                    {n}
+                  </p>
+                ))}
+              </div>
             )}
             {/* F3 — THE SHORTLIST (A5e.1).
                 The feasible region, spread over topology classes, ordered by

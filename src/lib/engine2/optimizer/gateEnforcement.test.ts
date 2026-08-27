@@ -47,7 +47,12 @@ const { wBase, tBase } = v2Responses();
 const driverZ = v2DriverZ();
 
 /** The pressure that produced the pathology in the first place: a tight phase target. */
-const PRESSURE = { phasePriority: 0.7, staged: { rippleDb: 1.0, phaseDeg: 5 } };
+/* F4c — split by class. `phasePriority` is a grey WEIGHT (it shapes the
+ * scalar, and so decides which part of the field is visited); `staged` is a
+ * CHOICE (it is the goal the search is held to). Neither may arrive through
+ * `tuneOptions` any more — see `choices.ts`. */
+const PRESSURE_WEIGHTS = { phasePriority: 0.7 };
+const PRESSURE_CHOICES = { staged: { rippleDb: 1.0, phaseDeg: 5 } };
 
 /** The gate set for the pathology regression — all three of A4's gates armed. */
 const GATES: GateSettings = {
@@ -103,7 +108,8 @@ function optimise(args: {
     tBase,
     driverZ,
     adjust: { offsetMm: 0, trimDb: 0, inverted: false },
-    tuneOptions: PRESSURE,
+    weights: PRESSURE_WEIGHTS,
+    choices: PRESSURE_CHOICES,
     determinism: { seed: args.seed ?? 4242, starts: args.starts ?? 3 },
     gateReference: reference,
     ...(args.gates ? { gates: args.gates } : {}),

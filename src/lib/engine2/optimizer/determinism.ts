@@ -165,6 +165,31 @@ export interface FingerprintInput {
   bounds: string;
   /** Stable serialisation of the tuner options that steer the search. */
   tuning: string;
+  /**
+   * F4b — the measured FACTS the run was handed: the resolved R_e per driver
+   * with the source that produced it (A5c.1), and the A5b.1 validity interval
+   * per driver.
+   *
+   * An ingredient rather than a note beside the result, for the same reason
+   * `status` is one. Before F4b the v2 route silently re-derived both — R_e
+   * from the bottom of the sweep whatever the hierarchy had chosen, validity
+   * from the whole analysis grid — and a run on the resolved facts was
+   * therefore indistinguishable from a run on the fallbacks: same seed, same
+   * design, same fingerprint, and one of them had divided by the wrong ohm
+   * (V21, V22). Absent is treated as "nothing was handed over", which is a
+   * different run from one where something was.
+   */
+  facts?: string;
+  /**
+   * F4c — the CANDIDATE this run searched, and the weights it was judged on.
+   *
+   * Until F4c the v2 route set four of the tuner's 37 options and inherited the
+   * rest from whatever the v1 chain built, so two runs on genuinely different
+   * ground — a different cage, a different slope target, a different phase
+   * weight — could be told apart only by their results. An ingredient rather
+   * than a note, for the same reason `status` and `facts` are.
+   */
+  choices?: string;
 }
 
 export function fingerprintComponents(input: FingerprintInput): FingerprintComponent[] {
@@ -193,6 +218,16 @@ export function fingerprintComponents(input: FingerprintInput): FingerprintCompo
     { name: 'gates', value: digest(input.gates), describe: 'the active gates and their limits' },
     { name: 'bounds', value: digest(input.bounds), describe: 'the active budgets and their inversions' },
     { name: 'tuning', value: digest(input.tuning), describe: 'the tuner options that steer the search' },
+    {
+      name: 'facts',
+      value: digest(input.facts ?? ''),
+      describe: 'the resolved R_e per driver with its source, and the A5b.1 validity per driver',
+    },
+    {
+      name: 'choices',
+      value: digest(input.choices ?? ''),
+      describe: 'what was searched (the candidate) and the weights it was judged on',
+    },
   ];
 }
 

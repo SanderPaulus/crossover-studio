@@ -27,6 +27,7 @@ import {
   stream,
   type FingerprintInput,
 } from './determinism.ts';
+import { measurementFactsKey, type MeasurementFactsPayload } from './measurementFacts.ts';
 import { DEFAULT_RUN_SEED, DEFAULT_RUN_STARTS } from '../constants.ts';
 import { runV2Optimization, EngineSelectionError, type V2OptimizeResult } from './run.ts';
 import { v2DriverZ, v2GateReference, v2Responses, v2SeedParts, V2_GRID } from './v2.fixture.ts';
@@ -46,7 +47,10 @@ function run(seed: number, starts = 2): V2OptimizeResult {
     tBase,
     driverZ,
     adjust: { offsetMm: 0, trimDb: 0, inverted: false },
-    tuneOptions: { phasePriority: 0.3 },
+    // F4c — `phasePriority` is a GREY weight: it shapes the scalar and so
+    // decides which part of the field the search visits. It may no longer
+    // arrive through `tuneOptions`, and the compiler is what says so.
+    weights: { phasePriority: 0.3 },
     determinism: { seed, starts, budgetEvaluations: 120 },
     gateReference: reference,
   });
@@ -144,7 +148,10 @@ describe('A5e.4 - the v2 optimisation path is deterministic', () => {
       tBase,
       driverZ,
       adjust: { offsetMm: 0, trimDb: 0, inverted: false },
-      tuneOptions: { phasePriority: 0.3 },
+      // F4c — `phasePriority` is a GREY weight: it shapes the scalar and so
+      // decides which part of the field is visited. It may no longer arrive
+      // through `tuneOptions`, and the compiler is what says so.
+      weights: { phasePriority: 0.3 },
       determinism: { seed: 4242, starts: 1, budgetEvaluations: 600 },
       gateReference: reference,
     });
@@ -159,10 +166,48 @@ describe('A5e.4 - the v2 optimisation path is deterministic', () => {
     determinism: resolveDeterminism({ seed: 1, starts: 2, budgetEvaluations: 100 }),
     design: 'design-A',
     measurements: 'measure-A',
+    choices: 'choices-A',
     gates: 'gates-A',
     bounds: 'bounds-A',
     tuning: 'tuning-A',
+    facts: 'facts-A',
   };
+
+  it('F4b2: the `facts` ingredient covers every fact that crosses the border', () => {
+    /* `facts` was introduced at F4b with two contents (the resolved R_e and the
+     * A5b.1 validity). F4b2 added three more — the resonance, the near field
+     * and the impedance sweep — because the LF-lift inversion cannot be made
+     * from anything the worker holds (V25). The ingredient's NAME did not
+     * change, so the coverage assert below cannot see the growth; this is what
+     * sees it. Each entry must move the key on its own, or a run on a different
+     * measurement could wear the same fingerprint.
+     *
+     * Deliberately synthetic: this is a statement about the key, not about any
+     * measurement set. */
+    const bare = JSON.stringify(measurementFactsKey({}));
+    const variants: Record<string, MeasurementFactsPayload> = {
+      re: { reOhmByModel: { w: 3 }, reSourceByModel: { w: 'entered' } },
+      validHz: { validHzByModel: { w: [100, 1000] } },
+      fundamental: { fundamentalHzByModel: { w: 50 } },
+      nearField: { nearFieldByModel: { w: { grid: [10, 20], db: [0, 1], validHz: [10, 20] } } },
+      impedance: {
+        impedanceByModel: {
+          w: { grid: [10, 20], magnitude: [8, 9], phaseDeg: [0, 1], validHz: [10, 20] },
+        },
+      },
+    };
+    const seen = new Set<string>([bare]);
+    for (const [name, payload] of Object.entries(variants)) {
+      const key = JSON.stringify(measurementFactsKey(payload));
+      expect(key, `${name} does not move the facts key`).not.toBe(bare);
+      expect(seen.has(key), `${name} collides with another fact`).toBe(false);
+      seen.add(key);
+    }
+    // Every field of the payload type is exercised above. A new one added
+    // without a variant here rides along untested, which is the failure this
+    // assert exists to prevent.
+    expect(Object.keys(variants).length).toBe(5);
+  });
 
   it('the fingerprint changes with EVERY component it is made of', () => {
     const original = fingerprintComponents(base);
@@ -187,6 +232,18 @@ describe('A5e.4 - the v2 optimisation path is deterministic', () => {
       // coverage assert below refused the build without it, which is exactly
       // what that assert is for.
       { name: 'status', input: { ...base, status: 'aborted' } },
+      // F4b: the measured FACTS the run was handed — the resolved R_e with its
+      // source and the A5b.1 validity per driver. Before F4b the v2 route
+      // re-derived both inside the worker, so a run on the resolved facts and a
+      // run on the fallbacks were indistinguishable (V21, V22). This entry is
+      // here for the same reason `status` is: the coverage assert refused the
+      // build without it.
+      { name: 'facts', input: { ...base, facts: 'facts-B' } },
+      // F4c: what was SEARCHED. Until F4c the v2 route inherited 33 of the
+      // tuner's 37 options from v1, so two runs over different ground could
+      // fingerprint alike. Same reason this entry exists as the others: the
+      // coverage assert refused the build without it.
+      { name: 'choices', input: { ...base, choices: 'choices-B' } },
     ];
     for (const m of mutations) {
       expect(fingerprintOf(fingerprintComponents(m.input)), `${m.name} did not move the fingerprint`)

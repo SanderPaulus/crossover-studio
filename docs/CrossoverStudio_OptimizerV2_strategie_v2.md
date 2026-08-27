@@ -44,6 +44,46 @@ De huidige optimizer stuurt op SPL, fase en min|Z|. In praktijkgebruik (casus 1,
        discrete catalogus-descent met exacte parasieten, Monte-Carlo eindpoort
 ```
 
+### A3j. Keuze, polish en het grijze gebied ertussen
+
+*Toegevoegd 27-08-2026 (F4c). Algemeen geformuleerd: de indeling geldt voor elke instelling die
+de tuner aanneemt, niet voor een vastgelegde lijst sleutels. De concrete indeling van de
+huidige tuner is een BIJLAGE bij het casusboek, geen onderdeel van deze specificatie — een
+lijst namen in Deel A zou een implementatiedetail tot norm verheffen.*
+
+Een optimalisatie krijgt twee soorten instellingen mee, en het onderscheid is niet cosmetisch:
+het bepaalt wie ze mag zetten zodra er twee engines zijn.
+
+**Keuze** — de instelling bepaalt **WAT** er gezocht wordt. Waar wordt overgenomen, welke flank
+krijgt welke orde, welke helling wordt nagestreefd, bindt de catalogus, welke curve wordt
+beoordeeld en over welke band, en wat is ronduit verboden. Een keuze beschrijft de kandidaat.
+Zij hoort bij de laag die de kandidaat oplevert (A5d, pre-design) en nergens anders vandaan te
+komen.
+
+**Polish** — de instelling bepaalt **HOE** er gezocht wordt binnen een gegeven keuze:
+iteratiebudget, gladding van de foutmaat, numerieke veiligheid, instrumentatie. Polish mag
+overerven: wie de kandidaat ook koos, deze instellingen veranderen niets aan wat er gezocht wordt.
+
+**Het grijze gebied** — gewichten die de scalaire kostfunctie vormgeven. Naar de vorm zijn het
+polish: geen ervan noemt een frequentie, een orde of een topologie. Naar het effect zijn het
+keuze, want de balans tussen deelscores bepaalt welk deel van het veld de zoektocht ooit
+bezoekt. Een kandidaat beoordeeld op een andere weging is een andere vraag, ook als het
+zoekgebied identiek is.
+
+**De regel die hieruit volgt.** Zodra twee engines dezelfde tuner delen, mag een keuze-instelling
+niet meer stilzwijgend van de ene naar de andere overerven: een kandidaat die door engine A is
+gekozen en met de instellingen van engine B wordt gezocht, wordt ongemerkt teruggetrokken naar
+B's ontwerp. Grijze instellingen erven wél, maar alleen **expliciet**: de engine die de zoektocht
+voert stelt ze vast, en waar zij een waarde van de ander overneemt zegt zij dat. Zeggen dat iets
+overgeërfd is verslaat het verzwijgen — en het maakt de aanname toetsbaar zodra iemand haar wil
+betwisten.
+
+**Toetsbaarheid.** De indeling is pas een regel als zij afdwingbaar is: elke instelling die de
+tuner aanneemt heeft een klasse, de verzameling klassen dekt de instellingen volledig, en een
+nieuwe instelling zonder klasse hoort de build te breken in plaats van stil in de erf-categorie
+te vallen.
+
+
 Structureel afgevangen ontwerpfouten: (1) polish-fase die grenzen negeert — grenshandhaving zit in de kern; (2) optima op een naald — worst-case over de parasietband is een vaste laatste fase, met de onzekerheidsband als instelling.
 
 ## A4. Metriekregister
@@ -316,6 +356,263 @@ Configuratie: 3-weg; 2× SB WO24TX-8 parallel, MR13TX-4 in bolpod, T25T-6 in WG1
   **Wat er op het spel stond.** Die 1395 Hz-detectie is niet decoratief: met de ernst-weging (3,2 dB → divisor 2,53) zet zij het plafond van het woofer-mid-kruisvenster op **551 Hz**, en `plafond_bindend: "breakup_ernst"` in het referentiebestand zegt dat het de énige binding op die bovengrens is. Een filter dat een kwart van de echte detecties wegneemt om dit artefact te verwijderen, zou de app het enige argument ontnemen dat zij heeft om dat kruispunt laag te houden. En de tegenwerping "op 1395 Hz is de woofer toch 35 dB onderdrukt" is precies de vuistregel die M-H vervangt: de vervorming ontstaat ín de driver, ná het filter, dus elektrische demping raakt haar niet.
 
   **De regel die hieruit volgt.** Twee scans met dezelfde formule zijn niet twee instanties van hetzelfde probleem. De geldigheid van een detectorregel hangt aan de vórm van de curve waarop hij draait — nominaal vlak of nominaal hellend — en een remedie overzetten zonder die vorm te toetsen is hoe een bugfix een regressie wordt. Het artefact blijft in de breakup-scan bewust staan, met de meting erbij, begrensd doordat een flankkruin ongeveer een kwart van de dipdiepte is en er dus een notch van meerdere dB nodig is om de rapportagedrempel te halen.
+
+- V19 (waar een referentie een FUNCTIE van is — de classificatie van casus 1) — bij F4a, en het is een sessie zonder één gedragswijziging.
+
+  **Waarom.** De audit (`docs/audit_engineV2_optimizerV1_grens.md`, §6 en §8) stelt vast dat engine v2 vandaag alleen WAARDEN begrenst: welke kandidaten er zijn beslist `crossover3Variants` stroomopwaarts, vóór de v1/v2-splitsing. Zodra v2 eigen kandidaten genereert (F4d) levert dat legitiem andere netwerken op, en elke golden reference die een eigenschap van de ZOEKTOCHT vastlegt in plaats van natuurkunde gaat dan rood — precies op het moment dat de acceptatie-autoriteit nodig is. V15 schreef die les op voor een eigenschap van één meetsessie; dit is dezelfde fout één laag lager, voor een eigenschap van één engine. De vraag was dus niet "klopt het getal" maar "waar is het getal een functie van".
+
+  **De drie klassen.** A = (metingen) → waarde, engine-onafhankelijk. B = (metingen, gegeven netlist) → metriek, berekend op een vaste netlist die als BESTAND in `test-fixtures/casus1/` staat. C = (metingen, zoektocht) → uitkomst: een kruispunt dat een zoektocht koos, componentwaarden waarop zij uitkwam, de score van een run, de samenstelling van een shortlist.
+
+  **De uitkomst, en zij was niet de verwachte.** Van de 272 bladeren van het referentiebestand zijn er 204 waardedragend (de rest is proza en bestandsboekhouding). Daarvan zijn er **123 klasse A**, **71 klasse B**, **0 klasse C**, plus 10 tolerantieklassen — die geen klasse dragen, want een tolerantie is nergens een functie van maar een besluit met een motivering. **Er is niets gedegradeerd, omdat er niets te degraderen viel.**
+
+  De reden is één ontwerpbesluit dat al lang geleden goed is uitgevallen: **de drie kandidaten van casus 1 zijn als netlist-BESTAND bevroren, niet als uitkomst van een run.** `manifest_en_geometrie.netlists` noemt drie `.adsfilter.json`-bestanden die sinds `b04f9fa` onveranderd in de repo staan; `casus1Filter` leest ze van schijf en `buildReport` rekent erop. Geen enkele test die een casus-1-referentie consumeert draait een zoektocht — nagelopen met `grep` op `optimizeNetworkValues`, `crossover3Variants`, `handleV2Request` en `runV2Chain3` over alle acht consumerende testbestanden. Wat de audit vreesde bestaat voor deze casus dus niet.
+
+  **Dat is een bevinding en geen opluchting.** Zij is pas waar sinds iemand het heeft nagekeken, en niets hield haar waar. Twee dingen doen dat sinds F4a wél: elke referentie draagt de velden `klasse` en `afhankelijkheid` (letterlijk `meting`, `meting+netlist` of `meting+zoektocht`), en `src/lib/engine2/goldenClassification.test.ts` faalt op een blok zonder klasse, op een klasse die niet bij haar afhankelijkheid past, op een klasse C buiten `v1_baseline`, en op een bronbestand dat een `v1_baseline`-waarde leest. Het lege `v1_baseline`-blok draagt de commit waarop de classificatie is gedaan (`b137f1d`) plus de herleiding: de kandidaatgeneratie bewoog het laatst bij `61a3ea4`, de tuner bij `c7030ab`. F4d kan zijn eigen uitkomst ernaast leggen zonder ergens een acceptatiecriterium te vinden dat er geen mocht zijn.
+
+  **Wat de classificatie wél opleverde: negen ontbrekende parameterblokken.** Klasse bepalen dwingt je te lezen waar een getal vandaan komt, en dan valt op wat er niet staat. **Veertien** van de 46 referentiegroepen in de tabel hieronder bleken een BAND, een GLADDING of een RASTER te gebruiken die alleen in de code stond — precies wat de V15-procesregel verbiedt. Zij zijn *herdefinieerd* en ondergebracht in **negen** parameterblokken; negen en niet veertien, omdat de vier SPL-scans (breakups, persistentie, richting, diffractie) er aantoonbaar één delen. De waarden zijn onaangeraakt gebleven en de parameters staan er nu bij — mechanisch geverifieerd: van de 272 bestaande bladeren is er geen enkele van waarde veranderd. De overige 31 groepen zijn *behouden* (14 + 31 = 45), en de zesenveertigste rij is het lege baseline-blok.
+
+  De scherpste drie:
+  - **De SPL-scans** (`_spl_scan_parameters`). Breakups, richtings-persistentie, de richtingsverhouding en de diffractierimpel draaien alle vier tegen dezelfde 1/2-octaaftrend op hetzelfde 500-punts logaritmische raster, geclipt op de eigen geldigheidsband van de driver. Geen van die drie stond in het bestand — terwijl **V8c letterlijk vastlegt dat dezelfde conusresonantie +0,7 of +3,2 dB leest naargelang die band**, en het kruisplafond van 551 Hz aan dat verschil hangt. De meest bandgevoelige referentie in het boek droeg haar band niet.
+  - **M-E** (`_M_E_parameters`). `Qes_mult` deelt door R_e, en het casusboek draagt twee lezingen van dezelfde R_e van het wooferpaar (V16: 2,90 en 3,05 Ω). Welke van de twee eronder lag stond in een zin in V16 en in een constante in de testfixture — `CASUS1_WOOFER_DC_OHM = 3.05`. Een parameter die alleen in code bestaat is exact wat V15 verbiedt, en de test vergelijkt de twee nu.
+  - **M-F-interim** (`_M_F_interim_parameters`). λ = d·f/c, en wélke d stond nergens. Het onderste paar gebruikt niet de 261 mm tussen wooferpaar en mid maar de **275,8 mm ARRAY-afstand binnen de wooferweg** — het paar is één weg met twee bronnen, en de bronscheiding die de lobe maakt zit binnen die weg. Op HUIDIG is dat 0,289 tegen 0,274 λ: buiten de λ-klasse van 4 %, dus een andere grootheid en geen afronding.
+
+  De andere zes: de directe R_e-aflezing (mediaan over de laagste 2,5 % van de punten — genoemd in proza bij woofer en tweeter, en bij de mid nergens), de spreekspoelfit (band = één decade boven de hoogste motionele resonantie), de verankerde gaps (energiegemiddelde tussen de overnames, met de overname als meetkundig midden van het A5d.3-venster), de kruisvensters (orde-factor 1,4, de ongekalibreerde ernst-divisors 3,0/2,0 en de casusboek-c-t-c), M-A/M-B (het volle poortvrije analyseraster en de IEC 60268-1-weging) en de vensterinteractie (KAND_B, en een fasehelling over een vol octaaf rond het kruispunt).
+
+  **De grens tussen "herdefiniëren" en "niet aanraken".** V15 gaat over een band, een middeling of een raster. Detectiedrempels — `RESONANCE_MIN_Z_OVER_RE`, de fasenul-hoek, de reflex-dipfractie — zijn géén V15-geval: zij zijn schattergedrag, en dat wordt gedekt door de schatter-versionering (`z-re@1.1`) en door casus S1. Die scheiding aanhouden is wat verhinderde dat "elke referentie krijgt parameters" ontaardde in het overschrijven van de hele engine in JSON.
+
+  **De les die overblijft.** Een referentie zonder klasse is een getal waarvan niemand weet wat het overleeft. Dat casus 1 er goed uit komt, komt doordat haar kandidaten bestanden zijn — en dat is een eigenschap van hoe de fixtures zijn aangelegd, niet van hoe het bestand is geschreven. Een volgende casus die kandidaten als RUN-uitkomst vastlegt, krijgt het probleem dat de audit voorzag, en krijgt het stil. Vandaar de regel in `.claude/skills/casus-toevoegen/SKILL.md`: elke nieuwe referentie draagt klasse en afhankelijkheid, en klasse C mag alleen onder `v1_baseline` of een toekomstig `v2_baseline` staan.
+
+  **Openstaand, en bewust niet in F4a opgelost.** Er is geen tolerantieklasse voor graden-per-octaaf; `goldenCasus1.test.ts:611` draagt daarom zijn eigen 15 %, en dat is dezelfde soort fout als een test die zijn eigen dB-klasse meesleept. Een klasse vaststellen is een besluit met een motivering en geen classificatie, dus het is genoteerd in `vensterinteractie.parameters.openstaand_tolerantie` en wacht op de sessie die het neemt.
+
+  **De inventarisatietabel.** Vijf kolommen: referentie, klasse, consumerende test, besluit, reden. `gCT` = `src/lib/engine2/goldenCasus1.test.ts`, `bIT` = `src/lib/engine2/optimizer/boundInversions.test.ts`, `cST` = `src/lib/engine2/optimizer/casus1Shortlist.test.ts`, `mWT` = `src/lib/engine2/manualWindowAndLobing.test.ts`, `fix` = `src/lib/engine2/casus1.fixture.ts`, `gClT` = `src/lib/engine2/goldenClassification.test.ts`.
+
+| referentie | kl. | consumerende test | besluit | reden |
+|---|---|---|---|---|
+| `toleranties.*` (10) | — | gCT:134-149 | behouden | Geen referentie maar de aanvaardingsbreedte VAN referenties; nergens een functie van. |
+| `afgeleide_parameters.woofer.Re` / `.mid.Re` / `.tweeter.Re` | A | gCT:162, 323, 384 | behouden | Motionele fit; band, weging en startpunten staan volledig in `re_fit_parameters`. |
+| `..woofer.Re_naief`, `.mid.Re_direct`, `.tweeter.Re_direct` | A | gCT:166, 389 | **herdefinieerd** | Venstermiddeling waarvan het venster (laagste 2,5 % van de punten, mediaan) alleen in proza stond, en bij de mid nergens. |
+| `..*.Re_motionele_rok_ohm` (3) | A | gCT:171, 262 | behouden | Uit de gefitte tak zelf; de fitband staat in `re_fit_parameters`. |
+| `..*.Re_fit_residu`, `..*.Re_fit_bandgevoeligheid_ohm` (6) | A | gCT:244-249 | behouden | Fitkwaliteit met eigen tolerantieklasse en volledige parameterset (F3b). |
+| `..*.Re_fit_band_hz` (3) | A | gCT:253-259 | behouden | De band zelf, expliciet — dit ís de V15-parameter. |
+| `..woofer.Re_werkelijk_ca` | A | gCT:163 | behouden | Meterlezing van het parallelle wooferpaar; herkomst genoteerd. |
+| `..woofer.fL` / `fb` / `fH` / `Zdip` | A | gCT:176-179 | behouden | Reflex-classificatie over de hele sweep; schattergedrag zit in de versiestring. |
+| `..woofer.Q_bovenpiek` | A | gCT:294 | behouden | Open referentieniveau van de −3 dB-punten is al gemotiveerd in `toleranties_toelichting.Q_pct`. |
+| `..woofer.breakup.{f,dB,Q}`, `..mid.breakups` (5) | A | gCT:312-315, 353-357 | **herdefinieerd** | Trendbreedte, scanraster en band ontbraken — juist de referentie waarvan V8c zegt dat zij bandgevoelig is. |
+| `..mid.persistentie_30gr` (5) | A | gCT:358-365 | **herdefinieerd** | Zelfde scan plus een ±1/6-octaaf zoekvenster; geen van beide stond er. |
+| `..mid.dir_m3_30` / `dir_m6_30` | A | gCT:373-374 | **herdefinieerd** | De VERSCHILcurve wordt gegladd op dezelfde trend; gladding en raster ontbraken. |
+| `..mid.fc` / `Zmax` / `r0` / `Qmc` / `Qec` / `Qtc`, `..tweeter.fs` / `Zmax` / `r0` | A | gCT:326-331, 390-392 | behouden | Gesloten-classificatie over de hele sweep. |
+| `..*.semi_inductantie_n` (2) | A | gCT:296, 332 | **herdefinieerd** | Fitband (één decade boven de hoogste resonantie) en de weigergrenzen stonden alleen in de code. |
+| `..*.NF_fmax` (2) | A | gCT:302, 333 | behouden | Keele over de getagde diameter; de diameter staat in het manifest. |
+| `..woofer.FF_vloer_header` | A | gCT:303 | behouden | 1/T uit de header; de headertijden staan in `manifest_en_geometrie.ff_headers`. |
+| `..tweeter.diffractie_rimpel_rms_dB`, `..dominante_omweg_mm` | A | gCT:393-398 | **herdefinieerd** | RMS-band, log-raster, 1024-punts lineaire transformatie, Hann-venster en de 4-perioden-ondergrens ontbraken alle vijf. |
+| `..tweeter._Re_sessie_25_08.waarde` / `.r0` | A | gCT:389 | behouden | Ingetrokken waarde mét haar schatter — de V15-vorm zelf. |
+| `verankerde_gaps_dB.anker` | A | gCT:580 | behouden | Acceptatiecriterium; reproduceert, en nagemeten identiek op alle drie de netlists (gClT). |
+| `verankerde_gaps_dB.woofer_tov_mid` / `.tweeter_tov_mid` | A | gCT:587 (status), 590-591 | **herdefinieerd** | Niveaubanden (energiegemiddelde tussen de overnames, overname = meetkundig venstermidden) ontbraken. |
+| `kandidaten.*.minZ` / `.minEPDR` (6) | B | gCT:420-421 | **herdefinieerd** | Zoekt een minimum over het HELE poortvrije analyseraster; band noch raster stond er. |
+| `kandidaten.*.dissipatie_pct`, `.R8_W_bij_100W` / `.grootste_R_W_bij_100W` (6) | B | gCT:426-431 | **herdefinieerd** | IEC-weging, normalisatie op aangenomen vermogen en het raster ontbraken. |
+| `kandidaten.*.Qes_mult` (3) | B | gCT:436-440 | **herdefinieerd** | Deelt door R_e = 3,05 Ω, een waarde die alleen in `fix:281` en in een zin van V16 bestond. |
+| `kandidaten.*.lf_bult_extra_dB` (3) | B | gCT:454-458 | behouden | Band en referentie afgeleid uit f_p; vastgelegd in `grens_inversies.parameters.maxL_bult`. |
+| `kandidaten.*.lobing_wm_lambda` / `.lobing_mt_lambda` (6) | B | gCT:464-467 | **herdefinieerd** | Wélke c-t-c stond nergens, en het onderste paar gebruikt de array-afstand en niet de paarafstand. |
+| `kandidaten.*.V_tweeter_op_fs_dB` (3) | B | gCT:445-449 | behouden | Doorlaatband afgeleid uit de eigen kruispunten (F1-conventie, genoteerd in `_V_tweeter_op_fs_dB_opmerking`). |
+| `kandidaten.*.wm_fase_oct` / `.mt_fase_oct` (6) | B | gCT:473-481 | behouden | ±1 octaaf geclipt op de geldigheidsband; de conventie staat in `_wm_fase_oct_opmerking`. |
+| `kandidaten.KAND_B_3e.lobing_eind_dip_15gr` | B | gCT:488-489, mWT:66-68 | behouden | Het ±15°-venster staat in de sleutelnaam, de akoestische centra in de geometrie. |
+| `kandidaten.KAND_B_3e.rms_vlakheid_dB` / `.spl_venster_pm_dB` | B | cST:83-92 | behouden | Volledige parameterset in `_F3_respons_oordeel` (doelcurve, gladding, band, raster). |
+| `kandidaten._F3_respons_oordeel.overige_kandidaten.*` (4) | B | cST:95-102 | behouden | Idem, en de kolom smalle pieken is expliciet leeg gemeld (cST:117-121). |
+| `kandidaten._F3_respons_oordeel.{gladding,band_hz,grid}` | B | cST:70-79 | behouden | Dit zijn de V15-parameters zelf. |
+| `kandidaten._V_tweeter_op_fs_dB_sessie_25_08.*` (11) | B | gCT:495-530 | behouden | Ingetrokken waarden mét sessieband, middeling, raster en f_s-afronding. |
+| `kruisvensters.woofer_mid_orde4.*` | A | gCT:537-546 | **herdefinieerd** | Orde-factor, ernst-divisors, significantiedrempel en c-t-c ontbraken; de sleutelnaam draagt de orde, en een naam is geen parameter. |
+| `kruisvensters.mid_tweeter_orde4.*` | A | gCT:548-557, 559-576 | **herdefinieerd** | Idem. |
+| `grens_inversies.maxRs_Qmult1_3/1_5/2_0_ohm` | A | bIT:78-91 | behouden | Volledige parameterset sinds F2, inclusief wélke R_e-lezing. |
+| `grens_inversies.maxL_bij_Rs0_5_budget2_5dB_mH` | A | bIT:139-160 | behouden | Band uit f_p, budget en pad-R expliciet; assert op de metriek, niet op de mH. |
+| `grens_inversies._maxL_sessie_25_08.*` (5) | A | bIT:162-196 | behouden | Ingetrokken waarde met haar sessieband — de V15-vorm. |
+| `grens_inversies.max_padR_tweeter_gap_ohm` + `parameters.max_padR.*` | **B** | bIT:200-208 | behouden | De impedantiemediaan is meting, maar de doorlaatband komt uit de kruispunten van HUIDIG; herkomst stond er al. |
+| `grens_inversies.parameters.voorbound_serie_C.*` | **B** | bIT:212-270 | behouden | `gerealiseerd_uF`/`_orde` zijn eigenschappen van de netlist KAND_B (C1 = 42,0 µF); geen acceptatiewaarde maar een mechanisme-eis. |
+| `vensterinteractie.midband_octaaf`, `.drie_bronnen_zone`, `.fase_doorkoppeling_...` | B | gCT:600-613 | **herdefinieerd** | Kandidaat (KAND_B) en de venstervorm van de fasehelling stonden er niet; op HUIDIG leest hetzelfde blok 2,65 okt en −127 °/okt. |
+| `manifest_en_geometrie.bestanden.*` (24) | A | fix:209-215 | behouden | Meetmanifest — projectinvoer, geen afleiding. |
+| `manifest_en_geometrie.ff_headers.*` (3) | A | mWT:156-162 | behouden | Headertijden uit de meetbestanden. |
+| `manifest_en_geometrie.geometrie.*` (14) | A | fix:238-262 | behouden | Kastgeometrie; c-t-c-herkomst sinds F3c expliciet toegeschreven. |
+| `manifest_en_geometrie.netlists.*` (3) | A | fix:287 | behouden | **De reden dat er geen klasse C is:** de kandidaten zijn bestandsnamen, geen runuitkomsten. |
+| `re_fit_parameters.*` (6 waarden) | A | gCT:272-288 | behouden | De V15-parameters van de motionele fit. |
+| `v1_baseline.referenties` | C | gClT (verbiedt lezen) | — | Leeg bij F4a; niets viel te degraderen. |
+
+- V20 (OPEN — welke afstand geldt voor lobing tussen een weg met N bronnen en de aangrenzende weg?) — opgeworpen bij F4a, **niet beantwoord**, en bewust als open vraag vastgelegd in plaats van als bevinding.
+
+  **De vraag.** M-F-interim rekent λ = d·f/c op het kruispunt. Voor het paar wooferarray → mid gebruikt de engine vandaag de **array-afstand** (275,8 mm, de afstand tussen de twee woofers onderling) en niet de **paarafstand** (261 mm, tussen het akoestisch centrum van het paar en dat van de mid). Op HUIDIG scheelt dat 0,289 tegen 0,274 λ — buiten de λ-tolerantieklasse van 4 %, dus twee verschillende grootheden en geen afronding.
+
+  **Wat er vóór elk van beide te zeggen valt, en waarom dat het lastig maakt.** De array-afstand beschrijft de bronscheiding *binnen* de lage weg; die maakt een lobe die er ook is als er geen tweede weg bestond. De paarafstand beschrijft de scheiding *tussen* de twee wegen op de plek waar zij elkaar overnemen, en dat is het verschijnsel waar M-F over gaat. Beide zijn echt en ze zitten in dezelfde frequentieband. Casus 1 kan de vraag niet beslechten: 0,289 en 0,274 vallen allebei in de gunstige zone, dus de ontwerpbeslissing gaat er niet van kantelen — precies waarom het een open vraag mag blijven en geen noodgreep hoeft.
+
+  **Wat F4a wél heeft vastgelegd.** Dát de engine de array-afstand gebruikt staat sinds F4a in het referentiebestand (`kandidaten._M_F_interim_parameters.d_woofer_mid_mm`, met de herkomst erbij), zodat de keuze niet langer alleen in de code bestaat. De vraag welke van de twee JUIST is, is daarmee niet beantwoord — zij is alleen zichtbaar gemaakt.
+
+  **Wat haar zou beslechten.** Een verticale meting over het kruisgebied van een weg met twee bronnen waarvan de array-afstand en de paarafstand ver genoeg uiteen liggen om de twee voorspellingen te scheiden, en waarvan de gemeten dip zegt welke van beide de lobe verklaart. Op deze meetset bestaat die scheiding niet. **Openstaand.**
+
+- V21 (de ingevoerde DC-weerstand kwam nooit aan — één hiërarchie, twee implementaties) — bij F4b, en het lek was drie fasen oud.
+
+  **Wat het was.** `V2RunSettings.reOhmByModel` bestond sinds F2, werd sinds F2 gelezen (`worker.ts`, `measurementFacts`), en werd door niemand ooit gevuld — `grep -rn "reOhmByModel" src/` gaf uitsluitend treffers in `worker.ts` zelf. Het A5a-formulierveld dat de ontwerper invult ging een andere kant op: `App.tsx` → `AdapterBranch.measuredReOhm` → `buildEngineV2Input` → `buildReport`, en daar hield het op. **De hele F3b-verbetering was rapportage-only.**
+
+  **Waarom de terugval niet onschuldig was.** De worker riep `estimateRe(curve)` aan zónder opties, en `impedance.ts` schakelt de motionele fit alleen in als `opts.fundamentalHz` én `opts.motionalPeaks` gezet zijn. Beide ontbraken per constructie — de worker heeft de geclassificeerde resonanties niet, die zitten in de opnamepas — dus de fit was altijd `null` en de **directe aflezing** won altijd. Op het wooferpaar van casus 1 is dat 3,81 Ω tegen een opgeloste 2,90 Ω. De M-E-inversie `R_s ≤ R_e·(q−1)` is lineair in R_e, dus de grens stond **32 % te ruim**, terwijl het paneel ernaast het juiste getal toonde. Eén hiërarchie, twee implementaties, en zij waren het oneens.
+
+  **Hoe aangetoond.** Door de échte route: `handleV2Request` met de payload eerst door `structuredClone`, en de assert op de `R_e_ohm` en `R_e_source` die de opgeleverde `qes-series-r`-grens meedraagt. Zonder payload leest die bron letterlijk "no resolved R_e reached this run"; mét payload staat de doorgegeven waarde er verbatim in en is de grens `R_e·(q−1)` daarvan. Het getal in de test is de eigen aflezing van de fixture maal een factor — geen enkele Ω-waarde staat in de test.
+
+  **Wat gewijzigd is.** De opnamepas blijft de énige plek waar A5c.1 gelopen wordt; de worker leidt niets meer opnieuw af. `measurementFacts.ts` (nieuw) draagt de opgeloste R_e mét zijn herkomsttekst over de grens, `App.tsx` vult hem bij `v2ScanSettings` uit het rapport dat er toch al ligt, en de sleutelvertaling gaat via `driverIds` + `canonicalModelForRole` — het rapport spreekt netlist-modelnamen, de worker canonieke, en dat zijn niet dezelfde. De terugval in de worker is **niet** verwijderd (de route zonder rapport heeft hem nodig) maar loopt alleen nog als de payload niets levert, en zegt dat dan in `collect.notes`. Sinds F4b heeft dat notitiekanaal ook een scherm: `App.tsx` verzamelt de notities van de kandidaten, ontdubbelt ze en toont ze bij de scanuitslag. **Een kanaal zonder lezer rapporteert niets — dat is hoe dit lek en V23 samen drie fasen overleefden.**
+
+  **De vingerafdruk.** Nieuw ingrediënt `facts` (A5e.4): een run op de opgeloste feiten en een run op de terugval waren tot F4b niet te onderscheiden — zelfde seed, zelfde ontwerp, zelfde vingerafdruk, en één van de twee deelde door het verkeerde getal. De herkomst zit erin naast de waarde, want 2,90 Ω van een meter en 2,90 Ω uit een fit zijn dezelfde grens en een andere bewering. `determinism.test.ts` weigerde de build tot het nieuwe ingrediënt zijn eigen mutatie kreeg — precies waarvoor die dekkingsassert bestaat.
+
+  **Acceptatie op casus 1.** De R_e die de grens oversteekt IS het getal waar de klasse-B-referentie `kandidaten.*.Qes_mult` door deelt: `factsForWorker(...).reOhmByModel.woofer` gelijk aan `kandidaten._M_E_parameters.R_e_ohm` uit het referentiebestand — het parameterblok dat F4a moest aanleggen omdat die waarde tot dan alleen in een constante in de fixture bestond. Eén R_e, één herkomst, aan beide kanten van de grens. Zonder ingevoerde waarde steekt de **motionele fit** over en aantoonbaar niet de directe aflezing (het verschil ligt buiten de ohm-klasse) — het getal dat de worker met eigen middelen nooit kon bereiken.
+
+  **Waarom de v1-route niet geraakt is.** Alles wat hier beweegt zit in `engine2/` en in de v2-tak van `App.tsx`. `optimWorker.ts` is byte-onaangeraakt en importeert nog steeds niets uit `engine2/`; `netOptimizer.ts`, `threeWayChain.ts` en `designChain.ts` zijn niet gewijzigd. Met de vlag uit bestaat `v2ScanSettings` niet en is `engineV2Report` `null`, dus de payload wordt niet eens opgebouwd. `toggleRegression.test.ts` blijft byte-identiek.
+
+- V22 (de meetgeldigheid werd bij de grens weggegooid — V15, één laag lager) — bij F4b.
+
+  **Wat het was.** `worker.ts` zette `validHz[model]` op `[grid[0], grid[grid.length-1]]`: het hele analyseraster, voor élke driver. De A5b.1-geldigheidsintervallen — 1/T uit de meetheader, geclipt op de omvang van de bestanden — staken de grens niet over. `freezeGateReference` kreeg dat raster mee, en `passbandOf` klemt de doorlaatband aan **beide** kanten op precies die "fallback" (`analysis.ts`: `[Math.max(lo, fallback[0]), Math.min(hi, fallback[1])]`). Met het volle raster is die klem inert, dus de bevroren doorlaatbanden en elke inversie die er een leest oordeelden ook op frequenties waarvan de meting zelf zegt dat ze er niet zijn.
+
+  **Waarom dit V15 is en geen nieuw soort fout.** V15 legde vast dat een referentie die een band gebruikt die band moet meedragen, anders is zij niet reproduceerbaar. Hier gebruikt een *grens* een band, en die band werd bij de overdracht vervangen door een ruimere — dezelfde fout één laag lager: niet "de referentie vergat haar band" maar "de route gooide haar band weg". En net als bij V15 had de engine gelijk en de route ongelijk: de opnamepas had het interval correct afgeleid.
+
+  **Hoe aangetoond.** Met een fixture waarin raster en geldigheid *bewust* verschillen: de gemeten tweeter-impedantie wordt boven een gekozen plafond maal acht genomen, en het plafond wordt als geldigheidstop meegegeven. De M-C-voorbound draagt de mediane |Z| over de doorlaatband als parameter, dus het effect is direct afleesbaar — **45,7 Ω zonder interval tegen 5,8 Ω met interval**, en de grens zelf beweegt mee. De onderkant van de sweep blijft schoon, met opzet: daar wonen de directe R_e-aflezing en de resonantieclassificatie, en die vervuilen zou de run laten falen om een reden die niets met geldigheid te maken heeft. Een interval dat *ruimer* is dan het raster wordt op het raster geklemd en niet geloofd — een array houdt op waar hij ophoudt.
+
+  **Wat gewijzigd is.** `validHzByModel` in de payload, gevuld uit `d.onAxis.bandHz` van het rapport; in de worker komt `validHz[model]` daaruit, geclipt op het raster, en het raster is uitsluitend terugval — genoteerd in `collect.notes` en in de vingerafdruk. Op casus 1 is het interval dat oversteekt aantoonbaar de header-gate-vloer die het referentiebestand noteert (`afgeleide_parameters.woofer.FF_vloer_header`), en aantoonbaar smaller dan het analyseraster.
+
+  **Waarom de v1-route niet geraakt is.** Zelfde argument als V21: het veld bestaat alleen in de v2-payload en wordt alleen door de v2-worker gelezen.
+
+- V23 (een ingevuld veld dat niets doet, en dat nergens stond) — bij F4b, en het is de kleinste van de drie reparaties met de scherpste les.
+
+  **Wat het was.** `worker.ts` geeft de budgetinversie `gapBudgetDb: null` mee, met een `TODO(A5e.2)` erboven: A5d.4(a) wil het ankerniveau ná baffle step in de beoogde opstelling, en dat is een eigenschap van het doelcurve-object — een open besluit. `bounds.ts` slaat de dempingsgrens dan over met een `continue` en zónder notitie ("het anker heeft per definitie geen verzwakkingsbudget"), want vanuit die functie gezien is een ontbrekend gap-budget geen ontbrekende invoer. Er volgde wél een noot in `collect.notes` — en `collect.notes` bereikte het scherm nooit. Resultaat: een ontwerper die `dampingMarginDb` invult krijgt een veld dat niets doet en dat nergens zegt dat het niets doet.
+
+  **Waarom dat een doctrine-schending is en niet alleen een gemis.** F0 legde vast: **leeg = geen oordeel**. Het spiegelbeeld stond nergens: *ingevuld en niet toegepast = ook geen oordeel*. Een getal dat in een veld staat ziet eruit alsof het meedoet.
+
+  **Wat gewijzigd is — en vooral wat níet.** De TODO staat er nog, het besluit blijft open, en er is geen gap verzonnen. Wat er bij is gekomen is één zin in `predesign.boundNotes`, die het paneel al rendert bij de budgetsectie: "stated — not applied on this route (waiting on A5e.2)". Met de asymmetrie erbij, want die is echt en de lezer heeft er recht op: in het **rapport** wordt de marge wél toegepast (dat heeft de verankerde gaps om hem bovenop te leggen), het is de **zoektocht** die hem niet kan gebruiken. Zonder ingevuld veld verschijnt er niets — een ongevraagd veld verdient geen zin.
+
+  **Bijvangst — GEREPAREERD IN F4b2.** Op dezelfde route droeg `BudgetWay` geen `nearField` en geen `impedance` (`grep` op `worker.ts`: nul treffers), dus óók `lfBumpBudgetDb` kon daar nooit tot een grens komen — hij leverde altijd de noot "needs a near-field measurement, the loaded impedance sweep and the impedance peak". Een vierde gat van dezelfde familie, buiten de drie die de audit noemt, en al aanwezig sinds F2. F4b maakte het **zichtbaar** door `collect.notes` een scherm te geven; F4b2 heeft het gedicht — de nabij-veldkromme, de impedantiesweep en de fundamentele resonantie steken sindsdien over als feiten. Zie **V25** voor de vier-inversies-tabel, voor de meting die de vorm van die reparatie bepaalde (het ketenraster levert geen weigering maar een grens van 1 048 576 mH), en voor wat er wél open blijft.
+
+  **Waarom de v1-route niet geraakt is.** De noot zit in het v2-rapportmodel, dat met de vlag uit niet gebouwd wordt.
+
+- V24 (hardgecodeerde kruispunt-defaults in `App.tsx`, en waarom ze blijven staan) — bij F4b, audit §7.
+
+  **Wat het was.** Vier `useState`-defaults en hun laad-terugvallen zetten het kruispunt van een ontwerp: 2200 ± 400 Hz voor de bovenste overname en 400 ± 150 Hz voor de onderste, plus 1800/3500 Hz als migratiewaarden voor een oud projectbestand. Het zijn frequenties uit één project die een ánder project sturen — `xoLowPin` en `xoHighPin` kooien de structuurzoektocht — en de lage geeft een bereik van 250–550 Hz terwijl de A5d.3-meetgeldigheidsvloer voor dat paar op 396,7 Hz ligt. **Het bereik begint 147 Hz onder de laagste frequentie die de app zelf vertrouwt.** Dezelfde klasse die P6 verbiedt; `p6Lint.test.ts` scande alleen `src/lib/engine2/`, dus de regel bestond en de bewaking niet.
+
+  **Waarom ze niet weg konden.** De toggle-invariant zegt dat de app met de vlag uit byte-identiek is aan de app van vóór engine2. Deze waarden afleiden op de v1-route verándert v1-gedrag, en dat is precies het ene wat dit project niet doet.
+
+  **Wat gewijzigd is.** Ze staan verzameld in één benoemd blok `V1_PIN_DEFAULTS_LEGACY`, met de audit-verwijzing en de reden erbij, en **geen enkele waarde is veranderd**. `p6Lint` heeft een tweede scope gekregen op `src/App.tsx`: een frequentie-literaal op een regel die een pin-identifier noemt is verboden tenzij die regel het legacy-blok noemt, plus een **snapshot** van het blok zodat er niets bij kan komen zonder dat de test breekt — een benoemd huis voor een schending helpt alleen zolang het klein blijft. De scope is bewust smal (deze namenfamilie, niet "elke frequentie in App.tsx"): een blanket-regel zou plotgrenzen, weergavelimieten en een notch-default meepakken, en een lint die wolf roept wordt weggehaald.
+
+  **Wat de lint meteen ving.** De audit noemde vier `useState`-defaults en de laad-terugval. Er waren er méér: `xoRangeValue` — de **tweewegroute** — droeg dezelfde twee literalen nog eens (`num(xoFreqHz, 2200)`, `num(xoMarginHz, 400)`), en de migratiewaarden 1800/3500 stonden ook nergens in de opsomming. De lint vond ze binnen een minuut. Dat is het argument voor de lint in één zin: een handmatige inventarisatie van literalen is compleet tot zij het niet is, en niemand merkt het verschil.
+
+  **De v2-route neemt zijn pin ergens anders vandaan.** `xoPinsValue` splitst nu: de getypte waarde van de ontwerper wint altijd — dat is de F3b/F3c-doctrine, de app maakt de onenigheid zichtbaar en doet dan precies wat haar gezegd is — maar wanneer een veld niets bruikbaars bevat valt de v1-route terug op het legacy-blok en de v2-route **niet**. Die neemt de A5d.3-band via de F3c-aanbeveling, en is er geen venster af te leiden, dan is er **geen pin** en wordt dat gemeld in `v2RunNotes` bij de scanuitslag. Een stille 400 Hz is de fout die daarmee weg is. De lint bewaakt die splitsing structureel: de legacy-namen mogen alleen binnen de `!useV2Pins`-tak gelezen worden.
+
+  **Waarom de v1-route niet geraakt is.** Het blok is een hernoeming, geen herwaardering: dezelfde getallen, dezelfde plekken, dezelfde volgorde. De tweewegroute (`xoRangeValue`) blijft volledig v1 — die is nog niet op v2 aangesloten (`TODO(F2c)`) — en gebruikt dus ook nog het blok. `toggleRegression.test.ts` is groen, en dat is het bewijs.
+
+- V25 (het vierde gat: de LF-bult-inversie had nooit invoer — en het raster loog niet, het zweeg) — bij F4b2.
+
+  **Wat het was.** V23 noteerde het als bijvangst: `BudgetWay` kreeg op de workerroute geen `nearField` en geen `impedance`, dus `lfBumpBudgetDb` kon daar nooit tot een grens komen. Gemeten met alle vier de budgetten tegelijk gewapend, door de échte route:
+
+  | # | inversie | gedreven door | wat zij nodig heeft | rapportroute | workerroute vóór F4b2 | na F4b2 |
+  |---|---|---|---|---|---|---|
+  | 1 | `qes-series-r` | `budgets.qesMultiplierMax` | `reOhm`, `lowest` | ✅ | ✅ (sinds F4b op de opgeloste R_e — V21) | ✅ |
+  | 2 | `bump-series-l` | `budgets.lfBumpBudgetDb` | `nearField`, `impedance`, `fPeakHz`, `lowest`, `pathROhm`, optioneel `crossingAboveHz` | ✅ | ❌ **dood** | ✅ **hersteld** |
+  | 3 | `gap-pad-r` | `budgets.dampingMarginDb` | `gapBudgetDb` ≠ null, `zPassbandMedianOhm` | ✅ | ❌ dood (`gapBudgetDb: null`) | ❌ **blijft dood, met reden** |
+  | 4 | `drive-series-c` | `gates.maxDriveOnFsDb` | `highPassProtected`, `fsHz`, `zPassbandMedianOhm`, `order?` | ✅ | ✅ maar altijd op orde 1 | ✅ op de gedeclareerde orde |
+
+  **2 van 4, en dat was de stand sinds F2** — niet iets wat F4b veroorzaakte. Wat F4b deed was `collect.notes` een scherm geven; daardoor werd zichtbaar wat er al drie fasen stond. De audit-tabel in §3 zegt "3 van 4" en draagt sinds F4b2 een gedateerd erratum; de tabelregel zelf is niet aangeraakt, omdat F4c en F4d er met paragraafnummers naar verwijzen.
+
+  **De meting die de reparatie van vorm deed veranderen, en mijn eerste antwoord was fout.** De vraag was: volstaat het raster dat de worker al heeft? Ik heb hem eerst verkeerd gesteld — ik mat de PRECISIE van de inversie op het raster van het rapport (de impedantiespanwijdte, 10 Hz–20 kHz) en vond 0,0143 dB verschil met de klasse-A-referentie, ruim binnen de dB-klasse van 0,15. Conclusie: het raster volstaat, de impedantie hoeft niet over.
+
+  Dat was het verkeerde raster. De worker houdt de impedantie op het KETENRASTER, en de ondergrens daarvan is de ver-veldspanwijdte — in `App.tsx` minstens 200 Hz. M-D evalueert over [0,7·f_p, 2,2·f_p], op deze woofer **36,7–115,2 Hz**: volledig onder dat raster. En de inversie weigert daar niet. Zij leest nergens bult, verdubbelt haar bracket tot `BOUND_BRACKET_DOUBLINGS` en levert **1 048 576 mH** af — duizend henry, aangeboden als zoekgrens.
+
+  Het was dus geen precisievraag maar een DEKKINGSvraag, en het antwoord staat aan de andere kant van de streep: de sweep steekt over, op zijn eigen raster, met zijn geldigheidsinterval erbij (de lek-2-vorm van F4b). Er is bewust **geen terugval** op de rasterkopie die de worker al heeft: een inversie zonder data onder haar band hoort géén grens te leveren, niet een grote.
+
+  **Om dezelfde reden steekt f_p zelf over.** `fPeakHz` werd in de worker geclassificeerd uit dezelfde rasterkopie. Een classificatie die de resonantie niet ziet vindt niets — of vindt een conusmode en noemt die f_s, precies de fout waarvoor A5c.2's fasetest bestaat (V8b). De opnamepas heeft hem al opgelost op de volle sweep; de worker consumeert. Dat repareert stilzwijgend ook M-C, dat zijn f_s uit diezelfde classificatie haalde.
+
+  **Wat er verder is bijgekomen, en waar het vandaan komt.** `order` en `crossingAboveHz` zijn NETWERKeigenschappen, geen meetfeiten, en komen daarom niet via `measurementFacts` uit het rapport — de orde in het rapport is de PRE-DESIGN-orde die de ontwerper voor een overname heeft ingesteld (`orderByPair`), en die over een v1-kandidaat leggen beschrijft die kandidaat als iets wat hij niet is: casus 1's HUIDIG is een 2e-orde ontwerp onder een 4e-orde vensterinstelling. Beide komen dus van de workerkant, dezelfde scheiding als `pathROhm`: de orde uit de gedeclareerde uitlijning die de kandidaat draagt (`structureLow`/`structureHigh` op de driewegroute, de filterspec op de tweewegroute; 'auto' betekent dat er niets gedeclareerd is en de voorbound valt terug op zijn eigen gedocumenteerde default), het kruispunt uit `xoLow`/`xoHigh`. `TODO(F4c)` staat op beide: het kandidaat-object maakt de bron expliciet.
+
+  **`pathROhm` verschilt tussen de routes, en dat blijft zo.** Het rapport heeft geen netwerk en geeft 0; de worker kent het seed-netwerk en geeft de werkelijke serieweerstand. Dat is geen onenigheid maar twee verschillende vragen. De acceptatietest voedt daarom BEIDE kanten het parameterblok van de klasse-A-referentie (`pad_R_ohm` uit de fixture) in plaats van wat elke route zelf zou produceren — anders zou de test een verschil meten dat er hoort te zijn.
+
+  **Hoe aangetoond.** Vijf asserts op de inversie zelf: dezelfde invoer uit het rapport en uit de payload leveren een byte-identieke grens; die grens IS de klasse-A-referentie `maxL_bij_Rs0_5_budget2_5dB_mH` binnen haar eigen tolerantieklasse (de assert staat op de METRIEK, niet op de millihenry — een geïnverteerde grens erft de tolerantie van de metriek die zij inverteert); en het ketenraster levert aantoonbaar de absurde grens op, zodat de reden om de sweep mee te sturen in de suite staat en niet alleen in dit boek. Drie asserts door de échte route met `structuredClone`: met beide krommen wordt de grens bereikt, met geen van beide niet en de noot zegt welke invoer ontbrak, en met alleen het nabije veld nog steeds niet — de sweep is de helft die niet uit het analyseraster verzonnen mag worden.
+
+  **De vingerafdruk.** Het F4b-ingrediënt `facts` is uitgebreid van twee naar vijf feiten (R_e, A5b.1-geldigheid, resonantie, nabij veld, sweep) in plaats van dat er een ingrediënt bij kwam — de naam beschrijft nog steeds precies wat erin zit. Omdat de NAAM niet verandert, ziet de dekkingsassert in `determinism.test.ts` die groei niet; daar staat sinds F4b2 een tweede assert naast die elk van de vijf apart de sleutel moet zien bewegen, plus een telling zodat een zesde feit niet ongetest kan meeliften.
+
+  **Waarom de v1-route niet geraakt is.** Alles zit in de v2-payload, in `engine2/` en in de v2-tak van `App.tsx`. `optimWorker.ts` is byte-onaangeraakt, `netOptimizer.ts`, `threeWayChain.ts` en `designChain.ts` zijn niet gewijzigd, en de inversieformules in `bounds.ts` evenmin — alleen wat zij als invoer krijgen. Met de vlag uit wordt de payload niet opgebouwd. `toggleRegression.test.ts` is byte-identiek.
+
+  **Openstaand.** De dempingsmarge (inversie 3) wacht op A5e.2 en op niets anders. En `crossingAboveHz` is op de tweewegroute het meetkundig midden van het gestelde bereik in plaats van een kruispunt, omdat die route een RANGE draagt en geen punt — F4c maakt dat expliciet.
+
+- V26 (wie mag kiezen: de 37 tuner-instellingen ingedeeld, en de v2-run vergrendeld) — bij F4c.
+
+  **Wat het was.** De v2-route zette vier van de tuner-instellingen en nam de rest letterlijk over uit wat de v1-keten toevallig had gebouwd (audit §2.2). Onschadelijk zolang v1 óók de kandidaten kiest — instellingen en kandidaat komen dan uit dezelfde hand en zijn het per constructie eens. Het houdt op onschadelijk te zijn zodra v2 een eigen kandidaat aanlevert: een v1-hellingsdoel, een v1-kooi of een v1-pin trekt die kandidaat dan stil terug naar de v1-keuze, en niets zegt het.
+
+  **Twee correcties op de aanname vooraf, en de tweede is de belangrijkste.**
+
+  *Ten eerste: het zijn er 37, geen "ruim vijftig".* De audit schatte het aantal op ruim vijftig; geteld op de top-level sleutels van `NetOptimizeOptions` zijn het er 37. Geen verschil dat iets aan de redenering verandert, wel een getal dat nu klopt en dat een test bewaakt.
+
+  *Ten tweede: `run.ts` is niet de route die de app neemt.* De `Omit<>` daar begrenst `runV2Optimization`, en die wordt uitsluitend door twee tests aangeroepen — `grep` bevestigt het. De scan-knop gaat via de wórker, en daar bouwt de kéten (`threeWayChain.ts`) de tuner-opties uit `Chain3Settings` en merget de engine-hook als láátste. Die volgorde is de hefboom: wat de hook noemt, wint. Alleen `run.ts` afsluiten zou een deur op slot doen die niemand gebruikt.
+
+  **De indeling.** Drie klassen, gedefinieerd in Deel A (A3j) in algemene bewoordingen; de tabel hieronder is de bijlage voor déze tuner en geen norm. **Keuze** (25): bepaalt WAT er gezocht wordt. **Grijs** (5): gewichten die de scalar vormgeven en daarmee bepalen welk deel van het veld bezocht wordt — polish naar de vorm, keuze naar het effect (audit §6.4). **Polish** (7): bepaalt HOE er gezocht wordt binnen een gegeven keuze; mag overerven.
+
+  **Wat gewijzigd is.** `run.ts`'s `tuneOptions` is versmald van "alles behalve de drie die v2 bezit" naar "alles wat geen keuze en geen gewicht is"; keuzes en gewichten komen binnen via twee nieuwe, benoemde objecten. **De compiler is de bewaking** — twee bestaande tests stopten meteen met compileren omdat ze `phasePriority` en `staged` door `tuneOptions` gaven, en dat is precies de vangst waarvoor de scheiding bestaat. Op de workerroute noemt de hook nu tien keuzes en vijf gewichten expliciet, teruggelezen uit de instellingen die de keten kreeg: **niets wordt hier gekozen**, en dat is het punt — de waarden zijn dezelfde, ze steken alleen benoemd over.
+
+  **Wat er nog niet gesteld kan worden, en waarom dat een noot is en geen omissie.** Vijftien keuze-sleutels worden binnen de keten samengesteld (`xoRangePairs` uit de eigen kooi van de kandidaat, en verder `branchTargets`, `safety`, `snapPrefs`, `staged`, `audit`, `midBranch`, `angleData` en de solo-familie). Die hier herleiden zou een tweede implementatie van ketenlogica zijn, en dat is hoe twee beschrijvingen van één ding uiteen gaan lopen — V21's les, een laag hoger. Ze staan met naam en toenaam in `collect.notes`: *"Search choices still inherited from the v1 chain, not v2-derived: …"*. F4d verhuist ze naar de kandidaat.
+
+  **De vijf grijze sleutels, elk met zijn motivering.**
+
+  - `phasePriority` — verdeelt het budget tussen amplitude en fase. Zet hem hoog en de zoektocht bezoekt ontwerpen die fase kopen met vlakheid; zet hem laag en zij komt daar nooit. Dat is geen fijnafstemming, dat is welk deel van het veld bestaat.
+  - `directivityWeight` — bepaalt of de energiegemiddelde respons meetelt. Op nul is de zoektocht op-as-blind voor bundeling; erboven wordt een ándere kandidaat de beste.
+  - `powerFoldWeight` — het gewicht van de DI-vouwterm rond elk kruispunt. Weegt precies het gebied waar de kandidaat over overname gaat.
+  - `dissipationWeight` — stuurt weg van serieweerstand vóór de laagste tak. De term bestaat omdat de tuner zonder niveau-anker een serie-R als goedkoopste niveauregeling gebruikt (19-08: R_s 7,15 Ω, Q_es ×3,24 won de ranking). Het gewicht bepaalt of die route open staat.
+  - `costWeight` — budgetdruk bij het snappen. Een BOM-voorkeur van de ontwerper, geen numerieke instelling.
+
+  Geen van de vijf is opnieuw gebalanceerd en er is er geen bijgekomen; F4c stelt ze alleen vast in plaats van ze te laten overwaaien. Een gewicht dat níemand stelt is de default van de tuner, en dát is ook een besluit: `run.ts` en de worker noemen sindsdien de gewichten die aan de tuner zijn overgelaten.
+
+  **De twee vondsten uit F4b2 staan in dezelfde tabel** (rijen 38 en 39), want ze zijn van dezelfde soort ook al zijn het geen tuner-instellingen: de ondergrens van het ketenraster is een keuze die v1 stil aan de v2-route oplegt, en de orde bij uitlijning `'auto'` is een keuze-sleutel zónder declaratie.
+
+  **Hoe aangetoond.** Dezelfde run twee keer uitgedrukt — de F4b2-vorm (alles door `tuneOptions`, gereconstrueerd met een cast langs het versmalde type heen, want de regressie moet vergelijken met wat de code déed en niet met een opgepoetste versie ervan) en de F4c-vorm (dezelfde waarden via `choices` en `weights`) — en de opgeleverde netwerken karakter voor karakter vergeleken. **Byte-identiek op beide seeds.** Met een assert ervoor dat de twee seeds aantoonbaar verschillende netwerken opleveren: zonder die assert zou "onveranderd op twee seeds" ook waar zijn voor een zoektocht die zijn seed negeert.
+
+  **Wat wél verandert: de vingerafdruk.** `choices` is een nieuw ingrediënt, dus een run die zijn kandidaat stelde en een run die hem overerfde zijn niet langer identiek gestempeld — precies waarvoor het ingrediënt bestaat. Het netwerk is hetzelfde, de stempel niet, en een lezer die een oude vingerafdruk naast een nieuwe legt hoort dat te weten.
+
+  **Waarom de v1-route niet geraakt is.** `netOptimizer.ts` is niet gewijzigd, `threeWayChain.ts` en `designChain.ts` evenmin, en er is geen gewicht bijgekomen of herbalanceerd. Alles wat beweegt zit in `engine2/`. Met de vlag uit draait de keten precies het object dat zij altijd bouwde — de hook wordt niet aangeroepen. `toggleRegression.test.ts` is byte-identiek.
+
+  ---
+
+  **Bijlage V26 — de 37 tuner-instellingen, ingedeeld.** Regelnummers zijn `src/lib/netOptimizer.ts` tenzij anders vermeld. "wie zet hem" geldt voor de v2-route.
+
+| # | sleutel | landt op | klasse | reden | wie zet hem op v2 |
+|---|---|---|---|---|---|
+| 1 | `phasePriority` | 815, 865 | **grijs** | verdeelt budget amplitude/fase — bepaalt welk deel van het veld bezocht wordt | v2-run (expliciet) |
+| 2 | `rSourceDisqualifyOhm` | 872 | keuze | hard verbod: infeasible bron-R | v2-kandidaat |
+| 3 | `loadFloor` | 873, 874, 1286 | keuze | hard verbod: afgeleide versterkervloer | v2-kandidaat |
+| 4 | `ampMinLoadOhm` | 600, 881, 1875 | keuze | hard verbod: de vloer van de ontwerper | v2-kandidaat |
+| 5 | `band` | 45 plekken vanaf 387 | keuze | wélke band beoordeeld wordt is wat "goed" betekent | v2-kandidaat |
+| 6 | `maxIterations` | 816, 2319–2364 | polish | iteratiebudget; verandert niets aan wat gezocht wordt | mag overerven |
+| 7 | `angleData` | 19 plekken vanaf 835 | keuze | wapent de directiviteitstermen; zonder is de zoektocht op-as | v2-kandidaat |
+| 8 | `directivityWeight` | 866 | **grijs** | of de energiegemiddelde respons meetelt — andere winnaar | v2-run (expliciet) |
+| 9 | `powerMetric` | 867 | keuze | kiest de DEFINITIE van de vermogensmaat ('smooth' / 'legacy') | v2-kandidaat |
+| 10 | `powerFoldWeight` | 1116 | **grijs** | weegt precies het gebied rond de overname | v2-run (expliciet) |
+| 11 | `errorSmoothOct` | 1129, 1131 | polish | gladding van de zoek-foutmaat; poorten en doelen blijven op het rauwe raster | mag overerven |
+| 12 | `ampTarget` | 817, 1117 | keuze | wélke curve vlak gemaakt wordt (op-as of luistervenster) | v2-kandidaat |
+| 13 | `breakupGuard` | 10 plekken vanaf 818 | keuze | ontwerpregel op stopbandlek naast het kruispunt | v2-kandidaat |
+| 14 | `staged` | 25 plekken vanaf 1216 | keuze | het DOEL waar de trapmethode aan gehouden wordt | v2-kandidaat |
+| 15 | `xoRange` | 1939 | keuze | pint het akoestische kruispunt | v2-kandidaat |
+| 16 | `phaseMetric` | 819, 1906, 1978 | keuze | kiest de fasemaat; "must match the design optimizer's setting" | v2-kandidaat |
+| 17 | `onStage` | 820, 1255–1275 | polish | voortgangscallback; beïnvloedt niets (V17: een etiket is geen meting) | mag overerven |
+| 18 | `catalogSnap` | 3200 | keuze | bindt de catalogus of niet — een ontwerpbesluit | v2-kandidaat |
+| 19 | `costWeight` | 385, 3206 | **grijs** | budgetdruk bij het snappen: een BOM-voorkeur, geen numerieke instelling | v2-run (expliciet) |
+| 20 | `snapPrefs` | 7 plekken vanaf 2134 | keuze | welke serie, welke tier per positie | v2-kandidaat |
+| 21 | `acousticSlopes` | 855–860 e.v. | keuze | de nagestreefde helling per flank | v2-kandidaat |
+| 22 | `xoRangePairs` | 1820, 2019 | keuze | de kooi per aangrenzend paar | v2-kandidaat (nu nog keten) |
+| 23 | `dissipationWeight` | 868 | **grijs** | opent of sluit de serie-R-route naar niveau-aanpassing | v2-run (expliciet) |
+| 24 | `xoFloorPairs` | 2025 | keuze | stijve fysica-vloer per paar | v2-kandidaat |
+| 25 | `xoPinHard` | 1819, 1949–2032 | keuze | stijve barrière i.p.v. zachte pin (alleen reparatiepas) | v2-kandidaat |
+| 26 | `solo` | 26 plekken vanaf 822 | keuze | topologie: nul driverparen | v2-kandidaat |
+| 27 | `soloSensitivityDb` | 849 | keuze | de code noemt hem zelf "A DESIGNER'S CHOICE, not a constant" | v2-kandidaat |
+| 28 | `soloTargetLevelDb` | 1614–1643 | keuze | ÍS de doelfunctie in solo-modus | v2-kandidaat |
+| 29 | `branchTargets` | 1443, 1447, 2011 | keuze | de leiband: het contract per tak | v2-kandidaat |
+| 30 | `zFloorStrict` | 3066, 3110, 3673 | keuze | verzet de lat van de reparatiepas | v2-kandidaat |
+| 31 | `safety` | 31 plekken vanaf 439 | keuze | volle-band-verbod op degeneratie | v2-kandidaat |
+| 32 | `midBranch` | 824 | keuze | topologie: twee paren i.p.v. één | v2-kandidaat |
+| 33 | `audit` | 36 plekken vanaf 401 | keuze | poort 4, het fysieke onderdelenaudit | v2-kandidaat |
+| 34 | `gateViolation` | 539, 975–1019 e.v. | polish (v2-bezit) | de poorthaak; v2 zet hem sinds F2 | v2-run |
+| 35 | `onGateEvaluated` | 1023 | polish | instrumentatie; "nothing here may influence a decision" | mag overerven |
+| 36 | `valueCeilings` | 2196, 2198 | polish (v2-bezit) | A5d.6-inversie; v2 zet hem sinds F2 | v2-run |
+| 37 | `valueSumCeilings` | 2216 | polish (v2-bezit) | A5d.6-somplafond; v2 zet hem sinds F2 | v2-run |
+| 38 | ketenraster-ondergrens | `App.tsx:4128` | **keuze** | ver-veldspanwijdte als hard getal; F4b2 mat dat de LF-bult-inversie daarop 1 048 576 mH afleverde | v2-kandidaat — nog niet gezet |
+| 39 | orde bij uitlijning `'auto'` | `worker.ts` (F4b2) | **keuze zonder declaratie** | `structureLow/High` is `undefined` bij 'auto', dus `drive-series-c` valt terug op zijn default terwijl de rapportroute de echte orde heeft | v2-kandidaat — moet de orde per flank altijd dragen |
+
+  **Wat er met rij 38 en 39 gebeurt.** Beide zijn geclassificeerd en geen van beide is in F4c gezet — dat zou kandidaatgeneratie zijn, en die is F4d. Rij 38 blijft op de v1-route byte-identiek; de v2-route mag hem expliciet maken zodra de kandidaat er een heeft. Rij 39 is de scherpste van de twee: het is een keuze-sleutel die op de v2-route soms helemaal niet gedeclareerd is, en het kandidaat-object uit F4d moet de orde per flank áltijd dragen — anders is "geen declaratie" opnieuw niet te onderscheiden van "orde 1".
 
 **Openstaand in deze casus:** groundplane-metingen onder het onderste kruisgebied vóór onderdelenbestelling; HD-sweep; 30°-meting tweeter voor M-G-compleetheid; verzadigings-/formaatcheck grote P-core shunt-spoel.
 

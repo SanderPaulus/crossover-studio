@@ -769,6 +769,43 @@ export function buildReport(input: EngineV2ReportInput): EngineV2Report {
     ? invertBudgets(budgetWays, input.settings, input.settings)
     : { bounds: [], notes: [] };
 
+  /* ---------------- F4b — the damping margin says what it does ----------- *
+   *
+   * `dampingMarginDb` is a stated budget that is NOT applied on the optimiser
+   * route: `worker.ts` hands the inversion `gapBudgetDb: null` because A5d.4(a)
+   * wants the anchor level AFTER baffle step in the intended setup, and that is
+   * a property of the target-curve object — open decision A5e.2. The inversion
+   * then skips the bound silently (`bounds.ts`, "the anchor has no attenuation
+   * budget by definition"), and until F4b the only trace was a note in the
+   * worker's `collect.notes`, which nothing on screen ever read.
+   *
+   * The TODO stays and the decision stays open. What changes is that the field
+   * no longer looks like it did something. F0's doctrine is that an EMPTY field
+   * is no judgement; this is the other half of it — a filled field that is not
+   * applied is also no judgement, and now it says so where the budget is shown.
+   *
+   * Note the asymmetry, because it is real and a reader deserves it: in THIS
+   * report the margin IS applied, because the report has the anchored gaps to
+   * add it to. It is the SEARCH that cannot use it. */
+  const boundNotes = [...inverted.notes];
+  if (input.settings.dampingMarginDb !== undefined) {
+    const applied = inverted.bounds.some((b) => b.rule === 'gap-pad-r');
+    boundNotes.push(
+      applied
+        ? 'Damping margin: stated, and applied HERE — this report has the anchored gap levels to ' +
+            'add it to. It is NOT applied on the v2 optimiser route: that route reaches the ' +
+            'inversion without a gap budget, because A5d.4(a) wants the anchor level after baffle ' +
+            'step in the intended setup and that is the target-curve object (open decision ' +
+            'A5e.2). So the search is not bounded by this number, whatever this table shows.'
+        : 'Damping margin: stated — not applied on this route (waiting on A5e.2). The bound it ' +
+            'would produce sits on top of an anchored gap budget, and A5d.4(a) wants that anchor ' +
+            'level taken after baffle step in the intended setup, which is a property of the ' +
+            'target-curve object. An empty field is no judgement (F0); a filled field that is not ' +
+            'applied is no judgement either, and that is worth saying rather than leaving the ' +
+            'number looking like it did something.',
+    );
+  }
+
   /* ---------------- system summary ---------------- */
   const system = summarise(
     ingest,
@@ -790,7 +827,7 @@ export function buildReport(input: EngineV2ReportInput): EngineV2Report {
     driversLowToHigh: order,
     analysisGrid: grid,
     metrics,
-    predesign: { gaps, windows, bounds: inverted.bounds, boundNotes: inverted.notes },
+    predesign: { gaps, windows, bounds: inverted.bounds, boundNotes },
     gates: {
       verdicts,
       violation: violationText(verdicts),

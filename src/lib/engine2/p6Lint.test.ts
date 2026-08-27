@@ -31,8 +31,57 @@ import { fileURLToPath } from 'node:url';
 import { P6_LITERAL_THRESHOLD } from './constants.ts';
 
 const ENGINE2 = dirname(fileURLToPath(import.meta.url));
+const APP_FILE = join(ENGINE2, '..', '..', 'App.tsx');
 const WHITELIST_FILE = 'constants.ts';
 const MARKER = 'P6-OK';
+
+/* ------------------------------------------------------------------ *
+ * SCOPE TWO — the crossover pin in App.tsx (F4b, audit §7)
+ * ------------------------------------------------------------------ */
+
+/**
+ * The identifiers that carry the crossover PIN — the numbers that cage the
+ * structure search at each handover.
+ *
+ * P6 is about engine and metric code, and `App.tsx` is neither; the reason this
+ * scope exists anyway is that these particular literals do exactly what P6
+ * forbids. `xoLowPin` and `xoHighPin` steer which crossings the chain is
+ * allowed to deliver, and the low default (400 ± 150 Hz) puts the range
+ * 147 Hz BELOW the A5d.3 measurement-validity floor the same app computes on
+ * the casebook set. A frequency out of one project, steering another.
+ *
+ * The rule is deliberately narrow — this family of names, not "any frequency
+ * in App.tsx". A blanket rule would flag plot bounds, display limits and a
+ * notch default, none of which decide a design, and a lint that cries wolf is
+ * a lint someone deletes.
+ */
+const PIN_IDENTIFIERS = [
+  'xoFreqHz',
+  'xoMarginHz',
+  'xoLowFreqHz',
+  'xoLowMarginHz',
+  'xoRangeLo',
+  'xoRangeHi',
+] as const;
+
+/** The one named block those literals are allowed to live in. */
+const LEGACY_BLOCK = 'V1_PIN_DEFAULTS_LEGACY';
+
+/**
+ * The block's contents, pinned.
+ *
+ * A named home for a violation only helps while it stays small; without this
+ * snapshot the block is a place to put the NEXT hard-coded frequency. Changing
+ * it is then a deliberate act with a test to update, which is the point.
+ */
+const LEGACY_BLOCK_SNAPSHOT: Readonly<Record<string, string>> = {
+  highFreqHz: "'2200'",
+  highMarginHz: "'400'",
+  lowFreqHz: "'400'",
+  lowMarginHz: "'150'",
+  legacyRangeLoHz: '1800',
+  legacyRangeHiHz: '3500',
+};
 
 /** The tags `constants.ts` may use, and what each one promises. */
 const P6_TAGS = ['unit', 'physical', 'norm', 'literature', 'rule'] as const;
@@ -171,6 +220,96 @@ describe('P6 lint - no project numbers in engine2', () => {
       'a frequency may only enter the whitelist as a standard or a citation:\n' +
         suspect.join('\n'),
     ).toEqual([]);
+  });
+
+  /* ================================================================== *
+   * F4b — scope two: the crossover pin in App.tsx (audit §7)
+   * ================================================================== */
+
+  describe('P6 lint - the crossover pin in App.tsx', () => {
+    const appLines = () => withoutBlockComments(readFileSync(APP_FILE, 'utf-8'));
+
+    /** A line that mentions a pin identifier, with strings kept (they hold the values). */
+    const pinLines = (lines: string[]): { n: number; line: string }[] =>
+      lines
+        .map((line, i) => ({ n: i + 1, line }))
+        .filter(({ line }) => {
+          const code = line.replace(/\/\/.*$/, ' ');
+          return PIN_IDENTIFIERS.some((id) => new RegExp(`\\b${id}\\b`).test(code));
+        });
+
+    it('no pin literal outside the named legacy block', () => {
+      const offenders: string[] = [];
+      for (const { n, line } of pinLines(appLines())) {
+        if (line.includes(LEGACY_BLOCK)) continue;
+        const code = line.replace(/\/\/.*$/, ' ');
+        // Both forms count: a bare number and a numeric STRING, because these
+        // fields are text inputs and `useState('2200')` is the same violation
+        // as `useState(2200)` wearing quotes.
+        const bare = [...code.matchAll(/(?<![\w.$'"])(\d+(?:\.\d+)?)/g)].map((m) => Number(m[1]));
+        const quoted = [...code.matchAll(/['"](\d+(?:\.\d+)?)['"]/g)].map((m) => Number(m[1]));
+        for (const v of [...bare, ...quoted]) {
+          if (Math.abs(v) >= P6_LITERAL_THRESHOLD) {
+            offenders.push(`App.tsx:${n}: ${v} in "${line.trim()}"`);
+          }
+        }
+      }
+      expect(
+        offenders,
+        'P6 (audit §7): a crossover-pin frequency may only appear in ' +
+          `${LEGACY_BLOCK}, which the toggle invariant protects:\n${offenders.join('\n')}`,
+      ).toEqual([]);
+    });
+
+    it('the scan can SEE a pin line, and sees several', () => {
+      // The assertion above is worth nothing until this one shows the scan
+      // reaches the code it claims to police.
+      const found = pinLines(appLines());
+      expect(found.length).toBeGreaterThan(8);
+      expect(found.some((f) => f.line.includes('useState'))).toBe(true);
+      expect(found.some((f) => f.line.includes(LEGACY_BLOCK))).toBe(true);
+    });
+
+    it('the legacy block holds exactly what it held, and nothing more', () => {
+      const text = readFileSync(APP_FILE, 'utf-8');
+      const start = text.indexOf(`const ${LEGACY_BLOCK} = {`);
+      expect(start, 'the legacy block is gone — see audit §7 before removing it').toBeGreaterThan(0);
+      const end = text.indexOf('} as const;', start);
+      expect(end).toBeGreaterThan(start);
+      const body = text.slice(start, end);
+      const entries: Record<string, string> = {};
+      for (const m of body.matchAll(/^\s{2}(\w+):\s*(.+?),\s*$/gm)) entries[m[1]] = m[2];
+      expect(entries).toEqual(LEGACY_BLOCK_SNAPSHOT);
+    });
+
+    it('the v2 route does not read the legacy block for its pin', () => {
+      /* The half of §7 that is a behaviour claim rather than a naming one: on
+       * the v2 route an unstated handover is pinned from the A5d.3 window, or
+       * not pinned at all and reported — never from a v1 default. The check is
+       * structural because the value is not: `xoPinsValue` must reach the
+       * legacy names only under the v1 branch. */
+      const text = readFileSync(APP_FILE, 'utf-8');
+      const start = text.indexOf('const xoPinsValue = ()');
+      expect(start).toBeGreaterThan(0);
+      const body = text.slice(start, text.indexOf('const xoRangeValue = ()', start));
+      expect(body).toContain('useV2Pins');
+      // The legacy values are CONSUMED only inside the `!useV2Pins` arm. Their
+      // names appear earlier as parameters, which is why the check is on the
+      // arm's contents rather than on first occurrence — the parameter list
+      // proves nothing about which branch reads them.
+      const guard = body.indexOf('if (!useV2Pins) {');
+      expect(guard).toBeGreaterThan(0);
+      const arm = body.slice(guard, body.indexOf('\n      }', guard));
+      expect(arm).toContain('legacyFreq');
+      expect(arm).toContain('legacyMargin');
+      // Everything outside that arm derives or refuses; it never substitutes.
+      const outside = body.slice(0, guard) + body.slice(guard + arm.length);
+      expect(outside).not.toContain('num(freqField, Number(legacyFreq))');
+      expect(body).toContain('const derived = fromWindow(side);');
+      // ...and the refusal path exists and says so rather than substituting.
+      expect(body).toContain('NOT pinned');
+      expect(body).toContain('return undefined;');
+    });
   });
 
   it('the lint actually walks the tree it claims to', () => {

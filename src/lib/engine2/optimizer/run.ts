@@ -52,6 +52,14 @@ import {
   type FingerprintComponent,
   type ResolvedDeterminism,
 } from './determinism.ts';
+import { measurementFactsKey } from './measurementFacts.ts';
+import {
+  choicesKey,
+  GREY_KEYS,
+  type CandidateChoices,
+  type GreyWeights,
+  type InheritableTuneOptions,
+} from './choices.ts';
 import {
   anyGateActive,
   evaluateGates,
@@ -74,12 +82,36 @@ export interface V2OptimizeInput {
   driverZ: Record<string, readonly Complex[]>;
   adjust: TweeterAdjust;
   /**
-   * Tuner options, exactly as the v1 path would pass them. The three fields
-   * this path owns — `gateViolation`, `valueCeilings`, `valueSumCeilings` —
-   * are overwritten, and passing them here is a mistake rather than an
-   * override.
+   * Tuner options a v2 run may INHERIT — the polish half, and nothing else.
+   *
+   * F4c narrowed this from "everything but the three v2 owns" to "everything
+   * that is not a choice and not a grey weight". The compiler is the guard: a
+   * caller that tries to hand a slope target, a cage, a pin or a phase weight
+   * through here no longer compiles, because on the v2 route those may only
+   * come from `choices` and `weights` below. See `choices.ts` for why each key
+   * is where it is.
    */
-  tuneOptions?: Omit<NetOptimizeOptions, 'gateViolation' | 'valueCeilings' | 'valueSumCeilings'>;
+  tuneOptions?: Omit<
+    InheritableTuneOptions,
+    'gateViolation' | 'valueCeilings' | 'valueSumCeilings'
+  >;
+  /**
+   * WHAT this run searches — the candidate, in the tuner's own vocabulary.
+   *
+   * A5d is the layer that produces this and F4d is what will fill it from the
+   * measurements; in F4c it is filled with exactly the values the v1 chain
+   * supplies today, so nothing about the search changes. What changed is that
+   * they cross the border named.
+   */
+  choices?: Partial<CandidateChoices>;
+  /**
+   * The weights that shape the scalar, stated rather than inherited.
+   *
+   * Grey in the sense of `choices.ts`: polish in form, choice in effect. A run
+   * that states none gets the tuner's own defaults — which is a decision, and
+   * `notes` says so.
+   */
+  weights?: Partial<GreyWeights>;
   gates?: GateSettings;
   budgets?: BudgetSettings;
   determinism?: DeterminismSettings;
@@ -239,7 +271,13 @@ export function runV2Optimization(input: V2OptimizeInput): V2OptimizeResult {
     : undefined;
 
   const tuneOptions: NetOptimizeOptions = {
+    // POLISH first: it may be overridden by everything below it.
     ...(input.tuneOptions ?? {}),
+    // CHOICE and GREY next, named rather than spread in from v1. In F4c these
+    // carry the values the v1 chain would have supplied anyway; the point is
+    // that from here on they can only arrive this way.
+    ...(input.choices ?? {}),
+    ...(input.weights ?? {}),
     ...(gateViolation ? { gateViolation } : {}),
     ...(Object.keys(searchBox.valueCeilings).length > 0
       ? { valueCeilings: searchBox.valueCeilings }
@@ -353,7 +391,30 @@ export function runV2Optimization(input: V2OptimizeInput): V2OptimizeResult {
       })),
     }),
     tuning: stableJson(tuningKey(input.tuneOptions ?? {})),
+    // F4b — the measured facts this route was handed. It receives a FROZEN
+    // gate reference rather than a payload, so the validity intervals are what
+    // it can name here; R_e reached it through the bounds it was given, and
+    // those are already an ingredient of `bounds` above.
+    facts: stableJson(
+      measurementFactsKey({ validHzByModel: input.gateReference.validHz }),
+    ),
+    // F4c — the candidate and the weights, as an ingredient. Two runs that
+    // searched different ground, or judged the same ground on a different
+    // balance, may not wear the same fingerprint.
+    choices: stableJson(choicesKey(input.choices, input.weights)),
   });
+
+  /* F4c — a grey weight nobody stated is the tuner's own default, and that is a
+   * decision made by omission. Saying which ones were left to it beats leaving
+   * a reader to discover it from `netOptimizer.ts`. */
+  const unstated = GREY_KEYS.filter((k) => input.weights?.[k] === undefined);
+  if (unstated.length > 0) {
+    notes.push(
+      `Weights left to the tuner's own defaults: ${unstated.join(', ')}. These shape the scalar ` +
+        'and therefore which part of the field the search visits (audit §6.4), so they are ' +
+        'reported rather than assumed. Stating one is a v2 decision; leaving it is also one.',
+    );
+  }
 
   if (!gatesArmed) {
     notes.push(

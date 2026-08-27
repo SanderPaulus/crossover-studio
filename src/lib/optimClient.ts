@@ -66,6 +66,7 @@ import {
 } from './engine2/optimizer/determinism.ts';
 import { gateSettingsKey } from './engine2/optimizer/gates.ts';
 import { budgetSettingsKey } from './engine2/optimizer/bounds.ts';
+import { measurementFactsKey } from './engine2/optimizer/measurementFacts.ts';
 import type {
   V2CandidateResult,
   V2Response,
@@ -550,6 +551,11 @@ function v2Stamp(
       gates: stableJson(gateSettingsKey(v2.gates)),
       bounds: stableJson(budgetSettingsKey(v2.budgets)),
       tuning: v2.tuningKey,
+      // F4b — built from the PAYLOAD, which is what decides the provenance:
+      // a model with an entry runs on the resolved fact, a model without one
+      // runs on the worker's fallback. Two runs that differ only in that are
+      // two different runs (V21, V22) and must not share a fingerprint.
+      facts: stableJson(measurementFactsKey(v2)),
     },
     status,
     reason,

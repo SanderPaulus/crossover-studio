@@ -1,0 +1,1692 @@
+{
+ "_": "ZIE HET KOPCOMMENTAAR VAN f4cRegression.test.ts. Niet met de hand bewerken.",
+ "stand": "F4b2",
+ "parameters": {
+  "starts": 2,
+  "budgetEvaluations": 140,
+  "weights": {
+   "phasePriority": 0.35
+  },
+  "choices": {
+   "staged": {
+    "rippleDb": 0.8,
+    "phaseDeg": 8
+   }
+  }
+ },
+ "fixture": "src/lib/engine2/optimizer/v2.fixture.ts (v2SeedParts, v2DriverZ, v2Responses, V2_GRID)",
+ "seeds": [
+  4242,
+  99
+ ],
+ "runs": {
+  "99": {
+   "candidates": [
+    {
+     "added": [
+      "C3"
+     ],
+     "after": {
+      "avgDevDb": 3.296165803669835,
+      "phaseDeg": 36.24979602515489,
+      "rSourceOhm": 0.16,
+      "rippleDb": 5.456854024028573,
+      "ripplePeakSmoothedDb": 5.436280916253551,
+      "xoHz": 620.8181295087779,
+      "zMinOhm": 1.346228549374684
+     },
+     "before": {
+      "avgDevDb": 3.0197999822070103,
+      "phaseDeg": 141.11891972909706,
+      "rSourceOhm": 1.16,
+      "rippleDb": 16.05560603126979,
+      "zMinOhm": 3.7602917635339104
+     },
+     "evaluations": 5182,
+     "gatesDerived": [
+      {
+       "active": false,
+       "direction": "max",
+       "gate": "M-A",
+       "limit": null,
+       "metric": "M-A",
+       "parameters": {
+        "band": "210-19000 Hz",
+        "weighting": "IEC 60268-1 programme noise"
+       },
+       "pass": true,
+       "reason": "0.0 % — no limit set",
+       "specRef": "A4 M-A",
+       "subject": "system",
+       "title": "Dissipation in the filter resistors",
+       "unit": "of amplifier power",
+       "value": 0,
+       "withinToleranceOnly": false
+      },
+      {
+       "active": false,
+       "direction": "min",
+       "gate": "M-B/EPDR",
+       "limit": null,
+       "metric": "M-B",
+       "parameters": {
+        "at": "291 Hz"
+       },
+       "pass": true,
+       "reason": "0.68 Ω — no limit set",
+       "specRef": "A4 M-B",
+       "subject": "system",
+       "title": "EPDR of the amplifier load",
+       "unit": "Ω",
+       "value": 0.6762310751277455,
+       "withinToleranceOnly": false
+      },
+      {
+       "active": false,
+       "direction": "min",
+       "gate": "M-B/|Z|",
+       "limit": null,
+       "metric": "M-B",
+       "parameters": {
+        "at": "305 Hz"
+       },
+       "pass": true,
+       "reason": "1.35 Ω — no limit set",
+       "specRef": "A4 M-B (simple mode)",
+       "subject": "system",
+       "title": "Minimum |Z| the amplifier sees (simple mode)",
+       "unit": "Ω",
+       "value": 1.346228549374684,
+       "withinToleranceOnly": false
+      },
+      {
+       "active": false,
+       "direction": "max",
+       "gate": "M-C",
+       "limit": null,
+       "metric": "M-C",
+       "parameters": {
+        "f_s": "901 Hz",
+        "passband": "614-19000 Hz (derived)"
+       },
+       "pass": true,
+       "reason": "-0.0 dB — no limit set",
+       "specRef": "A4 M-C",
+       "subject": "tweeter",
+       "title": "Drive voltage on the driver resonance",
+       "unit": "dB",
+       "value": -0.0387038464919649,
+       "withinToleranceOnly": false
+      }
+     ],
+     "gatesFrozen": [
+      {
+       "active": false,
+       "direction": "max",
+       "gate": "M-A",
+       "limit": null,
+       "metric": "M-A",
+       "parameters": {
+        "band": "210-19000 Hz",
+        "weighting": "IEC 60268-1 programme noise"
+       },
+       "pass": true,
+       "reason": "0.0 % — no limit set",
+       "specRef": "A4 M-A",
+       "subject": "system",
+       "title": "Dissipation in the filter resistors",
+       "unit": "of amplifier power",
+       "value": 0,
+       "withinToleranceOnly": false
+      },
+      {
+       "active": false,
+       "direction": "min",
+       "gate": "M-B/EPDR",
+       "limit": null,
+       "metric": "M-B",
+       "parameters": {
+        "at": "291 Hz"
+       },
+       "pass": true,
+       "reason": "0.68 Ω — no limit set",
+       "specRef": "A4 M-B",
+       "subject": "system",
+       "title": "EPDR of the amplifier load",
+       "unit": "Ω",
+       "value": 0.6762310751277455,
+       "withinToleranceOnly": false
+      },
+      {
+       "active": false,
+       "direction": "min",
+       "gate": "M-B/|Z|",
+       "limit": null,
+       "metric": "M-B",
+       "parameters": {
+        "at": "305 Hz"
+       },
+       "pass": true,
+       "reason": "1.35 Ω — no limit set",
+       "specRef": "A4 M-B (simple mode)",
+       "subject": "system",
+       "title": "Minimum |Z| the amplifier sees (simple mode)",
+       "unit": "Ω",
+       "value": 1.346228549374684,
+       "withinToleranceOnly": false
+      },
+      {
+       "active": false,
+       "direction": "max",
+       "gate": "M-C",
+       "limit": null,
+       "metric": "M-C",
+       "parameters": {
+        "f_s": "901 Hz",
+        "passband": "5733-19000 Hz (frozen)"
+       },
+       "pass": true,
+       "reason": "-1.3 dB — no limit set",
+       "specRef": "A4 M-C",
+       "subject": "tweeter",
+       "title": "Drive voltage on the driver resonance",
+       "unit": "dB",
+       "value": -1.3417297958630547,
+       "withinToleranceOnly": false
+      }
+     ],
+     "label": "seed",
+     "parts": [
+      {
+       "params": [
+        {
+         "name": "Eg",
+         "unit": "V",
+         "value": 2.83
+        },
+        {
+         "name": "Rg",
+         "unit": "Ω",
+         "value": 0.001
+        }
+       ],
+       "partId": "G1",
+       "type": "Generator",
+       "wires": [
+        {
+         "x": 3,
+         "y": 4
+        },
+        {
+         "x": 3,
+         "y": 11
+        }
+       ]
+      },
+      {
+       "params": [],
+       "type": "Ground",
+       "wires": [
+        {
+         "x": 3,
+         "y": 11
+        }
+       ]
+      },
+      {
+       "params": [],
+       "type": "Wire",
+       "wires": [
+        {
+         "x": 3,
+         "y": 4
+        },
+        {
+         "x": 7,
+         "y": 4
+        }
+       ]
+      },
+      {
+       "params": [
+        {
+         "name": "L",
+         "unit": "mH",
+         "value": 1.018
+        },
+        {
+         "name": "DCR",
+         "unit": "Ω",
+         "value": 0.16
+        }
+       ],
+       "partId": "L1",
+       "type": "Inductor",
+       "wires": [
+        {
+         "x": 7,
+         "y": 4
+        },
+        {
+         "x": 11,
+         "y": 4
+        }
+       ]
+      },
+      {
+       "params": [
+        {
+         "name": "C",
+         "unit": "uF",
+         "value": 152.6
+        },
+        {
+         "name": "ESR",
+         "unit": "Ω",
+         "value": 0.02
+        }
+       ],
+       "partId": "C2",
+       "type": "Capacitor",
+       "wires": [
+        {
+         "x": 11,
+         "y": 4
+        },
+        {
+         "x": 11,
+         "y": 8
+        }
+       ]
+      },
+      {
+       "params": [
+        {
+         "name": "L",
+         "unit": "mH",
+         "value": 0.1166
+        },
+        {
+         "name": "DCR",
+         "unit": "Ω",
+         "value": 0.2
+        }
+       ],
+       "partId": "L2",
+       "type": "Inductor",
+       "wires": [
+        {
+         "x": 11,
+         "y": 8
+        },
+        {
+         "x": 11,
+         "y": 11
+        }
+       ]
+      },
+      {
+       "params": [],
+       "type": "Ground",
+       "wires": [
+        {
+         "x": 11,
+         "y": 11
+        }
+       ]
+      },
+      {
+       "model": "mid",
+       "params": [],
+       "partId": "D1",
+       "type": "Driver",
+       "wires": [
+        {
+         "x": 11,
+         "y": 4
+        },
+        {
+         "x": 15,
+         "y": 11
+        }
+       ]
+      },
+      {
+       "params": [],
+       "type": "Ground",
+       "wires": [
+        {
+         "x": 15,
+         "y": 11
+        }
+       ]
+      },
+      {
+       "params": [
+        {
+         "name": "C",
+         "unit": "uF",
+         "value": 14.59
+        },
+        {
+         "name": "ESR",
+         "unit": "Ω",
+         "value": 0.02
+        }
+       ],
+       "partId": "C1",
+       "type": "Capacitor",
+       "wires": [
+        {
+         "x": 3,
+         "y": 4
+        },
+        {
+         "x": 19,
+         "y": 4
+        }
+       ]
+      },
+      {
+       "model": "tweeter",
+       "params": [],
+       "partId": "D2",
+       "type": "Driver",
+       "wires": [
+        {
+         "x": 19,
+         "y": 4
+        },
+        {
+         "x": 19,
+         "y": 11
+        }
+       ]
+      },
+      {
+       "params": [],
+       "type": "Ground",
+       "wires": [
+        {
+         "x": 19,
+         "y": 11
+        }
+       ]
+      }
+     ],
+     "removed": [
+      "R1",
+      "C3"
+     ],
+     "start": 0,
+     "tuned": 6
+    },
+    {
+     "added": [],
+     "after": {
+      "avgDevDb": 3.338099194578167,
+      "phaseDeg": 39.07326152788689,
+      "rSourceOhm": 0.16,
+      "rippleDb": 5.383180914124999,
+      "ripplePeakSmoothedDb": 5.362825512177736,
+      "xoHz": 613.8479307753112,
+      "zMinOhm": 1.5578645517485732
+     },
+     "before": {
+      "avgDevDb": 4.769018068174409,
+      "phaseDeg": 143.25153047722068,
+      "rSourceOhm": 1.9849999999999999,
+      "rippleDb": 10.731473691377893,
+      "zMinOhm": 3.239754890694566
+     },
+     "evaluations": 5791,
+     "gatesDerived": [
+      {
+       "active": false,
+       "direction": "max",
+       "gate": "M-A",
+       "limit": null,
+       "metric": "M-A",
+       "parameters": {
+        "band": "210-19000 Hz",
+        "weighting": "IEC 60268-1 programme noise"
+       },
+       "pass": true,
+       "reason": "0.0 % — no limit set",
+       "specRef": "A4 M-A",
+       "subject": "system",
+       "title": "Dissipation in the filter resistors",
+       "unit": "of amplifier power",
+       "value": 0,
+       "withinToleranceOnly": false
+      },
+      {
+       "active": false,
+       "direction": "min",
+       "gate": "M-B/EPDR",
+       "limit": null,
+       "metric": "M-B",
+       "parameters": {
+        "at": "278 Hz"
+       },
+       "pass": true,
+       "reason": "0.78 Ω — no limit set",
+       "specRef": "A4 M-B",
+       "subject": "system",
+       "title": "EPDR of the amplifier load",
+       "unit": "Ω",
+       "value": 0.7816214206914399,
+       "withinToleranceOnly": false
+      },
+      {
+       "active": false,
+       "direction": "min",
+       "gate": "M-B/|Z|",
+       "limit": null,
+       "metric": "M-B",
+       "parameters": {
+        "at": "291 Hz"
+       },
+       "pass": true,
+       "reason": "1.56 Ω — no limit set",
+       "specRef": "A4 M-B (simple mode)",
+       "subject": "system",
+       "title": "Minimum |Z| the amplifier sees (simple mode)",
+       "unit": "Ω",
+       "value": 1.5578645517485732,
+       "withinToleranceOnly": false
+      },
+      {
+       "active": false,
+       "direction": "max",
+       "gate": "M-C",
+       "limit": null,
+       "metric": "M-C",
+       "parameters": {
+        "f_s": "901 Hz",
+        "passband": "609-19000 Hz (derived)"
+       },
+       "pass": true,
+       "reason": "0.0 dB — no limit set",
+       "specRef": "A4 M-C",
+       "subject": "tweeter",
+       "title": "Drive voltage on the driver resonance",
+       "unit": "dB",
+       "value": 0.020369195730213674,
+       "withinToleranceOnly": false
+      }
+     ],
+     "gatesFrozen": [
+      {
+       "active": false,
+       "direction": "max",
+       "gate": "M-A",
+       "limit": null,
+       "metric": "M-A",
+       "parameters": {
+        "band": "210-19000 Hz",
+        "weighting": "IEC 60268-1 programme noise"
+       },
+       "pass": true,
+       "reason": "0.0 % — no limit set",
+       "specRef": "A4 M-A",
+       "subject": "system",
+       "title": "Dissipation in the filter resistors",
+       "unit": "of amplifier power",
+       "value": 0,
+       "withinToleranceOnly": false
+      },
+      {
+       "active": false,
+       "direction": "min",
+       "gate": "M-B/EPDR",
+       "limit": null,
+       "metric": "M-B",
+       "parameters": {
+        "at": "278 Hz"
+       },
+       "pass": true,
+       "reason": "0.78 Ω — no limit set",
+       "specRef": "A4 M-B",
+       "subject": "system",
+       "title": "EPDR of the amplifier load",
+       "unit": "Ω",
+       "value": 0.7816214206914399,
+       "withinToleranceOnly": false
+      },
+      {
+       "active": false,
+       "direction": "min",
+       "gate": "M-B/|Z|",
+       "limit": null,
+       "metric": "M-B",
+       "parameters": {
+        "at": "291 Hz"
+       },
+       "pass": true,
+       "reason": "1.56 Ω — no limit set",
+       "specRef": "A4 M-B (simple mode)",
+       "subject": "system",
+       "title": "Minimum |Z| the amplifier sees (simple mode)",
+       "unit": "Ω",
+       "value": 1.5578645517485732,
+       "withinToleranceOnly": false
+      },
+      {
+       "active": false,
+       "direction": "max",
+       "gate": "M-C",
+       "limit": null,
+       "metric": "M-C",
+       "parameters": {
+        "f_s": "901 Hz",
+        "passband": "5733-19000 Hz (frozen)"
+       },
+       "pass": true,
+       "reason": "-1.2 dB — no limit set",
+       "specRef": "A4 M-C",
+       "subject": "tweeter",
+       "title": "Drive voltage on the driver resonance",
+       "unit": "dB",
+       "value": -1.1649349026558455,
+       "withinToleranceOnly": false
+      }
+     ],
+     "label": "start 1",
+     "parts": [
+      {
+       "params": [
+        {
+         "name": "Eg",
+         "unit": "V",
+         "value": 2.83
+        },
+        {
+         "name": "Rg",
+         "unit": "Ω",
+         "value": 0.001
+        }
+       ],
+       "partId": "G1",
+       "type": "Generator",
+       "wires": [
+        {
+         "x": 3,
+         "y": 4
+        },
+        {
+         "x": 3,
+         "y": 11
+        }
+       ]
+      },
+      {
+       "params": [],
+       "type": "Ground",
+       "wires": [
+        {
+         "x": 3,
+         "y": 11
+        }
+       ]
+      },
+      {
+       "params": [],
+       "type": "Wire",
+       "wires": [
+        {
+         "x": 3,
+         "y": 4
+        },
+        {
+         "x": 7,
+         "y": 4
+        }
+       ]
+      },
+      {
+       "params": [
+        {
+         "name": "L",
+         "unit": "mH",
+         "value": 1.136
+        },
+        {
+         "name": "DCR",
+         "unit": "Ω",
+         "value": 0.16
+        }
+       ],
+       "partId": "L1",
+       "type": "Inductor",
+       "wires": [
+        {
+         "x": 7,
+         "y": 4
+        },
+        {
+         "x": 11,
+         "y": 4
+        }
+       ]
+      },
+      {
+       "params": [
+        {
+         "name": "C",
+         "unit": "uF",
+         "value": 129.1
+        },
+        {
+         "name": "ESR",
+         "unit": "Ω",
+         "value": 0.02
+        }
+       ],
+       "partId": "C2",
+       "type": "Capacitor",
+       "wires": [
+        {
+         "x": 11,
+         "y": 4
+        },
+        {
+         "x": 11,
+         "y": 8
+        }
+       ]
+      },
+      {
+       "params": [
+        {
+         "name": "L",
+         "unit": "mH",
+         "value": 0.1505
+        },
+        {
+         "name": "DCR",
+         "unit": "Ω",
+         "value": 0.2
+        }
+       ],
+       "partId": "L2",
+       "type": "Inductor",
+       "wires": [
+        {
+         "x": 11,
+         "y": 8
+        },
+        {
+         "x": 11,
+         "y": 11
+        }
+       ]
+      },
+      {
+       "params": [],
+       "type": "Ground",
+       "wires": [
+        {
+         "x": 11,
+         "y": 11
+        }
+       ]
+      },
+      {
+       "model": "mid",
+       "params": [],
+       "partId": "D1",
+       "type": "Driver",
+       "wires": [
+        {
+         "x": 11,
+         "y": 4
+        },
+        {
+         "x": 15,
+         "y": 11
+        }
+       ]
+      },
+      {
+       "params": [],
+       "type": "Ground",
+       "wires": [
+        {
+         "x": 15,
+         "y": 11
+        }
+       ]
+      },
+      {
+       "params": [
+        {
+         "name": "C",
+         "unit": "uF",
+         "value": 15.68
+        },
+        {
+         "name": "ESR",
+         "unit": "Ω",
+         "value": 0.02
+        }
+       ],
+       "partId": "C1",
+       "type": "Capacitor",
+       "wires": [
+        {
+         "x": 3,
+         "y": 4
+        },
+        {
+         "x": 19,
+         "y": 4
+        }
+       ]
+      },
+      {
+       "model": "tweeter",
+       "params": [],
+       "partId": "D2",
+       "type": "Driver",
+       "wires": [
+        {
+         "x": 19,
+         "y": 4
+        },
+        {
+         "x": 19,
+         "y": 11
+        }
+       ]
+      },
+      {
+       "params": [],
+       "type": "Ground",
+       "wires": [
+        {
+         "x": 19,
+         "y": 11
+        }
+       ]
+      }
+     ],
+     "removed": [
+      "R1"
+     ],
+     "start": 1,
+     "tuned": 5
+    }
+   ],
+   "rejected": [],
+   "searchBox": {
+    "bounds": [],
+    "notes": [],
+    "valueCeilings": {},
+    "valueSumCeilings": []
+   }
+  },
+  "4242": {
+   "candidates": [
+    {
+     "added": [
+      "C3"
+     ],
+     "after": {
+      "avgDevDb": 1.821842303115042,
+      "phaseDeg": 73.41488782692963,
+      "rSourceOhm": 53.38999999999999,
+      "rippleDb": 4.295140380072134,
+      "ripplePeakSmoothedDb": 4.260818040509257,
+      "xoHz": 3696.003398208666,
+      "zMinOhm": 38.58919416773543
+     },
+     "before": {
+      "avgDevDb": 5.39336501339145,
+      "phaseDeg": 146.08221918009258,
+      "rSourceOhm": 2.222,
+      "rippleDb": 19.95593943862739,
+      "zMinOhm": 5.661166824954747
+     },
+     "evaluations": 5500,
+     "gatesDerived": [
+      {
+       "active": false,
+       "direction": "max",
+       "gate": "M-A",
+       "limit": null,
+       "metric": "M-A",
+       "parameters": {
+        "band": "210-19000 Hz",
+        "weighting": "IEC 60268-1 programme noise"
+       },
+       "pass": true,
+       "reason": "93.2 % — no limit set",
+       "specRef": "A4 M-A",
+       "subject": "system",
+       "title": "Dissipation in the filter resistors",
+       "unit": "of amplifier power",
+       "value": 0.9320483605719918,
+       "withinToleranceOnly": false
+      },
+      {
+       "active": false,
+       "direction": "min",
+       "gate": "M-B/EPDR",
+       "limit": null,
+       "metric": "M-B",
+       "parameters": {
+        "at": "1250 Hz"
+       },
+       "pass": true,
+       "reason": "21.84 Ω — no limit set",
+       "specRef": "A4 M-B",
+       "subject": "system",
+       "title": "EPDR of the amplifier load",
+       "unit": "Ω",
+       "value": 21.836259108592685,
+       "withinToleranceOnly": false
+      },
+      {
+       "active": false,
+       "direction": "min",
+       "gate": "M-B/|Z|",
+       "limit": null,
+       "metric": "M-B",
+       "parameters": {
+        "at": "1621 Hz"
+       },
+       "pass": true,
+       "reason": "38.59 Ω — no limit set",
+       "specRef": "A4 M-B (simple mode)",
+       "subject": "system",
+       "title": "Minimum |Z| the amplifier sees (simple mode)",
+       "unit": "Ω",
+       "value": 38.58919416773543,
+       "withinToleranceOnly": false
+      },
+      {
+       "active": false,
+       "direction": "max",
+       "gate": "M-C",
+       "limit": null,
+       "metric": "M-C",
+       "parameters": {
+        "f_s": "901 Hz",
+        "passband": "3665-19000 Hz (derived)"
+       },
+       "pass": true,
+       "reason": "-10.2 dB — no limit set",
+       "specRef": "A4 M-C",
+       "subject": "tweeter",
+       "title": "Drive voltage on the driver resonance",
+       "unit": "dB",
+       "value": -10.235630187678467,
+       "withinToleranceOnly": false
+      }
+     ],
+     "gatesFrozen": [
+      {
+       "active": false,
+       "direction": "max",
+       "gate": "M-A",
+       "limit": null,
+       "metric": "M-A",
+       "parameters": {
+        "band": "210-19000 Hz",
+        "weighting": "IEC 60268-1 programme noise"
+       },
+       "pass": true,
+       "reason": "93.2 % — no limit set",
+       "specRef": "A4 M-A",
+       "subject": "system",
+       "title": "Dissipation in the filter resistors",
+       "unit": "of amplifier power",
+       "value": 0.9320483605719918,
+       "withinToleranceOnly": false
+      },
+      {
+       "active": false,
+       "direction": "min",
+       "gate": "M-B/EPDR",
+       "limit": null,
+       "metric": "M-B",
+       "parameters": {
+        "at": "1250 Hz"
+       },
+       "pass": true,
+       "reason": "21.84 Ω — no limit set",
+       "specRef": "A4 M-B",
+       "subject": "system",
+       "title": "EPDR of the amplifier load",
+       "unit": "Ω",
+       "value": 21.836259108592685,
+       "withinToleranceOnly": false
+      },
+      {
+       "active": false,
+       "direction": "min",
+       "gate": "M-B/|Z|",
+       "limit": null,
+       "metric": "M-B",
+       "parameters": {
+        "at": "1621 Hz"
+       },
+       "pass": true,
+       "reason": "38.59 Ω — no limit set",
+       "specRef": "A4 M-B (simple mode)",
+       "subject": "system",
+       "title": "Minimum |Z| the amplifier sees (simple mode)",
+       "unit": "Ω",
+       "value": 38.58919416773543,
+       "withinToleranceOnly": false
+      },
+      {
+       "active": false,
+       "direction": "max",
+       "gate": "M-C",
+       "limit": null,
+       "metric": "M-C",
+       "parameters": {
+        "f_s": "901 Hz",
+        "passband": "5733-19000 Hz (frozen)"
+       },
+       "pass": true,
+       "reason": "-12.1 dB — no limit set",
+       "specRef": "A4 M-C",
+       "subject": "tweeter",
+       "title": "Drive voltage on the driver resonance",
+       "unit": "dB",
+       "value": -12.135291934083298,
+       "withinToleranceOnly": false
+      }
+     ],
+     "label": "start 1",
+     "parts": [
+      {
+       "params": [
+        {
+         "name": "Eg",
+         "unit": "V",
+         "value": 2.83
+        },
+        {
+         "name": "Rg",
+         "unit": "Ω",
+         "value": 0.001
+        }
+       ],
+       "partId": "G1",
+       "type": "Generator",
+       "wires": [
+        {
+         "x": 3,
+         "y": 4
+        },
+        {
+         "x": 3,
+         "y": 11
+        }
+       ]
+      },
+      {
+       "params": [],
+       "type": "Ground",
+       "wires": [
+        {
+         "x": 3,
+         "y": 11
+        }
+       ]
+      },
+      {
+       "params": [
+        {
+         "name": "R",
+         "unit": "Ω",
+         "value": 53.23
+        }
+       ],
+       "partId": "R1",
+       "type": "Resistor",
+       "wires": [
+        {
+         "x": 3,
+         "y": 4
+        },
+        {
+         "x": 7,
+         "y": 4
+        }
+       ]
+      },
+      {
+       "params": [
+        {
+         "name": "L",
+         "unit": "mH",
+         "value": 4.71
+        },
+        {
+         "name": "DCR",
+         "unit": "Ω",
+         "value": 0.16
+        }
+       ],
+       "partId": "L1",
+       "type": "Inductor",
+       "wires": [
+        {
+         "x": 7,
+         "y": 4
+        },
+        {
+         "x": 11,
+         "y": 4
+        }
+       ]
+      },
+      {
+       "params": [
+        {
+         "name": "C",
+         "unit": "uF",
+         "value": 25.52
+        },
+        {
+         "name": "ESR",
+         "unit": "Ω",
+         "value": 0.02
+        }
+       ],
+       "partId": "C2",
+       "type": "Capacitor",
+       "wires": [
+        {
+         "x": 11,
+         "y": 4
+        },
+        {
+         "x": 11,
+         "y": 8
+        }
+       ]
+      },
+      {
+       "params": [
+        {
+         "name": "L",
+         "unit": "mH",
+         "value": 0.0002569
+        },
+        {
+         "name": "DCR",
+         "unit": "Ω",
+         "value": 0.2
+        }
+       ],
+       "partId": "L2",
+       "type": "Inductor",
+       "wires": [
+        {
+         "x": 11,
+         "y": 8
+        },
+        {
+         "x": 11,
+         "y": 11
+        }
+       ]
+      },
+      {
+       "params": [],
+       "type": "Ground",
+       "wires": [
+        {
+         "x": 11,
+         "y": 11
+        }
+       ]
+      },
+      {
+       "model": "mid",
+       "params": [],
+       "partId": "D1",
+       "type": "Driver",
+       "wires": [
+        {
+         "x": 11,
+         "y": 4
+        },
+        {
+         "x": 15,
+         "y": 11
+        }
+       ]
+      },
+      {
+       "params": [],
+       "type": "Ground",
+       "wires": [
+        {
+         "x": 15,
+         "y": 11
+        }
+       ]
+      },
+      {
+       "params": [
+        {
+         "name": "C",
+         "unit": "uF",
+         "value": 0.06052
+        },
+        {
+         "name": "ESR",
+         "unit": "Ω",
+         "value": 0.02
+        }
+       ],
+       "partId": "C1",
+       "type": "Capacitor",
+       "wires": [
+        {
+         "x": 3,
+         "y": 4
+        },
+        {
+         "x": 19,
+         "y": 4
+        }
+       ]
+      },
+      {
+       "model": "tweeter",
+       "params": [],
+       "partId": "D2",
+       "type": "Driver",
+       "wires": [
+        {
+         "x": 19,
+         "y": 4
+        },
+        {
+         "x": 19,
+         "y": 11
+        }
+       ]
+      },
+      {
+       "params": [],
+       "type": "Ground",
+       "wires": [
+        {
+         "x": 19,
+         "y": 11
+        }
+       ]
+      },
+      {
+       "params": [],
+       "type": "Wire",
+       "wires": [
+        {
+         "x": 3,
+         "y": 4
+        },
+        {
+         "x": 3,
+         "y": 0
+        }
+       ]
+      },
+      {
+       "params": [],
+       "type": "Wire",
+       "wires": [
+        {
+         "x": 7,
+         "y": 4
+        },
+        {
+         "x": 7,
+         "y": 0
+        }
+       ]
+      },
+      {
+       "params": [
+        {
+         "name": "C",
+         "unit": "uF",
+         "value": 1.606
+        }
+       ],
+       "partId": "C3",
+       "type": "Capacitor",
+       "wires": [
+        {
+         "x": 3,
+         "y": 0
+        },
+        {
+         "x": 7,
+         "y": 0
+        }
+       ]
+      }
+     ],
+     "removed": [],
+     "start": 1,
+     "tuned": 6
+    },
+    {
+     "added": [
+      "C3"
+     ],
+     "after": {
+      "avgDevDb": 3.296165803669835,
+      "phaseDeg": 36.24979602515489,
+      "rSourceOhm": 0.16,
+      "rippleDb": 5.456854024028573,
+      "ripplePeakSmoothedDb": 5.436280916253551,
+      "xoHz": 620.8181295087779,
+      "zMinOhm": 1.346228549374684
+     },
+     "before": {
+      "avgDevDb": 3.0197999822070103,
+      "phaseDeg": 141.11891972909706,
+      "rSourceOhm": 1.16,
+      "rippleDb": 16.05560603126979,
+      "zMinOhm": 3.7602917635339104
+     },
+     "evaluations": 5182,
+     "gatesDerived": [
+      {
+       "active": false,
+       "direction": "max",
+       "gate": "M-A",
+       "limit": null,
+       "metric": "M-A",
+       "parameters": {
+        "band": "210-19000 Hz",
+        "weighting": "IEC 60268-1 programme noise"
+       },
+       "pass": true,
+       "reason": "0.0 % — no limit set",
+       "specRef": "A4 M-A",
+       "subject": "system",
+       "title": "Dissipation in the filter resistors",
+       "unit": "of amplifier power",
+       "value": 0,
+       "withinToleranceOnly": false
+      },
+      {
+       "active": false,
+       "direction": "min",
+       "gate": "M-B/EPDR",
+       "limit": null,
+       "metric": "M-B",
+       "parameters": {
+        "at": "291 Hz"
+       },
+       "pass": true,
+       "reason": "0.68 Ω — no limit set",
+       "specRef": "A4 M-B",
+       "subject": "system",
+       "title": "EPDR of the amplifier load",
+       "unit": "Ω",
+       "value": 0.6762310751277455,
+       "withinToleranceOnly": false
+      },
+      {
+       "active": false,
+       "direction": "min",
+       "gate": "M-B/|Z|",
+       "limit": null,
+       "metric": "M-B",
+       "parameters": {
+        "at": "305 Hz"
+       },
+       "pass": true,
+       "reason": "1.35 Ω — no limit set",
+       "specRef": "A4 M-B (simple mode)",
+       "subject": "system",
+       "title": "Minimum |Z| the amplifier sees (simple mode)",
+       "unit": "Ω",
+       "value": 1.346228549374684,
+       "withinToleranceOnly": false
+      },
+      {
+       "active": false,
+       "direction": "max",
+       "gate": "M-C",
+       "limit": null,
+       "metric": "M-C",
+       "parameters": {
+        "f_s": "901 Hz",
+        "passband": "614-19000 Hz (derived)"
+       },
+       "pass": true,
+       "reason": "-0.0 dB — no limit set",
+       "specRef": "A4 M-C",
+       "subject": "tweeter",
+       "title": "Drive voltage on the driver resonance",
+       "unit": "dB",
+       "value": -0.0387038464919649,
+       "withinToleranceOnly": false
+      }
+     ],
+     "gatesFrozen": [
+      {
+       "active": false,
+       "direction": "max",
+       "gate": "M-A",
+       "limit": null,
+       "metric": "M-A",
+       "parameters": {
+        "band": "210-19000 Hz",
+        "weighting": "IEC 60268-1 programme noise"
+       },
+       "pass": true,
+       "reason": "0.0 % — no limit set",
+       "specRef": "A4 M-A",
+       "subject": "system",
+       "title": "Dissipation in the filter resistors",
+       "unit": "of amplifier power",
+       "value": 0,
+       "withinToleranceOnly": false
+      },
+      {
+       "active": false,
+       "direction": "min",
+       "gate": "M-B/EPDR",
+       "limit": null,
+       "metric": "M-B",
+       "parameters": {
+        "at": "291 Hz"
+       },
+       "pass": true,
+       "reason": "0.68 Ω — no limit set",
+       "specRef": "A4 M-B",
+       "subject": "system",
+       "title": "EPDR of the amplifier load",
+       "unit": "Ω",
+       "value": 0.6762310751277455,
+       "withinToleranceOnly": false
+      },
+      {
+       "active": false,
+       "direction": "min",
+       "gate": "M-B/|Z|",
+       "limit": null,
+       "metric": "M-B",
+       "parameters": {
+        "at": "305 Hz"
+       },
+       "pass": true,
+       "reason": "1.35 Ω — no limit set",
+       "specRef": "A4 M-B (simple mode)",
+       "subject": "system",
+       "title": "Minimum |Z| the amplifier sees (simple mode)",
+       "unit": "Ω",
+       "value": 1.346228549374684,
+       "withinToleranceOnly": false
+      },
+      {
+       "active": false,
+       "direction": "max",
+       "gate": "M-C",
+       "limit": null,
+       "metric": "M-C",
+       "parameters": {
+        "f_s": "901 Hz",
+        "passband": "5733-19000 Hz (frozen)"
+       },
+       "pass": true,
+       "reason": "-1.3 dB — no limit set",
+       "specRef": "A4 M-C",
+       "subject": "tweeter",
+       "title": "Drive voltage on the driver resonance",
+       "unit": "dB",
+       "value": -1.3417297958630547,
+       "withinToleranceOnly": false
+      }
+     ],
+     "label": "seed",
+     "parts": [
+      {
+       "params": [
+        {
+         "name": "Eg",
+         "unit": "V",
+         "value": 2.83
+        },
+        {
+         "name": "Rg",
+         "unit": "Ω",
+         "value": 0.001
+        }
+       ],
+       "partId": "G1",
+       "type": "Generator",
+       "wires": [
+        {
+         "x": 3,
+         "y": 4
+        },
+        {
+         "x": 3,
+         "y": 11
+        }
+       ]
+      },
+      {
+       "params": [],
+       "type": "Ground",
+       "wires": [
+        {
+         "x": 3,
+         "y": 11
+        }
+       ]
+      },
+      {
+       "params": [],
+       "type": "Wire",
+       "wires": [
+        {
+         "x": 3,
+         "y": 4
+        },
+        {
+         "x": 7,
+         "y": 4
+        }
+       ]
+      },
+      {
+       "params": [
+        {
+         "name": "L",
+         "unit": "mH",
+         "value": 1.018
+        },
+        {
+         "name": "DCR",
+         "unit": "Ω",
+         "value": 0.16
+        }
+       ],
+       "partId": "L1",
+       "type": "Inductor",
+       "wires": [
+        {
+         "x": 7,
+         "y": 4
+        },
+        {
+         "x": 11,
+         "y": 4
+        }
+       ]
+      },
+      {
+       "params": [
+        {
+         "name": "C",
+         "unit": "uF",
+         "value": 152.6
+        },
+        {
+         "name": "ESR",
+         "unit": "Ω",
+         "value": 0.02
+        }
+       ],
+       "partId": "C2",
+       "type": "Capacitor",
+       "wires": [
+        {
+         "x": 11,
+         "y": 4
+        },
+        {
+         "x": 11,
+         "y": 8
+        }
+       ]
+      },
+      {
+       "params": [
+        {
+         "name": "L",
+         "unit": "mH",
+         "value": 0.1166
+        },
+        {
+         "name": "DCR",
+         "unit": "Ω",
+         "value": 0.2
+        }
+       ],
+       "partId": "L2",
+       "type": "Inductor",
+       "wires": [
+        {
+         "x": 11,
+         "y": 8
+        },
+        {
+         "x": 11,
+         "y": 11
+        }
+       ]
+      },
+      {
+       "params": [],
+       "type": "Ground",
+       "wires": [
+        {
+         "x": 11,
+         "y": 11
+        }
+       ]
+      },
+      {
+       "model": "mid",
+       "params": [],
+       "partId": "D1",
+       "type": "Driver",
+       "wires": [
+        {
+         "x": 11,
+         "y": 4
+        },
+        {
+         "x": 15,
+         "y": 11
+        }
+       ]
+      },
+      {
+       "params": [],
+       "type": "Ground",
+       "wires": [
+        {
+         "x": 15,
+         "y": 11
+        }
+       ]
+      },
+      {
+       "params": [
+        {
+         "name": "C",
+         "unit": "uF",
+         "value": 14.59
+        },
+        {
+         "name": "ESR",
+         "unit": "Ω",
+         "value": 0.02
+        }
+       ],
+       "partId": "C1",
+       "type": "Capacitor",
+       "wires": [
+        {
+         "x": 3,
+         "y": 4
+        },
+        {
+         "x": 19,
+         "y": 4
+        }
+       ]
+      },
+      {
+       "model": "tweeter",
+       "params": [],
+       "partId": "D2",
+       "type": "Driver",
+       "wires": [
+        {
+         "x": 19,
+         "y": 4
+        },
+        {
+         "x": 19,
+         "y": 11
+        }
+       ]
+      },
+      {
+       "params": [],
+       "type": "Ground",
+       "wires": [
+        {
+         "x": 19,
+         "y": 11
+        }
+       ]
+      }
+     ],
+     "removed": [
+      "R1",
+      "C3"
+     ],
+     "start": 0,
+     "tuned": 6
+    }
+   ],
+   "rejected": [],
+   "searchBox": {
+    "bounds": [],
+    "notes": [],
+    "valueCeilings": {},
+    "valueSumCeilings": []
+   }
+  }
+ }
+}

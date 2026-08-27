@@ -2,6 +2,47 @@
  "casus": "Koan 2951 — casusboek casus 1",
  "meetdata": "22-08-2026 (.lim x3, ver-veld hor_0 x4, mid_hor_30, nabij-veld x3)",
  "vastgesteld": "25-08-2026",
+ "classificatie": {
+  "_": "F4a (27-08-2026). Elke referentie in dit bestand draagt sindsdien twee velden: \"klasse\" en \"afhankelijkheid\" - waar zij een FUNCTIE van is. Aanleiding: docs/audit_engineV2_optimizerV1_grens.md, paragraaf 6 en 8. Engine v2 begrenst vandaag alleen WAARDEN; welke kandidaten er zijn beslist de v1-zoektocht. Zodra v2 eigen kandidaten genereert (F4d) levert dat legitiem andere netwerken op, en elke referentie die een eigenschap van de ZOEKTOCHT vastlegt in plaats van natuurkunde gaat dan rood - precies op het moment dat de acceptatie-autoriteit nodig is. V15 beschrijft dezelfde fout voor een meetsessie-eigenschap; dit is die fout een laag lager, voor een engine-eigenschap.",
+  "klassen": {
+   "A": "(metingen) -> waarde. Volledig uit de meetbestanden afgeleid. Engine-onafhankelijk.",
+   "B": "(metingen, gegeven netlist) -> metriek. Berekend op een VASTE netlist die als bestand in test-fixtures/casus1/ staat (HUIDIG, KAND_A, KAND_B). Toetst de metriekbibliotheek en niet de zoektocht, en blijft geldig zolang die netlist en de bandparameters vastliggen.",
+   "C": "(metingen, zoektocht) -> uitkomst. Legt vast wat een zoektocht heeft GEVONDEN: een kruispunt, componentwaarden, de score van een run, een shortlist-samenstelling. Engine-afhankelijk."
+  },
+  "afhankelijkheid_waarden": [
+   "meting",
+   "meting+netlist",
+   "meting+zoektocht"
+  ],
+  "regel": "Klasse C hoort uitsluitend onder \"v1_baseline\" (of een toekomstig \"v2_baseline\") en mag door geen enkele test als acceptatiewaarde gelezen worden. Een nieuwe referentie zonder klasse en afhankelijkheid is geen referentie; zie .claude/skills/casus-toevoegen/SKILL.md.",
+  "toleranties_dragen_geen_klasse": "De tien klassen onder \"toleranties\" zijn geen referenties maar de aanvaardingsbreedte VAN referenties. Ze krijgen daarom geen klasse - een tolerantie is nergens een functie van, zij is een besluit met een motivering, en die staat in toleranties_toelichting.",
+  "bevinding_F4a": "GEEN ENKELE referentie in dit bestand is klasse C, en dat is een bevinding en geen opluchting. De drie kandidaten van casus 1 zijn als NETLIST-BESTAND bevroren (manifest_en_geometrie.netlists) en niet als uitkomst van een run: elke kandidaatmetriek is daarmee een functie van meting plus bestand, en een eigen kandidaatgeneratie in F4d verschuift er geen enkele. De vrees uit de audit is voor casus 1 dus ongegrond - maar zij is pas ongegrond sinds iemand het heeft nagekeken, en de klasse-velden zijn wat het nagekeken houdt.",
+  "telling": {
+   "_": "Geteld op BLADEREN en niet op regels: elke waarde die op een pad eindigt telt een keer. Proza (uitleg, herkomst, motivering) en bestandsboekhouding tellen niet als referentie. GETELD OP DE TOESTAND DIE F4a AANTROF - het bestand zoals het bij b137f1d in de repo stond, 272 bladeren. De negen parameterblokken die F4a heeft toegevoegd DOCUMENTEREN die referenties en zijn er geen; ze tellen hier dus niet mee, anders zou het aantal referenties groeien doordat er beter is opgeschreven wat de bestaande betekenen.",
+   "bladeren_totaal": 272,
+   "proza_en_boekhouding": 68,
+   "waardedragend": 204,
+   "tolerantieklassen": 10,
+   "klasse_A": 123,
+   "klasse_B": 71,
+   "klasse_C": 0
+  },
+  "besluiten": {
+   "_": "Drie mogelijke besluiten per referentie, conform de F4a-opdracht. De volledige inventarisatietabel - referentie, klasse, consumerende test met bestand en regel, besluit, reden - staat in het casusboek onder V19.",
+   "behouden": "klasse A of B, bandparameters expliciet aanwezig (V15-conform)",
+   "herdefinieerd": "klasse A of B, maar band, gladding of raster ontbrak of stond impliciet in de code; de referentie draagt die parameters sinds F4a expliciet. Veertien referentiegroepen, ondergebracht in NEGEN parameterblokken (de vier SPL-scans delen er een); GEEN ENKELE referentiewaarde is aangeraakt.",
+   "gedegradeerd": "klasse C, verhuist naar v1_baseline. Aantal bij F4a: nul."
+  }
+ },
+ "v1_baseline": {
+  "_": "DE LANDINGSPLAATS VOOR KLASSE C, EN HIJ IS LEEG. Hier horen referenties die vastleggen wat de v1-zoektocht heeft GEVONDEN: een kruispunt dat zij koos, componentwaarden waarop zij uitkwam, de score van een run, de samenstelling van een shortlist. Zulke waarden zijn geen natuurkunde en mogen daarom nooit een acceptatiecriterium zijn - maar ze zijn wel de gedocumenteerde uitkomst van v1 op deze casus, en F4d moet zijn eigen uitkomst ernaast kunnen leggen. Bij F4a is het blok leeg omdat er niets in hoorde: zie classificatie.bevinding_F4a.",
+  "klasse": "C",
+  "afhankelijkheid": "meting+zoektocht",
+  "acceptatie": "GEEN ENKELE waarde onder dit blok is een acceptatiecriterium. Een test die er een uit leest is per definitie fout, en src/lib/engine2/goldenClassification.test.ts faalt erop.",
+  "v1_commit": "b137f1d",
+  "v1_commit_herleiding": "b137f1d (F3c) is de werkboom waarop de audit is uitgevoerd en waarop deze classificatie is gedaan; het is tevens HEAD bij F4a. De onderdelen van v1 waar een klasse-C-waarde aan zou hangen bewogen het laatst eerder: de kandidaatgeneratie (src/lib/threeWayChain.ts, crossover3Variants) bij 61a3ea4 (F3), de tuner (src/lib/netOptimizer.ts, optimizeNetworkValues) bij c7030ab (F2b). De drie kandidaatnetlists zelf zijn bij b04f9fa in de repo gezet en sindsdien onveranderd - dat is precies waarom de kandidaatmetrieken klasse B zijn en niet klasse C.",
+  "referenties": {}
+ },
  "toleranties": {
   "frequenties_pct": 2,
   "dB": 0.15,
@@ -15,7 +56,54 @@
   "fit_kwaliteit_pct": 5
  },
  "afgeleide_parameters": {
+ "_re_direct_parameters": {
+  "_": "V15-PROCESREGEL op de DIRECTE aflezing (Re_naief bij de woofer, Re_direct bij mid en tweeter). Dat getal is geen fit maar een venstermiddeling, en het venster stond tot F4a alleen in proza - bij de mid stond het er zelfs helemaal niet. Een middeling zonder haar venster is niet reproduceerbaar en dus geen referentie.",
+  "schatter": "z-re@1.1",
+  "grootheid": "mediaan van Re(Z) over de LAAGSTE fractie van de gemeten punten",
+  "fractie_van_de_punten": 0.025,
+  "waarom_een_fractie": "een fractie van het puntental en geen frequentie: een frequentie zou een P6-overtreding zijn, en hoeveel punten je hoort te middelen is een eigenschap van de sweep en niet van de driver",
+  "middeling": "mediaan en niet gemiddelde - een enkele bin netbrom onderin een impedantiesweep is gewoon en mag de schatting niet meetrekken",
+  "raster": "de punten van het .lim-bestand zelf; er wordt niet geherbemonsterd",
+  "klasse": "A",
+  "afhankelijkheid": "meting"
+ },
+ "_spl_scan_parameters": {
+  "_": "V15-PROCESREGEL op de SPL-scans (A5b.2 / A5c.4). Breakups, richtings-persistentie, de richtingsverhouding en de diffractierimpel worden alle vier tegen DEZELFDE fractionele-octaaftrend op DEZELFDE band en hetzelfde raster gemeten, en geen van die parameters stond tot F4a in dit bestand - terwijl V8c juist vastlegt dat een en dezelfde conusresonantie +0,7 of +3,2 dB leest naargelang de band waarop de trend is berekend.",
+  "band": "per driver de EIGEN ver-veldgeldigheidsband (A5b.1): de doorsnede van de headergrenzen met de omvang van de bestanden zelf. Zie afgeleide_parameters.<driver>.FF_vloer_header voor de ondergrens van de woofer. DE CLIPPING IS DE METING (V8c).",
+  "raster_punten": 500,
+  "raster_verdeling": "log",
+  "trend_octaaf_deel": 2,
+  "trend_middeling": "rekenkundig gemiddelde van de dB-waarden over een venster van plus en min 1/(2 * trend_octaaf_deel) octaaf rond elk punt",
+  "piek_drempel_dB_boven_trend": 0.7,
+  "piek_samenvoeging_octaven": 0,
+  "persistentie_zoekvenster_octaven": 0.16666666666666666,
+  "richting_gladding": "de VERSCHILcurve (uit-as minus op-as) wordt gegladd, niet de twee curves apart: rimpel die beide gemeen hebben valt in het verschil weg en wat overblijft is de bundelingstrend",
+  "richting_aflezing": "de -3 dB- en -6 dB-frequenties zijn de kruisingen van die gegladde verschilcurve, log-geinterpoleerd tussen twee rasterpunten",
+  "diffractie_rms_raster": "op het LOG-raster hierboven; een lineair raster zou de bovenste octaaf de rest laten overstemmen",
+  "diffractie_transformatie_punten": 1024,
+  "diffractie_transformatie_verdeling": "lineair - een diffractierimpel is periodiek in frequentie, niet in log-frequentie",
+  "diffractie_venster": "Hann; zonder venster rinkelen de bandranden en verzinnen zij een omweglengte",
+  "diffractie_min_rimpelperioden": 4,
+  "klasse": "A",
+  "afhankelijkheid": "meting"
+ },
+ "_semi_inductantie_parameters": {
+  "_": "V15-PROCESREGEL op de spreekspoelfit (A5c.5 / V8e). De EXPONENT n is een referentie; zijn fitband stond tot F4a alleen in de code.",
+  "model": "|Z - R_e| = K * omega^n, lineair gefit in log-log",
+  "band": "van 10^decaden_boven_resonantie maal de HOOGSTE motionele resonantie van de driver tot de top van de sweep. Dimensieloos, dus P6-schoon: de band beweegt met de driver en noemt geen frequentie.",
+  "decaden_boven_resonantie": 1,
+  "minimum_punten": 8,
+  "n_geldig_van": 0.4,
+  "n_geldig_tot": 1.1,
+  "max_ln_residu": 0.25,
+  "weigering": "buiten dat bereik RAPPORTEERT de extractor dat hij het model niet kan bepalen, in plaats van een exponent te publiceren - precies wat de tweeter van casus 1 nodig heeft (V8e)",
+  "klasse": "A",
+  "afhankelijkheid": "meting"
+ },
   "woofer": {
+   "klasse": "A",
+   "afhankelijkheid": "meting",
+   "klasse_toelichting": "Alles onder deze driver komt uit de meetbestanden alleen: de impedantiesweep en de twee nabije/ver-veldbestanden. Geen netlist, geen zoektocht - de drie kandidaatrapporten geven aantoonbaar dezelfde waarden.",
    "Re_naief": 3.81,
    "Re": 2.8962,
    "Re_herkomst": "motionele fit (A5c.1, F3b) — de DC-term van het model, zie re_fit_parameters",
@@ -45,6 +133,8 @@
   },
   "mid": {
    "Re": 3.358,
+   "klasse": "A",
+   "afhankelijkheid": "meting",
    "Re_herkomst": "motionele fit (A5c.1, F3b)",
    "Re_direct": 3.381,
    "Re_motionele_rok_ohm": 0.04,
@@ -113,6 +203,8 @@
   },
   "tweeter": {
    "Re": 5.2274,
+   "klasse": "A",
+   "afhankelijkheid": "meting",
    "Re_herkomst": "motionele fit (A5c.1, F3b)",
    "Re_direct": 5.587,
    "Re_motionele_rok_ohm": 0.26,
@@ -141,12 +233,59 @@
  },
  "verankerde_gaps_dB": {
   "anker": "mid",
+  "klasse": "A",
+  "afhankelijkheid": "meting",
+  "klasse_toelichting": "Anker, gaps en de haalbaarheidswaarschuwing zijn functies van de gemeten niveaus en van het A5d.3-venster, niet van een filter: de drie kandidaatrapporten leveren aantoonbaar hetzelfde ankerblok op. Zie parameters.terugval voor het enige pad waarlangs een netlist hier wel invloed zou krijgen.",
+  "parameters": {
+   "_": "V15-PROCESREGEL. Een niveau is een BANDGEMIDDELDE, en welke band bepaalt het antwoord: over alles wat een driver gemeten heeft wordt een woofer omlaaggetrokken door zijn eigen afval en verandert een gevoeligheidsvergelijking in een vergelijking van meetbreedtes.",
+   "niveau": "ENERGIE-gemiddelde over de band van de weg. Een gap is een vermogensverhouding, en een rekenkundig dB-gemiddelde onderschat wat er bovenuit steekt.",
+   "band_per_weg": "tussen de OVERNAMES rond de weg; de buitenste randen zijn de eigen ver-veldgeldigheidsband van de driver",
+   "overname": "het MEETKUNDIG MIDDEN van het A5d.3-venster, sqrt(vloer * plafond) - niet een kruispunt van een filter. Dit is een PRE-designanalyse en moet hetzelfde antwoord geven voordat er een filter bestaat.",
+   "raster": "het log-scanraster van de SPL-pas; zie afgeleide_parameters._spl_scan_parameters",
+   "terugval": "alleen wanneer een venster onvolledig is valt de overname terug op het kruispunt van het geladen filter. Op casus 1 gebeurt dat niet - beide vensters zijn compleet - en dat is nagemeten: HUIDIG, KAND_A en KAND_B leveren hetzelfde ankerblok. Zou die terugval hier wel bijten, dan was dit blok klasse B."
+  },
   "woofer_tov_mid": 1.5,
   "tweeter_tov_mid": 4.1,
   "status": "WACHT OP A5e.2. Het ANKER en de haalbaarheidswaarschuwing zijn acceptatiecriteria en reproduceren; de WAARDEN niet. A5d.4(a) wil het ankerniveau NA baffle step in de beoogde opstelling, en dat is een eigenschap van het doelcurve-object - een open A5e-besluit. Tot dat genomen is vergelijkt de engine de kale gemeten niveaus en zegt dat erbij: 0,89 dB (woofer) en 3,44 dB (tweeter) tegen de 1,5 en 4,1 hieronder."
  },
  "kandidaten": {
+ "_M_A_M_B_parameters": {
+  "_": "V15-PROCESREGEL op M-A (dissipatie, grootste weerstand) en M-B (min |Z|, min EPDR). Beide integreren respectievelijk zoeken over een BAND op een RASTER, en beide stonden tot F4a zonder.",
+  "raster": "hetzelfde analyseraster als kandidaten._F3_respons_oordeel.grid - hier niet herhaald, omdat twee kopieen van een raster twee kansen zijn om uiteen te lopen",
+  "band": "het HELE raster, poortvrij. M-A en M-B gaan over wat de VERSTERKER ziet, en die ziet de hele last en niet het stuk waarvan een ver-veldmeting geldig is.",
+  "M_A_weging": "IEC 60268-1 simulated programme noise: roze met een 1e-orde hoogdoorlaat en een 1e-orde laagdoorlaat op de normranden (40 Hz en 5 kHz). Vastgelegd door de norm die M-A definieert, niet door dit project.",
+  "M_A_normalisatie": "fractie van het vermogen dat de luidspreker AANNEEMT - de integraal van Re(1/Z_in) onder dezelfde weging - en niet van het vermogen dat de versterker levert",
+  "M_A_versterkervermogen_W": 100,
+  "M_A_totaal": "dissipatie_pct telt alleen de NIET-parasitaire weerstanden; DCR van spoelen en ESR van condensatoren worden apart bijgehouden",
+  "M_B_EPDR": "|Z| / (2 * cos^2(phi)) - de weerstand die de versterker werkelijk ziet, gezocht over het hele raster",
+  "klasse": "B",
+  "afhankelijkheid": "meting+netlist"
+ },
+ "_M_E_parameters": {
+  "_": "V15-PROCESREGEL op M-E (Qes_mult). De metriek deelt door R_e, en het casusboek draagt TWEE lezingen van dezelfde R_e van het wooferpaar (V16). Welke van de twee onder Qes_mult ligt stond tot F4a alleen in proza en in een constante in de testfixture - en een parameter die alleen in code staat is precies wat V15 verbiedt.",
+  "R_e_ohm": 3.05,
+  "R_e_herkomst": "docs/prototype/compare.py, Re_w: de meterlezing waarop de M-E-referentie van 25-08 berekend is. De Qes-INVERSIE onder grens_inversies staat op de andere lezing (2,90 Ohm, afgeleide_parameters.woofer.Re_werkelijk_ca). Geen van beide is fout; wat fout was, is dat geen van beide referenties zei welke zij gebruikte.",
+  "R_e_invoerpunt": "ingevoerd bij de PAS en niet bij de metriek. R_e voedt ook de verliesindicator, r0 en de Qes-inversie, en een waarde die bij een metriek wordt ingevoerd laat de rest van het rapport een ander getal citeren.",
+  "f_resonantie": "de FUNDAMENTELE in-box-resonantie van de woofer, afgeleid uit de geladen impedantie - niet uit een lijst",
+  "klasse": "B",
+  "afhankelijkheid": "meting+netlist"
+ },
+ "_M_F_interim_parameters": {
+  "_": "V15-PROCESREGEL op M-F-interim (lobing_wm_lambda, lobing_mt_lambda). lambda = d * f / c, en WELKE d stond tot F4a niet in dit bestand - terwijl het onderste paar niet de paarafstand gebruikt maar de ARRAY-afstand van de twee woofers. Dat verschil is 0,289 tegen 0,274 lambda op HUIDIG - buiten de lambda-tolerantieklasse van 4 %, dus geen afronding maar een andere grootheid.",
+  "formule": "lambda = d * f_kruispunt / c",
+  "d_woofer_mid_mm": 275.8,
+  "d_woofer_mid_herkomst": "de ARRAY-afstand van de twee woofers (manifest_en_geometrie.geometrie.ctc_mm.woofer_woofer), NIET de 261 mm tussen wooferpaar en mid: het paar is EEN weg met twee bronnen, en de bronscheiding die de lobe maakt zit binnen die weg",
+  "d_mid_tweeter_mm": 129.2,
+  "d_mid_tweeter_herkomst": "manifest_en_geometrie.geometrie.ctc_mm.mid_tweeter",
+  "c_m_s": 343,
+  "kruispunt": "het kruispunt dat de netlist zelf oplevert - en daarom is dit klasse B en niet klasse A",
+  "klasse": "B",
+  "afhankelijkheid": "meting+netlist"
+ },
   "HUIDIG_2e": {
+   "klasse": "B",
+   "afhankelijkheid": "meting+netlist",
+   "klasse_toelichting": "Metrieken op de VASTE netlist manifest_en_geometrie.netlists.HUIDIG. Zij toetsen de metriekbibliotheek, niet een zoektocht: de netlist staat als bestand in test-fixtures/casus1/ en is sinds b04f9fa onveranderd. Een eigen kandidaatgeneratie in v2 verplaatst deze getallen dus niet.",
    "wm_fase_oct": 23.83,
    "mt_fase_oct": 7.1,
    "minZ": 3.46,
@@ -160,6 +299,8 @@
    "V_tweeter_op_fs_dB": -25.08
   },
   "KAND_A_2e": {
+   "klasse": "B",
+   "afhankelijkheid": "meting+netlist",
    "wm_fase_oct": 2.79,
    "mt_fase_oct": 3.6,
    "minZ": 3.32,
@@ -173,6 +314,8 @@
    "V_tweeter_op_fs_dB": -34.54
   },
   "KAND_B_3e": {
+   "klasse": "B",
+   "afhankelijkheid": "meting+netlist",
    "wm_fase_oct": 1.24,
    "mt_fase_oct": 3.5,
    "minZ": 3.44,
@@ -194,6 +337,8 @@
   "_wm_fase_oct_opmerking": "Gemiddelde |fasefout| over +-1 octaaf rond het kruispunt, GECLIPT op de meetgeldigheidsband (A5.5). De referentie van 25-08 gebruikte een band onder de geldigheidsvloer: bij HUIDIG ligt het kruispunt op 360 Hz en dus de onderste helft van het venster onder de 397 Hz-vloer. KAND-A en KAND-B reproduceren de oorspronkelijke referentiewaarden (2,8 / 1,3) omdat hun kruispunten boven de vloer liggen. mt_fase_oct is ongewijzigd - dat venster viel altijd al volledig binnen de geldige band.",
   "_V_tweeter_op_fs_dB_opmerking": "20*log10(|V_drv(f_s)| / V_passband), met de doorlaatband AFGELEID uit de gevonden kruispunten (A4 M-C) en het gemiddelde genomen in dB. De referentie van 25-08 gebruikte SESSIE-BANDEN 4-10 kHz (tweeter) en 0,7-1,5 kHz (mid) - tweede V15-geval. Het bandverschil is de volledige verklaring: met exact die banden reproduceert de engine de oude waarden tot binnen 0,05 dB (zie _V_tweeter_op_fs_dB_sessie_25_08, dat als staande test is vastgelegd).",
   "_V_tweeter_op_fs_dB_sessie_25_08": {
+   "klasse": "B",
+   "afhankelijkheid": "meting+netlist",
    "_": "De ingetrokken 25-08-waarden MET de parameters waarmee ze berekend zijn. Bewaard omdat de reproductie ervan het bewijs is dat er geen tweede oorzaak onder zat; de golden-suite draait hem als staande test.",
    "waarden": {
     "HUIDIG_2e": -24.6,
@@ -224,6 +369,8 @@
    "fs_afronding": "f_s op het dichtstbijzijnde gridpunt"
   },
   "_F3_respons_oordeel": {
+   "klasse": "B",
+   "afhankelijkheid": "meting+netlist",
    "_": "F3/A5e.1: het VENSTER is de acceptatievraag (piek-tot-piek op de 1/6-octaaf-gegladde som t.o.v. de doelcurve, uitgedrukt als ±), de RMS-afwijking is de sorteersleutel (ongegladd, dezelfde band, dezelfde doelcurve). Twee grootheden omdat het twee vragen zijn; één getal voor beide is hoe een piek van 3 dB en een kanteling van 3 dB gelijk gaan scoren.",
    "doelcurve": "flat (A5e.2) — de neutrale referentie; geen voicing toegepast",
    "gladding_octaven": 0.16666666666666666,
@@ -255,7 +402,30 @@
   "_spl_venster_opmerking": "Het bij F1 VERWIJDERDE spl_venster_dB is niet teruggekeerd: dat was een getal zonder band. Wat er nu staat is een andere grootheid met een andere definitie en volledig vastgelegde parameters (zie _F3_respons_oordeel) — geen herstel van de ingetrokken referentie."
  },
  "kruisvensters": {
+ "parameters": {
+  "_": "V15-PROCESREGEL. Een kruisvenster is een functie van de ORDE, van de ernst-weging van de breakup en van de c-t-c-afstand, en geen van drieen stond tot F4a in dit bestand. De ordeafhankelijkheid staat wel in de SLEUTELNAAM (\"_orde4\"), en een naam is geen parameter.",
+  "orde": 4,
+  "fs_factor_bij_orde_4": 1.4,
+  "fs_factor_herkomst": "A5d.3 - de vloer is k maal f_s van de BOVENliggende driver, met k dalend naarmate de flank steiler wordt (orde 1: 3,0 | 2: 2,0 | 3: 1,6 | 4: 1,4). Dimensieloos, dus P6-schoon.",
+  "breakup_significant_dB": 2.5,
+  "breakup_significant_herkomst": "de drempel waarboven een breakup het kruisplafond mag binden. Dezelfde drempel als M-H gebruikt, zodat venster en metriek niet van mening kunnen verschillen over welke resonantie deze overname beperkt.",
+  "breakup_divisor_ernstig": 3.0,
+  "breakup_divisor_mild": 2.0,
+  "breakup_volle_ernst_dB": 6.0,
+  "ernst_weging": "ONGEKALIBREERD (V6 / V9: het vergt HD-data). De twee divisors zijn de gepubliceerde eindpunten van de vuistregel; de helling ertussen is een plaatshouder, en elke consument is verplicht hem als zodanig te merken. Het plafond van 551 Hz hangt hier volledig aan.",
+  "c_t_c_mm": {
+   "woofer_mid": 261,
+   "mid_tweeter": 129.2
+  },
+  "c_t_c_herkomst": "de CASUSBOEK-geometrie (manifest_en_geometrie.geometrie.ctc_mm), niet de kastindeling van een lopend project. Die twee zetten de slechtste lobing-zone een octaaf uit elkaar, en een niet-toegeschreven afstand laat twee juiste composities op een defect lijken.",
+  "breakups": "de pieken waarop het plafond staat komen uit dezelfde SPL-pas; zie afgeleide_parameters._spl_scan_parameters",
+  "klasse": "A",
+  "afhankelijkheid": "meting"
+ },
   "woofer_mid_orde4": {
+   "klasse": "A",
+   "afhankelijkheid": "meting",
+   "klasse_toelichting": "Een A5d.3-venster is PRE-design: het staat op meetgeldigheid, f_s, breakup-ernst en c-t-c, en op geen enkel filter. Nagemeten: de drie kandidaatrapporten leveren identieke vensters.",
    "venster": [
     397,
     551
@@ -264,6 +434,8 @@
    "plafond_bindend": "breakup_ernst"
   },
   "mid_tweeter_orde4": {
+   "klasse": "A",
+   "afhankelijkheid": "meting",
    "venster": [
     1294,
     2284
@@ -272,6 +444,9 @@
   }
  },
  "grens_inversies": {
+  "klasse": "gemengd - zie per inversie",
+  "afhankelijkheid": "gemengd - zie per inversie",
+  "klasse_toelichting": "De Qes-inversie en de bult-inversie staan volledig op de meting (klasse A: R_e, de gemeten Z-piek en het gemeten nabije veld). De pad-R-inversie en de voorbound staan mede op een netlist - de doorlaatband komt uit de kruispunten van HUIDIG, en de voorbound wordt afgezet tegen de gerealiseerde midtak - en zijn daarmee klasse B. Geen van vieren is klasse C: een inversie is een BUDGET dat op een grens wordt omgezet, en geen uitkomst die een zoektocht vond.",
   "_": "A5d.6-inversies: budgetten omgezet in grenzen op de ZOEKRUIMTE. Bij F1 bewaard met status F2-REFERENTIE; sinds F2 gewone asserts (src/lib/engine2/optimizer/boundInversions.test.ts). Elke waarde draagt nu haar parameters, conform de V15-procesregel.",
   "maxRs_Qmult1_3_ohm": 0.87,
   "maxRs_Qmult1_5_ohm": 1.45,
@@ -294,12 +469,16 @@
   "parameters": {
    "_": "V15-PROCESREGEL: elke referentie die een band, een middeling of een grid gebruikt legt die parameters hier vast. Zonder deze parameters is de waarde niet reproduceerbaar en dus geen referentie.",
    "maxRs_Qmult": {
+    "klasse": "A",
+    "afhankelijkheid": "meting",
     "formule": "Rs <= R_e * (q - 1)",
     "R_e_ohm": 2.9,
     "R_e_herkomst": "afgeleide_parameters.woofer.Re_werkelijk_ca — de meterlezing van het parallelle wooferpaar. NIET de door de engine geschatte 3.81 Ohm: V8d documenteert waarom die overschat (de sweep begint minder dan een octaaf onder f_L). Let op dat de M-E-referentie 3.05 Ohm gebruikt (docs/prototype/compare.py, Re_w); dat zijn twee lezingen van dezelfde grootheid in hetzelfde casusboek, en de inversie is met 2.90 berekend.",
     "q_max": 1.5
    },
    "maxL_bult": {
+    "klasse": "A",
+    "afhankelijkheid": "meting",
     "formule": "grootste L waarvoor de M-D-bult <= budget, 1D-oplossing op de gemeten Z-piek en het gemeten nabije veld",
     "budget_dB": 2.5,
     "pad_R_ohm": 0.5,
@@ -309,6 +488,9 @@
     "assert": "op de METRIEK, niet op de mH: de bult bij de genoteerde L moet gelijk zijn aan het budget binnen de dB-klasse. Een geinverteerde grens erft de tolerantie van de metriek die zij inverteert; een eigen componenttolerantieklasse zou die relatie verbergen."
    },
    "max_padR": {
+    "klasse": "B",
+    "afhankelijkheid": "meting+netlist",
+    "klasse_toelichting": "De |Z|-mediaan is meting, maar de doorlaatband waarover hij genomen wordt komt uit de kruispunten van HUIDIG - zie doorlaatband_herkomst. Een andere netlist geeft een andere band en dus een ander getal.",
     "formule": "R_max = Z_doorlaatband * (10^(A/20) - 1)",
     "Z_referentie": "mediaan |Z| over de afgeleide doorlaatband van de weg, op het gemeten raster",
     "doorlaatband_hz": [
@@ -322,6 +504,9 @@
     "gemeten": 3.4894
    },
    "voorbound_serie_C": {
+    "klasse": "B",
+    "afhankelijkheid": "meting+netlist",
+    "klasse_toelichting": "gerealiseerd_uF en gerealiseerd_orde zijn eigenschappen van de netlist KAND_B (20260822.4-Koan2951-phase.adsfilter.json, C1 = 42,0 uF); Z_ohm is meting over de genoteerde sessieband. Geen acceptatiewaarde: het criterium is dat de voorbound de gerealiseerde tak niet uitsluit.",
     "_": "TOPOLOGIE-BEWUSTE VOORBOUND, met speling. Geen acceptatiewaarde: het acceptatiecriterium is dat de voorbound de GEREALISEERDE tak niet uitsluit.",
     "Z_ohm": 3.99,
     "Z_herkomst": "mediaan |Z| van de mid over 700-1500 Hz (de sessieband van de 25-08-analyse)",
@@ -335,12 +520,27 @@
   "herziening_F2": "EEN van de drie is herzien, en het is het derde geval van het V15-patroon. De bult-inversie was berekend op de SESSIEBAND van metrics5.py (40-110 Hz, genormeerd op 150 Hz) waar A4 M-D om een uit f_p afgeleide band vraagt. Op de afgeleide conventie lost de engine 2.43 mH op in plaats van 2.65; gevoed met de sessieparameters reproduceert zij de ingetrokken waarde, en die reproductie staat als staande test. De twee andere inversies reproduceren op hun eigen parameters: de Qes-inversie exact, de pad-R-inversie tot 0,011 Ohm (binnen de ohm-klasse). De VOORBOUND op de serie-C is geen acceptatiewaarde maar een mechanisme-eis: een voorbound met speling mag het ontwerp waar zij op wordt losgelaten nooit zelf uitsluiten."
  },
  "vensterinteractie": {
+  "klasse": "B",
+  "afhankelijkheid": "meting+netlist",
+  "parameters": {
+   "_": "V15-PROCESREGEL. Deze drie getallen horen bij EEN kandidaat en bij EEN venstervorm, en tot F4a stond geen van beide in dit bestand.",
+   "kandidaat": "KAND_B",
+   "kandidaat_toelichting": "het referentieontwerp van de casus (manifest_en_geometrie.netlists.KAND_B). midband_octaaf en de fasedoorkoppeling zijn functies van ZIJN kruispunten en verschuiven met elke andere netlist: op HUIDIG leest de midband 2,65 octaaf en de doorkoppeling -127 graden per octaaf.",
+   "midband_octaaf_definitie": "octaven tussen het onderste en het bovenste kruispunt van de weg",
+   "fase_venster": "een VOL octaaf gecentreerd op het kruispunt, van f/sqrt(2) tot f*sqrt(2). De helling is het verschil van de ontvouwen ELEKTRISCHE takfase over dat venster, gedeeld door de spanwijdte in octaven.",
+   "raster": "het analyseraster; zie kandidaten._F3_respons_oordeel.grid",
+   "drie_bronnen_zone": "null betekent GEEN zone: de amplitudes zijn ontkoppeld. Dat is een uitkomst en geen ontbrekende meting - precies het mechanisme van V11, fasekoppeling zonder amplitudekoppeling.",
+   "openstaand_tolerantie": "er is geen tolerantieklasse voor graden-per-octaaf, en de consumerende test draagt daarom zijn eigen (15 %). Dat is dezelfde soort fout als een test die zijn eigen dB-klasse meedraagt; genoteerd in V19 en NIET in F4a opgelost, omdat het vaststellen van een nieuwe klasse een besluit is en geen classificatie."
+  },
   "midband_octaaf": 2.49,
   "drie_bronnen_zone": null,
   "fase_doorkoppeling_onderkruispunt_gr_per_okt": -121
  },
  "let_op": "Meetbestanden zelf horen als fixtures in de repo; deze referenties zijn zinloos zonder. Schatter-versies: zie V8a-h in het casusboek voor bekende afwijkingen van naieve schatters.",
  "manifest_en_geometrie": {
+  "klasse": "A",
+  "afhankelijkheid": "meting",
+  "klasse_toelichting": "PROJECTINVOER, niet afgeleid: het meetmanifest, de headertijden, de geometrie en de bestandsnamen van de drie netlists. Zij is klasse A omdat zij nergens een functie van is behalve van de meetsessie zelf - en zij is tegelijk de reden dat de kandidaatmetrieken klasse B kunnen zijn in plaats van C: de kandidaten zijn BESTANDEN.",
   "opmerking": "Vereist om de referenties te reproduceren; behoort bij meetsessie 22-08-2026.",
   "bestanden": {
    "woofers_parallel__1_.lim": {
@@ -445,6 +645,8 @@
   "fit_kwaliteit_pct": "De GEMETEN kwaliteit van de motionele R_e-fit — relatief RMS-residu en bandgevoeligheid per driver — is sinds F3b zelf een referentie, niet alleen een ijkgetal in een opleverrapport. Reden: de solver is deterministisch, dus deze getallen horen te reproduceren; verandert een toekomstige solver-wijziging ze, dan is dat een gedragswijziging die zichtbaar moet FALEN in plaats van stil te verschuiven. 5 % is ruim genoeg voor platformverschillen in de laatste cijfers van een LM-iteratie en veel te strak om een andere startpuntenlijst, een andere weging of een andere bandkeuze te overleven. De grenzen waar de fit op WEIGERT staan apart in re_fit_parameters.kwaliteitsgrenzen: die zeggen wat nog aanvaardbaar is, deze zegt wat deze meetset feitelijk oplevert."
  },
  "re_fit_parameters": {
+  "klasse": "A",
+  "afhankelijkheid": "meting",
   "_": "V15-PROCESREGEL: een referentie die een BAND, een MIDDELING of een GRID gebruikt legt die parameters hier vast. De motionele R_e-fit gebruikt alle drie, dus staan ze hier — zonder deze regels is Re geen referentie maar een herinnering.",
   "spec": "A5c.1 / casusboek V8d; implementatie src/lib/engine2/ingest/motionalFit.ts",
   "model": "Z(w) = R_e + K*(jw)^n + SOM_k R_k / (1 + j*Q_k*(f/f_k - f_k/f)); R_e is de term die bij DC overblijft, want elke tak verdwijnt daar per constructie",

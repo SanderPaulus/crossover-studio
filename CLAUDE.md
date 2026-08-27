@@ -20,7 +20,10 @@
 ## Commando's
 
 - `npx tsc -b` — typecheck. Draait vóór elke oplevering, zonder uitzondering.
-- `npx vitest run` — volledige testsuite (99 bestanden, 1003 tests, ~4,5 min). Alles groen houden.
+- `npx vitest run` — volledige testsuite. **Gemeten 27-08-2026 (F4c): 111 bestanden, 1161 tests, ~4,5 min.**
+  Alles groen houden. De telling stond tot F4b op 99/1003 — dat was de stand bij F3 (`61a3ea4`) en zij
+  is drie opleveringen lang niet bijgewerkt: F3b bracht 104 bestanden, F3c 106, F4a 107, F4b 108, F4b2 109.
+  Vandaar de datum erbij: een telling zonder meetmoment is een telling die stil veroudert.
 - `npx vitest run <pad>` — gerichte run tijdens het werk; de volle suite blijft de acceptatie.
 - `npm run build` — productiebuild (draait ook de typecheck via `tsc -b`).
 
@@ -172,6 +175,99 @@
   A5e.5: een échte afleiding gecachet onder de pre-F3b-vingerafdruk vervalt, en wat ervoor
   in de plaats komt is een ánder getal. Een bump die hetzelfde getal onder een nieuw etiket
   teruggeeft bewijst niets.
+
+### F4b-guards (de drie lekken op de v2/v1-grens, en P6 op App.tsx)
+- `src/lib/engine2/optimizer/borderFacts.test.ts` — de drie lekken uit de audit (§4), elk door de
+  ÉCHTE route: `handleV2Request` met de payload eerst door `structuredClone`, zoals `postMessage`
+  hem serialiseert. **Lek 1 (V21):** de opgeloste R_e steekt over met zijn herkomsttekst, en de
+  opgeleverde `qes-series-r`-grens draagt beide verbatim; zonder payload zegt de bron letterlijk dat
+  er niets aankwam. De notities zijn PER DRIVER geassert — een run die de provenance per RUN meldde
+  zou juist het half-opgeloste geval verbergen. **Lek 2 (V22):** een fixture waarin raster en
+  geldigheid bewust verschillen (de tweeter-impedantie boven een plafond maal acht), zodat de mediane
+  |Z| die de M-C-voorbound meedraagt aantoonbaar verschilt — 45,7 Ω zonder interval tegen 5,8 Ω met.
+  De onderkant van de sweep blijft schoon met opzet: daar wonen de directe R_e-aflezing en de
+  resonantieclassificatie. **Lek 3 (V23):** de noot verschijnt in het rapportmodel mét
+  `dampingMarginDb` en niet zonder, en een assert dat de `TODO(A5e.2)` en de `gapBudgetDb: null`
+  er nog steeds staan — F4b mocht het besluit niet nemen en heeft het niet genomen.
+  Geen enkele Ω- of Hz-waarde staat in de asserts: alles komt uit de fixture of uit het
+  referentiebestand.
+- `src/lib/engine2/optimizer/determinism.test.ts` — de dekkingsassert dwong het nieuwe
+  vingerafdruk-ingrediënt `facts` af (A5e.4). Een run op de opgeloste feiten en een run op de
+  terugval waren tot F4b niet te onderscheiden: zelfde seed, zelfde ontwerp, zelfde vingerafdruk,
+  en één van de twee deelde door het verkeerde getal. De herkomst zit ín het ingrediënt naast de
+  waarde, want 2,90 Ω van een meter en 2,90 Ω uit een fit zijn dezelfde grens en een andere bewering.
+- `src/lib/engine2/p6Lint.test.ts` — **tweede scope, op `src/App.tsx`** (audit §7). Een
+  frequentie-literaal op een regel die een kruispunt-pin noemt is verboden tenzij die regel
+  `V1_PIN_DEFAULTS_LEGACY` noemt; het blok zelf staat onder snapshot, zodat er niets bij kan komen
+  zonder dat de test breekt. Bewust smal — deze namenfamilie, niet "elke frequentie in App.tsx":
+  een blanket-regel zou plotgrenzen en weergavelimieten meepakken, en een lint die wolf roept wordt
+  weggehaald. Plus een structurele assert dat de v2-route de legacy-namen alleen binnen de
+  `!useV2Pins`-tak leest. De lint ving meteen twee plekken die de audit niet noemde: `xoRangeValue`
+  (de tweewegroute) droeg dezelfde twee literalen nog eens, en de migratiewaarden 1800/3500 stonden
+  nergens in de opsomming.
+
+### F4c-guards (keuze vs. polish op de tuner-instellingen)
+- `src/lib/engine2/optimizer/choices.ts` — de indeling als DATA, niet als proza: `CHOICE_KEYS`
+  (25), `GREY_KEYS` (5), `POLISH_KEYS` (7). Samen exact de 37 top-level sleutels van
+  `NetOptimizeOptions`. De definities staan in de nota (A3j) in algemene bewoordingen; deze
+  lijsten zijn de bijlage voor deze tuner, en het casusboek V26 draagt de tabel met per sleutel
+  de reden.
+- `src/lib/engine2/optimizer/choiceKeyGuard.test.ts` — twee claims, beide als scan. (1) De drie
+  lijsten dekken de sleutelverzameling **volledig**, gelezen uit de BRON van `netOptimizer.ts` en
+  niet uit een met de hand overgetypte kopie; een sleutel die daar bijkomt valt in geen lijst en
+  breekt de build in plaats van stil in de erf-categorie te vallen. (2) Binnen `engine2/` mag geen
+  keuze-sleutel uit een `tuneOptions`-spread worden gelezen, en de volgorde in `run.ts` staat vast:
+  polish eerst, dan de benoemde keuzes en gewichten, zodat een overgeërfde waarde nooit van een
+  gestelde kan winnen.
+- `src/lib/engine2/optimizer/f4cRegression.test.ts` + `test-fixtures/f4b2_v2_baseline.json` — de
+  acceptatie dat F4c alleen de GRENS heeft verplaatst. **De baseline is een BESTAND**, en dat is
+  het hele punt van de vorm: de eerste versie berekende hem ter plekke uit dezelfde build, en dan
+  bewegen beide kanten mee — een echte gedragswijziging zou de test groen laten. Een baseline die
+  wordt herberekend uit de code die zij moet bewaken, bewaakt niets. Nu leest de test de
+  opgeslagen F4b2-netwerken terug, op **twee seeds**, en pint zowel de F4c-vorm als de F4b2-vorm
+  aan dat bestand. Met een assert dat de twee seeds aantoonbaar verschillende netwerken opleveren
+  (anders is "onveranderd op twee seeds" ook waar voor een zoektocht die zijn seed negeert), en
+  met de parameters uit de fixture zelf zodat een baseline op 140 evaluaties nooit tegen een run
+  op 200 wordt gelegd. Nagemeten dat hij kán falen: 0,001 dB in het bestand verschuiven zet beide
+  seed-asserts op rood. De vingerafdruk beweegt wél, en de test zegt dat dat correct is —
+  `choices` is een nieuw ingrediënt.
+- **De compiler is de derde guard.** `run.ts`'s `tuneOptions` is versmald tot de polish-helft, en
+  bij F4c stopten twee bestaande tests meteen met compileren omdat zij `phasePriority` en `staged`
+  daardoorheen gaven. Dat is de vangst waarvoor de scheiding bestaat.
+
+### F4b2-guard (het vierde gat: de LF-bult-inversie)
+- `src/lib/engine2/optimizer/lfBumpBorder.test.ts` — de vierde A5d.6-inversie, die op de
+  workerroute nooit invoer had (V23-bijvangst, dood sinds F2). Vijf asserts op de inversie zelf:
+  rapport-invoer en payload-invoer leveren een byte-identieke grens; die grens IS de klasse-A-
+  referentie `maxL_bij_Rs0_5_budget2_5dB_mH` binnen haar tolerantieklasse (assert op de METRIEK,
+  niet op de millihenry); en **het ketenraster levert aantoonbaar 1 048 576 mH op** — de meting
+  die bepaalde dat de impedantiesweep moest oversteken, in de suite en niet alleen in het
+  casusboek. Drie asserts door de échte route met `structuredClone`: met beide krommen wordt de
+  grens bereikt, zonder niet, en met alléén het nabije veld nog steeds niet.
+  `pathROhm` verschilt tussen de routes met opzet (het rapport heeft geen netwerk), dus de
+  vergelijking voedt beide kanten het parameterblok van de referentie in plaats van wat elke
+  route zelf produceert.
+- `src/lib/engine2/optimizer/determinism.test.ts` — het `facts`-ingrediënt is bij F4b2 gegroeid
+  van twee feiten naar vijf (R_e, A5b.1-geldigheid, resonantie, nabij veld, sweep) zónder van
+  naam te veranderen, en de dekkingsassert kijkt naar NAMEN. Er staat daarom een tweede assert
+  naast: elk van de vijf moet de sleutel apart doen bewegen, met een telling erbij zodat een
+  zesde feit niet ongetest kan meeliften.
+
+### F4a-guard (waar een referentie een functie van is)
+- `src/lib/engine2/goldenClassification.test.ts` — de classificatie als test. Elke referentie in
+  `golden_refs_casus1.json` draagt sinds F4a een `klasse` (A/B/C) en een `afhankelijkheid`
+  (`meting`, `meting+netlist`, `meting+zoektocht`), en de test faalt op een blok zonder klasse,
+  op een klasse die niet bij haar afhankelijkheid past, op een klasse C buiten `v1_baseline`, en
+  op een bronbestand dat een `v1_baseline`-waarde leest. Waarom het bestaat: v2 begrenst vandaag
+  alleen waarden en de kandidaten komen uit de v1-zoektocht — een referentie die een eigenschap
+  van die zoektocht vastlegt gaat rood zodra v2 eigen kandidaten genereert. Casus 1 heeft er
+  geen (de drie kandidaten zijn BESTANDEN, geen runuitkomsten), en dat is bij F4a nagemeten
+  in plaats van aangenomen: dezelfde referentie op alle drie de netlists reproduceren scheidt
+  klasse A van klasse B. De tweede helft van de test doet het werk dat blijft kosten — de negen
+  parameterblokken die F4a heeft toegevoegd worden vergeleken met wat de engine werkelijk
+  gebruikte (scanraster, trendbreedte, fitband, c-t-c, R_e), want een parameterblok dat nergens
+  tegen de engine wordt gehouden is decoratie, en decoratie is waar V15 over ging.
+  Zie casusboek V19 en `.claude/skills/casus-toevoegen/SKILL.md`.
 
 De vloer is sinds F0 uitsluitend het getal dat de ONTWERPER invult (`ampMinLoadOhm`, geen default):
 leeg veld = geen oordeel. Eén regel, één plek: `meetsAmpFloor` in `src/lib/impedanceFloor.ts`.
