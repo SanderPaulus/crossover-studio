@@ -1,7 +1,7 @@
 /**
  * F4d — THE FROZEN v2 CANDIDATES OF CASUS 1.
  *
- * The nine `KAND-V2-*.adsfilter.json` files in `test-fixtures/casus1/` are the
+ * The ten `KAND-V2-*.adsfilter.json` files in `test-fixtures/casus1/` are the
  * shortlist of the run `scripts/generate-casus1-v2-candidates.ts` performed, and
  * they are frozen for exactly the reason the three v1 candidates are: F4a
  * established that casus 1 has NO class-C references — no reference in the file
@@ -22,11 +22,25 @@
  *     delivers the stored network byte for byte.
  *
  * COST, stated because it is real: claim 3 runs one full casus-1 chain, which
- * takes about three minutes — casus 1 is a dense, three-driver measurement set
- * and the tune is the expensive part (measured: 132–286 s per candidate over the
- * nine). ONE candidate is run live and the other eight are read from disk. A
- * regression nobody runs because it is slow protects nothing; the discipline is
- * `workerRouteRegression.test.ts`'s and the reasoning is the same.
+ * takes about two minutes — casus 1 is a dense, three-driver measurement set
+ * and the tune is the expensive part (measured at the F4d follow-up: 37–72 s per
+ * candidate over the fifteen the field now holds). ONE candidate is run live and
+ * the rest are read from disk. A regression nobody runs because it is slow
+ * protects nothing; the discipline is `workerRouteRegression.test.ts`'s and the
+ * reasoning is the same.
+ *
+ * FIFTEEN CANDIDATES, TEN FILES — and the gap between those two numbers is new.
+ * The F4d follow-up suspended the F3c recommended-band excision (casebook V28):
+ * the zone it cut is a λ fraction on one centre-to-centre distance, and V20a
+ * reserves every lobing judgement for the vertical synthesis. The mid→tweeter
+ * axis went from three positions to five, so the FIELD went from nine to
+ * fifteen — and the shortlist, which passed nine of nine when the field was
+ * nine, now passes ten of fifteen. It had never actually refused anything
+ * before; it does now. What is frozen is the shortlist, as it always was.
+ *
+ * These are therefore different FILES under the same discipline, which is
+ * precisely why no reference had to be declared invalid: the references hang on
+ * files, and the files were replaced.
  *
  * The DETERMINISM claim proper — two runs, one seed, byte-identical, through
  * `handleV2Request` — is proved in `optimizer/candidateRoute.test.ts` on a
@@ -74,6 +88,16 @@ const HERKOMST = JSON.parse(
   gegenereerd_op_commit: string;
   bestanden: { name: string; label: string }[];
   generator_parameters: { derivedSize: number; deliveredSize: number };
+  shortlist: { overwogen: number; bevroren: number };
+  meetopstelling: {
+    synthMode: string;
+    v2_poorten_gewapend: string[];
+    v2_poorten_waarom: string;
+    v2_budgetten_gewapend: string[];
+    v2_budgetten_waarom: string;
+    beschermingen_via_kandidaat: string[];
+    seed: number;
+  };
 };
 
 const V2_KEYS = Object.keys(golden.manifest_en_geometrie.netlists).filter((k) =>
@@ -113,7 +137,39 @@ describe('the frozen v2 candidates are files, and the file says where they came 
     // The `choices` ingredient is what F4d added on this route: a run over a
     // different candidate field must not stamp the same.
     expect(HERKOMST.run_vingerafdruk).toMatch(/choices=[0-9a-f]{8}/);
-    expect(HERKOMST.generator_parameters.derivedSize).toBe(9);
+    /* Derived rather than typed: the field size has already changed once
+     * (nine → fifteen at V28) and a hard-coded count turns a legitimate
+     * regeneration into a test edit. What must hold is that the manifest, the
+     * files on disk and the generator's own bookkeeping agree. */
+    expect(HERKOMST.generator_parameters.deliveredSize).toBe(HERKOMST.shortlist.overwogen);
+    expect(HERKOMST.shortlist.bevroren).toBe(HERKOMST.bestanden.length);
+    expect(HERKOMST.shortlist.bevroren).toBeLessThanOrEqual(HERKOMST.shortlist.overwogen);
+    expect(HERKOMST.generator_parameters.derivedSize).toBeGreaterThanOrEqual(
+      HERKOMST.generator_parameters.deliveredSize,
+    );
+  });
+
+  it('the provenance block names the MEASUREMENT SETUP — synthesis, gates, budgets', () => {
+    /* F4d-nazorg, controle 2. V27 records two wrong setups before the
+     * definitive one: protections unarmed (min |Z| 0.00 Ω) and
+     * `synthMode: 'filter'` where the app runs `'acoustic'`. Neither was
+     * readable back off what the manifest wrote down, so both had to be
+     * reconstructed from memory. These four assertions make the setup part of
+     * the artefact instead. */
+    const m = HERKOMST.meetopstelling;
+    expect(m.synthMode).toBe(CASUS1_V2_SETTINGS.synthMode);
+    // Absent is written as absent WITH its reason, never omitted — P4. An
+    // omitted key reads as an oversight.
+    expect(Array.isArray(m.v2_poorten_gewapend)).toBe(true);
+    expect(m.v2_poorten_waarom).toMatch(/P4/);
+    expect(Array.isArray(m.v2_budgetten_gewapend)).toBe(true);
+    expect(m.v2_budgetten_waarom.length).toBeGreaterThan(0);
+    // The protections V27's first pass left out are named, and they are named
+    // by being READ OFF the declaration rather than restated.
+    for (const k of ['safety', 'staged', 'audit', 'rSourceDisqualifyOhm']) {
+      expect(m.beschermingen_via_kandidaat, `${k} is not declared`).toContain(k);
+    }
+    expect(m.seed).toBe(CASUS1_V2_SEED);
   });
 
   it('the candidate metrics are CLASS B, and the reference file says so', () => {

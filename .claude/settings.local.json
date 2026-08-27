@@ -304,6 +304,22 @@
       "Bash(awk 'NR>=520 && NR<=560' src/lib/threeWayDesign.ts)",
       "Bash([ -f \"$S/twin-A.json\" ])",
       "Bash([ -f \"$S/twin-B.json\" ])"
+    ],
+    "deny": [
+      "Write(//Users/sandersomers/CLAUDE.md)",
+      "Edit(//Users/sandersomers/CLAUDE.md)",
+      "Write(//Users/sandersomers/*.md)",
+      "Edit(//Users/sandersomers/*.md)",
+      "Write(~/*.md)",
+      "Edit(~/*.md)",
+      "Bash(cp * /Users/sandersomers/*)",
+      "Bash(cp * ~/*)",
+      "Bash(mv * /Users/sandersomers/*)",
+      "Bash(mv * ~/*)",
+      "Bash(cat > /Users/sandersomers/*)",
+      "Bash(cat > ~/*)",
+      "Bash(tee /Users/sandersomers/*)",
+      "Bash(tee ~/*)"
     ]
   }
 }

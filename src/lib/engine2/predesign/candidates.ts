@@ -33,10 +33,20 @@
  *
  *  4. NOTHING LEAVES THE WINDOW. Ever. The relaxation ladder may widen a taste
  *     requirement later; it may not widen measurement validity, and neither may
- *     this. Positions are carved out of `recommendedBand(...).effectiveHz`,
- *     which is a subset of the A5d.3 window by construction, so a candidate
- *     outside the window is not something this module declines to emit — it is
- *     something it cannot express.
+ *     this. Positions are carved out of the A5d.3 window itself
+ *     (`recommendedBand(...).windowHz`), so a candidate outside the window is
+ *     not something this module declines to emit — it is something it cannot
+ *     express.
+ *
+ * THE F3c EXCISION IS SUSPENDED (V28, open) — see `APPLY_BAND_EXCISIONS`. Until
+ * F4d this module laid its positions across `recommendedBand(...).effectiveHz`,
+ * the window MINUS the worst lobing zone. The zone that was subtracted turns
+ * out to be a λ fraction on a single centre-to-centre distance
+ * (`xoWindow.ts`), and V20 established that no such distance exists for a way
+ * with N sources and that no λ fraction may steer anything. Suspending it
+ * costs coverage of nothing: the whole window is allowed band, and every zone
+ * that WOULD have been cut still travels with each candidate, named and
+ * attributed, so the suspension is visible rather than silent.
  *
  * THE WINDOW IS RE-DERIVED PER ORDER, and that is the reason this takes an
  * `XoWindowInput` rather than a finished `XoWindowResult`. A5d.3's floor is
@@ -80,6 +90,35 @@ export interface Alignment {
  */
 const PREFERRED_ALIGNMENT_KIND = 'LR';
 
+/**
+ * Whether a recommended-band excision may SHAPE the field, or only be reported.
+ *
+ * FALSE, and it is a decision of the F4d follow-up rather than a knob. F3c
+ * subtracted "the worst lobing zone" from the band the positions are laid
+ * across; that zone is `[0.5, 0.7] · c/d` on the single centre-to-centre
+ * distance the pair was handed (`xoWindow.ts`), i.e. a λ fraction — and the
+ * 0.5–0.7 stretch is precisely the trough of the non-monotone zone score V20
+ * struck out. V20a: the vertical synthesis is the only lobing quantity a
+ * judgement may hang on, and "geen poort, geen budget, geen shortlist-
+ * criterium op een λ-fractie" is a standing prohibition. Choosing WHICH
+ * candidates exist is that same decision one step earlier — `noWeights.test.ts`
+ * already scans this file for exactly that reason.
+ *
+ * So the excision is suspended until casebook entry V28 decides it, and this
+ * module lays its positions evenly across the whole A5d.3 window. It is typed
+ * `boolean` rather than left as a literal so both branches below stay live
+ * code: the day V28 rules the excision legitimate, this becomes `true` and
+ * nothing else has to be rewritten.
+ */
+const APPLY_BAND_EXCISIONS: boolean = false;
+
+/** Why the excision is not applied — the sentence every candidate carries. */
+const EXCISION_SUSPENDED_BECAUSE =
+  'SUSPENDED pending casebook entry V28. The zone is a λ fraction on one centre-to-centre ' +
+  'distance, and V20a reserves every lobing judgement for the vertical synthesis; until V28 ' +
+  'decides whether an excision may none the less shape the field, the candidates cover the ' +
+  'whole A5d.3 window and this zone is reported rather than applied.';
+
 export interface CandidatePairInput {
   /**
    * The A5d.3 window inputs for this pair. Its `order` field is ignored — the
@@ -111,6 +150,28 @@ export interface CandidateFieldSettings {
   alignments: readonly Alignment[];
 }
 
+/**
+ * A stretch of band some rule would remove from where positions may be placed.
+ *
+ * It is recorded whether or not it was applied, and that asymmetry is the
+ * design: a reader of a shortlist can only ask "why is there no candidate
+ * between 1327 and 1858 Hz?" if the answer is written down somewhere. Applied
+ * or suspended, the zone, its source and its status travel with every position
+ * on that axis.
+ */
+export interface BandExcision {
+  /** The stretch, at the precision the window edges print at. */
+  hz: [number, number];
+  /** The zone's own name, as the window states it. */
+  label: string;
+  /** WHICH QUANTITY produced it and from what input — `XoZone.derivedFrom`. */
+  source: string;
+  /** True when it was actually subtracted from the band. */
+  applied: boolean;
+  /** When not applied: why not. Null when applied. */
+  suspendedBecause: string | null;
+}
+
 /** One handover of one candidate. */
 export interface CandidateCrossing {
   pairLabel: string;
@@ -127,8 +188,13 @@ export interface CandidateCrossing {
   /** Which limit bound each edge of that window. */
   floorBy: string;
   ceilingBy: string;
-  /** The recommended-band segment the position sits in. */
+  /** The candidate band segment the position sits in. */
   segmentHz: [number, number];
+  /**
+   * Zones a rule would remove from this axis's band, each with its source and
+   * whether it was applied. Empty when the window implies none.
+   */
+  excisions: BandExcision[];
   /** Where in the field this position is, and how far above the window floor. */
   position: { index: number; count: number; octavesAboveFloor: number };
   /** Why this order, in the derivation's own words. */
@@ -157,6 +223,8 @@ export interface CandidateAxis {
   positionsByOrder: { order: number; count: number; derivedCount: number; hz: number[] }[];
   window: Record<string, XoWindowResult>;
   recommended: Record<string, RecommendedBandResult>;
+  /** Per order: the zones a rule would cut, applied or suspended, with source. */
+  excisions: Record<string, BandExcision[]>;
   notes: string[];
 }
 
@@ -240,6 +308,40 @@ function positionsAlong(
   return out;
 }
 
+/**
+ * The zones a rule would cut out of this pair's band, with their attribution.
+ *
+ * Read off the window and the composition rather than recomputed: the zone
+ * frequencies are `recommendedBand`'s (so the two can never round apart) and
+ * the attribution is the zone's own (`XoZone.derivedFrom`), so this function
+ * states nothing about lobing that the window did not already state.
+ */
+function excisionsFor(w: XoWindowResult, rb: RecommendedBandResult): BandExcision[] {
+  if (!rb.worstZoneHz) return [];
+  const zone = w.zones.find((z) => z.kind === 'bad');
+  return [
+    {
+      hz: rb.worstZoneHz,
+      label: zone?.label ?? 'the excised zone',
+      source: zone?.derivedFrom ?? 'the window did not state where this zone came from',
+      applied: APPLY_BAND_EXCISIONS,
+      suspendedBecause: APPLY_BAND_EXCISIONS ? null : EXCISION_SUSPENDED_BECAUSE,
+    },
+  ];
+}
+
+/** The excision clause a provenance sentence ends with. Empty when there is none. */
+function excisionSentence(ex: readonly BandExcision[]): string {
+  return ex
+    .map(
+      (e) =>
+        `; ${e.applied ? 'EXCISED' : 'not excised'} ${formatEdge(e.hz[0])}–${formatEdge(e.hz[1])} Hz ` +
+        `(${e.label}, ${e.source})` +
+        (e.suspendedBecause ? ` — ${e.suspendedBecause}` : ''),
+    )
+    .join('');
+}
+
 /** How many positions the spacing rule admits over this span. */
 export function derivedPositionCount(spanOct: number, spacingOct: number): number {
   if (!(spanOct > 0) || !(spacingOct > 0)) return 1;
@@ -283,6 +385,7 @@ interface AxisSlot {
     window: XoWindowResult;
     recommended: RecommendedBandResult;
     segments: (readonly [number, number])[];
+    excisions: BandExcision[];
     derivedCount: number;
     count: number;
     uncalibrated: string[];
@@ -323,7 +426,28 @@ export function generateCandidates(
       }
       const window = crossoverWindow({ ...pair.windowInput, order });
       const recommended = recommendedBand(window);
-      const segments = recommended.effectiveHz.filter((s) => s[1] > s[0]);
+      const excisions = excisionsFor(window, recommended);
+      /* THE BAND THE POSITIONS ARE LAID ACROSS.
+       *
+       * With the excision suspended (V28) that is the whole A5d.3 window, and
+       * it is taken as `recommendedBand`'s own `windowHz` rather than from
+       * `window.floorHz`/`ceilingHz` directly, so both routes round identically
+       * and both are null in exactly the same cases — the F3b lesson about
+       * 473.20000000000005, applied to a band instead of to a field. */
+      const segments = (
+        APPLY_BAND_EXCISIONS
+          ? recommended.effectiveHz
+          : recommended.windowHz
+            ? [recommended.windowHz]
+            : []
+      ).filter((s) => s[1] > s[0]);
+      if (excisions.length > 0 && !APPLY_BAND_EXCISIONS) {
+        slot.notes.push(
+          `${label} at order ${order}: ${excisions[0].label} ` +
+            `(${formatEdge(excisions[0].hz[0])}–${formatEdge(excisions[0].hz[1])} Hz) is NOT cut out of ` +
+            `the candidate band. ${excisions[0].suspendedBecause} Its source: ${excisions[0].source}`,
+        );
+      }
       if (segments.length === 0) {
         refusals.push(
           `${label} at order ${order}: ` +
@@ -344,6 +468,7 @@ export function generateCandidates(
         window,
         recommended,
         segments,
+        excisions,
         derivedCount,
         count: derivedCount,
         uncalibrated: recommended.uncalibrated,
@@ -433,15 +558,17 @@ export function generateCandidates(
             ? `${o.window.ceilingBy.rule} — ${o.window.ceilingBy.source}`
             : 'no ceiling limit',
           segmentHz: seg,
+          excisions: o.excisions,
           position: { index: i, count: o.count, octavesAboveFloor: oct },
           orderWhy,
           uncalibrated: o.uncalibrated,
           provenance:
             `${wi.lower}→${wi.upper} at ${formatEdge(p.hz)} Hz, ${o.alignment.kind}${o.alignment.order}: ` +
-            `position ${i + 1} of ${o.count} across the recommended band ` +
+            `position ${i + 1} of ${o.count} across the candidate band ` +
             `${formatEdge(seg[0])}–${formatEdge(seg[1])} Hz, ${oct.toFixed(2)} oct above the ` +
             `window floor ${formatEdge(win[0])} Hz (${o.window.floorBy?.rule ?? 'none'}); ` +
-            `ceiling ${formatEdge(win[1])} Hz (${o.window.ceilingBy?.rule ?? 'none'}); ${orderWhy}`,
+            `ceiling ${formatEdge(win[1])} Hz (${o.window.ceilingBy?.rule ?? 'none'}); ${orderWhy}` +
+            excisionSentence(o.excisions),
         });
       });
     }
@@ -497,6 +624,7 @@ export function generateCandidates(
       })),
       window: Object.fromEntries(slot.byOrder.map((o) => [String(o.order), o.window])),
       recommended: Object.fromEntries(slot.byOrder.map((o) => [String(o.order), o.recommended])),
+      excisions: Object.fromEntries(slot.byOrder.map((o) => [String(o.order), o.excisions])),
       notes: slot.notes,
     })),
     refusals,

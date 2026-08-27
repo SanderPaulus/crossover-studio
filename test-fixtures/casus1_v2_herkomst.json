@@ -1,8 +1,8 @@
 {
  "_": "F4d — DOCUMENTATIE, geen acceptatiewaarde. Zie scripts/generate-casus1-v2-candidates.ts.",
- "gegenereerd_op_commit": "40bdf23242fd8eba4703b001d2e35834428c60f1",
+ "gegenereerd_op_commit": "d70c67bfd0fe70fd120817bc96844a9caffcb6b9",
  "seed": 20260827,
- "run_vingerafdruk": "engine=2.0.0-F1 estimators=6087f58a seed=20260827 budget=tuner starts=1 status=completed design=bee336e2 measurements=e97d1bdc gates=5465b825 bounds=5465b825 tuning=99e5b33a facts=7f4da8b5 choices=c300ec46",
+ "run_vingerafdruk": "engine=2.0.0-F1 estimators=6087f58a seed=20260827 budget=tuner starts=1 status=completed design=a7ccf830 measurements=e97d1bdc gates=5465b825 bounds=5465b825 tuning=99e5b33a facts=7f4da8b5 choices=072879e5",
  "grid": {
   "van_hz": 200,
   "tot_hz": 20000,
@@ -39,11 +39,46 @@
    }
   }
  },
+ "meetopstelling": {
+  "_": "De opstelling waarmee deze netlists zijn opgewekt, afgelezen van de laatste payload en niet overgeschreven uit het geheugen. V27 noteert twee foute opstellingen vóór de definitieve; geen van beide was terug te lezen uit wat het manifest opschreef.",
+  "synthMode": "acoustic",
+  "synthMode_waarom": "de eigen standaard van de app. Op 'filter' leverde dezelfde keten 31,4 dB rimpel tegen 5,2 dB op 'acoustic' (V27); een fixture die niet de synthese van de app draait, meet de app niet.",
+  "v2_poorten_gewapend": [],
+  "v2_poorten_waarom": "LEEG, en dat is P4 en geen omissie: casus 1 stelt geen versterkervloer (`ampMinLoadOhm`), geen dissipatieplafond (M-A), geen EPDR-vloer (M-B) en geen M-C-grens. Leeg veld = geen oordeel. Zie de min|Z|-kolom van de V27-vergelijking: dat is deze afwezigheid, zichtbaar.",
+  "v2_budgetten_gewapend": [],
+  "v2_budgetten_waarom": "LEEG. De A5d.6-inversies begrenzen waarden; op deze route is er geen gesteld budget dat de zoektocht inperkt. Het evaluatiebudget komt van de tuner zelf (zie de vingerafdruk: `budget=tuner`).",
+  "beschermingen_via_kandidaat": [
+   "ampTarget",
+   "audit",
+   "band",
+   "breakupGuard",
+   "catalogSnap",
+   "phaseMetric",
+   "powerMetric",
+   "rSourceDisqualifyOhm",
+   "safety",
+   "staged",
+   "xoFloorPairs",
+   "xoRangePairs",
+   "zFloorStrict"
+  ],
+  "beschermingen_waarom": "De beschermingen zijn KEUZE-sleutels (V26 rijen 31, 33, 14, 2) en bereiken de tuner sinds F4d uitsluitend via de verklaring van de kandidaat. `safety`, `staged`, `audit` en `rSourceDisqualifyOhm` staan hier omdat de eerste versie van deze fixture ze wegliet en daarmee een dode kortsluiting opleverde die de keten niet zag (V27).",
+  "oordeelband_hz": [
+   397,
+   19500
+  ],
+  "seed": 20260827
+ },
  "generator_parameters": {
   "minSpacingOctaves": 0.16666666666666666,
   "chainBudget": null,
-  "derivedSize": 9,
-  "deliveredSize": 9
+  "derivedSize": 15,
+  "deliveredSize": 15
+ },
+ "shortlist": {
+  "overwogen": 15,
+  "bevroren": 10,
+  "_": "Zie `buildShortlist`: toelaatbaar gebied plus spreiding. Rangschikt niets (A5e.1)."
  },
  "referentie_kruispunt_hz": [
   466.4275132314875,
@@ -72,11 +107,11 @@
  "bestanden": [
   {
    "name": "KAND-V2-1",
-   "label": "woofer→mid 466.5 LR4 · mid→tweeter 1294 LR4"
+   "label": "woofer→mid 396.7 LR4 · mid→tweeter 1294 LR4"
   },
   {
    "name": "KAND-V2-2",
-   "label": "woofer→mid 396.7 LR4 · mid→tweeter 1294 LR4"
+   "label": "woofer→mid 466.5 LR4 · mid→tweeter 1294 LR4"
   },
   {
    "name": "KAND-V2-3",
@@ -84,32 +119,36 @@
   },
   {
    "name": "KAND-V2-4",
-   "label": "woofer→mid 396.7 LR4 · mid→tweeter 2033.9 LR4"
-  },
-  {
-   "name": "KAND-V2-5",
-   "label": "woofer→mid 466.5 LR4 · mid→tweeter 2283.5 LR4"
-  },
-  {
-   "name": "KAND-V2-6",
    "label": "woofer→mid 548.5 LR4 · mid→tweeter 2283.5 LR4"
   },
   {
+   "name": "KAND-V2-5",
+   "label": "woofer→mid 396.7 LR4 · mid→tweeter 1719 LR4"
+  },
+  {
+   "name": "KAND-V2-6",
+   "label": "woofer→mid 466.5 LR4 · mid→tweeter 1981.2 LR4"
+  },
+  {
    "name": "KAND-V2-7",
-   "label": "woofer→mid 466.5 LR4 · mid→tweeter 2033.9 LR4"
+   "label": "woofer→mid 396.7 LR4 · mid→tweeter 1491.4 LR4"
   },
   {
    "name": "KAND-V2-8",
-   "label": "woofer→mid 548.5 LR4 · mid→tweeter 2033.9 LR4"
+   "label": "woofer→mid 548.5 LR4 · mid→tweeter 1719 LR4"
   },
   {
    "name": "KAND-V2-9",
+   "label": "woofer→mid 548.5 LR4 · mid→tweeter 1491.4 LR4"
+  },
+  {
+   "name": "KAND-V2-10",
    "label": "woofer→mid 548.5 LR4 · mid→tweeter 1294 LR4"
   }
  ],
  "kandidaat_herkomst": {
   "woofer→mid 396.7 LR4 · mid→tweeter 1294 LR4": {
-   "provenance": "woofer→mid at 396.7 Hz, LR4: position 1 of 3 across the recommended band 396.7–548.5 Hz, 0.00 oct above the window floor 396.7 Hz (validity); ceiling 548.5 Hz (breakup); order 4: the order the designer stated for this handover. Kept beside the demanded one rather than instead of it — \"what the measurements require\" and \"what you asked for\" are two questions, and there is no weighting here that could merge them. | mid→tweeter at 1294 Hz, LR4: position 1 of 3 across the recommended band 1294–1327.4 Hz, -0.00 oct above the window floor 1294 Hz (fs); ceiling 2283.5 Hz (breakup); order 4: the order the designer stated for this handover. Kept beside the demanded one rather than instead of it — \"what the measurements require\" and \"what you asked for\" are two questions, and there is no weighting here that could merge them.",
+   "provenance": "woofer→mid at 396.7 Hz, LR4: position 1 of 3 across the candidate band 396.7–548.5 Hz, 0.00 oct above the window floor 396.7 Hz (validity); ceiling 548.5 Hz (breakup); order 4: the order the designer stated for this handover. Kept beside the demanded one rather than instead of it — \"what the measurements require\" and \"what you asked for\" are two questions, and there is no weighting here that could merge them.; not excised 657.1–919.9 Hz (the WORST lobing zone, a fraction of the wavelength at the handover, taken on the ONE centre-to-centre distance this pair was given (261.0 mm — casebook geometry (golden_refs_casus1.json)). This is the M-F-INTERIM screening quantity (A4, role: reporting), not the vertical synthesis, which is the only lobing quantity a judgement may hang on (V20a).) — SUSPENDED pending casebook entry V28. The zone is a λ fraction on one centre-to-centre distance, and V20a reserves every lobing judgement for the vertical synthesis; until V28 decides whether an excision may none the less shape the field, the candidates cover the whole A5d.3 window and this zone is reported rather than applied. | mid→tweeter at 1294 Hz, LR4: position 1 of 5 across the candidate band 1294–2283.5 Hz, -0.00 oct above the window floor 1294 Hz (fs); ceiling 2283.5 Hz (breakup); order 4: the order the designer stated for this handover. Kept beside the demanded one rather than instead of it — \"what the measurements require\" and \"what you asked for\" are two questions, and there is no weighting here that could merge them.; not excised 1327.4–1858.4 Hz (the WORST lobing zone, a fraction of the wavelength at the handover, taken on the ONE centre-to-centre distance this pair was given (129.2 mm — casebook geometry (golden_refs_casus1.json)). This is the M-F-INTERIM screening quantity (A4, role: reporting), not the vertical synthesis, which is the only lobing quantity a judgement may hang on (V20a).) — SUSPENDED pending casebook entry V28. The zone is a λ fraction on one centre-to-centre distance, and V20a reserves every lobing judgement for the vertical synthesis; until V28 decides whether an excision may none the less shape the field, the candidates cover the whole A5d.3 window and this zone is reported rather than applied.",
    "crossings": [
     {
      "pairLabel": "woofer→mid",
@@ -135,6 +174,18 @@
       396.7,
       548.5
      ],
+     "excisions": [
+      {
+       "hz": [
+        657.1,
+        919.9
+       ],
+       "label": "the WORST lobing zone",
+       "source": "a fraction of the wavelength at the handover, taken on the ONE centre-to-centre distance this pair was given (261.0 mm — casebook geometry (golden_refs_casus1.json)). This is the M-F-INTERIM screening quantity (A4, role: reporting), not the vertical synthesis, which is the only lobing quantity a judgement may hang on (V20a).",
+       "applied": false,
+       "suspendedBecause": "SUSPENDED pending casebook entry V28. The zone is a λ fraction on one centre-to-centre distance, and V20a reserves every lobing judgement for the vertical synthesis; until V28 decides whether an excision may none the less shape the field, the candidates cover the whole A5d.3 window and this zone is reported rather than applied."
+      }
+     ],
      "position": {
       "index": 0,
       "count": 3,
@@ -144,7 +195,7 @@
      "uncalibrated": [
       "The divisor interpolates between the published endpoints (3 severe, 2 mild); the ramp between them is uncalibrated and needs HD data (spec V6/V9). This ceiling moves if that curve does."
      ],
-     "provenance": "woofer→mid at 396.7 Hz, LR4: position 1 of 3 across the recommended band 396.7–548.5 Hz, 0.00 oct above the window floor 396.7 Hz (validity); ceiling 548.5 Hz (breakup); order 4: the order the designer stated for this handover. Kept beside the demanded one rather than instead of it — \"what the measurements require\" and \"what you asked for\" are two questions, and there is no weighting here that could merge them."
+     "provenance": "woofer→mid at 396.7 Hz, LR4: position 1 of 3 across the candidate band 396.7–548.5 Hz, 0.00 oct above the window floor 396.7 Hz (validity); ceiling 548.5 Hz (breakup); order 4: the order the designer stated for this handover. Kept beside the demanded one rather than instead of it — \"what the measurements require\" and \"what you asked for\" are two questions, and there is no weighting here that could merge them.; not excised 657.1–919.9 Hz (the WORST lobing zone, a fraction of the wavelength at the handover, taken on the ONE centre-to-centre distance this pair was given (261.0 mm — casebook geometry (golden_refs_casus1.json)). This is the M-F-INTERIM screening quantity (A4, role: reporting), not the vertical synthesis, which is the only lobing quantity a judgement may hang on (V20a).) — SUSPENDED pending casebook entry V28. The zone is a λ fraction on one centre-to-centre distance, and V20a reserves every lobing judgement for the vertical synthesis; until V28 decides whether an excision may none the less shape the field, the candidates cover the whole A5d.3 window and this zone is reported rather than applied."
     },
     {
      "pairLabel": "mid→tweeter",
@@ -153,7 +204,7 @@
      "hz": 1294,
      "cageHz": [
       1294,
-      1327.4
+      1389.2
      ],
      "order": 4,
      "alignment": {
@@ -168,23 +219,35 @@
      "ceilingBy": "breakup — first significant breakup of mid at 5690 Hz (+3.0 dB) divided by 2.49",
      "segmentHz": [
       1294,
-      1327.4
+      2283.5
+     ],
+     "excisions": [
+      {
+       "hz": [
+        1327.4,
+        1858.4
+       ],
+       "label": "the WORST lobing zone",
+       "source": "a fraction of the wavelength at the handover, taken on the ONE centre-to-centre distance this pair was given (129.2 mm — casebook geometry (golden_refs_casus1.json)). This is the M-F-INTERIM screening quantity (A4, role: reporting), not the vertical synthesis, which is the only lobing quantity a judgement may hang on (V20a).",
+       "applied": false,
+       "suspendedBecause": "SUSPENDED pending casebook entry V28. The zone is a λ fraction on one centre-to-centre distance, and V20a reserves every lobing judgement for the vertical synthesis; until V28 decides whether an excision may none the less shape the field, the candidates cover the whole A5d.3 window and this zone is reported rather than applied."
+      }
      ],
      "position": {
       "index": 0,
-      "count": 3,
+      "count": 5,
       "octavesAboveFloor": -0.000047905543526532006
      },
      "orderWhy": "order 4: the order the designer stated for this handover. Kept beside the demanded one rather than instead of it — \"what the measurements require\" and \"what you asked for\" are two questions, and there is no weighting here that could merge them.",
      "uncalibrated": [
       "The divisor interpolates between the published endpoints (3 severe, 2 mild); the ramp between them is uncalibrated and needs HD data (spec V6/V9). This ceiling moves if that curve does."
      ],
-     "provenance": "mid→tweeter at 1294 Hz, LR4: position 1 of 3 across the recommended band 1294–1327.4 Hz, -0.00 oct above the window floor 1294 Hz (fs); ceiling 2283.5 Hz (breakup); order 4: the order the designer stated for this handover. Kept beside the demanded one rather than instead of it — \"what the measurements require\" and \"what you asked for\" are two questions, and there is no weighting here that could merge them."
+     "provenance": "mid→tweeter at 1294 Hz, LR4: position 1 of 5 across the candidate band 1294–2283.5 Hz, -0.00 oct above the window floor 1294 Hz (fs); ceiling 2283.5 Hz (breakup); order 4: the order the designer stated for this handover. Kept beside the demanded one rather than instead of it — \"what the measurements require\" and \"what you asked for\" are two questions, and there is no weighting here that could merge them.; not excised 1327.4–1858.4 Hz (the WORST lobing zone, a fraction of the wavelength at the handover, taken on the ONE centre-to-centre distance this pair was given (129.2 mm — casebook geometry (golden_refs_casus1.json)). This is the M-F-INTERIM screening quantity (A4, role: reporting), not the vertical synthesis, which is the only lobing quantity a judgement may hang on (V20a).) — SUSPENDED pending casebook entry V28. The zone is a λ fraction on one centre-to-centre distance, and V20a reserves every lobing judgement for the vertical synthesis; until V28 decides whether an excision may none the less shape the field, the candidates cover the whole A5d.3 window and this zone is reported rather than applied."
     }
    ]
   },
-  "woofer→mid 396.7 LR4 · mid→tweeter 2033.9 LR4": {
-   "provenance": "woofer→mid at 396.7 Hz, LR4: position 1 of 3 across the recommended band 396.7–548.5 Hz, 0.00 oct above the window floor 396.7 Hz (validity); ceiling 548.5 Hz (breakup); order 4: the order the designer stated for this handover. Kept beside the demanded one rather than instead of it — \"what the measurements require\" and \"what you asked for\" are two questions, and there is no weighting here that could merge them. | mid→tweeter at 2033.9 Hz, LR4: position 2 of 3 across the recommended band 1858.4–2283.5 Hz, 0.65 oct above the window floor 1294 Hz (fs); ceiling 2283.5 Hz (breakup); order 4: the order the designer stated for this handover. Kept beside the demanded one rather than instead of it — \"what the measurements require\" and \"what you asked for\" are two questions, and there is no weighting here that could merge them.",
+  "woofer→mid 396.7 LR4 · mid→tweeter 1491.4 LR4": {
+   "provenance": "woofer→mid at 396.7 Hz, LR4: position 1 of 3 across the candidate band 396.7–548.5 Hz, 0.00 oct above the window floor 396.7 Hz (validity); ceiling 548.5 Hz (breakup); order 4: the order the designer stated for this handover. Kept beside the demanded one rather than instead of it — \"what the measurements require\" and \"what you asked for\" are two questions, and there is no weighting here that could merge them.; not excised 657.1–919.9 Hz (the WORST lobing zone, a fraction of the wavelength at the handover, taken on the ONE centre-to-centre distance this pair was given (261.0 mm — casebook geometry (golden_refs_casus1.json)). This is the M-F-INTERIM screening quantity (A4, role: reporting), not the vertical synthesis, which is the only lobing quantity a judgement may hang on (V20a).) — SUSPENDED pending casebook entry V28. The zone is a λ fraction on one centre-to-centre distance, and V20a reserves every lobing judgement for the vertical synthesis; until V28 decides whether an excision may none the less shape the field, the candidates cover the whole A5d.3 window and this zone is reported rather than applied. | mid→tweeter at 1491.4 Hz, LR4: position 2 of 5 across the candidate band 1294–2283.5 Hz, 0.20 oct above the window floor 1294 Hz (fs); ceiling 2283.5 Hz (breakup); order 4: the order the designer stated for this handover. Kept beside the demanded one rather than instead of it — \"what the measurements require\" and \"what you asked for\" are two questions, and there is no weighting here that could merge them.; not excised 1327.4–1858.4 Hz (the WORST lobing zone, a fraction of the wavelength at the handover, taken on the ONE centre-to-centre distance this pair was given (129.2 mm — casebook geometry (golden_refs_casus1.json)). This is the M-F-INTERIM screening quantity (A4, role: reporting), not the vertical synthesis, which is the only lobing quantity a judgement may hang on (V20a).) — SUSPENDED pending casebook entry V28. The zone is a λ fraction on one centre-to-centre distance, and V20a reserves every lobing judgement for the vertical synthesis; until V28 decides whether an excision may none the less shape the field, the candidates cover the whole A5d.3 window and this zone is reported rather than applied.",
    "crossings": [
     {
      "pairLabel": "woofer→mid",
@@ -210,6 +273,18 @@
       396.7,
       548.5
      ],
+     "excisions": [
+      {
+       "hz": [
+        657.1,
+        919.9
+       ],
+       "label": "the WORST lobing zone",
+       "source": "a fraction of the wavelength at the handover, taken on the ONE centre-to-centre distance this pair was given (261.0 mm — casebook geometry (golden_refs_casus1.json)). This is the M-F-INTERIM screening quantity (A4, role: reporting), not the vertical synthesis, which is the only lobing quantity a judgement may hang on (V20a).",
+       "applied": false,
+       "suspendedBecause": "SUSPENDED pending casebook entry V28. The zone is a λ fraction on one centre-to-centre distance, and V20a reserves every lobing judgement for the vertical synthesis; until V28 decides whether an excision may none the less shape the field, the candidates cover the whole A5d.3 window and this zone is reported rather than applied."
+      }
+     ],
      "position": {
       "index": 0,
       "count": 3,
@@ -219,16 +294,16 @@
      "uncalibrated": [
       "The divisor interpolates between the published endpoints (3 severe, 2 mild); the ramp between them is uncalibrated and needs HD data (spec V6/V9). This ceiling moves if that curve does."
      ],
-     "provenance": "woofer→mid at 396.7 Hz, LR4: position 1 of 3 across the recommended band 396.7–548.5 Hz, 0.00 oct above the window floor 396.7 Hz (validity); ceiling 548.5 Hz (breakup); order 4: the order the designer stated for this handover. Kept beside the demanded one rather than instead of it — \"what the measurements require\" and \"what you asked for\" are two questions, and there is no weighting here that could merge them."
+     "provenance": "woofer→mid at 396.7 Hz, LR4: position 1 of 3 across the candidate band 396.7–548.5 Hz, 0.00 oct above the window floor 396.7 Hz (validity); ceiling 548.5 Hz (breakup); order 4: the order the designer stated for this handover. Kept beside the demanded one rather than instead of it — \"what the measurements require\" and \"what you asked for\" are two questions, and there is no weighting here that could merge them.; not excised 657.1–919.9 Hz (the WORST lobing zone, a fraction of the wavelength at the handover, taken on the ONE centre-to-centre distance this pair was given (261.0 mm — casebook geometry (golden_refs_casus1.json)). This is the M-F-INTERIM screening quantity (A4, role: reporting), not the vertical synthesis, which is the only lobing quantity a judgement may hang on (V20a).) — SUSPENDED pending casebook entry V28. The zone is a λ fraction on one centre-to-centre distance, and V20a reserves every lobing judgement for the vertical synthesis; until V28 decides whether an excision may none the less shape the field, the candidates cover the whole A5d.3 window and this zone is reported rather than applied."
     },
     {
      "pairLabel": "mid→tweeter",
      "lower": "mid",
      "upper": "tweeter",
-     "hz": 2033.9,
+     "hz": 1491.4,
      "cageHz": [
-      1919.6,
-      2155.1
+      1389.2,
+      1601.2
      ],
      "order": 4,
      "alignment": {
@@ -242,24 +317,234 @@
      "floorBy": "fs — 1.4x f_s of tweeter (924 Hz) at order 4 - a steeper flank may sit closer to the resonance",
      "ceilingBy": "breakup — first significant breakup of mid at 5690 Hz (+3.0 dB) divided by 2.49",
      "segmentHz": [
-      1858.4,
+      1294,
       2283.5
+     ],
+     "excisions": [
+      {
+       "hz": [
+        1327.4,
+        1858.4
+       ],
+       "label": "the WORST lobing zone",
+       "source": "a fraction of the wavelength at the handover, taken on the ONE centre-to-centre distance this pair was given (129.2 mm — casebook geometry (golden_refs_casus1.json)). This is the M-F-INTERIM screening quantity (A4, role: reporting), not the vertical synthesis, which is the only lobing quantity a judgement may hang on (V20a).",
+       "applied": false,
+       "suspendedBecause": "SUSPENDED pending casebook entry V28. The zone is a λ fraction on one centre-to-centre distance, and V20a reserves every lobing judgement for the vertical synthesis; until V28 decides whether an excision may none the less shape the field, the candidates cover the whole A5d.3 window and this zone is reported rather than applied."
+      }
      ],
      "position": {
       "index": 1,
-      "count": 3,
-      "octavesAboveFloor": 0.6523632256180969
+      "count": 5,
+      "octavesAboveFloor": 0.20478172376284287
      },
      "orderWhy": "order 4: the order the designer stated for this handover. Kept beside the demanded one rather than instead of it — \"what the measurements require\" and \"what you asked for\" are two questions, and there is no weighting here that could merge them.",
      "uncalibrated": [
       "The divisor interpolates between the published endpoints (3 severe, 2 mild); the ramp between them is uncalibrated and needs HD data (spec V6/V9). This ceiling moves if that curve does."
      ],
-     "provenance": "mid→tweeter at 2033.9 Hz, LR4: position 2 of 3 across the recommended band 1858.4–2283.5 Hz, 0.65 oct above the window floor 1294 Hz (fs); ceiling 2283.5 Hz (breakup); order 4: the order the designer stated for this handover. Kept beside the demanded one rather than instead of it — \"what the measurements require\" and \"what you asked for\" are two questions, and there is no weighting here that could merge them."
+     "provenance": "mid→tweeter at 1491.4 Hz, LR4: position 2 of 5 across the candidate band 1294–2283.5 Hz, 0.20 oct above the window floor 1294 Hz (fs); ceiling 2283.5 Hz (breakup); order 4: the order the designer stated for this handover. Kept beside the demanded one rather than instead of it — \"what the measurements require\" and \"what you asked for\" are two questions, and there is no weighting here that could merge them.; not excised 1327.4–1858.4 Hz (the WORST lobing zone, a fraction of the wavelength at the handover, taken on the ONE centre-to-centre distance this pair was given (129.2 mm — casebook geometry (golden_refs_casus1.json)). This is the M-F-INTERIM screening quantity (A4, role: reporting), not the vertical synthesis, which is the only lobing quantity a judgement may hang on (V20a).) — SUSPENDED pending casebook entry V28. The zone is a λ fraction on one centre-to-centre distance, and V20a reserves every lobing judgement for the vertical synthesis; until V28 decides whether an excision may none the less shape the field, the candidates cover the whole A5d.3 window and this zone is reported rather than applied."
+    }
+   ]
+  },
+  "woofer→mid 396.7 LR4 · mid→tweeter 1719 LR4": {
+   "provenance": "woofer→mid at 396.7 Hz, LR4: position 1 of 3 across the candidate band 396.7–548.5 Hz, 0.00 oct above the window floor 396.7 Hz (validity); ceiling 548.5 Hz (breakup); order 4: the order the designer stated for this handover. Kept beside the demanded one rather than instead of it — \"what the measurements require\" and \"what you asked for\" are two questions, and there is no weighting here that could merge them.; not excised 657.1–919.9 Hz (the WORST lobing zone, a fraction of the wavelength at the handover, taken on the ONE centre-to-centre distance this pair was given (261.0 mm — casebook geometry (golden_refs_casus1.json)). This is the M-F-INTERIM screening quantity (A4, role: reporting), not the vertical synthesis, which is the only lobing quantity a judgement may hang on (V20a).) — SUSPENDED pending casebook entry V28. The zone is a λ fraction on one centre-to-centre distance, and V20a reserves every lobing judgement for the vertical synthesis; until V28 decides whether an excision may none the less shape the field, the candidates cover the whole A5d.3 window and this zone is reported rather than applied. | mid→tweeter at 1719 Hz, LR4: position 3 of 5 across the candidate band 1294–2283.5 Hz, 0.41 oct above the window floor 1294 Hz (fs); ceiling 2283.5 Hz (breakup); order 4: the order the designer stated for this handover. Kept beside the demanded one rather than instead of it — \"what the measurements require\" and \"what you asked for\" are two questions, and there is no weighting here that could merge them.; not excised 1327.4–1858.4 Hz (the WORST lobing zone, a fraction of the wavelength at the handover, taken on the ONE centre-to-centre distance this pair was given (129.2 mm — casebook geometry (golden_refs_casus1.json)). This is the M-F-INTERIM screening quantity (A4, role: reporting), not the vertical synthesis, which is the only lobing quantity a judgement may hang on (V20a).) — SUSPENDED pending casebook entry V28. The zone is a λ fraction on one centre-to-centre distance, and V20a reserves every lobing judgement for the vertical synthesis; until V28 decides whether an excision may none the less shape the field, the candidates cover the whole A5d.3 window and this zone is reported rather than applied.",
+   "crossings": [
+    {
+     "pairLabel": "woofer→mid",
+     "lower": "woofer",
+     "upper": "mid",
+     "hz": 396.7,
+     "cageHz": [
+      396.7,
+      430.2
+     ],
+     "order": 4,
+     "alignment": {
+      "kind": "LR",
+      "order": 4
+     },
+     "windowHz": [
+      396.7,
+      548.5
+     ],
+     "floorBy": "validity — measurement validity (woofer far field)",
+     "ceilingBy": "breakup — first significant breakup of woofer at 1394 Hz (+3.3 dB) divided by 2.54",
+     "segmentHz": [
+      396.7,
+      548.5
+     ],
+     "excisions": [
+      {
+       "hz": [
+        657.1,
+        919.9
+       ],
+       "label": "the WORST lobing zone",
+       "source": "a fraction of the wavelength at the handover, taken on the ONE centre-to-centre distance this pair was given (261.0 mm — casebook geometry (golden_refs_casus1.json)). This is the M-F-INTERIM screening quantity (A4, role: reporting), not the vertical synthesis, which is the only lobing quantity a judgement may hang on (V20a).",
+       "applied": false,
+       "suspendedBecause": "SUSPENDED pending casebook entry V28. The zone is a λ fraction on one centre-to-centre distance, and V20a reserves every lobing judgement for the vertical synthesis; until V28 decides whether an excision may none the less shape the field, the candidates cover the whole A5d.3 window and this zone is reported rather than applied."
+      }
+     ],
+     "position": {
+      "index": 0,
+      "count": 3,
+      "octavesAboveFloor": 0.00011642079228369464
+     },
+     "orderWhy": "order 4: the order the designer stated for this handover. Kept beside the demanded one rather than instead of it — \"what the measurements require\" and \"what you asked for\" are two questions, and there is no weighting here that could merge them.",
+     "uncalibrated": [
+      "The divisor interpolates between the published endpoints (3 severe, 2 mild); the ramp between them is uncalibrated and needs HD data (spec V6/V9). This ceiling moves if that curve does."
+     ],
+     "provenance": "woofer→mid at 396.7 Hz, LR4: position 1 of 3 across the candidate band 396.7–548.5 Hz, 0.00 oct above the window floor 396.7 Hz (validity); ceiling 548.5 Hz (breakup); order 4: the order the designer stated for this handover. Kept beside the demanded one rather than instead of it — \"what the measurements require\" and \"what you asked for\" are two questions, and there is no weighting here that could merge them.; not excised 657.1–919.9 Hz (the WORST lobing zone, a fraction of the wavelength at the handover, taken on the ONE centre-to-centre distance this pair was given (261.0 mm — casebook geometry (golden_refs_casus1.json)). This is the M-F-INTERIM screening quantity (A4, role: reporting), not the vertical synthesis, which is the only lobing quantity a judgement may hang on (V20a).) — SUSPENDED pending casebook entry V28. The zone is a λ fraction on one centre-to-centre distance, and V20a reserves every lobing judgement for the vertical synthesis; until V28 decides whether an excision may none the less shape the field, the candidates cover the whole A5d.3 window and this zone is reported rather than applied."
+    },
+    {
+     "pairLabel": "mid→tweeter",
+     "lower": "mid",
+     "upper": "tweeter",
+     "hz": 1719,
+     "cageHz": [
+      1601.2,
+      1845.4
+     ],
+     "order": 4,
+     "alignment": {
+      "kind": "LR",
+      "order": 4
+     },
+     "windowHz": [
+      1294,
+      2283.5
+     ],
+     "floorBy": "fs — 1.4x f_s of tweeter (924 Hz) at order 4 - a steeper flank may sit closer to the resonance",
+     "ceilingBy": "breakup — first significant breakup of mid at 5690 Hz (+3.0 dB) divided by 2.49",
+     "segmentHz": [
+      1294,
+      2283.5
+     ],
+     "excisions": [
+      {
+       "hz": [
+        1327.4,
+        1858.4
+       ],
+       "label": "the WORST lobing zone",
+       "source": "a fraction of the wavelength at the handover, taken on the ONE centre-to-centre distance this pair was given (129.2 mm — casebook geometry (golden_refs_casus1.json)). This is the M-F-INTERIM screening quantity (A4, role: reporting), not the vertical synthesis, which is the only lobing quantity a judgement may hang on (V20a).",
+       "applied": false,
+       "suspendedBecause": "SUSPENDED pending casebook entry V28. The zone is a λ fraction on one centre-to-centre distance, and V20a reserves every lobing judgement for the vertical synthesis; until V28 decides whether an excision may none the less shape the field, the candidates cover the whole A5d.3 window and this zone is reported rather than applied."
+      }
+     ],
+     "position": {
+      "index": 2,
+      "count": 5,
+      "octavesAboveFloor": 0.409684021942027
+     },
+     "orderWhy": "order 4: the order the designer stated for this handover. Kept beside the demanded one rather than instead of it — \"what the measurements require\" and \"what you asked for\" are two questions, and there is no weighting here that could merge them.",
+     "uncalibrated": [
+      "The divisor interpolates between the published endpoints (3 severe, 2 mild); the ramp between them is uncalibrated and needs HD data (spec V6/V9). This ceiling moves if that curve does."
+     ],
+     "provenance": "mid→tweeter at 1719 Hz, LR4: position 3 of 5 across the candidate band 1294–2283.5 Hz, 0.41 oct above the window floor 1294 Hz (fs); ceiling 2283.5 Hz (breakup); order 4: the order the designer stated for this handover. Kept beside the demanded one rather than instead of it — \"what the measurements require\" and \"what you asked for\" are two questions, and there is no weighting here that could merge them.; not excised 1327.4–1858.4 Hz (the WORST lobing zone, a fraction of the wavelength at the handover, taken on the ONE centre-to-centre distance this pair was given (129.2 mm — casebook geometry (golden_refs_casus1.json)). This is the M-F-INTERIM screening quantity (A4, role: reporting), not the vertical synthesis, which is the only lobing quantity a judgement may hang on (V20a).) — SUSPENDED pending casebook entry V28. The zone is a λ fraction on one centre-to-centre distance, and V20a reserves every lobing judgement for the vertical synthesis; until V28 decides whether an excision may none the less shape the field, the candidates cover the whole A5d.3 window and this zone is reported rather than applied."
+    }
+   ]
+  },
+  "woofer→mid 396.7 LR4 · mid→tweeter 1981.2 LR4": {
+   "provenance": "woofer→mid at 396.7 Hz, LR4: position 1 of 3 across the candidate band 396.7–548.5 Hz, 0.00 oct above the window floor 396.7 Hz (validity); ceiling 548.5 Hz (breakup); order 4: the order the designer stated for this handover. Kept beside the demanded one rather than instead of it — \"what the measurements require\" and \"what you asked for\" are two questions, and there is no weighting here that could merge them.; not excised 657.1–919.9 Hz (the WORST lobing zone, a fraction of the wavelength at the handover, taken on the ONE centre-to-centre distance this pair was given (261.0 mm — casebook geometry (golden_refs_casus1.json)). This is the M-F-INTERIM screening quantity (A4, role: reporting), not the vertical synthesis, which is the only lobing quantity a judgement may hang on (V20a).) — SUSPENDED pending casebook entry V28. The zone is a λ fraction on one centre-to-centre distance, and V20a reserves every lobing judgement for the vertical synthesis; until V28 decides whether an excision may none the less shape the field, the candidates cover the whole A5d.3 window and this zone is reported rather than applied. | mid→tweeter at 1981.2 Hz, LR4: position 4 of 5 across the candidate band 1294–2283.5 Hz, 0.61 oct above the window floor 1294 Hz (fs); ceiling 2283.5 Hz (breakup); order 4: the order the designer stated for this handover. Kept beside the demanded one rather than instead of it — \"what the measurements require\" and \"what you asked for\" are two questions, and there is no weighting here that could merge them.; not excised 1327.4–1858.4 Hz (the WORST lobing zone, a fraction of the wavelength at the handover, taken on the ONE centre-to-centre distance this pair was given (129.2 mm — casebook geometry (golden_refs_casus1.json)). This is the M-F-INTERIM screening quantity (A4, role: reporting), not the vertical synthesis, which is the only lobing quantity a judgement may hang on (V20a).) — SUSPENDED pending casebook entry V28. The zone is a λ fraction on one centre-to-centre distance, and V20a reserves every lobing judgement for the vertical synthesis; until V28 decides whether an excision may none the less shape the field, the candidates cover the whole A5d.3 window and this zone is reported rather than applied.",
+   "crossings": [
+    {
+     "pairLabel": "woofer→mid",
+     "lower": "woofer",
+     "upper": "mid",
+     "hz": 396.7,
+     "cageHz": [
+      396.7,
+      430.2
+     ],
+     "order": 4,
+     "alignment": {
+      "kind": "LR",
+      "order": 4
+     },
+     "windowHz": [
+      396.7,
+      548.5
+     ],
+     "floorBy": "validity — measurement validity (woofer far field)",
+     "ceilingBy": "breakup — first significant breakup of woofer at 1394 Hz (+3.3 dB) divided by 2.54",
+     "segmentHz": [
+      396.7,
+      548.5
+     ],
+     "excisions": [
+      {
+       "hz": [
+        657.1,
+        919.9
+       ],
+       "label": "the WORST lobing zone",
+       "source": "a fraction of the wavelength at the handover, taken on the ONE centre-to-centre distance this pair was given (261.0 mm — casebook geometry (golden_refs_casus1.json)). This is the M-F-INTERIM screening quantity (A4, role: reporting), not the vertical synthesis, which is the only lobing quantity a judgement may hang on (V20a).",
+       "applied": false,
+       "suspendedBecause": "SUSPENDED pending casebook entry V28. The zone is a λ fraction on one centre-to-centre distance, and V20a reserves every lobing judgement for the vertical synthesis; until V28 decides whether an excision may none the less shape the field, the candidates cover the whole A5d.3 window and this zone is reported rather than applied."
+      }
+     ],
+     "position": {
+      "index": 0,
+      "count": 3,
+      "octavesAboveFloor": 0.00011642079228369464
+     },
+     "orderWhy": "order 4: the order the designer stated for this handover. Kept beside the demanded one rather than instead of it — \"what the measurements require\" and \"what you asked for\" are two questions, and there is no weighting here that could merge them.",
+     "uncalibrated": [
+      "The divisor interpolates between the published endpoints (3 severe, 2 mild); the ramp between them is uncalibrated and needs HD data (spec V6/V9). This ceiling moves if that curve does."
+     ],
+     "provenance": "woofer→mid at 396.7 Hz, LR4: position 1 of 3 across the candidate band 396.7–548.5 Hz, 0.00 oct above the window floor 396.7 Hz (validity); ceiling 548.5 Hz (breakup); order 4: the order the designer stated for this handover. Kept beside the demanded one rather than instead of it — \"what the measurements require\" and \"what you asked for\" are two questions, and there is no weighting here that could merge them.; not excised 657.1–919.9 Hz (the WORST lobing zone, a fraction of the wavelength at the handover, taken on the ONE centre-to-centre distance this pair was given (261.0 mm — casebook geometry (golden_refs_casus1.json)). This is the M-F-INTERIM screening quantity (A4, role: reporting), not the vertical synthesis, which is the only lobing quantity a judgement may hang on (V20a).) — SUSPENDED pending casebook entry V28. The zone is a λ fraction on one centre-to-centre distance, and V20a reserves every lobing judgement for the vertical synthesis; until V28 decides whether an excision may none the less shape the field, the candidates cover the whole A5d.3 window and this zone is reported rather than applied."
+    },
+    {
+     "pairLabel": "mid→tweeter",
+     "lower": "mid",
+     "upper": "tweeter",
+     "hz": 1981.2,
+     "cageHz": [
+      1845.4,
+      2127
+     ],
+     "order": 4,
+     "alignment": {
+      "kind": "LR",
+      "order": 4
+     },
+     "windowHz": [
+      1294,
+      2283.5
+     ],
+     "floorBy": "fs — 1.4x f_s of tweeter (924 Hz) at order 4 - a steeper flank may sit closer to the resonance",
+     "ceilingBy": "breakup — first significant breakup of mid at 5690 Hz (+3.0 dB) divided by 2.49",
+     "segmentHz": [
+      1294,
+      2283.5
+     ],
+     "excisions": [
+      {
+       "hz": [
+        1327.4,
+        1858.4
+       ],
+       "label": "the WORST lobing zone",
+       "source": "a fraction of the wavelength at the handover, taken on the ONE centre-to-centre distance this pair was given (129.2 mm — casebook geometry (golden_refs_casus1.json)). This is the M-F-INTERIM screening quantity (A4, role: reporting), not the vertical synthesis, which is the only lobing quantity a judgement may hang on (V20a).",
+       "applied": false,
+       "suspendedBecause": "SUSPENDED pending casebook entry V28. The zone is a λ fraction on one centre-to-centre distance, and V20a reserves every lobing judgement for the vertical synthesis; until V28 decides whether an excision may none the less shape the field, the candidates cover the whole A5d.3 window and this zone is reported rather than applied."
+      }
+     ],
+     "position": {
+      "index": 3,
+      "count": 5,
+      "octavesAboveFloor": 0.614489003211018
+     },
+     "orderWhy": "order 4: the order the designer stated for this handover. Kept beside the demanded one rather than instead of it — \"what the measurements require\" and \"what you asked for\" are two questions, and there is no weighting here that could merge them.",
+     "uncalibrated": [
+      "The divisor interpolates between the published endpoints (3 severe, 2 mild); the ramp between them is uncalibrated and needs HD data (spec V6/V9). This ceiling moves if that curve does."
+     ],
+     "provenance": "mid→tweeter at 1981.2 Hz, LR4: position 4 of 5 across the candidate band 1294–2283.5 Hz, 0.61 oct above the window floor 1294 Hz (fs); ceiling 2283.5 Hz (breakup); order 4: the order the designer stated for this handover. Kept beside the demanded one rather than instead of it — \"what the measurements require\" and \"what you asked for\" are two questions, and there is no weighting here that could merge them.; not excised 1327.4–1858.4 Hz (the WORST lobing zone, a fraction of the wavelength at the handover, taken on the ONE centre-to-centre distance this pair was given (129.2 mm — casebook geometry (golden_refs_casus1.json)). This is the M-F-INTERIM screening quantity (A4, role: reporting), not the vertical synthesis, which is the only lobing quantity a judgement may hang on (V20a).) — SUSPENDED pending casebook entry V28. The zone is a λ fraction on one centre-to-centre distance, and V20a reserves every lobing judgement for the vertical synthesis; until V28 decides whether an excision may none the less shape the field, the candidates cover the whole A5d.3 window and this zone is reported rather than applied."
     }
    ]
   },
   "woofer→mid 396.7 LR4 · mid→tweeter 2283.5 LR4": {
-   "provenance": "woofer→mid at 396.7 Hz, LR4: position 1 of 3 across the recommended band 396.7–548.5 Hz, 0.00 oct above the window floor 396.7 Hz (validity); ceiling 548.5 Hz (breakup); order 4: the order the designer stated for this handover. Kept beside the demanded one rather than instead of it — \"what the measurements require\" and \"what you asked for\" are two questions, and there is no weighting here that could merge them. | mid→tweeter at 2283.5 Hz, LR4: position 3 of 3 across the recommended band 1858.4–2283.5 Hz, 0.82 oct above the window floor 1294 Hz (fs); ceiling 2283.5 Hz (breakup); order 4: the order the designer stated for this handover. Kept beside the demanded one rather than instead of it — \"what the measurements require\" and \"what you asked for\" are two questions, and there is no weighting here that could merge them.",
+   "provenance": "woofer→mid at 396.7 Hz, LR4: position 1 of 3 across the candidate band 396.7–548.5 Hz, 0.00 oct above the window floor 396.7 Hz (validity); ceiling 548.5 Hz (breakup); order 4: the order the designer stated for this handover. Kept beside the demanded one rather than instead of it — \"what the measurements require\" and \"what you asked for\" are two questions, and there is no weighting here that could merge them.; not excised 657.1–919.9 Hz (the WORST lobing zone, a fraction of the wavelength at the handover, taken on the ONE centre-to-centre distance this pair was given (261.0 mm — casebook geometry (golden_refs_casus1.json)). This is the M-F-INTERIM screening quantity (A4, role: reporting), not the vertical synthesis, which is the only lobing quantity a judgement may hang on (V20a).) — SUSPENDED pending casebook entry V28. The zone is a λ fraction on one centre-to-centre distance, and V20a reserves every lobing judgement for the vertical synthesis; until V28 decides whether an excision may none the less shape the field, the candidates cover the whole A5d.3 window and this zone is reported rather than applied. | mid→tweeter at 2283.5 Hz, LR4: position 5 of 5 across the candidate band 1294–2283.5 Hz, 0.82 oct above the window floor 1294 Hz (fs); ceiling 2283.5 Hz (breakup); order 4: the order the designer stated for this handover. Kept beside the demanded one rather than instead of it — \"what the measurements require\" and \"what you asked for\" are two questions, and there is no weighting here that could merge them.; not excised 1327.4–1858.4 Hz (the WORST lobing zone, a fraction of the wavelength at the handover, taken on the ONE centre-to-centre distance this pair was given (129.2 mm — casebook geometry (golden_refs_casus1.json)). This is the M-F-INTERIM screening quantity (A4, role: reporting), not the vertical synthesis, which is the only lobing quantity a judgement may hang on (V20a).) — SUSPENDED pending casebook entry V28. The zone is a λ fraction on one centre-to-centre distance, and V20a reserves every lobing judgement for the vertical synthesis; until V28 decides whether an excision may none the less shape the field, the candidates cover the whole A5d.3 window and this zone is reported rather than applied.",
    "crossings": [
     {
      "pairLabel": "woofer→mid",
@@ -285,6 +570,18 @@
       396.7,
       548.5
      ],
+     "excisions": [
+      {
+       "hz": [
+        657.1,
+        919.9
+       ],
+       "label": "the WORST lobing zone",
+       "source": "a fraction of the wavelength at the handover, taken on the ONE centre-to-centre distance this pair was given (261.0 mm — casebook geometry (golden_refs_casus1.json)). This is the M-F-INTERIM screening quantity (A4, role: reporting), not the vertical synthesis, which is the only lobing quantity a judgement may hang on (V20a).",
+       "applied": false,
+       "suspendedBecause": "SUSPENDED pending casebook entry V28. The zone is a λ fraction on one centre-to-centre distance, and V20a reserves every lobing judgement for the vertical synthesis; until V28 decides whether an excision may none the less shape the field, the candidates cover the whole A5d.3 window and this zone is reported rather than applied."
+      }
+     ],
      "position": {
       "index": 0,
       "count": 3,
@@ -294,7 +591,7 @@
      "uncalibrated": [
       "The divisor interpolates between the published endpoints (3 severe, 2 mild); the ramp between them is uncalibrated and needs HD data (spec V6/V9). This ceiling moves if that curve does."
      ],
-     "provenance": "woofer→mid at 396.7 Hz, LR4: position 1 of 3 across the recommended band 396.7–548.5 Hz, 0.00 oct above the window floor 396.7 Hz (validity); ceiling 548.5 Hz (breakup); order 4: the order the designer stated for this handover. Kept beside the demanded one rather than instead of it — \"what the measurements require\" and \"what you asked for\" are two questions, and there is no weighting here that could merge them."
+     "provenance": "woofer→mid at 396.7 Hz, LR4: position 1 of 3 across the candidate band 396.7–548.5 Hz, 0.00 oct above the window floor 396.7 Hz (validity); ceiling 548.5 Hz (breakup); order 4: the order the designer stated for this handover. Kept beside the demanded one rather than instead of it — \"what the measurements require\" and \"what you asked for\" are two questions, and there is no weighting here that could merge them.; not excised 657.1–919.9 Hz (the WORST lobing zone, a fraction of the wavelength at the handover, taken on the ONE centre-to-centre distance this pair was given (261.0 mm — casebook geometry (golden_refs_casus1.json)). This is the M-F-INTERIM screening quantity (A4, role: reporting), not the vertical synthesis, which is the only lobing quantity a judgement may hang on (V20a).) — SUSPENDED pending casebook entry V28. The zone is a λ fraction on one centre-to-centre distance, and V20a reserves every lobing judgement for the vertical synthesis; until V28 decides whether an excision may none the less shape the field, the candidates cover the whole A5d.3 window and this zone is reported rather than applied."
     },
     {
      "pairLabel": "mid→tweeter",
@@ -302,7 +599,7 @@
      "upper": "tweeter",
      "hz": 2283.5,
      "cageHz": [
-      2155.1,
+      2127,
       2283.5
      ],
      "order": 4,
@@ -317,24 +614,36 @@
      "floorBy": "fs — 1.4x f_s of tweeter (924 Hz) at order 4 - a steeper flank may sit closer to the resonance",
      "ceilingBy": "breakup — first significant breakup of mid at 5690 Hz (+3.0 dB) divided by 2.49",
      "segmentHz": [
-      1858.4,
+      1294,
       2283.5
      ],
+     "excisions": [
+      {
+       "hz": [
+        1327.4,
+        1858.4
+       ],
+       "label": "the WORST lobing zone",
+       "source": "a fraction of the wavelength at the handover, taken on the ONE centre-to-centre distance this pair was given (129.2 mm — casebook geometry (golden_refs_casus1.json)). This is the M-F-INTERIM screening quantity (A4, role: reporting), not the vertical synthesis, which is the only lobing quantity a judgement may hang on (V20a).",
+       "applied": false,
+       "suspendedBecause": "SUSPENDED pending casebook entry V28. The zone is a λ fraction on one centre-to-centre distance, and V20a reserves every lobing judgement for the vertical synthesis; until V28 decides whether an excision may none the less shape the field, the candidates cover the whole A5d.3 window and this zone is reported rather than applied."
+      }
+     ],
      "position": {
-      "index": 2,
-      "count": 3,
+      "index": 4,
+      "count": 5,
       "octavesAboveFloor": 0.8193612668423201
      },
      "orderWhy": "order 4: the order the designer stated for this handover. Kept beside the demanded one rather than instead of it — \"what the measurements require\" and \"what you asked for\" are two questions, and there is no weighting here that could merge them.",
      "uncalibrated": [
       "The divisor interpolates between the published endpoints (3 severe, 2 mild); the ramp between them is uncalibrated and needs HD data (spec V6/V9). This ceiling moves if that curve does."
      ],
-     "provenance": "mid→tweeter at 2283.5 Hz, LR4: position 3 of 3 across the recommended band 1858.4–2283.5 Hz, 0.82 oct above the window floor 1294 Hz (fs); ceiling 2283.5 Hz (breakup); order 4: the order the designer stated for this handover. Kept beside the demanded one rather than instead of it — \"what the measurements require\" and \"what you asked for\" are two questions, and there is no weighting here that could merge them."
+     "provenance": "mid→tweeter at 2283.5 Hz, LR4: position 5 of 5 across the candidate band 1294–2283.5 Hz, 0.82 oct above the window floor 1294 Hz (fs); ceiling 2283.5 Hz (breakup); order 4: the order the designer stated for this handover. Kept beside the demanded one rather than instead of it — \"what the measurements require\" and \"what you asked for\" are two questions, and there is no weighting here that could merge them.; not excised 1327.4–1858.4 Hz (the WORST lobing zone, a fraction of the wavelength at the handover, taken on the ONE centre-to-centre distance this pair was given (129.2 mm — casebook geometry (golden_refs_casus1.json)). This is the M-F-INTERIM screening quantity (A4, role: reporting), not the vertical synthesis, which is the only lobing quantity a judgement may hang on (V20a).) — SUSPENDED pending casebook entry V28. The zone is a λ fraction on one centre-to-centre distance, and V20a reserves every lobing judgement for the vertical synthesis; until V28 decides whether an excision may none the less shape the field, the candidates cover the whole A5d.3 window and this zone is reported rather than applied."
     }
    ]
   },
   "woofer→mid 466.5 LR4 · mid→tweeter 1294 LR4": {
-   "provenance": "woofer→mid at 466.5 Hz, LR4: position 2 of 3 across the recommended band 396.7–548.5 Hz, 0.23 oct above the window floor 396.7 Hz (validity); ceiling 548.5 Hz (breakup); order 4: the order the designer stated for this handover. Kept beside the demanded one rather than instead of it — \"what the measurements require\" and \"what you asked for\" are two questions, and there is no weighting here that could merge them. | mid→tweeter at 1294 Hz, LR4: position 1 of 3 across the recommended band 1294–1327.4 Hz, -0.00 oct above the window floor 1294 Hz (fs); ceiling 2283.5 Hz (breakup); order 4: the order the designer stated for this handover. Kept beside the demanded one rather than instead of it — \"what the measurements require\" and \"what you asked for\" are two questions, and there is no weighting here that could merge them.",
+   "provenance": "woofer→mid at 466.5 Hz, LR4: position 2 of 3 across the candidate band 396.7–548.5 Hz, 0.23 oct above the window floor 396.7 Hz (validity); ceiling 548.5 Hz (breakup); order 4: the order the designer stated for this handover. Kept beside the demanded one rather than instead of it — \"what the measurements require\" and \"what you asked for\" are two questions, and there is no weighting here that could merge them.; not excised 657.1–919.9 Hz (the WORST lobing zone, a fraction of the wavelength at the handover, taken on the ONE centre-to-centre distance this pair was given (261.0 mm — casebook geometry (golden_refs_casus1.json)). This is the M-F-INTERIM screening quantity (A4, role: reporting), not the vertical synthesis, which is the only lobing quantity a judgement may hang on (V20a).) — SUSPENDED pending casebook entry V28. The zone is a λ fraction on one centre-to-centre distance, and V20a reserves every lobing judgement for the vertical synthesis; until V28 decides whether an excision may none the less shape the field, the candidates cover the whole A5d.3 window and this zone is reported rather than applied. | mid→tweeter at 1294 Hz, LR4: position 1 of 5 across the candidate band 1294–2283.5 Hz, -0.00 oct above the window floor 1294 Hz (fs); ceiling 2283.5 Hz (breakup); order 4: the order the designer stated for this handover. Kept beside the demanded one rather than instead of it — \"what the measurements require\" and \"what you asked for\" are two questions, and there is no weighting here that could merge them.; not excised 1327.4–1858.4 Hz (the WORST lobing zone, a fraction of the wavelength at the handover, taken on the ONE centre-to-centre distance this pair was given (129.2 mm — casebook geometry (golden_refs_casus1.json)). This is the M-F-INTERIM screening quantity (A4, role: reporting), not the vertical synthesis, which is the only lobing quantity a judgement may hang on (V20a).) — SUSPENDED pending casebook entry V28. The zone is a λ fraction on one centre-to-centre distance, and V20a reserves every lobing judgement for the vertical synthesis; until V28 decides whether an excision may none the less shape the field, the candidates cover the whole A5d.3 window and this zone is reported rather than applied.",
    "crossings": [
     {
      "pairLabel": "woofer→mid",
@@ -360,6 +669,18 @@
       396.7,
       548.5
      ],
+     "excisions": [
+      {
+       "hz": [
+        657.1,
+        919.9
+       ],
+       "label": "the WORST lobing zone",
+       "source": "a fraction of the wavelength at the handover, taken on the ONE centre-to-centre distance this pair was given (261.0 mm — casebook geometry (golden_refs_casus1.json)). This is the M-F-INTERIM screening quantity (A4, role: reporting), not the vertical synthesis, which is the only lobing quantity a judgement may hang on (V20a).",
+       "applied": false,
+       "suspendedBecause": "SUSPENDED pending casebook entry V28. The zone is a λ fraction on one centre-to-centre distance, and V20a reserves every lobing judgement for the vertical synthesis; until V28 decides whether an excision may none the less shape the field, the candidates cover the whole A5d.3 window and this zone is reported rather than applied."
+      }
+     ],
      "position": {
       "index": 1,
       "count": 3,
@@ -369,7 +690,7 @@
      "uncalibrated": [
       "The divisor interpolates between the published endpoints (3 severe, 2 mild); the ramp between them is uncalibrated and needs HD data (spec V6/V9). This ceiling moves if that curve does."
      ],
-     "provenance": "woofer→mid at 466.5 Hz, LR4: position 2 of 3 across the recommended band 396.7–548.5 Hz, 0.23 oct above the window floor 396.7 Hz (validity); ceiling 548.5 Hz (breakup); order 4: the order the designer stated for this handover. Kept beside the demanded one rather than instead of it — \"what the measurements require\" and \"what you asked for\" are two questions, and there is no weighting here that could merge them."
+     "provenance": "woofer→mid at 466.5 Hz, LR4: position 2 of 3 across the candidate band 396.7–548.5 Hz, 0.23 oct above the window floor 396.7 Hz (validity); ceiling 548.5 Hz (breakup); order 4: the order the designer stated for this handover. Kept beside the demanded one rather than instead of it — \"what the measurements require\" and \"what you asked for\" are two questions, and there is no weighting here that could merge them.; not excised 657.1–919.9 Hz (the WORST lobing zone, a fraction of the wavelength at the handover, taken on the ONE centre-to-centre distance this pair was given (261.0 mm — casebook geometry (golden_refs_casus1.json)). This is the M-F-INTERIM screening quantity (A4, role: reporting), not the vertical synthesis, which is the only lobing quantity a judgement may hang on (V20a).) — SUSPENDED pending casebook entry V28. The zone is a λ fraction on one centre-to-centre distance, and V20a reserves every lobing judgement for the vertical synthesis; until V28 decides whether an excision may none the less shape the field, the candidates cover the whole A5d.3 window and this zone is reported rather than applied."
     },
     {
      "pairLabel": "mid→tweeter",
@@ -378,7 +699,7 @@
      "hz": 1294,
      "cageHz": [
       1294,
-      1327.4
+      1389.2
      ],
      "order": 4,
      "alignment": {
@@ -393,23 +714,35 @@
      "ceilingBy": "breakup — first significant breakup of mid at 5690 Hz (+3.0 dB) divided by 2.49",
      "segmentHz": [
       1294,
-      1327.4
+      2283.5
+     ],
+     "excisions": [
+      {
+       "hz": [
+        1327.4,
+        1858.4
+       ],
+       "label": "the WORST lobing zone",
+       "source": "a fraction of the wavelength at the handover, taken on the ONE centre-to-centre distance this pair was given (129.2 mm — casebook geometry (golden_refs_casus1.json)). This is the M-F-INTERIM screening quantity (A4, role: reporting), not the vertical synthesis, which is the only lobing quantity a judgement may hang on (V20a).",
+       "applied": false,
+       "suspendedBecause": "SUSPENDED pending casebook entry V28. The zone is a λ fraction on one centre-to-centre distance, and V20a reserves every lobing judgement for the vertical synthesis; until V28 decides whether an excision may none the less shape the field, the candidates cover the whole A5d.3 window and this zone is reported rather than applied."
+      }
      ],
      "position": {
       "index": 0,
-      "count": 3,
+      "count": 5,
       "octavesAboveFloor": -0.000047905543526532006
      },
      "orderWhy": "order 4: the order the designer stated for this handover. Kept beside the demanded one rather than instead of it — \"what the measurements require\" and \"what you asked for\" are two questions, and there is no weighting here that could merge them.",
      "uncalibrated": [
       "The divisor interpolates between the published endpoints (3 severe, 2 mild); the ramp between them is uncalibrated and needs HD data (spec V6/V9). This ceiling moves if that curve does."
      ],
-     "provenance": "mid→tweeter at 1294 Hz, LR4: position 1 of 3 across the recommended band 1294–1327.4 Hz, -0.00 oct above the window floor 1294 Hz (fs); ceiling 2283.5 Hz (breakup); order 4: the order the designer stated for this handover. Kept beside the demanded one rather than instead of it — \"what the measurements require\" and \"what you asked for\" are two questions, and there is no weighting here that could merge them."
+     "provenance": "mid→tweeter at 1294 Hz, LR4: position 1 of 5 across the candidate band 1294–2283.5 Hz, -0.00 oct above the window floor 1294 Hz (fs); ceiling 2283.5 Hz (breakup); order 4: the order the designer stated for this handover. Kept beside the demanded one rather than instead of it — \"what the measurements require\" and \"what you asked for\" are two questions, and there is no weighting here that could merge them.; not excised 1327.4–1858.4 Hz (the WORST lobing zone, a fraction of the wavelength at the handover, taken on the ONE centre-to-centre distance this pair was given (129.2 mm — casebook geometry (golden_refs_casus1.json)). This is the M-F-INTERIM screening quantity (A4, role: reporting), not the vertical synthesis, which is the only lobing quantity a judgement may hang on (V20a).) — SUSPENDED pending casebook entry V28. The zone is a λ fraction on one centre-to-centre distance, and V20a reserves every lobing judgement for the vertical synthesis; until V28 decides whether an excision may none the less shape the field, the candidates cover the whole A5d.3 window and this zone is reported rather than applied."
     }
    ]
   },
-  "woofer→mid 466.5 LR4 · mid→tweeter 2033.9 LR4": {
-   "provenance": "woofer→mid at 466.5 Hz, LR4: position 2 of 3 across the recommended band 396.7–548.5 Hz, 0.23 oct above the window floor 396.7 Hz (validity); ceiling 548.5 Hz (breakup); order 4: the order the designer stated for this handover. Kept beside the demanded one rather than instead of it — \"what the measurements require\" and \"what you asked for\" are two questions, and there is no weighting here that could merge them. | mid→tweeter at 2033.9 Hz, LR4: position 2 of 3 across the recommended band 1858.4–2283.5 Hz, 0.65 oct above the window floor 1294 Hz (fs); ceiling 2283.5 Hz (breakup); order 4: the order the designer stated for this handover. Kept beside the demanded one rather than instead of it — \"what the measurements require\" and \"what you asked for\" are two questions, and there is no weighting here that could merge them.",
+  "woofer→mid 466.5 LR4 · mid→tweeter 1491.4 LR4": {
+   "provenance": "woofer→mid at 466.5 Hz, LR4: position 2 of 3 across the candidate band 396.7–548.5 Hz, 0.23 oct above the window floor 396.7 Hz (validity); ceiling 548.5 Hz (breakup); order 4: the order the designer stated for this handover. Kept beside the demanded one rather than instead of it — \"what the measurements require\" and \"what you asked for\" are two questions, and there is no weighting here that could merge them.; not excised 657.1–919.9 Hz (the WORST lobing zone, a fraction of the wavelength at the handover, taken on the ONE centre-to-centre distance this pair was given (261.0 mm — casebook geometry (golden_refs_casus1.json)). This is the M-F-INTERIM screening quantity (A4, role: reporting), not the vertical synthesis, which is the only lobing quantity a judgement may hang on (V20a).) — SUSPENDED pending casebook entry V28. The zone is a λ fraction on one centre-to-centre distance, and V20a reserves every lobing judgement for the vertical synthesis; until V28 decides whether an excision may none the less shape the field, the candidates cover the whole A5d.3 window and this zone is reported rather than applied. | mid→tweeter at 1491.4 Hz, LR4: position 2 of 5 across the candidate band 1294–2283.5 Hz, 0.20 oct above the window floor 1294 Hz (fs); ceiling 2283.5 Hz (breakup); order 4: the order the designer stated for this handover. Kept beside the demanded one rather than instead of it — \"what the measurements require\" and \"what you asked for\" are two questions, and there is no weighting here that could merge them.; not excised 1327.4–1858.4 Hz (the WORST lobing zone, a fraction of the wavelength at the handover, taken on the ONE centre-to-centre distance this pair was given (129.2 mm — casebook geometry (golden_refs_casus1.json)). This is the M-F-INTERIM screening quantity (A4, role: reporting), not the vertical synthesis, which is the only lobing quantity a judgement may hang on (V20a).) — SUSPENDED pending casebook entry V28. The zone is a λ fraction on one centre-to-centre distance, and V20a reserves every lobing judgement for the vertical synthesis; until V28 decides whether an excision may none the less shape the field, the candidates cover the whole A5d.3 window and this zone is reported rather than applied.",
    "crossings": [
     {
      "pairLabel": "woofer→mid",
@@ -435,6 +768,18 @@
       396.7,
       548.5
      ],
+     "excisions": [
+      {
+       "hz": [
+        657.1,
+        919.9
+       ],
+       "label": "the WORST lobing zone",
+       "source": "a fraction of the wavelength at the handover, taken on the ONE centre-to-centre distance this pair was given (261.0 mm — casebook geometry (golden_refs_casus1.json)). This is the M-F-INTERIM screening quantity (A4, role: reporting), not the vertical synthesis, which is the only lobing quantity a judgement may hang on (V20a).",
+       "applied": false,
+       "suspendedBecause": "SUSPENDED pending casebook entry V28. The zone is a λ fraction on one centre-to-centre distance, and V20a reserves every lobing judgement for the vertical synthesis; until V28 decides whether an excision may none the less shape the field, the candidates cover the whole A5d.3 window and this zone is reported rather than applied."
+      }
+     ],
      "position": {
       "index": 1,
       "count": 3,
@@ -444,16 +789,16 @@
      "uncalibrated": [
       "The divisor interpolates between the published endpoints (3 severe, 2 mild); the ramp between them is uncalibrated and needs HD data (spec V6/V9). This ceiling moves if that curve does."
      ],
-     "provenance": "woofer→mid at 466.5 Hz, LR4: position 2 of 3 across the recommended band 396.7–548.5 Hz, 0.23 oct above the window floor 396.7 Hz (validity); ceiling 548.5 Hz (breakup); order 4: the order the designer stated for this handover. Kept beside the demanded one rather than instead of it — \"what the measurements require\" and \"what you asked for\" are two questions, and there is no weighting here that could merge them."
+     "provenance": "woofer→mid at 466.5 Hz, LR4: position 2 of 3 across the candidate band 396.7–548.5 Hz, 0.23 oct above the window floor 396.7 Hz (validity); ceiling 548.5 Hz (breakup); order 4: the order the designer stated for this handover. Kept beside the demanded one rather than instead of it — \"what the measurements require\" and \"what you asked for\" are two questions, and there is no weighting here that could merge them.; not excised 657.1–919.9 Hz (the WORST lobing zone, a fraction of the wavelength at the handover, taken on the ONE centre-to-centre distance this pair was given (261.0 mm — casebook geometry (golden_refs_casus1.json)). This is the M-F-INTERIM screening quantity (A4, role: reporting), not the vertical synthesis, which is the only lobing quantity a judgement may hang on (V20a).) — SUSPENDED pending casebook entry V28. The zone is a λ fraction on one centre-to-centre distance, and V20a reserves every lobing judgement for the vertical synthesis; until V28 decides whether an excision may none the less shape the field, the candidates cover the whole A5d.3 window and this zone is reported rather than applied."
     },
     {
      "pairLabel": "mid→tweeter",
      "lower": "mid",
      "upper": "tweeter",
-     "hz": 2033.9,
+     "hz": 1491.4,
      "cageHz": [
-      1919.6,
-      2155.1
+      1389.2,
+      1601.2
      ],
      "order": 4,
      "alignment": {
@@ -467,24 +812,234 @@
      "floorBy": "fs — 1.4x f_s of tweeter (924 Hz) at order 4 - a steeper flank may sit closer to the resonance",
      "ceilingBy": "breakup — first significant breakup of mid at 5690 Hz (+3.0 dB) divided by 2.49",
      "segmentHz": [
-      1858.4,
+      1294,
       2283.5
+     ],
+     "excisions": [
+      {
+       "hz": [
+        1327.4,
+        1858.4
+       ],
+       "label": "the WORST lobing zone",
+       "source": "a fraction of the wavelength at the handover, taken on the ONE centre-to-centre distance this pair was given (129.2 mm — casebook geometry (golden_refs_casus1.json)). This is the M-F-INTERIM screening quantity (A4, role: reporting), not the vertical synthesis, which is the only lobing quantity a judgement may hang on (V20a).",
+       "applied": false,
+       "suspendedBecause": "SUSPENDED pending casebook entry V28. The zone is a λ fraction on one centre-to-centre distance, and V20a reserves every lobing judgement for the vertical synthesis; until V28 decides whether an excision may none the less shape the field, the candidates cover the whole A5d.3 window and this zone is reported rather than applied."
+      }
      ],
      "position": {
       "index": 1,
-      "count": 3,
-      "octavesAboveFloor": 0.6523632256180969
+      "count": 5,
+      "octavesAboveFloor": 0.20478172376284287
      },
      "orderWhy": "order 4: the order the designer stated for this handover. Kept beside the demanded one rather than instead of it — \"what the measurements require\" and \"what you asked for\" are two questions, and there is no weighting here that could merge them.",
      "uncalibrated": [
       "The divisor interpolates between the published endpoints (3 severe, 2 mild); the ramp between them is uncalibrated and needs HD data (spec V6/V9). This ceiling moves if that curve does."
      ],
-     "provenance": "mid→tweeter at 2033.9 Hz, LR4: position 2 of 3 across the recommended band 1858.4–2283.5 Hz, 0.65 oct above the window floor 1294 Hz (fs); ceiling 2283.5 Hz (breakup); order 4: the order the designer stated for this handover. Kept beside the demanded one rather than instead of it — \"what the measurements require\" and \"what you asked for\" are two questions, and there is no weighting here that could merge them."
+     "provenance": "mid→tweeter at 1491.4 Hz, LR4: position 2 of 5 across the candidate band 1294–2283.5 Hz, 0.20 oct above the window floor 1294 Hz (fs); ceiling 2283.5 Hz (breakup); order 4: the order the designer stated for this handover. Kept beside the demanded one rather than instead of it — \"what the measurements require\" and \"what you asked for\" are two questions, and there is no weighting here that could merge them.; not excised 1327.4–1858.4 Hz (the WORST lobing zone, a fraction of the wavelength at the handover, taken on the ONE centre-to-centre distance this pair was given (129.2 mm — casebook geometry (golden_refs_casus1.json)). This is the M-F-INTERIM screening quantity (A4, role: reporting), not the vertical synthesis, which is the only lobing quantity a judgement may hang on (V20a).) — SUSPENDED pending casebook entry V28. The zone is a λ fraction on one centre-to-centre distance, and V20a reserves every lobing judgement for the vertical synthesis; until V28 decides whether an excision may none the less shape the field, the candidates cover the whole A5d.3 window and this zone is reported rather than applied."
+    }
+   ]
+  },
+  "woofer→mid 466.5 LR4 · mid→tweeter 1719 LR4": {
+   "provenance": "woofer→mid at 466.5 Hz, LR4: position 2 of 3 across the candidate band 396.7–548.5 Hz, 0.23 oct above the window floor 396.7 Hz (validity); ceiling 548.5 Hz (breakup); order 4: the order the designer stated for this handover. Kept beside the demanded one rather than instead of it — \"what the measurements require\" and \"what you asked for\" are two questions, and there is no weighting here that could merge them.; not excised 657.1–919.9 Hz (the WORST lobing zone, a fraction of the wavelength at the handover, taken on the ONE centre-to-centre distance this pair was given (261.0 mm — casebook geometry (golden_refs_casus1.json)). This is the M-F-INTERIM screening quantity (A4, role: reporting), not the vertical synthesis, which is the only lobing quantity a judgement may hang on (V20a).) — SUSPENDED pending casebook entry V28. The zone is a λ fraction on one centre-to-centre distance, and V20a reserves every lobing judgement for the vertical synthesis; until V28 decides whether an excision may none the less shape the field, the candidates cover the whole A5d.3 window and this zone is reported rather than applied. | mid→tweeter at 1719 Hz, LR4: position 3 of 5 across the candidate band 1294–2283.5 Hz, 0.41 oct above the window floor 1294 Hz (fs); ceiling 2283.5 Hz (breakup); order 4: the order the designer stated for this handover. Kept beside the demanded one rather than instead of it — \"what the measurements require\" and \"what you asked for\" are two questions, and there is no weighting here that could merge them.; not excised 1327.4–1858.4 Hz (the WORST lobing zone, a fraction of the wavelength at the handover, taken on the ONE centre-to-centre distance this pair was given (129.2 mm — casebook geometry (golden_refs_casus1.json)). This is the M-F-INTERIM screening quantity (A4, role: reporting), not the vertical synthesis, which is the only lobing quantity a judgement may hang on (V20a).) — SUSPENDED pending casebook entry V28. The zone is a λ fraction on one centre-to-centre distance, and V20a reserves every lobing judgement for the vertical synthesis; until V28 decides whether an excision may none the less shape the field, the candidates cover the whole A5d.3 window and this zone is reported rather than applied.",
+   "crossings": [
+    {
+     "pairLabel": "woofer→mid",
+     "lower": "woofer",
+     "upper": "mid",
+     "hz": 466.5,
+     "cageHz": [
+      430.2,
+      505.8
+     ],
+     "order": 4,
+     "alignment": {
+      "kind": "LR",
+      "order": 4
+     },
+     "windowHz": [
+      396.7,
+      548.5
+     ],
+     "floorBy": "validity — measurement validity (woofer far field)",
+     "ceilingBy": "breakup — first significant breakup of woofer at 1394 Hz (+3.3 dB) divided by 2.54",
+     "segmentHz": [
+      396.7,
+      548.5
+     ],
+     "excisions": [
+      {
+       "hz": [
+        657.1,
+        919.9
+       ],
+       "label": "the WORST lobing zone",
+       "source": "a fraction of the wavelength at the handover, taken on the ONE centre-to-centre distance this pair was given (261.0 mm — casebook geometry (golden_refs_casus1.json)). This is the M-F-INTERIM screening quantity (A4, role: reporting), not the vertical synthesis, which is the only lobing quantity a judgement may hang on (V20a).",
+       "applied": false,
+       "suspendedBecause": "SUSPENDED pending casebook entry V28. The zone is a λ fraction on one centre-to-centre distance, and V20a reserves every lobing judgement for the vertical synthesis; until V28 decides whether an excision may none the less shape the field, the candidates cover the whole A5d.3 window and this zone is reported rather than applied."
+      }
+     ],
+     "position": {
+      "index": 1,
+      "count": 3,
+      "octavesAboveFloor": 0.23394510438612415
+     },
+     "orderWhy": "order 4: the order the designer stated for this handover. Kept beside the demanded one rather than instead of it — \"what the measurements require\" and \"what you asked for\" are two questions, and there is no weighting here that could merge them.",
+     "uncalibrated": [
+      "The divisor interpolates between the published endpoints (3 severe, 2 mild); the ramp between them is uncalibrated and needs HD data (spec V6/V9). This ceiling moves if that curve does."
+     ],
+     "provenance": "woofer→mid at 466.5 Hz, LR4: position 2 of 3 across the candidate band 396.7–548.5 Hz, 0.23 oct above the window floor 396.7 Hz (validity); ceiling 548.5 Hz (breakup); order 4: the order the designer stated for this handover. Kept beside the demanded one rather than instead of it — \"what the measurements require\" and \"what you asked for\" are two questions, and there is no weighting here that could merge them.; not excised 657.1–919.9 Hz (the WORST lobing zone, a fraction of the wavelength at the handover, taken on the ONE centre-to-centre distance this pair was given (261.0 mm — casebook geometry (golden_refs_casus1.json)). This is the M-F-INTERIM screening quantity (A4, role: reporting), not the vertical synthesis, which is the only lobing quantity a judgement may hang on (V20a).) — SUSPENDED pending casebook entry V28. The zone is a λ fraction on one centre-to-centre distance, and V20a reserves every lobing judgement for the vertical synthesis; until V28 decides whether an excision may none the less shape the field, the candidates cover the whole A5d.3 window and this zone is reported rather than applied."
+    },
+    {
+     "pairLabel": "mid→tweeter",
+     "lower": "mid",
+     "upper": "tweeter",
+     "hz": 1719,
+     "cageHz": [
+      1601.2,
+      1845.4
+     ],
+     "order": 4,
+     "alignment": {
+      "kind": "LR",
+      "order": 4
+     },
+     "windowHz": [
+      1294,
+      2283.5
+     ],
+     "floorBy": "fs — 1.4x f_s of tweeter (924 Hz) at order 4 - a steeper flank may sit closer to the resonance",
+     "ceilingBy": "breakup — first significant breakup of mid at 5690 Hz (+3.0 dB) divided by 2.49",
+     "segmentHz": [
+      1294,
+      2283.5
+     ],
+     "excisions": [
+      {
+       "hz": [
+        1327.4,
+        1858.4
+       ],
+       "label": "the WORST lobing zone",
+       "source": "a fraction of the wavelength at the handover, taken on the ONE centre-to-centre distance this pair was given (129.2 mm — casebook geometry (golden_refs_casus1.json)). This is the M-F-INTERIM screening quantity (A4, role: reporting), not the vertical synthesis, which is the only lobing quantity a judgement may hang on (V20a).",
+       "applied": false,
+       "suspendedBecause": "SUSPENDED pending casebook entry V28. The zone is a λ fraction on one centre-to-centre distance, and V20a reserves every lobing judgement for the vertical synthesis; until V28 decides whether an excision may none the less shape the field, the candidates cover the whole A5d.3 window and this zone is reported rather than applied."
+      }
+     ],
+     "position": {
+      "index": 2,
+      "count": 5,
+      "octavesAboveFloor": 0.409684021942027
+     },
+     "orderWhy": "order 4: the order the designer stated for this handover. Kept beside the demanded one rather than instead of it — \"what the measurements require\" and \"what you asked for\" are two questions, and there is no weighting here that could merge them.",
+     "uncalibrated": [
+      "The divisor interpolates between the published endpoints (3 severe, 2 mild); the ramp between them is uncalibrated and needs HD data (spec V6/V9). This ceiling moves if that curve does."
+     ],
+     "provenance": "mid→tweeter at 1719 Hz, LR4: position 3 of 5 across the candidate band 1294–2283.5 Hz, 0.41 oct above the window floor 1294 Hz (fs); ceiling 2283.5 Hz (breakup); order 4: the order the designer stated for this handover. Kept beside the demanded one rather than instead of it — \"what the measurements require\" and \"what you asked for\" are two questions, and there is no weighting here that could merge them.; not excised 1327.4–1858.4 Hz (the WORST lobing zone, a fraction of the wavelength at the handover, taken on the ONE centre-to-centre distance this pair was given (129.2 mm — casebook geometry (golden_refs_casus1.json)). This is the M-F-INTERIM screening quantity (A4, role: reporting), not the vertical synthesis, which is the only lobing quantity a judgement may hang on (V20a).) — SUSPENDED pending casebook entry V28. The zone is a λ fraction on one centre-to-centre distance, and V20a reserves every lobing judgement for the vertical synthesis; until V28 decides whether an excision may none the less shape the field, the candidates cover the whole A5d.3 window and this zone is reported rather than applied."
+    }
+   ]
+  },
+  "woofer→mid 466.5 LR4 · mid→tweeter 1981.2 LR4": {
+   "provenance": "woofer→mid at 466.5 Hz, LR4: position 2 of 3 across the candidate band 396.7–548.5 Hz, 0.23 oct above the window floor 396.7 Hz (validity); ceiling 548.5 Hz (breakup); order 4: the order the designer stated for this handover. Kept beside the demanded one rather than instead of it — \"what the measurements require\" and \"what you asked for\" are two questions, and there is no weighting here that could merge them.; not excised 657.1–919.9 Hz (the WORST lobing zone, a fraction of the wavelength at the handover, taken on the ONE centre-to-centre distance this pair was given (261.0 mm — casebook geometry (golden_refs_casus1.json)). This is the M-F-INTERIM screening quantity (A4, role: reporting), not the vertical synthesis, which is the only lobing quantity a judgement may hang on (V20a).) — SUSPENDED pending casebook entry V28. The zone is a λ fraction on one centre-to-centre distance, and V20a reserves every lobing judgement for the vertical synthesis; until V28 decides whether an excision may none the less shape the field, the candidates cover the whole A5d.3 window and this zone is reported rather than applied. | mid→tweeter at 1981.2 Hz, LR4: position 4 of 5 across the candidate band 1294–2283.5 Hz, 0.61 oct above the window floor 1294 Hz (fs); ceiling 2283.5 Hz (breakup); order 4: the order the designer stated for this handover. Kept beside the demanded one rather than instead of it — \"what the measurements require\" and \"what you asked for\" are two questions, and there is no weighting here that could merge them.; not excised 1327.4–1858.4 Hz (the WORST lobing zone, a fraction of the wavelength at the handover, taken on the ONE centre-to-centre distance this pair was given (129.2 mm — casebook geometry (golden_refs_casus1.json)). This is the M-F-INTERIM screening quantity (A4, role: reporting), not the vertical synthesis, which is the only lobing quantity a judgement may hang on (V20a).) — SUSPENDED pending casebook entry V28. The zone is a λ fraction on one centre-to-centre distance, and V20a reserves every lobing judgement for the vertical synthesis; until V28 decides whether an excision may none the less shape the field, the candidates cover the whole A5d.3 window and this zone is reported rather than applied.",
+   "crossings": [
+    {
+     "pairLabel": "woofer→mid",
+     "lower": "woofer",
+     "upper": "mid",
+     "hz": 466.5,
+     "cageHz": [
+      430.2,
+      505.8
+     ],
+     "order": 4,
+     "alignment": {
+      "kind": "LR",
+      "order": 4
+     },
+     "windowHz": [
+      396.7,
+      548.5
+     ],
+     "floorBy": "validity — measurement validity (woofer far field)",
+     "ceilingBy": "breakup — first significant breakup of woofer at 1394 Hz (+3.3 dB) divided by 2.54",
+     "segmentHz": [
+      396.7,
+      548.5
+     ],
+     "excisions": [
+      {
+       "hz": [
+        657.1,
+        919.9
+       ],
+       "label": "the WORST lobing zone",
+       "source": "a fraction of the wavelength at the handover, taken on the ONE centre-to-centre distance this pair was given (261.0 mm — casebook geometry (golden_refs_casus1.json)). This is the M-F-INTERIM screening quantity (A4, role: reporting), not the vertical synthesis, which is the only lobing quantity a judgement may hang on (V20a).",
+       "applied": false,
+       "suspendedBecause": "SUSPENDED pending casebook entry V28. The zone is a λ fraction on one centre-to-centre distance, and V20a reserves every lobing judgement for the vertical synthesis; until V28 decides whether an excision may none the less shape the field, the candidates cover the whole A5d.3 window and this zone is reported rather than applied."
+      }
+     ],
+     "position": {
+      "index": 1,
+      "count": 3,
+      "octavesAboveFloor": 0.23394510438612415
+     },
+     "orderWhy": "order 4: the order the designer stated for this handover. Kept beside the demanded one rather than instead of it — \"what the measurements require\" and \"what you asked for\" are two questions, and there is no weighting here that could merge them.",
+     "uncalibrated": [
+      "The divisor interpolates between the published endpoints (3 severe, 2 mild); the ramp between them is uncalibrated and needs HD data (spec V6/V9). This ceiling moves if that curve does."
+     ],
+     "provenance": "woofer→mid at 466.5 Hz, LR4: position 2 of 3 across the candidate band 396.7–548.5 Hz, 0.23 oct above the window floor 396.7 Hz (validity); ceiling 548.5 Hz (breakup); order 4: the order the designer stated for this handover. Kept beside the demanded one rather than instead of it — \"what the measurements require\" and \"what you asked for\" are two questions, and there is no weighting here that could merge them.; not excised 657.1–919.9 Hz (the WORST lobing zone, a fraction of the wavelength at the handover, taken on the ONE centre-to-centre distance this pair was given (261.0 mm — casebook geometry (golden_refs_casus1.json)). This is the M-F-INTERIM screening quantity (A4, role: reporting), not the vertical synthesis, which is the only lobing quantity a judgement may hang on (V20a).) — SUSPENDED pending casebook entry V28. The zone is a λ fraction on one centre-to-centre distance, and V20a reserves every lobing judgement for the vertical synthesis; until V28 decides whether an excision may none the less shape the field, the candidates cover the whole A5d.3 window and this zone is reported rather than applied."
+    },
+    {
+     "pairLabel": "mid→tweeter",
+     "lower": "mid",
+     "upper": "tweeter",
+     "hz": 1981.2,
+     "cageHz": [
+      1845.4,
+      2127
+     ],
+     "order": 4,
+     "alignment": {
+      "kind": "LR",
+      "order": 4
+     },
+     "windowHz": [
+      1294,
+      2283.5
+     ],
+     "floorBy": "fs — 1.4x f_s of tweeter (924 Hz) at order 4 - a steeper flank may sit closer to the resonance",
+     "ceilingBy": "breakup — first significant breakup of mid at 5690 Hz (+3.0 dB) divided by 2.49",
+     "segmentHz": [
+      1294,
+      2283.5
+     ],
+     "excisions": [
+      {
+       "hz": [
+        1327.4,
+        1858.4
+       ],
+       "label": "the WORST lobing zone",
+       "source": "a fraction of the wavelength at the handover, taken on the ONE centre-to-centre distance this pair was given (129.2 mm — casebook geometry (golden_refs_casus1.json)). This is the M-F-INTERIM screening quantity (A4, role: reporting), not the vertical synthesis, which is the only lobing quantity a judgement may hang on (V20a).",
+       "applied": false,
+       "suspendedBecause": "SUSPENDED pending casebook entry V28. The zone is a λ fraction on one centre-to-centre distance, and V20a reserves every lobing judgement for the vertical synthesis; until V28 decides whether an excision may none the less shape the field, the candidates cover the whole A5d.3 window and this zone is reported rather than applied."
+      }
+     ],
+     "position": {
+      "index": 3,
+      "count": 5,
+      "octavesAboveFloor": 0.614489003211018
+     },
+     "orderWhy": "order 4: the order the designer stated for this handover. Kept beside the demanded one rather than instead of it — \"what the measurements require\" and \"what you asked for\" are two questions, and there is no weighting here that could merge them.",
+     "uncalibrated": [
+      "The divisor interpolates between the published endpoints (3 severe, 2 mild); the ramp between them is uncalibrated and needs HD data (spec V6/V9). This ceiling moves if that curve does."
+     ],
+     "provenance": "mid→tweeter at 1981.2 Hz, LR4: position 4 of 5 across the candidate band 1294–2283.5 Hz, 0.61 oct above the window floor 1294 Hz (fs); ceiling 2283.5 Hz (breakup); order 4: the order the designer stated for this handover. Kept beside the demanded one rather than instead of it — \"what the measurements require\" and \"what you asked for\" are two questions, and there is no weighting here that could merge them.; not excised 1327.4–1858.4 Hz (the WORST lobing zone, a fraction of the wavelength at the handover, taken on the ONE centre-to-centre distance this pair was given (129.2 mm — casebook geometry (golden_refs_casus1.json)). This is the M-F-INTERIM screening quantity (A4, role: reporting), not the vertical synthesis, which is the only lobing quantity a judgement may hang on (V20a).) — SUSPENDED pending casebook entry V28. The zone is a λ fraction on one centre-to-centre distance, and V20a reserves every lobing judgement for the vertical synthesis; until V28 decides whether an excision may none the less shape the field, the candidates cover the whole A5d.3 window and this zone is reported rather than applied."
     }
    ]
   },
   "woofer→mid 466.5 LR4 · mid→tweeter 2283.5 LR4": {
-   "provenance": "woofer→mid at 466.5 Hz, LR4: position 2 of 3 across the recommended band 396.7–548.5 Hz, 0.23 oct above the window floor 396.7 Hz (validity); ceiling 548.5 Hz (breakup); order 4: the order the designer stated for this handover. Kept beside the demanded one rather than instead of it — \"what the measurements require\" and \"what you asked for\" are two questions, and there is no weighting here that could merge them. | mid→tweeter at 2283.5 Hz, LR4: position 3 of 3 across the recommended band 1858.4–2283.5 Hz, 0.82 oct above the window floor 1294 Hz (fs); ceiling 2283.5 Hz (breakup); order 4: the order the designer stated for this handover. Kept beside the demanded one rather than instead of it — \"what the measurements require\" and \"what you asked for\" are two questions, and there is no weighting here that could merge them.",
+   "provenance": "woofer→mid at 466.5 Hz, LR4: position 2 of 3 across the candidate band 396.7–548.5 Hz, 0.23 oct above the window floor 396.7 Hz (validity); ceiling 548.5 Hz (breakup); order 4: the order the designer stated for this handover. Kept beside the demanded one rather than instead of it — \"what the measurements require\" and \"what you asked for\" are two questions, and there is no weighting here that could merge them.; not excised 657.1–919.9 Hz (the WORST lobing zone, a fraction of the wavelength at the handover, taken on the ONE centre-to-centre distance this pair was given (261.0 mm — casebook geometry (golden_refs_casus1.json)). This is the M-F-INTERIM screening quantity (A4, role: reporting), not the vertical synthesis, which is the only lobing quantity a judgement may hang on (V20a).) — SUSPENDED pending casebook entry V28. The zone is a λ fraction on one centre-to-centre distance, and V20a reserves every lobing judgement for the vertical synthesis; until V28 decides whether an excision may none the less shape the field, the candidates cover the whole A5d.3 window and this zone is reported rather than applied. | mid→tweeter at 2283.5 Hz, LR4: position 5 of 5 across the candidate band 1294–2283.5 Hz, 0.82 oct above the window floor 1294 Hz (fs); ceiling 2283.5 Hz (breakup); order 4: the order the designer stated for this handover. Kept beside the demanded one rather than instead of it — \"what the measurements require\" and \"what you asked for\" are two questions, and there is no weighting here that could merge them.; not excised 1327.4–1858.4 Hz (the WORST lobing zone, a fraction of the wavelength at the handover, taken on the ONE centre-to-centre distance this pair was given (129.2 mm — casebook geometry (golden_refs_casus1.json)). This is the M-F-INTERIM screening quantity (A4, role: reporting), not the vertical synthesis, which is the only lobing quantity a judgement may hang on (V20a).) — SUSPENDED pending casebook entry V28. The zone is a λ fraction on one centre-to-centre distance, and V20a reserves every lobing judgement for the vertical synthesis; until V28 decides whether an excision may none the less shape the field, the candidates cover the whole A5d.3 window and this zone is reported rather than applied.",
    "crossings": [
     {
      "pairLabel": "woofer→mid",
@@ -510,6 +1065,18 @@
       396.7,
       548.5
      ],
+     "excisions": [
+      {
+       "hz": [
+        657.1,
+        919.9
+       ],
+       "label": "the WORST lobing zone",
+       "source": "a fraction of the wavelength at the handover, taken on the ONE centre-to-centre distance this pair was given (261.0 mm — casebook geometry (golden_refs_casus1.json)). This is the M-F-INTERIM screening quantity (A4, role: reporting), not the vertical synthesis, which is the only lobing quantity a judgement may hang on (V20a).",
+       "applied": false,
+       "suspendedBecause": "SUSPENDED pending casebook entry V28. The zone is a λ fraction on one centre-to-centre distance, and V20a reserves every lobing judgement for the vertical synthesis; until V28 decides whether an excision may none the less shape the field, the candidates cover the whole A5d.3 window and this zone is reported rather than applied."
+      }
+     ],
      "position": {
       "index": 1,
       "count": 3,
@@ -519,7 +1086,7 @@
      "uncalibrated": [
       "The divisor interpolates between the published endpoints (3 severe, 2 mild); the ramp between them is uncalibrated and needs HD data (spec V6/V9). This ceiling moves if that curve does."
      ],
-     "provenance": "woofer→mid at 466.5 Hz, LR4: position 2 of 3 across the recommended band 396.7–548.5 Hz, 0.23 oct above the window floor 396.7 Hz (validity); ceiling 548.5 Hz (breakup); order 4: the order the designer stated for this handover. Kept beside the demanded one rather than instead of it — \"what the measurements require\" and \"what you asked for\" are two questions, and there is no weighting here that could merge them."
+     "provenance": "woofer→mid at 466.5 Hz, LR4: position 2 of 3 across the candidate band 396.7–548.5 Hz, 0.23 oct above the window floor 396.7 Hz (validity); ceiling 548.5 Hz (breakup); order 4: the order the designer stated for this handover. Kept beside the demanded one rather than instead of it — \"what the measurements require\" and \"what you asked for\" are two questions, and there is no weighting here that could merge them.; not excised 657.1–919.9 Hz (the WORST lobing zone, a fraction of the wavelength at the handover, taken on the ONE centre-to-centre distance this pair was given (261.0 mm — casebook geometry (golden_refs_casus1.json)). This is the M-F-INTERIM screening quantity (A4, role: reporting), not the vertical synthesis, which is the only lobing quantity a judgement may hang on (V20a).) — SUSPENDED pending casebook entry V28. The zone is a λ fraction on one centre-to-centre distance, and V20a reserves every lobing judgement for the vertical synthesis; until V28 decides whether an excision may none the less shape the field, the candidates cover the whole A5d.3 window and this zone is reported rather than applied."
     },
     {
      "pairLabel": "mid→tweeter",
@@ -527,7 +1094,7 @@
      "upper": "tweeter",
      "hz": 2283.5,
      "cageHz": [
-      2155.1,
+      2127,
       2283.5
      ],
      "order": 4,
@@ -542,24 +1109,36 @@
      "floorBy": "fs — 1.4x f_s of tweeter (924 Hz) at order 4 - a steeper flank may sit closer to the resonance",
      "ceilingBy": "breakup — first significant breakup of mid at 5690 Hz (+3.0 dB) divided by 2.49",
      "segmentHz": [
-      1858.4,
+      1294,
       2283.5
      ],
+     "excisions": [
+      {
+       "hz": [
+        1327.4,
+        1858.4
+       ],
+       "label": "the WORST lobing zone",
+       "source": "a fraction of the wavelength at the handover, taken on the ONE centre-to-centre distance this pair was given (129.2 mm — casebook geometry (golden_refs_casus1.json)). This is the M-F-INTERIM screening quantity (A4, role: reporting), not the vertical synthesis, which is the only lobing quantity a judgement may hang on (V20a).",
+       "applied": false,
+       "suspendedBecause": "SUSPENDED pending casebook entry V28. The zone is a λ fraction on one centre-to-centre distance, and V20a reserves every lobing judgement for the vertical synthesis; until V28 decides whether an excision may none the less shape the field, the candidates cover the whole A5d.3 window and this zone is reported rather than applied."
+      }
+     ],
      "position": {
-      "index": 2,
-      "count": 3,
+      "index": 4,
+      "count": 5,
       "octavesAboveFloor": 0.8193612668423201
      },
      "orderWhy": "order 4: the order the designer stated for this handover. Kept beside the demanded one rather than instead of it — \"what the measurements require\" and \"what you asked for\" are two questions, and there is no weighting here that could merge them.",
      "uncalibrated": [
       "The divisor interpolates between the published endpoints (3 severe, 2 mild); the ramp between them is uncalibrated and needs HD data (spec V6/V9). This ceiling moves if that curve does."
      ],
-     "provenance": "mid→tweeter at 2283.5 Hz, LR4: position 3 of 3 across the recommended band 1858.4–2283.5 Hz, 0.82 oct above the window floor 1294 Hz (fs); ceiling 2283.5 Hz (breakup); order 4: the order the designer stated for this handover. Kept beside the demanded one rather than instead of it — \"what the measurements require\" and \"what you asked for\" are two questions, and there is no weighting here that could merge them."
+     "provenance": "mid→tweeter at 2283.5 Hz, LR4: position 5 of 5 across the candidate band 1294–2283.5 Hz, 0.82 oct above the window floor 1294 Hz (fs); ceiling 2283.5 Hz (breakup); order 4: the order the designer stated for this handover. Kept beside the demanded one rather than instead of it — \"what the measurements require\" and \"what you asked for\" are two questions, and there is no weighting here that could merge them.; not excised 1327.4–1858.4 Hz (the WORST lobing zone, a fraction of the wavelength at the handover, taken on the ONE centre-to-centre distance this pair was given (129.2 mm — casebook geometry (golden_refs_casus1.json)). This is the M-F-INTERIM screening quantity (A4, role: reporting), not the vertical synthesis, which is the only lobing quantity a judgement may hang on (V20a).) — SUSPENDED pending casebook entry V28. The zone is a λ fraction on one centre-to-centre distance, and V20a reserves every lobing judgement for the vertical synthesis; until V28 decides whether an excision may none the less shape the field, the candidates cover the whole A5d.3 window and this zone is reported rather than applied."
     }
    ]
   },
   "woofer→mid 548.5 LR4 · mid→tweeter 1294 LR4": {
-   "provenance": "woofer→mid at 548.5 Hz, LR4: position 3 of 3 across the recommended band 396.7–548.5 Hz, 0.47 oct above the window floor 396.7 Hz (validity); ceiling 548.5 Hz (breakup); order 4: the order the designer stated for this handover. Kept beside the demanded one rather than instead of it — \"what the measurements require\" and \"what you asked for\" are two questions, and there is no weighting here that could merge them. | mid→tweeter at 1294 Hz, LR4: position 1 of 3 across the recommended band 1294–1327.4 Hz, -0.00 oct above the window floor 1294 Hz (fs); ceiling 2283.5 Hz (breakup); order 4: the order the designer stated for this handover. Kept beside the demanded one rather than instead of it — \"what the measurements require\" and \"what you asked for\" are two questions, and there is no weighting here that could merge them.",
+   "provenance": "woofer→mid at 548.5 Hz, LR4: position 3 of 3 across the candidate band 396.7–548.5 Hz, 0.47 oct above the window floor 396.7 Hz (validity); ceiling 548.5 Hz (breakup); order 4: the order the designer stated for this handover. Kept beside the demanded one rather than instead of it — \"what the measurements require\" and \"what you asked for\" are two questions, and there is no weighting here that could merge them.; not excised 657.1–919.9 Hz (the WORST lobing zone, a fraction of the wavelength at the handover, taken on the ONE centre-to-centre distance this pair was given (261.0 mm — casebook geometry (golden_refs_casus1.json)). This is the M-F-INTERIM screening quantity (A4, role: reporting), not the vertical synthesis, which is the only lobing quantity a judgement may hang on (V20a).) — SUSPENDED pending casebook entry V28. The zone is a λ fraction on one centre-to-centre distance, and V20a reserves every lobing judgement for the vertical synthesis; until V28 decides whether an excision may none the less shape the field, the candidates cover the whole A5d.3 window and this zone is reported rather than applied. | mid→tweeter at 1294 Hz, LR4: position 1 of 5 across the candidate band 1294–2283.5 Hz, -0.00 oct above the window floor 1294 Hz (fs); ceiling 2283.5 Hz (breakup); order 4: the order the designer stated for this handover. Kept beside the demanded one rather than instead of it — \"what the measurements require\" and \"what you asked for\" are two questions, and there is no weighting here that could merge them.; not excised 1327.4–1858.4 Hz (the WORST lobing zone, a fraction of the wavelength at the handover, taken on the ONE centre-to-centre distance this pair was given (129.2 mm — casebook geometry (golden_refs_casus1.json)). This is the M-F-INTERIM screening quantity (A4, role: reporting), not the vertical synthesis, which is the only lobing quantity a judgement may hang on (V20a).) — SUSPENDED pending casebook entry V28. The zone is a λ fraction on one centre-to-centre distance, and V20a reserves every lobing judgement for the vertical synthesis; until V28 decides whether an excision may none the less shape the field, the candidates cover the whole A5d.3 window and this zone is reported rather than applied.",
    "crossings": [
     {
      "pairLabel": "woofer→mid",
@@ -585,6 +1164,18 @@
       396.7,
       548.5
      ],
+     "excisions": [
+      {
+       "hz": [
+        657.1,
+        919.9
+       ],
+       "label": "the WORST lobing zone",
+       "source": "a fraction of the wavelength at the handover, taken on the ONE centre-to-centre distance this pair was given (261.0 mm — casebook geometry (golden_refs_casus1.json)). This is the M-F-INTERIM screening quantity (A4, role: reporting), not the vertical synthesis, which is the only lobing quantity a judgement may hang on (V20a).",
+       "applied": false,
+       "suspendedBecause": "SUSPENDED pending casebook entry V28. The zone is a λ fraction on one centre-to-centre distance, and V20a reserves every lobing judgement for the vertical synthesis; until V28 decides whether an excision may none the less shape the field, the candidates cover the whole A5d.3 window and this zone is reported rather than applied."
+      }
+     ],
      "position": {
       "index": 2,
       "count": 3,
@@ -594,7 +1185,7 @@
      "uncalibrated": [
       "The divisor interpolates between the published endpoints (3 severe, 2 mild); the ramp between them is uncalibrated and needs HD data (spec V6/V9). This ceiling moves if that curve does."
      ],
-     "provenance": "woofer→mid at 548.5 Hz, LR4: position 3 of 3 across the recommended band 396.7–548.5 Hz, 0.47 oct above the window floor 396.7 Hz (validity); ceiling 548.5 Hz (breakup); order 4: the order the designer stated for this handover. Kept beside the demanded one rather than instead of it — \"what the measurements require\" and \"what you asked for\" are two questions, and there is no weighting here that could merge them."
+     "provenance": "woofer→mid at 548.5 Hz, LR4: position 3 of 3 across the candidate band 396.7–548.5 Hz, 0.47 oct above the window floor 396.7 Hz (validity); ceiling 548.5 Hz (breakup); order 4: the order the designer stated for this handover. Kept beside the demanded one rather than instead of it — \"what the measurements require\" and \"what you asked for\" are two questions, and there is no weighting here that could merge them.; not excised 657.1–919.9 Hz (the WORST lobing zone, a fraction of the wavelength at the handover, taken on the ONE centre-to-centre distance this pair was given (261.0 mm — casebook geometry (golden_refs_casus1.json)). This is the M-F-INTERIM screening quantity (A4, role: reporting), not the vertical synthesis, which is the only lobing quantity a judgement may hang on (V20a).) — SUSPENDED pending casebook entry V28. The zone is a λ fraction on one centre-to-centre distance, and V20a reserves every lobing judgement for the vertical synthesis; until V28 decides whether an excision may none the less shape the field, the candidates cover the whole A5d.3 window and this zone is reported rather than applied."
     },
     {
      "pairLabel": "mid→tweeter",
@@ -603,7 +1194,7 @@
      "hz": 1294,
      "cageHz": [
       1294,
-      1327.4
+      1389.2
      ],
      "order": 4,
      "alignment": {
@@ -618,23 +1209,35 @@
      "ceilingBy": "breakup — first significant breakup of mid at 5690 Hz (+3.0 dB) divided by 2.49",
      "segmentHz": [
       1294,
-      1327.4
+      2283.5
+     ],
+     "excisions": [
+      {
+       "hz": [
+        1327.4,
+        1858.4
+       ],
+       "label": "the WORST lobing zone",
+       "source": "a fraction of the wavelength at the handover, taken on the ONE centre-to-centre distance this pair was given (129.2 mm — casebook geometry (golden_refs_casus1.json)). This is the M-F-INTERIM screening quantity (A4, role: reporting), not the vertical synthesis, which is the only lobing quantity a judgement may hang on (V20a).",
+       "applied": false,
+       "suspendedBecause": "SUSPENDED pending casebook entry V28. The zone is a λ fraction on one centre-to-centre distance, and V20a reserves every lobing judgement for the vertical synthesis; until V28 decides whether an excision may none the less shape the field, the candidates cover the whole A5d.3 window and this zone is reported rather than applied."
+      }
      ],
      "position": {
       "index": 0,
-      "count": 3,
+      "count": 5,
       "octavesAboveFloor": -0.000047905543526532006
      },
      "orderWhy": "order 4: the order the designer stated for this handover. Kept beside the demanded one rather than instead of it — \"what the measurements require\" and \"what you asked for\" are two questions, and there is no weighting here that could merge them.",
      "uncalibrated": [
       "The divisor interpolates between the published endpoints (3 severe, 2 mild); the ramp between them is uncalibrated and needs HD data (spec V6/V9). This ceiling moves if that curve does."
      ],
-     "provenance": "mid→tweeter at 1294 Hz, LR4: position 1 of 3 across the recommended band 1294–1327.4 Hz, -0.00 oct above the window floor 1294 Hz (fs); ceiling 2283.5 Hz (breakup); order 4: the order the designer stated for this handover. Kept beside the demanded one rather than instead of it — \"what the measurements require\" and \"what you asked for\" are two questions, and there is no weighting here that could merge them."
+     "provenance": "mid→tweeter at 1294 Hz, LR4: position 1 of 5 across the candidate band 1294–2283.5 Hz, -0.00 oct above the window floor 1294 Hz (fs); ceiling 2283.5 Hz (breakup); order 4: the order the designer stated for this handover. Kept beside the demanded one rather than instead of it — \"what the measurements require\" and \"what you asked for\" are two questions, and there is no weighting here that could merge them.; not excised 1327.4–1858.4 Hz (the WORST lobing zone, a fraction of the wavelength at the handover, taken on the ONE centre-to-centre distance this pair was given (129.2 mm — casebook geometry (golden_refs_casus1.json)). This is the M-F-INTERIM screening quantity (A4, role: reporting), not the vertical synthesis, which is the only lobing quantity a judgement may hang on (V20a).) — SUSPENDED pending casebook entry V28. The zone is a λ fraction on one centre-to-centre distance, and V20a reserves every lobing judgement for the vertical synthesis; until V28 decides whether an excision may none the less shape the field, the candidates cover the whole A5d.3 window and this zone is reported rather than applied."
     }
    ]
   },
-  "woofer→mid 548.5 LR4 · mid→tweeter 2033.9 LR4": {
-   "provenance": "woofer→mid at 548.5 Hz, LR4: position 3 of 3 across the recommended band 396.7–548.5 Hz, 0.47 oct above the window floor 396.7 Hz (validity); ceiling 548.5 Hz (breakup); order 4: the order the designer stated for this handover. Kept beside the demanded one rather than instead of it — \"what the measurements require\" and \"what you asked for\" are two questions, and there is no weighting here that could merge them. | mid→tweeter at 2033.9 Hz, LR4: position 2 of 3 across the recommended band 1858.4–2283.5 Hz, 0.65 oct above the window floor 1294 Hz (fs); ceiling 2283.5 Hz (breakup); order 4: the order the designer stated for this handover. Kept beside the demanded one rather than instead of it — \"what the measurements require\" and \"what you asked for\" are two questions, and there is no weighting here that could merge them.",
+  "woofer→mid 548.5 LR4 · mid→tweeter 1491.4 LR4": {
+   "provenance": "woofer→mid at 548.5 Hz, LR4: position 3 of 3 across the candidate band 396.7–548.5 Hz, 0.47 oct above the window floor 396.7 Hz (validity); ceiling 548.5 Hz (breakup); order 4: the order the designer stated for this handover. Kept beside the demanded one rather than instead of it — \"what the measurements require\" and \"what you asked for\" are two questions, and there is no weighting here that could merge them.; not excised 657.1–919.9 Hz (the WORST lobing zone, a fraction of the wavelength at the handover, taken on the ONE centre-to-centre distance this pair was given (261.0 mm — casebook geometry (golden_refs_casus1.json)). This is the M-F-INTERIM screening quantity (A4, role: reporting), not the vertical synthesis, which is the only lobing quantity a judgement may hang on (V20a).) — SUSPENDED pending casebook entry V28. The zone is a λ fraction on one centre-to-centre distance, and V20a reserves every lobing judgement for the vertical synthesis; until V28 decides whether an excision may none the less shape the field, the candidates cover the whole A5d.3 window and this zone is reported rather than applied. | mid→tweeter at 1491.4 Hz, LR4: position 2 of 5 across the candidate band 1294–2283.5 Hz, 0.20 oct above the window floor 1294 Hz (fs); ceiling 2283.5 Hz (breakup); order 4: the order the designer stated for this handover. Kept beside the demanded one rather than instead of it — \"what the measurements require\" and \"what you asked for\" are two questions, and there is no weighting here that could merge them.; not excised 1327.4–1858.4 Hz (the WORST lobing zone, a fraction of the wavelength at the handover, taken on the ONE centre-to-centre distance this pair was given (129.2 mm — casebook geometry (golden_refs_casus1.json)). This is the M-F-INTERIM screening quantity (A4, role: reporting), not the vertical synthesis, which is the only lobing quantity a judgement may hang on (V20a).) — SUSPENDED pending casebook entry V28. The zone is a λ fraction on one centre-to-centre distance, and V20a reserves every lobing judgement for the vertical synthesis; until V28 decides whether an excision may none the less shape the field, the candidates cover the whole A5d.3 window and this zone is reported rather than applied.",
    "crossings": [
     {
      "pairLabel": "woofer→mid",
@@ -660,6 +1263,18 @@
       396.7,
       548.5
      ],
+     "excisions": [
+      {
+       "hz": [
+        657.1,
+        919.9
+       ],
+       "label": "the WORST lobing zone",
+       "source": "a fraction of the wavelength at the handover, taken on the ONE centre-to-centre distance this pair was given (261.0 mm — casebook geometry (golden_refs_casus1.json)). This is the M-F-INTERIM screening quantity (A4, role: reporting), not the vertical synthesis, which is the only lobing quantity a judgement may hang on (V20a).",
+       "applied": false,
+       "suspendedBecause": "SUSPENDED pending casebook entry V28. The zone is a λ fraction on one centre-to-centre distance, and V20a reserves every lobing judgement for the vertical synthesis; until V28 decides whether an excision may none the less shape the field, the candidates cover the whole A5d.3 window and this zone is reported rather than applied."
+      }
+     ],
      "position": {
       "index": 2,
       "count": 3,
@@ -669,16 +1284,16 @@
      "uncalibrated": [
       "The divisor interpolates between the published endpoints (3 severe, 2 mild); the ramp between them is uncalibrated and needs HD data (spec V6/V9). This ceiling moves if that curve does."
      ],
-     "provenance": "woofer→mid at 548.5 Hz, LR4: position 3 of 3 across the recommended band 396.7–548.5 Hz, 0.47 oct above the window floor 396.7 Hz (validity); ceiling 548.5 Hz (breakup); order 4: the order the designer stated for this handover. Kept beside the demanded one rather than instead of it — \"what the measurements require\" and \"what you asked for\" are two questions, and there is no weighting here that could merge them."
+     "provenance": "woofer→mid at 548.5 Hz, LR4: position 3 of 3 across the candidate band 396.7–548.5 Hz, 0.47 oct above the window floor 396.7 Hz (validity); ceiling 548.5 Hz (breakup); order 4: the order the designer stated for this handover. Kept beside the demanded one rather than instead of it — \"what the measurements require\" and \"what you asked for\" are two questions, and there is no weighting here that could merge them.; not excised 657.1–919.9 Hz (the WORST lobing zone, a fraction of the wavelength at the handover, taken on the ONE centre-to-centre distance this pair was given (261.0 mm — casebook geometry (golden_refs_casus1.json)). This is the M-F-INTERIM screening quantity (A4, role: reporting), not the vertical synthesis, which is the only lobing quantity a judgement may hang on (V20a).) — SUSPENDED pending casebook entry V28. The zone is a λ fraction on one centre-to-centre distance, and V20a reserves every lobing judgement for the vertical synthesis; until V28 decides whether an excision may none the less shape the field, the candidates cover the whole A5d.3 window and this zone is reported rather than applied."
     },
     {
      "pairLabel": "mid→tweeter",
      "lower": "mid",
      "upper": "tweeter",
-     "hz": 2033.9,
+     "hz": 1491.4,
      "cageHz": [
-      1919.6,
-      2155.1
+      1389.2,
+      1601.2
      ],
      "order": 4,
      "alignment": {
@@ -692,24 +1307,36 @@
      "floorBy": "fs — 1.4x f_s of tweeter (924 Hz) at order 4 - a steeper flank may sit closer to the resonance",
      "ceilingBy": "breakup — first significant breakup of mid at 5690 Hz (+3.0 dB) divided by 2.49",
      "segmentHz": [
-      1858.4,
+      1294,
       2283.5
+     ],
+     "excisions": [
+      {
+       "hz": [
+        1327.4,
+        1858.4
+       ],
+       "label": "the WORST lobing zone",
+       "source": "a fraction of the wavelength at the handover, taken on the ONE centre-to-centre distance this pair was given (129.2 mm — casebook geometry (golden_refs_casus1.json)). This is the M-F-INTERIM screening quantity (A4, role: reporting), not the vertical synthesis, which is the only lobing quantity a judgement may hang on (V20a).",
+       "applied": false,
+       "suspendedBecause": "SUSPENDED pending casebook entry V28. The zone is a λ fraction on one centre-to-centre distance, and V20a reserves every lobing judgement for the vertical synthesis; until V28 decides whether an excision may none the less shape the field, the candidates cover the whole A5d.3 window and this zone is reported rather than applied."
+      }
      ],
      "position": {
       "index": 1,
-      "count": 3,
-      "octavesAboveFloor": 0.6523632256180969
+      "count": 5,
+      "octavesAboveFloor": 0.20478172376284287
      },
      "orderWhy": "order 4: the order the designer stated for this handover. Kept beside the demanded one rather than instead of it — \"what the measurements require\" and \"what you asked for\" are two questions, and there is no weighting here that could merge them.",
      "uncalibrated": [
       "The divisor interpolates between the published endpoints (3 severe, 2 mild); the ramp between them is uncalibrated and needs HD data (spec V6/V9). This ceiling moves if that curve does."
      ],
-     "provenance": "mid→tweeter at 2033.9 Hz, LR4: position 2 of 3 across the recommended band 1858.4–2283.5 Hz, 0.65 oct above the window floor 1294 Hz (fs); ceiling 2283.5 Hz (breakup); order 4: the order the designer stated for this handover. Kept beside the demanded one rather than instead of it — \"what the measurements require\" and \"what you asked for\" are two questions, and there is no weighting here that could merge them."
+     "provenance": "mid→tweeter at 1491.4 Hz, LR4: position 2 of 5 across the candidate band 1294–2283.5 Hz, 0.20 oct above the window floor 1294 Hz (fs); ceiling 2283.5 Hz (breakup); order 4: the order the designer stated for this handover. Kept beside the demanded one rather than instead of it — \"what the measurements require\" and \"what you asked for\" are two questions, and there is no weighting here that could merge them.; not excised 1327.4–1858.4 Hz (the WORST lobing zone, a fraction of the wavelength at the handover, taken on the ONE centre-to-centre distance this pair was given (129.2 mm — casebook geometry (golden_refs_casus1.json)). This is the M-F-INTERIM screening quantity (A4, role: reporting), not the vertical synthesis, which is the only lobing quantity a judgement may hang on (V20a).) — SUSPENDED pending casebook entry V28. The zone is a λ fraction on one centre-to-centre distance, and V20a reserves every lobing judgement for the vertical synthesis; until V28 decides whether an excision may none the less shape the field, the candidates cover the whole A5d.3 window and this zone is reported rather than applied."
     }
    ]
   },
-  "woofer→mid 548.5 LR4 · mid→tweeter 2283.5 LR4": {
-   "provenance": "woofer→mid at 548.5 Hz, LR4: position 3 of 3 across the recommended band 396.7–548.5 Hz, 0.47 oct above the window floor 396.7 Hz (validity); ceiling 548.5 Hz (breakup); order 4: the order the designer stated for this handover. Kept beside the demanded one rather than instead of it — \"what the measurements require\" and \"what you asked for\" are two questions, and there is no weighting here that could merge them. | mid→tweeter at 2283.5 Hz, LR4: position 3 of 3 across the recommended band 1858.4–2283.5 Hz, 0.82 oct above the window floor 1294 Hz (fs); ceiling 2283.5 Hz (breakup); order 4: the order the designer stated for this handover. Kept beside the demanded one rather than instead of it — \"what the measurements require\" and \"what you asked for\" are two questions, and there is no weighting here that could merge them.",
+  "woofer→mid 548.5 LR4 · mid→tweeter 1719 LR4": {
+   "provenance": "woofer→mid at 548.5 Hz, LR4: position 3 of 3 across the candidate band 396.7–548.5 Hz, 0.47 oct above the window floor 396.7 Hz (validity); ceiling 548.5 Hz (breakup); order 4: the order the designer stated for this handover. Kept beside the demanded one rather than instead of it — \"what the measurements require\" and \"what you asked for\" are two questions, and there is no weighting here that could merge them.; not excised 657.1–919.9 Hz (the WORST lobing zone, a fraction of the wavelength at the handover, taken on the ONE centre-to-centre distance this pair was given (261.0 mm — casebook geometry (golden_refs_casus1.json)). This is the M-F-INTERIM screening quantity (A4, role: reporting), not the vertical synthesis, which is the only lobing quantity a judgement may hang on (V20a).) — SUSPENDED pending casebook entry V28. The zone is a λ fraction on one centre-to-centre distance, and V20a reserves every lobing judgement for the vertical synthesis; until V28 decides whether an excision may none the less shape the field, the candidates cover the whole A5d.3 window and this zone is reported rather than applied. | mid→tweeter at 1719 Hz, LR4: position 3 of 5 across the candidate band 1294–2283.5 Hz, 0.41 oct above the window floor 1294 Hz (fs); ceiling 2283.5 Hz (breakup); order 4: the order the designer stated for this handover. Kept beside the demanded one rather than instead of it — \"what the measurements require\" and \"what you asked for\" are two questions, and there is no weighting here that could merge them.; not excised 1327.4–1858.4 Hz (the WORST lobing zone, a fraction of the wavelength at the handover, taken on the ONE centre-to-centre distance this pair was given (129.2 mm — casebook geometry (golden_refs_casus1.json)). This is the M-F-INTERIM screening quantity (A4, role: reporting), not the vertical synthesis, which is the only lobing quantity a judgement may hang on (V20a).) — SUSPENDED pending casebook entry V28. The zone is a λ fraction on one centre-to-centre distance, and V20a reserves every lobing judgement for the vertical synthesis; until V28 decides whether an excision may none the less shape the field, the candidates cover the whole A5d.3 window and this zone is reported rather than applied.",
    "crossings": [
     {
      "pairLabel": "woofer→mid",
@@ -735,6 +1362,18 @@
       396.7,
       548.5
      ],
+     "excisions": [
+      {
+       "hz": [
+        657.1,
+        919.9
+       ],
+       "label": "the WORST lobing zone",
+       "source": "a fraction of the wavelength at the handover, taken on the ONE centre-to-centre distance this pair was given (261.0 mm — casebook geometry (golden_refs_casus1.json)). This is the M-F-INTERIM screening quantity (A4, role: reporting), not the vertical synthesis, which is the only lobing quantity a judgement may hang on (V20a).",
+       "applied": false,
+       "suspendedBecause": "SUSPENDED pending casebook entry V28. The zone is a λ fraction on one centre-to-centre distance, and V20a reserves every lobing judgement for the vertical synthesis; until V28 decides whether an excision may none the less shape the field, the candidates cover the whole A5d.3 window and this zone is reported rather than applied."
+      }
+     ],
      "position": {
       "index": 2,
       "count": 3,
@@ -744,7 +1383,205 @@
      "uncalibrated": [
       "The divisor interpolates between the published endpoints (3 severe, 2 mild); the ramp between them is uncalibrated and needs HD data (spec V6/V9). This ceiling moves if that curve does."
      ],
-     "provenance": "woofer→mid at 548.5 Hz, LR4: position 3 of 3 across the recommended band 396.7–548.5 Hz, 0.47 oct above the window floor 396.7 Hz (validity); ceiling 548.5 Hz (breakup); order 4: the order the designer stated for this handover. Kept beside the demanded one rather than instead of it — \"what the measurements require\" and \"what you asked for\" are two questions, and there is no weighting here that could merge them."
+     "provenance": "woofer→mid at 548.5 Hz, LR4: position 3 of 3 across the candidate band 396.7–548.5 Hz, 0.47 oct above the window floor 396.7 Hz (validity); ceiling 548.5 Hz (breakup); order 4: the order the designer stated for this handover. Kept beside the demanded one rather than instead of it — \"what the measurements require\" and \"what you asked for\" are two questions, and there is no weighting here that could merge them.; not excised 657.1–919.9 Hz (the WORST lobing zone, a fraction of the wavelength at the handover, taken on the ONE centre-to-centre distance this pair was given (261.0 mm — casebook geometry (golden_refs_casus1.json)). This is the M-F-INTERIM screening quantity (A4, role: reporting), not the vertical synthesis, which is the only lobing quantity a judgement may hang on (V20a).) — SUSPENDED pending casebook entry V28. The zone is a λ fraction on one centre-to-centre distance, and V20a reserves every lobing judgement for the vertical synthesis; until V28 decides whether an excision may none the less shape the field, the candidates cover the whole A5d.3 window and this zone is reported rather than applied."
+    },
+    {
+     "pairLabel": "mid→tweeter",
+     "lower": "mid",
+     "upper": "tweeter",
+     "hz": 1719,
+     "cageHz": [
+      1601.2,
+      1845.4
+     ],
+     "order": 4,
+     "alignment": {
+      "kind": "LR",
+      "order": 4
+     },
+     "windowHz": [
+      1294,
+      2283.5
+     ],
+     "floorBy": "fs — 1.4x f_s of tweeter (924 Hz) at order 4 - a steeper flank may sit closer to the resonance",
+     "ceilingBy": "breakup — first significant breakup of mid at 5690 Hz (+3.0 dB) divided by 2.49",
+     "segmentHz": [
+      1294,
+      2283.5
+     ],
+     "excisions": [
+      {
+       "hz": [
+        1327.4,
+        1858.4
+       ],
+       "label": "the WORST lobing zone",
+       "source": "a fraction of the wavelength at the handover, taken on the ONE centre-to-centre distance this pair was given (129.2 mm — casebook geometry (golden_refs_casus1.json)). This is the M-F-INTERIM screening quantity (A4, role: reporting), not the vertical synthesis, which is the only lobing quantity a judgement may hang on (V20a).",
+       "applied": false,
+       "suspendedBecause": "SUSPENDED pending casebook entry V28. The zone is a λ fraction on one centre-to-centre distance, and V20a reserves every lobing judgement for the vertical synthesis; until V28 decides whether an excision may none the less shape the field, the candidates cover the whole A5d.3 window and this zone is reported rather than applied."
+      }
+     ],
+     "position": {
+      "index": 2,
+      "count": 5,
+      "octavesAboveFloor": 0.409684021942027
+     },
+     "orderWhy": "order 4: the order the designer stated for this handover. Kept beside the demanded one rather than instead of it — \"what the measurements require\" and \"what you asked for\" are two questions, and there is no weighting here that could merge them.",
+     "uncalibrated": [
+      "The divisor interpolates between the published endpoints (3 severe, 2 mild); the ramp between them is uncalibrated and needs HD data (spec V6/V9). This ceiling moves if that curve does."
+     ],
+     "provenance": "mid→tweeter at 1719 Hz, LR4: position 3 of 5 across the candidate band 1294–2283.5 Hz, 0.41 oct above the window floor 1294 Hz (fs); ceiling 2283.5 Hz (breakup); order 4: the order the designer stated for this handover. Kept beside the demanded one rather than instead of it — \"what the measurements require\" and \"what you asked for\" are two questions, and there is no weighting here that could merge them.; not excised 1327.4–1858.4 Hz (the WORST lobing zone, a fraction of the wavelength at the handover, taken on the ONE centre-to-centre distance this pair was given (129.2 mm — casebook geometry (golden_refs_casus1.json)). This is the M-F-INTERIM screening quantity (A4, role: reporting), not the vertical synthesis, which is the only lobing quantity a judgement may hang on (V20a).) — SUSPENDED pending casebook entry V28. The zone is a λ fraction on one centre-to-centre distance, and V20a reserves every lobing judgement for the vertical synthesis; until V28 decides whether an excision may none the less shape the field, the candidates cover the whole A5d.3 window and this zone is reported rather than applied."
+    }
+   ]
+  },
+  "woofer→mid 548.5 LR4 · mid→tweeter 1981.2 LR4": {
+   "provenance": "woofer→mid at 548.5 Hz, LR4: position 3 of 3 across the candidate band 396.7–548.5 Hz, 0.47 oct above the window floor 396.7 Hz (validity); ceiling 548.5 Hz (breakup); order 4: the order the designer stated for this handover. Kept beside the demanded one rather than instead of it — \"what the measurements require\" and \"what you asked for\" are two questions, and there is no weighting here that could merge them.; not excised 657.1–919.9 Hz (the WORST lobing zone, a fraction of the wavelength at the handover, taken on the ONE centre-to-centre distance this pair was given (261.0 mm — casebook geometry (golden_refs_casus1.json)). This is the M-F-INTERIM screening quantity (A4, role: reporting), not the vertical synthesis, which is the only lobing quantity a judgement may hang on (V20a).) — SUSPENDED pending casebook entry V28. The zone is a λ fraction on one centre-to-centre distance, and V20a reserves every lobing judgement for the vertical synthesis; until V28 decides whether an excision may none the less shape the field, the candidates cover the whole A5d.3 window and this zone is reported rather than applied. | mid→tweeter at 1981.2 Hz, LR4: position 4 of 5 across the candidate band 1294–2283.5 Hz, 0.61 oct above the window floor 1294 Hz (fs); ceiling 2283.5 Hz (breakup); order 4: the order the designer stated for this handover. Kept beside the demanded one rather than instead of it — \"what the measurements require\" and \"what you asked for\" are two questions, and there is no weighting here that could merge them.; not excised 1327.4–1858.4 Hz (the WORST lobing zone, a fraction of the wavelength at the handover, taken on the ONE centre-to-centre distance this pair was given (129.2 mm — casebook geometry (golden_refs_casus1.json)). This is the M-F-INTERIM screening quantity (A4, role: reporting), not the vertical synthesis, which is the only lobing quantity a judgement may hang on (V20a).) — SUSPENDED pending casebook entry V28. The zone is a λ fraction on one centre-to-centre distance, and V20a reserves every lobing judgement for the vertical synthesis; until V28 decides whether an excision may none the less shape the field, the candidates cover the whole A5d.3 window and this zone is reported rather than applied.",
+   "crossings": [
+    {
+     "pairLabel": "woofer→mid",
+     "lower": "woofer",
+     "upper": "mid",
+     "hz": 548.5,
+     "cageHz": [
+      505.8,
+      548.5
+     ],
+     "order": 4,
+     "alignment": {
+      "kind": "LR",
+      "order": 4
+     },
+     "windowHz": [
+      396.7,
+      548.5
+     ],
+     "floorBy": "validity — measurement validity (woofer far field)",
+     "ceilingBy": "breakup — first significant breakup of woofer at 1394 Hz (+3.3 dB) divided by 2.54",
+     "segmentHz": [
+      396.7,
+      548.5
+     ],
+     "excisions": [
+      {
+       "hz": [
+        657.1,
+        919.9
+       ],
+       "label": "the WORST lobing zone",
+       "source": "a fraction of the wavelength at the handover, taken on the ONE centre-to-centre distance this pair was given (261.0 mm — casebook geometry (golden_refs_casus1.json)). This is the M-F-INTERIM screening quantity (A4, role: reporting), not the vertical synthesis, which is the only lobing quantity a judgement may hang on (V20a).",
+       "applied": false,
+       "suspendedBecause": "SUSPENDED pending casebook entry V28. The zone is a λ fraction on one centre-to-centre distance, and V20a reserves every lobing judgement for the vertical synthesis; until V28 decides whether an excision may none the less shape the field, the candidates cover the whole A5d.3 window and this zone is reported rather than applied."
+      }
+     ],
+     "position": {
+      "index": 2,
+      "count": 3,
+      "octavesAboveFloor": 0.46755964393755844
+     },
+     "orderWhy": "order 4: the order the designer stated for this handover. Kept beside the demanded one rather than instead of it — \"what the measurements require\" and \"what you asked for\" are two questions, and there is no weighting here that could merge them.",
+     "uncalibrated": [
+      "The divisor interpolates between the published endpoints (3 severe, 2 mild); the ramp between them is uncalibrated and needs HD data (spec V6/V9). This ceiling moves if that curve does."
+     ],
+     "provenance": "woofer→mid at 548.5 Hz, LR4: position 3 of 3 across the candidate band 396.7–548.5 Hz, 0.47 oct above the window floor 396.7 Hz (validity); ceiling 548.5 Hz (breakup); order 4: the order the designer stated for this handover. Kept beside the demanded one rather than instead of it — \"what the measurements require\" and \"what you asked for\" are two questions, and there is no weighting here that could merge them.; not excised 657.1–919.9 Hz (the WORST lobing zone, a fraction of the wavelength at the handover, taken on the ONE centre-to-centre distance this pair was given (261.0 mm — casebook geometry (golden_refs_casus1.json)). This is the M-F-INTERIM screening quantity (A4, role: reporting), not the vertical synthesis, which is the only lobing quantity a judgement may hang on (V20a).) — SUSPENDED pending casebook entry V28. The zone is a λ fraction on one centre-to-centre distance, and V20a reserves every lobing judgement for the vertical synthesis; until V28 decides whether an excision may none the less shape the field, the candidates cover the whole A5d.3 window and this zone is reported rather than applied."
+    },
+    {
+     "pairLabel": "mid→tweeter",
+     "lower": "mid",
+     "upper": "tweeter",
+     "hz": 1981.2,
+     "cageHz": [
+      1845.4,
+      2127
+     ],
+     "order": 4,
+     "alignment": {
+      "kind": "LR",
+      "order": 4
+     },
+     "windowHz": [
+      1294,
+      2283.5
+     ],
+     "floorBy": "fs — 1.4x f_s of tweeter (924 Hz) at order 4 - a steeper flank may sit closer to the resonance",
+     "ceilingBy": "breakup — first significant breakup of mid at 5690 Hz (+3.0 dB) divided by 2.49",
+     "segmentHz": [
+      1294,
+      2283.5
+     ],
+     "excisions": [
+      {
+       "hz": [
+        1327.4,
+        1858.4
+       ],
+       "label": "the WORST lobing zone",
+       "source": "a fraction of the wavelength at the handover, taken on the ONE centre-to-centre distance this pair was given (129.2 mm — casebook geometry (golden_refs_casus1.json)). This is the M-F-INTERIM screening quantity (A4, role: reporting), not the vertical synthesis, which is the only lobing quantity a judgement may hang on (V20a).",
+       "applied": false,
+       "suspendedBecause": "SUSPENDED pending casebook entry V28. The zone is a λ fraction on one centre-to-centre distance, and V20a reserves every lobing judgement for the vertical synthesis; until V28 decides whether an excision may none the less shape the field, the candidates cover the whole A5d.3 window and this zone is reported rather than applied."
+      }
+     ],
+     "position": {
+      "index": 3,
+      "count": 5,
+      "octavesAboveFloor": 0.614489003211018
+     },
+     "orderWhy": "order 4: the order the designer stated for this handover. Kept beside the demanded one rather than instead of it — \"what the measurements require\" and \"what you asked for\" are two questions, and there is no weighting here that could merge them.",
+     "uncalibrated": [
+      "The divisor interpolates between the published endpoints (3 severe, 2 mild); the ramp between them is uncalibrated and needs HD data (spec V6/V9). This ceiling moves if that curve does."
+     ],
+     "provenance": "mid→tweeter at 1981.2 Hz, LR4: position 4 of 5 across the candidate band 1294–2283.5 Hz, 0.61 oct above the window floor 1294 Hz (fs); ceiling 2283.5 Hz (breakup); order 4: the order the designer stated for this handover. Kept beside the demanded one rather than instead of it — \"what the measurements require\" and \"what you asked for\" are two questions, and there is no weighting here that could merge them.; not excised 1327.4–1858.4 Hz (the WORST lobing zone, a fraction of the wavelength at the handover, taken on the ONE centre-to-centre distance this pair was given (129.2 mm — casebook geometry (golden_refs_casus1.json)). This is the M-F-INTERIM screening quantity (A4, role: reporting), not the vertical synthesis, which is the only lobing quantity a judgement may hang on (V20a).) — SUSPENDED pending casebook entry V28. The zone is a λ fraction on one centre-to-centre distance, and V20a reserves every lobing judgement for the vertical synthesis; until V28 decides whether an excision may none the less shape the field, the candidates cover the whole A5d.3 window and this zone is reported rather than applied."
+    }
+   ]
+  },
+  "woofer→mid 548.5 LR4 · mid→tweeter 2283.5 LR4": {
+   "provenance": "woofer→mid at 548.5 Hz, LR4: position 3 of 3 across the candidate band 396.7–548.5 Hz, 0.47 oct above the window floor 396.7 Hz (validity); ceiling 548.5 Hz (breakup); order 4: the order the designer stated for this handover. Kept beside the demanded one rather than instead of it — \"what the measurements require\" and \"what you asked for\" are two questions, and there is no weighting here that could merge them.; not excised 657.1–919.9 Hz (the WORST lobing zone, a fraction of the wavelength at the handover, taken on the ONE centre-to-centre distance this pair was given (261.0 mm — casebook geometry (golden_refs_casus1.json)). This is the M-F-INTERIM screening quantity (A4, role: reporting), not the vertical synthesis, which is the only lobing quantity a judgement may hang on (V20a).) — SUSPENDED pending casebook entry V28. The zone is a λ fraction on one centre-to-centre distance, and V20a reserves every lobing judgement for the vertical synthesis; until V28 decides whether an excision may none the less shape the field, the candidates cover the whole A5d.3 window and this zone is reported rather than applied. | mid→tweeter at 2283.5 Hz, LR4: position 5 of 5 across the candidate band 1294–2283.5 Hz, 0.82 oct above the window floor 1294 Hz (fs); ceiling 2283.5 Hz (breakup); order 4: the order the designer stated for this handover. Kept beside the demanded one rather than instead of it — \"what the measurements require\" and \"what you asked for\" are two questions, and there is no weighting here that could merge them.; not excised 1327.4–1858.4 Hz (the WORST lobing zone, a fraction of the wavelength at the handover, taken on the ONE centre-to-centre distance this pair was given (129.2 mm — casebook geometry (golden_refs_casus1.json)). This is the M-F-INTERIM screening quantity (A4, role: reporting), not the vertical synthesis, which is the only lobing quantity a judgement may hang on (V20a).) — SUSPENDED pending casebook entry V28. The zone is a λ fraction on one centre-to-centre distance, and V20a reserves every lobing judgement for the vertical synthesis; until V28 decides whether an excision may none the less shape the field, the candidates cover the whole A5d.3 window and this zone is reported rather than applied.",
+   "crossings": [
+    {
+     "pairLabel": "woofer→mid",
+     "lower": "woofer",
+     "upper": "mid",
+     "hz": 548.5,
+     "cageHz": [
+      505.8,
+      548.5
+     ],
+     "order": 4,
+     "alignment": {
+      "kind": "LR",
+      "order": 4
+     },
+     "windowHz": [
+      396.7,
+      548.5
+     ],
+     "floorBy": "validity — measurement validity (woofer far field)",
+     "ceilingBy": "breakup — first significant breakup of woofer at 1394 Hz (+3.3 dB) divided by 2.54",
+     "segmentHz": [
+      396.7,
+      548.5
+     ],
+     "excisions": [
+      {
+       "hz": [
+        657.1,
+        919.9
+       ],
+       "label": "the WORST lobing zone",
+       "source": "a fraction of the wavelength at the handover, taken on the ONE centre-to-centre distance this pair was given (261.0 mm — casebook geometry (golden_refs_casus1.json)). This is the M-F-INTERIM screening quantity (A4, role: reporting), not the vertical synthesis, which is the only lobing quantity a judgement may hang on (V20a).",
+       "applied": false,
+       "suspendedBecause": "SUSPENDED pending casebook entry V28. The zone is a λ fraction on one centre-to-centre distance, and V20a reserves every lobing judgement for the vertical synthesis; until V28 decides whether an excision may none the less shape the field, the candidates cover the whole A5d.3 window and this zone is reported rather than applied."
+      }
+     ],
+     "position": {
+      "index": 2,
+      "count": 3,
+      "octavesAboveFloor": 0.46755964393755844
+     },
+     "orderWhy": "order 4: the order the designer stated for this handover. Kept beside the demanded one rather than instead of it — \"what the measurements require\" and \"what you asked for\" are two questions, and there is no weighting here that could merge them.",
+     "uncalibrated": [
+      "The divisor interpolates between the published endpoints (3 severe, 2 mild); the ramp between them is uncalibrated and needs HD data (spec V6/V9). This ceiling moves if that curve does."
+     ],
+     "provenance": "woofer→mid at 548.5 Hz, LR4: position 3 of 3 across the candidate band 396.7–548.5 Hz, 0.47 oct above the window floor 396.7 Hz (validity); ceiling 548.5 Hz (breakup); order 4: the order the designer stated for this handover. Kept beside the demanded one rather than instead of it — \"what the measurements require\" and \"what you asked for\" are two questions, and there is no weighting here that could merge them.; not excised 657.1–919.9 Hz (the WORST lobing zone, a fraction of the wavelength at the handover, taken on the ONE centre-to-centre distance this pair was given (261.0 mm — casebook geometry (golden_refs_casus1.json)). This is the M-F-INTERIM screening quantity (A4, role: reporting), not the vertical synthesis, which is the only lobing quantity a judgement may hang on (V20a).) — SUSPENDED pending casebook entry V28. The zone is a λ fraction on one centre-to-centre distance, and V20a reserves every lobing judgement for the vertical synthesis; until V28 decides whether an excision may none the less shape the field, the candidates cover the whole A5d.3 window and this zone is reported rather than applied."
     },
     {
      "pairLabel": "mid→tweeter",
@@ -752,7 +1589,7 @@
      "upper": "tweeter",
      "hz": 2283.5,
      "cageHz": [
-      2155.1,
+      2127,
       2283.5
      ],
      "order": 4,
@@ -767,19 +1604,31 @@
      "floorBy": "fs — 1.4x f_s of tweeter (924 Hz) at order 4 - a steeper flank may sit closer to the resonance",
      "ceilingBy": "breakup — first significant breakup of mid at 5690 Hz (+3.0 dB) divided by 2.49",
      "segmentHz": [
-      1858.4,
+      1294,
       2283.5
      ],
+     "excisions": [
+      {
+       "hz": [
+        1327.4,
+        1858.4
+       ],
+       "label": "the WORST lobing zone",
+       "source": "a fraction of the wavelength at the handover, taken on the ONE centre-to-centre distance this pair was given (129.2 mm — casebook geometry (golden_refs_casus1.json)). This is the M-F-INTERIM screening quantity (A4, role: reporting), not the vertical synthesis, which is the only lobing quantity a judgement may hang on (V20a).",
+       "applied": false,
+       "suspendedBecause": "SUSPENDED pending casebook entry V28. The zone is a λ fraction on one centre-to-centre distance, and V20a reserves every lobing judgement for the vertical synthesis; until V28 decides whether an excision may none the less shape the field, the candidates cover the whole A5d.3 window and this zone is reported rather than applied."
+      }
+     ],
      "position": {
-      "index": 2,
-      "count": 3,
+      "index": 4,
+      "count": 5,
       "octavesAboveFloor": 0.8193612668423201
      },
      "orderWhy": "order 4: the order the designer stated for this handover. Kept beside the demanded one rather than instead of it — \"what the measurements require\" and \"what you asked for\" are two questions, and there is no weighting here that could merge them.",
      "uncalibrated": [
       "The divisor interpolates between the published endpoints (3 severe, 2 mild); the ramp between them is uncalibrated and needs HD data (spec V6/V9). This ceiling moves if that curve does."
      ],
-     "provenance": "mid→tweeter at 2283.5 Hz, LR4: position 3 of 3 across the recommended band 1858.4–2283.5 Hz, 0.82 oct above the window floor 1294 Hz (fs); ceiling 2283.5 Hz (breakup); order 4: the order the designer stated for this handover. Kept beside the demanded one rather than instead of it — \"what the measurements require\" and \"what you asked for\" are two questions, and there is no weighting here that could merge them."
+     "provenance": "mid→tweeter at 2283.5 Hz, LR4: position 5 of 5 across the candidate band 1294–2283.5 Hz, 0.82 oct above the window floor 1294 Hz (fs); ceiling 2283.5 Hz (breakup); order 4: the order the designer stated for this handover. Kept beside the demanded one rather than instead of it — \"what the measurements require\" and \"what you asked for\" are two questions, and there is no weighting here that could merge them.; not excised 1327.4–1858.4 Hz (the WORST lobing zone, a fraction of the wavelength at the handover, taken on the ONE centre-to-centre distance this pair was given (129.2 mm — casebook geometry (golden_refs_casus1.json)). This is the M-F-INTERIM screening quantity (A4, role: reporting), not the vertical synthesis, which is the only lobing quantity a judgement may hang on (V20a).) — SUSPENDED pending casebook entry V28. The zone is a λ fraction on one centre-to-centre distance, and V20a reserves every lobing judgement for the vertical synthesis; until V28 decides whether an excision may none the less shape the field, the candidates cover the whole A5d.3 window and this zone is reported rather than applied."
     }
    ]
   }

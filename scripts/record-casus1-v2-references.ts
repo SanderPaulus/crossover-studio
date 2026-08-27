@@ -51,7 +51,13 @@ const files = casus1Files(manifest);
 const geometry = casus1Geometry(golden);
 const herkomst = JSON.parse(
   readFileSync(join(HERE, '..', 'test-fixtures', HERKOMST_FILE), 'utf-8'),
-) as { seed: number; run_vingerafdruk: string; gegenereerd_op_commit: string };
+) as {
+  seed: number;
+  run_vingerafdruk: string;
+  gegenereerd_op_commit: string;
+  bestanden: { name: string; label: string }[];
+  meetopstelling: Record<string, unknown>;
+};
 
 const report = (key: string) =>
   buildReport({
@@ -75,8 +81,32 @@ const r0 = (v: number | null | undefined): number | null =>
 
 const raw = JSON.parse(readFileSync(GOLDEN, 'utf-8')) as Record<string, Record<string, unknown>>;
 const netlists = raw.manifest_en_geometrie.netlists as Record<string, string>;
+
+/* THE KEY LIST COMES FROM THE GENERATOR'S OWN MANIFEST, not from whatever the
+ * reference file happened to list last time.
+ *
+ * It used to read the existing `netlists` entries, which was fine while the
+ * field never changed size — and wrong the first time it did. The F4d
+ * follow-up suspended the F3c excision (V28), the mid→tweeter axis went from
+ * three positions to five, and the field from nine candidates to fifteen; a
+ * recorder keyed on the OLD list would have written nine blocks, left six
+ * netlists on disk unreferenced, and reported success. So the generator's
+ * manifest is the authority for WHICH netlists exist, and stale KAND_V2
+ * entries are dropped rather than kept alive by silence. */
+const liveNetlists = (golden.manifest_en_geometrie as unknown as { netlists: Record<string, string> })
+  .netlists;
+for (const map of [netlists, liveNetlists]) {
+  // Both copies, and the second one is not redundant: `casus1Filter` resolves a
+  // key against the OBJECT `loadGolden()` returned, while the block being
+  // written is the raw JSON re-parsed for editing. Updating only the raw copy
+  // leaves the loader looking for a netlist the reference file no longer lists,
+  // which is how the first run of this change died — usefully, and loudly.
+  for (const k of Object.keys(map)) if (k.startsWith('KAND_V2')) delete map[k];
+  for (const f of herkomst.bestanden) map[f.name.replace(/-/g, '_')] = `${f.name}.adsfilter.json`;
+}
+for (const k of Object.keys(raw.kandidaten)) if (k.startsWith('KAND_V2')) delete raw.kandidaten[k];
 const keys = Object.keys(netlists).filter((k) => k.startsWith('KAND_V2'));
-if (keys.length === 0) throw new Error('no KAND_V2 entries in manifest_en_geometrie.netlists');
+if (keys.length === 0) throw new Error('no KAND_V2 entries in the generator manifest');
 
 let leaves = 0;
 for (const key of keys) {
@@ -119,19 +149,34 @@ raw.manifest_en_geometrie.v2_herkomst = {
   seed: herkomst.seed,
   run_vingerafdruk: herkomst.run_vingerafdruk,
   generator: 'scripts/generate-casus1-v2-candidates.ts',
+  /* De opstelling staat hier VERBATIM naast de vingerafdruk en niet alleen in
+   * het herkomstbestand ernaast. Controle 2 van de F4d-nazorg vroeg precies
+   * dat: elk v2_herkomst-blok noemt zelf welke synthese, welke poorten en
+   * welke budgetten gewapend waren. Een blok dat daarvoor naar een ander
+   * bestand wijst, laat de lezer die het niet opent met de aanname zitten. */
+  meetopstelling: herkomst.meetopstelling,
   kosten:
-    'negen ketenruns, gemeten 132-286 s per kandidaat op deze meetset; ongeveer een half uur ' +
-    'in totaal. Daarom een script en geen test.',
+    `${keys.length} ketenruns, gemeten 44-73 s per kandidaat op deze meetset (F4d-nazorg; de ` +
+    'F4d-meting van 132-286 s stond op een tragere machinebezetting). Daarom een script en ' +
+    'geen test.',
+  reproduceerbaarheid:
+    'Nagemeten bij de F4d-nazorg: het script opnieuw draaien op dezelfde commit levert de ' +
+    'netlists BYTE-IDENTIEK terug, op het `savedAt`-stempel van de serialisatie na. Dat ' +
+    'stempel is het enige niet-deterministische veld in deze bestanden, en het staat in de ' +
+    'kop en niet in de onderdelen.',
 };
 
 const telling = (raw.classificatie as Record<string, Record<string, unknown>>).telling;
 telling.sinds_F4d =
-  `F4d (27-08-2026) heeft ${leaves} klasse-B-bladeren toegevoegd: tien metrieken op elk van de ` +
-  `${keys.length} bevroren KAND-V2-netlists. De F4a-momentopname hierboven wordt niet bijgewerkt, ` +
-  'om dezelfde reden als bij V20 — een momentopname die met elke oplevering meebeweegt is er ' +
-  'geen. De bevinding blijft: nog steeds NUL klasse C. Deze negen netwerken komen uit een v2-run, ' +
-  'maar de referenties hangen aan de BESTANDEN, en een volgende run die andere netwerken oplevert ' +
-  'verschuift deze getallen dus niet — hij levert andere bestanden op.';
+  `F4d (27-08-2026), herzien bij de F4d-nazorg (V28): ${leaves} klasse-B-bladeren, tien metrieken ` +
+  `op elk van de ${keys.length} bevroren KAND-V2-netlists. Het waren er negen tot de nazorg de ` +
+  'F3c-uitsnijding opschortte; de mid→tweeter-as ging van drie posities naar vijf en het veld van ' +
+  'negen naar vijftien. De F4a-momentopname hierboven wordt niet bijgewerkt, om dezelfde reden ' +
+  'als bij V20 — een momentopname die met elke oplevering meebeweegt is er geen. De bevinding ' +
+  'blijft: nog steeds NUL klasse C. Deze netwerken komen uit een v2-run, maar de referenties ' +
+  'hangen aan de BESTANDEN, en een volgende run die andere netwerken oplevert verschuift deze ' +
+  'getallen dus niet — hij levert andere bestanden op. Dat is bij de nazorg ook precies wat ' +
+  'gebeurde, en het is de reden dat de verandering geen enkele referentie ONGELDIG maakte.';
 
 writeFileSync(GOLDEN, `${JSON.stringify(raw, null, 1)}\n`, 'utf-8');
 console.log(`wrote ${keys.length} class-B blocks (${leaves} leaves) to ${GOLDEN}`);

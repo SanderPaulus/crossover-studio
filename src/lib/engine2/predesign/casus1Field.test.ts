@@ -97,36 +97,50 @@ describe('the field casus 1 implies', () => {
     expect(near(win(1).ceilingHz!, mt.venster[1])).toBe(true);
   });
 
-  it('places three positions on each axis, and says why three', () => {
-    /* The count is derived: `1 + floor(span / smoothing)`. W-M spans 0.47
-     * octaves of window, all of it recommended; M-T spans 0.82 octaves of
-     * window but only 0.33 of RECOMMENDED band, because the worst lobing zone
-     * sits inside it. Both come out at three, for entirely different reasons —
-     * which is exactly the point of deriving the number instead of picking it. */
-    for (const a of FIELD.field.axes) {
-      expect(a.positionsByOrder).toHaveLength(1);
-      expect(a.positionsByOrder[0].count).toBe(3);
-      expect(a.positionsByOrder[0].derivedCount).toBe(3);
-    }
-    expect(FIELD.field.candidates).toHaveLength(9);
+  it('places three positions on the lower axis and five on the upper, and says why', () => {
+    /* The count is derived: `1 + floor(span / smoothing)`, over the A5d.3
+     * WINDOW. W-M spans 0.47 octaves ⇒ three. M-T spans 0.82 octaves ⇒ five.
+     *
+     * It read three and three until the F4d follow-up, because the upper axis
+     * was laid across the RECOMMENDED band (0.33 octaves, the window minus the
+     * worst lobing zone) instead of the window. The excision is suspended
+     * pending V28, so the upper axis now gets the count its window implies. */
+    const wm = FIELD.field.axes[0].positionsByOrder;
+    const mt = FIELD.field.axes[1].positionsByOrder;
+    expect(wm).toHaveLength(1);
+    expect(mt).toHaveLength(1);
+    expect(wm[0].count).toBe(3);
+    expect(wm[0].derivedCount).toBe(3);
+    expect(mt[0].count).toBe(5);
+    expect(mt[0].derivedCount).toBe(5);
+    expect(FIELD.field.candidates).toHaveLength(wm[0].count * mt[0].count);
+    expect(FIELD.field.candidates).toHaveLength(15);
   });
 
-  it('cuts the worst lobing zone out of the upper axis — V9 tension, now visible in the field', () => {
+  it('does NOT cut the worst lobing zone out of the upper axis, and says whose zone it was', () => {
     /* Casus 1's upper pair is the one V9 flagged: the favourable lobing zone
      * lies above the breakup ceiling and the WORST one lies inside the window.
-     * Before F4d that was a sentence in the panel. Now it is a gap in the
-     * candidate list, which is the same finding a designer cannot walk past. */
+     * F4d turned that into a gap in the candidate list. The F4d follow-up took
+     * the gap back out (V28): the zone is a λ fraction on one centre-to-centre
+     * distance, and V20a reserves every lobing judgement for the vertical
+     * synthesis. What replaces the gap is not silence — the zone travels with
+     * every candidate, attributed, and a position genuinely sits inside it. */
     const rec = FIELD.field.axes[1].recommended['4'];
-    expect(rec.segments).toHaveLength(2);
+    expect(rec.segments).toHaveLength(2); // `recommendedBand` is untouched
     const zone = rec.worstZoneHz!;
+    const inZone = FIELD.field.candidates.filter(
+      (c) => c.crossings[1].hz > zone[0] && c.crossings[1].hz < zone[1],
+    );
+    expect(inZone.length).toBeGreaterThan(0);
+
     for (const c of FIELD.field.candidates) {
-      const hz = c.crossings[1].hz;
-      expect(hz > zone[0] && hz < zone[1], `${hz} Hz is in the worst lobing zone`).toBe(false);
+      const ex = c.crossings[1].excisions;
+      expect(ex).toHaveLength(1);
+      expect(ex[0].hz).toEqual(zone);
+      expect(ex[0].applied).toBe(false);
+      expect(ex[0].source).toMatch(/not the vertical synthesis/);
+      expect(ex[0].suspendedBecause).toMatch(/V28/);
     }
-    // Both sides of the gap are used — the spread did not collapse onto the
-    // wider segment.
-    expect(FIELD.field.candidates.some((c) => c.crossings[1].hz < zone[0])).toBe(true);
-    expect(FIELD.field.candidates.some((c) => c.crossings[1].hz > zone[1])).toBe(true);
   });
 
   it('is CLASS A: the same field comes out of all three baseline reports', () => {
@@ -153,19 +167,34 @@ describe('the pre-start estimate on the v2 route: 0 of N', () => {
       FIELD.field.candidates.map((c) => ({ label: c.label, hz: c.crossings.map((x) => x.hz) })),
       windows,
     );
-    expect(estimate.total).toBe(9);
+    expect(estimate.total).toBe(15);
     expect(estimate.outside).toBe(0);
     for (const axis of estimate.perAxis) expect(axis.outside).toBe(0);
   });
 
-  it('none lies outside the RECOMMENDED band either — the weaker line is also zero', () => {
+  it('some DO lie outside the F3c recommended band, and that divergence is the point', () => {
+    /* This read zero until the F4d follow-up, and the change is worth stating
+     * rather than absorbing. The hard line — outside a feasible WINDOW — is
+     * still zero and always will be: a candidate outside the window is
+     * something the generator cannot express. The weaker line compares against
+     * the F3c RECOMMENDATION, which still cuts the worst lobing zone out
+     * because `recommendedBand.ts` is untouched (the dialog a designer reads
+     * has not changed). With the generator's own excision suspended (V28) the
+     * two now disagree, and the estimator says so.
+     *
+     * That is the behaviour to want while V28 is open. A suspension that
+     * silenced the estimator as well would leave nothing on screen saying the
+     * field and the recommendation have parted company. */
     const estimate = candidatesOutsideWindows(
       FIELD.field.candidates.map((c) => ({ label: c.label, hz: c.crossings.map((x) => x.hz) })),
       windows,
     );
-    expect(estimate.outsideRecommended).toBe(0);
-    // Nothing to say, so nothing is said — the dialog does not appear at all.
-    expect(estimate.message).toBeNull();
+    expect(estimate.outsideRecommended).toBeGreaterThan(0);
+    expect(estimate.message).not.toBeNull();
+    // ...and it is the UPPER axis that diverges, because that is the axis
+    // whose window the worst lobing zone sits inside.
+    expect(estimate.perAxis[0].outsideRecommended).toBe(0);
+    expect(estimate.perAxis[1].outsideRecommended).toBeGreaterThan(0);
   });
 
   it('the same estimator DOES report the v1 physics window, so zero means something', () => {

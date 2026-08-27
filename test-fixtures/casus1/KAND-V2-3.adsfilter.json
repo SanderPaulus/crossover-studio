@@ -1,7 +1,7 @@
 {
  "format": "acoustic-design-studio-filter",
  "version": 1,
- "savedAt": "2026-08-27T11:29:06.379Z",
+ "savedAt": "2026-08-27T12:27:45.091Z",
  "name": "KAND-V2-3",
  "parts": [
   {
@@ -259,7 +259,7 @@
    "params": [
     {
      "name": "L",
-     "value": 3.34,
+     "value": 3.46,
      "unit": "mH"
     }
    ],
@@ -290,7 +290,7 @@
    "params": [
     {
      "name": "L",
-     "value": 0.562,
+     "value": 0.578,
      "unit": "mH"
     }
    ],
@@ -311,7 +311,7 @@
    "params": [
     {
      "name": "C",
-     "value": 21,
+     "value": 21.5,
      "unit": "uF"
     }
    ],
@@ -342,7 +342,7 @@
    "params": [
     {
      "name": "L",
-     "value": 0.237,
+     "value": 0.239,
      "unit": "mH"
     }
    ],
@@ -363,7 +363,7 @@
    "params": [
     {
      "name": "C",
-     "value": 8.43,
+     "value": 8.38,
      "unit": "uF"
     }
    ],
@@ -457,7 +457,7 @@
    "params": [
     {
      "name": "C",
-     "value": 3.09,
+     "value": 3.21,
      "unit": "uF"
     }
    ],
@@ -478,7 +478,7 @@
    "params": [
     {
      "name": "L",
-     "value": 0.349,
+     "value": 0.356,
      "unit": "mH"
     }
    ],
@@ -509,7 +509,7 @@
    "params": [
     {
      "name": "C",
-     "value": 33,
+     "value": 33.6,
      "unit": "uF"
     }
    ],
@@ -530,7 +530,7 @@
    "params": [
     {
      "name": "L",
-     "value": 1.78,
+     "value": 1.84,
      "unit": "mH"
     }
    ],
@@ -582,7 +582,7 @@
    "params": [
     {
      "name": "R",
-     "value": 45.9,
+     "value": 33.8,
      "unit": "Ω"
     }
    ],

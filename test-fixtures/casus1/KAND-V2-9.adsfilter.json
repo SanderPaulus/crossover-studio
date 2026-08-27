@@ -1,7 +1,7 @@
 {
  "format": "acoustic-design-studio-filter",
  "version": 1,
- "savedAt": "2026-08-27T11:29:06.380Z",
+ "savedAt": "2026-08-27T12:27:45.091Z",
  "name": "KAND-V2-9",
  "parts": [
   {
@@ -238,7 +238,7 @@
    "params": [
     {
      "name": "C",
-     "value": 121,
+     "value": 117,
      "unit": "uF"
     }
    ],
@@ -259,7 +259,7 @@
    "params": [
     {
      "name": "L",
-     "value": 0.526,
+     "value": 0.519,
      "unit": "mH"
     }
    ],
@@ -290,7 +290,7 @@
    "params": [
     {
      "name": "C",
-     "value": 76.9,
+     "value": 80,
      "unit": "uF"
     }
    ],
@@ -311,7 +311,7 @@
    "params": [
     {
      "name": "L",
-     "value": 4.17,
+     "value": 3.94,
      "unit": "mH"
     }
    ],
@@ -342,7 +342,7 @@
    "params": [
     {
      "name": "L",
-     "value": 0.985,
+     "value": 0.909,
      "unit": "mH"
     }
    ],
@@ -363,7 +363,7 @@
    "params": [
     {
      "name": "C",
-     "value": 29.3,
+     "value": 28.3,
      "unit": "uF"
     }
    ],
@@ -394,7 +394,7 @@
    "params": [
     {
      "name": "L",
-     "value": 0.412,
+     "value": 0.379,
      "unit": "mH"
     }
    ],
@@ -415,7 +415,7 @@
    "params": [
     {
      "name": "C",
-     "value": 8.55,
+     "value": 8.03,
      "unit": "uF"
     }
    ],
@@ -509,7 +509,7 @@
    "params": [
     {
      "name": "C",
-     "value": 5.06,
+     "value": 4.88,
      "unit": "uF"
     }
    ],
@@ -530,7 +530,7 @@
    "params": [
     {
      "name": "L",
-     "value": 0.718,
+     "value": 0.63,
      "unit": "mH"
     }
    ],
@@ -561,7 +561,7 @@
    "params": [
     {
      "name": "C",
-     "value": 24,
+     "value": 25.8,
      "unit": "uF"
     }
    ],
@@ -582,7 +582,7 @@
    "params": [
     {
      "name": "L",
-     "value": 4.58,
+     "value": 4.11,
      "unit": "mH"
     }
    ],
@@ -613,7 +613,7 @@
    "params": [
     {
      "name": "R",
-     "value": 0.227,
+     "value": 0.22,
      "unit": "Ω"
     }
    ],
@@ -634,7 +634,7 @@
    "params": [
     {
      "name": "R",
-     "value": 16.5,
+     "value": 14.8,
      "unit": "Ω"
     }
    ],

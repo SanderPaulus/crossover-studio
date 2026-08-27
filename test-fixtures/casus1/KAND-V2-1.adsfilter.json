@@ -1,7 +1,7 @@
 {
  "format": "acoustic-design-studio-filter",
  "version": 1,
- "savedAt": "2026-08-27T11:29:06.378Z",
+ "savedAt": "2026-08-27T12:27:45.090Z",
  "name": "KAND-V2-1",
  "parts": [
   {
@@ -41,7 +41,7 @@
    "params": [
     {
      "name": "L",
-     "value": 3.873,
+     "value": 2.829,
      "unit": "mH"
     }
    ],
@@ -62,7 +62,7 @@
    "params": [
     {
      "name": "C",
-     "value": 194.1,
+     "value": 479.7,
      "unit": "uF"
     }
    ],
@@ -93,7 +93,7 @@
    "params": [
     {
      "name": "L",
-     "value": 1.319,
+     "value": 1.135,
      "unit": "mH"
     }
    ],
@@ -114,7 +114,7 @@
    "params": [
     {
      "name": "C",
-     "value": 5.968,
+     "value": 60.32,
      "unit": "uF"
     }
    ],
@@ -140,15 +140,8 @@
    ]
   },
   {
-   "type": "Resistor",
-   "partId": "R5",
-   "params": [
-    {
-     "name": "R",
-     "value": 2.193,
-     "unit": "Ω"
-    }
-   ],
+   "type": "Wire",
+   "params": [],
    "wires": [
     {
      "x": 17,
@@ -161,51 +154,6 @@
    ]
   },
   {
-   "type": "Resistor",
-   "partId": "R6",
-   "params": [
-    {
-     "name": "R",
-     "value": 117.1,
-     "unit": "Ω"
-    }
-   ],
-   "wires": [
-    {
-     "x": 24,
-     "y": 6
-    },
-    {
-     "x": 24,
-     "y": 13
-    }
-   ]
-  },
-  {
-   "type": "Ground",
-   "params": [],
-   "wires": [
-    {
-     "x": 24,
-     "y": 13
-    }
-   ]
-  },
-  {
-   "type": "Wire",
-   "params": [],
-   "wires": [
-    {
-     "x": 24,
-     "y": 6
-    },
-    {
-     "x": 31,
-     "y": 6
-    }
-   ]
-  },
-  {
    "type": "Driver",
    "partId": "D",
    "model": "woofer",
@@ -213,11 +161,11 @@
    "params": [],
    "wires": [
     {
-     "x": 31,
+     "x": 24,
      "y": 6
     },
     {
-     "x": 31,
+     "x": 24,
      "y": 13
     }
    ]
@@ -227,7 +175,7 @@
    "params": [],
    "wires": [
     {
-     "x": 31,
+     "x": 24,
      "y": 13
     }
    ]
@@ -238,7 +186,7 @@
    "params": [
     {
      "name": "C",
-     "value": 13.41,
+     "value": 12.53,
      "unit": "uF"
     }
    ],
@@ -259,7 +207,7 @@
    "params": [
     {
      "name": "L",
-     "value": 0.4561,
+     "value": 1.865,
      "unit": "mH"
     }
    ],
@@ -290,7 +238,7 @@
    "params": [
     {
      "name": "C",
-     "value": 406.7,
+     "value": 349.4,
      "unit": "uF"
     }
    ],
@@ -311,7 +259,7 @@
    "params": [
     {
      "name": "L",
-     "value": 0.7941,
+     "value": 1.657,
      "unit": "mH"
     }
    ],
@@ -342,7 +290,7 @@
    "params": [
     {
      "name": "L",
-     "value": 0.3216,
+     "value": 0.1944,
      "unit": "mH"
     }
    ],
@@ -363,7 +311,7 @@
    "params": [
     {
      "name": "C",
-     "value": 124.6,
+     "value": 107.7,
      "unit": "uF"
     }
    ],
@@ -394,7 +342,7 @@
    "params": [
     {
      "name": "L",
-     "value": 0.4806,
+     "value": 0.7342,
      "unit": "mH"
     }
    ],
@@ -415,7 +363,7 @@
    "params": [
     {
      "name": "C",
-     "value": 51.59,
+     "value": 45.01,
      "unit": "uF"
     }
    ],
@@ -509,7 +457,7 @@
    "params": [
     {
      "name": "C",
-     "value": 0.4996,
+     "value": 0.4857,
      "unit": "uF"
     }
    ],
@@ -530,7 +478,7 @@
    "params": [
     {
      "name": "L",
-     "value": 1.788,
+     "value": 1.347,
      "unit": "mH"
     }
    ],
@@ -561,7 +509,7 @@
    "params": [
     {
      "name": "C",
-     "value": 7.672,
+     "value": 39.07,
      "unit": "uF"
     }
    ],
@@ -582,7 +530,7 @@
    "params": [
     {
      "name": "L",
-     "value": 2.24,
+     "value": 1.731,
      "unit": "mH"
     }
    ],
@@ -604,20 +552,6 @@
     {
      "x": 17,
      "y": 37
-    }
-   ]
-  },
-  {
-   "type": "Wire",
-   "params": [],
-   "wires": [
-    {
-     "x": 17,
-     "y": 30
-    },
-    {
-     "x": 24,
-     "y": 30
     }
    ]
   },
@@ -690,11 +624,11 @@
    "wires": [
     {
      "x": 17,
-     "y": 6
+     "y": 30
     },
     {
      "x": 17,
-     "y": 2
+     "y": 26
     }
    ]
   },
@@ -704,11 +638,11 @@
    "wires": [
     {
      "x": 24,
-     "y": 6
+     "y": 30
     },
     {
      "x": 24,
-     "y": 2
+     "y": 26
     }
    ]
   },
@@ -718,18 +652,18 @@
    "params": [
     {
      "name": "C",
-     "value": 23.31,
+     "value": 395.6,
      "unit": "uF"
     }
    ],
    "wires": [
     {
      "x": 17,
-     "y": 2
+     "y": 26
     },
     {
      "x": 24,
-     "y": 2
+     "y": 26
     }
    ]
   }

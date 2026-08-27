@@ -13,7 +13,16 @@
  *   2. the count derived from the span and the smoothing, not fixed;
  *   3. several admissible orders means several CANDIDATES, never a compromise;
  *   4. nothing outside the window. Ever — including under a budget, including
- *      when the worst lobing zone has cut the band in two.
+ *      when the worst lobing zone straddles the band.
+ *
+ * SINCE THE F4d FOLLOW-UP, rule 4's second half reads differently: the F3c
+ * excision no longer shapes the field (V28, open). The block that used to
+ * assert "no candidate lands in the worst lobing zone" now asserts the
+ * suspension and its visibility — the band is whole, a position genuinely does
+ * land in the old gap, and the zone travels with every candidate named and
+ * attributed. The counter-proof matters more than the claim here: with the
+ * excision gone, "the band is whole" and "the band is cut" are only
+ * distinguishable if something actually sits in the gap.
  */
 
 import { describe, expect, it } from 'vitest';
@@ -153,23 +162,72 @@ describe('rule 4 — nothing leaves the window, and nothing leaves its cage', ()
     }
   });
 
-  it('the worst lobing zone is CUT OUT, and no candidate lands in it', () => {
+  /* V28 (open) — THE F3c EXCISION IS SUSPENDED, and this block is what it
+   * replaced. Until the F4d follow-up these three assertions read "the worst
+   * lobing zone is CUT OUT, and no candidate lands in it". The zone that was
+   * being cut is `[0.5, 0.7] · c/d` on the ONE centre-to-centre distance the
+   * pair was handed — a λ fraction, and V20a reserves every lobing judgement
+   * for the vertical synthesis. What the tests now pin is the suspension: the
+   * band is whole, the zone is still computed, and it travels with every
+   * candidate so a reader can see it and argue with it. */
+  it('the worst lobing zone is NOT cut out — the band is whole (V28 suspension)', () => {
     /* Spacing 261 mm puts the worst zone (0.5–0.7 · c/d) at 657–920 Hz. A
-     * window of 400–1600 Hz straddles it, so the band comes back in two
-     * segments — and the point of the test is that the gap is empty. */
+     * window of 400–1600 Hz straddles it. `recommendedBand` still carves the
+     * band in two — it is untouched — and the generator still ignores that. */
     const f = one(flatWindow(400, 1600, 261));
     const zone = f.axes[0].recommended['4'].worstZoneHz!;
     expect(zone).not.toBeNull();
     expect(f.axes[0].recommended['4'].segments.length).toBe(2);
+
+    // Every position sits in ONE segment spanning the whole window — the two
+    // recommended-band segments are not what was laid across.
     for (const c of f.candidates) {
-      const hz = c.crossings[0].hz;
-      const inZone = hz > zone[0] && hz < zone[1];
-      expect(inZone, `${hz} Hz landed inside the worst lobing zone`).toBe(false);
+      const x = c.crossings[0];
+      expect(x.segmentHz[0]).toBeCloseTo(x.windowHz[0], 6);
+      expect(x.segmentHz[1]).toBeCloseTo(x.windowHz[1], 6);
     }
-    // ...and both sides of the gap were used, so the spread did not quietly
-    // collapse onto the wider segment.
-    expect(f.candidates.some((c) => c.crossings[0].hz < zone[0])).toBe(true);
-    expect(f.candidates.some((c) => c.crossings[0].hz > zone[1])).toBe(true);
+
+    /* THE COUNTER-PROOF, and without it the assertion above is only a claim
+     * about arithmetic: with the gap gone, a position genuinely LANDS in the
+     * stretch F3c used to forbid. If none did, "the band is whole" and "the
+     * band is cut" would be indistinguishable on this fixture. */
+    const inZone = f.candidates.filter((c) => {
+      const hz = c.crossings[0].hz;
+      return hz > zone[0] && hz < zone[1];
+    });
+    expect(inZone.length).toBeGreaterThan(0);
+  });
+
+  it('the suspended zone travels with every candidate — named, attributed, and marked not applied', () => {
+    const f = one(flatWindow(400, 1600, 261));
+    const zone = f.axes[0].recommended['4'].worstZoneHz!;
+    expect(f.candidates.length).toBeGreaterThan(0);
+    for (const c of f.candidates) {
+      const ex = c.crossings[0].excisions;
+      expect(ex).toHaveLength(1);
+      // The zone frequencies are the composition's own — not recomputed here
+      // and not recomputed there, so the two can never round apart.
+      expect(ex[0].hz).toEqual(zone);
+      expect(ex[0].applied).toBe(false);
+      expect(ex[0].suspendedBecause).toMatch(/V28/);
+      // The attribution names the QUANTITY, and says which one it is not.
+      expect(ex[0].source).toMatch(/centre-to-centre/);
+      expect(ex[0].source).toMatch(/not the vertical synthesis/);
+      // ...and it reaches the one string a shortlist row actually prints.
+      expect(c.crossings[0].provenance).toMatch(/not excised/);
+      expect(c.crossings[0].provenance).toMatch(/V28/);
+    }
+    // The axis says it once too, for the panel.
+    expect(f.axes[0].notes.join(' ')).toMatch(/is NOT cut out of the candidate band/);
+    expect(f.axes[0].excisions['4']).toHaveLength(1);
+  });
+
+  it('a layout with no zones produces no excision at all — absence is not an empty verdict', () => {
+    // No spacing stated ⇒ `xoWindow` derives no zones ⇒ nothing to report.
+    const f = one(flatWindow(400, 1600));
+    expect(f.candidates.length).toBeGreaterThan(0);
+    for (const c of f.candidates) expect(c.crossings[0].excisions).toHaveLength(0);
+    for (const c of f.candidates) expect(c.crossings[0].provenance).not.toMatch(/excised/);
   });
 
   it('an EMPTY window produces no candidate and says why — never a fallback position', () => {

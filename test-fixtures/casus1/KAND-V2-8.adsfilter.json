@@ -1,7 +1,7 @@
 {
  "format": "acoustic-design-studio-filter",
  "version": 1,
- "savedAt": "2026-08-27T11:29:06.379Z",
+ "savedAt": "2026-08-27T12:27:45.091Z",
  "name": "KAND-V2-8",
  "parts": [
   {
@@ -41,7 +41,7 @@
    "params": [
     {
      "name": "L",
-     "value": 1.86,
+     "value": 1.87,
      "unit": "mH"
     }
    ],
@@ -62,7 +62,7 @@
    "params": [
     {
      "name": "C",
-     "value": 144,
+     "value": 140,
      "unit": "uF"
     }
    ],
@@ -93,7 +93,7 @@
    "params": [
     {
      "name": "L",
-     "value": 0.815,
+     "value": 0.787,
      "unit": "mH"
     }
    ],
@@ -114,7 +114,7 @@
    "params": [
     {
      "name": "C",
-     "value": 21.6,
+     "value": 21.2,
      "unit": "uF"
     }
    ],
@@ -145,7 +145,7 @@
    "params": [
     {
      "name": "R",
-     "value": 1.37,
+     "value": 1.44,
      "unit": "Ω"
     }
    ],
@@ -166,7 +166,7 @@
    "params": [
     {
      "name": "R",
-     "value": 47.7,
+     "value": 47.6,
      "unit": "Ω"
     }
    ],
@@ -238,7 +238,7 @@
    "params": [
     {
      "name": "C",
-     "value": 104,
+     "value": 111,
      "unit": "uF"
     }
    ],
@@ -259,7 +259,7 @@
    "params": [
     {
      "name": "L",
-     "value": 0.504,
+     "value": 0.503,
      "unit": "mH"
     }
    ],
@@ -290,7 +290,7 @@
    "params": [
     {
      "name": "C",
-     "value": 94.1,
+     "value": 87.4,
      "unit": "uF"
     }
    ],
@@ -311,7 +311,7 @@
    "params": [
     {
      "name": "L",
-     "value": 3.37,
+     "value": 3.61,
      "unit": "mH"
     }
    ],
@@ -342,7 +342,7 @@
    "params": [
     {
      "name": "L",
-     "value": 0.621,
+     "value": 0.767,
      "unit": "mH"
     }
    ],
@@ -363,7 +363,7 @@
    "params": [
     {
      "name": "C",
-     "value": 22.9,
+     "value": 26.5,
      "unit": "uF"
     }
    ],
@@ -394,7 +394,7 @@
    "params": [
     {
      "name": "L",
-     "value": 0.247,
+     "value": 0.309,
      "unit": "mH"
     }
    ],
@@ -415,7 +415,7 @@
    "params": [
     {
      "name": "C",
-     "value": 7.78,
+     "value": 7.28,
      "unit": "uF"
     }
    ],
@@ -509,7 +509,7 @@
    "params": [
     {
      "name": "C",
-     "value": 3.31,
+     "value": 4.22,
      "unit": "uF"
     }
    ],
@@ -530,7 +530,7 @@
    "params": [
     {
      "name": "L",
-     "value": 0.434,
+     "value": 0.525,
      "unit": "mH"
     }
    ],
@@ -561,7 +561,7 @@
    "params": [
     {
      "name": "C",
-     "value": 33.4,
+     "value": 30.4,
      "unit": "uF"
     }
    ],
@@ -582,7 +582,7 @@
    "params": [
     {
      "name": "L",
-     "value": 2.2,
+     "value": 3.15,
      "unit": "mH"
     }
    ],
@@ -613,7 +613,7 @@
    "params": [
     {
      "name": "R",
-     "value": 0.218,
+     "value": 0.219,
      "unit": "Ω"
     }
    ],
@@ -634,7 +634,7 @@
    "params": [
     {
      "name": "R",
-     "value": 35.7,
+     "value": 16.7,
      "unit": "Ω"
     }
    ],

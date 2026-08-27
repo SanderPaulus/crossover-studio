@@ -20,17 +20,57 @@
 ## Commando's
 
 - `npx tsc -b` — typecheck. Draait vóór elke oplevering, zonder uitzondering.
-- `npx vitest run` — volledige testsuite. **Gemeten 27-08-2026 (F4d): 119 bestanden, 1280 tests, ~4,8 min.**
+- `npx vitest run` — volledige testsuite. **Gemeten 27-08-2026 (F4d-nazorg): 120 bestanden, 1292 tests, ~4,7 min.**
   Alles groen houden. De telling stond tot F4b op 99/1003 — dat was de stand bij F3 (`61a3ea4`) en zij
   is drie opleveringen lang niet bijgewerkt: F3b bracht 104 bestanden, F3c 106, F4a 107, F4b 108, F4b2 109,
-  F4c 112, V20 113, F4d 119. Vandaar de datum erbij: een telling zonder meetmoment is een telling die stil veroudert.
-  **Waar de tijd zit (F4d-meting):** vijf bestanden draaien echte ketenruns en zijn samen ruim tien van de
-  ~23 CPU-minuten — `threeWayChain` (289 s), `candidateRoute` (117 s), `casus1V2Candidates` (109 s),
-  `designChain` (107 s), `workerRouteRegression` (104 s). Elk van hen draait het minimum aantal live runs
+  F4c 112, V20 113, F4d 119, de F4d-nazorg 120. Vandaar de datum erbij: een telling zonder meetmoment is
+  een telling die stil veroudert.
+  **Waar de tijd zit (nazorg-meting):** vijf bestanden draaien echte ketenruns en zijn samen ruim elf van de
+  ~22 CPU-minuten — `threeWayChain` (282 s), `candidateRoute` (111 s), `designChain` (102 s),
+  `workerRouteRegression` (98 s), `casus1V2Candidates` (77 s). Elk van hen draait het minimum aantal live runs
   dat zijn claim draagt; de rest leest bestanden. Een regressie die niemand draait omdat hij traag is,
   beschermt niets.
+- **De v2-kandidaatfixtures opnieuw opwekken** (alleen nodig als de generator of het veld verandert):
+  `npx vite-node scripts/generate-casus1-v2-candidates.ts` — vijftien ketenruns, gemeten 37–72 s per stuk,
+  ~13 min; schrijft de tien shortlist-netlists en `casus1_v2_herkomst.json`. Daarna
+  `npx vite-node scripts/record-casus1-v2-references.ts` (drie seconden) voor de klasse-B-blokken én
+  de vergelijkingstabel voor het casusboek. **Nagemeten bij de nazorg: twee opeenvolgende runs leveren de
+  netlists byte-identiek terug, op het `savedAt`-stempel van de serialisatie na.**
 - `npx vitest run <pad>` — gerichte run tijdens het werk; de volle suite blijft de acceptatie.
 - `npm run build` — productiebuild (draait ook de typecheck via `tsc -b`).
+
+### Schrijfbeveiliging buiten de repo (`.claude/settings.local.json`, `permissions.deny`)
+Tweemaal is `/Users/sandersomers/CLAUDE.md` — een CLAUDE.md in een BOVENLIGGENDE map, buiten de
+repo — overschreven met de project-CLAUDE.md. Beide keren door dezelfde regel, als laatste regel
+van dezelfde Bash-aanroep die de project-CLAUDE.md bijwerkte:
+
+    cp CLAUDE.md /Users/sandersomers/CLAUDE.md 2>/dev/null
+
+Geen hook, geen `/init`, geen cwd-ongeluk: een bewuste "houd ze gelijk"-stap, uitgelokt doordat
+beide bestanden bovenaan de context staan onder dezelfde kop. **Ze zijn niet hetzelfde bestand en
+horen niet gelijk te zijn.** De deny-regels dekken twee lagen — de padregels binden Write/Edit, de
+Bash-regels de vormen waarin het is misgegaan. JSON kent geen commentaar, dus de reden staat hier.
+
+**De dekking is nagemeten, en zij is niet volledig — lees dit voordat je erop vertrouwt.**
+
+| poging | uitkomst |
+| --- | --- |
+| `Write`/`Edit` op `~/CLAUDE.md` (of enig `~/*.md`) | **geweigerd** — *"File is in a directory that is denied by your permission settings"* |
+| `cd <repo> && cp CLAUDE.md /Users/sandersomers/CLAUDE.md` (de historische regel) | **geweigerd** |
+| `printf 'x' > /Users/sandersomers/probe.md` | **KOMT ER DOOR** |
+
+Bash-deny-regels matchen op het begin van een (deel)commando — Claude Code splitst op `&&` en
+toetst elk deel, wat verklaart waarom de `cp` binnen een `cd … && cp …` alsnog wordt gepakt. Een
+patroon dat met `*` begint werkt níet; die zijn er weer uit gehaald in plaats van blijven staan,
+want een regel die dekking suggereert die er niet is, is erger dan geen regel.
+
+*Wat de regels bewust NIET zijn:* een blanket-verbod op alles buiten de repo. De repo ligt zélf
+onder `/Users/sandersomers/`, en `Edit(//Users/sandersomers/*)` blokkeerde bij het uitproberen
+prompt de repo mee — de eerste versie van deze regels kon haar eigen bronbestanden niet meer
+bewerken. Een echt "alleen binnen de repo"-bereik vraagt de sandbox
+(`sandbox.filesystem.denyWrite`, dat volgens het settings-schema met de `Edit(...)`-deny-regels
+wordt samengevoegd zodra `sandbox.enabled` aanstaat), niet de permissieregels alleen. Dat is een
+grotere ingreep — hij raakt élk commando in dit project — en is deze sessie niet gedaan.
 
 ### Guards in de suite
 - `src/lib/noAppWideFloor.test.ts` — bewaakt dat de verwijderde app-brede versterkervloer niet
@@ -292,6 +332,36 @@
 - `src/lib/engine2/optimizer/noWeights.test.ts` — de scope is uitgebreid naar `predesign/
   candidates.ts`, `flankOrder.ts` en `candidateField.ts`. Kiezen wélke kandidaten bestaan is
   dezelfde beslissing als kiezen tussen hun uitkomsten, één stap eerder.
+
+### F4d-nazorg-guards (V28-opschorting, poorten op de bevroren netlists)
+- `src/lib/engine2/predesign/candidates.test.ts` — het blok dat tot de nazorg *"de slechtste
+  lobing-zone is CUT OUT"* asserteerde, asserteert nu de **opschorting** (V28) en haar
+  zichtbaarheid: de band is heel, de zone reist mee met bron en met `applied: false`, en er
+  landt aantoonbaar een positie in het oude gat. Die tegenproef draagt het hele blok — met de
+  uitsnijding weg zijn "de band is heel" en "de band is gesneden" alleen te onderscheiden als
+  er werkelijk iets in het gat staat. Plus: geen c-t-c gesteld ⇒ géén zone ⇒ géén melding,
+  want een afwezige zone is geen lege uitspraak.
+- `src/lib/engine2/predesign/casus1Field.test.ts` — de casus-1-helft: drie posities op W-M en
+  **vijf** op M-T (0,82 octaaf venster in plaats van 0,33 octaaf aanbevolen band), 15 in plaats
+  van 9 kandidaten, en de raming die **0 van 15 buiten het VENSTER** meldt maar niet meer nul
+  buiten de AANBEVELING. Dat laatste is bewust vastgelegd als gewenst gedrag: een opschorting
+  die ook de raming stil zou zetten, laat nergens zien dat veld en aanbeveling uit elkaar zijn
+  gelopen.
+- `src/lib/engine2/frozenNetlistGates.test.ts` — **de poorten op élke bevroren netlist in
+  `manifest_en_geometrie.netlists`**, dus ook de vijftien KAND-V2's; de lijst wordt uit het
+  referentiebestand gelezen zodat een nieuwe netlist meedoet door daar te bestaan. Twee helften,
+  en het bestand zegt zelf waarom er twee nodig zijn: casus 1 stelt géén enkele grens, dus
+  "een bevroren netlist die een poort niet haalt" is op deze casus onfalsifieerbaar (P4 —
+  afwezig is geen poort die altijd slaagt). De staande helft assert daarom dat elke poort een
+  WAARDE oplevert en zich als `absent` meldt; de tweede helft bewapent elke poort met een
+  **gemeten waarde uit het veld zelf** (de ongunstigste lezing) en toont dat het uiterste aan
+  de andere kant faalt. Geen enkel drempelgetal in het bestand.
+- `src/lib/engine2/casus1V2Candidates.test.ts` — uitgebreid met de meetopstelling als assert
+  (controle 2): `synthMode`, de gewapende poorten en budgetten mét hun P4-reden, en de
+  beschermingen die V27's eerste opstelling wegliet (`safety`, `staged`, `audit`,
+  `rSourceDisqualifyOhm`). De veldgrootte wordt niet meer geteld maar **vergeleken** —
+  manifest, bestanden op schijf en de boekhouding van de generator moeten het eens zijn,
+  zodat een legitieme regeneratie geen testwijziging vraagt.
 
 ### F4b2-guard (het vierde gat: de LF-bult-inversie)
 - `src/lib/engine2/optimizer/lfBumpBorder.test.ts` — de vierde A5d.6-inversie, die op de

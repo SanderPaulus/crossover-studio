@@ -63,6 +63,19 @@ export interface XoZone {
   kind: 'good' | 'bad';
   /** True when the zone lies wholly outside the feasible window. */
   outsideWindow: boolean;
+  /**
+   * WHICH QUANTITY produced this zone, and from which input — one sentence.
+   *
+   * REQUIRED, not optional, and that is the point of adding it. A zone that
+   * removes band from where a candidate may be placed is a lobing judgement,
+   * and V20a says only ONE lobing quantity may carry a judgement: the vertical
+   * synthesis. Every zone therefore has to say out loud which quantity it is,
+   * so a reader of a candidate list can see why a position is missing and on
+   * whose authority. A zone added later that forgets to answer does not
+   * compile, which is the cheapest possible enforcement of V20a's blijvend
+   * verbod on this surface.
+   */
+  derivedFrom: string;
 }
 
 export interface XoWindowResult {
@@ -212,8 +225,22 @@ export function crossoverWindow(input: XoWindowInput): XoWindowResult {
     const cOverD = SPEED_OF_SOUND_M_S / (input.spacingMm / MM_PER_M);
     const outside = (z: [number, number]): boolean =>
       floorHz !== null && ceilingHz !== null ? z[1] < floorHz || z[0] > ceilingHz : false;
+    /* THE ATTRIBUTION EVERY ZONE ON THIS SURFACE CARRIES (V20a).
+     *
+     * All three zones below are the same quantity with different multipliers:
+     * a fraction of the wavelength at the handover, measured on the ONE
+     * centre-to-centre distance this pair was handed. That is a geometric
+     * SCREENING quantity — the register row calls it M-F-interim and gives it
+     * the role "rapportage" — and it is emphatically not `verticalLobing`,
+     * which is the authority. Stated once, here, because it is a property of
+     * how these zones are computed rather than of any one of them. */
+    const derivedFrom =
+      `a fraction of the wavelength at the handover, taken on the ONE centre-to-centre distance ` +
+      `this pair was given (${input.spacingMm.toFixed(1)} mm — ${input.spacingSource ?? 'source not stated'}). ` +
+      `This is the M-F-INTERIM screening quantity (A4, role: reporting), not the vertical synthesis, ` +
+      `which is the only lobing quantity a judgement may hang on (V20a).`;
     const add = (label: string, hz: [number, number], kind: 'good' | 'bad') =>
-      zones.push({ label, hz, kind, outsideWindow: outside(hz) });
+      zones.push({ label, hz, kind, outsideWindow: outside(hz), derivedFrom });
     add('wide frontal radiation (spacing well under half a wavelength)', [0, LOBING_WIDE_UPPER * cOverD], 'good');
     add('the WORST lobing zone', [LOBING_WORST_LOW * cOverD, LOBING_WORST_HIGH * cOverD], 'bad');
     add(

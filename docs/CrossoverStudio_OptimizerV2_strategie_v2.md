@@ -256,6 +256,33 @@ A5d.1 t/m A5d.7 bakenen de ontwerpruimte af. Zolang die afbakening alleen gerapp
    Implementatie: `src/lib/engine2/optimizer/determinism.ts`; acceptatie in `determinism.test.ts` (twee runs byte-identiek, andere seed bereikt aantoonbaar de zoektocht, en de vingerafdruk beweegt mee met *elke* component waaruit hij bestaat — component voor component doorlopen, niet steekproefsgewijs).
 5. **Schatter-versionering.** Afgeleide parameters worden gecachet; elke extractor draagt een versienummer en een versiebump invalideert de cache en her-triggert de dekking- en golden-reference-tests. Zonder dit worden V8-verbeteringen stille gedragswijzigingen.
 
+### A5e-horizon: open punten uit de kandidaatgeneratie (F4d en de nazorg)
+
+Geen specificatiebesluiten in de zin hierboven — het zijn afgebakende, benoemde openstaande
+punten met een casusboek-entry erachter. Ze staan hier zodat ze niet alleen in Deel B leven.
+
+- **`diAnchor` als tweezijdige doelband in `xoWindow.ts`** — de énige v1-mechaniek die F4d
+  bewust niet overnam en waarvan F4d zelf zegt dat hij spijt doet. DI-continuïteit is een echte
+  A5d.3-voorkeurszone en hoort in het VENSTER thuis (A4 M-G: *"de snijzone van de twee
+  D(f)-curven wordt dan een tweezijdige doelband"*), niet als losse extra kandidaat naast het
+  venster. `xoWindow.ts` kent die zone nog niet; tot dan sturen de vensters de generator en
+  wordt de DI-match alleen gerapporteerd. Zie V27, dekkingstabel 1.
+- **Rij 38 — het ketenraster begint op 200 Hz** terwijl de laagste A5d.3-venstervloer op 397 Hz
+  ligt. Gemeten en GESTELD bij F4d, niet verplaatst: het raster is `sim` en daar tekent élke
+  grafiek op dat scherm uit, dus hem verzetten verandert de rapportage-oppervlakken van de
+  v2-route mee. Dat is een grotere wijziging dan F4d's opdracht toestond. De afweging staat
+  voluit in V27; **blijft open**, met de kanttekening die daar ook staat: een lezer die dit
+  betwist heeft een punt.
+- **V28 — mag een uitsnijding het kandidaatveld vormen, en zo ja op grond waarvan?** De
+  F3c-uitsnijding stuurde het veld met een λ-fractie op één c-t-c-afstand, wat V20a verbiedt;
+  zij is opgeschort en het veld dekt nu het hele venster. De drie uitkomsten die openstaan
+  (verwerpen / herbouwen op de verticale synthese / behouden als doorsnede van de vier
+  V20-fracties) staan in de entry. **Open.**
+- **Casus 1 heeft geen versterkervloer, en dat blokkeert de v2-vergelijking.** Geen
+  specificatiepunt maar een projectinstelling — hij staat hier omdat V27 en V28 er beide op
+  uitkomen en de tweede hem als oorzaak aanwijst van de fasetracking die de eerste aan iets
+  anders toeschreef.
+
 ## A6a. Ontwerp-pijplijn (werkvolgorde per project)
 
 De klassieke handmatige volgorde luidt: (1) impedantie lineariseren — Zobel op stijgende Le, LCR op resonantiepieken; (2) kruispunten en hellingen kiezen; (3) secties van onder naar boven ontwerpen; (4) niveaus padden; (5) fase/polariteit controleren; (6) voicen. Die volgorde bestaat omdat élke stap de volgende handmatig rekenbaar maakt: een geresistiveerde belasting laat tekstboekformules kloppen, vaste kruispunten ontkoppelen de secties.
@@ -761,18 +788,20 @@ Configuratie: 3-weg; 2× SB WO24TX-8 parallel, MR13TX-4 in bolpod, T25T-6 in WG1
 
   ---
 
-  **De uitkomst op casus 1.**
+  **De uitkomst op casus 1.** *(HERZIEN BIJ V28 — lees dit blok als het verslag van wat F4d deed, niet als de huidige stand. De F3c-uitsnijding die de M-T-as van vijf posities naar drie bracht is opgeschort; het veld is nu vijftien kandidaten en de tabellen hieronder zijn met hun opvolgers vervangen bij V28.)*
 
   Het veld dat de metingen impliceren, met de orde die het casusboek zelf voor deze vensters noteert (4 op beide overnames):
 
 | as | venster (orde 4) | aanbevolen band | posities | waarom dat aantal |
 |---|---|---|---|---|
 | woofer→mid | 396,7–548,5 Hz | 396,7–548,5 Hz (de slechtste lobing-zone 657–920 Hz ligt boven het plafond) | **396,7 / 466,5 / 548,5 Hz** | 0,47 octaaf band; 1 + ⌊0,47 / (1/6)⌋ = 3 |
-| mid→tweeter | 1294,0–2283,5 Hz | 1294,0–1327,4 **en** 1858,4–2283,5 Hz | **1294,0 / 2033,9 / 2283,5 Hz** | 0,33 octaaf *aanbevolen* band (de slechtste lobing-zone 1327–1858 Hz is eruit gesneden); 1 + ⌊0,33 / (1/6)⌋ = 3 |
+| mid→tweeter | 1294,0–2283,5 Hz | 1294,0–1327,4 **en** 1858,4–2283,5 Hz | **1294,0 / 2033,9 / 2283,5 Hz** *(V28: nu 1294,0 / 1491,4 / 1719,0 / 1981,2 / 2283,5)* | 0,33 octaaf *aanbevolen* band (de slechtste lobing-zone 1327–1858 Hz is eruit gesneden); 1 + ⌊0,33 / (1/6)⌋ = 3. **V28: die uitsnijding is opgeschort, dus 0,82 octaaf VENSTER en 1 + ⌊0,82 / (1/6)⌋ = 5.** |
 
   Twee keer drie, om volstrekt verschillende redenen — wat precies het punt is van een aantal dat wordt afgeleid in plaats van gekozen. Product: **9 kandidaten**, en de V9-spanning van dit project (de slechtste lobing-zone ligt binnen het bovenste venster) is nu een **gat in de kandidatenlijst** in plaats van een zin in het paneel.
 
-  **De pre-start-raming meldt 0 van 9 buiten het venster** en 0 van 9 buiten de aanbevolen band, dus de dialoog verschijnt niet. Met de tegenproef ernaast: dezelfde schatter, gevoed met de kruispunten die het v1-venster oplevert (707–728 Hz), meldt **4 van 4 buiten** — de audit-meting, gereproduceerd als uitspraak over de schatter in plaats van over de run.
+  *Precies dat gat is wat V28 opwierp, en het antwoord was dat het er niet had mogen zijn: het werd gesneden door een λ-fractie op één c-t-c-afstand, en V20a reserveert elk lobing-oordeel voor de verticale synthese. Sinds V28 is het veld drie × vijf = **15 kandidaten**, en de V9-spanning staat weer in het paneel — nu ook op elke kandidaat zelf, met bron en met de mededeling dat zij niet is toegepast.*
+
+  **De pre-start-raming meldt 0 van 9 buiten het venster** en 0 van 9 buiten de aanbevolen band, dus de dialoog verschijnt niet. *(V28: 0 van 15 buiten het venster — dat blijft een eigenschap die de generator niet kán schenden — maar niet meer 0 buiten de AANBEVELING, want de generator volgt haar niet meer. De raming zegt dat, en dat is gewenst zolang V28 open is.)* Met de tegenproef ernaast: dezelfde schatter, gevoed met de kruispunten die het v1-venster oplevert (707–728 Hz), meldt **4 van 4 buiten** — de audit-meting, gereproduceerd als uitspraak over de schatter in plaats van over de run.
 
   **Klasse A, nagemeten.** Het veld is een functie van de METINGEN alleen: dezelfde negen kandidaten komen uit een rapport dat op HUIDIG, op KAND-A en op KAND-B gebouwd is. Dat is de F4a-classificatie op de generator toegepast, en het is de reden dat de gegenereerde netlists als klasse B kunnen worden vastgelegd zonder ergens een klasse C te introduceren.
 
@@ -810,7 +839,7 @@ Configuratie: 3-weg; 2× SB WO24TX-8 parallel, MR13TX-4 in bolpod, T25T-6 in WG1
   **Twee dingen die de vergelijking wél blootlegt, en beide zijn echt.**
 
   1. **`min|Z|` van 0,00–1,4 Ω tegen 3,3–3,5 Ω.** Casus 1 stelt geen versterkervloer, dus `ampMinLoadOhm` is afwezig en niets oordeelt over de belasting — P4, en de F0-doctrine (*leeg veld = geen oordeel*) in werking. De drie baselines dragen de impliciete discipline van een ontwerper die dat getal in zijn hoofd had; de v2-run heeft daar geen gestelde tegenhanger voor. Dat is geen bug maar een **ontbrekende projectinstelling**, en het is precies het soort ding dat zichtbaar hoort te zijn in plaats van vanzelf goed te gaan.
-  2. **De fasetracking van KAND-V2-1 en -2 (84,7° en 65,6°).** Beide kruisen M-T op 1294 Hz, de ondergrens van het bovenste venster, in het segment dat maar 33 Hz breed is (1294–1327 Hz — de slechtste lobing-zone begint erboven). Een kooi van 2,6 % is nauwelijks een zoekruimte, en de tuner heeft er geen ruimte om de fase te repareren. Openstaand: of een segment dat smaller is dan de acceptatie-gladding een kandidaat verdient, of alleen een vermelding. De generator plaatst er nu één, omdat het toegestane band is en niets die keuze voor de ontwerper mag maken.
+  2. **De fasetracking van KAND-V2-1 en -2 (84,7° en 65,6°).** *(Achterhaald bij V28: het segment van 33 Hz was een artefact van de uitsnijding en bestaat niet meer. Zie daar voor de nameting.)* Beide kruisen M-T op 1294 Hz, de ondergrens van het bovenste venster, in het segment dat maar 33 Hz breed is (1294–1327 Hz — de slechtste lobing-zone begint erboven). Een kooi van 2,6 % is nauwelijks een zoekruimte, en de tuner heeft er geen ruimte om de fase te repareren. Openstaand: of een segment dat smaller is dan de acceptatie-gladding een kandidaat verdient, of alleen een vermelding. De generator plaatst er nu één, omdat het toegestane band is en niets die keuze voor de ontwerper mag maken.
 
   ---
 
@@ -821,6 +850,112 @@ Configuratie: 3-weg; 2× SB WO24TX-8 parallel, MR13TX-4 in bolpod, T25T-6 in WG1
   *Ten tweede, en dit was de duurdere: `synthMode` stond op `'filter'` en de app draait `'acoustic'`.* De controle legde het bloot: op `'filter'`, gestart op de kruispunten van HUIDIG, leverde dezelfde keten **31,4 dB** rimpel, dreef de overnames van 360/2250 naar **856/3848 Hz** en liet 0,00 Ω achter. Op `'acoustic'` werd dat 5,24 dB en 358/2370 Hz. Een fixture die niet de synthese van de app draait, meet de app niet.
 
   **De procesles is de bekende, één laag verder.** V15 zei het over referenties: een getal zonder zijn parameters is geen referentie. Hier ging het over een RUN, en de parameters die ontbraken waren niet exotisch — het waren de defaults van de app. De regel die hieruit volgt en die in de fixture staat opgeschreven: *een run-fixture die met een vergelijking als doel wordt gebouwd, draait de instellingen van de app en niet een minimale set.* En: **een tabel waarin het nieuwe verliest, verdient een controle vóórdat zij een bevinding wordt.** Zonder de controle zou hier gestaan hebben dat de v1-tuner op v2-kandidaten faalt, en dat was niet waar.
+
+- V28 (**OPEN** — de F3c-uitsnijding stuurde het kandidaatveld met een λ-fractie) — opgeworpen bij de F4d-nazorg, 27-08-2026.
+
+  **De vraag waarmee het begon.** Drie posities gelijkmatig over het 0,82-octaaf M-T-venster horen op ~1294 / ~1720 / ~2283 Hz te landen. De F4d-lijst gaf 1294 / 2034 / 2284. Waar komt dat gat vandaan?
+
+  **De herleiding, bestand voor bestand.**
+
+  1. `predesign/candidates.ts` legde zijn posities over `recommendedBand(window).effectiveHz` — de aanbevolen band, niet het venster.
+  2. `predesign/recommendedBand.ts:150` bepaalt wat daaruit gesneden wordt: `w.zones.find((z) => z.kind === 'bad')`.
+  3. Die zone wordt gemaakt in `predesign/xoWindow.ts:218` — `add('the WORST lobing zone', [LOBING_WORST_LOW * cOverD, LOBING_WORST_HIGH * cOverD], 'bad')` — met `LOBING_WORST_LOW = 0.5` en `LOBING_WORST_HIGH = 0.7` (`xoWindow.ts:140-141`).
+  4. En `cOverD` komt uit `xoWindow.ts:212`: `SPEED_OF_SOUND_M_S / (input.spacingMm / MM_PER_M)`, waarbij `spacingMm` de ENE c-t-c-afstand is die `report.ts:675` voor dit paar doorgeeft.
+
+  De uitgesneden grootheid is dus: **de band waarop d/λ tussen 0,5 en 0,7 ligt, voor één c-t-c-afstand.** Dat is een λ-fractie. Het is niet de verticale synthese; `verticalLobing` komt in dit hele pad niet voor. En 0,5–0,7 is niet zomaar een λ-fractie: het is precies het dal van de niet-monotone zonecurve die V20 heeft geschrapt (V20's knopen: 0,60 → 1,00, de ongunstigste).
+
+  **Het oordeel: F3c is een V20-schending op een plek die V20 niet zag.** V20a zegt dat de verticale synthese de énige lobing-grootheid is waar een oordeel aan mag hangen, en het blijvende verbod luidt: geen poort, geen budget, geen shortlist-criterium op een λ-fractie. Bij F3c leek dat niet te bijten, want de aanbevolen band was **advies**: een zin en twee veldwaarden achter een knop, die de ontwerper mocht negeren. F4d heeft er zonder het te merken iets anders van gemaakt — de band waaruit de kandidaten worden gesneden. F4d's eigen uitbreiding van `noWeights.test.ts` benoemt precies waarom dat het verschil maakt: *"kiezen wélke kandidaten bestaan is dezelfde beslissing als kiezen tussen hun uitkomsten, één stap eerder."* De uitsnijding werd sturend op het moment dat de generator haar ging lezen.
+
+  **Waarom dit geen leerstellige klacht is, maar nagemeten.** V20 stelde vast dat er voor een weg met N bronnen vier afstanden zijn en geen keuze ertussen. `xoWindow` krijgt er één. Wélke, bepaalt wat er wordt uitgesneden — en op het ONDERSTE paar van casus 1 (wooferarray → mid, een weg met twee bronnen) verandert dat het veld:
+
+  | λ-lezing (V20) | afstand | uitgesneden zone | valt in het W-M-venster 396,7–548,5 Hz? |
+  | --- | --- | --- | --- |
+  | dichtstbijzijnde bron *(wat de engine gebruikt)* | 261,3 mm | 656–919 Hz | nee — boven het plafond |
+  | binnen de wooferweg | 275,7 mm | 622–871 Hz | nee — boven het plafond |
+  | amplitudegewogen zwaartepunt | 399,2 mm | **430–602 Hz** | **ja — snijdt af vanaf 430 Hz** |
+  | verste bron | 537,0 mm | **319–447 Hz** | **ja — snijdt 396,7–447 Hz weg** |
+
+  Vier juiste getallen, vier verschillende kandidatenlijsten op dezelfde as. De verste-bron-lezing zou de positie op 396,7 Hz hebben geweigerd; de dichtstbijzijnde weigert niets. De keuze die V20 verwierp bepaalt hier rechtstreeks wélke ontwerpen een tuner ooit te zien krijgt, en zij wordt nergens genoemd. Dat is dezelfde vondst als V20, één laag verder: **de keuze tussen twee kandidaten verborg een derde, en hier verbergt zij bovendien dat er gekozen wórdt.**
+
+  **Wat de nazorgsessie heeft gedaan — en nadrukkelijk niet.**
+
+  - **Opgeschort, niet gerepareerd.** `candidates.ts` kent nu `APPLY_BAND_EXCISIONS`, en die staat op `false`. De generator dekt het hele A5d.3-venster gelijkmatig. Het besluit of een uitsnijding het veld überhaupt mag vormen is aan deze entry en is niet genomen.
+  - **`recommendedBand.ts` is byte-onaangeraakt**, en dat is opzet. De F3c-dialoog blijft de aanbevolen band tonen met haar overnameknoppen: als ADVIES is zij niet in strijd met V20a — een ontwerper die het leest en negeert is precies het geval waarvoor A5d.3 "toon de zones, middel ze niet" schreef. Wat verboden was, was dat een machine haar volgt zonder het te zeggen.
+  - **Elke uitgesneden zone reist nu mee met de kandidaat, mét bron.** `XoZone.derivedFrom` is VERPLICHT geworden (`xoWindow.ts`): elke zone die band wegneemt moet zeggen wélke grootheid zij is en waaruit zij is gerekend. `CandidateCrossing.excisions` draagt zone, bron, `applied` en — als zij niet is toegepast — waarom niet. Het staat in de provenance-zin die een shortlistrij afdrukt, in de axis-notities voor het paneel, en in `casus1_v2_herkomst.json`. Een lezer die vraagt "waarom staat er geen kandidaat tussen 1327 en 1858 Hz?" krijgt sinds nu antwoord, ook wanneer het antwoord "die staat er wél" is.
+  - **Geen poort, geen budget, geen drempel verplaatst of toegevoegd.**
+
+  **Wat dit op casus 1 verandert — BREAKING, alleen voor v2-runs.**
+
+  De M-T-as gaat van 0,33 octaaf aanbevolen band naar 0,82 octaaf venster, dus van drie posities naar vijf; W-M blijft drie (daar lag de zone al boven het plafond).
+
+  | as | venster (orde 4) | band waarover gespreid | posities |
+  | --- | --- | --- | --- |
+  | woofer→mid | 396,7–548,5 Hz | 396,7–548,5 Hz (0,47 okt) | **396,7 / 466,5 / 548,5 Hz** |
+  | mid→tweeter | 1294,0–2283,5 Hz | 1294,0–2283,5 Hz (0,82 okt) | **1294,0 / 1491,4 / 1719,0 / 1981,2 / 2283,5 Hz** |
+
+  Het veld gaat van **9 naar 15 kandidaten**. En daarmee komt een tweede getal in beeld dat bij F4d onzichtbaar was: **de shortlist laat er tien door van de vijftien.** Bij F4d was het negen van negen — de shortlist had nog nooit iets geweigerd, en of hij dat kón was op deze casus niet te zien. Nu wel. Bevroren wordt de shortlist, zoals altijd, dus er staan **tien** `KAND-V2-*.adsfilter.json` op schijf tegen negen daarvoor.
+
+  Geen enkele referentie werd hierdoor ONGELDIG, en dat is de F4a-classificatie die zich uitbetaalt: de referenties hangen aan BESTANDEN, dus een ander veld levert andere bestanden op en niet andere waarden voor dezelfde.
+
+  De pre-start-raming meldt nog steeds **0 van 15 buiten het venster** — dat blijft een eigenschap die de generator niet kán schenden. Wat wél verandert: enkele kandidaten liggen nu buiten de F3c-**aanbeveling**, en de raming zegt dat. Dat is gewenst zolang V28 open is: een opschorting die ook de raming het zwijgen oplegde, zou nergens op het scherm laten zien dat het veld en de aanbeveling uit elkaar zijn gelopen.
+
+  **Wat de bredere M-T-dekking opleverde — en één ding dat zij juist NIET opleverde.**
+
+  1. **De 33 Hz-kooi is weg, de rimpel beweegt — maar de fasetracking van V27's twee probleemgevallen is NIET gerepareerd, en dat weerlegt de verklaring die V27 gaf.**
+
+  V27 noteerde als tweede echte bevinding dat KAND-V2-1 en -2 (84,7° en 65,6° fase) allebei op 1294 Hz kruisten, in het segment van 1294–1327 Hz: *"Een kooi van 2,6 % is nauwelijks een zoekruimte, en de tuner heeft er geen ruimte om de fase te repareren."* Dat is een toetsbare uitspraak, en de opschorting toetst haar: met het hele venster als band is de kooi op diezelfde 1294 Hz zo'n 95 Hz breed, bijna een factor drie ruimer.
+
+  Wat de ene ketenpas per kandidaat rapporteert, F4d naast V28:
+
+  | kandidaat (W-M · M-T) | F4d (kooi 33 Hz) | V28 (kooi ≈95 Hz) |
+  | --- | --- | --- |
+  | 396,7 · 1294 | 9,15 dB / 27,0° | **3,25 dB / 19,0°** |
+  | 466,5 · 1294 | 3,11 dB / 21,3° | 3,93 dB / 26,6° |
+  | 548,5 · 1294 | 6,34 dB / 17,0° | 6,33 dB / 16,1° |
+
+  Bijna zes dB rimpel weg op de slechtste, 0,8 dB erbij op de middelste. **Een bredere kooi is dus geen strikt makkelijker probleem** — één ketenpas over een grotere zoekruimte is een ánder probleem, niet hetzelfde probleem met meer speling.
+
+  En op de metriek waar het V27 om ging is het antwoord ronduit nee. De M-T-fasetracking van de twee kandidaten die op 1294 Hz kruisen ging van 84,7° / 65,6° naar **89,9° / 89,2°**. Niet beter: slechter.
+
+  **Wat er in plaats daarvan mee correleert, staat in de tabel ernaast.** Precies die twee dragen `min |Z| = 0,01 Ω` — een dode kortsluiting. De dérde kandidaat die óók op 1294 Hz kruist, 548,5 · 1294, heeft `min |Z| = 0,86 Ω` en een M-T-fasetracking van 19,9°: dezelfde overname, dezelfde kooi, normale fase. De kooibreedte verklaart het verschil dus niet en de overnamefrequentie evenmin; wat de twee uitzonderingen delen is een gedegenereerde belasting.
+
+  Dat is **V27's eerste bevinding en niet zijn tweede**: casus 1 stelt geen versterkervloer, `ampMinLoadOhm` is afwezig, en niets oordeelt over de belasting (P4, de F0-doctrine). De tuner mag naar 0,01 Ω lopen en doet dat, en een netwerk dat daarheen is gelopen heeft geen bruikbare fase meer. V27 schreef de fasetracking toe aan te weinig zoekruimte; de ruimte is verdrievoudigd en de fase is verslechterd. **De ontbrekende projectinstelling is de verklaring, en de smalle kooi was het toeval dat ernaast lag.**
+
+  V27's openstaande vraag — *"of een segment dat smaller is dan de acceptatie-gladding een kandidaat verdient"* — is daarmee niet beantwoord maar wel onschadelijk: dat segment bestaat niet meer, want het was een artefact van de uitsnijding. Wat blijft openstaan is het echte punt: **casus 1 heeft een versterkervloer nodig voordat een v2-vergelijking iets zegt over wat een tuner kán.**
+  2. **De vergelijkingstabel schuift mee.** Zie het blok hieronder; het vervangt de v2-helft van V27's tabel, waarvan de rijen naar bestanden verwezen die niet meer bestaan. De conclusie van V27 verandert niet — één ketenpas levert geen ontwerp dat de drie bevroren netlists benadert, en de controle op de kruispunten van HUIDIG zélf (5,24 dB) blijft de reden dat dat een uitspraak is over de PAS en niet over de kandidaten.
+
+  ---
+
+  **DE VERGELIJKING NA V28 — tien bevroren v2-kandidaten naast de v1-baseline.**
+
+  Dezelfde metriekbibliotheek op dezelfde meetset (`predesign/comparison.ts`), dezelfde kolommen, niets gerangschikt.
+
+  |---|---|---|---|---|---|---|---|---|---|---|
+  | HUIDIG | 3.46 | 1.73 | 46 | 25.55 | -25.08 | 3.75 | 2.86 | 1.34 | 0.60 | 23.83 |
+  | KAND-A | 3.32 | 1.66 | 52 | 30.93 | 10.48 | 4.25 | 3.22 | 1.47 | 0.87 | 3.69 |
+  | KAND-B | 3.44 | 1.72 | 39 | 19.57 | 11.13 | 3.41 | 4.10 | 1.30 | 0.70 | 3.41 |
+  | KAND-V2-1 (396.7 / 1294 Hz, LR4) | 0.01 | 0.53 | 0 | — | 21.10 | 5.20 | 1.00 | 2.67 | 1.87 | 89.93 |
+  | KAND-V2-2 (466.5 / 1294 Hz, LR4) | 0.01 | 1.82 | 31 | 19.11 | 20.66 | 13.74 | 1.43 | 3.81 | 2.40 | 89.17 |
+  | KAND-V2-3 (396.7 / 2283.5 Hz, LR4) | 1.38 | 0.69 | 1 | 0.46 | -21.26 | 1.49 | 1.13 | 5.15 | 2.96 | 20.63 |
+  | KAND-V2-4 (548.5 / 2283.5 Hz, LR4) | 1.17 | 0.58 | 15 | 12.49 | 4.13 | 1.71 | 1.45 | 5.59 | 3.17 | 20.06 |
+  | KAND-V2-5 (396.7 / 1719 Hz, LR4) | 1.16 | 0.59 | 1 | 1.18 | -16.45 | 1.49 | 1.13 | 5.48 | 3.24 | 17.17 |
+  | KAND-V2-6 (466.5 / 1981.2 Hz, LR4) | 1.14 | 0.57 | 15 | 11.78 | 4.17 | 1.84 | 1.43 | 5.67 | 3.24 | 17.89 |
+  | KAND-V2-7 (396.7 / 1491.4 Hz, LR4) | 1.04 | 0.54 | 2 | 1.35 | -13.76 | 1.49 | 1.15 | 5.57 | 3.35 | 15.98 |
+  | KAND-V2-8 (548.5 / 1719 Hz, LR4) | 0.95 | 0.48 | 16 | 12.35 | 3.75 | 1.76 | 1.46 | 6.15 | 3.48 | 19.99 |
+  | KAND-V2-9 (548.5 / 1491.4 Hz, LR4) | 0.87 | 0.44 | 16 | 12.05 | 3.42 | 1.68 | 1.44 | 6.21 | 3.53 | 20.42 |
+  | KAND-V2-10 (548.5 / 1294 Hz, LR4) | 0.86 | 0.44 | 16 | 11.74 | -12.30 | 1.71 | 1.44 | 6.16 | 3.58 | 19.90 |
+
+  **Wat er tegenover de F4d-tabel verandert, en wat niet.** De v1-baselines zijn identiek — dezelfde bestanden, dezelfde metrieken. De v2-rijen zijn ándere netwerken (ander veld, andere shortlist) en niet betere: de rimpel- en fasekolommen liggen in dezelfde orde als bij F4d, en `min |Z|` blijft 0,01–1,4 Ω tegen 3,3–3,5 Ω voor de baselines. **De conclusie van V27 staat dus overeind en is niet door V28 gered.** Wat V28 wél doet, is de verklaring aanscherpen: de twee slechtste rijen zijn de twee met de gedegenereerde belasting, en dát is de ontbrekende versterkervloer en niet de kandidaat.
+
+  **Wat V28 moet beslissen, en welke uitkomsten open staan.**
+
+  1. **Verwerpen.** Geen enkele uitsnijding op een λ-fractie, ooit. De aanbevolen band blijft advies in de dialoog; de generator dekt altijd het venster. Dit is de huidige toestand, en de nulhypothese.
+  2. **Herbouwen op de synthese.** Een uitsnijding is legitiem als zij uit `verticalLobing` komt: draai de synthese over het kruisgebied per kandidaat-frequentie en snij weg waar de gesynthetiseerde dip een gestelde grens overschrijdt. Dat is een échte A5d.3-voorkeurszone en geen aanname — maar het is duur (een synthese per positie), het vraagt een **gestelde** dipgrens (P4: zonder die grens geen oordeel), en het is niet zonder meer een uitsnijding: een dip is continu en een zone is binair.
+  3. **Behouden als screening met etiket.** De uitsnijding blijft, maar alleen wanneer alle vier de V20-fracties hem eens zijn — de zone is dan de doorsnede van vier zones en de keuze tussen de afstanden is niet meer nodig. Op casus 1's onderste paar is die doorsnede leeg, wat de bruikbaarheid meteen laat zien.
+
+  Optie 2 heeft de voorkeur van de nazorgsessie en is niet uitgevoerd: zij vraagt een gestelde grens die casus 1 niet heeft, en dat is een projectinstelling en geen sessiebesluit. **Open.**
+
+  **Wat er in de code veranderde.** `predesign/candidates.ts` (`APPLY_BAND_EXCISIONS`, `BandExcision`, `excisionsFor`, `excisionSentence`, band = venster), `predesign/xoWindow.ts` (`XoZone.derivedFrom`, verplicht). **Onaangeraakt:** `recommendedBand.ts`, `metrics/lobing.ts`, `verticalLobing`, elke poort, elk budget, de v1-route, en `components/XoWindowAnnotation.tsx`. Met de vlag uit verandert er niets; `toggleRegression.test.ts` blijft byte-identiek.
 
 **Openstaand in deze casus:** groundplane-metingen onder het onderste kruisgebied vóór onderdelenbestelling; HD-sweep; 30°-meting tweeter voor M-G-compleetheid; verzadigings-/formaatcheck grote P-core shunt-spoel.
 

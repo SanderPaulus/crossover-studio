@@ -104,6 +104,18 @@ const gridded: {
 
 const rows: ShortlistInput<Chain3Result>[] = [];
 const perCandidate: Record<string, unknown> = {};
+/**
+ * The last payload built, kept so the recorded measurement setup is READ OFF
+ * the run rather than restated from memory.
+ *
+ * V27 recorded two wrong setups before the definitive one — protections
+ * unarmed (`min |Z|` 0.00 Ω) and `synthMode: 'filter'` where the app runs
+ * `'acoustic'` — and neither was visible in what the manifest wrote down. A
+ * setup nobody can read back off the artefact is a setup that gets remembered
+ * wrong; so the block below is derived, and if the payload changes shape the
+ * record changes with it instead of quietly staying true-sounding.
+ */
+let lastPayload: V2Chain3Payload | null = null;
 let n = 0;
 for (const c of field.field.candidates) {
   n++;
@@ -139,6 +151,7 @@ for (const c of field.field.candidates) {
     },
     candidate: casus1V2Declaration(c, gridded.safety),
   };
+  lastPayload = payload;
   const t0 = Date.now();
   const wire = structuredClone({ id: n, kind: 'v2Chain3One' as const, payload });
   let out: {
@@ -204,6 +217,43 @@ shortlist.rows.forEach((row, i) => {
 });
 
 const commit = execSync('git rev-parse HEAD', { cwd: join(HERE, '..') }).toString().trim();
+
+/* ---- the measurement setup, read off the run (F4d-nazorg, controle 2) ---- *
+ *
+ * Every field here answers a question V27's two failed setups made concrete:
+ * WHICH synthesis, WHICH gates, WHICH budgets, WHICH protections. Absent is
+ * written as absent with its reason, never omitted — an omitted key reads as
+ * an oversight and P4 says absence is a state. */
+if (!lastPayload) throw new Error('no payload was built, so no setup can be recorded');
+const declaredStated = Object.keys(lastPayload.candidate?.declaration.stated ?? {}).sort();
+const meetopstelling = {
+  _:
+    'De opstelling waarmee deze netlists zijn opgewekt, afgelezen van de laatste payload en niet ' +
+    'overgeschreven uit het geheugen. V27 noteert twee foute opstellingen vóór de definitieve; ' +
+    'geen van beide was terug te lezen uit wat het manifest opschreef.',
+  synthMode: CASUS1_V2_SETTINGS.synthMode,
+  synthMode_waarom:
+    "de eigen standaard van de app. Op 'filter' leverde dezelfde keten 31,4 dB rimpel tegen " +
+    "5,2 dB op 'acoustic' (V27); een fixture die niet de synthese van de app draait, meet de app niet.",
+  v2_poorten_gewapend: Object.keys(lastPayload.v2.gates ?? {}).sort(),
+  v2_poorten_waarom:
+    'LEEG, en dat is P4 en geen omissie: casus 1 stelt geen versterkervloer (`ampMinLoadOhm`), ' +
+    'geen dissipatieplafond (M-A), geen EPDR-vloer (M-B) en geen M-C-grens. Leeg veld = geen ' +
+    'oordeel. Zie de min|Z|-kolom van de V27-vergelijking: dat is deze afwezigheid, zichtbaar.',
+  v2_budgetten_gewapend: Object.keys(lastPayload.v2.budgets ?? {}).sort(),
+  v2_budgetten_waarom:
+    'LEEG. De A5d.6-inversies begrenzen waarden; op deze route is er geen gesteld budget dat ' +
+    'de zoektocht inperkt. Het evaluatiebudget komt van de tuner zelf (zie de vingerafdruk: ' +
+    '`budget=tuner`).',
+  beschermingen_via_kandidaat: declaredStated,
+  beschermingen_waarom:
+    'De beschermingen zijn KEUZE-sleutels (V26 rijen 31, 33, 14, 2) en bereiken de tuner sinds ' +
+    'F4d uitsluitend via de verklaring van de kandidaat. `safety`, `staged`, `audit` en ' +
+    '`rSourceDisqualifyOhm` staan hier omdat de eerste versie van deze fixture ze wegliet en ' +
+    'daarmee een dode kortsluiting opleverde die de keten niet zag (V27).',
+  oordeelband_hz: lastPayload.v2.judgeBandHz,
+  seed: lastPayload.v2.determinism?.seed ?? null,
+};
 writeFileSync(
   OUT_MANIFEST,
   `${JSON.stringify(
@@ -215,7 +265,19 @@ writeFileSync(
       grid: { van_hz: CASUS1_V2_GRID[0], tot_hz: CASUS1_V2_GRID[CASUS1_V2_GRID.length - 1], punten: CASUS1_V2_GRID.length },
       oordeelband_hz: CASUS1_V2_BAND_HZ,
       settings: CASUS1_V2_SETTINGS,
+      meetopstelling,
       generator_parameters: field.field.parameters,
+      /* Het veld is groter dan de bevroren verzameling, en dat verschil hoort
+       * genoemd: de generator levert `deliveredSize` kandidaten, de shortlist
+       * laat er `bestanden.length` door. Tot de V28-opschorting waren die twee
+       * gelijk (9 van 9) en was er niets te zien; sinds het veld vijftien telt
+       * weigert de shortlist er werkelijk een aantal, en een lezer die alleen
+       * de bestanden telt zou concluderen dat de generator er tien maakte. */
+      shortlist: {
+        overwogen: field.field.candidates.length,
+        bevroren: written.length,
+        _: 'Zie `buildShortlist`: toelaatbaar gebied plus spreiding. Rangschikt niets (A5e.1).',
+      },
       referentie_kruispunt_hz: field.referenceCrossingHz,
       orde_afleiding: field.orders.map((o) => ({ paar: o.pairLabel, orden: o.orders, waarom: o.why })),
       bestanden: written,
