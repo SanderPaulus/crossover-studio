@@ -1,9 +1,11 @@
 /**
  * F4c — WHAT IS SEARCHED versus HOW IT IS SEARCHED.
  *
- * `NetOptimizeOptions` has 37 top-level keys. Until F4c the v2 route set four
- * of them and inherited the other 33 verbatim from whatever the v1 chain
- * happened to build (`audit §2.2`). That is harmless while v1 also chooses the
+ * `NetOptimizeOptions` had 37 top-level keys when F4c classified them — 38
+ * since V30 added `zFloorBarrier`, and the count is asserted rather than
+ * described (`choiceKeyGuard.test.ts`). Until F4c the v2 route set four of
+ * them and inherited the other 33 verbatim from whatever the v1 chain happened
+ * to build (`audit §2.2`). That is harmless while v1 also chooses the
  * candidates — the options and the candidate come from the same place, so they
  * agree by construction. It stops being harmless the moment v2 supplies its own
  * candidate: a v1 slope target, a v1 cage or a v1 pin would quietly pull that
@@ -37,7 +39,7 @@
  * the build rather than defaulting to "inherit".
  */
 
-import type { NetOptimizeOptions } from '../../netOptimizer.ts';
+import { AMP_FLOOR_BARRIER_WEIGHT, type NetOptimizeOptions } from '../../netOptimizer.ts';
 
 /* ------------------------------------------------------------------ *
  * CHOICE — what is searched
@@ -79,6 +81,13 @@ export const CHOICE_KEYS = [
   'loadFloor',
   'ampMinLoadOhm',
   'zFloorStrict',
+  /* …and whether that last one STEERS or only vetoes. `zFloorBarrier` is a
+   * boolean about a barrier term, which looks like polish and is not: it
+   * decides what the search calls good. With it off the tuner optimises a
+   * network and is then asked whether the amplifier can drive it; with it on
+   * the ohms are part of the answer it is looking for. Two different searches,
+   * so a choice (casebook V30). */
+  'zFloorBarrier',
   'breakupGuard',
   'safety',
   'audit',
@@ -177,6 +186,45 @@ export function choicesKey(
   };
   put('choices', CHOICE_KEYS, choices as Record<string, unknown> | undefined);
   put('weights', GREY_KEYS, weights as Record<string, unknown> | undefined);
+  const grey = greyValues(choices);
+  if (Object.keys(grey).length > 0) out.greyValues = grey;
+  return out;
+}
+
+/* ------------------------------------------------------------------ *
+ * GREY VALUES — numbers inside the tuner that a v2 choice switches on
+ * ------------------------------------------------------------------ */
+
+/**
+ * Numbers that are not options and are not v2-derived, but that a stated
+ * choice hands the search anyway.
+ *
+ * `GREY_KEYS` covers weights the caller can SET. This covers the other kind:
+ * a constant that lives inside `netOptimizer.ts`, was tuned there for a
+ * different purpose, and becomes load-bearing on the v2 route the moment a
+ * candidate arms the choice that reads it. `AMP_FLOOR_BARRIER_WEIGHT` is the
+ * first — 1200, tuned for the repair pass, and nothing has ever measured
+ * whether that stiffness is right for a full search (casebook V30).
+ *
+ * It travels in the fingerprint WITH its provenance, not as a bare number.
+ * Two runs that differ only in this weight must be distinguishable, and a
+ * reader who meets it in a stamp must be able to tell an inherited constant
+ * from a derived one — the confusion V21, V22 and V25 each ended up being
+ * about. Recorded only when the choice that reads it is actually stated: an
+ * unarmed barrier does not hand the search anything.
+ */
+export function greyValues(
+  choices: Partial<CandidateChoices> | undefined,
+): Record<string, { value: number; origin: string }> {
+  const out: Record<string, { value: number; origin: string }> = {};
+  if (choices?.zFloorBarrier === true) {
+    out.zFloorBarrierWeight = {
+      value: AMP_FLOOR_BARRIER_WEIGHT,
+      origin:
+        'overgenomen uit v1, niet v2-afgeleid — de stijfheid van de reparatiebarrière, daar ' +
+        'gemeten voor een lokale reparatiepas en hier hergebruikt als zoekterm (V30)',
+    };
+  }
   return out;
 }
 

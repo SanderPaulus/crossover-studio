@@ -42,6 +42,7 @@ import {
 import { buildReport } from '../src/lib/engine2/report.ts';
 import { ctcKey } from '../src/lib/engine2/metrics/types.ts';
 import { buildCandidateField, candidateFieldKey } from '../src/lib/engine2/predesign/candidateField.ts';
+import { greyValues } from '../src/lib/engine2/optimizer/choices.ts';
 import { declareCandidateChoices } from '../src/lib/engine2/optimizer/candidateDeclaration.ts';
 import { stableJson, stampRun } from '../src/lib/engine2/optimizer/determinism.ts';
 import { gateSettingsKey } from '../src/lib/engine2/optimizer/gates.ts';
@@ -125,6 +126,24 @@ const outcomes: {
   poorten: { poort: string; onderwerp: string; gewapend: boolean; geslaagd: boolean; waarde: number | null; grens: number | null }[];
   geweigerd_door: string[];
   door_de_ketenzelf_gediskwalificeerd: string[];
+  /* WHY THIS CANDIDATE SHIPPED WHAT IT SHIPPED (V30).
+   *
+   * Added because a run whose tune is thrown away wholesale — by the
+   * full-band safety gate, or by the v2 gate hook — returns its SEED, and
+   * from the delivered metrics alone that is indistinguishable from a tune
+   * that simply landed there. The tell is structural: `ampFloorRepair` is set
+   * on every completed pass and absent on the early return. Recording it was
+   * what turned "the barrier changed nothing" into "the barrier's result was
+   * rejected downstream", which are different findings. */
+  pas: {
+    tuned: boolean | null;
+    evaluaties: number | null;
+    safetyNote: string | null;
+    safetyKinds: string[] | null;
+    ampFloorNote: string | null;
+    ampFloorRepair: string | null;
+    vroege_terugkeer: boolean;
+  };
 }[] = [];
 let n = 0;
 for (const c of field.field.candidates) {
@@ -213,6 +232,15 @@ for (const c of field.field.candidates) {
     })),
     geweigerd_door: failed.map((v) => `${v.gate} (${v.subject})`),
     door_de_ketenzelf_gediskwalificeerd: [...(done.result.disqualified ?? [])],
+    pas: {
+      tuned: (done.result.net as { tuned?: boolean }).tuned ?? null,
+      evaluaties: (done.result.net as { evaluations?: number }).evaluations ?? null,
+      safetyNote: (done.result.net as { safetyNote?: string }).safetyNote ?? null,
+      safetyKinds: (done.result.net as { safetyKinds?: string[] }).safetyKinds ?? null,
+      ampFloorNote: (done.result.net as { ampFloorNote?: string }).ampFloorNote ?? null,
+      ampFloorRepair: (done.result.net as { ampFloorRepair?: string }).ampFloorRepair ?? null,
+      vroege_terugkeer: !('ampFloorRepair' in (done.result.net as object)),
+    },
   });
   console.log(
     `  [${n}/${field.field.candidates.length}] ${c.label} → ` +
@@ -234,6 +262,7 @@ for (const c of field.field.candidates) {
 }
 
 /* ---- the run stamp, built exactly as `optimClient.ts` builds it ---------- */
+const lastPayloadForStamp = lastPayload;
 const v2Facts = {};
 const stamp = stampRun(
   {
@@ -244,7 +273,19 @@ const stamp = stampRun(
     bounds: stableJson(budgetSettingsKey({})),
     tuning: stableJson(CASUS1_V2_SETTINGS),
     facts: stableJson(measurementFactsKey(v2Facts)),
-    choices: stableJson(candidateFieldKey(field.field)),
+    /* THE FIELD, AND THE GREY VALUES THE FIELD'S CHOICES SWITCH ON (V30).
+     *
+     * `candidateFieldKey` covers what was searched. It does not cover a number
+     * that lives inside `netOptimizer.ts`, was tuned there for a different
+     * purpose, and becomes load-bearing the moment a candidate arms the choice
+     * that reads it — `AMP_FLOOR_BARRIER_WEIGHT`, once `zFloorBarrier` is
+     * stated. Read off the last payload's declaration rather than restated,
+     * and identical for every candidate in this field, so the ingredient is
+     * stable across candidate order. */
+    choices: stableJson({
+      veld: candidateFieldKey(field.field),
+      grijze_waarden: greyValues(lastPayloadForStamp?.candidate?.declaration.stated),
+    }),
   },
   'completed',
 );
@@ -321,6 +362,26 @@ const meetopstelling = {
     'F4d uitsluitend via de verklaring van de kandidaat. `safety`, `staged`, `audit` en ' +
     '`rSourceDisqualifyOhm` staan hier omdat de eerste versie van deze fixture ze wegliet en ' +
     'daarmee een dode kortsluiting opleverde die de keten niet zag (V27).',
+  /* IS THE FLOOR A ZOEKDOEL OR ONLY A VETO (V30)? Read off the declaration,
+   * because it is a CHOICE key and may only reach the tuner from there. The
+   * grey value beside it is the number that choice hands the search — an
+   * inherited v1 constant, labelled as one. */
+  vloer_is_zoekdoel:
+    lastPayload.candidate?.declaration.stated.zFloorBarrier === true,
+  vloer_is_zoekdoel_waarom:
+    lastPayload.candidate?.declaration.stated.zFloorBarrier === true
+      ? 'GEWAPEND. Sinds V30 is `zFloorBarrier` een keuze-sleutel en wapent de kandidaat hem ' +
+        'zodra er een vloer gesteld is: de barrièreterm zit in élke volle tune, dus de ' +
+        'zoektocht voelt de vloer terwijl zij kiest in plaats van erna. De reparatiepas ' +
+        'erachter is onveranderd.'
+      : 'NIET gewapend: de vloer is dan een veto plus een reparatiepas achteraf, en de ' +
+        'zoektocht die de topologie en de waarden kiest weet niet dat er een vloer is (V30).',
+  grijze_waarden: greyValues(lastPayload.candidate?.declaration.stated),
+  grijze_waarden_waarom:
+    'Getallen die geen optie zijn en niet v2-afgeleid, maar die een gestelde keuze wél aan de ' +
+    'zoektocht meegeeft. Zij reizen mét hun herkomst in de vingerafdruk, want een overgenomen ' +
+    'constante en een afgeleide grootheid zijn hetzelfde getal en een andere bewering ' +
+    '(V21, V22, V25).',
   oordeelband_hz: lastPayload.v2.judgeBandHz,
   seed: lastPayload.v2.determinism?.seed ?? null,
 };

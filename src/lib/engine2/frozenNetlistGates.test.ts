@@ -34,12 +34,19 @@
  *   1. EVERY GATE IS EVALUABLE on every frozen netlist. Fails when a metric
  *      returns null.
  *   2. THE ARMED FLOOR JUDGES, AND EVERY FROZEN NETLIST EITHER CLEARS IT OR IS
- *      NAMED. The ten `KAND-V2-*` netlists were frozen BEFORE the floor was
- *      stated and none of them clears it, so each is listed in
- *      `v2_herkomst.vloeruitzonderingen` with its measured minimum and the
- *      reason. That list is a bookkeeping entry, not a waiver: remove a name
+ *      NAMED. That list is a bookkeeping entry, not a waiver: remove a name
  *      while the netlist still misses the floor and this goes red, which is
  *      exactly what makes it falsifiable. Casebook V30.
+ *
+ *      IT HAS ALREADY MOVED ONCE, and that is the point of keeping it. When it
+ *      was written it held the ten `KAND-V2-*` netlists — frozen before the
+ *      floor was stated, none of them clearing it. V30's follow-up made the
+ *      floor a SEARCH GOAL on the v2 route and regenerated the corpus, and the
+ *      new netlists clear it on their own. So the list now names the ten
+ *      `V28_KAND_*` netlists instead: the same files under a dated name, kept
+ *      deliberately as the "before" half of that comparison rather than
+ *      deleted. A frozen artefact that may not be built is a finding; deleting
+ *      it would have made the finding disappear along with the evidence.
  *   3. THE UNARMED GATES REPORT WITHOUT JUDGING, and the still-useful
  *      counter-proof that the harness bites when a limit IS given, with limits
  *      taken from the field's own measured values so no number is written here.
@@ -220,7 +227,15 @@ describe('the STATED amplifier floor judges every frozen netlist', () => {
       expect(e.gestelde_vloer_ohm).toBe(STATED_FLOOR_OHM);
       expect(e.minZ_ohm, `${e.netlist}: no measured minimum`).not.toBeNull();
       expect(e.minZ_ohm!).toBeLessThan(STATED_FLOOR_OHM!);
-      expect(e.reden, `${e.netlist}: an exception without a reason is a waiver`).toMatch(/V30/);
+      /* The reason has to POINT SOMEWHERE — at a numbered case-book entry, so
+       * a reader can find out what is actually wrong with this netlist. It
+       * used to demand the literal "V30", which pinned the entry number rather
+       * than the requirement: at V30's follow-up three netlists joined the list
+       * for an entirely different reason (V32, the gate reference's 200 Hz
+       * floor) and a correct entry made the test fail. Any entry, and a
+       * sentence long enough to be one. */
+      expect(e.reden, `${e.netlist}: an exception without a reason is a waiver`).toMatch(/\bV\d+\b/);
+      expect(e.reden.length, `${e.netlist}: a stub reason is not a reason`).toBeGreaterThan(80);
     }
   });
 

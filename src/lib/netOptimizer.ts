@@ -279,6 +279,40 @@ export interface NetOptimizeOptions {
    *  floor, and it may spend response quality to get there — a short is not
    *  a tradeable quantity. */
   zFloorStrict?: boolean;
+  /**
+   * Make the amplifier-load floor a SEARCH GOAL instead of a veto with a
+   * repair pass behind it (casebook V30). Default `false`, and the default is
+   * the point: with the key absent this file behaves exactly as it did before
+   * the option existed, which is what `toggleRegression.test.ts` proves.
+   *
+   * WHAT IT SWITCHES ON. The barrier term `AMP_FLOOR_BARRIER_WEIGHT ·
+   * (zShort/floor)²` — until now reachable only from the repair pass — is
+   * armed for every full tune, so the simplex that picks the values feels the
+   * floor while it is choosing rather than after it has chosen. Nothing else
+   * changes: the same term, the same weight, the same repair pass afterwards.
+   *
+   * WHAT IT DOES NOT SWITCH ON. The repair pass's second half — the corridor
+   * cancellation `barr -= 2·corridorSq`, the "branch fidelity yields to the
+   * floor" hierarchy — stays tied to the repair pass, because that is where it
+   * was measured and what it was measured for: a LOCAL retune with no freedom
+   * left has to spend the corridor to lift the dip. A full search has other
+   * places to find the ohms and no reason to abandon the design step's leash
+   * across the whole run.
+   *
+   * WHY IT IS OPT-IN AND NOT SIMPLY TRUE. Read the amplifier-load note above
+   * `BOUNDS`: putting this floor in the objective has been measured twice on
+   * the v1 route and cost 6 dB of ripple once and 17° of phase the other time.
+   * Those measurements stand and this option does not overturn them — it makes
+   * a caller who has generated its own candidates able to ask for the other
+   * trade with its eyes open, and to measure what it costs on ITS field. On
+   * the v2 route it is a CHOICE key (`engine2/optimizer/choices.ts`): it
+   * decides what "good" means, so it may only arm from the candidate.
+   *
+   * INERT WITHOUT A RATING. No `ampMinLoadOhm`, no barrier — P4, and the same
+   * rule the rest of this file follows: an absent floor is not a floor of
+   * zero, it is no judgement at all.
+   */
+  zFloorBarrier?: boolean;
   safety?: {
     freqs: readonly number[];
     w: GriddedResponse;
@@ -610,7 +644,45 @@ export type SafetyKind = 'crossing' | 'valley' | 'protection' | 'load';
  *
  * The IEC-derived report (`loadShortOhm`, impedanceFloor.ts) is exactly that —
  * a report about what the finished design may be SOLD as. It does not
- * disqualify. */
+ * disqualify.
+ *
+ * ── ONE OPT-IN EXCEPTION, ADDED AT V30, AND IT DOES NOT REVOKE THE ABOVE ──
+ *
+ * "Never a term in `fxOf`" was, and remains, what this route does by DEFAULT.
+ * Both measurements behind it stand. What V30 established is that the same
+ * doctrine has a cost nobody had priced: a floor that only vetoes cannot
+ * steer, so a caller that generates its own candidates gets a search which
+ * chooses the topology and the values without ever knowing a floor exists, and
+ * then one locally-seeded repair is asked to lift the result from 1 Ω to 2.6 —
+ * from a point already locked into something else. Measured on casus 1: the
+ * repair fired on all fifteen candidates and failed on all fifteen, and
+ * thirteen came back BYTE-IDENTICAL to a run in which no floor existed.
+ *
+ * So `zFloorBarrier` exists, it is `false` unless a caller asks, and asking is
+ * a decision that route has to be able to defend. It is not a better default
+ * hiding behind an option — it is the other side of a trade, made measurable. */
+
+/**
+ * The repair barrier's weight, named rather than spelled out at its use site.
+ *
+ * INHERITED FROM v1, NOT DERIVED FROM ANYTHING. It was tuned for the repair
+ * pass (see the note at the barrier itself: at 120 a 2.7 Ω residue cost a
+ * negligible 1.2 and the repair stalled), and no measurement says it is the
+ * right stiffness for a full search. A v2 run that arms `zFloorBarrier`
+ * therefore carries this number into its fingerprint as a GREY VALUE with that
+ * provenance attached, so a later reader can tell an inherited constant from a
+ * derived one — the distinction V21, V22 and V25 were all about.
+ *
+ * ITS NAME IS NOT AN ACCIDENT EITHER. The obvious name used the stem of the
+ * app-wide floor constant that was deleted in 18adfe4, and
+ * `noAppWideFloor.test.ts` bans that stem outright — one amplifier's 2.5 Ω
+ * rating became everybody's under a name of exactly that shape. The guard
+ * caught this constant while it was being written, and then caught the comment
+ * that explained the catch, which is what a deliberately blunt guard is for.
+ * The rename is an improvement regardless: this number is a stiffness, not a
+ * floor.
+ */
+export const AMP_FLOOR_BARRIER_WEIGHT = 1200;
 
 /** Soft buildability bounds, as in synthesis. */
 const BOUNDS: Record<'C' | 'L' | 'R', [number, number]> = {
@@ -907,6 +979,15 @@ export function optimizeNetworkValues(
    * nobody asked for.
    */
   const zSlackOhm = ampFloorOhm === null ? 0 : Math.max(1e-3, ampFloorOhm - acceptedAmpFloor(ampFloorOhm));
+  /**
+   * V30 — is the floor a SEARCH GOAL on this run, or only a veto?
+   *
+   * One place decides it, for the same reason `ampFloorOhm` above is one
+   * place: "the floor is armed" must not be able to mean two different things
+   * in two passes. A rating is required — an option without a floor arms
+   * nothing, because there is nothing to be short of (P4).
+   */
+  const zFloorGoal = ampFloorOhm !== null && opts.zFloorBarrier === true;
   /* THE DC LIMIT, PRECOMPUTED. When the Thevenin probe has no usable frequency
    * — the low driver's impedance peak lies below the grid, which is the normal
    * case for a woofer measured from 200 Hz — the audit falls back to the
@@ -2157,9 +2238,25 @@ export function optimizeNetworkValues(
     budgetScale = 1,
     barrier: { rippleDb: number; phaseDeg: number } | null = null,
     applyWindow = true,
-    /** Amp-load floor REPAIR barrier — only the repair pass sets this; the
-     *  normal tune objective must stay clean (see the amplifier-load note). */
-    zFloorBarrier = false,
+    /** Amp-load floor barrier. Two callers now, and the DEFAULT is what
+     *  changed at V30: it used to be a literal `false` (the objective stayed
+     *  clean unless the repair pass asked), and it is now `zFloorGoal` — the
+     *  run-level decision made once beside `ampFloorOhm`. With the option
+     *  absent `zFloorGoal` is false and this is the same default it always
+     *  was. The repair pass still passes `true` explicitly. */
+    zFloorBarrier = zFloorGoal,
+    /** True for the amp-load REPAIR pass and for nothing else.
+     *
+     *  Separated from `zFloorBarrier` at V30, because until then the two were
+     *  the same thing and two behaviours were quietly keyed on that: the
+     *  corridor cancellation below, and the block-coordinate refinement
+     *  further down. Both were measured FOR the repair — a local retune from
+     *  an already-good point — and neither was ever a statement about a search
+     *  that has the floor in its objective. Keeping them on `zFloorBarrier`
+     *  would have made "the floor is a goal" silently also mean "the corridor
+     *  stops counting and the deep polish is skipped", which is two more
+     *  changes than anyone asked for. */
+    zFloorRepairPass = false,
   ): TuneOut => {
     const { work, free } = buildWork(ps);
     if (free.length === 0) {
@@ -2297,10 +2394,11 @@ export function optimizeNetworkValues(
         // Stiff on purpose — the quadratic is weak near the floor (a 2.7 Ω
         // residue at weight 120 cost a negligible 1.2 and the repair stalled
         // there; the gate then rejected the whole tune anyway).
-        // ampFloorOhm is non-null whenever this barrier is armed: only the
-        // repair pass sets zFloorBarrier, and that pass runs only with a
-        // rating given.
-        barr += 1200 * (m.zShortOhm / ampFloorOhm!) ** 2;
+        // ampFloorOhm is non-null whenever this barrier is armed, and that
+        // is enforced in ONE place rather than assumed here: `zFloorGoal`
+        // requires a rating, and the repair pass — the other caller — runs
+        // only when there is one.
+        barr += AMP_FLOOR_BARRIER_WEIGHT * (m.zShortOhm / ampFloorOhm!) ** 2;
         // THE HIERARCHY: the amplifier floor is non-negotiable, branch
         // fidelity yields to it. With the corridor still counting, the
         // repair paid corridor tax on exactly the branch shifts the lift
@@ -2309,7 +2407,15 @@ export function optimizeNetworkValues(
         // was rejected wholesale, and the scan shipped nine raw seeds with
         // 4.4–6.6 dB ripple and 0.1–2.0 Ω minima. The xo-window class and
         // the ranking still judge whatever the repair does to the branches.
-        barr -= 2 * m.corridorSq;
+        //
+        // REPAIR PASS ONLY (V30). That measurement is about a retune with no
+        // freedom left: seeded on a finished network, one round, lift the dip
+        // or fail. A full search armed with the barrier is not in that
+        // position — it can find the ohms in the topology it is still
+        // choosing — so it keeps the design step's leash. Cancelling the
+        // corridor for a whole run would be a second change riding along on
+        // the first, and V30 is about the first.
+        if (zFloorRepairPass) barr -= 2 * m.corridorSq;
       }
       return fxOf(m) + barr + 8 * penalty;
     };
@@ -2339,7 +2445,7 @@ export function optimizeNetworkValues(
      * (budgetScale ≥ 1, no amp-floor repair): the 0.6-scale retunes are local
      * recoveries from an already-good point where the deep search does not
      * pay for its runtime. ---- */
-    if (midB !== undefined && !zFloorBarrier && budgetScale >= 1 && free.length > 9) {
+    if (midB !== undefined && !zFloorRepairPass && budgetScale >= 1 && free.length > 9) {
       for (let start = 0; start < free.length; start += 3) {
         const ids: number[] = [];
         for (let k = start; k < Math.min(start + 6, free.length); k++) ids.push(k);
@@ -3067,10 +3173,10 @@ export function optimizeNetworkValues(
       // Iterate the barrier retune (max 3 warm-started rounds): one round's
       // simplex budget regularly stalls short (measured in the app chain:
       // 1.2 → 2.14 Ω in round one, threshold 2.5).
-      let rep = tune(cur.parts, 1, opts.staged ?? null, true, true);
+      let rep = tune(cur.parts, 1, opts.staged ?? null, true, true, true);
       let zRepI = worstZ(fullOf(rep.parts), rep.parts);
       for (let round = 1; round < 3 && !repairedEnough(zRepI.short); round++) {
-        const again = tune(rep.parts, 1, opts.staged ?? null, true, true);
+        const again = tune(rep.parts, 1, opts.staged ?? null, true, true, true);
         const zAgain = worstZ(fullOf(again.parts), again.parts);
         if (!(zAgain.short < zRepI.short - 1e-3)) break; // no longer improving
         rep = again;

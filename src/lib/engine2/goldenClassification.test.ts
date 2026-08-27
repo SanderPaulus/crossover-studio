@@ -148,11 +148,19 @@ const UNCLASSED_TOP_LEVEL: readonly string[] = [
  * NOT the thing being checked — and the count is asserted against the netlist
  * files the manifest names, so an empty or shrunken set fails instead of
  * passing quietly.
+ *
+ * TWO FAMILIES SINCE V30, and the predicate names both rather than matching a
+ * prefix. `KAND_V2_*` is the live corpus; `V28_KAND_*` is the dated one, the
+ * ten netlists frozen while the stated amplifier floor was still only a veto,
+ * kept as the "before" half of the V30 comparison. A `startsWith('KAND_V2')`
+ * would have covered the first and missed the second — which is the exact
+ * shape of the hole this block was written to close, one delivery earlier.
  */
+const FROZEN_V2_FAMILIES = [/^KAND_V2_\d+$/, /^V28_KAND_\d+$/];
 const V2_CANDIDATE_PATHS: readonly string[] = Object.keys(
   (golden.manifest_en_geometrie as unknown as { netlists: Record<string, string> }).netlists,
 )
-  .filter((k) => k.startsWith('KAND_V2'))
+  .filter((k) => FROZEN_V2_FAMILIES.some((re) => re.test(k)))
   .map((k) => `kandidaten.${k}`);
 
 /** The full list the scan runs over: the fixed blocks plus every frozen v2 candidate. */
@@ -190,8 +198,13 @@ describe('F4a — every golden reference says what it is a function of', () => {
      * be empty in BOTH places, and that is what this compares. */
     const named = Object.keys(
       (golden.manifest_en_geometrie as unknown as { netlists: Record<string, string> }).netlists,
-    ).filter((k) => k.startsWith('KAND_V2'));
+    ).filter((k) => FROZEN_V2_FAMILIES.some((re) => re.test(k)));
     expect(V2_CANDIDATE_PATHS).toHaveLength(named.length);
+    /* Both families are actually present, or the predicate above could have
+     * quietly stopped matching one of them and this test would still pass. */
+    for (const re of FROZEN_V2_FAMILIES) {
+      expect(named.some((k) => re.test(k)), `no frozen netlist matches ${re}`).toBe(true);
+    }
   });
 
   it('a NEW top-level block without a class fails here', () => {

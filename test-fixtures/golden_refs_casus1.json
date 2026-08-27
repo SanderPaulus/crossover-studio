@@ -27,7 +27,8 @@
    "klasse_B": 71,
    "klasse_C": 0,
    "sinds_F4a": "V20 (27-08-2026) heeft 21 klasse-B-bladeren toegevoegd: de vier lambda-fracties per kruispunt per netlist, waarvan er een de HERNOEMDE lobing_wm_lambda is. De telling hierboven blijft de F4a-momentopname en wordt niet bijgewerkt - een momentopname die met elke oplevering meebeweegt is geen momentopname. Wat blijft gelden is de bevinding eronder: nog steeds nul klasse C, want ook deze vier zijn functies van meting plus netlist-BESTAND.",
-   "sinds_F4d": "F4d (27-08-2026), herzien bij de F4d-nazorg (V28): 100 klasse-B-bladeren, tien metrieken op elk van de 10 bevroren KAND-V2-netlists. Het waren er negen tot de nazorg de F3c-uitsnijding opschortte; de mid→tweeter-as ging van drie posities naar vijf en het veld van negen naar vijftien. De F4a-momentopname hierboven wordt niet bijgewerkt, om dezelfde reden als bij V20 — een momentopname die met elke oplevering meebeweegt is er geen. De bevinding blijft: nog steeds NUL klasse C. Deze netwerken komen uit een v2-run, maar de referenties hangen aan de BESTANDEN, en een volgende run die andere netwerken oplevert verschuift deze getallen dus niet — hij levert andere bestanden op. Dat is bij de nazorg ook precies wat gebeurde, en het is de reden dat de verandering geen enkele referentie ONGELDIG maakte."
+   "sinds_F4d": "F4d (27-08-2026), herzien bij de F4d-nazorg (V28): 100 klasse-B-bladeren, tien metrieken op elk van de 10 bevroren KAND-V2-netlists. Het waren er negen tot de nazorg de F3c-uitsnijding opschortte; de mid→tweeter-as ging van drie posities naar vijf en het veld van negen naar vijftien. De F4a-momentopname hierboven wordt niet bijgewerkt, om dezelfde reden als bij V20 — een momentopname die met elke oplevering meebeweegt is er geen. De bevinding blijft: nog steeds NUL klasse C. Deze netwerken komen uit een v2-run, maar de referenties hangen aan de BESTANDEN, en een volgende run die andere netwerken oplevert verschuift deze getallen dus niet — hij levert andere bestanden op. Dat is bij de nazorg ook precies wat gebeurde, en het is de reden dat de verandering geen enkele referentie ONGELDIG maakte.",
+   "sinds_V30": "V30 (27-08-2026): het KAND-V2-corpus is opnieuw opgewekt met de gestelde vloer als ZOEKDOEL, en het corpus dat het vervangt is niet weggegooid maar hernoemd: 10 blokken `V28_KAND_*`, byte-identieke bestanden onder een gedateerde naam, met dezelfde tien metrieken en dezelfde klasse B. Dat is geen referentie aanpassen — het zijn dezelfde netlists, en de nieuwe staan ernaast in plaats van eroverheen, zodat de vóór/ná-vergelijking van deze entry reproduceerbaar blijft uit de repository zelf. De bevinding van F4a staat nog steeds: NUL klasse C. Wat wél veranderde is de uitzonderingslijst: zij noemde tien KAND-V2-netlists en noemt nu tien V28-KAND-netlists, want het nieuwe corpus haalt de vloer op eigen kracht."
   },
   "besluiten": {
    "_": "Drie mogelijke besluiten per referentie, conform de F4a-opdracht. De volledige inventarisatietabel - referentie, klasse, consumerende test met bestand en regel, besluit, reden - staat in het casusboek onder V19.",
@@ -431,10 +432,10 @@
    }
   },
   "_spl_venster_opmerking": "Het bij F1 VERWIJDERDE spl_venster_dB is niet teruggekeerd: dat was een getal zonder band. Wat er nu staat is een andere grootheid met een andere definitie en volledig vastgelegde parameters (zie _F3_respons_oordeel) — geen herstel van de ingetrokken referentie.",
-  "KAND_V2_1": {
+  "V28_KAND_1": {
    "klasse": "B",
    "afhankelijkheid": "meting+netlist",
-   "klasse_toelichting": "Metrieken op de VASTE netlist manifest_en_geometrie.netlists.KAND_V2_1, een BESTAND in test-fixtures/casus1/. Het netwerk komt uit een v2-run (zie manifest_en_geometrie.v2_herkomst), maar de referentie hangt aan het bestand en niet aan die run — precies zoals de drie v1-kandidaten. Daarom klasse B en geen klasse C.",
+   "klasse_toelichting": "HET GEDATEERDE V28-CORPUS. Metrieken op de VASTE netlist manifest_en_geometrie.netlists.V28_KAND_1, een BESTAND in test-fixtures/casus1/ — een byte-identieke kopie van wat tot V30 KAND-V2-1 heette. Bewaard, niet vervangen: deze tien netwerken zijn getuned terwijl de gestelde vloer alleen een veto was, en zij zijn het meetobject waartegen het V30-corpus (kandidaten.KAND_V2_*) wordt afgezet. Een referentie aanpassen zou de vergelijking hebben vernietigd; een netlist hernoemen en de nieuwe ernaast zetten bewaart hem. Klasse B om dezelfde reden als altijd: de referentie hangt aan het bestand en niet aan de run die het opleverde. ZIJ HALEN DE GESTELDE VLOER NIET en staan daarom alle tien in manifest_en_geometrie.v2_herkomst.vloeruitzonderingen — mag niet gebouwd worden.",
    "minZ": 0.01,
    "minEPDR": 0.53,
    "dissipatie_pct": 0,
@@ -446,10 +447,10 @@
    "wm_fase_oct": 8.2,
    "mt_fase_oct": 89.93
   },
-  "KAND_V2_2": {
+  "V28_KAND_2": {
    "klasse": "B",
    "afhankelijkheid": "meting+netlist",
-   "klasse_toelichting": "Metrieken op de VASTE netlist manifest_en_geometrie.netlists.KAND_V2_2, een BESTAND in test-fixtures/casus1/. Het netwerk komt uit een v2-run (zie manifest_en_geometrie.v2_herkomst), maar de referentie hangt aan het bestand en niet aan die run — precies zoals de drie v1-kandidaten. Daarom klasse B en geen klasse C.",
+   "klasse_toelichting": "HET GEDATEERDE V28-CORPUS. Metrieken op de VASTE netlist manifest_en_geometrie.netlists.V28_KAND_2, een BESTAND in test-fixtures/casus1/ — een byte-identieke kopie van wat tot V30 KAND-V2-2 heette. Bewaard, niet vervangen: deze tien netwerken zijn getuned terwijl de gestelde vloer alleen een veto was, en zij zijn het meetobject waartegen het V30-corpus (kandidaten.KAND_V2_*) wordt afgezet. Een referentie aanpassen zou de vergelijking hebben vernietigd; een netlist hernoemen en de nieuwe ernaast zetten bewaart hem. Klasse B om dezelfde reden als altijd: de referentie hangt aan het bestand en niet aan de run die het opleverde. ZIJ HALEN DE GESTELDE VLOER NIET en staan daarom alle tien in manifest_en_geometrie.v2_herkomst.vloeruitzonderingen — mag niet gebouwd worden.",
    "minZ": 0.01,
    "minEPDR": 1.82,
    "dissipatie_pct": 31,
@@ -461,10 +462,10 @@
    "wm_fase_oct": 25.68,
    "mt_fase_oct": 89.17
   },
-  "KAND_V2_3": {
+  "V28_KAND_3": {
    "klasse": "B",
    "afhankelijkheid": "meting+netlist",
-   "klasse_toelichting": "Metrieken op de VASTE netlist manifest_en_geometrie.netlists.KAND_V2_3, een BESTAND in test-fixtures/casus1/. Het netwerk komt uit een v2-run (zie manifest_en_geometrie.v2_herkomst), maar de referentie hangt aan het bestand en niet aan die run — precies zoals de drie v1-kandidaten. Daarom klasse B en geen klasse C.",
+   "klasse_toelichting": "HET GEDATEERDE V28-CORPUS. Metrieken op de VASTE netlist manifest_en_geometrie.netlists.V28_KAND_3, een BESTAND in test-fixtures/casus1/ — een byte-identieke kopie van wat tot V30 KAND-V2-3 heette. Bewaard, niet vervangen: deze tien netwerken zijn getuned terwijl de gestelde vloer alleen een veto was, en zij zijn het meetobject waartegen het V30-corpus (kandidaten.KAND_V2_*) wordt afgezet. Een referentie aanpassen zou de vergelijking hebben vernietigd; een netlist hernoemen en de nieuwe ernaast zetten bewaart hem. Klasse B om dezelfde reden als altijd: de referentie hangt aan het bestand en niet aan de run die het opleverde. ZIJ HALEN DE GESTELDE VLOER NIET en staan daarom alle tien in manifest_en_geometrie.v2_herkomst.vloeruitzonderingen — mag niet gebouwd worden.",
    "minZ": 1.38,
    "minEPDR": 0.69,
    "dissipatie_pct": 1,
@@ -476,10 +477,10 @@
    "wm_fase_oct": 20.63,
    "mt_fase_oct": 20.38
   },
-  "KAND_V2_4": {
+  "V28_KAND_4": {
    "klasse": "B",
    "afhankelijkheid": "meting+netlist",
-   "klasse_toelichting": "Metrieken op de VASTE netlist manifest_en_geometrie.netlists.KAND_V2_4, een BESTAND in test-fixtures/casus1/. Het netwerk komt uit een v2-run (zie manifest_en_geometrie.v2_herkomst), maar de referentie hangt aan het bestand en niet aan die run — precies zoals de drie v1-kandidaten. Daarom klasse B en geen klasse C.",
+   "klasse_toelichting": "HET GEDATEERDE V28-CORPUS. Metrieken op de VASTE netlist manifest_en_geometrie.netlists.V28_KAND_4, een BESTAND in test-fixtures/casus1/ — een byte-identieke kopie van wat tot V30 KAND-V2-4 heette. Bewaard, niet vervangen: deze tien netwerken zijn getuned terwijl de gestelde vloer alleen een veto was, en zij zijn het meetobject waartegen het V30-corpus (kandidaten.KAND_V2_*) wordt afgezet. Een referentie aanpassen zou de vergelijking hebben vernietigd; een netlist hernoemen en de nieuwe ernaast zetten bewaart hem. Klasse B om dezelfde reden als altijd: de referentie hangt aan het bestand en niet aan de run die het opleverde. ZIJ HALEN DE GESTELDE VLOER NIET en staan daarom alle tien in manifest_en_geometrie.v2_herkomst.vloeruitzonderingen — mag niet gebouwd worden.",
    "minZ": 1.17,
    "minEPDR": 0.58,
    "dissipatie_pct": 15,
@@ -491,10 +492,10 @@
    "wm_fase_oct": 18.05,
    "mt_fase_oct": 20.06
   },
-  "KAND_V2_5": {
+  "V28_KAND_5": {
    "klasse": "B",
    "afhankelijkheid": "meting+netlist",
-   "klasse_toelichting": "Metrieken op de VASTE netlist manifest_en_geometrie.netlists.KAND_V2_5, een BESTAND in test-fixtures/casus1/. Het netwerk komt uit een v2-run (zie manifest_en_geometrie.v2_herkomst), maar de referentie hangt aan het bestand en niet aan die run — precies zoals de drie v1-kandidaten. Daarom klasse B en geen klasse C.",
+   "klasse_toelichting": "HET GEDATEERDE V28-CORPUS. Metrieken op de VASTE netlist manifest_en_geometrie.netlists.V28_KAND_5, een BESTAND in test-fixtures/casus1/ — een byte-identieke kopie van wat tot V30 KAND-V2-5 heette. Bewaard, niet vervangen: deze tien netwerken zijn getuned terwijl de gestelde vloer alleen een veto was, en zij zijn het meetobject waartegen het V30-corpus (kandidaten.KAND_V2_*) wordt afgezet. Een referentie aanpassen zou de vergelijking hebben vernietigd; een netlist hernoemen en de nieuwe ernaast zetten bewaart hem. Klasse B om dezelfde reden als altijd: de referentie hangt aan het bestand en niet aan de run die het opleverde. ZIJ HALEN DE GESTELDE VLOER NIET en staan daarom alle tien in manifest_en_geometrie.v2_herkomst.vloeruitzonderingen — mag niet gebouwd worden.",
    "minZ": 1.16,
    "minEPDR": 0.59,
    "dissipatie_pct": 1,
@@ -506,10 +507,10 @@
    "wm_fase_oct": 6.4,
    "mt_fase_oct": 17.17
   },
-  "KAND_V2_6": {
+  "V28_KAND_6": {
    "klasse": "B",
    "afhankelijkheid": "meting+netlist",
-   "klasse_toelichting": "Metrieken op de VASTE netlist manifest_en_geometrie.netlists.KAND_V2_6, een BESTAND in test-fixtures/casus1/. Het netwerk komt uit een v2-run (zie manifest_en_geometrie.v2_herkomst), maar de referentie hangt aan het bestand en niet aan die run — precies zoals de drie v1-kandidaten. Daarom klasse B en geen klasse C.",
+   "klasse_toelichting": "HET GEDATEERDE V28-CORPUS. Metrieken op de VASTE netlist manifest_en_geometrie.netlists.V28_KAND_6, een BESTAND in test-fixtures/casus1/ — een byte-identieke kopie van wat tot V30 KAND-V2-6 heette. Bewaard, niet vervangen: deze tien netwerken zijn getuned terwijl de gestelde vloer alleen een veto was, en zij zijn het meetobject waartegen het V30-corpus (kandidaten.KAND_V2_*) wordt afgezet. Een referentie aanpassen zou de vergelijking hebben vernietigd; een netlist hernoemen en de nieuwe ernaast zetten bewaart hem. Klasse B om dezelfde reden als altijd: de referentie hangt aan het bestand en niet aan de run die het opleverde. ZIJ HALEN DE GESTELDE VLOER NIET en staan daarom alle tien in manifest_en_geometrie.v2_herkomst.vloeruitzonderingen — mag niet gebouwd worden.",
    "minZ": 1.14,
    "minEPDR": 0.57,
    "dissipatie_pct": 15,
@@ -521,10 +522,10 @@
    "wm_fase_oct": 10.47,
    "mt_fase_oct": 17.89
   },
-  "KAND_V2_7": {
+  "V28_KAND_7": {
    "klasse": "B",
    "afhankelijkheid": "meting+netlist",
-   "klasse_toelichting": "Metrieken op de VASTE netlist manifest_en_geometrie.netlists.KAND_V2_7, een BESTAND in test-fixtures/casus1/. Het netwerk komt uit een v2-run (zie manifest_en_geometrie.v2_herkomst), maar de referentie hangt aan het bestand en niet aan die run — precies zoals de drie v1-kandidaten. Daarom klasse B en geen klasse C.",
+   "klasse_toelichting": "HET GEDATEERDE V28-CORPUS. Metrieken op de VASTE netlist manifest_en_geometrie.netlists.V28_KAND_7, een BESTAND in test-fixtures/casus1/ — een byte-identieke kopie van wat tot V30 KAND-V2-7 heette. Bewaard, niet vervangen: deze tien netwerken zijn getuned terwijl de gestelde vloer alleen een veto was, en zij zijn het meetobject waartegen het V30-corpus (kandidaten.KAND_V2_*) wordt afgezet. Een referentie aanpassen zou de vergelijking hebben vernietigd; een netlist hernoemen en de nieuwe ernaast zetten bewaart hem. Klasse B om dezelfde reden als altijd: de referentie hangt aan het bestand en niet aan de run die het opleverde. ZIJ HALEN DE GESTELDE VLOER NIET en staan daarom alle tien in manifest_en_geometrie.v2_herkomst.vloeruitzonderingen — mag niet gebouwd worden.",
    "minZ": 1.04,
    "minEPDR": 0.54,
    "dissipatie_pct": 2,
@@ -536,10 +537,10 @@
    "wm_fase_oct": 4.47,
    "mt_fase_oct": 15.98
   },
-  "KAND_V2_8": {
+  "V28_KAND_8": {
    "klasse": "B",
    "afhankelijkheid": "meting+netlist",
-   "klasse_toelichting": "Metrieken op de VASTE netlist manifest_en_geometrie.netlists.KAND_V2_8, een BESTAND in test-fixtures/casus1/. Het netwerk komt uit een v2-run (zie manifest_en_geometrie.v2_herkomst), maar de referentie hangt aan het bestand en niet aan die run — precies zoals de drie v1-kandidaten. Daarom klasse B en geen klasse C.",
+   "klasse_toelichting": "HET GEDATEERDE V28-CORPUS. Metrieken op de VASTE netlist manifest_en_geometrie.netlists.V28_KAND_8, een BESTAND in test-fixtures/casus1/ — een byte-identieke kopie van wat tot V30 KAND-V2-8 heette. Bewaard, niet vervangen: deze tien netwerken zijn getuned terwijl de gestelde vloer alleen een veto was, en zij zijn het meetobject waartegen het V30-corpus (kandidaten.KAND_V2_*) wordt afgezet. Een referentie aanpassen zou de vergelijking hebben vernietigd; een netlist hernoemen en de nieuwe ernaast zetten bewaart hem. Klasse B om dezelfde reden als altijd: de referentie hangt aan het bestand en niet aan de run die het opleverde. ZIJ HALEN DE GESTELDE VLOER NIET en staan daarom alle tien in manifest_en_geometrie.v2_herkomst.vloeruitzonderingen — mag niet gebouwd worden.",
    "minZ": 0.95,
    "minEPDR": 0.48,
    "dissipatie_pct": 16,
@@ -551,10 +552,10 @@
    "wm_fase_oct": 8.38,
    "mt_fase_oct": 19.99
   },
-  "KAND_V2_9": {
+  "V28_KAND_9": {
    "klasse": "B",
    "afhankelijkheid": "meting+netlist",
-   "klasse_toelichting": "Metrieken op de VASTE netlist manifest_en_geometrie.netlists.KAND_V2_9, een BESTAND in test-fixtures/casus1/. Het netwerk komt uit een v2-run (zie manifest_en_geometrie.v2_herkomst), maar de referentie hangt aan het bestand en niet aan die run — precies zoals de drie v1-kandidaten. Daarom klasse B en geen klasse C.",
+   "klasse_toelichting": "HET GEDATEERDE V28-CORPUS. Metrieken op de VASTE netlist manifest_en_geometrie.netlists.V28_KAND_9, een BESTAND in test-fixtures/casus1/ — een byte-identieke kopie van wat tot V30 KAND-V2-9 heette. Bewaard, niet vervangen: deze tien netwerken zijn getuned terwijl de gestelde vloer alleen een veto was, en zij zijn het meetobject waartegen het V30-corpus (kandidaten.KAND_V2_*) wordt afgezet. Een referentie aanpassen zou de vergelijking hebben vernietigd; een netlist hernoemen en de nieuwe ernaast zetten bewaart hem. Klasse B om dezelfde reden als altijd: de referentie hangt aan het bestand en niet aan de run die het opleverde. ZIJ HALEN DE GESTELDE VLOER NIET en staan daarom alle tien in manifest_en_geometrie.v2_herkomst.vloeruitzonderingen — mag niet gebouwd worden.",
    "minZ": 0.87,
    "minEPDR": 0.44,
    "dissipatie_pct": 16,
@@ -566,10 +567,10 @@
    "wm_fase_oct": 13.09,
    "mt_fase_oct": 20.42
   },
-  "KAND_V2_10": {
+  "V28_KAND_10": {
    "klasse": "B",
    "afhankelijkheid": "meting+netlist",
-   "klasse_toelichting": "Metrieken op de VASTE netlist manifest_en_geometrie.netlists.KAND_V2_10, een BESTAND in test-fixtures/casus1/. Het netwerk komt uit een v2-run (zie manifest_en_geometrie.v2_herkomst), maar de referentie hangt aan het bestand en niet aan die run — precies zoals de drie v1-kandidaten. Daarom klasse B en geen klasse C.",
+   "klasse_toelichting": "HET GEDATEERDE V28-CORPUS. Metrieken op de VASTE netlist manifest_en_geometrie.netlists.V28_KAND_10, een BESTAND in test-fixtures/casus1/ — een byte-identieke kopie van wat tot V30 KAND-V2-10 heette. Bewaard, niet vervangen: deze tien netwerken zijn getuned terwijl de gestelde vloer alleen een veto was, en zij zijn het meetobject waartegen het V30-corpus (kandidaten.KAND_V2_*) wordt afgezet. Een referentie aanpassen zou de vergelijking hebben vernietigd; een netlist hernoemen en de nieuwe ernaast zetten bewaart hem. Klasse B om dezelfde reden als altijd: de referentie hangt aan het bestand en niet aan de run die het opleverde. ZIJ HALEN DE GESTELDE VLOER NIET en staan daarom alle tien in manifest_en_geometrie.v2_herkomst.vloeruitzonderingen — mag niet gebouwd worden.",
    "minZ": 0.86,
    "minEPDR": 0.44,
    "dissipatie_pct": 16,
@@ -580,6 +581,156 @@
    "spl_venster_pm_dB": 6.16,
    "wm_fase_oct": 15.53,
    "mt_fase_oct": 19.9
+  },
+  "KAND_V2_1": {
+   "klasse": "B",
+   "afhankelijkheid": "meting+netlist",
+   "klasse_toelichting": "Metrieken op de VASTE netlist manifest_en_geometrie.netlists.KAND_V2_1, een BESTAND in test-fixtures/casus1/. Het netwerk komt uit een v2-run (zie manifest_en_geometrie.v2_herkomst), maar de referentie hangt aan het bestand en niet aan die run — precies zoals de drie v1-kandidaten. Daarom klasse B en geen klasse C.",
+   "minZ": 2.45,
+   "minEPDR": 1.25,
+   "dissipatie_pct": 1,
+   "Qes_mult": 1,
+   "lf_bult_extra_dB": 4.6,
+   "V_tweeter_op_fs_dB": -15.99,
+   "rms_vlakheid_dB": 1.71,
+   "spl_venster_pm_dB": 3.7,
+   "wm_fase_oct": 11.81,
+   "mt_fase_oct": 30.52
+  },
+  "KAND_V2_2": {
+   "klasse": "B",
+   "afhankelijkheid": "meting+netlist",
+   "klasse_toelichting": "Metrieken op de VASTE netlist manifest_en_geometrie.netlists.KAND_V2_2, een BESTAND in test-fixtures/casus1/. Het netwerk komt uit een v2-run (zie manifest_en_geometrie.v2_herkomst), maar de referentie hangt aan het bestand en niet aan die run — precies zoals de drie v1-kandidaten. Daarom klasse B en geen klasse C.",
+   "minZ": 2.36,
+   "minEPDR": 1.22,
+   "dissipatie_pct": 1,
+   "Qes_mult": 1,
+   "lf_bult_extra_dB": 3.52,
+   "V_tweeter_op_fs_dB": -19.56,
+   "rms_vlakheid_dB": 1.79,
+   "spl_venster_pm_dB": 3.78,
+   "wm_fase_oct": 7.17,
+   "mt_fase_oct": 31.45
+  },
+  "KAND_V2_3": {
+   "klasse": "B",
+   "afhankelijkheid": "meting+netlist",
+   "klasse_toelichting": "Metrieken op de VASTE netlist manifest_en_geometrie.netlists.KAND_V2_3, een BESTAND in test-fixtures/casus1/. Het netwerk komt uit een v2-run (zie manifest_en_geometrie.v2_herkomst), maar de referentie hangt aan het bestand en niet aan die run — precies zoals de drie v1-kandidaten. Daarom klasse B en geen klasse C.",
+   "minZ": 2.59,
+   "minEPDR": 1.29,
+   "dissipatie_pct": 22,
+   "Qes_mult": 1.44,
+   "lf_bult_extra_dB": 4.22,
+   "V_tweeter_op_fs_dB": -21.7,
+   "rms_vlakheid_dB": 1.81,
+   "spl_venster_pm_dB": 3.44,
+   "wm_fase_oct": 16.96,
+   "mt_fase_oct": 34.01
+  },
+  "KAND_V2_4": {
+   "klasse": "B",
+   "afhankelijkheid": "meting+netlist",
+   "klasse_toelichting": "Metrieken op de VASTE netlist manifest_en_geometrie.netlists.KAND_V2_4, een BESTAND in test-fixtures/casus1/. Het netwerk komt uit een v2-run (zie manifest_en_geometrie.v2_herkomst), maar de referentie hangt aan het bestand en niet aan die run — precies zoals de drie v1-kandidaten. Daarom klasse B en geen klasse C.",
+   "minZ": 2.58,
+   "minEPDR": 1.29,
+   "dissipatie_pct": 19,
+   "Qes_mult": 1.35,
+   "lf_bult_extra_dB": 4.02,
+   "V_tweeter_op_fs_dB": -23.91,
+   "rms_vlakheid_dB": 1.84,
+   "spl_venster_pm_dB": 3.37,
+   "wm_fase_oct": 16.69,
+   "mt_fase_oct": 29.04
+  },
+  "KAND_V2_5": {
+   "klasse": "B",
+   "afhankelijkheid": "meting+netlist",
+   "klasse_toelichting": "Metrieken op de VASTE netlist manifest_en_geometrie.netlists.KAND_V2_5, een BESTAND in test-fixtures/casus1/. Het netwerk komt uit een v2-run (zie manifest_en_geometrie.v2_herkomst), maar de referentie hangt aan het bestand en niet aan die run — precies zoals de drie v1-kandidaten. Daarom klasse B en geen klasse C.",
+   "minZ": 2.57,
+   "minEPDR": 1.29,
+   "dissipatie_pct": 38,
+   "Qes_mult": 1.36,
+   "lf_bult_extra_dB": 1.69,
+   "V_tweeter_op_fs_dB": -13.78,
+   "rms_vlakheid_dB": 1.86,
+   "spl_venster_pm_dB": 4.17,
+   "wm_fase_oct": 40.51,
+   "mt_fase_oct": 13.78
+  },
+  "KAND_V2_6": {
+   "klasse": "B",
+   "afhankelijkheid": "meting+netlist",
+   "klasse_toelichting": "Metrieken op de VASTE netlist manifest_en_geometrie.netlists.KAND_V2_6, een BESTAND in test-fixtures/casus1/. Het netwerk komt uit een v2-run (zie manifest_en_geometrie.v2_herkomst), maar de referentie hangt aan het bestand en niet aan die run — precies zoals de drie v1-kandidaten. Daarom klasse B en geen klasse C.",
+   "minZ": 2.39,
+   "minEPDR": 1.22,
+   "dissipatie_pct": 1,
+   "Qes_mult": 1,
+   "lf_bult_extra_dB": 4.71,
+   "V_tweeter_op_fs_dB": -23.24,
+   "rms_vlakheid_dB": 1.87,
+   "spl_venster_pm_dB": 3.43,
+   "wm_fase_oct": 11.22,
+   "mt_fase_oct": 26.68
+  },
+  "KAND_V2_7": {
+   "klasse": "B",
+   "afhankelijkheid": "meting+netlist",
+   "klasse_toelichting": "Metrieken op de VASTE netlist manifest_en_geometrie.netlists.KAND_V2_7, een BESTAND in test-fixtures/casus1/. Het netwerk komt uit een v2-run (zie manifest_en_geometrie.v2_herkomst), maar de referentie hangt aan het bestand en niet aan die run — precies zoals de drie v1-kandidaten. Daarom klasse B en geen klasse C.",
+   "minZ": 2.6,
+   "minEPDR": 1.3,
+   "dissipatie_pct": 31,
+   "Qes_mult": 1.59,
+   "lf_bult_extra_dB": 3.94,
+   "V_tweeter_op_fs_dB": -12.24,
+   "rms_vlakheid_dB": 1.88,
+   "spl_venster_pm_dB": 4.2,
+   "wm_fase_oct": 20.83,
+   "mt_fase_oct": 27.78
+  },
+  "KAND_V2_8": {
+   "klasse": "B",
+   "afhankelijkheid": "meting+netlist",
+   "klasse_toelichting": "Metrieken op de VASTE netlist manifest_en_geometrie.netlists.KAND_V2_8, een BESTAND in test-fixtures/casus1/. Het netwerk komt uit een v2-run (zie manifest_en_geometrie.v2_herkomst), maar de referentie hangt aan het bestand en niet aan die run — precies zoals de drie v1-kandidaten. Daarom klasse B en geen klasse C.",
+   "minZ": 2.59,
+   "minEPDR": 1.3,
+   "dissipatie_pct": 29,
+   "Qes_mult": 1.37,
+   "lf_bult_extra_dB": 3.44,
+   "V_tweeter_op_fs_dB": -23.81,
+   "rms_vlakheid_dB": 1.89,
+   "spl_venster_pm_dB": 3.48,
+   "wm_fase_oct": 19.86,
+   "mt_fase_oct": 31.2
+  },
+  "KAND_V2_9": {
+   "klasse": "B",
+   "afhankelijkheid": "meting+netlist",
+   "klasse_toelichting": "Metrieken op de VASTE netlist manifest_en_geometrie.netlists.KAND_V2_9, een BESTAND in test-fixtures/casus1/. Het netwerk komt uit een v2-run (zie manifest_en_geometrie.v2_herkomst), maar de referentie hangt aan het bestand en niet aan die run — precies zoals de drie v1-kandidaten. Daarom klasse B en geen klasse C.",
+   "minZ": 2.57,
+   "minEPDR": 1.29,
+   "dissipatie_pct": 24,
+   "Qes_mult": 1.41,
+   "lf_bult_extra_dB": 1.54,
+   "V_tweeter_op_fs_dB": -14.72,
+   "rms_vlakheid_dB": 1.96,
+   "spl_venster_pm_dB": 4.35,
+   "wm_fase_oct": 41.15,
+   "mt_fase_oct": 11.15
+  },
+  "KAND_V2_10": {
+   "klasse": "B",
+   "afhankelijkheid": "meting+netlist",
+   "klasse_toelichting": "Metrieken op de VASTE netlist manifest_en_geometrie.netlists.KAND_V2_10, een BESTAND in test-fixtures/casus1/. Het netwerk komt uit een v2-run (zie manifest_en_geometrie.v2_herkomst), maar de referentie hangt aan het bestand en niet aan die run — precies zoals de drie v1-kandidaten. Daarom klasse B en geen klasse C.",
+   "minZ": 2.55,
+   "minEPDR": 1.28,
+   "dissipatie_pct": 25,
+   "Qes_mult": 1.48,
+   "lf_bult_extra_dB": 3.99,
+   "V_tweeter_op_fs_dB": -12.52,
+   "rms_vlakheid_dB": 2.49,
+   "spl_venster_pm_dB": 4.5,
+   "wm_fase_oct": 13.11,
+   "mt_fase_oct": 22.21
   }
  },
  "kruisvensters": {
@@ -804,6 +955,16 @@
    "HUIDIG": "20260822_3-Zopt_adsfilter.json",
    "KAND_A": "KAND-A-2eorde-continu.adsfilter.json",
    "KAND_B": "20260822.4-Koan2951-phase.adsfilter.json",
+   "V28_KAND_1": "V28-KAND-1.adsfilter.json",
+   "V28_KAND_2": "V28-KAND-2.adsfilter.json",
+   "V28_KAND_3": "V28-KAND-3.adsfilter.json",
+   "V28_KAND_4": "V28-KAND-4.adsfilter.json",
+   "V28_KAND_5": "V28-KAND-5.adsfilter.json",
+   "V28_KAND_6": "V28-KAND-6.adsfilter.json",
+   "V28_KAND_7": "V28-KAND-7.adsfilter.json",
+   "V28_KAND_8": "V28-KAND-8.adsfilter.json",
+   "V28_KAND_9": "V28-KAND-9.adsfilter.json",
+   "V28_KAND_10": "V28-KAND-10.adsfilter.json",
    "KAND_V2_1": "KAND-V2-1.adsfilter.json",
    "KAND_V2_2": "KAND-V2-2.adsfilter.json",
    "KAND_V2_3": "KAND-V2-3.adsfilter.json",
@@ -818,19 +979,31 @@
   "v2_herkomst": {
    "_": "DOCUMENTATIE, geen acceptatiewaarde. Waar de KAND-V2-netlists vandaan komen, zodat een lezer ze kan herleiden en desgewenst opnieuw kan opwekken. Niets in dit blok wordt geassert als getal; wat WEL acceptatie is, zijn de metrieken op de bestanden zelf (kandidaten.KAND_V2_*, klasse B) en de reproductie door de echte route (casus1V2Candidates.test.ts).",
    "bestand": "casus1_v2_herkomst.json",
-   "gegenereerd_op_commit": "d70c67bfd0fe70fd120817bc96844a9caffcb6b9",
+   "gegenereerd_op_commit": "892772d8485bfcd4a757dc2ea96ca7608c488218",
    "seed": 20260827,
-   "run_vingerafdruk": "engine=2.0.0-F1 estimators=6087f58a seed=20260827 budget=tuner starts=1 status=completed design=a7ccf830 measurements=e97d1bdc gates=5465b825 bounds=5465b825 tuning=99e5b33a facts=7f4da8b5 choices=072879e5",
+   "run_vingerafdruk": "engine=2.0.0-F1 estimators=6087f58a seed=20260827 budget=tuner starts=1 status=completed design=a7ccf830 measurements=e97d1bdc gates=5465b825 bounds=5465b825 tuning=e5687f86 facts=7f4da8b5 choices=1cfaa800",
    "generator": "scripts/generate-casus1-v2-candidates.ts",
    "meetopstelling": {
     "_": "De opstelling waarmee deze netlists zijn opgewekt, afgelezen van de laatste payload en niet overgeschreven uit het geheugen. V27 noteert twee foute opstellingen vóór de definitieve; geen van beide was terug te lezen uit wat het manifest opschreef.",
     "synthMode": "acoustic",
     "synthMode_waarom": "de eigen standaard van de app. Op 'filter' leverde dezelfde keten 31,4 dB rimpel tegen 5,2 dB op 'acoustic' (V27); een fixture die niet de synthese van de app draait, meet de app niet.",
-    "v2_poorten_gewapend": [],
-    "v2_poorten_waarom": "LEEG, en dat is P4 en geen omissie: casus 1 stelt geen versterkervloer (`ampMinLoadOhm`), geen dissipatieplafond (M-A), geen EPDR-vloer (M-B) en geen M-C-grens. Leeg veld = geen oordeel. Zie de min|Z|-kolom van de V27-vergelijking: dat is deze afwezigheid, zichtbaar.",
+    "v2_poorten_gewapend": [
+     "ampMinLoadOhm"
+    ],
+    "v2_poorten_bron": {
+     "M-B/|Z|": {
+      "sleutel": "ampMinLoadOhm",
+      "bron": "gesteld",
+      "waarde_ohm": 2.6,
+      "waar": "manifest_en_geometrie.gestelde_eisen.versterkervloer_ohm — het ENIGE voorkomen van dit getal. Het reist langs het A5a-pad van de app: settings.ampMinLoadOhm voor de reparatiepas, v2.gates.ampMinLoadOhm voor het oordeel.",
+      "regel": "meetsAmpFloor (src/lib/impedanceFloor.ts), inclusief haar meettolerantie — een projectconventie, geen eigenschap van de versterker."
+     }
+    },
+    "v2_poorten_waarom": "M-B/|Z| is GEWAPEND op de gestelde versterkervloer; zie `v2_poorten_bron`. M-A (dissipatiefractie), M-B/EPDR en M-C blijven ONGEWAPEND: casus 1 stelt daar niets voor, en leeg veld = geen oordeel (P4). Een afwezige grens is geen poort die altijd slaagt — hij rapporteert zijn waarde en oordeelt niets.",
     "v2_budgetten_gewapend": [],
     "v2_budgetten_waarom": "LEEG. De A5d.6-inversies begrenzen waarden; op deze route is er geen gesteld budget dat de zoektocht inperkt. Het evaluatiebudget komt van de tuner zelf (zie de vingerafdruk: `budget=tuner`).",
     "beschermingen_via_kandidaat": [
+     "ampMinLoadOhm",
      "ampTarget",
      "audit",
      "band",
@@ -843,9 +1016,19 @@
      "staged",
      "xoFloorPairs",
      "xoRangePairs",
+     "zFloorBarrier",
      "zFloorStrict"
     ],
     "beschermingen_waarom": "De beschermingen zijn KEUZE-sleutels (V26 rijen 31, 33, 14, 2) en bereiken de tuner sinds F4d uitsluitend via de verklaring van de kandidaat. `safety`, `staged`, `audit` en `rSourceDisqualifyOhm` staan hier omdat de eerste versie van deze fixture ze wegliet en daarmee een dode kortsluiting opleverde die de keten niet zag (V27).",
+    "vloer_is_zoekdoel": true,
+    "vloer_is_zoekdoel_waarom": "GEWAPEND. Sinds V30 is `zFloorBarrier` een keuze-sleutel en wapent de kandidaat hem zodra er een vloer gesteld is: de barrièreterm zit in élke volle tune, dus de zoektocht voelt de vloer terwijl zij kiest in plaats van erna. De reparatiepas erachter is onveranderd.",
+    "grijze_waarden": {
+     "zFloorBarrierWeight": {
+      "value": 1200,
+      "origin": "overgenomen uit v1, niet v2-afgeleid — de stijfheid van de reparatiebarrière, daar gemeten voor een lokale reparatiepas en hier hergebruikt als zoekterm (V30)"
+     }
+    },
+    "grijze_waarden_waarom": "Getallen die geen optie zijn en niet v2-afgeleid, maar die een gestelde keuze wél aan de zoektocht meegeeft. Zij reizen mét hun herkomst in de vingerafdruk, want een overgenomen constante en een afgeleide grootheid zijn hetzelfde getal en een andere bewering (V21, V22, V25).",
     "oordeelband_hz": [
      397,
      19500
@@ -855,64 +1038,95 @@
    "gestelde_vloer_ohm": 2.6,
    "vloeruitzonderingen": [
     {
-     "netlist": "KAND_V2_1",
+     "netlist": "V28_KAND_1",
      "minZ_ohm": 0.01,
+     "minZ_bij_hz": 3751,
      "gestelde_vloer_ohm": 2.6,
-     "reden": "Bevroren VOOR de vloer gesteld werd, en getuned zonder hem. Haalt de gestelde vloer niet. De tuner heeft de vloer bovendien niet als ZOEKDOEL gezien: hij is een veto plus een reparatiepas achteraf (casusboek V30, met bestand:regel). Deze netlist blijft in het casusboek staan als meetobject en mag NIET gebouwd worden; hij verdwijnt zodra V30 een opvolger heeft."
+     "reden": "HET GEDATEERDE V28-CORPUS. Bevroren VOOR de vloer een ZOEKDOEL was: de tuner kende hem als veto plus een reparatiepas achteraf, en die reparatie is op alle vijftien kandidaten afgegaan en op alle vijftien mislukt (casusboek V30). Deze tien blijven staan als de \"voor\"-helft van de V30-vergelijking — hun opvolgers met de vloer als zoekdoel staan onder kandidaten.KAND_V2_* en halen de vloer wel. Meetobject, GEEN ontwerp: mag niet gebouwd worden."
+    },
+    {
+     "netlist": "V28_KAND_2",
+     "minZ_ohm": 0.01,
+     "minZ_bij_hz": 3915.2,
+     "gestelde_vloer_ohm": 2.6,
+     "reden": "HET GEDATEERDE V28-CORPUS. Bevroren VOOR de vloer een ZOEKDOEL was: de tuner kende hem als veto plus een reparatiepas achteraf, en die reparatie is op alle vijftien kandidaten afgegaan en op alle vijftien mislukt (casusboek V30). Deze tien blijven staan als de \"voor\"-helft van de V30-vergelijking — hun opvolgers met de vloer als zoekdoel staan onder kandidaten.KAND_V2_* en halen de vloer wel. Meetobject, GEEN ontwerp: mag niet gebouwd worden."
+    },
+    {
+     "netlist": "V28_KAND_3",
+     "minZ_ohm": 1.38,
+     "minZ_bij_hz": 934.7,
+     "gestelde_vloer_ohm": 2.6,
+     "reden": "HET GEDATEERDE V28-CORPUS. Bevroren VOOR de vloer een ZOEKDOEL was: de tuner kende hem als veto plus een reparatiepas achteraf, en die reparatie is op alle vijftien kandidaten afgegaan en op alle vijftien mislukt (casusboek V30). Deze tien blijven staan als de \"voor\"-helft van de V30-vergelijking — hun opvolgers met de vloer als zoekdoel staan onder kandidaten.KAND_V2_* en halen de vloer wel. Meetobject, GEEN ontwerp: mag niet gebouwd worden."
+    },
+    {
+     "netlist": "V28_KAND_4",
+     "minZ_ohm": 1.17,
+     "minZ_bij_hz": 1008.6,
+     "gestelde_vloer_ohm": 2.6,
+     "reden": "HET GEDATEERDE V28-CORPUS. Bevroren VOOR de vloer een ZOEKDOEL was: de tuner kende hem als veto plus een reparatiepas achteraf, en die reparatie is op alle vijftien kandidaten afgegaan en op alle vijftien mislukt (casusboek V30). Deze tien blijven staan als de \"voor\"-helft van de V30-vergelijking — hun opvolgers met de vloer als zoekdoel staan onder kandidaten.KAND_V2_* en halen de vloer wel. Meetobject, GEEN ontwerp: mag niet gebouwd worden."
+    },
+    {
+     "netlist": "V28_KAND_5",
+     "minZ_ohm": 1.16,
+     "minZ_bij_hz": 849.8,
+     "gestelde_vloer_ohm": 2.6,
+     "reden": "HET GEDATEERDE V28-CORPUS. Bevroren VOOR de vloer een ZOEKDOEL was: de tuner kende hem als veto plus een reparatiepas achteraf, en die reparatie is op alle vijftien kandidaten afgegaan en op alle vijftien mislukt (casusboek V30). Deze tien blijven staan als de \"voor\"-helft van de V30-vergelijking — hun opvolgers met de vloer als zoekdoel staan onder kandidaten.KAND_V2_* en halen de vloer wel. Meetobject, GEEN ontwerp: mag niet gebouwd worden."
+    },
+    {
+     "netlist": "V28_KAND_6",
+     "minZ_ohm": 1.14,
+     "minZ_bij_hz": 948.1,
+     "gestelde_vloer_ohm": 2.6,
+     "reden": "HET GEDATEERDE V28-CORPUS. Bevroren VOOR de vloer een ZOEKDOEL was: de tuner kende hem als veto plus een reparatiepas achteraf, en die reparatie is op alle vijftien kandidaten afgegaan en op alle vijftien mislukt (casusboek V30). Deze tien blijven staan als de \"voor\"-helft van de V30-vergelijking — hun opvolgers met de vloer als zoekdoel staan onder kandidaten.KAND_V2_* en halen de vloer wel. Meetobject, GEEN ontwerp: mag niet gebouwd worden."
+    },
+    {
+     "netlist": "V28_KAND_7",
+     "minZ_ohm": 1.04,
+     "minZ_bij_hz": 806.5,
+     "gestelde_vloer_ohm": 2.6,
+     "reden": "HET GEDATEERDE V28-CORPUS. Bevroren VOOR de vloer een ZOEKDOEL was: de tuner kende hem als veto plus een reparatiepas achteraf, en die reparatie is op alle vijftien kandidaten afgegaan en op alle vijftien mislukt (casusboek V30). Deze tien blijven staan als de \"voor\"-helft van de V30-vergelijking — hun opvolgers met de vloer als zoekdoel staan onder kandidaten.KAND_V2_* en halen de vloer wel. Meetobject, GEEN ontwerp: mag niet gebouwd worden."
+    },
+    {
+     "netlist": "V28_KAND_8",
+     "minZ_ohm": 0.95,
+     "minZ_bij_hz": 939.1,
+     "gestelde_vloer_ohm": 2.6,
+     "reden": "HET GEDATEERDE V28-CORPUS. Bevroren VOOR de vloer een ZOEKDOEL was: de tuner kende hem als veto plus een reparatiepas achteraf, en die reparatie is op alle vijftien kandidaten afgegaan en op alle vijftien mislukt (casusboek V30). Deze tien blijven staan als de \"voor\"-helft van de V30-vergelijking — hun opvolgers met de vloer als zoekdoel staan onder kandidaten.KAND_V2_* en halen de vloer wel. Meetobject, GEEN ontwerp: mag niet gebouwd worden."
+    },
+    {
+     "netlist": "V28_KAND_9",
+     "minZ_ohm": 0.87,
+     "minZ_bij_hz": 887,
+     "gestelde_vloer_ohm": 2.6,
+     "reden": "HET GEDATEERDE V28-CORPUS. Bevroren VOOR de vloer een ZOEKDOEL was: de tuner kende hem als veto plus een reparatiepas achteraf, en die reparatie is op alle vijftien kandidaten afgegaan en op alle vijftien mislukt (casusboek V30). Deze tien blijven staan als de \"voor\"-helft van de V30-vergelijking — hun opvolgers met de vloer als zoekdoel staan onder kandidaten.KAND_V2_* en halen de vloer wel. Meetobject, GEEN ontwerp: mag niet gebouwd worden."
+    },
+    {
+     "netlist": "V28_KAND_10",
+     "minZ_ohm": 0.86,
+     "minZ_bij_hz": 853.8,
+     "gestelde_vloer_ohm": 2.6,
+     "reden": "HET GEDATEERDE V28-CORPUS. Bevroren VOOR de vloer een ZOEKDOEL was: de tuner kende hem als veto plus een reparatiepas achteraf, en die reparatie is op alle vijftien kandidaten afgegaan en op alle vijftien mislukt (casusboek V30). Deze tien blijven staan als de \"voor\"-helft van de V30-vergelijking — hun opvolgers met de vloer als zoekdoel staan onder kandidaten.KAND_V2_* en halen de vloer wel. Meetobject, GEEN ontwerp: mag niet gebouwd worden."
+    },
+    {
+     "netlist": "KAND_V2_1",
+     "minZ_ohm": 2.45,
+     "minZ_bij_hz": 82.5,
+     "gestelde_vloer_ohm": 2.6,
+     "reden": "BEVROREN MET DE VLOER ALS ZOEKDOEL, EN DE POORT IN DE RUN LIET HEM DOOR. Geen tegenspraak maar twee metingen op twee rasters. De v2-POORTREFERENTIE wordt bevroren op het analyseraster van de keteninvoer (200 Hz en hoger, want dat is waar de VERRE-VELDMETINGEN van deze set beginnen); deze referentie leest |Z| over de volle gemeten impedantiesweep. Het minimum van deze netlist ligt op 83 Hz — ONDER die rasterbodem, dus M-B/|Z| heeft het nooit gezien. De TUNER zag het wel: zijn eigen veiligheidsraster loopt tot ruim onder 100 Hz, en `kandidaat_uitkomst.pas.ampFloorRepair` staat bij precies deze netlists op `failed` terwijl de poort slaagde. Een impedantie-eis heeft geen geldigheidsvenster: de versterker voelt die dip ook al is de respons daar niet gemeten (zie de band-noot bij `netOptimizer.ts`). Casusboek V32. Mag niet gebouwd worden zolang deze regel er staat."
     },
     {
      "netlist": "KAND_V2_2",
-     "minZ_ohm": 0.01,
+     "minZ_ohm": 2.36,
+     "minZ_bij_hz": 83.7,
      "gestelde_vloer_ohm": 2.6,
-     "reden": "Bevroren VOOR de vloer gesteld werd, en getuned zonder hem. Haalt de gestelde vloer niet. De tuner heeft de vloer bovendien niet als ZOEKDOEL gezien: hij is een veto plus een reparatiepas achteraf (casusboek V30, met bestand:regel). Deze netlist blijft in het casusboek staan als meetobject en mag NIET gebouwd worden; hij verdwijnt zodra V30 een opvolger heeft."
-    },
-    {
-     "netlist": "KAND_V2_3",
-     "minZ_ohm": 1.38,
-     "gestelde_vloer_ohm": 2.6,
-     "reden": "Bevroren VOOR de vloer gesteld werd, en getuned zonder hem. Haalt de gestelde vloer niet. De tuner heeft de vloer bovendien niet als ZOEKDOEL gezien: hij is een veto plus een reparatiepas achteraf (casusboek V30, met bestand:regel). Deze netlist blijft in het casusboek staan als meetobject en mag NIET gebouwd worden; hij verdwijnt zodra V30 een opvolger heeft."
-    },
-    {
-     "netlist": "KAND_V2_4",
-     "minZ_ohm": 1.17,
-     "gestelde_vloer_ohm": 2.6,
-     "reden": "Bevroren VOOR de vloer gesteld werd, en getuned zonder hem. Haalt de gestelde vloer niet. De tuner heeft de vloer bovendien niet als ZOEKDOEL gezien: hij is een veto plus een reparatiepas achteraf (casusboek V30, met bestand:regel). Deze netlist blijft in het casusboek staan als meetobject en mag NIET gebouwd worden; hij verdwijnt zodra V30 een opvolger heeft."
-    },
-    {
-     "netlist": "KAND_V2_5",
-     "minZ_ohm": 1.16,
-     "gestelde_vloer_ohm": 2.6,
-     "reden": "Bevroren VOOR de vloer gesteld werd, en getuned zonder hem. Haalt de gestelde vloer niet. De tuner heeft de vloer bovendien niet als ZOEKDOEL gezien: hij is een veto plus een reparatiepas achteraf (casusboek V30, met bestand:regel). Deze netlist blijft in het casusboek staan als meetobject en mag NIET gebouwd worden; hij verdwijnt zodra V30 een opvolger heeft."
+     "reden": "BEVROREN MET DE VLOER ALS ZOEKDOEL, EN DE POORT IN DE RUN LIET HEM DOOR. Geen tegenspraak maar twee metingen op twee rasters. De v2-POORTREFERENTIE wordt bevroren op het analyseraster van de keteninvoer (200 Hz en hoger, want dat is waar de VERRE-VELDMETINGEN van deze set beginnen); deze referentie leest |Z| over de volle gemeten impedantiesweep. Het minimum van deze netlist ligt op 84 Hz — ONDER die rasterbodem, dus M-B/|Z| heeft het nooit gezien. De TUNER zag het wel: zijn eigen veiligheidsraster loopt tot ruim onder 100 Hz, en `kandidaat_uitkomst.pas.ampFloorRepair` staat bij precies deze netlists op `failed` terwijl de poort slaagde. Een impedantie-eis heeft geen geldigheidsvenster: de versterker voelt die dip ook al is de respons daar niet gemeten (zie de band-noot bij `netOptimizer.ts`). Casusboek V32. Mag niet gebouwd worden zolang deze regel er staat."
     },
     {
      "netlist": "KAND_V2_6",
-     "minZ_ohm": 1.14,
+     "minZ_ohm": 2.39,
+     "minZ_bij_hz": 82.1,
      "gestelde_vloer_ohm": 2.6,
-     "reden": "Bevroren VOOR de vloer gesteld werd, en getuned zonder hem. Haalt de gestelde vloer niet. De tuner heeft de vloer bovendien niet als ZOEKDOEL gezien: hij is een veto plus een reparatiepas achteraf (casusboek V30, met bestand:regel). Deze netlist blijft in het casusboek staan als meetobject en mag NIET gebouwd worden; hij verdwijnt zodra V30 een opvolger heeft."
-    },
-    {
-     "netlist": "KAND_V2_7",
-     "minZ_ohm": 1.04,
-     "gestelde_vloer_ohm": 2.6,
-     "reden": "Bevroren VOOR de vloer gesteld werd, en getuned zonder hem. Haalt de gestelde vloer niet. De tuner heeft de vloer bovendien niet als ZOEKDOEL gezien: hij is een veto plus een reparatiepas achteraf (casusboek V30, met bestand:regel). Deze netlist blijft in het casusboek staan als meetobject en mag NIET gebouwd worden; hij verdwijnt zodra V30 een opvolger heeft."
-    },
-    {
-     "netlist": "KAND_V2_8",
-     "minZ_ohm": 0.95,
-     "gestelde_vloer_ohm": 2.6,
-     "reden": "Bevroren VOOR de vloer gesteld werd, en getuned zonder hem. Haalt de gestelde vloer niet. De tuner heeft de vloer bovendien niet als ZOEKDOEL gezien: hij is een veto plus een reparatiepas achteraf (casusboek V30, met bestand:regel). Deze netlist blijft in het casusboek staan als meetobject en mag NIET gebouwd worden; hij verdwijnt zodra V30 een opvolger heeft."
-    },
-    {
-     "netlist": "KAND_V2_9",
-     "minZ_ohm": 0.87,
-     "gestelde_vloer_ohm": 2.6,
-     "reden": "Bevroren VOOR de vloer gesteld werd, en getuned zonder hem. Haalt de gestelde vloer niet. De tuner heeft de vloer bovendien niet als ZOEKDOEL gezien: hij is een veto plus een reparatiepas achteraf (casusboek V30, met bestand:regel). Deze netlist blijft in het casusboek staan als meetobject en mag NIET gebouwd worden; hij verdwijnt zodra V30 een opvolger heeft."
-    },
-    {
-     "netlist": "KAND_V2_10",
-     "minZ_ohm": 0.86,
-     "gestelde_vloer_ohm": 2.6,
-     "reden": "Bevroren VOOR de vloer gesteld werd, en getuned zonder hem. Haalt de gestelde vloer niet. De tuner heeft de vloer bovendien niet als ZOEKDOEL gezien: hij is een veto plus een reparatiepas achteraf (casusboek V30, met bestand:regel). Deze netlist blijft in het casusboek staan als meetobject en mag NIET gebouwd worden; hij verdwijnt zodra V30 een opvolger heeft."
+     "reden": "BEVROREN MET DE VLOER ALS ZOEKDOEL, EN DE POORT IN DE RUN LIET HEM DOOR. Geen tegenspraak maar twee metingen op twee rasters. De v2-POORTREFERENTIE wordt bevroren op het analyseraster van de keteninvoer (200 Hz en hoger, want dat is waar de VERRE-VELDMETINGEN van deze set beginnen); deze referentie leest |Z| over de volle gemeten impedantiesweep. Het minimum van deze netlist ligt op 82 Hz — ONDER die rasterbodem, dus M-B/|Z| heeft het nooit gezien. De TUNER zag het wel: zijn eigen veiligheidsraster loopt tot ruim onder 100 Hz, en `kandidaat_uitkomst.pas.ampFloorRepair` staat bij precies deze netlists op `failed` terwijl de poort slaagde. Een impedantie-eis heeft geen geldigheidsvenster: de versterker voelt die dip ook al is de respons daar niet gemeten (zie de band-noot bij `netOptimizer.ts`). Casusboek V32. Mag niet gebouwd worden zolang deze regel er staat."
     }
    ],
    "vloeruitzonderingen_regel": "Elke bevroren netlist haalt de gestelde vloer, OF staat in deze lijst met zijn reden. frozenNetlistGates.test.ts dwingt precies dat af: een netlist die hem niet haalt en hier niet staat, breekt de suite. De lijst is dus geen vrijstelling maar een boekhouding, en zij hoort leeg te raken.",
@@ -923,11 +1137,12 @@
    "_": "PROJECTINVOER — wat de ONTWERPER voor deze casus heeft gesteld. Geen meting en geen afleiding: getallen die iemand heeft ingevuld, met de reden erbij. Zij staan in dit blok en NERGENS anders — niet in src/lib/engine2/, niet als default, niet als constante in een fixture. De fixtures lezen ze hiervandaan, langs hetzelfde pad als de app: het A5a-veld vult de scan-instellingen, en die vullen de poort. Dit blok erft de klasse van manifest_en_geometrie, want het is dezelfde soort invoer als het meetmanifest zelf.",
    "versterkervloer_ohm": 2.6,
    "versterkervloer_gesteld_door": "Sander Somers, 27-08-2026",
-   "versterkervloer_motivering": "Het bestaande filter HUIDIG staat op ~2,6 ohm minimum en is qua SPL en fase goed; de v2-kandidaten worden zo op dezelfde voet vergeleken.",
+   "versterkervloer_motivering": "De vloer is het PARALLELDRIVERMINIMUM van deze meetset: de kale drivers zitten daar al, dus lager dan dat kan een filter nooit de bedoeling zijn — een netwerk dat eronder duikt maakt een pad dat de drivers omzeilt in plaats van ze aan te sturen. HUIDIG (3,46 ohm, zie gemeten_minZ_HUIDIG_ohm) staat er ruim boven en is qua SPL en fase goed; dat is het bewijs dat ruim boven de vloer haalbaar is MET DEZELFDE DRIVERS, en dus dat de eis geen ontwerp uitsluit dat het waard is om te bouwen. De v2-kandidaten worden zo op dezelfde voet vergeleken.",
    "versterkervloer_invoerpunt": "A5a-formulierveld 'Amplifier min load' (App.tsx). Van daar naar twee plaatsen tegelijk, precies zoals in de app: settings.ampMinLoadOhm en v2ScanSettings.gates.ampMinLoadOhm. Wat die twee WEL en NIET doen staat in casusboek V30 — kort: de tweede oordeelt, de eerste wapent alleen een reparatiepas achteraf en is geen zoekdoel.",
    "versterkervloer_poort": "A4 M-B, eenvoudige modus — poort-id 'M-B/|Z|' in GATE_IDS. NIET M-A: dat is de dissipatiefractie en die is dimensieloos. Een vloer in ohm kan maar een poort wapenen. De vergelijkingsregel is meetsAmpFloor (src/lib/impedanceFloor.ts): geslaagd bij min|Z| >= 0,98 x de vloer, hier 2,548 ohm. Die 2 % is een projectconventie en geen eigenschap van de versterker.",
    "gemeten_minZ_HUIDIG_ohm": 3.46,
-   "opmerking_bij_dat_verschil": "De motivering noemt ~2,6 ohm voor HUIDIG; de metriek in dit bestand leest 3.46 ohm (kandidaten.HUIDIG_2e.minZ, min |Z| over het hele analyseraster, poortvrij). Beide staan hier omdat zij niet hetzelfde getal zijn en het niet aan dit bestand is om te beslissen welk van de twee de ontwerper bedoelde — de app toont een systeemimpedantie op een eigen raster en band. De GESTELDE vloer is 2,6 en dat is wat er gewapend wordt; het gemeten getal staat ernaast zodat een lezer het verschil ziet in plaats van het te moeten reconstrueren. Gunstig neveneffect: HUIDIG haalt de gestelde vloer met marge, dus de baseline waaraan de motivering refereert valt niet zelf om."
+   "opmerking_bij_dat_verschil": "De vloer (2,6 ohm) en de gemeten min |Z| van HUIDIG (3,46 ohm, kandidaten.HUIDIG_2e.minZ, over het hele analyseraster en poortvrij) zijn twee verschillende grootheden en staan hier allebei. De GESTELDE vloer is 2,6 en dat is wat er gewapend wordt; het gemeten getal staat ernaast als het bewijs dat de motivering aanhaalt. Tot V30 stond hier dat de motivering ~2,6 ohm aan HUIDIG toeschreef en de metriek 3,46 las; die formulering is bij V30 vervangen, omdat zij de vloer aan een baseline ophing terwijl de reden een eigenschap van de DRIVERS is. Wat blijft: HUIDIG haalt de gestelde vloer met marge, dus de baseline waaraan de motivering refereert valt niet zelf om.",
+   "versterkervloer_motivering_nagemeten": "NAGEMETEN BIJ V30, want een motivering die naar een meting verwijst hoort naast die meting te staan. Op deze meetset (de drie Z-bestanden van het manifest, complex geinterpoleerd op een gemeenschappelijk logaritmisch raster): woofer min |Z| 3,17 ohm @ 157 Hz, mid 3,63 ohm @ 20 Hz, tweeter 5,63 ohm @ 6587 Hz; alle drie parallel 1,43 ohm @ 308 Hz; paarsgewijs 1,77 / 2,09 / 2,55 ohm. De gestelde 2,6 is dus GEEN aflezing: hij ligt tussen de parallelschakeling van alle drie (1,43) en het laagste enkele driverminimum (3,17). Dat is precies waarom hij in dit blok staat en niet in de code — hij is een GESTELDE eis met een motivering, geen afgeleide grootheid, en V29 gaat over de vraag of een afgeleide degeneratiegrens er ooit naast mag komen te staan."
   }
  },
  "herzien_F1": "25-08-2026 vastgesteld; herzien bij oplevering F1 (engine2-fundament)",

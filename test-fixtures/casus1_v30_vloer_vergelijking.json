@@ -1,0 +1,103 @@
+{
+ "_": "V30 — de vloer als zoekdoel, vóór en ná, op hetzelfde veld met dezelfde seed. DOCUMENTATIE en meetverslag, geen acceptatiewaarde: niets assert op dit bestand. Opgewekt door scripts/measure-v30-floor-goal.ts.",
+ "gegenereerd_op_commit": "892772d8485bfcd4a757dc2ea96ca7608c488218",
+ "gestelde_vloer_ohm": 2.6,
+ "seed": 20260827,
+ "oordeelband_hz": [
+  397,
+  19500
+ ],
+ "veld": 1,
+ "shortlists": {
+  "voor": {
+   "overwogen": 1,
+   "bevroren": 0,
+   "labels": []
+  },
+  "na": {
+   "overwogen": 1,
+   "bevroren": 0,
+   "labels": []
+  }
+ },
+ "netwerk_byte_identiek_tussen_de_armen": 1,
+ "rijen": [
+  {
+   "label": "woofer→mid 396.7 LR4 · mid→tweeter 1294 LR4",
+   "arm": "voor",
+   "rimpel_dB": 9.15,
+   "fase_graden": 27,
+   "ampFloorRepair": "failed",
+   "pas": {
+    "tuned": 0,
+    "evaluaties": 86390,
+    "infeasible": "M-B/|Z|: 0.03 Ω falls below the stated floor of 2.60 Ω. Nothing was rolled back — no arrangement of these values met the limit, so the constraint is not what this candidate failed on, the candidate is",
+    "safetyNote": null,
+    "safetyKinds": null,
+    "ampFloorNote": "amp-load floor: system impedance dips to 0.0 Ω (your amplifier's rated minimum load, 2.6 Ω) and could not be repaired without losing response quality — check the Impedance panel",
+    "vroege_terugkeer": false
+   },
+   "poort_MB_Z": {
+    "gewapend": true,
+    "geslaagd": false,
+    "waarde": 0.035,
+    "grens": 2.6
+   },
+   "geweigerd_door": [
+    "M-B/|Z| (system)"
+   ],
+   "gediskwalificeerd": [
+    "M-B/|Z|: 0.03 Ω falls below the stated floor of 2.60 Ω. Nothing was rolled back — no arrangement of these values met the limit, so the constraint is not what this candidate failed on, the candidate is",
+    "the mid branch presents 0.033 Ω to the amplifier at 2611 Hz — 0.71% of the 4.60 Ω the bare driver offers there. That is a DEGENERATION in the filter, not a heavy load: a healthy branch never goes below 1% (measured floor over two driver sets: 17%). Nothing downstream can repair it — do not reach for the amplifier or the impedance settings; this candidate's topology is what has to change."
+   ],
+   "metrieken": {
+    "minZ_ohm": 0.01,
+    "minEPDR_ohm": 0.02,
+    "spl_venster_pm_dB": 4.41,
+    "rms_vlakheid_dB": 2.8,
+    "wm_fase_oct": 9.32,
+    "mt_fase_oct": 65.57
+   },
+   "partsHash": "0b003bf9"
+  },
+  {
+   "label": "woofer→mid 396.7 LR4 · mid→tweeter 1294 LR4",
+   "arm": "na",
+   "rimpel_dB": 9.15,
+   "fase_graden": 27,
+   "ampFloorRepair": null,
+   "pas": {
+    "tuned": 0,
+    "evaluaties": 87521,
+    "infeasible": null,
+    "safetyNote": "safety gate: tune rejected on the full measurement band — tweeter protection got worse. The evaluated band is narrower than the measurement; widen the view range to let the optimizer see the whole design.",
+    "safetyKinds": [
+     "protection"
+    ],
+    "ampFloorNote": "the rejected tune — amp-load floor: system impedance dips to 1.8 Ω (your amplifier's rated minimum load, 2.6 Ω) and could not be repaired without losing response quality — check the Impedance panel",
+    "vroege_terugkeer": true
+   },
+   "poort_MB_Z": {
+    "gewapend": true,
+    "geslaagd": false,
+    "waarde": 0.035,
+    "grens": 2.6
+   },
+   "geweigerd_door": [
+    "M-B/|Z| (system)"
+   ],
+   "gediskwalificeerd": [
+    "the mid branch presents 0.033 Ω to the amplifier at 2611 Hz — 0.71% of the 4.60 Ω the bare driver offers there. That is a DEGENERATION in the filter, not a heavy load: a healthy branch never goes below 1% (measured floor over two driver sets: 17%). Nothing downstream can repair it — do not reach for the amplifier or the impedance settings; this candidate's topology is what has to change."
+   ],
+   "metrieken": {
+    "minZ_ohm": 0.01,
+    "minEPDR_ohm": 0.02,
+    "spl_venster_pm_dB": 4.41,
+    "rms_vlakheid_dB": 2.8,
+    "wm_fase_oct": 9.32,
+    "mt_fase_oct": 65.57
+   },
+   "partsHash": "0b003bf9"
+  }
+ ]
+}

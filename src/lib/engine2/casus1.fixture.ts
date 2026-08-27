@@ -348,7 +348,29 @@ export function casus1Filter(
     );
   }
   const parsed = deserializeFilter(readFileSync(join(CASUS1_DIR, name), 'utf-8'));
-  const { netlist } = crossoverToNetlist({ name: parsed.name, parts: parsed.parts } as VxpCrossover);
+  return casus1FilterFromParts(name, parsed.parts, manifest, files);
+}
+
+/**
+ * The same thing for a netlist that is NOT on disk — a network a run has just
+ * delivered, measured before anyone decides whether to freeze it.
+ *
+ * Extracted at V30 rather than written a second time. The before/after
+ * measurement that entry rests on has to report SPL window, RMS flatness and
+ * phase tracking for candidates that a gate REFUSED, and a refused candidate
+ * has no file: the whole point of the comparison is what the refusal cost. The
+ * only difference from `casus1Filter` is where the parts come from; everything
+ * downstream — the impedance assembly, the report — is shared, so a metric
+ * measured on a delivered network and the same metric measured on the frozen
+ * file cannot drift apart.
+ */
+export function casus1FilterFromParts(
+  name: string,
+  parts: readonly VxpCrossover['parts'][number][],
+  manifest: Manifest,
+  files: readonly MeasurementFile[],
+): FilterInput {
+  const { netlist } = crossoverToNetlist({ name, parts: [...parts] } as VxpCrossover);
   const driverZ: FilterInput['driverZ'] = {};
   for (const e of manifest.entries) {
     if (e.kind !== 'Z') continue;

@@ -29,7 +29,9 @@ import {
   POLISH_KEYS,
   declarationCoverage,
   declarationKey,
+  greyValues,
 } from './choices.ts';
+import { AMP_FLOOR_BARRIER_WEIGHT } from '../../netOptimizer.ts';
 import { declareCandidateChoices } from './candidateDeclaration.ts';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
@@ -108,8 +110,10 @@ describe('F4c — every tuner option has a class', () => {
     expect(stale, `classified keys that no longer exist upstream:\n${stale.join('\n')}`).toEqual([]);
 
     // The count is stated so a reader can check it against the casebook table.
-    expect(keys.length).toBe(37);
-    expect(CHOICE_KEYS.length + GREY_KEYS.length + POLISH_KEYS.length).toBe(37);
+    // 37 at F4c; 38 since V30 added `zFloorBarrier` as a choice.
+    expect(keys.length).toBe(38);
+    expect(CHOICE_KEYS.length + GREY_KEYS.length + POLISH_KEYS.length).toBe(38);
+    expect(CHOICE_KEYS).toContain('zFloorBarrier');
   });
 });
 
@@ -242,6 +246,53 @@ describe('F4d — a generated candidate declares every choice key', () => {
     // ...and a filled-in one really does land in `stated`.
     expect(full().stated.ampMinLoadOhm).toBe(3.2);
     expect(full().absent.some((a) => a.key === 'ampMinLoadOhm')).toBe(false);
+  });
+
+  it('V30 — a stated floor arms the barrier; no floor leaves it ABSENT, never false', () => {
+    /* The derivation, and both halves of it. A floor that exists but does not
+     * steer is what V30 measured and what this rule ends; a barrier armed
+     * without a floor would have nothing to be short of, so it is absent with
+     * the P4 reason rather than a `false` nobody chose. */
+    expect(full().stated.zFloorBarrier).toBe(true);
+    expect(full().absent.some((a) => a.key === 'zFloorBarrier')).toBe(false);
+
+    const d = bare();
+    expect(d.stated.zFloorBarrier).toBeUndefined();
+    const why = d.absent.find((a) => a.key === 'zFloorBarrier')?.why ?? '';
+    expect(why).toMatch(/P4/);
+    expect(why).toMatch(/nothing for the search to aim at/);
+
+    // ...and an explicit value still wins over the derivation, which is what
+    // makes the entry's before/after a run someone can ASK for.
+    const off = declareCandidateChoices({
+      cages: [[400, 500], [1500, 2000]],
+      windowFloorsHz: [397, 1294],
+      multiWay: true,
+      stated: { ampMinLoadOhm: 3.2, zFloorBarrier: false },
+    });
+    expect(off.stated.zFloorBarrier).toBe(false);
+    expect(off.absent.some((a) => a.key === 'zFloorBarrier')).toBe(false);
+  });
+
+  it('V30 — the barrier weight rides in the fingerprint as a GREY VALUE, with its provenance', () => {
+    /* 1200 is a v1 constant tuned for the repair pass. A v2 run that arms the
+     * barrier is steered by it, so it must be visible in the stamp and it must
+     * arrive labelled — an inherited constant and a derived one are the same
+     * number and a different claim (V21, V22, V25). */
+    const armed = greyValues(full().stated);
+    expect(armed.zFloorBarrierWeight?.value).toBe(AMP_FLOOR_BARRIER_WEIGHT);
+    expect(armed.zFloorBarrierWeight?.origin).toMatch(/niet v2-afgeleid/);
+    // Not recorded when nothing reads it: an unarmed barrier hands the search
+    // no number, and a fingerprint that carried it anyway would say it did.
+    expect(greyValues(bare().stated)).toEqual({});
+    // ...and it really does move the fingerprint.
+    const withGrey = JSON.stringify(declarationKey(full(), {}));
+    const withoutBarrier = JSON.stringify(
+      declarationKey({ ...full(), stated: { ...full().stated, zFloorBarrier: false } }, {}),
+    );
+    expect(withGrey).not.toBe(withoutBarrier);
+    expect(withGrey).toContain('zFloorBarrierWeight');
+    expect(withoutBarrier).not.toContain('zFloorBarrierWeight');
   });
 
   it('the candidate states its OWN two keys: the cages and the A5d.3 floors', () => {

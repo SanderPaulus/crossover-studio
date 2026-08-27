@@ -1,5 +1,10 @@
 /**
- * F4d — THE CANDIDATE'S DECLARATION OVER ALL TWENTY-FIVE CHOICE KEYS.
+ * F4d — THE CANDIDATE'S DECLARATION OVER EVERY CHOICE KEY.
+ *
+ * Twenty-five at F4d, twenty-six since V30 added `zFloorBarrier`. The number
+ * is not repeated in prose anywhere it could go stale: `declarationCoverage`
+ * compares against `CHOICE_KEYS` itself, so a key added upstream lands in no
+ * state and fails the build.
  *
  * F4c stated ten of them and wrote the other fifteen into a note beginning
  * "Search choices still inherited from the v1 chain". This module is what
@@ -61,6 +66,7 @@ export type StatedByDesigner = Partial<
     | 'ampMinLoadOhm'
     | 'rSourceDisqualifyOhm'
     | 'zFloorStrict'
+    | 'zFloorBarrier'
   >
 >;
 
@@ -134,6 +140,36 @@ export function declareCandidateChoices(input: CandidateDeclarationInput): Choic
   put('ampMinLoadOhm', 'amplifier minimum load');
   put('rSourceDisqualifyOhm', 'source-resistance disqualification limit');
   put('zFloorStrict', 'strict impedance-floor setting for the repair pass');
+
+  /* ---- V30: is the stated floor a SEARCH GOAL, or only a veto? ---------
+   *
+   * The only choice key on this route whose value is DERIVED from another
+   * key rather than read off a form, and the derivation is the whole finding:
+   * a floor that exists but does not steer produced a field of fifteen
+   * candidates of which thirteen came back byte-identical to a run where no
+   * floor existed at all (V30). So a candidate that carries a floor arms the
+   * barrier by default — stating a limit and then searching as though it were
+   * not there is the behaviour the entry exists to end.
+   *
+   * P4 on both sides. No floor ⇒ ABSENT with the reason, never `false`: a
+   * false here would read as "the designer decided the floor should not
+   * steer", and nobody decided anything. And an explicit value still wins, so
+   * the before/after measurement the entry rests on is a run that can be
+   * asked for rather than a build that has to be patched. */
+  if (s.zFloorBarrier !== undefined) {
+    stated.zFloorBarrier = s.zFloorBarrier;
+  } else if (s.ampMinLoadOhm !== undefined) {
+    stated.zFloorBarrier = true;
+  } else {
+    absent.push({
+      key: 'zFloorBarrier',
+      why:
+        'there is no amplifier floor on this design, so there is nothing for the search to aim ' +
+        'at — a barrier without a rating has no distance to be short of. Absent rather than ' +
+        'false (P4): false would say someone decided the floor should not steer, and with no ' +
+        'floor stated nobody decided anything',
+    });
+  }
 
   /* ---- what has no value on a design of this shape -------------------- */
   absent.push({

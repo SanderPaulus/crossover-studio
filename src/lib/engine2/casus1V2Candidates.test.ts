@@ -60,6 +60,7 @@ import {
   loadGolden,
 } from './casus1.fixture.ts';
 import {
+  CASUS1_AMP_MIN_LOAD_OHM,
   CASUS1_V2_BAND_HZ,
   CASUS1_V2_SEED,
   CASUS1_V2_SETTINGS,
@@ -271,10 +272,25 @@ describe('the run still delivers the frozen netlist', () => {
         xoFloorPairs: c!.crossings.map((x) => x.windowHz[0]),
       } as unknown as Chain3Input['settings'],
     };
+    /* THE GATES THIS RUN ARMS MUST BE THE GATES THE GENERATOR ARMED.
+     *
+     * They used to be none, and that was right while casus 1 stated no limits:
+     * the generator armed none either, so the two runs matched by having
+     * nothing. Since the floor was stated the generator arms `M-B/|Z|`, and an
+     * armed gate is not a passive observer — `gateViolation` can refuse a step
+     * the search was about to take, which changes the path. Reproducing a
+     * frozen netlist through "the real route" with a different set of gates is
+     * reproducing a different route, and this test failed exactly that way at
+     * V30 rather than quietly comparing two designs.
+     *
+     * Read from the same one home as everything else (P6), and checked against
+     * what the provenance block recorded, so the two cannot drift. */
+    const armedGates = CASUS1_AMP_MIN_LOAD_OHM !== null ? { ampMinLoadOhm: CASUS1_AMP_MIN_LOAD_OHM } : {};
+    expect(Object.keys(armedGates).sort()).toEqual([...HERKOMST.meetopstelling.v2_poorten_gewapend].sort());
     const payload: V2Chain3Payload = {
       input,
       v2: {
-        gates: {},
+        gates: armedGates,
         budgets: {},
         determinism: { seed: CASUS1_V2_SEED },
         targetCurve: FLAT_TARGET,

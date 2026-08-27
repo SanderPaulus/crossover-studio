@@ -42,6 +42,7 @@ import { ctcKey } from '../src/lib/engine2/metrics/types.ts';
 import { FLAT_TARGET } from '../src/lib/engine2/requirements/targetCurve.ts';
 import { compareDesigns } from '../src/lib/engine2/predesign/comparison.ts';
 import { meetsAmpFloor } from '../src/lib/impedanceFloor.ts';
+import { CASUS1_V2_GRID } from '../src/lib/engine2/casus1V2.fixture.ts';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const GOLDEN = join(HERE, '..', 'test-fixtures', 'golden_refs_casus1.json');
@@ -97,17 +98,31 @@ const netlists = raw.manifest_en_geometrie.netlists as Record<string, string>;
  * entries are dropped rather than kept alive by silence. */
 const liveNetlists = (golden.manifest_en_geometrie as unknown as { netlists: Record<string, string> })
   .netlists;
+/**
+ * THE LIVE CORPUS, and ONLY the live corpus.
+ *
+ * `^KAND_V2_\d+$` and not `startsWith('KAND_V2')`, which is not pedantry: since
+ * V30 the case book also holds `V28_KAND_*`, the ten netlists that were frozen
+ * while the stated floor was still only a veto. They are kept deliberately —
+ * they are the "before" half of the V30 comparison, and a prefix test that
+ * swallowed them would delete the evidence on the next regeneration and report
+ * success. The dated corpus is written once, by hand, and this script does not
+ * touch it.
+ */
+const LIVE_V2 = /^KAND_V2_\d+$/;
 for (const map of [netlists, liveNetlists]) {
   // Both copies, and the second one is not redundant: `casus1Filter` resolves a
   // key against the OBJECT `loadGolden()` returned, while the block being
   // written is the raw JSON re-parsed for editing. Updating only the raw copy
   // leaves the loader looking for a netlist the reference file no longer lists,
   // which is how the first run of this change died — usefully, and loudly.
-  for (const k of Object.keys(map)) if (k.startsWith('KAND_V2')) delete map[k];
+  for (const k of Object.keys(map)) if (LIVE_V2.test(k)) delete map[k];
   for (const f of herkomst.bestanden) map[f.name.replace(/-/g, '_')] = `${f.name}.adsfilter.json`;
 }
-for (const k of Object.keys(raw.kandidaten)) if (k.startsWith('KAND_V2')) delete raw.kandidaten[k];
-const keys = Object.keys(netlists).filter((k) => k.startsWith('KAND_V2'));
+for (const k of Object.keys(raw.kandidaten)) if (LIVE_V2.test(k)) delete raw.kandidaten[k];
+const keys = Object.keys(netlists).filter((k) => LIVE_V2.test(k));
+/** The dated corpus — the netlists frozen while the floor was still only a veto (V30). */
+const v28Keys = Object.keys(netlists).filter((k) => /^V28_KAND_\d+$/.test(k));
 /* AN EMPTY SET IS A RESULT, not a crash.
  *
  * It used to throw here, which was right while nothing could refuse a
@@ -126,23 +141,73 @@ if (keys.length === 0) {
 
 /* ---- the stated amplifier floor, against every frozen netlist ----------- *
  *
- * V30. The floor was stated after these ten netlists were frozen, and they
- * were tuned without it. Rather than delete them (a regenerated field with the
- * floor armed delivered NOTHING — see the entry), each one is measured against
- * the floor and the ones that miss it are named, with the reason and the entry
- * number. `frozenNetlistGates.test.ts` reads this list: an entry removed from
- * it while the netlist still misses the floor turns the suite red.
+ * V30. `frozenNetlistGates.test.ts` enforces one rule — EVERY frozen netlist
+ * clears the stated floor, or is named here with its reason — and it reads
+ * `manifest_en_geometrie.netlists` to decide what "every" means. So this walk
+ * has to read the same list. It used to walk only the live `KAND_V2_*` keys,
+ * which was correct while those were the only netlists that could miss the
+ * floor; since V30 the case book also holds the dated `V28_KAND_*` corpus,
+ * frozen while the floor was still only a veto, and none of those clears it.
+ * A list built from a narrower set than the test checks is a list that goes
+ * red on the first regeneration for a reason nobody wrote down.
  *
  * The point of writing it down rather than loosening the test: "this case book
  * contains designs nobody may build, and here is exactly which" is a finding.
- * A test that simply skipped them would make it disappear. */
+ * A test that simply skipped them would make it disappear. And it is
+ * bookkeeping, not a waiver — the list is meant to shrink, and at V30 it did:
+ * from ten names to ten OLDER names, with the new corpus clearing the floor on
+ * its own. */
 const statedFloorOhm = casus1AmpMinLoadOhm(golden);
 const floorExceptions: {
   netlist: string;
   minZ_ohm: number | null;
+  minZ_bij_hz: number | null;
   gestelde_vloer_ohm: number;
   reden: string;
 }[] = [];
+
+/** The chain's own analysis-grid floor — the lowest frequency a v2 RUN can see. */
+const CHAIN_GRID_LO_HZ = CASUS1_V2_GRID[0];
+
+/**
+ * Why a given frozen netlist is allowed to sit under the floor.
+ *
+ * Two families and two entirely different reasons, and writing one sentence
+ * for both would have hidden the second — which is the finding of this
+ * regeneration and not a footnote to it.
+ */
+const exceptionReason = (key: string, atHz: number | null): string => {
+  if (/^V28_KAND_\d+$/.test(key)) {
+    return (
+      'HET GEDATEERDE V28-CORPUS. Bevroren VOOR de vloer een ZOEKDOEL was: de tuner kende hem ' +
+      'als veto plus een reparatiepas achteraf, en die reparatie is op alle vijftien kandidaten ' +
+      'afgegaan en op alle vijftien mislukt (casusboek V30). Deze tien blijven staan als de ' +
+      '"voor"-helft van de V30-vergelijking — hun opvolgers met de vloer als zoekdoel staan ' +
+      'onder kandidaten.KAND_V2_* en halen de vloer wel. Meetobject, GEEN ontwerp: mag niet ' +
+      'gebouwd worden.'
+    );
+  }
+  const blind = atHz !== null && atHz < CHAIN_GRID_LO_HZ;
+  return (
+    'BEVROREN MET DE VLOER ALS ZOEKDOEL, EN DE POORT IN DE RUN LIET HEM DOOR. Geen ' +
+    'tegenspraak maar twee metingen op twee rasters. De v2-POORTREFERENTIE wordt bevroren op ' +
+    `het analyseraster van de keteninvoer (${CHAIN_GRID_LO_HZ.toFixed(0)} Hz en hoger, want dat ` +
+    'is waar de VERRE-VELDMETINGEN van deze set beginnen); deze referentie leest |Z| over de ' +
+    'volle gemeten impedantiesweep. ' +
+    (blind
+      ? `Het minimum van deze netlist ligt op ${atHz!.toFixed(0)} Hz — ONDER die rasterbodem, ` +
+        'dus M-B/|Z| heeft het nooit gezien. De TUNER zag het wel: zijn eigen ' +
+        'veiligheidsraster loopt tot ruim onder 100 Hz, en `kandidaat_uitkomst.pas.' +
+        'ampFloorRepair` staat bij precies deze netlists op `failed` terwijl de poort ' +
+        'slaagde. Een impedantie-eis heeft geen geldigheidsvenster: de versterker voelt die ' +
+        'dip ook al is de respons daar niet gemeten (zie de band-noot bij `netOptimizer.ts`). ' +
+        'Casusboek V32.'
+      : `Het minimum ligt op ${atHz === null ? 'onbekende hoogte' : `${atHz.toFixed(0)} Hz`}, ` +
+        'binnen het raster, dus de twee metingen kijken naar hetzelfde gebied en verschillen ' +
+        'alleen in resolutie. Controleer dit geval apart — het is niet de V32-blindheid.') +
+    ' Mag niet gebouwd worden zolang deze regel er staat.'
+  );
+};
 
 let leaves = 0;
 for (const key of keys) {
@@ -172,21 +237,23 @@ for (const key of keys) {
   leaves += Object.keys(block).length - 3; // klasse, afhankelijkheid, toelichting are bookkeeping
   (raw.kandidaten as Record<string, unknown>)[key] = block;
 
-  if (statedFloorOhm !== null) {
-    const zMin = rep.metrics.epdr?.minZOhm ?? null;
+}
+
+/* The floor walk, over EVERY netlist the manifest names — see the note above. */
+if (statedFloorOhm !== null) {
+  for (const key of Object.keys(netlists)) {
+    const epdr = report(key).metrics.epdr;
+    const zMin = epdr?.minZOhm ?? null;
+    const atHz = epdr?.minZAtHz ?? null;
     // The one comparison rule, asked rather than re-implemented — the whole
     // reason `impedanceFloor.ts` exists (A3g).
     if (zMin === null || !meetsAmpFloor(zMin, statedFloorOhm)) {
       floorExceptions.push({
         netlist: key,
         minZ_ohm: r2(zMin),
+        minZ_bij_hz: atHz === null ? null : Number(atHz.toFixed(1)),
         gestelde_vloer_ohm: statedFloorOhm,
-        reden:
-          'Bevroren VOOR de vloer gesteld werd, en getuned zonder hem. Haalt de gestelde ' +
-          'vloer niet. De tuner heeft de vloer bovendien niet als ZOEKDOEL gezien: hij is ' +
-          'een veto plus een reparatiepas achteraf (casusboek V30, met bestand:regel). ' +
-          'Deze netlist blijft in het casusboek staan als meetobject en mag NIET gebouwd ' +
-          'worden; hij verdwijnt zodra V30 een opvolger heeft.',
+        reden: exceptionReason(key, atHz),
       });
     }
   }
@@ -233,6 +300,15 @@ raw.manifest_en_geometrie.v2_herkomst = {
 };
 
 const telling = (raw.classificatie as Record<string, Record<string, unknown>>).telling;
+telling.sinds_V30 =
+  `V30 (27-08-2026): het KAND-V2-corpus is opnieuw opgewekt met de gestelde vloer als ZOEKDOEL, ` +
+  `en het corpus dat het vervangt is niet weggegooid maar hernoemd: ${v28Keys.length} blokken ` +
+  '`V28_KAND_*`, byte-identieke bestanden onder een gedateerde naam, met dezelfde tien metrieken ' +
+  'en dezelfde klasse B. Dat is geen referentie aanpassen — het zijn dezelfde netlists, en de ' +
+  'nieuwe staan ernaast in plaats van eroverheen, zodat de vóór/ná-vergelijking van deze entry ' +
+  'reproduceerbaar blijft uit de repository zelf. De bevinding van F4a staat nog steeds: NUL ' +
+  'klasse C. Wat wél veranderde is de uitzonderingslijst: zij noemde tien KAND-V2-netlists en ' +
+  'noemt nu tien V28-KAND-netlists, want het nieuwe corpus haalt de vloer op eigen kracht.';
 telling.sinds_F4d =
   `F4d (27-08-2026), herzien bij de F4d-nazorg (V28): ${leaves} klasse-B-bladeren, tien metrieken ` +
   `op elk van de ${keys.length} bevroren KAND-V2-netlists. Het waren er negen tot de nazorg de ` +
@@ -248,10 +324,23 @@ writeFileSync(GOLDEN, `${JSON.stringify(raw, null, 1)}\n`, 'utf-8');
 console.log(`wrote ${keys.length} class-B blocks (${leaves} leaves) to ${GOLDEN}`);
 
 /* ---- the comparison table, for the casebook -------------------------- */
+/* THE DATED V28 CORPUS RIDES ALONG (V30).
+ *
+ * Three v1 baselines, then the ten netlists that were tuned while the stated
+ * floor was only a veto, then the ten that were tuned with it as a search
+ * goal. A table that showed only the survivors would answer "how good is the
+ * new corpus" and hide the question this entry is actually about, which is
+ * what the change to the objective DID. Rows, not a ranking: the block orders
+ * nothing (A5e.1). */
 const table = compareDesigns([
   { label: 'HUIDIG', origin: 'baseline', report: report('HUIDIG') },
   { label: 'KAND-A', origin: 'baseline', report: report('KAND_A') },
   { label: 'KAND-B', origin: 'baseline', report: report('KAND_B') },
+  ...v28Keys.map((k) => ({
+    label: k.replace(/_/g, '-'),
+    origin: 'v2-candidate' as const,
+    report: report(k),
+  })),
   ...keys.map((k) => ({
     label: k.replace(/_/g, '-'),
     origin: 'v2-candidate' as const,

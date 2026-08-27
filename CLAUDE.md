@@ -21,11 +21,11 @@
 ## Commando's
 
 - `npx tsc -b` — typecheck. Draait vóór elke oplevering, zonder uitzondering.
-- `npx vitest run` — volledige testsuite. **Gemeten 27-08-2026 (vloersessie): 120 bestanden, 1296 tests, ~4,6 min.**
-  Alles groen houden. De telling stond tot F4b op 99/1003 — dat was de stand bij F3 (`61a3ea4`) en zij
-  is drie opleveringen lang niet bijgewerkt: F3b bracht 104 bestanden, F3c 106, F4a 107, F4b 108, F4b2 109,
-  F4c 112, V20 113, F4d 119, de F4d-nazorg 120, de vloersessie 120. Vandaar de datum erbij: een telling zonder meetmoment is
-  een telling die stil veroudert.
+- `npx vitest run` — volledige testsuite. **Gemeten 27-08-2026 (V30-vervolgsessie): 121 bestanden, 1305 tests, ~4,5 min
+  wandkloktijd (267 s; ~21 CPU-minuten).** Alles groen houden. De telling stond tot F4b op 99/1003 — dat was de
+  stand bij F3 (`61a3ea4`) en zij is drie opleveringen lang niet bijgewerkt: F3b bracht 104 bestanden, F3c 106,
+  F4a 107, F4b 108, F4b2 109, F4c 112, V20 113, F4d 119, de F4d-nazorg 120, de vloersessie 120, V30 121.
+  Vandaar de datum erbij: een telling zonder meetmoment is een telling die stil veroudert.
   **Waar de tijd zit (nazorg-meting):** vijf bestanden draaien echte ketenruns en zijn samen ruim elf van de
   ~22 CPU-minuten — `threeWayChain` (282 s), `candidateRoute` (111 s), `designChain` (102 s),
   `workerRouteRegression` (98 s), `casus1V2Candidates` (77 s). Elk van hen draait het minimum aantal live runs
@@ -37,6 +37,12 @@
   `npx vite-node scripts/record-casus1-v2-references.ts` (drie seconden) voor de klasse-B-blokken én
   de vergelijkingstabel voor het casusboek. **Nagemeten bij de nazorg: twee opeenvolgende runs leveren de
   netlists byte-identiek terug, op het `savedAt`-stempel van de serialisatie na.**
+- **De vloer als zoekdoel meten (V30)**: `npx vite-node scripts/measure-v30-floor-goal.ts` —
+  dertig ketenruns (vijftien kandidaten × twee armen), gemeten 45–70 s per stuk, ~30 min.
+  Schrijft `test-fixtures/casus1_v30_vloer_vergelijking.json` en drukt de vóór/ná-tabel af.
+  Schrijft géén netlist: de interessante rijen zijn juist de kandidaten die een poort
+  weigert, en die worden nooit een bestand. `V30_LIMIT=1` draait één kandidaat per arm als
+  rookproef — dat is geen meting.
 - `npx vitest run <pad>` — gerichte run tijdens het werk; de volle suite blijft de acceptatie.
 - `npm run build` — productiebuild (draait ook de typecheck via `tsc -b`).
 
@@ -254,8 +260,8 @@ grotere ingreep — hij raakt élk commando in dit project — en is deze sessie
 
 ### F4c-guards (keuze vs. polish op de tuner-instellingen)
 - `src/lib/engine2/optimizer/choices.ts` — de indeling als DATA, niet als proza: `CHOICE_KEYS`
-  (25), `GREY_KEYS` (5), `POLISH_KEYS` (7). Samen exact de 37 top-level sleutels van
-  `NetOptimizeOptions`. De definities staan in de nota (A3j) in algemene bewoordingen; deze
+  (26 sinds V30, 25 bij F4c), `GREY_KEYS` (5), `POLISH_KEYS` (7). Samen exact de 38 top-level
+  sleutels van `NetOptimizeOptions`. De definities staan in de nota (A3j) in algemene bewoordingen; deze
   lijsten zijn de bijlage voor deze tuner, en het casusboek V26 draagt de tabel met per sleutel
   de reden.
 - `src/lib/engine2/optimizer/choiceKeyGuard.test.ts` — twee claims, beide als scan. (1) De drie
@@ -384,6 +390,29 @@ grotere ingreep — hij raakt élk commando in dit project — en is deze sessie
   manifest, bestanden op schijf en de boekhouding van de generator moeten het eens zijn,
   zodat een legitieme regeneratie geen testwijziging vraagt.
 
+### V30-guards (de gestelde vloer als zoekdoel)
+- `src/lib/engine2/optimizer/floorAsGoal.test.ts` — de vier claims van V30 op de
+  tweeweg-fixture. Sleutel **afwezig** en sleutel **`false`** leveren byte-identieke
+  netwerken (P2: een mechanisme dat er alleen maar ís mag niets kosten); **gewapend
+  zónder gestelde vloer is inert** (P4 — een barrière zonder vloer heeft geen afstand om
+  tekort van te zijn); en **gewapend mét vloer levert aantoonbaar een ánder netwerk**,
+  want zonder die tegenproef zijn de eerste twee even waar voor een optie die nergens op
+  aangesloten is (V23). De vloer wordt uit de gelevérde min |Z| van de fixture afgeleid en
+  nooit ingetypt. Plus een bronscan die de vierde claim hard maakt: de corridor-annulering
+  en het overslaan van de blok-coördinaatverfijning hangen aan `zFloorRepairPass` en niet
+  aan `zFloorBarrier` — tot V30 waren die twee dezelfde bit, en "de vloer is een zoekdoel"
+  zou anders stilzwijgend óók "de corridor telt niet meer en de diepe polish vervalt"
+  hebben betekend.
+- `src/lib/engine2/optimizer/choiceKeyGuard.test.ts` — twee V30-blokken erbij: een gestelde
+  vloer wapent de barrière, géén vloer laat hem ABSENT (nooit `false` — dat zou zeggen dat
+  iemand besloot dat de vloer niet mag sturen), een expliciete waarde wint van de afleiding
+  zodat de vóór/ná-meting een run is die je kunt vrágen; en de **grijze waarde**
+  (`AMP_FLOOR_BARRIER_WEIGHT`, overgenomen uit v1) staat mét haar herkomst in de
+  vingerafdruk, alleen wanneer de keuze die haar leest ook echt gesteld is.
+- `src/lib/noAppWideFloor.test.ts` — ongewijzigd, en hij heeft gewerkt: de eerste naam voor
+  de barrièreconstante droeg de stam van de verwijderde app-brede vloer, en daarna ving hij
+  het commentaar dat die vangst uitlegde. Vandaar `AMP_FLOOR_BARRIER_WEIGHT`.
+
 ### F4b2-guard (het vierde gat: de LF-bult-inversie)
 - `src/lib/engine2/optimizer/lfBumpBorder.test.ts` — de vierde A5d.6-inversie, die op de
   workerroute nooit invoer had (V23-bijvangst, dood sinds F2). Vijf asserts op de inversie zelf:
@@ -454,8 +483,16 @@ Twee scripts, twee kosten:
   kandidaat, ~10 min totaal. Schrijft de netlists en `test-fixtures/casus1_v2_herkomst.json`.
 - `npx vite-node scripts/record-casus1-v2-references.ts` — leest die bestanden en schrijft de
   klasse-B-blokken in de golden refs. Drie seconden, dus vrij om opnieuw te draaien.
-De acceptatie zit in `casus1V2Candidates.test.ts`: de metrieken reproduceren op alle negen bestanden,
-en **één** kandidaat wordt live door de échte route heen gereproduceerd (~107 s).
+De acceptatie zit in `casus1V2Candidates.test.ts`: de metrieken reproduceren op alle bevroren bestanden,
+en **één** kandidaat wordt live door de échte route heen gereproduceerd (~41 s).
+
+**Sinds V30 zijn het er TWEE corpora, en dat is opzet.** `KAND_V2_1..10` is het levende corpus, opgewekt
+met de gestelde vloer als ZOEKDOEL. `V28_KAND_1..10` is het gedateerde corpus dat het verving —
+byte-identieke bestanden onder een andere naam, met hun klasse-B-blokken mee, bewaard als de
+"vóór"-helft van de V30-vergelijking. Wie een script schrijft dat het levende corpus opruimt gebruikt
+`^KAND_V2_\d+$` en nooit `startsWith('KAND_V2')`: die tweede slikt het gedateerde corpus mee en gooit
+het bewijsmateriaal weg. `record-casus1-v2-references.ts` en `goldenClassification.test.ts` dragen die
+regel allebei expliciet.
 
 De vloer is sinds F0 uitsluitend het getal dat de ONTWERPER invult (`ampMinLoadOhm`, geen default):
 leeg veld = geen oordeel. Eén regel, één plek: `meetsAmpFloor` in `src/lib/impedanceFloor.ts`.
