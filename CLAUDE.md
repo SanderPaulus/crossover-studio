@@ -29,19 +29,38 @@
   eruit ongezien fout. Verzamel in een ARRAY, dat kan de compiler wel volgen. (2) `tuned` naar `boolean`
   gecast terwijl het een TELLING is. Wie een script schrijft dat referentiegetallen wegschrijft, kijkt
   het geschreven blok nog steeds na — maar de typefout komt nu vooraf.
-- `npx vitest run` — volledige testsuite. **Gemeten 28-08-2026 (V38-fix-sessie): 127 bestanden,
-  1386 tests, ~6,8 min wandkloktijd (405 s).** Alles groen houden. De telling stond tot F4b op 99/1003 — dat was de
+- `npx vitest run` — volledige testsuite. **Gemeten 29-08-2026 (V41-sessie): 128 bestanden,
+  1391 tests, ~71 min wandkloktijd (4285 s).** Alles groen houden.
+
+  **DE SUITE IS BIJ V41 TIEN KEER ZO DUUR GEWORDEN (405 s → 4285 s), en het zit in ÉÉN bestand.**
+  Sinds de synthesestap correctienetwerken koopt dragen de casus-1-netlists veel meer onderdelen,
+  en het iteratiebudget van de tuner is `max(700, 140 · vrij)` — superlineair in het aantal vrije
+  waarden. `casus1V2Candidates.test.ts` doet twee LIVE ketenruns en kost daardoor **2601 s alleen
+  gedraaid** (V38-fix: 401 s), waarvan 1552 s voor de bevroren netlist en 1046 s voor de
+  verwerping. Alles daaromheen is nauwelijks bewogen. **Gevolg voor de per-bestand-cijfers
+  hieronder: zij zijn in een volle parallelle run niet meer bruikbaar** — één bestand houdt ruim
+  een uur een worker bezet, dus elk ander bestand rapporteert vooral wachttijd (`frozenNetlistGates`
+  meldt 17 min in de volle run en kost er 106 alleen gedraaid). Meet een bestand dus APART wanneer
+  je zijn prijs wilt weten; de cijfers hieronder dateren van V38-fix en beschrijven het oude,
+  kalere veld.
+
+  De telling van 1386 naar 1391 is +1 bestand en netto +5 tests, en dat is niet +5 claims:
+  `chainChoices.test.ts` brengt er 5, `choiceKeyGuard.test.ts` 2, en `casus1V2Candidates.test.ts`
+  verliest er 2 doordat zijn `it.each` over het levende corpus loopt en dat corpus van 10 naar 8
+  netlists ging. De telling stond tot F4b op 99/1003 — dat was de
   stand bij F3 (`61a3ea4`) en zij is drie opleveringen lang niet bijgewerkt: F3b bracht 104 bestanden, F3c 106,
   F4a 107, F4b 108, F4b2 109, F4c 112, V20 113, F4d 119, de F4d-nazorg 120, de vloersessie 120, V30 121,
   V31/V32 123, V33 124 (`barrierSource.test.ts`), V34 125 (`probeSource.test.ts`),
-  V36 126 (`dissipationTerm.test.ts`), V38-fix 127 (`searchMeasure.test.ts`). **V37 voegde géén
+  V36 126 (`dissipationTerm.test.ts`), V38-fix 127 (`searchMeasure.test.ts`), V41 128
+  (`chainChoices.test.ts`). **V37 voegde géén
   bestand toe** — zijn claims staan in
   `dissipationTerm.test.ts`, `frozenNetlistGates.test.ts`, `choiceKeyGuard.test.ts` en
   `casus1V2Candidates.test.ts`, naast de claims die zij al droegen; de telling ging van 1369
   naar 1376 tests op hetzelfde aantal bestanden. V38-fix voegt er één bestand (4 tests) en zes
   claims elders bij: 1386.
   Vandaar de datum erbij: een telling zonder meetmoment is een telling die stil veroudert.
-  **Waar de tijd zit (nagemeten bij V38-fix, volle parallelle run):** zeven bestanden draaien echte ketenruns en zijn
+  **Waar de tijd zat (nagemeten bij V38-fix, volle parallelle run — zie de waarschuwing hierboven:
+  deze cijfers zijn sinds V41 niet meer representatief):** zeven bestanden draaien echte ketenruns en zijn
   samen het leeuwendeel van de CPU-tijd — `casus1V2Candidates` (401 s: twee live runs, de bevroren netlist én
   de verwerping), `threeWayChain` (302 s), `candidateRoute` (128 s), `designChain` (114 s),
   `workerRouteRegression` (100 s), `frozenNetlistGates` (92 s), `f4cRegression` (81 s).
@@ -63,7 +82,12 @@
   bestanden draait het minimum aantal live runs dat zijn claim draagt; de rest leest bestanden. Een regressie die niemand draait omdat hij traag is,
   beschermt niets.
 - **De v2-kandidaatfixtures opnieuw opwekken** (alleen nodig als de generator of het veld verandert):
-  `npx vite-node scripts/generate-casus1-v2-candidates.ts` — vijftien ketenruns. De kosten hangen sinds
+  `npx vite-node scripts/generate-casus1-v2-candidates.ts` — vijftien ketenruns. **Sinds V41 kost
+  hij UREN en niet meer drie kwartier: gemeten 15 756 s (4 u 23 min), 567–1697 s per kandidaat.**
+  Dat is geen ongeluk maar de ingreep: de synthesestap koopt sinds V41 correctienetwerken, dus het
+  zaad draagt aanzienlijk meer onderdelen, en het iteratiebudget van de tuner is
+  `max(700, 140 · vrij)` — superlineair in het aantal vrije waarden. Elke prijs hieronder dateert
+  van vóór V41 en beschrijft het oude, kalere veld. De kosten hangen sinds
   V33 aan de BARRIÈREBRON die de kandidaat stelt, en alle drie zijn gemeten over het hele veld:
   `'grid'` ~14 min (45–66 s per kandidaat), **`'safety'` 44,6 min (113–237 s) — dit is wat de
   v2-route stelt en dus wat je krijgt**, `'sweep'` 4 u 23 min (603–2740 s). De barrière lost het
@@ -83,14 +107,19 @@
   de vergelijkingstabel voor het casusboek. **Nagemeten bij de nazorg: twee opeenvolgende runs leveren de
   netlists byte-identiek terug, op het `savedAt`-stempel van de serialisatie na.**
 - **De vóór/ná-tabel tussen twee corpora**: `npx vite-node scripts/compare-corpora.ts [vóór] [ná]` —
-  seconden, geen ketenrun. Corpora: `v30`, `v32`, `v33sweep`, `v33`, `v34`, `v37`, `live`; default
-  `v37 live`, wat de V38-fix-tabel is. `compare-corpora.ts v30 v32` reproduceert de V32-tabel,
-  `v32 v33` de V33-tabel, `v33 v34` de V34-tabel, `v34 v37` de V37-tabel.
+  seconden, geen ketenrun. Corpora: `v30`, `v32`, `v33sweep`, `v33`, `v34`, `v37`, `v38fix`,
+  `live`; default `v38fix live`, wat de V41-tabel is. `compare-corpora.ts v30 v32` reproduceert de
+  V32-tabel, `v32 v33` de V33-tabel, `v33 v34` de V34-tabel, `v34 v37` de V37-tabel, `v37 v38fix`
+  de V38-fix-tabel.
   Gekoppeld op KANDIDAAT (de bestandsnummers
   zijn rijnummers van verschillende shortlists en horen niet bij elkaar), beide helften gemeten door
   hetzelfde `buildReport`-pad. **Sinds V36 draagt hij twee kolommen erbij** — dissipatiefractie en
   de watt in de grootste enkele weerstand, per kandidaat en als corpusgemiddelde. Een kolom, geen
-  oordeel: casus 1 stelt geen dissipatiegrens (P4). Drukt voor het LEVENDE corpus ook de verwerpingen af met wat de
+  oordeel: casus 1 stelt geen dissipatiegrens (P4). **Sinds V41 een derde:** de CORRECTIEGROEPEN
+  per netlist (val / gedempte val / Zobel / shunt-shelf / niveauwerk), geteld uit de geleverde
+  netlist met `decompose` uit `v38-groups.ts` — één decompositie, inmiddels vier lezers — plus het
+  corpustotaal per rol. Ook een kolom en geen criterium: een correctiegroep is een shunt en kost
+  dissipatie en belastingimpedantie, en de twee kolommen ernaast zeggen of ze betaald zijn. Drukt voor het LEVENDE corpus ook de verwerpingen af met wat de
   geweigerde tune had bereikt. Draai hem ná de generator en ná de recorder.
   **Hij heette tot V33 `compare-v30-v32-corpus.ts` en had zijn "ná"-helft hard op het levende corpus
   staan** — dus de eerste regeneratie erna maakte stilletjes een ándere tabel dan de tabel waarvoor hij
@@ -171,6 +200,26 @@
   som van per-driver gegladde magnitudes met ongemoeide fase (wat de zoektocht tot V38-fix las).
   Dit is het bewijsmateriaal waarmee de reparatie gekozen is: gladden ná de sommatie repareert
   niets, want de stille geest zit ook in de som. `frozenNetlistGates.test.ts` assert de claims.
+- **De twee fasematen naast elkaar, per netlist en per paar (V40)**:
+  `npx vite-node scripts/measure-v40-phase.ts [SLEUTEL ...]` — seconden, geen ketenrun en geen
+  enkele tune; zonder argumenten élke netlist die het casusboek noemt. Drukt per paar af wat het
+  RAPPORT afdrukt (`system.phaseTracking`: ±1 octaaf rond het kruispunt, geknipt op
+  meetgeldigheid), wat de TUNER afdrukt (`pairPhaseDeg`: het overlapvenster, |Δniveau| ≤ 20 dB),
+  en daarnaast **één formule op beide banden**, op het ketenraster. Dat laatste paar is het punt:
+  het haalt BAND, RASTER en DEFINITIE uit elkaar. Gemeten uitkomst: de twee definities zijn
+  dezelfde formule en de tunerkolom reproduceert exact, dus het hele gat is de BAND. Dit is het
+  bewijsmateriaal onder casusboek V40, naast de zips van `export-v40-vxp.ts`.
+- **Drie bevroren netlists als VituixCAD-project (V40)**:
+  `npx vite-node scripts/export-v40-vxp.ts [SLEUTEL ...]` — seconden. Schrijft per sleutel één zip
+  in `test-fixtures/casus1/v40_vituix/`, elk met het `.vxp` én zijn meetbestanden, precies zoals
+  de exportknop van de app het doet: `serializeVxp`, `zipStore` en de brugvertraging uit
+  `vituixBridge.ts` zijn dezelfde functies. **Drie dingen doet hij anders dan de knop, en het
+  bestandshoofd van elk geschreven bestand zegt het:** de responsen zijn de `onAxisFull` van de
+  opnamepas (de woofer is één weg gemeten als twee bestanden en VituixCAD wil er één per
+  driverblok — V13), de impedanties zijn omgezet naar ZMA-tekst (casus 1's `.lim` is binair ARTA
+  en VituixCAD leest dat niet — **dat is ook een bevinding over de app: wie een `.lim` inlaadt en
+  exporteert krijgt het ongewijzigd in de map. Gemeld, niet gerepareerd**), en er gaan geen
+  hoekensets mee (casus 1 heeft er één, en één hoek is geen directiviteitsset).
 - **De vloer als zoekdoel meten (V30)**: `npx vite-node scripts/measure-v30-floor-goal.ts` —
   dertig ketenruns (vijftien kandidaten × twee armen), gemeten 45–70 s per stuk, ~30 min.
   Schrijft `test-fixtures/casus1_v30_vloer_vergelijking.json` en drukt de vóór/ná-tabel af.
@@ -743,10 +792,17 @@ grotere ingreep — hij raakt élk commando in dit project — en is deze sessie
   netlist waarvan de referentie werkelijk boven 1 ligt, met een teller die zegt hoeveel er
   meededen zodat een corpus zonder serieweerstand niet stil groen blijft. Plus: de opgeloste
   R_e, de fixture-constante en `_M_E_parameters.R_e_ohm` zijn hetzelfde getal (één R_e, één
-  herkomst, drie lezers), en de vóór/ná van de uitdagingsdrempel — op de piek haalde de term op
-  géén enkele netlist de 1 % (grootste aandeel 0,57 %), op R_e haalt hij hem wel (22,7 %), en
-  het verschil tussen die twee is het KWADRAAT van de factor tussen de noemers, afgeleid uit de
-  opgeschreven noemers zelf.
+  herkomst, drie lezers), en de vóór/ná van de uitdagingsdrempel — op de piek haalt de term op
+  géén enkele netlist de 1 %, op R_e haalt hij hem wel, en het verschil tussen die twee is het
+  KWADRAAT van de factor tussen de noemers, afgeleid uit de opgeschreven noemers zelf.
+  **De vergelijking is bij V41 gecorrigeerd en de drempel niet.** Zij deelde door de kleinste RMS
+  van het HÉLE casusboek; toen V41 het veld vlakker maakte (kleinste RMS 0,53 → 0,48) sloeg zij om
+  naar 1,22 % en viel om — niet doordat de term groeide (grootste piek-term 0,002819 → 0,002067)
+  maar doordat de noemer kromp. Die proxy legde de term van de ENE netlist naast het objectief van
+  een ANDERE, en dat is nergens een grootheid: de tuner telt de term op bij het objectief van het
+  netwerk dat hij evalueert. Elke netlist wordt nu tegen zijn EIGEN objectief gelegd — grootste
+  piek-aandeel 0,74 %, grootste R_e-aandeel 29,5 % — met een assert op het aantal deelnemers, en
+  nagemeten dat hij kán falen (de piek-term van `KAND_V2_3` maal 1,5 geeft 1,10 % en rood).
 - `src/lib/engine2/optimizer/choiceKeyGuard.test.ts` — het derde paar, met dezelfde scheiding
   als V33 en V34: `dissipationReferenceSource` is CHOICE (welke grootheid een gewogen term
   meet) en `dissipationReferenceReOhm` is POLISH (de opgeloste R_e die de run al in handen
@@ -791,6 +847,39 @@ grotere ingreep — hij raakt élk commando in dit project — en is deze sessie
 - `src/lib/engine2/casus1V2Candidates.test.ts` — de meetopstelling zegt sinds V38-fix ook op welke
   KROMME de amplitudeterm gemeten is (`zoekmaat_gladding_oct`, `zoekmaat_waarom`), afgelezen van
   de verklaring en niet overgeschreven. Vierde besluit naast V30/V33, V34 en V37.
+
+### V41-guards (wat de ontwerp- en synthesestap mochten bouwen)
+- `src/lib/engine2/optimizer/chainChoices.ts` — **een TWEEDE classificatielijst, en de smalheid is de
+  claim.** `CHOICE_KEYS`/`GREY_KEYS`/`POLISH_KEYS` dekken de 44 sleutels van `NetOptimizeOptions`
+  volledig; `CHAIN_CHOICE_KEYS` dekt **twee** sleutels van `Chain3Settings` (`eqBands`,
+  `leanTargetDb`) en beweert niets over de andere dertig. V38 tekende de hele laag op als gat
+  (beslispunt D) en V39 bezit hem; V41 sluit de twee sleutels die een MÉTING veroordeeld heeft.
+  Dat is de norm die rij 11 van de A3j-tabel stelt: een classificatie beweegt wanneer een meting
+  haar beweegt, niet op vermoeden. `withDeclaredChainChoices` is de V34-vorm van
+  `withDeclaredSourceLimit`, één laag breder: geen verklaring ⇒ de IDENTITEIT, en dat is wat elke
+  niet-v2-aanroeper byte-identiek houdt.
+- `src/lib/engine2/optimizer/chainChoices.test.ts` — vijf claims, en de derde draagt de rest. De
+  twee waarden zijn de ENGINE-standaarden, gelezen uit hun eigen huis (`SYNTHESIS_LEAN_DEFAULT_DB`
+  in `synthesis.ts`, `DEFAULT_EQ_BANDS_PER_DRIVER` in `vfOptimizer.ts`) en een expliciete waarde
+  wint; `withDeclaredChainChoices` is de identiteit zonder verklaring én met een lege verklaring
+  (P2); de verklaring BEREIKT de ontwerp- en synthesestap — dezelfde kandidaat, dezelfde seed en
+  hetzelfde budget leveren aantoonbaar een ander netwerk, want zonder die tegenproef zijn de
+  andere claims even waar voor twee sleutels die nergens op aangesloten zijn (V23); en — de claim
+  die de derde pas iets waard maakt — een arm die de OUDE waarden STELT is byte-identiek aan een
+  arm die niets stelt en de ketensettings ze laat dragen. Drie ketenruns op de kleine fixture van
+  `candidateRoute.test.ts`, krap budget.
+- `src/lib/engine2/optimizer/choiceKeyGuard.test.ts` — twee V41-blokken erbij. De ketenlijst is
+  gedekt (met een gatendetectie die is nagemeten), en **geen van beide sleutels mag naar de
+  classificatie van de tuner migreren**: de spiegel van de "nooit terug"-pinnen die V33, V34, V37
+  en V38-fix elk dragen, de andere kant op. `eqBands` bepaalt wat `deriveTopology` mag VOORSTELLEN
+  en `leanTargetDb` of `synthesize` het BOUWT; een waardetune verschuift alleen getallen tussen de
+  onderdelen die die twee gekozen hebben. De sleuteltelling van `NetOptimizeOptions` blijft 44 en
+  de test assert dat de twee ketensleutels er niet in voorkomen.
+- `src/lib/engine2/casus1V2Candidates.test.ts` — de meetopstelling noemt sinds V41 ook het
+  EQ-budget en de lean-drempel (`eq_budget_per_tak`, `lean_drempel_db`), afgelezen van de
+  ketenverklaring, met een assert dat de drempel aantoonbaar NIET het stopdoel van de trapmethode
+  is. Vijfde en zesde besluit naast V30/V33, V34, V37 en V38-fix — en het eerste paar dat bóven de
+  tuner zit.
 
 ### F4b2-guard (het vierde gat: de LF-bult-inversie)
 - `src/lib/engine2/optimizer/lfBumpBorder.test.ts` — de vierde A5d.6-inversie, die op de
@@ -854,12 +943,18 @@ grotere ingreep — hij raakt élk commando in dit project — en is deze sessie
   Zie casusboek V19 en `.claude/skills/casus-toevoegen/SKILL.md`.
 
 ### De casus-1-fixtures die een SCRIPT opwekt (F4d)
-`test-fixtures/casus1/KAND-V2-*.adsfilter.json` zijn de negen v2-kandidaten, bevroren als bestanden
+`test-fixtures/casus1/KAND-V2-*.adsfilter.json` zijn de v2-kandidaten die de shortlist haalden —
+negen bij F4d, tien vanaf V28, **acht sinds V41** — bevroren als bestanden
 op precies dezelfde voet als de drie v1-kandidaten — want F4a stelde vast dat casus 1 géén klasse-C-
 referenties heeft, en "laat de suite de scan draaien en assert op wat eruit komt" zou de eerste maken.
 Twee scripts, twee kosten:
-- `npx vite-node scripts/generate-casus1-v2-candidates.ts` — negen ketenruns, gemeten 45–72 s per
-  kandidaat, ~10 min totaal. Schrijft de netlists en `test-fixtures/casus1_v2_herkomst.json`.
+- `npx vite-node scripts/generate-casus1-v2-candidates.ts` — vijftien ketenruns; de gemeten prijs
+  per sessie staat bij het commando bovenaan, en zij is bij V41 van 42 minuten naar 4 u 23 min
+  gegaan. Schrijft de netlists en `test-fixtures/casus1_v2_herkomst.json`. **Hij schrijft alleen de
+  bestanden die de shortlist haalt en RUIMT NIETS OP:** krimpt de shortlist, dan blijven de
+  overtollige `KAND-V2-*`-bestanden van de vorige run staan als wezen. Bij V41 (10 → 8) gebeurde
+  dat, en de wezenloze-bestanden-wacht in `casus1V2Candidates.test.ts` is wat het zou hebben
+  gevangen — verwijder ze met de hand, na te hebben gecontroleerd dat het bevroren corpus ze draagt.
 - `npx vite-node scripts/record-casus1-v2-references.ts` — leest die bestanden en schrijft de
   klasse-B-blokken in de golden refs. Drie seconden, dus vrij om opnieuw te draaien. Sinds V36
   elf metrieken per kandidaat (`grootste_R_W_bij_100W` erbij) plus het afgeleide blok
@@ -870,9 +965,14 @@ Twee scripts, twee kosten:
 op een `FilterInput` dat geen `parts` heeft kwam niet als typefout terug. Wie een script schrijft dat
 referentiegetallen wegschrijft, kijkt het geschreven blok na vóór de commit.
 De acceptatie zit in `casus1V2Candidates.test.ts`: de metrieken reproduceren op alle bevroren bestanden,
-en **één** kandidaat wordt live door de échte route heen gereproduceerd — nagemeten bij V38-fix: 260 s, plus 139 s voor de verwerping ernaast (V37: 158 + 158 s). De ~41 s die hier tot V37 stond dateert van vóór V33: sinds de barrière het veiligheidsraster leest kost élke live casus-1-run het viervoudige.
+en **één** kandidaat wordt live door de échte route heen gereproduceerd — **nagemeten bij V41:
+1552 s, plus 1046 s voor de verwerping ernaast; het hele bestand kost 2601 s (43 min)** (V38-fix:
+260 + 139 s; V37: 158 + 158 s). De ~41 s die hier tot V37 stond dateert van vóór V33: sinds de
+barrière het veiligheidsraster leest kost élke live casus-1-run het viervoudige, en sinds V41 het
+zesvoudige daarvan — de synthesestap koopt correctienetwerken, dus er zijn veel meer vrije waarden
+te tunen. **Dit ene bestand is nu het leeuwendeel van de suite.**
 
-**Sinds V38-fix zijn het er ACHT corpora, en dat is opzet.** `KAND_V2_*` is het levende corpus.
+**Sinds V41 zijn het er NEGEN corpora, en dat is opzet.** `KAND_V2_*` is het levende corpus.
 `V28_KAND_*` is bevroren vóór de vloer een ZOEKDOEL was (V30); `V30_KAND_*` toen de poort nog blind
 was onder de verre-veldbodem (V32); `V32_KAND_*` toen de BARRIÈRE nog het evaluatieraster las terwijl
 de poort de sweep handhaafde (V33); `V33_SWEEP_KAND_*` is V33's dure referentiearm, met de barrière
@@ -882,8 +982,12 @@ zijn eigen zoekvenster landde en de v2-route nog een 2,0 Ω-grens droeg die niem
 R_e — 19,31 Ω tegen 3,05 Ω, en dat kwadrateert tot 40,1 (V37); `V37_KAND_*` toen de ZOEKTOCHT nog
 de spreiding mat van een som van gegladde magnitudes met ongemoeide fase, waarbij de
 gladdingskern de stille geest van net buiten de band over de bandrand trok en de amplitudeterm
-van 1,85 naar 10,22 dB blies (V38-fix).
-Alle zeven de gedateerde corpora zijn byte-identieke bestanden onder een andere naam, met hun
+van 1,85 naar 10,22 dB blies (V38-fix); `V38FIX_KAND_*` toen de ONTWERP- en SYNTHESESTAP nog
+erfden wat de v1-keten toevallig droeg — `eqBands` ongesteld (een stille nul, dus geen enkele
+EQ-band en daarmee geen enkele val op een gemeten breakup) en `leanTargetDb` afgeleid uit het
+stopdoel van de trapmethode (2,5 dB tegen de eigen 0,5 dB van `synthesize`, waardoor de kale
+ladder op 45 van de 45 takken slaagde) (V41).
+Alle acht de gedateerde corpora zijn byte-identieke bestanden onder een andere naam, met hun
 klasse-B-blokken mee, bewaard als de "vóór"-helften van hun vergelijkingen. Wie
 een script schrijft dat het levende corpus opruimt gebruikt `^KAND_V2_\d+$` en nooit
 `startsWith('KAND_V2')`: die tweede slikt de gedateerde corpora mee en gooit het bewijsmateriaal weg.
@@ -892,7 +996,7 @@ een script schrijft dat het levende corpus opruimt gebruikt `^KAND_V2_\d+$` en n
 genoemde netlist die geen v1-baseline is een geclassificeerd blok moet hebben, omdat de
 familielijst die er stond bij V32 vergeten is. De koppeling bestandsnaam ↔ kandidaat staat in
 `manifest_en_geometrie.v30_corpus`, `.v32_corpus`, `.v33_sweep_corpus`, `.v33_corpus`,
-`.v34_corpus` en `.v37_corpus`, want zij
+`.v34_corpus`, `.v37_corpus` en `.v38fix_corpus`, want zij
 stond alleen in `casus1_v2_herkomst.json` en dat bestand wordt door de volgende regeneratie
 overschreven. **Bevriezen doe je sinds V34 met `scripts/freeze-live-corpus.ts`** en niet met de
 hand: het zijn vijf bewerkingen die allemaal moeten landen.

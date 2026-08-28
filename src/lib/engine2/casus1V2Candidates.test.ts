@@ -83,6 +83,8 @@ import { buildReport, type EngineV2Report } from './report.ts';
 import { ctcKey } from './metrics/types.ts';
 import { FLAT_TARGET } from './requirements/targetCurve.ts';
 import { SEARCH_SMOOTHING_OCTAVES } from './constants.ts';
+import { SYNTHESIS_LEAN_DEFAULT_DB } from '../synthesis.ts';
+import { DEFAULT_EQ_BANDS_PER_DRIVER } from '../vfOptimizer.ts';
 import { compareDesigns } from './predesign/comparison.ts';
 import { stableJson } from './optimizer/determinism.ts';
 import { handleV2Request, type V2Chain3Payload, type V2Response } from './optimizer/worker.ts';
@@ -138,6 +140,14 @@ const HERKOMST = JSON.parse(
      *  hoeveel moeite hij doet (polish) maar waarvan hij de spreiding is. */
     zoekmaat_gladding_oct: number | null;
     zoekmaat_waarom: string;
+    /** V41 — wat de ONTWERP- en SYNTHESESTAP mochten bouwen. Eén laag hoger dan
+     *  alle bovenstaande: deze twee worden gelezen vóórdat de tuner bestaat,
+     *  dus zij bepalen wat de topologie KAN zijn en niet welke waarden zij
+     *  krijgt. */
+    eq_budget_per_tak: number | null;
+    eq_budget_waarom: string;
+    lean_drempel_db: number | null;
+    lean_drempel_waarom: string;
     dissipatiegewicht: number;
     dissipatiegewicht_waarom: string;
     seed: number;
@@ -295,6 +305,21 @@ describe('the frozen v2 candidates are files, and the file says where they came 
     expect(m.beschermingen_via_kandidaat).toContain('errorSmoothOct');
     expect(m.zoekmaat_gladding_oct).toBe(SEARCH_SMOOTHING_OCTAVES);
     expect(m.zoekmaat_waarom).toMatch(/V38-fix/);
+    /* V41 — het vijfde en zesde besluit, en het eerste paar dat BOVEN de tuner
+     * zit. `eqBands` was ongesteld en dat is in `designThreeWay` een stille
+     * nul: het veld kon geen enkele val op een gemeten breakup dragen omdat de
+     * ontwerpstap er nooit een voorstelde. `leanTargetDb` was geen sleutel maar
+     * een afleiding uit het stopdoel van de trapmethode, vijf keer zo ruim als
+     * de eigen standaard van `synthesize`, en daardoor slaagde de kale ladder
+     * altijd. Beide waarden zijn ENGINE-standaarden en geen casus-1-getallen —
+     * ze worden hieronder uit hun eigen huis gelezen en niet overgetypt, want
+     * dat is precies het verschil dat P6 bewaakt. */
+    expect(m.eq_budget_per_tak).toBe(DEFAULT_EQ_BANDS_PER_DRIVER);
+    expect(m.eq_budget_waarom).toMatch(/V38/);
+    expect(m.lean_drempel_db).toBe(SYNTHESIS_LEAN_DEFAULT_DB);
+    expect(m.lean_drempel_waarom).toMatch(/V41|synthesize/);
+    // En de afleiding is aantoonbaar NIET het stopdoel dat de keten gebruikte.
+    expect(m.lean_drempel_db).not.toBe(CASUS1_V2_SETTINGS.targets.rippleDb);
   });
 
   it('the candidate metrics are CLASS B, and the reference file says so', () => {

@@ -11,6 +11,20 @@ import { powerShape, smoothDbGaussian, type PowerMetricMode } from './bandMetric
 import type { AngleResponse } from './directivity.ts';
 
 /**
+ * THE EQ BUDGET PER DRIVER, one home since V41.
+ *
+ * The greedy design stage's own default, and also what the app's own control
+ * starts at (`vfEqBands` in `App.tsx`) — one number, two readers, and since V41
+ * a third: on the v2 route the CANDIDATE states it (`chainChoices.ts`), because
+ * an EQ band is the only route by which the three-way design step can propose a
+ * trap on a measured breakup, and `Chain3Settings.eqBands` unstated meant a
+ * silent zero rather than "no opinion" (V38 beslispunt C, P4).
+ *
+ * Not a casus number: it is the app's own default and it predates casus 1.
+ */
+export const DEFAULT_EQ_BANDS_PER_DRIVER = 2;
+
+/**
  * Virtual-filter optimizer — designs the crossover for you, greedily.
  *
  * The optimizer is NOT limited to what the user enabled; user settings only
@@ -135,9 +149,9 @@ export interface VfOptimizeOptions {
   /** Iterations for the final polish. Default scales with dimensions. */
   maxIterations?: number;
   /**
-   * Max EQ bands per driver the greedy stage may add. Default 2. Bands that
-   * do not measurably improve the result are never added, whatever the
-   * budget.
+   * Max EQ bands per driver the greedy stage may add. Default
+   * `DEFAULT_EQ_BANDS_PER_DRIVER`. Bands that do not measurably improve the
+   * result are never added, whatever the budget.
    */
   eqBandsPerDriver?: number;
   /** Minimum relative objective improvement to accept a band. Default 0.02. */
@@ -353,7 +367,7 @@ export function optimizeVirtualFilters(
 ): VfOptimizeResult {
   const {
     phasePriority = 0.5,
-    eqBandsPerDriver = 2,
+    eqBandsPerDriver = DEFAULT_EQ_BANDS_PER_DRIVER,
     minBandImprovement = 0.01,
     angleData,
     directivityWeight = 0,

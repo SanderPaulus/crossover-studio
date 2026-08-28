@@ -415,7 +415,16 @@ punten met een casusboek-entry erachter. Ze staan hier zodat ze niet alleen in D
   netlist in beide toestanden naar VituixCAD (de exportbrug bestaat en schrijft
   `MinimumPhase=True` plus de gemeten tweeter-Δ als `Delay`), en laat de fasetracking dáár
   oordelen. De maat die VituixCAD reproduceert beschrijft de luidspreker; de andere beschrijft
-  een conventie. **Open**, geen implementatie in de V38-fix-sessie.
+  een conventie. **Open**, geen implementatie in de V38-fix-sessie. **V41 heeft de beslisroute
+  GELOPEN maar niet beslist**, en het bewijsmateriaal maakt de vraag scherper dan zij hierboven
+  staat: `measure-v40-phase.ts` rekent één formule over beide banden en de tunerkolom reproduceert
+  daarmee EXACT, de rapportkolom binnen ongeveer een graad. De twee maten zijn dus dezelfde
+  formule, het raster draagt hooguit een graad, en **het hele gat is de BAND** — het
+  overlapvenster van de tuner (|Δniveau| ≤ 20 dB) is niet op meetgeldigheid geknipt en reikt op
+  `466,5 · 1491,4` tot 200 Hz, een vol octaaf onder de vloer waarop het rapport knipt (59,15°
+  tegen 17,05° op dezelfde formule). Welke band de juiste VRAAG stelt is beleid en geen meting;
+  drie VituixCAD-projecten staan klaar in `test-fixtures/casus1/v40_vituix/`. Zie V40 in Deel B
+  voor de leesinstructie en voor wat elke uitkomst intrekt.
 - **V39 — de toetsbaarheid van A3j houdt één laag te laag op.** `CHOICE_KEYS`/`GREY_KEYS`/
   `POLISH_KEYS`, de volledigheidsassert en `choiceKeyGuard.test.ts` dekken de 44 sleutels van
   `NetOptimizeOptions`. `Chain3Settings` — ongeveer 32 sleutels, en de laag waar de kandidaat
@@ -426,7 +435,23 @@ punten met een casusboek-entry erachter. Ze staan hier zodat ze niet alleen in D
   `targets.rippleDb` — een kandidaat kan hem principieel niet stellen. Gemeten: de kale ladder
   haalt de daaruit volgende 2,5 dB-drempel op 45 van de 45 takken en de eigen standaard van
   0,5 dB op 0 van de 45, dus er wordt nooit een Zobel, Fs-val of top-octaaf-hold gekocht. Zie
-  V38 in Deel B, beslislijst B–D. **Open.**
+  V38 in Deel B, beslislijst B–D. **GEDEELTELIJK GESLOTEN door V41**, en de scheiding is het
+  punt: die twee sleutels zijn nu kandidaat-gedragen (`CHAIN_CHOICE_KEYS` in `chainChoices.ts`;
+  `leanTargetDb` IS sindsdien een sleutel), en de LAAG is dat nadrukkelijk niet. V41's lijst dekt
+  twee van de ongeveer tweeëndertig en zegt dat zelf hardop — de norm die rij 11 van de
+  A3j-tabel stelt is dat een classificatie beweegt wanneer een MÉTING haar beweegt, en voor de
+  andere dertig is er geen meting. **De rest blijft open**, en V41's fixture-inventarisatie voegt
+  er twee concrete posten aan toe:
+  · **`audit.fbHz` steekt de grens niet over.** Bij de tuner is dat geen decoratie maar het
+  ANKER van de bronweerstandsprobe (`netOptimizer.ts:1574`) én de referentiefrequentie van de
+  dissipatieterm (`:1823`). Casus 1 KENT een kastafstemming — `afgeleide_parameters.woofer.fb`
+  = 31,3 Hz — maar dat is een afgeleid MEETFEIT en geen ontwerpersinstelling, en het bereikt de
+  tuner nergens. Dezelfde vorm als F4b's lekken, één grootheid verder; V34 en V37 verdienen er een
+  vóór/ná op.
+  · **`costWeight` staat in de v2-fixture op de legacy-default van de tuner (0,0015) waar de
+  app 0,015 stuurt.** Aantoonbaar inert op casus 1 — de tuner leest hem uitsluitend binnen
+  `if (opts.catalogSnap && hasImportedCatalog())` en deze casus snapt niet — maar hij is GRIJS
+  (A3j), en juist een grijze sleutel hoort expliciet én juist gesteld te worden.
 - **V29 — mag `safety` een netlist weigeren die vrijwel kortsluit als er géén vloer gesteld is?**
   Twee verdedigbare houdingen (strikt P4 tegenover een uit de gemeten driverimpedanties
   afleidbare degeneratiegrens), aanleiding is de V28-shortlist met 0,01 Ω erin. **Open**, geen
@@ -867,6 +892,15 @@ Configuratie: 3-weg; 2× SB WO24TX-8 parallel, MR13TX-4 in bolpod, T25T-6 in WG1
 | `maxIterations` (rij 6) | ja | **DE ENIGE ECHTE OVERLEVENDE, en hij verdient rij 11's behandeling.** Hij bepaalt waar de zoektocht STOPT (`netOptimizer.ts:3093`: `maxIterations ?? max(700, 140·vrij)`), geen enkele keten stelt hem, en op de v2-route wordt hij alleen gezet als een determinisme-budget dat doet. Nooit gemeten wat hij kost: V38 zag dezelfde topologie 478 tegen 891 seconden lopen op één andere sleutel, dus het iteratiebudget is aantoonbaar geen constante over armen heen. **V39-familie.** |
 | `gateViolation`, `valueCeilings`, `valueSumCeilings` (34, 36, 37) | nee | v2-bezit sinds F2 — er is niets om van te erven. |
 | `rejectedTuneReport` (V31), `zFloorBarrierImpedance` (V33), `dissipationReferenceReOhm` (V37) | nee | v2-bezit, alle drie met hun eigen argument in `choices.ts`. |
+
+  **AANVULLING (28-08-2026, V41): DEZE TABEL DEKT ÉÉN LAAG, EN DAT IS SINDS V41 EEN EXPLICIETE UITSPRAAK.** Elke rij hierboven is een sleutel van `NetOptimizeOptions`, en `choiceKeyGuard.test.ts` bewaakt dat die verzameling VOLLEDIG geclassificeerd is. `Chain3Settings` — de laag waar de kandidaat langskomt vóórdat de tuner iets ziet — is dat niet, en V38 tekende dat op als beslispunt D. V41 sluit daarvan twee sleutels, met een eigen lijst (`CHAIN_CHOICE_KEYS` in `chainChoices.ts`) die naast deze tabel staat en nadrukkelijk niet erin:
+
+| sleutel | laag | klasse | waarom | herkomst op de v2-route |
+|---|---|---|---|---|
+| `eqBands` | `Chain3Settings` | **keuze** | het budget snijdende EQ-banden dat de ONTWERPSTAP per tak mag voorstellen — en een EQ-band is de enige weg waarlangs `deriveTopology` een val op een gemeten breakup kan voorstellen. Ongesteld is in `designThreeWay` een stille NUL, niet "geen oordeel": het omgekeerde van P4 | v2-kandidaat (`DEFAULT_EQ_BANDS_PER_DRIVER`, de eigen standaard van de app én van de gulzige ontwerpstap) |
+| `leanTargetDb` | `Chain3Settings` | **keuze** | de fitfout van de kale ladder waaronder de SYNTHESESTAP geen Zobel, Fs-val of top-octaaf-hold koopt. Was tot V41 geen sleutel maar een afleiding uit `targets.rippleDb` — het stopdoel van de trapmethode, vijf keer zo ruim — dus een kandidaat kon hem principieel niet stellen | v2-kandidaat (`SYNTHESIS_LEAN_DEFAULT_DB`, de eigen standaard van `synthesize`) |
+
+  **De reden dat het bij twee blijft is dezelfde als de reden dat rij 11 verplaatst is:** een classificatie beweegt wanneer een MÉTING haar beweegt. Voor deze twee is die meting er (45 van de 45 takken, en 0 van de 10 netlists met een enkele val, Zobel of shelf); voor de overige ongeveer dertig sleutels van `Chain3Settings` is zij er niet, en een lijst die ze uit voorzorg zou claimen keert de les om. **De laag blijft dus open — V39.** De twee posten die V41's fixture-inventarisatie er concreet bij oplevert (`audit.fbHz` steekt de grens niet over; het grijze `costWeight` staat in de v2-fixture op de legacy-default in plaats van op wat de app stuurt) staan bij V39 in de A5e-horizon.
 
   **Wat er met rij 38 en 39 gebeurt.** Beide zijn geclassificeerd en geen van beide is in F4c gezet — dat zou kandidaatgeneratie zijn, en die is F4d. Rij 38 blijft op de v1-route byte-identiek; de v2-route mag hem expliciet maken zodra de kandidaat er een heeft. Rij 39 is de scherpste van de twee: het is een keuze-sleutel die op de v2-route soms helemaal niet gedeclareerd is, en het kandidaat-object uit F4d moet de orde per flank áltijd dragen — anders is "geen declaratie" opnieuw niet te onderscheiden van "orde 1".
 
@@ -2226,6 +2260,335 @@ Configuratie: 3-weg; 2× SB WO24TX-8 parallel, MR13TX-4 in bolpod, T25T-6 in WG1
   1. **De v1-route leest de gegladde maat nog steeds.** Dit is geen eigenschap van casus 1 maar van `smoothDbGaussian` op een raster met dode punten, en die dode punten zijn de STILLE-GEEST-conventie van de app zelf: op een drieweg-unieraster draagt elke tak stilte buiten zijn eigen gemeten uitgestrektheid (`designSolve`, hier herhaald door de ketenfixture). Elk project waarvan het analyseraster voorbij die uitgestrektheid loopt heeft dezelfde geest op dezelfde plek. De opdracht was expliciet — geen wijziging aan `smoothMag` of aan enige andere gladding — en er is er geen gedaan. **Open.**
   2. **`WINDOW_SMOOTHING_OCTAVES` blijft 1/6** (A5e.1) — dat is het OORDEEL en niet de zoekmaat, en de opdracht sloot het uit. **Maar de reden dat hij er niet door geraakt wordt is NIET zijn breedte en niet zijn volgorde, en dat is nagegaan in plaats van aangenomen:** `judgeResponse` gladt óók over het volle raster en leest daarna alleen binnen de band, precies de constructie die hierboven 43 dB oplevert. Hij ontsnapt omdat zijn RASTER geen dood punt draagt — de acceptatie meet op het rapportraster (band tot 19 999,5 Hz) en niet op het ketenraster met zijn geest op 20 000. Gemeten: HUIDIG leest daar ±1,34 dB. De naad tussen zoeken en oordelen is dus breder dan V38 hem beschreef: zij verschillen niet alleen in breedte maar in RASTER, en de tweede helft daarvan is nieuw. **Open**, en het is precies de vorm van bevinding die dit project met een eigen sessie afhandelt.
   3. **De fasematen zijn niet aangeraakt** — dat is V40, en op de ongegladde maat wordt het gat tussen tuner en rapport niet kleiner maar groter (tuner 11,00°, rapport 53,09° op W-M, tegen 9,65° en 47,68° gegladd). De reparatie van de zoekmaat neemt die tegenspraak dus niet weg.
+
+- V41 (28-08-2026 — **BREAKING, alleen v2-runs**: de kandidaat draagt de twee instellingen die de ontwerp- en synthesestap lezen) — opgeworpen als eigen opdracht uit V38, beslislijst B en C.
+
+  **DE OPDRACHT.** V38 mat en besliste niets; V38-fix repareerde beslispunt A. Deze sessie doet B en C: `leanTargetDb` en `eqBands` worden kandidaat-gedragen sleutels op de v2-route, in de vorm van F4c. Alles buiten die twee blijft staan — de fasematen zijn V40 en zijn niet aangeraakt, en er is geen nieuw topologievoorstel bij (beslispunt E blijft open). Met de vlag uit is de app byte-identiek, en elke v1-aanroeper leest wat hij las.
+
+  ---
+
+  **INVENTARISATIE 1 — WIE LEEST `targets.rippleDb`, EN MAG DIE LEZING BEWEGEN?**
+
+  Drie lezers op de driewegroute, en dat is het hele argument voor de vorm die V41 gekozen heeft:
+
+| lezer | wat hij ermee doet | mag hij bewegen? |
+|---|---|---|
+| `threeWayChain.ts:348` → `synthesize({ leanTargetDb })` | de drempel waaronder de kale ladder "goed genoeg" heet en er géén Zobel, Fs-val of top-octaaf-hold gekocht wordt | **ja** — dit is wat V38 mat |
+| `threeWayChain.ts:423` → `staged` | het STOPDOEL van de trapmethode in de tuner: waar de snoeipas en de escalatie mogen ophouden | **nee**, dat is een oordeel |
+| `threeWayChain.ts:1087` → `rankChain3Results` | de "doelen gehaald"-toets van de v1-rangschikking | **nee**, dat is een oordeel |
+
+  Vandaar een APARTE sleutel en niet een ander getal in `targets`: het getal verplaatsen zou alle drie verplaatsen. `Chain3Settings.leanTargetDb` is nieuw, en ongesteld is de identiteit — `s.leanTargetDb ?? s.targets?.rippleDb`, wat élke v1-aanroeper byte-identiek houdt. De eigen standaard van `synthesize` is 0,5 dB en heeft sinds V41 één huis (`SYNTHESIS_LEAN_DEFAULT_DB` in `synthesis.ts`), omdat de kandidaat hem nu ook noemt.
+
+  **INVENTARISATIE 2 — WAAR KOMT `eqBands` DE DRIEWEGROUTE BINNEN?**
+
+  `App.tsx` → `Chain3Settings.eqBands` → `designThreeWay({ eqBandsPerBranch })` → `deriveTopology`. Eén weg, één lezer, en géén poort of oordeel die hem ook leest — dus hier hoefde niets uit elkaar gehaald te worden. De app stelt 2 (`vfEqBands`); de v2-fixture stelde niets, en `input.eqBandsPerBranch ?? 0` maakt daar een stille NUL van. Ook dit getal heeft sinds V41 één huis (`DEFAULT_EQ_BANDS_PER_DRIVER` in `vfOptimizer.ts`, waar de eigen standaard van de gulzige ontwerpstap al stond) en de `useState` in de app leest hetzelfde huis.
+
+  ---
+
+  **INVENTARISATIE 3 — DE FIXTURE TEGEN DE APP-ROUTE, VELD VOOR VELD.**
+
+  De F4b-les luidt dat een run-fixture die met een vergelijking als doel gebouwd is de instellingen van de APP draait en niet een minimale set (V27 schreef hem op, V38 schond hem voor de derde keer). Dus is `CASUS1_V2_SETTINGS` deze sessie veld voor veld tegen het `settings`-blok van `App.tsx` gelegd. Wat eruit kwam, volledig — ook wat NIET omgezet is, want een lijst die alleen de gerepareerde regels noemt leest als een lijst zonder rest:
+
+| veld | app-route | fixture | oordeel |
+|---|---|---|---|
+| `eqBands` | 2 | **afwezig ⇒ stil nul** | **omgezet (V41)** |
+| lean-drempel | — (bestond niet als sleutel) | afgeleid uit `targets.rippleDb` = 2,5 | **omgezet (V41)** |
+| `costWeight` | **0,015** | **0,0015** | **afwijking, aantoonbaar inert, NIET omgezet** — de tuner leest hem uitsluitend binnen `if (opts.catalogSnap && hasImportedCatalog())` (`netOptimizer.ts:4009`) en deze casus zet `catalogSnap: false`. Maar hij is GRIJS (A3j), en juist een grijze sleutel hoort expliciet en juist gesteld te worden: wat er staat is de legacy-default van de tuner, niet wat de app stuurt. Gemeld, niet stilzwijgend rechtgezet — een tiende van een gewicht veranderen in de sessie die het veld regenereert, maakt de vóór/ná van V41 onleesbaar |
+| `audit.fbHz` | de kastafstemming die de ontwerper invult | **afwezig** | **afwijking, NIET inert, NIET omgezet.** Dit is de scherpste vondst van de inventarisatie. `fbHz` is bij de tuner geen decoratie: hij is het ANKER van de bronweerstandsprobe (`netOptimizer.ts:1574`, `sourceProbeIndex(..., opts.audit?.fbHz, ...)`) en hij is de referentiefrequentie van de dissipatieterm (`:1823`, `dissRefHz`). Zonder hem ZOEKT de probe zijn piek, wat precies is wat V34 mat en verankerde. Casus 1 KENT een kastafstemming — `afgeleide_parameters.woofer.fb` = 31,3 Hz — maar dat is een AFGELEID meetfeit en geen ontwerpersinstelling, en het steekt de grens naar de tuner niet over. Dat is de vorm van F4b's lekken, één grootheid verder, en het verdient dezelfde behandeling: een eigen sessie met een vóór/ná, niet een regel die er hier bij geschreven wordt. **Open** |
+| `directivityWeight` | 0,25 | 0 | afwijking, aantoonbaar inert: `dW = angleData ? … : 0` en er reist geen `angleData` mee (V38 mat dit al). Niet omgezet |
+| `diWeight` | 0,3 | afwezig | GEEN afwijking: `designThreeWay` heeft 0,3 als eigen standaard (`threeWayDesign.ts:240`) |
+| `acousticSlopes` | `acousticSlopesValue()` | afwezig | GEEN afwijking: die functie geeft `undefined` terug zolang elke helling op 'auto' staat, wat de eigen standaard van de app is. De kandidaat verklaart hem bovendien expliciet ABSENT met de P4-reden |
+| `snapPrefs` | `snapPrefsValue()` | afwezig | inert bij `catalogSnap: false`; ook hier verklaart de kandidaat hem ABSENT |
+| `hpFloorHz` | `tweeterHpFloor` (≥ 2·Fs) | afwezig | afwijking, redundant op déze route: de kniegrenzen van de ontwerpstap komen uit de kooi van de kandidaat, en die kooi komt uit A5d.3, dat de Fs-regel al draagt. Niet omgezet |
+| `xoLowPin` / `xoHighPin`, `structureLow/High`, `xoFloorPairs` | ontwerperspins en v1-fysicavloeren | de kandidaat | OPZET (F4d, audit §6.3) |
+| `rSourceDisqualifyOhm`, `audit.thresholds.rSourceOhm` | 2,0 / 1,0 | afwezig / `null` | OPZET (V34, P4) |
+| `errorSmoothOct` | 1/12 | afwezig, kandidaat stelt 0 | OPZET (V38-fix) |
+| `phasePriority`, `targets`, `breakupGuard`, `ampTarget`, `phaseMetric`, `powerMetric`, `powerFoldWeight`, `dissipationWeight`, `synthMode`, `catalogSnap`, `ampMinLoadOhm`, `safety` | — | — | gelijk |
+
+  Twee posten blijven dus als OPEN op de lijst staan (`audit.fbHz` en het grijze `costWeight`), en zij staan hier omdat dit de enige plek is waar ze niet onzichtbaar zijn.
+
+  ---
+
+  **WAT ER GEBOUWD IS, EN WAAROM HET EEN TWEEDE LIJST IS.**
+
+  A3j's toetsbaarheid — `CHOICE_KEYS`/`GREY_KEYS`/`POLISH_KEYS`, de volledigheidsassert en
+  `choiceKeyGuard.test.ts` — dekt de 44 sleutels van `NetOptimizeOptions` en niets anders. Dat is
+  beslispunt D, en V39 bezit het. V41 sluit niet de laag maar de twee sleutels die een MÉTING
+  veroordeeld heeft, en `chainChoices.ts` zegt dat zelf hardop: `CHAIN_CHOICE_KEYS` dekt twee
+  sleutels van `Chain3Settings` en beweert niets over de andere dertig. Dat is de norm die rij 11
+  van de A3j-tabel stelt — een classificatie beweegt wanneer een meting haar beweegt, niet op
+  vermoeden. Een lijst die uit voorzorg de hele laag zou claimen, zou precies de les omkeren.
+
+  De vorm is die van V34's `withDeclaredSourceLimit`, één laag breder: `withDeclaredChainChoices`
+  herschrijft de ketensettings uit de verklaring van de kandidaat, en **zonder verklaring is hij de
+  identiteit**. Dat is wat elke v1-aanroeper en elke v2-payload zonder kandidaat byte-identiek
+  houdt. De verklaring is sinds V41 **verplicht** op `V2CandidatePayload`, en dat is de
+  compiler-als-guard van F4c: een kandidaatbouwer die haar vergeet compileert niet, in plaats van
+  stil terug te vallen op wat de keten toevallig droeg.
+
+  **WAT DE TWEEWEGROUTE NIET KRIJGT, en het is een besluit.** `withDeclaredChainChoices` draait
+  alleen op de driewegroute. `ChainSettings` noemt het EQ-budget `eqBandsPerDriver` en leidt zijn
+  lean-drempel binnen `designChain.ts` af, dus honoreren zou een tweede afbeelding van twee
+  sleutels op een tweede vocabulaire zijn — en de tweewegroute is nog steeds v1 (TODO(F2c)). De
+  ketenverklaring REIST er wel en wordt er niet gelezen; de worker zegt dat in zijn notities in
+  plaats van een lezer te laten aannemen dat zij toegepast is. Exact dezelfde grens die V38-fix
+  trok voor de virtuele-filterstap. **V39-familie.**
+
+  ---
+
+  **DE PRIJS, EN ZIJ IS DE GROOTSTE VAN ALLE V-SESSIES.**
+
+  Een regeneratie van het veld kostte bij V38-fix 42 minuten (116–218 s per kandidaat). Bij V41
+  kost zij UREN, en de reden is geen ongeluk maar de ingreep zelf: de synthesestap koopt nu
+  correctienetwerken, dus het ZAAD draagt aanzienlijk meer onderdelen, en het iteratiebudget van
+  de tuner is `max(700, 140 · vrij)` — superlineair in het aantal vrije waarden. V38 mat het al op
+  de bank: op `396,7 · 1719` groeit het zaad van 18 naar 34 onderdelen bij EQ 2 en `lean`, en naar
+  38 bij `auto`. Dit is de eerste V-sessie waarin het veld duurder is geworden door wat het BOUWT
+  in plaats van door waar het KIJKT.
+
+  ---
+
+  **DE VÓÓR/NÁ OP HET HELE VELD.**
+
+  Vijftien kandidaten, `'safety'` als barrièrebron, zelfde seed, zelfde poorten en budgetten
+  (`compare-corpora.ts v38fix live`). Beide fasematen staan er als aparte kolommen (V40), en de
+  laatste kolom is nieuw: de CORRECTIEGROEPEN, geteld uit de geleverde netlist.
+
+  | kandidaat (W-M · M-T) | min \|Z\| vóór | min \|Z\| ná | @ Hz ná | vloer vóór → ná | SPL ± vóór → ná | RMS vóór → ná | W-M fase RAPPORT vóór → ná | W-M fase TUNER vóór → ná | M-T fase RAPPORT vóór → ná | M-T fase TUNER vóór → ná | dissipatie % vóór → ná | grootste R (W) vóór → ná | EPDR vóór → ná | Q_es× vóór → ná | smalste piek ná (dB @ Hz) | correctiegroepen vóór → ná |
+  |---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+  | 396.7 · 1294 | — | 3.50 | 77.57 | — → **ja** | — → 0.93 | — → 0.54 | — → 3.79 | — → 2.25 | — → 5.88 | — → 4.92 | — → 47.43 | — → 27.81 | — → 1.81 | — → 1.59 | — | — → shunt-shelf×1 series-pad×2 |
+  | 396.7 · 1491.4 | — | 3.40 | 853.85 | — → **ja** | — → 0.84 | — → 0.49 | — → 3.93 | — → 2.99 | — → 5.46 | — → 4.57 | — → 52.31 | — → 23.62 | — → 1.73 | — → 1.56 | — | — → damped-trap×1 series-pad×2 shunt-pad×1 |
+  | 396.7 · 1719 | 2.56 | 2.64 | 975.55 | **ja** → **ja** | 3.87 → 3.83 | 1.92 → 1.82 | 9.95 → 14.03 | 15.78 → 17.46 | 29.56 → 22.51 | 26.50 → 17.52 | 1.54 → 27.91 | 1.19 → 11.43 | 1.28 → 1.34 | 1.00 → 1.33 | — | series-pad×1 shunt-pad×1 → damped-trap×2 series-pad×3 shunt-pad×1 |
+  | 396.7 · 1981.2 | 2.57 | 3.29 | 72.92 | **ja** → **ja** | 4.07 → 0.78 | 2.01 → 0.48 | 23.20 → 4.55 | 20.72 → 2.14 | 11.64 → 5.67 | 13.24 → 4.78 | 2.03 → 40.27 | 1.26 → 28.18 | 1.29 → 1.67 | 1.00 → 1.33 | — | series-pad×1 shunt-pad×1 → damped-trap×2 shunt-shelf×1 series-pad×2 |
+  | 396.7 · 2283.5 | 2.57 | 3.75 | 75.03 | **ja** → **ja** | 3.37 → 1.05 | 1.77 → 0.53 | 22.40 → 3.95 | 15.99 → 2.54 | 21.91 → 7.52 | 17.29 → 5.83 | 0.99 → 43.91 | 0.74 → 24.64 | 1.29 → 1.92 | 1.00 → 1.52 | — | series-pad×1 shunt-pad×1 → zobel×1 shunt-shelf×1 series-pad×3 |
+  | 466.5 · 1294 | — | **verworpen** | — | — → — | — → **verworpen** | — → **verworpen** | — → **verworpen** | — → **verworpen** | — → **verworpen** | — → **verworpen** | — → **verworpen** | — → **verworpen** | — → **verworpen** | — → **verworpen** | — | — → **verworpen** |
+  | 466.5 · 1491.4 | 2.59 | **verworpen** | — | **ja** → — | 3.94 → **verworpen** | 1.81 → **verworpen** | 17.83 → **verworpen** | 59.15 → **verworpen** | 11.72 → **verworpen** | 10.72 → **verworpen** | 28.25 → **verworpen** | 18.30 → **verworpen** | 1.29 → **verworpen** | 1.39 → **verworpen** | — | series-pad×2 shunt-pad×2 → **verworpen** |
+  | 466.5 · 1719 | 2.59 | **verworpen** | — | **ja** → — | 2.83 → **verworpen** | 1.91 → **verworpen** | 18.90 → **verworpen** | 15.09 → **verworpen** | 31.34 → **verworpen** | 26.59 → **verworpen** | 22.36 → **verworpen** | 18.86 → **verworpen** | 1.34 → **verworpen** | 1.50 → **verworpen** | — | series-pad×1 shunt-pad×2 → **verworpen** |
+  | 466.5 · 1981.2 | 2.61 | 2.64 | 10045.66 | **ja** → **ja** | 3.56 → 3.00 | 1.92 → 1.86 | 13.47 → 20.09 | 9.75 → 19.84 | 30.81 → 25.21 | 28.43 → 13.00 | 35.50 → 40.38 | 27.83 → 16.93 | 1.31 → 1.33 | 1.96 → 1.86 | — | series-pad×2 shunt-pad×2 → damped-trap×2 series-pad×3 shunt-pad×2 |
+  | 466.5 · 2283.5 | 2.56 | 3.64 | 75.75 | **ja** → **ja** | 2.56 → 1.17 | 1.69 → 0.54 | 16.81 → 4.34 | 11.84 → 2.76 | 26.99 → 5.48 | 23.21 → 4.34 | 32.92 → 40.44 | 30.23 → 26.39 | 1.39 → 1.83 | 2.06 → 1.41 | — | series-pad×2 shunt-pad×2 → shunt-shelf×1 series-pad×2 |
+  | 548.5 · 1294 | — | **verworpen** | — | — → — | — → **verworpen** | — → **verworpen** | — → **verworpen** | — → **verworpen** | — → **verworpen** | — → **verworpen** | — → **verworpen** | — → **verworpen** | — → **verworpen** | — → **verworpen** | — | — → **verworpen** |
+  | 548.5 · 1491.4 | — | **verworpen** | — | — → — | — → **verworpen** | — → **verworpen** | — → **verworpen** | — → **verworpen** | — → **verworpen** | — → **verworpen** | — → **verworpen** | — → **verworpen** | — → **verworpen** | — → **verworpen** | — | — → **verworpen** |
+  | 548.5 · 1719 | 2.60 | **verworpen** | — | **ja** → — | 4.01 → **verworpen** | 2.08 → **verworpen** | 36.55 → **verworpen** | 52.05 → **verworpen** | 15.99 → **verworpen** | 11.92 → **verworpen** | 25.03 → **verworpen** | 19.60 → **verworpen** | 1.31 → **verworpen** | 1.43 → **verworpen** | — | series-pad×2 shunt-pad×2 → **verworpen** |
+  | 548.5 · 1981.2 | 2.58 | **verworpen** | — | **ja** → — | 2.68 → **verworpen** | 1.75 → **verworpen** | 20.27 → **verworpen** | 14.05 → **verworpen** | 26.41 → **verworpen** | 21.26 → **verworpen** | 33.77 → **verworpen** | 30.36 → **verworpen** | 1.39 → **verworpen** | 2.03 → **verworpen** | — | series-pad×1 shunt-pad×2 → **verworpen** |
+  | 548.5 · 2283.5 | 2.59 | 2.99 | 1062.80 | **ja** → **ja** | 2.56 → 0.93 | 1.68 → 0.53 | 20.54 → 6.45 | 12.13 → 5.36 | 26.08 → 4.77 | 23.49 → 3.43 | 34.44 → 63.14 | 31.73 → 33.81 | 1.38 → 1.56 | 2.14 → 2.29 | — | series-pad×2 shunt-pad×2 → shunt-shelf×1 series-pad×2 shunt-pad×1 |
+  **DE CORPUSGEMIDDELDEN, en zij zijn eerlijker dan de beste rij:**
+
+| grootheid | V38-fix-corpus | levend corpus | |
+| --- | --- | --- | --- |
+| RMS-vlakheid, gemiddeld | 1,85 dB | **0,85 dB** | −1,00 |
+| RMS-vlakheid, bereik | 1,68 – 2,08 | **0,48 – 1,86** | zes van de acht onder 0,55 |
+| SPL-venster ±, gemiddeld | 3,35 dB | **1,57 dB** | −1,78 |
+| W-M fase, RAPPORT | 20,0° | **7,6°** | −12,4 |
+| W-M fase, TUNER | 22,7° | **6,9°** | −15,8 |
+| M-T fase, RAPPORT | 23,2° | **10,3°** | −12,9 |
+| M-T fase, TUNER | 20,3° | **7,3°** | −13,0 |
+| dissipatie (M-A), gemiddeld | 21,7 % | **44,5 %** | +22,8 — de prijs, en casus 1 begrenst hem niet (P4) |
+| grootste enkele weerstand | 18,0 W | **24,1 W** | bij 100 W |
+| haalt de gestelde vloer | 10 van 10 | **8 van 8** | |
+| kandidaten zonder netwerk | 3 van 15 | **7 van 15** | de andere prijs |
+
+  **DE GEKOCHTE GROEPEN — dit IS beslispunt B en C, in één regel.** Het V38-fix-corpus droeg over
+  tien netlists NUL vallen, NUL gedempte vallen, NUL Zobels en NUL shunt-shelves; alles wat erin
+  stond was niveauwerk. Het levende corpus, over acht netlists:
+
+| rol | vóór | ná |
+| --- | --- | --- |
+| val (`trap`) | 0 | 0 |
+| gedempte val (`damped-trap`) | 0 | **7** |
+| Zobel | 0 | **1** |
+| shunt-shelf | 0 | **5** |
+| serie-niveauweerstand | 15 | 19 |
+| shunt-niveauweerstand | 17 | 5 |
+
+  **Het antwoord op "koopt hij de niveauweerstanden vanzelf" is dus: die kocht hij al, en wat hij
+  er nu bij koopt is iets anders.** Het niveauwerk stond er vóór V41 ook (15 serie- en 17
+  shunt-benen over tien netlists) — de wattenval van V38 wees ze als de grootste post aan en zij
+  waren nooit weg. Wat ontbrak zijn de dempende groepen, en die komen er nu: zeven gedempte
+  vallen, vijf shunt-shelves en één Zobel. De shunt-benen halveren daarbij bijna, wat past bij
+  wat er gebeurt: een L-pad-been dat alleen niveau maakt wordt vervangen door een netwerk dat
+  niveau én demping doet.
+
+  **En de kale `trap` blijft NUL.** Dat is de eerlijkste regel van de tabel: de wooferval op de
+  gemeten breakup bij 1394 Hz — de groep waar V38 het meest concreet over was — wordt nog steeds
+  niet gebouwd. Wat de EQ-band oplevert is een GEDEMPTE val, niet de scherpe. Beslispunt E blijft
+  dus open, en met een preciezere formulering dan V38 hem kon geven.
+
+  ---
+
+  **WAT HET GEKOST HEEFT, en het staat hier omdat de winst anders te mooi leest.**
+
+  1. **Het veld is gekrompen: 10 netlists → 8, en 7 van de 15 kandidaten leveren niets** (was 3).
+     De vier verliezers stonden alle vier IN het V38-fix-corpus. **Vijf** van de zeven weigeringen
+     zijn `M-B/|Z|` (de gestelde vloer) en twee zijn "tweeter protection got worse"; één van de
+     zeven (`466,5 · 1294`) was ook vóór V41 al verworpen, de andere zes zijn nieuw. De geweigerde tunes zijn niet marginaal maar catastrofaal — ±71 tot ±76 dB
+     SPL-venster, en op `548,5 · 1491,4` een geleverde 0,14 Ω met een gemeten 0,02 Ω. **De
+     beschermingen doen precies waarvoor ze bestaan**, en dat is de reden dat dit een gekrompen
+     veld is en geen onveilig veld: `safety`, `audit` en de poorten stonden gewapend, zoals V27's
+     procesregel eist.
+  2. **De dissipatie verdubbelt** (21,7 % → 44,5 %) en de grootste enkele weerstand gaat van 18,0
+     naar 24,1 W bij 100 W. Een correctiegroep is een shunt; dat is wat hij kost. Casus 1 stelt
+     geen dissipatiegrens (P4), dus dit is een KOLOM en geen oordeel — maar het is de kolom die
+     een bouwer als eerste wil zien.
+  3. **Een regeneratie kost nu uren in plaats van drie kwartier**: 15 756 s (4 u 23 min) tegen 42
+     minuten bij V38-fix, 567–1697 s per kandidaat. Zie hierboven waarom.
+
+  **WAT ER NIET GEBEURD IS: de belastingimpedantie wordt BETER, niet slechter.** Dat was de zorg
+  waarmee deze sessie begon — correctiegroepen zijn shunts, en sinds V30 is de vloer een zoekdoel.
+  Gemeten: elk van de acht haalt de vloer, en zes van de acht met een ruimere marge dan hun
+  voorganger (min |Z| 2,99–3,75 Ω tegen 2,56–2,61 Ω). De twee die niet stijgen zijn precies de
+  twee die ook op RMS blijven staan.
+
+  ---
+
+  **DE VERWACHTING TEGEN DE MÉTING, want de opdracht droeg er een.**
+
+  Verwacht was een veld "richting ~1,0–1,4 dB". Gemeten is **0,85 dB gemiddeld**, met zes van de
+  acht op 0,48–0,54 — **onder HUIDIG's eigen 0,60 dB**, en dat is het getal waar V38 mee begon.
+  Zes gegenereerde ontwerpen zijn op de maat waarop de vraag gesteld werd vlakker dan de
+  referentiefilter van de ontwerper. De twee die achterblijven (1,82 en 1,86) zijn precies de twee
+  die ook hun belastingimpedantie niet verbeteren.
+
+  **De wattenval van V38 klopt daarmee, en niet op de manier waarop hij gelezen werd.** Die tabel
+  zei: HUIDIG gestript van zijn vijf groepen levert 1,86 dB, het corpus stond op 1,75, en het
+  verschil van +1,33 dB zit in de groepen — waarvan 0,90 in de twee niveauweerstanden. De
+  gevolgtrekking die voor de hand lag is dat het corpus die niveauweerstanden miste. Dat was
+  onjuist: het corpus had ze (15 serie- en 17 shunt-benen over tien netlists). Wat het miste zijn
+  de DEMPENDE groepen, en die kosten in de ablatie weinig omdat zij bij HUIDIG bovenop een
+  topologie liggen die zonder hen al werkt — terwijl zij op een gegenereerd veld het verschil
+  maken tussen een tune die de vloer haalt en een die hem mist. Een ablatie meet wat een groep
+  BIJDRAAGT aan een bestaand ontwerp; zij meet niet wat zijn afwezigheid een ZOEKTOCHT kost.
+
+  ---
+
+  **EEN VLAKKER VELD BRAK EEN V37-ASSERT, EN DE REPARATIE ZIT IN DE VERGELIJKING EN NIET IN DE
+  DREMPEL.**
+
+  `frozenNetlistGates.test.ts` droeg sinds V37 de "vóór"-helft van V36's bevinding: op de
+  PIEKHOOGTE haalde de dissipatieterm nooit de uitdagingsdrempel van de tuner (1 %), dus hij was
+  gewapend, kostte rekentijd en bewaakte niets. Na de regeneratie stond die assert op **1,22 %**
+  en viel om.
+
+  **De oorzaak is niet wat zij lijkt.** De term is niet gegroeid — de grootste piek-term ging van
+  0,002819 naar 0,002067. Wat kromp is de NOEMER: de assert deelde door de kleinste RMS die het
+  hele casusboek draagt, en V41 duwde die van boven 0,53 naar **0,48**. De assert brak dus door
+  het SUCCES van deze sessie.
+
+  Daarmee werd zichtbaar dat de vergelijking zelf niet klopte. Zij legde de term van de ENE netlist
+  naast het objectief van een ANDERE, en dat is nergens een grootheid: de tuner telt de term op bij
+  het objectief van het netwerk dat hij op dat moment evalueert. Zolang alle netlists in een smalle
+  band lagen (1,68–2,08 bij V38-fix) was die conservatieve proxy onschadelijk; bij 0,48–1,86 is hij
+  misleidend. **Elke netlist wordt nu tegen zijn eigen objectief gelegd** — de vergelijking die de
+  engine maakt — en V37's bevinding staat daarmee ruimer overeind dan eerst: grootste
+  piek-aandeel **0,74 %**, grootste R_e-aandeel **29,5 %**. De drempel van 1 % is niet aangeraakt,
+  en dat is het hele punt: een tolerantie oprekken om een referentie te laten passen is precies
+  wat dit project verbiedt. Nagemeten dat hij kán falen: de piek-term van `KAND_V2_3` met 1,5
+  vermenigvuldigen zet hem op 1,10 % en de assert op rood.
+
+  ---
+
+  **WAT ER IN DE CODE VERANDERDE.** Nieuw: `src/lib/engine2/optimizer/chainChoices.ts` (de tweede
+  classificatielijst, met `withDeclaredChainChoices`), `chainChoices.test.ts`,
+  `src/lib/vituixBridge.ts` (de VituixCAD-brug, uit `App.tsx` gehaald zodat V40 hem scriptmatig
+  kan gebruiken — gedrag ongewijzigd), `scripts/export-v40-vxp.ts`,
+  `scripts/measure-v40-phase.ts`. Gewijzigd: `Chain3Settings` krijgt `leanTargetDb` (ongesteld =
+  de historische afleiding); `synthesis.ts` en `vfOptimizer.ts` exporteren elk hun eigen standaard
+  als benoemde constante; `candidateDeclaration.ts` krijgt `declareCandidateChainChoices`;
+  `worker.ts` past de ketenverklaring toe op de driewegroute en meldt haar in de notities;
+  `casus1V2.fixture.ts`, `App.tsx`, `compare-corpora.ts` (correctiegroep-kolom),
+  `generate-casus1-v2-candidates.ts` (twee herkomstvelden) en drie testbestanden volgen. Het
+  commentaar bij `VxpDriver.responseDelay` zei "ms" waar de code µs schrijft — gecorrigeerd.
+
+  **Wat er NIET veranderd is:** geen enkele fasemaat (dat is V40), geen `smoothMag`, geen
+  `WINDOW_SMOOTHING_OCTAVES`, geen vallen-generator en geen enkel nieuw topologievoorstel
+  (beslispunt E blijft open, met een scherpere formulering: de kale val wordt nog steeds niet
+  gebouwd). De tweewegroute is niet aangeraakt.
+
+  **Openstaand in deze casus:** de twee posten uit de fixture-inventarisatie (`audit.fbHz` en het
+  grijze `costWeight`), beslispunt E, en verder onveranderd — groundplane-metingen onder het
+  onderste kruisgebied vóór onderdelenbestelling; HD-sweep; 30°-meting tweeter voor
+  M-G-compleetheid; verzadigings-/formaatcheck grote P-core shunt-spoel.
+
+- V40 (28-08-2026 — **LEVERING, geen besluit**: de twee fasematen ontleed en drie netlists naar VituixCAD) — opgeworpen bij V38-fix, hier voorzien van bewijsmateriaal. **Blijft OPEN tot Sanders VituixCAD-uitslag.**
+
+  **DE STAND.** De app draagt twee fasematen. Op HUIDIG's zaad zijn zij het eens (tuner 22,28°, rapport 23,83° voor W-M); op het netwerk dat dezelfde run aflevert lopen zij in tegengestelde richting uiteen (tuner 9,65°, rapport 47,68°), en op de ongegladde maat van V38-fix wordt dat gat groter in plaats van kleiner. Zolang dat staat is "de tuner kocht fase" een uitspraak in de eenheden van één van de twee. Deze sessie verandert **geen enkele fasemaat** — dat was uitgesloten in de opdracht — en levert twee dingen: een getallenblad dat het gat ontleedt, en drie VituixCAD-projecten.
+
+  ---
+
+  **HET GETALLENBLAD, EN HET ONTLEEDT HET GAT VERDER DAN VERWACHT.**
+
+  `npx vite-node scripts/measure-v40-phase.ts` drukt per netlist en per driverpaar vijf getallen af. De eerste twee zijn wat de app afdrukt; de laatste twee rekenen **één formule** (gemiddelde |relatieve fase|) op **beide banden**, op het ketenraster, zodat BAND, RASTER en DEFINITIE uit elkaar liggen voordat er iets over gezegd wordt.
+
+  Wat de twee maten precies zijn — en zij verschillen op twee assen tegelijk:
+
+  | | RAPPORT (`system.phaseTracking`, A5.5) | TUNER (`pairPhaseDeg` → `computeIntegration`) |
+  |---|---|---|
+  | band | ±1 octaaf rond het kruispunt, **geknipt op meetgeldigheid** | het OVERLAPVENSTER: elk rasterpunt waar de twee takken binnen 20 dB van elkaar liggen |
+  | beweegt mee met | het kruispunt | het NETWERK |
+  | raster | het rapportraster | het ketenraster |
+  | formule | gemiddelde \|arg(onder) − arg(boven)\| | dezelfde |
+
+  **DE UITKOMST, en zij is scherper dan "ze zijn het oneens".** Op élke gemeten rij reproduceert de tunerkolom EXACT wanneer je één formule over het overlapvenster rekent, en de rapportkolom binnen ongeveer een graad wanneer je diezelfde formule over de rapportband rekent. **De twee definities zijn dus dezelfde formule, het raster draagt hooguit een graad, en het hele gat is de BAND.**
+
+  De scherpste rij van het bevroren V38-fix-corpus, `466,5 · 1491,4`:
+
+  | | ° |
+  |---|---|
+  | RAPPORT (eigen) | 17,83 |
+  | TUNER (eigen) | **59,15** |
+  | één formule op de OVERLAPband (200,0–815,7 Hz, 30 pt) | **59,15** |
+  | één formule op de RAPPORTband (396,7–1051,6 Hz, 20 pt) | 17,05 |
+
+  Het overlapvenster begint daar op **200,0 Hz** — de bodem van het ketenraster, en een vol octaaf ONDER de meetgeldigheidsvloer van 396,7 Hz waarop het rapport knipt. De tunermaat middelt daar dus fase over data die de app zelf niet vertrouwt. Op HUIDIG's W-M-paar loopt hetzelfde venster aan de andere kant door tot 20 000 Hz: beide takken liggen daar binnen 20 dB van elkaar terwijl ze allebei diep weg zijn.
+
+  **WAT DIT WEL EN NIET BESLIST.** Het beslist het MECHANISME: de tegenspraak is geen andere natuurkunde en geen tweede implementatie van één grootheid, maar één formule over twee puntenverzamelingen waarvan er één niet op meetgeldigheid geknipt is. Het beslist NIET welke band de juiste vraag stelt — dat is een besluit over beleid, geen meting, en het is precies waarom V40 open blijft.
+
+  ---
+
+  **DE DRIE ZIPS, EN DE GETALLEN DIE ERBIJ HOREN.** Gekozen op de assen waar V40 over gaat, niet
+  ingetypt: `HUIDIG` is het handwerk van de ontwerper, `KAND_V2_1` is de beste levende kandidaat
+  van ná V41 (0,48 dB RMS), en `V38FIX_KAND_5` is de netlist waarop de twee maten het VERST
+  uiteenlopen — die kandidaat (`466,5 · 1491,4`) levert sinds V41 geen netwerk meer, dus het
+  bevroren bestand IS zijn opvolger als meetobject.
+
+| zip | paar | kruispunt | RAPPORT ° | rapportband | dekking | TUNER ° | overlapband | één formule: overlap → rapport |
+|---|---|---|---|---|---|---|---|---|
+| `V40-HUIDIG` | W-M | 359,7 | **23,83** | 396,7–719,5 | 43,0 % | **22,28** | 254,9–20 000 | 22,28 → 24,22 |
+| `V40-HUIDIG` | M-T | 2250,2 | 7,04 | 1125,1–4500,5 | 100 % | 7,04 | 1145,3–3848,0 | 7,04 → 6,97 |
+| `V40-KAND_V2_1` | W-M | 408,3 | **4,55** | 396,7–816,7 | 52,1 % | **2,14** | 242,8–705,3 | 2,14 → 4,58 |
+| `V40-KAND_V2_1` | M-T | 1946,6 | 5,67 | 973,3–3893,2 | 100 % | 4,78 | 1145,3–3666,0 | 4,78 → 5,53 |
+| `V40-V38FIX_KAND_5` | W-M | 525,8 | **17,83** | 396,7–1051,6 | 70,3 % | **59,15** | **200,0**–815,7 | 59,15 → 17,05 |
+| `V40-V38FIX_KAND_5` | M-T | 1418,9 | 11,72 | 709,5–2837,8 | 100 % | 10,72 | 856,3–2257,7 | 10,72 → 11,50 |
+
+  Nagemeten over twintig rijen (HUIDIG, de acht levende kandidaten en het bevroren meetobject):
+  de tunerkolom reproduceert **exact** op élke rij, de rapportkolom binnen **1,5°** in het
+  slechtste geval. Daarmee is de decompositie hard: geen definitieverschil, hooguit anderhalve
+  graad raster, en al het overige is de band.
+
+  **DE ZIPS ZELF.** `npx vite-node scripts/export-v40-vxp.ts` schrijft in `test-fixtures/casus1/v40_vituix/` één zip per netlist, elk met het `.vxp` én zijn meetbestanden ernaast — precies zoals de exportknop van de app het doet, met dezelfde `serializeVxp`, dezelfde `zipStore` en dezelfde brugvertraging. Die brug is sinds V41 een module (`vituixBridge.ts`) in plaats van een lokale functie in `App.tsx`, want een tweede kopie van de brug ernaast zetten zou het oordeel dat zij moet dragen ongeldig maken.
+
+  **WAT DE EXPORT ANDERS DOET DAN DE KNOP, met de reden, want een stilzwijgende afwijking maakt dit hele oordeel waardeloos:**
+
+  1. **De responsen zijn afgeleid, niet de ruwe bestanden.** Casus 1's WOOFER is één weg gemeten als TWEE bestanden (V13) en VituixCAD wil er één per driverblok. Dus schrijft het script per driver de `onAxisFull` van de opnamepas weg — de ongeknipte complexe som waarop de app zélf ontwerpt — voor alle drie de wegen, zodat er één afleiding is en niet één afwijkende weg. Elk bestand draagt die herkomst in zijn kop.
+  2. **De impedanties zijn omgezet naar ZMA-tekst.** Casus 1's `.lim` is binair ARTA en VituixCAD leest dat niet. **Dat is ook een bevinding over de app zelf, gemeld en niet gerepareerd:** wie in de app een `.lim` inlaadt en exporteert, krijgt dat bestand ongewijzigd in de exportmap en VituixCAD weigert het. Buiten het bereik van V41.
+  3. **Geen hoekensets.** Casus 1 heeft er één (mid 30°), en één hoek op één driver is geen directiviteitsset; de app gebruikt hem op deze run zelf ook niet (`directivityWeight` 0, geen `angleData`).
+
+  Bijvangst en gecorrigeerd: het commentaar bij `VxpDriver.responseDelay` zei "ms" terwijl de code altijd µs geschreven heeft — en die brug is op de KOAN-set gevalideerd tot op ~2°. Een commentaarfout, op precies het veld waar V40 nu van afhangt.
+
+  ---
+
+  **WAT SANDER DOET, EN WAT ELKE UITKOMST BETEKENT.**
+
+  1. Pak één zip uit en open het `.vxp` in VituixCAD. Elke driver staat op `MinimumPhase=True` met zijn brugvertraging; het netwerk is CROSSOVER (variant 0).
+  2. Lees de fasetracking van één driverpaar af **op de RAPPORTBAND uit het getallenblad** (de kolom `rapportband Hz`) — dezelfde band, dezelfde twee takken.
+  3. Vergelijk met de twee getallen van datzelfde paar.
+
+  | uitkomst | wat het betekent | welke kolommen de verliezende maat droegen |
+  |---|---|---|
+  | VituixCAD reproduceert het RAPPORT-getal | de rapportmaat beschrijft de luidspreker; de tunermaat middelt over een band die de meetgeldigheid niet respecteert | de kolommen `W-M fase TUNER` en `M-T fase TUNER` in de vóór/ná-tabellen van **V38-fix** en **V41**, plus de `pairPhaseDeg`-regels in de wattenval- en transplantatietabellen van **V38** en de her-polijstingstabel (`paarfase W-M 22,28 → 9,65`) |
+  | VituixCAD reproduceert het TUNER-getal | de knip op meetgeldigheid verwijdert iets dat er hoort te zijn; het rapport onderschat | de kolommen `W-M fase RAPPORT` en `M-T fase RAPPORT` in dezelfde twee tabellen, plus élke A5.5-fasetracking in het paneel en in `goldenCasus1.test.ts` |
+  | geen van beide | de brug klopt niet, of het netwerk is anders aangekomen dan het bedoeld was | dan is de eerste vraag de export en niet de maat: vergelijk eerst de SPL-som van VituixCAD met `SPL ±` uit de tabel |
+
+  **Zolang dit open staat draagt elke afruil die op fase verdedigd wordt deze onzekerheid mee** — dat is ongewijzigd sinds V38-fix, en het getallenblad maakt hem alleen preciezer: het is niet de definitie en niet het raster, het is de band.
 
 ## Casus S1 — synthetische grondwaarheid voor de R_e-schatter (F3b, 26-08-2026)
 

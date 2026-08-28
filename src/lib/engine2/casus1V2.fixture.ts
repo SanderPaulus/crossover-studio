@@ -31,7 +31,10 @@ import type { Manifest } from './ingest/manifest.ts';
 import type { MeasurementFile } from './ingest/derive.ts';
 import type { EngineV2Report } from './report.ts';
 import { buildCandidateField, type CandidateFieldResult } from './predesign/candidateField.ts';
-import { declareCandidateChoices } from './optimizer/candidateDeclaration.ts';
+import {
+  declareCandidateChainChoices,
+  declareCandidateChoices,
+} from './optimizer/candidateDeclaration.ts';
 import type { GeneratedCandidate } from './predesign/candidates.ts';
 import { AUTO_STRUCTS } from '../threeWayDesign.ts';
 import { casus1AmpMinLoadOhm, loadGolden, type GoldenRefs } from './casus1.fixture.ts';
@@ -254,6 +257,12 @@ export function casus1V2Declaration(
         zFloorStrict: true,
       },
     }),
+    /* V41 — the two settings the DESIGN and SYNTHESIS steps read, which run
+     * before the tuner exists. Nothing is stated here, so the derivation
+     * applies: the app's own EQ budget and `synthesize`'s own lean threshold.
+     * Stating them here instead would put two more app defaults in a fixture,
+     * which is the pattern V34 removed for the source-resistance tiers. */
+    chainDeclaration: declareCandidateChainChoices({ stated: {} }),
     provenance: c.provenance,
     orderByModel: { mid: c.crossings[0].order, tweeter: c.crossings[1].order },
   };

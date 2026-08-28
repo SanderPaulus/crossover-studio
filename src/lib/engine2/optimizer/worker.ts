@@ -73,6 +73,12 @@ import {
   type ChoiceDeclaration,
   type GreyWeights,
 } from './choices.ts';
+import {
+  CHAIN_CHOICE_KEYS,
+  chainDeclarationCoverage,
+  withDeclaredChainChoices,
+  type ChainChoiceDeclaration,
+} from './chainChoices.ts';
 import type {
   MeasurementFactsPayload,
   MeasurementProvenance,
@@ -164,6 +170,18 @@ export interface V2RunSettings extends MeasurementFactsPayload {
 export interface V2CandidatePayload {
   /** The A5d layer's declaration over every choice key. */
   declaration: ChoiceDeclaration;
+  /**
+   * V41 — the same declaration over the two CHAIN-level choice keys.
+   *
+   * REQUIRED, and the compiler is the guard: `eqBands` and `leanTargetDb` are
+   * read by the design and synthesis steps, which run before the tuner exists,
+   * so a candidate that does not state them has its topology decided by
+   * whatever the v1 chain settings happened to carry — which for `eqBands` is a
+   * silent nought. That is the silent inheritance F4d ended one layer down, and
+   * making the field optional would let it back in wherever somebody forgot.
+   * See `chainChoices.ts` for why the list is two keys and not thirty-two.
+   */
+  chainDeclaration: ChainChoiceDeclaration;
   /** Where this candidate came from — one clause per handover. */
   provenance: string;
   /**
@@ -551,6 +569,8 @@ interface NetworkFacts {
    * stands and fifteen keys are still inherited, which the notes say.
    */
   declaration?: ChoiceDeclaration;
+  /** V41 — the chain-level half of the same declaration, when there is one. */
+  chainDeclaration?: ChainChoiceDeclaration;
 }
 
 /** Drop keys whose value is undefined — absent is a state, not a zero. */
@@ -777,6 +797,55 @@ function tuneOptionsFor(
           '(audit §2.2, §6.1). This route has no A5d candidate — see `V2CandidatePayload`.',
       );
     }
+  }
+
+  /* ---- V41: the two CHAIN-level choice keys, and what they were --------- *
+   *
+   * Reported here rather than where they are applied, because the reader needs
+   * them beside the tuner's own choices: `eqBands` decides how many corrections
+   * the design step may PROPOSE and `leanTargetDb` how easily the synthesis
+   * step declines to BUILD one, and neither is visible anywhere in the tuner's
+   * options. A run whose field carries no correction network has to be able to
+   * say whether nothing was warranted or nothing was allowed. */
+  if (network.chainDeclaration) {
+    const cover = chainDeclarationCoverage(network.chainDeclaration);
+    if (cover.missing.length > 0) {
+      collect.notes.push(
+        `The candidate's chain declaration does not cover ${cover.missing.join(', ')}. Those keys ` +
+          'fall back to the chain settings, where `eqBands` unstated is a silent nought and ' +
+          '`leanTargetDb` unstated is the staged pass\'s stop goal — neither is a decision ' +
+          'anybody took (V41).',
+      );
+    }
+    if (cover.duplicated.length > 0) {
+      collect.notes.push(
+        `The candidate declares ${cover.duplicated.join(', ')} in more than one state at once, so ` +
+          'which one applies is a matter of evaluation order.',
+      );
+    }
+    const said = CHAIN_CHOICE_KEYS.map((k) => {
+      const v = network.chainDeclaration?.stated?.[k];
+      return v === undefined ? null : `${k} = ${v}`;
+    }).filter((x): x is string => x !== null);
+    if (said.length > 0) {
+      collect.notes.push(
+        `Chain-level choices stated by the candidate: ${said.join(', ')}. They are read by the ` +
+          'design and synthesis steps, which run before the tuner exists, so they decide what the ' +
+          'topology CAN be rather than what its values are (V41).',
+      );
+    }
+    if (network.chainDeclaration.absent.length > 0) {
+      collect.notes.push(
+        'Declared ABSENT at the chain layer: ' +
+          network.chainDeclaration.absent.map((a) => `${a.key} — ${a.why}`).join(' · '),
+      );
+    }
+  } else if (network.declaration) {
+    collect.notes.push(
+      `Chain-level choices still inherited: ${CHAIN_CHOICE_KEYS.join(', ')}. This candidate ` +
+        'declares the tuner\'s options but not the two settings the design and synthesis steps ' +
+        'read, so its topology is bounded by whatever the chain settings carried (V41).',
+    );
   }
   const unstatedWeights = GREY_KEYS.filter((k) => weights[k] === undefined);
   if (unstatedWeights.length > 0) {
@@ -1395,12 +1464,23 @@ export function handleV2Request(req: V2Request, post: V2Post): void {
             dissipationWeight: input.settings.dissipationWeight,
             costWeight: input.settings.costWeight,
           }),
-          ...(candidate ? { declaration: candidate.declaration } : {}),
+          ...(candidate
+            ? {
+                declaration: candidate.declaration,
+                chainDeclaration: candidate.chainDeclaration,
+              }
+            : {}),
         };
         /* V34 — the candidate's declaration overrides the chain's own default
          * for the one CHOICE key the chain resolves outside the tuner. Identity
-         * when there is no candidate, so every other caller is untouched. */
-        const chainInput = withDeclaredSourceLimit(input, candidate?.declaration);
+         * when there is no candidate, so every other caller is untouched.
+         *
+         * V41 — and the two the chain resolves before the tuner exists at all.
+         * Same shape, same identity: no candidate, no rewrite. */
+        const chainInput = withDeclaredChainChoices(
+          withDeclaredSourceLimit(input, candidate?.declaration),
+          candidate?.chainDeclaration,
+        );
         data = runCandidate<Chain3Input, Chain3Result>(
           chainInput,
           v2,
@@ -1523,7 +1603,16 @@ export function handleV2Request(req: V2Request, post: V2Post): void {
           }),
           ...(candidate ? { declaration: candidate.declaration } : {}),
         };
-        /* V34 — see the three-way branch above; same rule, same reason. */
+        /* V34 — see the three-way branch above; same rule, same reason.
+         *
+         * V41 IS DELIBERATELY NOT APPLIED HERE, and it is the same boundary
+         * V38-fix drew for the two-way design step. `ChainSettings` names the
+         * EQ budget `eqBandsPerDriver` and derives its lean threshold inside
+         * `designChain.ts`, so honouring the chain declaration on this route
+         * would mean a second mapping of two keys into a second vocabulary —
+         * and the two-way route is still v1 (TODO(F2c)). The candidate's chain
+         * declaration therefore travels and is not read here; the note below
+         * says so rather than letting a reader assume it was. */
         const chainInput = withDeclaredSourceLimit(input, candidate?.declaration);
         data = runCandidate<ChainInput, ChainResult>(
           chainInput,

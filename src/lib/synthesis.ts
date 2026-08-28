@@ -26,6 +26,25 @@ import { wrapDeg } from './dsp.ts';
  * impedance the branches cannot interact, so per-branch fitting is exact.
  */
 
+/**
+ * LEAN MODE'S OWN THRESHOLD (dB) — the fit error below which the bare ladder is
+ * declared good enough and no correction network is bought.
+ *
+ * ONE HOME SINCE V41, and the reason is the same one `impedanceFloor.ts` and
+ * `partAudit.ts` carry: this number is compared against by the synthesis step
+ * and STATED by the v2 candidate, and a number with two homes is a number that
+ * will one day differ between them.
+ *
+ * WHY IT IS A CONSTANT AND NOT A CASUS NUMBER. It is the engine's own default —
+ * what `synthesize` uses when nobody says otherwise — and it predates every
+ * casus in the book. What V38 measured is that the three-way chain OVERWROTE it
+ * with `targets.rippleDb` (2.5 dB, the staged pass's stop goal, five times as
+ * wide), so on the whole casus-1 field the bare ladder cleared the bar on 45 of
+ * 45 branches and cleared this one on 0 of 45 — no Zobel, no Fs trap and no
+ * top-octave hold was ever bought. Restoring it on the v2 route is V41.
+ */
+export const SYNTHESIS_LEAN_DEFAULT_DB = 0.5;
+
 export interface SynthesizedComponent {
   id: string;
   kind: 'C' | 'L' | 'R';
@@ -459,7 +478,7 @@ export interface SynthesizeOptions {
    */
   corrections?: 'auto' | 'lean' | 'off';
   /** Lean mode: weighted-RMS fit error (dB) below which the bare ladder is
-   *  declared sufficient. Default 0.5. */
+   *  declared sufficient. Default `SYNTHESIS_LEAN_DEFAULT_DB`. */
   leanTargetDb?: number;
   /** Component-wizard preferences for the snap: binding series per kind,
    *  tier profile per position (series-path vs shunt — derived from the
@@ -499,7 +518,7 @@ export function synthesize(
     driverSplDb,
     catalogSnap = false,
     corrections = 'auto',
-    leanTargetDb = 0.5,
+    leanTargetDb = SYNTHESIS_LEAN_DEFAULT_DB,
     costWeight = 0.0015,
     snapPrefs = undefined,
   } = opts;

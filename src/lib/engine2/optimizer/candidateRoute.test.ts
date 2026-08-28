@@ -42,7 +42,10 @@ import { parseZma } from '../../parsers/zma.ts';
 import { AUTO_STRUCTS } from '../../threeWayDesign.ts';
 import type { Chain3Input, Chain3Result } from '../../threeWayChain.ts';
 import { stableJson } from './determinism.ts';
-import { declareCandidateChoices } from './candidateDeclaration.ts';
+import {
+  declareCandidateChainChoices,
+  declareCandidateChoices,
+} from './candidateDeclaration.ts';
 import { declarationCoverage } from './choices.ts';
 import { buildCandidateField, candidateFieldKey } from '../predesign/candidateField.ts';
 import type { XoWindowInput } from '../predesign/xoWindow.ts';
@@ -168,6 +171,9 @@ function declarationFor(c: GeneratedCandidate, bandOverride?: [number, number]) 
         zFloorStrict: true,
       },
     }),
+    /* V41 — the chain-level half. Nothing stated, so the derivation applies:
+     * the app's own EQ budget and `synthesize`'s own lean threshold. */
+    chainDeclaration: declareCandidateChainChoices({ stated: {} }),
     provenance: c.provenance,
     orderByModel: { mid: c.crossings[0].order, tweeter: c.crossings[1].order },
   };

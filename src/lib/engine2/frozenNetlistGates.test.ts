@@ -1115,19 +1115,52 @@ describe('V36 — de dissipatie van élke bevroren netlist, en de noemer van de 
      * gewapend, hij kost rekentijd, en hij bewaakt niets. Dat was de bevinding
      * van V36 en zij is hier de "vóór"-helft.
      *
-     * De grens komt uit de tuner en niet uit dit bestand; de objectiefwaarde
-     * komt uit de kleinste RMS die het casusboek draagt, want `fxOf`'s
-     * dominante term is `2(1−p)·rms²` met p = 0,5. Dat is de GUNSTIGSTE
-     * vergelijking voor de dissipatieterm: elke term die aan `fx` ontbreekt
-     * maakt de noemer alleen groter. */
+     * De grens komt uit de tuner en niet uit dit bestand; de objectiefwaarde is
+     * `rms²`, want `fxOf`'s dominante term is `2(1−p)·rms²` met p = 0,5. Elke
+     * term die aan `fx` ontbreekt maakt de noemer alleen groter, dus dit blijft
+     * de gunstigste vergelijking voor de dissipatieterm.
+     *
+     * ELKE NETLIST TEGEN ZIJN EIGEN OBJECTIEF, EN DAT IS SINDS V41 EEN
+     * CORRECTIE. Hier stond de kleinste RMS die het HELE casusboek draagt, als
+     * bewust conservatieve keuze — verdedigbaar zolang alle netlists in een
+     * smalle band lagen (1,68–2,08 bij V38-fix). V41 maakte het veld vlakker
+     * (0,48–1,86), en toen brak de "vóór"-helft: 1,22 % tegen een drempel van
+     * 1 %. NIET doordat de term groeide — de grootste piek-term ging van
+     * 0,002819 naar 0,002067 — maar doordat de noemer kromp. De vergelijking
+     * legde de term van de ENE netlist naast het objectief van een ANDERE, en
+     * dat is nergens een grootheid: de tuner telt de term op bij het objectief
+     * van het netwerk dat hij op dat moment evalueert. Per netlist tegen zijn
+     * eigen objectief is dus niet de zwakkere maar de JUISTE vergelijking, en
+     * zij houdt V37's bevinding overeind: grootste piek-aandeel 0,74 %,
+     * grootste R_e-aandeel 29,5 %. De drempel is niet aangeraakt.
+     *
+     * De drie v1-baselines dragen geen `rms_vlakheid_dB` in `kandidaten` en
+     * vallen daarom buiten deze vergelijking; het AANTAL dat meedoet wordt
+     * geassert, zodat een gekrompen verzameling faalt in plaats van stil groen
+     * te blijven. */
     const CHALLENGE_FRACTION = 0.01;
-    const rmsValues = Object.values(
-      golden.kandidaten as unknown as Record<string, { rms_vlakheid_dB?: number }>,
-    )
-      .map((k) => k.rms_vlakheid_dB)
-      .filter((v): v is number => typeof v === 'number');
-    expect(rmsValues.length).toBeGreaterThan(0);
-    const smallestFx = Math.min(...rmsValues) ** 2;
+    const rmsOf = (netlist: string): number | null => {
+      const block = (golden.kandidaten as unknown as Record<string, { rms_vlakheid_dB?: number }>)[
+        netlist
+      ];
+      const v = block?.rms_vlakheid_dB;
+      return typeof v === 'number' && v > 0 ? v : null;
+    };
+    const shares: { netlist: string; peak: number; re: number }[] = [];
+    for (const r of record.per_netlist) {
+      const rms = rmsOf(r.netlist);
+      if (rms === null) continue;
+      const fx = rms ** 2;
+      shares.push({
+        netlist: r.netlist,
+        peak: (r.term_veiligheidsraster?.term ?? 0) / fx,
+        re: (r.term_op_R_e?.term ?? 0) / fx,
+      });
+    }
+    expect(
+      shares.length,
+      'geen enkele bevroren netlist draagt zowel een dissipatieterm als een eigen RMS-referentie',
+    ).toBeGreaterThan(record.per_netlist.length - 5);
 
     const worstPeak = Math.max(
       ...record.per_netlist.map((r) => r.term_veiligheidsraster?.term ?? 0),
@@ -1136,15 +1169,19 @@ describe('V36 — de dissipatie van élke bevroren netlist, en de noemer van de 
     expect(worstPeak).toBeGreaterThan(0);
 
     // VÓÓR: op geen enkele bevroren netlist haalde de term de drempel.
+    const worstPeakShare = Math.max(...shares.map((x) => x.peak));
+    const worstPeakAt = shares.find((x) => x.peak === worstPeakShare)!.netlist;
     expect(
-      worstPeak / smallestFx,
-      `op de piekhoogte haalt de term ${((worstPeak / smallestFx) * 100).toFixed(2)} % — die ` +
-        'zou de uitdagingsdrempel dus wél kunnen halen, en dan is V36\'s bevinding vervallen',
+      worstPeakShare,
+      `op de piekhoogte haalt de term ${(worstPeakShare * 100).toFixed(2)} % van het eigen ` +
+        `objectief van ${worstPeakAt} — die zou de uitdagingsdrempel dus wél kunnen halen, en ` +
+        'dan is V36\'s bevinding vervallen',
     ).toBeLessThan(CHALLENGE_FRACTION);
     // NÁ: op R_e haalt hij hem, en dus kan hij voor het eerst iets beslissen.
+    const bestReShare = Math.max(...shares.map((x) => x.re));
     expect(
-      worstRe / smallestFx,
-      `op R_e haalt de term maar ${((worstRe / smallestFx) * 100).toFixed(2)} % — dan heeft V37 ` +
+      bestReShare,
+      `op R_e haalt de term maar ${(bestReShare * 100).toFixed(2)} % — dan heeft V37 ` +
         'de term niet groot genoeg gemaakt om te sturen en is de entry niet waar',
     ).toBeGreaterThan(CHALLENGE_FRACTION);
 

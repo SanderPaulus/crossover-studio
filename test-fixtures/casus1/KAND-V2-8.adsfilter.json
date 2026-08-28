@@ -1,7 +1,7 @@
 {
  "format": "acoustic-design-studio-filter",
  "version": 1,
- "savedAt": "2026-08-28T16:12:48.050Z",
+ "savedAt": "2026-08-28T21:39:29.272Z",
  "name": "KAND-V2-8",
  "parts": [
   {
@@ -41,7 +41,7 @@
    "params": [
     {
      "name": "L",
-     "value": 2.146,
+     "value": 2.715,
      "unit": "mH"
     }
    ],
@@ -62,7 +62,7 @@
    "params": [
     {
      "name": "C",
-     "value": 111.2,
+     "value": 97.2,
      "unit": "uF"
     }
    ],
@@ -93,7 +93,7 @@
    "params": [
     {
      "name": "L",
-     "value": 1.289,
+     "value": 1.439,
      "unit": "mH"
     }
    ],
@@ -114,7 +114,7 @@
    "params": [
     {
      "name": "R",
-     "value": 3.104,
+     "value": 0.3913,
      "unit": "Ω"
     }
    ],
@@ -135,7 +135,7 @@
    "params": [
     {
      "name": "R",
-     "value": 47.8,
+     "value": 48.15,
      "unit": "Ω"
     }
    ],
@@ -161,8 +161,15 @@
    ]
   },
   {
-   "type": "Wire",
-   "params": [],
+   "type": "Resistor",
+   "partId": "R7",
+   "params": [
+    {
+     "name": "R",
+     "value": 2.206,
+     "unit": "Ω"
+    }
+   ],
    "wires": [
     {
      "x": 24,
@@ -175,10 +182,56 @@
    ]
   },
   {
-   "type": "Driver",
-   "partId": "D",
-   "model": "woofer",
-   "inverted": false,
+   "type": "Wire",
+   "params": [],
+   "wires": [
+    {
+     "x": 24,
+     "y": 6
+    },
+    {
+     "x": 24,
+     "y": 2
+    }
+   ]
+  },
+  {
+   "type": "Capacitor",
+   "partId": "C8",
+   "params": [
+    {
+     "name": "C",
+     "value": 57.83,
+     "unit": "uF"
+    }
+   ],
+   "wires": [
+    {
+     "x": 24,
+     "y": 2
+    },
+    {
+     "x": 31,
+     "y": 2
+    }
+   ]
+  },
+  {
+   "type": "Wire",
+   "params": [],
+   "wires": [
+    {
+     "x": 31,
+     "y": 2
+    },
+    {
+     "x": 31,
+     "y": 6
+    }
+   ]
+  },
+  {
+   "type": "Wire",
    "params": [],
    "wires": [
     {
@@ -186,7 +239,24 @@
      "y": 6
     },
     {
-     "x": 31,
+     "x": 38,
+     "y": 6
+    }
+   ]
+  },
+  {
+   "type": "Driver",
+   "partId": "D",
+   "model": "woofer",
+   "inverted": false,
+   "params": [],
+   "wires": [
+    {
+     "x": 38,
+     "y": 6
+    },
+    {
+     "x": 38,
      "y": 13
     }
    ]
@@ -196,7 +266,7 @@
    "params": [],
    "wires": [
     {
-     "x": 31,
+     "x": 38,
      "y": 13
     }
    ]
@@ -207,7 +277,7 @@
    "params": [
     {
      "name": "C",
-     "value": 31.52,
+     "value": 26.34,
      "unit": "uF"
     }
    ],
@@ -228,7 +298,7 @@
    "params": [
     {
      "name": "L",
-     "value": 1.69,
+     "value": 2.445,
      "unit": "mH"
     }
    ],
@@ -259,7 +329,7 @@
    "params": [
     {
      "name": "C",
-     "value": 36.56,
+     "value": 24.68,
      "unit": "uF"
     }
    ],
@@ -280,7 +350,7 @@
    "params": [
     {
      "name": "L",
-     "value": 21.86,
+     "value": 41.78,
      "unit": "mH"
     }
    ],
@@ -311,7 +381,7 @@
    "params": [
     {
      "name": "L",
-     "value": 1.349,
+     "value": 1.655,
      "unit": "mH"
     }
    ],
@@ -332,7 +402,7 @@
    "params": [
     {
      "name": "C",
-     "value": 20.15,
+     "value": 18.58,
      "unit": "uF"
     }
    ],
@@ -363,7 +433,7 @@
    "params": [
     {
      "name": "L",
-     "value": 0.3557,
+     "value": 0.3837,
      "unit": "mH"
     }
    ],
@@ -387,7 +457,21 @@
      "y": 18
     },
     {
-     "x": 38,
+     "x": 37,
+     "y": 18
+    }
+   ]
+  },
+  {
+   "type": "Wire",
+   "params": [],
+   "wires": [
+    {
+     "x": 37,
+     "y": 18
+    },
+    {
+     "x": 44,
      "y": 18
     }
    ]
@@ -400,11 +484,11 @@
    "params": [],
    "wires": [
     {
-     "x": 38,
+     "x": 44,
      "y": 18
     },
     {
-     "x": 38,
+     "x": 44,
      "y": 25
     }
    ]
@@ -414,7 +498,7 @@
    "params": [],
    "wires": [
     {
-     "x": 38,
+     "x": 44,
      "y": 25
     }
    ]
@@ -447,18 +531,18 @@
    "params": [
     {
      "name": "C",
-     "value": 5.923,
+     "value": 8.419,
      "unit": "uF"
     }
    ],
    "wires": [
     {
      "x": 3,
-     "y": 30
+     "y": 38
     },
     {
      "x": 10,
-     "y": 30
+     "y": 38
     }
    ]
   },
@@ -468,18 +552,18 @@
    "params": [
     {
      "name": "L",
-     "value": 0.2357,
+     "value": 0.243,
      "unit": "mH"
     }
    ],
    "wires": [
     {
      "x": 10,
-     "y": 30
+     "y": 38
     },
     {
      "x": 10,
-     "y": 37
+     "y": 45
     }
    ]
   },
@@ -489,7 +573,7 @@
    "wires": [
     {
      "x": 10,
-     "y": 37
+     "y": 45
     }
    ]
   },
@@ -499,18 +583,18 @@
    "params": [
     {
      "name": "C",
-     "value": 57.35,
+     "value": 41.18,
      "unit": "uF"
     }
    ],
    "wires": [
     {
      "x": 10,
-     "y": 30
+     "y": 38
     },
     {
      "x": 17,
-     "y": 30
+     "y": 38
     }
    ]
   },
@@ -520,18 +604,18 @@
    "params": [
     {
      "name": "R",
-     "value": 0.1996,
+     "value": 0.8712,
      "unit": "Ω"
     }
    ],
    "wires": [
     {
      "x": 17,
-     "y": 30
+     "y": 38
     },
     {
      "x": 24,
-     "y": 30
+     "y": 38
     }
    ]
   },
@@ -541,18 +625,18 @@
    "params": [
     {
      "name": "R",
-     "value": 7.554,
+     "value": 77.86,
      "unit": "Ω"
     }
    ],
    "wires": [
     {
      "x": 24,
-     "y": 30
+     "y": 38
     },
     {
      "x": 24,
-     "y": 37
+     "y": 45
     }
    ]
   },
@@ -562,7 +646,7 @@
    "wires": [
     {
      "x": 24,
-     "y": 37
+     "y": 45
     }
    ]
   },
@@ -572,11 +656,185 @@
    "wires": [
     {
      "x": 24,
-     "y": 30
+     "y": 38
     },
     {
-     "x": 31,
-     "y": 30
+     "x": 30,
+     "y": 38
+    }
+   ]
+  },
+  {
+   "type": "Inductor",
+   "partId": "C·L7",
+   "params": [
+    {
+     "name": "L",
+     "value": 0.06323,
+     "unit": "mH"
+    }
+   ],
+   "wires": [
+    {
+     "x": 30,
+     "y": 38
+    },
+    {
+     "x": 30,
+     "y": 43
+    }
+   ]
+  },
+  {
+   "type": "Capacitor",
+   "partId": "C·C8",
+   "params": [
+    {
+     "name": "C",
+     "value": 28.84,
+     "unit": "uF"
+    }
+   ],
+   "wires": [
+    {
+     "x": 30,
+     "y": 43
+    },
+    {
+     "x": 30,
+     "y": 48
+    }
+   ]
+  },
+  {
+   "type": "Resistor",
+   "partId": "C·R9",
+   "params": [
+    {
+     "name": "R",
+     "value": 2.386,
+     "unit": "Ω"
+    }
+   ],
+   "wires": [
+    {
+     "x": 30,
+     "y": 48
+    },
+    {
+     "x": 30,
+     "y": 53
+    }
+   ]
+  },
+  {
+   "type": "Ground",
+   "params": [],
+   "wires": [
+    {
+     "x": 30,
+     "y": 53
+    }
+   ]
+  },
+  {
+   "type": "Wire",
+   "params": [],
+   "wires": [
+    {
+     "x": 30,
+     "y": 38
+    },
+    {
+     "x": 36,
+     "y": 38
+    }
+   ]
+  },
+  {
+   "type": "Inductor",
+   "partId": "C·L10",
+   "params": [
+    {
+     "name": "L",
+     "value": 1.194,
+     "unit": "mH"
+    }
+   ],
+   "wires": [
+    {
+     "x": 36,
+     "y": 38
+    },
+    {
+     "x": 36,
+     "y": 43
+    }
+   ]
+  },
+  {
+   "type": "Capacitor",
+   "partId": "C·C11",
+   "params": [
+    {
+     "name": "C",
+     "value": 12.13,
+     "unit": "uF"
+    }
+   ],
+   "wires": [
+    {
+     "x": 36,
+     "y": 43
+    },
+    {
+     "x": 36,
+     "y": 48
+    }
+   ]
+  },
+  {
+   "type": "Resistor",
+   "partId": "C·R12",
+   "params": [
+    {
+     "name": "R",
+     "value": 1.599,
+     "unit": "Ω"
+    }
+   ],
+   "wires": [
+    {
+     "x": 36,
+     "y": 48
+    },
+    {
+     "x": 36,
+     "y": 53
+    }
+   ]
+  },
+  {
+   "type": "Ground",
+   "params": [],
+   "wires": [
+    {
+     "x": 36,
+     "y": 53
+    }
+   ]
+  },
+  {
+   "type": "Wire",
+   "params": [],
+   "wires": [
+    {
+     "x": 36,
+     "y": 38
+    },
+    {
+     "x": 43,
+     "y": 38
     }
    ]
   },
@@ -588,12 +846,12 @@
    "params": [],
    "wires": [
     {
-     "x": 31,
-     "y": 30
+     "x": 43,
+     "y": 38
     },
     {
-     "x": 31,
-     "y": 37
+     "x": 43,
+     "y": 45
     }
    ]
   },
@@ -602,8 +860,8 @@
    "params": [],
    "wires": [
     {
-     "x": 31,
-     "y": 37
+     "x": 43,
+     "y": 45
     }
    ]
   },
@@ -621,11 +879,11 @@
     },
     {
      "x": 1,
-     "y": 30
+     "y": 38
     },
     {
      "x": 3,
-     "y": 30
+     "y": 38
     }
    ]
   }

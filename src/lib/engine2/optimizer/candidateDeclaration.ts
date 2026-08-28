@@ -49,8 +49,12 @@
  */
 
 import type { NetOptimizeOptions } from '../../netOptimizer.ts';
+import type { Chain3Settings } from '../../threeWayChain.ts';
+import { SYNTHESIS_LEAN_DEFAULT_DB } from '../../synthesis.ts';
+import { DEFAULT_EQ_BANDS_PER_DRIVER } from '../../vfOptimizer.ts';
 import { SEARCH_SMOOTHING_OCTAVES } from '../constants.ts';
 import type { ChoiceDeclaration, ChoiceKey } from './choices.ts';
+import type { ChainChoiceDeclaration, ChainChoiceKey } from './chainChoices.ts';
 
 /** The values the designer (or the app) has settled, in the tuner's own names. */
 export type StatedByDesigner = Partial<
@@ -382,4 +386,69 @@ export function declareCandidateChoices(input: CandidateDeclarationInput): Choic
   });
 
   return { stated: stated as ChoiceDeclaration['stated'], absent, delegated };
+}
+
+/**
+ * What the designer has settled at the CHAIN layer, in the chain's own names.
+ *
+ * Two keys, and both of them may legitimately be empty — see
+ * `declareCandidateChainChoices` for what happens then, which is not the same
+ * thing for both.
+ */
+export type StatedByDesignerChain = Partial<Pick<Chain3Settings, 'eqBands' | 'leanTargetDb'>>;
+
+export interface ChainDeclarationInput {
+  stated: StatedByDesignerChain;
+}
+
+/**
+ * V41 — THE CANDIDATE'S DECLARATION OVER THE TWO CHAIN-LEVEL CHOICE KEYS.
+ *
+ * Both are stated UNCONDITIONALLY, which makes them the third and fourth
+ * derivations in this module that hang on nothing else — the company of V37's
+ * `dissipationReferenceSource` and V38-fix's `errorSmoothOct`, and for the same
+ * shape of reason: the question is not conditional. Every candidate's topology
+ * is designed by a step that may or may not propose corrections and built by a
+ * step that may or may not decline them, so every candidate has to say what
+ * those two steps were allowed to do. There is no design on which the question
+ * has no answer, and therefore no honest ABSENT.
+ *
+ * NEITHER VALUE IS A CASUS-1 NUMBER, and that matters because a v2 default that
+ * was one would be P6's exact failure.
+ *
+ *  · `eqBands` is `DEFAULT_EQ_BANDS_PER_DRIVER` — the app's own control default
+ *    and the greedy design stage's own default, one constant with one home
+ *    (`vfOptimizer.ts`). What the v2 route inherited instead was not a smaller
+ *    number but NO number, and `Chain3Settings.eqBands` unstated means a silent
+ *    nought inside `designThreeWay`. That is the inverse of P4: absent reads as
+ *    a decision to forbid every correction, which nobody took.
+ *
+ *  · `leanTargetDb` is `SYNTHESIS_LEAN_DEFAULT_DB` — `synthesize`'s own
+ *    threshold, the value it uses when nobody says otherwise, and it predates
+ *    every casus in this book. What the chain substituted was `targets.rippleDb`,
+ *    the staged pass's STOP GOAL: a number about when the tuner may stop
+ *    escalating, borrowed as a number about when a driver behaves resistively
+ *    enough to need no correction. Two different questions, one number, and the
+ *    borrowed one is five times as wide.
+ *
+ * WHAT THIS DOES NOT TOUCH, and it is the same boundary V38-fix drew. The other
+ * two readers of `targets.rippleDb` on this route are JUDGEMENTS — `staged`
+ * (the tuner's prune and escalation goal) and `rankChain3Results` — and they
+ * still read `targets`, unchanged. Only the synthesis reading moves, because
+ * only the synthesis reading was measured to be the wrong question. And an
+ * explicit value still wins on both keys, so V41's before/after is a run
+ * somebody can ask for rather than a build that has to be patched.
+ */
+export function declareCandidateChainChoices(
+  input: ChainDeclarationInput,
+): ChainChoiceDeclaration {
+  const s = input.stated;
+  const stated: Partial<Pick<Chain3Settings, ChainChoiceKey>> = {};
+  /* Always empty today, and kept as a state rather than dropped: the shape is
+   * what `chainDeclarationCoverage` checks, and a third key that DOES have an
+   * absent case must have somewhere to go without changing this signature. */
+  const absent: { key: ChainChoiceKey; why: string }[] = [];
+  stated.eqBands = s.eqBands ?? DEFAULT_EQ_BANDS_PER_DRIVER;
+  stated.leanTargetDb = s.leanTargetDb ?? SYNTHESIS_LEAN_DEFAULT_DB;
+  return { stated, absent };
 }

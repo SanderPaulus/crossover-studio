@@ -141,7 +141,11 @@ import {
 } from './lib/engine2/predesign/candidateField.ts';
 import type { GeneratedCandidate } from './lib/engine2/predesign/candidates.ts';
 import { compareFloors, type FloorComparison } from './lib/engine2/predesign/floorComparison.ts';
-import { declareCandidateChoices } from './lib/engine2/optimizer/candidateDeclaration.ts';
+import {
+  declareCandidateChainChoices,
+  declareCandidateChoices,
+} from './lib/engine2/optimizer/candidateDeclaration.ts';
+import { chainDeclarationKey } from './lib/engine2/optimizer/chainChoices.ts';
 import { AUTO_STRUCTS } from './lib/threeWayDesign.ts';
 import { DEFAULT_RUN_SEED, SEARCH_SMOOTHING_OCTAVES } from './lib/engine2/constants.ts';
 import { stableJson, type V2RunStamp } from './lib/engine2/optimizer/determinism.ts';
@@ -230,7 +234,7 @@ import { synthesize, formatComponent, type SynthesisResult, type SynthesizedComp
 import { computePhaseStats } from './lib/phaseStats.ts';
 import { computeResponseStats } from './lib/responseStats.ts';
 import { toleranceBand } from './lib/tolerance.ts';
-import { type VfOptimizeResult, type StructChoice } from './lib/vfOptimizer.ts';
+import { DEFAULT_EQ_BANDS_PER_DRIVER, type VfOptimizeResult, type StructChoice } from './lib/vfOptimizer.ts';
 import { toTimeDomain, excessGroupDelay } from './lib/timeDomain.ts';
 import {
   serializeProject,
@@ -241,6 +245,7 @@ import {
   type StoredFile,
 } from './lib/project.ts';
 import { minimumPhaseDeg } from './lib/minphase.ts';
+import { bridgeDelaysUs, excessDelayMsOf } from './lib/vituixBridge.ts';
 import Chart, { type ChartHandle, type Series } from './components/Chart.tsx';
 import DriverFilterControls from './components/FilterControls.tsx';
 import { LogoMark, LogoWord } from './components/Logo.tsx';
@@ -1121,25 +1126,6 @@ function placementOf(d: CabinetDriver): DriverPlacement | null {
 const rSrcDelivered = (r: {
   net: { after: { rSourceOhm?: number | null } };
 }): number | null => r.net.after.rSourceOhm ?? null;
-
-function excessDelayMsOf(frd: Parsed): number | null {
-  try {
-    const lo = Math.max(500, frd.freq[0] * 1.05);
-    const hi = Math.min(5000, frd.freq[frd.freq.length - 1] * 0.95);
-    if (hi <= lo * 1.5) return null;
-    // The reconstruction grid must stay INSIDE the file: resample refuses to
-    // extrapolate, and an ARTA export ending at 19 999.5 Hz made a fixed
-    // 20 000 Hz top throw — caught, returned null, and every consumer
-    // (measured depth, VituixCAD bridge) silently had nothing (Sanders set).
-    const top = Math.min(20000, frd.freq[frd.freq.length - 1]);
-    const g = resample(frd.freq, frd.spl, frd.phase, logspace(lo, top, 400));
-    const mp = minimumPhaseDeg(g.freq, g.spl);
-    const excess = g.phaseDeg.map((p, i) => p - mp[i]);
-    return estimateBulkDelay(g.freq, excess, [lo, hi]).delayMs;
-  } catch {
-    return null;
-  }
-}
 
 /** A driver's own PASSBAND: where it plays within 10 dB of its upper-quartile
  *  level. File extent is useless (FRDs run from 5 Hz), and a delay fitted
@@ -5566,7 +5552,9 @@ export default function App() {
    *  with finish()'s cleanup, so without this the user only ever sees
    *  "round N−1" ("ik zie maar 1 ronde"). */
   const [vfRunStats, setVfRunStats] = useState<{ rounds: number; evals: number } | null>(null);
-  const [vfEqBands, setVfEqBands] = useState(2); // EQ bands the optimizer may use per driver
+  // EQ bands the optimizer may use per driver. The default has one home since
+  // V41 (`vfOptimizer.ts`), because the v2 candidate states the same number.
+  const [vfEqBands, setVfEqBands] = useState(DEFAULT_EQ_BANDS_PER_DRIVER);
   const [dirWeight, setDirWeight] = useState(25); // % of amplitude budget on the energy average
   /** Power-response metric: 'smooth' (detrended residual + DI fold, slope
    *  free — the crossover owns smoothness, the room owns the slope) or
@@ -6724,6 +6712,16 @@ export default function App() {
           settings: { ...settings, ...perCandidate },
         };
       };
+      /* V41 — the CHAIN-level half of the declaration, built once because it is
+       * a property of the RUN and not of one handover pair: `eqBands` bounds
+       * what the design step may propose on every branch and `leanTargetDb`
+       * what the synthesis step will build on every branch. The designer's own
+       * EQ setting is stated (it is a setting they can see and change); the
+       * lean threshold is not a setting anywhere, so the derivation supplies
+       * `synthesize`'s own default rather than the staged pass's stop goal. */
+      const chainDecl = declareCandidateChainChoices({
+        stated: { eqBands: settings.eqBands },
+      });
       /** The A5d declaration that travels beside one generated candidate. */
       const declarationFor = (cand: GeneratedCandidate, input: Chain3Input) => ({
         declaration: declareCandidateChoices({
@@ -6752,6 +6750,7 @@ export default function App() {
             zFloorStrict: true,
           },
         }),
+        chainDeclaration: chainDecl,
         provenance: cand.provenance,
         // V26 row 39: the HP flank of each way, keyed by model. The mid's high
         // pass belongs to the low handover and the tweeter's to the high one —
@@ -6934,6 +6933,12 @@ export default function App() {
               band: settings.band,
               catalogSnap: settings.catalogSnap,
               acousticSlopes: settings.acousticSlopes,
+              /* V41 — what the design and synthesis steps were allowed to
+               * build. Field-wide rather than per candidate, so it rides with
+               * the run's tuning identity instead of inside the candidate-field
+               * key; two runs that differ only in the EQ budget or the lean
+               * threshold are two different runs and may not stamp alike. */
+              chainChoices: chainDeclarationKey(chainDecl),
             }),
             /* F4d — WHAT was searched. The fingerprint has had a `choices`
              * ingredient since F4c and it was always empty on this route,
@@ -8891,14 +8896,11 @@ export default function App() {
       mid: midDrv ? excessDelayMsOf(midDrv.frd) : null,
       high: tweeter ? excessDelayMsOf(tweeter.frd) : null,
     };
-    const present = (['low', 'mid', 'high'] as BranchRole[])
-      .map((r) => exOf[r])
-      .filter((v): v is number => v !== null);
-    const earliestMs = present.length > 0 ? Math.min(...present) : 0;
-    const delayUsFor = (role: BranchRole) => {
-      const ex = exOf[role];
-      return ex === null ? 0 : Math.round((ex - earliestMs) * 1000 * 10) / 10;
-    };
+    // The normalisation lives in `vituixBridge.ts` since V41, so the script
+    // that exports a frozen netlist for V40 hands VituixCAD the same numbers
+    // this button does. Same arithmetic, one implementation.
+    const delaysUs = bridgeDelaysUs(exOf);
+    const delayUsFor = (role: BranchRole) => delaysUs[role] ?? 0;
 
     // Every VituixCAD crossover variant must have exactly ONE source (Generator),
     // else it rejects the file with "Amount of sources must be one". A tab that

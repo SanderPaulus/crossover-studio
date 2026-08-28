@@ -503,6 +503,32 @@ const meetopstelling = {
         'vraag, en zij wordt op de SOM gesteld nadat die bestaat.'
       : 'De zoektocht gladt de drivermagnitudes vóór de sommatie — de vóór-arm van V38-fix, en ' +
         'de default die elke v1-run leest.',
+  /* ---- V41: WAT DE ONTWERP- EN SYNTHESESTAP MOCHTEN BOUWEN ---------------
+   *
+   * Twee velden, één besluit, in dezelfde vorm als V30, V33, V34, V37 en
+   * V38-fix — maar één laag hoger: deze twee worden gelezen vóórdat de tuner
+   * bestaat, dus zij bepalen wat de topologie KAN zijn en niet welke waarden
+   * zij krijgt. Afgelezen van de ketenverklaring, want sinds V41 zijn het
+   * keuze-sleutels op de v2-route. */
+  eq_budget_per_tak: lastPayload.candidate?.chainDeclaration.stated.eqBands ?? null,
+  eq_budget_waarom:
+    'De ontwerpstap mag zoveel snijdende EQ-banden per tak voorstellen. Tot V41 stelde de ' +
+    'v2-fixture hem NIET, en ongesteld is in `designThreeWay` een stille NUL — geen enkele band, ' +
+    'terwijl een EQ-band de enige weg is waarlangs `deriveTopology` een val op een gemeten ' +
+    'breakup kan voorstellen, en een waardetune er nooit een kan maken die de ontwerpstap niet ' +
+    'voorstelde. De app zelf staat op dit getal en heeft daar altijd op gestaan (V38 ' +
+    'beslispunt C). Afwezig las als een besluit om élke correctie te verbieden, en dat besluit ' +
+    'heeft niemand genomen — het omgekeerde van P4.',
+  lean_drempel_db: lastPayload.candidate?.chainDeclaration.stated.leanTargetDb ?? null,
+  lean_drempel_waarom:
+    'De fitfout van de kale HP/LP-ladder waaronder de synthesestap besluit dat er geen ' +
+    'correctienetwerk nodig is (Zobel, Fs-val, top-octaaf-hold). Dit is de EIGEN standaard van ' +
+    '`synthesize`. Tot V41 was het geen sleutel maar een AFLEIDING binnen de keten uit ' +
+    '`targets.rippleDb` — het stopdoel van de trapmethode, 2,5 dB, vijf keer zo ruim — en over ' +
+    'het hele veld haalde de kale ladder die drempel op 45 van de 45 takken en deze op 0 van de ' +
+    '45 (V38 beslispunt B). De twee ANDERE lezers van `targets.rippleDb` zijn oordelen (de ' +
+    'trapmethode zelf en de v1-rangschikking) en zijn niet aangeraakt: alleen de synthese-lezing ' +
+    'beweegt.',
   dissipatiegewicht: CASUS1_V2_SETTINGS.dissipationWeight,
   dissipatiegewicht_waarom:
     'GRIJS (A3j): overgenomen uit v1, expliciet gesteld door de kandidaat, nooit stil op nul. ' +

@@ -23,7 +23,15 @@ export interface VxpDriver {
   /** True when VituixCAD is set to discard measured phase for this driver. */
   minimumPhase: boolean;
   inverted: boolean;
-  /** Explicit response delay (ms in the VituixCAD project). */
+  /**
+   * Explicit response delay, in MICROSECONDS as VituixCAD stores it.
+   *
+   * The doc said "ms" until V41 and the code has always written µs — the app's
+   * own export computes `delayUsFor` and puts it straight in this field, and
+   * that bridge is what reproduced the measured simulation within ~2° on the
+   * KOAN set. A comment, not behaviour, and corrected here because V40 is about
+   * to hand VituixCAD three files whose only timing information is this number.
+   */
   responseDelay: number;
   /** Acoustic-centre depth coordinate (mm). Higher Z = closer to the mic =
    *  earlier arrival; the driver-to-driver Z DIFFERENCE is the on-axis offset. */

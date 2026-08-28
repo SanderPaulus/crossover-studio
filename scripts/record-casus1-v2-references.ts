@@ -228,6 +228,18 @@ const CHAIN_GRID_LO_HZ = CASUS1_V2_GRID[0];
  * rather than a plausible-sounding reason that belongs to a different corpus.
  */
 const DATED_REASON: Record<string, string> = {
+  V38FIX:
+    'HET GEDATEERDE V38-FIX-CORPUS. Bevroren terwijl de DESIGN- en SYNTHESESTAP nog erfden wat de ' +
+    'v1-keten toevallig droeg. Twee instellingen, allebei BOVEN de tuner en dus buiten elke ' +
+    'A3j-garantie (V38 beslispunt B, C en D). `eqBands` was ongesteld, en ongesteld betekent in ' +
+    '`designThreeWay` een stille NUL: geen enkele EQ-band, en een EQ-band is de enige weg waarlangs ' +
+    '`deriveTopology` een val op een gemeten breakup kan voorstellen. `leanTargetDb` was geen ' +
+    'sleutel maar een AFLEIDING uit `targets.rippleDb` — 2,5 dB, het stopdoel van de trapmethode, ' +
+    'vijf keer de eigen 0,5 dB van `synthesize` — waardoor de kale ladder op 45 van de 45 takken ' +
+    'slaagde en er nooit een Zobel, Fs-val of top-octaaf-hold gekocht werd. Sinds V41 stelt de ' +
+    'v2-kandidaat beide expliciet, op de eigen standaard van de betrokken motor. Deze tien blijven ' +
+    'staan als de "vóór"-helft van die vergelijking. Meetobject, GEEN ontwerp: mag niet gebouwd ' +
+    'worden.',
   V37:
     'HET GEDATEERDE V37-CORPUS. Bevroren terwijl de ZOEKTOCHT nog op een gegladde maat mat. ' +
     '`smoothMag` gladt de MAGNITUDE van elke driverrespons met errorSmoothOct (1/12 octaaf, ' +

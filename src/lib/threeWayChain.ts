@@ -67,8 +67,34 @@ export interface Chain3Settings {
   structureLow?: Struct3Choice;
   structureHigh?: Struct3Choice;
   /** Greedy cut-only EQ budget per branch in the design step (the 2-way
-   *  "EQ bands/driver" setting; 0/absent = off). */
+   *  "EQ bands/driver" setting; 0/absent = off).
+   *
+   *  ABSENT MEANS ZERO HERE, and that is the P4 problem V38 recorded as
+   *  beslispunt C: the app states `DEFAULT_EQ_BANDS_PER_DRIVER` and a fixture
+   *  that stated nothing got a silent nought — not "no opinion". An EQ band is
+   *  the only route by which `deriveTopology` can propose a trap on a measured
+   *  breakup, so unstated is the difference between a field that can buy one
+   *  and a field that cannot. On the v2 route the CANDIDATE states it
+   *  (`chainChoices.ts`, V41); every v1 caller is unchanged. */
   eqBands?: number;
+  /**
+   *  The lean-mode threshold handed to per-branch SYNTHESIS (dB): the bare
+   *  ladder's fit error below which no correction network is bought.
+   *
+   *  ABSENT = the historical derivation, `targets.rippleDb` — which is what
+   *  every v1 caller gets and what keeps them byte-identical. V38 measured what
+   *  that derivation costs: the staged pass's stop goal is 2.5 dB, five times
+   *  `SYNTHESIS_LEAN_DEFAULT_DB`, so over the whole casus-1 field the bare
+   *  ladder cleared it on 45 of 45 branches and no Zobel, Fs trap or
+   *  top-octave hold was ever bought.
+   *
+   *  WHY A SEPARATE KEY AND NOT A CHANGE TO `targets`. `targets.rippleDb` has
+   *  three readers on this route: this one, `staged` (the tuner's prune and
+   *  escalation goal) and `rankChain3Results` (the ranking's "targets met"
+   *  test). Two of those are a JUDGEMENT. Moving the number itself would move
+   *  all three; a key that only the synthesis reading consults moves exactly
+   *  the one V38 found (V41). */
+  leanTargetDb?: number;
   breakupGuard?: boolean;
   /** In-room weight for the assembled tune (0..1): blends energy-average
    *  flatness into the amplitude term — the 2-way recipe, now three-branch.
@@ -316,7 +342,10 @@ export function runThreeWayChain(
       phasePriority: s.phasePriority,
       catalogSnap: s.catalogSnap,
       corrections: (s.targets ? 'lean' : 'auto') as 'lean' | 'auto',
-      leanTargetDb: s.targets?.rippleDb,
+      /* V41 — a stated threshold wins over the derivation from `targets`.
+       * Unstated is the identity: `s.leanTargetDb` is undefined on every v1
+       * caller, so this reads exactly what it read before. */
+      leanTargetDb: s.leanTargetDb ?? s.targets?.rippleDb,
       label: zKey,
       snapPrefs: s.snapPrefs?.profile === 'position' ? { ...s.snapPrefs, profile: 'premium' as const } : s.snapPrefs,
       ...(s.synthMode === 'acoustic' ? { driverSplDb: idxs.map((i) => resp.spl[i]) } : {}),

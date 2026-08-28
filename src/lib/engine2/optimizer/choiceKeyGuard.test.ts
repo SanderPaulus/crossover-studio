@@ -33,7 +33,11 @@ import {
 } from './choices.ts';
 import { AMP_FLOOR_BARRIER_WEIGHT } from '../../netOptimizer.ts';
 import { SEARCH_SMOOTHING_OCTAVES } from '../constants.ts';
-import { declareCandidateChoices } from './candidateDeclaration.ts';
+import {
+  declareCandidateChainChoices,
+  declareCandidateChoices,
+} from './candidateDeclaration.ts';
+import { CHAIN_CHOICE_KEYS, chainDeclarationCoverage } from './chainChoices.ts';
 import { withDeclaredSourceLimit } from './worker.ts';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
@@ -122,8 +126,16 @@ describe('F4c — every tuner option has a class', () => {
     // `dissipationReferenceReOhm` (polish — the resolved R_e it divides by).
     // V38-fix adds NO key and reclassifies one: `errorSmoothOct` moves from
     // polish to choice, so the total stays 44 and the split becomes 30/5/9.
+    // V41 adds no key HERE either, and that is the point of it being a
+    // separate list: `eqBands` and `leanTargetDb` are `Chain3Settings` keys,
+    // read by the design and synthesis steps before the tuner exists. They may
+    // never appear among the tuner's own options, because a value that reaches
+    // the tuner arrives too late to put a component in the network.
     expect(keys.length).toBe(44);
     expect(CHOICE_KEYS.length + GREY_KEYS.length + POLISH_KEYS.length).toBe(44);
+    for (const k of CHAIN_CHOICE_KEYS) {
+      expect(classified as readonly string[], `${k} is a chain key, not a tuner option`).not.toContain(k);
+    }
     // V31: instrumentation, never a choice — the key may not silently migrate
     // into the class whose values are only allowed to come from a candidate.
     expect(POLISH_KEYS).toContain('rejectedTuneReport');
@@ -600,5 +612,50 @@ describe('F4d — a generated candidate declares every choice key', () => {
       ),
     };
     expect(JSON.stringify(declarationKey(reworded, {}))).not.toBe(a);
+  });
+
+  /* ================================================================== *
+   * V41 — the two keys A3j's guarantee did not reach
+   * ================================================================== */
+
+  it('V41 — the chain-level list is covered, and it says out loud that it is a SUBSET', () => {
+    /* The completeness claim here is deliberately narrower than the one above,
+     * and the narrowness is the honest part. `CHOICE_KEYS` covers ALL of
+     * `NetOptimizeOptions`; this list covers two keys of `Chain3Settings` and
+     * makes no claim about the other thirty. V38 recorded the whole layer as a
+     * gap (beslispunt D) and V39 owns it; V41 closes the two keys a
+     * MEASUREMENT condemned, which is the standard row 11 of the A3j table
+     * sets — a classification moves when a measurement moves it, not on
+     * suspicion. */
+    const cover = chainDeclarationCoverage(declareCandidateChainChoices({ stated: {} }));
+    expect(cover.complete).toBe(true);
+    expect(cover.missing).toEqual([]);
+    expect(cover.duplicated).toEqual([]);
+
+    // The coverage check can actually fail — otherwise "complete" above is a
+    // property of an empty rule rather than of the declaration.
+    const holed = chainDeclarationCoverage({
+      stated: { eqBands: 2 },
+      absent: [],
+    });
+    expect(holed.complete).toBe(false);
+    expect(holed.missing).toEqual(['leanTargetDb']);
+  });
+
+  it('V41 — neither chain key may migrate into the tuner\'s own classification', () => {
+    /* The mirror of the "never migrate back" pins V33, V34, V37 and V38-fix
+     * each carry, pointed the other way: these two are not tuner options and a
+     * future refactor that made them so would move the decision to a stage that
+     * runs after the topology is fixed. `eqBands` decides what `deriveTopology`
+     * may PROPOSE and `leanTargetDb` whether `synthesize` BUILDS it; the value
+     * tune only moves numbers between the components those two chose. */
+    for (const k of CHAIN_CHOICE_KEYS) {
+      expect(CHOICE_KEYS as readonly string[]).not.toContain(k);
+      expect(GREY_KEYS as readonly string[]).not.toContain(k);
+      expect(POLISH_KEYS as readonly string[]).not.toContain(k);
+    }
+    // And the pair is exactly the pair: a third key is a decision somebody has
+    // to write down, not something that arrives with a rename.
+    expect([...CHAIN_CHOICE_KEYS].sort()).toEqual(['eqBands', 'leanTargetDb']);
   });
 });

@@ -13,13 +13,14 @@
  * So both halves are named, every dated corpus stays addressable, and the
  * default is the newest comparison.
  *
- *   corpora: `v30` · `v32` · `v33sweep` · `v33` · `v34` · `v37` · `live`
- *   default: `v37` → `live`   (casebook V38-fix)
+ *   corpora: `v30` · `v32` · `v33sweep` · `v33` · `v34` · `v37` · `v38fix` · `live`
+ *   default: `v38fix` → `live`   (casebook V41)
  *   V32's own table: `npx vite-node scripts/compare-corpora.ts v30 v32`
  *   V33's own table: `npx vite-node scripts/compare-corpora.ts v32 v33`
  *   V33's two arms:  `npx vite-node scripts/compare-corpora.ts v33sweep v33`
  *   V34's own table: `npx vite-node scripts/compare-corpora.ts v33 v34`
  *   V37's own table: `npx vite-node scripts/compare-corpora.ts v34 v37`
+ *   V38-fix's table: `npx vite-node scripts/compare-corpora.ts v37 v38fix`
  *
  * WHY A FILE COMPARISON AND NOT TWO RUNS. `measure-v30-floor-goal.ts` ran the
  * same field twice and switched one option between the arms, because V30's
@@ -64,6 +65,7 @@ import {
   casus1ChainInput,
 } from '../src/lib/engine2/casus1V2.fixture.ts';
 import type { VxpPart } from '../src/lib/parsers/vxp.ts';
+import { decompose } from './v38-groups.ts';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 
@@ -146,6 +148,7 @@ const DATED: Record<string, { block: string; name: string }> = {
   v33: { block: 'v33_corpus', name: 'V33' },
   v34: { block: 'v34_corpus', name: 'V34' },
   v37: { block: 'v37_corpus', name: 'V37' },
+  v38fix: { block: 'v38fix_corpus', name: 'V38-fix' },
 };
 
 const corpusOf = (id: string): Corpus => {
@@ -155,7 +158,7 @@ const corpusOf = (id: string): Corpus => {
   throw new Error(`unknown corpus "${id}" — use ${[...Object.keys(DATED), 'live'].join(', ')}`);
 };
 
-const [beforeId = 'v37', afterId = 'live'] = process.argv.slice(2);
+const [beforeId = 'v38fix', afterId = 'live'] = process.argv.slice(2);
 const before = corpusOf(beforeId);
 const after = corpusOf(afterId);
 
@@ -190,6 +193,23 @@ interface Row {
   qesMult: number | null;
   narrowPeakDb: number | null;
   narrowPeakHz: number | null;
+  /**
+   * V41 — WELKE CORRECTIEGROEPEN DE SYNTHESESTAP WERKELIJK GEKOCHT HEEFT.
+   *
+   * Geteld uit de GELEVERDE netlist door `decompose` (de decompositie van V38,
+   * één implementatie en inmiddels vier lezers), niet afgelezen van een
+   * ontwerpintentie. De klassen zijn precies die welke géén filterpool zijn:
+   * val, gedempte val, Zobel, shunt-shelf, serie-niveauweerstand,
+   * shunt-niveauweerstand. Dat is de vraag die V38 als beslispunt B en C open
+   * liet — het veld droeg er nul van de eerste vier op tien netlists, en de
+   * twee instellingen die dat bepaalden werden overgeërfd.
+   *
+   * EEN KOLOM EN GEEN CRITERIUM. Méér correctiegroepen is niet beter: het zijn
+   * shunts, en een shunt kost dissipatie en belastingimpedantie. De twee
+   * kolommen ernaast (`dissPct`, `minZ`) zeggen of ze betaald zijn, en casus 1
+   * stelt geen dissipatiegrens (P4).
+   */
+  groups: Record<string, number>;
 }
 
 const r2 = (v: number | null | undefined): number | null =>
@@ -250,6 +270,43 @@ function tunerPhaseOf(key: string): { wm: number | null; mt: number | null } {
   }
 }
 
+/**
+ * V41 — de niet-poolgroepen van één bevroren netlist, per rol geteld.
+ *
+ * Leest hetzelfde bestand dat `measure` hieronder rapporteert, en telt met
+ * `decompose` uit `v38-groups.ts`. Geen tweede definitie van "wat een val is":
+ * die staat daar, is door de ablatie van V38 gebruikt, en een script dat er
+ * hier een eigen versie van maakt is precies waar V21 over ging.
+ */
+const CORRECTION_ROLES = [
+  'trap',
+  'damped-trap',
+  'zobel',
+  'shunt-shelf',
+  'series-pad',
+  'shunt-pad',
+] as const;
+
+function correctionGroupsOf(key: string): Record<string, number> {
+  const name = (golden.manifest_en_geometrie as { netlists: Record<string, string> }).netlists[key];
+  const parts: VxpPart[] = deserializeFilter(
+    readFileSync(join(CASUS1_DIR, name), 'utf-8'),
+  ).parts;
+  const out: Record<string, number> = {};
+  for (const role of CORRECTION_ROLES) out[role] = 0;
+  for (const g of decompose(parts)) {
+    if (out[g.role] !== undefined) out[g.role]++;
+  }
+  return out;
+}
+
+/** De correctiegroepen als één cel: alleen wat er IS, of een liggend streepje. */
+const groupCell = (g: Record<string, number> | undefined): string => {
+  if (!g) return '—';
+  const parts = CORRECTION_ROLES.filter((r) => (g[r] ?? 0) > 0).map((r) => `${r}×${g[r]}`);
+  return parts.length ? parts.join(' ') : 'geen';
+};
+
 function measure(key: string): Row {
   const rep = buildReport({
     manifest,
@@ -283,6 +340,7 @@ function measure(key: string): Row {
     ),
     narrowPeakDb: r2(rep.system.response?.narrowPeaks[0]?.db ?? null),
     narrowPeakHz: r2(rep.system.response?.narrowPeaks[0]?.fHz ?? null),
+    groups: correctionGroupsOf(key),
   };
 }
 
@@ -307,9 +365,9 @@ console.log(
     'SPL ± vóór → ná | RMS vóór → ná | W-M fase RAPPORT vóór → ná | ' +
     'W-M fase TUNER vóór → ná | M-T fase RAPPORT vóór → ná | M-T fase TUNER vóór → ná | ' +
     'dissipatie % vóór → ná | grootste R (W) vóór → ná | EPDR vóór → ná | ' +
-    'Q_es× vóór → ná | smalste piek ná (dB @ Hz) |',
+    'Q_es× vóór → ná | smalste piek ná (dB @ Hz) | correctiegroepen vóór → ná |',
 );
-console.log('|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|');
+console.log('|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|');
 
 let beforeClears = 0;
 let afterClears = 0;
@@ -346,7 +404,8 @@ for (const label of labels) {
       `${num(b?.largestRw ?? null)} → ${afterCell(a?.largestRw ?? null)} | ` +
       `${num(b?.epdr ?? null)} → ${afterCell(a?.epdr ?? null)} | ` +
       `${num(b?.qesMult ?? null)} → ${afterCell(a?.qesMult ?? null)} | ` +
-      `${a && a.narrowPeakDb !== null ? `${num(a.narrowPeakDb)} @ ${num(a.narrowPeakHz)}` : '—'} |`,
+      `${a && a.narrowPeakDb !== null ? `${num(a.narrowPeakDb)} @ ${num(a.narrowPeakHz)}` : '—'} | ` +
+      `${groupCell(b?.groups)} → ${a ? groupCell(a.groups) : outcome?.verwerping ? '**verworpen**' : 'geen netlist'} |`,
   );
 }
 
@@ -388,6 +447,26 @@ console.log(
     `${fmt(avg(measuredAfter.map((r) => r.mtPhaseTuner)))}°. ` +
     'Welke van de twee de luidspreker beschrijft is open (V40).',
 );
+/* V41 — het CORPUSTOTAAL per correctierol, want dat is de vraag van
+ * beslispunt B en C in één regel: koopt de synthese ze nu wel. Per rol, want
+ * "meer groepen" zegt niets — een Zobel en een niveauweerstand zijn niet
+ * hetzelfde soort aankoop, en alleen de eerste vier zijn wat V38 miste. */
+const roleTotals = (rows: Row[]) => {
+  const t: Record<string, number> = {};
+  for (const role of CORRECTION_ROLES) t[role] = 0;
+  for (const r of rows) for (const role of CORRECTION_ROLES) t[role] += r.groups[role] ?? 0;
+  return t;
+};
+{
+  const tb = roleTotals(measuredBefore);
+  const ta = roleTotals(measuredAfter);
+  console.log(
+    'correctiegroepen over het corpus (' +
+      CORRECTION_ROLES.map((r) => `${r} ${tb[r]}→${ta[r]}`).join(', ') +
+      `) over ${measuredBefore.length} → ${measuredAfter.length} netlists. ` +
+      'Een kolom, geen oordeel: een correctiegroep is een shunt en kost dissipatie en |Z|.',
+  );
+}
 console.log(`uit de shortlist gevallen: ${gone.length}${gone.length ? ` — ${gone.map(short).join('; ')}` : ''}`);
 console.log(`nieuw in de shortlist: ${arrived.length}${arrived.length ? ` — ${arrived.map(short).join('; ')}` : ''}`);
 
