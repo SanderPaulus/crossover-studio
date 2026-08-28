@@ -1,7 +1,7 @@
 /**
  * F4d — THE FROZEN v2 CANDIDATES OF CASUS 1.
  *
- * The ten `KAND-V2-*.adsfilter.json` files in `test-fixtures/casus1/` are the
+ * The `KAND-V2-*.adsfilter.json` files in `test-fixtures/casus1/` are the
  * shortlist of the run `scripts/generate-casus1-v2-candidates.ts` performed, and
  * they are frozen for exactly the reason the three v1 candidates are: F4a
  * established that casus 1 has NO class-C references — no reference in the file
@@ -21,22 +21,31 @@
  *  3. THE RUN REPRODUCES THEM. One live pass through the real worker route
  *     delivers the stored network byte for byte.
  *
- * COST, stated because it is real: claim 3 runs one full casus-1 chain, which
- * takes about two minutes — casus 1 is a dense, three-driver measurement set
- * and the tune is the expensive part (measured at the F4d follow-up: 37–72 s per
- * candidate over the fifteen the field now holds). ONE candidate is run live and
- * the rest are read from disk. A regression nobody runs because it is slow
- * protects nothing; the discipline is `workerRouteRegression.test.ts`'s and the
- * reasoning is the same.
+ * COST, STATED BECAUSE IT IS REAL AND BECAUSE IT CHANGED. Claim 3 runs one full
+ * casus-1 chain, and since V33 that is ELEVEN MINUTES rather than the 37–72 s
+ * the F4d follow-up measured — plus a second live run for the refusal below.
+ * The factor is not a regression: V33 put the amp-load barrier on the same
+ * measured impedance sweep the `M-B/|Z|` gate enforces, so the objective now
+ * solves the network on the analysis-resolution grid at every evaluation
+ * instead of on the decimated one (measured on one candidate, both arms: 44.0 s
+ * against 669.8 s at 88 008 against 86 399 evaluations). It is the price of the
+ * goal and the limit reading one number, it is paid here because this file is
+ * where the corpus is accepted, and it is written down rather than discovered.
+ * TWO candidates run live and the rest are read from disk. A regression nobody
+ * runs because it is slow protects nothing; the discipline is
+ * `workerRouteRegression.test.ts`'s and the reasoning is the same.
  *
- * FIFTEEN CANDIDATES, TEN FILES — and the gap between those two numbers is new.
- * The F4d follow-up suspended the F3c recommended-band excision (casebook V28):
- * the zone it cut is a λ fraction on one centre-to-centre distance, and V20a
- * reserves every lobing judgement for the vertical synthesis. The mid→tweeter
- * axis went from three positions to five, so the FIELD went from nine to
- * fifteen — and the shortlist, which passed nine of nine when the field was
- * nine, now passes ten of fifteen. It had never actually refused anything
- * before; it does now. What is frozen is the shortlist, as it always was.
+ * FIFTEEN CANDIDATES, FEWER FILES — and the gap between those two numbers is
+ * where the interesting part of this casus now lives. The F4d follow-up
+ * suspended the F3c recommended-band excision (casebook V28): the zone it cut is
+ * a λ fraction on one centre-to-centre distance, and V20a reserves every lobing
+ * judgement for the vertical synthesis. The mid→tweeter axis went from three
+ * positions to five, so the FIELD went from nine to fifteen — and the shortlist,
+ * which passed nine of nine when the field was nine, has refused candidates ever
+ * since. What is frozen is the shortlist, as it always was, and the counts are
+ * READ from the provenance block rather than written here: they have moved at
+ * V28, V30, V32 and V33, and a number in a comment moves later than the thing it
+ * describes.
  *
  * These are therefore different FILES under the same discipline, which is
  * precisely why no reference had to be declared invalid: the references hang on
@@ -105,6 +114,10 @@ const HERKOMST = JSON.parse(
     v2_budgetten_gewapend: string[];
     v2_budgetten_waarom: string;
     beschermingen_via_kandidaat: string[];
+    vloer_is_zoekdoel: boolean;
+    /** V33 — and WHERE that goal is measured. */
+    vloer_zoekdoel_bron: string | null;
+    vloer_zoekdoel_bron_waarom: string;
     seed: number;
   };
 };
@@ -209,6 +222,13 @@ describe('the frozen v2 candidates are files, and the file says where they came 
       expect(m.beschermingen_via_kandidaat, `${k} is not declared`).toContain(k);
     }
     expect(m.seed).toBe(CASUS1_V2_SEED);
+    /* V30 and V33, and they are two lines because they are two decisions: IS
+     * the stated floor a search goal, and WHERE is that goal measured. A run
+     * that recorded only the first would look identical before and after V33,
+     * which is exactly the confusion the second line exists to end. */
+    expect(m.vloer_is_zoekdoel).toBe(CASUS1_AMP_MIN_LOAD_OHM !== null);
+    expect(m.vloer_zoekdoel_bron).toBe(CASUS1_AMP_MIN_LOAD_OHM !== null ? 'safety' : null);
+    expect(m.vloer_zoekdoel_bron_waarom).toMatch(/V33/);
   });
 
   it('the candidate metrics are CLASS B, and the reference file says so', () => {
@@ -361,10 +381,10 @@ describe('the run still delivers the frozen netlist', () => {
   }, 900_000);
 
   /* ---------------------------------------------------------------- *
-   * V31 — the candidate the safety gate actually refuses
+   * V31/V33 — the candidate a wholesale rule actually refuses
    * ---------------------------------------------------------------- */
 
-  it('a candidate the safety gate refuses comes back as a REFUSAL, with no network', () => {
+  it('a candidate a WHOLESALE rule refuses comes back as a REFUSAL, with no network', () => {
     /* THE EXPENSIVE HALF OF V31, and it has to be this route.
      * `wholesaleRejection.test.ts` proves what the shortlist does with a
      * refusal; only a live run proves that a refusal is what the worker
@@ -450,8 +470,17 @@ describe('the run still delivers the frozen netlist', () => {
     expect(done.rejection!.kinds).toEqual(recorded.kinds);
     expect(done.rejection!.kinds.length).toBeGreaterThan(0);
     expect(done.rejection!.reason).toBe(recorded.reason);
-    // The reason is the tuner's own sentence about its own rule, not ours.
-    expect(done.rejection!.reason).toContain('safety gate');
+    /* The reason is the tuner's own sentence about its own rule, not ours, and
+     * the CATEGORY is what a caller may act on (A3g). Since V33 there are two
+     * families that can throw a whole tune away — the full-band safety gate and
+     * an active gate refusing the value tune — and the shortlist deliberately
+     * does not distinguish them, so this asserts the vocabulary rather than one
+     * member of it. A category outside the set means someone invented one. */
+    const KINDS = ['crossing', 'valley', 'protection', 'load', 'gate'];
+    for (const k of done.rejection!.kinds) {
+      expect(KINDS, `unknown refusal category "${k}"`).toContain(k);
+    }
+    expect(done.rejection!.reason.length).toBeGreaterThan(20);
 
     // 2. ITS SEED IS IN NO OUTPUT AS A NETWORK. Not in `parts`, not anywhere
     //    under `net` — a serialisation of the whole result may contain no part

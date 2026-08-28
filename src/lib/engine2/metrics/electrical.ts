@@ -32,6 +32,7 @@ import {
   trapz,
 } from '../util.ts';
 import { coverageOf, type Coverage } from '../ingest/validity.ts';
+import { minImpedanceAt } from '../../impedanceFloor.ts';
 import type { Complex } from '../../complex.ts';
 import type { NetworkAnalysis } from './types.ts';
 
@@ -194,19 +195,24 @@ export function epdr(analysis: NetworkAnalysis): EpdrResult {
     return cabs(z) / (2 * c * c);
   });
   let iMin = 0;
-  let iZ = 0;
   let iPh = 0;
   for (let i = 1; i < grid.length; i++) {
     if (curve[i] < curve[iMin]) iMin = i;
-    if (cabs(inputZ[i]) < cabs(inputZ[iZ])) iZ = i;
     if (Math.abs(inputZ[i].im / cabs(inputZ[i])) > Math.abs(inputZ[iPh].im / cabs(inputZ[iPh]))) iPh = i;
   }
+  /* V33 — the bare |Z| minimum comes from the SHARED reader, not from a loop
+   * of its own. The gate below this and the tuner's barrier term now ask the
+   * same question about the same network, and V30 and V32 were both entries
+   * about two answers to one requirement. Same arithmetic, same tie-break,
+   * one place (`minImpedanceAt`). */
+  const zMin = minImpedanceAt(inputZ);
+  const iZ = zMin?.index ?? 0;
   const band: [number, number] = [grid[0], grid[grid.length - 1]];
   return {
     curve,
     minOhm: curve[iMin],
     atHz: grid[iMin],
-    minZOhm: cabs(inputZ[iZ]),
+    minZOhm: zMin?.ohm ?? cabs(inputZ[iZ]),
     minZAtHz: grid[iZ],
     worstPhaseDeg: cargDeg(inputZ[iPh]),
     worstPhaseAtHz: grid[iPh],

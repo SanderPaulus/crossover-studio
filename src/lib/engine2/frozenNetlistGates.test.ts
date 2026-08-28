@@ -53,6 +53,9 @@
  */
 
 import { describe, expect, it } from 'vitest';
+import { readFileSync } from 'node:fs';
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import {
   casus1AmpMinLoadOhm,
   casus1Files,
@@ -73,7 +76,13 @@ import { CASUS1_V2_GRID, casus1ChainInput, casus1V2Facts } from './casus1V2.fixt
 import { impedanceReferenceFrom } from './optimizer/impedanceReference.ts';
 import { buildAnalysis } from './metrics/analysis.ts';
 import { epdr } from './metrics/electrical.ts';
+import { systemMinImpedanceOhm } from '../netOptimizer.ts';
+import { ampFloorSlackOhm, meetsAmpFloor } from '../impedanceFloor.ts';
 import type { Complex } from '../complex.ts';
+
+const HERE = dirname(fileURLToPath(import.meta.url));
+const NET_OPTIMIZER = join(HERE, '..', 'netOptimizer.ts');
+const ELECTRICAL = join(HERE, 'metrics', 'electrical.ts');
 
 const golden = loadGolden();
 const manifest = casus1Manifest(golden);
@@ -87,6 +96,9 @@ const NETLIST_KEYS = Object.keys(
 
 /** The floor the DESIGNER stated, read from the reference file (P6, one home). */
 const STATED_FLOOR_OHM = casus1AmpMinLoadOhm(golden);
+
+/** The three designs that are not a v2 candidate — files, not run outcomes. */
+const V1_BASELINES = ['HUIDIG', 'KAND_A', 'KAND_B'];
 
 /**
  * Frozen netlists that are known NOT to clear the stated floor, with the
@@ -287,7 +299,8 @@ describe('V32 — the search gate and the file measurement agree on every frozen
   const gridded = casus1ChainInput(manifest, files, golden);
   const facts = casus1V2Facts(report('HUIDIG'), manifest, files);
 
-  const searchVerdicts = (key: string): GateVerdict[] => {
+  /** The reference the WORKER freezes, for this netlist. */
+  const searchRef = (key: string) => {
     const filter = casus1Filter(key, manifest, files, golden);
     const ref = freezeGateReference({
       netlist: filter.netlist,
@@ -303,6 +316,11 @@ describe('V32 — the search gate and the file measurement agree on every frozen
         ]),
       ),
     });
+    return { filter, ref };
+  };
+
+  const searchVerdicts = (key: string): GateVerdict[] => {
+    const { filter, ref } = searchRef(key);
     return evaluateGates(
       filter.netlist,
       STATED_FLOOR_OHM !== null ? { ampMinLoadOhm: STATED_FLOOR_OHM } : {},
@@ -398,6 +416,175 @@ describe('V32 — the search gate and the file measurement agree on every frozen
         Math.max(0, -Math.log10((golden.toleranties as { ohm: number }).ohm)),
       );
     }
+  });
+
+  /* ------------------------------------------------------------------ *
+   * V33 — and the OBJECTIVE reads the same number as the gate
+   * ------------------------------------------------------------------ */
+
+  it('V33 — the barrier reads exactly the gate value, netlist by netlist, bit for bit', () => {
+    /* THE CLAIM. V32 put the gate on the measured sweep and left the amp-load
+     * barrier — the term that steers the search toward that same floor — on
+     * the evaluation grid. So the search aimed at one band and the gate
+     * enforced another, and on casus 1 that cost five of fifteen candidates
+     * their whole value tune (casebook V33).
+     *
+     * `systemMinImpedanceOhm` is what the objective reads its shortfall
+     * through; `M-B/|Z|`'s value comes out of `epdr`. Since V33 both take the
+     * minimum through `minImpedanceAt`, on the same grid and the same driver
+     * impedances, so this is `toBe` and not `toBeCloseTo`. A tolerance here
+     * would be the mistake itself in miniature: two implementations that agree
+     * to three decimals is exactly the state V32 found. */
+    expect(STATED_FLOOR_OHM).not.toBeNull();
+    for (const key of NETLIST_KEYS) {
+      const { filter, ref } = searchRef(key);
+      expect(ref.impedance, `${key}: no impedance reference was frozen`).not.toBeNull();
+      const fromGate = searchVerdicts(key).find((v) => v.gate === 'M-B/|Z|')!.value;
+      const fromBarrier = systemMinImpedanceOhm(
+        filter.netlist,
+        ref.impedance!.grid,
+        ref.impedance!.driverZ,
+      );
+      expect(fromBarrier, `${key}: the objective could not read the load`).not.toBeNull();
+      expect(fromBarrier, `${key}: barrier ${fromBarrier} vs gate ${fromGate}`).toBe(fromGate);
+    }
+  });
+
+  it('V33 — and that identity is about the GRID, not about arithmetic', () => {
+    /* The counter-proof, and without it the test above is equally true of a
+     * barrier still reading the chain grid: two functions can agree because
+     * they were handed the same data by accident. Read the SAME netlist on the
+     * chain's analysis grid and at least one frozen netlist must disagree with
+     * its gate — that disagreement is the whole of V32 and V33. */
+    const differs = NETLIST_KEYS.filter((key) => {
+      const { filter, ref } = searchRef(key);
+      const onGate = systemMinImpedanceOhm(filter.netlist, ref.impedance!.grid, ref.impedance!.driverZ);
+      const onChainGrid = systemMinImpedanceOhm(filter.netlist, gridded.grid, gridded.driverZ);
+      return onGate !== onChainGrid;
+    });
+    expect(
+      differs.length,
+      'no frozen netlist reads differently on the chain grid than on the measured sweep, so ' +
+        '"the barrier reads the gate\'s grid" cannot be distinguished from "it reads any grid"',
+    ).toBeGreaterThan(0);
+  });
+
+  it('V33 — the barrier grid sits INSIDE the gate\'s, and the resolution gap is under the floor slack', () => {
+    /* THE MEASUREMENT THAT JUSTIFIES `'safety'` AS THE v2 DEFAULT.
+     *
+     * The barrier could read the gate's own reference and then goal and limit
+     * would be one number by construction — which is true, and which costs a
+     * casus-1 chain run eleven minutes instead of one, because that grid is the
+     * analysis resolution and the barrier runs inside the objective. So the v2
+     * route aims at the tuner's own full-band safety grid instead: the same
+     * reader, the same extent, 240 points against 1600.
+     *
+     * That is a defensible substitution only if it is MEASURED, and this is the
+     * measurement. Two claims, and the first is what makes the second mean
+     * anything:
+     *
+     *  1. CONTAINMENT. The safety grid lies inside the extent the gate judges
+     *     on. If it did not, the barrier could be blind somewhere the gate
+     *     looks — which is V33 itself, restated one grid over.
+     *  2. THE GAP IS SMALLER THAN THE SLACK. Not "approximately equal": the
+     *     difference between the two readings is held against
+     *     `ampFloorSlackOhm`, the tolerance the tuner ALREADY treats as
+     *     indistinguishable from meeting the floor. A search aiming within the
+     *     slack of the enforced number is aiming at it in the only sense this
+     *     app has ever used.
+     *
+     * The largest gap travels in the failure message, so a run that widens it
+     * says by how much rather than only that it did. */
+    expect(STATED_FLOOR_OHM).not.toBeNull();
+    const slack = ampFloorSlackOhm(STATED_FLOOR_OHM!);
+    const safety = gridded.safety;
+
+    // 1. Containment, once — the grids do not vary per netlist.
+    const anyRef = searchRef(NETLIST_KEYS[0]).ref.impedance!;
+    expect(safety.freqs[0], 'the safety grid starts below the gate\'s extent').toBeGreaterThanOrEqual(
+      anyRef.grid[0],
+    );
+    expect(
+      safety.freqs[safety.freqs.length - 1],
+      'the safety grid ends above the gate\'s extent',
+    ).toBeLessThanOrEqual(anyRef.grid[anyRef.grid.length - 1]);
+    // ...and it really is the coarser of the two, or there is no gap to measure.
+    expect(safety.freqs.length).toBeLessThan(anyRef.grid.length);
+
+    // 2. The gap, netlist by netlist, over the designs that are in play.
+    const live = NETLIST_KEYS.filter((k) => /^KAND_V2_\d+$/.test(k) || V1_BASELINES.includes(k));
+    expect(live.length, 'no live design to measure the gap on').toBeGreaterThan(0);
+    let worst = { key: '', gap: 0, onSafety: 0, onSweep: 0 };
+    for (const key of live) {
+      const { filter, ref } = searchRef(key);
+      const onSweep = systemMinImpedanceOhm(filter.netlist, ref.impedance!.grid, ref.impedance!.driverZ);
+      const onSafety = systemMinImpedanceOhm(filter.netlist, safety.freqs, safety.z);
+      expect(onSweep, `${key}: the gate grid produced no reading`).not.toBeNull();
+      expect(onSafety, `${key}: the safety grid produced no reading`).not.toBeNull();
+      const gap = Math.abs(onSafety! - onSweep!);
+      if (gap > worst.gap) worst = { key, gap, onSafety: onSafety!, onSweep: onSweep! };
+    }
+    expect(
+      worst.gap,
+      `the coarser barrier grid reads ${worst.gap.toFixed(4)} Ω away from the grid the gate ` +
+        `enforces on, worst at ${worst.key} (${worst.onSafety.toFixed(4)} against ` +
+        `${worst.onSweep.toFixed(4)} Ω), against a floor slack of ${slack.toFixed(4)} Ω. Either ` +
+        'the safety grid needs more points or the v2 route needs the expensive source',
+    ).toBeLessThan(slack);
+    /* And the gap is not ZERO either, or the two grids would be the same grid
+     * and this whole measurement would be describing nothing. */
+    expect(worst.gap).toBeGreaterThan(0);
+
+    /* ---- WHERE THE APPROXIMATION BREAKS DOWN, AND WHY IT DOES NOT MATTER ----
+     *
+     * Measured over the WHOLE case book, dated corpora included, exactly one
+     * netlist reads further apart than the slack: `V28_KAND_2`, at 0.073 Ω —
+     * and it is a design whose minimum is 0.006 Ω, a dead short with a dip so
+     * narrow that 240 points land beside it. That is the honest boundary of a
+     * coarser grid and it is worth stating rather than scoping away.
+     *
+     * What makes it survivable is the claim below, which is the one that
+     * actually matters: on every frozen netlist the two readings reach the SAME
+     * VERDICT about the stated floor. A barrier aiming with the coarse reading
+     * is never aiming at a network the gate would refuse for the fine one — not
+     * on this case book — and where the numbers diverge most, both of them
+     * condemn. */
+    const disagree: string[] = [];
+    for (const key of NETLIST_KEYS) {
+      const { filter, ref } = searchRef(key);
+      const onSweep = systemMinImpedanceOhm(filter.netlist, ref.impedance!.grid, ref.impedance!.driverZ);
+      const onSafety = systemMinImpedanceOhm(filter.netlist, safety.freqs, safety.z);
+      if (meetsAmpFloor(onSweep, STATED_FLOOR_OHM) !== meetsAmpFloor(onSafety, STATED_FLOOR_OHM)) {
+        disagree.push(
+          `${key}: sweep ${onSweep?.toFixed(4)} Ω, safety ${onSafety?.toFixed(4)} Ω`,
+        );
+      }
+    }
+    expect(
+      disagree,
+      'the barrier grid and the gate grid disagree about whether the stated floor is met:\n' +
+        `${disagree.join('\n')}\nA search aiming at one and judged on the other is V33 all over ` +
+        'again, one grid further in',
+    ).toEqual([]);
+  });
+
+  it('V33 — the objective really goes through that function, and not through a copy', () => {
+    /* A scan, for the same reason `floorAsGoal.test.ts` scans: this is a claim
+     * about WHICH expression the barrier term contains, and no delivered value
+     * shows it. A second loop over `inputZ` written beside it would pass every
+     * assertion above and still be the defect. */
+    const src = readFileSync(NET_OPTIMIZER, 'utf-8');
+    const barrier = src
+      .split('\n')
+      .find((l) => /barr \+= AMP_FLOOR_BARRIER_WEIGHT/.test(l));
+    expect(barrier, 'the amp-load barrier term has moved or been renamed').toBeDefined();
+    expect(barrier).toMatch(/barrierShortOhm\(/);
+    const reader = src.split('\n').find((l) => /const ohm = systemMinImpedanceOhm\(/.test(l));
+    expect(reader, 'the barrier no longer reads through the shared function').toBeDefined();
+    // ...and `epdr` takes its minimum through the shared reader as well, or the
+    // two sides are one edit away from disagreeing again.
+    const electrical = readFileSync(ELECTRICAL, 'utf-8');
+    expect(electrical).toContain('minImpedanceAt(inputZ)');
   });
 
   it('and they name the same span — one rule, not two that happen to agree', () => {

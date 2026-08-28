@@ -24,6 +24,8 @@
 
 import { describe, expect, it } from 'vitest';
 import type { VxpPart } from '../../parsers/vxp.ts';
+import { optimizeNetworkValues, type NetOptimizeOptions } from '../../netOptimizer.ts';
+import { v2DriverZ, v2Responses, v2SeedParts, V2_GRID } from './v2.fixture.ts';
 import { buildShortlist, type ShortlistInput } from './shortlist.ts';
 import type { GateVerdict } from './gates.ts';
 import type { CandidateMeasurements } from '../requirements/requirements.ts';
@@ -189,5 +191,100 @@ describe('V31 — a candidate that delivered nothing is not a row', () => {
     );
     expect(buildShortlist(plain, 'fp').rejected).toEqual([]);
     expect(buildShortlist(plain, 'fp').notes.join(' ')).not.toContain('delivered no network');
+  });
+});
+
+/* ================================================================== *
+ * V33 — the SECOND way a whole tune gets thrown away
+ * ================================================================== */
+
+/**
+ * V31 handled one wholesale refusal: the full-band safety gate. There was a
+ * second, and it did not say so — an ACTIVE GATE refusing the value tune. The
+ * tuner fell back to the seed, the run carried on from there, and whatever came
+ * out was published as the candidate's answer. On casus 1 that was five of
+ * fifteen candidates, delivered at 0.01–1.38 Ω against a stated 2.60 Ω floor
+ * (casebook V33).
+ *
+ * So both paths now fill ONE field, `refusal`, and the shortlist above knows
+ * exactly one kind of rejection. What is tested here is the tuner's half: that
+ * the second path exists, that it is not taken when a later pass recovers, and
+ * that it costs a v1 run nothing.
+ */
+describe('V33 — an active gate that refuses the whole value tune is a refusal too', () => {
+  const { wBase, tBase } = v2Responses();
+  const driverZ = v2DriverZ();
+
+  /** The R/L/C values, which is what "the same network" means here. */
+  const values = (ps: readonly VxpPart[]): string =>
+    JSON.stringify(
+      ps
+        .filter((p) => p.partId !== undefined)
+        .map((p) => [p.partId, p.params.map((q) => [q.name, q.value])]),
+    );
+
+  const run = (extra: Partial<NetOptimizeOptions>) =>
+    optimizeNetworkValues(
+      v2SeedParts(),
+      V2_GRID,
+      wBase,
+      tBase,
+      driverZ,
+      { offsetMm: 0, trimDb: 0, inverted: false },
+      { phasePriority: 0.5, staged: { rippleDb: 1.5, phaseDeg: 8 }, maxIterations: 120, ...extra },
+    );
+
+  const SEED = values(v2SeedParts());
+
+  it('nothing acceptable anywhere: the run delivers a REFUSAL and not a seed-as-design', () => {
+    const refusedRun = run({
+      gateViolation: () => 'M-B/|Z|: 1.00 Ω falls below the stated floor of 3.00 Ω',
+      rejectedTuneReport: true,
+    });
+    /* The one shape, and the category recorded where the decision was taken —
+     * never re-derived from the sentence (A3g). */
+    expect(refusedRun.refusal?.by).toBe('active-gate');
+    expect(refusedRun.refusal?.kinds).toEqual(['gate']);
+    expect(refusedRun.refusal?.reason).toContain('falls below the stated floor');
+    expect(refusedRun.refusal?.note).toContain('delivers no network');
+    // What comes back is the SEED, untouched and declared untouched — the same
+    // convention the safety gate's rollback has always followed.
+    expect(refusedRun.tuned).toBe(0);
+    expect(values(refusedRun.parts)).toBe(SEED);
+    // ...and the tune that was refused travels as REPORTING, so the cost of the
+    // refusal is visible without re-running anything (V31's contribution).
+    expect(refusedRun.rejectedTune).toBeDefined();
+    expect(refusedRun.rejectedParts).toBeDefined();
+    expect(values(refusedRun.rejectedParts!)).not.toBe(SEED);
+    // The early return is structural, exactly as it is for the safety gate: a
+    // completed pass always reports `ampFloorRepair`, and this one cannot.
+    expect('ampFloorRepair' in refusedRun).toBe(false);
+  });
+
+  it('a later pass CAN still recover, and then there is no refusal', () => {
+    /* The second condition, and it is not decoration. After the value tune is
+     * refused the seed stands as the working point, and the passes that follow
+     * — the reseed challenge, the drift catch, the staged barrier, prune,
+     * escalation — are real searches, each gate-checked before it is accepted.
+     * If one of them lands somewhere the gate accepts, this run DID find an
+     * admissible design and calling that "no network" would throw away a legal
+     * answer. Here the hook accepts exactly the seed and refuses everything
+     * else, so the value tune is refused and what is delivered is not. */
+    const recovered = run({
+      gateViolation: (ps) => (values(ps) === SEED ? null : 'anything but the seed is refused'),
+      rejectedTuneReport: true,
+    });
+    expect(recovered.refusal).toBeUndefined();
+    expect(recovered.gateRefusals?.some((l) => l.startsWith('value tune refused'))).toBe(true);
+    expect(values(recovered.parts)).toBe(SEED);
+  });
+
+  it('P2 — with no gate hook the result object is untouched, which is every v1 run', () => {
+    const plain = run({});
+    expect(plain.refusal).toBeUndefined();
+    expect('gateRefusals' in plain).toBe(false);
+    // ...and the counter-proof that the fixture's tune is not simply inert:
+    // without a hook it really does move the network.
+    expect(values(plain.parts)).not.toBe(SEED);
   });
 });

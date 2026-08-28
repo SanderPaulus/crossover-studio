@@ -84,6 +84,56 @@ export const v2Sweeps = (): Record<string, MeasuredSweep> => {
 };
 
 /**
+ * V33 — THE FULL-BAND SAFETY SET, so this fixture can exercise the barrier's
+ * `'safety'` source.
+ *
+ * The app builds a safety set over the drivers' whole measured extent and hands
+ * it to the tuner; `worstZOf`, the repair trigger and the delivered verdict
+ * have always read it, and since V33 the barrier can too. Here it spans the
+ * drivers' own IMPEDANCE extent rather than their response extent, which is a
+ * deliberate fixture choice: it makes "the barrier grid lies inside the grid
+ * the gate judges on" a property this fixture actually has, and that
+ * containment is the thing V33's justification rests on. (On casus 1 the same
+ * containment holds for a different reason — the response extent happens to sit
+ * inside the impedance extent.)
+ *
+ * The responses are held flat outside their own measurement, which is what
+ * `clampEdges` does and what every safety set in this app does.
+ *
+ * THE THREE READINGS ON THE SEED, measured rather than described: 3.760 Ω on
+ * the evaluation grid, 3.773 Ω on this safety grid, 3.758 Ω on the gate's
+ * 1600-point reference. Three numbers, one function, three grids — which is
+ * exactly the shape V33 gave the barrier, and small enough differences that
+ * what 240 versus 1600 costs has to be MEASURED on a real corpus
+ * (`frozenNetlistGates.test.ts`) rather than argued about here.
+ */
+export const V2_SAFETY_POINTS = 240;
+
+export function v2Safety(points: number = V2_SAFETY_POINTS): {
+  freqs: number[];
+  w: GriddedResponse;
+  t: GriddedResponse;
+  z: Record<string, Complex[]>;
+} {
+  const sweeps = v2Sweeps();
+  const models = Object.keys(sweeps);
+  const lo = Math.min(...models.map((m) => sweeps[m].validHz[0]));
+  const hi = Math.max(...models.map((m) => sweeps[m].validHz[1]));
+  const freqs = logspace(lo, hi, points);
+  const resp = (name: string): GriddedResponse => {
+    const f = parseFrd(load(name));
+    return resample(f.freq, f.spl, f.phase, freqs, { clampEdges: true });
+  };
+  const z: Record<string, Complex[]> = {};
+  for (const m of models) {
+    const s = sweeps[m];
+    const g = resample(s.grid, s.magnitude, s.phaseDeg, freqs, { clampEdges: true });
+    z[m] = g.spl.map((mag, i) => fromPolar(mag, (g.phaseDeg[i] * Math.PI) / 180));
+  }
+  return { freqs, w: resp('mid_hor0_mettape.txt'), t: resp('tweet_hor0_mettape.txt'), z };
+}
+
+/**
  * A two-way seed with the ingredients the V2 pathology needs to be possible:
  * a free SERIES RESISTOR in front of the low branch (the element that drifted
  * to extremes in the casebook), and a shunt L/C across it that can be driven

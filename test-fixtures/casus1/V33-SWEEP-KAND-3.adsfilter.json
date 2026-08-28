@@ -1,8 +1,8 @@
 {
  "format": "acoustic-design-studio-filter",
  "version": 1,
- "savedAt": "2026-08-27T23:09:27.354Z",
- "name": "KAND-V2-2",
+ "savedAt": "2026-08-27T22:23:04.302Z",
+ "name": "KAND-V2-3",
  "parts": [
   {
    "type": "Generator",
@@ -41,7 +41,7 @@
    "params": [
     {
      "name": "L",
-     "value": 3.52,
+     "value": 3.363,
      "unit": "mH"
     }
    ],
@@ -62,7 +62,7 @@
    "params": [
     {
      "name": "C",
-     "value": 103.2,
+     "value": 98.74,
      "unit": "uF"
     }
    ],
@@ -93,7 +93,7 @@
    "params": [
     {
      "name": "L",
-     "value": 1.724,
+     "value": 1.445,
      "unit": "mH"
     }
    ],
@@ -155,7 +155,7 @@
    "params": [
     {
      "name": "C",
-     "value": 37.66,
+     "value": 37.8,
      "unit": "uF"
     }
    ],
@@ -176,7 +176,7 @@
    "params": [
     {
      "name": "L",
-     "value": 2.014,
+     "value": 1.857,
      "unit": "mH"
     }
    ],
@@ -207,7 +207,7 @@
    "params": [
     {
      "name": "C",
-     "value": 36.64,
+     "value": 40.42,
      "unit": "uF"
     }
    ],
@@ -228,7 +228,7 @@
    "params": [
     {
      "name": "L",
-     "value": 23.99,
+     "value": 19.8,
      "unit": "mH"
     }
    ],
@@ -259,7 +259,7 @@
    "params": [
     {
      "name": "L",
-     "value": 1.472,
+     "value": 1.267,
      "unit": "mH"
     }
    ],
@@ -280,7 +280,7 @@
    "params": [
     {
      "name": "C",
-     "value": 22.28,
+     "value": 21.55,
      "unit": "uF"
     }
    ],
@@ -311,7 +311,7 @@
    "params": [
     {
      "name": "L",
-     "value": 0.3444,
+     "value": 0.2857,
      "unit": "mH"
     }
    ],
@@ -323,37 +323,6 @@
     {
      "x": 31,
      "y": 18
-    }
-   ]
-  },
-  {
-   "type": "Capacitor",
-   "partId": "B·C8",
-   "params": [
-    {
-     "name": "C",
-     "value": 1.919,
-     "unit": "uF"
-    }
-   ],
-   "wires": [
-    {
-     "x": 31,
-     "y": 18
-    },
-    {
-     "x": 31,
-     "y": 25
-    }
-   ]
-  },
-  {
-   "type": "Ground",
-   "params": [],
-   "wires": [
-    {
-     "x": 31,
-     "y": 25
     }
    ]
   },
@@ -426,7 +395,7 @@
    "params": [
     {
      "name": "C",
-     "value": 3.398,
+     "value": 3.259,
      "unit": "uF"
     }
    ],
@@ -447,7 +416,7 @@
    "params": [
     {
      "name": "L",
-     "value": 0.6184,
+     "value": 0.4808,
      "unit": "mH"
     }
    ],
@@ -478,7 +447,7 @@
    "params": [
     {
      "name": "C",
-     "value": 98.08,
+     "value": 103.7,
      "unit": "uF"
     }
    ],
@@ -499,7 +468,7 @@
    "params": [
     {
      "name": "L",
-     "value": 2.393,
+     "value": 2.474,
      "unit": "mH"
     }
    ],
@@ -530,7 +499,7 @@
    "params": [
     {
      "name": "R",
-     "value": 0.1828,
+     "value": 0.183,
      "unit": "Ω"
     }
    ],
@@ -551,7 +520,7 @@
    "params": [
     {
      "name": "R",
-     "value": 54.29,
+     "value": 51.35,
      "unit": "Ω"
     }
    ],

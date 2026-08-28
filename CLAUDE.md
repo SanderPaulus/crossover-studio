@@ -21,28 +21,40 @@
 ## Commando's
 
 - `npx tsc -b` — typecheck. Draait vóór elke oplevering, zonder uitzondering.
-- `npx vitest run` — volledige testsuite. **Gemeten 27-08-2026 (V31/V32-sessie): 123 bestanden, 1323 tests, ~4,5 min
-  wandkloktijd (264 s).** Alles groen houden. De telling stond tot F4b op 99/1003 — dat was de
+- `npx vitest run` — volledige testsuite. **Gemeten 28-08-2026 (V33-sessie): 124 bestanden, 1339 tests, ~5 min
+  wandkloktijd (304 s).** Alles groen houden. De telling stond tot F4b op 99/1003 — dat was de
   stand bij F3 (`61a3ea4`) en zij is drie opleveringen lang niet bijgewerkt: F3b bracht 104 bestanden, F3c 106,
   F4a 107, F4b 108, F4b2 109, F4c 112, V20 113, F4d 119, de F4d-nazorg 120, de vloersessie 120, V30 121,
-  V31/V32 123 (`gateGrid.test.ts` en `wholesaleRejection.test.ts`).
+  V31/V32 123, V33 124 (`barrierSource.test.ts`).
   Vandaar de datum erbij: een telling zonder meetmoment is een telling die stil veroudert.
-  **Waar de tijd zit (nagemeten bij V31/V32):** zes bestanden draaien echte ketenruns en zijn samen het leeuwendeel
-  van de CPU-tijd — `threeWayChain` (282 s), `casus1V2Candidates` (105 s sinds de live V31-verwerping erbij kwam),
-  `candidateRoute` (111 s), `designChain` (102 s), `workerRouteRegression` (98 s), `f4cRegression` (43 s).
-  Elk van hen draait het minimum aantal live runs dat zijn claim draagt; de rest leest bestanden. Een regressie
-  die niemand draait omdat hij traag is, beschermt niets.
+  **Waar de tijd zit (nagemeten bij V33):** zeven bestanden draaien echte ketenruns en zijn samen het leeuwendeel
+  van de CPU-tijd — `casus1V2Candidates` (300 s: twee live runs, de bevroren netlist én de verwerping),
+  `threeWayChain` (286 s), `candidateRoute` (115 s), `designChain` (102 s), `workerRouteRegression` (101 s),
+  `f4cRegression` (76 s), `gateEnforcement` (27 s). `casus1V2Candidates` is bij V33 van 105 s naar 300 s
+  gegaan en dat is de prijs van de barrièrebron: elke live casus-1-run lost het netwerk nu ook op het
+  veiligheidsraster op. Op de dure bron (`'sweep'`) zou datzelfde bestand ruim twintig minuten kosten — dat is
+  waarom de v2-route `'safety'` stelt. Elk van deze bestanden draait het minimum aantal live runs dat zijn
+  claim draagt; de rest leest bestanden. Een regressie die niemand draait omdat hij traag is, beschermt niets.
 - **De v2-kandidaatfixtures opnieuw opwekken** (alleen nodig als de generator of het veld verandert):
-  `npx vite-node scripts/generate-casus1-v2-candidates.ts` — vijftien ketenruns, gemeten 45–66 s per stuk,
-  ~14 min; schrijft de shortlist-netlists (zeven sinds V32) en `casus1_v2_herkomst.json`. Daarna
+  `npx vite-node scripts/generate-casus1-v2-candidates.ts` — vijftien ketenruns. De kosten hangen sinds
+  V33 aan de BARRIÈREBRON die de kandidaat stelt, en alle drie zijn gemeten over het hele veld:
+  `'grid'` ~14 min (45–66 s per kandidaat), **`'safety'` 44,6 min (113–237 s) — dit is wat de
+  v2-route stelt en dus wat je krijgt**, `'sweep'` 4 u 23 min (603–2740 s). De barrière lost het
+  netwerk bij élke objectief-evaluatie op op het raster van zijn bron, en dat kost 0,507 ms op
+  96 punten, 1,257 ms op 240 en 8,886 ms op 1600; een ketenrun doet er ~88 000. Schrijft de
+  shortlist-netlists en `casus1_v2_herkomst.json`. Daarna
   `npx vite-node scripts/record-casus1-v2-references.ts` (drie seconden) voor de klasse-B-blokken én
   de vergelijkingstabel voor het casusboek. **Nagemeten bij de nazorg: twee opeenvolgende runs leveren de
   netlists byte-identiek terug, op het `savedAt`-stempel van de serialisatie na.**
-- **De vóór/ná-tabel van V31/V32**: `npx vite-node scripts/compare-v30-v32-corpus.ts` — seconden, geen
-  ketenrun. Legt het GEDATEERDE V30-corpus naast het levende, gekoppeld op KANDIDAAT (de bestandsnummers
-  zijn rijnummers van twee verschillende shortlists en horen niet bij elkaar), beide gemeten door hetzelfde
-  `buildReport`-pad. Drukt ook de V31-verwerpingen af met wat de geweigerde tune had bereikt. Draai hem ná
-  de generator en ná de recorder.
+- **De vóór/ná-tabel tussen twee corpora**: `npx vite-node scripts/compare-corpora.ts [vóór] [ná]` —
+  seconden, geen ketenrun. Corpora: `v30`, `v32`, `live`; default `v32 live`, wat de V33-tabel is.
+  `compare-corpora.ts v30 v32` reproduceert de V32-tabel. Gekoppeld op KANDIDAAT (de bestandsnummers
+  zijn rijnummers van verschillende shortlists en horen niet bij elkaar), beide helften gemeten door
+  hetzelfde `buildReport`-pad. Drukt voor het LEVENDE corpus ook de verwerpingen af met wat de
+  geweigerde tune had bereikt. Draai hem ná de generator en ná de recorder.
+  **Hij heette tot V33 `compare-v30-v32-corpus.ts` en had zijn "ná"-helft hard op het levende corpus
+  staan** — dus de eerste regeneratie erna maakte stilletjes een ándere tabel dan de tabel waarvoor hij
+  geschreven was. Beide helften zijn nu een argument; dat is de hele reden voor de hernoeming.
 - **De vloer als zoekdoel meten (V30)**: `npx vite-node scripts/measure-v30-floor-goal.ts` —
   dertig ketenruns (vijftien kandidaten × twee armen), gemeten 45–70 s per stuk, ~30 min.
   Schrijft `test-fixtures/casus1_v30_vloer_vergelijking.json` en drukt de vóór/ná-tabel af.
@@ -477,6 +489,52 @@ grotere ingreep — hij raakt élk commando in dit project — en is deze sessie
   SWEEP gelezen (zoals `report.ts` al deed) en niet van het ketenraster. Het interval knipt
   nog steeds wat er GELEZEN wordt; alleen de meting waarvan het een mediaan is, is veranderd.
 
+### V33-guards (waar de barrière mikt; een geweigerde tune is een verwerping)
+- `src/lib/impedanceFloor.ts` — `minImpedanceAt` is sinds V33 de ÉNIGE plek waar wordt beslist
+  wat "de kortste impedantie" is (eerste index wint, strikte `<`, geen epsilon). `epdr()` leest
+  hem — dus de M-B/|Z|-poortwaarde — en de amp-vloerbarrière leest hem via
+  `systemMinImpedanceOhm` in `netOptimizer.ts`. Eén functie, drie rasters: het RASTER is een
+  parameter (`zFloorBarrierSource`: `'grid'` = default en v1, `'safety'` = de v2-route,
+  `'sweep'` = het poortraster zelf). `ampFloorSlackOhm` staat er sinds V33 naast, om dezelfde
+  reden: de tuner rekende de vloerspeling zelf uit en een test vraagt hem nu óók op.
+- `src/lib/engine2/optimizer/barrierSource.test.ts` — de vijf claims op de tweeweg-fixture.
+  Sleutel **afwezig** en `'grid'` leveren byte-identieke netwerken (P2); een bron die genoemd is
+  maar zijn data niet krijgt levert aantoonbaar NIET het netwerk dat `'grid'` levert — want dat
+  is precies hoe een stille terugval eruitziet en niets anders; en `'safety'` én `'sweep'`
+  bereiken allebei de zoektocht. De vloer is 5 % boven het geleverde minimum, en dat getal is
+  zelf een vondst: op 50 % weigert de volle-band veiligheidspoort de hele tune en komt in élke
+  arm het zaad terug, wat elke vergelijking leegmaakt.
+- `src/lib/engine2/frozenNetlistGates.test.ts` — drie V33-blokken. (1) Op het POORTRASTER is de
+  barrièregrootheid `toBe`-gelijk aan de M-B/|Z|-waarde, geen tolerantie — twee implementaties
+  die tot drie decimalen overeenkomen is precies de toestand die V32 aantrof. (2) Diezelfde
+  netlist op het KETENRASTER wijkt aantoonbaar af, anders is "hij leest het poortraster" niet te
+  onderscheiden van "hij leest willekeurig welk raster". (3) **De rechtvaardiging van
+  `'safety'`, als meting:** het veiligheidsraster ligt BINNEN de uitgestrektheid van het
+  poortraster, het verschil tussen beide lezingen is op het levende corpus kleiner dan
+  `ampFloorSlackOhm` (gemeten 0,0075 Ω tegen een speling van 0,0520 Ω), en — de assert die er
+  werkelijk toe doet — op élke bevroren netlist vellen de twee rasters hetzelfde oordeel over de
+  gestelde vloer. De grootste afwijking reist mee in de faalboodschap.
+- `src/lib/engine2/optimizer/wholesaleRejection.test.ts` — de tweede helft, op de tuner zelf. Een
+  poorthook die alles weigert levert `refusal.by = 'active-gate'`, `kinds: ['gate']`, het ZAAD met
+  `tuned: 0`, en de geweigerde tune als rapportage. Plus de tak die de ingreep behoedzaam maakt:
+  een hook die alléén het zaad accepteert weigert wél de waardetune maar niet wat er geleverd
+  wordt, en dan is er GEEN verwerping — de passen ná de waardetune zijn echte zoektochten en een
+  toelaatbaar antwoord daaruit mag niet weggegooid worden. En P2: zonder poorthook is het
+  resultaatobject onveranderd, wat élke v1-run is.
+- `src/lib/engine2/optimizer/choiceKeyGuard.test.ts` — de twee nieuwe sleutels, en de scheiding
+  ertussen is de claim: `zFloorBarrierSource` is CHOICE (welke band het doel meet) en
+  `zFloorBarrierImpedance` is POLISH (de meting die de run al in handen heeft, het
+  `gateViolation`-argument). Een migratie in beide richtingen breekt de build. Sleuteltelling
+  39 → 41. Plus: een gewapende barrière verklaart zijn bron (`'safety'`), een ongewapende
+  verklaart hem ABSENT met de P4-reden, en de bron beweegt de vingerafdruk.
+- `src/lib/engine2/goldenClassification.test.ts` — de FAMILIELIJST is weg, en dat is een V33-
+  bijvangst: zij noemde `KAND_V2_*` en `V28_KAND_*`, V32 vroor `V30_KAND_*` in, en tien
+  klasse-B-blokken hebben een oplevering lang zonder klassecontrole in het bestand gestaan. De
+  regel is nu structureel — élke netlist die het casusboek noemt en die geen v1-baseline is moet
+  een geclassificeerd blok hebben. `record-casus1-v2-references.ts` en `compare-corpora.ts`
+  leiden hun corpuslijst om dezelfde reden af; alleen de REDEN van een gedateerd corpus staat
+  nog met de hand geregistreerd, want die is niet af te leiden.
+
 ### F4b2-guard (het vierde gat: de LF-bult-inversie)
 - `src/lib/engine2/optimizer/lfBumpBorder.test.ts` — de vierde A5d.6-inversie, die op de
   workerroute nooit invoer had (V23-bijvangst, dood sinds F2). Vijf asserts op de inversie zelf:
@@ -550,21 +608,25 @@ Twee scripts, twee kosten:
 De acceptatie zit in `casus1V2Candidates.test.ts`: de metrieken reproduceren op alle bevroren bestanden,
 en **één** kandidaat wordt live door de échte route heen gereproduceerd (~41 s).
 
-**Sinds V32 zijn het er DRIE corpora, en dat is opzet.** `KAND_V2_1..7` is het levende corpus.
-`V28_KAND_1..10` is het corpus dat bevroren werd vóór de vloer een ZOEKDOEL was (V30);
-`V30_KAND_1..10` is het corpus dat bevroren werd toen de poort nog blind was onder de
-verre-veldbodem (V32). Beide gedateerde corpora zijn byte-identieke bestanden onder een andere naam,
-met hun klasse-B-blokken mee, bewaard als de "vóór"-helften van hun vergelijkingen. Wie een script
-schrijft dat het levende corpus opruimt gebruikt `^KAND_V2_\d+$` en nooit `startsWith('KAND_V2')`:
-die tweede slikt de gedateerde corpora mee en gooit het bewijsmateriaal weg.
-`record-casus1-v2-references.ts`, `goldenClassification.test.ts` en `casus1V2Candidates.test.ts`
-dragen die regel allemaal expliciet. De koppeling bestandsnaam ↔ kandidaat van het V30-corpus staat in
-`manifest_en_geometrie.v30_corpus`, want zij stond alleen in `casus1_v2_herkomst.json` en dat bestand
-wordt door de volgende regeneratie overschreven.
+**Sinds V33 zijn het er VIJF corpora, en dat is opzet.** `KAND_V2_*` is het levende corpus.
+`V28_KAND_*` is bevroren vóór de vloer een ZOEKDOEL was (V30); `V30_KAND_*` toen de poort nog blind
+was onder de verre-veldbodem (V32); `V32_KAND_*` toen de BARRIÈRE nog het evaluatieraster las terwijl
+de poort de sweep handhaafde (V33); `V33_SWEEP_KAND_*` is V33's dure referentiearm, met de barrière
+op het poortraster zelf. Alle vier de gedateerde corpora zijn byte-identieke bestanden onder een
+andere naam, met hun klasse-B-blokken mee, bewaard als de "vóór"-helften van hun vergelijkingen. Wie
+een script schrijft dat het levende corpus opruimt gebruikt `^KAND_V2_\d+$` en nooit
+`startsWith('KAND_V2')`: die tweede slikt de gedateerde corpora mee en gooit het bewijsmateriaal weg.
+`record-casus1-v2-references.ts` en `casus1V2Candidates.test.ts` dragen die regel expliciet;
+`goldenClassification.test.ts` is er sinds V33 vanaf — daar geldt de structurele regel dat élke
+genoemde netlist die geen v1-baseline is een geclassificeerd blok moet hebben, omdat de
+familielijst die er stond bij V32 vergeten is. De koppeling bestandsnaam ↔ kandidaat staat in
+`manifest_en_geometrie.v30_corpus`, `.v32_corpus` en `.v33_sweep_corpus`, want zij stond alleen in
+`casus1_v2_herkomst.json` en dat bestand wordt door de volgende regeneratie overschreven.
 
-**Zeven van de tien V30-netlists zijn byte-identiek overgenomen in het levende corpus** — nagemeten,
+**Zeven van de tien V30-netlists zijn byte-identiek overgenomen in het V32-corpus** — nagemeten,
 onderdeel voor onderdeel. V32 heeft geen enkel ontwerp veranderd; het heeft er drie ingetrokken die de
-vloer misten op een gebied waar de oude poort niet keek.
+vloer misten op een gebied waar de oude poort niet keek. Wat V33 met datzelfde corpus deed staat in
+de V33-entry en in `compare-corpora.ts v32 live`.
 
 De vloer is sinds F0 uitsluitend het getal dat de ONTWERPER invult (`ampMinLoadOhm`, geen default):
 leeg veld = geen oordeel. Eén regel, één plek: `meetsAmpFloor` in `src/lib/impedanceFloor.ts`.

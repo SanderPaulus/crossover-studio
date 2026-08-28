@@ -154,6 +154,11 @@ const outcomes: {
     ampFloorNote: string | null;
     ampFloorRepair: string | null;
     vroege_terugkeer: boolean;
+    /* V33 — waar de barrière zijn tekort las, in de woorden van de tuner
+     * zelf. Een run die niet zegt op welke band hij mikte, is een run
+     * waarvan je de uitkomst niet kunt lezen: dat is precies wat V32 en V33
+     * allebei waren. */
+    vloerbron: string | null;
   };
   /* V31 — een kandidaat die niets geleverd heeft, en de regel die hem
    * weigerde. `null` = hij leverde wél een netwerk. De cijfers eronder gaan
@@ -261,6 +266,7 @@ for (const c of field.field.candidates) {
       ampFloorNote: (done.result.net as { ampFloorNote?: string }).ampFloorNote ?? null,
       ampFloorRepair: (done.result.net as { ampFloorRepair?: string }).ampFloorRepair ?? null,
       vroege_terugkeer: !('ampFloorRepair' in (done.result.net as object)),
+      vloerbron: (done.result.net as { zFloorSourceNote?: string }).zFloorSourceNote ?? null,
     },
     verwerping: done.rejection
       ? {
@@ -405,6 +411,27 @@ const meetopstelling = {
    * because it is a CHOICE key and may only reach the tuner from there. The
    * grey value beside it is the number that choice hands the search — an
    * inherited v1 constant, labelled as one. */
+  /* V33 — WAAR dat zoekdoel gemeten wordt, naast de vraag OF het er is.
+   * Twee sleutels, twee regels in dit blok: V30 ging over het eerste en V33
+   * over het tweede, en ze samenvoegen zou verbergen welke van de twee bewoog. */
+  vloer_zoekdoel_bron: lastPayload.candidate?.declaration.stated.zFloorBarrierSource ?? null,
+  vloer_zoekdoel_bron_waarom:
+    {
+      safety:
+        'De barrièreterm leest zijn tekort op het VEILIGHEIDSRASTER van de tuner — dezelfde ' +
+        'uitgestrektheid als de gemeten sweep waarop M-B/|Z| oordeelt, dezelfde lezer ' +
+        '(`minImpedanceAt`), grover raster. Tot V33 las hij het EVALUATIERASTER, waarvan de ' +
+        'bodem de verre-veldspan is: de zoektocht mikte dan op een minimum boven 200 Hz terwijl ' +
+        'de poort er sinds V32 een op de volle sweep handhaafde, en op deze casus kostte dat ' +
+        'vijf van de vijftien kandidaten hun hele waardetune (V33). Hoever deze lezing van de ' +
+        'poortlezing af ligt is gemeten en staat in `manifest_en_geometrie.v33_barriere_raster`.',
+      sweep:
+        'De barrièreterm leest zijn tekort op het POORTRASTER zelf — hetzelfde raster en ' +
+        'dezelfde driverimpedanties waarop M-B/|Z| oordeelt (`impedanceReferenceFrom` → ' +
+        '`minImpedanceAt`), dus doel en poort zien per constructie één getal. Dit is de dure ' +
+        'arm van V33: ruim tien minuten per ketenrun tegen één op het veiligheidsraster.',
+      grid: 'De barrière leest het EVALUATIERASTER, zoals altijd — de vóór-arm van V33.',
+    }[lastPayload.candidate?.declaration.stated.zFloorBarrierSource ?? 'grid'],
   vloer_is_zoekdoel:
     lastPayload.candidate?.declaration.stated.zFloorBarrier === true,
   vloer_is_zoekdoel_waarom:

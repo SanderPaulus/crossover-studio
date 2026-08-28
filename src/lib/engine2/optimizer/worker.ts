@@ -773,9 +773,51 @@ function tuneOptionsFor(
     v2.gates.ampMinLoadOhm !== undefined ||
     v2.gates.maxDriveOnFsDb !== undefined;
 
+  /* ---- V33: the barrier's reading, from the gate's own reference --------
+   *
+   * The candidate decides WHERE the amp-load barrier aims (`zFloorBarrierSource`,
+   * a choice key); this supplies WHAT is there, and it supplies the very object
+   * the gate was frozen on. That is the whole delivery: `M-B/|Z|` and the term
+   * that steers toward it read one grid and one set of driver impedances, so
+   * they cannot describe two different bands the way they did on casus 1's
+   * 396.7 Hz axis (V33).
+   *
+   * No reference, no reading — and the tuner does NOT fall back to the
+   * evaluation grid. Said here as well as there, because this is the side that
+   * knows why it is missing. */
+  const barrierOnSweep = stated.zFloorBarrierSource === 'sweep';
+  if (barrierOnSweep && !reference.impedance) {
+    collect.notes.push(
+      'The candidate asked the amp-load barrier to aim at the measured impedance sweep, and no ' +
+        'sweep reached this run. The barrier therefore does not steer this search at all — it ' +
+        'is NOT falling back to the chain grid, which would restore the reading V32 withdrew. ' +
+        'No electrical gate judges this candidate either, for the same missing input.',
+    );
+  }
+  /* `'safety'` needs nothing from here: the safety set is a CHOICE the
+   * candidate already states, so the tuner has the grid in hand. It is the
+   * default a generated candidate takes, and the one every casus-1 run uses. */
+  if (stated.zFloorBarrierSource === 'safety' && stated.safety === undefined) {
+    collect.notes.push(
+      'The candidate asked the amp-load barrier to aim at the full-band safety grid and states ' +
+        'no safety set, so the barrier does not steer this search at all. It is NOT falling ' +
+        'back to the evaluation grid: a search that silently aims at a narrower band than the ' +
+        'one it is judged on is exactly what V33 removed.',
+    );
+  }
+
   return {
     ...stated,
     ...weights,
+    ...(barrierOnSweep && reference.impedance
+      ? {
+          zFloorBarrierImpedance: {
+            grid: reference.impedance.grid,
+            driverZ: reference.impedance.driverZ,
+            span: reference.impedance.span,
+          },
+        }
+      : {}),
     /* V31 — the v2 route asks the tuner to hand back what a wholesale gate
      * threw away. Instrumentation only: it changes no decision, and with it
      * unset (every v1 run) the result object is byte-identical to before. */
@@ -928,6 +970,13 @@ interface FilterFlank {
 
 /** The wholesale-rejection fields the tuner records, as VALUES (A3g). */
 interface WholesaleRejectionFields {
+  /**
+   * V33 — the one shape, whatever refused. The tuner fills it on every
+   * wholesale return: the two safety-gate paths and the active-gate path V33
+   * added. Detected in preference to `safetyNote`, which stays for the callers
+   * that never armed a v2 mechanism.
+   */
+  refusal?: { by: string; kinds: string[]; reason: string; note: string };
   safetyNote?: string;
   safetyKinds?: string[];
   rejectedTune?: {
@@ -951,10 +1000,34 @@ interface WholesaleRejectionFields {
 function wholesaleRejection(net: WholesaleRejectionFields): {
   reason: string;
   kinds: string[];
+  by: string;
+  note: string | null;
   fields: WholesaleRejectionFields;
 } | null {
+  /* V33 — ONE QUESTION, not two. The v2 route arms both mechanisms, so the
+   * harmonised field is always there and is what this reads; a caller that
+   * asked two questions about one event is how the shortlist would end up with
+   * two kinds of rejection for a distinction its reader does not have. The
+   * `safetyNote` branch below is the pre-V33 route (no gate hook, no rejected-
+   * tune report) and is kept because removing it would silently stop detecting
+   * a refusal on any caller that arms neither. */
+  if (net.refusal !== undefined) {
+    return {
+      reason: net.refusal.reason,
+      kinds: [...net.refusal.kinds],
+      by: net.refusal.by,
+      note: net.refusal.note,
+      fields: net,
+    };
+  }
   if (net.safetyNote === undefined) return null;
-  return { reason: net.safetyNote, kinds: [...(net.safetyKinds ?? [])], fields: net };
+  return {
+    reason: net.safetyNote,
+    kinds: [...(net.safetyKinds ?? [])],
+    by: 'safety-gate',
+    note: null,
+    fields: net,
+  };
 }
 
 function runCandidate<I, R extends { parts: VxpPart[]; net: { gateRefusals?: string[] } }>(
@@ -1000,6 +1073,14 @@ function runCandidate<I, R extends { parts: VxpPart[]; net: { gateRefusals?: str
    * against anything this candidate asked for, and a shortlist row is an
    * offer to build. What replaces it is a rejection with the rule's name, and
    * the metrics of the tune that was refused so the cost is visible. */
+  /* V33 — where the amp-load barrier aimed, in the tuner's own words. A run
+   * that does not say which band its goal was measured over is a run whose
+   * outcome cannot be read: that is what V30, V32 and V33 were each about, one
+   * layer apart. Absent on any run that stated no source, which is every v1
+   * run and every v2 run without a stated floor. */
+  const floorSource = (delivered.net as { zFloorSourceNote?: string }).zFloorSourceNote;
+  if (floorSource) collect.notes.push(floorSource);
+
   const refused = wholesaleRejection(delivered.net as WholesaleRejectionFields);
   let rejection: CandidateRejection | null = null;
   let result = delivered;
@@ -1030,7 +1111,12 @@ function runCandidate<I, R extends { parts: VxpPart[]; net: { gateRefusals?: str
         (refused.kinds.length === 0
           ? 'The refusing rule records no category, which today means the solo sensitivity ' +
             'gate; read `reason`.'
-          : `Refused by: ${refused.kinds.join(', ')}.`),
+          : `Refused by: ${refused.kinds.join(', ')} (${refused.by}).`) +
+        /* V33 — the refusing rule's own account of what it did, when it has
+         * one. An active-gate refusal says here that the fallback was refused
+         * as well, which is the difference between "the tune was thrown away"
+         * and "nothing this run reached is buildable". */
+        (refused.note ? ` ${refused.note}` : ''),
     };
     /* THE SEED GOES — BOTH COPIES OF IT — and so do the rejected parts.
      *

@@ -149,19 +149,26 @@ const UNCLASSED_TOP_LEVEL: readonly string[] = [
  * files the manifest names, so an empty or shrunken set fails instead of
  * passing quietly.
  *
- * TWO FAMILIES SINCE V30, and the predicate names both rather than matching a
- * prefix. `KAND_V2_*` is the live corpus; `V28_KAND_*` is the dated one, the
- * ten netlists frozen while the stated amplifier floor was still only a veto,
- * kept as the "before" half of the V30 comparison. A `startsWith('KAND_V2')`
- * would have covered the first and missed the second — which is the exact
- * shape of the hole this block was written to close, one delivery earlier.
+ * AND THE FAMILY LIST IS GONE AGAIN — V33, and this is the third time. The
+ * predicate used to NAME the families: `KAND_V2_*` (live) and `V28_KAND_*`
+ * (dated at V30). V32 froze a second dated corpus, `V30_KAND_*`, and nobody
+ * came back here — so ten class-B blocks sat in the reference file for a whole
+ * delivery without ever being checked for a class, which is EXACTLY the hole
+ * this block was written to close one delivery earlier. A list that has to be
+ * extended by hand gets forgotten by hand.
+ *
+ * So the rule is now structural: every netlist the case book NAMES that is not
+ * one of the three v1 baselines must have a classed block under `kandidaten`.
+ * A new corpus joins by existing, and a corpus with no block fails instead of
+ * being silently outside the scan. The source is still
+ * `manifest_en_geometrie.netlists` — deliberately NOT the thing being checked,
+ * so an empty `kandidaten` cannot make the test vacuous.
  */
-const FROZEN_V2_FAMILIES = [/^KAND_V2_\d+$/, /^V28_KAND_\d+$/];
-const V2_CANDIDATE_PATHS: readonly string[] = Object.keys(
+const V1_BASELINES = ['HUIDIG', 'KAND_A', 'KAND_B'];
+const FROZEN_NETLIST_KEYS: readonly string[] = Object.keys(
   (golden.manifest_en_geometrie as unknown as { netlists: Record<string, string> }).netlists,
-)
-  .filter((k) => FROZEN_V2_FAMILIES.some((re) => re.test(k)))
-  .map((k) => `kandidaten.${k}`);
+).filter((k) => !V1_BASELINES.includes(k));
+const V2_CANDIDATE_PATHS: readonly string[] = FROZEN_NETLIST_KEYS.map((k) => `kandidaten.${k}`);
 
 /** The full list the scan runs over: the fixed blocks plus every frozen v2 candidate. */
 const ALL_CLASSED_PATHS: readonly string[] = [...CLASSED_PATHS, ...V2_CANDIDATE_PATHS];
@@ -196,15 +203,25 @@ describe('F4a — every golden reference says what it is a function of', () => {
      * `casus1V2Candidates.test.ts`. An empty field is a legitimate outcome of a
      * run — the amplifier floor can refuse every candidate — but it must then
      * be empty in BOTH places, and that is what this compares. */
-    const named = Object.keys(
-      (golden.manifest_en_geometrie as unknown as { netlists: Record<string, string> }).netlists,
-    ).filter((k) => FROZEN_V2_FAMILIES.some((re) => re.test(k)));
-    expect(V2_CANDIDATE_PATHS).toHaveLength(named.length);
-    /* Both families are actually present, or the predicate above could have
-     * quietly stopped matching one of them and this test would still pass. */
-    for (const re of FROZEN_V2_FAMILIES) {
-      expect(named.some((k) => re.test(k)), `no frozen netlist matches ${re}`).toBe(true);
+    expect(V2_CANDIDATE_PATHS).toHaveLength(FROZEN_NETLIST_KEYS.length);
+    /* The three v1 baselines are excluded on purpose and are classed elsewhere
+     * (`v1_baseline`), so their absence here is a decision rather than a gap —
+     * asserted, because an exclusion list nobody checks is how the family list
+     * this replaced went wrong. */
+    for (const key of V1_BASELINES) {
+      expect(FROZEN_NETLIST_KEYS, `${key} should be classed as a v1 baseline`).not.toContain(key);
     }
+    /* Both the live corpus and at least one DATED corpus are actually present.
+     * Without this the structural rule above could quietly stop matching
+     * anything — a manifest holding only baselines would pass every assertion
+     * in this test. */
+    expect(FROZEN_NETLIST_KEYS.some((k) => /^KAND_V2_\d+$/.test(k)), 'no live v2 corpus').toBe(
+      true,
+    );
+    expect(
+      FROZEN_NETLIST_KEYS.some((k) => /^V\d+_KAND_\d+$/.test(k)),
+      'no dated corpus is named any more — the before-halves of V30/V32/V33 have gone',
+    ).toBe(true);
   });
 
   it('a NEW top-level block without a class fails here', () => {

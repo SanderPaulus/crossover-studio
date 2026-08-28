@@ -111,14 +111,26 @@ describe('F4c — every tuner option has a class', () => {
 
     // The count is stated so a reader can check it against the casebook table.
     // 37 at F4c; 38 since V30 added `zFloorBarrier` as a choice; 39 since V31
-    // added `rejectedTuneReport` as instrumentation.
-    expect(keys.length).toBe(39);
-    expect(CHOICE_KEYS.length + GREY_KEYS.length + POLISH_KEYS.length).toBe(39);
+    // added `rejectedTuneReport` as instrumentation; 41 since V33 added
+    // `zFloorBarrierSource` (choice — which band the goal is measured over) and
+    // `zFloorBarrierImpedance` (polish — the measurement that band comes from).
+    expect(keys.length).toBe(41);
+    expect(CHOICE_KEYS.length + GREY_KEYS.length + POLISH_KEYS.length).toBe(41);
     // V31: instrumentation, never a choice — the key may not silently migrate
     // into the class whose values are only allowed to come from a candidate.
     expect(POLISH_KEYS).toContain('rejectedTuneReport');
     expect(CHOICE_KEYS as readonly string[]).not.toContain('rejectedTuneReport');
     expect(CHOICE_KEYS).toContain('zFloorBarrier');
+    /* V33 — the pair, and the split between them is the claim. WHICH band the
+     * amp-load goal is measured over decides what the search calls good, so it
+     * is a choice and may only come from a candidate. WHAT is on that band is
+     * the run's own measured sweep, handed over by the caller that already
+     * holds it — the `gateViolation` argument, and the same class. A migration
+     * either way would be a decision, so it breaks the build. */
+    expect(CHOICE_KEYS).toContain('zFloorBarrierSource');
+    expect(POLISH_KEYS).toContain('zFloorBarrierImpedance');
+    expect(CHOICE_KEYS as readonly string[]).not.toContain('zFloorBarrierImpedance');
+    expect(POLISH_KEYS as readonly string[]).not.toContain('zFloorBarrierSource');
   });
 });
 
@@ -277,6 +289,42 @@ describe('F4d — a generated candidate declares every choice key', () => {
     });
     expect(off.stated.zFloorBarrier).toBe(false);
     expect(off.absent.some((a) => a.key === 'zFloorBarrier')).toBe(false);
+  });
+
+  it('V33 — an armed barrier states WHERE it aims; an unarmed one states nothing', () => {
+    /* The second half of V30's derivation. A barrier that steers must steer at
+     * a band that covers what will be enforced, and since V32 that is the
+     * drivers' whole measured extent — so the two are derived together and
+     * neither is a default anyone has to remember. `'safety'` and not
+     * `'sweep'`: same reader, same extent, coarser grid, and a chain run of one
+     * minute instead of eleven. Absent when the barrier is not armed, for the
+     * same P4 reason `zFloorBarrier` itself is: naming a band for a term nobody
+     * switched on reads as a decision about where to aim. */
+    expect(full().stated.zFloorBarrierSource).toBe('safety');
+    expect(full().absent.some((a) => a.key === 'zFloorBarrierSource')).toBe(false);
+
+    const d = bare();
+    expect(d.stated.zFloorBarrierSource).toBeUndefined();
+    const why = d.absent.find((a) => a.key === 'zFloorBarrierSource')?.why ?? '';
+    expect(why).toMatch(/P4/);
+    expect(why).toMatch(/barrier is not armed/);
+
+    // An explicit source still wins, so the before/after V33 rests on is a run
+    // that can be asked for rather than a build that has to be patched.
+    const onGrid = declareCandidateChoices({
+      cages: [[400, 500], [1500, 2000]],
+      windowFloorsHz: [397, 1294],
+      multiWay: true,
+      stated: { ampMinLoadOhm: 3.2, zFloorBarrierSource: 'grid' },
+    });
+    expect(onGrid.stated.zFloorBarrier).toBe(true);
+    expect(onGrid.stated.zFloorBarrierSource).toBe('grid');
+    expect(onGrid.absent.some((a) => a.key === 'zFloorBarrierSource')).toBe(false);
+
+    // ...and the source moves the fingerprint, or the choice would be a label.
+    const a = JSON.stringify(declarationKey(full(), {}));
+    const b = JSON.stringify(declarationKey(onGrid, {}));
+    expect(a).not.toBe(b);
   });
 
   it('V30 — the barrier weight rides in the fingerprint as a GREY VALUE, with its provenance', () => {

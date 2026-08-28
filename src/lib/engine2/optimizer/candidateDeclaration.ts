@@ -1,7 +1,8 @@
 /**
  * F4d — THE CANDIDATE'S DECLARATION OVER EVERY CHOICE KEY.
  *
- * Twenty-five at F4d, twenty-six since V30 added `zFloorBarrier`. The number
+ * Twenty-five at F4d, twenty-six since V30 added `zFloorBarrier` and
+ * twenty-seven since V33 added `zFloorBarrierSource`. The number
  * is not repeated in prose anywhere it could go stale: `declarationCoverage`
  * compares against `CHOICE_KEYS` itself, so a key added upstream lands in no
  * state and fails the build.
@@ -67,6 +68,7 @@ export type StatedByDesigner = Partial<
     | 'rSourceDisqualifyOhm'
     | 'zFloorStrict'
     | 'zFloorBarrier'
+    | 'zFloorBarrierSource'
   >
 >;
 
@@ -168,6 +170,47 @@ export function declareCandidateChoices(input: CandidateDeclarationInput): Choic
         'at — a barrier without a rating has no distance to be short of. Absent rather than ' +
         'false (P4): false would say someone decided the floor should not steer, and with no ' +
         'floor stated nobody decided anything',
+    });
+  }
+
+  /* ---- V33: WHERE THE STEERING IS MEASURED ----------------------------
+   *
+   * The second half of V30's derivation, and it only exists because the first
+   * one worked. A barrier that steers has to steer at the number that will be
+   * enforced, and since V32 that number is read over the drivers' whole
+   * measured extent rather than over the chain's analysis grid. Casus 1
+   * measured what the mismatch costs: five of fifteen candidates had their
+   * whole value tune refused by `M-B/|Z|` for a dip at ~82 Hz, which is below
+   * the far-field span the evaluation grid starts at, and delivered their seed.
+   *
+   * `'safety'` AND NOT `'sweep'`, AND THE REASON IS A MEASUREMENT. Both cover
+   * the drivers' full extent and both go through the same reader, so both end
+   * the blindness; they differ in RESOLUTION, and the difference between them
+   * is held against the floor slack on every frozen netlist
+   * (`frozenNetlistGates.test.ts`). What they do not share is price — the
+   * sweep's grid is the analysis resolution and the barrier runs inside the
+   * objective, which on casus 1 is a chain run of eleven minutes against one.
+   * A default nobody can afford to run is a default nobody runs.
+   *
+   * Two keys rather than one because they answer different questions — whether
+   * the floor steers, and over what band — and V30 and V33 are two separate
+   * entries precisely because collapsing them hides which one moved.
+   *
+   * P4 on both sides, exactly as above: barrier not armed ⇒ ABSENT with the
+   * reason, never a source for a term nobody switched on. And an explicit
+   * value still wins, so the before/after this entry rests on is a run that can
+   * be asked for. */
+  if (s.zFloorBarrierSource !== undefined) {
+    stated.zFloorBarrierSource = s.zFloorBarrierSource;
+  } else if (stated.zFloorBarrier === true) {
+    stated.zFloorBarrierSource = 'safety';
+  } else {
+    absent.push({
+      key: 'zFloorBarrierSource',
+      why:
+        'the barrier is not armed on this design, so there is no reading for it to take and no ' +
+        'band to take it over. Absent rather than a stated default (P4): naming a source for a ' +
+        'term nobody switched on would read as a decision about where to aim',
     });
   }
 

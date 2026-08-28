@@ -41,8 +41,14 @@ import { buildReport } from '../src/lib/engine2/report.ts';
 import { ctcKey } from '../src/lib/engine2/metrics/types.ts';
 import { FLAT_TARGET } from '../src/lib/engine2/requirements/targetCurve.ts';
 import { compareDesigns } from '../src/lib/engine2/predesign/comparison.ts';
-import { meetsAmpFloor } from '../src/lib/impedanceFloor.ts';
-import { CASUS1_V2_GRID } from '../src/lib/engine2/casus1V2.fixture.ts';
+import { ampFloorSlackOhm, meetsAmpFloor } from '../src/lib/impedanceFloor.ts';
+import { systemMinImpedanceOhm } from '../src/lib/netOptimizer.ts';
+import { impedanceReferenceFrom } from '../src/lib/engine2/optimizer/impedanceReference.ts';
+import {
+  CASUS1_V2_GRID,
+  casus1ChainInput,
+  casus1V2Facts,
+} from '../src/lib/engine2/casus1V2.fixture.ts';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const GOLDEN = join(HERE, '..', 'test-fixtures', 'golden_refs_casus1.json');
@@ -81,6 +87,9 @@ const r2 = (v: number | null | undefined): number | null =>
   v === null || v === undefined || !Number.isFinite(v) ? null : Number(v.toFixed(2));
 const r0 = (v: number | null | undefined): number | null =>
   v === null || v === undefined || !Number.isFinite(v) ? null : Number(v.toFixed(0));
+/** Ohms at the resolution the V33 grid comparison needs — the slack is 0.05 Ω. */
+const r4 = (v: number | null | undefined): number | null =>
+  v === null || v === undefined || !Number.isFinite(v) ? null : Number(v.toFixed(4));
 
 const raw = JSON.parse(readFileSync(GOLDEN, 'utf-8')) as Record<string, Record<string, unknown>>;
 const netlists = raw.manifest_en_geometrie.netlists as Record<string, string>;
@@ -134,8 +143,25 @@ const keys = Object.keys(netlists).filter((k) => LIVE_V2.test(k));
  * names. The regex is anchored for the reason the live one is — a prefix test
  * would eat them on the next regeneration and report success.
  */
-const v28Keys = Object.keys(netlists).filter((k) => /^V28_KAND_\d+$/.test(k));
-const v30Keys = Object.keys(netlists).filter((k) => /^V30_KAND_\d+$/.test(k));
+/**
+ * EVERY DATED CORPUS, DERIVED — not a list somebody has to remember to extend.
+ *
+ * There are four now (V28, V30, V32, V33-sweep) and the list has been forgotten
+ * once already: `goldenClassification.test.ts` carried a hand-written family
+ * list, V32 added a corpus, and ten class-B blocks went a whole delivery
+ * without ever being checked. So: a dated corpus is a netlist key that looks
+ * like one, and the only thing that has to be registered by hand is its REASON
+ * (below), which cannot be derived and whose absence is reported rather than
+ * silently skipped.
+ */
+const DATED_KAND = /^V\d+[A-Z0-9_]*_KAND_\d+$/;
+const datedKeys = Object.keys(netlists).filter((k) => DATED_KAND.test(k));
+/** Grouped by their corpus prefix, in the order the manifest lists them. */
+const datedByCorpus = new Map<string, string[]>();
+for (const k of datedKeys) {
+  const prefix = k.replace(/_KAND_\d+$/, '');
+  datedByCorpus.set(prefix, [...(datedByCorpus.get(prefix) ?? []), k]);
+}
 /* AN EMPTY SET IS A RESULT, not a crash.
  *
  * It used to throw here, which was right while nothing could refuse a
@@ -189,25 +215,52 @@ const CHAIN_GRID_LO_HZ = CASUS1_V2_GRID[0];
  * for both would have hidden the second — which is the finding of this
  * regeneration and not a footnote to it.
  */
+/**
+ * Why a dated corpus is allowed to sit under the floor, per corpus.
+ *
+ * The ONE thing about a dated corpus that cannot be derived, so the one thing
+ * registered by hand — and a corpus with no entry gets a sentence saying so
+ * rather than a plausible-sounding reason that belongs to a different corpus.
+ */
+const DATED_REASON: Record<string, string> = {
+  V33_SWEEP:
+    'HET GEDATEERDE V33-SWEEP-CORPUS. Bevroren met de barrière op de VOLLE GEMETEN SWEEP — ' +
+    'hetzelfde raster als de poort, 1600 punten, en daarmee de duurste arm van V33: ruim tien ' +
+    'minuten per ketenrun. Het levende corpus draait sinds V33 op het veiligheidsraster van de ' +
+    'tuner (240 punten, dezelfde uitgestrektheid, dezelfde functie), en de vóór/ná van die twee ' +
+    'armen is precies waar dit corpus voor bewaard is. Meetobject, GEEN ontwerp.',
+  V32:
+    'HET GEDATEERDE V31/V32-CORPUS. Bevroren terwijl de BARRIÈRETERM nog het evaluatieraster ' +
+    'las — 200 Hz en hoger op deze meetset — en de poort sinds V32 de volle gemeten sweep ' +
+    'handhaafde. De zoektocht mikte dus op een ander gebied dan waarop zij beoordeeld werd ' +
+    '(casusboek V33). Sinds V33 leest de barrière een raster met dezelfde uitgestrektheid als ' +
+    'de poort, via dezelfde functie. Deze netlists blijven staan als de "vóór"-helft van die ' +
+    'vergelijking. Meetobject, GEEN ontwerp: mag niet gebouwd worden.',
+  V30:
+    'HET GEDATEERDE V30-CORPUS. Bevroren toen de v2-POORTREFERENTIE nog op het ketenraster ' +
+    'oordeelde en dus blind was onder de verre-veldbodem: deze netlists PASSEERDEN M-B/|Z| in ' +
+    'hun eigen run en missen de vloer zodra je ze meet zoals het paneel het doet, over de ' +
+    'volle gemeten impedantiesweep (casusboek V32). Sinds V32 oordeelt elke elektrische poort ' +
+    'op die sweep, dus dit kan niet meer gebeuren; deze tien blijven staan als de ' +
+    '"voor"-helft van die vergelijking. Meetobject, GEEN ontwerp: mag niet gebouwd worden.',
+  V28:
+    'HET GEDATEERDE V28-CORPUS. Bevroren VOOR de vloer een ZOEKDOEL was: de tuner kende hem ' +
+    'als veto plus een reparatiepas achteraf, en die reparatie is op alle vijftien kandidaten ' +
+    'afgegaan en op alle vijftien mislukt (casusboek V30). Deze tien blijven staan als de ' +
+    '"voor"-helft van de V30-vergelijking — hun opvolgers met de vloer als zoekdoel staan ' +
+    'onder kandidaten.KAND_V2_* en halen de vloer wel. Meetobject, GEEN ontwerp: mag niet ' +
+    'gebouwd worden.',
+};
+
 const exceptionReason = (key: string, atHz: number | null): string => {
-  if (/^V30_KAND_\d+$/.test(key)) {
+  if (DATED_KAND.test(key)) {
+    const prefix = key.replace(/_KAND_\d+$/, '');
     return (
-      'HET GEDATEERDE V30-CORPUS. Bevroren toen de v2-POORTREFERENTIE nog op het ketenraster ' +
-      'oordeelde en dus blind was onder de verre-veldbodem: deze netlists PASSEERDEN M-B/|Z| in ' +
-      'hun eigen run en missen de vloer zodra je ze meet zoals het paneel het doet, over de ' +
-      'volle gemeten impedantiesweep (casusboek V32). Sinds V32 oordeelt elke elektrische poort ' +
-      'op die sweep, dus dit kan niet meer gebeuren; deze tien blijven staan als de ' +
-      '"voor"-helft van die vergelijking. Meetobject, GEEN ontwerp: mag niet gebouwd worden.'
-    );
-  }
-  if (/^V28_KAND_\d+$/.test(key)) {
-    return (
-      'HET GEDATEERDE V28-CORPUS. Bevroren VOOR de vloer een ZOEKDOEL was: de tuner kende hem ' +
-      'als veto plus een reparatiepas achteraf, en die reparatie is op alle vijftien kandidaten ' +
-      'afgegaan en op alle vijftien mislukt (casusboek V30). Deze tien blijven staan als de ' +
-      '"voor"-helft van de V30-vergelijking — hun opvolgers met de vloer als zoekdoel staan ' +
-      'onder kandidaten.KAND_V2_* en halen de vloer wel. Meetobject, GEEN ontwerp: mag niet ' +
-      'gebouwd worden.'
+      DATED_REASON[prefix] ??
+      `HET GEDATEERDE ${prefix}-CORPUS, EN NIEMAND HEEFT OPGESCHREVEN WAAROM HET BEWAARD IS. ` +
+        'Een gedateerd corpus is een meetobject en geen ontwerp, dus het mag onder de vloer ' +
+        'staan — maar welke bevinding het de "vóór"-helft van is, is het hele punt van bewaren. ' +
+        'Zet die reden in DATED_REASON in scripts/record-casus1-v2-references.ts.'
     );
   }
   /* SINDS V32 IS DIT GEVAL EEN ECHTE TEGENSPRAAK EN GEEN RASTERVERSCHIL MEER.
@@ -288,6 +341,76 @@ if (statedFloorOhm !== null) {
   }
 }
 
+/* ---- V33: HOW FAR THE BARRIER'S GRID READS FROM THE GATE'S ---------------
+ *
+ * DOCUMENTATION, and the number that justifies a decision. The v2 route aims
+ * the amp-load barrier at the tuner's own full-band safety grid (240 points)
+ * while `M-B/|Z|` enforces on the drivers' measured sweeps (1600). Same reader,
+ * same extent, different resolution — so the substitution stands or falls on
+ * how far apart the two read, and that is a measurement rather than a claim.
+ * `frozenNetlistGates.test.ts` holds it against `ampFloorSlackOhm`; this writes
+ * it down so a reader of the case book does not have to run a test to see it.
+ *
+ * Derived, never typed: it moves when the corpus moves. */
+const barrierGrids = (() => {
+  if (statedFloorOhm === null) return null;
+  const gridded = casus1ChainInput(manifest, files, golden);
+  const facts = casus1V2Facts(report('HUIDIG'), manifest, files);
+  const ref = impedanceReferenceFrom(
+    Object.fromEntries(
+      Object.entries(facts.impedanceByModel ?? {}).map(([m, z]) => [
+        m,
+        { grid: z.grid, magnitude: z.magnitude, phaseDeg: z.phaseDeg, validHz: z.validHz },
+      ]),
+    ),
+  );
+  if (!ref) return null;
+  const rows = Object.keys(netlists).map((key) => {
+    const netlist = casus1Filter(key, manifest, files, golden).netlist;
+    const onSweep = systemMinImpedanceOhm(netlist, ref.grid, ref.driverZ);
+    const onSafety = systemMinImpedanceOhm(netlist, gridded.safety.freqs, gridded.safety.z);
+    return {
+      netlist: key,
+      poortraster_ohm: r4(onSweep),
+      barriereraster_ohm: r4(onSafety),
+      verschil_ohm: onSweep === null || onSafety === null ? null : r4(Math.abs(onSweep - onSafety)),
+      zelfde_oordeel:
+        meetsAmpFloor(onSweep, statedFloorOhm) === meetsAmpFloor(onSafety, statedFloorOhm),
+    };
+  });
+  const live = rows.filter((r) => LIVE_V2.test(r.netlist) || ['HUIDIG', 'KAND_A', 'KAND_B'].includes(r.netlist));
+  const worstLive = live.reduce((a, b) => ((b.verschil_ohm ?? 0) > (a.verschil_ohm ?? 0) ? b : a), live[0]);
+  const worstAll = rows.reduce((a, b) => ((b.verschil_ohm ?? 0) > (a.verschil_ohm ?? 0) ? b : a), rows[0]);
+  return {
+    _:
+      'DOCUMENTATIE (V33). De barrièreterm mikt op het VEILIGHEIDSRASTER van de tuner, de poort ' +
+      'M-B/|Z| oordeelt op de gemeten SWEEP. Zelfde functie (`minImpedanceAt`), zelfde ' +
+      'uitgestrektheid, andere resolutie — dus het verschil tussen de twee is wat die keuze ' +
+      'rechtvaardigt, en het wordt gemeten in plaats van beweerd.',
+    barriereraster: {
+      punten: gridded.safety.freqs.length,
+      van_hz: Number(gridded.safety.freqs[0].toFixed(1)),
+      tot_hz: Number(gridded.safety.freqs[gridded.safety.freqs.length - 1].toFixed(0)),
+    },
+    poortraster: {
+      punten: ref.grid.length,
+      van_hz: Number(ref.grid[0].toFixed(1)),
+      tot_hz: Number(ref.grid[ref.grid.length - 1].toFixed(0)),
+    },
+    vloerspeling_ohm: r4(ampFloorSlackOhm(statedFloorOhm)),
+    grootste_verschil_levend: worstLive ?? null,
+    grootste_verschil_hele_casusboek: worstAll ?? null,
+    oordeel_wijkt_af_op: rows.filter((r) => !r.zelfde_oordeel).map((r) => r.netlist),
+    regel:
+      'Elke LEVENDE netlist leest op beide rasters binnen de vloerspeling, en op ELKE bevroren ' +
+      'netlist vellen de twee rasters hetzelfde oordeel over de gestelde vloer. Het eerste is ' +
+      'de rechtvaardiging, het tweede is wat er werkelijk toe doet — beide staan als assert in ' +
+      'frozenNetlistGates.test.ts.',
+    per_netlist: rows,
+  };
+})();
+
+raw.manifest_en_geometrie.v33_barriere_raster = barrierGrids;
 raw.manifest_en_geometrie.v2_herkomst = {
   _:
     'DOCUMENTATIE, geen acceptatiewaarde. Waar de KAND-V2-netlists vandaan komen, zodat een ' +
@@ -318,9 +441,14 @@ raw.manifest_en_geometrie.v2_herkomst = {
     'niet staat, breekt de suite. De lijst is dus geen vrijstelling maar een boekhouding, en ' +
     'zij hoort leeg te raken.',
   kosten:
-    `${keys.length} ketenruns, gemeten 44-73 s per kandidaat op deze meetset (F4d-nazorg; de ` +
-    'F4d-meting van 132-286 s stond op een tragere machinebezetting). Daarom een script en ' +
-    'geen test.',
+    `${keys.length} ketenruns. TOT V33 gemeten op 44-73 s per kandidaat; SINDS V33 op ruim tien ` +
+    'minuten, en die factor is geen regressie maar de prijs van de reparatie: de barrièreterm ' +
+    'lost het netwerk nu bij ELKE objectief-evaluatie op op het impedantie-oordeelraster ' +
+    '(ANALYSIS_GRID_POINTS punten) in plaats van op het gedecimeerde evaluatieraster. Nagemeten ' +
+    'op één kandidaat: 44,0 s tegen 669,8 s, bij vrijwel hetzelfde aantal evaluaties (88 008 ' +
+    'tegen 86 399). Daarom een script en geen test — en daarom is de bron een KEUZE-sleutel: wie ' +
+    'de prijs niet wil betalen kan `zFloorBarrierSource` op het evaluatieraster laten staan en ' +
+    'weet dan dat doel en poort weer twee banden lezen.',
   reproduceerbaarheid:
     'Nagemeten bij de F4d-nazorg: het script opnieuw draaien op dezelfde commit levert de ' +
     'netlists BYTE-IDENTIEK terug, op het `savedAt`-stempel van de serialisatie na. Dat ' +
@@ -329,18 +457,31 @@ raw.manifest_en_geometrie.v2_herkomst = {
 };
 
 const telling = (raw.classificatie as Record<string, Record<string, unknown>>).telling;
+const datedSummary = [...datedByCorpus.entries()]
+  .sort()
+  .map(([prefix, ks]) => `${ks.length}x \`${prefix}_KAND_*\``)
+  .join(', ');
+telling.sinds_V33 =
+  'V33 (27-08-2026): het KAND-V2-corpus is opnieuw opgewekt nadat de amp-vloerbarrière — de term ' +
+  'die de zoektocht naar de vloer duwt — zijn tekort op de GEMETEN IMPEDANTIESWEEP ging lezen in ' +
+  'plaats van op het evaluatieraster, via dezelfde functie waarmee M-B/|Z| oordeelt. Doel en ' +
+  'poort zien daarmee per constructie één getal — het levende corpus over het veiligheidsraster ' +
+  'van de tuner, met een tweede, duurdere arm ernaast die over de volle sweep draaide. Corpora ' +
+  `die vervangen zijn worden NIET weggegooid maar hernoemd: ${datedSummary} — byte-identieke ` +
+  'bestanden onder een gedateerde naam, met dezelfde tien metrieken en dezelfde klasse B. Nog ' +
+  'steeds NUL klasse C.';
 telling.sinds_V32 =
   'V31/V32 (27-08-2026): het KAND-V2-corpus is opnieuw opgewekt nadat de elektrische poorten op ' +
   'de gemeten impedantiesweep gingen oordelen in plaats van op het ketenraster (V32), en nadat ' +
   'een kandidaat wiens tune in zijn geheel geweigerd werd zijn zaad niet meer als ontwerp ' +
   `aflevert (V31). Het corpus dat het verving is opnieuw NIET weggegooid maar hernoemd: ` +
-  `${v30Keys.length} blokken \`V30_KAND_*\`, byte-identieke bestanden onder een gedateerde naam, ` +
+  `${(datedByCorpus.get('V30') ?? []).length} blokken \`V30_KAND_*\`, byte-identieke bestanden onder een gedateerde naam, ` +
   'met dezelfde tien metrieken en dezelfde klasse B. Er staan nu dus twee gedateerde corpora ' +
   'naast het levende: V28 (vóór de vloer een zoekdoel was) en V30 (vóór de poort de volle sweep ' +
   'las). Nog steeds NUL klasse C: het zijn metrieken op bestanden.';
 telling.sinds_V30 =
   `V30 (27-08-2026): het KAND-V2-corpus is opnieuw opgewekt met de gestelde vloer als ZOEKDOEL, ` +
-  `en het corpus dat het vervangt is niet weggegooid maar hernoemd: ${v28Keys.length} blokken ` +
+  `en het corpus dat het vervangt is niet weggegooid maar hernoemd: ${(datedByCorpus.get('V28') ?? []).length} blokken ` +
   '`V28_KAND_*`, byte-identieke bestanden onder een gedateerde naam, met dezelfde tien metrieken ' +
   'en dezelfde klasse B. Dat is geen referentie aanpassen — het zijn dezelfde netlists, en de ' +
   'nieuwe staan ernaast in plaats van eroverheen, zodat de vóór/ná-vergelijking van deze entry ' +
@@ -374,12 +515,7 @@ const table = compareDesigns([
   { label: 'HUIDIG', origin: 'baseline', report: report('HUIDIG') },
   { label: 'KAND-A', origin: 'baseline', report: report('KAND_A') },
   { label: 'KAND-B', origin: 'baseline', report: report('KAND_B') },
-  ...v28Keys.map((k) => ({
-    label: k.replace(/_/g, '-'),
-    origin: 'v2-candidate' as const,
-    report: report(k),
-  })),
-  ...v30Keys.map((k) => ({
+  ...datedKeys.map((k) => ({
     label: k.replace(/_/g, '-'),
     origin: 'v2-candidate' as const,
     report: report(k),

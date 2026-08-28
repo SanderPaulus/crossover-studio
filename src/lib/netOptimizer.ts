@@ -19,7 +19,7 @@ import {
 } from './catalog.ts';
 import type { AngleResponse } from './directivity.ts';
 import { floorCurve, type FloorShape } from './impedanceFloor.ts';
-import { acceptedAmpFloor } from './impedanceFloor.ts';
+import { ampFloorSlackOhm, minImpedanceAt } from './impedanceFloor.ts';
 import { auditNetwork, type AuditThresholds, type NetworkAudit, sourceResistanceOhm, seenImpedance, sliceDriverZ, sourceProbeIndex } from './partAudit.ts';
 
 /**
@@ -313,6 +313,65 @@ export interface NetOptimizeOptions {
    * zero, it is no judgement at all.
    */
   zFloorBarrier?: boolean;
+  /**
+   * WHERE the barrier above reads the system's shortest impedance (casebook
+   * V33). Absent = `'grid'`, which is what it has always read, so a v1 run —
+   * and the repair pass, which is a v1 caller of the same term — is
+   * byte-identical.
+   *
+   * THE FINDING. V32 moved every ELECTRICAL gate onto the drivers' own
+   * measured impedance sweeps, because an impedance requirement has no
+   * measurement gate and the response grid's floor is the far-field span. The
+   * barrier term stayed where it was, on the evaluation grid. So the search
+   * aimed at a minimum over 200 Hz–20 kHz while the gate enforced one over the
+   * whole sweep, and on casus 1 five of fifteen candidates had their entire
+   * value tune refused for a dip at 82 Hz the objective could not see. Two
+   * views of one requirement — the same shape as V30 and V32, one layer down.
+   *
+   * THREE VALUES, AND THE MIDDLE ONE IS THE POINT.
+   *
+   *   `'grid'`   — the decimated evaluation grid. What it always read; the
+   *                default, and therefore the v1 behaviour.
+   *   `'safety'` — the tuner's own full-band safety grid (`opts.safety`), which
+   *                already spans the drivers' whole measured extent and which
+   *                the repair trigger, the repair acceptance and the delivered
+   *                verdict have always used (`worstZOf`). The barrier was the
+   *                one floor reader that did not.
+   *   `'sweep'`  — `zFloorBarrierImpedance` below, which a caller fills from
+   *                the very `ImpedanceReference` the gate was frozen on. The
+   *                identical number the gate enforces, at the identical
+   *                resolution, and correspondingly expensive: that grid is the
+   *                analysis resolution and this runs inside the objective.
+   *
+   * All three go through the same reader (`systemMinImpedanceOhm` →
+   * `minImpedanceAt`), so the GRID is a parameter and not a second
+   * implementation. That is what makes `'safety'` defensible rather than
+   * merely cheap: it is the same question asked over a coarser grid with the
+   * same extent, and how much coarser costs is a MEASUREMENT — see
+   * `frozenNetlistGates.test.ts`, which holds the difference between the two
+   * against `ampFloorSlackOhm` on every frozen netlist.
+   *
+   * IT REACHES THE REPAIR PASS TOO, and that is not a side effect anyone should
+   * be surprised by — it is the same fix one pass further on. The repair's
+   * barrier pushed on the evaluation grid while the repair's ACCEPTANCE judged
+   * on the safety grid (`worstZOf`), so on a design whose minimum sits below
+   * the evaluation grid's floor the repair was pushing where there was nothing
+   * to push and being judged where there was: V32 measured four candidates with
+   * `ampFloorRepair: 'failed'`, all four with their minimum under 200 Hz. One
+   * source for one term makes those two agree.
+   *
+   * NO FALLBACK, DELIBERATELY. Asking for a source and not supplying its data
+   * does NOT quietly return to the evaluation grid: that would restore exactly
+   * the reading being withdrawn, and do it silently (V32's rule, applied to a
+   * search term instead of to a verdict). The term goes inert instead — in the
+   * search AND in the repair, because it is one term — and the run says so in
+   * `zFloorSourceNote`.
+   *
+   * IT IS A CHOICE KEY on the v2 route (`engine2/optimizer/choices.ts`): it
+   * decides which band "good" is measured over, which is a different search
+   * and not a different amount of polish.
+   */
+  zFloorBarrierSource?: 'grid' | 'safety' | 'sweep';
   safety?: {
     freqs: readonly number[];
     w: GriddedResponse;
@@ -366,6 +425,27 @@ export interface NetOptimizeOptions {
    * boundary and must be built on the side that runs the tuner.
    */
   gateViolation?: (parts: readonly VxpPart[]) => string | null;
+  /**
+   * V33 — the measured impedance the barrier reads when
+   * `zFloorBarrierSource` names the sweep. Data, not a decision: which grid
+   * this is comes from the choice key above, and what is ON it is the
+   * measurement the run already holds.
+   *
+   * SAME ARGUMENT AS `gateViolation`, and the same class (polish). The sweep,
+   * the resampling and the union extent are all `engine2/` work, and this file
+   * may not import from there; so the caller that already built the gate's
+   * `ImpedanceReference` hands over its grid and its driver impedances, and
+   * this file solves on them and knows nothing about where they came from.
+   * Handing over the same object is what makes "the goal and the gate see one
+   * number" a construction rather than a coincidence.
+   *
+   * `span` is prose for the notes — never parsed, never compared.
+   */
+  zFloorBarrierImpedance?: {
+    grid: readonly number[];
+    driverZ: Record<string, readonly Complex[]>;
+    span: string;
+  };
   /**
    * V31 — REPORT the tune a wholesale gate threw away, instead of leaving the
    * caller with a seed and no way to know what was lost.
@@ -582,6 +662,44 @@ export interface NetOptimizeResult {
    */
   safetyKinds?: SafetyKind[];
   /**
+   * V33 — THE WHOLESALE REFUSAL IN ONE SHAPE, WHATEVER DID THE REFUSING.
+   *
+   * Until V33 there was one way for a whole tune to be thrown away — the
+   * full-band safety gate — and one field to detect it by, `safetyNote`. V33
+   * adds a second: an ACTIVE GATE refusing the value tune. A caller that had to
+   * detect two shapes would end up asking two questions about one event, and
+   * the shortlist would grow two kinds of rejection for a distinction its
+   * reader does not have (`engine2/optimizer/shortlist.ts` has exactly one).
+   *
+   * So both paths fill this, and `by` says which rule family spoke. `kinds`
+   * carries the categories the deciding rule recorded AT THE POINT OF DECISION
+   * — never re-derived from `reason`, which is prose for a human (A3g).
+   *
+   * PRESENT ONLY ON A RUN THAT ARMED ONE OF THE TWO v2 MECHANISMS (the gate
+   * hook or the rejected-tune report). Neither exists on a v1 run, so every v1
+   * result object is byte-identical to what it was — the same guard
+   * `rejectedTune` has carried since V31.
+   *
+   * `note` is the prose a caller may show. It says why the run delivers
+   * nothing; `reason` is the refusing rule's own sentence. Neither is ever
+   * parsed to decide anything (A3g) — `by` and `kinds` are what a caller acts
+   * on.
+   */
+  refusal?: {
+    by: 'safety-gate' | 'active-gate';
+    kinds: string[];
+    reason: string;
+    note: string;
+  };
+  /**
+   * V33 — where the amp-load barrier took its shortfall, or why it took none.
+   *
+   * Prose, for the run notes. Set whenever a caller states
+   * `zFloorBarrierSource`; absent on every run that does not, which is every
+   * v1 run.
+   */
+  zFloorSourceNote?: string;
+  /**
    * V31 — the metrics of the tune that was REJECTED, in the same `report()`
    * shape as `after`. Present only when `rejectedTuneReport` was asked for.
    *
@@ -724,6 +842,38 @@ export type SafetyKind = 'crossing' | 'valley' | 'protection' | 'load';
  * floor.
  */
 export const AMP_FLOOR_BARRIER_WEIGHT = 1200;
+
+/**
+ * V33 — THE SYSTEM'S SHORTEST IMPEDANCE ON A GIVEN MEASURED GRID.
+ *
+ * Exported for one reason and it is not convenience: this is the function the
+ * amp-load barrier reads its shortfall through, and a test has to be able to
+ * ask it the same question the `M-B/|Z|` gate is asked, about the same netlist,
+ * and get the same bits back. "Goal and limit see one number" is then a claim
+ * that can be checked rather than a sentence in a commit message
+ * (`frozenNetlistGates.test.ts`).
+ *
+ * The gate reaches the same value through `epdr`, which since V33 also takes
+ * its |Z| minimum from `minImpedanceAt`. Two solves of one network on one grid
+ * with one tie-break rule — no tolerance is involved anywhere, and none should
+ * be: two implementations that agree to three decimals is exactly the state
+ * V32 found and repaired.
+ *
+ * Null when the network cannot be solved. That is not a floor verdict: an
+ * unsolvable network is not a network, and the constraint machinery and the
+ * caller's own gate both refuse it on their own terms.
+ */
+export function systemMinImpedanceOhm(
+  net: { nodeCount: number; elements: NetElement[] },
+  grid: readonly number[],
+  driverZ: Record<string, readonly Complex[]>,
+): number | null {
+  try {
+    return minImpedanceAt(solveNetwork(net, grid, driverZ).inputZ)?.ohm ?? null;
+  } catch {
+    return null;
+  }
+}
 
 /** Soft buildability bounds, as in synthesis. */
 const BOUNDS: Record<'C' | 'L' | 'R', [number, number]> = {
@@ -1019,7 +1169,7 @@ export function optimizeNetworkValues(
    * quality — measured at 1.2 dB and 11° for one such lift — on a decision
    * nobody asked for.
    */
-  const zSlackOhm = ampFloorOhm === null ? 0 : Math.max(1e-3, ampFloorOhm - acceptedAmpFloor(ampFloorOhm));
+  const zSlackOhm = ampFloorOhm === null ? 0 : ampFloorSlackOhm(ampFloorOhm);
   /**
    * V30 — is the floor a SEARCH GOAL on this run, or only a veto?
    *
@@ -1029,6 +1179,114 @@ export function optimizeNetworkValues(
    * nothing, because there is nothing to be short of (P4).
    */
   const zFloorGoal = ampFloorOhm !== null && opts.zFloorBarrier === true;
+  /* ---- V33: WHERE THAT GOAL IS MEASURED ------------------------------- *
+   *
+   * One place decides it, exactly as `zFloorGoal` above decides whether there
+   * is a goal at all — and for a sharper version of the same reason. V30 and
+   * V32 were both entries about one requirement being answered on two
+   * different bands; V33 is the last of the three, and it is the objective's
+   * turn. Since V32 the `M-B/|Z|` gate enforces the floor on the drivers' own
+   * measured impedance sweeps, while this barrier read the shortfall off the
+   * EVALUATION grid, whose floor is the far-field measurement span. On casus 1
+   * the search therefore aimed at a minimum above 200 Hz and the gate refused
+   * it for a dip at 82 Hz.
+   *
+   * `barrierShortOhm` is the ONLY reader of that decision, and it is the one
+   * line in this file V33 changes. Every other floor reader — the repair
+   * trigger, `worstZOf`, the snap target, the delivered verdict, the safety
+   * gate — is deliberately untouched: they are the veto half, they were not
+   * what disagreed with the gate, and V33's remit was the objective.
+   */
+  const barrierSource: 'grid' | 'safety' | 'sweep' = opts.zFloorBarrierSource ?? 'grid';
+  /**
+   * The grid the barrier reads on, when it is not the evaluation grid.
+   *
+   * Null means the caller named a source and did not supply it. `what` is the
+   * sentence for the note — prose, never parsed.
+   */
+  const barrierGrid: {
+    grid: readonly number[];
+    driverZ: Record<string, readonly Complex[]>;
+    what: string;
+  } | null =
+    barrierSource === 'safety'
+      ? opts.safety
+        ? {
+            grid: opts.safety.freqs,
+            driverZ: opts.safety.z,
+            what:
+              `${opts.safety.freqs[0].toFixed(0)}-` +
+              `${opts.safety.freqs[opts.safety.freqs.length - 1].toFixed(0)} Hz, ` +
+              `${opts.safety.freqs.length} points — the tuner's own full-band safety grid, the ` +
+              'one every other amp-floor reader has always used',
+          }
+        : null
+      : barrierSource === 'sweep'
+        ? opts.zFloorBarrierImpedance
+          ? {
+              grid: opts.zFloorBarrierImpedance.grid,
+              driverZ: opts.zFloorBarrierImpedance.driverZ,
+              what: opts.zFloorBarrierImpedance.span,
+            }
+          : null
+        : null;
+  /**
+   * The shortfall the barrier term is pulling against, from the stated source.
+   *
+   * On `'grid'` this is `m.zShortOhm`, i.e. exactly the expression that stood
+   * here before V33 — so a caller that states nothing gets the same arithmetic
+   * in the same order, and the v1 route (including the repair pass, which is a
+   * v1 caller of this same term) is byte-identical.
+   *
+   * Otherwise it solves the network on the grid the caller named and reads the
+   * minimum through `minImpedanceAt`, the SAME function `epdr` reads it
+   * through. On `'sweep'` that is the gate's own reference, so goal and limit
+   * are one number by construction rather than two loops that agree until
+   * someone edits one of them. On `'safety'` it is the tuner's own full-band
+   * grid: same reader, an extent that covers the gate's readings, a coarser
+   * step — and how far that lands from the gate's number is a MEASUREMENT
+   * (`frozenNetlistGates.test.ts` holds it against `ampFloorSlackOhm`) rather
+   * than a hope.
+   *
+   * THE PRICE, MEASURED AND NOT HIDDEN, and it is why there are three values
+   * and not two: the sweep grid is the analysis resolution (1600 points on
+   * casus 1) against 240 for the safety grid and 96 for the evaluation grid,
+   * and this runs inside the objective. On casus 1 that is a chain run of
+   * eleven minutes against one.
+   *
+   * NO DATA, NO PULL — never a quiet fall back to the evaluation grid. That
+   * would restore the very reading V32 withdrew, silently, in the one place
+   * nobody looks. Zero here means the floor does not steer, which is the
+   * pre-V30 state and is said out loud in `zFloorSourceNote`.
+   */
+  const barrierShortOhm = (
+    m: { zShortOhm: number },
+    net: { nodeCount: number; elements: NetElement[] },
+  ): number => {
+    if (barrierSource === 'grid') return m.zShortOhm;
+    if (barrierGrid === null || ampFloorOhm === null) return 0;
+    const ohm = systemMinImpedanceOhm(net, barrierGrid.grid, barrierGrid.driverZ);
+    return ohm === null ? 0 : Math.max(0, ampFloorOhm - ohm);
+  };
+  /** Prose about the line above, for the run notes. Absent unless asked. */
+  const zFloorSourceNote: string | undefined =
+    opts.zFloorBarrierSource === undefined
+      ? undefined
+      : barrierSource === 'grid'
+        ? 'The amp-load barrier aimed at the |Z| minimum over the EVALUATION grid, which is what ' +
+          'it has always read. On a measurement set whose far-field span starts above the ' +
+          'impedance minimum, that is a different band from the one M-B/|Z| enforces (V33).'
+        : barrierGrid !== null
+          ? `The amp-load barrier aimed at the |Z| minimum over ${barrierGrid.what}, through the ` +
+            'same reader the M-B/|Z| gate takes its own minimum through. Goal and limit are ' +
+            'therefore one question rather than two; where they can still differ is the grid, ' +
+            'and that difference is measured against the floor slack rather than assumed away ' +
+            '(V33).'
+          : `The amp-load barrier was asked to aim at the "${barrierSource}" source and its data ` +
+            'never reached this run, so the stated floor did not steer anything here — not the ' +
+            'search, and not the repair pass, which pushes with the same term. It did NOT fall ' +
+            'back to the evaluation grid: that would restore the reading V32 withdrew, and do it ' +
+            'silently.';
   /* THE DC LIMIT, PRECOMPUTED. When the Thevenin probe has no usable frequency
    * — the low driver's impedance peak lies below the grid, which is the normal
    * case for a woofer measured from 200 Hz — the audit falls back to the
@@ -2439,7 +2697,7 @@ export function optimizeNetworkValues(
         // is enforced in ONE place rather than assumed here: `zFloorGoal`
         // requires a rating, and the repair pass — the other caller — runs
         // only when there is one.
-        barr += AMP_FLOOR_BARRIER_WEIGHT * (m.zShortOhm / ampFloorOhm!) ** 2;
+        barr += AMP_FLOOR_BARRIER_WEIGHT * (barrierShortOhm(m, work) / ampFloorOhm!) ** 2;
         // THE HIERARCHY: the amplifier floor is non-negotiable, branch
         // fidelity yields to it. With the corridor still counting, the
         // repair paid corridor tax on exactly the branch shifts the lift
@@ -2829,7 +3087,27 @@ export function optimizeNetworkValues(
    * refused and the seed stands — the same doctrine the full-band safety gate
    * already follows, and the honest one: a design that only reaches its
    * targets outside the designer's stated limits has not reached them. */
-  if (opts.gateViolation && !gateOk(cur.parts, 'value tune')) cur = asIs(seedParts);
+  /**
+   * V33 — the value tune an active gate refused WHOLESALE, kept as evidence.
+   *
+   * Until V33 this fell back to the seed and the run carried on, and what came
+   * out the other end was published as the candidate's answer. On casus 1 that
+   * was five of fifteen candidates: networks nobody tuned against the goal
+   * this run was given, delivered at 0.01–1.38 Ω against a stated 2.60 Ω
+   * floor, and indistinguishable in the result object from a tune that simply
+   * landed there. The seed still stands as the working point below — a later
+   * pass may still find something the gate accepts, and throwing that away
+   * would be a second change — but if nothing does, the run says so instead of
+   * handing over the seed (see the wholesale return further down).
+   */
+  let refusedValueTune: { reason: string; parts: VxpPart[] } | null = null;
+  if (opts.gateViolation) {
+    const why = gateRefusal(cur.parts, 'value tune');
+    if (why !== null) {
+      refusedValueTune = { reason: why, parts: cloneParts(cur.parts) };
+      cur = asIs(seedParts);
+    }
+  }
   {
     const s1 = reseedOutliers(parts, textbook);
     if (s1) cur = challenge(cur, s1);
@@ -3887,6 +4165,20 @@ export function optimizeNetworkValues(
       ...(opts.rejectedTuneReport
           ? { rejectedTune: report(after, outParts), rejectedParts: cloneParts(outParts) }
           : {}),
+      /* V33 — the same refusal, in the one shape a caller detects (see
+       * `refusal`). Absent on a v1 run, where neither v2 mechanism is armed. */
+      ...(opts.rejectedTuneReport || opts.gateViolation
+        ? {
+            refusal: {
+              by: 'safety-gate' as const,
+              kinds: [] as string[],
+              reason: `the tune attenuated the driver ${resLoss.toFixed(1)} dB below its own level (budget ${soloSensBudgetDb} dB)`,
+              note:
+                'The solo sensitivity gate refused the whole tune, so this run delivers no ' +
+                'network. Flattening by pulling everything down is not a filter.',
+            },
+          }
+        : {}),
       safetyNote:
           `sensitivity gate: the tune reached its flatness by attenuating the driver ` +
           `${resLoss.toFixed(1)} dB below its own level (budget ${soloSensBudgetDb} dB) — ` +
@@ -3968,6 +4260,21 @@ export function optimizeNetworkValues(
         (opts.band ? '' : ' (full grid minus edges — no validity band supplied)'),
       safetyNote: `safety gate: tune rejected on the full measurement band — ${reasons.join('; ')}. ${tail}`,
       safetyKinds: kinds,
+      /* V33 — the same refusal, in the one shape a caller detects. `kinds` is
+       * the same array `safetyKinds` carries: one decision, recorded once. */
+      ...(opts.rejectedTuneReport || opts.gateViolation
+        ? {
+            refusal: {
+              by: 'safety-gate' as const,
+              kinds: [...kinds] as string[],
+              reason: reasons.join('; '),
+              note:
+                'The full-band safety gate refused the whole tune, so this run delivers no ' +
+                'network. What it fell back on is the SEED, which nobody judged against this ' +
+                "run's goal (casebook V31).",
+            },
+          }
+        : {}),
       /* V31 — what was thrown away. Reporting only; no rule above reads it. */
       ...(opts.rejectedTuneReport
         ? { rejectedTune: report(after, outParts), rejectedParts: cloneParts(outParts) }
@@ -3977,6 +4284,71 @@ export function optimizeNetworkValues(
         // returned is the seed, not the one this sentence is about (A3g: a
         // note may never be read as describing the delivered design).
         ...(ampFloorNote ? { ampFloorNote: `the rejected tune — ${ampFloorNote}` } : {}),
+      };
+    }
+  }
+
+  /* ---- V33: THE VALUE TUNE WAS REFUSED AND NOTHING AFTER IT RECOVERED ----
+   *
+   * The V31 form, one rule further out. V31 established what a run owes its
+   * caller when a whole tune is thrown away: a refusal with the rule that
+   * refused it and the metrics of what was refused — never a seed, because a
+   * seed is a network nobody judged against anything this run was asked for.
+   * That was written for the full-band safety gate. The v2 gate hook throws a
+   * whole tune away in exactly the same sense and did not say so.
+   *
+   * THE SECOND CONDITION IS NOT DECORATION. `cur` fell back to the seed, and
+   * the passes after it — the reseed challenge, the drift catch, the staged
+   * barrier, prune, escalation — are real searches that are each gate-checked
+   * before they are accepted. If one of them delivered a network this gate
+   * accepts, then this run DID find an admissible design and calling that "no
+   * network" would throw away a legal answer. So the refusal stands only when
+   * what is actually being handed over is refused too, and the question is put
+   * to the same one place every other acceptance goes through.
+   *
+   * The reason reported is the one that refused the TUNE, because that is the
+   * rule this candidate ran into; the delivered network's own sentence is
+   * appended so a reader can see both. Guarded on the hook, so no v1 run
+   * reaches a line of this. ---- */
+  if (refusedValueTune !== null && opts.gateViolation) {
+    const deliveredRefusal = gateRefusal(outParts, 'delivered network');
+    if (deliveredRefusal !== null) {
+      const refusedMetrics = fullOf(refusedValueTune.parts);
+      return {
+        parts: cloneParts(parts),
+        before: report(before, parts),
+        after: report(before, parts),
+        tuned: 0,
+        evaluations,
+        removed: [],
+        added: [],
+        bandNote:
+          `optimised on ${Math.round(band[0])}–${Math.round(band[1])} Hz` +
+          (opts.band ? '' : ' (full grid minus edges — no validity band supplied)'),
+        refusal: {
+          by: 'active-gate',
+          /* One category, recorded where the decision is taken (A3g). It is
+           * not the gate's NAME: which gate refused is in `reason`, and a
+           * caller that switched on a gate name would be parsing prose. */
+          kinds: ['gate'],
+          reason: refusedValueTune.reason,
+          note:
+            'An active gate refused the whole value tune, and what the run then fell back on is ' +
+            `refused as well — ${deliveredRefusal}. So this run delivers no network rather than a ` +
+            'seed nobody tuned against the goal it was given (casebook V31, V33).',
+        },
+        ...(zFloorSourceNote ? { zFloorSourceNote } : {}),
+        ...(opts.rejectedTuneReport
+          ? {
+              rejectedTune: report(refusedMetrics, refusedValueTune.parts),
+              rejectedParts: cloneParts(refusedValueTune.parts),
+            }
+          : {}),
+        ...(ampFloorNote ? { ampFloorNote: `the rejected tune — ${ampFloorNote}` } : {}),
+        ...(auditReport ? { audit: auditReport } : {}),
+        gateRefusals,
+        gateEvaluations,
+        gateCacheHits,
       };
     }
   }
@@ -4037,6 +4409,7 @@ export function optimizeNetworkValues(
     ampFloorRepair,
     ...(valueWindowNote ? { valueWindowNote } : {}),
     ...(auditReport ? { audit: auditReport } : {}),
+    ...(zFloorSourceNote ? { zFloorSourceNote } : {}),
     ...(opts.gateViolation ? { gateRefusals, gateEvaluations, gateCacheHits } : {}),
   };
 }

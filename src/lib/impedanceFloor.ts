@@ -88,11 +88,74 @@ export function acceptedAmpFloor(ratedOhm: number): number {
   return ratedOhm * (1 - AMP_FLOOR_TOLERANCE);
 }
 
+/**
+ * Numerieke ondergrens onder de speling — geen ontwerpmarge.
+ *
+ * De speling is een PERCENTAGE van de rating, dus zij loopt naar nul zodra de
+ * rating dat doet. Detectie en acceptatie vergelijken drijvende-kommagetallen,
+ * en een speling van nul maakt van "haalt hem precies" een muntworp.
+ */
+const AMP_FLOOR_SLACK_MIN_OHM = 1e-3;
+
+/**
+ * De speling waarmee de tuner met de vloer werkt: hoe ver een geleverd minimum
+ * ONDER de rating mag landen en nog steeds "gehaald" heet.
+ *
+ * Eén definitie, één plek — de reden waarom `meetsAmpFloor` hier woont. De
+ * tuner rekende hem tot V33 zelf uit, en sinds V33 vraagt óók een test hem op:
+ * die meet het verschil tussen twee rasters waarop dezelfde eis gelezen kan
+ * worden en houdt het tegen déze speling aan. Twee plekken die hetzelfde
+ * percentage uitrekenen is precies hoe een netwerk gerepareerd kon heten en
+ * daarna doorgestreept worden.
+ */
+export function ampFloorSlackOhm(ratedOhm: number): number {
+  return Math.max(AMP_FLOOR_SLACK_MIN_OHM, ratedOhm - acceptedAmpFloor(ratedOhm));
+}
+
 /** Haalt dit geleverde minimum de rating? Absent/0 = geen rating, dus geen oordeel. */
 export function meetsAmpFloor(zMinOhm: number | null | undefined, ratedOhm: number | null | undefined): boolean {
   if (!(typeof ratedOhm === 'number' && ratedOhm > 0)) return true;
   if (zMinOhm === null || zMinOhm === undefined) return true;
   return zMinOhm >= acceptedAmpFloor(ratedOhm);
+}
+
+/* ------------------------------------------------------------------ *
+ * V33 — WHICH READING OF |Z| IS "THE SYSTEM'S SHORTEST IMPEDANCE"
+ * ------------------------------------------------------------------ */
+
+/**
+ * The smallest modulus in a solved input impedance, and where it sits.
+ *
+ * WHY THIS IS A FUNCTION AND NOT A THREE-LINE LOOP. Two places ask this
+ * question about the same network: the `M-B/|Z|` gate, which decides whether a
+ * design may be offered, and — since V33 — the amp-floor barrier term, which
+ * decides where the search aims. V30 and V32 were both about those two
+ * answering on different data; V33 is about them answering with different
+ * code. A loop written twice agrees until someone changes one of them, and the
+ * whole casebook entry above `meetsAmpFloor` is about what that costs.
+ *
+ * So the tie-break is stated once: the FIRST index wins, strict `<`, no
+ * epsilon. That matters more than it looks — a network with two equal minima
+ * would otherwise report two different frequencies depending on which copy of
+ * the loop ran, and `minZAtHz` is printed beside the ohms.
+ *
+ * Returns null for an empty array rather than Infinity: no samples is not a
+ * measurement of an infinite impedance.
+ */
+export function minImpedanceAt(
+  inputZ: readonly { re: number; im: number }[],
+): { ohm: number; index: number } | null {
+  if (inputZ.length === 0) return null;
+  let index = 0;
+  let ohm = Math.hypot(inputZ[0].re, inputZ[0].im);
+  for (let i = 1; i < inputZ.length; i++) {
+    const m = Math.hypot(inputZ[i].re, inputZ[i].im);
+    if (m < ohm) {
+      ohm = m;
+      index = i;
+    }
+  }
+  return { ohm, index };
 }
 
 export const IEC_MIN_FRACTION = 0.8;

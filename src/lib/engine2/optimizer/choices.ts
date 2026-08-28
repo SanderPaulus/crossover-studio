@@ -2,8 +2,9 @@
  * F4c — WHAT IS SEARCHED versus HOW IT IS SEARCHED.
  *
  * `NetOptimizeOptions` had 37 top-level keys when F4c classified them — 38
- * since V30 added `zFloorBarrier` and 39 since V31 added `rejectedTuneReport`,
- * and the count is asserted rather than
+ * since V30 added `zFloorBarrier`, 39 since V31 added `rejectedTuneReport`,
+ * and 41 since V33 added `zFloorBarrierSource` (choice) beside
+ * `zFloorBarrierImpedance` (polish), and the count is asserted rather than
  * described (`choiceKeyGuard.test.ts`). Until F4c the v2 route set four of
  * them and inherited the other 33 verbatim from whatever the v1 chain happened
  * to build (`audit §2.2`). That is harmless while v1 also chooses the
@@ -89,6 +90,14 @@ export const CHOICE_KEYS = [
    * the ohms are part of the answer it is looking for. Two different searches,
    * so a choice (casebook V30). */
   'zFloorBarrier',
+  /* …and WHERE that steering is measured. V33, and it is a choice for the
+   * same reason `band` is one: it names the band a requirement is judged over.
+   * With the evaluation grid the search aims at the |Z| minimum above the
+   * far-field span; with the measured sweep it aims at the one M-B/|Z|
+   * actually enforces. Same weight, same term, two different searches — and
+   * on casus 1 the difference was five candidates whose entire value tune the
+   * gate refused for a dip the objective could not see (casebook V33). */
+  'zFloorBarrierSource',
   'breakupGuard',
   'safety',
   'audit',
@@ -158,6 +167,13 @@ export const POLISH_KEYS = [
    * refusal instead of publishing a seed. A key that cannot alter an outcome
    * is not a choice about what is searched. */
   'rejectedTuneReport',
+  /* V33 — the measurement the choice above names, handed over by the caller
+   * that already holds it. Polish for the same reason `gateViolation` is: it
+   * carries no decision. WHICH grid the barrier reads is
+   * `zFloorBarrierSource`, a choice; what is ON that grid is the run's own
+   * measured sweep, and restating it as a candidate value would put a second
+   * copy of one measurement on the wire (the angleData argument, again). */
+  'zFloorBarrierImpedance',
 ] as const;
 
 export type PolishKey = (typeof POLISH_KEYS)[number];
