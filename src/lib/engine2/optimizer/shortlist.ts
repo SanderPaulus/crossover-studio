@@ -66,6 +66,43 @@ export const SHORTLIST_SELECTION_VERSION = 'shortlist/1.1';
  * at all. The same field can therefore produce a different list, which is
  * exactly the condition this constant exists to record. */
 
+/**
+ * V36 — WHAT A DESIGN BURNS, AS A COLUMN.
+ *
+ * A COLUMN AND NOT A CRITERION, and the distinction is the whole delivery.
+ * Nothing in this file reads it: it does not filter, it does not spread, it
+ * does not sort, and no threshold anywhere compares against it. That is the
+ * A5e.1 rule (`noWeights.test.ts` enforces the general form of it) and it is
+ * also the honest state of affairs — casus 1 states no dissipation limit, so
+ * per P4 there is nothing to judge and a number without a judgement is exactly
+ * what belongs on a screen.
+ *
+ * WHY IT HAD TO BE CARRIED RATHER THAN LOOKED UP. The M-A gate verdict already
+ * carries the FRACTION, and the shortlist has shown that since F3. It cannot
+ * carry the WATTS: a fraction is scale-free by construction (A4 says so) and a
+ * watt needs the amplifier power the designer stated. So the number that tells
+ * a builder whether a 20 W resistor will do had no route to the list at all —
+ * measured on the live corpus at V36: 15.2 to 28.7 W in ONE resistor at 100 W,
+ * on designs whose only visible dissipation figure was "23 %".
+ */
+export interface DissipationColumn {
+  /** M-A's own number — the share of amplifier power burnt in the DISCRETE
+   *  resistors. Read from the gate evaluation, never recomputed here. */
+  totalFraction: number;
+  /** The largest single discrete resistor, or null when the design has none. */
+  largestResistor: { id: string; ohm: number; fraction: number } | null;
+  /**
+   * Watts in that resistor at the stated amplifier power. `null` when the
+   * designer stated no power — an empty field is not a judgement (F0), and a
+   * default wattage would be this app inventing the one number a builder is
+   * most likely to act on.
+   */
+  largestResistorWatts: number | null;
+  /** The power those watts are at, or null. Quoted beside them, because
+   *  "20 W" without it is half a sentence. */
+  powerW: number | null;
+}
+
 /** One candidate offered to the selection. */
 export interface ShortlistInput<T> {
   label: string;
@@ -76,6 +113,20 @@ export interface ShortlistInput<T> {
   measurements: CandidateMeasurements;
   /** The gate verdicts this candidate already earned (F2). */
   gates: readonly GateVerdict[];
+  /**
+   * V36 — what it burns.
+   *
+   * OPTIONAL, and the two empty states mean different things. ABSENT is a
+   * caller that does not measure dissipation at all; `null` is a candidate that
+   * was measured and could not be answered — no network (a wholesale refusal),
+   * or no measured sweep to solve it on. Both become `null` on the row, because
+   * a row has nothing to show either way; the distinction lives here, where the
+   * caller states it.
+   *
+   * Neither is 0. A design that burns nothing and a design nobody measured are
+   * not the same claim (F0).
+   */
+  dissipation?: DissipationColumn | null;
   /** Reasons the v1 chain itself disqualified it, if any. */
   disqualified?: readonly string[];
   /**
@@ -106,6 +157,8 @@ export interface ShortlistRow<T> {
   orderSignature: string;
   requirements: RequirementEvaluation;
   gates: readonly GateVerdict[];
+  /** V36 — carried through untouched, exactly as `gates` is. */
+  dissipation: DissipationColumn | null;
   measurements: CandidateMeasurements;
 }
 
@@ -224,6 +277,7 @@ export function buildShortlist<T>(
       orderSignature: orderSignature(c.topology),
       requirements: evaluation,
       gates: c.gates,
+      dissipation: c.dissipation ?? null,
       measurements: c.measurements,
     };
     feasible.push({

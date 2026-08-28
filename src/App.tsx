@@ -6892,6 +6892,18 @@ export default function App() {
             // evaluation band the tuner used, which is already clipped to
             // measurement validity (A5.5).
             judgeBandHz: settings.band,
+            /* V36 — the power the shortlist's dissipation column turns M-A's
+             * scale-free fraction into watts at. Reporting only: it steers
+             * nothing and is not in the fingerprint. Read from the SAME field
+             * the report panel reads, so the two surfaces cannot print watts at
+             * two different powers; absent when the designer stated none, and
+             * then there are no watts at all rather than watts at a default. */
+            ...(() => {
+              const w = Number(engineV2Settings.amplifierPowerW);
+              return engineV2Settings.amplifierPowerW !== '' && Number.isFinite(w) && w > 0
+                ? { amplifierPowerW: w }
+                : {};
+            })(),
             // Stable identities for the fingerprint. Each is a hash INPUT, so
             // what matters is that it changes when the thing it names changes
             // — never that a human can read it.
@@ -6949,6 +6961,9 @@ export default function App() {
               topology: c.topology,
               measurements: c.measurements,
               gates: c.gates,
+              // V36 — what it burns, measured by the worker that already
+              // solved it. A column, never a criterion.
+              dissipation: c.dissipation,
               disqualified: c.result.disqualified,
               /* V31 — a candidate whose tune was refused wholesale carries no
                * network. It still goes into the field: the shortlist is what
@@ -16763,6 +16778,14 @@ export default function App() {
                     ['zmin', 'Z min', (r: (typeof v2Shortlist.rows)[number]) => r.result.zMinOhm, (v: number) => `${v.toFixed(1)} Ω`],
                     ['epdr', 'EPDR', (r: (typeof v2Shortlist.rows)[number]) => r.gates.find((g) => g.gate === 'M-B/EPDR')?.value ?? null, (v: number) => `${v.toFixed(2)} Ω`],
                     ['diss', t('dissipation'), (r: (typeof v2Shortlist.rows)[number]) => r.gates.find((g) => g.gate === 'M-A')?.value ?? null, (v: number) => `${(v * 100).toFixed(0)} %`],
+                    /* V36 — the WATTS in the largest single resistor, beside
+                     * the fraction that has been here since F3. The fraction
+                     * says how much of the amplifier the filter eats; this says
+                     * whether the part exists. On casus 1 they read 23 % and
+                     * 17.9 W, and only the second is a number anybody can take
+                     * to a supplier. Blank when no amplifier power is stated —
+                     * a fraction is scale-free and a watt is not. */
+                    ['rmax', t('largest R'), (r: (typeof v2Shortlist.rows)[number]) => r.dissipation?.largestResistorWatts ?? null, (v: number) => `${v.toFixed(1)} W`],
                     ['vfs', 'V@fs', (r: (typeof v2Shortlist.rows)[number]) => { const mc = r.gates.filter((g) => g.gate === 'M-C' && g.value !== null); return mc.length ? Math.max(...mc.map((g) => g.value!)) : null; }, (v: number) => `${v.toFixed(1)} dB`],
                     ['peak', t('peak'), (r: (typeof v2Shortlist.rows)[number]) => r.measurements.response?.narrowPeaks[0]?.db ?? null, (v: number) => `+${v.toFixed(1)} dB`],
                   ] as const;

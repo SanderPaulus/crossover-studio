@@ -54,6 +54,8 @@ import {
   type GateVerdict,
   type MeasuredSweep,
 } from './gates.ts';
+import type { DissipationResult } from '../metrics/electrical.ts';
+import type { DissipationColumn } from './shortlist.ts';
 import {
   invertBudgets,
   passbandImpedanceMedian,
@@ -129,6 +131,17 @@ export interface V2RunSettings extends MeasurementFactsPayload {
    * lower edge.
    */
   judgeBandHz?: [number, number];
+  /**
+   * V36 — the amplifier power M-A's scale-free fraction is expressed in watts
+   * against, for the shortlist's dissipation column. REPORTING ONLY: it steers
+   * nothing, judges nothing, and is deliberately not a fingerprint ingredient
+   * — two runs that differ only in the power a table is printed at searched the
+   * same field.
+   *
+   * Absent = the designer stated no power, and then there is no watt figure at
+   * all rather than one at an invented default (F0).
+   */
+  amplifierPowerW?: number;
 }
 
 /**
@@ -260,6 +273,13 @@ export interface V2CandidateResult<R> {
   measurements: CandidateMeasurements;
   /** F3 — the topology class this design belongs to (A5e.1). */
   topology: TopologyDescriptor;
+  /**
+   * V36 — what this design burns, from the gate evaluation that already
+   * measured it. Null for a candidate with no network, and for one whose
+   * network could not be solved on the measured sweep. Never recomputed: it is
+   * M-A's own `DissipationResult`, read rather than asked a second time (A3g).
+   */
+  dissipation: DissipationColumn | null;
   /**
    * V31 — non-null when this candidate's tune was refused wholesale. The
    * candidate then delivers NO network: `result.parts` is empty, the gates are
@@ -1070,6 +1090,33 @@ export function withDeclaredSourceLimit<
   };
 }
 
+/**
+ * V36 — M-A's result, shaped into the shortlist's column.
+ *
+ * Deliberately trivial, and deliberately in one place: the fraction is copied,
+ * the largest discrete resistor is the first non-parasitic element (the metric
+ * already sorts them descending), and the watts are that element's share of a
+ * power the designer stated. Nothing here decides anything.
+ *
+ * PARASITICS ARE EXCLUDED, exactly as `totalFraction` excludes them. A coil's
+ * DCR is not a component anybody chooses a wattage for, and letting one win the
+ * "largest resistor" column would point a builder at a part they cannot buy.
+ */
+function dissipationColumnOf(
+  diss: DissipationResult | null,
+  powerW: number | undefined,
+): DissipationColumn | null {
+  if (!diss) return null;
+  const largest = diss.elements.find((e) => !e.parasitic) ?? null;
+  const power = powerW !== undefined && powerW > 0 ? powerW : null;
+  return {
+    totalFraction: diss.totalFraction,
+    largestResistor: largest ? { id: largest.id, ohm: largest.ohm, fraction: largest.fraction } : null,
+    largestResistorWatts: largest && power !== null ? largest.fraction * power : null,
+    powerW: power,
+  };
+}
+
 function runCandidate<I, R extends { parts: VxpPart[]; net: { gateRefusals?: string[] } }>(
   input: I,
   v2: V2RunSettings,
@@ -1183,6 +1230,7 @@ function runCandidate<I, R extends { parts: VxpPart[]; net: { gateRefusals?: str
   let gates: GateVerdict[] = [];
   let gatesDerived: GateVerdict[] = [];
   let violation: string | null = null;
+  let dissipation: DissipationColumn | null = null;
   if (!rejection && collect.reference) {
     try {
       const netlist = netlistOf(result.parts);
@@ -1190,6 +1238,16 @@ function runCandidate<I, R extends { parts: VxpPart[]; net: { gateRefusals?: str
       const derived = evaluateGates(netlist, v2.gates, collect.reference, 'derived');
       gates = frozen.verdicts;
       gatesDerived = derived.verdicts;
+      /* V36 — the column, from the evaluation that already measured it. The
+       * FROZEN half on purpose: it is the reference the search was held to, and
+       * it is the same half the M-A verdict beside it comes from, so a table
+       * cannot show a fraction from one convention and watts from the other.
+       *
+       * The watts are `fraction × power` and not a second `dissipation()` call
+       * with `amplifierPowerW` passed in: that would solve the network again to
+       * multiply by a scalar, and two solves of one question is how the two
+       * answers start to differ (A3g). */
+      dissipation = dissipationColumnOf(frozen.metrics.dissipation, v2.amplifierPowerW);
       // Judged on BOTH conventions, and a failure on either is a failure —
       // see the note at the top of `gates.ts` about a reference that moves.
       violation =
@@ -1218,6 +1276,7 @@ function runCandidate<I, R extends { parts: VxpPart[]; net: { gateRefusals?: str
     gateRefusals: result.net.gateRefusals ?? [],
     measurements: judged.measurements,
     topology: judged.topology,
+    dissipation,
     rejection,
     notes: collect.notes,
   };

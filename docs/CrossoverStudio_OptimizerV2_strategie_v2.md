@@ -346,6 +346,29 @@ punten met een casusboek-entry erachter. Ze staan hier zodat ze niet alleen in D
   eigen sessie met een vóór/ná-meting. Tot dan heet de aflezing wat zij is — "de bronweerstand bij
   de bovenste impedantiepiek van de laagste weg" — en zegt `rSourceProbeNote` dat hardop. Zie V34
   in Deel B. **Open.**
+- **~~V36 — waar leest de dissipatieterm zijn probe, en wat bewaakt dissipatie nog?~~ — GESLOTEN op
+  28-08-2026, in een eigen sessie.** Twee gedaanten waren mogelijk en het was geen van beide: de
+  term is niet ingetrokken (dat zou A3j schenden — `dissipationWeight` is grijs en wordt expliciet
+  overgenomen) en hij is niet dood door een randweigering (dat zou V33 in een vierde gedaante
+  zijn). Hij leest sinds V34 hetzelfde raster als élke andere lezer van diezelfde probe. De
+  bevinding is een andere: hij is **te klein om iets te beslissen** — hoogstens 0,34 % van de
+  objectiefwaarde op het levende casus-1-corpus, tegen een uitdagingsdrempel van 1 %, en dat gold
+  vóór V34 net zo goed. Wat er wél is gebouwd: de shortlist toont naast de dissipatieFRACTIE nu de
+  WATT in de grootste enkele weerstand bij het gestelde vermogen — een kolom, geen criterium, met
+  een assert dat een veld waarin één kandidaat 95 % verstookt een byte-identieke lijst oplevert.
+  Geen regeneratie: er is geen regel in de zoektocht veranderd. Zie V36 in Deel B.
+- **V37 — de dissipatieterm deelt door de PIEKHOOGTE en niet door R_e.** De term bestaat om de
+  serie-R-route naar niveauregeling af te remmen, en de schade die zij aanricht is
+  Q_es-vermenigvuldiging: `1 + R_source/R_e`, met R_e de DC-weerstand (A3j rij 23). Hij deelt echter
+  door `Re(Z)` BIJ de bronweerstandsprobe, en sinds V34 zit die probe op de impedantiepiek van de
+  laagste weg. Gemeten op casus 1: noemer 19,31 Ω tegen een gemeten R_e van 3,05 Ω — een factor
+  6,33, die tot **40,1** kwadrateert. De controle is dat `R_source/R_e` de `Qes_mult`-referenties
+  van het casusboek exact reproduceert en de gebruikte verhouding niet. Met R_e als noemer zou de
+  term op HUIDIG 3 % van de objectiefwaarde waard zijn en dus werkelijk sturen. NIET genomen bij
+  V36, om dezelfde reden als V33 over V34 en V34 over V35: zij verandert de uitkomst van élke
+  v2-run en verdient een eigen sessie met een vóór/ná-meting over het hele veld. Volgorde: eerst de
+  noemer, dán pas de vraag of het gewicht klopt — een gewicht ophogen om een verkeerd gemeten
+  grootheid te compenseren is de fout twee keer maken. Zie V36 in Deel B. **Open.**
 - **V29 — mag `safety` een netlist weigeren die vrijwel kortsluit als er géén vloer gesteld is?**
   Twee verdedigbare houdingen (strikt P4 tegenover een uit de gemeten driverimpedanties
   afleidbare degeneratiegrens), aanleiding is de V28-shortlist met 0,01 Ω erin. **Open**, geen
@@ -1615,7 +1638,7 @@ Configuratie: 3-weg; 2× SB WO24TX-8 parallel, MR13TX-4 in bolpod, T25T-6 in WG1
 
   **De reden dat er iets beweegt is niet de probe maar wat er aan de probe hing.** Op casus 1 doet V34 vier dingen tegelijk, en drie ervan zijn intrekkingen:
 
-  1. `dissRatio` is niet langer `null`. Op het ketenraster werd de probe geweigerd (index 0 voor de mid, de bovenrand voor de woofer) en viel de dissipatieterm dus **volledig weg**; op het veiligheidsraster meet hij wél, dus de term doet mee. Klein — het gewicht is 0,05 en de ratio ~0,04 — maar niet nul, en de doelfunctie is niet convex.
+  1. ~~`dissRatio` is niet langer `null`. Op het ketenraster werd de probe geweigerd (index 0 voor de mid, de bovenrand voor de woofer) en viel de dissipatieterm dus **volledig weg**; op het veiligheidsraster meet hij wél, dus de term doet mee. Klein — het gewicht is 0,05 en de ratio ~0,04 — maar niet nul, en de doelfunctie is niet convex.~~ **ERRATUM (V36, nagemeten).** De weigering die hier beschreven wordt is de STRIKTE randregel op het ketenraster, een combinatie die de v2-route nooit gedraaid heeft: vóór V34 stond zij op de historische regel, en de tabel drie alinea's hierboven zegt het zelf — `woofer | 24 | 640,2 Hz | inBand true`. De term viel dus niet weg maar mat op 640,2 Hz, met een ratio van 0,36 tot 0,76 in plaats van ~0,04. Wat V34 met deze term deed is hem **veertig keer kleiner** maken, doordat de noemer meeverhuisde naar de impedantiepiek. Zie V36.
   2. `rsSafe`, de structuurzet-bewaking, is UIT: hij leest `rSourceLimit`, en die is nu `null` ⇒ 0. Structuurzetten die vroeger geweigerd werden omdat zij de laagste weg over de 1,0 Ω-tier duwden, worden nu overwogen.
   3. `crossesRs` in de onderdelenaudit is uit, dus een onderdeel wordt niet meer `earned` door een tier die niemand stelde — het kan nu als `inert` verwijderd worden.
   4. De harde diskwalificatie op 2,0 Ω is uit.
@@ -1629,6 +1652,63 @@ Configuratie: 3-weg; 2× SB WO24TX-8 parallel, MR13TX-4 in bolpod, T25T-6 in WG1
   **WAT ER IN DE CODE VERANDERDE.** Nieuw: `optimizer/probeSource.test.ts`, `scripts/measure-v34-probe.ts` (de meting waarop deze entry rust — drie rasters, waar de probe landt, en de bronweerstand van élke bevroren netlist op alle drie), `scripts/freeze-live-corpus.ts` (het bevriezen van een corpus is vier keer met de hand gedaan en het zijn vijf bewerkingen die allemaal moeten landen). Gewijzigd: `partAudit.ts` (`ProbeEdgeRule`, de drie benoemde constanten, `AuditContext.probe`, `AuditThresholds.rSourceOhm` nullable, `crossesRs` en `rSourceWarn` null-bewust, `rSourceAtGridEdge` op de nieuwe regel), `netOptimizer.ts` (`rSourceProbeSource`, `probeOn`, `rSourceProbeNote`, `rSourceOf`/`rsSafe`/`metricsOn`/`runAudit` door één lezer, `rSourceLimit` met drie toestanden), `designChain.ts` en `threeWayChain.ts` (de gedeelde constanten, `null` = geen grens), `minimize.ts` en `App.tsx` (de constanten in plaats van hun eigen kopie), `optimizer/choices.ts` (41 → 42), `optimizer/candidateDeclaration.ts` (de V34-afleiding met haar P4-tegenhanger), `optimizer/worker.ts` (`withDeclaredSourceLimit`, de probenoot in de notities), `casus1V2.fixture.ts` (de twee defaults ingetrokken, de bron gesteld), de generator (`probe_raster`, `bronweerstandsgrens`, `audittier_ohm` met hun redenen), de recorder en `compare-corpora.ts` (het V33-corpus geregistreerd), `frozenNetlistGates.test.ts`, `choiceKeyGuard.test.ts`, `casus1V2Candidates.test.ts`.
 
   **ONAANGERAAKT:** de fxOf-term en élk gewicht, het ketenraster, de amp-vloerbarrière, `safety` en elke veiligheidsregel, de poorten zelf, `crossover3Variants`, de logica van beide ketens, en de v1-route — `toggleRegression.test.ts` is byte-identiek, `workerRouteRegression.test.ts` levert zijn opgeslagen netwerk nog steeds byte voor byte, en `f4cRegression.test.ts` reproduceert beide vormen op twee seeds.
+
+- V36 (**GESLOTEN** op 28-08-2026 — de term leest de gestelde probe, hij is niet ingetrokken en niet dood; hij is te klein om iets te beslissen) — opgeworpen als vervolgvraag bij de V34-sessie, 28-08-2026.
+
+  **De vraag, en het antwoord was geen van de twee die verwacht werden.** De opdracht stelde twee gedaanten: (a) de dissipatieterm leest de opgeloste probe maar is per P4 INGETROKKEN — dan botst dat met A3j, want een grijze sleutel wordt expliciet overgenomen en nooit stil op nul gezet; (b) hij leest nog de ketenraster-probe die sinds V34's strikte randregel niets meer teruggeeft — dan is dit V33 in een vierde gedaante, doel en oordeel op twee rasters. **Gemeten: geen van beide.** De term leeft, hij leest hetzelfde raster als élke andere lezer van diezelfde probe, en de reparatie die de opdracht klaarlegde was niet nodig. Wat er wél uit de meting kwam is een ander soort bevinding, en zij is scherper dan beide gedaanten.
+
+  **WAAR HIJ LEEST.** `netOptimizer.ts:2002` — `if (dissW > 0) dissRatio = rSourceOhm / re;` — binnen het `probeOn`-blok van `metricsOn` (`1969`–`1990`). `probeOn` (`1222`) is sinds V34 de ENE plek die beslist waar de bronweerstandsprobe leest, en hij heeft vijf lezers: de harde diskwalificatie, de structuurzet-bewaking, de audittier, het geleverde rapport, en deze term. Op de v2-route staat `rSourceProbeSource: 'safety'`, dus alle vijf lezen het veiligheidsraster. Er is geen tweede implementatie en geen terugval: een genoemde bron zonder data probet niets, en dan is er geen verhouding — `dissipationTerm.test.ts` assert dat als de vijfde claim.
+
+  **WAT DE TERM BIJDRAAGT, GEMETEN OP HET LEVENDE CORPUS.** `npx vite-node scripts/measure-v36-dissipation.ts`, seconden, geen ketenrun. De "vóór"-arm is het ketenraster met de historische randregel — precies wat de v2-route tot V34 deed; de "ná"-arm is het veiligheidsraster met de strikte regel, wat zij nu doet.
+
+  | netlist | vóór: Hz / R_s / noemer / term | ná: Hz / R_s / noemer / term | fx (2 termen) | aandeel ná |
+  | --- | --- | --- | --- | --- |
+  | HUIDIG | 640,2 / 0,503 / 3,46 / 1,06e-3 | 51,5 / 3,978 / 19,31 / 2,12e-3 | 2,88 | 0,074 % |
+  | KAND_A | 640,2 / 0,465 / 3,46 / 9,04e-4 | 51,5 / 4,585 / 19,31 / 2,82e-3 | 0,82 | 0,344 % |
+  | KAND_B | 640,2 / 0,678 / 3,46 / 1,92e-3 | 51,5 / 2,552 / 19,31 / 8,73e-4 | 0,55 | 0,159 % |
+  | KAND_V2_1 | 640,2 / 1,577 / 3,46 / 1,04e-2 | 51,5 / 1,093 / 19,31 / 1,60e-4 | 9,27 | 0,0017 % |
+  | KAND_V2_6 | 640,2 / 1,903 / 3,46 / 1,51e-2 | 51,5 / 1,445 / 19,31 / 2,80e-4 | 7,85 | 0,0036 % |
+  | KAND_V2_9 | 640,2 / 2,625 / 3,46 / 2,88e-2 | 51,5 / 2,573 / 19,31 / 8,88e-4 | 6,49 | 0,014 % |
+
+  **Het grootste aandeel van de dissipatieterm in de objectiefwaarde is 0,34 % ná en 0,44 % vóór, tegen een uitdagingsdrempel van 1 %.** De tuner beslist met procentuele poorten — een uitdaging wordt aangenomen bij 1 % verbetering, een tak gesnoeid bij 10 % — dus deze term kan geen van die beslissingen omdraaien, en dat gold vóór V34 net zo goed. `fx` in de tabel is de som van de twee dominante termen van `fxOf` (`2(1−p)·rms² + 2p·(φ/15)²`, met p = 0,50 uit `phasePriority`), herrekend uit het geleverde rapport; élke term die eraan ontbreekt maakt de noemer alleen groter, dus wat er staat is de **gunstigste** lezing voor de dissipatieterm.
+
+  **ERRATUM OP DE V34-ENTRY, en de V34-entry weerlegt zichzelf.** Punt 1 van "V34 doet vier dingen tegelijk" zegt: *"`dissRatio` is niet langer `null`. Op het ketenraster werd de probe geweigerd … en viel de dissipatieterm dus volledig weg."* Dat klopt niet. De weigering die daar beschreven wordt is de STRIKTE randregel op het ketenraster — een combinatie die op de v2-route nooit gedraaid heeft. Vóór V34 stond die route op de historische regel, en V34's eigen tabel drie alinea's eerder zegt het al: `woofer | 24 | 640,2 Hz | inBand true`. De term viel dus niet weg; hij mat op 640,2 Hz, met de waarden in de tabel hierboven. Ook de ratio "~0,04" hoort bij het veiligheidsraster en niet bij de toestand ervóór: op het ketenraster stond hij op 0,36 tot 0,76. Wat V34 met deze term deed is hem **veertig keer kleiner maken**, niet hem aanzetten.
+
+  **WAAROM VEERTIG KEER KLEINER, EN DAT IS DE BEVINDING.** De term deelt door `re = Math.max(0.5, pZl[k].re)` — de reële impedantie van de laagste weg BIJ de probe. Vóór V34 zat die probe op 640,2 Hz, waar de woofer 3,46 Ω leest, dicht bij zijn gemeten DC-weerstand van 3,05 Ω. Sinds V34 zit hij op de impedantiePIEK, en daar is de noemer 19,31 Ω — **een factor 6,33 boven R_e, en dat kwadrateert tot 40,1**. De teller is intussen juister geworden (de bronweerstand bij een echte resonantie in plaats van bij een venstergrens); de noemer is precies even veel onjuister geworden.
+
+  Dat de noemer R_e HOORT te zijn is geen smaakoordeel maar de reden dat de term bestaat. A3j rij 23: *"stuurt weg van serieweerstand vóór de laagste tak. De term bestaat omdat de tuner zonder niveau-anker een serie-R als goedkoopste niveauregeling gebruikt (19-08: R_s 7,15 Ω, Q_es ×3,24 won de ranking)."* De schade heet Q_es-vermenigvuldiging, en die is `1 + R_source/R_e` met R_e de DC-weerstand. De controle staat in de meting: de kolom `R_s/R_e` reproduceert **exact** de `Qes_mult`-referenties van het casusboek (HUIDIG 2,30 tegen 2,31; KAND_A 2,50; KAND_B 1,84; KAND_V2_9 1,84), terwijl de kolom die de term gebruikt daar een factor 6,33 onder zit. Met R_e als noemer zou de term op HUIDIG 8,5e-2 waard zijn tegen een fx van 2,88 — 3 %, boven de uitdagingsdrempel, en dus een term die werkelijk stuurt.
+
+  **DIT IS DEZE SESSIE NIET GEREPAREERD**, en dat is dezelfde beslissing die V33 over V34 nam en V34 over V35: de reparatie verandert de uitkomst van élke v2-run, dus zij verdient een eigen sessie met een vóór/ná-meting over het hele veld. Zij staat als **V37** open. Wat deze sessie wél doet is het getal vastleggen: `manifest_en_geometrie.v36_dissipatie.noemer_is_R_e` staat op `false` met de reden erbij, en `frozenNetlistGates.test.ts` assert dat de noemer meetbaar boven R_e ligt — een reparatie breekt daar zichtbaar op in plaats van stil door te schuiven.
+
+  **A3j IS NIET GESCHONDEN EN HOEFT NIET GEAMENDEERD.** Gedaante (a) zou dat wel hebben betekend. `dissipationWeight` is een GRIJZE sleutel, hij staat op 0,05 (de app-standaard, overgenomen uit v1), en hij bereikt de tuner EXPLICIET via de kandidaatverklaring — `casus1V2.fixture.ts:130`, `choices.ts:GREY_KEYS`, `choiceKeyGuard.test.ts`. Er is niets stil op nul gezet en er is dus ook geen amendement nodig. Het gewicht is deze sessie ook niet bijgesteld, en dat is een besluit: een gewicht ophogen om een verkeerd gemeten grootheid te compenseren is de fout twee keer maken. Eerst de noemer (V37), dan pas de vraag of het gewicht klopt.
+
+  **WAT DISSIPATIE VANDAAG NOG BEWAAKT OP DE v2-ROUTE — de inventarisatie die de opdracht vroeg.**
+
+  | mechanisme | toestand op casus 1 | waarom |
+  | --- | --- | --- |
+  | M-A, poort op de dissipatiefractie | **ongewapend** | casus 1 stelt geen `maxDissipationFraction`; leeg veld = geen oordeel (P4) |
+  | `rSourceDisqualifyOhm`, harde diskwalificatie | **ingetrokken** | V34: niemand stelde 2,0 Ω |
+  | audittier `rSourceOhm` | **`null`** | V34: niemand stelde 1,0 Ω; de audit draait, zijn tier oordeelt niets |
+  | `rsSafe`, structuurzet-bewaking | **uit** | leest dezelfde tier |
+  | Q_es-budget (`qesMultiplierMax`) | **ongewapend** | `v2_budgetten_gewapend` is leeg |
+  | `dissRatio` in `fxOf` | **aan, ≤ 0,34 % van fx** | leeft, stuurt niets — deze entry |
+  | rapportage (M-A-waarde in de poortcel, dissipatiekolom) | **aan** | een waarde zonder oordeel, precies wat P4 voorschrijft |
+
+  **De vraag die daarachter zat is dus terecht.** Sinds V30 mág de tuner serie-R inzetten om de vloer te halen, en wat hem tegenhoudt om de vloer met weerstand te kopen is vandaag: niets dat bijt. Het veld laat allebei de uitkomsten zien en dat is het bewijsmateriaal: `KAND_V2_2/3/4` halen de vloer met **0,9 %** dissipatie en Q_es ×1,00, `KAND_V2_9` met **34,7 %** en Q_es ×1,84 — 28,7 W in één weerstand bij 100 W. De zoektocht onderscheidt die twee niet; de shortlist doet dat sinds deze oplevering wél, als kolom.
+
+  **WAT ER GEBOUWD IS.**
+
+  1. **De shortlist toont de watt naast de fractie.** De FRACTIE stond er al sinds F3 (de M-A-poortwaarde, inactief, met haar waarde). De WATT kon er niet staan: een fractie is per constructie schaalvrij (A4 zegt dat met zoveel woorden) en een watt heeft het gestelde versterkervermogen nodig, dat de v2-run niet meekreeg. Dus reisde `V2RunSettings.amplifierPowerW` mee — uitsluitend rapportage, geen vingerafdruk-ingrediënt — en draagt `ShortlistRow.dissipation` nu de fractie, de grootste discrete weerstand en zijn watt. **Kolom, geen criterium:** `shortlist.test.ts` assert dat een veld waarin één kandidaat 95 % verstookt een BYTE-IDENTIEKE lijst oplevert, in dezelfde volgorde, met dezelfde stempel. Parasieten tellen niet mee, om dezelfde reden als in `totalFraction`: de DCR van een spoel is geen onderdeel waar iemand een wattage voor kiest, en hem de kolom laten winnen zou een bouwer naar een niet-bestaand onderdeel wijzen.
+  2. **Het corpus draagt de waarde.** `kandidaten.KAND_V2_*.grootste_R_W_bij_100W` — het veld dat de drie v1-kandidaten sinds F1 dragen en het v2-corpus niet, waardoor een ontwerp met 23 % dissipatie in het casusboek stond zonder dat ergens te lezen was dat er 17,9 W in één weerstand zit. Elf metrieken per kandidaat in plaats van tien. Plus `manifest_en_geometrie.v36_dissipatie`: per netlist de fractie, de grootste weerstand met zijn watt, `Qes_mult`, en beide armen van de doelfunctieterm — afgeleid door de recorder, nooit getypt, en door `frozenNetlistGates.test.ts` tegen de metriek zelf gehouden.
+  3. **De vóór/ná-tabel heeft twee kolommen erbij.** `compare-corpora.ts` drukt dissipatie % en grootste R (W) af per kandidaat, plus het corpusgemiddelde.
+
+  **GEEN REGENERATIE, EN DAT IS DE HELE WINST VAN EERST METEN.** De opdracht schreef regeneratie voor als de term "weer zou gaan leven". Hij leefde al; er is geen regel in de zoektocht veranderd, dus het veld is bit voor bit hetzelfde en 41 minuten ketenruns zijn niet gedraaid. De dissipatie van het BESTAANDE corpus is in plaats daarvan gemeten en vastgelegd. Wat `compare-corpora.ts v33 live` er nu bij afdrukt is de V34-tabel met de dissipatiekolom: gemiddeld **22,1 % → 19,7 %**, grootste enkele weerstand **15,1 W → 14,2 W** bij 100 W, met twee rijen die ver bewegen (`466,5 · 2283,5` 22,97 % → 34,66 % en 16,4 → 28,7 W; `466,5 · 1719` 39,03 % → 22,89 %). Dat is geen effect van de term — die werd op deze kandidaten juist veertig keer kleiner — maar van wat er bij V34 aan de probe hing, en het is precies het soort beweging dat een ongestuurde grootheid vertoont.
+
+  **WAT ER IN DE CODE VERANDERDE.** Nieuw: `optimizer/dissipationTerm.test.ts`, `scripts/measure-v36-dissipation.ts` (de meting waarop deze entry rust — beide armen per netlist, de termbijdrage naast de objectiefwaarde, en de noemer naast R_e). Gewijzigd: `optimizer/shortlist.ts` (`DissipationColumn`, op `ShortlistInput` en `ShortlistRow`), `optimizer/worker.ts` (`V2RunSettings.amplifierPowerW`, `dissipationColumnOf`, het veld op `V2CandidateResult`), `App.tsx` (het vermogen in de scaninstellingen, de kolom in het veld, de kolom in de tabel), de recorder (`grootste_R_W_bij_100W` en het `v36_dissipatie`-blok), `compare-corpora.ts` (twee kolommen en een corpusgemiddelde), `shortlist.test.ts`, `frozenNetlistGates.test.ts`, `casus1V2Candidates.test.ts`.
+
+  **Bijvangst, en zij verklaart een fout die deze sessie zelf maakte:** `scripts/` valt buiten `tsc -b`. De testscope in `tsconfig.test.json` is `src/**`, en er is geen scope die `scripts/` dekt — dus `casus1Filter(key, …).parts` op een `FilterInput` dat geen `parts` heeft, kwam niet als typefout terug maar als een kolom vol `null` in het referentiebestand. Gevonden doordat het blok werd nagekeken; het staat hier omdat de volgende die een script schrijft dat referentiegetallen wegschrijft, dit hoort te weten. Niet gerepareerd deze sessie: `scripts/` in de build trekken raakt vijf scripts tegelijk en hoort een eigen oplevering te zijn.
+
+  **ONAANGERAAKT:** M-A en élke andere poort, de audittier, `dissipationWeight` en élk ander gewicht, de fxOf-term zelf, `probeOn` en de randregel, de barrière, `safety`, het ketenraster, de generator, de netlists (bit voor bit), en de v1-route — `toggleRegression.test.ts` is byte-identiek, `workerRouteRegression.test.ts` levert zijn opgeslagen netwerk nog steeds byte voor byte, en `f4cRegression.test.ts` reproduceert beide vormen op twee seeds.
 
 **Openstaand in deze casus:** groundplane-metingen onder het onderste kruisgebied vóór onderdelenbestelling; HD-sweep; 30°-meting tweeter voor M-G-compleetheid; verzadigings-/formaatcheck grote P-core shunt-spoel.
 

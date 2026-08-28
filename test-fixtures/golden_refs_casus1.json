@@ -27,7 +27,7 @@
    "klasse_B": 71,
    "klasse_C": 0,
    "sinds_F4a": "V20 (27-08-2026) heeft 21 klasse-B-bladeren toegevoegd: de vier lambda-fracties per kruispunt per netlist, waarvan er een de HERNOEMDE lobing_wm_lambda is. De telling hierboven blijft de F4a-momentopname en wordt niet bijgewerkt - een momentopname die met elke oplevering meebeweegt is geen momentopname. Wat blijft gelden is de bevinding eronder: nog steeds nul klasse C, want ook deze vier zijn functies van meting plus netlist-BESTAND.",
-   "sinds_F4d": "F4d (27-08-2026), herzien bij de F4d-nazorg (V28): 100 klasse-B-bladeren, tien metrieken op elk van de 10 bevroren KAND-V2-netlists. Het waren er negen tot de nazorg de F3c-uitsnijding opschortte; de mid→tweeter-as ging van drie posities naar vijf en het veld van negen naar vijftien. De F4a-momentopname hierboven wordt niet bijgewerkt, om dezelfde reden als bij V20 — een momentopname die met elke oplevering meebeweegt is er geen. De bevinding blijft: nog steeds NUL klasse C. Deze netwerken komen uit een v2-run, maar de referenties hangen aan de BESTANDEN, en een volgende run die andere netwerken oplevert verschuift deze getallen dus niet — hij levert andere bestanden op. Dat is bij de nazorg ook precies wat gebeurde, en het is de reden dat de verandering geen enkele referentie ONGELDIG maakte.",
+   "sinds_F4d": "F4d (27-08-2026), herzien bij de F4d-nazorg (V28) en bij V36: 110 klasse-B-bladeren, elf metrieken op elk van de 10 bevroren KAND-V2-netlists — tien tot V36 `grootste_R_W_bij_100W` toevoegde, het veld dat de drie v1-kandidaten sinds F1 dragen en het v2-corpus niet. Het waren er negen tot de nazorg de F3c-uitsnijding opschortte; de mid→tweeter-as ging van drie posities naar vijf en het veld van negen naar vijftien. De F4a-momentopname hierboven wordt niet bijgewerkt, om dezelfde reden als bij V20 — een momentopname die met elke oplevering meebeweegt is er geen. De bevinding blijft: nog steeds NUL klasse C. Deze netwerken komen uit een v2-run, maar de referenties hangen aan de BESTANDEN, en een volgende run die andere netwerken oplevert verschuift deze getallen dus niet — hij levert andere bestanden op. Dat is bij de nazorg ook precies wat gebeurde, en het is de reden dat de verandering geen enkele referentie ONGELDIG maakte.",
    "sinds_V30": "V30 (27-08-2026): het KAND-V2-corpus is opnieuw opgewekt met de gestelde vloer als ZOEKDOEL, en het corpus dat het vervangt is niet weggegooid maar hernoemd: 10 blokken `V28_KAND_*`, byte-identieke bestanden onder een gedateerde naam, met dezelfde tien metrieken en dezelfde klasse B. Dat is geen referentie aanpassen — het zijn dezelfde netlists, en de nieuwe staan ernaast in plaats van eroverheen, zodat de vóór/ná-vergelijking van deze entry reproduceerbaar blijft uit de repository zelf. De bevinding van F4a staat nog steeds: NUL klasse C. Wat wél veranderde is de uitzonderingslijst: zij noemde tien KAND-V2-netlists en noemt nu tien V28-KAND-netlists, want het nieuwe corpus haalt de vloer op eigen kracht.",
    "sinds_V32": "V31/V32 (27-08-2026): het KAND-V2-corpus is opnieuw opgewekt nadat de elektrische poorten op de gemeten impedantiesweep gingen oordelen in plaats van op het ketenraster (V32), en nadat een kandidaat wiens tune in zijn geheel geweigerd werd zijn zaad niet meer als ontwerp aflevert (V31). Het corpus dat het verving is opnieuw NIET weggegooid maar hernoemd: 10 blokken `V30_KAND_*`, byte-identieke bestanden onder een gedateerde naam, met dezelfde tien metrieken en dezelfde klasse B. Er staan nu dus twee gedateerde corpora naast het levende: V28 (vóór de vloer een zoekdoel was) en V30 (vóór de poort de volle sweep las). Nog steeds NUL klasse C: het zijn metrieken op bestanden.",
    "sinds_V33": "V33 (27-08-2026): het KAND-V2-corpus is opnieuw opgewekt nadat de amp-vloerbarrière — de term die de zoektocht naar de vloer duwt — zijn tekort op de GEMETEN IMPEDANTIESWEEP ging lezen in plaats van op het evaluatieraster, via dezelfde functie waarmee M-B/|Z| oordeelt. Doel en poort zien daarmee per constructie één getal — het levende corpus over het veiligheidsraster van de tuner, met een tweede, duurdere arm ernaast die over de volle sweep draaide. Corpora die vervangen zijn worden NIET weggegooid maar hernoemd: 10x `V28_KAND_*`, 10x `V30_KAND_*`, 7x `V32_KAND_*`, 10x `V33_KAND_*`, 10x `V33_SWEEP_KAND_*` — byte-identieke bestanden onder een gedateerde naam, met dezelfde tien metrieken en dezelfde klasse B. Nog steeds NUL klasse C."
@@ -1146,6 +1146,7 @@
    "minZ": 2.58,
    "minEPDR": 1.29,
    "dissipatie_pct": 23,
+   "grootste_R_W_bij_100W": 17.86,
    "Qes_mult": 1.36,
    "lf_bult_extra_dB": 1.63,
    "V_tweeter_op_fs_dB": -21.6,
@@ -1161,6 +1162,7 @@
    "minZ": 2.56,
    "minEPDR": 1.28,
    "dissipatie_pct": 1,
+   "grootste_R_W_bij_100W": 0.66,
    "Qes_mult": 1,
    "lf_bult_extra_dB": 4.56,
    "V_tweeter_op_fs_dB": -23.59,
@@ -1176,6 +1178,7 @@
    "minZ": 2.56,
    "minEPDR": 1.28,
    "dissipatie_pct": 1,
+   "grootste_R_W_bij_100W": 0.7,
    "Qes_mult": 1,
    "lf_bult_extra_dB": 5.76,
    "V_tweeter_op_fs_dB": -19.04,
@@ -1191,6 +1194,7 @@
    "minZ": 2.57,
    "minEPDR": 1.29,
    "dissipatie_pct": 1,
+   "grootste_R_W_bij_100W": 0.65,
    "Qes_mult": 1,
    "lf_bult_extra_dB": 5.44,
    "V_tweeter_op_fs_dB": -22.26,
@@ -1206,6 +1210,7 @@
    "minZ": 2.6,
    "minEPDR": 1.3,
    "dissipatie_pct": 23,
+   "grootste_R_W_bij_100W": 17.63,
    "Qes_mult": 1.46,
    "lf_bult_extra_dB": 4.54,
    "V_tweeter_op_fs_dB": -19.1,
@@ -1221,6 +1226,7 @@
    "minZ": 2.59,
    "minEPDR": 1.31,
    "dissipatie_pct": 29,
+   "grootste_R_W_bij_100W": 21.7,
    "Qes_mult": 1.47,
    "lf_bult_extra_dB": 1.82,
    "V_tweeter_op_fs_dB": -15.96,
@@ -1236,6 +1242,7 @@
    "minZ": 2.61,
    "minEPDR": 1.3,
    "dissipatie_pct": 26,
+   "grootste_R_W_bij_100W": 18.22,
    "Qes_mult": 1.44,
    "lf_bult_extra_dB": 3.9,
    "V_tweeter_op_fs_dB": -20.53,
@@ -1251,6 +1258,7 @@
    "minZ": 2.58,
    "minEPDR": 1.29,
    "dissipatie_pct": 29,
+   "grootste_R_W_bij_100W": 20.68,
    "Qes_mult": 1.48,
    "lf_bult_extra_dB": 1.68,
    "V_tweeter_op_fs_dB": -25.07,
@@ -1266,6 +1274,7 @@
    "minZ": 2.58,
    "minEPDR": 1.3,
    "dissipatie_pct": 35,
+   "grootste_R_W_bij_100W": 28.73,
    "Qes_mult": 1.84,
    "lf_bult_extra_dB": 3.46,
    "V_tweeter_op_fs_dB": -23.01,
@@ -1281,6 +1290,7 @@
    "minZ": 2.59,
    "minEPDR": 1.3,
    "dissipatie_pct": 30,
+   "grootste_R_W_bij_100W": 15.21,
    "Qes_mult": 1.35,
    "lf_bult_extra_dB": 2.74,
    "V_tweeter_op_fs_dB": -14.15,
@@ -2420,6 +2430,1338 @@
      "naam": "V33_KAND_10",
      "was": "KAND_V2_10",
      "kandidaat": "woofer→mid 548.5 LR4 · mid→tweeter 1491.4 LR4"
+    }
+   ]
+  },
+  "v36_dissipatie": {
+   "_": "DOCUMENTATIE (V36). Wat het corpus verstookt, en wat de doelfunctie daarvan merkt. Afgeleid uit de bestanden en uit de probe waarop de tuner leest; geen acceptatiewaarde op zichzelf — de acceptatie zit in kandidaten.*.dissipatie_pct en .grootste_R_W_bij_100W, en in frozenNetlistGates.test.ts.",
+   "aangenomen_vermogen_W": 100,
+   "dissipationWeight": 0.05,
+   "dissipationWeight_herkomst": "GRIJS (A3j). Overgenomen uit v1 en expliciet gesteld door de kandidaat — nooit stil geërfd, nooit v2-afgeleid. De waarde is de app-standaard 0,05 en V36 heeft haar niet aangeraakt: een gewicht bijstellen om een verkeerd gemeten grootheid te compenseren is de fout twee keer maken.",
+   "R_e_woofer_ohm": 3.05,
+   "noemer_is_R_e": false,
+   "noemer_waarom": "De term deelt door `Re(Z)` BIJ de probe, en sinds V34 zit die probe op de impedantiepiek van de woofer. De noemer is daarmee de piekhoogte en niet de DC-weerstand waarnaar de verhouding genoemd is. Opgeworpen als V37; deze sessie NIET gerepareerd, want zij verandert elke v2-run en verdient dezelfde behandeling als V30, V32, V33 en V34 — een eigen sessie met een vóór/ná-meting.",
+   "grootste_termaandeel_levend": 0.000888,
+   "per_netlist": [
+    {
+     "netlist": "HUIDIG",
+     "dissipatie_pct": 45.81,
+     "grootste_R": "R8",
+     "grootste_R_ohm": 3.3,
+     "grootste_R_W_bij_100W": 25.55,
+     "Qes_mult": 2.31,
+     "term_ketenraster": {
+      "hz": 640.2,
+      "r_source_ohm": 0.5035,
+      "noemer_ohm": 3.46,
+      "ratio": 0.1455,
+      "term": 0.001058
+     },
+     "term_veiligheidsraster": {
+      "hz": 51.5,
+      "r_source_ohm": 3.9781,
+      "noemer_ohm": 19.31,
+      "ratio": 0.206,
+      "term": 0.002122
+     }
+    },
+    {
+     "netlist": "KAND_A",
+     "dissipatie_pct": 52.39,
+     "grootste_R": "R8",
+     "grootste_R_ohm": 4,
+     "grootste_R_W_bij_100W": 30.93,
+     "Qes_mult": 2.5,
+     "term_ketenraster": {
+      "hz": 640.2,
+      "r_source_ohm": 0.4654,
+      "noemer_ohm": 3.46,
+      "ratio": 0.1345,
+      "term": 0.0009038
+     },
+     "term_veiligheidsraster": {
+      "hz": 51.5,
+      "r_source_ohm": 4.5854,
+      "noemer_ohm": 19.31,
+      "ratio": 0.2375,
+      "term": 0.002819
+     }
+    },
+    {
+     "netlist": "KAND_B",
+     "dissipatie_pct": 38.56,
+     "grootste_R": "B·R9",
+     "grootste_R_ohm": 6.5,
+     "grootste_R_W_bij_100W": 19.57,
+     "Qes_mult": 1.84,
+     "term_ketenraster": {
+      "hz": 640.2,
+      "r_source_ohm": 0.6783,
+      "noemer_ohm": 3.46,
+      "ratio": 0.196,
+      "term": 0.00192
+     },
+     "term_veiligheidsraster": {
+      "hz": 51.5,
+      "r_source_ohm": 2.5516,
+      "noemer_ohm": 19.31,
+      "ratio": 0.1321,
+      "term": 0.000873
+     }
+    },
+    {
+     "netlist": "V28_KAND_1",
+     "dissipatie_pct": 0,
+     "grootste_R": null,
+     "grootste_R_ohm": null,
+     "grootste_R_W_bij_100W": null,
+     "Qes_mult": 1,
+     "term_ketenraster": {
+      "hz": 640.2,
+      "r_source_ohm": 0.0039,
+      "noemer_ohm": 3.46,
+      "ratio": 0.0011,
+      "term": 6.421e-8
+     },
+     "term_veiligheidsraster": {
+      "hz": 51.5,
+      "r_source_ohm": 0.0014,
+      "noemer_ohm": 19.31,
+      "ratio": 0.0001,
+      "term": 2.776e-10
+     }
+    },
+    {
+     "netlist": "V28_KAND_2",
+     "dissipatie_pct": 30.76,
+     "grootste_R": "R5",
+     "grootste_R_ohm": 0.95,
+     "grootste_R_W_bij_100W": 19.11,
+     "Qes_mult": 1.43,
+     "term_ketenraster": {
+      "hz": 640.2,
+      "r_source_ohm": 0.9343,
+      "noemer_ohm": 3.46,
+      "ratio": 0.2699,
+      "term": 0.003643
+     },
+     "term_veiligheidsraster": {
+      "hz": 51.5,
+      "r_source_ohm": 1.305,
+      "noemer_ohm": 19.31,
+      "ratio": 0.0676,
+      "term": 0.0002284
+     }
+    },
+    {
+     "netlist": "V28_KAND_3",
+     "dissipatie_pct": 0.6,
+     "grootste_R": "C·R6",
+     "grootste_R_ohm": 33.8,
+     "grootste_R_W_bij_100W": 0.46,
+     "Qes_mult": 1,
+     "term_ketenraster": {
+      "hz": 640.2,
+      "r_source_ohm": 0.0001,
+      "noemer_ohm": 3.46,
+      "ratio": 0,
+      "term": 2.008e-11
+     },
+     "term_veiligheidsraster": {
+      "hz": 51.5,
+      "r_source_ohm": 0.0011,
+      "noemer_ohm": 19.31,
+      "ratio": 0.0001,
+      "term": 1.661e-10
+     }
+    },
+    {
+     "netlist": "V28_KAND_4",
+     "dissipatie_pct": 15.43,
+     "grootste_R": "R5",
+     "grootste_R_ohm": 1.39,
+     "grootste_R_W_bij_100W": 12.49,
+     "Qes_mult": 1.45,
+     "term_ketenraster": {
+      "hz": 640.2,
+      "r_source_ohm": 1.3728,
+      "noemer_ohm": 3.46,
+      "ratio": 0.3966,
+      "term": 0.007865
+     },
+     "term_veiligheidsraster": {
+      "hz": 51.5,
+      "r_source_ohm": 1.3668,
+      "noemer_ohm": 19.31,
+      "ratio": 0.0708,
+      "term": 0.0002505
+     }
+    },
+    {
+     "netlist": "V28_KAND_5",
+     "dissipatie_pct": 1.38,
+     "grootste_R": "C·R6",
+     "grootste_R_ohm": 15.4,
+     "grootste_R_W_bij_100W": 1.18,
+     "Qes_mult": 1,
+     "term_ketenraster": {
+      "hz": 640.2,
+      "r_source_ohm": 0.0001,
+      "noemer_ohm": 3.46,
+      "ratio": 0,
+      "term": 2.007e-11
+     },
+     "term_veiligheidsraster": {
+      "hz": 51.5,
+      "r_source_ohm": 0.0011,
+      "noemer_ohm": 19.31,
+      "ratio": 0.0001,
+      "term": 1.661e-10
+     }
+    },
+    {
+     "netlist": "V28_KAND_6",
+     "dissipatie_pct": 14.97,
+     "grootste_R": "R5",
+     "grootste_R_ohm": 1.32,
+     "grootste_R_W_bij_100W": 11.78,
+     "Qes_mult": 1.43,
+     "term_ketenraster": {
+      "hz": 640.2,
+      "r_source_ohm": 1.41,
+      "noemer_ohm": 3.46,
+      "ratio": 0.4073,
+      "term": 0.008297
+     },
+     "term_veiligheidsraster": {
+      "hz": 51.5,
+      "r_source_ohm": 1.3051,
+      "noemer_ohm": 19.31,
+      "ratio": 0.0676,
+      "term": 0.0002284
+     }
+    },
+    {
+     "netlist": "V28_KAND_7",
+     "dissipatie_pct": 1.63,
+     "grootste_R": "C·R6",
+     "grootste_R_ohm": 14.9,
+     "grootste_R_W_bij_100W": 1.35,
+     "Qes_mult": 1,
+     "term_ketenraster": {
+      "hz": 640.2,
+      "r_source_ohm": 0.0001,
+      "noemer_ohm": 3.46,
+      "ratio": 0,
+      "term": 2.007e-11
+     },
+     "term_veiligheidsraster": {
+      "hz": 51.5,
+      "r_source_ohm": 0.0011,
+      "noemer_ohm": 19.31,
+      "ratio": 0.0001,
+      "term": 1.661e-10
+     }
+    },
+    {
+     "netlist": "V28_KAND_8",
+     "dissipatie_pct": 15.92,
+     "grootste_R": "R5",
+     "grootste_R_ohm": 1.44,
+     "grootste_R_W_bij_100W": 12.35,
+     "Qes_mult": 1.46,
+     "term_ketenraster": {
+      "hz": 640.2,
+      "r_source_ohm": 1.4136,
+      "noemer_ohm": 3.46,
+      "ratio": 0.4084,
+      "term": 0.008339
+     },
+     "term_veiligheidsraster": {
+      "hz": 51.5,
+      "r_source_ohm": 1.4137,
+      "noemer_ohm": 19.31,
+      "ratio": 0.0732,
+      "term": 0.000268
+     }
+    },
+    {
+     "netlist": "V28_KAND_9",
+     "dissipatie_pct": 15.99,
+     "grootste_R": "R5",
+     "grootste_R_ohm": 1.38,
+     "grootste_R_W_bij_100W": 12.05,
+     "Qes_mult": 1.44,
+     "term_ketenraster": {
+      "hz": 640.2,
+      "r_source_ohm": 1.3571,
+      "noemer_ohm": 3.46,
+      "ratio": 0.3921,
+      "term": 0.007686
+     },
+     "term_veiligheidsraster": {
+      "hz": 51.5,
+      "r_source_ohm": 1.3568,
+      "noemer_ohm": 19.31,
+      "ratio": 0.0703,
+      "term": 0.0002468
+     }
+    },
+    {
+     "netlist": "V28_KAND_10",
+     "dissipatie_pct": 15.65,
+     "grootste_R": "R5",
+     "grootste_R_ohm": 1.35,
+     "grootste_R_W_bij_100W": 11.74,
+     "Qes_mult": 1.44,
+     "term_ketenraster": {
+      "hz": 640.2,
+      "r_source_ohm": 1.3555,
+      "noemer_ohm": 3.46,
+      "ratio": 0.3916,
+      "term": 0.007668
+     },
+     "term_veiligheidsraster": {
+      "hz": 51.5,
+      "r_source_ohm": 1.3301,
+      "noemer_ohm": 19.31,
+      "ratio": 0.0689,
+      "term": 0.0002372
+     }
+    },
+    {
+     "netlist": "V30_KAND_1",
+     "dissipatie_pct": 1.13,
+     "grootste_R": "C·R6",
+     "grootste_R_ohm": 47.7,
+     "grootste_R_W_bij_100W": 0.89,
+     "Qes_mult": 1,
+     "term_ketenraster": {
+      "hz": 640.2,
+      "r_source_ohm": 0,
+      "noemer_ohm": 3.46,
+      "ratio": 0,
+      "term": 5.062e-12
+     },
+     "term_veiligheidsraster": {
+      "hz": 51.5,
+      "r_source_ohm": 0.0011,
+      "noemer_ohm": 19.31,
+      "ratio": 0.0001,
+      "term": 1.587e-10
+     }
+    },
+    {
+     "netlist": "V30_KAND_2",
+     "dissipatie_pct": 0.88,
+     "grootste_R": "C·R6",
+     "grootste_R_ohm": 49.84,
+     "grootste_R_W_bij_100W": 0.68,
+     "Qes_mult": 1,
+     "term_ketenraster": {
+      "hz": 640.2,
+      "r_source_ohm": 0,
+      "noemer_ohm": 3.46,
+      "ratio": 0,
+      "term": 4.333e-12
+     },
+     "term_veiligheidsraster": {
+      "hz": 51.5,
+      "r_source_ohm": 0.0011,
+      "noemer_ohm": 19.31,
+      "ratio": 0.0001,
+      "term": 1.596e-10
+     }
+    },
+    {
+     "netlist": "V30_KAND_3",
+     "dissipatie_pct": 22.47,
+     "grootste_R": "R5",
+     "grootste_R_ohm": 1.35,
+     "grootste_R_W_bij_100W": 17.13,
+     "Qes_mult": 1.44,
+     "term_ketenraster": {
+      "hz": 640.2,
+      "r_source_ohm": 1.3803,
+      "noemer_ohm": 3.46,
+      "ratio": 0.3988,
+      "term": 0.007951
+     },
+     "term_veiligheidsraster": {
+      "hz": 51.5,
+      "r_source_ohm": 1.3532,
+      "noemer_ohm": 19.31,
+      "ratio": 0.0701,
+      "term": 0.0002455
+     }
+    },
+    {
+     "netlist": "V30_KAND_4",
+     "dissipatie_pct": 19.1,
+     "grootste_R": "R5",
+     "grootste_R_ohm": 1.06,
+     "grootste_R_W_bij_100W": 14.17,
+     "Qes_mult": 1.35,
+     "term_ketenraster": {
+      "hz": 640.2,
+      "r_source_ohm": 1.0836,
+      "noemer_ohm": 3.46,
+      "ratio": 0.3131,
+      "term": 0.0049
+     },
+     "term_veiligheidsraster": {
+      "hz": 51.5,
+      "r_source_ohm": 1.0792,
+      "noemer_ohm": 19.31,
+      "ratio": 0.0559,
+      "term": 0.0001562
+     }
+    },
+    {
+     "netlist": "V30_KAND_5",
+     "dissipatie_pct": 37.53,
+     "grootste_R": "R5",
+     "grootste_R_ohm": 1.13,
+     "grootste_R_W_bij_100W": 21.33,
+     "Qes_mult": 1.36,
+     "term_ketenraster": {
+      "hz": 640.2,
+      "r_source_ohm": 1.8498,
+      "noemer_ohm": 3.46,
+      "ratio": 0.5344,
+      "term": 0.01428
+     },
+     "term_veiligheidsraster": {
+      "hz": 51.5,
+      "r_source_ohm": 1.089,
+      "noemer_ohm": 19.31,
+      "ratio": 0.0564,
+      "term": 0.000159
+     }
+    },
+    {
+     "netlist": "V30_KAND_6",
+     "dissipatie_pct": 0.74,
+     "grootste_R": "C·R6",
+     "grootste_R_ohm": 51.96,
+     "grootste_R_W_bij_100W": 0.56,
+     "Qes_mult": 1,
+     "term_ketenraster": {
+      "hz": 640.2,
+      "r_source_ohm": 0,
+      "noemer_ohm": 3.46,
+      "ratio": 0,
+      "term": 3.061e-12
+     },
+     "term_veiligheidsraster": {
+      "hz": 51.5,
+      "r_source_ohm": 0.0011,
+      "noemer_ohm": 19.31,
+      "ratio": 0.0001,
+      "term": 1.618e-10
+     }
+    },
+    {
+     "netlist": "V30_KAND_7",
+     "dissipatie_pct": 31.5,
+     "grootste_R": "R5",
+     "grootste_R_ohm": 1.84,
+     "grootste_R_W_bij_100W": 23.45,
+     "Qes_mult": 1.59,
+     "term_ketenraster": {
+      "hz": 640.2,
+      "r_source_ohm": 1.7889,
+      "noemer_ohm": 3.46,
+      "ratio": 0.5168,
+      "term": 0.01335
+     },
+     "term_veiligheidsraster": {
+      "hz": 51.5,
+      "r_source_ohm": 1.7873,
+      "noemer_ohm": 19.31,
+      "ratio": 0.0926,
+      "term": 0.0004283
+     }
+    },
+    {
+     "netlist": "V30_KAND_8",
+     "dissipatie_pct": 28.59,
+     "grootste_R": "R5",
+     "grootste_R_ohm": 1.14,
+     "grootste_R_W_bij_100W": 16.41,
+     "Qes_mult": 1.37,
+     "term_ketenraster": {
+      "hz": 640.2,
+      "r_source_ohm": 1.0738,
+      "noemer_ohm": 3.46,
+      "ratio": 0.3102,
+      "term": 0.004812
+     },
+     "term_veiligheidsraster": {
+      "hz": 51.5,
+      "r_source_ohm": 1.1315,
+      "noemer_ohm": 19.31,
+      "ratio": 0.0586,
+      "term": 0.0001717
+     }
+    },
+    {
+     "netlist": "V30_KAND_9",
+     "dissipatie_pct": 24.17,
+     "grootste_R": "R5",
+     "grootste_R_ohm": 1.25,
+     "grootste_R_W_bij_100W": 19.43,
+     "Qes_mult": 1.41,
+     "term_ketenraster": {
+      "hz": 640.2,
+      "r_source_ohm": 1.6672,
+      "noemer_ohm": 3.46,
+      "ratio": 0.4816,
+      "term": 0.0116
+     },
+     "term_veiligheidsraster": {
+      "hz": 51.5,
+      "r_source_ohm": 1.2431,
+      "noemer_ohm": 19.31,
+      "ratio": 0.0644,
+      "term": 0.0002072
+     }
+    },
+    {
+     "netlist": "V30_KAND_10",
+     "dissipatie_pct": 25.45,
+     "grootste_R": "R5",
+     "grootste_R_ohm": 1.46,
+     "grootste_R_W_bij_100W": 18.63,
+     "Qes_mult": 1.48,
+     "term_ketenraster": {
+      "hz": 640.2,
+      "r_source_ohm": 1.6353,
+      "noemer_ohm": 3.46,
+      "ratio": 0.4724,
+      "term": 0.01116
+     },
+     "term_veiligheidsraster": {
+      "hz": 51.5,
+      "r_source_ohm": 1.4563,
+      "noemer_ohm": 19.31,
+      "ratio": 0.0754,
+      "term": 0.0002844
+     }
+    },
+    {
+     "netlist": "V32_KAND_1",
+     "dissipatie_pct": 22.47,
+     "grootste_R": "R5",
+     "grootste_R_ohm": 1.35,
+     "grootste_R_W_bij_100W": 17.13,
+     "Qes_mult": 1.44,
+     "term_ketenraster": {
+      "hz": 640.2,
+      "r_source_ohm": 1.3803,
+      "noemer_ohm": 3.46,
+      "ratio": 0.3988,
+      "term": 0.007951
+     },
+     "term_veiligheidsraster": {
+      "hz": 51.5,
+      "r_source_ohm": 1.3532,
+      "noemer_ohm": 19.31,
+      "ratio": 0.0701,
+      "term": 0.0002455
+     }
+    },
+    {
+     "netlist": "V32_KAND_2",
+     "dissipatie_pct": 19.1,
+     "grootste_R": "R5",
+     "grootste_R_ohm": 1.06,
+     "grootste_R_W_bij_100W": 14.17,
+     "Qes_mult": 1.35,
+     "term_ketenraster": {
+      "hz": 640.2,
+      "r_source_ohm": 1.0836,
+      "noemer_ohm": 3.46,
+      "ratio": 0.3131,
+      "term": 0.0049
+     },
+     "term_veiligheidsraster": {
+      "hz": 51.5,
+      "r_source_ohm": 1.0792,
+      "noemer_ohm": 19.31,
+      "ratio": 0.0559,
+      "term": 0.0001562
+     }
+    },
+    {
+     "netlist": "V32_KAND_3",
+     "dissipatie_pct": 37.53,
+     "grootste_R": "R5",
+     "grootste_R_ohm": 1.13,
+     "grootste_R_W_bij_100W": 21.33,
+     "Qes_mult": 1.36,
+     "term_ketenraster": {
+      "hz": 640.2,
+      "r_source_ohm": 1.8498,
+      "noemer_ohm": 3.46,
+      "ratio": 0.5344,
+      "term": 0.01428
+     },
+     "term_veiligheidsraster": {
+      "hz": 51.5,
+      "r_source_ohm": 1.089,
+      "noemer_ohm": 19.31,
+      "ratio": 0.0564,
+      "term": 0.000159
+     }
+    },
+    {
+     "netlist": "V32_KAND_4",
+     "dissipatie_pct": 31.5,
+     "grootste_R": "R5",
+     "grootste_R_ohm": 1.84,
+     "grootste_R_W_bij_100W": 23.45,
+     "Qes_mult": 1.59,
+     "term_ketenraster": {
+      "hz": 640.2,
+      "r_source_ohm": 1.7889,
+      "noemer_ohm": 3.46,
+      "ratio": 0.5168,
+      "term": 0.01335
+     },
+     "term_veiligheidsraster": {
+      "hz": 51.5,
+      "r_source_ohm": 1.7873,
+      "noemer_ohm": 19.31,
+      "ratio": 0.0926,
+      "term": 0.0004283
+     }
+    },
+    {
+     "netlist": "V32_KAND_5",
+     "dissipatie_pct": 28.59,
+     "grootste_R": "R5",
+     "grootste_R_ohm": 1.14,
+     "grootste_R_W_bij_100W": 16.41,
+     "Qes_mult": 1.37,
+     "term_ketenraster": {
+      "hz": 640.2,
+      "r_source_ohm": 1.0738,
+      "noemer_ohm": 3.46,
+      "ratio": 0.3102,
+      "term": 0.004812
+     },
+     "term_veiligheidsraster": {
+      "hz": 51.5,
+      "r_source_ohm": 1.1315,
+      "noemer_ohm": 19.31,
+      "ratio": 0.0586,
+      "term": 0.0001717
+     }
+    },
+    {
+     "netlist": "V32_KAND_6",
+     "dissipatie_pct": 24.17,
+     "grootste_R": "R5",
+     "grootste_R_ohm": 1.25,
+     "grootste_R_W_bij_100W": 19.43,
+     "Qes_mult": 1.41,
+     "term_ketenraster": {
+      "hz": 640.2,
+      "r_source_ohm": 1.6672,
+      "noemer_ohm": 3.46,
+      "ratio": 0.4816,
+      "term": 0.0116
+     },
+     "term_veiligheidsraster": {
+      "hz": 51.5,
+      "r_source_ohm": 1.2431,
+      "noemer_ohm": 19.31,
+      "ratio": 0.0644,
+      "term": 0.0002072
+     }
+    },
+    {
+     "netlist": "V32_KAND_7",
+     "dissipatie_pct": 25.45,
+     "grootste_R": "R5",
+     "grootste_R_ohm": 1.46,
+     "grootste_R_W_bij_100W": 18.63,
+     "Qes_mult": 1.48,
+     "term_ketenraster": {
+      "hz": 640.2,
+      "r_source_ohm": 1.6353,
+      "noemer_ohm": 3.46,
+      "ratio": 0.4724,
+      "term": 0.01116
+     },
+     "term_veiligheidsraster": {
+      "hz": 51.5,
+      "r_source_ohm": 1.4563,
+      "noemer_ohm": 19.31,
+      "ratio": 0.0754,
+      "term": 0.0002844
+     }
+    },
+    {
+     "netlist": "V33_SWEEP_KAND_1",
+     "dissipatie_pct": 24.17,
+     "grootste_R": "R5",
+     "grootste_R_ohm": 1.13,
+     "grootste_R_W_bij_100W": 18.39,
+     "Qes_mult": 1.37,
+     "term_ketenraster": {
+      "hz": 640.2,
+      "r_source_ohm": 1.4013,
+      "noemer_ohm": 3.46,
+      "ratio": 0.4048,
+      "term": 0.008194
+     },
+     "term_veiligheidsraster": {
+      "hz": 51.5,
+      "r_source_ohm": 1.1263,
+      "noemer_ohm": 19.31,
+      "ratio": 0.0583,
+      "term": 0.0001701
+     }
+    },
+    {
+     "netlist": "V33_SWEEP_KAND_2",
+     "dissipatie_pct": 24.75,
+     "grootste_R": "R5",
+     "grootste_R_ohm": 1.25,
+     "grootste_R_W_bij_100W": 19.85,
+     "Qes_mult": 1.41,
+     "term_ketenraster": {
+      "hz": 640.2,
+      "r_source_ohm": 1.6611,
+      "noemer_ohm": 3.46,
+      "ratio": 0.4799,
+      "term": 0.01151
+     },
+     "term_veiligheidsraster": {
+      "hz": 51.5,
+      "r_source_ohm": 1.2519,
+      "noemer_ohm": 19.31,
+      "ratio": 0.0648,
+      "term": 0.0002102
+     }
+    },
+    {
+     "netlist": "V33_SWEEP_KAND_3",
+     "dissipatie_pct": 0.88,
+     "grootste_R": "C·R6",
+     "grootste_R_ohm": 51.35,
+     "grootste_R_W_bij_100W": 0.67,
+     "Qes_mult": 1,
+     "term_ketenraster": {
+      "hz": 640.2,
+      "r_source_ohm": 0.0001,
+      "noemer_ohm": 3.46,
+      "ratio": 0,
+      "term": 1.142e-11
+     },
+     "term_veiligheidsraster": {
+      "hz": 51.5,
+      "r_source_ohm": 0.0011,
+      "noemer_ohm": 19.31,
+      "ratio": 0.0001,
+      "term": 1.545e-10
+     }
+    },
+    {
+     "netlist": "V33_SWEEP_KAND_4",
+     "dissipatie_pct": 22.84,
+     "grootste_R": "R5",
+     "grootste_R_ohm": 1.01,
+     "grootste_R_W_bij_100W": 16.36,
+     "Qes_mult": 1.33,
+     "term_ketenraster": {
+      "hz": 640.2,
+      "r_source_ohm": 1.4634,
+      "noemer_ohm": 3.46,
+      "ratio": 0.4228,
+      "term": 0.008936
+     },
+     "term_veiligheidsraster": {
+      "hz": 51.5,
+      "r_source_ohm": 1.0199,
+      "noemer_ohm": 19.31,
+      "ratio": 0.0528,
+      "term": 0.0001395
+     }
+    },
+    {
+     "netlist": "V33_SWEEP_KAND_5",
+     "dissipatie_pct": 25.35,
+     "grootste_R": "R5",
+     "grootste_R_ohm": 1.14,
+     "grootste_R_W_bij_100W": 17.85,
+     "Qes_mult": 1.38,
+     "term_ketenraster": {
+      "hz": 640.2,
+      "r_source_ohm": 1.5895,
+      "noemer_ohm": 3.46,
+      "ratio": 0.4592,
+      "term": 0.01054
+     },
+     "term_veiligheidsraster": {
+      "hz": 51.5,
+      "r_source_ohm": 1.1452,
+      "noemer_ohm": 19.31,
+      "ratio": 0.0593,
+      "term": 0.0001758
+     }
+    },
+    {
+     "netlist": "V33_SWEEP_KAND_6",
+     "dissipatie_pct": 0.98,
+     "grootste_R": "C·R6",
+     "grootste_R_ohm": 50.48,
+     "grootste_R_W_bij_100W": 0.75,
+     "Qes_mult": 1,
+     "term_ketenraster": {
+      "hz": 640.2,
+      "r_source_ohm": 0,
+      "noemer_ohm": 3.46,
+      "ratio": 0,
+      "term": 6.338e-12
+     },
+     "term_veiligheidsraster": {
+      "hz": 51.5,
+      "r_source_ohm": 0.0011,
+      "noemer_ohm": 19.31,
+      "ratio": 0.0001,
+      "term": 1.574e-10
+     }
+    },
+    {
+     "netlist": "V33_SWEEP_KAND_7",
+     "dissipatie_pct": 31.2,
+     "grootste_R": "R5",
+     "grootste_R_ohm": 2.88,
+     "grootste_R_W_bij_100W": 27.61,
+     "Qes_mult": 1.9,
+     "term_ketenraster": {
+      "hz": 640.2,
+      "r_source_ohm": 2.7928,
+      "noemer_ohm": 3.46,
+      "ratio": 0.8068,
+      "term": 0.03255
+     },
+     "term_veiligheidsraster": {
+      "hz": 51.5,
+      "r_source_ohm": 2.7474,
+      "noemer_ohm": 19.31,
+      "ratio": 0.1423,
+      "term": 0.001012
+     }
+    },
+    {
+     "netlist": "V33_SWEEP_KAND_8",
+     "dissipatie_pct": 33.04,
+     "grootste_R": "R5",
+     "grootste_R_ohm": 1.86,
+     "grootste_R_W_bij_100W": 22.79,
+     "Qes_mult": 1.59,
+     "term_ketenraster": {
+      "hz": 640.2,
+      "r_source_ohm": 1.891,
+      "noemer_ohm": 3.46,
+      "ratio": 0.5463,
+      "term": 0.01492
+     },
+     "term_veiligheidsraster": {
+      "hz": 51.5,
+      "r_source_ohm": 1.8078,
+      "noemer_ohm": 19.31,
+      "ratio": 0.0936,
+      "term": 0.0004382
+     }
+    },
+    {
+     "netlist": "V33_SWEEP_KAND_9",
+     "dissipatie_pct": 34.6,
+     "grootste_R": "R5",
+     "grootste_R_ohm": 1.25,
+     "grootste_R_W_bij_100W": 16.89,
+     "Qes_mult": 1.41,
+     "term_ketenraster": {
+      "hz": 640.2,
+      "r_source_ohm": 1.3316,
+      "noemer_ohm": 3.46,
+      "ratio": 0.3847,
+      "term": 0.007399
+     },
+     "term_veiligheidsraster": {
+      "hz": 51.5,
+      "r_source_ohm": 1.2456,
+      "noemer_ohm": 19.31,
+      "ratio": 0.0645,
+      "term": 0.0002081
+     }
+    },
+    {
+     "netlist": "V33_SWEEP_KAND_10",
+     "dissipatie_pct": 26.56,
+     "grootste_R": "R5",
+     "grootste_R_ohm": 1.97,
+     "grootste_R_W_bij_100W": 21.62,
+     "Qes_mult": 1.63,
+     "term_ketenraster": {
+      "hz": 640.2,
+      "r_source_ohm": 1.9339,
+      "noemer_ohm": 3.46,
+      "ratio": 0.5587,
+      "term": 0.01561
+     },
+     "term_veiligheidsraster": {
+      "hz": 51.5,
+      "r_source_ohm": 1.9318,
+      "noemer_ohm": 19.31,
+      "ratio": 0.1,
+      "term": 0.0005004
+     }
+    },
+    {
+     "netlist": "V33_KAND_1",
+     "dissipatie_pct": 0.86,
+     "grootste_R": "C·R6",
+     "grootste_R_ohm": 48.13,
+     "grootste_R_W_bij_100W": 0.66,
+     "Qes_mult": 1,
+     "term_ketenraster": {
+      "hz": 640.2,
+      "r_source_ohm": 0.0001,
+      "noemer_ohm": 3.46,
+      "ratio": 0,
+      "term": 1.54e-11
+     },
+     "term_veiligheidsraster": {
+      "hz": 51.5,
+      "r_source_ohm": 0.0011,
+      "noemer_ohm": 19.31,
+      "ratio": 0.0001,
+      "term": 1.532e-10
+     }
+    },
+    {
+     "netlist": "V33_KAND_2",
+     "dissipatie_pct": 0.93,
+     "grootste_R": "C·R6",
+     "grootste_R_ohm": 54.29,
+     "grootste_R_W_bij_100W": 0.7,
+     "Qes_mult": 1,
+     "term_ketenraster": {
+      "hz": 640.2,
+      "r_source_ohm": 0,
+      "noemer_ohm": 3.46,
+      "ratio": 0,
+      "term": 7.374e-12
+     },
+     "term_veiligheidsraster": {
+      "hz": 51.5,
+      "r_source_ohm": 0.0011,
+      "noemer_ohm": 19.31,
+      "ratio": 0.0001,
+      "term": 1.566e-10
+     }
+    },
+    {
+     "netlist": "V33_KAND_3",
+     "dissipatie_pct": 28.63,
+     "grootste_R": "R5",
+     "grootste_R_ohm": 1.6,
+     "grootste_R_W_bij_100W": 20.38,
+     "Qes_mult": 1.51,
+     "term_ketenraster": {
+      "hz": 640.2,
+      "r_source_ohm": 1.585,
+      "noemer_ohm": 3.46,
+      "ratio": 0.4579,
+      "term": 0.01048
+     },
+     "term_veiligheidsraster": {
+      "hz": 51.5,
+      "r_source_ohm": 1.549,
+      "noemer_ohm": 19.31,
+      "ratio": 0.0802,
+      "term": 0.0003217
+     }
+    },
+    {
+     "netlist": "V33_KAND_4",
+     "dissipatie_pct": 22.97,
+     "grootste_R": "R5",
+     "grootste_R_ohm": 1.23,
+     "grootste_R_W_bij_100W": 16.39,
+     "Qes_mult": 1.4,
+     "term_ketenraster": {
+      "hz": 640.2,
+      "r_source_ohm": 1.2226,
+      "noemer_ohm": 3.46,
+      "ratio": 0.3532,
+      "term": 0.006237
+     },
+     "term_veiligheidsraster": {
+      "hz": 51.5,
+      "r_source_ohm": 1.2284,
+      "noemer_ohm": 19.31,
+      "ratio": 0.0636,
+      "term": 0.0002023
+     }
+    },
+    {
+     "netlist": "V33_KAND_5",
+     "dissipatie_pct": 20.85,
+     "grootste_R": "R5",
+     "grootste_R_ohm": 0.85,
+     "grootste_R_W_bij_100W": 13.43,
+     "Qes_mult": 1.29,
+     "term_ketenraster": {
+      "hz": 640.2,
+      "r_source_ohm": 1.1074,
+      "noemer_ohm": 3.46,
+      "ratio": 0.3199,
+      "term": 0.005118
+     },
+     "term_veiligheidsraster": {
+      "hz": 51.5,
+      "r_source_ohm": 0.8701,
+      "noemer_ohm": 19.31,
+      "ratio": 0.0451,
+      "term": 0.0001015
+     }
+    },
+    {
+     "netlist": "V33_KAND_6",
+     "dissipatie_pct": 39.03,
+     "grootste_R": "R5",
+     "grootste_R_ohm": 1.66,
+     "grootste_R_W_bij_100W": 22.79,
+     "Qes_mult": 1.5,
+     "term_ketenraster": {
+      "hz": 640.2,
+      "r_source_ohm": 1.6683,
+      "noemer_ohm": 3.46,
+      "ratio": 0.482,
+      "term": 0.01161
+     },
+     "term_veiligheidsraster": {
+      "hz": 51.5,
+      "r_source_ohm": 1.5356,
+      "noemer_ohm": 19.31,
+      "ratio": 0.0795,
+      "term": 0.0003162
+     }
+    },
+    {
+     "netlist": "V33_KAND_7",
+     "dissipatie_pct": 25.3,
+     "grootste_R": "R5",
+     "grootste_R_ohm": 1.33,
+     "grootste_R_W_bij_100W": 20.05,
+     "Qes_mult": 1.43,
+     "term_ketenraster": {
+      "hz": 640.2,
+      "r_source_ohm": 1.8013,
+      "noemer_ohm": 3.46,
+      "ratio": 0.5204,
+      "term": 0.01354
+     },
+     "term_veiligheidsraster": {
+      "hz": 51.5,
+      "r_source_ohm": 1.3236,
+      "noemer_ohm": 19.31,
+      "ratio": 0.0685,
+      "term": 0.0002349
+     }
+    },
+    {
+     "netlist": "V33_KAND_8",
+     "dissipatie_pct": 26.9,
+     "grootste_R": "R5",
+     "grootste_R_ohm": 1.22,
+     "grootste_R_W_bij_100W": 16.98,
+     "Qes_mult": 1.4,
+     "term_ketenraster": {
+      "hz": 640.2,
+      "r_source_ohm": 1.4228,
+      "noemer_ohm": 3.46,
+      "ratio": 0.4111,
+      "term": 0.008448
+     },
+     "term_veiligheidsraster": {
+      "hz": 51.5,
+      "r_source_ohm": 1.2243,
+      "noemer_ohm": 19.31,
+      "ratio": 0.0634,
+      "term": 0.000201
+     }
+    },
+    {
+     "netlist": "V33_KAND_9",
+     "dissipatie_pct": 28.26,
+     "grootste_R": "R5",
+     "grootste_R_ohm": 1.38,
+     "grootste_R_W_bij_100W": 19.56,
+     "Qes_mult": 1.45,
+     "term_ketenraster": {
+      "hz": 640.2,
+      "r_source_ohm": 1.6168,
+      "noemer_ohm": 3.46,
+      "ratio": 0.4671,
+      "term": 0.01091
+     },
+     "term_veiligheidsraster": {
+      "hz": 51.5,
+      "r_source_ohm": 1.3655,
+      "noemer_ohm": 19.31,
+      "ratio": 0.0707,
+      "term": 0.00025
+     }
+    },
+    {
+     "netlist": "V33_KAND_10",
+     "dissipatie_pct": 27.54,
+     "grootste_R": "R5",
+     "grootste_R_ohm": 1.52,
+     "grootste_R_W_bij_100W": 19.59,
+     "Qes_mult": 1.49,
+     "term_ketenraster": {
+      "hz": 640.2,
+      "r_source_ohm": 1.4901,
+      "noemer_ohm": 3.46,
+      "ratio": 0.4305,
+      "term": 0.009266
+     },
+     "term_veiligheidsraster": {
+      "hz": 51.5,
+      "r_source_ohm": 1.5012,
+      "noemer_ohm": 19.31,
+      "ratio": 0.0777,
+      "term": 0.0003022
+     }
+    },
+    {
+     "netlist": "KAND_V2_1",
+     "dissipatie_pct": 23.14,
+     "grootste_R": "R5",
+     "grootste_R_ohm": 1.09,
+     "grootste_R_W_bij_100W": 17.86,
+     "Qes_mult": 1.36,
+     "term_ketenraster": {
+      "hz": 640.2,
+      "r_source_ohm": 1.5774,
+      "noemer_ohm": 3.46,
+      "ratio": 0.4557,
+      "term": 0.01038
+     },
+     "term_veiligheidsraster": {
+      "hz": 51.5,
+      "r_source_ohm": 1.0925,
+      "noemer_ohm": 19.31,
+      "ratio": 0.0566,
+      "term": 0.0001601
+     }
+    },
+    {
+     "netlist": "KAND_V2_2",
+     "dissipatie_pct": 0.86,
+     "grootste_R": "C·R6",
+     "grootste_R_ohm": 48.13,
+     "grootste_R_W_bij_100W": 0.66,
+     "Qes_mult": 1,
+     "term_ketenraster": {
+      "hz": 640.2,
+      "r_source_ohm": 0.0001,
+      "noemer_ohm": 3.46,
+      "ratio": 0,
+      "term": 1.54e-11
+     },
+     "term_veiligheidsraster": {
+      "hz": 51.5,
+      "r_source_ohm": 0.0011,
+      "noemer_ohm": 19.31,
+      "ratio": 0.0001,
+      "term": 1.532e-10
+     }
+    },
+    {
+     "netlist": "KAND_V2_3",
+     "dissipatie_pct": 0.93,
+     "grootste_R": "C·R6",
+     "grootste_R_ohm": 54.29,
+     "grootste_R_W_bij_100W": 0.7,
+     "Qes_mult": 1,
+     "term_ketenraster": {
+      "hz": 640.2,
+      "r_source_ohm": 0,
+      "noemer_ohm": 3.46,
+      "ratio": 0,
+      "term": 7.374e-12
+     },
+     "term_veiligheidsraster": {
+      "hz": 51.5,
+      "r_source_ohm": 0.0011,
+      "noemer_ohm": 19.31,
+      "ratio": 0.0001,
+      "term": 1.566e-10
+     }
+    },
+    {
+     "netlist": "KAND_V2_4",
+     "dissipatie_pct": 0.86,
+     "grootste_R": "C·R6",
+     "grootste_R_ohm": 52.76,
+     "grootste_R_W_bij_100W": 0.65,
+     "Qes_mult": 1,
+     "term_ketenraster": {
+      "hz": 640.2,
+      "r_source_ohm": 0.0001,
+      "noemer_ohm": 3.46,
+      "ratio": 0,
+      "term": 1.082e-11
+     },
+     "term_veiligheidsraster": {
+      "hz": 51.5,
+      "r_source_ohm": 0.0011,
+      "noemer_ohm": 19.31,
+      "ratio": 0.0001,
+      "term": 1.548e-10
+     }
+    },
+    {
+     "netlist": "KAND_V2_5",
+     "dissipatie_pct": 22.89,
+     "grootste_R": "R5",
+     "grootste_R_ohm": 1.41,
+     "grootste_R_W_bij_100W": 17.63,
+     "Qes_mult": 1.46,
+     "term_ketenraster": {
+      "hz": 640.2,
+      "r_source_ohm": 1.439,
+      "noemer_ohm": 3.46,
+      "ratio": 0.4157,
+      "term": 0.008641
+     },
+     "term_veiligheidsraster": {
+      "hz": 51.5,
+      "r_source_ohm": 1.4141,
+      "noemer_ohm": 19.31,
+      "ratio": 0.0732,
+      "term": 0.0002682
+     }
+    },
+    {
+     "netlist": "KAND_V2_6",
+     "dissipatie_pct": 28.89,
+     "grootste_R": "R5",
+     "grootste_R_ohm": 1.46,
+     "grootste_R_W_bij_100W": 21.7,
+     "Qes_mult": 1.47,
+     "term_ketenraster": {
+      "hz": 640.2,
+      "r_source_ohm": 1.9034,
+      "noemer_ohm": 3.46,
+      "ratio": 0.5499,
+      "term": 0.01512
+     },
+     "term_veiligheidsraster": {
+      "hz": 51.5,
+      "r_source_ohm": 1.4451,
+      "noemer_ohm": 19.31,
+      "ratio": 0.0748,
+      "term": 0.00028
+     }
+    },
+    {
+     "netlist": "KAND_V2_7",
+     "dissipatie_pct": 26.17,
+     "grootste_R": "R5",
+     "grootste_R_ohm": 1.36,
+     "grootste_R_W_bij_100W": 18.22,
+     "Qes_mult": 1.44,
+     "term_ketenraster": {
+      "hz": 640.2,
+      "r_source_ohm": 1.3519,
+      "noemer_ohm": 3.46,
+      "ratio": 0.3906,
+      "term": 0.007627
+     },
+     "term_veiligheidsraster": {
+      "hz": 51.5,
+      "r_source_ohm": 1.3544,
+      "noemer_ohm": 19.31,
+      "ratio": 0.0701,
+      "term": 0.000246
+     }
+    },
+    {
+     "netlist": "KAND_V2_8",
+     "dissipatie_pct": 28.56,
+     "grootste_R": "R5",
+     "grootste_R_ohm": 1.47,
+     "grootste_R_W_bij_100W": 20.68,
+     "Qes_mult": 1.48,
+     "term_ketenraster": {
+      "hz": 640.2,
+      "r_source_ohm": 1.9391,
+      "noemer_ohm": 3.46,
+      "ratio": 0.5602,
+      "term": 0.01569
+     },
+     "term_veiligheidsraster": {
+      "hz": 51.5,
+      "r_source_ohm": 1.4545,
+      "noemer_ohm": 19.31,
+      "ratio": 0.0753,
+      "term": 0.0002837
+     }
+    },
+    {
+     "netlist": "KAND_V2_9",
+     "dissipatie_pct": 34.66,
+     "grootste_R": "R5",
+     "grootste_R_ohm": 2.8,
+     "grootste_R_W_bij_100W": 28.73,
+     "Qes_mult": 1.84,
+     "term_ketenraster": {
+      "hz": 640.2,
+      "r_source_ohm": 2.6252,
+      "noemer_ohm": 3.46,
+      "ratio": 0.7584,
+      "term": 0.02876
+     },
+     "term_veiligheidsraster": {
+      "hz": 51.5,
+      "r_source_ohm": 2.5734,
+      "noemer_ohm": 19.31,
+      "ratio": 0.1333,
+      "term": 0.000888
+     }
+    },
+    {
+     "netlist": "KAND_V2_10",
+     "dissipatie_pct": 30.28,
+     "grootste_R": "R5",
+     "grootste_R_ohm": 1.08,
+     "grootste_R_W_bij_100W": 15.21,
+     "Qes_mult": 1.35,
+     "term_ketenraster": {
+      "hz": 640.2,
+      "r_source_ohm": 1.244,
+      "noemer_ohm": 3.46,
+      "ratio": 0.3594,
+      "term": 0.006458
+     },
+     "term_veiligheidsraster": {
+      "hz": 51.5,
+      "r_source_ohm": 1.0809,
+      "noemer_ohm": 19.31,
+      "ratio": 0.056,
+      "term": 0.0001567
+     }
     }
    ]
   }

@@ -44,11 +44,16 @@ import { compareDesigns } from '../src/lib/engine2/predesign/comparison.ts';
 import { ampFloorSlackOhm, meetsAmpFloor } from '../src/lib/impedanceFloor.ts';
 import { systemMinImpedanceOhm } from '../src/lib/netOptimizer.ts';
 import { impedanceReferenceFrom } from '../src/lib/engine2/optimizer/impedanceReference.ts';
+import { sourceProbeIndex, sourceResistanceOhm } from '../src/lib/partAudit.ts';
+import { deserializeFilter } from '../src/lib/filterFile.ts';
 import {
   CASUS1_V2_GRID,
+  CASUS1_V2_SETTINGS,
   casus1ChainInput,
   casus1V2Facts,
 } from '../src/lib/engine2/casus1V2.fixture.ts';
+import type { VxpPart } from '../src/lib/parsers/vxp.ts';
+import type { Complex } from '../src/lib/complex.ts';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const GOLDEN = join(HERE, '..', 'test-fixtures', 'golden_refs_casus1.json');
@@ -318,6 +323,16 @@ for (const key of keys) {
     minZ: r2(rep.metrics.epdr?.minZOhm),
     minEPDR: r2(rep.metrics.epdr?.minOhm),
     dissipatie_pct: r0((rep.metrics.dissipation?.totalFraction ?? NaN) * 100),
+    /* V36 — de WATT in de grootste enkele weerstand, bij het aangenomen
+     * vermogen. Naast de fractie en niet in plaats ervan: de fractie zegt
+     * hoeveel van de versterker het filter opeet, dit zegt of het onderdeel
+     * bestaat. De drie v1-kandidaten dragen dit veld sinds F1 (`R8_W_bij_100W`
+     * / `grootste_R_W_bij_100W`); het v2-corpus droeg alleen de fractie, en
+     * daardoor stond een ontwerp met 23 % dissipatie in het casusboek zonder
+     * dat ergens te lezen was dat er 17,9 W in één weerstand zit. */
+    grootste_R_W_bij_100W: r2(
+      rep.metrics.dissipation?.elements.find((e) => !e.parasitic)?.watts ?? null,
+    ),
     Qes_mult: r2(rep.metrics.thevenin.find((t) => t.qMultiplier !== null)?.qMultiplier ?? null),
     lf_bult_extra_dB: r2(rep.metrics.lfBump[0]?.result.extraDb ?? null),
     V_tweeter_op_fs_dB: r2(
@@ -423,6 +438,108 @@ const barrierGrids = (() => {
 })();
 
 raw.manifest_en_geometrie.v33_barriere_raster = barrierGrids;
+
+/* ---- V36: WHAT THE CORPUS BURNS, AND WHAT THE OBJECTIVE MAKES OF IT ------
+ *
+ * DOCUMENTATION, in the shape `v33_barriere_raster` established: a number that
+ * justifies a decision, derived from the files rather than typed, so it moves
+ * when the corpus moves.
+ *
+ * TWO HALVES, and they answer two different questions.
+ *
+ *   `per_netlist` — what M-A measures: the share of amplifier power burnt in
+ *   the discrete resistors, and the WATTS in the largest single one. The
+ *   fraction was already in every candidate block; the watts were not, and a
+ *   corpus whose designs put 15 to 29 W into one resistor recorded only "23 %".
+ *
+ *   `objectiefterm` — what the SEARCH makes of the same quantity. The tuner
+ *   adds `dissipationWeight · (R_source/re)²` at every evaluation, with both
+ *   readings taken at the source-resistance probe. V34 moved that probe on the
+ *   v2 route, so both readings moved, and this records where they landed on
+ *   each grid. `noemer_is_R_e: false` is the finding V36 raises and does not
+ *   fix: `re` is the real part of the impedance AT the probe, and since V34 the
+ *   probe sits on the woofer's impedance PEAK — so the denominator is the peak
+ *   height and not the DC resistance the ratio is named after.
+ */
+const dissipationRecord = (() => {
+  const gridded = casus1ChainInput(manifest, files, golden);
+  const dissW = (CASUS1_V2_SETTINGS as { dissipationWeight: number }).dissipationWeight;
+  const armOf = (
+    parts: readonly VxpPart[],
+    grid: readonly number[],
+    z: Record<string, readonly Complex[]>,
+    edgeRule: 'first' | 'both',
+  ) => {
+    const zl = z.woofer;
+    if (!zl) return null;
+    const probe = sourceProbeIndex(grid, zl, undefined, edgeRule);
+    if (!probe || !probe.inBand) return null;
+    const rs = sourceResistanceOhm(parts, { grid, driverZ: z, edgeRule });
+    if (rs === null) return null;
+    const re = Math.max(0.5, zl[probe.idx].re);
+    const ratio = rs / re;
+    return {
+      hz: Number(grid[probe.idx].toFixed(1)),
+      r_source_ohm: r4(rs),
+      noemer_ohm: r2(re),
+      ratio: r4(ratio),
+      term: Number((dissW * ratio * ratio).toPrecision(4)),
+    };
+  };
+  const perNetlist = Object.keys(netlists).map((key) => {
+    const rep = report(key);
+    const d = rep.metrics.dissipation;
+    const largest = d?.elements.find((e) => !e.parasitic) ?? null;
+    /* De ONDERDELEN, van schijf. `casus1Filter` levert een netlist en geen
+     * onderdelenlijst, en `scripts/` valt buiten `tsc -b` (zie tsconfig.json:
+     * de test-scope dekt `src/**`), dus deze verwisseling kwam niet als
+     * typefout maar als een kolom vol `null` terug. */
+    const parts = deserializeFilter(
+      readFileSync(join(HERE, '..', 'test-fixtures', 'casus1', netlists[key]), 'utf-8'),
+    ).parts;
+    return {
+      netlist: key,
+      dissipatie_pct: r2((d?.totalFraction ?? NaN) * 100),
+      grootste_R: largest ? largest.id : null,
+      grootste_R_ohm: r2(largest?.ohm ?? null),
+      grootste_R_W_bij_100W: r2(largest?.watts ?? null),
+      Qes_mult: r2(rep.metrics.thevenin.find((t) => t.qMultiplier !== null)?.qMultiplier ?? null),
+      term_ketenraster: armOf(parts, gridded.grid, gridded.driverZ, 'first'),
+      term_veiligheidsraster: armOf(parts, gridded.safety.freqs, gridded.safety.z, 'both'),
+    };
+  });
+  const live = perNetlist.filter((r) => LIVE_V2.test(r.netlist));
+  return {
+    _:
+      'DOCUMENTATIE (V36). Wat het corpus verstookt, en wat de doelfunctie daarvan merkt. ' +
+      'Afgeleid uit de bestanden en uit de probe waarop de tuner leest; geen acceptatiewaarde ' +
+      'op zichzelf — de acceptatie zit in kandidaten.*.dissipatie_pct en ' +
+      '.grootste_R_W_bij_100W, en in frozenNetlistGates.test.ts.',
+    aangenomen_vermogen_W: 100,
+    dissipationWeight: dissW,
+    dissipationWeight_herkomst:
+      'GRIJS (A3j). Overgenomen uit v1 en expliciet gesteld door de kandidaat — nooit stil ' +
+      'geërfd, nooit v2-afgeleid. De waarde is de app-standaard 0,05 en V36 heeft haar niet ' +
+      'aangeraakt: een gewicht bijstellen om een verkeerd gemeten grootheid te compenseren is ' +
+      'de fout twee keer maken.',
+    R_e_woofer_ohm: CASUS1_WOOFER_DC_OHM,
+    noemer_is_R_e: false,
+    noemer_waarom:
+      'De term deelt door `Re(Z)` BIJ de probe, en sinds V34 zit die probe op de ' +
+      'impedantiepiek van de woofer. De noemer is daarmee de piekhoogte en niet de ' +
+      'DC-weerstand waarnaar de verhouding genoemd is. Opgeworpen als V37; deze sessie NIET ' +
+      'gerepareerd, want zij verandert elke v2-run en verdient dezelfde behandeling als V30, ' +
+      'V32, V33 en V34 — een eigen sessie met een vóór/ná-meting.',
+    grootste_termaandeel_levend: live.reduce(
+      (a: number, r) => Math.max(a, r.term_veiligheidsraster?.term ?? 0),
+      0,
+    ),
+    per_netlist: perNetlist,
+  };
+})();
+
+raw.manifest_en_geometrie.v36_dissipatie = dissipationRecord;
+
 raw.manifest_en_geometrie.v2_herkomst = {
   _:
     'DOCUMENTATIE, geen acceptatiewaarde. Waar de KAND-V2-netlists vandaan komen, zodat een ' +
@@ -501,8 +618,10 @@ telling.sinds_V30 =
   'klasse C. Wat wél veranderde is de uitzonderingslijst: zij noemde tien KAND-V2-netlists en ' +
   'noemt nu tien V28-KAND-netlists, want het nieuwe corpus haalt de vloer op eigen kracht.';
 telling.sinds_F4d =
-  `F4d (27-08-2026), herzien bij de F4d-nazorg (V28): ${leaves} klasse-B-bladeren, tien metrieken ` +
-  `op elk van de ${keys.length} bevroren KAND-V2-netlists. Het waren er negen tot de nazorg de ` +
+  `F4d (27-08-2026), herzien bij de F4d-nazorg (V28) en bij V36: ${leaves} klasse-B-bladeren, ` +
+  `elf metrieken op elk van de ${keys.length} bevroren KAND-V2-netlists — tien tot V36 ` +
+  '`grootste_R_W_bij_100W` toevoegde, het veld dat de drie v1-kandidaten sinds F1 dragen en het ' +
+  `v2-corpus niet. Het waren er negen tot de nazorg de ` +
   'F3c-uitsnijding opschortte; de mid→tweeter-as ging van drie posities naar vijf en het veld van ' +
   'negen naar vijftien. De F4a-momentopname hierboven wordt niet bijgewerkt, om dezelfde reden ' +
   'als bij V20 — een momentopname die met elke oplevering meebeweegt is er geen. De bevinding ' +

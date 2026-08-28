@@ -57,6 +57,7 @@ import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {
+  CASUS1_WOOFER_DC_OHM,
   casus1AmpMinLoadOhm,
   casus1Files,
   casus1Filter,
@@ -166,12 +167,27 @@ const report = (key: string, settings: ReportSettings = BASE) =>
   });
 
 /** Every frozen netlist, judged once, reused by every case below. */
-const FIELD: { key: string; verdicts: GateVerdict[]; anyActive: boolean }[] = NETLIST_KEYS.map(
-  (key) => {
-    const r = report(key);
-    return { key, verdicts: r.gates.verdicts, anyActive: r.gates.anyActive };
-  },
-);
+const FIELD: {
+  key: string;
+  verdicts: GateVerdict[];
+  anyActive: boolean;
+  /** V36 — M-A's own result, kept from the report this pass already built.
+   *  Sixty netlists is sixty reports; re-reporting them to read one more field
+   *  would have doubled the slowest test file in the suite for a column. */
+  dissipationPct: number | null;
+  largestResistorW: number | null;
+}[] = NETLIST_KEYS.map((key) => {
+  const r = report(key);
+  const d = r.metrics.dissipation;
+  const largest = d?.elements.find((e) => !e.parasitic) ?? null;
+  return {
+    key,
+    verdicts: r.gates.verdicts,
+    anyActive: r.gates.anyActive,
+    dissipationPct: d ? d.totalFraction * 100 : null,
+    largestResistorW: largest?.watts ?? null,
+  };
+});
 
 describe('every gate runs on every frozen netlist', () => {
   it('the field is not empty, and it contains the v2 candidates as well as the baselines', () => {
@@ -845,5 +861,136 @@ describe('a stated limit DOES judge these files — the counter-proof', () => {
     })).filter((j) => j.verdict !== undefined);
     expect(judged.find((j) => j.key === loudest.key)!.verdict.pass).toBe(false);
     expect(judged.find((j) => j.key === quietest.key)!.verdict.pass).toBe(true);
+  });
+});
+
+
+/* ================================================================== *
+ * V36 — wat het corpus verstookt, en waar de doelfunctie dat afleest
+ * ================================================================== */
+
+describe('V36 — de dissipatie van élke bevroren netlist, en de noemer van de term', () => {
+  /** De tolerantieklassen komen uit het referentiebestand, nooit uit deze test
+   *  — een tolerantie hoort bij de referentie (goldenCasus1.test.ts). */
+  const TOLERANCES = (golden as unknown as {
+    toleranties: { procentpunten: number; watt_pct: number };
+  }).toleranties;
+
+  const record = (
+    golden.manifest_en_geometrie as unknown as {
+      v36_dissipatie: {
+        aangenomen_vermogen_W: number;
+        dissipationWeight: number;
+        R_e_woofer_ohm: number;
+        noemer_is_R_e: boolean;
+        per_netlist: {
+          netlist: string;
+          dissipatie_pct: number | null;
+          grootste_R_W_bij_100W: number | null;
+          term_ketenraster: { hz: number; noemer_ohm: number | null; term: number } | null;
+          term_veiligheidsraster: { hz: number; noemer_ohm: number | null; term: number } | null;
+        }[];
+      };
+    }
+  ).v36_dissipatie;
+
+  it('het blok dekt élke bevroren netlist — een lege of gekrompen lijst faalt', () => {
+    /* Dezelfde regel als de vloerwandeling erboven: het blok is afgeleid, dus
+     * het hoort mee te bewegen met het manifest. Een blok dat de helft van de
+     * netlists noemt zou stil groen blijven. */
+    expect(record.per_netlist.map((r) => r.netlist).sort()).toEqual([...NETLIST_KEYS].sort());
+    expect(record.aangenomen_vermogen_W).toBe(BASE.amplifierPowerW);
+  });
+
+  it('elke opgeschreven dissipatie reproduceert uit de metriek zelf', () => {
+    for (const row of record.per_netlist) {
+      const got = FIELD.find((f) => f.key === row.netlist)!;
+      expect(got.dissipationPct, `${row.netlist}: geen dissipatie gemeten`).not.toBeNull();
+      expect(Math.abs(got.dissipationPct! - row.dissipatie_pct!)).toBeLessThanOrEqual(
+        TOLERANCES.procentpunten,
+      );
+      /* NULL AAN BEIDE KANTEN IS EEN GELDIGE UITKOMST, en zij komt voor:
+       * `V28_KAND_1` heeft geen enkele DISCRETE weerstand, alleen parasieten.
+       * Een netwerk zonder weerstand heeft geen grootste weerstand, en een 0
+       * daar zou lezen als "gemeten, en het is nul". Wat NIET mag is dat de twee
+       * kanten van elkaar verschillen. */
+      expect(
+        got.largestResistorW === null,
+        `${row.netlist}: het blok en de metriek zijn het oneens over of er een weerstand IS`,
+      ).toBe(row.grootste_R_W_bij_100W === null);
+      if (got.largestResistorW !== null) {
+        expect(
+          (Math.abs(got.largestResistorW - row.grootste_R_W_bij_100W!) /
+            Math.max(row.grootste_R_W_bij_100W!, 1e-9)) *
+            100,
+        ).toBeLessThanOrEqual(TOLERANCES.watt_pct);
+      }
+    }
+  });
+
+  it('de doelfunctieterm leest de probe, en zijn noemer is de PIEK en niet R_e (V37)', () => {
+    /* DE BEVINDING VAN V36, ALS ASSERT OP HET ECHTE CORPUS.
+     *
+     * `dissipationWeight · (R_source/re)²` bestaat om de serie-R-route naar
+     * niveauregeling af te remmen, en de schade die zij aanricht is
+     * Q_es-vermenigvuldiging: `1 + R_source/R_e`, met R_e de DC-weerstand. De
+     * term deelt echter door `Re(Z)` BIJ de probe, en sinds V34 zit die probe
+     * op de impedantiepiek van de woofer. Op casus 1 is die piek een factor
+     * boven de gemeten DC-weerstand, en dat kwadrateert.
+     *
+     * Vastgelegd als een feit over de code van vandaag: de factor wordt uit de
+     * meting zelf afgeleid en nooit ingetypt, en het blok zegt hardop dat de
+     * noemer NIET R_e is. Een reparatie (V37) hoort hier zichtbaar op te
+     * breken in plaats van stil door te schuiven. */
+    expect(record.noemer_is_R_e).toBe(false);
+    expect(record.R_e_woofer_ohm).toBe(CASUS1_WOOFER_DC_OHM);
+
+    const rows = record.per_netlist.filter((r) => r.term_veiligheidsraster !== null);
+    expect(rows.length, 'geen enkele netlist probet nog op het veiligheidsraster').toBe(
+      NETLIST_KEYS.length,
+    );
+    for (const row of rows) {
+      const arm = row.term_veiligheidsraster!;
+      /* De probe hangt aan het RASTER en aan de impedantie van de laagste weg,
+       * niet aan het netwerk — dus élke netlist landt op dezelfde frequentie
+       * met dezelfde noemer. Zou dat ooit niet meer zo zijn, dan is de aanname
+       * onder deze hele entry weg en hoort dat hier te blijken. */
+      expect(arm.hz).toBe(rows[0].term_veiligheidsraster!.hz);
+      expect(arm.noemer_ohm).toBe(rows[0].term_veiligheidsraster!.noemer_ohm);
+    }
+    const denom = rows[0].term_veiligheidsraster!.noemer_ohm!;
+    expect(
+      denom / CASUS1_WOOFER_DC_OHM,
+      `de noemer (${denom} Ω) is niet meer meetbaar boven R_e — V37 kan gesloten zijn`,
+    ).toBeGreaterThan(2);
+  });
+
+  it('...en die term is te klein om iets te beslissen — gemeten, niet beredeneerd', () => {
+    /* WAT DISSIPATIE VANDAAG NOG BEWAAKT OP DE v2-ROUTE, in één getal. De
+     * tuner beslist met procentuele poorten (uitdaging 1 %, snoei 10 %). De
+     * grootste termwaarde op het hele casusboek staat hieronder naast de
+     * kleinste objectiefwaarde die een casus-1-kandidaat haalt, en die
+     * verhouding is de reden dat V36 het gewicht NIET heeft bijgesteld: een
+     * gewicht ophogen om een verkeerd gemeten grootheid te compenseren is de
+     * fout twee keer maken. De grens komt uit de tuner en niet uit dit bestand:
+     * 1 % is de uitdagingsdrempel die `netOptimizer.ts` hanteert. */
+    const CHALLENGE_FRACTION = 0.01;
+    const worstTerm = Math.max(
+      ...record.per_netlist.map((r) => r.term_veiligheidsraster?.term ?? 0),
+    );
+    expect(worstTerm).toBeGreaterThan(0);
+    /* De objectiefwaarde zelf is niet uit een bestand te lezen — zij hoort bij
+     * een run. Wat er WEL uit te lezen is, is de dominante term ervan:
+     * `2(1−p)·rms²` met p = 0,5, dus rms². De kleinste RMS in het casusboek
+     * geeft dus de kleinste objectiefwaarde die hier kan voorkomen, en dat is
+     * de gunstigste vergelijking voor de dissipatieterm. */
+    const rmsValues = Object.values(
+      golden.kandidaten as unknown as Record<string, { rms_vlakheid_dB?: number }>,
+    )
+      .map((k) => k.rms_vlakheid_dB)
+      .filter((v): v is number => typeof v === 'number');
+    expect(rmsValues.length).toBeGreaterThan(0);
+    const smallestFx = Math.min(...rmsValues) ** 2;
+    expect(worstTerm / smallestFx).toBeLessThan(CHALLENGE_FRACTION);
   });
 });

@@ -288,6 +288,19 @@ describe('the metrics on the frozen netlists reproduce', () => {
       TOL.procentpunten,
       'dissipation',
     );
+    /* V36 — de WATT in de grootste enkele weerstand, naast de fractie. Het
+     * veld dat de drie v1-kandidaten sinds F1 dragen en het v2-corpus niet:
+     * een ontwerp met 23 % dissipatie stond in het casusboek zonder dat ergens
+     * te lezen was dat er 17,9 W in één weerstand zit. Op procent, want dat is
+     * de tolerantieklasse waarin de v1-kandidaten hun watt al dragen
+     * (`goldenCasus1.test.ts`, `TOL.watt_pct`). */
+    const largestW = r.metrics.dissipation?.elements.find((e) => !e.parasitic)?.watts ?? null;
+    expect(largestW, `${key}: geen grootste weerstand gemeten`).not.toBeNull();
+    expect(ref.grootste_R_W_bij_100W, `${key}: geen watt-referentie`).toBeTypeOf('number');
+    expect(
+      (Math.abs(largestW! - ref.grootste_R_W_bij_100W) / ref.grootste_R_W_bij_100W) * 100,
+      `${key}: watt in the largest resistor`,
+    ).toBeLessThanOrEqual(TOL.watt_pct);
     near(r.system.response?.rmsDeviationDb, ref.rms_vlakheid_dB, TOL.dB, 'RMS flatness');
     near(r.system.response?.windowPlusMinusDb, ref.spl_venster_pm_dB, TOL.dB, 'SPL window');
   });

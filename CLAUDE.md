@@ -21,22 +21,25 @@
 ## Commando's
 
 - `npx tsc -b` — typecheck. Draait vóór elke oplevering, zonder uitzondering.
-- `npx vitest run` — volledige testsuite. **Gemeten 28-08-2026 (V34-sessie): 125 bestanden, 1356 tests, ~6 min
-  wandkloktijd (347 s).** Alles groen houden. De telling stond tot F4b op 99/1003 — dat was de
+- `npx vitest run` — volledige testsuite. **Gemeten 28-08-2026 (V36-sessie): 126 bestanden, 1369 tests, ~6 min
+  wandkloktijd (374 s).** Alles groen houden. De telling stond tot F4b op 99/1003 — dat was de
   stand bij F3 (`61a3ea4`) en zij is drie opleveringen lang niet bijgewerkt: F3b bracht 104 bestanden, F3c 106,
   F4a 107, F4b 108, F4b2 109, F4c 112, V20 113, F4d 119, de F4d-nazorg 120, de vloersessie 120, V30 121,
-  V31/V32 123, V33 124 (`barrierSource.test.ts`), V34 125 (`probeSource.test.ts`).
+  V31/V32 123, V33 124 (`barrierSource.test.ts`), V34 125 (`probeSource.test.ts`),
+  V36 126 (`dissipationTerm.test.ts`).
   Vandaar de datum erbij: een telling zonder meetmoment is een telling die stil veroudert.
-  **Waar de tijd zit (nagemeten bij V34, volle parallelle run):** acht bestanden draaien echte ketenruns en zijn
-  samen het leeuwendeel van de CPU-tijd — `casus1V2Candidates` (344 s: twee live runs, de bevroren netlist én
-  de verwerping), `threeWayChain` (269 s), `candidateRoute` (107 s), `designChain` (94 s),
-  `workerRouteRegression` (88 s), `f4cRegression` (64 s), `frozenNetlistGates` (62 s), `borderFacts` (61 s).
+  **Waar de tijd zit (nagemeten bij V36, volle parallelle run):** zeven bestanden draaien echte ketenruns en zijn
+  samen het leeuwendeel van de CPU-tijd — `casus1V2Candidates` (370 s: twee live runs, de bevroren netlist én
+  de verwerping), `threeWayChain` (288 s), `candidateRoute` (120 s), `designChain` (107 s),
+  `workerRouteRegression` (100 s), `f4cRegression` (75 s), `frozenNetlistGates` (69 s).
   `casus1V2Candidates` is bij V33 van 105 s naar 300 s gegaan en dat is de prijs van de barrièrebron: elke live
   casus-1-run lost het netwerk nu ook op het veiligheidsraster op. Op de dure bron (`'sweep'`) zou datzelfde
   bestand ruim twintig minuten kosten — dat is waarom de v2-route `'safety'` stelt. `probeSource` (40 s) draait
   dertien korte tuner-runs op de tweewegfixture en géén ketenrun: V34's probe scant een raster en lost niets
-  extra's op, dus hij kost in de suite niets meetbaars. Elk van deze bestanden draait het minimum aantal live
-  runs dat zijn claim draagt; de rest leest bestanden. Een regressie die niemand draait omdat hij traag is,
+  extra's op, dus hij kost in de suite niets meetbaars. `dissipationTerm` (9 s) draait vier korte tuner-runs op
+  dezelfde fixture, om dezelfde reden. `frozenNetlistGates` is bij V36 van 62 naar 69 s gegaan zonder een enkel
+  extra rapport: `FIELD` bouwde al één rapport per netlist en houdt er sinds V36 ook M-A uit vast. Elk van deze
+  bestanden draait het minimum aantal live runs dat zijn claim draagt; de rest leest bestanden. Een regressie die niemand draait omdat hij traag is,
   beschermt niets.
 - **De v2-kandidaatfixtures opnieuw opwekken** (alleen nodig als de generator of het veld verandert):
   `npx vite-node scripts/generate-casus1-v2-candidates.ts` — vijftien ketenruns. De kosten hangen sinds
@@ -58,7 +61,9 @@
   V34-tabel is. `compare-corpora.ts v30 v32` reproduceert de V32-tabel, `v32 v33` de V33-tabel.
   Gekoppeld op KANDIDAAT (de bestandsnummers
   zijn rijnummers van verschillende shortlists en horen niet bij elkaar), beide helften gemeten door
-  hetzelfde `buildReport`-pad. Drukt voor het LEVENDE corpus ook de verwerpingen af met wat de
+  hetzelfde `buildReport`-pad. **Sinds V36 draagt hij twee kolommen erbij** — dissipatiefractie en
+  de watt in de grootste enkele weerstand, per kandidaat en als corpusgemiddelde. Een kolom, geen
+  oordeel: casus 1 stelt geen dissipatiegrens (P4). Drukt voor het LEVENDE corpus ook de verwerpingen af met wat de
   geweigerde tune had bereikt. Draai hem ná de generator en ná de recorder.
   **Hij heette tot V33 `compare-v30-v32-corpus.ts` en had zijn "ná"-helft hard op het levende corpus
   staan** — dus de eerste regeneratie erna maakte stilletjes een ándere tabel dan de tabel waarvoor hij
@@ -79,6 +84,14 @@
   driver landt en of elke randregel hem accepteert, en daarna de bronweerstand van élke bevroren
   netlist op alle drie plus zijn DC-limiet. Dit is het bewijsmateriaal onder casusboek V34;
   `frozenNetlistGates.test.ts` assert de claims, dit script laat de getallen zien.
+- **Wat de dissipatieterm bijdraagt (V36)**: `npx vite-node scripts/measure-v36-dissipation.ts` —
+  seconden, geen ketenrun. Drukt per bevroren netlist beide armen van de bronweerstandsprobe af
+  (ketenraster met de historische randregel = de v2-route tot V34; veiligheidsraster met de
+  strikte regel = wat zij nu doet), met R_source, de noemer, de verhouding en de termwaarde die
+  eruit volgt — naast de objectiefwaarde waarin die term wordt opgeteld, en naast M-A
+  (dissipatiefractie en de watt in de grootste enkele weerstand). De laatste tabel legt de
+  noemer naast de gemeten R_e: dat is V37. Dit is het bewijsmateriaal onder casusboek V36;
+  `frozenNetlistGates.test.ts` en `dissipationTerm.test.ts` asserteren de claims.
 - **De vloer als zoekdoel meten (V30)**: `npx vite-node scripts/measure-v30-floor-goal.ts` —
   dertig ketenruns (vijftien kandidaten × twee armen), gemeten 45–70 s per stuk, ~30 min.
   Schrijft `test-fixtures/casus1_v30_vloer_vergelijking.json` en drukt de vóór/ná-tabel af.
@@ -601,6 +614,32 @@ grotere ingreep — hij raakt élk commando in dit project — en is deze sessie
   `null` is (de audit draait, zijn tier oordeelt niets), en op welk raster de probe leest. Een
   afwezige grens die alleen door afwezigheid zichtbaar is, leest als een vergissing.
 
+### V36-guards (waar de dissipatieterm leest, en wat dissipatie nog bewaakt)
+- `src/lib/engine2/optimizer/dissipationTerm.test.ts` — de vijf claims op de tweewegfixture, en
+  de derde draagt de andere. `dissipationWeight` staat in GREY (A3j: een grijze sleutel wordt
+  expliciet overgenomen, nooit stil op nul gezet); de v2-route levert een dissipatieverhouding af,
+  dus de term is NIET ingetrokken; het ketenraster weigert op deze fixture wél en het
+  veiligheidsraster niet, dus "hij leest de gestelde bron" is te onderscheiden van "hij leest wat
+  dan ook" (V23); de verhouding IS `R_source/Re(Z)` op dát raster, exact tot negen decimalen, met
+  beide grootheden nagerekend op het geleverde netwerk; en een genoemde bron zonder data probet
+  niets in plaats van terug te vallen. Plus de V37-bevinding als feit over de code van vandaag:
+  de noemer is de PIEKHOOGTE, met de factor afgeleid uit de kromme zelf.
+- `src/lib/engine2/frozenNetlistGates.test.ts` — vier V36-blokken op het echte corpus, en zij
+  kosten NIETS extra: `FIELD` bouwt al één rapport per netlist en houdt sinds V36 ook M-A vast.
+  Het blok `manifest_en_geometrie.v36_dissipatie` dekt élke bevroren netlist (een gekrompen lijst
+  faalt), elke opgeschreven dissipatie en watt reproduceert uit de metriek zelf — met `null` aan
+  BEIDE kanten als geldige uitkomst, want `V28_KAND_1` heeft geen enkele discrete weerstand — de
+  noemer van de doelfunctieterm ligt meetbaar boven de gemeten R_e (V37 breekt hier zichtbaar op),
+  en de grootste termwaarde op het hele casusboek blijft onder de uitdagingsdrempel van 1 %.
+- `src/lib/engine2/optimizer/shortlist.test.ts` — de kolom als kolom. Doorgegeven zoals `gates`
+  wordt doorgegeven; `null` en nooit 0 op een kandidaat die er geen draagt (een 0 leest als
+  "gemeten, en het is nul"); en de dragende claim: een veld waarin de EERSTE kandidaat 95 %
+  verstookt levert een byte-identieke lijst op — zelfde rijen, zelfde volgorde, zelfde stempel.
+  A5e.1 als meting in plaats van als belofte.
+- `src/lib/engine2/casus1V2Candidates.test.ts` — `grootste_R_W_bij_100W` reproduceert per
+  kandidaat, in de watt-tolerantieklasse die de drie v1-kandidaten al gebruikten. Elf metrieken
+  per kandidaat in plaats van tien.
+
 ### F4b2-guard (het vierde gat: de LF-bult-inversie)
 - `src/lib/engine2/optimizer/lfBumpBorder.test.ts` — de vierde A5d.6-inversie, die op de
   workerroute nooit invoer had (V23-bijvangst, dood sinds F2). Vijf asserts op de inversie zelf:
@@ -670,7 +709,14 @@ Twee scripts, twee kosten:
 - `npx vite-node scripts/generate-casus1-v2-candidates.ts` — negen ketenruns, gemeten 45–72 s per
   kandidaat, ~10 min totaal. Schrijft de netlists en `test-fixtures/casus1_v2_herkomst.json`.
 - `npx vite-node scripts/record-casus1-v2-references.ts` — leest die bestanden en schrijft de
-  klasse-B-blokken in de golden refs. Drie seconden, dus vrij om opnieuw te draaien.
+  klasse-B-blokken in de golden refs. Drie seconden, dus vrij om opnieuw te draaien. Sinds V36
+  elf metrieken per kandidaat (`grootste_R_W_bij_100W` erbij) plus het afgeleide blok
+  `manifest_en_geometrie.v36_dissipatie`.
+
+**`scripts/` valt buiten `tsc -b`** — `tsconfig.test.json` dekt `src/**` en geen enkele scope dekt
+`scripts/`. Bij V36 kostte dat een kolom vol `null` in het referentiebestand: `casus1Filter(...).parts`
+op een `FilterInput` dat geen `parts` heeft kwam niet als typefout terug. Wie een script schrijft dat
+referentiegetallen wegschrijft, kijkt het geschreven blok na vóór de commit.
 De acceptatie zit in `casus1V2Candidates.test.ts`: de metrieken reproduceren op alle bevroren bestanden,
 en **één** kandidaat wordt live door de échte route heen gereproduceerd (~41 s).
 

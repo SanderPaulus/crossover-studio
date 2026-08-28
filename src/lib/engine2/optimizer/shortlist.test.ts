@@ -262,6 +262,69 @@ describe('the shortlist', () => {
     const s = buildShortlist(field2(), RUN, { targetCurve: { type: 'tilt' } });
     expect(s.notes.join(' ')).toContain('not implemented');
   });
+
+  /* ================================================================== *
+   * V36 — what a design BURNS, as a column
+   * ================================================================== */
+
+  describe('V36 — the dissipation column', () => {
+    /**
+     * WHY THIS BLOCK IS THREE CLAIMS AND NOT ONE. "The column is carried
+     * through" is easy to satisfy and easy to satisfy WRONGLY: a column that
+     * quietly participated in the selection would still be carried through. So
+     * the load-bearing claim is the third one — a candidate that burns
+     * absurdly more than the others comes out in exactly the same place, and
+     * the whole list is byte-identical to the one without any dissipation at
+     * all. That is A5e.1 as a measurement instead of as a promise.
+     */
+    const burn = (fraction: number, watts: number | null) => ({
+      totalFraction: fraction,
+      largestResistor: { id: 'R1', ohm: 3.3, fraction },
+      largestResistorWatts: watts,
+      powerW: watts === null ? null : 100,
+    });
+
+    it('is carried through untouched, exactly as `gates` is', () => {
+      const s = buildShortlist(
+        [{ ...candidate('a', 2, 4.0, measurements(1.0, 0.4, 3)), dissipation: burn(0.23, 17.9) }],
+        RUN,
+        {},
+      );
+      expect(s.rows[0].dissipation).toEqual(burn(0.23, 17.9));
+    });
+
+    it('is `null` — never invented — on a candidate that carries none', () => {
+      /* An absent column is not a design that burns nothing. Every v1 caller
+       * and the two-way route (TODO(F2c)) hand over no dissipation at all, and
+       * a 0 there would read as "measured, and it is zero". */
+      const s = buildShortlist([candidate('a', 2, 4.0, measurements(1.0, 0.4, 3))], RUN, {});
+      expect(s.rows[0].dissipation).toBeNull();
+    });
+
+    it('decides NOTHING: the same field with wild dissipation gives the same list', () => {
+      const base = field2().concat([
+        candidate('b', 2, 4.1, measurements(1.1, 0.5, 3)),
+        candidate('c', 4, 12.0, measurements(1.2, 0.6, 4)),
+      ]);
+      const strip = (x: ReturnType<typeof buildShortlist<string>>) =>
+        stableJson({
+          rows: x.rows.map((r) => [r.label, r.topologyClass, r.requirements.feasible]),
+          feasible: x.feasibleCount,
+          stamp: x.stamp.shortlistFingerprint,
+        });
+      const plain = buildShortlist(base, RUN, { size: 3 });
+      /* The worst burner is put FIRST in the field and given the best RMS's
+       * neighbour, so a column that leaked into either the spreading or the
+       * ordering would have to move it. */
+      const loaded = buildShortlist(
+        base.map((c, i) => ({ ...c, dissipation: burn(i === 0 ? 0.95 : 0.01, i === 0 ? 95 : 1) })),
+        RUN,
+        { size: 3 },
+      );
+      expect(strip(loaded)).toBe(strip(plain));
+      expect(loaded.rows.map((r) => r.dissipation?.totalFraction)).toEqual([0.95, 0.01, 0.01]);
+    });
+  });
 });
 
 function field2(): ShortlistInput<string>[] {

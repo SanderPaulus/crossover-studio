@@ -154,6 +154,11 @@ interface Row {
   wmPhase: number | null;
   mtPhase: number | null;
   clearsFloor: boolean | null;
+  /** V36 — M-A's fraction as a percentage, and the WATTS in the largest single
+   *  discrete resistor at the assumed power. A column, never a criterion: this
+   *  script ranks nothing and no threshold anywhere compares against it. */
+  dissPct: number | null;
+  largestRw: number | null;
 }
 
 const r2 = (v: number | null | undefined): number | null =>
@@ -177,6 +182,8 @@ function measure(key: string): Row {
     wmPhase: r2(pt.find((p) => p.lower === 'woofer')?.meanAbsDeg ?? null),
     mtPhase: r2(pt.find((p) => p.lower === 'mid')?.meanAbsDeg ?? null),
     clearsFloor: z === null || FLOOR === null ? null : meetsAmpFloor(z, FLOOR),
+    dissPct: r2((rep.metrics.dissipation?.totalFraction ?? NaN) * 100),
+    largestRw: r2(rep.metrics.dissipation?.elements.find((e) => !e.parasitic)?.watts ?? null),
   };
 }
 
@@ -198,19 +205,25 @@ console.log(
    * columns — which is exactly what happened to the V34 table before anyone
    * looked at the rendered file. */
   '| kandidaat (W-M · M-T) | min \\|Z\\| vóór | min \\|Z\\| ná | @ Hz ná | vloer vóór → ná | ' +
-    'SPL ± vóór → ná | RMS vóór → ná | W-M fase vóór → ná | M-T fase vóór → ná |',
+    'SPL ± vóór → ná | RMS vóór → ná | W-M fase vóór → ná | M-T fase vóór → ná | ' +
+    'dissipatie % vóór → ná | grootste R (W) vóór → ná |',
 );
-console.log('|---|---|---|---|---|---|---|---|---|');
+console.log('|---|---|---|---|---|---|---|---|---|---|---|');
 
 let beforeClears = 0;
 let afterClears = 0;
 const gone: string[] = [];
 const arrived: string[] = [];
+/** Elke gemeten rij, per helft — voor het corpusgemiddelde onderaan. */
+const measuredBefore: Row[] = [];
+const measuredAfter: Row[] = [];
 for (const label of labels) {
   const bKey = before.byCandidate.get(label);
   const aKey = after.byCandidate.get(label);
   const b = bKey ? measure(bKey) : null;
   const a = aKey ? measure(aKey) : null;
+  if (b) measuredBefore.push(b);
+  if (a) measuredAfter.push(a);
   if (b?.clearsFloor) beforeClears++;
   if (a?.clearsFloor) afterClears++;
   if (b && !a) gone.push(label);
@@ -225,7 +238,9 @@ for (const label of labels) {
       `${num(b?.splWindow ?? null)} → ${afterCell(a?.splWindow ?? null)} | ` +
       `${num(b?.rms ?? null)} → ${afterCell(a?.rms ?? null)} | ` +
       `${num(b?.wmPhase ?? null)} → ${afterCell(a?.wmPhase ?? null)} | ` +
-      `${num(b?.mtPhase ?? null)} → ${afterCell(a?.mtPhase ?? null)} |`,
+      `${num(b?.mtPhase ?? null)} → ${afterCell(a?.mtPhase ?? null)} | ` +
+      `${num(b?.dissPct ?? null)} → ${afterCell(a?.dissPct ?? null)} | ` +
+      `${num(b?.largestRw ?? null)} → ${afterCell(a?.largestRw ?? null)} |`,
   );
 }
 
@@ -236,6 +251,21 @@ console.log(`bevroren: ${beforeSize} vóór → ${afterSize} ná`);
 console.log(
   `haalt de vloer ALS BESTAND: ${beforeClears} van ${beforeSize} vóór → ` +
     `${afterClears} van ${afterSize} ná`,
+);
+/* V36 — het corpusgemiddelde, uit de rijen die hierboven al gemeten zijn.
+ * Opnieuw `measure()` aanroepen zou elke netlist een tweede keer oplossen voor
+ * een gemiddelde, en dat is precies het patroon dat A3g elders verbiedt. */
+const avg = (xs: (number | null)[]) => {
+  const v = xs.filter((x): x is number => x !== null);
+  return v.length ? v.reduce((a, b) => a + b, 0) / v.length : null;
+};
+const fmt = (v: number | null) => (v === null ? '—' : v.toFixed(1));
+console.log(
+  `dissipatie (M-A) gemiddeld: ${fmt(avg(measuredBefore.map((r) => r.dissPct)))} % vóór → ` +
+    `${fmt(avg(measuredAfter.map((r) => r.dissPct)))} % ná; grootste enkele weerstand gemiddeld ` +
+    `${fmt(avg(measuredBefore.map((r) => r.largestRw)))} W → ` +
+    `${fmt(avg(measuredAfter.map((r) => r.largestRw)))} W bij ${SETTINGS.amplifierPowerW} W. ` +
+    'Een kolom, geen oordeel: casus 1 stelt geen dissipatiegrens (P4).',
 );
 console.log(`uit de shortlist gevallen: ${gone.length}${gone.length ? ` — ${gone.map(short).join('; ')}` : ''}`);
 console.log(`nieuw in de shortlist: ${arrived.length}${arrived.length ? ` — ${arrived.map(short).join('; ')}` : ''}`);
