@@ -26,7 +26,7 @@
  * worker route still delivers them byte for byte (`casus1V2Candidates.test.ts`).
  */
 
-import { readFileSync, writeFileSync } from 'node:fs';
+import { writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { execSync } from 'node:child_process';
@@ -41,9 +41,8 @@ import {
 } from '../src/lib/engine2/casus1.fixture.ts';
 import { buildReport } from '../src/lib/engine2/report.ts';
 import { ctcKey } from '../src/lib/engine2/metrics/types.ts';
-import { buildCandidateField, candidateFieldKey } from '../src/lib/engine2/predesign/candidateField.ts';
+import { candidateFieldKey } from '../src/lib/engine2/predesign/candidateField.ts';
 import { greyValues } from '../src/lib/engine2/optimizer/choices.ts';
-import { declareCandidateChoices } from '../src/lib/engine2/optimizer/candidateDeclaration.ts';
 import { stableJson, stampRun } from '../src/lib/engine2/optimizer/determinism.ts';
 import { gateSettingsKey } from '../src/lib/engine2/optimizer/gates.ts';
 import { budgetSettingsKey } from '../src/lib/engine2/optimizer/bounds.ts';
@@ -51,7 +50,6 @@ import { measurementFactsKey } from '../src/lib/engine2/optimizer/measurementFac
 import { buildShortlist, type ShortlistInput } from '../src/lib/engine2/optimizer/shortlist.ts';
 import { FLAT_TARGET } from '../src/lib/engine2/requirements/targetCurve.ts';
 import { handleV2Request, type V2Chain3Payload, type V2Response } from '../src/lib/engine2/optimizer/worker.ts';
-import { AUTO_STRUCTS } from '../src/lib/threeWayDesign.ts';
 import type { Chain3Input, Chain3Result } from '../src/lib/threeWayChain.ts';
 import type { GriddedResponse } from '../src/lib/dsp.ts';
 import { serializeFilter } from '../src/lib/filterFile.ts';
@@ -115,6 +113,17 @@ const gridded: {
   safety: ReturnType<typeof casus1ChainInput>['safety'];
 } = casus1ChainInput(manifest, files, golden);
 
+/** What the worker hands back on `done` — one name, so the collector below and
+ *  every read off it describe the same shape. */
+type DoneData = {
+  result: Chain3Result;
+  measurements: ShortlistInput<Chain3Result>['measurements'];
+  topology: ShortlistInput<Chain3Result>['topology'];
+  gates: ShortlistInput<Chain3Result>['gates'];
+  rejection: ShortlistInput<Chain3Result>['rejection'];
+  notes: string[];
+};
+
 const rows: ShortlistInput<Chain3Result>[] = [];
 const perCandidate: Record<string, unknown> = {};
 /**
@@ -147,8 +156,11 @@ const outcomes: {
    * what turned "the barrier changed nothing" into "the barrier's result was
    * rejected downstream", which are different findings. */
   pas: {
-    tuned: boolean | null;
-    evaluaties: number | null;
+    /** Het AANTAL componentwaarden dat vrij was om te bewegen — een telling,
+     *  geen vlag. Stond hier tot V37 als `boolean | null`, en de cast die hem
+     *  vulde was even fout; `scripts/` viel toen buiten `tsc -b`. */
+    tuned: number;
+    evaluaties: number;
     safetyNote: string | null;
     safetyKinds: string[] | null;
     ampFloorNote: string | null;
@@ -220,20 +232,21 @@ for (const c of field.field.candidates) {
   lastPayload = payload;
   const t0 = Date.now();
   const wire = structuredClone({ id: n, kind: 'v2Chain3One' as const, payload });
-  let out: {
-    result: Chain3Result;
-    measurements: ShortlistInput<Chain3Result>['measurements'];
-    topology: ShortlistInput<Chain3Result>['topology'];
-    gates: ShortlistInput<Chain3Result>['gates'];
-    rejection: ShortlistInput<Chain3Result>['rejection'];
-    notes: string[];
-  } | null = null;
+  /* THE CALLBACK'S RESULT, COLLECTED IN AN ARRAY AND NOT IN A `let`.
+   *
+   * V37 — the shape a `let` needs here is one TypeScript cannot follow: it
+   * narrows the variable to `null` at its declaration and never widens it
+   * again for an assignment made inside a callback, so the guard below narrows
+   * it to `never` and every field read off it was an error the build did not
+   * see (`scripts/` was outside `tsc -b` until V37). An array is assigned
+   * through a method the compiler does understand. */
+  const collected: DoneData[] = [];
   handleV2Request(wire, (m: V2Response) => {
     if (m.kind === 'error') throw new Error(m.message);
-    if (m.kind === 'done') out = m.data as typeof out;
+    if (m.kind === 'done') collected.push(m.data as DoneData);
   });
-  if (!out) throw new Error(`candidate ${c.label} produced nothing`);
-  const done = out as NonNullable<typeof out>;
+  const done = collected[0];
+  if (!done) throw new Error(`candidate ${c.label} produced nothing`);
   /* WHAT EACH CANDIDATE DID, gate verdicts included.
    *
    * Recorded for every candidate and not only for the survivors, because the
@@ -258,15 +271,19 @@ for (const c of field.field.candidates) {
     })),
     geweigerd_door: failed.map((v) => `${v.gate} (${v.subject})`),
     door_de_ketenzelf_gediskwalificeerd: [...(done.result.disqualified ?? [])],
+    /* READ OFF THE RESULT TYPE, NOT THROUGH A CAST. V37 — `tuned` was cast to
+     * `boolean` here and it is a COUNT of the values that were free to move;
+     * the recorded field said `true`/`false` about a number. `scripts/` was
+     * outside `tsc -b` until V37, so the compiler never saw it. */
     pas: {
-      tuned: (done.result.net as { tuned?: boolean }).tuned ?? null,
-      evaluaties: (done.result.net as { evaluations?: number }).evaluations ?? null,
-      safetyNote: (done.result.net as { safetyNote?: string }).safetyNote ?? null,
-      safetyKinds: (done.result.net as { safetyKinds?: string[] }).safetyKinds ?? null,
-      ampFloorNote: (done.result.net as { ampFloorNote?: string }).ampFloorNote ?? null,
-      ampFloorRepair: (done.result.net as { ampFloorRepair?: string }).ampFloorRepair ?? null,
+      tuned: done.result.net.tuned,
+      evaluaties: done.result.net.evaluations,
+      safetyNote: done.result.net.safetyNote ?? null,
+      safetyKinds: done.result.net.safetyKinds ?? null,
+      ampFloorNote: done.result.net.ampFloorNote ?? null,
+      ampFloorRepair: done.result.net.ampFloorRepair ?? null,
       vroege_terugkeer: !('ampFloorRepair' in (done.result.net as object)),
-      vloerbron: (done.result.net as { zFloorSourceNote?: string }).zFloorSourceNote ?? null,
+      vloerbron: done.result.net.zFloorSourceNote ?? null,
     },
     verwerping: done.rejection
       ? {
@@ -439,6 +456,35 @@ const meetopstelling = {
     '2,0 Ω — de UI-default van de app, in een fixture getypt, langs precies het pad dat F0 voor ' +
     '`ampMinLoadOhm` heeft opgeruimd. `withDeclaredSourceLimit` in de worker zorgt dat de keten ' +
     'die afwezigheid ook honoreert in plaats van terug te vallen op haar eigen default.',
+  /* ---- V37: WAT DE DISSIPATIETERM DEELT ---------------------------------
+   *
+   * Eén veld, één besluit, in dezelfde vorm als V30, V33 en V34: niet WAAR de
+   * probe leest (dat is `probe_raster`) maar WAARDOOR de teller gedeeld wordt.
+   * Afgelezen van de verklaring, want het is een keuze-sleutel. */
+  dissipatie_noemer:
+    lastPayload.candidate?.declaration.stated.dissipationReferenceSource ?? null,
+  dissipatie_noemer_waarom:
+    {
+      re:
+        'De dissipatieterm deelt door de OPGELOSTE R_e van de laagste weg — het getal dat M-E ' +
+        'publiceert en dat de Q_es-inversie gebruikt, opgelost door de ingestpas (A5c.1) en ' +
+        'meegedragen door `measurementFacts`. De term bestaat om de serie-R-route naar ' +
+        'niveauregeling af te remmen en de schade daarvan is Q_es-vermenigvuldiging, ' +
+        '`1 + R_source/R_e`, met R_e de DC-weerstand (A3j rij 23, A4 M-E). Tot V37 deelde hij ' +
+        'door `Re(Z)` BIJ de probe, en sinds V34 zit die probe op de impedantiepiek van het ' +
+        'wooferpaar: gemeten 19,31 Ω tegen een gemeten R_e van 3,05 Ω, een factor 6,33 die tot ' +
+        '40,1 kwadrateert. Geen terugval: zonder opgeloste R_e is er geen verhouding en meldt ' +
+        'de run welke invoer ontbrak.',
+      probe:
+        'De dissipatieterm deelt door `Re(Z)` bij de probe — de vóór-arm van V37, en de ' +
+        'default die elke v1-run leest.',
+    }[lastPayload.candidate?.declaration.stated.dissipationReferenceSource ?? 'probe'],
+  dissipatiegewicht: CASUS1_V2_SETTINGS.dissipationWeight,
+  dissipatiegewicht_waarom:
+    'GRIJS (A3j): overgenomen uit v1, expliciet gesteld door de kandidaat, nooit stil op nul. ' +
+    'De waarde is de app-standaard en V37 heeft haar NIET aangeraakt — eerst de noemer, dan pas ' +
+    'de vraag of het gewicht klopt; een gewicht ophogen om een verkeerd gemeten grootheid te ' +
+    'compenseren is de fout twee keer maken.',
   audittier_ohm: CASUS1_V2_SETTINGS.audit.thresholds.rSourceOhm,
   audittier_waarom:
     'NULL, en null is hier een waarde: de onderdelenaudit DRAAIT (zij is een bescherming), maar ' +

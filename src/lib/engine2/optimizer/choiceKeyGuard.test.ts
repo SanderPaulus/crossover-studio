@@ -116,9 +116,11 @@ describe('F4c — every tuner option has a class', () => {
     // `zFloorBarrierSource` (choice — which band the goal is measured over) and
     // `zFloorBarrierImpedance` (polish — the measurement that band comes from);
     // 42 since V34 added `rSourceProbeSource` (choice — which frequency a hard
-    // limit is compared at).
-    expect(keys.length).toBe(42);
-    expect(CHOICE_KEYS.length + GREY_KEYS.length + POLISH_KEYS.length).toBe(42);
+    // limit is compared at); 44 since V37 added `dissipationReferenceSource`
+    // (choice — WHAT the dissipation term divides by) and
+    // `dissipationReferenceReOhm` (polish — the resolved R_e it divides by).
+    expect(keys.length).toBe(44);
+    expect(CHOICE_KEYS.length + GREY_KEYS.length + POLISH_KEYS.length).toBe(44);
     // V31: instrumentation, never a choice — the key may not silently migrate
     // into the class whose values are only allowed to come from a candidate.
     expect(POLISH_KEYS).toContain('rejectedTuneReport');
@@ -144,6 +146,23 @@ describe('F4c — every tuner option has a class', () => {
     expect(GREY_KEYS as readonly string[]).not.toContain('rSourceProbeSource');
     // ...and it stays beside the limit it qualifies, which is also a choice.
     expect(CHOICE_KEYS).toContain('rSourceDisqualifyOhm');
+    /* V37 — the third pair, and the split is the same claim a third time.
+     * WHAT the dissipation term divides by defines the quantity a weighted term
+     * measures: `1 + R_source/R_e` is Q_es multiplication (A3j row 23, A4 M-E),
+     * and `Re(Z)` at the probe is a different number — on casus 1, 19.31 Ω
+     * against a metered 3.05 Ω, squared to 40.1. A migration into polish would
+     * make "which quantity the objective measures" a tuning detail. The R_e
+     * itself is the run's own resolved fact, handed over by the caller that
+     * already holds it, and may never become a choice: a candidate that carried
+     * its own R_e would be a second opinion about the A5c.1 hierarchy, which
+     * has one implementation on purpose (F4b leak 1). */
+    expect(CHOICE_KEYS).toContain('dissipationReferenceSource');
+    expect(POLISH_KEYS).toContain('dissipationReferenceReOhm');
+    expect(POLISH_KEYS as readonly string[]).not.toContain('dissipationReferenceSource');
+    expect(GREY_KEYS as readonly string[]).not.toContain('dissipationReferenceSource');
+    expect(CHOICE_KEYS as readonly string[]).not.toContain('dissipationReferenceReOhm');
+    // ...and it stays beside the WEIGHT it qualifies, which is grey (A3j).
+    expect(GREY_KEYS).toContain('dissipationWeight');
   });
 });
 
@@ -385,6 +404,47 @@ describe('F4d — a generated candidate declares every choice key', () => {
     // ...and the source moves the fingerprint, or the choice would be a label.
     expect(JSON.stringify(declarationKey(full(), {}))).not.toBe(
       JSON.stringify(declarationKey(onGrid, {})),
+    );
+  });
+
+  it('V37 — every candidate states WHAT the dissipation term divides by, and it is R_e', () => {
+    /* THE ONE UNCONDITIONAL DERIVATION IN THIS MODULE, and the asymmetry is the
+     * claim. V30, V33 and V34 all hang on another setting — no floor, no
+     * barrier; no barrier, no band; no safety set, no wider grid to probe on.
+     * V37 hangs on nothing, because the question it answers is not conditional:
+     * `dissipationWeight` is GREY, so a v2 candidate always states it and the
+     * term is always live, and a live term always measures something.
+     *
+     * WHICH something is settled by what the term is for. A3j row 23 and A4 M-E
+     * both define the damage as Q_es multiplication, `1 + R_source/R_e` on the
+     * DC resistance — so the candidate names R_e, in both arms, with and
+     * without a safety set. */
+    expect(full().stated.dissipationReferenceSource).toBe('re');
+    expect(bare().stated.dissipationReferenceSource).toBe('re');
+    for (const d of [full(), bare()]) {
+      expect(d.absent.some((a) => a.key === 'dissipationReferenceSource')).toBe(false);
+      expect(d.delegated.some((g) => g.key === 'dissipationReferenceSource')).toBe(false);
+    }
+
+    /* P4 IS ANSWERED ONE LAYER DOWN, and this assert is what says so out loud:
+     * the candidate carries no R_e and may not, because whether one was
+     * RESOLVED is a measured fact and not a designer setting. The tuner reports
+     * the absence (`dissipationRefNote`) and produces no ratio. */
+    expect(Object.keys(full().stated)).not.toContain('dissipationReferenceReOhm');
+
+    // An explicit source still wins, so V37's before/after is a run someone can
+    // ask for rather than a build that has to be patched.
+    const onProbe = declareCandidateChoices({
+      cages: [[400, 500], [1500, 2000]],
+      windowFloorsHz: [397, 1294],
+      multiWay: true,
+      stated: { dissipationReferenceSource: 'probe' },
+    });
+    expect(onProbe.stated.dissipationReferenceSource).toBe('probe');
+
+    // ...and it moves the fingerprint, or the choice would be a label.
+    expect(JSON.stringify(declarationKey(bare(), {}))).not.toBe(
+      JSON.stringify(declarationKey(onProbe, {})),
     );
   });
 

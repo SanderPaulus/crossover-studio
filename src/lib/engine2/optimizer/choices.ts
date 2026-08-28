@@ -4,8 +4,10 @@
  * `NetOptimizeOptions` had 37 top-level keys when F4c classified them — 38
  * since V30 added `zFloorBarrier`, 39 since V31 added `rejectedTuneReport`,
  * 41 since V33 added `zFloorBarrierSource` (choice) beside
- * `zFloorBarrierImpedance` (polish), and 42 since V34 added
- * `rSourceProbeSource` (choice); the count is asserted rather than
+ * `zFloorBarrierImpedance` (polish), 42 since V34 added
+ * `rSourceProbeSource` (choice), and 44 since V37 added
+ * `dissipationReferenceSource` (choice) beside `dissipationReferenceReOhm`
+ * (polish); the count is asserted rather than
  * described (`choiceKeyGuard.test.ts`). Until F4c the v2 route set four of
  * them and inherited the other 33 verbatim from whatever the v1 chain happened
  * to build (`audit §2.2`). That is harmless while v1 also chooses the
@@ -108,6 +110,18 @@ export const CHOICE_KEYS = [
    * on casus 1 the difference was five candidates whose entire value tune the
    * gate refused for a dip the objective could not see (casebook V33). */
   'zFloorBarrierSource',
+  /* …and V37, one term along: WHAT the dissipation term divides by. A choice
+   * because it does not tune how the search runs — it DEFINES the quantity a
+   * weighted term measures. `dissipationWeight · (R_source/x)²` exists to slow
+   * the series-R route to level matching, and the damage that route does is
+   * Q_es multiplication, `1 + R_source/R_e` with R_e the DC resistance (A3j
+   * row 23, A4 M-E). With `x = Re(Z)` at the probe the term measures something
+   * else, and since V34 that probe sits on the low driver's impedance peak:
+   * measured on casus 1, 19.31 Ω against a metered 3.05 Ω, squared to 40.1.
+   * Two searches that divide by those two numbers are looking for different
+   * networks — 3 % of the objective against 0.07 % — so this is the same class
+   * as `band`, one quantity along (casebook V37). */
+  'dissipationReferenceSource',
   'breakupGuard',
   'safety',
   'audit',
@@ -184,6 +198,16 @@ export const POLISH_KEYS = [
    * measured sweep, and restating it as a candidate value would put a second
    * copy of one measurement on the wire (the angleData argument, again). */
   'zFloorBarrierImpedance',
+  /* V37 — the measurement the choice above names, handed over by the caller
+   * that already holds it. Polish for exactly the reason
+   * `zFloorBarrierImpedance` is: it carries no decision. WHICH quantity the
+   * dissipation term divides by is `dissipationReferenceSource`, a choice; what
+   * that quantity IS for a given driver is the run's own resolved R_e, walked
+   * once by the ingest pass (A5c.1) and already on the wire as a measured fact.
+   * Restating it as a candidate value would put a second copy of one
+   * measurement on the wire — and worse, a second opinion about a hierarchy
+   * that has one implementation on purpose (F4b leak 1, V21). */
+  'dissipationReferenceReOhm',
 ] as const;
 
 export type PolishKey = (typeof POLISH_KEYS)[number];

@@ -1,5 +1,5 @@
 /**
- * V36 — WAT DE DISSIPATIETERM BIJDRAAGT AAN fxOf, VÓÓR EN NÁ V34.
+ * V36/V37 — WAT DE DISSIPATIETERM BIJDRAAGT AAN fxOf, EN WAARDOOR HIJ DEELT.
  *
  * `npx vite-node scripts/measure-v36-dissipation.ts` — seconden, geen ketenrun.
  *
@@ -203,11 +203,17 @@ console.log(
  * `dissipationWeight · (R_source/R_e)²` heet in de nota de rem op de serie-R-
  * route naar niveauregeling, en de schade die zij moet remmen is Q_es-
  * vermenigvuldiging: `Q_es_mult = 1 + R_source/R_e`, met R_e de DC-weerstand.
- * De term leest als noemer echter `Re(Z)` BIJ DE PROBE, en sinds V34 zit die
- * probe op de impedantiepiek. Deze tabel legt de twee naast elkaar; de kolom
- * `M-E` komt uit de metriek die de vermenigvuldiging wél op R_e berekent, dus
- * hij is de controle op de middelste kolom en geen tweede mening. */
-console.log('\n=== DE NOEMER: DE PIEK, OF DE DC-WEERSTAND ===');
+ * De term las als noemer echter `Re(Z)` BIJ DE PROBE, en sinds V34 zit die
+ * probe op de impedantiepiek.
+ *
+ * V37 — DIT IS DE VÓÓR/NÁ VAN DIE REPARATIE. `term nu` is wat een v1-run leest
+ * (de default `dissipationReferenceSource: 'probe'`, onveranderd); `term op
+ * R_e` is wat de v2-route sinds V37 optelt. De kolom `M-E` komt uit de metriek
+ * die de vermenigvuldiging wél op R_e berekent — zij is de CONTROLE op de
+ * kolom `R_s/R_e` en geen tweede mening: `1 + R_s/R_e` hoort per definitie de
+ * `Qes_mult`-referentie van het casusboek te zijn, en
+ * `frozenNetlistGates.test.ts` assert dat op élke bevroren netlist. */
+console.log('\n=== DE NOEMER: DE PIEK, OF DE DC-WEERSTAND (V37: vóór en ná) ===');
 console.log(
   `${'netlist'.padEnd(12)}${'R_s @probe'.padStart(12)}${'R_s/Re(piek)'.padStart(14)}` +
     `${'R_s/R_e'.padStart(10)}${'M-E Q_es'.padStart(10)}${'term nu'.padStart(12)}` +

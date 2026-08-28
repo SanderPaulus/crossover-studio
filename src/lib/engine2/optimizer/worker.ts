@@ -826,6 +826,33 @@ function tuneOptionsFor(
     );
   }
 
+  /* ---- V37: the R_e the dissipation term divides by ---------------------
+   *
+   * The candidate decides WHICH quantity the term measures
+   * (`dissipationReferenceSource`, a choice key); this supplies WHAT that
+   * quantity is, and it supplies the very number M-E publishes and the Q_es
+   * budget inverts. `facts.reOhm` is walked once, above, out of the payload the
+   * ingest pass resolved (A5c.1) — there is no second hierarchy here and there
+   * must not be one, which is the whole of F4b's leak 1.
+   *
+   * No R_e, no reading. The tuner does NOT go back to Re(Z) at the probe; it
+   * produces no ratio, the term adds nothing, and it says so. Stated here as
+   * well as there, because this is the side that knows why it is missing. */
+  const dissipationReferenceReOhm: Record<string, number> = {};
+  for (const model of Object.keys(facts.reOhm)) {
+    dissipationReferenceReOhm[model] = facts.reOhm[model].ohm;
+  }
+  const wantsResolvedRe = stated.dissipationReferenceSource === 're';
+  if (wantsResolvedRe && Object.keys(dissipationReferenceReOhm).length === 0) {
+    collect.notes.push(
+      'The candidate asked the dissipation term to divide by the resolved R_e and no R_e could ' +
+        'be resolved for any driver on this run, so the term does not steer this search at all. ' +
+        'It is NOT falling back to Re(Z) at the probe — since V34 that reading is the impedance ' +
+        'PEAK of the lowest branch, which is the quantity V37 withdrew rather than the DC ' +
+        'resistance Q_es multiplication is defined on.',
+    );
+  }
+
   return {
     ...stated,
     ...weights,
@@ -837,6 +864,9 @@ function tuneOptionsFor(
             span: reference.impedance.span,
           },
         }
+      : {}),
+    ...(wantsResolvedRe && Object.keys(dissipationReferenceReOhm).length > 0
+      ? { dissipationReferenceReOhm }
       : {}),
     /* V31 — the v2 route asks the tuner to hand back what a wholesale gate
      * threw away. Instrumentation only: it changes no decision, and with it
@@ -1173,6 +1203,11 @@ function runCandidate<I, R extends { parts: VxpPart[]; net: { gateRefusals?: str
    * v1 run. */
   const probeSource = (delivered.net as { rSourceProbeNote?: string }).rSourceProbeNote;
   if (probeSource) collect.notes.push(probeSource);
+  /* V37 — and WHAT the dissipation term divided by, for the same reason again:
+   * a ratio is only readable beside the thing it is a ratio of. Absent on any
+   * run that stated no source, which is every v1 run. */
+  const dissRef = (delivered.net as { dissipationRefNote?: string }).dissipationRefNote;
+  if (dissRef) collect.notes.push(dissRef);
 
   const refused = wholesaleRejection(delivered.net as WholesaleRejectionFields);
   let rejection: CandidateRejection | null = null;

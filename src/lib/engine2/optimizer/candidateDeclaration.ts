@@ -2,8 +2,9 @@
  * F4d — THE CANDIDATE'S DECLARATION OVER EVERY CHOICE KEY.
  *
  * Twenty-five at F4d, twenty-six since V30 added `zFloorBarrier`,
- * twenty-seven since V33 added `zFloorBarrierSource` and twenty-eight since
- * V34 added `rSourceProbeSource`. The number
+ * twenty-seven since V33 added `zFloorBarrierSource`, twenty-eight since
+ * V34 added `rSourceProbeSource` and twenty-nine since V37 added
+ * `dissipationReferenceSource`. The number
  * is not repeated in prose anywhere it could go stale: `declarationCoverage`
  * compares against `CHOICE_KEYS` itself, so a key added upstream lands in no
  * state and fails the build.
@@ -71,6 +72,7 @@ export type StatedByDesigner = Partial<
     | 'zFloorBarrier'
     | 'zFloorBarrierSource'
     | 'rSourceProbeSource'
+    | 'dissipationReferenceSource'
   >
 >;
 
@@ -251,6 +253,37 @@ export function declareCandidateChoices(input: CandidateDeclarationInput): Choic
         'reading, stated as absent rather than inherited in silence (P4)',
     });
   }
+
+  /* ---- V37: WHAT THE DISSIPATION TERM DIVIDES BY ----------------------
+   *
+   * STATED UNCONDITIONALLY, and that is the one derivation in this module that
+   * does not hang on another setting. The reason is that the question is not
+   * conditional. `dissipationWeight` is a GREY key (A3j): a v2 candidate always
+   * states it explicitly, never inherits it and never silently zeroes it — so
+   * the term is always live on this route, and a live term always has a
+   * quantity it measures.
+   *
+   * WHICH quantity is settled by what the term is FOR. A4 M-E and A3j row 23
+   * both name it: series resistance in the lowest path multiplies Q_es by
+   * `1 + R_source/R_e`, with R_e the DC resistance — the same number M-E
+   * publishes and `maxSeriesResistanceFromQes` inverts the budget with. Until
+   * V37 the tuner divided by `Re(Z)` at the probe instead, which is the branch's
+   * impedance there and not its DC resistance. Since V34 that probe sits ON the
+   * low driver's impedance peak, so the two are furthest apart exactly where
+   * the reading is taken: 19.31 Ω against a metered 3.05 Ω on casus 1, squared
+   * to a factor 40.1.
+   *
+   * P4 IS ANSWERED ONE LAYER DOWN, and deliberately so. This module cannot see
+   * whether a resolved R_e reached the run — that is a measured fact, not a
+   * designer setting. So the candidate names the quantity and the TUNER reports
+   * the absence: with no resolved R_e for the lowest branch there is no ratio
+   * at all, the term adds nothing, and `dissipationRefNote` says which input
+   * was missing. No fallback to the peak height, for the third time and the
+   * same reason as V32, V33 and V34.
+   *
+   * An explicit value still wins, so V37's before/after is a run someone can
+   * ask for rather than a build that has to be patched. */
+  stated.dissipationReferenceSource = s.dissipationReferenceSource ?? 're';
 
   /* ---- what has no value on a design of this shape -------------------- */
   absent.push({

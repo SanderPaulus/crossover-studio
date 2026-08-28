@@ -873,26 +873,55 @@ describe('V36 — de dissipatie van élke bevroren netlist, en de noemer van de 
   /** De tolerantieklassen komen uit het referentiebestand, nooit uit deze test
    *  — een tolerantie hoort bij de referentie (goldenCasus1.test.ts). */
   const TOLERANCES = (golden as unknown as {
-    toleranties: { procentpunten: number; watt_pct: number };
+    toleranties: { procentpunten: number; watt_pct: number; exponent_pct: number };
   }).toleranties;
 
+  type TermArm = {
+    hz: number;
+    r_source_ohm: number | null;
+    noemer_ohm: number | null;
+    ratio: number | null;
+    term: number;
+  };
   const record = (
     golden.manifest_en_geometrie as unknown as {
       v36_dissipatie: {
         aangenomen_vermogen_W: number;
         dissipationWeight: number;
         R_e_woofer_ohm: number;
-        noemer_is_R_e: boolean;
+        /** V37 — de OPGELOSTE R_e die de worker meedraagt, en waar hij vandaan
+         *  komt. Twee velden, want zij vallen op casus 1 samen en dat is een
+         *  assert en geen aanname. */
+        R_e_woofer_opgelost_ohm: number | null;
+        noemer_default: string;
+        noemer_v2_route: string;
         per_netlist: {
           netlist: string;
           dissipatie_pct: number | null;
           grootste_R_W_bij_100W: number | null;
-          term_ketenraster: { hz: number; noemer_ohm: number | null; term: number } | null;
-          term_veiligheidsraster: { hz: number; noemer_ohm: number | null; term: number } | null;
+          term_ketenraster: TermArm | null;
+          term_veiligheidsraster: TermArm | null;
+          /** V37 — dezelfde probe, dezelfde teller, de GESTELDE noemer. */
+          term_op_R_e: TermArm | null;
         }[];
       };
     }
   ).v36_dissipatie;
+
+  /**
+   * De klasse-B-referentie die bij één bevroren netlist hoort.
+   *
+   * AFGELEID en niet uitgeschreven: de drie v1-baselines dragen een sessiesuffix
+   * (`HUIDIG_2e`, `KAND_B_3e`) en de rest niet. Een met de hand bijgehouden
+   * lijst is precies wat `goldenClassification.test.ts` bij V33 heeft moeten
+   * opgeven nadat er bij V32 een corpus bijkwam en niemand terugkwam.
+   */
+  const KANDIDATEN = golden.kandidaten as unknown as Record<string, { Qes_mult?: number }>;
+  const refOf = (netlist: string): { Qes_mult?: number } | null => {
+    if (KANDIDATEN[netlist]) return KANDIDATEN[netlist];
+    const hits = Object.keys(KANDIDATEN).filter((k) => k.startsWith(`${netlist}_`));
+    return hits.length === 1 ? KANDIDATEN[hits[0]] : null;
+  };
 
   it('het blok dekt élke bevroren netlist — een lege of gekrompen lijst faalt', () => {
     /* Dezelfde regel als de vloerwandeling erboven: het blok is afgeleid, dus
@@ -928,62 +957,160 @@ describe('V36 — de dissipatie van élke bevroren netlist, en de noemer van de 
     }
   });
 
-  it('de doelfunctieterm leest de probe, en zijn noemer is de PIEK en niet R_e (V37)', () => {
-    /* DE BEVINDING VAN V36, ALS ASSERT OP HET ECHTE CORPUS.
+  it('de doelfunctieterm deelt sinds V37 door de OPGELOSTE R_e, en dat is dezelfde R_e als M-E', () => {
+    /* WAT V37 VERPLAATSTE, ALS ASSERT OP HET ECHTE CORPUS.
      *
-     * `dissipationWeight · (R_source/re)²` bestaat om de serie-R-route naar
+     * `dissipationWeight · (R_source/x)²` bestaat om de serie-R-route naar
      * niveauregeling af te remmen, en de schade die zij aanricht is
-     * Q_es-vermenigvuldiging: `1 + R_source/R_e`, met R_e de DC-weerstand. De
-     * term deelt echter door `Re(Z)` BIJ de probe, en sinds V34 zit die probe
-     * op de impedantiepiek van de woofer. Op casus 1 is die piek een factor
-     * boven de gemeten DC-weerstand, en dat kwadrateert.
+     * Q_es-vermenigvuldiging: `1 + R_source/R_e`, met R_e de DC-weerstand (A3j
+     * rij 23, A4 M-E). Tot V37 was `x` de reële impedantie BIJ de probe, en
+     * sinds V34 zit die probe op de impedantiepiek van de woofer — de plek waar
+     * de twee grootheden het verst uit elkaar liggen.
      *
-     * Vastgelegd als een feit over de code van vandaag: de factor wordt uit de
-     * meting zelf afgeleid en nooit ingetypt, en het blok zegt hardop dat de
-     * noemer NIET R_e is. Een reparatie (V37) hoort hier zichtbaar op te
-     * breken in plaats van stil door te schuiven. */
-    expect(record.noemer_is_R_e).toBe(false);
+     * De v2-route deelt sinds V37 door de opgeloste R_e. De DEFAULT is
+     * onveranderd, en dat staat er even hard bij: een v1-run leest nog steeds
+     * de piekhoogte, byte voor byte. */
+    expect(record.noemer_default).toMatch(/probe/);
+    expect(record.noemer_v2_route).toMatch(/R_e/);
+
+    /* ÉÉN R_e, ÉÉN HERKOMST, SINDS V37 DRIE LEZERS. De opgeloste R_e die de
+     * worker meedraagt, het getal waarop de `Qes_mult`-referenties berekend
+     * zijn, en de constante van de fixture zijn hetzelfde getal — en dat is
+     * hier een assert, want als zij ooit uiteenlopen weet niemand meer welke
+     * van de drie de doelfunctie gebruikt (F4b lek 1, V21). */
     expect(record.R_e_woofer_ohm).toBe(CASUS1_WOOFER_DC_OHM);
+    expect(record.R_e_woofer_opgelost_ohm).toBeCloseTo(CASUS1_WOOFER_DC_OHM, 6);
+    const mE = (golden.kandidaten as unknown as { _M_E_parameters: { R_e_ohm: number } })
+      ._M_E_parameters;
+    expect(mE.R_e_ohm).toBe(CASUS1_WOOFER_DC_OHM);
+
+    /* De facts ZOALS DE RUN ZE BOUWT, en dat detail is de helft van de claim.
+     * De A5c.1-hiërarchie zet een INGEVOERDE meterlezing boven elke afleiding
+     * uit de sweep, en de generator voert er een in — het is het getal waarop
+     * de `Qes_mult`-referenties berekend zijn. Wat de worker meedraagt is
+     * daarmee precies wat M-E publiceert. */
+    const runFacts = casus1V2Facts(
+      report('HUIDIG', { ...BASE, reOhmByDriver: { woofer: CASUS1_WOOFER_DC_OHM } }),
+      manifest,
+      files,
+    );
+    expect(runFacts.reOhmByModel?.woofer).toBeCloseTo(CASUS1_WOOFER_DC_OHM, 6);
+    expect(runFacts.reSourceByModel?.woofer).toMatch(/meter/);
+
+    /* ...en de tegenproef dat de hiërarchie ECHT loopt: zonder die ingevoerde
+     * lezing komt er een ander getal uit (de motionele fit), en dan draagt de
+     * term dat. Zonder deze assert zou "de opgeloste R_e" niet te onderscheiden
+     * zijn van "een constante die toevallig 3,05 is". */
+    const fitFacts = casus1V2Facts(report('HUIDIG'), manifest, files);
+    expect(
+      Math.abs((fitFacts.reOhmByModel?.woofer ?? 0) - CASUS1_WOOFER_DC_OHM),
+      'zonder ingevoerde DC levert de hiërarchie hetzelfde getal — dan meet zij niets',
+    ).toBeGreaterThan(0.05);
 
     const rows = record.per_netlist.filter((r) => r.term_veiligheidsraster !== null);
     expect(rows.length, 'geen enkele netlist probet nog op het veiligheidsraster').toBe(
       NETLIST_KEYS.length,
     );
+    expect(
+      record.per_netlist.filter((r) => r.term_op_R_e !== null).length,
+      'niet elke netlist draagt de V37-arm',
+    ).toBe(NETLIST_KEYS.length);
     for (const row of rows) {
-      const arm = row.term_veiligheidsraster!;
       /* De probe hangt aan het RASTER en aan de impedantie van de laagste weg,
        * niet aan het netwerk — dus élke netlist landt op dezelfde frequentie
        * met dezelfde noemer. Zou dat ooit niet meer zo zijn, dan is de aanname
        * onder deze hele entry weg en hoort dat hier te blijken. */
-      expect(arm.hz).toBe(rows[0].term_veiligheidsraster!.hz);
-      expect(arm.noemer_ohm).toBe(rows[0].term_veiligheidsraster!.noemer_ohm);
+      expect(row.term_veiligheidsraster!.hz).toBe(rows[0].term_veiligheidsraster!.hz);
+      expect(row.term_veiligheidsraster!.noemer_ohm).toBe(
+        rows[0].term_veiligheidsraster!.noemer_ohm,
+      );
+      // ...en de V37-arm leest dezelfde probe met een ANDERE noemer: de teller
+      // is niet verplaatst, alleen datgene waardoor hij gedeeld wordt.
+      expect(row.term_op_R_e!.hz).toBe(row.term_veiligheidsraster!.hz);
+      expect(row.term_op_R_e!.r_source_ohm).toBe(row.term_veiligheidsraster!.r_source_ohm);
+      expect(row.term_op_R_e!.noemer_ohm).toBeCloseTo(CASUS1_WOOFER_DC_OHM, 2);
     }
+
+    /* DE FACTOR DIE V37 WEGHAALT, uit de meting zelf en nooit ingetypt. De
+     * piekhoogte ligt meetbaar boven R_e, en de term kwadrateert dat verschil.
+     * Zakt deze verhouding ooit naar 1, dan is de vóór/ná van deze entry
+     * betekenisloos geworden en hoort dat hier te breken. */
     const denom = rows[0].term_veiligheidsraster!.noemer_ohm!;
     expect(
       denom / CASUS1_WOOFER_DC_OHM,
-      `de noemer (${denom} Ω) is niet meer meetbaar boven R_e — V37 kan gesloten zijn`,
+      `de piekhoogte (${denom} Ω) ligt niet meer meetbaar boven R_e`,
     ).toBeGreaterThan(2);
   });
 
-  it('...en die term is te klein om iets te beslissen — gemeten, niet beredeneerd', () => {
-    /* WAT DISSIPATIE VANDAAG NOG BEWAAKT OP DE v2-ROUTE, in één getal. De
-     * tuner beslist met procentuele poorten (uitdaging 1 %, snoei 10 %). De
-     * grootste termwaarde op het hele casusboek staat hieronder naast de
-     * kleinste objectiefwaarde die een casus-1-kandidaat haalt, en die
-     * verhouding is de reden dat V36 het gewicht NIET heeft bijgesteld: een
-     * gewicht ophogen om een verkeerd gemeten grootheid te compenseren is de
-     * fout twee keer maken. De grens komt uit de tuner en niet uit dit bestand:
-     * 1 % is de uitdagingsdrempel die `netOptimizer.ts` hanteert. */
+  it('V37 — de verhouding op R_e REPRODUCEERT de Qes_mult-referenties, en die op de piek niet', () => {
+    /* DE REFERENTIE IS DE DEFINITIE, en dat is de hele controle onder V37.
+     * M-E rekent `Q_es_mult = (R_e + R_s)/R_e = 1 + R_s/R_e` op precies de R_e
+     * hierboven; de dissipatieterm rekent `R_source/x`. Zijn beide dezelfde
+     * grootheid, dan is `1 + verhouding` per definitie gelijk aan de
+     * `Qes_mult`-referentie van dezelfde netlist — binnen de tolerantieklasse
+     * die bij die referentie hoort, want de twee lezen bij een iets andere
+     * frequentie (M-E bij f_s op het rapportraster, de term bij de probe op het
+     * veiligheidsraster).
+     *
+     * De TEGENPROEF draagt de claim (V23): op de piekhoogte reproduceert
+     * dezelfde som juist NIET, en dat moet zichtbaar zijn op élke netlist die
+     * werkelijk serieweerstand draagt. Zonder die helft zou "hij deelt door
+     * R_e" niet te onderscheiden zijn van "hij deelt door iets wat er toevallig
+     * op lijkt". */
+    const tol = TOLERANCES.exponent_pct;
+    const pct = (got: number, want: number) => (Math.abs(got - want) / Math.abs(want)) * 100;
+    let checked = 0;
+    let counterProved = 0;
+    for (const row of record.per_netlist) {
+      const ref = refOf(row.netlist);
+      const q = ref?.Qes_mult;
+      expect(q, `${row.netlist}: geen Qes_mult-referentie om tegen te controleren`).toBeTypeOf(
+        'number',
+      );
+      const onRe = row.term_op_R_e!;
+      expect(onRe.ratio, `${row.netlist}: de V37-arm draagt geen verhouding`).toBeTypeOf('number');
+      expect(
+        pct(1 + onRe.ratio!, q!),
+        `${row.netlist}: 1 + R_source/R_e = ${(1 + onRe.ratio!).toFixed(4)} tegen een ` +
+          `Qes_mult-referentie van ${q}`,
+      ).toBeLessThanOrEqual(tol);
+      checked++;
+
+      /* De tegenproef, alleen waar zij iets kan betekenen: een netlist met
+       * vrijwel geen serieweerstand heeft `Qes_mult ≈ 1` en dan liggen beide
+       * noemers even dicht bij de referentie. Dat is geen ontsnapping maar een
+       * eigenschap van zo'n netwerk, en het aantal dat WEL meedoet wordt
+       * geteld zodat een corpus waarin niemand meer meedoet niet stil groen
+       * blijft. */
+      if (q! > 1 + tol / 100) {
+        expect(
+          pct(1 + row.term_veiligheidsraster!.ratio!, q!),
+          `${row.netlist}: de PIEKHOOGTE reproduceert de Qes_mult-referentie ook — dan is de ` +
+            'claim "de term deelt door R_e" niet te onderscheiden van de toestand ervóór',
+        ).toBeGreaterThan(tol);
+        counterProved++;
+      }
+    }
+    expect(checked).toBe(NETLIST_KEYS.length);
+    expect(counterProved, 'geen enkele bevroren netlist draagt genoeg serieweerstand voor de tegenproef')
+      .toBeGreaterThan(0);
+  });
+
+  it('V37 — op de PIEK haalde die term de uitdagingsdrempel nooit; op R_e haalt hij hem wel', () => {
+    /* WAAROM V37 EEN EIGEN SESSIE WAARD WAS, in één vergelijking.
+     *
+     * De tuner beslist met PROCENTUELE poorten: een uitdaging wordt aangenomen
+     * bij 1 % verbetering, een tak gesnoeid bij 10 %. Een term die onder die
+     * 1 % blijft kan geen enkele van die beslissingen omdraaien — hij is dan
+     * gewapend, hij kost rekentijd, en hij bewaakt niets. Dat was de bevinding
+     * van V36 en zij is hier de "vóór"-helft.
+     *
+     * De grens komt uit de tuner en niet uit dit bestand; de objectiefwaarde
+     * komt uit de kleinste RMS die het casusboek draagt, want `fxOf`'s
+     * dominante term is `2(1−p)·rms²` met p = 0,5. Dat is de GUNSTIGSTE
+     * vergelijking voor de dissipatieterm: elke term die aan `fx` ontbreekt
+     * maakt de noemer alleen groter. */
     const CHALLENGE_FRACTION = 0.01;
-    const worstTerm = Math.max(
-      ...record.per_netlist.map((r) => r.term_veiligheidsraster?.term ?? 0),
-    );
-    expect(worstTerm).toBeGreaterThan(0);
-    /* De objectiefwaarde zelf is niet uit een bestand te lezen — zij hoort bij
-     * een run. Wat er WEL uit te lezen is, is de dominante term ervan:
-     * `2(1−p)·rms²` met p = 0,5, dus rms². De kleinste RMS in het casusboek
-     * geeft dus de kleinste objectiefwaarde die hier kan voorkomen, en dat is
-     * de gunstigste vergelijking voor de dissipatieterm. */
     const rmsValues = Object.values(
       golden.kandidaten as unknown as Record<string, { rms_vlakheid_dB?: number }>,
     )
@@ -991,6 +1118,37 @@ describe('V36 — de dissipatie van élke bevroren netlist, en de noemer van de 
       .filter((v): v is number => typeof v === 'number');
     expect(rmsValues.length).toBeGreaterThan(0);
     const smallestFx = Math.min(...rmsValues) ** 2;
-    expect(worstTerm / smallestFx).toBeLessThan(CHALLENGE_FRACTION);
+
+    const worstPeak = Math.max(
+      ...record.per_netlist.map((r) => r.term_veiligheidsraster?.term ?? 0),
+    );
+    const worstRe = Math.max(...record.per_netlist.map((r) => r.term_op_R_e?.term ?? 0));
+    expect(worstPeak).toBeGreaterThan(0);
+
+    // VÓÓR: op geen enkele bevroren netlist haalde de term de drempel.
+    expect(
+      worstPeak / smallestFx,
+      `op de piekhoogte haalt de term ${((worstPeak / smallestFx) * 100).toFixed(2)} % — die ` +
+        'zou de uitdagingsdrempel dus wél kunnen halen, en dan is V36\'s bevinding vervallen',
+    ).toBeLessThan(CHALLENGE_FRACTION);
+    // NÁ: op R_e haalt hij hem, en dus kan hij voor het eerst iets beslissen.
+    expect(
+      worstRe / smallestFx,
+      `op R_e haalt de term maar ${((worstRe / smallestFx) * 100).toFixed(2)} % — dan heeft V37 ` +
+        'de term niet groot genoeg gemaakt om te sturen en is de entry niet waar',
+    ).toBeGreaterThan(CHALLENGE_FRACTION);
+
+    /* ...en het verschil tussen die twee is precies het KWADRAAT van de factor
+     * tussen de twee noemers. Afgeleid uit de opgeschreven noemers zelf, zodat
+     * de bewering niet op een ingetypt getal rust. */
+    const peakOhm = record.per_netlist.find((r) => r.term_veiligheidsraster)!
+      .term_veiligheidsraster!.noemer_ohm!;
+    const expected = (peakOhm / CASUS1_WOOFER_DC_OHM) ** 2;
+    expect(
+      Math.abs(worstRe / worstPeak - expected) / expected,
+      `de twee armen verschillen een factor ${(worstRe / worstPeak).toFixed(2)}, en de noemers ` +
+        `een factor ${(peakOhm / CASUS1_WOOFER_DC_OHM).toFixed(2)} — dat kwadrateert niet tot ` +
+        'hetzelfde, dus de twee armen meten niet dezelfde teller',
+    ).toBeLessThan(0.01);
   });
 });

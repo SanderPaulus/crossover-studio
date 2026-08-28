@@ -228,6 +228,16 @@ const CHAIN_GRID_LO_HZ = CASUS1_V2_GRID[0];
  * rather than a plausible-sounding reason that belongs to a different corpus.
  */
 const DATED_REASON: Record<string, string> = {
+  V34:
+    'HET GEDATEERDE V34-CORPUS. Bevroren terwijl de DISSIPATIETERM nog door de PIEKHOOGTE deelde. ' +
+    'De term bestaat om de serie-R-route naar niveauregeling af te remmen, en de schade die zij ' +
+    'aanricht is Q_es-vermenigvuldiging: 1 + R_source/R_e, met R_e de DC-weerstand (A3j rij 23, ' +
+    'A4 M-E). Hij deelde echter door Re(Z) BIJ de bronweerstandsprobe, en sinds V34 zit die probe ' +
+    'op de impedantiepiek van het wooferpaar: 19,31 Ohm tegen een gemeten R_e van 3,05 Ohm, een ' +
+    'factor 6,33 die tot 40,1 kwadrateert. Sinds V37 deelt de v2-route door de OPGELOSTE R_e — ' +
+    'hetzelfde getal dat M-E publiceert en de Q_es-inversie gebruikt — en is de term voor het ' +
+    'eerst groot genoeg om de uitdagingsdrempel van de tuner te halen. Deze tien blijven staan ' +
+    'als de "vóór"-helft van die vergelijking. Meetobject, GEEN ontwerp: mag niet gebouwd worden.',
   V33:
     'HET GEDATEERDE V33-CORPUS. Bevroren terwijl de BRONWEERSTANDSPROBE nog het ketenraster las. ' +
     'Zonder gestelde boxafstemming neemt de probe de impedantiepiek van de laagste driver over de ' +
@@ -453,22 +463,38 @@ raw.manifest_en_geometrie.v33_barriere_raster = barrierGrids;
  *   corpus whose designs put 15 to 29 W into one resistor recorded only "23 %".
  *
  *   `objectiefterm` — what the SEARCH makes of the same quantity. The tuner
- *   adds `dissipationWeight · (R_source/re)²` at every evaluation, with both
- *   readings taken at the source-resistance probe. V34 moved that probe on the
- *   v2 route, so both readings moved, and this records where they landed on
- *   each grid. `noemer_is_R_e: false` is the finding V36 raises and does not
- *   fix: `re` is the real part of the impedance AT the probe, and since V34 the
- *   probe sits on the woofer's impedance PEAK — so the denominator is the peak
- *   height and not the DC resistance the ratio is named after.
+ *   adds `dissipationWeight · (R_source/x)²` at every evaluation. V34 moved the
+ *   probe the numerator is read at, and this records where the term landed on
+ *   each grid.
+ *
+ * V37 — AND WHAT `x` IS, which is the third arm. V36 recorded
+ * `noemer_is_R_e: false` as a finding it raised and did not fix: `x` was the
+ * real part of the impedance AT the probe, and since V34 that probe sits on the
+ * woofer's impedance PEAK, so the denominator was the peak height and not the
+ * DC resistance the ratio is named after. V37 fixes it on the v2 route, so this
+ * block now records two denominators by name — `noemer_default` (what a v1 run
+ * still divides by, unchanged) and `noemer_v2_route` — with `term_op_R_e`
+ * beside the two probe arms. The control is `Qes_mult`, one column along: the
+ * M-E metric computes `1 + R_source/R_e` on the same R_e, so the recorded ratio
+ * and the recorded multiplier have to agree by definition.
  */
 const dissipationRecord = (() => {
   const gridded = casus1ChainInput(manifest, files, golden);
   const dissW = (CASUS1_V2_SETTINGS as { dissipationWeight: number }).dissipationWeight;
+  /** De OPGELOSTE R_e van de laagste weg, zoals de worker hem meedraagt.
+   *  Uit `factsForWorker` en niet uit een constante hier: de v2-route deelt
+   *  sinds V37 door precies dit getal, en een tweede exemplaar ervan in dit
+   *  script zou een tweede mening zijn over een hiërarchie die er met opzet
+   *  één implementatie heeft (F4b lek 1). */
+  const resolvedRe = casus1V2Facts(report('HUIDIG'), manifest, files).reOhmByModel?.woofer ?? null;
   const armOf = (
     parts: readonly VxpPart[],
     grid: readonly number[],
     z: Record<string, readonly Complex[]>,
     edgeRule: 'first' | 'both',
+    /** `null` = de historische noemer, `Re(Z)` bij de probe zelf (V37: de
+     *  default, en dus wat elke v1-run leest). Anders: de gestelde R_e. */
+    denomOhm: number | null = null,
   ) => {
     const zl = z.woofer;
     if (!zl) return null;
@@ -476,12 +502,12 @@ const dissipationRecord = (() => {
     if (!probe || !probe.inBand) return null;
     const rs = sourceResistanceOhm(parts, { grid, driverZ: z, edgeRule });
     if (rs === null) return null;
-    const re = Math.max(0.5, zl[probe.idx].re);
-    const ratio = rs / re;
+    const den = denomOhm ?? Math.max(0.5, zl[probe.idx].re);
+    const ratio = rs / den;
     return {
       hz: Number(grid[probe.idx].toFixed(1)),
       r_source_ohm: r4(rs),
-      noemer_ohm: r2(re),
+      noemer_ohm: r2(den),
       ratio: r4(ratio),
       term: Number((dissW * ratio * ratio).toPrecision(4)),
     };
@@ -506,6 +532,13 @@ const dissipationRecord = (() => {
       Qes_mult: r2(rep.metrics.thevenin.find((t) => t.qMultiplier !== null)?.qMultiplier ?? null),
       term_ketenraster: armOf(parts, gridded.grid, gridded.driverZ, 'first'),
       term_veiligheidsraster: armOf(parts, gridded.safety.freqs, gridded.safety.z, 'both'),
+      /* V37 — dezelfde probe, dezelfde teller, de GESTELDE noemer. Dit is wat
+       * de v2-route sinds V37 werkelijk optelt; de twee armen erboven zijn de
+       * default en de toestand vóór V34. */
+      term_op_R_e:
+        resolvedRe === null
+          ? null
+          : armOf(parts, gridded.safety.freqs, gridded.safety.z, 'both', resolvedRe),
     };
   });
   const live = perNetlist.filter((r) => LIVE_V2.test(r.netlist));
@@ -523,15 +556,32 @@ const dissipationRecord = (() => {
       'aangeraakt: een gewicht bijstellen om een verkeerd gemeten grootheid te compenseren is ' +
       'de fout twee keer maken.',
     R_e_woofer_ohm: CASUS1_WOOFER_DC_OHM,
-    noemer_is_R_e: false,
-    noemer_waarom:
-      'De term deelt door `Re(Z)` BIJ de probe, en sinds V34 zit die probe op de ' +
-      'impedantiepiek van de woofer. De noemer is daarmee de piekhoogte en niet de ' +
-      'DC-weerstand waarnaar de verhouding genoemd is. Opgeworpen als V37; deze sessie NIET ' +
-      'gerepareerd, want zij verandert elke v2-run en verdient dezelfde behandeling als V30, ' +
-      'V32, V33 en V34 — een eigen sessie met een vóór/ná-meting.',
+    R_e_woofer_opgelost_ohm: r4(resolvedRe),
+    R_e_herkomst:
+      'De OPGELOSTE R_e die factsForWorker meedraagt, uit de A5c.1-hiërarchie. Op casus 1 is ' +
+      'dat de meterlezing van het wooferpaar, dus hetzelfde getal als R_e_woofer_ohm — en dat ' +
+      'zij samenvallen is een assert en geen aanname (frozenNetlistGates.test.ts): één R_e, één ' +
+      'herkomst, sinds V37 drie lezers (M-E, de Q_es-inversie, de doelfunctieterm).',
+    noemer_default: 'Re(Z) bij de probe',
+    noemer_default_waarom:
+      'Wat de term altijd al deelde, en sinds V37 de DEFAULT van ' +
+      '`dissipationReferenceSource`. Een v1-run leest hem nog byte-identiek. Het is de ' +
+      'impedantie van de laagste weg BIJ de probe, en sinds V34 zit die probe op de ' +
+      'impedantiepiek — dus de piekhoogte en niet de DC-weerstand waarnaar de verhouding ' +
+      'genoemd is.',
+    noemer_v2_route: 'de opgeloste R_e',
+    noemer_v2_route_waarom:
+      'V37. De term bestaat om de serie-R-route naar niveauregeling af te remmen, en de schade ' +
+      'die zij aanricht is Q_es-vermenigvuldiging: 1 + R_source/R_e, met R_e de DC-weerstand ' +
+      '(A3j rij 23, A4 M-E). De kandidaat stelt daarom `dissipationReferenceSource: re` en de ' +
+      'worker draagt de opgeloste R_e over. Geen terugval: zonder opgeloste R_e is er geen ' +
+      'verhouding en meldt de run welke invoer ontbrak.',
     grootste_termaandeel_levend: live.reduce(
       (a: number, r) => Math.max(a, r.term_veiligheidsraster?.term ?? 0),
+      0,
+    ),
+    grootste_termaandeel_levend_op_R_e: live.reduce(
+      (a: number, r) => Math.max(a, r.term_op_R_e?.term ?? 0),
       0,
     ),
     per_netlist: perNetlist,
@@ -570,14 +620,15 @@ raw.manifest_en_geometrie.v2_herkomst = {
     'niet staat, breekt de suite. De lijst is dus geen vrijstelling maar een boekhouding, en ' +
     'zij hoort leeg te raken.',
   kosten:
-    `${keys.length} ketenruns. TOT V33 gemeten op 44-73 s per kandidaat; SINDS V33 op ruim tien ` +
-    'minuten, en die factor is geen regressie maar de prijs van de reparatie: de barrièreterm ' +
-    'lost het netwerk nu bij ELKE objectief-evaluatie op op het impedantie-oordeelraster ' +
-    '(ANALYSIS_GRID_POINTS punten) in plaats van op het gedecimeerde evaluatieraster. Nagemeten ' +
-    'op één kandidaat: 44,0 s tegen 669,8 s, bij vrijwel hetzelfde aantal evaluaties (88 008 ' +
-    'tegen 86 399). Daarom een script en geen test — en daarom is de bron een KEUZE-sleutel: wie ' +
-    'de prijs niet wil betalen kan `zFloorBarrierSource` op het evaluatieraster laten staan en ' +
-    'weet dan dat doel en poort weer twee banden lezen.',
+    `${keys.length} ketenruns. TOT V33 gemeten op 44-73 s per kandidaat; SINDS V33 op het ` +
+    'VEILIGHEIDSRASTER, en dat is de prijs van die reparatie: de barrièreterm lost het netwerk ' +
+    'bij ELKE objectief-evaluatie op op het raster van zijn bron in plaats van op het ' +
+    'gedecimeerde evaluatieraster. Nagemeten op één kandidaat, de twee uitersten: 44,0 s tegen ' +
+    '669,8 s op de volle sweep, bij vrijwel hetzelfde aantal evaluaties (88 008 tegen 86 399). ' +
+    'Daarom een script en geen test — en daarom is de bron een KEUZE-sleutel. GEMETEN BIJ V37 ' +
+    'over het hele veld: 115-223 s per kandidaat, 40 minuten wandkloktijd, dezelfde orde als de ' +
+    '41 minuten van V34 — V37 verandert een deling en geen raster, dus de prijs van de barrière ' +
+    'is onveranderd.',
   reproduceerbaarheid:
     'Nagemeten bij de F4d-nazorg: het script opnieuw draaien op dezelfde commit levert de ' +
     'netlists BYTE-IDENTIEK terug, op het `savedAt`-stempel van de serialisatie na. Dat ' +
@@ -590,6 +641,15 @@ const datedSummary = [...datedByCorpus.entries()]
   .sort()
   .map(([prefix, ks]) => `${ks.length}x \`${prefix}_KAND_*\``)
   .join(', ');
+telling.sinds_V37 =
+  'V37 (28-08-2026): het KAND-V2-corpus is opnieuw opgewekt nadat de DISSIPATIETERM door de ' +
+  'opgeloste R_e ging delen in plaats van door de piekhoogte. De term heet (R_source/R_e)^2 en ' +
+  'deelde door Re(Z) BIJ de bronweerstandsprobe, die sinds V34 op de impedantiepiek van het ' +
+  'wooferpaar zit: 19,31 Ohm tegen een gemeten R_e van 3,05 Ohm, een factor die tot 40,1 ' +
+  'kwadrateert. De controle is de referentie zelf — 1 + R_source/R_e reproduceert ' +
+  'kandidaten.*.Qes_mult op elke bevroren netlist binnen exponent_pct, en de piekhoogte niet. ' +
+  `Het vervangen corpus is hernoemd tot V34_KAND_*; gedateerde corpora nu: ${datedSummary}. ` +
+  'Nog steeds NUL klasse C.';
 telling.sinds_V33 =
   'V33 (27-08-2026): het KAND-V2-corpus is opnieuw opgewekt nadat de amp-vloerbarrière — de term ' +
   'die de zoektocht naar de vloer duwt — zijn tekort op de GEMETEN IMPEDANTIESWEEP ging lezen in ' +

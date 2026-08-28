@@ -128,6 +128,13 @@ const HERKOMST = JSON.parse(
     bronweerstandsgrens_herkomst: string;
     audittier_ohm: number | null;
     audittier_waarom: string;
+    /** V37 — and WHAT the dissipation term divides by. A choice key of its own:
+     *  not where the probe reads (that is `probe_raster`) but which quantity
+     *  its reading is a ratio OF. */
+    dissipatie_noemer: string | null;
+    dissipatie_noemer_waarom: string;
+    dissipatiegewicht: number;
+    dissipatiegewicht_waarom: string;
     seed: number;
   };
 };
@@ -259,6 +266,18 @@ describe('the frozen v2 candidates are files, and the file says where they came 
     expect(m.vloer_is_zoekdoel).toBe(CASUS1_AMP_MIN_LOAD_OHM !== null);
     expect(m.vloer_zoekdoel_bron).toBe(CASUS1_AMP_MIN_LOAD_OHM !== null ? 'safety' : null);
     expect(m.vloer_zoekdoel_bron_waarom).toMatch(/V33/);
+    /* V37 — WHAT that probe's reading is a ratio of, which is a third decision
+     * beside the two above and is recorded as one. The term is named
+     * `R_source/R_e` and divided by the impedance PEAK until V37; on this casus
+     * that is 19.31 Ω against a metered 3.05 Ω, squared. Two lines again: the
+     * quantity, and the weight it is multiplied by — the weight is GREY and
+     * deliberately untouched, and a record that showed only the repair would
+     * read as though the weight had been tuned to fit. */
+    expect(m.beschermingen_via_kandidaat).toContain('dissipationReferenceSource');
+    expect(m.dissipatie_noemer).toBe('re');
+    expect(m.dissipatie_noemer_waarom).toMatch(/V37/);
+    expect(m.dissipatiegewicht).toBe(CASUS1_V2_SETTINGS.dissipationWeight);
+    expect(m.dissipatiegewicht_waarom).toMatch(/A3j/);
   });
 
   it('the candidate metrics are CLASS B, and the reference file says so', () => {

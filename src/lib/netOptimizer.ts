@@ -139,6 +139,68 @@ export interface NetOptimizeOptions {
    */
   rSourceProbeSource?: 'grid' | 'safety';
   /**
+   * V37 — WHAT THE DISSIPATION TERM DIVIDES BY. Absent = `'probe'`, which is
+   * what it has always divided by; a v1 run is byte-identical.
+   *
+   * THE FINDING. `fxOf` adds `dissipationWeight · (R_source/x)²` at every
+   * evaluation, and the reason that term exists is stated in A3j row 23: series
+   * resistance in the lowest path multiplies Q_es, and the factor is
+   *
+   *     Q_es' / Q_es = (R_e + R_source) / R_e = 1 + R_source/R_e
+   *
+   * with R_e the driver's DC RESISTANCE — a declared data need (A4 M-E), and
+   * the same number `maxSeriesResistanceFromQes` inverts the M-E budget with.
+   * The term did not divide by that. It divided by `Re(Z)` AT the probe, which
+   * is a different quantity that merely coincides with R_e when the probe sits
+   * far from any resonance. Since V34 the probe sits ON the low driver's
+   * impedance peak, which is where it belongs for the NUMERATOR and is the
+   * worst possible place for the denominator: measured on casus 1, 19.31 Ω
+   * against a metered R_e of 3.05 Ω — a factor 6.33, and it is squared, so the
+   * term came out 40.1× too small.
+   *
+   *   `'probe'` — `Re(Z)` of the lowest branch at the probe frequency. Default,
+   *               and therefore the v1 behaviour, unchanged.
+   *   `'re'`    — the RESOLVED R_e of that branch, from
+   *               `dissipationReferenceReOhm` below. The same number M-E
+   *               reports, the same number the Q_es inversion uses, resolved
+   *               once by the ingest pass (A5c.1) and carried across the border
+   *               by `measurementFacts.ts`.
+   *
+   * NO FALLBACK, for the third time and for the same reason as V32, V33 and
+   * V34. Naming `'re'` for a branch that carries no resolved R_e does not
+   * quietly go back to the peak height: there is no ratio at all, `fxOf` adds
+   * nothing, and `dissipationRefNote` says which input was missing. A silent
+   * fallback would restore exactly the reading being withdrawn, in the one
+   * place nobody looks.
+   *
+   * IT IS A CHOICE KEY on the v2 route (`engine2/optimizer/choices.ts`): it
+   * does not tune how the search runs, it DEFINES the quantity a weighted term
+   * measures. Two searches that divide by 3.05 Ω and by 19.31 Ω are looking for
+   * different networks, and on casus 1 the difference between them is the
+   * difference between a term at 3 % of the objective and one at 0.07 %.
+   */
+  dissipationReferenceSource?: 'probe' | 're';
+  /**
+   * V37 — the resolved R_e per driver MODEL, in ohms, for the source above.
+   *
+   * Keyed by model because that is what `driverZ` is keyed by, and filled by
+   * the caller that already holds it: the v2 worker reads it straight off
+   * `measurementFacts`, so there is exactly one R_e in a run and one provenance
+   * for it (F4b leak 1). This file resolves NOTHING — the A5c.1 hierarchy is
+   * walked once, in the ingest pass, and a second walk here is how two
+   * descriptions of one number come to disagree (V21).
+   *
+   * Data, not a decision, and therefore polish rather than a choice: WHICH
+   * quantity the term divides by is `dissipationReferenceSource`; what that
+   * quantity measures for this particular driver is a measurement the run
+   * already has. Same split as `zFloorBarrierSource` / `zFloorBarrierImpedance`
+   * (V33).
+   *
+   * A model with no entry has no resolved R_e, which is not the same as a small
+   * one: on `'re'` its branch simply produces no ratio.
+   */
+  dissipationReferenceReOhm?: Record<string, number>;
+  /**
    * A3i-2 — the DERIVED amplifier-load floor, as a CONSTRAINT.
    *
    * `nominalOhm` is what the DRIVERS support (impedanceFloor.nominalFromDrivers),
@@ -774,6 +836,16 @@ export interface NetOptimizeResult {
    */
   rSourceProbeNote?: string;
   /**
+   * V37 — what the dissipation term divided by, or why it divided by nothing.
+   *
+   * Prose, for the run notes. Set whenever a caller states
+   * `dissipationReferenceSource`; absent on every run that does not, which is
+   * every v1 run. It exists because the term's NAME (`R_source/R_e`) and the
+   * quantity it read were two different things for as long as the term has
+   * existed, and nothing said so.
+   */
+  dissipationRefNote?: string;
+  /**
    * V31 — the metrics of the tune that was REJECTED, in the same `report()`
    * shape as `after`. Present only when `rejectedTuneReport` was asked for.
    *
@@ -1245,6 +1317,26 @@ export function optimizeNetworkValues(
               `${opts.safety.freqs.length} points — the tuner's own full-band safety grid`,
           }
         : null;
+  /* ---- V37: WHAT THE DISSIPATION TERM DIVIDES BY ----------------------- *
+   *
+   * ONE PLACE DECIDES IT, for the same reason `probeOn` above is one place:
+   * the term's numerator and its denominator are two readings of one branch,
+   * and "the reference" must not be able to mean the peak height in the search
+   * and the DC resistance in the report.
+   *
+   * `'probe'` is the historical reading and the default, so every v1 run and
+   * every v2 run that states nothing takes the pre-V37 arithmetic in the
+   * pre-V37 order. `'re'` divides by the resolved R_e the caller carries — and
+   * carries NOTHING when that caller has none for the branch in question. See
+   * the option's own note for why there is no fallback between the two.
+   */
+  const dissRefSource: 'probe' | 're' = opts.dissipationReferenceSource ?? 'probe';
+  const dissRefReOhm = opts.dissipationReferenceReOhm;
+  /** The resolved R_e of one branch, or null. Never a substitute for it. */
+  const resolvedReOf = (model: string): number | null => {
+    const re = dissRefReOhm?.[model];
+    return typeof re === 'number' && Number.isFinite(re) && re > 0 ? re : null;
+  };
   const loadNominalOhm = opts.loadFloor?.nominalOhm && opts.loadFloor.nominalOhm > 0
     ? opts.loadFloor.nominalOhm
     : null;
@@ -1430,6 +1522,26 @@ export function optimizeNetworkValues(
     }
   })();
   /**
+   * The LOWEST branch of the seed, by slot.
+   *
+   * Computed once because two notes describe it — where the probe read (V34)
+   * and what the dissipation term divided by (V37) — and two derivations of
+   * "the low driver" is how two sentences about one run come to name two
+   * drivers. A value tune moves no driver, so this is a fact about the run.
+   */
+  const seedLowModel: string | null = (() => {
+    try {
+      const { netlist } = crossoverToNetlist({ name: 'probe', parts: [...parts] });
+      const drivers = netlist.elements.filter(
+        (e): e is Extract<NetElement, { kind: 'driver' }> => e.kind === 'driver',
+      );
+      const slots = pickSlotsN(drivers);
+      return (slots.woofer ?? slots.mid ?? slots.tweeter)?.model ?? null;
+    } catch {
+      return null;
+    }
+  })();
+  /**
    * V34 — WHERE THE PROBE ACTUALLY LANDED, AS PROSE.
    *
    * Computed once, from the SEED: the probe index depends on the grid and on
@@ -1454,18 +1566,7 @@ export function optimizeNetworkValues(
       );
     }
     const where = `The source-resistance probe read over ${probeOn.what}`;
-    const low = (() => {
-      try {
-        const { netlist } = crossoverToNetlist({ name: 'probe', parts: [...parts] });
-        const drivers = netlist.elements.filter(
-          (e): e is Extract<NetElement, { kind: 'driver' }> => e.kind === 'driver',
-        );
-        const slots = pickSlotsN(drivers);
-        return (slots.woofer ?? slots.mid ?? slots.tweeter)?.model ?? null;
-      } catch {
-        return null;
-      }
-    })();
+    const low = seedLowModel;
     const zl = low ? probeOn.z[low] : undefined;
     if (!low || !zl) {
       return `${where}, but this network has no low driver with impedance data, so it read nothing.`;
@@ -1486,6 +1587,55 @@ export function optimizeNetworkValues(
         ? ' (the stated box tuning).'
         : ' (its impedance peak — no box tuning was stated, so the probe took the peak; on a ' +
           'ported box that is a peak beside the tuning and not the tuning itself).')
+    );
+  })();
+
+  /**
+   * V37 — WHAT THE DISSIPATION TERM DIVIDED BY, AS PROSE.
+   *
+   * The same discipline as the probe note above, one quantity along: a ratio is
+   * only readable beside the thing it is a ratio OF. Until V37 the term was
+   * called `R_source/R_e` in every comment and divided by the impedance peak,
+   * and no surface said so.
+   *
+   * Absent unless a caller states a source, which is every v1 run.
+   */
+  const dissipationRefNote: string | undefined = (() => {
+    if (opts.dissipationReferenceSource === undefined) return undefined;
+    if (dissW <= 0) {
+      return (
+        'The dissipation term carries no weight on this run, so what it would have divided by ' +
+        'decides nothing.'
+      );
+    }
+    if (dissRefSource === 'probe') {
+      return (
+        'The dissipation term divided by Re(Z) of the lowest branch AT the probe frequency — the ' +
+        'reading it has always used. That is the impedance the branch presents there, not its DC ' +
+        'resistance, so on a probe that sits at a resonance the ratio is smaller than the Q_es ' +
+        'multiplication it is named after (casebook V37).'
+      );
+    }
+    if (seedLowModel === null) {
+      return (
+        'The dissipation term was asked to divide by the resolved R_e and this network has no low ' +
+        'driver to resolve one for, so there is no ratio and the term adds nothing.'
+      );
+    }
+    const re = resolvedReOf(seedLowModel);
+    if (re === null) {
+      return (
+        `The dissipation term was asked to divide by the resolved R_e of ${seedLowModel} and none ` +
+        'reached this run, so there is no ratio and the term adds nothing. It did NOT fall back ' +
+        'to Re(Z) at the probe — that is the reading V37 withdrew, and restoring it silently ' +
+        'would put the wrong quantity back in the one place nobody looks (casebook V32, V33, ' +
+        'V34, V37).'
+      );
+    }
+    return (
+      `The dissipation term divided by the resolved R_e of ${seedLowModel}, ${re.toFixed(3)} ` +
+      'Ohm — the DC resistance the Q_es multiplication is defined on (A4 M-E), resolved once by ' +
+      'the ingest pass and carried across the border rather than re-derived here.'
     );
   })();
 
@@ -1990,6 +2140,14 @@ export function optimizeNetworkValues(
         if (probe && probe.inBand) {
           const k = probe.idx;
           const re = Math.max(0.5, pZl[k].re);
+          /* V37 — the DENOMINATOR, which is a different question from the
+           * frequency. `'probe'` keeps `re` above, byte for byte; `'re'` takes
+           * the resolved DC resistance of THIS branch — the same reading M-E
+           * publishes and the Q_es budget inverts — and takes nothing at all
+           * when the caller carries none for it. The numerator is unaffected
+           * either way: it is the Thevenin resistance this branch sees at the
+           * probe, and where to read that was settled at V34. */
+          const den = dissRefSource === 'probe' ? re : resolvedReOf(lowDrv.model);
           const zs = seenImpedance(
             net,
             [lowDrv.id],
@@ -1999,7 +2157,7 @@ export function optimizeNetworkValues(
           );
           if (zs) {
             rSourceOhm = Math.max(0, zs[0].re);
-            if (dissW > 0) dissRatio = rSourceOhm / re;
+            if (dissW > 0 && den !== null) dissRatio = rSourceOhm / den;
           }
         }
         // Same fallback as the audit: the DC limit is a LOWER bound on the real
@@ -4563,6 +4721,7 @@ export function optimizeNetworkValues(
         },
         ...(zFloorSourceNote ? { zFloorSourceNote } : {}),
         ...(rSourceProbeNote ? { rSourceProbeNote } : {}),
+        ...(dissipationRefNote ? { dissipationRefNote } : {}),
         ...(opts.rejectedTuneReport
           ? {
               rejectedTune: report(refusedMetrics, refusedValueTune.parts),
@@ -4636,6 +4795,7 @@ export function optimizeNetworkValues(
     ...(auditReport ? { audit: auditReport } : {}),
     ...(zFloorSourceNote ? { zFloorSourceNote } : {}),
     ...(rSourceProbeNote ? { rSourceProbeNote } : {}),
+    ...(dissipationRefNote ? { dissipationRefNote } : {}),
     ...(opts.gateViolation ? { gateRefusals, gateEvaluations, gateCacheHits } : {}),
   };
 }

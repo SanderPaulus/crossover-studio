@@ -133,6 +133,17 @@ const ARMS: Arm[] = [
   { armed: true, naam: 'na' },
 ];
 
+/** Wat de worker op `done` teruggeeft — één naam, zodat de verzamelaar en elke
+ *  aflezing eruit dezelfde vorm beschrijven. */
+type DoneData = {
+  result: Chain3Result;
+  measurements: ShortlistInput<Chain3Result>['measurements'];
+  topology: ShortlistInput<Chain3Result>['topology'];
+  gates: ShortlistInput<Chain3Result>['gates'];
+  rejection: ShortlistInput<Chain3Result>['rejection'];
+  notes: string[];
+};
+
 type Row = {
   label: string;
   arm: 'voor' | 'na';
@@ -206,19 +217,18 @@ for (const arm of ARMS) {
     };
     const t0 = Date.now();
     const wire = structuredClone({ id: n, kind: 'v2Chain3One' as const, payload });
-    let out: {
-      result: Chain3Result;
-      measurements: ShortlistInput<Chain3Result>['measurements'];
-      topology: ShortlistInput<Chain3Result>['topology'];
-      gates: ShortlistInput<Chain3Result>['gates'];
-      notes: string[];
-    } | null = null;
+    /* Verzameld in een ARRAY en niet in een `let`: TypeScript versmalt een
+     * `let` bij zijn declaratie tot `null` en verbreedt hem nooit voor een
+     * toewijzing binnen een callback, dus de bewaking eronder maakte er `never`
+     * van en elk veld dat er hierna van gelezen werd was een fout die de build
+     * niet zag (`scripts/` viel tot V37 buiten `tsc -b`). */
+    const collected: DoneData[] = [];
     handleV2Request(wire, (msg: V2Response) => {
       if (msg.kind === 'error') throw new Error(msg.message);
-      if (msg.kind === 'done') out = msg.data as typeof out;
+      if (msg.kind === 'done') collected.push(msg.data as DoneData);
     });
-    if (!out) throw new Error(`candidate ${c.label} produced nothing`);
-    const done = out as NonNullable<typeof out>;
+    const done = collected[0];
+    if (!done) throw new Error(`candidate ${c.label} produced nothing`);
     const zGate = done.gates.find((v) => v.gate === 'M-B/|Z|');
     /* V31 — a candidate that delivered nothing has no parts to measure. Its
      * row records the refusal instead; `metricsOfParts` on an empty list would
@@ -240,14 +250,17 @@ for (const arm of ARMS) {
        * the ABSENCE of `ampFloorRepair` on the returned object. A comparison
        * that recorded only the delivered metrics would have called those two
        * runs "the same result". */
-      ampFloorRepair: (done.result.net as { ampFloorRepair?: string }).ampFloorRepair ?? null,
+      ampFloorRepair: done.result.net.ampFloorRepair ?? null,
+      /* AFGELEZEN VAN HET RESULTAATTYPE, niet door een cast. V37 — `tuned` werd
+       * hier naar `boolean` gecast en het is een TELLING; `scripts/` viel tot
+       * V37 buiten `tsc -b`, dus niemand zag het. */
       pas: {
-        tuned: (done.result.net as { tuned?: boolean }).tuned ?? null,
-        evaluaties: (done.result.net as { evaluations?: number }).evaluations ?? null,
-        infeasible: (done.result.net as { infeasible?: unknown }).infeasible ?? null,
-        safetyNote: (done.result.net as { safetyNote?: string }).safetyNote ?? null,
-        safetyKinds: (done.result.net as { safetyKinds?: string[] }).safetyKinds ?? null,
-        ampFloorNote: (done.result.net as { ampFloorNote?: string }).ampFloorNote ?? null,
+        tuned: done.result.net.tuned,
+        evaluaties: done.result.net.evaluations,
+        infeasible: done.result.net.infeasible ?? null,
+        safetyNote: done.result.net.safetyNote ?? null,
+        safetyKinds: done.result.net.safetyKinds ?? null,
+        ampFloorNote: done.result.net.ampFloorNote ?? null,
         /* The tell that the tune was rejected wholesale rather than merely
          * failing its repair: `ampFloorRepair` is set on every completed pass
          * and is absent on the early return. */

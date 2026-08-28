@@ -83,7 +83,23 @@ for (let i = 0; i < herkomst.bestanden.length; i++) {
    * `goldenClassification.test.ts` — ten blocks, one whole delivery. */
   const refs = raw.kandidaten[wasKey];
   if (refs === undefined) throw new Error(`${wasKey} has no reference block to carry over`);
-  raw.kandidaten[key] = JSON.parse(JSON.stringify(refs));
+  const carried = JSON.parse(JSON.stringify(refs)) as Record<string, unknown>;
+  /* ...AND SO DOES ITS `klasse_toelichting`, WHICH IS WHY IT IS REWRITTEN.
+   *
+   * The carried block is a copy of the LIVE block, and that block's explanation
+   * names the live key (`…netlists.KAND_V2_3`). Copied verbatim it points a
+   * reader at the netlist that is about to be REPLACED by the very regeneration
+   * this freeze exists to precede — the wrong file, under a name that says it
+   * is the right one. V33's and V34's dated blocks carry that stale sentence;
+   * V37 fixes the script and the blocks it wrote. */
+  carried.klasse_toelichting =
+    `HET GEDATEERDE ${prefix.replace(/-KAND$/, '')}-CORPUS. Metrieken op de VASTE netlist ` +
+    `manifest_en_geometrie.netlists.${key}, een BESTAND in test-fixtures/casus1/ en een ` +
+    `byte-identieke kopie van wat bij het bevriezen als ${wasKey} leefde. De referentie hangt ` +
+    'aan het bestand en niet aan de run die het opleverde — daarom klasse B en geen klasse C. ' +
+    `Waaróm dit corpus bewaard is staat in manifest_en_geometrie.${block}.reden. Meetobject, ` +
+    'GEEN ontwerp: mag niet gebouwd worden.';
+  raw.kandidaten[key] = carried;
   bestanden.push({ naam: key, was: wasKey, kandidaat: src.label });
 }
 
