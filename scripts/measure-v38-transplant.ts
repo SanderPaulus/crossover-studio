@@ -143,8 +143,31 @@ function seedParts(parts: readonly VxpPart[], label: string, jitter: boolean): V
   });
 }
 
+/**
+ * OP WELKE ZOEKMAAT DE REEKS DRAAIT — dezelfde schakelaar als de ablatie.
+ *
+ * `V38_ERRSMOOTH=0` draait élk zaad met de magnitude-gladding van de zoektocht
+ * UIT; alles anders blijft gelijk. Default is de gladding van de app (1/12
+ * octaaf), en dat is wat de v2-route tot V38 deed.
+ *
+ * WAAROM DE SPREIDING TWEE KEER GEMETEN MOET WORDEN. V38 leidde uit deze reeks
+ * af dat de zoektocht niet de beperking is: vier zaden 12 dB uiteen leveren
+ * allemaal 2,7–3,1 dB, spreiding 0,44 dB. Dat is een uitspraak over de
+ * CONVERGENTIE van de zoektocht, en zij is gedaan op de gegladde maat. De
+ * V38-fix vervangt die maat op de v2-route, dus zij moet op de nieuwe maat
+ * opnieuw beantwoord worden — een reparatie die de vlakheid verbetert maar de
+ * convergentie sloopt is geen reparatie, en het verschil is alleen zichtbaar
+ * als dezelfde vier zaden opnieuw draaien.
+ */
+const UNSMOOTHED = process.env.V38_ERRSMOOTH === '0';
+
 const HERE = dirname(fileURLToPath(import.meta.url));
-const OUT = join(HERE, '..', 'test-fixtures', 'casus1_v38_transplantatie.json');
+const OUT = join(
+  HERE,
+  '..',
+  'test-fixtures',
+  `casus1_v38_transplantatie${UNSMOOTHED ? '_ongegladd' : ''}.json`,
+);
 
 const base = partsOf('HUIDIG');
 const report = buildReport({
@@ -187,6 +210,7 @@ interface Row extends Measured {
 console.log(`topologie: HUIDIG (${countParts(base)} onderdelen)`);
 console.log(`kooi: ${cage.map((c) => (c ? `${c[0].toFixed(0)}–${c[1].toFixed(0)}` : '—')).join(' | ')} Hz`);
 console.log(`seed: ${SEED}   koude starts: 1 + ${COLD_STARTS}`);
+console.log(`zoekgladding: ${UNSMOOTHED ? 'UIT (errorSmoothOct 0)' : '1/12 octaaf (de app-standaard)'}`);
 const frozen = measure('HUIDIG-bevroren', base);
 console.log(`bevroren HUIDIG: RMS ${frozen.rms} dB, ±${frozen.venster} dB`);
 
@@ -203,7 +227,7 @@ for (const s of seeds) {
     chain.t,
     chain.driverZ,
     { offsetMm: 0, trimDb: 0, inverted: false },
-    { ...TUNE_OPTS, xoRangePairs: cage },
+    { ...TUNE_OPTS, xoRangePairs: cage, ...(UNSMOOTHED ? { errorSmoothOct: 0 } : {}) },
   );
   const seconds = (Date.now() - t0) / 1000;
   const row: Row = {
@@ -299,6 +323,7 @@ writeFileSync(
       opzet: {
         topologie: 'HUIDIG',
         tuner: 'optimizeNetworkValues, WAARDEN-only (geen `staged`)',
+        zoekgladding: UNSMOOTHED ? 'UIT (errorSmoothOct 0)' : '1/12 octaaf (de app-standaard)',
         kooi: cage,
         seed: SEED,
         zaadgrenzen: SEED_BOUNDS,

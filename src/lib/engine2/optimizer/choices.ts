@@ -7,7 +7,9 @@
  * `zFloorBarrierImpedance` (polish), 42 since V34 added
  * `rSourceProbeSource` (choice), and 44 since V37 added
  * `dissipationReferenceSource` (choice) beside `dissipationReferenceReOhm`
- * (polish); the count is asserted rather than
+ * (polish). V38-fix adds no key and RECLASSIFIES one: `errorSmoothOct` moves
+ * from POLISH to CHOICE, so the total stays 44 and the split becomes 30/5/9.
+ * The count is asserted rather than
  * described (`choiceKeyGuard.test.ts`). Until F4c the v2 route set four of
  * them and inherited the other 33 verbatim from whatever the v1 chain happened
  * to build (`audit §2.2`). That is harmless while v1 also chooses the
@@ -122,6 +124,31 @@ export const CHOICE_KEYS = [
    * networks — 3 % of the objective against 0.07 % — so this is the same class
    * as `band`, one quantity along (casebook V37). */
   'dissipationReferenceSource',
+  /* …and V38-fix, one step earlier than all of those: WHAT CURVE the amplitude
+   * term measures at all. Classified POLISH at F4c on the reading that it
+   * "smooths the search error measure; gates and targets stay on the raw grid"
+   * — true as a description of the code and wrong about what it costs, which
+   * is why it took a measurement to move it.
+   *
+   * WHAT IT ACTUALLY DOES, measured rather than reasoned. The tuner's amplitude
+   * term is the spread of the summed response over the judged band; every
+   * downstream judgement reads that same sum, unsmoothed. Smoothing it first
+   * does not merely blur it: a Gaussian kernel in log-f reaches ACROSS the band
+   * edge, and on a grid that runs past the drivers' measured extent the point
+   * beyond the edge is the silent ghost at -400 dB. On casus 1 that drags the
+   * last point inside the band from 130.95 to 43.67 dB, so the search's
+   * amplitude term reads 9.6-10.9 dB across the whole frozen corpus where the
+   * real spread runs 0.60-3.81. It does not offset the objective; it COMPRESSES
+   * it — the design the judgement calls worst ranks 16th of 80 on the search
+   * measure. Delivered, one key at a time: 0.55 to 2.45 dB on three separate
+   * topologies (casebook V38, V38-fix).
+   *
+   * A key that decides which network wins by two and a half decibels does not
+   * decide HOW the search runs. It is the same class as `band`: it names the
+   * quantity the amplitude term is a statistic of. So on the v2 route it may
+   * only come from the candidate, and it may never migrate back — that is what
+   * `choiceKeyGuard.test.ts` pins. */
+  'errorSmoothOct',
   'breakupGuard',
   'safety',
   'audit',
@@ -175,10 +202,23 @@ export type GreyWeights = Pick<NetOptimizeOptions, GreyKey>;
  * `gateViolation`, `valueCeilings` and `valueSumCeilings` are here because the
  * v2 route has owned them since F2 — they are not inherited from anything, and
  * `run.ts` has always overwritten them.
+ *
+ * "MAY BE INHERITED" IS A CLAIM, AND ONE OF THEM WAS FALSE. `errorSmoothOct`
+ * sat in this list from F4c until V38-fix on the reading that a resolution
+ * knob cannot change which network wins; measured, it changed it by up to
+ * 2.45 dB and it is a CHOICE now. What survives that is worth stating, because
+ * it is what makes the remaining entries different in kind rather than merely
+ * unmeasured: `onStage` and `onGateEvaluated` return `void` and are never read
+ * by the engine, so they cannot alter an outcome by construction — that is a
+ * property of their type, not an assumption. `maxIterations` is the one
+ * genuine survivor: it decides where the search STOPS, nothing on the v2 route
+ * states it unless a determinism budget does, and nobody has measured what it
+ * costs. Recorded in casebook V38-fix as the next key to hold to the same
+ * standard, and deliberately NOT moved here on suspicion — the whole lesson of
+ * this row is that a classification changes when a measurement changes it.
  */
 export const POLISH_KEYS = [
   'maxIterations',
-  'errorSmoothOct',
   'onStage',
   'onGateEvaluated',
   'gateViolation',

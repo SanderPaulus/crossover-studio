@@ -82,6 +82,7 @@ import {
 import { buildReport, type EngineV2Report } from './report.ts';
 import { ctcKey } from './metrics/types.ts';
 import { FLAT_TARGET } from './requirements/targetCurve.ts';
+import { SEARCH_SMOOTHING_OCTAVES } from './constants.ts';
 import { compareDesigns } from './predesign/comparison.ts';
 import { stableJson } from './optimizer/determinism.ts';
 import { handleV2Request, type V2Chain3Payload, type V2Response } from './optimizer/worker.ts';
@@ -133,6 +134,10 @@ const HERKOMST = JSON.parse(
      *  its reading is a ratio OF. */
     dissipatie_noemer: string | null;
     dissipatie_noemer_waarom: string;
+    /** V38-fix — WELKE KROMME de amplitudeterm van de zoektocht meet. Niet
+     *  hoeveel moeite hij doet (polish) maar waarvan hij de spreiding is. */
+    zoekmaat_gladding_oct: number | null;
+    zoekmaat_waarom: string;
     dissipatiegewicht: number;
     dissipatiegewicht_waarom: string;
     seed: number;
@@ -278,6 +283,18 @@ describe('the frozen v2 candidates are files, and the file says where they came 
     expect(m.dissipatie_noemer_waarom).toMatch(/V37/);
     expect(m.dissipatiegewicht).toBe(CASUS1_V2_SETTINGS.dissipationWeight);
     expect(m.dissipatiegewicht_waarom).toMatch(/A3j/);
+    /* V38-fix — WELKE KROMME de amplitudeterm meet, en het is een vierde
+     * besluit naast de drie hierboven. Tot V38-fix stond `errorSmoothOct` als
+     * POLISH geclassificeerd en erfde de v2-route hem uit de keten: de
+     * zoektocht mat de spreiding van een som van gegladde magnitudes met
+     * ongemoeide fase, terwijl elk oordeel de ongegladde som leest. Op dit
+     * ketenraster trok die gladding de stille geest van net buiten de band
+     * over de bandrand heen. Nul is hier "meet de kromme die beoordeeld
+     * wordt", geen casus-1-getal — en dat verschil is precies waarom het veld
+     * ERBIJ staat in plaats van in de code. */
+    expect(m.beschermingen_via_kandidaat).toContain('errorSmoothOct');
+    expect(m.zoekmaat_gladding_oct).toBe(SEARCH_SMOOTHING_OCTAVES);
+    expect(m.zoekmaat_waarom).toMatch(/V38-fix/);
   });
 
   it('the candidate metrics are CLASS B, and the reference file says so', () => {

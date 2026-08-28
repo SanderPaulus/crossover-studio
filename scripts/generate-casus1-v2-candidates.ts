@@ -479,6 +479,30 @@ const meetopstelling = {
         'De dissipatieterm deelt door `Re(Z)` bij de probe — de vóór-arm van V37, en de ' +
         'default die elke v1-run leest.',
     }[lastPayload.candidate?.declaration.stated.dissipationReferenceSource ?? 'probe'],
+  /* ---- V38-fix: WELKE KROMME DE AMPLITUDETERM MEET -----------------------
+   *
+   * Eén veld, één besluit, in dezelfde vorm als V30, V33, V34 en V37. Niet
+   * hoevéél moeite de zoektocht doet (dat is polish) maar WAARVAN zijn
+   * amplitudeterm de spreiding is. Afgelezen van de verklaring, want het is
+   * sinds V38-fix een keuze-sleutel. */
+  zoekmaat_gladding_oct:
+    lastPayload.candidate?.declaration.stated.errorSmoothOct ?? null,
+  zoekmaat_waarom:
+    (lastPayload.candidate?.declaration.stated.errorSmoothOct ?? null) === 0
+      ? 'DE ZOEKTOCHT MEET DE SOM DIE ZIJ BEOORDEELD WORDT — geen gladding. `smoothMag` in ' +
+        '`netOptimizer.ts` gladt de MAGNITUDE van elke driverrespons met `errorSmoothOct`, laat ' +
+        'zijn FASE staan en sommeert de takken daarna complex, terwijl élk oordeel — ' +
+        '`judgeResponse`, het SPL-venster, de trapdoelen, elke poort — de ONGEGLADDE som leest. ' +
+        'Op dit ketenraster reikt de gladdingskern over de bandrand heen naar de stille geest op ' +
+        '20 000 Hz (−400 dB, buiten de beoordeelde band) en trekt het laatste punt BINNEN de ' +
+        'band van 130,95 naar 43,67 dB: de amplitudeterm stond daardoor op 10,22 dB waar de ' +
+        'echte som er 1,85 heeft. Gemeten kostte die ene sleutel 0,55–2,45 dB geleverde ' +
+        'vlakheid op drie topologieën (V38, V38-fix). Gladden NA de sommatie repareert het niet ' +
+        '— nagemeten op élke bevroren netlist, de geest zit ook in de som — dus 0 en geen ' +
+        'smallere breedte. Het OORDEEL blijft gegladd op 1/6 octaaf (A5e.1): dat is een andere ' +
+        'vraag, en zij wordt op de SOM gesteld nadat die bestaat.'
+      : 'De zoektocht gladt de drivermagnitudes vóór de sommatie — de vóór-arm van V38-fix, en ' +
+        'de default die elke v1-run leest.',
   dissipatiegewicht: CASUS1_V2_SETTINGS.dissipationWeight,
   dissipatiegewicht_waarom:
     'GRIJS (A3j): overgenomen uit v1, expliciet gesteld door de kandidaat, nooit stil op nul. ' +

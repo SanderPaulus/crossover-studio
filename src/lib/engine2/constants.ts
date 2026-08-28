@@ -506,6 +506,35 @@ export const PREBOUND_SLACK_PER_ORDER = 2.0;
 export const WINDOW_SMOOTHING_OCTAVES = 1 / 6;
 
 /**
+ * V38-fix — the smoothing the v2 SEARCH measures on, in octaves. Zero: none.
+ *
+ * BESIDE `WINDOW_SMOOTHING_OCTAVES` ON PURPOSE, because the two are the pair
+ * F3c's visibility line is about: one is the width a design is JUDGED on, the
+ * other the width it is SEARCHED on. They answer different questions and they
+ * do not have to agree — what they may not do is describe two different
+ * loudspeakers, and until V38 they did.
+ *
+ * WHY ZERO AND NOT A NARROWER WIDTH, and this is the measurement rather than a
+ * preference. A Gaussian kernel in log-f reaches ACROSS the edge of the judged
+ * band. On a grid that runs past the drivers' measured extent — which a
+ * three-way union grid does by construction — the point beyond that edge is the
+ * silent ghost at -400 dB, the app's own "not measured here". No judgement ever
+ * touches it; a smoothed search measure does. On casus 1 it drags the last
+ * point INSIDE the band from 130.95 dB to 43.67, and the search's amplitude
+ * term then reads 9.6-10.9 dB across the whole frozen corpus where the real
+ * spread runs 0.60-3.81 — it compresses the objective rather than offsetting
+ * it. Any width above zero reaches over the same edge, so the repair is not a
+ * narrower width. Smoothing AFTER the summation does not help either: the ghost
+ * is in the sum too, and that was measured on every frozen netlist rather than
+ * argued (casebook V38-fix). The window keeps its own smoothing because it
+ * smooths the SUM for a different question, and A5e.1 owns that one.
+ *
+ * A resolution choice about a SEARCH, not a band and not a project number: it
+ * moves with no measurement and it is the same for every design. @p6 rule
+ */
+export const SEARCH_SMOOTHING_OCTAVES = 0;
+
+/**
  * A5e.1 — how tall a NARROW feature has to be over the smoothed trend before
  * it is reported as a peak, in dB.
  *

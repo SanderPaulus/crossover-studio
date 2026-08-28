@@ -73,7 +73,17 @@ import {
   freezeGateReference,
   type GateVerdict,
 } from './optimizer/gates.ts';
-import { CASUS1_V2_GRID, casus1ChainInput, casus1V2Facts } from './casus1V2.fixture.ts';
+import {
+  CASUS1_V2_BAND_HZ,
+  CASUS1_V2_GRID,
+  casus1ChainInput,
+  casus1V2Facts,
+} from './casus1V2.fixture.ts';
+import { smoothDbGaussian } from '../bandMetrics.ts';
+import { applyTransfer, combineN, type GriddedResponse } from '../dsp.ts';
+import { solveNetwork } from '../network.ts';
+import { crossoverToNetlist } from '../vxpNetwork.ts';
+import type { VxpCrossover } from '../parsers/vxp.ts';
 import { impedanceReferenceFrom } from './optimizer/impedanceReference.ts';
 import { buildAnalysis } from './metrics/analysis.ts';
 import { epdr } from './metrics/electrical.ts';
@@ -1150,5 +1160,252 @@ describe('V36 — de dissipatie van élke bevroren netlist, en de noemer van de 
         `een factor ${(peakOhm / CASUS1_WOOFER_DC_OHM).toFixed(2)} — dat kwadrateert niet tot ` +
         'hetzelfde, dus de twee armen meten niet dezelfde teller',
     ).toBeLessThan(0.01);
+  });
+});
+
+/* ================================================================== *
+ * V38-fix — WAT DE ZOEKTOCHT MEET, OP ELKE BEVROREN NETLIST
+ * ================================================================== */
+
+/**
+ * DE VONDST, EN ZIJ CORRIGEERT DE MECHANISME-ZIN VAN V38.
+ *
+ * V38 mat dat de zoektocht op deze casus een som met een kenmerk van 43-47 dB
+ * ziet waar de echte som 4,4-6,4 dB rimpelpiek heeft, en schreef die 43 dB toe
+ * aan de ontkoppeling van magnitude en fase: `smoothMag` gladt de MAGNITUDE
+ * van elke driver, laat zijn FASE staan, en sommeert daarna complex. Die
+ * ontkoppeling bestaat, maar zij is niet wat de 43 dB maakt — nagemeten door
+ * de gladding ook NA de sommatie uit te rekenen, waar geen enkele ontkoppeling
+ * bestaat, en hetzelfde getal te krijgen.
+ *
+ * WAT HET WEL IS. Het ketenraster loopt tot 20 000 Hz en de gemeten
+ * uitgestrektheid van alle drie de wegen houdt op bij 19 053,6 Hz. Het
+ * rasterpunt daarboven is de STILLE GEEST: -400 dB, de conventie van de app
+ * voor "hier is niet gemeten" (A5b/`designSolve`). Dat punt ligt BUITEN de
+ * beoordeelde band, dus geen enkel oordeel raakt het aan. Maar een
+ * gladdingskern van 1/12 octaaf reikt eroverheen, en zij trekt het laatste
+ * punt BINNEN de band van 130,95 dB naar 43,67 dB. Eén rasterpunt, en het
+ * draagt de hele 43 dB.
+ *
+ * WAAROM DAT DE REPARATIE KIEST. De opdracht was: 0, of gladden-ná-sommatie —
+ * beantwoord met een meting. Het antwoord staat hieronder en het is
+ * ondubbelzinnig: ná de sommatie gladden verandert er niets aan, want de geest
+ * zit ook in de som. Alleen NIET gladden haalt hem weg. Elke breedte boven nul
+ * reikt over dezelfde rand.
+ *
+ * WAT DAARMEE NIET GEREPAREERD IS, en het staat hier omdat het anders
+ * onzichtbaar zou zijn: dit is een eigenschap van `smoothDbGaussian` op een
+ * raster met dode punten, en de v1-route leest die maat nog steeds. V38-fix
+ * verandert wat de v2-route MEET; het repareert de gladding niet (opdracht:
+ * geen wijziging aan `smoothMag` of enige andere gladding). Zie casusboek
+ * V38-fix, open punt.
+ */
+
+/** De historische zoekgladding van de tuner — de breedte die tot V38-fix gold. */
+const LEGACY_SMOOTH_OCT = 1 / 12;
+
+/** De band waarop de v2-route casus 1 beoordeelt — uit de fixture, niet hier. */
+const JUDGED_BAND = CASUS1_V2_BAND_HZ;
+
+const v38fixChain = casus1ChainInput(manifest, files, golden);
+
+/** De takken zoals de keten ze aan de tuner geeft. */
+const V38FIX_BRANCHES: { model: string; response: GriddedResponse }[] = [
+  { model: 'woofer', response: v38fixChain.w },
+  { model: 'mid', response: v38fixChain.m },
+  { model: 'tweeter', response: v38fixChain.t },
+];
+
+/** De complexe som van een netwerk uit de gegeven takresponsies. */
+function v38fixSum(
+  parts: readonly VxpPart[],
+  branches: typeof V38FIX_BRANCHES,
+): GriddedResponse {
+  const netlist = crossoverToNetlist({ name: 'v38fix', parts: [...parts] } as VxpCrossover).netlist;
+  const sol = solveNetwork(netlist, v38fixChain.grid, v38fixChain.driverZ);
+  const filtered: { response: GriddedResponse }[] = [];
+  for (const b of branches) {
+    const d = sol.drivers.find((x) => x.model === b.model);
+    const h = d ? sol.transfers[d.id] : null;
+    if (h) filtered.push({ response: applyTransfer(b.response, h) });
+  }
+  const c = combineN(filtered);
+  return { freq: c.freq, spl: c.combinedSpl, phaseDeg: c.combinedPhaseDeg };
+}
+
+/** Indices van het raster die binnen de beoordeelde band vallen. */
+const IN_BAND = v38fixChain.grid
+  .map((f, i) => ({ f, i }))
+  .filter((x) => x.f >= JUDGED_BAND[0] && x.f <= JUDGED_BAND[1])
+  .map((x) => x.i);
+
+const bandStats = (spl: readonly number[]) => {
+  let lo = Infinity;
+  let hi = -Infinity;
+  let loAt = -1;
+  let sum = 0;
+  let sq = 0;
+  for (const i of IN_BAND) {
+    if (spl[i] < lo) {
+      lo = spl[i];
+      loAt = i;
+    }
+    if (spl[i] > hi) hi = spl[i];
+    sum += spl[i];
+    sq += spl[i] * spl[i];
+  }
+  const mean = sum / IN_BAND.length;
+  return {
+    min: lo,
+    minAt: loAt,
+    max: hi,
+    peak: (hi - lo) / 2,
+    /** De AMPLITUDETERM zelf: de spreiding om het bandgemiddelde, dezelfde
+     *  statistiek als `bandStd` in de tuner en als `rmsDeviationDb` bij de
+     *  acceptatie. De piek hierboven is wat de tuner rapporteert; dit is
+     *  waarop hij zoekt. */
+    std: Math.sqrt(Math.max(0, sq / IN_BAND.length - mean * mean)),
+  };
+};
+
+/**
+ * De drie zoekmaten per bevroren netlist, één keer uitgerekend.
+ *
+ * Geen enkele tune: dit zijn oplossingen van een gegeven netwerk, en de vraag
+ * is welke KROMME eruit volgt — niet welk netwerk een zoektocht zou vinden.
+ */
+const V38FIX: {
+  key: string;
+  raw: ReturnType<typeof bandStats>;
+  afterSum: ReturnType<typeof bandStats>;
+  beforeSum: ReturnType<typeof bandStats>;
+}[] = NETLIST_KEYS.map((key) => {
+  const parts = casus1Parts(key);
+  const raw = v38fixSum(parts, V38FIX_BRANCHES);
+  const beforeSum = v38fixSum(
+    parts,
+    V38FIX_BRANCHES.map((b) => ({
+      model: b.model,
+      response: { ...b.response, spl: smoothDbGaussian(b.response.freq, b.response.spl, LEGACY_SMOOTH_OCT) },
+    })),
+  );
+  return {
+    key,
+    raw: bandStats(raw.spl),
+    afterSum: bandStats(smoothDbGaussian(raw.freq, raw.spl, LEGACY_SMOOTH_OCT)),
+    beforeSum: bandStats(beforeSum.spl),
+  };
+});
+
+describe('V38-fix — de zoekmaat op elke bevroren netlist', () => {
+  it('de premisse: er staat een STILLE GEEST net buiten de band, en de band zelf is heel', () => {
+    /* Zonder deze assert is alles hieronder een uitspraak over een raster
+     * waarvan niemand heeft gecontroleerd hoe het eruitziet. Twee helften:
+     * binnen de band leeft élk punt (anders zou het oordeel zelf al een dood
+     * punt lezen), en het eerste punt erboven is dood. */
+    const dead = (v: number) => v < -300;
+    for (const b of V38FIX_BRANCHES) {
+      for (const i of IN_BAND) {
+        expect(dead(b.response.spl[i]), `${b.model} is dood binnen de band`).toBe(false);
+      }
+    }
+    const above = v38fixChain.grid.findIndex((f) => f > JUDGED_BAND[1]);
+    expect(above, 'het raster houdt op bij de band — dan is er geen geest om over te reiken').toBeGreaterThan(0);
+    for (const b of V38FIX_BRANCHES) {
+      expect(dead(b.response.spl[above]), `${b.model} leeft nog boven de band`).toBe(true);
+    }
+  });
+
+  it('de gegladde zoekmaat leest een minimum dat groter is dan de hele echte variatie — op ELKE netlist', () => {
+    /* De bevinding, falsifieerbaar gemaakt zonder één ingetypt getal: het gat
+     * dat de gladding in de band trekt is groter dan het VOLLEDIGE
+     * piek-tot-dal-bereik van de echte som. Een zoekmaat waarvan het
+     * artefact groter is dan het verschijnsel dat zij gladstrijkt, meet niet
+     * datzelfde verschijnsel.
+     *
+     * En hij landt op het LAATSTE punt in de band, wat het mechanisme is: de
+     * kern reikt over de bandrand heen naar de stille geest. */
+    const last = IN_BAND[IN_BAND.length - 1];
+    let worst = 0;
+    for (const r of V38FIX) {
+      const drop = r.raw.min - r.beforeSum.min;
+      expect(drop, `${r.key}: de gladding trekt niets naar beneden`).toBeGreaterThan(2 * r.raw.peak);
+      expect(r.beforeSum.minAt, `${r.key}: het minimum ligt niet op de bandrand`).toBe(last);
+      worst = Math.max(worst, drop);
+    }
+    expect(worst).toBeGreaterThan(0);
+  });
+
+  it('GLADDEN-NA-SOMMATIE repareert het niet — de twee volgorden zijn niet te onderscheiden', () => {
+    /* DE METING DIE DE REPARATIE KOOS. De ongebouwde variant (eerst sommeren,
+     * dan gladden) kent geen ontkoppeling van magnitude en fase, dus als die
+     * ontkoppeling het probleem was zou zij het wegnemen. Zij neemt niets weg:
+     * de twee volgorden verschillen minder dan de ECHTE rimpel van dezelfde
+     * netlist, terwijl beide daar veelvouden boven zitten. De geest zit ook in
+     * de som.
+     *
+     * Daarom is de reparatie 0 en is de variant een genoteerde mogelijkheid
+     * gebleven in plaats van een bouwopdracht. */
+    for (const r of V38FIX) {
+      const dAfter = Math.abs(r.afterSum.peak - r.raw.peak);
+      const dBefore = Math.abs(r.beforeSum.peak - r.raw.peak);
+      expect(dAfter, `${r.key}: ná sommatie gladden laat de echte som staan`).toBeGreaterThan(
+        2 * r.raw.peak,
+      );
+      expect(
+        Math.abs(dAfter - dBefore),
+        `${r.key}: de twee gladdingsvolgorden zijn wél te onderscheiden`,
+      ).toBeLessThan(2 * r.raw.peak);
+    }
+  });
+
+  it('DE ZOEKMAAT RANGSCHIKT HET CORPUS ANDERS DAN DE MAAT DIE HET BEOORDEELT', () => {
+    /* DE SCHERPSTE VORM VAN DE BEVINDING, en de reden dat een offset hier geen
+     * onschuldige offset is.
+     *
+     * De amplitudeterm van de zoektocht is de SPREIDING van de som over de
+     * band (`bandStd`), en de acceptatie leest dezelfde statistiek ongegladd
+     * (`rmsDeviationDb`). Trok de gladding er alleen een constante bij op, dan
+     * zou de zoektocht nog steeds de goede kant op lopen. Zij doet iets anders:
+     * zij COMPRIMEERT. De echte spreiding loopt over dit corpus van 0,60 tot
+     * 3,81 dB — een factor 6,4 — en de zoekmaat leest 9,60 tot 10,93, een
+     * factor 1,14, want in beide gevallen is het gat naar de stille geest de
+     * dominante term.
+     *
+     * Gevolg, en dat is de assert: het ontwerp dat het OORDEEL het slechtste
+     * van dit corpus vindt, komt op de zoekmaat in de BETERE HELFT terecht.
+     * Geen ingetypt getal — de vergelijking is die van de twee rangordes met
+     * elkaar. */
+    const byJudged = [...V38FIX].sort((a, b) => a.raw.std - b.raw.std);
+    const bySearch = [...V38FIX].sort((a, b) => a.beforeSum.std - b.beforeSum.std);
+    const worstJudged = byJudged[byJudged.length - 1];
+    const whereOnSearch = bySearch.findIndex((r) => r.key === worstJudged.key);
+    expect(
+      whereOnSearch,
+      `${worstJudged.key} is het slechtste ontwerp op de beoordeelde maat en de zoekmaat zet ` +
+        'het niet meer in de betere helft — is de zoekmaat veranderd?',
+    ).toBeLessThan(V38FIX.length / 2);
+
+    /* ...en de compressie zelf, in dezelfde constant-vrije vorm: de spreiding
+     * die het oordeel ziet is een veelvoud van de spreiding die de zoektocht
+     * ziet. Zonder deze helft zou de rangorde-assert ook waar kunnen zijn bij
+     * een maat die simpelweg ruis toevoegt. */
+    const span = (xs: number[]) => Math.max(...xs) / Math.min(...xs);
+    expect(span(V38FIX.map((r) => r.raw.std))).toBeGreaterThan(
+      2 * span(V38FIX.map((r) => r.beforeSum.std)),
+    );
+  });
+
+  it('...en de ontkoppeling van magnitude en fase is er wél, maar zij is het niet', () => {
+    /* De correctie op V38's mechanisme-zin, als eigen claim: het verschil
+     * tussen vóór en ná sommatie is het effect van de ontkoppeling, en dat is
+     * op élke netlist kleiner dan een tiende van de echte rimpelpiek. Het
+     * bestaat; het draagt de bevinding niet. */
+    for (const r of V38FIX) {
+      const decoupling = Math.abs(r.beforeSum.peak - r.afterSum.peak);
+      expect(decoupling, `${r.key}: de ontkoppeling draagt hier wél gewicht`).toBeLessThan(
+        r.raw.peak / 10,
+      );
+    }
   });
 });

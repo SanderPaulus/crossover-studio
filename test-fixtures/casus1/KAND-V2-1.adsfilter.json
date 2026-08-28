@@ -1,7 +1,7 @@
 {
  "format": "acoustic-design-studio-filter",
  "version": 1,
- "savedAt": "2026-08-28T09:12:11.816Z",
+ "savedAt": "2026-08-28T16:12:48.048Z",
  "name": "KAND-V2-1",
  "parts": [
   {
@@ -41,7 +41,7 @@
    "params": [
     {
      "name": "L",
-     "value": 3.211,
+     "value": 2.284,
      "unit": "mH"
     }
    ],
@@ -62,7 +62,7 @@
    "params": [
     {
      "name": "C",
-     "value": 97.34,
+     "value": 98.46,
      "unit": "uF"
     }
    ],
@@ -93,7 +93,7 @@
    "params": [
     {
      "name": "L",
-     "value": 1.301,
+     "value": 1.552,
      "unit": "mH"
     }
    ],
@@ -109,8 +109,46 @@
    ]
   },
   {
-   "type": "Wire",
+   "type": "Capacitor",
+   "partId": "C4",
+   "params": [
+    {
+     "name": "C",
+     "value": 1.593,
+     "unit": "uF"
+    }
+   ],
+   "wires": [
+    {
+     "x": 17,
+     "y": 6
+    },
+    {
+     "x": 17,
+     "y": 13
+    }
+   ]
+  },
+  {
+   "type": "Ground",
    "params": [],
+   "wires": [
+    {
+     "x": 17,
+     "y": 13
+    }
+   ]
+  },
+  {
+   "type": "Resistor",
+   "partId": "R5",
+   "params": [
+    {
+     "name": "R",
+     "value": 3.706,
+     "unit": "Ω"
+    }
+   ],
    "wires": [
     {
      "x": 17,
@@ -123,11 +161,15 @@
    ]
   },
   {
-   "type": "Driver",
-   "partId": "D",
-   "model": "woofer",
-   "inverted": false,
-   "params": [],
+   "type": "Resistor",
+   "partId": "R6",
+   "params": [
+    {
+     "name": "R",
+     "value": 52.93,
+     "unit": "Ω"
+    }
+   ],
    "wires": [
     {
      "x": 24,
@@ -150,12 +192,53 @@
    ]
   },
   {
+   "type": "Wire",
+   "params": [],
+   "wires": [
+    {
+     "x": 24,
+     "y": 6
+    },
+    {
+     "x": 31,
+     "y": 6
+    }
+   ]
+  },
+  {
+   "type": "Driver",
+   "partId": "D",
+   "model": "woofer",
+   "inverted": false,
+   "params": [],
+   "wires": [
+    {
+     "x": 31,
+     "y": 6
+    },
+    {
+     "x": 31,
+     "y": 13
+    }
+   ]
+  },
+  {
+   "type": "Ground",
+   "params": [],
+   "wires": [
+    {
+     "x": 31,
+     "y": 13
+    }
+   ]
+  },
+  {
    "type": "Capacitor",
    "partId": "B·C1",
    "params": [
     {
      "name": "C",
-     "value": 41.69,
+     "value": 28.31,
      "unit": "uF"
     }
    ],
@@ -176,7 +259,7 @@
    "params": [
     {
      "name": "L",
-     "value": 1.652,
+     "value": 2.058,
      "unit": "mH"
     }
    ],
@@ -207,7 +290,7 @@
    "params": [
     {
      "name": "C",
-     "value": 44.52,
+     "value": 33.09,
      "unit": "uF"
     }
    ],
@@ -228,7 +311,7 @@
    "params": [
     {
      "name": "L",
-     "value": 19.87,
+     "value": 73.04,
      "unit": "mH"
     }
    ],
@@ -259,7 +342,7 @@
    "params": [
     {
      "name": "L",
-     "value": 1.045,
+     "value": 1.158,
      "unit": "mH"
     }
    ],
@@ -280,7 +363,7 @@
    "params": [
     {
      "name": "C",
-     "value": 20.48,
+     "value": 14.39,
      "unit": "uF"
     }
    ],
@@ -311,7 +394,7 @@
    "params": [
     {
      "name": "L",
-     "value": 0.2429,
+     "value": 0.3228,
      "unit": "mH"
     }
    ],
@@ -332,7 +415,7 @@
    "params": [
     {
      "name": "C",
-     "value": 1.2,
+     "value": 0.2921,
      "unit": "uF"
     }
    ],
@@ -426,7 +509,7 @@
    "params": [
     {
      "name": "C",
-     "value": 3.276,
+     "value": 3.372,
      "unit": "uF"
     }
    ],
@@ -447,7 +530,7 @@
    "params": [
     {
      "name": "L",
-     "value": 0.3526,
+     "value": 0.278,
      "unit": "mH"
     }
    ],
@@ -478,7 +561,7 @@
    "params": [
     {
      "name": "C",
-     "value": 92.5,
+     "value": 104.2,
      "unit": "uF"
     }
    ],
@@ -499,7 +582,7 @@
    "params": [
     {
      "name": "L",
-     "value": 6.009,
+     "value": 15.07,
      "unit": "mH"
     }
    ],
@@ -530,7 +613,7 @@
    "params": [
     {
      "name": "R",
-     "value": 0.1795,
+     "value": 6.461,
      "unit": "Ω"
     }
    ],
@@ -551,7 +634,7 @@
    "params": [
     {
      "name": "R",
-     "value": 48.13,
+     "value": 81.29,
      "unit": "Ω"
     }
    ],
@@ -636,6 +719,104 @@
     {
      "x": 3,
      "y": 30
+    }
+   ]
+  },
+  {
+   "type": "Wire",
+   "params": [],
+   "wires": [
+    {
+     "x": 17,
+     "y": 6
+    },
+    {
+     "x": 17,
+     "y": 2
+    }
+   ]
+  },
+  {
+   "type": "Wire",
+   "params": [],
+   "wires": [
+    {
+     "x": 24,
+     "y": 6
+    },
+    {
+     "x": 24,
+     "y": 2
+    }
+   ]
+  },
+  {
+   "type": "Capacitor",
+   "partId": "C5",
+   "params": [
+    {
+     "name": "C",
+     "value": 5.786,
+     "unit": "uF"
+    }
+   ],
+   "wires": [
+    {
+     "x": 17,
+     "y": 2
+    },
+    {
+     "x": 24,
+     "y": 2
+    }
+   ]
+  },
+  {
+   "type": "Wire",
+   "params": [],
+   "wires": [
+    {
+     "x": 17,
+     "y": 30
+    },
+    {
+     "x": 17,
+     "y": 26
+    }
+   ]
+  },
+  {
+   "type": "Wire",
+   "params": [],
+   "wires": [
+    {
+     "x": 24,
+     "y": 30
+    },
+    {
+     "x": 24,
+     "y": 26
+    }
+   ]
+  },
+  {
+   "type": "Capacitor",
+   "partId": "C6",
+   "params": [
+    {
+     "name": "C",
+     "value": 128.2,
+     "unit": "uF"
+    }
+   ],
+   "wires": [
+    {
+     "x": 17,
+     "y": 26
+    },
+    {
+     "x": 24,
+     "y": 26
     }
    ]
   }

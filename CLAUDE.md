@@ -29,20 +29,27 @@
   eruit ongezien fout. Verzamel in een ARRAY, dat kan de compiler wel volgen. (2) `tuned` naar `boolean`
   gecast terwijl het een TELLING is. Wie een script schrijft dat referentiegetallen wegschrijft, kijkt
   het geschreven blok nog steeds na — maar de typefout komt nu vooraf.
-- `npx vitest run` — volledige testsuite. **Gemeten 28-08-2026 (V37-sessie): 126 bestanden, 1376 tests, ~5,5 min
-  wandkloktijd (321 s).** Alles groen houden. De telling stond tot F4b op 99/1003 — dat was de
+- `npx vitest run` — volledige testsuite. **Gemeten 28-08-2026 (V38-fix-sessie): 127 bestanden,
+  1386 tests, ~6,8 min wandkloktijd (405 s).** Alles groen houden. De telling stond tot F4b op 99/1003 — dat was de
   stand bij F3 (`61a3ea4`) en zij is drie opleveringen lang niet bijgewerkt: F3b bracht 104 bestanden, F3c 106,
   F4a 107, F4b 108, F4b2 109, F4c 112, V20 113, F4d 119, de F4d-nazorg 120, de vloersessie 120, V30 121,
   V31/V32 123, V33 124 (`barrierSource.test.ts`), V34 125 (`probeSource.test.ts`),
-  V36 126 (`dissipationTerm.test.ts`). **V37 voegde géén bestand toe** — zijn claims staan in
+  V36 126 (`dissipationTerm.test.ts`), V38-fix 127 (`searchMeasure.test.ts`). **V37 voegde géén
+  bestand toe** — zijn claims staan in
   `dissipationTerm.test.ts`, `frozenNetlistGates.test.ts`, `choiceKeyGuard.test.ts` en
-  `casus1V2Candidates.test.ts`, naast de claims die zij al droegen; de telling gaat van 1369
-  naar 1376 tests op hetzelfde aantal bestanden.
+  `casus1V2Candidates.test.ts`, naast de claims die zij al droegen; de telling ging van 1369
+  naar 1376 tests op hetzelfde aantal bestanden. V38-fix voegt er één bestand (4 tests) en zes
+  claims elders bij: 1386.
   Vandaar de datum erbij: een telling zonder meetmoment is een telling die stil veroudert.
-  **Waar de tijd zit (nagemeten bij V37, volle parallelle run):** zeven bestanden draaien echte ketenruns en zijn
-  samen het leeuwendeel van de CPU-tijd — `casus1V2Candidates` (317 s: twee live runs, de bevroren netlist én
-  de verwerping), `threeWayChain` (294 s), `candidateRoute` (124 s), `designChain` (107 s),
-  `workerRouteRegression` (96 s), `frozenNetlistGates` (80 s), `f4cRegression` (76 s).
+  **Waar de tijd zit (nagemeten bij V38-fix, volle parallelle run):** zeven bestanden draaien echte ketenruns en zijn
+  samen het leeuwendeel van de CPU-tijd — `casus1V2Candidates` (401 s: twee live runs, de bevroren netlist én
+  de verwerping), `threeWayChain` (302 s), `candidateRoute` (128 s), `designChain` (114 s),
+  `workerRouteRegression` (100 s), `frozenNetlistGates` (92 s), `f4cRegression` (81 s).
+  De V37-stand ter vergelijking: 317 / 294 / 124 / 107 / 96 / 80 / 76 s. De groei zit waar de
+  zoekmaat veranderde — `casus1V2Candidates` draait twee LIVE ketenruns op de v2-route en die
+  meten sinds V38-fix een andere kromme; `frozenNetlistGates` telt er twaalf seconden bij voor
+  de vier V38-fix-blokken, die per netlist twee extra netwerkoplossingen doen en geen tune.
+  `searchMeasure` (22 s) draait vier korte tuner-runs op de tweewegfixture.
   `casus1V2Candidates` is bij V33 van 105 s naar 300 s gegaan en dat is de prijs van de barrièrebron: elke live
   casus-1-run lost het netwerk nu ook op het veiligheidsraster op. Op de dure bron (`'sweep'`) zou datzelfde
   bestand ruim twintig minuten kosten — dat is waarom de v2-route `'safety'` stelt. `probeSource` (40 s) draait
@@ -66,16 +73,19 @@
   ook op het veiligheidsraster maar SCANT er alleen (één rasterdoorloop tot 400 Hz plus één
   één-frequentie-oplossing), dus hij kost niets meetbaars. **Nagemeten bij V37: 40 min
   (115–223 s per kandidaat)** — V37 verandert een DELING en geen raster, dus de prijs is
-  onveranderd. Schrijft de
+  onveranderd. **Nagemeten bij V38-fix: 42 min (116–218 s per kandidaat)** — de ONGEGLADDE
+  zoekmaat van V38-fix verandert geen raster, alleen wélke kromme de amplitudeterm meet, en zij
+  kost niets meetbaars: het evaluatiebudget beweegt beide kanten op (−39 % en +12 % op de twee
+  kandidaten waar het apart gemeten is). Schrijft de
   shortlist-netlists en `casus1_v2_herkomst.json`. **Bevries het levende corpus ERVÓÓR** met
   `scripts/freeze-live-corpus.ts` als je de vóór/ná wilt kunnen reproduceren. Daarna
   `npx vite-node scripts/record-casus1-v2-references.ts` (drie seconden) voor de klasse-B-blokken én
   de vergelijkingstabel voor het casusboek. **Nagemeten bij de nazorg: twee opeenvolgende runs leveren de
   netlists byte-identiek terug, op het `savedAt`-stempel van de serialisatie na.**
 - **De vóór/ná-tabel tussen twee corpora**: `npx vite-node scripts/compare-corpora.ts [vóór] [ná]` —
-  seconden, geen ketenrun. Corpora: `v30`, `v32`, `v33sweep`, `v33`, `v34`, `live`; default `v34 live`,
-  wat de V37-tabel is. `compare-corpora.ts v30 v32` reproduceert de V32-tabel, `v32 v33` de V33-tabel,
-  `v33 v34` de V34-tabel.
+  seconden, geen ketenrun. Corpora: `v30`, `v32`, `v33sweep`, `v33`, `v34`, `v37`, `live`; default
+  `v37 live`, wat de V38-fix-tabel is. `compare-corpora.ts v30 v32` reproduceert de V32-tabel,
+  `v32 v33` de V33-tabel, `v33 v34` de V34-tabel, `v34 v37` de V37-tabel.
   Gekoppeld op KANDIDAAT (de bestandsnummers
   zijn rijnummers van verschillende shortlists en horen niet bij elkaar), beide helften gemeten door
   hetzelfde `buildReport`-pad. **Sinds V36 draagt hij twee kolommen erbij** — dissipatiefractie en
@@ -141,7 +151,10 @@
     waarden uit een warm en drie koude zaden.
   - `V38_EQ=<n> npx vite-node scripts/measure-v38-corrections-tuned.ts` — vier waardetunes per
     EQ-budget. Draai hem met `V38_EQ=0` (wat de v2-route stelt) en `V38_EQ=2` (wat de app stelt).
-  `V38_LIMIT=n` doet er n als rookproef; dat is geen meting. **De bank is niet de v2-route**, en
+  `V38_LIMIT=n` doet er n als rookproef; dat is geen meting.
+  **`V38_ERRSMOOTH=0` draait de ablatie én de transplantatie met de zoekgladding UIT** — de
+  ene-sleutel-arm, en sinds V38-fix is dat de arm die de v2-route zelf draait. De transplantatie
+  schrijft dan `casus1_v38_transplantatie_ongegladd.json`, de ablatie `..._ablatie_ongegladd.json`. **De bank is niet de v2-route**, en
   dat verschil is gemeten in plaats van geschat: hij draait zonder `staged` (die snoeit en
   escaleert ONDERDELEN, wat elke ablatie zinloos maakt) en zonder `branchTargets` (die komt uit
   de ontwerpstap, die hier niet draait). **De topologie ligt daarmee nog niet vast**: de
@@ -151,6 +164,13 @@
   onzichtbaar in een Δ te zitten. Op de kandidaat waar beide gemeten zijn levert de bank
   3,22 dB waar de volle route 1,76 dB levert. Arm-tegen-arm is dus de meting; het absolute
   niveau is dat van de bank en niet van het corpus.
+- **Wat de zoektocht ziet, per bevroren netlist (V38-fix)**:
+  `npx vite-node scripts/measure-v38fix-search-measure.ts` — seconden, geen ketenrun en geen
+  enkele tune. Drukt per netlist drie krommen af op dezelfde oplossing: de echte complexe som
+  (wat 0 meet en wat élk oordeel leest), diezelfde som ná gladding (de ongebouwde variant), en de
+  som van per-driver gegladde magnitudes met ongemoeide fase (wat de zoektocht tot V38-fix las).
+  Dit is het bewijsmateriaal waarmee de reparatie gekozen is: gladden ná de sommatie repareert
+  niets, want de stille geest zit ook in de som. `frozenNetlistGates.test.ts` assert de claims.
 - **De vloer als zoekdoel meten (V30)**: `npx vite-node scripts/measure-v30-floor-goal.ts` —
   dertig ketenruns (vijftien kandidaten × twee armen), gemeten 45–70 s per stuk, ~30 min.
   Schrijft `test-fixtures/casus1_v30_vloer_vergelijking.json` en drukt de vóór/ná-tabel af.
@@ -374,8 +394,10 @@ grotere ingreep — hij raakt élk commando in dit project — en is deze sessie
 
 ### F4c-guards (keuze vs. polish op de tuner-instellingen)
 - `src/lib/engine2/optimizer/choices.ts` — de indeling als DATA, niet als proza: `CHOICE_KEYS`
-  (26 sinds V30, 25 bij F4c), `GREY_KEYS` (5), `POLISH_KEYS` (7). Samen exact de 38 top-level
-  sleutels van `NetOptimizeOptions`. De definities staan in de nota (A3j) in algemene bewoordingen; deze
+  (30 sinds V38-fix; 25 bij F4c, 26 bij V30, 27 bij V33, 28 bij V34, 29 bij V37), `GREY_KEYS` (5),
+  `POLISH_KEYS` (9). Samen exact de 44 top-level sleutels van `NetOptimizeOptions` — een telling
+  die de test uit de BRON leest en niet uit deze regel. V38-fix voegde geen sleutel toe maar
+  verplaatste er één (`errorSmoothOct`, polish → keuze), dus 44 blijft 44 en 29/5/10 wordt 30/5/9. De definities staan in de nota (A3j) in algemene bewoordingen; deze
   lijsten zijn de bijlage voor deze tuner, en het casusboek V26 draagt de tabel met per sleutel
   de reden.
 - `src/lib/engine2/optimizer/choiceKeyGuard.test.ts` — twee claims, beide als scan. (1) De drie
@@ -738,6 +760,38 @@ grotere ingreep — hij raakt élk commando in dit project — en is deze sessie
   `tsc -b`; zie de aantekening bij het commando hierboven voor de twee foutklassen die er
   meteen uit kwamen.
 
+### V38-fix-guards (wat de zoektocht meet)
+- `src/lib/engine2/optimizer/searchMeasure.test.ts` — de tuner-helft, vier claims. Afwezig en de
+  historische 1/12 octaaf zijn byte-identieke netwerken (P2: de default is niet aangeraakt, dus
+  élke v1-run leest wat hij las); **0 BEREIKT de zoektocht** — er komt aantoonbaar een ander
+  netwerk uit, en zonder die tegenproef zijn de andere claims even waar voor een sleutel die
+  nergens op aangesloten is (V23); met gladding aan rapporteert de tuner twee verschillende
+  pieken (`rippleDb` tegen `ripplePeakSmoothedDb`) en met 0 zijn het er één — de naad zelf; en
+  gladden-ná-sommatie levert een andere kromme dan gladden-vóór, maar op deze tweewegfixture
+  blijven ze allebei binnen een fractie van de echte som. **Dat laatste is geen zwakte van de
+  test maar de meting die de reparatie koos:** deze fixture heeft geen stille geest (het raster
+  loopt niet voorbij de gemeten uitgestrektheid), dus hier is de ontkoppeling van magnitude en
+  fase het énige effect en zij is klein. De grote helft staat op het echte corpus.
+- `src/lib/engine2/frozenNetlistGates.test.ts` — vier V38-fix-blokken op élke bevroren netlist, en
+  ze kosten geen tune: het zijn oplossingen van een gegeven netwerk. (1) De PREMISSE: binnen de
+  beoordeelde band leeft elk punt van elke tak, en het eerste rasterpunt erboven is dood
+  (−400 dB, de stille geest). (2) De gegladde zoekmaat leest een minimum dat op élke netlist
+  dieper wegzakt dan het VOLLEDIGE piek-tot-dal-bereik van de echte som, en het landt op het
+  laatste punt in de band — dat is het mechanisme. (3) **Gladden-ná-sommatie repareert het niet**:
+  de twee volgorden verschillen minder dan de echte rimpel terwijl beide daar veelvouden boven
+  zitten. Dit is de meting waarmee de ongebouwde variant is afgewezen in plaats van beredeneerd.
+  (4) De ontkoppeling van magnitude en fase bestaat wél maar draagt minder dan een tiende van de
+  echte rimpelpiek — de correctie op V38's eigen mechanisme-zin.
+- `src/lib/engine2/optimizer/choiceKeyGuard.test.ts` — de HERCLASSIFICATIE, en zij is de enige in
+  de A3j-tabel: `errorSmoothOct` is sinds V38-fix CHOICE en mag nooit terug naar POLISH of GREY.
+  De sleuteltelling blijft 44 (geen sleutel erbij) en de verdeling wordt geassert: 30/5/9. Plus
+  de V38-fix-verklaring, de tweede ONVOORWAARDELIJKE afleiding in `candidateDeclaration.ts` naast
+  V37's: `full()` en `bare()` stellen allebei `SEARCH_SMOOTHING_OCTAVES`, een expliciete breedte
+  wint, en de breedte beweegt de vingerafdruk.
+- `src/lib/engine2/casus1V2Candidates.test.ts` — de meetopstelling zegt sinds V38-fix ook op welke
+  KROMME de amplitudeterm gemeten is (`zoekmaat_gladding_oct`, `zoekmaat_waarom`), afgelezen van
+  de verklaring en niet overgeschreven. Vierde besluit naast V30/V33, V34 en V37.
+
 ### F4b2-guard (het vierde gat: de LF-bult-inversie)
 - `src/lib/engine2/optimizer/lfBumpBorder.test.ts` — de vierde A5d.6-inversie, die op de
   workerroute nooit invoer had (V23-bijvangst, dood sinds F2). Vijf asserts op de inversie zelf:
@@ -816,17 +870,20 @@ Twee scripts, twee kosten:
 op een `FilterInput` dat geen `parts` heeft kwam niet als typefout terug. Wie een script schrijft dat
 referentiegetallen wegschrijft, kijkt het geschreven blok na vóór de commit.
 De acceptatie zit in `casus1V2Candidates.test.ts`: de metrieken reproduceren op alle bevroren bestanden,
-en **één** kandidaat wordt live door de échte route heen gereproduceerd — nagemeten bij V37: 158 s, plus 158 s voor de verwerping ernaast. De ~41 s die hier tot V37 stond dateert van vóór V33: sinds de barrière het veiligheidsraster leest kost élke live casus-1-run het viervoudige.
+en **één** kandidaat wordt live door de échte route heen gereproduceerd — nagemeten bij V38-fix: 260 s, plus 139 s voor de verwerping ernaast (V37: 158 + 158 s). De ~41 s die hier tot V37 stond dateert van vóór V33: sinds de barrière het veiligheidsraster leest kost élke live casus-1-run het viervoudige.
 
-**Sinds V37 zijn het er ZEVEN corpora, en dat is opzet.** `KAND_V2_*` is het levende corpus.
+**Sinds V38-fix zijn het er ACHT corpora, en dat is opzet.** `KAND_V2_*` is het levende corpus.
 `V28_KAND_*` is bevroren vóór de vloer een ZOEKDOEL was (V30); `V30_KAND_*` toen de poort nog blind
 was onder de verre-veldbodem (V32); `V32_KAND_*` toen de BARRIÈRE nog het evaluatieraster las terwijl
 de poort de sweep handhaafde (V33); `V33_SWEEP_KAND_*` is V33's dure referentiearm, met de barrière
 op het poortraster zelf; `V33_KAND_*` is bevroren toen de BRONWEERSTANDSPROBE nog op de bovenrand van
 zijn eigen zoekvenster landde en de v2-route nog een 2,0 Ω-grens droeg die niemand gesteld had (V34);
 `V34_KAND_*` toen de DISSIPATIETERM nog door de piekhoogte deelde in plaats van door de opgeloste
-R_e — 19,31 Ω tegen 3,05 Ω, en dat kwadrateert tot 40,1 (V37).
-Alle zes de gedateerde corpora zijn byte-identieke bestanden onder een andere naam, met hun
+R_e — 19,31 Ω tegen 3,05 Ω, en dat kwadrateert tot 40,1 (V37); `V37_KAND_*` toen de ZOEKTOCHT nog
+de spreiding mat van een som van gegladde magnitudes met ongemoeide fase, waarbij de
+gladdingskern de stille geest van net buiten de band over de bandrand trok en de amplitudeterm
+van 1,85 naar 10,22 dB blies (V38-fix).
+Alle zeven de gedateerde corpora zijn byte-identieke bestanden onder een andere naam, met hun
 klasse-B-blokken mee, bewaard als de "vóór"-helften van hun vergelijkingen. Wie
 een script schrijft dat het levende corpus opruimt gebruikt `^KAND_V2_\d+$` en nooit
 `startsWith('KAND_V2')`: die tweede slikt de gedateerde corpora mee en gooit het bewijsmateriaal weg.
@@ -834,8 +891,8 @@ een script schrijft dat het levende corpus opruimt gebruikt `^KAND_V2_\d+$` en n
 `goldenClassification.test.ts` is er sinds V33 vanaf — daar geldt de structurele regel dat élke
 genoemde netlist die geen v1-baseline is een geclassificeerd blok moet hebben, omdat de
 familielijst die er stond bij V32 vergeten is. De koppeling bestandsnaam ↔ kandidaat staat in
-`manifest_en_geometrie.v30_corpus`, `.v32_corpus`, `.v33_sweep_corpus`, `.v33_corpus` en
-`.v34_corpus`, want zij
+`manifest_en_geometrie.v30_corpus`, `.v32_corpus`, `.v33_sweep_corpus`, `.v33_corpus`,
+`.v34_corpus` en `.v37_corpus`, want zij
 stond alleen in `casus1_v2_herkomst.json` en dat bestand wordt door de volgende regeneratie
 overschreven. **Bevriezen doe je sinds V34 met `scripts/freeze-live-corpus.ts`** en niet met de
 hand: het zijn vijf bewerkingen die allemaal moeten landen.

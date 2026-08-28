@@ -3,8 +3,9 @@
  *
  * Twenty-five at F4d, twenty-six since V30 added `zFloorBarrier`,
  * twenty-seven since V33 added `zFloorBarrierSource`, twenty-eight since
- * V34 added `rSourceProbeSource` and twenty-nine since V37 added
- * `dissipationReferenceSource`. The number
+ * V34 added `rSourceProbeSource`, twenty-nine since V37 added
+ * `dissipationReferenceSource` and thirty since V38-fix RECLASSIFIED
+ * `errorSmoothOct` out of polish. The number
  * is not repeated in prose anywhere it could go stale: `declarationCoverage`
  * compares against `CHOICE_KEYS` itself, so a key added upstream lands in no
  * state and fails the build.
@@ -48,6 +49,7 @@
  */
 
 import type { NetOptimizeOptions } from '../../netOptimizer.ts';
+import { SEARCH_SMOOTHING_OCTAVES } from '../constants.ts';
 import type { ChoiceDeclaration, ChoiceKey } from './choices.ts';
 
 /** The values the designer (or the app) has settled, in the tuner's own names. */
@@ -73,6 +75,7 @@ export type StatedByDesigner = Partial<
     | 'zFloorBarrierSource'
     | 'rSourceProbeSource'
     | 'dissipationReferenceSource'
+    | 'errorSmoothOct'
   >
 >;
 
@@ -284,6 +287,40 @@ export function declareCandidateChoices(input: CandidateDeclarationInput): Choic
    * An explicit value still wins, so V37's before/after is a run someone can
    * ask for rather than a build that has to be patched. */
   stated.dissipationReferenceSource = s.dissipationReferenceSource ?? 're';
+
+  /* ---- V38-fix: WHAT CURVE THE AMPLITUDE TERM MEASURES -----------------
+   *
+   * STATED UNCONDITIONALLY, the second derivation here that hangs on nothing
+   * else, and for the same shape of reason as V37's: the question is not
+   * conditional. Every candidate is judged on the amplitude of its complex sum
+   * — `judgeResponse`'s RMS deviation, the SPL window, the staged targets and
+   * every gate all read that one curve — so every candidate has to say which
+   * curve its SEARCH minimises the spread of, and there is one honest answer.
+   *
+   * WHY THE INHERITED ANSWER WAS NOT IT. Smoothing the search measure is not a
+   * blur of the judged curve: a Gaussian kernel in log-f reaches ACROSS the
+   * judged band's edge, and on a grid that runs past the drivers' measured
+   * extent the point beyond it is the silent ghost at -400 dB. Measured on
+   * casus 1: the last point inside the band drops from 130.95 dB to 43.67, the
+   * search's amplitude term reads 9.6-10.9 dB across the whole frozen corpus
+   * where the real spread runs 0.60-3.81, and the design the judgement calls
+   * worst ranks 16th of 80 on that measure. Delivered, one key at a time: 0.55
+   * to 2.45 dB on three separate topologies (casebook V38, V38-fix). That is
+   * not a resolution detail; it is the whole distance between the generated
+   * field and the designer's own filter.
+   *
+   * ZERO IS NOT A CASUS-1 NUMBER, and that matters because a v2 default that
+   * was one would be P6's exact failure. It is "measure the curve that will be
+   * judged": any width above zero reaches over the same edge. Smoothing the SUM
+   * after it exists was the other candidate repair and it was MEASURED rather
+   * than reasoned about — it leaves the same 43 dB standing, because the ghost
+   * is in the sum too. It stays unbuilt, noted in V38-fix.
+   *
+   * WHAT THIS DOES NOT TOUCH. `WINDOW_SMOOTHING_OCTAVES` (A5e.1) is the
+   * acceptance width and is unchanged; the two are different questions and F3c
+   * built the line that says so. And an explicit value still wins, so V38-fix's
+   * before/after is a run someone can ask for rather than a build to patch. */
+  stated.errorSmoothOct = s.errorSmoothOct ?? SEARCH_SMOOTHING_OCTAVES;
 
   /* ---- what has no value on a design of this shape -------------------- */
   absent.push({

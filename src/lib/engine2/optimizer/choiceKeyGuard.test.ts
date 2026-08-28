@@ -32,6 +32,7 @@ import {
   greyValues,
 } from './choices.ts';
 import { AMP_FLOOR_BARRIER_WEIGHT } from '../../netOptimizer.ts';
+import { SEARCH_SMOOTHING_OCTAVES } from '../constants.ts';
 import { declareCandidateChoices } from './candidateDeclaration.ts';
 import { withDeclaredSourceLimit } from './worker.ts';
 
@@ -119,6 +120,8 @@ describe('F4c — every tuner option has a class', () => {
     // limit is compared at); 44 since V37 added `dissipationReferenceSource`
     // (choice — WHAT the dissipation term divides by) and
     // `dissipationReferenceReOhm` (polish — the resolved R_e it divides by).
+    // V38-fix adds NO key and reclassifies one: `errorSmoothOct` moves from
+    // polish to choice, so the total stays 44 and the split becomes 30/5/9.
     expect(keys.length).toBe(44);
     expect(CHOICE_KEYS.length + GREY_KEYS.length + POLISH_KEYS.length).toBe(44);
     // V31: instrumentation, never a choice — the key may not silently migrate
@@ -163,6 +166,28 @@ describe('F4c — every tuner option has a class', () => {
     expect(CHOICE_KEYS as readonly string[]).not.toContain('dissipationReferenceReOhm');
     // ...and it stays beside the WEIGHT it qualifies, which is grey (A3j).
     expect(GREY_KEYS).toContain('dissipationWeight');
+    /* V38-fix — the one RECLASSIFICATION in this list, and the only reason it
+     * is not a pair like the three above is that there is nothing to hand over
+     * beside it: the width is the whole statement.
+     *
+     * It was filed POLISH at F4c on a description of the code that was true —
+     * it smooths the search error measure and leaves gates and targets on the
+     * raw grid — and on an assumption about that description that was not: that
+     * a resolution knob cannot decide which network wins. Measured, one key at
+     * a time, it decided it by 0.55 to 2.45 dB on three separate topologies,
+     * which is the entire distance between the generated field and the
+     * designer's own filter (casebook V38, V38-fix). What the amplitude term is
+     * a statistic OF is the same class of question as `band`: it names the
+     * quantity, not the effort spent on it.
+     *
+     * A migration back into polish would restore exactly the state the
+     * measurement ended, so it breaks the build in both directions. */
+    expect(CHOICE_KEYS).toContain('errorSmoothOct');
+    expect(POLISH_KEYS as readonly string[]).not.toContain('errorSmoothOct');
+    expect(GREY_KEYS as readonly string[]).not.toContain('errorSmoothOct');
+    expect(CHOICE_KEYS.length).toBe(30);
+    expect(GREY_KEYS.length).toBe(5);
+    expect(POLISH_KEYS.length).toBe(9);
   });
 });
 
@@ -445,6 +470,43 @@ describe('F4d — a generated candidate declares every choice key', () => {
     // ...and it moves the fingerprint, or the choice would be a label.
     expect(JSON.stringify(declarationKey(bare(), {}))).not.toBe(
       JSON.stringify(declarationKey(onProbe, {})),
+    );
+  });
+
+  it('V38-fix — every candidate states WHAT CURVE the amplitude term measures, and it is the sum', () => {
+    /* THE SECOND UNCONDITIONAL DERIVATION, for the same shape of reason as
+     * V37's: the question is not conditional. Every candidate is judged on the
+     * amplitude of its complex sum — `judgeResponse`'s RMS deviation, the SPL
+     * window, the staged targets and every gate read that one curve — so every
+     * candidate has to say which curve its SEARCH minimises the spread of.
+     *
+     * ZERO IS NOT A CASUS-1 NUMBER, and the difference matters because a v2
+     * default that was one would be P6's exact failure. It is "measure the
+     * curve that will be judged". The width above it, 1/12 octave, is the app's
+     * historical preference and stays the tuner's default: this states what the
+     * v2 route measures, it does not change what anybody else measures. */
+    expect(full().stated.errorSmoothOct).toBe(SEARCH_SMOOTHING_OCTAVES);
+    expect(bare().stated.errorSmoothOct).toBe(SEARCH_SMOOTHING_OCTAVES);
+    for (const d of [full(), bare()]) {
+      expect(d.absent.some((a) => a.key === 'errorSmoothOct')).toBe(false);
+      expect(d.delegated.some((g) => g.key === 'errorSmoothOct')).toBe(false);
+    }
+
+    /* An explicit width still wins, so V38-fix's before/after is a run someone
+     * can ask for rather than a build that has to be patched — the same
+     * property V30, V33, V34 and V37 each rest on. */
+    const smoothed = declareCandidateChoices({
+      cages: [[400, 500], [1500, 2000]],
+      windowFloorsHz: [397, 1294],
+      multiWay: true,
+      stated: { errorSmoothOct: 1 / 12 },
+    });
+    expect(smoothed.stated.errorSmoothOct).toBe(1 / 12);
+    expect(smoothed.absent.some((a) => a.key === 'errorSmoothOct')).toBe(false);
+
+    // ...and the width moves the fingerprint, or the choice would be a label.
+    expect(JSON.stringify(declarationKey(bare(), {}))).not.toBe(
+      JSON.stringify(declarationKey(smoothed, {})),
     );
   });
 

@@ -13,12 +13,13 @@
  * So both halves are named, every dated corpus stays addressable, and the
  * default is the newest comparison.
  *
- *   corpora: `v30` · `v32` · `v33sweep` · `v33` · `v34` · `live`
- *   default: `v34` → `live`   (casebook V37)
+ *   corpora: `v30` · `v32` · `v33sweep` · `v33` · `v34` · `v37` · `live`
+ *   default: `v37` → `live`   (casebook V38-fix)
  *   V32's own table: `npx vite-node scripts/compare-corpora.ts v30 v32`
  *   V33's own table: `npx vite-node scripts/compare-corpora.ts v32 v33`
  *   V33's two arms:  `npx vite-node scripts/compare-corpora.ts v33sweep v33`
  *   V34's own table: `npx vite-node scripts/compare-corpora.ts v33 v34`
+ *   V37's own table: `npx vite-node scripts/compare-corpora.ts v34 v37`
  *
  * WHY A FILE COMPARISON AND NOT TWO RUNS. `measure-v30-floor-goal.ts` ran the
  * same field twice and switched one option between the arms, because V30's
@@ -54,6 +55,15 @@ import { buildReport, type ReportSettings } from '../src/lib/engine2/report.ts';
 import { ctcKey } from '../src/lib/engine2/metrics/types.ts';
 import { FLAT_TARGET } from '../src/lib/engine2/requirements/targetCurve.ts';
 import { meetsAmpFloor } from '../src/lib/impedanceFloor.ts';
+import { optimizeNetworkValues } from '../src/lib/netOptimizer.ts';
+import { deserializeFilter } from '../src/lib/filterFile.ts';
+import { CASUS1_DIR } from '../src/lib/engine2/casus1.fixture.ts';
+import {
+  CASUS1_V2_BAND_HZ,
+  CASUS1_V2_SETTINGS,
+  casus1ChainInput,
+} from '../src/lib/engine2/casus1V2.fixture.ts';
+import type { VxpPart } from '../src/lib/parsers/vxp.ts';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 
@@ -135,6 +145,7 @@ const DATED: Record<string, { block: string; name: string }> = {
   v33sweep: { block: 'v33_sweep_corpus', name: 'V33-sweep' },
   v33: { block: 'v33_corpus', name: 'V33' },
   v34: { block: 'v34_corpus', name: 'V34' },
+  v37: { block: 'v37_corpus', name: 'V37' },
 };
 
 const corpusOf = (id: string): Corpus => {
@@ -144,7 +155,7 @@ const corpusOf = (id: string): Corpus => {
   throw new Error(`unknown corpus "${id}" — use ${[...Object.keys(DATED), 'live'].join(', ')}`);
 };
 
-const [beforeId = 'v34', afterId = 'live'] = process.argv.slice(2);
+const [beforeId = 'v37', afterId = 'live'] = process.argv.slice(2);
 const before = corpusOf(beforeId);
 const after = corpusOf(afterId);
 
@@ -153,18 +164,91 @@ interface Row {
   atHz: number | null;
   splWindow: number | null;
   rms: number | null;
+  /** De RAPPORT-maat: `system.phaseTracking`, één octaaf rond het kruispunt,
+   *  geknipt op meetgeldigheid en met zijn dekking erbij (A5.5). */
   wmPhase: number | null;
   mtPhase: number | null;
+  /** De TUNER-maat: `pairPhaseDeg` uit `netOptimizer`, de grootheid waarop de
+   *  zoektocht zijn fasebudget uitgeeft. V38 mat dat de twee op HUIDIG's zaad
+   *  overeenkomen (22,28° tegen 23,83°) en op het geleverde netwerk in
+   *  TEGENGESTELDE richting uiteenlopen (9,65° tegen 47,68°). Zolang dat zo is
+   *  is één fasekolom een half antwoord, en welke van de twee de luidspreker
+   *  beschrijft is open (V40). Vandaar twee kolommen, met naam. */
+  wmPhaseTuner: number | null;
+  mtPhaseTuner: number | null;
   clearsFloor: boolean | null;
   /** V36 — M-A's fraction as a percentage, and the WATTS in the largest single
    *  discrete resistor at the assumed power. A column, never a criterion: this
    *  script ranks nothing and no threshold anywhere compares against it. */
   dissPct: number | null;
   largestRw: number | null;
+  /** V38-fix — de rest van de vector waarmee V38 zijn armen vergeleek, zodat
+   *  deze tabel en het casusboek in dezelfde eenheden staan: EPDR (M-B), de
+   *  Q_es-vermenigvuldiging van de laagste weg (M-E) en de grootste smalle
+   *  piek die de venstergladding wegneemt (A5e.1). */
+  epdr: number | null;
+  qesMult: number | null;
+  narrowPeakDb: number | null;
+  narrowPeakHz: number | null;
 }
 
 const r2 = (v: number | null | undefined): number | null =>
   v === null || v === undefined || !Number.isFinite(v) ? null : Number(v.toFixed(2));
+
+/* ---- de TUNER-maat op een BESTAND (V38-fix) --------------------------- *
+ *
+ * `NetOptimizeResult.before` is de volle-raster-metriek van het ZAAD, gemeten
+ * door de tuner zelf vóórdat hij iets verplaatst. Eén onderdeel blijft vrij en
+ * het budget staat op het minimum: de tuner weigert een netwerk waarin álles
+ * op slot zit ("nothing for the optimizer to move"), en `before` hangt niet af
+ * van wat de zoektocht daarna doet. Gemeten 0,5 s per netlist.
+ *
+ * WAAROM NIET NAGEBOUWD. De fasemaat van de tuner nog een keer uitrekenen in
+ * dit script zou een tweede implementatie van een metriek zijn, en dat is
+ * precies wat dit project elders verbiedt — V21 ging erover. Dus wordt de
+ * tuner gevraagd, met de opties waarmee de v2-route hem vraagt.
+ *
+ * GEEN `staged`, `safety` of `audit`: die verplaatsen of verwijderen
+ * onderdelen, en dit is een MÉTING van een bestand. */
+const v2chain = casus1ChainInput(manifest, files, golden);
+
+function tunerPhaseOf(key: string): { wm: number | null; mt: number | null } {
+  const name = (golden.manifest_en_geometrie as { netlists: Record<string, string> }).netlists[key];
+  const parts: VxpPart[] = deserializeFilter(
+    readFileSync(join(CASUS1_DIR, name), 'utf-8'),
+  ).parts;
+  let freed = false;
+  const pinned = parts.map((p) => {
+    if (p.partId === undefined || p.type === 'Driver' || p.type === 'Generator') return p;
+    if (!freed) {
+      freed = true;
+      return p;
+    }
+    return { ...p, locked: true };
+  });
+  try {
+    const r = optimizeNetworkValues(
+      pinned,
+      [...v2chain.grid],
+      v2chain.w,
+      v2chain.t,
+      v2chain.driverZ,
+      { offsetMm: 0, trimDb: 0, inverted: false },
+      {
+        midBranch: { response: v2chain.m, adjust: {} },
+        band: CASUS1_V2_BAND_HZ,
+        phaseMetric: CASUS1_V2_SETTINGS.phaseMetric,
+        maxIterations: 1,
+      },
+    );
+    const pp = r.before.pairPhaseDeg ?? [];
+    return { wm: r2(pp[0] ?? null), mt: r2(pp[1] ?? null) };
+  } catch {
+    // Een netlist die de tuner niet kan oplossen levert geen fasemaat, en dat
+    // is een leeg vakje en geen nul.
+    return { wm: null, mt: null };
+  }
+}
 
 function measure(key: string): Row {
   const rep = buildReport({
@@ -175,6 +259,7 @@ function measure(key: string): Row {
     settings: SETTINGS,
   });
   const pt = rep.system.phaseTracking;
+  const tuner = tunerPhaseOf(key);
   const z = rep.metrics.epdr?.minZOhm ?? null;
   return {
     minZ: r2(z),
@@ -183,9 +268,21 @@ function measure(key: string): Row {
     rms: r2(rep.system.response?.rmsDeviationDb),
     wmPhase: r2(pt.find((p) => p.lower === 'woofer')?.meanAbsDeg ?? null),
     mtPhase: r2(pt.find((p) => p.lower === 'mid')?.meanAbsDeg ?? null),
+    wmPhaseTuner: tuner.wm,
+    mtPhaseTuner: tuner.mt,
     clearsFloor: z === null || FLOOR === null ? null : meetsAmpFloor(z, FLOOR),
     dissPct: r2((rep.metrics.dissipation?.totalFraction ?? NaN) * 100),
     largestRw: r2(rep.metrics.dissipation?.elements.find((e) => !e.parasitic)?.watts ?? null),
+    epdr: r2(rep.metrics.epdr?.minOhm),
+    /* M-E van de LAAGSTE weg: de Thévenin-rij waarvan de doorlaatband het
+     * laagst begint. Afgeleid, niet bij naam gezocht — nergens in dit project
+     * mag een script weten wat een "woofer" is. */
+    qesMult: r2(
+      [...rep.metrics.thevenin].sort((a, b) => (a.atHz ?? Infinity) - (b.atHz ?? Infinity))[0]
+        ?.qMultiplier ?? null,
+    ),
+    narrowPeakDb: r2(rep.system.response?.narrowPeaks[0]?.db ?? null),
+    narrowPeakHz: r2(rep.system.response?.narrowPeaks[0]?.fHz ?? null),
   };
 }
 
@@ -207,10 +304,12 @@ console.log(
    * columns — which is exactly what happened to the V34 table before anyone
    * looked at the rendered file. */
   '| kandidaat (W-M · M-T) | min \\|Z\\| vóór | min \\|Z\\| ná | @ Hz ná | vloer vóór → ná | ' +
-    'SPL ± vóór → ná | RMS vóór → ná | W-M fase vóór → ná | M-T fase vóór → ná | ' +
-    'dissipatie % vóór → ná | grootste R (W) vóór → ná |',
+    'SPL ± vóór → ná | RMS vóór → ná | W-M fase RAPPORT vóór → ná | ' +
+    'W-M fase TUNER vóór → ná | M-T fase RAPPORT vóór → ná | M-T fase TUNER vóór → ná | ' +
+    'dissipatie % vóór → ná | grootste R (W) vóór → ná | EPDR vóór → ná | ' +
+    'Q_es× vóór → ná | smalste piek ná (dB @ Hz) |',
 );
-console.log('|---|---|---|---|---|---|---|---|---|---|---|');
+console.log('|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|');
 
 let beforeClears = 0;
 let afterClears = 0;
@@ -240,9 +339,14 @@ for (const label of labels) {
       `${num(b?.splWindow ?? null)} → ${afterCell(a?.splWindow ?? null)} | ` +
       `${num(b?.rms ?? null)} → ${afterCell(a?.rms ?? null)} | ` +
       `${num(b?.wmPhase ?? null)} → ${afterCell(a?.wmPhase ?? null)} | ` +
+      `${num(b?.wmPhaseTuner ?? null)} → ${afterCell(a?.wmPhaseTuner ?? null)} | ` +
       `${num(b?.mtPhase ?? null)} → ${afterCell(a?.mtPhase ?? null)} | ` +
+      `${num(b?.mtPhaseTuner ?? null)} → ${afterCell(a?.mtPhaseTuner ?? null)} | ` +
       `${num(b?.dissPct ?? null)} → ${afterCell(a?.dissPct ?? null)} | ` +
-      `${num(b?.largestRw ?? null)} → ${afterCell(a?.largestRw ?? null)} |`,
+      `${num(b?.largestRw ?? null)} → ${afterCell(a?.largestRw ?? null)} | ` +
+      `${num(b?.epdr ?? null)} → ${afterCell(a?.epdr ?? null)} | ` +
+      `${num(b?.qesMult ?? null)} → ${afterCell(a?.qesMult ?? null)} | ` +
+      `${a && a.narrowPeakDb !== null ? `${num(a.narrowPeakDb)} @ ${num(a.narrowPeakHz)}` : '—'} |`,
   );
 }
 
@@ -268,6 +372,21 @@ console.log(
     `${fmt(avg(measuredBefore.map((r) => r.largestRw)))} W → ` +
     `${fmt(avg(measuredAfter.map((r) => r.largestRw)))} W bij ${SETTINGS.amplifierPowerW} W. ` +
     'Een kolom, geen oordeel: casus 1 stelt geen dissipatiegrens (P4).',
+);
+/* V38-fix — de twee fasematen naast elkaar als CORPUSGEMIDDELDE, want het
+ * verschil tussen hen is een open bevinding (V40) en geen afrondingsverschil.
+ * Twee kolommen die uiteenlopen zijn een vraag; één kolom is een antwoord dat
+ * niemand gegeven heeft. */
+console.log(
+  `W-M fase gemiddeld: RAPPORT ${fmt(avg(measuredBefore.map((r) => r.wmPhase)))}° → ` +
+    `${fmt(avg(measuredAfter.map((r) => r.wmPhase)))}°, TUNER ` +
+    `${fmt(avg(measuredBefore.map((r) => r.wmPhaseTuner)))}° → ` +
+    `${fmt(avg(measuredAfter.map((r) => r.wmPhaseTuner)))}°. ` +
+    `M-T fase gemiddeld: RAPPORT ${fmt(avg(measuredBefore.map((r) => r.mtPhase)))}° → ` +
+    `${fmt(avg(measuredAfter.map((r) => r.mtPhase)))}°, TUNER ` +
+    `${fmt(avg(measuredBefore.map((r) => r.mtPhaseTuner)))}° → ` +
+    `${fmt(avg(measuredAfter.map((r) => r.mtPhaseTuner)))}°. ` +
+    'Welke van de twee de luidspreker beschrijft is open (V40).',
 );
 console.log(`uit de shortlist gevallen: ${gone.length}${gone.length ? ` — ${gone.map(short).join('; ')}` : ''}`);
 console.log(`nieuw in de shortlist: ${arrived.length}${arrived.length ? ` — ${arrived.map(short).join('; ')}` : ''}`);

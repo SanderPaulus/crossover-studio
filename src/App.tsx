@@ -143,7 +143,7 @@ import type { GeneratedCandidate } from './lib/engine2/predesign/candidates.ts';
 import { compareFloors, type FloorComparison } from './lib/engine2/predesign/floorComparison.ts';
 import { declareCandidateChoices } from './lib/engine2/optimizer/candidateDeclaration.ts';
 import { AUTO_STRUCTS } from './lib/threeWayDesign.ts';
-import { DEFAULT_RUN_SEED } from './lib/engine2/constants.ts';
+import { DEFAULT_RUN_SEED, SEARCH_SMOOTHING_OCTAVES } from './lib/engine2/constants.ts';
 import { stableJson, type V2RunStamp } from './lib/engine2/optimizer/determinism.ts';
 import type { GateVerdict } from './lib/engine2/optimizer/gates.ts';
 import { gateCellState } from './lib/engine2/optimizer/gateCell.ts';
@@ -5597,7 +5597,21 @@ export default function App() {
    */
   const v2Smoothing: SmoothingNotice | null = !engineSelection.reporting
     ? null
-    : smoothingConsistency(errorSmoothOct);
+    : smoothingConsistency(
+        /* V38-fix — the line has to name the width the RUN will search on, not
+         * the one the preference holds. With the v2 optimiser selected the
+         * candidate states its own (`declareCandidateChoices`), and stating a
+         * width the search does not use would turn F3c's visibility line into
+         * the silent disagreement it exists to prevent.
+         *
+         * ONE CASE OVERSTATES, and it is named rather than hidden: when no
+         * A5d.3 window can be derived, the v2 route falls back to the v1
+         * candidate generator, no declaration travels, and the run searches on
+         * the preference after all. That fallback already announces itself
+         * loudly in the run notes at the moment it happens — which is where a
+         * reader is, and this line is rendered before the run. */
+        engineSelection.optimizer === 'v2' ? SEARCH_SMOOTHING_OCTAVES : errorSmoothOct,
+      );
   /** Source-resistance limit at the low driver (Ω): above it a candidate
    *  loses a ranking class and a staged structure move is not "safe" (point
    *  4). Yellow from half the limit in the strip. Default 1.0. */

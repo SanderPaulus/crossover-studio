@@ -1,7 +1,7 @@
 {
  "format": "acoustic-design-studio-filter",
  "version": 1,
- "savedAt": "2026-08-28T09:12:11.817Z",
+ "savedAt": "2026-08-28T16:12:48.049Z",
  "name": "KAND-V2-3",
  "parts": [
   {
@@ -41,7 +41,7 @@
    "params": [
     {
      "name": "L",
-     "value": 2.613,
+     "value": 2.315,
      "unit": "mH"
     }
    ],
@@ -62,7 +62,7 @@
    "params": [
     {
      "name": "C",
-     "value": 145.4,
+     "value": 99.49,
      "unit": "uF"
     }
    ],
@@ -93,7 +93,7 @@
    "params": [
     {
      "name": "L",
-     "value": 1.09,
+     "value": 1.346,
      "unit": "mH"
     }
    ],
@@ -114,7 +114,7 @@
    "params": [
     {
      "name": "C",
-     "value": 49.15,
+     "value": 0.4553,
      "unit": "uF"
     }
    ],
@@ -145,7 +145,7 @@
    "params": [
     {
      "name": "R",
-     "value": 0.8354,
+     "value": 3.319,
      "unit": "Ω"
     }
    ],
@@ -166,7 +166,7 @@
    "params": [
     {
      "name": "R",
-     "value": 55.05,
+     "value": 49.52,
      "unit": "Ω"
     }
    ],
@@ -238,7 +238,7 @@
    "params": [
     {
      "name": "C",
-     "value": 24.75,
+     "value": 28.13,
      "unit": "uF"
     }
    ],
@@ -259,7 +259,7 @@
    "params": [
     {
      "name": "L",
-     "value": 6.042,
+     "value": 2.146,
      "unit": "mH"
     }
    ],
@@ -290,7 +290,7 @@
    "params": [
     {
      "name": "C",
-     "value": 72.52,
+     "value": 29.86,
      "unit": "uF"
     }
    ],
@@ -311,7 +311,7 @@
    "params": [
     {
      "name": "L",
-     "value": 22.6,
+     "value": 80.19,
      "unit": "mH"
     }
    ],
@@ -342,7 +342,7 @@
    "params": [
     {
      "name": "L",
-     "value": 2.054,
+     "value": 1.367,
      "unit": "mH"
     }
    ],
@@ -363,7 +363,7 @@
    "params": [
     {
      "name": "C",
-     "value": 15.97,
+     "value": 16.96,
      "unit": "uF"
     }
    ],
@@ -394,7 +394,7 @@
    "params": [
     {
      "name": "L",
-     "value": 0.341,
+     "value": 0.3126,
      "unit": "mH"
     }
    ],
@@ -406,37 +406,6 @@
     {
      "x": 31,
      "y": 18
-    }
-   ]
-  },
-  {
-   "type": "Capacitor",
-   "partId": "B·C8",
-   "params": [
-    {
-     "name": "C",
-     "value": 2.005,
-     "unit": "uF"
-    }
-   ],
-   "wires": [
-    {
-     "x": 31,
-     "y": 18
-    },
-    {
-     "x": 31,
-     "y": 25
-    }
-   ]
-  },
-  {
-   "type": "Ground",
-   "params": [],
-   "wires": [
-    {
-     "x": 31,
-     "y": 25
     }
    ]
   },
@@ -509,7 +478,7 @@
    "params": [
     {
      "name": "C",
-     "value": 3.994,
+     "value": 3.801,
      "unit": "uF"
     }
    ],
@@ -530,7 +499,7 @@
    "params": [
     {
      "name": "L",
-     "value": 0.4699,
+     "value": 0.3215,
      "unit": "mH"
     }
    ],
@@ -561,7 +530,7 @@
    "params": [
     {
      "name": "C",
-     "value": 24.46,
+     "value": 171.1,
      "unit": "uF"
     }
    ],
@@ -577,13 +546,13 @@
    ]
   },
   {
-   "type": "Resistor",
-   "partId": "C·R5",
+   "type": "Inductor",
+   "partId": "C·L4",
    "params": [
     {
-     "name": "R",
-     "value": 0.1771,
-     "unit": "Ω"
+     "name": "L",
+     "value": 12.41,
+     "unit": "mH"
     }
    ],
    "wires": [
@@ -592,8 +561,18 @@
      "y": 30
     },
     {
-     "x": 24,
-     "y": 30
+     "x": 17,
+     "y": 37
+    }
+   ]
+  },
+  {
+   "type": "Ground",
+   "params": [],
+   "wires": [
+    {
+     "x": 17,
+     "y": 37
     }
    ]
   },
@@ -603,7 +582,7 @@
    "params": [
     {
      "name": "R",
-     "value": 15.24,
+     "value": 48.74,
      "unit": "Ω"
     }
    ],
@@ -688,6 +667,55 @@
     {
      "x": 3,
      "y": 30
+    }
+   ]
+  },
+  {
+   "type": "Wire",
+   "params": [],
+   "wires": [
+    {
+     "x": 17,
+     "y": 30
+    },
+    {
+     "x": 17,
+     "y": 26
+    }
+   ]
+  },
+  {
+   "type": "Wire",
+   "params": [],
+   "wires": [
+    {
+     "x": 24,
+     "y": 30
+    },
+    {
+     "x": 24,
+     "y": 26
+    }
+   ]
+  },
+  {
+   "type": "Capacitor",
+   "partId": "C5",
+   "params": [
+    {
+     "name": "C",
+     "value": 133.6,
+     "unit": "uF"
+    }
+   ],
+   "wires": [
+    {
+     "x": 17,
+     "y": 26
+    },
+    {
+     "x": 24,
+     "y": 26
     }
    ]
   }

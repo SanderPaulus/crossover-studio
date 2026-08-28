@@ -391,7 +391,31 @@ punten met een casusboek-entry erachter. Ze staan hier zodat ze niet alleen in D
   met een scherpere notitie; de fase meegladden zodat de gegladde som een echte som blijft; de
   bron een kandidaat-sleutel maken zoals bij V33/V34/V37; of alleen de zoekmaat gladden en de
   leveringsmaat niet — en het verdient dezelfde behandeling als V30, V32, V33 en V34: een eigen
-  sessie met een vóór/ná op het hele veld. Zie V38 in Deel B. **Open.**
+  sessie met een vóór/ná op het hele veld. Zie V38 in Deel B. **GESLOTEN door V38-fix**, met één
+  correctie op de zin hierboven: de 43–47 dB komt NIET van de ontkoppeling van magnitude en fase.
+  Die bestaat en is meetbaar, maar zij draagt op élke van tachtig bevroren netlists hoogstens
+  6 % van de echte rimpelpiek. Wat de 43 dB draagt is de STILLE GEEST net buiten de beoordeelde band: het
+  ketenraster loopt tot 20 kHz, de gemeten uitgestrektheid van alle drie de wegen houdt op bij
+  19 053,6 Hz, en een gladdingskern van 1/12 octaaf reikt over die rand heen en trekt het laatste
+  punt bínnen de band van 130,95 naar 43,67 dB. Dat is nagemeten door óók ná de sommatie te
+  gladden — waar geen enkele ontkoppeling bestaat — en hetzelfde getal te krijgen. Daarmee is
+  vorm (ii) en (iv) weerlegd in plaats van gekozen: de reparatie is 0. **Wat er open blijft staat
+  in de V38-fix-entry en is niet klein:** de v1-route leest die maat nog steeds, en de acceptatie
+  ontsnapt er niet aan door haar breedte of haar volgorde maar doordat haar RASTER geen dood punt
+  draagt. De naad tussen zoeken en oordelen is dus breder dan V38 hem beschreef.
+- **V40 — de twee fasematen bewegen tegengesteld op hetzelfde netwerk, en niemand weet welke de
+  luidspreker beschrijft.** Op HUIDIG's zaad zijn zij het eens (tuner 22,28°, rapport 23,83° voor
+  W-M). Op het netwerk dat dezelfde run aflevert lopen zij uiteen in tegengestelde richting: de
+  tuner leest 9,65°, het rapport 47,68°. Nagemeten dat het niet de band is — beide netwerken
+  worden op 397–715 Hz geoordeeld met 42,95 % dekking. Op de ongegladde maat van V38-fix wordt
+  het gat niet kleiner maar groter (tuner 11,00°, rapport 53,09°), dus de reparatie van de
+  zoekmaat neemt het niet weg. Zolang dit staat is "de tuner kocht fase" een uitspraak in de
+  eenheden van de tuner en niet in die van het rapport, en elke afruil die op fase verdedigd
+  wordt draagt die onzekerheid mee. **Beslisroute, genoteerd en niet gelopen:** exporteer één
+  netlist in beide toestanden naar VituixCAD (de exportbrug bestaat en schrijft
+  `MinimumPhase=True` plus de gemeten tweeter-Δ als `Delay`), en laat de fasetracking dáár
+  oordelen. De maat die VituixCAD reproduceert beschrijft de luidspreker; de andere beschrijft
+  een conventie. **Open**, geen implementatie in de V38-fix-sessie.
 - **V39 — de toetsbaarheid van A3j houdt één laag te laag op.** `CHOICE_KEYS`/`GREY_KEYS`/
   `POLISH_KEYS`, de volledigheidsassert en `choiceKeyGuard.test.ts` dekken de 44 sleutels van
   `NetOptimizeOptions`. `Chain3Settings` — ongeveer 32 sleutels, en de laag waar de kandidaat
@@ -802,7 +826,7 @@ Configuratie: 3-weg; 2× SB WO24TX-8 parallel, MR13TX-4 in bolpod, T25T-6 in WG1
 | 8 | `directivityWeight` | 866 | **grijs** | of de energiegemiddelde respons meetelt — andere winnaar | v2-run (expliciet) |
 | 9 | `powerMetric` | 867 | keuze | kiest de DEFINITIE van de vermogensmaat ('smooth' / 'legacy') | v2-kandidaat |
 | 10 | `powerFoldWeight` | 1116 | **grijs** | weegt precies het gebied rond de overname | v2-run (expliciet) |
-| 11 | `errorSmoothOct` | 1129, 1131 | polish | gladding van de zoek-foutmaat; poorten en doelen blijven op het rauwe raster | mag overerven |
+| 11 | `errorSmoothOct` | 1129, 1131 | ~~polish~~ → **keuze** *(28-08-2026, V38-fix)* | ~~gladding van de zoek-foutmaat; poorten en doelen blijven op het rauwe raster~~ — de beschrijving klopte, de gevolgtrekking niet: hij bepaalt WELKE KROMME de amplitudeterm een statistiek van is, en dat is dezelfde soort vraag als `band`. Eén sleutel, alleen die, verplaatste het geleverde netwerk 0,55–2,45 dB op drie topologieën | ~~mag overerven~~ → **v2-kandidaat** (`declareCandidateChoices`, onvoorwaardelijk 0) |
 | 12 | `ampTarget` | 817, 1117 | keuze | wélke curve vlak gemaakt wordt (op-as of luistervenster) | v2-kandidaat |
 | 13 | `breakupGuard` | 10 plekken vanaf 818 | keuze | ontwerpregel op stopbandlek naast het kruispunt | v2-kandidaat |
 | 14 | `staged` | 25 plekken vanaf 1216 | keuze | het DOEL waar de trapmethode aan gehouden wordt | v2-kandidaat |
@@ -831,6 +855,18 @@ Configuratie: 3-weg; 2× SB WO24TX-8 parallel, MR13TX-4 in bolpod, T25T-6 in WG1
 | 37 | `valueSumCeilings` | 2216 | polish (v2-bezit) | A5d.6-somplafond; v2 zet hem sinds F2 | v2-run |
 | 38 | ketenraster-ondergrens | `App.tsx:4128` | **keuze** | ver-veldspanwijdte als hard getal; F4b2 mat dat de LF-bult-inversie daarop 1 048 576 mH afleverde | v2-kandidaat — nog niet gezet |
 | 39 | orde bij uitlijning `'auto'` | `worker.ts` (F4b2) | **keuze zonder declaratie** | `structureLow/High` is `undefined` bij 'auto', dus `drive-series-c` valt terug op zijn default terwijl de rapportroute de echte orde heeft | v2-kandidaat — moet de orde per flank altijd dragen |
+
+  **GEDATEERDE CORRECTIE OP RIJ 11 (28-08-2026, V38-fix), en zij is de enige herclassificatie die deze tabel kent.** "Mag overerven" is geen beschrijving maar een CLAIM, en bij `errorSmoothOct` was zij onwaar. De reden waarom hij polish werd is nog steeds letterlijk juist — hij gladt de zoek-foutmaat, en poorten, doelen en acceptatie blijven op het rauwe raster — maar wat daaruit werd afgeleid, dat een resolutieknop niet kan bepalen wélk netwerk wint, is gemeten en weerlegd: 2,45 dB op HUIDIG, 0,55–1,39 dB op twee gegenereerde kandidaten, met die ene sleutel als enige verschil. Sinds V38-fix stelt de kandidaat hem. Zie de V38-fix-entry voor het mechanisme, dat een ánder is dan V38 dacht.
+
+  **DE ANDERE POLISH-SLEUTELS, NAGELOPEN OP DEZELFDE AANNAME.** Gemeld, niet omgezet — de les van rij 11 is nu juist dat een classificatie verandert wanneer een METING haar verandert, en op verdenking omzetten zou dezelfde fout in spiegelbeeld zijn.
+
+| sleutel | draagt nog "mag overerven"? | wat de aanname waard is |
+|---|---|---|
+| `onStage` (rij 17) | ja | **niet te weerleggen, structureel.** `(label, evals) => void`; de engine leest nooit een teruggave. Een instrumentatiehaak die niets teruggeeft kán geen uitkomst verplaatsen — dat is een eigenschap van zijn type en geen aanname. |
+| `onGateEvaluated` (rij 35) | ja | idem: `(info) => void`, en de code zegt het zelf ("nothing here may influence a decision"). |
+| `maxIterations` (rij 6) | ja | **DE ENIGE ECHTE OVERLEVENDE, en hij verdient rij 11's behandeling.** Hij bepaalt waar de zoektocht STOPT (`netOptimizer.ts:3093`: `maxIterations ?? max(700, 140·vrij)`), geen enkele keten stelt hem, en op de v2-route wordt hij alleen gezet als een determinisme-budget dat doet. Nooit gemeten wat hij kost: V38 zag dezelfde topologie 478 tegen 891 seconden lopen op één andere sleutel, dus het iteratiebudget is aantoonbaar geen constante over armen heen. **V39-familie.** |
+| `gateViolation`, `valueCeilings`, `valueSumCeilings` (34, 36, 37) | nee | v2-bezit sinds F2 — er is niets om van te erven. |
+| `rejectedTuneReport` (V31), `zFloorBarrierImpedance` (V33), `dissipationReferenceReOhm` (V37) | nee | v2-bezit, alle drie met hun eigen argument in `choices.ts`. |
 
   **Wat er met rij 38 en 39 gebeurt.** Beide zijn geclassificeerd en geen van beide is in F4c gezet — dat zou kandidaatgeneratie zijn, en die is F4d. Rij 38 blijft op de v1-route byte-identiek; de v2-route mag hem expliciet maken zodra de kandidaat er een heeft. Rij 39 is de scherpste van de twee: het is een keuze-sleutel die op de v2-route soms helemaal niet gedeclareerd is, en het kandidaat-object uit F4d moet de orde per flank áltijd dragen — anders is "geen declaratie" opnieuw niet te onderscheiden van "orde 1".
 
@@ -2046,6 +2082,150 @@ Configuratie: 3-weg; 2× SB WO24TX-8 parallel, MR13TX-4 in bolpod, T25T-6 in WG1
   **WAT ER IN DE CODE VERANDERDE: NIETS ONDER `src/`.** Nieuw onder `scripts/`: `v38-bench.ts` (de gedeelde meetbank), `v38-groups.ts` (decompositie, gemeten groepseffect, ablatie), `measure-v38-topology.ts`, `measure-v38-corrections.ts`, `measure-v38-ablation.ts`, `measure-v38-transplant.ts`, `measure-v38-corrections-tuned.ts`, `measure-v38-smoothing.ts`. Nieuw onder `test-fixtures/`: zeven `casus1_v38_*.json` met de armen, hun volle vector en hun geleverde netlists. `CLAUDE.md` documenteert de commando's en de bank-kalibratie. Het levende corpus, de golden refs en elke test zijn onaangeraakt.
 
   **Openstaand in deze casus:** groundplane-metingen onder het onderste kruisgebied vóór onderdelenbestelling; HD-sweep; 30°-meting tweeter voor M-G-compleetheid; verzadigings-/formaatcheck grote P-core shunt-spoel.
+
+- V38-fix (28-08-2026 — **BREAKING, alleen v2-runs**: de zoekmaat gladt niet langer vóór de sommatie) — opgeworpen als eigen opdracht uit V38, beslislijst A.
+
+  **DE OPDRACHT.** V38 mat en besliste niets. Deze sessie repareert precies één ding: op de v2-route stelt de kandidaat `errorSmoothOct` expliciet, en de waarde is wat de inventarisatie als de juiste reparatie mat. De default van de tuner is onaangeraakt, `smoothMag` is onaangeraakt, en met de vlag uit is de app byte-identiek.
+
+  ---
+
+  **INVENTARISATIE 1 — WAAR GLADT `smoothMag`, EN WIE LEEST DEZE SLEUTEL NOG MEER?**
+
+  `netOptimizer.ts:1852–1864`. Per DRIVER, vóór de decimatie naar het binnenste raster, en dus vóór de complexe sommatie: `optW`, `optT`, `optM` en élke hoekenset gaan er doorheen. De fase blijft ongemoeid — de code zegt dat zelf, en dat is geen nalatigheid maar de definitie van de sleutel. De tweede lezer staat in hetzelfde bestand op regel 4390 en is uitsluitend RAPPORTAGE: `ripplePeakSmoothedDb`, de piek zoals de zoektocht hem zag, afgedrukt naast de rauwe.
+
+  Buiten de tuner zijn er drie soorten lezers, en één ervan is een echte tweede zoektocht:
+
+| lezer | wat hij ermee doet | raakt de v2-driewegroute? |
+|---|---|---|
+| `vfOptimizer.ts:424` | dezelfde constructie, in de VIRTUELE-FILTER-ontwerpstap: per driver gegladd, fase ongemoeid, daarna gesommeerd | **nee.** Hij hangt aan `designChain` (de tweewegroute). `threeWayChain` gebruikt hem niet; de driewegontwerpstap is `designThreeWay` + `synthesize` en die gladden nergens. |
+| `designChain.ts:163, 315` en `threeWayChain.ts:381` | doorgeefluiken uit `Chain3Settings` naar tuner en ontwerpstap | ja — en dit is precies het pad dat de hook van de kandidaat overschrijft (hij wordt LAATST gemerged). |
+| `App.tsx:5583` + `smoothingConsistency.ts` | de voorkeur van de ontwerper en F3c's zichtbaarheidsregel ernaast | zie hieronder. |
+
+  **Dat de tweeweg-ONTWERPSTAP buiten deze reparatie valt is een besluit en geen vergetelheid.** De verklaring van de kandidaat dekt `NetOptimizeOptions`; de ontwerpstap leest `ChainSettings`, en dat is exact het dekkingsgat dat V38 als beslispunt D optekende — A3j's toetsbaarheid houdt één laag te laag op. Op de tweewegroute meet de waardetuner sinds V38-fix ongegladd terwijl de virtuele-filterstap ervóór nog gladt. Gemeld in plaats van stilzwijgend meegenomen: V39-familie.
+
+  ---
+
+  **INVENTARISATIE 2 — WAT KOST `errorSmoothOct: 0` IN ZOEKGEDRAG?**
+
+  Eén kandidaat, twee armen, alles verder gelijk (`test-fixtures/casus1_v38_gladding.json`):
+
+| kandidaat | gladding | evaluaties | wandkloktijd | onderdelen | RMS geleverd |
+| --- | --- | --- | --- | --- | --- |
+| 396,7 · 1719 | 1/12 okt | 170 540 | 279 s | 18 | 3,22 |
+| 396,7 · 1719 | uit | **104 440** | **169 s** | 16 | **1,83** |
+| 396,7 · 2283,5 | 1/12 okt | 93 336 | 157 s | 16 | 2,08 |
+| 396,7 · 2283,5 | uit | 104 963 | 169 s | 17 | **1,53** |
+
+  Op de ablatiereeks van V38 was hetzelfde te zien op HUIDIG's topologie: 478 s ongegladd tegen 891 s gegladd. **Het evaluatiebudget beweegt beide kanten op** (−39 % en +12 %) en de wandkloktijd volgt het; er is dus geen aanwijzing dat de ongegladde maat de zoektocht duurder maakt, en ook geen bewijs dat zij hem structureel goedkoper maakt. Wat er wél staat: op geen enkele arm is hij duurder dan de gegladde arm van dezelfde kandidaat met meer dan 12 %.
+
+  **DE CONVERGENTIEMETING, HERHAALD OP DE NIEUWE MAAT.** V38 leidde uit vier zaden 12 dB uiteen af dat de zoektocht niet de beperking is: zij landden allemaal op 2,7–3,1 dB, spreiding 0,44 dB. Die uitspraak is gedaan op de maat die deze sessie vervangt, dus zij moest opnieuw. Zelfde topologie (HUIDIG), zelfde kooi, zelfde zaden, alleen `errorSmoothOct: 0` (`V38_ERRSMOOTH=0 npx vite-node scripts/measure-v38-transplant.ts`):
+
+| zaad | RMS zaad | geleverd GEGLADD (V38) | geleverd ONGEGLADD (V38-fix) | wandkloktijd ongegladd |
+| --- | --- | --- | --- | --- |
+| HUIDIG, bevroren (geen tune) | 0,60 | — | — | — |
+| warm (HUIDIG zelf) | 0,60 | 2,98 | **0,53** | 478 s |
+| koud (midden van de doos) | 4,00 | 3,02 | **0,53** | 561 s |
+| koud-1 (log-uniform) | 12,72 | 3,13 | **0,55** | 327 s |
+| koud-2 (log-uniform) | 3,90 | 2,69 | 0,90 | 505 s |
+| **spreiding** | | **0,44 dB** | **0,37 dB** | |
+
+  **De convergentie is niet verslechterd, en dat is de vraag die gesteld moest worden.** Vier zaden die 12 dB uiteen liggen landen op 0,53 / 0,53 / 0,55 / 0,90 dB; de spreiding is 0,37 dB tegen 0,44 op de oude maat. Drie van de vier komen ónder HUIDIG's eigen 0,60 uit. De vierde niet — koud-2 landt op 0,90 — en dat wordt hier gemeld in plaats van weggelaten: de ongegladde maat is niet immuun voor een ongelukkige start, hij is alleen niet slechter dan de gegladde en hij landt twee decibel lager. In de eenheden van de tuner is dezelfde arm de enige die op een andere bronweerstand uitkomt (2,71 Ω tegen 5,01–5,60 Ω), dus het is een ander lokaal minimum en geen vastloper.
+
+  ---
+
+  **INVENTARISATIE 3 — IS 0 DE JUISTE REPARATIE, OF GLADDEN-NÁ-SOMMATIE? EN DE CORRECTIE OP V38's MECHANISME.**
+
+  De vraag moest met een meting beantwoord worden, en de meting gaf een ander antwoord dan de vraag veronderstelde. **De 43–47 dB die V38 optekende komt NIET van de ontkoppeling van magnitude en fase.**
+
+  Drie krommen op hetzelfde netwerk, per bevroren netlist, zonder één tune (`scripts/measure-v38fix-search-measure.ts`, 80 netlists):
+
+  - **ruw** — de echte complexe som. Wat élk oordeel leest en wat 0 meet.
+  - **ná som** — diezelfde som, daarna gegladd. De ongebouwde variant; hier bestaat per constructie geen ontkoppeling.
+  - **vóór som** — de som van gegladde magnitudes met ongemoeide fase. Wat de zoektocht tot nu toe las.
+
+| grootheid | ruw | ná som | vóór som |
+| --- | --- | --- | --- |
+| rimpelpiek, over het corpus | 1,36 – 7,40 dB | 43,59 – 49,86 dB | 43,59 – 49,87 dB |
+| amplitudeterm (spreiding om het bandgemiddelde) | 0,60 – 3,81 dB | 9,59 – 10,93 dB | 9,60 – 10,93 dB |
+| verschil vóór/ná sommatie (= de ontkoppeling) | — | — | **0,000 – 0,298 dB** |
+
+  **Gladden ná de sommatie repareert dus niets.** De ontkoppeling bestaat en is meetbaar, maar zij draagt op élke bevroren netlist hoogstens **6 %** van de echte rimpelpiek.
+
+  **WAT DE 43 dB WEL DRAAGT: DE STILLE GEEST OVER DE BANDRAND.** Het ketenraster loopt van 200 tot 20 000 Hz; de gemeten uitgestrektheid van alle drie de wegen houdt op bij 19 053,6 Hz. Het laatste rasterpunt is daardoor de stille geest van de app: −400 dB, "hier is niet gemeten". Dat punt ligt **buiten** de beoordeelde band (397–19 500 Hz), dus geen enkel oordeel raakt het aan. Een gladdingskern van 1/12 octaaf reikt er wél overheen, en zij trekt het laatste punt *binnen* de band van 130,95 dB naar **43,67 dB**. Eén rasterpunt draagt de hele bevinding — en het zit óók in de som, wat verklaart waarom de volgorde van gladden en sommeren er niets aan verandert.
+
+  **Elke breedte boven nul reikt over dezelfde rand.** Daarmee is de keuze geen afweging meer: 0 is de reparatie, en de variant "gladden ná de sommatie" is een genoteerde mogelijkheid gebleven in plaats van een bouwopdracht — zij is gemeten en zij lost het niet op.
+
+  **EN DE OFFSET IS GEEN OFFSET.** Trok de gladding er een constante bij op, dan zou de zoektocht nog steeds de goede kant op lopen. Zij COMPRIMEERT: de echte spreiding loopt over dit corpus van 0,60 tot 3,81 dB, een factor **6,40**, en de zoekmaat leest 9,60 tot 10,93, een factor **1,14**. Gevolg, en dit is de scherpste vorm van de bevinding: **het ontwerp dat het oordeel het slechtste van het corpus vindt (`V37_KAND_10`, 3,81 dB) staat op de zoekmaat 16e van 80.** HUIDIG, het beste, staat 5e. De maat waarop gezocht wordt kan de beste ontwerpen niet van de slechtste onderscheiden. Twee rijen naast elkaar zeggen het in één oogopslag:
+
+| netlist | wat het OORDEEL leest | wat de ZOEKTOCHT las |
+| --- | --- | --- |
+| HUIDIG (het beste ontwerp van het corpus) | **0,60 dB** | 9,78 dB |
+| `V37_KAND_10` (het slechtste) | **3,81 dB** | 10,19 dB |
+
+  Een verschil van 3,2 dB dat als 0,4 dB aankomt.
+
+  ---
+
+  **WAT ER GEBOUWD IS — één sleutel, drie regels code, en een herclassificatie.**
+
+  `errorSmoothOct` verhuist van POLISH naar CHOICE (`choices.ts`), en `declareCandidateChoices` stelt hem ONVOORWAARDELIJK op `SEARCH_SMOOTHING_OCTAVES` = 0. Dat is de tweede onvoorwaardelijke afleiding in die module, naast V37's, en om dezelfde reden: de vraag is niet voorwaardelijk. Elke kandidaat wordt op de amplitude van zijn complexe som beoordeeld, dus elke kandidaat moet zeggen waarvan zijn zoektocht de spreiding minimaliseert.
+
+  **NUL IS GEEN CASUS-1-GETAL** (P6), en dat verschil is de reden dat de constante bij `WINDOW_SMOOTHING_OCTAVES` in `constants.ts` staat en niet in een fixture: het is "meet de kromme die beoordeeld wordt". Een expliciete breedte wint nog steeds van de afleiding, zodat de vóór/ná een run is die je kunt vrágen.
+
+  **DE HERCLASSIFICATIE IS DE ENIGE IN DE A3j-TABEL.** De reden waarom hij polish werd is nog steeds letterlijk juist; wat eruit werd afgeleid — dat een resolutieknop niet kan bepalen wélk netwerk wint — is gemeten en weerlegd. Zie de gedateerde correctie op rij 11 van de V26-bijlage, met daarnaast de andere polish-sleutels nagelopen op dezelfde aanname: `onStage` en `onGateEvaluated` kunnen structureel geen uitkomst verplaatsen (ze geven `void` terug en de engine leest nooit een teruggave), en **`maxIterations` is de enige echte overlevende** — hij bepaalt waar de zoektocht stopt, niemand stelt hem op de v2-route tenzij een determinismebudget dat doet, en niemand heeft ooit gemeten wat hij kost. V39-familie, gemeld en niet omgezet: de les van rij 11 is nu juist dat een classificatie verandert wanneer een MÉTING haar verandert.
+
+  **DE F3c-ZICHTBAARHEIDSREGEL IS MEEVERHUISD.** Zij drukte de voorkeur van de ontwerper af ("de tuner zoekt op 1/12 octaaf") en dat zou na deze wijziging een getal zijn dat de v2-run niet gebruikt — precies de stille onenigheid waarvoor die regel bestaat. Zij leest nu de breedte waarop de RUN zoekt. Eén geval overdrijft en het staat er met naam: valt de kandidaatgenerator terug op de v1-generator omdat er geen A5d.3-venster afgeleid kon worden, dan reist er geen verklaring mee en zoekt de run tóch op de voorkeur. Die terugval meldt zichzelf luid in de runnotities op het moment dat hij gebeurt.
+
+  ---
+
+  **DE VÓÓR/NÁ OP HET HELE VELD.**
+
+  Vijftien kandidaten, `'safety'` als barrièrebron, zelfde seed, zelfde poorten en budgetten (`compare-corpora.ts v37 live`). Beide fasematen staan er als APARTE kolommen, met naam: het rapport oordeelt één octaaf rond het kruispunt geknipt op meetgeldigheid, de tuner leest `pairPhaseDeg`. Op de bestanden bewegen zij dezelfde kant op; dat zij op HUIDIG's GETUNDE netwerk tegengesteld bewegen is V40 en staat hieronder.
+
+| kandidaat (W-M · M-T) | min \|Z\| vóór | min \|Z\| ná | @ Hz ná | vloer vóór → ná | SPL ± vóór → ná | RMS vóór → ná | W-M fase RAPPORT vóór → ná | W-M fase TUNER vóór → ná | M-T fase RAPPORT vóór → ná | M-T fase TUNER vóór → ná | dissipatie % vóór → ná | grootste R (W) vóór → ná | EPDR vóór → ná | Q_es× vóór → ná | smalste piek ná (dB @ Hz) |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| 396.7 · 1294 | — | **verworpen** | — | — → — | — → **verworpen** | — → **verworpen** | — → **verworpen** | — → **verworpen** | — → **verworpen** | — → **verworpen** | — → **verworpen** | — → **verworpen** | — → **verworpen** | — → **verworpen** | — |
+| 396.7 · 1491.4 | — | **verworpen** | — | — → — | — → **verworpen** | — → **verworpen** | — → **verworpen** | — → **verworpen** | — → **verworpen** | — → **verworpen** | — → **verworpen** | — → **verworpen** | — → **verworpen** | — → **verworpen** | — |
+| 396.7 · 1719 | 2.56 | 2.56 | 1008.60 | **ja** → **ja** | 3.67 → 3.87 | 1.76 → 1.92 | 16.74 → 9.95 | 16.73 → 15.78 | 26.31 → 29.56 | 22.55 → 26.50 | 0.93 → 1.54 | 0.70 → 1.19 | 1.28 → 1.28 | 1.00 → 1.00 | — |
+| 396.7 · 1981.2 | — | 2.57 | 83.31 | — → **ja** | — → 4.07 | — → 2.01 | — → 23.20 | — → 20.72 | — → 11.64 | — → 13.24 | — → 2.03 | — → 1.26 | — → 1.29 | — → 1.00 | — |
+| 396.7 · 2283.5 | 2.56 | 2.57 | 1174.51 | **ja** → **ja** | 3.42 → 3.37 | 1.75 → 1.77 | 20.51 → 22.40 | 17.94 → 15.99 | 22.41 → 21.91 | 15.89 → 17.29 | 0.86 → 0.99 | 0.66 → 0.74 | 1.28 → 1.29 | 1.00 → 1.00 | — |
+| 466.5 · 1294 | — | **verworpen** | — | — → — | — → **verworpen** | — → **verworpen** | — → **verworpen** | — → **verworpen** | — → **verworpen** | — → **verworpen** | — → **verworpen** | — → **verworpen** | — → **verworpen** | — → **verworpen** | — |
+| 466.5 · 1491.4 | — | 2.59 | 132.19 | — → **ja** | — → 3.94 | — → 1.81 | — → 17.83 | — → 59.15 | — → 11.72 | — → 10.72 | — → 28.25 | — → 18.30 | — → 1.29 | — → 1.39 | — |
+| 466.5 · 1719 | 2.61 | 2.59 | 404.48 | **ja** → **ja** | 3.86 → 2.83 | 1.88 → 1.91 | 14.42 → 18.90 | 13.96 → 15.09 | 31.81 → 31.34 | 28.28 → 26.59 | 35.75 → 22.36 | 29.12 → 18.86 | 1.30 → 1.34 | 1.91 → 1.50 | — |
+| 466.5 · 1981.2 | 2.61 | 2.61 | 1146.89 | **ja** → **ja** | 3.93 → 3.56 | 2.05 → 1.92 | 16.33 → 13.47 | 15.23 → 9.75 | 30.75 → 30.81 | 24.26 → 28.43 | 31.46 → 35.50 | 20.76 → 27.83 | 1.31 → 1.31 | 1.47 → 1.96 | — |
+| 466.5 · 2283.5 | 2.60 | 2.56 | 414.22 | **ja** → **ja** | 3.25 → 2.56 | 1.80 → 1.69 | 17.33 → 16.81 | 15.07 → 11.84 | 26.47 → 26.99 | 21.50 → 23.21 | 22.80 → 32.92 | 17.98 → 30.23 | 1.30 → 1.39 | 1.46 → 2.06 | — |
+| 548.5 · 1294 | 2.59 | geen netlist | — | **ja** → — | 4.43 → geen netlist | 2.14 → geen netlist | 14.20 → geen netlist | 17.87 → geen netlist | 33.36 → geen netlist | 29.05 → geen netlist | 33.38 → geen netlist | 14.92 → geen netlist | 1.31 → geen netlist | 1.34 → geen netlist | — |
+| 548.5 · 1491.4 | 3.53 | geen netlist | — | **ja** → — | 5.47 → geen netlist | 3.83 → geen netlist | 81.39 → geen netlist | 65.74 → geen netlist | 114.03 → geen netlist | 97.71 → geen netlist | 26.27 → geen netlist | 16.38 → geen netlist | 1.77 → geen netlist | 1.45 → geen netlist | — |
+| 548.5 · 1719 | 2.57 | 2.60 | 980.21 | **ja** → **ja** | 4.16 → 4.01 | 1.77 → 2.08 | 29.87 → 36.55 | 61.31 → 52.05 | 8.11 → 15.99 | 3.63 → 11.92 | 20.99 → 25.03 | 14.21 → 19.60 | 1.30 → 1.31 | 1.28 → 1.43 | — |
+| 548.5 · 1981.2 | 2.58 | 2.58 | 428.25 | **ja** → **ja** | 3.65 → 2.68 | 1.92 → 1.75 | 42.40 → 20.27 | 47.44 → 14.05 | 19.92 → 26.41 | 13.33 → 21.26 | 22.42 → 33.77 | 17.01 → 30.36 | 1.30 → 1.39 | 1.35 → 2.03 | — |
+| 548.5 · 2283.5 | 2.59 | 2.59 | 424.19 | **ja** → **ja** | 3.85 → 2.56 | 1.88 → 1.68 | 46.87 → 20.54 | 48.91 → 12.13 | 5.47 → 26.08 | 5.21 → 23.49 | 27.42 → 34.44 | 19.80 → 31.73 | 1.30 → 1.38 | 1.45 → 2.14 | — |
+
+  **De corpusgemiddelden, en zij zijn eerlijker dan de beste rij:**
+
+| grootheid | V37-corpus | levend corpus | |
+| --- | --- | --- | --- |
+| RMS-vlakheid, gemiddeld | 2,08 dB | **1,85 dB** | −0,23 |
+| RMS-vlakheid, bereik | 1,75 – 3,83 | **1,68 – 2,08** | de uitschieter is weg |
+| SPL-venster ±, gemiddeld | 3,97 dB | **3,35 dB** | −0,62 |
+| W-M fase, RAPPORT | 30,0° | **20,0°** | −10,0 |
+| W-M fase, TUNER | 32,0° | **22,7°** | −9,3 |
+| M-T fase, RAPPORT | 31,9° | **23,2°** | −8,7 |
+| M-T fase, TUNER | 26,1° | **20,3°** | −5,8 |
+| dissipatie (M-A), gemiddeld | 22,2 % | 21,7 % | een kolom, geen oordeel (P4) |
+| haalt de gestelde vloer | 10 van 10 | 10 van 10 | |
+| kandidaten zonder netwerk | 4 van 15 | **3 van 15** | alle drie door M-B/\|Z\| |
+
+  **HET VELD IS BETER GEWORDEN OP ELKE AS DIE HET WEEGT, MAAR MINDER DAN DE BANK VOORSPELDE, en dat verschil is niet vaag.** De verwachting bij aanvang was een veld richting 1,5–1,8 dB; gemeten is 1,68–2,08 met een gemiddelde van 1,85. De reden staat al in V38: de MEETBANK is zwakker dan de volle route — zij draait zonder `staged` en zonder `branchTargets`, en op `396,7 · 1719` levert zij 3,22 dB waar de route 1,76 levert. Wat op de bank 1,39 dB winst was, is op de route 0,07 tot 0,23 dB, want de route zat daar al veel dichter bij haar eigen bodem. De winst is dus echt en klein op RMS, en groot op FASE — tien graden op de W-M-koppeling, op beide matens tegelijk.
+
+  **WAT ER OOK VERANDERT, en het is de eerlijkste rij van de tabel:** twee kandidaten vallen uit de shortlist (`548,5 · 1294` en `548,5 · 1491,4`) en twee komen erin (`396,7 · 1981,2` en `466,5 · 1491,4`). De uitvaller `548,5 · 1491,4` is precies de netlist die het V37-corpus met 3,83 dB als slechtste droeg — het ontwerp waarvan de zoekmaat niet kon zien dat het slecht was. Het veld verliest zijn uitschieter niet doordat een poort hem weigert maar doordat de spreiding hem niet meer selecteert.
+
+  ---
+
+  **WAT ER NIET GEREPAREERD IS, en het staat hier omdat het anders onzichtbaar is.**
+
+  1. **De v1-route leest de gegladde maat nog steeds.** Dit is geen eigenschap van casus 1 maar van `smoothDbGaussian` op een raster met dode punten, en die dode punten zijn de STILLE-GEEST-conventie van de app zelf: op een drieweg-unieraster draagt elke tak stilte buiten zijn eigen gemeten uitgestrektheid (`designSolve`, hier herhaald door de ketenfixture). Elk project waarvan het analyseraster voorbij die uitgestrektheid loopt heeft dezelfde geest op dezelfde plek. De opdracht was expliciet — geen wijziging aan `smoothMag` of aan enige andere gladding — en er is er geen gedaan. **Open.**
+  2. **`WINDOW_SMOOTHING_OCTAVES` blijft 1/6** (A5e.1) — dat is het OORDEEL en niet de zoekmaat, en de opdracht sloot het uit. **Maar de reden dat hij er niet door geraakt wordt is NIET zijn breedte en niet zijn volgorde, en dat is nagegaan in plaats van aangenomen:** `judgeResponse` gladt óók over het volle raster en leest daarna alleen binnen de band, precies de constructie die hierboven 43 dB oplevert. Hij ontsnapt omdat zijn RASTER geen dood punt draagt — de acceptatie meet op het rapportraster (band tot 19 999,5 Hz) en niet op het ketenraster met zijn geest op 20 000. Gemeten: HUIDIG leest daar ±1,34 dB. De naad tussen zoeken en oordelen is dus breder dan V38 hem beschreef: zij verschillen niet alleen in breedte maar in RASTER, en de tweede helft daarvan is nieuw. **Open**, en het is precies de vorm van bevinding die dit project met een eigen sessie afhandelt.
+  3. **De fasematen zijn niet aangeraakt** — dat is V40, en op de ongegladde maat wordt het gat tussen tuner en rapport niet kleiner maar groter (tuner 11,00°, rapport 53,09° op W-M, tegen 9,65° en 47,68° gegladd). De reparatie van de zoekmaat neemt die tegenspraak dus niet weg.
 
 ## Casus S1 — synthetische grondwaarheid voor de R_e-schatter (F3b, 26-08-2026)
 

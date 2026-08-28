@@ -228,6 +228,19 @@ const CHAIN_GRID_LO_HZ = CASUS1_V2_GRID[0];
  * rather than a plausible-sounding reason that belongs to a different corpus.
  */
 const DATED_REASON: Record<string, string> = {
+  V37:
+    'HET GEDATEERDE V37-CORPUS. Bevroren terwijl de ZOEKTOCHT nog op een gegladde maat mat. ' +
+    '`smoothMag` gladt de MAGNITUDE van elke driverrespons met errorSmoothOct (1/12 octaaf, ' +
+    'overgeerfd uit v1 als "polish, mag overerven") en sommeert de takken daarna complex, ' +
+    'terwijl elk oordeel — judgeResponse, het SPL-venster, de trapdoelen, elke poort — de ' +
+    'ONGEGLADDE som leest. Op het ketenraster van casus 1 reikt die gladdingskern over de ' +
+    'bandrand heen naar de stille geest op 20 000 Hz (-400 dB, buiten de beoordeelde band) en ' +
+    'trekt het laatste punt BINNEN de band van 130,95 naar 43,67 dB: de amplitudeterm van de ' +
+    'zoektocht staat daardoor op 10,22 dB waar de echte som er 1,85 heeft. Gemeten kostte die ' +
+    'ene sleutel 0,55 tot 2,45 dB geleverde vlakheid op drie topologieen (casusboek V38). Sinds ' +
+    'V38-fix stelt de v2-kandidaat errorSmoothOct expliciet op 0 en meet de zoektocht de som ' +
+    'die zij beoordeeld wordt. Deze tien blijven staan als de "voor"-helft van die ' +
+    'vergelijking. Meetobject, GEEN ontwerp: mag niet gebouwd worden.',
   V34:
     'HET GEDATEERDE V34-CORPUS. Bevroren terwijl de DISSIPATIETERM nog door de PIEKHOOGTE deelde. ' +
     'De term bestaat om de serie-R-route naar niveauregeling af te remmen, en de schade die zij ' +
