@@ -1030,6 +1030,46 @@ function wholesaleRejection(net: WholesaleRejectionFields): {
   };
 }
 
+/**
+ * V34 — THE DECLARATION IS THE AUTHORITY ON THE SOURCE-RESISTANCE LIMIT.
+ *
+ * `rSourceDisqualifyOhm` has been a CHOICE key since F4c, which means that on
+ * the v2 route it may only arm from the candidate. It did not: the key reaches
+ * the tuner through `collect.choices` only when the candidate STATES it, and a
+ * candidate that states nothing left the chain's own
+ * `?? DEFAULT_R_SOURCE_DISQUALIFY_OHM` standing — in the search AND in the
+ * ranking's disqualification list. So "the designer stated no limit" and "the
+ * designer stated 2.0 Ω" arrived at the same place by different routes and
+ * produced the same run.
+ *
+ * That is precisely the silent inheritance F4d ended for the tuner's own
+ * options, surviving one level up in the chain wrapper, where `choices.ts` does
+ * not reach. Casus 1 states no source-resistance requirement anywhere
+ * (`manifest_en_geometrie.gestelde_eisen`), and V34 measured what the
+ * inherited default costs once the probe reads where the quantity lives: at the
+ * woofer's real impedance peak the designer's own best filter reads 3.98 Ω, so
+ * a limit nobody asked for would disqualify the reference design.
+ *
+ * `null` and not `0`, because the chain distinguishes them: `null` is the
+ * designer having stated none, `undefined` is nothing said (and then the
+ * historical default applies, which is what every v1 run gets). A run without a
+ * declaration is returned UNCHANGED — the identity is what keeps every non-v2
+ * caller byte-identical.
+ */
+export function withDeclaredSourceLimit<
+  I extends { settings: { rSourceDisqualifyOhm?: number | null } },
+>(input: I, declaration: ChoiceDeclaration | undefined): I {
+  if (!declaration) return input;
+  const stated = declaration.stated.rSourceDisqualifyOhm;
+  return {
+    ...input,
+    settings: {
+      ...input.settings,
+      rSourceDisqualifyOhm: stated === undefined ? null : stated,
+    },
+  };
+}
+
 function runCandidate<I, R extends { parts: VxpPart[]; net: { gateRefusals?: string[] } }>(
   input: I,
   v2: V2RunSettings,
@@ -1080,6 +1120,12 @@ function runCandidate<I, R extends { parts: VxpPart[]; net: { gateRefusals?: str
    * run and every v2 run without a stated floor. */
   const floorSource = (delivered.net as { zFloorSourceNote?: string }).zFloorSourceNote;
   if (floorSource) collect.notes.push(floorSource);
+  /* V34 — and where the source-resistance probe read, for the same reason one
+   * layer along: a hard limit is only readable beside the frequency it was
+   * compared at. Absent on any run that stated no probe source, which is every
+   * v1 run. */
+  const probeSource = (delivered.net as { rSourceProbeNote?: string }).rSourceProbeNote;
+  if (probeSource) collect.notes.push(probeSource);
 
   const refused = wholesaleRejection(delivered.net as WholesaleRejectionFields);
   let rejection: CandidateRejection | null = null;
@@ -1257,14 +1303,18 @@ export function handleV2Request(req: V2Request, post: V2Post): void {
           }),
           ...(candidate ? { declaration: candidate.declaration } : {}),
         };
+        /* V34 — the candidate's declaration overrides the chain's own default
+         * for the one CHOICE key the chain resolves outside the tuner. Identity
+         * when there is no candidate, so every other caller is untouched. */
+        const chainInput = withDeclaredSourceLimit(input, candidate?.declaration);
         data = runCandidate<Chain3Input, Chain3Result>(
-          input,
+          chainInput,
           v2,
           facts,
           network,
           (hooks) =>
             runThreeWayChain(
-              input,
+              chainInput,
               (pr) => post({ id: req.id, kind: 'progress', data: { ...pr, variant: input.label } }),
               hooks,
             ),
@@ -1379,14 +1429,16 @@ export function handleV2Request(req: V2Request, post: V2Post): void {
           }),
           ...(candidate ? { declaration: candidate.declaration } : {}),
         };
+        /* V34 — see the three-way branch above; same rule, same reason. */
+        const chainInput = withDeclaredSourceLimit(input, candidate?.declaration);
         data = runCandidate<ChainInput, ChainResult>(
-          input,
+          chainInput,
           v2,
           facts,
           network,
           (hooks) =>
             runDesignChain(
-              input,
+              chainInput,
               label,
               (pr) => post({ id: req.id, kind: 'progress', data: { ...pr, variant: label } }),
               hooks,

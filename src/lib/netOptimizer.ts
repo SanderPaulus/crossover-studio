@@ -20,7 +20,17 @@ import {
 import type { AngleResponse } from './directivity.ts';
 import { floorCurve, type FloorShape } from './impedanceFloor.ts';
 import { ampFloorSlackOhm, minImpedanceAt } from './impedanceFloor.ts';
-import { auditNetwork, type AuditThresholds, type NetworkAudit, sourceResistanceOhm, seenImpedance, sliceDriverZ, sourceProbeIndex } from './partAudit.ts';
+import {
+  auditNetwork,
+  type AuditThresholds,
+  type NetworkAudit,
+  sourceResistanceOhm,
+  seenImpedance,
+  sliceDriverZ,
+  sourceProbeIndex,
+  type ProbeEdgeRule,
+  DEFAULT_R_SOURCE_TIER_OHM,
+} from './partAudit.ts';
 
 /**
  * Passive-in-the-loop component optimizer: re-fit the VALUES of a schematic's
@@ -74,8 +84,60 @@ export interface NetOptimizeOptions {
    * ohms. The same number the ranking disqualifies on; passing it here moves
    * the decision from "thrown away afterwards" to "never searched". 0/absent =
    * off, which is the pre-A3e behaviour.
+   *
+   * `null` since V34, and it means the same thing 0 does HERE while meaning
+   * something different one level up: the chain wrappers turn an absent value
+   * into their own historical default and a `null` into no limit at all. This
+   * file has never had a default, so the distinction costs it nothing — it
+   * carries the type so a caller can state "none" in one vocabulary all the way
+   * down. See `DEFAULT_R_SOURCE_DISQUALIFY_OHM` in `partAudit.ts`.
    */
-  rSourceDisqualifyOhm?: number;
+  rSourceDisqualifyOhm?: number | null;
+  /**
+   * V34 — WHERE THE SOURCE-RESISTANCE PROBE READS. Absent = `'grid'`, the
+   * evaluation grid, which is what it has always read; a v1 run is
+   * byte-identical.
+   *
+   * THE FINDING, AND IT IS ISSUE #14 ONE EDGE FURTHER ON. Without a stated box
+   * tuning the probe takes the low driver's impedance peak over the bottom of
+   * the grid, and the guard that exists for that fallback refuses a peak on the
+   * FIRST grid point only. On casus 1 the peak lands on the LAST point of the
+   * probe's own search window — grid[24] = 640.2 Hz, measured, with the woofer
+   * pair's real peaks at 17 and 51 Hz, both below a grid that starts at 200. So
+   * a disqualification limit, a search constraint, a structure-move guard, an
+   * audit tier and one objective term were all reading a number taken at a
+   * frequency the probe had picked because it ran out of window.
+   *
+   * TWO VALUES, NOT THREE, AND THAT IS THE DIFFERENCE FROM V33.
+   *
+   *   `'grid'`   — the evaluation grid, with the historical edge rule. Default,
+   *                and therefore the v1 behaviour.
+   *   `'safety'` — the tuner's own full-band safety grid (`opts.safety`), with
+   *                the strict edge rule. That grid spans the drivers' whole
+   *                measured extent, which is where a woofer resonance actually
+   *                is.
+   *
+   * V33 needed a third value because its barrier had to aim at the number a
+   * GATE enforces, and only the gate's own reference is that number by
+   * construction. Nothing gates the source resistance, so there is nothing to
+   * be identical to — and the difference between the safety grid and the gate's
+   * 1600-point sweep is a measurement rather than an argument: across all fifty
+   * frozen netlists it is at most 0.013 Ω (`frozenNetlistGates.test.ts`). A
+   * value nobody can afford to run inside the objective, to buy that, would be
+   * decoration.
+   *
+   * NO FALLBACK, DELIBERATELY, exactly as in V32 and V33. Naming `'safety'`
+   * without supplying `safety` does not quietly return to the evaluation grid:
+   * the probe answers nothing, the dissipation term drops, the disqualification
+   * cannot fire, and `rSourceProbeNote` says so. A silent fallback would
+   * restore the reading being withdrawn, in the one place nobody looks.
+   *
+   * IT IS A CHOICE KEY on the v2 route (`engine2/optimizer/choices.ts`): it
+   * decides which frequency a hard limit is compared at, and V34 measured that
+   * the same limit passes or disqualifies all three v1 baselines depending only
+   * on that.
+   */
+  rSourceProbeSource?: 'grid' | 'safety';
   /**
    * A3i-2 — the DERIVED amplifier-load floor, as a CONSTRAINT.
    *
@@ -700,6 +762,18 @@ export interface NetOptimizeResult {
    */
   zFloorSourceNote?: string;
   /**
+   * V34 — where the source-resistance probe read, and at which frequency it
+   * landed, or why it landed nowhere.
+   *
+   * Prose, for the run notes. Set whenever a caller states
+   * `rSourceProbeSource`; absent on every run that does not, which is every v1
+   * run. It exists because the probe's answer is only meaningful beside the
+   * frequency it was taken at, and until V34 no surface said what that was:
+   * casus 1 disqualified on a number read at 640.2 Hz for four openings
+   * without a single line saying so.
+   */
+  rSourceProbeNote?: string;
+  /**
    * V31 — the metrics of the tune that was REJECTED, in the same `report()`
    * shape as `after`. Present only when `rejectedTuneReport` was asked for.
    *
@@ -1131,8 +1205,46 @@ export function optimizeNetworkValues(
   const dissW = Math.max(0, opts.dissipationWeight ?? 0.05);
   /** Hard source-resistance tier: past this a candidate is infeasible. Mirrors
    *  the ranking's disqualification so the search cannot spend its time in
-   *  ground that will be thrown away. 0 = off. */
+   *  ground that will be thrown away. 0/null/absent = off. */
   const rsHardOhm = Math.max(0, opts.rSourceDisqualifyOhm ?? 0);
+  /* ---- V34: WHERE THE SOURCE-RESISTANCE PROBE READS -------------------- *
+   *
+   * ONE PLACE DECIDES IT, for the same reason `ampFloorOhm` and `zFloorGoal`
+   * are one place each: five consumers read this probe — the hard constraint,
+   * the structure-move guard, the part audit's tier, the delivered report the
+   * ranking disqualifies on, and the dissipation term in the objective — and
+   * "the probe" must not be able to mean two frequencies in two of them.
+   *
+   * `null` is a named source whose data never arrived. It is NOT a fallback to
+   * the evaluation grid: the probe then answers nothing at all, which is the
+   * V32/V33 rule applied to a measurement instead of to a verdict.
+   */
+  const probeSource: 'grid' | 'safety' = opts.rSourceProbeSource ?? 'grid';
+  const probeOn: {
+    freqs: readonly number[];
+    z: Record<string, readonly Complex[]>;
+    edgeRule: ProbeEdgeRule;
+    what: string;
+  } | null =
+    probeSource === 'grid'
+      ? {
+          freqs: grid,
+          z: driverZ,
+          edgeRule: 'first',
+          what:
+            `${grid[0].toFixed(0)}-${grid[grid.length - 1].toFixed(0)} Hz, the evaluation grid`,
+        }
+      : opts.safety
+        ? {
+            freqs: opts.safety.freqs,
+            z: opts.safety.z,
+            edgeRule: 'both',
+            what:
+              `${opts.safety.freqs[0].toFixed(0)}-` +
+              `${opts.safety.freqs[opts.safety.freqs.length - 1].toFixed(0)} Hz, ` +
+              `${opts.safety.freqs.length} points — the tuner's own full-band safety grid`,
+          }
+        : null;
   const loadNominalOhm = opts.loadFloor?.nominalOhm && opts.loadFloor.nominalOhm > 0
     ? opts.loadFloor.nominalOhm
     : null;
@@ -1318,6 +1430,66 @@ export function optimizeNetworkValues(
     }
   })();
   /**
+   * V34 — WHERE THE PROBE ACTUALLY LANDED, AS PROSE.
+   *
+   * Computed once, from the SEED: the probe index depends on the grid and on
+   * the low driver's own impedance, neither of which a value tune moves, so
+   * this is a fact about the run rather than about a network.
+   *
+   * It says the frequency out loud on purpose. The reading is only meaningful
+   * beside it — measured at V34, the three casus-1 baselines score 0.50/0.47/
+   * 0.68 Ω at the chain grid's probe and 3.98/4.59/2.55 Ω at the woofer's real
+   * impedance peak, against a limit of 2.0 Ω. A surface that prints the ohms
+   * and not the hertz is printing half a sentence.
+   */
+  const rSourceProbeNote: string | undefined = (() => {
+    if (opts.rSourceProbeSource === undefined) return undefined;
+    if (probeOn === null) {
+      return (
+        `The source-resistance probe was asked to read the "${probeSource}" grid and its data ` +
+        'never reached this run, so nothing was probed: the dissipation term is out, the ' +
+        'disqualification cannot fire, and the delivered report carries no source resistance. It ' +
+        'did NOT fall back to the evaluation grid — that is the reading V34 withdrew (casebook ' +
+        'V32, V33, V34).'
+      );
+    }
+    const where = `The source-resistance probe read over ${probeOn.what}`;
+    const low = (() => {
+      try {
+        const { netlist } = crossoverToNetlist({ name: 'probe', parts: [...parts] });
+        const drivers = netlist.elements.filter(
+          (e): e is Extract<NetElement, { kind: 'driver' }> => e.kind === 'driver',
+        );
+        const slots = pickSlotsN(drivers);
+        return (slots.woofer ?? slots.mid ?? slots.tweeter)?.model ?? null;
+      } catch {
+        return null;
+      }
+    })();
+    const zl = low ? probeOn.z[low] : undefined;
+    if (!low || !zl) {
+      return `${where}, but this network has no low driver with impedance data, so it read nothing.`;
+    }
+    const p = sourceProbeIndex(probeOn.freqs, zl, opts.audit?.fbHz, probeOn.edgeRule);
+    if (!p || !p.inBand) {
+      return (
+        `${where} and found no usable frequency for ${low}` +
+        (p ? ` — the peak it found sits on a boundary of its own search window ` +
+             `(${probeOn.freqs[p.idx].toFixed(1)} Hz), which is a boundary and not a resonance` : '') +
+        '. The run therefore used the series-path DC limit, which is a LOWER bound: it may ' +
+        'condemn a design but never exonerate one.'
+      );
+    }
+    return (
+      `${where} and probed ${low} at ${probeOn.freqs[p.idx].toFixed(1)} Hz` +
+      (opts.audit?.fbHz && opts.audit.fbHz > 0
+        ? ' (the stated box tuning).'
+        : ' (its impedance peak — no box tuning was stated, so the probe took the peak; on a ' +
+          'ported box that is a peak beside the tuning and not the tuning itself).')
+    );
+  })();
+
+  /**
    * THE HARD CONSTRAINT, IN ONE PLACE (A3f).
    *
    * The value search already refuses to enter forbidden ground, but the passes
@@ -1337,9 +1509,17 @@ export function optimizeNetworkValues(
    */
   /** Source resistance the way the constraint and the ranking must both read
    *  it: on the parts handed over, with the audit's fbHz so the two cannot
-   *  drift apart. */
+   *  drift apart — and since V34 on the grid `probeOn` names, for the same
+   *  reason. A named source without data answers null, never the old grid. */
   const rSourceOf = (ps: readonly VxpPart[]): number | null =>
-    sourceResistanceOhm(ps, { grid, driverZ, fbHz: opts.audit?.fbHz });
+    probeOn === null
+      ? null
+      : sourceResistanceOhm(ps, {
+          grid: probeOn.freqs,
+          driverZ: probeOn.z,
+          fbHz: opts.audit?.fbHz,
+          edgeRule: probeOn.edgeRule,
+        });
 
   /**
    * F2 / A3 — THE GATE BOUND, asked at every acceptance point.
@@ -1491,8 +1671,19 @@ export function optimizeNetworkValues(
     return sum;
   };
   const dissRefHz: number | null = opts.audit?.fbHz && opts.audit.fbHz > 0 ? opts.audit.fbHz : null;
-  /** Source-resistance limit at the low driver (Ω) — shared with the audit. */
-  const rSourceLimit = opts.audit?.thresholds?.rSourceOhm ?? 1.0;
+  /**
+   * Source-resistance limit at the low driver (Ω) — shared with the audit.
+   *
+   * Three states since V34, and the middle one is new: a stated number, an
+   * explicit `null` (the designer stated no tier, so nothing is judged by one
+   * — P4), and absent, which is the app's historical default and keeps every
+   * v1 run reading what it always read. 0 here means "no tier" the way it
+   * always did.
+   */
+  const rSourceLimit =
+    opts.audit?.thresholds?.rSourceOhm === null
+      ? 0
+      : (opts.audit?.thresholds?.rSourceOhm ?? DEFAULT_R_SOURCE_TIER_OHM);
   const foldW = Math.max(0, opts.powerFoldWeight ?? 0.5);
   const useLw = ampTarget === 'listeningWindow' && !!angleData;
   const band: [number, number] = opts.band ?? [grid[0] * 1.02, grid[grid.length - 1] * 0.975];
@@ -1768,8 +1959,22 @@ export function optimizeNetworkValues(
         const slots = pickSlotsN(sol.drivers);
         return slots.woofer ?? slots.mid ?? slots.tweeter ?? null;
       })();
-      if (lowDrv && z[lowDrv.model]) {
-        const zl = z[lowDrv.model];
+      /* V34 — the probe reads the grid `probeOn` names, which on the v2 route is
+       * NOT the grid this metric is being computed on. That is the point: the
+       * response numbers around it belong to `freqs`, and the source resistance
+       * at the low driver's tuning belongs to a frequency `freqs` usually does
+       * not contain. On `'grid'` these are the same arrays and the same edge
+       * rule, so the arithmetic below is the pre-V34 arithmetic in the
+       * pre-V34 order. */
+      const pFreqs = probeOn ? probeOn.freqs : freqs;
+      const pZ = probeOn ? probeOn.z : z;
+      const pZl = probeOn && lowDrv ? pZ[lowDrv.model] : undefined;
+      const pEdge: ProbeEdgeRule = probeOn ? probeOn.edgeRule : 'first';
+      /* `probeOn === null` is a named source whose data never arrived, and then
+       * NOTHING is probed — not even the DC limit. The run reports that in
+       * `rSourceProbeNote` rather than substituting a number from a grid the
+       * caller withdrew. */
+      if (probeOn && lowDrv && pZl) {
         /* ISSUE #14. This used to take the grid point NEAREST fbHz with no
          * check that fbHz was inside the grid at all. On Sander's set the port
          * is tuned to 31 Hz and the view range starts at 200, so every
@@ -1781,11 +1986,17 @@ export function optimizeNetworkValues(
          * grid, and here the honest response to that refusal is to DROP the
          * term: a weight applied at an arbitrary frequency is worse than a
          * weight not applied. dissRatio stays null and fxOf adds nothing. */
-        const probe = sourceProbeIndex(freqs, zl, dissRefHz ?? undefined);
+        const probe = sourceProbeIndex(pFreqs, pZl, dissRefHz ?? undefined, pEdge);
         if (probe && probe.inBand) {
           const k = probe.idx;
-          const re = Math.max(0.5, zl[k].re);
-          const zs = seenImpedance(net, [lowDrv.id], lowDrv.nodes, [freqs[k]], sliceDriverZ(z, [k]));
+          const re = Math.max(0.5, pZl[k].re);
+          const zs = seenImpedance(
+            net,
+            [lowDrv.id],
+            lowDrv.nodes,
+            [pFreqs[k]],
+            sliceDriverZ(pZ, [k]),
+          );
           if (zs) {
             rSourceOhm = Math.max(0, zs[0].re);
             if (dissW > 0) dissRatio = rSourceOhm / re;
@@ -2995,6 +3206,11 @@ export function optimizeNetworkValues(
       fbHz: opts.audit?.fbHz,
       zFloorOhm: ampFloorOhm ?? undefined,
       costOf: auditCostOf,
+      /* V34 — the audit's per-part response work stays on the analysis grid;
+       * only its source-resistance probe moves. Passed explicitly on every run,
+       * including `'grid'`, so this call site cannot silently disagree with the
+       * five other readers of the same probe. */
+      probe: probeOn ? { grid: probeOn.freqs, driverZ: probeOn.z, edgeRule: probeOn.edgeRule } : null,
     });
     if (!rep) return null;
     const fullOf = (qs: readonly VxpPart[]): Metrics =>
@@ -3156,9 +3372,13 @@ export function optimizeNetworkValues(
      *  at/under to over is unsafe; already over stays judged by the audit. */
     const rsSafe = (candParts: readonly VxpPart[], refParts: readonly VxpPart[]): boolean => {
       if (!(rSourceLimit > 0)) return true;
-      const rsRef = sourceResistanceOhm(refParts, { grid, driverZ, fbHz: opts.audit?.fbHz });
+      /* V34: through `rSourceOf`, so this guard, the hard constraint and the
+       * delivered report read one probe on one grid. It used to build its own
+       * `sourceResistanceOhm` call twice with `grid` written out by hand, which
+       * is exactly how the same question comes to have two answers. */
+      const rsRef = rSourceOf(refParts);
       if (rsRef === null || rsRef > rSourceLimit) return true;
-      const rsCand = sourceResistanceOhm(candParts, { grid, driverZ, fbHz: opts.audit?.fbHz });
+      const rsCand = rSourceOf(candParts);
       return rsCand === null || rsCand <= rSourceLimit;
     };
     /** Escalation adds a part + full retune: protection shifts a little by
@@ -3685,7 +3905,11 @@ export function optimizeNetworkValues(
       for (const c of z) lo = Math.min(lo, Math.hypot(c.re, c.im));
       return isFinite(lo) ? lo : 0;
     };
-    const rSrcLimit = opts.audit?.thresholds?.rSourceOhm ?? 1.0;
+    /* The same three states as `rSourceLimit` above, and deliberately the same
+     * expression: this is the branch-DCR ceiling the catalogue snap works
+     * against, and a tier that meant one thing to the search and another to the
+     * snap is the arrangement `impedanceFloor.ts` exists to prevent. */
+    const rSrcLimit = rSourceLimit;
     const coilWeight = (q: VxpPart): number => {
       const v = q.params.find((p) => p.name === 'L')?.value ?? 0;
       return v > 0 ? v ** 0.65 : 0;
@@ -4338,6 +4562,7 @@ export function optimizeNetworkValues(
             'seed nobody tuned against the goal it was given (casebook V31, V33).',
         },
         ...(zFloorSourceNote ? { zFloorSourceNote } : {}),
+        ...(rSourceProbeNote ? { rSourceProbeNote } : {}),
         ...(opts.rejectedTuneReport
           ? {
               rejectedTune: report(refusedMetrics, refusedValueTune.parts),
@@ -4410,6 +4635,7 @@ export function optimizeNetworkValues(
     ...(valueWindowNote ? { valueWindowNote } : {}),
     ...(auditReport ? { audit: auditReport } : {}),
     ...(zFloorSourceNote ? { zFloorSourceNote } : {}),
+    ...(rSourceProbeNote ? { rSourceProbeNote } : {}),
     ...(opts.gateViolation ? { gateRefusals, gateEvaluations, gateCacheHits } : {}),
   };
 }

@@ -1,7 +1,7 @@
 {
  "format": "acoustic-design-studio-filter",
  "version": 1,
- "savedAt": "2026-08-27T23:09:27.356Z",
+ "savedAt": "2026-08-28T06:48:03.211Z",
  "name": "KAND-V2-7",
  "parts": [
   {
@@ -41,7 +41,7 @@
    "params": [
     {
      "name": "L",
-     "value": 2.308,
+     "value": 2.982,
      "unit": "mH"
     }
    ],
@@ -62,7 +62,7 @@
    "params": [
     {
      "name": "C",
-     "value": 159.1,
+     "value": 106.2,
      "unit": "uF"
     }
    ],
@@ -93,7 +93,7 @@
    "params": [
     {
      "name": "L",
-     "value": 1.105,
+     "value": 1.052,
      "unit": "mH"
     }
    ],
@@ -109,43 +109,12 @@
    ]
   },
   {
-   "type": "Capacitor",
-   "partId": "C4",
-   "params": [
-    {
-     "name": "C",
-     "value": 52.17,
-     "unit": "uF"
-    }
-   ],
-   "wires": [
-    {
-     "x": 17,
-     "y": 6
-    },
-    {
-     "x": 17,
-     "y": 13
-    }
-   ]
-  },
-  {
-   "type": "Ground",
-   "params": [],
-   "wires": [
-    {
-     "x": 17,
-     "y": 13
-    }
-   ]
-  },
-  {
    "type": "Resistor",
    "partId": "R5",
    "params": [
     {
      "name": "R",
-     "value": 1.331,
+     "value": 1.364,
      "unit": "Ω"
     }
    ],
@@ -166,7 +135,7 @@
    "params": [
     {
      "name": "R",
-     "value": 57.09,
+     "value": 23.55,
      "unit": "Ω"
     }
    ],
@@ -238,7 +207,7 @@
    "params": [
     {
      "name": "C",
-     "value": 25.72,
+     "value": 28.12,
      "unit": "uF"
     }
    ],
@@ -259,7 +228,7 @@
    "params": [
     {
      "name": "L",
-     "value": 4.104,
+     "value": 1.878,
      "unit": "mH"
     }
    ],
@@ -290,7 +259,7 @@
    "params": [
     {
      "name": "C",
-     "value": 97.39,
+     "value": 33.03,
      "unit": "uF"
     }
    ],
@@ -311,7 +280,7 @@
    "params": [
     {
      "name": "L",
-     "value": 21.78,
+     "value": 22.78,
      "unit": "mH"
     }
    ],
@@ -342,7 +311,7 @@
    "params": [
     {
      "name": "L",
-     "value": 1.449,
+     "value": 1.531,
      "unit": "mH"
     }
    ],
@@ -363,7 +332,7 @@
    "params": [
     {
      "name": "C",
-     "value": 14.27,
+     "value": 20.02,
      "unit": "uF"
     }
    ],
@@ -394,7 +363,7 @@
    "params": [
     {
      "name": "L",
-     "value": 0.2762,
+     "value": 0.3627,
      "unit": "mH"
     }
    ],
@@ -478,7 +447,7 @@
    "params": [
     {
      "name": "C",
-     "value": 3.528,
+     "value": 3.071,
      "unit": "uF"
     }
    ],
@@ -499,7 +468,7 @@
    "params": [
     {
      "name": "L",
-     "value": 0.3938,
+     "value": 0.437,
      "unit": "mH"
     }
    ],
@@ -530,7 +499,7 @@
    "params": [
     {
      "name": "C",
-     "value": 17.31,
+     "value": 37.12,
      "unit": "uF"
     }
    ],
@@ -551,7 +520,7 @@
    "params": [
     {
      "name": "L",
-     "value": 1.268,
+     "value": 2.83,
      "unit": "mH"
     }
    ],
@@ -582,7 +551,7 @@
    "params": [
     {
      "name": "R",
-     "value": 0.1849,
+     "value": 0.1877,
      "unit": "Ω"
     }
    ],
@@ -603,7 +572,7 @@
    "params": [
     {
      "name": "R",
-     "value": 19.12,
+     "value": 52.06,
      "unit": "Ω"
     }
    ],

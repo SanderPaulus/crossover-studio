@@ -13,10 +13,11 @@
  * So both halves are named, every dated corpus stays addressable, and the
  * default is the newest comparison.
  *
- *   corpora: `v30` · `v32` · `v33sweep` · `live`
- *   default: `v32` → `live`   (casebook V33)
+ *   corpora: `v30` · `v32` · `v33sweep` · `v33` · `live`
+ *   default: `v33` → `live`   (casebook V34)
  *   V32's own table: `npx vite-node scripts/compare-corpora.ts v30 v32`
- *   V33's two arms:  `npx vite-node scripts/compare-corpora.ts v33sweep live`
+ *   V33's own table: `npx vite-node scripts/compare-corpora.ts v32 v33`
+ *   V33's two arms:  `npx vite-node scripts/compare-corpora.ts v33sweep v33`
  *
  * WHY A FILE COMPARISON AND NOT TWO RUNS. `measure-v30-floor-goal.ts` ran the
  * same field twice and switched one option between the arms, because V30's
@@ -131,6 +132,7 @@ const DATED: Record<string, { block: string; name: string }> = {
   v30: { block: 'v30_corpus', name: 'V30' },
   v32: { block: 'v32_corpus', name: 'V32' },
   v33sweep: { block: 'v33_sweep_corpus', name: 'V33-sweep' },
+  v33: { block: 'v33_corpus', name: 'V33' },
 };
 
 const corpusOf = (id: string): Corpus => {
@@ -140,7 +142,7 @@ const corpusOf = (id: string): Corpus => {
   throw new Error(`unknown corpus "${id}" — use ${[...Object.keys(DATED), 'live'].join(', ')}`);
 };
 
-const [beforeId = 'v32', afterId = 'live'] = process.argv.slice(2);
+const [beforeId = 'v33', afterId = 'live'] = process.argv.slice(2);
 const before = corpusOf(beforeId);
 const after = corpusOf(afterId);
 
@@ -191,7 +193,11 @@ const short = (label: string) =>
 
 console.log(`vóór: ${beforeId}   ná: ${afterId}   gestelde vloer: ${FLOOR ?? '—'} Ω`);
 console.log(
-  '| kandidaat (W-M · M-T) | min |Z| vóór | min |Z| ná | @ Hz ná | vloer vóór → ná | ' +
+  /* The pipes in `|Z|` are ESCAPED, because this line is pasted into the case
+   * book as a Markdown table and an unescaped one silently opens two extra
+   * columns — which is exactly what happened to the V34 table before anyone
+   * looked at the rendered file. */
+  '| kandidaat (W-M · M-T) | min \\|Z\\| vóór | min \\|Z\\| ná | @ Hz ná | vloer vóór → ná | ' +
     'SPL ± vóór → ná | RMS vóór → ná | W-M fase vóór → ná | M-T fase vóór → ná |',
 );
 console.log('|---|---|---|---|---|---|---|---|---|');

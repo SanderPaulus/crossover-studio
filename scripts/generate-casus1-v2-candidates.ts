@@ -404,9 +404,48 @@ const meetopstelling = {
   beschermingen_via_kandidaat: declaredStated,
   beschermingen_waarom:
     'De beschermingen zijn KEUZE-sleutels (V26 rijen 31, 33, 14, 2) en bereiken de tuner sinds ' +
-    'F4d uitsluitend via de verklaring van de kandidaat. `safety`, `staged`, `audit` en ' +
-    '`rSourceDisqualifyOhm` staan hier omdat de eerste versie van deze fixture ze wegliet en ' +
-    'daarmee een dode kortsluiting opleverde die de keten niet zag (V27).',
+    'F4d uitsluitend via de verklaring van de kandidaat. `safety`, `staged` en `audit` staan ' +
+    'hier omdat de eerste versie van deze fixture ze wegliet en daarmee een dode kortsluiting ' +
+    'opleverde die de keten niet zag (V27). `rSourceDisqualifyOhm` STOND hier tot V34 en staat ' +
+    'er nu niet meer, en dat is geen weglating maar de verklaring zelf — zie ' +
+    '`bronweerstandsgrens_waarom` hieronder.',
+  /* ---- V34: DE BRONWEERSTANDSPROBE, EN ZIJN TWEE GRENZEN ---------------- *
+   *
+   * Twee velden, twee besluiten, precies zoals V30 en V33 er twee zijn: WAAR
+   * de probe leest, en WELKE grens hij vergeleken wordt met. Beide afgelezen
+   * van de verklaring, want beide zijn keuze-sleutels. */
+  probe_raster: lastPayload.candidate?.declaration.stated.rSourceProbeSource ?? null,
+  probe_raster_waarom:
+    {
+      safety:
+        'De bronweerstandsprobe leest op het VEILIGHEIDSRASTER. Op het ketenraster landde hij ' +
+        'op `grid[24] = 640,2 Hz`, en dat is de BOVENRAND van zijn eigen zoekvenster en geen ' +
+        'resonantie: dit wooferpaar is bassreflex en zijn twee impedantiepieken liggen op 17 en ' +
+        '51 Hz, allebei onder een raster dat op 200 Hz begint. De bewaking die daarvoor bestond ' +
+        '(ISSUE #14) verwierp alleen index 0. Gemeten: op 640 Hz lezen de drie v1-baselines ' +
+        '0,50/0,47/0,68 Ω, op de echte piek 3,98/4,59/2,55 Ω (V34).',
+      grid:
+        'De probe leest het EVALUATIERASTER, zoals altijd — de vóór-arm van V34, met de ' +
+        'historische randregel.',
+    }[lastPayload.candidate?.declaration.stated.rSourceProbeSource ?? 'grid'],
+  bronweerstandsgrens:
+    lastPayload.candidate?.declaration.stated.rSourceDisqualifyOhm ?? null,
+  bronweerstandsgrens_waarom:
+    lastPayload.candidate?.declaration.absent.find((a) => a.key === 'rSourceDisqualifyOhm')?.why ??
+    'GESTELD — zie `bronweerstandsgrens`.',
+  bronweerstandsgrens_herkomst:
+    'Casus 1 stelt in `manifest_en_geometrie.gestelde_eisen` GEEN bronweerstandsgrens, dus de ' +
+    'kandidaat draagt er geen en er wordt niets op gediskwalificeerd (P4). Tot V34 stond hier ' +
+    '2,0 Ω — de UI-default van de app, in een fixture getypt, langs precies het pad dat F0 voor ' +
+    '`ampMinLoadOhm` heeft opgeruimd. `withDeclaredSourceLimit` in de worker zorgt dat de keten ' +
+    'die afwezigheid ook honoreert in plaats van terug te vallen op haar eigen default.',
+  audittier_ohm: CASUS1_V2_SETTINGS.audit.thresholds.rSourceOhm,
+  audittier_waarom:
+    'NULL, en null is hier een waarde: de onderdelenaudit DRAAIT (zij is een bescherming), maar ' +
+    'haar bronweerstandstier is niet gesteld. Die tier draagt een oordeel en geen rapportage — ' +
+    'een onderdeel dat de tier overschrijdt heet `earned` en wordt dus NIET verwijderd, en de ' +
+    'catalogus-snap begrenst er het DCR-budget per tak mee. Casus 1 stelt hem niet, dus hij ' +
+    'oordeelt niets (V34, P4).',
   /* IS THE FLOOR A ZOEKDOEL OR ONLY A VETO (V30)? Read off the declaration,
    * because it is a CHOICE key and may only reach the tuner from there. The
    * grey value beside it is the number that choice hands the search — an

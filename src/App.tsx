@@ -207,7 +207,12 @@ import {
   type NetOptimizeOptions,
 } from './lib/netOptimizer.ts';
 import type { MinimizeResult } from './lib/minimize.ts';
-import { sourceResistanceOhm, type NetworkAudit } from './lib/partAudit.ts';
+import {
+  sourceResistanceOhm,
+  type NetworkAudit,
+  DEFAULT_R_SOURCE_DISQUALIFY_OHM,
+  DEFAULT_R_SOURCE_TIER_OHM,
+} from './lib/partAudit.ts';
 import type { Chain3Result } from './lib/threeWayChain.ts';
 import { buildSoloNetwork, optimizeSoloFilter, reachableBandFor } from './lib/soloOptimizer.ts';
 import { crossoverVariants, rankChainResults, type ChainResult, type ChainSettings } from './lib/designChain.ts';
@@ -5608,12 +5613,12 @@ export default function App() {
   const [rSourceDisqOhm, setRSourceDisqOhm] = useState<number>(() => {
     const raw = localStorage.getItem('ads-rsource-disq');
     const v = raw === null ? NaN : Number(raw);
-    return Number.isFinite(v) && v >= 0 ? v : 2.0;
+    return Number.isFinite(v) && v >= 0 ? v : DEFAULT_R_SOURCE_DISQUALIFY_OHM;
   });
   const [rSourceLimitOhm, setRSourceLimitOhm] = useState<number>(() => {
     const raw = localStorage.getItem('ads-rsource-limit');
     const v = raw === null ? NaN : Number(raw);
-    return Number.isFinite(v) && v >= 0 ? v : 1.0;
+    return Number.isFinite(v) && v >= 0 ? v : DEFAULT_R_SOURCE_TIER_OHM;
   });
   /** B1 — BOM cap per channel (EUR; 0 = off): class loss in the ranking above
    *  it, shown in the strip. A design decision, not a weight. */

@@ -3,8 +3,9 @@
  *
  * `NetOptimizeOptions` had 37 top-level keys when F4c classified them — 38
  * since V30 added `zFloorBarrier`, 39 since V31 added `rejectedTuneReport`,
- * and 41 since V33 added `zFloorBarrierSource` (choice) beside
- * `zFloorBarrierImpedance` (polish), and the count is asserted rather than
+ * 41 since V33 added `zFloorBarrierSource` (choice) beside
+ * `zFloorBarrierImpedance` (polish), and 42 since V34 added
+ * `rSourceProbeSource` (choice); the count is asserted rather than
  * described (`choiceKeyGuard.test.ts`). Until F4c the v2 route set four of
  * them and inherited the other 33 verbatim from whatever the v1 chain happened
  * to build (`audit §2.2`). That is harmless while v1 also chooses the
@@ -80,6 +81,15 @@ export const CHOICE_KEYS = [
   'snapPrefs',
   /* --- what is forbidden outright --- */
   'rSourceDisqualifyOhm',
+  /* …and WHERE that limit is compared. V34, and it is a choice for exactly the
+   * reason `zFloorBarrierSource` is one, one quantity along: it names the
+   * frequency a hard limit is measured at. Measured on casus 1 — read at the
+   * chain grid's probe the three v1 baselines carry 0.50/0.47/0.68 Ω, read at
+   * the woofer's real impedance peak they carry 3.98/4.59/2.55 Ω, against the
+   * same 2.0 Ω limit. One source passes all three, the other disqualifies all
+   * three, and the designer's own best filter is among them. A key that can do
+   * that is not polish (casebook V34). */
+  'rSourceProbeSource',
   'loadFloor',
   'ampMinLoadOhm',
   'zFloorStrict',

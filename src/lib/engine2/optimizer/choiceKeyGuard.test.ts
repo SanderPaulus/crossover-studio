@@ -33,6 +33,7 @@ import {
 } from './choices.ts';
 import { AMP_FLOOR_BARRIER_WEIGHT } from '../../netOptimizer.ts';
 import { declareCandidateChoices } from './candidateDeclaration.ts';
+import { withDeclaredSourceLimit } from './worker.ts';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const ENGINE2 = join(HERE, '..');
@@ -113,9 +114,11 @@ describe('F4c — every tuner option has a class', () => {
     // 37 at F4c; 38 since V30 added `zFloorBarrier` as a choice; 39 since V31
     // added `rejectedTuneReport` as instrumentation; 41 since V33 added
     // `zFloorBarrierSource` (choice — which band the goal is measured over) and
-    // `zFloorBarrierImpedance` (polish — the measurement that band comes from).
-    expect(keys.length).toBe(41);
-    expect(CHOICE_KEYS.length + GREY_KEYS.length + POLISH_KEYS.length).toBe(41);
+    // `zFloorBarrierImpedance` (polish — the measurement that band comes from);
+    // 42 since V34 added `rSourceProbeSource` (choice — which frequency a hard
+    // limit is compared at).
+    expect(keys.length).toBe(42);
+    expect(CHOICE_KEYS.length + GREY_KEYS.length + POLISH_KEYS.length).toBe(42);
     // V31: instrumentation, never a choice — the key may not silently migrate
     // into the class whose values are only allowed to come from a candidate.
     expect(POLISH_KEYS).toContain('rejectedTuneReport');
@@ -131,6 +134,16 @@ describe('F4c — every tuner option has a class', () => {
     expect(POLISH_KEYS).toContain('zFloorBarrierImpedance');
     expect(CHOICE_KEYS as readonly string[]).not.toContain('zFloorBarrierImpedance');
     expect(POLISH_KEYS as readonly string[]).not.toContain('zFloorBarrierSource');
+    /* V34 — the same split, one quantity along, and the same reason it may not
+     * drift: WHERE the source-resistance probe reads decides which frequency
+     * `rSourceDisqualifyOhm` is compared at, and on casus 1 that decides
+     * whether the designer's own best filter passes or is thrown away. A
+     * migration into polish would make that a tuning detail. */
+    expect(CHOICE_KEYS).toContain('rSourceProbeSource');
+    expect(POLISH_KEYS as readonly string[]).not.toContain('rSourceProbeSource');
+    expect(GREY_KEYS as readonly string[]).not.toContain('rSourceProbeSource');
+    // ...and it stays beside the limit it qualifies, which is also a choice.
+    expect(CHOICE_KEYS).toContain('rSourceDisqualifyOhm');
   });
 });
 
@@ -210,6 +223,15 @@ describe('F4d — a generated candidate declares every choice key', () => {
       stated: {},
     });
 
+  /** A full-band safety set — three points is enough to BE one; nothing here
+   *  reads it, the declaration only asks whether it exists (V34). */
+  const SAFETY = {
+    freqs: [20, 200, 20000],
+    w: { freq: [20, 200, 20000], spl: [80, 80, 80], phaseDeg: [0, 0, 0] },
+    t: { freq: [20, 200, 20000], spl: [80, 80, 80], phaseDeg: [0, 0, 0] },
+    z: { woofer: [{ re: 6, im: 0 }, { re: 6, im: 0 }, { re: 6, im: 0 }] },
+  };
+
   /** ...and one with everything the designer can state, filled in. */
   const full = () =>
     declareCandidateChoices({
@@ -227,6 +249,7 @@ describe('F4d — a generated candidate declares every choice key', () => {
         snapPrefs: { profile: 'auto' },
         breakupGuard: true,
         audit: {},
+        safety: SAFETY,
         ampMinLoadOhm: 3.2,
         rSourceDisqualifyOhm: 2,
         zFloorStrict: true,
@@ -325,6 +348,73 @@ describe('F4d — a generated candidate declares every choice key', () => {
     const a = JSON.stringify(declarationKey(full(), {}));
     const b = JSON.stringify(declarationKey(onGrid, {}));
     expect(a).not.toBe(b);
+  });
+
+  it('V34 — a candidate with a safety set probes on it; without one it states nothing', () => {
+    /* The derivation, and it is derived from a fact rather than chosen: the
+     * probe asks about the low driver's box tuning, and on a measurement set
+     * whose analysis grid starts above that resonance the question is only
+     * answerable on the full-band safety grid. Casus 1 measured what the other
+     * reading costs — the probe landed on grid[24] = 640.2 Hz, the top of its
+     * own search window, and the three v1 baselines read 0.50/0.47/0.68 Ω there
+     * against 3.98/4.59/2.55 Ω at the woofer's real peak. */
+    expect(full().stated.rSourceProbeSource).toBe('safety');
+    expect(full().absent.some((a) => a.key === 'rSourceProbeSource')).toBe(false);
+
+    /* No safety set ⇒ ABSENT with the reason, and the reason names the
+     * consequence: the tuner reads its own grid, which is the pre-V34 reading.
+     * Not a stated `'grid'` — nobody decided that, and a stated default is how
+     * an inherited value comes to look like a choice. */
+    const d = bare();
+    expect(d.stated.rSourceProbeSource).toBeUndefined();
+    const why = d.absent.find((a) => a.key === 'rSourceProbeSource')?.why ?? '';
+    expect(why).toMatch(/P4/);
+    expect(why).toMatch(/no full-band safety set/);
+
+    // An explicit source still wins over the derivation, so V34's before/after
+    // is a run someone can ask for.
+    const onGrid = declareCandidateChoices({
+      cages: [[400, 500], [1500, 2000]],
+      windowFloorsHz: [397, 1294],
+      multiWay: true,
+      stated: { safety: SAFETY, rSourceProbeSource: 'grid' },
+    });
+    expect(onGrid.stated.rSourceProbeSource).toBe('grid');
+    expect(onGrid.absent.some((a) => a.key === 'rSourceProbeSource')).toBe(false);
+
+    // ...and the source moves the fingerprint, or the choice would be a label.
+    expect(JSON.stringify(declarationKey(full(), {}))).not.toBe(
+      JSON.stringify(declarationKey(onGrid, {})),
+    );
+  });
+
+  it('V34 — an unstated source-resistance limit is ABSENT, and the worker makes the chain honour it', () => {
+    /* Two halves, and the second is the one that was missing. `put()` has
+     * always filed an unstated `rSourceDisqualifyOhm` as absent with the P4
+     * reason — but the chain resolves that key OUTSIDE the tuner
+     * (`runThreeWayChain`'s own default), where `choices.ts` does not reach, so
+     * "absent" still produced a 2.0 Ω limit in the search and in the ranking's
+     * disqualification list. */
+    const d = bare();
+    expect(d.stated.rSourceDisqualifyOhm).toBeUndefined();
+    expect(d.absent.find((a) => a.key === 'rSourceDisqualifyOhm')?.why ?? '').toMatch(/P4/);
+
+    const base = { settings: { rSourceDisqualifyOhm: 2.0 }, other: 1 };
+    // Absent in the declaration ⇒ an explicit `null` on the wire: no limit,
+    // rather than the chain's historical default.
+    expect(withDeclaredSourceLimit(base, d).settings.rSourceDisqualifyOhm).toBe(null);
+    // Stated ⇒ the stated value, whatever the chain input happened to carry.
+    expect(withDeclaredSourceLimit(base, full()).settings.rSourceDisqualifyOhm).toBe(2);
+    const other = declareCandidateChoices({
+      cages: [[400, 500], [1500, 2000]],
+      windowFloorsHz: [397, 1294],
+      multiWay: true,
+      stated: { rSourceDisqualifyOhm: 1.25 },
+    });
+    expect(withDeclaredSourceLimit(base, other).settings.rSourceDisqualifyOhm).toBe(1.25);
+    // NO declaration ⇒ the identity, which is what keeps every v1 caller and
+    // every candidate-less v2 payload byte-identical.
+    expect(withDeclaredSourceLimit(base, undefined)).toBe(base);
   });
 
   it('V30 — the barrier weight rides in the fingerprint as a GREY VALUE, with its provenance', () => {

@@ -30,7 +30,7 @@
    "sinds_F4d": "F4d (27-08-2026), herzien bij de F4d-nazorg (V28): 100 klasse-B-bladeren, tien metrieken op elk van de 10 bevroren KAND-V2-netlists. Het waren er negen tot de nazorg de F3c-uitsnijding opschortte; de mid→tweeter-as ging van drie posities naar vijf en het veld van negen naar vijftien. De F4a-momentopname hierboven wordt niet bijgewerkt, om dezelfde reden als bij V20 — een momentopname die met elke oplevering meebeweegt is er geen. De bevinding blijft: nog steeds NUL klasse C. Deze netwerken komen uit een v2-run, maar de referenties hangen aan de BESTANDEN, en een volgende run die andere netwerken oplevert verschuift deze getallen dus niet — hij levert andere bestanden op. Dat is bij de nazorg ook precies wat gebeurde, en het is de reden dat de verandering geen enkele referentie ONGELDIG maakte.",
    "sinds_V30": "V30 (27-08-2026): het KAND-V2-corpus is opnieuw opgewekt met de gestelde vloer als ZOEKDOEL, en het corpus dat het vervangt is niet weggegooid maar hernoemd: 10 blokken `V28_KAND_*`, byte-identieke bestanden onder een gedateerde naam, met dezelfde tien metrieken en dezelfde klasse B. Dat is geen referentie aanpassen — het zijn dezelfde netlists, en de nieuwe staan ernaast in plaats van eroverheen, zodat de vóór/ná-vergelijking van deze entry reproduceerbaar blijft uit de repository zelf. De bevinding van F4a staat nog steeds: NUL klasse C. Wat wél veranderde is de uitzonderingslijst: zij noemde tien KAND-V2-netlists en noemt nu tien V28-KAND-netlists, want het nieuwe corpus haalt de vloer op eigen kracht.",
    "sinds_V32": "V31/V32 (27-08-2026): het KAND-V2-corpus is opnieuw opgewekt nadat de elektrische poorten op de gemeten impedantiesweep gingen oordelen in plaats van op het ketenraster (V32), en nadat een kandidaat wiens tune in zijn geheel geweigerd werd zijn zaad niet meer als ontwerp aflevert (V31). Het corpus dat het verving is opnieuw NIET weggegooid maar hernoemd: 10 blokken `V30_KAND_*`, byte-identieke bestanden onder een gedateerde naam, met dezelfde tien metrieken en dezelfde klasse B. Er staan nu dus twee gedateerde corpora naast het levende: V28 (vóór de vloer een zoekdoel was) en V30 (vóór de poort de volle sweep las). Nog steeds NUL klasse C: het zijn metrieken op bestanden.",
-   "sinds_V33": "V33 (27-08-2026): het KAND-V2-corpus is opnieuw opgewekt nadat de amp-vloerbarrière — de term die de zoektocht naar de vloer duwt — zijn tekort op de GEMETEN IMPEDANTIESWEEP ging lezen in plaats van op het evaluatieraster, via dezelfde functie waarmee M-B/|Z| oordeelt. Doel en poort zien daarmee per constructie één getal — het levende corpus over het veiligheidsraster van de tuner, met een tweede, duurdere arm ernaast die over de volle sweep draaide. Corpora die vervangen zijn worden NIET weggegooid maar hernoemd: 10x `V28_KAND_*`, 10x `V30_KAND_*`, 7x `V32_KAND_*`, 10x `V33_SWEEP_KAND_*` — byte-identieke bestanden onder een gedateerde naam, met dezelfde tien metrieken en dezelfde klasse B. Nog steeds NUL klasse C."
+   "sinds_V33": "V33 (27-08-2026): het KAND-V2-corpus is opnieuw opgewekt nadat de amp-vloerbarrière — de term die de zoektocht naar de vloer duwt — zijn tekort op de GEMETEN IMPEDANTIESWEEP ging lezen in plaats van op het evaluatieraster, via dezelfde functie waarmee M-B/|Z| oordeelt. Doel en poort zien daarmee per constructie één getal — het levende corpus over het veiligheidsraster van de tuner, met een tweede, duurdere arm ernaast die over de volle sweep draaide. Corpora die vervangen zijn worden NIET weggegooid maar hernoemd: 10x `V28_KAND_*`, 10x `V30_KAND_*`, 7x `V32_KAND_*`, 10x `V33_KAND_*`, 10x `V33_SWEEP_KAND_*` — byte-identieke bestanden onder een gedateerde naam, met dezelfde tien metrieken en dezelfde klasse B. Nog steeds NUL klasse C."
   },
   "besluiten": {
    "_": "Drie mogelijke besluiten per referentie, conform de F4a-opdracht. De volledige inventarisatietabel - referentie, klasse, consumerende test met bestand en regel, besluit, reden - staat in het casusboek onder V19.",
@@ -989,7 +989,7 @@
    "wm_fase_oct": 14.07,
    "mt_fase_oct": 14.81
   },
-  "KAND_V2_1": {
+  "V33_KAND_1": {
    "klasse": "B",
    "afhankelijkheid": "meting+netlist",
    "klasse_toelichting": "Metrieken op de VASTE netlist manifest_en_geometrie.netlists.KAND_V2_1, een BESTAND in test-fixtures/casus1/. Het netwerk komt uit een v2-run (zie manifest_en_geometrie.v2_herkomst), maar de referentie hangt aan het bestand en niet aan die run — precies zoals de drie v1-kandidaten. Daarom klasse B en geen klasse C.",
@@ -1004,7 +1004,7 @@
    "wm_fase_oct": 20.51,
    "mt_fase_oct": 22.41
   },
-  "KAND_V2_2": {
+  "V33_KAND_2": {
    "klasse": "B",
    "afhankelijkheid": "meting+netlist",
    "klasse_toelichting": "Metrieken op de VASTE netlist manifest_en_geometrie.netlists.KAND_V2_2, een BESTAND in test-fixtures/casus1/. Het netwerk komt uit een v2-run (zie manifest_en_geometrie.v2_herkomst), maar de referentie hangt aan het bestand en niet aan die run — precies zoals de drie v1-kandidaten. Daarom klasse B en geen klasse C.",
@@ -1019,7 +1019,7 @@
    "wm_fase_oct": 16.74,
    "mt_fase_oct": 26.31
   },
-  "KAND_V2_3": {
+  "V33_KAND_3": {
    "klasse": "B",
    "afhankelijkheid": "meting+netlist",
    "klasse_toelichting": "Metrieken op de VASTE netlist manifest_en_geometrie.netlists.KAND_V2_3, een BESTAND in test-fixtures/casus1/. Het netwerk komt uit een v2-run (zie manifest_en_geometrie.v2_herkomst), maar de referentie hangt aan het bestand en niet aan die run — precies zoals de drie v1-kandidaten. Daarom klasse B en geen klasse C.",
@@ -1034,7 +1034,7 @@
    "wm_fase_oct": 16.06,
    "mt_fase_oct": 32.11
   },
-  "KAND_V2_4": {
+  "V33_KAND_4": {
    "klasse": "B",
    "afhankelijkheid": "meting+netlist",
    "klasse_toelichting": "Metrieken op de VASTE netlist manifest_en_geometrie.netlists.KAND_V2_4, een BESTAND in test-fixtures/casus1/. Het netwerk komt uit een v2-run (zie manifest_en_geometrie.v2_herkomst), maar de referentie hangt aan het bestand en niet aan die run — precies zoals de drie v1-kandidaten. Daarom klasse B en geen klasse C.",
@@ -1049,7 +1049,7 @@
    "wm_fase_oct": 12.6,
    "mt_fase_oct": 26.7
   },
-  "KAND_V2_5": {
+  "V33_KAND_5": {
    "klasse": "B",
    "afhankelijkheid": "meting+netlist",
    "klasse_toelichting": "Metrieken op de VASTE netlist manifest_en_geometrie.netlists.KAND_V2_5, een BESTAND in test-fixtures/casus1/. Het netwerk komt uit een v2-run (zie manifest_en_geometrie.v2_herkomst), maar de referentie hangt aan het bestand en niet aan die run — precies zoals de drie v1-kandidaten. Daarom klasse B en geen klasse C.",
@@ -1064,7 +1064,7 @@
    "wm_fase_oct": 36.4,
    "mt_fase_oct": 6.65
   },
-  "KAND_V2_6": {
+  "V33_KAND_6": {
    "klasse": "B",
    "afhankelijkheid": "meting+netlist",
    "klasse_toelichting": "Metrieken op de VASTE netlist manifest_en_geometrie.netlists.KAND_V2_6, een BESTAND in test-fixtures/casus1/. Het netwerk komt uit een v2-run (zie manifest_en_geometrie.v2_herkomst), maar de referentie hangt aan het bestand en niet aan die run — precies zoals de drie v1-kandidaten. Daarom klasse B en geen klasse C.",
@@ -1079,7 +1079,7 @@
    "wm_fase_oct": 15.16,
    "mt_fase_oct": 31.67
   },
-  "KAND_V2_7": {
+  "V33_KAND_7": {
    "klasse": "B",
    "afhankelijkheid": "meting+netlist",
    "klasse_toelichting": "Metrieken op de VASTE netlist manifest_en_geometrie.netlists.KAND_V2_7, een BESTAND in test-fixtures/casus1/. Het netwerk komt uit een v2-run (zie manifest_en_geometrie.v2_herkomst), maar de referentie hangt aan het bestand en niet aan die run — precies zoals de drie v1-kandidaten. Daarom klasse B en geen klasse C.",
@@ -1094,7 +1094,7 @@
    "wm_fase_oct": 45.41,
    "mt_fase_oct": 5.29
   },
-  "KAND_V2_8": {
+  "V33_KAND_8": {
    "klasse": "B",
    "afhankelijkheid": "meting+netlist",
    "klasse_toelichting": "Metrieken op de VASTE netlist manifest_en_geometrie.netlists.KAND_V2_8, een BESTAND in test-fixtures/casus1/. Het netwerk komt uit een v2-run (zie manifest_en_geometrie.v2_herkomst), maar de referentie hangt aan het bestand en niet aan die run — precies zoals de drie v1-kandidaten. Daarom klasse B en geen klasse C.",
@@ -1109,7 +1109,7 @@
    "wm_fase_oct": 14.47,
    "mt_fase_oct": 34.37
   },
-  "KAND_V2_9": {
+  "V33_KAND_9": {
    "klasse": "B",
    "afhankelijkheid": "meting+netlist",
    "klasse_toelichting": "Metrieken op de VASTE netlist manifest_en_geometrie.netlists.KAND_V2_9, een BESTAND in test-fixtures/casus1/. Het netwerk komt uit een v2-run (zie manifest_en_geometrie.v2_herkomst), maar de referentie hangt aan het bestand en niet aan die run — precies zoals de drie v1-kandidaten. Daarom klasse B en geen klasse C.",
@@ -1124,7 +1124,7 @@
    "wm_fase_oct": 45.94,
    "mt_fase_oct": 5.3
   },
-  "KAND_V2_10": {
+  "V33_KAND_10": {
    "klasse": "B",
    "afhankelijkheid": "meting+netlist",
    "klasse_toelichting": "Metrieken op de VASTE netlist manifest_en_geometrie.netlists.KAND_V2_10, een BESTAND in test-fixtures/casus1/. Het netwerk komt uit een v2-run (zie manifest_en_geometrie.v2_herkomst), maar de referentie hangt aan het bestand en niet aan die run — precies zoals de drie v1-kandidaten. Daarom klasse B en geen klasse C.",
@@ -1138,6 +1138,156 @@
    "spl_venster_pm_dB": 3.96,
    "wm_fase_oct": 19.93,
    "mt_fase_oct": 56.16
+  },
+  "KAND_V2_1": {
+   "klasse": "B",
+   "afhankelijkheid": "meting+netlist",
+   "klasse_toelichting": "Metrieken op de VASTE netlist manifest_en_geometrie.netlists.KAND_V2_1, een BESTAND in test-fixtures/casus1/. Het netwerk komt uit een v2-run (zie manifest_en_geometrie.v2_herkomst), maar de referentie hangt aan het bestand en niet aan die run — precies zoals de drie v1-kandidaten. Daarom klasse B en geen klasse C.",
+   "minZ": 2.58,
+   "minEPDR": 1.29,
+   "dissipatie_pct": 23,
+   "Qes_mult": 1.36,
+   "lf_bult_extra_dB": 1.63,
+   "V_tweeter_op_fs_dB": -21.6,
+   "rms_vlakheid_dB": 1.69,
+   "spl_venster_pm_dB": 3.85,
+   "wm_fase_oct": 38,
+   "mt_fase_oct": 10.85
+  },
+  "KAND_V2_2": {
+   "klasse": "B",
+   "afhankelijkheid": "meting+netlist",
+   "klasse_toelichting": "Metrieken op de VASTE netlist manifest_en_geometrie.netlists.KAND_V2_2, een BESTAND in test-fixtures/casus1/. Het netwerk komt uit een v2-run (zie manifest_en_geometrie.v2_herkomst), maar de referentie hangt aan het bestand en niet aan die run — precies zoals de drie v1-kandidaten. Daarom klasse B en geen klasse C.",
+   "minZ": 2.56,
+   "minEPDR": 1.28,
+   "dissipatie_pct": 1,
+   "Qes_mult": 1,
+   "lf_bult_extra_dB": 4.56,
+   "V_tweeter_op_fs_dB": -23.59,
+   "rms_vlakheid_dB": 1.75,
+   "spl_venster_pm_dB": 3.42,
+   "wm_fase_oct": 20.51,
+   "mt_fase_oct": 22.41
+  },
+  "KAND_V2_3": {
+   "klasse": "B",
+   "afhankelijkheid": "meting+netlist",
+   "klasse_toelichting": "Metrieken op de VASTE netlist manifest_en_geometrie.netlists.KAND_V2_3, een BESTAND in test-fixtures/casus1/. Het netwerk komt uit een v2-run (zie manifest_en_geometrie.v2_herkomst), maar de referentie hangt aan het bestand en niet aan die run — precies zoals de drie v1-kandidaten. Daarom klasse B en geen klasse C.",
+   "minZ": 2.56,
+   "minEPDR": 1.28,
+   "dissipatie_pct": 1,
+   "Qes_mult": 1,
+   "lf_bult_extra_dB": 5.76,
+   "V_tweeter_op_fs_dB": -19.04,
+   "rms_vlakheid_dB": 1.76,
+   "spl_venster_pm_dB": 3.67,
+   "wm_fase_oct": 16.74,
+   "mt_fase_oct": 26.31
+  },
+  "KAND_V2_4": {
+   "klasse": "B",
+   "afhankelijkheid": "meting+netlist",
+   "klasse_toelichting": "Metrieken op de VASTE netlist manifest_en_geometrie.netlists.KAND_V2_4, een BESTAND in test-fixtures/casus1/. Het netwerk komt uit een v2-run (zie manifest_en_geometrie.v2_herkomst), maar de referentie hangt aan het bestand en niet aan die run — precies zoals de drie v1-kandidaten. Daarom klasse B en geen klasse C.",
+   "minZ": 2.57,
+   "minEPDR": 1.29,
+   "dissipatie_pct": 1,
+   "Qes_mult": 1,
+   "lf_bult_extra_dB": 5.44,
+   "V_tweeter_op_fs_dB": -22.26,
+   "rms_vlakheid_dB": 1.81,
+   "spl_venster_pm_dB": 3.57,
+   "wm_fase_oct": 17.07,
+   "mt_fase_oct": 29.06
+  },
+  "KAND_V2_5": {
+   "klasse": "B",
+   "afhankelijkheid": "meting+netlist",
+   "klasse_toelichting": "Metrieken op de VASTE netlist manifest_en_geometrie.netlists.KAND_V2_5, een BESTAND in test-fixtures/casus1/. Het netwerk komt uit een v2-run (zie manifest_en_geometrie.v2_herkomst), maar de referentie hangt aan het bestand en niet aan die run — precies zoals de drie v1-kandidaten. Daarom klasse B en geen klasse C.",
+   "minZ": 2.6,
+   "minEPDR": 1.3,
+   "dissipatie_pct": 23,
+   "Qes_mult": 1.46,
+   "lf_bult_extra_dB": 4.54,
+   "V_tweeter_op_fs_dB": -19.1,
+   "rms_vlakheid_dB": 1.8,
+   "spl_venster_pm_dB": 3.72,
+   "wm_fase_oct": 16.74,
+   "mt_fase_oct": 33.3
+  },
+  "KAND_V2_6": {
+   "klasse": "B",
+   "afhankelijkheid": "meting+netlist",
+   "klasse_toelichting": "Metrieken op de VASTE netlist manifest_en_geometrie.netlists.KAND_V2_6, een BESTAND in test-fixtures/casus1/. Het netwerk komt uit een v2-run (zie manifest_en_geometrie.v2_herkomst), maar de referentie hangt aan het bestand en niet aan die run — precies zoals de drie v1-kandidaten. Daarom klasse B en geen klasse C.",
+   "minZ": 2.59,
+   "minEPDR": 1.31,
+   "dissipatie_pct": 29,
+   "Qes_mult": 1.47,
+   "lf_bult_extra_dB": 1.82,
+   "V_tweeter_op_fs_dB": -15.96,
+   "rms_vlakheid_dB": 1.83,
+   "spl_venster_pm_dB": 3.98,
+   "wm_fase_oct": 31.78,
+   "mt_fase_oct": 10.28
+  },
+  "KAND_V2_7": {
+   "klasse": "B",
+   "afhankelijkheid": "meting+netlist",
+   "klasse_toelichting": "Metrieken op de VASTE netlist manifest_en_geometrie.netlists.KAND_V2_7, een BESTAND in test-fixtures/casus1/. Het netwerk komt uit een v2-run (zie manifest_en_geometrie.v2_herkomst), maar de referentie hangt aan het bestand en niet aan die run — precies zoals de drie v1-kandidaten. Daarom klasse B en geen klasse C.",
+   "minZ": 2.61,
+   "minEPDR": 1.3,
+   "dissipatie_pct": 26,
+   "Qes_mult": 1.44,
+   "lf_bult_extra_dB": 3.9,
+   "V_tweeter_op_fs_dB": -20.53,
+   "rms_vlakheid_dB": 1.85,
+   "spl_venster_pm_dB": 3.36,
+   "wm_fase_oct": 13.34,
+   "mt_fase_oct": 32.09
+  },
+  "KAND_V2_8": {
+   "klasse": "B",
+   "afhankelijkheid": "meting+netlist",
+   "klasse_toelichting": "Metrieken op de VASTE netlist manifest_en_geometrie.netlists.KAND_V2_8, een BESTAND in test-fixtures/casus1/. Het netwerk komt uit een v2-run (zie manifest_en_geometrie.v2_herkomst), maar de referentie hangt aan het bestand en niet aan die run — precies zoals de drie v1-kandidaten. Daarom klasse B en geen klasse C.",
+   "minZ": 2.58,
+   "minEPDR": 1.29,
+   "dissipatie_pct": 29,
+   "Qes_mult": 1.48,
+   "lf_bult_extra_dB": 1.68,
+   "V_tweeter_op_fs_dB": -25.07,
+   "rms_vlakheid_dB": 1.88,
+   "spl_venster_pm_dB": 3.86,
+   "wm_fase_oct": 48.22,
+   "mt_fase_oct": 4.68
+  },
+  "KAND_V2_9": {
+   "klasse": "B",
+   "afhankelijkheid": "meting+netlist",
+   "klasse_toelichting": "Metrieken op de VASTE netlist manifest_en_geometrie.netlists.KAND_V2_9, een BESTAND in test-fixtures/casus1/. Het netwerk komt uit een v2-run (zie manifest_en_geometrie.v2_herkomst), maar de referentie hangt aan het bestand en niet aan die run — precies zoals de drie v1-kandidaten. Daarom klasse B en geen klasse C.",
+   "minZ": 2.58,
+   "minEPDR": 1.3,
+   "dissipatie_pct": 35,
+   "Qes_mult": 1.84,
+   "lf_bult_extra_dB": 3.46,
+   "V_tweeter_op_fs_dB": -23.01,
+   "rms_vlakheid_dB": 1.9,
+   "spl_venster_pm_dB": 3.35,
+   "wm_fase_oct": 15.15,
+   "mt_fase_oct": 25.53
+  },
+  "KAND_V2_10": {
+   "klasse": "B",
+   "afhankelijkheid": "meting+netlist",
+   "klasse_toelichting": "Metrieken op de VASTE netlist manifest_en_geometrie.netlists.KAND_V2_10, een BESTAND in test-fixtures/casus1/. Het netwerk komt uit een v2-run (zie manifest_en_geometrie.v2_herkomst), maar de referentie hangt aan het bestand en niet aan die run — precies zoals de drie v1-kandidaten. Daarom klasse B en geen klasse C.",
+   "minZ": 2.59,
+   "minEPDR": 1.3,
+   "dissipatie_pct": 30,
+   "Qes_mult": 1.35,
+   "lf_bult_extra_dB": 2.74,
+   "V_tweeter_op_fs_dB": -14.15,
+   "rms_vlakheid_dB": 2.08,
+   "spl_venster_pm_dB": 4.39,
+   "wm_fase_oct": 16.91,
+   "mt_fase_oct": 30.75
   }
  },
  "kruisvensters": {
@@ -1399,6 +1549,16 @@
    "V33_SWEEP_KAND_8": "V33-SWEEP-KAND-8.adsfilter.json",
    "V33_SWEEP_KAND_9": "V33-SWEEP-KAND-9.adsfilter.json",
    "V33_SWEEP_KAND_10": "V33-SWEEP-KAND-10.adsfilter.json",
+   "V33_KAND_1": "V33-KAND-1.adsfilter.json",
+   "V33_KAND_2": "V33-KAND-2.adsfilter.json",
+   "V33_KAND_3": "V33-KAND-3.adsfilter.json",
+   "V33_KAND_4": "V33-KAND-4.adsfilter.json",
+   "V33_KAND_5": "V33-KAND-5.adsfilter.json",
+   "V33_KAND_6": "V33-KAND-6.adsfilter.json",
+   "V33_KAND_7": "V33-KAND-7.adsfilter.json",
+   "V33_KAND_8": "V33-KAND-8.adsfilter.json",
+   "V33_KAND_9": "V33-KAND-9.adsfilter.json",
+   "V33_KAND_10": "V33-KAND-10.adsfilter.json",
    "KAND_V2_1": "KAND-V2-1.adsfilter.json",
    "KAND_V2_2": "KAND-V2-2.adsfilter.json",
    "KAND_V2_3": "KAND-V2-3.adsfilter.json",
@@ -1413,9 +1573,9 @@
   "v2_herkomst": {
    "_": "DOCUMENTATIE, geen acceptatiewaarde. Waar de KAND-V2-netlists vandaan komen, zodat een lezer ze kan herleiden en desgewenst opnieuw kan opwekken. Niets in dit blok wordt geassert als getal; wat WEL acceptatie is, zijn de metrieken op de bestanden zelf (kandidaten.KAND_V2_*, klasse B) en de reproductie door de echte route (casus1V2Candidates.test.ts).",
    "bestand": "casus1_v2_herkomst.json",
-   "gegenereerd_op_commit": "4cb9cc63d81ad047ddb8f7a2964922523b8dff3f",
+   "gegenereerd_op_commit": "52a6ca47d38cd27257bee7ddcd170c381a41e2ba",
    "seed": 20260827,
-   "run_vingerafdruk": "engine=2.0.0-F1 estimators=6087f58a seed=20260827 budget=tuner starts=1 status=completed design=a7ccf830 measurements=e97d1bdc gates=77e69859 bounds=5465b825 tuning=e5687f86 facts=eafd901a choices=1cfaa800",
+   "run_vingerafdruk": "engine=2.0.0-F1 estimators=6087f58a seed=20260827 budget=tuner starts=1 status=completed design=a7ccf830 measurements=e97d1bdc gates=77e69859 bounds=5465b825 tuning=9e0c0524 facts=eafd901a choices=1cfaa800",
    "generator": "scripts/generate-casus1-v2-candidates.ts",
    "meetopstelling": {
     "_": "De opstelling waarmee deze netlists zijn opgewekt, afgelezen van de laatste payload en niet overgeschreven uit het geheugen. V27 noteert twee foute opstellingen vóór de definitieve; geen van beide was terug te lezen uit wat het manifest opschreef.",
@@ -1445,7 +1605,7 @@
      "catalogSnap",
      "phaseMetric",
      "powerMetric",
-     "rSourceDisqualifyOhm",
+     "rSourceProbeSource",
      "safety",
      "staged",
      "xoFloorPairs",
@@ -1454,7 +1614,14 @@
      "zFloorBarrierSource",
      "zFloorStrict"
     ],
-    "beschermingen_waarom": "De beschermingen zijn KEUZE-sleutels (V26 rijen 31, 33, 14, 2) en bereiken de tuner sinds F4d uitsluitend via de verklaring van de kandidaat. `safety`, `staged`, `audit` en `rSourceDisqualifyOhm` staan hier omdat de eerste versie van deze fixture ze wegliet en daarmee een dode kortsluiting opleverde die de keten niet zag (V27).",
+    "beschermingen_waarom": "De beschermingen zijn KEUZE-sleutels (V26 rijen 31, 33, 14, 2) en bereiken de tuner sinds F4d uitsluitend via de verklaring van de kandidaat. `safety`, `staged` en `audit` staan hier omdat de eerste versie van deze fixture ze wegliet en daarmee een dode kortsluiting opleverde die de keten niet zag (V27). `rSourceDisqualifyOhm` STOND hier tot V34 en staat er nu niet meer, en dat is geen weglating maar de verklaring zelf — zie `bronweerstandsgrens_waarom` hieronder.",
+    "probe_raster": "safety",
+    "probe_raster_waarom": "De bronweerstandsprobe leest op het VEILIGHEIDSRASTER. Op het ketenraster landde hij op `grid[24] = 640,2 Hz`, en dat is de BOVENRAND van zijn eigen zoekvenster en geen resonantie: dit wooferpaar is bassreflex en zijn twee impedantiepieken liggen op 17 en 51 Hz, allebei onder een raster dat op 200 Hz begint. De bewaking die daarvoor bestond (ISSUE #14) verwierp alleen index 0. Gemeten: op 640 Hz lezen de drie v1-baselines 0,50/0,47/0,68 Ω, op de echte piek 3,98/4,59/2,55 Ω (V34).",
+    "bronweerstandsgrens": null,
+    "bronweerstandsgrens_waarom": "the designer stated no source-resistance disqualification limit, and absent is absent (P4) — a stated nothing judges nothing, here and in the tuner",
+    "bronweerstandsgrens_herkomst": "Casus 1 stelt in `manifest_en_geometrie.gestelde_eisen` GEEN bronweerstandsgrens, dus de kandidaat draagt er geen en er wordt niets op gediskwalificeerd (P4). Tot V34 stond hier 2,0 Ω — de UI-default van de app, in een fixture getypt, langs precies het pad dat F0 voor `ampMinLoadOhm` heeft opgeruimd. `withDeclaredSourceLimit` in de worker zorgt dat de keten die afwezigheid ook honoreert in plaats van terug te vallen op haar eigen default.",
+    "audittier_ohm": null,
+    "audittier_waarom": "NULL, en null is hier een waarde: de onderdelenaudit DRAAIT (zij is een bescherming), maar haar bronweerstandstier is niet gesteld. Die tier draagt een oordeel en geen rapportage — een onderdeel dat de tier overschrijdt heet `earned` en wordt dus NIET verwijderd, en de catalogus-snap begrenst er het DCR-budget per tak mee. Casus 1 stelt hem niet, dus hij oordeelt niets (V34, P4).",
     "vloer_zoekdoel_bron": "safety",
     "vloer_zoekdoel_bron_waarom": "De barrièreterm leest zijn tekort op het VEILIGHEIDSRASTER van de tuner — dezelfde uitgestrektheid als de gemeten sweep waarop M-B/|Z| oordeelt, dezelfde lezer (`minImpedanceAt`), grover raster. Tot V33 las hij het EVALUATIERASTER, waarvan de bodem de verre-veldspan is: de zoektocht mikte dan op een minimum boven 200 Hz terwijl de poort er sinds V32 een op de volle sweep handhaafde, en op deze casus kostte dat vijf van de vijftien kandidaten hun hele waardetune (V33). Hoever deze lezing van de poortlezing af ligt is gemeten en staat in `manifest_en_geometrie.v33_barriere_raster`.",
     "vloer_is_zoekdoel": true,
@@ -1696,10 +1863,10 @@
    },
    "vloerspeling_ohm": 0.052,
    "grootste_verschil_levend": {
-    "netlist": "KAND_V2_5",
-    "poortraster_ohm": 2.5931,
-    "barriereraster_ohm": 2.6007,
-    "verschil_ohm": 0.0075,
+    "netlist": "KAND_V2_8",
+    "poortraster_ohm": 2.5757,
+    "barriereraster_ohm": 2.5818,
+    "verschil_ohm": 0.0061,
     "zelfde_oordeel": true
    },
    "grootste_verschil_hele_casusboek": {
@@ -1993,73 +2160,143 @@
      "zelfde_oordeel": true
     },
     {
-     "netlist": "KAND_V2_1",
+     "netlist": "V33_KAND_1",
      "poortraster_ohm": 2.5586,
      "barriereraster_ohm": 2.5606,
      "verschil_ohm": 0.002,
      "zelfde_oordeel": true
     },
     {
-     "netlist": "KAND_V2_2",
+     "netlist": "V33_KAND_2",
      "poortraster_ohm": 2.5569,
      "barriereraster_ohm": 2.5614,
      "verschil_ohm": 0.0045,
      "zelfde_oordeel": true
     },
     {
-     "netlist": "KAND_V2_3",
+     "netlist": "V33_KAND_3",
      "poortraster_ohm": 2.6094,
      "barriereraster_ohm": 2.6115,
      "verschil_ohm": 0.0021,
      "zelfde_oordeel": true
     },
     {
-     "netlist": "KAND_V2_4",
+     "netlist": "V33_KAND_4",
      "poortraster_ohm": 2.5918,
      "barriereraster_ohm": 2.5947,
      "verschil_ohm": 0.003,
      "zelfde_oordeel": true
     },
     {
-     "netlist": "KAND_V2_5",
+     "netlist": "V33_KAND_5",
      "poortraster_ohm": 2.5931,
      "barriereraster_ohm": 2.6007,
      "verschil_ohm": 0.0075,
      "zelfde_oordeel": true
     },
     {
-     "netlist": "KAND_V2_6",
+     "netlist": "V33_KAND_6",
      "poortraster_ohm": 2.6259,
      "barriereraster_ohm": 2.6266,
      "verschil_ohm": 0.0007,
      "zelfde_oordeel": true
     },
     {
-     "netlist": "KAND_V2_7",
+     "netlist": "V33_KAND_7",
      "poortraster_ohm": 2.5907,
      "barriereraster_ohm": 2.5937,
      "verschil_ohm": 0.003,
      "zelfde_oordeel": true
     },
     {
-     "netlist": "KAND_V2_8",
+     "netlist": "V33_KAND_8",
      "poortraster_ohm": 2.6108,
      "barriereraster_ohm": 2.6111,
      "verschil_ohm": 0.0003,
      "zelfde_oordeel": true
     },
     {
-     "netlist": "KAND_V2_9",
+     "netlist": "V33_KAND_9",
      "poortraster_ohm": 2.5867,
      "barriereraster_ohm": 2.5879,
      "verschil_ohm": 0.0012,
      "zelfde_oordeel": true
     },
     {
-     "netlist": "KAND_V2_10",
+     "netlist": "V33_KAND_10",
      "poortraster_ohm": 2.5819,
      "barriereraster_ohm": 2.587,
      "verschil_ohm": 0.0051,
+     "zelfde_oordeel": true
+    },
+    {
+     "netlist": "KAND_V2_1",
+     "poortraster_ohm": 2.5839,
+     "barriereraster_ohm": 2.5895,
+     "verschil_ohm": 0.0056,
+     "zelfde_oordeel": true
+    },
+    {
+     "netlist": "KAND_V2_2",
+     "poortraster_ohm": 2.5586,
+     "barriereraster_ohm": 2.5606,
+     "verschil_ohm": 0.002,
+     "zelfde_oordeel": true
+    },
+    {
+     "netlist": "KAND_V2_3",
+     "poortraster_ohm": 2.5569,
+     "barriereraster_ohm": 2.5614,
+     "verschil_ohm": 0.0045,
+     "zelfde_oordeel": true
+    },
+    {
+     "netlist": "KAND_V2_4",
+     "poortraster_ohm": 2.5696,
+     "barriereraster_ohm": 2.5696,
+     "verschil_ohm": 0,
+     "zelfde_oordeel": true
+    },
+    {
+     "netlist": "KAND_V2_5",
+     "poortraster_ohm": 2.6026,
+     "barriereraster_ohm": 2.6041,
+     "verschil_ohm": 0.0015,
+     "zelfde_oordeel": true
+    },
+    {
+     "netlist": "KAND_V2_6",
+     "poortraster_ohm": 2.5858,
+     "barriereraster_ohm": 2.5885,
+     "verschil_ohm": 0.0027,
+     "zelfde_oordeel": true
+    },
+    {
+     "netlist": "KAND_V2_7",
+     "poortraster_ohm": 2.6085,
+     "barriereraster_ohm": 2.6103,
+     "verschil_ohm": 0.0018,
+     "zelfde_oordeel": true
+    },
+    {
+     "netlist": "KAND_V2_8",
+     "poortraster_ohm": 2.5757,
+     "barriereraster_ohm": 2.5818,
+     "verschil_ohm": 0.0061,
+     "zelfde_oordeel": true
+    },
+    {
+     "netlist": "KAND_V2_9",
+     "poortraster_ohm": 2.5841,
+     "barriereraster_ohm": 2.5875,
+     "verschil_ohm": 0.0034,
+     "zelfde_oordeel": true
+    },
+    {
+     "netlist": "KAND_V2_10",
+     "poortraster_ohm": 2.5931,
+     "barriereraster_ohm": 2.595,
+     "verschil_ohm": 0.0018,
      "zelfde_oordeel": true
     }
    ]
@@ -2123,6 +2360,66 @@
      "naam": "V33_SWEEP_KAND_10",
      "was": "KAND_V2_10",
      "kandidaat": "woofer→mid 466.5 LR4 · mid→tweeter 1981.2 LR4"
+    }
+   ]
+  },
+  "v33_corpus": {
+   "_": "HET GEDATEERDE V33-CORPUS, met de kandidaat waar elke netlist vandaan kwam. Zelfde reden als de andere gedateerde corpora: de koppeling bestandsnaam ↔ kandidaat stond alleen in casus1_v2_herkomst.json, en dat bestand wordt door de volgende regeneratie overschreven. DOCUMENTATIE, geen acceptatiewaarde.",
+   "reden": "Bevroren terwijl de BRONWEERSTANDSPROBE nog het ketenraster las, waar hij op de bovenrand van zijn eigen zoekvenster landde (grid[24] = 640,2 Hz) in plaats van op de wooferresonantie, en terwijl de v2-route nog een bronweerstandsgrens van 2,0 Ohm droeg die niemand had gesteld. De vóór-helft van de V34-vergelijking. Meetobject, GEEN ontwerp.",
+   "seed": 20260827,
+   "run_vingerafdruk": "engine=2.0.0-F1 estimators=6087f58a seed=20260827 budget=tuner starts=1 status=completed design=a7ccf830 measurements=e97d1bdc gates=77e69859 bounds=5465b825 tuning=e5687f86 facts=eafd901a choices=1cfaa800",
+   "gegenereerd_op_commit": "4cb9cc63d81ad047ddb8f7a2964922523b8dff3f",
+   "bevroren_op_commit": "52a6ca47d38cd27257bee7ddcd170c381a41e2ba",
+   "bestanden": [
+    {
+     "naam": "V33_KAND_1",
+     "was": "KAND_V2_1",
+     "kandidaat": "woofer→mid 396.7 LR4 · mid→tweeter 2283.5 LR4"
+    },
+    {
+     "naam": "V33_KAND_2",
+     "was": "KAND_V2_2",
+     "kandidaat": "woofer→mid 396.7 LR4 · mid→tweeter 1719 LR4"
+    },
+    {
+     "naam": "V33_KAND_3",
+     "was": "KAND_V2_3",
+     "kandidaat": "woofer→mid 466.5 LR4 · mid→tweeter 1981.2 LR4"
+    },
+    {
+     "naam": "V33_KAND_4",
+     "was": "KAND_V2_4",
+     "kandidaat": "woofer→mid 466.5 LR4 · mid→tweeter 2283.5 LR4"
+    },
+    {
+     "naam": "V33_KAND_5",
+     "was": "KAND_V2_5",
+     "kandidaat": "woofer→mid 548.5 LR4 · mid→tweeter 1719 LR4"
+    },
+    {
+     "naam": "V33_KAND_6",
+     "was": "KAND_V2_6",
+     "kandidaat": "woofer→mid 466.5 LR4 · mid→tweeter 1719 LR4"
+    },
+    {
+     "naam": "V33_KAND_7",
+     "was": "KAND_V2_7",
+     "kandidaat": "woofer→mid 548.5 LR4 · mid→tweeter 1981.2 LR4"
+    },
+    {
+     "naam": "V33_KAND_8",
+     "was": "KAND_V2_8",
+     "kandidaat": "woofer→mid 548.5 LR4 · mid→tweeter 1294 LR4"
+    },
+    {
+     "naam": "V33_KAND_9",
+     "was": "KAND_V2_9",
+     "kandidaat": "woofer→mid 548.5 LR4 · mid→tweeter 2283.5 LR4"
+    },
+    {
+     "naam": "V33_KAND_10",
+     "was": "KAND_V2_10",
+     "kandidaat": "woofer→mid 548.5 LR4 · mid→tweeter 1491.4 LR4"
     }
    ]
   }

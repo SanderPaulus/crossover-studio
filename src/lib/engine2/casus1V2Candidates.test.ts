@@ -71,6 +71,7 @@ import {
 import {
   CASUS1_AMP_MIN_LOAD_OHM,
   CASUS1_V2_BAND_HZ,
+  CASUS1_V2_GRID,
   CASUS1_V2_SEED,
   CASUS1_V2_SETTINGS,
   casus1ChainInput,
@@ -118,6 +119,15 @@ const HERKOMST = JSON.parse(
     /** V33 — and WHERE that goal is measured. */
     vloer_zoekdoel_bron: string | null;
     vloer_zoekdoel_bron_waarom: string;
+    /** V34 — where the source-resistance probe reads, and the two limits it is
+     *  compared against. `null` on either limit is casus 1 stating none. */
+    probe_raster: string | null;
+    probe_raster_waarom: string;
+    bronweerstandsgrens: number | null;
+    bronweerstandsgrens_waarom: string;
+    bronweerstandsgrens_herkomst: string;
+    audittier_ohm: number | null;
+    audittier_waarom: string;
     seed: number;
   };
 };
@@ -218,9 +228,29 @@ describe('the frozen v2 candidates are files, and the file says where they came 
     expect(m.v2_budgetten_waarom.length).toBeGreaterThan(0);
     // The protections V27's first pass left out are named, and they are named
     // by being READ OFF the declaration rather than restated.
-    for (const k of ['safety', 'staged', 'audit', 'rSourceDisqualifyOhm']) {
+    for (const k of ['safety', 'staged', 'audit']) {
       expect(m.beschermingen_via_kandidaat, `${k} is not declared`).toContain(k);
     }
+    /* V34 — AND ONE OF THEM IS DECLARED BY BEING ABSENT, which is a different
+     * statement from being forgotten and has to read as one. Casus 1 states no
+     * source-resistance requirement, so the candidate carries no
+     * disqualification limit; until V34 the fixture typed the app's 2.0 Ω UI
+     * default into itself and the chain would have fallen back to the same
+     * number anyway. Both halves are asserted: the key is NOT in the stated
+     * list, and the reason it is not is recorded with P4 named. */
+    expect(m.beschermingen_via_kandidaat).not.toContain('rSourceDisqualifyOhm');
+    expect(m.bronweerstandsgrens).toBe(null);
+    expect(m.bronweerstandsgrens_waarom).toMatch(/P4/);
+    expect(m.bronweerstandsgrens_herkomst).toMatch(/V34/);
+    /* ...and the audit tier beside it: `null` is a value, and it means the
+     * audit runs while its source-resistance tier judges nothing. */
+    expect(m.audittier_ohm).toBe(null);
+    expect(m.audittier_waarom).toMatch(/P4/);
+    /* WHERE the probe reads, which is the other half of V34 and a choice key of
+     * its own — read off the declaration, like the floor's two lines above. */
+    expect(m.beschermingen_via_kandidaat).toContain('rSourceProbeSource');
+    expect(m.probe_raster).toBe('safety');
+    expect(m.probe_raster_waarom).toMatch(/640,2 Hz/);
     expect(m.seed).toBe(CASUS1_V2_SEED);
     /* V30 and V33, and they are two lines because they are two decisions: IS
      * the stated floor a search goal, and WHERE is that goal measured. A run
@@ -366,11 +396,34 @@ describe('the run still delivers the frozen netlist', () => {
     };
     const wire = structuredClone({ id: 1, kind: 'v2Chain3One' as const, payload });
     let out: Chain3Result | null = null;
+    let notes: string[] = [];
     handleV2Request(wire, (m: V2Response) => {
       if (m.kind === 'error') throw new Error(m.message);
-      if (m.kind === 'done') out = (m.data as { result: Chain3Result }).result;
+      if (m.kind === 'done') {
+        const d = m.data as { result: Chain3Result; notes?: string[] };
+        out = d.result;
+        notes = d.notes ?? [];
+      }
     });
     expect(out).toBeTruthy();
+
+    /* V34 — THE RUN SAYS WHERE THE SOURCE-RESISTANCE PROBE READ, AND AT WHICH
+     * FREQUENCY.
+     *
+     * Free to assert on a run that is happening anyway, and it is the only
+     * place the worker's own hand-off of `rSourceProbeNote` into the notes is
+     * exercised end to end. It matters because the ohms are unreadable without
+     * the hertz: this app disqualified on a number taken at 640.2 Hz — the top
+     * of the probe's own search window — for four deliveries without a single
+     * surface saying so. */
+    const noteText = notes.join(' ');
+    expect(noteText).toContain('The source-resistance probe read over');
+    expect(noteText).toContain('safety grid');
+    expect(noteText).toMatch(/probed \S+ at [\d.]+ Hz/);
+    // ...and it landed BELOW the chain grid, which is the whole point of the
+    // move — read off the note rather than restated.
+    const at = Number(/probed \S+ at ([\d.]+) Hz/.exec(noteText)?.[1] ?? NaN);
+    expect(at).toBeLessThan(CASUS1_V2_GRID[0]);
 
     const stored = JSON.parse(
       readFileSync(join(CASUS1_DIR, `${target.name}.adsfilter.json`), 'utf-8'),

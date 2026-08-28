@@ -223,6 +223,18 @@ const CHAIN_GRID_LO_HZ = CASUS1_V2_GRID[0];
  * rather than a plausible-sounding reason that belongs to a different corpus.
  */
 const DATED_REASON: Record<string, string> = {
+  V33:
+    'HET GEDATEERDE V33-CORPUS. Bevroren terwijl de BRONWEERSTANDSPROBE nog het ketenraster las. ' +
+    'Zonder gestelde boxafstemming neemt de probe de impedantiepiek van de laagste driver over de ' +
+    'onderkant van het raster, en op het ketenraster landde die piek op `grid[24] = 640,2 Hz` — de ' +
+    'BOVENRAND van zijn eigen zoekvenster, geen resonantie: dit wooferpaar is bassreflex en zijn ' +
+    'twee pieken liggen op 17 en 51 Hz, allebei onder een raster dat op 200 Hz begint. De bewaking ' +
+    'die daarvoor bestond (ISSUE #14) verwierp alleen index 0. Dat getal voedde een harde ' +
+    'diskwalificatie, een zoekbeperking, een structuurzet-bewaking, een audittier en één ' +
+    'doelfunctieterm. Sinds V34 leest de probe op de v2-route het veiligheidsraster, met de ' +
+    'strikte randregel, en draagt de kandidaat geen bronweerstandsgrens meer die niemand gesteld ' +
+    'heeft. Deze tien blijven staan als de "vóór"-helft van die vergelijking. Meetobject, GEEN ' +
+    'ontwerp: mag niet gebouwd worden.',
   V33_SWEEP:
     'HET GEDATEERDE V33-SWEEP-CORPUS. Bevroren met de barrière op de VOLLE GEMETEN SWEEP — ' +
     'hetzelfde raster als de poort, 1600 punten, en daarmee de duurste arm van V33: ruim tien ' +

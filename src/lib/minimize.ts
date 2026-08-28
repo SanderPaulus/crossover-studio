@@ -28,7 +28,12 @@ import {
   type NetOptimizeOptions,
   type NetOptimizeResult,
 } from './netOptimizer.ts';
-import { auditNetwork, sourceResistanceOhm, type NetworkAudit } from './partAudit.ts';
+import {
+  auditNetwork,
+  sourceResistanceOhm,
+  type NetworkAudit,
+  DEFAULT_R_SOURCE_TIER_OHM,
+} from './partAudit.ts';
 import { bomFor, nearestParts, type CatalogPart } from './catalog.ts';
 import { crossoverToNetlist } from './vxpNetwork.ts';
 
@@ -62,7 +67,8 @@ export interface MinimizeOptions {
   /** Staged targets the network must keep meeting. Required — without a
    *  goal "minimal" is meaningless. */
   targets: { rippleDb: number; phaseDeg: number };
-  /** Source-resistance limit at the low driver (Ω). Default 1.0. */
+  /** Source-resistance limit at the low driver (Ω). Absent = the app's
+   *  historical default, {@link DEFAULT_R_SOURCE_TIER_OHM}. */
   rSourceLimitOhm?: number;
   /** Fb of the low branch for the source-R probe, if known. */
   fbHz?: number;
@@ -88,7 +94,7 @@ export function minimizeNetwork(
   adjust: TweeterAdjust,
   opts: MinimizeOptions,
 ): MinimizeResult {
-  const rsLimit = opts.rSourceLimitOhm ?? 1.0;
+  const rsLimit = opts.rSourceLimitOhm ?? DEFAULT_R_SOURCE_TIER_OHM;
   const tune = (ps: readonly VxpPart[], retune: boolean): NetOptimizeResult =>
     optimizeNetworkValues(ps, grid, wBase, tBase, driverZ, adjust, {
       ...(opts.tuneOpts ?? {}),

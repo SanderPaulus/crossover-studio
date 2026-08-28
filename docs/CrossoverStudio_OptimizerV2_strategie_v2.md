@@ -318,12 +318,34 @@ punten met een casusboek-entry erachter. Ze staan hier zodat ze niet alleen in D
   zaad dat als ontwerp leest. Wat de inventarisatie daarnaast opleverde staat als **V34**
   (de bronweerstandsprobe leest de rand van zijn eigen zoekvenster, met een doel én een
   diskwalificatie eraan). Zie V33 in Deel B.
-- **V34 — een DOEL en een DISKWALIFICATIE lezen nog steeds het ketenraster, op een frequentie die
-  de rasterrand aanwijst.** `sourceResistanceOhm` krijgt het ketenraster mee; op casus 1 landt de
-  probe op 640,2 Hz, wat `grid[24]` is en dus de bovenrand van zijn eigen zoekvenster, omdat de
-  wooferresonantie onder de rasterbodem ligt. Daaraan hangen `rSourceDisqualifyOhm` (2,0 Ω),
-  de structuurzet-bewaking, de audittier, het rapport, en via `dissRatio` een term in `fxOf`.
-  Drie mogelijke uitkomsten staan in de entry; geen ervan is genomen. Zie V34 in Deel B. **Open.**
+- **~~V34 — een DOEL en een DISKWALIFICATIE lezen nog steeds het ketenraster, op een frequentie
+  die de rasterrand aanwijst~~ — GESLOTEN op 28-08-2026, in een eigen sessie.** De vondst stond,
+  en zij is nagemeten: op casus 1 landt de probe op `grid[24] = 640,2 Hz` — de BOVENrand van zijn
+  eigen zoekvenster — terwijl dit wooferpaar bassreflex is en zijn twee impedantiepieken op 17 en
+  51 Hz liggen, allebei onder een raster dat op 200 Hz begint. Twee reparaties, één entry, en dat
+  is geen bundeling maar een noodzaak: elk van de twee is in zijn eentje slechter dan geen van
+  beide. (1) De bewaking is een echte bewaking geworden — `ProbeEdgeRule`, `'first'` = de
+  historische regel en dus v1 byte-onaangeraakt, `'both'` = elke rand — en de probe leest op de
+  v2-route het VEILIGHEIDSRASTER (`rSourceProbeSource`, keuze-sleutel met `'grid'` als default).
+  (2) De 2,0 Ω-diskwalificatie en de 1,0 Ω-audittier zijn op de v2-route INGETROKKEN: casus 1
+  stelt geen bronweerstandseis, dus de kandidaat draagt er geen (P4). Waarom samen: op 640 Hz
+  lezen de drie v1-baselines 0,50/0,47/0,68 Ω, op de echte piek 3,98/4,59/2,55 Ω — alleen de
+  probe repareren zou de eigen referentiefilter van de ontwerper hebben gediskwalificeerd op een
+  grens die niemand heeft gesteld. Beide getallen hebben nu één huis met een motivering
+  (`partAudit.ts`), langs dezelfde weg als `ampMinLoadOhm` bij F0. Zie V34 in Deel B.
+- **V35 — de terugval van de probe neemt de PIEK, en op een bassreflexkast is de afstemming het
+  DAL.** Sinds V34 leest de bronweerstandsprobe op de v2-route het veiligheidsraster en landt hij
+  op een echte resonantie (51,5 Hz op casus 1) in plaats van op een venstergrens. Maar wat
+  `rSourceDisqualifyOhm` en de dissipatieterm willen weten is de demping BIJ de boxafstemming, en
+  dit wooferpaar heeft twee pieken (17 en 51 Hz) met het dal — de werkelijke poortafstemming,
+  ~31 Hz — ertussen. Twee mogelijke uitkomsten, geen van beide genomen: (i) **de ontwerper stelt
+  f_b** — het veld bestaat (`audit.fbHz`), casus 1 vult het niet, en dan is dit een P4-vraag en
+  geen enginevraag; (ii) **de terugval leidt de kastsoort af uit de kromme** (twee pieken met een
+  dal ertussen ⇒ bassreflex ⇒ neem het dal). Die tweede verandert de uitkomst van élke bestaande
+  run met een bassreflexwoofer en verdient dus dezelfde behandeling als V30, V32, V33 en V34: een
+  eigen sessie met een vóór/ná-meting. Tot dan heet de aflezing wat zij is — "de bronweerstand bij
+  de bovenste impedantiepiek van de laagste weg" — en zegt `rSourceProbeNote` dat hardop. Zie V34
+  in Deel B. **Open.**
 - **V29 — mag `safety` een netlist weigeren die vrijwel kortsluit als er géén vloer gesteld is?**
   Twee verdedigbare houdingen (strikt P4 tegenover een uit de gemeten driverimpedanties
   afleidbare degeneratiegrens), aanleiding is de V28-shortlist met 0,01 Ω erin. **Open**, geen
@@ -1459,7 +1481,7 @@ Configuratie: 3-weg; 2× SB WO24TX-8 parallel, MR13TX-4 in bolpod, T25T-6 in WG1
 
   **ONAANGERAAKT:** het gewicht `AMP_FLOOR_BARRIER_WEIGHT`, de reparatiepas, `safety` en élke veiligheidsregel, het ketenraster, de poorten zelf, `crossover3Variants`, de logica van beide ketens, en de v1-route — `toggleRegression.test.ts` is byte-identiek, `workerRouteRegression.test.ts` levert zijn opgeslagen netwerk nog steeds byte voor byte (die baseline heeft geen gestelde vloer, dus daar is de barrière uit), en `f4cRegression.test.ts` reproduceert beide vormen op twee seeds.
 
-- V34 (**OPEN** — de bronweerstandsprobe wordt op de rand van zijn eigen zoekvenster afgelezen, en er hangt een doel én een diskwalificatie aan) — opgeworpen bij de V33-sessie, 27-08-2026.
+- V34 (**GESLOTEN** op 28-08-2026 — de probe leest waar de grootheid woont, en de grens die hem oordeelde is op de v2-route ingetrokken) — opgeworpen bij de V33-sessie, 27-08-2026.
 
   **De aanleiding.** V33's inventarisatie stelde de vraag die de opdracht stelde — draagt er ná V32 nog een lezer van het KETENRASTER een oordeel of een doel — en het antwoord is ja. De grootste is de bronweerstand aan de laagste weg. `sourceResistanceOhm` (`partAudit.ts:541`) krijgt het ketenraster mee, en de waarde die eruit komt voedt vier oordelen en één doel:
 
@@ -1494,7 +1516,119 @@ Configuratie: 3-weg; 2× SB WO24TX-8 parallel, MR13TX-4 in bolpod, T25T-6 in WG1
 
   En daarnaast, los van de drie: **de twee grenzen krijgen één huis en een motivering**, zoals `ampMinLoadOhm` die heeft gekregen. Dat is een kleinere ingreep dan de drie hierboven en zij hangt er niet van af.
 
-  **Wat het zou beslechten:** één meting die er niet is — dezelfde vijftien kandidaten met de probe op de sweep naast de huidige, met `dissRatio` en de diskwalificatiegrens erbij per kandidaat. Zolang die er niet is, is elke keuze hierboven een voorkeur. **Open.**
+  **Wat het zou beslechten:** één meting die er niet is — dezelfde vijftien kandidaten met de probe op de sweep naast de huidige, met `dissRatio` en de diskwalificatiegrens erbij per kandidaat. Zolang die er niet is, is elke keuze hierboven een voorkeur. **Open.** *(Die meting is bij de vervolgsessie hieronder gedaan, en zij heeft de keuze niet zozeer beslecht als wel verlegd: uitkomst 1 en de intrekking van de grens bleken dezelfde ingreep.)*
+
+  ---
+
+  **V34 — VERVOLGSESSIE, 28-08-2026: DE PROBE LEEST WAAR DE GROOTHEID WOONT, EN DE GRENS DIE HEM OORDEELT IS INGETROKKEN. GESLOTEN.**
+
+  **DE INVENTARISATIE EERST**, want zij is de reden dat dit één entry is en geen twee. Alle regelnummers zijn die van de boom VÓÓR deze sessie (`52a6ca4`).
+
+  **1. De probe, zijn raster en zijn zoekvenster.** `sourceResistanceOhm` (`partAudit.ts:541`) krijgt een raster mee en meet de reële Thevenin-weerstand die de laagste driver ziet. Wélke frequentie dat is beslist `sourceProbeIndex` (`partAudit.ts:449`): met een gestelde boxafstemming het rasterpunt dat er het dichtst bij ligt, en zonder — casus 1 vult `audit.fbHz` niet in — **de impedantiepiek over het onderste deel van het raster**, met `stop = max(400, grid[⌊n/4⌋])`. De bewaking die daarbij hoort verwierp één rand: `inBand: best > 0`.
+
+  Nagemeten met `scripts/measure-v34-probe.ts`, op de drie rasters die deze app werkelijk in handen heeft:
+
+  | raster | punten | uitgestrektheid | zoekvenster | waar de probe de WOOFER vindt |
+  | --- | --- | --- | --- | --- |
+  | ketenraster (`CASUS1_V2_GRID`) | 96 | 200–20 000 Hz | idx 0..24 (200–**640,2** Hz) | **idx 24 = 640,2 Hz — de BOVENRAND** |
+  | veiligheidsraster (`safety.freqs`) | 240 | 20,5–20 000 Hz | idx 0..103 (20,5–398,2 Hz) | idx 32 = 51,5 Hz, \|Z\| 19,32 Ω |
+  | poortraster (`impedanceReferenceFrom`) | 1600 | 10,1–20 317 Hz | idx 0..773 (10,1–398,7 Hz) | idx 346 = 52,3 Hz, \|Z\| 19,81 Ω |
+
+  De 640,2 Hz van V33 reproduceert exact, en `640,2 = grid[24] = stop`: het is de bovenrand van het zoekvenster zelf. Dat het geen resonantie is, is nu ook gemeten in plaats van beredeneerd — **dit wooferpaar is bassreflex**, en zijn impedantiekromme onder 200 Hz draagt twee pieken met een dal ertussen: 11,72 Ω @ 17,0 Hz, **3,93 Ω @ ~31 Hz**, 18,90 Ω @ 50,9 Hz. Die 31 Hz is precies de poortafstemming die de ISSUE #14-noot noemt. Alle drie liggen onder de rasterbodem van 200 Hz. Wat op 640 Hz gelezen werd is de impedantie die uit de doorlaatband van de woofer omhoog loopt.
+
+  **2. Wat er aan die aflezing hangt, en of het rapportage is of een oordeel.** Zes lezers, en vijf ervan oordelen:
+
+  | lezer | wat het is | oordeel of rapportage |
+  | --- | --- | --- |
+  | `rSourceDisqualifyOhm` (`netOptimizer.ts`, `constraintViolation`) | harde diskwalificatie, en op de v2-route gewapend op 2,0 Ω | **oordeel** — zet `infeasible` op het geleverde netwerk |
+  | `rsSafe`, structuurzetten (`netOptimizer.ts:3157`) | een zet mag de laagste weg niet over de audittier duwen | **oordeel** — het weigert zetten |
+  | audittier `thr.rSourceOhm` (`partAudit.ts:691`) | `crossesRs` in de onderdelenaudit | **oordeel** — een onderdeel dat de tier kruist heet `earned` en wordt dus NIET verwijderd |
+  | audittier in de snap (`netOptimizer.ts:3688`) | `branchDcrBudgetOhms(re, tier)` begrenst de DCR per tak | **oordeel** — het snoeit de catalogusruimte |
+  | `net.after.rSourceOhm` (`netOptimizer.ts:4127`) → keten | de ranking diskwalificeert erop (`threeWayChain.ts:495`) | **oordeel** |
+  | `dissRatio` → `fxOf` (`netOptimizer.ts:1791`, `2424`) | `dissipationWeight · (R_source/R_e)²` | doel, gewicht 0,05 |
+
+  De opdracht vroeg dit expliciet voor de audittier, en het antwoord is dus: **hij draagt een oordeel, op twee plekken.** Dat betekent dat dezelfde regel geldt als voor `rSourceDisqualifyOhm`.
+
+  **3. De twee literalen, en waar de v1-route staat.** 2,0 Ω stond op vier plekken (`designChain.ts:429` als parameterdefault, `threeWayChain.ts:495` als `?? 2.0`, de doc-noot op `threeWayChain.ts:96`, en `casus1V2.fixture.ts:135`); 1,0 Ω op vier (`partAudit.ts:88`, `netOptimizer.ts:1495` en `:3688`, `casus1V2.fixture.ts:136`), plus de twee UI-defaults in `App.tsx`. Geen van beide droeg een afleiding. **Op de v1-route mag daar niets van bewegen** — dat is de toggle-invariant, en zij is geen richtlijn — dus alles wat deze sessie doet is opt-in.
+
+  **WAAROM DIT ÉÉN ENTRY IS EN GEEN TWEE, EN DAT IS DE VONDST VAN DE SESSIE.** De probe repareren en de grens laten staan is slechter dan geen van beide doen. Gemeten, per bevroren netlist, met de strikte randregel:
+
+  | netlist | ketenraster | veiligheidsraster | poortraster | DC-limiet |
+  | --- | --- | --- | --- | --- |
+  | HUIDIG | 3,756 | **3,978** | 3,985 | 3,756 |
+  | KAND_A | 4,423 | **4,585** | 4,590 | 4,423 |
+  | KAND_B | 2,352 | **2,552** | 2,558 | 2,352 |
+
+  Met de OUDE randregel leest het ketenraster diezelfde drie op **0,503 / 0,465 / 0,678 Ω** — het cijfer waarop de app tot vandaag diskwalificeerde. De gestelde grens is 2,0 Ω. Dus: op 640 Hz haalt iedereen hem ruim, op de echte piek haalt **geen van de drie v1-baselines** hem, HUIDIG — het eigen, beste, handgebouwde filter van de ontwerper — voorop. Een reparatie die alleen de probe verzet, zou het referentieontwerp van deze casus hebben weggegooid op een grens die in `manifest_en_geometrie.gestelde_eisen` niet voorkomt.
+
+  **En de aflezing op het ketenraster is met de strikte regel exact de DC-limiet**, op elke netlist zonder uitzondering: waar de probe geweigerd wordt, is er niets gemeten. Dat is de scherpste formulering van de vondst — het getal waarop gediskwalificeerd werd was, met de strikte regel toegepast, nooit een meting van de grootheid waar de regel over gaat.
+
+  **WAT ER IS GEBOUWD.**
+
+  **(1) De randregel is een echte bewaking geworden, en zij is een parameter.** `ProbeEdgeRule` in `partAudit.ts`: `'first'` verwerpt alleen index 0 — de historische regel, dus de default, dus v1 byte-onaangeraakt — en `'both'` verwerpt elke rand van het zoekvenster. De regel geldt alléén voor de TERUGVAL: een gestelde boxafstemming die op een rand valt is het antwoord op een vraag die de ontwerper stelde, niet een zoekartefact, en hem weigeren zou de remedie van ISSUE #14 zelf breken. Een geweigerde landing valt terug op de serie-pad-DC-limiet, die mag veroordelen maar nooit vrijpleiten — dezelfde regel die er sinds #14 staat, nu ook aan de bovenkant.
+
+  **(2) Het raster is een KEUZE-sleutel, in de V33-vorm.** `rSourceProbeSource`: `'grid'` (default, evaluatieraster, historische randregel) en `'safety'` (het volle-band-veiligheidsraster van de tuner, strikte randregel). Eén beslissing in de tuner (`probeOn`) wapent beide; in de code zijn het twee parameters, zodat een falende test zegt wélke van de twee bewoog. Alle vijf de lezers gaan er doorheen, óók de onderdelenaudit — die krijgt een `probe`-context naast zijn analyseraster, want zijn ΔSPL en Δfase zijn responsvragen en horen op het analyseraster, en de bronweerstand bij de boxafstemming is een impedantievraag over een frequentie dat raster meestal niet bevat.
+
+  **TWEE WAARDEN EN NIET DRIE, EN DAT IS HET VERSCHIL MET V33.** V33 had een derde nodig (`'sweep'`) omdat de barrière moest mikken op het getal dat een POORT handhaaft, en alleen de poortreferentie ís dat getal per constructie. Niets poortent de bronweerstand, dus er is niets om identiek aan te zijn. Het verschil tussen veiligheidsraster en poortraster is dan een meting in plaats van een argument: beide vinden de wooferpiek binnen één rasterstap van elkaar (51,5 tegen 52,3 Hz), het grootste verschil over élke bevroren netlist in het casusboek is **0,0129 Ω** (bij `V28_KAND_2`, een netwerk met 0,001 Ω belasting), en op géén enkele netlist vellen zij een ander oordeel over een van beide tiers. Een derde waarde die niemand kan betalen om dat te kopen, zou decoratie zijn.
+
+  **GEEN TERUGVAL, NADRUKKELIJK.** Een genoemde bron zonder data probet NIETS: `rSourceOhm` is null, de dissipatieterm valt weg, de diskwalificatie kan niet vuren, en `rSourceProbeNote` zegt het. Dat is dezelfde regel als V32 (een poort zonder sweep oordeelt niet) en V33 (een barrière zonder bron stuurt niet), toegepast op een meting. De test die dat vasthoudt vergelijkt niet de netwerken maar het GELEVERDE getal, want een stille terugval levert precies het rastergetal en niets anders.
+
+  **(3) De twee grenzen zijn op de v2-route INGETROKKEN, en hebben op de v1-route één huis gekregen.** Casus 1 stelt in `gestelde_eisen` geen bronweerstandseis, dus de kandidaat draagt er geen: `rSourceDisqualifyOhm` is ABSENT met de P4-reden en de audittier staat op `null` — de audit DRAAIT (hij is een bescherming, V26 rij 33), zijn bronweerstandstier oordeelt niets.
+
+  **En daar zat een gat dat F4d niet had gedicht.** `rSourceDisqualifyOhm` is sinds F4c een keuze-sleutel, wat betekent dat hij op de v2-route alleen vanuit de kandidaat mag wapenen. Dat was niet zo: de sleutel bereikt de tuner via `collect.choices` alléén wanneer de kandidaat hem STELT, en de keten resolvet hem daarnáást, BUITEN de tuner om (`threeWayChain.ts`'s eigen `?? 2.0`), waar `choices.ts` niet bij komt. "De ontwerper stelde niets" en "de ontwerper stelde 2,0 Ω" kwamen dus langs verschillende wegen op dezelfde plek uit. `withDeclaredSourceLimit` in de worker sluit dat: is er een verklaring, dan is die de autoriteit, en een niet-gestelde sleutel wordt een expliciete `null` op de wire. Geen verklaring ⇒ de identiteit, wat élke v1-aanroeper byte-identiek houdt. `null` en `undefined` zijn met opzet verschillende toestanden — de eerste is "de ontwerper stelde er geen", de tweede is "er is niets gezegd", en de keten geeft alleen op de tweede haar historische default.
+
+  Voor de v1-route zelf: `DEFAULT_R_SOURCE_TIER_OHM`, `DEFAULT_R_SOURCE_DISQUALIFY_OHM` en `SOURCE_PROBE_WINDOW_TOP_HZ` staan sinds V34 in `partAudit.ts`, naast de probe waarvan zij de aflezing oordelen, elk met een motivering en met de kanttekening dat geen van beide is afgeleid. Langs dezelfde weg als `ampMinLoadOhm` bij F0 en `meetsAmpFloor` bij de vloersessie. P6 dekt `src/lib/engine2/` en deze twee wonen er net buiten — een scopegrens is geen vrijbrief.
+
+  **DE GREP-BARE CLAIM DIE DE OPDRACHT VROEG.** Ná V34 neemt op de v2-route **geen enkele poort, geen enkele A5d.6-inversie, geen enkele doelfunctieterm en geen enkele probe een ELEKTRISCH oordeel op het ketenraster.** De poorten lezen sinds V32 de gemeten sweep, de barrière sinds V33 het veiligheidsraster met dezelfde uitgestrektheid, de doorlaatband-impedantiemediaan sinds V32 de sweep, en de bronweerstandsprobe sinds V34 het veiligheidsraster. Wat wél op het ketenraster blijft en waarom:
+
+  | wat | waarom dat correct is |
+  | --- | --- |
+  | rimpel, gemiddelde afwijking, fase, kruispuntdip, tweeterbescherming, breakup-lek | RESPONSgrootheden, en een respons hééft een meetpoort: buiten het verre-veldvenster is er geen meting om over te oordelen. Dat is precies de asymmetrie die `impedanceReference.ts` bovenaan uitspreekt. Ze worden bovendien op het veiligheidsraster hérmeten door de volle-band-veiligheidspoort. |
+  | `m.zShortOhm` in `safe()` / `safeEsc()` (vijf vergelijkingen; regelnummers in de boom ná deze sessie) | RELATIEF, nooit absoluut: `m.zShortOhm <= ref.zShortOhm + 0,1`, twee netwerken op hetzelfde raster. Het is een "word niet slechter"-bewaking bij een structuurzet, geen oordeel over een gestelde vloer. Élk absoluut vloeroordeel loopt via `worstZOf` / `zMinOf` / `barrierShortOhm`, en die drie nemen het veiligheidsraster mee. |
+  | `metricsOn`'s eigen `zMinOhm` / `zShortOhm` als velden | grondstof, geen oordeel. Er is geen consument die ze absoluut leest zonder door een van de drie functies hierboven te gaan — nagemeten met een grep over alle veertien voorkomens. |
+
+  Wat er dus NIET onder valt, en met opzet: de v1-route. Daar leest alles nog wat het altijd las, en dat is de toggle-invariant.
+
+  **DE VÓÓR/NÁ-METING.** Het veld is opnieuw opgewekt met dezelfde seed (20260827), hetzelfde raster en dezelfde vijftien kandidaten; het enige verschil is deze sessie. Vijftien ketenruns, 115–224 s per stuk, **41 minuten** totaal — praktisch dezelfde prijs als V33's `'safety'`-arm, want de probe scant een raster en lost niets extra's op. Het corpus dat het vervangt staat als `V33_KAND_*` in de repository (`compare-corpora.ts v33 live` reproduceert de tabel).
+
+  | kandidaat (W-M · M-T) | min \|Z\| vóór | min \|Z\| ná | @ Hz ná | vloer vóór → ná | SPL ± vóór → ná | RMS vóór → ná | W-M fase vóór → ná | M-T fase vóór → ná |
+  |---|---|---|---|---|---|---|---|---|
+  | 396.7 · 1294 | — | **verworpen** | — | — → — | — → **verworpen** | — → **verworpen** | — → **verworpen** | — → **verworpen** |
+  | 396.7 · 1491.4 | — | **verworpen** | — | — → — | — → **verworpen** | — → **verworpen** | — → **verworpen** | — → **verworpen** |
+  | 396.7 · 1719 | 2.56 | 2.56 | 80.97 | **ja** → **ja** | 3.67 → 3.67 | 1.76 → 1.76 | 16.74 → 16.74 | 26.31 → 26.31 |
+  | 396.7 · 1981.2 | — | 2.57 | 1119.92 | — → **ja** | — → 3.57 | — → 1.81 | — → 17.07 | — → 29.06 |
+  | 396.7 · 2283.5 | 2.56 | 2.56 | 83.31 | **ja** → **ja** | 3.42 → 3.42 | 1.75 → 1.75 | 20.51 → 20.51 | 22.41 → 22.41 |
+  | 466.5 · 1294 | — | **verworpen** | — | — → — | — → **verworpen** | — → **verworpen** | — → **verworpen** | — → **verworpen** |
+  | 466.5 · 1491.4 | — | **verworpen** | — | — → — | — → **verworpen** | — → **verworpen** | — → **verworpen** | — → **verworpen** |
+  | 466.5 · 1719 | 2.63 | 2.60 | 1067.87 | **ja** → **ja** | 3.94 → 3.72 | 1.89 → 1.80 | 15.16 → 16.74 | 31.67 → 33.30 |
+  | 466.5 · 1981.2 | 2.61 | 2.61 | 1163.38 | **ja** → **ja** | 3.43 → 3.36 | 1.85 → 1.85 | 16.06 → 13.34 | 32.11 → 32.09 |
+  | 466.5 · 2283.5 | 2.59 | 2.58 | 1208.53 | **ja** → **ja** | 3.40 → 3.35 | 1.86 → 1.90 | 12.60 → 15.15 | 26.70 → 25.53 |
+  | 548.5 · 1294 | 2.61 | 2.59 | 966.31 | **ja** → **ja** | 4.30 → 4.39 | 1.93 → 2.08 | 14.47 → 16.91 | 34.37 → 30.75 |
+  | 548.5 · 1491.4 | 2.58 | **verworpen** | — | **ja** → — | 3.96 → **verworpen** | 2.25 → **verworpen** | 19.93 → **verworpen** | 56.16 → **verworpen** |
+  | 548.5 · 1719 | 2.59 | 2.59 | 227.41 | **ja** → **ja** | 4.54 → 3.98 | 1.90 → 1.83 | 36.40 → 31.78 | 6.65 → 10.28 |
+  | 548.5 · 1981.2 | 2.59 | 2.58 | 132.19 | **ja** → **ja** | 4.13 → 3.85 | 1.92 → 1.69 | 45.41 → 38.00 | 5.29 → 10.85 |
+  | 548.5 · 2283.5 | 2.59 | 2.58 | 1072.97 | **ja** → **ja** | 3.86 → 3.86 | 1.96 → 1.88 | 45.94 → 48.22 | 5.30 → 4.68 |
+
+  **Bevroren: 10 vóór → 10 ná; alle tien halen de vloer als bestand, vóór én ná.** Eén kandidaat valt uit de shortlist (`548,5 · 1491,4`) en één komt erin (`396,7 · 1981,2`). Vijf van de vijftien leveren geen netwerk tegen vier bij V33.
+
+  **EN DE VERWACHTING WAS FOUT, PRECIES ZOALS V33 LEERT.** De opdracht schreef "verwacht klein of geen verschil — de probe was rapportage plus diskwalificatie, geen doel". Zeven van de negen overgenomen rijen bewegen, en drie ervan ruim buiten afrondingsruis: `548,5 · 1981,2` gaat van ±4,13 naar ±3,85 dB met RMS 1,92 → 1,69 dB en W-M-fase 45,4° → 38,0°; `548,5 · 1719` van ±4,54 naar ±3,98 dB; `466,5 · 1719` van ±3,94 naar ±3,72 dB. En `548,5 · 1491,4` levert nu **helemaal geen netwerk**: `M-B/\|Z\|` weigert zijn hele waardetune op 2,45 Ω tegen de gestelde 2,60 Ω, waar hij vóór deze sessie een netwerk van 2,58 Ω afleverde.
+
+  **De reden dat er iets beweegt is niet de probe maar wat er aan de probe hing.** Op casus 1 doet V34 vier dingen tegelijk, en drie ervan zijn intrekkingen:
+
+  1. `dissRatio` is niet langer `null`. Op het ketenraster werd de probe geweigerd (index 0 voor de mid, de bovenrand voor de woofer) en viel de dissipatieterm dus **volledig weg**; op het veiligheidsraster meet hij wél, dus de term doet mee. Klein — het gewicht is 0,05 en de ratio ~0,04 — maar niet nul, en de doelfunctie is niet convex.
+  2. `rsSafe`, de structuurzet-bewaking, is UIT: hij leest `rSourceLimit`, en die is nu `null` ⇒ 0. Structuurzetten die vroeger geweigerd werden omdat zij de laagste weg over de 1,0 Ω-tier duwden, worden nu overwogen.
+  3. `crossesRs` in de onderdelenaudit is uit, dus een onderdeel wordt niet meer `earned` door een tier die niemand stelde — het kan nu als `inert` verwijderd worden.
+  4. De harde diskwalificatie op 2,0 Ω is uit.
+
+  **Alle vier volgen uit P4 en niet uit een smaakoordeel**, en dat is het verschil met een gewichtswijziging: er is niets bijgesteld, er is een grens weggehaald die er niet hoorde te staan. Wat er NIET is veranderd: de fxOf-term zelf, `AMP_FLOOR_BARRIER_WEIGHT`, `dissipationWeight` (0,05, ongewijzigd), het ketenraster, de barrière, `safety`, de poorten, en de v1-route.
+
+  **WAT ER OPEN BLIJFT, EN HET IS SCHERPER GEWORDEN.** V34's derde mogelijke uitkomst — *de ontwerper stelt f_b* — is niet genomen en is nu beter te beargumenteren dan bij het opwerpen. De terugval neemt de PIEK, en dit wooferpaar is bassreflex: zijn twee pieken liggen op 17 en 51 Hz met het dal — de werkelijke poortafstemming, ~31 Hz — ertussen. De probe landt dus sinds V34 op 51,5 Hz, wat een echte resonantie is en dus veel dichter bij de bedoelde grootheid dan 640 Hz, maar het is **niet f_b**. Wat `rSourceDisqualifyOhm` en de dissipatieterm willen weten is de demping BIJ de afstemming. Zolang `audit.fbHz` leeg blijft is de aflezing "de bronweerstand bij de bovenste impedantiepiek van de laagste weg", en dat hoort zo te heten. Dat is een P4-vraag (het veld bestaat) en geen enginevraag, en zij staat als **V35** open.
+
+  Tweede open punt, kleiner: `sourceProbeIndex` neemt de terugval-piek en niet het lokale MINIMUM tussen twee pieken. Voor een gesloten kast is piek = f_c en klopt het; voor een bassreflexkast is f_b het dal. Een terugval die dat onderscheid maakt is afleidbaar uit de kromme zelf (twee pieken met een dal ertussen ⇒ bassreflex ⇒ neem het dal), en zij is deze sessie NIET gebouwd: hij verandert de uitkomst van élke bestaande run met een bassreflexwoofer en verdient dezelfde behandeling als V30, V32, V33 en V34 — een eigen sessie met een vóór/ná-meting. Ook onder V35.
+
+  **WAT ER IN DE CODE VERANDERDE.** Nieuw: `optimizer/probeSource.test.ts`, `scripts/measure-v34-probe.ts` (de meting waarop deze entry rust — drie rasters, waar de probe landt, en de bronweerstand van élke bevroren netlist op alle drie), `scripts/freeze-live-corpus.ts` (het bevriezen van een corpus is vier keer met de hand gedaan en het zijn vijf bewerkingen die allemaal moeten landen). Gewijzigd: `partAudit.ts` (`ProbeEdgeRule`, de drie benoemde constanten, `AuditContext.probe`, `AuditThresholds.rSourceOhm` nullable, `crossesRs` en `rSourceWarn` null-bewust, `rSourceAtGridEdge` op de nieuwe regel), `netOptimizer.ts` (`rSourceProbeSource`, `probeOn`, `rSourceProbeNote`, `rSourceOf`/`rsSafe`/`metricsOn`/`runAudit` door één lezer, `rSourceLimit` met drie toestanden), `designChain.ts` en `threeWayChain.ts` (de gedeelde constanten, `null` = geen grens), `minimize.ts` en `App.tsx` (de constanten in plaats van hun eigen kopie), `optimizer/choices.ts` (41 → 42), `optimizer/candidateDeclaration.ts` (de V34-afleiding met haar P4-tegenhanger), `optimizer/worker.ts` (`withDeclaredSourceLimit`, de probenoot in de notities), `casus1V2.fixture.ts` (de twee defaults ingetrokken, de bron gesteld), de generator (`probe_raster`, `bronweerstandsgrens`, `audittier_ohm` met hun redenen), de recorder en `compare-corpora.ts` (het V33-corpus geregistreerd), `frozenNetlistGates.test.ts`, `choiceKeyGuard.test.ts`, `casus1V2Candidates.test.ts`.
+
+  **ONAANGERAAKT:** de fxOf-term en élk gewicht, het ketenraster, de amp-vloerbarrière, `safety` en elke veiligheidsregel, de poorten zelf, `crossover3Variants`, de logica van beide ketens, en de v1-route — `toggleRegression.test.ts` is byte-identiek, `workerRouteRegression.test.ts` levert zijn opgeslagen netwerk nog steeds byte voor byte, en `f4cRegression.test.ts` reproduceert beide vormen op twee seeds.
 
 **Openstaand in deze casus:** groundplane-metingen onder het onderste kruisgebied vóór onderdelenbestelling; HD-sweep; 30°-meting tweeter voor M-G-compleetheid; verzadigings-/formaatcheck grote P-core shunt-spoel.
 

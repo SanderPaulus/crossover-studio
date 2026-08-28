@@ -77,7 +77,18 @@ import { impedanceReferenceFrom } from './optimizer/impedanceReference.ts';
 import { buildAnalysis } from './metrics/analysis.ts';
 import { epdr } from './metrics/electrical.ts';
 import { systemMinImpedanceOhm } from '../netOptimizer.ts';
+import {
+  sourceProbeIndex,
+  sourceResistanceOhm,
+  seriesPathResistanceOhm,
+  SOURCE_PROBE_WINDOW_TOP_HZ,
+  DEFAULT_R_SOURCE_TIER_OHM,
+  DEFAULT_R_SOURCE_DISQUALIFY_OHM,
+} from '../partAudit.ts';
 import { ampFloorSlackOhm, meetsAmpFloor } from '../impedanceFloor.ts';
+import { deserializeFilter } from '../filterFile.ts';
+import { CASUS1_DIR } from './casus1.fixture.ts';
+import type { VxpPart } from '../parsers/vxp.ts';
 import type { Complex } from '../complex.ts';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
@@ -129,6 +140,20 @@ const BASE: ReportSettings = {
   amplifierPowerW: 100,
   orderByPair: { [ctcKey('woofer', 'mid')]: 4, [ctcKey('mid', 'tweeter')]: 4 },
   ...(STATED_FLOOR_OHM !== null ? { ampMinLoadOhm: STATED_FLOOR_OHM } : {}),
+};
+
+/**
+ * The PARTS of a frozen netlist (V34).
+ *
+ * `casus1Filter` hands over a solved netlist, which is what a gate needs; the
+ * source-resistance probe works on the part list, because it has to rebuild the
+ * network with one driver replaced by a source. Same file, same reader
+ * (`deserializeFilter`), same manifest entry — the path comes from the case
+ * book so a new corpus takes part by existing.
+ */
+const casus1Parts = (key: string): VxpPart[] => {
+  const name = (golden.manifest_en_geometrie as { netlists: Record<string, string> }).netlists[key];
+  return deserializeFilter(readFileSync(join(CASUS1_DIR, name), 'utf-8')).parts;
 };
 
 const report = (key: string, settings: ReportSettings = BASE) =>
@@ -585,6 +610,139 @@ describe('V32 — the search gate and the file measurement agree on every frozen
     // two sides are one edit away from disagreeing again.
     const electrical = readFileSync(ELECTRICAL, 'utf-8');
     expect(electrical).toContain('minImpedanceAt(inputZ)');
+  });
+
+  it('V34 — the source-resistance probe: the chain grid answers with the DC limit, the safety grid with a measurement', () => {
+    /* THE FINDING, ON THE REAL CORPUS. Without a stated box tuning the probe
+     * takes the low driver's impedance peak over the bottom of the grid. On the
+     * chain grid that peak lands on grid[24] = 640.2 Hz, which is the TOP of
+     * the probe's own search window rather than a resonance: this woofer pair
+     * is ported and its peaks sit at 17 and 51 Hz, both below a grid that
+     * starts at 200. The guard that existed refused only grid[0].
+     *
+     * Two claims, and the first is the premise of the second:
+     *
+     *  1. On the CHAIN grid the strict rule refuses the landing, so every
+     *     netlist falls back to the series-path DC limit — a lower bound, which
+     *     may condemn but never exonerate. That is what the disqualification was
+     *     comparing against.
+     *  2. On the SAFETY grid the probe finds a real interior peak below 200 Hz,
+     *     and the reading is a Thevenin measurement rather than the DC limit.
+     *
+     * And the consequence, which is why V34 withdraws the 2.0 Ω default in the
+     * same entry: read at the real peak the three v1 baselines carry far more
+     * source resistance than read at 640 Hz. A limit nobody stated, applied to
+     * a number finally taken where the physics is, would throw away the
+     * designer's own reference design. */
+    const safety = gridded.safety;
+    const lowZ = gridded.driverZ.woofer;
+    const chain = sourceProbeIndex(gridded.grid, lowZ, undefined, 'first');
+    expect(chain, 'the chain grid produced no probe at all').not.toBeNull();
+    // The landing IS the window top — measured, and the whole reason V34 exists.
+    expect(chain!.inBand, 'the historical rule accepted this landing').toBe(true);
+    expect(sourceProbeIndex(gridded.grid, lowZ, undefined, 'both')!.inBand).toBe(false);
+    expect(gridded.grid[chain!.idx]).toBeGreaterThan(SOURCE_PROBE_WINDOW_TOP_HZ);
+
+    const onSafety = sourceProbeIndex(safety.freqs, safety.z.woofer, undefined, 'both');
+    expect(onSafety!.inBand, 'the safety grid cannot probe the low driver either').toBe(true);
+    expect(safety.freqs[onSafety!.idx]).toBeLessThan(gridded.grid[0]);
+
+    const rows: string[] = [];
+    for (const key of NETLIST_KEYS) {
+      const parts = casus1Parts(key);
+      const dc = seriesPathResistanceOhm(parts);
+      const onGrid = sourceResistanceOhm(parts, {
+        grid: gridded.grid,
+        driverZ: gridded.driverZ,
+        edgeRule: 'both',
+      });
+      const measured = sourceResistanceOhm(parts, {
+        grid: safety.freqs,
+        driverZ: safety.z,
+        edgeRule: 'both',
+      });
+      expect(onGrid, `${key}: the chain grid answered something other than the DC limit`).toBe(dc);
+      expect(measured, `${key}: the safety grid produced no reading`).not.toBeNull();
+      rows.push(`${key}: DC ${dc?.toFixed(3)} Ω, measured ${measured!.toFixed(3)} Ω`);
+    }
+    // ...and the two are not the same number everywhere, or "measured" would be
+    // a word for the same fallback under another name.
+    const differing = rows.filter((r) => {
+      const [, a, b] = r.match(/DC ([\d.]+) Ω, measured ([\d.]+)/) ?? [];
+      return a !== undefined && Math.abs(Number(a) - Number(b)) > 0.01;
+    });
+    expect(differing.length, `every netlist read identically:\n${rows.join('\n')}`).toBeGreaterThan(0);
+  });
+
+  it('V34 — the safety grid and the gate\'s own sweep probe the same resonance, and reach the same tiers', () => {
+    /* THE MEASUREMENT THAT JUSTIFIES `'safety'` FOR THE PROBE, and it is the
+     * V33 argument one quantity along. The gate's 1600-point reference is the
+     * finest grid this route holds; the safety grid is 240 points over the same
+     * extent and is the one the objective can afford. So the substitution has to
+     * be measured rather than argued.
+     *
+     * TWO CLAIMS. The two grids find the peak at the same PLACE (within the
+     * coarse grid's own step, since a peak cannot be located finer than that),
+     * and — the one that decides anything — on every frozen netlist they land
+     * on the same side of both source-resistance tiers. A limit that two
+     * readings of one quantity disagree about is a limit nobody can state.
+     *
+     * Unlike V33's floor there is no `ampFloorSlackOhm` here, because there is
+     * no stated requirement to have a slack ON: casus 1 states no
+     * source-resistance limit at all. So the tolerance IS the tiers, and the
+     * assertion is about verdicts rather than about ohms. The largest gap
+     * travels in the message anyway, so a run that widens it says by how
+     * much. */
+    const safety = gridded.safety;
+    const anyRef = searchRef(NETLIST_KEYS[0]).ref.impedance!;
+
+    const pSafety = sourceProbeIndex(safety.freqs, safety.z.woofer, undefined, 'both')!;
+    const pSweep = sourceProbeIndex(anyRef.grid, anyRef.driverZ.woofer, undefined, 'both')!;
+    const fSafety = safety.freqs[pSafety.idx];
+    const fSweep = anyRef.grid[pSweep.idx];
+    const step = safety.freqs[1] / safety.freqs[0];
+    expect(
+      Math.max(fSafety / fSweep, fSweep / fSafety),
+      `the two grids find the low driver's peak at ${fSafety.toFixed(1)} and ` +
+        `${fSweep.toFixed(1)} Hz — further apart than the coarse grid's own step`,
+    ).toBeLessThanOrEqual(step);
+
+    const disagree: string[] = [];
+    let worst = { key: '', gap: 0 };
+    for (const key of NETLIST_KEYS) {
+      const parts = casus1Parts(key);
+      const onSafety = sourceResistanceOhm(parts, {
+        grid: safety.freqs,
+        driverZ: safety.z,
+        edgeRule: 'both',
+      });
+      const onSweep = sourceResistanceOhm(parts, {
+        grid: anyRef.grid,
+        driverZ: anyRef.driverZ,
+        edgeRule: 'both',
+      });
+      expect(onSafety, `${key}: no safety reading`).not.toBeNull();
+      expect(onSweep, `${key}: no sweep reading`).not.toBeNull();
+      const gap = Math.abs(onSafety! - onSweep!);
+      if (gap > worst.gap) worst = { key, gap };
+      for (const tier of [DEFAULT_R_SOURCE_TIER_OHM, DEFAULT_R_SOURCE_DISQUALIFY_OHM]) {
+        if (onSafety! >= tier !== (onSweep! >= tier)) {
+          disagree.push(
+            `${key} at the ${tier} Ω tier: safety ${onSafety!.toFixed(4)} Ω, ` +
+              `sweep ${onSweep!.toFixed(4)} Ω`,
+          );
+        }
+      }
+    }
+    expect(
+      disagree,
+      `the coarse probe grid and the fine one reach different verdicts (worst gap ` +
+        `${worst.gap.toFixed(4)} Ω at ${worst.key}):\n${disagree.join('\n')}\nEither the safety ` +
+        'grid needs more points or the v2 route needs the expensive source',
+    ).toEqual([]);
+    // ...and they are not the same grid, or the comparison describes nothing.
+    expect(safety.freqs.length).toBeLessThan(anyRef.grid.length);
+    expect(worst.gap).toBeGreaterThan(0);
   });
 
   it('and they name the same span — one rule, not two that happen to agree', () => {

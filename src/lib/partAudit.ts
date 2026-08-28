@@ -67,9 +67,83 @@ export interface AuditThresholds {
   /** EARNED: |ΔZmin| at or above this (ohms), even without crossing the floor. */
   zMinStepOhm: number;
   /** Source-resistance limit at the low driver's tuning (ohms): crossing it
-   *  either way earns a part; exceeding it flags the network. */
-  rSourceOhm: number;
+   *  either way earns a part; exceeding it flags the network.
+   *
+   *  NULL IS A VALUE HERE AND IT MEANS "NO TIER" (V34, P4). `undefined` in a
+   *  `Partial<AuditThresholds>` means "nothing said", and nothing said falls
+   *  back to {@link DEFAULT_R_SOURCE_TIER_OHM} — which is what every v1 caller
+   *  has always got. `null` is the designer having stated no limit, and a
+   *  stated nothing judges nothing: no part is earned by crossing it and no
+   *  branch DCR budget is capped by it. The two are deliberately different
+   *  states; collapsing them is how a default becomes a requirement nobody
+   *  chose. */
+  rSourceOhm: number | null;
 }
+
+/**
+ * V34 — THE TWO SOURCE-RESISTANCE LIMITS, EACH WITH ONE HOME.
+ *
+ * Both numbers existed before this entry; what they did not have is an
+ * address. The 1.0 Ω tier stood here AND twice in `netOptimizer.ts` as
+ * `?? 1.0`; the 2.0 Ω disqualification stood as a parameter default in
+ * `designChain.ts`, as `?? 2.0` in `threeWayChain.ts`, in a doc comment beside
+ * it, and a fourth time in the casus-1 fixture. Neither carried a derivation.
+ *
+ * That is the same shape `impedanceFloor.ts` exists for — one question, three
+ * thresholds, and a network that could be repaired by one and struck through
+ * by the next. P6 forbids exactly this pattern, and its lint covers
+ * `src/lib/engine2/` while these two live just outside it. A scope boundary is
+ * not a licence, so they are consolidated here, beside the probe whose reading
+ * they judge.
+ *
+ * WHAT THEY ARE NOT: derived. Neither is a measurement and neither is claimed
+ * to be. They are the APP'S HISTORICAL DEFAULTS for a v1 run that states
+ * nothing, kept byte-identical on that route on purpose. On the v2 route a
+ * limit the designer never stated is ABSENT (P4) and neither of these applies
+ * — see `candidateDeclaration.ts` and casebook V34.
+ */
+
+/**
+ * The class-loss tier: above this the low branch's source resistance costs a
+ * candidate its ranking class, a part that tips across it is EARNED, and the
+ * catalogue snap caps the branch's total coil DCR at 70 % of it.
+ *
+ * 1.0 Ω is `BRANCH_SERIES_DCR_DB`'s own calibration read as an ohm figure:
+ * 0.24 + 0.19 Ω of series DCR into the 3.2 Ω woofer pair of the hand-built
+ * reference filter is 1.1 dB and about 13 % on Qts (see `catalog.ts`). It is a
+ * convention on a continuum, not a threshold in the physics.
+ */
+export const DEFAULT_R_SOURCE_TIER_OHM = 1.0;
+
+/**
+ * The hard disqualification: at or above this a candidate is infeasible rather
+ * than merely worse, in the ranking and — since A3e — in the search.
+ *
+ * Twice the tier, and that is all it is. Nothing measured says the damping is
+ * acceptable at 1.9 Ω and unacceptable at 2.0.
+ *
+ * ⚠ THE NUMBER IS ONLY MEANINGFUL BESIDE THE FREQUENCY IT IS COMPARED AT.
+ * Measured at V34 on casus 1: read at the chain grid's probe (640 Hz, the top
+ * edge of the probe's own search window) the three v1 baselines score 0.50,
+ * 0.47 and 0.68 Ω; read at the woofer's actual impedance peak they score 3.98,
+ * 4.59 and 2.55 Ω. The same limit therefore passes all three or disqualifies
+ * all three depending only on where the probe landed — including the
+ * designer's own best filter. That is why V34 changes the probe and withdraws
+ * the default on the v2 route in one entry: either half alone is worse than
+ * neither.
+ */
+export const DEFAULT_R_SOURCE_DISQUALIFY_OHM = 2.0;
+
+/**
+ * The top of the probe's own search window when no box tuning is stated, Hz.
+ *
+ * A woofer resonance lives below this whatever the box; above it the peaks
+ * belong to the FILTER, which is the reading ISSUE #14 was about. The window
+ * is the wider of this and the grid's first quarter, so a grid that starts
+ * high still gets a window to look in — and since V34 a peak that lands ON
+ * either end of that window is refused rather than reported.
+ */
+export const SOURCE_PROBE_WINDOW_TOP_HZ = 400;
 
 /** Defaults. inertDeg is 1.5°, not the 1° first written down: measured on the
  *  textbook-dead case (a 6.8 mH shunt trap across a 6 Ω tweeter behind a
@@ -85,7 +159,7 @@ export const DEFAULT_AUDIT_THRESHOLDS: AuditThresholds = {
   earnedDb: 1.0,
   earnedDeg: 3,
   zMinStepOhm: 1.0,
-  rSourceOhm: 1.0,
+  rSourceOhm: DEFAULT_R_SOURCE_TIER_OHM,
 };
 
 export type AuditVerdict = 'inert' | 'earned' | 'grey';
@@ -174,6 +248,24 @@ export interface AuditContext {
   zFloorOhm?: number;
   /** Cost of one part, EUR (nearest catalog part), or null. */
   costOf?: (p: VxpPart) => number | null;
+  /**
+   * V34 — WHERE THE SOURCE-RESISTANCE PROBE READS, when that is not `grid`.
+   *
+   * A SECOND grid and not a replacement, because the audit asks two different
+   * kinds of question. Everything it measures per part — ΔSPL, pair phase,
+   * ΔZmin — is a RESPONSE question and belongs on the analysis grid, which is
+   * where the design is judged. The source resistance at the low driver's
+   * tuning is an impedance question about a frequency that is usually not on
+   * that grid at all, and an impedance measurement has no gate
+   * (`impedanceReference.ts`). Absent = read on `grid`, which is what every v1
+   * caller does.
+   *
+   * `null` here is NOT the same as absent: it means a source was named and its
+   * data never arrived, so the probe answers nothing rather than falling back
+   * to the analysis grid. Same rule as V32's gate and V33's barrier — a silent
+   * fallback restores exactly the reading being withdrawn.
+   */
+  probe?: { grid: readonly number[]; driverZ: Record<string, readonly Complex[]>; edgeRule?: ProbeEdgeRule } | null;
 }
 
 const RLC = new Set(['Resistor', 'Inductor', 'Capacitor']);
@@ -446,10 +538,30 @@ function roleGuess(members: VxpPart[], pos: 'series' | 'shunt'): string {
  * 7.40 Ω that way and 0.23 Ω in band. Fifteen of nineteen candidates were
  * disqualified on that reading.
  */
+/**
+ * WHICH EDGES OF THE FALLBACK'S SEARCH WINDOW DISQUALIFY A PEAK (V34).
+ *
+ *   `'first'` — only a peak sitting on the window's FIRST point. What this
+ *               function has always done, and therefore what a v1 run gets.
+ *   `'both'`  — either end. A maximum on a boundary is a boundary, whichever
+ *               boundary it is.
+ *
+ * IT IS A PARAMETER AND NOT A FIX because the strict rule changes the reading
+ * of every existing v1 run whose low driver resonates below the grid, and the
+ * toggle invariant does not bend for a correctness argument. The v2 route
+ * arms it; nothing else does.
+ *
+ * The rule applies to the FALLBACK ONLY. A stated box tuning that lands on
+ * grid[0] is the frequency the designer asked for, not a search artefact, and
+ * refusing it would answer a question nobody asked.
+ */
+export type ProbeEdgeRule = 'first' | 'both';
+
 export function sourceProbeIndex(
   grid: readonly number[],
   z: readonly Complex[],
   fbHz?: number,
+  edgeRule: ProbeEdgeRule = 'first',
 ): { idx: number; inBand: boolean } | null {
   if (grid.length === 0) return null;
   const lo = grid[0];
@@ -473,12 +585,27 @@ export function sourceProbeIndex(
   }
   // No usable tuning frequency: the impedance peak on the low part of the grid.
   // Only counts as in-band when it is a real PEAK (an interior maximum) — a
-  // maximum sitting on the first grid point is the edge again, not a resonance.
+  // maximum sitting on a grid point that is also a window BOUNDARY is the edge
+  // again, not a resonance.
+  //
+  // V34, AND IT IS THE SAME BUG AS ISSUE #14 ONE EDGE FURTHER ON. The guard
+  // written for #14 refused index 0 and stopped there, because the failure it
+  // had in front of it was a filter resonance at the bottom of the grid. The
+  // TOP of the window can be a boundary in exactly the same way, and on casus 1
+  // it is: with a chain grid of 200 Hz–20 kHz the window ends at grid[24] =
+  // 640.2 Hz and that is precisely where the woofer's "peak" was found —
+  // measured, not inferred. It is not a resonance; this woofer pair is ported
+  // and its two peaks sit at 17 and 51 Hz, both below the grid. What was being
+  // read there was the impedance rising out of the woofer's own passband, and
+  // the source resistance measured at it was 0.50 Ω against 3.98 Ω at the real
+  // peak, because the low-pass shunt shorts the series path at 640 Hz.
   let best = -1;
   let bestZ = -Infinity;
-  const stop = Math.max(400, grid[Math.floor(grid.length / 4)]);
+  let last = -1;
+  const stop = Math.max(SOURCE_PROBE_WINDOW_TOP_HZ, grid[Math.floor(grid.length / 4)]);
   for (let i = 0; i < grid.length; i++) {
     if (grid[i] > stop) break;
+    last = i;
     const m = Math.hypot(z[i].re, z[i].im);
     if (m > bestZ) {
       bestZ = m;
@@ -486,7 +613,10 @@ export function sourceProbeIndex(
     }
   }
   if (best < 0) return null;
-  return { idx: best, inBand: best > 0 };
+  // `last` is the window's own top, which is only the GRID's top when the whole
+  // grid fits inside the window — and then it is a boundary too.
+  const onEdge = best === 0 || (edgeRule === 'both' && best === last);
+  return { idx: best, inBand: !onEdge };
 }
 
 /**
@@ -540,7 +670,14 @@ export function seriesPathResistanceOhm(parts: readonly VxpPart[]): number | nul
 
 export function sourceResistanceOhm(
   parts: readonly VxpPart[],
-  ctx: { grid: readonly number[]; driverZ: Record<string, readonly Complex[]>; fbHz?: number },
+  ctx: {
+    grid: readonly number[];
+    driverZ: Record<string, readonly Complex[]>;
+    fbHz?: number;
+    /** V34 — which window boundaries refuse a peak. Absent = the historical
+     *  rule, so every v1 caller reads what it always read. */
+    edgeRule?: ProbeEdgeRule;
+  },
 ): number | null {
   let net: { nodeCount: number; elements: NetElement[] };
   try {
@@ -557,7 +694,7 @@ export function sourceResistanceOhm(
   const z = ctx.driverZ[low.model];
   if (!z) return null;
   const grid = ctx.grid;
-  const probe = sourceProbeIndex(grid, z, ctx.fbHz);
+  const probe = sourceProbeIndex(grid, z, ctx.fbHz, ctx.edgeRule);
   // Out of band: the DC limit (series-path resistance), never a reading off
   // the grid edge — see sourceProbeIndex.
   if (!probe || !probe.inBand) return seriesPathResistanceOhm(parts);
@@ -584,15 +721,22 @@ export function auditNetwork(parts: readonly VxpPart[], ctx: AuditContext): Netw
     const slots = pickSlotsN(drivers);
     return slots.woofer ?? slots.mid ?? slots.tweeter ?? null;
   })();
+  /* V34 — the probe's own grid. `undefined` is the historical one (`grid`);
+   * `null` is a source that was named and whose data never arrived, and then
+   * nothing is probed at all rather than quietly re-reading the analysis
+   * grid. */
+  const probeCtx =
+    ctx.probe === undefined ? { grid, driverZ: ctx.driverZ, edgeRule: undefined } : ctx.probe;
+  const probeGrid = probeCtx?.grid ?? [];
   let fbIdx: number | null = null;
   let reOhm: number | null = null;
   /** The probe frequency was not measurable — R_source is the DC limit, and
    *  callers must not disqualify on a number that was never measured. */
   let rSourceOutOfBand = false;
   if (lowDrv) {
-    const z = ctx.driverZ[lowDrv.model];
+    const z = probeCtx ? probeCtx.driverZ[lowDrv.model] : undefined;
     if (z) {
-      const probe = sourceProbeIndex(grid, z, ctx.fbHz);
+      const probe = sourceProbeIndex(probeGrid, z, ctx.fbHz, probeCtx!.edgeRule);
       fbIdx = probe ? probe.idx : null;
       rSourceOutOfBand = !probe || !probe.inBand;
       if (fbIdx !== null) {
@@ -601,20 +745,28 @@ export function auditNetwork(parts: readonly VxpPart[], ctx: AuditContext): Netw
         // (that is the mid-band dip of the network's own filter).
         let mn = Infinity;
         for (let i = 0; i <= fbIdx; i++) mn = Math.min(mn, Math.hypot(z[i].re, z[i].im));
-        for (let i = fbIdx; i < grid.length && grid[i] <= grid[fbIdx] * 6; i++) {
+        for (let i = fbIdx; i < probeGrid.length && probeGrid[i] <= probeGrid[fbIdx] * 6; i++) {
           mn = Math.min(mn, Math.hypot(z[i].re, z[i].im));
         }
         reOhm = Number.isFinite(mn) ? mn : null;
       }
+    } else {
+      rSourceOutOfBand = true;
     }
   }
   // Source RESISTANCE (real part of the Thevenin impedance): that is what adds
   // to Re in Qes' = Qes·(Re + Rs)/Re. The reactive part of a series coil is
   // reported separately as |Z| but does not damp like a resistor.
   const rSourceOf = (net: Probe['net'], drv: typeof lowDrv): number | null => {
-    if (!drv || fbIdx === null) return null;
+    if (!drv || fbIdx === null || !probeCtx) return null;
     if (rSourceOutOfBand) return null; // measured below; see rSourceFull
-    const zs = seenImpedance(net, [drv.id], drv.nodes, [grid[fbIdx]], sliceDriverZ(ctx.driverZ, [fbIdx]));
+    const zs = seenImpedance(
+      net,
+      [drv.id],
+      drv.nodes,
+      [probeGrid[fbIdx]],
+      sliceDriverZ(probeCtx.driverZ, [fbIdx]),
+    );
     return zs ? Math.max(0, zs[0].re) : null;
   };
   const rSourceFull = rSourceOutOfBand ? seriesPathResistanceOhm(parts) : rSourceOf(full.net, lowDrv);
@@ -688,7 +840,11 @@ export function auditNetwork(parts: readonly VxpPart[], ctx: AuditContext): Netw
     const crossesFloor = dropsUnderFloor;
     const rsFull = rSourceFull;
     const rsVar = rsFull !== null && v.dRs !== null ? rsFull + v.dRs : null;
-    const crossesRs = rsFull !== null && rsVar !== null && rsFull > thr.rSourceOhm !== rsVar > thr.rSourceOhm;
+    /* V34 — a null tier is no tier: nothing crosses a limit that was never
+     * stated, and a part cannot be EARNED by a boundary nobody drew (P4). */
+    const rsTier = thr.rSourceOhm;
+    const crossesRs =
+      rsTier !== null && rsFull !== null && rsVar !== null && rsFull > rsTier !== rsVar > rsTier;
     const dZneg = Math.abs(v.dZmin) < thr.inertZOhm && (v.dRs === null || Math.abs(v.dRs) < thr.inertZOhm) && !crossesFloor && !crossesRs;
     let verdict: AuditVerdict;
     if (v.dA >= thr.earnedDb) reasons.push(`sum moves ${v.dA.toFixed(2)} dB without it`);
@@ -699,7 +855,7 @@ export function auditNetwork(parts: readonly VxpPart[], ctx: AuditContext): Netw
     if (crossesFloor) reasons.push(`Z min ${full.zMinOhm.toFixed(2)} → ${v.probe.zMinOhm.toFixed(2)} Ω crosses your amplifier's ${zFloor} Ω minimum`);
     else if (v.dZmin <= -thr.zMinStepOhm) reasons.push(`Z min ${full.zMinOhm.toFixed(2)} → ${v.probe.zMinOhm.toFixed(2)} Ω`);
     if (crossesRs && rsVar !== null && rsFull !== null)
-      reasons.push(`source R at the low driver ${rsFull.toFixed(2)} → ${rsVar.toFixed(2)} Ω crosses the ${thr.rSourceOhm} Ω limit`);
+      reasons.push(`source R at the low driver ${rsFull.toFixed(2)} → ${rsVar.toFixed(2)} Ω crosses the ${rsTier} Ω limit`);
     if (reasons.length > 0) verdict = 'earned';
     else if (v.dA < thr.inertDb && v.dP < thr.inertDeg && dZneg) {
       verdict = 'inert';
@@ -807,11 +963,19 @@ export function auditNetwork(parts: readonly VxpPart[], ctx: AuditContext): Netw
     entries,
     rSourceTunedOhm: rSourceFull,
     rSourceOutOfBand,
-    rSourceAtHz: fbIdx !== null ? grid[fbIdx] : null,
+    rSourceAtHz: fbIdx !== null ? probeGrid[fbIdx] : null,
     reOhm,
     qesFactor,
-    rSourceWarn: rSourceFull !== null && rSourceFull > thr.rSourceOhm,
-    rSourceAtGridEdge: fbIdx === 0 && !(ctx.fbHz !== undefined && ctx.fbHz >= grid[0]),
+    rSourceWarn:
+      thr.rSourceOhm !== null && rSourceFull !== null && rSourceFull > thr.rSourceOhm,
+    /* V34: "the probe landed on a boundary of its own search window", which
+     * before this entry could only mean the bottom one. Still false whenever a
+     * stated box tuning put it there, for the reason above `ProbeEdgeRule`:
+     * that frequency is the answer to a question the designer asked. */
+    rSourceAtGridEdge:
+      fbIdx !== null &&
+      rSourceOutOfBand &&
+      !(ctx.fbHz !== undefined && probeGrid.length > 0 && ctx.fbHz >= probeGrid[0]),
     zMinOhm: full.zMinOhm,
     bandHz: band,
     thresholds: thr,

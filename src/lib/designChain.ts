@@ -29,6 +29,10 @@ import { mergeSynthesizedSchematics } from './schematicEdit.ts';
 import { optimizeNetworkValues, type NetOptimizeResult } from './netOptimizer.ts';
 import type { ChainEngineHooks } from './threeWayChain.ts';
 import { bomFor, type SnapPrefs } from './catalog.ts';
+import {
+  DEFAULT_R_SOURCE_DISQUALIFY_OHM,
+  DEFAULT_R_SOURCE_TIER_OHM,
+} from './partAudit.ts';
 import { evalDriverFilter, type DriverFilterSpec } from './filters.ts';
 
 export interface ChainSettings {
@@ -44,8 +48,11 @@ export interface ChainSettings {
   /** Catalog-snap cost pressure (score ×(1 + w·ΣEUR)). Default 0.0015 in the tuner. */
   costWeight?: number;
   /** Source resistance past which a design is infeasible (A3e) — the same
-   *  number the ranking disqualifies on. */
-  rSourceDisqualifyOhm?: number;
+   *  number the ranking disqualifies on. `null` = the designer stated none, so
+   *  nothing is disqualified on it; absent = the app's historical default
+   *  ({@link DEFAULT_R_SOURCE_DISQUALIFY_OHM}). The two are different states
+   *  and V34 is about what it costs to confuse them. */
+  rSourceDisqualifyOhm?: number | null;
   /** A3i-2 — derived amplifier-load floor (IEC 80 % of what the DRIVERS
    *  support). Forwarded to the tuner as a constraint; absent = off. */
   loadFloor?: { nominalOhm: number };
@@ -423,10 +430,13 @@ export function rankChainResults(
   targets: { rippleDb: number; phaseDeg: number } | undefined,
   phasePriority: number,
   hpFloorHz?: number,
-  /** Source-resistance limit at the low driver (Ω, point 4) — class loss above it. */
-  rSourceLimitOhm = 1.0,
-  /** Hard tier (fix 1): at/above this the candidate is disqualified (ranks last). */
-  rSourceDisqualifyOhm = 2.0,
+  /** Source-resistance limit at the low driver (Ω, point 4) — class loss above
+   *  it. Absent = the app's historical default; `null` = the designer stated no
+   *  tier, so nothing loses a class for it (V34, P4). */
+  rSourceLimitOhm: number | null = DEFAULT_R_SOURCE_TIER_OHM,
+  /** Hard tier (fix 1): at/above this the candidate is disqualified (ranks
+   *  last). Same three states as above. */
+  rSourceDisqualifyOhm: number | null = DEFAULT_R_SOURCE_DISQUALIFY_OHM,
   /** B1 — BOM cap per channel (EUR, 0 = off): class loss above it. */
   bomCapEur = 0,
   /** The amplifier's rated minimum load (Ω), when the user stated one:
@@ -444,8 +454,8 @@ export function rankChainResults(
     // against 1.64 Ω delivered). Same definition the constraint enforces.
     const rs = r.net.after.rSourceOhm;
     if (rs == null) return 0;
-    if (rSourceDisqualifyOhm > 0 && rs >= rSourceDisqualifyOhm) return 10;
-    return rSourceLimitOhm > 0 && rs > rSourceLimitOhm ? 1 : 0;
+    if (rSourceDisqualifyOhm !== null && rSourceDisqualifyOhm > 0 && rs >= rSourceDisqualifyOhm) return 10;
+    return rSourceLimitOhm !== null && rSourceLimitOhm > 0 && rs > rSourceLimitOhm ? 1 : 0;
   };
   // Whole-range verdict in the ripple slot (Sanders doctrine, jul 2026): rank
   // on the AVERAGE |deviation|, scaled by π/2 so a smooth ±A dB wobble scores

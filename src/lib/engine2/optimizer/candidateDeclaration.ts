@@ -1,8 +1,9 @@
 /**
  * F4d — THE CANDIDATE'S DECLARATION OVER EVERY CHOICE KEY.
  *
- * Twenty-five at F4d, twenty-six since V30 added `zFloorBarrier` and
- * twenty-seven since V33 added `zFloorBarrierSource`. The number
+ * Twenty-five at F4d, twenty-six since V30 added `zFloorBarrier`,
+ * twenty-seven since V33 added `zFloorBarrierSource` and twenty-eight since
+ * V34 added `rSourceProbeSource`. The number
  * is not repeated in prose anywhere it could go stale: `declarationCoverage`
  * compares against `CHOICE_KEYS` itself, so a key added upstream lands in no
  * state and fails the build.
@@ -69,6 +70,7 @@ export type StatedByDesigner = Partial<
     | 'zFloorStrict'
     | 'zFloorBarrier'
     | 'zFloorBarrierSource'
+    | 'rSourceProbeSource'
   >
 >;
 
@@ -211,6 +213,42 @@ export function declareCandidateChoices(input: CandidateDeclarationInput): Choic
         'the barrier is not armed on this design, so there is no reading for it to take and no ' +
         'band to take it over. Absent rather than a stated default (P4): naming a source for a ' +
         'term nobody switched on would read as a decision about where to aim',
+    });
+  }
+
+  /* ---- V34: WHERE THE SOURCE-RESISTANCE PROBE READS -------------------
+   *
+   * Derived, like V30's and V33's, and derived from the same fact: the probe
+   * is asking about the low driver's box tuning, and a resonance below the
+   * analysis grid cannot be read on the analysis grid. The safety set spans
+   * the drivers' whole measured extent — it is the only band this route holds
+   * where the question is answerable — so a candidate that carries one probes
+   * on it.
+   *
+   * WHY THIS IS NOT A DETAIL. The probe feeds a hard disqualification, a
+   * search constraint, a structure-move guard, an audit tier and one objective
+   * term. Measured on casus 1 at V34: on the chain grid the probe lands on
+   * grid[24] = 640.2 Hz, which is the top of its OWN search window rather than
+   * a resonance, and the three v1 baselines read 0.50/0.47/0.68 Ω there
+   * against 3.98/4.59/2.55 Ω at the woofer's real peak. Same networks, same
+   * limit, opposite verdicts.
+   *
+   * P4 on the other side, and the reason is stated rather than implied: with
+   * no safety set there is no wider band to probe on, so the candidate states
+   * nothing and the tuner reads its own grid — which is the pre-V34 reading,
+   * named as such instead of inherited in silence. */
+  if (s.rSourceProbeSource !== undefined) {
+    stated.rSourceProbeSource = s.rSourceProbeSource;
+  } else if (s.safety !== undefined) {
+    stated.rSourceProbeSource = 'safety';
+  } else {
+    absent.push({
+      key: 'rSourceProbeSource',
+      why:
+        'this candidate carries no full-band safety set, so there is no grid wider than the ' +
+        'evaluation grid for the probe to read on, and naming one whose data never arrives would ' +
+        'switch the probe off altogether. The tuner therefore reads its own grid — the pre-V34 ' +
+        'reading, stated as absent rather than inherited in silence (P4)',
     });
   }
 

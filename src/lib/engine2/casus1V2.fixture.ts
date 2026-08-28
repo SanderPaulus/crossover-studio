@@ -131,9 +131,47 @@ export const CASUS1_V2_SETTINGS = {
   powerFoldWeight: 0.5,
   costWeight: 0.0015,
   directivityWeight: 0,
-  /** The app's own defaults for the source-resistance tiers. */
-  rSourceDisqualifyOhm: 2.0,
-  audit: { thresholds: { rSourceOhm: 1.0 } },
+  /**
+   * THE SOURCE-RESISTANCE TIERS: NEITHER IS STATED, AND THAT IS THE STATEMENT
+   * (V34, P4).
+   *
+   * This block used to read `rSourceDisqualifyOhm: 2.0` and
+   * `audit.thresholds.rSourceOhm: 1.0`, with the comment "the app's own
+   * defaults for the source-resistance tiers". Every other project number in
+   * this fixture is READ from `manifest_en_geometrie.gestelde_eisen` — the amp
+   * floor is, and the note above `CASUS1_AMP_MIN_LOAD_OHM` says why — and these
+   * two were not, because there was nothing to read: casus 1 states no
+   * source-resistance requirement. What stood here was a UI default typed into
+   * a fixture, which is exactly the pattern F0 removed for `ampMinLoadOhm`.
+   *
+   * WHY IT MATTERED, MEASURED. Until V34 the probe read the chain grid, where
+   * it landed on the top of its own search window (640.2 Hz) rather than on the
+   * woofer's resonance, and there every candidate scores well under 2 Ω. Read
+   * where the quantity actually lives, the three v1 baselines score 3.98, 4.59
+   * and 2.55 Ω — so an unasked-for 2.0 Ω limit would disqualify all three,
+   * including the designer's own best filter. Repairing the probe without
+   * withdrawing the default would have made the field worse than leaving both
+   * alone; that is why V34 is one entry and not two.
+   *
+   * `rSourceDisqualifyOhm` is therefore simply ABSENT: `declareCandidateChoices`
+   * files it with the P4 reason, and `withDeclaredSourceLimit` in the worker
+   * makes the chain honour that instead of falling back to its own default.
+   * The audit still RUNS — it is a protection, and V26 row 33 is why every
+   * protection this app arms by default stays armed — but its source-resistance
+   * tier is stated `null`: no limit, because nobody stated one. `null` and not
+   * absent, because an absent `audit` would switch the whole part audit off.
+   */
+  audit: { thresholds: { rSourceOhm: null } },
+  /**
+   * V34 — the probe reads the full-band safety grid, not the chain grid.
+   *
+   * Stated here rather than left to the derivation for the same reason
+   * `zFloorBarrierSource` is stated on the runs the comparison table is built
+   * from: a before/after measurement has to be a run somebody can ask for. The
+   * derivation in `declareCandidateChoices` would reach the same value on this
+   * casus, and `choiceKeyGuard.test.ts` pins that it does.
+   */
+  rSourceProbeSource: 'safety' as const,
   /* Spread rather than assigned, so an unstated floor leaves the KEY absent
    * instead of present-and-undefined. `declareCandidateChoices` distinguishes
    * those two: undefined becomes an ABSENT declaration with the P4 reason, and
@@ -177,6 +215,12 @@ export function casus1Field(report: EngineV2Report): CandidateFieldResult {
  * 33, 14 and 2), so on the v2 route they may only reach the tuner through the
  * candidate. The first version of this fixture proved why by leaving three of
  * them out — see the note on `CASUS1_V2_SETTINGS`.
+ *
+ * SINCE V34 ONE OF THEM IS STATED BY BEING ABSENT. `rSourceDisqualifyOhm` is
+ * not listed below, and that is the declaration: casus 1 states no
+ * source-resistance requirement, so the candidate carries none and nothing is
+ * disqualified on it (P4). `rSourceProbeSource` takes its place — where the
+ * probe reads is a choice this candidate does make.
  */
 export function casus1V2Declaration(
   c: GeneratedCandidate,
@@ -201,8 +245,8 @@ export function casus1V2Declaration(
         phaseMetric: CASUS1_V2_SETTINGS.phaseMetric,
         catalogSnap: CASUS1_V2_SETTINGS.catalogSnap,
         breakupGuard: CASUS1_V2_SETTINGS.breakupGuard,
-        rSourceDisqualifyOhm: CASUS1_V2_SETTINGS.rSourceDisqualifyOhm,
         audit: CASUS1_V2_SETTINGS.audit,
+        rSourceProbeSource: CASUS1_V2_SETTINGS.rSourceProbeSource,
         ...(CASUS1_AMP_MIN_LOAD_OHM !== null
           ? { ampMinLoadOhm: CASUS1_AMP_MIN_LOAD_OHM }
           : {}),

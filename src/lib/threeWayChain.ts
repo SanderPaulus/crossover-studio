@@ -19,6 +19,10 @@ import {
 } from './netOptimizer.ts';
 import type { SnapPrefs } from './catalog.ts';
 import { bomFor } from './catalog.ts';
+import {
+  DEFAULT_R_SOURCE_DISQUALIFY_OHM,
+  DEFAULT_R_SOURCE_TIER_OHM,
+} from './partAudit.ts';
 import type { VxpPart } from './parsers/vxp.ts';
 import type { ChainStageProgress } from './designChain.ts';
 import type { AngleResponse } from './directivity.ts';
@@ -91,10 +95,15 @@ export interface Chain3Settings {
    *  DISQUALIFIED (visible, struck through, with reason). */
   xoFloorPairs?: (number | null)[];
   xoFloorSlack?: number;
-  /** Source-resistance tiers at the low driver (Ω): warn ≥ rSourceWarnOhm
-   *  (default 0.5), class loss ≥ rSourceLimitOhm (1.0, see the ranker),
-   *  DISQUALIFIED ≥ rSourceDisqualifyOhm (default 2.0). */
-  rSourceDisqualifyOhm?: number;
+  /** Source-resistance tiers at the low driver (Ω): warn ≥ half the class-loss
+   *  tier, class loss ≥ `DEFAULT_R_SOURCE_TIER_OHM` (see the ranker),
+   *  DISQUALIFIED ≥ `DEFAULT_R_SOURCE_DISQUALIFY_OHM`. Both numbers and their
+   *  derivations live in `partAudit.ts` since V34; this comment used to spell
+   *  them out, which made it a fourth place they could be changed.
+   *
+   *  `null` = the designer stated no limit, so nothing is disqualified on
+   *  source resistance (P4). Absent = the historical default. */
+  rSourceDisqualifyOhm?: number | null;
   /** A3i-2 — derived amplifier-load floor (IEC 80 % of what the DRIVERS
    *  support). Forwarded to the tuner as a constraint; absent = off. */
   loadFloor?: { nominalOhm: number };
@@ -492,7 +501,11 @@ export function runThreeWayChain(
   if (net.infeasible) disqualified.push(net.infeasible);
   disqualified.push(...degenerate);
   // (fix 1a) Source resistance at the low driver: hard tier.
-  const rsDisq = s.rSourceDisqualifyOhm ?? 2.0;
+  /* V34: three states. A number is the limit, `null` is the designer having
+   * stated none (and a stated nothing disqualifies nothing — P4), and absent is
+   * the app's historical default, which keeps every v1 run reading what it
+   * always read. */
+  const rsDisq = s.rSourceDisqualifyOhm === null ? 0 : (s.rSourceDisqualifyOhm ?? DEFAULT_R_SOURCE_DISQUALIFY_OHM);
   /* The DELIVERED figure, not the audit's: audit.rSourceOhm is frozen before
    * the shrink ladder and the catalog snap, and both still move it. Measured on
    * Sanders 562/2270 candidate: audit 2.0002 Ω (disqualified) against 1.64 Ω
@@ -1008,7 +1021,7 @@ export function rankChain3Results(
    *  delivered network puts more than this in front of the woofer at Fb loses
    *  a class — same mechanism as the Z floor, never a score term. null/absent
    *  audit is never punished. */
-  rSourceLimitOhm = 1.0,
+  rSourceLimitOhm: number | null = DEFAULT_R_SOURCE_TIER_OHM,
   /** B1 — BOM cap per channel (EUR, 0 = off): a candidate whose priced BOM
    *  exceeds it loses a CLASS — same mechanism as the Z floor and R_src, never
    *  a soft term. An unpriced BOM (null) is never punished. */
@@ -1023,7 +1036,7 @@ export function rankChain3Results(
   const dW = Math.min(Math.max(directivityWeight, 0), 1);
   const rsClass = (r: Chain3Result): number => {
     const rs = r.net.after.rSourceOhm;
-    return rs != null && rSourceLimitOhm > 0 && rs > rSourceLimitOhm ? 1 : 0;
+    return rs != null && rSourceLimitOhm !== null && rSourceLimitOhm > 0 && rs > rSourceLimitOhm ? 1 : 0;
   };
   const rippleOf = (r: Chain3Result): number => {
     const on = r.net.after.avgDevDb != null ? (Math.PI / 2) * r.net.after.avgDevDb : r.net.after.rippleDb;
