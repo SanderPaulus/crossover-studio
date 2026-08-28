@@ -375,6 +375,34 @@ punten met een casusboek-entry erachter. Ze staan hier zodat ze niet alleen in D
   piekhoogte doet dat aantoonbaar niet (minstens 18 % ernaast op élke netlist die werkelijk
   serieweerstand draagt). Het gewicht is NIET bijgesteld, en dat is een besluit met dezelfde
   volgorde als bij V36: eerst de noemer, dán pas de vraag of het gewicht klopt. Zie V37 in Deel B.
+- **V38 — de zoektocht gladt de drivermagnitudes en niet hun fase, en op casus 1 is dat het hele
+  gat naar de referentiefilter van de ontwerper.** Gemeten in een meetsessie zonder één
+  gedragswijziging. `smoothMag` in `netOptimizer.ts` gladt de magnitudes met `errorSmoothOct`
+  (1/12 octaaf, de app-standaard) vóór de decimatie, laat de fase ongemoeid, en sommeert de
+  takken dan complex. De zoektocht ziet daardoor een som met een kenmerk van 43–47 dB waar de
+  geleverde luidspreker 4–6 dB rimpelpiek heeft. Eén sleutel op 0, alles verder gelijk: HUIDIG's
+  eigen topologie gaat van 2,98 naar **0,53 dB** RMS — onder HUIDIG's eigen 0,60 — en op twee
+  gegenereerde kandidaten van 3,22 naar 1,83 en van 2,08 naar 1,53, waarbij de eerste ook van
+  0,68 Ω (een bijna-kortsluiting onder de gestelde vloer) naar 2,59 Ω gaat. De
+  ene-sleutel-vergelijking is in beide richtingen in twee onafhankelijke runs gemeten en is
+  symmetrisch tot op de decimaal. **Geen bug-melding en niets gerepareerd:** `errorSmoothOct` is
+  gedocumenteerd gedrag, staat als POLISH geclassificeerd (A3j) en F3c bouwde er al een
+  zichtbaarheidsnotitie voor. Wat V38 toevoegt is de maat. Vier vormen liggen open — laten staan
+  met een scherpere notitie; de fase meegladden zodat de gegladde som een echte som blijft; de
+  bron een kandidaat-sleutel maken zoals bij V33/V34/V37; of alleen de zoekmaat gladden en de
+  leveringsmaat niet — en het verdient dezelfde behandeling als V30, V32, V33 en V34: een eigen
+  sessie met een vóór/ná op het hele veld. Zie V38 in Deel B. **Open.**
+- **V39 — de toetsbaarheid van A3j houdt één laag te laag op.** `CHOICE_KEYS`/`GREY_KEYS`/
+  `POLISH_KEYS`, de volledigheidsassert en `choiceKeyGuard.test.ts` dekken de 44 sleutels van
+  `NetOptimizeOptions`. `Chain3Settings` — ongeveer 32 sleutels, en de laag waar de kandidaat
+  langskomt vóórdat de tuner iets ziet — is nergens geclassificeerd. Twee instellingen die op
+  casus 1 aantoonbaar de TOPOLOGIE bepalen vallen daardoor buiten elke garantie: `eqBands` (de
+  app stelt 2, de v2-fixture stelt niets, en een EQ-band is de enige weg naar een breakup-val)
+  en `leanTargetDb`, die niet eens een sleutel IS maar binnen de keten wordt afgeleid uit
+  `targets.rippleDb` — een kandidaat kan hem principieel niet stellen. Gemeten: de kale ladder
+  haalt de daaruit volgende 2,5 dB-drempel op 45 van de 45 takken en de eigen standaard van
+  0,5 dB op 0 van de 45, dus er wordt nooit een Zobel, Fs-val of top-octaaf-hold gekocht. Zie
+  V38 in Deel B, beslislijst B–D. **Open.**
 - **V29 — mag `safety` een netlist weigeren die vrijwel kortsluit als er géén vloer gesteld is?**
   Twee verdedigbare houdingen (strikt P4 tegenover een uit de gemeten driverimpedanties
   afleidbare degeneratiegrens), aanleiding is de V28-shortlist met 0,01 Ω erin. **Open**, geen
@@ -1792,7 +1820,232 @@ Configuratie: 3-weg; 2× SB WO24TX-8 parallel, MR13TX-4 in bolpod, T25T-6 in WG1
 
   **ONAANGERAAKT:** `dissipationWeight` en élk ander gewicht, M-A, de audittier, élke poort, de bronweerstandsprobe en zijn bron-sleutel (V35 blijft open), de barrière, `safety`, het ketenraster, de logica van beide ketens, en de v1-route — `toggleRegression.test.ts` is byte-identiek, `workerRouteRegression.test.ts` levert zijn opgeslagen netwerk nog steeds byte voor byte, en `f4cRegression.test.ts` reproduceert beide vormen op twee seeds.
 
-**Openstaand in deze casus:** groundplane-metingen onder het onderste kruisgebied vóór onderdelenbestelling; HD-sweep; 30°-meting tweeter voor M-G-compleetheid; verzadigings-/formaatcheck grote P-core shunt-spoel.
+- V38 (**MEETSESSIE** op 28-08-2026 — het gat naar HUIDIG ontleed; geen enkele regel engine, keten, tuner of poort gewijzigd) — opgeworpen als eigen opdracht.
+
+  **DE VRAAG.** HUIDIG meet 0,60 dB RMS-vlakheid, het beste levende v2-corpus 1,75. Wat bouwt het handwerk dat de keten niet bouwt, hoeveel van het gat verklaart elk element, en welk deel is geen topologie maar de zoektocht of de synthese? Deze sessie meet en besluit niets: `src/lib/` is onaangeraakt, het levende corpus staat er nog, en de uitkomst is een beslislijst.
+
+  ---
+
+  **DE MEETBANK, EN WAT ZIJ NIET IS.** Alle armen delen één opzet (`scripts/v38-bench.ts`): de tuner-opties van de v2-route, dezelfde metriekvector door `buildReport`, dezelfde netlist-loader. Twee scripts die elk hun eigen opties samenstellen leveren twee tabellen op die niet mogen worden afgetrokken, en de aftrekking IS de opdracht.
+
+  Zij wijkt op drie punten af van de v2-route, elk een besluit:
+
+  - **geen `staged`** — die zet de trapmethode aan, en die SNOEIT en ESCALEERT onderdelen. Een ablatie waarin de tuner het weggehaalde onderdeel terug mag zetten meet niets.
+  - **geen `branchTargets`** — die leiband komt uit de ontwerpstap van de keten; die stap draait hier niet.
+  - **geen `gateViolation`-hook** — een poort die de hele tune weigert levert het ZAAD terug (V31/V33), en een arm die zijn zaad teruggeeft is geen meetpunt maar een lege regel. De poort oordeelt ná afloop met `buildReport`, zoals `compare-corpora.ts` het doet. De gestelde vloer stuurt wél: zij wapent de reparatiepas én is zoekdoel (V30/V33).
+
+  **DE BANK IS DAARMEE ZWAKKER DAN DE ROUTE, en dat is gemeten in plaats van geschat.** Op `396,7 · 1719` levert de bank 3,22 dB waar de volle route 1,76 levert; op `396,7 · 2283,5` 2,08 tegen 1,75. Eén getal zou hier meer suggereren dan gemeten is, dus staan er twee: **1,46 en 0,33 dB**. Arm-tegen-arm is de meting; het absolute niveau is dat van de bank.
+
+  **EN DE TOPOLOGIE LIGT NIET VAST, ook zonder `staged`.** De ONDERDELENAUDIT blijft gewapend (V26 rij 33) en verwijdert componenten. Op vier van de tien gegladde armen haalde zij `C·L10` weg — een vierde-orde-pool in de tweetertak. Elk script schrijft daarom de geleverde netlist mee, zodat per arm na te meten is wat er verdween; een Δ die stilzwijgend ook een audit-verwijdering bevat is geen groepsbijdrage. Dat is niet theoretisch: **precies één Δ per reeks is er door vervuild**, en beide staan hieronder met naam.
+
+  ---
+
+  **STAP 1 — DE TOPOLOGIE-DIFF.**
+
+  HUIDIG draagt vijf groepen die geen filterpool zijn. KAND-A en KAND-B dragen dezelfde vijf, met dezelfde partIds. Het levende corpus draagt er **nul** van: geen enkele val, gedempte val, Zobel of shunt-shelf in tien netlists. Wat elke groep DOET is gemeten door het netwerk twee keer op te lossen — met en zonder — en niet uit het schema afgelezen; de "aanleiding" is de dichtstbijzijnde vondst van de opnamepas op dezelfde driver, met de octaafafstand erbij.
+
+| groep | tak | Δ doorlaatband | piek Δ | breedte | dichtstbijzijnde gemeten aanleiding | in KAND_V2 |
+| --- | --- | --- | --- | --- | --- | --- |
+| `L10+C11` (val) | woofer | −0,03 dB | −17,91 dB @ 1307 Hz | 0,99 okt | breakup +3,25 dB @ 1394 Hz (**+0,09 okt**) | 0 van 10 |
+| `B·L14+B·C15+B·R16` (gedempte val) | mid | −0,00 dB | −6,66 dB @ 4596 Hz | 0,24 okt | breakup +2,95 dB @ 5690 Hz (+0,31 okt) | 0 van 10 |
+| `C·L13+C·R15` (shunt-shelf) | tweeter | −0,14 dB | −3,29 dB @ 1040 Hz | 0,53 okt | Z-piek 16,6 Ω @ 924 Hz — f_s (**−0,17 okt**) | 0 van 10 |
+| `R8` (3,30 Ω serie) | woofer | **−3,53 dB** | −20,15 dB @ 1889 Hz | 1,15 okt | niveauwerk (A5d.4) | 1–2 series-pad per netlist |
+| `B·R9` (4,70 Ω serie) | mid | **−1,43 dB** | −6,58 dB @ 4099 Hz | 0,81 okt | niveauwerk (A5d.4) | ja |
+
+  De kolom "Δ doorlaatband" doet het onderscheidende werk: een groep die vlak over de eigen doorlaatband werkt is NIVEAUwerk, een groep die daar niets doet en ergens een smalle hap neemt is een VAL. Zonder die kolom is elke rij een piek in de stopband en zegt de tabel niets.
+
+  Op alle drie de v1-netlists landen dezelfde drie niet-niveau-groepen op dezelfde plek: de wooferval op 1040–1307 Hz (binnen 0,25 okt van een gemeten wooferbreakup), de tweeter-shelf op 893–1211 Hz (binnen 0,26 okt van de gemeten tweeter-f_s), de mid-val op 4596–5285 Hz. Alleen die laatste staat er **niet** op: 0,11–0,31 octaaf ONDER de dichtstbijzijnde gemeten mid-breakup (5690 Hz). Dat is een rij zonder aanleiding, en zij gaat als zodanig de beslislijst in.
+
+  ---
+
+  **WAAROM DE KETEN ZE NIET BOUWT — TWEE OORZAKEN, ALLEBEI BOVENSTROOMS VAN DE TUNER.**
+
+  **(1) De lean-drempel rijdt mee op een andere instelling.** `threeWayChain.ts` stelt `corrections = (s.targets ? 'lean' : 'auto')` en `leanTargetDb = s.targets?.rippleDb`. `'lean'` fit eerst de kale ladder en koopt alleen correcties als die fit de drempel MIST. De eigen standaard van `synthesize` is 0,5 dB; de v2-route geeft `targets.rippleDb` mee, en dat is 2,5 dB — het stopdoel van de trapmethode, vijf keer zo ruim. Gemeten over het hele veld (15 kandidaten × 3 takken):
+
+  | | takken |
+  | --- | --- |
+  | kale ladder onder 2,5 dB (wat de v2-route hanteert) | **45 van 45** |
+  | kale ladder onder 0,5 dB (de eigen standaard) | **0 van 45** |
+  | takken waar `'auto'` méér onderdelen zou bouwen | 45 van 45 |
+
+  Er wordt dus nooit een Zobel, een Fs-val of een top-octaaf-hold gekocht, en met de eigen standaard zou dat op élke tak wél gebeuren. Onder `'auto'` bouwt elke kandidaat een `zobel ×1` en een `damped-trap ×1` erbij.
+
+  **(2) Het EQ-budget is niet gesteld.** Een val op een BREAKUP komt in `deriveTopology` langs precies één weg: een EQ-band in de spec. Het budget is `Chain3Settings.eqBands`, en `CASUS1_V2_SETTINGS` stelt hem niet — dus nul. De app zelf staat op **twee** (`vfEqBands`, `App.tsx:5569`). Nagemeten: met 2 ontwerpt de stap wél banden (woofer lowShelf 1159 Hz, mid peak 966 Hz, tweeter peaks 3216 en 4754 Hz), met 0 geen enkele, en zonder band kan geen enkele waardetune er een maken.
+
+  **Dat is V27's procesles voor de derde keer.** V27 ving `synthMode: 'filter'` waar de app `'acoustic'` draait, en een fixture zonder beschermingen die een dode kortsluiting opleverde. De regel die daar is opgeschreven — *een run-fixture die met een vergelijking als doel wordt gebouwd, draait de instellingen van de app en niet een minimale set* — is hier opnieuw geschonden, met een sleutel die niemand heeft gemist omdat afwezig hier stil "nul" betekent.
+
+  **WAT DIE TOPOLOGIE WAARD IS NA HET TUNEN**, want een zaad draagt geen claim over de levering — de horizonpost over het synthese-verlies is precies daarop stukgelopen. Vier cellen op `396,7 · 1719`, allemaal door dezelfde waardetune:
+
+  | EQ | correcties | zaad | RMS | SPL ± | W-M fase | M-T fase | min \|Z\| | EPDR | dissipatie |
+  | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+  | 0 | lean *(de v2-route)* | 18 | 3,22 | 5,44 | 38,81° | 31,20° | **0,68 Ω** | 0,49 Ω | 1,0 % |
+  | 0 | auto | 27 | **2,57** | 6,41 | **3,32°** | 11,36° | 2,56 Ω | 1,87 Ω | 45,4 % |
+  | 2 | lean | 34 | **2,31** | 4,64 | 21,34° | 37,03° | 2,51 Ω | 1,30 Ω | 38,5 % |
+  | 2 | auto | 38 | 3,02 | 6,31 | 6,29° | 18,52° | **3,23 Ω** | **3,23 Ω** | 65,4 % |
+
+  En dezelfde vier op `396,7 · 2283,5`:
+
+  | EQ | correcties | zaad | RMS | SPL ± | W-M fase | M-T fase | min \|Z\| | EPDR | dissipatie |
+  | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+  | 0 | lean *(de v2-route)* | 18 | **2,08** | 4,53 | 19,16° | 15,05° | 2,58 Ω | 1,29 Ω | 0,6 % |
+  | 0 | auto | 27 | 3,65 | 8,04 | 4,40° | 20,28° | 2,82 Ω | 2,41 Ω | 39,3 % |
+  | 2 | lean | 32 | 2,51 | 4,41 | 15,17° | 22,89° | **1,41 Ω** | 0,71 Ω | 30,1 % |
+  | 2 | auto | 41 | 3,15 | 6,93 | **3,61°** | 28,77° | 2,61 Ω | **3,64 Ω** | 73,3 % |
+
+  **Op RMS is er geen consistente winst**: op de eerste kandidaat is de rijkste topologie de op één na slechtste, op de tweede is de KAALSTE de beste. Maar op twee andere assen wint `'auto'` **acht van de acht keer**:
+
+  | as | kandidaat 1 (lean eq0 → auto eq2) | kandidaat 2 (lean eq0 → auto eq2) |
+  | --- | --- | --- |
+  | W-M fasetracking | 38,81° → **6,29°** (auto eq0: 3,32°) | 19,16° → **3,61°** (auto eq0: 4,40°) |
+  | min \|Z\| | 0,68 Ω (mist de vloer) → **3,23 Ω** | 2,58 → **2,61 Ω** (lean eq2 zakt naar 1,41 en mist hem) |
+  | EPDR | 0,49 → **3,23 Ω** | 1,29 → **3,64 Ω** |
+
+  Betaald in dissipatie (1,0 → 65,4 % en 0,6 → 73,3 %), die casus 1 niet begrenst (P4). Dat is een afruil met n=2 kandidaten, geen verbetering, en de beslislijst somt hem zo op. Wat er wél hard uit komt: **de kale v2-cel is de enige die de gestelde versterkervloer met een bijna-kortsluiting mist** (0,68 Ω), en elke cel met correcties haalt hem.
+
+  ---
+
+  **STAP 2 — DE WATTENVAL, EN WAAROM ER TWEE ZIJN.**
+
+  De ablatie loopt cumulatief van buiten naar binnen, filterkern blijft staan, met vier controle-armen ervóór. Die controles zijn niet decoratie: de eerste rookproef leverde 2,76 dB voor HUIDIG's eigen topologie mét zijn eigen waarden, en zonder controle zou dat als "de ablatie van de eerste groep" zijn opgeschreven — de fout die V27 optekende.
+
+  **Op de maat die de v2-route vandaag gebruikt is de wattenval onmeetbaar.** Elke arm landt rond 2–3 dB en het weghalen van HUIDIG's handwerk maakt het geleverde netwerk VLAKKER: 0,00 / −0,50 / −0,37 / −0,24 / −0,01, samen −1,12 dB. Een tabel waarin elke groep negatief bijdraagt meet niet de groepen maar de bodem van de maat waarop hij is opgeschreven. Daarom staat hij er, en daarom staat er een tweede naast.
+
+  **Op de eerlijke maat (`errorSmoothOct: 0`) meet hij wél:**
+
+| arm | verwijderd | rol | onderd. | RMS | Δ | SPL ± | W-M fase | M-T fase | min \|Z\| | vloer | dissipatie | Q_es× | audit |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| HUIDIG, bevroren | — | — | 23 | 0,60 | — | 1,34 | 23,83° | 7,04° | 3,46 | ja | 45,8 % | 2,31 | — |
+| 0c — alles, her-gepolijst | — | — | 23 | **0,53** | — | 0,91 | 53,09° | 6,54° | 2,61 | ja | 53,2 % | 2,64 | schoon |
+| arm 1 | mid gedempte val | damped-trap | 20 | 0,54 | +0,01 | 0,98 | 51,09° | 5,77° | 2,89 | ja | 51,5 % | 2,73 | schoon |
+| arm 2 | + mid niveau-R | series-pad | 18 | 1,15 | +0,61 | 2,38 | 41,44° | 5,18° | 2,59 | ja | 26,0 % | 2,79 | **`C·L10` mee weg** |
+| arm 3 | + tweeter shelf | shunt-shelf | 17 | 1,49 | +0,34 | 3,20 | 25,32° | 8,41° | 2,59 | ja | 26,6 % | 3,18 | **`C·L10` terug** |
+| arm 4 | + wooferval | trap | 15 | 1,57 | +0,08 | 3,18 | 38,17° | 9,50° | 2,59 | ja | 25,3 % | 4,22 | schoon |
+| arm 5 | + woofer niveau-R | series-pad | 14 | 1,86 | +0,29 | 4,05 | 72,65° | 13,96° | 1,86 | **nee** | 0,0 % | 1,16 | schoon |
+| | | | | | **som +1,33** | | | | | | | | |
+
+  **De Δ's van arm 2 en arm 3 zijn elk apart vervuild** — de audit haalt `C·L10` op arm 2 weg en op arm 3 staat hij er weer — maar SAMEN zijn ze schoon, want arm 1 en arm 3 dragen allebei geen audit-verwijdering: **arm 1 → arm 3 is +0,95 dB**. Dat is het hele nut van de kolom.
+
+  **DE OPTELLING, EN ZIJ KLOPT.** Gestript van alle vijf de groepen levert HUIDIG's topologie 1,86 dB; het beste levende corpus — dat geen van die vijf groepen heeft — staat op 1,75 dB, 0,11 dB ernaast. En 0,53 + 1,33 = 1,86 exact. Het gemeten gat HUIDIG → corpus (1,15 dB) valt dus uiteen in: **groepen +1,33 dB**, her-polijstingswinst **−0,07 dB** (de tuner doet het ongegladd iets beter dan de ontwerper), en **+0,11 dB** restverschil tussen HUIDIG-gestript en het corpus — twee verschillende topologieën die na het strippen dicht bij elkaar liggen. Waar hij niet optelt staat dat erbij: de twee middelste Δ's zijn alleen als paar geldig.
+
+  **De rangorde die eruit volgt** — en dit IS de volgorde van de beslislijst: de mid-niveauweerstand (+0,61), de tweeter-shelf (+0,34), de woofer-niveauweerstand (+0,29), de wooferval (+0,08), de mid-val (+0,01).
+
+  Dat de WOOFERVAL, de enige groep die pal op een gemeten breakup staat, 0,08 dB bijdraagt en de twee NIVEAUWEERSTANDEN samen 0,90, is de bevinding onder de bevinding: wat HUIDIG voorheeft is niet in de eerste plaats zijn vallen maar zijn niveauwerk.
+
+  ---
+
+  **WAT DE HER-POLIJSTING KOCHT EN WAT ZIJ BETAALDE.** "De doelfunctie loopt weg" mag alleen als er op géén enkele gewogen as iets terugkwam. Er kwam iets terug, en het is precies één ding. Controle 0c (gegladd) tegen HUIDIG's zaad, in de eenheden van de tuner:
+
+  | as | voor | na | |
+  | --- | --- | --- | --- |
+  | fase (band) | 14,19° | 8,73° | **gekocht** |
+  | paarfase W-M | 22,28° | 9,65° | **gekocht** |
+  | rippelpiek | 1,40 dB | 6,42 dB | betaald |
+  | gem. afwijking | 0,45 dB | 2,02 dB | betaald |
+  | paarfase M-T | 7,04° | 7,99° | betaald |
+  | min \|Z\| | 3,46 Ω | 2,60 Ω | betaald |
+  | R_source | 3,98 Ω | 5,53 Ω | betaald |
+  | dissRatio | 1,30 | 1,81 | betaald |
+  | power-std / power-fold | weegt 0 | weegt 0 | n.v.t. |
+
+  **De in-room-as kan niets teruggegeven hebben, en dat is gemeten en niet aangenomen:** `directivityWeight` staat op 0 in `CASUS1_V2_SETTINGS` én er reist geen `angleData` mee, dus `dW = 0` en beide power-termen wegen nul. Een as die niets weegt is geen verklaring.
+
+  Het is dus een AFRUIL: 5,5° fase gekocht, al het andere betaald. **En 0d laat zien dat die afruil niet nodig was** — ongegladd verbetert dezelfde her-polijsting rippelpiek (1,40 → 1,15) én fase (14,19° → 11,00°) tegelijk.
+
+  **DE DOELCURVES ZIJN GELIJK, NAGEGAAN.** `judgeResponse` rekent `rmsDeviationDb` t.o.v. de doelcurve gerefereerd aan het BANDGEMIDDELDE (`response.ts`); de amplitudeterm van de zoektocht is `bandStd` — de standaarddeviatie om datzelfde bandgemiddelde (`netOptimizer.ts:1887`). Zelfde vlakke doelcurve, zelfde niveauvrijheid, zelfde statistiek: er hoeft niets omgerekend te worden. Wat verschilt is de gladding en de band, en dat is precies de naad hieronder.
+
+  ---
+
+  **DE BEVINDING: DE ZOEKGLADDING, EN ZIJ IS GROTER DAN "1/12 TEGEN 1/6".**
+
+  `smoothMag` gladt de DRIVERMAGNITUDES met 1/12 octaaf, laat de FASE ongemoeid, en sommeert de takken dan complex. Op élke gegladde arm ziet de zoektocht daardoor een som met een kenmerk van **43–47 dB** waar de echte som 4,4–6,4 dB rimpelpiek heeft. Met `errorSmoothOct: 0` vallen de twee samen (1,15 = 1,15), precies zoals de code belooft.
+
+  De ene-sleutel-vergelijking, in beide richtingen gemeten, in twee onafhankelijke runs:
+
+  | | gegladd | ongegladd |
+  | --- | --- | --- |
+  | gegladde reeks | 0c: **2,98** | 0d: **0,53** |
+  | ongegladde reeks | 0d: **2,98** | 0c: **0,53** |
+
+  Symmetrisch tot op de decimaal. Eén sleutel, 2,45 dB — en ongegladd landt de her-polijsting op 0,53 dB, **onder HUIDIG's eigen 0,60**, met een venster van ±0,91 tegen ±1,34, en zij haalt de gestelde vloer waar de gegladde arm hem mist.
+
+  **HET GENERALISEERT NAAR GEGENEREERDE KANDIDATEN**, wat het onderscheidt van een eigenaardigheid van HUIDIG:
+
+  | kandidaat | gladding | RMS | min \|Z\| | vloer | rippelpiek ruw / zoals de zoektocht hem ziet |
+  | --- | --- | --- | --- | --- | --- |
+  | 396,7 · 1719 | 1/12 okt | 3,22 | 0,68 Ω | **nee** | 6,07 / **46,47** |
+  | 396,7 · 1719 | uit | **1,83** | 2,59 Ω | ja | 4,00 / 4,00 |
+  | 396,7 · 2283,5 | 1/12 okt | 2,08 | 2,58 Ω | ja | 4,84 / **47,45** |
+  | 396,7 · 2283,5 | uit | **1,53** | 2,60 Ω | ja | 4,68 / 4,68 |
+
+  Drie topologieën, dezelfde richting, 0,55–2,45 dB. Op `396,7 · 2283,5` levert de bank ZONDER gladding 1,53 dB, beter dan de volle v2-route MET gladding op dezelfde kandidaat (1,75) — terwijl die bank verder zwakker is.
+
+  **Dit is géén bug-melding en de sessie repareert niets.** `errorSmoothOct` is gedocumenteerd gedrag, staat als POLISH geclassificeerd (A3j), en F3c bouwde er al een zichtbaarheidsnotitie voor (`smoothingConsistency`). Wat V38 toevoegt is de MAAT: op deze casus is die polish-sleutel het hele gat.
+
+  **DE TWEEDE NAAD, en zij zit op de as waarvoor de afruil is gemaakt.** Op HUIDIG's zaad zijn de twee fasematen het eens (tuner 22,28° tegen rapport 23,83° voor W-M). Op het geleverde netwerk lopen ze uiteen in TEGENGESTELDE RICHTING: de tuner leest 9,65°, het rapport 47,68°. Nagemeten dat het niet de band is — beide netwerken worden op 397–715 Hz geoordeeld met 42,95 % dekking, en dat is dezelfde band. HUIDIG kruist W-M op 359,7 Hz, ónder de meetgeldigheidsvloer, dus dat oordeel kijkt uitsluitend BOVEN het kruispunt. Welke van de twee de luidspreker beschrijft is met deze sessie niet uitgemaakt; dát ze het oneens zijn wel.
+
+  ---
+
+  **STAP 3 — DE TRANSPLANTATIE: BLIJFT ER EEN REST?**
+
+  HUIDIG's topologie, waarden uit vier zaden die 0,60 tot 12,72 dB uiteen liggen, overname vastgehouden:
+
+  | zaad | RMS zaad | RMS geleverd | W-M | M-T | min \|Z\| | overnames |
+  | --- | --- | --- | --- | --- | --- | --- |
+  | warm (HUIDIG zelf) | 0,60 | 2,98 | 47,68° | 7,77° | 2,53 Ω | 358/2370 |
+  | koud (midden van de doos) | 4,00 | 3,02 | 45,55° | 6,13° | 2,53 Ω | 358/2370 |
+  | koud-1 | 12,72 | 3,13 | 42,02° | 20,22° | 2,53 Ω | 358/2370 |
+  | koud-2 | 3,90 | **2,69** | 45,73° | 5,69° | 3,44 Ω | 358/2370 |
+
+  Alle vier op dezelfde geleverde overnames, spreiding 0,44 dB. **De zoektocht loopt niet vast en mist HUIDIG niet door pech**: hij convergeert betrouwbaar, en het punt waarheen hij convergeert is 2,7–3,1 dB. De rest is 2,09 dB — en met `errorSmoothOct: 0` op dezelfde topologie is zij **negatief** (0,53 tegen 0,60). Er blijft dus niets over voor topologie.
+
+  **HET SYNTHESE-FASEVERLIES VERKLAART HEM NIET, en dat hoefde niet opnieuw gemeten te worden.** De hypothese — *de ontwerpstap modelleert zijn EQ-banden fase-vrij* — is in `OVERDRACHT-2026-08.md` al WEERLEGD: `evalEqBand` is een complexe analoge biquad (peak én beide shelves), dus de ontwerpstap rekent met volledige minimumfase. Bij V38 nagelezen in `src/lib/filters.ts:163`; het staat er nog zo. Bovendien komt er in de transplantatie geen ontwerpstap en geen EQ-band voorbij — de topologie is gegeven en alleen waarden bewegen. Een rest die dáár overblijft kan per constructie geen synthese-faseverlies zijn.
+
+  ---
+
+  **TWEE NUL-RESULTATEN, die allebei een verklaring wegnemen.**
+
+  **De venstergrens kost niets.** HUIDIG kruist W-M op 359,7 Hz, 0,14 octaaf onder de A5d.3-vloer van 396,7 Hz, en de generator mag daar per beleid niet komen — meetgeldigheid, en terecht. Gemeten als eigen post, zelfde topologie, zelfde zaad, alleen een andere kooi:
+
+  | kooi | overnames | RMS | W-M fase | M-T fase | min \|Z\| | dissipatie | Q_es× |
+  | --- | --- | --- | --- | --- | --- | --- | --- |
+  | HUIDIG's eigen ±2 % (0c) | 358/2370 | 2,98 | 47,68° | 7,77° | 2,53 Ω | 58,9 % | 2,82 |
+  | A5d.3-venster (0b) | 554/2370 | **2,96** | **19,79°** | 7,83° | 2,53 Ω | **42,8 %** | **1,93** |
+
+  Bijdrage aan het gat: **−0,02 dB**. De vloer levert 27,9° W-M-fase op, 16 procentpunt dissipatie en Q_es× van 2,82 naar 1,93. Ongegladd draait hij dezelfde kant op: 0b 0,43 tegen 0c 0,53. HUIDIG's kruispunt onder de meetgeldigheidsvloer is dus NIET waar zijn voorsprong vandaan komt, en de venstergrens vervalt als post in de wattenval. De groundplane-hermeting van de horizonlijst blijft de moeite waard — zij opent dat gebied echt — maar zij is op deze casus geen verklaring voor het gat.
+
+  **De zoektocht is niet de beperking.** Zie de vier zaden hierboven.
+
+  ---
+
+  **STAP 4 — DE BESLISLIJST. Zij somt op; Sander besluit.** Volgorde is verwacht rendement, en dat is de wattenval plus de ene-sleutel-metingen.
+
+  **A. De zoekgladding (`errorSmoothOct`) — 0,55 tot 2,45 dB, op drie topologieën.** Geen kandidaat- en geen topologiekwestie: de zoektocht gladt drivermagnitudes en niet hun fase, en sommeert dan complex. Wat dat waard is staat hierboven; wat het KOST is niet gemeten (de gladding bestaat om de zoekruimte glad te maken, en een ongegladde zoektocht kan op andere casussen slechter converteren — hier werd hij juist sneller: 478 s tegen 891 s). Vier vormen liggen open, geen ervan hier gekozen: (i) laten staan en de F3c-notitie aanscherpen; (ii) de fase meegladden zodat de gegladde som een echte som blijft; (iii) een kandidaat de bron laten stellen zoals bij V33/V34/V37; (iv) de gladding alleen op de zoekmaat en niet op de leveringsmaat. Dit verdient dezelfde behandeling als V30/V32/V33/V34: een eigen sessie met een vóór/ná op het hele veld.
+
+  **B. `leanTargetDb` — 45 van 45 takken, en hij is niet eens een sleutel.** De drempel die bepaalt of een tak een Zobel, een Fs-val of een top-octaaf-hold koopt, wordt binnen de keten AFGELEID uit `targets.rippleDb`. Een kandidaat kan hem principieel niet stellen: er is geen sleutel om te stellen. Dat is niet "nog niet verklaard" maar "niet verklaarbaar", en het is de scherpste vorm van de erf-fout die F4d beëindigde.
+
+  **C. `eqBands` — de app stelt 2, de v2-fixture stelt niets.** De enige weg naar een breakup-val. Afwezig betekent hier stil NUL en niet "geen oordeel", wat het tegendeel is van P4.
+
+  **D. Het dekkingsgat waar B en C in vallen.** A3j's toetsbaarheid — `CHOICE_KEYS`/`GREY_KEYS`/`POLISH_KEYS`, de volledigheidsassert, en `choiceKeyGuard.test.ts`'s "een sleutel die er bovenstrooms bijkomt zonder klasse breekt de build" — dekt de 44 sleutels van `NetOptimizeOptions` en niets anders. `Chain3Settings` (≈32 sleutels) is nergens geclassificeerd; hij komt in `engine2/` alleen in twee commentaarregels voor. `eqBands` is naar A3j's eigen woorden een KEUZE ("wat de topologie IS") en heeft geen klasse, geen verklaring en geen dekkingsgarantie. Wat V38 hier oplevert is geen reparatie maar de vaststelling dat de garantie één laag te laag ophoudt.
+
+  **E. Per groep, wat een kandidaat P6-schoon zou kunnen dragen.** De metriek levert frequentie en Q, de kandidaat draagt de structuur, de tuner polijst de waarden:
+
+  | groep | kan de kandidaat hem dragen? | waaruit |
+  | --- | --- | --- |
+  | wooferval | **ja** | `breakups.peaks`: f = 1394 Hz, +3,25 dB, Q 6,7 — f, diepte en Q zijn alle drie gemeten |
+  | tweeter shunt-shelf | **ja** | `impedance`: f_s 924,3 Hz, 16,6 Ω, Q 1,07, R_e 5,227 Ω — een Fs-dempingsnetwerk is hieruit exact te parameteriseren |
+  | Zobel (heeft HUIDIG niet; `'auto'` bouwt hem) | **ja voor woofer en mid, NEE voor de tweeter** | `semiInductance`: woofer n = 0,849 geldig, mid n = 0,603 geldig, tweeter ONGELDIG — de fit weigert (V8e). Een kandidaat die hem daar tóch voorstelt verzint |
+  | mid gedempte val | **nee, niet op deze plek** | de dichtstbijzijnde gemeten aanleiding ligt 0,31 okt hoger. Wat HUIDIG daar doet is niet uit de opnamepas af te leiden |
+  | niveauwerk (`R8`, `B·R9`) | **gedeeltelijk** | A5d.4 levert een verankerd budget (anker = mid; woofer 0,89 dB, tweeter 3,44 dB) maar "as measured": A5d.4(a) wil het ankerniveau ná baffle step, en dat is het doelcurve-object — **A5e.2, geparkeerd**. HUIDIG betaalt 3,53 dB op de woofer waar het budget 0,89 zegt; dat verschil IS de baffle-step-compensatie die het blok nog niet kan uitdrukken, en het blok zegt dat zelf in zijn notities |
+
+  Twee posten hebben dus geen gemeten aanleiding en kunnen door de generator niet worden voorgesteld zonder te verzinnen: de mid-val op zijn feitelijke plek, en het deel van het niveauwerk dat aan de doelcurve hangt. Dat laatste is niet nieuw — het is A5e.2 — maar V38 zet er een getal bij: **0,90 van de 1,33 dB van de wattenval zit in de twee niveauweerstanden.**
+
+  **F. De twee fasematen zijn het oneens.** Zie de tweede naad. Zolang dat zo is, is "de tuner kocht fase" een uitspraak in de eenheden van de tuner en niet in die van het rapport, en elke afruil die op fase wordt verdedigd draagt die onzekerheid mee.
+
+  ---
+
+  **WAT ER IN DE CODE VERANDERDE: NIETS ONDER `src/`.** Nieuw onder `scripts/`: `v38-bench.ts` (de gedeelde meetbank), `v38-groups.ts` (decompositie, gemeten groepseffect, ablatie), `measure-v38-topology.ts`, `measure-v38-corrections.ts`, `measure-v38-ablation.ts`, `measure-v38-transplant.ts`, `measure-v38-corrections-tuned.ts`, `measure-v38-smoothing.ts`. Nieuw onder `test-fixtures/`: zeven `casus1_v38_*.json` met de armen, hun volle vector en hun geleverde netlists. `CLAUDE.md` documenteert de commando's en de bank-kalibratie. Het levende corpus, de golden refs en elke test zijn onaangeraakt.
+
+  **Openstaand in deze casus:** groundplane-metingen onder het onderste kruisgebied vóór onderdelenbestelling; HD-sweep; 30°-meting tweeter voor M-G-compleetheid; verzadigings-/formaatcheck grote P-core shunt-spoel.
 
 ## Casus S1 — synthetische grondwaarheid voor de R_e-schatter (F3b, 26-08-2026)
 

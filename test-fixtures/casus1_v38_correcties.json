@@ -1,0 +1,818 @@
+{
+ "_": "V38 stap 1b — wat de lean-drempel van de synthese op de v2-route doet. Documentatie, geen acceptatiewaarde.",
+ "leanTargetDb_v2": 2.5,
+ "leanTargetDb_standaard": 0.5,
+ "herkomst": "threeWayChain.ts: corrections = (s.targets ? 'lean' : 'auto'), leanTargetDb = s.targets?.rippleDb",
+ "kandidaten": [
+  {
+   "kandidaat": "woofer→mid 396.7 LR4 · mid→tweeter 1294 LR4",
+   "xoHz": [
+    396.7,
+    1294
+   ],
+   "takken": [
+    {
+     "tak": "woofer",
+     "kaal_rms_dB": 1.336,
+     "kaal_onderdelen": 4,
+     "auto_rms_dB": 1.344,
+     "auto_onderdelen": 6,
+     "lean_v2_onderdelen": 4,
+     "lean_default_onderdelen": 4,
+     "kale_ladder_haalt_v2_drempel": true,
+     "kale_ladder_haalt_standaard": false
+    },
+    {
+     "tak": "mid",
+     "kaal_rms_dB": 1.175,
+     "kaal_onderdelen": 8,
+     "auto_rms_dB": 0.846,
+     "auto_onderdelen": 10,
+     "lean_v2_onderdelen": 8,
+     "lean_default_onderdelen": 10,
+     "kale_ladder_haalt_v2_drempel": true,
+     "kale_ladder_haalt_standaard": false
+    },
+    {
+     "tak": "tweeter",
+     "kaal_rms_dB": 1.327,
+     "kaal_onderdelen": 6,
+     "auto_rms_dB": 1.196,
+     "auto_onderdelen": 11,
+     "lean_v2_onderdelen": 6,
+     "lean_default_onderdelen": 6,
+     "kale_ladder_haalt_v2_drempel": true,
+     "kale_ladder_haalt_standaard": false
+    }
+   ],
+   "rollen_lean_v2": {
+    "pole": 16,
+    "series-pad": 1,
+    "shunt-pad": 1
+   },
+   "rollen_auto": {
+    "pole": 18,
+    "series-pad": 3,
+    "zobel": 1,
+    "shunt-pad": 1,
+    "damped-trap": 1
+   }
+  },
+  {
+   "kandidaat": "woofer→mid 396.7 LR4 · mid→tweeter 1491.4 LR4",
+   "xoHz": [
+    396.7,
+    1491.4
+   ],
+   "takken": [
+    {
+     "tak": "woofer",
+     "kaal_rms_dB": 1.336,
+     "kaal_onderdelen": 4,
+     "auto_rms_dB": 1.344,
+     "auto_onderdelen": 6,
+     "lean_v2_onderdelen": 4,
+     "lean_default_onderdelen": 4,
+     "kale_ladder_haalt_v2_drempel": true,
+     "kale_ladder_haalt_standaard": false
+    },
+    {
+     "tak": "mid",
+     "kaal_rms_dB": 0.791,
+     "kaal_onderdelen": 8,
+     "auto_rms_dB": 0.802,
+     "auto_onderdelen": 10,
+     "lean_v2_onderdelen": 8,
+     "lean_default_onderdelen": 8,
+     "kale_ladder_haalt_v2_drempel": true,
+     "kale_ladder_haalt_standaard": false
+    },
+    {
+     "tak": "tweeter",
+     "kaal_rms_dB": 1.298,
+     "kaal_onderdelen": 6,
+     "auto_rms_dB": 1.195,
+     "auto_onderdelen": 11,
+     "lean_v2_onderdelen": 6,
+     "lean_default_onderdelen": 6,
+     "kale_ladder_haalt_v2_drempel": true,
+     "kale_ladder_haalt_standaard": false
+    }
+   ],
+   "rollen_lean_v2": {
+    "pole": 16,
+    "series-pad": 1,
+    "shunt-pad": 1
+   },
+   "rollen_auto": {
+    "pole": 18,
+    "series-pad": 3,
+    "zobel": 1,
+    "shunt-pad": 1,
+    "damped-trap": 1
+   }
+  },
+  {
+   "kandidaat": "woofer→mid 396.7 LR4 · mid→tweeter 1719 LR4",
+   "xoHz": [
+    396.7,
+    1719
+   ],
+   "takken": [
+    {
+     "tak": "woofer",
+     "kaal_rms_dB": 1.336,
+     "kaal_onderdelen": 4,
+     "auto_rms_dB": 1.344,
+     "auto_onderdelen": 6,
+     "lean_v2_onderdelen": 4,
+     "lean_default_onderdelen": 4,
+     "kale_ladder_haalt_v2_drempel": true,
+     "kale_ladder_haalt_standaard": false
+    },
+    {
+     "tak": "mid",
+     "kaal_rms_dB": 0.752,
+     "kaal_onderdelen": 8,
+     "auto_rms_dB": 0.709,
+     "auto_onderdelen": 10,
+     "lean_v2_onderdelen": 8,
+     "lean_default_onderdelen": 8,
+     "kale_ladder_haalt_v2_drempel": true,
+     "kale_ladder_haalt_standaard": false
+    },
+    {
+     "tak": "tweeter",
+     "kaal_rms_dB": 1.263,
+     "kaal_onderdelen": 6,
+     "auto_rms_dB": 1.174,
+     "auto_onderdelen": 11,
+     "lean_v2_onderdelen": 6,
+     "lean_default_onderdelen": 6,
+     "kale_ladder_haalt_v2_drempel": true,
+     "kale_ladder_haalt_standaard": false
+    }
+   ],
+   "rollen_lean_v2": {
+    "pole": 16,
+    "series-pad": 1,
+    "shunt-pad": 1
+   },
+   "rollen_auto": {
+    "pole": 18,
+    "series-pad": 3,
+    "zobel": 1,
+    "shunt-pad": 1,
+    "damped-trap": 1
+   }
+  },
+  {
+   "kandidaat": "woofer→mid 396.7 LR4 · mid→tweeter 1981.2 LR4",
+   "xoHz": [
+    396.7,
+    1981.2
+   ],
+   "takken": [
+    {
+     "tak": "woofer",
+     "kaal_rms_dB": 1.336,
+     "kaal_onderdelen": 4,
+     "auto_rms_dB": 1.344,
+     "auto_onderdelen": 6,
+     "lean_v2_onderdelen": 4,
+     "lean_default_onderdelen": 4,
+     "kale_ladder_haalt_v2_drempel": true,
+     "kale_ladder_haalt_standaard": false
+    },
+    {
+     "tak": "mid",
+     "kaal_rms_dB": 0.753,
+     "kaal_onderdelen": 8,
+     "auto_rms_dB": 0.628,
+     "auto_onderdelen": 10,
+     "lean_v2_onderdelen": 8,
+     "lean_default_onderdelen": 10,
+     "kale_ladder_haalt_v2_drempel": true,
+     "kale_ladder_haalt_standaard": false
+    },
+    {
+     "tak": "tweeter",
+     "kaal_rms_dB": 1.249,
+     "kaal_onderdelen": 6,
+     "auto_rms_dB": 1.233,
+     "auto_onderdelen": 11,
+     "lean_v2_onderdelen": 6,
+     "lean_default_onderdelen": 6,
+     "kale_ladder_haalt_v2_drempel": true,
+     "kale_ladder_haalt_standaard": false
+    }
+   ],
+   "rollen_lean_v2": {
+    "pole": 16,
+    "series-pad": 1,
+    "shunt-pad": 1
+   },
+   "rollen_auto": {
+    "pole": 18,
+    "series-pad": 3,
+    "zobel": 1,
+    "shunt-pad": 1,
+    "damped-trap": 1
+   }
+  },
+  {
+   "kandidaat": "woofer→mid 396.7 LR4 · mid→tweeter 2283.5 LR4",
+   "xoHz": [
+    396.7,
+    2283.5
+   ],
+   "takken": [
+    {
+     "tak": "woofer",
+     "kaal_rms_dB": 1.336,
+     "kaal_onderdelen": 4,
+     "auto_rms_dB": 1.344,
+     "auto_onderdelen": 6,
+     "lean_v2_onderdelen": 4,
+     "lean_default_onderdelen": 4,
+     "kale_ladder_haalt_v2_drempel": true,
+     "kale_ladder_haalt_standaard": false
+    },
+    {
+     "tak": "mid",
+     "kaal_rms_dB": 0.753,
+     "kaal_onderdelen": 8,
+     "auto_rms_dB": 0.582,
+     "auto_onderdelen": 10,
+     "lean_v2_onderdelen": 8,
+     "lean_default_onderdelen": 10,
+     "kale_ladder_haalt_v2_drempel": true,
+     "kale_ladder_haalt_standaard": false
+    },
+    {
+     "tak": "tweeter",
+     "kaal_rms_dB": 1.286,
+     "kaal_onderdelen": 6,
+     "auto_rms_dB": 1.185,
+     "auto_onderdelen": 11,
+     "lean_v2_onderdelen": 6,
+     "lean_default_onderdelen": 6,
+     "kale_ladder_haalt_v2_drempel": true,
+     "kale_ladder_haalt_standaard": false
+    }
+   ],
+   "rollen_lean_v2": {
+    "pole": 16,
+    "series-pad": 1,
+    "shunt-pad": 1
+   },
+   "rollen_auto": {
+    "pole": 18,
+    "series-pad": 3,
+    "zobel": 1,
+    "shunt-pad": 1,
+    "damped-trap": 1
+   }
+  },
+  {
+   "kandidaat": "woofer→mid 466.5 LR4 · mid→tweeter 1294 LR4",
+   "xoHz": [
+    466.5,
+    1294
+   ],
+   "takken": [
+    {
+     "tak": "woofer",
+     "kaal_rms_dB": 1.361,
+     "kaal_onderdelen": 6,
+     "auto_rms_dB": 1.366,
+     "auto_onderdelen": 8,
+     "lean_v2_onderdelen": 6,
+     "lean_default_onderdelen": 6,
+     "kale_ladder_haalt_v2_drempel": true,
+     "kale_ladder_haalt_standaard": false
+    },
+    {
+     "tak": "mid",
+     "kaal_rms_dB": 1.239,
+     "kaal_onderdelen": 8,
+     "auto_rms_dB": 0.908,
+     "auto_onderdelen": 10,
+     "lean_v2_onderdelen": 8,
+     "lean_default_onderdelen": 10,
+     "kale_ladder_haalt_v2_drempel": true,
+     "kale_ladder_haalt_standaard": false
+    },
+    {
+     "tak": "tweeter",
+     "kaal_rms_dB": 1.321,
+     "kaal_onderdelen": 6,
+     "auto_rms_dB": 1.192,
+     "auto_onderdelen": 11,
+     "lean_v2_onderdelen": 6,
+     "lean_default_onderdelen": 6,
+     "kale_ladder_haalt_v2_drempel": true,
+     "kale_ladder_haalt_standaard": false
+    }
+   ],
+   "rollen_lean_v2": {
+    "pole": 16,
+    "series-pad": 2,
+    "shunt-pad": 2
+   },
+   "rollen_auto": {
+    "pole": 18,
+    "series-pad": 4,
+    "shunt-pad": 2,
+    "zobel": 1,
+    "damped-trap": 1
+   }
+  },
+  {
+   "kandidaat": "woofer→mid 466.5 LR4 · mid→tweeter 1491.4 LR4",
+   "xoHz": [
+    466.5,
+    1491.4
+   ],
+   "takken": [
+    {
+     "tak": "woofer",
+     "kaal_rms_dB": 1.361,
+     "kaal_onderdelen": 6,
+     "auto_rms_dB": 1.366,
+     "auto_onderdelen": 8,
+     "lean_v2_onderdelen": 6,
+     "lean_default_onderdelen": 6,
+     "kale_ladder_haalt_v2_drempel": true,
+     "kale_ladder_haalt_standaard": false
+    },
+    {
+     "tak": "mid",
+     "kaal_rms_dB": 0.785,
+     "kaal_onderdelen": 8,
+     "auto_rms_dB": 0.832,
+     "auto_onderdelen": 10,
+     "lean_v2_onderdelen": 8,
+     "lean_default_onderdelen": 8,
+     "kale_ladder_haalt_v2_drempel": true,
+     "kale_ladder_haalt_standaard": false
+    },
+    {
+     "tak": "tweeter",
+     "kaal_rms_dB": 1.298,
+     "kaal_onderdelen": 6,
+     "auto_rms_dB": 1.195,
+     "auto_onderdelen": 11,
+     "lean_v2_onderdelen": 6,
+     "lean_default_onderdelen": 6,
+     "kale_ladder_haalt_v2_drempel": true,
+     "kale_ladder_haalt_standaard": false
+    }
+   ],
+   "rollen_lean_v2": {
+    "pole": 16,
+    "series-pad": 2,
+    "shunt-pad": 2
+   },
+   "rollen_auto": {
+    "pole": 18,
+    "series-pad": 4,
+    "shunt-pad": 2,
+    "zobel": 1,
+    "damped-trap": 1
+   }
+  },
+  {
+   "kandidaat": "woofer→mid 466.5 LR4 · mid→tweeter 1719 LR4",
+   "xoHz": [
+    466.5,
+    1719
+   ],
+   "takken": [
+    {
+     "tak": "woofer",
+     "kaal_rms_dB": 1.361,
+     "kaal_onderdelen": 6,
+     "auto_rms_dB": 1.366,
+     "auto_onderdelen": 8,
+     "lean_v2_onderdelen": 6,
+     "lean_default_onderdelen": 6,
+     "kale_ladder_haalt_v2_drempel": true,
+     "kale_ladder_haalt_standaard": false
+    },
+    {
+     "tak": "mid",
+     "kaal_rms_dB": 0.79,
+     "kaal_onderdelen": 8,
+     "auto_rms_dB": 0.718,
+     "auto_onderdelen": 10,
+     "lean_v2_onderdelen": 8,
+     "lean_default_onderdelen": 8,
+     "kale_ladder_haalt_v2_drempel": true,
+     "kale_ladder_haalt_standaard": false
+    },
+    {
+     "tak": "tweeter",
+     "kaal_rms_dB": 1.263,
+     "kaal_onderdelen": 6,
+     "auto_rms_dB": 1.174,
+     "auto_onderdelen": 11,
+     "lean_v2_onderdelen": 6,
+     "lean_default_onderdelen": 6,
+     "kale_ladder_haalt_v2_drempel": true,
+     "kale_ladder_haalt_standaard": false
+    }
+   ],
+   "rollen_lean_v2": {
+    "pole": 16,
+    "series-pad": 2,
+    "shunt-pad": 2
+   },
+   "rollen_auto": {
+    "pole": 18,
+    "series-pad": 4,
+    "shunt-pad": 2,
+    "zobel": 1,
+    "damped-trap": 1
+   }
+  },
+  {
+   "kandidaat": "woofer→mid 466.5 LR4 · mid→tweeter 1981.2 LR4",
+   "xoHz": [
+    466.5,
+    1981.2
+   ],
+   "takken": [
+    {
+     "tak": "woofer",
+     "kaal_rms_dB": 1.378,
+     "kaal_onderdelen": 6,
+     "auto_rms_dB": 1.384,
+     "auto_onderdelen": 8,
+     "lean_v2_onderdelen": 6,
+     "lean_default_onderdelen": 6,
+     "kale_ladder_haalt_v2_drempel": true,
+     "kale_ladder_haalt_standaard": false
+    },
+    {
+     "tak": "mid",
+     "kaal_rms_dB": 0.781,
+     "kaal_onderdelen": 8,
+     "auto_rms_dB": 0.623,
+     "auto_onderdelen": 10,
+     "lean_v2_onderdelen": 8,
+     "lean_default_onderdelen": 10,
+     "kale_ladder_haalt_v2_drempel": true,
+     "kale_ladder_haalt_standaard": false
+    },
+    {
+     "tak": "tweeter",
+     "kaal_rms_dB": 1.249,
+     "kaal_onderdelen": 6,
+     "auto_rms_dB": 1.233,
+     "auto_onderdelen": 11,
+     "lean_v2_onderdelen": 6,
+     "lean_default_onderdelen": 6,
+     "kale_ladder_haalt_v2_drempel": true,
+     "kale_ladder_haalt_standaard": false
+    }
+   ],
+   "rollen_lean_v2": {
+    "pole": 16,
+    "series-pad": 2,
+    "shunt-pad": 2
+   },
+   "rollen_auto": {
+    "pole": 18,
+    "series-pad": 4,
+    "shunt-pad": 2,
+    "zobel": 1,
+    "damped-trap": 1
+   }
+  },
+  {
+   "kandidaat": "woofer→mid 466.5 LR4 · mid→tweeter 2283.5 LR4",
+   "xoHz": [
+    466.5,
+    2283.5
+   ],
+   "takken": [
+    {
+     "tak": "woofer",
+     "kaal_rms_dB": 1.354,
+     "kaal_onderdelen": 6,
+     "auto_rms_dB": 1.36,
+     "auto_onderdelen": 8,
+     "lean_v2_onderdelen": 6,
+     "lean_default_onderdelen": 6,
+     "kale_ladder_haalt_v2_drempel": true,
+     "kale_ladder_haalt_standaard": false
+    },
+    {
+     "tak": "mid",
+     "kaal_rms_dB": 0.774,
+     "kaal_onderdelen": 8,
+     "auto_rms_dB": 0.581,
+     "auto_onderdelen": 10,
+     "lean_v2_onderdelen": 8,
+     "lean_default_onderdelen": 10,
+     "kale_ladder_haalt_v2_drempel": true,
+     "kale_ladder_haalt_standaard": false
+    },
+    {
+     "tak": "tweeter",
+     "kaal_rms_dB": 1.291,
+     "kaal_onderdelen": 6,
+     "auto_rms_dB": 1.183,
+     "auto_onderdelen": 11,
+     "lean_v2_onderdelen": 6,
+     "lean_default_onderdelen": 6,
+     "kale_ladder_haalt_v2_drempel": true,
+     "kale_ladder_haalt_standaard": false
+    }
+   ],
+   "rollen_lean_v2": {
+    "pole": 16,
+    "series-pad": 2,
+    "shunt-pad": 2
+   },
+   "rollen_auto": {
+    "pole": 18,
+    "series-pad": 4,
+    "shunt-pad": 2,
+    "zobel": 1,
+    "damped-trap": 1
+   }
+  },
+  {
+   "kandidaat": "woofer→mid 548.5 LR4 · mid→tweeter 1294 LR4",
+   "xoHz": [
+    548.5,
+    1294
+   ],
+   "takken": [
+    {
+     "tak": "woofer",
+     "kaal_rms_dB": 1.319,
+     "kaal_onderdelen": 6,
+     "auto_rms_dB": 1.322,
+     "auto_onderdelen": 8,
+     "lean_v2_onderdelen": 6,
+     "lean_default_onderdelen": 6,
+     "kale_ladder_haalt_v2_drempel": true,
+     "kale_ladder_haalt_standaard": false
+    },
+    {
+     "tak": "mid",
+     "kaal_rms_dB": 0.814,
+     "kaal_onderdelen": 8,
+     "auto_rms_dB": 1.229,
+     "auto_onderdelen": 10,
+     "lean_v2_onderdelen": 8,
+     "lean_default_onderdelen": 8,
+     "kale_ladder_haalt_v2_drempel": true,
+     "kale_ladder_haalt_standaard": false
+    },
+    {
+     "tak": "tweeter",
+     "kaal_rms_dB": 1.321,
+     "kaal_onderdelen": 6,
+     "auto_rms_dB": 1.192,
+     "auto_onderdelen": 11,
+     "lean_v2_onderdelen": 6,
+     "lean_default_onderdelen": 6,
+     "kale_ladder_haalt_v2_drempel": true,
+     "kale_ladder_haalt_standaard": false
+    }
+   ],
+   "rollen_lean_v2": {
+    "pole": 16,
+    "series-pad": 2,
+    "shunt-pad": 2
+   },
+   "rollen_auto": {
+    "pole": 18,
+    "series-pad": 4,
+    "shunt-pad": 2,
+    "zobel": 1,
+    "damped-trap": 1
+   }
+  },
+  {
+   "kandidaat": "woofer→mid 548.5 LR4 · mid→tweeter 1491.4 LR4",
+   "xoHz": [
+    548.5,
+    1491.4
+   ],
+   "takken": [
+    {
+     "tak": "woofer",
+     "kaal_rms_dB": 1.294,
+     "kaal_onderdelen": 6,
+     "auto_rms_dB": 1.294,
+     "auto_onderdelen": 8,
+     "lean_v2_onderdelen": 6,
+     "lean_default_onderdelen": 6,
+     "kale_ladder_haalt_v2_drempel": true,
+     "kale_ladder_haalt_standaard": false
+    },
+    {
+     "tak": "mid",
+     "kaal_rms_dB": 0.853,
+     "kaal_onderdelen": 8,
+     "auto_rms_dB": 0.842,
+     "auto_onderdelen": 10,
+     "lean_v2_onderdelen": 8,
+     "lean_default_onderdelen": 8,
+     "kale_ladder_haalt_v2_drempel": true,
+     "kale_ladder_haalt_standaard": false
+    },
+    {
+     "tak": "tweeter",
+     "kaal_rms_dB": 1.297,
+     "kaal_onderdelen": 6,
+     "auto_rms_dB": 1.192,
+     "auto_onderdelen": 11,
+     "lean_v2_onderdelen": 6,
+     "lean_default_onderdelen": 6,
+     "kale_ladder_haalt_v2_drempel": true,
+     "kale_ladder_haalt_standaard": false
+    }
+   ],
+   "rollen_lean_v2": {
+    "pole": 16,
+    "series-pad": 2,
+    "shunt-pad": 2
+   },
+   "rollen_auto": {
+    "pole": 18,
+    "series-pad": 4,
+    "shunt-pad": 2,
+    "zobel": 1,
+    "damped-trap": 1
+   }
+  },
+  {
+   "kandidaat": "woofer→mid 548.5 LR4 · mid→tweeter 1719 LR4",
+   "xoHz": [
+    548.5,
+    1719
+   ],
+   "takken": [
+    {
+     "tak": "woofer",
+     "kaal_rms_dB": 1.317,
+     "kaal_onderdelen": 6,
+     "auto_rms_dB": 1.317,
+     "auto_onderdelen": 8,
+     "lean_v2_onderdelen": 6,
+     "lean_default_onderdelen": 6,
+     "kale_ladder_haalt_v2_drempel": true,
+     "kale_ladder_haalt_standaard": false
+    },
+    {
+     "tak": "mid",
+     "kaal_rms_dB": 0.835,
+     "kaal_onderdelen": 8,
+     "auto_rms_dB": 0.714,
+     "auto_onderdelen": 10,
+     "lean_v2_onderdelen": 8,
+     "lean_default_onderdelen": 10,
+     "kale_ladder_haalt_v2_drempel": true,
+     "kale_ladder_haalt_standaard": false
+    },
+    {
+     "tak": "tweeter",
+     "kaal_rms_dB": 1.264,
+     "kaal_onderdelen": 6,
+     "auto_rms_dB": 1.193,
+     "auto_onderdelen": 11,
+     "lean_v2_onderdelen": 6,
+     "lean_default_onderdelen": 6,
+     "kale_ladder_haalt_v2_drempel": true,
+     "kale_ladder_haalt_standaard": false
+    }
+   ],
+   "rollen_lean_v2": {
+    "pole": 16,
+    "series-pad": 2,
+    "shunt-pad": 2
+   },
+   "rollen_auto": {
+    "pole": 18,
+    "series-pad": 4,
+    "shunt-pad": 2,
+    "zobel": 1,
+    "damped-trap": 1
+   }
+  },
+  {
+   "kandidaat": "woofer→mid 548.5 LR4 · mid→tweeter 1981.2 LR4",
+   "xoHz": [
+    548.5,
+    1981.2
+   ],
+   "takken": [
+    {
+     "tak": "woofer",
+     "kaal_rms_dB": 1.312,
+     "kaal_onderdelen": 6,
+     "auto_rms_dB": 1.313,
+     "auto_onderdelen": 8,
+     "lean_v2_onderdelen": 6,
+     "lean_default_onderdelen": 6,
+     "kale_ladder_haalt_v2_drempel": true,
+     "kale_ladder_haalt_standaard": false
+    },
+    {
+     "tak": "mid",
+     "kaal_rms_dB": 0.804,
+     "kaal_onderdelen": 8,
+     "auto_rms_dB": 0.616,
+     "auto_onderdelen": 10,
+     "lean_v2_onderdelen": 8,
+     "lean_default_onderdelen": 10,
+     "kale_ladder_haalt_v2_drempel": true,
+     "kale_ladder_haalt_standaard": false
+    },
+    {
+     "tak": "tweeter",
+     "kaal_rms_dB": 1.251,
+     "kaal_onderdelen": 6,
+     "auto_rms_dB": 1.232,
+     "auto_onderdelen": 11,
+     "lean_v2_onderdelen": 6,
+     "lean_default_onderdelen": 6,
+     "kale_ladder_haalt_v2_drempel": true,
+     "kale_ladder_haalt_standaard": false
+    }
+   ],
+   "rollen_lean_v2": {
+    "pole": 16,
+    "series-pad": 2,
+    "shunt-pad": 2
+   },
+   "rollen_auto": {
+    "pole": 18,
+    "series-pad": 4,
+    "shunt-pad": 2,
+    "zobel": 1,
+    "damped-trap": 1
+   }
+  },
+  {
+   "kandidaat": "woofer→mid 548.5 LR4 · mid→tweeter 2283.5 LR4",
+   "xoHz": [
+    548.5,
+    2283.5
+   ],
+   "takken": [
+    {
+     "tak": "woofer",
+     "kaal_rms_dB": 1.305,
+     "kaal_onderdelen": 6,
+     "auto_rms_dB": 1.305,
+     "auto_onderdelen": 8,
+     "lean_v2_onderdelen": 6,
+     "lean_default_onderdelen": 6,
+     "kale_ladder_haalt_v2_drempel": true,
+     "kale_ladder_haalt_standaard": false
+    },
+    {
+     "tak": "mid",
+     "kaal_rms_dB": 0.797,
+     "kaal_onderdelen": 8,
+     "auto_rms_dB": 0.583,
+     "auto_onderdelen": 10,
+     "lean_v2_onderdelen": 8,
+     "lean_default_onderdelen": 10,
+     "kale_ladder_haalt_v2_drempel": true,
+     "kale_ladder_haalt_standaard": false
+    },
+    {
+     "tak": "tweeter",
+     "kaal_rms_dB": 1.296,
+     "kaal_onderdelen": 6,
+     "auto_rms_dB": 1.181,
+     "auto_onderdelen": 11,
+     "lean_v2_onderdelen": 6,
+     "lean_default_onderdelen": 6,
+     "kale_ladder_haalt_v2_drempel": true,
+     "kale_ladder_haalt_standaard": false
+    }
+   ],
+   "rollen_lean_v2": {
+    "pole": 16,
+    "series-pad": 2,
+    "shunt-pad": 2
+   },
+   "rollen_auto": {
+    "pole": 18,
+    "series-pad": 4,
+    "shunt-pad": 2,
+    "zobel": 1,
+    "damped-trap": 1
+   }
+  }
+ ]
+}

@@ -117,6 +117,40 @@
   `1 + R_source/R_e` hoort per definitie de `Qes_mult`-referentie te zijn. Dit is het
   bewijsmateriaal onder casusboek V36 en V37; `frozenNetlistGates.test.ts` en
   `dissipationTerm.test.ts` asserteren de claims.
+- **Het gat naar HUIDIG ontleed (V38)** — vier scripts en één gedeelde meetbank, en de bank
+  is het punt: `scripts/v38-bench.ts` stelt de tuner-opties, de gemeten vector en de
+  netlist-loader één keer vast, zodat de wattenval van de ablatie en de rest van de
+  transplantatie in dezelfde eenheden staan. Twee scripts die elk hun eigen opties samenstellen
+  leveren twee tabellen die niet mogen worden afgetrokken, en de aftrekking IS de vraag.
+  `scripts/v38-groups.ts` ontleedt een partslijst in componentgroepen (pool / val / gedempte val /
+  Zobel / shunt-shelf / niveauwerk) uit de netlist-graaf, meet wat elke groep in zijn eigen tak
+  doet door het netwerk twee keer op te lossen, en ableert een groep zoals de snoeipas van de
+  tuner dat doet — serie `shorted`, shunt `open`, nooit uit de lijst gooien.
+  - `npx vite-node scripts/measure-v38-topology.ts` — seconden. De diff-tabel: de gemeten
+    aanleidingen per driver uit de opnamepas, HUIDIG ontleed, dezelfde ontleding over het levende
+    corpus, en per niet-kern-groep de dichtstbijzijnde gemeten aanleiding met de octaafafstand
+    erbij. Een groep waarvan de aanleiding een halve octaaf verderop ligt KRIJGT dat als antwoord.
+  - `npx vite-node scripts/measure-v38-corrections.ts` — minuten, geen tune. Ontwerp- en
+    synthesestap voor élke kandidaat onder beide correctiebeleiden. Meet de lean-drempel.
+  - `npx vite-node scripts/measure-v38-ablation.ts` — negen waardetunes, ~13 min per stuk,
+    ruim twee uur. Vier controle-armen (geen kooi / A5d.3-venster / HUIDIG's eigen overname ±2 % /
+    dezelfde maar met `errorSmoothOct: 0`) en dan de cumulatieve ablatie. Schrijft
+    `test-fixtures/casus1_v38_ablatie.json`, mét de geleverde netlist per arm, zodat een latere
+    kolom nooit een tweede tune kost.
+  - `npx vite-node scripts/measure-v38-transplant.ts` — vier waardetunes. HUIDIG's topologie met
+    waarden uit een warm en drie koude zaden.
+  - `V38_EQ=<n> npx vite-node scripts/measure-v38-corrections-tuned.ts` — vier waardetunes per
+    EQ-budget. Draai hem met `V38_EQ=0` (wat de v2-route stelt) en `V38_EQ=2` (wat de app stelt).
+  `V38_LIMIT=n` doet er n als rookproef; dat is geen meting. **De bank is niet de v2-route**, en
+  dat verschil is gemeten in plaats van geschat: hij draait zonder `staged` (die snoeit en
+  escaleert ONDERDELEN, wat elke ablatie zinloos maakt) en zonder `branchTargets` (die komt uit
+  de ontwerpstap, die hier niet draait). **De topologie ligt daarmee nog niet vast**: de
+  onderdelenaudit blijft gewapend en verwijdert componenten — op twee van de vier
+  transplantatie-armen een vierde-orde-pool uit de tweetertak. Daarom schrijft elk script de
+  geleverde netlist mee: wat de audit weghaalde is dan per arm na te meten in plaats van
+  onzichtbaar in een Δ te zitten. Op de kandidaat waar beide gemeten zijn levert de bank
+  3,22 dB waar de volle route 1,76 dB levert. Arm-tegen-arm is dus de meting; het absolute
+  niveau is dat van de bank en niet van het corpus.
 - **De vloer als zoekdoel meten (V30)**: `npx vite-node scripts/measure-v30-floor-goal.ts` —
   dertig ketenruns (vijftien kandidaten × twee armen), gemeten 45–70 s per stuk, ~30 min.
   Schrijft `test-fixtures/casus1_v30_vloer_vergelijking.json` en drukt de vóór/ná-tabel af.
