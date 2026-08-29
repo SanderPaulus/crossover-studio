@@ -163,8 +163,13 @@ export const METRIC_DECLARATIONS: readonly MetricDeclaration[] = [
   {
     id: 'M-D',
     title: 'Low-frequency lift on the resonance',
-    quantity: 'Extra response bump the filter and source impedance add over the bare box',
-    formula: 'max_B[NF*H_el] - max_B[NF], normalised at f_ref; B and f_ref derived from f_p',
+    quantity:
+      'Extra response bump the filter and source impedance add over the bare box, split since ' +
+      'V43 into the broad RESISTIVE lift and the narrow RESONANT amplification',
+    formula:
+      'max_B[NF*H_el] - max_B[NF], normalised at f_ref; B and f_ref derived from f_p. The two ' +
+      'halves are the same difference taken against the network\'s resistive equivalent ' +
+      '(H_res: every reactance replaced by its own series resistance), and they add up to it',
     role: 'soft',
     scope: 'driver',
     needs: [hasFilter, hasNearField(), hasImpedance(), hasResonance()],

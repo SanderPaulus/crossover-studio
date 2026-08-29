@@ -57,8 +57,9 @@
  */
 
 import { describe, expect, it } from 'vitest';
-import { readdirSync, readFileSync } from 'node:fs';
-import { join } from 'node:path';
+import { readdirSync, readFileSync, statSync } from 'node:fs';
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import {
   CASUS1_DIR,
   CASUS1_WOOFER_DC_OHM,
@@ -403,7 +404,23 @@ describe('the comparison block on casus 1', () => {
  * The live run — one candidate, through the route the app takes
  * ================================================================== */
 
-describe('the run still delivers the frozen netlist', () => {
+/**
+ * `[live]` IS A SCHEDULING TAG, NOT A CATEGORY OF TEST (V43).
+ *
+ * The two cases below are the only ones in the whole suite that run a real
+ * chain — one delivering candidate and one refused one — and at V42 they cost
+ * 1427 s and 653 s. That is roughly ninety-nine per cent of the wall clock of
+ * `vitest run`, and a suite nobody runs during development protects nothing.
+ *
+ * So `npm run test:fast` filters this tag out and everything else stays. The
+ * tag changes WHEN these run, never WHETHER: `npm test` is unchanged, and the
+ * project rule is that the full run is mandatory before any commit that
+ * touches the search and after any change to the corpus — which is exactly
+ * what these two cases check. Anything tagged here has to be a live chain run;
+ * a test tagged to make it stop failing would be the thing the tag exists to
+ * prevent.
+ */
+describe('[live] the run still delivers the frozen netlist', () => {
   it('one candidate, live through handleV2Request, byte for byte', () => {
     const rep = report('HUIDIG');
     const field = casus1Field(rep);
@@ -650,4 +667,61 @@ describe('the run still delivers the frozen netlist', () => {
     expect(done.rejection!.note).toContain('delivers no network');
     expect(done.notes.join(' ')).toContain('Refusing rule:');
   }, 900_000);
+});
+
+/* ================================================================== *
+ * V43 — de tag die het tweelagenbeleid draagt, bewaakt
+ * ================================================================== */
+
+/* The block's own title must NOT carry the tag — `test:fast` filters on the
+ * test NAME, so a guard called after the thing it guards filters itself out
+ * and stops guarding. Found the hard way, in the run that added it. */
+describe('the live-run tag is a schedule, not a hiding place', () => {
+  /* `npm run test:fast` filters `[live]` out so that development has a suite
+   * that finishes in minutes instead of in forty. That is only defensible as
+   * long as the tag stays on the two cases it was measured for. This scan is
+   * what stops it from spreading: a third tagged case has to be a deliberate
+   * act with this list edited, and the edit is where someone asks whether the
+   * case really is a live chain run. */
+  const SRC = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
+
+  /** Every `describe`/`it` title in `src/` that carries the tag. */
+  const tagged = (): string[] => {
+    const out: string[] = [];
+    const walk = (dir: string): void => {
+      for (const name of readdirSync(dir)) {
+        const full = join(dir, name);
+        if (statSync(full).isDirectory()) {
+          walk(full);
+          continue;
+        }
+        if (!/\.tsx?$/.test(full)) continue;
+        for (const line of readFileSync(full, 'utf-8').split('\n')) {
+          const m = /^\s*(?:describe|it)(?:\.\w+)?\(\s*['"`](\[live\][^'"`]*)/.exec(line);
+          if (m) out.push(m[1]);
+        }
+      }
+    };
+    walk(SRC);
+    return out.sort();
+  };
+
+  it('exactly one block carries it, and it is the live chain run', () => {
+    expect(tagged()).toEqual(['[live] the run still delivers the frozen netlist']);
+  });
+
+  it('and the walker really walks — a scan that finds nothing is always green', () => {
+    /* The counter-proof every scan in this project carries: without it, a
+     * broken walker and an empty tag set are the same result. */
+    let files = 0;
+    const walk = (dir: string): void => {
+      for (const name of readdirSync(dir)) {
+        const full = join(dir, name);
+        if (statSync(full).isDirectory()) walk(full);
+        else if (/\.tsx?$/.test(full)) files++;
+      }
+    };
+    walk(SRC);
+    expect(files).toBeGreaterThan(100);
+  });
 });

@@ -542,6 +542,18 @@ export function EngineV2Panel({ report, ambiguous, floors = [] }: EngineV2PanelP
               <span className="v2-id">M-D</span> Low-frequency lift — {driver}
               <b>{db(result.extraDb, 2)} on top of the bare box</b>
             </div>
+            {/* V43 — the two mechanisms that number adds up, side by side and
+                with no verdict on either. Series resistance lifts the low end
+                on its own (it attenuates the low-|Z| reference more than the
+                high-|Z| peak); reactance adds on top of that against the
+                motional peak. "off — input missing" when the branch carries
+                nothing in the resistive limit. */}
+            <div className="v2-muted">
+              resistive lift{' '}
+              {result.liftDb === null ? 'off — no resistive equivalent' : db(result.liftDb, 2)} ·
+              resonant amplification{' '}
+              {result.resonantDb === null ? 'off — no resistive equivalent' : db(result.resonantDb, 2)}
+            </div>
             <div className="v2-muted">
               bare box {db(result.bareDb, 2)} · peak at {hz(result.atHz)} · band and reference derived
               from f_p {hz(result.fPeakHz)}: {hz(result.bandHz[0])} – {hz(result.bandHz[1])},

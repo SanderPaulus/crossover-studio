@@ -29,15 +29,39 @@
   eruit ongezien fout. Verzamel in een ARRAY, dat kan de compiler wel volgen. (2) `tuned` naar `boolean`
   gecast terwijl het een TELLING is. Wie een script schrijft dat referentiegetallen wegschrijft, kijkt
   het geschreven blok nog steeds na — maar de typefout komt nu vooraf.
-- `npx vitest run` — volledige testsuite. **Gemeten 29-08-2026 (V41-sessie): 128 bestanden,
-  1391 tests, ~71 min wandkloktijd (4285 s).** Alles groen houden.
+- **TWEELAGENBELEID SINDS V43 — LEES DIT VOORDAT JE DE SUITE DRAAIT.** De volle run is
+  35–40 minuten en daarvan is ~99 % ÉÉN blok: de twee live ketenruns in
+  `casus1V2Candidates.test.ts` (bij V42 nagemeten op 1427 s + 653 s). Een suite die niemand
+  tijdens het werk draait beschermt niets, dus:
+  - `npm run test:fast` — **de standaard tijdens ontwikkeling.** `vitest run -t '^(?!.*\[live\])'`,
+    dus alles behalve wat de tag `[live]` draagt. **Gemeten 29-08-2026 (V43): 293 s (4 min 54),
+    129 bestanden, 1417 tests en 2 overgeslagen** — tegen 2097 s voor de volle run. Wat er dan
+    overblijft als langste bestand is `threeWayChain` (293 s), dus de snelle laag IS die ene
+    ketenrun; korter kan alleen door daar iets aan te doen.
+  - `npm test` / `npx vitest run` — **de volle run, en hij is VERPLICHT** bij elke wijziging aan
+    het corpus en vóór elke commit die de zoektocht raakt. Precies dát is wat de twee live
+    gevallen toetsen: dat de route nog steeds de bevroren netlist levert.
+  **Geen test verdwijnt; alleen WANNEER hij draait is beleid.** De tag zit op de testNAAM en niet
+  op het bestand — `casus1V2Candidates.test.ts` draagt ook elf goedkope claims en die blijven in
+  de snelle laag. Twee valkuilen, allebei in de sessie die de tag invoerde tegengekomen: (1) het
+  filter matcht de VOLLEDIGE testnaam, dus een blok dat het woord in zijn eigen titel noemt
+  filtert zichzelf weg — de bewaker heet daarom `the live-run tag is …` en niet `[live] …`;
+  (2) een tag die stilletjes groeit maakt de snelle laag waardeloos, dus
+  `casus1V2Candidates.test.ts` bewaakt met een bronscan dat er precies ÉÉN getagd blok bestaat.
+- `npx vitest run` — volledige testsuite. **Gemeten 29-08-2026 (V43-sessie): 129 bestanden,
+  1419 tests, 35 min wandkloktijd (2097 s).** Alles groen houden. (V41 mat 128 / 1391 / 4285 s;
+  het verschil met die 71 minuten is niet dat er iets goedkoper werd maar dat V42 het levende
+  corpus van 8 naar 4 netlists bracht — de `it.each` over dat corpus draait vier keer minder, en
+  de twee live ketenruns kosten 1438 + 655 s.)
 
   **DE SUITE IS BIJ V41 TIEN KEER ZO DUUR GEWORDEN (405 s → 4285 s), en het zit in ÉÉN bestand.**
   Sinds de synthesestap correctienetwerken koopt dragen de casus-1-netlists veel meer onderdelen,
   en het iteratiebudget van de tuner is `max(700, 140 · vrij)` — superlineair in het aantal vrije
   waarden. `casus1V2Candidates.test.ts` doet twee LIVE ketenruns en kost daardoor **2601 s alleen
   gedraaid** (V38-fix: 401 s), waarvan 1552 s voor de bevroren netlist en 1046 s voor de
-  verwerping. Alles daaromheen is nauwelijks bewogen. **Gevolg voor de per-bestand-cijfers
+  verwerping. **Nagemeten bij V43 in de volle run: 2094 s van de 2097** — dit ene bestand IS de
+  volle wandkloktijd en al het andere draait ernaast in de schaduw. Dat cijfer is de meting
+  waarop het tweelagenbeleid hierboven rust. Alles daaromheen is nauwelijks bewogen. **Gevolg voor de per-bestand-cijfers
   hieronder: zij zijn in een volle parallelle run niet meer bruikbaar** — één bestand houdt ruim
   een uur een worker bezet, dus elk ander bestand rapporteert vooral wachttijd (`frozenNetlistGates`
   meldt 17 min in de volle run en kost er 106 alleen gedraaid). Meet een bestand dus APART wanneer
@@ -52,7 +76,7 @@
   F4a 107, F4b 108, F4b2 109, F4c 112, V20 113, F4d 119, de F4d-nazorg 120, de vloersessie 120, V30 121,
   V31/V32 123, V33 124 (`barrierSource.test.ts`), V34 125 (`probeSource.test.ts`),
   V36 126 (`dissipationTerm.test.ts`), V38-fix 127 (`searchMeasure.test.ts`), V41 128
-  (`chainChoices.test.ts`). **V37 voegde géén
+  (`chainChoices.test.ts`), V43 129 (`metrics/lfBumpDecomposition.test.ts`). **V37 voegde géén
   bestand toe** — zijn claims staan in
   `dissipationTerm.test.ts`, `frozenNetlistGates.test.ts`, `choiceKeyGuard.test.ts` en
   `casus1V2Candidates.test.ts`, naast de claims die zij al droegen; de telling ging van 1369
@@ -216,6 +240,17 @@
   V41-corpus: zes van de negen netlists, HUIDIG (3,76 Ω) inbegrepen. Het budget is dus een grens
   op de totale BRONIMPEDANTIE bij resonantie en niet op de spoel alleen; wie hem als spoelplafond
   leest, leest hem op de helft van de ontwerpen verkeerd.
+- **De LF-bult ontleed in lift en opslingering (V43)**:
+  `npx vite-node scripts/measure-v43-decomposition.ts [SLEUTEL ...]` — seconden, geen ketenrun en
+  geen enkele tune. Twee tabellen. De EERSTE ontleedt élke bevroren netlist: `extraDb`, de
+  resistieve lift en de resonante opslingering, met de optel-controle ernaast (zij tellen per
+  constructie op). De TWEEDE is het bewijsmateriaal onder de belangrijkste bevinding van V43: het
+  plafond dat de A5d.6-inversie oplevert wanneer zij tegen de SOM oplost (wat zij vandaag doet)
+  naast wat zij zou opleveren tegen de OPSLINGERING, per padweerstand. **Bij 0,5 Ω — de
+  padweerstand van de klasse-A-referentie — is de resistieve lift al 0,967 dB van de gestelde
+  2,5 dB en verschuift het plafond van 2,432 naar 3,162 mH (+30 %).** Daarom is de inversie bij
+  V43 NIET verplaatst; zie het casusboek. `frozenNetlistGates.test.ts` assert de eerste tabel,
+  `lfBumpBorder.test.ts` de tweede.
 - **De twee fasematen naast elkaar, per netlist en per paar (V40)**:
   `npx vite-node scripts/measure-v40-phase.ts [SLEUTEL ...]` — seconden, geen ketenrun en geen
   enkele tune; zonder argumenten élke netlist die het casusboek noemt. Drukt per paar af wat het
@@ -898,6 +933,46 @@ grotere ingreep — hij raakt élk commando in dit project — en is deze sessie
   overschrijden hem — HUIDIG 3,78 dB tegen 2,5, wat het spiegelbeeld is van de versterkervloer,
   waar HUIDIG de eis juist met marge haalt).
 
+### V43-guards (de bult ontleed, en de tag die de suite betaalbaar houdt)
+- `src/lib/engine2/metrics/resistiveEquivalent.ts` — **het RESISTIEVE EQUIVALENT is een
+  netlist-transform en geen model.** Zelfde topologie, zelfde waarden: spoel → haar eigen DCR
+  (een ideale spoel heeft DCR 0 en wordt dus een KORTSLUITING — de knopen worden samengevoegd met
+  union-find, want nodale analyse kan geen ideale kortsluiting stempelen en een "klein genoeg"
+  weerstandje is een magisch getal dat het antwoord bepaalt, P6), condensator → OPEN en de tak
+  verlaat het netwerk. Dat laatste is een besluit met een reden: de resistieve limiet van een
+  condensator is een open tak, dus zijn ESR staat in serie met een oneindige reactantie en kan
+  niets geleiden — hem dóór zijn ESR vervangen zou elke seriecondensator in een bijna-kortsluiting
+  veranderen, de tegenovergestelde limiet. Ground blijft knoop 0 (de kleinste index wint een
+  merge), en een driver die in die limiet kortgesloten raakt wordt bij NAAM gemeld in plaats van
+  een tak op te leveren die niets uitstraalt.
+- `src/lib/engine2/metrics/lfBumpDecomposition.test.ts` — de vier testsoorten van de
+  metriek-skill op één bank. HANDBEREKENING: een puur reële belasting en één nabije-veldpunt in de
+  band, zodat alle drie de maxima op hetzelfde rasterpunt vallen en elke kromme één regel algebra
+  is (geleverd 0,6417 / 0,5514 / 0,0903 dB). DE OPTELSOM: `liftDb + resonantDb = extraDb` op vier
+  combinaties, en met nul reactantie is de resonante helft exact nul. P2: zónder resistieve kromme
+  is `extraDb` bit-identiek en zijn beide helften `null` — nooit 0, want een nul leest als
+  "gemeten, en het is niets". NIEUWE MÉTING: een grotere spoel verplaatst de resonante helft en
+  laat de resistieve **exact** onaangeraakt (het resistieve equivalent bevat de spoel niet), en
+  meer serieweerstand verplaatst ze in TEGENGESTELDE richting — zonder die tegenproef zijn het
+  twee namen voor één getal. Plus de transform zelf en beide versiestrings.
+- `src/lib/engine2/frozenNetlistGates.test.ts` — vier V43-blokken over het HELE casusboek, en zij
+  kosten geen tune: `FIELD` bouwt al één rapport per netlist. (1) De optel-assert op élke bevroren
+  netlist — dat is wat de staande `lf_bult_extra_dB`-referenties tot de BRUG naar de twee nieuwe
+  maakt. (2) De tegenproef dat het werkelijk twee grootheden zijn: er zijn netlists waar de lift
+  domineert, netlists waar de opslingering domineert, en netlists waar zij TEGENGESTELDE TEKENS
+  hebben — dat laatste kan geen enkel getal onder twee namen (V23). (3) De opgeschreven ontleding
+  (`manifest_en_geometrie.v43_ontleding`) klopt nog met een verse meting, per netlist. (4) De
+  bevinding van V43 als falsifieerbare claim: op alle drie de referentiefilters is de opslingering
+  nul of negatief terwijl `extraDb` het budget overschrijdt — wat het budget op HUIDIG veroordeelt
+  is dus niveauwerk en niet de spoel.
+- `src/lib/engine2/optimizer/lfBumpBorder.test.ts` — de tweede tabel als assert, en géén tweede
+  bisectie: `lfBumpForSeriesRL` is bij V43 uit `maxSeriesInductanceFromBump` gelicht en
+  geëxporteerd, zodat de test de plafonds ON DE METRIEK toetst (bij de genoteerde spoel moet de
+  lift het budget zijn) in plaats van de inversie na te bouwen. Eén synthese, twee lezers — de
+  vorm die `impedanceFloor.ts` en `partAudit.ts` al dragen. De `null`-rijen zijn de scherpste
+  assert: boven ~1,5 Ω hoort er GEEN plafond te zijn, en een versie die daar stilletjes 0 mH gaat
+  teruggeven zou als een aanscherping lezen in plaats van als de stilte die het is.
+
 ### V41-guards (wat de ontwerp- en synthesestap mochten bouwen)
 - `src/lib/engine2/optimizer/chainChoices.ts` — **een TWEEDE classificatielijst, en de smalheid is de
   claim.** `CHOICE_KEYS`/`GREY_KEYS`/`POLISH_KEYS` dekken de 44 sleutels van `NetOptimizeOptions`
@@ -1009,7 +1084,13 @@ Twee scripts, twee kosten:
 - `npx vite-node scripts/record-casus1-v2-references.ts` — leest die bestanden en schrijft de
   klasse-B-blokken in de golden refs. Drie seconden, dus vrij om opnieuw te draaien. Sinds V36
   elf metrieken per kandidaat (`grootste_R_W_bij_100W` erbij) plus het afgeleide blok
-  `manifest_en_geometrie.v36_dissipatie`.
+  `manifest_en_geometrie.v36_dissipatie`; **sinds V43 dertien** (`lf_lift_dB` en
+  `lf_opslingering_dB`) plus `manifest_en_geometrie.v43_ontleding`, dat de ontleding over ÉLKE
+  bevroren netlist draagt en niet alleen over het levende corpus — dezelfde vorm en dezelfde reden
+  als `v36_dissipatie`, want de gedateerde corpora dragen hun eigen bevroren blokken en worden
+  nooit herschreven. **V43 heeft het corpus NIET geregenereerd** en hoefde dat ook niet:
+  `extraDb` is bit-identiek gebleven, dus het referentiebestand kreeg 471 bladeren erbij en
+  veranderde er nul.
 
 **`scripts/` valt buiten `tsc -b`** — `tsconfig.test.json` dekt `src/**` en geen enkele scope dekt
 `scripts/`. Bij V36 kostte dat een kolom vol `null` in het referentiebestand: `casus1Filter(...).parts`

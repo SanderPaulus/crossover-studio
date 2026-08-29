@@ -40,6 +40,8 @@ import {
 import { buildReport } from '../src/lib/engine2/report.ts';
 import { ctcKey } from '../src/lib/engine2/metrics/types.ts';
 import { FLAT_TARGET } from '../src/lib/engine2/requirements/targetCurve.ts';
+import { LF_BUMP_VERSION } from '../src/lib/engine2/metrics/acoustic.ts';
+import { RESISTIVE_EQUIVALENT_VERSION } from '../src/lib/engine2/metrics/resistiveEquivalent.ts';
 import { compareDesigns } from '../src/lib/engine2/predesign/comparison.ts';
 import { ampFloorSlackOhm, meetsAmpFloor } from '../src/lib/impedanceFloor.ts';
 import { systemMinImpedanceOhm } from '../src/lib/netOptimizer.ts';
@@ -380,6 +382,14 @@ for (const key of keys) {
     ),
     Qes_mult: r2(rep.metrics.thevenin.find((t) => t.qMultiplier !== null)?.qMultiplier ?? null),
     lf_bult_extra_dB: r2(rep.metrics.lfBump[0]?.result.extraDb ?? null),
+    /* V43 — dezelfde bult, ONTLEED. `lf_bult_extra_dB` blijft staan en is de
+     * BRUG: de twee helften tellen per constructie tot hem op, dus een lezer
+     * die de oude referentie kent kan de nieuwe twee natrekken zonder iets te
+     * herberekenen. `lf_lift_dB` is wat de weerstand van dit netwerk in zijn
+     * eentje aan het laag doet (het resistieve equivalent tegen de kale kast),
+     * `lf_opslingering_dB` wat de reactanties daar bovenop leggen. */
+    lf_lift_dB: r2(rep.metrics.lfBump[0]?.result.liftDb ?? null),
+    lf_opslingering_dB: r2(rep.metrics.lfBump[0]?.result.resonantDb ?? null),
     V_tweeter_op_fs_dB: r2(
       rep.metrics.driveVoltage.find((d) => d.driver === 'tweeter')?.db ?? null,
     ),
@@ -624,6 +634,47 @@ const dissipationRecord = (() => {
 })();
 
 raw.manifest_en_geometrie.v36_dissipatie = dissipationRecord;
+
+/* ------------------------------------------------------------------ *
+ * V43 — de LF-bult ONTLEED, over ELKE bevroren netlist
+ * ------------------------------------------------------------------ */
+
+/**
+ * Dezelfde vorm en dezelfde reden als `v36_dissipatie`: de klasse-B-blokken
+ * onder `kandidaten` dekken alleen het LEVENDE corpus (de gedateerde corpora
+ * dragen hun eigen bevroren blokken en worden nooit herschreven — zij zijn
+ * bewijsmateriaal), terwijl de claim over de ONTLEDING over het hele casusboek
+ * gaat. Dit blok is afgeleid en geen invoer: elke rij komt uit `buildReport` op
+ * het bestand, en `frozenNetlistGates.test.ts` herrekent hem.
+ */
+const decompositionRecord = {
+  _:
+    'V43 — `lfBump().extraDb` telt TWEE mechanismen bij elkaar op, en dit blok haalt ze uit ' +
+    'elkaar op elke bevroren netlist. `lift_dB` is wat het RESISTIEVE EQUIVALENT van hetzelfde ' +
+    'netwerk (zelfde topologie, zelfde waarden, elke reactantie vervangen door haar eigen ' +
+    'serieweerstand: spoel -> DCR, condensator -> open) bovenop de kale kast tilt; ' +
+    '`opslingering_dB` is wat de reactanties daar bovenop leggen. Per constructie tellen zij ' +
+    'op tot `extra_dB` - alle drie de maxima worden in één pas over één band genomen - en dat ' +
+    'is wat de oude extraDb-referenties tot de BRUG naar de nieuwe maakt. ' +
+    'DE OPSLINGERING KAN NEGATIEF ZIJN, en dat is geen fout: M-D normaliseert op f_ref, dus ' +
+    'een filter waarvan de doorlaatband JUIST DAAR door zijn reactanties opgetild wordt, leest ' +
+    'ten opzichte van zijn eigen resistieve equivalent lager. HUIDIG is precies dat geval ' +
+    '(-0,94 dB). Zie casusboek V43 en scripts/measure-v43-decomposition.ts.',
+  metriek_versie: LF_BUMP_VERSION,
+  transform_versie: RESISTIVE_EQUIVALENT_VERSION,
+  per_netlist: Object.keys(netlists).map((key) => {
+    const row = report(key).metrics.lfBump[0];
+    return {
+      netlist: key,
+      weg: row?.driver ?? null,
+      extra_dB: r2(row?.result.extraDb ?? null),
+      lift_dB: r2(row?.result.liftDb ?? null),
+      opslingering_dB: r2(row?.result.resonantDb ?? null),
+    };
+  }),
+};
+
+raw.manifest_en_geometrie.v43_ontleding = decompositionRecord;
 
 raw.manifest_en_geometrie.v2_herkomst = {
   _:

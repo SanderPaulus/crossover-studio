@@ -200,6 +200,21 @@ export interface NetworkAnalysis {
   driverModelById: Record<string, string>;
   /** Re-solve with one driver model's impedance replaced (M-E). */
   resolveWithLoad: (model: string, z: readonly Complex[]) => { transfer: Complex[] };
+  /**
+   * V43 — the SAME network with every reactance replaced by its own series
+   * resistance (`resistiveEquivalent`), solved on the same grid.
+   *
+   * LAZY AND MEMOISED, on purpose. It is a second full solve, and only M-D's
+   * decomposition asks for it; a report that never reads it must not pay for
+   * it. A driver whose branch collapses in that limit — a DCR-less coil
+   * straight across it — is named in `shortedDriverModels` instead of being
+   * handed a silent zero.
+   */
+  resistiveEquivalent: () => {
+    transferByModel: Record<string, Complex[]>;
+    shortedDriverModels: string[];
+    notes: string[];
+  };
 }
 
 /** An acoustic handover between two adjacent drivers, DERIVED from the sum. */

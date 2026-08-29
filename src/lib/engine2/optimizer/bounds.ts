@@ -176,35 +176,46 @@ export interface BumpInversionInput {
  * failure of the solve but the answer: at that path resistance no inductor
  * satisfies the budget. V12 documents exactly that case (at R_s = 2 Ω the
  * 2.5 dB budget is unreachable with any L), and reporting it as "0 mH" would
- * hide a driver-and-damping problem behind a component limit.
+ * hide a driver-and-damping problem behind a component limit. V42 measured how
+ * often that answer comes up on casus 1: six of nine frozen netlists, HUIDIG
+ * among them.
+ *
+ * `lfBumpForSeriesRL` is the transfer synthesis on its own, EXPORTED since V43
+ * for one reason: the case book records what the lift is at L = 0 (the purely
+ * resistive part of it) and at candidate inductances, and a test that checked
+ * those numbers by building the same `Z/(Z + R + jωL)` again would be a second
+ * implementation of the one thing this function contributes. One synthesis,
+ * two readers.
  */
+export function lfBumpForSeriesRL(input: BumpInversionInput, henry: number): number | null {
+  const h: Complex[] = input.zGrid.map((f, i) => {
+    const zl = {
+      re: input.z[i].re + input.pathROhm,
+      im: input.z[i].im + 2 * Math.PI * f * henry,
+    };
+    const d = zl.re * zl.re + zl.im * zl.im;
+    if (!(d > 0)) return { re: 0, im: 0 };
+    return {
+      re: (input.z[i].re * zl.re + input.z[i].im * zl.im) / d,
+      im: (input.z[i].im * zl.re - input.z[i].re * zl.im) / d,
+    };
+  });
+  const r = lfBump(input.nfGrid, input.nfDb, input.zGrid, h, input.fPeakHz, {
+    ...(input.nfValidHz ? { validHz: input.nfValidHz } : {}),
+    ...(input.belowHz !== undefined ? { belowHz: input.belowHz } : {}),
+    ...(input.overrideBandHz ? { overrideBandHz: input.overrideBandHz } : {}),
+    ...(input.overrideReferenceHz !== undefined
+      ? { overrideReferenceHz: input.overrideReferenceHz }
+      : {}),
+  });
+  return r ? r.extraDb : null;
+}
+
 export function maxSeriesInductanceFromBump(
   input: BumpInversionInput,
   budgetDb: number,
 ): { maxHenry: number; atBudgetDb: number } | null {
-  const bumpAt = (henry: number): number | null => {
-    const h: Complex[] = input.zGrid.map((f, i) => {
-      const zl = {
-        re: input.z[i].re + input.pathROhm,
-        im: input.z[i].im + 2 * Math.PI * f * henry,
-      };
-      const d = zl.re * zl.re + zl.im * zl.im;
-      if (!(d > 0)) return { re: 0, im: 0 };
-      return {
-        re: (input.z[i].re * zl.re + input.z[i].im * zl.im) / d,
-        im: (input.z[i].im * zl.re - input.z[i].re * zl.im) / d,
-      };
-    });
-    const r = lfBump(input.nfGrid, input.nfDb, input.zGrid, h, input.fPeakHz, {
-      ...(input.nfValidHz ? { validHz: input.nfValidHz } : {}),
-      ...(input.belowHz !== undefined ? { belowHz: input.belowHz } : {}),
-      ...(input.overrideBandHz ? { overrideBandHz: input.overrideBandHz } : {}),
-      ...(input.overrideReferenceHz !== undefined
-        ? { overrideReferenceHz: input.overrideReferenceHz }
-        : {}),
-    });
-    return r ? r.extraDb : null;
-  };
+  const bumpAt = (henry: number): number | null => lfBumpForSeriesRL(input, henry);
 
   const atZero = bumpAt(0);
   if (atZero === null) return null;

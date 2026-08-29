@@ -18,6 +18,7 @@
 import type { Complex } from '../../complex.ts';
 import { abs as cabsC, mul as cmul } from '../../complex.ts';
 import { solveNetwork, type Netlist, type PassiveElement } from '../../network.ts';
+import { resistiveEquivalent } from './resistiveEquivalent.ts';
 import { dbAmp, interpLog } from '../util.ts';
 import type { Crossing, NetworkAnalysis } from './types.ts';
 
@@ -52,6 +53,15 @@ export function buildAnalysis(
     .filter((e): e is PassiveElement => e.kind === 'R' || e.kind === 'L' || e.kind === 'C')
     .map((e) => ({ id: e.id, kind: e.kind, value: e.value, seriesR: e.seriesR ?? 0 }));
 
+  /* V43 — the resistive-equivalent solve, built at most once per analysis.
+   * It is a whole second MNA pass, so it happens when a metric asks and not
+   * before; `null` is "not asked yet", never "asked and empty". */
+  let resistive: {
+    transferByModel: Record<string, Complex[]>;
+    shortedDriverModels: string[];
+    notes: string[];
+  } | null = null;
+
   return {
     grid: [...grid],
     netlist,
@@ -68,6 +78,30 @@ export function buildAnalysis(
       const element = sol.drivers.find((d) => d.model === model);
       if (!element) throw new Error(`No driver element uses model "${model}".`);
       return { transfer: s.transfers[element.id] };
+    },
+    resistiveEquivalent: () => {
+      if (resistive) return resistive;
+      const eq = resistiveEquivalent(netlist);
+      const shortedDriverModels = eq.shortedDriverIds
+        .map((id) => driverModelById[id])
+        .filter((m): m is string => m !== undefined);
+      const transferByModel: Record<string, Complex[]> = {};
+      const notes = [...eq.notes];
+      if (eq.netlist.nodeCount > 1) {
+        const s = solveNetwork(eq.netlist, grid, driverZ);
+        for (const d of s.drivers) {
+          if (!transferByModel[d.model]) transferByModel[d.model] = s.transfers[d.id];
+        }
+      } else {
+        // Everything merged onto ground: there is no network left to solve, so
+        // there is nothing to compare against either.
+        notes.push(
+          'The resistive equivalent has no non-ground node left — every reactance in this ' +
+            'network was a DCR-less coil, so nothing can be read from it.',
+        );
+      }
+      resistive = { transferByModel, shortedDriverModels, notes };
+      return resistive;
     },
   };
 }

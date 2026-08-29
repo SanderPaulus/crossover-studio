@@ -42,9 +42,44 @@ const MD_BAND_LOW_OVER_FP = 0.7;
 const MD_BAND_HIGH_OVER_FP = 2.2;
 const MD_REFERENCE_OVER_FP = 3;
 
+/**
+ * Estimator version for M-D's lift figures.
+ *
+ * `1.0` was the unversioned F1 form: one number, `extraDb = loaded − bare`.
+ * `1.1` is V43's DECOMPOSITION of that same number into the broad resistive
+ * lift and the narrow resonant amplification, against the network's own
+ * resistive equivalent. MINOR and not major: `extraDb` is bit-identical, the
+ * band and the normalisation are untouched, and the result only grew — but the
+ * numbers a caller can now read are new, so a cache from before this cannot be
+ * reused to answer a question it never computed.
+ */
+export const LF_BUMP_VERSION = 'lf-bump/1.1';
+
 export interface LfBumpResult {
   /** Extra lift the filter + source impedance add on top of the bare box, dB. */
   extraDb: number;
+  /**
+   * V43 — the BROAD half of `extraDb`: what the network's resistive equivalent
+   * alone lifts the band by, over the bare box. Series resistance attenuates
+   * the low-|Z| reference more than the high-|Z| peak, so it raises the low end
+   * with no reactance involved at all. Level work, and it is the anchor
+   * decision's business (A5e.2) and not the coil's.
+   *
+   * `null` when no resistive equivalent was supplied, or when this driver's
+   * branch collapses in that limit (a DCR-less coil across it).
+   */
+  liftDb: number | null;
+  /**
+   * V43 — the NARROW half: what the reactances add on top of that same
+   * resistive equivalent, over the same band. This is the mechanism the coil
+   * rule of thumb is about.
+   *
+   * `liftDb + resonantDb === extraDb` by construction: all three maxima are
+   * taken over one band in one pass, so the split can never fail to add up.
+   */
+  resonantDb: number | null;
+  /** Where the resistive equivalent's maximum sits, when there is one. */
+  resistiveAtHz: number | null;
   /** The bare box's own lift over the same band, dB — the thing it adds to. */
   bareDb: number;
   /** Where the loaded maximum sits. */
@@ -89,6 +124,12 @@ export function lfBump(
      */
     overrideBandHz?: [number, number];
     overrideReferenceHz?: number;
+    /**
+     * V43 — the electrical transfer of the SAME network with every reactance
+     * replaced by its own series resistance, on the same grid as `hEl`. Absent
+     * = no decomposition, and the two halves come back `null` rather than 0.
+     */
+    resistiveHEl?: readonly Complex[];
   } = {},
 ): LfBumpResult | null {
   const notes: string[] = [];
@@ -124,9 +165,25 @@ export function lfBump(
   const nfRef = nfAt(reference);
   const hRef = hDbAt(reference);
 
+  /* V43 — the resistive equivalent, normalised at ITS OWN value on f_ref, for
+   * the same reason the loaded curve is: what is being compared is the SHAPE
+   * over the band, and a curve that is a decibel lower everywhere describes the
+   * same low end. */
+  const res = opts.resistiveHEl;
+  const resMagAt = res ? (f: number): number => cabs(res[nearest(hGrid, f)]) : null;
+  const resRefMag = resMagAt ? resMagAt(reference) : 0;
+  const resRef = dbAmp(resRefMag);
+  /* A branch that carries nothing in the resistive limit has no shape to
+   * normalise. `dbAmp` floors rather than returning −Infinity — deliberately,
+   * because a plot with a −Infinity in it is unusable — so the emptiness has to
+   * be caught on the MAGNITUDE, before the floor hides it. */
+  let resSeen = false;
+
   let bare = -Infinity;
   let loaded = -Infinity;
+  let resistive = -Infinity;
   let atHz = band[0];
+  let resistiveAtHz: number | null = null;
   let seen = 0;
   const lo = valid ? Math.max(band[0], valid[0]) : band[0];
   const hi = valid ? Math.min(band[1], valid[1]) : band[1];
@@ -140,11 +197,36 @@ export function lfBump(
       loaded = l;
       atHz = f;
     }
+    if (resMagAt) {
+      const mag = resMagAt(f);
+      if (mag > 0) resSeen = true;
+      const r = b + (dbAmp(mag) - resRef);
+      if (r > resistive) {
+        resistive = r;
+        resistiveAtHz = f;
+      }
+    }
   }
   if (seen === 0) return null;
 
+  /* The split exists only when the resistive equivalent actually carried
+   * something — over the band AND at the reference it is normalised on. `null`
+   * is the honest answer for a branch that collapses in that limit: not
+   * measured, rather than zero. */
+  const split =
+    resMagAt !== null && resSeen && resRefMag > 0 && Number.isFinite(resistive);
+  if (resMagAt !== null && !split) {
+    notes.push(
+      'The resistive equivalent of this branch carries no signal over the evaluation band, so ' +
+        'the lift cannot be split into a resistive and a resonant half.',
+    );
+  }
+
   return {
     extraDb: loaded - bare,
+    liftDb: split ? resistive - bare : null,
+    resonantDb: split ? loaded - resistive : null,
+    resistiveAtHz: split ? resistiveAtHz : null,
     bareDb: bare,
     atHz,
     bandHz: band,

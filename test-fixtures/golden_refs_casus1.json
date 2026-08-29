@@ -27,7 +27,7 @@
    "klasse_B": 71,
    "klasse_C": 0,
    "sinds_F4a": "V20 (27-08-2026) heeft 21 klasse-B-bladeren toegevoegd: de vier lambda-fracties per kruispunt per netlist, waarvan er een de HERNOEMDE lobing_wm_lambda is. De telling hierboven blijft de F4a-momentopname en wordt niet bijgewerkt - een momentopname die met elke oplevering meebeweegt is geen momentopname. Wat blijft gelden is de bevinding eronder: nog steeds nul klasse C, want ook deze vier zijn functies van meting plus netlist-BESTAND.",
-   "sinds_F4d": "F4d (27-08-2026), herzien bij de F4d-nazorg (V28) en bij V36: 44 klasse-B-bladeren, elf metrieken op elk van de 4 bevroren KAND-V2-netlists — tien tot V36 `grootste_R_W_bij_100W` toevoegde, het veld dat de drie v1-kandidaten sinds F1 dragen en het v2-corpus niet. Het waren er negen tot de nazorg de F3c-uitsnijding opschortte; de mid→tweeter-as ging van drie posities naar vijf en het veld van negen naar vijftien. De F4a-momentopname hierboven wordt niet bijgewerkt, om dezelfde reden als bij V20 — een momentopname die met elke oplevering meebeweegt is er geen. De bevinding blijft: nog steeds NUL klasse C. Deze netwerken komen uit een v2-run, maar de referenties hangen aan de BESTANDEN, en een volgende run die andere netwerken oplevert verschuift deze getallen dus niet — hij levert andere bestanden op. Dat is bij de nazorg ook precies wat gebeurde, en het is de reden dat de verandering geen enkele referentie ONGELDIG maakte.",
+   "sinds_F4d": "F4d (27-08-2026), herzien bij de F4d-nazorg (V28) en bij V36: 52 klasse-B-bladeren, elf metrieken op elk van de 4 bevroren KAND-V2-netlists — tien tot V36 `grootste_R_W_bij_100W` toevoegde, het veld dat de drie v1-kandidaten sinds F1 dragen en het v2-corpus niet. Het waren er negen tot de nazorg de F3c-uitsnijding opschortte; de mid→tweeter-as ging van drie posities naar vijf en het veld van negen naar vijftien. De F4a-momentopname hierboven wordt niet bijgewerkt, om dezelfde reden als bij V20 — een momentopname die met elke oplevering meebeweegt is er geen. De bevinding blijft: nog steeds NUL klasse C. Deze netwerken komen uit een v2-run, maar de referenties hangen aan de BESTANDEN, en een volgende run die andere netwerken oplevert verschuift deze getallen dus niet — hij levert andere bestanden op. Dat is bij de nazorg ook precies wat gebeurde, en het is de reden dat de verandering geen enkele referentie ONGELDIG maakte.",
    "sinds_V30": "V30 (27-08-2026): het KAND-V2-corpus is opnieuw opgewekt met de gestelde vloer als ZOEKDOEL, en het corpus dat het vervangt is niet weggegooid maar hernoemd: 10 blokken `V28_KAND_*`, byte-identieke bestanden onder een gedateerde naam, met dezelfde tien metrieken en dezelfde klasse B. Dat is geen referentie aanpassen — het zijn dezelfde netlists, en de nieuwe staan ernaast in plaats van eroverheen, zodat de vóór/ná-vergelijking van deze entry reproduceerbaar blijft uit de repository zelf. De bevinding van F4a staat nog steeds: NUL klasse C. Wat wél veranderde is de uitzonderingslijst: zij noemde tien KAND-V2-netlists en noemt nu tien V28-KAND-netlists, want het nieuwe corpus haalt de vloer op eigen kracht.",
    "sinds_V32": "V31/V32 (27-08-2026): het KAND-V2-corpus is opnieuw opgewekt nadat de elektrische poorten op de gemeten impedantiesweep gingen oordelen in plaats van op het ketenraster (V32), en nadat een kandidaat wiens tune in zijn geheel geweigerd werd zijn zaad niet meer als ontwerp aflevert (V31). Het corpus dat het verving is opnieuw NIET weggegooid maar hernoemd: 10 blokken `V30_KAND_*`, byte-identieke bestanden onder een gedateerde naam, met dezelfde tien metrieken en dezelfde klasse B. Er staan nu dus twee gedateerde corpora naast het levende: V28 (vóór de vloer een zoekdoel was) en V30 (vóór de poort de volle sweep las). Nog steeds NUL klasse C: het zijn metrieken op bestanden.",
    "sinds_V33": "V33 (27-08-2026): het KAND-V2-corpus is opnieuw opgewekt nadat de amp-vloerbarrière — de term die de zoektocht naar de vloer duwt — zijn tekort op de GEMETEN IMPEDANTIESWEEP ging lezen in plaats van op het evaluatieraster, via dezelfde functie waarmee M-B/|Z| oordeelt. Doel en poort zien daarmee per constructie één getal — het levende corpus over het veiligheidsraster van de tuner, met een tweede, duurdere arm ernaast die over de volle sweep draaide. Corpora die vervangen zijn worden NIET weggegooid maar hernoemd: 10x `V28_KAND_*`, 10x `V30_KAND_*`, 7x `V32_KAND_*`, 10x `V33_KAND_*`, 10x `V33_SWEEP_KAND_*`, 10x `V34_KAND_*`, 10x `V37_KAND_*`, 10x `V38FIX_KAND_*`, 8x `V41_KAND_*` — byte-identieke bestanden onder een gedateerde naam, met dezelfde tien metrieken en dezelfde klasse B. Nog steeds NUL klasse C.",
@@ -1758,6 +1758,8 @@
    "grootste_R_W_bij_100W": 28.18,
    "Qes_mult": 1.33,
    "lf_bult_extra_dB": 7.93,
+   "lf_lift_dB": 1.79,
+   "lf_opslingering_dB": 6.14,
    "V_tweeter_op_fs_dB": -23.35,
    "rms_vlakheid_dB": 0.48,
    "spl_venster_pm_dB": 0.78,
@@ -1774,6 +1776,8 @@
    "grootste_R_W_bij_100W": 33.81,
    "Qes_mult": 2.29,
    "lf_bult_extra_dB": 3.85,
+   "lf_lift_dB": 4.71,
+   "lf_opslingering_dB": -0.87,
    "V_tweeter_op_fs_dB": -27.7,
    "rms_vlakheid_dB": 0.53,
    "spl_venster_pm_dB": 0.93,
@@ -1790,6 +1794,8 @@
    "grootste_R_W_bij_100W": 26.39,
    "Qes_mult": 1.41,
    "lf_bult_extra_dB": 7.17,
+   "lf_lift_dB": 2.17,
+   "lf_opslingering_dB": 5.01,
    "V_tweeter_op_fs_dB": -26.81,
    "rms_vlakheid_dB": 0.54,
    "spl_venster_pm_dB": 1.17,
@@ -1806,6 +1812,8 @@
    "grootste_R_W_bij_100W": 16.93,
    "Qes_mult": 1.86,
    "lf_bult_extra_dB": 4.38,
+   "lf_lift_dB": 3.7,
+   "lf_opslingering_dB": 0.68,
    "V_tweeter_op_fs_dB": -23.08,
    "rms_vlakheid_dB": 1.86,
    "spl_venster_pm_dB": 3,
@@ -6168,6 +6176,730 @@
     }
    ],
    "lf_bult_budget_werkingsgebied": "DE INVERSIE LEVERT OP DE HELFT VAN DE ONTWERPEN GEEN PLAFOND, en dat is geen fout maar het antwoord (V12). De elektrische overdracht is H_el = Z / (Z + R_pad + jomega*L): bij de reflexpiek is |Z| hoog en blijft H_el dicht bij 1, bij de referentiefrequentie is |Z| laag en zakt hij weg. SERIEWEERSTAND tilt de piek dus in zijn eentje al op - dezelfde natuurkunde als de Q_es-vermenigvuldiging van M-E - en boven ongeveer 1,7 ohm padweerstand is de gestelde 2,5 dB al op voordat er een spoel in het pad zit. maxSeriesInductanceFromBump geeft dan null en er komt geen grens. Gemeten op de bevroren netlists: HUIDIG 3,76 ohm geen grens; op het V41-corpus zes van de negen zonder grens. Het budget is daarmee een grens op de totale BRONIMPEDANTIE bij resonantie en niet op de spoel alleen. Waar hij wel bond, brak hij de versterkervloer: vier kandidaten die bij V41 een netwerk leverden kwamen terug op 1,93 tot 2,41 ohm tegen een vloer van 2,60. Dat is de gemeten aanleiding voor de LCR-/parallel-R-vraag, en zij is scherper dan zij bij V38 gesteld werd: de vraag is niet hoe je de spoel begrenst maar hoe je de bronimpedantie bij resonantie begrenst zonder de vloer te breken."
+  },
+  "v43_ontleding": {
+   "_": "V43 — `lfBump().extraDb` telt TWEE mechanismen bij elkaar op, en dit blok haalt ze uit elkaar op elke bevroren netlist. `lift_dB` is wat het RESISTIEVE EQUIVALENT van hetzelfde netwerk (zelfde topologie, zelfde waarden, elke reactantie vervangen door haar eigen serieweerstand: spoel -> DCR, condensator -> open) bovenop de kale kast tilt; `opslingering_dB` is wat de reactanties daar bovenop leggen. Per constructie tellen zij op tot `extra_dB` - alle drie de maxima worden in één pas over één band genomen - en dat is wat de oude extraDb-referenties tot de BRUG naar de nieuwe maakt. DE OPSLINGERING KAN NEGATIEF ZIJN, en dat is geen fout: M-D normaliseert op f_ref, dus een filter waarvan de doorlaatband JUIST DAAR door zijn reactanties opgetild wordt, leest ten opzichte van zijn eigen resistieve equivalent lager. HUIDIG is precies dat geval (-0,94 dB). Zie casusboek V43 en scripts/measure-v43-decomposition.ts.",
+   "metriek_versie": "lf-bump/1.1",
+   "transform_versie": "resistive-equivalent/1.0",
+   "per_netlist": [
+    {
+     "netlist": "HUIDIG",
+     "weg": "woofer",
+     "extra_dB": 3.75,
+     "lift_dB": 4.69,
+     "opslingering_dB": -0.94
+    },
+    {
+     "netlist": "KAND_A",
+     "weg": "woofer",
+     "extra_dB": 4.25,
+     "lift_dB": 5.15,
+     "opslingering_dB": -0.9
+    },
+    {
+     "netlist": "KAND_B",
+     "weg": "woofer",
+     "extra_dB": 3.41,
+     "lift_dB": 3.46,
+     "opslingering_dB": -0.05
+    },
+    {
+     "netlist": "V28_KAND_1",
+     "weg": "woofer",
+     "extra_dB": 5.2,
+     "lift_dB": 0,
+     "opslingering_dB": 5.2
+    },
+    {
+     "netlist": "V28_KAND_2",
+     "weg": "woofer",
+     "extra_dB": 13.74,
+     "lift_dB": 1.69,
+     "opslingering_dB": 12.05
+    },
+    {
+     "netlist": "V28_KAND_3",
+     "weg": "woofer",
+     "extra_dB": 1.49,
+     "lift_dB": 0,
+     "opslingering_dB": 1.49
+    },
+    {
+     "netlist": "V28_KAND_4",
+     "weg": "woofer",
+     "extra_dB": 1.71,
+     "lift_dB": 2.29,
+     "opslingering_dB": -0.58
+    },
+    {
+     "netlist": "V28_KAND_5",
+     "weg": "woofer",
+     "extra_dB": 1.49,
+     "lift_dB": 0,
+     "opslingering_dB": 1.49
+    },
+    {
+     "netlist": "V28_KAND_6",
+     "weg": "woofer",
+     "extra_dB": 1.84,
+     "lift_dB": 2.2,
+     "opslingering_dB": -0.36
+    },
+    {
+     "netlist": "V28_KAND_7",
+     "weg": "woofer",
+     "extra_dB": 1.49,
+     "lift_dB": 0,
+     "opslingering_dB": 1.49
+    },
+    {
+     "netlist": "V28_KAND_8",
+     "weg": "woofer",
+     "extra_dB": 1.76,
+     "lift_dB": 2.35,
+     "opslingering_dB": -0.59
+    },
+    {
+     "netlist": "V28_KAND_9",
+     "weg": "woofer",
+     "extra_dB": 1.68,
+     "lift_dB": 2.28,
+     "opslingering_dB": -0.6
+    },
+    {
+     "netlist": "V28_KAND_10",
+     "weg": "woofer",
+     "extra_dB": 1.71,
+     "lift_dB": 2.24,
+     "opslingering_dB": -0.53
+    },
+    {
+     "netlist": "V30_KAND_1",
+     "weg": "woofer",
+     "extra_dB": 4.6,
+     "lift_dB": 0,
+     "opslingering_dB": 4.59
+    },
+    {
+     "netlist": "V30_KAND_2",
+     "weg": "woofer",
+     "extra_dB": 3.52,
+     "lift_dB": 0,
+     "opslingering_dB": 3.52
+    },
+    {
+     "netlist": "V30_KAND_3",
+     "weg": "woofer",
+     "extra_dB": 4.22,
+     "lift_dB": 2.23,
+     "opslingering_dB": 1.99
+    },
+    {
+     "netlist": "V30_KAND_4",
+     "weg": "woofer",
+     "extra_dB": 4.02,
+     "lift_dB": 1.85,
+     "opslingering_dB": 2.16
+    },
+    {
+     "netlist": "V30_KAND_5",
+     "weg": "woofer",
+     "extra_dB": 1.69,
+     "lift_dB": 1.82,
+     "opslingering_dB": -0.13
+    },
+    {
+     "netlist": "V30_KAND_6",
+     "weg": "woofer",
+     "extra_dB": 4.71,
+     "lift_dB": 0,
+     "opslingering_dB": 4.71
+    },
+    {
+     "netlist": "V30_KAND_7",
+     "weg": "woofer",
+     "extra_dB": 3.94,
+     "lift_dB": 2.79,
+     "opslingering_dB": 1.15
+    },
+    {
+     "netlist": "V30_KAND_8",
+     "weg": "woofer",
+     "extra_dB": 3.44,
+     "lift_dB": 1.89,
+     "opslingering_dB": 1.55
+    },
+    {
+     "netlist": "V30_KAND_9",
+     "weg": "woofer",
+     "extra_dB": 1.54,
+     "lift_dB": 2.11,
+     "opslingering_dB": -0.58
+    },
+    {
+     "netlist": "V30_KAND_10",
+     "weg": "woofer",
+     "extra_dB": 3.99,
+     "lift_dB": 2.39,
+     "opslingering_dB": 1.61
+    },
+    {
+     "netlist": "V32_KAND_1",
+     "weg": "woofer",
+     "extra_dB": 4.22,
+     "lift_dB": 2.23,
+     "opslingering_dB": 1.99
+    },
+    {
+     "netlist": "V32_KAND_2",
+     "weg": "woofer",
+     "extra_dB": 4.02,
+     "lift_dB": 1.85,
+     "opslingering_dB": 2.16
+    },
+    {
+     "netlist": "V32_KAND_3",
+     "weg": "woofer",
+     "extra_dB": 1.69,
+     "lift_dB": 1.82,
+     "opslingering_dB": -0.13
+    },
+    {
+     "netlist": "V32_KAND_4",
+     "weg": "woofer",
+     "extra_dB": 3.94,
+     "lift_dB": 2.79,
+     "opslingering_dB": 1.15
+    },
+    {
+     "netlist": "V32_KAND_5",
+     "weg": "woofer",
+     "extra_dB": 3.44,
+     "lift_dB": 1.89,
+     "opslingering_dB": 1.55
+    },
+    {
+     "netlist": "V32_KAND_6",
+     "weg": "woofer",
+     "extra_dB": 1.54,
+     "lift_dB": 2.11,
+     "opslingering_dB": -0.58
+    },
+    {
+     "netlist": "V32_KAND_7",
+     "weg": "woofer",
+     "extra_dB": 3.99,
+     "lift_dB": 2.39,
+     "opslingering_dB": 1.61
+    },
+    {
+     "netlist": "V33_SWEEP_KAND_1",
+     "weg": "woofer",
+     "extra_dB": 1.78,
+     "lift_dB": 1.95,
+     "opslingering_dB": -0.16
+    },
+    {
+     "netlist": "V33_SWEEP_KAND_2",
+     "weg": "woofer",
+     "extra_dB": 2.2,
+     "lift_dB": 2.12,
+     "opslingering_dB": 0.08
+    },
+    {
+     "netlist": "V33_SWEEP_KAND_3",
+     "weg": "woofer",
+     "extra_dB": 5.08,
+     "lift_dB": 0,
+     "opslingering_dB": 5.07
+    },
+    {
+     "netlist": "V33_SWEEP_KAND_4",
+     "weg": "woofer",
+     "extra_dB": 1.66,
+     "lift_dB": 1.79,
+     "opslingering_dB": -0.12
+    },
+    {
+     "netlist": "V33_SWEEP_KAND_5",
+     "weg": "woofer",
+     "extra_dB": 1.88,
+     "lift_dB": 1.97,
+     "opslingering_dB": -0.09
+    },
+    {
+     "netlist": "V33_SWEEP_KAND_6",
+     "weg": "woofer",
+     "extra_dB": 6.01,
+     "lift_dB": 0,
+     "opslingering_dB": 6.01
+    },
+    {
+     "netlist": "V33_SWEEP_KAND_7",
+     "weg": "woofer",
+     "extra_dB": 3.89,
+     "lift_dB": 3.82,
+     "opslingering_dB": 0.07
+    },
+    {
+     "netlist": "V33_SWEEP_KAND_8",
+     "weg": "woofer",
+     "extra_dB": 2.84,
+     "lift_dB": 2.83,
+     "opslingering_dB": 0.01
+    },
+    {
+     "netlist": "V33_SWEEP_KAND_9",
+     "weg": "woofer",
+     "extra_dB": 3.13,
+     "lift_dB": 2.08,
+     "opslingering_dB": 1.05
+    },
+    {
+     "netlist": "V33_SWEEP_KAND_10",
+     "weg": "woofer",
+     "extra_dB": 4.19,
+     "lift_dB": 2.96,
+     "opslingering_dB": 1.23
+    },
+    {
+     "netlist": "V33_KAND_1",
+     "weg": "woofer",
+     "extra_dB": 4.56,
+     "lift_dB": 0,
+     "opslingering_dB": 4.56
+    },
+    {
+     "netlist": "V33_KAND_2",
+     "weg": "woofer",
+     "extra_dB": 5.76,
+     "lift_dB": 0,
+     "opslingering_dB": 5.76
+    },
+    {
+     "netlist": "V33_KAND_3",
+     "weg": "woofer",
+     "extra_dB": 3.77,
+     "lift_dB": 2.46,
+     "opslingering_dB": 1.31
+    },
+    {
+     "netlist": "V33_KAND_4",
+     "weg": "woofer",
+     "extra_dB": 3.68,
+     "lift_dB": 2.05,
+     "opslingering_dB": 1.62
+    },
+    {
+     "netlist": "V33_KAND_5",
+     "weg": "woofer",
+     "extra_dB": 3.23,
+     "lift_dB": 1.54,
+     "opslingering_dB": 1.69
+    },
+    {
+     "netlist": "V33_KAND_6",
+     "weg": "woofer",
+     "extra_dB": 3.46,
+     "lift_dB": 2.42,
+     "opslingering_dB": 1.04
+    },
+    {
+     "netlist": "V33_KAND_7",
+     "weg": "woofer",
+     "extra_dB": 1.72,
+     "lift_dB": 2.22,
+     "opslingering_dB": -0.51
+    },
+    {
+     "netlist": "V33_KAND_8",
+     "weg": "woofer",
+     "extra_dB": 3.39,
+     "lift_dB": 2.05,
+     "opslingering_dB": 1.34
+    },
+    {
+     "netlist": "V33_KAND_9",
+     "weg": "woofer",
+     "extra_dB": 1.56,
+     "lift_dB": 2.28,
+     "opslingering_dB": -0.72
+    },
+    {
+     "netlist": "V33_KAND_10",
+     "weg": "woofer",
+     "extra_dB": 2.84,
+     "lift_dB": 2.46,
+     "opslingering_dB": 0.38
+    },
+    {
+     "netlist": "V34_KAND_1",
+     "weg": "woofer",
+     "extra_dB": 1.63,
+     "lift_dB": 1.9,
+     "opslingering_dB": -0.26
+    },
+    {
+     "netlist": "V34_KAND_2",
+     "weg": "woofer",
+     "extra_dB": 4.56,
+     "lift_dB": 0,
+     "opslingering_dB": 4.56
+    },
+    {
+     "netlist": "V34_KAND_3",
+     "weg": "woofer",
+     "extra_dB": 5.76,
+     "lift_dB": 0,
+     "opslingering_dB": 5.76
+    },
+    {
+     "netlist": "V34_KAND_4",
+     "weg": "woofer",
+     "extra_dB": 5.44,
+     "lift_dB": 0,
+     "opslingering_dB": 5.44
+    },
+    {
+     "netlist": "V34_KAND_5",
+     "weg": "woofer",
+     "extra_dB": 4.54,
+     "lift_dB": 2.32,
+     "opslingering_dB": 2.22
+    },
+    {
+     "netlist": "V34_KAND_6",
+     "weg": "woofer",
+     "extra_dB": 1.82,
+     "lift_dB": 2.38,
+     "opslingering_dB": -0.56
+    },
+    {
+     "netlist": "V34_KAND_7",
+     "weg": "woofer",
+     "extra_dB": 3.9,
+     "lift_dB": 2.21,
+     "opslingering_dB": 1.69
+    },
+    {
+     "netlist": "V34_KAND_8",
+     "weg": "woofer",
+     "extra_dB": 1.68,
+     "lift_dB": 2.4,
+     "opslingering_dB": -0.71
+    },
+    {
+     "netlist": "V34_KAND_9",
+     "weg": "woofer",
+     "extra_dB": 3.46,
+     "lift_dB": 3.65,
+     "opslingering_dB": -0.18
+    },
+    {
+     "netlist": "V34_KAND_10",
+     "weg": "woofer",
+     "extra_dB": 2.74,
+     "lift_dB": 1.88,
+     "opslingering_dB": 0.86
+    },
+    {
+     "netlist": "V37_KAND_1",
+     "weg": "woofer",
+     "extra_dB": 4.56,
+     "lift_dB": 0,
+     "opslingering_dB": 4.56
+    },
+    {
+     "netlist": "V37_KAND_2",
+     "weg": "woofer",
+     "extra_dB": 5.76,
+     "lift_dB": 0,
+     "opslingering_dB": 5.76
+    },
+    {
+     "netlist": "V37_KAND_3",
+     "weg": "woofer",
+     "extra_dB": 2.4,
+     "lift_dB": 1.52,
+     "opslingering_dB": 0.88
+    },
+    {
+     "netlist": "V37_KAND_4",
+     "weg": "woofer",
+     "extra_dB": 3.42,
+     "lift_dB": 2.32,
+     "opslingering_dB": 1.1
+    },
+    {
+     "netlist": "V37_KAND_5",
+     "weg": "woofer",
+     "extra_dB": 1.68,
+     "lift_dB": 2.31,
+     "opslingering_dB": -0.63
+    },
+    {
+     "netlist": "V37_KAND_6",
+     "weg": "woofer",
+     "extra_dB": 3.83,
+     "lift_dB": 3.84,
+     "opslingering_dB": -0.02
+    },
+    {
+     "netlist": "V37_KAND_7",
+     "weg": "woofer",
+     "extra_dB": 1.48,
+     "lift_dB": 1.87,
+     "opslingering_dB": -0.39
+    },
+    {
+     "netlist": "V37_KAND_8",
+     "weg": "woofer",
+     "extra_dB": 3.38,
+     "lift_dB": 2.33,
+     "opslingering_dB": 1.05
+    },
+    {
+     "netlist": "V37_KAND_9",
+     "weg": "woofer",
+     "extra_dB": 2.88,
+     "lift_dB": 1.77,
+     "opslingering_dB": 1.11
+    },
+    {
+     "netlist": "V37_KAND_10",
+     "weg": "woofer",
+     "extra_dB": 10.21,
+     "lift_dB": 2.02,
+     "opslingering_dB": 8.19
+    },
+    {
+     "netlist": "V38FIX_KAND_1",
+     "weg": "woofer",
+     "extra_dB": 4.28,
+     "lift_dB": 4.46,
+     "opslingering_dB": -0.19
+    },
+    {
+     "netlist": "V38FIX_KAND_2",
+     "weg": "woofer",
+     "extra_dB": 4.14,
+     "lift_dB": 4.26,
+     "opslingering_dB": -0.11
+    },
+    {
+     "netlist": "V38FIX_KAND_3",
+     "weg": "woofer",
+     "extra_dB": 4.08,
+     "lift_dB": 4.17,
+     "opslingering_dB": -0.09
+    },
+    {
+     "netlist": "V38FIX_KAND_4",
+     "weg": "woofer",
+     "extra_dB": 4.53,
+     "lift_dB": 0,
+     "opslingering_dB": 4.53
+    },
+    {
+     "netlist": "V38FIX_KAND_5",
+     "weg": "woofer",
+     "extra_dB": 1.85,
+     "lift_dB": 2.03,
+     "opslingering_dB": -0.18
+    },
+    {
+     "netlist": "V38FIX_KAND_6",
+     "weg": "woofer",
+     "extra_dB": 4.05,
+     "lift_dB": 2.48,
+     "opslingering_dB": 1.58
+    },
+    {
+     "netlist": "V38FIX_KAND_7",
+     "weg": "woofer",
+     "extra_dB": 5.56,
+     "lift_dB": 0,
+     "opslingering_dB": 5.56
+    },
+    {
+     "netlist": "V38FIX_KAND_8",
+     "weg": "woofer",
+     "extra_dB": 3.76,
+     "lift_dB": 4,
+     "opslingering_dB": -0.24
+    },
+    {
+     "netlist": "V38FIX_KAND_9",
+     "weg": "woofer",
+     "extra_dB": 4.35,
+     "lift_dB": 0,
+     "opslingering_dB": 4.35
+    },
+    {
+     "netlist": "V38FIX_KAND_10",
+     "weg": "woofer",
+     "extra_dB": 1.61,
+     "lift_dB": 2.19,
+     "opslingering_dB": -0.58
+    },
+    {
+     "netlist": "V41_KAND_1",
+     "weg": "woofer",
+     "extra_dB": 7.93,
+     "lift_dB": 1.79,
+     "opslingering_dB": 6.14
+    },
+    {
+     "netlist": "V41_KAND_2",
+     "weg": "woofer",
+     "extra_dB": 6.1,
+     "lift_dB": 2.76,
+     "opslingering_dB": 3.34
+    },
+    {
+     "netlist": "V41_KAND_3",
+     "weg": "woofer",
+     "extra_dB": 3.85,
+     "lift_dB": 4.71,
+     "opslingering_dB": -0.87
+    },
+    {
+     "netlist": "V41_KAND_4",
+     "weg": "woofer",
+     "extra_dB": 6.56,
+     "lift_dB": 2.6,
+     "opslingering_dB": 3.96
+    },
+    {
+     "netlist": "V41_KAND_5",
+     "weg": "woofer",
+     "extra_dB": 7.17,
+     "lift_dB": 2.17,
+     "opslingering_dB": 5.01
+    },
+    {
+     "netlist": "V41_KAND_6",
+     "weg": "woofer",
+     "extra_dB": 5.98,
+     "lift_dB": 2.84,
+     "opslingering_dB": 3.14
+    },
+    {
+     "netlist": "V41_KAND_7",
+     "weg": "woofer",
+     "extra_dB": 3.62,
+     "lift_dB": 1.8,
+     "opslingering_dB": 1.82
+    },
+    {
+     "netlist": "V41_KAND_8",
+     "weg": "woofer",
+     "extra_dB": 4.38,
+     "lift_dB": 3.7,
+     "opslingering_dB": 0.68
+    },
+    {
+     "netlist": "KAND_V2_1",
+     "weg": "woofer",
+     "extra_dB": 7.93,
+     "lift_dB": 1.79,
+     "opslingering_dB": 6.14
+    },
+    {
+     "netlist": "KAND_V2_2",
+     "weg": "woofer",
+     "extra_dB": 3.85,
+     "lift_dB": 4.71,
+     "opslingering_dB": -0.87
+    },
+    {
+     "netlist": "KAND_V2_3",
+     "weg": "woofer",
+     "extra_dB": 7.17,
+     "lift_dB": 2.17,
+     "opslingering_dB": 5.01
+    },
+    {
+     "netlist": "KAND_V2_4",
+     "weg": "woofer",
+     "extra_dB": 4.38,
+     "lift_dB": 3.7,
+     "opslingering_dB": 0.68
+    }
+   ]
+  },
+  "v43_inversie_bevinding": {
+   "_": "V43 — WAT ER MET DE A5d.6-INVERSIE bump-series-l GEBEURT ALS ZIJ TEGEN DE RESONANTE COMPONENT OPLOST IN PLAATS VAN TEGEN DE SOM. Dit blok is de meting die de V43-sessie deed STOPPEN voordat de inversie verplaatst werd, en het staat hier omdat de aanleiding tot die stop anders nergens bewaard blijft. De verwachting was dat de klasse-A-referentie grens_inversies.maxL_bij_Rs0_5_budget2_5dB_mH vrijwel niet zou bewegen, omdat bij lage padweerstand de resistieve lift klein zou zijn en de oude referentie daar dus praktisch al de opslingering mat. DAT IS ONWAAR: bij 0,5 ohm padweerstand is de lift al 0,967 dB van de gestelde 2,5 - 39 % van het budget - en het plafond verschuift van 2,432 naar 3,162 mH, +30 %. Boven 1,5 ohm is het verschil kwalitatief in plaats van kwantitatief: op de som is het budget dan op voordat er een spoel bestaat (V42, GEEN GRENS), op de opslingering is er per constructie altijd een grens, want bij L = 0 is de opslingering exact nul. De inversie verplaatsen maakt het budget dus niet strenger of losser maar OVERAL WERKZAAM, en dat is een andere eis dan de gestelde. Wat 2,5 dB op de resonante component moet zijn is een GESTELDE eis en dus het besluit van de ontwerper, niet een afleiding (P4). Gemeten met scripts/measure-v43-decomposition.ts, tweede tabel.",
+   "budget_dB": 2.5,
+   "referentie_bij_pad_R_0_5": {
+    "op_de_som_mH": 2.432,
+    "op_de_opslingering_mH": 3.162,
+    "lift_bij_L0_dB": 0.967,
+    "_": "De eerste is de staande klasse-A-referentie maxL_bij_Rs0_5_budget2_5dB_mH; de tweede is wat op dezelfde meting uit dezelfde 1D-oplossing komt wanneer de opslingering de grootheid is. Zij verschillen met 30 %."
+   },
+   "per_pad_R": [
+    {
+     "pad_R_ohm": 0.0,
+     "lift_bij_L0_dB": 0.0,
+     "op_de_som_mH": 2.857,
+     "op_de_opslingering_mH": 2.857
+    },
+    {
+     "pad_R_ohm": 0.25,
+     "lift_bij_L0_dB": 0.506,
+     "op_de_som_mH": 2.662,
+     "op_de_opslingering_mH": 3.008
+    },
+    {
+     "pad_R_ohm": 0.5,
+     "lift_bij_L0_dB": 0.967,
+     "op_de_som_mH": 2.432,
+     "op_de_opslingering_mH": 3.162
+    },
+    {
+     "pad_R_ohm": 1.0,
+     "lift_bij_L0_dB": 1.798,
+     "op_de_som_mH": 1.806,
+     "op_de_opslingering_mH": 3.493
+    },
+    {
+     "pad_R_ohm": 1.5,
+     "lift_bij_L0_dB": 2.518,
+     "op_de_som_mH": null,
+     "op_de_opslingering_mH": 3.846
+    },
+    {
+     "pad_R_ohm": 1.7,
+     "lift_bij_L0_dB": 2.777,
+     "op_de_som_mH": null,
+     "op_de_opslingering_mH": 3.992
+    },
+    {
+     "pad_R_ohm": 2.0,
+     "lift_bij_L0_dB": 3.139,
+     "op_de_som_mH": null,
+     "op_de_opslingering_mH": 4.215
+    },
+    {
+     "pad_R_ohm": 2.6,
+     "lift_bij_L0_dB": 3.781,
+     "op_de_som_mH": null,
+     "op_de_opslingering_mH": 4.665
+    },
+    {
+     "pad_R_ohm": 3.0,
+     "lift_bij_L0_dB": 4.156,
+     "op_de_som_mH": null,
+     "op_de_opslingering_mH": 4.938
+    },
+    {
+     "pad_R_ohm": 3.76,
+     "lift_bij_L0_dB": 4.776,
+     "op_de_som_mH": null,
+     "op_de_opslingering_mH": 5.465
+    }
+   ],
+   "waarom_de_sessie_hier_stopte": "De opdracht van V43 schreef deze controle zelf voor: verifieer dat de waarde bij pad_R 0,5 ohm vrijwel gelijk blijft; als hij significant verschuift is dat een bevinding, stop en meld. Hij verschuift met 30 %. Alles wat NIET van dat besluit afhangt is wel gebouwd - de metriek is gesplitst, geversioneerd, getest en per bevroren netlist als klasse-B-referentie vastgelegd (v43_ontleding) - en drie dingen zijn bewust NIET gedaan: de inversie is niet verplaatst, gestelde_eisen.lf_bult_budget_dB is niet hernoemd, en het veld is niet geregenereerd. Die regeneratie kost sinds V41 ruim vier uur en zou tegen een budgetgetal draaien dat de ontwerper na deze meting kan willen wijzigen."
   }
  },
  "herzien_F1": "25-08-2026 vastgesteld; herzien bij oplevering F1 (engine2-fundament)",

@@ -105,6 +105,21 @@ Formaat per metriek: *grootheid → formule → afgeleide parameters → databeh
 
 **M-D · LF-opslingering op de driverresonantie.** Extra respons-bult die filter + bronimpedantie toevoegen bovenop het kale driver-in-kast-gedrag: `max over B van [NF×H_el] − max over B van [NF]`, beide genormeerd op f_ref. **Afleiding (P6):** B en f_ref volgen uit de bovenste impedantiepiek f_p van het geladen .zma — B ≈ [0,7·f_p , 2,2·f_p], f_ref ≈ 3·f_p mits binnen het geldige NF-bereik en onder het kruispunt. Databehoefte: nabije-veldmeting van de betreffende weg. Vervangt de spoel-vuistregel (die R, DCR, piek-Q en kastafstemming mist).
 
+*Registerrij, herzien bij V43 — de bult is ÉÉN getal met TWEE mechanismen erin, en zij worden sindsdien apart gerapporteerd:*
+
+| veld | inhoud |
+| --- | --- |
+| grootheid | Drie getallen op één band, niet één. (1) `extraDb` — de volle bult, ongewijzigd sinds F1 en de grootheid waarin élke staande referentie en het gestelde budget zijn uitgedrukt. (2) `liftDb` — de **resistieve lift**: de brede, gedempte helft. Serieweerstand verzwakt de midband (lage \|Z\|) méér dan de reflexpiek (hoge \|Z\|), dus zij tilt het laag op zonder één reactantie. Niveauwerk. (3) `resonantDb` — de **resonante opslingering**: de smalle, ondergedempte helft, wat de reactanties bovenop die lift leggen tegen de motionele piek. |
+| formule | Alle drie op dezelfde band B en dezelfde normalisatie f_ref, in één pas: `extraDb = max_B[NF·H_el] − max_B[NF]`, `liftDb = max_B[NF·H_res] − max_B[NF]`, `resonantDb = max_B[NF·H_el] − max_B[NF·H_res]`. **Per constructie `liftDb + resonantDb = extraDb`** — drie maxima over één band, geen tweede meting — en dát is wat de bestaande `lf_bult_extra_dB`-referenties tot de brug naar de twee nieuwe maakt. |
+| het resistieve equivalent (H_res) | Hetzelfde netwerk, dezelfde topologie, dezelfde waarden, elke reactantie vervangen door **haar eigen serieweerstand**: spoel → DCR (een ideale spoel heeft DCR 0 en wordt dus een KORTSLUITING; de knopen worden samengevoegd, want nodale analyse kan geen ideale kortsluiting stempelen en een "klein genoeg" weerstandje is een magisch getal dat het antwoord bepaalt — P6), condensator → **OPEN**, en de tak verlaat het netwerk. Dat laatste is een besluit met een reden: de resistieve limiet van een condensator is een open tak, zijn ESR staat in serie met een reactantie die oneindig is geworden en kan dus niets geleiden. Hem door zijn ESR vervangen zou elke seriecondensator in een bijna-kortsluiting veranderen, wat de tegenovergestelde limiet is. **De DRIVER houdt zijn gemeten impedantie, reactantie en al** — de motionele piek is juist de grootheid waarover de twee krommen vergeleken worden; wie hem ook zou resistiveren houdt niets over om tegen op te slingeren. Wat de transform weghaalt is de reactantie die de ONTWERPER kiest. |
+| afgeleide parameters | B en f_ref precies als hierboven, uit f_p — de ontleding voegt géén band en géén frequentie toe. |
+| databehoefte | Onveranderd voor `extraDb`. De twee helften vragen er één ding bij: een **tweede netwerkoplossing** op hetzelfde raster. Geen meting erbij; wel een tweede MNA-pas, dus zij wordt lui gebouwd en per rapport hooguit één keer. |
+| rol | **rapportage**, alle drie. Zij dragen geen poort: M-D heeft geen id in `GATE_IDS` en veroordeelt geen geleverde netlist. Wat er wél aan hangt is het projectbudget dat de A5d.6-inversie `bump-series-l` voedt, en dat staat **sinds V43 open**: het is vandaag op `extraDb` gesteld, terwijl de vakregel waaruit het komt over `resonantDb` gaat. Zie V43 in Deel B; het besluit is dat van de ontwerper (P4). |
+| geldigheid | Precies die van `extraDb` — dezelfde band, dezelfde NF-geldigheid, dezelfde dekkingsrapportage. Eén ding erbij: een tak die in de resistieve limiet niets draagt (een DCR-loze spoel dwars over de driver) levert **geen** ontleding, en dan zijn beide helften `null` mét de reden. Nooit 0 — een nul leest als "gemeten, en het is niets". |
+| negatieve opslingering | **Kan, en is geen fout.** M-D normaliseert op f_ref, dus wie daar door zijn eigen reactanties wordt opgetild — een doorlaatband­resonantie rond f_ref — leest ten opzichte van zijn resistieve equivalent lager. HUIDIG is precies dat geval: `extraDb` 3,75, lift 4,69, opslingering **−0,94** dB. De opslingering is dus "wat reactantie bij de piek doet **ten opzichte van wat zij bij f_ref doet**", en niet "wat reactantie bij de piek doet". Dat is dezelfde relativiteit die `extraDb` altijd al droeg; zij wordt hier alleen zichtbaar. |
+| validatiecasus | casus 1, élke bevroren netlist (`manifest_en_geometrie.v43_ontleding`, klasse B) plus het levende corpus in `kandidaten.*.lf_lift_dB` / `.lf_opslingering_dB`. Handberekening en nieuwe-meting-test in `metrics/lfBumpDecomposition.test.ts`; de optel-assert over het hele casusboek in `frozenNetlistGates.test.ts`. |
+| versie | `lf-bump/1.1` (was ongeversioneerd; 1.0 = de F1-vorm met alleen `extraDb`), naast `resistive-equivalent/1.0` voor de transform. MINOR en geen MAJOR: `extraDb` is bit-identiek, band en normalisatie zijn onaangeraakt, de resultaatvorm is alleen gegroeid — dezelfde afweging als bij `z-re` 1.0 → 1.1. Een cache van vóór deze versie kan de nieuwe vraag niet beantwoorden, dus hij vervalt. |
+
 **M-E · Thévenin-bronweerstand / Q-vermenigvuldiging.** `Z_s(f) = (V₂−V₁)/(V₁/Z₁ − V₂/Z₂)` via twee solves (Z en 2Z), geëvalueerd rond f_s; rapportage als `(R_e+R_s)/R_e`. Databehoefte: R_e per driver. Goedkope benadering van M-D wanneer geen NF-meting beschikbaar is; rapportage kan de consequentie in kastvolume tonen (V_box ∝ Q_ts²-vuistregel als duiding, niet als grens).
 
 **M-F · Verticale lobing.** Twee niveaus, en sinds V20 (27-08-2026) is de rangorde tussen die twee vastgelegd in plaats van impliciet: **F-eind is de autoriteit**, F-interim is leesvoer.
@@ -470,7 +485,20 @@ punten met een casusboek-entry erachter. Ze staan hier zodat ze niet alleen in D
   f_p, of de eis uitdrukken als één grens op `R_pad + jωL` samen — dat laatste is een tweede
   inversie en geen topologievoorstel. Bewijsmateriaal: `scripts/measure-v42-bump-bound.ts` en
   `manifest_en_geometrie.v42_bult_bevinding`. **Open**, Sander beslist welke richting de generator
-  mag voorstellen.
+  mag voorstellen. **AANGESCHERPT DOOR V43, dat de grootheid heeft ONTLEED maar het budget niet
+  heeft verplaatst.** M-D levert sinds V43 naast `extraDb` ook `liftDb` (wat het resistieve
+  equivalent van hetzelfde netwerk alleen al doet) en `resonantDb` (wat de reactanties daar
+  bovenop leggen), en zij tellen per constructie op tot `extraDb`. Wat de ontleding zegt over de
+  drie richtingen hierboven: de derde is nu BEREKENBAAR — de kolom "lift bij L = 0" ís de
+  resistieve term van `R_pad + jωL` — en er ligt een vierde bij: **twee eisen in plaats van één**,
+  een spoelbudget op `resonantDb` naast een liftgrens die in werkelijkheid het ankerbesluit
+  (A5e.2) is. Wat de ontleding NIET oplost is het getal: 2,5 dB op de resonante component laat op
+  HUIDIG's eigen padweerstand 5,47 mH toe, tegen de ~2,35 mH van de vuistregel waaruit het budget
+  komt — dus verplaatsen zonder herijken maakt de eis losser, niet scherper. En bij 0,5 Ω
+  verschuift de klasse-A-referentie van 2,432 naar 3,162 mH (+30 %). Bewijsmateriaal:
+  `scripts/measure-v43-decomposition.ts`, `manifest_en_geometrie.v43_ontleding` en
+  `.v43_inversie_bevinding`. **Open**, en het is nu één besluit met een getal erin in plaats van
+  drie topologievoorstellen.
 - **V29 — mag `safety` een netlist weigeren die vrijwel kortsluit als er géén vloer gesteld is?**
   Twee verdedigbare houdingen (strikt P4 tegenover een uit de gemeten driverimpedanties
   afleidbare degeneratiegrens), aanleiding is de V28-shortlist met 0,01 Ω erin. **Open**, geen
@@ -2757,6 +2785,79 @@ Configuratie: 3-weg; 2× SB WO24TX-8 parallel, MR13TX-4 in bolpod, T25T-6 in WG1
   | geen van beide | de brug klopt niet, of het netwerk is anders aangekomen dan het bedoeld was | dan is de eerste vraag de export en niet de maat: vergelijk eerst de SPL-som van VituixCAD met `SPL ±` uit de tabel |
 
   **Zolang dit open staat draagt elke afruil die op fase verdedigd wordt deze onzekerheid mee** — dat is ongewijzigd sinds V38-fix, en het getallenblad maakt hem alleen preciezer: het is niet de definitie en niet het raster, het is de band.
+
+- V43 (29-08-2026 — de LF-bult wordt ontleed in resistieve lift en resonante opslingering; de inversie is NIET verplaatst) — opgeworpen als eigen opdracht uit V42. **Een halve oplevering met opzet: de metriek is gebouwd, het budget is niet verplaatst, en de reden staat hieronder in één tabel.**
+
+  **DE OPDRACHT.** V42 mat dat `lfBump().extraDb` twee mechanismen bij elkaar optelt — een brede resistieve lift en een smalle resonante opslingering — en dat het gestelde 2,5 dB-budget boven ~1,7 Ω padweerstand al op is vóórdat er een spoel bestaat. V43 zou die twee uit elkaar halen en het budget op de tweede zetten. De opdracht schreef één controle voor: *verifieer dat de klasse-A-referentie `maxL_bij_Rs0_5_budget2_5dB_mH` vrijwel gelijk blijft — bij lage pad-R was de lift immers klein, dus de oude referentie mat daar praktisch de opslingering; als hij significant verschuift is dát een bevinding, stop en meld.* Hij verschuift met 30 %.
+
+  ---
+
+  **WAT ER GEBOUWD IS.** De metriek levert sinds V43 drie getallen op één band in één pas: `extraDb` (ongewijzigd, bit-identiek, en de grootheid waarin élke staande referentie is uitgedrukt), `liftDb` en `resonantDb`. De registerrij staat in A4 M-D; de tweede kromme komt van een **resistief equivalent** — dezelfde topologie, dezelfde waarden, spoel → DCR (een ideale spoel dus een kortsluiting, met knoopsamenvoeging), condensator → open. `liftDb + resonantDb = extraDb` per constructie, en dat is precies wat de bestaande `lf_bult_extra_dB`-referenties tot de brug naar de twee nieuwe maakt.
+
+  **DE ONTLEDING VAN DE DRIE REFERENTIEFILTERS — EN ZIJ KEERT V42's BEELD OM.**
+
+  | netlist | pad R | `extraDb` | lift | opslingering |
+  |---|---|---|---|---|
+  | HUIDIG | 3,76 Ω | 3,75 | **4,69** | **−0,94** |
+  | KAND_A | 4,42 Ω | 4,25 | **5,15** | **−0,90** |
+  | KAND_B | 2,35 Ω | 3,41 | **3,46** | **−0,05** |
+  | gesteld budget | | 2,5 | | |
+
+  V42 stelde vast dat de eis strenger is dan het eigen referentiefilter van de ontwerper: alle drie de baselines overschrijden de 2,5 dB. Ontleed blijkt die overschrijding **volledig niveauwerk**: de spoelen van deze drie ontwerpen voegen op hun eigen resistieve equivalent níets toe — de opslingering is op alle drie nul of negatief. Wat het budget op HUIDIG veroordeelde was R8 die baffle-step-werk doet, en dat is het ankerdomein (A5e.2), niet de spoelregel. Op de resonante component gemeten haalt HUIDIG de eis ruim, en daarmee is de spiegel van de versterkervloer hersteld: *HUIDIG bewijst haalbaar*.
+
+  **DE NEGATIEVE OPSLINGERING IS GEEN FOUT EN VERDIENT ZIJN EIGEN ZIN.** M-D normaliseert op f_ref (≈ 3·f_p, hier 157 Hz). HUIDIG's wooferpad draagt daar een doorlaatband­resonantie tussen zijn seriespoel en zijn 108 µF shunt, dus de geladen kromme wordt júist bij de normalisatiefrequentie opgetild en leest ten opzichte van haar resistieve equivalent lager. De opslingering is dus "wat reactantie bij de piek doet **ten opzichte van wat zij bij f_ref doet**". Dat is dezelfde relativiteit die `extraDb` altijd al droeg; de ontleding maakt haar alleen zichtbaar. Wie een absolute piekmaat wil, vraagt een andere metriek, niet een andere normalisatie van deze.
+
+  **DE VIER DOOR V42 VERWORPEN ONTWERPEN, ONTLEED.** De vraag was: hoeveel van hun overschrijding was lift en hoeveel opslingering?
+
+  | netlist | RMS | pad R | `extraDb` | lift | opslingering | onder 2,5 op de opslingering? |
+  |---|---|---|---|---|---|---|
+  | V41_KAND_2 | 0,49 | 1,72 Ω | 6,10 | 2,76 (45 %) | **3,34** | nee |
+  | V41_KAND_4 | 0,53 | 1,59 Ω | 6,56 | 2,60 (40 %) | **3,96** | nee |
+  | V41_KAND_6 | 0,54 | 1,79 Ω | 5,98 | 2,84 (47 %) | **3,14** | nee |
+  | V41_KAND_7 | 1,82 | 1,01 Ω | 3,62 | 1,80 (50 %) | **1,82** | ja |
+
+  **Dus nee.** De verwachting bij aanvang was dat hun schending grotendeels lift zou zijn en dat zij onder een geherformuleerd budget zouden terugkeren. Gemeten is ongeveer half om half, en drie van de vier blijven eroverheen. Het levende corpus splitst hetzelfde: `KAND_V2_1` 1,79 + **6,14**, `KAND_V2_2` 4,71 + **−0,87**, `KAND_V2_3` 2,17 + **5,01**, `KAND_V2_4` 3,70 + **0,68** — twee van de vier over de 2,5, waar het op `extraDb` er vier van vier waren.
+
+  ---
+
+  **DE BEVINDING DIE DE SESSIE STOPTE.** `scripts/measure-v43-decomposition.ts`, tweede tabel, en zij staat als `manifest_en_geometrie.v43_inversie_bevinding` in het referentiebestand met een assert eronder:
+
+  | pad R | lift bij L = 0 | plafond op de SOM (nu) | plafond op de OPSLINGERING |
+  |---|---|---|---|
+  | 0,00 Ω | 0,000 dB | 2,857 mH | 2,857 mH |
+  | 0,25 Ω | 0,506 dB | 2,662 mH | 3,008 mH |
+  | **0,50 Ω** | **0,967 dB** | **2,432 mH** | **3,162 mH** |
+  | 1,00 Ω | 1,798 dB | 1,806 mH | 3,493 mH |
+  | 1,50 Ω | 2,518 dB | **geen grens** | 3,846 mH |
+  | 1,70 Ω | 2,777 dB | **geen grens** | 3,992 mH |
+  | 2,00 Ω | 3,139 dB | **geen grens** | 4,215 mH |
+  | 2,60 Ω | 3,781 dB | **geen grens** | 4,665 mH |
+  | 3,00 Ω | 4,156 dB | **geen grens** | 4,938 mH |
+  | 3,76 Ω | 4,776 dB | **geen grens** | 5,465 mH |
+
+  Bij 0,5 Ω — de padweerstand waarop de staande klasse-A-referentie berekend is — is de resistieve lift **0,967 dB van de gestelde 2,5**, dus 39 % van het budget. De premisse van de opdracht ("bij lage pad-R was de lift klein") is daarmee onwaar, en het plafond gaat van 2,432 naar 3,162 mH.
+
+  **En de tweede helft van de tabel is de grotere verandering.** Op de som verdwijnt de grens boven ~1,5 Ω volledig (V42's negatieve resultaat); op de opslingering is er **altijd** een grens, want bij L = 0 is de opslingering per definitie exact nul. De inversie verplaatsen maakt het budget dus niet strenger of losser — het maakt hem **overal werkzaam**, waar hij vandaag op de helft van de ontwerpen zwijgt. Dat is een andere eis dan de gestelde, en het getal erbij is een gestelde eis en dus het besluit van de ontwerper (P4).
+
+  **WAT DAT BESLUIT MOEILIJK MAAKT, in één zin met getallen.** De motivering van het budget is een spoelregel: *~4,7 mH bij 8 Ω, dus de helft bij dit ~4 Ω wooferpaar* — ongeveer 2,35 mH. Op de SOM gemeten levert 2,5 dB bij lage padweerstand precies dat (2,43 mH). Op de OPSLINGERING gemeten levert 2,5 dB bij HUIDIG's eigen 3,76 Ω een plafond van **5,47 mH** — meer dan het dubbele van de regel waaruit het getal komt, en meer dan de 4,7 mH die voor een 8 Ω-driver geldt. **Een budget van 2,5 dB op de resonante component is dus aanzienlijk losser dan de vuistregel die het moest vangen**, ook al is het de grootheid waarover die vuistregel gaat.
+
+  ---
+
+  **WAT BEWUST NIET GEDAAN IS, en het zijn drie dingen die bij elkaar horen.**
+
+  1. De inversie is **niet** verplaatst: `bump-series-l` lost nog steeds tegen `extraDb` op. Verplaatsen zou de klasse-A-referentie met 30 % verschuiven en het budget van "zwijgt op de helft" naar "bindt overal" brengen, allebei zonder dat de ontwerper het getal heeft kunnen herijken.
+  2. `gestelde_eisen.lf_bult_budget_dB` is **niet** hernoemd. De naam hoort bij de grootheid waartegen hij handhaaft, en die is niet veranderd.
+  3. Het veld is **niet** geregenereerd. Dat kost sinds V41 ruim vier uur en zou tegen een budgetgetal draaien dat na deze meting kan wijzigen.
+
+  Wat wél gebouwd is, staat los van dat besluit en is compleet: de metriek, de transform, hun versies, de vier testsoorten, de klasse-B-referenties op élke bevroren netlist (`v43_ontleding`), de optel-assert over het hele casusboek, en het meetscript. `extraDb` is bit-identiek gebleven — het referentiebestand kreeg 471 bladeren erbij en veranderde er nul.
+
+  **DE DRIE OPTIES DIE NU OP TAFEL LIGGEN,** en zij zijn scherper dan de LCR-vraag van V42 omdat de ontleding zegt wélke helft welk mechanisme is:
+
+  1. **Twee eisen in plaats van één.** Een budget op `resonantDb` (de spoelregel, waar hij thuishoort) én een aparte grens op `liftDb`. Dat tweede is dan géén nieuwe eis maar het ankerbesluit (A5e.2) onder een andere naam: hoeveel van HUIDIG's 4,69 dB lift is gewénst baffle-step-werk?
+  2. **Één eis, geherijkt.** Het budget verhuist naar `resonantDb` en het getal wordt opnieuw gesteld — 2,5 is dan te ruim, want het laat op HUIDIG's pad 5,47 mH toe waar de vuistregel 2,35 zegt.
+  3. **De eis uitdrukken op R_pad + jωL samen** (V42's derde optie). Dat is precies de grootheid die de tabel hierboven meet: de kolom "lift bij L = 0" ís de resistieve term van diezelfde bronimpedantie. De ontleding maakt deze optie berekenbaar in plaats van alleen bedenkbaar.
+
+  Geen van de drie is gebouwd, en optie 1 raakt A5e.2, dat geparkeerd is.
 
 ## Casus S1 — synthetische grondwaarheid voor de R_e-schatter (F3b, 26-08-2026)
 

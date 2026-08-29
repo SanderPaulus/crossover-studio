@@ -463,9 +463,16 @@ export function buildReport(input: EngineV2ReportInput): EngineV2Report {
       const above = crossings.find((c) => c.lower === driver && Number.isFinite(c.fHz));
       const h = analysis.transferByModel[driver];
       if (h) {
+        /* V43 — the second curve M-D's decomposition needs: the same network
+         * with its reactances replaced by their own series resistance. Solved
+         * lazily by the analysis, once for the whole report, and absent here
+         * only when this branch collapses in that limit. */
+        const eq = analysis.resistiveEquivalent();
+        const hRes = eq.transferByModel[driver];
         const r = lfBump(d.nearField.grid, d.nearField.db, grid, h, fs, {
           validHz: d.nearField.bandHz,
           belowHz: above?.fHz,
+          ...(hRes && !eq.shortedDriverModels.includes(driver) ? { resistiveHEl: hRes } : {}),
         });
         if (r) metrics.lfBump.push({ driver, result: r });
       }

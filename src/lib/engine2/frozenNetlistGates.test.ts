@@ -88,6 +88,8 @@ import type { VxpCrossover } from '../parsers/vxp.ts';
 import { impedanceReferenceFrom } from './optimizer/impedanceReference.ts';
 import { buildAnalysis } from './metrics/analysis.ts';
 import { epdr } from './metrics/electrical.ts';
+import { LF_BUMP_VERSION } from './metrics/acoustic.ts';
+import { RESISTIVE_EQUIVALENT_VERSION } from './metrics/resistiveEquivalent.ts';
 import { systemMinImpedanceOhm } from '../netOptimizer.ts';
 import {
   sourceProbeIndex,
@@ -189,6 +191,10 @@ const FIELD: {
   largestResistorW: number | null;
   /** V42 — M-D's extra lift, kept from the same report for the same reason. */
   lfBumpDb: number | null;
+  /** V43 — the two halves that lift adds up to, from the same report again. */
+  lfLiftDb: number | null;
+  lfResonantDb: number | null;
+  lfWay: string | null;
 }[] = NETLIST_KEYS.map((key) => {
   const r = report(key);
   const d = r.metrics.dissipation;
@@ -200,6 +206,9 @@ const FIELD: {
     dissipationPct: d ? d.totalFraction * 100 : null,
     largestResistorW: largest?.watts ?? null,
     lfBumpDb: r.metrics.lfBump[0]?.result.extraDb ?? null,
+    lfLiftDb: r.metrics.lfBump[0]?.result.liftDb ?? null,
+    lfResonantDb: r.metrics.lfBump[0]?.result.resonantDb ?? null,
+    lfWay: r.metrics.lfBump[0]?.driver ?? null,
   };
 });
 
@@ -1586,6 +1595,117 @@ describe('V42 — the stated LF-lift budget, on every frozen netlist', () => {
         `${key} satisfies the stated budget after all — then the manifest's claim that the ` +
           "requirement is stricter than the designer's own filter is no longer true",
       ).toBeGreaterThan(BUDGET_DB!);
+    }
+  });
+});
+
+/* ================================================================== *
+ * V43 — de LF-bult ontleed, op élke bevroren netlist
+ * ================================================================== */
+
+describe('V43 — the lift splits into a resistive and a resonant half', () => {
+  const TOL_DB = (golden as unknown as { toleranties: { dB: number } }).toleranties.dB;
+  const BUDGET_DB = casus1LfBumpBudgetDb(golden);
+
+  /** What the recorder wrote, over the WHOLE case book — see `v43_ontleding`. */
+  const RECORD = (golden.manifest_en_geometrie as unknown as {
+    v43_ontleding?: {
+      metriek_versie: string;
+      transform_versie: string;
+      per_netlist: {
+        netlist: string;
+        weg: string | null;
+        extra_dB: number | null;
+        lift_dB: number | null;
+        opslingering_dB: number | null;
+      }[];
+    };
+  }).v43_ontleding;
+
+  it('every frozen netlist carries both halves, and they ADD UP to the lift', () => {
+    /* THE DECOMPOSITION ASSERT, and it is what makes every standing
+     * `lf_bult_extra_dB` reference the bridge to the two new ones. The three
+     * maxima are taken over one band in one pass, so this cannot drift by a
+     * rounding error — it can only break if the split stops being a split. */
+    for (const f of FIELD) {
+      expect(f.lfBumpDb, `${f.key}: M-D produced no lift figure`).not.toBeNull();
+      expect(
+        f.lfLiftDb,
+        `${f.key}: no resistive half — the resistive equivalent of this netlist carries nothing`,
+      ).not.toBeNull();
+      expect(f.lfResonantDb, `${f.key}: no resonant half`).not.toBeNull();
+      expect(
+        f.lfLiftDb! + f.lfResonantDb! - f.lfBumpDb!,
+        `${f.key}: ${f.lfLiftDb} + ${f.lfResonantDb} does not reproduce ${f.lfBumpDb}`,
+      ).toBeCloseTo(0, 9);
+    }
+  });
+
+  it('the two halves are DIFFERENT quantities, and the corpus proves it', () => {
+    /* Without this the assert above is equally true of a "split" that puts
+     * everything in one half and zero in the other (V23). On this case book
+     * both halves carry the whole lift somewhere, and on at least one netlist
+     * they have OPPOSITE signs — which no single quantity under two names can
+     * do. */
+    const liftLed = FIELD.filter((f) => f.lfLiftDb! > f.lfResonantDb!);
+    const resonantLed = FIELD.filter((f) => f.lfResonantDb! > f.lfLiftDb!);
+    expect(liftLed.length, 'no netlist is dominated by its resistive half').toBeGreaterThan(0);
+    expect(resonantLed.length, 'no netlist is dominated by its resonant half').toBeGreaterThan(0);
+    const opposed = FIELD.filter((f) => f.lfLiftDb! > 0 && f.lfResonantDb! < 0);
+    expect(
+      opposed.length,
+      'nowhere in the case book do the two halves point in opposite directions — then they ' +
+        'are not two mechanisms, and the split describes nothing',
+    ).toBeGreaterThan(0);
+  });
+
+  it('the recorded decomposition still matches a fresh measurement, per netlist', () => {
+    /* Same shape as the V42 finding assert, and the same reason: a recorded
+     * table that nothing re-measures becomes false in silence. Per netlist, so
+     * a corpus that changed shape cannot average its way to agreement. */
+    expect(RECORD, 'the case book records no V43 decomposition').toBeTruthy();
+    expect(RECORD!.metriek_versie).toBe(LF_BUMP_VERSION);
+    expect(RECORD!.transform_versie).toBe(RESISTIVE_EQUIVALENT_VERSION);
+    expect(RECORD!.per_netlist.map((r) => r.netlist).sort()).toEqual([...NETLIST_KEYS].sort());
+    for (const row of RECORD!.per_netlist) {
+      const f = FIELD.find((x) => x.key === row.netlist)!;
+      expect(row.weg).toBe(f.lfWay);
+      for (const [label, recorded, measured] of [
+        ['extra', row.extra_dB, f.lfBumpDb],
+        ['lift', row.lift_dB, f.lfLiftDb],
+        ['opslingering', row.opslingering_dB, f.lfResonantDb],
+      ] as const) {
+        expect(recorded, `${row.netlist}: no recorded ${label}`).not.toBeNull();
+        expect(
+          Math.abs(measured! - recorded!),
+          `${row.netlist}: the record says ${recorded} dB for ${label} and the metric reads ` +
+            `${measured!.toFixed(3)}`,
+        ).toBeLessThanOrEqual(TOL_DB);
+      }
+    }
+  });
+
+  it("what the stated budget condemns on the designer's own filters is the RESISTIVE half", () => {
+    /* THE FINDING OF V43, as a claim that can fail. The stated budget is on
+     * `extraDb`, and V42 recorded that all three reference filters exceed it.
+     * Split, the picture inverts: their coils add nothing at all — the resonant
+     * half is at or below zero on all three — and the whole transgression is
+     * level work in the series resistance. That is the anchor decision's
+     * business (A5e.2) and not the coil rule's, and it is why the requirement
+     * is being reformulated rather than relaxed. */
+    expect(BUDGET_DB, 'casus 1 states no LF-lift budget').not.toBeNull();
+    for (const key of V1_BASELINES) {
+      const f = FIELD.find((x) => x.key === key)!;
+      expect(
+        f.lfBumpDb!,
+        `${key} no longer exceeds the stated budget on the SUM — then V42's finding has moved`,
+      ).toBeGreaterThan(BUDGET_DB!);
+      expect(
+        f.lfResonantDb!,
+        `${key}: the resonant half is ${f.lfResonantDb!.toFixed(2)} dB, which is no longer at or ` +
+          'below zero — then the transgression is no longer purely resistive and the V43 ' +
+          'reformulation rests on something that has changed',
+      ).toBeLessThanOrEqual(0);
     }
   });
 });
