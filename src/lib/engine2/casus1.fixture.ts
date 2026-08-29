@@ -102,7 +102,20 @@ export interface GoldenRefs {
     maxRs_Qmult1_3_ohm: number;
     maxRs_Qmult1_5_ohm: number;
     maxRs_Qmult2_0_ohm: number;
-    maxL_bij_Rs0_5_budget2_5dB_mH: number;
+    /* V43 — the LIVE bound, on the RESONANT half of M-D's lift and against the
+     * re-derived 1.4 dB budget. The V42 form (2.432 mH on `extraDb` at 2.5 dB)
+     * stays beside it as a bridge; both are asserted, and the pair is what
+     * makes the redefinition checkable rather than merely announced. */
+    maxL_bij_Rs0_5_budget1_4dB_opslingering_mH: number;
+    _maxL_op_de_som_V42: {
+      waarde: number;
+      grootheid: string;
+      budget_dB: number;
+      pad_R_ohm: number;
+      /** What the ceiling WOULD have become if only the quantity had moved. */
+      waarde_zonder_herijking: number;
+      waarom_ingetrokken: string;
+    };
     _maxL_sessie_25_08: {
       waarde: number;
       band_hz: [number, number];
@@ -116,10 +129,21 @@ export interface GoldenRefs {
     parameters: {
       maxRs_Qmult: { formule: string; R_e_ohm: number; R_e_herkomst: string; q_max: number };
       maxL_bult: {
+        grootheid: string;
         formule: string;
         budget_dB: number;
+        budget_herkomst: string;
         pad_R_ohm: number;
+        /** V43 — the two halves of the lift at this path resistance. */
+        decompositie: {
+          resistief_equivalent: string;
+          lift_bij_L0_dB: number;
+          lift_bij_L0_waarom: string;
+          som_bij_de_grens_dB: number;
+          som_waarom: string;
+        };
         tegenvoorbeeld_pad_R_ohm: number;
+        tegenvoorbeeld_waarom: string;
         band: string;
         f_p_hz: number;
         assert: string;
@@ -326,8 +350,9 @@ export function casus1AmpMinLoadOhm(golden: GoldenRefs = loadGolden()): number |
 }
 
 /**
- * V42 — the LF-lift budget the DESIGNER stated for casus 1, dB. Same shape as
- * the floor above, same reason, and the differences are the interesting part.
+ * V42/V43 — the LF-lift budget the DESIGNER stated for casus 1, dB. Same shape
+ * as the floor above, same reason, and the differences are the interesting
+ * part.
  *
  * IT ARMS AN INVERSION, NOT A GATE. The floor is a limit on a delivered
  * network and `M-B/|Z|` judges it. M-D has no gate id at all — it is a
@@ -338,14 +363,26 @@ export function casus1AmpMinLoadOhm(golden: GoldenRefs = loadGolden()): number |
  * point of the session that added it — the lift stops being a property one
  * reads off the result and becomes a limit the search respects.
  *
+ * IT IS ON THE RESONANT HALF SINCE V43, and the field is named for it
+ * (`lf_opslingering_budget_dB`). V42 stated 2.5 dB on `extraDb`, the SUM of the
+ * broad resistive lift and the narrow resonant amplification, and that turned
+ * out to be the wrong quantity twice over: it condemned level work (all three
+ * reference filters exceeded it while their coils added nothing) and above
+ * roughly 1.5 Ω of path resistance it was spent before any coil existed, so the
+ * inversion produced no ceiling at all. The stated number was re-derived on the
+ * new quantity from the designer's own coil rule and is 1.4 dB; the manifest
+ * carries the derivation.
+ *
  * Null when the project states none, and that is P4: no budget, no inversion,
- * no ceiling, and the notes say which input was missing.
+ * no ceiling, and the notes say which input was missing. No fallback to the
+ * V42 field name either — the golden refs live in this repository, so a
+ * fallback would only ever hide a botched rename.
  */
-export function casus1LfBumpBudgetDb(golden: GoldenRefs = loadGolden()): number | null {
+export function casus1LfResonantBudgetDb(golden: GoldenRefs = loadGolden()): number | null {
   const stated = (golden.manifest_en_geometrie as unknown as {
-    gestelde_eisen?: { lf_bult_budget_dB?: unknown };
+    gestelde_eisen?: { lf_opslingering_budget_dB?: unknown };
   }).gestelde_eisen;
-  const v = stated?.lf_bult_budget_dB;
+  const v = stated?.lf_opslingering_budget_dB;
   return typeof v === 'number' && Number.isFinite(v) && v > 0 ? v : null;
 }
 

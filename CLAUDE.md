@@ -34,10 +34,12 @@
   `casus1V2Candidates.test.ts` (bij V42 nagemeten op 1427 s + 653 s). Een suite die niemand
   tijdens het werk draait beschermt niets, dus:
   - `npm run test:fast` — **de standaard tijdens ontwikkeling.** `vitest run -t '^(?!.*\[live\])'`,
-    dus alles behalve wat de tag `[live]` draagt. **Gemeten 29-08-2026 (V43): 293 s (4 min 54),
-    129 bestanden, 1417 tests en 2 overgeslagen** — tegen 2097 s voor de volle run. Wat er dan
-    overblijft als langste bestand is `threeWayChain` (293 s), dus de snelle laag IS die ene
-    ketenrun; korter kan alleen door daar iets aan te doen.
+    dus alles behalve wat de tag `[live]` draagt. **Gemeten 29-08-2026 (V43): 289 s (4 min 50),
+    129 bestanden, 1425 tests en 2 overgeslagen** — tegen 3150 s voor de volle run. Wat er dan
+    overblijft als langste bestand is `threeWayChain` (289 s), dus de snelle laag IS die ene
+    ketenrun; korter kan alleen door daar iets aan te doen. **Meet hem op een LEEG systeem:**
+    dezelfde run vlak na de vier uur durende regeneratie kostte 1348 s, viereneenhalf keer zo
+    veel, zonder dat er iets aan de suite veranderd was.
   - `npm test` / `npx vitest run` — **de volle run, en hij is VERPLICHT** bij elke wijziging aan
     het corpus en vóór elke commit die de zoektocht raakt. Precies dát is wat de twee live
     gevallen toetsen: dat de route nog steeds de bevroren netlist levert.
@@ -48,18 +50,19 @@
   filtert zichzelf weg — de bewaker heet daarom `the live-run tag is …` en niet `[live] …`;
   (2) een tag die stilletjes groeit maakt de snelle laag waardeloos, dus
   `casus1V2Candidates.test.ts` bewaakt met een bronscan dat er precies ÉÉN getagd blok bestaat.
-- `npx vitest run` — volledige testsuite. **Gemeten 29-08-2026 (V43-sessie): 129 bestanden,
-  1419 tests, 35 min wandkloktijd (2097 s).** Alles groen houden. (V41 mat 128 / 1391 / 4285 s;
-  het verschil met die 71 minuten is niet dat er iets goedkoper werd maar dat V42 het levende
-  corpus van 8 naar 4 netlists bracht — de `it.each` over dat corpus draait vier keer minder, en
-  de twee live ketenruns kosten 1438 + 655 s.)
+- `npx vitest run` — volledige testsuite. **Gemeten 29-08-2026 (V43-sessie, ná de regeneratie):
+  129 bestanden, 1427 tests, 52 min wandkloktijd (3150 s).** Alles groen houden. De twee live
+  ketenruns kosten 2537 + 608 s; de rest van de suite draait ernaast en is 289 s. (V41 mat
+  128 / 1391 / 4285 s. Het cijfer beweegt vooral met het LEVENDE CORPUS en met wélke kandidaat de
+  live reproductie treft, niet met de hoeveelheid tests: V42 bracht het corpus van 8 naar 4 en de
+  suite naar 2097 s, V43 bracht het naar 7 en de suite naar 3150 s.)
 
   **DE SUITE IS BIJ V41 TIEN KEER ZO DUUR GEWORDEN (405 s → 4285 s), en het zit in ÉÉN bestand.**
   Sinds de synthesestap correctienetwerken koopt dragen de casus-1-netlists veel meer onderdelen,
   en het iteratiebudget van de tuner is `max(700, 140 · vrij)` — superlineair in het aantal vrije
   waarden. `casus1V2Candidates.test.ts` doet twee LIVE ketenruns en kost daardoor **2601 s alleen
   gedraaid** (V38-fix: 401 s), waarvan 1552 s voor de bevroren netlist en 1046 s voor de
-  verwerping. **Nagemeten bij V43 in de volle run: 2094 s van de 2097** — dit ene bestand IS de
+  verwerping. **Nagemeten bij V43 in de volle run: 3146 s van de 3150** — dit ene bestand IS de
   volle wandkloktijd en al het andere draait ernaast in de schaduw. Dat cijfer is de meting
   waarop het tweelagenbeleid hierboven rust. Alles daaromheen is nauwelijks bewogen. **Gevolg voor de per-bestand-cijfers
   hieronder: zij zijn in een volle parallelle run niet meer bruikbaar** — één bestand houdt ruim
@@ -107,7 +110,9 @@
   beschermt niets.
 - **De v2-kandidaatfixtures opnieuw opwekken** (alleen nodig als de generator of het veld verandert):
   `npx vite-node scripts/generate-casus1-v2-candidates.ts` — vijftien ketenruns. **Sinds V41 kost
-  hij UREN en niet meer drie kwartier: gemeten 15 756 s (4 u 23 min), 567–1697 s per kandidaat.**
+  hij UREN en niet meer drie kwartier: gemeten 15 756 s (4 u 23 min), 567–1697 s per kandidaat;
+  nagemeten bij V43 op 17 498 s (4 u 52 min), 634–2436 s per kandidaat — de spreiding is
+  gegroeid, de orde niet.**
   Dat is geen ongeluk maar de ingreep: de synthesestap koopt sinds V41 correctienetwerken, dus het
   zaad draagt aanzienlijk meer onderdelen, en het iteratiebudget van de tuner is
   `max(700, 140 · vrij)` — superlineair in het aantal vrije waarden. Elke prijs hieronder dateert
@@ -132,9 +137,9 @@
   netlists byte-identiek terug, op het `savedAt`-stempel van de serialisatie na.**
 - **De vóór/ná-tabel tussen twee corpora**: `npx vite-node scripts/compare-corpora.ts [vóór] [ná]` —
   seconden, geen ketenrun. Corpora: `v30`, `v32`, `v33sweep`, `v33`, `v34`, `v37`, `v38fix`,
-  `v41`, `live`; default `v41 live`, wat de V42-tabel is. `compare-corpora.ts v30 v32` reproduceert de
+  `v41`, `v42`, `live`; default `v42 live`, wat de V43-tabel is. `compare-corpora.ts v30 v32` reproduceert de
   V32-tabel, `v32 v33` de V33-tabel, `v33 v34` de V34-tabel, `v34 v37` de V37-tabel, `v37 v38fix`
-  de V38-fix-tabel, `v38fix v41` de V41-tabel.
+  de V38-fix-tabel, `v38fix v41` de V41-tabel, `v41 v42` de V42-tabel.
   Gekoppeld op KANDIDAAT (de bestandsnummers
   zijn rijnummers van verschillende shortlists en horen niet bij elkaar), beide helften gemeten door
   hetzelfde `buildReport`-pad. **Sinds V36 draagt hij twee kolommen erbij** — dissipatiefractie en
@@ -148,7 +153,10 @@
   gestelde budget is uitgedrukt) en de TOTALE seriespoel van de weg waarop M-D oordeelt — de
   grootheid die de A5d.6-inversie begrenst. De weg wordt afgeleid uit `metrics.lfBump[0].driver`
   en nergens benoemd. De corpusregel eronder zet het gestelde budget ernaast en telt hoeveel
-  netlists eroverheen gaan, vóór en ná. Drukt voor het LEVENDE corpus ook de verwerpingen af met wat de
+  netlists eroverheen gaan, vóór en ná. **Sinds V43 twee kolommen daar weer bij** — de LIFT en de
+  OPSLINGERING waarin die bult uiteenvalt — en de corpusregel telt sindsdien op de OPSLINGERING,
+  want dáár staat het gestelde budget op. De liftkolom draagt geen oordeel: hij is niveauwerk en
+  hoort bij A5e.2. Drukt voor het LEVENDE corpus ook de verwerpingen af met wat de
   geweigerde tune had bereikt. Draai hem ná de generator en ná de recorder.
   **Hij heette tot V33 `compare-v30-v32-corpus.ts` en had zijn "ná"-helft hard op het levende corpus
   staan** — dus de eerste regeneratie erna maakte stilletjes een ándere tabel dan de tabel waarvoor hij
@@ -244,13 +252,15 @@
   `npx vite-node scripts/measure-v43-decomposition.ts [SLEUTEL ...]` — seconden, geen ketenrun en
   geen enkele tune. Twee tabellen. De EERSTE ontleedt élke bevroren netlist: `extraDb`, de
   resistieve lift en de resonante opslingering, met de optel-controle ernaast (zij tellen per
-  constructie op). De TWEEDE is het bewijsmateriaal onder de belangrijkste bevinding van V43: het
-  plafond dat de A5d.6-inversie oplevert wanneer zij tegen de SOM oplost (wat zij vandaag doet)
-  naast wat zij zou opleveren tegen de OPSLINGERING, per padweerstand. **Bij 0,5 Ω — de
-  padweerstand van de klasse-A-referentie — is de resistieve lift al 0,967 dB van de gestelde
-  2,5 dB en verschuift het plafond van 2,432 naar 3,162 mH (+30 %).** Daarom is de inversie bij
-  V43 NIET verplaatst; zie het casusboek. `frozenNetlistGates.test.ts` assert de eerste tabel,
-  `lfBumpBorder.test.ts` de tweede.
+  constructie op). De TWEEDE zet de A5d.6-inversie in DRIE vormen naast elkaar en zij is het
+  bewijsmateriaal onder de herdefinitie van de klasse-A-referentie: op de SOM bij 2,5 dB (wat V42
+  deed — boven ~1,5 Ω géén grens), op de OPSLINGERING bij diezelfde 2,5 dB (de stap die NIET
+  genomen is: bij 0,5 Ω springt het plafond van 2,432 naar 3,162 mH, +30 %, want de resistieve
+  lift eet daar al 0,967 dB van dat budget op), en op de OPSLINGERING bij de herijkte 1,4 dB (wat
+  er sinds V43 draait: 2,322 mH, waar het was). **Grootheid én getal samen; één van de twee alleen
+  zou de eis stilletjes hebben opgerekt, en dát is waarom de sessie halverwege gestopt is om het
+  getal te laten stellen.** `frozenNetlistGates.test.ts` assert de eerste tabel,
+  `lfBumpBorder.test.ts` alle drie de kolommen van de tweede.
 - **De twee fasematen naast elkaar, per netlist en per paar (V40)**:
   `npx vite-node scripts/measure-v40-phase.ts [SLEUTEL ...]` — seconden, geen ketenrun en geen
   enkele tune; zonder argumenten élke netlist die het casusboek noemt. Drukt per paar af wat het
@@ -933,7 +943,35 @@ grotere ingreep — hij raakt élk commando in dit project — en is deze sessie
   overschrijden hem — HUIDIG 3,78 dB tegen 2,5, wat het spiegelbeeld is van de versterkervloer,
   waar HUIDIG de eis juist met marge haalt).
 
-### V43-guards (de bult ontleed, en de tag die de suite betaalbaar houdt)
+### V43-guards (de bult ontleed, het budget verhuisd, en de tag die de suite betaalbaar houdt)
+- `src/lib/engine2/optimizer/bounds.ts` — **`maxSeriesInductanceFromBump` lost sinds V43 op tegen
+  de RESONANTE component en niet meer tegen de som**, en dat verandert het KARAKTER van de grens
+  en niet alleen haar waarde. Op `extraDb` kon de functie `null` teruggeven zodra het budget bij
+  L = 0 al op was — geen fout maar het antwoord (V12) — en op casus 1 gebeurde dat op zes van de
+  negen bevroren netlists, HUIDIG inbegrepen. Op `resonantDb` is de opslingering bij L = 0 per
+  definitie exact nul, dus er is ALTIJD een plafond en `null` betekent nog uitsluitend "de metriek
+  kreeg geen data". De teruggave draagt sinds V43 ook `resistiveLiftDb`, en de bound-notitie zegt
+  hardop wat de padweerstand al optilt: dat deel kan de zoektocht niet uitgeven en niet
+  repareren — het is niveauwerk en hoort bij A5e.2.
+- `src/lib/engine2/optimizer/boundInversions.test.ts` — de klasse-A-referentie is HERDEFINIEERD
+  (V15-vorm) en drie asserts houden dat eerlijk. De LEVENDE waarde
+  (`maxL_bij_Rs0_5_budget1_4dB_opslingering_mH`, 2,322 mH) wordt op de METRIEK getoetst: bij die
+  spoel moet `extraDb(L) − extraDb(0)` het gestelde budget zijn. De BRUG (`_maxL_op_de_som_V42`,
+  2,432 mH bij 2,5 dB op de som) reproduceert nog steeds op zijn eigen grootheid. En de
+  NIET-GENOMEN stap (`waarde_zonder_herijking`, 3,162 mH) reproduceert óók — dat is de assert die
+  het besluit draagt: grootheid alleen verplaatsen was +30 %, grootheid én getal samen is −4,5 %.
+  **V12's tegenvoorbeeld is niet geschrapt maar aangescherpt:** waar het zei "bij 2 Ω haalt geen
+  enkele spoel de 2,5 dB", zegt het nu wat het altijd al mat — bij 2 Ω is de RESISTIEVE helft
+  alleen al over dat budget — plus de tegenproef dat er op de nieuwe grootheid daar wél een grens
+  is.
+- `src/lib/engine2/frozenNetlistGates.test.ts` — twee budgetblokken naast elkaar, en de scheiding
+  is de claim. Het V42-blok bewaakt het NEGATIEVE resultaat en is HERANKERD op het bevroren
+  `V42_KAND_*`-corpus: het noemde het levende corpus, en dat is bij V43 opnieuw opgewekt, dus de
+  bevinding zou onwaar zijn geworden zonder dat iets faalde. Het V43-blok bewaakt de eis die
+  vandaag geldt: haalbaar (**alle drie de referentiefilters halen haar nu**, wat onder V42 juist
+  níet zo was en de reden dat het bewijs toen van het V28-corpus moest komen), niet vacuüm
+  (netlists in het casusboek overschrijden haar), en de opgeschreven bevinding
+  (`v43_budget_bevinding`, door de recorder geschreven) klopt met een verse meting per netlist.
 - `src/lib/engine2/metrics/resistiveEquivalent.ts` — **het RESISTIEVE EQUIVALENT is een
   netlist-transform en geen model.** Zelfde topologie, zelfde waarden: spoel → haar eigen DCR
   (een ideale spoel heeft DCR 0 en wordt dus een KORTSLUITING — de knopen worden samengevoegd met
@@ -1069,7 +1107,7 @@ grotere ingreep — hij raakt élk commando in dit project — en is deze sessie
 
 ### De casus-1-fixtures die een SCRIPT opwekt (F4d)
 `test-fixtures/casus1/KAND-V2-*.adsfilter.json` zijn de v2-kandidaten die de shortlist haalden —
-negen bij F4d, tien vanaf V28, acht sinds V41, **vier sinds V42** — bevroren als bestanden
+negen bij F4d, tien vanaf V28, acht sinds V41, vier bij V42, **zeven sinds V43** — bevroren als bestanden
 op precies dezelfde voet als de drie v1-kandidaten — want F4a stelde vast dat casus 1 géén klasse-C-
 referenties heeft, en "laat de suite de scan draaien en assert op wat eruit komt" zou de eerste maken.
 Twee scripts, twee kosten:
@@ -1080,31 +1118,36 @@ Twee scripts, twee kosten:
   overtollige `KAND-V2-*`-bestanden van de vorige run staan als wezen. Bij V41 (10 → 8) en
   opnieuw bij V42 (8 → 4) gebeurde dat, en de wezenloze-bestanden-wacht in
   `casus1V2Candidates.test.ts` is wat het zou hebben gevangen — verwijder ze met de hand, na te
-  hebben gecontroleerd dat het bevroren corpus ze draagt.
+  hebben gecontroleerd dat het bevroren corpus ze draagt. Bij V43 GROEIDE de shortlist (4 → 7),
+  dus daar viel niets op te ruimen; nagegaan in plaats van aangenomen.
 - `npx vite-node scripts/record-casus1-v2-references.ts` — leest die bestanden en schrijft de
   klasse-B-blokken in de golden refs. Drie seconden, dus vrij om opnieuw te draaien. Sinds V36
   elf metrieken per kandidaat (`grootste_R_W_bij_100W` erbij) plus het afgeleide blok
   `manifest_en_geometrie.v36_dissipatie`; **sinds V43 dertien** (`lf_lift_dB` en
-  `lf_opslingering_dB`) plus `manifest_en_geometrie.v43_ontleding`, dat de ontleding over ÉLKE
-  bevroren netlist draagt en niet alleen over het levende corpus — dezelfde vorm en dezelfde reden
+  `lf_opslingering_dB`) plus twee afgeleide blokken. `v43_ontleding` draagt de ontleding over
+  ÉLKE bevroren netlist en niet alleen over het levende corpus — dezelfde vorm en dezelfde reden
   als `v36_dissipatie`, want de gedateerde corpora dragen hun eigen bevroren blokken en worden
-  nooit herschreven. **V43 heeft het corpus NIET geregenereerd** en hoefde dat ook niet:
-  `extraDb` is bit-identiek gebleven, dus het referentiebestand kreeg 471 bladeren erbij en
-  veranderde er nul.
+  nooit herschreven. `v43_budget_bevinding` draagt wat het gestelde budget op het LEVENDE corpus
+  doet, plus wat de drie referentiefilters op dezelfde grootheid meten. **Dat tweede blok is
+  afgeleid en niet met de hand geschreven, en dat is de les van zijn voorganger:**
+  `v42_bult_bevinding` noemde "het levende corpus", en zodra V43 dat corpus opnieuw opwekte zou
+  die zin onwaar zijn geworden zonder dat iets faalde. Hij is bij V43 HERANKERD op het bevroren
+  `V42_KAND_*`-corpus, waar hij niet meer kan verouderen.
 
 **`scripts/` valt buiten `tsc -b`** — `tsconfig.test.json` dekt `src/**` en geen enkele scope dekt
 `scripts/`. Bij V36 kostte dat een kolom vol `null` in het referentiebestand: `casus1Filter(...).parts`
 op een `FilterInput` dat geen `parts` heeft kwam niet als typefout terug. Wie een script schrijft dat
 referentiegetallen wegschrijft, kijkt het geschreven blok na vóór de commit.
 De acceptatie zit in `casus1V2Candidates.test.ts`: de metrieken reproduceren op alle bevroren bestanden,
-en **één** kandidaat wordt live door de échte route heen gereproduceerd — **nagemeten bij V42:
-1427 s, plus 653 s voor de verwerping ernaast; het hele bestand kost 2080 s (35 min)** (V41:
-1552 + 1046 s; V38-fix: 260 + 139 s; V37: 158 + 158 s). De ~41 s die hier tot V37 stond dateert van vóór V33: sinds de
+en **één** kandidaat wordt live door de échte route heen gereproduceerd — **nagemeten bij V43:
+1130–2537 s, plus 608–629 s voor de verwerping ernaast; het hele bestand kost 1761–3146 s, en die
+spreiding komt van de machine en niet van de code** (V42:
+1427 + 653 s; V41: 1552 + 1046 s; V38-fix: 260 + 139 s; V37: 158 + 158 s). De ~41 s die hier tot V37 stond dateert van vóór V33: sinds de
 barrière het veiligheidsraster leest kost élke live casus-1-run het viervoudige, en sinds V41 het
 zesvoudige daarvan — de synthesestap koopt correctienetwerken, dus er zijn veel meer vrije waarden
 te tunen. **Dit ene bestand is nu het leeuwendeel van de suite.**
 
-**Sinds V42 zijn het er TIEN corpora, en dat is opzet.** `KAND_V2_*` is het levende corpus.
+**Sinds V43 zijn het er ELF corpora, en dat is opzet.** `KAND_V2_*` is het levende corpus.
 `V28_KAND_*` is bevroren vóór de vloer een ZOEKDOEL was (V30); `V30_KAND_*` toen de poort nog blind
 was onder de verre-veldbodem (V32); `V32_KAND_*` toen de BARRIÈRE nog het evaluatieraster las terwijl
 de poort de sweep handhaafde (V33); `V33_SWEEP_KAND_*` is V33's dure referentiearm, met de barrière
@@ -1121,8 +1164,12 @@ stopdoel van de trapmethode (2,5 dB tegen de eigen 0,5 dB van `synthesize`, waar
 ladder op 45 van de 45 takken slaagde) (V41); `V41_KAND_*` toen het LF-BULT-BUDGET nog niet
 GESTELD was, dus geen enkele A5d.6-inversie de seriespoel van de laagste weg begrensde — 3,62 tot
 7,93 dB opslingering, tot 7,34 mH in twee spoelen, en de inversie plafonneerde toen nog alleen per
-component zodat een gesplitste keten er sowieso aan ontsnapte (V42).
-Alle negen de gedateerde corpora zijn byte-identieke bestanden onder een andere naam, met hun
+component zodat een gesplitste keten er sowieso aan ontsnapte (V42); `V42_KAND_*` toen het budget
+wel GESTELD was maar op de verkeerde GROOTHEID — op `extraDb`, de SOM van de resistieve lift en de
+resonante opslingering, waardoor de eis niveauwerk mee veroordeelde (alle drie de
+referentiefilters overschreden haar terwijl hun spoelen niets toevoegden) en boven ~1,5 Ω
+padweerstand helemaal zweeg omdat het budget al op was vóór er een spoel bestond (V43).
+Alle tien de gedateerde corpora zijn byte-identieke bestanden onder een andere naam, met hun
 klasse-B-blokken mee, bewaard als de "vóór"-helften van hun vergelijkingen. Wie
 een script schrijft dat het levende corpus opruimt gebruikt `^KAND_V2_\d+$` en nooit
 `startsWith('KAND_V2')`: die tweede slikt de gedateerde corpora mee en gooit het bewijsmateriaal weg.
@@ -1131,7 +1178,7 @@ een script schrijft dat het levende corpus opruimt gebruikt `^KAND_V2_\d+$` en n
 genoemde netlist die geen v1-baseline is een geclassificeerd blok moet hebben, omdat de
 familielijst die er stond bij V32 vergeten is. De koppeling bestandsnaam ↔ kandidaat staat in
 `manifest_en_geometrie.v30_corpus`, `.v32_corpus`, `.v33_sweep_corpus`, `.v33_corpus`,
-`.v34_corpus`, `.v37_corpus`, `.v38fix_corpus` en `.v41_corpus`, want zij
+`.v34_corpus`, `.v37_corpus`, `.v38fix_corpus`, `.v41_corpus` en `.v42_corpus`, want zij
 stond alleen in `casus1_v2_herkomst.json` en dat bestand wordt door de volgende regeneratie
 overschreven. **Bevriezen doe je sinds V34 met `scripts/freeze-live-corpus.ts`** en niet met de
 hand: het zijn vijf bewerkingen die allemaal moeten landen.

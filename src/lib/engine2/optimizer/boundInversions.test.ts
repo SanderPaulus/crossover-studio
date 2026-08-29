@@ -136,27 +136,65 @@ describe('A5d.6 bound inversions - casus 1 references', () => {
     return r ? r.extraDb : null;
   };
 
-  it('LF-lift budget -> max series L, on the band A4 M-D derives', () => {
+  it('LF budget -> max series L on the RESONANT half, on the band A4 M-D derives', () => {
     const p = REF.parameters.maxL_bult;
     const solved = maxSeriesInductanceFromBump(bumpInput(p.pad_R_ohm), p.budget_dB);
     expect(solved).not.toBeNull();
 
-    // THE ASSERT IS ON THE METRIC, NOT ON THE MILLIHENRY, and the reference
-    // file says so in `parameters.maxL_bult.assert`. An inverted bound
-    // inherits the tolerance of the metric it inverts: at the stored
-    // inductance the M-D lift must equal the budget within the dB class. A
-    // separate component-tolerance class would hide that relation and would
-    // have to be argued about on its own.
-    const atStored = liftAt(REF.maxL_bij_Rs0_5_budget2_5dB_mH * H_PER_MH, p.pad_R_ohm);
+    /* THE ASSERT IS ON THE METRIC, NOT ON THE MILLIHENRY, and the reference
+     * file says so in `parameters.maxL_bult.assert`. An inverted bound inherits
+     * the tolerance of the metric it inverts: at the stored inductance the
+     * quantity being bounded must equal the budget within the dB class. A
+     * separate component-tolerance class would hide that relation and would
+     * have to be argued about on its own.
+     *
+     * SINCE V43 THAT QUANTITY IS THE RESONANT HALF — what the reactance adds on
+     * top of the same path with no reactance at all — so the metric is read
+     * twice and subtracted, exactly as the inversion does it. */
+    const stored = REF.maxL_bij_Rs0_5_budget1_4dB_opslingering_mH * H_PER_MH;
+    const atStored = liftAt(stored, p.pad_R_ohm);
+    const atZero = liftAt(0, p.pad_R_ohm);
     expect(atStored).not.toBeNull();
-    expect(Math.abs(atStored! - p.budget_dB)).toBeLessThanOrEqual(TOL.dB);
+    expect(atZero).not.toBeNull();
+    expect(Math.abs(atStored! - atZero! - p.budget_dB)).toBeLessThanOrEqual(TOL.dB);
+
+    // The purely resistive half at that path resistance is recorded beside the
+    // bound, because it is the part the search can neither spend nor repair.
+    expect(Math.abs(atZero! - p.decompositie.lift_bij_L0_dB)).toBeLessThanOrEqual(TOL.dB);
+    expect(Math.abs(solved!.resistiveLiftDb - atZero!)).toBeLessThan(1e-9);
 
     // ...and the solve really did land ON the budget rather than near it.
     expect(solved!.atBudgetDb).toBeLessThanOrEqual(p.budget_dB + 1e-6);
     expect(solved!.atBudgetDb).toBeGreaterThan(p.budget_dB - 0.01);
-    expect(Math.abs(solved!.maxHenry / H_PER_MH - REF.maxL_bij_Rs0_5_budget2_5dB_mH)).toBeLessThan(
-      0.01,
-    );
+    expect(
+      Math.abs(solved!.maxHenry / H_PER_MH - REF.maxL_bij_Rs0_5_budget1_4dB_opslingering_mH),
+    ).toBeLessThan(0.01);
+  });
+
+  it('the V42 form of this same bound is a BRIDGE, and it still reproduces', () => {
+    /* The redefinition is only defensible if both halves of it are visible: the
+     * quantity moved (extraDb -> resonantDb) AND the stated budget was
+     * re-derived on the designer's own coil rule (2.5 -> 1.4 dB). Together they
+     * leave the ceiling nearly where it was — 2.432 -> 2.322 mH — and THAT is
+     * the claim this test keeps honest. Changing the quantity alone, with the
+     * old 2.5 dB left standing, would have moved it to 3.162 mH. */
+    const b = REF._maxL_op_de_som_V42;
+    const p = REF.parameters.maxL_bult;
+
+    // The withdrawn value, on the quantity it was solved against.
+    const atOld = liftAt(b.waarde * H_PER_MH, b.pad_R_ohm);
+    expect(Math.abs(atOld! - b.budget_dB)).toBeLessThanOrEqual(TOL.dB);
+
+    // The recorded "quantity changed, budget not" figure, on the new quantity.
+    const atZero = liftAt(0, b.pad_R_ohm)!;
+    const atUnrevised = liftAt(b.waarde_zonder_herijking * H_PER_MH, b.pad_R_ohm)!;
+    expect(Math.abs(atUnrevised - atZero - b.budget_dB)).toBeLessThanOrEqual(TOL.dB);
+
+    // And the move that actually happened is small, where that one is not.
+    const live = REF.maxL_bij_Rs0_5_budget1_4dB_opslingering_mH;
+    expect(Math.abs(live - b.waarde) / b.waarde).toBeLessThan(0.1);
+    expect((b.waarde_zonder_herijking - b.waarde) / b.waarde).toBeGreaterThan(0.25);
+    expect(p.budget_dB).toBeLessThan(b.budget_dB);
   });
 
   it('the WITHDRAWN 25-08 value reproduces from its own session band', () => {
@@ -179,20 +217,40 @@ describe('A5d.6 bound inversions - casus 1 references', () => {
     expect(Math.abs(derivedAtWithdrawn! - w.budget_dB)).toBeGreaterThan(TOL.dB);
   });
 
-  it('V12: at 2 Ohm of path resistance NO inductor meets the 2.5 dB budget', () => {
-    // The counter-case matters more than the bound does: it is the difference
-    // between "use a smaller coil" and "this is a damping problem". Reported
-    // as no bound at all rather than as a ceiling of zero.
+  it('V12 REVISITED (V43): at 2 Ohm the resistive half alone spends the old budget', () => {
+    /* V12's counter-case used to be an assert that this function returns NULL
+     * there — no inductor meets 2.5 dB at 2 Ω of path resistance, so the answer
+     * was "this is a damping problem, not a component limit". V43 measured WHY,
+     * and the why dissolves the case: at 2 Ω the path's own resistance already
+     * lifts the band past 2.5 dB with no coil in it at all. The budget was
+     * never being spent by an inductor there.
+     *
+     * So the claim is kept and sharpened rather than deleted. What used to be
+     * "no bound exists" is now "the RESISTIVE half alone exceeds the old
+     * budget", which is the same measurement said correctly — and on the
+     * quantity the requirement uses today a bound does exist, because the
+     * resonant half starts at zero. */
     const w = REF._maxL_sessie_25_08;
+    const pathR = REF.parameters.maxL_bult.tegenvoorbeeld_pad_R_ohm;
+    const session = {
+      overrideBandHz: w.band_hz as [number, number],
+      overrideReferenceHz: w.referentie_hz,
+    };
+
+    // The old case, restated as what it always measured.
+    const resistiveOnly = liftAt(0, pathR, session);
+    expect(resistiveOnly).not.toBeNull();
+    expect(resistiveOnly!).toBeGreaterThan(w.budget_dB);
+
+    // And on the resonant half there IS a bound — the requirement is not silent
+    // there any more, which is the whole of V43's change to this rule.
     const solved = maxSeriesInductanceFromBump(
-      {
-        ...bumpInput(REF.parameters.maxL_bult.tegenvoorbeeld_pad_R_ohm),
-        overrideBandHz: w.band_hz as [number, number],
-        overrideReferenceHz: w.referentie_hz,
-      },
-      w.budget_dB,
+      { ...bumpInput(pathR), ...session },
+      REF.parameters.maxL_bult.budget_dB,
     );
-    expect(solved).toBeNull();
+    expect(solved).not.toBeNull();
+    expect(solved!.maxHenry).toBeGreaterThan(0);
+    expect(Math.abs(solved!.resistiveLiftDb - resistiveOnly!)).toBeLessThan(1e-9);
   });
 
   /* ================= exact inversion 3: sensitivity gap ================= */

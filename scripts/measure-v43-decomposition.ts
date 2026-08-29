@@ -13,19 +13,28 @@
  * `bump-series-l` oplevert wanneer zij tegen de ene of de andere grootheid
  * oplost.
  *
- * DE TWEEDE TABEL IS DE BEVINDING VAN V43 en zij is de reden dat de inversie
- * deze sessie NIET verplaatst is: bij 0,5 Ω padweerstand — de padweerstand
- * waarop de klasse-A-referentie `maxL_bij_Rs0_5_budget2_5dB_mH` staat — is de
- * resistieve lift al 0,97 dB van de gestelde 2,5. De aanname dat de oude
- * referentie daar "praktisch de opslingering" mat, is dus onwaar, en het
- * plafond verschuift van 2,432 naar 3,162 mH. Zie casusboek V43.
+ * DE TWEEDE TABEL ZET DE INVERSIE IN DRIE VORMEN NAAST ELKAAR, en zij is het
+ * bewijsmateriaal onder de herdefinitie van de klasse-A-referentie:
+ *
+ *   · op de SOM bij 2,5 dB — wat V42 deed. Boven ongeveer 1,5 Ω padweerstand
+ *     levert die vorm GEEN grens: het budget is op vóór er een spoel bestaat.
+ *   · op de OPSLINGERING bij diezelfde 2,5 dB — de stap die NIET genomen is.
+ *     Bij 0,5 Ω springt het plafond van 2,432 naar 3,162 mH, +30 %, omdat de
+ *     resistieve lift daar al 0,967 dB van dat budget opeet.
+ *   · op de OPSLINGERING bij de herijkte 1,4 dB — wat er sinds V43 draait. Dat
+ *     getal komt uit de spoelvuistregel van de ontwerper (~2,35 mH bij dit
+ *     ~4 Ω paar levert 1,433 dB) en brengt het plafond terug op 2,322 mH, waar
+ *     het was. Grootheid én getal samen; één van de twee alleen zou de eis
+ *     stilletjes hebben opgerekt.
+ *
+ * Zie casusboek V43 en `manifest_en_geometrie.v43_inversie_bevinding`.
  */
 
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import {
   CASUS1_DIR, casus1Files, casus1Geometry, casus1Manifest, casus1Filter,
-  casus1LfBumpBudgetDb, loadGolden,
+  casus1LfResonantBudgetDb, loadGolden,
 } from '../src/lib/engine2/casus1.fixture.ts';
 import { casus1V2Facts } from '../src/lib/engine2/casus1V2.fixture.ts';
 import { buildReport } from '../src/lib/engine2/report.ts';
@@ -41,7 +50,7 @@ const golden = loadGolden();
 const manifest = casus1Manifest(golden);
 const files = casus1Files(manifest);
 const geometry = casus1Geometry(golden);
-const budget = casus1LfBumpBudgetDb(golden)!;
+const budget = casus1LfResonantBudgetDb(golden)!;
 const netlists = (golden.manifest_en_geometrie as { netlists: Record<string, string> }).netlists;
 const BASE = {
   amplifierPowerW: 100,
@@ -142,14 +151,23 @@ const solve = (pathR: number, budgetDb: number, resonantOnly: boolean): number |
   return lo;
 };
 
-console.log(`\nDE INVERSIE — plafond op de seriespoel bij budget ${budget} dB`);
-console.log('padR(Ω)  lift bij L=0   op de SOM (nu)   op de opslingering');
+/** Het INGETROKKEN V42-budget, uit het casusboek en nooit hier getypt. */
+const withdrawn = (golden.manifest_en_geometrie as unknown as {
+  v42_bult_bevinding: { gesteld_budget_dB: number };
+}).v42_bult_bevinding.gesteld_budget_dB;
+
+console.log('\nDE INVERSIE — plafond op de seriespoel, in drie vormen');
+console.log(
+  `padR(Ω)  lift bij L=0   SOM @ ${withdrawn} dB (V42)   OPSLING. @ ${withdrawn} dB   ` +
+    `OPSLING. @ ${budget} dB (nu)`,
+);
+const cell = (v: number | null): string =>
+  v === null ? 'GEEN GRENS' : `${(v / H_PER_MH).toFixed(3)} mH`;
 for (const R of [0, 0.25, 0.5, 1.0, 1.5, 1.7, 2.0, 2.6, 3.0, 3.76]) {
-  const oud = solve(R, budget, false);
-  const nieuw = solve(R, budget, true);
   console.log(
     `${R.toFixed(2).padStart(6)}  ${bumpAt(R, 0).toFixed(3).padStart(12)}  ` +
-      `${(oud === null ? 'GEEN GRENS' : `${(oud / H_PER_MH).toFixed(3)} mH`).padStart(14)}  ` +
-      `${(nieuw === null ? 'GEEN GRENS' : `${(nieuw / H_PER_MH).toFixed(3)} mH`).padStart(18)}`,
+      `${cell(solve(R, withdrawn, false)).padStart(19)}  ` +
+      `${cell(solve(R, withdrawn, true)).padStart(19)}  ` +
+      `${cell(solve(R, budget, true)).padStart(22)}`,
   );
 }

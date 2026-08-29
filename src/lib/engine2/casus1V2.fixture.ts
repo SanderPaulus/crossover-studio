@@ -39,7 +39,7 @@ import type { GeneratedCandidate } from './predesign/candidates.ts';
 import { AUTO_STRUCTS } from '../threeWayDesign.ts';
 import {
   casus1AmpMinLoadOhm,
-  casus1LfBumpBudgetDb,
+  casus1LfResonantBudgetDb,
   loadGolden,
   type GoldenRefs,
 } from './casus1.fixture.ts';
@@ -120,7 +120,7 @@ export const CASUS1_V2_SEED = 20260827;
 export const CASUS1_AMP_MIN_LOAD_OHM: number | null = casus1AmpMinLoadOhm();
 
 /**
- * V42 — the stated LF-lift budget, read from the manifest for the same reason
+ * V42/V43 — the stated LF budget, read from the manifest for the same reason
  * the floor above is: it is a project number and it has one home.
  *
  * IT DOES NOT BELONG IN `CASUS1_V2_SETTINGS`, and that is the difference from
@@ -129,8 +129,13 @@ export const CASUS1_AMP_MIN_LOAD_OHM: number | null = casus1AmpMinLoadOhm();
  * arms neither: it is an input to `invertBudgets`, which lives on the v2 side
  * only, so it travels in `v2.budgets.lfBumpBudgetDb` and nowhere else. A copy
  * in the chain settings would be a number with no reader.
+ *
+ * SINCE V43 IT IS ON THE RESONANT HALF of M-D's lift, and 1.4 dB rather than
+ * V42's 2.5 — the manifest field is `lf_opslingering_budget_dB` and carries the
+ * derivation. The transport key kept its name on purpose; see the fixture
+ * helper and the manifest's `..._invoerpunt`.
  */
-export const CASUS1_LF_BUMP_BUDGET_DB: number | null = casus1LfBumpBudgetDb();
+export const CASUS1_LF_RESONANT_BUDGET_DB: number | null = casus1LfResonantBudgetDb();
 
 /**
  * V42 — THE ARMED GATES AND BUDGETS OF A CASUS-1 v2 RUN, in one place.
@@ -152,7 +157,7 @@ export const CASUS1_V2_GATES: { ampMinLoadOhm?: number } =
   CASUS1_AMP_MIN_LOAD_OHM !== null ? { ampMinLoadOhm: CASUS1_AMP_MIN_LOAD_OHM } : {};
 
 export const CASUS1_V2_BUDGETS: { lfBumpBudgetDb?: number } =
-  CASUS1_LF_BUMP_BUDGET_DB !== null ? { lfBumpBudgetDb: CASUS1_LF_BUMP_BUDGET_DB } : {};
+  CASUS1_LF_RESONANT_BUDGET_DB !== null ? { lfBumpBudgetDb: CASUS1_LF_RESONANT_BUDGET_DB } : {};
 
 export const CASUS1_V2_SETTINGS = {
   phasePriority: 0.5,

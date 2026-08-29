@@ -114,7 +114,7 @@ Formaat per metriek: *grootheid → formule → afgeleide parameters → databeh
 | het resistieve equivalent (H_res) | Hetzelfde netwerk, dezelfde topologie, dezelfde waarden, elke reactantie vervangen door **haar eigen serieweerstand**: spoel → DCR (een ideale spoel heeft DCR 0 en wordt dus een KORTSLUITING; de knopen worden samengevoegd, want nodale analyse kan geen ideale kortsluiting stempelen en een "klein genoeg" weerstandje is een magisch getal dat het antwoord bepaalt — P6), condensator → **OPEN**, en de tak verlaat het netwerk. Dat laatste is een besluit met een reden: de resistieve limiet van een condensator is een open tak, zijn ESR staat in serie met een reactantie die oneindig is geworden en kan dus niets geleiden. Hem door zijn ESR vervangen zou elke seriecondensator in een bijna-kortsluiting veranderen, wat de tegenovergestelde limiet is. **De DRIVER houdt zijn gemeten impedantie, reactantie en al** — de motionele piek is juist de grootheid waarover de twee krommen vergeleken worden; wie hem ook zou resistiveren houdt niets over om tegen op te slingeren. Wat de transform weghaalt is de reactantie die de ONTWERPER kiest. |
 | afgeleide parameters | B en f_ref precies als hierboven, uit f_p — de ontleding voegt géén band en géén frequentie toe. |
 | databehoefte | Onveranderd voor `extraDb`. De twee helften vragen er één ding bij: een **tweede netwerkoplossing** op hetzelfde raster. Geen meting erbij; wel een tweede MNA-pas, dus zij wordt lui gebouwd en per rapport hooguit één keer. |
-| rol | **rapportage**, alle drie. Zij dragen geen poort: M-D heeft geen id in `GATE_IDS` en veroordeelt geen geleverde netlist. Wat er wél aan hangt is het projectbudget dat de A5d.6-inversie `bump-series-l` voedt, en dat staat **sinds V43 open**: het is vandaag op `extraDb` gesteld, terwijl de vakregel waaruit het komt over `resonantDb` gaat. Zie V43 in Deel B; het besluit is dat van de ontwerper (P4). |
+| rol | **rapportage**, alle drie. Zij dragen geen poort: M-D heeft geen id in `GATE_IDS` en veroordeelt geen geleverde netlist. Wat er wél aan hangt is het projectbudget dat de A5d.6-inversie `bump-series-l` voedt, en dat staat **sinds V43 op `resonantDb`** — één staande eis, op de helft waar de spoelvuistregel over gaat. `liftDb` krijgt met opzet **géén eigen budget**: hij is niveauwerk, en wat daarvan gewenst is hangt aan doelcurve en dempingsmarge, oftewel aan het ankerbesluit A5e.2. Twee eisen naast elkaar zouden dat besluit onder een andere naam nemen. |
 | geldigheid | Precies die van `extraDb` — dezelfde band, dezelfde NF-geldigheid, dezelfde dekkingsrapportage. Eén ding erbij: een tak die in de resistieve limiet niets draagt (een DCR-loze spoel dwars over de driver) levert **geen** ontleding, en dan zijn beide helften `null` mét de reden. Nooit 0 — een nul leest als "gemeten, en het is niets". |
 | negatieve opslingering | **Kan, en is geen fout.** M-D normaliseert op f_ref, dus wie daar door zijn eigen reactanties wordt opgetild — een doorlaatband­resonantie rond f_ref — leest ten opzichte van zijn resistieve equivalent lager. HUIDIG is precies dat geval: `extraDb` 3,75, lift 4,69, opslingering **−0,94** dB. De opslingering is dus "wat reactantie bij de piek doet **ten opzichte van wat zij bij f_ref doet**", en niet "wat reactantie bij de piek doet". Dat is dezelfde relativiteit die `extraDb` altijd al droeg; zij wordt hier alleen zichtbaar. |
 | validatiecasus | casus 1, élke bevroren netlist (`manifest_en_geometrie.v43_ontleding`, klasse B) plus het levende corpus in `kandidaten.*.lf_lift_dB` / `.lf_opslingering_dB`. Handberekening en nieuwe-meting-test in `metrics/lfBumpDecomposition.test.ts`; de optel-assert over het hele casusboek in `frozenNetlistGates.test.ts`. |
@@ -485,20 +485,20 @@ punten met een casusboek-entry erachter. Ze staan hier zodat ze niet alleen in D
   f_p, of de eis uitdrukken als één grens op `R_pad + jωL` samen — dat laatste is een tweede
   inversie en geen topologievoorstel. Bewijsmateriaal: `scripts/measure-v42-bump-bound.ts` en
   `manifest_en_geometrie.v42_bult_bevinding`. **Open**, Sander beslist welke richting de generator
-  mag voorstellen. **AANGESCHERPT DOOR V43, dat de grootheid heeft ONTLEED maar het budget niet
-  heeft verplaatst.** M-D levert sinds V43 naast `extraDb` ook `liftDb` (wat het resistieve
-  equivalent van hetzelfde netwerk alleen al doet) en `resonantDb` (wat de reactanties daar
-  bovenop leggen), en zij tellen per constructie op tot `extraDb`. Wat de ontleding zegt over de
-  drie richtingen hierboven: de derde is nu BEREKENBAAR — de kolom "lift bij L = 0" ís de
-  resistieve term van `R_pad + jωL` — en er ligt een vierde bij: **twee eisen in plaats van één**,
-  een spoelbudget op `resonantDb` naast een liftgrens die in werkelijkheid het ankerbesluit
-  (A5e.2) is. Wat de ontleding NIET oplost is het getal: 2,5 dB op de resonante component laat op
-  HUIDIG's eigen padweerstand 5,47 mH toe, tegen de ~2,35 mH van de vuistregel waaruit het budget
-  komt — dus verplaatsen zonder herijken maakt de eis losser, niet scherper. En bij 0,5 Ω
-  verschuift de klasse-A-referentie van 2,432 naar 3,162 mH (+30 %). Bewijsmateriaal:
-  `scripts/measure-v43-decomposition.ts`, `manifest_en_geometrie.v43_ontleding` en
-  `.v43_inversie_bevinding`. **Open**, en het is nu één besluit met een getal erin in plaats van
-  drie topologievoorstellen.
+  mag voorstellen. **GESLOTEN DOOR V43**, en niet met een topologievoorstel maar met de
+  vaststelling dat de vraag verkeerd gesteld was. M-D levert sinds V43 naast `extraDb` ook
+  `liftDb` (wat het resistieve equivalent van hetzelfde netwerk alleen al doet) en `resonantDb`
+  (wat de reactanties daar bovenop leggen), en zij tellen per constructie op tot `extraDb`. De
+  gemeten conclusie: wat V42's budget veroordeelde was op alle drie de referentiefilters de
+  LIFT — HUIDIG 4,69 dB lift tegen −0,94 dB opslingering — en dat is niveauwerk, geen spoel. De
+  eis staat sinds V43 op `resonantDb` alleen, met een op de vuistregel herijkt getal (1,4 dB), en
+  de lift krijgt géén eigen budget: die is ankerdomein en hoort bij A5e.2 (doelcurve plus
+  dempingsmarge). **Optie 3 van V42 — één grens op `R_pad + jωL` samen — is daarmee expliciet
+  vervallen:** zij herkoppelt precies wat de ontleding gescheiden heeft. De LCR- en
+  parallel-R-voorstellen (opties 1 en 2) zijn niet weerlegd maar ook niet meer nodig om de eis
+  werkzaam te krijgen; zij blijven beschikbaar als de zoektocht de spoel op de nieuwe grens
+  onvoldoende kan krijgen. Bewijsmateriaal: `scripts/measure-v43-decomposition.ts`,
+  `manifest_en_geometrie.v43_ontleding`, `.v43_inversie_bevinding` en `.v43_budget_bevinding`.
 - **V29 — mag `safety` een netlist weigeren die vrijwel kortsluit als er géén vloer gesteld is?**
   Twee verdedigbare houdingen (strikt P4 tegenover een uit de gemeten driverimpedanties
   afleidbare degeneratiegrens), aanleiding is de V28-shortlist met 0,01 Ω erin. **Open**, geen
@@ -2786,13 +2786,13 @@ Configuratie: 3-weg; 2× SB WO24TX-8 parallel, MR13TX-4 in bolpod, T25T-6 in WG1
 
   **Zolang dit open staat draagt elke afruil die op fase verdedigd wordt deze onzekerheid mee** — dat is ongewijzigd sinds V38-fix, en het getallenblad maakt hem alleen preciezer: het is niet de definitie en niet het raster, het is de band.
 
-- V43 (29-08-2026 — de LF-bult wordt ontleed in resistieve lift en resonante opslingering; de inversie is NIET verplaatst) — opgeworpen als eigen opdracht uit V42. **Een halve oplevering met opzet: de metriek is gebouwd, het budget is niet verplaatst, en de reden staat hieronder in één tabel.**
+- V43 (29-08-2026 — **BREAKING, alleen v2-runs**: de LF-bult wordt ontleed, en het budget verhuist naar de resonante component met een herijkt getal) — opgeworpen als eigen opdracht uit V42. **In twee helften uitgevoerd, met een meetbesluit ertussen; die tweedeling is zelf een bevinding en staat hieronder voluit.**
 
-  **DE OPDRACHT.** V42 mat dat `lfBump().extraDb` twee mechanismen bij elkaar optelt — een brede resistieve lift en een smalle resonante opslingering — en dat het gestelde 2,5 dB-budget boven ~1,7 Ω padweerstand al op is vóórdat er een spoel bestaat. V43 zou die twee uit elkaar halen en het budget op de tweede zetten. De opdracht schreef één controle voor: *verifieer dat de klasse-A-referentie `maxL_bij_Rs0_5_budget2_5dB_mH` vrijwel gelijk blijft — bij lage pad-R was de lift immers klein, dus de oude referentie mat daar praktisch de opslingering; als hij significant verschuift is dát een bevinding, stop en meld.* Hij verschuift met 30 %.
+  **DE OPDRACHT.** V42 mat dat `lfBump().extraDb` twee mechanismen bij elkaar optelt — een brede resistieve lift en een smalle resonante opslingering — en dat het gestelde 2,5 dB-budget boven ~1,7 Ω padweerstand al op is vóórdat er een spoel bestaat. V43 haalt die twee uit elkaar en zet de eis op de tweede.
 
   ---
 
-  **WAT ER GEBOUWD IS.** De metriek levert sinds V43 drie getallen op één band in één pas: `extraDb` (ongewijzigd, bit-identiek, en de grootheid waarin élke staande referentie is uitgedrukt), `liftDb` en `resonantDb`. De registerrij staat in A4 M-D; de tweede kromme komt van een **resistief equivalent** — dezelfde topologie, dezelfde waarden, spoel → DCR (een ideale spoel dus een kortsluiting, met knoopsamenvoeging), condensator → open. `liftDb + resonantDb = extraDb` per constructie, en dat is precies wat de bestaande `lf_bult_extra_dB`-referenties tot de brug naar de twee nieuwe maakt.
+  **DE METRIEK.** M-D levert sinds V43 drie getallen op één band in één pas: `extraDb` (ongewijzigd en bit-identiek — de grootheid waarin élke staande referentie is uitgedrukt), `liftDb` en `resonantDb`. De registerrij staat in A4 M-D. De tweede kromme komt van een **resistief equivalent**: dezelfde topologie, dezelfde waarden, spoel → DCR (een ideale spoel dus een kortsluiting, met knoopsamenvoeging), condensator → open, en de DRIVER houdt zijn gemeten impedantie — de motionele piek is juist de grootheid waarover de twee krommen vergeleken worden. `liftDb + resonantDb = extraDb` per constructie, en dat maakt elke bestaande `lf_bult_extra_dB`-referentie de brug naar de twee nieuwe.
 
   **DE ONTLEDING VAN DE DRIE REFERENTIEFILTERS — EN ZIJ KEERT V42's BEELD OM.**
 
@@ -2801,63 +2801,117 @@ Configuratie: 3-weg; 2× SB WO24TX-8 parallel, MR13TX-4 in bolpod, T25T-6 in WG1
   | HUIDIG | 3,76 Ω | 3,75 | **4,69** | **−0,94** |
   | KAND_A | 4,42 Ω | 4,25 | **5,15** | **−0,90** |
   | KAND_B | 2,35 Ω | 3,41 | **3,46** | **−0,05** |
-  | gesteld budget | | 2,5 | | |
 
-  V42 stelde vast dat de eis strenger is dan het eigen referentiefilter van de ontwerper: alle drie de baselines overschrijden de 2,5 dB. Ontleed blijkt die overschrijding **volledig niveauwerk**: de spoelen van deze drie ontwerpen voegen op hun eigen resistieve equivalent níets toe — de opslingering is op alle drie nul of negatief. Wat het budget op HUIDIG veroordeelde was R8 die baffle-step-werk doet, en dat is het ankerdomein (A5e.2), niet de spoelregel. Op de resonante component gemeten haalt HUIDIG de eis ruim, en daarmee is de spiegel van de versterkervloer hersteld: *HUIDIG bewijst haalbaar*.
+  V42 stelde vast dat de eis strenger was dan het eigen referentiefilter van de ontwerper: alle drie de baselines overschreden de 2,5 dB. Ontleed blijkt die overschrijding **volledig niveauwerk** — de spoelen van deze drie ontwerpen voegen op hun eigen resistieve equivalent níets toe. Wat het budget op HUIDIG veroordeelde was R8 die baffle-step-werk doet, en dat is ankerdomein (A5e.2), niet de spoelregel.
 
-  **DE NEGATIEVE OPSLINGERING IS GEEN FOUT EN VERDIENT ZIJN EIGEN ZIN.** M-D normaliseert op f_ref (≈ 3·f_p, hier 157 Hz). HUIDIG's wooferpad draagt daar een doorlaatband­resonantie tussen zijn seriespoel en zijn 108 µF shunt, dus de geladen kromme wordt júist bij de normalisatiefrequentie opgetild en leest ten opzichte van haar resistieve equivalent lager. De opslingering is dus "wat reactantie bij de piek doet **ten opzichte van wat zij bij f_ref doet**". Dat is dezelfde relativiteit die `extraDb` altijd al droeg; de ontleding maakt haar alleen zichtbaar. Wie een absolute piekmaat wil, vraagt een andere metriek, niet een andere normalisatie van deze.
+  **DE NEGATIEVE OPSLINGERING IS GEEN FOUT EN VERDIENT ZIJN EIGEN ZIN.** M-D normaliseert op f_ref (≈ 3·f_p, hier 157 Hz). HUIDIG's wooferpad draagt daar een doorlaatband­resonantie tussen zijn seriespoel en zijn 108 µF shunt, dus de geladen kromme wordt júist bij de normalisatiefrequentie opgetild en leest ten opzichte van haar resistieve equivalent lager. De opslingering is dus "wat reactantie bij de piek doet **ten opzichte van wat zij bij f_ref doet**". Dat is dezelfde relativiteit die `extraDb` altijd al droeg; de ontleding maakt haar alleen zichtbaar.
 
-  **DE VIER DOOR V42 VERWORPEN ONTWERPEN, ONTLEED.** De vraag was: hoeveel van hun overschrijding was lift en hoeveel opslingering?
+  **DE VIER DOOR V42 VERWORPEN ONTWERPEN, ONTLEED.** De vraag was hoeveel van hun overschrijding lift was en hoeveel opslingering.
 
-  | netlist | RMS | pad R | `extraDb` | lift | opslingering | onder 2,5 op de opslingering? |
-  |---|---|---|---|---|---|---|
-  | V41_KAND_2 | 0,49 | 1,72 Ω | 6,10 | 2,76 (45 %) | **3,34** | nee |
-  | V41_KAND_4 | 0,53 | 1,59 Ω | 6,56 | 2,60 (40 %) | **3,96** | nee |
-  | V41_KAND_6 | 0,54 | 1,79 Ω | 5,98 | 2,84 (47 %) | **3,14** | nee |
-  | V41_KAND_7 | 1,82 | 1,01 Ω | 3,62 | 1,80 (50 %) | **1,82** | ja |
+  | netlist | RMS | pad R | `extraDb` | lift | opslingering |
+  |---|---|---|---|---|---|
+  | V41_KAND_2 | 0,49 | 1,72 Ω | 6,10 | 2,76 (45 %) | **3,34** |
+  | V41_KAND_4 | 0,53 | 1,59 Ω | 6,56 | 2,60 (40 %) | **3,96** |
+  | V41_KAND_6 | 0,54 | 1,79 Ω | 5,98 | 2,84 (47 %) | **3,14** |
+  | V41_KAND_7 | 1,82 | 1,01 Ω | 3,62 | 1,80 (50 %) | **1,82** |
 
-  **Dus nee.** De verwachting bij aanvang was dat hun schending grotendeels lift zou zijn en dat zij onder een geherformuleerd budget zouden terugkeren. Gemeten is ongeveer half om half, en drie van de vier blijven eroverheen. Het levende corpus splitst hetzelfde: `KAND_V2_1` 1,79 + **6,14**, `KAND_V2_2` 4,71 + **−0,87**, `KAND_V2_3` 2,17 + **5,01**, `KAND_V2_4` 3,70 + **0,68** — twee van de vier over de 2,5, waar het op `extraDb` er vier van vier waren.
+  **Ongeveer half om half.** De verwachting was dat hun schending grotendeels lift zou zijn en dat zij onder een geherformuleerd budget zouden terugkeren; dat is niet zo, en alle vier blijven boven 1,4 dB.
 
   ---
 
-  **DE BEVINDING DIE DE SESSIE STOPTE.** `scripts/measure-v43-decomposition.ts`, tweede tabel, en zij staat als `manifest_en_geometrie.v43_inversie_bevinding` in het referentiebestand met een assert eronder:
+  **HET MEETBESLUIT TUSSEN DE TWEE HELFTEN, en dit is de reden dat de sessie in tweeën is uitgevoerd.**
 
-  | pad R | lift bij L = 0 | plafond op de SOM (nu) | plafond op de OPSLINGERING |
+  De opdracht schreef één controle voor: de klasse-A-referentie `maxL_bij_Rs0_5_budget2_5dB_mH` moest vrijwel gelijk blijven, want bij lage padweerstand zou de lift klein zijn. **Zij is dat niet.** Bij 0,5 Ω is de resistieve lift al 0,967 dB van de gestelde 2,5 — 39 % van het budget — en het plafond zou van 2,432 naar 3,162 mH gaan, +30 %. Alleen de grootheid verplaatsen zou de eis dus stilletjes met een derde hebben opgerekt. De sessie is daar gestopt en heeft de vraag teruggelegd; het antwoord was **optie 1 met één staande eis** en een herijking.
+
+  **DE HERIJKING, GEMETEN EN NIET GEKOZEN.** De ervaringsregel van de ontwerper is een spoelregel: ~4,7 mH bij 8 Ω, dus ~2,35 mH bij dit ~4 Ω wooferpaar. Wat die spoel op de gemeten Z-piek en het gemeten nabije veld aan resonante opslingering oplevert bij 0,5 Ω padweerstand is **1,433 dB**, afgerond op één decimaal **1,4**. De vuistregelband 2,2–2,7 mH levert 1,26–1,87 dB. De eis reproduceert de regel dus in plaats van haar te vervangen.
+
+  **DE INVERSIE IN DRIE VORMEN** (`scripts/measure-v43-decomposition.ts`, tweede tabel; vastgelegd als `manifest_en_geometrie.v43_inversie_bevinding` met een assert per kolom):
+
+  | pad R | lift bij L = 0 | SOM @ 2,5 dB (V42) | OPSLING. @ 2,5 dB (niet genomen) | **OPSLING. @ 1,4 dB (nu)** |
+  |---|---|---|---|---|
+  | 0,00 Ω | 0,000 dB | 2,857 mH | 2,857 mH | **2,130 mH** |
+  | 0,25 Ω | 0,506 dB | 2,662 mH | 3,008 mH | **2,225 mH** |
+  | **0,50 Ω** | **0,967 dB** | **2,432 mH** | **3,162 mH** | **2,322 mH** |
+  | 1,00 Ω | 1,798 dB | 1,806 mH | 3,493 mH | **2,544 mH** |
+  | 1,50 Ω | 2,518 dB | **geen grens** | 3,846 mH | **2,791 mH** |
+  | 1,70 Ω | 2,777 dB | **geen grens** | 3,992 mH | **2,894 mH** |
+  | 2,00 Ω | 3,139 dB | **geen grens** | 4,215 mH | **3,053 mH** |
+  | 2,60 Ω | 3,781 dB | **geen grens** | 4,665 mH | **3,325 mH** |
+  | 3,00 Ω | 4,156 dB | **geen grens** | 4,938 mH | **3,504 mH** |
+  | 3,76 Ω | 4,776 dB | **geen grens** | 5,465 mH | **3,852 mH** |
+
+  Drie dingen staan in die tabel, en zij dragen samen de herdefinitie.
+
+  1. **Grootheid én getal, of geen van beide.** 2,432 → 2,322 mH is −4,5 %; de klasse-A-referentie staat vrijwel waar zij stond. Alleen de grootheid verplaatsen zou +30 % zijn geweest. Beide waarden staan in het referentiebestand (`_maxL_op_de_som_V42` als brug, `waarde_zonder_herijking` als de niet-genomen stap) en `boundInversions.test.ts` assert alle drie.
+  2. **De eis zwijgt nergens meer.** Op `extraDb` gaf de inversie boven ~1,5 Ω géén grens; op `resonantDb` is de opslingering bij L = 0 per definitie exact nul, dus er is **altijd** een plafond. Dat is de grootste gedragswijziging van V43 en zij is groter dan de getalsverandering: de eis was op zes van de negen bevroren netlists inert.
+  3. **Meer padwerk mag meer spoel, en dat is de bedoeling.** De derde kolom loopt van 2,13 mH bij nul tot 3,85 mH bij HUIDIG's eigen 3,76 Ω, omdat demping de opslingering werkelijk onderdrukt. De vuistregel kan dat niet zien — zij kent alleen de spoel — en dat is precies waarom M-D haar vervangt (zij mist R, DCR, piek-Q en kastafstemming). Alle tien de waarden blijven onder de 4,7 mH die de regel voor een 8 Ω-driver noemt. Geen versoepeling maar de grootheid die de regel bedoelde.
+
+  **DE LIFT KRIJGT GÉÉN EIGEN BUDGET, en dat is een besluit met een reden.** Hoeveel van HUIDIG's 4,69 dB lift gewenst baffle-step-werk is, is de ankervraag: doelcurve plus dempingsmarge, oftewel A5e.2, en dat besluit is geparkeerd. Een tweede eis erop zou het onder een andere naam nemen. **Optie 3 van V42 — één grens op `R_pad + jωL` samen — is expliciet vervallen**, want zij herkoppelt precies wat deze sessie gescheiden heeft.
+
+  **DE TWEE FEITEN DIE ELKE GESTELDE EIS HOORT TE DRAGEN, en hier keert de spiegel om.** Bij de versterkervloer haalt HUIDIG de eis met marge, en dát is het bewijs dat de eis geen bouwbaar ontwerp uitsluit. Onder V42's 2,5 dB op de som ontbrak dat bewijs — alle drie de baselines overschreden haar — en het moest van het V28-corpus komen. Op de resonante component halen alle drie de referentiefilters de 1,4 dB ruim (−0,94 / −0,90 / −0,05). **Haalbaar** is dus weer bewezen door het eigen filter van de ontwerper, en **niet vacuüm** door de netlists in het casusboek die de eis wél overschrijden. `frozenNetlistGates.test.ts` assert beide.
+
+  ---
+
+  **DE VÓÓR/NÁ OP HET HELE VELD.** Vijftien kandidaten, `'safety'` als barrièrebron, zelfde seed, zelfde poorten, het nieuwe budget gewapend (`compare-corpora.ts v42 live`). De generator kostte **4 u 52 min** (634–2436 s per kandidaat).
+
+| kandidaat (W-M · M-T) | min \|Z\| vóór | min \|Z\| ná | @ Hz ná | vloer vóór → ná | SPL ± vóór → ná | RMS vóór → ná | W-M fase RAPPORT vóór → ná | W-M fase TUNER vóór → ná | M-T fase RAPPORT vóór → ná | M-T fase TUNER vóór → ná | dissipatie % vóór → ná | grootste R (W) vóór → ná | EPDR vóór → ná | Q_es× vóór → ná | smalste piek ná (dB @ Hz) | correctiegroepen vóór → ná | LF-bult dB vóór → ná | lift dB vóór → ná | opslingering dB vóór → ná | serie-L mH vóór → ná |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| 396.7 · 1294 | — | **verworpen** | — | — → — | — → **verworpen** | — → **verworpen** | — → **verworpen** | — → **verworpen** | — → **verworpen** | — → **verworpen** | — → **verworpen** | — → **verworpen** | — → **verworpen** | — → **verworpen** | — | — → **verworpen** | — → **verworpen** | — → **verworpen** | — → **verworpen** | — → **verworpen** |
+| 396.7 · 1491.4 | — | **verworpen** | — | — → — | — → **verworpen** | — → **verworpen** | — → **verworpen** | — → **verworpen** | — → **verworpen** | — → **verworpen** | — → **verworpen** | — → **verworpen** | — → **verworpen** | — → **verworpen** | — | — → **verworpen** | — → **verworpen** | — → **verworpen** | — → **verworpen** | — → **verworpen** |
+| 396.7 · 1719 | — | 2.61 | 235.11 | — → **ja** | — → 4.42 | — → 2.17 | — → 32.32 | — → 27.58 | — → 15.30 | — → 14.11 | — → 29.21 | — → 14.09 | — → 1.34 | — → 1.34 | — | — → trap×1 damped-trap×2 series-pad×3 shunt-pad×1 | — → 1.05 | — → 1.85 | — → -0.80 | — → 2.57 |
+| 396.7 · 1981.2 | 3.29 | 2.60 | 263.56 | **ja** → **ja** | 0.78 → 1.84 | 0.48 → 0.83 | 4.55 → 26.86 | 2.14 → 16.86 | 5.67 → 6.07 | 4.78 → 4.80 | 40.27 → 65.75 | 28.18 → 27.35 | 1.67 → 1.31 | 1.33 → 2.90 | — | damped-trap×2 shunt-shelf×1 series-pad×2 → damped-trap×1 shunt-shelf×2 series-pad×3 shunt-pad×1 | 7.93 → 4.20 | 1.79 → 5.93 | 6.14 → -1.72 | 7.34 → 2.82 |
+| 396.7 · 2283.5 | — | 2.59 | 1003.81 | — → **ja** | — → 1.59 | — → 0.78 | — → 24.15 | — → 22.84 | — → 4.29 | — → 3.56 | — → 60.53 | — → 28.49 | — → 1.30 | — → 2.16 | — | — → damped-trap×3 series-pad×3 shunt-pad×1 | — → 2.88 | — → 4.52 | — → -1.63 | — → 2.70 |
+| 466.5 · 1294 | — | **verworpen** | — | — → — | — → **verworpen** | — → **verworpen** | — → **verworpen** | — → **verworpen** | — → **verworpen** | — → **verworpen** | — → **verworpen** | — → **verworpen** | — → **verworpen** | — → **verworpen** | — | — → **verworpen** | — → **verworpen** | — → **verworpen** | — → **verworpen** | — → **verworpen** |
+| 466.5 · 1491.4 | — | **verworpen** | — | — → — | — → **verworpen** | — → **verworpen** | — → **verworpen** | — → **verworpen** | — → **verworpen** | — → **verworpen** | — → **verworpen** | — → **verworpen** | — → **verworpen** | — → **verworpen** | — | — → **verworpen** | — → **verworpen** | — → **verworpen** | — → **verworpen** | — → **verworpen** |
+| 466.5 · 1719 | — | 2.62 | 975.55 | — → **ja** | — → 3.82 | — → 2.12 | — → 16.62 | — → 18.14 | — → 41.54 | — → 35.86 | — → 41.14 | — → 13.93 | — → 1.31 | — → 1.74 | — | — → damped-trap×2 shunt-shelf×1 series-pad×3 shunt-pad×2 | — → 2.67 | — → 3.34 | — → -0.68 | — → 2.92 |
+| 466.5 · 1981.2 | 2.64 | 2.56 | 449.12 | **ja** → **ja** | 3.00 → 2.29 | 1.86 → 1.49 | 20.09 → 20.93 | 19.84 → 16.88 | 25.21 → 19.85 | 13.00 → 14.16 | 40.38 → 48.85 | 16.93 → 17.22 | 1.33 → 1.31 | 1.86 → 2.03 | — | damped-trap×2 series-pad×3 shunt-pad×2 → trap×2 damped-trap×1 series-pad×3 shunt-pad×2 | 4.38 → 4.34 | 3.70 → 4.13 | 0.68 → 0.22 | 4.15 → 3.27 |
+| 466.5 · 2283.5 | 3.64 | 2.94 | 357.40 | **ja** → **ja** | 1.17 → 0.95 | 0.54 → 0.51 | 4.34 → 4.19 | 2.76 → 2.67 | 5.48 → 5.18 | 4.34 → 3.97 | 40.44 → 75.90 | 26.39 → 42.17 | 1.83 → 1.47 | 1.41 → 1.71 | — | shunt-shelf×1 series-pad×2 → zobel×1 shunt-shelf×1 series-pad×3 shunt-pad×1 | 7.17 → 2.60 | 2.17 → 3.23 | 5.01 → -0.63 | 6.60 → 3.23 |
+| 548.5 · 1294 | — | **verworpen** | — | — → — | — → **verworpen** | — → **verworpen** | — → **verworpen** | — → **verworpen** | — → **verworpen** | — → **verworpen** | — → **verworpen** | — → **verworpen** | — → **verworpen** | — → **verworpen** | — | — → **verworpen** | — → **verworpen** | — → **verworpen** | — → **verworpen** | — → **verworpen** |
+| 548.5 · 1491.4 | — | **verworpen** | — | — → — | — → **verworpen** | — → **verworpen** | — → **verworpen** | — → **verworpen** | — → **verworpen** | — → **verworpen** | — → **verworpen** | — → **verworpen** | — → **verworpen** | — → **verworpen** | — | — → **verworpen** | — → **verworpen** | — → **verworpen** | — → **verworpen** | — → **verworpen** |
+| 548.5 · 1719 | — | **verworpen** | — | — → — | — → **verworpen** | — → **verworpen** | — → **verworpen** | — → **verworpen** | — → **verworpen** | — → **verworpen** | — → **verworpen** | — → **verworpen** | — → **verworpen** | — → **verworpen** | — | — → **verworpen** | — → **verworpen** | — → **verworpen** | — → **verworpen** | — → **verworpen** |
+| 548.5 · 1981.2 | — | **verworpen** | — | — → — | — → **verworpen** | — → **verworpen** | — → **verworpen** | — → **verworpen** | — → **verworpen** | — → **verworpen** | — → **verworpen** | — → **verworpen** | — → **verworpen** | — → **verworpen** | — | — → **verworpen** | — → **verworpen** | — → **verworpen** | — → **verworpen** | — → **verworpen** |
+| 548.5 · 2283.5 | 2.99 | 3.97 | 1093.59 | **ja** → **ja** | 0.93 → 1.09 | 0.53 → 0.56 | 6.45 → 6.06 | 5.36 → 5.91 | 4.77 → 4.35 | 3.43 → 3.43 | 63.14 → 46.02 | 33.81 → 24.87 | 1.56 → 2.06 | 2.29 → 1.78 | — | shunt-shelf×1 series-pad×2 shunt-pad×1 → shunt-shelf×1 series-pad×2 shunt-pad×1 | 3.85 → 3.60 | 4.71 → 3.50 | -0.87 → 0.10 | 2.29 → 3.57 |
+  | grootheid | V42-corpus | levend corpus | |
+  | --- | --- | --- | --- |
+  | netlists | 4 | **7** | drie erbij, nul eruit |
+  | **opslingering, gemiddeld** | **2,7 dB** | **−0,7 dB** | **de doelgrootheid bewoog** |
+  | **boven het gestelde budget** | **2 van 4** | **0 van 7** | |
+  | lift, gemiddeld | 3,1 dB | **3,8 dB** | omhoog — zie hieronder |
+  | LF-bult (som), gemiddeld | 5,8 dB | 3,0 dB | |
+  | totale serie-L laagste weg | 5,1 mH | **3,0 mH** | het plafond werkt |
+  | RMS-vlakheid, gemiddeld | 0,93 dB | 1,21 dB | |
+  | W-M fase RAPPORT, gemiddeld | 8,9° | 18,7° | |
+  | dissipatie | 46,1 % | 52,5 % | |
+  | haalt de vloer | 4 van 4 | 7 van 7 | |
+
+  **DE EIS WERKT, EN ZIJ IS BETAALD.** Dit is het spiegelbeeld van V42, waar het budget de helft van het veld verwijderde en geen enkel ontwerp veranderde. Nu verandert hij élk ontwerp: de totale seriespoel van de wooferweg gaat van gemiddeld 5,1 naar 3,0 mH, de opslingering van +2,7 naar −0,7 dB, en **geen van de zeven netlists overschrijdt de eis nog**. Het veld GROEIT bovendien van vier naar zeven — drie kandidaten die V42 verwierp leveren nu een netwerk — want de kleinere spoel maakt de takimpedantie rond het kruispunt niet meer automatisch te laag.
+
+  De prijs staat in dezelfde tabel en wordt niet weggeschreven: RMS-vlakheid 0,93 → 1,21 dB gemiddeld, W-M fase 8,9° → 18,7°, dissipatie 46,1 → 52,5 %. Drie van de zeven nieuwe netlists zijn ronduit slechter dan wat V42 had (2,17 / 2,12 / 1,49 dB RMS); twee zijn vrijwel gelijk (0,51 en 0,56 dB). **De beste ontwerpen van het project — 0,48 dB — zijn niet teruggekomen.** Wie de vlakste respons wil, wil de grote spoel; de eis verbiedt hem. Dat is geen defect van de eis maar wat een eis is.
+
+  **EN DE LIFT LIEP OMHOOG TERWIJL DE OPSLINGERING OMLAAG GING — 3,1 → 3,8 dB.** Dat is de scherpste bevinding van de tweede helft, en zij was voorspelbaar noch weggeschreven: de zoektocht compenseert de verloren seriespoel met serieWEERSTAND, en serieweerstand tilt het laag op precies de brede, gedempte manier die V43 buiten het budget heeft gelaten. De dissipatie beweegt mee (46,1 → 52,5 %). **De twee helften ruilen dus tegen elkaar, en één ervan begrenzen verplaatst het ontwerp naar de andere.** Dat maakt het ankerbesluit (A5e.2) niet alleen onafgemaakt maar nu ook dringend: zolang niemand zegt hoeveel resistieve lift gewénst is, heeft de zoektocht daar een onbewaakte uitweg. Het is óók het scherpste argument voor de LCR-/parallel-R-vraag: een LCR over de driver op f_p verlaagt de piek zelf en zou beide helften tegelijk kleiner maken in plaats van de ene in de andere te duwen.
+
+  **DE ACHT VERWORPEN KANDIDATEN, met reden en met wat de geweigerde tune had bereikt** (V31-vorm; het verslag drukt ze af omdat een kandidaat die niets oplevert anders onzichtbaar is):
+
+  | kandidaat | geweigerd door | de geweigerde tune stond op | reden |
   |---|---|---|---|
-  | 0,00 Ω | 0,000 dB | 2,857 mH | 2,857 mH |
-  | 0,25 Ω | 0,506 dB | 2,662 mH | 3,008 mH |
-  | **0,50 Ω** | **0,967 dB** | **2,432 mH** | **3,162 mH** |
-  | 1,00 Ω | 1,798 dB | 1,806 mH | 3,493 mH |
-  | 1,50 Ω | 2,518 dB | **geen grens** | 3,846 mH |
-  | 1,70 Ω | 2,777 dB | **geen grens** | 3,992 mH |
-  | 2,00 Ω | 3,139 dB | **geen grens** | 4,215 mH |
-  | 2,60 Ω | 3,781 dB | **geen grens** | 4,665 mH |
-  | 3,00 Ω | 4,156 dB | **geen grens** | 4,938 mH |
-  | 3,76 Ω | 4,776 dB | **geen grens** | 5,465 mH |
+  | 396,7 · 1294 | gate | 2,55 Ω · ±71,47 dB · RMS 1,05 | M-B/\|Z\|: 2,55 Ω onder de gestelde 2,60 |
+  | 396,7 · 1491,4 | gate | 2,55 Ω · ±71,91 dB · RMS 1,07 | M-B/\|Z\|: 2,55 Ω onder de gestelde 2,60 |
+  | 466,5 · 1294 | protection | 2,58 Ω · ±73,94 dB · RMS 1,96 | tweeter protection got worse |
+  | 466,5 · 1491,4 | protection | 2,57 Ω · ±73,43 dB · RMS 2,08 | tweeter protection got worse |
+  | 548,5 · 1294 | gate | 0,09 Ω · ±73,27 dB · RMS 1,60 | M-B/\|Z\|: 0,01 Ω onder de gestelde 2,60 |
+  | 548,5 · 1491,4 | gate | 0,10 Ω · ±72,06 dB · RMS 1,28 | M-B/\|Z\|: 0,01 Ω onder de gestelde 2,60 |
+  | 548,5 · 1719 | protection | 2,82 Ω · ±72,36 dB · RMS 2,05 | tweeter protection got worse |
+  | 548,5 · 1981,2 | gate | 2,59 Ω · ±72,74 dB · RMS 1,72 | M-B/\|Z\|: 2,27 Ω onder de gestelde 2,60 |
 
-  Bij 0,5 Ω — de padweerstand waarop de staande klasse-A-referentie berekend is — is de resistieve lift **0,967 dB van de gestelde 2,5**, dus 39 % van het budget. De premisse van de opdracht ("bij lage pad-R was de lift klein") is daarmee onwaar, en het plafond gaat van 2,432 naar 3,162 mH.
-
-  **En de tweede helft van de tabel is de grotere verandering.** Op de som verdwijnt de grens boven ~1,5 Ω volledig (V42's negatieve resultaat); op de opslingering is er **altijd** een grens, want bij L = 0 is de opslingering per definitie exact nul. De inversie verplaatsen maakt het budget dus niet strenger of losser — het maakt hem **overal werkzaam**, waar hij vandaag op de helft van de ontwerpen zwijgt. Dat is een andere eis dan de gestelde, en het getal erbij is een gestelde eis en dus het besluit van de ontwerper (P4).
-
-  **WAT DAT BESLUIT MOEILIJK MAAKT, in één zin met getallen.** De motivering van het budget is een spoelregel: *~4,7 mH bij 8 Ω, dus de helft bij dit ~4 Ω wooferpaar* — ongeveer 2,35 mH. Op de SOM gemeten levert 2,5 dB bij lage padweerstand precies dat (2,43 mH). Op de OPSLINGERING gemeten levert 2,5 dB bij HUIDIG's eigen 3,76 Ω een plafond van **5,47 mH** — meer dan het dubbele van de regel waaruit het getal komt, en meer dan de 4,7 mH die voor een 8 Ω-driver geldt. **Een budget van 2,5 dB op de resonante component is dus aanzienlijk losser dan de vuistregel die het moest vangen**, ook al is het de grootheid waarover die vuistregel gaat.
+  **Geen van de acht is door het LF-budget geweigerd, en dat kan ook niet:** M-D heeft geen poort-id en het budget begrenst de zoekruimte in plaats van een uitkomst te veroordelen. Wat ze weigert is de versterkervloer (vijf) en de tweeterbescherming (drie) — dezelfde twee die V42's veld ook dunden. **De vier laagste M-T-kruispunten (1294 en 1491,4 Hz) leveren op geen enkele wooferkruising een netwerk**, en dat patroon staat er nu drie corpora achter elkaar: het is een eigenschap van deze drivers en niet van deze eis.
 
   ---
 
-  **WAT BEWUST NIET GEDAAN IS, en het zijn drie dingen die bij elkaar horen.**
+  **EEN OPEN PUNT DAT V43 GROTER MAAKT DAN HET WAS.** Het plafond wordt tijdens de run ÉÉN KEER opgelost, bij de padweerstand van het ZAAD, en daarna ligt het vast — terwijl de zoektocht die padweerstand vervolgens verandert (en blijkens de liftkolom systematisch omhóóg). Onder V42 was dat zelden merkbaar omdat de grens op de helft van de ontwerpen helemaal niet bond; sinds V43 bindt zij altijd, dus het verschil tussen zaad- en leveringspadweerstand vertaalt zich nu in élke run naar een plafond dat strenger of losser is dan de geleverde netlist verdient. Gemeten voorbeeld uit dit corpus: `KAND_V2_4` levert 5,80 Ω padweerstand af, en bij díe padweerstand staat de eis 4,83 mH toe — terwijl de grens bij een zaad zonder padwerk op 2,13 mH wordt opgelost. Een factor 2,3 tussen wat de zoektocht kreeg en wat de geleverde netlist verdiend zou hebben. **Open**, en het is een eigen sessie waard: een grens die tijdens de zoektocht meebeweegt is een ander mechanisme dan een grens uit een doos.
 
-  1. De inversie is **niet** verplaatst: `bump-series-l` lost nog steeds tegen `extraDb` op. Verplaatsen zou de klasse-A-referentie met 30 % verschuiven en het budget van "zwijgt op de helft" naar "bindt overal" brengen, allebei zonder dat de ontwerper het getal heeft kunnen herijken.
-  2. `gestelde_eisen.lf_bult_budget_dB` is **niet** hernoemd. De naam hoort bij de grootheid waartegen hij handhaaft, en die is niet veranderd.
-  3. Het veld is **niet** geregenereerd. Dat kost sinds V41 ruim vier uur en zou tegen een budgetgetal draaien dat na deze meting kan wijzigen.
+  ---
 
-  Wat wél gebouwd is, staat los van dat besluit en is compleet: de metriek, de transform, hun versies, de vier testsoorten, de klasse-B-referenties op élke bevroren netlist (`v43_ontleding`), de optel-assert over het hele casusboek, en het meetscript. `extraDb` is bit-identiek gebleven — het referentiebestand kreeg 471 bladeren erbij en veranderde er nul.
-
-  **DE DRIE OPTIES DIE NU OP TAFEL LIGGEN,** en zij zijn scherper dan de LCR-vraag van V42 omdat de ontleding zegt wélke helft welk mechanisme is:
-
-  1. **Twee eisen in plaats van één.** Een budget op `resonantDb` (de spoelregel, waar hij thuishoort) én een aparte grens op `liftDb`. Dat tweede is dan géén nieuwe eis maar het ankerbesluit (A5e.2) onder een andere naam: hoeveel van HUIDIG's 4,69 dB lift is gewénst baffle-step-werk?
-  2. **Één eis, geherijkt.** Het budget verhuist naar `resonantDb` en het getal wordt opnieuw gesteld — 2,5 is dan te ruim, want het laat op HUIDIG's pad 5,47 mH toe waar de vuistregel 2,35 zegt.
-  3. **De eis uitdrukken op R_pad + jωL samen** (V42's derde optie). Dat is precies de grootheid die de tabel hierboven meet: de kolom "lift bij L = 0" ís de resistieve term van diezelfde bronimpedantie. De ontleding maakt deze optie berekenbaar in plaats van alleen bedenkbaar.
-
-  Geen van de drie is gebouwd, en optie 1 raakt A5e.2, dat geparkeerd is.
+  **WAT ER NIET GEBOUWD IS.** Geen ankerbesluit (A5e.2 blijft geparkeerd, en de liftkolom hierboven is precies waarom hij dringend is), geen LCR-generatie, geen wijziging aan V42's som-plafond-machinerie, en geen v2-default die een casus-1-getal is: 1,4 dB staat uitsluitend in `manifest_en_geometrie.gestelde_eisen` en de fixture leest hem daarvandaan.
 
 ## Casus S1 — synthetische grondwaarheid voor de R_e-schatter (F3b, 26-08-2026)
 

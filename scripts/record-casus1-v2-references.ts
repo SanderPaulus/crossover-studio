@@ -34,6 +34,7 @@ import {
   casus1Files,
   casus1Filter,
   casus1Geometry,
+  casus1LfResonantBudgetDb,
   casus1Manifest,
   loadGolden,
 } from '../src/lib/engine2/casus1.fixture.ts';
@@ -230,6 +231,17 @@ const CHAIN_GRID_LO_HZ = CASUS1_V2_GRID[0];
  * rather than a plausible-sounding reason that belongs to a different corpus.
  */
 const DATED_REASON: Record<string, string> = {
+  V42:
+    'HET GEDATEERDE V42-CORPUS. Bevroren terwijl het LF-bult-budget wel GESTELD was maar op de ' +
+    'verkeerde GROOTHEID: op `extraDb`, de SOM van de brede resistieve lift en de smalle ' +
+    'resonante opslingering. Twee gevolgen, allebei gemeten (V43). (1) De eis veroordeelde ' +
+    'NIVEAUWERK mee: alle drie de referentiefilters overschreden haar terwijl hun spoelen niets ' +
+    'toevoegden — HUIDIG 4,69 dB lift tegen −0,94 dB opslingering. (2) Boven ongeveer 1,5 ohm ' +
+    'padweerstand was het budget op vóórdat er een spoel bestond, dus leverde de inversie GEEN ' +
+    'grens en zweeg de eis op de helft van de ontwerpen. Deze vier zijn onderdeel voor onderdeel ' +
+    'identiek aan V41_KAND_1, 3, 5 en 8 — het gestelde budget verwijderde bij V42 de helft van ' +
+    'het veld en veranderde geen enkel ontwerp dat overbleef. Zij blijven staan als de ' +
+    '"vóór"-helft van de V43-vergelijking. Meetobject, GEEN ontwerp: mag niet gebouwd worden.',
   V41:
     'HET GEDATEERDE V41-CORPUS. Bevroren terwijl het LF-BULT-BUDGET (A4 M-D) nog niet GESTELD was. ' +
     'Geen enkele A5d.6-inversie begrensde de seriespoel van de laagste weg, dus de zoektocht koos ' +
@@ -675,6 +687,50 @@ const decompositionRecord = {
 };
 
 raw.manifest_en_geometrie.v43_ontleding = decompositionRecord;
+
+/* ------------------------------------------------------------------ *
+ * V43 — wat het GEHERIJKTE budget op het levende corpus doet
+ * ------------------------------------------------------------------ */
+
+/**
+ * De opvolger van `v42_bult_bevinding`, op de grootheid die vandaag geldt.
+ *
+ * Waarom hij afgeleid is en niet met de hand geschreven: de V42-versie noemde
+ * het LEVENDE corpus en werd daarmee onwaar zodra dat corpus opnieuw opgewekt
+ * werd. Deze wordt bij elke regeneratie meegeschreven, en
+ * `frozenNetlistGates.test.ts` legt hem naast een verse meting.
+ */
+const budgetRecord = (() => {
+  /** Het GESTELDE budget, uit het manifest — nooit hier geschreven (P6). */
+  const budgetDb = casus1LfResonantBudgetDb(golden);
+  const live = Object.keys(netlists).filter((k) => /^KAND_V2_\d+$/.test(k));
+  const resonantOf = (key: string): number | null =>
+    report(key).metrics.lfBump[0]?.result.resonantDb ?? null;
+  const rows = live.map((key) => ({ netlist: key, opslingering_dB: r2(resonantOf(key)) }));
+  const over = rows.filter((r) => r.opslingering_dB !== null && r.opslingering_dB > (budgetDb ?? Infinity));
+  const baselines = ['HUIDIG', 'KAND_A', 'KAND_B'].map((key) => ({
+    netlist: key,
+    opslingering_dB: r2(resonantOf(key)),
+  }));
+  return {
+    _:
+      'V43 — WAT HET GEHERIJKTE BUDGET OP HET LEVENDE CORPUS DOET. De eis is sinds V43 1,4 dB op ' +
+      'lfBump().resonantDb (gestelde_eisen.lf_opslingering_budget_dB), niet meer 2,5 dB op ' +
+      'extraDb. Twee dingen horen hier te staan en zij zijn allebei afgeleid: hoeveel van het ' +
+      'levende veld de eis haalt, en wat de drie REFERENTIEFILTERS van de ontwerper op dezelfde ' +
+      'grootheid meten. Dat tweede is het bewijs dat de eis geen bouwbaar ontwerp uitsluit - de ' +
+      'spiegel van de versterkervloer, die onder V42 juist ONTBRAK omdat alle drie de baselines ' +
+      'de toenmalige eis overschreden.',
+    gesteld_budget_dB: budgetDb,
+    grootheid: 'lfBump().resonantDb',
+    levend_corpus: rows.length,
+    eroverheen: over.length,
+    per_netlist: rows,
+    referentiefilters: baselines,
+  };
+})();
+
+raw.manifest_en_geometrie.v43_budget_bevinding = budgetRecord;
 
 raw.manifest_en_geometrie.v2_herkomst = {
   _:

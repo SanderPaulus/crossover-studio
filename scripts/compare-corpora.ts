@@ -13,8 +13,9 @@
  * So both halves are named, every dated corpus stays addressable, and the
  * default is the newest comparison.
  *
- *   corpora: `v30` · `v32` · `v33sweep` · `v33` · `v34` · `v37` · `v38fix` · `v41` · `live`
- *   default: `v41` → `live`   (casebook V42)
+ *   corpora: `v30` · `v32` · `v33sweep` · `v33` · `v34` · `v37` · `v38fix` · `v41` ·
+ *            `v42` · `live`
+ *   default: `v42` → `live`   (casebook V43)
  *   V32's own table: `npx vite-node scripts/compare-corpora.ts v30 v32`
  *   V33's own table: `npx vite-node scripts/compare-corpora.ts v32 v33`
  *   V33's two arms:  `npx vite-node scripts/compare-corpora.ts v33sweep v33`
@@ -22,6 +23,7 @@
  *   V37's own table: `npx vite-node scripts/compare-corpora.ts v34 v37`
  *   V38-fix's table: `npx vite-node scripts/compare-corpora.ts v37 v38fix`
  *   V41's own table: `npx vite-node scripts/compare-corpora.ts v38fix v41`
+ *   V42's own table: `npx vite-node scripts/compare-corpora.ts v41 v42`
  *
  * WHY A FILE COMPARISON AND NOT TWO RUNS. `measure-v30-floor-goal.ts` ran the
  * same field twice and switched one option between the arms, because V30's
@@ -50,7 +52,7 @@ import {
   casus1Files,
   casus1Filter,
   casus1Geometry,
-  casus1LfBumpBudgetDb,
+  casus1LfResonantBudgetDb,
   casus1Manifest,
   loadGolden,
 } from '../src/lib/engine2/casus1.fixture.ts';
@@ -152,6 +154,7 @@ const DATED: Record<string, { block: string; name: string }> = {
   v37: { block: 'v37_corpus', name: 'V37' },
   v38fix: { block: 'v38fix_corpus', name: 'V38-fix' },
   v41: { block: 'v41_corpus', name: 'V41' },
+  v42: { block: 'v42_corpus', name: 'V42' },
 };
 
 const corpusOf = (id: string): Corpus => {
@@ -161,7 +164,7 @@ const corpusOf = (id: string): Corpus => {
   throw new Error(`unknown corpus "${id}" — use ${[...Object.keys(DATED), 'live'].join(', ')}`);
 };
 
-const [beforeId = 'v41', afterId = 'live'] = process.argv.slice(2);
+const [beforeId = 'v42', afterId = 'live'] = process.argv.slice(2);
 const before = corpusOf(beforeId);
 const after = corpusOf(afterId);
 
@@ -227,6 +230,17 @@ interface Row {
    */
   bultDb: number | null;
   seriesLmH: number | null;
+  /**
+   * V43 — DE BULT ONTLEED, en `opslingeringDb` is sinds V43 de doelgrootheid.
+   *
+   * `liftDb` is wat het RESISTIEVE EQUIVALENT van hetzelfde netwerk in zijn
+   * eentje aan het laag doet; `opslingeringDb` is wat de reactanties daar
+   * bovenop leggen. Zij tellen per constructie op tot `bultDb`, dus de oude
+   * kolom blijft leesbaar naast de twee nieuwe. Het GESTELDE budget staat sinds
+   * V43 op `opslingeringDb`: de lift is niveauwerk en hoort bij A5e.2.
+   */
+  liftDb: number | null;
+  opslingeringDb: number | null;
 }
 
 const r2 = (v: number | null | undefined): number | null =>
@@ -387,6 +401,8 @@ function measure(key: string): Row {
     groups: correctionGroupsOf(key),
     bultDb: r2(rep.metrics.lfBump[0]?.result.extraDb ?? null),
     seriesLmH: r2(seriesInductanceMH(key, rep.metrics.lfBump[0]?.driver ?? null)),
+    liftDb: r2(rep.metrics.lfBump[0]?.result.liftDb ?? null),
+    opslingeringDb: r2(rep.metrics.lfBump[0]?.result.resonantDb ?? null),
   };
 }
 
@@ -412,9 +428,12 @@ console.log(
     'W-M fase TUNER vóór → ná | M-T fase RAPPORT vóór → ná | M-T fase TUNER vóór → ná | ' +
     'dissipatie % vóór → ná | grootste R (W) vóór → ná | EPDR vóór → ná | ' +
     'Q_es× vóór → ná | smalste piek ná (dB @ Hz) | correctiegroepen vóór → ná | ' +
-    'LF-bult dB vóór → ná | serie-L mH vóór → ná |',
+    'LF-bult dB vóór → ná | lift dB vóór → ná | opslingering dB vóór → ná | ' +
+    'serie-L mH vóór → ná |',
 );
-console.log('|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|');
+console.log(
+  '|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|',
+);
 
 let beforeClears = 0;
 let afterClears = 0;
@@ -454,6 +473,8 @@ for (const label of labels) {
       `${a && a.narrowPeakDb !== null ? `${num(a.narrowPeakDb)} @ ${num(a.narrowPeakHz)}` : '—'} | ` +
       `${groupCell(b?.groups)} → ${a ? groupCell(a.groups) : outcome?.verwerping ? '**verworpen**' : 'geen netlist'} | ` +
       `${num(b?.bultDb ?? null)} → ${afterCell(a?.bultDb ?? null)} | ` +
+      `${num(b?.liftDb ?? null)} → ${afterCell(a?.liftDb ?? null)} | ` +
+      `${num(b?.opslingeringDb ?? null)} → ${afterCell(a?.opslingeringDb ?? null)} | ` +
       `${num(b?.seriesLmH ?? null)} → ${afterCell(a?.seriesLmH ?? null)} |`,
   );
 }
@@ -519,19 +540,25 @@ const roleTotals = (rows: Row[]) => {
 /* V42 — de doelgrootheid als corpusregel, met het gestelde budget ernaast.
  * Het budget wordt GELEZEN uit het manifest en nooit hier geschreven (P6). */
 {
-  const budget = casus1LfBumpBudgetDb(golden);
+  const budget = casus1LfResonantBudgetDb(golden);
   const overCount = (rows: Row[]) =>
-    budget === null ? null : rows.filter((r) => r.bultDb !== null && r.bultDb > budget).length;
+    budget === null
+      ? null
+      : rows.filter((r) => r.opslingeringDb !== null && r.opslingeringDb > budget).length;
   console.log(
     `LF-bult (M-D) gemiddeld: ${fmt(avg(measuredBefore.map((r) => r.bultDb)))} dB vóór → ` +
-      `${fmt(avg(measuredAfter.map((r) => r.bultDb)))} dB ná; totale serie-L van de laagste weg ` +
+      `${fmt(avg(measuredAfter.map((r) => r.bultDb)))} dB ná, ontleed in lift ` +
+      `${fmt(avg(measuredBefore.map((r) => r.liftDb)))} → ${fmt(avg(measuredAfter.map((r) => r.liftDb)))} dB ` +
+      `en opslingering ${fmt(avg(measuredBefore.map((r) => r.opslingeringDb)))} → ` +
+      `${fmt(avg(measuredAfter.map((r) => r.opslingeringDb)))} dB; totale serie-L van de laagste weg ` +
       `${fmt(avg(measuredBefore.map((r) => r.seriesLmH)))} → ` +
       `${fmt(avg(measuredAfter.map((r) => r.seriesLmH)))} mH. ` +
       (budget === null
         ? 'Geen budget gesteld, dus dit is een kolom en geen eis (P4).'
-        : `Gesteld budget ${budget} dB: ${overCount(measuredBefore)} van ` +
+        : `Gesteld budget ${budget} dB OP DE OPSLINGERING (V43): ${overCount(measuredBefore)} van ` +
           `${measuredBefore.length} eroverheen vóór, ${overCount(measuredAfter)} van ` +
-          `${measuredAfter.length} ná.`),
+          `${measuredAfter.length} ná. De LIFT wordt hier niet geoordeeld — dat is ankerdomein ` +
+          '(A5e.2).'),
   );
 }
 console.log(`uit de shortlist gevallen: ${gone.length}${gone.length ? ` — ${gone.map(short).join('; ')}` : ''}`);

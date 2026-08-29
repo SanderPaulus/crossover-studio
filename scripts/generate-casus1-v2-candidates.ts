@@ -55,7 +55,7 @@ import type { GriddedResponse } from '../src/lib/dsp.ts';
 import { serializeFilter } from '../src/lib/filterFile.ts';
 import {
   CASUS1_AMP_MIN_LOAD_OHM,
-  CASUS1_LF_BUMP_BUDGET_DB,
+  CASUS1_LF_RESONANT_BUDGET_DB,
   CASUS1_V2_BUDGETS,
   CASUS1_V2_GATES,
   CASUS1_V2_BAND_HZ,
@@ -443,26 +443,32 @@ const meetopstelling = {
     'slaagt — hij rapporteert zijn waarde en oordeelt niets.',
   v2_budgetten_gewapend: Object.keys(lastPayload.v2.budgets ?? {}).sort(),
   v2_budgetten_waarom:
-    CASUS1_LF_BUMP_BUDGET_DB !== null
-      ? `M-D IS GEWAPEND, met bron GESTELD: ${CASUS1_LF_BUMP_BUDGET_DB} dB uit ` +
-        '`manifest_en_geometrie.gestelde_eisen.lf_bult_budget_dB`, langs hetzelfde pad als de ' +
-        'versterkervloer en met dezelfde P4-regel (leeg veld = geen inversie). Hij wapent GEEN ' +
-        'poort: M-D heeft geen poort-id in `GATE_IDS` en staat in A4 onder de rapporterende ' +
+    CASUS1_LF_RESONANT_BUDGET_DB !== null
+      ? `M-D IS GEWAPEND, met bron GESTELD: ${CASUS1_LF_RESONANT_BUDGET_DB} dB uit ` +
+        '`manifest_en_geometrie.gestelde_eisen.lf_opslingering_budget_dB`, langs hetzelfde pad ' +
+        'als de versterkervloer en met dezelfde P4-regel (leeg veld = geen inversie). Hij wapent ' +
+        'GEEN poort: M-D heeft geen poort-id in `GATE_IDS` en staat in A4 onder de rapporterende ' +
         'metrieken. Wat hij doet is de A5d.6-inversie `bump-series-l` van invoer voorzien, en ' +
         'die levert een PLAFOND op de seriespoel van de laagste weg — opgelost op de gemeten ' +
         'Z-piek en het gemeten nabije veld, bij de padweerstand van het zaad. Sinds V42 is dat ' +
         'plafond een SOM over de vrije seriespoelen van de weg en niet alleen een grens per ' +
         'component: zeven van de acht V41-netlists droegen twee spoelen in serie en ontsnapten ' +
-        'daarmee aan de per-component-versie. Het evaluatiebudget komt nog steeds van de tuner ' +
-        'zelf (zie de vingerafdruk: `budget=tuner`).'
+        'daarmee aan de per-component-versie. SINDS V43 is de GROOTHEID de resonante component ' +
+        '(`lfBump().resonantDb`) en niet de som van lift en opslingering, en daarmee levert de ' +
+        'inversie ALTIJD een plafond: bij L = 0 is de opslingering per definitie nul, dus het ' +
+        'budget kan niet op zijn vóór er een spoel bestaat. Op `extraDb` gebeurde dat op zes van ' +
+        'de negen bevroren netlists. Het evaluatiebudget komt nog steeds van de tuner zelf (zie ' +
+        'de vingerafdruk: `budget=tuner`).'
       : 'LEEG. De A5d.6-inversies begrenzen waarden; op deze route is er geen gesteld budget dat ' +
         'de zoektocht inperkt. Het evaluatiebudget komt van de tuner zelf (zie de vingerafdruk: ' +
         '`budget=tuner`).',
   /* V42 — het gestelde budget zelf, naast de lijst met gewapende namen. Een
-   * naam zonder waarde laat de lezer raden waar de grens lag. */
-  lf_bult_budget_dB: CASUS1_LF_BUMP_BUDGET_DB,
-  lf_bult_budget_herkomst:
-    CASUS1_LF_BUMP_BUDGET_DB !== null
+   * naam zonder waarde laat de lezer raden waar de grens lag. Sinds V43 heet
+   * het veld naar de GROOTHEID die het begrenst; op `extraDb` heette het
+   * `lf_bult_budget_dB` en stond het op 2,5. */
+  lf_opslingering_budget_dB: CASUS1_LF_RESONANT_BUDGET_DB,
+  lf_opslingering_budget_herkomst:
+    CASUS1_LF_RESONANT_BUDGET_DB !== null
       ? 'GESTELD door de ontwerper, gelezen uit `manifest_en_geometrie.gestelde_eisen` — niet ' +
         'afgeleid en nergens als default in `src/lib/engine2/` (P6).'
       : 'NIET GESTELD: geen inversie, geen plafond, en de bult wordt alleen gerapporteerd (P4).',

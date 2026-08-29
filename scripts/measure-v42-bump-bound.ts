@@ -36,7 +36,7 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import {
   CASUS1_DIR, casus1Files, casus1Geometry, casus1Manifest, casus1Filter,
-  casus1LfBumpBudgetDb, loadGolden,
+  casus1LfResonantBudgetDb, loadGolden,
 } from '../src/lib/engine2/casus1.fixture.ts';
 import { casus1V2Facts } from '../src/lib/engine2/casus1V2.fixture.ts';
 import { buildReport } from '../src/lib/engine2/report.ts';
@@ -51,7 +51,7 @@ import type { Complex } from '../src/lib/complex.ts';
 const golden = loadGolden();
 const manifest = casus1Manifest(golden);
 const files = casus1Files(manifest);
-const budget = casus1LfBumpBudgetDb(golden)!;
+const budget = casus1LfResonantBudgetDb(golden)!;
 const report = buildReport({
   manifest, files, filter: casus1Filter('HUIDIG', manifest, files, golden),
   geometry: casus1Geometry(golden),

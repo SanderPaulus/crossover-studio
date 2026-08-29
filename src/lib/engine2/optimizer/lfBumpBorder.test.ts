@@ -47,7 +47,7 @@ import {
   casus1Files,
   casus1Filter,
   casus1Geometry,
-  casus1LfBumpBudgetDb,
+  casus1LfResonantBudgetDb,
   casus1Manifest,
   loadGolden,
 } from '../casus1.fixture.ts';
@@ -177,7 +177,7 @@ describe('F4b2 — the LF-lift bound is the same on both routes', () => {
     );
     expect(solved).not.toBeNull();
     expect(Math.abs(solved!.atBudgetDb - P.budget_dB)).toBeLessThanOrEqual(TOL.dB);
-    expect(Math.abs(solved!.maxHenry / H_PER_MH - REF.maxL_bij_Rs0_5_budget2_5dB_mH)).toBeLessThan(0.01);
+    expect(Math.abs(solved!.maxHenry / H_PER_MH - REF.maxL_bij_Rs0_5_budget1_4dB_opslingering_mH)).toBeLessThan(0.01);
   });
 
   it('the CHAIN grid cannot carry this inversion, and fails loudly rather than quietly', () => {
@@ -205,7 +205,7 @@ describe('F4b2 — the LF-lift bound is the same on both routes', () => {
     // search box would have been given.
     expect(absurd!.maxHenry / H_PER_MH).toBeGreaterThan(1000);
     // The sweep-based answer is the real one, and they are nothing alike.
-    expect(REF.maxL_bij_Rs0_5_budget2_5dB_mH).toBeLessThan(10);
+    expect(REF.maxL_bij_Rs0_5_budget1_4dB_opslingering_mH).toBeLessThan(10);
   });
 
   it('the fingerprint moves with the near field and with the sweep', () => {
@@ -487,43 +487,49 @@ describe('V42 — a split series chain does not escape the LF-lift bound', () =>
     expect(box.notes.join(' ')).not.toContain('SUM of');
   });
 });
-
 /* ================================================================== *
- * V43 — waar de inversie landt als zij de RESONANTE component oplost
+ * V43 — de inversie op de RESONANTE component, in drie vormen
  * ================================================================== */
 
 describe('V43 — the recorded inversion finding, re-measured', () => {
   /**
-   * WHY THIS BLOCK EXISTS AND WHAT IT DELIBERATELY DOES NOT DO.
+   * WHY THIS BLOCK EXISTS. V43 moved `bump-series-l` from `extraDb` — the SUM
+   * of the broad resistive lift and the narrow resonant amplification — onto
+   * the resonant half alone, AND re-derived the stated budget on the new
+   * quantity (2.5 dB → 1.4 dB, from the designer's own coil rule). Either half
+   * of that on its own would have been a mistake, and the case book records all
+   * three columns so a reader can see why:
    *
-   * V43 split M-D's lift into a resistive and a resonant half and set out to
-   * move this inversion onto the second one. The session's own instruction was
-   * to check first that the class-A reference — the ceiling at 0.5 Ω of path
-   * resistance — barely moves, on the reasoning that at a low path resistance
-   * the resistive lift is small. THE MEASUREMENT REFUSED THAT REASONING: at
-   * 0.5 Ω the lift alone is 0.967 dB of the stated 2.5, and the ceiling moves
-   * from 2.432 to 3.162 mH. So the inversion was NOT moved, and what is
-   * asserted here is the measurement that stopped it.
+   *   · on the SUM at 2.5 dB the requirement is silent above ~1.5 Ω of path
+   *     resistance — the budget is spent before a coil exists, and there is no
+   *     ceiling at all;
+   *   · on the RESONANT half at the old 2.5 dB the ceiling at 0.5 Ω jumps from
+   *     2.432 to 3.162 mH, +30 % — the requirement quietly loosens;
+   *   · on the RESONANT half at the re-derived 1.4 dB it lands on 2.322 mH,
+   *     which is where it was, and it exists everywhere.
    *
-   * Nothing here re-implements a bisection. The recorded ceilings are checked
-   * ON THE METRIC — the lift at the recorded inductance must be the budget —
-   * which is the same rule `parameters.maxL_bult.assert` already states for the
-   * standing reference, and it is why `lfBumpForSeriesRL` is exported.
+   * Nothing here re-implements a bisection. Every recorded ceiling is checked
+   * ON THE METRIC — at the noted inductance the quantity must be the budget —
+   * which is the rule `parameters.maxL_bult.assert` already states, and it is
+   * why `lfBumpForSeriesRL` is exported.
    */
-  const BUDGET_DB = casus1LfBumpBudgetDb(golden)!;
+  const BUDGET_DB = casus1LfResonantBudgetDb(golden)!;
   const FINDING = (golden.manifest_en_geometrie as unknown as {
     v43_inversie_bevinding?: {
-      budget_dB: number;
+      budget_op_de_som_dB: number;
+      budget_op_de_opslingering_dB: number;
       referentie_bij_pad_R_0_5: {
-        op_de_som_mH: number;
-        op_de_opslingering_mH: number;
+        op_de_som_2_5_mH: number;
+        op_de_opslingering_2_5_mH: number;
+        op_de_opslingering_1_4_mH: number;
         lift_bij_L0_dB: number;
       };
       per_pad_R: {
         pad_R_ohm: number;
         lift_bij_L0_dB: number;
-        op_de_som_mH: number | null;
-        op_de_opslingering_mH: number;
+        op_de_som_2_5_mH: number | null;
+        op_de_opslingering_2_5_mH: number;
+        op_de_opslingering_1_4_mH: number;
       }[];
     };
   }).v43_inversie_bevinding;
@@ -551,82 +557,102 @@ describe('V43 — the recorded inversion finding, re-measured', () => {
     };
   };
 
+  /** The SUM at a given inductance — what the V42 form solved against. */
+  const sumAt = (pathR: number, mH: number): number =>
+    lfBumpForSeriesRL(inputAt(pathR), mH * H_PER_MH)!;
+  /** The RESONANT half — what the live form solves against. */
+  const resonantAt = (pathR: number, mH: number): number => sumAt(pathR, mH) - sumAt(pathR, 0);
+
   it('the case book records the finding, on the budget that is actually stated', () => {
     expect(FINDING, 'the case book records no V43 inversion finding').toBeTruthy();
-    expect(FINDING!.budget_dB).toBe(BUDGET_DB);
+    expect(FINDING!.budget_op_de_opslingering_dB).toBe(BUDGET_DB);
+    expect(FINDING!.budget_op_de_som_dB).toBeGreaterThan(BUDGET_DB);
   });
 
   it('at every recorded path resistance, the lift at L = 0 is what the record says', () => {
-    /* This is the whole mechanism in one line: at L = 0 the transfer is
-     * `Z/(Z + R)` — pure resistance — so this column IS the resistive half of
-     * the lift, measured by the same metric the budget is expressed in. */
+    /* The whole mechanism in one line: at L = 0 the transfer is `Z/(Z + R)` —
+     * pure resistance — so this column IS the resistive half, measured by the
+     * same metric the requirement is expressed in. It is also the zero of the
+     * live quantity, which is why the live column can never be empty. */
     for (const row of FINDING!.per_pad_R) {
-      const lift = lfBumpForSeriesRL(inputAt(row.pad_R_ohm), 0);
-      expect(lift, `${row.pad_R_ohm} Ω: no lift figure at L = 0`).not.toBeNull();
       expect(
-        Math.abs(lift! - row.lift_bij_L0_dB),
+        Math.abs(sumAt(row.pad_R_ohm, 0) - row.lift_bij_L0_dB),
         `${row.pad_R_ohm} Ω: the record says ${row.lift_bij_L0_dB} dB of resistive lift and the ` +
-          `metric reads ${lift!.toFixed(3)}`,
+          `metric reads ${sumAt(row.pad_R_ohm, 0).toFixed(3)}`,
       ).toBeLessThanOrEqual(TOL.dB);
+      expect(resonantAt(row.pad_R_ohm, 0)).toBeCloseTo(0, 12);
     }
   });
 
-  it('the ceilings ON THE SUM reproduce — including the ones that do not exist', () => {
-    /* V42's half of the table, re-measured through the production inversion.
-     * A `null` row is an assert too, and the sharper one: above roughly 1.5 Ω
-     * the budget is spent before any coil exists, so there IS no ceiling (V12)
-     * — and a session that quietly started returning 0 mH there would look
-     * like a tightening instead of the silence it is. */
+  it('the V42 column reproduces — including the rows where no ceiling existed', () => {
+    /* A `null` row is an assert too, and the sharper one: on the SUM, above
+     * roughly 1.5 Ω the budget is spent before any coil exists, so there IS no
+     * ceiling. That is what V43 removed, and a record that quietly lost it
+     * would make the change look smaller than it was. */
+    const B = FINDING!.budget_op_de_som_dB;
     for (const row of FINDING!.per_pad_R) {
-      const solved = maxSeriesInductanceFromBump(inputAt(row.pad_R_ohm), BUDGET_DB);
-      if (row.op_de_som_mH === null) {
+      if (row.op_de_som_2_5_mH === null) {
         expect(
-          solved,
-          `${row.pad_R_ohm} Ω: the record says the budget yields no ceiling here, and the ` +
-            'inversion produced one',
-        ).toBeNull();
-        // ...and the reason is exactly that the resistive half is already over.
-        expect(lfBumpForSeriesRL(inputAt(row.pad_R_ohm), 0)!).toBeGreaterThan(BUDGET_DB);
+          sumAt(row.pad_R_ohm, 0),
+          `${row.pad_R_ohm} Ω: the record says the old budget was already spent at L = 0`,
+        ).toBeGreaterThan(B);
       } else {
-        expect(solved, `${row.pad_R_ohm} Ω: the inversion produced no ceiling`).not.toBeNull();
-        expect(Math.abs(solved!.maxHenry / H_PER_MH - row.op_de_som_mH)).toBeLessThan(0.01);
+        expect(
+          Math.abs(sumAt(row.pad_R_ohm, row.op_de_som_2_5_mH) - B),
+          `${row.pad_R_ohm} Ω: at the recorded ${row.op_de_som_2_5_mH} mH the SUM is ` +
+            `${sumAt(row.pad_R_ohm, row.op_de_som_2_5_mH).toFixed(3)} dB, not ${B}`,
+        ).toBeLessThanOrEqual(TOL.dB);
       }
     }
   });
 
-  it('the ceilings ON THE RESONANT HALF reproduce, asserted on the metric', () => {
-    /* The column that does not exist in production, recorded because it is the
-     * finding. At the noted inductance the lift MINUS the lift at L = 0 — which
-     * is the resonant half by definition — has to be the budget. Same rule as
-     * the standing class-A reference: assert on the metric, not on the
-     * millihenry. */
+  it('the not-taken middle column reproduces too — quantity moved, budget left alone', () => {
+    const B = FINDING!.budget_op_de_som_dB;
     for (const row of FINDING!.per_pad_R) {
-      const input = inputAt(row.pad_R_ohm);
-      const atZero = lfBumpForSeriesRL(input, 0)!;
-      const atL = lfBumpForSeriesRL(input, row.op_de_opslingering_mH * H_PER_MH)!;
       expect(
-        Math.abs(atL - atZero - BUDGET_DB),
-        `${row.pad_R_ohm} Ω: at the recorded ${row.op_de_opslingering_mH} mH the resonant half ` +
-          `is ${(atL - atZero).toFixed(3)} dB, not the stated ${BUDGET_DB}`,
+        Math.abs(resonantAt(row.pad_R_ohm, row.op_de_opslingering_2_5_mH) - B),
+        `${row.pad_R_ohm} Ω: at ${row.op_de_opslingering_2_5_mH} mH the resonant half is ` +
+          `${resonantAt(row.pad_R_ohm, row.op_de_opslingering_2_5_mH).toFixed(3)} dB, not ${B}`,
       ).toBeLessThanOrEqual(TOL.dB);
     }
   });
 
-  it('and THAT is why the session stopped: the class-A reference moves by a third', () => {
-    /* The headline, as a claim that can fail. If a later measurement session
-     * ever brings these two together — a different reference frequency, a
-     * different near field — then the reason V43 stopped has evaporated and
-     * this test should say so rather than leave the case-book entry standing. */
-    const at05 = FINDING!.referentie_bij_pad_R_0_5;
-    expect(at05.op_de_som_mH).toBe(REF.maxL_bij_Rs0_5_budget2_5dB_mH);
-    const shift = (at05.op_de_opslingering_mH - at05.op_de_som_mH) / at05.op_de_som_mH;
-    expect(
-      shift,
-      'the two formulations now agree at 0.5 Ω — then the premise V43 stopped on is no longer ' +
-        'true and the inversion can simply be moved',
-    ).toBeGreaterThan(0.25);
-    // The reason they differ is not subtle and is worth pinning: at that path
-    // resistance the resistive half already spends a third of the budget.
-    expect(at05.lift_bij_L0_dB / BUDGET_DB).toBeGreaterThan(0.25);
+  it('the LIVE column comes out of the production inversion, everywhere', () => {
+    /* Not asserted on the metric alone this time but through
+     * `maxSeriesInductanceFromBump` itself, because the claim includes that a
+     * ceiling EXISTS at every path resistance — which is exactly what the V42
+     * form could not promise. */
+    for (const row of FINDING!.per_pad_R) {
+      const solved = maxSeriesInductanceFromBump(inputAt(row.pad_R_ohm), BUDGET_DB);
+      expect(solved, `${row.pad_R_ohm} Ω: the live inversion produced no ceiling`).not.toBeNull();
+      expect(
+        Math.abs(solved!.maxHenry / H_PER_MH - row.op_de_opslingering_1_4_mH),
+        `${row.pad_R_ohm} Ω: the record says ${row.op_de_opslingering_1_4_mH} mH and the ` +
+          `inversion solves ${(solved!.maxHenry / H_PER_MH).toFixed(3)}`,
+      ).toBeLessThan(0.01);
+      expect(Math.abs(solved!.atBudgetDb - BUDGET_DB)).toBeLessThanOrEqual(TOL.dB);
+      expect(Math.abs(solved!.resistiveLiftDb - row.lift_bij_L0_dB)).toBeLessThanOrEqual(TOL.dB);
+    }
+  });
+
+  it('grootheid AND budget both moved, and only together do they keep the ceiling', () => {
+    /* The claim that justifies the redefinition, as something that can fail.
+     * Moving the quantity alone would have loosened the bound by a third;
+     * moving it together with the re-derived budget leaves it within a few per
+     * cent of where V42 had it. If a later measurement ever breaks that pairing
+     * this goes red and the redefinition has to be argued again. */
+    const r = FINDING!.referentie_bij_pad_R_0_5;
+    expect(r.op_de_som_2_5_mH).toBe(REF._maxL_op_de_som_V42.waarde);
+    expect(r.op_de_opslingering_2_5_mH).toBe(REF._maxL_op_de_som_V42.waarde_zonder_herijking);
+    expect(r.op_de_opslingering_1_4_mH).toBe(REF.maxL_bij_Rs0_5_budget1_4dB_opslingering_mH);
+
+    const loosened = (r.op_de_opslingering_2_5_mH - r.op_de_som_2_5_mH) / r.op_de_som_2_5_mH;
+    const actual = Math.abs(r.op_de_opslingering_1_4_mH - r.op_de_som_2_5_mH) / r.op_de_som_2_5_mH;
+    expect(loosened, 'moving the quantity alone no longer loosens the bound').toBeGreaterThan(0.25);
+    expect(actual, 'the redefined bound is no longer close to the one it replaces').toBeLessThan(0.1);
+
+    // And the reason the middle column is so far out: at this path resistance
+    // the resistive half already spends a third of the old budget.
+    expect(r.lift_bij_L0_dB / FINDING!.budget_op_de_som_dB).toBeGreaterThan(0.25);
   });
 });

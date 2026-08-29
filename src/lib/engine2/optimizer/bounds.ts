@@ -172,13 +172,33 @@ export interface BumpInversionInput {
  * band the lift is judged on, where it is normalised and how coverage is
  * reported stays where A4 put it.
  *
- * Returns null when even L = 0 already exceeds the budget — which is not a
- * failure of the solve but the answer: at that path resistance no inductor
- * satisfies the budget. V12 documents exactly that case (at R_s = 2 Ω the
- * 2.5 dB budget is unreachable with any L), and reporting it as "0 mH" would
- * hide a driver-and-damping problem behind a component limit. V42 measured how
- * often that answer comes up on casus 1: six of nine frozen netlists, HUIDIG
- * among them.
+ * IT SOLVES AGAINST THE RESONANT HALF SINCE V43, and that is the single most
+ * consequential line in this file. Until V43 the budget was compared with the
+ * WHOLE lift, `extraDb`, and `extraDb` at L = 0 is not zero: `H_el = Z/(Z + R)`
+ * with no reactance at all already raises the peak relative to the reference,
+ * because |Z| is high at one and low at the other. The measured consequences on
+ * casus 1 were two, and both were wrong in the same direction:
+ *
+ *   · the budget condemned LEVEL WORK. All three of the designer's own
+ *     reference filters exceeded 2.5 dB while their coils added nothing —
+ *     HUIDIG reads 4.69 dB of resistive lift against −0.94 dB of resonant
+ *     amplification.
+ *   · above roughly 1.5 Ω of path resistance the budget was spent before any
+ *     coil existed, so this function returned null and there was NO bound at
+ *     all. Six of nine frozen netlists sat there, HUIDIG among them. (That is
+ *     the case V12 described, and it is now unreachable for this rule.)
+ *
+ * So the quantity is `resonantDb = extraDb(L) − extraDb(0)`: what the REACTANCE
+ * adds on top of the network's own resistive equivalent. At L = 0 it is exactly
+ * zero by construction, so a bound always exists — the requirement is never
+ * silent — and what it bounds is the coil, which is what the rule of thumb it
+ * comes from was ever about. The resistive half is not unbounded, it is simply
+ * not this rule's business: it is anchor work (A5e.2, target curve and damping
+ * margin).
+ *
+ * Returns null only when the METRIC returns nothing — missing near field,
+ * missing sweep, a band that no measurement covers. That is a data answer, not
+ * a design one, and the caller says which input was absent.
  *
  * `lfBumpForSeriesRL` is the transfer synthesis on its own, EXPORTED since V43
  * for one reason: the case book records what the lift is at L = 0 (the purely
@@ -214,34 +234,46 @@ export function lfBumpForSeriesRL(input: BumpInversionInput, henry: number): num
 export function maxSeriesInductanceFromBump(
   input: BumpInversionInput,
   budgetDb: number,
-): { maxHenry: number; atBudgetDb: number } | null {
-  const bumpAt = (henry: number): number | null => lfBumpForSeriesRL(input, henry);
-
-  const atZero = bumpAt(0);
+): { maxHenry: number; atBudgetDb: number; resistiveLiftDb: number } | null {
+  /* The purely resistive lift of this path: the SAME metric with no reactance
+   * in the chain, which is exactly what the network's resistive equivalent is
+   * for a series R+L. It is the zero of the quantity being bounded, and it is
+   * carried out so the caller can report what the search is not allowed to
+   * touch. */
+  const atZero = lfBumpForSeriesRL(input, 0);
   if (atZero === null) return null;
-  if (atZero > budgetDb) return null;
 
-  // Bracket: grow until the budget is exceeded, then bisect. The lift is
-  // monotone in L for a series inductor into a measured load — more series
-  // reactance at resonance is more lift — but the bracket is grown rather
-  // than assumed so a non-monotone measurement produces a conservative answer
-  // instead of a wrong one.
+  /** What the REACTANCE adds on top of that — the quantity the budget bounds. */
+  const resonantAt = (henry: number): number | null => {
+    const v = lfBumpForSeriesRL(input, henry);
+    return v === null ? null : v - atZero;
+  };
+
+  // Bracket: grow until the budget is exceeded, then bisect. The amplification
+  // is monotone in L for a series inductor into a measured load — more series
+  // reactance at resonance is more amplification — but the bracket is grown
+  // rather than assumed so a non-monotone measurement produces a conservative
+  // answer instead of a wrong one.
   let lo = 0;
   let hi = H_PER_MH; // 1 mH, a starting bracket in SI — not a limit.
   let guard = 0;
   while (guard++ < BOUND_BRACKET_DOUBLINGS) {
-    const v = bumpAt(hi);
+    const v = resonantAt(hi);
     if (v === null || v > budgetDb) break;
     lo = hi;
     hi *= 2;
   }
   for (let i = 0; i < BOUND_INVERSION_STEPS; i++) {
     const mid = (lo + hi) / 2;
-    const v = bumpAt(mid);
+    const v = resonantAt(mid);
     if (v !== null && v <= budgetDb) lo = mid;
     else hi = mid;
   }
-  return { maxHenry: lo, atBudgetDb: bumpAt(lo) ?? budgetDb };
+  return {
+    maxHenry: lo,
+    atBudgetDb: resonantAt(lo) ?? budgetDb,
+    resistiveLiftDb: atZero,
+  };
 }
 
 /**
@@ -599,10 +631,10 @@ export function invertBudgets(
         );
         if (solved === null) {
           notes.push(
-            `${w.driver}: at ${w.pathROhm.toFixed(2)} Ω of path resistance the ${budgets.lfBumpBudgetDb} dB ` +
-              'lift budget is already exceeded with no series inductor at all. No inductance ' +
-              'satisfies it — that is a damping and driver question, not a component limit ' +
-              '(casebook V12).',
+            `${w.driver}: M-D produced no lift figure on the measurements handed over, so the ` +
+              'series-inductance bound could not be solved. Since V43 this can only be a DATA ' +
+              'answer — the budget is on the resonant half, which is exactly zero without a ' +
+              'coil, so it can never be spent before the search begins.',
           );
         } else {
           bounds.push({
@@ -613,14 +645,24 @@ export function invertBudgets(
             unit: 'H',
             slack: false,
             parameters: {
-              formula: 'largest L with M-D lift <= budget, solved on the measured Z peak and NF',
+              formula:
+                'largest L with M-D RESONANT amplification <= budget (V43), solved on the ' +
+                'measured Z peak and NF',
               budget_dB: budgets.lfBumpBudgetDb,
               path_R_ohm: w.pathROhm,
               f_peak_hz: w.fPeakHz,
-              lift_at_bound_dB: Number(solved.atBudgetDb.toFixed(3)),
+              resonant_at_bound_dB: Number(solved.atBudgetDb.toFixed(3)),
+              /* What the path's own resistance already lifts, reported beside
+               * the bound because the search cannot spend it and cannot fix it.
+               * It is the anchor's business (A5e.2), not this bound's. */
+              resistive_lift_dB: Number(solved.resistiveLiftDb.toFixed(3)),
               band: 'A4 M-D, derived from f_p',
             },
-            notes: [],
+            notes: [
+              `${w.pathROhm.toFixed(2)} Ω of path resistance already lifts this band by ` +
+                `${solved.resistiveLiftDb.toFixed(2)} dB before any coil exists. That half is ` +
+                'not bounded here — it is level work, and A5e.2 owns it.',
+            ],
           });
         }
       }
