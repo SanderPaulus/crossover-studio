@@ -377,19 +377,67 @@ export function searchBoxFor(
         valueCeilings[id] = Math.min(valueCeilings[id] ?? Infinity, room > 0 ? room : Number.MIN_VALUE);
       }
     } else if (b.rule === 'bump-series-l') {
-      const coils = seriesOf(b.subject, 'L').filter((p) => !p.locked);
-      for (const p of coils) valueCeilings[p.partId!] = Math.min(valueCeilings[p.partId!] ?? Infinity, b.maxSI);
+      /* THE BOUND IS ON THE SUM, BECAUSE THE METRIC IS ON THE SUM.
+       *
+       * Until V42 this branch wrote only per-component ceilings, and the note
+       * it pushed said so out loud: "the inversion is exact for one; with
+       * several in series the total is what the metric sees". That was an
+       * accurate description of a hole. `maxSeriesInductanceFromBump` solves
+       * for the total series reactance the driver sees — `jωL` in one term —
+       * so a chain split over two coils is bounded at 2 × maxSI by a
+       * per-component box, and on casus 1 that is exactly what happened: seven
+       * of eight V41 netlists carry two coils, up to 5.39 + 1.95 = 7.34 mH
+       * against a 2.43 mH inversion, with 3.6-7.9 dB of measured lift.
+       *
+       * The repair is the shape `qes-series-r` has carried since F2 and it is
+       * INPUT rather than formula: the same solved `maxSI`, filed as a sum over
+       * the way's free series coils, with the LOCKED ones charged against the
+       * budget first. A locked coil's inductance is series reactance the driver
+       * sees just as surely as a free one, and the tuner cannot move it — so it
+       * comes off the top rather than being ignored, exactly as a coil's DCR
+       * does in the resistance branch above.
+       *
+       * The per-component ceiling STAYS beside it as the necessary condition:
+       * no single coil can exceed what the whole chain may have. */
+      const all = seriesOf(b.subject, 'L');
+      const coils = all.filter((p) => !p.locked);
+      const fixedSI = all
+        .filter((p) => p.locked)
+        .reduce((sum, p) => sum + (valueSI(p) ?? 0), 0);
       if (coils.length === 0) {
         notes.push(
           `${b.subject}: the LF-lift budget bounds the series inductance at ` +
             `${(b.maxSI / H_PER_MH).toFixed(2)} mH, but this way has no free series coil.`,
         );
-      } else if (coils.length > 1) {
-        notes.push(
-          `${b.subject}: the LF-lift bound is applied to each of ${coils.length} series coils ` +
-            'separately. The inversion is exact for one; with several in series the total is ' +
-            'what the metric sees, and the gate remains the authority.',
-        );
+      } else {
+        valueSumCeilings.push({
+          ids: coils.map((p) => p.partId!),
+          maxSI: b.maxSI,
+          fixedSI,
+          label: `${b.subject} ${b.quantity}`,
+        });
+        const room = Math.max(b.maxSI - fixedSI, 0);
+        for (const p of coils) {
+          valueCeilings[p.partId!] = Math.min(
+            valueCeilings[p.partId!] ?? Infinity,
+            room > 0 ? room : Number.MIN_VALUE,
+          );
+        }
+        if (coils.length > 1) {
+          notes.push(
+            `${b.subject}: the LF-lift bound of ${(b.maxSI / H_PER_MH).toFixed(2)} mH is applied ` +
+              `to the SUM of ${coils.length} free series coils, which is the quantity the metric ` +
+              'sees. Each one is also capped at the total on its own — a necessary condition, not ' +
+              'a second bound (V42).',
+          );
+        }
+        if (fixedSI > 0) {
+          notes.push(
+            `${b.subject}: ${(fixedSI / H_PER_MH).toFixed(2)} mH of the LF-lift budget is already ` +
+              'spent on locked series coils, which the tuner cannot move; the free coils share ' +
+              `what is left (${(room / H_PER_MH).toFixed(2)} mH).`,
+          );
+        }
       }
     } else if (b.rule === 'drive-series-c') {
       /* A SLACK BOUND MAY NARROW THE SPACE AROUND THE DESIGN; IT MAY NEVER

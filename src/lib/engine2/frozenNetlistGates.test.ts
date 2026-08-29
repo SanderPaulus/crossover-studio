@@ -59,6 +59,7 @@ import { fileURLToPath } from 'node:url';
 import {
   CASUS1_WOOFER_DC_OHM,
   casus1AmpMinLoadOhm,
+  casus1LfBumpBudgetDb,
   casus1Files,
   casus1Filter,
   casus1Geometry,
@@ -186,6 +187,8 @@ const FIELD: {
    *  would have doubled the slowest test file in the suite for a column. */
   dissipationPct: number | null;
   largestResistorW: number | null;
+  /** V42 — M-D's extra lift, kept from the same report for the same reason. */
+  lfBumpDb: number | null;
 }[] = NETLIST_KEYS.map((key) => {
   const r = report(key);
   const d = r.metrics.dissipation;
@@ -196,6 +199,7 @@ const FIELD: {
     anyActive: r.gates.anyActive,
     dissipationPct: d ? d.totalFraction * 100 : null,
     largestResistorW: largest?.watts ?? null,
+    lfBumpDb: r.metrics.lfBump[0]?.result.extraDb ?? null,
   };
 });
 
@@ -1443,6 +1447,145 @@ describe('V38-fix — de zoekmaat op elke bevroren netlist', () => {
       expect(decoupling, `${r.key}: de ontkoppeling draagt hier wél gewicht`).toBeLessThan(
         r.raw.peak / 10,
       );
+    }
+  });
+});
+
+/* ================================================================== *
+ * V42 — het gestelde LF-bult-budget
+ * ================================================================== */
+
+describe('V42 — the stated LF-lift budget, on every frozen netlist', () => {
+  /** The budget the DESIGNER stated, read from the reference file (P6, one home). */
+  const BUDGET_DB = casus1LfBumpBudgetDb(golden);
+
+  /** The dB tolerance class, from the reference file — never written here. */
+  const TOL_DB = (golden as unknown as { toleranties: { dB: number } }).toleranties.dB;
+
+  /** The live corpus — the netlists a run WITH the budget armed produced. */
+  const LIVE = FIELD.filter((f) => /^KAND_V2_\d+$/.test(f.key));
+
+  /** What V42 MEASURED, recorded in the case book beside the requirement. */
+  const FINDING = (golden.manifest_en_geometrie as unknown as {
+    v42_bult_bevinding?: {
+      gesteld_budget_dB: number;
+      levend_corpus: number;
+      eroverheen: number;
+      per_netlist: { netlist: string; bult_dB: number }[];
+      lf_bult_budget_werkingsgebied: string;
+    };
+  }).v42_bult_bevinding;
+
+  /**
+   * WHY THERE IS NO "EVERY NETLIST IS UNDER BUDGET" ASSERT HERE, and this note
+   * is the deliverable rather than an apology for a missing one.
+   *
+   * The session that stated this budget set out to write exactly that claim.
+   * The measurement refused it, and asserting it anyway would have meant an
+   * exception list containing the entire corpus — which is the waiver this
+   * file exists to prevent, not a record.
+   *
+   * WHAT THE BUDGET CAN AND CANNOT DO. It is an input to the A5d.6 inversion,
+   * which bounds the lowest way's series inductance. It is NOT a gate: A4 lists
+   * M-D under the reporting metrics and it has no id in `GATE_IDS`, so nothing
+   * anywhere condemns a delivered network on its lift. And the inversion is
+   * silent on half the designs: `H_el = Z/(Z + R_path + jωL)` means series
+   * RESISTANCE lifts the peak on its own, so above roughly 1.7 Ω of path
+   * resistance the stated 2.5 dB is spent before any coil exists and
+   * `maxSeriesInductanceFromBump` correctly returns null (V12). A requirement
+   * whose mechanism does not engage cannot be asserted as an outcome.
+   *
+   * So the claims below are the ones that are TRUE and that can fail: the
+   * metric is reported for everything, the recorded finding matches a fresh
+   * measurement, the budget is reachable on these drivers, and it is not
+   * vacuous. What the budget did to the field is a case-book entry (V42), and
+   * the assert on `FINDING` is what stops that entry from going stale.
+   */
+  it('the budget is stated, and every frozen netlist carries a measured lift', () => {
+    expect(BUDGET_DB, 'casus 1 states no LF-lift budget — V42 assumes it does').not.toBeNull();
+    for (const f of FIELD) {
+      expect(f.lfBumpDb, `${f.key}: M-D produced no lift figure`).not.toBeNull();
+    }
+  });
+
+  it('the recorded V42 finding still matches the corpus it describes', () => {
+    /* THE ASSERT THAT KEEPS A NEGATIVE RESULT HONEST. The case book records
+     * that the stated budget left the field at four netlists and moved none of
+     * them under it. If a later session changes that — for better or worse —
+     * this goes red and the entry gets rewritten instead of quietly becoming
+     * false. */
+    expect(FINDING, 'the case book records no V42 finding').toBeTruthy();
+    expect(FINDING!.gesteld_budget_dB).toBe(BUDGET_DB);
+    expect(FINDING!.levend_corpus, 'the live corpus is not the size the finding describes').toBe(
+      LIVE.length,
+    );
+
+    const overNow = LIVE.filter((f) => f.lfBumpDb !== null && f.lfBumpDb > BUDGET_DB!).length;
+    expect(
+      overNow,
+      `the finding records ${FINDING!.eroverheen} live netlists over the stated budget and the ` +
+        `metric now counts ${overNow} — the record and the corpus have drifted apart`,
+    ).toBe(FINDING!.eroverheen);
+
+    // Per netlist, so a corpus that changed shape cannot average its way to the
+    // same count.
+    expect(FINDING!.per_netlist.map((r) => r.netlist).sort()).toEqual(
+      LIVE.map((f) => f.key).sort(),
+    );
+    for (const row of FINDING!.per_netlist) {
+      const f = LIVE.find((x) => x.key === row.netlist)!;
+      expect(
+        Math.abs(f.lfBumpDb! - row.bult_dB),
+        `${row.netlist}: the finding records ${row.bult_dB} dB and the metric reads ` +
+          `${f.lfBumpDb!.toFixed(2)}`,
+      ).toBeLessThanOrEqual(TOL_DB);
+    }
+    // The reason has to be a reason, not a shrug.
+    expect(FINDING!.lf_bult_budget_werkingsgebied.length).toBeGreaterThan(200);
+    expect(FINDING!.lf_bult_budget_werkingsgebied).toMatch(/\bV\d+\b/);
+  });
+
+  it('the budget is REACHABLE on these drivers — the V28 corpus shows it', () => {
+    /* The floor's counter-proof is "HUIDIG clears it". That one is NOT
+     * available here and the difference is the finding: the designer stated a
+     * budget his own reference filter misses (HUIDIG 3.78 dB, KAND_A 4.30,
+     * KAND_B 3.36 against 2.5). So the evidence that the requirement does not
+     * exclude every buildable design has to come from somewhere else, and it
+     * does: the V28 corpus was generated on these same measurements and these
+     * same drivers and carries netlists well under the budget. Without this
+     * assert, everything above would be compatible with a budget nothing can
+     * meet. */
+    const clears = FIELD.filter((f) => f.lfBumpDb !== null && f.lfBumpDb <= BUDGET_DB!);
+    expect(
+      clears.length,
+      'no frozen netlist anywhere in the case book satisfies the stated budget — then the ' +
+        'requirement is unreachable with these drivers and it is the requirement that is wrong',
+    ).toBeGreaterThan(0);
+  });
+
+  it('and it is NOT vacuous: the reference filters exceed it, and the record says so', () => {
+    /* The mirror of the assert above, and the one that keeps the budget
+     * honest. A requirement every netlist already meets bounds nothing; this
+     * one demonstrably bites, and it bites the designer's own filter first.
+     * The measured values live in the manifest beside the requirement, so a
+     * reader meets them where the number is stated rather than here. */
+    const stated = (golden.manifest_en_geometrie as unknown as {
+      gestelde_eisen?: { gemeten_bult_referentiefilters_dB?: Record<string, number> };
+    }).gestelde_eisen?.gemeten_bult_referentiefilters_dB;
+    expect(stated, 'the manifest does not record what the reference filters measure').toBeTruthy();
+    for (const key of V1_BASELINES) {
+      const f = FIELD.find((x) => x.key === key)!;
+      expect(f.lfBumpDb, `${key}: no measured lift`).not.toBeNull();
+      expect(
+        Math.abs(f.lfBumpDb! - stated![key]),
+        `${key}: the manifest records ${stated![key]} dB and the metric now reads ` +
+          `${f.lfBumpDb!.toFixed(2)} — the record and the measurement have drifted apart`,
+      ).toBeLessThanOrEqual(TOL_DB);
+      expect(
+        f.lfBumpDb!,
+        `${key} satisfies the stated budget after all — then the manifest's claim that the ` +
+          "requirement is stricter than the designer's own filter is no longer true",
+      ).toBeGreaterThan(BUDGET_DB!);
     }
   });
 });

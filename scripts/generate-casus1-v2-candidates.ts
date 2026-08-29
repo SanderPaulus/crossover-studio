@@ -55,6 +55,9 @@ import type { GriddedResponse } from '../src/lib/dsp.ts';
 import { serializeFilter } from '../src/lib/filterFile.ts';
 import {
   CASUS1_AMP_MIN_LOAD_OHM,
+  CASUS1_LF_BUMP_BUDGET_DB,
+  CASUS1_V2_BUDGETS,
+  CASUS1_V2_GATES,
   CASUS1_V2_BAND_HZ,
   CASUS1_V2_GRID,
   CASUS1_V2_SEED,
@@ -172,6 +175,12 @@ const outcomes: {
      * allebei waren. */
     vloerbron: string | null;
   };
+  /** V42 — wat de A5d.6-inversie over de seriespoel van deze weg zei, in de
+   *  woorden van de run zelf. `null` = geen enkele notitie over de LF-lift,
+   *  wat betekent dat er een plafond was en dat het niets bijzonders te melden
+   *  had; een notitie erin betekent dat er GEEN grens kwam, of dat er iets aan
+   *  de verdeling over meerdere spoelen uit te leggen viel. */
+  lf_bult_plafond: string[] | null;
   /* V31 — een kandidaat die niets geleverd heeft, en de regel die hem
    * weigerde. `null` = hij leverde wél een netwerk. De cijfers eronder gaan
    * over de tune die geweigerd IS en die niemand gaat bouwen. */
@@ -217,12 +226,16 @@ for (const c of field.field.candidates) {
        * verdict. Spread rather than assigned, so an unstated floor arms nothing
        * — which is what casus 1 looked like before the floor was stated, and
        * what any other casus without one still looks like. */
-      gates: {
-        ...(CASUS1_AMP_MIN_LOAD_OHM !== null
-          ? { ampMinLoadOhm: CASUS1_AMP_MIN_LOAD_OHM }
-          : {}),
-      },
-      budgets: {},
+      gates: { ...CASUS1_V2_GATES },
+      /* V42 — THE ONE BUDGET THIS CASUS STATES.
+       *
+       * Same path as the floor above and the same P4 rule: spread, so an
+       * unstated budget arms no inversion at all. The difference is what it
+       * arms — not a gate but the `bump-series-l` inversion, which turns the
+       * stated decibels into a ceiling on the lowest way's series inductance.
+       * M-D has no gate id (A4 lists it under the reporting metrics), so this
+       * bounds the SEARCH and condemns no delivered network. */
+      budgets: { ...CASUS1_V2_BUDGETS },
       determinism: { seed: CASUS1_V2_SEED },
       targetCurve: FLAT_TARGET,
       judgeBandHz: CASUS1_V2_BAND_HZ,
@@ -285,6 +298,21 @@ for (const c of field.field.candidates) {
       vroege_terugkeer: !('ampFloorRepair' in (done.result.net as object)),
       vloerbron: done.result.net.zFloorSourceNote ?? null,
     },
+    /* ---- V42: KREEG DEZE KANDIDAAT WERKELIJK EEN PLAFOND? ----------------
+     *
+     * De notities van de run stonden tot V42 in `DoneData` en werden nergens
+     * opgeschreven — een kanaal zonder lezer, en precies op de claim waar deze
+     * sessie over gaat. Een gesteld budget dat op een gegeven zaad GEEN grens
+     * oplevert is namelijk geen theoretisch geval: `maxSeriesInductanceFromBump`
+     * geeft `null` zodra het budget al zonder spoel overschreden wordt, en dat
+     * gebeurt bij deze drivers boven ongeveer 2 Ω padweerstand (V12, hier
+     * nagemeten: 2,86 mH bij 0 Ω, 2,43 bij 0,5, 1,81 bij 1,0, geen grens bij
+     * 2,0). Zonder deze regel is "het budget is gewapend" niet te onderscheiden
+     * van "het budget deed niets", en dat verschil is de hele oplevering. */
+    lf_bult_plafond: (() => {
+      const applied = done.notes.filter((n) => /LF-lift/i.test(n));
+      return applied.length > 0 ? applied : null;
+    })(),
     verwerping: done.rejection
       ? {
           regels: [...done.rejection.kinds],
@@ -415,9 +443,29 @@ const meetopstelling = {
     'slaagt — hij rapporteert zijn waarde en oordeelt niets.',
   v2_budgetten_gewapend: Object.keys(lastPayload.v2.budgets ?? {}).sort(),
   v2_budgetten_waarom:
-    'LEEG. De A5d.6-inversies begrenzen waarden; op deze route is er geen gesteld budget dat ' +
-    'de zoektocht inperkt. Het evaluatiebudget komt van de tuner zelf (zie de vingerafdruk: ' +
-    '`budget=tuner`).',
+    CASUS1_LF_BUMP_BUDGET_DB !== null
+      ? `M-D IS GEWAPEND, met bron GESTELD: ${CASUS1_LF_BUMP_BUDGET_DB} dB uit ` +
+        '`manifest_en_geometrie.gestelde_eisen.lf_bult_budget_dB`, langs hetzelfde pad als de ' +
+        'versterkervloer en met dezelfde P4-regel (leeg veld = geen inversie). Hij wapent GEEN ' +
+        'poort: M-D heeft geen poort-id in `GATE_IDS` en staat in A4 onder de rapporterende ' +
+        'metrieken. Wat hij doet is de A5d.6-inversie `bump-series-l` van invoer voorzien, en ' +
+        'die levert een PLAFOND op de seriespoel van de laagste weg — opgelost op de gemeten ' +
+        'Z-piek en het gemeten nabije veld, bij de padweerstand van het zaad. Sinds V42 is dat ' +
+        'plafond een SOM over de vrije seriespoelen van de weg en niet alleen een grens per ' +
+        'component: zeven van de acht V41-netlists droegen twee spoelen in serie en ontsnapten ' +
+        'daarmee aan de per-component-versie. Het evaluatiebudget komt nog steeds van de tuner ' +
+        'zelf (zie de vingerafdruk: `budget=tuner`).'
+      : 'LEEG. De A5d.6-inversies begrenzen waarden; op deze route is er geen gesteld budget dat ' +
+        'de zoektocht inperkt. Het evaluatiebudget komt van de tuner zelf (zie de vingerafdruk: ' +
+        '`budget=tuner`).',
+  /* V42 — het gestelde budget zelf, naast de lijst met gewapende namen. Een
+   * naam zonder waarde laat de lezer raden waar de grens lag. */
+  lf_bult_budget_dB: CASUS1_LF_BUMP_BUDGET_DB,
+  lf_bult_budget_herkomst:
+    CASUS1_LF_BUMP_BUDGET_DB !== null
+      ? 'GESTELD door de ontwerper, gelezen uit `manifest_en_geometrie.gestelde_eisen` — niet ' +
+        'afgeleid en nergens als default in `src/lib/engine2/` (P6).'
+      : 'NIET GESTELD: geen inversie, geen plafond, en de bult wordt alleen gerapporteerd (P4).',
   beschermingen_via_kandidaat: declaredStated,
   beschermingen_waarom:
     'De beschermingen zijn KEUZE-sleutels (V26 rijen 31, 33, 14, 2) en bereiken de tuner sinds ' +

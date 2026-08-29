@@ -29,7 +29,13 @@
  */
 
 import { describe, expect, it } from 'vitest';
-import { invertBudgets, maxSeriesInductanceFromBump, type BudgetWay } from './bounds.ts';
+import {
+  invertBudgets,
+  maxSeriesInductanceFromBump,
+  searchBoxFor,
+  type BudgetWay,
+} from './bounds.ts';
+import type { VxpPart } from '../../parsers/vxp.ts';
 import { factsForWorker, measurementFactsKey } from './measurementFacts.ts';
 import { handleV2Request, type V2ChainOnePayload, type V2Response } from './worker.ts';
 import { v2DriverZ, v2Responses, V2_GRID } from './v2.fixture.ts';
@@ -304,5 +310,172 @@ describe('F4b2 — through the worker route', () => {
     });
     expect(r.bounds.map((b) => b.rule)).not.toContain('bump-series-l');
     expect(r.notes.join(' ')).toContain('loaded impedance sweep');
+  });
+});
+
+/* ================================================================== *
+ * V42 — the bound is on the SUM, because the metric is on the sum
+ * ================================================================== */
+
+describe('V42 — a split series chain does not escape the LF-lift bound', () => {
+  /* THE CASE IS THE REAL ONE, not an invented topology. Seven of the eight V41
+   * netlists carry TWO series coils on the woofer way, and `KAND_V2_1` carries
+   * 5.39 + 1.95 = 7.34 mH against an inversion of ~2.43 mH. Under the
+   * per-component box that was here until V42 both coils sit inside their own
+   * ceiling while the total — the quantity `maxSeriesInductanceFromBump`
+   * actually solves for — is three times it. */
+  const SPLIT: [number, number] = [5.39, 1.95];
+
+  /* The same three fixtures the first block builds, rebuilt here rather than
+   * hoisted: they are cheap, and a shared `let` across describes is how two
+   * blocks come to depend on each other's execution order. */
+  const ingest = runIngest(manifest, files);
+  const woofer = ingest.drivers.find((d) => d.driver === 'woofer')!;
+  const facts = factsForWorker(report, identity, sweeps);
+  const toComplex = (m: readonly number[], ph: readonly number[]): Complex[] =>
+    m.map((mag, i) => {
+      const r = (ph[i] * Math.PI) / 180;
+      return { re: mag * Math.cos(r), im: mag * Math.sin(r) };
+    });
+
+  const coil = (id: string, mH: number, locked = false): VxpPart => ({
+    type: 'Inductor',
+    partId: id,
+    model: 'woofer',
+    params: [{ name: 'L', value: mH, unit: 'mH' }],
+    wires: [
+      { x: 0, y: 0 },
+      { x: 1, y: 0 },
+    ],
+    ...(locked ? { locked: true } : {}),
+  }) as unknown as VxpPart;
+
+  /** A minimal woofer way: generator -> two series coils -> the driver. */
+  const partsWith = (coils: VxpPart[]): VxpPart[] =>
+    [
+      {
+        type: 'Generator',
+        partId: 'G',
+        params: [{ name: 'Eg', value: 2.83, unit: 'V' }],
+        wires: [
+          { x: 0, y: 0 },
+          { x: 0, y: 9 },
+        ],
+      },
+      { type: 'Ground', params: [], wires: [{ x: 0, y: 9 }] },
+      ...coils,
+      {
+        type: 'Driver',
+        partId: 'D1',
+        model: 'woofer',
+        params: [],
+        wires: [
+          { x: 1, y: 0 },
+          { x: 0, y: 9 },
+        ],
+      },
+    ] as unknown as VxpPart[];
+
+  /** The solved bound, in henry — taken from the inversion, never typed here. */
+  const bound = (): number => {
+    const zW = facts.impedanceByModel!.woofer;
+    const nfW = facts.nearFieldByModel!.woofer;
+    const solved = maxSeriesInductanceFromBump(
+      {
+        nfGrid: nfW.grid,
+        nfDb: nfW.db,
+        zGrid: zW.grid,
+        z: toComplex(zW.magnitude, zW.phaseDeg),
+        fPeakHz: woofer.impedance!.fundamentalHz!,
+        nfValidHz: nfW.validHz,
+        pathROhm: P.pad_R_ohm,
+      },
+      P.budget_dB,
+    );
+    expect(solved).not.toBeNull();
+    return solved!.maxHenry;
+  };
+
+  it('the SUM is bounded, and the per-part ceiling stays beside it', () => {
+    const maxSI = bound();
+    const box = searchBoxFor(partsWith([coil('L1', SPLIT[0]), coil('L3', SPLIT[1])]), [
+      {
+        rule: 'bump-series-l',
+        subject: 'woofer',
+        quantity: 'series inductance',
+        maxSI,
+        unit: 'H',
+        slack: false,
+        parameters: {},
+        notes: [],
+      },
+    ]);
+
+    const group = box.valueSumCeilings.find((g) => g.label.startsWith('woofer'));
+    expect(group, 'no sum ceiling was produced for the woofer series chain').toBeTruthy();
+    expect([...group!.ids].sort()).toEqual(['L1', 'L3']);
+    expect(group!.maxSI).toBe(maxSI);
+    expect(group!.fixedSI).toBe(0);
+
+    // The necessary condition survives: neither coil alone may exceed the total.
+    expect(box.valueCeilings.L1).toBe(maxSI);
+    expect(box.valueCeilings.L3).toBe(maxSI);
+
+    /* THE CLAIM THAT MAKES THIS TEST WORTH HAVING. Under the per-component box
+     * alone the seed satisfies every ceiling while the metric's own quantity is
+     * three times the bound — which is precisely the escape V42 closes. */
+    const seedTotalSI = (SPLIT[0] + SPLIT[1]) * H_PER_MH;
+    expect(SPLIT[0] * H_PER_MH).toBeGreaterThan(maxSI); // this one alone is caught...
+    expect(SPLIT[1] * H_PER_MH).toBeLessThan(maxSI); //   ...and this one is not
+    expect(seedTotalSI).toBeGreaterThan(2 * maxSI); // but the TOTAL is far over
+  });
+
+  it('a LOCKED coil is charged against the budget, not ignored', () => {
+    /* Same argument the resistance branch has carried since F2: a locked coil's
+     * inductance is series reactance the driver sees, and the tuner cannot move
+     * it. Ignoring it would let the free coils spend a budget that is already
+     * gone. */
+    const maxSI = bound();
+    const box = searchBoxFor(partsWith([coil('L1', SPLIT[0], true), coil('L3', SPLIT[1])]), [
+      {
+        rule: 'bump-series-l',
+        subject: 'woofer',
+        quantity: 'series inductance',
+        maxSI,
+        unit: 'H',
+        slack: false,
+        parameters: {},
+        notes: [],
+      },
+    ]);
+    const group = box.valueSumCeilings.find((g) => g.label.startsWith('woofer'));
+    expect(group!.ids).toEqual(['L3']);
+    expect(group!.fixedSI).toBeCloseTo(SPLIT[0] * H_PER_MH, 12);
+    // The locked coil alone already exceeds the whole budget, so nothing is
+    // left: the free coil is driven to the floor rather than given room.
+    expect(box.valueCeilings.L3).toBe(Number.MIN_VALUE);
+    expect(box.notes.join(' ')).toContain('already');
+  });
+
+  it('one free coil produces a sum group too — the shape does not change with count', () => {
+    const maxSI = bound();
+    const box = searchBoxFor(partsWith([coil('L1', 3.0)]), [
+      {
+        rule: 'bump-series-l',
+        subject: 'woofer',
+        quantity: 'series inductance',
+        maxSI,
+        unit: 'H',
+        slack: false,
+        parameters: {},
+        notes: [],
+      },
+    ]);
+    const group = box.valueSumCeilings.find((g) => g.label.startsWith('woofer'));
+    expect(group!.ids).toEqual(['L1']);
+    expect(box.valueCeilings.L1).toBe(maxSI);
+    // With one coil the sum and the per-part ceiling say the same thing, so no
+    // note about several coils is warranted.
+    expect(box.notes.join(' ')).not.toContain('SUM of');
   });
 });

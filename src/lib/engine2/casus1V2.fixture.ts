@@ -37,7 +37,12 @@ import {
 } from './optimizer/candidateDeclaration.ts';
 import type { GeneratedCandidate } from './predesign/candidates.ts';
 import { AUTO_STRUCTS } from '../threeWayDesign.ts';
-import { casus1AmpMinLoadOhm, loadGolden, type GoldenRefs } from './casus1.fixture.ts';
+import {
+  casus1AmpMinLoadOhm,
+  casus1LfBumpBudgetDb,
+  loadGolden,
+  type GoldenRefs,
+} from './casus1.fixture.ts';
 import {
   factsForWorker,
   type MeasurementFactsPayload,
@@ -113,6 +118,41 @@ export const CASUS1_V2_SEED = 20260827;
  * judges the delivered network. A floor that only judges arrives too late.
  */
 export const CASUS1_AMP_MIN_LOAD_OHM: number | null = casus1AmpMinLoadOhm();
+
+/**
+ * V42 — the stated LF-lift budget, read from the manifest for the same reason
+ * the floor above is: it is a project number and it has one home.
+ *
+ * IT DOES NOT BELONG IN `CASUS1_V2_SETTINGS`, and that is the difference from
+ * the floor. `ampMinLoadOhm` goes to two places at once because it arms two
+ * mechanisms — the chain's repair pass and the run's verdict. A lift budget
+ * arms neither: it is an input to `invertBudgets`, which lives on the v2 side
+ * only, so it travels in `v2.budgets.lfBumpBudgetDb` and nowhere else. A copy
+ * in the chain settings would be a number with no reader.
+ */
+export const CASUS1_LF_BUMP_BUDGET_DB: number | null = casus1LfBumpBudgetDb();
+
+/**
+ * V42 — THE ARMED GATES AND BUDGETS OF A CASUS-1 v2 RUN, in one place.
+ *
+ * WHY THIS EXISTS, and it is not tidiness. The generator and the acceptance
+ * test each built this block themselves, and the moment V42 armed a budget in
+ * the generator the test stopped reproducing the run it asserts about: it
+ * re-ran a candidate the record says was REFUSED, without the budget that
+ * refused it, got a network back, and failed. That is the same failure V27
+ * wrote down — a run fixture that differs from the route it claims to measure —
+ * and the fix is the one this file already applies to everything else: one
+ * definition, two consumers.
+ *
+ * Spread at the use site (`gates: { ...CASUS1_V2_GATES }`) so an unstated
+ * requirement arms nothing at all, which is what P4 asks for and what a casus
+ * without these numbers still looks like.
+ */
+export const CASUS1_V2_GATES: { ampMinLoadOhm?: number } =
+  CASUS1_AMP_MIN_LOAD_OHM !== null ? { ampMinLoadOhm: CASUS1_AMP_MIN_LOAD_OHM } : {};
+
+export const CASUS1_V2_BUDGETS: { lfBumpBudgetDb?: number } =
+  CASUS1_LF_BUMP_BUDGET_DB !== null ? { lfBumpBudgetDb: CASUS1_LF_BUMP_BUDGET_DB } : {};
 
 export const CASUS1_V2_SETTINGS = {
   phasePriority: 0.5,

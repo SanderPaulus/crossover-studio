@@ -228,6 +228,16 @@ const CHAIN_GRID_LO_HZ = CASUS1_V2_GRID[0];
  * rather than a plausible-sounding reason that belongs to a different corpus.
  */
 const DATED_REASON: Record<string, string> = {
+  V41:
+    'HET GEDATEERDE V41-CORPUS. Bevroren terwijl het LF-BULT-BUDGET (A4 M-D) nog niet GESTELD was. ' +
+    'Geen enkele A5d.6-inversie begrensde de seriespoel van de laagste weg, dus de zoektocht koos ' +
+    'de wooferinductie zonder te weten dat zij de bovenste reflexpiek opslingert. Gemeten op dit ' +
+    'corpus: 3,62 tot 7,93 dB extra opslingering (gemiddeld 5,7) tegen de 2,5 dB die V42 stelt, ' +
+    'met totale seriespoelen tot 7,34 mH tegen een inversie van 2,43 mH. Zeven van de acht ' +
+    'netlists dragen TWEE spoelen in serie, en dat is de tweede helft van de bevinding: de ' +
+    'inversie plafonneerde tot V42 alleen PER COMPONENT, dus een gesplitste keten ontsnapte er ' +
+    'sowieso aan. Deze acht blijven staan als de "vóór"-helft van die vergelijking. Meetobject, ' +
+    'GEEN ontwerp: mag niet gebouwd worden.',
   V38FIX:
     'HET GEDATEERDE V38-FIX-CORPUS. Bevroren terwijl de DESIGN- en SYNTHESESTAP nog erfden wat de ' +
     'v1-keten toevallig droeg. Twee instellingen, allebei BOVEN de tuner en dus buiten elke ' +

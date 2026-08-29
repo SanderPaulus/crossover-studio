@@ -452,6 +452,25 @@ punten met een casusboek-entry erachter. Ze staan hier zodat ze niet alleen in D
   app 0,015 stuurt.** Aantoonbaar inert op casus 1 — de tuner leest hem uitsluitend binnen
   `if (opts.catalogSnap && hasImportedCatalog())` en deze casus snapt niet — maar hij is GRIJS
   (A3j), en juist een grijze sleutel hoort expliciet én juist gesteld te worden.
+- **V42 — hoe begrens je de BRONIMPEDANTIE bij resonantie zonder de versterkervloer te breken?**
+  Het LF-bult-budget (A4 M-D) is sinds V42 een gestelde eis en voedt de A5d.6-inversie
+  `bump-series-l`, die sindsdien de SOM van de seriespoelen plafonneert in plaats van elke spoel
+  apart — zeven van de acht V41-netlists droegen er twee en ontsnapten aan de per-component-versie.
+  Wat de meting daarna opleverde is een NEGATIEF resultaat en het staat voluit in V42: het veld
+  ging van 8 naar 4 netlists en geen enkele overlevende veranderde — alle vier byte-identiek aan
+  hun voorganger, alle vier nog steeds boven het budget. De oorzaak is natuurkunde en geen bug:
+  `H_el = Z/(Z + R_pad + jωL)`, dus serieweerstand tilt de reflexpiek in zijn eentje al op
+  (dezelfde natuurkunde als M-E's Q_es-vermenigvuldiging), en boven ~1,7 Ω padweerstand is het
+  budget op vóór er een spoel in het pad zit — `maxSeriesInductanceFromBump` geeft dan `null` en
+  er komt geen grens (V12). Zes van de negen bevroren netlists zitten daar, HUIDIG (3,76 Ω)
+  inbegrepen. Waar de grens WEL bond brak zij de versterkervloer: vier kandidaten met de beste
+  RMS van het project (0,48–0,54 dB) kwamen terug op 1,93–2,41 Ω tegen een vloer van 2,60. **De
+  twee gestelde eisen trekken aan hetzelfde onderdeel.** Drie richtingen liggen open en geen ervan
+  is gebouwd: een parallelweerstand over de seriespoel, een LCR-dempingsnetwerk over de driver op
+  f_p, of de eis uitdrukken als één grens op `R_pad + jωL` samen — dat laatste is een tweede
+  inversie en geen topologievoorstel. Bewijsmateriaal: `scripts/measure-v42-bump-bound.ts` en
+  `manifest_en_geometrie.v42_bult_bevinding`. **Open**, Sander beslist welke richting de generator
+  mag voorstellen.
 - **V29 — mag `safety` een netlist weigeren die vrijwel kortsluit als er géén vloer gesteld is?**
   Twee verdedigbare houdingen (strikt P4 tegenover een uit de gemeten driverimpedanties
   afleidbare degeneratiegrens), aanleiding is de V28-shortlist met 0,01 Ω erin. **Open**, geen
@@ -2260,6 +2279,155 @@ Configuratie: 3-weg; 2× SB WO24TX-8 parallel, MR13TX-4 in bolpod, T25T-6 in WG1
   1. **De v1-route leest de gegladde maat nog steeds.** Dit is geen eigenschap van casus 1 maar van `smoothDbGaussian` op een raster met dode punten, en die dode punten zijn de STILLE-GEEST-conventie van de app zelf: op een drieweg-unieraster draagt elke tak stilte buiten zijn eigen gemeten uitgestrektheid (`designSolve`, hier herhaald door de ketenfixture). Elk project waarvan het analyseraster voorbij die uitgestrektheid loopt heeft dezelfde geest op dezelfde plek. De opdracht was expliciet — geen wijziging aan `smoothMag` of aan enige andere gladding — en er is er geen gedaan. **Open.**
   2. **`WINDOW_SMOOTHING_OCTAVES` blijft 1/6** (A5e.1) — dat is het OORDEEL en niet de zoekmaat, en de opdracht sloot het uit. **Maar de reden dat hij er niet door geraakt wordt is NIET zijn breedte en niet zijn volgorde, en dat is nagegaan in plaats van aangenomen:** `judgeResponse` gladt óók over het volle raster en leest daarna alleen binnen de band, precies de constructie die hierboven 43 dB oplevert. Hij ontsnapt omdat zijn RASTER geen dood punt draagt — de acceptatie meet op het rapportraster (band tot 19 999,5 Hz) en niet op het ketenraster met zijn geest op 20 000. Gemeten: HUIDIG leest daar ±1,34 dB. De naad tussen zoeken en oordelen is dus breder dan V38 hem beschreef: zij verschillen niet alleen in breedte maar in RASTER, en de tweede helft daarvan is nieuw. **Open**, en het is precies de vorm van bevinding die dit project met een eigen sessie afhandelt.
   3. **De fasematen zijn niet aangeraakt** — dat is V40, en op de ongegladde maat wordt het gat tussen tuner en rapport niet kleiner maar groter (tuner 11,00°, rapport 53,09° op W-M, tegen 9,65° en 47,68° gegladd). De reparatie van de zoekmaat neemt die tegenspraak dus niet weg.
+
+- V42 (29-08-2026 — **BREAKING, alleen v2-runs**: het LF-bult-budget wordt een gestelde eis, en de inversie plafonneert de SOM) — opgeworpen als eigen opdracht. **Een negatief resultaat, en het staat hier voluit omdat juist die verdwijnen.**
+
+  **DE OPDRACHT.** Sander stelt `lf_bult_budget_dB: 2,5` — het maximale extra niveau dat het elektrische filter rond de bovenste reflexpiek mag opslingeren. Daarmee zou de opslingering ophouden een eigenschap van de uitkomst te zijn en een grens in de zoektocht worden. De inversie zelf en de metriek zijn niet aangeraakt; wat V42 verandert is de INVOER (een gesteld budget) en de VERTALING (som in plaats van per component).
+
+  ---
+
+  **INVENTARISATIE 1 — PER SPOEL OF OVER DE SOM? Per spoel, en de code wist het.**
+
+  `bounds.ts`, de tak `'bump-series-l'`: hij schreef alleen `valueCeilings`, één plafond per spoel, en duwde er een notitie bij die het hardop zei — *"the inversion is exact for one; with several in series the total is what the metric sees, and the gate remains the authority."* Dat was een accurate beschrijving van een gat. `maxSeriesInductanceFromBump` lost op voor de TOTALE seriereactantie die de driver ziet (`jωL` in één term), dus een keten die over twee spoelen verdeeld is werd door een per-component-box op 2 × maxSI begrensd. Op casus 1 is dat niet de uitzondering maar de regel:
+
+  | netlist | spoelen op de wooferweg | totaal |
+  |---|---|---|
+  | HUIDIG | 3,00 | 3,00 mH |
+  | V41_KAND_1 | 5,39 + 1,95 | **7,34 mH** |
+  | zes andere V41-netlists | twee spoelen elk | 4,15 – 6,60 mH |
+  | V41_KAND_3 | 2,29 | 2,29 mH |
+  | klasse-A-inversie bij 0,5 Ω | | **2,43 mH** |
+
+  Zeven van de acht droegen er twee. **Dat is dus de reparatie van deze sessie**, in de vorm die `qes-series-r` sinds F2 draagt: dezelfde opgeloste `maxSI`, gearchiveerd als som over de vrije seriespoelen van de weg, met de GESLOTEN spoelen eerst van het budget afgetrokken — een vergrendelde spoel is reactantie die de driver ziet en die de tuner niet kan verplaatsen, precies zoals de DCR van een spoel in de weerstandstak. Het per-component-plafond blijft ernaast staan als de noodzakelijke voorwaarde. Invoer en vertaling; geen formule aangeraakt.
+
+  **De eenheden zijn nagegaan vóórdat de projectie vertrouwd werd.** `valueSumCeilings` werd tot nu toe alleen door `qes-series-r` gebruikt, en R heeft SI-factor 1 — een mH/H-verwisseling zou daar nooit zijn opgevallen. `crossoverToNetlist` schrijft `value: mH * 1e-3`, dus `free[i].value` en `maxSI` staan allebei in henry en `projectSums` klopt voor spoelen.
+
+  **INVENTARISATIE 2 — DE INVOER IS METING EN NERGENS KETENRASTER.** Nabije veld op zijn eigen raster met zijn eigen geldigheid (`nearFieldByModel`), impedantie als de GEMETEN sweep op zijn eigen raster (`impedanceByModel`, en F4b2 liet die oversteken juist zodat het ketenraster niet gesubstitueerd kon worden), `fPeakHz` uit de resonantieclassificatie. De ketenrasterfamilie zit er nergens meer in.
+
+  **INVENTARISATIE 3 — DEZELFDE GROOTHEID.** `lfBump().extraDb` is `loaded − bare`: de grootste opslingering die de elektrische overdracht bovenop de kale driver legt, in de band afgeleid uit f_p en genormaliseerd op de referentiefrequentie. Dat is precies waarin het budget is uitgedrukt, dus de vóór/ná-kolom en de eis delen hun eenheid.
+
+  ---
+
+  **DE EIS IS STRENGER DAN HET EIGEN REFERENTIEFILTER VAN DE ONTWERPER, en dat is vóór de run gemeten.**
+
+  | netlist | LF-bult |
+  |---|---|
+  | HUIDIG | **3,78 dB** |
+  | KAND_A | **4,30 dB** |
+  | KAND_B | **3,36 dB** |
+  | gesteld budget | 2,5 dB |
+
+  Bij de versterkervloer haalt HUIDIG de eis met marge, en dát is het bewijs dat de eis geen bouwbaar ontwerp uitsluit. Hier is dat bewijs er niet: alle drie de v1-baselines overschrijden het budget. Het bewijs dat de eis haalbaar IS komt van het V28-corpus, dat op dezelfde drivers netlists van 1,49–1,84 dB draagt. Beide feiten staan nu in het manifest naast het getal, en `frozenNetlistGates.test.ts` assert ze allebei — bereikbaar én niet vacuüm.
+
+  ---
+
+  **DE VÓÓR/NÁ OP HET HELE VELD.** Vijftien kandidaten, `'safety'` als barrièrebron, zelfde seed, zelfde poorten (`compare-corpora.ts v41 live`). De laatste twee kolommen zijn de doelgrootheid en de knop die haar zou moeten sturen.
+  | kandidaat (W-M · M-T) | min \|Z\| vóór | min \|Z\| ná | @ Hz ná | vloer vóór → ná | SPL ± vóór → ná | RMS vóór → ná | W-M fase RAPPORT vóór → ná | W-M fase TUNER vóór → ná | M-T fase RAPPORT vóór → ná | M-T fase TUNER vóór → ná | dissipatie % vóór → ná | grootste R (W) vóór → ná | EPDR vóór → ná | Q_es× vóór → ná | smalste piek ná (dB @ Hz) | correctiegroepen vóór → ná | LF-bult dB vóór → ná | serie-L mH vóór → ná |
+  |---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+  | 396.7 · 1294 | 3.50 | **verworpen** | — | **ja** → — | 0.93 → **verworpen** | 0.54 → **verworpen** | 3.79 → **verworpen** | 2.25 → **verworpen** | 5.88 → **verworpen** | 4.92 → **verworpen** | 47.43 → **verworpen** | 27.81 → **verworpen** | 1.81 → **verworpen** | 1.59 → **verworpen** | — | shunt-shelf×1 series-pad×2 → **verworpen** | 5.98 → **verworpen** | 6.33 → **verworpen** |
+  | 396.7 · 1491.4 | 3.40 | **verworpen** | — | **ja** → — | 0.84 → **verworpen** | 0.49 → **verworpen** | 3.93 → **verworpen** | 2.99 → **verworpen** | 5.46 → **verworpen** | 4.57 → **verworpen** | 52.31 → **verworpen** | 23.62 → **verworpen** | 1.73 → **verworpen** | 1.56 → **verworpen** | — | damped-trap×1 series-pad×2 shunt-pad×1 → **verworpen** | 6.10 → **verworpen** | 6.35 → **verworpen** |
+  | 396.7 · 1719 | 2.64 | **verworpen** | — | **ja** → — | 3.83 → **verworpen** | 1.82 → **verworpen** | 14.03 → **verworpen** | 17.46 → **verworpen** | 22.51 → **verworpen** | 17.52 → **verworpen** | 27.91 → **verworpen** | 11.43 → **verworpen** | 1.34 → **verworpen** | 1.33 → **verworpen** | — | damped-trap×2 series-pad×3 shunt-pad×1 → **verworpen** | 3.62 → **verworpen** | 4.23 → **verworpen** |
+  | 396.7 · 1981.2 | 3.29 | 3.29 | 72.92 | **ja** → **ja** | 0.78 → 0.78 | 0.48 → 0.48 | 4.55 → 4.55 | 2.14 → 2.14 | 5.67 → 5.67 | 4.78 → 4.78 | 40.27 → 40.27 | 28.18 → 28.18 | 1.67 → 1.67 | 1.33 → 1.33 | — | damped-trap×2 shunt-shelf×1 series-pad×2 → damped-trap×2 shunt-shelf×1 series-pad×2 | 7.93 → 7.93 | 7.34 → 7.34 |
+  | 396.7 · 2283.5 | 3.75 | **verworpen** | — | **ja** → — | 1.05 → **verworpen** | 0.53 → **verworpen** | 3.95 → **verworpen** | 2.54 → **verworpen** | 7.52 → **verworpen** | 5.83 → **verworpen** | 43.91 → **verworpen** | 24.64 → **verworpen** | 1.92 → **verworpen** | 1.52 → **verworpen** | — | zobel×1 shunt-shelf×1 series-pad×3 → **verworpen** | 6.56 → **verworpen** | 6.55 → **verworpen** |
+  | 466.5 · 1294 | — | **verworpen** | — | — → — | — → **verworpen** | — → **verworpen** | — → **verworpen** | — → **verworpen** | — → **verworpen** | — → **verworpen** | — → **verworpen** | — → **verworpen** | — → **verworpen** | — → **verworpen** | — | — → **verworpen** | — → **verworpen** | — → **verworpen** |
+  | 466.5 · 1491.4 | — | **verworpen** | — | — → — | — → **verworpen** | — → **verworpen** | — → **verworpen** | — → **verworpen** | — → **verworpen** | — → **verworpen** | — → **verworpen** | — → **verworpen** | — → **verworpen** | — → **verworpen** | — | — → **verworpen** | — → **verworpen** | — → **verworpen** |
+  | 466.5 · 1719 | — | **verworpen** | — | — → — | — → **verworpen** | — → **verworpen** | — → **verworpen** | — → **verworpen** | — → **verworpen** | — → **verworpen** | — → **verworpen** | — → **verworpen** | — → **verworpen** | — → **verworpen** | — | — → **verworpen** | — → **verworpen** | — → **verworpen** |
+  | 466.5 · 1981.2 | 2.64 | 2.64 | 10045.66 | **ja** → **ja** | 3.00 → 3.00 | 1.86 → 1.86 | 20.09 → 20.09 | 19.84 → 19.84 | 25.21 → 25.21 | 13.00 → 13.00 | 40.38 → 40.38 | 16.93 → 16.93 | 1.33 → 1.33 | 1.86 → 1.86 | — | damped-trap×2 series-pad×3 shunt-pad×2 → damped-trap×2 series-pad×3 shunt-pad×2 | 4.38 → 4.38 | 4.15 → 4.15 |
+  | 466.5 · 2283.5 | 3.64 | 3.64 | 75.75 | **ja** → **ja** | 1.17 → 1.17 | 0.54 → 0.54 | 4.34 → 4.34 | 2.76 → 2.76 | 5.48 → 5.48 | 4.34 → 4.34 | 40.44 → 40.44 | 26.39 → 26.39 | 1.83 → 1.83 | 1.41 → 1.41 | — | shunt-shelf×1 series-pad×2 → shunt-shelf×1 series-pad×2 | 7.17 → 7.17 | 6.60 → 6.60 |
+  | 548.5 · 1294 | — | **verworpen** | — | — → — | — → **verworpen** | — → **verworpen** | — → **verworpen** | — → **verworpen** | — → **verworpen** | — → **verworpen** | — → **verworpen** | — → **verworpen** | — → **verworpen** | — → **verworpen** | — | — → **verworpen** | — → **verworpen** | — → **verworpen** |
+  | 548.5 · 1491.4 | — | **verworpen** | — | — → — | — → **verworpen** | — → **verworpen** | — → **verworpen** | — → **verworpen** | — → **verworpen** | — → **verworpen** | — → **verworpen** | — → **verworpen** | — → **verworpen** | — → **verworpen** | — | — → **verworpen** | — → **verworpen** | — → **verworpen** |
+  | 548.5 · 1719 | — | **verworpen** | — | — → — | — → **verworpen** | — → **verworpen** | — → **verworpen** | — → **verworpen** | — → **verworpen** | — → **verworpen** | — → **verworpen** | — → **verworpen** | — → **verworpen** | — → **verworpen** | — | — → **verworpen** | — → **verworpen** | — → **verworpen** |
+  | 548.5 · 1981.2 | — | **verworpen** | — | — → — | — → **verworpen** | — → **verworpen** | — → **verworpen** | — → **verworpen** | — → **verworpen** | — → **verworpen** | — → **verworpen** | — → **verworpen** | — → **verworpen** | — → **verworpen** | — | — → **verworpen** | — → **verworpen** | — → **verworpen** |
+  | 548.5 · 2283.5 | 2.99 | 2.99 | 1062.80 | **ja** → **ja** | 0.93 → 0.93 | 0.53 → 0.53 | 6.45 → 6.45 | 5.36 → 5.36 | 4.77 → 4.77 | 3.43 → 3.43 | 63.14 → 63.14 | 33.81 → 33.81 | 1.56 → 1.56 | 2.29 → 2.29 | — | shunt-shelf×1 series-pad×2 shunt-pad×1 → shunt-shelf×1 series-pad×2 shunt-pad×1 | 3.85 → 3.85 | 2.29 → 2.29 |
+
+  | grootheid | V41-corpus | levend corpus | |
+  | --- | --- | --- | --- |
+  | netlists | 8 | **4** | vier eruit, nul erbij |
+  | LF-bult, gemiddeld | 5,7 dB | **5,8 dB** | de doelgrootheid bewoog NIET |
+  | boven het gestelde budget | 8 van 8 | **4 van 4** | idem |
+  | totale serie-L laagste weg | 5,5 mH | 5,1 mH | |
+  | RMS-vlakheid, gemiddeld | 0,85 dB | 0,93 dB | |
+  | dissipatie | 44,5 % | 46,1 % | |
+  | haalt de vloer | 8 van 8 | 4 van 4 | |
+
+  **EN DE VIER OVERLEVENDEN ZIJN ONDERDEEL VOOR ONDERDEEL IDENTIEK AAN HUN V41-VOORGANGER.** Nagemeten, niet aangenomen: `KAND_V2_1 = V41_KAND_1`, `2 = V41_KAND_3`, `3 = V41_KAND_5`, `4 = V41_KAND_8`, op het `savedAt`-stempel en de naam na. Het gestelde budget heeft dus de helft van het veld verwijderd en geen enkel ontwerp dat overbleef veranderd.
+
+  ---
+
+  **WAAROM — EN DIT IS DE BEVINDING VAN V42.**
+
+  De opslingering hangt niet alleen aan de spoel. De elektrische overdracht is
+
+      H_el(f) = Z(f) / (Z(f) + R_pad + jωL)
+
+  en bij de reflexpiek is |Z| hoog, zodat H_el daar dicht bij 1 blijft, terwijl hij bij de referentiefrequentie — waar |Z| laag is — wegzakt. **SERIEWEERSTAND tilt de piek dus in zijn eentje al op**, en dat is dezelfde natuurkunde als de Q_es-vermenigvuldiging van M-E. Boven ongeveer 1,7 Ω padweerstand is de gestelde 2,5 dB al op vóórdat er één spoel in het pad zit; `maxSeriesInductanceFromBump` geeft dan `null` en er komt GEEN plafond — geen fout, maar het antwoord (V12).
+
+  Gemeten met `scripts/measure-v42-bump-bound.ts`:
+
+  | netlist | pad R | plafond |
+  |---|---|---|
+  | HUIDIG | 3,76 Ω | **geen grens** |
+  | V41_KAND_1 | 1,00 Ω | 1,81 mH |
+  | V41_KAND_2 | 1,72 Ω | **geen grens** |
+  | V41_KAND_3 | 3,79 Ω | **geen grens** |
+  | V41_KAND_4 | 1,59 Ω | **geen grens** |
+  | V41_KAND_5 | 1,26 Ω | 1,31 mH |
+  | V41_KAND_6 | 1,79 Ω | **geen grens** |
+  | V41_KAND_7 | 1,01 Ω | 1,80 mH |
+  | V41_KAND_8 | 2,60 Ω | **geen grens** |
+
+  Zes van de negen krijgen geen grens. Daarmee valt het veld uiteen in twee helften, en beide werken tegen de eis:
+
+  - **Waar de inversie GEEN grens oplevert, verandert er niets.** Vier kandidaten kwamen byte-identiek terug — drie die bij V41 al verworpen waren met exact dezelfde getallen, en `396,7 · 1981,2` dat opnieuw 1,18 dB / 3,5° / 3,29 Ω leverde. Het budget is daar inert.
+  - **Waar de inversie WEL bond, brak zij de versterkervloer.** Vier kandidaten die bij V41 een netwerk leverden (0,48–0,54 dB RMS, de beste van het hele project) kwamen terug op 1,93 / 2,27 / 2,34 / 2,41 Ω tegen een vloer van 2,60. De seriespoel deed dubbel werk: filteren én de takimpedantie rond het kruispunt omhoog houden. Wie haar wegneemt, verliest het tweede.
+
+  **Dat de padweerstand van de geleverde netlist niet die van het ZAAD is, is nagegaan en verandert de conclusie niet.** De grens wordt tijdens de run opgelost bij de padweerstand van het zaad; het zaad bestaat alleen tijdens de run. Maar de gevolgtrekking staat langs een andere weg vast: `projectSums` schaalt de vrije spoelen ómlaag binnen de doelfunctie zodra hun som het plafond overschrijdt, dus een netlist die 7,34 mH aflevert kán geen actief plafond van 1,81 mH gehad hebben. Byte-identiek + 7,34 mH bewijst dat er geen grens actief was.
+
+  ---
+
+  **WAT DIT BETEKENT VOOR DE EIS, en het is geen reden om het getal op te rekken.**
+
+  Het budget is in de praktijk een grens op de **totale bronimpedantie bij resonantie**, waarvan de spoel één term is en de serieweerstand de andere. Wie hem als spoelplafond leest, leest hem op de helft van de ontwerpen verkeerd. En de twee gestelde eisen van deze casus trekken aan hetzelfde onderdeel: de LF-bult wil de seriespoel kleiner, de versterkervloer wil de takimpedantie hoger.
+
+  **Er is daarom GEEN "elke netlist onder het budget"-assert gebouwd.** Die claim zou een uitzonderingslijst ter grootte van het hele corpus vragen, en dat is de vrijstelling die dit project verbiedt. `frozenNetlistGates.test.ts` assert wat waar is en kán falen: de metriek wordt overal gerapporteerd, de OPGESCHREVEN bevinding klopt nog met een verse meting (per netlist, niet als gemiddelde), de eis is bereikbaar op deze drivers, en zij is niet vacuüm. Het negatieve resultaat is daarmee vastgelegd in plaats van weggetest.
+
+  ---
+
+  **DE LCR-/PARALLEL-R-VRAAG — OPEN, MÉT MEETUITSLAG, EN SCHERPER GESTELD DAN BIJ V38.**
+
+  V38 vroeg of de generator een LCR of een parallelweerstand mag voorstellen. Deze sessie levert de gemeten aanleiding, en zij herformuleert de vraag: **hoe begrens je de bronimpedantie bij resonantie zonder de versterkervloer te breken?** Het antwoord is niet "een kleinere spoel" — dat is precies gemeten en het kost het netwerk. Wat er op tafel ligt en NIET gebouwd is (de opdracht sloot het uit):
+
+  1. een parallelweerstand over de seriespoel, die de bult begrenst zonder de doorlaatband­impedantie weg te nemen;
+  2. een LCR-dempingsnetwerk over de driver op f_p, dat de piek zelf verlaagt in plaats van de bron te beperken;
+  3. de eis uitdrukken als een grens op R_pad + jωL samen — één grootheid in plaats van twee, en dan is het een tweede inversie en geen topologievoorstel.
+
+  Sander beslist welke van de drie de generator mag voorstellen. Geen ervan is gebouwd.
+
+  ---
+
+  **V27's PROCESLES, VOOR DE VIERDE KEER — en deze keer ving de suite hem.**
+
+  De acceptatietest bouwde zijn eigen payload met `budgets: {}`. Zodra V42 het budget in de
+  GENERATOR wapende, reproduceerde die test dus niet meer de run waarover hij een uitspraak doet:
+  hij nam een kandidaat die het verslag als VERWORPEN registreert, draaide hem zonder het budget
+  dat hem weigerde, kreeg een netwerk terug en viel om. Precies de vorm die V27 optekende — een
+  run-fixture die afwijkt van de route die zij zegt te meten — en die V38 als beslispunt C nog
+  eens tegenkwam.
+
+  Het verschil met de vorige drie keer is dat hij nu ZICHTBAAR was: de volle suite ging rood met
+  de zin *"the run delivered a network where a refusal was recorded"*. De reparatie is de regel
+  die `casus1V2.fixture.ts` bovenaan zelf stelt en die op dit blok nog niet was toegepast: één
+  definitie, twee consumenten. `CASUS1_V2_GATES` en `CASUS1_V2_BUDGETS` staan sinds V42 in de
+  fixture en worden door het generatiescript én door beide payloads in de acceptatietest gespreid.
+  Er is geen derde plek meer waar iemand kan vergeten mee te bewegen.
+
+  ---
+
+  **WAT ER IN DE CODE VERANDERDE.** `bounds.ts`: de `'bump-series-l'`-tak levert een som-plafond met vergrendelde spoelen van het budget af (invoer/vertaling, geen formule). Nieuw: `scripts/measure-v42-bump-bound.ts`. Het manifest draagt `lf_bult_budget_dB` met motivering, invoerpunt en grens, plus de gemeten bult van de drie referentiefilters en het blok `v42_bult_bevinding`. `casus1.fixture.ts` leest het budget (`casus1LfBumpBudgetDb`), `casus1V2.fixture.ts` exporteert het, het generatiescript wapent het en schrijft sinds V42 per kandidaat op of er werkelijk een plafond kwam — dat kanaal had tot nu toe geen lezer, en het lag precies op de claim van deze sessie. `compare-corpora.ts` draagt twee kolommen erbij. `casus1V2.fixture.ts` krijgt `CASUS1_V2_GATES` en `CASUS1_V2_BUDGETS` zodat de gewapende eisen één huis hebben. Tests: `lfBumpBorder.test.ts` (drie V42-claims op het echte 5,39+1,95-geval), `frozenNetlistGates.test.ts` (vier), en `casus1V2Candidates.test.ts` spreidt sindsdien dezelfde blokken.
+
+  **Wat er NIET veranderd is:** de inversieformule, de metriek, en er is geen LCR- of parallel-R-generatie bij. Het budget is niet opgerekt en niet ontwapend.
+
+  **Openstaand in deze casus:** de LCR-/parallel-R-vraag hierboven; de twee posten uit V41 (`audit.fbHz`, het grijze `costWeight`); en verder onveranderd — groundplane-metingen onder het onderste kruisgebied vóór onderdelenbestelling; HD-sweep; 30°-meting tweeter voor M-G-compleetheid; verzadigings-/formaatcheck grote P-core shunt-spoel.
 
 - V41 (28-08-2026 — **BREAKING, alleen v2-runs**: de kandidaat draagt de twee instellingen die de ontwerp- en synthesestap lezen) — opgeworpen als eigen opdracht uit V38, beslislijst B en C.
 

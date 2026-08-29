@@ -326,6 +326,30 @@ export function casus1AmpMinLoadOhm(golden: GoldenRefs = loadGolden()): number |
 }
 
 /**
+ * V42 — the LF-lift budget the DESIGNER stated for casus 1, dB. Same shape as
+ * the floor above, same reason, and the differences are the interesting part.
+ *
+ * IT ARMS AN INVERSION, NOT A GATE. The floor is a limit on a delivered
+ * network and `M-B/|Z|` judges it. M-D has no gate id at all — it is a
+ * REPORTING metric in A4 — so a stated lift budget cannot condemn anything.
+ * What it does instead is give `invertBudgets` its `bump-series-l` rule an
+ * input, which turns into a ceiling on the lowest way's series inductance:
+ * the search is bounded rather than the outcome judged. That is the whole
+ * point of the session that added it — the lift stops being a property one
+ * reads off the result and becomes a limit the search respects.
+ *
+ * Null when the project states none, and that is P4: no budget, no inversion,
+ * no ceiling, and the notes say which input was missing.
+ */
+export function casus1LfBumpBudgetDb(golden: GoldenRefs = loadGolden()): number | null {
+  const stated = (golden.manifest_en_geometrie as unknown as {
+    gestelde_eisen?: { lf_bult_budget_dB?: unknown };
+  }).gestelde_eisen;
+  const v = stated?.lf_bult_budget_dB;
+  return typeof v === 'number' && Number.isFinite(v) && v > 0 ? v : null;
+}
+
+/**
  * One of the frozen candidate netlists, with the measured driver impedances.
  *
  * The key is any entry of `manifest_en_geometrie.netlists`, which since F4d

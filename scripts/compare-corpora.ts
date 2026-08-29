@@ -13,14 +13,15 @@
  * So both halves are named, every dated corpus stays addressable, and the
  * default is the newest comparison.
  *
- *   corpora: `v30` · `v32` · `v33sweep` · `v33` · `v34` · `v37` · `v38fix` · `live`
- *   default: `v38fix` → `live`   (casebook V41)
+ *   corpora: `v30` · `v32` · `v33sweep` · `v33` · `v34` · `v37` · `v38fix` · `v41` · `live`
+ *   default: `v41` → `live`   (casebook V42)
  *   V32's own table: `npx vite-node scripts/compare-corpora.ts v30 v32`
  *   V33's own table: `npx vite-node scripts/compare-corpora.ts v32 v33`
  *   V33's two arms:  `npx vite-node scripts/compare-corpora.ts v33sweep v33`
  *   V34's own table: `npx vite-node scripts/compare-corpora.ts v33 v34`
  *   V37's own table: `npx vite-node scripts/compare-corpora.ts v34 v37`
  *   V38-fix's table: `npx vite-node scripts/compare-corpora.ts v37 v38fix`
+ *   V41's own table: `npx vite-node scripts/compare-corpora.ts v38fix v41`
  *
  * WHY A FILE COMPARISON AND NOT TWO RUNS. `measure-v30-floor-goal.ts` ran the
  * same field twice and switched one option between the arms, because V30's
@@ -49,6 +50,7 @@ import {
   casus1Files,
   casus1Filter,
   casus1Geometry,
+  casus1LfBumpBudgetDb,
   casus1Manifest,
   loadGolden,
 } from '../src/lib/engine2/casus1.fixture.ts';
@@ -56,7 +58,7 @@ import { buildReport, type ReportSettings } from '../src/lib/engine2/report.ts';
 import { ctcKey } from '../src/lib/engine2/metrics/types.ts';
 import { FLAT_TARGET } from '../src/lib/engine2/requirements/targetCurve.ts';
 import { meetsAmpFloor } from '../src/lib/impedanceFloor.ts';
-import { optimizeNetworkValues } from '../src/lib/netOptimizer.ts';
+import { busTopology, optimizeNetworkValues } from '../src/lib/netOptimizer.ts';
 import { deserializeFilter } from '../src/lib/filterFile.ts';
 import { CASUS1_DIR } from '../src/lib/engine2/casus1.fixture.ts';
 import {
@@ -149,6 +151,7 @@ const DATED: Record<string, { block: string; name: string }> = {
   v34: { block: 'v34_corpus', name: 'V34' },
   v37: { block: 'v37_corpus', name: 'V37' },
   v38fix: { block: 'v38fix_corpus', name: 'V38-fix' },
+  v41: { block: 'v41_corpus', name: 'V41' },
 };
 
 const corpusOf = (id: string): Corpus => {
@@ -158,7 +161,7 @@ const corpusOf = (id: string): Corpus => {
   throw new Error(`unknown corpus "${id}" — use ${[...Object.keys(DATED), 'live'].join(', ')}`);
 };
 
-const [beforeId = 'v38fix', afterId = 'live'] = process.argv.slice(2);
+const [beforeId = 'v41', afterId = 'live'] = process.argv.slice(2);
 const before = corpusOf(beforeId);
 const after = corpusOf(afterId);
 
@@ -210,6 +213,20 @@ interface Row {
    * stelt geen dissipatiegrens (P4).
    */
   groups: Record<string, number>;
+  /**
+   * V42 — DE DOELGROOTHEID VAN DEZE SESSIE en de knop die haar stuurt.
+   *
+   * `bultDb` is `lfBump().extraDb`: het extra niveau dat het elektrische filter
+   * rond de bovenste reflexpiek bovenop de kale driver legt — precies de
+   * grootheid waarin het gestelde budget is uitgedrukt, zodat de vóór/ná-kolom
+   * en de eis dezelfde eenheid hebben.
+   *
+   * `seriesLmH` is de TOTALE seriespoel van de weg waarop M-D oordeelt, want
+   * dat is de grootheid die de A5d.6-inversie begrenst. Twee kolommen en niet
+   * één: de eerste zegt of de eis gehaald is, de tweede waarom.
+   */
+  bultDb: number | null;
+  seriesLmH: number | null;
 }
 
 const r2 = (v: number | null | undefined): number | null =>
@@ -307,6 +324,33 @@ const groupCell = (g: Record<string, number> | undefined): string => {
   return parts.length ? parts.join(' ') : 'geen';
 };
 
+/**
+ * V42 — de totale seriespoel van de weg waarop M-D oordeelt, mH.
+ *
+ * De WEG wordt afgeleid en niet benoemd: `rep.metrics.lfBump[0].driver` is de
+ * weg waarvoor de metriek een bult berekent, en dat is per definitie dezelfde
+ * weg die de inversie begrenst. Nergens in dit script staat het woord
+ * "woofer". De spoelen komen uit `busTopology` — de bus-wandeling van de app
+ * zelf — en niet uit een tweede mening over wat "in serie" betekent.
+ */
+function seriesInductanceMH(key: string, driver: string | null): number | null {
+  if (driver === null) return null;
+  const name = (golden.manifest_en_geometrie as { netlists: Record<string, string> }).netlists[key];
+  const parts: VxpPart[] = deserializeFilter(
+    readFileSync(join(CASUS1_DIR, name), 'utf-8'),
+  ).parts;
+  const bus = busTopology(parts);
+  let total = 0;
+  let seen = 0;
+  for (const p of parts) {
+    if (p.type !== 'Inductor' || p.partId === undefined || p.open || p.shorted) continue;
+    if (!bus.driversOf(p.partId).includes(driver)) continue;
+    total += p.params.find((q) => q.name === 'L')?.value ?? 0;
+    seen++;
+  }
+  return seen > 0 ? total : null;
+}
+
 function measure(key: string): Row {
   const rep = buildReport({
     manifest,
@@ -341,6 +385,8 @@ function measure(key: string): Row {
     narrowPeakDb: r2(rep.system.response?.narrowPeaks[0]?.db ?? null),
     narrowPeakHz: r2(rep.system.response?.narrowPeaks[0]?.fHz ?? null),
     groups: correctionGroupsOf(key),
+    bultDb: r2(rep.metrics.lfBump[0]?.result.extraDb ?? null),
+    seriesLmH: r2(seriesInductanceMH(key, rep.metrics.lfBump[0]?.driver ?? null)),
   };
 }
 
@@ -365,9 +411,10 @@ console.log(
     'SPL ± vóór → ná | RMS vóór → ná | W-M fase RAPPORT vóór → ná | ' +
     'W-M fase TUNER vóór → ná | M-T fase RAPPORT vóór → ná | M-T fase TUNER vóór → ná | ' +
     'dissipatie % vóór → ná | grootste R (W) vóór → ná | EPDR vóór → ná | ' +
-    'Q_es× vóór → ná | smalste piek ná (dB @ Hz) | correctiegroepen vóór → ná |',
+    'Q_es× vóór → ná | smalste piek ná (dB @ Hz) | correctiegroepen vóór → ná | ' +
+    'LF-bult dB vóór → ná | serie-L mH vóór → ná |',
 );
-console.log('|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|');
+console.log('|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|');
 
 let beforeClears = 0;
 let afterClears = 0;
@@ -405,7 +452,9 @@ for (const label of labels) {
       `${num(b?.epdr ?? null)} → ${afterCell(a?.epdr ?? null)} | ` +
       `${num(b?.qesMult ?? null)} → ${afterCell(a?.qesMult ?? null)} | ` +
       `${a && a.narrowPeakDb !== null ? `${num(a.narrowPeakDb)} @ ${num(a.narrowPeakHz)}` : '—'} | ` +
-      `${groupCell(b?.groups)} → ${a ? groupCell(a.groups) : outcome?.verwerping ? '**verworpen**' : 'geen netlist'} |`,
+      `${groupCell(b?.groups)} → ${a ? groupCell(a.groups) : outcome?.verwerping ? '**verworpen**' : 'geen netlist'} | ` +
+      `${num(b?.bultDb ?? null)} → ${afterCell(a?.bultDb ?? null)} | ` +
+      `${num(b?.seriesLmH ?? null)} → ${afterCell(a?.seriesLmH ?? null)} |`,
   );
 }
 
@@ -465,6 +514,24 @@ const roleTotals = (rows: Row[]) => {
       CORRECTION_ROLES.map((r) => `${r} ${tb[r]}→${ta[r]}`).join(', ') +
       `) over ${measuredBefore.length} → ${measuredAfter.length} netlists. ` +
       'Een kolom, geen oordeel: een correctiegroep is een shunt en kost dissipatie en |Z|.',
+  );
+}
+/* V42 — de doelgrootheid als corpusregel, met het gestelde budget ernaast.
+ * Het budget wordt GELEZEN uit het manifest en nooit hier geschreven (P6). */
+{
+  const budget = casus1LfBumpBudgetDb(golden);
+  const overCount = (rows: Row[]) =>
+    budget === null ? null : rows.filter((r) => r.bultDb !== null && r.bultDb > budget).length;
+  console.log(
+    `LF-bult (M-D) gemiddeld: ${fmt(avg(measuredBefore.map((r) => r.bultDb)))} dB vóór → ` +
+      `${fmt(avg(measuredAfter.map((r) => r.bultDb)))} dB ná; totale serie-L van de laagste weg ` +
+      `${fmt(avg(measuredBefore.map((r) => r.seriesLmH)))} → ` +
+      `${fmt(avg(measuredAfter.map((r) => r.seriesLmH)))} mH. ` +
+      (budget === null
+        ? 'Geen budget gesteld, dus dit is een kolom en geen eis (P4).'
+        : `Gesteld budget ${budget} dB: ${overCount(measuredBefore)} van ` +
+          `${measuredBefore.length} eroverheen vóór, ${overCount(measuredAfter)} van ` +
+          `${measuredAfter.length} ná.`),
   );
 }
 console.log(`uit de shortlist gevallen: ${gone.length}${gone.length ? ` — ${gone.map(short).join('; ')}` : ''}`);

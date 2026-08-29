@@ -70,6 +70,8 @@ import {
 } from './casus1.fixture.ts';
 import {
   CASUS1_AMP_MIN_LOAD_OHM,
+  CASUS1_V2_BUDGETS,
+  CASUS1_V2_GATES,
   CASUS1_V2_BAND_HZ,
   CASUS1_V2_GRID,
   CASUS1_V2_SEED,
@@ -461,7 +463,11 @@ describe('the run still delivers the frozen netlist', () => {
       v2: {
         ...casus1V2Facts(rep, manifest, files),
         gates: armedGates,
-        budgets: {},
+        /* V42 — the budgets the GENERATOR arms, from the one place that
+         * defines them. This said `{}` until V42 armed a budget, and the run
+         * this test reproduces then differed from the run that made the
+         * record — see `CASUS1_V2_BUDGETS`. */
+        budgets: { ...CASUS1_V2_BUDGETS },
         determinism: { seed: CASUS1_V2_SEED },
         targetCurve: FLAT_TARGET,
         judgeBandHz: CASUS1_V2_BAND_HZ,
@@ -561,8 +567,11 @@ describe('the run still delivers the frozen netlist', () => {
       input,
       v2: {
         ...casus1V2Facts(rep, manifest, files),
-        gates: CASUS1_AMP_MIN_LOAD_OHM !== null ? { ampMinLoadOhm: CASUS1_AMP_MIN_LOAD_OHM } : {},
-        budgets: {},
+        gates: { ...CASUS1_V2_GATES },
+        /* V42 — see the note at the other payload in this file. This is the
+         * site that FAILED: the record says this candidate was refused, and a
+         * re-run without the armed budget delivered a network instead. */
+        budgets: { ...CASUS1_V2_BUDGETS },
         determinism: { seed: CASUS1_V2_SEED },
         targetCurve: FLAT_TARGET,
         judgeBandHz: CASUS1_V2_BAND_HZ,
