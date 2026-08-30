@@ -104,6 +104,8 @@ import { deserializeFilter } from '../filterFile.ts';
 import { CASUS1_DIR } from './casus1.fixture.ts';
 import type { VxpPart } from '../parsers/vxp.ts';
 import type { Complex } from '../complex.ts';
+import { PHASE_INTEGRATION_VERSION } from './metrics/phaseIntegration.ts';
+import { PHASE_ADMISSION_VERSION } from '../phaseAdmission.ts';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const NET_OPTIMIZER = join(HERE, '..', 'netOptimizer.ts');
@@ -195,6 +197,17 @@ const FIELD: {
   lfLiftDb: number | null;
   lfResonantDb: number | null;
   lfWay: string | null;
+  /** V44 — M-K per handover, with both control columns, from the same report. */
+  phase: {
+    pair: string;
+    mk: number;
+    n: number;
+    bandHz: [number, number];
+    octaveClipped: number | null;
+    overlapWindow: number | null;
+    rejected: { validity: number; silence: number; level: number };
+    grounds: { validity: boolean; silence: boolean; level: boolean };
+  }[];
 }[] = NETLIST_KEYS.map((key) => {
   const r = report(key);
   const d = r.metrics.dissipation;
@@ -209,6 +222,16 @@ const FIELD: {
     lfLiftDb: r.metrics.lfBump[0]?.result.liftDb ?? null,
     lfResonantDb: r.metrics.lfBump[0]?.result.resonantDb ?? null,
     lfWay: r.metrics.lfBump[0]?.driver ?? null,
+    phase: r.system.phaseTracking.map((p) => ({
+      pair: `${p.lower}|${p.upper}`,
+      mk: p.meanAbsDeg,
+      n: p.n,
+      bandHz: p.bandHz,
+      octaveClipped: p.control.octaveClipped.meanAbsDeg,
+      overlapWindow: p.control.overlapWindow.meanAbsDeg,
+      rejected: p.rejected,
+      grounds: p.grounds,
+    })),
   };
 });
 
@@ -1756,5 +1779,170 @@ describe('V43 — the lift splits into a resistive and a resonant half', () => {
           'reformulation rests on something that has changed',
       ).toBeLessThanOrEqual(0);
     }
+  });
+});
+
+/* ------------------------------------------------------------------ *
+ * V44 — M-K op het echte corpus, met beide vervangen maten ernaast
+ * ------------------------------------------------------------------ */
+
+describe('V44 — welke punten een fase-oordeel dragen, over het hele casusboek', () => {
+  /** Wat de recorder schreef — zie `v44_fasematen`, dezelfde vorm als V43. */
+  const RECORD = (golden.manifest_en_geometrie as unknown as {
+    v44_fasematen?: {
+      metriek_versie: string;
+      toelating_versie: string;
+      per_netlist: {
+        netlist: string;
+        paar: string;
+        mk_graden: number | null;
+        punten: number;
+        octaafgeknipt_graden: number | null;
+        overlapvenster_graden: number | null;
+      }[];
+    };
+  }).v44_fasematen;
+
+  it('elke bevroren netlist levert M-K, en zij staat binnen de meetgeldigheid', () => {
+    /* DE PREMISSE, en zij is wat de rest draagt. Grond (a) is op deze casus
+     * gewapend voor élke netlist — de meetbestanden geven hun venster in de
+     * KOP op — dus de band waarop M-K gelezen wordt kan de geldigheidsvloer
+     * niet onderschrijden. Zou dat ooit wél zo zijn, dan leest de maat weer
+     * data die de meting zelf niet draagt, en dat is precies wat V44 sloot. */
+    let judged = 0;
+    for (const f of FIELD) {
+      for (const p of f.phase) {
+        judged++;
+        expect(p.n, `${f.key} ${p.pair}: no admitted point at all`).toBeGreaterThan(0);
+        expect(p.grounds.validity, `${f.key} ${p.pair}: validity ground not armed`).toBe(true);
+        expect(p.grounds.level).toBe(true);
+        expect(Number.isFinite(p.mk)).toBe(true);
+        expect(p.bandHz[1]).toBeGreaterThan(p.bandHz[0]);
+      }
+    }
+    // A scan over an empty field is green for the wrong reason.
+    expect(judged).toBeGreaterThan(NETLIST_KEYS.length);
+  });
+
+  it('de dekking zegt hoeveel van het OVERNAMEGEBIED de meetgeldigheid overliet', () => {
+    /* De transpositie van V15's dekkingsgetal op de band die V44 ervoor in de
+     * plaats zette. Zij hoort niet altijd 100 te zijn — dan zou zij niets
+     * zeggen — en zij hoort ook niet altijd onder de 100 te liggen, want dan
+     * zou zij een constante zijn. Op deze meetset is precies één handover
+     * afgeknepen, en dat is de laagste: zijn overnamegebied reikt onder de
+     * 397 Hz-vloer die de meetbestanden opgeven. */
+    const full: string[] = [];
+    const clipped: string[] = [];
+    for (const f of FIELD) {
+      for (const p of f.phase) {
+        const rep = report(f.key).system.phaseTracking.find(
+          (x) => `${x.lower}|${x.upper}` === p.pair,
+        )!;
+        expect(rep.coverage.fraction).toBeGreaterThan(0);
+        expect(rep.coverage.fraction).toBeLessThanOrEqual(1);
+        (rep.coverage.fraction >= 1 ? full : clipped).push(`${f.key} ${p.pair}`);
+      }
+    }
+    expect(full.length, 'no handover anywhere is fully covered').toBeGreaterThan(0);
+    expect(clipped.length, 'no handover anywhere is clipped — then coverage says nothing')
+      .toBeGreaterThan(0);
+  });
+
+  it('de toegelaten verzameling is een DEELVERZAMELING van het overlapvenster, en ergens strikt', () => {
+    /* Ground (c) IS the overlap test, so M-K can never admit a point the
+     * historic tuner set refused: `n` may only shrink. And it must shrink
+     * SOMEWHERE, or the two are the same set under two names and the whole
+     * change is a rename (V23). */
+    let strict = 0;
+    for (const f of FIELD) {
+      for (const p of f.phase) {
+        if (p.overlapWindow === null) continue;
+        expect(
+          p.rejected.validity + p.rejected.silence,
+          `${f.key} ${p.pair}: nothing was refused on validity or silence`,
+        ).toBeGreaterThanOrEqual(0);
+        if (p.rejected.validity > 0 || p.rejected.silence > 0) strict++;
+      }
+    }
+    expect(strict, 'no handover anywhere refuses a point on validity or silence').toBeGreaterThan(0);
+  });
+
+  it('de drie maten zijn drie GROOTHEDEN — zij lopen op het corpus beide kanten op uiteen', () => {
+    /* De tegenproef die de controlekolommen iets waard maakt. Eén getal onder
+     * drie namen zou elke assert hierboven halen; drie grootheden doen dat niet
+     * op dezelfde manier. Er moeten netlists zijn waar het octaafvenster HOGER
+     * leest dan M-K en netlists waar het LAGER leest, en hetzelfde voor het
+     * kale overlapvenster — anders is het verschil een systematische offset en
+     * geen andere vraag. */
+    let octHigher = 0;
+    let octLower = 0;
+    let ovlHigher = 0;
+    let ovlLower = 0;
+    let opposite = 0;
+    for (const f of FIELD) {
+      for (const p of f.phase) {
+        if (p.octaveClipped === null || p.overlapWindow === null) continue;
+        if (p.octaveClipped > p.mk) octHigher++;
+        if (p.octaveClipped < p.mk) octLower++;
+        if (p.overlapWindow > p.mk) ovlHigher++;
+        if (p.overlapWindow < p.mk) ovlLower++;
+        if ((p.octaveClipped - p.mk) * (p.overlapWindow - p.mk) < 0) opposite++;
+      }
+    }
+    expect(octHigher).toBeGreaterThan(0);
+    expect(octLower).toBeGreaterThan(0);
+    expect(ovlHigher).toBeGreaterThan(0);
+    expect(ovlLower).toBeGreaterThan(0);
+    /* En de scherpste: handovers waar de twee oude maten aan WEERSZIJDEN van
+     * M-K vallen. Dat kan geen enkele monotone herschaling van één getal. */
+    expect(opposite, 'the two control columns never straddle M-K').toBeGreaterThan(0);
+  });
+
+  it('de bevinding van V40 staat nog: de twee oude maten zijn het aantoonbaar oneens', () => {
+    /* V40's meting, als claim die kan falen. De twee vervangen maten lopen op
+     * dit corpus tot tientallen graden uiteen over ÉÉN netwerk, en dat is de
+     * reden dat er een derde maat is. Wordt dit ooit klein, dan is er iets aan
+     * een van beide veranderd zonder dat iemand het besloot — en dat is precies
+     * wat deze kolommen moeten laten zien. */
+    let worst = 0;
+    let worstAt = '';
+    for (const f of FIELD) {
+      for (const p of f.phase) {
+        if (p.octaveClipped === null || p.overlapWindow === null) continue;
+        const gap = Math.abs(p.octaveClipped - p.overlapWindow);
+        if (gap > worst) {
+          worst = gap;
+          worstAt = `${f.key} ${p.pair}`;
+        }
+      }
+    }
+    expect(worst, `the widest disagreement is only ${worst.toFixed(2)} deg at ${worstAt}`)
+      .toBeGreaterThan(10);
+  });
+
+  it('de opgeschreven ontleding klopt nog met een verse meting, per netlist', () => {
+    /* Dezelfde vorm en dezelfde reden als V43's: een blok dat de recorder
+     * schrijft en dat niemand herrekent, veroudert stil. Per netlist en per
+     * paar, niet als gemiddelde. */
+    expect(RECORD, 'the case book records no V44 phase decomposition').toBeTruthy();
+    expect(RECORD!.metriek_versie).toBe(PHASE_INTEGRATION_VERSION);
+    expect(RECORD!.toelating_versie).toBe(PHASE_ADMISSION_VERSION);
+    const rows = RECORD!.per_netlist;
+    expect(rows.length).toBeGreaterThan(0);
+    let checked = 0;
+    for (const row of rows) {
+      const f = FIELD.find((x) => x.key === row.netlist);
+      expect(f, `${row.netlist} is recorded but not in the manifest`).toBeTruthy();
+      const p = f!.phase.find((x) => x.pair === row.paar);
+      expect(p, `${row.netlist} ${row.paar} is recorded but not measured`).toBeTruthy();
+      expect(p!.mk).toBeCloseTo(row.mk_graden!, 1);
+      expect(p!.n).toBe(row.punten);
+      expect(p!.octaveClipped!).toBeCloseTo(row.octaafgeknipt_graden!, 1);
+      expect(p!.overlapWindow!).toBeCloseTo(row.overlapvenster_graden!, 1);
+      checked++;
+    }
+    // A shrunken record must fail rather than pass on the rows it still has.
+    const measured = FIELD.reduce((a, f) => a + f.phase.length, 0);
+    expect(checked).toBe(measured);
   });
 });

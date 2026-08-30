@@ -356,7 +356,18 @@ export function casus1V2Facts(
       phaseDeg: f.impedance.phaseDeg,
     };
   }
-  return factsForWorker(report, modelByDriverId, sweepByDriverId);
+  return {
+    ...factsForWorker(report, modelByDriverId, sweepByDriverId),
+    /* V44 — this fixture BUILDS the chain grid and bands every branch to its
+     * own measured extent (`banded`, below), so it is the party that knows what
+     * stands for silence here. Stating it arms ground (b) of the phase
+     * admission; leaving it out would make that ground abstain on the one run
+     * where the ghost demonstrably exists. On this casus it removes nothing
+     * that ground (a) does not already remove — measured in
+     * `frozenNetlistGates.test.ts`, not assumed — because the validity band
+     * lies inside the measured extent by construction. */
+    silentFloorDb: SILENT_GHOST_DB,
+  };
 }
 
 /** Band a response to its own measured extent — silence outside it. */

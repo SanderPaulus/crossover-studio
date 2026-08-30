@@ -62,8 +62,26 @@ export interface IntegrationResult {
   bandwidth: { fLo: number; fHi: number; octaves: number } | null;
 }
 
+/**
+ * Het overlapvenster in dB — ÉÉN huis, sinds V44 twee lezers.
+ *
+ * De fysica staat bovenaan dit bestand: bij |ΔdB| = 20 draagt de zwakste tak
+ * een tiende van de amplitude en kan zij de som niet breken, hoe haar fase ook
+ * staat. Dat is geen projectgetal maar een conventie over wanneer fase ertoe
+ * doet, en zij hoorde altijd al hier. `phaseAdmission.ts` leest hem als grond
+ * (c) in plaats van de vergelijking na te bouwen — de vorm die
+ * `impedanceFloor.ts` draagt, en om dezelfde reden (V32: twee implementaties
+ * die tot drie decimalen overeenkomen zijn niet te onderscheiden van één).
+ */
+export const DEFAULT_OVERLAP_WINDOW_DB = 20;
+
+/** De ENE vergelijking die zegt of een punt in de overlap ligt. */
+export function inOverlapWindow(levelDiffDb: number, windowDb: number): boolean {
+  return levelDiffDb <= windowDb;
+}
+
 export interface IntegrationOptions {
-  /** Points with |ΔdB| beyond this are not part of the overlap. Default 20 dB. */
+  /** Points with |ΔdB| beyond this are not part of the overlap. */
   overlapWindowDb?: number;
 }
 
@@ -71,7 +89,7 @@ export function computeIntegration(
   r: CombineResult,
   opts: IntegrationOptions = {},
 ): IntegrationResult {
-  const { overlapWindowDb = 20 } = opts;
+  const { overlapWindowDb = DEFAULT_OVERLAP_WINDOW_DB } = opts;
   const n = r.freq.length;
 
   const points: IntegrationPoint[] = new Array(n);
@@ -82,7 +100,7 @@ export function computeIntegration(
 
   for (let i = 0; i < n; i++) {
     const levelDiffDb = Math.abs(r.woofer.spl[i] - r.tweeter.spl[i]);
-    const inOverlap = levelDiffDb <= overlapWindowDb;
+    const inOverlap = inOverlapWindow(levelDiffDb, overlapWindowDb);
     const weight = 10 ** (-levelDiffDb / 20);
     const phaseErrorDeg = Math.abs(r.relativePhaseDeg[i]);
 

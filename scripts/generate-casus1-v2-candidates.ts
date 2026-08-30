@@ -557,6 +557,32 @@ const meetopstelling = {
         'vraag, en zij wordt op de SOM gesteld nadat die bestaat.'
       : 'De zoektocht gladt de drivermagnitudes vóór de sommatie — de vóór-arm van V38-fix, en ' +
         'de default die elke v1-run leest.',
+  /* ---- V44: WELKE PUNTEN EEN FASE-OORDEEL DRAGEN -------------------------
+   *
+   * Eén veld, één besluit, in dezelfde vorm als V30, V33, V34, V37 en V38-fix.
+   * Niet hoe fase GEWOGEN wordt (dat is `phaseMetric`, en dat veld staat er al)
+   * maar over welke PUNTEN het gemiddelde genomen wordt. Afgelezen van de
+   * verklaring, want het is sinds V44 een keuze-sleutel. */
+  fase_toelating: lastPayload.candidate?.declaration.stated.phaseAdmission ?? null,
+  fase_toelating_waarom:
+    (lastPayload.candidate?.declaration.stated.phaseAdmission ?? null) === 'measured'
+      ? 'HET FASE-OORDEEL RUST OP DE PUNTEN DIE HET MOGEN DRAGEN — drie gronden tegelijk, elk ' +
+        'een bestaande doctrine. (a) Binnen de meetgeldigheid van BEIDE takken: over het hele ' +
+        'casusboek telde de oude tunerverzameling 1048 punten mee die het rapport niet zag, ' +
+        'waarvan 911 onder de vloer die de meetbestanden ZELF in hun kop opgeven (V15, lek 2). ' +
+        '(b) Beide takken boven de stille-geestvloer: 14 punten waar BEIDE takken dood waren en ' +
+        'het faseverschil dus uitsluitend van de filters kwam — op HUIDIG is dat 20 kHz met ' +
+        '−475 en −462 dB, |Δ| = 13,1 dB, dus ruim binnen elk RELATIEF venster (V38-fix). (c) ' +
+        '|niveauverschil na filter| ≤ het overlapvenster: het bestaande tuner-criterium, want ' +
+        'fase waar de som hem niet voelt telt niet — de oude rapportmaat middelde op ' +
+        'V28_KAND_1 M-T dertien punten van gemiddeld 146° mee en las 90,7° waar de som 29,7° ' +
+        'zag. De ±1-OCTAAFBAND is als toelating VERVALLEN: grond (c) leest het overnamegebied ' +
+        'van het geleverde netwerk af in plaats van het met een octaafregel te benaderen. Geen ' +
+        'van de drie gronden stelt een frequentie of een grens — de geldige band komt uit de ' +
+        'opnamepas, de geestvloer is de conventie van wie het raster bouwde, en het ' +
+        'overlapvenster woonde al in `integration.ts` (V40, V44).'
+      : 'Het fase-oordeel rust op elk punt binnen het overlapvenster, ongeknipt op ' +
+        'meetgeldigheid — de vóór-arm van V44, en de default die elke v1-run leest.',
   /* ---- V41: WAT DE ONTWERP- EN SYNTHESESTAP MOCHTEN BOUWEN ---------------
    *
    * Twee velden, één besluit, in dezelfde vorm als V30, V33, V34, V37 en

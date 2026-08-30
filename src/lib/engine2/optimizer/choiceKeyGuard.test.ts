@@ -131,8 +131,12 @@ describe('F4c — every tuner option has a class', () => {
     // read by the design and synthesis steps before the tuner exists. They may
     // never appear among the tuner's own options, because a value that reaches
     // the tuner arrives too late to put a component in the network.
-    expect(keys.length).toBe(44);
-    expect(CHOICE_KEYS.length + GREY_KEYS.length + POLISH_KEYS.length).toBe(44);
+    // 46 since V44 added `phaseAdmission` (choice — WHICH POINTS a phase
+    // judgement may rest on) and `phaseAdmissionFacts` (polish — the validity
+    // band and ghost convention those grounds read). Same pair shape as V33,
+    // V34 and V37, and the split becomes 31/5/10.
+    expect(keys.length).toBe(46);
+    expect(CHOICE_KEYS.length + GREY_KEYS.length + POLISH_KEYS.length).toBe(46);
     for (const k of CHAIN_CHOICE_KEYS) {
       expect(classified as readonly string[], `${k} is a chain key, not a tuner option`).not.toContain(k);
     }
@@ -197,9 +201,30 @@ describe('F4c — every tuner option has a class', () => {
     expect(CHOICE_KEYS).toContain('errorSmoothOct');
     expect(POLISH_KEYS as readonly string[]).not.toContain('errorSmoothOct');
     expect(GREY_KEYS as readonly string[]).not.toContain('errorSmoothOct');
-    expect(CHOICE_KEYS.length).toBe(30);
+    /* V44 — the fourth pair, and the split between them is the same claim as
+     * V33's, V34's and V37's. WHICH POINTS a phase judgement may rest on
+     * decides what the search calls good and what the requirement accepts, so
+     * it is a choice and may only come from a candidate. WHAT those grounds
+     * read — the validity band from the ingest pass, the caller's ghost
+     * convention — is the run's own measurement, handed over by the caller that
+     * already holds it. `phaseAdmissionFacts` may never become a choice: a
+     * candidate that brought its own validity band would be a second opinion
+     * about A5b.1, which has one implementation on purpose. A migration either
+     * way breaks the build. */
+    expect(CHOICE_KEYS).toContain('phaseAdmission');
+    expect(POLISH_KEYS as readonly string[]).not.toContain('phaseAdmission');
+    expect(GREY_KEYS as readonly string[]).not.toContain('phaseAdmission');
+    expect(POLISH_KEYS).toContain('phaseAdmissionFacts');
+    expect(CHOICE_KEYS as readonly string[]).not.toContain('phaseAdmissionFacts');
+    expect(GREY_KEYS as readonly string[]).not.toContain('phaseAdmissionFacts');
+    /* And the two are INDEPENDENT of `phaseMetric`, which is the correction V40
+     * turned up: both of that key's values average over the overlap window, so
+     * it names the WEIGHTING and can state no admission at all. Two keys, two
+     * questions — collapsing them would make one of the two unavailable. */
+    expect(CHOICE_KEYS).toContain('phaseMetric');
+    expect(CHOICE_KEYS.length).toBe(31);
     expect(GREY_KEYS.length).toBe(5);
-    expect(POLISH_KEYS.length).toBe(9);
+    expect(POLISH_KEYS.length).toBe(10);
   });
 });
 
@@ -519,6 +544,42 @@ describe('F4d — a generated candidate declares every choice key', () => {
     // ...and the width moves the fingerprint, or the choice would be a label.
     expect(JSON.stringify(declarationKey(bare(), {}))).not.toBe(
       JSON.stringify(declarationKey(smoothed, {})),
+    );
+  });
+
+  it('V44 — every candidate states WHICH POINTS a phase judgement rests on', () => {
+    /* THE THIRD UNCONDITIONAL DERIVATION, same shape as V37's and V38-fix's:
+     * the question is not conditional. Every candidate is judged on phase — the
+     * `phase-tracking` requirement reads it per handover, the objective carries
+     * it under `phasePriority`, and the panel prints it — so every candidate has
+     * to say which points that judgement rests on.
+     *
+     * 'MEASURED' IS NOT A CASUS-1 NUMBER. It states no frequency and no limit;
+     * the three grounds are the measurement's own validity band, the caller's
+     * own ghost convention, and the overlap window that already lived in
+     * `integration.ts`. */
+    expect(full().stated.phaseAdmission).toBe('measured');
+    expect(bare().stated.phaseAdmission).toBe('measured');
+    for (const d of [full(), bare()]) {
+      expect(d.absent.some((a) => a.key === 'phaseAdmission')).toBe(false);
+      expect(d.delegated.some((g) => g.key === 'phaseAdmission')).toBe(false);
+    }
+
+    /* An explicit admission still wins, so V44's before/after is a run someone
+     * can ask for rather than a build that has to be patched — the property
+     * V30, V33, V34, V37 and V38-fix each rest on. */
+    const historic = declareCandidateChoices({
+      cages: [[400, 500], [1500, 2000]],
+      windowFloorsHz: [397, 1294],
+      multiWay: true,
+      stated: { phaseAdmission: 'overlap' },
+    });
+    expect(historic.stated.phaseAdmission).toBe('overlap');
+    expect(historic.absent.some((a) => a.key === 'phaseAdmission')).toBe(false);
+
+    // ...and it moves the fingerprint, or the choice would be a label.
+    expect(JSON.stringify(declarationKey(bare(), {}))).not.toBe(
+      JSON.stringify(declarationKey(historic, {})),
     );
   });
 

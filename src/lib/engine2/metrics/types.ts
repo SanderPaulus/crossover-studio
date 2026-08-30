@@ -41,7 +41,8 @@ export type MetricId =
   | 'M-F-final'
   | 'M-G'
   | 'M-H'
-  | 'M-J';
+  | 'M-J'
+  | 'M-K';
 
 /** The role A4 assigns each metric in the FINISHED engine (F2/F3), not in F1. */
 export type MetricRole = 'gate' | 'soft' | 'report';

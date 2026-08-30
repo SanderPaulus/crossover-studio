@@ -518,6 +518,11 @@ function measurementFacts(
     branchDb,
     grid,
     driverZ,
+    /* V44 — the caller's silent-ghost convention, carried through unchanged.
+     * Not derived and not guessed: which value stands for "not measured here"
+     * is a decision of whoever built the grid, and a sentinel this code sniffed
+     * out of the curve would be the magic number P6 forbids. */
+    silentFloorDb: v2.silentFloorDb,
     provenance,
     notes,
   };
@@ -922,9 +927,58 @@ function tuneOptionsFor(
     );
   }
 
+  /* ---- V44: the facts the phase admission reads ------------------------
+   *
+   * The candidate decides WHICH POINTS may carry a phase judgement
+   * (`phaseAdmission`, a choice key); this supplies what the grounds READ.
+   * Both come straight out of the payload the ingest pass resolved — there is
+   * no second validity hierarchy here and there must not be one, which is the
+   * whole of F4b's leak 2.
+   *
+   * ONE band for both branches of every pair, and it is the INTERSECTION, the
+   * same reduction `commonBand` makes in `report.ts`. Not per driver: the tuner
+   * builds its pairs out of adjusted branches and carries no way names beside
+   * them, so a per-driver band could not be handed to the right branch — and
+   * two readers that each derive their own band are two implementations, which
+   * is the state V32 found and this change exists not to repeat.
+   *
+   * No validity, no reading: the ground abstains and the note says so. It does
+   * NOT fall back to the grid — a search that silently judges phase on data its
+   * own measurements disown is exactly what V44 removed. */
+  /* ONLY the MEASURED intervals. `facts.validHz` also holds grid-fallback
+   * entries for models whose files carried no window, and folding those in
+   * would substitute the analysis grid for a measurement claim — the exact
+   * silent fallback V32 removed from the gates and V44 removes from here. */
+  const validBands: [number, number][] = Object.entries(facts.validHz)
+    .filter(([model]) => facts.provenance.validHz[model] === 'measured')
+    .map(([, b]) => b);
+  let phaseValidBandHz: [number, number] | null = null;
+  if (validBands.length > 0) {
+    const lo = Math.max(...validBands.map((b) => b[0]));
+    const hi = Math.min(...validBands.map((b) => b[1]));
+    if (hi > lo) phaseValidBandHz = [lo, hi];
+  }
+  const wantsAdmission = stated.phaseAdmission === 'measured';
+  if (wantsAdmission && phaseValidBandHz === null && facts.silentFloorDb === undefined) {
+    collect.notes.push(
+      'The candidate asked the phase judgement to rest on the measured points and this run ' +
+        'states neither a validity interval nor a silent-ghost convention, so only the overlap ' +
+        'window is armed and the admission is the historic set. It is NOT falling back ' +
+        'silently: two of the three grounds simply have no input (P4).',
+    );
+  }
+
   return {
     ...stated,
     ...weights,
+    ...(wantsAdmission
+      ? {
+          phaseAdmissionFacts: {
+            validBandHz: phaseValidBandHz,
+            silentFloorDb: facts.silentFloorDb ?? null,
+          },
+        }
+      : {}),
     ...(barrierOnSweep && reference.impedance
       ? {
           zFloorBarrierImpedance: {
@@ -1510,12 +1564,21 @@ export function handleV2Request(req: V2Request, post: V2Post): void {
             // The phase tracking the tuner already delivered, per adjacent
             // pair — the existing metric, not a second opinion about it.
             const pairs = r.net.after.pairPhaseDeg ?? [];
+            /* V44 — the historic reading rides along per pair when the
+             * admission was armed. It judges nothing; the shortlist prints it
+             * beside the delivered number so a figure that MOVED reads as a
+             * redefinition instead of a regression. */
+            const control = r.net.after.pairPhaseControlDeg ?? [];
             const labels = ['woofer|mid', 'mid|tweeter'];
             return {
               measurements: {
                 response,
                 phaseTracking: pairs
-                  .map((deg, i) => ({ subject: labels[i] ?? `pair ${i}`, meanAbsDeg: deg }))
+                  .map((deg, i) => ({
+                    subject: labels[i] ?? `pair ${i}`,
+                    meanAbsDeg: deg,
+                    ...(Number.isFinite(control[i]) ? { controlDeg: control[i] } : {}),
+                  }))
                   .filter((x) => Number.isFinite(x.meanAbsDeg)),
               },
               topology: topologyOf(
@@ -1643,7 +1706,15 @@ export function handleV2Request(req: V2Request, post: V2Post): void {
                   ? judgeResponse(sum.freq, sum.spl, v2.targetCurve ?? FLAT_TARGET, band)
                   : null,
                 phaseTracking: Number.isFinite(r.net.after.phaseDeg)
-                  ? [{ subject: 'low|high', meanAbsDeg: r.net.after.phaseDeg }]
+                  ? [
+                      {
+                        subject: 'low|high',
+                        meanAbsDeg: r.net.after.phaseDeg,
+                        ...(Number.isFinite(r.net.after.pairPhaseControlDeg?.[0])
+                          ? { controlDeg: r.net.after.pairPhaseControlDeg![0] }
+                          : {}),
+                      },
+                    ]
                   : [],
               },
               // TODO(F2c/F3): the two-way chain settles its structure inside

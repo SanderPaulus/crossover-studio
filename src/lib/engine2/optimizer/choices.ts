@@ -74,6 +74,15 @@ export const CHOICE_KEYS = [
   'ampTarget',
   'powerMetric',
   'phaseMetric',
+  /* …and WELKE PUNTEN een fase-oordeel mogen dragen. V44, and a choice for
+   * exactly the reason `zFloorBarrierSource` (V33) and `rSourceProbeSource`
+   * (V34) are: it names the points at which a judged quantity is measured, and
+   * `phaseMetric` beside it cannot state this — both of ITS values average over
+   * the overlap window, so the weighting and the admission are two questions.
+   * Measured on casus 1: over one and the same network the two admissions read
+   * 59.15 deg and 17.05 deg, and the requirement `phase-tracking` judges on
+   * this number. A key that can do that is not polish (casebook V40/V44). */
+  'phaseAdmission',
   'angleData',
   /* --- what the topology IS --- */
   'midBranch',
@@ -248,6 +257,15 @@ export const POLISH_KEYS = [
    * measurement on the wire — and worse, a second opinion about a hierarchy
    * that has one implementation on purpose (F4b leak 1, V21). */
   'dissipationReferenceReOhm',
+  /* V44 — the measurement the choice above names, handed over by the caller
+   * that already holds it. Polish for the same reason the two entries above
+   * are: it carries no decision. WHICH points a phase judgement may rest on is
+   * `phaseAdmission`, a choice; the validity band and the silent-ghost
+   * convention that those grounds read are the run's own measured facts,
+   * derived once by the ingest pass (A5b.1) and already on the wire. A
+   * candidate that brought its own validity band would be a second opinion
+   * about a hierarchy that has one implementation on purpose. */
+  'phaseAdmissionFacts',
 ] as const;
 
 export type PolishKey = (typeof POLISH_KEYS)[number];

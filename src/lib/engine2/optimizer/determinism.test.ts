@@ -177,9 +177,10 @@ describe('A5e.4 - the v2 optimisation path is deterministic', () => {
     /* `facts` was introduced at F4b with two contents (the resolved R_e and the
      * A5b.1 validity). F4b2 added three more — the resonance, the near field
      * and the impedance sweep — because the LF-lift inversion cannot be made
-     * from anything the worker holds (V25). The ingredient's NAME did not
-     * change, so the coverage assert below cannot see the growth; this is what
-     * sees it. Each entry must move the key on its own, or a run on a different
+     * from anything the worker holds (V25). V44 added a sixth, the caller's
+     * silent-ghost convention, because the phase admission reads it as ground
+     * (b). The ingredient's NAME did not change any of those times, so the
+     * coverage assert below cannot see the growth; this is what sees it. Each entry must move the key on its own, or a run on a different
      * measurement could wear the same fingerprint.
      *
      * Deliberately synthetic: this is a statement about the key, not about any
@@ -195,6 +196,12 @@ describe('A5e.4 - the v2 optimisation path is deterministic', () => {
           w: { grid: [10, 20], magnitude: [8, 9], phaseDeg: [0, 1], validHz: [10, 20] },
         },
       },
+      /* V44 — and `0` is the wrong probe value here on purpose-avoidance
+       * grounds: an unstated convention fingerprints as `null`, so a variant
+       * that used a falsy number would still be distinguishable, but a reader
+       * could not tell whether it was the value or the presence that moved the
+       * key. A real ghost value makes the claim unambiguous. */
+      silentFloor: { silentFloorDb: -400 },
     };
     const seen = new Set<string>([bare]);
     for (const [name, payload] of Object.entries(variants)) {
@@ -206,7 +213,7 @@ describe('A5e.4 - the v2 optimisation path is deterministic', () => {
     // Every field of the payload type is exercised above. A new one added
     // without a variant here rides along untested, which is the failure this
     // assert exists to prevent.
-    expect(Object.keys(variants).length).toBe(5);
+    expect(Object.keys(variants).length).toBe(6);
   });
 
   it('the fingerprint changes with EVERY component it is made of', () => {

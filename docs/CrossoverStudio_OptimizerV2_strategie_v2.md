@@ -144,6 +144,24 @@ Formaat per metriek: *grootheid → formule → afgeleide parameters → databeh
 
 **M-H · Breakup-afstand met ernst-weging.** Breakup-detectie per driver (zie A5.2); de vakregel "kruis onder f_break/3 (H3) resp. /2 (H2)" geldt in volle sterkte alleen voor forse pieken. Weging: vereiste marge schaalt met piekamplitude en Q (voorstel: volle regel vanaf circa +6 dB piek; daaronder lineair afbouwend; exacte weging vaststellen zodra HD-metingen in het casusboek zitten). Belangrijk inzicht: een notch op de breakup verhelpt dit niet — de vervorming ontstaat ín de driver, ná het filter. **Richtings-persistentie als ernst-component:** een piek die bij off-axis metingen blijft staan of groeit is een echte conusresonantie (telt mee in de power response → ernst omhoog); een piek die verdwijnt of van teken wisselt is interferentie/diffractie (ernst omlaag). Lineair deelrapport (altijd beschikbaar): elektrische onderdrukking op f_break.
 
+**M-K · Fase-integratie per kruisgebied.** *Nieuw bij V44 (30-08-2026). Vóór V44 bestond deze grootheid wel maar had zij geen registerrij: zij stond als extractor onder A5.5 en werd op TWEE plaatsen anders geïmplementeerd — en die twee bewogen op hetzelfde netwerk in tegengestelde richting (Deel B, V40).*
+
+| veld | inhoud |
+| --- | --- |
+| grootheid | Het gemiddelde \|relatieve fase\| tussen twee AANGRENZENDE takken, over de punten die zo'n oordeel mogen DRAGEN. De formule is ongewijzigd sinds F1; wat V44 vaststelt is de puntenverzameling. |
+| formule | `mean over toegelaten i van \|wrap(arg H_onder(f_i) − arg H_boven(f_i))\|`, op het raster waarop de aanroeper werkt. |
+| toelating (drie gronden, alle drie tegelijk) | **(a)** het punt ligt binnen de meetgeldige band van BEIDE takken (A5b.1). **(b)** BEIDE takken liggen boven de stille-geestvloer van de aanroeper — buiten haar gemeten uitgestrektheid draagt een tak de geestwaarde met fase 0, en twee even dode takken liggen per definitie binnen élk RELATIEF niveauvenster. **(c)** \|niveauverschil na filter\| ≤ het overlapvenster (`integration.ts`): fase waar de som hem niet voelt, telt niet. |
+| wat vervalt | De **±1-octaafband rond het kruispunt** als toelating. Zij was een BENADERING van "waar de twee takken elkaar overnemen"; grond (c) meet dat gebied rechtstreeks, op het geleverde netwerk. Gevolg in beide richtingen: geldige punten buiten dat octaaf tellen mee, en punten binnen dat octaaf waar één tak allang weg is, tellen niet. |
+| afgeleide parameters | Géén. De geldige band komt per weg uit de opnamepas, de geestvloer is de conventie van wie het raster bouwde, en het overlapvenster woont in `integration.ts`. Er staat geen frequentie en geen grens in de metriekcode (P6). |
+| databehoefte | Twee gefilterde taktransfers op één raster. Grond (a) vraagt de A5b.1-geldigheid, grond (b) een gestelde geestconventie; ontbreekt er een, dan ONTHOUDT die grond zich en de metriek zegt welke (P4). Zij valt nooit terug op een verzonnen band. |
+| geldigheid | De dekking wordt gemeten tegen het OVERNAMEGEBIED (de band die grond (c) van dit netwerk afleest) en niet tegen een octaafvenster: zij zegt hoeveel van dat gebied de meetgeldigheid en de geestvloer overlieten. Op casus 1 is dat 100 % op mid→tweeter en 42–56 % op woofer→mid, waar het overnamegebied onder de 397 Hz-vloer reikt. |
+| rol | **zacht.** Dit is waar de EIS `phase-tracking` op oordeelt (per kruisgebied, verruimbaar door de relaxatieladder als smaak-eis, A5e.1) en waar de shortlist op sorteert; het is geen poort en heeft geen id in `GATE_IDS`. |
+| controlekolommen | De twee vervangen maten blijven meereizen onder eigen naam (`control.octaveClipped`, `control.overlapWindow`) en oordelen niets. Zij staan er omdat hun onderlinge tegenspraak het bewijsmateriaal onder V44 is: verdwijnt zij, dan is er aan een van beide iets veranderd zonder dat iemand het besloot. |
+| validatiecasus | casus 1, élke bevroren netlist (`manifest_en_geometrie.v44_fasematen`, klasse B) plus `kandidaten.*.wm_fase_oct` / `.mt_fase_oct`. Handberekening en nieuwe-meting-test in `metrics/phaseIntegration.test.ts`; de corpusclaims in `frozenNetlistGates.test.ts`; de tuner-helft in `optimizer/phaseAdmission.test.ts`. |
+| versie | `phase-integration/2.0`, naast `phase-admission/1.0` voor de toelating. MAJOR: dezelfde naam, een andere puntenverzameling, dus een ander getal — dezelfde afweging als `lobing-lambda/2.0`. Een cache van vóór deze versie beantwoordt de nieuwe vraag niet en vervalt. |
+
+*Wat V44 verving, en waarom geen van de twee genoeg was.* De RAPPORTMAAT middelde over ±1 octaaf rond het kruispunt, geknipt op meetgeldigheid — en telde daarmee punten mee waar één tak dertig dB weg was (op `V28_KAND_1` mid→tweeter dertien punten van gemiddeld 146°, wat 90,7° opleverde waar de som 29,7° zag). De TUNERMAAT middelde over het overlapvenster zonder enige knip — en telde daarmee, over het hele casusboek, 1047 punten mee die de rapportmaat niet zag, waarvan 911 onder de meetgeldigheidsvloer die de meetbestanden zélf opgeven en 14 waar beide takken dood waren en het faseverschil uitsluitend van de filters kwam. De twee defecten staan haaks op elkaar, en dat is waarom het antwoord hun DOORSNEDE is en niet een van beide.
+
 ### Rapportage zonder optimalisatierol
 
 **M-J · Groepvertraging vs. hoorbaarheidsdrempel.** Groepvertraging van het totale systeem, getoond tegen de drempelcurve uit de psychoakoestische literatuur (~1–3 ms in het middengebied, ruimer daarbuiten). Geen poort, geen smaakoordeel: typische HF-kruisingen blijven er ruim onder, lage kruispunten verdienen de blik. Dit is de berekenbare afstammeling van alle "steil klinkt slechter"-lore; de klankregel zelf ("2e orde muzikaler") is ❌ — geen grootheid, en de gecontroleerde luisterliteratuur wijst gladde on-/off-axis respons aan als dominante voorkeursfactor.
@@ -250,7 +268,7 @@ A5d.1 t/m A5d.7 bakenen de ontwerpruimte af. Zolang die afbakening alleen gerapp
    - **De engine zoekt het TOELAATBARE GEBIED.** Alles wat aan alle actieve eisen én alle actieve poorten voldoet is een winnaar. Er bestaat **geen gewogen somscore en geen gewichtsvector** — nergens, ook niet intern als "hulpmiddel". Eisen zijn acceptatie-eisen op de uitkomst, geen straftermen in de zoektocht: P3 (onhaalbare doelen krijgen geen drempel) blijft onverkort gelden voor de zoektocht zelf.
    - **De uitkomst is een GEDIVERSIFIEERDE SHORTLIST** (standaard 10, instelbaar): eerst gespreid over topologie-klassen (orde per flank, polariteit meegerekend), daarbinnen op afstand in genormaliseerde componentruimte. Tien wezenlijk verschillende ontwerpen, geen tien klonen.
    - **Sortering is presentatie, geen oordeel.** Standaard gesorteerd op RMS-vlakheid t.o.v. de doelcurve; elke metriekkolom is hersorteerbaar; sorteren verandert niets aan de inhoud van de lijst. De selectie is aan de mens.
-   - **Venster poort, gemiddelde rangschikt.** De ±dB-eis is peak-to-peak op de 1/6-octaaf-gegladde systeemrespons t.o.v. de doelcurve; de sorteersleutel is de RMS-afwijking van diezelfde doelcurve. Twee verschillende vragen — "is dit acceptabel" en "welke is het vlakst" — verdienen twee verschillende grootheden, en één getal voor beide is precies hoe een piek van 3 dB en een systematische kanteling van 3 dB gelijk gaan scoren. De fase-eis is de bestaande trackingmetriek: gemiddelde |Δφ| per kruisgebied, geclipt op meetgeldigheid, met gerapporteerde dekking (A5.5).
+   - **Venster poort, gemiddelde rangschikt.** De ±dB-eis is peak-to-peak op de 1/6-octaaf-gegladde systeemrespons t.o.v. de doelcurve; de sorteersleutel is de RMS-afwijking van diezelfde doelcurve. Twee verschillende vragen — "is dit acceptabel" en "welke is het vlakst" — verdienen twee verschillende grootheden, en één getal voor beide is precies hoe een piek van 3 dB en een systematische kanteling van 3 dB gelijk gaan scoren. De fase-eis is **M-K** (A4): gemiddelde |Δφ| per kruisgebied over de punten die zo'n oordeel mogen dragen, met gerapporteerde dekking. Tot V44 stond hier "de bestaande trackingmetriek, geclipt op meetgeldigheid" — één van de twee implementaties die de app toen droeg, en niet degene waarop de eis werkelijk geoordeeld werd (de worker las de TUNER-maat). Zie Deel B, V40 en V44.
    - **Outliers asymmetrisch — en dat is een SMAAKPRINCIPE, expliciet als zodanig.** Smalle kenmerken vallen door de 1/6-octaaf-gladding buiten het venster-oordeel; ze gaan naar de rimpelscan. Smalle **pieken** worden per kandidaat gerapporteerd als kolom (grootste piek: +dB @ f, met Q). Smalle **dips** worden vergeven. *Motivering:* het gehoor is asymmetrisch gevoelig voor resonanties en anti-resonanties. Een smalle piek is een resonantie: hij klinkt na, hij wordt door meerdere richtingen tegelijk gevoed en hij is in de powerrespons terug te vinden. Een smalle dip is een interferentie-uitdoving: hij is positie- en hoekafhankelijk, hij verplaatst zich met de luisteraar, en hij vult zich in een kamer grotendeels vanzelf. De literatuur over hoorbaarheidsdrempels van smalle filters zet de drempel voor dips consequent hoger dan voor pieken. Een ontwerp afkeuren op een dip die de luisteraar nooit op die plek hoort is dus strenger dan het gehoor zelf. **Er komt geen extra drempelveld voor:** het onderscheid zit in wat gerapporteerd wordt, niet in een getal dat de gebruiker moet raden.
    - **RELAXATIE-LADDER.** Levert de zoektocht geen (of minder dan N) winnaars, dan verruimt de engine in ZICHTBARE stappen uitsluitend de FALENDE SMAAK-eisen (SPL-venster, fase) tot N kandidaten passen. De uitkomst draagt een etiket: "voldoet aan ±2,25 dB — gestelde eis was ±1,5". **Beschermingsgrenzen (Z/EPDR, dissipatie, V@fs) worden NOOIT gerelaxeerd** — een ladder die er een aanraakt is een bug, geen feature, en de suite bewaakt dat. De ladder is een HER-FILTER op de al geëvalueerde kandidaten, geen nieuwe zoektocht: een ladder die opnieuw gaat scannen trekt de eisen alsnog de zoektocht in. Het etiket vermeldt daarom ook zijn eigen begrenzing ("binnen de gescande kandidaten; een fijner grid kan meer opleveren"). Is een eis principieel onhaalbaar — bijvoorbeeld een Z-eis boven de vloer die het drivercomplement zelf al zet — dan meldt de pre-design-diagnose dat VÓÓR de zoektocht, met het haalbare getal erbij.
    - **TWEETRAPS-STEMPELING.** De eisen raken de zoektocht niet, dus zij horen niet in de run-vingerafdruk (A5e.4). De shortlist-UITKOMST hangt er wél aan, dus die krijgt een eigen stempel — doelcurve, eisenwaarden, ladderstappen inclusief etiket, N, selectieversie — bovenop de vingerafdruk van de onderliggende run. Zelfde eisen op dezelfde run geven een byte-identieke shortlist; andere eisen op dezelfde run geven dezelfde run-vingerafdruk en een ander shortlist-stempel. Dat maakt "de selectie is aan de mens" reproduceerbaar én navertelbaar.
@@ -440,6 +458,18 @@ punten met een casusboek-entry erachter. Ze staan hier zodat ze niet alleen in D
   tegen 17,05° op dezelfde formule). Welke band de juiste VRAAG stelt is beleid en geen meting;
   drie VituixCAD-projecten staan klaar in `test-fixtures/casus1/v40_vituix/`. Zie V40 in Deel B
   voor de leesinstructie en voor wat elke uitkomst intrekt.
+  **GESLOTEN door V44 (30-08-2026), en het antwoord is GEEN VAN BEIDE.** De ontleding
+  punt-voor-punt (`measure-v40-overlap-band.ts`) laat zien dat allebei de verzamelingen een
+  gemeten defect dragen, en dat de twee defecten haaks op elkaar staan. De tuner middelde over
+  het hele casusboek 1047 punten mee die het rapport niet zag — 911 daarvan onder de
+  meetgeldigheidsvloer die de meetbestanden zélf opgeven, 14 op punten waar BEIDE takken dood
+  waren en het faseverschil dus uitsluitend van de filters kwam. Het rapport middelde over punten
+  waar één tak dertig dB weg was en zijn fase de som niet kon bewegen (op `V28_KAND_1` M-T
+  dertien punten van gemiddeld 146°, wat 90,7° opleverde waar de som 29,7° zag). De maat is
+  daarom hun DOORSNEDE geworden — M-K in A4, met elke uitsluiting op een bestaande doctrine en
+  één implementatie (`lib/phaseAdmission.ts`) die de tuner én de rapportlaag lezen. Beide oude
+  maten blijven als benoemde controlekolommen staan. Zie V44 in Deel B, en daar ook de
+  leesinstructie voor de fase-kolommen van V30 tot en met V43.
 - **V39 — de toetsbaarheid van A3j houdt één laag te laag op.** `CHOICE_KEYS`/`GREY_KEYS`/
   `POLISH_KEYS`, de volledigheidsassert en `choiceKeyGuard.test.ts` dekken de 44 sleutels van
   `NetOptimizeOptions`. `Chain3Settings` — ongeveer 32 sleutels, en de laag waar de kandidaat
@@ -2704,7 +2734,10 @@ Configuratie: 3-weg; 2× SB WO24TX-8 parallel, MR13TX-4 in bolpod, T25T-6 in WG1
   onderste kruisgebied vóór onderdelenbestelling; HD-sweep; 30°-meting tweeter voor
   M-G-compleetheid; verzadigings-/formaatcheck grote P-core shunt-spoel.
 
-- V40 (28-08-2026 — **LEVERING, geen besluit**: de twee fasematen ontleed en drie netlists naar VituixCAD) — opgeworpen bij V38-fix, hier voorzien van bewijsmateriaal. **Blijft OPEN tot Sanders VituixCAD-uitslag.**
+- V40 (28-08-2026 — **LEVERING, geen besluit**: de twee fasematen ontleed en drie netlists naar VituixCAD) — opgeworpen bij V38-fix, hier voorzien van bewijsmateriaal. **GESLOTEN door V44 (30-08-2026), en niet door de VituixCAD-aflezing waar deze entry op wachtte.**
+
+  > **Gedateerde noot, 30-08-2026 (V44).** De entry hieronder staat ongewijzigd; wat eronder volgt is wat er sindsdien van geworden is. De beslistabel aan het eind van deze entry — "VituixCAD reproduceert het RAPPORT-getal / het TUNER-getal / geen van beide" — is nooit ingevuld en hoefde dat ook niet: de ontleding die V44 eraan toevoegde (`measure-v40-overlap-band.ts`, punt voor punt over het hele casusboek) liet zien dat **beide verzamelingen een gemeten defect dragen, en dat de twee defecten haaks op elkaar staan**. De derde rij van die tabel — "geen van beide" — was dus het antwoord, en zij stond er als foutmodus in plaats van als uitkomst. Wat overeind blijft en het waard is bewaard te worden: de decompositie in DEFINITIE, RASTER en BAND, en de meting dat het hele gat de band is. Dat is wat V44 bruikbaar maakte. **De drie zips zijn vervangen** — zij heetten naar een LEVENDE corpussleutel en waren daardoor bij lezing al twee generaties oud; zie de nazorg in V44.
+
 
   **DE STAND.** De app draagt twee fasematen. Op HUIDIG's zaad zijn zij het eens (tuner 22,28°, rapport 23,83° voor W-M); op het netwerk dat dezelfde run aflevert lopen zij in tegengestelde richting uiteen (tuner 9,65°, rapport 47,68°), en op de ongegladde maat van V38-fix wordt dat gat groter in plaats van kleiner. Zolang dat staat is "de tuner kocht fase" een uitspraak in de eenheden van één van de twee. Deze sessie verandert **geen enkele fasemaat** — dat was uitgesloten in de opdracht — en levert twee dingen: een getallenblad dat het gat ontleedt, en drie VituixCAD-projecten.
 
@@ -2912,6 +2945,182 @@ Configuratie: 3-weg; 2× SB WO24TX-8 parallel, MR13TX-4 in bolpod, T25T-6 in WG1
   ---
 
   **WAT ER NIET GEBOUWD IS.** Geen ankerbesluit (A5e.2 blijft geparkeerd, en de liftkolom hierboven is precies waarom hij dringend is), geen LCR-generatie, geen wijziging aan V42's som-plafond-machinerie, en geen v2-default die een casus-1-getal is: 1,4 dB staat uitsluitend in `manifest_en_geometrie.gestelde_eisen` en de fixture leest hem daarvandaan.
+
+- V44 (30-08-2026 — **BREAKING, alleen v2-runs**: de fasematen worden er één, en het is geen van de twee die er stonden) — opgeworpen als V40 bij V38-fix, gemeten bij V41, hier beslist. **De inventarisatie is de motivering: elke uitsluiting in de nieuwe maat is een bestaande doctrine, geen nieuwe.**
+
+  **DE STAND WAARUIT DIT VOLGT.** De app droeg twee fasematen. Het RAPPORT (`system.phaseTracking`) middelde |Δφ| over ±1 octaaf rond het kruispunt, geknipt op meetgeldigheid; de TUNER (`pairPhaseDeg`) middelde diezelfde grootheid over het overlapvenster — elk rasterpunt waar de takken binnen 20 dB van elkaar liggen — zonder enige knip. V41 mat dat zij dezelfde FORMULE zijn op verschillende PUNTEN, en dat het raster hooguit anderhalve graad draagt. Wat toen open bleef was welke van de twee de luidspreker beschrijft.
+
+  **DAT WAS DE VERKEERDE VRAAG, en de ontleding punt-voor-punt liet dat zien.** `scripts/measure-v40-overlap-band.ts` (nieuw) telt per netlist en per driverpaar welke punten ALLEEN de tuner meetelt, en waarom zij binnenkwamen. Over de 198 paar-rijen van de 99 BEVROREN netlists (het levende corpus is uitgesloten, want dat beweegt met deze ingreep mee):
+
+  | de tuner telde extra mee | punten | wat zij zijn |
+  | --- | --- | --- |
+  | onder de meetgeldigheidsvloer | **911** van 1048 (87 %) | data die de meetbestanden ZELF buiten hun geldige band leggen — de vloer van casus 1 staat in de KOP van alle drie de metingen, hij is geen app-heuristiek |
+  | dode punten | **14** | beide takken op de stille-geestvloer. Op HUIDIG is dat 20 kHz met −475 en −462 dB: |Δ| = 13,1 ≤ 20, dus het punt telt mee, en wat het bijdraagt is uitsluitend het faseverschil van de FILTERS — er zit geen meting in. De stille geest van V38-fix, één metriek verderop |
+  | echte, geldige data buiten ±1 octaaf | 123 | géén defect: het antwoord op een andere vraag |
+
+  **En het is niet eenzijdig — dat is de vondst die de beslissing draaide.** Het rapport telt punten mee waar de takken meer dan 20 dB uiteen liggen en de fase de som dus niet kan bewegen. Op `V28_KAND_1` mid→tweeter zijn dat dertien punten van gemiddeld **146,21°**, waarmee het rapport 90,73° las tegen 29,74° voor de tuner; op `V28_KAND_2` is het 148,79° en 88,36 tegen 26,31. Over het corpus staat het rapport op 109 rijen hoger, de tuner op 58. **Nog een cijfer dat de tweedeling scherp maakt:** alle 99 woofer→mid-rijen dragen tuner-only punten en slechts 11 van de 99 mid→tweeter-rijen — het defect van de tuner zit op de LAGE kruising, waar het overnamegebied onder de meetvloer reikt, en dat van het rapport op de HOGE, waar de takken snel uiteen lopen. **Beide maten hebben een gemeten defect, en de twee defecten staan haaks op elkaar.** Dus is het antwoord hun DOORSNEDE, en niet een van beide.
+
+  ---
+
+  **DE MAAT: M-K, met drie gronden tegelijk.** De registerrij staat in A4. De formule is ongewijzigd; wat vastgelegd is, is de toelating, en elke grond is een doctrine die dit project al draagt:
+
+  | grond | wat zij weert | wiens les |
+  | --- | --- | --- |
+  | (a) binnen de meetgeldigheid van BEIDE takken | 911 punten | V15 / F4b-lek 2 — een gemiddelde over data die de meting niet draagt, is een uitspraak over de reconstructie |
+  | (b) BEIDE takken boven de stille-geestvloer | de 14 dode punten | V38-fix — twee even dode takken liggen per definitie binnen élk RELATIEF niveauvenster |
+  | (c) \|niveauverschil na filter\| ≤ het overlapvenster | de 146°-punten van het rapport | het bestaande tuner-criterium, ongewijzigd overgenomen uit `integration.ts`: fase waar de som hem niet voelt, telt niet |
+
+  **De ±1-octaafband vervalt als toelating.** Zij was een BENADERING van "waar de twee takken elkaar overnemen"; grond (c) meet dat gebied rechtstreeks, op het geleverde netwerk. De 123 geldige punten die erbuiten vielen horen er daarmee bij. Gevolg dat de moeite waard is om op te schrijven: **het kruispunt stuurt de maat niet meer.** Verplaats het kruispunt en M-K staat stil; alleen de controlekolom beweegt (geassert in `metrics/phaseIntegration.test.ts`).
+
+  **ÉÉN IMPLEMENTATIE, TWEE LEZERS — de V32-vorm.** `src/lib/phaseAdmission.ts` beslist als enige welke punten meetellen; `engine2/metrics/phaseIntegration.ts` is de rapportlezer, `netOptimizer.ts` de tuner-lezer achter de keuze-sleutel `phaseAdmission`. Het bestand staat in `src/lib/` en niet in `engine2/` om de reden die `impedanceFloor.ts` en `partAudit.ts` al dragen: de tuner mag niets uit `engine2/` importeren (toggleRegression), dus een gedeelde regel woont daar waar beide erbij kunnen. Het overlapvenster zelf heeft óók één huis gekregen (`DEFAULT_OVERLAP_WINDOW_DB` en `inOverlapWindow` in `integration.ts`), zodat grond (c) de vergelijking leest in plaats van hem na te bouwen.
+
+  **DE TWEE OUDE MATEN ZIJN NIET WEG.** Zij reizen mee als benoemde controlekolommen (`control.octaveClipped`, `control.overlapWindow`) — in het rapport, in het paneel, in de shortlist, in `compare-corpora.ts` en in het referentiebestand (`manifest_en_geometrie.v44_fasematen`). Zij oordelen niets: geen poort, geen eis, geen sorteersleutel leest ze. **Dat zij het oneens waren is zelf een bewaakte eigenschap**, en `frozenNetlistGates.test.ts` assert dat: er moeten netlists zijn waar de ene hoger leest dan M-K en netlists waar zij lager leest, voor allebei de kolommen, plus handovers waar de twee aan WEERSZIJDEN van M-K vallen — wat geen enkele monotone herschaling van één getal kan. Verdwijnt die tegenspraak, dan is er aan een van beide iets veranderd zonder dat iemand het besloot.
+
+  **DE SLEUTELS.** `phaseAdmission` is CHOICE (`'overlap'` = de historische verzameling en élke v1-run; `'measured'` = de drie gronden), `phaseAdmissionFacts` is POLISH — de geldige band uit de opnamepas en de geestconventie van de aanroeper, allebei metingen die de run al in handen heeft. Vierde paar in dezelfde vorm als V33, V34 en V37; sleuteltelling 44 → 46, verdeling 30/5/9 → 31/5/10. **Correctie op de opdracht die dit mogelijk maakte:** `phaseMetric` kón dit niet stellen. Beide waarden ervan middelen over het overlapvenster — `'band'` ongewogen plus een P95-term, `'overlap'` overlapgewogen — dus die sleutel noemt de WEGING en niet de toelating. Twee sleutels, twee vragen; ze samenvoegen zou één van de twee antwoorden onbereikbaar maken.
+
+  **DE DEKKING IS MEEVERHUISD, en dat is een besluit.** Zij wordt sinds V44 gemeten tegen het OVERNAMEGEBIED (de band die grond (c) van dit netwerk afleest) en niet tegen een octaafvenster: zij zegt hoeveel van dat gebied de meetgeldigheid en de geestvloer overlieten. Op casus 1 is dat 100 % op mid→tweeter en 42–56 % op woofer→mid — bijna de helft van het overnamegebied van de laagste kruising ligt onder de 397 Hz-vloer, en dát is het getal dat V15 wilde laten zien.
+
+  ---
+
+  **LEESINSTRUCTIE VOOR DE ENTRIES V30 T/M V43 — welke fase-kolommen wat betekenen.**
+
+  Elke entry van V30 tot en met V43 draagt fase-kolommen, en zij zijn geen van alle M-K. Zij worden hier NIET herschreven; dit is de sleutel waarmee ze gelezen moeten worden.
+
+  | waar | wat er staat | hoe te herlezen |
+  | --- | --- | --- |
+  | kolommen `W-M fase RAPPORT` / `M-T fase RAPPORT` in de vóór/ná-tabellen van V38-fix, V41, V42, V43 | de OCTAAFGEKNIPTE maat | **verdacht in één richting**: zij telt punten mee waar één tak allang weg is. Zij overschat waar de takken snel uiteen lopen — op M-T-paren is dat het grootst (`V28_KAND_1`: 90,7° tegen 29,7°) |
+  | kolommen `W-M fase TUNER` / `M-T fase TUNER` in dezelfde tabellen | het KALE OVERLAPVENSTER | **verdacht in de andere richting**: zij telt punten mee onder de meetgeldigheidsvloer en op de stille geest. Zij overschat waar het overnamegebied onder 397 Hz reikt — op W-M-paren is dat het grootst (`V38FIX_KAND_5`: 59,15° tegen 17,05°). **En zij is scherp te maken: alle 99 W-M-rijen van het casusboek dragen zulke punten en slechts 11 van de 99 M-T-rijen.** Een TUNER-kolom op W-M is dus altijd verdacht, en een afruil die in een oude entry op W-M is opgeschreven kan van teken omslaan; een TUNER-kolom op M-T is op negen van de tien netlists gewoon de gedeelde verzameling en mag als betrouwbaar gelezen worden. Overschat de vlakte niet in de andere richting: de sub-vloerpunten lazen op het V43-corpus vaker LAGER dan de geldige, dus zij VLEIDEN de tuner even vaak als zij hem straffen |
+  | de `pairPhaseDeg`-regels in de wattenval- en transplantatietabellen van V38, en de her-polijstingstabel (`paarfase W-M 22,28 → 9,65`) | het KALE OVERLAPVENSTER | idem. De 22,28 → 9,65 die V40 opwierp is dus een beweging in de eenheden van de verdachte maat, en de tegenspraak met het rapport (23,83 → 47,68) is precies wat V44 verklaart |
+  | `kandidaten.*.wm_fase_oct` / `.mt_fase_oct` in het referentiebestand | tot V43 de OCTAAFGEKNIPTE maat, sinds V44 **M-K** | de oude waarden staan onder `*_octaafgeknipt_V43` en reproduceren nog steeds als controlekolom — dat is de brug (V15's vorm) |
+  | élke A5.5-fasetracking in het paneel en in `goldenCasus1.test.ts` | tot V43 de OCTAAFGEKNIPTE maat, sinds V44 M-K met beide controles ernaast | zie hierboven |
+
+  **Wat er NIET uit volgt:** dat een besluit uit V30–V43 onjuist was. Geen enkel van die besluiten hing aan een fase-DREMPEL — casus 1 stelt er geen — en de fase-kolommen waren daar rapportage. Wat wél volgt is dat een ZIN als "de tuner kocht hier fase" uit die entries in de eenheden van de verdachte maat staat, en dat het teken van zo'n beweging kan omslaan wanneer je hem in M-K herleest. Dat is niet hypothetisch: `compare-corpora.ts` drukt alle drie de kolommen af, en de V44-tabel hieronder laat rijen zien waar zij dat werkelijk doen.
+
+  ---
+
+  ---
+
+  **DE VÓÓR/NÁ OP HET HELE VELD — en de meetlat is meeverhuisd, dus de tabel zegt het erbij.**
+
+  Vijftien kandidaten, `'safety'` als barrièrebron, zelfde seed, zelfde poorten en budgetten
+  (`compare-corpora.ts v43 live`). **Er staan sinds V44 DRIE fasekolommen per paar in plaats van
+  twee, en zij komen alle drie uit hetzelfde rapport** — `M-K` is de maat, `octaaf (ctl)` en
+  `overlap (ctl)` zijn de twee vervangen maten als controle. Dat de vóór-helft óók in M-K gemeten
+  wordt is de hele reden dat deze tabel iets betekent: het V43-corpus is met de OUDE maat gezócht
+  en met de NIEUWE nagemeten, dus er is precies één kolom waarin vóór en ná dezelfde grootheid
+  dragen. Elke uitspraak hieronder over "beter" of "slechter" staat in die kolom; de twee andere
+  zeggen alleen hoe groot de herdefinitie was. De aparte TUNERRUN per netlist is vervallen — sinds
+  V44 leest de tuner dezelfde functie als het rapport, dus die run zou dezelfde grootheid op een
+  ander raster afdrukken (V40 mat dat verschil op hoogstens 1,5°).
+
+  | kandidaat (W-M · M-T) | min \|Z\| vóór | min \|Z\| ná | @ Hz ná | vloer vóór → ná | SPL ± vóór → ná | W-M fase M-K vóór → ná | W-M fase octaaf (ctl) vóór → ná | W-M fase overlap (ctl) vóór → ná | M-T fase M-K vóór → ná | M-T fase octaaf (ctl) vóór → ná | M-T fase overlap (ctl) vóór → ná | RMS vóór → ná | dissipatie % vóór → ná | grootste R (W) vóór → ná | EPDR vóór → ná | Q_es× vóór → ná | smalste piek ná (dB @ Hz) | correctiegroepen vóór → ná | LF-bult dB vóór → ná | lift dB vóór → ná | opslingering dB vóór → ná | serie-L mH vóór → ná |
+  |---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+  | 396.7 · 1294 | — | **verworpen** | — | — → — | — → **verworpen** | — → **verworpen** | — → **verworpen** | — → **verworpen** | — → **verworpen** | — → **verworpen** | — → **verworpen** | — → **verworpen** | — → **verworpen** | — → **verworpen** | — → **verworpen** | — → **verworpen** | — | — → **verworpen** | — → **verworpen** | — → **verworpen** | — → **verworpen** | — → **verworpen** |
+  | 396.7 · 1491.4 | — | 2.58 | 226.33 | — → **ja** | — → 1.60 | — → 26.49 | — → 26.08 | — → 24.35 | — → 5.35 | — → 6.52 | — → 5.35 | — → 0.90 | — → 49.62 | — → 25.40 | — → 1.29 | — → 1.33 | 0.73 @ 2859.87 | — → trap×1 damped-trap×3 series-pad×4 shunt-pad×1 | — → 0.94 | — → 1.79 | — → -0.85 | — → 2.55 |
+  | 396.7 · 1719 | 2.61 | 2.59 | 230.68 | **ja** → **ja** | 4.42 → 4.97 | 27.43 → 22.92 | 32.32 → 27.00 | 28.68 → 26.94 | 14.57 → 23.90 | 15.30 → 23.41 | 14.57 → 23.84 | 2.17 → 2.42 | 29.21 → 26.41 | 14.09 → 13.65 | 1.34 → 1.31 | 1.34 → 1.32 | — | trap×1 damped-trap×2 series-pad×3 shunt-pad×1 → trap×2 damped-trap×1 series-pad×2 shunt-pad×1 | 1.05 → 0.95 | 1.85 → 1.77 | -0.80 → -0.82 | 2.57 → 2.57 |
+  | 396.7 · 1981.2 | 2.60 | 2.63 | 263.56 | **ja** → **ja** | 1.84 → 1.51 | 26.56 → 21.66 | 26.86 → 21.95 | 18.12 → 22.13 | 4.77 → 4.24 | 6.07 → 5.24 | 4.77 → 4.24 | 0.83 → 0.74 | 65.75 → 68.18 | 27.35 → 33.70 | 1.31 → 1.33 | 2.90 → 2.85 | — | damped-trap×1 shunt-shelf×2 series-pad×3 shunt-pad×1 → damped-trap×4 series-pad×3 shunt-pad×1 | 4.20 → 4.16 | 5.93 → 5.85 | -1.72 → -1.70 | 2.82 → 2.82 |
+  | 396.7 · 2283.5 | 2.59 | 2.59 | 758.07 | **ja** → **ja** | 1.59 → 1.40 | 24.41 → 22.06 | 24.15 → 21.92 | 22.97 → 23.05 | 3.45 → 4.18 | 4.29 → 4.59 | 3.45 → 4.18 | 0.78 → 0.63 | 60.53 → 65.05 | 28.49 → 32.07 | 1.30 → 1.31 | 2.16 → 2.31 | — | damped-trap×3 series-pad×3 shunt-pad×1 → damped-trap×4 series-pad×3 shunt-pad×1 | 2.88 → 3.14 | 4.52 → 4.85 | -1.63 → -1.71 | 2.70 → 2.70 |
+  | 466.5 · 1294 | — | **verworpen** | — | — → — | — → **verworpen** | — → **verworpen** | — → **verworpen** | — → **verworpen** | — → **verworpen** | — → **verworpen** | — → **verworpen** | — → **verworpen** | — → **verworpen** | — → **verworpen** | — → **verworpen** | — → **verworpen** | — | — → **verworpen** | — → **verworpen** | — → **verworpen** | — → **verworpen** | — → **verworpen** |
+  | 466.5 · 1491.4 | — | **verworpen** | — | — → — | — → **verworpen** | — → **verworpen** | — → **verworpen** | — → **verworpen** | — → **verworpen** | — → **verworpen** | — → **verworpen** | — → **verworpen** | — → **verworpen** | — → **verworpen** | — → **verworpen** | — → **verworpen** | — | — → **verworpen** | — → **verworpen** | — → **verworpen** | — → **verworpen** | — → **verworpen** |
+  | 466.5 · 1719 | 2.62 | **verworpen** | — | **ja** → — | 3.82 → **verworpen** | 15.84 → **verworpen** | 16.62 → **verworpen** | 18.16 → **verworpen** | 36.18 → **verworpen** | 41.54 → **verworpen** | 36.18 → **verworpen** | 2.12 → **verworpen** | 41.14 → **verworpen** | 13.93 → **verworpen** | 1.31 → **verworpen** | 1.74 → **verworpen** | — | damped-trap×2 shunt-shelf×1 series-pad×3 shunt-pad×2 → **verworpen** | 2.67 → **verworpen** | 3.34 → **verworpen** | -0.68 → **verworpen** | 2.92 → **verworpen** |
+  | 466.5 · 1981.2 | 2.56 | 2.61 | 9578.79 | **ja** → **ja** | 2.29 → 3.87 | 22.57 → 11.30 | 20.93 → 10.88 | 17.58 → 15.34 | 13.68 → 16.97 | 19.85 → 23.03 | 13.68 → 16.97 | 1.49 → 1.81 | 48.85 → 51.01 | 17.22 → 18.71 | 1.31 → 1.30 | 2.03 → 1.88 | — | trap×2 damped-trap×1 series-pad×3 shunt-pad×2 → damped-trap×2 series-pad×3 shunt-pad×2 | 4.34 → 4.25 | 4.13 → 3.68 | 0.22 → 0.57 | 3.27 → 3.27 |
+  | 466.5 · 2283.5 | 2.94 | 3.61 | 312.81 | **ja** → **ja** | 0.95 → 0.97 | 3.40 → 5.02 | 4.19 → 5.67 | 2.63 → 8.24 | 4.21 → 3.90 | 5.18 → 4.36 | 4.21 → 3.90 | 0.51 → 0.53 | 75.90 → 61.71 | 42.17 → 21.41 | 1.47 → 1.85 | 1.71 → 2.12 | — | zobel×1 shunt-shelf×1 series-pad×3 shunt-pad×1 → shunt-shelf×1 series-pad×2 shunt-pad×1 | 2.60 → 4.53 | 3.23 → 4.35 | -0.63 → 0.18 | 3.23 → 3.24 |
+  | 548.5 · 1294 | — | **verworpen** | — | — → — | — → **verworpen** | — → **verworpen** | — → **verworpen** | — → **verworpen** | — → **verworpen** | — → **verworpen** | — → **verworpen** | — → **verworpen** | — → **verworpen** | — → **verworpen** | — → **verworpen** | — → **verworpen** | — | — → **verworpen** | — → **verworpen** | — → **verworpen** | — → **verworpen** | — → **verworpen** |
+  | 548.5 · 1491.4 | — | **verworpen** | — | — → — | — → **verworpen** | — → **verworpen** | — → **verworpen** | — → **verworpen** | — → **verworpen** | — → **verworpen** | — → **verworpen** | — → **verworpen** | — → **verworpen** | — → **verworpen** | — → **verworpen** | — → **verworpen** | — | — → **verworpen** | — → **verworpen** | — → **verworpen** | — → **verworpen** | — → **verworpen** |
+  | 548.5 · 1719 | — | **verworpen** | — | — → — | — → **verworpen** | — → **verworpen** | — → **verworpen** | — → **verworpen** | — → **verworpen** | — → **verworpen** | — → **verworpen** | — → **verworpen** | — → **verworpen** | — → **verworpen** | — → **verworpen** | — → **verworpen** | — | — → **verworpen** | — → **verworpen** | — → **verworpen** | — → **verworpen** | — → **verworpen** |
+  | 548.5 · 1981.2 | — | **verworpen** | — | — → — | — → **verworpen** | — → **verworpen** | — → **verworpen** | — → **verworpen** | — → **verworpen** | — → **verworpen** | — → **verworpen** | — → **verworpen** | — → **verworpen** | — → **verworpen** | — → **verworpen** | — → **verworpen** | — | — → **verworpen** | — → **verworpen** | — → **verworpen** | — → **verworpen** | — → **verworpen** |
+  | 548.5 · 2283.5 | 3.97 | 3.46 | 1078.09 | **ja** → **ja** | 1.09 → 0.86 | 5.54 → 4.65 | 6.06 → 5.16 | 5.85 → 5.15 | 3.52 → 4.14 | 4.35 → 4.87 | 3.52 → 4.14 | 0.56 → 0.47 | 46.02 → 58.41 | 24.87 → 30.92 | 2.06 → 1.78 | 1.78 → 1.99 | — | shunt-shelf×1 series-pad×2 shunt-pad×1 → zobel×1 shunt-shelf×1 series-pad×2 | 3.60 → 3.54 | 3.50 → 3.99 | 0.10 → -0.45 | 3.57 → 2.29 |
+
+  **DE CORPUSGEMIDDELDEN, en dan de eerlijker vergelijking eronder.** Het corpus is van
+  samenstelling veranderd — `466.5 · 1719` is eruit gevallen (de tweeterbescherming weigerde de
+  tune) en `396.7 · 1491.4` is erbij gekomen — dus een corpusgemiddelde vergelijkt deels twee
+  verschillende verzamelingen ontwerpen.
+
+| grootheid | V43-corpus | levend corpus | |
+| --- | --- | --- | --- |
+| W-M fase, **M-K** | 18,0° | **16,3°** | −1,7 |
+| W-M fase, octaafgeknipt (ctl) | 18,7° | 17,0° | controlekolom |
+| W-M fase, overlapvenster (ctl) | 16,3° | 17,9° | controlekolom — **en het teken draait om** |
+| M-T fase, **M-K** | 11,5° | **9,0°** | −2,5 — **maar zie hieronder: dit is de wissel en niet de ingreep** |
+| M-T fase, octaafgeknipt (ctl) | 13,8° | 10,3° | controlekolom |
+| M-T fase, overlapvenster (ctl) | 11,5° | 8,9° | controlekolom |
+| RMS-vlakheid, gemiddeld | 1,21 dB | **1,07 dB** | vertekend door de wissel: 2,12 eruit, 0,90 erin |
+| dissipatie (M-A), gemiddeld | 52,5 % | 54,3 % | +1,8 — een kolom, geen oordeel (P4) |
+| grootste enkele weerstand | 24,0 W | 25,1 W | bij 100 W |
+| haalt de gestelde vloer | 7 van 7 | 7 van 7 | |
+| LF-opslingering boven het budget | 0 van 7 | 0 van 7 | 1,4 dB, V43 |
+| kandidaten zonder netwerk | 8 van 15 | 8 van 15 | dezelfde telling, één andere naam |
+
+  **De wissel vertekent twee van deze rijen en zij trekken naar tegengestelde kanten**, dus zij
+  zijn zonder de tabel eronder niet te lezen. De vertrekkende `466.5 · 1719` droeg W-M 15,84° en
+  M-T 36,18°, de aankomende `396.7 · 1491.4` draagt 26,49° en 5,35°: dat maakt het
+  W-M-corpusgemiddelde te braaf (−1,7 waar de gedeelde rijen −3,72 doen) en het M-T-gemiddelde
+  vals gunstig (−2,5 waar de gedeelde rijen +2,19 doen).
+
+  **GEKOPPELD OP KRUISPUNT — zes van de zeven handovers komen in beide corpora voor, en dit is de
+  vergelijking waarop de conclusie rust.** Zij haalt de wissel eruit:
+
+| grootheid (zes gedeelde rijen) | V43-corpus | levend corpus | |
+| --- | --- | --- | --- |
+| W-M fase, **M-K** | 18,32° | **14,60°** | **−3,72** — beter op vijf van de zes rijen |
+| W-M fase, overlapvenster (ctl) | 15,97° | 16,81° | **+0,84 — de andere kant op** |
+| M-T fase, **M-K** | 7,37° | **9,55°** | **+2,19** — de prijs, en zij staat niet waar hij verwacht werd |
+| RMS-vlakheid | 1,06 dB | 1,10 dB | +0,04 |
+| dissipatie (M-A) | 54,4 % | 55,1 % | +0,8 |
+
+  **WAT DIT LAAT ZIEN, in drie stukken.**
+
+  **1. Op W-M is de reparatie precies wat zij hoorde te zijn, en het mechanisme is te zien.**
+  `measure-v40-overlap-band.ts` op het V43-corpus telt per woofer→mid-rij vijf tot elf punten die
+  alléén de oude tunerverzameling meetelde, en zij zijn op alle zeven rijen bijna allemaal hetzelfde
+  ding: data onder de 396,7 Hz-meetgeldigheidsvloer. **Op vijf van de zeven rijen lazen die punten
+  LAGER dan de punten die de twee verzamelingen DELEN** — op `V43_KAND_4` 2,07° tegen 26,72°,
+  waardoor de tuner 16,86° zag terwijl de gedeelde punten 26,72° droegen. De ongeldige punten waren
+  dus geen ruis maar een KREDIET: zij vertelden de zoektocht dat de lage kruising al goed stond.
+  Trek ze eruit en de zoektocht gaat er alsnog voor werken — vandaar −3,72° op M-K. Op het levende
+  corpus is het beeld omgekeerd: daar lezen de uitgesloten punten op zes van de zeven rijen juist
+  HOGER dan de gedeelde (`KAND_V2_2`: 15,95° tegen 4,73°), want daar wordt niet meer voor betaald.
+  (Die kolommen staan op het KETENRASTER van 96 punten en zijn dus een ontleding van het mechanisme,
+  niet de rapportgetallen uit de tabel hierboven; M-K zelf staat in de eerste fasekolom.)
+
+  **2. De prijs staat op M-T-fase, en dat was niet de verwachting.** De bouwsessie voorzag een
+  tiende dB RMS of wat dissipatie; die zijn er ook (+0,04 dB en +0,8 procentpunt), maar het grootste
+  verschil is M-T-fase: +2,19° gemiddeld, en op `396.7 · 1719` +9,33°. **Dat is REALLOCATIE en geen
+  meetartefact, en dat is na te gaan in plaats van aan te nemen:** op mid→tweeter is M-K in twaalf
+  van de dertien rijen van deze tabel op de honderdste graad gelijk aan de overlapvenster-controle
+  — de ene uitzondering is `396.7 · 1719` ná (23,90° tegen 23,84°) — en
+  `measure-v40-overlap-band.ts` telt in beide corpora op zes van de zeven M-T-rijen NUL
+  alleen-tuner-punten (de zevende draagt er één). De toelating heeft daar dus niets
+  weggenomen — wat de tuner op M-T leest is wat hij altijd al las. Wat wél veranderde is dat W-M
+  eerlijk werd, en `phasePriority` 0,5 verdeelt één budget over twee kruisingen: de zoektocht koopt
+  nu W-M en betaalt op M-T. Het rapport-getal voor M-T is wél verschoven (de octaafcontrole staat
+  1,3° hoger dan M-K), maar dat is de herdefinitie en niet de zoektocht.
+
+  **3. De tegenspraak die de leesinstructie voorspelde staat in de tabel.** In de eenheden van de
+  oude tunermaat is W-M-fase over de gedeelde rijen VERSLECHTERD (+0,84°) terwijl M-K met 3,72°
+  verbeterde; op `396.7 · 1981.2` is het per rij te zien — M-K −4,90° tegen overlapvenster +4,01°.
+  Wie deze oplevering in de eenheden van V30–V43 zou navertellen, zou dus opschrijven dat V44 op de
+  lage kruising fase heeft INGELEVERD — het tegendeel van wat er gebeurde, met een teken dat
+  uitsluitend van de meetlat komt. Dat is exact de fout waar de leesinstructie hierboven voor
+  bestaat, en zij is hier voor het eerst in een echte tabel te zien in plaats van beredeneerd.
+
+  ---
+
+  **NAZORG: DE ZIPS, en dit is een fout die eerst gerepareerd moest worden.** De drie V40-projecten heetten `V40-HUIDIG.zip`, `V40-KAND_V2_1.zip` en `V40-V38FIX_KAND_5.zip`. De tweede naam wijst naar een LEVENDE corpussleutel, en die is sinds de export twee keer opnieuw opgewekt (V42 en V43): de zip bevatte de V41-netlist (L1 = 5,391 mH) terwijl `KAND_V2_1` in de repo inmiddels 2,118 mH droeg, met een ander kruispunt (408,3 tegen 470,1 Hz) en een andere onderdelenlijst. Een aflezing uit die zip zou tegen de verkeerde rij van het getallenblad zijn gelegd. **Nagemeten en niet aangenomen:** de zip is waarde-voor-waarde `V41_KAND_1`. De export heet sindsdien naar de BEVROREN sleutel plus de commit (`V41_KAND_1@c5e848b.zip`), en `export-v40-vxp.ts` exporteert nog uitsluitend bevroren netlists — een levende kan als argument, maar wordt niet meegeleverd omdat zijn zip bij de eerstvolgende regeneratie een ander netwerk zou beschrijven onder dezelfde naam.
+
+  **NAZORG 2: TWEE DOCUMENTATIEVELDEN ZIJN MET DE HAND BIJGESCHREVEN, en het hoort hier te staan.**
+  `meetopstelling.fase_toelating` en `..._waarom` zijn bij V44 aan `generate-casus1-v2-candidates.ts`
+  toegevoegd terwijl de regeneratie al liep, dus het herkomstbestand dat die run schreef mist ze.
+  Opnieuw draaien kost bijna vijf uur en is er niet voor gedaan; de twee velden zijn nageschreven,
+  de tekst LETTERLIJK uit de generatorbron gelezen zodat de eerstvolgende regeneratie hetzelfde
+  bestand oplevert. **Dat de RUN zelf de keuze wél droeg is nagegaan en niet aangenomen**, uit twee
+  dingen die de run zelf opschreef: `meetopstelling.beschermingen_via_kandidaat` — een lijst die uit
+  de verklaring wordt afgeleid en niet met de hand geschreven — noemt `phaseAdmission`, en het
+  `facts`-ingrediënt van de vingerafdruk is bewogen (`eafd901a` → `3e82255c`), wat precies de zesde
+  meetfeit-sleutel is die V44 toevoegde. De live-reproductie in `casus1V2Candidates.test.ts` is de
+  derde en hardste controle: zij draait de bevroren netlist opnieuw door de échte route.
+
+  **Het getallenblad is meeverhuisd.** `measure-v40-phase.ts` zet M-K vooraan met zijn band, zijn puntental en zijn afwijzingen per grond, en de twee oude maten erachter als controle. De vraag aan VituixCAD is daarmee veranderd: zij was "welke van deze twee reproduceert", zij is nu "reproduceert M-K" — een VALIDATIE van een gebouwde maat in plaats van een scheidsrechter tussen twee ongebouwde. De band waarop afgelezen moet worden staat per rij, want die is niet meer uit het kruispunt af te leiden.
 
 ## Casus S1 — synthetische grondwaarheid voor de R_e-schatter (F3b, 26-08-2026)
 

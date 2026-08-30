@@ -4,8 +4,9 @@
  * Twenty-five at F4d, twenty-six since V30 added `zFloorBarrier`,
  * twenty-seven since V33 added `zFloorBarrierSource`, twenty-eight since
  * V34 added `rSourceProbeSource`, twenty-nine since V37 added
- * `dissipationReferenceSource` and thirty since V38-fix RECLASSIFIED
- * `errorSmoothOct` out of polish. The number
+ * `dissipationReferenceSource`, thirty since V38-fix RECLASSIFIED
+ * `errorSmoothOct` out of polish and thirty-one since V44 added
+ * `phaseAdmission`. The number
  * is not repeated in prose anywhere it could go stale: `declarationCoverage`
  * compares against `CHOICE_KEYS` itself, so a key added upstream lands in no
  * state and fails the build.
@@ -80,6 +81,7 @@ export type StatedByDesigner = Partial<
     | 'rSourceProbeSource'
     | 'dissipationReferenceSource'
     | 'errorSmoothOct'
+    | 'phaseAdmission'
   >
 >;
 
@@ -325,6 +327,41 @@ export function declareCandidateChoices(input: CandidateDeclarationInput): Choic
    * built the line that says so. And an explicit value still wins, so V38-fix's
    * before/after is a run someone can ask for rather than a build to patch. */
   stated.errorSmoothOct = s.errorSmoothOct ?? SEARCH_SMOOTHING_OCTAVES;
+
+  /* ---- V44: WHICH POINTS MAY CARRY A PHASE JUDGEMENT -------------------
+   *
+   * STATED UNCONDITIONALLY, the third derivation here that hangs on nothing
+   * else, and for the same shape of reason as V37's and V38-fix's: the question
+   * is not conditional. Every candidate is judged on phase — the requirement
+   * `phase-tracking` reads this number per handover, the objective carries it
+   * with `phasePriority`, and the panel prints it — so every candidate has to
+   * say which points that judgement rests on, and there is one honest answer.
+   *
+   * WHY THE INHERITED ANSWER WAS NOT IT. The historic set admits a point when
+   * the two branches lie within the overlap window of EACH OTHER, and nothing
+   * else: no clip on measurement validity, no floor under the silent ghost.
+   * Measured over the whole casebook (V40): of the 1048 points that set added
+   * beyond the report's, 911 sat below the validity floor the measurement files
+   * themselves declare, and 14 were points where both branches were dead and
+   * the phase difference came from the FILTERS alone. On `V38FIX_KAND_5` that
+   * is 15 of 30 points carrying 101 deg against 17 deg on the shared ones —
+   * 59.15 against 17.05 over one and the same network.
+   *
+   * WHY NOT THE REPORT'S OLD SET EITHER, and this is why the answer is a third
+   * thing rather than one of the two: the octave window admits points where one
+   * branch is long gone and its phase cannot move the sum. On `V28_KAND_1` M-T
+   * that is thirteen points of 146 deg average, and the report read 90.7 deg
+   * where the sum saw 29.7.
+   *
+   * 'MEASURED' IS NOT A CASUS-1 NUMBER. It states no frequency and no limit:
+   * the three grounds are the measurement's own validity band, the caller's own
+   * ghost convention, and the overlap window that already lived in
+   * `integration.ts`. The facts those grounds read travel as POLISH beside it,
+   * because they are the run's measurements and not the candidate's opinion.
+   *
+   * An explicit value still wins, so V44's before/after is a run someone can
+   * ask for rather than a build that has to be patched. */
+  stated.phaseAdmission = s.phaseAdmission ?? 'measured';
 
   /* ---- what has no value on a design of this shape -------------------- */
   absent.push({

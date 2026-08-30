@@ -43,6 +43,8 @@ import { ctcKey } from '../src/lib/engine2/metrics/types.ts';
 import { FLAT_TARGET } from '../src/lib/engine2/requirements/targetCurve.ts';
 import { LF_BUMP_VERSION } from '../src/lib/engine2/metrics/acoustic.ts';
 import { RESISTIVE_EQUIVALENT_VERSION } from '../src/lib/engine2/metrics/resistiveEquivalent.ts';
+import { PHASE_INTEGRATION_VERSION } from '../src/lib/engine2/metrics/phaseIntegration.ts';
+import { PHASE_ADMISSION_VERSION } from '../src/lib/phaseAdmission.ts';
 import { compareDesigns } from '../src/lib/engine2/predesign/comparison.ts';
 import { ampFloorSlackOhm, meetsAmpFloor } from '../src/lib/impedanceFloor.ts';
 import { systemMinImpedanceOhm } from '../src/lib/netOptimizer.ts';
@@ -231,6 +233,18 @@ const CHAIN_GRID_LO_HZ = CASUS1_V2_GRID[0];
  * rather than a plausible-sounding reason that belongs to a different corpus.
  */
 const DATED_REASON: Record<string, string> = {
+  V43:
+    'HET GEDATEERDE V43-CORPUS. Bevroren terwijl de ZOEKTOCHT fase nog beoordeelde op elk ' +
+    'rasterpunt waar de twee takken binnen 20 dB van ELKAAR lagen — een RELATIEVE toets, zonder ' +
+    'knip op meetgeldigheid en zonder vloer onder de stille geest. Gemeten over het hele ' +
+    'casusboek (V40/V44): die verzameling telde 1048 punten mee die de rapportmaat niet zag, ' +
+    'waarvan 911 onder de meetgeldigheidsvloer die de meetbestanden ZELF in hun kop opgeven, en ' +
+    '14 op punten waar BEIDE takken dood waren en het faseverschil dus uitsluitend van de filters ' +
+    'kwam. Op V38FIX_KAND_5 las de tuner daardoor 59,15 graden waar het gedeelde deel 17,08 gaf. ' +
+    'De eis `phase-tracking` en de faseterm in het objectief lazen allebei dat getal, dus deze ' +
+    'zeven netlists zijn gezocht met een fasemaat die de luidspreker niet beschreef. Zij blijven ' +
+    'staan als de "vóór"-helft van de V44-vergelijking. Meetobject, GEEN ontwerp: mag niet ' +
+    'gebouwd worden.',
   V42:
     'HET GEDATEERDE V42-CORPUS. Bevroren terwijl het LF-bult-budget wel GESTELD was maar op de ' +
     'verkeerde GROOTHEID: op `extraDb`, de SOM van de brede resistieve lift en de smalle ' +
@@ -407,8 +421,26 @@ for (const key of keys) {
     ),
     rms_vlakheid_dB: r2(rep.system.response?.rmsDeviationDb ?? null),
     spl_venster_pm_dB: r2(rep.system.response?.windowPlusMinusDb ?? null),
+    /* V44 — M-K, de fase-integratie op de TOEGELATEN punten. De naam is niet
+     * veranderd en de grootheid wel: tot V43 was dit het gemiddelde over ±1
+     * octaaf rond het kruispunt geknipt op meetgeldigheid. Die oude lezing
+     * staat als CONTROLEKOLOM in de twee sleutels eronder, zodat een getal dat
+     * bewoog te lezen is als een herdefinitie in plaats van als een regressie
+     * (V15's vorm). */
     wm_fase_oct: r2(pt.find((p) => p.lower === 'woofer')?.meanAbsDeg ?? null),
     mt_fase_oct: r2(pt.find((p) => p.lower === 'mid')?.meanAbsDeg ?? null),
+    wm_fase_oct_octaafgeknipt_V43: r2(
+      pt.find((p) => p.lower === 'woofer')?.control.octaveClipped.meanAbsDeg ?? null,
+    ),
+    mt_fase_oct_octaafgeknipt_V43: r2(
+      pt.find((p) => p.lower === 'mid')?.control.octaveClipped.meanAbsDeg ?? null,
+    ),
+    wm_fase_overlapvenster_V43: r2(
+      pt.find((p) => p.lower === 'woofer')?.control.overlapWindow.meanAbsDeg ?? null,
+    ),
+    mt_fase_overlapvenster_V43: r2(
+      pt.find((p) => p.lower === 'mid')?.control.overlapWindow.meanAbsDeg ?? null,
+    ),
   };
   leaves += Object.keys(block).length - 3; // klasse, afhankelijkheid, toelichting are bookkeeping
   (raw.kandidaten as Record<string, unknown>)[key] = block;
@@ -687,6 +719,55 @@ const decompositionRecord = {
 };
 
 raw.manifest_en_geometrie.v43_ontleding = decompositionRecord;
+
+/* ------------------------------------------------------------------ *
+ * V44 — de drie fasematen op ELKE bevroren netlist
+ * ------------------------------------------------------------------ */
+
+/**
+ * De ontleding van M-K over het HELE casusboek, met beide vervangen maten
+ * ernaast.
+ *
+ * Dezelfde vorm en dezelfde reden als `v43_ontleding`: over élke netlist die
+ * het casusboek noemt en niet alleen over het levende corpus, want de
+ * gedateerde corpora dragen hun eigen bevroren blokken en worden nooit
+ * herschreven. Dit blok is AFGELEID en geen invoer — elke rij komt uit
+ * `buildReport` op het bestand, en `frozenNetlistGates.test.ts` herrekent hem.
+ *
+ * Waarom de twee controlekolommen erbij staan: dat de twee oude maten het
+ * ONEENS waren is zelf een bewaakte eigenschap (V40). Zonder hen in het
+ * referentiebestand zou een stille wijziging aan een van beide nergens meer
+ * zichtbaar worden, en zou het bewijsmateriaal onder V44 verdwijnen op het
+ * moment dat V44 landt.
+ */
+const phaseRecord = {
+  _:
+    'V44 — WELKE PUNTEN EEN FASE-OORDEEL DRAGEN. `mk_dB` is M-K: het gemiddelde |relatieve fase| ' +
+    'over de punten die alle drie de gronden doorstaan (binnen de meetgeldigheid van beide ' +
+    'takken, beide takken boven de stille-geestvloer, en binnen het overlapvenster). ' +
+    '`octaafgeknipt_dB` is wat `system.phaseTracking` tot V43 afdrukte (±1 octaaf rond het ' +
+    'kruispunt, geknipt op meetgeldigheid) en `overlapvenster_dB` is wat de TUNER tot V43 las ' +
+    '(elk punt binnen het overlapvenster, ongeknipt). Beide laatste zijn CONTROLEKOLOMMEN: geen ' +
+    'poort, geen eis, geen sorteersleutel leest ze. Zij staan er omdat hun onderlinge ' +
+    'tegenspraak het bewijsmateriaal onder V44 is. De eenheid is graden; de sleutelnamen zeggen ' +
+    'dB en dat is een vergissing in de naam die niet in de waarde zit. Zie casusboek V40 en V44.',
+  metriek_versie: PHASE_INTEGRATION_VERSION,
+  toelating_versie: PHASE_ADMISSION_VERSION,
+  per_netlist: Object.keys(netlists).flatMap((key) =>
+    report(key).system.phaseTracking.map((p) => ({
+      netlist: key,
+      paar: `${p.lower}|${p.upper}`,
+      mk_graden: r2(p.meanAbsDeg),
+      punten: p.n,
+      band_Hz: [r2(p.bandHz[0]), r2(p.bandHz[1])],
+      octaafgeknipt_graden: r2(p.control.octaveClipped.meanAbsDeg),
+      overlapvenster_graden: r2(p.control.overlapWindow.meanAbsDeg),
+      afgewezen: p.rejected,
+    })),
+  ),
+};
+
+raw.manifest_en_geometrie.v44_fasematen = phaseRecord;
 
 /* ------------------------------------------------------------------ *
  * V43 — wat het GEHERIJKTE budget op het levende corpus doet

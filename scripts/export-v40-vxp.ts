@@ -55,6 +55,7 @@
  * dat `measure-v40-phase.ts` afdrukt.
  */
 
+import { execSync } from 'node:child_process';
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -74,6 +75,21 @@ import { bridgeDelaysUs, excessDelayMsOf } from '../src/lib/vituixBridge.ts';
 const HERE = dirname(fileURLToPath(import.meta.url));
 const OUT_DIR = join(HERE, '..', 'test-fixtures', 'casus1', 'v40_vituix');
 
+/**
+ * De commit waarop geëxporteerd is, kort. Reist mee in élke bestandsnaam en in
+ * de projectbeschrijving: zonder haar is "welk netwerk zit hierin" een vraag
+ * die alleen de bestandsdatum kan beantwoorden, en die overleeft geen kopie.
+ * Faalt de aanroep (geen git), dan staat er `nogit` — een leugen zou erger zijn
+ * dan een gat.
+ */
+const COMMIT = (() => {
+  try {
+    return execSync('git rev-parse --short HEAD', { encoding: 'utf-8' }).trim() || 'nogit';
+  } catch {
+    return 'nogit';
+  }
+})();
+
 /** De plotgrenzen die de app meegeeft (`fMin`/`fMax` op deze casus). */
 const PLOT_HZ: [number, number] = [200, 20000];
 
@@ -87,19 +103,6 @@ const netlists = (golden.manifest_en_geometrie as { netlists: Record<string, str
  * De drie sleutels
  * ------------------------------------------------------------------ */
 
-/**
- * Welke drie netlists geëxporteerd worden, AFGELEID.
- *
- * `HUIDIG` is het handwerk van de ontwerper en de referentie waarop V38 het gat
- * mat. De andere twee komen uit het levende corpus en worden gekozen op de
- * grootheden waar V40 over gaat — de beste RMS-vlakheid, en de kandidaat waar
- * de twee fasematen het verst uiteenlopen. Niets hier is een ingetypte
- * bestandsnaam: het corpus verandert bij elke regeneratie en een lijst die dat
- * niet volgt exporteert de vorige sessie.
- */
-function liveKeys(): string[] {
-  return Object.keys(netlists).filter((k) => /^KAND_V2_\d+$/.test(k));
-}
 
 /* ------------------------------------------------------------------ *
  * De bestanden die meereizen
@@ -202,13 +205,24 @@ function exportOne(key: string): { zip: string; bridge: string } {
     };
   });
 
-  const base = `V40-${key}`;
+  /* V44 — DE NAAM DRAAGT DE CORPUSSLEUTEL EN DE COMMIT, en dat is een reparatie.
+   *
+   * De V41-zips heetten naar de LEVENDE sleutel (`V40-KAND_V2_1.zip`), en die
+   * sleutel wijst na elke regeneratie naar een ander bestand: de zip die Sander
+   * in VituixCAD opendeed bevatte de V41-netlist terwijl `KAND_V2_1` in de repo
+   * inmiddels twee generaties verder stond, met een ander kruispunt en andere
+   * onderdelen. Een aflezing die tegen de verkeerde rij wordt gelegd is erger
+   * dan geen aflezing. Dus: een BEVROREN sleutel in de naam (die verwijst voor
+   * altijd naar hetzelfde bestand) plus de commit waarop geëxporteerd is, zodat
+   * er ook over de meetset en de brug geen twijfel bestaat. */
+  const base = `${key}@${COMMIT}`;
   const xml = serializeVxp(
     { drivers, crossovers: [{ name: 'CROSSOVER', parts }] },
     {
       description:
-        `SD Acoustics Crossover Studio — casus 1, netlist ${key} (${name}). ` +
-        'Geëxporteerd voor de V40-fasebeslissing.',
+        `SD Acoustics Crossover Studio — casus 1, netlist ${key} (${name}), ` +
+        `geëxporteerd op commit ${COMMIT}. Voor de validatie van de fasemaat M-K ` +
+        '(casusboek V40/V44).',
       activeVariant: 0,
       xMin: PLOT_HZ[0],
       xMax: PLOT_HZ[1],
@@ -230,8 +244,27 @@ function exportOne(key: string): { zip: string; bridge: string } {
  * Run
  * ------------------------------------------------------------------ */
 
+/**
+ * DE DRIE VASTE MEETOBJECTEN, en alle drie zijn BEVROREN met opzet (V44).
+ *
+ * Tot V43 stond hier `['HUIDIG', ...liveKeys()]`, en dat is precies waardoor de
+ * V41-zips onbruikbaar werden: een levende sleutel wijst na elke regeneratie
+ * naar een ander bestand, dus de zip in de repo en de rij in het getallenblad
+ * liepen uit elkaar zonder dat iets faalde. Een bevroren sleutel kan dat niet.
+ *
+ * De keuze is dezelfde als bij V40 en op dezelfde assen: HUIDIG is het handwerk
+ * van de ontwerper, `V41_KAND_1` was de beste kandidaat van dat veld, en
+ * `V38FIX_KAND_5` is de netlist waarop de twee vervangen fasematen het VERST
+ * uiteenliepen — het scherpste validatieobject dat het casusboek heeft.
+ *
+ * Een LEVENDE kandidaat exporteren kan altijd door hem als argument mee te
+ * geven; hij wordt hier niet meegeleverd omdat zijn zip bij de eerstvolgende
+ * regeneratie een ander netwerk zou beschrijven onder dezelfde naam.
+ */
+const FROZEN_SUBJECTS = ['HUIDIG', 'V41_KAND_1', 'V38FIX_KAND_5'];
+
 const asked = process.argv.slice(2);
-const keys = asked.length > 0 ? asked : ['HUIDIG', ...liveKeys()];
+const keys = asked.length > 0 ? asked : FROZEN_SUBJECTS;
 
 console.log(`uitvoermap: ${OUT_DIR}`);
 console.log('');

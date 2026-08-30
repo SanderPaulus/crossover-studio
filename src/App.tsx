@@ -16790,7 +16790,23 @@ export default function App() {
                   const COLS = [
                     ['rms', t('RMS'), (r: (typeof v2Shortlist.rows)[number]) => r.measurements.response?.rmsDeviationDb ?? null, (v: number) => `${v.toFixed(2)} dB`],
                     ['window', t('window'), (r: (typeof v2Shortlist.rows)[number]) => r.measurements.response?.windowPlusMinusDb ?? null, (v: number) => `±${v.toFixed(2)} dB`],
+                    /* M-K since V44 — the WORST handover, on the admitted
+                     * points. This is the number the `phase-tracking`
+                     * requirement judges, so it comes first. */
                     ['phase', t('phase'), (r: (typeof v2Shortlist.rows)[number]) => r.measurements.phaseTracking.reduce((a, b) => Math.max(a, b.meanAbsDeg), 0), (v: number) => `${v.toFixed(1)}°`],
+                    /* …and the CONTROL column behind it, with its own name:
+                     * what the historic overlap-window set read on that same
+                     * network. Null on any row that did not arm the admission,
+                     * so it is blank rather than misleading. It judges nothing;
+                     * it exists because every casebook entry from V30 to V43
+                     * quoted that measure, and a figure that MOVED should read
+                     * as a redefinition instead of a regression (V40/V44). */
+                    ['phase-ctl', t('phase (overlap window)'), (r: (typeof v2Shortlist.rows)[number]) => {
+                      const c = r.measurements.phaseTracking
+                        .map((p) => p.controlDeg)
+                        .filter((v): v is number => v !== undefined);
+                      return c.length > 0 ? Math.max(...c) : null;
+                    }, (v: number) => `${v.toFixed(1)}°`],
                     ['zmin', 'Z min', (r: (typeof v2Shortlist.rows)[number]) => r.result.zMinOhm, (v: number) => `${v.toFixed(1)} Ω`],
                     ['epdr', 'EPDR', (r: (typeof v2Shortlist.rows)[number]) => r.gates.find((g) => g.gate === 'M-B/EPDR')?.value ?? null, (v: number) => `${v.toFixed(2)} Ω`],
                     ['diss', t('dissipation'), (r: (typeof v2Shortlist.rows)[number]) => r.gates.find((g) => g.gate === 'M-A')?.value ?? null, (v: number) => `${(v * 100).toFixed(0)} %`],

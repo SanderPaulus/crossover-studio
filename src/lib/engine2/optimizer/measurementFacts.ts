@@ -67,6 +67,28 @@ export interface MeasurementFactsPayload {
   /** The A5b.1 validity interval per model, Hz. Absent = the grid, visibly. */
   validHzByModel?: Record<string, [number, number]>;
   /**
+   * V44 — the caller's SILENT-GHOST convention in dB, when it has one.
+   *
+   * A branch that was not measured at a grid point contributes silence rather
+   * than an extrapolation, and the value that stands for silence is a decision
+   * of whoever built the grid (`designSolve` in the app, `SILENT_GHOST_DB` in
+   * the casus-1 fixture). It is stated rather than derived because guessing at
+   * a sentinel is exactly the "small enough resistor" mistake V43 refused.
+   *
+   * What it is FOR: ground (b) of the phase admission. Two equally dead
+   * branches lie within every RELATIVE level window, so without a floor under
+   * them they read as perfect overlap and their phase difference — which comes
+   * from the filters alone — is averaged in. Measured on casus 1: 14 such
+   * points across the casebook, one of them at 20 kHz on HUIDIG with both
+   * branches at -475 and -462 dB.
+   *
+   * On a run that also states measurement validity this ground removes nothing
+   * extra, and that is measured rather than assumed: the validity band lies
+   * inside the measured extent by construction, so every dead point is already
+   * refused. It is the ground that survives when validity is ABSENT.
+   */
+  silentFloorDb?: number;
+  /**
    * F4b2 — the FUNDAMENTAL in-box resonance per model, Hz (A5c.2/A5c.3).
    *
    * M-C reads the drive voltage at it and M-D derives its whole evaluation band
@@ -194,7 +216,14 @@ export function measurementFactsKey(v2: MeasurementFactsPayload): Record<string,
       ph: z.phaseDeg.map((v) => Number(v.toPrecision(9))),
     };
   }
-  return { re, valid, fundamental, nearField, impedance };
+  /* V44 — the sixth fact. A run that states a ghost convention and one that
+   * does not can deliver the same network from the same seed and mean two
+   * different things about which points carried the phase judgement, so the
+   * convention rides in the fingerprint beside the validity band it works with.
+   * `null` rather than omitted when unstated: absent is a state, not a gap. */
+  const silentFloorDb =
+    v2.silentFloorDb === undefined ? null : Number(v2.silentFloorDb.toPrecision(9));
+  return { re, valid, fundamental, nearField, impedance, silentFloorDb };
 }
 
 /**

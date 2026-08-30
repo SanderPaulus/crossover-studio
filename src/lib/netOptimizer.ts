@@ -2,9 +2,10 @@ import { nelderMead } from './optimize.ts';
 import { bandMedian, powerShape, smoothDbGaussian, type PowerMetricMode } from './bandMetrics.ts';
 import { crossoverToNetlist } from './vxpNetwork.ts';
 import { solveNetwork, type NetElement, type PassiveElement } from './network.ts';
-import { applyTransfer, combine, combineN, type BranchAdjust, type GriddedResponse, type TweeterAdjust } from './dsp.ts';
+import { applyTransfer, combine, combineN, type BranchAdjust, type CombineResult, type GriddedResponse, type TweeterAdjust } from './dsp.ts';
 import { pickSlotsN } from './driverSlots.ts';
-import { computeIntegration } from './integration.ts';
+import { computeIntegration, DEFAULT_OVERLAP_WINDOW_DB } from './integration.ts';
+import { admitPhasePoints } from './phaseAdmission.ts';
 import type { Complex } from './complex.ts';
 import type { VxpPart } from './parsers/vxp.ts';
 import {
@@ -275,8 +276,38 @@ export interface NetOptimizeOptions {
   xoRange?: [number, number];
   /** Phase metric: 'band' (default) = the panel's uniform avg over the
    *  overlap window + P95 excursion term; 'overlap' = classic weighted mean.
-   *  Must match the design optimizer's setting. */
+   *  Must match the design optimizer's setting.
+   *
+   *  NB (V40/V44): this key is the WEIGHTING, not the band. Both values average
+   *  over the overlap window; neither can state the measurement-validity clip
+   *  the report applied. That is `phaseAdmission` below, and the two are
+   *  independent. */
   phaseMetric?: 'band' | 'overlap';
+  /** WHICH POINTS may carry a phase judgement — V44, and a CHOICE for exactly
+   *  the reason `zFloorBarrierSource` and `rSourceProbeSource` are choices, one
+   *  quantity along: it names the points a judged quantity is measured on.
+   *
+   *  'overlap' (default, and every v1 run) = the historic set: every grid point
+   *  where the two branches lie within the overlap window, with no clip on
+   *  measurement validity and no silent-ghost floor. 'measured' = the three
+   *  grounds of `phaseAdmission.ts`.
+   *
+   *  Measured on casus 1, which is why it is a choice and not polish: on
+   *  `V38FIX_KAND_5` the two sets read 59.15 deg and 17.05 deg over one and the
+   *  same network, and 911 of the 1048 points the historic set added across the
+   *  casebook sat below the floor the measurement files themselves declare. */
+  phaseAdmission?: 'overlap' | 'measured';
+  /** The measurement facts the phase admission needs — POLISH, never a choice.
+   *
+   *  This is the run's OWN measurement data (the validity band from the ingest
+   *  pass, the caller's silent-ghost convention), not a second opinion about
+   *  it: a candidate that brought its own validity band would be a second
+   *  answer to A5b.1, the same reason `dissipationReferenceReOhm` may never
+   *  become a choice. Absent = the grounds that need it abstain (P4). */
+  phaseAdmissionFacts?: {
+    validBandHz?: [number, number] | null;
+    silentFloorDb?: number | null;
+  } | null;
   /** Coarse stage callback (value tune, prune, snap, …) for live progress.
    *  NOT structured-cloneable — callers across a worker boundary inject it
    *  on the worker side, never in the posted payload. */
@@ -680,6 +711,10 @@ export interface NetOptimizeResult {
     phaseDeg: number;
     zMinOhm?: number | null;
     pairPhaseDeg?: number[];
+    /** V44 — the HISTORIC overlap-window reading per pair, present only when
+     *  `phaseAdmission: 'measured'` armed the narrower set. A control column:
+     *  no gate, no requirement and no sort key reads it. */
+    pairPhaseControlDeg?: number[];
     xoHzPairs?: (number | null)[];
     powerStdDb?: number;
     /** Source resistance at the low driver of THESE parts (the seed). */
@@ -711,6 +746,10 @@ export interface NetOptimizeResult {
     /** 3-way: uniform-average phase error per adjacent pair [low, high] —
      *  the coupled-pairs verdict (gates judge the worst of these). */
     pairPhaseDeg?: number[];
+    /** V44 — the HISTORIC overlap-window reading per pair, present only when
+     *  `phaseAdmission: 'measured'` armed the narrower set. A control column:
+     *  no gate, no requirement and no sort key reads it. */
+    pairPhaseControlDeg?: number[];
     xoHz?: number | null;
     /** 3-way: the DELIVERED acoustic crossing per adjacent pair [low, high].
      *  Worth reporting on its own: a design can meet every flatness target
@@ -1226,6 +1265,8 @@ export function optimizeNetworkValues(
     ampTarget = 'onAxis',
     breakupGuard = false,
     phaseMetric = 'band',
+    phaseAdmission = 'overlap',
+    phaseAdmissionFacts = null,
     onStage,
   } = opts;
   const solo = opts.solo === true;
@@ -2047,6 +2088,9 @@ export function optimizeNetworkValues(
     /** Uniform-average phase error PER pair — the coupled-pairs gate reads
      *  the WORST of these (solo: empty). */
     pairPhaseDeg: number[];
+    /** V44 — the historic overlap-window reading per pair, present only when
+     *  the admission is armed. Diagnostic: nothing judges on it. */
+    pairPhaseControlDeg: number[];
     /** Mean squared corridor excess over the branch targets (0 without
      *  targets, and 0 for any tune that stays inside the corridor). */
     corridorSq: number;
@@ -2237,6 +2281,11 @@ export function optimizeNetworkValues(
     let rFreq: readonly number[];
     let rCombinedSpl: number[];
     let integList: ReturnType<typeof computeIntegration>[];
+    /* The pairs themselves ride along beside their integrations: V44's
+     * admission needs the two branches' LEVELS and PHASES, and a CombineResult
+     * already carries both, adjusted. Building them twice would be the second
+     * implementation this whole change exists to avoid. */
+    let pairList: CombineResult[];
     // Adjusted branches for the pair list (3-way) — combineN returns them.
     let bW: GriddedResponse | null = null;
     let bM: GriddedResponse | null = null;
@@ -2253,16 +2302,34 @@ export function optimizeNetworkValues(
       bM = n3.branches[1];
       bT = n3.branches[2];
       const zeroAdj: TweeterAdjust = { offsetMm: 0, trimDb: 0, inverted: false };
-      integList = [
-        computeIntegration(combine(bW, bM, zeroAdj)),
-        computeIntegration(combine(bM, bT, zeroAdj)),
-      ];
+      pairList = [combine(bW, bM, zeroAdj), combine(bM, bT, zeroAdj)];
+      integList = pairList.map((pr) => computeIntegration(pr));
     } else {
       const r2 = combine(wF, tF, adjust);
       rFreq = r2.freq;
       rCombinedSpl = r2.combinedSpl;
+      pairList = [r2];
       integList = [computeIntegration(r2)];
     }
+    /* V44 — WHICH points count. Null in the historic mode, and then the loop
+     * below reduces to `pt.cls === null` exactly as it always read: the
+     * arithmetic, its order and its operands are untouched, so a v1 run is
+     * byte-identical. The per-point PHASE keeps coming from
+     * `computeIntegration`; only the mask is a second opinion, and it is the
+     * one this change is about. */
+    const admitMasks: (readonly boolean[] | null)[] = pairList.map((pr) => {
+      if (phaseAdmission !== 'measured') return null;
+      const valid = phaseAdmissionFacts?.validBandHz ?? null;
+      const branch = (g: GriddedResponse) => ({
+        db: g.spl,
+        phaseDeg: g.phaseDeg,
+        validHz: valid,
+      });
+      return admitPhasePoints(pr.freq, branch(pr.woofer), branch(pr.tweeter), {
+        overlapWindowDb: DEFAULT_OVERLAP_WINDOW_DB,
+        silentFloorDb: phaseAdmissionFacts?.silentFloorDb ?? null,
+      }).admitted;
+    });
     const r = { freq: rFreq, combinedSpl: rCombinedSpl };
     // Both phase metrics (see vfOptimizer): weighted classic and the panel's
     // uniform avg + bucket-P95 — 3-way sums the pairs' overlap windows.
@@ -2278,11 +2345,27 @@ export function optimizeNetworkValues(
     // invisibly. The gates below judge the WORST pair; the search objective
     // keeps the average (the anchor lesson: no objective perturbation).
     const pairPhaseDeg: number[] = [];
-    for (const integ of integList) {
+    /* V44 — the HISTORIC reading beside the delivered one, per pair, and only
+     * when the admission is actually armed. It judges nothing: it exists so a
+     * shortlist row and a corpus table can print what the same network read
+     * before the admission narrowed, because the designer has read that number
+     * in every casebook entry from V30 to V43. Absent on every v1 run, so the
+     * result object there is byte-identical. */
+    const pairPhaseControlDeg: number[] = [];
+    for (let pi = 0; pi < integList.length; pi++) {
+      const integ = integList[pi];
+      const mask = admitMasks[pi];
       let pSum = 0;
       let pN = 0;
-      for (const pt of integ.points) {
-        if (pt.cls === null) continue;
+      let cSum = 0;
+      let cN = 0;
+      for (let ptI = 0; ptI < integ.points.length; ptI++) {
+        const pt = integ.points[ptI];
+        if (mask && pt.cls !== null) {
+          cSum += pt.phaseErrorDeg;
+          cN++;
+        }
+        if (mask ? !mask[ptI] : pt.cls === null) continue;
         wSum += pt.weight;
         eSum += pt.weight * pt.phaseErrorDeg;
         uSum += pt.phaseErrorDeg;
@@ -2292,6 +2375,7 @@ export function optimizeNetworkValues(
         buckets[Math.min(180, Math.round(pt.phaseErrorDeg))]++;
       }
       pairPhaseDeg.push(pN > 0 ? pSum / pN : 180);
+      if (mask) pairPhaseControlDeg.push(cN > 0 ? cSum / cN : 180);
     }
     let phaseP95Deg = 180;
     if (uN > 0) {
@@ -2664,6 +2748,7 @@ export function optimizeNetworkValues(
       xoEdgeSq,
       pairSlopes: pm.map((x) => ({ lower: x.lowerSlopeDbOct, upper: x.upperSlopeDbOct })),
       pairPhaseDeg: solo ? [] : pairPhaseDeg,
+      pairPhaseControlDeg: solo ? [] : pairPhaseControlDeg,
       pairOverlapOct: solo ? [] : integList.map((ig) => ig.bandwidth?.octaves ?? null),
       corridorSq,
       xoDipDb,
@@ -4515,6 +4600,12 @@ export function optimizeNetworkValues(
     ...(m.dissRatio !== null ? { dissRatio: m.dissRatio } : {}),
     ...(m.powerSlopeDbDec !== null ? { powerSlopeDbDec: m.powerSlopeDbDec } : {}),
     ...(m.pairPhaseDeg.length > 1 ? { pairPhaseDeg: m.pairPhaseDeg } : {}),
+    /* V44 — carried whenever the admission was armed, at any pair count: a
+     * two-way has one handover and still deserves to show what the historic
+     * set read. Empty on every v1 run, hence absent there. */
+    ...(m.pairPhaseControlDeg.length > 0
+      ? { pairPhaseControlDeg: m.pairPhaseControlDeg }
+      : {}),
     ...(m.xoHzPairs.length > 1 ? { xoHzPairs: m.xoHzPairs } : {}),
     ...(m.pairOverlapOct.length > 1 ? { pairOverlapOct: m.pairOverlapOct } : {}),
   });

@@ -869,10 +869,33 @@ export function EngineV2Panel({ report, ambiguous, floors = [] }: EngineV2PanelP
             SPL window: {system.splWindowDb === null ? '—' : `± ${system.splWindowDb.toFixed(2)} dB`}
             {system.splBandHz && ` over ${hz(system.splBandHz[0])} – ${hz(system.splBandHz[1])}`}
           </li>
+          {/* M-K since V44 — the number, the band it was read on, and the two
+              measures it replaced beside it. The control columns are printed
+              because the designer has read one of them in every entry from V30
+              to V43: without them on screen a figure that moved would look like
+              a regression instead of a redefinition. */}
           {system.phaseTracking.map((p) => (
             <li key={`${p.lower}-${p.upper}`}>
-              Phase tracking {p.lower} → {p.upper}: {p.meanAbsDeg.toFixed(1)}° mean over ±1 octave
-              around {hz(p.crossingHz)}
+              Phase integration {p.lower} → {p.upper}: {p.meanAbsDeg.toFixed(1)}° mean over{' '}
+              {p.n} admitted points, {hz(p.bandHz[0])} – {hz(p.bandHz[1])} ({p.coverage.describe})
+              <div className="v2-muted">
+                admitted: inside both measurements&apos; validity
+                {p.grounds.validity ? '' : ' (not stated — that ground abstains)'}, both branches
+                above the silent floor
+                {p.grounds.silence ? '' : ' (no ghost convention stated — that ground abstains)'},
+                and within the overlap window. Refused: {p.rejected.validity} on validity,{' '}
+                {p.rejected.silence} on silence, {p.rejected.level} on level.
+              </div>
+              <div className="v2-muted">
+                control (judges nothing): ±1 octave around {hz(p.crossingHz)} clipped on validity ={' '}
+                {p.control.octaveClipped.meanAbsDeg === null
+                  ? '—'
+                  : `${p.control.octaveClipped.meanAbsDeg.toFixed(1)}°`}
+                ; bare overlap window ={' '}
+                {p.control.overlapWindow.meanAbsDeg === null
+                  ? '—'
+                  : `${p.control.overlapWindow.meanAbsDeg.toFixed(1)}°`}
+              </div>
             </li>
           ))}
           {system.midbandOctaves.map((m) => (

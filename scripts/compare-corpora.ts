@@ -60,14 +60,9 @@ import { buildReport, type ReportSettings } from '../src/lib/engine2/report.ts';
 import { ctcKey } from '../src/lib/engine2/metrics/types.ts';
 import { FLAT_TARGET } from '../src/lib/engine2/requirements/targetCurve.ts';
 import { meetsAmpFloor } from '../src/lib/impedanceFloor.ts';
-import { busTopology, optimizeNetworkValues } from '../src/lib/netOptimizer.ts';
+import { busTopology } from '../src/lib/netOptimizer.ts';
 import { deserializeFilter } from '../src/lib/filterFile.ts';
 import { CASUS1_DIR } from '../src/lib/engine2/casus1.fixture.ts';
-import {
-  CASUS1_V2_BAND_HZ,
-  CASUS1_V2_SETTINGS,
-  casus1ChainInput,
-} from '../src/lib/engine2/casus1V2.fixture.ts';
 import type { VxpPart } from '../src/lib/parsers/vxp.ts';
 import { decompose } from './v38-groups.ts';
 
@@ -155,6 +150,7 @@ const DATED: Record<string, { block: string; name: string }> = {
   v38fix: { block: 'v38fix_corpus', name: 'V38-fix' },
   v41: { block: 'v41_corpus', name: 'V41' },
   v42: { block: 'v42_corpus', name: 'V42' },
+  v43: { block: 'v43_corpus', name: 'V43' },
 };
 
 const corpusOf = (id: string): Corpus => {
@@ -164,7 +160,7 @@ const corpusOf = (id: string): Corpus => {
   throw new Error(`unknown corpus "${id}" — use ${[...Object.keys(DATED), 'live'].join(', ')}`);
 };
 
-const [beforeId = 'v42', afterId = 'live'] = process.argv.slice(2);
+const [beforeId = 'v43', afterId = 'live'] = process.argv.slice(2);
 const before = corpusOf(beforeId);
 const after = corpusOf(afterId);
 
@@ -173,18 +169,30 @@ interface Row {
   atHz: number | null;
   splWindow: number | null;
   rms: number | null;
-  /** De RAPPORT-maat: `system.phaseTracking`, één octaaf rond het kruispunt,
-   *  geknipt op meetgeldigheid en met zijn dekking erbij (A5.5). */
+  /** M-K — DE MAAT, sinds V44: het gemiddelde |relatieve fase| over de punten
+   *  die een fase-oordeel mogen dragen (binnen de meetgeldigheid van beide
+   *  takken, beide takken boven de stille-geestvloer, binnen het
+   *  overlapvenster). Dit is wat de eis `phase-tracking` leest, wat de
+   *  zoektocht uitgeeft en wat het paneel afdrukt — dus staat hij vooraan. */
   wmPhase: number | null;
   mtPhase: number | null;
-  /** De TUNER-maat: `pairPhaseDeg` uit `netOptimizer`, de grootheid waarop de
-   *  zoektocht zijn fasebudget uitgeeft. V38 mat dat de twee op HUIDIG's zaad
-   *  overeenkomen (22,28° tegen 23,83°) en op het geleverde netwerk in
-   *  TEGENGESTELDE richting uiteenlopen (9,65° tegen 47,68°). Zolang dat zo is
-   *  is één fasekolom een half antwoord, en welke van de twee de luidspreker
-   *  beschrijft is open (V40). Vandaar twee kolommen, met naam. */
-  wmPhaseTuner: number | null;
-  mtPhaseTuner: number | null;
+  /** CONTROLEKOLOM 1 — wat het rapport tot V43 afdrukte: ±1 octaaf rond het
+   *  kruispunt, geknipt op meetgeldigheid (A5.5). */
+  wmPhaseOctave: number | null;
+  mtPhaseOctave: number | null;
+  /** CONTROLEKOLOM 2 — wat de TUNER tot V43 las: elk punt binnen het
+   *  overlapvenster, ongeknipt op meetgeldigheid en zonder vloer onder de
+   *  stille geest.
+   *
+   *  DRIE KOLOMMEN EN NIET TWEE, en alle drie uit hetzelfde rapport. Tot V43
+   *  stonden hier twee kolommen waarvan de tweede de TUNER apart bevroeg, op
+   *  het KETENRASTER — nodig zolang die twee verschillende grootheden lazen.
+   *  Sinds V44 leest de tuner M-K, dus een aparte tunerkolom zou dezelfde
+   *  grootheid op een ander raster afdrukken, en V40 heeft dat rasterverschil
+   *  gemeten op hoogstens anderhalve graad. Eén rapport, drie namen, één
+   *  raster — en de tunerrun per netlist is daarmee vervallen. */
+  wmPhaseOverlap: number | null;
+  mtPhaseOverlap: number | null;
   clearsFloor: boolean | null;
   /** V36 — M-A's fraction as a percentage, and the WATTS in the largest single
    *  discrete resistor at the assumed power. A column, never a criterion: this
@@ -246,60 +254,17 @@ interface Row {
 const r2 = (v: number | null | undefined): number | null =>
   v === null || v === undefined || !Number.isFinite(v) ? null : Number(v.toFixed(2));
 
-/* ---- de TUNER-maat op een BESTAND (V38-fix) --------------------------- *
+/* V44 — DE TUNERRUN PER NETLIST IS HIER VERVALLEN, en dat is een gevolg van de
+ * ingreep en geen bezuiniging.
  *
- * `NetOptimizeResult.before` is de volle-raster-metriek van het ZAAD, gemeten
- * door de tuner zelf vóórdat hij iets verplaatst. Eén onderdeel blijft vrij en
- * het budget staat op het minimum: de tuner weigert een netwerk waarin álles
- * op slot zit ("nothing for the optimizer to move"), en `before` hangt niet af
- * van wat de zoektocht daarna doet. Gemeten 0,5 s per netlist.
- *
- * WAAROM NIET NAGEBOUWD. De fasemaat van de tuner nog een keer uitrekenen in
- * dit script zou een tweede implementatie van een metriek zijn, en dat is
- * precies wat dit project elders verbiedt — V21 ging erover. Dus wordt de
- * tuner gevraagd, met de opties waarmee de v2-route hem vraagt.
- *
- * GEEN `staged`, `safety` of `audit`: die verplaatsen of verwijderen
- * onderdelen, en dit is een MÉTING van een bestand. */
-const v2chain = casus1ChainInput(manifest, files, golden);
-
-function tunerPhaseOf(key: string): { wm: number | null; mt: number | null } {
-  const name = (golden.manifest_en_geometrie as { netlists: Record<string, string> }).netlists[key];
-  const parts: VxpPart[] = deserializeFilter(
-    readFileSync(join(CASUS1_DIR, name), 'utf-8'),
-  ).parts;
-  let freed = false;
-  const pinned = parts.map((p) => {
-    if (p.partId === undefined || p.type === 'Driver' || p.type === 'Generator') return p;
-    if (!freed) {
-      freed = true;
-      return p;
-    }
-    return { ...p, locked: true };
-  });
-  try {
-    const r = optimizeNetworkValues(
-      pinned,
-      [...v2chain.grid],
-      v2chain.w,
-      v2chain.t,
-      v2chain.driverZ,
-      { offsetMm: 0, trimDb: 0, inverted: false },
-      {
-        midBranch: { response: v2chain.m, adjust: {} },
-        band: CASUS1_V2_BAND_HZ,
-        phaseMetric: CASUS1_V2_SETTINGS.phaseMetric,
-        maxIterations: 1,
-      },
-    );
-    const pp = r.before.pairPhaseDeg ?? [];
-    return { wm: r2(pp[0] ?? null), mt: r2(pp[1] ?? null) };
-  } catch {
-    // Een netlist die de tuner niet kan oplossen levert geen fasemaat, en dat
-    // is een leeg vakje en geen nul.
-    return { wm: null, mt: null };
-  }
-}
+ * Tot V43 stond hier `tunerPhaseOf`: het vroeg de tuner om `pairPhaseDeg` van
+ * het ZAAD (één onderdeel vrij, budget op het minimum), omdat de tuner een
+ * ANDERE grootheid las dan het rapport en die tegenspraak nu juist de open
+ * bevinding was (V40). Sinds V44 lezen beide M-K — één functie, twee lezers —
+ * dus zo'n run zou dezelfde grootheid op een ander RASTER afdrukken, en V40
+ * heeft dat rasterverschil gemeten op hoogstens anderhalve graad. De drie
+ * fasekolommen komen daarom alle drie uit hetzelfde rapport: de maat, en de
+ * twee die zij vervangt als controle. Scheelt ook een tunerrun per netlist. */
 
 /**
  * V41 — de niet-poolgroepen van één bevroren netlist, per rol geteld.
@@ -374,17 +339,20 @@ function measure(key: string): Row {
     settings: SETTINGS,
   });
   const pt = rep.system.phaseTracking;
-  const tuner = tunerPhaseOf(key);
+  const wm = pt.find((p) => p.lower === 'woofer');
+  const mt = pt.find((p) => p.lower === 'mid');
   const z = rep.metrics.epdr?.minZOhm ?? null;
   return {
     minZ: r2(z),
     atHz: r2(rep.metrics.epdr?.minZAtHz),
     splWindow: r2(rep.system.response?.windowPlusMinusDb),
     rms: r2(rep.system.response?.rmsDeviationDb),
-    wmPhase: r2(pt.find((p) => p.lower === 'woofer')?.meanAbsDeg ?? null),
-    mtPhase: r2(pt.find((p) => p.lower === 'mid')?.meanAbsDeg ?? null),
-    wmPhaseTuner: tuner.wm,
-    mtPhaseTuner: tuner.mt,
+    wmPhase: r2(wm?.meanAbsDeg ?? null),
+    mtPhase: r2(mt?.meanAbsDeg ?? null),
+    wmPhaseOctave: r2(wm?.control.octaveClipped.meanAbsDeg ?? null),
+    mtPhaseOctave: r2(mt?.control.octaveClipped.meanAbsDeg ?? null),
+    wmPhaseOverlap: r2(wm?.control.overlapWindow.meanAbsDeg ?? null),
+    mtPhaseOverlap: r2(mt?.control.overlapWindow.meanAbsDeg ?? null),
     clearsFloor: z === null || FLOOR === null ? null : meetsAmpFloor(z, FLOOR),
     dissPct: r2((rep.metrics.dissipation?.totalFraction ?? NaN) * 100),
     largestRw: r2(rep.metrics.dissipation?.elements.find((e) => !e.parasitic)?.watts ?? null),
@@ -424,15 +392,16 @@ console.log(
    * columns — which is exactly what happened to the V34 table before anyone
    * looked at the rendered file. */
   '| kandidaat (W-M · M-T) | min \\|Z\\| vóór | min \\|Z\\| ná | @ Hz ná | vloer vóór → ná | ' +
-    'SPL ± vóór → ná | RMS vóór → ná | W-M fase RAPPORT vóór → ná | ' +
-    'W-M fase TUNER vóór → ná | M-T fase RAPPORT vóór → ná | M-T fase TUNER vóór → ná | ' +
+    'SPL ± vóór → ná | W-M fase M-K vóór → ná | W-M fase octaaf (ctl) vóór → ná | ' +
+    'W-M fase overlap (ctl) vóór → ná | M-T fase M-K vóór → ná | ' +
+    'M-T fase octaaf (ctl) vóór → ná | M-T fase overlap (ctl) vóór → ná | RMS vóór → ná | ' +
     'dissipatie % vóór → ná | grootste R (W) vóór → ná | EPDR vóór → ná | ' +
     'Q_es× vóór → ná | smalste piek ná (dB @ Hz) | correctiegroepen vóór → ná | ' +
     'LF-bult dB vóór → ná | lift dB vóór → ná | opslingering dB vóór → ná | ' +
     'serie-L mH vóór → ná |',
 );
 console.log(
-  '|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|',
+  '|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|',
 );
 
 let beforeClears = 0;
@@ -461,11 +430,13 @@ for (const label of labels) {
       `${a ? num(a.atHz) : '—'} | ` +
       `${b ? (b.clearsFloor ? '**ja**' : 'nee') : '—'} → ${a ? (a.clearsFloor ? '**ja**' : 'nee') : '—'} | ` +
       `${num(b?.splWindow ?? null)} → ${afterCell(a?.splWindow ?? null)} | ` +
-      `${num(b?.rms ?? null)} → ${afterCell(a?.rms ?? null)} | ` +
       `${num(b?.wmPhase ?? null)} → ${afterCell(a?.wmPhase ?? null)} | ` +
-      `${num(b?.wmPhaseTuner ?? null)} → ${afterCell(a?.wmPhaseTuner ?? null)} | ` +
+      `${num(b?.wmPhaseOctave ?? null)} → ${afterCell(a?.wmPhaseOctave ?? null)} | ` +
+      `${num(b?.wmPhaseOverlap ?? null)} → ${afterCell(a?.wmPhaseOverlap ?? null)} | ` +
       `${num(b?.mtPhase ?? null)} → ${afterCell(a?.mtPhase ?? null)} | ` +
-      `${num(b?.mtPhaseTuner ?? null)} → ${afterCell(a?.mtPhaseTuner ?? null)} | ` +
+      `${num(b?.mtPhaseOctave ?? null)} → ${afterCell(a?.mtPhaseOctave ?? null)} | ` +
+      `${num(b?.mtPhaseOverlap ?? null)} → ${afterCell(a?.mtPhaseOverlap ?? null)} | ` +
+      `${num(b?.rms ?? null)} → ${afterCell(a?.rms ?? null)} | ` +
       `${num(b?.dissPct ?? null)} → ${afterCell(a?.dissPct ?? null)} | ` +
       `${num(b?.largestRw ?? null)} → ${afterCell(a?.largestRw ?? null)} | ` +
       `${num(b?.epdr ?? null)} → ${afterCell(a?.epdr ?? null)} | ` +
@@ -502,20 +473,29 @@ console.log(
     `${fmt(avg(measuredAfter.map((r) => r.largestRw)))} W bij ${SETTINGS.amplifierPowerW} W. ` +
     'Een kolom, geen oordeel: casus 1 stelt geen dissipatiegrens (P4).',
 );
-/* V38-fix — de twee fasematen naast elkaar als CORPUSGEMIDDELDE, want het
- * verschil tussen hen is een open bevinding (V40) en geen afrondingsverschil.
- * Twee kolommen die uiteenlopen zijn een vraag; één kolom is een antwoord dat
- * niemand gegeven heeft. */
+/* V44 — DRIE fasematen als corpusgemiddelde, met naam en in volgorde: de maat
+ * eerst, de twee die zij vervangt erachter. Zij oordelen niets meer — geen
+ * poort, geen eis, geen sorteersleutel leest ze — maar zij blijven staan omdat
+ * hun onderlinge tegenspraak het bewijsmateriaal onder V44 is: verdwijnt zij
+ * ooit, dan is er aan een van beide iets veranderd zonder dat iemand het
+ * besloot, en dat hoort zichtbaar te zijn. */
 console.log(
-  `W-M fase gemiddeld: RAPPORT ${fmt(avg(measuredBefore.map((r) => r.wmPhase)))}° → ` +
-    `${fmt(avg(measuredAfter.map((r) => r.wmPhase)))}°, TUNER ` +
-    `${fmt(avg(measuredBefore.map((r) => r.wmPhaseTuner)))}° → ` +
-    `${fmt(avg(measuredAfter.map((r) => r.wmPhaseTuner)))}°. ` +
-    `M-T fase gemiddeld: RAPPORT ${fmt(avg(measuredBefore.map((r) => r.mtPhase)))}° → ` +
-    `${fmt(avg(measuredAfter.map((r) => r.mtPhase)))}°, TUNER ` +
-    `${fmt(avg(measuredBefore.map((r) => r.mtPhaseTuner)))}° → ` +
-    `${fmt(avg(measuredAfter.map((r) => r.mtPhaseTuner)))}°. ` +
-    'Welke van de twee de luidspreker beschrijft is open (V40).',
+  `W-M fase gemiddeld: M-K ${fmt(avg(measuredBefore.map((r) => r.wmPhase)))}° → ` +
+    `${fmt(avg(measuredAfter.map((r) => r.wmPhase)))}°, controle octaafgeknipt ` +
+    `${fmt(avg(measuredBefore.map((r) => r.wmPhaseOctave)))}° → ` +
+    `${fmt(avg(measuredAfter.map((r) => r.wmPhaseOctave)))}°, controle overlapvenster ` +
+    `${fmt(avg(measuredBefore.map((r) => r.wmPhaseOverlap)))}° → ` +
+    `${fmt(avg(measuredAfter.map((r) => r.wmPhaseOverlap)))}°.`,
+);
+console.log(
+  `M-T fase gemiddeld: M-K ${fmt(avg(measuredBefore.map((r) => r.mtPhase)))}° → ` +
+    `${fmt(avg(measuredAfter.map((r) => r.mtPhase)))}°, controle octaafgeknipt ` +
+    `${fmt(avg(measuredBefore.map((r) => r.mtPhaseOctave)))}° → ` +
+    `${fmt(avg(measuredAfter.map((r) => r.mtPhaseOctave)))}°, controle overlapvenster ` +
+    `${fmt(avg(measuredBefore.map((r) => r.mtPhaseOverlap)))}° → ` +
+    `${fmt(avg(measuredAfter.map((r) => r.mtPhaseOverlap)))}°. ` +
+    'De twee controlekolommen zijn de maten die tot V43 in deze tabel stonden; ' +
+    'zie casusboek V40 voor waarom geen van beide de luidspreker beschreef.',
 );
 /* V41 — het CORPUSTOTAAL per correctierol, want dat is de vraag van
  * beslispunt B en C in één regel: koopt de synthese ze nu wel. Per rol, want

@@ -500,18 +500,36 @@ describe('golden references - casus 1 (Koan 2951)', () => {
       expect(mt.authorityNote).toBeNull();
     });
 
-    it('phase tracking over +-1 octave, on the band the measurements support', () => {
+    /* V44 — M-K, and the two measures it replaced ride along as control
+     * columns. The reference moved with the metric (V15's form: a redefinition
+     * carries its own value, and the OLD value stays reproducible under its own
+     * name so the move is readable instead of silent). */
+    it('phase integration on the admitted points (M-K), with both control columns', () => {
       const wm = r.system.phaseTracking.find((p) => p.lower === 'woofer')!;
       const mt = r.system.phaseTracking.find((p) => p.lower === 'mid')!;
       expect(Math.abs(wm.meanAbsDeg - ref.wm_fase_oct)).toBeLessThanOrEqual(TOL.graden);
       expect(Math.abs(mt.meanAbsDeg - ref.mt_fase_oct)).toBeLessThanOrEqual(TOL.graden);
-      // The window is CLIPPED to the valid band, and says how much of the
-      // intended +-1 octave survived. On this dataset the mid-tweeter window
-      // is whole and the woofer-mid one is not - which is the entire reason
-      // the reference had to be revised.
-      expect(mt.coverage.fraction).toBeCloseTo(1, 6);
-      expect(wm.bandHz[0]).toBeGreaterThanOrEqual(wm.intendedHz[0]);
-      expect(wm.bandHz[0]).toBeCloseTo(397, -1);
+      // THE BRIDGE: the pre-V44 measure is the octave-clipped control column,
+      // and it still reproduces the value this reference carried until V44.
+      expect(
+        Math.abs(wm.control.octaveClipped.meanAbsDeg! - ref.wm_fase_oct_octaafgeknipt_V43),
+      ).toBeLessThanOrEqual(TOL.graden);
+      expect(
+        Math.abs(mt.control.octaveClipped.meanAbsDeg! - ref.mt_fase_oct_octaafgeknipt_V43),
+      ).toBeLessThanOrEqual(TOL.graden);
+      // The historic column is still CLIPPED to the valid band and still says
+      // how much of the intended +-1 octave survived: on this dataset the
+      // mid-tweeter window is whole and the woofer-mid one is not, which is
+      // the entire reason the reference had to be revised at V15.
+      expect(mt.control.octaveClipped.bandHz![0]).toBeGreaterThanOrEqual(
+        mt.control.octaveClipped.intendedHz[0],
+      );
+      expect(wm.control.octaveClipped.bandHz![0]).toBeCloseTo(397, -1);
+      // M-K's own band is NOT that window: the level ground picks the handover
+      // region out of the delivered network, so it reaches past one octave.
+      expect(wm.n).toBeGreaterThan(0);
+      expect(wm.grounds.validity).toBe(true);
+      expect(wm.grounds.level).toBe(true);
     });
   });
 

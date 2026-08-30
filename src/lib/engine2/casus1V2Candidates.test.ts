@@ -143,6 +143,10 @@ const HERKOMST = JSON.parse(
      *  hoeveel moeite hij doet (polish) maar waarvan hij de spreiding is. */
     zoekmaat_gladding_oct: number | null;
     zoekmaat_waarom: string;
+    /** V44 — WELKE PUNTEN het fase-oordeel dragen. Niet hoe fase gewogen wordt
+     *  (dat is `fasemaat`) maar over welke punten het gemiddelde gaat. */
+    fase_toelating: string | null;
+    fase_toelating_waarom: string;
     /** V41 — wat de ONTWERP- en SYNTHESESTAP mochten bouwen. Eén laag hoger dan
      *  alle bovenstaande: deze twee worden gelezen vóórdat de tuner bestaat,
      *  dus zij bepalen wat de topologie KAN zijn en niet welke waarden zij
@@ -308,6 +312,16 @@ describe('the frozen v2 candidates are files, and the file says where they came 
     expect(m.beschermingen_via_kandidaat).toContain('errorSmoothOct');
     expect(m.zoekmaat_gladding_oct).toBe(SEARCH_SMOOTHING_OCTAVES);
     expect(m.zoekmaat_waarom).toMatch(/V38-fix/);
+    /* V44 — het zevende besluit, en het corrigeert een aanname die er al stond:
+     * `fasemaat` (`phaseMetric`) leek de sleutel die de fasemaat stelt, en hij
+     * stelt alleen de WEGING. Beide waarden ervan middelen over het
+     * overlapvenster; welke PUNTEN dat venster bevat was tot V43 nergens een
+     * keuze en verschilde per lezer — de tuner en het rapport lazen twee
+     * verschillende verzamelingen over hetzelfde netwerk. Beide velden staan er
+     * dus, en zij zijn twee verschillende besluiten. */
+    expect(m.fase_toelating).toBe('measured');
+    expect(m.fase_toelating_waarom).toMatch(/V44/);
+    expect(m.beschermingen_via_kandidaat).toContain('phaseAdmission');
     /* V41 — het vijfde en zesde besluit, en het eerste paar dat BOVEN de tuner
      * zit. `eqBands` was ongesteld en dat is in `designThreeWay` een stille
      * nul: het veld kon geen enkele val op een gemeten breakup dragen omdat de

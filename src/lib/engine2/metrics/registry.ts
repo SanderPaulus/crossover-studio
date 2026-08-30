@@ -235,6 +235,26 @@ export const METRIC_DECLARATIONS: readonly MetricDeclaration[] = [
       'Severity weighting is uncalibrated; only its endpoints are published (spec V6/V9).',
   },
   {
+    id: 'M-K',
+    title: 'Phase integration through the handover',
+    quantity:
+      'Mean |relative phase| between two adjacent branches over the points that may CARRY such a ' +
+      'judgement — inside both measurements validity, both branches alive, and within the ' +
+      'overlap window',
+    formula:
+      'mean |wrap(arg lower - arg upper)| over the admitted points; admission on three grounds ' +
+      'at once (phaseAdmission.ts). The +-1 octave window is NOT one of them since V44: the ' +
+      'level ground reads the handover region off the delivered network instead',
+    /* SOFT, and the word is A5e.1's: this is what a REQUIREMENT is judged on
+     * (`phase-tracking`, per handover, relaxable by the ladder as a taste
+     * requirement) and what the shortlist sorts on. It is not a gate — it has
+     * no id in `GATE_IDS` and disqualifies nothing. */
+    role: 'soft',
+    scope: 'pair',
+    needs: [hasFilter, hasCrossing, hasOnAxisEverywhere],
+    specRef: 'A4 M-K / Deel B V40, V44',
+  },
+  {
     id: 'M-J',
     title: 'Group delay vs audibility threshold',
     quantity: 'System group delay against the published audibility band',

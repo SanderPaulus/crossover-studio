@@ -87,7 +87,10 @@ export interface RequirementEvaluation {
 export interface CandidateMeasurements {
   response: ResponseJudgement | null;
   /** Mean |Δφ| per crossover region, with the region's own label. */
-  phaseTracking: { subject: string; meanAbsDeg: number }[];
+  /* `controlDeg` is V44's control column: what the HISTORIC overlap-window set
+   * read on the same network. Optional and read by nothing that judges — the
+   * requirement below uses `meanAbsDeg` and only that. */
+  phaseTracking: { subject: string; meanAbsDeg: number; controlDeg?: number }[];
 }
 
 /**

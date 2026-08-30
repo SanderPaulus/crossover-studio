@@ -26,7 +26,7 @@
 
 import type { Complex } from '../complex.ts';
 import { fromPolar } from '../complex.ts';
-import { toComplex, wrapDeg } from '../dsp.ts';
+import { toComplex } from '../dsp.ts';
 import type { Netlist } from '../network.ts';
 import { unwrapPhaseDeg } from '../timing.ts';
 import { DEG_PER_HALF_TURN, MM_PER_M } from './constants.ts';
@@ -35,6 +35,12 @@ import { runIngest, type IngestResult, type MeasurementFile } from './ingest/der
 import { passbandLevel } from './ingest/spl.ts';
 import type { Manifest } from './ingest/manifest.ts';
 import { coverageOf, type Coverage } from './ingest/validity.ts';
+import {
+  phaseIntegration,
+  type PhaseIntegrationResult,
+} from './metrics/phaseIntegration.ts';
+import type { PhaseRejection } from '../phaseAdmission.ts';
+import { DEFAULT_OVERLAP_WINDOW_DB } from '../integration.ts';
 import {
   breakupDistance,
   directivityMatch,
@@ -177,19 +183,30 @@ export interface EngineV2ReportInput {
   ingestOptions?: { trendOctaveFraction?: number; breakupMinDb?: number; mergeOctaves?: number };
 }
 
-/** One pair's phase tracking around its own crossing. */
+/**
+ * One pair's phase integration around its own handover (M-K).
+ *
+ * SINCE V44 the admitted points are decided by `lib/phaseAdmission.ts` — three
+ * grounds at once, see that file — and the two historic measures ride along as
+ * named control columns that judge nothing. `meanAbsDeg` is M-K; the panel, the
+ * requirement and the tuner all read that one number.
+ */
 export interface PhaseTracking {
   lower: string;
   upper: string;
   crossingHz: number;
-  /** Mean |phase difference| over the evaluated band, degrees. */
+  /** Mean |phase difference| over the ADMITTED points, degrees. */
   meanAbsDeg: number;
-  /** The band actually evaluated: +-1 octave around the crossing, CLIPPED to
-   *  the band every contributing measurement is valid on. */
+  /** The band the admitted points span. */
   bandHz: [number, number];
-  /** The +-1 octave window before clipping — what the metric wanted. */
-  intendedHz: [number, number];
+  /** How many points carried the judgement. */
+  n: number;
+  /** Why points fell away, per ground, and which grounds were armed. */
+  rejected: Record<PhaseRejection, number>;
+  grounds: { validity: boolean; silence: boolean; level: boolean };
   coverage: Coverage;
+  /** The two measures V44 replaced. Reading matter — no gate, no requirement. */
+  control: PhaseIntegrationResult['control'];
 }
 
 export interface SystemSummary {
@@ -313,8 +330,6 @@ export interface EngineV2Report {
   problems: string[];
 }
 
-/** How far either side of a crossing the phase tracking is judged, in octaves. */
-const PHASE_TRACKING_OCTAVES = 1;
 /** How close a way has to be to the sum to count as "contributing" (indicator a). */
 const CONTRIBUTING_WITHIN_DB = 10;
 
@@ -1037,7 +1052,6 @@ function summarise(
   targetCurve: TargetCurve,
 ): SystemSummary {
   const band = commonBand(ingest);
-  const validBand = band;
   let splWindowDb: number | null = null;
   if (sum && grid && band) {
     let min = Infinity;
@@ -1064,50 +1078,73 @@ function summarise(
     }
   }
 
+  /* M-K — see `metrics/phaseIntegration.ts` and `lib/phaseAdmission.ts`.
+   *
+   * WHICH POINTS may carry a phase judgement is one rule with two readers since
+   * V44 (the V32 shape), so this block hands over branches and reads a result;
+   * it decides nothing itself. What it DOES decide is what "valid" means for a
+   * branch here: the measurement-validity band when the ingest pass could
+   * derive one, and otherwise the extent where there is measurement at all.
+   * Falling back on the extent rather than on nothing matters — a project whose
+   * files carry no header window would otherwise arm none of the grounds that
+   * clip the low end, which is exactly the state V40 found the tuner in.
+   *
+   * The silent-ghost ground is not armed here and does not need to be: this
+   * report interpolates `onAxisFull` and holds no ghost convention, and every
+   * point outside a branch's extent is already refused by the validity ground
+   * above. In the CHAIN that is not so, and there the ground earns its keep. */
   const phaseTracking: PhaseTracking[] = [];
   if (grid) {
+    /* ÉÉN band voor beide takken, en dat is een besluit: de tuner kan geen
+     * band PER WEG meegeven (hij kent daar geen wegnamen bij zijn paren), en
+     * twee lezers die elk hun eigen band afleiden zijn twee implementaties —
+     * precies de toestand die V32 aantrof. Dus dezelfde doorsnede als
+     * `commonBand`, met de gemeten uitgestrektheid als terugval wanneer een weg
+     * geen geldigheidsoordeel draagt. */
+    const systemValidHz: readonly [number, number] | null = (() => {
+      let lo = -Infinity;
+      let hi = Infinity;
+      let any = false;
+      for (const d of ingest.drivers) {
+        const b = d.onAxis?.bandHz ?? d.onAxisFull?.extentHz;
+        if (!b) continue;
+        any = true;
+        lo = Math.max(lo, b[0]);
+        hi = Math.min(hi, b[1]);
+      }
+      return any && hi > lo ? [lo, hi] : null;
+    })();
+    const branchOf = (driver: string, z: Complex[]) => ({
+      driver,
+      db: z.map((p) => dbAmp(cabs(p))),
+      phaseDeg: z.map((p) => cargDeg(p)),
+      validHz: systemValidHz,
+    });
     for (const c of crossings) {
       if (!Number.isFinite(c.fHz)) continue;
       const a = branchComplex.get(c.lower);
       const b = branchComplex.get(c.upper);
       if (!a || !b) continue;
-      // The intended window is +-1 octave around the crossing. It is then
-      // CLIPPED to the band both branches are actually valid on (A5.5).
-      //
-      // This is not a detail on a low crossing. Casus 1's woofer-mid handover
-      // sits at 360 Hz with a 397 Hz gate floor, so the lower half of the
-      // intended window is below anything the measurements support - and an
-      // unclipped mean averages in phase that was reconstructed from
-      // flat-held data. The 25-08 reference analysis reported that unclipped
-      // figure; the coverage field below is what makes the difference visible
-      // instead of arguable.
-      const lo = c.fHz / 2 ** PHASE_TRACKING_OCTAVES;
-      const hi = c.fHz * 2 ** PHASE_TRACKING_OCTAVES;
-      const validLo = validBand ? Math.max(lo, validBand[0]) : lo;
-      const validHi = validBand ? Math.min(hi, validBand[1]) : hi;
-      let sumAbs = 0;
-      let n = 0;
-      for (let i = 0; i < grid.length; i++) {
-        if (grid[i] < validLo || grid[i] > validHi) continue;
-        const pa = cargDeg(a[i]);
-        const pb = cargDeg(b[i]);
-        sumAbs += Math.abs(wrapDeg(pa - pb));
-        n++;
-      }
-      if (n > 0) {
+      const r = phaseIntegration({
+        freq: grid,
+        lower: branchOf(c.lower, a),
+        upper: branchOf(c.upper, b),
+        crossingHz: c.fHz,
+        overlapWindowDb: DEFAULT_OVERLAP_WINDOW_DB,
+        silentFloorDb: null,
+      });
+      if (r.meanAbsDeg !== null && r.bandHz !== null) {
         phaseTracking.push({
-          lower: c.lower,
-          upper: c.upper,
-          crossingHz: c.fHz,
-          meanAbsDeg: sumAbs / n,
-          bandHz: [validLo, validHi],
-          intendedHz: [lo, hi],
-          coverage: coverageOf([lo, hi], {
-            fromHz: validLo,
-            toHz: validHi,
-            fromBy: 'measurement validity',
-            toBy: 'measurement validity',
-          }),
+          lower: r.lower,
+          upper: r.upper,
+          crossingHz: r.crossingHz,
+          meanAbsDeg: r.meanAbsDeg,
+          bandHz: r.bandHz,
+          n: r.n,
+          rejected: r.rejected,
+          grounds: r.grounds,
+          coverage: r.coverage,
+          control: r.control,
         });
       }
     }
