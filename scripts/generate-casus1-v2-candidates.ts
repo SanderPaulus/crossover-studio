@@ -722,6 +722,29 @@ writeFileSync(
         'terwijl de fixtures bij d70c67b lagen, en dat leek een fout tot het opnieuw draaien ' +
         'de netlists byte-identiek teruggaf.',
       seed: CASUS1_V2_SEED,
+      /* V46 — DE MACHINE EN DE RUNTIME WAAROP DIT VELD IS OPGEWEKT.
+       *
+       * V15's procesregel, één laag verder: een referentie die van een
+       * parameter afhangt legt die parameter vast, en een BYTE-referentie hangt
+       * meetbaar af van machine en runtime. Gemeten bij V46: alleen de
+       * Node-versie wijzigen op dezelfde machine (26 -> 22) verplaatst het zaad
+       * al op het vijfde significante cijfer en de simplex daarna naar een ánder
+       * lokaal optimum. Zonder dit veld leest een reproductie die elders faalt
+       * als een regressie, terwijl zij een legitiem ander corpus is (A5e.4, zoals
+       * gepreciseerd bij V46). */
+      opgenomen_op: {
+        platform: process.platform,
+        arch: process.arch,
+        node: process.version,
+        v8: process.versions.v8,
+        _:
+          'A5e.4 is byte-identiek PER (machine, runtime); over machines heen geldt ' +
+          'equivalentie binnen de tolerantieklassen. Reproduceert dit corpus elders niet ' +
+          'byte-voor-byte, dan is dat geen regressie — regenereren daar levert een eigen, ' +
+          'even geldig corpus. Wat wél overal moet reproduceren zijn de klasse-A/B-' +
+          'referenties: dat is rekenwerk op bevroren netlists en dat is de laag die CI ' +
+          'draait (casusboek V46).',
+      },
       run_vingerafdruk: stamp.fingerprint,
       grid: { van_hz: CASUS1_V2_GRID[0], tot_hz: CASUS1_V2_GRID[CASUS1_V2_GRID.length - 1], punten: CASUS1_V2_GRID.length },
       oordeelband_hz: CASUS1_V2_BAND_HZ,

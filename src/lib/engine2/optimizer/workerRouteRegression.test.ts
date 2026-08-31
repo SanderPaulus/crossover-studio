@@ -37,6 +37,27 @@
  * seed through would be a real behaviour change, and this is where it would
  * show.
  *
+ *
+ * ── V46: DEZE REPRODUCTIE IS NIET PORTABLE, EN DAT IS GEMETEN ─────────────
+ *
+ * De vergelijkingen hieronder dragen de tag `[bytes]` en draaien daarom NIET
+ * op CI (`npm run test:ci`). Zij vergelijken een LIVE herberekend netwerk
+ * byte-voor-byte met een opgeslagen fixture, en zo'n fixture hangt af van de
+ * machine en de runtime waarop hij is opgenomen — hier darwin/arm64 onder
+ * Node 26, en het fixturebestand zegt dat sinds V46 zelf (`opgenomen_op`).
+ *
+ * De meting: alleen de RUNTIME wijzigen op dezelfde machine (Node 26 -> 22)
+ * verplaatst het ZAAD — een vast netwerk, zonder enige zoektocht — al op het
+ * vijfde significante cijfer, en de simplex loopt daarna naar een ander lokaal
+ * optimum: L1 3,005 -> 3,034 mH. Afronden repareert dat niet; dat is een ander
+ * ontwerp, en een vergelijking die het doorlaat bewaakt niets meer.
+ *
+ * A5e.4 IS GEPRECISEERD EN NIET GESCHONDEN: byte-identiek geldt per (machine,
+ * runtime); over machines heen geldt equivalentie binnen de tolerantieklassen.
+ * Deze test blijft de VERPLICHTE lokale acceptatie vóór elke commit — zij is
+ * niet zwakker geworden, alleen niet overal draaibaar. Wat CI in plaats
+ * hiervan bewaakt en waarom dat de natuurkunde dekt, staat in
+ * `ciLayer.test.ts`; die bewaakt ook dat deze tag niet stil groeit.
  * COST. One chain run is about eighty seconds and that is the search itself, not
  * the grid or the part audit (both were measured). So exactly ONE live run
  * happens here; every other assertion reads the file. A regression that nobody
@@ -166,7 +187,7 @@ describe('F4c — the worker route delivers what it delivered', () => {
     expect(BASELINE.bevinding_seed).toContain('bereikt de seed de zoektocht NIET');
   });
 
-  it('today the real route still reproduces the stored network', () => {
+  it('[bytes] today the real route still reproduces the stored network', () => {
     // The one live run. Eighty seconds, and it is the only thing here that can
     // catch a change in the tuner, the chain, the bounds or the search box.
     expect(throughTheRoute(4242)).toBe(storedStated(4242));

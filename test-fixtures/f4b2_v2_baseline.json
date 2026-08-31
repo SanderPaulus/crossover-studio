@@ -1,5 +1,13 @@
 {
  "_": "ZIE HET KOPCOMMENTAAR VAN f4cRegression.test.ts. Niet met de hand bewerken.",
+ "opgenomen_op": {
+  "_": "V46 — DE MACHINE EN DE RUNTIME WAAROP DEZE BYTE-REFERENTIE IS OPGENOMEN. V15's procesregel een laag verder: een referentie die van een parameter afhangt legt die parameter vast, en een byte-referentie hangt meetbaar af van machine en runtime. Gemeten bij V46: alleen de Node-versie wijzigen op dezelfde machine (26 -> 22) verplaatst het zaad al op het vijfde significante cijfer (avgDevDb 1,1610824868774228 -> 1,1610684586317268) en de simplex daarna naar een ander lokaal optimum (L1 3,005 -> 3,034 mH, C*R9 13,61 -> 7,08 Ohm, 102259 -> 91194 evaluaties). Afronden repareert dat niet: 3,005 tegen 3,034 mH is een ander ontwerp. A5e.4 is daarmee GEPRECISEERD en niet geschonden - byte-identiek geldt per (machine, runtime), over machines heen geldt equivalentie binnen de tolerantieklassen. De tests die dit bestand lezen dragen daarom de tag [bytes] en draaien niet op CI; zie ciLayer.test.ts en casusboek V46.",
+  "platform": "darwin",
+  "arch": "arm64",
+  "node": "v26.0.0",
+  "v8": "14.6.202.33-node.19",
+  "nagedragen": "Bij V46 met de hand toegevoegd aan een bestand dat al bestond. Het is de machine waarop dit project wordt gewerkt en waarop de V45-suite groen draaide; het is GEEN afdruk die het opnemende script destijds zelf heeft weggeschreven, en dat staat hier omdat het verschil ertoe doet. Voor het levende corpus schrijft generate-casus1-v2-candidates.ts dit blok sinds V46 wel zelf."
+ },
  "stand": "F4b2",
  "parameters": {
   "starts": 2,

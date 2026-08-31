@@ -3266,6 +3266,45 @@ Configuratie: 3-weg; 2× SB WO24TX-8 parallel, MR13TX-4 in bolpod, T25T-6 in WG1
 
   **WAT ER NIET GEBOUWD IS.** Geen tilt en geen in-room-doel (optie C, expliciet uitgesteld). Geen LCR-generatie. Geen wijziging aan het anker zelf als grootheid — het blijft de stilste weg, en de haalbaarheidswaarschuwing van A5d.4(b) staat ongewijzigd. Geen fasemaat-wijziging: M-K staat, en Sanders VituixCAD-validatie loopt parallel en blokkeert niet — status ongewijzigd sinds V44. Geen dempingsmarge op casus 1. En geen v2-default die een casus-1-getal is: de plateaudiepte en de Q_es-grens staan uitsluitend in `manifest_en_geometrie.gestelde_eisen` en de fixture leest ze daarvandaan.
 
+- V46 (31-08-2026 — **geen gedragswijziging**: de CI-laag, en de A5e.4-precisering die eronder ligt) — de deploy stond stil sinds F3c omdat GitHub Actions `npx vitest run` draaide en die run daar niet groen kán worden. Dit is de meting die uitlegt waarom, en de taakverdeling die eruit volgt.
+
+  **WAT HET WAS.** `.github/workflows/deploy.yml` draaide de VOLLE suite op ubuntu/Node 22 en publiceerde daarna naar Pages. Zeven — met de `it.each`-uitrol acht — van die tests vergelijken een LIVE herberekend netwerk BYTE-VOOR-BYTE met een opgeslagen fixture: `f4cRegression` (drie × twee zaden), `workerRouteRegression` (één) en de live ketenrun in `casus1V2Candidates` (één). Die fixtures zijn opgenomen op darwin/arm64 onder Node 26. Zij faalden op CI, de workflow brak vóór de build, en de site bleef op de F3c-versie van 26-08 staan. Vier opleveringen lang.
+
+  **DE MEETUITSLAG, en zij is scherper dan "floating point verschilt een beetje".** Op DEZELFDE machine, met alléén de Node-versie anders (26 → 22):
+
+  | | Node 26 | Node 22 |
+  | --- | --- | --- |
+  | `avgDevDb` van het ZAAD (vast netwerk, geen zoektocht) | 1,1610824868774228 | 1,1610684586317268 |
+  | L1 na de tune | 3,005 mH | **3,034 mH** |
+  | C·R9 | 13,61 Ω | **7,08 Ω** |
+  | evaluaties | 102 259 | 91 194 |
+
+  Het zaad wijkt af op het VIJFDE significante cijfer — dat is een vast netwerk waar geen enkele zoektocht aan te pas komt, dus het verschil zit in de bibliotheekfuncties zelf. En de simplex is een deterministische afdaling door een multimodaal landschap: die 1e-5 aan het begin stuurt hem naar een ánder lokaal optimum, en dan is C·R9 bijna een factor twee anders. Daarnaast wijkt linux-x64/Node 22 op zijn beurt af van darwin-arm64/Node 22, dus **platform en runtime dragen onafhankelijk bij**.
+
+  **AFRONDEN REPAREERT DIT NIET, en dat is de reden dat er geen "los" antwoord bestaat.** Bij een verschil in het laatste bit zou een `toPrecision`-stap volstaan. 3,005 tegen 3,034 mH is een ander ONTWERP, en een vergelijking die dat doorlaat bewaakt niet meer wat zij moet bewaken: precies de klasse fout die `f4cRegression.test.ts` in zijn eigen kop beschrijft ("een baseline die wordt herberekend uit de code die zij moet bewaken, bewaakt niets"), één laag verder.
+
+  ---
+
+  **DE PRECISERING VAN A5e.4, en zij is een precisering en geen versoepeling.** A5e.4 belooft dat twee runs met dezelfde seed byte-identiek zijn. Die belofte staat en is niet geschonden — maar zij geldt **per (machine, runtime)**, en dat stond nergens opgeschreven. Over machines heen geldt **equivalentie binnen de tolerantieklassen**, wat precies de vorm is die het casusboek voor élke andere referentie al gebruikt. **Een corpus dat elders wordt opgewekt is daarmee een LEGITIEM ander corpus en geen regressie**; wie op een andere machine regenereert krijgt zijn eigen, even geldige veld, en de klasse-A/B-referenties horen daar gewoon te reproduceren.
+
+  Daaruit volgt waar de byte-referenties hun eigen herkomst horen te dragen, en dat is V15's procesregel één laag verder: een referentie die van een parameter afhangt legt die parameter vast, en een byte-referentie hangt meetbaar af van machine en runtime. Sinds V46 dragen `f4b2_v2_baseline.json` en `f4b2_v2_worker_baseline.json` een `opgenomen_op`-blok (met de hand nagedragen, en dat staat erbij), en `generate-casus1-v2-candidates.ts` schrijft het voortaan zelf in `casus1_v2_herkomst.json`.
+
+  ---
+
+  **DE TAAKVERDELING: CI BEWAAKT DE NATUURKUNDE, DE LOKALE SUITE BEWAAKT DE BYTES.** De acht niet-portable vergelijkingen dragen de tag `[bytes]` en `npm run test:ci` filtert hem weg, naast `[live]`. Twee tags op één geval is geen dubbelop maar het antwoord op twee vragen: `[live]` is PLANNING (dit kost twintig minuten), `[bytes]` is DRAAGWIJDTE (dit is niet portable).
+
+  **De volle run verandert niet en blijft de acceptatie-autoriteit.** Wat CI draait is een deelverzameling, geen vervanging, en de `[bytes]`-tests blijven de verplichte lokale acceptatie vóór elke commit. Zij zijn niet zwakker geworden — alleen niet overal draaibaar.
+
+  **En wat er dan op CI overblijft is met opzet de helft die er niet aan lijdt, gemeten en niet aangenomen:** op linux-x64/Node 22 reproduceerden `goldenCasus1` (46), `goldenClassification` (12) en `frozenNetlistGates` (49) volledig. Dat is geen toeval maar een eigenschap: klasse-A/B-referenties zijn rekenwerk op BEVROREN netlists, zonder zoektocht, dus er is geen simplex die op een 1e-5 een andere kant op kan lopen, en zij horen op élk platform binnen hun tolerantieklasse te reproduceren. **Wijkt díé laag af, dan is het een echte bug** — en dat is precies de claim die het waard is om bij elke push te draaien.
+
+  ---
+
+  **DE TAAKVERDELING IS ZELF NIET ZELFDRAGEND, en daarom is er een bewaker.** Zij bestaat uit een regex in `package.json` en een tag in een testnaam, en allebei kunnen stil groeien — de valkuil die V43 voor `[live]` opschreef, één tag verderop. `ciLayer.test.ts` sluit twee gaten tegelijk: (1) iemand tagt er nog een test bij en de CI-laag wordt leger zonder dat iets faalt, en (2) een van de DRAGENDE referentiebestanden krijgt een tag en verdwijnt uit CI — waarmee de enige claim die CI nog draagt verdwijnt. Vandaar een INVENTARIS in plaats van een belofte: de vijf getagde bronnamen staan voluit, zodat wie er een bij tagt hier langskomt en moet opschrijven wat hij uit CI haalt. De tagnamen worden op runtime samengesteld, om dezelfde reden als in `noAppWideFloor.test.ts` én om een tweede: `-t` matcht de VOLLEDIGE testnaam, dus een bewaker die het woord letterlijk in zijn eigen titel draagt filtert zichzelf uit de laag die hij bewaakt.
+
+  De lijst van dragende bestanden staat met opzet UITGESCHREVEN, terwijl dit project afgeleide lijsten verkiest. De reden is dat er niets is om uit af te leiden: *"welke tests moeten op elk platform reproduceren"* is een BESLUIT en geen eigenschap van de boom. Wat wél afgeleid wordt is of ze nog bestaan en of ze getagd zijn.
+
+  **WAT ER NIET GEBOUWD IS.** Geen enkele wijziging aan engine-code, aan V45 of aan het corpus. Geen poging om de byte-vergelijkingen portable te maken — dat zou betekenen dat je de tolerantie zo ver oprekt dat zij een ander ontwerp doorlaat, en dan kan de vergelijking net zo goed weg. Geen tweede CI-job op macOS: dat zou de bytes wél kunnen bewaken, maar het is een uitgave (runners, wachttijd) tegen een claim die de lokale suite vóór elke commit al hard maakt, en het is opgeschreven als optie in plaats van gebouwd.
+
 ## Casus S1 — synthetische grondwaarheid voor de R_e-schatter (F3b, 26-08-2026)
 
 *De eerste casus in dit boek die geen luidspreker is. A7 noemt synthetische grondwaarheid als

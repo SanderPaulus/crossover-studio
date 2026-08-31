@@ -45,18 +45,53 @@
   - `npm test` / `npx vitest run` — **de volle run, en hij is VERPLICHT** bij elke wijziging aan
     het corpus en vóór elke commit die de zoektocht raakt. Precies dát is wat de twee live
     gevallen toetsen: dat de route nog steeds de bevroren netlist levert.
-  **Geen test verdwijnt; alleen WANNEER hij draait is beleid.** De tag zit op de testNAAM en niet
-  op het bestand — `casus1V2Candidates.test.ts` draagt ook elf goedkope claims en die blijven in
+  - `npm run test:ci` — **wat GitHub Actions draait, en hij is een derde laag met een andere
+    reden dan de eerste twee.** `test:fast` en de volle run verdelen naar TIJD; deze verdeelt naar
+    PLAATS. `vitest run -t '^(?!.*\[live\])(?!.*\[bytes\])'`: alles behalve de acht tests die een
+    live herberekend netwerk BYTE-VOOR-BYTE naast een opgeslagen fixture leggen. Die fixtures zijn
+    opgenomen op darwin/arm64 onder Node 26 en zij reproduceren daar; ergens anders niet, en dat is
+    gemeten (V46, zie de A5e.4-precisering hieronder). **De volle run blijft de acceptatie-
+    autoriteit en verandert niet:** wat CI draait is een deelverzameling, geen vervanging.
+    Wat er dan overblijft is met opzet de helft die er niet aan lijdt — de klasse-A/B-referenties
+    en de poortcontroles op bevroren netlists (`goldenCasus1`, `goldenClassification`,
+    `frozenNetlistGates` en vier metriekbestanden): rekenwerk op vaste netwerken, zonder zoektocht,
+    en dus portable. **CI bewaakt de natuurkunde, de lokale suite bewaakt de bytes.**
+    `ciLayer.test.ts` bewaakt die taakverdeling zelf.
+    **Gemeten 31-08-2026 (V46), lokaal op arm64/Node 26: 134 bestanden, 1475 geslaagd,
+    9 overgeslagen, 286 s.** Die negen zijn precies 2 `[live]` + 8 `[bytes]` − 1 die beide tags
+    draagt; klopt dat aantal niet meer, dan is er een tag bij gekomen en hoort `ciLayer.test.ts`
+    daarover te zijn gevallen. Lokaal groen zegt overigens NIETS over CI — dat is de hele
+    bevinding — en of de laag op ubuntu/Node 22 groen is, is wat de workflow zelf beantwoordt.
+  **Geen test verdwijnt; alleen WANNEER en WAAR hij draait is beleid.** De tag zit op de testNAAM
+  en niet op het bestand — `casus1V2Candidates.test.ts` draagt ook elf goedkope claims en die blijven in
   de snelle laag. Twee valkuilen, allebei in de sessie die de tag invoerde tegengekomen: (1) het
   filter matcht de VOLLEDIGE testnaam, dus een blok dat het woord in zijn eigen titel noemt
   filtert zichzelf weg — de bewaker heet daarom `the live-run tag is …` en niet `[live] …`;
   (2) een tag die stilletjes groeit maakt de snelle laag waardeloos, dus
   `casus1V2Candidates.test.ts` bewaakt met een bronscan dat er precies ÉÉN getagd blok bestaat.
+- **A5e.4-PRECISERING (V46): BYTE-IDENTIEK GELDT PER (MACHINE, RUNTIME).** A5e.4 belooft dat twee
+  runs met dezelfde seed byte-identiek zijn. Dat blijft staan en het is niet geschonden — maar het
+  geldt binnen één machine en één runtime, en dat stond nergens. **Gemeten bij V46, op dezelfde
+  machine en met alléén de Node-versie anders (26 → 22):** het ZAAD — een vast netwerk, zonder
+  enige zoektocht — meet al anders op het vijfde significante cijfer (`avgDevDb`
+  1,1610824868774228 → 1,1610684586317268), en de simplex loopt daarna naar een ÁNDER lokaal
+  optimum: **L1 3,005 → 3,034 mH, C·R9 13,61 → 7,08 Ω, 102 259 → 91 194 evaluaties.** En
+  linux-x64/Node 22 wijkt op zijn beurt af van darwin-arm64/Node 22, dus platform en runtime dragen
+  onafhankelijk bij. **Afronden repareert dit niet:** bij een verschil in het laatste bit zou een
+  `toPrecision`-stap volstaan; 3,005 tegen 3,034 mH is een ánder ontwerp, en een vergelijking die
+  dát doorlaat bewaakt niets meer. **Gevolg voor de doctrine:** over machines heen geldt
+  EQUIVALENTIE BINNEN DE TOLERANTIEKLASSEN, niet byte-gelijkheid. Een corpus dat elders wordt
+  opgewekt is een LEGITIEM ander corpus en geen regressie — wie het daar regenereert krijgt zijn
+  eigen, even geldige veld. Daarom leggen de byte-referenties sinds V46 hun machine en runtime
+  zelf vast (`opgenomen_op` in `f4b2_v2_baseline.json`, `f4b2_v2_worker_baseline.json` en
+  `casus1_v2_herkomst.json`, dat laatste geschreven door de generator), precies zoals V15 eist dat
+  een referentie haar parameters vastlegt.
 - `npx vitest run` — volledige testsuite. **Gemeten 31-08-2026 (V45-sessie, ná de regeneratie):
   134 bestanden, 1484 tests, 5011 s (1 u 24 min), niets overgeslagen. LET OP: die meting bevatte
   één bestand dat V45 NIET heeft opgeleverd** (`ciLayer.test.ts`, 4 tests, uit parallel werk aan
   de CI-laag dat op het moment van committen nog niet gecommit was) — de stand van de V45-commit
-  zelf is dus **133 bestanden en 1480 tests**. **HET TIJDCIJFER IS GEEN NIEUWE REFERENTIE** — hij is direct na een regeneratie van bijna zes uur gedraaid, precies het
+  zelf is dus **133 bestanden en 1480 tests**. Dat bestand is bij **V46** gecommit, dus vanaf daar
+  is 134 / 1484 de stand en klopt de meting hierboven alsnog met de boom. **HET TIJDCIJFER IS GEEN NIEUWE REFERENTIE** — hij is direct na een regeneratie van bijna zes uur gedraaid, precies het
   belaste geval waarvoor de waarschuwing bij `test:fast` bestaat. De V44-meting hieronder blijft
   de referentie tot iemand op een leeg systeem opnieuw meet. De TELLING is wel de nieuwe stand:
   **+2 bestanden** (`requirements/targetCurve.test.ts` 11 tests en
@@ -408,6 +443,18 @@ grotere ingreep — hij raakt élk commando in dit project — en is deze sessie
   runtime samengesteld, zodat de guard zichzelf niet matcht. Een tweede test controleert dat de
   walker de boom echt afloopt — een stille lege scan zou anders eeuwig groen blijven.
 
+- `src/lib/engine2/ciLayer.test.ts` — **de taakverdeling tussen CI en de lokale suite als test.**
+  Zij is anders niet zelfdragend: zij is een regex in `package.json` plus een tag in een testnaam,
+  en allebei kunnen stil groeien — dezelfde valkuil die V43 voor `[live]` opschreef, één tag
+  verderop. Vier claims. (1) `test:ci` sluit beide planningstags uit en `npm test` sluit niets uit.
+  (2) De DRAGENDE referentiebestanden van de CI-laag bestaan nog en dragen géén enkele tag — een
+  tag daar zou CI leegmaken terwijl de deploy groen blijft, de stilste manier waarop dit ongedaan
+  gaat. (3) De byte-inventaris is precies vijf bronnamen (acht gedraaide tests: drie zijn
+  `it.each` over twee zaden), voluit opgeschreven zodat wie er een tagt hier langskomt en moet
+  opschrijven wat hij uit CI haalt. (4) De scan loopt echt — zonder die tegenproef is "niets
+  gevonden" niet te onderscheiden van "niet gekeken". De tagnamen worden op runtime samengesteld,
+  zodat dit bestand zichzelf niet matcht én zichzelf niet uit de CI-laag filtert (`-t` matcht de
+  VOLLEDIGE testnaam).
 - `src/lib/engine2/p6Lint.test.ts` — P6 als test, niet als reviewregel: elk numeriek
   literal ≥ 20 in `src/lib/engine2/` moet in `constants.ts` staan (met een `@p6`-tag uit
   een gesloten set) of een `P6-OK`-markering op zijn regel dragen. Plus: geen constante

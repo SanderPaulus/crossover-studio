@@ -42,6 +42,27 @@
  * satisfied by a search that ignores its seed, and the regression would be
  * measuring nothing.
  *
+ *
+ * ── V46: DEZE REPRODUCTIE IS NIET PORTABLE, EN DAT IS GEMETEN ─────────────
+ *
+ * De vergelijkingen hieronder dragen de tag `[bytes]` en draaien daarom NIET
+ * op CI (`npm run test:ci`). Zij vergelijken een LIVE herberekend netwerk
+ * byte-voor-byte met een opgeslagen fixture, en zo'n fixture hangt af van de
+ * machine en de runtime waarop hij is opgenomen — hier darwin/arm64 onder
+ * Node 26, en het fixturebestand zegt dat sinds V46 zelf (`opgenomen_op`).
+ *
+ * De meting: alleen de RUNTIME wijzigen op dezelfde machine (Node 26 -> 22)
+ * verplaatst het ZAAD — een vast netwerk, zonder enige zoektocht — al op het
+ * vijfde significante cijfer, en de simplex loopt daarna naar een ander lokaal
+ * optimum: L1 3,005 -> 3,034 mH. Afronden repareert dat niet; dat is een ander
+ * ontwerp, en een vergelijking die het doorlaat bewaakt niets meer.
+ *
+ * A5e.4 IS GEPRECISEERD EN NIET GESCHONDEN: byte-identiek geldt per (machine,
+ * runtime); over machines heen geldt equivalentie binnen de tolerantieklassen.
+ * Deze test blijft de VERPLICHTE lokale acceptatie vóór elke commit — zij is
+ * niet zwakker geworden, alleen niet overal draaibaar. Wat CI in plaats
+ * hiervan bewaakt en waarom dat de natuurkunde dekt, staat in
+ * `ciLayer.test.ts`; die bewaakt ook dat deze tag niet stil groeit.
  * ── V32 SPLIT THIS FILE IN TWO, AND KEPT THE STRONGER HALF WHOLE ──────────
  *
  * V32 moved WHERE an electrical gate measures: off this fixture's response grid
@@ -226,18 +247,18 @@ describe('F4c — naming the choices changed no network', () => {
     expect(storedFor(seeds[0]).length).toBeGreaterThan(1000);
   });
 
-  it.each(seeds)('seed %i: the F4c shape reproduces the STORED F4b2 network', (seed) => {
+  it.each(seeds)('[bytes] seed %i: the F4c shape reproduces the STORED F4b2 network', (seed) => {
     expect(delivered(newShape(seed))).toBe(storedFor(seed));
   });
 
-  it.each(seeds)('seed %i: so does the F4b2 shape — the fixture pins both', (seed) => {
+  it.each(seeds)('[bytes] seed %i: so does the F4b2 shape — the fixture pins both', (seed) => {
     /* This is what keeps the header's argument honest rather than asserted. If
      * one of F4c's edits could reach the network through the old call shape,
      * this is where it would show. */
     expect(delivered(oldShape(seed))).toBe(storedFor(seed));
   });
 
-  it.each(seeds)('seed %i: the VERDICTS reproduce their own V32 block', (seed) => {
+  it.each(seeds)('[bytes] seed %i: the VERDICTS reproduce their own V32 block', (seed) => {
     /* The half V32 moved, pinned so it cannot move again unnoticed. It is a
      * separate assertion from the network above on purpose: "the design is
      * unchanged" and "the report about it is unchanged" are two claims, and

@@ -464,6 +464,21 @@ describe('the comparison block on casus 1', () => {
  * what these two cases check. Anything tagged here has to be a live chain run;
  * a test tagged to make it stop failing would be the thing the tag exists to
  * prevent.
+ *
+ * ── V46: EN DE BINNENSTE DRAAGT OOK `[bytes]` ─────────────────────────────
+ *
+ * Twee tags op één geval, en zij zeggen twee verschillende dingen. `[live]`
+ * is PLANNING: dit kost twintig minuten, dus het draait niet tijdens het
+ * werk. `[bytes]` is DRAAGWIJDTE: deze vergelijking is niet portable, want zij
+ * legt een live herberekend netwerk byte-voor-byte naast een bevroren bestand
+ * dat op darwin/arm64 onder Node 26 is opgewekt (`casus1_v2_herkomst.json`,
+ * `opgenomen_op`, dat de generator sinds V46 zelf schrijft). Alleen de
+ * Node-versie wijzigen verplaatst het resultaat al meetbaar — V46 mat
+ * L1 3,005 -> 3,034 mH op dezelfde machine.
+ *
+ * Beide tags filteren hem uit de CI-laag, en dat is geen dubbelop maar het
+ * juiste antwoord op twee vragen. Zie `ciLayer.test.ts`, die bewaakt dat geen
+ * van beide tags stil groeit.
  */
 describe('[live] the run still delivers the frozen netlist', () => {
   it('[bytes] one candidate, live through handleV2Request, byte for byte', () => {

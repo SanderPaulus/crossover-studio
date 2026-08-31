@@ -31,7 +31,26 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
-      - run: npx vitest run
+      # DE CI-LAAG BEWAAKT DE NATUURKUNDE, DE LOKALE SUITE DE BYTES (V45).
+      #
+      # Niet `vitest run`: zeven reproducties vergelijken een LIVE herberekend
+      # netwerk byte-voor-byte met een opgeslagen fixture, en die fixtures zijn
+      # opgenomen op arm64/Node 26. Gemeten: alleen de Node-versie wijzigen
+      # (26 -> 22, zelfde machine) verplaatst het zaad al op het vijfde
+      # significante cijfer en de simplex naar een ánder lokaal optimum
+      # (3,005 -> 3,034 mH). Ze kunnen hier dus niet groen worden, en afronden
+      # repareert het niet. Zij dragen de tag `[bytes]` en blijven de
+      # VERPLICHTE lokale acceptatie vóór elke commit.
+      #
+      # Wat hier WEL draait is de helft die er niet aan lijdt, en dat is
+      # gemeten en niet aangenomen: op linux-x64/Node 22 reproduceerden
+      # `goldenCasus1` (46), `goldenClassification` (12) en
+      # `frozenNetlistGates` (49) volledig — de klasse-A/B-referenties zijn
+      # rekenwerk op bevroren netlists, zonder zoektocht, en zij horen op élk
+      # platform binnen hun tolerantieklasse te reproduceren. Wijken díé hier
+      # af, dan is het een echte bug. `ciLayer.test.ts` bewaakt dat ze niet
+      # stilletjes uit deze laag kunnen vallen.
+      - run: npm run test:ci
       - run: npm run build
       - uses: actions/upload-pages-artifact@v3
         with:

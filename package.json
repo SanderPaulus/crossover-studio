@@ -10,6 +10,7 @@
     "typecheck": "tsc -b --noEmit",
     "test": "vitest run",
     "test:fast": "vitest run -t '^(?!.*\\[live\\])'",
+    "test:ci": "vitest run -t '^(?!.*\\[live\\])(?!.*\\[bytes\\])'",
     "test:watch": "vitest",
     "sum-check": "vite-node scripts/sum-check.ts"
   },
