@@ -86,18 +86,27 @@
   zelf vast (`opgenomen_op` in `f4b2_v2_baseline.json`, `f4b2_v2_worker_baseline.json` en
   `casus1_v2_herkomst.json`, dat laatste geschreven door de generator), precies zoals V15 eist dat
   een referentie haar parameters vastlegt.
-- `npx vitest run` — volledige testsuite. **Gemeten 31-08-2026 (V45-sessie, ná de regeneratie):
+- `npx vitest run` — volledige testsuite. **GEMETEN 31-08-2026 (V47, ná de regeneratie):
+  135 bestanden, 1496 tests, 1540 s (26 min), niets overgeslagen — en dit cijfer IS bruikbaar,
+  anders dan de V45-meting eronder.** De waarschuwing daar ("meet op een leeg systeem") gold omdat
+  de regeneratie zes uur lang élke andere meting vertraagde; sinds V47 duurt zij 27 minuten en is
+  de machine daarna gewoon leeg. Dat de volle run nu ongeveer kost wat de SNELLE laag bij V43
+  kostte, komt van het CORPUS: het levende veld ging van zeven netlists naar vier en de twee live
+  ketenruns treffen daarmee goedkopere kandidaten. **Het cijfer beweegt met het veld en niet met de
+  hoeveelheid tests** — dezelfde les die V42/V43/V44 al noteerden, nu de andere kant op. De TELLING
+  is de nieuwe stand: **+1 bestand** (`optimizer/protectionRule.test.ts`, 6 tests) en +12 tests, de
+  rest verdeeld over de V47-blokken in `frozenNetlistGates.test.ts` (8), `choiceKeyGuard.test.ts`
+  (1) en `casus1V2Candidates.test.ts`. **Twee BRONbestanden erbij zonder eigen testbestand:**
+  `lib/protectionDeficit.ts` (de regel) en `engine2/metrics/protection.ts` (de adapter) — zij
+  worden geoefend door `frozenNetlistGates.test.ts` en door de byte-baselines, want de extractie
+  mocht per definitie geen enkel getal verplaatsen.
+  (V45 mat, ter vergelijking en BELAST — direct na een regeneratie van bijna zes uur:
   134 bestanden, 1484 tests, 5011 s (1 u 24 min), niets overgeslagen. LET OP: die meting bevatte
   één bestand dat V45 NIET heeft opgeleverd** (`ciLayer.test.ts`, 4 tests, uit parallel werk aan
   de CI-laag dat op het moment van committen nog niet gecommit was) — de stand van de V45-commit
   zelf is dus **133 bestanden en 1480 tests**. Dat bestand is bij **V46** gecommit, dus vanaf daar
-  is 134 / 1484 de stand en klopt de meting hierboven alsnog met de boom. **HET TIJDCIJFER IS GEEN NIEUWE REFERENTIE** — hij is direct na een regeneratie van bijna zes uur gedraaid, precies het
-  belaste geval waarvoor de waarschuwing bij `test:fast` bestaat. De V44-meting hieronder blijft
-  de referentie tot iemand op een leeg systeem opnieuw meet. De TELLING is wel de nieuwe stand:
-  **+2 bestanden** (`requirements/targetCurve.test.ts` 11 tests en
-  `optimizer/amplitudeReference.test.ts` 6) en +31 tests, de rest verdeeld over de V45-blokken in
-  `frozenNetlistGates.test.ts` (60), `choiceKeyGuard.test.ts` (23), `goldenCasus1.test.ts` (47) en
-  `borderFacts.test.ts` (16).
+  is 134 / 1484 de V45-stand. Die telling was +2 bestanden — `requirements/targetCurve.test.ts`
+  11 tests en `optimizer/amplitudeReference.test.ts` 6 — en +31 tests.)
   (V44 mat, ter vergelijking:
   131 bestanden, 1449 tests, 33 min wandkloktijd (1973 s), niets overgeslagen.)** Alles groen
   houden. De twee live ketenruns kosten 1314 + 653 s en zijn samen 1969 van die 1973 s; de rest
@@ -165,11 +174,20 @@
   bestanden draait het minimum aantal live runs dat zijn claim draagt; de rest leest bestanden. Een regressie die niemand draait omdat hij traag is,
   beschermt niets.
 - **De v2-kandidaatfixtures opnieuw opwekken** (alleen nodig als de generator of het veld verandert):
-  `npx vite-node scripts/generate-casus1-v2-candidates.ts` — vijftien ketenruns. **Sinds V41 kost
-  hij UREN en niet meer drie kwartier: gemeten 15 756 s (4 u 23 min), 567–1697 s per kandidaat;
-  nagemeten bij V43 op 17 498 s (4 u 52 min), 634–2436 s per kandidaat — de spreiding is
-  gegroeid, de orde niet. NAGEMETEN BIJ V45: 21 357 s (5 u 56 min), 513–3762 s per kandidaat, de
-  duurste tot nu toe.** Dat de spreiding weer groeide zit in WELKE kandidaten geweigerd worden en
+  `npx vite-node scripts/generate-casus1-v2-candidates.ts` — vijftien ketenruns.
+  **SINDS V47 DRAAIT HIJ PARALLEL EN KOST HIJ MINUTEN IN PLAATS VAN UREN: gemeten 1624 s
+  (27 min) op achttien kernen, tegen 21 357 s (5 u 56) sequentieel bij V45.** Het script roept
+  zichzelf aan met `V2_ONLY=<n>`, één proces per kandidaat, `V2_JOBS` tegelijk (default: alle
+  kernen), en voegt de shards samen in KANDIDAATVOLGORDE — nooit in de volgorde waarin zij klaar
+  kwamen, want dan zou de shortlist van de planning afhangen. `V2_SEQUENTIAL=1` draait de oude weg
+  in één proces; hij is er als ARM om een parallelle run tegen af te zetten. **Het mag omdat er
+  nergens in `netOptimizer.ts` of `engine2/` module-scope mutable state staat** — nagegaan en niet
+  aangenomen — en het is GEMETEN: drie kandidaten als shard gedraaid leveren netlists die
+  byte-identiek zijn aan het corpus dat de sequentiële weg opleverde. A5e.4 blijft gelden zoals
+  V46 hem preciseerde: byte-identiek per (machine, runtime), en een kind draait op dezelfde
+  machine en runtime als zijn ouder.
+  *De sequentiële prijzen ter vergelijking: 15 756 s (4 u 23) bij V41, 17 498 s (4 u 52) bij V43,
+  21 357 s (5 u 56, 513–3762 s per kandidaat) bij V45.* Dat de spreiding weer groeide zit in WELKE kandidaten geweigerd worden en
   niet in een algemene vertraging: de vier duurste runs van V45 (2931, 3762, 2089, 1626 s) zijn
   drie verwerpingen en één zware winnaar, terwijl de goedkoopste winnaar er 678 kostte. Een
   geweigerde kandidaat doorloopt de hele zoektocht en wordt pas aan het eind weggegooid, dus een
@@ -198,7 +216,16 @@
   netlists byte-identiek terug, op het `savedAt`-stempel van de serialisatie na.**
 - **De vóór/ná-tabel tussen twee corpora**: `npx vite-node scripts/compare-corpora.ts [vóór] [ná]` —
   seconden, geen ketenrun. Corpora: `v30`, `v32`, `v33sweep`, `v33`, `v34`, `v37`, `v38fix`,
-  `v41`, `v42`, `v43`, `v44`, `live`; default `v44 live`, wat de V45-tabel is.
+  `v41`, `v42`, `v43`, `v44`, `v45`, `live`; default `v45 live`, wat de V47-tabel is.
+  **SINDS V47 draagt hij twee kolommen erbij.** De eerste is een M-C-kolom — de aandrijving op de eigen resonantie van de SLECHTST
+  beschermde weg, afgeleid uit de poortoordelen van het rapport en nooit op een wegnaam gezocht —
+  met een corpusregel eronder die de gestelde grens ernaast zet en telt hoeveel netlists eroverheen
+  gaan, vóór en ná. Zelfde vorm als de LF-budgetregel, met één verschil dat de regel zelf noemt:
+  dit is een POORT en niet alleen een zoekgrens. De tweede is `protSqDb` als CONTROLEKOLOM
+  (V44-patroon: gerapporteerd, nooit een poort, nooit een sorteersleutel) — de maat waarop de
+  zaadvergelijking oordeelde, gelezen door de adapter die de REGEL van de tuner aanroept. Zij staat
+  er voor de dekkingsvraag: M-C leest f_s, `protSqDb` integreert onder `xo/3`, en de eerste netlist
+  die M-C haalt met een tekort boven nul is een bevinding over de VORM van de eis.
   **SINDS V45 GAAN BEIDE HELFTEN DOOR DE DOELCURVE VAN HET ONTWERP, en dat heeft een gevolg dat
   een lezer verteld moet worden:** `venster` en `RMS` zijn afwijkingen van een REFERENTIE, en
   A5e.2 heeft casus 1 een referentie gegeven die niet horizontaal is. Het paar blijft eerlijk —
@@ -395,6 +422,24 @@
   en VituixCAD leest dat niet — **dat is ook een bevinding over de app: wie een `.lim` inlaadt en
   exporteert krijgt het ongewijzigd in de map. Gemeld, niet gerepareerd**), en er gaan geen
   hoekensets mee (casus 1 heeft er één, en één hoek is geen directiviteitsset).
+- **Waar de aandrijving op de eigen resonantie landt (V47)**:
+  `npx vite-node scripts/measure-v47-drive.ts [SLEUTEL ...]` — seconden, geen ketenrun en geen
+  enkele tune. Drukt M-C af per HOOGDOORLAATBESCHERMDE WEG van élke bevroren netlist, en dat is
+  het punt: de klasse-B-referentie `V_tweeter_op_fs_dB` noteert alleen de tweeter terwijl de poort
+  élke beschermde weg oordeelt — op casus 1 dus ook de mid. Tabel 2 is de sanity die V42 afdwingt:
+  waar ligt HUIDIG (−25,084 dB op zijn slechtste weg) en welke gestelde waarde op één decimaal
+  laat hem nog net toe (−25,0). Dit is het bewijsmateriaal onder de gestelde eis van V47.
+- **Wat de relatieve beschermingsregel mat op de geweigerde tunes (V47)**:
+  `npx vite-node scripts/measure-v47-rejections.ts [LABEL ...]` — ÉÉN KETENRUN PER LABEL, 15–55
+  min per stuk; zonder argumenten leest hij de `kinds: ['protection']`-weigeringen uit
+  `casus1_v2_herkomst.json` en draait ze allemaal SEQUENTIEEL. **Draai ze parallel** — één proces
+  per label — anders duurt hij uren. Drukt per kandidaat de zaadwaarde, de tunewaarde en de
+  speling van élke veiligheidsvergelijking af die vuurde (`refusal.measured`, sinds V47), plus
+  M-C van het GEWEIGERDE netwerk. **Dat laatste komt uit de weigering zelf en niet uit een eigen
+  meting, en dat is geen omweg maar de enige weg:** `runCandidate` wist `rejectedParts` voordat
+  het resultaat de worker verlaat (V31), dus van buitenaf is een geweigerd netwerk principieel
+  onmeetbaar. De eerste versie van dit script probeerde het van buitenaf en kreeg een lege kolom
+  terug — wat als "geen resonantie" leest terwijl het "geen onderdelen" betekende.
 - **De vloer als zoekdoel meten (V30)**: `npx vite-node scripts/measure-v30-floor-goal.ts` —
   dertig ketenruns (vijftien kandidaten × twee armen), gemeten 45–70 s per stuk, ~30 min.
   Schrijft `test-fixtures/casus1_v30_vloer_vergelijking.json` en drukt de vóór/ná-tabel af.
@@ -990,6 +1035,16 @@ grotere ingreep — hij raakt élk commando in dit project — en is deze sessie
   netwerk dat hij evalueert. Elke netlist wordt nu tegen zijn EIGEN objectief gelegd — grootste
   piek-aandeel 0,74 %, grootste R_e-aandeel 29,5 % — met een assert op het aantal deelnemers, en
   nagemeten dat hij kán falen (de piek-term van `KAND_V2_3` maal 1,5 geeft 1,10 % en rood).
+  **BIJ V47 SLOEG DEZELFDE VAL VOOR DE DERDE KEER TOE, en de vorm is nu veranderd in plaats van de
+  drempel.** De assert viel om op `KAND_V2_1` met 1,053 %, en opnieuw niet doordat de term groeide
+  maar doordat de NOEMER kromp: hij deelt door het objectief van de netlist zelf, en de gewapende
+  M-C-poort liet alleen de vlakste ontwerpen door (`KAND_V2_1` draagt RMS 0,48, het vlakste van het
+  boek). Elke vaste drempel op een aandeel-van-het-objectief beweegt dus mee met de kwaliteit van
+  het veld. De drempel is NIET opgerekt — dat zou een bewaker zijn die precies zo ver meeschuift als
+  nodig. De strikte claim is GEANKERD op de gedateerde corpora, waar hij onveranderd staat op
+  0,736 % (dezelfde herankering die V43 op `v42_bult_bevinding` toepaste), en het levende veld krijgt
+  de claim die V37 werkelijk draagt en die op ÉLKE netlist geldt: de twee noemers liggen een ORDE
+  VAN GROOTTE uit elkaar (1,05 % tegen 42,2 %). Die vorm kan niet stil verouderen.
 - `src/lib/engine2/optimizer/choiceKeyGuard.test.ts` — het derde paar, met dezelfde scheiding
   als V33 en V34: `dissipationReferenceSource` is CHOICE (welke grootheid een gewogen term
   meet) en `dissipationReferenceReOhm` is POLISH (de opgeloste R_e die de run al in handen
@@ -1263,6 +1318,39 @@ grotere ingreep — hij raakt élk commando in dit project — en is deze sessie
   wat er werkelijk gemeten is, met beide uitersten bij NAAM, zodat elke richting met de hand tegen
   één rij te controleren is in plaats van als aggregaat geloofd te moeten worden.
 
+### V47-guards (welke regel een onbeschermde bovenste driver verbiedt)
+- `src/lib/protectionDeficit.ts` — **de beschermingsmaat van de tuner heeft sinds V47 één huis, en
+  twee lezers.** Zelfde vorm en zelfde reden als `impedanceFloor.ts`, `phaseAdmission.ts` en
+  `targetLevel.ts`: `protSqDb` werd binnen een closure in `metricsOn` berekend en was nergens
+  leesbaar, en zodra hij ook als CONTROLEKOLOM gerapporteerd moet worden zijn er twee lezers. De
+  getallen (vloer −15 dB, band tot `xo/3`) zijn v1-erfenis en zijn alleen BENOEMD, niet herzien —
+  de extractie mag geen enkel getal verplaatsen en de byte-baselines van `f4cRegression` en
+  `workerRouteRegression` zijn wat dat afdwingt (nagemeten: beide reproduceren).
+  `engine2/metrics/protection.ts` is de adapter die de rapportwereld erop aansluit; hij bouwt de
+  grootheid niet na.
+- **DE DEKKINGSVRAAG, en het antwoord is een MÉTING die de naam van de oude regel weerlegt.**
+  `protSqDb` integreert onder `xo/3`; M-C leest f_s. **HET ANTWOORD IS ABSOLUUT: op het
+  TWEETERPAAR leest de oude maat exact 0,000 dB² op élke netlist van het hele casusboek** — 117 van
+  117 — inclusief de twee die de eis met tien dB overschrijden. Zij is niet STUK: elders leest zij
+  wél boven nul (`V38FIX_KAND_5` 1,226 dB², `V37_KAND_3` 0,063, `V33_KAND_5` 0,018), maar die
+  tekorten komen alle drie van een paar waarvan de bovenste weg NIET de tweeter is. **Wat zij op
+  deze casus mat is de MID** (f_s 88,8 Hz, binnen elke W-M-band): de vier geweigerde tunes dragen
+  M-C op de mid van +4,5 / +0,5 / −1,7 / −5,3 dB. De melding "tweeter protection got worse" ging
+  dus over de mid.
+  **TWEE EERDERE VORMEN VAN DEZE CLAIM WAREN TE BREED EN DE DATA DOODDE ZE ALLEBEI**, en daarom
+  staat er nu een die geen bandrekensom nodig heeft. (1) "Geen netlist kruist boven `3·f_s` =
+  2773 Hz" — er zijn er drie (`V28_KAND_2` 3949, `V28_KAND_1` 3818, `V33_KAND_10` 3312). (2) "Geen
+  netlist die de eis MIST kruist zo hoog" — dat zijn er twee (`V28_KAND_1` M-C −19,38,
+  `V28_KAND_2` −22,87). Ook op díé twee, waar de band de resonantie wél bereikt, leest de maat nul:
+  hoog genoeg kruisen is noodzakelijk noch voldoende.
+  **DE TEGENPROEF:** élke condensator van HUIDIG opschalen jaagt M-C van −25,08 via −15,92 en
+  −10,39 naar **+9,75 dB** terwijl `protSqDb` de hele weg exact 0,000 blijft — `xoF` zakt mee
+  (2250 → 404 Hz), dus de band beweegt WEG van f_s in plaats van ernaartoe.
+  **OPENSTAAND:** op de mid dekt de eis het RESONANTIEPUNT en niet de hele band eronder — daar was
+  de vervangen regel een integraal en is de eis een punt. Op het huidige veld is dat leeg (de
+  controlekolom leest nul op alle vier de levende netlists), en zij staat er om de eerste netlist te
+  vangen die M-C haalt met een tekort boven nul.
+
 ### V41-guards (wat de ontwerp- en synthesestap mochten bouwen)
 - `src/lib/engine2/optimizer/chainChoices.ts` — **een TWEEDE classificatielijst, en de smalheid is de
   claim.** `CHOICE_KEYS`/`GREY_KEYS`/`POLISH_KEYS` dekken de 44 sleutels van `NetOptimizeOptions`
@@ -1359,8 +1447,8 @@ grotere ingreep — hij raakt élk commando in dit project — en is deze sessie
 
 ### De casus-1-fixtures die een SCRIPT opwekt (F4d)
 `test-fixtures/casus1/KAND-V2-*.adsfilter.json` zijn de v2-kandidaten die de shortlist haalden —
-negen bij F4d, tien vanaf V28, acht sinds V41, vier bij V42, **zeven sinds V43 en nog steeds zeven na
-de V44-regeneratie** — bevroren als bestanden
+negen bij F4d, tien vanaf V28, acht sinds V41, vier bij V42, zeven sinds V43, zeven na de V44- en
+de V45-regeneratie, **en VIER sinds V47** — bevroren als bestanden
 op precies dezelfde voet als de drie v1-kandidaten — want F4a stelde vast dat casus 1 géén klasse-C-
 referenties heeft, en "laat de suite de scan draaien en assert op wat eruit komt" zou de eerste maken.
 Twee scripts, twee kosten:
@@ -1378,7 +1466,9 @@ Twee scripts, twee kosten:
   klasse-B-blokken in de golden refs. Drie seconden, dus vrij om opnieuw te draaien. Sinds V36
   elf metrieken per kandidaat (`grootste_R_W_bij_100W` erbij) plus het afgeleide blok
   `manifest_en_geometrie.v36_dissipatie`; sinds V43 dertien (`lf_lift_dB` en
-  `lf_opslingering_dB`) plus twee afgeleide blokken; **sinds V45 een VIERDE afgeleid blok,
+  `lf_opslingering_dB`) plus twee afgeleide blokken; **sinds V47 een VIJFDE afgeleid blok, `v47_bescherming`** — M-C tegen de
+  gestelde aandrijfgrens, met f_s en de doorlaatband erbij, ÉÉN RIJ PER HOOGDOORLAATBESCHERMDE WEG
+  en niet per netlist, want dat is wat de poort oordeelt; **sinds V45 een VIERDE afgeleid blok,
   `v45_qes`** — M-E op de laagste weg van élke bevroren netlist tegen de gestelde
   Q_es-vermenigvuldigingsgrens, met de bronweerstand, de PADWEERSTAND (de grootheid die de
   inversie werkelijk begrenst), beide q-lezingen, het plafond en het oordeel. Zelfde vorm en
@@ -1418,7 +1508,7 @@ barrière het veiligheidsraster leest kost élke live casus-1-run het viervoudig
 zesvoudige daarvan — de synthesestap koopt correctienetwerken, dus er zijn veel meer vrije waarden
 te tunen. **Dit ene bestand is nu het leeuwendeel van de suite.**
 
-**Sinds V45 zijn het er DERTIEN corpora, en dat is opzet.** `KAND_V2_*` is het levende corpus.
+**Sinds V47 zijn het er VEERTIEN corpora, en dat is opzet.** `KAND_V2_*` is het levende corpus.
 `V28_KAND_*` is bevroren vóór de vloer een ZOEKDOEL was (V30); `V30_KAND_*` toen de poort nog blind
 was onder de verre-veldbodem (V32); `V32_KAND_*` toen de BARRIÈRE nog het evaluatieraster las terwijl
 de poort de sweep handhaafde (V33); `V33_SWEEP_KAND_*` is V33's dure referentiearm, met de barrière
@@ -1449,8 +1539,14 @@ werd, en daar ontbraken drie dingen tegelijk die alle drie over NIVEAUWERK gaan 
 was het KALE gemeten niveau (A5d.4(a) wil het NA baffle step, en dat object bestond niet), de
 ZOEKTOCHT mat vlakheid tegen horizontaal terwijl het oordeel al een doelcurve kon lezen, en er was
 geen Q_es-vermenigvuldigingsgrens, dus de weerstandsvlucht die V43 mat liep door tot 5,65 Ω
-padweerstand op de wooferweg (V45).
-Alle twaalf de gedateerde corpora zijn byte-identieke bestanden onder een andere naam, met hun
+padweerstand op de wooferweg (V45); `V45_KAND_*` toen de TWEETERBESCHERMING nog uitsluitend
+RELATIEF bewaakt werd — de volle-band-veiligheidspoort legde het beschermingstekort van het
+geleverde netwerk naast dat van het ZAAD en casus 1 stelde niets op M-C. Wat dat kostte is bij V47
+aan BEIDE kanten gemeten en de twee kanten wijzen tegengesteld: alle vier de kandidaten die zij weigerde
+meten absoluut −3,43 tot −12,29 dB, dus zij ving daar echte schendingen — maar hetzelfde veld
+LEVERDE twee netlists op −14,38 en −15,10 dB, omdat hún zaad even slecht was. Een regel die aan
+het zaad hangt bewaakt het toeval en niet de driver (V47).
+Alle dertien de gedateerde corpora zijn byte-identieke bestanden onder een andere naam, met hun
 klasse-B-blokken mee, bewaard als de "vóór"-helften van hun vergelijkingen. Wie
 een script schrijft dat het levende corpus opruimt gebruikt `^KAND_V2_\d+$` en nooit
 `startsWith('KAND_V2')`: die tweede slikt de gedateerde corpora mee en gooit het bewijsmateriaal weg.
@@ -1459,8 +1555,8 @@ een script schrijft dat het levende corpus opruimt gebruikt `^KAND_V2_\d+$` en n
 genoemde netlist die geen v1-baseline is een geclassificeerd blok moet hebben, omdat de
 familielijst die er stond bij V32 vergeten is. De koppeling bestandsnaam ↔ kandidaat staat in
 `manifest_en_geometrie.v30_corpus`, `.v32_corpus`, `.v33_sweep_corpus`, `.v33_corpus`,
-`.v34_corpus`, `.v37_corpus`, `.v38fix_corpus`, `.v41_corpus`, `.v42_corpus`, `.v43_corpus` en
-`.v44_corpus`, want zij
+`.v34_corpus`, `.v37_corpus`, `.v38fix_corpus`, `.v41_corpus`, `.v42_corpus`, `.v43_corpus`,
+`.v44_corpus` en `.v45_corpus`, want zij
 stond alleen in `casus1_v2_herkomst.json` en dat bestand wordt door de volgende regeneratie
 overschreven. **Bevriezen doe je sinds V34 met `scripts/freeze-live-corpus.ts`** en niet met de
 hand: het zijn vijf bewerkingen die allemaal moeten landen.

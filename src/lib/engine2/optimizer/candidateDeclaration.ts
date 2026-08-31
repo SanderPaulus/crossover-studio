@@ -5,8 +5,9 @@
  * twenty-seven since V33 added `zFloorBarrierSource`, twenty-eight since
  * V34 added `rSourceProbeSource`, twenty-nine since V37 added
  * `dissipationReferenceSource`, thirty since V38-fix RECLASSIFIED
- * `errorSmoothOct` out of polish and thirty-one since V44 added
- * `phaseAdmission`. The number
+ * `errorSmoothOct` out of polish, thirty-one since V44 added
+ * `phaseAdmission`, thirty-two since V45 added `amplitudeReference` and
+ * thirty-three since V47 added `protectionRule`. The number
  * is not repeated in prose anywhere it could go stale: `declarationCoverage`
  * compares against `CHOICE_KEYS` itself, so a key added upstream lands in no
  * state and fails the build.
@@ -84,6 +85,7 @@ export type StatedByDesigner = Partial<
     | 'errorSmoothOct'
     | 'phaseAdmission'
     | 'amplitudeReference'
+    | 'protectionRule'
   >
 >;
 
@@ -115,6 +117,18 @@ export interface CandidateDeclarationInput {
    * curve that says something. Absent = the first.
    */
   targetCurve?: TargetCurve;
+  /**
+   * V47 — the project's stated maximum drive on a driver's own resonance, dB,
+   * when it states one.
+   *
+   * The NUMBER rather than a boolean, for the same reason `targetCurve` is the
+   * object: the derivation below has to be able to say, in the absent case,
+   * what was missing. It is never passed on as a tuner option — the limit
+   * itself travels as `v2.gates.maxDriveOnFsDb` and is enforced by the gate
+   * machinery. All this input decides is which of the two protection rules the
+   * full-band safety gate applies.
+   */
+  driveOnFsLimitDb?: number;
 }
 
 /** A key the designer left empty, filed with the P4 reason. */
@@ -423,6 +437,56 @@ export function declareCandidateChoices(input: CandidateDeclarationInput): Choic
               'evaluated on the data handed over — an unimplemented shape, or a stated shape ' +
               'whose parameters did not arrive. A curve nothing can sample steers nothing, and ' +
               'saying so beats searching against a voicing that was silently taken as flat',
+    });
+  }
+
+  /* ---- V47: WHICH RULE FORBIDS AN UNPROTECTED UPPER DRIVER -------------
+   *
+   * DERIVED, like V30's `zFloorBarrier` and V45's `amplitudeReference`, and
+   * from the same shape of fact: a stated requirement that another rule
+   * silently overrides is a requirement that does not decide anything. The
+   * full-band safety gate refuses a whole tune whose upper-driver protection
+   * deficit sits more than a fixed slack above the SEED's. That is a distance
+   * to a network nobody judged against this run's goal (V31, one rule along),
+   * so what it permits moves with whatever the seed happened to carry — and it
+   * is applied INSTEAD of the stated requirement, not beside it.
+   *
+   * MEASURED ON CASUS 1, and both directions occurred in the same field of
+   * fifteen. Four candidates were refused with "tweeter protection got worse"
+   * while their absolute M-C reading was inside the requirement the designer's
+   * own filter sets; two candidates the same field DELIVERED sat ten decibels
+   * the wrong side of it and the rule said nothing, because their seeds were no
+   * better. The relative rule is therefore not a stricter version of the
+   * absolute one — it is a different, seed-shaped ordering of the field.
+   *
+   * WHY 'stated' IS NOT A WEAKENING. The requirement is still enforced, and
+   * more strictly than before: `gateViolation` consults M-C at EVERY point a
+   * pass accepts a network, and a run that finds nothing admissible comes back
+   * as a refusal with the measured value and the limit rather than as a seed
+   * (V31/V33). What is dropped is the comparison to the seed, and only when
+   * there is something absolute to drop it in favour of.
+   *
+   * ABSENT AND NEVER `'seed'` (P4), which is the same rule V45 applies to
+   * `'flat'`: a stated `'seed'` would read as "somebody decided the seed
+   * comparison is the right rule here", and with no requirement stated nobody
+   * decided anything. The tuner then reads its own default, which IS the seed
+   * comparison — named as absent rather than inherited in silence, and kept
+   * because a seed comparison without a requirement is still better than no
+   * comparison at all. An explicit value still wins, so V47's before/after is a
+   * run somebody can ask for rather than a build that has to be patched. */
+  if (s.protectionRule !== undefined) {
+    stated.protectionRule = s.protectionRule;
+  } else if (input.driveOnFsLimitDb !== undefined) {
+    stated.protectionRule = 'stated';
+  } else {
+    absent.push({
+      key: 'protectionRule',
+      why:
+        'this design states no maximum drive on a driver\'s own resonance, so there is no ' +
+        'absolute requirement for the safety gate to defer to. The tuner therefore keeps its own ' +
+        'rule — the comparison against the seed — which is the pre-V47 behaviour, stated as ' +
+        'absent rather than inherited in silence (P4). A stated \'seed\' would claim somebody ' +
+        'chose that rule, and with nothing stated nobody chose anything',
     });
   }
 

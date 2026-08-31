@@ -72,6 +72,7 @@ import {
 import {
   CASUS1_AMP_MIN_LOAD_OHM,
   CASUS1_V2_BUDGETS,
+  CASUS1_MAX_DRIVE_ON_FS_DB,
   CASUS1_V2_GATES,
   CASUS1_V2_BAND_HZ,
   CASUS1_V2_GRID,
@@ -119,6 +120,9 @@ const HERKOMST = JSON.parse(
     synthMode: string;
     v2_poorten_gewapend: string[];
     v2_poorten_waarom: string;
+    /** V32/V47 — per gewapende poort: de sleutel, de gestelde waarde en waar
+     *  zij vandaan komt. Een naam zonder getal laat de lezer raden. */
+    v2_poorten_bron: Record<string, unknown>;
     v2_budgetten_gewapend: string[];
     v2_budgetten_waarom: string;
     beschermingen_via_kandidaat: string[];
@@ -144,6 +148,10 @@ const HERKOMST = JSON.parse(
      *  hoeveel moeite hij doet (polish) maar waarvan hij de spreiding is. */
     zoekmaat_gladding_oct: number | null;
     zoekmaat_waarom: string;
+    /** V47 — WELKE REGEL een onbeschermde bovenste driver verbiedt: de
+     *  vergelijking met het zaad, of de gestelde absolute eis. */
+    beschermingsregel: string | null;
+    beschermingsregel_waarom: string;
     /** V44 — WELKE PUNTEN het fase-oordeel dragen. Niet hoe fase gewogen wordt
      *  (dat is `fasemaat`) maar over welke punten het gemiddelde gaat. */
     fase_toelating: string | null;
@@ -343,6 +351,23 @@ describe('the frozen v2 candidates are files, and the file says where they came 
     expect(m.beschermingen_via_kandidaat).toContain('errorSmoothOct');
     expect(m.zoekmaat_gladding_oct).toBe(SEARCH_SMOOTHING_OCTAVES);
     expect(m.zoekmaat_waarom).toMatch(/V38-fix/);
+    /* V47 — WELKE REGEL een onbeschermde bovenste driver verbiedt, en het is
+     * het eerste besluit in dit blok dat een POORT wapent in plaats van alleen
+     * de zoektocht te sturen. Twee regels, want het zijn twee dingen: de
+     * gestelde grens (die M-C oordeelt op élke hoogdoorlaatbeschermde weg) en
+     * de keuze-sleutel die daaruit volgt (die de zaadvergelijking van de
+     * volle-band-veiligheidspoort laat vervallen). Een verslag dat alleen het
+     * eerste noteerde zou niet laten zien dat er ook iets IS WEGGEHAALD. */
+    expect(m.beschermingen_via_kandidaat).toContain('protectionRule');
+    expect(m.beschermingsregel).toBe(CASUS1_MAX_DRIVE_ON_FS_DB !== null ? 'stated' : null);
+    expect(m.beschermingsregel_waarom).toMatch(/V47|zaadvergelijking/);
+    if (CASUS1_MAX_DRIVE_ON_FS_DB !== null) {
+      expect(m.v2_poorten_gewapend).toContain('maxDriveOnFsDb');
+      /* En de eis staat met naam en waarde in `v2_poorten_bron`, net als de
+       * vloer: een gewapende poortnaam zonder zijn getal laat de lezer raden
+       * waar de grens lag. */
+      expect(JSON.stringify(m.v2_poorten_bron)).toContain('maxDriveOnFsDb');
+    }
     /* V44 — het zevende besluit, en het corrigeert een aanname die er al stond:
      * `fasemaat` (`phaseMetric`) leek de sleutel die de fasemaat stelt, en hij
      * stelt alleen de WEGING. Beide waarden ervan middelen over het
@@ -526,7 +551,15 @@ describe('[live] the run still delivers the frozen netlist', () => {
      *
      * Read from the same one home as everything else (P6), and checked against
      * what the provenance block recorded, so the two cannot drift. */
-    const armedGates = CASUS1_AMP_MIN_LOAD_OHM !== null ? { ampMinLoadOhm: CASUS1_AMP_MIN_LOAD_OHM } : {};
+    /* V47 — GELEZEN UIT `CASUS1_V2_GATES` EN NIET HIER OPNIEUW GEBOUWD, en de
+     * regel eronder is precies waarom. Deze regel stelde het blok zelf samen
+     * uit `CASUS1_AMP_MIN_LOAD_OHM`, en dat is de V42-val een tweede keer: toen
+     * V47 M-C wapende armde de generator twee poorten en dit blok één, dus deze
+     * reproductie zou een ANDERE route hebben gedraaid dan de route die de
+     * netlist maakte. De assert eronder ving het — en de reparatie is dezelfde
+     * die `casus1V2.fixture.ts` in zijn eigen kop voorschrijft: één definitie,
+     * gespreid op de gebruiksplek, zodat een ongestelde eis niets wapent (P4). */
+    const armedGates = { ...CASUS1_V2_GATES };
     expect(Object.keys(armedGates).sort()).toEqual([...HERKOMST.meetopstelling.v2_poorten_gewapend].sort());
     /* V32 — AND THE MEASURED FACTS MUST BE THE FACTS THE GENERATOR SENT.
      *

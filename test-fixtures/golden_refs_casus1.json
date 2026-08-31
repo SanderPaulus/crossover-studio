@@ -27,11 +27,11 @@
    "klasse_B": 71,
    "klasse_C": 0,
    "sinds_F4a": "V20 (27-08-2026) heeft 21 klasse-B-bladeren toegevoegd: de vier lambda-fracties per kruispunt per netlist, waarvan er een de HERNOEMDE lobing_wm_lambda is. De telling hierboven blijft de F4a-momentopname en wordt niet bijgewerkt - een momentopname die met elke oplevering meebeweegt is geen momentopname. Wat blijft gelden is de bevinding eronder: nog steeds nul klasse C, want ook deze vier zijn functies van meting plus netlist-BESTAND.",
-   "sinds_F4d": "F4d (27-08-2026), herzien bij de F4d-nazorg (V28) en bij V36: 119 klasse-B-bladeren, elf metrieken op elk van de 7 bevroren KAND-V2-netlists — tien tot V36 `grootste_R_W_bij_100W` toevoegde, het veld dat de drie v1-kandidaten sinds F1 dragen en het v2-corpus niet. Het waren er negen tot de nazorg de F3c-uitsnijding opschortte; de mid→tweeter-as ging van drie posities naar vijf en het veld van negen naar vijftien. De F4a-momentopname hierboven wordt niet bijgewerkt, om dezelfde reden als bij V20 — een momentopname die met elke oplevering meebeweegt is er geen. De bevinding blijft: nog steeds NUL klasse C. Deze netwerken komen uit een v2-run, maar de referenties hangen aan de BESTANDEN, en een volgende run die andere netwerken oplevert verschuift deze getallen dus niet — hij levert andere bestanden op. Dat is bij de nazorg ook precies wat gebeurde, en het is de reden dat de verandering geen enkele referentie ONGELDIG maakte.",
+   "sinds_F4d": "F4d (27-08-2026), herzien bij de F4d-nazorg (V28) en bij V36: 68 klasse-B-bladeren, elf metrieken op elk van de 4 bevroren KAND-V2-netlists — tien tot V36 `grootste_R_W_bij_100W` toevoegde, het veld dat de drie v1-kandidaten sinds F1 dragen en het v2-corpus niet. Het waren er negen tot de nazorg de F3c-uitsnijding opschortte; de mid→tweeter-as ging van drie posities naar vijf en het veld van negen naar vijftien. De F4a-momentopname hierboven wordt niet bijgewerkt, om dezelfde reden als bij V20 — een momentopname die met elke oplevering meebeweegt is er geen. De bevinding blijft: nog steeds NUL klasse C. Deze netwerken komen uit een v2-run, maar de referenties hangen aan de BESTANDEN, en een volgende run die andere netwerken oplevert verschuift deze getallen dus niet — hij levert andere bestanden op. Dat is bij de nazorg ook precies wat gebeurde, en het is de reden dat de verandering geen enkele referentie ONGELDIG maakte.",
    "sinds_V30": "V30 (27-08-2026): het KAND-V2-corpus is opnieuw opgewekt met de gestelde vloer als ZOEKDOEL, en het corpus dat het vervangt is niet weggegooid maar hernoemd: 10 blokken `V28_KAND_*`, byte-identieke bestanden onder een gedateerde naam, met dezelfde tien metrieken en dezelfde klasse B. Dat is geen referentie aanpassen — het zijn dezelfde netlists, en de nieuwe staan ernaast in plaats van eroverheen, zodat de vóór/ná-vergelijking van deze entry reproduceerbaar blijft uit de repository zelf. De bevinding van F4a staat nog steeds: NUL klasse C. Wat wél veranderde is de uitzonderingslijst: zij noemde tien KAND-V2-netlists en noemt nu tien V28-KAND-netlists, want het nieuwe corpus haalt de vloer op eigen kracht.",
    "sinds_V32": "V31/V32 (27-08-2026): het KAND-V2-corpus is opnieuw opgewekt nadat de elektrische poorten op de gemeten impedantiesweep gingen oordelen in plaats van op het ketenraster (V32), en nadat een kandidaat wiens tune in zijn geheel geweigerd werd zijn zaad niet meer als ontwerp aflevert (V31). Het corpus dat het verving is opnieuw NIET weggegooid maar hernoemd: 10 blokken `V30_KAND_*`, byte-identieke bestanden onder een gedateerde naam, met dezelfde tien metrieken en dezelfde klasse B. Er staan nu dus twee gedateerde corpora naast het levende: V28 (vóór de vloer een zoekdoel was) en V30 (vóór de poort de volle sweep las). Nog steeds NUL klasse C: het zijn metrieken op bestanden.",
-   "sinds_V33": "V33 (27-08-2026): het KAND-V2-corpus is opnieuw opgewekt nadat de amp-vloerbarrière — de term die de zoektocht naar de vloer duwt — zijn tekort op de GEMETEN IMPEDANTIESWEEP ging lezen in plaats van op het evaluatieraster, via dezelfde functie waarmee M-B/|Z| oordeelt. Doel en poort zien daarmee per constructie één getal — het levende corpus over het veiligheidsraster van de tuner, met een tweede, duurdere arm ernaast die over de volle sweep draaide. Corpora die vervangen zijn worden NIET weggegooid maar hernoemd: 10x `V28_KAND_*`, 10x `V30_KAND_*`, 7x `V32_KAND_*`, 10x `V33_KAND_*`, 10x `V33_SWEEP_KAND_*`, 10x `V34_KAND_*`, 10x `V37_KAND_*`, 10x `V38FIX_KAND_*`, 8x `V41_KAND_*`, 4x `V42_KAND_*`, 7x `V43_KAND_*`, 7x `V44_KAND_*` — byte-identieke bestanden onder een gedateerde naam, met dezelfde tien metrieken en dezelfde klasse B. Nog steeds NUL klasse C.",
-   "sinds_V37": "V37 (28-08-2026): het KAND-V2-corpus is opnieuw opgewekt nadat de DISSIPATIETERM door de opgeloste R_e ging delen in plaats van door de piekhoogte. De term heet (R_source/R_e)^2 en deelde door Re(Z) BIJ de bronweerstandsprobe, die sinds V34 op de impedantiepiek van het wooferpaar zit: 19,31 Ohm tegen een gemeten R_e van 3,05 Ohm, een factor die tot 40,1 kwadrateert. De controle is de referentie zelf — 1 + R_source/R_e reproduceert kandidaten.*.Qes_mult op elke bevroren netlist binnen exponent_pct, en de piekhoogte niet. Het vervangen corpus is hernoemd tot V34_KAND_*; gedateerde corpora nu: 10x `V28_KAND_*`, 10x `V30_KAND_*`, 7x `V32_KAND_*`, 10x `V33_KAND_*`, 10x `V33_SWEEP_KAND_*`, 10x `V34_KAND_*`, 10x `V37_KAND_*`, 10x `V38FIX_KAND_*`, 8x `V41_KAND_*`, 4x `V42_KAND_*`, 7x `V43_KAND_*`, 7x `V44_KAND_*`. Nog steeds NUL klasse C."
+   "sinds_V33": "V33 (27-08-2026): het KAND-V2-corpus is opnieuw opgewekt nadat de amp-vloerbarrière — de term die de zoektocht naar de vloer duwt — zijn tekort op de GEMETEN IMPEDANTIESWEEP ging lezen in plaats van op het evaluatieraster, via dezelfde functie waarmee M-B/|Z| oordeelt. Doel en poort zien daarmee per constructie één getal — het levende corpus over het veiligheidsraster van de tuner, met een tweede, duurdere arm ernaast die over de volle sweep draaide. Corpora die vervangen zijn worden NIET weggegooid maar hernoemd: 10x `V28_KAND_*`, 10x `V30_KAND_*`, 7x `V32_KAND_*`, 10x `V33_KAND_*`, 10x `V33_SWEEP_KAND_*`, 10x `V34_KAND_*`, 10x `V37_KAND_*`, 10x `V38FIX_KAND_*`, 8x `V41_KAND_*`, 4x `V42_KAND_*`, 7x `V43_KAND_*`, 7x `V44_KAND_*`, 7x `V45_KAND_*` — byte-identieke bestanden onder een gedateerde naam, met dezelfde tien metrieken en dezelfde klasse B. Nog steeds NUL klasse C.",
+   "sinds_V37": "V37 (28-08-2026): het KAND-V2-corpus is opnieuw opgewekt nadat de DISSIPATIETERM door de opgeloste R_e ging delen in plaats van door de piekhoogte. De term heet (R_source/R_e)^2 en deelde door Re(Z) BIJ de bronweerstandsprobe, die sinds V34 op de impedantiepiek van het wooferpaar zit: 19,31 Ohm tegen een gemeten R_e van 3,05 Ohm, een factor die tot 40,1 kwadrateert. De controle is de referentie zelf — 1 + R_source/R_e reproduceert kandidaten.*.Qes_mult op elke bevroren netlist binnen exponent_pct, en de piekhoogte niet. Het vervangen corpus is hernoemd tot V34_KAND_*; gedateerde corpora nu: 10x `V28_KAND_*`, 10x `V30_KAND_*`, 7x `V32_KAND_*`, 10x `V33_KAND_*`, 10x `V33_SWEEP_KAND_*`, 10x `V34_KAND_*`, 10x `V37_KAND_*`, 10x `V38FIX_KAND_*`, 8x `V41_KAND_*`, 4x `V42_KAND_*`, 7x `V43_KAND_*`, 7x `V44_KAND_*`, 7x `V45_KAND_*`. Nog steeds NUL klasse C."
   },
   "besluiten": {
    "_": "Drie mogelijke besluiten per referentie, conform de F4a-opdracht. De volledige inventarisatietabel - referentie, klasse, consumerende test met bestand en regel, besluit, reden - staat in het casusboek onder V19.",
@@ -2133,10 +2133,10 @@
    "wm_fase_overlapvenster_V43": 26.94,
    "mt_fase_overlapvenster_V43": 23.84
   },
-  "KAND_V2_1": {
+  "V45_KAND_1": {
    "klasse": "B",
    "afhankelijkheid": "meting+netlist",
-   "klasse_toelichting": "Metrieken op de VASTE netlist manifest_en_geometrie.netlists.KAND_V2_1, een BESTAND in test-fixtures/casus1/. Het netwerk komt uit een v2-run (zie manifest_en_geometrie.v2_herkomst), maar de referentie hangt aan het bestand en niet aan die run — precies zoals de drie v1-kandidaten. Daarom klasse B en geen klasse C.",
+   "klasse_toelichting": "HET GEDATEERDE V45-CORPUS. Metrieken op de VASTE netlist manifest_en_geometrie.netlists.V45_KAND_1, een BESTAND in test-fixtures/casus1/ en een byte-identieke kopie van wat bij het bevriezen als KAND_V2_1 leefde. De referentie hangt aan het bestand en niet aan de run die het opleverde — daarom klasse B en geen klasse C. Waaróm dit corpus bewaard is staat in manifest_en_geometrie.v45_corpus.reden. Meetobject, GEEN ontwerp: mag niet gebouwd worden.",
    "minZ": 2.69,
    "minEPDR": 1.35,
    "dissipatie_pct": 79,
@@ -2155,10 +2155,10 @@
    "wm_fase_overlapvenster_V43": 6.65,
    "mt_fase_overlapvenster_V43": 4.22
   },
-  "KAND_V2_2": {
+  "V45_KAND_2": {
    "klasse": "B",
    "afhankelijkheid": "meting+netlist",
-   "klasse_toelichting": "Metrieken op de VASTE netlist manifest_en_geometrie.netlists.KAND_V2_2, een BESTAND in test-fixtures/casus1/. Het netwerk komt uit een v2-run (zie manifest_en_geometrie.v2_herkomst), maar de referentie hangt aan het bestand en niet aan die run — precies zoals de drie v1-kandidaten. Daarom klasse B en geen klasse C.",
+   "klasse_toelichting": "HET GEDATEERDE V45-CORPUS. Metrieken op de VASTE netlist manifest_en_geometrie.netlists.V45_KAND_2, een BESTAND in test-fixtures/casus1/ en een byte-identieke kopie van wat bij het bevriezen als KAND_V2_2 leefde. De referentie hangt aan het bestand en niet aan de run die het opleverde — daarom klasse B en geen klasse C. Waaróm dit corpus bewaard is staat in manifest_en_geometrie.v45_corpus.reden. Meetobject, GEEN ontwerp: mag niet gebouwd worden.",
    "minZ": 3.02,
    "minEPDR": 1.52,
    "dissipatie_pct": 75,
@@ -2177,10 +2177,10 @@
    "wm_fase_overlapvenster_V43": 12.91,
    "mt_fase_overlapvenster_V43": 3.92
   },
-  "KAND_V2_3": {
+  "V45_KAND_3": {
    "klasse": "B",
    "afhankelijkheid": "meting+netlist",
-   "klasse_toelichting": "Metrieken op de VASTE netlist manifest_en_geometrie.netlists.KAND_V2_3, een BESTAND in test-fixtures/casus1/. Het netwerk komt uit een v2-run (zie manifest_en_geometrie.v2_herkomst), maar de referentie hangt aan het bestand en niet aan die run — precies zoals de drie v1-kandidaten. Daarom klasse B en geen klasse C.",
+   "klasse_toelichting": "HET GEDATEERDE V45-CORPUS. Metrieken op de VASTE netlist manifest_en_geometrie.netlists.V45_KAND_3, een BESTAND in test-fixtures/casus1/ en een byte-identieke kopie van wat bij het bevriezen als KAND_V2_3 leefde. De referentie hangt aan het bestand en niet aan de run die het opleverde — daarom klasse B en geen klasse C. Waaróm dit corpus bewaard is staat in manifest_en_geometrie.v45_corpus.reden. Meetobject, GEEN ontwerp: mag niet gebouwd worden.",
    "minZ": 2.6,
    "minEPDR": 1.3,
    "dissipatie_pct": 57,
@@ -2199,10 +2199,10 @@
    "wm_fase_overlapvenster_V43": 29.5,
    "mt_fase_overlapvenster_V43": 4.3
   },
-  "KAND_V2_4": {
+  "V45_KAND_4": {
    "klasse": "B",
    "afhankelijkheid": "meting+netlist",
-   "klasse_toelichting": "Metrieken op de VASTE netlist manifest_en_geometrie.netlists.KAND_V2_4, een BESTAND in test-fixtures/casus1/. Het netwerk komt uit een v2-run (zie manifest_en_geometrie.v2_herkomst), maar de referentie hangt aan het bestand en niet aan die run — precies zoals de drie v1-kandidaten. Daarom klasse B en geen klasse C.",
+   "klasse_toelichting": "HET GEDATEERDE V45-CORPUS. Metrieken op de VASTE netlist manifest_en_geometrie.netlists.V45_KAND_4, een BESTAND in test-fixtures/casus1/ en een byte-identieke kopie van wat bij het bevriezen als KAND_V2_4 leefde. De referentie hangt aan het bestand en niet aan de run die het opleverde — daarom klasse B en geen klasse C. Waaróm dit corpus bewaard is staat in manifest_en_geometrie.v45_corpus.reden. Meetobject, GEEN ontwerp: mag niet gebouwd worden.",
    "minZ": 2.61,
    "minEPDR": 1.32,
    "dissipatie_pct": 65,
@@ -2221,10 +2221,10 @@
    "wm_fase_overlapvenster_V43": 18.06,
    "mt_fase_overlapvenster_V43": 4.93
   },
-  "KAND_V2_5": {
+  "V45_KAND_5": {
    "klasse": "B",
    "afhankelijkheid": "meting+netlist",
-   "klasse_toelichting": "Metrieken op de VASTE netlist manifest_en_geometrie.netlists.KAND_V2_5, een BESTAND in test-fixtures/casus1/. Het netwerk komt uit een v2-run (zie manifest_en_geometrie.v2_herkomst), maar de referentie hangt aan het bestand en niet aan die run — precies zoals de drie v1-kandidaten. Daarom klasse B en geen klasse C.",
+   "klasse_toelichting": "HET GEDATEERDE V45-CORPUS. Metrieken op de VASTE netlist manifest_en_geometrie.netlists.V45_KAND_5, een BESTAND in test-fixtures/casus1/ en een byte-identieke kopie van wat bij het bevriezen als KAND_V2_5 leefde. De referentie hangt aan het bestand en niet aan de run die het opleverde — daarom klasse B en geen klasse C. Waaróm dit corpus bewaard is staat in manifest_en_geometrie.v45_corpus.reden. Meetobject, GEEN ontwerp: mag niet gebouwd worden.",
    "minZ": 2.57,
    "minEPDR": 1.29,
    "dissipatie_pct": 48,
@@ -2243,10 +2243,10 @@
    "wm_fase_overlapvenster_V43": 42.1,
    "mt_fase_overlapvenster_V43": 9.58
   },
-  "KAND_V2_6": {
+  "V45_KAND_6": {
    "klasse": "B",
    "afhankelijkheid": "meting+netlist",
-   "klasse_toelichting": "Metrieken op de VASTE netlist manifest_en_geometrie.netlists.KAND_V2_6, een BESTAND in test-fixtures/casus1/. Het netwerk komt uit een v2-run (zie manifest_en_geometrie.v2_herkomst), maar de referentie hangt aan het bestand en niet aan die run — precies zoals de drie v1-kandidaten. Daarom klasse B en geen klasse C.",
+   "klasse_toelichting": "HET GEDATEERDE V45-CORPUS. Metrieken op de VASTE netlist manifest_en_geometrie.netlists.V45_KAND_6, een BESTAND in test-fixtures/casus1/ en een byte-identieke kopie van wat bij het bevriezen als KAND_V2_6 leefde. De referentie hangt aan het bestand en niet aan de run die het opleverde — daarom klasse B en geen klasse C. Waaróm dit corpus bewaard is staat in manifest_en_geometrie.v45_corpus.reden. Meetobject, GEEN ontwerp: mag niet gebouwd worden.",
    "minZ": 2.55,
    "minEPDR": 1.29,
    "dissipatie_pct": 56,
@@ -2265,10 +2265,10 @@
    "wm_fase_overlapvenster_V43": 50.44,
    "mt_fase_overlapvenster_V43": 11.74
   },
-  "KAND_V2_7": {
+  "V45_KAND_7": {
    "klasse": "B",
    "afhankelijkheid": "meting+netlist",
-   "klasse_toelichting": "Metrieken op de VASTE netlist manifest_en_geometrie.netlists.KAND_V2_7, een BESTAND in test-fixtures/casus1/. Het netwerk komt uit een v2-run (zie manifest_en_geometrie.v2_herkomst), maar de referentie hangt aan het bestand en niet aan die run — precies zoals de drie v1-kandidaten. Daarom klasse B en geen klasse C.",
+   "klasse_toelichting": "HET GEDATEERDE V45-CORPUS. Metrieken op de VASTE netlist manifest_en_geometrie.netlists.V45_KAND_7, een BESTAND in test-fixtures/casus1/ en een byte-identieke kopie van wat bij het bevriezen als KAND_V2_7 leefde. De referentie hangt aan het bestand en niet aan de run die het opleverde — daarom klasse B en geen klasse C. Waaróm dit corpus bewaard is staat in manifest_en_geometrie.v45_corpus.reden. Meetobject, GEEN ontwerp: mag niet gebouwd worden.",
    "minZ": 2.81,
    "minEPDR": 1.59,
    "dissipatie_pct": 43,
@@ -2286,6 +2286,94 @@
    "mt_fase_oct_octaafgeknipt_V43": 25.36,
    "wm_fase_overlapvenster_V43": 19.42,
    "mt_fase_overlapvenster_V43": 18.05
+  },
+  "KAND_V2_1": {
+   "klasse": "B",
+   "afhankelijkheid": "meting+netlist",
+   "klasse_toelichting": "Metrieken op de VASTE netlist manifest_en_geometrie.netlists.KAND_V2_1, een BESTAND in test-fixtures/casus1/. Het netwerk komt uit een v2-run (zie manifest_en_geometrie.v2_herkomst), maar de referentie hangt aan het bestand en niet aan die run — precies zoals de drie v1-kandidaten. Daarom klasse B en geen klasse C.",
+   "minZ": 2.93,
+   "minEPDR": 1.47,
+   "dissipatie_pct": 63,
+   "grootste_R_W_bij_100W": 37.3,
+   "Qes_mult": 2.4,
+   "lf_bult_extra_dB": 3.96,
+   "lf_lift_dB": 4.95,
+   "lf_opslingering_dB": -0.99,
+   "V_tweeter_op_fs_dB": -28.42,
+   "rms_vlakheid_dB": 0.48,
+   "spl_venster_pm_dB": 0.82,
+   "wm_fase_oct": 6.67,
+   "mt_fase_oct": 4.12,
+   "wm_fase_oct_octaafgeknipt_V43": 7.54,
+   "mt_fase_oct_octaafgeknipt_V43": 5.16,
+   "wm_fase_overlapvenster_V43": 10.64,
+   "mt_fase_overlapvenster_V43": 4.12
+  },
+  "KAND_V2_2": {
+   "klasse": "B",
+   "afhankelijkheid": "meting+netlist",
+   "klasse_toelichting": "Metrieken op de VASTE netlist manifest_en_geometrie.netlists.KAND_V2_2, een BESTAND in test-fixtures/casus1/. Het netwerk komt uit een v2-run (zie manifest_en_geometrie.v2_herkomst), maar de referentie hangt aan het bestand en niet aan die run — precies zoals de drie v1-kandidaten. Daarom klasse B en geen klasse C.",
+   "minZ": 3.55,
+   "minEPDR": 1.84,
+   "dissipatie_pct": 64,
+   "grootste_R_W_bij_100W": 24.37,
+   "Qes_mult": 2.11,
+   "lf_bult_extra_dB": 4.53,
+   "lf_lift_dB": 4.33,
+   "lf_opslingering_dB": 0.2,
+   "V_tweeter_op_fs_dB": -28.14,
+   "rms_vlakheid_dB": 0.57,
+   "spl_venster_pm_dB": 1.01,
+   "wm_fase_oct": 4.75,
+   "mt_fase_oct": 4.25,
+   "wm_fase_oct_octaafgeknipt_V43": 5.32,
+   "mt_fase_oct_octaafgeknipt_V43": 5.56,
+   "wm_fase_overlapvenster_V43": 7.41,
+   "mt_fase_overlapvenster_V43": 4.25
+  },
+  "KAND_V2_3": {
+   "klasse": "B",
+   "afhankelijkheid": "meting+netlist",
+   "klasse_toelichting": "Metrieken op de VASTE netlist manifest_en_geometrie.netlists.KAND_V2_3, een BESTAND in test-fixtures/casus1/. Het netwerk komt uit een v2-run (zie manifest_en_geometrie.v2_herkomst), maar de referentie hangt aan het bestand en niet aan die run — precies zoals de drie v1-kandidaten. Daarom klasse B en geen klasse C.",
+   "minZ": 2.59,
+   "minEPDR": 1.3,
+   "dissipatie_pct": 62,
+   "grootste_R_W_bij_100W": 30.38,
+   "Qes_mult": 2.06,
+   "lf_bult_extra_dB": 2.52,
+   "lf_lift_dB": 4.28,
+   "lf_opslingering_dB": -1.76,
+   "V_tweeter_op_fs_dB": -29.79,
+   "rms_vlakheid_dB": 0.7,
+   "spl_venster_pm_dB": 1.56,
+   "wm_fase_oct": 19.21,
+   "mt_fase_oct": 3.1,
+   "wm_fase_oct_octaafgeknipt_V43": 18.97,
+   "mt_fase_oct_octaafgeknipt_V43": 4.32,
+   "wm_fase_overlapvenster_V43": 24.64,
+   "mt_fase_overlapvenster_V43": 3.1
+  },
+  "KAND_V2_4": {
+   "klasse": "B",
+   "afhankelijkheid": "meting+netlist",
+   "klasse_toelichting": "Metrieken op de VASTE netlist manifest_en_geometrie.netlists.KAND_V2_4, een BESTAND in test-fixtures/casus1/. Het netwerk komt uit een v2-run (zie manifest_en_geometrie.v2_herkomst), maar de referentie hangt aan het bestand en niet aan die run — precies zoals de drie v1-kandidaten. Daarom klasse B en geen klasse C.",
+   "minZ": 2.6,
+   "minEPDR": 1.31,
+   "dissipatie_pct": 60,
+   "grootste_R_W_bij_100W": 29.69,
+   "Qes_mult": 2.4,
+   "lf_bult_extra_dB": 3.19,
+   "lf_lift_dB": 5.05,
+   "lf_opslingering_dB": -1.86,
+   "V_tweeter_op_fs_dB": -27.75,
+   "rms_vlakheid_dB": 0.81,
+   "spl_venster_pm_dB": 1.75,
+   "wm_fase_oct": 21.6,
+   "mt_fase_oct": 3.99,
+   "wm_fase_oct_octaafgeknipt_V43": 21.88,
+   "mt_fase_oct_octaafgeknipt_V43": 4.96,
+   "wm_fase_overlapvenster_V43": 21.24,
+   "mt_fase_overlapvenster_V43": 3.99
   }
  },
  "kruisvensters": {
@@ -2639,29 +2727,41 @@
    "V44_KAND_5": "V44-KAND-5.adsfilter.json",
    "V44_KAND_6": "V44-KAND-6.adsfilter.json",
    "V44_KAND_7": "V44-KAND-7.adsfilter.json",
+   "V45_KAND_1": "V45-KAND-1.adsfilter.json",
+   "V45_KAND_2": "V45-KAND-2.adsfilter.json",
+   "V45_KAND_3": "V45-KAND-3.adsfilter.json",
+   "V45_KAND_4": "V45-KAND-4.adsfilter.json",
+   "V45_KAND_5": "V45-KAND-5.adsfilter.json",
+   "V45_KAND_6": "V45-KAND-6.adsfilter.json",
+   "V45_KAND_7": "V45-KAND-7.adsfilter.json",
    "KAND_V2_1": "KAND-V2-1.adsfilter.json",
    "KAND_V2_2": "KAND-V2-2.adsfilter.json",
    "KAND_V2_3": "KAND-V2-3.adsfilter.json",
-   "KAND_V2_4": "KAND-V2-4.adsfilter.json",
-   "KAND_V2_5": "KAND-V2-5.adsfilter.json",
-   "KAND_V2_6": "KAND-V2-6.adsfilter.json",
-   "KAND_V2_7": "KAND-V2-7.adsfilter.json"
+   "KAND_V2_4": "KAND-V2-4.adsfilter.json"
   },
   "v2_herkomst": {
    "_": "DOCUMENTATIE, geen acceptatiewaarde. Waar de KAND-V2-netlists vandaan komen, zodat een lezer ze kan herleiden en desgewenst opnieuw kan opwekken. Niets in dit blok wordt geassert als getal; wat WEL acceptatie is, zijn de metrieken op de bestanden zelf (kandidaten.KAND_V2_*, klasse B) en de reproductie door de echte route (casus1V2Candidates.test.ts).",
    "bestand": "casus1_v2_herkomst.json",
-   "gegenereerd_op_commit": "16fbc101213f4a52a9e9a7646b53cc66b5947576",
+   "gegenereerd_op_commit": "11d3db972c8173c5532bbfa1f2e6713557ac2f6b",
    "seed": 20260827,
-   "run_vingerafdruk": "engine=2.0.0-F1 estimators=6087f58a seed=20260827 budget=tuner starts=1 status=completed design=a7ccf830 measurements=e97d1bdc gates=77e69859 bounds=5465b825 tuning=9e0c0524 facts=dc57fb2c choices=1cfaa800",
+   "run_vingerafdruk": "engine=2.0.0-F1 estimators=6087f58a seed=20260827 budget=tuner starts=1 status=completed design=a7ccf830 measurements=e97d1bdc gates=bda73aab bounds=5465b825 tuning=9e0c0524 facts=dc57fb2c choices=1cfaa800",
    "generator": "scripts/generate-casus1-v2-candidates.ts",
    "meetopstelling": {
     "_": "De opstelling waarmee deze netlists zijn opgewekt, afgelezen van de laatste payload en niet overgeschreven uit het geheugen. V27 noteert twee foute opstellingen vóór de definitieve; geen van beide was terug te lezen uit wat het manifest opschreef.",
     "synthMode": "acoustic",
     "synthMode_waarom": "de eigen standaard van de app. Op 'filter' leverde dezelfde keten 31,4 dB rimpel tegen 5,2 dB op 'acoustic' (V27); een fixture die niet de synthese van de app draait, meet de app niet.",
     "v2_poorten_gewapend": [
-     "ampMinLoadOhm"
+     "ampMinLoadOhm",
+     "maxDriveOnFsDb"
     ],
     "v2_poorten_bron": {
+     "M-C": {
+      "sleutel": "maxDriveOnFsDb",
+      "bron": "gesteld",
+      "waarde_dB": -25,
+      "waar": "manifest_en_geometrie.gestelde_eisen.tweeter_drive_op_fs_max_dB — het ENIGE voorkomen van dit getal. Het reist langs het A5a-pad van de app: v2.gates.maxDriveOnFsDb voor het oordeel, en dezelfde gestelde grens laat de kandidaat `protectionRule: stated` verklaren, waarmee de zaadvergelijking van de volle-band-veiligheidspoort vervalt (V47).",
+      "regel": "driveVoltageOnResonance (src/lib/engine2/metrics/electrical.ts) op de gemeten sweep (V32), per hoogdoorlaatbeschermde weg, met de doorlaatband uit de eigen kruispunten (F1-conventie)."
+     },
      "M-B/|Z|": {
       "sleutel": "ampMinLoadOhm",
       "bron": "gesteld",
@@ -2670,7 +2770,7 @@
       "regel": "meetsAmpFloor (src/lib/impedanceFloor.ts), inclusief haar meettolerantie — een projectconventie, geen eigenschap van de versterker."
      }
     },
-    "v2_poorten_waarom": "M-B/|Z| is GEWAPEND op de gestelde versterkervloer; zie `v2_poorten_bron`. M-A (dissipatiefractie), M-B/EPDR en M-C blijven ONGEWAPEND: casus 1 stelt daar niets voor, en leeg veld = geen oordeel (P4). Een afwezige grens is geen poort die altijd slaagt — hij rapporteert zijn waarde en oordeelt niets.",
+    "v2_poorten_waarom": "M-B/|Z| is GEWAPEND op de gestelde versterkervloer; zie `v2_poorten_bron`. M-C is GEWAPEND op de gestelde aandrijfgrens (V47), en hij oordeelt ÉLKE hoogdoorlaatbeschermde weg — op casus 1 de mid én de tweeter, terwijl het getal van een tweetermeting is afgeleid. M-A (dissipatiefractie) en M-B/EPDR blijven ONGEWAPEND: casus 1 stelt daar niets voor, en leeg veld = geen oordeel (P4). Een afwezige grens is geen poort die altijd slaagt — hij rapporteert zijn waarde en oordeelt niets.",
     "v2_budgetten_gewapend": [
      "lfBumpBudgetDb",
      "qesMultiplierMax"
@@ -2691,6 +2791,7 @@
      "phaseAdmission",
      "phaseMetric",
      "powerMetric",
+     "protectionRule",
      "rSourceProbeSource",
      "safety",
      "staged",
@@ -2718,6 +2819,8 @@
     "lean_drempel_waarom": "De fitfout van de kale HP/LP-ladder waaronder de synthesestap besluit dat er geen correctienetwerk nodig is (Zobel, Fs-val, top-octaaf-hold). Dit is de EIGEN standaard van `synthesize`. Tot V41 was het geen sleutel maar een AFLEIDING binnen de keten uit `targets.rippleDb` — het stopdoel van de trapmethode, 2,5 dB, vijf keer zo ruim — en over het hele veld haalde de kale ladder die drempel op 45 van de 45 takken en deze op 0 van de 45 (V38 beslispunt B). De twee ANDERE lezers van `targets.rippleDb` zijn oordelen (de trapmethode zelf en de v1-rangschikking) en zijn niet aangeraakt: alleen de synthese-lezing beweegt.",
     "amplitude_referentie": "target",
     "amplitude_referentie_waarom": "DE ZOEKTOCHT MEET DE VLAKHEID TEN OPZICHTE VAN DE DOELCURVE, niet ten opzichte van horizontaal. `bandStd` is de spreiding van de som rond haar eigen bandgemiddelde, dus zonder deze sleutel is \"perfect\" per definitie een rechte lijn — en dan werd een ontwerp GEZOCHT tegen vlak en GEOORDEELD tegen een plateau (A5e.1 leest de doelcurve al sinds F3). Van die twee heeft de zoektocht het hele iteratiebudget: zij wint, en het oordeel legt alleen de nederlaag vast. De curve zelf reist als POLISH mee — hij is de voicing van het ONTWERP en geen mening van de kandidaat (A5e.2, V45).",
+    "beschermingsregel": "stated",
+    "beschermingsregel_waarom": "DE GESTELDE EIS OORDEELT, EN DE ZAADVERGELIJKING VERVALT. De volle-band-veiligheidspoort weigerde een tune in zijn geheel zodra haar beschermingstekort meer dan 3 dB-kwadraat boven dat van het ZAAD lag — een afstand tot een netwerk dat niemand tegen het doel van deze run heeft gelegd (V31), dus wat zij toestond bewoog mee met wat het zaad droeg. Met een gestelde grens (-25 dB) oordeelt M-C ABSOLUUT, op élk punt waar een pas een netwerk accepteert, en een run die niets toelaatbaars vindt komt terug als weigering met de gemeten waarde en de eis. GEMETEN BIJ V47, en de meting keerde de verwachting om: de vier V45-kandidaten die de zaadregel weigerde meten absoluut -3,43 tot -12,29 dB, dus zij ving daar echte schendingen; waar zij faalde is de andere kant op, want datzelfde veld LEVERDE twee netlists op -14,38 en -15,10 dB omdat hun zaad even slecht was.",
     "doelcurve": "bass-plateau — 2.5 dB below the flat part under a transition centred on the measured baffle step at 442 Hz",
     "doelcurve_herkomst": "De DIEPTE is gesteld (`gestelde_eisen.basplateau_offset_dB`) en de OVERGANG is afgeleid (`baffleStepHz` van de gemeten kastbreedte in `geometrie.baffle_mm`). Twee halves uit twee verschillende soorten bron, en dat is P6: een frequentie in dit project komt uit projectdata, een voicing-diepte komt van een ontwerper. Zie `gestelde_eisen.basplateau_waarom_niet_gemeten` voor waarom de diepte op deze meetset niet te MÉTEN is.",
     "qes_grens": 2.4,
@@ -2838,7 +2941,7 @@
     }
    ],
    "vloeruitzonderingen_regel": "Elke bevroren netlist haalt de gestelde vloer, OF staat in deze lijst met zijn reden. frozenNetlistGates.test.ts dwingt precies dat af: een netlist die hem niet haalt en hier niet staat, breekt de suite. De lijst is dus geen vrijstelling maar een boekhouding, en zij hoort leeg te raken.",
-   "kosten": "7 ketenruns. TOT V33 gemeten op 44-73 s per kandidaat; SINDS V33 op het VEILIGHEIDSRASTER, en dat is de prijs van die reparatie: de barrièreterm lost het netwerk bij ELKE objectief-evaluatie op op het raster van zijn bron in plaats van op het gedecimeerde evaluatieraster. Nagemeten op één kandidaat, de twee uitersten: 44,0 s tegen 669,8 s op de volle sweep, bij vrijwel hetzelfde aantal evaluaties (88 008 tegen 86 399). Daarom een script en geen test — en daarom is de bron een KEUZE-sleutel. GEMETEN BIJ V37 over het hele veld: 115-223 s per kandidaat, 40 minuten wandkloktijd, dezelfde orde als de 41 minuten van V34 — V37 verandert een deling en geen raster, dus de prijs van de barrière is onveranderd.",
+   "kosten": "4 ketenruns. TOT V33 gemeten op 44-73 s per kandidaat; SINDS V33 op het VEILIGHEIDSRASTER, en dat is de prijs van die reparatie: de barrièreterm lost het netwerk bij ELKE objectief-evaluatie op op het raster van zijn bron in plaats van op het gedecimeerde evaluatieraster. Nagemeten op één kandidaat, de twee uitersten: 44,0 s tegen 669,8 s op de volle sweep, bij vrijwel hetzelfde aantal evaluaties (88 008 tegen 86 399). Daarom een script en geen test — en daarom is de bron een KEUZE-sleutel. GEMETEN BIJ V37 over het hele veld: 115-223 s per kandidaat, 40 minuten wandkloktijd, dezelfde orde als de 41 minuten van V34 — V37 verandert een deling en geen raster, dus de prijs van de barrière is onveranderd.",
    "reproduceerbaarheid": "Nagemeten bij de F4d-nazorg: het script opnieuw draaien op dezelfde commit levert de netlists BYTE-IDENTIEK terug, op het `savedAt`-stempel van de serialisatie na. Dat stempel is het enige niet-deterministische veld in deze bestanden, en het staat in de kop en niet in de onderdelen."
   },
   "gestelde_eisen": {
@@ -2886,7 +2989,27 @@
     "KAND_A": -0.9,
     "KAND_B": -0.05
    },
-   "_bij_die_twee_reeksen": "De EERSTE reeks is lfBump().extraDb en hoort bij de INGETROKKEN V42-eis van 2,5 dB op de som; hij blijft staan omdat de V42-entry in het casusboek ernaar verwijst en omdat hij de brug is naar de tweede (lift + opslingering = extra). De TWEEDE is lfBump().resonantDb en hoort bij de eis die vandaag geldt. Het verschil tussen de twee reeksen IS de bevinding van V43: op de som overschrijden alle drie de referentiefilters de eis, op de resonante component haalt geen van drieen haar ook maar in de buurt van overschrijden - hun spoelen voegen niets toe, en wat het budget veroordeelde was hun niveauwerk."
+   "_bij_die_twee_reeksen": "De EERSTE reeks is lfBump().extraDb en hoort bij de INGETROKKEN V42-eis van 2,5 dB op de som; hij blijft staan omdat de V42-entry in het casusboek ernaar verwijst en omdat hij de brug is naar de tweede (lift + opslingering = extra). De TWEEDE is lfBump().resonantDb en hoort bij de eis die vandaag geldt. Het verschil tussen de twee reeksen IS de bevinding van V43: op de som overschrijden alle drie de referentiefilters de eis, op de resonante component haalt geen van drieen haar ook maar in de buurt van overschrijden - hun spoelen voegen niets toe, en wat het budget veroordeelde was hun niveauwerk.",
+   "tweeter_drive_op_fs_max_dB": -25,
+   "tweeter_drive_op_fs_max_gesteld_door": "Sander Somers, 31-08-2026",
+   "tweeter_drive_op_fs_max_motivering": "De maximale aandrijfspanning die een hoogdoorlaatbeschermde weg op haar EIGEN resonantie mag krijgen, ten opzichte van het dB-gemiddelde over haar doorlaatband (A4 M-C, F1-conventie: de doorlaatband volgt uit de kruispunten die het filter zelf oplevert, en het gemiddelde wordt in dB genomen). Gesteld voor de Bliesma T25T-6 in waveguide, waarvan de resonantie op 924 Hz ligt en dus vlak onder het werkgebied. HET GETAL KOMT VAN HUIDIG, langs dezelfde weg als qes_vermenigvuldiging_max: het goedgekeurde ontwerp meet -25,084 dB op zijn slechtste beschermde weg (de tweeter; de mid leest -42,61), dus -25,0 is de STRENGSTE waarde op een decimaal die het eigen referentiefilter van de ontwerper nog toelaat. Bij -25,1 zou HUIDIG veroordeeld worden, en dat is precies de V42-fout die niet herhaald mag worden. DE EIS WORDT GEHANDHAAFD OP ELKE HOOGDOORLAATBESCHERMDE WEG en niet alleen op de tweeter, want dat is wat de poort doet. Op casus 1 is dat ook de mid, en die staat er ruim onder: HUIDIG -42,61, KAND_A -46,83, KAND_B -34,17. Dat de eis van een TWEETER-meting is afgeleid en een tweede weg meeoordeelt, is een eigenschap die alleen een meting kan vaststellen en zij staat daarom hier - zie manifest_en_geometrie.v47_bescherming voor de aflezing per weg. WAT DE EIS VERVANGT, EN WAT DE METING DAAROVER ZEI. Tot V47 bewaakte alleen de volle-band-veiligheidspoort van de tuner deze eigenschap, en RELATIEF: het beschermingstekort van het geleverde netwerk mocht niet meer dan 3 dB-kwadraat boven dat van het ZAAD liggen. Dat is een afstand tot een netwerk dat niemand tegen het doel van de run heeft gelegd (V31), dus wat zij toestaat beweegt mee met wat het zaad droeg. DE OPDRACHT VAN V47 VERWACHTTE DAT DIE REGEL TE STRENG WAS EN DE METING ZEI HET OMGEKEERDE, en dat staat hier omdat het de reden is dat de eis er anders uitziet dan bedoeld: de vier V45-kandidaten die zij weigerde meten absoluut -12,29 en -6,82 dB op hun slechtst beschermde weg (twee van de vier gemeten; het zaad mat in beide gevallen protSqDb 0,000). Zij zaten dus dertien tot achttien dB BOVEN deze eis. De relatieve regel ving daar echte schendingen. Waar zij faalde is de andere kant op: het levende V45-corpus LEVERDE twee netlists op -14,38 en -15,10 dB, en daarover zweeg zij, want hun zaad was even slecht. Een regel die aan het zaad hangt bewaakt dus niet de driver maar het toeval.",
+   "tweeter_drive_op_fs_max_invoerpunt": "A5a-formulierveld 'Max drive on Fs' (App.tsx) -> v2ScanSettings.gates.maxDriveOnFsDb, langs hetzelfde pad als de versterkervloer: het manifest is de enige bron en de fixture LEEST hem hiervandaan (P6). ANDERS DAN HET LF-BUDGET EN DE Q_es-GRENS IS DIT EEN POORT: M-C heeft een poort-id in GATE_IDS, dus de eis veroordeelt een GELEVERD netwerk en niet alleen de zoektocht. Zij doet daarnaast twee dingen die de andere gestelde eisen niet doen. (1) Zij wapent de A5d.6-inversie drive-series-c, een SLACK voorbound op de seriecondensator van de beschermde weg - richtinggevend, nooit beslissend (V12). (2) Zij bepaalt op de v2-route WELKE beschermingsregel geldt: met een gestelde grens verklaart de kandidaat protectionRule = 'stated' en past de volle-band-veiligheidspoort haar zaadvergelijking niet meer toe. Leeg veld = geen poort, geen voorbound, en de zaadvergelijking blijft staan (P4) - want een vergelijking met het zaad zonder eis is beter dan helemaal geen vergelijking.",
+   "tweeter_drive_op_fs_max_haalbaar_en_niet_vacuum": "HAALBAAR: alle drie de referentiefilters halen haar (-25,08 / -34,54 / -34,17 op hun slechtste weg), en HUIDIG is de maat - hij haalt haar met 0,084 dB marge, want zo is het getal gekozen. NIET VACUUM, en dat is de hele reden dat zij gesteld is: het LEVENDE V45-corpus overschrijdt haar op twee van de zeven netlists (KAND_V2_5 -14,38 dB, KAND_V2_6 -15,10 dB) en de gedateerde corpora lopen tot -9,78 dB (V38FIX_KAND_5, op de MID). Zij bindt dus aantoonbaar, en zij bindt op ontwerpen die zonder haar gewoon geleverd werden.",
+   "gemeten_M_C_referentiefilters_dB": {
+    "HUIDIG": {
+     "mid": -42.61,
+     "tweeter": -25.08
+    },
+    "KAND_A": {
+     "mid": -46.83,
+     "tweeter": -34.54
+    },
+    "KAND_B": {
+     "mid": -34.17,
+     "tweeter": -35.18
+    }
+   },
+   "_bij_de_M_C_reeks": "Per WEG en niet per netlist, want de poort oordeelt elke weg die zij hoogdoorlaatbeschermd noemt. Op KAND_B is de slechtste weg de MID en niet de tweeter (-34,17 tegen -35,18), wat laat zien dat 'de tweeterwaarde' en 'de waarde waarop de eis bijt' niet hetzelfde zijn. De tweeterkolom reproduceert de staande klasse-B-referentie kandidaten.*.V_tweeter_op_fs_dB; de midkolom bestond nog niet en is bij V47 gemeten met scripts/measure-v47-drive.ts."
   },
   "v30_corpus": {
    "_": "V31/V32 — HET GEDATEERDE V30-CORPUS, met de kandidaat waar elke netlist vandaan kwam. Bewaard omdat de vóór/ná-vergelijking anders niet te maken is: de bestanden heten V30-KAND-n en de kandidaat heet naar zijn twee kruispunten, en die koppeling stond alleen in casus1_v2_herkomst.json — een bestand dat de volgende regeneratie overschrijft. DOCUMENTATIE, geen acceptatiewaarde.",
@@ -3003,10 +3126,10 @@
    },
    "vloerspeling_ohm": 0.052,
    "grootste_verschil_levend": {
-    "netlist": "KAND_V2_7",
-    "poortraster_ohm": 2.8127,
-    "barriereraster_ohm": 2.8343,
-    "verschil_ohm": 0.0216,
+    "netlist": "KAND_V2_3",
+    "poortraster_ohm": 2.5946,
+    "barriereraster_ohm": 2.5964,
+    "verschil_ohm": 0.0018,
     "zelfde_oordeel": true
    },
    "grootste_verschil_hele_casusboek": {
@@ -3762,52 +3885,80 @@
      "zelfde_oordeel": true
     },
     {
-     "netlist": "KAND_V2_1",
+     "netlist": "V45_KAND_1",
      "poortraster_ohm": 2.693,
      "barriereraster_ohm": 2.6938,
      "verschil_ohm": 0.0009,
      "zelfde_oordeel": true
     },
     {
-     "netlist": "KAND_V2_2",
+     "netlist": "V45_KAND_2",
      "poortraster_ohm": 3.0245,
      "barriereraster_ohm": 3.0257,
      "verschil_ohm": 0.0012,
      "zelfde_oordeel": true
     },
     {
-     "netlist": "KAND_V2_3",
+     "netlist": "V45_KAND_3",
      "poortraster_ohm": 2.5964,
      "barriereraster_ohm": 2.5967,
      "verschil_ohm": 0.0003,
      "zelfde_oordeel": true
     },
     {
-     "netlist": "KAND_V2_4",
+     "netlist": "V45_KAND_4",
      "poortraster_ohm": 2.6094,
      "barriereraster_ohm": 2.6097,
      "verschil_ohm": 0.0003,
      "zelfde_oordeel": true
     },
     {
-     "netlist": "KAND_V2_5",
+     "netlist": "V45_KAND_5",
      "poortraster_ohm": 2.5683,
      "barriereraster_ohm": 2.5683,
      "verschil_ohm": 0,
      "zelfde_oordeel": true
     },
     {
-     "netlist": "KAND_V2_6",
+     "netlist": "V45_KAND_6",
      "poortraster_ohm": 2.5511,
      "barriereraster_ohm": 2.5516,
      "verschil_ohm": 0.0006,
      "zelfde_oordeel": true
     },
     {
-     "netlist": "KAND_V2_7",
+     "netlist": "V45_KAND_7",
      "poortraster_ohm": 2.8127,
      "barriereraster_ohm": 2.8343,
      "verschil_ohm": 0.0216,
+     "zelfde_oordeel": true
+    },
+    {
+     "netlist": "KAND_V2_1",
+     "poortraster_ohm": 2.9267,
+     "barriereraster_ohm": 2.9284,
+     "verschil_ohm": 0.0017,
+     "zelfde_oordeel": true
+    },
+    {
+     "netlist": "KAND_V2_2",
+     "poortraster_ohm": 3.5519,
+     "barriereraster_ohm": 3.552,
+     "verschil_ohm": 0.0002,
+     "zelfde_oordeel": true
+    },
+    {
+     "netlist": "KAND_V2_3",
+     "poortraster_ohm": 2.5946,
+     "barriereraster_ohm": 2.5964,
+     "verschil_ohm": 0.0018,
+     "zelfde_oordeel": true
+    },
+    {
+     "netlist": "KAND_V2_4",
+     "poortraster_ohm": 2.5979,
+     "barriereraster_ohm": 2.5981,
+     "verschil_ohm": 0.0002,
      "zelfde_oordeel": true
     }
    ]
@@ -4048,7 +4199,7 @@
       "r_source_ohm": 0.0039,
       "noemer_ohm": 3.46,
       "ratio": 0.0011,
-      "term": 6.421e-8
+      "term": 6.421e-08
      },
      "term_veiligheidsraster": {
       "hz": 51.5,
@@ -4062,7 +4213,7 @@
       "r_source_ohm": 0.0014,
       "noemer_ohm": 3.05,
       "ratio": 0.0005,
-      "term": 1.113e-8
+      "term": 1.113e-08
      }
     },
     {
@@ -4120,7 +4271,7 @@
       "r_source_ohm": 0.0011,
       "noemer_ohm": 3.05,
       "ratio": 0.0004,
-      "term": 6.657e-9
+      "term": 6.657e-09
      }
     },
     {
@@ -4178,7 +4329,7 @@
       "r_source_ohm": 0.0011,
       "noemer_ohm": 3.05,
       "ratio": 0.0004,
-      "term": 6.657e-9
+      "term": 6.657e-09
      }
     },
     {
@@ -4236,7 +4387,7 @@
       "r_source_ohm": 0.0011,
       "noemer_ohm": 3.05,
       "ratio": 0.0004,
-      "term": 6.657e-9
+      "term": 6.657e-09
      }
     },
     {
@@ -4352,7 +4503,7 @@
       "r_source_ohm": 0.0011,
       "noemer_ohm": 3.05,
       "ratio": 0.0004,
-      "term": 6.36e-9
+      "term": 6.36e-09
      }
     },
     {
@@ -4381,7 +4532,7 @@
       "r_source_ohm": 0.0011,
       "noemer_ohm": 3.05,
       "ratio": 0.0004,
-      "term": 6.397e-9
+      "term": 6.397e-09
      }
     },
     {
@@ -4497,7 +4648,7 @@
       "r_source_ohm": 0.0011,
       "noemer_ohm": 3.05,
       "ratio": 0.0004,
-      "term": 6.485e-9
+      "term": 6.485e-09
      }
     },
     {
@@ -4903,7 +5054,7 @@
       "r_source_ohm": 0.0011,
       "noemer_ohm": 3.05,
       "ratio": 0.0004,
-      "term": 6.194e-9
+      "term": 6.194e-09
      }
     },
     {
@@ -4990,7 +5141,7 @@
       "r_source_ohm": 0.0011,
       "noemer_ohm": 3.05,
       "ratio": 0.0004,
-      "term": 6.31e-9
+      "term": 6.31e-09
      }
     },
     {
@@ -5135,7 +5286,7 @@
       "r_source_ohm": 0.0011,
       "noemer_ohm": 3.05,
       "ratio": 0.0004,
-      "term": 6.141e-9
+      "term": 6.141e-09
      }
     },
     {
@@ -5164,7 +5315,7 @@
       "r_source_ohm": 0.0011,
       "noemer_ohm": 3.05,
       "ratio": 0.0004,
-      "term": 6.278e-9
+      "term": 6.278e-09
      }
     },
     {
@@ -5454,7 +5605,7 @@
       "r_source_ohm": 0.0011,
       "noemer_ohm": 3.05,
       "ratio": 0.0004,
-      "term": 6.141e-9
+      "term": 6.141e-09
      }
     },
     {
@@ -5483,7 +5634,7 @@
       "r_source_ohm": 0.0011,
       "noemer_ohm": 3.05,
       "ratio": 0.0004,
-      "term": 6.278e-9
+      "term": 6.278e-09
      }
     },
     {
@@ -5512,7 +5663,7 @@
       "r_source_ohm": 0.0011,
       "noemer_ohm": 3.05,
       "ratio": 0.0004,
-      "term": 6.203e-9
+      "term": 6.203e-09
      }
     },
     {
@@ -5715,7 +5866,7 @@
       "r_source_ohm": 0.0011,
       "noemer_ohm": 3.05,
       "ratio": 0.0004,
-      "term": 6.141e-9
+      "term": 6.141e-09
      }
     },
     {
@@ -5744,7 +5895,7 @@
       "r_source_ohm": 0.0011,
       "noemer_ohm": 3.05,
       "ratio": 0.0004,
-      "term": 6.278e-9
+      "term": 6.278e-09
      }
     },
     {
@@ -5766,7 +5917,7 @@
       "r_source_ohm": 0.8515,
       "noemer_ohm": 19.31,
       "ratio": 0.0441,
-      "term": 0.00009722
+      "term": 9.722e-05
      },
      "term_op_R_e": {
       "hz": 51.5,
@@ -6092,7 +6243,7 @@
       "r_source_ohm": 0.0011,
       "noemer_ohm": 3.05,
       "ratio": 0.0003,
-      "term": 6.114e-9
+      "term": 6.114e-09
      }
     },
     {
@@ -6179,7 +6330,7 @@
       "r_source_ohm": 0.0011,
       "noemer_ohm": 3.05,
       "ratio": 0.0004,
-      "term": 6.239e-9
+      "term": 6.239e-09
      }
     },
     {
@@ -6237,7 +6388,7 @@
       "r_source_ohm": 0.0011,
       "noemer_ohm": 3.05,
       "ratio": 0.0003,
-      "term": 6.106e-9
+      "term": 6.106e-09
      }
     },
     {
@@ -7024,7 +7175,7 @@
      }
     },
     {
-     "netlist": "KAND_V2_1",
+     "netlist": "V45_KAND_1",
      "dissipatie_pct": 78.65,
      "grootste_R": "R5",
      "grootste_R_ohm": 4.27,
@@ -7053,7 +7204,7 @@
      }
     },
     {
-     "netlist": "KAND_V2_2",
+     "netlist": "V45_KAND_2",
      "dissipatie_pct": 75.23,
      "grootste_R": "R5",
      "grootste_R_ohm": 3.77,
@@ -7082,7 +7233,7 @@
      }
     },
     {
-     "netlist": "KAND_V2_3",
+     "netlist": "V45_KAND_3",
      "dissipatie_pct": 57.21,
      "grootste_R": "B·R9",
      "grootste_R_ohm": 5.76,
@@ -7111,7 +7262,7 @@
      }
     },
     {
-     "netlist": "KAND_V2_4",
+     "netlist": "V45_KAND_4",
      "dissipatie_pct": 65.12,
      "grootste_R": "B·R9",
      "grootste_R_ohm": 4.13,
@@ -7140,7 +7291,7 @@
      }
     },
     {
-     "netlist": "KAND_V2_5",
+     "netlist": "V45_KAND_5",
      "dissipatie_pct": 47.73,
      "grootste_R": "B·R9",
      "grootste_R_ohm": 5.26,
@@ -7169,7 +7320,7 @@
      }
     },
     {
-     "netlist": "KAND_V2_6",
+     "netlist": "V45_KAND_6",
      "dissipatie_pct": 55.78,
      "grootste_R": "B·R9",
      "grootste_R_ohm": 4.95,
@@ -7198,7 +7349,7 @@
      }
     },
     {
-     "netlist": "KAND_V2_7",
+     "netlist": "V45_KAND_7",
      "dissipatie_pct": 42.82,
      "grootste_R": "R7",
      "grootste_R_ohm": 2.35,
@@ -7224,6 +7375,122 @@
       "noemer_ohm": 3.05,
       "ratio": 0.8743,
       "term": 0.03822
+     }
+    },
+    {
+     "netlist": "KAND_V2_1",
+     "dissipatie_pct": 62.65,
+     "grootste_R": "R7",
+     "grootste_R_ohm": 4.12,
+     "grootste_R_W_bij_100W": 37.3,
+     "Qes_mult": 2.4,
+     "term_ketenraster": {
+      "hz": 640.2,
+      "r_source_ohm": 0.3419,
+      "noemer_ohm": 3.46,
+      "ratio": 0.0988,
+      "term": 0.0004877
+     },
+     "term_veiligheidsraster": {
+      "hz": 51.5,
+      "r_source_ohm": 4.2541,
+      "noemer_ohm": 19.31,
+      "ratio": 0.2203,
+      "term": 0.002427
+     },
+     "term_op_R_e": {
+      "hz": 51.5,
+      "r_source_ohm": 4.2541,
+      "noemer_ohm": 3.05,
+      "ratio": 1.3948,
+      "term": 0.09727
+     }
+    },
+    {
+     "netlist": "KAND_V2_2",
+     "dissipatie_pct": 64.2,
+     "grootste_R": "R6",
+     "grootste_R_ohm": 13.37,
+     "grootste_R_W_bij_100W": 24.37,
+     "Qes_mult": 2.11,
+     "term_ketenraster": {
+      "hz": 640.2,
+      "r_source_ohm": 3.4917,
+      "noemer_ohm": 3.46,
+      "ratio": 1.0087,
+      "term": 0.05088
+     },
+     "term_veiligheidsraster": {
+      "hz": 51.5,
+      "r_source_ohm": 3.3807,
+      "noemer_ohm": 19.31,
+      "ratio": 0.1751,
+      "term": 0.001532
+     },
+     "term_op_R_e": {
+      "hz": 51.5,
+      "r_source_ohm": 3.3807,
+      "noemer_ohm": 3.05,
+      "ratio": 1.1084,
+      "term": 0.06143
+     }
+    },
+    {
+     "netlist": "KAND_V2_3",
+     "dissipatie_pct": 61.68,
+     "grootste_R": "B·R9",
+     "grootste_R_ohm": 3.9,
+     "grootste_R_W_bij_100W": 30.38,
+     "Qes_mult": 2.06,
+     "term_ketenraster": {
+      "hz": 640.2,
+      "r_source_ohm": 3.24,
+      "noemer_ohm": 3.46,
+      "ratio": 0.936,
+      "term": 0.04381
+     },
+     "term_veiligheidsraster": {
+      "hz": 51.5,
+      "r_source_ohm": 3.2411,
+      "noemer_ohm": 19.31,
+      "ratio": 0.1678,
+      "term": 0.001409
+     },
+     "term_op_R_e": {
+      "hz": 51.5,
+      "r_source_ohm": 3.2411,
+      "noemer_ohm": 3.05,
+      "ratio": 1.0626,
+      "term": 0.05646
+     }
+    },
+    {
+     "netlist": "KAND_V2_4",
+     "dissipatie_pct": 60.39,
+     "grootste_R": "B·R9",
+     "grootste_R_ohm": 5.6,
+     "grootste_R_W_bij_100W": 29.69,
+     "Qes_mult": 2.4,
+     "term_ketenraster": {
+      "hz": 640.2,
+      "r_source_ohm": 4.27,
+      "noemer_ohm": 3.46,
+      "ratio": 1.2336,
+      "term": 0.07609
+     },
+     "term_veiligheidsraster": {
+      "hz": 51.5,
+      "r_source_ohm": 4.2711,
+      "noemer_ohm": 19.31,
+      "ratio": 0.2212,
+      "term": 0.002446
+     },
+     "term_op_R_e": {
+      "hz": 51.5,
+      "r_source_ohm": 4.2711,
+      "noemer_ohm": 3.05,
+      "ratio": 1.4004,
+      "term": 0.09805
      }
     }
    ]
@@ -8233,53 +8500,81 @@
      "opslingering_dB": -0.82
     },
     {
-     "netlist": "KAND_V2_1",
+     "netlist": "V45_KAND_1",
      "weg": "woofer",
      "extra_dB": 2.38,
      "lift_dB": 3.19,
      "opslingering_dB": -0.81
     },
     {
-     "netlist": "KAND_V2_2",
+     "netlist": "V45_KAND_2",
      "weg": "woofer",
      "extra_dB": 2.54,
      "lift_dB": 2.96,
      "opslingering_dB": -0.41
     },
     {
-     "netlist": "KAND_V2_3",
+     "netlist": "V45_KAND_3",
      "weg": "woofer",
      "extra_dB": 2.01,
      "lift_dB": 3.86,
      "opslingering_dB": -1.84
     },
     {
-     "netlist": "KAND_V2_4",
+     "netlist": "V45_KAND_4",
      "weg": "woofer",
      "extra_dB": 3.38,
      "lift_dB": 5.05,
      "opslingering_dB": -1.67
     },
     {
-     "netlist": "KAND_V2_5",
+     "netlist": "V45_KAND_5",
      "weg": "woofer",
      "extra_dB": 0.91,
      "lift_dB": 1.83,
      "opslingering_dB": -0.92
     },
     {
-     "netlist": "KAND_V2_6",
+     "netlist": "V45_KAND_6",
      "weg": "woofer",
      "extra_dB": 0.95,
      "lift_dB": 1.91,
      "opslingering_dB": -0.96
     },
     {
-     "netlist": "KAND_V2_7",
+     "netlist": "V45_KAND_7",
      "weg": "woofer",
      "extra_dB": 3.72,
      "lift_dB": 3.73,
      "opslingering_dB": -0.01
+    },
+    {
+     "netlist": "KAND_V2_1",
+     "weg": "woofer",
+     "extra_dB": 3.96,
+     "lift_dB": 4.95,
+     "opslingering_dB": -0.99
+    },
+    {
+     "netlist": "KAND_V2_2",
+     "weg": "woofer",
+     "extra_dB": 4.53,
+     "lift_dB": 4.33,
+     "opslingering_dB": 0.2
+    },
+    {
+     "netlist": "KAND_V2_3",
+     "weg": "woofer",
+     "extra_dB": 2.52,
+     "lift_dB": 4.28,
+     "opslingering_dB": -1.76
+    },
+    {
+     "netlist": "KAND_V2_4",
+     "weg": "woofer",
+     "extra_dB": 3.19,
+     "lift_dB": 5.05,
+     "opslingering_dB": -1.86
     }
    ]
   },
@@ -8402,36 +8697,24 @@
    "_": "V43 — WAT HET GEHERIJKTE BUDGET OP HET LEVENDE CORPUS DOET. De eis is sinds V43 1,4 dB op lfBump().resonantDb (gestelde_eisen.lf_opslingering_budget_dB), niet meer 2,5 dB op extraDb. Twee dingen horen hier te staan en zij zijn allebei afgeleid: hoeveel van het levende veld de eis haalt, en wat de drie REFERENTIEFILTERS van de ontwerper op dezelfde grootheid meten. Dat tweede is het bewijs dat de eis geen bouwbaar ontwerp uitsluit - de spiegel van de versterkervloer, die onder V42 juist ONTBRAK omdat alle drie de baselines de toenmalige eis overschreden.",
    "gesteld_budget_dB": 1.4,
    "grootheid": "lfBump().resonantDb",
-   "levend_corpus": 7,
+   "levend_corpus": 4,
    "eroverheen": 0,
    "per_netlist": [
     {
      "netlist": "KAND_V2_1",
-     "opslingering_dB": -0.81
+     "opslingering_dB": -0.99
     },
     {
      "netlist": "KAND_V2_2",
-     "opslingering_dB": -0.41
+     "opslingering_dB": 0.2
     },
     {
      "netlist": "KAND_V2_3",
-     "opslingering_dB": -1.84
+     "opslingering_dB": -1.76
     },
     {
      "netlist": "KAND_V2_4",
-     "opslingering_dB": -1.67
-    },
-    {
-     "netlist": "KAND_V2_5",
-     "opslingering_dB": -0.92
-    },
-    {
-     "netlist": "KAND_V2_6",
-     "opslingering_dB": -0.96
-    },
-    {
-     "netlist": "KAND_V2_7",
-     "opslingering_dB": -0.01
+     "opslingering_dB": -1.86
     }
    ],
    "referentiefilters": [
@@ -12104,7 +12387,7 @@
      }
     },
     {
-     "netlist": "KAND_V2_1",
+     "netlist": "V45_KAND_1",
      "paar": "woofer|mid",
      "mk_graden": 3.9,
      "punten": 182,
@@ -12121,7 +12404,7 @@
      }
     },
     {
-     "netlist": "KAND_V2_1",
+     "netlist": "V45_KAND_1",
      "paar": "mid|tweeter",
      "mk_graden": 4.22,
      "punten": 255,
@@ -12138,7 +12421,7 @@
      }
     },
     {
-     "netlist": "KAND_V2_2",
+     "netlist": "V45_KAND_2",
      "paar": "woofer|mid",
      "mk_graden": 5.3,
      "punten": 162,
@@ -12155,7 +12438,7 @@
      }
     },
     {
-     "netlist": "KAND_V2_2",
+     "netlist": "V45_KAND_2",
      "paar": "mid|tweeter",
      "mk_graden": 3.92,
      "punten": 255,
@@ -12172,7 +12455,7 @@
      }
     },
     {
-     "netlist": "KAND_V2_3",
+     "netlist": "V45_KAND_3",
      "paar": "woofer|mid",
      "mk_graden": 18.88,
      "punten": 167,
@@ -12189,7 +12472,7 @@
      }
     },
     {
-     "netlist": "KAND_V2_3",
+     "netlist": "V45_KAND_3",
      "paar": "mid|tweeter",
      "mk_graden": 4.3,
      "punten": 255,
@@ -12206,7 +12489,7 @@
      }
     },
     {
-     "netlist": "KAND_V2_4",
+     "netlist": "V45_KAND_4",
      "paar": "woofer|mid",
      "mk_graden": 19.78,
      "punten": 170,
@@ -12223,7 +12506,7 @@
      }
     },
     {
-     "netlist": "KAND_V2_4",
+     "netlist": "V45_KAND_4",
      "paar": "mid|tweeter",
      "mk_graden": 4.93,
      "punten": 266,
@@ -12240,7 +12523,7 @@
      }
     },
     {
-     "netlist": "KAND_V2_5",
+     "netlist": "V45_KAND_5",
      "paar": "woofer|mid",
      "mk_graden": 52.41,
      "punten": 210,
@@ -12257,7 +12540,7 @@
      }
     },
     {
-     "netlist": "KAND_V2_5",
+     "netlist": "V45_KAND_5",
      "paar": "mid|tweeter",
      "mk_graden": 9.58,
      "punten": 246,
@@ -12274,7 +12557,7 @@
      }
     },
     {
-     "netlist": "KAND_V2_6",
+     "netlist": "V45_KAND_6",
      "paar": "woofer|mid",
      "mk_graden": 60,
      "punten": 270,
@@ -12291,7 +12574,7 @@
      }
     },
     {
-     "netlist": "KAND_V2_6",
+     "netlist": "V45_KAND_6",
      "paar": "mid|tweeter",
      "mk_graden": 11.74,
      "punten": 260,
@@ -12308,7 +12591,7 @@
      }
     },
     {
-     "netlist": "KAND_V2_7",
+     "netlist": "V45_KAND_7",
      "paar": "woofer|mid",
      "mk_graden": 16.79,
      "punten": 171,
@@ -12325,7 +12608,7 @@
      }
     },
     {
-     "netlist": "KAND_V2_7",
+     "netlist": "V45_KAND_7",
      "paar": "mid|tweeter",
      "mk_graden": 18.05,
      "punten": 184,
@@ -12339,6 +12622,142 @@
       "validity": 776,
       "silence": 0,
       "level": 640
+     }
+    },
+    {
+     "netlist": "KAND_V2_1",
+     "paar": "woofer|mid",
+     "mk_graden": 6.67,
+     "punten": 182,
+     "band_Hz": [
+      396.85,
+      939.11
+     ],
+     "octaafgeknipt_graden": 7.54,
+     "overlapvenster_graden": 10.64,
+     "afgewezen": {
+      "validity": 776,
+      "silence": 0,
+      "level": 642
+     }
+    },
+    {
+     "netlist": "KAND_V2_1",
+     "paar": "mid|tweeter",
+     "mk_graden": 4.12,
+     "punten": 259,
+     "band_Hz": [
+      1152.36,
+      3933.88
+     ],
+     "octaafgeknipt_graden": 5.16,
+     "overlapvenster_graden": 4.12,
+     "afgewezen": {
+      "validity": 776,
+      "silence": 0,
+      "level": 565
+     }
+    },
+    {
+     "netlist": "KAND_V2_2",
+     "paar": "woofer|mid",
+     "mk_graden": 4.75,
+     "punten": 169,
+     "band_Hz": [
+      396.85,
+      882.77
+     ],
+     "octaafgeknipt_graden": 5.32,
+     "overlapvenster_graden": 7.41,
+     "afgewezen": {
+      "validity": 776,
+      "silence": 0,
+      "level": 655
+     }
+    },
+    {
+     "netlist": "KAND_V2_2",
+     "paar": "mid|tweeter",
+     "mk_graden": 4.25,
+     "punten": 258,
+     "band_Hz": [
+      1146.89,
+      3896.61
+     ],
+     "octaafgeknipt_graden": 5.56,
+     "overlapvenster_graden": 4.25,
+     "afgewezen": {
+      "validity": 776,
+      "silence": 0,
+      "level": 566
+     }
+    },
+    {
+     "netlist": "KAND_V2_3",
+     "paar": "woofer|mid",
+     "mk_graden": 19.21,
+     "punten": 169,
+     "band_Hz": [
+      396.85,
+      882.77
+     ],
+     "octaafgeknipt_graden": 18.97,
+     "overlapvenster_graden": 24.64,
+     "afgewezen": {
+      "validity": 776,
+      "silence": 0,
+      "level": 655
+     }
+    },
+    {
+     "netlist": "KAND_V2_3",
+     "paar": "mid|tweeter",
+     "mk_graden": 3.1,
+     "punten": 253,
+     "band_Hz": [
+      1185.74,
+      3933.88
+     ],
+     "octaafgeknipt_graden": 4.32,
+     "overlapvenster_graden": 3.1,
+     "afgewezen": {
+      "validity": 776,
+      "silence": 0,
+      "level": 571
+     }
+    },
+    {
+     "netlist": "KAND_V2_4",
+     "paar": "woofer|mid",
+     "mk_graden": 21.6,
+     "punten": 162,
+     "band_Hz": [
+      396.85,
+      853.85
+     ],
+     "octaafgeknipt_graden": 21.88,
+     "overlapvenster_graden": 21.24,
+     "afgewezen": {
+      "validity": 776,
+      "silence": 0,
+      "level": 662
+     }
+    },
+    {
+     "netlist": "KAND_V2_4",
+     "paar": "mid|tweeter",
+     "mk_graden": 3.99,
+     "punten": 258,
+     "band_Hz": [
+      1157.86,
+      3933.88
+     ],
+     "octaafgeknipt_graden": 4.96,
+     "overlapvenster_graden": 3.99,
+     "afgewezen": {
+      "validity": 776,
+      "silence": 0,
+      "level": 566
      }
     }
    ]
@@ -13514,7 +13933,7 @@
      "haalt_de_eis": true
     },
     {
-     "netlist": "KAND_V2_1",
+     "netlist": "V45_KAND_1",
      "weg": "woofer",
      "R_e_ohm": 3.05,
      "R_s_ohm": 2.12,
@@ -13525,7 +13944,7 @@
      "haalt_de_eis": true
     },
     {
-     "netlist": "KAND_V2_2",
+     "netlist": "V45_KAND_2",
      "weg": "woofer",
      "R_e_ohm": 3.05,
      "R_s_ohm": 1.93,
@@ -13536,13 +13955,90 @@
      "haalt_de_eis": true
     },
     {
-     "netlist": "KAND_V2_3",
+     "netlist": "V45_KAND_3",
      "weg": "woofer",
      "R_e_ohm": 3.05,
      "R_s_ohm": 2.76,
      "padweerstand_ohm": 2.76,
      "q_M_E": 1.91,
      "q_padweerstand": 1.9,
+     "plafond_ohm": 4.27,
+     "haalt_de_eis": true
+    },
+    {
+     "netlist": "V45_KAND_4",
+     "weg": "woofer",
+     "R_e_ohm": 3.05,
+     "R_s_ohm": 4.27,
+     "padweerstand_ohm": 4.27,
+     "q_M_E": 2.4,
+     "q_padweerstand": 2.4,
+     "plafond_ohm": 4.27,
+     "haalt_de_eis": true
+    },
+    {
+     "netlist": "V45_KAND_5",
+     "weg": "woofer",
+     "R_e_ohm": 3.05,
+     "R_s_ohm": 1.03,
+     "padweerstand_ohm": 1.03,
+     "q_M_E": 1.34,
+     "q_padweerstand": 1.34,
+     "plafond_ohm": 4.27,
+     "haalt_de_eis": true
+    },
+    {
+     "netlist": "V45_KAND_6",
+     "weg": "woofer",
+     "R_e_ohm": 3.05,
+     "R_s_ohm": 1.08,
+     "padweerstand_ohm": 1.08,
+     "q_M_E": 1.35,
+     "q_padweerstand": 1.35,
+     "plafond_ohm": 4.27,
+     "haalt_de_eis": true
+    },
+    {
+     "netlist": "V45_KAND_7",
+     "weg": "woofer",
+     "R_e_ohm": 3.05,
+     "R_s_ohm": 2.67,
+     "padweerstand_ohm": 2.62,
+     "q_M_E": 1.87,
+     "q_padweerstand": 1.86,
+     "plafond_ohm": 4.27,
+     "haalt_de_eis": true
+    },
+    {
+     "netlist": "KAND_V2_1",
+     "weg": "woofer",
+     "R_e_ohm": 3.05,
+     "R_s_ohm": 4.26,
+     "padweerstand_ohm": 4.12,
+     "q_M_E": 2.4,
+     "q_padweerstand": 2.35,
+     "plafond_ohm": 4.27,
+     "haalt_de_eis": true
+    },
+    {
+     "netlist": "KAND_V2_2",
+     "weg": "woofer",
+     "R_e_ohm": 3.05,
+     "R_s_ohm": 3.38,
+     "padweerstand_ohm": 3.29,
+     "q_M_E": 2.11,
+     "q_padweerstand": 2.08,
+     "plafond_ohm": 4.27,
+     "haalt_de_eis": true
+    },
+    {
+     "netlist": "KAND_V2_3",
+     "weg": "woofer",
+     "R_e_ohm": 3.05,
+     "R_s_ohm": 3.24,
+     "padweerstand_ohm": 3.24,
+     "q_M_E": 2.06,
+     "q_padweerstand": 2.06,
      "plafond_ohm": 4.27,
      "haalt_de_eis": true
     },
@@ -13554,39 +14050,6 @@
      "padweerstand_ohm": 4.27,
      "q_M_E": 2.4,
      "q_padweerstand": 2.4,
-     "plafond_ohm": 4.27,
-     "haalt_de_eis": true
-    },
-    {
-     "netlist": "KAND_V2_5",
-     "weg": "woofer",
-     "R_e_ohm": 3.05,
-     "R_s_ohm": 1.03,
-     "padweerstand_ohm": 1.03,
-     "q_M_E": 1.34,
-     "q_padweerstand": 1.34,
-     "plafond_ohm": 4.27,
-     "haalt_de_eis": true
-    },
-    {
-     "netlist": "KAND_V2_6",
-     "weg": "woofer",
-     "R_e_ohm": 3.05,
-     "R_s_ohm": 1.08,
-     "padweerstand_ohm": 1.08,
-     "q_M_E": 1.35,
-     "q_padweerstand": 1.35,
-     "plafond_ohm": 4.27,
-     "haalt_de_eis": true
-    },
-    {
-     "netlist": "KAND_V2_7",
-     "weg": "woofer",
-     "R_e_ohm": 3.05,
-     "R_s_ohm": 2.67,
-     "padweerstand_ohm": 2.62,
-     "q_M_E": 1.87,
-     "q_padweerstand": 1.86,
      "plafond_ohm": 4.27,
      "haalt_de_eis": true
     }
@@ -13634,6 +14097,1983 @@
      "naam": "V44_KAND_7",
      "was": "KAND_V2_7",
      "kandidaat": "woofer→mid 396.7 LR4 · mid→tweeter 1719 LR4"
+    }
+   ]
+  },
+  "v45_corpus": {
+   "_": "HET GEDATEERDE V45-CORPUS, met de kandidaat waar elke netlist vandaan kwam. Zelfde reden als de andere gedateerde corpora: de koppeling bestandsnaam ↔ kandidaat stond alleen in casus1_v2_herkomst.json, en dat bestand wordt door de volgende regeneratie overschreven. DOCUMENTATIE, geen acceptatiewaarde.",
+   "reden": "Bevroren vóór V47, toen de TWEETERBESCHERMING nog uitsluitend RELATIEF bewaakt werd: de volle-band-veiligheidspoort van de tuner vergeleek het beschermingstekort van het geleverde netwerk met dat van het ZAAD (protSqDb, speling 3 dB²) en er was geen enkele gestelde grens op M-C. Wat dat kostte is aan twee kanten gemeten. Zij weigerde vier van de vijftien kandidaten WHOLESALE — en terecht, want die tunes meten absoluut -12,29 en -6,82 dB op hun slechtst beschermde weg tegen HUIDIG's -25,08. Maar zij LIET twee netlists door die zij in dit corpus geleverd heeft, KAND_V2_5 op -14,38 dB en KAND_V2_6 op -15,10 dB, omdat hun zaad even slecht was: een regel die aan het zaad hangt bewaakt het toeval en niet de driver. Sinds V47 stelt casus 1 -25,0 dB (gestelde_eisen.tweeter_drive_op_fs_max_dB, de strengste waarde op een decimaal die HUIDIG nog toelaat) en vervangt die absolute poort de zaadvergelijking op de v2-route.",
+   "seed": 20260827,
+   "run_vingerafdruk": "engine=2.0.0-F1 estimators=6087f58a seed=20260827 budget=tuner starts=1 status=completed design=a7ccf830 measurements=e97d1bdc gates=77e69859 bounds=5465b825 tuning=9e0c0524 facts=dc57fb2c choices=1cfaa800",
+   "gegenereerd_op_commit": "16fbc101213f4a52a9e9a7646b53cc66b5947576",
+   "bevroren_op_commit": "11d3db972c8173c5532bbfa1f2e6713557ac2f6b",
+   "bestanden": [
+    {
+     "naam": "V45_KAND_1",
+     "was": "KAND_V2_1",
+     "kandidaat": "woofer→mid 548.5 LR4 · mid→tweeter 2283.5 LR4"
+    },
+    {
+     "naam": "V45_KAND_2",
+     "was": "KAND_V2_2",
+     "kandidaat": "woofer→mid 466.5 LR4 · mid→tweeter 2283.5 LR4"
+    },
+    {
+     "naam": "V45_KAND_3",
+     "was": "KAND_V2_3",
+     "kandidaat": "woofer→mid 396.7 LR4 · mid→tweeter 1981.2 LR4"
+    },
+    {
+     "naam": "V45_KAND_4",
+     "was": "KAND_V2_4",
+     "kandidaat": "woofer→mid 396.7 LR4 · mid→tweeter 2283.5 LR4"
+    },
+    {
+     "naam": "V45_KAND_5",
+     "was": "KAND_V2_5",
+     "kandidaat": "woofer→mid 396.7 LR4 · mid→tweeter 1294 LR4"
+    },
+    {
+     "naam": "V45_KAND_6",
+     "was": "KAND_V2_6",
+     "kandidaat": "woofer→mid 396.7 LR4 · mid→tweeter 1491.4 LR4"
+    },
+    {
+     "naam": "V45_KAND_7",
+     "was": "KAND_V2_7",
+     "kandidaat": "woofer→mid 466.5 LR4 · mid→tweeter 1981.2 LR4"
+    }
+   ],
+   "aandrijfuitzonderingen": [
+    {
+     "netlist": "V45_KAND_5",
+     "M_C_dB": -14.38,
+     "weg": "tweeter",
+     "gestelde_grens_dB": -25.0,
+     "reden": "GELEVERD onder de relatieve regel en veroordeeld door de eis die V47 stelt. De zaadvergelijking zag hem niet: zij integreert onder xo/3 en het kruispunt van deze netlist ligt op 1392 Hz, dus haar band stopt bij 464 Hz terwijl f_s van de tweeter op 924 Hz ligt. protSq meet hier exact 0,000 dB^2. Meetobject, GEEN ontwerp: mag niet gebouwd worden."
+    },
+    {
+     "netlist": "V45_KAND_6",
+     "M_C_dB": -15.1,
+     "weg": "tweeter",
+     "gestelde_grens_dB": -25.0,
+     "reden": "Zelfde geval, kruispunt 1426 Hz en dus een band tot 475 Hz; protSq 0,000 dB^2. Tien dB harder op de eigen resonantie dan HUIDIG. Meetobject, GEEN ontwerp: mag niet gebouwd worden."
+    }
+   ],
+   "_bij_de_aandrijfuitzonderingen": "HET V30-VLAGPATROON, op de aandrijfgrens in plaats van op de versterkervloer: BOEKHOUDING en geen vrijstelling. Deze twee netlists zijn door een v2-run GELEVERD terwijl zij de eis die sinds V47 geldt met tien dB overschrijden, en zij staan hier met naam, waarde en grens omdat een corpus dat zoiets draagt het hardop hoort te zeggen. Zij zijn de scherpste vorm van de V47-bevinding: de relatieve regel weigerde vier kandidaten die de eis echt schonden EN liet deze twee door, en de reden is niet dat hun zaad toevallig slecht was maar dat haar band de tweeterresonantie op deze casus structureel niet bereikt."
+  },
+  "v47_bescherming": {
+   "_": "V47 — M-C (A4: de aandrijfspanning op de eigen resonantie van een weg, tegen het dB-gemiddelde over haar doorlaatband) tegen de GESTELDE grens, op élke hoogdoorlaatbeschermde weg van élke bevroren netlist. De doorlaatband volgt uit de kruispunten die dit filter zelf oplevert (F1-conventie) en staat erbij, want een M-C zonder zijn band is geen getal (V15). Zie gestelde_eisen.tweeter_drive_op_fs_max_dB.",
+   "gestelde_grens_dB": -25,
+   "grootheid": "driveVoltageOnResonance().db, poort-id M-C",
+   "levend_corpus_wegen": 8,
+   "levend_corpus_eroverheen": 0,
+   "referentiefilters": [
+    {
+     "netlist": "HUIDIG",
+     "weg": "mid",
+     "f_s_hz": 89,
+     "doorlaatband_hz": "397-2250 Hz (derived from this filter's own crossings)",
+     "M_C_dB": -42.61,
+     "haalt_de_eis": true
+    },
+    {
+     "netlist": "HUIDIG",
+     "weg": "tweeter",
+     "f_s_hz": 926,
+     "doorlaatband_hz": "2250-20000 Hz (derived from this filter's own crossings)",
+     "M_C_dB": -25.08,
+     "haalt_de_eis": true
+    },
+    {
+     "netlist": "KAND_A",
+     "weg": "mid",
+     "f_s_hz": 89,
+     "doorlaatband_hz": "461-2503 Hz (derived from this filter's own crossings)",
+     "M_C_dB": -46.83,
+     "haalt_de_eis": true
+    },
+    {
+     "netlist": "KAND_A",
+     "weg": "tweeter",
+     "f_s_hz": 926,
+     "doorlaatband_hz": "2503-20000 Hz (derived from this filter's own crossings)",
+     "M_C_dB": -34.54,
+     "haalt_de_eis": true
+    },
+    {
+     "netlist": "KAND_B",
+     "weg": "mid",
+     "f_s_hz": 89,
+     "doorlaatband_hz": "447-2500 Hz (derived from this filter's own crossings)",
+     "M_C_dB": -34.17,
+     "haalt_de_eis": true
+    },
+    {
+     "netlist": "KAND_B",
+     "weg": "tweeter",
+     "f_s_hz": 926,
+     "doorlaatband_hz": "2500-20000 Hz (derived from this filter's own crossings)",
+     "M_C_dB": -35.18,
+     "haalt_de_eis": true
+    }
+   ],
+   "per_weg": [
+    {
+     "netlist": "HUIDIG",
+     "weg": "mid",
+     "f_s_hz": 89,
+     "doorlaatband_hz": "397-2250 Hz (derived from this filter's own crossings)",
+     "M_C_dB": -42.61,
+     "haalt_de_eis": true
+    },
+    {
+     "netlist": "HUIDIG",
+     "weg": "tweeter",
+     "f_s_hz": 926,
+     "doorlaatband_hz": "2250-20000 Hz (derived from this filter's own crossings)",
+     "M_C_dB": -25.08,
+     "haalt_de_eis": true
+    },
+    {
+     "netlist": "KAND_A",
+     "weg": "mid",
+     "f_s_hz": 89,
+     "doorlaatband_hz": "461-2503 Hz (derived from this filter's own crossings)",
+     "M_C_dB": -46.83,
+     "haalt_de_eis": true
+    },
+    {
+     "netlist": "KAND_A",
+     "weg": "tweeter",
+     "f_s_hz": 926,
+     "doorlaatband_hz": "2503-20000 Hz (derived from this filter's own crossings)",
+     "M_C_dB": -34.54,
+     "haalt_de_eis": true
+    },
+    {
+     "netlist": "KAND_B",
+     "weg": "mid",
+     "f_s_hz": 89,
+     "doorlaatband_hz": "447-2500 Hz (derived from this filter's own crossings)",
+     "M_C_dB": -34.17,
+     "haalt_de_eis": true
+    },
+    {
+     "netlist": "KAND_B",
+     "weg": "tweeter",
+     "f_s_hz": 926,
+     "doorlaatband_hz": "2500-20000 Hz (derived from this filter's own crossings)",
+     "M_C_dB": -35.18,
+     "haalt_de_eis": true
+    },
+    {
+     "netlist": "V28_KAND_1",
+     "weg": "mid",
+     "f_s_hz": 89,
+     "doorlaatband_hz": "495-3818 Hz (derived from this filter's own crossings)",
+     "M_C_dB": -29.66,
+     "haalt_de_eis": true
+    },
+    {
+     "netlist": "V28_KAND_1",
+     "weg": "tweeter",
+     "f_s_hz": 926,
+     "doorlaatband_hz": "3818-20000 Hz (derived from this filter's own crossings)",
+     "M_C_dB": -19.38,
+     "haalt_de_eis": false
+    },
+    {
+     "netlist": "V28_KAND_2",
+     "weg": "mid",
+     "f_s_hz": 89,
+     "doorlaatband_hz": "521-3949 Hz (derived from this filter's own crossings)",
+     "M_C_dB": -45.57,
+     "haalt_de_eis": true
+    },
+    {
+     "netlist": "V28_KAND_2",
+     "weg": "tweeter",
+     "f_s_hz": 926,
+     "doorlaatband_hz": "3949-20000 Hz (derived from this filter's own crossings)",
+     "M_C_dB": -22.87,
+     "haalt_de_eis": false
+    },
+    {
+     "netlist": "V28_KAND_3",
+     "weg": "mid",
+     "f_s_hz": 89,
+     "doorlaatband_hz": "397-2500 Hz (derived from this filter's own crossings)",
+     "M_C_dB": -52.34,
+     "haalt_de_eis": true
+    },
+    {
+     "netlist": "V28_KAND_3",
+     "weg": "tweeter",
+     "f_s_hz": 926,
+     "doorlaatband_hz": "2500-20000 Hz (derived from this filter's own crossings)",
+     "M_C_dB": -21.26,
+     "haalt_de_eis": false
+    },
+    {
+     "netlist": "V28_KAND_4",
+     "weg": "mid",
+     "f_s_hz": 89,
+     "doorlaatband_hz": "446-2620 Hz (derived from this filter's own crossings)",
+     "M_C_dB": -57.76,
+     "haalt_de_eis": true
+    },
+    {
+     "netlist": "V28_KAND_4",
+     "weg": "tweeter",
+     "f_s_hz": 926,
+     "doorlaatband_hz": "2620-20000 Hz (derived from this filter's own crossings)",
+     "M_C_dB": -21.41,
+     "haalt_de_eis": false
+    },
+    {
+     "netlist": "V28_KAND_5",
+     "weg": "mid",
+     "f_s_hz": 89,
+     "doorlaatband_hz": "397-1967 Hz (derived from this filter's own crossings)",
+     "M_C_dB": -49.5,
+     "haalt_de_eis": true
+    },
+    {
+     "netlist": "V28_KAND_5",
+     "weg": "tweeter",
+     "f_s_hz": 926,
+     "doorlaatband_hz": "1967-20000 Hz (derived from this filter's own crossings)",
+     "M_C_dB": -16.45,
+     "haalt_de_eis": false
+    },
+    {
+     "netlist": "V28_KAND_6",
+     "weg": "mid",
+     "f_s_hz": 89,
+     "doorlaatband_hz": "404-2284 Hz (derived from this filter's own crossings)",
+     "M_C_dB": -54.5,
+     "haalt_de_eis": true
+    },
+    {
+     "netlist": "V28_KAND_6",
+     "weg": "tweeter",
+     "f_s_hz": 926,
+     "doorlaatband_hz": "2284-20000 Hz (derived from this filter's own crossings)",
+     "M_C_dB": -19.12,
+     "haalt_de_eis": false
+    },
+    {
+     "netlist": "V28_KAND_7",
+     "weg": "mid",
+     "f_s_hz": 89,
+     "doorlaatband_hz": "397-1814 Hz (derived from this filter's own crossings)",
+     "M_C_dB": -48.38,
+     "haalt_de_eis": true
+    },
+    {
+     "netlist": "V28_KAND_7",
+     "weg": "tweeter",
+     "f_s_hz": 926,
+     "doorlaatband_hz": "1814-20000 Hz (derived from this filter's own crossings)",
+     "M_C_dB": -13.76,
+     "haalt_de_eis": false
+    },
+    {
+     "netlist": "V28_KAND_8",
+     "weg": "mid",
+     "f_s_hz": 89,
+     "doorlaatband_hz": "424-2036 Hz (derived from this filter's own crossings)",
+     "M_C_dB": -56.8,
+     "haalt_de_eis": true
+    },
+    {
+     "netlist": "V28_KAND_8",
+     "weg": "tweeter",
+     "f_s_hz": 926,
+     "doorlaatband_hz": "2036-20000 Hz (derived from this filter's own crossings)",
+     "M_C_dB": -16.52,
+     "haalt_de_eis": false
+    },
+    {
+     "netlist": "V28_KAND_9",
+     "weg": "mid",
+     "f_s_hz": 89,
+     "doorlaatband_hz": "413-1889 Hz (derived from this filter's own crossings)",
+     "M_C_dB": -56.02,
+     "haalt_de_eis": true
+    },
+    {
+     "netlist": "V28_KAND_9",
+     "weg": "tweeter",
+     "f_s_hz": 926,
+     "doorlaatband_hz": "1889-20000 Hz (derived from this filter's own crossings)",
+     "M_C_dB": -13.86,
+     "haalt_de_eis": false
+    },
+    {
+     "netlist": "V28_KAND_10",
+     "weg": "mid",
+     "f_s_hz": 89,
+     "doorlaatband_hz": "397-1791 Hz (derived from this filter's own crossings)",
+     "M_C_dB": -54.32,
+     "haalt_de_eis": true
+    },
+    {
+     "netlist": "V28_KAND_10",
+     "weg": "tweeter",
+     "f_s_hz": 926,
+     "doorlaatband_hz": "1791-20000 Hz (derived from this filter's own crossings)",
+     "M_C_dB": -12.3,
+     "haalt_de_eis": false
+    },
+    {
+     "netlist": "V30_KAND_1",
+     "weg": "mid",
+     "f_s_hz": 89,
+     "doorlaatband_hz": "397-1665 Hz (derived from this filter's own crossings)",
+     "M_C_dB": -39.09,
+     "haalt_de_eis": true
+    },
+    {
+     "netlist": "V30_KAND_1",
+     "weg": "tweeter",
+     "f_s_hz": 926,
+     "doorlaatband_hz": "1665-20000 Hz (derived from this filter's own crossings)",
+     "M_C_dB": -15.99,
+     "haalt_de_eis": false
+    },
+    {
+     "netlist": "V30_KAND_2",
+     "weg": "mid",
+     "f_s_hz": 89,
+     "doorlaatband_hz": "397-1854 Hz (derived from this filter's own crossings)",
+     "M_C_dB": -37.01,
+     "haalt_de_eis": true
+    },
+    {
+     "netlist": "V30_KAND_2",
+     "weg": "tweeter",
+     "f_s_hz": 926,
+     "doorlaatband_hz": "1854-20000 Hz (derived from this filter's own crossings)",
+     "M_C_dB": -19.56,
+     "haalt_de_eis": false
+    },
+    {
+     "netlist": "V30_KAND_3",
+     "weg": "mid",
+     "f_s_hz": 89,
+     "doorlaatband_hz": "508-2016 Hz (derived from this filter's own crossings)",
+     "M_C_dB": -42.27,
+     "haalt_de_eis": true
+    },
+    {
+     "netlist": "V30_KAND_3",
+     "weg": "tweeter",
+     "f_s_hz": 926,
+     "doorlaatband_hz": "2016-20000 Hz (derived from this filter's own crossings)",
+     "M_C_dB": -21.7,
+     "haalt_de_eis": false
+    },
+    {
+     "netlist": "V30_KAND_4",
+     "weg": "mid",
+     "f_s_hz": 89,
+     "doorlaatband_hz": "490-2247 Hz (derived from this filter's own crossings)",
+     "M_C_dB": -41.77,
+     "haalt_de_eis": true
+    },
+    {
+     "netlist": "V30_KAND_4",
+     "weg": "tweeter",
+     "f_s_hz": 926,
+     "doorlaatband_hz": "2247-20000 Hz (derived from this filter's own crossings)",
+     "M_C_dB": -23.91,
+     "haalt_de_eis": false
+    },
+    {
+     "netlist": "V30_KAND_5",
+     "weg": "mid",
+     "f_s_hz": 89,
+     "doorlaatband_hz": "553-2014 Hz (derived from this filter's own crossings)",
+     "M_C_dB": -18.2,
+     "haalt_de_eis": false
+    },
+    {
+     "netlist": "V30_KAND_5",
+     "weg": "tweeter",
+     "f_s_hz": 926,
+     "doorlaatband_hz": "2014-20000 Hz (derived from this filter's own crossings)",
+     "M_C_dB": -13.78,
+     "haalt_de_eis": false
+    },
+    {
+     "netlist": "V30_KAND_6",
+     "weg": "mid",
+     "f_s_hz": 89,
+     "doorlaatband_hz": "407-2241 Hz (derived from this filter's own crossings)",
+     "M_C_dB": -37.47,
+     "haalt_de_eis": true
+    },
+    {
+     "netlist": "V30_KAND_6",
+     "weg": "tweeter",
+     "f_s_hz": 926,
+     "doorlaatband_hz": "2241-20000 Hz (derived from this filter's own crossings)",
+     "M_C_dB": -23.24,
+     "haalt_de_eis": false
+    },
+    {
+     "netlist": "V30_KAND_7",
+     "weg": "mid",
+     "f_s_hz": 89,
+     "doorlaatband_hz": "606-1754 Hz (derived from this filter's own crossings)",
+     "M_C_dB": -41.47,
+     "haalt_de_eis": true
+    },
+    {
+     "netlist": "V30_KAND_7",
+     "weg": "tweeter",
+     "f_s_hz": 926,
+     "doorlaatband_hz": "1754-20000 Hz (derived from this filter's own crossings)",
+     "M_C_dB": -12.24,
+     "haalt_de_eis": false
+    },
+    {
+     "netlist": "V30_KAND_8",
+     "weg": "mid",
+     "f_s_hz": 89,
+     "doorlaatband_hz": "529-2283 Hz (derived from this filter's own crossings)",
+     "M_C_dB": -45.07,
+     "haalt_de_eis": true
+    },
+    {
+     "netlist": "V30_KAND_8",
+     "weg": "tweeter",
+     "f_s_hz": 926,
+     "doorlaatband_hz": "2283-20000 Hz (derived from this filter's own crossings)",
+     "M_C_dB": -23.81,
+     "haalt_de_eis": false
+    },
+    {
+     "netlist": "V30_KAND_9",
+     "weg": "mid",
+     "f_s_hz": 89,
+     "doorlaatband_hz": "553-1935 Hz (derived from this filter's own crossings)",
+     "M_C_dB": -17.95,
+     "haalt_de_eis": false
+    },
+    {
+     "netlist": "V30_KAND_9",
+     "weg": "tweeter",
+     "f_s_hz": 926,
+     "doorlaatband_hz": "1935-20000 Hz (derived from this filter's own crossings)",
+     "M_C_dB": -14.72,
+     "haalt_de_eis": false
+    },
+    {
+     "netlist": "V30_KAND_10",
+     "weg": "mid",
+     "f_s_hz": 89,
+     "doorlaatband_hz": "551-1390 Hz (derived from this filter's own crossings)",
+     "M_C_dB": -44.56,
+     "haalt_de_eis": true
+    },
+    {
+     "netlist": "V30_KAND_10",
+     "weg": "tweeter",
+     "f_s_hz": 926,
+     "doorlaatband_hz": "1390-20000 Hz (derived from this filter's own crossings)",
+     "M_C_dB": -12.52,
+     "haalt_de_eis": false
+    },
+    {
+     "netlist": "V32_KAND_1",
+     "weg": "mid",
+     "f_s_hz": 89,
+     "doorlaatband_hz": "508-2016 Hz (derived from this filter's own crossings)",
+     "M_C_dB": -42.27,
+     "haalt_de_eis": true
+    },
+    {
+     "netlist": "V32_KAND_1",
+     "weg": "tweeter",
+     "f_s_hz": 926,
+     "doorlaatband_hz": "2016-20000 Hz (derived from this filter's own crossings)",
+     "M_C_dB": -21.7,
+     "haalt_de_eis": false
+    },
+    {
+     "netlist": "V32_KAND_2",
+     "weg": "mid",
+     "f_s_hz": 89,
+     "doorlaatband_hz": "490-2247 Hz (derived from this filter's own crossings)",
+     "M_C_dB": -41.77,
+     "haalt_de_eis": true
+    },
+    {
+     "netlist": "V32_KAND_2",
+     "weg": "tweeter",
+     "f_s_hz": 926,
+     "doorlaatband_hz": "2247-20000 Hz (derived from this filter's own crossings)",
+     "M_C_dB": -23.91,
+     "haalt_de_eis": false
+    },
+    {
+     "netlist": "V32_KAND_3",
+     "weg": "mid",
+     "f_s_hz": 89,
+     "doorlaatband_hz": "553-2014 Hz (derived from this filter's own crossings)",
+     "M_C_dB": -18.2,
+     "haalt_de_eis": false
+    },
+    {
+     "netlist": "V32_KAND_3",
+     "weg": "tweeter",
+     "f_s_hz": 926,
+     "doorlaatband_hz": "2014-20000 Hz (derived from this filter's own crossings)",
+     "M_C_dB": -13.78,
+     "haalt_de_eis": false
+    },
+    {
+     "netlist": "V32_KAND_4",
+     "weg": "mid",
+     "f_s_hz": 89,
+     "doorlaatband_hz": "606-1754 Hz (derived from this filter's own crossings)",
+     "M_C_dB": -41.47,
+     "haalt_de_eis": true
+    },
+    {
+     "netlist": "V32_KAND_4",
+     "weg": "tweeter",
+     "f_s_hz": 926,
+     "doorlaatband_hz": "1754-20000 Hz (derived from this filter's own crossings)",
+     "M_C_dB": -12.24,
+     "haalt_de_eis": false
+    },
+    {
+     "netlist": "V32_KAND_5",
+     "weg": "mid",
+     "f_s_hz": 89,
+     "doorlaatband_hz": "529-2283 Hz (derived from this filter's own crossings)",
+     "M_C_dB": -45.07,
+     "haalt_de_eis": true
+    },
+    {
+     "netlist": "V32_KAND_5",
+     "weg": "tweeter",
+     "f_s_hz": 926,
+     "doorlaatband_hz": "2283-20000 Hz (derived from this filter's own crossings)",
+     "M_C_dB": -23.81,
+     "haalt_de_eis": false
+    },
+    {
+     "netlist": "V32_KAND_6",
+     "weg": "mid",
+     "f_s_hz": 89,
+     "doorlaatband_hz": "553-1935 Hz (derived from this filter's own crossings)",
+     "M_C_dB": -17.95,
+     "haalt_de_eis": false
+    },
+    {
+     "netlist": "V32_KAND_6",
+     "weg": "tweeter",
+     "f_s_hz": 926,
+     "doorlaatband_hz": "1935-20000 Hz (derived from this filter's own crossings)",
+     "M_C_dB": -14.72,
+     "haalt_de_eis": false
+    },
+    {
+     "netlist": "V32_KAND_7",
+     "weg": "mid",
+     "f_s_hz": 89,
+     "doorlaatband_hz": "551-1390 Hz (derived from this filter's own crossings)",
+     "M_C_dB": -44.56,
+     "haalt_de_eis": true
+    },
+    {
+     "netlist": "V32_KAND_7",
+     "weg": "tweeter",
+     "f_s_hz": 926,
+     "doorlaatband_hz": "1390-20000 Hz (derived from this filter's own crossings)",
+     "M_C_dB": -12.52,
+     "haalt_de_eis": false
+    },
+    {
+     "netlist": "V33_SWEEP_KAND_1",
+     "weg": "mid",
+     "f_s_hz": 89,
+     "doorlaatband_hz": "553-1510 Hz (derived from this filter's own crossings)",
+     "M_C_dB": -25.34,
+     "haalt_de_eis": true
+    },
+    {
+     "netlist": "V33_SWEEP_KAND_1",
+     "weg": "tweeter",
+     "f_s_hz": 926,
+     "doorlaatband_hz": "1510-20000 Hz (derived from this filter's own crossings)",
+     "M_C_dB": -15.21,
+     "haalt_de_eis": false
+    },
+    {
+     "netlist": "V33_SWEEP_KAND_2",
+     "weg": "mid",
+     "f_s_hz": 89,
+     "doorlaatband_hz": "553-1740 Hz (derived from this filter's own crossings)",
+     "M_C_dB": -26.75,
+     "haalt_de_eis": true
+    },
+    {
+     "netlist": "V33_SWEEP_KAND_2",
+     "weg": "tweeter",
+     "f_s_hz": 926,
+     "doorlaatband_hz": "1740-20000 Hz (derived from this filter's own crossings)",
+     "M_C_dB": -18.14,
+     "haalt_de_eis": false
+    },
+    {
+     "netlist": "V33_SWEEP_KAND_3",
+     "weg": "mid",
+     "f_s_hz": 89,
+     "doorlaatband_hz": "526-2046 Hz (derived from this filter's own crossings)",
+     "M_C_dB": -40.17,
+     "haalt_de_eis": true
+    },
+    {
+     "netlist": "V33_SWEEP_KAND_3",
+     "weg": "tweeter",
+     "f_s_hz": 926,
+     "doorlaatband_hz": "2046-20000 Hz (derived from this filter's own crossings)",
+     "M_C_dB": -21.19,
+     "haalt_de_eis": false
+    },
+    {
+     "netlist": "V33_SWEEP_KAND_4",
+     "weg": "mid",
+     "f_s_hz": 89,
+     "doorlaatband_hz": "553-2264 Hz (derived from this filter's own crossings)",
+     "M_C_dB": -22.7,
+     "haalt_de_eis": false
+    },
+    {
+     "netlist": "V33_SWEEP_KAND_4",
+     "weg": "tweeter",
+     "f_s_hz": 926,
+     "doorlaatband_hz": "2264-20000 Hz (derived from this filter's own crossings)",
+     "M_C_dB": -23.19,
+     "haalt_de_eis": false
+    },
+    {
+     "netlist": "V33_SWEEP_KAND_5",
+     "weg": "mid",
+     "f_s_hz": 89,
+     "doorlaatband_hz": "553-2000 Hz (derived from this filter's own crossings)",
+     "M_C_dB": -22.02,
+     "haalt_de_eis": false
+    },
+    {
+     "netlist": "V33_SWEEP_KAND_5",
+     "weg": "tweeter",
+     "f_s_hz": 926,
+     "doorlaatband_hz": "2000-20000 Hz (derived from this filter's own crossings)",
+     "M_C_dB": -20.8,
+     "haalt_de_eis": false
+    },
+    {
+     "netlist": "V33_SWEEP_KAND_6",
+     "weg": "mid",
+     "f_s_hz": 89,
+     "doorlaatband_hz": "397-1801 Hz (derived from this filter's own crossings)",
+     "M_C_dB": -36.5,
+     "haalt_de_eis": true
+    },
+    {
+     "netlist": "V33_SWEEP_KAND_6",
+     "weg": "tweeter",
+     "f_s_hz": 926,
+     "doorlaatband_hz": "1801-20000 Hz (derived from this filter's own crossings)",
+     "M_C_dB": -18.51,
+     "haalt_de_eis": false
+    },
+    {
+     "netlist": "V33_SWEEP_KAND_7",
+     "weg": "mid",
+     "f_s_hz": 89,
+     "doorlaatband_hz": "488-2255 Hz (derived from this filter's own crossings)",
+     "M_C_dB": -41.41,
+     "haalt_de_eis": true
+    },
+    {
+     "netlist": "V33_SWEEP_KAND_7",
+     "weg": "tweeter",
+     "f_s_hz": 926,
+     "doorlaatband_hz": "2255-20000 Hz (derived from this filter's own crossings)",
+     "M_C_dB": -23.67,
+     "haalt_de_eis": false
+    },
+    {
+     "netlist": "V33_SWEEP_KAND_8",
+     "weg": "mid",
+     "f_s_hz": 89,
+     "doorlaatband_hz": "526-1857 Hz (derived from this filter's own crossings)",
+     "M_C_dB": -41.28,
+     "haalt_de_eis": true
+    },
+    {
+     "netlist": "V33_SWEEP_KAND_8",
+     "weg": "tweeter",
+     "f_s_hz": 926,
+     "doorlaatband_hz": "1857-20000 Hz (derived from this filter's own crossings)",
+     "M_C_dB": -18.62,
+     "haalt_de_eis": false
+    },
+    {
+     "netlist": "V33_SWEEP_KAND_9",
+     "weg": "mid",
+     "f_s_hz": 89,
+     "doorlaatband_hz": "553-1452 Hz (derived from this filter's own crossings)",
+     "M_C_dB": -39.01,
+     "haalt_de_eis": true
+    },
+    {
+     "netlist": "V33_SWEEP_KAND_9",
+     "weg": "tweeter",
+     "f_s_hz": 926,
+     "doorlaatband_hz": "1452-20000 Hz (derived from this filter's own crossings)",
+     "M_C_dB": -14.98,
+     "haalt_de_eis": false
+    },
+    {
+     "netlist": "V33_SWEEP_KAND_10",
+     "weg": "mid",
+     "f_s_hz": 89,
+     "doorlaatband_hz": "414-2248 Hz (derived from this filter's own crossings)",
+     "M_C_dB": -41.3,
+     "haalt_de_eis": true
+    },
+    {
+     "netlist": "V33_SWEEP_KAND_10",
+     "weg": "tweeter",
+     "f_s_hz": 926,
+     "doorlaatband_hz": "2248-20000 Hz (derived from this filter's own crossings)",
+     "M_C_dB": -25.61,
+     "haalt_de_eis": true
+    },
+    {
+     "netlist": "V33_KAND_1",
+     "weg": "mid",
+     "f_s_hz": 89,
+     "doorlaatband_hz": "414-2263 Hz (derived from this filter's own crossings)",
+     "M_C_dB": -39.23,
+     "haalt_de_eis": true
+    },
+    {
+     "netlist": "V33_KAND_1",
+     "weg": "tweeter",
+     "f_s_hz": 926,
+     "doorlaatband_hz": "2263-20000 Hz (derived from this filter's own crossings)",
+     "M_C_dB": -23.59,
+     "haalt_de_eis": false
+    },
+    {
+     "netlist": "V33_KAND_2",
+     "weg": "mid",
+     "f_s_hz": 89,
+     "doorlaatband_hz": "397-1916 Hz (derived from this filter's own crossings)",
+     "M_C_dB": -37.55,
+     "haalt_de_eis": true
+    },
+    {
+     "netlist": "V33_KAND_2",
+     "weg": "tweeter",
+     "f_s_hz": 926,
+     "doorlaatband_hz": "1916-20000 Hz (derived from this filter's own crossings)",
+     "M_C_dB": -19.04,
+     "haalt_de_eis": false
+    },
+    {
+     "netlist": "V33_KAND_3",
+     "weg": "mid",
+     "f_s_hz": 89,
+     "doorlaatband_hz": "494-2022 Hz (derived from this filter's own crossings)",
+     "M_C_dB": -42.37,
+     "haalt_de_eis": true
+    },
+    {
+     "netlist": "V33_KAND_3",
+     "weg": "tweeter",
+     "f_s_hz": 926,
+     "doorlaatband_hz": "2022-20000 Hz (derived from this filter's own crossings)",
+     "M_C_dB": -22.03,
+     "haalt_de_eis": false
+    },
+    {
+     "netlist": "V33_KAND_4",
+     "weg": "mid",
+     "f_s_hz": 89,
+     "doorlaatband_hz": "426-2262 Hz (derived from this filter's own crossings)",
+     "M_C_dB": -41.36,
+     "haalt_de_eis": true
+    },
+    {
+     "netlist": "V33_KAND_4",
+     "weg": "tweeter",
+     "f_s_hz": 926,
+     "doorlaatband_hz": "2262-20000 Hz (derived from this filter's own crossings)",
+     "M_C_dB": -22.23,
+     "haalt_de_eis": false
+    },
+    {
+     "netlist": "V33_KAND_5",
+     "weg": "mid",
+     "f_s_hz": 89,
+     "doorlaatband_hz": "553-1868 Hz (derived from this filter's own crossings)",
+     "M_C_dB": -16.38,
+     "haalt_de_eis": false
+    },
+    {
+     "netlist": "V33_KAND_5",
+     "weg": "tweeter",
+     "f_s_hz": 926,
+     "doorlaatband_hz": "1868-20000 Hz (derived from this filter's own crossings)",
+     "M_C_dB": -18.42,
+     "haalt_de_eis": false
+    },
+    {
+     "netlist": "V33_KAND_6",
+     "weg": "mid",
+     "f_s_hz": 89,
+     "doorlaatband_hz": "415-1835 Hz (derived from this filter's own crossings)",
+     "M_C_dB": -41.72,
+     "haalt_de_eis": true
+    },
+    {
+     "netlist": "V33_KAND_6",
+     "weg": "tweeter",
+     "f_s_hz": 926,
+     "doorlaatband_hz": "1835-20000 Hz (derived from this filter's own crossings)",
+     "M_C_dB": -18.51,
+     "haalt_de_eis": false
+    },
+    {
+     "netlist": "V33_KAND_7",
+     "weg": "mid",
+     "f_s_hz": 89,
+     "doorlaatband_hz": "553-2038 Hz (derived from this filter's own crossings)",
+     "M_C_dB": -19.23,
+     "haalt_de_eis": false
+    },
+    {
+     "netlist": "V33_KAND_7",
+     "weg": "tweeter",
+     "f_s_hz": 926,
+     "doorlaatband_hz": "2038-20000 Hz (derived from this filter's own crossings)",
+     "M_C_dB": -19.42,
+     "haalt_de_eis": false
+    },
+    {
+     "netlist": "V33_KAND_8",
+     "weg": "mid",
+     "f_s_hz": 89,
+     "doorlaatband_hz": "547-1451 Hz (derived from this filter's own crossings)",
+     "M_C_dB": -40.02,
+     "haalt_de_eis": true
+    },
+    {
+     "netlist": "V33_KAND_8",
+     "weg": "tweeter",
+     "f_s_hz": 926,
+     "doorlaatband_hz": "1451-20000 Hz (derived from this filter's own crossings)",
+     "M_C_dB": -14.31,
+     "haalt_de_eis": false
+    },
+    {
+     "netlist": "V33_KAND_9",
+     "weg": "mid",
+     "f_s_hz": 89,
+     "doorlaatband_hz": "553-2353 Hz (derived from this filter's own crossings)",
+     "M_C_dB": -18.97,
+     "haalt_de_eis": false
+    },
+    {
+     "netlist": "V33_KAND_9",
+     "weg": "tweeter",
+     "f_s_hz": 926,
+     "doorlaatband_hz": "2353-20000 Hz (derived from this filter's own crossings)",
+     "M_C_dB": -25.01,
+     "haalt_de_eis": true
+    },
+    {
+     "netlist": "V33_KAND_10",
+     "weg": "mid",
+     "f_s_hz": 89,
+     "doorlaatband_hz": "437-3312 Hz (derived from this filter's own crossings)",
+     "M_C_dB": -36.3,
+     "haalt_de_eis": true
+    },
+    {
+     "netlist": "V34_KAND_1",
+     "weg": "mid",
+     "f_s_hz": 89,
+     "doorlaatband_hz": "553-1937 Hz (derived from this filter's own crossings)",
+     "M_C_dB": -23.76,
+     "haalt_de_eis": false
+    },
+    {
+     "netlist": "V34_KAND_1",
+     "weg": "tweeter",
+     "f_s_hz": 926,
+     "doorlaatband_hz": "1937-20000 Hz (derived from this filter's own crossings)",
+     "M_C_dB": -21.6,
+     "haalt_de_eis": false
+    },
+    {
+     "netlist": "V34_KAND_2",
+     "weg": "mid",
+     "f_s_hz": 89,
+     "doorlaatband_hz": "414-2263 Hz (derived from this filter's own crossings)",
+     "M_C_dB": -39.23,
+     "haalt_de_eis": true
+    },
+    {
+     "netlist": "V34_KAND_2",
+     "weg": "tweeter",
+     "f_s_hz": 926,
+     "doorlaatband_hz": "2263-20000 Hz (derived from this filter's own crossings)",
+     "M_C_dB": -23.59,
+     "haalt_de_eis": false
+    },
+    {
+     "netlist": "V34_KAND_3",
+     "weg": "mid",
+     "f_s_hz": 89,
+     "doorlaatband_hz": "397-1916 Hz (derived from this filter's own crossings)",
+     "M_C_dB": -37.55,
+     "haalt_de_eis": true
+    },
+    {
+     "netlist": "V34_KAND_3",
+     "weg": "tweeter",
+     "f_s_hz": 926,
+     "doorlaatband_hz": "1916-20000 Hz (derived from this filter's own crossings)",
+     "M_C_dB": -19.04,
+     "haalt_de_eis": false
+    },
+    {
+     "netlist": "V34_KAND_4",
+     "weg": "mid",
+     "f_s_hz": 89,
+     "doorlaatband_hz": "413-2021 Hz (derived from this filter's own crossings)",
+     "M_C_dB": -41.89,
+     "haalt_de_eis": true
+    },
+    {
+     "netlist": "V34_KAND_4",
+     "weg": "tweeter",
+     "f_s_hz": 926,
+     "doorlaatband_hz": "2021-20000 Hz (derived from this filter's own crossings)",
+     "M_C_dB": -22.26,
+     "haalt_de_eis": false
+    },
+    {
+     "netlist": "V34_KAND_5",
+     "weg": "mid",
+     "f_s_hz": 89,
+     "doorlaatband_hz": "539-1830 Hz (derived from this filter's own crossings)",
+     "M_C_dB": -42.17,
+     "haalt_de_eis": true
+    },
+    {
+     "netlist": "V34_KAND_5",
+     "weg": "tweeter",
+     "f_s_hz": 926,
+     "doorlaatband_hz": "1830-20000 Hz (derived from this filter's own crossings)",
+     "M_C_dB": -19.1,
+     "haalt_de_eis": false
+    },
+    {
+     "netlist": "V34_KAND_6",
+     "weg": "mid",
+     "f_s_hz": 89,
+     "doorlaatband_hz": "553-1811 Hz (derived from this filter's own crossings)",
+     "M_C_dB": -21.72,
+     "haalt_de_eis": false
+    },
+    {
+     "netlist": "V34_KAND_6",
+     "weg": "tweeter",
+     "f_s_hz": 926,
+     "doorlaatband_hz": "1811-20000 Hz (derived from this filter's own crossings)",
+     "M_C_dB": -15.96,
+     "haalt_de_eis": false
+    },
+    {
+     "netlist": "V34_KAND_7",
+     "weg": "mid",
+     "f_s_hz": 89,
+     "doorlaatband_hz": "421-2035 Hz (derived from this filter's own crossings)",
+     "M_C_dB": -42.38,
+     "haalt_de_eis": true
+    },
+    {
+     "netlist": "V34_KAND_7",
+     "weg": "tweeter",
+     "f_s_hz": 926,
+     "doorlaatband_hz": "2035-20000 Hz (derived from this filter's own crossings)",
+     "M_C_dB": -20.53,
+     "haalt_de_eis": false
+    },
+    {
+     "netlist": "V34_KAND_8",
+     "weg": "mid",
+     "f_s_hz": 89,
+     "doorlaatband_hz": "553-2336 Hz (derived from this filter's own crossings)",
+     "M_C_dB": -21.51,
+     "haalt_de_eis": false
+    },
+    {
+     "netlist": "V34_KAND_8",
+     "weg": "tweeter",
+     "f_s_hz": 926,
+     "doorlaatband_hz": "2336-20000 Hz (derived from this filter's own crossings)",
+     "M_C_dB": -25.07,
+     "haalt_de_eis": true
+    },
+    {
+     "netlist": "V34_KAND_9",
+     "weg": "mid",
+     "f_s_hz": 89,
+     "doorlaatband_hz": "496-2257 Hz (derived from this filter's own crossings)",
+     "M_C_dB": -41.79,
+     "haalt_de_eis": true
+    },
+    {
+     "netlist": "V34_KAND_9",
+     "weg": "tweeter",
+     "f_s_hz": 926,
+     "doorlaatband_hz": "2257-20000 Hz (derived from this filter's own crossings)",
+     "M_C_dB": -23.01,
+     "haalt_de_eis": false
+    },
+    {
+     "netlist": "V34_KAND_10",
+     "weg": "mid",
+     "f_s_hz": 89,
+     "doorlaatband_hz": "572-1388 Hz (derived from this filter's own crossings)",
+     "M_C_dB": -38.9,
+     "haalt_de_eis": true
+    },
+    {
+     "netlist": "V34_KAND_10",
+     "weg": "tweeter",
+     "f_s_hz": 926,
+     "doorlaatband_hz": "1388-20000 Hz (derived from this filter's own crossings)",
+     "M_C_dB": -14.15,
+     "haalt_de_eis": false
+    },
+    {
+     "netlist": "V37_KAND_1",
+     "weg": "mid",
+     "f_s_hz": 89,
+     "doorlaatband_hz": "414-2263 Hz (derived from this filter's own crossings)",
+     "M_C_dB": -39.23,
+     "haalt_de_eis": true
+    },
+    {
+     "netlist": "V37_KAND_1",
+     "weg": "tweeter",
+     "f_s_hz": 926,
+     "doorlaatband_hz": "2263-20000 Hz (derived from this filter's own crossings)",
+     "M_C_dB": -23.59,
+     "haalt_de_eis": false
+    },
+    {
+     "netlist": "V37_KAND_2",
+     "weg": "mid",
+     "f_s_hz": 89,
+     "doorlaatband_hz": "397-1916 Hz (derived from this filter's own crossings)",
+     "M_C_dB": -37.55,
+     "haalt_de_eis": true
+    },
+    {
+     "netlist": "V37_KAND_2",
+     "weg": "tweeter",
+     "f_s_hz": 926,
+     "doorlaatband_hz": "1916-20000 Hz (derived from this filter's own crossings)",
+     "M_C_dB": -19.04,
+     "haalt_de_eis": false
+    },
+    {
+     "netlist": "V37_KAND_3",
+     "weg": "mid",
+     "f_s_hz": 89,
+     "doorlaatband_hz": "553-1750 Hz (derived from this filter's own crossings)",
+     "M_C_dB": -19.83,
+     "haalt_de_eis": false
+    },
+    {
+     "netlist": "V37_KAND_3",
+     "weg": "tweeter",
+     "f_s_hz": 926,
+     "doorlaatband_hz": "1750-20000 Hz (derived from this filter's own crossings)",
+     "M_C_dB": -19.15,
+     "haalt_de_eis": false
+    },
+    {
+     "netlist": "V37_KAND_4",
+     "weg": "mid",
+     "f_s_hz": 89,
+     "doorlaatband_hz": "495-2319 Hz (derived from this filter's own crossings)",
+     "M_C_dB": -42.46,
+     "haalt_de_eis": true
+    },
+    {
+     "netlist": "V37_KAND_4",
+     "weg": "tweeter",
+     "f_s_hz": 926,
+     "doorlaatband_hz": "2319-20000 Hz (derived from this filter's own crossings)",
+     "M_C_dB": -24.19,
+     "haalt_de_eis": false
+    },
+    {
+     "netlist": "V37_KAND_5",
+     "weg": "mid",
+     "f_s_hz": 89,
+     "doorlaatband_hz": "553-2352 Hz (derived from this filter's own crossings)",
+     "M_C_dB": -21.01,
+     "haalt_de_eis": false
+    },
+    {
+     "netlist": "V37_KAND_5",
+     "weg": "tweeter",
+     "f_s_hz": 926,
+     "doorlaatband_hz": "2352-20000 Hz (derived from this filter's own crossings)",
+     "M_C_dB": -25.28,
+     "haalt_de_eis": true
+    },
+    {
+     "netlist": "V37_KAND_6",
+     "weg": "mid",
+     "f_s_hz": 89,
+     "doorlaatband_hz": "503-1843 Hz (derived from this filter's own crossings)",
+     "M_C_dB": -41.39,
+     "haalt_de_eis": true
+    },
+    {
+     "netlist": "V37_KAND_6",
+     "weg": "tweeter",
+     "f_s_hz": 926,
+     "doorlaatband_hz": "1843-20000 Hz (derived from this filter's own crossings)",
+     "M_C_dB": -18.63,
+     "haalt_de_eis": false
+    },
+    {
+     "netlist": "V37_KAND_7",
+     "weg": "mid",
+     "f_s_hz": 89,
+     "doorlaatband_hz": "553-2076 Hz (derived from this filter's own crossings)",
+     "M_C_dB": -18.3,
+     "haalt_de_eis": false
+    },
+    {
+     "netlist": "V37_KAND_7",
+     "weg": "tweeter",
+     "f_s_hz": 926,
+     "doorlaatband_hz": "2076-20000 Hz (derived from this filter's own crossings)",
+     "M_C_dB": -21.67,
+     "haalt_de_eis": false
+    },
+    {
+     "netlist": "V37_KAND_8",
+     "weg": "mid",
+     "f_s_hz": 89,
+     "doorlaatband_hz": "494-2034 Hz (derived from this filter's own crossings)",
+     "M_C_dB": -42.19,
+     "haalt_de_eis": true
+    },
+    {
+     "netlist": "V37_KAND_8",
+     "weg": "tweeter",
+     "f_s_hz": 926,
+     "doorlaatband_hz": "2034-20000 Hz (derived from this filter's own crossings)",
+     "M_C_dB": -21.56,
+     "haalt_de_eis": false
+    },
+    {
+     "netlist": "V37_KAND_9",
+     "weg": "mid",
+     "f_s_hz": 89,
+     "doorlaatband_hz": "552-1387 Hz (derived from this filter's own crossings)",
+     "M_C_dB": -41.12,
+     "haalt_de_eis": true
+    },
+    {
+     "netlist": "V37_KAND_9",
+     "weg": "tweeter",
+     "f_s_hz": 926,
+     "doorlaatband_hz": "1387-20000 Hz (derived from this filter's own crossings)",
+     "M_C_dB": -14.08,
+     "haalt_de_eis": false
+    },
+    {
+     "netlist": "V37_KAND_10",
+     "weg": "mid",
+     "f_s_hz": 89,
+     "doorlaatband_hz": "428-1990 Hz (derived from this filter's own crossings)",
+     "M_C_dB": -39.23,
+     "haalt_de_eis": true
+    },
+    {
+     "netlist": "V38FIX_KAND_1",
+     "weg": "mid",
+     "f_s_hz": 89,
+     "doorlaatband_hz": "520-2432 Hz (derived from this filter's own crossings)",
+     "M_C_dB": -33.5,
+     "haalt_de_eis": true
+    },
+    {
+     "netlist": "V38FIX_KAND_1",
+     "weg": "tweeter",
+     "f_s_hz": 926,
+     "doorlaatband_hz": "2432-20000 Hz (derived from this filter's own crossings)",
+     "M_C_dB": -26.3,
+     "haalt_de_eis": true
+    },
+    {
+     "netlist": "V38FIX_KAND_2",
+     "weg": "mid",
+     "f_s_hz": 89,
+     "doorlaatband_hz": "485-2367 Hz (derived from this filter's own crossings)",
+     "M_C_dB": -32.48,
+     "haalt_de_eis": true
+    },
+    {
+     "netlist": "V38FIX_KAND_2",
+     "weg": "tweeter",
+     "f_s_hz": 926,
+     "doorlaatband_hz": "2367-20000 Hz (derived from this filter's own crossings)",
+     "M_C_dB": -25.55,
+     "haalt_de_eis": true
+    },
+    {
+     "netlist": "V38FIX_KAND_3",
+     "weg": "mid",
+     "f_s_hz": 89,
+     "doorlaatband_hz": "524-2200 Hz (derived from this filter's own crossings)",
+     "M_C_dB": -33.96,
+     "haalt_de_eis": true
+    },
+    {
+     "netlist": "V38FIX_KAND_3",
+     "weg": "tweeter",
+     "f_s_hz": 926,
+     "doorlaatband_hz": "2200-20000 Hz (derived from this filter's own crossings)",
+     "M_C_dB": -23.89,
+     "haalt_de_eis": false
+    },
+    {
+     "netlist": "V38FIX_KAND_4",
+     "weg": "mid",
+     "f_s_hz": 89,
+     "doorlaatband_hz": "515-2356 Hz (derived from this filter's own crossings)",
+     "M_C_dB": -39.36,
+     "haalt_de_eis": true
+    },
+    {
+     "netlist": "V38FIX_KAND_4",
+     "weg": "tweeter",
+     "f_s_hz": 926,
+     "doorlaatband_hz": "2356-20000 Hz (derived from this filter's own crossings)",
+     "M_C_dB": -25.6,
+     "haalt_de_eis": true
+    },
+    {
+     "netlist": "V38FIX_KAND_5",
+     "weg": "mid",
+     "f_s_hz": 89,
+     "doorlaatband_hz": "526-1419 Hz (derived from this filter's own crossings)",
+     "M_C_dB": -9.78,
+     "haalt_de_eis": false
+    },
+    {
+     "netlist": "V38FIX_KAND_5",
+     "weg": "tweeter",
+     "f_s_hz": 926,
+     "doorlaatband_hz": "1419-20000 Hz (derived from this filter's own crossings)",
+     "M_C_dB": -13.06,
+     "haalt_de_eis": false
+    },
+    {
+     "netlist": "V38FIX_KAND_6",
+     "weg": "mid",
+     "f_s_hz": 89,
+     "doorlaatband_hz": "521-1882 Hz (derived from this filter's own crossings)",
+     "M_C_dB": -36.06,
+     "haalt_de_eis": true
+    },
+    {
+     "netlist": "V38FIX_KAND_6",
+     "weg": "tweeter",
+     "f_s_hz": 926,
+     "doorlaatband_hz": "1882-20000 Hz (derived from this filter's own crossings)",
+     "M_C_dB": -19.59,
+     "haalt_de_eis": false
+    },
+    {
+     "netlist": "V38FIX_KAND_7",
+     "weg": "mid",
+     "f_s_hz": 89,
+     "doorlaatband_hz": "456-1848 Hz (derived from this filter's own crossings)",
+     "M_C_dB": -36.62,
+     "haalt_de_eis": true
+    },
+    {
+     "netlist": "V38FIX_KAND_7",
+     "weg": "tweeter",
+     "f_s_hz": 926,
+     "doorlaatband_hz": "1848-20000 Hz (derived from this filter's own crossings)",
+     "M_C_dB": -18.56,
+     "haalt_de_eis": false
+    },
+    {
+     "netlist": "V38FIX_KAND_8",
+     "weg": "mid",
+     "f_s_hz": 89,
+     "doorlaatband_hz": "503-2080 Hz (derived from this filter's own crossings)",
+     "M_C_dB": -42.46,
+     "haalt_de_eis": true
+    },
+    {
+     "netlist": "V38FIX_KAND_8",
+     "weg": "tweeter",
+     "f_s_hz": 926,
+     "doorlaatband_hz": "2080-20000 Hz (derived from this filter's own crossings)",
+     "M_C_dB": -22.62,
+     "haalt_de_eis": false
+    },
+    {
+     "netlist": "V38FIX_KAND_9",
+     "weg": "mid",
+     "f_s_hz": 89,
+     "doorlaatband_hz": "413-2160 Hz (derived from this filter's own crossings)",
+     "M_C_dB": -38.61,
+     "haalt_de_eis": true
+    },
+    {
+     "netlist": "V38FIX_KAND_9",
+     "weg": "tweeter",
+     "f_s_hz": 926,
+     "doorlaatband_hz": "2160-20000 Hz (derived from this filter's own crossings)",
+     "M_C_dB": -22.46,
+     "haalt_de_eis": false
+    },
+    {
+     "netlist": "V38FIX_KAND_10",
+     "weg": "mid",
+     "f_s_hz": 89,
+     "doorlaatband_hz": "553-1821 Hz (derived from this filter's own crossings)",
+     "M_C_dB": -18.21,
+     "haalt_de_eis": false
+    },
+    {
+     "netlist": "V38FIX_KAND_10",
+     "weg": "tweeter",
+     "f_s_hz": 926,
+     "doorlaatband_hz": "1821-20000 Hz (derived from this filter's own crossings)",
+     "M_C_dB": -17.37,
+     "haalt_de_eis": false
+    },
+    {
+     "netlist": "V41_KAND_1",
+     "weg": "mid",
+     "f_s_hz": 89,
+     "doorlaatband_hz": "408-1947 Hz (derived from this filter's own crossings)",
+     "M_C_dB": -30.13,
+     "haalt_de_eis": true
+    },
+    {
+     "netlist": "V41_KAND_1",
+     "weg": "tweeter",
+     "f_s_hz": 926,
+     "doorlaatband_hz": "1947-20000 Hz (derived from this filter's own crossings)",
+     "M_C_dB": -23.35,
+     "haalt_de_eis": false
+    },
+    {
+     "netlist": "V41_KAND_2",
+     "weg": "mid",
+     "f_s_hz": 89,
+     "doorlaatband_hz": "434-1462 Hz (derived from this filter's own crossings)",
+     "M_C_dB": -29.56,
+     "haalt_de_eis": true
+    },
+    {
+     "netlist": "V41_KAND_2",
+     "weg": "tweeter",
+     "f_s_hz": 926,
+     "doorlaatband_hz": "1462-20000 Hz (derived from this filter's own crossings)",
+     "M_C_dB": -14.71,
+     "haalt_de_eis": false
+    },
+    {
+     "netlist": "V41_KAND_3",
+     "weg": "mid",
+     "f_s_hz": 89,
+     "doorlaatband_hz": "515-2062 Hz (derived from this filter's own crossings)",
+     "M_C_dB": -43.3,
+     "haalt_de_eis": true
+    },
+    {
+     "netlist": "V41_KAND_3",
+     "weg": "tweeter",
+     "f_s_hz": 926,
+     "doorlaatband_hz": "2062-20000 Hz (derived from this filter's own crossings)",
+     "M_C_dB": -27.7,
+     "haalt_de_eis": true
+    },
+    {
+     "netlist": "V41_KAND_4",
+     "weg": "mid",
+     "f_s_hz": 89,
+     "doorlaatband_hz": "413-2059 Hz (derived from this filter's own crossings)",
+     "M_C_dB": -36.37,
+     "haalt_de_eis": true
+    },
+    {
+     "netlist": "V41_KAND_4",
+     "weg": "tweeter",
+     "f_s_hz": 926,
+     "doorlaatband_hz": "2059-20000 Hz (derived from this filter's own crossings)",
+     "M_C_dB": -27.06,
+     "haalt_de_eis": true
+    },
+    {
+     "netlist": "V41_KAND_5",
+     "weg": "mid",
+     "f_s_hz": 89,
+     "doorlaatband_hz": "469-2105 Hz (derived from this filter's own crossings)",
+     "M_C_dB": -32.37,
+     "haalt_de_eis": true
+    },
+    {
+     "netlist": "V41_KAND_5",
+     "weg": "tweeter",
+     "f_s_hz": 926,
+     "doorlaatband_hz": "2105-20000 Hz (derived from this filter's own crossings)",
+     "M_C_dB": -26.81,
+     "haalt_de_eis": true
+    },
+    {
+     "netlist": "V41_KAND_6",
+     "weg": "mid",
+     "f_s_hz": 89,
+     "doorlaatband_hz": "434-1390 Hz (derived from this filter's own crossings)",
+     "M_C_dB": -30.08,
+     "haalt_de_eis": true
+    },
+    {
+     "netlist": "V41_KAND_6",
+     "weg": "tweeter",
+     "f_s_hz": 926,
+     "doorlaatband_hz": "1390-20000 Hz (derived from this filter's own crossings)",
+     "M_C_dB": -13.08,
+     "haalt_de_eis": false
+    },
+    {
+     "netlist": "V41_KAND_7",
+     "weg": "mid",
+     "f_s_hz": 89,
+     "doorlaatband_hz": "397-1763 Hz (derived from this filter's own crossings)",
+     "M_C_dB": -50.19,
+     "haalt_de_eis": true
+    },
+    {
+     "netlist": "V41_KAND_7",
+     "weg": "tweeter",
+     "f_s_hz": 926,
+     "doorlaatband_hz": "1763-20000 Hz (derived from this filter's own crossings)",
+     "M_C_dB": -18.18,
+     "haalt_de_eis": false
+    },
+    {
+     "netlist": "V41_KAND_8",
+     "weg": "mid",
+     "f_s_hz": 89,
+     "doorlaatband_hz": "406-1975 Hz (derived from this filter's own crossings)",
+     "M_C_dB": -37.62,
+     "haalt_de_eis": true
+    },
+    {
+     "netlist": "V41_KAND_8",
+     "weg": "tweeter",
+     "f_s_hz": 926,
+     "doorlaatband_hz": "1975-20000 Hz (derived from this filter's own crossings)",
+     "M_C_dB": -23.08,
+     "haalt_de_eis": false
+    },
+    {
+     "netlist": "V42_KAND_1",
+     "weg": "mid",
+     "f_s_hz": 89,
+     "doorlaatband_hz": "408-1947 Hz (derived from this filter's own crossings)",
+     "M_C_dB": -30.13,
+     "haalt_de_eis": true
+    },
+    {
+     "netlist": "V42_KAND_1",
+     "weg": "tweeter",
+     "f_s_hz": 926,
+     "doorlaatband_hz": "1947-20000 Hz (derived from this filter's own crossings)",
+     "M_C_dB": -23.35,
+     "haalt_de_eis": false
+    },
+    {
+     "netlist": "V42_KAND_2",
+     "weg": "mid",
+     "f_s_hz": 89,
+     "doorlaatband_hz": "515-2062 Hz (derived from this filter's own crossings)",
+     "M_C_dB": -43.3,
+     "haalt_de_eis": true
+    },
+    {
+     "netlist": "V42_KAND_2",
+     "weg": "tweeter",
+     "f_s_hz": 926,
+     "doorlaatband_hz": "2062-20000 Hz (derived from this filter's own crossings)",
+     "M_C_dB": -27.7,
+     "haalt_de_eis": true
+    },
+    {
+     "netlist": "V42_KAND_3",
+     "weg": "mid",
+     "f_s_hz": 89,
+     "doorlaatband_hz": "469-2105 Hz (derived from this filter's own crossings)",
+     "M_C_dB": -32.37,
+     "haalt_de_eis": true
+    },
+    {
+     "netlist": "V42_KAND_3",
+     "weg": "tweeter",
+     "f_s_hz": 926,
+     "doorlaatband_hz": "2105-20000 Hz (derived from this filter's own crossings)",
+     "M_C_dB": -26.81,
+     "haalt_de_eis": true
+    },
+    {
+     "netlist": "V42_KAND_4",
+     "weg": "mid",
+     "f_s_hz": 89,
+     "doorlaatband_hz": "406-1975 Hz (derived from this filter's own crossings)",
+     "M_C_dB": -37.62,
+     "haalt_de_eis": true
+    },
+    {
+     "netlist": "V42_KAND_4",
+     "weg": "tweeter",
+     "f_s_hz": 926,
+     "doorlaatband_hz": "1975-20000 Hz (derived from this filter's own crossings)",
+     "M_C_dB": -23.08,
+     "haalt_de_eis": false
+    },
+    {
+     "netlist": "V43_KAND_1",
+     "weg": "mid",
+     "f_s_hz": 89,
+     "doorlaatband_hz": "470-2088 Hz (derived from this filter's own crossings)",
+     "M_C_dB": -48.61,
+     "haalt_de_eis": true
+    },
+    {
+     "netlist": "V43_KAND_1",
+     "weg": "tweeter",
+     "f_s_hz": 926,
+     "doorlaatband_hz": "2088-20000 Hz (derived from this filter's own crossings)",
+     "M_C_dB": -27.42,
+     "haalt_de_eis": true
+    },
+    {
+     "netlist": "V43_KAND_2",
+     "weg": "mid",
+     "f_s_hz": 89,
+     "doorlaatband_hz": "534-2236 Hz (derived from this filter's own crossings)",
+     "M_C_dB": -34.79,
+     "haalt_de_eis": true
+    },
+    {
+     "netlist": "V43_KAND_2",
+     "weg": "tweeter",
+     "f_s_hz": 926,
+     "doorlaatband_hz": "2236-20000 Hz (derived from this filter's own crossings)",
+     "M_C_dB": -29.7,
+     "haalt_de_eis": true
+    },
+    {
+     "netlist": "V43_KAND_3",
+     "weg": "mid",
+     "f_s_hz": 89,
+     "doorlaatband_hz": "433-2257 Hz (derived from this filter's own crossings)",
+     "M_C_dB": -51.74,
+     "haalt_de_eis": true
+    },
+    {
+     "netlist": "V43_KAND_3",
+     "weg": "tweeter",
+     "f_s_hz": 926,
+     "doorlaatband_hz": "2257-20000 Hz (derived from this filter's own crossings)",
+     "M_C_dB": -28.67,
+     "haalt_de_eis": true
+    },
+    {
+     "netlist": "V43_KAND_4",
+     "weg": "mid",
+     "f_s_hz": 89,
+     "doorlaatband_hz": "434-2163 Hz (derived from this filter's own crossings)",
+     "M_C_dB": -51.51,
+     "haalt_de_eis": true
+    },
+    {
+     "netlist": "V43_KAND_4",
+     "weg": "tweeter",
+     "f_s_hz": 926,
+     "doorlaatband_hz": "2163-20000 Hz (derived from this filter's own crossings)",
+     "M_C_dB": -29.02,
+     "haalt_de_eis": true
+    },
+    {
+     "netlist": "V43_KAND_5",
+     "weg": "mid",
+     "f_s_hz": 89,
+     "doorlaatband_hz": "417-2120 Hz (derived from this filter's own crossings)",
+     "M_C_dB": -38.2,
+     "haalt_de_eis": true
+    },
+    {
+     "netlist": "V43_KAND_5",
+     "weg": "tweeter",
+     "f_s_hz": 926,
+     "doorlaatband_hz": "2120-20000 Hz (derived from this filter's own crossings)",
+     "M_C_dB": -21.74,
+     "haalt_de_eis": false
+    },
+    {
+     "netlist": "V43_KAND_6",
+     "weg": "mid",
+     "f_s_hz": 89,
+     "doorlaatband_hz": "501-1834 Hz (derived from this filter's own crossings)",
+     "M_C_dB": -43.18,
+     "haalt_de_eis": true
+    },
+    {
+     "netlist": "V43_KAND_6",
+     "weg": "tweeter",
+     "f_s_hz": 926,
+     "doorlaatband_hz": "1834-20000 Hz (derived from this filter's own crossings)",
+     "M_C_dB": -17.19,
+     "haalt_de_eis": false
+    },
+    {
+     "netlist": "V43_KAND_7",
+     "weg": "mid",
+     "f_s_hz": 89,
+     "doorlaatband_hz": "397-1848 Hz (derived from this filter's own crossings)",
+     "M_C_dB": -53.39,
+     "haalt_de_eis": true
+    },
+    {
+     "netlist": "V43_KAND_7",
+     "weg": "tweeter",
+     "f_s_hz": 926,
+     "doorlaatband_hz": "1848-20000 Hz (derived from this filter's own crossings)",
+     "M_C_dB": -18.79,
+     "haalt_de_eis": false
+    },
+    {
+     "netlist": "V44_KAND_1",
+     "weg": "mid",
+     "f_s_hz": 89,
+     "doorlaatband_hz": "554-2060 Hz (derived from this filter's own crossings)",
+     "M_C_dB": -52.4,
+     "haalt_de_eis": true
+    },
+    {
+     "netlist": "V44_KAND_1",
+     "weg": "tweeter",
+     "f_s_hz": 926,
+     "doorlaatband_hz": "2060-20000 Hz (derived from this filter's own crossings)",
+     "M_C_dB": -27.9,
+     "haalt_de_eis": true
+    },
+    {
+     "netlist": "V44_KAND_2",
+     "weg": "mid",
+     "f_s_hz": 89,
+     "doorlaatband_hz": "502-2219 Hz (derived from this filter's own crossings)",
+     "M_C_dB": -32.77,
+     "haalt_de_eis": true
+    },
+    {
+     "netlist": "V44_KAND_2",
+     "weg": "tweeter",
+     "f_s_hz": 926,
+     "doorlaatband_hz": "2219-20000 Hz (derived from this filter's own crossings)",
+     "M_C_dB": -27.76,
+     "haalt_de_eis": true
+    },
+    {
+     "netlist": "V44_KAND_3",
+     "weg": "mid",
+     "f_s_hz": 89,
+     "doorlaatband_hz": "435-2258 Hz (derived from this filter's own crossings)",
+     "M_C_dB": -54.26,
+     "haalt_de_eis": true
+    },
+    {
+     "netlist": "V44_KAND_3",
+     "weg": "tweeter",
+     "f_s_hz": 926,
+     "doorlaatband_hz": "2258-20000 Hz (derived from this filter's own crossings)",
+     "M_C_dB": -29.07,
+     "haalt_de_eis": true
+    },
+    {
+     "netlist": "V44_KAND_4",
+     "weg": "mid",
+     "f_s_hz": 89,
+     "doorlaatband_hz": "478-1595 Hz (derived from this filter's own crossings)",
+     "M_C_dB": -52.07,
+     "haalt_de_eis": true
+    },
+    {
+     "netlist": "V44_KAND_4",
+     "weg": "tweeter",
+     "f_s_hz": 926,
+     "doorlaatband_hz": "1595-20000 Hz (derived from this filter's own crossings)",
+     "M_C_dB": -14.91,
+     "haalt_de_eis": false
+    },
+    {
+     "netlist": "V44_KAND_5",
+     "weg": "mid",
+     "f_s_hz": 89,
+     "doorlaatband_hz": "437-2146 Hz (derived from this filter's own crossings)",
+     "M_C_dB": -55.44,
+     "haalt_de_eis": true
+    },
+    {
+     "netlist": "V44_KAND_5",
+     "weg": "tweeter",
+     "f_s_hz": 926,
+     "doorlaatband_hz": "2146-20000 Hz (derived from this filter's own crossings)",
+     "M_C_dB": -28.63,
+     "haalt_de_eis": true
+    },
+    {
+     "netlist": "V44_KAND_6",
+     "weg": "mid",
+     "f_s_hz": 89,
+     "doorlaatband_hz": "416-1925 Hz (derived from this filter's own crossings)",
+     "M_C_dB": -41.68,
+     "haalt_de_eis": true
+    },
+    {
+     "netlist": "V44_KAND_6",
+     "weg": "tweeter",
+     "f_s_hz": 926,
+     "doorlaatband_hz": "1925-20000 Hz (derived from this filter's own crossings)",
+     "M_C_dB": -23.81,
+     "haalt_de_eis": false
+    },
+    {
+     "netlist": "V44_KAND_7",
+     "weg": "mid",
+     "f_s_hz": 89,
+     "doorlaatband_hz": "397-1945 Hz (derived from this filter's own crossings)",
+     "M_C_dB": -40,
+     "haalt_de_eis": true
+    },
+    {
+     "netlist": "V44_KAND_7",
+     "weg": "tweeter",
+     "f_s_hz": 926,
+     "doorlaatband_hz": "1945-20000 Hz (derived from this filter's own crossings)",
+     "M_C_dB": -20.86,
+     "haalt_de_eis": false
+    },
+    {
+     "netlist": "V45_KAND_1",
+     "weg": "mid",
+     "f_s_hz": 89,
+     "doorlaatband_hz": "515-2049 Hz (derived from this filter's own crossings)",
+     "M_C_dB": -54.84,
+     "haalt_de_eis": true
+    },
+    {
+     "netlist": "V45_KAND_1",
+     "weg": "tweeter",
+     "f_s_hz": 926,
+     "doorlaatband_hz": "2049-20000 Hz (derived from this filter's own crossings)",
+     "M_C_dB": -29.01,
+     "haalt_de_eis": true
+    },
+    {
+     "netlist": "V45_KAND_2",
+     "weg": "mid",
+     "f_s_hz": 89,
+     "doorlaatband_hz": "489-2211 Hz (derived from this filter's own crossings)",
+     "M_C_dB": -35.87,
+     "haalt_de_eis": true
+    },
+    {
+     "netlist": "V45_KAND_2",
+     "weg": "tweeter",
+     "f_s_hz": 926,
+     "doorlaatband_hz": "2211-20000 Hz (derived from this filter's own crossings)",
+     "M_C_dB": -29.07,
+     "haalt_de_eis": true
+    },
+    {
+     "netlist": "V45_KAND_3",
+     "weg": "mid",
+     "f_s_hz": 89,
+     "doorlaatband_hz": "414-2151 Hz (derived from this filter's own crossings)",
+     "M_C_dB": -51.78,
+     "haalt_de_eis": true
+    },
+    {
+     "netlist": "V45_KAND_3",
+     "weg": "tweeter",
+     "f_s_hz": 926,
+     "doorlaatband_hz": "2151-20000 Hz (derived from this filter's own crossings)",
+     "M_C_dB": -28.2,
+     "haalt_de_eis": true
+    },
+    {
+     "netlist": "V45_KAND_4",
+     "weg": "mid",
+     "f_s_hz": 89,
+     "doorlaatband_hz": "457-2261 Hz (derived from this filter's own crossings)",
+     "M_C_dB": -52.6,
+     "haalt_de_eis": true
+    },
+    {
+     "netlist": "V45_KAND_4",
+     "weg": "tweeter",
+     "f_s_hz": 926,
+     "doorlaatband_hz": "2261-20000 Hz (derived from this filter's own crossings)",
+     "M_C_dB": -31.14,
+     "haalt_de_eis": true
+    },
+    {
+     "netlist": "V45_KAND_5",
+     "weg": "mid",
+     "f_s_hz": 89,
+     "doorlaatband_hz": "456-1392 Hz (derived from this filter's own crossings)",
+     "M_C_dB": -37.36,
+     "haalt_de_eis": true
+    },
+    {
+     "netlist": "V45_KAND_5",
+     "weg": "tweeter",
+     "f_s_hz": 926,
+     "doorlaatband_hz": "1392-20000 Hz (derived from this filter's own crossings)",
+     "M_C_dB": -14.38,
+     "haalt_de_eis": false
+    },
+    {
+     "netlist": "V45_KAND_6",
+     "weg": "mid",
+     "f_s_hz": 89,
+     "doorlaatband_hz": "455-1426 Hz (derived from this filter's own crossings)",
+     "M_C_dB": -40.59,
+     "haalt_de_eis": true
+    },
+    {
+     "netlist": "V45_KAND_6",
+     "weg": "tweeter",
+     "f_s_hz": 926,
+     "doorlaatband_hz": "1426-20000 Hz (derived from this filter's own crossings)",
+     "M_C_dB": -15.1,
+     "haalt_de_eis": false
+    },
+    {
+     "netlist": "V45_KAND_7",
+     "weg": "mid",
+     "f_s_hz": 89,
+     "doorlaatband_hz": "415-2004 Hz (derived from this filter's own crossings)",
+     "M_C_dB": -35.52,
+     "haalt_de_eis": true
+    },
+    {
+     "netlist": "V45_KAND_7",
+     "weg": "tweeter",
+     "f_s_hz": 926,
+     "doorlaatband_hz": "2004-20000 Hz (derived from this filter's own crossings)",
+     "M_C_dB": -25.54,
+     "haalt_de_eis": true
+    },
+    {
+     "netlist": "KAND_V2_1",
+     "weg": "mid",
+     "f_s_hz": 89,
+     "doorlaatband_hz": "526-2054 Hz (derived from this filter's own crossings)",
+     "M_C_dB": -46.91,
+     "haalt_de_eis": true
+    },
+    {
+     "netlist": "KAND_V2_1",
+     "weg": "tweeter",
+     "f_s_hz": 926,
+     "doorlaatband_hz": "2054-20000 Hz (derived from this filter's own crossings)",
+     "M_C_dB": -28.42,
+     "haalt_de_eis": true
+    },
+    {
+     "netlist": "KAND_V2_2",
+     "weg": "mid",
+     "f_s_hz": 89,
+     "doorlaatband_hz": "502-2105 Hz (derived from this filter's own crossings)",
+     "M_C_dB": -31.64,
+     "haalt_de_eis": true
+    },
+    {
+     "netlist": "KAND_V2_2",
+     "weg": "tweeter",
+     "f_s_hz": 926,
+     "doorlaatband_hz": "2105-20000 Hz (derived from this filter's own crossings)",
+     "M_C_dB": -28.14,
+     "haalt_de_eis": true
+    },
+    {
+     "netlist": "KAND_V2_3",
+     "weg": "mid",
+     "f_s_hz": 89,
+     "doorlaatband_hz": "435-2256 Hz (derived from this filter's own crossings)",
+     "M_C_dB": -55.65,
+     "haalt_de_eis": true
+    },
+    {
+     "netlist": "KAND_V2_3",
+     "weg": "tweeter",
+     "f_s_hz": 926,
+     "doorlaatband_hz": "2256-20000 Hz (derived from this filter's own crossings)",
+     "M_C_dB": -29.79,
+     "haalt_de_eis": true
+    },
+    {
+     "netlist": "KAND_V2_4",
+     "weg": "mid",
+     "f_s_hz": 89,
+     "doorlaatband_hz": "435-2143 Hz (derived from this filter's own crossings)",
+     "M_C_dB": -51.18,
+     "haalt_de_eis": true
+    },
+    {
+     "netlist": "KAND_V2_4",
+     "weg": "tweeter",
+     "f_s_hz": 926,
+     "doorlaatband_hz": "2143-20000 Hz (derived from this filter's own crossings)",
+     "M_C_dB": -27.75,
+     "haalt_de_eis": true
     }
    ]
   }

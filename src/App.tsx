@@ -6780,6 +6780,14 @@ export default function App() {
            * shortlist judges the window and the RMS against; handing the
            * declaration a different one would be the split V45 closed. */
           targetCurve: activeTargetCurve,
+          /* V47 — the design's stated drive limit, so the candidate can declare
+           * WHICH RULE forbids an unprotected upper driver. The limit itself
+           * does not travel here: it is a gate and it crosses in
+           * `v2.gates.maxDriveOnFsDb`, judged by the same machinery the panel
+           * reads. Absent leaves the historic seed comparison in force (P4). */
+          ...(engineV2Gates.maxDriveOnFsDb !== undefined
+            ? { driveOnFsLimitDb: engineV2Gates.maxDriveOnFsDb }
+            : {}),
         }),
         chainDeclaration: chainDecl,
         provenance: cand.provenance,

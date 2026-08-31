@@ -64,6 +64,7 @@ import {
   casus1Filter,
   casus1Geometry,
   casus1Manifest,
+  casus1MaxDriveOnFsDb,
   casus1QesMultiplierMax,
   casus1TargetCurve,
   loadGolden,
@@ -78,6 +79,7 @@ import {
   evaluateGates,
   freezeGateReference,
   type GateVerdict,
+  type MeasuredSweep,
 } from './optimizer/gates.ts';
 import {
   CASUS1_V2_BAND_HZ,
@@ -91,6 +93,7 @@ import { solveNetwork } from '../network.ts';
 import { crossoverToNetlist } from '../vxpNetwork.ts';
 import type { VxpCrossover } from '../parsers/vxp.ts';
 import { impedanceReferenceFrom } from './optimizer/impedanceReference.ts';
+import { protectionByPair } from './metrics/protection.ts';
 import { buildAnalysis } from './metrics/analysis.ts';
 import { epdr } from './metrics/electrical.ts';
 import { LF_BUMP_VERSION } from './metrics/acoustic.ts';
@@ -157,10 +160,18 @@ const EXCEPTIONS: { netlist: string; minZ_ohm: number | null; gestelde_vloer_ohm
  * states none arms nothing — which is what casus 1 looked like before the
  * floor was stated, and what this file is still able to describe.
  */
+const STATED_DRIVE_MAX_DB = casus1MaxDriveOnFsDb(golden);
+
 const BASE: ReportSettings = {
   amplifierPowerW: 100,
   orderByPair: { [ctcKey('woofer', 'mid')]: 4, [ctcKey('mid', 'tweeter')]: 4 },
   ...(STATED_FLOOR_OHM !== null ? { ampMinLoadOhm: STATED_FLOOR_OHM } : {}),
+  /* V47 — SPREAD, om precies dezelfde reden als de vloer erboven: een casus die
+   * niets stelt wapent niets. Hij hoort HIER en niet alleen in de v2-payload,
+   * want dit blok is wat het RAPPORT stelt, en een rapport dat de gestelde eis
+   * niet meekrijgt drukt `no limit set` af naast een netlist die er wél aan
+   * gehouden is. */
+  ...(STATED_DRIVE_MAX_DB !== null ? { maxDriveOnFsDb: STATED_DRIVE_MAX_DB } : {}),
 };
 
 /**
@@ -186,6 +197,39 @@ const report = (key: string, settings: ReportSettings = BASE) =>
     settings,
   });
 
+/**
+ * V47 — `protSqDb` van een bevroren netlist: de maat waarop de
+ * volle-band-veiligheidspoort tot V47 tegen het ZAAD vergeleek.
+ *
+ * De ANALYSE wordt hier opgebouwd zoals `report.ts` haar opbouwt, omdat het
+ * rapport zijn takoverdrachten niet doorgeeft; de MAAT komt uit
+ * `protectionByPair`, die de regel van de tuner aanroept. Eén implementatie van
+ * de grootheid — een controlekolom die haar nábouwt controleert niets.
+ */
+const protectionOf = (
+  key: string,
+  rep: ReturnType<typeof report>,
+): ReturnType<typeof protectionByPair> => {
+  const filter = casus1Filter(key, manifest, files, golden);
+  const sweeps: Record<string, MeasuredSweep> = {};
+  for (const [driver, z] of Object.entries(filter.driverZ)) {
+    sweeps[driver] = {
+      grid: z.freq,
+      magnitude: z.magnitude,
+      phaseDeg: z.phaseDeg,
+      validHz: [z.freq[0], z.freq[z.freq.length - 1]],
+    };
+  }
+  const ref = impedanceReferenceFrom(sweeps);
+  const empty = { pairs: [], sumSqDb: null };
+  if (!ref) return empty;
+  try {
+    return protectionByPair(buildAnalysis(filter.netlist, ref.grid, ref.driverZ), rep.crossings);
+  } catch {
+    return empty;
+  }
+};
+
 /** Every frozen netlist, judged once, reused by every case below. */
 const FIELD: {
   key: string;
@@ -207,6 +251,15 @@ const FIELD: {
    *  pass resolved; the path resistance beside it comes off the file. */
   lowestWay: string | null;
   lowestRsOhm: number | null;
+  /** V47 — de maat waarop de zaadvergelijking oordeelde, uit de ENE regel die
+   *  de tuner ook aanroept. `null` = het netwerk kon er niet op opgelost
+   *  worden; 0 is een MÉTING en betekent "geen tekort" (F0). */
+  protectionSqDb: number | null;
+  /** V47 — en PER PAAR, want de claim gaat over de tweeter en niet over de som. */
+  protectionPairs: { upper: string; xoHz: number; sqDb: number }[];
+  /** De akoestische kruispunten van deze netlist — de band van de maat
+   *  hierboven hangt eraan, dus zij horen ernaast leesbaar te zijn. */
+  crossingsHz: number[];
   /** V44 — M-K per handover, with both control columns, from the same report. */
   phase: {
     pair: string;
@@ -235,6 +288,9 @@ const FIELD: {
     lowestWay: r.driversLowToHigh[0] ?? null,
     lowestRsOhm:
       r.metrics.thevenin.find((t) => t.driver === r.driversLowToHigh[0])?.rsOhm ?? null,
+    protectionSqDb: protectionOf(key, r).sumSqDb,
+    protectionPairs: protectionOf(key, r).pairs,
+    crossingsHz: r.crossings.map((c) => c.fHz),
     phase: r.system.phaseTracking.map((p) => ({
       pair: `${p.lower}|${p.upper}`,
       mk: p.meanAbsDeg,
@@ -289,6 +345,10 @@ describe('every gate runs on every frozen netlist', () => {
     for (const { key, verdicts } of FIELD) {
       for (const v of verdicts) {
         if (v.gate === 'M-B/|Z|' && STATED_FLOOR_OHM !== null) continue;
+        // V47 — en sinds V47 stelt casus 1 er twee. M-A en M-B/EPDR blijven
+        // over, en dat is nog steeds een echte claim: zij rapporteren hun
+        // waarde en oordelen niets.
+        if (v.gate === 'M-C' && STATED_DRIVE_MAX_DB !== null) continue;
         expect(v.active, `${key}: ${v.gate} is armed and casus 1 states no limit for it`).toBe(
           false,
         );
@@ -1217,14 +1277,40 @@ describe('V36 — de dissipatie van élke bevroren netlist, en de noemer van de 
     const worstRe = Math.max(...record.per_netlist.map((r) => r.term_op_R_e?.term ?? 0));
     expect(worstPeak).toBeGreaterThan(0);
 
-    // VÓÓR: op geen enkele bevroren netlist haalde de term de drempel.
-    const worstPeakShare = Math.max(...shares.map((x) => x.peak));
-    const worstPeakAt = shares.find((x) => x.peak === worstPeakShare)!.netlist;
+    /* VÓÓR: op geen enkele netlist HAALDE de term de drempel — en sinds V47 is
+     * dat een claim over het corpus waarop V36 en V37 hem gemeten hebben, niet
+     * over het levende veld.
+     *
+     * DIT IS DE DERDE KEER DAT DEZELFDE VAL TOESLAAT en daarom staat zij hier
+     * uitgeschreven. De term wordt gedeeld door het OBJECTIEF van de netlist,
+     * en dat objectief krimpt naarmate het veld vlakker wordt. V41 mat het voor
+     * het eerst: de assert deelde toen door de kleinste RMS van het HELE
+     * casusboek en sloeg om toen V41 het veld vlakker maakte — niet doordat de
+     * term groeide maar doordat de noemer kromp. De reparatie (elke netlist
+     * tegen zijn EIGEN objectief) was juist en heeft het mechanisme niet
+     * weggenomen: bij V47 kromp het objectief opnieuw, want de gewapende
+     * M-C-poort liet alleen de vlakste ontwerpen door. `KAND_V2_1` draagt RMS
+     * 0,48 — het vlakste ontwerp van het boek — en komt daarmee op 1,05 %.
+     *
+     * DE DREMPEL WORDT NIET OPGEREKT, want dan zou zij precies zo ver
+     * meebewegen als nodig is om groen te blijven, en dat is geen bewaker meer.
+     * In plaats daarvan wordt de strikte claim geANKERD op de netlists waarop
+     * V36 en V37 hem deden — de gedateerde corpora, waar hij ONVERANDERD staat
+     * (grootste piek-aandeel 0,736 %) — en het levende veld krijgt de claim die
+     * V37 werkelijk draagt en die hieronder los geassert wordt: de twee noemers
+     * liggen een orde van grootte uit elkaar. Dezelfde herankering die V43 op
+     * `v42_bult_bevinding` toepaste, en om dezelfde reden: een bevinding die het
+     * LEVENDE corpus noemt wordt onwaar zodra dat corpus opnieuw wordt opgewekt,
+     * zonder dat er iets aan de bevinding mankeert. */
+    const dated = shares.filter((x) => !/^KAND_V2_\d+$/.test(x.netlist));
+    expect(dated.length, 'geen enkel gedateerd corpus draagt deze meting meer').toBeGreaterThan(50);
+    const worstPeakShare = Math.max(...dated.map((x) => x.peak));
+    const worstPeakAt = dated.find((x) => x.peak === worstPeakShare)!.netlist;
     expect(
       worstPeakShare,
       `op de piekhoogte haalt de term ${(worstPeakShare * 100).toFixed(2)} % van het eigen ` +
         `objectief van ${worstPeakAt} — die zou de uitdagingsdrempel dus wél kunnen halen, en ` +
-        'dan is V36\'s bevinding vervallen',
+        'dan is V36\'s bevinding vervallen op het corpus waarop zij gedaan is',
     ).toBeLessThan(CHALLENGE_FRACTION);
     // NÁ: op R_e haalt hij hem, en dus kan hij voor het eerst iets beslissen.
     const bestReShare = Math.max(...shares.map((x) => x.re));
@@ -1233,6 +1319,21 @@ describe('V36 — de dissipatie van élke bevroren netlist, en de noemer van de 
       `op R_e haalt de term maar ${(bestReShare * 100).toFixed(2)} % — dan heeft V37 ` +
         'de term niet groot genoeg gemaakt om te sturen en is de entry niet waar',
     ).toBeGreaterThan(CHALLENGE_FRACTION);
+
+    /* EN DE CLAIM DIE V37 WERKELIJK DRAAGT, op ÉLKE netlist en dus ook op het
+     * levende veld: welke noemer je ook kiest, zij liggen een orde van grootte
+     * uit elkaar. Dat is wat "de term is op de piek te klein om te sturen"
+     * betekent zodra het objectief zelf een bewegend doel blijkt, en het is de
+     * vorm die niet stil kan verouderen wanneer het veld vlakker wordt. */
+    for (const x of shares) {
+      if (x.peak <= 0) continue;
+      expect(
+        x.re / x.peak,
+        `${x.netlist}: R_e-aandeel ${(x.re * 100).toFixed(2)} % tegen piek-aandeel ` +
+          `${(x.peak * 100).toFixed(2)} % — geen orde van grootte ertussen, en dan is het ` +
+          'verschil tussen de twee noemers geen verschil meer dat iets beslist',
+      ).toBeGreaterThan(10);
+    }
 
     /* ...en het verschil tussen die twee is precies het KWADRAAT van de factor
      * tussen de twee noemers. Afgeleid uit de opgeschreven noemers zelf, zodat
@@ -2172,6 +2273,218 @@ describe('V45 — the delivered network is tested against the stated LF budget',
         `${f.key} exceeds the stated budget on the DELIVERED network — the A5d.6 ceiling was ` +
           'solved at the seed\'s path resistance and no longer describes what was built',
       ).toBeLessThanOrEqual(BUDGET_DB);
+    }
+  });
+});
+
+describe('V47 — the stated drive limit on a driver\'s own resonance', () => {
+  const CEILING_DB = STATED_DRIVE_MAX_DB;
+  const TOL_DB_V47 = (golden as unknown as { toleranties: { dB: number } }).toleranties.dB;
+
+  const RECORD = (golden.manifest_en_geometrie as unknown as {
+    v47_bescherming?: {
+      gestelde_grens_dB: number | null;
+      per_weg: {
+        netlist: string;
+        weg: string;
+        f_s_hz: number | null;
+        doorlaatband_hz: string | null;
+        M_C_dB: number | null;
+        haalt_de_eis: boolean | null;
+      }[];
+    };
+  }).v47_bescherming;
+
+  /** Every M-C verdict on the whole casebook — one row per protected way. */
+  const DRIVE = FIELD.flatMap((f) =>
+    f.verdicts
+      .filter((v) => v.gate === 'M-C' && v.value !== null)
+      .map((v) => ({ key: f.key, driver: v.subject, db: v.value as number, limit: v.limit })),
+  );
+
+  it('the limit comes from the case book, not from this file', () => {
+    expect(CEILING_DB, 'casus 1 no longer states a drive limit').not.toBeNull();
+    const stated = (golden.manifest_en_geometrie as unknown as {
+      gestelde_eisen: {
+        tweeter_drive_op_fs_max_dB: number;
+        tweeter_drive_op_fs_max_motivering: string;
+      };
+    }).gestelde_eisen;
+    expect(CEILING_DB).toBe(stated.tweeter_drive_op_fs_max_dB);
+    // A stated number without its reason is V15 one layer up.
+    expect(stated.tweeter_drive_op_fs_max_motivering.length).toBeGreaterThan(40);
+  });
+
+  it('M-C is ARMED on every protected way of every frozen netlist', () => {
+    expect(DRIVE.length).toBeGreaterThan(0);
+    for (const d of DRIVE) {
+      expect(d.limit, `${d.key}/${d.driver}: the stated limit did not reach the gate`).toBe(
+        CEILING_DB,
+      );
+    }
+    /* And it really is per WAY rather than per netlist: on this casus the mid
+     * is high-pass protected as well, so the requirement — derived from a
+     * tweeter measurement — judges a second driver. A block that only looked at
+     * the tweeter would hide that. */
+    expect(new Set(DRIVE.map((d) => d.driver)).size).toBeGreaterThan(1);
+  });
+
+  it("it is REACHABLE, and the designer's own filter is the proof", () => {
+    /* THE SAME PAIR OF FACTS the amplifier floor, the LF budget and the Q_es
+     * ceiling each carry, and the V42 mistake is why it comes first: HUIDIG is
+     * the approved design and the requirement is derived FROM it, so if it
+     * failed here the number would have been mis-rounded. */
+    for (const key of V1_BASELINES) {
+      const rows = DRIVE.filter((d) => d.key === key);
+      expect(rows.length, `${key} has no M-C verdict at all`).toBeGreaterThan(0);
+      for (const d of rows) {
+        expect(d.db, `${key}/${d.driver} exceeds the stated limit`).toBeLessThanOrEqual(
+          CEILING_DB!,
+        );
+      }
+    }
+    /* HUIDIG IS THE MEASURE, and the rounding is asserted rather than trusted:
+     * the limit is the strictest single decimal it still clears, so one tenth
+     * stricter would condemn it. */
+    const huidig = Math.max(...DRIVE.filter((d) => d.key === 'HUIDIG').map((d) => d.db));
+    expect(huidig).toBeLessThanOrEqual(CEILING_DB!);
+    expect(huidig).toBeGreaterThan(CEILING_DB! - 0.1);
+  });
+
+  it('it is NOT VACUOUS: netlists in the casebook exceed it', () => {
+    /* A requirement nothing can fail describes rather than binds. The dated
+     * corpora were frozen before it existed and are exactly where the evidence
+     * lives — the same role they play for the floor and the LF budget. */
+    const over = DRIVE.filter((d) => d.db > CEILING_DB!);
+    expect(over.length, 'no frozen netlist exceeds the limit — it is untestable').toBeGreaterThan(0);
+  });
+
+  it('the recorded block reproduces from a fresh measurement, per way', () => {
+    /* Same discipline as `v36_dissipatie`, `v43_ontleding`, `v44_fasematen` and
+     * `v45_qes`: the derived block is re-measured rather than trusted. */
+    expect(RECORD, 'the recorder wrote no v47_bescherming block').toBeDefined();
+    expect(RECORD!.gestelde_grens_dB).toBe(CEILING_DB);
+    expect(RECORD!.per_weg.length).toBe(DRIVE.length);
+    for (const row of RECORD!.per_weg) {
+      const d = DRIVE.find((x) => x.key === row.netlist && x.driver === row.weg);
+      expect(d, `${row.netlist}/${row.weg} is recorded but not in the field`).toBeDefined();
+      expect(
+        Math.abs(row.M_C_dB! - d!.db),
+        `${row.netlist}/${row.weg}: recorded ${row.M_C_dB} against a fresh ${d!.db}`,
+      ).toBeLessThanOrEqual(TOL_DB_V47);
+      expect(row.haalt_de_eis).toBe(d!.db <= CEILING_DB!);
+      // A band without its parameters is not a measurement (V15).
+      expect(row.doorlaatband_hz, `${row.netlist}/${row.weg}: no passband recorded`).toBeTruthy();
+    }
+  });
+
+  it('the two netlists it condemns are NAMED in the dated block — bookkeeping, not a waiver', () => {
+    /* THE V30 FLAG PATTERN, on this requirement instead of on the floor. These
+     * two were DELIVERED by a v2 run and they miss the requirement by ten dB;
+     * a corpus that carries such a thing has to say so with name, value and
+     * limit. Read from the case book rather than listed here, so the test
+     * cannot drift from the record a human reads — and asserted against a FRESH
+     * measurement, so the entry cannot quietly become untrue. */
+    const flagged = (golden.manifest_en_geometrie as unknown as {
+      v45_corpus?: {
+        aandrijfuitzonderingen?: { netlist: string; M_C_dB: number; gestelde_grens_dB: number }[];
+      };
+    }).v45_corpus?.aandrijfuitzonderingen ?? [];
+    expect(flagged.length, 'the dated V45 block names no drive exception').toBeGreaterThan(0);
+    for (const f of flagged) {
+      expect(f.gestelde_grens_dB).toBe(CEILING_DB);
+      const rows = DRIVE.filter((d) => d.key === f.netlist);
+      expect(rows.length, `${f.netlist} is flagged but carries no M-C verdict`).toBeGreaterThan(0);
+      const worst = Math.max(...rows.map((d) => d.db));
+      expect(
+        Math.abs(worst - f.M_C_dB),
+        `${f.netlist}: recorded ${f.M_C_dB} against a fresh ${worst}`,
+      ).toBeLessThanOrEqual(TOL_DB_V47);
+      // ...and it really does miss, or the flag is describing something else.
+      expect(worst).toBeGreaterThan(CEILING_DB!);
+    }
+    /* AND EVERY DATED NETLIST THAT MISSES IT IS EITHER FLAGGED OR PREDATES THE
+     * CORPUS THAT FLAGS IT. The claim is narrow on purpose: the older corpora
+     * were frozen long before this requirement existed and carry no such list,
+     * so demanding one there would be a waiver list the size of the casebook —
+     * the very thing this project refuses. What must hold is that the corpus
+     * this requirement was measured AGAINST accounts for its own failures. */
+    const v45Missing = DRIVE.filter((d) => /^V45_KAND_\d+$/.test(d.key) && d.db > CEILING_DB!);
+    for (const d of v45Missing) {
+      expect(
+        flagged.map((f) => f.netlist),
+        `${d.key} misses the requirement and is not named in the dated block`,
+      ).toContain(d.key);
+    }
+  });
+
+  it('the relative rule it replaces never once saw a TWEETER resonance problem', () => {
+    /* THE COVERAGE QUESTION, as a measurement rather than an assumption, and it
+     * is the reason `protectionDeficit.ts` has a second reader.
+     *
+     * The seed comparison read `protSqDb`: the mean squared deficit above the
+     * protection floor, integrated over the band BELOW `xoF/3`, summed over the
+     * pairs. M-C reads one point — the driver's own resonance. Whether the
+     * requirement covers what the rule covered is therefore a MEASUREMENT, and
+     * this is it.
+     *
+     * TWO EARLIER VERSIONS OF THIS BLOCK WERE TOO BROAD AND THE DATA KILLED
+     * BOTH, which is why the claim below is the narrow one it is. The first
+     * said no netlist in the casebook crosses above `3·f_s` (three do). The
+     * second said no netlist that MISSES the requirement crosses that high (two
+     * do: `V28_KAND_1` at 3818 Hz and `V28_KAND_2` at 3949). What survived both
+     * is stronger than either, because it needs no band arithmetic at all: on
+     * the TWEETER pair the deficit is zero on every frozen netlist in the book
+     * — including those two, whose band does reach the resonance, and including
+     * the pair that misses the requirement by ten dB. */
+    const tweeterPairs = FIELD.flatMap((f) =>
+      f.protectionPairs.filter((p) => p.upper === 'tweeter').map((p) => ({ key: f.key, ...p })),
+    );
+    expect(tweeterPairs.length, 'no frozen netlist yields a tweeter pair at all').toBeGreaterThan(50);
+    for (const p of tweeterPairs) {
+      expect(
+        p.sqDb,
+        `${p.key}: the relative rule reads ${p.sqDb} on the tweeter pair — if that is no longer ` +
+          'zero it has started to see something there, and V47\'s finding needs remeasuring',
+      ).toBe(0);
+    }
+
+    /* AND IT IS NOT INERT EVERYWHERE, which is what makes the line above a
+     * finding rather than a broken reader: elsewhere in the casebook it DOES
+     * read above zero. Those readings come from a pair whose upper way is not
+     * the tweeter — the mid, whose own resonance at 88.8 Hz falls inside every
+     * W-M band this field carries. That is what the rule was actually measuring
+     * when it refused four candidates with a sentence about the tweeter. */
+    const nonZero = FIELD.flatMap((f) =>
+      f.protectionPairs.filter((p) => p.sqDb > 0).map((p) => ({ key: f.key, ...p })),
+    );
+    expect(
+      nonZero.length,
+      'the relative rule reads zero on EVERY pair of every netlist — then this test cannot tell a ' +
+        'blind measure from a broken reader',
+    ).toBeGreaterThan(0);
+    for (const p of nonZero) expect(p.upper).not.toBe('tweeter');
+
+    /* THE TWO THE REQUIREMENT CONDEMNS ARE INSIDE THE ZERO, spelled out by name
+     * so the finding can be checked against one row by hand. */
+    for (const key of ['V45_KAND_5', 'V45_KAND_6']) {
+      const f = FIELD.find((x) => x.key === key);
+      expect(f?.protectionSqDb, `${key} carries no protection reading`).toBe(0);
+    }
+  });
+
+  it('the LIVE corpus clears it — which is the armed gate, not a coincidence', () => {
+    /* The measurement this session was for. The gate judges the DELIVERED
+     * network, so every candidate the field shipped had to clear it; a failure
+     * here would mean a netlist reached the shortlist that the gate should have
+     * refused, which is a defect in the route rather than in the corpus. */
+    const live = DRIVE.filter((d) => /^KAND_V2_\d+$/.test(d.key));
+    expect(live.length).toBeGreaterThan(0);
+    for (const d of live) {
+      expect(
+        d.db,
+        `${d.key}/${d.driver} was delivered above the stated limit — the gate did not judge it`,
+      ).toBeLessThanOrEqual(CEILING_DB!);
     }
   });
 });

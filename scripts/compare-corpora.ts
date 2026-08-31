@@ -68,10 +68,15 @@ import {
   casus1Filter,
   casus1Geometry,
   casus1LfResonantBudgetDb,
+  casus1MaxDriveOnFsDb,
   casus1Manifest,
   loadGolden,
 } from '../src/lib/engine2/casus1.fixture.ts';
-import { buildReport, type ReportSettings } from '../src/lib/engine2/report.ts';
+import { buildReport, type EngineV2Report, type ReportSettings } from '../src/lib/engine2/report.ts';
+import { impedanceReferenceFrom } from '../src/lib/engine2/optimizer/impedanceReference.ts';
+import type { MeasuredSweep } from '../src/lib/engine2/optimizer/gates.ts';
+import { buildAnalysis } from '../src/lib/engine2/metrics/analysis.ts';
+import { protectionByPair } from '../src/lib/engine2/metrics/protection.ts';
 import { CASUS1_TARGET_CURVE } from '../src/lib/engine2/casus1V2.fixture.ts';
 import { ctcKey } from '../src/lib/engine2/metrics/types.ts';
 import { meetsAmpFloor } from '../src/lib/impedanceFloor.ts';
@@ -167,6 +172,7 @@ const DATED: Record<string, { block: string; name: string }> = {
   v42: { block: 'v42_corpus', name: 'V42' },
   v43: { block: 'v43_corpus', name: 'V43' },
   v44: { block: 'v44_corpus', name: 'V44' },
+  v45: { block: 'v45_corpus', name: 'V45' },
 };
 
 const corpusOf = (id: string): Corpus => {
@@ -176,7 +182,7 @@ const corpusOf = (id: string): Corpus => {
   throw new Error(`unknown corpus "${id}" — use ${[...Object.keys(DATED), 'live'].join(', ')}`);
 };
 
-const [beforeId = 'v44', afterId = 'live'] = process.argv.slice(2);
+const [beforeId = 'v45', afterId = 'live'] = process.argv.slice(2);
 const before = corpusOf(beforeId);
 const after = corpusOf(afterId);
 
@@ -221,6 +227,34 @@ interface Row {
    *  piek die de venstergladding wegneemt (A5e.1). */
   epdr: number | null;
   qesMult: number | null;
+  /**
+   * V47 — M-C op de SLECHTST BESCHERMDE weg, dB.
+   *
+   * De aandrijfspanning op de eigen resonantie van een hoogdoorlaatbeschermde
+   * weg tegen het dB-gemiddelde over haar doorlaatband (A4, F1-conventie). Het
+   * MAXIMUM over de beschermde wegen en niet de tweeter bij naam: de poort
+   * oordeelt élke beschermde weg, en nergens in dit project mag een script
+   * weten wat een "tweeter" is.
+   *
+   * Sinds V47 is dit een GESTELDE EIS en dus geen kolom-zonder-oordeel: de
+   * corpusregel eronder zet de grens ernaast en telt hoeveel netlists eroverheen
+   * gaan, vóór en ná — dezelfde vorm als het LF-budget.
+   */
+  driveDb: number | null;
+  /**
+   * V47 — CONTROLEKOLOM, in de vorm die V44 voor de fasematen invoerde:
+   * gerapporteerd, nooit een poort, nooit een sorteersleutel.
+   *
+   * `protSqDb` is de maat waarop de volle-band-veiligheidspoort tot V47 tegen
+   * het ZAAD vergeleek — het gemiddelde kwadratische tekort boven de
+   * beschermingsvloer, over de band onder het kruispunt, gesommeerd over de
+   * paren. Sinds V47 vervangt de gestelde M-C-eis die vergelijking op de
+   * v2-route, en M-C is een ANDERE grootheid: één punt (de eigen resonantie)
+   * tegen een integraal over een band. Zij kunnen dus uiteenlopen, en of de
+   * absolute eis dekt wat de relatieve dekte is een MEETVRAAG. Deze kolom is
+   * hoe zij gesteld kan worden; zij beantwoordt haar niet.
+   */
+  protSqDb: number | null;
   narrowPeakDb: number | null;
   narrowPeakHz: number | null;
   /**
@@ -346,6 +380,37 @@ function seriesInductanceMH(key: string, driver: string | null): number | null {
   return seen > 0 ? total : null;
 }
 
+/**
+ * `protSqDb` van een bevroren netlist, op de sweep waarop élke elektrische
+ * grootheid sinds V32 gelezen wordt.
+ *
+ * De ANALYSE wordt hier opgebouwd zoals `report.ts` haar opbouwt (de
+ * impedantiereferentie plus `buildAnalysis`) omdat het rapport zijn
+ * takoverdrachten niet doorgeeft; de MAAT komt uit `protectionByPair`, en die
+ * roept de regel van de tuner aan. Eén implementatie van de grootheid, één van
+ * de netwerkoplossing — en geen enkel getal in dit bestand.
+ */
+function protectionOf(key: string, rep: EngineV2Report): number | null {
+  const filter = casus1Filter(key, manifest, files, golden);
+  const sweeps: Record<string, MeasuredSweep> = {};
+  for (const [driver, z] of Object.entries(filter.driverZ)) {
+    sweeps[driver] = {
+      grid: z.freq,
+      magnitude: z.magnitude,
+      phaseDeg: z.phaseDeg,
+      validHz: [z.freq[0], z.freq[z.freq.length - 1]],
+    };
+  }
+  const ref = impedanceReferenceFrom(sweeps);
+  if (!ref) return null;
+  try {
+    const analysis = buildAnalysis(filter.netlist, ref.grid, ref.driverZ);
+    return protectionByPair(analysis, rep.crossings).sumSqDb;
+  } catch {
+    return null;
+  }
+}
+
 function measure(key: string): Row {
   const rep = buildReport({
     manifest,
@@ -380,6 +445,20 @@ function measure(key: string): Row {
       [...rep.metrics.thevenin].sort((a, b) => (a.atHz ?? Infinity) - (b.atHz ?? Infinity))[0]
         ?.qMultiplier ?? null,
     ),
+    /* Het maximum over de M-C-oordelen van dit rapport — de wegen die het
+     * hoogdoorlaatbeschermd noemt, precies de verzameling die de poort
+     * oordeelt. Geen wegnaam, geen tweede afleiding. */
+    driveDb: (() => {
+      const v = rep.gates.verdicts
+        .filter((x) => x.gate === 'M-C' && x.value !== null)
+        .map((x) => x.value as number);
+      return v.length ? r2(Math.max(...v)) : null;
+    })(),
+    /* De beschermingsmaat van de tuner, gelezen door de adapter die de REGEL
+     * uit `protectionDeficit.ts` aanroept — dezelfde functie die de tuner zelf
+     * aanroept, want een controlekolom die de grootheid nábouwt controleert
+     * niets. Het netwerk wordt opgelost zoals `report.ts` het oplost. */
+    protSqDb: r2(protectionOf(key, rep)),
     narrowPeakDb: r2(rep.system.response?.narrowPeaks[0]?.db ?? null),
     narrowPeakHz: r2(rep.system.response?.narrowPeaks[0]?.fHz ?? null),
     groups: correctionGroupsOf(key),
@@ -412,12 +491,12 @@ console.log(
     'W-M fase overlap (ctl) vóór → ná | M-T fase M-K vóór → ná | ' +
     'M-T fase octaaf (ctl) vóór → ná | M-T fase overlap (ctl) vóór → ná | RMS vóór → ná | ' +
     'dissipatie % vóór → ná | grootste R (W) vóór → ná | EPDR vóór → ná | ' +
-    'Q_es× vóór → ná | smalste piek ná (dB @ Hz) | correctiegroepen vóór → ná | ' +
+    'Q_es× vóór → ná | M-C dB vóór → ná | protSq dB² (ctl) vóór → ná | smalste piek ná (dB @ Hz) | correctiegroepen vóór → ná | ' +
     'LF-bult dB vóór → ná | lift dB vóór → ná | opslingering dB vóór → ná | ' +
     'serie-L mH vóór → ná |',
 );
 console.log(
-  '|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|',
+  '|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|',
 );
 
 let beforeClears = 0;
@@ -457,6 +536,8 @@ for (const label of labels) {
       `${num(b?.largestRw ?? null)} → ${afterCell(a?.largestRw ?? null)} | ` +
       `${num(b?.epdr ?? null)} → ${afterCell(a?.epdr ?? null)} | ` +
       `${num(b?.qesMult ?? null)} → ${afterCell(a?.qesMult ?? null)} | ` +
+      `${num(b?.driveDb ?? null)} → ${afterCell(a?.driveDb ?? null)} | ` +
+      `${num(b?.protSqDb ?? null)} → ${afterCell(a?.protSqDb ?? null)} | ` +
       `${a && a.narrowPeakDb !== null ? `${num(a.narrowPeakDb)} @ ${num(a.narrowPeakHz)}` : '—'} | ` +
       `${groupCell(b?.groups)} → ${a ? groupCell(a.groups) : outcome?.verwerping ? '**verworpen**' : 'geen netlist'} | ` +
       `${num(b?.bultDb ?? null)} → ${afterCell(a?.bultDb ?? null)} | ` +
@@ -558,6 +639,55 @@ const roleTotals = (rows: Row[]) => {
           '(de doelcurve die de zoektocht stuurt, en de Q_es-grens op de serieweerstand die de ' +
           'lift veroorzaakt) in plaats van een tweede budget op deze grootheid — A5e.2, ' +
           'gesloten.'),
+  );
+}
+/* V47 — de tweede GESTELDE eis met een corpusregel, in dezelfde vorm als het
+ * LF-budget hierboven en om dezelfde reden: een kolom zonder haar grens laat
+ * de lezer niet zien of het veld erdoorheen kwam. De grens wordt GELEZEN uit
+ * het manifest en nooit hier geschreven (P6). */
+{
+  const ceiling = casus1MaxDriveOnFsDb(golden);
+  const overCount = (rows: Row[]) =>
+    ceiling === null
+      ? null
+      : rows.filter((r) => r.driveDb !== null && r.driveDb > ceiling).length;
+  console.log(
+    `M-C op de slechtst beschermde weg gemiddeld: ${fmt(avg(measuredBefore.map((r) => r.driveDb)))} dB ` +
+      `vóór → ${fmt(avg(measuredAfter.map((r) => r.driveDb)))} dB ná. ` +
+      (ceiling === null
+        ? 'Geen grens gesteld, dus dit is een kolom en geen eis (P4).'
+        : `Gestelde grens ${ceiling} dB (V47): ${overCount(measuredBefore)} van ` +
+          `${measuredBefore.length} eroverheen vóór, ${overCount(measuredAfter)} van ` +
+          `${measuredAfter.length} ná. Anders dan het LF-budget is dit een POORT: hij begrenst ` +
+          'niet alleen de zoektocht maar veroordeelt ook een geleverd netwerk, en op de v2-route ' +
+          'vervangt hij de zaadvergelijking van de volle-band-veiligheidspoort.'),
+  );
+}
+/* V47 — DE CONTROLEKOLOM ALS CORPUSREGEL, en de vraag die zij stelt.
+ * `protSqDb` is wat de zaadvergelijking mat en M-C is wat de gestelde eis
+ * meet; zij vallen niet samen. HUIDIG is de ijk aan beide kanten — de eis is
+ * er van afgeleid — dus de vraag is of een netlist die M-C haalt ook op
+ * protSqDb niet slechter is dan HUIDIG. Een netlist waar dat NIET zo is, is
+ * een bevinding: dan dekt "f_s alleen" niet wat de relatieve regel dekte. */
+{
+  const huidig = measure('HUIDIG');
+  const worse = (rows: Row[]) =>
+    huidig.protSqDb === null
+      ? null
+      : rows.filter((r) => r.protSqDb !== null && r.protSqDb > huidig.protSqDb!).length;
+  const live = (rows: Row[]) => rows.filter((r) => r.protSqDb !== null && r.protSqDb > 0).length;
+  console.log(
+    `protSq (controle, GEEN poort) gemiddeld: ${fmt(avg(measuredBefore.map((r) => r.protSqDb)))} dB² ` +
+      `vóór → ${fmt(avg(measuredAfter.map((r) => r.protSqDb)))} dB² ná; HUIDIG ` +
+      `${fmt(huidig.protSqDb)} dB². Boven nul: ${live(measuredBefore)} van ${measuredBefore.length} ` +
+      `vóór, ${live(measuredAfter)} van ${measuredAfter.length} ná; slechter dan HUIDIG: ` +
+      `${worse(measuredBefore)} → ${worse(measuredAfter)}. ` +
+      'DIT IS DE MAAT DIE DE ZAADVERGELIJKING LAS en niet de maat waarop de eis staat, en op deze ' +
+      'casus liggen zij op de TWEETER niet eens over dezelfde frequenties: protSq integreert onder ' +
+      'xo/3 en M-C leest f_s, dus f_s valt pas in de band bij een kruispunt boven 3·f_s — hoger ' +
+      'dan dit veld ooit kruist. Een netlist die M-C haalt en hier slechter is dan HUIDIG zou ' +
+      'zeggen dat "f_s alleen" niet dekt wat de relatieve regel dekte; nul boven nul zegt dat de ' +
+      'relatieve maat op geleverde netwerken inert is (V47).',
   );
 }
 console.log(`uit de shortlist gevallen: ${gone.length}${gone.length ? ` — ${gone.map(short).join('; ')}` : ''}`);

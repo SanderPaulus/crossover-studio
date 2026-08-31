@@ -140,9 +140,17 @@ describe('F4c — every tuner option has a class', () => {
     // horizontal, or the design's stated voicing) and `amplitudeTargetDb`
     // (polish — the target curve of that design, sampled). The fifth pair of
     // the same shape, and the split becomes 32/5/11.
-    expect(keys.length).toBe(48);
-    expect(CHOICE_KEYS.length + GREY_KEYS.length + POLISH_KEYS.length).toBe(48);
-    expect([CHOICE_KEYS.length, GREY_KEYS.length, POLISH_KEYS.length]).toEqual([32, 5, 11]);
+    // 49 since V47 added `protectionRule` (choice — WHICH RULE forbids an
+    // unprotected upper driver: the distance to the seed, or a stated absolute
+    // requirement). It is the FIRST of these that arrives WITHOUT a polish
+    // companion, and the absence is the argument: the quantity the stated rule
+    // defers to is already on the wire as `v2.gates.maxDriveOnFsDb`, evaluated
+    // by the same gate machinery the shortlist reads. Adding a second copy
+    // beside it would be the very thing every other pair here avoids. Split
+    // becomes 33/5/11.
+    expect(keys.length).toBe(49);
+    expect(CHOICE_KEYS.length + GREY_KEYS.length + POLISH_KEYS.length).toBe(49);
+    expect([CHOICE_KEYS.length, GREY_KEYS.length, POLISH_KEYS.length]).toEqual([33, 5, 11]);
     for (const k of CHAIN_CHOICE_KEYS) {
       expect(classified as readonly string[], `${k} is a chain key, not a tuner option`).not.toContain(k);
     }
@@ -248,7 +256,26 @@ describe('F4c — every tuner option has a class', () => {
      * questions — collapsing them would make one of the two unavailable, which
      * is exactly the correction V40 turned up for `phaseMetric`. */
     expect(CHOICE_KEYS).toContain('ampTarget');
-    expect(CHOICE_KEYS.length).toBe(32);
+    /* V47 — the SIXTH of these, and the first WITHOUT a polish companion. The
+     * absence is the argument: what `'stated'` defers to is `maxDriveOnFsDb`,
+     * which is already on the wire as a GATE and is evaluated by the same gate
+     * machinery the shortlist reads. A polish key carrying a second copy of it
+     * would be exactly what the five pairs above each avoid.
+     *
+     * It may never migrate. WHICH RULE forbids an unprotected upper driver
+     * decides what the search may deliver at all — the same family as
+     * `rSourceDisqualifyOhm` and `ampMinLoadOhm`, both of which are choices —
+     * and the two rules do not order the same designs. */
+    expect(CHOICE_KEYS).toContain('protectionRule');
+    expect(POLISH_KEYS as readonly string[]).not.toContain('protectionRule');
+    expect(GREY_KEYS as readonly string[]).not.toContain('protectionRule');
+    /* And it is INDEPENDENT of `safety`, which is also a choice and whose name
+     * is close enough to invite the collapse. That one decides WHETHER the
+     * full-band set is watched at all; this one decides what the watching
+     * compares against. Folding them together would make "watch the full band
+     * against a stated requirement" unsayable. */
+    expect(CHOICE_KEYS).toContain('safety');
+    expect(CHOICE_KEYS.length).toBe(33);
     expect(GREY_KEYS.length).toBe(5);
     expect(POLISH_KEYS.length).toBe(11);
   });
@@ -681,6 +708,56 @@ describe('F4d — a generated candidate declares every choice key', () => {
     expect(JSON.stringify(declarationKey(voiced, {}))).not.toBe(
       JSON.stringify(declarationKey(forcedFlat, {})),
     );
+  });
+
+  it('V47 — the candidate states WHICH RULE forbids an unprotected upper driver', () => {
+    /* DERIVED, like V30's `zFloorBarrier` and V45's `amplitudeReference`, and
+     * from the same finding: a stated requirement that another rule silently
+     * overrides decides nothing.
+     *
+     * (a) A design that states a drive limit arms the stated rule. */
+    const limited = declareCandidateChoices({
+      cages: [[400, 500], [1500, 2000]],
+      windowFloorsHz: [397, 1294],
+      multiWay: true,
+      stated: {},
+      driveOnFsLimitDb: -25,
+    });
+    expect(limited.stated.protectionRule).toBe('stated');
+    expect(limited.absent.some((a) => a.key === 'protectionRule')).toBe(false);
+
+    /* (b) No limit ⇒ ABSENT with the P4 reason, and NEVER a stated 'seed'. The
+     * tuner then reads its own default, which IS the seed comparison — named as
+     * absent rather than inherited in silence, and kept because a comparison to
+     * the seed without a requirement still beats no comparison at all. */
+    expect(bare().stated.protectionRule).toBeUndefined();
+    const why = bare().absent.find((a) => a.key === 'protectionRule')?.why ?? '';
+    expect(why).toMatch(/P4/);
+    expect(why).toContain('seed');
+
+    /* An explicit value still wins, so V47's before/after is a run someone can
+     * ask for — the property V30, V33, V34, V37, V38-fix, V44 and V45 rest on. */
+    const forced = declareCandidateChoices({
+      cages: [[400, 500], [1500, 2000]],
+      windowFloorsHz: [397, 1294],
+      multiWay: true,
+      stated: { protectionRule: 'seed' },
+      driveOnFsLimitDb: -25,
+    });
+    expect(forced.stated.protectionRule).toBe('seed');
+    expect(forced.absent.some((a) => a.key === 'protectionRule')).toBe(false);
+
+    // ...and it moves the fingerprint, or the choice would be a label.
+    expect(JSON.stringify(declarationKey(limited, {}))).not.toBe(
+      JSON.stringify(declarationKey(forced, {})),
+    );
+
+    /* THE LIMIT ITSELF DOES NOT TRAVEL AS A TUNER OPTION, and that is the shape
+     * that distinguishes this key from the five pairs above: the number is a
+     * GATE (`v2.gates.maxDriveOnFsDb`), so the declaration names the RULE and
+     * nothing else. A candidate that also carried the decibels would be a
+     * second copy of a stated requirement. */
+    expect(Object.keys(limited.stated)).not.toContain('maxDriveOnFsDb');
   });
 
   it('V34 — an unstated source-resistance limit is ABSENT, and the worker makes the chain honour it', () => {

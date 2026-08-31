@@ -3305,6 +3305,92 @@ Configuratie: 3-weg; 2× SB WO24TX-8 parallel, MR13TX-4 in bolpod, T25T-6 in WG1
 
   **WAT ER NIET GEBOUWD IS.** Geen enkele wijziging aan engine-code, aan V45 of aan het corpus. Geen poging om de byte-vergelijkingen portable te maken — dat zou betekenen dat je de tolerantie zo ver oprekt dat zij een ander ontwerp doorlaat, en dan kan de vergelijking net zo goed weg. Geen tweede CI-job op macOS: dat zou de bytes wél kunnen bewaken, maar het is een uitgave (runners, wachttijd) tegen een claim die de lokale suite vóór elke commit al hard maakt, en het is opgeschreven als optie in plaats van gebouwd.
 
+- V47 (31-08-2026 — **BREAKING, alleen v2-runs**: de tweeterbescherming wordt een GESTELDE eis, en de meting keerde de aanleiding om) — de opdracht verwachtte dat de relatieve beschermingsregel te streng was. Zij was te LOS, en dat is de hele entry.
+
+  **DE HOOFDBEVINDING, en zij staat vooraan omdat zij het ontwerp raakt en niet de code.** Het V45-veld heeft twee netlists GELEVERD die de tweeter op zijn eigen resonantie tien dB harder aandrijven dan het goedgekeurde ontwerp: `V45_KAND_5` op **−14,38 dB** en `V45_KAND_6` op **−15,10 dB**, tegen HUIDIG's −25,08. Zij stonden in de shortlist, klaar om te bouwen. Niets veroordeelde ze — en de reden dat niets ze veroordeelde is niet dat de bewaking te soepel stond, maar dat zij op een ANDERE band keek (zie de dekkingsvraag verderop). Beide zijn nu met naam, waarde en grens geregistreerd in `manifest_en_geometrie.v45_corpus.aandrijfuitzonderingen`, in het V30-vlagpatroon: boekhouding en geen vrijstelling, en `frozenNetlistGates.test.ts` herrekent ze.
+
+  **WAT ER STOND.** De volle-band-veiligheidspoort van de tuner weigerde een tune in zijn geheel zodra het beschermingstekort van het geleverde netwerk meer dan 3 dB² boven dat van het ZAAD lag (`protSqDb`, het gemiddelde kwadratische tekort van de elektrische takoverdracht boven −15 dB, onder `xoF/3`). Casus 1 stelde niets op M-C, dus dit was het enige dat de bovenste driver van elk paar bewaakte. Een relatieve regel, en dat is de eerste helft van wat eraan mankeert: wat zij toestaat beweegt mee met wat het zaad toevallig droeg, en zij wordt toegepast IN PLAATS VAN een gestelde eis in plaats van ernaast. De tweede helft is erger en is pas bij de dekkingsmeting hieronder gevonden: haar BAND bereikt de tweeterresonantie op deze casus helemaal niet.
+
+  **DE INVENTARISATIE, en zij is de reden dat deze sessie iets anders is geworden dan zij van plan was.** Alle vier de V45-kandidaten die de zaadregel weigerde zijn opnieuw gedraaid en hun weigering is ontleed.
+
+  | kandidaat | zaad `protSqDb` | tune | speling | M-C van de geweigerde tune |
+  | --- | --- | --- | --- | --- |
+  | 466,5 · 1491,4 | **0,000** | 11,818 | 3,0 | **−8,56 dB** |
+  | 466,5 · 1719 | **0,000** | 15,969 | 3,0 | **−3,43 dB** |
+  | 548,5 · 1719 | **0,000** | 21,458 | 3,0 | **−12,29 dB** |
+  | 548,5 · 1981,2 | **0,000** | 9,653 | 3,0 | **−6,82 dB** |
+
+  Het zaad mat NUL — perfecte bescherming — dus de regel oordeelde tegen de scherpst denkbare referentie, precies zoals de opdracht vermoedde. Maar wat zij weigerde was geen bijna-goed ontwerp: die tunes drijven hun slechtst beschermde weg aan op −3,4 tot −12,3 dB, en dat zijn echte schendingen van de eis die deze sessie stelt.
+
+  **DAT ZIJ ZE VING IS ECHTER NIET DE VERDIENSTE DIE HET LIJKT, en de dekkingsmeting verderop zegt waarom: zij ving ze op de MID en niet op de tweeter.** De beschermingsband loopt tot `xo/3` en de mid-f_s (88,8 Hz) valt daar bij elk W-M-kruispunt binnen; de tweeter-f_s (924 Hz) valt er nooit binnen. Dezelfde regel liet daarom de twee netlists uit de hoofdbevinding gewoon door — niet omdat hun zaad slecht was, maar omdat zij daar niets meet.
+
+  **DE M-C-KOLOM WAS EERST LEEG, EN DAT WAS GEEN MEETFOUT.** `runCandidate` wist `rejectedParts` voordat het resultaat de worker verlaat (V31: een kandidaat die niets levert mag niets uitleveren dat iemand als netlist kan wegschrijven), dus van buitenaf is een geweigerd netwerk principieel onmeetbaar — en een leeg vakje leest als "geen resonantie" terwijl het "geen onderdelen" betekent. De worker meet M-C sinds V47 zelf op die onderdelen, via dezelfde `evaluateGates` waarmee hij een gelevérd netwerk oordeelt, en zet het als `rejectedTune.driveOnFsDb` in de weigering. Daarmee is van élke weigering leesbaar of zij een ontwerp gekost heeft dat de eis wél haalde.
+
+  ---
+
+  **DE DEKKINGSVRAAG, EN ZIJ IS HET SCHERPSTE STUK VAN DEZE SESSIE: DEKT DE ABSOLUTE EIS WAT DE RELATIEVE DEKTE?** De twee zijn verschillende grootheden — `protSqDb` is het gemiddelde kwadratische tekort boven de beschermingsvloer, GEÏNTEGREERD over de band onder `xo/3`; M-C leest ÉÉN punt, de eigen resonantie. Om die vraag te kunnen stellen is de regel uit de tuner gelicht naar `lib/protectionDeficit.ts` — één implementatie, twee lezers, dezelfde vorm als `impedanceFloor.ts` — en als CONTROLEKOLOM opgenomen in `compare-corpora.ts` en in de guards, in de vorm die V44 voor de fasematen invoerde: gerapporteerd, nooit een poort.
+
+  **HET ANTWOORD, EN HET IS ABSOLUUT: DE RELATIEVE REGEL HEEFT IN 117 BEVROREN NETLISTS GEEN ENKELE KEER EEN TWEETERPROBLEEM GEREGISTREERD.** Op het tweeterpaar leest zij **exact 0,000 dB² op élke netlist van het hele casusboek** — inclusief de twee die de eis met tien dB overschrijden. Dat is geen soepeler versie van de eis; het is een maat die daar niets meet.
+
+  **EN ZIJ IS NIET STUK, wat de vorige zin pas een bevinding maakt:** elders in het boek leest zij wél boven nul — `V38FIX_KAND_5` op 1,226 dB², `V37_KAND_3` op 0,063, `V33_KAND_5` op 0,018 — en die tekorten komen alle drie van een paar waarvan de bovenste weg **niet** de tweeter is.
+
+  **TWEE EERDERE VERSIES VAN DEZE CLAIM WAREN TE BREED EN DE DATA HEEFT ZE ALLEBEI GEDOOD**, en dat hoort erbij omdat het de vorm bepaalt waarin zij nu staat. De eerste zei dat geen enkele netlist boven `3·f_s` = 2773 Hz kruist — er zijn er drie (`V28_KAND_2` 3949 Hz, `V28_KAND_1` 3818, `V33_KAND_10` 3312). De tweede zei dat geen netlist die de eis MIST zo hoog kruist — dat zijn er twee (`V28_KAND_1` op −19,38 dB, `V28_KAND_2` op −22,87). **Wat overbleef is sterker dan beide en heeft geen bandrekensom nodig:** ook op díé twee, waar de band de resonantie wel degelijk bereikt, leest de maat nul. Hoog genoeg kruisen is dus NOODZAKELIJK noch VOLDOENDE — de tweeteroverdracht is daar nog steeds onder de vloer, terwijl M-C op f_s tien dB erboven zit.
+
+  De TEGENPROEF maakt het onontkoombaar: schaal élke condensator van HUIDIG op, en M-C loopt van −25,08 via −15,92 en −10,39 naar **+9,75 dB** — de tweeter tien dB BOVEN zijn doorlaatbandniveau op zijn eigen resonantie — terwijl `protSqDb` de hele weg exact 0,000 blijft. Het mechanisme is dat `xoF` meezakt met de capaciteit (2250 → 404 Hz), dus de band beweegt WEG van f_s in plaats van ernaartoe. De maat kan de fout per constructie niet naderen.
+
+  **WAT ZIJ DAN WÉL MAT, op deze casus: de MID.** Diens f_s ligt op 88,8 Hz en valt bij elk W-M-kruispunt boven 266 Hz binnen de band — dus overal in dit veld, en dáár komen de drie tekorten hierboven vandaan. Het verklaart ook de weigeringen: de vier geweigerde tunes dragen M-C op de mid van **+4,5 / +0,5 / −1,7 / −5,3 dB**, en dát is waarop `protSqDb` vuurde. **De melding "tweeter protection got worse" ging op casus 1 dus over de mid.** De naam beschreef de bedoeling en niet de meting.
+
+  **WAT ER OPEN BLIJFT, en dit is wat er vóór de LCR-vraag op tafel hoort.** De eis dekt op de tweeter STRIKT MEER dan de regel die zij vervangt, en op de mid dekt zij het RESONANTIEPUNT maar niet de hele band eronder — daar is de vervangen regel een integraal en de eis een punt. Een ontwerp dat op f_s netjes is en elders onder `xo/3` niet, is met wat er nu staat niet te betrappen. Op het huidige veld is dat geen open gat maar een onbewezen aanname: de controlekolom leest nul op alle vier de levende netlists, dus er is niets om te betrappen. Zij staat er juist om dat te blijven meten wanneer het veld verandert, en de eerste netlist die M-C haalt met een tekort boven nul is een bevinding die de vorm van de eis opnieuw ter discussie stelt.
+
+  ---
+
+  **WAT ER GESTELD IS.** `tweeter_drive_op_fs_max_dB = −25,0`, langs dezelfde weg als `qesMultiplierMax`: HUIDIG meet −25,084 dB op zijn slechtste beschermde weg, dus dat is de strengste waarde op één decimaal die het eigen referentiefilter van de ontwerper nog toelaat. Bij −25,1 zou HUIDIG veroordeeld worden — de V42-fout, niet herhaald.
+
+  **DE EIS OORDEELT ÉLKE HOOGDOORLAATBESCHERMDE WEG, en op casus 1 is dat er twee.** Het getal is van een TWEETER-meting afgeleid en de mid wordt meegeoordeeld. Dat is nagegaan vóór het stellen en niet erna: HUIDIG leest −42,61 op de mid, KAND_A −46,83, KAND_B −34,17 — ruim eronder, dus de eis veroordeelt daar niets. **Op KAND_B is de slechtste weg trouwens de MID en niet de tweeter** (−34,17 tegen −35,18), wat laat zien dat "de tweeterwaarde" en "de waarde waarop de eis bijt" niet hetzelfde zijn. De midkolom bestond nog niet en is bij V47 gemeten (`scripts/measure-v47-drive.ts`).
+
+  **WAT ER GEBOUWD IS.** De poort wordt gewapend langs het bestaande A5a-pad (`v2.gates.maxDriveOnFsDb`), waarmee ook de A5d.6-inversie `drive-series-c` invoer krijgt — de vier-inversies-tabel staat daarmee op 4 bereikbaar, 3 gewapend (`gap-pad-r` blijft ongewapend per A5e.2). Daarnaast één nieuwe keuze-sleutel: `protectionRule` (`'seed'` = default en historisch, `'stated'` = de zaadvergelijking vervalt). **Zij is de eerste van deze familie ZONDER polish-partner**, en die afwezigheid is het argument: waar `'stated'` naar wijkt is `maxDriveOnFsDb`, dat al als POORT op de wire staat en door dezelfde poortmachinerie geoordeeld wordt die de shortlist leest. Een tweede kopie ernaast is precies wat de vijf paren vóór haar vermijden. Sleuteltelling 48 → 49, verdeling 32/5/11 → 33/5/11.
+
+  ---
+
+  **DE VÓÓR/NÁ (`compare-corpora.ts v45 live`), en zij is drastisch.**
+
+  | | V45 | V47 |
+  | --- | --- | --- |
+  | bevroren netlists | 7 | **4** |
+  | kandidaten die geen netwerk leverden | 8 van 15 | **11 van 15** |
+  | M-C op de slechtst beschermde weg, gemiddeld | −24,6 dB | **−28,5 dB** |
+  | boven de gestelde −25,0 | **2 van 7** | **0 van 4** |
+  | W-M fase M-K, gemiddeld | 25,3° | 13,1° |
+  | M-T fase M-K, gemiddeld | 8,1° | 3,9° |
+  | dissipatie, gemiddeld | 60,4 % | 62,2 % |
+  | LF-lift / opslingering, gemiddeld | 3,2 / −0,9 dB | 4,7 / −1,1 dB |
+
+  **DE FASEWINST IS SELECTIE EN GEEN AANKOOP, en dat hoort er hardop bij.** De opdracht vroeg of de doelcurve-sturing van V45 nu meer W-M-fase koopt. Het antwoord is nee: de corpusverbetering van 25,3° naar 13,1° komt vrijwel geheel doordat de twee netlists die 52,4° en 60,0° droegen het veld verlaten hebben — en dat zijn exact de twee die de nieuwe eis overschreden. Op de VIER overlevenden beweegt W-M nauwelijks en soms de verkeerde kant op (18,9→21,6 / 19,8→19,2 / 5,3→4,8 / 3,9→6,7). Wie de tabelregel zonder deze zin leest, schrijft een verbetering toe aan een mechanisme dat haar niet geleverd heeft.
+
+  **WAT DE EIS KOSTTE, en dit is de eerlijke minpost.** Van de drie netlists die uit de shortlist vielen waren er twee schenders — die horen weg. De derde, `466,5 · 1981,2`, mat in V45 **−25,54 dB** en haalde de eis dus. Met de poort gewapend liep diezelfde kandidaat een ander pad, landde op −22,6 en werd in zijn geheel geweigerd. **Een gewapende poort is geen passieve waarnemer**: `gateViolation` weigert stappen en verlegt de zoektocht, dus zij kan een ontwerp kosten dat zonder haar aan haar voldeed. Dat is geen argument tegen de eis, maar het is wél de reden dat het veld van zeven naar vier ging en niet van zeven naar vijf.
+
+  **EN DE MID KREEG VOOR HET EERST EEN GETAL.** In de weigeringsredenen van de geregenereerde run staat vier keer M-C op de MID: **+4,5 / +0,5 / −1,7 / −5,3 dB** — aangedreven op of BOVEN zijn doorlaatbandniveau op zijn eigen resonantie. De zaadregel vúúrde daarop (zie de dekkingsvraag), maar zij deed het zonder ooit een getal te noemen dat iemand kon nalezen, en het casusboek noteerde alleen `V_tweeter_op_fs_dB`. De eis vangt het nu mee mét de aflezing, en de kolom per WEG (`manifest_en_geometrie.v47_bescherming`) is wat het zichtbaar houdt.
+
+  ---
+
+  **DE REGENERATIE KOST GEEN ZES UUR MEER MAAR ZEVENENTWINTIG MINUTEN, en dat is een blijvende opbrengst los van V47.** `generate-casus1-v2-candidates.ts` draaide zijn vijftien ketenruns sequentieel op ÉÉN kern — 4 u 23 bij V41, 4 u 52 bij V43, 5 u 56 bij V45 — op een machine met achttien kernen. Dat is geen rekentijd maar wachttijd. Het script roept zichzelf nu aan met `V2_ONLY=<n>`, één proces per kandidaat, en voegt de shards samen in KANDIDAATVOLGORDE (nooit in de volgorde waarin zij klaar kwamen — dan zou de shortlist van de planning afhangen). **Gemeten: 1624 s tegen 21 357 s bij V45.**
+
+  Het mag omdat er nergens in `netOptimizer.ts` of in `engine2/` module-scope mutable state staat — nagegaan en niet aangenomen — dus twee kandidaten kunnen elkaars uitkomst niet zien. **En het is GEMETEN in plaats van beredeneerd:** drie kandidaten zijn met de poort nog ongewapend als shard gedraaid en hun geleverde netlist is BYTE-IDENTIEK aan `KAND-V2-5`, `KAND-V2-6` en `KAND-V2-1` uit het V45-corpus. `V2_SEQUENTIAL=1` houdt de oude weg als arm om tegen af te zetten. A5e.4 blijft gelden zoals V46 hem preciseerde: byte-identiek per (machine, runtime), en een kind draait op dezelfde machine en runtime als zijn ouder.
+
+  ---
+
+  **DEZELFDE VAL VOOR DE DERDE KEER, EN NU IS ZIJ UITGESCHREVEN.** De V37-assert in `frozenNetlistGates.test.ts` claimt dat de dissipatieterm op de PIEKHOOGTE de uitdagingsdrempel van 1 % nooit haalt — de reden dat V37 hem naar R_e verplaatste. Die assert viel om op `KAND_V2_1`, met 1,053 %. **De term is niet gegroeid; de NOEMER is gekrompen.** Hij deelt door het objectief van de netlist zelf, en het objectief krimpt naarmate het veld vlakker wordt — de gewapende M-C-poort liet alleen de vlakste ontwerpen door, en `KAND_V2_1` draagt met RMS 0,48 het vlakste objectief van het hele boek.
+
+  Dat is exact het mechanisme dat V41 al een keer mat (toen deelde de assert door de kleinste RMS van het HÉLE casusboek en sloeg zij om zodra V41 het veld vlakker maakte). De reparatie van toen — elke netlist tegen zijn EIGEN objectief — was juist en heeft het mechanisme niet weggenomen: elke vaste drempel op een aandeel-van-het-objectief beweegt mee met de kwaliteit van het veld. **De drempel is daarom NIET opgerekt** — dan zou zij precies zo ver meebewegen als nodig is om groen te blijven, en dat is geen bewaker meer. De strikte claim is GEANKERD op de netlists waarop V36 en V37 hem gedaan hebben (de gedateerde corpora, waar hij onveranderd staat op 0,736 %), dezelfde herankering die V43 op `v42_bult_bevinding` toepaste en om dezelfde reden. En het levende veld krijgt de claim die V37 werkelijk draagt, op élke netlist: de twee noemers liggen een ORDE VAN GROOTTE uit elkaar (1,05 % tegen 42,2 % op `KAND_V2_1`). Die vorm kan niet stil verouderen wanneer het veld beter wordt.
+
+  **EEN BEWAKER HEEFT GEWERKT, EN HET WAS DE V42-VAL VOOR DE TWEEDE KEER.** `casus1V2Candidates.test.ts` bouwde zijn eigen poortblok (`{ ampMinLoadOhm }`) in plaats van `CASUS1_V2_GATES` te lezen. Toen V47 M-C wapende armde de generator twee poorten en de test één — dus de "reproductie door de échte route" zou een ANDERE route gedraaid hebben dan de route die de netlist maakte. Zijn eigen assert (`Object.keys(armedGates)` tegen `v2_poorten_gewapend`) ving het. Gerepareerd met de vorm die `casus1V2.fixture.ts` in zijn eigen kop voorschrijft: één definitie, gespreid op de gebruiksplek.
+
+  **EN ÉÉN PLEK WAAR DE EIS NIET AANKWAM.** `frozenNetlistGates.test.ts` bouwt zijn rapporten met een eigen `BASE`-instellingenblok, en dat droeg wél de gestelde vloer en niet de gestelde aandrijfgrens — dus het rapport drukte `no limit set` af naast netlists die er in de RUN wel aan gehouden waren. De eis hoort in beide, om dezelfde reden als bij de vloer: het rapport is wat een mens leest. Gespreid, zodat een casus die niets stelt niets wapent.
+
+  **WAT ER NIET GEBOUWD IS.** Geen wijziging aan de beschermings-inversie `drive-series-c` zelf en niet aan `safety`. Geen wijziging aan de relatieve regel op de v1-route: `protectionRule` afwezig is byte-identiek, en dat is als test vastgelegd op een run die de vergelijking WÉL bereikt. Geen v2-default die een casus-1-getal is: −25,0 staat uitsluitend in `manifest_en_geometrie.gestelde_eisen` en de fixture leest hem daarvandaan. Geen wijziging aan de plateau-eis. Geen LCR-generatie.
+
+  **DE LCR-/PARALLEL-R-VRAAG, GEACTUALISEERD OP WAT ER NÁ DEZE POORT NOG GEWEIGERD WORDT.** Elf van de vijftien kandidaten leveren niets, en de redenen zijn nu leesbaar per kandidaat. Drie ervan missen de eis met minder dan 2,5 dB (−23,5 / −23,4 / −22,6) en drie struikelen (ook) over de versterkervloer. De vraag is daarmee scherper dan bij V43: **de zoektocht heeft op de lage kruisingen geen gereedschap om de tweeter onder de eis te krijgen zonder de belasting of de vlakheid op te offeren.** En de dekkingsmeting hierboven zegt waaróm dat gereedschap ontbreekt: de enige knop die de zoektocht heeft is de serie-C verkleinen, en die verlaagt de aandrijving op f_s door het KRUISPUNT op te schuiven — wat op de lage kruisingen precies is wat de kandidaat definieert. Een LCR over de driver verlaagt de PIEK zelf en ontkoppelt die twee. Een LCR over de driver op zijn resonantie verlaagt de PIEK zelf en zou precies daar ruimte maken; een serie-C verkleinen is wat de zoektocht nu al probeert en het botst op de vloer. Openstaand blijft verder: de twee posten uit V41 (`audit.fbHz`, het grijze `costWeight`); of `qesMultiplierMax` per weg hoort te bestaan in plaats van alleen op de laagste (V45); groundplane-metingen onder het onderste kruisgebied vóór onderdelenbestelling; HD-sweep; 30°-meting tweeter voor M-G-compleetheid.
+
 ## Casus S1 — synthetische grondwaarheid voor de R_e-schatter (F3b, 26-08-2026)
 
 *De eerste casus in dit boek die geen luidspreker is. A7 noemt synthetische grondwaarheid als

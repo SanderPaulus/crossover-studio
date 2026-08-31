@@ -266,6 +266,22 @@ export interface CandidateRejection {
     /** The tuner's own peak-to-peak ripple and phase figures, for continuity. */
     rippleDb: number | null;
     phaseDeg: number | null;
+    /**
+     * V47 — M-C on the WORST high-pass-protected way of the refused network,
+     * dB, or null when nothing here could measure one.
+     *
+     * WHY IT HAS TO BE MEASURED HERE and cannot be measured by a caller: this
+     * function blanks `rejectedParts` before the result leaves (V31 — a
+     * candidate that delivers nothing may hand out nothing anyone can serialise
+     * into a netlist), so the refused network is only in scope at this point.
+     * A reader who wants to know whether the refusal cost a design that WOULD
+     * have met the stated drive requirement has no other way to find out.
+     *
+     * Measured through `evaluateGates` on the frozen reference — the same
+     * machinery that would have judged it had it been delivered, so the number
+     * is comparable to the M-C column of every candidate that was.
+     */
+    driveOnFsDb: number | null;
   } | null;
   /** Why this candidate delivers no network at all. */
   note: string;
@@ -937,6 +953,52 @@ function tuneOptionsFor(
     v2.gates.ampMinLoadOhm !== undefined ||
     v2.gates.maxDriveOnFsDb !== undefined;
 
+  /* ---- V47: WHICH OF THE TWO PROTECTION RULES IS ACTUALLY IN FORCE ------
+   *
+   * Said out loud on every v2 run, because the two rules do not order the same
+   * designs and a reader of a shortlist cannot see from the outside which one
+   * threw a candidate away. The three states are distinguished and none of them
+   * is silent:
+   *
+   *   · stated AND armed — the requirement judges, the seed comparison is off;
+   *   · stated but NOT armed — the candidate asked for the absolute rule and no
+   *     limit reached this run, so nothing absolute would judge. The seed
+   *     comparison is what remains, and the note says so rather than leaving a
+   *     run with neither rule in force (P4, and the fallback V32 removed from
+   *     the gates: a mechanism whose input never arrived must not silently
+   *     switch its replacement off too);
+   *   · absent — the historic rule, named as the historic rule.
+   *
+   * The SECOND state is the one worth building for. It cannot happen on the
+   * casus-1 route, where both come out of the same manifest entry, and it can
+   * happen in the app the moment somebody clears the M-C field while a
+   * candidate that was generated with it is still in flight. */
+  const wantsStatedProtection = stated.protectionRule === 'stated';
+  const driveGateArmed = v2.gates.maxDriveOnFsDb !== undefined;
+  if (wantsStatedProtection && driveGateArmed) {
+    collect.notes.push(
+      'Upper-driver protection is judged by the STATED requirement — M-C at most ' +
+        `${v2.gates.maxDriveOnFsDb} dB, enforced by the gate at every point a pass accepts a ` +
+        'network — and the full-band safety gate no longer compares against the seed. The two ' +
+        'rules do not order the same designs: the seed comparison is stricter than the ' +
+        'requirement on a well-protected seed and looser on a poor one (V47).',
+    );
+  } else if (wantsStatedProtection) {
+    collect.notes.push(
+      'The candidate asked for upper-driver protection to be judged by a stated requirement and ' +
+        'no M-C limit reached this run, so the search keeps the SEED comparison of the full-band ' +
+        'safety gate. It is NOT running with neither rule: dropping the relative rule without ' +
+        'anything absolute to drop it in favour of would leave the protection unjudged (P4, V47).',
+    );
+  } else {
+    collect.notes.push(
+      'Upper-driver protection is judged by the SEED comparison of the full-band safety gate — ' +
+        'the historic rule. This design states no maximum drive on a driver\'s own resonance, so ' +
+        'there is nothing absolute to judge it against, and a comparison to the seed is what ' +
+        'remains (V47).',
+    );
+  }
+
   /* ---- V33: the barrier's reading, from the gate's own reference --------
    *
    * The candidate decides WHERE the amp-load barrier aims (`zFloorBarrierSource`,
@@ -1069,6 +1131,12 @@ function tuneOptionsFor(
   return {
     ...stated,
     ...weights,
+    /* V47 — the stated rule reaches the tuner only when the requirement it
+     * defers to actually reached this run. Written AFTER the spread so it
+     * overrides what the declaration said, and it can only ever move one way:
+     * toward the historic comparison. See the note above for why the other
+     * direction would be a run with no protection rule at all. */
+    ...(wantsStatedProtection && !driveGateArmed ? { protectionRule: 'seed' as const } : {}),
     ...(wantsAdmission
       ? {
           phaseAdmissionFacts: {
@@ -1586,6 +1654,22 @@ function runCandidate<I, R extends { parts: VxpPart[]; net: { gateRefusals?: str
     const judged = parts && parts.length > 0 ? measureRejected(parts) : null;
     const num = (v: number | null | undefined): number | null =>
       typeof v === 'number' && Number.isFinite(v) ? v : null;
+    /* V47 — the refused network's own M-C, taken before the parts are blanked.
+     * The WORST protected way rather than a named driver: the gate judges every
+     * way it calls high-pass protected, and nothing in this file may know which
+     * of them is "the tweeter". Null covers both empty states honestly — no
+     * reference to judge on, and a network with no protected way at all (which
+     * is itself what a destroyed high-pass looks like). */
+    const refusedDrive = ((): number | null => {
+      if (!parts || parts.length === 0 || !collect.reference) return null;
+      try {
+        const e = evaluateGates(netlistOf(parts), v2.gates, collect.reference, 'frozen');
+        const db = e.metrics.driveVoltage.map((d) => d.db);
+        return db.length > 0 ? Math.max(...db) : null;
+      } catch {
+        return null;
+      }
+    })();
     rejection = {
       kinds: refused.kinds,
       reason: refused.reason,
@@ -1603,6 +1687,7 @@ function runCandidate<I, R extends { parts: VxpPart[]; net: { gateRefusals?: str
               rmsDeviationDb: num(judged?.rmsDeviationDb),
               rippleDb: num(rt?.rippleDb),
               phaseDeg: num(rt?.phaseDeg),
+              driveOnFsDb: refusedDrive,
             }
           : null,
       note:

@@ -497,6 +497,35 @@ export function casus1QesMultiplierMax(golden: GoldenRefs = loadGolden()): numbe
 }
 
 /**
+ * V47 — the MAXIMUM DRIVE ON A DRIVER'S OWN RESONANCE the designer stated for
+ * casus 1, dB.
+ *
+ * Same shape as the four requirements above and the same reason it is read
+ * rather than written: a project number has one home. The DIFFERENCE is what
+ * it arms — this one is a GATE. M-C has a gate id in `GATE_IDS`, so unlike the
+ * LF budget and the Q_es ceiling a stated limit here CONDEMNS a delivered
+ * network as well as bounding the search; and unlike the amplifier floor it
+ * also decides, on the v2 route, which of two protection rules the full-band
+ * safety gate applies (`protectionRule`).
+ *
+ * IT IS STATED FROM THE TWEETER AND ENFORCED ON EVERY HIGH-PASS-PROTECTED WAY,
+ * which is a property of the gate and not of this helper. On casus 1 that is
+ * the mid as well, and the manifest records both readings of HUIDIG for exactly
+ * that reason: a requirement whose subject set is wider than the measurement it
+ * was derived from has to say so.
+ *
+ * Null when the project states none — P4, no gate, and the seed comparison
+ * stays in force because an empty field is not a judgement.
+ */
+export function casus1MaxDriveOnFsDb(golden: GoldenRefs = loadGolden()): number | null {
+  const stated = (golden.manifest_en_geometrie as unknown as {
+    gestelde_eisen?: { tweeter_drive_op_fs_max_dB?: unknown };
+  }).gestelde_eisen;
+  const v = stated?.tweeter_drive_op_fs_max_dB;
+  return typeof v === 'number' && Number.isFinite(v) ? v : null;
+}
+
+/**
  * One of the frozen candidate netlists, with the measured driver impedances.
  *
  * The key is any entry of `manifest_en_geometrie.netlists`, which since F4d

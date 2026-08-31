@@ -9,6 +9,11 @@
  * `dissipationReferenceSource` (choice) beside `dissipationReferenceReOhm`
  * (polish). V38-fix adds no key and RECLASSIFIES one: `errorSmoothOct` moves
  * from POLISH to CHOICE, so the total stays 44 and the split becomes 30/5/9.
+ * V44 adds two (`phaseAdmission` choice, `phaseAdmissionFacts` polish) for 46
+ * and 31/5/10, V45 two more (`amplitudeReference` choice, `amplitudeTargetDb`
+ * polish) for 48 and 32/5/11, and V47 ONE — `protectionRule`, a choice with no
+ * polish companion, because the requirement it defers to is already on the wire
+ * as a GATE — for 49 and 33/5/11.
  * The count is asserted rather than
  * described (`choiceKeyGuard.test.ts`). Until F4c the v2 route set four of
  * them and inherited the other 33 verbatim from whatever the v1 chain happened
@@ -105,6 +110,26 @@ export const CHOICE_KEYS = [
   'snapPrefs',
   /* --- what is forbidden outright --- */
   'rSourceDisqualifyOhm',
+  /* …and WHICH RULE forbids an unprotected upper driver. V47, and it belongs
+   * in this family rather than beside `safety` because it does not decide
+   * whether the full-band set is watched — it decides what the watching
+   * COMPARES AGAINST.
+   *
+   * `'seed'` is the historic rule: the tuned network's protection deficit may
+   * not exceed the SEED's by more than a fixed slack. That is a distance to a
+   * network nobody judged against anything this run was asked for (V31, one
+   * rule along), and what it permits therefore moves with the seed. `'stated'`
+   * drops the comparison, and is only honest when an absolute requirement is
+   * enforced elsewhere — on the v2 route the M-C gate, armed from the project's
+   * own stated limit.
+   *
+   * MEASURED ON CASUS 1 AT V47, and both directions occurred in one field: the
+   * relative rule refused four of fifteen candidates whose ABSOLUTE drive on
+   * the tweeter's resonance was inside the requirement the designer's own
+   * filter sets, while designs the same field delivered sat ten decibels the
+   * wrong side of it and the rule said nothing, because their seeds were poor
+   * too. A key that reorders the field that way is not polish. */
+  'protectionRule',
   /* …and WHERE that limit is compared. V34, and it is a choice for exactly the
    * reason `zFloorBarrierSource` is one, one quantity along: it names the
    * frequency a hard limit is measured at. Measured on casus 1 — read at the

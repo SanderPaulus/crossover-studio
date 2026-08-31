@@ -6,6 +6,7 @@ import { applyTransfer, combine, combineN, type BranchAdjust, type CombineResult
 import { pickSlotsN } from './driverSlots.ts';
 import { computeIntegration, DEFAULT_OVERLAP_WINDOW_DB } from './integration.ts';
 import { admitPhasePoints } from './phaseAdmission.ts';
+import { protectionDeficitSqDb } from './protectionDeficit.ts';
 import { isFlatTargetLevel, targetLevelAt, type TargetLevelCurve } from './targetLevel.ts';
 import type { Complex } from './complex.ts';
 import type { VxpPart } from './parsers/vxp.ts';
@@ -565,6 +566,34 @@ export interface NetOptimizeOptions {
    * and not a different amount of polish.
    */
   zFloorBarrierSource?: 'grid' | 'safety' | 'sweep';
+  /**
+   * V47 — WHICH RULE JUDGES THE UPPER DRIVER'S PROTECTION IN THE FULL-BAND
+   * SAFETY GATE.
+   *
+   *   'seed'   — the historic rule and the DEFAULT: the tuned network's
+   *              protection deficit may not exceed the SEED's by more than
+   *              `PROTECTION_SEED_SLACK_SQDB`. A comparison against a network
+   *              nobody judged against anything this run was asked for.
+   *   'stated' — the comparison is not made. Only meaningful when an absolute
+   *              requirement is enforced elsewhere; on the v2 route that is
+   *              the M-C gate, armed through `gateViolation`, which refuses at
+   *              every point a pass accepts a network and refuses the whole
+   *              run when nothing admissible is found (V31/V33).
+   *
+   * WHY IT IS A CHOICE KEY and not polish. It decides what is FORBIDDEN
+   * OUTRIGHT — the same family as `rSourceDisqualifyOhm` and `ampMinLoadOhm` —
+   * and the two rules do not order the same designs. The relative rule is
+   * scaled by whatever the seed happened to carry: a seed that protects far
+   * better than the requirement asks makes the rule stricter than the
+   * requirement, and a seed that protects worse makes it looser. Measured on
+   * casus 1 at V47, and both directions occurred in one field.
+   *
+   * ABSENT = 'seed' = BYTE-IDENTICAL. Every v1 run reads what it always read,
+   * and so does a v2 run on a project that states no drive limit — an empty
+   * field is not a judgement (F0/P4), and a seed comparison without a stated
+   * requirement is still better than no comparison at all.
+   */
+  protectionRule?: 'seed' | 'stated';
   safety?: {
     freqs: readonly number[];
     w: GriddedResponse;
@@ -890,6 +919,16 @@ export interface NetOptimizeResult {
     by: 'safety-gate' | 'active-gate';
     kinds: string[];
     reason: string;
+    /**
+     * V47 — the NUMBERS behind the sentence, one entry per comparison that
+     * fired. Present only on the full-band safety gate, which is the rule that
+     * compares against a seed; the active-gate path quotes an absolute limit in
+     * `reason` and has nothing relative to report.
+     *
+     * Instrumentation, never parsed to decide anything — the categories a
+     * caller may act on are in `kinds`.
+     */
+    measured?: { quantity: string; seed: number; result: number; allowance: number }[];
     note: string;
   };
   /**
@@ -1065,6 +1104,24 @@ export type SafetyKind = 'crossing' | 'valley' | 'protection' | 'load';
  * floor.
  */
 export const AMP_FLOOR_BARRIER_WEIGHT = 1200;
+
+/**
+ * V47 — how far above the SEED's protection deficit the full-band safety gate
+ * lets a tuned network sit before it throws the whole tune away.
+ *
+ * Named rather than spelled out at its use site, because since V47 there is a
+ * second rule beside it (`protectionRule`) and the number is the thing that
+ * distinguishes them. The value is unchanged and inherited: 3 dB^2 of
+ * mean-squared deficit above the -15 dB floor, the same slack `safeEsc` allows
+ * a structure move, on the reasoning recorded there — escalation shifts
+ * protection a little by nature and the prune-strict 0.5 blocked every
+ * legitimate bypass capacitor.
+ *
+ * IT IS A DISTANCE AND NOT A LEVEL, which is the whole finding of V47: what it
+ * permits depends on what the seed happened to carry, so it is stricter than a
+ * stated requirement on a well-protected seed and looser on a poor one.
+ */
+const PROTECTION_SEED_SLACK_SQDB = 3;
 
 /**
  * V33 — THE SYSTEM'S SHORTEST IMPEDANCE ON A GIVEN MEASURED GRID.
@@ -2699,20 +2756,22 @@ export function optimizeNetworkValues(
         leakSqDb = n ? acc / n : 0;
       }
 
-      // FUNDAMENTAL — upper-driver protection (always on): electrical drive at
-      // and below crossing/3 stays ≤ −15 dB, whatever the shape metric prefers.
+      /* FUNDAMENTAL — upper-driver protection (always on): electrical drive at
+       * and below crossing/3 stays under the protection floor, whatever the
+       * shape metric prefers.
+       *
+       * V47 — THE RULE ITSELF LIVES IN `protectionDeficit.ts` NOW, for the
+       * reason `impedanceFloor.ts` gives for the amp floor: since V47 it is
+       * also REPORTED as a control column beside M-C, and a quantity with two
+       * readers may not have two implementations. Nothing about it moved —
+       * same floor, same band, same mean of squares — and the byte baselines
+       * are what enforces that. */
       let protSqDb = 0;
       if (p.upperH && xoF !== null) {
-        let acc = 0;
-        let n = 0;
-        for (let i = 0; i < r.freq.length; i++) {
-          if (r.freq[i] > xoF / 3) continue;
-          const mag = 20 * Math.log10(Math.hypot(p.upperH[i].re, p.upperH[i].im) || 1e-9);
-          const d = Math.max(0, mag + 15);
-          acc += d * d;
-          n++;
-        }
-        protSqDb = n ? acc / n : 0;
+        const mag = r.freq.map((_, i) =>
+          20 * Math.log10(Math.hypot(p.upperH![i].re, p.upperH![i].im) || 1e-9),
+        );
+        protSqDb = protectionDeficitSqDb(r.freq, mag, xoF);
       }
       return { xoF, xoDipDb, lowerSlopeDbOct, upperSlopeDbOct, leakSqDb, protSqDb };
     };
@@ -4760,6 +4819,14 @@ export function optimizeNetworkValues(
      * from the sentence afterwards — the sentence is for a human and may be
      * reworded; the category is what a caller may act on. */
     const kinds: SafetyKind[] = [];
+    /* V47 — WHAT EACH COMPARISON ACTUALLY MEASURED, as values beside the
+     * sentence (A3g). Instrumentation only, and it travels in `refusal`, which
+     * is already a v2-only object: a v1 run builds none of it and reads
+     * `safetyNote` exactly as it always did. It exists because a refusal that
+     * says "got worse" without saying worse THAN WHAT cannot be argued with —
+     * and on casus 1 the answer to "than what" turned out to be a seed that
+     * protected the tweeter ten decibels better than the requirement asks. */
+    const measured: { quantity: string; seed: number; result: number; allowance: number }[] = [];
     // Per PAIR: in a 3-way losing EITHER crossing is the same degeneration
     // (with one pair this is exactly the old xoHz check).
     for (let pi = 0; pi < Math.max(seedS.xoHzPairs.length, resS.xoHzPairs.length); pi++) {
@@ -4775,15 +4842,43 @@ export function optimizeNetworkValues(
     if (resS.xoDipDb > seedS.xoDipDb + 2) {
       reasons.push(`the crossing sank into a ${resS.xoDipDb.toFixed(0)} dB hole`);
       kinds.push('valley');
+      measured.push({
+        quantity: 'crossing dip (dB)',
+        seed: seedS.xoDipDb,
+        result: resS.xoDipDb,
+        allowance: 2,
+      });
     }
-    if (resS.protSqDb > seedS.protSqDb + 3) {
-      reasons.push('tweeter protection got worse');
-      kinds.push('protection');
+    /* V47 — THE RELATIVE RULE, AND THE ONE PLACE IT MAY BE SET ASIDE.
+     *
+     * `'stated'` does not weaken the protection requirement; it says the
+     * requirement is enforced ABSOLUTELY somewhere else. On the v2 route that
+     * is the M-C gate through `gateViolation`, which is consulted at every
+     * acceptance point and refuses the whole run when nothing admissible is
+     * found. Absent — every v1 run, and every v2 run on a project that states
+     * no drive limit — leaves this comparison exactly where it was. */
+    if (opts.protectionRule !== 'stated') {
+      if (resS.protSqDb > seedS.protSqDb + PROTECTION_SEED_SLACK_SQDB) {
+        reasons.push('tweeter protection got worse');
+        kinds.push('protection');
+        measured.push({
+          quantity: 'upper-driver protection deficit (mean squared dB above the -15 dB floor)',
+          seed: seedS.protSqDb,
+          result: resS.protSqDb,
+          allowance: PROTECTION_SEED_SLACK_SQDB,
+        });
+      }
     }
     let zReason = false;
     if (resS.zShortOhm > seedS.zShortOhm + 0.2) {
       zReason = true;
       kinds.push('load');
+      measured.push({
+        quantity: 'amplifier-load shortfall (ohm below the stated floor)',
+        seed: seedS.zShortOhm,
+        result: resS.zShortOhm,
+        allowance: 0.2,
+      });
       // Honest attribution: a seed that already sits under the floor is a
       // DESIGN property (three parallel branches around a crossover often
       // are), not something the tuner broke — say so.
@@ -4823,6 +4918,7 @@ export function optimizeNetworkValues(
               by: 'safety-gate' as const,
               kinds: [...kinds] as string[],
               reason: reasons.join('; '),
+              ...(measured.length > 0 ? { measured: [...measured] } : {}),
               note:
                 'The full-band safety gate refused the whole tune, so this run delivers no ' +
                 'network. What it fell back on is the SEED, which nobody judged against this ' +

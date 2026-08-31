@@ -26,10 +26,11 @@
  * worker route still delivers them byte for byte (`casus1V2Candidates.test.ts`).
  */
 
-import { writeFileSync } from 'node:fs';
+import { mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { execSync } from 'node:child_process';
+import { execSync, spawn } from 'node:child_process';
+import { cpus } from 'node:os';
 import {
   CASUS1_WOOFER_DC_OHM,
   CASUS1_DIR,
@@ -66,6 +67,7 @@ import {
   casus1Field,
   casus1V2Declaration,
   casus1V2Facts,
+  CASUS1_MAX_DRIVE_ON_FS_DB,
   CASUS1_QES_MULTIPLIER_MAX,
   CASUS1_TARGET_CURVE,
 } from '../src/lib/engine2/casus1V2.fixture.ts';
@@ -192,9 +194,70 @@ const outcomes: {
     geweigerde_tune: Record<string, number | null> | null;
   } | null;
 }[] = [];
-let n = 0;
-for (const c of field.field.candidates) {
-  n++;
+/* ------------------------------------------------------------------ *
+ * V47 — DE VIJFTIEN KETENRUNS OVER DE CORES, IN PLAATS VAN ACHTER ELKAAR
+ * ------------------------------------------------------------------ *
+ *
+ * WAAROM. Tot V47 draaide deze lus sequentieel op ÉÉN kern, en de prijs stond
+ * in CLAUDE.md: 4 u 23 bij V41, 4 u 52 bij V43, 5 u 56 bij V45. Op een machine
+ * met achttien kernen is dat geen rekentijd maar wachttijd — zeventien kernen
+ * stonden stil. De wandkloktijd wordt hiermee de duurste ENKELE kandidaat in
+ * plaats van hun som.
+ *
+ * WAAROM HET MAG. Elke kandidaat is een eigen `handleV2Request` met een eigen
+ * seed, en er is geen enkele module-scope mutable state in `netOptimizer.ts` of
+ * in `engine2/` — nagegaan en niet aangenomen. Twee kandidaten kunnen elkaars
+ * uitkomst dus niet zien, en dat is precies waarom sequentieel en parallel
+ * hetzelfde veld moeten opleveren. A5e.4 blijft gelden zoals V46 hem
+ * preciseerde: byte-identiek per (machine, runtime), en een kind draait op
+ * dezelfde machine en dezelfde runtime als zijn ouder.
+ *
+ * HOE. Het script roept ZICHZELF aan met `V2_ONLY=<n>`, één proces per
+ * kandidaat, met hoogstens `V2_JOBS` tegelijk (default: kernen − 4, zodat de
+ * machine bruikbaar blijft). Het kind schrijft zijn eigen shard-bestand en het
+ * ouderproces voegt ze samen in KANDIDAATVOLGORDE — nooit in de volgorde
+ * waarin zij klaar kwamen, want dan zou de shortlist van de planning afhangen.
+ *
+ * `V2_SEQUENTIAL=1` DRAAIT DE OUDE WEG, in één proces en in kandidaatvolgorde.
+ * Hij is er niet voor de nostalgie: hij is de ARM waartegen een parallelle run
+ * afgezet kan worden, en zonder hem zou "parallel levert hetzelfde veld" een
+ * bewering zijn in plaats van een meting.
+ */
+const SHARD_DIR = join(HERE, '..', 'test-fixtures', '.casus1-v2-shards');
+const ONLY = process.env.V2_ONLY ? Number(process.env.V2_ONLY) : null;
+/**
+ * Hoeveel kandidaten tegelijk. ALLE KERNEN, en dat is een gestelde keuze en
+ * geen ondergrens: elke kandidaat is één rekenkern lang bezig en er zijn er
+ * vijftien, dus op een machine met achttien kernen draait het hele veld in één
+ * golf en is de wandkloktijd de duurste ENKELE kandidaat. `V2_JOBS` overschrijft
+ * hem — `V2_JOBS=1` geeft de sequentiële volgorde zonder het sequentiële pad.
+ */
+const JOBS = Math.max(1, Number(process.env.V2_JOBS ?? cpus().length));
+const SELF = fileURLToPath(import.meta.url);
+
+/** Wat één kandidaat oplevert, in de vorm waarin hij een shard-bestand wordt. */
+interface Shard {
+  label: string;
+  row: {
+    label: string;
+    parts: unknown;
+    /* CARRIED, NEVER READ. `buildShortlist` draagt `result` ongelezen door en
+     * niets stroomafwaarts leest hem; wat wél gelezen wordt is `parts`, en dat
+     * is een vlakke lijst die een JSON-rondgang zonder verlies overleeft. */
+    result: unknown;
+    topology: unknown;
+    measurements: unknown;
+    gates: unknown;
+    disqualified: unknown;
+    rejection: unknown;
+  };
+  outcome: unknown;
+  seconds: number;
+}
+
+/** De payload van één kandidaat — gescheiden van het DRAAIEN ervan, omdat de
+ *  vingerafdruk hem nodig heeft zonder dat er een run bij hoort. */
+function payloadFor(c: (typeof field.field.candidates)[number]): V2Chain3Payload {
   const input: Chain3Input = {
     grid: [...gridded.grid],
     w: gridded.w,
@@ -244,6 +307,12 @@ for (const c of field.field.candidates) {
     },
     candidate: casus1V2Declaration(c, gridded.safety),
   };
+  return payload;
+}
+
+/** Eén kandidaat draaien — dezelfde code voor de sequentiële en de shard-weg. */
+function runCandidate(c: (typeof field.field.candidates)[number], n: number): Shard {
+  const payload = payloadFor(c);
   lastPayload = payload;
   const t0 = Date.now();
   const wire = structuredClone({ id: n, kind: 'v2Chain3One' as const, payload });
@@ -272,7 +341,7 @@ for (const c of field.field.candidates) {
    * refused, by this gate, at these ohms". */
   const armed = done.gates.filter((v) => v.active);
   const failed = armed.filter((v) => !v.pass);
-  outcomes.push({
+  const outcome = {
     label: c.label,
     rimpel_dB: Number(done.result.net.after.rippleDb.toFixed(2)),
     fase_graden: Number(done.result.net.after.phaseDeg.toFixed(1)),
@@ -319,13 +388,17 @@ for (const c of field.field.candidates) {
       ? {
           regels: [...done.rejection.kinds],
           reden: done.rejection.reason,
+          /* V47 — `driveOnFsDb` staat hierin: M-C van het GEWEIGERDE netwerk,
+           * gemeten door de worker vóórdat hij de onderdelen wist. Zonder die
+           * kolom is niet te zien of een weigering een ontwerp heeft gekost dat
+           * de gestelde eis wél haalde. */
           geweigerde_tune: (done.rejection.rejectedTune ?? null) as Record<
             string,
             number | null
           > | null,
         }
       : null,
-  });
+  };
   console.log(
     `  [${n}/${field.field.candidates.length}] ${c.label} → ` +
       (done.rejection
@@ -337,17 +410,104 @@ for (const c of field.field.candidates) {
           `  ${failed.length ? `REFUSED by ${failed.map((v) => v.gate).join(', ')}` : 'gates ok'}`) +
       `  (${((Date.now() - t0) / 1000).toFixed(0)} s)`,
   );
-  rows.push({
+  return {
     label: c.label,
-    parts: done.result.parts,
-    result: done.result,
-    topology: done.topology,
-    measurements: done.measurements,
-    gates: done.gates,
-    disqualified: done.result.disqualified,
-    rejection: done.rejection,
+    row: {
+      label: c.label,
+      parts: done.result.parts,
+      result: done.result,
+      topology: done.topology,
+      measurements: done.measurements,
+      gates: done.gates,
+      disqualified: done.result.disqualified,
+      rejection: done.rejection,
+    },
+    outcome,
+    seconds: (Date.now() - t0) / 1000,
+  };
+}
+
+/* ---- child mode: één kandidaat, één shard-bestand, klaar ---------------- */
+if (ONLY !== null) {
+  const c = field.field.candidates[ONLY - 1];
+  if (!c) throw new Error(`V2_ONLY=${ONLY} is buiten het veld van ${field.field.candidates.length}`);
+  mkdirSync(SHARD_DIR, { recursive: true });
+  writeFileSync(
+    join(SHARD_DIR, `cand-${String(ONLY).padStart(3, '0')}.json`),
+    JSON.stringify(runCandidate(c, ONLY)),
+    'utf-8',
+  );
+  process.exit(0);
+}
+
+/* ---- de oude weg, als arm om tegen af te zetten ------------------------- */
+if (process.env.V2_SEQUENTIAL === '1') {
+  console.log(`sequentieel: ${field.field.candidates.length} kandidaten in één proces`);
+  let i = 0;
+  for (const c of field.field.candidates) {
+    const shard = runCandidate(c, ++i);
+    rows.push(shard.row as unknown as ShortlistInput<Chain3Result>);
+    outcomes.push(shard.outcome as (typeof outcomes)[number]);
+    perCandidate[c.label] = { provenance: c.provenance, crossings: c.crossings };
+  }
+} else {
+/* ---- parent mode: de kandidaten over de kernen, dan samenvoegen --------- */
+  const count = field.field.candidates.length;
+  console.log(`parallel: ${count} kandidaten, ${JOBS} tegelijk op ${cpus().length} kernen`);
+  rmSync(SHARD_DIR, { recursive: true, force: true });
+  mkdirSync(SHARD_DIR, { recursive: true });
+  const t0 = Date.now();
+  let next = 0;
+  let finished = 0;
+  await new Promise<void>((resolve, reject) => {
+    const start = () => {
+      if (next >= count) {
+        if (finished === count) resolve();
+        return;
+      }
+      const n = ++next;
+      const child = spawn('npx', ['vite-node', SELF], {
+        cwd: join(HERE, '..'),
+        env: { ...process.env, V2_ONLY: String(n), V2_JOBS: '1' },
+        stdio: ['ignore', 'pipe', 'pipe'],
+      });
+      let out = '';
+      child.stdout.on('data', (b: Buffer) => (out += b.toString()));
+      child.stderr.on('data', (b: Buffer) => (out += b.toString()));
+      child.on('close', (code) => {
+        if (code !== 0) {
+          reject(new Error(`kandidaat ${n} faalde (exit ${code}):\n${out}`));
+          return;
+        }
+        finished++;
+        /* Alleen de eigen samenvattingsregel van het kind, want de rest van
+         * zijn uitvoer is de veldkop die élk kind opnieuw afdrukt. */
+        for (const line of out.split('\n')) if (line.startsWith('  [')) console.log(line);
+        start();
+      });
+    };
+    for (let i = 0; i < Math.min(JOBS, count); i++) start();
   });
-  perCandidate[c.label] = { provenance: c.provenance, crossings: c.crossings };
+  console.log(`alle ${count} kandidaten klaar in ${((Date.now() - t0) / 1000).toFixed(0)} s`);
+
+  /* SAMENVOEGEN IN KANDIDAATVOLGORDE en nooit in de volgorde waarin zij klaar
+   * kwamen: de shortlist kiest op spreiding, en een veld waarvan de volgorde
+   * van de planning afhangt zou per run een andere shortlist geven. */
+  for (let n = 1; n <= count; n++) {
+    const shard = JSON.parse(
+      readFileSync(join(SHARD_DIR, `cand-${String(n).padStart(3, '0')}.json`), 'utf-8'),
+    ) as Shard;
+    rows.push(shard.row as unknown as ShortlistInput<Chain3Result>);
+    outcomes.push(shard.outcome as (typeof outcomes)[number]);
+    const c = field.field.candidates[n - 1];
+    perCandidate[c.label] = { provenance: c.provenance, crossings: c.crossings };
+  }
+  /* De vingerafdruk leest de LAATSTE payload, en die is voor élke kandidaat
+   * gelijk op de kandidaatverklaring na. Hij wordt hier gebouwd zonder te
+   * draaien — payloadbouw is gratis, en de alternatieven (hem uit een shard
+   * terugserialiseren, of de laatste kandidaat nog eens draaien) zijn allebei
+   * duurder en minder eerlijk. */
+  lastPayload = payloadFor(field.field.candidates[count - 1]);
 }
 
 /* ---- the run stamp, built exactly as `optimClient.ts` builds it ---------- */
@@ -418,8 +578,27 @@ const meetopstelling = {
     "de eigen standaard van de app. Op 'filter' leverde dezelfde keten 31,4 dB rimpel tegen " +
     "5,2 dB op 'acoustic' (V27); een fixture die niet de synthese van de app draait, meet de app niet.",
   v2_poorten_gewapend: Object.keys(lastPayload.v2.gates ?? {}).sort(),
-  v2_poorten_bron:
-    CASUS1_AMP_MIN_LOAD_OHM !== null
+  v2_poorten_bron: {
+    ...(CASUS1_MAX_DRIVE_ON_FS_DB !== null
+      ? {
+          'M-C': {
+            sleutel: 'maxDriveOnFsDb',
+            bron: 'gesteld',
+            waarde_dB: CASUS1_MAX_DRIVE_ON_FS_DB,
+            waar:
+              'manifest_en_geometrie.gestelde_eisen.tweeter_drive_op_fs_max_dB — het ENIGE ' +
+              'voorkomen van dit getal. Het reist langs het A5a-pad van de app: ' +
+              'v2.gates.maxDriveOnFsDb voor het oordeel, en dezelfde gestelde grens laat de ' +
+              'kandidaat `protectionRule: stated` verklaren, waarmee de zaadvergelijking van de ' +
+              'volle-band-veiligheidspoort vervalt (V47).',
+            regel:
+              'driveVoltageOnResonance (src/lib/engine2/metrics/electrical.ts) op de gemeten ' +
+              'sweep (V32), per hoogdoorlaatbeschermde weg, met de doorlaatband uit de eigen ' +
+              'kruispunten (F1-conventie).',
+          },
+        }
+      : {}),
+    ...(CASUS1_AMP_MIN_LOAD_OHM !== null
       ? {
           'M-B/|Z|': {
             sleutel: 'ampMinLoadOhm',
@@ -435,12 +614,18 @@ const meetopstelling = {
               'een projectconventie, geen eigenschap van de versterker.',
           },
         }
-      : {},
+      : {}),
+  },
   v2_poorten_waarom:
     (CASUS1_AMP_MIN_LOAD_OHM !== null
       ? 'M-B/|Z| is GEWAPEND op de gestelde versterkervloer; zie `v2_poorten_bron`. '
       : 'Geen versterkervloer gesteld, dus M-B/|Z| oordeelt niet. ') +
-    'M-A (dissipatiefractie), M-B/EPDR en M-C blijven ONGEWAPEND: casus 1 stelt daar niets ' +
+    (CASUS1_MAX_DRIVE_ON_FS_DB !== null
+      ? 'M-C is GEWAPEND op de gestelde aandrijfgrens (V47), en hij oordeelt ÉLKE ' +
+        'hoogdoorlaatbeschermde weg — op casus 1 de mid én de tweeter, terwijl het getal van een ' +
+        'tweetermeting is afgeleid. '
+      : 'M-C blijft ONGEWAPEND: casus 1 stelt geen aandrijfgrens. ') +
+    'M-A (dissipatiefractie) en M-B/EPDR blijven ONGEWAPEND: casus 1 stelt daar niets ' +
     'voor, en leeg veld = geen oordeel (P4). Een afwezige grens is geen poort die altijd ' +
     'slaagt — hij rapporteert zijn waarde en oordeelt niets.',
   v2_budgetten_gewapend: Object.keys(lastPayload.v2.budgets ?? {}).sort(),
@@ -631,6 +816,27 @@ const meetopstelling = {
         'voicing van het ONTWERP en geen mening van de kandidaat (A5e.2, V45).'
       : 'De zoektocht meet vlakheid ten opzichte van horizontaal — de vóór-arm van V45, en de ' +
         'default die elke v1-run leest.',
+  /* V47 — WELKE REGEL EEN ONBESCHERMDE BOVENSTE DRIVER VERBIEDT. Het ACHTSTE
+   * besluit in dit blok, naast V30/V33, V34, V37, V38-fix, het V41-paar, V44 en
+   * V45 — en het eerste dat een POORT wapent in plaats van alleen de zoektocht
+   * te sturen. */
+  beschermingsregel: lastPayload.candidate?.declaration.stated.protectionRule ?? null,
+  beschermingsregel_waarom:
+    (lastPayload.candidate?.declaration.stated.protectionRule ?? null) === 'stated'
+      ? 'DE GESTELDE EIS OORDEELT, EN DE ZAADVERGELIJKING VERVALT. De volle-band-veiligheidspoort ' +
+        'weigerde een tune in zijn geheel zodra haar beschermingstekort meer dan 3 dB-kwadraat ' +
+        'boven dat van het ZAAD lag — een afstand tot een netwerk dat niemand tegen het doel van ' +
+        'deze run heeft gelegd (V31), dus wat zij toestond bewoog mee met wat het zaad droeg. Met ' +
+        `een gestelde grens (${CASUS1_MAX_DRIVE_ON_FS_DB} dB) oordeelt M-C ABSOLUUT, op élk punt ` +
+        'waar een pas een netwerk accepteert, en een run die niets toelaatbaars vindt komt terug ' +
+        'als weigering met de gemeten waarde en de eis. GEMETEN BIJ V47, en de meting keerde de ' +
+        'verwachting om: de vier V45-kandidaten die de zaadregel weigerde meten absoluut -3,43 ' +
+        'tot -12,29 dB, dus zij ving daar echte schendingen; waar zij faalde is de andere kant ' +
+        'op, want datzelfde veld LEVERDE twee netlists op -14,38 en -15,10 dB omdat hun zaad ' +
+        'even slecht was.'
+      : 'De zaadvergelijking van de volle-band-veiligheidspoort staat — de historische regel, en ' +
+        'wat elke v1-run leest. Zonder gestelde grens is er niets absoluuts om naar te wijken, ' +
+        'en een vergelijking met het zaad is dan beter dan geen vergelijking (P4).',
   doelcurve: describeTargetCurve(CASUS1_TARGET_CURVE),
   doelcurve_herkomst:
     'De DIEPTE is gesteld (`gestelde_eisen.basplateau_offset_dB`) en de OVERGANG is afgeleid ' +

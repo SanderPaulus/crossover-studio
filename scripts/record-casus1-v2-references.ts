@@ -37,6 +37,7 @@ import {
   casus1Geometry,
   casus1LfResonantBudgetDb,
   casus1Manifest,
+  casus1MaxDriveOnFsDb,
   casus1QesMultiplierMax,
   loadGolden,
   type GoldenRefs,
@@ -236,6 +237,19 @@ const CHAIN_GRID_LO_HZ = CASUS1_V2_GRID[0];
  * rather than a plausible-sounding reason that belongs to a different corpus.
  */
 const DATED_REASON: Record<string, string> = {
+  V45:
+    'HET GEDATEERDE V45-CORPUS. Bevroren toen de TWEETERBESCHERMING nog uitsluitend RELATIEF ' +
+    'bewaakt werd: de volle-band-veiligheidspoort van de tuner legde het beschermingstekort van ' +
+    'het geleverde netwerk naast dat van het ZAAD (`protSqDb`, speling 3 dB-kwadraat) en casus 1 ' +
+    'stelde geen enkele grens op M-C. Wat dat kostte is bij V47 aan BEIDE kanten gemeten, en de ' +
+    'twee kanten wijzen tegengesteld. Zij weigerde vier van de vijftien kandidaten wholesale — ' +
+    'en TERECHT, want die tunes meten absoluut -12,29 en -6,82 dB op hun slechtst beschermde weg ' +
+    'tegen HUIDIG\'s -25,08. Maar zij LIET twee netlists door die in dit corpus staan, ' +
+    'V45_KAND_5 op -14,38 dB en V45_KAND_6 op -15,10 dB, omdat hun zaad even slecht was: een ' +
+    'regel die aan het zaad hangt bewaakt het toeval en niet de driver. Die twee drijven de ' +
+    'tweeter op zijn resonantie tien dB harder aan dan het goedgekeurde ontwerp. Zij blijven ' +
+    'staan als de "vóór"-helft van de V47-vergelijking. Meetobject, GEEN ontwerp: mag niet ' +
+    'gebouwd worden.',
   V44:
     'HET GEDATEERDE V44-CORPUS. Bevroren vóór A5e.2 gesloten werd, en er ontbraken drie dingen ' +
     'tegelijk die alle drie over NIVEAUWERK gaan. (1) Het niveau-anker was het KALE gemeten ' +
@@ -858,6 +872,65 @@ const qesRecord = {
 };
 
 raw.manifest_en_geometrie.v45_qes = qesRecord;
+
+/* ------------------------------------------------------------------ *
+ * V47 — M-C tegen de gestelde aandrijfgrens, per bevroren netlist
+ * ------------------------------------------------------------------ */
+
+/**
+ * Zelfde vorm en zelfde reden als `v36_dissipatie`, `v43_ontleding`,
+ * `v44_fasematen` en `v45_qes`: afgeleid, over het HELE casusboek, en
+ * `frozenNetlistGates.test.ts` herrekent hem.
+ *
+ * ÉÉN RIJ PER HOOGDOORLAATBESCHERMDE WEG en niet één per netlist, want dat is
+ * wat de poort oordeelt. De klasse-B-referentie `V_tweeter_op_fs_dB` noteert
+ * alleen de tweeter; de gestelde eis is dáárvan afgeleid en wordt op élke
+ * beschermde weg gehandhaafd, en een blok dat die tweede weg niet afdrukt zou
+ * dat verschil onzichtbaar maken.
+ */
+const driveCeilingDb = casus1MaxDriveOnFsDb(raw as unknown as GoldenRefs);
+const driveRecord = (() => {
+  const rows: {
+    netlist: string;
+    weg: string;
+    f_s_hz: number | null;
+    doorlaatband_hz: string | null;
+    M_C_dB: number | null;
+    haalt_de_eis: boolean | null;
+  }[] = [];
+  for (const key of Object.keys(netlists)) {
+    const rep = report(key);
+    for (const v of rep.gates.verdicts) {
+      if (v.gate !== 'M-C') continue;
+      rows.push({
+        netlist: key,
+        weg: v.subject,
+        f_s_hz: r0(Number(String(v.parameters?.f_s ?? '').replace(/[^0-9.]/g, ''))),
+        doorlaatband_hz: v.parameters?.passband ? String(v.parameters.passband) : null,
+        M_C_dB: r2(v.value),
+        haalt_de_eis:
+          v.value === null || driveCeilingDb === null ? null : v.value <= driveCeilingDb,
+      });
+    }
+  }
+  const live = rows.filter((r) => /^KAND_V2_\d+$/.test(r.netlist));
+  return {
+    _:
+      'V47 — M-C (A4: de aandrijfspanning op de eigen resonantie van een weg, tegen het ' +
+      'dB-gemiddelde over haar doorlaatband) tegen de GESTELDE grens, op élke ' +
+      'hoogdoorlaatbeschermde weg van élke bevroren netlist. De doorlaatband volgt uit de ' +
+      'kruispunten die dit filter zelf oplevert (F1-conventie) en staat erbij, want een M-C ' +
+      'zonder zijn band is geen getal (V15). Zie gestelde_eisen.tweeter_drive_op_fs_max_dB.',
+    gestelde_grens_dB: driveCeilingDb,
+    grootheid: 'driveVoltageOnResonance().db, poort-id M-C',
+    levend_corpus_wegen: live.length,
+    levend_corpus_eroverheen: live.filter((r) => r.haalt_de_eis === false).length,
+    referentiefilters: rows.filter((r) => ['HUIDIG', 'KAND_A', 'KAND_B'].includes(r.netlist)),
+    per_weg: rows,
+  };
+})();
+
+raw.manifest_en_geometrie.v47_bescherming = driveRecord;
 
 /* ------------------------------------------------------------------ *
  * V43 — wat het GEHERIJKTE budget op het levende corpus doet

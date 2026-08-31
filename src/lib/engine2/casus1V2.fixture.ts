@@ -40,6 +40,7 @@ import { AUTO_STRUCTS } from '../threeWayDesign.ts';
 import {
   casus1AmpMinLoadOhm,
   casus1LfResonantBudgetDb,
+  casus1MaxDriveOnFsDb,
   casus1QesMultiplierMax,
   casus1TargetCurve,
   loadGolden,
@@ -156,8 +157,25 @@ export const CASUS1_LF_RESONANT_BUDGET_DB: number | null = casus1LfResonantBudge
  * requirement arms nothing at all, which is what P4 asks for and what a casus
  * without these numbers still looks like.
  */
-export const CASUS1_V2_GATES: { ampMinLoadOhm?: number } =
-  CASUS1_AMP_MIN_LOAD_OHM !== null ? { ampMinLoadOhm: CASUS1_AMP_MIN_LOAD_OHM } : {};
+/**
+ * V47 — the stated maximum drive on a driver's own resonance, read from the
+ * manifest for the same reason the amplifier floor is: one home per project
+ * number.
+ *
+ * It is the SECOND armed gate on this casus, and the first one since the floor.
+ * Unlike the LF budget and the Q_es ceiling it condemns a delivered network
+ * (M-C has a gate id), and unlike the floor it also decides which protection
+ * rule the tuner's full-band safety gate applies — see `protectionRule` in
+ * `casus1V2Declaration`.
+ */
+export const CASUS1_MAX_DRIVE_ON_FS_DB: number | null = casus1MaxDriveOnFsDb();
+
+export const CASUS1_V2_GATES: { ampMinLoadOhm?: number; maxDriveOnFsDb?: number } = {
+  ...(CASUS1_AMP_MIN_LOAD_OHM !== null ? { ampMinLoadOhm: CASUS1_AMP_MIN_LOAD_OHM } : {}),
+  ...(CASUS1_MAX_DRIVE_ON_FS_DB !== null
+    ? { maxDriveOnFsDb: CASUS1_MAX_DRIVE_ON_FS_DB }
+    : {}),
+};
 
 /**
  * V45 (A5e.2) — the stated Q_es multiplication ceiling, read from the manifest
@@ -339,6 +357,15 @@ export function casus1V2Declaration(
        * `amplitudeReference` instead of leaving the search flattening toward
        * horizontal while the shortlist judges against a plateau. */
       targetCurve: CASUS1_TARGET_CURVE,
+      /* V47 — the design's stated drive limit, so the candidate can declare
+       * WHICH RULE forbids an unprotected upper driver. The limit itself does
+       * not travel this way: it is a gate and it crosses as
+       * `v2.gates.maxDriveOnFsDb`. This is only what lets the declaration
+       * derive `protectionRule` instead of leaving the safety gate comparing
+       * against a seed while a stated requirement judges the result. */
+      ...(CASUS1_MAX_DRIVE_ON_FS_DB !== null
+        ? { driveOnFsLimitDb: CASUS1_MAX_DRIVE_ON_FS_DB }
+        : {}),
     }),
     /* V41 — the two settings the DESIGN and SYNTHESIS steps read, which run
      * before the tuner exists. Nothing is stated here, so the derivation
