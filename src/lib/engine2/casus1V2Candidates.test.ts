@@ -81,10 +81,11 @@ import {
   casus1Field,
   casus1V2Declaration,
   casus1V2Facts,
+  CASUS1_QES_MULTIPLIER_MAX,
+  CASUS1_TARGET_CURVE,
 } from './casus1V2.fixture.ts';
 import { buildReport, type EngineV2Report } from './report.ts';
 import { ctcKey } from './metrics/types.ts';
-import { FLAT_TARGET } from './requirements/targetCurve.ts';
 import { SEARCH_SMOOTHING_OCTAVES } from './constants.ts';
 import { SYNTHESIS_LEAN_DEFAULT_DB } from '../synthesis.ts';
 import { DEFAULT_EQ_BANDS_PER_DRIVER } from '../vfOptimizer.ts';
@@ -155,6 +156,15 @@ const HERKOMST = JSON.parse(
     eq_budget_waarom: string;
     lean_drempel_db: number | null;
     lean_drempel_waarom: string;
+    /** V45 — WAARTEGEN de amplitudeterm vlak is (keuze), plus de doelcurve die
+     *  hij leest en de gestelde Q_es-grens. Niet WELKE som (dat is `ampTarget`)
+     *  maar wat er als vlak telt voor die som. */
+    amplitude_referentie: string | null;
+    amplitude_referentie_waarom: string;
+    doelcurve: string;
+    doelcurve_herkomst: string;
+    qes_grens: number | null;
+    qes_grens_waarom: string;
     dissipatiegewicht: number;
     dissipatiegewicht_waarom: string;
     seed: number;
@@ -180,7 +190,7 @@ const report = (key: string): EngineV2Report =>
       amplifierPowerW: 100,
       orderByPair: { [ctcKey('woofer', 'mid')]: 4, [ctcKey('mid', 'tweeter')]: 4 },
       reOhmByDriver: { woofer: CASUS1_WOOFER_DC_OHM },
-      targetCurve: FLAT_TARGET,
+      targetCurve: CASUS1_TARGET_CURVE,
     },
   });
 
@@ -300,6 +310,27 @@ describe('the frozen v2 candidates are files, and the file says where they came 
     expect(m.dissipatie_noemer_waarom).toMatch(/V37/);
     expect(m.dissipatiegewicht).toBe(CASUS1_V2_SETTINGS.dissipationWeight);
     expect(m.dissipatiegewicht_waarom).toMatch(/A3j/);
+    /* V45 — het ZEVENDE en ACHTSTE besluit, en zij horen bij elkaar zonder
+     * hetzelfde te zijn. `amplitude_referentie` is de keuze-sleutel: waartegen
+     * de amplitudeterm vlak is. `doelcurve` is de POLISH ernaast — de voicing
+     * van het ontwerp zelf, met beide helften van haar herkomst, want een
+     * curve zonder haar diepte én haar overgang is geen curve (V15). */
+    expect(m.beschermingen_via_kandidaat).toContain('amplitudeReference');
+    expect(m.amplitude_referentie).toBe('target');
+    expect(m.amplitude_referentie_waarom).toMatch(/V45/);
+    expect(m.doelcurve).toContain('bass-plateau');
+    // De twee helften komen uit twee soorten bron, en de tekst zegt welke.
+    expect(m.doelcurve_herkomst).toMatch(/GESTELD|gesteld/);
+    expect(m.doelcurve_herkomst).toMatch(/AFGELEID|afgeleid/);
+    expect(m.doelcurve_herkomst).toMatch(/P6/);
+    /* En de Q_es-grens, die GEEN keuze-sleutel is maar een gesteld budget —
+     * dezelfde soort invoer als de vloer en het opslingeringsbudget, dus hij
+     * hoort ook in `v2_budgetten_gewapend` te staan en niet alleen hier. */
+    expect(m.qes_grens).toBe(CASUS1_QES_MULTIPLIER_MAX);
+    expect(m.qes_grens_waarom).toMatch(/V45/);
+    if (CASUS1_QES_MULTIPLIER_MAX !== null) {
+      expect(m.v2_budgetten_gewapend).toContain('qesMultiplierMax');
+    }
     /* V38-fix — WELKE KROMME de amplitudeterm meet, en het is een vierde
      * besluit naast de drie hierboven. Tot V38-fix stond `errorSmoothOct` als
      * POLISH geclassificeerd en erfde de v2-route hem uit de keten: de
@@ -435,7 +466,7 @@ describe('the comparison block on casus 1', () => {
  * prevent.
  */
 describe('[live] the run still delivers the frozen netlist', () => {
-  it('one candidate, live through handleV2Request, byte for byte', () => {
+  it('[bytes] one candidate, live through handleV2Request, byte for byte', () => {
     const rep = report('HUIDIG');
     const field = casus1Field(rep);
     const gridded = casus1ChainInput(manifest, files, golden);
@@ -500,7 +531,7 @@ describe('[live] the run still delivers the frozen netlist', () => {
          * record — see `CASUS1_V2_BUDGETS`. */
         budgets: { ...CASUS1_V2_BUDGETS },
         determinism: { seed: CASUS1_V2_SEED },
-        targetCurve: FLAT_TARGET,
+        targetCurve: CASUS1_TARGET_CURVE,
         judgeBandHz: CASUS1_V2_BAND_HZ,
       },
       candidate: casus1V2Declaration(c!, gridded.safety),
@@ -604,7 +635,7 @@ describe('[live] the run still delivers the frozen netlist', () => {
          * re-run without the armed budget delivered a network instead. */
         budgets: { ...CASUS1_V2_BUDGETS },
         determinism: { seed: CASUS1_V2_SEED },
-        targetCurve: FLAT_TARGET,
+        targetCurve: CASUS1_TARGET_CURVE,
         judgeBandHz: CASUS1_V2_BAND_HZ,
       },
       candidate: casus1V2Declaration(c!, gridded.safety),

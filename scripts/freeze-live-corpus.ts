@@ -48,6 +48,26 @@ if (!id || !prefix || !reden) {
       '(e.g. v33 V33-KAND "de barriere las nog ...")',
   );
 }
+/* THE SEPARATOR IS A HYPHEN, AND THIS CHECK EXISTS BECAUSE IT WAS GOT WRONG.
+ *
+ * V45 froze its corpus with `V44_KAND` and the mistake was almost invisible:
+ * the reference KEYS came out right anyway (the `-`→`_` rewrite below is a
+ * no-op on an underscore), so the manifest read `V44_KAND_1` exactly as
+ * intended — while the FILES on disk were named `V44_KAND-1` against a case
+ * book where every other corpus is `V43-KAND-1`, and the corpus description
+ * read "HET GEDATEERDE V44_KAND-CORPUS" because the `-KAND` strip did not
+ * match either. Nothing failed; it just quietly did not match the convention.
+ *
+ * A convention that only lives in the example line of a usage string is a
+ * convention that gets broken, so it lives here now. */
+if (!/^[A-Z0-9]+-KAND$/.test(prefix)) {
+  throw new Error(
+    `the file prefix must look like "V44-KAND" — an uppercase corpus name, a HYPHEN, then KAND. ` +
+      `Got "${prefix}". The hyphen is not cosmetic: the reference key is derived by rewriting ` +
+      'every hyphen to an underscore, and the corpus description is derived by stripping ' +
+      '"-KAND", so a different separator produces the right keys beside wrongly named files.',
+  );
+}
 
 const herkomst = JSON.parse(readFileSync(join(FIXTURES, 'casus1_v2_herkomst.json'), 'utf-8')) as {
   seed: number;

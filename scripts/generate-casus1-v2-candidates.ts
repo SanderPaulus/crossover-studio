@@ -40,6 +40,7 @@ import {
   loadGolden,
 } from '../src/lib/engine2/casus1.fixture.ts';
 import { buildReport } from '../src/lib/engine2/report.ts';
+import { describeTargetCurve } from '../src/lib/engine2/requirements/targetCurve.ts';
 import { ctcKey } from '../src/lib/engine2/metrics/types.ts';
 import { candidateFieldKey } from '../src/lib/engine2/predesign/candidateField.ts';
 import { greyValues } from '../src/lib/engine2/optimizer/choices.ts';
@@ -48,7 +49,6 @@ import { gateSettingsKey } from '../src/lib/engine2/optimizer/gates.ts';
 import { budgetSettingsKey } from '../src/lib/engine2/optimizer/bounds.ts';
 import { measurementFactsKey } from '../src/lib/engine2/optimizer/measurementFacts.ts';
 import { buildShortlist, type ShortlistInput } from '../src/lib/engine2/optimizer/shortlist.ts';
-import { FLAT_TARGET } from '../src/lib/engine2/requirements/targetCurve.ts';
 import { handleV2Request, type V2Chain3Payload, type V2Response } from '../src/lib/engine2/optimizer/worker.ts';
 import type { Chain3Input, Chain3Result } from '../src/lib/threeWayChain.ts';
 import type { GriddedResponse } from '../src/lib/dsp.ts';
@@ -66,6 +66,8 @@ import {
   casus1Field,
   casus1V2Declaration,
   casus1V2Facts,
+  CASUS1_QES_MULTIPLIER_MAX,
+  CASUS1_TARGET_CURVE,
 } from '../src/lib/engine2/casus1V2.fixture.ts';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
@@ -84,7 +86,7 @@ const report = buildReport({
     amplifierPowerW: 100,
     orderByPair: { [ctcKey('woofer', 'mid')]: 4, [ctcKey('mid', 'tweeter')]: 4 },
     reOhmByDriver: { woofer: CASUS1_WOOFER_DC_OHM },
-    targetCurve: FLAT_TARGET,
+    targetCurve: CASUS1_TARGET_CURVE,
   },
 });
 
@@ -237,7 +239,7 @@ for (const c of field.field.candidates) {
        * bounds the SEARCH and condemns no delivered network. */
       budgets: { ...CASUS1_V2_BUDGETS },
       determinism: { seed: CASUS1_V2_SEED },
-      targetCurve: FLAT_TARGET,
+      targetCurve: CASUS1_TARGET_CURVE,
       judgeBandHz: CASUS1_V2_BAND_HZ,
     },
     candidate: casus1V2Declaration(c, gridded.safety),
@@ -380,7 +382,7 @@ const stamp = stampRun(
   'completed',
 );
 
-const shortlist = buildShortlist(rows, stamp.fingerprint, { targetCurve: FLAT_TARGET });
+const shortlist = buildShortlist(rows, stamp.fingerprint, { targetCurve: CASUS1_TARGET_CURVE });
 console.log(`shortlist: ${shortlist.rows.length} of ${shortlist.consideredCount} considered`);
 
 const written: { name: string; label: string }[] = [];
@@ -609,6 +611,45 @@ const meetopstelling = {
     '45 (V38 beslispunt B). De twee ANDERE lezers van `targets.rippleDb` zijn oordelen (de ' +
     'trapmethode zelf en de v1-rangschikking) en zijn niet aangeraakt: alleen de synthese-lezing ' +
     'beweegt.',
+  /* ---- V45: WAARTEGEN DE AMPLITUDETERM VLAK IS, EN DE Q_es-GRENS ---------
+   *
+   * Twee velden, twee besluiten, in dezelfde vorm als V30, V33, V34, V37,
+   * V38-fix en V44. Het EERSTE is een keuze-sleutel en wordt van de verklaring
+   * afgelezen; het TWEEDE is een gesteld budget en staat in `v2_budgetten_...`
+   * hierboven — het krijgt hier zijn eigen regel omdat een lezer moet kunnen
+   * zien WELKE grootheid begrensd is en waardoor de inversie deelt. */
+  amplitude_referentie:
+    lastPayload.candidate?.declaration.stated.amplitudeReference ?? null,
+  amplitude_referentie_waarom:
+    (lastPayload.candidate?.declaration.stated.amplitudeReference ?? null) === 'target'
+      ? 'DE ZOEKTOCHT MEET DE VLAKHEID TEN OPZICHTE VAN DE DOELCURVE, niet ten opzichte van ' +
+        'horizontaal. `bandStd` is de spreiding van de som rond haar eigen bandgemiddelde, dus ' +
+        'zonder deze sleutel is "perfect" per definitie een rechte lijn — en dan werd een ' +
+        'ontwerp GEZOCHT tegen vlak en GEOORDEELD tegen een plateau (A5e.1 leest de doelcurve ' +
+        'al sinds F3). Van die twee heeft de zoektocht het hele iteratiebudget: zij wint, en het ' +
+        'oordeel legt alleen de nederlaag vast. De curve zelf reist als POLISH mee — hij is de ' +
+        'voicing van het ONTWERP en geen mening van de kandidaat (A5e.2, V45).'
+      : 'De zoektocht meet vlakheid ten opzichte van horizontaal — de vóór-arm van V45, en de ' +
+        'default die elke v1-run leest.',
+  doelcurve: describeTargetCurve(CASUS1_TARGET_CURVE),
+  doelcurve_herkomst:
+    'De DIEPTE is gesteld (`gestelde_eisen.basplateau_offset_dB`) en de OVERGANG is afgeleid ' +
+    '(`baffleStepHz` van de gemeten kastbreedte in `geometrie.baffle_mm`). Twee halves uit twee ' +
+    'verschillende soorten bron, en dat is P6: een frequentie in dit project komt uit ' +
+    'projectdata, een voicing-diepte komt van een ontwerper. Zie ' +
+    '`gestelde_eisen.basplateau_waarom_niet_gemeten` voor waarom de diepte op deze meetset ' +
+    'niet te MÉTEN is.',
+  qes_grens: CASUS1_QES_MULTIPLIER_MAX,
+  qes_grens_waarom:
+    CASUS1_QES_MULTIPLIER_MAX !== null
+      ? 'GESTELD door de ontwerper, gelezen uit `manifest_en_geometrie.gestelde_eisen`. Hij ' +
+        'wapent de A5d.6-inversie `qes-series-r`: een plafond op de TOTALE serieweerstand van de ' +
+        'laagste weg, `R_s <= R_e * (q - 1)`, met de DCR van de spoelen eerst van het plafond ' +
+        'af. Geen poort — M-E heeft geen poort-id, dus het budget begrenst de ZOEKTOCHT en ' +
+        'veroordeelt geen geleverde netlist. Hij bestaat om de weerstandsvlucht af te knippen ' +
+        'die V43 mat toen het opslingeringsbudget de spoel begrensde: dissipatie 46,1 → 52,5 %, ' +
+        'pads tot 5,80 Ω, Q_es maal 3 (V45).'
+      : 'NIET GESTELD: geen inversie, geen plafond, en M-E wordt alleen gerapporteerd (P4).',
   dissipatiegewicht: CASUS1_V2_SETTINGS.dissipationWeight,
   dissipatiegewicht_waarom:
     'GRIJS (A3j): overgenomen uit v1, expliciet gesteld door de kandidaat, nooit stil op nul. ' +

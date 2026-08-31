@@ -102,14 +102,24 @@ export interface AnchoredGaps {
  * is the level the whole system has to come down to; the lowest way is the
  * anchor by default and only loses the role when something above it is quieter.
  *
- * `targetCurveShift` is where A5e.2 would enter: A5d.4(a) says the anchor
- * level is the lowest way's level AFTER baffle step in the intended setup, not
- * its bare passband sensitivity, and the intended setup is a property of the
- * target-curve object.
+ * `targetCurveShift` is where A5e.2 ENTERS, and since V45 it is no longer a
+ * placeholder. A5d.4(a) says the anchor level is the lowest way's level AFTER
+ * baffle step in the intended setup, not its bare passband sensitivity, and the
+ * intended setup is a property of the target-curve object — which exists now
+ * (`requirements/targetCurve.ts`).
  *
- * TODO(A5e.2): the target-curve object is an open specification decision. Until
- * it is taken, the caller may pass a per-way shift explicitly; passing nothing
- * means the raw measured levels are compared and the note says so.
+ * WHAT THE SHIFT IS, in one line: how far the target says this way's own band
+ * may sit below the flat part, with the sign turned round. A way the voicing
+ * puts 2.5 dB down is CREDITED those 2.5 dB here, so its gap to the anchor —
+ * and therefore its attenuation budget — grows by exactly what the design
+ * deliberately asked it to give up. Only DIFFERENCES between ways matter, so a
+ * curve that shifts every way alike changes nothing, which is correct: a target
+ * that tilts the whole loudspeaker is not a statement about level balance.
+ *
+ * Passing nothing still means the raw measured levels are compared, and the
+ * note still says so — that is the FLAT reference and not an open question any
+ * more. Nothing here computes a shift: the caller owns the target curve, and a
+ * second opinion about a voicing is the last thing this module should hold.
  */
 export function anchoredGaps(
   levels: readonly WayLevel[],
@@ -120,12 +130,37 @@ export function anchoredGaps(
   const shift = targetCurveShift ?? {};
   if (!targetCurveShift) {
     notes.push(
-      'Levels are compared as measured. A5d.4(a) wants the anchor taken AFTER baffle step in the ' +
-        'intended setup, which is a property of the target-curve object - an open decision ' +
-        '(A5e.2). Supply a per-way shift to apply it.',
+      'Levels are compared AS MEASURED, against the flat reference. A5d.4(a) takes the anchor ' +
+        'after baffle step in the intended setup, which is a property of the target-curve object ' +
+        '(A5e.2); this design either states no curve or states the flat one, and flat is the ' +
+        'neutral reference rather than a missing answer. A design with a voicing supplies a ' +
+        'per-way shift and these levels move with it.',
     );
   }
   const adjusted = levels.map((l) => ({ ...l, db: l.db + (shift[l.driver] ?? 0) }));
+  if (targetCurveShift) {
+    /* THE BRANCH IS ON THE SPREAD AND NOT ON THE VALUES, and that is the whole
+     * arithmetic of this block in one condition: every gap below is a
+     * DIFFERENCE between two adjusted levels, so a shift that moves every way
+     * by the same amount cancels exactly. Reporting "applied" on a uniform
+     * shift would name numbers that changed nothing. */
+    const values = levels.map((l) => shift[l.driver] ?? 0);
+    const spread = Math.max(...values) - Math.min(...values);
+    const applied = levels.map(
+      (l) => `${l.driver} ${(shift[l.driver] ?? 0) > 0 ? '+' : ''}${(shift[l.driver] ?? 0).toFixed(2)} dB`,
+    );
+    notes.push(
+      spread > 0
+        ? 'Levels are compared AFTER the target curve (A5d.4a, A5e.2): ' +
+            `${applied.join(', ')}. A way the voicing puts below the flat part is credited that ` +
+            'much here, so its gap and its attenuation budget grow by what the design asked it ' +
+            'to give up. Only differences between ways move an anchor.'
+        : 'A target-curve shift was supplied and it moves every way by the same amount, so it ' +
+          'cancels in every gap and the anchor and the budgets are what the raw measured levels ' +
+          'give (A5d.4a). That is a result, not an omission: a target that tilts the whole ' +
+          'loudspeaker makes no statement about level balance between its ways.',
+    );
+  }
 
   let anchorIx = 0;
   for (let i = 1; i < adjusted.length; i++) if (adjusted[i].db < adjusted[anchorIx].db) anchorIx = i;

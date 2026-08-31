@@ -218,6 +218,30 @@ Zie casusboek **V23** (waar dit als bijvangst is vastgelegd) en **V25** (de vier
 en de reparatie).
 
 
+### Derde erratum bij §3 — 30-08-2026 (V45), de rijen "Dempingsmargebudget" en "Verankerde gaps"
+
+**De tabel hierboven is niet gewijzigd**, om dezelfde reden als bij de twee errata eronder: er
+wordt met paragraafnummers naar verwezen.
+
+**Wat er staat.** Twee regels, en zij hoorden altijd al bij elkaar: *"Dempingsmargebudget | **nee**
+| expliciet niet toegepast — lek 3"* en *"Verankerde gaps / ankerniveau | nee | wacht op
+doelcurve-object (open besluit A5e.2)"*. De tweede was de reden voor de eerste.
+
+**Wat er sinds V45 geldt.** Het doelcurve-object bestaat (`bass-plateau`, met een GESTELDE diepte
+en een uit de gemeten kastbreedte AFGELEIDE overgang), dus A5d.4(a) kan het ankerniveau ná baffle
+step nemen. Het verankerde budget steekt sindsdien als MEETFEIT de grens over
+(`gapBudgetDbByModel`, met `gapAnchorModel` ernaast omdat "deze weg heeft geen budget" twee
+betekenissen heeft), de `TODO(A5e.2)` in `worker.ts` bestaat niet meer, en `gap-pad-r` bereikt een
+grens zodra een project een dempingsmarge stelt — nagemeten: 1,045 Ω op HUIDIG's woofer bij een
+marge van 1 dB. **De juiste lezing van de eerste regel is daarmee "ja, zodra gesteld", en van de
+budgetregel "ja (4 van 4)".**
+
+**Wat er NIET mee gezegd is.** Casus 1 wapent `gap-pad-r` niet: zij stelt geen dempingsmarge, dus
+daar levert de inversie geen grens (P4). Waarom die eis op deze casus niet zomaar gesteld kán
+worden — de ANKERWEG is in élk referentiefilter de zwaarst gepadde weg, terwijl A5d.4 haar per
+definitie nul budget geeft — staat in casusboek V45, en het is een bevinding over het MODEL en
+niet over de getallen.
+
 ### Tweede erratum bij §3 — 27-08-2026 (F4d), de rij "Seed, starts, evaluatiebudget"
 
 **De tabel is opnieuw niet gewijzigd.** Wat hieronder staat corrigeert één rij ervan en legt het

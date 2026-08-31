@@ -156,7 +156,11 @@ import {
   type Shortlist,
   type ShortlistInput,
 } from './lib/engine2/optimizer/shortlist.ts';
-import { FLAT_TARGET, type TargetCurve } from './lib/engine2/requirements/targetCurve.ts';
+import {
+  FLAT_TARGET,
+  describeTargetCurve,
+  type TargetCurve,
+} from './lib/engine2/requirements/targetCurve.ts';
 import { BaffleView } from './components/BaffleView.tsx';
 import { XoWindowAnnotation, type XoWindowPair } from './components/XoWindowAnnotation.tsx';
 import { CatalogManager } from './components/CatalogManager.tsx';
@@ -2195,6 +2199,22 @@ export default function App() {
     () => designs.find((d) => d.id === activeDesignId) ?? null,
     [designs, activeDesignId],
   );
+  /**
+   * A5e.2 — the voicing the ACTIVE design is judged and searched against.
+   *
+   * One expression, several readers since V45: the shortlist's window and RMS,
+   * the anchored gaps (A5d.4a), and the tuner's amplitude term through the
+   * candidate declaration. They used to read it from two places; two copies of
+   * one voicing is two chances for a design to be searched against one curve
+   * and judged against another, which is exactly the split V45 closed.
+   *
+   * Absent = flat, which is the neutral reference and not a guess — a design
+   * that has never stated a voicing means "judge me horizontal".
+   */
+  const activeTargetCurve: TargetCurve = useMemo(
+    () => (activeDesign?.targetCurve as TargetCurve | undefined) ?? FLAT_TARGET,
+    [activeDesign],
+  );
   const schematic: VxpCrossover | null = useMemo(
     () => (activeDesign ? { name: activeDesign.name, parts: activeDesign.parts } : null),
     [activeDesign],
@@ -3402,6 +3422,11 @@ export default function App() {
             ? { amplifierPowerW: power }
             : {}),
           ...(Object.keys(orderByPair).length > 0 ? { orderByPair } : {}),
+          /* A5e.2/V45 — the design's voicing, so the panel judges its window
+           * and its RMS against the same curve the scan searches against, and
+           * so A5d.4(a) can take the anchor AFTER baffle step. One expression,
+           * every reader (`activeTargetCurve`). */
+          targetCurve: activeTargetCurve,
           ...Object.fromEntries(
             Object.entries(gateAndBudget).filter(([, v]) => v !== undefined),
           ),
@@ -3451,6 +3476,7 @@ export default function App() {
     ampMinLoadOhm,
     xoName,
     v2Meas,
+    activeTargetCurve,
   ]);
 
   /**
@@ -6749,6 +6775,11 @@ export default function App() {
             // is indistinguishable from a decision.
             zFloorStrict: true,
           },
+          /* A5e.2/V45 — the design's own voicing, so the candidate can declare
+           * WHAT the amplitude term is flat against. The same object the
+           * shortlist judges the window and the RMS against; handing the
+           * declaration a different one would be the split V45 closed. */
+          targetCurve: activeTargetCurve,
         }),
         chainDeclaration: chainDecl,
         provenance: cand.provenance,
@@ -6898,9 +6929,7 @@ export default function App() {
             // A5e.2 — the design's own target curve, or flat when it has
             // never stated one. On the DESIGN, so two voicings can sit side by
             // side and be compared.
-            targetCurve:
-              (designs.find((d) => d.id === activeDesignId)?.targetCurve as TargetCurve | undefined) ??
-              FLAT_TARGET,
+            targetCurve: activeTargetCurve,
             // The band the window and the RMS are judged on: the same
             // evaluation band the tuner used, which is already clipped to
             // measurement validity (A5.5).
@@ -15330,8 +15359,16 @@ export default function App() {
                         style={{ width: '5rem' }}
                       />
                     </label>
+                    {/* A5e.2/V45 — the ACTIVE design's voicing, described by the
+                        one function that knows the vocabulary. It used to read
+                        "Target curve: flat" unconditionally, which was true
+                        while `flat` was the only implemented shape and became a
+                        wrong answer the moment a design could state a plateau.
+                        Since V45 this curve steers the search as well as the
+                        verdict, so a designer has to be able to see which one
+                        is armed. */}
                     <span className="derived" style={{ fontSize: '0.85em' }}>
-                      {t('Target curve: flat')} — {t('per design; tilt and hold-current are declared but not implemented (A5e.2)')}
+                      {t('Target curve')}: {describeTargetCurve(activeTargetCurve)}
                     </span>
 
                     {/* ---- F2: determinism (spec A5e.4) ---- */}

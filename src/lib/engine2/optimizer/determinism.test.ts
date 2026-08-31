@@ -18,6 +18,7 @@
  */
 
 import { describe, expect, it } from 'vitest';
+import { readFileSync } from 'node:fs';
 import { selectEngine } from '../facade.ts';
 import {
   fingerprintComponents,
@@ -202,6 +203,13 @@ describe('A5e.4 - the v2 optimisation path is deterministic', () => {
        * could not tell whether it was the value or the presence that moved the
        * key. A real ghost value makes the claim unambiguous. */
       silentFloor: { silentFloorDb: -400 },
+      /* V45 — the seventh fact, in its two halves. The BUDGETS and the ANCHOR
+       * move the key separately because they answer different questions: a run
+       * that carried budgets and one that could not are different runs, and so
+       * are a run whose anchor was the mid and one whose anchor was the woofer
+       * with the same budgets attached. */
+      gapBudget: { gapBudgetDbByModel: { w: 1.5 } },
+      gapAnchor: { gapAnchorModel: 'w' },
     };
     const seen = new Set<string>([bare]);
     for (const [name, payload] of Object.entries(variants)) {
@@ -210,10 +218,39 @@ describe('A5e.4 - the v2 optimisation path is deterministic', () => {
       expect(seen.has(key), `${name} collides with another fact`).toBe(false);
       seen.add(key);
     }
-    // Every field of the payload type is exercised above. A new one added
-    // without a variant here rides along untested, which is the failure this
-    // assert exists to prevent.
-    expect(Object.keys(variants).length).toBe(6);
+    /* EVERY FIELD OF THE PAYLOAD TYPE IS EXERCISED ABOVE — AND THIS NOW CHECKS
+     * THAT, instead of counting its own list.
+     *
+     * It used to read `expect(Object.keys(variants).length).toBe(6)` under a
+     * comment promising exactly this guarantee, and V45 walked straight through
+     * it: two fields were added to `MeasurementFactsPayload`, no variants were
+     * written, the count was still 6 and the suite stayed green. A guard that
+     * counts the thing a session edits by hand cannot notice the thing that
+     * session forgot.
+     *
+     * So the field list comes from the SOURCE of the payload type — the same
+     * technique `choiceKeyGuard.test.ts` uses on `NetOptimizeOptions`, and for
+     * the same reason: an interface is erased at runtime, and a hand-kept copy
+     * of it is a second list to forget. */
+    const src = readFileSync(new URL('./measurementFacts.ts', import.meta.url), 'utf-8');
+    const body = src.slice(
+      src.indexOf('export interface MeasurementFactsPayload {'),
+    );
+    const declared = new Set(
+      [...body.slice(0, body.indexOf('\n}')).matchAll(/^\s{2}(\w+)\??:/gm)].map((m) => m[1]),
+    );
+    expect(declared.size, 'the payload type could not be read from source').toBeGreaterThan(5);
+    const exercised = new Set(Object.values(variants).flatMap((v) => Object.keys(v)));
+    for (const field of declared) {
+      expect(
+        exercised.has(field),
+        `${field} is a fact on the wire and no variant above exercises it — it rides in the ` +
+          'fingerprint untested',
+      ).toBe(true);
+    }
+    // ...and nothing is exercised that the type does not declare, which would
+    // mean a variant is testing a field that no longer exists.
+    for (const field of exercised) expect(declared.has(field)).toBe(true);
   });
 
   it('the fingerprint changes with EVERY component it is made of', () => {

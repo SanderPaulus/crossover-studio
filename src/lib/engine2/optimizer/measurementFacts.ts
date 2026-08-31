@@ -145,6 +145,44 @@ export interface MeasurementFactsPayload {
       validHz: [number, number];
     }
   >;
+  /**
+   * V45 (A5e.2) — THE ANCHORED ATTENUATION BUDGET per model, dB (A5d.4).
+   *
+   * The fact this border was missing for four sessions, and the one the
+   * `TODO(A5e.2)` in `worker.ts` stood on. A5d.4 chains each way's budget down
+   * to the ANCHOR — the way where attenuation is dearest — and A5d.4(a) wants
+   * that anchor taken after baffle step in the intended setup, which is a
+   * property of the target-curve object. With that object open, the worker had
+   * no gap to hand `invertBudgets`, so it handed `null`, the `gap-pad-r` rule
+   * skipped every way, and a designer who filled in a damping margin got a
+   * field that did nothing.
+   *
+   * It crosses as a FACT rather than being re-derived here for the reason this
+   * whole module exists: the chain has no far-field levels, no A5d.3 windows
+   * and no target curve, so a second implementation would be a worse one. The
+   * ingest pass and the report resolve it once — target-curve shift included —
+   * and the worker consumes it.
+   *
+   * Absent per model = no budget for that way, which is NOT the same as zero
+   * and not the same as the anchor's case; `gapAnchorModel` below separates
+   * those two, and the worker says which it is.
+   */
+  gapBudgetDbByModel?: Record<string, number>;
+  /**
+   * V45 — WHICH model is the anchor, when an anchored gap analysis crossed.
+   *
+   * Carried beside the budgets because "this way has no attenuation budget" has
+   * two meanings that must not read alike. The anchor has none BY DEFINITION —
+   * it is the level everything else comes down to, and that is a complete
+   * answer. Every other way with no entry has none because something was
+   * missing, and that is a report about the data. A map with a hole in it
+   * cannot tell those apart; a map plus the anchor's name can.
+   *
+   * Absent = no anchored gap analysis crossed at all (fewer than two ways with
+   * levels, or no report on this route), and then the damping bound produces
+   * nothing and says so.
+   */
+  gapAnchorModel?: string;
 }
 
 /**
@@ -164,6 +202,12 @@ export interface MeasurementProvenance {
   impedanceSweep: Record<string, 'measured' | 'absent'>;
   /** F4b2 — the resonance: resolved by the ingest pass, or classified here. */
   fundamental: Record<string, 'resolved' | 'worker-fallback'>;
+  /**
+   * V45 — the anchored gap budget: carried, the anchor (which has none by
+   * definition), or nothing at all. Three states, because a run that inverted
+   * a damping bound and a run that could not are different runs.
+   */
+  gapBudget: Record<string, 'resolved' | 'anchor' | 'absent'>;
 }
 
 /**
@@ -223,7 +267,19 @@ export function measurementFactsKey(v2: MeasurementFactsPayload): Record<string,
    * `null` rather than omitted when unstated: absent is a state, not a gap. */
   const silentFloorDb =
     v2.silentFloorDb === undefined ? null : Number(v2.silentFloorDb.toPrecision(9));
-  return { re, valid, fundamental, nearField, impedance, silentFloorDb };
+  /* V45 — the seventh fact. A run whose damping bound was inverted against a
+   * measured anchored gap and a run that reached the inversion with nothing are
+   * different runs even when they deliver the same network from the same seed,
+   * so the budgets and the anchor's name ride in the fingerprint. `null` rather
+   * than omitted for the anchor: absent is a state, not a gap. */
+  const gapBudget: Record<string, unknown> = {};
+  for (const model of Object.keys(v2.gapBudgetDbByModel ?? {}).sort()) {
+    gapBudget[model] = Number(v2.gapBudgetDbByModel![model].toPrecision(9));
+  }
+  const gapAnchor = v2.gapAnchorModel ?? null;
+  return {
+    re, valid, fundamental, nearField, impedance, silentFloorDb, gapBudget, gapAnchor,
+  };
 }
 
 /**
@@ -265,6 +321,7 @@ export function factsForWorker(
   const fundamentalHzByModel: Record<string, number> = {};
   const nearFieldByModel: NonNullable<MeasurementFactsPayload['nearFieldByModel']> = {};
   const impedanceByModel: NonNullable<MeasurementFactsPayload['impedanceByModel']> = {};
+  const gapBudgetDbByModel: Record<string, number> = {};
 
   for (const d of report.ingest.drivers) {
     const model = modelByDriverId[d.driver];
@@ -316,11 +373,29 @@ export function factsForWorker(
     }
   }
 
+  /* V45 — A5d.4's budgets, resolved once (target-curve shift included) by the
+   * report and keyed the way the worker needs them. The ANCHOR contributes no
+   * entry, which is its correct state; `gapAnchorModel` beside it is what keeps
+   * that from reading as a missing measurement. A way whose level could not be
+   * taken at all contributes no entry either and no anchor name covers it, and
+   * the worker then says which input was missing. */
+  const gaps = report.predesign.gaps;
+  const gapAnchorModel = gaps ? modelByDriverId[gaps.anchor] : undefined;
+  if (gaps) {
+    for (const w of gaps.ways) {
+      const model = modelByDriverId[w.driver];
+      if (model === undefined || !Number.isFinite(w.budgetDb)) continue;
+      gapBudgetDbByModel[model] = w.budgetDb;
+    }
+  }
+
   return {
     ...(Object.keys(reOhmByModel).length > 0 ? { reOhmByModel, reSourceByModel } : {}),
     ...(Object.keys(validHzByModel).length > 0 ? { validHzByModel } : {}),
     ...(Object.keys(fundamentalHzByModel).length > 0 ? { fundamentalHzByModel } : {}),
     ...(Object.keys(nearFieldByModel).length > 0 ? { nearFieldByModel } : {}),
     ...(Object.keys(impedanceByModel).length > 0 ? { impedanceByModel } : {}),
+    ...(Object.keys(gapBudgetDbByModel).length > 0 ? { gapBudgetDbByModel } : {}),
+    ...(gapAnchorModel !== undefined ? { gapAnchorModel } : {}),
   };
 }

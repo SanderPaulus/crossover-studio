@@ -6,6 +6,7 @@ import { applyTransfer, combine, combineN, type BranchAdjust, type CombineResult
 import { pickSlotsN } from './driverSlots.ts';
 import { computeIntegration, DEFAULT_OVERLAP_WINDOW_DB } from './integration.ts';
 import { admitPhasePoints } from './phaseAdmission.ts';
+import { isFlatTargetLevel, targetLevelAt, type TargetLevelCurve } from './targetLevel.ts';
 import type { Complex } from './complex.ts';
 import type { VxpPart } from './parsers/vxp.ts';
 import {
@@ -308,6 +309,43 @@ export interface NetOptimizeOptions {
     validBandHz?: [number, number] | null;
     silentFloorDb?: number | null;
   } | null;
+  /** WHICH CURVE THE AMPLITUDE TERM IS FLAT AGAINST — V45 (A5e.2), and a
+   *  CHOICE for the same reason `phaseAdmission` is: it names the reference a
+   *  judged quantity is measured against, which is a decision and not data.
+   *
+   *  'flat' (default, and every v1 run) = the historic objective: spread of the
+   *  summed response around its own band mean, i.e. horizontal is perfect.
+   *  'target' = the same spread, taken on the response MINUS the target
+   *  offsets, i.e. the stated voicing is perfect.
+   *
+   *  Not the same key as `ampTarget`, and the names are unfortunately close:
+   *  `ampTarget` picks WHICH SUM is flattened (on-axis or listening window),
+   *  this picks WHAT COUNTS AS FLAT for whichever sum that is. They compose.
+   *
+   *  Why it must reach the search rather than only the verdict: until V45 a
+   *  target curve moved the shortlist's window and RMS and moved nothing else,
+   *  so a design was searched against horizontal and then judged against a
+   *  plateau. The search wins that argument every time — it has the whole
+   *  budget — and the verdict just records the loss.
+   *
+   *  WHAT IT ALSO MOVES, said out loud because it is a real consequence and not
+   *  a side effect anybody should discover: `rippleDb` IS this term, so with a
+   *  target armed the reported ripple — and therefore the staged pass's stop
+   *  goal, which compares against it — becomes spread relative to the VOICING.
+   *  That is the coherent reading ("flat enough" means "on target"), and it is
+   *  why `ripplePeakDb` and `avgDevDb` beside it deliberately stay on the raw
+   *  sum: the search-and-stop quantity follows the target, the absolute
+   *  flatness readings keep answering the absolute question. */
+  amplitudeReference?: 'flat' | 'target';
+  /** The target offsets the reference above measures against — POLISH, never a
+   *  choice.
+   *
+   *  This is the run's own target curve SAMPLED, not a second opinion about
+   *  which voicing the design wants: a candidate that brought its own curve
+   *  would be a second answer to A5e.2, the same reason `phaseAdmissionFacts`
+   *  and `dissipationReferenceReOhm` may never become choices. Absent, or a
+   *  curve of zeroes, is the identity — see `targetLevel.ts`. */
+  amplitudeTargetDb?: TargetLevelCurve | null;
   /** Coarse stage callback (value tune, prune, snap, …) for live progress.
    *  NOT structured-cloneable — callers across a worker boundary inject it
    *  on the worker side, never in the posted payload. */
@@ -1267,6 +1305,8 @@ export function optimizeNetworkValues(
     phaseMetric = 'band',
     phaseAdmission = 'overlap',
     phaseAdmissionFacts = null,
+    amplitudeReference = 'flat',
+    amplitudeTargetDb = null,
     onStage,
   } = opts;
   const solo = opts.solo === true;
@@ -1961,6 +2001,35 @@ export function optimizeNetworkValues(
     return acc / n;
   };
 
+  /* ---- V45 (A5e.2): WHAT COUNTS AS FLAT --------------------------------
+   *
+   * `bandStd` measures spread around the band mean, so "perfect" is a
+   * horizontal line. When the design states a target curve, perfect is that
+   * curve instead, and the cheapest exact way to say so is to subtract the
+   * target from the response before measuring the same spread: the deviation
+   * from a curve is the deviation from horizontal of (response − curve).
+   *
+   * ARMED ONLY WHEN BOTH HALVES ARE THERE, and a curve of zeroes is treated as
+   * absent rather than applied — subtracting zeroes is the identity, but saying
+   * so here is what makes "a run that stated a flat target searched the field a
+   * run that stated nothing searched" a fact about this code rather than a fact
+   * about floating point.
+   *
+   * INTERPOLATED BY FREQUENCY, never indexed by position: this closure is
+   * called with the decimated evaluation grid inside the search and with the
+   * full grid at every report point, and an offsets array indexed by position
+   * would quietly mean two different curves on those two grids. */
+  const targetArmed =
+    amplitudeReference === 'target' &&
+    amplitudeTargetDb !== null &&
+    amplitudeTargetDb.freqHz.length > 0 &&
+    !isFlatTargetLevel(amplitudeTargetDb);
+  const deTarget = (freq: readonly number[], spl: readonly number[]): readonly number[] => {
+    if (!targetArmed) return spl;
+    const off = targetLevelAt(amplitudeTargetDb!, freq);
+    return spl.map((v, i) => v - off[i]);
+  };
+
   /** Median level over the band — reference for the SOLO sensitivity budget.
    *  Shared implementation (bandMetrics.ts): solo-only, so no risk to the
    *  two-way search path. */
@@ -2398,7 +2467,11 @@ export function optimizeNetworkValues(
     // even when the on-axis sum is dead flat.
     let powerStdDb: number | null = null;
     let powerDbArr: number[] | null = null;
-    let lwStd: number | null = null;
+    /* The listening-window LEVEL as a CURVE rather than as a std. It used to
+     * be collapsed to `lwStd` right here, and since V45 the amplitude term may
+     * have a target to subtract from it first — so the collapse moved down to
+     * the one place that takes the spread. */
+    let lwLevelDb: number[] | null = null;
     if (angles) {
       const n = r.freq.length;
       const shared = angles.woofer
@@ -2437,11 +2510,20 @@ export function optimizeNetworkValues(
       powerDbArr = powerAcc.map((v) => 10 * Math.log10(v / shared.length));
       powerStdDb = bandStd(r.freq, powerDbArr);
       if (lwCount > 0) {
-        lwStd = bandStd(r.freq, lwAcc.map((v) => 10 * Math.log10(v / lwCount)));
+        lwLevelDb = lwAcc.map((v) => 10 * Math.log10(v / lwCount));
       }
     }
 
-    let targetStd = useLw && lwStd !== null ? lwStd : bandStd(r.freq, r.combinedSpl);
+    /* V45 — the amplitude term is spread around the TARGET, which with no
+     * target armed is spread around horizontal and therefore bit-identical.
+     * The listening-window branch gets the same treatment: a stated voicing is
+     * a statement about the system's level against frequency, and it does not
+     * stop applying because the amplitude term is being taken on the energy
+     * average instead of on the axis. */
+    let targetStd =
+      useLw && lwLevelDb !== null
+        ? bandStd(r.freq, deTarget(r.freq, lwLevelDb))
+        : bandStd(r.freq, deTarget(r.freq, r.combinedSpl));
     // Solo floor mode: the amplitude term is RMS deviation from the FIXED
     // target level — bandStd is level-invariant and would erase the level
     // goal the design stage just met (see soloTargetLevelDb).

@@ -337,9 +337,15 @@ export function buildShortlist<T>(
       : [];
 
   if (!isImplementedCurve(targetCurve)) {
+    /* V45 — the SENTENCE comes from the curve itself, because there are now two
+     * ways to be unusable and they are different problems for the reader: a
+     * shape nobody has built (`tilt`), and a shape this design stated whose
+     * parameters never arrived. `describeTargetCurve` separates them; a fixed
+     * "declared but not implemented" would have reported the second as the
+     * first and sent someone looking in the wrong place. */
     notes.push(
-      `The target curve "${targetCurve.type}" is declared but not implemented (A5e.2); every ` +
-        'window and RMS figure here would have been evaluated against something else.',
+      `The target curve cannot be evaluated — ${describeTargetCurve(targetCurve)} (A5e.2); ` +
+        'every window and RMS figure here would have been evaluated against something else.',
     );
   }
 

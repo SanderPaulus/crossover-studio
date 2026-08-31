@@ -41,6 +41,21 @@
  * `manifest_en_geometrie.v30_corpus` / `.v32_corpus` for the dated corpora and
  * in `casus1_v2_herkomst.json` for the live one. A candidate present in one
  * corpus and absent from the other is a ROW, not a gap: that is the finding.
+ *
+ * SINCE V45 BOTH HALVES ARE JUDGED AGAINST THE DESIGN'S TARGET CURVE, and that
+ * has a consequence a reader has to be told rather than left to discover. The
+ * `venster` and `RMS` columns are deviations from a REFERENCE, and A5e.2 gave
+ * casus 1 a reference that is not horizontal (`CASUS1_TARGET_CURVE`). Both
+ * halves go through it, which is the rule this script has always followed — so
+ * the pair is honest — but the "before" column no longer reproduces the number
+ * the V44 table printed for the same netlist, because that one was taken
+ * against flat. The netlists did not move; the question did. Anyone who needs
+ * the old reading takes it with `targetCurve: FLAT_TARGET`, and the casebook
+ * records both.
+ *
+ * (This is the V33 rename's lesson one column along: a comparison script that
+ * quietly changes what it measures produces a table that looks like the table
+ * it was written for and is not.)
  */
 
 import { readFileSync } from 'node:fs';
@@ -57,8 +72,8 @@ import {
   loadGolden,
 } from '../src/lib/engine2/casus1.fixture.ts';
 import { buildReport, type ReportSettings } from '../src/lib/engine2/report.ts';
+import { CASUS1_TARGET_CURVE } from '../src/lib/engine2/casus1V2.fixture.ts';
 import { ctcKey } from '../src/lib/engine2/metrics/types.ts';
-import { FLAT_TARGET } from '../src/lib/engine2/requirements/targetCurve.ts';
 import { meetsAmpFloor } from '../src/lib/impedanceFloor.ts';
 import { busTopology } from '../src/lib/netOptimizer.ts';
 import { deserializeFilter } from '../src/lib/filterFile.ts';
@@ -78,7 +93,7 @@ const SETTINGS: ReportSettings = {
   amplifierPowerW: 100,
   orderByPair: { [ctcKey('woofer', 'mid')]: 4, [ctcKey('mid', 'tweeter')]: 4 },
   reOhmByDriver: { woofer: CASUS1_WOOFER_DC_OHM },
-  targetCurve: FLAT_TARGET,
+  targetCurve: CASUS1_TARGET_CURVE,
   ...(FLOOR !== null ? { ampMinLoadOhm: FLOOR } : {}),
 };
 
@@ -151,6 +166,7 @@ const DATED: Record<string, { block: string; name: string }> = {
   v41: { block: 'v41_corpus', name: 'V41' },
   v42: { block: 'v42_corpus', name: 'V42' },
   v43: { block: 'v43_corpus', name: 'V43' },
+  v44: { block: 'v44_corpus', name: 'V44' },
 };
 
 const corpusOf = (id: string): Corpus => {
@@ -160,7 +176,7 @@ const corpusOf = (id: string): Corpus => {
   throw new Error(`unknown corpus "${id}" — use ${[...Object.keys(DATED), 'live'].join(', ')}`);
 };
 
-const [beforeId = 'v43', afterId = 'live'] = process.argv.slice(2);
+const [beforeId = 'v44', afterId = 'live'] = process.argv.slice(2);
 const before = corpusOf(beforeId);
 const after = corpusOf(afterId);
 
@@ -537,8 +553,11 @@ const roleTotals = (rows: Row[]) => {
         ? 'Geen budget gesteld, dus dit is een kolom en geen eis (P4).'
         : `Gesteld budget ${budget} dB OP DE OPSLINGERING (V43): ${overCount(measuredBefore)} van ` +
           `${measuredBefore.length} eroverheen vóór, ${overCount(measuredAfter)} van ` +
-          `${measuredAfter.length} ná. De LIFT wordt hier niet geoordeeld — dat is ankerdomein ` +
-          '(A5e.2).'),
+          `${measuredAfter.length} ná. De LIFT wordt hier nog steeds niet door DIT budget ` +
+          'geoordeeld: hij is ankerdomein, en dat domein heeft sinds V45 zijn eigen mechanismen ' +
+          '(de doelcurve die de zoektocht stuurt, en de Q_es-grens op de serieweerstand die de ' +
+          'lift veroorzaakt) in plaats van een tweede budget op deze grootheid — A5e.2, ' +
+          'gesloten.'),
   );
 }
 console.log(`uit de shortlist gevallen: ${gone.length}${gone.length ? ` — ${gone.map(short).join('; ')}` : ''}`);

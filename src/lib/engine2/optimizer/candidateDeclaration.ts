@@ -54,6 +54,7 @@ import type { Chain3Settings } from '../../threeWayChain.ts';
 import { SYNTHESIS_LEAN_DEFAULT_DB } from '../../synthesis.ts';
 import { DEFAULT_EQ_BANDS_PER_DRIVER } from '../../vfOptimizer.ts';
 import { SEARCH_SMOOTHING_OCTAVES } from '../constants.ts';
+import { isImplemented as isImplementedCurve, type TargetCurve } from '../requirements/targetCurve.ts';
 import type { ChoiceDeclaration, ChoiceKey } from './choices.ts';
 import type { ChainChoiceDeclaration, ChainChoiceKey } from './chainChoices.ts';
 
@@ -82,6 +83,7 @@ export type StatedByDesigner = Partial<
     | 'dissipationReferenceSource'
     | 'errorSmoothOct'
     | 'phaseAdmission'
+    | 'amplitudeReference'
   >
 >;
 
@@ -103,6 +105,16 @@ export interface CandidateDeclarationInput {
   stated: StatedByDesigner;
   /** True when this design has more than one way — i.e. is not a solo design. */
   multiWay: boolean;
+  /**
+   * A5e.2 — the design's own target curve, when it carries one that can
+   * actually be evaluated.
+   *
+   * The OBJECT rather than a boolean, because the derivation below has to
+   * distinguish three states and a boolean can hold two: no curve at all, a
+   * curve that is `flat` (the neutral reference, which is the identity), and a
+   * curve that says something. Absent = the first.
+   */
+  targetCurve?: TargetCurve;
 }
 
 /** A key the designer left empty, filed with the P4 reason. */
@@ -362,6 +374,57 @@ export function declareCandidateChoices(input: CandidateDeclarationInput): Choic
    * An explicit value still wins, so V44's before/after is a run someone can
    * ask for rather than a build that has to be patched. */
   stated.phaseAdmission = s.phaseAdmission ?? 'measured';
+
+  /* ---- V45 (A5e.2): WHAT THE AMPLITUDE TERM IS FLAT AGAINST -------------
+   *
+   * DERIVED, like V30's `zFloorBarrier` and for the same finding one axis
+   * along: a reference that exists but does not steer is a reference that
+   * changes nothing. Until V45 a design could state a voicing, have the
+   * shortlist judge its window and its RMS deviation against it, and have the
+   * SEARCH flatten it toward horizontal the whole time — and the search has the
+   * whole iteration budget, so it wins and the verdict merely records the loss.
+   * A design that carries an evaluable target therefore searches against it.
+   *
+   * THREE STATES, NOT TWO, and that is why the input is the curve and not a
+   * flag. No curve at all and a `flat` curve both leave this ABSENT: `flat` is
+   * the neutral reference, subtracting it is the identity, and arming a
+   * mechanism that provably cannot move anything is how a run comes to carry a
+   * key nobody can point at a consequence of (V23). The third state — a curve
+   * that says something and whose parameters arrived — arms it.
+   *
+   * ABSENT AND NEVER `'flat'` (P4). A stated `'flat'` would read as "somebody
+   * decided the voicing should not steer the search"; with no voicing stated,
+   * nobody decided anything. An explicit value still wins, so V45's before/after
+   * is a run that can be asked for rather than a build that has to be patched.
+   *
+   * IT STATES NO CASUS-1 NUMBER. The depth and the step frequency live in the
+   * curve object, which travels as POLISH beside this key for the same reason
+   * the phase-admission facts do: they are the design's own data, not a second
+   * opinion the candidate brought along. */
+  if (s.amplitudeReference !== undefined) {
+    stated.amplitudeReference = s.amplitudeReference;
+  } else if (input.targetCurve && input.targetCurve.type !== 'flat' && isImplementedCurve(input.targetCurve)) {
+    stated.amplitudeReference = 'target';
+  } else {
+    absent.push({
+      key: 'amplitudeReference',
+      why:
+        input.targetCurve === undefined
+          ? 'this design states no target curve, so there is no voicing for the amplitude term to ' +
+            'be flat against. Absent rather than a stated \'flat\' (P4): naming the neutral ' +
+            'reference here would read as a decision that the voicing must not steer, and with ' +
+            'no voicing stated nobody decided anything'
+          : input.targetCurve.type === 'flat'
+            ? 'this design states the FLAT target, which is the neutral reference and therefore ' +
+              'the identity — subtracting it from the response would change no evaluation. ' +
+              'Absent rather than armed: a mechanism that provably cannot move anything should ' +
+              'not appear in a run as though it might have'
+            : `this design states the "${input.targetCurve.type}" target curve, and it cannot be ` +
+              'evaluated on the data handed over — an unimplemented shape, or a stated shape ' +
+              'whose parameters did not arrive. A curve nothing can sample steers nothing, and ' +
+              'saying so beats searching against a voicing that was silently taken as flat',
+    });
+  }
 
   /* ---- what has no value on a design of this shape -------------------- */
   absent.push({

@@ -40,9 +40,12 @@ import { AUTO_STRUCTS } from '../threeWayDesign.ts';
 import {
   casus1AmpMinLoadOhm,
   casus1LfResonantBudgetDb,
+  casus1QesMultiplierMax,
+  casus1TargetCurve,
   loadGolden,
   type GoldenRefs,
 } from './casus1.fixture.ts';
+import type { TargetCurve } from './requirements/targetCurve.ts';
 import {
   factsForWorker,
   type MeasurementFactsPayload,
@@ -156,8 +159,37 @@ export const CASUS1_LF_RESONANT_BUDGET_DB: number | null = casus1LfResonantBudge
 export const CASUS1_V2_GATES: { ampMinLoadOhm?: number } =
   CASUS1_AMP_MIN_LOAD_OHM !== null ? { ampMinLoadOhm: CASUS1_AMP_MIN_LOAD_OHM } : {};
 
-export const CASUS1_V2_BUDGETS: { lfBumpBudgetDb?: number } =
-  CASUS1_LF_RESONANT_BUDGET_DB !== null ? { lfBumpBudgetDb: CASUS1_LF_RESONANT_BUDGET_DB } : {};
+/**
+ * V45 (A5e.2) — the stated Q_es multiplication ceiling, read from the manifest
+ * for the same reason the two above are: it is a project number with one home.
+ *
+ * It arms the A5d.6 inversion `qes-series-r`, which is a ceiling on the TOTAL
+ * series resistance of the lowest way's path — the mechanism that has existed
+ * since F2 and that casus 1 never stated an input for. Like the LF budget and
+ * unlike the amp floor it belongs in `v2.budgets` and nowhere else: it is an
+ * input to `invertBudgets`, which lives on the v2 side only, so a copy in the
+ * chain settings would be a number with no reader.
+ */
+export const CASUS1_QES_MULTIPLIER_MAX: number | null = casus1QesMultiplierMax();
+
+/**
+ * V45 — the design's own TARGET CURVE, built by the fixture helper from the
+ * stated depth and the MEASURED baffle step. See `casus1TargetCurve`.
+ *
+ * It is not a budget and not a gate, so it travels in its own field
+ * (`v2.targetCurve`) and in the report settings — two readers of one object:
+ * A5d.4(a)'s anchored gaps and, since V45, the tuner's amplitude term.
+ */
+export const CASUS1_TARGET_CURVE: TargetCurve = casus1TargetCurve();
+
+export const CASUS1_V2_BUDGETS: { lfBumpBudgetDb?: number; qesMultiplierMax?: number } = {
+  ...(CASUS1_LF_RESONANT_BUDGET_DB !== null
+    ? { lfBumpBudgetDb: CASUS1_LF_RESONANT_BUDGET_DB }
+    : {}),
+  ...(CASUS1_QES_MULTIPLIER_MAX !== null
+    ? { qesMultiplierMax: CASUS1_QES_MULTIPLIER_MAX }
+    : {}),
+};
 
 export const CASUS1_V2_SETTINGS = {
   phasePriority: 0.5,
@@ -301,6 +333,12 @@ export function casus1V2Declaration(
         ...(safety ? { safety } : {}),
         zFloorStrict: true,
       },
+      /* V45 — the design's voicing, so the candidate can declare WHAT the
+       * amplitude term is flat against. The curve itself travels as polish
+       * beside that choice; this is only what lets the declaration derive
+       * `amplitudeReference` instead of leaving the search flattening toward
+       * horizontal while the shortlist judges against a plateau. */
+      targetCurve: CASUS1_TARGET_CURVE,
     }),
     /* V41 — the two settings the DESIGN and SYNTHESIS steps read, which run
      * before the tuner exists. Nothing is stated here, so the derivation

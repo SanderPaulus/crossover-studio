@@ -114,7 +114,7 @@ Formaat per metriek: *grootheid → formule → afgeleide parameters → databeh
 | het resistieve equivalent (H_res) | Hetzelfde netwerk, dezelfde topologie, dezelfde waarden, elke reactantie vervangen door **haar eigen serieweerstand**: spoel → DCR (een ideale spoel heeft DCR 0 en wordt dus een KORTSLUITING; de knopen worden samengevoegd, want nodale analyse kan geen ideale kortsluiting stempelen en een "klein genoeg" weerstandje is een magisch getal dat het antwoord bepaalt — P6), condensator → **OPEN**, en de tak verlaat het netwerk. Dat laatste is een besluit met een reden: de resistieve limiet van een condensator is een open tak, zijn ESR staat in serie met een reactantie die oneindig is geworden en kan dus niets geleiden. Hem door zijn ESR vervangen zou elke seriecondensator in een bijna-kortsluiting veranderen, wat de tegenovergestelde limiet is. **De DRIVER houdt zijn gemeten impedantie, reactantie en al** — de motionele piek is juist de grootheid waarover de twee krommen vergeleken worden; wie hem ook zou resistiveren houdt niets over om tegen op te slingeren. Wat de transform weghaalt is de reactantie die de ONTWERPER kiest. |
 | afgeleide parameters | B en f_ref precies als hierboven, uit f_p — de ontleding voegt géén band en géén frequentie toe. |
 | databehoefte | Onveranderd voor `extraDb`. De twee helften vragen er één ding bij: een **tweede netwerkoplossing** op hetzelfde raster. Geen meting erbij; wel een tweede MNA-pas, dus zij wordt lui gebouwd en per rapport hooguit één keer. |
-| rol | **rapportage**, alle drie. Zij dragen geen poort: M-D heeft geen id in `GATE_IDS` en veroordeelt geen geleverde netlist. Wat er wél aan hangt is het projectbudget dat de A5d.6-inversie `bump-series-l` voedt, en dat staat **sinds V43 op `resonantDb`** — één staande eis, op de helft waar de spoelvuistregel over gaat. `liftDb` krijgt met opzet **géén eigen budget**: hij is niveauwerk, en wat daarvan gewenst is hangt aan doelcurve en dempingsmarge, oftewel aan het ankerbesluit A5e.2. Twee eisen naast elkaar zouden dat besluit onder een andere naam nemen. |
+| rol | **rapportage**, alle drie. Zij dragen geen poort: M-D heeft geen id in `GATE_IDS` en veroordeelt geen geleverde netlist. Wat er wél aan hangt is het projectbudget dat de A5d.6-inversie `bump-series-l` voedt, en dat staat **sinds V43 op `resonantDb`** — één staande eis, op de helft waar de spoelvuistregel over gaat. `liftDb` krijgt met opzet **géén eigen budget**: hij is niveauwerk, en wat daarvan gewenst is hangt aan doelcurve en dempingsmarge — het ankerbesluit A5e.2, **gesloten bij V45**. Sindsdien is dat niveauwerk niet onbewaakt maar bewaakt door de dingen die er wél over gaan: de doelcurve stuurt de zoektocht (`amplitudeReference`), de Q_es-grens begrenst de serieweerstand die de lift veroorzaakt, en `gap-pad-r` is bereikbaar zodra een project een dempingsmarge stelt. Een tweede budget op `liftDb` zou dat besluit nog steeds onder een andere naam nemen, en komt er niet. |
 | geldigheid | Precies die van `extraDb` — dezelfde band, dezelfde NF-geldigheid, dezelfde dekkingsrapportage. Eén ding erbij: een tak die in de resistieve limiet niets draagt (een DCR-loze spoel dwars over de driver) levert **geen** ontleding, en dan zijn beide helften `null` mét de reden. Nooit 0 — een nul leest als "gemeten, en het is niets". |
 | negatieve opslingering | **Kan, en is geen fout.** M-D normaliseert op f_ref, dus wie daar door zijn eigen reactanties wordt opgetild — een doorlaatband­resonantie rond f_ref — leest ten opzichte van zijn resistieve equivalent lager. HUIDIG is precies dat geval: `extraDb` 3,75, lift 4,69, opslingering **−0,94** dB. De opslingering is dus "wat reactantie bij de piek doet **ten opzichte van wat zij bij f_ref doet**", en niet "wat reactantie bij de piek doet". Dat is dezelfde relativiteit die `extraDb` altijd al droeg; zij wordt hier alleen zichtbaar. |
 | validatiecasus | casus 1, élke bevroren netlist (`manifest_en_geometrie.v43_ontleding`, klasse B) plus het levende corpus in `kandidaten.*.lf_lift_dB` / `.lf_opslingering_dB`. Handberekening en nieuwe-meting-test in `metrics/lfBumpDecomposition.test.ts`; de optel-assert over het hele casusboek in `frozenNetlistGates.test.ts`. |
@@ -272,11 +272,14 @@ A5d.1 t/m A5d.7 bakenen de ontwerpruimte af. Zolang die afbakening alleen gerapp
    - **Outliers asymmetrisch — en dat is een SMAAKPRINCIPE, expliciet als zodanig.** Smalle kenmerken vallen door de 1/6-octaaf-gladding buiten het venster-oordeel; ze gaan naar de rimpelscan. Smalle **pieken** worden per kandidaat gerapporteerd als kolom (grootste piek: +dB @ f, met Q). Smalle **dips** worden vergeven. *Motivering:* het gehoor is asymmetrisch gevoelig voor resonanties en anti-resonanties. Een smalle piek is een resonantie: hij klinkt na, hij wordt door meerdere richtingen tegelijk gevoed en hij is in de powerrespons terug te vinden. Een smalle dip is een interferentie-uitdoving: hij is positie- en hoekafhankelijk, hij verplaatst zich met de luisteraar, en hij vult zich in een kamer grotendeels vanzelf. De literatuur over hoorbaarheidsdrempels van smalle filters zet de drempel voor dips consequent hoger dan voor pieken. Een ontwerp afkeuren op een dip die de luisteraar nooit op die plek hoort is dus strenger dan het gehoor zelf. **Er komt geen extra drempelveld voor:** het onderscheid zit in wat gerapporteerd wordt, niet in een getal dat de gebruiker moet raden.
    - **RELAXATIE-LADDER.** Levert de zoektocht geen (of minder dan N) winnaars, dan verruimt de engine in ZICHTBARE stappen uitsluitend de FALENDE SMAAK-eisen (SPL-venster, fase) tot N kandidaten passen. De uitkomst draagt een etiket: "voldoet aan ±2,25 dB — gestelde eis was ±1,5". **Beschermingsgrenzen (Z/EPDR, dissipatie, V@fs) worden NOOIT gerelaxeerd** — een ladder die er een aanraakt is een bug, geen feature, en de suite bewaakt dat. De ladder is een HER-FILTER op de al geëvalueerde kandidaten, geen nieuwe zoektocht: een ladder die opnieuw gaat scannen trekt de eisen alsnog de zoektocht in. Het etiket vermeldt daarom ook zijn eigen begrenzing ("binnen de gescande kandidaten; een fijner grid kan meer opleveren"). Is een eis principieel onhaalbaar — bijvoorbeeld een Z-eis boven de vloer die het drivercomplement zelf al zet — dan meldt de pre-design-diagnose dat VÓÓR de zoektocht, met het haalbare getal erbij.
    - **TWEETRAPS-STEMPELING.** De eisen raken de zoektocht niet, dus zij horen niet in de run-vingerafdruk (A5e.4). De shortlist-UITKOMST hangt er wél aan, dus die krijgt een eigen stempel — doelcurve, eisenwaarden, ladderstappen inclusief etiket, N, selectieversie — bovenop de vingerafdruk van de onderliggende run. Zelfde eisen op dezelfde run geven een byte-identieke shortlist; andere eisen op dezelfde run geven dezelfde run-vingerafdruk en een ander shortlist-stempel. Dat maakt "de selectie is aan de mens" reproduceerbaar én navertelbaar.
-2. **Doelcurve-object — BESLOTEN bij F3 (26-08-2026): MINIMAAL.**
+2. **Doelcurve-object — BESLOTEN bij F3 (26-08-2026): MINIMAAL. GESLOTEN bij V45 (30-08-2026): het niveau-anker.**
 
    - Referentie voor dag één is **vlak**. Het object kent een type-veld; `tilt` en `behoud-huidig` zijn GEDECLAREERD maar niet geïmplementeerd (TODO, geen gedrag). Een half werkende kanteling is erger dan een afwezige: hij zou stilletjes meedoen in elk venster- en RMS-oordeel.
+   - **`bass-plateau` is er sinds V45 bij, en hij is de vorm die A5d.4(a) nodig had.** Twee parameters, met opzet uit tegengestelde bronnen (P6): de DIEPTE is GESTELD — hoeveel het on-axis laag bewust onder het anker ligt, een voicing-besluit over een opstelling dat geen meting kan opleveren — en de OVERGANG is GEMETEN: `baffleStepHz` van de kastbreedte uit de projectdata, en van niets anders. De VORM is de eerste-orde shelf die de app zelf al tekent (`baffleStepShelfDb`), geen tweede mening over baffle step. Ontbreekt een van beide helften, dan levert de curve GEEN offsets en noemt zij wat er miste (P4).
+   - **Twee lezers, en dat is wat het besluit sluit.** (a) A5d.4(a) — het ankerniveau wordt NA baffle step genomen, dus de verankerde gaps vergelijken elke weg op haar eigen doelniveau in plaats van op haar kale gemeten niveau. Alleen VERSCHILLEN tussen wegen verplaatsen een anker. (b) De ZOEKTOCHT — de amplitudeterm meet sinds V45 de spreiding van (som − doel) in plaats van van de som. Zonder die tweede lezer verplaatst een gestelde voicing wél het oordeel (A5e.1) en niet de zoektocht, en de zoektocht heeft het hele iteratiebudget: dan wint zij, en het oordeel legt de nederlaag vast. Sleutelpaar `amplitudeReference` (CHOICE) en `amplitudeTargetDb` (POLISH).
    - De doelcurve hangt aan het **ONTWERP**, niet aan het project. Twee voicings van dezelfde luidspreker moeten naast elkaar kunnen bestaan en vergeleken worden; een projectbrede doelcurve maakt van "welke voicing wil ik" een instelling die je heen en weer moet zetten in plaats van een keuze die je naast elkaar legt.
    - Additief in het model: afwezig = vlak, en oude projecten laden ongewijzigd. Zodra het veld bestaat gaat het mee in het shortlist-stempel.
+   - **Wat OPEN blijft:** `tilt` en `behoud-huidig` (optie C bij V45 expliciet uitgesteld), en op casus 1 de vraag of de gestelde plateaudiepte ooit gemeten kan worden — zij kan dat op deze meetset niet, en waarom staat in V45 en in `gestelde_eisen.basplateau_waarom_niet_gemeten`.
 3. **Catalogus-schema.** Families met parasietmodellen (DCR/ESR-fits), verzadigings-/kernvlaggen, bouwvorm/formaat, prijs; en de regel dat **optimalisatiegrenzen uit de catalogus-spanwijdte volgen** — hardgecodeerde componentgrenzen zijn dezelfde P6-fout als hardgecodeerde frequenties.
 4. **Determinisme — BESLOTEN bij F2 (26-08-2026).** Zelfde invoer + zelfde seed = byte-identiek resultaat. Het vastgelegde beleid:
 
@@ -523,12 +526,36 @@ punten met een casusboek-entry erachter. Ze staan hier zodat ze niet alleen in D
   LIFT — HUIDIG 4,69 dB lift tegen −0,94 dB opslingering — en dat is niveauwerk, geen spoel. De
   eis staat sinds V43 op `resonantDb` alleen, met een op de vuistregel herijkt getal (1,4 dB), en
   de lift krijgt géén eigen budget: die is ankerdomein en hoort bij A5e.2 (doelcurve plus
-  dempingsmarge). **Optie 3 van V42 — één grens op `R_pad + jωL` samen — is daarmee expliciet
+  dempingsmarge) — **gesloten bij V45**, waar dat domein zijn eigen mechanismen kreeg in plaats
+  van een tweede budget op deze grootheid. **Optie 3 van V42 — één grens op `R_pad + jωL` samen — is daarmee expliciet
   vervallen:** zij herkoppelt precies wat de ontleding gescheiden heeft. De LCR- en
   parallel-R-voorstellen (opties 1 en 2) zijn niet weerlegd maar ook niet meer nodig om de eis
   werkzaam te krijgen; zij blijven beschikbaar als de zoektocht de spoel op de nieuwe grens
   onvoldoende kan krijgen. Bewijsmateriaal: `scripts/measure-v43-decomposition.ts`,
   `manifest_en_geometrie.v43_ontleding`, `.v43_inversie_bevinding` en `.v43_budget_bevinding`.
+- **V45 — drie open punten uit het ankerbesluit, alle drie GEMETEN en geen ervan gebouwd.**
+  · **Het STALE PLAFOND van `bump-series-l`.** De inversie lost haar plafond op bij de
+  padweerstand van het ZAAD en daarna ligt het vast, terwijl de zoektocht die padweerstand vrij
+  mag verhogen — en meer serieweerstand DEMPT de resonante helft, dus het plafond is conservatief
+  en niet fout. "Conservatief" is niet hetzelfde als "veilig", en dat verschil was ongemeten.
+  Sinds V45 wordt het GELEVERDE netwerk op `resonantDb` tegen hetzelfde gestelde budget getoetst
+  (V31-vorm, `by: 'stated-budget'`), zodat het stale plafond hoogstens te streng kan zijn en nooit
+  een schending kan doorlaten. De inversie iteratief heroplossen tijdens de tune is een eigen
+  sessie — het vraagt een netwerkoplossing per evaluatie — en of hij nodig is, is nu meetbaar: als
+  die toets nooit vuurt, kost de staleness niets. **Open, en de meting loopt vanzelf.**
+  · **De Q_es-eis is strenger dan haar eigen metriek op elke netlist met een shunt.** De eis is
+  uitgedrukt in M-E (`q = 1 + R_s/R_e`, met R_s de Thévenin-bronweerstand op f_p), maar de
+  A5d.6-inversie kan alleen de DC-SERIEWEERSTAND van het pad begrenzen — dat is het enige wat in
+  een zoekruimte staat. Die twee lopen naar BEIDE kanten uiteen: waar de weg reactantie draagt
+  leest M-E hoger (HUIDIG +0,08), waar een shunt over de driver staat leest hij LAGER
+  (`V43_KAND_1`: 2,17 Ω tegen 4,46 Ω padweerstand, q 1,71 tegen 2,46). Gevolg: de eis kan een
+  ontwerp weigeren dat M-E zou goedkeuren. Dat is de veilige kant, en dezelfde vorm van
+  benadering als het stale plafond hierboven — de reparatie is dezelfde soort sessie. **Open.**
+  · **De gestelde plateaudiepte is niet gemeten en kan dat op deze meetset niet worden.** De
+  ver-veldgeldigheidsvloer ligt bijna drie octaven boven f_p, de wooferbestanden zijn geen
+  NF/FF-merge, en een merge zou de baffle-step-diepte moeten AANNEMEN die de eis juist bedoelt.
+  **Open tot er een groundplane- of near/far-gemergede meting is die het laag werkelijk ziet**;
+  dan wordt het getal herzien. Bij verplaatsing van de luidsprekers wordt het sowieso herzien.
 - **V29 — mag `safety` een netlist weigeren die vrijwel kortsluit als er géén vloer gesteld is?**
   Twee verdedigbare houdingen (strikt P4 tegenover een uit de gemeten driverimpedanties
   afleidbare degeneratiegrens), aanleiding is de V28-shortlist met 0,01 Ω erin. **Open**, geen
@@ -843,12 +870,12 @@ Configuratie: 3-weg; 2× SB WO24TX-8 parallel, MR13TX-4 in bolpod, T25T-6 in WG1
 
   **Wat het was.** V23 noteerde het als bijvangst: `BudgetWay` kreeg op de workerroute geen `nearField` en geen `impedance`, dus `lfBumpBudgetDb` kon daar nooit tot een grens komen. Gemeten met alle vier de budgetten tegelijk gewapend, door de échte route:
 
-  | # | inversie | gedreven door | wat zij nodig heeft | rapportroute | workerroute vóór F4b2 | na F4b2 |
-  |---|---|---|---|---|---|---|
-  | 1 | `qes-series-r` | `budgets.qesMultiplierMax` | `reOhm`, `lowest` | ✅ | ✅ (sinds F4b op de opgeloste R_e — V21) | ✅ |
-  | 2 | `bump-series-l` | `budgets.lfBumpBudgetDb` | `nearField`, `impedance`, `fPeakHz`, `lowest`, `pathROhm`, optioneel `crossingAboveHz` | ✅ | ❌ **dood** | ✅ **hersteld** |
-  | 3 | `gap-pad-r` | `budgets.dampingMarginDb` | `gapBudgetDb` ≠ null, `zPassbandMedianOhm` | ✅ | ❌ dood (`gapBudgetDb: null`) | ❌ **blijft dood, met reden** |
-  | 4 | `drive-series-c` | `gates.maxDriveOnFsDb` | `highPassProtected`, `fsHz`, `zPassbandMedianOhm`, `order?` | ✅ | ✅ maar altijd op orde 1 | ✅ op de gedeclareerde orde |
+  | # | inversie | gedreven door | wat zij nodig heeft | rapportroute | workerroute vóór F4b2 | na F4b2 | na V45 |
+  |---|---|---|---|---|---|---|---|
+  | 1 | `qes-series-r` | `budgets.qesMultiplierMax` | `reOhm`, `lowest` | ✅ | ✅ (sinds F4b op de opgeloste R_e — V21) | ✅ | ✅ **en op casus 1 GEWAPEND** (2,4) |
+  | 2 | `bump-series-l` | `budgets.lfBumpBudgetDb` | `nearField`, `impedance`, `fPeakHz`, `lowest`, `pathROhm`, optioneel `crossingAboveHz` | ✅ | ❌ **dood** | ✅ **hersteld** | ✅ + geleverde-netwerk-toets |
+  | 3 | `gap-pad-r` | `budgets.dampingMarginDb` | `gapBudgetDb` ≠ null, `zPassbandMedianOhm` | ✅ | ❌ dood (`gapBudgetDb: null`) | ❌ **blijft dood, met reden** | ✅ **BEREIKBAAR** (casus 1 wapent hem niet — P4) |
+  | 4 | `drive-series-c` | `gates.maxDriveOnFsDb` | `highPassProtected`, `fsHz`, `zPassbandMedianOhm`, `order?` | ✅ | ✅ maar altijd op orde 1 | ✅ op de gedeclareerde orde | ✅ |
 
   **2 van 4, en dat was de stand sinds F2** — niet iets wat F4b veroorzaakte. Wat F4b deed was `collect.notes` een scherm geven; daardoor werd zichtbaar wat er al drie fasen stond. De audit-tabel in §3 zegt "3 van 4" en draagt sinds F4b2 een gedateerd erratum; de tabelregel zelf is niet aangeraakt, omdat F4c en F4d er met paragraafnummers naar verwijzen.
 
@@ -870,7 +897,7 @@ Configuratie: 3-weg; 2× SB WO24TX-8 parallel, MR13TX-4 in bolpod, T25T-6 in WG1
 
   **Waarom de v1-route niet geraakt is.** Alles zit in de v2-payload, in `engine2/` en in de v2-tak van `App.tsx`. `optimWorker.ts` is byte-onaangeraakt, `netOptimizer.ts`, `threeWayChain.ts` en `designChain.ts` zijn niet gewijzigd, en de inversieformules in `bounds.ts` evenmin — alleen wat zij als invoer krijgen. Met de vlag uit wordt de payload niet opgebouwd. `toggleRegression.test.ts` is byte-identiek.
 
-  **Openstaand.** De dempingsmarge (inversie 3) wacht op A5e.2 en op niets anders. En `crossingAboveHz` is op de tweewegroute het meetkundig midden van het gestelde bereik in plaats van een kruispunt, omdat die route een RANGE draagt en geen punt — F4c maakt dat expliciet.
+  **Openstaand — en de eerste helft is bij V45 gesloten.** De dempingsmarge (inversie 3) wachtte op A5e.2 en op niets anders; sinds V45 bestaat het doelcurve-object, steekt het verankerde budget als meetfeit de grens over en is de inversie **4 van 4 bereikbaar**. Bereikbaar en niet gewapend: casus 1 stelt geen dempingsmarge, dus zij levert daar geen grens (P4) — waarom niet staat in V45 onder *"wat gap-pad-r op deze casus niet kan"*. En `crossingAboveHz` is op de tweewegroute het meetkundig midden van het gestelde bereik in plaats van een kruispunt, omdat die route een RANGE draagt en geen punt — F4c maakt dat expliciet.
 
 - V26 (wie mag kiezen: de 37 tuner-instellingen ingedeeld, en de v2-run vergrendeld) — bij F4c.
 
@@ -3121,6 +3148,123 @@ Configuratie: 3-weg; 2× SB WO24TX-8 parallel, MR13TX-4 in bolpod, T25T-6 in WG1
   derde en hardste controle: zij draait de bevroren netlist opnieuw door de échte route.
 
   **Het getallenblad is meeverhuisd.** `measure-v40-phase.ts` zet M-K vooraan met zijn band, zijn puntental en zijn afwijzingen per grond, en de twee oude maten erachter als controle. De vraag aan VituixCAD is daarmee veranderd: zij was "welke van deze twee reproduceert", zij is nu "reproduceert M-K" — een VALIDATIE van een gebouwde maat in plaats van een scheidsrechter tussen twee ongebouwde. De band waarop afgelezen moet worden staat per rij, want die is niet meer uit het kruispunt af te leiden.
+
+- V45 (30/31-08-2026 — **BREAKING, alleen v2-runs**: A5e.2 gesloten — het niveau-anker wordt een gestelde eis, en de doelcurve stuurt eindelijk óók de zoektocht) — geparkeerd sinds F1, dringend verklaard bij V43, hier beslist. **Twee van de drie verwachtingen waarmee deze sessie begon bleken bij het meten onjuist, en dat is de belangrijkste inhoud van deze entry.**
+
+  **WAT HET WAS.** A5d.4(a) wil het ankerniveau NA baffle step in de beoogde opstelling. Dat is een eigenschap van het doelcurve-object, en dat object bestond alleen als vocabulaire: `flat` werkte, `tilt` en `hold-current` weigerden netjes, en verder was er niets. Daardoor stonden er sinds F1 drie dingen stil, en pas bij elkaar opgeteld is het een gat:
+
+  - `verankerde_gaps_dB` vergeleek de KALE gemeten niveaus en droeg een `status`-veld dat zei dat zijn waarden geen acceptatiecriterium waren;
+  - `worker.ts` gaf de A5d.6-inversie `gapBudgetDb: null` onder een `TODO(A5e.2)`, dus `gap-pad-r` sloeg élke weg over en een ontwerper die `dampingMarginDb` invulde kreeg een veld dat op de zoekroute niets deed (V23 telde het als het derde dode budget, F4b maakte het zichtbaar zonder het te repareren);
+  - en — het gat dat niemand had opgeschreven — een gesteld doelcurve-object werd sinds F3 door het OORDEEL gelezen (A5e.1: venster en RMS-afwijking) en door de ZOEKTOCHT niet. `bandStd` meet de spreiding van de som rond haar eigen bandgemiddelde, dus "perfect" is per definitie een rechte lijn. Een ontwerp werd GEZOCHT tegen vlak en GEOORDEELD tegen een plateau, en van die twee heeft de zoektocht het hele iteratiebudget: zij wint, en het oordeel legt de nederlaag vast.
+
+  ---
+
+  **STAP 1 — METEN VÓÓR STELLEN, EN TWEE VERWACHTINGEN SNEUVELDEN.** `scripts/measure-a5e2-anchor.ts` (nieuw, seconden, geen ketenrun) drukt vier tabellen af: het gerealiseerde basplateau per bevroren netlist in vier bandlezingen, de baffle step uit de gemeten kastbreedte, M-E op de laagste weg, en de gerealiseerde verzwakking per weg tegen het verankerde gap-budget.
+
+  **De baffle step klopte, als enige van de drie.** `baffleStepHz(260) = 442,3 Hz`, tegen een verwachting van ~440.
+
+  **HUIDIG's plateau is −1,08 dB en niet −2 à −3.** De ver-veldgeldigheidsvloer van deze sessie is 396,7 Hz en f_p van de woofer is 52,4 Hz: bijna drie octaven ertussen. De voorgeschreven band `[f_p, W-M-overname]`, geclipt op meetgeldigheid zoals voorgeschreven, is daarmee geen plateau maar een **sliver van een kwart octaaf (396,7–466,4 Hz) die BOVEN de baffle step ligt**.
+
+  | | geclipt (397–466) | ongeclipt (52–466) | ongeclipt tot eigen kruispunt |
+  | --- | --- | --- | --- |
+  | HUIDIG | **−1,08** | −1,94 | −2,04 |
+  | KAND_A | −1,24 | −1,59 | −1,59 |
+  | KAND_B | −0,80 | +0,05 | +0,05 |
+
+  De −2 à −3 dB verschijnt alleen in de ongeclipte kolommen, en die lezen ver-velddata waarvan A5b.1 zegt dat zij er niet is.
+
+  **HUIDIG's Q_es-vermenigvuldiging is 2,31 en niet 1,3 à 1,4.** Dat is niet eens een nieuwe meting: het staat als klasse-B-referentie in dit casusboek (`kandidaten.HUIDIG_2e.Qes_mult`). Nagemeten: HUIDIG 2,31 op R_e = 3,05 Ω (2,37 op de 2,90 van de inversie), KAND_A 2,51, KAND_B 1,84; het levende corpus 1,32–2,85. **De schatting van 1,3 à 1,4 stond op R8 alleen** — de niveauweerstand — en niet op de HELE serieweerstand van het pad, waar M-E over gaat: HUIDIG draagt 3,756 Ω padweerstand. Een gestelde 1,3 à 1,4 zou alle drie de referentiefilters van de ontwerper hebben veroordeeld, wat exact de fout is die V42 maakte en V43 moest terugdraaien.
+
+  **En de derde meting is de scherpste, want zij veroordeelde een heel mechanisme.** De gerealiseerde verzwakking per weg, tegen het verankerde gap-budget dat `gap-pad-r` erop zou loslaten:
+
+  | netlist | woofer A / budget | mid (ANKER — budget 0 per definitie) | tweeter A / budget |
+  | --- | --- | --- | --- |
+  | HUIDIG | doorlaatband **leeg** (kruispunt 359,7 Hz ligt onder de vloer) | **7,51** | 0,00 / 3,44 |
+  | KAND_A | 7,24 / 0,89 | **8,64** | 0,00 / 3,44 |
+  | KAND_B | 4,59 / 0,89 | **8,98** | 0,00 / 3,44 |
+
+  Drie dingen tegelijk. De woofer betaalt 4,6–8,5 dB tegen een budget van 0,89. De **ankerweg** — die per A5d.4 nul budget krijgt omdat zij het niveau is waar alles naartoe komt — is in élk referentiefilter de zwaarst gepadde weg. En op HUIDIG is de wooferdoorlaatband leeg, dus daar is niet eens een |Z|-referentie om de grens op te lossen.
+
+  **De bevinding daaronder is een bevinding over het MODEL en niet over de getallen:** serieweerstand in een passieve tak doet filterwerk — Q-vorming, impedantievlakking, spoel-DCR — en niet alleen niveauwerk, en A5d.4 drukt dat niet uit. Een plateau-krediet van 1 à 3 dB dekt geen van die gaten. `gap-pad-r` gewapend op casus 1 knipt niet de weerstandsvlucht af; het veroordeelt het hele casusboek, inclusief de drie referentiefilters. Dat is de V42-fout in een nieuwe jas, en zij is hier vóór het stellen gevangen in plaats van erna.
+
+  ---
+
+  **DE BESLISSING, en zij is op drie punten anders dan de opdracht.**
+
+  **(1) Het plateau wordt GESTELD op 2,5 dB en is NIET gemeten.** De tussenstap die geprobeerd is en faalde staat erbij, want zij is het bewijs dat de eerlijke route dicht zit. Het voorstel was: de 396,7-vloer is de MID-geldigheid die op de som wordt toegepast, de woofer-FRD's zijn NF/FF-gemerged en dragen geldige data lager, dus leg hun werkelijke LF-geldigheid vast en meet het plateau alsnog. **Alle drie de helften van die premisse zijn nagemeten en geen ervan houdt stand.** (a) Alle vijf de ver-veldbestanden dragen dezelfde ARTA-gate — referentietijd 2,5 ms, rechtervenster 5,021 ms — dus 396,7 Hz is de EIGEN header van `woofer_up_hor_0.txt` net zo goed als van `mid_hor_0.txt`. (b) Die wooferbestanden zijn geen merge: `Source file = woofer up hor 0.pir`, FFT 32768, kale gepoorte ver-veldmeting, met de nabije velden als aparte `.pir`-opnamen die het manifest als `NF` tagt. Er is geen merge-herkomst om vast te leggen. (c) En de controle die als beslissingsregel was gesteld — "mid weglaten onder de vloer beweegt het plateau < 0,1 dB" — faalt vijfvoudig: **−0,514 dB op HUIDIG** (KAND_A −0,452, KAND_B −0,322), gemeten op een reconstructie van de som die bit-identiek is aan wat het rapport zelf oplevert. De som onder 400 Hz rust dus meetbaar op takken zonder geldigheid.
+
+  **Dieper dan alle drie:** dit plateau is uit deze meetset niet te meten zonder eerst de baffle-step-DIEPTE aan te nemen die de eis juist bedoelt — de NF/FF-merge zet haar terug met `baffleStepDepthDb` als knop. Dat is circulair. Het getal is daarom gesteld met de opstelling als motivering (< ~50 cm van de achterwand, de wandbijdrage vult het laag in-room aan) en draagt in het manifest hardop het veld `basplateau_waarom_niet_gemeten`. **Hermeten na een groundplane-meting** is de open entry.
+
+  **(2) `qesMultiplierMax` wordt 2,4 — het strengste getal op één decimaal dat HUIDIG nog toelaat.** Dezelfde bewijs-haalbaar-vorm als de versterkervloer: het goedgekeurde ontwerp haalt de eis (3,756 Ω padweerstand tegen een plafond van 4,27 Ω op de R_e die deze route oplost), en zij bindt aantoonbaar — het V43-corpus loopt tot 5,795 Ω en het levende V44-corpus tot 5,651. KAND_A (2,51) valt erbuiten en krijgt daarvoor geen uitzondering in de eis.
+
+  **(3) `gap-pad-r` gaat LEVEN maar wordt op casus 1 NIET gewapend.** De mechaniek steekt de grens over — dat is wat A5e.2 sluit — en casus 1 stelt geen dempingsmarge, dus zij levert daar geen grens (P4). De weerstandsvlucht wordt gedekt door `qesMultiplierMax` en door de doelcurve, niet door dit budget. Dat de inversie werkelijk bereikbaar is, is gemeten en niet beweerd: met een gestelde marge van 1 dB levert zij op HUIDIG's woofer 1,045 Ω. De vier-inversies-tabel van V25 staat daarmee op **4 van 4 bereikbaar**.
+
+  ---
+
+  **DE DOELCURVE ALS OBJECT.** `bass-plateau` is de derde vorm in het vocabulaire, en haar twee parameters komen met opzet uit tegengestelde bronnen (P6):
+
+  - `plateauDepthDb` is GESTELD — hoeveel het on-axis laag bewust onder het anker ligt. Geen meting kan dat opleveren; het is een voicing-besluit over een opstelling.
+  - `stepHz` is GEMETEN — `baffleStepHz` van de kastbreedte in `manifest_en_geometrie.geometrie.baffle_mm`, en van niets anders. Die maat is bij V45 aan het manifest toegevoegd; tot dan las niets in de engine haar en stond zij alleen in de projectinvoer van de app.
+
+  De VORM is de eigen shelf van de app (`baffleStepShelfDb`), niet een tweede mening over baffle step. Een `bass-plateau` waarvan één helft ontbreekt levert GEEN offsets en noemt wat er miste; `tilt` en `hold-current` weigeren zoals altijd.
+
+  **TWEE LEZERS VAN ÉÉN GETAL, en zij lezen het op twee manieren.** (a) A5d.4(a) — de verankerde gaps vergelijken elke weg op haar eigen DOELNIVEAU: de shelf, energiegemiddeld over de eigen niveauband van die weg, met het teken omgedraaid. Een weg die de voicing lager zet wordt dat bedrag gecrediteerd. (b) De zoektocht — sinds V45 meet de amplitudeterm de spreiding van (som − doel). Alleen VERSCHILLEN tussen wegen verplaatsen een anker, dus een curve die alle wegen even veel verschuift verandert het ankerblok niet, en dat is correct.
+
+  **DE SLEUTELS.** `amplitudeReference` is CHOICE (`'flat'` = de historische term en élke v1-run; `'target'` = spreiding rond de voicing), `amplitudeTargetDb` is POLISH — de doelcurve van het ONTWERP, gesampeld door de kant die hem al heeft. Vijfde paar in dezelfde vorm als V33, V34, V37 en V44; sleuteltelling 46 → 48, verdeling 31/5/10 → 32/5/11. **Niet te verwarren met `ampTarget`**, en de namen liggen ongelukkig dicht bij elkaar: die kiest WELKE som vlak gemaakt wordt (on-as of luistervenster), deze wat er als vlak TELT voor die som. Twee sleutels, twee vragen. De verklaring leidt hem af zoals V30 `zFloorBarrier` afleidt, met **drie** toestanden in plaats van twee — geen curve, een `flat` curve (de identiteit, dus niet wapenen: een mechanisme dat aantoonbaar niets kan bewegen hoort niet in een run te staan alsof het iets deed) en een curve die iets zegt.
+
+  **HET VERANKERDE BUDGET STEEKT OVER ALS MEETFEIT.** Zevende feit in `MeasurementFactsPayload`, met de ANKER-naam ernaast, en die naam is nodig: "deze weg heeft geen verzwakkingsbudget" heeft twee betekenissen die niet gelijk mogen lezen — het anker heeft er per definitie geen, elke andere weg zonder budget mist een meting. Er is geen terugval en er mag er geen zijn: de ketenkant heeft geen ver-veldniveaus en geen A5d.3-vensters, dus alles wat zij zelf zou uitrekenen is een slechtere tweede implementatie van A5d.4 (de les van F4b-lek 1). Het `facts`-ingrediënt van de vingerafdruk telt daarmee zeven feiten.
+
+  **WAT HET MET DE VERANKERDE GAPS DOET, in getallen.** De shelf, energiegemiddeld over de eigen niveauband van elke weg, crediteert de woofer +1,27 dB, de mid +0,84 en de tweeter +0,21. Omdat alleen VERSCHILLEN tellen wordt het wooferbudget 0,895 → **1,328 dB** en het tweeterbudget 3,444 → **2,818 dB**. `verankerde_gaps_dB` is daarmee van een blok met een `status`-veld dat zei dat zijn waarden niet meetellen een ACCEPTATIECRITERIUM geworden; de oude waarden staan als gedateerde brug ernaast (de handberekening van 25-08: 1,5 en 4,1; de engine op kale niveaus: 0,895 en 3,444), en de golden-suite assert dat de brug reproduceert **mét** de tegenproef dat de nieuwe waarden daar aantoonbaar van verschillen. Het blok blijft klasse A: alle drie de referentiefilters leveren hetzelfde ankerblok, nagemeten.
+
+  **DE ASYMMETRIE DIE F4b MOEST OPBIECHTEN IS WEG.** Tot V45 werd de dempingsmarge in het RAPPORT toegepast en op de ZOEKROUTE niet; beide oppervlakken inverteren nu dezelfde grens uit dezelfde verankerde budgetten. De `TODO(A5e.2)` bestaat niet meer in `worker.ts` — `grep` bevestigt het en `borderFacts.test.ts` assert het.
+
+  ---
+
+  **HET V43-OPEN PUNT: DE GELEVERDE-NETWERK-TOETS.** `bump-series-l` lost zijn plafond op bij de padweerstand van het ZAAD en daarna ligt het vast, terwijl de zoektocht die padweerstand vrij mag verhogen — en meer serieweerstand DEMPT de resonante helft. Het stale plafond is dus conservatief en niet fout, maar "conservatief" is niet hetzelfde als "veilig" en niemand had gemeten welke van de twee het was. Sinds V45 wordt het GELEVERDE netwerk op `resonantDb` tegen hetzelfde gestelde budget getoetst, in V31-vorm: weigering met reden, netwerk ingetrokken. De refusal draagt `by: 'stated-budget'` en `kinds: ['budget']` en leent de categorie van de poort NIET — een aanroeper die op `by` schakelt zou anders te horen krijgen dat een poort sprak terwijl er geen poort was (A3g). De toetsing hergebruikt `lfBump` op hetzelfde raster en dezelfde gemeten impedanties als de poortreferentie en het rapport, dus paneel en run kunnen het niet oneens zijn.
+
+  **Het stale plafond zelf blijft een OPEN PUNT.** De inversie iteratief heroplossen tijdens de tune is een eigen sessie — het vraagt een netwerkoplossing per evaluatie — en of hij ooit nodig is, is nu meetbaar: als deze toets nooit vuurt, kost de staleness niets.
+
+  ---
+
+  **NOG EEN OPEN PUNT, GEMETEN EN NIET VERMOED: de Q_es-eis is strenger dan haar eigen metriek.** De eis is uitgedrukt in M-E (`q = 1 + R_s/R_e`, met R_s de Thévenin-bronweerstand op f_p), maar de A5d.6-inversie kan alleen de DC-SERIEWEERSTAND van het pad begrenzen — dat is het enige wat in een zoekruimte staat. Die twee lopen op dit casusboek **naar beide kanten** uiteen. Waar de weg reactantie in zijn eigen pad draagt leest M-E HOGER (HUIDIG +0,08, `V28_KAND_2` +0,12). Waar er een SHUNT over de driver staat leest M-E LAGER, want die shunt verlaagt de bronimpedantie die de driver werkelijk ziet: op `V43_KAND_1` is dat 2,17 Ω tegen 4,46 Ω padweerstand, dus q = 1,71 waar de inversie op 2,46 begrenst. **Gevolg: op een netlist met een shunt kan de eis zoals gehandhaafd een ontwerp weigeren dat M-E zou goedkeuren.** Dat is de veilige kant — te streng en nooit te ruim — maar het is een eigenschap die alleen een meting kan vaststellen, dus zij staat in het manifest en in `frozenNetlistGates.test.ts` en niet in een aanname.
+
+  ---
+
+  ---
+
+  **DE VÓÓR/NÁ, en zij is GEMENGD — dat staat hier vooraan omdat het de eerlijke lezing is.** Het veld is opnieuw opgewekt met de doelcurve, de Q_es-grens en het verankerde budget alle drie gewapend: **5 u 56 min** voor vijftien ketenruns (513–3762 s per kandidaat), de duurste regeneratie tot nu toe. Zeven kandidaten leverden een netwerk en alle zeven haalden de shortlist, precies als bij V44; één rij eruit (`396.7 · 1719`, verworpen door de vloerpoort op 2,55 Ω) en één erin (`396.7 · 1294`).
+
+  | grootheid | V44 | V45 | richting |
+  | --- | --- | --- | --- |
+  | netlists in de shortlist | 7 van 15 | 7 van 15 | gelijk |
+  | halen de gestelde vloer | 7 van 7 | 7 van 7 | gelijk |
+  | **M-D LIFT** (de resistieve helft) | 3,8 dB | **3,2 dB** | **omlaag** |
+  | M-D bult (`extraDb`) | 3,1 dB | 2,3 dB | omlaag |
+  | M-D opslingering | −0,7 dB | −0,9 dB | ruim binnen het budget |
+  | totale serie-L laagste weg | 2,8 mH | 2,7 mH | vrijwel gelijk |
+  | **dissipatie (M-A)** | 54,3 % | **60,4 %** | **omhoog** |
+  | grootste enkele weerstand bij 100 W | 25,1 W | 30,9 W | omhoog |
+  | **W-M fase (M-K)** | 16,3° | **25,3°** | **slechter** |
+  | M-T fase (M-K) | 9,0° | 8,1° | iets beter |
+  | Q_es-grens overschreden | 1 van 7 (`V44_KAND_5`, 5,65 Ω) | **0 van 7** | de eis bindt |
+
+  **DE Q_es-GRENS BINDT AANTOONBAAR, en niet alleen statistisch: twee van de zeven netlists landen EXACT op het plafond** (`KAND_V2_1` en `KAND_V2_4`, allebei 4,27 Ω padweerstand tegen een plafond van 4,27). Dat is een zoekruimte die tegen haar wand aan ligt, en het is het scherpste bewijs dat de grens de zoektocht werkelijk stuurt in plaats van achteraf te oordelen.
+
+  **DE LIFT IS OMLAAG GEGAAN, en dat is precies wat V43 vroeg.** V43's tweede helft mat dat de zoektocht een begrensde spoel compenseerde met serieWEERSTAND en dat de lift daardoor van 3,1 naar 3,8 dB liep — "een onbewaakte uitweg", in de woorden van die entry. Die uitweg is nu dicht: 3,8 → 3,2 dB, met de spoel op zijn plaats (2,8 → 2,7 mH). Twee mechanismen tegelijk deden dat en zij zijn niet te scheiden zonder een derde arm: de Q_es-grens plafonneert de weerstand die de lift veroorzaakt, en de doelcurve maakt het bas-niveau dat die weerstand kocht een DOEL in plaats van een afwijking.
+
+  **MAAR DE DISSIPATIE IS GESTEGEN EN DE W-M-FASE IS SLECHTER, en dat wordt hier niet weggeschreven.** De weerstand is niet verdwenen maar VERPLAATST: de Q_es-grens bewaakt alleen de LAAGSTE weg, en het corpus telt sindsdien meer shunt-pads (7 → 9) en meer series-pads (19 → 20) op de andere twee. Dissipatie is op casus 1 een KOLOM en geen eis (P4), dus niets veroordeelt dat — maar het is exact het patroon dat V43 op de spoel zag, één weg opgeschoven, en het hoort in de open punten. De fasedegradatie op W-M (16,3 → 25,3°) is de tweede prijs; zij is bovendien ONGELIJK verdeeld — `396.7 · 1491.4` gaat van 26,5° naar 60,0° — en op een casus die geen fase-eis STELT veroordeelt ook dat niets. **Wie de volgende sessie doet begint hier**, en de vraag is of `qesMultiplierMax` per weg hoort te bestaan in plaats van alleen op de laagste.
+
+  ---
+
+  **TWEE BEWAKERS BLEKEN NIET TE BEWAKEN WAT ZIJ BELOOFDEN, en allebei zijn zij door deze sessie zelf betrapt.**
+
+  · **De feiten-dekkingsassert in `determinism.test.ts` telde zijn EIGEN lijst.** Er stond `expect(Object.keys(variants).length).toBe(6)` onder een commentaar dat beloofde dat élk veld van `MeasurementFactsPayload` erboven geoefend wordt — precies om te voorkomen dat een nieuw feit ongetest in de vingerafdruk meelift. V45 voegde twee velden toe, schreef geen varianten, en de telling was nog steeds 6: groen. Een bewaker die telt wat een sessie met de hand bijhoudt, kan niet zien wat die sessie vergat. De veldenlijst komt nu uit de BRON van het payload-type (de techniek die `choiceKeyGuard.test.ts` op `NetOptimizeOptions` gebruikt), met de assert twee kanten op, en nagemeten dat hij kán falen: één variant weghalen noemt het vergeten veld bij naam.
+
+  · **`freeze-live-corpus.ts` accepteerde een verkeerde bestandsprefix zonder mokken.** Het corpus is bevroren met `V44_KAND` waar de conventie `V44-KAND` is. De referentie-SLEUTELS kwamen gewoon goed — de `-`→`_`-herschrijving is een no-op op een underscore — dus het manifest las `V44_KAND_1` zoals bedoeld, terwijl de BESTANDEN `V44_KAND-1` heetten in een casusboek waar elk ander corpus `V43-KAND-1` heet, en de corpusomschrijving "HET GEDATEERDE V44_KAND-CORPUS" werd. Niets faalde. Hernoemd, en het script weigert de vorm nu met de reden erbij.
+
+  ---
+
+  **WAT ER NIET GEBOUWD IS.** Geen tilt en geen in-room-doel (optie C, expliciet uitgesteld). Geen LCR-generatie. Geen wijziging aan het anker zelf als grootheid — het blijft de stilste weg, en de haalbaarheidswaarschuwing van A5d.4(b) staat ongewijzigd. Geen fasemaat-wijziging: M-K staat, en Sanders VituixCAD-validatie loopt parallel en blokkeert niet — status ongewijzigd sinds V44. Geen dempingsmarge op casus 1. En geen v2-default die een casus-1-getal is: de plateaudiepte en de Q_es-grens staan uitsluitend in `manifest_en_geometrie.gestelde_eisen` en de fixture leest ze daarvandaan.
 
 ## Casus S1 — synthetische grondwaarheid voor de R_e-schatter (F3b, 26-08-2026)
 

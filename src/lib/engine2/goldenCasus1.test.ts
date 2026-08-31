@@ -30,9 +30,11 @@ import {
   casus1Filter,
   casus1Geometry,
   casus1Manifest,
+  casus1TargetCurve,
   loadGolden,
 } from './casus1.fixture.ts';
 import { buildReport, type EngineV2Report } from './report.ts';
+import { FLAT_TARGET } from './requirements/targetCurve.ts';
 import { ctcKey } from './metrics/types.ts';
 import { buildAnalysis } from './metrics/analysis.ts';
 import { logspace, resampleImpedance } from '../dsp.ts';
@@ -48,6 +50,12 @@ const settings = {
   orderByPair: { [ctcKey('woofer', 'mid')]: 4, [ctcKey('mid', 'tweeter')]: 4 },
   diMatchToleranceDb: 2,
   reOhmByDriver: { woofer: CASUS1_WOOFER_DC_OHM },
+  /* V45 (A5e.2) — CASUS 1 IS A VOICED DESIGN NOW, and every reference that
+   * depends on a target curve has to be taken against the one this design
+   * states. Read from the manifest and built from the measured baffle step;
+   * never written here (P6). Until V45 this was `flat` by omission, which was
+   * correct while A5e.2 was open and is a silent wrong answer now. */
+  targetCurve: casus1TargetCurve(golden),
 };
 
 const manifest = casus1Manifest(golden);
@@ -630,19 +638,64 @@ describe('golden references - casus 1 (Koan 2951)', () => {
       const g = r.predesign.gaps!;
       expect(g.anchor).toBe(golden.verankerde_gaps_dB.anker);
       expect(g.anchorSwitchWarning).toContain('NOT the lowest way');
-      // The VALUES are not an acceptance criterion in F1 and the reference
-      // file says so in its own `status` field: A5d.4(a) wants the anchor
-      // taken after baffle step in the intended setup, which is a property of
-      // the target-curve object (A5e.2, parked). They are still pinned here,
-      // so a regression fails even though the reference cannot yet judge them.
-      expect(String(golden.verankerde_gaps_dB.status)).toContain('A5e.2');
+      /* V45 — THE VALUES ARE AN ACCEPTANCE CRITERION NOW. Until V45 they were
+       * not, and the reference file said so in its own `status`: A5d.4(a)
+       * wants the anchor taken after baffle step in the intended setup, which
+       * is a property of the target-curve object, and that object did not
+       * exist. It does, this design states one, and the numbers are read from
+       * the reference file rather than typed here — a value in a test is the
+       * second home P6 forbids, one level up. */
+      expect(String(golden.verankerde_gaps_dB.status)).toContain('GESLOTEN BIJ V45');
       const w = g.ways.find((x) => x.driver === 'woofer')!;
       const t = g.ways.find((x) => x.driver === 'tweeter')!;
-      expect(w.gapToAnchorDb).toBeCloseTo(0.89, 1);
-      expect(t.gapToAnchorDb).toBeCloseTo(3.44, 1);
+      expect(w.gapToAnchorDb).toBeCloseTo(golden.verankerde_gaps_dB.woofer_tov_mid, 2);
+      expect(t.gapToAnchorDb).toBeCloseTo(golden.verankerde_gaps_dB.tweeter_tov_mid, 2);
+      /* THE BRIDGE, and it is what makes the movement readable as a
+       * redefinition instead of a regression (V15): with the voicing taken OFF
+       * the very same measurement reproduces the values this block carried
+       * before, to the decimal it recorded them at. */
+      const bare = buildReport({
+        manifest,
+        files,
+        filter: casus1Filter('HUIDIG', manifest, files, golden),
+        geometry,
+        settings: { ...settings, targetCurve: FLAT_TARGET },
+      }).predesign.gaps!;
+      const bridge = golden.verankerde_gaps_dB._waarden_voor_A5e2.engine_op_kale_niveaus;
+      expect(bare.ways.find((x) => x.driver === 'woofer')!.gapToAnchorDb)
+        .toBeCloseTo(bridge.woofer_tov_mid, 2);
+      expect(bare.ways.find((x) => x.driver === 'tweeter')!.gapToAnchorDb)
+        .toBeCloseTo(bridge.tweeter_tov_mid, 2);
+      // ...and they really are different numbers, so the bridge is not the
+      // same assertion written twice.
+      expect(w.gapToAnchorDb).not.toBeCloseTo(bridge.woofer_tov_mid, 2);
       expect(g.notes.join(' ')).toContain('A5e.2');
       // The chain is the sum of the steps, which is what A5d.4 specifies.
       expect(t.budgetDb).toBeCloseTo(t.gapToAnchorDb, 6);
+    });
+
+    it('V45 — the recorded target-curve parameters are the ones the engine used', () => {
+      /* V15's process rule on the block that A5e.2 just moved. Every number in
+       * `verankerde_gaps_dB` now depends on a curve, and a curve recorded only
+       * in prose is exactly what that rule forbids — so the depth, the corner
+       * and the per-way SHIFT are all held against what the run produced. The
+       * shifts are the interesting ones: they are what turns 0.89 into 1.33. */
+      const dc = golden.verankerde_gaps_dB.parameters.doelcurve;
+      const curve = casus1TargetCurve(golden);
+      expect(dc.type).toBe(curve.type);
+      expect(dc.plateau_diepte_dB).toBe(curve.plateauDepthDb);
+      expect(dc.overgang_hz).toBeCloseTo(curve.stepHz!, 1);
+      // The engine prints the shift it applied, per way, in the block's notes.
+      const note = r.predesign.gaps!.notes.find((n) => n.includes('AFTER the target curve'))!;
+      expect(note).toBeDefined();
+      for (const [way, dB] of Object.entries(dc.verschuiving_per_weg_dB)) {
+        expect(note, `${way} is recorded at ${dB} dB but the engine did not apply that`)
+          .toContain(`${way} ${dB > 0 ? '+' : ''}${dB.toFixed(2)} dB`);
+      }
+      // ...and the ways it names are ALL of them, so a shift cannot be quietly
+      // recorded for two of three.
+      expect(Object.keys(dc.verschuiving_per_weg_dB).sort())
+        .toEqual([...r.driversLowToHigh].sort());
     });
   });
 

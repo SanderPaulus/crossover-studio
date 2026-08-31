@@ -24,6 +24,8 @@ import { parseArtaHeader, type Manifest, type ManifestEntry, type MeasurementKin
 import type { MeasurementFile } from './ingest/derive.ts';
 import type { FilterInput } from './report.ts';
 import type { Geometry } from './metrics/types.ts';
+import { baffleStepHz } from '../cabinet.ts';
+import { FLAT_TARGET, type TargetCurve } from './requirements/targetCurve.ts';
 import { ctcKey } from './metrics/types.ts';
 
 export const CASUS1_DIR = join(
@@ -66,7 +68,31 @@ export interface GoldenRefs {
   /** Why five references were revised at F1 — see V13/V14/V15 in the casebook. */
   herziening_F1_toelichting: string[];
   afgeleide_parameters: Record<string, Record<string, unknown>>;
-  verankerde_gaps_dB: Record<string, unknown>;
+  /**
+   * A5d.4's anchored gaps. Typed since V45 for the reason the withdrawn M-C
+   * block is typed: the golden suite runs a standing test off these numbers AND
+   * off the bridge beside them, and evidence has to stay checkable.
+   */
+  verankerde_gaps_dB: Record<string, unknown> & {
+    anker: string;
+    woofer_tov_mid: number;
+    tweeter_tov_mid: number;
+    status: string;
+    /** The values this block carried before A5e.2 closed — the V15 bridge. */
+    _waarden_voor_A5e2: {
+      sessie_25_08_2026: { woofer_tov_mid: number; tweeter_tov_mid: number };
+      engine_op_kale_niveaus: { woofer_tov_mid: number; tweeter_tov_mid: number };
+    };
+    parameters: Record<string, unknown> & {
+      /** V45 — the target curve these levels were adjusted by (A5d.4a). */
+      doelcurve: {
+        type: string;
+        plateau_diepte_dB: number;
+        overgang_hz: number;
+        verschuiving_per_weg_dB: Record<string, number>;
+      };
+    };
+  };
   kandidaten: Record<string, Record<string, unknown>> & {
     /**
      * The WITHDRAWN 25-08 M-C values, together with the session parameters
@@ -194,6 +220,13 @@ export interface GoldenRefs {
       D_inch: Record<string, number>;
       z_offset_mm: Record<string, number>;
       ctc_mm: Record<string, number>;
+      /**
+       * A5e.2 — the cabinet front, mm. A MEASURED dimension, in this block for
+       * the same reason `ctc_mm` is; the baffle-step frequency the target curve
+       * centres its transition on is derived from `breedte` and from nothing
+       * else (P6).
+       */
+      baffle_mm?: { breedte: number; hoogte: number };
       rotatiesymmetrisch: Record<string, boolean>;
     };
     netlists: Record<string, string>;
@@ -308,6 +341,12 @@ export function casus1Geometry(golden: GoldenRefs = loadGolden()): Geometry {
       tweeter: g.rotatiesymmetrisch['tweeter'] ?? false,
       woofer: false,
     },
+    /* A5e.2 — the baffle width, which until now nothing in engine2 read. It is
+     * spread rather than assigned so a casus that states no cabinet leaves the
+     * KEY absent: the target curve then has no measured step frequency to
+     * centre a transition on, and must produce none rather than one at a
+     * default (P4, P6). */
+    ...(g.baffle_mm?.breedte !== undefined ? { baffleWidthMm: g.baffle_mm.breedte } : {}),
   };
 }
 
@@ -384,6 +423,77 @@ export function casus1LfResonantBudgetDb(golden: GoldenRefs = loadGolden()): num
   }).gestelde_eisen;
   const v = stated?.lf_opslingering_budget_dB;
   return typeof v === 'number' && Number.isFinite(v) && v > 0 ? v : null;
+}
+
+/**
+ * V45 (A5e.2) — the BASS-PLATEAU DEPTH the designer stated for casus 1, dB.
+ * Same shape as the floor and the LF budget above, same reason, and one
+ * difference that is written down in the manifest rather than here: this number
+ * is STATED and not measured, because on this measurement set it cannot be
+ * measured at all. The far-field validity floor is 396.7 Hz — nearly three
+ * octaves above the woofer's f_p — so the plateau lives entirely below what a
+ * 2.5 ms gate can see, and reconstructing it needs a near/far merge whose own
+ * baffle-step knob would assume the answer.
+ *
+ * WHAT IT IS: the DEPTH of the target curve's shelf, not a level anybody read
+ * off a graph. The transition it sits under is derived (`casus1TargetCurve`).
+ *
+ * Null when the project states none, and that is P4: no depth, no evaluable
+ * target curve, and every judgement falls back on the flat reference — which is
+ * the neutral reference and not a guess.
+ */
+export function casus1BassPlateauDb(golden: GoldenRefs = loadGolden()): number | null {
+  const stated = (golden.manifest_en_geometrie as unknown as {
+    gestelde_eisen?: { basplateau_offset_dB?: unknown };
+  }).gestelde_eisen;
+  const v = stated?.basplateau_offset_dB;
+  return typeof v === 'number' && Number.isFinite(v) && v > 0 ? v : null;
+}
+
+/**
+ * V45 — the design's own TARGET CURVE, built from the two places A5e.2 says
+ * they come from.
+ *
+ * The DEPTH is read from `gestelde_eisen`; the STEP FREQUENCY is derived from
+ * the cabinet's measured front width through `baffleStepHz` and from nothing
+ * else. Neither is written here, and that split is the point (P6): a frequency
+ * in this project comes from project data, and a voicing depth comes from a
+ * designer.
+ *
+ * Returns the FLAT target when either half is missing. Flat is the neutral
+ * reference rather than a fallback — "no voicing stated" is a coherent state
+ * and the report says so — but a `bass-plateau` with half its parameters would
+ * not be, and inventing the other half is what P4 forbids.
+ */
+export function casus1TargetCurve(golden: GoldenRefs = loadGolden()): TargetCurve {
+  const depth = casus1BassPlateauDb(golden);
+  const width = golden.manifest_en_geometrie.geometrie.baffle_mm?.breedte;
+  const step = width !== undefined ? baffleStepHz(width) : null;
+  if (depth === null || step === null) return FLAT_TARGET;
+  return { type: 'bass-plateau', plateauDepthDb: depth, stepHz: step };
+}
+
+/**
+ * V45 — the Q_es MULTIPLICATION CEILING the designer stated for casus 1.
+ *
+ * Same shape and the same reason as the LF budget: it arms an A5d.6 INVERSION
+ * (`qes-series-r`) and not a gate — M-E has no gate id in `GATE_IDS`, so a
+ * stated ceiling cannot condemn a delivered network, it bounds the total series
+ * resistance the search may put in the lowest way's path.
+ *
+ * It divides by the R_e the RUN resolved (A5c.1), never by a reading fixed
+ * here: the casebook carries two readings of this woofer pair's R_e (V16) and a
+ * ceiling pinned to one of them would quietly disagree with the panel beside
+ * it. The manifest records what the ceiling comes to on each.
+ *
+ * Null when the project states none — P4, no inversion, no ceiling.
+ */
+export function casus1QesMultiplierMax(golden: GoldenRefs = loadGolden()): number | null {
+  const stated = (golden.manifest_en_geometrie as unknown as {
+    gestelde_eisen?: { qes_vermenigvuldiging_max?: unknown };
+  }).gestelde_eisen;
+  const v = stated?.qes_vermenigvuldiging_max;
+  return typeof v === 'number' && Number.isFinite(v) && v > 1 ? v : null;
 }
 
 /**

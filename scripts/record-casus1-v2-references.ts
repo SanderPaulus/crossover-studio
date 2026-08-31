@@ -29,6 +29,7 @@ import { readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {
+  CASUS1_DIR,
   CASUS1_WOOFER_DC_OHM,
   casus1AmpMinLoadOhm,
   casus1Files,
@@ -36,18 +37,19 @@ import {
   casus1Geometry,
   casus1LfResonantBudgetDb,
   casus1Manifest,
+  casus1QesMultiplierMax,
   loadGolden,
+  type GoldenRefs,
 } from '../src/lib/engine2/casus1.fixture.ts';
 import { buildReport } from '../src/lib/engine2/report.ts';
 import { ctcKey } from '../src/lib/engine2/metrics/types.ts';
-import { FLAT_TARGET } from '../src/lib/engine2/requirements/targetCurve.ts';
 import { LF_BUMP_VERSION } from '../src/lib/engine2/metrics/acoustic.ts';
 import { RESISTIVE_EQUIVALENT_VERSION } from '../src/lib/engine2/metrics/resistiveEquivalent.ts';
 import { PHASE_INTEGRATION_VERSION } from '../src/lib/engine2/metrics/phaseIntegration.ts';
 import { PHASE_ADMISSION_VERSION } from '../src/lib/phaseAdmission.ts';
 import { compareDesigns } from '../src/lib/engine2/predesign/comparison.ts';
 import { ampFloorSlackOhm, meetsAmpFloor } from '../src/lib/impedanceFloor.ts';
-import { systemMinImpedanceOhm } from '../src/lib/netOptimizer.ts';
+import { busTopology, systemMinImpedanceOhm } from '../src/lib/netOptimizer.ts';
 import { impedanceReferenceFrom } from '../src/lib/engine2/optimizer/impedanceReference.ts';
 import { sourceProbeIndex, sourceResistanceOhm } from '../src/lib/partAudit.ts';
 import { deserializeFilter } from '../src/lib/filterFile.ts';
@@ -56,6 +58,7 @@ import {
   CASUS1_V2_SETTINGS,
   casus1ChainInput,
   casus1V2Facts,
+  CASUS1_TARGET_CURVE,
 } from '../src/lib/engine2/casus1V2.fixture.ts';
 import type { VxpPart } from '../src/lib/parsers/vxp.ts';
 import type { Complex } from '../src/lib/complex.ts';
@@ -88,7 +91,7 @@ const report = (key: string) =>
       amplifierPowerW: 100,
       orderByPair: { [ctcKey('woofer', 'mid')]: 4, [ctcKey('mid', 'tweeter')]: 4 },
       reOhmByDriver: { woofer: CASUS1_WOOFER_DC_OHM },
-      targetCurve: FLAT_TARGET,
+      targetCurve: CASUS1_TARGET_CURVE,
     },
   });
 
@@ -233,6 +236,19 @@ const CHAIN_GRID_LO_HZ = CASUS1_V2_GRID[0];
  * rather than a plausible-sounding reason that belongs to a different corpus.
  */
 const DATED_REASON: Record<string, string> = {
+  V44:
+    'HET GEDATEERDE V44-CORPUS. Bevroren vóór A5e.2 gesloten werd, en er ontbraken drie dingen ' +
+    'tegelijk die alle drie over NIVEAUWERK gaan. (1) Het niveau-anker was het KALE gemeten ' +
+    'niveau per weg: A5d.4(a) wil het ankerniveau NA baffle step in de beoogde opstelling en dat ' +
+    'is het doelcurve-object, dat toen nog niet bestond — de wooferbudget las 0,89 dB waar hij ' +
+    'sinds V45 1,33 leest en de tweeter 3,44 waar hij nu 2,82 leest. (2) De ZOEKTOCHT mat ' +
+    'vlakheid tegen HORIZONTAAL terwijl het oordeel van A5e.1 al een doelcurve kon lezen, dus ' +
+    'een ontwerp werd gezocht tegen vlak en geoordeeld tegen een plateau — en de zoektocht heeft ' +
+    'het hele iteratiebudget. (3) Er was GEEN Q_es-vermenigvuldigingsgrens, dus de ' +
+    'weerstandsvlucht die V43 mat was onbegrensd: dit corpus loopt tot 5,65 ohm padweerstand op ' +
+    'de wooferweg (KAND_V2_5, Q_es maal 2,85) tegen een sinds V45 gestelde 2,4. Zij blijven ' +
+    'staan als de "vóór"-helft van de V45-vergelijking. Meetobject, GEEN ontwerp: mag niet ' +
+    'gebouwd worden.',
   V43:
     'HET GEDATEERDE V43-CORPUS. Bevroren terwijl de ZOEKTOCHT fase nog beoordeelde op elk ' +
     'rasterpunt waar de twee takken binnen 20 dB van ELKAAR lagen — een RELATIEVE toets, zonder ' +
@@ -768,6 +784,80 @@ const phaseRecord = {
 };
 
 raw.manifest_en_geometrie.v44_fasematen = phaseRecord;
+
+/* ------------------------------------------------------------------ *
+ * V45 — waar de Q_es-eis elke bevroren netlist laat vallen
+ * ------------------------------------------------------------------ */
+
+/**
+ * M-E over het HELE casusboek, tegen de gestelde Q_es-vermenigvuldigingsgrens.
+ *
+ * Dezelfde vorm en dezelfde reden als `v36_dissipatie`, `v43_ontleding` en
+ * `v44_fasematen`: over élke netlist die het casusboek noemt en niet alleen
+ * over het levende corpus, want de gedateerde corpora dragen hun eigen bevroren
+ * blokken en worden nooit herschreven. Afgeleid en geen invoer — elke rij komt
+ * uit `buildReport` op het bestand, en `frozenNetlistGates.test.ts` herrekent
+ * hem.
+ *
+ * WAAROM ER TWEE KOLOMMEN ZIJN DIE ALLEBEI 'q' HETEN. De eis wordt gehandhaafd
+ * als een plafond op de SERIEWEERSTAND (`R_s <= R_e * (q - 1)`, de A5d.6-
+ * inversie), en de zoekruimte kent alleen DC-weerstand: discrete weerstanden
+ * plus de DCR van de spoelen. M-E daarentegen meet de THEVENIN-bronweerstand op
+ * f_p, en die is iets groter, want het netwerk draagt daar ook reactantie.
+ * `q_M_E` is dus wat de metriek rapporteert en `q_padweerstand` is wat de
+ * inversie begrenst — twee lezingen van één eis, en de tweede is de enige die
+ * een zoekruimte kan binden.
+ */
+/** Serieweerstand in het pad van één weg, DCR inbegrepen — zoals V43 hem telt
+ *  en zoals `searchBoxFor` hem tegen het Q_es-plafond legt. */
+function seriesPathROhm(key: string, driver: string): number {
+  const parts = deserializeFilter(
+    readFileSync(join(CASUS1_DIR, netlists[key]), 'utf-8'),
+  ).parts;
+  const bus = busTopology(parts);
+  let total = 0;
+  for (const p of parts) {
+    if (p.partId === undefined || p.open || p.shorted) continue;
+    if (!bus.driversOf(p.partId).includes(driver)) continue;
+    if (p.type === 'Resistor') total += p.params.find((q) => q.name === 'R')?.value ?? 0;
+    if (p.type === 'Inductor') total += p.params.find((q) => q.name === 'DCR')?.value ?? 0;
+  }
+  return total;
+}
+
+const qesCeiling = casus1QesMultiplierMax(raw as unknown as GoldenRefs);
+const qesRecord = {
+  _:
+    'V45 — M-E TEGEN DE GESTELDE Q_es-GRENS, per bevroren netlist en op de LAAGSTE weg. ' +
+    '`R_s_ohm` is de Thevenin-bronweerstand op f_p uit M-E zelf; `padweerstand_ohm` is de ' +
+    'DC-serieweerstand van diezelfde weg (discrete weerstanden plus spoel-DCR), en dat is de ' +
+    'grootheid die de A5d.6-inversie qes-series-r begrenst. `R_e_ohm` is wat de PAS oploste ' +
+    '(A5c.1) en niet een van de twee vaste casusboeklezingen — de eis deelt door de R_e van de ' +
+    'run, en een plafond dat aan een andere lezing hing zou stilletjes van het paneel ernaast ' +
+    'afwijken (V16). Zie gestelde_eisen.qes_vermenigvuldiging_max.',
+  gestelde_grens: qesCeiling,
+  per_netlist: Object.keys(netlists).map((key) => {
+    const rep = report(key);
+    const way = rep.driversLowToHigh[0];
+    const th = rep.metrics.thevenin.find((t) => t.driver === way) ?? null;
+    const re = th?.reOhm ?? null;
+    const pathR = seriesPathROhm(key, way);
+    return {
+      netlist: key,
+      weg: way,
+      R_e_ohm: r2(re),
+      R_s_ohm: r2(th?.rsOhm ?? null),
+      padweerstand_ohm: r2(pathR),
+      q_M_E: r2(th?.qMultiplier ?? null),
+      q_padweerstand: re !== null && re > 0 ? r2(1 + pathR / re) : null,
+      plafond_ohm: re !== null && re > 0 && qesCeiling !== null ? r2(re * (qesCeiling - 1)) : null,
+      haalt_de_eis:
+        re !== null && re > 0 && qesCeiling !== null ? pathR <= re * (qesCeiling - 1) : null,
+    };
+  }),
+};
+
+raw.manifest_en_geometrie.v45_qes = qesRecord;
 
 /* ------------------------------------------------------------------ *
  * V43 — wat het GEHERIJKTE budget op het levende corpus doet

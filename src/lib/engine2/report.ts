@@ -85,7 +85,7 @@ import type {
 import { ctcKey } from './metrics/types.ts';
 import { anchoredGaps, type AnchoredGaps, type WayLevel } from './predesign/gaps.ts';
 import { judgeResponse, type ResponseJudgement } from './requirements/response.ts';
-import { FLAT_TARGET, type TargetCurve } from './requirements/targetCurve.ts';
+import { FLAT_TARGET, targetOffsetsDb, type TargetCurve } from './requirements/targetCurve.ts';
 import {
   gateVerdicts,
   isHighPassProtected,
@@ -212,6 +212,19 @@ export interface PhaseTracking {
 export interface SystemSummary {
   /** Half the peak-to-peak of the summed response over the valid band, dB. */
   splWindowDb: number | null;
+  /**
+   * A5e.2 — THE SUMMED RESPONSE ITSELF, in dB on `analysisGrid`.
+   *
+   * Exposed rather than only summarised, because the level a design REALISES
+   * over a band is a question the report already answers for every driver
+   * (`passbandLevel`, A5d.4) and could not answer for the system. A caller that
+   * wants it had to re-add the branches, and a second summation is a second
+   * thing that can disagree with the one the window and the RMS were judged on
+   * — the V32 shape, one implementation with more than one reader.
+   *
+   * Null when no filter is loaded: there is then no system to sum.
+   */
+  sumDb: number[] | null;
   /**
    * A5e.1 (F3) — the summed response judged against the target curve: the
    * WINDOW (smoothed, the acceptance question), the RMS DEVIATION (raw, the
@@ -754,7 +767,41 @@ export function buildReport(input: EngineV2ReportInput): EngineV2Report {
       });
     }
   }
-  const gaps = anchoredGaps(levels);
+  /* A5d.4(a) via A5e.2 — THE ANCHOR AFTER BAFFLE STEP, since V45.
+   *
+   * The shift is the target curve read over each way's OWN level band, with the
+   * sign turned round: a way the voicing puts below the flat part is credited
+   * that much, so its gap and its chained attenuation budget grow by exactly
+   * what the design deliberately asked it to give up.
+   *
+   * SAME BAND AND SAME GRID AS THE LEVEL IT ADJUSTS, and same estimator — the
+   * energy average of `passbandLevel`, not an arithmetic mean of decibels. A
+   * level and the target it is compared against have to be the same kind of
+   * quantity or the difference between them is not a gap (V15).
+   *
+   * A curve that cannot be evaluated produces NO shift and a problem, never a
+   * silent flat: that is the difference between "this design is voiced flat"
+   * and "this design states a voicing nothing could read". */
+  let targetShift: Record<string, number> | undefined;
+  const curve = input.settings.targetCurve ?? FLAT_TARGET;
+  if (curve.type !== 'flat' && levels.length > 0) {
+    try {
+      const shift: Record<string, number> = {};
+      for (const l of levels) {
+        const d = ingest.drivers.find((x) => x.driver === l.driver);
+        if (!d?.onAxis) continue;
+        const offsets = targetOffsetsDb(curve, d.onAxis.grid);
+        const t = passbandLevel(offsets, d.onAxis.grid, l.bandHz);
+        if (t) shift[l.driver] = -t.db;
+      }
+      if (Object.keys(shift).length > 0) targetShift = shift;
+    } catch (e) {
+      problems.push(
+        `The target curve could not be applied to the anchored gap analysis: ${(e as Error).message}`,
+      );
+    }
+  }
+  const gaps = anchoredGaps(levels, targetShift);
 
   /* ---------------- F2: the gates on the loaded filter ------------------ *
    * Built from the numbers the metric section above ALREADY produced. No
@@ -850,40 +897,41 @@ export function buildReport(input: EngineV2ReportInput): EngineV2Report {
     ? invertBudgets(budgetWays, input.settings, input.settings)
     : { bounds: [], notes: [] };
 
-  /* ---------------- F4b — the damping margin says what it does ----------- *
+  /* ---------------- F4b/V45 — the damping margin says what it does -------- *
    *
-   * `dampingMarginDb` is a stated budget that is NOT applied on the optimiser
-   * route: `worker.ts` hands the inversion `gapBudgetDb: null` because A5d.4(a)
-   * wants the anchor level AFTER baffle step in the intended setup, and that is
-   * a property of the target-curve object — open decision A5e.2. The inversion
-   * then skips the bound silently (`bounds.ts`, "the anchor has no attenuation
-   * budget by definition"), and until F4b the only trace was a note in the
-   * worker's `collect.notes`, which nothing on screen ever read.
+   * THE ASYMMETRY THIS BLOCK EXISTED TO CONFESS IS GONE, and that is the whole
+   * V45 change here. `dampingMarginDb` used to be applied in this report and
+   * NOT on the optimiser route: `worker.ts` handed the inversion a hard null
+   * because A5d.4(a) wants the anchor level after baffle step and that was an
+   * open decision (A5e.2), so the rule skipped every way and a designer who
+   * filled the field in got a bound the search never saw. F4b's contribution
+   * was to say so on screen rather than leave the number looking like it did
+   * something.
    *
-   * The TODO stays and the decision stays open. What changes is that the field
-   * no longer looks like it did something. F0's doctrine is that an EMPTY field
-   * is no judgement; this is the other half of it — a filled field that is not
-   * applied is also no judgement, and now it says so where the budget is shown.
+   * A5e.2 is closed. The anchored budgets now cross the border as a measured
+   * fact with the target-curve shift already in them
+   * (`optimizer/measurementFacts.ts`), so the two surfaces invert the SAME
+   * bound from the same numbers — the V32 shape, one implementation with more
+   * than one reader.
    *
-   * Note the asymmetry, because it is real and a reader deserves it: in THIS
-   * report the margin IS applied, because the report has the anchored gaps to
-   * add it to. It is the SEARCH that cannot use it. */
+   * F0's doctrine still holds on both sides and is what the sentences below
+   * say: an empty field is no judgement, and a filled field that produced no
+   * bound has to name the input that was missing rather than read as a limit
+   * that happened not to bite. */
   const boundNotes = [...inverted.notes];
   if (input.settings.dampingMarginDb !== undefined) {
-    const applied = inverted.bounds.some((b) => b.rule === 'gap-pad-r');
+    const bounded = inverted.bounds.filter((b) => b.rule === 'gap-pad-r').map((b) => b.subject);
     boundNotes.push(
-      applied
-        ? 'Damping margin: stated, and applied HERE — this report has the anchored gap levels to ' +
-            'add it to. It is NOT applied on the v2 optimiser route: that route reaches the ' +
-            'inversion without a gap budget, because A5d.4(a) wants the anchor level after baffle ' +
-            'step in the intended setup and that is the target-curve object (open decision ' +
-            'A5e.2). So the search is not bounded by this number, whatever this table shows.'
-        : 'Damping margin: stated — not applied on this route (waiting on A5e.2). The bound it ' +
-            'would produce sits on top of an anchored gap budget, and A5d.4(a) wants that anchor ' +
-            'level taken after baffle step in the intended setup, which is a property of the ' +
-            'target-curve object. An empty field is no judgement (F0); a filled field that is not ' +
-            'applied is no judgement either, and that is worth saying rather than leaving the ' +
-            'number looking like it did something.',
+      bounded.length > 0
+        ? `Damping margin: stated at ${input.settings.dampingMarginDb} dB and applied, on top of ` +
+            `each way's anchored attenuation budget (A5d.4). Bounded here: ${bounded.join(', ')}. ` +
+            'The v2 optimiser route inverts the same bound from the same anchored budgets, which ' +
+            'cross to it as a measured fact — since V45 this table and the search agree by ' +
+            'construction rather than by coincidence.'
+        : `Damping margin: stated at ${input.settings.dampingMarginDb} dB, and it bounded no way ` +
+            'on this design. That is a report about the inputs and not a limit that happened not ' +
+            'to bite — the anchor has no attenuation budget by definition, and any other way ' +
+            'without one is named in the inversion notes above with the measurement it lacked.',
     );
   }
 
@@ -1203,6 +1251,7 @@ function summarise(
 
   return {
     splWindowDb,
+    sumDb: sum && grid ? sum.map((z) => dbAmp(cabs(z))) : null,
     response,
     splBandHz: band,
     phaseTracking,

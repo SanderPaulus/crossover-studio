@@ -55,6 +55,8 @@ import {
   type MeasuredSweep,
 } from './gates.ts';
 import type { DissipationResult } from '../metrics/electrical.ts';
+import { lfBump } from '../metrics/acoustic.ts';
+import { buildAnalysis } from '../metrics/analysis.ts';
 import type { DissipationColumn } from './shortlist.ts';
 import {
   invertBudgets,
@@ -87,7 +89,7 @@ import { applyTransfer, combineN, type GriddedResponse } from '../../dsp.ts';
 import { solveNetwork } from '../../network.ts';
 import { pickSlotsN } from '../../driverSlots.ts';
 import { judgeResponse, type ResponseJudgement } from '../requirements/response.ts';
-import { FLAT_TARGET, type TargetCurve } from '../requirements/targetCurve.ts';
+import { FLAT_TARGET, targetLevelCurveFor, type TargetCurve } from '../requirements/targetCurve.ts';
 import type { CandidateMeasurements } from '../requirements/requirements.ts';
 import type { TopologyDescriptor } from './diversity.ts';
 
@@ -361,12 +363,15 @@ function measurementFacts(
     nearField: {},
     impedanceSweep: {},
     fundamental: {},
+    gapBudget: {},
   };
   const nearField: Record<
     string,
     { grid: readonly number[]; db: readonly number[]; validHz: [number, number] }
   > = {};
   const impedanceSweep: Record<string, { grid: readonly number[]; z: Complex[] }> = {};
+  /** V45 — A5d.4's chained attenuation budget per model, dB. */
+  const gapBudgetDb: Record<string, number> = {};
   /* V32 — the same sweeps in the shape the GATE reference wants them.
    * `impedanceSweep` above is complex, for `BudgetWay`; this one is magnitude
    * and phase, because that is what `impedanceReferenceFrom` resamples. One
@@ -507,6 +512,34 @@ function measurementFacts(
           'measurement span, and an impedance measurement has no gate (V32).',
       );
     }
+
+    /* ---- V45 (A5e.2): the anchored attenuation budget ------------------- *
+     * A5d.4's chained budget, resolved once by the report — target-curve shift
+     * included, which is the half that was open until V45 — and consumed here.
+     * There is NO fallback and there must not be one: this side has no
+     * far-field levels and no A5d.3 windows, so anything it computed would be a
+     * worse second implementation of A5d.4 (the F4b leak-1 lesson).
+     *
+     * Three states, and the third is why the anchor's name travels beside the
+     * map. A way with a budget gets one. THE ANCHOR has none by definition —
+     * it is the level everything else comes down to — and that is a complete
+     * answer rather than a missing measurement. Any other way with no entry has
+     * one because something did not arrive, and that is worth a note. */
+    const gapBudget = v2.gapBudgetDbByModel?.[model];
+    if (gapBudget !== undefined && Number.isFinite(gapBudget)) {
+      gapBudgetDb[model] = gapBudget;
+      provenance.gapBudget[model] = 'resolved';
+    } else if (v2.gapAnchorModel === model) {
+      provenance.gapBudget[model] = 'anchor';
+    } else {
+      provenance.gapBudget[model] = 'absent';
+      notes.push(
+        `${model}: no anchored attenuation budget (A5d.4) reached this run, so the damping bound ` +
+          'produces nothing for this way. It is not the anchor either — the anchor has no budget ' +
+          'by definition and is named separately. A budget this side computed for itself would be ' +
+          'a second implementation of A5d.4 without the far-field levels it needs (V45).',
+      );
+    }
   }
   return {
     fsHz,
@@ -518,6 +551,9 @@ function measurementFacts(
     branchDb,
     grid,
     driverZ,
+    /* V45 — A5d.4's chained budgets, and the anchor they chain down to. */
+    gapBudgetDb,
+    gapAnchorModel: v2.gapAnchorModel,
     /* V44 — the caller's silent-ghost convention, carried through unchanged.
      * Not derived and not guessed: which value stands for "not measured here"
      * is a decision of whoever built the grid, and a sentinel this code sniffed
@@ -596,6 +632,7 @@ function tuneOptionsFor(
     notes: string[];
     choices: Partial<CandidateChoices>;
     weights: Partial<GreyWeights>;
+    lowestModel: string | null;
   },
 ): Partial<NetOptimizeOptions> {
   let reference: GateReference;
@@ -642,6 +679,7 @@ function tuneOptionsFor(
     const pb = reference.frozenPassbandHz[b]?.[0] ?? Infinity;
     return pa - pb;
   });
+  collect.lowestModel = models[0] ?? null;
   for (let i = 0; i < models.length; i++) {
     const model = models[i];
     const pass = reference.frozenPassbandHz[model] ?? facts.validHz[model];
@@ -671,12 +709,22 @@ function tuneOptionsFor(
       passbandHz: pass,
       fsHz: facts.fsHz[model] ?? null,
       fPeakHz: facts.fsHz[model] ?? null,
-      // TODO(A5e.2): the anchored attenuation budget wants the anchor level
-      // AFTER baffle step in the intended setup, which is a property of the
-      // target-curve object. Until that decision is taken the damping bound
-      // has no measured budget to sit on in this route, so it is not applied
-      // here — and saying so beats inventing a gap.
-      gapBudgetDb: null,
+      /* V45 (A5e.2) — THE BUDGET THAT USED TO BE `null` HERE.
+       *
+       * A5d.4(a) wants the anchor level AFTER baffle step in the intended
+       * setup, which is a property of the target-curve object; with that object
+       * open, this line handed over a hard null under a TODO naming that
+       * decision, the `gap-pad-r` rule skipped every way, and
+       * `dampingMarginDb` was a form field that did nothing on the route that
+       * actually searches. A5e.2 is closed and
+       * the budget crosses as a measured fact — resolved once by the report,
+       * target-curve shift included (`measurementFacts.ts`).
+       *
+       * `null` STILL HAPPENS AND STILL MEANS SOMETHING: the anchor has no
+       * attenuation budget by definition, and a way whose level could not be
+       * taken has none either. Which of the two it is, is in the provenance and
+       * in the notes — not inferred from the hole. */
+      gapBudgetDb: facts.gapBudgetDb[model] ?? null,
       pathROhm: seriesPathResistance(seedParts, model),
       /* ---- F4b2: the inputs the LF-lift and the pre-bound were missing ----
        *
@@ -702,11 +750,33 @@ function tuneOptionsFor(
   const inverted = invertBudgets(ways, v2.budgets, v2.gates);
   collect.bounds = inverted.bounds;
   collect.notes.push(...inverted.notes);
+  /* V45 — the damping margin says what it DID, per way.
+   *
+   * Until V45 this block said the margin was stated and not applied, because it
+   * was not: `gapBudgetDb` was `null` for every way and `invertBudgets` skipped
+   * the rule. Now the honest report is per way, because the answer is per way:
+   * a bound, the anchor's by-definition nothing, or a missing measurement. The
+   * general "which input was missing" sentences come from `invertBudgets`
+   * itself; what belongs here is the ANCHOR, which that function cannot name —
+   * from inside it a way with no gap budget is indistinguishable from a way
+   * whose level never arrived. */
   if (v2.budgets.dampingMarginDb !== undefined) {
+    const bounded = inverted.bounds.filter((b) => b.rule === 'gap-pad-r').map((b) => b.subject);
+    const anchor = facts.gapAnchorModel;
     collect.notes.push(
-      'The damping margin is stated but not applied on this route: A5d.4 measures the budget it ' +
-        'sits on top of against the anchor level AFTER baffle step, and that is the target-curve ' +
-        'object (open decision A5e.2).',
+      `The damping margin of ${v2.budgets.dampingMarginDb} dB is stated AND applied on this ` +
+        'route (A5e.2, closed at V45): it sits on top of each way\'s anchored attenuation ' +
+        'budget (A5d.4), which crossed as a measured fact with the target-curve shift already ' +
+        'in it. ' +
+        (bounded.length > 0
+          ? `Bounded: ${bounded.join(', ')}. `
+          : 'It bounded no way on this candidate — see the inversion notes for which input was ' +
+            'missing. ') +
+        (anchor !== undefined
+          ? `${anchor} is the anchor and has no attenuation budget by definition, so no bound ` +
+            'is produced for it and none is missing.'
+          : 'No anchored gap analysis reached this run, so there is no anchor to name and no ' +
+            'budget for the margin to sit on.'),
     );
   }
   const box = searchBoxFor(seedParts, inverted.bounds);
@@ -968,6 +1038,34 @@ function tuneOptionsFor(
     );
   }
 
+  /* ---- V45 (A5e.2): the target curve the amplitude term is flat against ---
+   *
+   * POLISH, handed over by the side that holds it. WHETHER the search measures
+   * against the voicing is `amplitudeReference`, a CHOICE the candidate states;
+   * WHAT the voicing is, is the design's own target-curve object, and a
+   * candidate that brought its own would be a second opinion about which
+   * loudspeaker is being designed.
+   *
+   * Sampled on the CHAIN's analysis grid — the grid the tuner's own responses
+   * live on — and read back by frequency rather than by index, because the
+   * tuner evaluates its objective on a decimated grid and its reports on the
+   * full one (`targetLevel.ts`).
+   *
+   * A curve that cannot be evaluated hands over NOTHING and says so, and the
+   * tuner then searches exactly as a run with no voicing does. That is the
+   * difference between abstaining and quietly searching against flat while a
+   * verdict elsewhere judges against a plateau — the very split V45 closed. */
+  const wantsTarget = stated.amplitudeReference === 'target';
+  const targetLevel = wantsTarget ? targetLevelCurveFor(v2.targetCurve ?? FLAT_TARGET, facts.grid) : null;
+  if (wantsTarget && targetLevel === null) {
+    collect.notes.push(
+      'The candidate asked the amplitude term to be flat against the design\'s target curve, and ' +
+        'no curve on this run could be evaluated on the analysis grid — so the search measures ' +
+        'against horizontal, exactly as a run with no voicing does. It is NOT falling back ' +
+        'silently (P4): the reference simply has no input.',
+    );
+  }
+
   return {
     ...stated,
     ...weights,
@@ -979,6 +1077,7 @@ function tuneOptionsFor(
           },
         }
       : {}),
+    ...(targetLevel ? { amplitudeTargetDb: targetLevel } : {}),
     ...(barrierOnSweep && reference.impedance
       ? {
           zFloorBarrierImpedance: {
@@ -1270,6 +1369,82 @@ function dissipationColumnOf(
   };
 }
 
+/**
+ * V45 — WHAT THE DELIVERED NETWORK ACTUALLY DOES TO THE REFLEX PEAK.
+ *
+ * THE HOLE V43 LEFT OPEN, in one sentence: `bump-series-l` solves its ceiling
+ * at the path resistance OF THE SEED and then that ceiling stands for the whole
+ * run, while the search is free to raise the path resistance underneath it —
+ * and more series R DAMPS the resonant half, so a ceiling solved at 0.5 Ω is
+ * conservative at 3 Ω rather than wrong. Conservative is not the same as safe,
+ * though, and nothing measured which of the two it was on a delivered network.
+ *
+ * So the delivered network is measured, once, against the same stated budget:
+ *
+ *   · the ceiling can now only ever be TOO STRICT, never permissive. If the
+ *     stale ceiling let something through, this catches it.
+ *   · and if it never catches anything, that is the measurement that says the
+ *     staleness costs nothing — which is a result, not an absence.
+ *
+ * IT RE-IMPLEMENTS NOTHING. `lfBump` is the F1 metric, solved on the SAME grid
+ * and the SAME measured impedances the gate reference judges on and the report
+ * builds its own M-D from (`impedanceReference.ts`, the V32 rule), with the
+ * resistive equivalent for the decomposition exactly as `report.ts` takes it.
+ * The panel and this check cannot disagree about a network because neither of
+ * them computes it twice.
+ *
+ * Returns null when any input is missing — no near field, no resonance, no
+ * solvable network. A budget with nothing under it produces no verdict, which
+ * is the same answer `invertBudgets` gives one layer up (P4).
+ *
+ * ONE INPUT COMES FROM THE SEED AND NOT FROM THE DELIVERED NETWORK, and it is
+ * named here rather than glossed: `crossingAboveHz`. It clips M-D's
+ * normalisation frequency, and it does so ONLY when the derived reference
+ * (`MD_REFERENCE_OVER_FP · f_p`) lands above the crossing — so it bites when
+ * the way's own crossover sits below three times its resonance. Deriving it
+ * from the delivered network would mean re-solving the branches and
+ * re-deriving crossings here, which is a second implementation of
+ * `deriveCrossings` in the one place that must not disagree with the report.
+ * The seed's value is used, and the condition under which that could matter is
+ * a fact anyone can check on a case book: on casus 1 3·f_p is 157 Hz and every
+ * crossing in the field is 360-554 Hz, so the clip never fires and the two
+ * readings are identical. On a design where it WOULD fire, this check becomes
+ * approximate in the strict direction it is already conservative in.
+ */
+export function deliveredResonantDb(
+  parts: readonly VxpPart[],
+  model: string,
+  input: {
+    /** The way's measured near field, with its own validity band. */
+    nearField?: { grid: readonly number[]; db: readonly number[]; validHz: [number, number] };
+    /** The impedance peak M-D derives its band and reference from. */
+    fPeakHz?: number;
+    /** The grid and driver impedances every electrical verdict is taken on. */
+    impedance?: { grid: readonly number[]; driverZ: Record<string, readonly Complex[]> };
+    /** The crossing above this way — see the note above on where it comes from. */
+    crossingAboveHz?: number;
+  },
+): number | null {
+  const { nearField: nf, fPeakHz: fs, impedance: imp, crossingAboveHz } = input;
+  if (!nf || fs === undefined || !imp) return null;
+  let analysis;
+  try {
+    analysis = buildAnalysis(netlistOf(parts), [...imp.grid], imp.driverZ);
+  } catch {
+    return null;
+  }
+  const h = analysis.transferByModel[model];
+  if (!h) return null;
+  const eq = analysis.resistiveEquivalent();
+  const hRes = eq.transferByModel[model];
+  const r = lfBump(nf.grid, nf.db, imp.grid, h, fs, {
+    validHz: nf.validHz,
+    ...(crossingAboveHz !== undefined ? { belowHz: crossingAboveHz } : {}),
+    ...(hRes && !eq.shortedDriverModels.includes(model) ? { resistiveHEl: hRes } : {}),
+  });
+  return r?.resonantDb ?? null;
+}
+
 function runCandidate<I, R extends { parts: VxpPart[]; net: { gateRefusals?: string[] } }>(
   input: I,
   v2: V2RunSettings,
@@ -1289,11 +1464,14 @@ function runCandidate<I, R extends { parts: VxpPart[]; net: { gateRefusals?: str
     notes: string[];
     choices: Partial<CandidateChoices>;
     weights: Partial<GreyWeights>;
+    /** V45 — the way A5d.6's first two inversions belong to, named once. */
+    lowestModel: string | null;
   } = {
     reference: null,
     bounds: [],
     choices: {},
     weights: {},
+    lowestModel: null,
     // THE FACTS PASS SPEAKS FIRST. A run that fell back to this worker's own
     // R_e, or to the whole grid for validity, has to say so before it says
     // anything about budgets — every note below is about what the budgets did
@@ -1332,7 +1510,74 @@ function runCandidate<I, R extends { parts: VxpPart[]; net: { gateRefusals?: str
   const dissRef = (delivered.net as { dissipationRefNote?: string }).dissipationRefNote;
   if (dissRef) collect.notes.push(dissRef);
 
-  const refused = wholesaleRejection(delivered.net as WholesaleRejectionFields);
+  let refused = wholesaleRejection(delivered.net as WholesaleRejectionFields);
+
+  /* ---- V45: the stated LF budget, tested on the network that is OFFERED --
+   *
+   * V31's shape, one rule family along. The tuner refuses on GATES; this
+   * refuses on a stated BUDGET, and it says so — `by: 'stated-budget'` and
+   * `kinds: ['budget']` rather than borrowing the gate's category, because a
+   * caller that switched on `by` would otherwise be told a gate spoke when none
+   * did (A3g: the categories are values, and they have to be true).
+   *
+   * WHY IT IS HERE AND NOT IN THE TUNER. A budget bounds the SEARCH BOX — that
+   * is what an A5d.6 inversion is — and `bump-series-l` does exactly that. What
+   * it cannot do is follow the search: the ceiling is solved at the SEED's path
+   * resistance and then stands, while the tune is free to move that resistance.
+   * Teaching the tuner to re-solve the inversion every evaluation is a session
+   * of its own and may never be needed; measuring the delivered network against
+   * the requirement is cheap, exact, and closes the direction that matters —
+   * the stale ceiling can now only be too strict, never permissive.
+   *
+   * ONLY WHEN THE TUNER DID NOT ALREADY REFUSE. A candidate that was thrown out
+   * by a gate delivers nothing to test, and reporting a second reason for one
+   * rejection would leave a reader guessing which one was decisive. */
+  if (!refused && v2.budgets.lfBumpBudgetDb !== undefined && collect.lowestModel !== null) {
+    const model = collect.lowestModel;
+    const got = deliveredResonantDb(delivered.parts, model, {
+      ...(facts.nearField[model] ? { nearField: facts.nearField[model] } : {}),
+      ...(facts.fsHz[model] !== undefined ? { fPeakHz: facts.fsHz[model] } : {}),
+      ...(collect.reference?.impedance
+        ? {
+            impedance: {
+              grid: collect.reference.impedance.grid,
+              driverZ: collect.reference.impedance.driverZ,
+            },
+          }
+        : {}),
+      ...(network.crossingAboveByModel[model] !== undefined
+        ? { crossingAboveHz: network.crossingAboveByModel[model] }
+        : {}),
+    });
+    if (got !== null && got > v2.budgets.lfBumpBudgetDb) {
+      collect.notes.push(
+        `The delivered network was tested against the stated LF budget on M-D's RESONANT half ` +
+          `(V43) and exceeded it: ${got.toFixed(3)} dB against ${v2.budgets.lfBumpBudgetDb} dB on ` +
+          `${model}. The A5d.6 ceiling that bounded the search was solved at the SEED's path ` +
+          'resistance and could not follow the tune (V45, open point).',
+      );
+      refused = {
+        by: 'stated-budget',
+        kinds: ['budget'],
+        reason:
+          `the delivered network amplifies ${model}'s reflex peak by ${got.toFixed(2)} dB of ` +
+          `resonant lift, against a stated budget of ${v2.budgets.lfBumpBudgetDb} dB (A4 M-D, ` +
+          'the resonant half — casebook V43)',
+        note:
+          'The search box bounded this way\'s series inductance at a ceiling solved on the ' +
+          'SEED\'s path resistance, and the tune moved that resistance underneath it. The ' +
+          'ceiling therefore described a different network than the one delivered. It can only ' +
+          'ever err towards being too strict — more series resistance damps the resonant half — ' +
+          'so this check exists to make sure the other direction is impossible, and here it ' +
+          'fired.',
+        fields: {
+          ...(delivered.net as WholesaleRejectionFields),
+          rejectedParts: [...delivered.parts],
+        },
+      };
+    }
+  }
+
   let rejection: CandidateRejection | null = null;
   let result = delivered;
   if (refused) {
@@ -1344,21 +1589,34 @@ function runCandidate<I, R extends { parts: VxpPart[]; net: { gateRefusals?: str
     rejection = {
       kinds: refused.kinds,
       reason: refused.reason,
-      rejectedTune: rt
-        ? {
-            minZOhm: num(rt.zMinOhm),
-            windowPlusMinusDb: num(judged?.windowPlusMinusDb),
-            rmsDeviationDb: num(judged?.rmsDeviationDb),
-            rippleDb: num(rt.rippleDb),
-            phaseDeg: num(rt.phaseDeg),
-          }
-        : null,
+      /* V45 — filled from EITHER source. `rejectedTune` is what the tuner
+       * reports about a tune it threw away; `judged` is this side measuring the
+       * parts that came with the refusal. A gate refusal has both, a
+       * stated-budget refusal has only the second — and dropping the row
+       * entirely in that case would withdraw a network and say nothing about
+       * what withdrawing it cost, which is the one thing V31 exists to show. */
+      rejectedTune:
+        rt || judged
+          ? {
+              minZOhm: num(rt?.zMinOhm),
+              windowPlusMinusDb: num(judged?.windowPlusMinusDb),
+              rmsDeviationDb: num(judged?.rmsDeviationDb),
+              rippleDb: num(rt?.rippleDb),
+              phaseDeg: num(rt?.phaseDeg),
+            }
+          : null,
       note:
-        'The whole tune was refused, so this candidate delivers no network. What the tuner ' +
-        'returned is its SEED — a design nobody judged against anything this candidate asked ' +
-        'for — and it is withdrawn here rather than offered (F0: an empty field is not a ' +
-        'judgement, and a seed is not empty either; casebook V31). The figures under ' +
-        '`rejectedTune` describe the network that was REFUSED and will not be built. ' +
+        (refused.by === 'stated-budget'
+          ? 'The tune COMPLETED and the network it produced fails a requirement this project ' +
+            'stated, so this candidate delivers nothing. What is withdrawn here is a real tuned ' +
+            'design rather than a seed — it is withdrawn because it may not be built, not ' +
+            'because nobody judged it (casebook V31 for the shape, V45 for this rule). '
+          : 'The whole tune was refused, so this candidate delivers no network. What the tuner ' +
+            'returned is its SEED — a design nobody judged against anything this candidate asked ' +
+            'for — and it is withdrawn here rather than offered (F0: an empty field is not a ' +
+            'judgement, and a seed is not empty either; casebook V31). ') +
+        'The figures under `rejectedTune` describe the network that was REFUSED and will not ' +
+        'be built. ' +
         (refused.kinds.length === 0
           ? 'The refusing rule records no category, which today means the solo sensitivity ' +
             'gate; read `reason`.'

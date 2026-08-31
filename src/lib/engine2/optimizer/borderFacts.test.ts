@@ -426,10 +426,17 @@ describe('F4b leak 2 on casus 1 — the A5b.1 intervals cross intact', () => {
 });
 
 /* ================================================================== *
- * LEAK 3 — the damping margin says what it does (V23)
+ * LEAK 3 — the damping margin (V23, F4b) and its CLOSURE (V45)
+ *
+ * F4b could only make the field say it did nothing; A5e.2 was open, the worker
+ * handed the inversion a hard null, and `gap-pad-r` skipped every way. V45
+ * closes the decision, so these claims are inverted in the V15 bridge form: the
+ * assertions now pin what the code does TODAY, and each one records the state
+ * it replaced so a number that moved reads as a redefinition rather than as a
+ * regression.
  * ================================================================== */
 
-describe('F4b leak 3 — a stated damping margin is visible in the report model', () => {
+describe('F4b leak 3 / V45 — a stated damping margin is applied, on both surfaces', () => {
   const golden = loadGolden();
   const manifest = casus1Manifest(golden);
   const files = casus1Files(manifest);
@@ -443,15 +450,28 @@ describe('F4b leak 3 — a stated damping margin is visible in the report model'
       geometry,
       settings: { ...base, ...settings },
     });
+  /** Casus 1's report ids ARE the netlist model names, so the bridge is the
+   *  identity here — stated rather than assumed, since `factsForWorker` keys by
+   *  model and the report keys by driver id and those are two vocabularies. */
+  const identity = (r: ReturnType<typeof build>): Record<string, string> =>
+    Object.fromEntries(r.ingest.drivers.map((d) => [d.driver, d.driver]));
 
-  it('with the margin stated, the note appears and names the open decision', () => {
+  it('with the margin stated the note appears, and it says the bound was APPLIED', () => {
     const r = build({ dampingMarginDb: 1 });
     const notes = r.predesign.boundNotes.join(' ');
     expect(notes).toContain('Damping margin');
-    expect(notes).toContain('A5e.2');
-    // The F0 doctrine, spelled out: an empty field is no judgement, and so is
-    // a filled one that nothing applies.
-    expect(notes).toMatch(/not applied|NOT applied/);
+    /* THE INVERSION OF F4b's CLAIM. Until V45 this asserted /not applied/,
+     * because the report applied the margin and the SEARCH could not — the
+     * asymmetry F4b existed to confess. The bound is now inverted from the same
+     * anchored budgets on both surfaces, so the sentence may no longer say the
+     * search is unbounded by it. */
+    expect(notes).not.toMatch(/not applied|NOT applied/);
+    expect(notes).toContain('applied');
+    // And it names the ways it bounded, because a margin that bounded nothing
+    // and one that bounded two ways must not read alike (P4).
+    const bounded = r.predesign.bounds.filter((b) => b.rule === 'gap-pad-r');
+    expect(bounded.length).toBeGreaterThan(0);
+    for (const b of bounded) expect(notes).toContain(b.subject);
   });
 
   it('without it, nothing is said — an unstated field earns no sentence', () => {
@@ -459,17 +479,38 @@ describe('F4b leak 3 — a stated damping margin is visible in the report model'
     expect(r.predesign.boundNotes.join(' ')).not.toContain('Damping margin');
   });
 
-  it('the TODO stays: the worker route still applies no gap budget', () => {
-    /* F4b was explicitly not allowed to invent a gap, and did not. The decision
-     * (A5d.4(a) wants the anchor level after baffle step, which is the
-     * target-curve object) is still open, and the source still says so where
-     * the null is written. What changed is that the field no longer looks like
-     * it did something. */
-    const worker = readFileSync(
-      new URL('./worker.ts', import.meta.url),
-      'utf-8',
+  it('V45 — the TODO is GONE and the worker hands over the resolved budget', () => {
+    /* The acceptance criterion of A5e.2, as a scan rather than as prose. F4b
+     * was explicitly not allowed to invent a gap and did not; V45 does not
+     * invent one either — it CARRIES the one the report resolved, target-curve
+     * shift included, which is why the TODO could go rather than be deleted. */
+    const worker = readFileSync(new URL('./worker.ts', import.meta.url), 'utf-8');
+    expect(worker).not.toContain('TODO(A5e.2)');
+    expect(worker).not.toContain('gapBudgetDb: null,');
+    expect(worker).toContain('gapBudgetDb: facts.gapBudgetDb[model] ?? null');
+  });
+
+  it('V45 — the budget CROSSES the border, and the anchor crosses beside it', () => {
+    /* The fact itself, on casus 1. Two claims in one, and the second is what
+     * keeps the first honest: every non-anchor way carries a budget, and the
+     * ANCHOR is named rather than left as a hole — because "no budget" means
+     * two different things and a map alone cannot tell them apart. */
+    const r = build({});
+    const facts = factsForWorker(r, identity(r));
+    const gaps = r.predesign.gaps!;
+    expect(facts.gapAnchorModel).toBe(gaps.anchor);
+    expect(facts.gapBudgetDbByModel).toBeDefined();
+    // The anchor contributes NO entry — that is its correct state, not a gap.
+    expect(facts.gapBudgetDbByModel![gaps.anchor]).toBeUndefined();
+    for (const w of gaps.ways) {
+      expect(facts.gapBudgetDbByModel![w.driver]).toBeCloseTo(w.budgetDb, 12);
+    }
+    // A5e.4 — a run that carried the budgets and a run that did not are
+    // different runs, so the fingerprint has to move between them.
+    const withGaps = JSON.stringify(measurementFactsKey(facts));
+    const without = JSON.stringify(
+      measurementFactsKey({ ...facts, gapBudgetDbByModel: undefined, gapAnchorModel: undefined }),
     );
-    expect(worker).toContain('TODO(A5e.2)');
-    expect(worker).toContain('gapBudgetDb: null');
+    expect(withGaps).not.toBe(without);
   });
 });

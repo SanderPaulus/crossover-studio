@@ -83,6 +83,17 @@ export const CHOICE_KEYS = [
    * 59.15 deg and 17.05 deg, and the requirement `phase-tracking` judges on
    * this number. A key that can do that is not polish (casebook V40/V44). */
   'phaseAdmission',
+  /* …and WAARTEGEN de amplitudeterm vlak is. V45 (A5e.2), and the fifth key of
+   * this family: `band` names the frequencies, `ampTarget` names which SUM,
+   * `phaseAdmission` names the points, and this names the REFERENCE the
+   * amplitude is judged against — horizontal, or the design's stated voicing.
+   *
+   * It is a choice and not polish because it decides what "flat" means, which
+   * is the acceptance question itself. Until V45 a stated target curve moved
+   * the shortlist's window and RMS and moved nothing in the search, so a design
+   * was searched against horizontal and judged against a plateau; the search
+   * has the whole budget and wins that argument every time. */
+  'amplitudeReference',
   'angleData',
   /* --- what the topology IS --- */
   'midBranch',
@@ -266,6 +277,16 @@ export const POLISH_KEYS = [
    * candidate that brought its own validity band would be a second opinion
    * about a hierarchy that has one implementation on purpose. */
   'phaseAdmissionFacts',
+  /* V45 — the curve the choice above names, sampled by the caller that already
+   * holds it. Polish for the same reason the three entries above are: it
+   * carries no decision. WHETHER the amplitude term measures against the target
+   * is `amplitudeReference`, a choice; WHAT the target is for this design is
+   * the design's own target-curve object (A5e.2), evaluated once and already on
+   * the wire. A candidate that brought its own voicing would be a second
+   * opinion about which loudspeaker is being designed — and the whole reason
+   * the curve hangs on the design rather than on the project is so that two
+   * voicings can be COMPARED instead of toggled. */
+  'amplitudeTargetDb',
 ] as const;
 
 export type PolishKey = (typeof POLISH_KEYS)[number];

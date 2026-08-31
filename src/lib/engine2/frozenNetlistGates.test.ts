@@ -64,8 +64,13 @@ import {
   casus1Filter,
   casus1Geometry,
   casus1Manifest,
+  casus1QesMultiplierMax,
+  casus1TargetCurve,
   loadGolden,
 } from './casus1.fixture.ts';
+import { baffleStepHz } from '../cabinet.ts';
+import { isImplemented as isImplementedCurve } from './requirements/targetCurve.ts';
+import { deliveredResonantDb } from './optimizer/worker.ts';
 import { buildReport, type ReportSettings } from './report.ts';
 import { ctcKey } from './metrics/types.ts';
 import {
@@ -90,7 +95,7 @@ import { buildAnalysis } from './metrics/analysis.ts';
 import { epdr } from './metrics/electrical.ts';
 import { LF_BUMP_VERSION } from './metrics/acoustic.ts';
 import { RESISTIVE_EQUIVALENT_VERSION } from './metrics/resistiveEquivalent.ts';
-import { systemMinImpedanceOhm } from '../netOptimizer.ts';
+import { busTopology, systemMinImpedanceOhm } from '../netOptimizer.ts';
 import {
   sourceProbeIndex,
   sourceResistanceOhm,
@@ -197,6 +202,11 @@ const FIELD: {
   lfLiftDb: number | null;
   lfResonantDb: number | null;
   lfWay: string | null;
+  /** V45 — M-E on the LOWEST way, from the same report again. `rsOhm` is the
+   *  Thevenin source resistance at f_p and does not depend on which R_e the
+   *  pass resolved; the path resistance beside it comes off the file. */
+  lowestWay: string | null;
+  lowestRsOhm: number | null;
   /** V44 — M-K per handover, with both control columns, from the same report. */
   phase: {
     pair: string;
@@ -222,6 +232,9 @@ const FIELD: {
     lfLiftDb: r.metrics.lfBump[0]?.result.liftDb ?? null,
     lfResonantDb: r.metrics.lfBump[0]?.result.resonantDb ?? null,
     lfWay: r.metrics.lfBump[0]?.driver ?? null,
+    lowestWay: r.driversLowToHigh[0] ?? null,
+    lowestRsOhm:
+      r.metrics.thevenin.find((t) => t.driver === r.driversLowToHigh[0])?.rsOhm ?? null,
     phase: r.system.phaseTracking.map((p) => ({
       pair: `${p.lower}|${p.upper}`,
       mk: p.meanAbsDeg,
@@ -1944,5 +1957,268 @@ describe('V44 — welke punten een fase-oordeel dragen, over het hele casusboek'
     // A shrunken record must fail rather than pass on the rows it still has.
     const measured = FIELD.reduce((a, f) => a + f.phase.length, 0);
     expect(checked).toBe(measured);
+  });
+});
+
+/* ================================================================== *
+ * V45 (A5e.2) — de gestelde Q_es-grens, en het niveau-anker na baffle step
+ * ================================================================== */
+
+describe('V45 — the stated Q_es ceiling, on every frozen netlist', () => {
+  const CEILING = casus1QesMultiplierMax(golden);
+  const TOL_OHM = (golden as unknown as { toleranties: { ohm: number } }).toleranties.ohm;
+
+  const RECORD = (golden.manifest_en_geometrie as unknown as {
+    v45_qes?: {
+      gestelde_grens: number | null;
+      per_netlist: {
+        netlist: string;
+        weg: string;
+        R_e_ohm: number | null;
+        R_s_ohm: number | null;
+        padweerstand_ohm: number | null;
+        q_M_E: number | null;
+        q_padweerstand: number | null;
+        plafond_ohm: number | null;
+        haalt_de_eis: boolean | null;
+      }[];
+    };
+  }).v45_qes;
+
+  /** The DC series resistance of one way, off the FILE — what the inversion
+   *  bounds, and what `searchBoxFor` sums. No report needed. */
+  const pathROhm = (key: string, driver: string): number => {
+    const bus = busTopology(casus1Parts(key));
+    let total = 0;
+    for (const p of casus1Parts(key)) {
+      if (p.partId === undefined || p.open || p.shorted) continue;
+      if (!bus.driversOf(p.partId).includes(driver)) continue;
+      if (p.type === 'Resistor') total += p.params.find((q) => q.name === 'R')?.value ?? 0;
+      if (p.type === 'Inductor') total += p.params.find((q) => q.name === 'DCR')?.value ?? 0;
+    }
+    return total;
+  };
+
+  it('the ceiling is stated, and every netlist carries an M-E reading to judge', () => {
+    expect(CEILING, 'casus 1 states no Q_es ceiling — V45 assumes it does').not.toBeNull();
+    expect(CEILING!).toBeGreaterThan(1);
+    for (const f of FIELD) {
+      expect(f.lowestWay, `${f.key}: no lowest way`).not.toBeNull();
+      expect(f.lowestRsOhm, `${f.key}: M-E produced no source resistance`).not.toBeNull();
+    }
+  });
+
+  it('it is REACHABLE, and the designer\'s own filter is the proof', () => {
+    /* THE SAME PAIR OF FACTS the amplifier floor and the LF budget each carry.
+     * HUIDIG is the approved design and it has to fit, or the requirement rules
+     * out the loudspeaker it was written for — the V42 mistake, which cost a
+     * whole session to undo. */
+    const huidig = RECORD!.per_netlist.find((r) => r.netlist === 'HUIDIG')!;
+    expect(huidig.haalt_de_eis).toBe(true);
+    expect(huidig.padweerstand_ohm!).toBeLessThanOrEqual(huidig.plafond_ohm!);
+  });
+
+  it('it is NOT VACUOUS: netlists in the casebook exceed it', () => {
+    /* A requirement nothing can fail is a requirement that describes rather
+     * than binds. The failures are named so a reader can check them by hand
+     * instead of trusting a count. */
+    const over = RECORD!.per_netlist.filter((r) => r.haalt_de_eis === false);
+    expect(over.length).toBeGreaterThan(0);
+    // The resistance flight V43 measured is exactly what it cuts: the netlists
+    // that exceed it are the ones carrying the biggest pads.
+    const worst = Math.max(...RECORD!.per_netlist.map((r) => r.padweerstand_ohm ?? 0));
+    expect(over.some((r) => r.padweerstand_ohm === worst)).toBe(true);
+  });
+
+  it('the recorded block reproduces from a fresh measurement, per netlist', () => {
+    /* Same discipline as `v36_dissipatie`, `v43_ontleding` and
+     * `v44_fasematen`: the derived block is re-measured rather than trusted, so
+     * a later corpus cannot make the entry quietly untrue. */
+    expect(RECORD, 'the recorder wrote no v45_qes block').toBeDefined();
+    expect(RECORD!.gestelde_grens).toBe(CEILING);
+    expect(RECORD!.per_netlist.length).toBe(FIELD.length);
+    for (const row of RECORD!.per_netlist) {
+      const f = FIELD.find((x) => x.key === row.netlist);
+      expect(f, `${row.netlist} is recorded but not in the field`).toBeDefined();
+      expect(row.weg).toBe(f!.lowestWay);
+      // R_s comes from M-E and does not depend on which R_e the pass resolved,
+      // so it is comparable across the two settings the two passes used.
+      expect(
+        Math.abs(row.R_s_ohm! - f!.lowestRsOhm!),
+        `${row.netlist}: recorded R_s ${row.R_s_ohm} against a fresh ${f!.lowestRsOhm}`,
+      ).toBeLessThanOrEqual(TOL_OHM);
+      expect(
+        Math.abs(row.padweerstand_ohm! - pathROhm(row.netlist, row.weg)),
+        `${row.netlist}: recorded path resistance`,
+      ).toBeLessThanOrEqual(TOL_OHM);
+      /* THE R_e THE RECORD DIVIDED BY IS THE CASEBOOK'S METER READING, not a
+       * fit — V16's two readings of one quantity, and a q without its R_e is
+       * not a number. The v2 route enters the same value, so the ceiling this
+       * block reports IS the ceiling those runs searched under. */
+      expect(row.R_e_ohm).toBeCloseTo(CASUS1_WOOFER_DC_OHM, 6);
+      expect(row.q_M_E!).toBeCloseTo(1 + row.R_s_ohm! / row.R_e_ohm!, 1);
+      expect(row.plafond_ohm!).toBeCloseTo(row.R_e_ohm! * (CEILING! - 1), 1);
+      expect(row.haalt_de_eis).toBe(row.padweerstand_ohm! <= row.plafond_ohm!);
+    }
+  });
+
+  it('the two q columns are two quantities, and the inversion binds the second', () => {
+    /* Not pedantry: `q_M_E` is what the metric reports (Thevenin R_s at f_p,
+     * which carries the network's reactance) and `q_padweerstand` is what the
+     * A5d.6 inversion can actually bound (DC series resistance, the only thing
+     * a search box holds). They differ on real netlists, and a reader who took
+     * one for the other would mis-read every margin in this block. */
+    const rows = RECORD!.per_netlist.filter(
+      (r) => r.q_M_E !== null && r.q_padweerstand !== null,
+    );
+    expect(rows.length).toBeGreaterThan(0);
+    /* THEY SEPARATE IN BOTH DIRECTIONS, and that is the strongest form the
+     * claim can take: no monotone rescaling of one gives the other, so they are
+     * two quantities and not one under two names (V23).
+     *
+     * The two directions have two different mechanisms and both are real.
+     * · M-E HIGHER — reactance in the way's own path adds to what its DC
+     *   resistance presents at f_p. HUIDIG is the clean case (+0.08).
+     * · M-E LOWER — a SHUNT across the driver lowers the source impedance it
+     *   actually sees, below the DC series resistance in the path. On
+     *   `V43_KAND_1` that is 2.17 Ω against 4.46 Ω of path resistance: q reads
+     *   1.71 where the inversion bounds 2.46.
+     *
+     * THE SECOND CASE IS A LIMITATION OF THE REQUIREMENT AS ENFORCED, not a
+     * bug in this test, and it is written down rather than smoothed over: on a
+     * netlist with a shunt the inversion is STRICTER than the metric it comes
+     * from, so it can refuse a design M-E would pass. It errs towards caution,
+     * which is the safe direction — but only measurement can say that, so it is
+     * measured here and recorded as an open point in the casebook. */
+    const gap = rows.map((r) => r.q_M_E! - r.q_padweerstand!);
+    expect(Math.max(...gap)).toBeGreaterThan(0.05);
+    expect(Math.min(...gap)).toBeLessThan(-0.05);
+    // Both named, so each direction is checkable against one row by hand
+    // instead of trusted as an aggregate.
+    const huidig = rows.find((r) => r.netlist === 'HUIDIG')!;
+    expect(huidig.q_M_E!).toBeGreaterThan(huidig.q_padweerstand!);
+    const shunted = rows.find((r) => r.netlist === 'V43_KAND_1')!;
+    expect(shunted.q_M_E!).toBeLessThan(shunted.q_padweerstand!);
+    expect(shunted.R_s_ohm!).toBeLessThan(shunted.padweerstand_ohm!);
+  });
+});
+
+describe('V45 — the delivered network is tested against the stated LF budget', () => {
+  const BUDGET_DB = casus1LfResonantBudgetDb(golden)!;
+  const TOL_DB_V45 = (golden as unknown as { toleranties: { dB: number } }).toleranties.dB;
+  const factsAll = casus1V2Facts(report('HUIDIG'), manifest, files);
+  /** The grid and impedances every electrical verdict is taken on (V32). */
+  const REF = impedanceReferenceFrom(
+    Object.fromEntries(
+      Object.entries(factsAll.impedanceByModel ?? {}).map(([m, z]) => [
+        m,
+        { grid: z.grid, magnitude: z.magnitude, phaseDeg: z.phaseDeg, validHz: z.validHz },
+      ]),
+    ),
+  )!;
+  const checked = (key: string, model: string): number | null =>
+    deliveredResonantDb(casus1Parts(key), model, {
+      nearField: factsAll.nearFieldByModel![model],
+      fPeakHz: factsAll.fundamentalHzByModel![model],
+      impedance: { grid: REF.grid, driverZ: REF.driverZ },
+    });
+
+  it('the check reads the SAME number the panel reads — one implementation, two readers', () => {
+    /* THE CLAIM THE WHOLE MECHANISM RESTS ON. The worker withdraws a delivered
+     * network on this number, and the panel prints M-D beside it; if the two
+     * could disagree, a design would read acceptable in one place and be
+     * refused in the other — the exact split V32 found in the gates and V45
+     * must not reintroduce one metric later. They agree by construction (same
+     * `lfBump`, same grid, same measured impedances) and this asserts it on
+     * every frozen netlist rather than on the one that was tried by hand. */
+    let compared = 0;
+    for (const f of FIELD) {
+      if (f.lfResonantDb === null || f.lfWay === null) continue;
+      const got = checked(f.key, f.lfWay);
+      expect(got, `${f.key}: the delivered-network check produced nothing`).not.toBeNull();
+      expect(
+        Math.abs(got! - f.lfResonantDb),
+        `${f.key}: the check reads ${got} where M-D reads ${f.lfResonantDb}`,
+      ).toBeLessThanOrEqual(TOL_DB_V45);
+      compared++;
+    }
+    // A loop over an empty list passes silently, which is how a guard rots.
+    expect(compared).toBe(FIELD.filter((f) => f.lfResonantDb !== null).length);
+    expect(compared).toBeGreaterThan(0);
+  });
+
+  it('it CAN refuse: the casebook holds networks that exceed the stated budget', () => {
+    /* The counter-proof. A check that no netlist in the casebook could ever
+     * fail is a check nobody can tell from a no-op, so the dated corpora are
+     * asked whether they contain one — and they do, which is precisely what
+     * they were frozen for. */
+    const over = FIELD.filter((f) => f.lfResonantDb !== null && f.lfResonantDb > BUDGET_DB);
+    expect(over.length, 'no frozen netlist exceeds the budget — the check is untestable').toBeGreaterThan(0);
+    for (const f of over) expect(checked(f.key, f.lfWay!)!).toBeGreaterThan(BUDGET_DB);
+  });
+
+  it('and it does NOT refuse the live corpus — which is the measurement, not an absence', () => {
+    /* The other half, and it is a RESULT rather than a passing test: the search
+     * box already keeps the live corpus under the budget, so the delivered
+     * check never fires there. That is what says the stale ceiling costs
+     * nothing on this casus today (V45, open point) — and the moment it stops
+     * being true, this assertion is where it shows. */
+    const live = FIELD.filter((f) => /^KAND_V2_\d+$/.test(f.key));
+    expect(live.length).toBeGreaterThan(0);
+    for (const f of live) {
+      expect(f.lfResonantDb, `${f.key}: no resonant figure`).not.toBeNull();
+      expect(
+        f.lfResonantDb!,
+        `${f.key} exceeds the stated budget on the DELIVERED network — the A5d.6 ceiling was ` +
+          'solved at the seed\'s path resistance and no longer describes what was built',
+      ).toBeLessThanOrEqual(BUDGET_DB);
+    }
+  });
+});
+
+describe('V45 — the anchor is taken AFTER baffle step, and the bridge holds', () => {
+  const CURVE = casus1TargetCurve(golden);
+
+  it('the target curve is evaluable, and its step frequency is DERIVED', () => {
+    /* P6, as a test. The depth is stated and the frequency is not: it is
+     * `baffleStepHz` of the cabinet's measured front width, and it appears
+     * nowhere in the reference file as a constant. */
+    expect(CURVE.type).toBe('bass-plateau');
+    expect(isImplementedCurve(CURVE)).toBe(true);
+    const width = golden.manifest_en_geometrie.geometrie.baffle_mm!.breedte;
+    expect(CURVE.stepHz).toBeCloseTo(baffleStepHz(width)!, 12);
+    expect(CURVE.plateauDepthDb).toBe(
+      (golden.manifest_en_geometrie as unknown as {
+        gestelde_eisen: { basplateau_offset_dB: number };
+      }).gestelde_eisen.basplateau_offset_dB,
+    );
+  });
+
+  it('it moves the anchored gaps, and it moves them in OPPOSITE directions', () => {
+    /* THE CLAIM THAT MAKES IT A VOICING RATHER THAN A LEVEL SHIFT. Only
+     * differences between ways move an anchor, so a curve that shifted every
+     * way alike would change nothing at all. The woofer's band sits deepest in
+     * the transition and is credited most; the tweeter's sits above it and is
+     * credited least — so the woofer's budget must GROW and the tweeter's must
+     * SHRINK. One number under two names cannot do that (V23). */
+    const bare = report('HUIDIG').predesign.gaps!;
+    const voiced = report('HUIDIG', { ...BASE, targetCurve: CURVE }).predesign.gaps!;
+    expect(voiced.anchor).toBe(bare.anchor);
+    const w = (g: typeof bare, d: string): number =>
+      g.ways.find((x) => x.driver === d)!.budgetDb;
+    expect(w(voiced, 'woofer')).toBeGreaterThan(w(bare, 'woofer'));
+    expect(w(voiced, 'tweeter')).toBeLessThan(w(bare, 'tweeter'));
+    expect(voiced.notes.join(' ')).toContain('AFTER the target curve');
+  });
+
+  it('it is a PRE-design analysis still: no netlist moves it (class A)', () => {
+    /* The property F4a established and V45 must not have broken. The voicing
+     * is a property of the DESIGN, not of a filter, so all three reference
+     * filters have to produce the same block — otherwise `verankerde_gaps_dB`
+     * would have quietly become class B. */
+    const blocks = ['HUIDIG', 'KAND_A', 'KAND_B'].map((k) =>
+      JSON.stringify(report(k, { ...BASE, targetCurve: CURVE }).predesign.gaps),
+    );
+    expect(new Set(blocks).size).toBe(1);
   });
 });

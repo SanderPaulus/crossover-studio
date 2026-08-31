@@ -20,6 +20,7 @@
  */
 
 import { describe, expect, it } from 'vitest';
+import { FLAT_TARGET } from '../requirements/targetCurve.ts';
 import { readdirSync, readFileSync, statSync } from 'node:fs';
 import { dirname, join, relative } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -135,8 +136,13 @@ describe('F4c — every tuner option has a class', () => {
     // judgement may rest on) and `phaseAdmissionFacts` (polish — the validity
     // band and ghost convention those grounds read). Same pair shape as V33,
     // V34 and V37, and the split becomes 31/5/10.
-    expect(keys.length).toBe(46);
-    expect(CHOICE_KEYS.length + GREY_KEYS.length + POLISH_KEYS.length).toBe(46);
+    // 48 since V45 added `amplitudeReference` (choice — WHAT COUNTS AS FLAT:
+    // horizontal, or the design's stated voicing) and `amplitudeTargetDb`
+    // (polish — the target curve of that design, sampled). The fifth pair of
+    // the same shape, and the split becomes 32/5/11.
+    expect(keys.length).toBe(48);
+    expect(CHOICE_KEYS.length + GREY_KEYS.length + POLISH_KEYS.length).toBe(48);
+    expect([CHOICE_KEYS.length, GREY_KEYS.length, POLISH_KEYS.length]).toEqual([32, 5, 11]);
     for (const k of CHAIN_CHOICE_KEYS) {
       expect(classified as readonly string[], `${k} is a chain key, not a tuner option`).not.toContain(k);
     }
@@ -222,9 +228,29 @@ describe('F4c — every tuner option has a class', () => {
      * it names the WEIGHTING and can state no admission at all. Two keys, two
      * questions — collapsing them would make one of the two unavailable. */
     expect(CHOICE_KEYS).toContain('phaseMetric');
-    expect(CHOICE_KEYS.length).toBe(31);
+    /* V45 — the FIFTH pair, same shape and same split. WHAT COUNTS AS FLAT
+     * decides what the search calls good, so it is a choice and may only come
+     * from a candidate; WHAT the voicing IS, is the design's own target-curve
+     * object, handed over by the side that holds it. `amplitudeTargetDb` may
+     * never become a choice: a candidate that brought its own voicing would be
+     * a second opinion about which loudspeaker is being designed, and the whole
+     * reason A5e.2 hangs the curve on the DESIGN is so that two voicings can be
+     * compared rather than toggled. A migration either way breaks the build. */
+    expect(CHOICE_KEYS).toContain('amplitudeReference');
+    expect(POLISH_KEYS as readonly string[]).not.toContain('amplitudeReference');
+    expect(GREY_KEYS as readonly string[]).not.toContain('amplitudeReference');
+    expect(POLISH_KEYS).toContain('amplitudeTargetDb');
+    expect(CHOICE_KEYS as readonly string[]).not.toContain('amplitudeTargetDb');
+    expect(GREY_KEYS as readonly string[]).not.toContain('amplitudeTargetDb');
+    /* And it is INDEPENDENT of `ampTarget`, whose name is unfortunately close.
+     * That one picks WHICH SUM is flattened (on-axis or listening window); this
+     * one picks what counts as flat for whichever sum that is. Two keys, two
+     * questions — collapsing them would make one of the two unavailable, which
+     * is exactly the correction V40 turned up for `phaseMetric`. */
+    expect(CHOICE_KEYS).toContain('ampTarget');
+    expect(CHOICE_KEYS.length).toBe(32);
     expect(GREY_KEYS.length).toBe(5);
-    expect(POLISH_KEYS.length).toBe(10);
+    expect(POLISH_KEYS.length).toBe(11);
   });
 });
 
@@ -580,6 +606,80 @@ describe('F4d — a generated candidate declares every choice key', () => {
     // ...and it moves the fingerprint, or the choice would be a label.
     expect(JSON.stringify(declarationKey(bare(), {}))).not.toBe(
       JSON.stringify(declarationKey(historic, {})),
+    );
+  });
+
+  it('V45 — the candidate states WHAT THE AMPLITUDE TERM IS FLAT AGAINST, or files it absent', () => {
+    /* DERIVED, like V30's `zFloorBarrier`, and from the same finding one axis
+     * along: a reference that exists but does not steer changes nothing. Three
+     * states and not two, which is why the input is the CURVE and not a flag.
+     *
+     * (a) A design with an evaluable voicing arms it. */
+    const voiced = declareCandidateChoices({
+      cages: [[400, 500], [1500, 2000]],
+      windowFloorsHz: [397, 1294],
+      multiWay: true,
+      stated: {},
+      targetCurve: { type: 'bass-plateau', plateauDepthDb: 2.5, stepHz: 442 },
+    });
+    expect(voiced.stated.amplitudeReference).toBe('target');
+    expect(voiced.absent.some((a) => a.key === 'amplitudeReference')).toBe(false);
+
+    /* (b) No curve at all ⇒ ABSENT with the P4 reason, never a stated 'flat'.
+     * A stated flat would read as "somebody decided the voicing must not
+     * steer", and with no voicing stated nobody decided anything. */
+    expect(bare().stated.amplitudeReference).toBeUndefined();
+    expect(bare().absent.find((a) => a.key === 'amplitudeReference')?.why ?? '')
+      .toMatch(/P4/);
+
+    /* (c) A FLAT curve ⇒ also absent, and for a different reason that the text
+     * has to give: subtracting it is the identity, so arming the mechanism
+     * would put a key in the run that provably cannot move anything (V23). */
+    const neutral = declareCandidateChoices({
+      cages: [[400, 500], [1500, 2000]],
+      windowFloorsHz: [397, 1294],
+      multiWay: true,
+      stated: {},
+      targetCurve: FLAT_TARGET,
+    });
+    expect(neutral.stated.amplitudeReference).toBeUndefined();
+    expect(neutral.absent.find((a) => a.key === 'amplitudeReference')?.why ?? '')
+      .toContain('identity');
+
+    /* (d) A stated shape whose parameters never arrived is a THIRD sentence:
+     * a curve nothing can sample steers nothing, and that is a report about the
+     * data rather than about the voicing. */
+    const unusable = declareCandidateChoices({
+      cages: [[400, 500], [1500, 2000]],
+      windowFloorsHz: [397, 1294],
+      multiWay: true,
+      stated: {},
+      targetCurve: { type: 'bass-plateau', plateauDepthDb: 2.5 },
+    });
+    expect(unusable.stated.amplitudeReference).toBeUndefined();
+    expect(unusable.absent.find((a) => a.key === 'amplitudeReference')?.why ?? '')
+      .toContain('cannot be evaluated');
+    // The three reasons are three different sentences, or a reader cannot tell
+    // which of the three states produced the absence.
+    const why = (d: ReturnType<typeof declareCandidateChoices>): string =>
+      d.absent.find((a) => a.key === 'amplitudeReference')!.why;
+    expect(new Set([why(bare()), why(neutral), why(unusable)]).size).toBe(3);
+
+    /* An explicit value still wins, so V45's before/after is a run someone can
+     * ask for — the property V30, V33, V34, V37, V38-fix and V44 each rest on. */
+    const forcedFlat = declareCandidateChoices({
+      cages: [[400, 500], [1500, 2000]],
+      windowFloorsHz: [397, 1294],
+      multiWay: true,
+      stated: { amplitudeReference: 'flat' },
+      targetCurve: { type: 'bass-plateau', plateauDepthDb: 2.5, stepHz: 442 },
+    });
+    expect(forcedFlat.stated.amplitudeReference).toBe('flat');
+    expect(forcedFlat.absent.some((a) => a.key === 'amplitudeReference')).toBe(false);
+
+    // ...and it moves the fingerprint, or the choice would be a label.
+    expect(JSON.stringify(declarationKey(voiced, {}))).not.toBe(
+      JSON.stringify(declarationKey(forcedFlat, {})),
     );
   });
 
