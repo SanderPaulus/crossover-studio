@@ -14,8 +14,9 @@
  * default is the newest comparison.
  *
  *   corpora: `v30` · `v32` · `v33sweep` · `v33` · `v34` · `v37` · `v38fix` · `v41` ·
- *            `v42` · `live`
- *   default: `v42` → `live`   (casebook V43)
+ *            `v42` · `v43` · `v44` · `v45` · `live`   (de kaart staat in
+ *            `casus1Corpora.fixture.ts`; deze regel is de leesbare kopie ervan)
+ *   default: `v45` → `live`   (casebook V47)
  *   V32's own table: `npx vite-node scripts/compare-corpora.ts v30 v32`
  *   V33's own table: `npx vite-node scripts/compare-corpora.ts v32 v33`
  *   V33's two arms:  `npx vite-node scripts/compare-corpora.ts v33sweep v33`
@@ -56,29 +57,46 @@
  * (This is the V33 rename's lesson one column along: a comparison script that
  * quietly changes what it measures produces a table that looks like the table
  * it was written for and is not.)
+ *
+ * SINDS DE V47-NAZORG STAAT NAAST ÉLK CORPUSGEMIDDELDE DE GEPAARDE DELTA, en
+ * dat is de leesregel van deze hele tabel. Een corpusgemiddelde is een
+ * gemiddelde over de netlists die het corpus TOEVALLIG bevat; een gewapende
+ * eis verwijdert netlists, en dan verandert dat gemiddelde zonder dat er één
+ * netwerk bewogen heeft. De gepaarde delta neemt hetzelfde getal over
+ * uitsluitend de kandidaten die BEIDE corpora dragen, met het aantal paren
+ * erbij. HET CORPUSGEMIDDELDE BESCHRIJFT HET VELD, DE GEPAARDE DELTA DE
+ * INGREEP, en alleen de tweede mag als verbetering of verslechtering gelezen
+ * worden. Twee gemeten gevallen, in tegengestelde richting: `v45 live` las
+ * fase als winst (25,3° → 13,1°) terwijl gepaard 11,96° → 13,06°, en
+ * dissipatie als verlies (60,4 % → 62,2 %) terwijl gepaard 69,05 % → 62,23 %.
+ * `v30 v32` is de scherpste demonstratie en is volledig gedateerd: daar is
+ * élke gepaarde delta EXACT nul — V32 veranderde geen ontwerp en trok er drie
+ * in — terwijl de corpusgemiddelden acht procentpunten bewegen.
+ * `corpusPairing.test.ts` reproduceert beide.
  */
 
 import { readFileSync } from 'node:fs';
-import { dirname, join } from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { join } from 'node:path';
 import {
-  CASUS1_WOOFER_DC_OHM,
-  casus1AmpMinLoadOhm,
-  casus1Files,
   casus1Filter,
-  casus1Geometry,
   casus1LfResonantBudgetDb,
   casus1MaxDriveOnFsDb,
-  casus1Manifest,
   loadGolden,
 } from '../src/lib/engine2/casus1.fixture.ts';
-import { buildReport, type EngineV2Report, type ReportSettings } from '../src/lib/engine2/report.ts';
+import {
+  corpusBank,
+  corpusOf,
+  mean,
+  pairedDelta,
+  round2,
+  unionOfCandidates,
+  type CorpusPair,
+} from '../src/lib/engine2/casus1Corpora.fixture.ts';
+import { type EngineV2Report } from '../src/lib/engine2/report.ts';
 import { impedanceReferenceFrom } from '../src/lib/engine2/optimizer/impedanceReference.ts';
 import type { MeasuredSweep } from '../src/lib/engine2/optimizer/gates.ts';
 import { buildAnalysis } from '../src/lib/engine2/metrics/analysis.ts';
 import { protectionByPair } from '../src/lib/engine2/metrics/protection.ts';
-import { CASUS1_TARGET_CURVE } from '../src/lib/engine2/casus1V2.fixture.ts';
-import { ctcKey } from '../src/lib/engine2/metrics/types.ts';
 import { meetsAmpFloor } from '../src/lib/impedanceFloor.ts';
 import { busTopology } from '../src/lib/netOptimizer.ts';
 import { deserializeFilter } from '../src/lib/filterFile.ts';
@@ -86,105 +104,19 @@ import { CASUS1_DIR } from '../src/lib/engine2/casus1.fixture.ts';
 import type { VxpPart } from '../src/lib/parsers/vxp.ts';
 import { decompose } from './v38-groups.ts';
 
-const HERE = dirname(fileURLToPath(import.meta.url));
-
+/* DE CORPUSKAART, HET INSTELLINGENBLOK EN DE STATISTIEK WONEN SINDS DE
+ * V47-NAZORG IN `casus1Corpora.fixture.ts` — dit script is er de ene lezer van
+ * en `corpusPairing.test.ts` de andere. Zolang deze tabel de enige lezer was,
+ * was een kopie hier geen kopie; zodra een test dezelfde getallen moet kunnen
+ * reproduceren zijn twee beschrijvingen van één ding het begin van uiteenlopen
+ * (V21). Wat hier blijft staan is wat alléén deze tabel doet: de kolommen. */
 const golden = loadGolden();
-const manifest = casus1Manifest(golden);
-const files = casus1Files(manifest);
-const geometry = casus1Geometry(golden);
-const FLOOR = casus1AmpMinLoadOhm(golden);
-
-const SETTINGS: ReportSettings = {
-  amplifierPowerW: 100,
-  orderByPair: { [ctcKey('woofer', 'mid')]: 4, [ctcKey('mid', 'tweeter')]: 4 },
-  reOhmByDriver: { woofer: CASUS1_WOOFER_DC_OHM },
-  targetCurve: CASUS1_TARGET_CURVE,
-  ...(FLOOR !== null ? { ampMinLoadOhm: FLOOR } : {}),
-};
-
-interface Outcome {
-  label: string;
-  geweigerd_door: string[];
-  verwerping: {
-    regels: string[];
-    reden: string;
-    geweigerde_tune: Record<string, number | null> | null;
-  } | null;
-  poorten: { poort: string; waarde: number | null; geslaagd: boolean }[];
-}
-
-const herkomst = JSON.parse(
-  readFileSync(join(HERE, '..', 'test-fixtures', 'casus1_v2_herkomst.json'), 'utf-8'),
-) as {
-  bestanden: { name: string; label: string }[];
-  kandidaat_uitkomst: Outcome[];
-};
-
-/** One addressable corpus: which netlist key each candidate was frozen as. */
-interface Corpus {
-  name: string;
-  byCandidate: Map<string, string>;
-  /** The run's own account, when this corpus is the live one. */
-  outcomes: Outcome[] | null;
-  order: string[];
-}
-
-const datedCorpus = (block: string, name: string): Corpus => {
-  const b = (
-    golden.manifest_en_geometrie as unknown as Record<
-      string,
-      { bestanden: { naam: string; kandidaat: string }[] } | undefined
-    >
-  )[block];
-  if (!b) throw new Error(`the case book has no ${block} — nothing to compare against`);
-  return {
-    name,
-    byCandidate: new Map(b.bestanden.map((x) => [x.kandidaat, x.naam])),
-    outcomes: null,
-    order: b.bestanden.map((x) => x.kandidaat),
-  };
-};
-
-const liveCorpus = (): Corpus => ({
-  name: 'live',
-  byCandidate: new Map(herkomst.bestanden.map((b) => [b.label, b.name.replace(/-/g, '_')])),
-  outcomes: herkomst.kandidaat_uitkomst,
-  order: herkomst.kandidaat_uitkomst.map((o) => o.label),
-});
-
-/**
- * The dated corpora, by the id a caller types.
- *
- * A map rather than a chain of `if`s, and it is the same lesson twice in one
- * session: a hand-maintained family list is what `goldenClassification.test.ts`
- * had to give up at V33, after a corpus was added at V32 and nobody came back.
- * One line per corpus, in one place, next to the block it names.
- */
-const DATED: Record<string, { block: string; name: string }> = {
-  v30: { block: 'v30_corpus', name: 'V30' },
-  v32: { block: 'v32_corpus', name: 'V32' },
-  v33sweep: { block: 'v33_sweep_corpus', name: 'V33-sweep' },
-  v33: { block: 'v33_corpus', name: 'V33' },
-  v34: { block: 'v34_corpus', name: 'V34' },
-  v37: { block: 'v37_corpus', name: 'V37' },
-  v38fix: { block: 'v38fix_corpus', name: 'V38-fix' },
-  v41: { block: 'v41_corpus', name: 'V41' },
-  v42: { block: 'v42_corpus', name: 'V42' },
-  v43: { block: 'v43_corpus', name: 'V43' },
-  v44: { block: 'v44_corpus', name: 'V44' },
-  v45: { block: 'v45_corpus', name: 'V45' },
-};
-
-const corpusOf = (id: string): Corpus => {
-  if (id === 'live') return liveCorpus();
-  const d = DATED[id];
-  if (d) return datedCorpus(d.block, d.name);
-  throw new Error(`unknown corpus "${id}" — use ${[...Object.keys(DATED), 'live'].join(', ')}`);
-};
+const bank = corpusBank(golden);
+const { manifest, files, settings: SETTINGS, floorOhm: FLOOR } = bank;
 
 const [beforeId = 'v45', afterId = 'live'] = process.argv.slice(2);
-const before = corpusOf(beforeId);
-const after = corpusOf(afterId);
+const before = corpusOf(beforeId, golden);
+const after = corpusOf(afterId, golden);
 
 interface Row {
   minZ: number | null;
@@ -301,8 +233,10 @@ interface Row {
   opslingeringDb: number | null;
 }
 
-const r2 = (v: number | null | undefined): number | null =>
-  v === null || v === undefined || !Number.isFinite(v) ? null : Number(v.toFixed(2));
+/* De afronding zelf woont sinds de V47-nazorg in `casus1Corpora.fixture.ts`:
+ * de corpusgemiddelden worden over de AFGERONDE rijen genomen, dus zij is
+ * onderdeel van de getallen en niet van de opmaak. */
+const r2 = round2;
 
 /* V44 — DE TUNERRUN PER NETLIST IS HIER VERVALLEN, en dat is een gevolg van de
  * ingreep en geen bezuiniging.
@@ -412,13 +346,7 @@ function protectionOf(key: string, rep: EngineV2Report): number | null {
 }
 
 function measure(key: string): Row {
-  const rep = buildReport({
-    manifest,
-    files,
-    filter: casus1Filter(key, manifest, files, golden),
-    geometry,
-    settings: SETTINGS,
-  });
+  const rep = bank.report(key);
   const pt = rep.system.phaseTracking;
   const wm = pt.find((p) => p.lower === 'woofer');
   const mt = pt.find((p) => p.lower === 'mid');
@@ -473,8 +401,7 @@ const outcomeByCandidate = new Map((after.outcomes ?? []).map((o) => [o.label, o
 
 /* Every candidate either corpus knows about, in the order the newer one ran
  * them — so the table reads as a field with holes rather than as two lists. */
-const labels: string[] = [...after.order];
-for (const label of before.order) if (!labels.includes(label)) labels.push(label);
+const labels: string[] = unionOfCandidates(before, after);
 
 const num = (v: number | null) => (v === null ? '—' : v.toFixed(2));
 const short = (label: string) =>
@@ -506,6 +433,11 @@ const arrived: string[] = [];
 /** Elke gemeten rij, per helft — voor het corpusgemiddelde onderaan. */
 const measuredBefore: Row[] = [];
 const measuredAfter: Row[] = [];
+/** De kandidaten die BEIDE corpora dragen, met hun twee metingen — voor de
+ *  GEPAARDE delta naast elk corpusgemiddelde (V47-nazorg). Hij wordt hier
+ *  verzameld en niet achteraf gereconstrueerd: de koppeling is de kandidaat,
+ *  en die staat op dit punt in de lus nog naast beide rijen. */
+const pairs: CorpusPair<Row>[] = [];
 for (const label of labels) {
   const bKey = before.byCandidate.get(label);
   const aKey = after.byCandidate.get(label);
@@ -513,6 +445,7 @@ for (const label of labels) {
   const a = aKey ? measure(aKey) : null;
   if (b) measuredBefore.push(b);
   if (a) measuredAfter.push(a);
+  if (b && a) pairs.push({ label, before: b, after: a });
   if (b?.clearsFloor) beforeClears++;
   if (a?.clearsFloor) afterClears++;
   if (b && !a) gone.push(label);
@@ -558,16 +491,49 @@ console.log(
 /* V36 — het corpusgemiddelde, uit de rijen die hierboven al gemeten zijn.
  * Opnieuw `measure()` aanroepen zou elke netlist een tweede keer oplossen voor
  * een gemiddelde, en dat is precies het patroon dat A3g elders verbiedt. */
-const avg = (xs: (number | null)[]) => {
-  const v = xs.filter((x): x is number => x !== null);
-  return v.length ? v.reduce((a, b) => a + b, 0) / v.length : null;
-};
+const avg = (xs: (number | null)[]) => mean(xs);
 const fmt = (v: number | null) => (v === null ? '—' : v.toFixed(1));
+
+/**
+ * V47-NAZORG — DE GEPAARDE DELTA, EN ZIJ STAAT SINDS 01-09-2026 NAAST ÉLK
+ * CORPUSGEMIDDELDE HIERONDER.
+ *
+ * Een corpusgemiddelde is een gemiddelde over de netlists die het corpus
+ * TOEVALLIG bevat. Een eis die netlists verwijdert verandert het dus zonder
+ * één netwerk aan te raken, en het verschil leest dan als een aankoop terwijl
+ * het compositie is. Bij V47 gebeurde dat twee keer en in beide richtingen:
+ * de W-M-fase las als winst (25,3° → 13,1°) doordat de twee slechtste netlists
+ * het veld verlieten — gepaard verslechterde zij van 11,97° naar 13,06° — en
+ * de dissipatie las als verlies (60,4 % → 62,2 %) terwijl diezelfde vier
+ * netlists van 69,1 % naar 62,2 % gingen. De entry ving de eerste met een
+ * alinea eronder en de tweede helemaal niet; een leesregel die van een alinea
+ * afhangt is geen leesregel.
+ *
+ * Het corpusgemiddelde beschrijft dus het VELD en de gepaarde delta de
+ * INGREEP, en alleen de tweede mag als verbetering of verslechtering gelezen
+ * worden. Het AANTAL PAREN staat er altijd bij: een delta over één paar is een
+ * anekdote en hoort als zodanig te lezen. De statistiek zelf zit in
+ * `casus1Corpora.fixture.ts`, zodat `corpusPairing.test.ts` haar kan
+ * reproduceren in plaats van nábouwen.
+ */
+const paired = (pick: (r: Row) => number | null, unit = ''): string => {
+  const d = pairedDelta(pairs, pick);
+  /* TWEE decimalen en niet één, anders dan het corpusgemiddelde ernaast: een
+   * gepaarde delta is per constructie klein — dat is juist wat zij laat zien —
+   * en op één decimaal verdwijnt het verschil tussen "niets bewogen" en "iets
+   * de verkeerde kant op". De W-M-fase van V47 is het geval: 11,97 → 13,06. */
+  const p2 = (v: number | null) => (v === null ? '—' : v.toFixed(2));
+  return (
+    `${p2(d.before)}${unit} → ${p2(d.after)}${unit} ` +
+    `(${d.n} ${d.n === 1 ? 'paar' : 'paren'})`
+  );
+};
 console.log(
   `dissipatie (M-A) gemiddeld: ${fmt(avg(measuredBefore.map((r) => r.dissPct)))} % vóór → ` +
     `${fmt(avg(measuredAfter.map((r) => r.dissPct)))} % ná; grootste enkele weerstand gemiddeld ` +
     `${fmt(avg(measuredBefore.map((r) => r.largestRw)))} W → ` +
     `${fmt(avg(measuredAfter.map((r) => r.largestRw)))} W bij ${SETTINGS.amplifierPowerW} W. ` +
+    `Gepaard: ${paired((r) => r.dissPct, ' %')} en ${paired((r) => r.largestRw, ' W')}. ` +
     'Een kolom, geen oordeel: casus 1 stelt geen dissipatiegrens (P4).',
 );
 /* V44 — DRIE fasematen als corpusgemiddelde, met naam en in volgorde: de maat
@@ -582,7 +548,10 @@ console.log(
     `${fmt(avg(measuredBefore.map((r) => r.wmPhaseOctave)))}° → ` +
     `${fmt(avg(measuredAfter.map((r) => r.wmPhaseOctave)))}°, controle overlapvenster ` +
     `${fmt(avg(measuredBefore.map((r) => r.wmPhaseOverlap)))}° → ` +
-    `${fmt(avg(measuredAfter.map((r) => r.wmPhaseOverlap)))}°.`,
+    `${fmt(avg(measuredAfter.map((r) => r.wmPhaseOverlap)))}°. ` +
+    `Gepaard: M-K ${paired((r) => r.wmPhase, '°')}, octaafgeknipt ` +
+    `${paired((r) => r.wmPhaseOctave, '°')}, overlapvenster ` +
+    `${paired((r) => r.wmPhaseOverlap, '°')}.`,
 );
 console.log(
   `M-T fase gemiddeld: M-K ${fmt(avg(measuredBefore.map((r) => r.mtPhase)))}° → ` +
@@ -591,6 +560,9 @@ console.log(
     `${fmt(avg(measuredAfter.map((r) => r.mtPhaseOctave)))}°, controle overlapvenster ` +
     `${fmt(avg(measuredBefore.map((r) => r.mtPhaseOverlap)))}° → ` +
     `${fmt(avg(measuredAfter.map((r) => r.mtPhaseOverlap)))}°. ` +
+    `Gepaard: M-K ${paired((r) => r.mtPhase, '°')}, octaafgeknipt ` +
+    `${paired((r) => r.mtPhaseOctave, '°')}, overlapvenster ` +
+    `${paired((r) => r.mtPhaseOverlap, '°')}. ` +
     'De twee controlekolommen zijn de maten die tot V43 in deze tabel stonden; ' +
     'zie casusboek V40 voor waarom geen van beide de luidspreker beschreef.',
 );
@@ -607,10 +579,19 @@ const roleTotals = (rows: Row[]) => {
 {
   const tb = roleTotals(measuredBefore);
   const ta = roleTotals(measuredAfter);
+  /* Een TELLING en geen gemiddelde, maar zij lijdt aan precies hetzelfde:
+   * twaalf gedempte vallen over zeven netlists tegen zes over vier zegt niets
+   * over de synthesestap. Vandaar dezelfde gepaarde lezing eronder, op de
+   * netlists die beide corpora dragen. */
+  const pb = roleTotals(pairs.map((p) => p.before));
+  const pa = roleTotals(pairs.map((p) => p.after));
   console.log(
     'correctiegroepen over het corpus (' +
       CORRECTION_ROLES.map((r) => `${r} ${tb[r]}→${ta[r]}`).join(', ') +
       `) over ${measuredBefore.length} → ${measuredAfter.length} netlists. ` +
+      'Gepaard (' +
+      CORRECTION_ROLES.map((r) => `${r} ${pb[r]}→${pa[r]}`).join(', ') +
+      `) over ${pairs.length} paren. ` +
       'Een kolom, geen oordeel: een correctiegroep is een shunt en kost dissipatie en |Z|.',
   );
 }
@@ -630,6 +611,9 @@ const roleTotals = (rows: Row[]) => {
       `${fmt(avg(measuredAfter.map((r) => r.opslingeringDb)))} dB; totale serie-L van de laagste weg ` +
       `${fmt(avg(measuredBefore.map((r) => r.seriesLmH)))} → ` +
       `${fmt(avg(measuredAfter.map((r) => r.seriesLmH)))} mH. ` +
+      `Gepaard: bult ${paired((r) => r.bultDb, ' dB')}, lift ${paired((r) => r.liftDb, ' dB')}, ` +
+      `opslingering ${paired((r) => r.opslingeringDb, ' dB')}, serie-L ` +
+      `${paired((r) => r.seriesLmH, ' mH')}. ` +
       (budget === null
         ? 'Geen budget gesteld, dus dit is een kolom en geen eis (P4).'
         : `Gesteld budget ${budget} dB OP DE OPSLINGERING (V43): ${overCount(measuredBefore)} van ` +
@@ -654,6 +638,7 @@ const roleTotals = (rows: Row[]) => {
   console.log(
     `M-C op de slechtst beschermde weg gemiddeld: ${fmt(avg(measuredBefore.map((r) => r.driveDb)))} dB ` +
       `vóór → ${fmt(avg(measuredAfter.map((r) => r.driveDb)))} dB ná. ` +
+      `Gepaard: ${paired((r) => r.driveDb, ' dB')}. ` +
       (ceiling === null
         ? 'Geen grens gesteld, dus dit is een kolom en geen eis (P4).'
         : `Gestelde grens ${ceiling} dB (V47): ${overCount(measuredBefore)} van ` +
@@ -678,7 +663,8 @@ const roleTotals = (rows: Row[]) => {
   const live = (rows: Row[]) => rows.filter((r) => r.protSqDb !== null && r.protSqDb > 0).length;
   console.log(
     `protSq (controle, GEEN poort) gemiddeld: ${fmt(avg(measuredBefore.map((r) => r.protSqDb)))} dB² ` +
-      `vóór → ${fmt(avg(measuredAfter.map((r) => r.protSqDb)))} dB² ná; HUIDIG ` +
+      `vóór → ${fmt(avg(measuredAfter.map((r) => r.protSqDb)))} dB² ná; gepaard ` +
+      `${paired((r) => r.protSqDb, ' dB²')}; HUIDIG ` +
       `${fmt(huidig.protSqDb)} dB². Boven nul: ${live(measuredBefore)} van ${measuredBefore.length} ` +
       `vóór, ${live(measuredAfter)} van ${measuredAfter.length} ná; slechter dan HUIDIG: ` +
       `${worse(measuredBefore)} → ${worse(measuredAfter)}. ` +

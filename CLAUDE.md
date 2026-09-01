@@ -48,6 +48,18 @@
     referentie:** `threeWayChain` alléén kostte in diezelfde run 361 s tegen de 289 s van V43, dus
     wat er beweegt is de machine en niet de laag. Het overgeslagen BESTAND is nieuw en klopt: de
     verhuisde verwerpingsrun is een bestand dat volledig uit `[live]` bestaat.
+    **Ná de V47-nazorg (01-09-2026) gemeten op 276 s — 137 geslaagd + 1 overgeslagen bestand,
+    1510 tests + 2 overgeslagen** (+1 bestand, `engine2/corpusPairing.test.ts`, 7 claims).
+    **Twee dingen daarbij, en het tweede is een onopgeloste telling.** (i) 276 s is GEEN nieuwe
+    referentie: de V43-waarde van 289 s blijft staan, dit is dezelfde laag op dezelfde machine en
+    het verschil is ruis. (ii) Deze stand mínus dit ene bestand is 136 geslaagd + 1 overgeslagen
+    bestand en 1503 geslaagde tests — en dat is NIET wat de post-splitsingsregel hierboven noteert
+    (135 + 1, 1495). `find src -name '*.test.ts*'` telt op deze stand 138 bestanden en op de commit
+    ervoor 137, wat met de meting klopt en niet met die regel. Een splitsing voegt een bestand toe
+    en verplaatst tests; zij kan geen bestand en geen acht tests laten verdwijnen, dus één van de
+    twee tellingen is verkeerd overgenomen. **Niet blind rechtgezet:** welke van de twee valt
+    alleen te bepalen door de commit ervóór opnieuw te meten, en dat is een volle snelle run die
+    deze sessie niet gedaan heeft.
   - `npm test` / `npx vitest run` — **de volle run, en hij is VERPLICHT** bij elke wijziging aan
     het corpus en vóór elke commit die de zoektocht raakt. Precies dát is wat de twee live
     gevallen toetsen: dat de route nog steeds de bevroren netlist levert.
@@ -256,6 +268,22 @@
 - **De vóór/ná-tabel tussen twee corpora**: `npx vite-node scripts/compare-corpora.ts [vóór] [ná]` —
   seconden, geen ketenrun. Corpora: `v30`, `v32`, `v33sweep`, `v33`, `v34`, `v37`, `v38fix`,
   `v41`, `v42`, `v43`, `v44`, `v45`, `live`; default `v45 live`, wat de V47-tabel is.
+  **DE LEESREGEL, EN ZIJ GAAT VÓÓR ELKE KOLOM HIERONDER (sinds de V47-nazorg, 01-09-2026): EEN
+  CORPUSGEMIDDELDE IS GEEN DELTA.** De twee corpora bevatten niet dezelfde netlists — dat is juist
+  wat een gewapende eis DOET — dus het verschil tussen twee corpusgemiddelden draagt twee dingen
+  tegelijk: wat er met de overlevende ontwerpen gebeurde, en wie er vertrok. Daarom staat naast élk
+  corpusgemiddelde de GEPAARDE lezing: hetzelfde getal over uitsluitend de kandidaten die BEIDE
+  corpora dragen, met het aantal paren erbij en op twee decimalen (een gepaarde delta is klein, en
+  op één decimaal verdwijnt het verschil tussen "niets bewogen" en "iets de verkeerde kant op").
+  **Het corpusgemiddelde beschrijft het VELD, de gepaarde delta beschrijft de INGREEP, en alleen de
+  tweede mag als verbetering of verslechtering gelezen worden.** Gemeten aanleiding, beide
+  richtingen op dezelfde tabel: V45 → V47 las fase als winst (25,3° → 13,1°) terwijl gepaard
+  11,96° → 13,06°, en dissipatie als verlies (60,4 % → 62,2 %) terwijl gepaard 69,05 % → 62,23 %.
+  De scherpste vorm staat op twee GEDATEERDE corpora: `v30 v32` drukt 19,2 → 27,0 % dissipatie af
+  terwijl élke gepaarde delta daar exact NUL is — V32 veranderde geen enkel ontwerp en trok er
+  alleen drie in. De statistiek zelf woont in `casus1Corpora.fixture.ts` (één regel, twee lezers:
+  dit script en `corpusPairing.test.ts`), samen met de corpuskaart, het instellingenblok en de
+  afronding waarop de gemiddelden rusten.
   **SINDS V47 draagt hij twee kolommen erbij.** De eerste is een M-C-kolom — de aandrijving op de eigen resonantie van de SLECHTST
   beschermde weg, afgeleid uit de poortoordelen van het rapport en nooit op een wegnaam gezocht —
   met een corpusregel eronder die de gestelde grens ernaast zet en telt hoeveel netlists eroverheen
@@ -1474,6 +1502,26 @@ grotere ingreep — hij raakt élk commando in dit project — en is deze sessie
   de vervangen regel een integraal en is de eis een punt. Op het huidige veld is dat leeg (de
   controlekolom leest nul op alle vier de levende netlists), en zij staat er om de eerste netlist te
   vangen die M-C haalt met een tekort boven nul.
+
+### V47-nazorg-guards (een corpusgemiddelde is geen delta)
+- `src/lib/engine2/casus1Corpora.fixture.ts` + `corpusPairing.test.ts` — **de leesregel bij elke
+  vóór/ná-tabel, als test.** De corpuskaart, het instellingenblok waarmee beide helften gemeten
+  worden, de afronding waarop de gemiddelden rusten en de gepaarde statistiek stonden alle vier in
+  `compare-corpora.ts`; zolang die tabel de enige lezer was, was dat één implementatie. Zij wonen nu
+  in de fixture, met het script en de test als twee lezers (V21). Zeven claims. De dragende twee zijn
+  RICHTINGSCLAIMS en geen getallen: op V45 → levend leest het corpusgemiddelde van de W-M-fase als
+  winst terwijl de gepaarde delta verslechtert, en leest de dissipatie als verlies terwijl de
+  gepaarde delta verbetert — dezelfde twee corpora, dezelfde grootheden, tegengestelde conclusies.
+  De derde knoopt ze vast: omdat er niets is bijgekomen is het gepaarde ná-gemiddelde per
+  constructie hetzelfde getal als het corpusgemiddelde ná, dus het hele verschil zit in de
+  VÓÓR-helft. **De ankerproef is `V30 → V32` en zij is volledig gedateerd, dus onverouderbaar:**
+  V32 veranderde geen enkel ontwerp en trok er drie in, en daar is élke gepaarde delta EXACT nul
+  terwijl de corpusgemiddelden bijna acht procentpunten bewegen — het compositie-effect zonder één
+  bewegend netwerk eronder. Verder: een paar waarvan één helft niets meet telt aan géén van beide
+  kanten mee (nagemeten dat hij kán falen), en de marge waarmee vergeleken wordt is twee ordes
+  kleiner dan het verschil dat hij moet zien. **De V45 → levend-helft hoort bij de eerstvolgende
+  regeneratie HERANKERD te worden op het dan bevroren V47-corpus** — dezelfde herankering die V43 op
+  `v42_bult_bevinding` toepaste; een falende test is daar de bedoeling.
 
 ### V41-guards (wat de ontwerp- en synthesestap mochten bouwen)
 - `src/lib/engine2/optimizer/chainChoices.ts` — **een TWEEDE classificatielijst, en de smalheid is de
