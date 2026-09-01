@@ -29,10 +29,9 @@
   eruit ongezien fout. Verzamel in een ARRAY, dat kan de compiler wel volgen. (2) `tuned` naar `boolean`
   gecast terwijl het een TELLING is. Wie een script schrijft dat referentiegetallen wegschrijft, kijkt
   het geschreven blok nog steeds na — maar de typefout komt nu vooraf.
-- **TWEELAGENBELEID SINDS V43 — LEES DIT VOORDAT JE DE SUITE DRAAIT.** De volle run is
-  35–40 minuten en daarvan is ~99 % ÉÉN blok: de twee live ketenruns in
-  `casus1V2Candidates.test.ts` (bij V42 nagemeten op 1427 s + 653 s). Een suite die niemand
-  tijdens het werk draait beschermt niets, dus:
+- **TWEELAGENBELEID SINDS V43 — LEES DIT VOORDAT JE DE SUITE DRAAIT.** De volle run wordt
+  vrijwel geheel gedragen door de twee live ketenruns (bij V42 nagemeten op 1427 s + 653 s).
+  Een suite die niemand tijdens het werk draait beschermt niets, dus:
   - `npm run test:fast` — **de standaard tijdens ontwikkeling.** `vitest run -t '^(?!.*\[live\])'`,
     dus alles behalve wat de tag `[live]` draagt. **Gemeten 29-08-2026 (V43): 289 s (4 min 50),
     129 bestanden, 1425 tests en 2 overgeslagen** — tegen 3150 s voor de volle run. Wat er dan
@@ -41,7 +40,11 @@
     deze waarde is de REFERENTIE — overschrijf hem nooit met een belaste meting:** dezelfde run
     vlak na de vier uur durende regeneratie kostte 1348 s, viereneenhalf keer zo veel, zonder dat
     er iets aan de suite veranderd was. Bij V44 hetzelfde patroon en dus geen nieuwe referentie:
-    906 s, óók vlak na een regeneratie.
+    906 s, óók vlak na een regeneratie. **Ná de splitsing van 01-09-2026 gemeten op 361 s
+    (135 geslaagd + 1 overgeslagen bestand, 1495 tests + 2 overgeslagen) — en dat is GEEN nieuwe
+    referentie:** `threeWayChain` alléén kostte in diezelfde run 361 s tegen de 289 s van V43, dus
+    wat er beweegt is de machine en niet de laag. Het overgeslagen BESTAND is nieuw en klopt: de
+    verhuisde verwerpingsrun is een bestand dat volledig uit `[live]` bestaat.
   - `npm test` / `npx vitest run` — **de volle run, en hij is VERPLICHT** bij elke wijziging aan
     het corpus en vóór elke commit die de zoektocht raakt. Precies dát is wat de twee live
     gevallen toetsen: dat de route nog steeds de bevroren netlist levert.
@@ -57,18 +60,25 @@
     `frozenNetlistGates` en vier metriekbestanden): rekenwerk op vaste netwerken, zonder zoektocht,
     en dus portable. **CI bewaakt de natuurkunde, de lokale suite bewaakt de bytes.**
     `ciLayer.test.ts` bewaakt die taakverdeling zelf.
-    **Gemeten 31-08-2026 (V46), lokaal op arm64/Node 26: 134 bestanden, 1475 geslaagd,
-    9 overgeslagen, 286 s.** Die negen zijn precies 2 `[live]` + 8 `[bytes]` − 1 die beide tags
+    **Gemeten 01-09-2026 (ná de splitsing), lokaal op arm64/Node 26: 136 bestanden (135 geslaagd,
+    1 overgeslagen), 1488 geslaagd, 9 overgeslagen, 283 s.** (V46 mat 134 / 1475 / 9 / 286 s.)
+    Die negen zijn precies 2 `[live]` + 8 `[bytes]` − 1 die beide tags
     draagt; klopt dat aantal niet meer, dan is er een tag bij gekomen en hoort `ciLayer.test.ts`
-    daarover te zijn gevallen. Lokaal groen zegt overigens NIETS over CI — dat is de hele
+    daarover te zijn gevallen. **De splitsing veranderde dit aantal NIET** — de verwerpingsrun
+    droeg `[live]` al vóór de verhuizing — maar wel het aantal BESTANDEN: er is nu één bestand dat
+    volledig uit `[live]` bestaat en dus in zijn geheel overgeslagen wordt. Lokaal groen zegt overigens NIETS over CI — dat is de hele
     bevinding — en of de laag op ubuntu/Node 22 groen is, is wat de workflow zelf beantwoordt.
   **Geen test verdwijnt; alleen WANNEER en WAAR hij draait is beleid.** De tag zit op de testNAAM
-  en niet op het bestand — `casus1V2Candidates.test.ts` draagt ook elf goedkope claims en die blijven in
-  de snelle laag. Twee valkuilen, allebei in de sessie die de tag invoerde tegengekomen: (1) het
-  filter matcht de VOLLEDIGE testnaam, dus een blok dat het woord in zijn eigen titel noemt
+  en niet op het bestand — `casus1V2Candidates.test.ts` draagt ook dertien goedkope claims en die
+  blijven in de snelle laag. Twee valkuilen, allebei in de sessie die de tag invoerde tegengekomen:
+  (1) het filter matcht de VOLLEDIGE testnaam, dus een blok dat het woord in zijn eigen titel noemt
   filtert zichzelf weg — de bewaker heet daarom `the live-run tag is …` en niet `[live] …`;
   (2) een tag die stilletjes groeit maakt de snelle laag waardeloos, dus
-  `casus1V2Candidates.test.ts` bewaakt met een bronscan dat er precies ÉÉN getagd blok bestaat.
+  `casus1V2Candidates.test.ts` bewaakt met een bronscan dat er precies TWEE getagde blokken
+  bestaan, met naam — één sinds de splitsing van 01-09-2026 twee werd, en `ciLayer.test.ts`
+  bewaakt dezelfde inventaris van de andere kant. **Sinds die splitsing is het ENE bestand dat
+  volledig uit `[live]` bestaat (`casus1V2Refusal.test.ts`) in de snelle laag een OVERGESLAGEN
+  bestand; dat is geen verdwenen test maar hetzelfde beleid, één bestand verderop.**
 - **A5e.4-PRECISERING (V46): BYTE-IDENTIEK GELDT PER (MACHINE, RUNTIME).** A5e.4 belooft dat twee
   runs met dezelfde seed byte-identiek zijn. Dat blijft staan en het is niet geschonden — maar het
   geldt binnen één machine en één runtime, en dat stond nergens. **Gemeten bij V46, op dezelfde
@@ -86,9 +96,29 @@
   zelf vast (`opgenomen_op` in `f4b2_v2_baseline.json`, `f4b2_v2_worker_baseline.json` en
   `casus1_v2_herkomst.json`, dat laatste geschreven door de generator), precies zoals V15 eist dat
   een referentie haar parameters vastlegt.
-- `npx vitest run` — volledige testsuite. **GEMETEN 31-08-2026 (V47, ná de regeneratie):
+- **DE TWEE LIVE KETENRUNS DRAAIEN SINDS 01-09-2026 NAAST ELKAAR, EN DAT IS EEN SPLITSING VAN
+  BESTANDEN EN NIET VAN TESTS.** `handleV2Request` is SYNCHROON: twee live ketenruns in één
+  bestand blokkeren dezelfde event loop en draaien dus achter elkaar, op een machine met achttien
+  kernen net zo goed als op één. Vitest parallelliseert over BESTANDEN. De verwerpingsrun is
+  daarom, ongewijzigd, verhuisd naar `src/lib/engine2/casus1V2Refusal.test.ts`; beide describes
+  dragen `[live]`, en `ciLayer.test.ts` plus de tagbewaker in `casus1V2Candidates.test.ts` leggen
+  vast dat het er precies TWEE zijn, met naam. **Vóór/ná op één leeg systeem, 01-09-2026:
+  1761,09 s (29 min 23) → 1254,43 s (20 min 55), dus 506 s eraf (−29 %).**
+  **De winst is kleiner dan het verschil tussen de twee runs, en dat is de eerlijke helft van de
+  meting:** naast elkaar draaien kost élke run tijd. De byte-run ging van 1119,6 naar 1244,3 s
+  (+11 %), de verwerpingsrun van 637,7 naar 924,2 s (+45 %), en `threeWayChain` — dat er
+  onveranderd naast staat — van 285,8 naar 517,4 s. De totale CPU-tijd steeg van 3615 naar
+  4306 s. Wandkloktijd is dus gekocht met rekentijd; een voorspelling op `max(1120, 638)` ≈ 950 s
+  was te optimistisch en de gemeten 1254 s is wat er staat.
+- `npx vitest run` — volledige testsuite. **GEMETEN 01-09-2026 (ná de splitsing hierboven):
+  136 bestanden, 1497 tests, 1254 s (21 min), niets overgeslagen.** Het extra bestand is de
+  verhuisde verwerpingsrun; de extra test is de live-inventaris in `ciLayer.test.ts`. De
+  V47-meting eronder is de "vóór"-helft van die vergelijking en blijft staan.
+  **GEMETEN 31-08-2026 (V47, ná de regeneratie):
   135 bestanden, 1496 tests, 1540 s (26 min), niets overgeslagen — en dit cijfer IS bruikbaar,
-  anders dan de V45-meting eronder.** De waarschuwing daar ("meet op een leeg systeem") gold omdat
+  anders dan de V45-meting eronder.** (Dezelfde stand op 01-09-2026 op een leeg systeem
+  nagemeten: 1761 s. Het cijfer beweegt met de machine en niet met de suite; de vóór/ná van de
+  splitsing hierboven is daarom in ÉÉN sessie en op ÉÉN systeem gemeten.) De waarschuwing daar ("meet op een leeg systeem") gold omdat
   de regeneratie zes uur lang élke andere meting vertraagde; sinds V47 duurt zij 27 minuten en is
   de machine daarna gewoon leeg. Dat de volle run nu ongeveer kost wat de SNELLE laag bij V43
   kostte, komt van het CORPUS: het levende veld ging van zeven netlists naar vier en de twee live
@@ -124,7 +154,13 @@
   gedraaid** (V38-fix: 401 s), waarvan 1552 s voor de bevroren netlist en 1046 s voor de
   verwerping. **Nagemeten bij V44 in de volle run: 1969 s van de 1973** (V43: 3146 van 3150) —
   dit ene bestand IS de volle wandkloktijd en al het andere draait ernaast in de schaduw. Dat cijfer is de meting
-  waarop het tweelagenbeleid hierboven rust. Alles daaromheen is nauwelijks bewogen. **Gevolg voor de per-bestand-cijfers
+  waarop het tweelagenbeleid hierboven rust. Alles daaromheen is nauwelijks bewogen.
+  **SINDS 01-09-2026 ZIJN HET TWEE BESTANDEN, en dat verandert deze alinea op één punt: er is geen
+  ENKEL bestand meer dat de wandkloktijd IS.** De twee live runs draaien naast elkaar (1244,3 s en
+  924,2 s in de volle run van 01-09-2026, bij een wandklok van 1254,4 s), dus de langste van de
+  twee zet de wandkloktijd en de andere staat ernaast. Wat NIET verandert: samen zijn zij nog
+  steeds vrijwel de hele suite, en de volle run blijft verplicht vóór elke commit die de zoektocht
+  raakt. **Gevolg voor de per-bestand-cijfers
   hieronder: zij zijn in een volle parallelle run niet meer bruikbaar** — één bestand houdt ruim
   een uur een worker bezet, dus elk ander bestand rapporteert vooral wachttijd (`frozenNetlistGates`
   meldt 17 min in de volle run en kost er 106 alleen gedraaid). Meet een bestand dus APART wanneer
@@ -496,10 +532,21 @@ grotere ingreep — hij raakt élk commando in dit project — en is deze sessie
   tag daar zou CI leegmaken terwijl de deploy groen blijft, de stilste manier waarop dit ongedaan
   gaat. (3) De byte-inventaris is precies vijf bronnamen (acht gedraaide tests: drie zijn
   `it.each` over twee zaden), voluit opgeschreven zodat wie er een tagt hier langskomt en moet
-  opschrijven wat hij uit CI haalt. (4) De scan loopt echt — zonder die tegenproef is "niets
+  opschrijven wat hij uit CI haalt. (4) **SINDS 01-09-2026 een LIVE-inventaris ernaast, in dezelfde
+  vorm en om dezelfde reden: precies TWEE blokken, met naam.** De splitsing van de twee live
+  ketenruns bracht het tagtal van één naar twee, en precies zo'n verhoging is wat stil kan
+  doorgroeien. (5) De scan loopt echt — zonder die tegenproef is "niets
   gevonden" niet te onderscheiden van "niet gekeken". De tagnamen worden op runtime samengesteld,
   zodat dit bestand zichzelf niet matcht én zichzelf niet uit de CI-laag filtert (`-t` matcht de
-  VOLLEDIGE testnaam).
+  VOLLEDIGE testnaam). **Het aantal overgeslagen tests in `test:ci` verandert door de splitsing
+  NIET** — de verwerpingsrun droeg `[live]` al vóór de verhuizing, dus de vereniging van beide
+  tags blijft negen gedraaide tests.
+- `src/lib/engine2/casus1V2Refusal.test.ts` — **de tweede live ketenrun, sinds 01-09-2026 een
+  eigen bestand.** Inhoudelijk ongewijzigd: het is de V31/V33-claim dat een kandidaat die een
+  wholesale-regel weigert als VERWERPING terugkomt en dat er nergens in het resultaat een
+  onderdelenlijst overleeft. De verhuizing is planning en geen herindeling — zie de meting bij
+  `npx vitest run` hierboven — en zij is de enige reden dat het bestand bestaat; wie de twee ooit
+  weer samenvoegt zet de suite terug op negenentwintig minuten.
 - `src/lib/engine2/p6Lint.test.ts` — P6 als test, niet als reviewregel: elk numeriek
   literal ≥ 20 in `src/lib/engine2/` moet in `constants.ts` staan (met een `@p6`-tag uit
   een gesloten set) of een `P6-OK`-markering op zijn regel dragen. Plus: geen constante
@@ -1506,7 +1553,10 @@ spreiding komt van de machine en niet van de code** (V42:
 1427 + 653 s; V41: 1552 + 1046 s; V38-fix: 260 + 139 s; V37: 158 + 158 s). De ~41 s die hier tot V37 stond dateert van vóór V33: sinds de
 barrière het veiligheidsraster leest kost élke live casus-1-run het viervoudige, en sinds V41 het
 zesvoudige daarvan — de synthesestap koopt correctienetwerken, dus er zijn veel meer vrije waarden
-te tunen. **Dit ene bestand is nu het leeuwendeel van de suite.**
+te tunen. **Deze twee runs zijn samen het leeuwendeel van de suite** — en zij staan sinds
+01-09-2026 in twee bestanden (`casus1V2Candidates.test.ts` houdt de byte-reproductie,
+`casus1V2Refusal.test.ts` de verwerping), zodat zij naast elkaar draaien in plaats van na elkaar.
+Gemeten in de volle run van 01-09-2026: 1244,3 s en 924,2 s, bij een wandklok van 1254,4 s.
 
 **Sinds V47 zijn het er VEERTIEN corpora, en dat is opzet.** `KAND_V2_*` is het levende corpus.
 `V28_KAND_*` is bevroren vóór de vloer een ZOEKDOEL was (V30); `V30_KAND_*` toen de poort nog blind

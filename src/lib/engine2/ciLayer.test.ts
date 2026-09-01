@@ -152,6 +152,20 @@ describe('V45 — de CI-laag bewaakt de natuurkunde, de lokale suite de bytes', 
     ]);
   });
 
+  it('de live-inventaris is precies deze TWEE blokken', () => {
+    /* Sinds 01-09-2026 zijn de twee live ketenruns twee BESTANDEN: `[live]` is
+     * planning, en een synchrone `handleV2Request` laat twee van hen binnen één
+     * bestand niet naast elkaar draaien. De splitsing verandert dus WAAR zij
+     * draaien en niet OF — maar zij verhoogt het tagtal van één naar twee, en
+     * precies zo'n verhoging is wat deze inventaris zichtbaar moet houden. Wie
+     * er een derde bij tagt komt hier langs en schrijft op wat hij uit de
+     * snelle laag én uit CI haalt. */
+    expect(taggedNames(LIVE_TAG)).toEqual([
+      `${LIVE_TAG} a wholesale refusal comes back as a refusal`,
+      `${LIVE_TAG} the run still delivers the frozen netlist`,
+    ]);
+  });
+
   it('en de scan loopt echt — een lege scan is anders eeuwig groen', () => {
     /* Dezelfde tegenproef als in `noAppWideFloor.test.ts`, en om dezelfde
      * reden: zonder haar is "niets gevonden" niet te onderscheiden van "niet
