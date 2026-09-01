@@ -3391,6 +3391,209 @@ Configuratie: 3-weg; 2× SB WO24TX-8 parallel, MR13TX-4 in bolpod, T25T-6 in WG1
 
   **DE LCR-/PARALLEL-R-VRAAG, GEACTUALISEERD OP WAT ER NÁ DEZE POORT NOG GEWEIGERD WORDT.** Elf van de vijftien kandidaten leveren niets, en de redenen zijn nu leesbaar per kandidaat. Drie ervan missen de eis met minder dan 2,5 dB (−23,5 / −23,4 / −22,6) en drie struikelen (ook) over de versterkervloer. De vraag is daarmee scherper dan bij V43: **de zoektocht heeft op de lage kruisingen geen gereedschap om de tweeter onder de eis te krijgen zonder de belasting of de vlakheid op te offeren.** En de dekkingsmeting hierboven zegt waaróm dat gereedschap ontbreekt: de enige knop die de zoektocht heeft is de serie-C verkleinen, en die verlaagt de aandrijving op f_s door het KRUISPUNT op te schuiven — wat op de lage kruisingen precies is wat de kandidaat definieert. Een LCR over de driver verlaagt de PIEK zelf en ontkoppelt die twee. Een LCR over de driver op zijn resonantie verlaagt de PIEK zelf en zou precies daar ruimte maken; een serie-C verkleinen is wat de zoektocht nu al probeert en het botst op de vloer. Openstaand blijft verder: de twee posten uit V41 (`audit.fbHz`, het grijze `costWeight`); of `qesMultiplierMax` per weg hoort te bestaan in plaats van alleen op de laagste (V45); groundplane-metingen onder het onderste kruisgebied vóór onderdelenbestelling; HD-sweep; 30°-meting tweeter voor M-G-compleetheid.
 
+### UI-1 — de shortlist is de bron van de Working-tab (01-09-2026)
+
+**AANLEIDING.** Sander draaide op de live site (`fb8f211`) een v2-run op casus 1 met gestelde eisen:
+4 van de 9 kandidaten haalden de shortlist, de bovenste op 0,49 dB RMS. En de Working-tab was
+**leeg** — *"No generator — add a source element. No drivers — nothing to listen to."* Erboven een
+groene regel: *"Design ready — the winner is loaded in the Working tab"*. De grafieken toonden de
+ongefilterde drivers gesommeerd (±16 dB, fase P95 175°) en vier statusbadges beoordeelden die som
+alsof het een ontwerp was. Klikken op een shortlist-rij deed niets.
+
+**HET MECHANISME, en het is opgebouwd uit drie stappen die elk apart verdedigbaar zijn.**
+
+1. **De v1-ranglijst kent geen enkel v2-oordeel.** `rankChain3Results` weegt vlakheid, fase, prijs
+   en belasting. Zij weet niets van een poort, niets van een eis en niets van een wholesale-
+   weigering. Op de v2-route kon zij dus een kandidaat kronen die v2 had weggegooid — en dat deed
+   zij: Sanders "winner" op 396,7/1294 Hz met Z min 0,8 Ω is een kandidaat die de veiligheidspoort
+   in zijn geheel geweigerd had.
+2. **Een geweigerde kandidaat draagt geen onderdelen.** V31 wist `parts` én `net.parts` voordat het
+   resultaat de worker verlaat — met opzet, zodat niemand een zaad dat niemand beoordeeld heeft als
+   netlist kan serialiseren. Wat V31 níét wist is `net.after`: die cijfers beschrijven het netwerk
+   dat geweigerd is en zijn het verslag erover. Vandaar de 0,8 Ω in de regel: een echte meting aan
+   een netwerk dat niet bestaat.
+3. **Dus landde er een lege onderdelenlijst in de Working-tab.** `setWorkingDesign([])` zet
+   `networkActive` er onvoorwaardelijk achter, en daarmee stond de app in een toestand waar zij geen
+   woord voor had: een actief ontwerp zonder onderdelen. De editor meldde "No generator", de
+   grafieken sommeerden de kale drivers, en de badges gaven die som een cijfer.
+
+Elk van de drie stappen is voor zich correct. Samen leveren zij een groene regel die liegt.
+
+**DE BEVINDING DIE ERONDER LIGT: DE UI-LAAG NA `handleV2Request` LAG BUITEN ELKE TEST.** De
+workerroute heeft `workerRouteRegression`, de shortlist heeft `shortlist.test.ts`, de weigering
+heeft `wholesaleRejection.test.ts` én sinds V31 een eigen live ketenrun. Wat de app vervolgens
+mét die shortlist deed was vanaf de eerste v2-oplevering tot nu ongetest — en het was al die tijd
+fout. Nagegaan en niet aangenomen: geen enkel testbestand noemt `workingDesign`, `WORKING_ID` of
+`applyScanCandidate`.
+
+**WAT ER GEBOUWD IS: ÉÉN FUNCTIE, IN DE V32-VORM.** `optimizer/selection.ts` —
+`selectFromShortlist(shortlist, label?)` levert óf een ontwerp óf een getypeerde reden waarom er
+geen is (`no-run` / `nothing-feasible` / `refused` / `unknown-label` / `empty-network`). De regel is
+daarmee een WAARDE in plaats van een reeks `setState`-aanroepen binnen een bestand van achttienduizend
+regels, en `selection.test.ts` (8 claims) leest hem zonder browser. `App.tsx` past het antwoord toe
+via exact dezelfde `applyScanCandidate` die de scan-tabel altijd al gebruikte — zelfde velden,
+zelfde volgorde — zodat een shortlist-rij en een scan-rij niet verschillend kunnen landen.
+
+De vijfde reden, `empty-network`, is de wacht op het mechanisme zelf. Zij hoort onbereikbaar te
+zijn (een weigering wordt nooit een rij) en staat er omdat een lege lijst die de Working-tab
+bereikt precies dit incident is; haar zin zegt dan ook dat het een bugmelding is en geen
+ontwerpbesluit.
+
+**DE CLAIM DIE ER HET MEEST TOE DOET is niet "er wordt niets geladen".** Het defect was niet dat er
+niets laadde — het was dat er iets ánders laadde. De zin bij een lege shortlist sluit de
+v1-ranglijst daarom bij naam uit, want "0 van 9 gekwalificeerd" en "hier is de v1-winnaar" stonden
+tegelijk op het scherm en waren allebei waar.
+
+---
+
+**STAP 0 — DE DEMODATA OP DE SITE TEGEN `test-fixtures/casus1`. HET IS EEN ANDER BESTAND, ÉN DE
+AFLEIDING LIET DE HEADER VALLEN.**
+
+Per bestand gehasht, header gelezen en de kromme herbemonsterd naast de fixture gelegd:
+
+| bestand | n | vensterheader | grootste \|ΔdB\| tegen casus 1 |
+| --- | --- | --- | --- |
+| `mid-hor0.txt` | 500 | 5,021 / 2,5 → T 2,521 ms | **0,001** |
+| `tweeter-hor0.txt` | 500 | 5,021 / 2,5 → T 2,521 ms | **0,001** |
+| `woofer-pair-hor0.frd` | 500 | **geen** | 0,002 tegen `woofer_up ⊕ woofer_down` (complex) |
+
+De demobundel **is** casus 1, herbemonsterd op een 500-punts logaritmisch raster. De mid en de
+tweeter zijn de fixturebestanden tot op een duizendste dB. Het wooferbestand is de complexe SOM van
+`woofer_up_hor_0` en `woofer_down_hor_0` — een legitieme afleiding, want de app tekent één
+wooferweg — en **die afleiding schreef de ARTA-vensterregels weg**. Wat ervoor in de plaats kwam is
+een prozaregel: `* bron: ARTA gated 5.021 ms, ref time 2.5 ms`.
+
+**Twee parsers, één bestand, twee antwoorden.** `xoWindow.gateHeaderOf` (v1) accepteert de vorm
+`ARTA gated 5.021 ms` en leest 5,021. `ingest/manifest.parseArtaHeader` (engine2) matcht op
+VELDNAAM (`Naam = waarde`) en leest niets — en engine2 heeft bovendien de referentietijd nodig,
+want de geldigheidsvloer is `1/T` met `T = rechter venster − referentietijd`. De v1-laag zag dus
+een venster waar de v2-laag er geen zag.
+
+**Wat dat kostte, gemeten in beide armen op dezelfde bundel:**
+
+| | anker | wisselwaarschuwing | verdachte band |
+| --- | --- | --- | --- |
+| header weg (de site op 01-09) | **low** | nee | low |
+| header hersteld | **mid** | ja | geen |
+
+Dat is exact de inversie die `manualWindowAndLobing.test.ts` sinds F3b beschrijft, nu op de
+demobundel in het echt. `mid` is ook het anker van de fixture (`goldenCasus1.test.ts` assert de
+wisselwaarschuwing).
+
+**DE REPARATIE IS DE DATA EN NIET DE PARSER.** De twee headerregels staan teruggezet op alle vijf
+de afgeleide wooferbestanden, met in het bestand zelf waaróm: beide bronbestanden dragen ze
+woordelijk, en een complexe som van twee gelijk gepoortte responsen heeft die poort. **De parser
+blijft zoals hij is.** Hem proza laten lezen zou betekenen dat een willekeurige commentaarregel een
+geldigheidsvloer kan zetten, en die vloer is A5b.1(i): hard, automatisch, bindend.
+
+**EN DE KANTTEKENING IS EEN BLOKKADE GEWORDEN.** F3b's `suspectBands` drukte een waarschuwing af
+BOVEN een verder compleet blok — anker, gap per weg, drie verzwakkingsbudgetten. Deze bundel bewijst
+dat dat niet genoeg is: er stond een waarschuwing én er stond een anker, en dat anker was het
+verkeerde. `anchoredGaps` weigert sinds UI-1 te rekenen zodra één niveau op een band rust zonder
+afgeleide poortvloer, en `report.predesign.gapsBlocked` draagt de reden. **Op ÉLKE weg en niet
+alleen op de weg die het anker zou worden**: het anker is per definitie de STILSTE weg, dus je weet
+pas welke weg de rol draagt als je elk niveau gelooft, en een niet-anker met onbekende vloer
+overdrijft zijn eigen gap en zijn eigen budget. De uitweg is een INVOER en geen schakelaar: de
+header van het bestand, of de venstertijden in het A5a-formulier. Er is geen "reken toch"-knop.
+
+De F3b-test is meeverhuisd en de inversie wordt er nog stééds gemeten — niet vervangen door "er
+werd geweigerd", maar herberekend uit de eigen ongevloerde niveaus van het rapport, want anders is
+de weigering een bewering die niemand kan narekenen.
+
+---
+
+**WAT ER VERDER GEREPAREERD IS, en het zijn allemaal varianten van één regel: een cijfer zonder
+onderwerp is geen oordeel (F0).**
+
+- **`not judged` is een eigen poortstatus.** Een poort met gestelde grens en een waarde van `null`
+  is `active: true, pass: true` — met opzet, want "we konden niet kijken" mag niet als "hij faalde"
+  gerapporteerd worden (`gates.ts`). De statuscel las die `pass` en drukte **`inside`** af: de
+  sterkst mogelijke lezing van het zwakst mogelijke bewijs. De data was al eerlijk (`value: null`,
+  `reason` begint met "not evaluated"); alleen de cel klapte drie toestanden tot twee. Live
+  nagemeten: M-B/EPDR met grens 2,00 Ω en geen netwerk leest nu `not judged`.
+- **Het v2-paneel zegt WAAR het over oordeelt.** Zonder netwerk stond er een volledige pagina
+  tabellen die als een verdict over een ontwerp leest en dat over niets was. Het rapport draagt
+  daarvoor sinds UI-1 `subject.network` — de naam van de netlist waarop het gebouwd is, of `null`.
+  Een paneel dat leegte uit een patroon van afwezige rijen moet afleiden, is de app die haar eigen
+  invoer zit te reconstrueren.
+- **De voettekst noemde vier A5e-besluiten "parked" en drie ervan zijn genomen** — aggregatie bij
+  F3, de doelcurve bij F3 en gesloten bij V45, determinisme bij F2. Er staat nu alleen nog wat
+  werkelijk open is: het catalogusschema (A5e.3).
+- **De v1-tabel blijft staan en is gedegradeerd.** Op de v2-route onder de kop *"v1 reading — not
+  the route that made this run"*, zonder 🏆 en zonder ✗. Die ✗ kwam van de v1-bronweerstandsregel
+  die de v2-route bij V34 heeft ingetrokken, en zij markeerde als mislukking precies de ontwerpen
+  die de shortlist erboven goedkeurde. De REDEN blijft leesbaar in de tooltip, als
+  *"v1 note (not applied on this route)"* — het oordeel is ingetrokken, de waarneming niet.
+- **De Pareto-plot en een kostenkolom lezen de shortlist.** "Cost vs quality — the knee is yours to
+  pick" is een plaatje van een KEUZE, en op de v2-route is de keuze de shortlist; hij tekende het
+  hele v1-veld, dus de goedkoopste knik was geregeld een ontwerp dat de run al had weggegooid.
+  Dezelfde rijenbouwer (`chain3ScanRow`), zodat een punt en een rij niet twee prijzen voor één
+  ontwerp kunnen afdrukken. De shortlist kreeg bij dezelfde gelegenheid een BOM-kolom: de énige
+  lijst waaruit een ontwerper kiest, was de énige lijst zonder prijs erin.
+- **De verwerpingen staan voor het eerst op het scherm.** `shortlist.rejected` bestaat sinds V31 en
+  niets renderde het ooit — wat de tweede reden is dat de lege Working-tab onverklaarbaar was: de
+  kandidaat die de v1-tabel kroonde was er één van, en dit was de enige plek die dat wist.
+  Zichtbaar met de weigerende regel, en met opzet niet klikbaar.
+- **De lege toestand heeft een eigen zin gekregen.** `emptyNetworkLoaded` — actief ontwerp, nul
+  onderdelen — staat naast `designShaped` in plaats van erin, omdat de twee lege toestanden andere
+  zinnen zijn voor een lezer: "je hebt nog geen ontwerp gemaakt" en "er is een ontwerp geladen en er
+  zit niets in". De eerste is waar iedereen begint; de tweede is een bug of een lege shortlist.
+
+---
+
+**A5e.2 HAD GEEN VELD. Sander zocht het en het was er niet.**
+
+V45 gaf de engine `bass-plateau`, liet de doelcurve óók de zoektocht sturen en sloot A5e.2 erop. Wat
+V45 niet deed was iemand een manier geven om er een te STELLEN: de app las `activeDesign.targetCurve`
+op vier plaatsen en schreef hem nergens, het opslagtype in `project.ts` kende de vorm niet, en het
+paneel drukte "Target curve: flat" af als een feit over elke run ooit gemaakt. Drie gaten, alle drie
+stil.
+
+Er staat nu een besturing onder de kop *"Engine v2 — voicing (A5e.2)"*, en de tweedeling van A5e.2
+is in de UI terug te zien: **de DIEPTE wordt gesteld** (een besluit over waar deze luidspreker komt
+te staan; geen meting levert hem) en **de OVERGANG wordt gemeten** — de baffle step van de kastbreedte,
+afgeleid bij het LEZEN en nergens opgeslagen. Een opgeslagen overgang zou een meting in een ontwerp
+bevriezen en verouderen zodra de breedte gecorrigeerd wordt, onzichtbaar. Live nagemeten op de
+demokast: 260 mm → **442 Hz**, en met een gestelde 2,5 dB leest de regel
+*"bass-plateau — 2.5 dB below the flat part under a transition centred on the measured baffle step
+at 442 Hz"*. Zonder diepte leest zij dat er niets tegen beoordeeld wordt (P4).
+
+Twee dingen die daarbij bovenkwamen en gerepareerd zijn. **`saveActiveDesign` nam de voicing niet
+mee**, dus elke bewaarde kopie zou stil vlak zijn geweest — precies de vergelijking die A5e.2
+gemakkelijk moest maken, stil onmogelijk. En **`shortlist.ts` droeg een tweede implementatie van
+"is deze curve bruikbaar"** (`isImplementedCurve = c.type === 'flat'`), waar tot V45 niets mis mee
+was en die sinds V45 een werkende plateau-curve als onbeoordeelbaar rapporteerde — op de lijst
+waarvan venster en RMS er zojuist tegen geoordeeld wáren. Zij vraagt het nu aan de functie die de
+woordenschat bezit.
+
+De run-noten openen sinds UI-1 met de voicing (`describeTargetCurve`). Zij is de meest ingrijpende
+instelling van een run die nergens een spoor in een getal achterlaat: twee runs die alleen daarin
+verschillen zien er overal identiek uit behalve in het stempel.
+
+---
+
+**WAT ER NIET GEBOUWD IS.** Niets aan de zoektocht, de shortlist-selectie, de poorten of het corpus.
+Geen nieuwe drempel: de lobing-kolom is rapportage, `protSqDb`-stijl. Geen regeneratie. Op de
+v1-route verandert niets — `selectFromShortlist` wordt daar niet aangeroepen en de commit-tak is
+letterlijk de oude; `toggleRegression.test.ts` blijft groen.
+
+**ÉÉN WIJZIGING GELDT WÉL IN BEIDE MODI, en dat is een besluit en geen slordigheid.**
+`emptyNetworkLoaded` — actief ontwerp, nul onderdelen — zet `designShaped` uit ongeacht de toggle,
+dus een lege ontwerptab scoort ook op de v1-route niet meer. Op de v1-route is die toestand
+nauwelijks bereikbaar (er is geen wholesale-weigering die een onderdelenlijst leegt), maar F0 geldt
+daar even hard: een cijfer over een leeg netwerk is geen oordeel, of de vlag nu aan of uit staat.
+De toggle-invariant raakt het niet — die gaat over de v1-RANGLIJST en de geleverde netlist, en die
+zijn letterlijk ongewijzigd.
+
+**WAT ER GEMETEN IS EN NIET AANGENOMEN.** De demobundel tegen de fixture (hash, header, kromme). De
+ankerinversie in beide armen. `not judged` in de draaiende app. De baffle step in de draaiende app.
+Dat geen enkele test de Working-tab dekte.
+
+**OPENSTAAND.** De lobing-kolom bouwt één rapport per shortlist-rij op de hoofdthread — meetbaar,
+niet gemeten, en pas de moeite waard als een shortlist ooit veel langer wordt dan tien. En `tilt` /
+`hold-current` blijven ongebouwd (A5e.2); de besturing biedt ze niet aan, wat beter is dan ze
+aanbieden en weigeren.
+
 ## Casus S1 — synthetische grondwaarheid voor de R_e-schatter (F3b, 26-08-2026)
 
 *De eerste casus in dit boek die geen luidspreker is. A7 noemt synthetische grondwaarheid als

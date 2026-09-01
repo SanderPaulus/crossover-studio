@@ -40,7 +40,10 @@
     deze waarde is de REFERENTIE — overschrijf hem nooit met een belaste meting:** dezelfde run
     vlak na de vier uur durende regeneratie kostte 1348 s, viereneenhalf keer zo veel, zonder dat
     er iets aan de suite veranderd was. Bij V44 hetzelfde patroon en dus geen nieuwe referentie:
-    906 s, óók vlak na een regeneratie. **Ná de splitsing van 01-09-2026 gemeten op 361 s
+    906 s, óók vlak na een regeneratie. **Ná UI-1 (01-09-2026) gemeten op 289 s — 136 geslaagd
+    + 1 overgeslagen bestand, 1503 tests + 2 overgeslagen** (+1 bestand,
+    `optimizer/selection.test.ts`, 8 claims). Dat is exact de V43-referentie op dezelfde machine,
+    dus de laag is niet duurder geworden. **Ná de splitsing van 01-09-2026 gemeten op 361 s
     (135 geslaagd + 1 overgeslagen bestand, 1495 tests + 2 overgeslagen) — en dat is GEEN nieuwe
     referentie:** `threeWayChain` alléén kostte in diezelfde run 361 s tegen de 289 s van V43, dus
     wat er beweegt is de machine en niet de laag. Het overgeslagen BESTAND is nieuw en klopt: de
@@ -1364,6 +1367,80 @@ grotere ingreep — hij raakt élk commando in dit project — en is deze sessie
   er alleen bij komen", en zij is fout op elke netlist met een shunt. De assert is vervangen door
   wat er werkelijk gemeten is, met beide uitersten bij NAAM, zodat elke richting met de hand tegen
   één rij te controleren is in plaats van als aggregaat geloofd te moeten worden.
+
+### UI-1-guards (wat de Working-tab toont na een v2-run)
+- `src/lib/engine2/optimizer/selection.ts` + `selection.test.ts` — **de UI-laag ná
+  `handleV2Request` lag tot 01-09-2026 buiten ELKE test, en zij deed al die tijd het verkeerde.**
+  De workerroute heeft `workerRouteRegression`, de shortlist heeft `shortlist.test.ts`, de
+  weigering heeft `wholesaleRejection.test.ts` plus een eigen live ketenrun — en wat de app
+  vervolgens mét de shortlist deed was ongedekt. Nagegaan en niet aangenomen: geen enkel
+  testbestand noemde `workingDesign`, `WORKING_ID` of `applyScanCandidate`. Wat het deed was
+  `rankChain3Results(results)[0]` in de Working-tab zetten: de V1-RANGLIJST, die geen poort, geen
+  eis en geen wholesale-weigering kent, dus zij kroonde een kandidaat die v2 had weggegooid — en
+  V31 wist de onderdelen van zo'n kandidaat (`parts` én `net.parts`) voordat het resultaat de
+  worker verlaat. `setWorkingDesign([])` zette `networkActive` er onvoorwaardelijk achter. Gevolg
+  op de live site: "No generator — add a source element" in de Working-tab, de kale drivers
+  gesommeerd in élke grafiek, vier badges die die som een cijfer gaven, en één groene regel
+  "Design ready — the winner is loaded in the Working tab". **`net.after` overleeft de weigering
+  wél** (die cijfers beschrijven het geweigerde netwerk), en daar komt de "Z min 0,8 Ω" in Sanders
+  melding vandaan: een echte meting aan een netwerk dat niet bestaat.
+  De regel is nu een WAARDE en geen reeks `setState`-aanroepen — de V32-vorm:
+  `selectFromShortlist(shortlist, label?)` levert óf een ontwerp óf een getypeerde reden
+  (`no-run` / `nothing-feasible` / `refused` / `unknown-label` / `empty-network`), en `App.tsx`
+  past het antwoord toe via dezelfde `applyScanCandidate` die de scan-tabel al gebruikte. Acht
+  claims, gebouwd op ECHTE shortlists uit `buildShortlist`. **De claim die er het meest toe doet
+  is niet "er wordt niets geladen"** — het defect was dat er iets ánders laadde — dus de zin bij
+  een lege shortlist sluit de v1-ranglijst bij NAAM uit, en de test assert die zin. Nagemeten dat
+  hij kán falen: `rows.find(...) ?? rows[0]` (de stille terugval) zet hem op rood.
+  De vijfde reden `empty-network` hoort onbereikbaar te zijn en staat er omdat een lege
+  onderdelenlijst die de Working-tab bereikt exact dit incident IS.
+- **`anchoredGaps` WEIGERT sinds UI-1 te rekenen als een niveau op een onbekende vensterband rust.**
+  F3b's `suspectBands` drukte een kanttekening af BOVEN een verder compleet blok — anker, gap per
+  weg, drie verzwakkingsbudgetten — en de demobundel bewees dat dat niet genoeg is: er stond een
+  waarschuwing én er stond een anker, en dat anker was het verkeerde (`low` in plaats van `mid`).
+  `report.predesign.gapsBlocked` draagt de reden. **Op ÉLKE weg en niet alleen op de weg die het
+  anker zou worden:** het anker is per definitie de STILSTE weg, dus je weet pas welke weg de rol
+  draagt als je élk niveau gelooft, en een niet-anker met onbekende vloer overdrijft zijn eigen gap
+  en zijn eigen budget. De uitweg is een INVOER (de header van het bestand, of de venstertijden in
+  het A5a-formulier) en er is met opzet geen "reken toch"-knop. `manualWindowAndLobing.test.ts`
+  meet de inversie nog stééds — herberekend uit de eigen ongevloerde niveaus van het rapport, want
+  "er werd geweigerd" is een bewering die niemand kan narekenen.
+- **De demobundel op de site IS casus 1, en de wooferbestanden waren hun ARTA-header kwijt.**
+  Gemeten per bestand (hash, header, kromme): `mid-hor0.txt` en `tweeter-hor0.txt` zijn de
+  fixturebestanden herbemonsterd op 500 punten, grootste |ΔdB| **0,001**; `woofer-pair-hor*.frd` is
+  de complexe SOM van `woofer_up_hor_*` en `woofer_down_hor_*`, grootste |ΔdB| **0,002**. Die
+  sommatie schreef `* Reference time = 2,5 ms` en `* Right window = 5,021 ms, Tukey 0.25` weg en
+  zette er een prozaregel voor in de plaats. **Twee parsers, één bestand, twee antwoorden:**
+  `xoWindow.gateHeaderOf` (v1) accepteert de vorm `ARTA gated 5.021 ms` en las 5,021;
+  `ingest/manifest.parseArtaHeader` (engine2) matcht op VELDNAAM en las niets — en engine2 heeft
+  óók de referentietijd nodig, want de vloer is `1/T` met `T = rechter venster − referentietijd`.
+  De reparatie is de DATA en niet de parser: de twee regels staan terug op alle vijf de afgeleide
+  bestanden, met in het bestand zelf waarom (beide bronbestanden dragen ze woordelijk, en een
+  complexe som van twee gelijk gepoortte responsen heeft die poort). **De parser blijft zoals hij
+  is** — hem proza laten lezen zou betekenen dat een willekeurige commentaarregel een
+  geldigheidsvloer kan zetten, en die vloer is A5b.1(i): hard, automatisch, bindend.
+- **`not judged` is sinds UI-1 een eigen POORTSTATUS.** Een poort met gestelde grens en waarde
+  `null` is `active: true, pass: true` — met opzet, want "we konden niet kijken" mag niet als "hij
+  faalde" gerapporteerd worden. De statuscel las die `pass` en drukte **`inside`** af: de sterkst
+  mogelijke lezing van het zwakst mogelijke bewijs. De data was al eerlijk (`value: null`, `reason`
+  begint met "not evaluated"); alleen de cel klapte drie toestanden tot twee. Gemeten in de
+  draaiende app: M-B/EPDR met grens 2,00 Ω en geen netwerk leest nu `not judged`.
+- **`report.subject.network`** — het rapport zegt sinds UI-1 zelf op welk NETWERK het gebouwd is,
+  of `null`. Zonder dat moest het paneel leegte afleiden uit een patroon van afwezige rijen, en dat
+  is de app die haar eigen invoer reconstrueert. Zonder netwerk stond er een volledige pagina
+  tabellen die als een verdict over een ontwerp leest en over niets ging.
+- **A5e.2 HAD GEEN VELD.** V45 gaf de engine `bass-plateau`, liet de doelcurve óók de zoektocht
+  sturen en sloot A5e.2 erop — en gaf niemand een manier om er een te STELLEN: de app las
+  `activeDesign.targetCurve` op vier plaatsen en schreef hem nergens, het opslagtype in
+  `project.ts` kende de vorm niet, en het paneel drukte "Target curve: flat" af als een feit over
+  elke run ooit gemaakt. De besturing staat er nu, en de tweedeling van A5e.2 is erin terug te
+  zien: de DIEPTE wordt gesteld, de OVERGANG wordt afgeleid uit de kastbreedte **bij het lezen en
+  nergens opgeslagen** (een opgeslagen overgang is een meting die in een ontwerp bevriest en
+  onzichtbaar veroudert). Gemeten in de draaiende app: 260 mm → 442 Hz. Twee bijvangsten:
+  `saveActiveDesign` nam de voicing niet mee (elke bewaarde kopie zou stil vlak zijn geweest — de
+  vergelijking die A5e.2 gemakkelijk moest maken, stil onmogelijk), en `shortlist.ts` droeg een
+  TWEEDE implementatie van "is deze curve bruikbaar" die sinds V45 een werkende plateau-curve als
+  onbeoordeelbaar rapporteerde.
 
 ### V47-guards (welke regel een onbeschermde bovenste driver verbiedt)
 - `src/lib/protectionDeficit.ts` — **de beschermingsmaat van de tuner heeft sinds V47 één huis, en

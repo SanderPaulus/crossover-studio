@@ -39,7 +39,12 @@ import {
   type RequirementEvaluation,
   type RequirementSettings,
 } from '../requirements/requirements.ts';
-import { describeTargetCurve, FLAT_TARGET, type TargetCurve } from '../requirements/targetCurve.ts';
+import {
+  describeTargetCurve,
+  FLAT_TARGET,
+  isImplemented,
+  type TargetCurve,
+} from '../requirements/targetCurve.ts';
 import { digest, fingerprintOf, stableJson, type FingerprintComponent } from './determinism.ts';
 import {
   componentVector,
@@ -336,7 +341,7 @@ export function buildShortlist<T>(
         ]
       : [];
 
-  if (!isImplementedCurve(targetCurve)) {
+  if (!isImplemented(targetCurve)) {
     /* V45 — the SENTENCE comes from the curve itself, because there are now two
      * ways to be unusable and they are different problems for the reader: a
      * shape nobody has built (`tilt`), and a shape this design stated whose
@@ -403,4 +408,13 @@ export function buildShortlist<T>(
   };
 }
 
-const isImplementedCurve = (c: TargetCurve): boolean => c.type === 'flat';
+/* UI-1 — the local `isImplementedCurve` that used to live here read
+ * `c.type === 'flat'`, which was the whole truth until V45 gave the vocabulary
+ * a second implemented shape. After V45 it was a SECOND OPINION about a
+ * question `targetCurve.ts` already answers, and it answered it wrongly: a
+ * working `bass-plateau` — depth stated, step measured — was reported as a
+ * curve nothing could be judged against, on the very list whose window and RMS
+ * figures had just been judged against it. Two implementations of one
+ * question, exactly the family of bug `impedanceFloor.ts` and
+ * `phaseAdmission.ts` were consolidated to end. It now asks the one function
+ * that owns the vocabulary. */

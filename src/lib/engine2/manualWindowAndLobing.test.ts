@@ -26,6 +26,8 @@ import { buildReport, type EngineV2Report, type ReportSettings } from './report.
 import type { MeasurementFile } from './ingest/derive.ts';
 import type { Manifest, ManifestEntry } from './ingest/manifest.ts';
 import { ctcKey, type Geometry } from './metrics/types.ts';
+import { anchoredGaps, type WayLevel } from './predesign/gaps.ts';
+import { passbandLevel } from './ingest/spl.ts';
 
 const golden = loadGolden();
 const manifest = casus1Manifest(golden);
@@ -152,6 +154,36 @@ function withManualWindow(
 const wooferAngle = (r: EngineV2Report) =>
   r.ingest.drivers.find((d) => d.driver === 'woofer')!.onAxis!;
 
+/**
+ * The way levels the report itself derived, rebuilt from the report.
+ *
+ * Since UI-1 the report REFUSES to publish anchored gaps when a level rests on
+ * an unbelievable band, so the inversion that refusal exists for can no longer
+ * be read off the report. It is recomputed here instead — same drivers, same
+ * bands, same energy average — so the test still MEASURES the thing it claims
+ * rather than asserting that a refusal happened.
+ *
+ * The band is each driver's own validity band rather than the report's
+ * boundary-split one: the split only matters to the absolute levels, and this
+ * helper is used for the ANCHOR, which is an ordering.
+ */
+const levelsOf = (r: EngineV2Report): WayLevel[] => {
+  const out: WayLevel[] = [];
+  for (const d of r.ingest.drivers) {
+    if (!d.onAxis) continue;
+    const lvl = passbandLevel(d.onAxis.db, d.onAxis.grid, d.onAxis.bandHz);
+    if (!lvl) continue;
+    out.push({
+      driver: d.driver,
+      db: lvl.db,
+      bandHz: lvl.bandHz,
+      bandFloorKnown: d.onAxis.bandFloorKnown,
+      bandFloorProvenance: d.onAxis.bandFloorProvenance,
+    });
+  }
+  return out;
+};
+
 describe('(h) manual window metadata: the floor appears, the block recomputes, the flag clears', () => {
   const headers = golden.manifest_en_geometrie.ff_headers;
   const stripped = withoutHeaders('woofer');
@@ -174,17 +206,28 @@ describe('(h) manual window metadata: the floor appears, the block recomputes, t
     expect(a.bandHz[0]).toBeLessThan(wooferAngle(withHeader).bandHz[0]);
   });
 
-  it('the flag from deliverable 4c appears on the anchored-gap block, not three sections away', () => {
-    const s = noFloor.predesign.gaps!.suspectBands;
-    expect(s.map((x) => x.driver)).toContain('woofer');
-    const w = s.find((x) => x.driver === 'woofer')!;
-    expect(w.describe).toContain('NOT a derived gate floor');
-    // It says what it does to THIS block: a level averaged over rolloff reads
-    // low, and reading low is how a way takes the anchor role.
-    expect(w.describe).toContain('reads LOWER');
-    if (w.isAnchor) {
-      expect(w.describe).toContain('THIS WAY IS THE ANCHOR');
-    }
+  it('UI-1: an unknown floor BLOCKS the block — no anchor, no gaps, and the reason travels', () => {
+    /* Until UI-1 this was a caveat printed above an otherwise complete table
+     * (`suspectBands`, F3b), and the 3-way demo showed a caveat is not enough:
+     * the panel warned AND published an anchor, a gap per way and three
+     * attenuation budgets, every one of them computed on a level biased
+     * downwards, every one of them looking ordinary. So there are no numbers
+     * now — F0's rule, one section further along. */
+    expect(noFloor.predesign.gaps).toBeNull();
+    const b = noFloor.predesign.gapsBlocked!;
+    expect(b.drivers).toContain('woofer');
+    expect(b.bands.find((x) => x.driver === 'woofer')!.provenance).toContain(
+      'no window header',
+    );
+    // It still says WHY, in terms of what it would have done to this block.
+    expect(b.describe).toContain('not a derived gate floor');
+    expect(b.describe).toContain('reads LOWER');
+    // ...and it names the way out, which is an INPUT and not a switch.
+    expect(b.describe).toContain('reference time and right window');
+    // The block is absent exactly when it should be: a report whose levels all
+    // rest on a derived floor has no block and does have gaps.
+    expect(withHeader.predesign.gapsBlocked).toBeNull();
+    expect(withHeader.predesign.gaps).not.toBeNull();
   });
 
   it('entering the window times restores the floor, with its provenance visible', () => {
@@ -222,14 +265,25 @@ describe('(h) manual window metadata: the floor appears, the block recomputes, t
      * The inversion is invisible to every existing signal in the block, which
      * is precisely why the caveat had to be added to it. */
     expect(withHeader.predesign.gaps!.anchor).toBe('mid');
-    expect(noFloor.predesign.gaps!.anchor).toBe('woofer');
-    expect(noFloor.predesign.gaps!.anchorSwitchWarning).toBeNull();
-    expect(noFloor.predesign.gaps!.suspectBands[0].isAnchor).toBe(true);
-    expect(noFloor.predesign.gaps!.suspectBands[0].describe).toContain('THIS WAY IS THE ANCHOR');
 
-    // With the window entered, the flag clears and the block is the one the
+    /* THE INVERSION ITSELF, still measured — and it has to be, or the block
+     * above is a refusal nobody can check. The report no longer publishes
+     * these numbers, so they are recomputed here from the report's OWN
+     * unfloored levels with the flag dropped: that is precisely the call the
+     * app used to make. The anchor comes out `woofer` instead of `mid`, and
+     * `anchorSwitchWarning` stays silent throughout — the woofer IS the lowest
+     * way, so A5d.4(b) has nothing to say about it. Not one existing signal in
+     * the block saw this, which is why it had to become a refusal. */
+    const asIfBelieved = anchoredGaps(
+      levelsOf(noFloor).map((l) => ({ ...l, bandFloorKnown: undefined })),
+    )!;
+    expect(asIfBelieved.anchor).toBe('woofer');
+    expect(asIfBelieved.anchorSwitchWarning).toBeNull();
+    expect(noFloor.predesign.gaps).toBeNull();
+
+    // With the window entered, the block clears and the table is the one the
     // header itself produced - anchor, gaps and budgets alike.
-    expect(typed.predesign.gaps!.suspectBands).toEqual([]);
+    expect(typed.predesign.gapsBlocked).toBeNull();
     expect(typed.predesign.gaps!.anchor).toBe(withHeader.predesign.gaps!.anchor);
     const budget = (r: EngineV2Report, driver: string) =>
       r.predesign.gaps!.ways.find((w) => w.driver === driver)?.budgetDb ?? null;
@@ -237,7 +291,11 @@ describe('(h) manual window metadata: the floor appears, the block recomputes, t
     expect(budget(typed, 'tweeter')).toBeCloseTo(budget(withHeader, 'tweeter')!, 6);
     // ...and it really was RECOMPUTED rather than merely re-flagged: the
     // tweeter's budget is a different number in the unfloored report.
-    expect(budget(noFloor, 'tweeter')).not.toBeCloseTo(budget(typed, 'tweeter')!, 3);
+    expect(
+      anchoredGaps(levelsOf(noFloor).map((l) => ({ ...l, bandFloorKnown: undefined })))!.ways.find(
+        (w) => w.driver === 'tweeter',
+      )!.budgetDb,
+    ).not.toBeCloseTo(budget(typed, 'tweeter')!, 3);
   });
 
   it('the shortcut form states the floor directly', () => {
@@ -246,7 +304,7 @@ describe('(h) manual window metadata: the floor appears, the block recomputes, t
     const a = wooferAngle(r);
     expect(a.bandFloorProvenance).toBe('manual-floor');
     expect(a.bandHz[0]).toBeCloseTo(397, 6);
-    expect(r.predesign.gaps!.suspectBands).toEqual([]);
+    expect(r.predesign.gapsBlocked).toBeNull();
   });
 
   it('a HEADER always wins: typed numbers cannot relax a measured gate floor', () => {
@@ -272,6 +330,6 @@ describe('(h) manual window metadata: the floor appears, the block recomputes, t
     const a = wooferAngle(r);
     expect(a.bandFloorProvenance).toBe('header');
     expect(a.bandHz[0]).toBeCloseTo(wooferAngle(withHeader).bandHz[0], 6);
-    expect(r.predesign.gaps!.suspectBands).toEqual([]);
+    expect(r.predesign.gapsBlocked).toBeNull();
   });
 });

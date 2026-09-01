@@ -34,8 +34,23 @@ export interface NetworkDesign {
    *
    * `tilt` and `hold-current` exist in the vocabulary and are REFUSED by the
    * engine rather than approximated — see `engine2/requirements/targetCurve.ts`.
+   *
+   * UI-1 — `bass-plateau` was added to the engine's vocabulary at V45 and NOT
+   * here, so a design could not have stored one even once something offered to
+   * set it. Only the STATED half is persisted: A5e.2 gives the shape two
+   * parameters from opposite sources on purpose, and the transition frequency
+   * is the MEASURED baffle step of the cabinet front. Storing that too would
+   * freeze a measurement into the design and leave it stale the moment the
+   * cabinet width is corrected; it is derived on read, from the cabinet form
+   * and from nothing else (P6).
    */
-  targetCurve?: { type: 'flat' | 'tilt' | 'hold-current'; tiltDbPerDecade?: number; tiltPivotHz?: number };
+  targetCurve?: {
+    type: 'flat' | 'bass-plateau' | 'tilt' | 'hold-current';
+    /** `bass-plateau` — how far below the flat part, in dB. Stated; no default. */
+    plateauDepthDb?: number;
+    tiltDbPerDecade?: number;
+    tiltPivotHz?: number;
+  };
 }
 
 /**

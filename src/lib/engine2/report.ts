@@ -83,7 +83,13 @@ import type {
   ProjectSettings,
 } from './metrics/types.ts';
 import { ctcKey } from './metrics/types.ts';
-import { anchoredGaps, type AnchoredGaps, type WayLevel } from './predesign/gaps.ts';
+import {
+  anchoredGaps,
+  anchorFloorBlock,
+  type AnchoredGaps,
+  type AnchorFloorBlock,
+  type WayLevel,
+} from './predesign/gaps.ts';
 import { judgeResponse, type ResponseJudgement } from './requirements/response.ts';
 import { FLAT_TARGET, targetOffsetsDb, type TargetCurve } from './requirements/targetCurve.ts';
 import {
@@ -297,6 +303,12 @@ export interface EngineV2Report {
   };
   predesign: {
     gaps: AnchoredGaps | null;
+    /**
+     * UI-1 — set when `gaps` is null BECAUSE a level could not be believed,
+     * rather than because there were fewer than two ways. Two causes, one
+     * absence; a reader is owed the difference and a panel cannot invent it.
+     */
+    gapsBlocked: AnchorFloorBlock | null;
     windows: XoWindowResult[];
     /**
      * F4d — the INPUTS each window above was derived from, one per adjacent
@@ -339,6 +351,19 @@ export interface EngineV2Report {
     highPassProtected: string[];
   };
   system: SystemSummary;
+  /**
+   * UI-1 — WHAT this report is about: the NETWORK it was built on, by name,
+   * or null when none was loaded.
+   *
+   * Sounds like decoration and is not. With no filter every network metric
+   * reports "off" and every gate reports a value it could not measure, and the
+   * two together render as a full panel of rows that a reader takes for a
+   * verdict on a design. The panel has to be able to say "there is no design
+   * here" in its own heading, and it can only say that if the report tells it.
+   * The alternative — the panel inferring emptiness from a pattern of absent
+   * rows — is the app deducing its own input.
+   */
+  subject: { network: string | null };
   /** Everything the report could not do, addressed to the designer. */
   problems: string[];
 }
@@ -802,6 +827,9 @@ export function buildReport(input: EngineV2ReportInput): EngineV2Report {
     }
   }
   const gaps = anchoredGaps(levels, targetShift);
+  /* Computed from the same `levels`, so the block and the absence can never
+   * disagree about why there is no table. */
+  const gapsBlocked = anchorFloorBlock(levels);
 
   /* ---------------- F2: the gates on the loaded filter ------------------ *
    * Built from the numbers the metric section above ALREADY produced. No
@@ -956,7 +984,7 @@ export function buildReport(input: EngineV2ReportInput): EngineV2Report {
     driversLowToHigh: order,
     analysisGrid: grid,
     metrics,
-    predesign: { gaps, windows, windowInputs, bounds: inverted.bounds, boundNotes },
+    predesign: { gaps, gapsBlocked, windows, windowInputs, bounds: inverted.bounds, boundNotes },
     gates: {
       verdicts,
       violation: violationText(verdicts),
@@ -964,6 +992,7 @@ export function buildReport(input: EngineV2ReportInput): EngineV2Report {
       highPassProtected,
     },
     system,
+    subject: { network: input.filter?.name ?? null },
     problems,
   };
 }

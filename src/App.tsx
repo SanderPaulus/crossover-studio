@@ -156,6 +156,7 @@ import {
   type Shortlist,
   type ShortlistInput,
 } from './lib/engine2/optimizer/shortlist.ts';
+import { selectFromShortlist } from './lib/engine2/optimizer/selection.ts';
 import {
   FLAT_TARGET,
   describeTargetCurve,
@@ -2211,10 +2212,26 @@ export default function App() {
    * Absent = flat, which is the neutral reference and not a guess — a design
    * that has never stated a voicing means "judge me horizontal".
    */
-  const activeTargetCurve: TargetCurve = useMemo(
-    () => (activeDesign?.targetCurve as TargetCurve | undefined) ?? FLAT_TARGET,
-    [activeDesign],
-  );
+  const activeTargetCurve: TargetCurve = useMemo(() => {
+    const stored = activeDesign?.targetCurve as TargetCurve | undefined;
+    if (!stored) return FLAT_TARGET;
+    if (stored.type !== 'bass-plateau') return stored;
+    /* UI-1 — THE MEASURED HALF IS DERIVED HERE AND STORED NOWHERE.
+     *
+     * A5e.2 gives `bass-plateau` two parameters from opposite sources, and the
+     * split is the point: the DEPTH is a voicing decision no measurement can
+     * produce, and the TRANSITION is the baffle step of the cabinet front and
+     * nothing else (P6). So the design stores the depth and this reads the
+     * step off the cabinet form, through the one function that owns it. A
+     * stored step would be a measurement frozen into a design, stale the
+     * moment the width is corrected and invisible when it went stale.
+     *
+     * No width, no step, and then `targetOffsetsDb` produces NO offsets and
+     * names what was missing — which is what P4 asks for and is a great deal
+     * better than a plateau at a corner nobody measured. */
+    const step = baffleStepHz(Number(cabinet.baffleWidthMm));
+    return step === null ? stored : { ...stored, stepHz: step };
+  }, [activeDesign, cabinet.baffleWidthMm]);
   const schematic: VxpCrossover | null = useMemo(
     () => (activeDesign ? { name: activeDesign.name, parts: activeDesign.parts } : null),
     [activeDesign],
@@ -2227,15 +2244,36 @@ export default function App() {
    * Raw drivers score terribly on every design metric by nature, and a red
    * alarm the user did nothing to cause reads as "the app is broken" instead
    * of "get started" — so pre-design, the chips go neutral, values intact. */
+  /**
+   * UI-1 — A NETWORK TAB THAT IS ACTIVE AND EMPTY.
+   *
+   * `setWorkingDesign` sets `networkActive` unconditionally, which is right
+   * for every design it is normally handed and wrong for a part list of
+   * length zero — and a part list of length zero DID reach it (see the
+   * selection block in `runVfOptimize`). The result was an app in a state it
+   * has no word for: the Working tab said "No generator — add a source
+   * element" while every chart summed the unfiltered drivers and four status
+   * badges scored that sum as though it were a design.
+   *
+   * Kept as its own flag rather than folded into `designShaped`, because the
+   * two empty states are different sentences to a reader: "you have not made a
+   * design yet" and "a design was loaded and it has nothing in it". The first
+   * is where everyone starts; the second is a bug or an empty shortlist.
+   */
+  const emptyNetworkLoaded = useMemo(
+    () => networkActive && !!activeDesign && activeDesign.parts.length === 0,
+    [networkActive, activeDesign],
+  );
+
   const designShaped = useMemo(
     () =>
-      networkActive ||
+      (networkActive && !emptyNetworkLoaded) ||
       (project != null && xoName !== 'none') ||
       (!vfBypass &&
         (isActive(vFilters.woofer) ||
           isActive(vFilters.tweeter) ||
           (threeWay && isActive(vFilters.mid)))),
-    [networkActive, project, xoName, vfBypass, vFilters, threeWay],
+    [networkActive, emptyNetworkLoaded, project, xoName, vfBypass, vFilters, threeWay],
   );
 
   /* One visible answer to "which crossover am I looking at right now?" — the
@@ -2440,6 +2478,16 @@ export default function App() {
         id,
         name: uniqueDesignName(name.trim() || 'Filter', ds),
         parts: structuredClone(activeDesign.parts),
+        /* UI-1 — THE VOICING TRAVELS WITH THE DESIGN (A5e.2).
+         *
+         * It hangs on the design precisely so two voicings of one loudspeaker
+         * can sit side by side and be compared, and Save-as-new is how the
+         * second one comes to exist. Dropping it here would have made every
+         * saved copy silently flat — the comparison this decision exists to
+         * make easy, quietly impossible. */
+        ...(activeDesign.targetCurve
+          ? { targetCurve: structuredClone(activeDesign.targetCurve) }
+          : {}),
       },
     ]);
     setActiveDesignId(id);
@@ -3215,7 +3263,26 @@ export default function App() {
     };
   }, [engineV2Settings]);
 
-  const engineV2Report = useMemo(() => {
+  /**
+   * UI-1 — THE v2 REPORT AS A FUNCTION OF A NETWORK, not of the active tab.
+   *
+   * It was a memo over the active design and nothing else, which is what the
+   * panel needs and not what the shortlist column needs: M-F-final (the
+   * vertical lobing synthesis) is a property of a NETWORK, and the shortlist
+   * has ten of them. Building a second, smaller lobing path beside this one
+   * would be two implementations of one metric — the failure mode this
+   * codebase has paid for repeatedly — so the whole report becomes a function
+   * of the netlist instead, and `engineV2Report` is that function applied to
+   * the active design.
+   *
+   * Everything else — measurements, geometry, gates, target curve — is the
+   * same for every candidate, because it describes the LOUDSPEAKER and not the
+   * filter. That is precisely why the dependency list below no longer mentions
+   * `designs` or `activeDesignId`.
+   */
+  const buildV2Report = useMemo(() => (
+    net: { name: string; parts: readonly VxpPart[] } | null,
+  ) => {
     if (!engineSelection.reporting) return null;
     try {
       const asResponse = (name: string, frd: Parsed): AdapterResponse => ({
@@ -3300,12 +3367,11 @@ export default function App() {
       }
       if (branches.length === 0) return null;
 
-      const active = designs.find((d) => d.id === activeDesignId);
       let filter: { name: string; netlist: Netlist } | null = null;
-      if (active && active.parts.length > 0) {
+      if (net && net.parts.length > 0) {
         try {
-          const { netlist } = crossoverToNetlist({ name: active.name, parts: active.parts } as VxpCrossover);
-          filter = { name: active.name, netlist };
+          const { netlist } = crossoverToNetlist({ name: net.name, parts: [...net.parts] } as VxpCrossover);
+          filter = { name: net.name, netlist };
         } catch {
           filter = null;
         }
@@ -3462,8 +3528,6 @@ export default function App() {
     nearField,
     zStandalone,
     impedances,
-    designs,
-    activeDesignId,
     cabinet,
     midSizeInch,
     wooferSizeInch,
@@ -3478,6 +3542,12 @@ export default function App() {
     v2Meas,
     activeTargetCurve,
   ]);
+
+  /** The panel's report: the function above, applied to the design on screen. */
+  const engineV2Report = useMemo(() => {
+    const active = designs.find((d) => d.id === activeDesignId);
+    return buildV2Report(active ? { name: active.name, parts: active.parts } : null);
+  }, [buildV2Report, designs, activeDesignId]);
 
   /**
    * 3-way pins for the design chain (freq ± margin per handover).
@@ -6376,7 +6446,23 @@ export default function App() {
       const pinsRaw = xoPinsValue();
       // F4b — a substituted or refused pin is a fact about the run, so it is
       // reported rather than left to be inferred from the delivered crossings.
-      setV2RunNotes(useV2 ? pinsRaw.notes : []);
+      setV2RunNotes(
+        useV2
+          ? [
+              /* UI-1 — WHICH VOICING THIS RUN SEARCHED AGAINST, said out loud
+               * at the top of its own notes. Since V45 the target curve steers
+               * the AMPLITUDE TERM as well as the window and the RMS, so it is
+               * the most consequential setting in the run that leaves no trace
+               * in a number; two runs that differ only in it look identical
+               * everywhere except in the stamp. `describeTargetCurve` is the
+               * one function that knows the vocabulary — including which half
+               * of a stated plateau failed to arrive. */
+              `Voicing (A5e.2): ${describeTargetCurve(activeTargetCurve)}. Every window, RMS and ` +
+                'amplitude term in this run is measured against it.',
+              ...pinsRaw.notes,
+            ]
+          : [],
+      );
       /* THE v1 DATA-FLOOR CLAMP, AND WHY IT IS NOW v1-ONLY (F4d, audit §6.3).
        *
        * A pin that dips under the v1 data floor is REPLACED here by the v1
@@ -6832,6 +6918,11 @@ export default function App() {
       setV2Run(null);
       setV2Shortlist(null);
       setShortlistSort(null);
+      /* UI-1 — and the row that WAS loaded is no longer a row of any list.
+       * The design itself stays in the Working tab (a run in flight may not
+       * take it away); what is cleared is the claim that it came from this
+       * run's shortlist. */
+      setShortlistPick(null);
       /* ---- Axis-by-axis scan (Sanders' proposal): W-M sweep with M-T held
        * at its anchor → M-T sweep with the best W-M → local 3×3 refinement
        * around the pair. Finer per axis than the corners grid for a
@@ -7138,14 +7229,17 @@ export default function App() {
            * so a partial field can never read as a whole one, and the status
            * is an ingredient of the fingerprint rather than a label beside
            * it, so the two can never compare equal either. */
-          if (v2Stamp) {
-            setV2Run({ stamp: v2Stamp, gatesByLabel: { ...v2GatesByLabel } });
-            /* A5e.1 — the FEASIBLE REGION, built here on the main thread from
-             * the field the workers produced. Deliberately not in the worker:
-             * a shortlist is a statement about a SET of candidates, and every
-             * worker only ever sees one. */
-            setV2Shortlist(
-              buildShortlist(v2Field, v2Stamp.fingerprint, {
+          /* A5e.1 — the FEASIBLE REGION, built here on the main thread from
+           * the field the workers produced. Deliberately not in the worker: a
+           * shortlist is a statement about a SET of candidates, and every
+           * worker only ever sees one.
+           *
+           * UI-1 — held in a LOCAL as well as in state, because the selection
+           * below has to read it in this same tick and `setV2Shortlist` will
+           * not have landed yet. Reading it back out of state here is how the
+           * app would come to load one list while displaying another. */
+          const shortlist = v2Stamp
+            ? buildShortlist(v2Field, v2Stamp.fingerprint, {
                 requirements: {
                   ...(engineV2Gates.splWindowPlusMinusDb !== undefined
                     ? { splWindowPlusMinusDb: engineV2Gates.splWindowPlusMinusDb }
@@ -7158,8 +7252,12 @@ export default function App() {
                 ...(engineV2Gates.shortlistSize !== undefined
                   ? { size: Math.max(1, Math.round(engineV2Gates.shortlistSize)) }
                   : {}),
-              }),
-            );
+              })
+            : null;
+          if (v2Stamp) {
+            setV2Run({ stamp: v2Stamp, gatesByLabel: { ...v2GatesByLabel } });
+            setV2Shortlist(shortlist);
+            setShortlistPick(null);
           }
           // "Stop and use what finished" can land before the first candidate
           // does. Ranking an empty field would crash; committing nothing and
@@ -7181,21 +7279,50 @@ export default function App() {
             ampMinLoadOhm ?? 0,
           );
           const win = ranked[0];
-          setVFilters((prev) => ({ ...prev, ...win.specs }));
-          // The design step CHOSE the polarities; the sim must sum the design
-          // that was actually fitted, so the checkboxes follow it.
-          setMidInverted(win.midInverted);
-          setInverted(win.tweeterInverted);
-          setSynth({
-            mode: synthMode,
-            woofer: win.synthWoofer,
-            mid: win.synthMid,
-            tweeter: win.synthTweeter,
-          });
-          setWorkingDesign(win.parts);
-          setNetOptAudit(win.net.audit ?? null);
-          setNetworkActive(true);
-          setVfBypass(true);
+          /* ---- UI-1: WHAT LANDS IN THE WORKING TAB --------------------------
+           *
+           * On the v2 route: the SHORTLIST decides, and if it delivers nothing
+           * then nothing is loaded. On the v1 route: `win`, exactly as before
+           * and byte for byte — `shortlist` is null there and this branch is
+           * not entered, which is what keeps the toggle invariant.
+           *
+           * WHY THIS EXISTS. Until UI-1 both routes ended here, at
+           * `setWorkingDesign(win.parts)` — the v1 ranking, which has no gate,
+           * no requirement and no notion of a wholesale refusal. On the v2
+           * route it could and did crown a candidate v2 had thrown away, and
+           * V31 blanks a refused candidate's part list before it leaves the
+           * worker. So `win.parts` was `[]`, `setWorkingDesign` set
+           * `networkActive` behind it anyway, the Working tab said "No
+           * generator — add a source element", every chart summed the
+           * unfiltered drivers, and one green line read "Design ready — the
+           * winner is loaded in the Working tab". See `selection.ts`. */
+          const selection = shortlist ? selectFromShortlist(shortlist) : null;
+          if (selection) {
+            if (selection.kind === 'design') {
+              applyScanCandidate({ label: selection.label, result: selection.result });
+              setShortlistPick(selection.label);
+            } else {
+              /* NOTHING IS LOADED, and the design on screen stays exactly as it
+               * was. Falling back to `win` here is the whole bug. */
+              setShortlistPick(null);
+            }
+          } else {
+            setVFilters((prev) => ({ ...prev, ...win.specs }));
+            // The design step CHOSE the polarities; the sim must sum the design
+            // that was actually fitted, so the checkboxes follow it.
+            setMidInverted(win.midInverted);
+            setInverted(win.tweeterInverted);
+            setSynth({
+              mode: synthMode,
+              woofer: win.synthWoofer,
+              mid: win.synthMid,
+              tweeter: win.synthTweeter,
+            });
+            setWorkingDesign(win.parts);
+            setNetOptAudit(win.net.audit ?? null);
+            setNetworkActive(true);
+            setVfBypass(true);
+          }
           setVfOpt(null);
           setVfRunStats(null);
           // De scan-tabel werkt nu OOK in 3-weg (Sander: "bij de 2-weg kreeg
@@ -7207,8 +7334,19 @@ export default function App() {
           setChainScan(
             results.length > 1
               ? {
-                  rows: ranked.map((rr) => chain3ScanRow(rr, win)),
-                  active: win.label,
+                  /* UI-1 — ON THE v2 ROUTE THERE IS NO WINNER HERE. This table
+                   * is the v1 reading of the same field: a ranking that has no
+                   * gate, no requirement and no notion of a refused tune. It
+                   * stays visible, because a second reading of one's own field
+                   * is worth having; it may not crown anything, and its `active`
+                   * row is whatever the SHORTLIST loaded — which is often not
+                   * its own top row and is sometimes nothing at all. */
+                  rows: ranked.map((rr) => chain3ScanRow(rr, shortlist ? null : win)),
+                  active: shortlist
+                    ? selection?.kind === 'design'
+                      ? selection.label
+                      : ''
+                    : win.label,
                 }
               : null,
           );
@@ -7249,14 +7387,24 @@ export default function App() {
            * EVERY candidate sits under the floor the gate reorders nothing and
            * the designer silently gets an amp-hostile load anyway. Say it, and
            * say whether it was the only option. */
+          /* UI-1 — THE WARNINGS BELONG TO THE DESIGN THAT WAS LOADED.
+           *
+           * On the v1 route that is `win` and nothing changes. On the v2 route
+           * it is the shortlist row this run put in the Working tab, and when
+           * the shortlist delivered nothing there is no design to warn about —
+           * so the reader gets the shortlist's own diagnosis instead of an
+           * amplifier-load warning about a network nobody has. */
+          const loaded: Chain3Result | null =
+            shortlist ? (selection?.kind === 'design' ? selection.result : null) : win;
           const zLow =
-            ampMinLoadOhm !== null && win.zMinOhm !== null && !meetsAmpFloor(win.zMinOhm, ampMinLoadOhm);
+            loaded !== null &&
+            ampMinLoadOhm !== null && loaded.zMinOhm !== null && !meetsAmpFloor(loaded.zMinOhm, ampMinLoadOhm);
           const anySane = ranked.some(
             (r) => r.zMinOhm !== null && ampMinLoadOhm !== null && meetsAmpFloor(r.zMinOhm, ampMinLoadOhm),
           );
           const zNote = !zLow
             ? ''
-            : `⚠ amplifier load: the winner dips to ${win.zMinOhm!.toFixed(1)} Ω ` +
+            : `⚠ amplifier load: the loaded design dips to ${loaded!.zMinOhm!.toFixed(1)} Ω ` +
               `(your amplifier is rated to ${ampMinLoadOhm!.toFixed(1)} Ω)` +
               (anySane
                 ? ' — a candidate with a sane load exists in the table; it ranks lower on flatness.'
@@ -7267,7 +7415,7 @@ export default function App() {
            * floor — a class the designer cannot read reorders silently. */
           const anyXoSane = ranked.some((r) => r.xoWindowOk !== false);
           const xoWinNote =
-            win.xoWindowOk !== false
+            loaded === null || loaded.xoWindowOk !== false
               ? ''
               : `⚠ handover: a delivered crossing sits outside its physics window` +
                 (anyXoSane
@@ -7278,10 +7426,10 @@ export default function App() {
             ...brokenWindows,
             zNote,
             xoWinNote,
-            win.xoPinNote ? `⚠ PIN: ${win.xoPinNote}` : '',
-            win.net.snapNote ?? '',
-            win.net.safetyNote ? `⚠ ${win.net.safetyNote}` : '',
-            win.net.ampFloorNote ? `⚠ ${win.net.ampFloorNote}` : '',
+            loaded?.xoPinNote ? `⚠ PIN: ${loaded.xoPinNote}` : '',
+            loaded?.net.snapNote ?? '',
+            loaded?.net.safetyNote ? `⚠ ${loaded.net.safetyNote}` : '',
+            loaded?.net.ampFloorNote ? `⚠ ${loaded.net.ampFloorNote}` : '',
           ].filter(Boolean);
           setNetOptNote(
             [
@@ -7292,12 +7440,37 @@ export default function App() {
                 (partial
                   ? ` — ⏹ STOPPED EARLY: this is the best of the ${results.length} that finished, the rest was never computed`
                   : ''),
-              `winner  xo ${win.label} · ${win.structureLabel}` +
-                (win.net.after.avgDevDb !== undefined
-                  ? ` · avg ${win.net.after.avgDevDb.toFixed(2)} dB`
-                  : ''),
-              `        ${line(win)}`,
-              ...ranked.slice(1).map((r, i) => `${i === 0 ? 'others  ' : '        '}${line(r)}`),
+              /* UI-1 — THE HEADLINE IS THE SHORTLIST ON THE v2 ROUTE.
+               *
+               * "winner" is a v1 word and it was being printed over a v2 run
+               * that had no winner, only a feasible region and a first row.
+               * Worse, on a run where nothing qualified it printed the v1
+               * ranking's top candidate — the one v2 had refused — under that
+               * word, beside a shortlist saying "0 of 9 qualified". */
+              ...(shortlist
+                ? [
+                    `shortlist  ${shortlist.rows.length} design${shortlist.rows.length === 1 ? '' : 's'} ` +
+                      `of ${shortlist.consideredCount} candidates meet every requirement and every gate` +
+                      (shortlist.rejected.length > 0
+                        ? ` · ${shortlist.rejected.length} delivered no network at all (refused)`
+                        : ''),
+                    selection?.kind === 'design'
+                      ? `loaded     ${selection.label}${loaded ? ` · ${loaded.structureLabel}` : ''}` +
+                        (loaded?.net.after.avgDevDb !== undefined
+                          ? ` · avg ${loaded.net.after.avgDevDb.toFixed(2)} dB`
+                          : '')
+                      : `loaded     NOTHING — ${selection?.describe ?? ''}`,
+                    ...(loaded ? [`        ${line(loaded)}`] : []),
+                    ...shortlist.diagnosis.map((d) => `        ${d}`),
+                  ]
+                : [
+                    `winner  xo ${win.label} · ${win.structureLabel}` +
+                      (win.net.after.avgDevDb !== undefined
+                        ? ` · avg ${win.net.after.avgDevDb.toFixed(2)} dB`
+                        : ''),
+                    `        ${line(win)}`,
+                    ...ranked.slice(1).map((r, i) => `${i === 0 ? 'others  ' : '        '}${line(r)}`),
+                  ]),
               ...waarschuwingen,
             ].join('\n'),
           );
@@ -8124,6 +8297,55 @@ export default function App() {
   const [v2RunNotes, setV2RunNotes] = useState<string[]>([]);
   /** Which shortlist column the table is sorted on. Presentation only. */
   const [shortlistSort, setShortlistSort] = useState<{ key: string; dir: 1 | -1 } | null>(null);
+  /**
+   * UI-1 — the shortlist row currently loaded in the Working tab, by label.
+   *
+   * Null means nothing from this shortlist is loaded, which after a run with
+   * an empty feasible region is the correct and deliberate state: the design
+   * on screen is whatever was there before, and the v1 ranking's winner is not
+   * a substitute for a list that came out empty (`selection.ts`).
+   */
+  const [shortlistPick, setShortlistPick] = useState<string | null>(null);
+  /**
+   * UI-1 — M-F-FINAL PER SHORTLIST ROW: the vertical lobing synthesis.
+   *
+   * The one lobing quantity that is allowed to carry a judgement (V20a). The
+   * four λ-fractions next door are reported and never ranked, because for a
+   * way with N sources there is no single distance that summarises the pair;
+   * the vertical synthesis has no such problem — it sums the actual sources at
+   * their actual heights through the actual filter.
+   *
+   * A COLUMN AND NOT A CRITERION. Nothing filters, spreads, sorts or gates on
+   * it: A5e.1 forbids a second opinion about which designs exist, and casus 1
+   * states no lobing limit, so per P4 there is nothing to judge. What it is
+   * for is the question a number in a table answers and prose does not — this
+   * design is 0.4 dB flatter and collapses three dB harder at 15°.
+   *
+   * Computed through `buildV2Report`, the same path the panel uses, so a row
+   * and the panel can never print two different dips for one network. One
+   * report per row, on a list of ten, only when the list changes.
+   */
+  const shortlistLobing = useMemo(() => {
+    const out: Record<string, { dipDb: number; atHz: number } | null> = {};
+    if (!v2Shortlist) return out;
+    for (const r of v2Shortlist.rows) {
+      let v: { dipDb: number; atHz: number } | null = null;
+      try {
+        const l = buildV2Report({ name: r.label, parts: r.parts })?.report?.metrics.lobingFinal;
+        if (l && l.worstDipInCrossoverDb !== null && l.worstInCrossoverAtHz !== null) {
+          v = { dipDb: l.worstDipInCrossoverDb, atHz: l.worstInCrossoverAtHz };
+        }
+      } catch {
+        // A row whose report cannot be built shows an empty cell, exactly as a
+        // row with no crossover region does. It may not show a zero: 0.0 dB of
+        // vertical deviation is what a coplanar or single-source set reports,
+        // and that is the arithmetic of a missing input rather than a result.
+        v = null;
+      }
+      out[r.label] = v;
+    }
+    return out;
+  }, [v2Shortlist, buildV2Report]);
   /** Old → new component values of the last tune run ("⚙ Optimize
    *  components" / auto-tune) — makes the tuner inspectable: you see WHERE
    *  it found its gains instead of just "N components tuned" (Sanders wens,
@@ -8377,6 +8599,27 @@ export default function App() {
     setNetOptAudit(r.net.audit ?? null);
     setChainScan((c) => (c ? { ...c, active: row.label } : c));
   }
+  /**
+   * UI-1 — load a shortlist row into the Working tab and every chart.
+   *
+   * The DECISION is `selectFromShortlist` (one implementation, tested without
+   * a browser); this only applies its answer, through exactly the same
+   * `applyScanCandidate` the scan table has always used — same fields, same
+   * order — so a shortlist row and a scan row cannot land differently.
+   *
+   * A refused candidate reaches here only if something makes one clickable,
+   * which the rendering deliberately does not; it is handled anyway, because a
+   * guard at the decision is worth more than a guard at every call site.
+   */
+  function loadShortlistRow(label: string) {
+    const sel = selectFromShortlist(v2Shortlist, label);
+    if (sel.kind === 'design') {
+      applyScanCandidate({ label: sel.label, result: sel.result });
+      setShortlistPick(sel.label);
+    }
+    setNetOptNote(sel.describe);
+  }
+
   /** One-click chain: after Optimize→Build lands in Working, auto-run the
    *  component tuner ON THE ASSEMBLY — branch syntheses are judged per
    *  branch, only the tuner judges the built SUM (phase included). */
@@ -12859,7 +13102,7 @@ export default function App() {
                   ? 'chip-neutral'
                   : combinedFlat.score >= 85 ? 'chip-ok' : combinedFlat.score >= 70 ? 'chip-warn' : 'chip-bad'
               }`}
-              title={`${!designShaped ? t('RAW DRIVERS — no crossover is shaping the sum yet, so this is just where you start from, not a problem. It colours once a design exists.') + '\n\n' : ''}${t("Whole-range flatness of the combined response, 0–100 — from the AVERAGE deviation over the visible range, so one narrow dip can't dominate the verdict (the peak ±dB in the SPL strip still shows it)")}`}
+              title={`${!designShaped ? (emptyNetworkLoaded ? t('NO NETWORK LOADED — the design tab that is active holds no components, so this figure describes the unfiltered drivers and judges nothing. A score on nothing is not a verdict.') : t('RAW DRIVERS — no crossover is shaping the sum yet, so this is just where you start from, not a problem. It colours once a design exists.')) + '\n\n' : ''}${t("Whole-range flatness of the combined response, 0–100 — from the AVERAGE deviation over the visible range, so one narrow dip can't dominate the verdict (the peak ±dB in the SPL strip still shows it)")}`}
             >
               {t('Response')} <strong>{combinedFlat.score.toFixed(0)}</strong>
             </span>
@@ -12893,7 +13136,7 @@ export default function App() {
                   ? 'chip-neutral'
                   : phaseStats.p95ErrorDeg <= 45 ? 'chip-ok' : phaseStats.p95ErrorDeg <= 90 ? 'chip-warn' : 'chip-bad'
               }`}
-              title={`${!designShaped ? t('RAW DRIVERS — no crossover yet, so this is the starting point, not a fault. It colours once a design exists.') + '\n\n' : ''}${t('95th-percentile phase error in the driver overlap — ≤45° sums fully, ≤90° still gains ≥3 dB, beyond that the drivers stop helping each other')}`}
+              title={`${!designShaped ? (emptyNetworkLoaded ? t('NO NETWORK LOADED — the design tab that is active holds no components, so this figure describes the unfiltered drivers and judges nothing.') : t('RAW DRIVERS — no crossover yet, so this is the starting point, not a fault. It colours once a design exists.')) + '\n\n' : ''}${t('95th-percentile phase error in the driver overlap — ≤45° sums fully, ≤90° still gains ≥3 dB, beyond that the drivers stop helping each other')}`}
             >
               {t('Phase P95')} <strong>{phaseStats.p95ErrorDeg.toFixed(0)}°</strong>
             </span>
@@ -12910,7 +13153,7 @@ export default function App() {
                     ? 'chip-neutral'
                     : worst <= 45 ? 'chip-ok' : worst <= 90 ? 'chip-warn' : 'chip-bad'
                 }`}
-                title={`${!designShaped ? 'RAW DRIVERS — no crossover yet, so this is the starting point, not a fault. It colours once a design exists.\n\n' : ''}Worst pair's 95th-percentile phase error (woofer-mid vs mid-tweeter overlap windows)`}
+                title={`${!designShaped ? (emptyNetworkLoaded ? 'NO NETWORK LOADED — the design tab that is active holds no components, so this figure describes the unfiltered drivers and judges nothing.\n\n' : 'RAW DRIVERS — no crossover yet, so this is the starting point, not a fault. It colours once a design exists.\n\n') : ''}Worst pair's 95th-percentile phase error (woofer-mid vs mid-tweeter overlap windows)`}
               >
                 Phase P95 <strong>{worst.toFixed(0)}°</strong>
               </span>
@@ -15367,16 +15610,97 @@ export default function App() {
                         style={{ width: '5rem' }}
                       />
                     </label>
-                    {/* A5e.2/V45 — the ACTIVE design's voicing, described by the
-                        one function that knows the vocabulary. It used to read
-                        "Target curve: flat" unconditionally, which was true
-                        while `flat` was the only implemented shape and became a
-                        wrong answer the moment a design could state a plateau.
-                        Since V45 this curve steers the search as well as the
-                        verdict, so a designer has to be able to see which one
-                        is armed. */}
+                    {/* ---- A5e.2 — THE VOICING (UI-1) ----
+                      * The fourth kind of number in this panel and the only one
+                      * that is not a limit: a gate protects the hardware, a
+                      * budget shapes the search box, a requirement decides which
+                      * finished designs you are shown — and this decides what
+                      * "flat" MEANS for all three of them.
+                      *
+                      * V45 gave the engine `bass-plateau`, made the curve steer
+                      * the search as well as the verdict, and closed A5e.2 on
+                      * it. What V45 did NOT do was give anyone a way to state
+                      * one: the app read `activeDesign.targetCurve` in four
+                      * places and wrote it in none, the persistence type did not
+                      * know the shape, and this line printed "Target curve:
+                      * flat" as a fact about every run ever made. Sander went
+                      * looking for the field and there was no field.
+                      *
+                      * ON THE DESIGN AND NOT ON THE PROJECT (A5e.2): two
+                      * voicings of one loudspeaker have to sit side by side and
+                      * be compared, so this control writes to the design tab
+                      * that is open and Save-as-new keeps a voicing with it. */}
+                    <span className="opt-group-cap">{t('Engine v2 — voicing (A5e.2)')}</span>
+                    <label title={t('The reference every window, RMS and search judges against. FLAT is the neutral reference, not a missing answer. BASS PLATEAU is the on-axis voicing of a speaker meant to stand near a wall: the bass sits deliberately below the flat part, and the wall fills it back in. It hangs on the DESIGN, so two voicings of one loudspeaker can be compared side by side.')}>
+                      {t('Target curve')}
+                      <select
+                        value={activeTargetCurve.type}
+                        disabled={!activeDesign}
+                        onChange={(e) => {
+                          const type = e.target.value as TargetCurve['type'];
+                          if (!activeDesign) return;
+                          setDesigns((ds) =>
+                            ds.map((d) =>
+                              d.id !== activeDesign.id
+                                ? d
+                                : type === 'flat'
+                                  ? { ...d, targetCurve: { type: 'flat' } }
+                                  : {
+                                      ...d,
+                                      targetCurve: {
+                                        ...(d.targetCurve ?? {}),
+                                        type,
+                                      },
+                                    },
+                            ),
+                          );
+                        }}
+                      >
+                        <option value="flat">{t('flat')}</option>
+                        <option value="bass-plateau">{t('bass plateau')}</option>
+                      </select>
+                    </label>
+                    {activeTargetCurve.type === 'bass-plateau' && (
+                      <label title={t('How far BELOW the flat part the bass is meant to sit, in dB — a positive depth. STATED: it is a decision about where this loudspeaker will stand and no measurement can produce it. The TRANSITION is not asked for here: it is the baffle step of your cabinet front, derived from the width in the Cabinet form and from nothing else. Empty = the curve produces no offsets and says which half was missing.')}>
+                        {t('Bass plateau depth dB')}
+                        <input
+                          type="number"
+                          min={0}
+                          step={0.1}
+                          value={
+                            activeTargetCurve.plateauDepthDb === undefined
+                              ? ''
+                              : String(activeTargetCurve.plateauDepthDb)
+                          }
+                          placeholder="2.5"
+                          onChange={(e) => {
+                            if (!activeDesign) return;
+                            const raw = e.target.value;
+                            const v = Number(raw);
+                            setDesigns((ds) =>
+                              ds.map((d) => {
+                                if (d.id !== activeDesign.id) return d;
+                                const base = { ...(d.targetCurve ?? {}), type: 'bass-plateau' as const };
+                                // An empty field is ABSENT, never zero: a
+                                // plateau of 0 dB is a stated voicing that
+                                // happens to be flat, and "not stated yet" is
+                                // a different thing to say (P4).
+                                if (raw.trim() === '' || !Number.isFinite(v) || v < 0) {
+                                  const { plateauDepthDb: _drop, ...rest } = base;
+                                  void _drop;
+                                  return { ...d, targetCurve: rest };
+                                }
+                                return { ...d, targetCurve: { ...base, plateauDepthDb: v } };
+                              }),
+                            );
+                          }}
+                          style={{ width: '5rem' }}
+                        />
+                      </label>
+                    )}
                     <span className="derived" style={{ fontSize: '0.85em' }}>
                       {t('Target curve')}: {describeTargetCurve(activeTargetCurve)}
+                      {!activeDesign && ` — ${t('open a design tab to state one')}`}
                     </span>
 
                     {/* ---- F2: determinism (spec A5e.4) ---- */}
@@ -16488,7 +16812,7 @@ export default function App() {
                 </button>
               </p>
             )}
-            {chainScan && (
+            {chainScan && !v2Shortlist && (
               /* The success moment of a multi-minute run deserves its own
                  visual register — one green line that says it worked, where
                  the result lives, and that the table below is a MENU, before
@@ -16498,6 +16822,29 @@ export default function App() {
                 {t('tab and every chart shows it. The rows below are the full candidates: click one to try it, 💾 Save keeps the one you trust.')}
               </p>
             )}
+            {/* UI-1 — ON THE v2 ROUTE THE SENTENCE IS ABOUT THE SHORTLIST.
+                The line above said "the winner is loaded in the Working tab"
+                over a run whose Working tab was empty, because the winner it
+                meant was the v1 ranking's and that candidate had been refused.
+                Two states now, and the second one is the whole point: a run
+                that qualified nothing says so, and says that nothing was
+                loaded — rather than quietly showing a design that failed. */}
+            {v2Shortlist &&
+              (shortlistPick !== null ? (
+                <p className="result-good">
+                  ✓ {t('Shortlist ready —')} <strong>{shortlistPick}</strong>{' '}
+                  {t('is loaded in the')} <strong>Working</strong>{' '}
+                  {t('tab and every chart shows it. Click any shortlist row to load that design instead; 💾 Save keeps the one you trust.')}
+                </p>
+              ) : (
+                <p className="result-warn">
+                  ⚠{' '}
+                  {t('No design was loaded: {n} of {m} candidates meet the requirements you stated. The Working tab is untouched — the v1 ranking below has no knowledge of your gates or requirements, so its top row is not a stand-in for an empty shortlist.', {
+                    n: String(v2Shortlist.rows.length),
+                    m: String(v2Shortlist.consideredCount),
+                  })}
+                </p>
+              ))}
             {chainScan && scanReference && (() => {
               /* THE HONEST VERDICT. A scan always crowns one of its own rows —
                  so it must also be able to say that none of them was worth the
@@ -16529,13 +16876,27 @@ export default function App() {
                 </p>
               );
             })()}
-            {chainScan && chainScan.rows.filter((r) => r.bomEur !== null).length >= 2 && (() => {
+            {(() => {
+              /* UI-1 — ON THE v2 ROUTE THE PARETO PLOTS THE SHORTLIST.
+               *
+               * "Cost vs quality — the knee is yours to pick" is a picture of a
+               * CHOICE, and on the v2 route the choice is the shortlist. It was
+               * plotting the v1 ranking's field instead: every candidate the
+               * scan produced, gates and requirements and refusals included, so
+               * the cheapest point on the knee was regularly a design the run
+               * had already thrown away. Same rows, same builder
+               * (`chain3ScanRow`), so a point and a shortlist row cannot print
+               * two different prices for one design. */
+              const paretoRows = v2Shortlist
+                ? v2Shortlist.rows.map((r) => chain3ScanRow(r.result, null))
+                : chainScan?.rows;
+              if (!paretoRows || paretoRows.filter((r) => r.bomEur !== null).length < 2) return null;
               // B3 — Pareto scatter. y = chosen quality (lower is better), x = BOM.
-              const yOf = (r: (typeof chainScan.rows)[number]): number | null =>
+              const yOf = (r: (typeof paretoRows)[number]): number | null =>
                 paretoY === 'peak' ? r.rippleDb : paretoY === 'avg' ? r.avgDevDb : r.phaseDeg;
-              const pts = chainScan.rows
+              const pts = paretoRows
                 .map((r) => ({ r, x: r.bomEur!, y: yOf(r) }))
-                .filter((p): p is { r: (typeof chainScan.rows)[number]; x: number; y: number } => p.r.bomEur !== null && p.y !== null && Number.isFinite(p.y));
+                .filter((p): p is { r: (typeof paretoRows)[number]; x: number; y: number } => p.r.bomEur !== null && p.y !== null && Number.isFinite(p.y));
               if (pts.length < 2) return null;
               const dominated = (p: typeof pts[number]) =>
                 pts.some((q) => q !== p && q.x <= p.x && q.y <= p.y && (q.x < p.x || q.y < p.y));
@@ -16576,9 +16937,17 @@ export default function App() {
                     {pts.map((p) => {
                       const onFront = front.includes(p);
                       const dq = !!p.r.disqualified?.length;
-                      const active = chainScan.active === p.r.label;
+                      const active = v2Shortlist
+                        ? shortlistPick === p.r.label
+                        : chainScan?.active === p.r.label;
                       return (
-                        <g key={p.r.label} style={{ cursor: 'pointer' }} onClick={() => applyScanCandidate(p.r)}>
+                        <g
+                          key={p.r.label}
+                          style={{ cursor: 'pointer' }}
+                          onClick={() =>
+                            v2Shortlist ? loadShortlistRow(p.r.label) : applyScanCandidate(p.r)
+                          }
+                        >
                           <title>{`${p.r.delivered} · €${Math.round(p.x)} · ${yLabel} ${p.y.toFixed(2)}${dq ? ' · ✗' : ''}${onFront ? ' · Pareto' : ''}`}</title>
                           <circle cx={X(p.x)} cy={Y(p.y)} r={onFront ? 6 : 4.5} fill={onFront ? 'var(--accent, #4d8df0)' : 'transparent'} stroke={dq ? 'var(--bad, #d55)' : 'var(--accent, #4d8df0)'} strokeWidth={active ? 2.5 : 1.2} />
                           {dq && <text x={X(p.x)} y={Y(p.y) + 3.5} textAnchor="middle" fontSize="9" fill="var(--bad, #d55)">✗</text>}
@@ -16590,9 +16959,27 @@ export default function App() {
                 </div>
               );
             })()}
+            {chainScan && v2Shortlist && (
+              /* UI-1 — WHAT THIS TABLE IS ON THE v2 ROUTE, said above it.
+               *
+               * It is the v1 ranking over the same field: one weighted order,
+               * with no knowledge of a gate, a requirement or a refused tune.
+               * It stays — a second reading of one's own field is worth having
+               * — but it may not present itself as the run's verdict, and it
+               * did: it crowned a row with 🏆, called it "winner" in the note,
+               * and struck others through with ✗ on a source-resistance rule
+               * the v2 route withdrew at V34, marking as failures exactly the
+               * designs the shortlist above had passed. */
+              <div className="v1-reading">
+                <h4>{t('v1 reading — not the route that made this run')}</h4>
+                <p className="sub">
+                  {t('The same candidates, ordered by the v1 ranking: one weighted score over flatness, phase, price and load. It knows nothing about your gates, your requirements or a candidate whose tune was refused, so it crowns nothing here and its disqualification marks are shown as v1 notes rather than as verdicts. The shortlist above is what this run decided.')}
+                </p>
+              </div>
+            )}
             {chainScan && (
               <table
-                className="scan-table scan-table-pick"
+                className={`scan-table scan-table-pick${v2Shortlist ? ' scan-table-v1-reading' : ''}`}
                 title={t("Full-chain crossover scan — click a row to load that candidate's complete design (filters + tuned network) into Working; click a header to sort")}
               >
                 <thead>
@@ -16680,7 +17067,7 @@ export default function App() {
                     .map((r) => (
                     <tr
                       key={r.label}
-                      className={`${r.winner ? 'winner' : ''}${chainScan.active === r.label ? ' active' : ''}${r.disqualified.length > 0 ? ' disqualified' : ''}`}
+                      className={`${r.winner ? 'winner' : ''}${chainScan.active === r.label ? ' active' : ''}${r.disqualified.length > 0 && !v2Shortlist ? ' disqualified' : ''}`}
                       onClick={() => applyScanCandidate(r)}
                       title={
                         chainScan.active === r.label
@@ -16694,7 +17081,17 @@ export default function App() {
                           (r.unrealisable
                             ? t('Target not realisable: the tuned network crosses more than ⅓ octave from the candidate it aimed at — the window or the topology binds. ')
                             : '') +
-                          (r.disqualified.length > 0 ? `${t('DISQUALIFIED')}: ${r.disqualified.join('; ')}. ` : '') +
+                          (r.disqualified.length > 0
+                            ? v2Shortlist
+                              ? /* UI-1 — the reason is kept and the VERDICT is
+                                   withdrawn. The v1 chain's rules are not this
+                                   run's rules; the source-resistance limit in
+                                   particular was withdrawn on the v2 route at
+                                   V34, and it struck out designs the shortlist
+                                   passed. */
+                                `${t('v1 note (not applied on this route)')}: ${r.disqualified.join('; ')}. `
+                              : `${t('DISQUALIFIED')}: ${r.disqualified.join('; ')}. `
+                            : '') +
                           (r.xoFloorVerdict?.some((v) => v === 'warn') ? t('Delivered within 5 % under a physics floor (fs·K / excursion / reach). ') : '') +
                           t('Named after the DELIVERED acoustic crossing; aimed at {target}', { target: r.target }) +
                           (r.powerSlopeDbDec !== null
@@ -16703,7 +17100,7 @@ export default function App() {
                         }
                       >
                         {r.winner ? '🏆 ' : ''}
-                        {r.disqualified.length > 0 ? '✗ ' : r.unrealisable ? '⚠ ' : r.xoFloorVerdict?.some((v) => v === 'warn') ? '△ ' : ''}
+                        {r.disqualified.length > 0 && !v2Shortlist ? '✗ ' : r.unrealisable ? '⚠ ' : r.xoFloorVerdict?.some((v) => v === 'warn') ? '△ ' : ''}
                         {r.delivered}
                         <span style={{ opacity: 0.6 }}> {t('(aim')} {r.target.replace(/ Hz$/, '')})</span>
                         {chainScan.active === r.label ? ' ◂' : ''}
@@ -16865,6 +17262,20 @@ export default function App() {
                     ['rmax', t('largest R'), (r: (typeof v2Shortlist.rows)[number]) => r.dissipation?.largestResistorWatts ?? null, (v: number) => `${v.toFixed(1)} W`],
                     ['vfs', 'V@fs', (r: (typeof v2Shortlist.rows)[number]) => { const mc = r.gates.filter((g) => g.gate === 'M-C' && g.value !== null); return mc.length ? Math.max(...mc.map((g) => g.value!)) : null; }, (v: number) => `${v.toFixed(1)} dB`],
                     ['peak', t('peak'), (r: (typeof v2Shortlist.rows)[number]) => r.measurements.response?.narrowPeaks[0]?.db ?? null, (v: number) => `+${v.toFixed(1)} dB`],
+                    /* UI-1 — M-F-FINAL: the vertical lobing synthesis, per row.
+                       The only lobing quantity that may carry a judgement (V20a),
+                       and a COLUMN and not a criterion: nothing filters, sorts or
+                       gates on it. Empty when the row has no crossover region to
+                       synthesise over — never 0.0 dB, which is what a coplanar or
+                       single-source set reports and is the arithmetic of a missing
+                       input rather than a result. */
+                    ['lobing', t('vert. dip'), (r: (typeof v2Shortlist.rows)[number]) => shortlistLobing[r.label]?.dipDb ?? null, (v: number) => `${v.toFixed(1)} dB`],
+                    /* UI-1 — the price of THIS design. It was only ever on the
+                       v1 table, so on the v2 route the one list a designer picks
+                       from was the one list with no cost in it. Read from the
+                       row's own chain result — the same number the v1 table
+                       prints — and it sorts like every other column. */
+                    ['bom', 'BOM', (r: (typeof v2Shortlist.rows)[number]) => r.result.bomTotalEur, (v: number) => `€${Math.round(v)}`],
                   ] as const;
                   const sorted = [...v2Shortlist.rows];
                   if (shortlistSort) {
@@ -16907,8 +17318,26 @@ export default function App() {
                         </thead>
                         <tbody>
                           {sorted.map((r) => (
-                            <tr key={r.label}>
-                              <td>{r.label}</td>
+                            /* UI-1 — A SHORTLIST ROW IS A DESIGN YOU CAN LOAD.
+                               It carries the tuned NETWORK (`parts`), not a seed
+                               and not a label: it has done since F3, and until
+                               UI-1 nothing on this table could reach it. Clicking
+                               loads that network into Working and every chart —
+                               the same application the scan table's rows get. */
+                            <tr
+                              key={r.label}
+                              className={shortlistPick === r.label ? 'active' : ''}
+                              onClick={() => loadShortlistRow(r.label)}
+                              title={
+                                shortlistPick === r.label
+                                  ? t('This design is loaded in the Working tab')
+                                  : t('Load this design into the Working tab and every chart')
+                              }
+                            >
+                              <td>
+                                {r.label}
+                                {shortlistPick === r.label ? ' ◂' : ''}
+                              </td>
                               <td title={r.topologyClass} className="derived">{r.orderSignature}</td>
                               {COLS.map(([key, , read, fmt]) => {
                                 const v = read(r);
@@ -16927,6 +17356,48 @@ export default function App() {
                     {v2Shortlist.stamp.shortlistFingerprint}
                   </code>
                 </p>
+                {/* V31 — THE CANDIDATES THAT DELIVERED NOTHING.
+                    They have existed on the shortlist object since V31 and
+                    nothing has ever rendered them, which is one of the two
+                    reasons the empty Working tab was unexplainable: the
+                    candidate the v1 table crowned was one of THESE, and this
+                    was the only place that knew it. Listed with the rule that
+                    refused each of them, and deliberately NOT clickable —
+                    there is no network to load. */}
+                {v2Shortlist.rejected.length > 0 && (
+                  <div className="shortlist-refused">
+                    <h5>
+                      {t('Refused — no network at all')}{' '}
+                      <span className="derived">
+                        {t('{n} of {m} candidates', {
+                          n: String(v2Shortlist.rejected.length),
+                          m: String(v2Shortlist.consideredCount),
+                        })}
+                      </span>
+                    </h5>
+                    <p className="sub">
+                      {t('Their tune was refused wholesale, so what came back from the tuner is a seed nobody judged — not a proposal (V31). These rows cannot be loaded, and they are not near-misses: nobody looked at a design here.')}
+                    </p>
+                    <ul>
+                      {v2Shortlist.rejected.map((r) => (
+                        <li key={r.label}>
+                          <strong>{r.label}</strong>{' '}
+                          <span className="derived">[{r.kinds.join(', ') || t('uncategorised')}]</span>{' '}
+                          {r.reason}
+                          {r.rejectedTune && Object.keys(r.rejectedTune).length > 0 && (
+                            <span className="derived">
+                              {' '}
+                              — {t('the refused tune had reached')}{' '}
+                              {Object.entries(r.rejectedTune)
+                                .map(([k, v]) => `${k} ${v === null ? '—' : v}`)
+                                .join(' · ')}
+                            </span>
+                          )}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
                 {v2Shortlist.notes.map((n, i) => (
                   <p className="v2-muted" key={i}>{n}</p>
                 ))}
@@ -17304,9 +17775,18 @@ export default function App() {
           {result && !designShaped && (
               <div className="panel">
                 <div className="verdict no-reference">
-                  <strong>{t('No filter in the simulation — you are looking at the RAW drivers.')}</strong>{' '}
-                  {t('Design one in the Filters tab (Optimize — design for me), activate a network in the Network tab')}
-                  {project ? t(', or pick a vxp variant in the Setup tab') : ''}.
+                  {emptyNetworkLoaded ? (
+                    <>
+                      <strong>{t('No network loaded — the active design tab holds no components.')}</strong>{' '}
+                      {t('Everything on screen is the RAW drivers summed, and every score beside it judges that and not a design. Load a shortlist row, switch to a saved design tab, or build a network in the Network tab.')}
+                    </>
+                  ) : (
+                    <>
+                      <strong>{t('No filter in the simulation — you are looking at the RAW drivers.')}</strong>{' '}
+                      {t('Design one in the Filters tab (Optimize — design for me), activate a network in the Network tab')}
+                      {project ? t(', or pick a vxp variant in the Setup tab') : ''}.
+                    </>
+                  )}
                 </div>
               </div>
             )}

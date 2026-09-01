@@ -143,11 +143,28 @@ export function EngineV2Panel({ report, ambiguous, floors = [] }: EngineV2PanelP
           <code title={ingest.fingerprint}>{ingest.fingerprint.split(';').length} versioned</code>
         </div>
       </div>
-      <p className="sub">
-        The metric library, the ingest pass and the pre-design blocks, on the loaded design. The
-        gates below are the ones the v2 optimisation path enforces; a limit you have not stated
-        judges nothing, here or there.
-      </p>
+      {/* UI-1 — WHAT this panel judges, said before the first table.
+          With no network loaded every network metric reports "off" and every
+          gate reports a value it could not measure, and the two render as a
+          full page of rows that reads like a verdict on a design. It is not a
+          verdict on anything, and the panel has to say so where the eye lands
+          first rather than leave it to be inferred from absent rows (F0). */}
+      {report.subject.network === null ? (
+        <p className="v2-problem">
+          <b>No network loaded.</b> The metrics, the gates and the bounds below apply to NOTHING —
+          there is no crossover here to judge. What they show is the measurement set and the
+          pre-design analysis that rests on it alone; every network figure is off and every gate
+          reads a value it had no design to measure. Load a design (a shortlist row, a saved tab)
+          and this panel judges that design.
+        </p>
+      ) : (
+        <p className="sub">
+          Judging the loaded design <b>{report.subject.network}</b> — the metric library, the
+          ingest pass and the pre-design blocks, on that network and no other. The gates below are
+          the ones the v2 optimisation path enforces; a limit you have not stated judges nothing,
+          here or there.
+        </p>
+      )}
 
       {ambiguous && <p className="v2-problem">{ambiguous}</p>}
       {report.problems.map((p, i) => (
@@ -190,25 +207,42 @@ export function EngineV2Panel({ report, ambiguous, floors = [] }: EngineV2PanelP
                       `${v.direction === 'max' ? '≤' : '≥'} ${fmt(v.limit, v.gate)}`
                     )}
                   </td>
+                  {/* UI-1 — "not judged" IS A STATUS, and it used to be spelled
+                      "inside".
+
+                      A gate with a limit stated and a value of null is
+                      `active: true, pass: true` on purpose: "we could not look"
+                      may not be reported as "it failed" (the rule at the top of
+                      `gates.ts`). But the cell read that `pass` and printed
+                      "inside", so a gate that measured NOTHING was shown as a
+                      gate the design cleared — the strongest possible reading
+                      of the weakest possible evidence. The data was honest all
+                      along: `value` is null and `reason` starts "not
+                      evaluated". Only this cell collapsed the three states into
+                      two (F0). */}
                   <td
                     className={
                       !v.active
                         ? 'v2-off'
-                        : v.withinToleranceOnly
-                          ? 'v2-on v2-tolerance'
-                          : v.pass
-                            ? 'v2-on'
-                            : 'v2-fail'
+                        : v.value === null
+                          ? 'v2-unjudged'
+                          : v.withinToleranceOnly
+                            ? 'v2-on v2-tolerance'
+                            : v.pass
+                              ? 'v2-on'
+                              : 'v2-fail'
                     }
-                    title={v.withinToleranceOnly ? v.reason : undefined}
+                    title={v.value === null || v.withinToleranceOnly ? v.reason : undefined}
                   >
                     {!v.active
                       ? 'off'
-                      : v.withinToleranceOnly
-                        ? 'inside, on tolerance'
-                        : v.pass
-                          ? 'inside'
-                          : 'EXCEEDED'}
+                      : v.value === null
+                        ? 'not judged'
+                        : v.withinToleranceOnly
+                          ? 'inside, on tolerance'
+                          : v.pass
+                            ? 'inside'
+                            : 'EXCEEDED'}
                   </td>
                 </tr>
               ))}
@@ -718,7 +752,38 @@ export function EngineV2Panel({ report, ambiguous, floors = [] }: EngineV2PanelP
       </Section>
 
       <Section title="Pre-design — anchored sensitivity gaps" spec="A5d.4">
-        {!predesign.gaps ? (
+        {predesign.gapsBlocked ? (
+          /* UI-1 — the two reasons this block can be empty, told apart.
+             A caveat printed ABOVE a full table is still a published table,
+             and the 3-way demo published an anchor of `low` where the same
+             measurements with their window header intact anchor on `mid`. */
+          <div className="v2-suspect">
+            <p className="v2-problem">
+              <b>⛔ Not computed — the window is unknown.</b>
+            </p>
+            <p className="v2-warn">{predesign.gapsBlocked.describe}</p>
+            <table className="v2-table">
+              <thead>
+                <tr>
+                  <th>Way</th>
+                  <th>Band its level would rest on</th>
+                  <th>Floor provenance</th>
+                </tr>
+              </thead>
+              <tbody>
+                {predesign.gapsBlocked.bands.map((b) => (
+                  <tr key={b.driver}>
+                    <th scope="row">{b.driver}</th>
+                    <td>
+                      {hz(b.bandHz[0])}–{hz(b.bandHz[1])}
+                    </td>
+                    <td>{b.provenance}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        ) : !predesign.gaps ? (
           <p className="v2-muted">Needs at least two branches with a usable band.</p>
         ) : (
           <>
@@ -727,16 +792,6 @@ export function EngineV2Panel({ report, ambiguous, floors = [] }: EngineV2PanelP
             </p>
             {predesign.gaps.anchorSwitchWarning && (
               <p className="v2-warn">{predesign.gaps.anchorSwitchWarning}</p>
-            )}
-            {predesign.gaps.suspectBands.length > 0 && (
-              <div className="v2-suspect">
-                <b>⚠ Read this block with a caveat.</b>
-                {predesign.gaps.suspectBands.map((b) => (
-                  <p className="v2-warn" key={b.driver}>
-                    {b.describe}
-                  </p>
-                ))}
-              </div>
             )}
             <table className="v2-table">
               <thead>
@@ -922,10 +977,18 @@ export function EngineV2Panel({ report, ambiguous, floors = [] }: EngineV2PanelP
         </p>
       </Section>
 
+      {/* UI-1 — this footer named four A5e decisions as PARKED and three of
+          them have been taken since: aggregation at F3 (satisficing, no
+          weights), the target-curve object at F3 and closed at V45 (the level
+          anchor), and determinism at F2. A footer that keeps calling a settled
+          decision open is not a caveat, it is a wrong statement about the
+          engine standing under every number on the page. What is genuinely
+          still open is the catalog schema, and it says only that. */}
       <p className="v2-foot">
-        {report.engine.mark} · parked pending specification decisions (A5e): soft-goal normalisation
-        and aggregation, the target-curve object, the catalog schema, and the determinism policy.
-        Nothing on this panel assumes any of them.
+        {report.engine.mark} · one A5e decision is still open — the catalog schema (A5e.3), so
+        component bounds here do not follow a catalogue's span. Aggregation (A5e.1, satisficing
+        with no weights), the target curve (A5e.2, with its level anchor) and the determinism
+        policy (A5e.4) are settled, and this panel applies them.
       </p>
     </div>
   );

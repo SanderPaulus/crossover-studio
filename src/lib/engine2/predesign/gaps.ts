@@ -43,12 +43,15 @@ export interface WayLevel {
    * system's sensitivity is capped by the wrong way, and every chained budget
    * behind it is wrong too.
    *
-   * That is not hypothetical — it happened, and the point of the incident is
-   * that NOTHING IN THE BLOCK SHOWED IT. The anchor, the gaps and the budgets
-   * all looked like ordinary numbers. So the flag travels with the level into
-   * the analysis and out the other side as a caveat on the block itself,
-   * rather than living in a driver table three sections away where a reader
-   * would have to think to go and look.
+   * That is not hypothetical — it happened twice. The first time (F3b) the
+   * point was that NOTHING IN THE BLOCK SHOWED IT: the anchor, the gaps and
+   * the budgets all looked like ordinary numbers, so the flag was made to
+   * travel with the level and come out as a caveat on the block itself. The
+   * second time (UI-1, on the 3-way demo bundle) the point was that a caveat
+   * ABOVE a full table is still a full table — it warned, and it published an
+   * anchor of `low` where the same measurements with their window header
+   * intact anchor on `mid`. So the flag no longer annotates the block: it
+   * BLOCKS it. See `anchorFloorBlock` below.
    *
    * Absent = true: a caller that does not know cannot be made to claim it does
    * not know, but a caller that DOES know must say so.
@@ -79,19 +82,102 @@ export interface AnchoredGaps {
    * case.
    */
   anchorSwitchWarning: string | null;
-  /**
-   * The ways whose level rests on a band with NO derived gate floor, with what
-   * that does to this analysis. Empty when every level is on a known floor.
-   */
-  suspectBands: {
+  notes: string[];
+}
+
+/**
+ * UI-1 — THE BLOCK: why there are no anchored gaps at all.
+ *
+ * A5d.4 rests on the LEVELS, a level is an energy average over a band, and the
+ * bottom of that band has to be a DERIVED gate floor. When it is not — when it
+ * is simply where a sweep happened to start — the average carries however much
+ * rolloff sits below the real limit, and the level reads LOW. Read one way low
+ * enough and it takes the anchor role away from the way that should have it,
+ * and every chained budget behind it is wrong too.
+ *
+ * UNTIL UI-1 THIS WAS A CAVEAT BESIDE THE NUMBERS (`suspectBands`, F3b), and
+ * the caveat is what the demo bundle proved insufficient. The 3-way demo's
+ * woofer file is a legitimate derivation — the two measured woofers complex-
+ * summed and resampled — and the derivation dropped the ARTA window header.
+ * The panel printed the warning, and it also printed an anchor, a gap table
+ * and three attenuation budgets, all computed on a level biased downwards. The
+ * anchor was `low`; the same measurement set with the header intact anchors on
+ * `mid`. A reader who trusts a table under a warning gets the wrong answer, and
+ * every one of those numbers looked ordinary.
+ *
+ * So it BLOCKS. There is no anchor, there are no gaps, and there are no
+ * budgets until the window is known — which is the F0 rule this codebase
+ * already applies to a score on an empty network: a judgement resting on an
+ * input nobody has is not a judgement, and printing one beside a warning is
+ * publishing it anyway.
+ *
+ * IT BLOCKS ON *ANY* WAY, not only on the way that would be the anchor. The
+ * anchor is "the quietest way", so you cannot know which way holds the role
+ * until you believe every level; and a non-anchor way with an unknown floor
+ * still overstates its own gap and its own budget. Both are wrong numbers in
+ * the same table.
+ *
+ * THE WAY OUT IS AN INPUT, NOT A SETTING. Either the file states its window,
+ * or the designer enters one in the A5a form (`manual-window` /
+ * `manual-floor` provenance, F3b) — both produce a derived floor and both
+ * unblock this. There is no "compute anyway" switch, deliberately.
+ */
+export interface AnchorFloorBlock {
+  /** The ways whose level rests on a band with no derived gate floor. */
+  drivers: string[];
+  bands: {
     driver: string;
     bandHz: [number, number];
+    /** What the validity pass said produced (or failed to produce) the floor. */
     provenance: string;
-    /** True when this way is the anchor — the case that inverts the block. */
-    isAnchor: boolean;
-    describe: string;
   }[];
-  notes: string[];
+  /** One paragraph a reader can act on. */
+  describe: string;
+}
+
+/**
+ * The block, or null when every level rests on a derived floor.
+ *
+ * Exported separately from `anchoredGaps` so a caller can render WHY there are
+ * no gaps without having to reconstruct the reason from an absence. `null`
+ * from `anchoredGaps` has two causes — fewer than two ways, and this — and a
+ * reader is owed the difference.
+ */
+export function anchorFloorBlock(levels: readonly WayLevel[]): AnchorFloorBlock | null {
+  const bad = levels.filter((l) => l.bandFloorKnown === false);
+  if (bad.length === 0) return null;
+  const bands = bad.map((l) => ({
+    driver: l.driver,
+    bandHz: l.bandHz,
+    /* The provenance arrives as the tag the validity pass carries. `none` is
+     * the case this whole block exists for, and printing the tag verbatim
+     * ("(none)") reads like a missing value rather than like the finding. */
+    provenance:
+      l.bandFloorProvenance === undefined || l.bandFloorProvenance === 'none'
+        ? 'no detector could establish one — the file carries no window header and none was entered'
+        : l.bandFloorProvenance,
+  }));
+  return {
+    drivers: bad.map((l) => l.driver),
+    bands,
+    describe:
+      'The anchored sensitivity gaps are NOT computed, because a level they would rest on ' +
+      'cannot be believed. ' +
+      bands
+        .map(
+          (b) =>
+            `${b.driver}'s level would be averaged over ${b.bandHz[0].toFixed(0)}–` +
+            `${b.bandHz[1].toFixed(0)} Hz and the bottom of that band is not a derived gate ` +
+            `floor (${b.provenance})`,
+        )
+        .join('; ') +
+      '. Everything below the real gate limit is rolloff, so such a level reads LOWER than the ' +
+      'way actually is — and the anchor is by definition the QUIETEST way, so one biased level ' +
+      'moves the anchor, every gap behind it and every attenuation budget with it. A5d.4(a) ' +
+      'also feeds the target-curve plateau, so nothing anchor-dependent is judged here until ' +
+      "the window is known. Give the measurement its window — the file's own ARTA header, or " +
+      'the reference time and right window in the measurement form — and this block computes.',
+  };
 }
 
 /**
@@ -126,6 +212,9 @@ export function anchoredGaps(
   targetCurveShift?: Readonly<Record<string, number>>,
 ): AnchoredGaps | null {
   if (levels.length < 2) return null;
+  /* UI-1 — REFUSE rather than warn. See `anchorFloorBlock` for why the caveat
+   * that used to stand here was not enough; the caller renders the block. */
+  if (anchorFloorBlock(levels)) return null;
   const notes: string[] = [];
   const shift = targetCurveShift ?? {};
   if (!targetCurveShift) {
@@ -192,43 +281,6 @@ export function anchoredGaps(
 
   const switched = anchorIx !== 0;
 
-  /* A5d.4 / F3b — the caveat that was missing.
-   *
-   * Flagged on the LEVELS, not on the outcome, and stated in terms of what it
-   * would do to this block: a level averaged over a band whose bottom is not a
-   * derived floor reads LOW, and reading low is how a way takes the anchor
-   * role away from the way that should have it. The flag is loudest exactly
-   * where it matters most — on the anchor itself. */
-  const suspectBands: AnchoredGaps['suspectBands'] = [];
-  for (const l of levels) {
-    if (l.bandFloorKnown !== false) continue;
-    const isAnchor = l.driver === anchor.driver;
-    // The provenance arrives as the tag the validity pass carries. `none` is
-    // the case this whole flag exists for, and printing the tag verbatim
-    // ("(none)") reads like a missing value rather than like the finding it is.
-    const provenance =
-      l.bandFloorProvenance === undefined || l.bandFloorProvenance === 'none'
-        ? 'no detector could establish one — the file carries no window header and none was entered'
-        : l.bandFloorProvenance;
-    suspectBands.push({
-      driver: l.driver,
-      bandHz: l.bandHz,
-      provenance,
-      isAnchor,
-      describe:
-        `${l.driver}'s level is averaged over ${l.bandHz[0].toFixed(0)}–${l.bandHz[1].toFixed(0)} Hz, ` +
-        'and the bottom of that band is NOT a derived gate floor — it is where the sweep starts ' +
-        `(${provenance}). Everything below the real ` +
-        'gate limit is rolloff, so this level reads LOWER than the way actually is' +
-        (isAnchor
-          ? ', AND THIS WAY IS THE ANCHOR: the reference level of the whole system, and every ' +
-            'chained budget behind it, rests on a number that is biased downwards. Establish this ' +
-            "measurement's window before believing the anchor."
-          : '. Its gap and its budget are overstated by however much of that rolloff is in the ' +
-            'average.'),
-    });
-  }
-
   return {
     anchor: anchor.driver,
     anchorReason: switched
@@ -244,7 +296,6 @@ export function anchoredGaps(
         'where attenuation is most expensive. This is a driver-selection problem, not something ' +
         'the filter can optimise away (A5d.4b).'
       : null,
-    suspectBands,
     notes,
   };
 }

@@ -1083,6 +1083,56 @@ svg.legend-key-dash {
   font-weight: 600;
 }
 
+/* UI-1 — THE SHORTLIST IS A MENU, exactly as the scan table is.
+   It carries the tuned network per row and has done since F3; until UI-1
+   nothing on the table could reach it, so the one list a designer is meant to
+   pick from was the one list you could not pick from. */
+.shortlist .scan-table tbody tr {
+  cursor: pointer;
+}
+.shortlist .scan-table tbody tr:hover td {
+  color: var(--fg);
+}
+.shortlist .scan-table tr.active td {
+  color: var(--accent);
+  font-weight: 600;
+}
+
+/* V31's refusals, on screen for the first time (UI-1). Not a table and not
+   clickable, on purpose: there is no design here to load or to compare. */
+.shortlist-refused {
+  border: 1px dashed var(--border);
+  border-radius: 4px;
+  padding: 0.4rem 0.6rem;
+  margin: 0.6rem 0;
+}
+.shortlist-refused h5 {
+  margin: 0 0 0.2rem;
+}
+.shortlist-refused ul {
+  margin: 0.3rem 0 0 1.1rem;
+  padding: 0;
+}
+.shortlist-refused li {
+  margin-bottom: 0.25rem;
+}
+
+/* UI-1 — the v1 ranking, kept and demoted on the v2 route. Muted because it is
+   a second reading and not the run's verdict; visible because a second reading
+   of your own field is worth having. */
+.v1-reading {
+  margin-top: 1rem;
+  border-top: 1px solid var(--border);
+  padding-top: 0.6rem;
+}
+.v1-reading h4 {
+  margin: 0 0 0.2rem;
+  color: var(--muted);
+}
+.scan-table-v1-reading {
+  opacity: 0.88;
+}
+
 /* Network-design tabs. */
 .design-tabs {
   display: flex;
@@ -3974,6 +4024,17 @@ details.cabinet-driver > .derived strong,
   font-weight: 600;
 }
 
+/* UI-1 — A GATE THAT WAS NOT JUDGED. Armed, and no value under it.
+   Neither green nor red on purpose: it did not pass and it did not fail, and
+   colouring it either way is the collapse this class exists to undo. Dotted,
+   like .v2-tolerance, because both mean "read the sentence behind this". */
+.v2-unjudged {
+  color: var(--muted);
+  border-bottom: 1px dotted currentColor;
+  cursor: help;
+  font-style: italic;
+}
+
 /* A gate that passes ONLY because of a measurement tolerance. Still green —
    it does pass — but it may not read the same as a design that clears the
    limit outright, because those are two different things to build. */
@@ -3983,9 +4044,11 @@ details.cabinet-driver > .derived strong,
   cursor: help;
 }
 
-/* The caveat that hangs on a whole analysis block rather than on one number:
-   the band a level was averaged over had no derived gate floor, so the block's
-   own conclusion may be inverted (A5d.4 / F4). */
+/* The frame around an analysis block that was NOT computed, and why. Until
+   UI-1 this was a caveat printed above a full table; the table is gone now —
+   a level averaged over a band with no derived gate floor can invert the
+   block's own conclusion, and a warning above the wrong numbers is still the
+   wrong numbers (A5d.4 / F4 / UI-1). */
 .v2-suspect {
   border: 1px dashed #ec835a;
   border-radius: 4px;

@@ -2,6 +2,16 @@
 * Koan 2951 - woofers W1+W2 complex gesommeerd, hor 15 graden
 * bron: ARTA gated 5.021 ms, ref time 2.5 ms - GELDIG BOVEN ~400 Hz
 * source: woofer_pair_hor_15.frd (ARTA export, 13640 pts, 20.51–20000 Hz), resampled to a 500-pt log grid 20.5–20000 Hz (dB + unwrapped phase in log-f, then re-wrapped)
+* HEADER HERSTELD (UI-1, 01-09-2026). De afleiding hierboven — complexe sommatie
+* van woofer_up_hor_* en woofer_down_hor_* plus herbemonstering — schreef de
+* vensterregels van ARTA weg en zette er de prozaregel "bron: ARTA gated ..." voor
+* in de plaats. Engine2 leest de header op VELDNAAM (`Naam = waarde`), dus dit
+* bestand meldde "no window header": geen geldigheidsvloer, band 21 Hz-20 kHz, en
+* daardoor het VERKEERDE niveau-anker (A5d.4). De twee regels hieronder zijn niet
+* verzonnen maar teruggezet: beide bronbestanden dragen ze woordelijk, en een
+* complexe som van twee gelijk gepoortte responsen heeft die poort.
+* Reference time = 2,5 ms
+* Right window = 5,021 ms, Tukey 0.25
 Freq[Hz]     dBSPL  Phase[Deg]
 20.508  130.484  135.889
 20.793  130.410  135.345
