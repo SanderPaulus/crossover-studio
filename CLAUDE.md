@@ -1773,6 +1773,11 @@ grotere ingreep — hij raakt élk commando in dit project — en is deze sessie
   `_excursie_parameters.R_e_lezing`); route 2 staat UIT met de meetspanning bij naam; en P2:
   zonder de excursie-invoer is het rapport wat het was, met dezelfde M-C-WAARDE en alleen het
   gestelde getal als grens.
+- **CI ving bij V49 een exacte float-vergelijking op een AFGELEIDE grens** (`effectieve_grens_dB`
+  `toBe` de verse limiet): op de zeven V28-mids is die limiet het afgeleide plafond, een float, en
+  linux/Node 22 leest −20,05402383546058 waar darwin/Node 26 −20,054023835475075 opschreef — de
+  A5e.4-precisering van V46, nu op een klasse-B-referentie. Lokaal groen, CI rood; sindsdien
+  binnen de dB-klasse. Een gestelde grens is een exact getal, een afgeleide is dat niet.
 - **De V47-guard is bij V49 van vorm veranderd zonder van claim te veranderen:** "M-C is ARMED on
   every protected way" pinde `verdict.limit === −20`; de limit is sinds V49 `min(gesteld,
   afgeleid)`, dus de guard pint nu dat het gestelde getal élk oordeel BEREIKT (`stated_limit_dB`)

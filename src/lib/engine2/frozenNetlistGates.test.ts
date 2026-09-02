@@ -2666,7 +2666,11 @@ describe('V49 — M-C v2.0: the excursion-derived ceiling beside the stated figu
       expect(d, `${row.netlist}/${row.weg} is recorded but not in the field`).toBeDefined();
       expect(Math.abs(row.M_C_dB! - d!.db)).toBeLessThanOrEqual(TOL_DB_V49);
       expect(Math.abs(row.afgeleide_grens_dB! - d!.derived!)).toBeLessThanOrEqual(TOL_DB_V49);
-      expect(row.effectieve_grens_dB).toBe(d!.limit);
+      /* Within the dB class, NOT `toBe`: where the derived ceiling is the
+       * limit (the seven V28 mids) it is a float, and linux/Node 22 lands on
+       * −20.05402383546058 where darwin/Node 26 records −20.054023835475075
+       * (V46's A5e.4 precision rule — CI caught the exact comparison). */
+      expect(Math.abs(row.effectieve_grens_dB! - d!.limit!)).toBeLessThanOrEqual(TOL_DB_V49);
       expect(row.haalt_de_eis).toBe(d!.db <= d!.limit!);
     }
     /* And the weakest-link rows: every netlist with an unprotected way carries
