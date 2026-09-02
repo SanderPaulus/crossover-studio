@@ -2373,12 +2373,25 @@ describe('V47 — the stated drive limit on a driver\'s own resonance', () => {
         );
       }
     }
-    /* HUIDIG IS THE MEASURE, and the rounding is asserted rather than trusted:
-     * the limit is the strictest single decimal it still clears, so one tenth
-     * stricter would condemn it. */
+    /* HUIDIG IS NO LONGER THE MEASURE (V47b). Until V47b the limit was HUIDIG's
+     * own reading rounded to one decimal, and this block asserted that one
+     * tenth stricter would condemn it — which is exactly what made the
+     * requirement brittle: a re-measurement of the reference filter after
+     * break-in that moved f_s or the passband level by a tenth of a dB would
+     * have condemned the design the requirement was derived from. Since V47b
+     * the number is a RULE (18 dB below passband on f_s, plus 2 dB for f_s
+     * drift; provisional until M-C is excursion-based, V49) and HUIDIG merely
+     * proves the rule excludes no buildable design. So the assertion is the
+     * inverse of the old one: HUIDIG clears the limit by MORE than a rounding
+     * step. If it ever sits within a dB of it, either the number has quietly
+     * become HUIDIG's again (the V47 form) or HUIDIG has drifted onto the
+     * rule, and both are findings rather than green. */
     const huidig = Math.max(...DRIVE.filter((d) => d.key === 'HUIDIG').map((d) => d.db));
     expect(huidig).toBeLessThanOrEqual(CEILING_DB!);
-    expect(huidig).toBeGreaterThan(CEILING_DB! - 0.1);
+    expect(
+      CEILING_DB! - huidig,
+      'HUIDIG sits within a dB of the stated limit — the limit reads as its rounded value again',
+    ).toBeGreaterThan(1);
   });
 
   it('it is NOT VACUOUS: netlists in the casebook exceed it', () => {

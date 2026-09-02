@@ -45,9 +45,19 @@ const files = casus1Files(manifest);
 const loadParts = (file: string): VxpPart[] =>
   deserializeFilter(readFileSync(join(CASUS1_DIR, file), 'utf-8')).parts;
 
-/** The shortlist's first row, as the Working tab would hold it. */
-const K1 = loadParts('KAND-V2-1.adsfilter.json');
-const K2 = loadParts('KAND-V2-2.adsfilter.json');
+/** The shortlist's first row, as the Working tab held it when UI-2 measured
+ *  this table — ANCHORED ON THE FROZEN V48 CORPUS SINCE V47b, not on the live
+ *  file. UI-2 read `KAND-V2-1` directly, and that file is rewritten by every
+ *  regeneration: V47b regenerated, the mid branch of the new `KAND-V2-1`
+ *  carries one part more, and the row `delete a wire (the feed to the mid
+ *  branch)` — which pins the number of parts that go undriven — went red
+ *  without a single line of readiness code changing. The same re-anchoring
+ *  V43 applied to `v42_bult_bevinding` and V48 to `corpusPairing`: a claim
+ *  that names the live corpus becomes untrue in silence. `V48-KAND-1` is
+ *  byte-identical to the file UI-2 tested (checked with `cmp` against the
+ *  pre-regeneration `KAND-V2-1`), so every number below is unchanged. */
+const K1 = loadParts('V48-KAND-1.adsfilter.json');
+const K2 = loadParts('V48-KAND-2.adsfilter.json');
 const MODELS = Object.keys(casus1FilterFromParts('k1', K1, manifest, files).driverZ);
 
 /** Where the series resistor before the woofer sits, read from the file and

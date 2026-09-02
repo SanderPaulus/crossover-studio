@@ -4002,6 +4002,189 @@ point"), dus een verdwaalde klik begint een volgende draad; niet aangeraakt. En 
 statuscel op de v2-pagina en de scan-tabel lezen `sim` — de vorige toestand — zonder eigen tag;
 zij staan onder dezelfde banner, maar dragen hem niet zelf.
 
+### V47b — de tweetereis wordt voorlopig −20 dB (02-09-2026, **BREAKING, alleen v2-runs**)
+
+**AANLEIDING.** V47 stelde `tweeter_drive_op_fs_max_dB = −25,0` als de strengste waarde op één
+decimaal die HUIDIG nog toelaat: HUIDIG meet −25,084 dB op zijn slechtste beschermde weg, dus de
+marge was **0,084 dB**. Dat maakte het eigen referentiefilter van de ontwerper de maat — en het
+maakte de eis breekbaar in de andere richting dan de V42-fout: een hermeting van HUIDIG na
+inspelen die f_s of het doorlaatniveau een tiende dB verplaatst, veroordeelt het ontwerp waaruit
+de eis is afgeleid. Bovendien weigerde zij kandidaten die de vuistregel waar de eis over gaat
+ruim halen: vier van de elf V47-weigeringen maten op de tweeter **−21,8 / −22,6 / −23,4 /
+−23,5 dB**.
+
+**HET BESLUIT (Sander, 02-09-2026): −20,0 dB, VOORLOPIG.** De industrieregel is 18 dB onder het
+doorlaatniveau op f_s. Zij is bedacht voor een tweede-orde filter op 2×f_s en werd toen al "te
+conservatief" gevonden; met LR4-flanken, een waveguide en padwerk vóór de driver is zij hier
+conservatiever dan in haar oorsprong. Daar komt 2 dB marge bij voor f_s-drift — een
+tweeterresonantie verloopt met inspelen en temperatuur, en een grens die exact op de regel staat
+veroordeelt bij de eerste hermeting. **Een gekozen dB-getal is geen generieke eis:** dit is een
+vuistregel op één punt, en zij VERVALT zodra M-C excursie-gedragen is (V49: de aandrijving op f_s
+omgerekend naar uitwijking tegen X_max, met gedocumenteerde meetspanning en Sd — dan is de grens
+een eigenschap van de driver en niet een conventie). HUIDIG haalt de eis nu ruim (5,1 dB marge)
+en is niet langer de maat; de haalbaarheid rust op de regel en niet op het referentiefilter. Het
+casus-1-getal staat uitsluitend in `manifest_en_geometrie.gestelde_eisen`; de fixture leest het,
+engine-code kent het niet (P6). De verwachting vooraf: het veld wordt groter, 1700–2000 Hz gaat
+open, en wat onder ~1660 Hz kruist blijft terecht geweigerd — daar liggen te weinig octaven
+tussen f_s en het kruispunt voor welke orde dan ook.
+
+**WAT ER GEBOUWD IS, en het is bijna niets — met opzet.** Eén getal in het manifest, met een
+herschreven motivering; niets aan de formule van M-C, niets aan de poort, niets aan de
+`drive-series-c`-inversie, geen trap. Daaromheen drie stukken boekhouding. (1) Het V48-corpus is
+bevroren als `V48_KAND_*` (`freeze-live-corpus.ts`, vijf netlists) vóór de regeneratie, met zijn
+reden in `DATED_REASON` en zijn rij in `DATED_CORPORA`. (2) `frozenNetlistGates.test.ts` keerde
+zijn HUIDIG-assert om: tot V47b eiste hij dat één tiende strenger HUIDIG zou veroordelen (de
+"HUIDIG is de maat"-vorm); sinds V47b eist hij dat HUIDIG de eis met MEER dan een dB haalt, want
+zit hij er ooit binnen een dB van, dan is het getal stilletjes weer HUIDIG's afronding geworden of
+is HUIDIG op de regel gedreven — allebei bevindingen. De vlaggen op `V45_KAND_5/_6` (−14,38 /
+−15,10) staan ongewijzigd, met de grens die vandáág geldt in de rij, want een uitzonderingslijst
+die een vervallen grens noemt is boekhouding van niets. (3) `compare-corpora.ts` kreeg twee
+kolommen: M-C PER WEG naast het maximum (op KAND_B raakt de eis de mid en niet de tweeter, en het
+maximum zegt dat niet) en de VERTICALE LOBING-SYNTHESE (M-F-eind, diepste dip in het kruisgebied
+over het ±15°-venster van `lobing_eind_dip_15gr`). Voor die laatste kreeg de meetbank in
+`casus1Corpora.fixture.ts` een `verticalWindowDeg` — zonder venster staat de synthese UIT, en dat
+was tot nu toe zo, onopgemerkt, omdat niemand de kolom vroeg. `corpusPairing.test.ts` bleef
+groen op het onveranderde bankpad (fase en dissipatie lezen het venster niet).
+
+**CORPUSPAIRING HOEFDE NIET HERANKERD, en dat is de voorspelde faalvorm die NIET optrad.** De
+opdracht voorzag dat de V45→levend-helft bij deze regeneratie zou omvallen; V48 had haar al op
+`v45 → v47` herankerd, dus beide vergelijkingen zijn volledig gedateerd en zeven van zeven claims
+bleven groen zonder één getal te verplaatsen.
+
+---
+
+**DE REGENERATIE (`V2_JOBS=8`, 'safety'): 2688 s (45 min), en het veld gaat van VIJF naar ZEVEN.**
+Drie kandidaten komen binnen en één vertrekt. Binnen: `396,7 · 1719` (onder −25 geweigerd op
+−22,5 dB, nu geleverd op **−21,92**), `466,5 · 1981,2` (de eerlijke minpost van V47: onder −25
+geweigerd op −22,6 en −24,6, nu geleverd op **−24,22**) en — niet voorspeld — `396,7 · 1491,4`,
+dat onder −25 op −16,2 dB geweigerd werd en nu op **−29,86** landt. Dat laatste is de les van V47
+nog een keer: een gewapende poort is geen passieve waarnemer, `gateViolation` weigert stappen en
+verlegt de zoektocht, dus dezelfde kandidaat loopt onder een andere grens een ander pad, en dat
+pad kan ver ónder de grens uitkomen die hem eerder weigerde. De verwachting "wat onder ~1660 Hz
+kruist blijft terecht geweigerd" is daarmee op één van de drie 1491-kandidaten WEERLEGD; op de
+andere twee (466,5 en 548,5) staat zij, en op alle drie de 1294-kandidaten ook.
+
+**EN DEZELFDE LES DE ANDERE KANT OP, want die hoort erbij.** `548,5 · 1981,2` werd onder −25
+GELEVERD (V48: mid −40,43 / tweeter −25,37) en wordt onder de RUIMERE −20 GEWEIGERD — op de
+**MID**, met −7,3 dB. Met de tweetergrens slack liep de zoektocht een pad waarop de mid op zijn
+eigen resonantie (88,8 Hz) achttien dB harder wordt aangedreven, en de poort ving dat aan het
+eind. Een ruimere grens kan dus een ontwerp kosten dat de strengere leverde; het mechanisme is
+identiek aan de V47-minpost, alleen het teken van de grenswijziging is omgekeerd.
+
+**DE VÓÓR/NÁ (`compare-corpora.ts v48 live`).** Corpusgemiddelde én gepaarde delta (vier paren:
+de vier kandidaten die beide corpora dragen), want een corpusgemiddelde is geen delta
+(V47-nazorg). M-C is het maximum over de beschermde wegen; de kolom per weg staat in de tabel
+eronder.
+
+  | | V48 (5) | V47b (7) | gepaard vóór → ná (4) |
+  | --- | --- | --- | --- |
+  | kandidaten zonder netwerk | 10 van 15 | **8 van 15** | — |
+  | M-C slechtste weg, gemiddeld | −28,2 dB | −27,3 dB | −28,87 → −28,74 |
+  | boven de gestelde grens | 0 van 5 (bij −25) | **0 van 7 (bij −20)** | — |
+  | protSq (controle) | 0,000 dB² | 0,000 dB² | 0,00 → 0,00 |
+  | RMS, gemiddeld | 0,92 dB | 1,18 dB | 0,63 → 0,61 |
+  | venster ±, gemiddeld | 1,79 dB | 2,27 dB | 1,24 → 1,25 |
+  | W-M fase M-K, gemiddeld | 7,1° | 12,4° | 5,15 → 6,10 |
+  | M-T fase M-K, gemiddeld | 6,0° | 8,0° | 4,53 → 3,75 |
+  | min \|Z\|, gemiddeld | 3,10 Ω | 3,04 Ω | 3,22 → 3,37 |
+  | dissipatie, gemiddeld | 57,5 % | 51,3 % | 58,23 → 57,80 |
+  | Q_es×, gemiddeld | 2,24 | 1,91 | 2,34 → 2,21 |
+  | opslingering (resonantDb), gemiddeld | −0,7 dB | −0,7 dB | −0,91 → −0,80 |
+  | verticale lobing-synthese (M-F-eind, ±15°), gemiddeld | −2,7 dB | −2,8 dB | −2,71 → −2,76 |
+
+  | kandidaat (W-M · M-T) | min \|Z\| vóór → ná | venster ± | W-M M-K | M-T M-K | RMS | diss. % | Q_es× | M-C per weg vóór → ná | M-F-eind |
+  | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+  | 396,7 · 1491,4 | — → 2,59 | — → 2,68 | — → 15,9° | — → 8,3° | — → 1,56 | — → 49,8 | — → 1,34 | — → mid −60,53 / tweeter −29,86 | — → −3,17 |
+  | 396,7 · 1719 | — → 2,58 | — → 5,23 | — → 23,1° | — → 22,5° | — → 2,51 | — → 32,6 | — → 1,36 | — → mid −40,57 / tweeter −21,92 | — → −2,64 |
+  | 396,7 · 1981,2 | 2,92 → 2,98 | 1,16 → 1,38 | 6,4 → 6,8° | 5,5 → 4,2° | 0,65 → 0,67 | 58,5 → 54,1 | 2,40 → 2,40 | mid −49,21 / tw −28,67 → mid −58,59 / tw −27,97 | −2,71 → −2,48 |
+  | 396,7 · 2283,5 | 2,65 → 2,70 | 1,68 → 1,56 | 4,9 → 8,5° | 4,1 → 3,3° | 0,77 → 0,72 | 57,4 → 53,2 | 2,40 → 2,39 | mid −49,03 / tw −28,87 → mid −30,71 / tw −29,91 | −2,53 → −3,00 |
+  | 466,5 · 1981,2 | — → 2,66 | — → 2,98 | — → 23,1° | — → 10,5° | — → 1,73 | — → 45,2 | — → 1,86 | — → mid −35,76 / tweeter −24,22 | — → −2,66 |
+  | 466,5 · 2283,5 | 3,59 → 3,63 | 1,11 → 1,09 | 3,9 → 4,2° | 3,7 → 3,7° | 0,56 → 0,55 | 57,1 → 57,0 | 2,20 → 2,21 | mid −52,61 / tw −29,28 → mid −51,82 / tw −29,30 | −2,92 → −2,90 |
+  | 548,5 · 1981,2 | 2,60 → **verworpen** | 4,00 → | 15,1° → | 11,9° → | 2,08 → | 54,6 → | 1,86 → | mid −40,43 / tw −25,37 → **verworpen (mid −7,3)** | −2,84 → |
+  | 548,5 · 2283,5 | 3,72 → 4,17 | 0,99 → 0,97 | 5,3 → 5,0° | 4,8 → 3,8° | 0,52 → 0,51 | 59,9 → 66,9 | 2,36 → 1,84 | mid −52,17 / tw −28,66 → mid −33,75 / tw −27,78 | −2,70 → −2,65 |
+
+**WAT DE TABEL ZEGT, gepaard gelezen.** Op de vier overlevenden beweegt vrijwel niets: RMS 0,63 →
+0,61, venster 1,24 → 1,25, opslingering −0,91 → −0,80, lobing −2,71 → −2,76. De poort was op
+die vier al slack bij −25 en is het bij −20 nog steeds. **Elke corpusregel die wél beweegt is
+compositie:** RMS 0,92 → 1,18 en W-M-fase 7,1° → 12,4° komen van de drie nieuwe netlists op de
+lagere M-T-kruisingen (1,56 / 2,51 / 1,73 dB RMS, 15,9° / 23,1° / 23,1° W-M), en de
+dissipatiewinst 57,5 → 51,3 % komt van diezelfde drie (49,8 / 32,6 / 45,2 %) — `396,7 · 1719`
+verstookt met 32,6 % de helft van wat het corpus gewend is, en draagt tegelijk de slechtste
+vlakheid van het veld. Q_es× daalt gepaard wel (2,34 → 2,21), en op `548,5 · 2283,5` van 2,36
+naar 1,84 tegen een dissipatie die van 59,9 naar 66,9 % gaat: minder serieweerstand in het pad,
+meer in de shunts. De verticale lobing-synthese, hier voor het eerst in de tabel, zegt dat de
+lagere M-T-kruisingen in het ±15°-venster **niets extra kosten**: −3,17 / −2,64 / −2,66 dB tegen
+−2,48 tot −3,00 op de 1981/2283-kruisingen. Een kolom en geen oordeel — maar wie verwachtte dat
+1491 Hz verticaal gestraft zou worden, vindt het hier niet.
+
+**DE M-C-KOLOM PER WEG IS DE REDEN DAT ZIJ ER STAAT.** Op het maximum bewegen de vier paren
+nauwelijks (−28,87 → −28,74); per weg beweegt de MID op twee ervan tientallen dB — `396,7 ·
+2283,5` van −49,03 naar −30,71, `548,5 · 2283,5` van −52,17 naar −33,75 — zonder dat de eis er
+iets over zegt, want zij is op beide nog ruim gehaald. Dat is het tweede spoor van dezelfde
+bevinding als de `548,5 · 1981,2`-weigering: met de tweetergrens slack is de mid-aandrijving op
+88,8 Hz de grootheid die de zoektocht nu vrij laat lopen.
+
+**WAT ER OP M-C STRANDT, en de trap-vraag geactualiseerd.** Acht kandidaten leveren niets; alle
+acht door een poort, geen enkele door de keten zelf.
+
+  | kandidaat | M-C tweeter | M-C mid | vloer |
+  | --- | --- | --- | --- |
+  | 396,7 · 1294 | −12,1 | — | — |
+  | 466,5 · 1294 | −11,9 | — | 1,99 Ω |
+  | 548,5 · 1294 | −13,2 | — | 0,02 Ω |
+  | 466,5 · 1491,4 | −16,6 | — | 2,49 Ω |
+  | 548,5 · 1491,4 | −17,5 | −11,1 | 1,11 Ω |
+  | 466,5 · 1719 | −17,0 | **+5,6** | — |
+  | 548,5 · 1719 | −17,3 | — | — |
+  | 548,5 · 1981,2 | (haalt) | **−7,3** | — |
+
+Drie dingen. (1) **De marginale band is LEEG.** Onder −25 stonden er vier weigeringen binnen
+2,5 dB van de grens; onder −20 staat de dichtstbijzijnde tweeterweigering op −17,5 (2,5 dB
+erover) en de rest 3 tot 8 dB. Een trap over de tweeter op f_s zou dus geen 1,5 dB moeten kopen
+maar 2,5 tot 8, en op de 1294-kruisingen 7 tot 8 dB bóvenop een vloerweigering die hij niet
+repareert. Dat is geen argument tegen een trap, maar het is een andere vraag dan de V47-vraag:
+niet "haal de bijna-missers binnen" maar "koop 3–8 dB op de laagste kruisingen". (2) **De mid
+staat in drie van de acht weigeringen, en op twee ervan als ENIGE of ERGSTE grond** (+5,6 en
+−7,3 dB). Een tweetertrap doet daar niets; dat is de aandrijving van de mid op zijn eigen
+resonantie bij de hogere W-M-kruisingen (466,5 en 548,5), waar de mid-hoogdoorlaat verder van
+88,8 Hz af ligt en de zoektocht de serie-C van de mid kennelijk vrij laat groeien zodra de
+tweeter niet meer bindt. Of dát een trap vraagt, een strengere mid-orde of een eigen grens is een
+eigen vraag; zij is nu voor het eerst met getallen gesteld. (3) `548,5 · 1719` ging van −21,8
+(V48, geweigerd op de mid) naar −17,3 op de tweeter en een schone mid: de zoektocht ruilde het
+ene tekort voor het andere. Twee wegen met elk een eigen resonantie-eis en één zoektocht die
+alleen kruispunt en serie-C als knop heeft, is precies de situatie waarin een trap de twee
+ontkoppelt — als hij ergens gerechtvaardigd is, dan hier, en de meting die dat moet beslissen is
+V49 (excursie) en niet nog een dB-getal.
+
+**DE TWEE GEVLAGDE NETLISTS BLIJVEN BUITEN DE EIS.** `V45_KAND_5` (−14,38) en `V45_KAND_6`
+(−15,10) overschrijden ook de −20 met vijf dB; het vlagpatroon in `v45_corpus` staat
+ongewijzigd, met de grens die vandaag geldt in de rij. `frozenNetlistGates` legt beide naast een
+verse meting en naast de gestelde eis; de "niet vacuüm"-claim rust nog steeds op de gedateerde
+corpora (tot −9,78 dB op de mid van `V38FIX_KAND_5`).
+
+**WAT ER NIET GEBOUWD IS.** Niets aan de formule van M-C, niets aan de poort, niets aan de
+`drive-series-c`-inversie, geen trap, geen ander getal. De v1-route is onaangeraakt:
+`toggleRegression` en de byte-baselines van `f4cRegression` en `workerRouteRegression` lezen geen
+casus-1-grens. BREAKING alleen voor v2-runs: elke v2-run op casus 1 oordeelt sinds V47b op −20,0
+en levert een ander veld; de vingerafdruk beweegt in `gates=` (bda73aab → c1a08532).
+
+**EEN BEWAKER GING ROOD OP HET VERKEERDE, en dat is de vijfde keer dezelfde val.** De volle run
+viel om op `networkReadiness.test.ts`: de UI-2-mutatietabel las het LEVENDE `KAND-V2-1` en pint
+hoeveel onderdelen stroomloos raken als de mid-voeding wegvalt. De regeneratie gaf dat bestand
+een mid-tak met één onderdeel meer, en de rij ging rood zonder één regel readiness-code te
+raken — een claim die het levende corpus noemt wordt stil onwaar (V43 op `v42_bult_bevinding`,
+V47 en V48 op de V37-drempel, V48 op `corpusPairing`). Herankerd op `V48-KAND-1`, dat
+byte-identiek is aan het bestand dat UI-2 toetste; geen getal bewoog. De volle run is daarna
+opnieuw gedraaid.
+
+**OPENSTAAND.** (1) V49: M-C excursie-gedragen — dan vervalt dit getal. (2) De mid-weigeringen
+hierboven: een eis die van een tweetermeting is afgeleid oordeelt nu op de mid drie van de acht
+weigeringen, en het is niet gesteld of −20 dB op een 88,8 Hz-resonantie onder een LR4 op 466 Hz
+dezelfde betekenis heeft als op een 924 Hz-resonantie onder een LR4 op 1500 Hz. (3) De
+regeneratie kost 45 minuten op acht jobs (V48: 40), en de langste shard (`396,7 · 2283,5`,
+1511 s) is een tune die de grens nergens raakt — de prijs zit in het iteratiebudget en niet in
+de poort.
+
 ## Casus S1 — synthetische grondwaarheid voor de R_e-schatter (F3b, 26-08-2026)
 
 *De eerste casus in dit boek die geen luidspreker is. A7 noemt synthetische grondwaarheid als

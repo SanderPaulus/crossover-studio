@@ -137,8 +137,19 @@
   onveranderd naast staat — van 285,8 naar 517,4 s. De totale CPU-tijd steeg van 3615 naar
   4306 s. Wandkloktijd is dus gekocht met rekentijd; een voorspelling op `max(1120, 638)` ≈ 950 s
   was te optimistisch en de gemeten 1254 s is wat er staat.
-- `npx vitest run` — volledige testsuite. **GEMETEN 02-09-2026 (V48): 139 bestanden, 1525 tests,
-  1116 s (19 min), niets overgeslagen.**
+- `npx vitest run` — volledige testsuite. **GEMETEN 02-09-2026 (V47b): 141 bestanden, 1559 tests,
+  1341 s (22 min), niets overgeslagen, alleen gedraaid op een lege machine.** De telling is
+  +2 bestanden sinds V48 (de twee UI-2-bestanden, `lib/chartView.test.ts` en
+  `lib/networkReadiness.test.ts`, die de UI-2-regel bij `test:fast` al noemt) en +34 tests: 32 uit
+  die twee bestanden en **TWEE uit de `it.each` van `casus1V2Candidates.test.ts`, die over het
+  levende corpus loopt en van vijf naar zeven netlists ging** — opnieuw een corpusgrootte in de
+  testtelling. Het cijfer ligt boven de 1116 s van V48 om dezelfde reden: de twee live ketenruns
+  treffen een ander, groter veld. **De eerste volle run van V47b viel om op
+  `networkReadiness.test.ts`** — de UI-2-mutatietabel las het levende `KAND-V2-1` en pinde er een
+  onderdelentelling op; herankerd op `V48-KAND-1` (zie de V47b-guards) en de volle run daarna
+  opnieuw gedraaid, want een run met één rood bestand is geen acceptatie.
+  (De stand ervoor: **02-09-2026 (V48): 139 bestanden, 1525 tests, 1116 s (19 min), niets
+  overgeslagen.**)
   **DRAAI DE LAGEN NA ELKAAR EN NOOIT NAAST ELKAAR — deze sessie liep op een GEHEUGENLIMIET
   en gooide er een halve volle run mee weg.** De volle suite spant een worker per kern op en
   twee daarvan dragen een live ketenrun; een tweede vitest-pool ernaast (hier: de snelle
@@ -308,7 +319,14 @@
   netlists byte-identiek terug, op het `savedAt`-stempel van de serialisatie na.**
 - **De vóór/ná-tabel tussen twee corpora**: `npx vite-node scripts/compare-corpora.ts [vóór] [ná]` —
   seconden, geen ketenrun. Corpora: `v30`, `v32`, `v33sweep`, `v33`, `v34`, `v37`, `v38fix`,
-  `v41`, `v42`, `v43`, `v44`, `v45`, `live`; default `v45 live`, wat de V47-tabel is.
+  `v41`, `v42`, `v43`, `v44`, `v45`, `v47`, `v48`, `live`; default `v47 live`, wat de V48-tabel is
+  (`v48 live` is de V47b-tabel). **Sinds V47b twee kolommen erbij:** M-C PER WEG naast het
+  maximum (op KAND_B raakt de eis de mid en niet de tweeter, en het maximum zegt dat niet) en de
+  VERTICALE LOBING-SYNTHESE (M-F-eind, diepste dip in het kruisgebied over het ±15°-venster dat
+  de klasse-B-referentie `lobing_eind_dip_15gr` draagt — daarvoor kreeg de meetbank in
+  `casus1Corpora.fixture.ts` een `verticalWindowDeg`, want zonder venster staat de synthese UIT).
+  Allebei kolommen en geen oordeel: casus 1 stelt geen lobinggrens, en de M-C-corpusregel telt
+  al op het maximum.
   **DE LEESREGEL, EN ZIJ GAAT VÓÓR ELKE KOLOM HIERONDER (sinds de V47-nazorg, 01-09-2026): EEN
   CORPUSGEMIDDELDE IS GEEN DELTA.** De twee corpora bevatten niet dezelfde netlists — dat is juist
   wat een gewapende eis DOET — dus het verschil tussen twee corpusgemiddelden draagt twee dingen
@@ -1632,6 +1650,47 @@ grotere ingreep — hij raakt élk commando in dit project — en is deze sessie
   regeneratie HERANKERD te worden op het dan bevroren V47-corpus** — dezelfde herankering die V43 op
   `v42_bult_bevinding` toepaste; een falende test is daar de bedoeling.
 
+### V47b-guards (de tweetereis wordt voorlopig −20 dB)
+- **Het getal zelf woont in `manifest_en_geometrie.gestelde_eisen.tweeter_drive_op_fs_max_dB` en
+  nergens anders** — V47b verplaatste het van −25,0 naar −20,0 zonder één regel engine-, poort- of
+  inversiecode aan te raken, en dát is de claim: `casus1MaxDriveOnFsDb` leest het, de fixture
+  spreidt het, en de generator schrijft het in `v2_poorten_bron`. Een grep op `-25` of `-20` in
+  `src/lib/engine2/` buiten tests en fixtures hoort leeg te zijn (p6Lint bewaakt de literalen).
+- `src/lib/engine2/frozenNetlistGates.test.ts` — **de HUIDIG-assert is OMGEKEERD.** Tot V47b eiste
+  het V47-blok dat één tiende strenger HUIDIG zou veroordelen ("HUIDIG is de maat"); sinds V47b
+  eist het dat HUIDIG de eis met MEER dan een dB haalt. Zit hij er ooit binnen een dB van, dan is
+  het getal stilletjes weer HUIDIG's afronding geworden (de V47-vorm, die bij hermeting na
+  inspelen het eigen referentiefilter veroordeelt) of is HUIDIG op de regel gedreven — allebei
+  bevindingen en geen groen. De vlaggen op `V45_KAND_5/_6` staan ongewijzigd en dragen de grens
+  die VANDAAG geldt (−20): een uitzonderingslijst die een vervallen grens noemt is boekhouding
+  van niets, en het blok assert `gestelde_grens_dB` tegen de gestelde eis én tegen een verse
+  meting. Het "LEVENDE corpus haalt haar"-blok is de acceptatie van de regeneratie: 14 wegen,
+  0 eroverheen.
+- `src/lib/engine2/casus1Corpora.fixture.ts` — de meetbank draagt sinds V47b een
+  `verticalWindowDeg` (±15°, het venster onder `lobing_eind_dip_15gr`), want zonder venster staat
+  de lobing-SYNTHESE uit en was de M-F-kolom in `compare-corpora.ts` leeg zonder dat iemand het
+  zag. `corpusPairing.test.ts` bleef groen op hetzelfde bankpad: fase en dissipatie lezen het
+  venster niet, en dat is nagemeten en niet aangenomen (zeven van zeven, ongewijzigde getallen).
+  **corpusPairing hoefde NIET herankerd:** de opdracht voorzag de V45→levend-faalvorm, maar V48
+  had die helft al op `v45 → v47` gezet, dus beide vergelijkingen zijn volledig gedateerd.
+- `src/lib/networkReadiness.test.ts` — **HERANKERD op `V48-KAND-1`/`-2`, en dat was een bewaker
+  die werkte op de verkeerde manier.** UI-2 las de mutatietabel op het LEVENDE `KAND-V2-1`, en
+  de rij "delete a wire (the feed to the mid branch)" pint hoeveel onderdelen er dan stroomloos
+  raken. De V47b-regeneratie gaf `KAND-V2-1` een mid-tak met één onderdeel meer, en de rij ging
+  rood zonder dat er één regel readiness-code veranderd was — de stille-verouderingsval die V43
+  op `v42_bult_bevinding` en V48 op `corpusPairing` al vingen, nu op een UI-test. `V48-KAND-1` is
+  byte-identiek aan het bestand dat UI-2 toetste (met `cmp` nagegaan tegen het pre-regeneratie
+  `KAND-V2-1`), dus geen enkel getal in de tabel bewoog. **Regel voor élke test die een
+  `KAND-V2-*`-bestand van schijf leest en er een GETAL op pint: lees het gedateerde corpus.** De
+  live bestanden zijn voor de guards die het levende veld moeten volgen (`casus1V2Candidates`,
+  `frozenNetlistGates`), niet voor een tabel die één topologie beschrijft.
+- **Een ruimere poort is óók geen passieve waarnemer.** V47 mat dat een gewapende poort een
+  kandidaat kan kosten die zonder haar aan haar voldeed; V47b mat het spiegelbeeld: `548,5 ·
+  1981,2` werd onder −25 geleverd en onder −20 op de MID geweigerd (−7,3 dB), en `396,7 · 1491,4`
+  werd onder −25 op −16,2 geweigerd en onder −20 op −29,86 geleverd. Wie een grens verplaatst en
+  het veld als monotone functie van die grens leest, leest het verkeerd — de zoektocht loopt onder
+  elke grens een ander pad.
+
 ### V48-guards (welk netwerk het seriespoel-plafond beschrijft)
 - `src/lib/engine2/optimizer/bounds.ts` — **`seriesInductanceCeilingTracker` is dezelfde inversie,
   als FUNCTIE van de padweerstand.** `maxSeriesInductanceFromBump` lost op bij ÉÉN padweerstand;
@@ -1785,7 +1844,7 @@ grotere ingreep — hij raakt élk commando in dit project — en is deze sessie
 ### De casus-1-fixtures die een SCRIPT opwekt (F4d)
 `test-fixtures/casus1/KAND-V2-*.adsfilter.json` zijn de v2-kandidaten die de shortlist haalden —
 negen bij F4d, tien vanaf V28, acht sinds V41, vier bij V42, zeven sinds V43, zeven na de V44- en
-de V45-regeneratie, vier bij V47, **en VIJF sinds V48** — bevroren als bestanden
+de V45-regeneratie, vier bij V47, vijf bij V48, **en ZEVEN sinds V47b** — bevroren als bestanden
 op precies dezelfde voet als de drie v1-kandidaten — want F4a stelde vast dat casus 1 géén klasse-C-
 referenties heeft, en "laat de suite de scan draaien en assert op wat eruit komt" zou de eerste maken.
 Twee scripts, twee kosten:
@@ -1848,7 +1907,7 @@ te tunen. **Deze twee runs zijn samen het leeuwendeel van de suite** — en zij 
 `casus1V2Refusal.test.ts` de verwerping), zodat zij naast elkaar draaien in plaats van na elkaar.
 Gemeten in de volle run van 01-09-2026: 1244,3 s en 924,2 s, bij een wandklok van 1254,4 s.
 
-**Sinds V48 zijn het er VIJFTIEN corpora, en dat is opzet.** `KAND_V2_*` is het levende corpus.
+**Sinds V47b zijn het er ZESTIEN corpora, en dat is opzet.** `KAND_V2_*` is het levende corpus.
 `V28_KAND_*` is bevroren vóór de vloer een ZOEKDOEL was (V30); `V30_KAND_*` toen de poort nog blind
 was onder de verre-veldbodem (V32); `V32_KAND_*` toen de BARRIÈRE nog het evaluatieraster las terwijl
 de poort de sweep handhaafde (V33); `V33_SWEEP_KAND_*` is V33's dure referentiearm, met de barrière
@@ -1893,8 +1952,13 @@ serieweerstand dempt de resonante helft, dus een plafond opgelost bij een LAGERE
 hoogstens te streng. Wat dat argument weglaat is de tune die de padweerstand VERLAAGT, en daar is
 het plafond TOEGEEFLIJK — gemeten op Sanders browserrun van 01-09-2026: twee van negen kandidaten
 leverden 2,29 en 1,61 dB opslingering tegen een gestelde 1,4, en de geleverde-netwerk-toets ving ze
-allebei. Vangen is verliezen (V48).
-Alle veertien de gedateerde corpora zijn byte-identieke bestanden onder een andere naam, met hun
+allebei. Vangen is verliezen (V48); `V48_KAND_*` toen de TWEETERAANDRIJFGRENS nog op −25,0 dB
+stond — de toevallige waarde van HUIDIG op één decimaal (−25,084), met 0,084 dB marge, zodat een
+hermeting van het eigen referentiefilter na inspelen de eis kon laten omslaan, en zodat vier
+V47-weigeringen tussen −21,8 en −23,5 dB, die de 18-dB-industrieregel op f_s ruim halen, als
+kandidaat geweigerd werden. Bij V47b staat de eis VOORLOPIG op −20,0 (18 dB + 2 dB marge voor
+f_s-drift), tot M-C excursie-gedragen is (V49); een gekozen dB-getal is geen generieke eis (V47b).
+Alle vijftien de gedateerde corpora zijn byte-identieke bestanden onder een andere naam, met hun
 klasse-B-blokken mee, bewaard als de "vóór"-helften van hun vergelijkingen. Wie
 een script schrijft dat het levende corpus opruimt gebruikt `^KAND_V2_\d+$` en nooit
 `startsWith('KAND_V2')`: die tweede slikt de gedateerde corpora mee en gooit het bewijsmateriaal weg.
@@ -1904,7 +1968,7 @@ genoemde netlist die geen v1-baseline is een geclassificeerd blok moet hebben, o
 familielijst die er stond bij V32 vergeten is. De koppeling bestandsnaam ↔ kandidaat staat in
 `manifest_en_geometrie.v30_corpus`, `.v32_corpus`, `.v33_sweep_corpus`, `.v33_corpus`,
 `.v34_corpus`, `.v37_corpus`, `.v38fix_corpus`, `.v41_corpus`, `.v42_corpus`, `.v43_corpus`,
-`.v44_corpus`, `.v45_corpus` en `.v47_corpus`, want zij
+`.v44_corpus`, `.v45_corpus`, `.v47_corpus` en `.v48_corpus`, want zij
 stond alleen in `casus1_v2_herkomst.json` en dat bestand wordt door de volgende regeneratie
 overschreven. **Bevriezen doe je sinds V34 met `scripts/freeze-live-corpus.ts`** en niet met de
 hand: het zijn vijf bewerkingen die allemaal moeten landen.

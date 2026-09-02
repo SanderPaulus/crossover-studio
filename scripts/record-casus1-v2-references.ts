@@ -237,6 +237,16 @@ const CHAIN_GRID_LO_HZ = CASUS1_V2_GRID[0];
  * rather than a plausible-sounding reason that belongs to a different corpus.
  */
 const DATED_REASON: Record<string, string> = {
+  V48:
+    'HET GEDATEERDE V48-CORPUS. Bevroren toen de tweeteraandrijfgrens nog op -25,0 dB stond: de ' +
+    'toevallige waarde van HUIDIG op een decimaal (-25,084), met 0,084 dB marge. Dat maakte het ' +
+    'eigen referentiefilter van de ontwerper de maat, en het maakte de eis breekbaar: een hermeting ' +
+    'van HUIDIG na inspelen die f_s of het doorlaatniveau een tiende dB verplaatst, veroordeelt het ' +
+    'ontwerp waaruit de eis is afgeleid. En zij weigerde kandidaten die de 18-dB-industrieregel op ' +
+    'f_s ruim halen: vier V47-weigeringen tussen -21,8 en -23,5 dB. Bij V47b is de eis VOORLOPIG op ' +
+    '-20,0 gezet (18 dB plus 2 dB marge voor f_s-drift), tot M-C excursie-gedragen is (V49). Zij ' +
+    'blijven staan als de "vóór"-helft van de V47b-vergelijking. Meetobject, GEEN ontwerp: mag ' +
+    'niet gebouwd worden.',
   V47:
     'HET GEDATEERDE V47-CORPUS. Bevroren toen het A5d.6-plafond op de seriespoel van de laagste ' +
     'weg nog EENMALIG werd opgelost, bij de padweerstand van het ZAAD, en daarna vaststond voor ' +

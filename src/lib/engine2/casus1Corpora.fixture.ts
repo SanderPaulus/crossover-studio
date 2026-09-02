@@ -57,6 +57,17 @@ const CORPUS_POWER_W = 100;
  *  door de hele reeks LR4/LR4 getuned; hij staat hier zodat beide helften van
  *  een vergelijking hem gegarandeerd delen. */
 const CORPUS_ORDER = 4;
+/**
+ * Het verticale waarnemingsvenster waarover de lobing-SYNTHESE (M-F-eind)
+ * gemeten wordt, graden — hetzelfde venster als onder de klasse-B-referentie
+ * `kandidaten.*.lobing_eind_dip_15gr` en als `goldenCasus1.test.ts` stelt.
+ * Zonder venster staat de synthese UIT (het rapport zegt dat zelf), en dan is
+ * de kolom in `compare-corpora.ts` leeg; sinds V47b staat zij erin omdat de
+ * aandrijfeis het M-T-veld naar lagere kruispunten opent en dáár de verticale
+ * som het eerst iets kost. Een instelling en geen oordeel: casus 1 stelt geen
+ * lobinggrens (P4), en de synthese is per A4 de enige autoriteit over lobing.
+ */
+const CORPUS_VERTICAL_WINDOW_DEG: [number, number] = [-15, 15];
 
 /** Wat de generator van één kandidaat opschreef, voor zover een vergelijking
  *  het leest. Alleen het LEVENDE corpus heeft dit: een gedateerd corpus is een
@@ -107,6 +118,7 @@ export const DATED_CORPORA: Record<string, { block: string; name: string }> = {
   v44: { block: 'v44_corpus', name: 'V44' },
   v45: { block: 'v45_corpus', name: 'V45' },
   v47: { block: 'v47_corpus', name: 'V47' },
+  v48: { block: 'v48_corpus', name: 'V48' },
 };
 
 interface Herkomst {
@@ -191,6 +203,7 @@ export function corpusBank(golden: GoldenRefs = loadGolden()): CorpusBank {
     },
     reOhmByDriver: { woofer: CASUS1_WOOFER_DC_OHM },
     targetCurve: CASUS1_TARGET_CURVE,
+    verticalWindowDeg: CORPUS_VERTICAL_WINDOW_DEG,
     ...(floorOhm !== null ? { ampMinLoadOhm: floorOhm } : {}),
   };
   return {

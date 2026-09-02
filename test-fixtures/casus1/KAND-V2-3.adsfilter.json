@@ -1,7 +1,7 @@
 {
  "format": "acoustic-design-studio-filter",
  "version": 1,
- "savedAt": "2026-09-02T15:17:22.561Z",
+ "savedAt": "2026-09-02T19:09:49.017Z",
  "name": "KAND-V2-3",
  "parts": [
   {
@@ -62,7 +62,7 @@
    "params": [
     {
      "name": "C",
-     "value": 125.3,
+     "value": 123.2,
      "unit": "uF"
     }
    ],
@@ -93,7 +93,7 @@
    "params": [
     {
      "name": "L",
-     "value": 1.16,
+     "value": 1.161,
      "unit": "mH"
     }
    ],
@@ -176,7 +176,7 @@
    "params": [
     {
      "name": "C",
-     "value": 45.98,
+     "value": 36.29,
      "unit": "uF"
     }
    ],
@@ -198,7 +198,7 @@
    "params": [
     {
      "name": "L",
-     "value": 1.786,
+     "value": 2.388,
      "unit": "mH"
     }
    ],
@@ -229,7 +229,7 @@
    "params": [
     {
      "name": "C",
-     "value": 38.14,
+     "value": 29.93,
      "unit": "uF"
     }
    ],
@@ -247,42 +247,11 @@
   },
   {
    "type": "Inductor",
-   "partId": "B·L4",
-   "params": [
-    {
-     "name": "L",
-     "value": 5.835,
-     "unit": "mH"
-    }
-   ],
-   "wires": [
-    {
-     "x": 17,
-     "y": 22
-    },
-    {
-     "x": 17,
-     "y": 29
-    }
-   ]
-  },
-  {
-   "type": "Ground",
-   "params": [],
-   "wires": [
-    {
-     "x": 17,
-     "y": 29
-    }
-   ]
-  },
-  {
-   "type": "Inductor",
    "partId": "B·L5",
    "params": [
     {
      "name": "L",
-     "value": 1.621,
+     "value": 1.774,
      "unit": "mH"
     }
    ],
@@ -303,7 +272,7 @@
    "params": [
     {
      "name": "C",
-     "value": 6.8,
+     "value": 9.893,
      "unit": "uF"
     }
    ],
@@ -316,8 +285,7 @@
      "x": 24,
      "y": 29
     }
-   ],
-   "locked": false
+   ]
   },
   {
    "type": "Ground",
@@ -335,7 +303,7 @@
    "params": [
     {
      "name": "L",
-     "value": 0.5106,
+     "value": 0.3712,
      "unit": "mH"
     }
    ],
@@ -356,7 +324,7 @@
    "params": [
     {
      "name": "R",
-     "value": 7.931,
+     "value": 4.443,
      "unit": "Ω"
     }
    ],
@@ -368,6 +336,65 @@
     {
      "x": 38,
      "y": 22
+    }
+   ]
+  },
+  {
+   "type": "Inductor",
+   "partId": "B·L11",
+   "params": [
+    {
+     "name": "L",
+     "value": 2.102,
+     "unit": "mH"
+    }
+   ],
+   "wires": [
+    {
+     "x": 38,
+     "y": 22
+    },
+    {
+     "x": 38,
+     "y": 27
+    }
+   ]
+  },
+  {
+   "type": "Wire",
+   "params": [],
+   "wires": [
+    {
+     "x": 38,
+     "y": 27
+    },
+    {
+     "x": 38,
+     "y": 32
+    }
+   ]
+  },
+  {
+   "type": "Wire",
+   "params": [],
+   "wires": [
+    {
+     "x": 38,
+     "y": 32
+    },
+    {
+     "x": 38,
+     "y": 37
+    }
+   ]
+  },
+  {
+   "type": "Ground",
+   "params": [],
+   "wires": [
+    {
+     "x": 38,
+     "y": 37
     }
    ]
   },
@@ -454,7 +481,7 @@
    "params": [
     {
      "name": "C",
-     "value": 2.33,
+     "value": 2.2,
      "unit": "uF"
     }
    ],
@@ -476,7 +503,7 @@
    "params": [
     {
      "name": "L",
-     "value": 0.4373,
+     "value": 0.4935,
      "unit": "mH"
     }
    ],
@@ -507,7 +534,7 @@
    "params": [
     {
      "name": "C",
-     "value": 11.74,
+     "value": 12.56,
      "unit": "uF"
     }
    ],
@@ -519,37 +546,6 @@
     {
      "x": 17,
      "y": 42
-    }
-   ]
-  },
-  {
-   "type": "Inductor",
-   "partId": "C·L4",
-   "params": [
-    {
-     "name": "L",
-     "value": 1.117,
-     "unit": "mH"
-    }
-   ],
-   "wires": [
-    {
-     "x": 17,
-     "y": 42
-    },
-    {
-     "x": 17,
-     "y": 49
-    }
-   ]
-  },
-  {
-   "type": "Ground",
-   "params": [],
-   "wires": [
-    {
-     "x": 17,
-     "y": 49
     }
    ]
   },
@@ -587,7 +583,7 @@
    "params": [
     {
      "name": "L",
-     "value": 0.5737,
+     "value": 0.6114,
      "unit": "mH"
     }
    ],
@@ -622,7 +618,7 @@
    "params": [
     {
      "name": "R",
-     "value": 10.75,
+     "value": 4.568,
      "unit": "Ω"
     }
    ],

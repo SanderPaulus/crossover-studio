@@ -187,6 +187,23 @@ interface Row {
    * hoe zij gesteld kan worden; zij beantwoordt haar niet.
    */
   protSqDb: number | null;
+  /**
+   * V47b — M-C PER WEG, naast het maximum hierboven.
+   *
+   * De poort oordeelt élke hoogdoorlaatbeschermde weg en het maximum zegt niet
+   * WELKE weg de eis raakt: op KAND_B is dat de mid en niet de tweeter (V47).
+   * De wegen komen uit de oordelen van het rapport en worden nergens bij naam
+   * gezocht; de cel drukt ze af in de volgorde waarin het rapport ze oordeelt.
+   */
+  driveByWay: { way: string; db: number }[];
+  /**
+   * V47b — DE VERTICALE LOBING-SYNTHESE (M-F-eind): de diepste dip van de som
+   * over het verticale venster, in het kruisgebied, dB. `null` waar de
+   * synthese UIT staat (het rapport zegt dan zelf waarom, `lobingFinalOff`).
+   * Een kolom en geen oordeel: casus 1 stelt geen lobinggrens, en A4 verbiedt
+   * een poort op een λ-fractie (V20) — dit is de synthese, niet een fractie.
+   */
+  lobingDipDb: number | null;
   narrowPeakDb: number | null;
   narrowPeakHz: number | null;
   /**
@@ -387,6 +404,12 @@ function measure(key: string): Row {
      * aanroept, want een controlekolom die de grootheid nábouwt controleert
      * niets. Het netwerk wordt opgelost zoals `report.ts` het oplost. */
     protSqDb: r2(protectionOf(key, rep)),
+    driveByWay: rep.gates.verdicts
+      .filter((x) => x.gate === 'M-C' && x.value !== null)
+      .map((x) => ({ way: x.subject, db: r2(x.value as number)! })),
+    lobingDipDb: r2(
+      rep.metrics.lobingFinal?.worstDipInCrossoverDb ?? rep.metrics.lobingFinal?.worstDipDb ?? null,
+    ),
     narrowPeakDb: r2(rep.system.response?.narrowPeaks[0]?.db ?? null),
     narrowPeakHz: r2(rep.system.response?.narrowPeaks[0]?.fHz ?? null),
     groups: correctionGroupsOf(key),
@@ -404,6 +427,10 @@ const outcomeByCandidate = new Map((after.outcomes ?? []).map((o) => [o.label, o
 const labels: string[] = unionOfCandidates(before, after);
 
 const num = (v: number | null) => (v === null ? '—' : v.toFixed(2));
+/** M-C per weg als één cel: `mid −42,61 / tweeter −25,08`, in de volgorde van
+ *  het rapport. Geen weg wordt hier bij naam gezocht. */
+const wayCell = (ways: { way: string; db: number }[] | undefined) =>
+  !ways ? '—' : ways.length ? ways.map((w) => `${w.way} ${num(w.db)}`).join(' / ') : '—';
 const short = (label: string) =>
   label.replace(/woofer→mid /, '').replace(/ LR4 · mid→tweeter /, ' · ').replace(/ LR4$/, '');
 
@@ -418,12 +445,13 @@ console.log(
     'W-M fase overlap (ctl) vóór → ná | M-T fase M-K vóór → ná | ' +
     'M-T fase octaaf (ctl) vóór → ná | M-T fase overlap (ctl) vóór → ná | RMS vóór → ná | ' +
     'dissipatie % vóór → ná | grootste R (W) vóór → ná | EPDR vóór → ná | ' +
-    'Q_es× vóór → ná | M-C dB vóór → ná | protSq dB² (ctl) vóór → ná | smalste piek ná (dB @ Hz) | correctiegroepen vóór → ná | ' +
+    'Q_es× vóór → ná | M-C dB vóór → ná | M-C per weg vóór → ná | protSq dB² (ctl) vóór → ná | ' +
+    'M-F-eind dB vóór → ná | smalste piek ná (dB @ Hz) | correctiegroepen vóór → ná | ' +
     'LF-bult dB vóór → ná | lift dB vóór → ná | opslingering dB vóór → ná | ' +
     'serie-L mH vóór → ná |',
 );
 console.log(
-  '|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|',
+  '|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|',
 );
 
 let beforeClears = 0;
@@ -470,7 +498,9 @@ for (const label of labels) {
       `${num(b?.epdr ?? null)} → ${afterCell(a?.epdr ?? null)} | ` +
       `${num(b?.qesMult ?? null)} → ${afterCell(a?.qesMult ?? null)} | ` +
       `${num(b?.driveDb ?? null)} → ${afterCell(a?.driveDb ?? null)} | ` +
+      `${wayCell(b?.driveByWay)} → ${a ? wayCell(a.driveByWay) : afterCell(null)} | ` +
       `${num(b?.protSqDb ?? null)} → ${afterCell(a?.protSqDb ?? null)} | ` +
+      `${num(b?.lobingDipDb ?? null)} → ${afterCell(a?.lobingDipDb ?? null)} | ` +
       `${a && a.narrowPeakDb !== null ? `${num(a.narrowPeakDb)} @ ${num(a.narrowPeakHz)}` : '—'} | ` +
       `${groupCell(b?.groups)} → ${a ? groupCell(a.groups) : outcome?.verwerping ? '**verworpen**' : 'geen netlist'} | ` +
       `${num(b?.bultDb ?? null)} → ${afterCell(a?.bultDb ?? null)} | ` +
@@ -674,6 +704,21 @@ const roleTotals = (rows: Row[]) => {
       'dan dit veld ooit kruist. Een netlist die M-C haalt en hier slechter is dan HUIDIG zou ' +
       'zeggen dat "f_s alleen" niet dekt wat de relatieve regel dekte; nul boven nul zegt dat de ' +
       'relatieve maat op geleverde netwerken inert is (V47).',
+  );
+}
+/* V47b — de verticale lobing-synthese als corpusregel: een kolom, geen oordeel.
+ * Casus 1 stelt geen lobinggrens, en de synthese is per A4 de enige autoriteit
+ * over lobing (de λ-fracties rangschikken niets, V20). Zij staat hier omdat de
+ * aandrijfeis het M-T-veld naar lagere kruispunten opent en dáár de verticale
+ * som het eerst iets kost. */
+{
+  const off = (rows: Row[]) => rows.filter((r) => r.lobingDipDb === null).length;
+  console.log(
+    `verticale lobing-synthese (M-F-eind, diepste dip in het kruisgebied) gemiddeld: ` +
+      `${fmt(avg(measuredBefore.map((r) => r.lobingDipDb)))} dB vóór → ` +
+      `${fmt(avg(measuredAfter.map((r) => r.lobingDipDb)))} dB ná; gepaard ` +
+      `${paired((r) => r.lobingDipDb, ' dB')}; synthese UIT op ${off(measuredBefore)} → ` +
+      `${off(measuredAfter)} netlists. Een kolom, geen oordeel: casus 1 stelt geen lobinggrens (P4).`,
   );
 }
 console.log(`uit de shortlist gevallen: ${gone.length}${gone.length ? ` — ${gone.map(short).join('; ')}` : ''}`);
