@@ -27,6 +27,7 @@ import { solveDesign } from './lib/designSolve.ts';
 import { beginScanRun, endScanRun, putScanRow, listScanRuns, listScanRows, dropScanRun, pickResumable } from './lib/scanStore.ts';
 import { computeIntegration } from './lib/integration.ts';
 import { crossoverToNetlist } from './lib/vxpNetwork.ts';
+import { assessNetwork, type NetworkReadiness } from './lib/networkReadiness.ts';
 import { solveNetwork, type Netlist } from './lib/network.ts';
 import {
   canonicalModelForRole,
@@ -36,7 +37,7 @@ import {
   withSlotAliasesN,
   type BranchRole,
 } from './lib/driverSlots.ts';
-import { estimateCoilDcr, validateNetlist } from './lib/netlistEdit.ts';
+import { estimateCoilDcr } from './lib/netlistEdit.ts';
 import {
 
   checkTransition,
@@ -2297,18 +2298,34 @@ export default function App() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [networkActive, activeDesign, project, xoName, vfBypass, vFilters, threeWay, uiLang]);
 
+  /**
+   * UI-2 — EVERY NETWORK MUTATION LANDS HERE, and nowhere else.
+   *
+   * An edit, an undo and a redo all replace the active tab's part list through
+   * this one function. What happens next is not decided here: the `schematic`
+   * memo follows the part list, `readiness` (below) says whether the drawing
+   * can be simulated and what is wrong with it, and the sim memo either solves
+   * it or refuses with that reason. Three callers, one path — the V32 shape —
+   * so an undo cannot reach the charts by a different road than the edit it
+   * undoes. The history bookkeeping is the only thing that differs per caller.
+   */
+  function replaceActiveParts(parts: VxpPart[]) {
+    if (!activeDesign) return;
+    setDesigns((ds) => ds.map((d) => (d.id === activeDesign.id ? { ...d, parts } : d)));
+  }
+
   function commitSchematic(parts: VxpPart[]) {
     if (!activeDesign) return;
     setSchHistory((h) => [...h.slice(-49), activeDesign.parts]);
     setSchFuture([]); // a fresh edit invalidates the redo branch
-    setDesigns((ds) => ds.map((d) => (d.id === activeDesign.id ? { ...d, parts } : d)));
+    replaceActiveParts(parts);
   }
 
   function undoSchematic() {
     if (schHistory.length === 0 || !activeDesign) return;
     const prev = schHistory[schHistory.length - 1];
     setSchFuture((f) => [...f.slice(-49), activeDesign.parts]);
-    setDesigns((ds) => ds.map((d) => (d.id === activeDesign.id ? { ...d, parts: prev } : d)));
+    replaceActiveParts(prev);
     setSchHistory(schHistory.slice(0, -1));
   }
 
@@ -2316,7 +2333,7 @@ export default function App() {
     if (schFuture.length === 0 || !activeDesign) return;
     const next = schFuture[schFuture.length - 1];
     setSchHistory((h) => [...h.slice(-49), activeDesign.parts]);
-    setDesigns((ds) => ds.map((d) => (d.id === activeDesign.id ? { ...d, parts: next } : d)));
+    replaceActiveParts(next);
     setSchFuture(schFuture.slice(0, -1));
   }
 
@@ -4215,7 +4232,23 @@ export default function App() {
     };
   }, [seatShiftMm, offsetMm, trimDb, inverted, midOffsetMm, midTrimDb, midInverted]);
 
-  const sim = useMemo(() => {
+  /**
+   * UI-2 — CAN THE DRAWING BE SIMULATED, AND IF NOT, WHY NOT.
+   *
+   * One answer for three readers: the sim memo (solve or refuse), the Network
+   * tab (print it under the editor) and the status badges (score nothing on a
+   * network that was not simulated). Computed on the DRAWING, before anything
+   * is solved, from the same part list every mutation replaces — so a wire
+   * that connects nothing, a driver with no path to the generator or a deleted
+   * generator is named the moment it happens, instead of the sim silently
+   * falling back to the raw drivers (what happened until UI-2).
+   */
+  const readiness: NetworkReadiness | null = useMemo(
+    () => (schematic ? assessNetwork(schematic.parts, Object.keys(impedances)) : null),
+    [schematic, impedances],
+  );
+
+  const simRaw = useMemo(() => {
     // Single-driver mode: ONE loaded measurement is enough (validation flow:
     // measure a lone driver, rebuild the physical network in the editor,
     // compare sim vs measurement). The missing slot gets a silent ghost
@@ -4304,12 +4337,32 @@ export default function App() {
         : undefined;
     // The editable schematic (when switched on) replaces the vxp variant.
     const useEditor = networkActive && schematic !== null;
-    if (useEditor && Object.keys(impedances).length === 0) {
-      xoError = 'Network editor needs measured impedances — add a .ZMA per driver (or load the demo).';
+    /* UI-2 — THE EDITOR NETWORK IS SOLVED OR REFUSED, NEVER SILENTLY REPLACED.
+     *
+     * Until UI-2 a solver throw on the editor network set `xoError` and let the
+     * RAW drivers through as the sum — every chart and badge then described
+     * a design that was not on screen, and the one line that said so lived on
+     * the Setup tab. Now `readiness` decides before the solve: a refused drawing
+     * produces no network at all and the memo says why; the display layer keeps
+     * the previous simulated state on screen, marked as such. The vxp-variant
+     * path (`xo`) is untouched and still reports through `xoError`. */
+    let refused: Extract<NetworkReadiness, { kind: 'refused' }> | null = null;
+    if (useEditor) {
+      if (!readiness) {
+        refused = { kind: 'refused', cause: 'empty', describe: 'Nothing to simulate: the network holds no components.', defects: [] };
+      } else if (readiness.kind === 'refused') {
+        refused = readiness;
+      }
     }
-    if ((useEditor || xo) && Object.keys(impedances).length > 0) {
+    const refuse = (why: string) => {
+      refused = { kind: 'refused', cause: 'malformed', describe: `Not simulable: ${why}`, defects: readiness?.defects ?? [] };
+    };
+    if ((useEditor && !refused) || (!useEditor && xo && Object.keys(impedances).length > 0)) {
       try {
-        const netlist = crossoverToNetlist(useEditor ? schematic! : xo!).netlist;
+        const netlist =
+          useEditor && readiness && readiness.kind === 'simulable'
+            ? readiness.netlist
+            : crossoverToNetlist(xo!).netlist;
         const zOnGrid = Object.fromEntries(
           Object.entries(impedances).map(([model, z]) => {
             return [model, resampleImpedance(z.freq, z.magnitude, z.phase, grid).z];
@@ -4320,10 +4373,13 @@ export default function App() {
         // drivers freely (e.g. "Woofer 12w8524" / "Tweeter r2604"), so matching
         // literal "mid"/"tweeter" silently applied NO filter and summed the raw
         // drivers (crossover looked like it landed way too high).
-        if (m) {
+        if (useEditor && sol.inputZ.some((c) => !Number.isFinite(c.re) || !Number.isFinite(c.im))) {
+          refuse('the solver produced non-finite values for this network.');
+        } else if (m) {
           const { hW, hM, hT, ambiguous } = slotTransfersN(sol);
           if (ambiguous) {
-            xoError = ambiguous;
+            if (useEditor) refuse(ambiguous);
+            else xoError = ambiguous;
           } else {
             if (hW) w = applyTransfer(w, hW);
             if (hM) m = applyTransfer(m, hM);
@@ -4339,7 +4395,9 @@ export default function App() {
           systemZ = sol.inputZ;
         }
       } catch (e) {
-        xoError = e instanceof Error ? e.message : String(e);
+        const msg = e instanceof Error ? e.message : String(e);
+        if (useEditor) refuse(msg);
+        else xoError = msg;
       }
     }
 
@@ -4419,6 +4477,7 @@ export default function App() {
         transfers,
         systemZ,
         xoError,
+        refused,
         base,
       };
     }
@@ -4429,9 +4488,64 @@ export default function App() {
       transfers,
       systemZ,
       xoError,
+      refused,
       base,
     };
-  }, [woofer, midDrv, threeWay, tweeter, project, impedances, xoName, vFilters, vfBypass, phaseMode, fMinDeb, fMaxDeb, offsetMm, trimDb, inverted, midOffsetMm, midTrimDb, midInverted, branchAdj, schematic, networkActive]);
+  }, [woofer, midDrv, threeWay, tweeter, project, impedances, xoName, vFilters, vfBypass, phaseMode, fMinDeb, fMaxDeb, offsetMm, trimDb, inverted, midOffsetMm, midTrimDb, midInverted, branchAdj, schematic, networkActive, readiness]);
+
+  /**
+   * UI-2 — WHAT THE CHARTS SHOW WHILE THE NETWORK CANNOT BE SIMULATED.
+   *
+   * A refused drawing produces no network. The charts then keep the LAST
+   * simulated state — dimmed, tagged "previous state", and with the reason
+   * printed on the Network tab and in the topbar — rather than a blank page
+   * or, worse, the raw drivers scored as though they were the design. F0: no
+   * verdict is not green, and a frozen chart says that it is frozen.
+   *
+   * The previous state is only reused while it describes the same drivers,
+   * impedances and design tab; anything else and there IS no previous state,
+   * and the memo's own raw-driver sum shows, tagged the same way.
+   */
+  const lastGoodSimRef = useRef<{
+    sim: NonNullable<typeof simRaw>;
+    woofer: typeof woofer;
+    midDrv: typeof midDrv;
+    tweeter: typeof tweeter;
+    impedances: typeof impedances;
+    designId: string | null;
+  } | null>(null);
+  useEffect(() => {
+    if (simRaw && !simRaw.refused) {
+      lastGoodSimRef.current = { sim: simRaw, woofer, midDrv, tweeter, impedances, designId: activeDesignId };
+    }
+  }, [simRaw, woofer, midDrv, tweeter, impedances, activeDesignId]);
+  const simStale: { refusal: Extract<NetworkReadiness, { kind: 'refused' }>; showing: 'previous' | 'raw' } | null =
+    useMemo(() => {
+      if (!simRaw?.refused) return null;
+      const prev = lastGoodSimRef.current;
+      const reusable =
+        prev !== null &&
+        prev.woofer === woofer &&
+        prev.midDrv === midDrv &&
+        prev.tweeter === tweeter &&
+        prev.impedances === impedances &&
+        prev.designId === activeDesignId;
+      return { refusal: simRaw.refused, showing: reusable ? 'previous' : 'raw' };
+    }, [simRaw, woofer, midDrv, tweeter, impedances, activeDesignId]);
+  const sim = simStale?.showing === 'previous' ? lastGoodSimRef.current!.sim : simRaw;
+  const staleTag = simStale ? (
+    <span
+      className="stale-tag"
+      title={`${simStale.refusal.describe}\n\n${
+        simStale.showing === 'previous'
+          ? t('These curves are the LAST network that could be simulated, not the one in the editor. Fix the network and they update.')
+          : t('Nothing has been simulated yet for this network; these are the raw drivers. Fix the network and the curves appear.')
+      }`}
+    >
+      ⚠ {simStale.showing === 'previous' ? t('previous state — network not simulated') : t('raw drivers — network not simulated')}
+    </span>
+  ) : null;
+  const panelClass = simStale ? 'panel sim-stale' : 'panel';
 
   const result = sim?.combined ?? null;
 
@@ -8201,15 +8315,6 @@ export default function App() {
   /** Driver models with measured impedance available for the network editor. */
   const zModels = useMemo(() => Object.keys(impedances), [impedances]);
 
-  const networkIssues = useMemo(() => {
-    if (!schematic) return null;
-    try {
-      return validateNetlist(crossoverToNetlist(schematic).netlist, zModels);
-    } catch (e) {
-      return { errors: [e instanceof Error ? e.message : String(e)], warnings: [] };
-    }
-  }, [schematic, zModels]);
-
   // Imports open a NEW tab — peeking at a variant never costs you work.
   function importNetworkFromVariant() {
     const xo = project && xoName !== 'none' ? project.vxp.crossovers.find((c) => c.name === xoName) : undefined;
@@ -11172,6 +11277,16 @@ export default function App() {
    * calls the same handlers the buttons call. */
 
   const issues: { text: string; where: string }[] = [];
+  if (simStale)
+    issues.push({
+      text: simStale.refusal.describe,
+      where: t('Network tab — the status line under the editor'),
+    });
+  else if (networkActive && readiness && readiness.kind === 'simulable' && readiness.defects.length > 0)
+    issues.push({
+      text: readiness.describe,
+      where: t('Network tab — the status line under the editor names each part'),
+    });
   if (error)
     issues.push({ text: error, where: t('Import tab — the banner above the file slots') });
   if (midIgnored)
@@ -13074,6 +13189,12 @@ export default function App() {
           </div>
         </div>
         <div className="status-chips">
+          {simStale && (
+            <span className="status-chip chip-bad" title={simStale.refusal.describe}>
+              <span className="chip-dot" />
+              {t('Not simulated')} <strong>{simStale.showing === 'previous' ? t('previous state shown') : t('raw drivers shown')}</strong>
+            </span>
+          )}
           {/* 3-way: the PER-PAIR excess-phase verdict (see timing3) — the
               2-way woofer↔tweeter/raw-phase check is a false alarm here. The
               chip shows the worst pair; the tooltip carries both. */}
@@ -13103,7 +13224,7 @@ export default function App() {
               {t('Timing')} <strong>{timing.ref.verdict}</strong>
             </span>
           ) : null}
-          {combinedFlat && (
+          {combinedFlat && !simStale && (
             <span
               className={`status-chip ${
                 !designShaped
@@ -13115,7 +13236,7 @@ export default function App() {
               {t('Response')} <strong>{combinedFlat.score.toFixed(0)}</strong>
             </span>
           )}
-          {integration?.overlapCentreHz != null && (
+          {integration?.overlapCentreHz != null && !simStale && (
             <span
               className="status-chip"
               title={t("Where the two drivers' levels meet in the current sim — the acoustic crossover point. Neutral by design: a location, not a verdict.")}
@@ -13124,6 +13245,7 @@ export default function App() {
             </span>
           )}
           {pairScores &&
+            !simStale &&
             pairScores.low.integ.overlapCentreHz != null &&
             pairScores.high.integ.overlapCentreHz != null && (
               <span
@@ -13137,7 +13259,7 @@ export default function App() {
                 </strong>
               </span>
             )}
-          {phaseStats && (
+          {phaseStats && !simStale && (
             <span
               className={`status-chip ${
                 !designShaped
@@ -13149,7 +13271,7 @@ export default function App() {
               {t('Phase P95')} <strong>{phaseStats.p95ErrorDeg.toFixed(0)}°</strong>
             </span>
           )}
-          {pairScores && (pairScores.low.stats || pairScores.high.stats) && (() => {
+          {pairScores && !simStale && (pairScores.low.stats || pairScores.high.stats) && (() => {
             const worst = Math.max(
               pairScores.low.stats?.p95ErrorDeg ?? 0,
               pairScores.high.stats?.p95ErrorDeg ?? 0,
@@ -17581,14 +17703,35 @@ export default function App() {
                   onRedo={redoSchematic}
                   canRedo={schFuture.length > 0}
                 />
-                {networkIssues && (networkIssues.errors.length > 0 || networkIssues.warnings.length > 0) && (
-                  <div className="nl-issues">
-                    {networkIssues.errors.map((m) => (
-                      <p key={m} className="error">{m}</p>
+                {/* UI-2 — the simulation status of THIS drawing, right under
+                    the editor: solved as drawn (with every defect by name), or
+                    refused with the reason. This is the place where, until
+                    UI-2, a disconnected woofer and a wire that touched nothing
+                    both printed nothing at all. */}
+                {readiness && (
+                  <div
+                    className={`sim-status ${
+                      readiness.kind === 'refused' ? 'refused' : readiness.defects.length > 0 ? 'defects' : 'clean'
+                    }`}
+                  >
+                    <p className="sim-status-head">
+                      {readiness.kind === 'refused'
+                        ? readiness.describe
+                        : readiness.defects.length > 0
+                          ? readiness.describe
+                          : t('Simulated as drawn — every part has a path to the generator.')}
+                      {!networkActive ? ` ${t('(“Use in simulation” is off, so the charts show something else.)')}` : ''}
+                    </p>
+                    {readiness.defects.map((d) => (
+                      <p key={`${d.code}:${d.part}`}>{d.text}</p>
                     ))}
-                    {networkIssues.warnings.map((m) => (
-                      <p key={m} className="nl-warning">{m}</p>
-                    ))}
+                    {simStale && (
+                      <p>
+                        {simStale.showing === 'previous'
+                          ? t('The charts keep the PREVIOUS simulated state, dimmed and tagged, until this is fixed.')
+                          : t('The charts show the raw drivers, dimmed and tagged, until this is fixed.')}
+                      </p>
+                    )}
                   </div>
                 )}
                 {(() => {
@@ -17799,9 +17942,19 @@ export default function App() {
               </div>
             )}
 
-          <div className={`panel${splPinned ? ' spl-sticky' : ''}`}>
+          {simStale && (
+            <div className="panel">
+              <div className="verdict no-reference">
+                <strong>{simStale.refusal.describe}</strong>{' '}
+                {simStale.showing === 'previous'
+                  ? t('The charts below keep the previous simulated state, dimmed, until the network in the editor can be solved again.')
+                  : t('The charts below show the raw drivers, dimmed, until the network in the editor can be solved.')}
+              </div>
+            </div>
+          )}
+          <div className={`panel${splPinned ? ' spl-sticky' : ''}${simStale ? ' sim-stale' : ''}`}>
             <div className="panel-head">
-              <h2>SPL</h2>
+              <h2>SPL{staleTag}</h2>
               <button
                 type="button"
                 className={`pin-btn${heldTrace ? ' on' : ''}`}
@@ -18089,8 +18242,8 @@ export default function App() {
           </div>
 
           {directivity && (
-            <div className="panel">
-              <h2>{t('Directivity (horizontal)')}</h2>
+            <div className={panelClass}>
+              <h2>{t('Directivity (horizontal)')}{staleTag}</h2>
               <p className="sub" style={{ marginBottom: '0.8rem' }}>
                 {t('Same filter at every measured angle ({angles}° hor, one side).', { angles: directivity.angles.join('/') })}{' '}
                 {Number(cabinet.baffleWidthMm) > Number(cabinet.baffleHeightMm)
@@ -18233,8 +18386,8 @@ export default function App() {
           )}
 
           {showPanels.transfer && sim?.transfers && result && (
-            <div className="panel">
-              <h2>{t('Filter transfer (driver voltage vs source)')}</h2>
+            <div className={panelClass}>
+              <h2>{t('Filter transfer (driver voltage vs source)')}{staleTag}</h2>
               <Chart
                 storageKey="transfer"
                 series={[
@@ -18294,8 +18447,8 @@ export default function App() {
           )}
 
           {systemZInfo && result && (
-            <div className="panel">
-              <h2>{t('System impedance (amplifier load)')}</h2>
+            <div className={panelClass}>
+              <h2>{t('System impedance (amplifier load)')}{staleTag}</h2>
               <div className="score-strip">
                 <span className="strip-label">Z min</span>
                 <span
@@ -18371,13 +18524,14 @@ export default function App() {
           )}
 
           {showPanels.phase && (
-          <div className="panel">
+          <div className={panelClass}>
             <h2>
               {soloDriver
                 ? t('{drv} phase (total)', { drv: soloDriver === 'woofer' ? t('Woofer/mid') : t('Tweeter') })
                 : threeWay
                   ? t('Relative phase per driver pair')
                   : t('Tweeter phase relative to woofer')}
+              {staleTag}
             </h2>
             {phaseStats && (
               <div className="score-strip">
@@ -18538,8 +18692,8 @@ export default function App() {
 
       {timeDomain && result && (
         <>
-          <div className="panel">
-            <h2>{t('Excess group delay (combined)')}</h2>
+          <div className={panelClass}>
+            <h2>{t('Excess group delay (combined)')}{staleTag}</h2>
             <Chart
               series={[
                 {
@@ -18565,8 +18719,8 @@ export default function App() {
             />
           </div>
 
-          <div className="panel">
-            <h2>{t('Step response & ETC (IFFT of combined response)')}</h2>
+          <div className={panelClass}>
+            <h2>{t('Step response & ETC (IFFT of combined response)')}{staleTag}</h2>
             <p className="sub" style={{ marginBottom: '0.8rem' }}>
               {t('Sanity check, not a measurement — band edges are tapered. t = 0 at the impulse peak (arrival {ms} ms).', { ms: timeDomain.td.peakTimeMs.toFixed(2) })}
             </p>

@@ -1,5 +1,6 @@
 import { t } from '../lib/i18n.ts';
 import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
+import { effectiveView } from '../lib/chartView.ts';
 
 /**
  * Log-frequency line chart (SVG). Series carry NaN gaps to break the path
@@ -220,14 +221,26 @@ export default function Chart({
   const isLog = xScale === 'log';
   const sharedHover = useSyncExternalStore(subscribeCrosshair, readCrosshair);
 
-  // Committed domains changed (view-range fields, new data) → drop the zoom;
-  // the override would otherwise silently outlive the range it was taken from.
-  useEffect(() => {
-    setView(null);
-  }, [xDomain[0], xDomain[1], yDomain[0], yDomain[1]]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  const vx: [number, number] = view?.x ?? xDomain;
-  const vy: [number, number] = view?.y ?? yDomain;
+  /* UI-2 — A ZOOM THE USER SET SURVIVES A RECOMPUTATION.
+   *
+   * Until UI-2 an effect here dropped `view` whenever a committed domain
+   * changed. For the SPL chart the y-domain is auto-scaled from the data, so
+   * any network edit that moved the loudest trace across a 5 dB rounding step
+   * (Sander: removing the series resistor before the woofer — measured live
+   * with Rg 20 Ω: 80–140 → 75–135 dB) threw the user's X-zoom away with it and
+   * the axis snapped from the zoomed window back to the full range. The view
+   * followed the data instead of the user.
+   *
+   * The override is a window in DATA units and it now stays until the user
+   * resets it (button, double-click) or zooms back out to the base. What
+   * changes with the base is only the FIT: a window that no longer lies inside
+   * the new domain is shifted in with its span kept, and a window at least as
+   * wide as the base collapses to the base — which is also how "use as view
+   * range" (base := window) ends the zoom cleanly. The rule is a pure function
+   * in `lib/chartView.ts`, and `chartView.test.ts` holds it without a browser. */
+  const eff = effectiveView(view, xDomain, yDomain, isLog);
+  const vx: [number, number] = eff.x;
+  const vy: [number, number] = eff.y;
 
   // Report the live visible x-range (zoom/pan/reset all flow through vx).
   useEffect(() => {
@@ -331,17 +344,17 @@ export default function Chart({
   const xTicks = useMemo(() => {
     if (!isLog) return linearTicks(vx[0], vx[1]);
     const coarse = FREQ_TICKS.filter((f) => f >= vx[0] && f <= vx[1]);
-    if (coarse.length >= 4 || !view?.x) return coarse;
+    if (coarse.length >= 4 || !eff.xZoomed) return coarse;
     return FREQ_TICKS_DENSE.filter((f) => f >= vx[0] && f <= vx[1]);
-  }, [isLog, vx[0], vx[1], view?.x]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [isLog, vx[0], vx[1], eff.xZoomed]); // eslint-disable-line react-hooks/exhaustive-deps
   const fmtX = isLog ? fmtHz : fmtLinear;
   const yTicks = useMemo(() => {
-    if (view?.y) return linearTicks(vy[0], vy[1]);
+    if (eff.yZoomed) return linearTicks(vy[0], vy[1]);
     const out: number[] = [];
     const start = Math.ceil(vy[0] / yTickStep) * yTickStep;
     for (let v = start; v <= vy[1] + 1e-9; v += yTickStep) out.push(v);
     return out;
-  }, [vy[0], vy[1], yTickStep, view?.y]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [vy[0], vy[1], yTickStep, eff.yZoomed]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ----- zoom & pan (pure view transform; data and simulation untouched) -----
 
@@ -427,7 +440,7 @@ export default function Chart({
   }
 
   function onPointerDown(e: React.PointerEvent<SVGSVGElement>) {
-    if (e.button !== 0 || !view) return; // nothing to pan at full range
+    if (e.button !== 0 || !eff.zoomed) return; // nothing to pan at full range
     dragRef.current = { cx: e.clientX, cy: e.clientY, x: vx, y: vy };
     try {
       e.currentTarget.setPointerCapture(e.pointerId);
@@ -459,7 +472,7 @@ export default function Chart({
       if (!dragging && dragRef.current) return;
       const dxu = (-(e.clientX - drag.cx) / rect.width) * W * ((lx1 - lx0) / plotW);
       const dyu = ((e.clientY - drag.cy) / rect.height) * H * ((vy[1] - vy[0]) / plotH);
-      if (view?.x) {
+      if (eff.xZoomed) {
         const b0 = isLog ? Math.log10(xDomain[0]) : xDomain[0];
         const b1 = isLog ? Math.log10(xDomain[1]) : xDomain[1];
         const d0 = isLog ? Math.log10(drag.x[0]) : drag.x[0];
@@ -467,7 +480,7 @@ export default function Chart({
         const lo = clamp(d0 + dxu, b0, b1 - span);
         applyView('x', isLog ? [10 ** lo, 10 ** (lo + span)] : [lo, lo + span], xDomain);
       }
-      if (view?.y) {
+      if (eff.yZoomed) {
         const span = drag.y[1] - drag.y[0];
         const lo = clamp(drag.y[0] + dyu, yDomain[0], yDomain[1] - span);
         applyView('y', [lo, lo + span], yDomain);
@@ -633,10 +646,10 @@ export default function Chart({
           </button>
         )}
       </div>
-      {view && (
+      {eff.zoomed && (
         <div className="chart-zoom-tools">
-          <span className="chart-zoom-range">{view.x ? fmtRange(vx[0], vx[1]) : 'y-zoom'}</span>
-          {view.x && onXRangeCommit && (
+          <span className="chart-zoom-range">{eff.xZoomed ? fmtRange(vx[0], vx[1]) : 'y-zoom'}</span>
+          {eff.xZoomed && onXRangeCommit && (
             <button
               type="button"
               onClick={() => onXRangeCommit(vx[0], vx[1])}
@@ -663,7 +676,7 @@ export default function Chart({
         onPointerCancel={onPointerUp}
         onMouseLeave={onLeave}
         onDoubleClick={() => setView(null)}
-        className={dragging ? 'panning' : view ? 'pannable' : undefined}
+        className={dragging ? 'panning' : eff.zoomed ? 'pannable' : undefined}
         role="img"
       >
         {/* background zones */}

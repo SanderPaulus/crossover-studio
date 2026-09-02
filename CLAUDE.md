@@ -48,6 +48,10 @@
     referentie:** `threeWayChain` alléén kostte in diezelfde run 361 s tegen de 289 s van V43, dus
     wat er beweegt is de machine en niet de laag. Het overgeslagen BESTAND is nieuw en klopt: de
     verhuisde verwerpingsrun is een bestand dat volledig uit `[live]` bestaat.
+    **Ná UI-2 (02-09-2026) gemeten op 279 s — 140 geslaagd + 1 overgeslagen bestand,
+    1555 geslaagd + 2 overgeslagen** (+2 bestanden: `lib/chartView.test.ts` 6 claims en
+    `lib/networkReadiness.test.ts` 26 claims, waarvan achttien de mutatietabel als `it.each`).
+    GEEN nieuwe referentie: de V43-waarde van 289 s blijft staan.
     **Ná V48 (02-09-2026) gemeten op 285 s — 138 geslaagd + 1 overgeslagen bestand,
     1523 geslaagd + 2 overgeslagen**, apart gedraaid op een lege machine ná de volle run en
     NOOIT ernaast (zie de geheugenles daar). GEEN nieuwe referentie: de V43-waarde van 289 s
@@ -1566,6 +1570,47 @@ grotere ingreep — hij raakt élk commando in dit project — en is deze sessie
   de vervangen regel een integraal en is de eis een punt. Op het huidige veld is dat leeg (de
   controlekolom leest nul op alle vier de levende netlists), en zij staat er om de eerste netlist te
   vangen die M-C haalt met een tekort boven nul.
+
+### UI-2-guards (elke bewerking herrekent, of zegt waarom niet; de view is van de gebruiker)
+- `src/lib/networkReadiness.ts` + `networkReadiness.test.ts` — **"kan dit netwerk gesimuleerd
+  worden, en zo niet, waarom niet" heeft sinds UI-2 één huis, met drie lezers**: de sim-memo in
+  `App.tsx` (oplossen of weigeren), de status onder de editor op de Network-tab, en de badges.
+  Tot UI-2 had elk van de drie een eigen idee: de sim liet bij een solver-`throw` stil de KALE
+  drivers als som door (met de foutregel op de Setup-tab), de editor drukte `validateNetlist` af,
+  en de badges scoorden wat de sim teruggaf. Twee ernstgraden — GEWEIGERD (geen generator,
+  kortgesloten of Rg ≤ 0, geen driver, driver zonder impedantie, waarde ≤ 0, één terminal) en
+  GESIMULEERD MET GEBREKEN (driver zonder pad naar de generator, los onderdeel, draad die geen
+  terminal raakt, losse ground, beide terminals op één net, tweede generator, niets aan ground).
+  **"Pad naar de generator" wordt gelopen ZONDER door ground te gaan** — de ene regel verschil met
+  `validateNetlist`, en het is de hele bevinding: een wooferketen die alleen nog aan ground hangt
+  gold daar als verbonden. De test is een MUTATIETABEL op het echte KAND-V2-1 met de
+  casus-1-impedanties (achttien rijen: elke editorbewerking, undo, redo, shortlist-rij) plus de
+  gemeten casus: R5 weg → woofer exact nul en `validateNetlist` schoon; de draad één rij ernaast
+  → byte-identieke overdrachten en de draad bij zijn eindpunten benoemd. Het bestand leest van
+  schijf (`casus1.fixture.ts`), dus het is een test en geen bundelcode. Het bestand staat in
+  `src/lib/` en niet in `engine2/`, want de editor is v1-laag en de regel geldt in beide modi
+  (dezelfde reden als `impedanceFloor.ts`).
+- `src/lib/chartView.ts` + `chartView.test.ts` — **een door de gebruiker gezet grafiekvenster
+  overleeft een herberekening.** `Chart.tsx` had één effect dat de zoom liet vallen zodra een
+  domein veranderde; de SPL-y-as is auto uit de data, dus élke bewerking die de luidste kromme
+  over een 5 dB-stap duwde gooide óók de x-zoom weg (live gemeten met Rg 20 Ω: 80–140 → 75–135,
+  zoom weg, x-as terug op "10k"). `effectiveView` is de pure regel: geen keuze → de basis volgen;
+  een venster blijft in DATA-eenheden staan, schuift met behoud van span in een basis waar het
+  niet meer in past, en valt samen met de basis zodra het even breed is — wat ook is hoe "use as
+  view range" de zoom netjes beëindigt. Zes claims, en de dragende is de X-zoom die een
+  Y-domeinwissel overleeft. Geldt voor élke `Chart`, want de regel zit in de component.
+- **In `App.tsx`: `replaceActiveParts` is de ENIGE plek die de onderdelenlijst van de actieve tab
+  vervangt** — `commitSchematic`, `undoSchematic` en `redoSchematic` roepen hem aan en verschillen
+  alleen in hun geschiedenisboekhouding. De sim-memo vraagt `readiness` vóór de solve; op de
+  editor-route is een `throw`, een `ambiguous` slot-mapping en een niet-eindige oplossing een
+  WEIGERING en geen stille terugval. Een geweigerde tekening houdt de VORIGE gesimuleerde
+  toestand op het scherm (alleen zolang drivers, impedanties en tab dezelfde zijn), gedimd, met
+  de tag "previous state — network not simulated" op elk grafiekpaneel, één chip "Not simulated"
+  in plaats van Response/Overlap/Phase, een banner boven de SPL en een DRC-regel. De Timing-chip
+  blijft: hij beoordeelt de metingen en niet het netwerk. `validateNetlist` heeft in de app geen
+  lezer meer en is niet aangeraakt.
+- **Het "Draw wire"-gereedschap blijft na een draad actief** ("click the start point"); niet
+  aangeraakt, wel genoteerd in de UI-2-entry.
 
 ### V47-nazorg-guards (een corpusgemiddelde is geen delta)
 - `src/lib/engine2/casus1Corpora.fixture.ts` + `corpusPairing.test.ts` — **de leesregel bij elke

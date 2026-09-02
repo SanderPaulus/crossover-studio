@@ -4243,3 +4243,53 @@ details.cabinet-driver > .derived strong,
   color: var(--muted);
   text-transform: lowercase;
 }
+
+/* UI-2 — a chart that shows the PREVIOUS simulated state because the network
+   on screen cannot be simulated. The curves stay (a blank chart says even
+   less) but they are dimmed and carry a tag that says what they are, and the
+   Network tab prints why the sim refused. F0: no verdict is not green and
+   not a chart pretending to be current. */
+.panel.sim-stale > :not(h2):not(.panel-head) {
+  opacity: 0.45;
+  filter: saturate(0.4);
+}
+.stale-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  margin-left: 0.6rem;
+  padding: 0.1rem 0.55rem;
+  border: 1px dashed var(--bad);
+  border-radius: 999px;
+  color: var(--bad);
+  font-size: 0.75rem;
+  font-weight: 600;
+  vertical-align: middle;
+  white-space: nowrap;
+}
+.sim-status {
+  margin: 0.6rem 0 0;
+  padding: 0.5rem 0.7rem;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  font-size: 0.85rem;
+}
+.sim-status.refused {
+  border-color: var(--bad);
+  color: var(--bad);
+  background: var(--bad-bg);
+}
+.sim-status.defects {
+  border-color: var(--warn);
+  color: var(--warn);
+  background: var(--warn-bg);
+}
+.sim-status.clean {
+  color: var(--muted);
+}
+.sim-status p {
+  margin: 0.15rem 0;
+}
+.sim-status .sim-status-head {
+  font-weight: 600;
+}

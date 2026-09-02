@@ -3829,6 +3829,179 @@ onderdelenlijst in de shard bewaren, en dat kost een nieuwe run van dertig keten
 niet door dit gat geraakt — nagegaan, niet aangenomen; als er ooit een inversie bij komt die er wél
 van afhangt, is dit de plek waar zij dezelfde behandeling hoort te krijgen.
 
+### UI-2 — elke bewerking herrekent, of zegt waarom niet; de view is van de gebruiker (02-09-2026)
+
+**AANLEIDING.** Sander, op de live site (`1576903`) met het shortlist-#1-ontwerp geladen: (a) de
+serieweerstand vóór de woofer verwijderd → de simulatie herrekent, maar de SPL-as springt van
+20 kHz terug naar 10 kHz; (b) daarna een draad getekend → geen herberekening, geen melding.
+
+**HET WAS TWEE KEER HETZELFDE GEBREK, in twee lagen: de app volgde de DATA in plaats van de
+gebruiker, en waar zij niets te melden had, meldde zij niets.**
+
+---
+
+**INVENTARISATIE — wat een editorbewerking deed vóór UI-2.** Alles in de editor loopt door
+`onChange` → `commitSchematic` → `setDesigns`; undo en redo riepen `setDesigns` rechtstreeks;
+een shortlist-rij komt via `applyScanCandidate` → `setWorkingDesign` → `setDesigns`. De
+simulatie is een `useMemo` op `schematic`, en dat is een memo op `activeDesign.parts`. **Dus
+élke mutatie triggerde de hersimulatie — er is nooit een bewerking geweest die dat niet deed.**
+Wat er daarna gebeurde is de kolom die ertoe doet:
+
+| bewerking | trigger | wat er dan gebeurde (vóór UI-2) |
+| --- | --- | --- |
+| draad tekenen, op de terminals | ja (`SchematicEditor.tsx` `onBackgroundDown` → `addWire`) | herrekend |
+| draad tekenen, één rij ernaast | ja | netlist byte-identiek → curves identiek, **geen melding** |
+| draad verwijderen | ja (`onKeyDown` Delete / knop → `deletePart`) | herrekend; de afgesneden tak stil, **geen melding** |
+| component toevoegen | ja (`addPart`) | herrekend; het losse onderdeel doet niets, geen melding |
+| component verwijderen | ja (`deletePart`, "its wires stay") | herrekend; wat erachter hing stil, **geen melding** |
+| waarde wijzigen | ja (`ParamField` → `setPartParam`) | herrekend |
+| waarde op 0 | ja | `1/0` in de stamp → NaN-oplossing, geen melding |
+| roteren | ja (`rotatePart`, om de eerste terminal) | herrekend; de tweede terminal los, geen melding |
+| generator plaatsen | ja (`addPart`) | herrekend; twee bronnen, alleen `validateNetlist`-waarschuwing |
+| generator verwijderen | ja | solver gooit → `xoError` → **RAW drivers als som**, foutregel op de Setup-tab |
+| ground plaatsen | ja | herrekend; een losse ground doet niets, geen melding |
+| undo / redo | ja (`undoSchematic`/`redoSchematic` → `setDesigns`) | als de bewerking die zij terugdraaien |
+| shortlist-rij laden (UI-1) | ja (`selectFromShortlist` → `applyScanCandidate`) | herrekend |
+
+**Geval (b), nagemeten in Node op de casus-1-impedanties en daarna live in de draaiende app met
+échte pointer-events.** R5 (4,019 Ω, tussen de bus en de wooferketen) verwijderd:
+
+| toestand | woofer \|H\| (200 Hz / 1 k / 5 k) | Z min | `validateNetlist` |
+| --- | --- | --- | --- |
+| geladen ontwerp | −5,18 / −32,06 / −67,40 dB | 3,719 Ω | schoon |
+| R5 weg | **−∞ / −∞ / −∞** | **0,179 Ω** | **schoon** |
+| R5 weg + draad exact op (17,6)–(24,6) | −1,30 / −27,79 / −53,90 dB | 3,536 Ω | schoon |
+| R5 weg + draad op (17,7)–(24,7) | −∞ / −∞ / −∞ | 0,179 Ω | schoon — **byte-identiek aan "R5 weg"** |
+
+Drie dingen staan in die tabel. **(1) De woofer was al stil vóór de draad.** Verwijderen laat de
+twee terminals los ("its wires stay"), en de wooferketen erachter hangt dan alleen nog aan
+ground. De simulator lost dat correct op — de lekgeleiding houdt de matrix regulier en de
+overdracht is exact nul — en de som herrekende zonder woofer: "Response 90", "Phase P95 16°",
+geen Overlap-chip meer, en nergens één woord. **(2) `validateNetlist` zag er niets van.** Haar
+bereikbaarheidsloop wandelt door node 0 zoals door elke andere knoop, en de wooferketen bereikt
+ground via haar eigen shunt en haar eigen retour — dus "verbonden met de generator". Dat is de
+regel die het had moeten zeggen, en zij is er blind voor. **(3) De draad ernaast is een no-op.**
+Draden lossen op in de union-find vóórdat er een netlist bestaat; een draad die geen enkele
+terminal raakt levert een netlist die byte-identiek is aan die ervoor, dus de simulatie
+"reageerde niet" — terecht, en zonder dat iets dat kon zeggen. Live nagemeten: draad
+(10,7)–(17,7) één rij onder het gat in de opgeruimde layout → alles identiek, `issues: null`.
+De exacte draad (10,6)–(17,6) bracht de woofer wél terug: W-M 98 · 556 Hz.
+
+**Geval (a), live nagemeten.** `Chart.tsx` had één effect: *"committed domains changed → drop
+the zoom"*, op `[xDomain, yDomain]`. De SPL-y-as is auto uit de data (top = luidste kromme,
+bodem = doorlaatband − 50 dB, op 5 dB afgerond), dus élke bewerking die de luidste kromme over
+een 5 dB-stap heen duwde gooide óók de x-zoom weg. Gemeten met Rg 0,001 → 20 Ω: y-as
+80–140 → 75–135, zoom 1,22k–9,68k → weg, x-as terug naar het volle bereik waarvan het laatste
+label "10k" is — precies "van 20 kHz terug naar 10 kHz". De R-verwijdering op de site deed
+hetzelfde via de bodem; in de demo trof de R5-verwijdering toevallig geen 5 dB-stap en overleefde
+de zoom, wat laat zien hoe willekeurig de grens lag.
+
+---
+
+**WAT ER GEBOUWD IS.**
+
+**Eén functie voor "kan dit gesimuleerd worden, en zo niet, waarom niet":** `lib/networkReadiness.ts`,
+`assessNetwork(parts, models)`, in de V32-vorm met drie lezers — de sim-memo (oplossen of
+weigeren), de Network-tab (de status onder de editor) en de badges (niets scoren op een netwerk
+dat niet gesimuleerd is). Twee ernstgraden, en de grens is de natuurkunde:
+
+- **GEWEIGERD** — geen simuleerbare betekenis: geen generator, generator kortgesloten of Rg ≤ 0,
+  geen driver, driver zonder gemeten impedantie, waarde ≤ 0, onderdeel met één terminal. De sim
+  draait niet; de grafieken houden de VORIGE gesimuleerde toestand, gedimd en met de tag
+  *"previous state — network not simulated"*, de badges Response/Overlap/Phase verdwijnen en er
+  staat één chip *"Not simulated · previous state shown"* voor in de plaats, de DRC-lijst
+  draagt de reden, en boven de SPL een banner. Is er geen vorige toestand (andere drivers,
+  andere tab), dan staan de kale drivers er met dezelfde tag. F0: geen oordeel is geen groen,
+  en een bevroren grafiek zegt dat zij bevroren is.
+- **GESIMULEERD MET GEBREKEN** — het netwerk lost op en de oplossing is precies wat de tekening
+  zegt, maar de tekening zegt iets wat de ontwerper vermoedelijk niet bedoelde: een driver zonder
+  pad naar de generator (stil), een onderdeel dat nergens aan hangt, een draad die geen terminal
+  raakt, een losse ground, een onderdeel met beide terminals op één net, twee generatoren, niets
+  aan ground. De sim DRAAIT — een losgekoppelde woofer is een echte fysische toestand en de
+  eerlijke kromme is die zonder hem — en het gebrek staat ernaast, per onderdeel bij naam.
+
+**"Pad naar de generator" wordt gelopen ZONDER door ground te gaan.** Dat is de ene regel
+verschil met `validateNetlist`, en het is de hele bevinding. Sanders R-verwijdering landt in de
+tweede categorie: de curves herrekenen én de status zegt *"D (woofer) has no path to the
+generator — it is SILENT in this simulation"*. De draad ernaast: *"Wire 10,7 → 17,7 touches no
+terminal of any part — it connects nothing, and the network is exactly what it was before it
+was drawn."*
+
+**Eén pad voor elke mutatie.** `replaceActiveParts(parts)` is sinds UI-2 de enige plek die de
+onderdelenlijst van de actieve tab vervangt; `commitSchematic`, `undoSchematic` en
+`redoSchematic` roepen hem aan en verschillen alleen in hun geschiedenisboekhouding. Een undo
+kan de grafieken dus niet via een andere weg bereiken dan de bewerking die hij terugdraait.
+In de sim-memo is de editor-tak omgebouwd: `readiness` beslist vóór de solve, een geweigerde
+tekening levert géén netwerk en de memo zegt waarom; de vxp-variant-route (`xo`) is ongewijzigd
+en meldt nog via `xoError`. De solver-`throw` die tot UI-2 de kale drivers als som doorliet, is
+op de editor-route een weigering geworden — net als een `ambiguous` slot-mapping en een
+niet-eindige oplossing.
+
+**De grafiek-view volgt de gebruiker.** Het effect dat de zoom liet vallen is weg. De
+zoomtoestand is een venster in DATA-eenheden en blijft staan tot de expliciete reset (knop,
+dubbelklik) of tot de gebruiker terug uitzoomt tot de basis; wat met de basis meebeweegt is
+alleen de PASSING — een venster dat niet meer in het nieuwe domein ligt schuift erin met behoud
+van span (log-span op de log-as), een venster minstens zo breed als de basis valt samen met de
+basis en de zoombalk verdwijnt, wat óók is hoe "use as view range" (basis := venster) de zoom
+netjes beëindigt. Auto-scale alleen zolang de gebruiker niets koos. De regel is een pure
+functie (`lib/chartView.ts`, `effectiveView`) en geldt voor élke `Chart` — SPL, impedantie,
+fase, filteroverdracht, groepsvertraging, tijddomein — want zij zit in de component en niet in
+één aanroeper. Live nagemeten: zoom 3,04k–5,97k, Rg 0,001 → 20 Ω, y-as 80–140 → 75–135,
+**zoom staat**.
+
+**Handmatige controle, in de draaiende app (dev-server op de commit-code), de twee handelingen
+van de entry:** shortlist-#1 geladen (KAND-V2-1 via Import filter — hetzelfde bestand als de
+rij), SPL gezoomd, R5 verwijderd → **de zoom blijft staan, de curves zijn herrekend (woofer
+weg), status onder de editor: "Simulated as drawn: D silent — no path to the generator · 1 more
+issue" met C10 en de woofer bij naam, en de ⚠-chip telt één issue**. Daarna een draad één rij
+onder het gat → **status: "… · 1 wire connects nothing" met de draad bij zijn eindpunten**;
+de exacte draad → woofer terug. Generator verwijderd → **chip "Not simulated · previous state
+shown", banner boven de SPL, drie grafiekpanelen gedimd met de tag, de status onder de editor
+"Not simulable: the network has no generator. Place one (+ Gen) and wire it to the filter
+input." plus "Ground symbol at 3,13 touches no terminal".**
+
+**De tabel ná UI-2.** Elke rij triggert nog steeds — dat was nooit het probleem — en de derde
+kolom is nu wat `networkReadiness.test.ts` per rij assert (op het echte KAND-V2-1, met de
+casus-1-impedanties):
+
+| bewerking | uitkomst |
+| --- | --- |
+| draad op de terminals (na R5 weg) | simuleerbaar, schoon |
+| draad over een aanwezig onderdeel | simuleerbaar, `shorted-part` (R5) |
+| draad één rij ernaast | simuleerbaar, `dangling-wire` + woofer stil + C10 los |
+| draad die één terminal haalt | simuleerbaar, woofer stil + C10 los |
+| voeddraad van de midketen weg | simuleerbaar, acht onderdelen los + mid stil |
+| component toevoegen | simuleerbaar, `undriven-part` |
+| R5 verwijderen | simuleerbaar, woofer stil + C10 los |
+| waarde wijzigen | simuleerbaar, schoon |
+| waarde op 0 | **geweigerd**, `invalid-value` |
+| R5 roteren | simuleerbaar, woofer stil + C10 los |
+| driver inverteren | simuleerbaar, schoon |
+| tweede generator plaatsen | simuleerbaar, `extra-generator` |
+| generator verwijderen | **geweigerd**, `no-generator` (+ zijn ground los) |
+| draad over de generator | **geweigerd**, `shorted-generator` |
+| ground plaatsen | simuleerbaar, `dangling-ground` |
+| woofer verwijderen | simuleerbaar (+ zijn ground los) |
+| undo / redo | de toestand waar zij naartoe gaan |
+| shortlist-rij laden (KAND-V2-2) | simuleerbaar, schoon |
+
+---
+
+**WAT ER NIET GEBOUWD IS.** Niets aan engine, shortlist, poorten of corpus; geen regeneratie.
+De simulatie-uitkomst voor een gegeven simuleerbaar netwerk is ongewijzigd — `readiness.netlist`
+is `crossoverToNetlist` op dezelfde onderdelen — en `toggleRegression` blijft groen. **De
+Timing-chip blijft staan wanneer het netwerk niet gesimuleerd is, en dat is een besluit:** hij
+beoordeelt de tijdbasis van de METINGEN (`timing` hangt aan `woofer`/`tweeter`, niet aan het
+netwerk) en is dus geen score op het netwerk. `validateNetlist` is niet aangeraakt: hij heeft
+sinds UI-2 geen lezer meer in de app en zijn eigen tests staan nog; de test in
+`networkReadiness.test.ts` pint dat hij op de R5-loze netlist niets ziet, zodat wie hem ooit
+repareert dáár de bevinding tegenkomt.
+
+**OPENSTAAND.** Het "Draw wire"-gereedschap blijft na een draad actief ("click the start
+point"), dus een verdwaalde klik begint een volgende draad; niet aangeraakt. En de
+statuscel op de v2-pagina en de scan-tabel lezen `sim` — de vorige toestand — zonder eigen tag;
+zij staan onder dezelfde banner, maar dragen hem niet zelf.
+
 ## Casus S1 — synthetische grondwaarheid voor de R_e-schatter (F3b, 26-08-2026)
 
 *De eerste casus in dit boek die geen luidspreker is. A7 noemt synthetische grondwaarheid als
