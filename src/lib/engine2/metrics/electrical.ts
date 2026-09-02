@@ -233,6 +233,15 @@ export interface DriveVoltageResult {
   db: number;
   /** The passband the mean was taken over — DERIVED from the crossings. */
   passbandHz: [number, number];
+  /**
+   * V49 — the two halves the dB above is the difference of: |H(f_s)| in dB re
+   * the generator, and the dB-mean of |H| over the passband. Carried so that
+   * an excursion-derived ceiling, which is stated re the INPUT, can be turned
+   * into M-C's passband-relative form by whoever judges it (one subtraction,
+   * in `driveExcursion.ts`), without a second look at the network.
+   */
+  fsDb: number;
+  passbandMeanDb: number;
   coverage: Coverage;
 }
 
@@ -298,11 +307,14 @@ export function driveVoltageOnResonance(
   }
   if (n === 0) return null;
   const meanDb = sumDb / n;
+  const fsDb = dbAmp(cabs(h[iFs]));
   return {
     driver: driverModel,
     fsHz: grid[iFs],
-    db: dbAmp(cabs(h[iFs])) - meanDb,
+    db: fsDb - meanDb,
     passbandHz,
+    fsDb,
+    passbandMeanDb: meanDb,
     coverage: coverageOf(passbandHz, {
       fromHz: Math.max(passbandHz[0], grid[0]),
       toHz: Math.min(passbandHz[1], grid[grid.length - 1]),

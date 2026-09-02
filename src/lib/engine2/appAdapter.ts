@@ -25,7 +25,13 @@ import type { Netlist } from '../network.ts';
 import { parseArtaHeader, type Manifest, type ManifestEntry } from './ingest/manifest.ts';
 import type { MeasurementFile } from './ingest/derive.ts';
 import type { FilterInput, EngineV2ReportInput, ReportSettings } from './report.ts';
-import { ctcKey, sourcesFromArray, type Geometry, type WaySourcePosition } from './metrics/types.ts';
+import {
+  ctcKey,
+  sourcesFromArray,
+  type DriverCard,
+  type Geometry,
+  type WaySourcePosition,
+} from './metrics/types.ts';
 
 /** A response file as the app holds it after parsing. */
 export interface AdapterResponse {
@@ -77,6 +83,20 @@ export interface AdapterBranch {
    * a set where only some files lost their headers behaves correctly.
    */
   manualWindow?: ManifestEntry['manualWindow'];
+  /**
+   * V49 — the DRIVER CARD the designer copied off the datasheet: X_max, S_d,
+   * Bl, M_ms and how many identical drivers this branch wires in parallel.
+   * Travels on the branch for the same reason `measuredReOhm` does — the app
+   * speaks roles, the engine speaks driver ids, and the re-keying happens in
+   * one place. Absent fields switch M-C v2.0 off for this way, by name.
+   */
+  driverCard?: DriverCard;
+  /**
+   * V49 — the drive voltage (V rms) and mic distance (mm) the on-axis far
+   * field was taken at, when the designer documented them. The ACOUSTIC route
+   * of M-C v2.0 needs both; a header cannot supply either.
+   */
+  responseDrive?: { driveVoltageV: number; micDistanceMm: number; source?: string };
 }
 
 /** Cabinet geometry, already parsed to numbers by the caller. */
@@ -301,10 +321,28 @@ export function buildEngineV2Input(args: AdapterInput): AdapterResult {
     if (b.measuredReOhm === undefined || !(b.measuredReOhm > 0)) continue;
     reByDriver[ids[b.role] ?? b.role] = b.measuredReOhm;
   }
-  const settings: ReportSettings =
-    Object.keys(reByDriver).length > 0
-      ? { ...args.settings, reOhmByDriver: reByDriver }
-      : args.settings;
+  /* V49 — the driver cards and the documented response drive, re-keyed from
+   * roles to driver ids exactly like R_e above. A card with nothing on it is
+   * left out rather than passed as an empty object: absent is a state the
+   * capability matrix can name, an empty card is not. */
+  const cards: Record<string, DriverCard> = { ...(args.settings.driverCardByDriver ?? {}) };
+  const drives: NonNullable<ReportSettings['responseDriveByDriver']> = {
+    ...(args.settings.responseDriveByDriver ?? {}),
+  };
+  for (const b of args.branches) {
+    const id = ids[b.role] ?? b.role;
+    const c = b.driverCard;
+    if (c && Object.values(c).some((v) => v !== undefined && v !== '')) cards[id] = c;
+    if (b.responseDrive && b.responseDrive.driveVoltageV > 0 && b.responseDrive.micDistanceMm > 0) {
+      drives[id] = b.responseDrive;
+    }
+  }
+  const settings: ReportSettings = {
+    ...args.settings,
+    ...(Object.keys(reByDriver).length > 0 ? { reOhmByDriver: reByDriver } : {}),
+    ...(Object.keys(cards).length > 0 ? { driverCardByDriver: cards } : {}),
+    ...(Object.keys(drives).length > 0 ? { responseDriveByDriver: drives } : {}),
+  };
 
   return {
     input: { manifest, files, filter, geometry, settings },

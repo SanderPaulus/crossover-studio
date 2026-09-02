@@ -86,6 +86,8 @@ const CLASSED_PATHS: readonly string[] = [
   'afgeleide_parameters._re_direct_parameters',
   'afgeleide_parameters._spl_scan_parameters',
   'afgeleide_parameters._semi_inductantie_parameters',
+  /* V49 — the excursion inputs M-C v2.0's class-A values stand on. */
+  'afgeleide_parameters._excursie_parameters',
   'afgeleide_parameters.woofer',
   'afgeleide_parameters.mid',
   'afgeleide_parameters.tweeter',

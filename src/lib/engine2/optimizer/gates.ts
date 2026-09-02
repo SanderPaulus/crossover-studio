@@ -91,6 +91,7 @@ import {
   type DissipationResult,
   type EpdrResult,
 } from '../metrics/electrical.ts';
+import { derivedDriveLimitDb } from '../metrics/driveExcursion.ts';
 import type { Crossing, NetworkAnalysis } from '../metrics/types.ts';
 
 /* ================================================================== *
@@ -124,6 +125,46 @@ export interface GateSettings {
    * that is normally negative, so −18 means "at least 18 dB down".
    */
   maxDriveOnFsDb?: number;
+  /**
+   * V49 — M-C v2.0: the EXCURSION-DERIVED ceiling per driver, in dB relative to
+   * the amplifier's PEAK INPUT voltage (`driveExcursion.ts`). Derived once by
+   * the report from the driver card, the measured sweep and the stated
+   * amplifier peak, and carried here — never re-derived by a gate.
+   *
+   * Judged beside `maxDriveOnFsDb`, and THE STRICTER OF THE TWO APPLIES: the
+   * stated figure is a passband-relative convention, the derived one becomes
+   * passband-relative by subtracting the way's passband mean (which the M-C
+   * value already carries). A way with neither is unjudged; the verdict names
+   * which one bit.
+   */
+  driveCeilingDbByDriver?: Record<string, number>;
+}
+
+/**
+ * V49 — the M-C limit that actually applies to one way: the stated dB figure,
+ * the excursion-derived one turned passband-relative, or the stricter of the
+ * two. `undefined` = nothing to judge on (P4).
+ *
+ * ONE function, two readers (the gate and the pre-bound), so the search box and
+ * the verdict cannot disagree about which requirement bites.
+ */
+export function effectiveDriveLimit(
+  settings: Pick<GateSettings, 'maxDriveOnFsDb' | 'driveCeilingDbByDriver'>,
+  driver: string,
+  passbandMeanDb: number | undefined,
+): { limitDb: number; source: 'stated' | 'derived'; statedDb?: number; derivedDb?: number } | undefined {
+  const stated = settings.maxDriveOnFsDb;
+  const ceiling = settings.driveCeilingDbByDriver?.[driver];
+  const derived =
+    ceiling !== undefined && passbandMeanDb !== undefined && Number.isFinite(passbandMeanDb)
+      ? derivedDriveLimitDb(ceiling, passbandMeanDb)
+      : undefined;
+  if (stated === undefined && derived === undefined) return undefined;
+  if (derived === undefined) return { limitDb: stated!, source: 'stated', statedDb: stated };
+  if (stated === undefined) return { limitDb: derived, source: 'derived', derivedDb: derived };
+  return stated <= derived
+    ? { limitDb: stated, source: 'stated', statedDb: stated, derivedDb: derived }
+    : { limitDb: derived, source: 'derived', statedDb: stated, derivedDb: derived };
 }
 
 export const GATE_IDS = ['M-A', 'M-B/EPDR', 'M-B/|Z|', 'M-C'] as const;
@@ -318,6 +359,9 @@ export interface GateMetricValues {
     passbandHz: [number, number];
     /** Which passband convention produced it — 'frozen' or 'derived'. */
     bandSource: string;
+    /** V49 — the dB-mean of |H| over that passband, so an input-relative
+     *  excursion ceiling can be judged in M-C's passband-relative form. */
+    passbandMeanDb?: number;
   }[];
 }
 
@@ -398,6 +442,11 @@ export function gateVerdicts(
     }),
   ];
   for (const d of values.driveVoltage) {
+    /* V49 — the limit is the STRICTER of the stated figure and the
+     * excursion-derived ceiling, and the parameters say which one bit. With a
+     * ceiling but no passband mean (a null M-C) the derived half cannot be
+     * formed; the stated one still judges, and the verdict says so. */
+    const eff = effectiveDriveLimit(settings, d.driver, d.passbandMeanDb);
     out.push(
       judge({
         gate: 'M-C',
@@ -406,7 +455,7 @@ export function gateVerdicts(
         subject: d.driver,
         value: d.db,
         unit: 'dB',
-        limit: settings.maxDriveOnFsDb,
+        limit: eff?.limitDb,
         direction: 'max',
         specRef: 'A4 M-C',
         show: (v) => `${v.toFixed(1)} dB`,
@@ -415,6 +464,23 @@ export function gateVerdicts(
           f_s: `${d.fsHz.toFixed(0)} Hz`,
           passband: `${d.passbandHz[0].toFixed(0)}-${d.passbandHz[1].toFixed(0)} Hz (${d.bandSource})`,
           ...(values.electricalSpan ? { judged_on: values.electricalSpan } : {}),
+          ...(eff
+            ? {
+                limit_source:
+                  eff.source === 'stated'
+                    ? eff.derivedDb !== undefined
+                      ? 'stated dB figure (stricter than the excursion-derived ceiling)'
+                      : 'stated dB figure (no excursion-derived ceiling for this way)'
+                    : eff.statedDb !== undefined
+                      ? 'excursion-derived ceiling (stricter than the stated dB figure, V49)'
+                      : 'excursion-derived ceiling (no stated dB figure, V49)',
+                ...(eff.statedDb !== undefined ? { stated_limit_dB: Number(eff.statedDb.toFixed(2)) } : {}),
+                ...(eff.derivedDb !== undefined ? { derived_limit_dB: Number(eff.derivedDb.toFixed(2)) } : {}),
+                ...(settings.driveCeilingDbByDriver?.[d.driver] !== undefined
+                  ? { ceiling_re_peak_input_dB: Number(settings.driveCeilingDbByDriver[d.driver].toFixed(2)) }
+                  : {}),
+              }
+            : {}),
         },
       }),
     );
@@ -527,7 +593,13 @@ export interface GateEvaluation {
   metrics: {
     dissipation: DissipationResult | null;
     epdr: EpdrResult | null;
-    driveVoltage: { driver: string; db: number; passbandHz: [number, number] }[];
+    driveVoltage: {
+      driver: string;
+      db: number;
+      passbandHz: [number, number];
+      /** V49 — the passband mean the dB is relative to, for the pre-bound. */
+      passbandMeanDb: number;
+    }[];
   };
   /** The crossings this evaluation derived, when it derived any. */
   crossings: Crossing[];
@@ -752,8 +824,22 @@ export function evaluateGates(
     const band = passbandFor(driver);
     if (fs === undefined || !band) continue;
     const r = electrical ? driveVoltageOnResonance(electrical, driver, fs, band) : null;
-    if (r) metrics.driveVoltage.push({ driver, db: r.db, passbandHz: r.passbandHz });
-    drive.push({ driver, db: r ? r.db : null, fsHz: fs, passbandHz: band, bandSource: passbands });
+    if (r) {
+      metrics.driveVoltage.push({
+        driver,
+        db: r.db,
+        passbandHz: r.passbandHz,
+        passbandMeanDb: r.passbandMeanDb,
+      });
+    }
+    drive.push({
+      driver,
+      db: r ? r.db : null,
+      fsHz: fs,
+      passbandHz: band,
+      bandSource: passbands,
+      ...(r ? { passbandMeanDb: r.passbandMeanDb } : {}),
+    });
   }
 
   verdicts.push(
@@ -784,16 +870,27 @@ export function anyGateActive(s: GateSettings): boolean {
     s.maxDissipationFraction !== undefined ||
     s.minEpdrOhm !== undefined ||
     s.ampMinLoadOhm !== undefined ||
-    s.maxDriveOnFsDb !== undefined
+    s.maxDriveOnFsDb !== undefined ||
+    Object.keys(s.driveCeilingDbByDriver ?? {}).length > 0
   );
 }
 
 /** Stable serialisation of the ACTIVE limits, for the run fingerprint. */
-export function gateSettingsKey(s: GateSettings): Record<string, number> {
-  const out: Record<string, number> = {};
+export function gateSettingsKey(s: GateSettings): Record<string, number | Record<string, number>> {
+  const out: Record<string, number | Record<string, number>> = {};
   if (s.maxDissipationFraction !== undefined) out.maxDissipationFraction = s.maxDissipationFraction;
   if (s.minEpdrOhm !== undefined) out.minEpdrOhm = s.minEpdrOhm;
   if (s.ampMinLoadOhm !== undefined) out.ampMinLoadOhm = s.ampMinLoadOhm;
   if (s.maxDriveOnFsDb !== undefined) out.maxDriveOnFsDb = s.maxDriveOnFsDb;
+  /* V49 — per driver, sorted, rounded to a fixed precision so two payloads that
+   * mean the same ceiling cannot fingerprint differently over a float's last
+   * digit (the `measurementFactsKey` rule). */
+  const ceilings = s.driveCeilingDbByDriver ?? {};
+  const keys = Object.keys(ceilings).sort();
+  if (keys.length > 0) {
+    const c: Record<string, number> = {};
+    for (const k of keys) c[k] = Number(ceilings[k].toPrecision(9));
+    out.driveCeilingDbByDriver = c;
+  }
   return out;
 }

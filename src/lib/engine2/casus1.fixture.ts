@@ -23,7 +23,7 @@ import type { VxpCrossover } from '../parsers/vxp.ts';
 import { parseArtaHeader, type Manifest, type ManifestEntry, type MeasurementKind } from './ingest/manifest.ts';
 import type { MeasurementFile } from './ingest/derive.ts';
 import type { FilterInput } from './report.ts';
-import type { Geometry } from './metrics/types.ts';
+import type { DriverCard, Geometry } from './metrics/types.ts';
 import { baffleStepHz } from '../cabinet.ts';
 import { FLAT_TARGET, type TargetCurve } from './requirements/targetCurve.ts';
 import { ctcKey } from './metrics/types.ts';
@@ -523,6 +523,119 @@ export function casus1MaxDriveOnFsDb(golden: GoldenRefs = loadGolden()): number 
   }).gestelde_eisen;
   const v = stated?.tweeter_drive_op_fs_max_dB;
   return typeof v === 'number' && Number.isFinite(v) ? v : null;
+}
+
+/**
+ * V49 (M-C v2.0) — THE DRIVER CARDS the designer entered for casus 1, keyed by
+ * driver id, read from `manifest_en_geometrie.driverkaart` and never written
+ * here. Same shape and the same reason as every stated requirement above: a
+ * datasheet number has one home. A driver with no card is simply absent, and
+ * M-C v2.0 then says so for that driver (P4).
+ */
+export function casus1DriverCards(golden: GoldenRefs = loadGolden()): Record<string, DriverCard> {
+  const block = (golden.manifest_en_geometrie as unknown as {
+    driverkaart?: Record<string, unknown>;
+  }).driverkaart;
+  const out: Record<string, DriverCard> = {};
+  if (!block) return out;
+  const num = (v: unknown): number | undefined =>
+    typeof v === 'number' && Number.isFinite(v) && v > 0 ? v : undefined;
+  for (const [driver, raw] of Object.entries(block)) {
+    if (!raw || typeof raw !== 'object' || Array.isArray(raw)) continue;
+    const c = raw as Record<string, unknown>;
+    if (typeof c.X_max_mm !== 'number') continue;
+    const card: DriverCard = {
+      ...(num(c.X_max_mm) !== undefined ? { xMaxMm: num(c.X_max_mm) } : {}),
+      ...(num(c.S_d_cm2) !== undefined ? { sdCm2: num(c.S_d_cm2) } : {}),
+      ...(num(c.Bl_Tm) !== undefined ? { blTm: num(c.Bl_Tm) } : {}),
+      ...(num(c.M_ms_g) !== undefined ? { mmsG: num(c.M_ms_g) } : {}),
+      ...(num(c.parallel_aantal) !== undefined ? { parallelCount: num(c.parallel_aantal) } : {}),
+      source: `${String(c.model ?? driver)} datasheet (manifest_en_geometrie.driverkaart)`,
+    };
+    out[driver] = card;
+  }
+  return out;
+}
+
+/**
+ * V49 — the amplifier's stated PEAK: the brief power and the load it is
+ * specified into (`gestelde_eisen.versterker_piekvermogen_W`,
+ * `versterker_nominale_last_ohm`). Null when either is unstated — no peak
+ * voltage, no excursion requirement (P4).
+ */
+export function casus1AmplifierPeak(
+  golden: GoldenRefs = loadGolden(),
+): { peakPowerW: number; nominalLoadOhm: number } | null {
+  const stated = (golden.manifest_en_geometrie as unknown as {
+    gestelde_eisen?: { versterker_piekvermogen_W?: unknown; versterker_nominale_last_ohm?: unknown };
+  }).gestelde_eisen;
+  const p = stated?.versterker_piekvermogen_W;
+  const r = stated?.versterker_nominale_last_ohm;
+  if (typeof p !== 'number' || !(p > 0) || typeof r !== 'number' || !(r > 0)) return null;
+  return { peakPowerW: p, nominalLoadOhm: r };
+}
+
+/** V49 — the stated fraction of X_max a design may use (`gestelde_eisen.xmax_marge`). */
+export function casus1XmaxMargin(golden: GoldenRefs = loadGolden()): number | null {
+  const stated = (golden.manifest_en_geometrie as unknown as {
+    gestelde_eisen?: { xmax_marge?: unknown };
+  }).gestelde_eisen;
+  const v = stated?.xmax_marge;
+  return typeof v === 'number' && Number.isFinite(v) && v > 0 && v <= 1 ? v : null;
+}
+
+/**
+ * V49 — the documented drive voltage and mic distance of the on-axis far
+ * field, per driver, for the ACOUSTIC route. On casus 1 the voltage is NOT
+ * documented (`driverkaart.ff_meetspanning_V` is null, and the block says
+ * why), so this returns an empty map and route 2 is off with that reason.
+ * Deliberately no assumed 2.83 V: a route that ran on an assumed voltage would
+ * publish a displacement nobody measured.
+ */
+export function casus1ResponseDrive(
+  golden: GoldenRefs = loadGolden(),
+): Record<string, { driveVoltageV: number; micDistanceMm: number; source: string }> {
+  const block = (golden.manifest_en_geometrie as unknown as {
+    driverkaart?: { ff_meetspanning_V?: unknown; ff_mic_afstand_mm?: unknown };
+  }).driverkaart;
+  const v = block?.ff_meetspanning_V;
+  const r = block?.ff_mic_afstand_mm;
+  if (typeof v !== 'number' || !(v > 0) || typeof r !== 'number' || !(r > 0)) return {};
+  const out: Record<string, { driveVoltageV: number; micDistanceMm: number; source: string }> = {};
+  for (const e of casus1Manifest(golden).entries) {
+    if (e.kind === 'FF' && (e.angleDeg ?? 0) === 0) {
+      out[e.driver] = { driveVoltageV: v, micDistanceMm: r, source: 'manifest_en_geometrie.driverkaart' };
+    }
+  }
+  return out;
+}
+
+/**
+ * V49 — everything the REPORT needs to derive the excursion ceiling, as one
+ * spreadable block: the cards, the amplifier peak, the margin and (when
+ * documented) the response drive. Spread into a `ReportSettings` at every
+ * casus-1 measuring site — the frozen-netlist gates, the recorder, the
+ * generator, the corpus bank, the live reproductions — so that they cannot
+ * disagree about whether the ceiling was armed. An unstated half leaves its
+ * KEY absent, which is what P4 asks for.
+ */
+export function casus1ExcursionSettings(golden: GoldenRefs = loadGolden()): {
+  driverCardByDriver?: Record<string, DriverCard>;
+  amplifierPeakPowerW?: number;
+  amplifierNominalLoadOhm?: number;
+  xmaxMarginFraction?: number;
+  responseDriveByDriver?: Record<string, { driveVoltageV: number; micDistanceMm: number; source: string }>;
+} {
+  const cards = casus1DriverCards(golden);
+  const amp = casus1AmplifierPeak(golden);
+  const margin = casus1XmaxMargin(golden);
+  const drive = casus1ResponseDrive(golden);
+  return {
+    ...(Object.keys(cards).length > 0 ? { driverCardByDriver: cards } : {}),
+    ...(amp ? { amplifierPeakPowerW: amp.peakPowerW, amplifierNominalLoadOhm: amp.nominalLoadOhm } : {}),
+    ...(margin !== null ? { xmaxMarginFraction: margin } : {}),
+    ...(Object.keys(drive).length > 0 ? { responseDriveByDriver: drive } : {}),
+  };
 }
 
 /**

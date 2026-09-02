@@ -106,6 +106,8 @@ Formaat per metriek: *grootheid → formule → afgeleide parameters → databeh
 
 **M-C · Spanning op driverresonantie.** `20·log10(|V_drv(f_s)| / V̄_passband)`, met f_s automatisch uit de piek(en) van het geladen impedantiebestand en V̄_passband het gemiddelde over de doorlaatband van die weg, **afgeleid uit de gevonden kruispunten** (P6). Vangt de vuistregels "kruis ≥ 2×Fs" en "−18 dB op Fs" in één berekenbare grootheid. Databehoefte: geen. Grens instelbaar per project.
 
+**M-C v2.0 · De grens excursie-gedragen (V49, 02-09-2026).** De GROOTHEID blijft M-C; wat verandert is waar de grens vandaan komt. *Formule:* `x/V|f₀ = Bl·Q_ms / (Z_max·N·M_ms·ω₀²)` (route 1, elektromechanisch, ladingsonafhankelijk; Z_max, f₀ en Q_ms uit de GEMETEN sweep in situ — z-resonance 1.1 draagt Small's Q_ms per motionele piek —, Bl en M_ms van de driverkaart, N het aantal parallelle drivers achter de gemeten impedantie); tegenproef `x/V = p·2π·r / (ρ₀·S_d·N·ω₀²·V_meet)` (route 2, akoestisch, uit de gemeten SPL bij een GEDOCUMENTEERDE meetspanning en micafstand; veronderstelt vrije halfruimte-straling en overschat x onder elke akoestische belasting — waveguide, hoorn, kastfront —, dus altijd conservatief; de verhouding route 2/route 1 is een gemeten eigenschap van de inbouw en wordt zo gemeld, zonder geometrie-specifieke tak). *Van uitslag naar eis:* `V_toegestaan = X_max·marge / (x/V)`, `plafond = 20·log10(V_toegestaan / V_piek)` met `V_piek = √2·√(P_piek·R_nom)`; de afgeleide M-C-grens per ontwerp is `plafond − V̄_passband[dB]`, en de poort leest de **strengste** van die grens en een eventueel gesteld dB-getal, met vermelding welke. *Monotoniciteit:* onder f₀ stijfheidsgestuurd (x/V ≈ constant), erboven 1/f²; onder een monotoon dalende hoogdoorlaat is f₀ het maximum van uitslag-per-volt, dus één punt volstaat (V47) — de `protSqDb`-controlekolom bewaakt de aanname. *Afgeleide parameters:* x/V, V_toegestaan, plafond (klasse A per driver); afgeleide grens (klasse B per netlist). *Databehoefte:* driverkaart (X_max, en Bl+M_ms óf S_d met gedocumenteerde meetspanning en -afstand), versterkerpiek (P_piek, R_nom), X_max-marge; ontbreekt er één, dan staat de afleiding UIT met het veld genoemd en oordeelt het gestelde dB-getal alleen. *Rol:* poort (dezelfde M-C-poort), plus de `drive-series-c`-voorbound leest dezelfde effectieve grens. *Wat de grens NIET dekt:* thermische belasting (de V36-wattkolom blijft de zichtbaarheid) en vervorming rond de resonantie (de fabrikantsondergrens is context). De weg zónder hoogdoorlaat krijgt geen eis maar de zwakste-schakel-rapportage: uitslag op f₀ bij V_piek tegen X_max·marge, en waar het één-resonatormodel de grens haalt. *Validatiecasus:* casus 1, Deel B V49.
+
 ### Zachte doelen
 
 > **Herijkt bij F3 (26-08-2026), A5e.1.** "Zacht" betekende in de oorspronkelijke opzet: meedoen in een gewogen kostenfunctie, met een gewicht dat de gebruiker instelt. Dat is vervallen. Onder het satisficing-besluit zijn de metrieken hieronder **rapportage- en sorteerkolommen** op de shortlist: zij beschrijven een kandidaat, zij rangschikken hem op verzoek van de lezer, en zij kennen géén gewicht. Wat een kandidaat wél kan afwijzen is een EIS (venster, fase) of een POORT (M-A/M-B/M-C) — beide acceptatiegrenzen, beide zonder gewicht. De formules, afleidingen en databehoeften hieronder veranderen daar niet door; alleen hun rol verandert, en het woord "gewicht" komt in geen van hun implementaties meer voor.
@@ -4184,6 +4186,198 @@ dezelfde betekenis heeft als op een 924 Hz-resonantie onder een LR4 op 1500 Hz. 
 regeneratie kost 45 minuten op acht jobs (V48: 40), en de langste shard (`396,7 · 2283,5`,
 1511 s) is een tune die de grens nergens raakt — de prijs zit in het iteratiebudget en niet in
 de poort.
+
+### V49 — M-C wordt excursie-gedragen (02-09-2026, alleen v2-runs; het corpus beweegt NIET)
+
+**AANLEIDING.** V47 en V47b hadden gemeten wat één gesteld dB-getal op f_s waard is: op elk
+ontwerp iets anders (orde, inbouw, padwerk, niveau) en voor twee drivers onder één eis niet
+generiek. De mid van casus 1 (±3 mm, 69 cm², f_c 88,8 Hz in de pod) werd onder −20 de ergste
+weigergrond (−7,3 dB) zonder dat iemand wist of −7,3 dB op DIE driver gevaarlijk is; de tweeter
+verloor zijn deler op een hoge-Q-resonantiepiek, dus lage verzwakking op f_c is een delerkwestie
+en geen ordekwestie. V47b noemde zijn −20 daarom VOORLOPIG, "tot M-C excursie-gedragen is". Dit
+is die sessie: het antwoord hoort te zijn hoeveel uitslag, tegen welke X_max, bij welke spanning.
+
+**DE AFLEIDING (registerrij A4 M-C v2.0, vóór de code geschreven).** Route 1, elektromechanisch
+en ladingsonafhankelijk: op de resonantie is de spoelstroom V/Z_max — Z_max bevat de tegen-EMK,
+en dát is precies waarom de gemeten piek in situ de juiste deler is —, de kracht Bl·I, en een
+massa-veer-resonator zet kracht om in uitslag met winst Q_ms/(M_ms·ω₀²): `x/V = Bl·Q_ms /
+(Z_max·N·M_ms·ω₀²)`, met N het aantal parallelle drivers achter de gemeten impedantie. Z_max, f₀
+en Q_ms uit de GEMETEN sweep; Bl en M_ms van de driverkaart. Route 2, akoestisch (tegenproef):
+`x/V = p·2π·r / (ρ₀·S_d·N·ω₀²·V_meet)` uit de gemeten SPL bij een gedocumenteerde meetspanning en
+micafstand — veronderstelt vrije halfruimte-straling en OVERschat x onder elke belasting
+(waveguide, hoorn, kastfront), dus altijd conservatief, en de verhouding route 2/route 1 is een
+gemeten eigenschap van de inbouw. Van uitslag naar eis: `V_toegestaan = X_max·marge/(x/V)`,
+`plafond = 20·log10(V_toegestaan/V_piek)` met `V_piek = √2·√(P_piek·R_nom)`; de afgeleide
+M-C-grens per ontwerp is `plafond − V̄_passband` (de F1-conventie), en de poort leest de
+**strengste** van die grens en het gestelde dB-getal, met vermelding welke. Monotoniciteit:
+onder f₀ stijfheidsgestuurd, erboven 1/f², dus onder een monotone hoogdoorlaat is f₀ het maximum
+en volstaat één punt (V47); `protSqDb` bewaakt de aanname. Wat de grens NIET dekt en het rapport
+zegt: thermisch (de V36-wattkolom blijft de zichtbaarheid) en vervorming rond de resonantie (de
+fabrikantsondergrens is context).
+
+**WAT ER GEBOUWD IS.** `metrics/driveExcursion.ts` (M-C v2.0, versie `drive-excursion/2.0`):
+de bouwstenen als handberekeningen, de samengestelde uitkomst per driver met beide routes en
+hun uit-redenen, de zwakste-schakel-scan voor de weg zonder hoogdoorlaat. `z-resonance`
+1.0 → 1.1: elke motionele piek draagt Small's Q_ms en Q_es (halfvermogen op √r0·R_e) — de vorm
+groeide, geen getal bewoog, de cache vervalt. Registerrij `M-C-excursion` met eigen databehoefte
+(kaart, versterkerpiek, marge; capability-matrix zegt per driver wat ontbreekt). De POORT: één
+regel `effectiveDriveLimit` — gesteld, afgeleid, of de strengste — gelezen door `gateVerdicts`
+én door de `drive-series-c`-voorbound, met `limit_source`, `stated_limit_dB`,
+`derived_limit_dB` en `ceiling_re_peak_input_dB` op élk M-C-oordeel. De GRENS: het plafond
+steekt als ACHTSTE feit over (`driveCeilingDbByModel`, in de vingerafdruk), de worker vouwt het
+bij binnenkomst in zijn poortobject (`withDerivedDriveCeiling`) en zegt per weg of er een
+plafond aankwam; de kandidaatverklaring leidt `protectionRule: 'stated'` óók af uit een afgeleid
+plafond (`driveCeilingDerived`). De INVOER: driverkaart (Sd/Xmax van de Setup-tab, Bl/M_ms en de
+meetspanning in het Engine v2-meetblok, parallelaantal uit het kastformulier),
+A5a-velden `Amplifier peak power W`, `Nominal load Ω`, `X_max margin`; alles leeg = uit met het
+veld genoemd, geen enkele default. Het paneel toont per driver plafond, x/V, beide routes, de
+zwakste schakel en — bij gedocumenteerde meetspanning — de SPL bij P en bij de piek. De
+recorder schrijft de klasse-A-waarden in `afgeleide_parameters.<driver>` (met
+`_excursie_parameters` als V15-blok) en het klasse-B-blok `v49_excursie`;
+`goldenClassification` kent het nieuwe blok, `frozenNetlistGates` en `goldenCasus1` herrekenen
+beide.
+
+---
+
+**TABEL 1 — x/V op de resonantie en het plafond, per driver (klasse A). V_piek = √(2·160·8) =
+50,6 V; marge 0,8.**
+
+  | driver | f₀ Hz | Z_max Ω | Q_ms (bron) | Bl T·m | M_ms g | N | x/V mm/V | X_max·marge mm | V_toegestaan V | plafond dB re ingang |
+  | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+  | tweeter | 924,3 | 16,63 | 1,37 (Q_mc sealed) | 2,6 | 0,15 | 1 | 0,0424 | 0,80 | 18,85 | **−8,58** |
+  | mid | 88,8 | 44,22 | 7,34 (Q_mc sealed) | 4,9 | 7,2 | 1 | 0,3628 | 2,40 | 6,61 | **−17,67** |
+  | woofer (paar) | 52,4 | 19,88 | 7,63 (bovenste reflexpiek, benadering) | 10,45 | 44,2 | 2 | 0,4192 | 6,84 | 16,32 | −9,83 (geen eis) |
+
+**TABEL 2 — de AFGELEIDE grens per beschermde weg, naast −20 (gesteld), −25 (V47) en de
+18-dB-regel.** Klasse B: `plafond − doorlaatbandgemiddelde |H|` van dít netwerk. Over de 13
+gemeten netlists (drie referentiefilters, zeven levend, drie gedateerde bewijsstukken) ligt de
+afgeleide grens op de **tweeter tussen −3,89 en −1,10 dB** en op de **mid tussen −14,45 en
+−10,81 dB**; het levende corpus in volle breedte staat in `manifest_en_geometrie.v49_excursie`.
+
+  | netlist | weg | V̄_passband dB | afgeleid dB | gesteld | poort las | M-C dB |
+  | --- | --- | --- | --- | --- | --- | --- |
+  | HUIDIG | mid | −5,75 | −11,93 | −20 | gesteld | −42,61 |
+  | HUIDIG | tweeter | −6,89 | −1,69 | −20 | gesteld | −25,08 |
+  | KAND_B | mid | −6,58 | −11,09 | −20 | gesteld | −34,17 |
+  | KAND_V2_6 | mid | −3,29 | −14,38 | −20 | gesteld | −35,76 |
+  | KAND_V2_7 | tweeter | −5,72 | −2,85 | −20 | gesteld | −21,92 |
+  | V45_KAND_5 | tweeter | −5,22 | −3,35 | −20 | gesteld | −14,38 (eroverheen op −20, BINNEN de excursie) |
+  | V38FIX_KAND_5 | mid | −3,22 | −14,45 | −20 | gesteld | −9,78 (eroverheen op ALLEBEI) |
+
+**DE HOOFDBEVINDING: op ÉLKE weg van het levende corpus en van de drie referentiefilters is de
+afgeleide grens RUIMER dan de gestelde −20, dus de gestelde waarde bijt daar overal en de
+effectieve poort is niet bewogen.** 0 van 14 levende wegen waar de afgeleide grens strenger is.
+**Over het HELE casusboek (256 wegen op 129 netlists) is dat NIET vacuüm, en de eerste versie van
+deze zin was te breed — de guard ving het:** op zeven mids van het V28-corpus — het corpus van
+vóór de vloer — is de afgeleide grens de strengste, met 0,05 tot 0,59 dB (`V28_KAND_4` −20,05 …
+`V28_KAND_10` −20,59). Die zeven mids hebben een doorlaatbandgemiddelde BOVEN de ingang
+(+2,4 tot +2,9 dB, een resonante lift die de zoektocht vóór de vloer kocht), en precies dat is de
+vorm waarin een afgeleid plafond strenger wordt dan een conventie: "de mid mag op f_c hoogstens
+−20 dB onder zijn doorlaatband" betekent bij een doorlaatband die 2,9 dB bóven de ingang ligt een
+hogere absolute spanning dan de excursie toelaat. Het spiegelbeeld staat er ook: de mids van
+`V28_KAND_1/2` liggen 23–25 dB ónder de ingang en lezen een afgeleide grens BOVEN nul (+5,1 /
++7,6 dB) — een mid die zó stil staat mag op f_c de volle piek hebben. De tweeter loopt casusboekwijd
+van −5,23 tot +7,96 dB. `frozenNetlistGates` assert de levende helft als claim, de zeven V28-mids
+als exact de verzameling die het `v49_excursie`-blok noemt, en de niet-vacuümheid ("bijt het
+plafond nergens, dan is het niet te onderscheiden van een plafond dat nooit gelezen is").
+**Daarom is er NIET geregenereerd en NIET bevroren:** de zoektocht ziet onder `min(−20,
+afgeleid) = −20` dezelfde poortbeslissingen als onder V47b — de afgeleide grens kan op de mid pas
+strenger worden dan −20 bij een doorlaatbandgemiddelde boven +2,3 dB en op de tweeter boven
++11,4 dB, en dat levert het V47b-veld nergens (de V28-mids bewijzen dat een zoektocht zónder vloer
+het wél kan) — en de live byte-reproductie in `casus1V2Candidates` is wat dat bewijst in plaats van
+beredeneert. Wat wél beweegt is de vingerafdruk (`facts=` met het achtste feit, `estimators=` met
+z-resonance 1.1); `casus1_v2_herkomst.json` is niet herschreven en draagt dus nog de
+V47b-vingerafdruk, met deze entry als de reden.
+
+**EEN TWEEDE BEWAKER VING EEN R_e-AFHANKELIJKHEID.** Small's Q_ms leest het halfvermogensniveau op
+√(Z_max·R_e), dus x/V van de woofer hangt aan WELKE R_e de pas oploste: op de ingevoerde
+meterlezing van het paar (3,05 Ω) leest de zwakste schakel van HUIDIG 18,90 mm, op de motionele
+fit (2,896 Ω) 0,2 mm anders. De recorder en `goldenCasus1` lezen de meterlezing (dezelfde als
+`_M_E_parameters`, V16); `frozenNetlistGates` liet de fit staan en viel om. Vastgelegd als
+`_excursie_parameters.R_e_lezing`, en de guard leest sindsdien dezelfde lezing als het blok. Mid
+en tweeter bewegen niet (geen ingevoerde R_e).
+
+**HET ANTWOORD OP V47b's MID-VRAAG: −7,3 dB op de mid was GEVAARLIJK, niet conservatief.** De
+afgeleide mid-grens ligt op elke netlist van het levende corpus en de referentiefilters tussen
+−14,5 en −10,8 dB; de kandidaat die V47b op de mid weigerde (`548,5 · 1981,2`, −7,3 dB) zat daar
+4 tot 7 dB boven — bij de NAD-piek zou de MR13TX-4 op zijn eigen resonantie 0,8·X_max
+overschrijden. `V38FIX_KAND_5` (mid −9,78) is het enige bevroren geval dat de afgeleide grens ook
+zónder de −20 zou weigeren. De gestelde −20 is op de mid dus 6 tot 9 dB conservatiever dan de
+excursie vraagt, maar hij wees de goede kant op. `frozenNetlistGates` pint dat de afgeleide
+mid-grens op élke netlist van het beoordeelde veld ónder −7,3 ligt (de twee stille V28-mids
+hierboven zijn de reden dat de claim over het beoordeelde veld gaat en niet over het hele boek).
+
+**DE TWEETER IS HET SPIEGELBEELD, en dat is het scherpste stuk van deze meting.** Met X_max
+1,0 mm, Bl 2,6 en M_ms 0,15 g laat de excursie op f_s 18,85 V toe — een plafond van −8,6 dB re
+ingang en een afgeleide grens van −1,1 tot −3,9 dB re doorlaatband. De 18-dB-regel is op de
+tweeter dus **geen excursiegrens**: wat een tweeter op f_s werkelijk begrenst is thermisch en
+vervorming, precies de twee dingen waarvan de registerrij zegt dat M-C v2.0 ze niet dekt. Wie de
+−20 op de tweeter zou vervangen door de afgeleide grens, laat de tweeter tot ~15 dB harder
+aandrijven op 924 Hz zonder dat iets de thermische kant bewaakt.
+
+**DE ROUTE-1/ROUTE-2-TEGENPROEF IS NIET GEMETEN, en dat staat als bevinding in het manifest.**
+De verwachting vooraf was dat route 2 op de tweeter duidelijk hoger zou liggen — de waveguide,
+gemeten. Zij kan op deze meetset niet gesteld worden: de ARTA-headers dragen geen meetspanning
+(`Scale type = Pa`, `Scale = 0.0 dB`), de dBSPL-kolom leest 135–141 dB in de doorlaatband — geen
+absolute SPL bij een bekende spanning — en nota A5d zegt letterlijk dat absolute
+excursiegrenzen "gedocumenteerde meetspanning en -afstand plus Sd/Xmax" vereisen. De micafstand is
+Sanders kastinvoer (1 m); de spanning ontbreekt. Route 2 staat daarom UIT met die reden op alle
+drie de drivers, route 1 draagt het plafond, en de verhouding is `null` en geen getal. Er is
+bewust geen 2,83 V aangenomen: een route op een aangenomen spanning publiceert een uitslag die
+niemand gemeten heeft. De code voor route 2 is er en is op een bank getest (rondgang van een
+kolvenformule); de tegenproef wacht op een hermeting met gedocumenteerde spanning.
+
+**DE ZWAKSTE SCHAKEL: het wooferpaar, bij het NAD-piekvermogen.** Bij 50,6 V leest het
+één-resonatormodel op de bovenste reflexpiek (52,4 Hz) **14 tot 21 mm** op de zeven levende
+netlists en de drie referentiefilters (HUIDIG 18,9 mm) — 2,1 tot 3,1 keer de 6,84 mm van
+X_max·marge — en onder de piek haalt het model de grens tot aan de onderkant van de sweep.
+Twee kanttekeningen, allebei in het rapport: de bovenste piek van een reflexkast is een
+gekoppelde tweegraads-resonantie die hier als één wordt gelezen (benadering, richting niet
+vast te stellen), en onder f_b ontlast de poort de conus, waar het model ONDERschat. Geen eis
+(P4: de woofer draagt geen hoogdoorlaat), wel de regel die de passief-of-hybride-beslissing
+nodig heeft: **bij de piek van de M10 V2 is het de wooferexcursie die als eerste buiten het
+lineaire gebied gaat, niet de tweeter.** Het argument voor een hybride (actieve LF) is dus
+displacement-headroom in het laag, en het passieve veld mét alle gestelde eisen — vloer,
+opslingering, Q_es, M-C — is het bewijsmateriaal dat de tweeter en de mid passief binnen hun
+eisen blijven. De SPL-bij-P-regel (100 W continu en 160 W piek op 1 m) staat om dezelfde reden
+als route 2 uit: zij vraagt de gemeten gevoeligheid in absolute zin.
+
+**ADVIES: −20 BLIJFT STAAN, EN DE AFGELEIDE GRENS IS DE VLOER ERONDER.** Op de tweeter kan −20
+niet vervallen op grond van excursie, want excursie is daar niet de grens; op de mid zou de
+excursie −11 tot −14,5 toelaten, maar dezelfde thermische en vervormingskant is ook daar niet
+gedekt. De juiste vorm is dus wat er nu draait: "de strengste geldt" — de conventie bewaakt wat
+M-C v2.0 niet ziet, de afgeleide grens bewaakt wat de conventie niet wist (de mid), en het
+oordeel zegt per weg welke van de twee las. −20 vervalt pas zodra een thermische of
+vervormingsgrens gesteld is die de tweeterkant draagt.
+
+**WAT ER NIET GEBOUWD IS.** Geen default voor X_max, marge, P of R_nom; geen drivernaam of
+versterker in code (p6Lint groen, de nieuwe constanten zijn ρ₀ en 20 µPa, physical/norm); geen
+thermische grens; geen trap; niets aan vloer, Q_es, opslingering of plateau. Het veld "Design
+for … dB" (v1, default 96) is niet verwijderd — de v1-route is byte-identiek
+(`toggleRegression`) — maar verliest zijn rol in M-C en is een P4-kandidaat: het is een
+luisterniveau-gok waar V49 een gesteld piekvermogen voor in de plaats zet.
+
+**TESTS.** `driveExcursion.test.ts` (15: handberekeningen op ω₀ = 1000 rad/s, uit-toestanden
+met het veld bij naam, nieuwe meting op drie wetten, het één-resonatormodel op en onder f₀),
+`driveCeiling.test.ts` (13: de strengste geldt in beide richtingen met `limit_source`, P2 zonder
+plafond, de voorbound op dezelfde regel, vingerafdruk en achtste feit, de verklaring),
+`determinism` (het achtste feit afgedwongen), `frozenNetlistGates` (zes V49-blokken),
+`goldenCasus1` (klasse A per driver, Q_ms van de mid IS `sealed.qmc`), `goldenClassification`
+(`_excursie_parameters`). Snelle laag: 142 + 1 bestanden, 1596 + 2 tests, groen. **Volle run
+03-09-2026: 143 bestanden, 1598 tests, 1352 s, niets overgeslagen, groen** — inclusief de
+byte-reproductie van `KAND-V2-1` door de échte route mét het achtste feit in de payload, wat de
+"corpus beweegt niet"-claim tot een meting maakt. `tsc -b` groen; p6Lint, noWeights,
+toggleRegression, choiceKeyGuard, corpusPairing, ciLayer, searchMeasure, barrierSource en
+floorAsGoal ongewijzigd groen. In de draaiende app gecontroleerd: de drie A5a-velden en de
+Bl/M_ms/meetspanning-velden renderen, het paneel toont per driver "M-C v2.0 is OFF … no complete
+driver card" op de demobundel (Sd/Xmax aanwezig, Bl/M_ms en versterkerpiek niet), console schoon.
+
+**OPENSTAAND.** (1) De meetspanning van de FF-metingen documenteren bij de eerstvolgende
+hermeting — dan meet route 2 en wordt de waveguide-verhouding een getal. (2) Een thermische of
+vervormingsgrens voor de tweeter, zodat −20 een afleiding kan worden in plaats van een
+conventie. (3) De woofer-zwakste-schakel op een tweegraads-reflexmodel, met de gemeten f_b.
+(4) "Design for … dB" als P4-kandidaat. (5) `casus1_v2_herkomst.json` draagt de V47b-
+vingerafdruk; bij de eerstvolgende regeneratie schrijft de generator het achtste feit mee.
 
 ## Casus S1 — synthetische grondwaarheid voor de R_e-schatter (F3b, 26-08-2026)
 

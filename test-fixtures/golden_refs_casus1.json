@@ -135,7 +135,14 @@
    "NF_fmax": 567,
    "FF_vloer_header": 397,
    "Re_naief_toelichting": "De DIRECTE aflezing, mediaan van Re(Z) over de laagste 2,5 % van de punten. Blijft staan als VERGELIJKINGSWAARDE, niet als schatting: op deze sweep (start 10,07 Hz naast f_L = 16,5 Hz) draagt zij 0,787 Ω motionele rok, en dat verschil — 3,81 tegen 2,90 — is precies V8d. De rok is berekend uit de gefitte resonantietak zelf, niet uit een octaafregel.",
-   "Re_werkelijk_ca_toelichting": "De meterlezing van het parallelle wooferpaar uit het casusboek (2,90 Ω). De motionele fit landt er op 0,004 Ω vanaf — de onafhankelijke bevestiging dat de fit de grootheid meet die hij claimt te meten, en niet een getal produceert dat toevallig lager is."
+   "Re_werkelijk_ca_toelichting": "De meterlezing van het parallelle wooferpaar uit het casusboek (2,90 Ω). De motionele fit landt er op 0,004 Ω vanaf — de onafhankelijke bevestiging dat de fit de grootheid meet die hij claimt te meten, en niet een getal produceert dat toevallig lager is.",
+   "excursie_x_per_V_op_f0_mm_per_V": 0.4192,
+   "excursie_Q_ms": 7.63,
+   "excursie_Z_max_op_f0_ohm": 19.88,
+   "excursie_toegestane_spanning_V": 16.32,
+   "excursie_plafond_re_ingang_dB": -9.83,
+   "excursie_route_verhouding": null,
+   "excursie_toelichting": "M-C v2.0 (V49), route electromechanical: x/V op f0 = 52.4 Hz, klasse A — dezelfde waarde op élke netlist van het casusboek. Het plafond is dB t.o.v. de PIEKINGANGSSPANNING; de grens per netlist (plafond − doorlaatbandgemiddelde) staat in manifest_en_geometrie.v49_excursie. Route 2: acoustic route off for woofer: the drive voltage and mic distance of the on-axis response are not documented."
   },
   "mid": {
    "Re": 3.358,
@@ -205,7 +212,14 @@
    "dir_m6_30": 5433,
    "semi_inductantie_n": 0.59,
    "NF_fmax": 1078,
-   "breakups_opmerking": "De vierde piek van de 25-08-analyse (14434 Hz, +5,2 dB) is er in werkelijkheid TWEE: 14379 Hz +2,83 dB en 14955 Hz +3,17 dB. De andere drie reproduceren op dezelfde schatter en dezelfde trendbreedte tot binnen 0,06 dB, dus de schatter staat niet ter discussie - de referentie las de twee pieken als een breder kenmerk op een grover raster."
+   "breakups_opmerking": "De vierde piek van de 25-08-analyse (14434 Hz, +5,2 dB) is er in werkelijkheid TWEE: 14379 Hz +2,83 dB en 14955 Hz +3,17 dB. De andere drie reproduceren op dezelfde schatter en dezelfde trendbreedte tot binnen 0,06 dB, dus de schatter staat niet ter discussie - de referentie las de twee pieken als een breder kenmerk op een grover raster.",
+   "excursie_x_per_V_op_f0_mm_per_V": 0.3628,
+   "excursie_Q_ms": 7.34,
+   "excursie_Z_max_op_f0_ohm": 44.22,
+   "excursie_toegestane_spanning_V": 6.61,
+   "excursie_plafond_re_ingang_dB": -17.67,
+   "excursie_route_verhouding": null,
+   "excursie_toelichting": "M-C v2.0 (V49), route electromechanical: x/V op f0 = 88.8 Hz, klasse A — dezelfde waarde op élke netlist van het casusboek. Het plafond is dB t.o.v. de PIEKINGANGSSPANNING; de grens per netlist (plafond − doorlaatbandgemiddelde) staat in manifest_en_geometrie.v49_excursie. Route 2: acoustic route off for mid: the drive voltage and mic distance of the on-axis response are not documented."
   },
   "tweeter": {
    "Re": 5.2274,
@@ -234,7 +248,32 @@
     "waarom_ingetrokken": "De sweep begint op 199,95 Hz, 2,2 octaaf onder f_s = 924 Hz — buiten het bereik van de oude octaafregel, dus de aflezing kreeg geen waarschuwing. De gefitte tak zegt iets anders: bij 200 Hz draagt een resonantie van Q ≈ 1,5 daar nog 0,260 Ω reële motionele impedantie. Dat is exact het mechanisme waarom de octaafregel eruit moest (V18-klasse: hoe ver een resonantie naar beneden reikt hangt aan haar Q, niet aan een vast aantal octaven). 5,587 − 0,260 = 5,327, en de fit leest 5,227 — dezelfde orde, en beide ver onder de ingetrokken waarde.",
     "reproductie": "De directe aflezing reproduceert 5,587 onveranderd en staat als Re_direct in het bestand; wie de oude waarde wil narekenen leest die kolom.",
     "gevolg_r0": "r0 = Z_max/R_e beweegt één op één mee: 16,6/5,587 = 2,98 wordt 16,6/5,227 = 3,18. De kwalitatieve conclusie verandert niet — deze tweeter blijft zwaar gedempt."
-   }
+   },
+   "excursie_x_per_V_op_f0_mm_per_V": 0.0424,
+   "excursie_Q_ms": 1.37,
+   "excursie_Z_max_op_f0_ohm": 16.63,
+   "excursie_toegestane_spanning_V": 18.85,
+   "excursie_plafond_re_ingang_dB": -8.58,
+   "excursie_route_verhouding": null,
+   "excursie_toelichting": "M-C v2.0 (V49), route electromechanical: x/V op f0 = 924.3 Hz, klasse A — dezelfde waarde op élke netlist van het casusboek. Het plafond is dB t.o.v. de PIEKINGANGSSPANNING; de grens per netlist (plafond − doorlaatbandgemiddelde) staat in manifest_en_geometrie.v49_excursie. Route 2: acoustic route off for tweeter: the drive voltage and mic distance of the on-axis response are not documented."
+  },
+  "_excursie_parameters": {
+   "_": "V15-PROCESREGEL op M-C v2.0 (V49). x/V op de resonantie is een functie van de gemeten sweep (f0, Z_max en Small's Q_ms van de piek die de classificatie fundamenteel noemt) en van INVOER (de driverkaart, het versterkerpiekvermogen met zijn nominale last, de X_max-marge). Die invoer staat hier, zodat de klasse-A-waarden per driver reproduceerbaar zijn; de invoer zelf woont in manifest_en_geometrie.driverkaart en .gestelde_eisen en wordt hier alleen GENOEMD.",
+   "schatter": "drive-excursion/2.0",
+   "formule": "x/V = Bl·Q_ms/(Z_max·N·M_ms·ω0²) [route 1]; V_toegestaan = X_max·marge/(x/V); plafond = 20·log10(V_toegestaan/V_piek) met V_piek = √(2·P·R_nom); afgeleide M-C-grens per netlist = plafond − doorlaatband-gemiddelde |H| in dB (F1-conventie), en de poort leest de STRENGSTE van die grens en de gestelde (effectiveDriveLimit)",
+   "versterker_piekvermogen_W": 160,
+   "versterker_nominale_last_ohm": 8,
+   "V_piek_V": 50.6,
+   "xmax_marge": 0.8,
+   "Q_ms_bron": {
+    "woofer": "Small's construction on the UPPER peak of the vented pair — an approximation: a vented box is a two-degree system and this reads it as one",
+    "mid": "Small's Q_mc of the sealed fundamental (half-power at √r0·R_e), measured in situ",
+    "tweeter": "Small's Q_mc of the sealed fundamental (half-power at √r0·R_e), measured in situ"
+   },
+   "R_e_lezing": "Small's Q_ms leest het halfvermogensniveau op √r0·R_e = √(Z_max·R_e), dus x/V hangt aan WELKE R_e de pas oploste (V16). Hier: de INGEVOERDE DC-meterlezing van het wooferpaar (3.05 Ω, reOhmByDriver) en de motionele fit voor mid en tweeter — dezelfde lezing als kandidaten._M_E_parameters. Op de fit-lezing (2,896 Ω) leest de woofer 0,2 mm anders op f0; mid en tweeter bewegen niet.",
+   "route_2": "UIT op deze casus: de FF-meetspanning is niet gedocumenteerd (driverkaart.ff_meetspanning_V is null, met de bevinding erbij). De route-1/route-2-verhouding is daarom null en geen getal.",
+   "klasse": "A",
+   "afhankelijkheid": "meting"
   }
  },
  "verankerde_gaps_dB": {
@@ -3288,7 +3327,53 @@
      "tweeter": -35.18
     }
    },
-   "_bij_de_M_C_reeks": "Per WEG en niet per netlist, want de poort oordeelt elke weg die zij hoogdoorlaatbeschermd noemt. Op KAND_B is de slechtste weg de MID en niet de tweeter (-34,17 tegen -35,18), wat laat zien dat 'de tweeterwaarde' en 'de waarde waarop de eis bijt' niet hetzelfde zijn. De tweeterkolom reproduceert de staande klasse-B-referentie kandidaten.*.V_tweeter_op_fs_dB; de midkolom bestond nog niet en is bij V47 gemeten met scripts/measure-v47-drive.ts."
+   "_bij_de_M_C_reeks": "Per WEG en niet per netlist, want de poort oordeelt elke weg die zij hoogdoorlaatbeschermd noemt. Op KAND_B is de slechtste weg de MID en niet de tweeter (-34,17 tegen -35,18), wat laat zien dat 'de tweeterwaarde' en 'de waarde waarop de eis bijt' niet hetzelfde zijn. De tweeterkolom reproduceert de staande klasse-B-referentie kandidaten.*.V_tweeter_op_fs_dB; de midkolom bestond nog niet en is bij V47 gemeten met scripts/measure-v47-drive.ts.",
+   "versterker_piekvermogen_W": 160,
+   "versterker_nominale_last_ohm": 8,
+   "versterker_piek_gesteld_door": "Sander Somers, 02-09-2026 (V49)",
+   "versterker_piek_motivering": "NAD M10 V2: IHF-dynamisch vermogen 160 W in 8 Ω — de HOOGSTE spanning die de versterker kortstondig levert, √2·√(160·8) ≈ 50,6 V piek aan de filteringang. Dát is de spanning waarbij de excursie-eis van M-C v2.0 geldt: bij die piekspanning blijft de uitslag op de gemeten resonantie van elke hoogdoorlaatbeschermde weg ≤ X_max·marge. Het bestaande veld 'Amplifier power' (100 W continu, 8/4 Ω) is daarmee een GESTELD getal met een andere rol: de wattkolom van M-A en de SPL-referentie in het rapport. PROJECTCONTEXT (motivering, geen engine-kennis): één versterker drijft alle drie de wegen passief; hybride (actieve LF) is de terugvaloptie als het passieve veld de gestelde eisen niet haalt, en de shortlist mét alle gestelde eisen is het bewijsmateriaal voor die beslissing.",
+   "versterker_piek_invoerpunt": "A5a-formuliervelden 'Amplifier peak power W' en 'Nominal load Ω' (App.tsx) -> settings.amplifierPeakPowerW / amplifierNominalLoadOhm; het rapport leidt er per driver een plafond uit af (metrics.driveExcursion) dat als feit de grens oversteekt (driveCeilingDbByModel) en in de worker naast maxDriveOnFsDb komt te staan: de STRENGSTE geldt (effectiveDriveLimit). Leeg = geen plafond, en dan oordeelt het gestelde dB-getal alleen (P4).",
+   "xmax_marge": 0.8,
+   "xmax_marge_gesteld_door": "Sander Somers, 02-09-2026 (V49)",
+   "xmax_marge_motivering": "X_max is geometrisch gedefinieerd (spoeloverhang/onderhang); daarboven loopt de vervorming snel op. 80 % is gangbaar en dekt definitieverschillen tussen fabrikanten. Een fractie en geen millimeter: zij geldt voor elke driver op de kaart.",
+   "xmax_marge_invoerpunt": "A5a-formulierveld 'X_max margin' (App.tsx) -> settings.xmaxMarginFraction. Leeg = geen afleiding (P4).",
+   "versterkervloer_motivering_nad_aanvulling": "AANVULLING V49: de NAD M10 V2 wordt opgegeven met 4 Ω minimale belasting. De gestelde 2,6 Ω is dus een BEWUSTE overschrijding van de fabrieksopgave, gemotiveerd op het driverpaar (3,17 Ω kaal) en op HUIDIG (3,46 Ω), zodat dit later niet als vergissing leest: de vloer beschrijft wat de drivers presenteren en niet wat de versterker opgeeft, en de passief-of-hybride-beslissing weegt dit mee."
+  },
+  "driverkaart": {
+   "_": "DRIVERKAART (V49) — PROJECTINVOER van de ontwerper, overgenomen uit de FABRIKANTSDATASHEETS; geen meting en geen afleiding. Dezelfde soort invoer als gestelde_eisen en zij erft daarom de klasse van manifest_en_geometrie. Deze getallen staan UITSLUITEND hier: niet in src/lib/engine2/, niet als default, niet als constante in een fixture (P6). De fixture leest ze via casus1DriverCards() en de app via het A5a-formulier (Sd/Xmax op de Setup-tab, Bl/M_ms in het Engine v2-meetblok). F_s/f_c, Q_ms, Q_es en Z_max komen NIET van de kaart maar uit de gemeten sweep in situ — de ingest heeft ze (z-resonance 1.1 draagt sinds V49 Small's Q_ms per motionele piek).",
+   "gesteld_door": "Sander Somers, 02-09-2026 (V49), uit de datasheets van Bliesma en SB Acoustics",
+   "tweeter": {
+    "model": "Bliesma T25T-6",
+    "X_max_mm": 1,
+    "S_d_cm2": 5.7,
+    "Bl_Tm": 2.6,
+    "M_ms_g": 0.15,
+    "Re_datasheet_ohm": 5.2,
+    "aanbevolen_ondergrens_hz": 2200,
+    "context": "100 W gespecificeerd met 2e-orde BW op 2,5 kHz. De aanbevolen ondergrens en de Re van de datasheet zijn CONTEXT en geen engine-invoer: de engine leest R_e uit de A5c.1-hiërarchie en de ondergrens is een vervormingsgrens die M-C niet kan zien (V49, wat de grens NIET dekt)."
+   },
+   "mid": {
+    "model": "SB Acoustics MR13TX-4",
+    "X_max_mm": 3,
+    "S_d_cm2": 69,
+    "Bl_Tm": 4.9,
+    "M_ms_g": 7.2,
+    "Re_datasheet_ohm": 3.4,
+    "context": "Datasheet-Re als context; de engine leest R_e uit de sweep (motionele fit 3,358 Ω)."
+   },
+   "woofer": {
+    "model": "SB Acoustics WO24TX-8 (paar, parallel)",
+    "X_max_mm": 8.55,
+    "S_d_cm2": 255,
+    "Bl_Tm": 10.45,
+    "M_ms_g": 44.2,
+    "Re_datasheet_ohm": 5.8,
+    "parallel_aantal": 2,
+    "context": "PER DRIVER; het paar telt dubbel in S_d en verplaatst volume, en de gemeten impedantie (woofers_parallel__1_.lim) is de PARALLELSCHAKELING, dus de spoelstroom per driver is V/(2·Z_gemeten). Alleen voor de zwakste-schakel-rapportage: de woofer draagt geen hoogdoorlaat en krijgt geen eis (V49)."
+   },
+   "ff_meetspanning_V": null,
+   "ff_mic_afstand_mm": 1000,
+   "ff_meetspanning_toelichting": "NIET GEDOCUMENTEERD, en dat is een bevinding en geen vergissing. De ARTA-headers van de FF-bestanden dragen geen meetspanning ('Scale type = Pa', 'Scale = 0.0 dB', kalibratiebestand MM1CDU) en de dBSPL-kolom leest 135–141 dB in de doorlaatband — geen absolute SPL bij een bekende spanning. De ACOUSTISCHE route van M-C v2.0 (route 2) en de SPL-bij-P-regel hebben allebei een gedocumenteerde meetspanning EN micafstand nodig (nota A5d: 'absolute max-SPL/excursiegrenzen vereisen gedocumenteerde meetspanning en -afstand plus Sd/Xmax'). De micafstand is Sanders kastinvoer (1 m, src/demo3way.ts); de spanning ontbreekt, dus route 2 staat op casus 1 UIT met die reden, route 1 draagt de grens, en de route-1/route-2-tegenproef wacht op een hermeting met gedocumenteerde spanning. Leeg = geen afleiding (P4), nooit een aangenomen 2,83 V."
   },
   "v30_corpus": {
    "_": "V31/V32 — HET GEDATEERDE V30-CORPUS, met de kandidaat waar elke netlist vandaan kwam. Bewaard omdat de vóór/ná-vergelijking anders niet te maken is: de bestanden heten V30-KAND-n en de kandidaat heet naar zijn twee kruispunten, en die koppeling stond alleen in casus1_v2_herkomst.json — een bestand dat de volgende regeneratie overschrijft. DOCUMENTATIE, geen acceptatiewaarde.",
@@ -17678,6 +17763,4054 @@
      "naam": "V48_KAND_5",
      "was": "KAND_V2_5",
      "kandidaat": "woofer→mid 548.5 LR4 · mid→tweeter 1981.2 LR4"
+    }
+   ]
+  },
+  "v49_excursie": {
+   "_": "V49 — M-C v2.0: de AFGELEIDE M-C-grens per hoogdoorlaatbeschermde weg van élke bevroren netlist, naast de gestelde. De afgeleide grens is plafond (klasse A, afgeleide_parameters.<driver>) minus het doorlaatband-gemiddelde |H| van DÍT netwerk (F1-conventie), dus klasse B; de poort leest de STRENGSTE van beide en `bron` zegt welke. Zwakste schakel: de weg zonder hoogdoorlaat bij de piekingang, rapportage en geen eis.",
+   "schatter": "drive-excursion/2.0",
+   "gestelde_grens_dB": -20,
+   "context_dB": {
+    "V47": -25,
+    "regel_18dB": -18
+   },
+   "levend_corpus_wegen": 14,
+   "levend_corpus_eroverheen_op_de_effectieve_grens": 0,
+   "levend_corpus_wegen_waar_de_afgeleide_grens_strenger_is": 0,
+   "casusboek_wegen_waar_de_afgeleide_grens_strenger_is": [
+    {
+     "netlist": "V28_KAND_4",
+     "weg": "mid",
+     "afgeleide_grens_dB": -20.05
+    },
+    {
+     "netlist": "V28_KAND_5",
+     "weg": "mid",
+     "afgeleide_grens_dB": -20.22
+    },
+    {
+     "netlist": "V28_KAND_6",
+     "weg": "mid",
+     "afgeleide_grens_dB": -20.05
+    },
+    {
+     "netlist": "V28_KAND_7",
+     "weg": "mid",
+     "afgeleide_grens_dB": -20.33
+    },
+    {
+     "netlist": "V28_KAND_8",
+     "weg": "mid",
+     "afgeleide_grens_dB": -20.56
+    },
+    {
+     "netlist": "V28_KAND_9",
+     "weg": "mid",
+     "afgeleide_grens_dB": -20.58
+    },
+    {
+     "netlist": "V28_KAND_10",
+     "weg": "mid",
+     "afgeleide_grens_dB": -20.59
+    }
+   ],
+   "per_weg": [
+    {
+     "netlist": "HUIDIG",
+     "weg": "mid",
+     "doorlaatband_gem_dB": -5.75,
+     "afgeleide_grens_dB": -11.93,
+     "gestelde_grens_dB": -20,
+     "effectieve_grens_dB": -20,
+     "bron": "stated dB figure (stricter than the excursion-derived ceiling)",
+     "M_C_dB": -42.61,
+     "haalt_de_eis": true
+    },
+    {
+     "netlist": "HUIDIG",
+     "weg": "tweeter",
+     "doorlaatband_gem_dB": -6.89,
+     "afgeleide_grens_dB": -1.69,
+     "gestelde_grens_dB": -20,
+     "effectieve_grens_dB": -20,
+     "bron": "stated dB figure (stricter than the excursion-derived ceiling)",
+     "M_C_dB": -25.08,
+     "haalt_de_eis": true
+    },
+    {
+     "netlist": "KAND_A",
+     "weg": "mid",
+     "doorlaatband_gem_dB": -6.71,
+     "afgeleide_grens_dB": -10.96,
+     "gestelde_grens_dB": -20,
+     "effectieve_grens_dB": -20,
+     "bron": "stated dB figure (stricter than the excursion-derived ceiling)",
+     "M_C_dB": -46.83,
+     "haalt_de_eis": true
+    },
+    {
+     "netlist": "KAND_A",
+     "weg": "tweeter",
+     "doorlaatband_gem_dB": -7.43,
+     "afgeleide_grens_dB": -1.14,
+     "gestelde_grens_dB": -20,
+     "effectieve_grens_dB": -20,
+     "bron": "stated dB figure (stricter than the excursion-derived ceiling)",
+     "M_C_dB": -34.54,
+     "haalt_de_eis": true
+    },
+    {
+     "netlist": "KAND_B",
+     "weg": "mid",
+     "doorlaatband_gem_dB": -6.58,
+     "afgeleide_grens_dB": -11.09,
+     "gestelde_grens_dB": -20,
+     "effectieve_grens_dB": -20,
+     "bron": "stated dB figure (stricter than the excursion-derived ceiling)",
+     "M_C_dB": -34.17,
+     "haalt_de_eis": true
+    },
+    {
+     "netlist": "KAND_B",
+     "weg": "tweeter",
+     "doorlaatband_gem_dB": -7.48,
+     "afgeleide_grens_dB": -1.1,
+     "gestelde_grens_dB": -20,
+     "effectieve_grens_dB": -20,
+     "bron": "stated dB figure (stricter than the excursion-derived ceiling)",
+     "M_C_dB": -35.18,
+     "haalt_de_eis": true
+    },
+    {
+     "netlist": "V28_KAND_1",
+     "weg": "mid",
+     "doorlaatband_gem_dB": -22.76,
+     "afgeleide_grens_dB": 5.09,
+     "gestelde_grens_dB": -20,
+     "effectieve_grens_dB": -20,
+     "bron": "stated dB figure (stricter than the excursion-derived ceiling)",
+     "M_C_dB": -29.66,
+     "haalt_de_eis": true
+    },
+    {
+     "netlist": "V28_KAND_1",
+     "weg": "tweeter",
+     "doorlaatband_gem_dB": -16.27,
+     "afgeleide_grens_dB": 7.69,
+     "gestelde_grens_dB": -20,
+     "effectieve_grens_dB": -20,
+     "bron": "stated dB figure (stricter than the excursion-derived ceiling)",
+     "M_C_dB": -19.38,
+     "haalt_de_eis": false
+    },
+    {
+     "netlist": "V28_KAND_2",
+     "weg": "mid",
+     "doorlaatband_gem_dB": -25.24,
+     "afgeleide_grens_dB": 7.57,
+     "gestelde_grens_dB": -20,
+     "effectieve_grens_dB": -20,
+     "bron": "stated dB figure (stricter than the excursion-derived ceiling)",
+     "M_C_dB": -45.57,
+     "haalt_de_eis": true
+    },
+    {
+     "netlist": "V28_KAND_2",
+     "weg": "tweeter",
+     "doorlaatband_gem_dB": -16.54,
+     "afgeleide_grens_dB": 7.96,
+     "gestelde_grens_dB": -20,
+     "effectieve_grens_dB": -20,
+     "bron": "stated dB figure (stricter than the excursion-derived ceiling)",
+     "M_C_dB": -22.87,
+     "haalt_de_eis": true
+    },
+    {
+     "netlist": "V28_KAND_3",
+     "weg": "mid",
+     "doorlaatband_gem_dB": 2.12,
+     "afgeleide_grens_dB": -19.79,
+     "gestelde_grens_dB": -20,
+     "effectieve_grens_dB": -20,
+     "bron": "stated dB figure (stricter than the excursion-derived ceiling)",
+     "M_C_dB": -52.34,
+     "haalt_de_eis": true
+    },
+    {
+     "netlist": "V28_KAND_3",
+     "weg": "tweeter",
+     "doorlaatband_gem_dB": -4.54,
+     "afgeleide_grens_dB": -4.04,
+     "gestelde_grens_dB": -20,
+     "effectieve_grens_dB": -20,
+     "bron": "stated dB figure (stricter than the excursion-derived ceiling)",
+     "M_C_dB": -21.26,
+     "haalt_de_eis": true
+    },
+    {
+     "netlist": "V28_KAND_4",
+     "weg": "mid",
+     "doorlaatband_gem_dB": 2.38,
+     "afgeleide_grens_dB": -20.05,
+     "gestelde_grens_dB": -20,
+     "effectieve_grens_dB": -20.054023835475075,
+     "bron": "excursion-derived ceiling (stricter than the stated dB figure, V49)",
+     "M_C_dB": -57.76,
+     "haalt_de_eis": true
+    },
+    {
+     "netlist": "V28_KAND_4",
+     "weg": "tweeter",
+     "doorlaatband_gem_dB": -4.35,
+     "afgeleide_grens_dB": -4.22,
+     "gestelde_grens_dB": -20,
+     "effectieve_grens_dB": -20,
+     "bron": "stated dB figure (stricter than the excursion-derived ceiling)",
+     "M_C_dB": -21.41,
+     "haalt_de_eis": true
+    },
+    {
+     "netlist": "V28_KAND_5",
+     "weg": "mid",
+     "doorlaatband_gem_dB": 2.55,
+     "afgeleide_grens_dB": -20.22,
+     "gestelde_grens_dB": -20,
+     "effectieve_grens_dB": -20.224844291088377,
+     "bron": "excursion-derived ceiling (stricter than the stated dB figure, V49)",
+     "M_C_dB": -49.5,
+     "haalt_de_eis": true
+    },
+    {
+     "netlist": "V28_KAND_5",
+     "weg": "tweeter",
+     "doorlaatband_gem_dB": -4.85,
+     "afgeleide_grens_dB": -3.73,
+     "gestelde_grens_dB": -20,
+     "effectieve_grens_dB": -20,
+     "bron": "stated dB figure (stricter than the excursion-derived ceiling)",
+     "M_C_dB": -16.45,
+     "haalt_de_eis": false
+    },
+    {
+     "netlist": "V28_KAND_6",
+     "weg": "mid",
+     "doorlaatband_gem_dB": 2.38,
+     "afgeleide_grens_dB": -20.05,
+     "gestelde_grens_dB": -20,
+     "effectieve_grens_dB": -20.052791665313553,
+     "bron": "excursion-derived ceiling (stricter than the stated dB figure, V49)",
+     "M_C_dB": -54.5,
+     "haalt_de_eis": true
+    },
+    {
+     "netlist": "V28_KAND_6",
+     "weg": "tweeter",
+     "doorlaatband_gem_dB": -4.7,
+     "afgeleide_grens_dB": -3.88,
+     "gestelde_grens_dB": -20,
+     "effectieve_grens_dB": -20,
+     "bron": "stated dB figure (stricter than the excursion-derived ceiling)",
+     "M_C_dB": -19.12,
+     "haalt_de_eis": false
+    },
+    {
+     "netlist": "V28_KAND_7",
+     "weg": "mid",
+     "doorlaatband_gem_dB": 2.66,
+     "afgeleide_grens_dB": -20.33,
+     "gestelde_grens_dB": -20,
+     "effectieve_grens_dB": -20.334881518722423,
+     "bron": "excursion-derived ceiling (stricter than the stated dB figure, V49)",
+     "M_C_dB": -48.38,
+     "haalt_de_eis": true
+    },
+    {
+     "netlist": "V28_KAND_7",
+     "weg": "tweeter",
+     "doorlaatband_gem_dB": -4.8,
+     "afgeleide_grens_dB": -3.77,
+     "gestelde_grens_dB": -20,
+     "effectieve_grens_dB": -20,
+     "bron": "stated dB figure (stricter than the excursion-derived ceiling)",
+     "M_C_dB": -13.76,
+     "haalt_de_eis": false
+    },
+    {
+     "netlist": "V28_KAND_8",
+     "weg": "mid",
+     "doorlaatband_gem_dB": 2.89,
+     "afgeleide_grens_dB": -20.56,
+     "gestelde_grens_dB": -20,
+     "effectieve_grens_dB": -20.561785612376486,
+     "bron": "excursion-derived ceiling (stricter than the stated dB figure, V49)",
+     "M_C_dB": -56.8,
+     "haalt_de_eis": true
+    },
+    {
+     "netlist": "V28_KAND_8",
+     "weg": "tweeter",
+     "doorlaatband_gem_dB": -4.76,
+     "afgeleide_grens_dB": -3.82,
+     "gestelde_grens_dB": -20,
+     "effectieve_grens_dB": -20,
+     "bron": "stated dB figure (stricter than the excursion-derived ceiling)",
+     "M_C_dB": -16.52,
+     "haalt_de_eis": false
+    },
+    {
+     "netlist": "V28_KAND_9",
+     "weg": "mid",
+     "doorlaatband_gem_dB": 2.91,
+     "afgeleide_grens_dB": -20.58,
+     "gestelde_grens_dB": -20,
+     "effectieve_grens_dB": -20.577365687945182,
+     "bron": "excursion-derived ceiling (stricter than the stated dB figure, V49)",
+     "M_C_dB": -56.02,
+     "haalt_de_eis": true
+    },
+    {
+     "netlist": "V28_KAND_9",
+     "weg": "tweeter",
+     "doorlaatband_gem_dB": -4.63,
+     "afgeleide_grens_dB": -3.95,
+     "gestelde_grens_dB": -20,
+     "effectieve_grens_dB": -20,
+     "bron": "stated dB figure (stricter than the excursion-derived ceiling)",
+     "M_C_dB": -13.86,
+     "haalt_de_eis": false
+    },
+    {
+     "netlist": "V28_KAND_10",
+     "weg": "mid",
+     "doorlaatband_gem_dB": 2.91,
+     "afgeleide_grens_dB": -20.59,
+     "gestelde_grens_dB": -20,
+     "effectieve_grens_dB": -20.58601216621485,
+     "bron": "excursion-derived ceiling (stricter than the stated dB figure, V49)",
+     "M_C_dB": -54.32,
+     "haalt_de_eis": true
+    },
+    {
+     "netlist": "V28_KAND_10",
+     "weg": "tweeter",
+     "doorlaatband_gem_dB": -4.7,
+     "afgeleide_grens_dB": -3.88,
+     "gestelde_grens_dB": -20,
+     "effectieve_grens_dB": -20,
+     "bron": "stated dB figure (stricter than the excursion-derived ceiling)",
+     "M_C_dB": -12.3,
+     "haalt_de_eis": false
+    },
+    {
+     "netlist": "V30_KAND_1",
+     "weg": "mid",
+     "doorlaatband_gem_dB": -2.54,
+     "afgeleide_grens_dB": -15.13,
+     "gestelde_grens_dB": -20,
+     "effectieve_grens_dB": -20,
+     "bron": "stated dB figure (stricter than the excursion-derived ceiling)",
+     "M_C_dB": -39.09,
+     "haalt_de_eis": true
+    },
+    {
+     "netlist": "V30_KAND_1",
+     "weg": "tweeter",
+     "doorlaatband_gem_dB": -4.61,
+     "afgeleide_grens_dB": -3.96,
+     "gestelde_grens_dB": -20,
+     "effectieve_grens_dB": -20,
+     "bron": "stated dB figure (stricter than the excursion-derived ceiling)",
+     "M_C_dB": -15.99,
+     "haalt_de_eis": false
+    },
+    {
+     "netlist": "V30_KAND_2",
+     "weg": "mid",
+     "doorlaatband_gem_dB": -1.66,
+     "afgeleide_grens_dB": -16.01,
+     "gestelde_grens_dB": -20,
+     "effectieve_grens_dB": -20,
+     "bron": "stated dB figure (stricter than the excursion-derived ceiling)",
+     "M_C_dB": -37.01,
+     "haalt_de_eis": true
+    },
+    {
+     "netlist": "V30_KAND_2",
+     "weg": "tweeter",
+     "doorlaatband_gem_dB": -4.64,
+     "afgeleide_grens_dB": -3.94,
+     "gestelde_grens_dB": -20,
+     "effectieve_grens_dB": -20,
+     "bron": "stated dB figure (stricter than the excursion-derived ceiling)",
+     "M_C_dB": -19.56,
+     "haalt_de_eis": false
+    },
+    {
+     "netlist": "V30_KAND_3",
+     "weg": "mid",
+     "doorlaatband_gem_dB": -2.62,
+     "afgeleide_grens_dB": -15.05,
+     "gestelde_grens_dB": -20,
+     "effectieve_grens_dB": -20,
+     "bron": "stated dB figure (stricter than the excursion-derived ceiling)",
+     "M_C_dB": -42.27,
+     "haalt_de_eis": true
+    },
+    {
+     "netlist": "V30_KAND_3",
+     "weg": "tweeter",
+     "doorlaatband_gem_dB": -4.89,
+     "afgeleide_grens_dB": -3.69,
+     "gestelde_grens_dB": -20,
+     "effectieve_grens_dB": -20,
+     "bron": "stated dB figure (stricter than the excursion-derived ceiling)",
+     "M_C_dB": -21.7,
+     "haalt_de_eis": true
+    },
+    {
+     "netlist": "V30_KAND_4",
+     "weg": "mid",
+     "doorlaatband_gem_dB": -2.63,
+     "afgeleide_grens_dB": -15.04,
+     "gestelde_grens_dB": -20,
+     "effectieve_grens_dB": -20,
+     "bron": "stated dB figure (stricter than the excursion-derived ceiling)",
+     "M_C_dB": -41.77,
+     "haalt_de_eis": true
+    },
+    {
+     "netlist": "V30_KAND_4",
+     "weg": "tweeter",
+     "doorlaatband_gem_dB": -4.8,
+     "afgeleide_grens_dB": -3.78,
+     "gestelde_grens_dB": -20,
+     "effectieve_grens_dB": -20,
+     "bron": "stated dB figure (stricter than the excursion-derived ceiling)",
+     "M_C_dB": -23.91,
+     "haalt_de_eis": true
+    },
+    {
+     "netlist": "V30_KAND_5",
+     "weg": "mid",
+     "doorlaatband_gem_dB": -3.07,
+     "afgeleide_grens_dB": -14.6,
+     "gestelde_grens_dB": -20,
+     "effectieve_grens_dB": -20,
+     "bron": "stated dB figure (stricter than the excursion-derived ceiling)",
+     "M_C_dB": -18.2,
+     "haalt_de_eis": false
+    },
+    {
+     "netlist": "V30_KAND_5",
+     "weg": "tweeter",
+     "doorlaatband_gem_dB": -5.13,
+     "afgeleide_grens_dB": -3.45,
+     "gestelde_grens_dB": -20,
+     "effectieve_grens_dB": -20,
+     "bron": "stated dB figure (stricter than the excursion-derived ceiling)",
+     "M_C_dB": -13.78,
+     "haalt_de_eis": false
+    },
+    {
+     "netlist": "V30_KAND_6",
+     "weg": "mid",
+     "doorlaatband_gem_dB": -2,
+     "afgeleide_grens_dB": -15.67,
+     "gestelde_grens_dB": -20,
+     "effectieve_grens_dB": -20,
+     "bron": "stated dB figure (stricter than the excursion-derived ceiling)",
+     "M_C_dB": -37.47,
+     "haalt_de_eis": true
+    },
+    {
+     "netlist": "V30_KAND_6",
+     "weg": "tweeter",
+     "doorlaatband_gem_dB": -4.91,
+     "afgeleide_grens_dB": -3.67,
+     "gestelde_grens_dB": -20,
+     "effectieve_grens_dB": -20,
+     "bron": "stated dB figure (stricter than the excursion-derived ceiling)",
+     "M_C_dB": -23.24,
+     "haalt_de_eis": true
+    },
+    {
+     "netlist": "V30_KAND_7",
+     "weg": "mid",
+     "doorlaatband_gem_dB": -3.62,
+     "afgeleide_grens_dB": -14.05,
+     "gestelde_grens_dB": -20,
+     "effectieve_grens_dB": -20,
+     "bron": "stated dB figure (stricter than the excursion-derived ceiling)",
+     "M_C_dB": -41.47,
+     "haalt_de_eis": true
+    },
+    {
+     "netlist": "V30_KAND_7",
+     "weg": "tweeter",
+     "doorlaatband_gem_dB": -4.77,
+     "afgeleide_grens_dB": -3.81,
+     "gestelde_grens_dB": -20,
+     "effectieve_grens_dB": -20,
+     "bron": "stated dB figure (stricter than the excursion-derived ceiling)",
+     "M_C_dB": -12.24,
+     "haalt_de_eis": false
+    },
+    {
+     "netlist": "V30_KAND_8",
+     "weg": "mid",
+     "doorlaatband_gem_dB": -2.5,
+     "afgeleide_grens_dB": -15.17,
+     "gestelde_grens_dB": -20,
+     "effectieve_grens_dB": -20,
+     "bron": "stated dB figure (stricter than the excursion-derived ceiling)",
+     "M_C_dB": -45.07,
+     "haalt_de_eis": true
+    },
+    {
+     "netlist": "V30_KAND_8",
+     "weg": "tweeter",
+     "doorlaatband_gem_dB": -4.61,
+     "afgeleide_grens_dB": -3.97,
+     "gestelde_grens_dB": -20,
+     "effectieve_grens_dB": -20,
+     "bron": "stated dB figure (stricter than the excursion-derived ceiling)",
+     "M_C_dB": -23.81,
+     "haalt_de_eis": true
+    },
+    {
+     "netlist": "V30_KAND_9",
+     "weg": "mid",
+     "doorlaatband_gem_dB": -3.02,
+     "afgeleide_grens_dB": -14.66,
+     "gestelde_grens_dB": -20,
+     "effectieve_grens_dB": -20,
+     "bron": "stated dB figure (stricter than the excursion-derived ceiling)",
+     "M_C_dB": -17.95,
+     "haalt_de_eis": false
+    },
+    {
+     "netlist": "V30_KAND_9",
+     "weg": "tweeter",
+     "doorlaatband_gem_dB": -5.13,
+     "afgeleide_grens_dB": -3.45,
+     "gestelde_grens_dB": -20,
+     "effectieve_grens_dB": -20,
+     "bron": "stated dB figure (stricter than the excursion-derived ceiling)",
+     "M_C_dB": -14.72,
+     "haalt_de_eis": false
+    },
+    {
+     "netlist": "V30_KAND_10",
+     "weg": "mid",
+     "doorlaatband_gem_dB": -2.22,
+     "afgeleide_grens_dB": -15.46,
+     "gestelde_grens_dB": -20,
+     "effectieve_grens_dB": -20,
+     "bron": "stated dB figure (stricter than the excursion-derived ceiling)",
+     "M_C_dB": -44.56,
+     "haalt_de_eis": true
+    },
+    {
+     "netlist": "V30_KAND_10",
+     "weg": "tweeter",
+     "doorlaatband_gem_dB": -4.61,
+     "afgeleide_grens_dB": -3.97,
+     "gestelde_grens_dB": -20,
+     "effectieve_grens_dB": -20,
+     "bron": "stated dB figure (stricter than the excursion-derived ceiling)",
+     "M_C_dB": -12.52,
+     "haalt_de_eis": false
+    },
+    {
+     "netlist": "V32_KAND_1",
+     "weg": "mid",
+     "doorlaatband_gem_dB": -2.62,
+     "afgeleide_grens_dB": -15.05,
+     "gestelde_grens_dB": -20,
+     "effectieve_grens_dB": -20,
+     "bron": "stated dB figure (stricter than the excursion-derived ceiling)",
+     "M_C_dB": -42.27,
+     "haalt_de_eis": true
+    },
+    {
+     "netlist": "V32_KAND_1",
+     "weg": "tweeter",
+     "doorlaatband_gem_dB": -4.89,
+     "afgeleide_grens_dB": -3.69,
+     "gestelde_grens_dB": -20,
+     "effectieve_grens_dB": -20,
+     "bron": "stated dB figure (stricter than the excursion-derived ceiling)",
+     "M_C_dB": -21.7,
+     "haalt_de_eis": true
+    },
+    {
+     "netlist": "V32_KAND_2",
+     "weg": "mid",
+     "doorlaatband_gem_dB": -2.63,
+     "afgeleide_grens_dB": -15.04,
+     "gestelde_grens_dB": -20,
+     "effectieve_grens_dB": -20,
+     "bron": "stated dB figure (stricter than the excursion-derived ceiling)",
+     "M_C_dB": -41.77,
+     "haalt_de_eis": true
+    },
+    {
+     "netlist": "V32_KAND_2",
+     "weg": "tweeter",
+     "doorlaatband_gem_dB": -4.8,
+     "afgeleide_grens_dB": -3.78,
+     "gestelde_grens_dB": -20,
+     "effectieve_grens_dB": -20,
+     "bron": "stated dB figure (stricter than the excursion-derived ceiling)",
+     "M_C_dB": -23.91,
+     "haalt_de_eis": true
+    },
+    {
+     "netlist": "V32_KAND_3",
+     "weg": "mid",
+     "doorlaatband_gem_dB": -3.07,
+     "afgeleide_grens_dB": -14.6,
+     "gestelde_grens_dB": -20,
+     "effectieve_grens_dB": -20,
+     "bron": "stated dB figure (stricter than the excursion-derived ceiling)",
+     "M_C_dB": -18.2,
+     "haalt_de_eis": false
+    },
+    {
+     "netlist": "V32_KAND_3",
+     "weg": "tweeter",
+     "doorlaatband_gem_dB": -5.13,
+     "afgeleide_grens_dB": -3.45,
+     "gestelde_grens_dB": -20,
+     "effectieve_grens_dB": -20,
+     "bron": "stated dB figure (stricter than the excursion-derived ceiling)",
+     "M_C_dB": -13.78,
+     "haalt_de_eis": false
+    },
+    {
+     "netlist": "V32_KAND_4",
+     "weg": "mid",
+     "doorlaatband_gem_dB": -3.62,
+     "afgeleide_grens_dB": -14.05,
+     "gestelde_grens_dB": -20,
+     "effectieve_grens_dB": -20,
+     "bron": "stated dB figure (stricter than the excursion-derived ceiling)",
+     "M_C_dB": -41.47,
+     "haalt_de_eis": true
+    },
+    {
+     "netlist": "V32_KAND_4",
+     "weg": "tweeter",
+     "doorlaatband_gem_dB": -4.77,
+     "afgeleide_grens_dB": -3.81,
+     "gestelde_grens_dB": -20,
+     "effectieve_grens_dB": -20,
+     "bron": "stated dB figure (stricter than the excursion-derived ceiling)",
+     "M_C_dB": -12.24,
+     "haalt_de_eis": false
+    },
+    {
+     "netlist": "V32_KAND_5",
+     "weg": "mid",
+     "doorlaatband_gem_dB": -2.5,
+     "afgeleide_grens_dB": -15.17,
+     "gestelde_grens_dB": -20,
+     "effectieve_grens_dB": -20,
+     "bron": "stated dB figure (stricter than the excursion-derived ceiling)",
+     "M_C_dB": -45.07,
+     "haalt_de_eis": true
+    },
+    {
+     "netlist": "V32_KAND_5",
+     "weg": "tweeter",
+     "doorlaatband_gem_dB": -4.61,
+     "afgeleide_grens_dB": -3.97,
+     "gestelde_grens_dB": -20,
+     "effectieve_grens_dB": -20,
+     "bron": "stated dB figure (stricter than the excursion-derived ceiling)",
+     "M_C_dB": -23.81,
+     "haalt_de_eis": true
+    },
+    {
+     "netlist": "V32_KAND_6",
+     "weg": "mid",
+     "doorlaatband_gem_dB": -3.02,
+     "afgeleide_grens_dB": -14.66,
+     "gestelde_grens_dB": -20,
+     "effectieve_grens_dB": -20,
+     "bron": "stated dB figure (stricter than the excursion-derived ceiling)",
+     "M_C_dB": -17.95,
+     "haalt_de_eis": false
+    },
+    {
+     "netlist": "V32_KAND_6",
+     "weg": "tweeter",
+     "doorlaatband_gem_dB": -5.13,
+     "afgeleide_grens_dB": -3.45,
+     "gestelde_grens_dB": -20,
+     "effectieve_grens_dB": -20,
+     "bron": "stated dB figure (stricter than the excursion-derived ceiling)",
+     "M_C_dB": -14.72,
+     "haalt_de_eis": false
+    },
+    {
+     "netlist": "V32_KAND_7",
+     "weg": "mid",
+     "doorlaatband_gem_dB": -2.22,
+     "afgeleide_grens_dB": -15.46,
+     "gestelde_grens_dB": -20,
+     "effectieve_grens_dB": -20,
+     "bron": "stated dB figure (stricter than the excursion-derived ceiling)",
+     "M_C_dB": -44.56,
+     "haalt_de_eis": true
+    },
+    {
+     "netlist": "V32_KAND_7",
+     "weg": "tweeter",
+     "doorlaatband_gem_dB": -4.61,
+     "afgeleide_grens_dB": -3.97,
+     "gestelde_grens_dB": -20,
+     "effectieve_grens_dB": -20,
+     "bron": "stated dB figure (stricter than the excursion-derived ceiling)",
+     "M_C_dB": -12.52,
+     "haalt_de_eis": false
+    },
+    {
+     "netlist": "V33_SWEEP_KAND_1",
+     "weg": "mid",
+     "doorlaatband_gem_dB": -3.24,
+     "afgeleide_grens_dB": -14.44,
+     "gestelde_grens_dB": -20,
+     "effectieve_grens_dB": -20,
+     "bron": "stated dB figure (stricter than the excursion-derived ceiling)",
+     "M_C_dB": -25.34,
+     "haalt_de_eis": true
+    },
+    {
+     "netlist": "V33_SWEEP_KAND_1",
+     "weg": "tweeter",
+     "doorlaatband_gem_dB": -4.95,
+     "afgeleide_grens_dB": -3.63,
+     "gestelde_grens_dB": -20,
+     "effectieve_grens_dB": -20,
+     "bron": "stated dB figure (stricter than the excursion-derived ceiling)",
+     "M_C_dB": -15.21,
+     "haalt_de_eis": false
+    },
+    {
+     "netlist": "V33_SWEEP_KAND_2",
+     "weg": "mid",
+     "doorlaatband_gem_dB": -4.14,
+     "afgeleide_grens_dB": -13.53,
+     "gestelde_grens_dB": -20,
+     "effectieve_grens_dB": -20,
+     "bron": "stated dB figure (stricter than the excursion-derived ceiling)",
+     "M_C_dB": -26.75,
+     "haalt_de_eis": true
+    },
+    {
+     "netlist": "V33_SWEEP_KAND_2",
+     "weg": "tweeter",
+     "doorlaatband_gem_dB": -5.52,
+     "afgeleide_grens_dB": -3.06,
+     "gestelde_grens_dB": -20,
+     "effectieve_grens_dB": -20,
+     "bron": "stated dB figure (stricter than the excursion-derived ceiling)",
+     "M_C_dB": -18.14,
+     "haalt_de_eis": false
+    },
+    {
+     "netlist": "V33_SWEEP_KAND_3",
+     "weg": "mid",
+     "doorlaatband_gem_dB": -1.74,
+     "afgeleide_grens_dB": -15.93,
+     "gestelde_grens_dB": -20,
+     "effectieve_grens_dB": -20,
+     "bron": "stated dB figure (stricter than the excursion-derived ceiling)",
+     "M_C_dB": -40.17,
+     "haalt_de_eis": true
+    },
+    {
+     "netlist": "V33_SWEEP_KAND_3",
+     "weg": "tweeter",
+     "doorlaatband_gem_dB": -4.76,
+     "afgeleide_grens_dB": -3.82,
+     "gestelde_grens_dB": -20,
+     "effectieve_grens_dB": -20,
+     "bron": "stated dB figure (stricter than the excursion-derived ceiling)",
+     "M_C_dB": -21.19,
+     "haalt_de_eis": true
+    },
+    {
+     "netlist": "V33_SWEEP_KAND_4",
+     "weg": "mid",
+     "doorlaatband_gem_dB": -3.52,
+     "afgeleide_grens_dB": -14.16,
+     "gestelde_grens_dB": -20,
+     "effectieve_grens_dB": -20,
+     "bron": "stated dB figure (stricter than the excursion-derived ceiling)",
+     "M_C_dB": -22.7,
+     "haalt_de_eis": true
+    },
+    {
+     "netlist": "V33_SWEEP_KAND_4",
+     "weg": "tweeter",
+     "doorlaatband_gem_dB": -5.01,
+     "afgeleide_grens_dB": -3.57,
+     "gestelde_grens_dB": -20,
+     "effectieve_grens_dB": -20,
+     "bron": "stated dB figure (stricter than the excursion-derived ceiling)",
+     "M_C_dB": -23.19,
+     "haalt_de_eis": true
+    },
+    {
+     "netlist": "V33_SWEEP_KAND_5",
+     "weg": "mid",
+     "doorlaatband_gem_dB": -3.66,
+     "afgeleide_grens_dB": -14.01,
+     "gestelde_grens_dB": -20,
+     "effectieve_grens_dB": -20,
+     "bron": "stated dB figure (stricter than the excursion-derived ceiling)",
+     "M_C_dB": -22.02,
+     "haalt_de_eis": true
+    },
+    {
+     "netlist": "V33_SWEEP_KAND_5",
+     "weg": "tweeter",
+     "doorlaatband_gem_dB": -5.31,
+     "afgeleide_grens_dB": -3.27,
+     "gestelde_grens_dB": -20,
+     "effectieve_grens_dB": -20,
+     "bron": "stated dB figure (stricter than the excursion-derived ceiling)",
+     "M_C_dB": -20.8,
+     "haalt_de_eis": true
+    },
+    {
+     "netlist": "V33_SWEEP_KAND_6",
+     "weg": "mid",
+     "doorlaatband_gem_dB": -1.22,
+     "afgeleide_grens_dB": -16.45,
+     "gestelde_grens_dB": -20,
+     "effectieve_grens_dB": -20,
+     "bron": "stated dB figure (stricter than the excursion-derived ceiling)",
+     "M_C_dB": -36.5,
+     "haalt_de_eis": true
+    },
+    {
+     "netlist": "V33_SWEEP_KAND_6",
+     "weg": "tweeter",
+     "doorlaatband_gem_dB": -4.67,
+     "afgeleide_grens_dB": -3.91,
+     "gestelde_grens_dB": -20,
+     "effectieve_grens_dB": -20,
+     "bron": "stated dB figure (stricter than the excursion-derived ceiling)",
+     "M_C_dB": -18.51,
+     "haalt_de_eis": false
+    },
+    {
+     "netlist": "V33_SWEEP_KAND_7",
+     "weg": "mid",
+     "doorlaatband_gem_dB": -2.85,
+     "afgeleide_grens_dB": -14.82,
+     "gestelde_grens_dB": -20,
+     "effectieve_grens_dB": -20,
+     "bron": "stated dB figure (stricter than the excursion-derived ceiling)",
+     "M_C_dB": -41.41,
+     "haalt_de_eis": true
+    },
+    {
+     "netlist": "V33_SWEEP_KAND_7",
+     "weg": "tweeter",
+     "doorlaatband_gem_dB": -4.93,
+     "afgeleide_grens_dB": -3.64,
+     "gestelde_grens_dB": -20,
+     "effectieve_grens_dB": -20,
+     "bron": "stated dB figure (stricter than the excursion-derived ceiling)",
+     "M_C_dB": -23.67,
+     "haalt_de_eis": true
+    },
+    {
+     "netlist": "V33_SWEEP_KAND_8",
+     "weg": "mid",
+     "doorlaatband_gem_dB": -2.76,
+     "afgeleide_grens_dB": -14.92,
+     "gestelde_grens_dB": -20,
+     "effectieve_grens_dB": -20,
+     "bron": "stated dB figure (stricter than the excursion-derived ceiling)",
+     "M_C_dB": -41.28,
+     "haalt_de_eis": true
+    },
+    {
+     "netlist": "V33_SWEEP_KAND_8",
+     "weg": "tweeter",
+     "doorlaatband_gem_dB": -4.97,
+     "afgeleide_grens_dB": -3.6,
+     "gestelde_grens_dB": -20,
+     "effectieve_grens_dB": -20,
+     "bron": "stated dB figure (stricter than the excursion-derived ceiling)",
+     "M_C_dB": -18.62,
+     "haalt_de_eis": false
+    },
+    {
+     "netlist": "V33_SWEEP_KAND_9",
+     "weg": "mid",
+     "doorlaatband_gem_dB": -2.41,
+     "afgeleide_grens_dB": -15.26,
+     "gestelde_grens_dB": -20,
+     "effectieve_grens_dB": -20,
+     "bron": "stated dB figure (stricter than the excursion-derived ceiling)",
+     "M_C_dB": -39.01,
+     "haalt_de_eis": true
+    },
+    {
+     "netlist": "V33_SWEEP_KAND_9",
+     "weg": "tweeter",
+     "doorlaatband_gem_dB": -4.65,
+     "afgeleide_grens_dB": -3.93,
+     "gestelde_grens_dB": -20,
+     "effectieve_grens_dB": -20,
+     "bron": "stated dB figure (stricter than the excursion-derived ceiling)",
+     "M_C_dB": -14.98,
+     "haalt_de_eis": false
+    },
+    {
+     "netlist": "V33_SWEEP_KAND_10",
+     "weg": "mid",
+     "doorlaatband_gem_dB": -3.16,
+     "afgeleide_grens_dB": -14.51,
+     "gestelde_grens_dB": -20,
+     "effectieve_grens_dB": -20,
+     "bron": "stated dB figure (stricter than the excursion-derived ceiling)",
+     "M_C_dB": -41.3,
+     "haalt_de_eis": true
+    },
+    {
+     "netlist": "V33_SWEEP_KAND_10",
+     "weg": "tweeter",
+     "doorlaatband_gem_dB": -4.78,
+     "afgeleide_grens_dB": -3.8,
+     "gestelde_grens_dB": -20,
+     "effectieve_grens_dB": -20,
+     "bron": "stated dB figure (stricter than the excursion-derived ceiling)",
+     "M_C_dB": -25.61,
+     "haalt_de_eis": true
+    },
+    {
+     "netlist": "V33_KAND_1",
+     "weg": "mid",
+     "doorlaatband_gem_dB": -1.66,
+     "afgeleide_grens_dB": -16.01,
+     "gestelde_grens_dB": -20,
+     "effectieve_grens_dB": -20,
+     "bron": "stated dB figure (stricter than the excursion-derived ceiling)",
+     "M_C_dB": -39.23,
+     "haalt_de_eis": true
+    },
+    {
+     "netlist": "V33_KAND_1",
+     "weg": "tweeter",
+     "doorlaatband_gem_dB": -4.43,
+     "afgeleide_grens_dB": -4.15,
+     "gestelde_grens_dB": -20,
+     "effectieve_grens_dB": -20,
+     "bron": "stated dB figure (stricter than the excursion-derived ceiling)",
+     "M_C_dB": -23.59,
+     "haalt_de_eis": true
+    },
+    {
+     "netlist": "V33_KAND_2",
+     "weg": "mid",
+     "doorlaatband_gem_dB": -2.41,
+     "afgeleide_grens_dB": -15.26,
+     "gestelde_grens_dB": -20,
+     "effectieve_grens_dB": -20,
+     "bron": "stated dB figure (stricter than the excursion-derived ceiling)",
+     "M_C_dB": -37.55,
+     "haalt_de_eis": true
+    },
+    {
+     "netlist": "V33_KAND_2",
+     "weg": "tweeter",
+     "doorlaatband_gem_dB": -4.73,
+     "afgeleide_grens_dB": -3.85,
+     "gestelde_grens_dB": -20,
+     "effectieve_grens_dB": -20,
+     "bron": "stated dB figure (stricter than the excursion-derived ceiling)",
+     "M_C_dB": -19.04,
+     "haalt_de_eis": false
+    },
+    {
+     "netlist": "V33_KAND_3",
+     "weg": "mid",
+     "doorlaatband_gem_dB": -2.42,
+     "afgeleide_grens_dB": -15.25,
+     "gestelde_grens_dB": -20,
+     "effectieve_grens_dB": -20,
+     "bron": "stated dB figure (stricter than the excursion-derived ceiling)",
+     "M_C_dB": -42.37,
+     "haalt_de_eis": true
+    },
+    {
+     "netlist": "V33_KAND_3",
+     "weg": "tweeter",
+     "doorlaatband_gem_dB": -4.92,
+     "afgeleide_grens_dB": -3.66,
+     "gestelde_grens_dB": -20,
+     "effectieve_grens_dB": -20,
+     "bron": "stated dB figure (stricter than the excursion-derived ceiling)",
+     "M_C_dB": -22.03,
+     "haalt_de_eis": true
+    },
+    {
+     "netlist": "V33_KAND_4",
+     "weg": "mid",
+     "doorlaatband_gem_dB": -2.78,
+     "afgeleide_grens_dB": -14.89,
+     "gestelde_grens_dB": -20,
+     "effectieve_grens_dB": -20,
+     "bron": "stated dB figure (stricter than the excursion-derived ceiling)",
+     "M_C_dB": -41.36,
+     "haalt_de_eis": true
+    },
+    {
+     "netlist": "V33_KAND_4",
+     "weg": "tweeter",
+     "doorlaatband_gem_dB": -4.88,
+     "afgeleide_grens_dB": -3.69,
+     "gestelde_grens_dB": -20,
+     "effectieve_grens_dB": -20,
+     "bron": "stated dB figure (stricter than the excursion-derived ceiling)",
+     "M_C_dB": -22.23,
+     "haalt_de_eis": true
+    },
+    {
+     "netlist": "V33_KAND_5",
+     "weg": "mid",
+     "doorlaatband_gem_dB": -3.45,
+     "afgeleide_grens_dB": -14.22,
+     "gestelde_grens_dB": -20,
+     "effectieve_grens_dB": -20,
+     "bron": "stated dB figure (stricter than the excursion-derived ceiling)",
+     "M_C_dB": -16.38,
+     "haalt_de_eis": false
+    },
+    {
+     "netlist": "V33_KAND_5",
+     "weg": "tweeter",
+     "doorlaatband_gem_dB": -5.38,
+     "afgeleide_grens_dB": -3.2,
+     "gestelde_grens_dB": -20,
+     "effectieve_grens_dB": -20,
+     "bron": "stated dB figure (stricter than the excursion-derived ceiling)",
+     "M_C_dB": -18.42,
+     "haalt_de_eis": false
+    },
+    {
+     "netlist": "V33_KAND_6",
+     "weg": "mid",
+     "doorlaatband_gem_dB": -3.19,
+     "afgeleide_grens_dB": -14.48,
+     "gestelde_grens_dB": -20,
+     "effectieve_grens_dB": -20,
+     "bron": "stated dB figure (stricter than the excursion-derived ceiling)",
+     "M_C_dB": -41.72,
+     "haalt_de_eis": true
+    },
+    {
+     "netlist": "V33_KAND_6",
+     "weg": "tweeter",
+     "doorlaatband_gem_dB": -4.92,
+     "afgeleide_grens_dB": -3.66,
+     "gestelde_grens_dB": -20,
+     "effectieve_grens_dB": -20,
+     "bron": "stated dB figure (stricter than the excursion-derived ceiling)",
+     "M_C_dB": -18.51,
+     "haalt_de_eis": false
+    },
+    {
+     "netlist": "V33_KAND_7",
+     "weg": "mid",
+     "doorlaatband_gem_dB": -3.28,
+     "afgeleide_grens_dB": -14.39,
+     "gestelde_grens_dB": -20,
+     "effectieve_grens_dB": -20,
+     "bron": "stated dB figure (stricter than the excursion-derived ceiling)",
+     "M_C_dB": -19.23,
+     "haalt_de_eis": false
+    },
+    {
+     "netlist": "V33_KAND_7",
+     "weg": "tweeter",
+     "doorlaatband_gem_dB": -5.27,
+     "afgeleide_grens_dB": -3.31,
+     "gestelde_grens_dB": -20,
+     "effectieve_grens_dB": -20,
+     "bron": "stated dB figure (stricter than the excursion-derived ceiling)",
+     "M_C_dB": -19.42,
+     "haalt_de_eis": false
+    },
+    {
+     "netlist": "V33_KAND_8",
+     "weg": "mid",
+     "doorlaatband_gem_dB": -1.99,
+     "afgeleide_grens_dB": -15.68,
+     "gestelde_grens_dB": -20,
+     "effectieve_grens_dB": -20,
+     "bron": "stated dB figure (stricter than the excursion-derived ceiling)",
+     "M_C_dB": -40.02,
+     "haalt_de_eis": true
+    },
+    {
+     "netlist": "V33_KAND_8",
+     "weg": "tweeter",
+     "doorlaatband_gem_dB": -4.75,
+     "afgeleide_grens_dB": -3.83,
+     "gestelde_grens_dB": -20,
+     "effectieve_grens_dB": -20,
+     "bron": "stated dB figure (stricter than the excursion-derived ceiling)",
+     "M_C_dB": -14.31,
+     "haalt_de_eis": false
+    },
+    {
+     "netlist": "V33_KAND_9",
+     "weg": "mid",
+     "doorlaatband_gem_dB": -2.93,
+     "afgeleide_grens_dB": -14.74,
+     "gestelde_grens_dB": -20,
+     "effectieve_grens_dB": -20,
+     "bron": "stated dB figure (stricter than the excursion-derived ceiling)",
+     "M_C_dB": -18.97,
+     "haalt_de_eis": false
+    },
+    {
+     "netlist": "V33_KAND_9",
+     "weg": "tweeter",
+     "doorlaatband_gem_dB": -4.92,
+     "afgeleide_grens_dB": -3.66,
+     "gestelde_grens_dB": -20,
+     "effectieve_grens_dB": -20,
+     "bron": "stated dB figure (stricter than the excursion-derived ceiling)",
+     "M_C_dB": -25.01,
+     "haalt_de_eis": true
+    },
+    {
+     "netlist": "V33_KAND_10",
+     "weg": "mid",
+     "doorlaatband_gem_dB": -5.35,
+     "afgeleide_grens_dB": -12.32,
+     "gestelde_grens_dB": -20,
+     "effectieve_grens_dB": -20,
+     "bron": "stated dB figure (stricter than the excursion-derived ceiling)",
+     "M_C_dB": -36.3,
+     "haalt_de_eis": true
+    },
+    {
+     "netlist": "V34_KAND_1",
+     "weg": "mid",
+     "doorlaatband_gem_dB": -3.78,
+     "afgeleide_grens_dB": -13.89,
+     "gestelde_grens_dB": -20,
+     "effectieve_grens_dB": -20,
+     "bron": "stated dB figure (stricter than the excursion-derived ceiling)",
+     "M_C_dB": -23.76,
+     "haalt_de_eis": true
+    },
+    {
+     "netlist": "V34_KAND_1",
+     "weg": "tweeter",
+     "doorlaatband_gem_dB": -5.42,
+     "afgeleide_grens_dB": -3.15,
+     "gestelde_grens_dB": -20,
+     "effectieve_grens_dB": -20,
+     "bron": "stated dB figure (stricter than the excursion-derived ceiling)",
+     "M_C_dB": -21.6,
+     "haalt_de_eis": true
+    },
+    {
+     "netlist": "V34_KAND_2",
+     "weg": "mid",
+     "doorlaatband_gem_dB": -1.66,
+     "afgeleide_grens_dB": -16.01,
+     "gestelde_grens_dB": -20,
+     "effectieve_grens_dB": -20,
+     "bron": "stated dB figure (stricter than the excursion-derived ceiling)",
+     "M_C_dB": -39.23,
+     "haalt_de_eis": true
+    },
+    {
+     "netlist": "V34_KAND_2",
+     "weg": "tweeter",
+     "doorlaatband_gem_dB": -4.43,
+     "afgeleide_grens_dB": -4.15,
+     "gestelde_grens_dB": -20,
+     "effectieve_grens_dB": -20,
+     "bron": "stated dB figure (stricter than the excursion-derived ceiling)",
+     "M_C_dB": -23.59,
+     "haalt_de_eis": true
+    },
+    {
+     "netlist": "V34_KAND_3",
+     "weg": "mid",
+     "doorlaatband_gem_dB": -2.41,
+     "afgeleide_grens_dB": -15.26,
+     "gestelde_grens_dB": -20,
+     "effectieve_grens_dB": -20,
+     "bron": "stated dB figure (stricter than the excursion-derived ceiling)",
+     "M_C_dB": -37.55,
+     "haalt_de_eis": true
+    },
+    {
+     "netlist": "V34_KAND_3",
+     "weg": "tweeter",
+     "doorlaatband_gem_dB": -4.73,
+     "afgeleide_grens_dB": -3.85,
+     "gestelde_grens_dB": -20,
+     "effectieve_grens_dB": -20,
+     "bron": "stated dB figure (stricter than the excursion-derived ceiling)",
+     "M_C_dB": -19.04,
+     "haalt_de_eis": false
+    },
+    {
+     "netlist": "V34_KAND_4",
+     "weg": "mid",
+     "doorlaatband_gem_dB": -1.83,
+     "afgeleide_grens_dB": -15.84,
+     "gestelde_grens_dB": -20,
+     "effectieve_grens_dB": -20,
+     "bron": "stated dB figure (stricter than the excursion-derived ceiling)",
+     "M_C_dB": -41.89,
+     "haalt_de_eis": true
+    },
+    {
+     "netlist": "V34_KAND_4",
+     "weg": "tweeter",
+     "doorlaatband_gem_dB": -4.71,
+     "afgeleide_grens_dB": -3.86,
+     "gestelde_grens_dB": -20,
+     "effectieve_grens_dB": -20,
+     "bron": "stated dB figure (stricter than the excursion-derived ceiling)",
+     "M_C_dB": -22.26,
+     "haalt_de_eis": true
+    },
+    {
+     "netlist": "V34_KAND_5",
+     "weg": "mid",
+     "doorlaatband_gem_dB": -2.74,
+     "afgeleide_grens_dB": -14.93,
+     "gestelde_grens_dB": -20,
+     "effectieve_grens_dB": -20,
+     "bron": "stated dB figure (stricter than the excursion-derived ceiling)",
+     "M_C_dB": -42.17,
+     "haalt_de_eis": true
+    },
+    {
+     "netlist": "V34_KAND_5",
+     "weg": "tweeter",
+     "doorlaatband_gem_dB": -4.97,
+     "afgeleide_grens_dB": -3.6,
+     "gestelde_grens_dB": -20,
+     "effectieve_grens_dB": -20,
+     "bron": "stated dB figure (stricter than the excursion-derived ceiling)",
+     "M_C_dB": -19.1,
+     "haalt_de_eis": false
+    },
+    {
+     "netlist": "V34_KAND_6",
+     "weg": "mid",
+     "doorlaatband_gem_dB": -3.46,
+     "afgeleide_grens_dB": -14.21,
+     "gestelde_grens_dB": -20,
+     "effectieve_grens_dB": -20,
+     "bron": "stated dB figure (stricter than the excursion-derived ceiling)",
+     "M_C_dB": -21.72,
+     "haalt_de_eis": true
+    },
+    {
+     "netlist": "V34_KAND_6",
+     "weg": "tweeter",
+     "doorlaatband_gem_dB": -5.28,
+     "afgeleide_grens_dB": -3.29,
+     "gestelde_grens_dB": -20,
+     "effectieve_grens_dB": -20,
+     "bron": "stated dB figure (stricter than the excursion-derived ceiling)",
+     "M_C_dB": -15.96,
+     "haalt_de_eis": false
+    },
+    {
+     "netlist": "V34_KAND_7",
+     "weg": "mid",
+     "doorlaatband_gem_dB": -2.97,
+     "afgeleide_grens_dB": -14.7,
+     "gestelde_grens_dB": -20,
+     "effectieve_grens_dB": -20,
+     "bron": "stated dB figure (stricter than the excursion-derived ceiling)",
+     "M_C_dB": -42.38,
+     "haalt_de_eis": true
+    },
+    {
+     "netlist": "V34_KAND_7",
+     "weg": "tweeter",
+     "doorlaatband_gem_dB": -5.07,
+     "afgeleide_grens_dB": -3.5,
+     "gestelde_grens_dB": -20,
+     "effectieve_grens_dB": -20,
+     "bron": "stated dB figure (stricter than the excursion-derived ceiling)",
+     "M_C_dB": -20.53,
+     "haalt_de_eis": true
+    },
+    {
+     "netlist": "V34_KAND_8",
+     "weg": "mid",
+     "doorlaatband_gem_dB": -3.14,
+     "afgeleide_grens_dB": -14.53,
+     "gestelde_grens_dB": -20,
+     "effectieve_grens_dB": -20,
+     "bron": "stated dB figure (stricter than the excursion-derived ceiling)",
+     "M_C_dB": -21.51,
+     "haalt_de_eis": true
+    },
+    {
+     "netlist": "V34_KAND_8",
+     "weg": "tweeter",
+     "doorlaatband_gem_dB": -4.91,
+     "afgeleide_grens_dB": -3.67,
+     "gestelde_grens_dB": -20,
+     "effectieve_grens_dB": -20,
+     "bron": "stated dB figure (stricter than the excursion-derived ceiling)",
+     "M_C_dB": -25.07,
+     "haalt_de_eis": true
+    },
+    {
+     "netlist": "V34_KAND_9",
+     "weg": "mid",
+     "doorlaatband_gem_dB": -2.55,
+     "afgeleide_grens_dB": -15.12,
+     "gestelde_grens_dB": -20,
+     "effectieve_grens_dB": -20,
+     "bron": "stated dB figure (stricter than the excursion-derived ceiling)",
+     "M_C_dB": -41.79,
+     "haalt_de_eis": true
+    },
+    {
+     "netlist": "V34_KAND_9",
+     "weg": "tweeter",
+     "doorlaatband_gem_dB": -4.69,
+     "afgeleide_grens_dB": -3.89,
+     "gestelde_grens_dB": -20,
+     "effectieve_grens_dB": -20,
+     "bron": "stated dB figure (stricter than the excursion-derived ceiling)",
+     "M_C_dB": -23.01,
+     "haalt_de_eis": true
+    },
+    {
+     "netlist": "V34_KAND_10",
+     "weg": "mid",
+     "doorlaatband_gem_dB": -2.57,
+     "afgeleide_grens_dB": -15.1,
+     "gestelde_grens_dB": -20,
+     "effectieve_grens_dB": -20,
+     "bron": "stated dB figure (stricter than the excursion-derived ceiling)",
+     "M_C_dB": -38.9,
+     "haalt_de_eis": true
+    },
+    {
+     "netlist": "V34_KAND_10",
+     "weg": "tweeter",
+     "doorlaatband_gem_dB": -4.77,
+     "afgeleide_grens_dB": -3.81,
+     "gestelde_grens_dB": -20,
+     "effectieve_grens_dB": -20,
+     "bron": "stated dB figure (stricter than the excursion-derived ceiling)",
+     "M_C_dB": -14.15,
+     "haalt_de_eis": false
+    },
+    {
+     "netlist": "V37_KAND_1",
+     "weg": "mid",
+     "doorlaatband_gem_dB": -1.66,
+     "afgeleide_grens_dB": -16.01,
+     "gestelde_grens_dB": -20,
+     "effectieve_grens_dB": -20,
+     "bron": "stated dB figure (stricter than the excursion-derived ceiling)",
+     "M_C_dB": -39.23,
+     "haalt_de_eis": true
+    },
+    {
+     "netlist": "V37_KAND_1",
+     "weg": "tweeter",
+     "doorlaatband_gem_dB": -4.43,
+     "afgeleide_grens_dB": -4.15,
+     "gestelde_grens_dB": -20,
+     "effectieve_grens_dB": -20,
+     "bron": "stated dB figure (stricter than the excursion-derived ceiling)",
+     "M_C_dB": -23.59,
+     "haalt_de_eis": true
+    },
+    {
+     "netlist": "V37_KAND_2",
+     "weg": "mid",
+     "doorlaatband_gem_dB": -2.41,
+     "afgeleide_grens_dB": -15.26,
+     "gestelde_grens_dB": -20,
+     "effectieve_grens_dB": -20,
+     "bron": "stated dB figure (stricter than the excursion-derived ceiling)",
+     "M_C_dB": -37.55,
+     "haalt_de_eis": true
+    },
+    {
+     "netlist": "V37_KAND_2",
+     "weg": "tweeter",
+     "doorlaatband_gem_dB": -4.73,
+     "afgeleide_grens_dB": -3.85,
+     "gestelde_grens_dB": -20,
+     "effectieve_grens_dB": -20,
+     "bron": "stated dB figure (stricter than the excursion-derived ceiling)",
+     "M_C_dB": -19.04,
+     "haalt_de_eis": false
+    },
+    {
+     "netlist": "V37_KAND_3",
+     "weg": "mid",
+     "doorlaatband_gem_dB": -3.9,
+     "afgeleide_grens_dB": -13.77,
+     "gestelde_grens_dB": -20,
+     "effectieve_grens_dB": -20,
+     "bron": "stated dB figure (stricter than the excursion-derived ceiling)",
+     "M_C_dB": -19.83,
+     "haalt_de_eis": false
+    },
+    {
+     "netlist": "V37_KAND_3",
+     "weg": "tweeter",
+     "doorlaatband_gem_dB": -5.4,
+     "afgeleide_grens_dB": -3.18,
+     "gestelde_grens_dB": -20,
+     "effectieve_grens_dB": -20,
+     "bron": "stated dB figure (stricter than the excursion-derived ceiling)",
+     "M_C_dB": -19.15,
+     "haalt_de_eis": false
+    },
+    {
+     "netlist": "V37_KAND_4",
+     "weg": "mid",
+     "doorlaatband_gem_dB": -2.58,
+     "afgeleide_grens_dB": -15.09,
+     "gestelde_grens_dB": -20,
+     "effectieve_grens_dB": -20,
+     "bron": "stated dB figure (stricter than the excursion-derived ceiling)",
+     "M_C_dB": -42.46,
+     "haalt_de_eis": true
+    },
+    {
+     "netlist": "V37_KAND_4",
+     "weg": "tweeter",
+     "doorlaatband_gem_dB": -4.65,
+     "afgeleide_grens_dB": -3.92,
+     "gestelde_grens_dB": -20,
+     "effectieve_grens_dB": -20,
+     "bron": "stated dB figure (stricter than the excursion-derived ceiling)",
+     "M_C_dB": -24.19,
+     "haalt_de_eis": true
+    },
+    {
+     "netlist": "V37_KAND_5",
+     "weg": "mid",
+     "doorlaatband_gem_dB": -2.95,
+     "afgeleide_grens_dB": -14.72,
+     "gestelde_grens_dB": -20,
+     "effectieve_grens_dB": -20,
+     "bron": "stated dB figure (stricter than the excursion-derived ceiling)",
+     "M_C_dB": -21.01,
+     "haalt_de_eis": true
+    },
+    {
+     "netlist": "V37_KAND_5",
+     "weg": "tweeter",
+     "doorlaatband_gem_dB": -4.71,
+     "afgeleide_grens_dB": -3.87,
+     "gestelde_grens_dB": -20,
+     "effectieve_grens_dB": -20,
+     "bron": "stated dB figure (stricter than the excursion-derived ceiling)",
+     "M_C_dB": -25.28,
+     "haalt_de_eis": true
+    },
+    {
+     "netlist": "V37_KAND_6",
+     "weg": "mid",
+     "doorlaatband_gem_dB": -2.52,
+     "afgeleide_grens_dB": -15.15,
+     "gestelde_grens_dB": -20,
+     "effectieve_grens_dB": -20,
+     "bron": "stated dB figure (stricter than the excursion-derived ceiling)",
+     "M_C_dB": -41.39,
+     "haalt_de_eis": true
+    },
+    {
+     "netlist": "V37_KAND_6",
+     "weg": "tweeter",
+     "doorlaatband_gem_dB": -4.93,
+     "afgeleide_grens_dB": -3.65,
+     "gestelde_grens_dB": -20,
+     "effectieve_grens_dB": -20,
+     "bron": "stated dB figure (stricter than the excursion-derived ceiling)",
+     "M_C_dB": -18.63,
+     "haalt_de_eis": false
+    },
+    {
+     "netlist": "V37_KAND_7",
+     "weg": "mid",
+     "doorlaatband_gem_dB": -2.44,
+     "afgeleide_grens_dB": -15.24,
+     "gestelde_grens_dB": -20,
+     "effectieve_grens_dB": -20,
+     "bron": "stated dB figure (stricter than the excursion-derived ceiling)",
+     "M_C_dB": -18.3,
+     "haalt_de_eis": false
+    },
+    {
+     "netlist": "V37_KAND_7",
+     "weg": "tweeter",
+     "doorlaatband_gem_dB": -4.99,
+     "afgeleide_grens_dB": -3.59,
+     "gestelde_grens_dB": -20,
+     "effectieve_grens_dB": -20,
+     "bron": "stated dB figure (stricter than the excursion-derived ceiling)",
+     "M_C_dB": -21.67,
+     "haalt_de_eis": true
+    },
+    {
+     "netlist": "V37_KAND_8",
+     "weg": "mid",
+     "doorlaatband_gem_dB": -2.68,
+     "afgeleide_grens_dB": -14.99,
+     "gestelde_grens_dB": -20,
+     "effectieve_grens_dB": -20,
+     "bron": "stated dB figure (stricter than the excursion-derived ceiling)",
+     "M_C_dB": -42.19,
+     "haalt_de_eis": true
+    },
+    {
+     "netlist": "V37_KAND_8",
+     "weg": "tweeter",
+     "doorlaatband_gem_dB": -5.36,
+     "afgeleide_grens_dB": -3.22,
+     "gestelde_grens_dB": -20,
+     "effectieve_grens_dB": -20,
+     "bron": "stated dB figure (stricter than the excursion-derived ceiling)",
+     "M_C_dB": -21.56,
+     "haalt_de_eis": true
+    },
+    {
+     "netlist": "V37_KAND_9",
+     "weg": "mid",
+     "doorlaatband_gem_dB": -2.42,
+     "afgeleide_grens_dB": -15.25,
+     "gestelde_grens_dB": -20,
+     "effectieve_grens_dB": -20,
+     "bron": "stated dB figure (stricter than the excursion-derived ceiling)",
+     "M_C_dB": -41.12,
+     "haalt_de_eis": true
+    },
+    {
+     "netlist": "V37_KAND_9",
+     "weg": "tweeter",
+     "doorlaatband_gem_dB": -4.71,
+     "afgeleide_grens_dB": -3.87,
+     "gestelde_grens_dB": -20,
+     "effectieve_grens_dB": -20,
+     "bron": "stated dB figure (stricter than the excursion-derived ceiling)",
+     "M_C_dB": -14.08,
+     "haalt_de_eis": false
+    },
+    {
+     "netlist": "V37_KAND_10",
+     "weg": "mid",
+     "doorlaatband_gem_dB": -9.96,
+     "afgeleide_grens_dB": -7.71,
+     "gestelde_grens_dB": -20,
+     "effectieve_grens_dB": -20,
+     "bron": "stated dB figure (stricter than the excursion-derived ceiling)",
+     "M_C_dB": -39.23,
+     "haalt_de_eis": true
+    },
+    {
+     "netlist": "V38FIX_KAND_1",
+     "weg": "mid",
+     "doorlaatband_gem_dB": -2.79,
+     "afgeleide_grens_dB": -14.89,
+     "gestelde_grens_dB": -20,
+     "effectieve_grens_dB": -20,
+     "bron": "stated dB figure (stricter than the excursion-derived ceiling)",
+     "M_C_dB": -33.5,
+     "haalt_de_eis": true
+    },
+    {
+     "netlist": "V38FIX_KAND_1",
+     "weg": "tweeter",
+     "doorlaatband_gem_dB": -3.6,
+     "afgeleide_grens_dB": -4.98,
+     "gestelde_grens_dB": -20,
+     "effectieve_grens_dB": -20,
+     "bron": "stated dB figure (stricter than the excursion-derived ceiling)",
+     "M_C_dB": -26.3,
+     "haalt_de_eis": true
+    },
+    {
+     "netlist": "V38FIX_KAND_2",
+     "weg": "mid",
+     "doorlaatband_gem_dB": -2.79,
+     "afgeleide_grens_dB": -14.88,
+     "gestelde_grens_dB": -20,
+     "effectieve_grens_dB": -20,
+     "bron": "stated dB figure (stricter than the excursion-derived ceiling)",
+     "M_C_dB": -32.48,
+     "haalt_de_eis": true
+    },
+    {
+     "netlist": "V38FIX_KAND_2",
+     "weg": "tweeter",
+     "doorlaatband_gem_dB": -3.64,
+     "afgeleide_grens_dB": -4.94,
+     "gestelde_grens_dB": -20,
+     "effectieve_grens_dB": -20,
+     "bron": "stated dB figure (stricter than the excursion-derived ceiling)",
+     "M_C_dB": -25.55,
+     "haalt_de_eis": true
+    },
+    {
+     "netlist": "V38FIX_KAND_3",
+     "weg": "mid",
+     "doorlaatband_gem_dB": -2.9,
+     "afgeleide_grens_dB": -14.77,
+     "gestelde_grens_dB": -20,
+     "effectieve_grens_dB": -20,
+     "bron": "stated dB figure (stricter than the excursion-derived ceiling)",
+     "M_C_dB": -33.96,
+     "haalt_de_eis": true
+    },
+    {
+     "netlist": "V38FIX_KAND_3",
+     "weg": "tweeter",
+     "doorlaatband_gem_dB": -3.53,
+     "afgeleide_grens_dB": -5.05,
+     "gestelde_grens_dB": -20,
+     "effectieve_grens_dB": -20,
+     "bron": "stated dB figure (stricter than the excursion-derived ceiling)",
+     "M_C_dB": -23.89,
+     "haalt_de_eis": true
+    },
+    {
+     "netlist": "V38FIX_KAND_4",
+     "weg": "mid",
+     "doorlaatband_gem_dB": -0.89,
+     "afgeleide_grens_dB": -16.79,
+     "gestelde_grens_dB": -20,
+     "effectieve_grens_dB": -20,
+     "bron": "stated dB figure (stricter than the excursion-derived ceiling)",
+     "M_C_dB": -39.36,
+     "haalt_de_eis": true
+    },
+    {
+     "netlist": "V38FIX_KAND_4",
+     "weg": "tweeter",
+     "doorlaatband_gem_dB": -3.44,
+     "afgeleide_grens_dB": -5.14,
+     "gestelde_grens_dB": -20,
+     "effectieve_grens_dB": -20,
+     "bron": "stated dB figure (stricter than the excursion-derived ceiling)",
+     "M_C_dB": -25.6,
+     "haalt_de_eis": true
+    },
+    {
+     "netlist": "V38FIX_KAND_5",
+     "weg": "mid",
+     "doorlaatband_gem_dB": -3.22,
+     "afgeleide_grens_dB": -14.45,
+     "gestelde_grens_dB": -20,
+     "effectieve_grens_dB": -20,
+     "bron": "stated dB figure (stricter than the excursion-derived ceiling)",
+     "M_C_dB": -9.78,
+     "haalt_de_eis": false
+    },
+    {
+     "netlist": "V38FIX_KAND_5",
+     "weg": "tweeter",
+     "doorlaatband_gem_dB": -4.79,
+     "afgeleide_grens_dB": -3.79,
+     "gestelde_grens_dB": -20,
+     "effectieve_grens_dB": -20,
+     "bron": "stated dB figure (stricter than the excursion-derived ceiling)",
+     "M_C_dB": -13.06,
+     "haalt_de_eis": false
+    },
+    {
+     "netlist": "V38FIX_KAND_6",
+     "weg": "mid",
+     "doorlaatband_gem_dB": -2.91,
+     "afgeleide_grens_dB": -14.76,
+     "gestelde_grens_dB": -20,
+     "effectieve_grens_dB": -20,
+     "bron": "stated dB figure (stricter than the excursion-derived ceiling)",
+     "M_C_dB": -36.06,
+     "haalt_de_eis": true
+    },
+    {
+     "netlist": "V38FIX_KAND_6",
+     "weg": "tweeter",
+     "doorlaatband_gem_dB": -3.34,
+     "afgeleide_grens_dB": -5.23,
+     "gestelde_grens_dB": -20,
+     "effectieve_grens_dB": -20,
+     "bron": "stated dB figure (stricter than the excursion-derived ceiling)",
+     "M_C_dB": -19.59,
+     "haalt_de_eis": false
+    },
+    {
+     "netlist": "V38FIX_KAND_7",
+     "weg": "mid",
+     "doorlaatband_gem_dB": -0.63,
+     "afgeleide_grens_dB": -17.04,
+     "gestelde_grens_dB": -20,
+     "effectieve_grens_dB": -20,
+     "bron": "stated dB figure (stricter than the excursion-derived ceiling)",
+     "M_C_dB": -36.62,
+     "haalt_de_eis": true
+    },
+    {
+     "netlist": "V38FIX_KAND_7",
+     "weg": "tweeter",
+     "doorlaatband_gem_dB": -3.64,
+     "afgeleide_grens_dB": -4.93,
+     "gestelde_grens_dB": -20,
+     "effectieve_grens_dB": -20,
+     "bron": "stated dB figure (stricter than the excursion-derived ceiling)",
+     "M_C_dB": -18.56,
+     "haalt_de_eis": false
+    },
+    {
+     "netlist": "V38FIX_KAND_8",
+     "weg": "mid",
+     "doorlaatband_gem_dB": -2.1,
+     "afgeleide_grens_dB": -15.57,
+     "gestelde_grens_dB": -20,
+     "effectieve_grens_dB": -20,
+     "bron": "stated dB figure (stricter than the excursion-derived ceiling)",
+     "M_C_dB": -42.46,
+     "haalt_de_eis": true
+    },
+    {
+     "netlist": "V38FIX_KAND_8",
+     "weg": "tweeter",
+     "doorlaatband_gem_dB": -4.15,
+     "afgeleide_grens_dB": -4.43,
+     "gestelde_grens_dB": -20,
+     "effectieve_grens_dB": -20,
+     "bron": "stated dB figure (stricter than the excursion-derived ceiling)",
+     "M_C_dB": -22.62,
+     "haalt_de_eis": true
+    },
+    {
+     "netlist": "V38FIX_KAND_9",
+     "weg": "mid",
+     "doorlaatband_gem_dB": -2.45,
+     "afgeleide_grens_dB": -15.23,
+     "gestelde_grens_dB": -20,
+     "effectieve_grens_dB": -20,
+     "bron": "stated dB figure (stricter than the excursion-derived ceiling)",
+     "M_C_dB": -38.61,
+     "haalt_de_eis": true
+    },
+    {
+     "netlist": "V38FIX_KAND_9",
+     "weg": "tweeter",
+     "doorlaatband_gem_dB": -4.29,
+     "afgeleide_grens_dB": -4.28,
+     "gestelde_grens_dB": -20,
+     "effectieve_grens_dB": -20,
+     "bron": "stated dB figure (stricter than the excursion-derived ceiling)",
+     "M_C_dB": -22.46,
+     "haalt_de_eis": true
+    },
+    {
+     "netlist": "V38FIX_KAND_10",
+     "weg": "mid",
+     "doorlaatband_gem_dB": -2.52,
+     "afgeleide_grens_dB": -15.15,
+     "gestelde_grens_dB": -20,
+     "effectieve_grens_dB": -20,
+     "bron": "stated dB figure (stricter than the excursion-derived ceiling)",
+     "M_C_dB": -18.21,
+     "haalt_de_eis": false
+    },
+    {
+     "netlist": "V38FIX_KAND_10",
+     "weg": "tweeter",
+     "doorlaatband_gem_dB": -4.88,
+     "afgeleide_grens_dB": -3.69,
+     "gestelde_grens_dB": -20,
+     "effectieve_grens_dB": -20,
+     "bron": "stated dB figure (stricter than the excursion-derived ceiling)",
+     "M_C_dB": -17.37,
+     "haalt_de_eis": false
+    },
+    {
+     "netlist": "V41_KAND_1",
+     "weg": "mid",
+     "doorlaatband_gem_dB": -6.09,
+     "afgeleide_grens_dB": -11.58,
+     "gestelde_grens_dB": -20,
+     "effectieve_grens_dB": -20,
+     "bron": "stated dB figure (stricter than the excursion-derived ceiling)",
+     "M_C_dB": -30.13,
+     "haalt_de_eis": true
+    },
+    {
+     "netlist": "V41_KAND_1",
+     "weg": "tweeter",
+     "doorlaatband_gem_dB": -7.34,
+     "afgeleide_grens_dB": -1.24,
+     "gestelde_grens_dB": -20,
+     "effectieve_grens_dB": -20,
+     "bron": "stated dB figure (stricter than the excursion-derived ceiling)",
+     "M_C_dB": -23.35,
+     "haalt_de_eis": true
+    },
+    {
+     "netlist": "V41_KAND_2",
+     "weg": "mid",
+     "doorlaatband_gem_dB": -6.08,
+     "afgeleide_grens_dB": -11.6,
+     "gestelde_grens_dB": -20,
+     "effectieve_grens_dB": -20,
+     "bron": "stated dB figure (stricter than the excursion-derived ceiling)",
+     "M_C_dB": -29.56,
+     "haalt_de_eis": true
+    },
+    {
+     "netlist": "V41_KAND_2",
+     "weg": "tweeter",
+     "doorlaatband_gem_dB": -6.81,
+     "afgeleide_grens_dB": -1.77,
+     "gestelde_grens_dB": -20,
+     "effectieve_grens_dB": -20,
+     "bron": "stated dB figure (stricter than the excursion-derived ceiling)",
+     "M_C_dB": -14.71,
+     "haalt_de_eis": false
+    },
+    {
+     "netlist": "V41_KAND_3",
+     "weg": "mid",
+     "doorlaatband_gem_dB": -6.49,
+     "afgeleide_grens_dB": -11.18,
+     "gestelde_grens_dB": -20,
+     "effectieve_grens_dB": -20,
+     "bron": "stated dB figure (stricter than the excursion-derived ceiling)",
+     "M_C_dB": -43.3,
+     "haalt_de_eis": true
+    },
+    {
+     "netlist": "V41_KAND_3",
+     "weg": "tweeter",
+     "doorlaatband_gem_dB": -7.06,
+     "afgeleide_grens_dB": -1.52,
+     "gestelde_grens_dB": -20,
+     "effectieve_grens_dB": -20,
+     "bron": "stated dB figure (stricter than the excursion-derived ceiling)",
+     "M_C_dB": -27.7,
+     "haalt_de_eis": true
+    },
+    {
+     "netlist": "V41_KAND_4",
+     "weg": "mid",
+     "doorlaatband_gem_dB": -5.13,
+     "afgeleide_grens_dB": -12.54,
+     "gestelde_grens_dB": -20,
+     "effectieve_grens_dB": -20,
+     "bron": "stated dB figure (stricter than the excursion-derived ceiling)",
+     "M_C_dB": -36.37,
+     "haalt_de_eis": true
+    },
+    {
+     "netlist": "V41_KAND_4",
+     "weg": "tweeter",
+     "doorlaatband_gem_dB": -6.59,
+     "afgeleide_grens_dB": -1.99,
+     "gestelde_grens_dB": -20,
+     "effectieve_grens_dB": -20,
+     "bron": "stated dB figure (stricter than the excursion-derived ceiling)",
+     "M_C_dB": -27.06,
+     "haalt_de_eis": true
+    },
+    {
+     "netlist": "V41_KAND_5",
+     "weg": "mid",
+     "doorlaatband_gem_dB": -6.05,
+     "afgeleide_grens_dB": -11.62,
+     "gestelde_grens_dB": -20,
+     "effectieve_grens_dB": -20,
+     "bron": "stated dB figure (stricter than the excursion-derived ceiling)",
+     "M_C_dB": -32.37,
+     "haalt_de_eis": true
+    },
+    {
+     "netlist": "V41_KAND_5",
+     "weg": "tweeter",
+     "doorlaatband_gem_dB": -6.88,
+     "afgeleide_grens_dB": -1.7,
+     "gestelde_grens_dB": -20,
+     "effectieve_grens_dB": -20,
+     "bron": "stated dB figure (stricter than the excursion-derived ceiling)",
+     "M_C_dB": -26.81,
+     "haalt_de_eis": true
+    },
+    {
+     "netlist": "V41_KAND_6",
+     "weg": "mid",
+     "doorlaatband_gem_dB": -5.97,
+     "afgeleide_grens_dB": -11.7,
+     "gestelde_grens_dB": -20,
+     "effectieve_grens_dB": -20,
+     "bron": "stated dB figure (stricter than the excursion-derived ceiling)",
+     "M_C_dB": -30.08,
+     "haalt_de_eis": true
+    },
+    {
+     "netlist": "V41_KAND_6",
+     "weg": "tweeter",
+     "doorlaatband_gem_dB": -6.6,
+     "afgeleide_grens_dB": -1.98,
+     "gestelde_grens_dB": -20,
+     "effectieve_grens_dB": -20,
+     "bron": "stated dB figure (stricter than the excursion-derived ceiling)",
+     "M_C_dB": -13.08,
+     "haalt_de_eis": false
+    },
+    {
+     "netlist": "V41_KAND_7",
+     "weg": "mid",
+     "doorlaatband_gem_dB": -3,
+     "afgeleide_grens_dB": -14.67,
+     "gestelde_grens_dB": -20,
+     "effectieve_grens_dB": -20,
+     "bron": "stated dB figure (stricter than the excursion-derived ceiling)",
+     "M_C_dB": -50.19,
+     "haalt_de_eis": true
+    },
+    {
+     "netlist": "V41_KAND_7",
+     "weg": "tweeter",
+     "doorlaatband_gem_dB": -4.48,
+     "afgeleide_grens_dB": -4.1,
+     "gestelde_grens_dB": -20,
+     "effectieve_grens_dB": -20,
+     "bron": "stated dB figure (stricter than the excursion-derived ceiling)",
+     "M_C_dB": -18.18,
+     "haalt_de_eis": false
+    },
+    {
+     "netlist": "V41_KAND_8",
+     "weg": "mid",
+     "doorlaatband_gem_dB": -3.46,
+     "afgeleide_grens_dB": -14.21,
+     "gestelde_grens_dB": -20,
+     "effectieve_grens_dB": -20,
+     "bron": "stated dB figure (stricter than the excursion-derived ceiling)",
+     "M_C_dB": -37.62,
+     "haalt_de_eis": true
+    },
+    {
+     "netlist": "V41_KAND_8",
+     "weg": "tweeter",
+     "doorlaatband_gem_dB": -5.1,
+     "afgeleide_grens_dB": -3.48,
+     "gestelde_grens_dB": -20,
+     "effectieve_grens_dB": -20,
+     "bron": "stated dB figure (stricter than the excursion-derived ceiling)",
+     "M_C_dB": -23.08,
+     "haalt_de_eis": true
+    },
+    {
+     "netlist": "V42_KAND_1",
+     "weg": "mid",
+     "doorlaatband_gem_dB": -6.09,
+     "afgeleide_grens_dB": -11.58,
+     "gestelde_grens_dB": -20,
+     "effectieve_grens_dB": -20,
+     "bron": "stated dB figure (stricter than the excursion-derived ceiling)",
+     "M_C_dB": -30.13,
+     "haalt_de_eis": true
+    },
+    {
+     "netlist": "V42_KAND_1",
+     "weg": "tweeter",
+     "doorlaatband_gem_dB": -7.34,
+     "afgeleide_grens_dB": -1.24,
+     "gestelde_grens_dB": -20,
+     "effectieve_grens_dB": -20,
+     "bron": "stated dB figure (stricter than the excursion-derived ceiling)",
+     "M_C_dB": -23.35,
+     "haalt_de_eis": true
+    },
+    {
+     "netlist": "V42_KAND_2",
+     "weg": "mid",
+     "doorlaatband_gem_dB": -6.49,
+     "afgeleide_grens_dB": -11.18,
+     "gestelde_grens_dB": -20,
+     "effectieve_grens_dB": -20,
+     "bron": "stated dB figure (stricter than the excursion-derived ceiling)",
+     "M_C_dB": -43.3,
+     "haalt_de_eis": true
+    },
+    {
+     "netlist": "V42_KAND_2",
+     "weg": "tweeter",
+     "doorlaatband_gem_dB": -7.06,
+     "afgeleide_grens_dB": -1.52,
+     "gestelde_grens_dB": -20,
+     "effectieve_grens_dB": -20,
+     "bron": "stated dB figure (stricter than the excursion-derived ceiling)",
+     "M_C_dB": -27.7,
+     "haalt_de_eis": true
+    },
+    {
+     "netlist": "V42_KAND_3",
+     "weg": "mid",
+     "doorlaatband_gem_dB": -6.05,
+     "afgeleide_grens_dB": -11.62,
+     "gestelde_grens_dB": -20,
+     "effectieve_grens_dB": -20,
+     "bron": "stated dB figure (stricter than the excursion-derived ceiling)",
+     "M_C_dB": -32.37,
+     "haalt_de_eis": true
+    },
+    {
+     "netlist": "V42_KAND_3",
+     "weg": "tweeter",
+     "doorlaatband_gem_dB": -6.88,
+     "afgeleide_grens_dB": -1.7,
+     "gestelde_grens_dB": -20,
+     "effectieve_grens_dB": -20,
+     "bron": "stated dB figure (stricter than the excursion-derived ceiling)",
+     "M_C_dB": -26.81,
+     "haalt_de_eis": true
+    },
+    {
+     "netlist": "V42_KAND_4",
+     "weg": "mid",
+     "doorlaatband_gem_dB": -3.46,
+     "afgeleide_grens_dB": -14.21,
+     "gestelde_grens_dB": -20,
+     "effectieve_grens_dB": -20,
+     "bron": "stated dB figure (stricter than the excursion-derived ceiling)",
+     "M_C_dB": -37.62,
+     "haalt_de_eis": true
+    },
+    {
+     "netlist": "V42_KAND_4",
+     "weg": "tweeter",
+     "doorlaatband_gem_dB": -5.1,
+     "afgeleide_grens_dB": -3.48,
+     "gestelde_grens_dB": -20,
+     "effectieve_grens_dB": -20,
+     "bron": "stated dB figure (stricter than the excursion-derived ceiling)",
+     "M_C_dB": -23.08,
+     "haalt_de_eis": true
+    },
+    {
+     "netlist": "V43_KAND_1",
+     "weg": "mid",
+     "doorlaatband_gem_dB": -6.15,
+     "afgeleide_grens_dB": -11.53,
+     "gestelde_grens_dB": -20,
+     "effectieve_grens_dB": -20,
+     "bron": "stated dB figure (stricter than the excursion-derived ceiling)",
+     "M_C_dB": -48.61,
+     "haalt_de_eis": true
+    },
+    {
+     "netlist": "V43_KAND_1",
+     "weg": "tweeter",
+     "doorlaatband_gem_dB": -7.02,
+     "afgeleide_grens_dB": -1.56,
+     "gestelde_grens_dB": -20,
+     "effectieve_grens_dB": -20,
+     "bron": "stated dB figure (stricter than the excursion-derived ceiling)",
+     "M_C_dB": -27.42,
+     "haalt_de_eis": true
+    },
+    {
+     "netlist": "V43_KAND_2",
+     "weg": "mid",
+     "doorlaatband_gem_dB": -5.83,
+     "afgeleide_grens_dB": -11.84,
+     "gestelde_grens_dB": -20,
+     "effectieve_grens_dB": -20,
+     "bron": "stated dB figure (stricter than the excursion-derived ceiling)",
+     "M_C_dB": -34.79,
+     "haalt_de_eis": true
+    },
+    {
+     "netlist": "V43_KAND_2",
+     "weg": "tweeter",
+     "doorlaatband_gem_dB": -6.27,
+     "afgeleide_grens_dB": -2.3,
+     "gestelde_grens_dB": -20,
+     "effectieve_grens_dB": -20,
+     "bron": "stated dB figure (stricter than the excursion-derived ceiling)",
+     "M_C_dB": -29.7,
+     "haalt_de_eis": true
+    },
+    {
+     "netlist": "V43_KAND_3",
+     "weg": "mid",
+     "doorlaatband_gem_dB": -4.45,
+     "afgeleide_grens_dB": -13.22,
+     "gestelde_grens_dB": -20,
+     "effectieve_grens_dB": -20,
+     "bron": "stated dB figure (stricter than the excursion-derived ceiling)",
+     "M_C_dB": -51.74,
+     "haalt_de_eis": true
+    },
+    {
+     "netlist": "V43_KAND_3",
+     "weg": "tweeter",
+     "doorlaatband_gem_dB": -5.61,
+     "afgeleide_grens_dB": -2.97,
+     "gestelde_grens_dB": -20,
+     "effectieve_grens_dB": -20,
+     "bron": "stated dB figure (stricter than the excursion-derived ceiling)",
+     "M_C_dB": -28.67,
+     "haalt_de_eis": true
+    },
+    {
+     "netlist": "V43_KAND_4",
+     "weg": "mid",
+     "doorlaatband_gem_dB": -4.35,
+     "afgeleide_grens_dB": -13.32,
+     "gestelde_grens_dB": -20,
+     "effectieve_grens_dB": -20,
+     "bron": "stated dB figure (stricter than the excursion-derived ceiling)",
+     "M_C_dB": -51.51,
+     "haalt_de_eis": true
+    },
+    {
+     "netlist": "V43_KAND_4",
+     "weg": "tweeter",
+     "doorlaatband_gem_dB": -5.56,
+     "afgeleide_grens_dB": -3.02,
+     "gestelde_grens_dB": -20,
+     "effectieve_grens_dB": -20,
+     "bron": "stated dB figure (stricter than the excursion-derived ceiling)",
+     "M_C_dB": -29.02,
+     "haalt_de_eis": true
+    },
+    {
+     "netlist": "V43_KAND_5",
+     "weg": "mid",
+     "doorlaatband_gem_dB": -2.28,
+     "afgeleide_grens_dB": -15.39,
+     "gestelde_grens_dB": -20,
+     "effectieve_grens_dB": -20,
+     "bron": "stated dB figure (stricter than the excursion-derived ceiling)",
+     "M_C_dB": -38.2,
+     "haalt_de_eis": true
+    },
+    {
+     "netlist": "V43_KAND_5",
+     "weg": "tweeter",
+     "doorlaatband_gem_dB": -4.15,
+     "afgeleide_grens_dB": -4.42,
+     "gestelde_grens_dB": -20,
+     "effectieve_grens_dB": -20,
+     "bron": "stated dB figure (stricter than the excursion-derived ceiling)",
+     "M_C_dB": -21.74,
+     "haalt_de_eis": true
+    },
+    {
+     "netlist": "V43_KAND_6",
+     "weg": "mid",
+     "doorlaatband_gem_dB": -2.07,
+     "afgeleide_grens_dB": -15.6,
+     "gestelde_grens_dB": -20,
+     "effectieve_grens_dB": -20,
+     "bron": "stated dB figure (stricter than the excursion-derived ceiling)",
+     "M_C_dB": -43.18,
+     "haalt_de_eis": true
+    },
+    {
+     "netlist": "V43_KAND_6",
+     "weg": "tweeter",
+     "doorlaatband_gem_dB": -3.7,
+     "afgeleide_grens_dB": -4.88,
+     "gestelde_grens_dB": -20,
+     "effectieve_grens_dB": -20,
+     "bron": "stated dB figure (stricter than the excursion-derived ceiling)",
+     "M_C_dB": -17.19,
+     "haalt_de_eis": false
+    },
+    {
+     "netlist": "V43_KAND_7",
+     "weg": "mid",
+     "doorlaatband_gem_dB": -4.01,
+     "afgeleide_grens_dB": -13.66,
+     "gestelde_grens_dB": -20,
+     "effectieve_grens_dB": -20,
+     "bron": "stated dB figure (stricter than the excursion-derived ceiling)",
+     "M_C_dB": -53.39,
+     "haalt_de_eis": true
+    },
+    {
+     "netlist": "V43_KAND_7",
+     "weg": "tweeter",
+     "doorlaatband_gem_dB": -5.68,
+     "afgeleide_grens_dB": -2.9,
+     "gestelde_grens_dB": -20,
+     "effectieve_grens_dB": -20,
+     "bron": "stated dB figure (stricter than the excursion-derived ceiling)",
+     "M_C_dB": -18.79,
+     "haalt_de_eis": false
+    },
+    {
+     "netlist": "V44_KAND_1",
+     "weg": "mid",
+     "doorlaatband_gem_dB": -6.45,
+     "afgeleide_grens_dB": -11.22,
+     "gestelde_grens_dB": -20,
+     "effectieve_grens_dB": -20,
+     "bron": "stated dB figure (stricter than the excursion-derived ceiling)",
+     "M_C_dB": -52.4,
+     "haalt_de_eis": true
+    },
+    {
+     "netlist": "V44_KAND_1",
+     "weg": "tweeter",
+     "doorlaatband_gem_dB": -6.84,
+     "afgeleide_grens_dB": -1.74,
+     "gestelde_grens_dB": -20,
+     "effectieve_grens_dB": -20,
+     "bron": "stated dB figure (stricter than the excursion-derived ceiling)",
+     "M_C_dB": -27.9,
+     "haalt_de_eis": true
+    },
+    {
+     "netlist": "V44_KAND_2",
+     "weg": "mid",
+     "doorlaatband_gem_dB": -5.8,
+     "afgeleide_grens_dB": -11.87,
+     "gestelde_grens_dB": -20,
+     "effectieve_grens_dB": -20,
+     "bron": "stated dB figure (stricter than the excursion-derived ceiling)",
+     "M_C_dB": -32.77,
+     "haalt_de_eis": true
+    },
+    {
+     "netlist": "V44_KAND_2",
+     "weg": "tweeter",
+     "doorlaatband_gem_dB": -6.47,
+     "afgeleide_grens_dB": -2.11,
+     "gestelde_grens_dB": -20,
+     "effectieve_grens_dB": -20,
+     "bron": "stated dB figure (stricter than the excursion-derived ceiling)",
+     "M_C_dB": -27.76,
+     "haalt_de_eis": true
+    },
+    {
+     "netlist": "V44_KAND_3",
+     "weg": "mid",
+     "doorlaatband_gem_dB": -4.89,
+     "afgeleide_grens_dB": -12.78,
+     "gestelde_grens_dB": -20,
+     "effectieve_grens_dB": -20,
+     "bron": "stated dB figure (stricter than the excursion-derived ceiling)",
+     "M_C_dB": -54.26,
+     "haalt_de_eis": true
+    },
+    {
+     "netlist": "V44_KAND_3",
+     "weg": "tweeter",
+     "doorlaatband_gem_dB": -6.01,
+     "afgeleide_grens_dB": -2.57,
+     "gestelde_grens_dB": -20,
+     "effectieve_grens_dB": -20,
+     "bron": "stated dB figure (stricter than the excursion-derived ceiling)",
+     "M_C_dB": -29.07,
+     "haalt_de_eis": true
+    },
+    {
+     "netlist": "V44_KAND_4",
+     "weg": "mid",
+     "doorlaatband_gem_dB": -4.56,
+     "afgeleide_grens_dB": -13.11,
+     "gestelde_grens_dB": -20,
+     "effectieve_grens_dB": -20,
+     "bron": "stated dB figure (stricter than the excursion-derived ceiling)",
+     "M_C_dB": -52.07,
+     "haalt_de_eis": true
+    },
+    {
+     "netlist": "V44_KAND_4",
+     "weg": "tweeter",
+     "doorlaatband_gem_dB": -5.12,
+     "afgeleide_grens_dB": -3.46,
+     "gestelde_grens_dB": -20,
+     "effectieve_grens_dB": -20,
+     "bron": "stated dB figure (stricter than the excursion-derived ceiling)",
+     "M_C_dB": -14.91,
+     "haalt_de_eis": false
+    },
+    {
+     "netlist": "V44_KAND_5",
+     "weg": "mid",
+     "doorlaatband_gem_dB": -4.72,
+     "afgeleide_grens_dB": -12.95,
+     "gestelde_grens_dB": -20,
+     "effectieve_grens_dB": -20,
+     "bron": "stated dB figure (stricter than the excursion-derived ceiling)",
+     "M_C_dB": -55.44,
+     "haalt_de_eis": true
+    },
+    {
+     "netlist": "V44_KAND_5",
+     "weg": "tweeter",
+     "doorlaatband_gem_dB": -6.04,
+     "afgeleide_grens_dB": -2.54,
+     "gestelde_grens_dB": -20,
+     "effectieve_grens_dB": -20,
+     "bron": "stated dB figure (stricter than the excursion-derived ceiling)",
+     "M_C_dB": -28.63,
+     "haalt_de_eis": true
+    },
+    {
+     "netlist": "V44_KAND_6",
+     "weg": "mid",
+     "doorlaatband_gem_dB": -2.37,
+     "afgeleide_grens_dB": -15.3,
+     "gestelde_grens_dB": -20,
+     "effectieve_grens_dB": -20,
+     "bron": "stated dB figure (stricter than the excursion-derived ceiling)",
+     "M_C_dB": -41.68,
+     "haalt_de_eis": true
+    },
+    {
+     "netlist": "V44_KAND_6",
+     "weg": "tweeter",
+     "doorlaatband_gem_dB": -4.62,
+     "afgeleide_grens_dB": -3.95,
+     "gestelde_grens_dB": -20,
+     "effectieve_grens_dB": -20,
+     "bron": "stated dB figure (stricter than the excursion-derived ceiling)",
+     "M_C_dB": -23.81,
+     "haalt_de_eis": true
+    },
+    {
+     "netlist": "V44_KAND_7",
+     "weg": "mid",
+     "doorlaatband_gem_dB": -3.7,
+     "afgeleide_grens_dB": -13.97,
+     "gestelde_grens_dB": -20,
+     "effectieve_grens_dB": -20,
+     "bron": "stated dB figure (stricter than the excursion-derived ceiling)",
+     "M_C_dB": -40,
+     "haalt_de_eis": true
+    },
+    {
+     "netlist": "V44_KAND_7",
+     "weg": "tweeter",
+     "doorlaatband_gem_dB": -5.92,
+     "afgeleide_grens_dB": -2.65,
+     "gestelde_grens_dB": -20,
+     "effectieve_grens_dB": -20,
+     "bron": "stated dB figure (stricter than the excursion-derived ceiling)",
+     "M_C_dB": -20.86,
+     "haalt_de_eis": true
+    },
+    {
+     "netlist": "V45_KAND_1",
+     "weg": "mid",
+     "doorlaatband_gem_dB": -6.76,
+     "afgeleide_grens_dB": -10.92,
+     "gestelde_grens_dB": -20,
+     "effectieve_grens_dB": -20,
+     "bron": "stated dB figure (stricter than the excursion-derived ceiling)",
+     "M_C_dB": -54.84,
+     "haalt_de_eis": true
+    },
+    {
+     "netlist": "V45_KAND_1",
+     "weg": "tweeter",
+     "doorlaatband_gem_dB": -6.81,
+     "afgeleide_grens_dB": -1.77,
+     "gestelde_grens_dB": -20,
+     "effectieve_grens_dB": -20,
+     "bron": "stated dB figure (stricter than the excursion-derived ceiling)",
+     "M_C_dB": -29.01,
+     "haalt_de_eis": true
+    },
+    {
+     "netlist": "V45_KAND_2",
+     "weg": "mid",
+     "doorlaatband_gem_dB": -6.17,
+     "afgeleide_grens_dB": -11.5,
+     "gestelde_grens_dB": -20,
+     "effectieve_grens_dB": -20,
+     "bron": "stated dB figure (stricter than the excursion-derived ceiling)",
+     "M_C_dB": -35.87,
+     "haalt_de_eis": true
+    },
+    {
+     "netlist": "V45_KAND_2",
+     "weg": "tweeter",
+     "doorlaatband_gem_dB": -6.4,
+     "afgeleide_grens_dB": -2.18,
+     "gestelde_grens_dB": -20,
+     "effectieve_grens_dB": -20,
+     "bron": "stated dB figure (stricter than the excursion-derived ceiling)",
+     "M_C_dB": -29.07,
+     "haalt_de_eis": true
+    },
+    {
+     "netlist": "V45_KAND_3",
+     "weg": "mid",
+     "doorlaatband_gem_dB": -5.41,
+     "afgeleide_grens_dB": -12.26,
+     "gestelde_grens_dB": -20,
+     "effectieve_grens_dB": -20,
+     "bron": "stated dB figure (stricter than the excursion-derived ceiling)",
+     "M_C_dB": -51.78,
+     "haalt_de_eis": true
+    },
+    {
+     "netlist": "V45_KAND_3",
+     "weg": "tweeter",
+     "doorlaatband_gem_dB": -6.15,
+     "afgeleide_grens_dB": -2.43,
+     "gestelde_grens_dB": -20,
+     "effectieve_grens_dB": -20,
+     "bron": "stated dB figure (stricter than the excursion-derived ceiling)",
+     "M_C_dB": -28.2,
+     "haalt_de_eis": true
+    },
+    {
+     "netlist": "V45_KAND_4",
+     "weg": "mid",
+     "doorlaatband_gem_dB": -4.96,
+     "afgeleide_grens_dB": -12.71,
+     "gestelde_grens_dB": -20,
+     "effectieve_grens_dB": -20,
+     "bron": "stated dB figure (stricter than the excursion-derived ceiling)",
+     "M_C_dB": -52.6,
+     "haalt_de_eis": true
+    },
+    {
+     "netlist": "V45_KAND_4",
+     "weg": "tweeter",
+     "doorlaatband_gem_dB": -5.62,
+     "afgeleide_grens_dB": -2.96,
+     "gestelde_grens_dB": -20,
+     "effectieve_grens_dB": -20,
+     "bron": "stated dB figure (stricter than the excursion-derived ceiling)",
+     "M_C_dB": -31.14,
+     "haalt_de_eis": true
+    },
+    {
+     "netlist": "V45_KAND_5",
+     "weg": "mid",
+     "doorlaatband_gem_dB": -4.74,
+     "afgeleide_grens_dB": -12.93,
+     "gestelde_grens_dB": -20,
+     "effectieve_grens_dB": -20,
+     "bron": "stated dB figure (stricter than the excursion-derived ceiling)",
+     "M_C_dB": -37.36,
+     "haalt_de_eis": true
+    },
+    {
+     "netlist": "V45_KAND_5",
+     "weg": "tweeter",
+     "doorlaatband_gem_dB": -5.22,
+     "afgeleide_grens_dB": -3.35,
+     "gestelde_grens_dB": -20,
+     "effectieve_grens_dB": -20,
+     "bron": "stated dB figure (stricter than the excursion-derived ceiling)",
+     "M_C_dB": -14.38,
+     "haalt_de_eis": false
+    },
+    {
+     "netlist": "V45_KAND_6",
+     "weg": "mid",
+     "doorlaatband_gem_dB": -6.86,
+     "afgeleide_grens_dB": -10.81,
+     "gestelde_grens_dB": -20,
+     "effectieve_grens_dB": -20,
+     "bron": "stated dB figure (stricter than the excursion-derived ceiling)",
+     "M_C_dB": -40.59,
+     "haalt_de_eis": true
+    },
+    {
+     "netlist": "V45_KAND_6",
+     "weg": "tweeter",
+     "doorlaatband_gem_dB": -7.1,
+     "afgeleide_grens_dB": -1.48,
+     "gestelde_grens_dB": -20,
+     "effectieve_grens_dB": -20,
+     "bron": "stated dB figure (stricter than the excursion-derived ceiling)",
+     "M_C_dB": -15.1,
+     "haalt_de_eis": false
+    },
+    {
+     "netlist": "V45_KAND_7",
+     "weg": "mid",
+     "doorlaatband_gem_dB": -3.21,
+     "afgeleide_grens_dB": -14.46,
+     "gestelde_grens_dB": -20,
+     "effectieve_grens_dB": -20,
+     "bron": "stated dB figure (stricter than the excursion-derived ceiling)",
+     "M_C_dB": -35.52,
+     "haalt_de_eis": true
+    },
+    {
+     "netlist": "V45_KAND_7",
+     "weg": "tweeter",
+     "doorlaatband_gem_dB": -4.57,
+     "afgeleide_grens_dB": -4.01,
+     "gestelde_grens_dB": -20,
+     "effectieve_grens_dB": -20,
+     "bron": "stated dB figure (stricter than the excursion-derived ceiling)",
+     "M_C_dB": -25.54,
+     "haalt_de_eis": true
+    },
+    {
+     "netlist": "V47_KAND_1",
+     "weg": "mid",
+     "doorlaatband_gem_dB": -6.66,
+     "afgeleide_grens_dB": -11.01,
+     "gestelde_grens_dB": -20,
+     "effectieve_grens_dB": -20,
+     "bron": "stated dB figure (stricter than the excursion-derived ceiling)",
+     "M_C_dB": -46.91,
+     "haalt_de_eis": true
+    },
+    {
+     "netlist": "V47_KAND_1",
+     "weg": "tweeter",
+     "doorlaatband_gem_dB": -6.87,
+     "afgeleide_grens_dB": -1.71,
+     "gestelde_grens_dB": -20,
+     "effectieve_grens_dB": -20,
+     "bron": "stated dB figure (stricter than the excursion-derived ceiling)",
+     "M_C_dB": -28.42,
+     "haalt_de_eis": true
+    },
+    {
+     "netlist": "V47_KAND_2",
+     "weg": "mid",
+     "doorlaatband_gem_dB": -6.85,
+     "afgeleide_grens_dB": -10.83,
+     "gestelde_grens_dB": -20,
+     "effectieve_grens_dB": -20,
+     "bron": "stated dB figure (stricter than the excursion-derived ceiling)",
+     "M_C_dB": -31.64,
+     "haalt_de_eis": true
+    },
+    {
+     "netlist": "V47_KAND_2",
+     "weg": "tweeter",
+     "doorlaatband_gem_dB": -6.87,
+     "afgeleide_grens_dB": -1.71,
+     "gestelde_grens_dB": -20,
+     "effectieve_grens_dB": -20,
+     "bron": "stated dB figure (stricter than the excursion-derived ceiling)",
+     "M_C_dB": -28.14,
+     "haalt_de_eis": true
+    },
+    {
+     "netlist": "V47_KAND_3",
+     "weg": "mid",
+     "doorlaatband_gem_dB": -4.94,
+     "afgeleide_grens_dB": -12.73,
+     "gestelde_grens_dB": -20,
+     "effectieve_grens_dB": -20,
+     "bron": "stated dB figure (stricter than the excursion-derived ceiling)",
+     "M_C_dB": -55.65,
+     "haalt_de_eis": true
+    },
+    {
+     "netlist": "V47_KAND_3",
+     "weg": "tweeter",
+     "doorlaatband_gem_dB": -5.64,
+     "afgeleide_grens_dB": -2.94,
+     "gestelde_grens_dB": -20,
+     "effectieve_grens_dB": -20,
+     "bron": "stated dB figure (stricter than the excursion-derived ceiling)",
+     "M_C_dB": -29.79,
+     "haalt_de_eis": true
+    },
+    {
+     "netlist": "V47_KAND_4",
+     "weg": "mid",
+     "doorlaatband_gem_dB": -5.05,
+     "afgeleide_grens_dB": -12.63,
+     "gestelde_grens_dB": -20,
+     "effectieve_grens_dB": -20,
+     "bron": "stated dB figure (stricter than the excursion-derived ceiling)",
+     "M_C_dB": -51.18,
+     "haalt_de_eis": true
+    },
+    {
+     "netlist": "V47_KAND_4",
+     "weg": "tweeter",
+     "doorlaatband_gem_dB": -5.82,
+     "afgeleide_grens_dB": -2.76,
+     "gestelde_grens_dB": -20,
+     "effectieve_grens_dB": -20,
+     "bron": "stated dB figure (stricter than the excursion-derived ceiling)",
+     "M_C_dB": -27.75,
+     "haalt_de_eis": true
+    },
+    {
+     "netlist": "V48_KAND_1",
+     "weg": "mid",
+     "doorlaatband_gem_dB": -6.88,
+     "afgeleide_grens_dB": -10.8,
+     "gestelde_grens_dB": -20,
+     "effectieve_grens_dB": -20,
+     "bron": "stated dB figure (stricter than the excursion-derived ceiling)",
+     "M_C_dB": -52.17,
+     "haalt_de_eis": true
+    },
+    {
+     "netlist": "V48_KAND_1",
+     "weg": "tweeter",
+     "doorlaatband_gem_dB": -6.78,
+     "afgeleide_grens_dB": -1.8,
+     "gestelde_grens_dB": -20,
+     "effectieve_grens_dB": -20,
+     "bron": "stated dB figure (stricter than the excursion-derived ceiling)",
+     "M_C_dB": -28.66,
+     "haalt_de_eis": true
+    },
+    {
+     "netlist": "V48_KAND_2",
+     "weg": "mid",
+     "doorlaatband_gem_dB": -6.35,
+     "afgeleide_grens_dB": -11.32,
+     "gestelde_grens_dB": -20,
+     "effectieve_grens_dB": -20,
+     "bron": "stated dB figure (stricter than the excursion-derived ceiling)",
+     "M_C_dB": -52.61,
+     "haalt_de_eis": true
+    },
+    {
+     "netlist": "V48_KAND_2",
+     "weg": "tweeter",
+     "doorlaatband_gem_dB": -6.42,
+     "afgeleide_grens_dB": -2.16,
+     "gestelde_grens_dB": -20,
+     "effectieve_grens_dB": -20,
+     "bron": "stated dB figure (stricter than the excursion-derived ceiling)",
+     "M_C_dB": -29.28,
+     "haalt_de_eis": true
+    },
+    {
+     "netlist": "V48_KAND_3",
+     "weg": "mid",
+     "doorlaatband_gem_dB": -6.28,
+     "afgeleide_grens_dB": -11.39,
+     "gestelde_grens_dB": -20,
+     "effectieve_grens_dB": -20,
+     "bron": "stated dB figure (stricter than the excursion-derived ceiling)",
+     "M_C_dB": -49.21,
+     "haalt_de_eis": true
+    },
+    {
+     "netlist": "V48_KAND_3",
+     "weg": "tweeter",
+     "doorlaatband_gem_dB": -6.7,
+     "afgeleide_grens_dB": -1.87,
+     "gestelde_grens_dB": -20,
+     "effectieve_grens_dB": -20,
+     "bron": "stated dB figure (stricter than the excursion-derived ceiling)",
+     "M_C_dB": -28.67,
+     "haalt_de_eis": true
+    },
+    {
+     "netlist": "V48_KAND_4",
+     "weg": "mid",
+     "doorlaatband_gem_dB": -5.84,
+     "afgeleide_grens_dB": -11.84,
+     "gestelde_grens_dB": -20,
+     "effectieve_grens_dB": -20,
+     "bron": "stated dB figure (stricter than the excursion-derived ceiling)",
+     "M_C_dB": -49.03,
+     "haalt_de_eis": true
+    },
+    {
+     "netlist": "V48_KAND_4",
+     "weg": "tweeter",
+     "doorlaatband_gem_dB": -6.71,
+     "afgeleide_grens_dB": -1.86,
+     "gestelde_grens_dB": -20,
+     "effectieve_grens_dB": -20,
+     "bron": "stated dB figure (stricter than the excursion-derived ceiling)",
+     "M_C_dB": -28.87,
+     "haalt_de_eis": true
+    },
+    {
+     "netlist": "V48_KAND_5",
+     "weg": "mid",
+     "doorlaatband_gem_dB": -3.79,
+     "afgeleide_grens_dB": -13.88,
+     "gestelde_grens_dB": -20,
+     "effectieve_grens_dB": -20,
+     "bron": "stated dB figure (stricter than the excursion-derived ceiling)",
+     "M_C_dB": -40.43,
+     "haalt_de_eis": true
+    },
+    {
+     "netlist": "V48_KAND_5",
+     "weg": "tweeter",
+     "doorlaatband_gem_dB": -4.84,
+     "afgeleide_grens_dB": -3.74,
+     "gestelde_grens_dB": -20,
+     "effectieve_grens_dB": -20,
+     "bron": "stated dB figure (stricter than the excursion-derived ceiling)",
+     "M_C_dB": -25.37,
+     "haalt_de_eis": true
+    },
+    {
+     "netlist": "KAND_V2_1",
+     "weg": "mid",
+     "doorlaatband_gem_dB": -6.49,
+     "afgeleide_grens_dB": -11.18,
+     "gestelde_grens_dB": -20,
+     "effectieve_grens_dB": -20,
+     "bron": "stated dB figure (stricter than the excursion-derived ceiling)",
+     "M_C_dB": -33.75,
+     "haalt_de_eis": true
+    },
+    {
+     "netlist": "KAND_V2_1",
+     "weg": "tweeter",
+     "doorlaatband_gem_dB": -6.7,
+     "afgeleide_grens_dB": -1.88,
+     "gestelde_grens_dB": -20,
+     "effectieve_grens_dB": -20,
+     "bron": "stated dB figure (stricter than the excursion-derived ceiling)",
+     "M_C_dB": -27.78,
+     "haalt_de_eis": true
+    },
+    {
+     "netlist": "KAND_V2_2",
+     "weg": "mid",
+     "doorlaatband_gem_dB": -6.37,
+     "afgeleide_grens_dB": -11.3,
+     "gestelde_grens_dB": -20,
+     "effectieve_grens_dB": -20,
+     "bron": "stated dB figure (stricter than the excursion-derived ceiling)",
+     "M_C_dB": -51.82,
+     "haalt_de_eis": true
+    },
+    {
+     "netlist": "KAND_V2_2",
+     "weg": "tweeter",
+     "doorlaatband_gem_dB": -6.43,
+     "afgeleide_grens_dB": -2.15,
+     "gestelde_grens_dB": -20,
+     "effectieve_grens_dB": -20,
+     "bron": "stated dB figure (stricter than the excursion-derived ceiling)",
+     "M_C_dB": -29.3,
+     "haalt_de_eis": true
+    },
+    {
+     "netlist": "KAND_V2_3",
+     "weg": "mid",
+     "doorlaatband_gem_dB": -6.25,
+     "afgeleide_grens_dB": -11.42,
+     "gestelde_grens_dB": -20,
+     "effectieve_grens_dB": -20,
+     "bron": "stated dB figure (stricter than the excursion-derived ceiling)",
+     "M_C_dB": -58.59,
+     "haalt_de_eis": true
+    },
+    {
+     "netlist": "KAND_V2_3",
+     "weg": "tweeter",
+     "doorlaatband_gem_dB": -6.88,
+     "afgeleide_grens_dB": -1.69,
+     "gestelde_grens_dB": -20,
+     "effectieve_grens_dB": -20,
+     "bron": "stated dB figure (stricter than the excursion-derived ceiling)",
+     "M_C_dB": -27.97,
+     "haalt_de_eis": true
+    },
+    {
+     "netlist": "KAND_V2_4",
+     "weg": "mid",
+     "doorlaatband_gem_dB": -5.28,
+     "afgeleide_grens_dB": -12.39,
+     "gestelde_grens_dB": -20,
+     "effectieve_grens_dB": -20,
+     "bron": "stated dB figure (stricter than the excursion-derived ceiling)",
+     "M_C_dB": -30.71,
+     "haalt_de_eis": true
+    },
+    {
+     "netlist": "KAND_V2_4",
+     "weg": "tweeter",
+     "doorlaatband_gem_dB": -5.82,
+     "afgeleide_grens_dB": -2.76,
+     "gestelde_grens_dB": -20,
+     "effectieve_grens_dB": -20,
+     "bron": "stated dB figure (stricter than the excursion-derived ceiling)",
+     "M_C_dB": -29.91,
+     "haalt_de_eis": true
+    },
+    {
+     "netlist": "KAND_V2_5",
+     "weg": "mid",
+     "doorlaatband_gem_dB": -6.3,
+     "afgeleide_grens_dB": -11.37,
+     "gestelde_grens_dB": -20,
+     "effectieve_grens_dB": -20,
+     "bron": "stated dB figure (stricter than the excursion-derived ceiling)",
+     "M_C_dB": -60.53,
+     "haalt_de_eis": true
+    },
+    {
+     "netlist": "KAND_V2_5",
+     "weg": "tweeter",
+     "doorlaatband_gem_dB": -6.2,
+     "afgeleide_grens_dB": -2.38,
+     "gestelde_grens_dB": -20,
+     "effectieve_grens_dB": -20,
+     "bron": "stated dB figure (stricter than the excursion-derived ceiling)",
+     "M_C_dB": -29.86,
+     "haalt_de_eis": true
+    },
+    {
+     "netlist": "KAND_V2_6",
+     "weg": "mid",
+     "doorlaatband_gem_dB": -3.29,
+     "afgeleide_grens_dB": -14.38,
+     "gestelde_grens_dB": -20,
+     "effectieve_grens_dB": -20,
+     "bron": "stated dB figure (stricter than the excursion-derived ceiling)",
+     "M_C_dB": -35.76,
+     "haalt_de_eis": true
+    },
+    {
+     "netlist": "KAND_V2_6",
+     "weg": "tweeter",
+     "doorlaatband_gem_dB": -4.69,
+     "afgeleide_grens_dB": -3.89,
+     "gestelde_grens_dB": -20,
+     "effectieve_grens_dB": -20,
+     "bron": "stated dB figure (stricter than the excursion-derived ceiling)",
+     "M_C_dB": -24.22,
+     "haalt_de_eis": true
+    },
+    {
+     "netlist": "KAND_V2_7",
+     "weg": "mid",
+     "doorlaatband_gem_dB": -3.55,
+     "afgeleide_grens_dB": -14.12,
+     "gestelde_grens_dB": -20,
+     "effectieve_grens_dB": -20,
+     "bron": "stated dB figure (stricter than the excursion-derived ceiling)",
+     "M_C_dB": -40.57,
+     "haalt_de_eis": true
+    },
+    {
+     "netlist": "KAND_V2_7",
+     "weg": "tweeter",
+     "doorlaatband_gem_dB": -5.72,
+     "afgeleide_grens_dB": -2.85,
+     "gestelde_grens_dB": -20,
+     "effectieve_grens_dB": -20,
+     "bron": "stated dB figure (stricter than the excursion-derived ceiling)",
+     "M_C_dB": -21.92,
+     "haalt_de_eis": true
+    }
+   ],
+   "zwakste_schakel": [
+    {
+     "netlist": "HUIDIG",
+     "weg": "woofer",
+     "x_op_f0_mm": 18.9,
+     "fractie_van_limiet": 2.76,
+     "grens_gehaald_vanaf_hz": 10.07,
+     "ergste_mm": 19.01,
+     "ergste_bij_hz": 52.76
+    },
+    {
+     "netlist": "KAND_A",
+     "weg": "woofer",
+     "x_op_f0_mm": 18.04,
+     "fractie_van_limiet": 2.64,
+     "grens_gehaald_vanaf_hz": 22.62,
+     "ergste_mm": 18.15,
+     "ergste_bij_hz": 51.77
+    },
+    {
+     "netlist": "KAND_B",
+     "weg": "woofer",
+     "x_op_f0_mm": 20.27,
+     "fractie_van_limiet": 2.96,
+     "grens_gehaald_vanaf_hz": 10.07,
+     "ergste_mm": 20.45,
+     "ergste_bij_hz": 53.01
+    },
+    {
+     "netlist": "V28_KAND_1",
+     "weg": "woofer",
+     "x_op_f0_mm": 25.89,
+     "fractie_van_limiet": 3.79,
+     "grens_gehaald_vanaf_hz": 10.07,
+     "ergste_mm": 26.45,
+     "ergste_bij_hz": 53.26
+    },
+    {
+     "netlist": "V28_KAND_2",
+     "weg": "woofer",
+     "x_op_f0_mm": 22.04,
+     "fractie_van_limiet": 3.22,
+     "grens_gehaald_vanaf_hz": 10.07,
+     "ergste_mm": 23.67,
+     "ergste_bij_hz": 58.86
+    },
+    {
+     "netlist": "V28_KAND_3",
+     "weg": "woofer",
+     "x_op_f0_mm": 22.65,
+     "fractie_van_limiet": 3.31,
+     "grens_gehaald_vanaf_hz": 10.07,
+     "ergste_mm": 23.75,
+     "ergste_bij_hz": 39.28
+    },
+    {
+     "netlist": "V28_KAND_4",
+     "weg": "woofer",
+     "x_op_f0_mm": 20.16,
+     "fractie_van_limiet": 2.95,
+     "grens_gehaald_vanaf_hz": 10.07,
+     "ergste_mm": 20.49,
+     "ergste_bij_hz": 45.31
+    },
+    {
+     "netlist": "V28_KAND_5",
+     "weg": "woofer",
+     "x_op_f0_mm": 22.65,
+     "fractie_van_limiet": 3.31,
+     "grens_gehaald_vanaf_hz": 10.07,
+     "ergste_mm": 23.75,
+     "ergste_bij_hz": 39.28
+    },
+    {
+     "netlist": "V28_KAND_6",
+     "weg": "woofer",
+     "x_op_f0_mm": 20.38,
+     "fractie_van_limiet": 2.98,
+     "grens_gehaald_vanaf_hz": 10.07,
+     "ergste_mm": 20.59,
+     "ergste_bij_hz": 53.01
+    },
+    {
+     "netlist": "V28_KAND_7",
+     "weg": "woofer",
+     "x_op_f0_mm": 22.65,
+     "fractie_van_limiet": 3.31,
+     "grens_gehaald_vanaf_hz": 10.07,
+     "ergste_mm": 23.75,
+     "ergste_bij_hz": 39.28
+    },
+    {
+     "netlist": "V28_KAND_8",
+     "weg": "woofer",
+     "x_op_f0_mm": 20.09,
+     "fractie_van_limiet": 2.94,
+     "grens_gehaald_vanaf_hz": 10.07,
+     "ergste_mm": 20.39,
+     "ergste_bij_hz": 45.31
+    },
+    {
+     "netlist": "V28_KAND_9",
+     "weg": "woofer",
+     "x_op_f0_mm": 20.16,
+     "fractie_van_limiet": 2.95,
+     "grens_gehaald_vanaf_hz": 10.07,
+     "ergste_mm": 20.52,
+     "ergste_bij_hz": 45.31
+    },
+    {
+     "netlist": "V28_KAND_10",
+     "weg": "woofer",
+     "x_op_f0_mm": 20.25,
+     "fractie_van_limiet": 2.96,
+     "grens_gehaald_vanaf_hz": 10.07,
+     "ergste_mm": 20.56,
+     "ergste_bij_hz": 45.31
+    },
+    {
+     "netlist": "V30_KAND_1",
+     "weg": "woofer",
+     "x_op_f0_mm": 22.42,
+     "fractie_van_limiet": 3.28,
+     "grens_gehaald_vanaf_hz": 10.07,
+     "ergste_mm": 22.79,
+     "ergste_bij_hz": 53.01
+    },
+    {
+     "netlist": "V30_KAND_2",
+     "weg": "woofer",
+     "x_op_f0_mm": 22.44,
+     "fractie_van_limiet": 3.28,
+     "grens_gehaald_vanaf_hz": 10.07,
+     "ergste_mm": 23.1,
+     "ergste_bij_hz": 39.28
+    },
+    {
+     "netlist": "V30_KAND_3",
+     "weg": "woofer",
+     "x_op_f0_mm": 20.08,
+     "fractie_van_limiet": 2.94,
+     "grens_gehaald_vanaf_hz": 10.07,
+     "ergste_mm": 20.34,
+     "ergste_bij_hz": 53.01
+    },
+    {
+     "netlist": "V30_KAND_4",
+     "weg": "woofer",
+     "x_op_f0_mm": 20.59,
+     "fractie_van_limiet": 3.01,
+     "grens_gehaald_vanaf_hz": 10.07,
+     "ergste_mm": 20.86,
+     "ergste_bij_hz": 53.01
+    },
+    {
+     "netlist": "V30_KAND_5",
+     "weg": "woofer",
+     "x_op_f0_mm": 19.17,
+     "fractie_van_limiet": 2.8,
+     "grens_gehaald_vanaf_hz": 10.07,
+     "ergste_mm": 19.67,
+     "ergste_bij_hz": 45.31
+    },
+    {
+     "netlist": "V30_KAND_6",
+     "weg": "woofer",
+     "x_op_f0_mm": 22.53,
+     "fractie_van_limiet": 3.29,
+     "grens_gehaald_vanaf_hz": 10.07,
+     "ergste_mm": 22.91,
+     "ergste_bij_hz": 53.01
+    },
+    {
+     "netlist": "V30_KAND_7",
+     "weg": "woofer",
+     "x_op_f0_mm": 19.19,
+     "fractie_van_limiet": 2.81,
+     "grens_gehaald_vanaf_hz": 10.07,
+     "ergste_mm": 19.4,
+     "ergste_bij_hz": 53.01
+    },
+    {
+     "netlist": "V30_KAND_8",
+     "weg": "woofer",
+     "x_op_f0_mm": 19.55,
+     "fractie_van_limiet": 2.86,
+     "grens_gehaald_vanaf_hz": 10.07,
+     "ergste_mm": 19.86,
+     "ergste_bij_hz": 45.31
+    },
+    {
+     "netlist": "V30_KAND_9",
+     "weg": "woofer",
+     "x_op_f0_mm": 20.97,
+     "fractie_van_limiet": 3.07,
+     "grens_gehaald_vanaf_hz": 10.07,
+     "ergste_mm": 21.22,
+     "ergste_bij_hz": 53.01
+    },
+    {
+     "netlist": "V30_KAND_10",
+     "weg": "woofer",
+     "x_op_f0_mm": 20.01,
+     "fractie_van_limiet": 2.93,
+     "grens_gehaald_vanaf_hz": 10.07,
+     "ergste_mm": 20.26,
+     "ergste_bij_hz": 53.01
+    },
+    {
+     "netlist": "V32_KAND_1",
+     "weg": "woofer",
+     "x_op_f0_mm": 20.08,
+     "fractie_van_limiet": 2.94,
+     "grens_gehaald_vanaf_hz": 10.07,
+     "ergste_mm": 20.34,
+     "ergste_bij_hz": 53.01
+    },
+    {
+     "netlist": "V32_KAND_2",
+     "weg": "woofer",
+     "x_op_f0_mm": 20.59,
+     "fractie_van_limiet": 3.01,
+     "grens_gehaald_vanaf_hz": 10.07,
+     "ergste_mm": 20.86,
+     "ergste_bij_hz": 53.01
+    },
+    {
+     "netlist": "V32_KAND_3",
+     "weg": "woofer",
+     "x_op_f0_mm": 19.17,
+     "fractie_van_limiet": 2.8,
+     "grens_gehaald_vanaf_hz": 10.07,
+     "ergste_mm": 19.67,
+     "ergste_bij_hz": 45.31
+    },
+    {
+     "netlist": "V32_KAND_4",
+     "weg": "woofer",
+     "x_op_f0_mm": 19.19,
+     "fractie_van_limiet": 2.81,
+     "grens_gehaald_vanaf_hz": 10.07,
+     "ergste_mm": 19.4,
+     "ergste_bij_hz": 53.01
+    },
+    {
+     "netlist": "V32_KAND_5",
+     "weg": "woofer",
+     "x_op_f0_mm": 19.55,
+     "fractie_van_limiet": 2.86,
+     "grens_gehaald_vanaf_hz": 10.07,
+     "ergste_mm": 19.86,
+     "ergste_bij_hz": 45.31
+    },
+    {
+     "netlist": "V32_KAND_6",
+     "weg": "woofer",
+     "x_op_f0_mm": 20.97,
+     "fractie_van_limiet": 3.07,
+     "grens_gehaald_vanaf_hz": 10.07,
+     "ergste_mm": 21.22,
+     "ergste_bij_hz": 53.01
+    },
+    {
+     "netlist": "V32_KAND_7",
+     "weg": "woofer",
+     "x_op_f0_mm": 20.01,
+     "fractie_van_limiet": 2.93,
+     "grens_gehaald_vanaf_hz": 10.07,
+     "ergste_mm": 20.26,
+     "ergste_bij_hz": 53.01
+    },
+    {
+     "netlist": "V33_SWEEP_KAND_1",
+     "weg": "woofer",
+     "x_op_f0_mm": 21,
+     "fractie_van_limiet": 3.07,
+     "grens_gehaald_vanaf_hz": 10.07,
+     "ergste_mm": 21.25,
+     "ergste_bij_hz": 53.01
+    },
+    {
+     "netlist": "V33_SWEEP_KAND_2",
+     "weg": "woofer",
+     "x_op_f0_mm": 20.93,
+     "fractie_van_limiet": 3.06,
+     "grens_gehaald_vanaf_hz": 10.07,
+     "ergste_mm": 21.19,
+     "ergste_bij_hz": 53.01
+    },
+    {
+     "netlist": "V33_SWEEP_KAND_3",
+     "weg": "woofer",
+     "x_op_f0_mm": 22.27,
+     "fractie_van_limiet": 3.26,
+     "grens_gehaald_vanaf_hz": 10.07,
+     "ergste_mm": 22.65,
+     "ergste_bij_hz": 53.01
+    },
+    {
+     "netlist": "V33_SWEEP_KAND_4",
+     "weg": "woofer",
+     "x_op_f0_mm": 21.18,
+     "fractie_van_limiet": 3.1,
+     "grens_gehaald_vanaf_hz": 10.07,
+     "ergste_mm": 21.44,
+     "ergste_bij_hz": 53.01
+    },
+    {
+     "netlist": "V33_SWEEP_KAND_5",
+     "weg": "woofer",
+     "x_op_f0_mm": 21.03,
+     "fractie_van_limiet": 3.08,
+     "grens_gehaald_vanaf_hz": 10.07,
+     "ergste_mm": 21.29,
+     "ergste_bij_hz": 53.01
+    },
+    {
+     "netlist": "V33_SWEEP_KAND_6",
+     "weg": "woofer",
+     "x_op_f0_mm": 22.38,
+     "fractie_van_limiet": 3.27,
+     "grens_gehaald_vanaf_hz": 10.07,
+     "ergste_mm": 22.8,
+     "ergste_bij_hz": 53.01
+    },
+    {
+     "netlist": "V33_SWEEP_KAND_7",
+     "weg": "woofer",
+     "x_op_f0_mm": 18.33,
+     "fractie_van_limiet": 2.68,
+     "grens_gehaald_vanaf_hz": 10.07,
+     "ergste_mm": 18.51,
+     "ergste_bij_hz": 53.01
+    },
+    {
+     "netlist": "V33_SWEEP_KAND_8",
+     "weg": "woofer",
+     "x_op_f0_mm": 19.39,
+     "fractie_van_limiet": 2.83,
+     "grens_gehaald_vanaf_hz": 10.07,
+     "ergste_mm": 19.58,
+     "ergste_bij_hz": 53.01
+    },
+    {
+     "netlist": "V33_SWEEP_KAND_9",
+     "weg": "woofer",
+     "x_op_f0_mm": 19.92,
+     "fractie_van_limiet": 2.91,
+     "grens_gehaald_vanaf_hz": 10.07,
+     "ergste_mm": 20.14,
+     "ergste_bij_hz": 53.01
+    },
+    {
+     "netlist": "V33_SWEEP_KAND_10",
+     "weg": "woofer",
+     "x_op_f0_mm": 19.39,
+     "fractie_van_limiet": 2.83,
+     "grens_gehaald_vanaf_hz": 10.07,
+     "ergste_mm": 19.62,
+     "ergste_bij_hz": 53.01
+    },
+    {
+     "netlist": "V33_KAND_1",
+     "weg": "woofer",
+     "x_op_f0_mm": 22.21,
+     "fractie_van_limiet": 3.25,
+     "grens_gehaald_vanaf_hz": 10.07,
+     "ergste_mm": 22.74,
+     "ergste_bij_hz": 39.28
+    },
+    {
+     "netlist": "V33_KAND_2",
+     "weg": "woofer",
+     "x_op_f0_mm": 22.35,
+     "fractie_van_limiet": 3.27,
+     "grens_gehaald_vanaf_hz": 10.07,
+     "ergste_mm": 22.76,
+     "ergste_bij_hz": 53.01
+    },
+    {
+     "netlist": "V33_KAND_3",
+     "weg": "woofer",
+     "x_op_f0_mm": 19.01,
+     "fractie_van_limiet": 2.78,
+     "grens_gehaald_vanaf_hz": 10.07,
+     "ergste_mm": 19.21,
+     "ergste_bij_hz": 53.01
+    },
+    {
+     "netlist": "V33_KAND_4",
+     "weg": "woofer",
+     "x_op_f0_mm": 20.1,
+     "fractie_van_limiet": 2.94,
+     "grens_gehaald_vanaf_hz": 10.07,
+     "ergste_mm": 20.34,
+     "ergste_bij_hz": 53.01
+    },
+    {
+     "netlist": "V33_KAND_5",
+     "weg": "woofer",
+     "x_op_f0_mm": 21.58,
+     "fractie_van_limiet": 3.15,
+     "grens_gehaald_vanaf_hz": 10.07,
+     "ergste_mm": 21.89,
+     "ergste_bij_hz": 53.01
+    },
+    {
+     "netlist": "V33_KAND_6",
+     "weg": "woofer",
+     "x_op_f0_mm": 17.89,
+     "fractie_van_limiet": 2.62,
+     "grens_gehaald_vanaf_hz": 10.07,
+     "ergste_mm": 18.06,
+     "ergste_bij_hz": 53.01
+    },
+    {
+     "netlist": "V33_KAND_7",
+     "weg": "woofer",
+     "x_op_f0_mm": 20.85,
+     "fractie_van_limiet": 3.05,
+     "grens_gehaald_vanaf_hz": 10.07,
+     "ergste_mm": 21.1,
+     "ergste_bij_hz": 53.01
+    },
+    {
+     "netlist": "V33_KAND_8",
+     "weg": "woofer",
+     "x_op_f0_mm": 20.27,
+     "fractie_van_limiet": 2.96,
+     "grens_gehaald_vanaf_hz": 10.07,
+     "ergste_mm": 20.52,
+     "ergste_bij_hz": 53.01
+    },
+    {
+     "netlist": "V33_KAND_9",
+     "weg": "woofer",
+     "x_op_f0_mm": 20.58,
+     "fractie_van_limiet": 3.01,
+     "grens_gehaald_vanaf_hz": 10.07,
+     "ergste_mm": 20.81,
+     "ergste_bij_hz": 53.01
+    },
+    {
+     "netlist": "V33_KAND_10",
+     "weg": "woofer",
+     "x_op_f0_mm": 20,
+     "fractie_van_limiet": 2.92,
+     "grens_gehaald_vanaf_hz": 10.07,
+     "ergste_mm": 20.21,
+     "ergste_bij_hz": 53.01
+    },
+    {
+     "netlist": "V33_KAND_10",
+     "weg": "tweeter",
+     "x_op_f0_mm": 0.14,
+     "fractie_van_limiet": 0.17,
+     "grens_gehaald_vanaf_hz": null,
+     "ergste_mm": 0.42,
+     "ergste_bij_hz": 1768.48
+    },
+    {
+     "netlist": "V34_KAND_1",
+     "weg": "woofer",
+     "x_op_f0_mm": 21.21,
+     "fractie_van_limiet": 3.1,
+     "grens_gehaald_vanaf_hz": 10.07,
+     "ergste_mm": 21.47,
+     "ergste_bij_hz": 53.01
+    },
+    {
+     "netlist": "V34_KAND_2",
+     "weg": "woofer",
+     "x_op_f0_mm": 22.21,
+     "fractie_van_limiet": 3.25,
+     "grens_gehaald_vanaf_hz": 10.07,
+     "ergste_mm": 22.74,
+     "ergste_bij_hz": 39.28
+    },
+    {
+     "netlist": "V34_KAND_3",
+     "weg": "woofer",
+     "x_op_f0_mm": 22.35,
+     "fractie_van_limiet": 3.27,
+     "grens_gehaald_vanaf_hz": 10.07,
+     "ergste_mm": 22.76,
+     "ergste_bij_hz": 53.01
+    },
+    {
+     "netlist": "V34_KAND_4",
+     "weg": "woofer",
+     "x_op_f0_mm": 22.28,
+     "fractie_van_limiet": 3.26,
+     "grens_gehaald_vanaf_hz": 10.07,
+     "ergste_mm": 22.67,
+     "ergste_bij_hz": 53.01
+    },
+    {
+     "netlist": "V34_KAND_5",
+     "weg": "woofer",
+     "x_op_f0_mm": 20.08,
+     "fractie_van_limiet": 2.94,
+     "grens_gehaald_vanaf_hz": 10.07,
+     "ergste_mm": 20.35,
+     "ergste_bij_hz": 53.01
+    },
+    {
+     "netlist": "V34_KAND_6",
+     "weg": "woofer",
+     "x_op_f0_mm": 20.51,
+     "fractie_van_limiet": 3,
+     "grens_gehaald_vanaf_hz": 10.07,
+     "ergste_mm": 20.75,
+     "ergste_bij_hz": 53.01
+    },
+    {
+     "netlist": "V34_KAND_7",
+     "weg": "woofer",
+     "x_op_f0_mm": 19.61,
+     "fractie_van_limiet": 2.87,
+     "grens_gehaald_vanaf_hz": 10.07,
+     "ergste_mm": 19.84,
+     "ergste_bij_hz": 53.01
+    },
+    {
+     "netlist": "V34_KAND_8",
+     "weg": "woofer",
+     "x_op_f0_mm": 20.49,
+     "fractie_van_limiet": 3,
+     "grens_gehaald_vanaf_hz": 10.07,
+     "ergste_mm": 20.73,
+     "ergste_bij_hz": 53.01
+    },
+    {
+     "netlist": "V34_KAND_9",
+     "weg": "woofer",
+     "x_op_f0_mm": 17.63,
+     "fractie_van_limiet": 2.58,
+     "grens_gehaald_vanaf_hz": 10.07,
+     "ergste_mm": 17.78,
+     "ergste_bij_hz": 53.01
+    },
+    {
+     "netlist": "V34_KAND_10",
+     "weg": "woofer",
+     "x_op_f0_mm": 20.69,
+     "fractie_van_limiet": 3.02,
+     "grens_gehaald_vanaf_hz": 10.07,
+     "ergste_mm": 20.93,
+     "ergste_bij_hz": 53.01
+    },
+    {
+     "netlist": "V37_KAND_1",
+     "weg": "woofer",
+     "x_op_f0_mm": 22.21,
+     "fractie_van_limiet": 3.25,
+     "grens_gehaald_vanaf_hz": 10.07,
+     "ergste_mm": 22.74,
+     "ergste_bij_hz": 39.28
+    },
+    {
+     "netlist": "V37_KAND_2",
+     "weg": "woofer",
+     "x_op_f0_mm": 22.35,
+     "fractie_van_limiet": 3.27,
+     "grens_gehaald_vanaf_hz": 10.07,
+     "ergste_mm": 22.76,
+     "ergste_bij_hz": 53.01
+    },
+    {
+     "netlist": "V37_KAND_3",
+     "weg": "woofer",
+     "x_op_f0_mm": 21.55,
+     "fractie_van_limiet": 3.15,
+     "grens_gehaald_vanaf_hz": 10.07,
+     "ergste_mm": 21.84,
+     "ergste_bij_hz": 53.01
+    },
+    {
+     "netlist": "V37_KAND_4",
+     "weg": "woofer",
+     "x_op_f0_mm": 20.04,
+     "fractie_van_limiet": 2.93,
+     "grens_gehaald_vanaf_hz": 10.07,
+     "ergste_mm": 20.27,
+     "ergste_bij_hz": 53.01
+    },
+    {
+     "netlist": "V37_KAND_5",
+     "weg": "woofer",
+     "x_op_f0_mm": 20.59,
+     "fractie_van_limiet": 3.01,
+     "grens_gehaald_vanaf_hz": 10.07,
+     "ergste_mm": 20.83,
+     "ergste_bij_hz": 53.01
+    },
+    {
+     "netlist": "V37_KAND_6",
+     "weg": "woofer",
+     "x_op_f0_mm": 17.58,
+     "fractie_van_limiet": 2.57,
+     "grens_gehaald_vanaf_hz": 10.07,
+     "ergste_mm": 17.74,
+     "ergste_bij_hz": 53.01
+    },
+    {
+     "netlist": "V37_KAND_7",
+     "weg": "woofer",
+     "x_op_f0_mm": 21.04,
+     "fractie_van_limiet": 3.08,
+     "grens_gehaald_vanaf_hz": 10.07,
+     "ergste_mm": 21.28,
+     "ergste_bij_hz": 53.01
+    },
+    {
+     "netlist": "V37_KAND_8",
+     "weg": "woofer",
+     "x_op_f0_mm": 18.85,
+     "fractie_van_limiet": 2.76,
+     "grens_gehaald_vanaf_hz": 10.07,
+     "ergste_mm": 19.05,
+     "ergste_bij_hz": 53.01
+    },
+    {
+     "netlist": "V37_KAND_9",
+     "weg": "woofer",
+     "x_op_f0_mm": 20.3,
+     "fractie_van_limiet": 2.97,
+     "grens_gehaald_vanaf_hz": 10.07,
+     "ergste_mm": 20.55,
+     "ergste_bij_hz": 45.31
+    },
+    {
+     "netlist": "V37_KAND_10",
+     "weg": "woofer",
+     "x_op_f0_mm": 19.42,
+     "fractie_van_limiet": 2.84,
+     "grens_gehaald_vanaf_hz": 10.07,
+     "ergste_mm": 19.84,
+     "ergste_bij_hz": 53.26
+    },
+    {
+     "netlist": "V37_KAND_10",
+     "weg": "tweeter",
+     "x_op_f0_mm": 0.28,
+     "fractie_van_limiet": 0.35,
+     "grens_gehaald_vanaf_hz": null,
+     "ergste_mm": 0.55,
+     "ergste_bij_hz": 1291.79
+    },
+    {
+     "netlist": "V38FIX_KAND_1",
+     "weg": "woofer",
+     "x_op_f0_mm": 17.46,
+     "fractie_van_limiet": 2.55,
+     "grens_gehaald_vanaf_hz": 10.07,
+     "ergste_mm": 17.61,
+     "ergste_bij_hz": 53.01
+    },
+    {
+     "netlist": "V38FIX_KAND_2",
+     "weg": "woofer",
+     "x_op_f0_mm": 17.81,
+     "fractie_van_limiet": 2.6,
+     "grens_gehaald_vanaf_hz": 10.07,
+     "ergste_mm": 17.97,
+     "ergste_bij_hz": 53.01
+    },
+    {
+     "netlist": "V38FIX_KAND_3",
+     "weg": "woofer",
+     "x_op_f0_mm": 17.78,
+     "fractie_van_limiet": 2.6,
+     "grens_gehaald_vanaf_hz": 10.07,
+     "ergste_mm": 17.93,
+     "ergste_bij_hz": 53.01
+    },
+    {
+     "netlist": "V38FIX_KAND_4",
+     "weg": "woofer",
+     "x_op_f0_mm": 22.19,
+     "fractie_van_limiet": 3.24,
+     "grens_gehaald_vanaf_hz": 10.07,
+     "ergste_mm": 22.74,
+     "ergste_bij_hz": 39.28
+    },
+    {
+     "netlist": "V38FIX_KAND_5",
+     "weg": "woofer",
+     "x_op_f0_mm": 21.15,
+     "fractie_van_limiet": 3.09,
+     "grens_gehaald_vanaf_hz": 10.07,
+     "ergste_mm": 21.42,
+     "ergste_bij_hz": 53.01
+    },
+    {
+     "netlist": "V38FIX_KAND_6",
+     "weg": "woofer",
+     "x_op_f0_mm": 20.15,
+     "fractie_van_limiet": 2.95,
+     "grens_gehaald_vanaf_hz": 10.07,
+     "ergste_mm": 20.41,
+     "ergste_bij_hz": 53.01
+    },
+    {
+     "netlist": "V38FIX_KAND_7",
+     "weg": "woofer",
+     "x_op_f0_mm": 22.32,
+     "fractie_van_limiet": 3.26,
+     "grens_gehaald_vanaf_hz": 10.07,
+     "ergste_mm": 22.72,
+     "ergste_bij_hz": 53.01
+    },
+    {
+     "netlist": "V38FIX_KAND_8",
+     "weg": "woofer",
+     "x_op_f0_mm": 17.98,
+     "fractie_van_limiet": 2.63,
+     "grens_gehaald_vanaf_hz": 10.07,
+     "ergste_mm": 18.13,
+     "ergste_bij_hz": 53.01
+    },
+    {
+     "netlist": "V38FIX_KAND_9",
+     "weg": "woofer",
+     "x_op_f0_mm": 22.18,
+     "fractie_van_limiet": 3.24,
+     "grens_gehaald_vanaf_hz": 10.07,
+     "ergste_mm": 22.79,
+     "ergste_bij_hz": 39.28
+    },
+    {
+     "netlist": "V38FIX_KAND_10",
+     "weg": "woofer",
+     "x_op_f0_mm": 20.79,
+     "fractie_van_limiet": 3.04,
+     "grens_gehaald_vanaf_hz": 10.07,
+     "ergste_mm": 21.03,
+     "ergste_bij_hz": 53.01
+    },
+    {
+     "netlist": "V41_KAND_1",
+     "weg": "woofer",
+     "x_op_f0_mm": 21.74,
+     "fractie_van_limiet": 3.18,
+     "grens_gehaald_vanaf_hz": 10.07,
+     "ergste_mm": 22.28,
+     "ergste_bij_hz": 53.26
+    },
+    {
+     "netlist": "V41_KAND_2",
+     "weg": "woofer",
+     "x_op_f0_mm": 21.14,
+     "fractie_van_limiet": 3.09,
+     "grens_gehaald_vanaf_hz": 10.07,
+     "ergste_mm": 21.57,
+     "ergste_bij_hz": 53.26
+    },
+    {
+     "netlist": "V41_KAND_3",
+     "weg": "woofer",
+     "x_op_f0_mm": 18.5,
+     "fractie_van_limiet": 2.7,
+     "grens_gehaald_vanaf_hz": 10.07,
+     "ergste_mm": 18.61,
+     "ergste_bij_hz": 51.77
+    },
+    {
+     "netlist": "V41_KAND_4",
+     "weg": "woofer",
+     "x_op_f0_mm": 20.93,
+     "fractie_van_limiet": 3.06,
+     "grens_gehaald_vanaf_hz": 10.07,
+     "ergste_mm": 21.35,
+     "ergste_bij_hz": 53.26
+    },
+    {
+     "netlist": "V41_KAND_5",
+     "weg": "woofer",
+     "x_op_f0_mm": 21.15,
+     "fractie_van_limiet": 3.09,
+     "grens_gehaald_vanaf_hz": 10.07,
+     "ergste_mm": 21.58,
+     "ergste_bij_hz": 53.26
+    },
+    {
+     "netlist": "V41_KAND_6",
+     "weg": "woofer",
+     "x_op_f0_mm": 21.17,
+     "fractie_van_limiet": 3.09,
+     "grens_gehaald_vanaf_hz": 10.07,
+     "ergste_mm": 21.59,
+     "ergste_bij_hz": 53.26
+    },
+    {
+     "netlist": "V41_KAND_7",
+     "weg": "woofer",
+     "x_op_f0_mm": 21.22,
+     "fractie_van_limiet": 3.1,
+     "grens_gehaald_vanaf_hz": 10.07,
+     "ergste_mm": 21.52,
+     "ergste_bij_hz": 53.01
+    },
+    {
+     "netlist": "V41_KAND_8",
+     "weg": "woofer",
+     "x_op_f0_mm": 19.32,
+     "fractie_van_limiet": 2.82,
+     "grens_gehaald_vanaf_hz": 10.07,
+     "ergste_mm": 19.52,
+     "ergste_bij_hz": 53.01
+    },
+    {
+     "netlist": "V42_KAND_1",
+     "weg": "woofer",
+     "x_op_f0_mm": 21.74,
+     "fractie_van_limiet": 3.18,
+     "grens_gehaald_vanaf_hz": 10.07,
+     "ergste_mm": 22.28,
+     "ergste_bij_hz": 53.26
+    },
+    {
+     "netlist": "V42_KAND_2",
+     "weg": "woofer",
+     "x_op_f0_mm": 18.5,
+     "fractie_van_limiet": 2.7,
+     "grens_gehaald_vanaf_hz": 10.07,
+     "ergste_mm": 18.61,
+     "ergste_bij_hz": 51.77
+    },
+    {
+     "netlist": "V42_KAND_3",
+     "weg": "woofer",
+     "x_op_f0_mm": 21.15,
+     "fractie_van_limiet": 3.09,
+     "grens_gehaald_vanaf_hz": 10.07,
+     "ergste_mm": 21.58,
+     "ergste_bij_hz": 53.26
+    },
+    {
+     "netlist": "V42_KAND_4",
+     "weg": "woofer",
+     "x_op_f0_mm": 19.32,
+     "fractie_van_limiet": 2.82,
+     "grens_gehaald_vanaf_hz": 10.07,
+     "ergste_mm": 19.52,
+     "ergste_bij_hz": 53.01
+    },
+    {
+     "netlist": "V43_KAND_1",
+     "weg": "woofer",
+     "x_op_f0_mm": 9.38,
+     "fractie_van_limiet": 1.37,
+     "grens_gehaald_vanaf_hz": 31.71,
+     "ergste_mm": 9.62,
+     "ergste_bij_hz": 45.52
+    },
+    {
+     "netlist": "V43_KAND_2",
+     "weg": "woofer",
+     "x_op_f0_mm": 19.72,
+     "fractie_van_limiet": 2.88,
+     "grens_gehaald_vanaf_hz": 10.07,
+     "ergste_mm": 19.93,
+     "ergste_bij_hz": 53.01
+    },
+    {
+     "netlist": "V43_KAND_3",
+     "weg": "woofer",
+     "x_op_f0_mm": 18.86,
+     "fractie_van_limiet": 2.76,
+     "grens_gehaald_vanaf_hz": 10.07,
+     "ergste_mm": 19.01,
+     "ergste_bij_hz": 53.01
+    },
+    {
+     "netlist": "V43_KAND_4",
+     "weg": "woofer",
+     "x_op_f0_mm": 17.11,
+     "fractie_van_limiet": 2.5,
+     "grens_gehaald_vanaf_hz": 24.64,
+     "ergste_mm": 17.22,
+     "ergste_bij_hz": 52.76
+    },
+    {
+     "netlist": "V43_KAND_5",
+     "weg": "woofer",
+     "x_op_f0_mm": 16.19,
+     "fractie_van_limiet": 2.37,
+     "grens_gehaald_vanaf_hz": 22.62,
+     "ergste_mm": 16.29,
+     "ergste_bij_hz": 53.01
+    },
+    {
+     "netlist": "V43_KAND_6",
+     "weg": "woofer",
+     "x_op_f0_mm": 19.54,
+     "fractie_van_limiet": 2.86,
+     "grens_gehaald_vanaf_hz": 10.07,
+     "ergste_mm": 19.72,
+     "ergste_bij_hz": 53.01
+    },
+    {
+     "netlist": "V43_KAND_7",
+     "weg": "woofer",
+     "x_op_f0_mm": 21.17,
+     "fractie_van_limiet": 3.09,
+     "grens_gehaald_vanaf_hz": 10.07,
+     "ergste_mm": 21.69,
+     "ergste_bij_hz": 45.31
+    },
+    {
+     "netlist": "V44_KAND_1",
+     "weg": "woofer",
+     "x_op_f0_mm": 19.22,
+     "fractie_van_limiet": 2.81,
+     "grens_gehaald_vanaf_hz": 10.07,
+     "ergste_mm": 19.33,
+     "ergste_bij_hz": 51.77
+    },
+    {
+     "netlist": "V44_KAND_2",
+     "weg": "woofer",
+     "x_op_f0_mm": 18.82,
+     "fractie_van_limiet": 2.75,
+     "grens_gehaald_vanaf_hz": 10.07,
+     "ergste_mm": 18.99,
+     "ergste_bij_hz": 53.01
+    },
+    {
+     "netlist": "V44_KAND_3",
+     "weg": "woofer",
+     "x_op_f0_mm": 18.48,
+     "fractie_van_limiet": 2.7,
+     "grens_gehaald_vanaf_hz": 10.07,
+     "ergste_mm": 18.62,
+     "ergste_bij_hz": 53.01
+    },
+    {
+     "netlist": "V44_KAND_4",
+     "weg": "woofer",
+     "x_op_f0_mm": 21.23,
+     "fractie_van_limiet": 3.1,
+     "grens_gehaald_vanaf_hz": 10.07,
+     "ergste_mm": 21.79,
+     "ergste_bij_hz": 45.31
+    },
+    {
+     "netlist": "V44_KAND_5",
+     "weg": "woofer",
+     "x_op_f0_mm": 17.21,
+     "fractie_van_limiet": 2.52,
+     "grens_gehaald_vanaf_hz": 24.41,
+     "ergste_mm": 17.32,
+     "ergste_bij_hz": 52.76
+    },
+    {
+     "netlist": "V44_KAND_6",
+     "weg": "woofer",
+     "x_op_f0_mm": 19.05,
+     "fractie_van_limiet": 2.79,
+     "grens_gehaald_vanaf_hz": 10.07,
+     "ergste_mm": 19.22,
+     "ergste_bij_hz": 53.01
+    },
+    {
+     "netlist": "V44_KAND_7",
+     "weg": "woofer",
+     "x_op_f0_mm": 21.25,
+     "fractie_van_limiet": 3.11,
+     "grens_gehaald_vanaf_hz": 10.07,
+     "ergste_mm": 21.81,
+     "ergste_bij_hz": 45.31
+    },
+    {
+     "netlist": "V45_KAND_1",
+     "weg": "woofer",
+     "x_op_f0_mm": 9.61,
+     "fractie_van_limiet": 1.41,
+     "grens_gehaald_vanaf_hz": 30.81,
+     "ergste_mm": 10,
+     "ergste_bij_hz": 45.52
+    },
+    {
+     "netlist": "V45_KAND_2",
+     "weg": "woofer",
+     "x_op_f0_mm": 9.91,
+     "fractie_van_limiet": 1.45,
+     "grens_gehaald_vanaf_hz": 29.38,
+     "ergste_mm": 10.24,
+     "ergste_bij_hz": 45.31
+    },
+    {
+     "netlist": "V45_KAND_3",
+     "weg": "woofer",
+     "x_op_f0_mm": 19.7,
+     "fractie_van_limiet": 2.88,
+     "grens_gehaald_vanaf_hz": 10.07,
+     "ergste_mm": 19.88,
+     "ergste_bij_hz": 53.01
+    },
+    {
+     "netlist": "V45_KAND_4",
+     "weg": "woofer",
+     "x_op_f0_mm": 18.24,
+     "fractie_van_limiet": 2.67,
+     "grens_gehaald_vanaf_hz": 22.3,
+     "ergste_mm": 18.37,
+     "ergste_bij_hz": 53.01
+    },
+    {
+     "netlist": "V45_KAND_5",
+     "weg": "woofer",
+     "x_op_f0_mm": 21.24,
+     "fractie_van_limiet": 3.1,
+     "grens_gehaald_vanaf_hz": 10.07,
+     "ergste_mm": 21.76,
+     "ergste_bij_hz": 45.31
+    },
+    {
+     "netlist": "V45_KAND_6",
+     "weg": "woofer",
+     "x_op_f0_mm": 21.2,
+     "fractie_van_limiet": 3.1,
+     "grens_gehaald_vanaf_hz": 10.07,
+     "ergste_mm": 21.68,
+     "ergste_bij_hz": 45.31
+    },
+    {
+     "netlist": "V45_KAND_7",
+     "weg": "woofer",
+     "x_op_f0_mm": 19.24,
+     "fractie_van_limiet": 2.81,
+     "grens_gehaald_vanaf_hz": 10.07,
+     "ergste_mm": 19.41,
+     "ergste_bij_hz": 53.01
+    },
+    {
+     "netlist": "V47_KAND_1",
+     "weg": "woofer",
+     "x_op_f0_mm": 18.23,
+     "fractie_van_limiet": 2.66,
+     "grens_gehaald_vanaf_hz": 10.07,
+     "ergste_mm": 18.34,
+     "ergste_bij_hz": 51.77
+    },
+    {
+     "netlist": "V47_KAND_2",
+     "weg": "woofer",
+     "x_op_f0_mm": 18.89,
+     "fractie_van_limiet": 2.76,
+     "grens_gehaald_vanaf_hz": 10.07,
+     "ergste_mm": 19.05,
+     "ergste_bij_hz": 53.01
+    },
+    {
+     "netlist": "V47_KAND_3",
+     "weg": "woofer",
+     "x_op_f0_mm": 19.16,
+     "fractie_van_limiet": 2.8,
+     "grens_gehaald_vanaf_hz": 10.07,
+     "ergste_mm": 19.32,
+     "ergste_bij_hz": 53.01
+    },
+    {
+     "netlist": "V47_KAND_4",
+     "weg": "woofer",
+     "x_op_f0_mm": 18.31,
+     "fractie_van_limiet": 2.68,
+     "grens_gehaald_vanaf_hz": 22.19,
+     "ergste_mm": 18.45,
+     "ergste_bij_hz": 53.01
+    },
+    {
+     "netlist": "V48_KAND_1",
+     "weg": "woofer",
+     "x_op_f0_mm": 18.37,
+     "fractie_van_limiet": 2.69,
+     "grens_gehaald_vanaf_hz": 10.07,
+     "ergste_mm": 18.47,
+     "ergste_bij_hz": 52.76
+    },
+    {
+     "netlist": "V48_KAND_2",
+     "weg": "woofer",
+     "x_op_f0_mm": 18.7,
+     "fractie_van_limiet": 2.73,
+     "grens_gehaald_vanaf_hz": 10.07,
+     "ergste_mm": 18.89,
+     "ergste_bij_hz": 53.01
+    },
+    {
+     "netlist": "V48_KAND_3",
+     "weg": "woofer",
+     "x_op_f0_mm": 18.33,
+     "fractie_van_limiet": 2.68,
+     "grens_gehaald_vanaf_hz": 22.19,
+     "ergste_mm": 18.51,
+     "ergste_bij_hz": 53.01
+    },
+    {
+     "netlist": "V48_KAND_4",
+     "weg": "woofer",
+     "x_op_f0_mm": 18.34,
+     "fractie_van_limiet": 2.68,
+     "grens_gehaald_vanaf_hz": 22.19,
+     "ergste_mm": 18.53,
+     "ergste_bij_hz": 53.01
+    },
+    {
+     "netlist": "V48_KAND_5",
+     "weg": "woofer",
+     "x_op_f0_mm": 18.99,
+     "fractie_van_limiet": 2.78,
+     "grens_gehaald_vanaf_hz": 10.07,
+     "ergste_mm": 19.15,
+     "ergste_bij_hz": 53.01
+    },
+    {
+     "netlist": "KAND_V2_1",
+     "weg": "woofer",
+     "x_op_f0_mm": 14.06,
+     "fractie_van_limiet": 2.06,
+     "grens_gehaald_vanaf_hz": 23.95,
+     "ergste_mm": 14.16,
+     "ergste_bij_hz": 53.01
+    },
+    {
+     "netlist": "KAND_V2_2",
+     "weg": "woofer",
+     "x_op_f0_mm": 18.66,
+     "fractie_van_limiet": 2.73,
+     "grens_gehaald_vanaf_hz": 10.07,
+     "ergste_mm": 18.85,
+     "ergste_bij_hz": 53.01
+    },
+    {
+     "netlist": "KAND_V2_3",
+     "weg": "woofer",
+     "x_op_f0_mm": 18.32,
+     "fractie_van_limiet": 2.68,
+     "grens_gehaald_vanaf_hz": 22.19,
+     "ergste_mm": 18.5,
+     "ergste_bij_hz": 53.01
+    },
+    {
+     "netlist": "KAND_V2_4",
+     "weg": "woofer",
+     "x_op_f0_mm": 18.45,
+     "fractie_van_limiet": 2.7,
+     "grens_gehaald_vanaf_hz": 22.19,
+     "ergste_mm": 18.64,
+     "ergste_bij_hz": 53.01
+    },
+    {
+     "netlist": "KAND_V2_5",
+     "weg": "woofer",
+     "x_op_f0_mm": 21.25,
+     "fractie_van_limiet": 3.11,
+     "grens_gehaald_vanaf_hz": 10.07,
+     "ergste_mm": 21.78,
+     "ergste_bij_hz": 45.31
+    },
+    {
+     "netlist": "KAND_V2_6",
+     "weg": "woofer",
+     "x_op_f0_mm": 19.34,
+     "fractie_van_limiet": 2.83,
+     "grens_gehaald_vanaf_hz": 10.07,
+     "ergste_mm": 19.52,
+     "ergste_bij_hz": 53.01
+    },
+    {
+     "netlist": "KAND_V2_7",
+     "weg": "woofer",
+     "x_op_f0_mm": 21.1,
+     "fractie_van_limiet": 3.09,
+     "grens_gehaald_vanaf_hz": 10.07,
+     "ergste_mm": 21.6,
+     "ergste_bij_hz": 45.31
     }
    ]
   }

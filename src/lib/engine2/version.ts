@@ -60,8 +60,15 @@ export const ESTIMATOR_VERSIONS = {
    *      shape of the result grew but nothing was removed from it.
    */
   'z-re': '1.1',
-  /** Resonance classification by phase zero crossing — A5c.2/3 (V8b). */
-  'z-resonance': '1.0',
+  /**
+   * Resonance classification by phase zero crossing — A5c.2/3 (V8b).
+   *
+   * 1.1: V49 — every motional peak also carries Small's Q_ms and Q_es (the
+   *      half-power construction at √r0·R_e), because M-C v2.0 reads the cone
+   *      displacement per volt at a resonance from them. MINOR: the shape grew
+   *      (two fields per peak), no existing number moved.
+   */
+  'z-resonance': '1.1',
   /** Semi-inductance fit |Z−Re| = K·ω^n with validity detection — A5c.5 (V8e). */
   'z-semi-inductance': '1.0',
   /** Ripple against a fractional-octave trend — A5c.4. */

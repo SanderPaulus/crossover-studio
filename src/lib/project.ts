@@ -315,6 +315,16 @@ export interface ProjectDesign {
     dampingMarginDb?: string;
     runSeed?: string;
     runBudgetEvals?: string;
+    /**
+     * V49 (M-C v2.0) — the amplifier's brief PEAK power and the load it is
+     * specified into, plus the fraction of X_max a design may use. Together
+     * with the driver cards they turn M-C's limit from a stated decibel into
+     * a derived property of the driver. Empty = absent, and M-C is then judged
+     * on `maxDriveOnFsDb` alone (or on nothing).
+     */
+    amplifierPeakPowerW?: string;
+    amplifierNominalLoadOhm?: string;
+    xmaxMarginFraction?: string;
   };
   /**
    * A5a (F3b) — per-branch MEASUREMENT metadata for the v2 layer, keyed by
@@ -338,6 +348,18 @@ export interface ProjectDesign {
         rightWindowMs?: string;
         floorHz?: string;
         windowNote?: string;
+        /**
+         * V49 (M-C v2.0) — the two datasheet numbers the excursion route needs
+         * beside the Sd/Xmax the Setup tab already holds: force factor (T·m)
+         * and moving mass (g). Empty = absent; M-C v2.0 stays off for the
+         * branch and names the field.
+         */
+        blTm?: string;
+        mmsG?: string;
+        /** V49 — the drive voltage (V rms) the on-axis far field was taken at,
+         *  when documented. With the mic distance on the cabinet form it arms
+         *  the ACOUSTIC counter-proof of M-C v2.0. */
+        driveVoltageV?: string;
       }
     >
   >;

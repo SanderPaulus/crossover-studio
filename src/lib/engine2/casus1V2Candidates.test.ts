@@ -87,6 +87,7 @@ import {
   casus1V2Facts,
   CASUS1_QES_MULTIPLIER_MAX,
   CASUS1_TARGET_CURVE,
+  CASUS1_EXCURSION,
 } from './casus1V2.fixture.ts';
 import { buildReport, type EngineV2Report } from './report.ts';
 import { ctcKey } from './metrics/types.ts';
@@ -206,6 +207,10 @@ const report = (key: string): EngineV2Report =>
       orderByPair: { [ctcKey('woofer', 'mid')]: 4, [ctcKey('mid', 'tweeter')]: 4 },
       reOhmByDriver: { woofer: CASUS1_WOOFER_DC_OHM },
       targetCurve: CASUS1_TARGET_CURVE,
+      /* V49 — the excursion inputs, so the facts this reproduction sends carry
+       * the same derived ceilings the generator sent (V32's rule: the facts
+       * must be the facts the generator sent). */
+      ...CASUS1_EXCURSION,
     },
   });
 

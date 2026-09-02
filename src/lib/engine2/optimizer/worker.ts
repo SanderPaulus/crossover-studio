@@ -47,6 +47,7 @@ import { crossoverToNetlist } from '../../vxpNetwork.ts';
 import { classifyImpedance, estimateRe } from '../ingest/impedance.ts';
 import { DEG_PER_HALF_TURN, H_PER_MH } from '../constants.ts';
 import {
+  anyGateActive,
   evaluateGates,
   freezeGateReference,
   type GateReference,
@@ -686,6 +687,22 @@ function tuneOptionsFor(
   }
 
   /* ---- the budget inversions (A5d.6) --------------------------------- */
+  /* V49 — the SEED's own M-C halves, so the series-C pre-bound can read an
+   * excursion ceiling (stated re the input) in the passband-relative form the
+   * inversion needs. One evaluation of the seed on the frozen reference; the
+   * same machinery that will judge the delivered network. */
+  const seedDrive = ((): Record<string, number> => {
+    const out: Record<string, number> = {};
+    if (Object.keys(reference.driverZ).length === 0) return out;
+    try {
+      for (const d of evaluateGates(netlistOf(seedParts), v2.gates, reference, 'frozen').metrics.driveVoltage) {
+        out[d.driver] = d.passbandMeanDb;
+      }
+    } catch {
+      /* an unsolvable seed is reported by the chain; the pre-bound then reads the stated figure only */
+    }
+    return out;
+  })();
   const ways: BudgetWay[] = [];
   const order = [...reference.frozenHighPassProtected];
   const models = Object.keys(facts.driverZ).sort((a, b) => {
@@ -723,6 +740,7 @@ function tuneOptionsFor(
           )
         : null,
       passbandHz: pass,
+      passbandMeanDb: seedDrive[model] ?? null,
       fsHz: facts.fsHz[model] ?? null,
       fPeakHz: facts.fsHz[model] ?? null,
       /* V45 (A5e.2) — THE BUDGET THAT USED TO BE `null` HERE.
@@ -980,11 +998,34 @@ function tuneOptionsFor(
   }
 
   /* ---- the gate hook -------------------------------------------------- */
-  const armed =
-    v2.gates.maxDissipationFraction !== undefined ||
-    v2.gates.minEpdrOhm !== undefined ||
-    v2.gates.ampMinLoadOhm !== undefined ||
-    v2.gates.maxDriveOnFsDb !== undefined;
+  const armed = anyGateActive(v2.gates);
+  /* V49 — WHICH M-C LIMIT JUDGES EACH WAY, said per way on every v2 run. The
+   * ceilings are dB re the amplifier's peak input; what the gate compares is
+   * their passband-relative form, and which of the two halves bites depends on
+   * the network's own passband level, so the verdict parameters carry it per
+   * evaluation. Here: what arrived, and what did not. */
+  const ceilings = v2.gates.driveCeilingDbByDriver ?? {};
+  const ceilingModels = Object.keys(ceilings).sort();
+  if (ceilingModels.length > 0) {
+    collect.notes.push(
+      'M-C v2.0 (V49): an excursion-derived ceiling reached this run for ' +
+        ceilingModels.map((m) => `${m} (${ceilings[m].toFixed(2)} dB re peak input)`).join(', ') +
+        (v2.gates.maxDriveOnFsDb !== undefined
+          ? `; the stated ${v2.gates.maxDriveOnFsDb} dB figure stands beside it and the STRICTER ` +
+            'of the two judges each way (see limit_source on every M-C verdict).'
+          : '; no dB figure is stated, so the ceiling alone judges each of these ways.'),
+    );
+    const without = Object.keys(facts.driverZ).filter((m) => !ceilingModels.includes(m)).sort();
+    if (without.length > 0) {
+      collect.notes.push(
+        `No excursion-derived ceiling reached this run for ${without.join(', ')} — driver card, ` +
+          'amplifier peak or resonance missing on the report side — so ' +
+          (v2.gates.maxDriveOnFsDb !== undefined
+            ? 'the stated dB figure alone judges those ways where they are high-pass protected.'
+            : 'nothing absolute judges those ways.'),
+      );
+    }
+  }
 
   /* ---- V47: WHICH OF THE TWO PROTECTION RULES IS ACTUALLY IN FORCE ------
    *
@@ -1007,11 +1048,14 @@ function tuneOptionsFor(
    * happen in the app the moment somebody clears the M-C field while a
    * candidate that was generated with it is still in flight. */
   const wantsStatedProtection = stated.protectionRule === 'stated';
-  const driveGateArmed = v2.gates.maxDriveOnFsDb !== undefined;
+  const driveGateArmed = v2.gates.maxDriveOnFsDb !== undefined || ceilingModels.length > 0;
   if (wantsStatedProtection && driveGateArmed) {
     collect.notes.push(
       'Upper-driver protection is judged by the STATED requirement — M-C at most ' +
-        `${v2.gates.maxDriveOnFsDb} dB, enforced by the gate at every point a pass accepts a ` +
+        (v2.gates.maxDriveOnFsDb !== undefined
+          ? `${v2.gates.maxDriveOnFsDb} dB`
+          : 'the excursion-derived ceiling (V49)') +
+        ', enforced by the gate at every point a pass accepts a ' +
         'network — and the full-band safety gate no longer compares against the seed. The two ' +
         'rules do not order the same designs: the seed comparison is stricter than the ' +
         'requirement on a well-protected seed and looser on a poor one (V47).',
@@ -1213,6 +1257,30 @@ function tuneOptionsFor(
     ...(v2.determinism.budgetEvaluations !== undefined
       ? { maxIterations: v2.determinism.budgetEvaluations }
       : {}),
+  };
+}
+
+/**
+ * V49 — FOLD THE EXCURSION-DERIVED CEILINGS INTO THE GATE SETTINGS THIS RUN
+ * JUDGES ON.
+ *
+ * They arrive as a measured FACT (`driveCeilingDbByModel`, derived once by
+ * the report from the driver card and the classified sweep) and become a
+ * gate setting here, beside the stated `maxDriveOnFsDb`; `effectiveDriveLimit`
+ * then applies the stricter of the two per way. Done once at the entry so that
+ * every reader below — the armed check, the gate hook, the refused-tune
+ * measurement, the delivered verdict and the pre-bound — sees ONE gate object.
+ * A payload without ceilings is returned untouched, byte for byte.
+ */
+function withDerivedDriveCeiling(v2: V2RunSettings): V2RunSettings {
+  const c = v2.driveCeilingDbByModel;
+  if (!c || Object.keys(c).length === 0) return v2;
+  return {
+    ...v2,
+    gates: {
+      ...v2.gates,
+      driveCeilingDbByDriver: { ...(v2.gates.driveCeilingDbByDriver ?? {}), ...c },
+    },
   };
 }
 
@@ -1872,7 +1940,8 @@ export function handleV2Request(req: V2Request, post: V2Post): void {
     let data: unknown;
     switch (req.kind) {
       case 'v2Chain3One': {
-        const { input, v2, candidate } = req.payload;
+        const { input, v2: v2Wire, candidate } = req.payload;
+        const v2 = withDerivedDriveCeiling(v2Wire);
         const facts = measurementFacts(
           input.grid,
           input.driverZ,
@@ -2029,7 +2098,8 @@ export function handleV2Request(req: V2Request, post: V2Post): void {
         break;
       }
       case 'v2ChainOne': {
-        const { input, label, v2, candidate } = req.payload;
+        const { input, label, v2: v2Wire, candidate } = req.payload;
+        const v2 = withDerivedDriveCeiling(v2Wire);
         const facts = measurementFacts(
           input.grid,
           input.driverZ,

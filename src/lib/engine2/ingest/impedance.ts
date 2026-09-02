@@ -398,6 +398,24 @@ export interface ZPeak {
    * Null when the curve does not come back down to that level inside the sweep.
    */
   q: number | null;
+  /**
+   * V49 — SMALL'S MECHANICAL Q OF THIS PEAK, and its electrical companion.
+   *
+   * The half-height `q` above answers "how sharp is this peak"; this answers
+   * the question M-C v2.0 asks, "how far does a volt move the cone at this
+   * resonance", and that needs Q_ms in the sense of the mass-compliance model:
+   * the peak's half-POWER width read at √r0·R_e, with Q_ms = f·√r0/(f2−f1) and
+   * Q_es = Q_ms/(r0−1) (Small 1972, the same construction `SealedDiagnosis`
+   * has always used for the fundamental of a sealed alignment). Carried on
+   * EVERY motional peak rather than only on the sealed fundamental so that a
+   * vented woofer's upper peak can be read the same way — an approximation
+   * there, and the reader that uses it says so.
+   *
+   * Null when the curve does not come back down to √r0·R_e inside the sweep.
+   * `z-resonance` went 1.0 → 1.1 for this: the shape grew, no number moved.
+   */
+  qms: number | null;
+  qes: number | null;
   /** Why the classification came out this way — shown, never just applied. */
   reason: string;
 }
@@ -516,6 +534,14 @@ export function classifyImpedance(
     const lo = crossingHz(freq, a, i, -1, halfHeight);
     const hi = crossingHz(freq, a, i, 1, halfHeight);
     const q = lo !== null && hi !== null && hi > lo ? freq[i] / (hi - lo) : null;
+    /* V49 — Small's construction on THIS peak: the half-power level is
+     * √r0·R_e, not half the peak height. Same arithmetic `SealedDiagnosis`
+     * applies to the fundamental below; here it is carried per peak. */
+    const smallLevel = reOhm * Math.sqrt(r0);
+    const sLo = crossingHz(freq, a, i, -1, smallLevel);
+    const sHi = crossingHz(freq, a, i, 1, smallLevel);
+    const qms = sLo !== null && sHi !== null && sHi > sLo ? (freq[i] * Math.sqrt(r0)) / (sHi - sLo) : null;
+    const qes = qms !== null && r0 > 1 ? qms / (r0 - 1) : null;
     peaks.push({
       fHz: freq[i],
       ohm: a[i],
@@ -523,6 +549,8 @@ export function classifyImpedance(
       r0,
       motional,
       q,
+      qms,
+      qes,
       reason: motional
         ? `phase ${phaseDeg[i].toFixed(0)}° at the crest — inside ±${RESONANCE_PHASE_ZERO_DEG}°, so motional`
         : `phase ${phaseDeg[i].toFixed(0)}° at the crest — outside ±${RESONANCE_PHASE_ZERO_DEG}°, ` +

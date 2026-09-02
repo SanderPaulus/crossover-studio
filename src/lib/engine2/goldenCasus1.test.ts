@@ -26,6 +26,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   CASUS1_WOOFER_DC_OHM,
+  casus1ExcursionSettings,
   casus1Files,
   casus1Filter,
   casus1Geometry,
@@ -56,6 +57,10 @@ const settings = {
    * never written here (P6). Until V45 this was `flat` by omission, which was
    * correct while A5e.2 was open and is a silent wrong answer now. */
   targetCurve: casus1TargetCurve(golden),
+  /* V49 — the driver cards, the amplifier peak and the X_max margin, so the
+   * class-A excursion references below are measured on the same inputs the
+   * manifest states. Read, never written here (P6). */
+  ...casus1ExcursionSettings(golden),
 };
 
 const manifest = casus1Manifest(golden);
@@ -741,3 +746,47 @@ describe('golden references - casus 1 (Koan 2951)', () => {
     expect(r.ingest.fingerprint).toContain('spl-breakup@');
   });
 });
+
+/* ================= V49 — M-C v2.0, class A per driver ================= */
+
+describe('V49 — the excursion-derived ceiling per driver (class A)', () => {
+  const exc = (r: EngineV2Report, name: string) => r.metrics.driveExcursion.find((x) => x.driver === name);
+  const P = golden.afgeleide_parameters._excursie_parameters as Record<string, unknown>;
+
+  it('the parameter block names the inputs, and the engine used them', () => {
+    expect(P.schatter).toBe('drive-excursion/2.0');
+    expect(P.versterker_piekvermogen_W).toBe(settings.amplifierPeakPowerW);
+    expect(P.versterker_nominale_last_ohm).toBe(settings.amplifierNominalLoadOhm);
+    expect(P.xmax_marge).toBe(settings.xmaxMarginFraction);
+    const t = exc(REPORTS.HUIDIG, 'tweeter')!;
+    expect(t.peakInputVolts).toBeCloseTo(
+      Math.sqrt(2 * (settings.amplifierPeakPowerW as number) * (settings.amplifierNominalLoadOhm as number)),
+      9,
+    );
+  });
+
+  it.each(['woofer', 'mid', 'tweeter'])('%s: x/V, the allowed volts and the ceiling reproduce, on all three filters', (name) => {
+    const ref = golden.afgeleide_parameters[name] as Record<string, number | null>;
+    expect(ref.excursie_x_per_V_op_f0_mm_per_V).toBeTypeOf('number');
+    for (const key of ['HUIDIG', 'KAND_A', 'KAND_B'] as const) {
+      const x = exc(REPORTS[key], name);
+      expect(x, `${key}: no excursion result for ${name}`).toBeDefined();
+      expect(x!.route).toBe('electromechanical');
+      // The class-A claim: a function of measurement + inputs, so identical on every filter.
+      expect(pct(x!.xPerVoltMmPerV, ref.excursie_x_per_V_op_f0_mm_per_V!)).toBeLessThanOrEqual(TOL.Q_pct);
+      expect(Math.abs(x!.ceiling.allowedVolts - ref.excursie_toegestane_spanning_V!)).toBeLessThanOrEqual(0.01);
+      expect(Math.abs(x!.ceiling.ceilingDbReInput - ref.excursie_plafond_re_ingang_dB!)).toBeLessThanOrEqual(TOL.dB);
+      expect(pct(x!.electromechanical!.qms, ref.excursie_Q_ms!)).toBeLessThanOrEqual(TOL.Q_pct);
+    }
+    // Route 2 is off on this casus and the reference says so with null, not 0 (F0).
+    expect(ref.excursie_route_verhouding).toBeNull();
+  });
+
+  it('the mid Q_ms IS Small\'s Q_mc of the sealed alignment — one construction, two readers', () => {
+    const m = driver(REPORTS.HUIDIG, 'mid');
+    const x = exc(REPORTS.HUIDIG, 'mid')!;
+    expect(x.electromechanical!.qms).toBeCloseTo(m.impedance!.sealed!.qmc!, 9);
+    expect(x.electromechanical!.zMaxOhm).toBeCloseTo(m.impedance!.sealed!.zMaxOhm, 9);
+  });
+});
+

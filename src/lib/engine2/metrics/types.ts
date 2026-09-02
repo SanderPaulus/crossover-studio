@@ -30,11 +30,19 @@ import type { Netlist } from '../../network.ts';
 import type { Coverage } from '../ingest/validity.ts';
 import type { DerivedDriver, IngestResult } from '../ingest/derive.ts';
 import type { EstimatorStamp } from '../version.ts';
+import type { DriverCard } from './driveExcursion.ts';
+
+export type { DriverCard };
 
 export type MetricId =
   | 'M-A'
   | 'M-B'
   | 'M-C'
+  /* V49 — M-C v2.0: the excursion-derived LIMIT of M-C, per driver. A row of
+   * its own in the register because it has its own data needs (the driver
+   * card, the amplifier's peak) and its own off-reasons; the VALUE it limits is
+   * still M-C's. */
+  | 'M-C-excursion'
   | 'M-D'
   | 'M-E'
   | 'M-F-interim'
@@ -176,6 +184,28 @@ export interface ProjectSettings {
    * literature default in `constants.ts`.
    */
   groupDelayThresholdMsKnots?: readonly (readonly [number, number])[];
+  /* ---- V49 (M-C v2.0): the excursion inputs ---------------------------- *
+   * All four stated by the designer, none defaulted. With any of them absent
+   * `M-C-excursion` is OFF for the driver it concerns, with the field named,
+   * and M-C is judged on the stated dB limit alone (or on nothing). */
+  /** The datasheet card per driver id — X_max, S_d, Bl, M_ms, parallel count. */
+  driverCardByDriver?: Record<string, DriverCard>;
+  /**
+   * The amplifier's brief PEAK power, W, and the load it is specified into.
+   * The requirement is judged at the peak voltage those two imply
+   * (√2·√(P·R_nom)); `amplifierPowerW` above stays the continuous figure the
+   * dissipation watts and the SPL reference line are printed at.
+   */
+  amplifierPeakPowerW?: number;
+  amplifierNominalLoadOhm?: number;
+  /** Fraction of X_max the design may use on the resonance, e.g. 0.8. */
+  xmaxMarginFraction?: number;
+  /**
+   * The drive voltage (V rms) and mic distance (mm) the on-axis far-field
+   * responses were taken at, per driver id — what the ACOUSTIC route of
+   * M-C v2.0 needs and what a header cannot say. Absent = that route is off.
+   */
+  responseDriveByDriver?: Record<string, { driveVoltageV: number; micDistanceMm: number; source?: string }>;
 }
 
 /**

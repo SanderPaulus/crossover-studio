@@ -570,6 +570,88 @@ export function EngineV2Panel({ report, ambiguous, floors = [] }: EngineV2PanelP
           </div>
         ))}
 
+        {/* V49 — M-C v2.0: the LIMIT, derived from excursion, per driver. Both
+            routes shown, the acoustic one with its ratio or its off-reason; the
+            ceiling is re the amplifier's PEAK input and the gate table above
+            shows which limit — this one or the stated figure — actually bit.
+            The weakest-link row is the unprotected way's reading: no
+            requirement, a number. */}
+        {metrics.driveExcursion.map((x) => (
+          <div className="v2-metric" key={`cx-${x.driver}`}>
+            <div className="v2-metric-head">
+              <span className="v2-id">M-C v2.0</span> Drive limit from excursion — {x.driver}
+              <b>
+                ceiling {db(x.ceiling.ceilingDbReInput, 1)} re peak input ({num(x.peakInputVolts, 1)} V) ·{' '}
+                {num(x.ceiling.allowedVolts, 2)} V allowed on f_s
+              </b>
+            </div>
+            <div className="v2-muted">
+              f_s {hz(x.f0Hz)} · x/V {num(x.xPerVoltMmPerV, 4)} mm/V ({x.route}) · limit{' '}
+              {num(x.ceiling.xLimitMm, 2)} mm = X_max {num(x.parameters.X_max_mm as number, 2)} mm ×{' '}
+              {num(x.parameters.margin as number, 2)}
+            </div>
+            {x.electromechanical && (
+              <div className="v2-muted">
+                route 1 (electromechanical): Bl {num(x.electromechanical.blTm, 2)} T·m · M_ms{' '}
+                {num(x.electromechanical.mmsG, 2)} g · Z_max {ohm(x.electromechanical.zMaxOhm)} · Q_ms{' '}
+                {num(x.electromechanical.qms, 2)} — {x.electromechanical.qmsSource}
+              </div>
+            )}
+            <div className="v2-muted">
+              {'off' in x.acoustic
+                ? `route 2 (acoustic): ${x.acoustic.off}`
+                : `route 2 (acoustic): ${num(x.acoustic.xPerVoltMmPerV, 4)} mm/V from ${db(x.acoustic.splDb, 1)} at ` +
+                  `${num(x.acoustic.driveVoltageV, 2)} V / ${num(x.acoustic.micDistanceMm, 0)} mm` +
+                  (x.acoustic.ratioToElectromechanical !== null
+                    ? ` — ${num(x.acoustic.ratioToElectromechanical, 2)}× route 1`
+                    : '')}
+            </div>
+            {x.notes.map((n, i) => (
+              <div className="v2-muted" key={i}>
+                {n}
+              </div>
+            ))}
+          </div>
+        ))}
+        {metrics.driveExcursionOff.map((why, i) => (
+          <div className="v2-metric" key={`cxo-${i}`}>
+            <div className="v2-metric-head">
+              <span className="v2-id">M-C v2.0</span> <b className="v2-muted">off — input missing</b>
+            </div>
+            <div className="v2-muted">{why}</div>
+          </div>
+        ))}
+        {metrics.weakestLink.map((w) => (
+          <div className="v2-metric" key={`wl-${w.driver}`}>
+            <div className="v2-metric-head">
+              <span className="v2-id">M-C v2.0</span> Weakest link (no high-pass) — {w.driver}
+              <b>
+                {num(w.xAtF0Mm, 2)} mm on f_s at the peak input = {num(w.fractionOfLimit * 100, 0)} % of the limit
+              </b>
+            </div>
+            <div className="v2-muted">
+              {w.reachesLimitAtHz === null
+                ? `the model never reaches the limit on this grid; worst ${num(w.worstMm, 2)} mm at ${hz(w.worstAtHz)}`
+                : `the model reaches the limit from ${hz(w.reachesLimitAtHz)} down; worst ${num(w.worstMm, 2)} mm at ${hz(w.worstAtHz)}`}
+            </div>
+            <div className="v2-muted">{w.note}</div>
+          </div>
+        ))}
+        {metrics.splAtPower.map((p) => (
+          <div className="v2-metric" key={`spl-${p.driver}`}>
+            <div className="v2-metric-head">
+              <span className="v2-id">SPL</span> Level at the stated power, re 1 m — {p.driver}
+              <b>
+                {p.continuousDb !== null && p.powerW !== null
+                  ? `${db(p.continuousDb, 1)} at ${p.powerW} W · `
+                  : ''}
+                {db(p.peakDb, 1)} at the {p.peakPowerW} W peak
+              </b>
+            </div>
+            <div className="v2-muted">from the measured passband level and the documented drive voltage and mic distance</div>
+          </div>
+        ))}
+
         {metrics.lfBump.map(({ driver, result }) => (
           <div className="v2-metric" key={`d-${driver}`}>
             <div className="v2-metric-head">

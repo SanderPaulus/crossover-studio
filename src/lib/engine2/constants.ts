@@ -66,6 +66,12 @@ export const H_PER_MH = 1e-3;
 /** Farad per microfarad. @p6 unit */
 export const F_PER_UF = 1e-6;
 
+/** Grams per kilogram — a datasheet states M_ms in grams. @p6 unit */
+export const G_PER_KG = 1000;
+
+/** Square metres per square centimetre — a datasheet states S_d in cm². @p6 unit */
+export const M2_PER_CM2 = 1e-4;
+
 /* ------------------------------------------------------------------ *
  * Physical constants
  * ------------------------------------------------------------------ */
@@ -77,6 +83,20 @@ export const F_PER_UF = 1e-6;
  * complete without following an import. @p6 physical
  */
 export const SPEED_OF_SOUND_M_S = 343;
+
+/**
+ * Density of air, kg/m³ at ~20 °C and 1 atm. Needed by the ACOUSTIC route of
+ * M-C v2.0 (V49): a piston's far-field pressure is ρ0·S_d·a/(2π·r), so turning
+ * a measured SPL back into a cone displacement divides by it. @p6 physical
+ */
+export const AIR_DENSITY_KG_M3 = 1.204;
+
+/**
+ * The reference sound pressure of the dB SPL scale, 20 µPa (IEC 61672 /
+ * ISO 1683). The only way an SPL figure becomes a pressure in pascals, and the
+ * acoustic route of M-C v2.0 needs pascals. @p6 norm
+ */
+export const REFERENCE_SOUND_PRESSURE_PA = 20e-6;
 
 /* ------------------------------------------------------------------ *
  * Standards

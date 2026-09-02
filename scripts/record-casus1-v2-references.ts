@@ -32,6 +32,7 @@ import {
   CASUS1_DIR,
   CASUS1_WOOFER_DC_OHM,
   casus1AmpMinLoadOhm,
+  casus1ExcursionSettings,
   casus1Files,
   casus1Filter,
   casus1Geometry,
@@ -48,6 +49,7 @@ import { LF_BUMP_VERSION } from '../src/lib/engine2/metrics/acoustic.ts';
 import { RESISTIVE_EQUIVALENT_VERSION } from '../src/lib/engine2/metrics/resistiveEquivalent.ts';
 import { PHASE_INTEGRATION_VERSION } from '../src/lib/engine2/metrics/phaseIntegration.ts';
 import { PHASE_ADMISSION_VERSION } from '../src/lib/phaseAdmission.ts';
+import { DRIVE_EXCURSION_VERSION, derivedDriveLimitDb } from '../src/lib/engine2/metrics/driveExcursion.ts';
 import { compareDesigns } from '../src/lib/engine2/predesign/comparison.ts';
 import { ampFloorSlackOhm, meetsAmpFloor } from '../src/lib/impedanceFloor.ts';
 import { busTopology, systemMinImpedanceOhm } from '../src/lib/netOptimizer.ts';
@@ -55,6 +57,7 @@ import { impedanceReferenceFrom } from '../src/lib/engine2/optimizer/impedanceRe
 import { sourceProbeIndex, sourceResistanceOhm } from '../src/lib/partAudit.ts';
 import { deserializeFilter } from '../src/lib/filterFile.ts';
 import {
+  CASUS1_EXCURSION,
   CASUS1_V2_GRID,
   CASUS1_V2_SETTINGS,
   casus1ChainInput,
@@ -93,6 +96,10 @@ const report = (key: string) =>
       orderByPair: { [ctcKey('woofer', 'mid')]: 4, [ctcKey('mid', 'tweeter')]: 4 },
       reOhmByDriver: { woofer: CASUS1_WOOFER_DC_OHM },
       targetCurve: CASUS1_TARGET_CURVE,
+      /* V49 — the excursion inputs, so every recorded M-C verdict carries the
+       * limit the report actually judged on (stated or derived, whichever is
+       * stricter). Same manifest, same reader as the guards. */
+      ...CASUS1_EXCURSION,
     },
   });
 
@@ -954,6 +961,159 @@ const driveRecord = (() => {
 })();
 
 raw.manifest_en_geometrie.v47_bescherming = driveRecord;
+
+/* ------------------------------------------------------------------ *
+ * V49 — M-C v2.0: de excursie-afgeleide grens, klasse A per driver en
+ * klasse B per beschermde weg per netlist
+ * ------------------------------------------------------------------ */
+
+/**
+ * TWEE BLOKKEN, en zij dragen twee klassen. (1) `afgeleide_parameters.<driver>`
+ * krijgt de KLASSE-A-waarden: x/V op de resonantie, de toegestane spanning en
+ * het plafond in dB t.o.v. de piekingang — een functie van meting (f0, Z_max,
+ * Q_ms uit de sweep) plus INVOER (kaart, versterkerpiek, marge), en van geen
+ * enkele netlist; `_excursie_parameters` legt die invoer vast (V15-regel).
+ * (2) `manifest_en_geometrie.v49_excursie` is het afgeleide klasse-B-blok in
+ * de vorm van `v47_bescherming`: per hoogdoorlaatbeschermde weg van élke
+ * bevroren netlist de doorlaatband-gemiddelde |H|, de daaruit AFGELEIDE
+ * M-C-grens, de gestelde, welke van de twee de poort las, en M-C met zijn
+ * oordeel. `frozenNetlistGates.test.ts` herrekent beide.
+ */
+{
+  /* The report AS THE GATE JUDGES IT: with the stated figure armed, so that
+   * `effectieve_grens_dB` and `bron` below record what the poort actually
+   * read — the V47 block above judged by hand against `driveCeilingDb`; this
+   * one reads the verdict, and a verdict without the stated figure would be
+   * the derived half alone. */
+  const judged = (key: string) =>
+    buildReport({
+      manifest,
+      files,
+      filter: casus1Filter(key, manifest, files, golden),
+      geometry,
+      settings: {
+        amplifierPowerW: 100,
+        orderByPair: { [ctcKey('woofer', 'mid')]: 4, [ctcKey('mid', 'tweeter')]: 4 },
+        reOhmByDriver: { woofer: CASUS1_WOOFER_DC_OHM },
+        targetCurve: CASUS1_TARGET_CURVE,
+        ...(driveCeilingDb !== null ? { maxDriveOnFsDb: driveCeilingDb } : {}),
+        ...CASUS1_EXCURSION,
+      },
+    });
+  const first = judged('HUIDIG');
+  const exc = first.metrics.driveExcursion;
+  const settings = casus1ExcursionSettings(golden);
+  const amp = { P: settings.amplifierPeakPowerW ?? null, R: settings.amplifierNominalLoadOhm ?? null };
+  const params = (raw.afgeleide_parameters as Record<string, unknown>);
+  params._excursie_parameters = {
+    _:
+      'V15-PROCESREGEL op M-C v2.0 (V49). x/V op de resonantie is een functie van de gemeten ' +
+      'sweep (f0, Z_max en Small\'s Q_ms van de piek die de classificatie fundamenteel noemt) en ' +
+      'van INVOER (de driverkaart, het versterkerpiekvermogen met zijn nominale last, de ' +
+      'X_max-marge). Die invoer staat hier, zodat de klasse-A-waarden per driver reproduceerbaar ' +
+      'zijn; de invoer zelf woont in manifest_en_geometrie.driverkaart en .gestelde_eisen en ' +
+      'wordt hier alleen GENOEMD.',
+    schatter: DRIVE_EXCURSION_VERSION,
+    formule:
+      'x/V = Bl·Q_ms/(Z_max·N·M_ms·ω0²) [route 1]; V_toegestaan = X_max·marge/(x/V); ' +
+      'plafond = 20·log10(V_toegestaan/V_piek) met V_piek = √(2·P·R_nom); afgeleide M-C-grens per ' +
+      'netlist = plafond − doorlaatband-gemiddelde |H| in dB (F1-conventie), en de poort leest de ' +
+      'STRENGSTE van die grens en de gestelde (effectiveDriveLimit)',
+    versterker_piekvermogen_W: amp.P,
+    versterker_nominale_last_ohm: amp.R,
+    V_piek_V: exc[0] ? r2(exc[0].peakInputVolts) : null,
+    xmax_marge: settings.xmaxMarginFraction ?? null,
+    Q_ms_bron: Object.fromEntries(exc.map((x) => [x.driver, x.electromechanical?.qmsSource ?? null])),
+    R_e_lezing:
+      'Small\'s Q_ms leest het halfvermogensniveau op √r0·R_e = √(Z_max·R_e), dus x/V hangt aan ' +
+      'WELKE R_e de pas oploste (V16). Hier: de INGEVOERDE DC-meterlezing van het wooferpaar ' +
+      `(${CASUS1_WOOFER_DC_OHM} Ω, reOhmByDriver) en de motionele fit voor mid en tweeter — dezelfde ` +
+      'lezing als kandidaten._M_E_parameters. Op de fit-lezing (2,896 Ω) leest de woofer 0,2 mm ' +
+      'anders op f0; mid en tweeter bewegen niet.',
+    route_2:
+      'UIT op deze casus: de FF-meetspanning is niet gedocumenteerd (driverkaart.ff_meetspanning_V ' +
+      'is null, met de bevinding erbij). De route-1/route-2-verhouding is daarom null en geen getal.',
+    klasse: 'A',
+    afhankelijkheid: 'meting',
+  };
+  for (const x of exc) {
+    const block = params[x.driver] as Record<string, unknown> | undefined;
+    if (!block) continue;
+    block.excursie_x_per_V_op_f0_mm_per_V = Number(x.xPerVoltMmPerV.toFixed(4));
+    block.excursie_Q_ms = r2(x.electromechanical?.qms ?? null);
+    block.excursie_Z_max_op_f0_ohm = r2(x.electromechanical?.zMaxOhm ?? null);
+    block.excursie_toegestane_spanning_V = r2(x.ceiling.allowedVolts);
+    block.excursie_plafond_re_ingang_dB = r2(x.ceiling.ceilingDbReInput);
+    block.excursie_route_verhouding =
+      'off' in x.acoustic ? null : r2(x.acoustic.ratioToElectromechanical ?? null);
+    block.excursie_toelichting =
+      `M-C v2.0 (V49), route ${x.route}: x/V op f0 = ${x.f0Hz.toFixed(1)} Hz, klasse A — dezelfde waarde ` +
+      'op élke netlist van het casusboek. Het plafond is dB t.o.v. de PIEKINGANGSSPANNING; de ' +
+      'grens per netlist (plafond − doorlaatbandgemiddelde) staat in manifest_en_geometrie.v49_excursie. ' +
+      ('off' in x.acoustic ? `Route 2: ${x.acoustic.off}.` : 'Route 2 gemeten; zie de verhouding.');
+  }
+  const perWeg: Record<string, unknown>[] = [];
+  const zwakste: Record<string, unknown>[] = [];
+  for (const key of Object.keys(netlists)) {
+    const rep = judged(key);
+    const ceilings = new Map(rep.metrics.driveExcursion.map((x) => [x.driver, x.ceiling.ceilingDbReInput]));
+    for (const v of rep.gates.verdicts) {
+      if (v.gate !== 'M-C') continue;
+      const dv = rep.metrics.driveVoltage.find((d) => d.driver === v.subject);
+      const c = ceilings.get(v.subject);
+      const derived = dv && c !== undefined ? derivedDriveLimitDb(c, dv.passbandMeanDb) : null;
+      perWeg.push({
+        netlist: key,
+        weg: v.subject,
+        doorlaatband_gem_dB: r2(dv?.passbandMeanDb ?? null),
+        afgeleide_grens_dB: r2(derived),
+        gestelde_grens_dB: driveCeilingDb,
+        effectieve_grens_dB: v.limit,
+        bron: String(v.parameters?.limit_source ?? ''),
+        M_C_dB: r2(v.value),
+        haalt_de_eis: v.value === null || v.limit === null ? null : v.value <= v.limit,
+      });
+    }
+    for (const w of rep.metrics.weakestLink) {
+      zwakste.push({
+        netlist: key,
+        weg: w.driver,
+        x_op_f0_mm: r2(w.xAtF0Mm),
+        fractie_van_limiet: r2(w.fractionOfLimit),
+        grens_gehaald_vanaf_hz: r2(w.reachesLimitAtHz),
+        ergste_mm: r2(w.worstMm),
+        ergste_bij_hz: r2(w.worstAtHz),
+      });
+    }
+  }
+  const live = perWeg.filter((r) => /^KAND_V2_\d+$/.test(String(r.netlist)));
+  const derivedStricter = perWeg.filter((r) => String(r.bron).startsWith('excursion-derived'));
+  raw.manifest_en_geometrie.v49_excursie = {
+    _:
+      'V49 — M-C v2.0: de AFGELEIDE M-C-grens per hoogdoorlaatbeschermde weg van élke bevroren ' +
+      'netlist, naast de gestelde. De afgeleide grens is plafond (klasse A, afgeleide_parameters.<driver>) ' +
+      'minus het doorlaatband-gemiddelde |H| van DÍT netwerk (F1-conventie), dus klasse B; de poort ' +
+      'leest de STRENGSTE van beide en `bron` zegt welke. Zwakste schakel: de weg zonder ' +
+      'hoogdoorlaat bij de piekingang, rapportage en geen eis.',
+    schatter: DRIVE_EXCURSION_VERSION,
+    gestelde_grens_dB: driveCeilingDb,
+    context_dB: { V47: -25, regel_18dB: -18 },
+    levend_corpus_wegen: live.length,
+    levend_corpus_eroverheen_op_de_effectieve_grens: live.filter((r) => r.haalt_de_eis === false).length,
+    levend_corpus_wegen_waar_de_afgeleide_grens_strenger_is:
+      live.filter((r) => String(r.bron).startsWith('excursion-derived')).length,
+    /* Over het HELE casusboek: waar las de poort het afgeleide plafond in plaats
+     * van het gestelde getal — met naam, want dat is de bevinding en niet een
+     * telling. Bij V49: zeven mids van het V28-corpus, alle binnen 0,6 dB. */
+    casusboek_wegen_waar_de_afgeleide_grens_strenger_is: derivedStricter.map((r) => ({
+      netlist: r.netlist,
+      weg: r.weg,
+      afgeleide_grens_dB: r.afgeleide_grens_dB,
+    })),
+    per_weg: perWeg,
+    zwakste_schakel: zwakste,
+  };
+}
 
 /* ------------------------------------------------------------------ *
  * V43 — wat het GEHERIJKTE budget op het levende corpus doet

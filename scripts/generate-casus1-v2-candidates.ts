@@ -67,6 +67,7 @@ import {
   casus1Field,
   casus1V2Declaration,
   casus1V2Facts,
+  CASUS1_EXCURSION,
   CASUS1_MAX_DRIVE_ON_FS_DB,
   CASUS1_QES_MULTIPLIER_MAX,
   CASUS1_TARGET_CURVE,
@@ -89,6 +90,12 @@ const report = buildReport({
     orderByPair: { [ctcKey('woofer', 'mid')]: 4, [ctcKey('mid', 'tweeter')]: 4 },
     reOhmByDriver: { woofer: CASUS1_WOOFER_DC_OHM },
     targetCurve: CASUS1_TARGET_CURVE,
+    /* V49 — the excursion inputs. The report derives a ceiling per driver from
+     * them and `casus1V2Facts` carries it to the worker as a measured fact, so
+     * every candidate is judged on the STRICTER of that ceiling and the stated
+     * figure. Left out, the run would judge on the stated figure alone — a
+     * different route than the app's. */
+    ...CASUS1_EXCURSION,
   },
 });
 
@@ -595,6 +602,15 @@ const meetopstelling = {
               'driveVoltageOnResonance (src/lib/engine2/metrics/electrical.ts) op de gemeten ' +
               'sweep (V32), per hoogdoorlaatbeschermde weg, met de doorlaatband uit de eigen ' +
               'kruispunten (F1-conventie).',
+            /* V49 — de tweede helft van dezelfde poort: het excursie-afgeleide
+             * plafond per driver, als ACHTSTE feit op de wire, en de STRENGSTE van
+             * beide oordeelt. Afgelezen van de payload, niet overgeschreven. */
+            excursie_plafond_re_ingang_dB: facts.driveCeilingDbByModel ?? null,
+            excursie_regel:
+              'M-C v2.0 (V49): plafond = 20·log10(V_toegestaan/V_piek) per driver uit ' +
+              'driverkaart + versterkerpiek + gemeten sweep (metrics/driveExcursion.ts); de ' +
+              'poort leest per weg de STRENGSTE van dit plafond (passband-relatief gemaakt) en ' +
+              'het gestelde dB-getal (effectiveDriveLimit).',
           },
         }
       : {}),

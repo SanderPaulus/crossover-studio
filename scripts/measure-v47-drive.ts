@@ -30,6 +30,7 @@
  */
 
 import {
+  casus1ExcursionSettings,
   casus1Files,
   casus1Filter,
   casus1Geometry,
@@ -49,6 +50,9 @@ const netlists = (golden.manifest_en_geometrie as { netlists: Record<string, str
 const BASE: ReportSettings = {
   amplifierPowerW: 100,
   orderByPair: { [ctcKey('woofer', 'mid')]: 4, [ctcKey('mid', 'tweeter')]: 4 },
+  /* V49 — de excursie-invoer, zodat de M-C-kolom hier dezelfde grens leest als
+   * de poort (gesteld of afgeleid, de strengste). */
+  ...casus1ExcursionSettings(golden),
 };
 
 const only = process.argv.slice(2);

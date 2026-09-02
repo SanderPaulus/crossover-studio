@@ -132,6 +132,15 @@ export interface CandidateDeclarationInput {
    */
   driveOnFsLimitDb?: number;
   /**
+   * V49 — TRUE when the report derived an excursion ceiling for at least one
+   * way (M-C v2.0). An absolute requirement exists then even with no stated dB
+   * figure, so the safety gate's seed comparison has something to defer to
+   * and `protectionRule` derives `'stated'` exactly as it does for a stated
+   * figure. The ceilings themselves travel as a measured fact
+   * (`driveCeilingDbByModel`), never through the declaration.
+   */
+  driveCeilingDerived?: boolean;
+  /**
    * V48 — the project's stated LF-lift budget, dB, when it states one.
    *
    * The NUMBER rather than a boolean for the same reason `driveOnFsLimitDb` is
@@ -489,7 +498,7 @@ export function declareCandidateChoices(input: CandidateDeclarationInput): Choic
    * run somebody can ask for rather than a build that has to be patched. */
   if (s.protectionRule !== undefined) {
     stated.protectionRule = s.protectionRule;
-  } else if (input.driveOnFsLimitDb !== undefined) {
+  } else if (input.driveOnFsLimitDb !== undefined || input.driveCeilingDerived === true) {
     stated.protectionRule = 'stated';
   } else {
     absent.push({

@@ -43,7 +43,7 @@ import {
   loadGolden,
   type GoldenRefs,
 } from './casus1.fixture.ts';
-import { CASUS1_TARGET_CURVE } from './casus1V2.fixture.ts';
+import { CASUS1_EXCURSION, CASUS1_TARGET_CURVE } from './casus1V2.fixture.ts';
 import { buildReport, type EngineV2Report, type ReportSettings } from './report.ts';
 import type { Manifest } from './ingest/manifest.ts';
 import type { MeasurementFile } from './ingest/derive.ts';
@@ -205,6 +205,9 @@ export function corpusBank(golden: GoldenRefs = loadGolden()): CorpusBank {
     targetCurve: CASUS1_TARGET_CURVE,
     verticalWindowDeg: CORPUS_VERTICAL_WINDOW_DEG,
     ...(floorOhm !== null ? { ampMinLoadOhm: floorOhm } : {}),
+    /* V49 — the excursion inputs, so the M-C column of a corpus comparison
+     * reads the limit the gate actually judged on. */
+    ...CASUS1_EXCURSION,
   };
   return {
     golden,

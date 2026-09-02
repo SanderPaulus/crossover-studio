@@ -210,6 +210,11 @@ describe('A5e.4 - the v2 optimisation path is deterministic', () => {
        * with the same budgets attached. */
       gapBudget: { gapBudgetDbByModel: { w: 1.5 } },
       gapAnchor: { gapAnchorModel: 'w' },
+      /* V49 — the eighth fact: the excursion-derived M-C ceiling per model. A
+       * run judged against it and a run judged against the stated figure alone
+       * can deliver the same network from the same seed and mean two different
+       * things about which requirement bit. */
+      driveCeiling: { driveCeilingDbByModel: { w: -18 } },
     };
     const seen = new Set<string>([bare]);
     for (const [name, payload] of Object.entries(variants)) {

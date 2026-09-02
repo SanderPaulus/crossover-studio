@@ -39,6 +39,7 @@ import type { GeneratedCandidate } from './predesign/candidates.ts';
 import { AUTO_STRUCTS } from '../threeWayDesign.ts';
 import {
   casus1AmpMinLoadOhm,
+  casus1ExcursionSettings,
   casus1LfResonantBudgetDb,
   casus1MaxDriveOnFsDb,
   casus1QesMultiplierMax,
@@ -169,6 +170,20 @@ export const CASUS1_LF_RESONANT_BUDGET_DB: number | null = casus1LfResonantBudge
  * `casus1V2Declaration`.
  */
 export const CASUS1_MAX_DRIVE_ON_FS_DB: number | null = casus1MaxDriveOnFsDb();
+
+/**
+ * V49 — THE EXCURSION INPUTS of casus 1 (driver cards, amplifier peak, X_max
+ * margin, and the response drive when documented), read from the manifest for
+ * the same reason every stated requirement above is.
+ *
+ * They belong in the REPORT SETTINGS and nowhere on the wire: the report
+ * derives a ceiling per driver from them, and THAT crosses to the worker as a
+ * measured fact (`factsForWorker` → `driveCeilingDbByModel`), beside the stated
+ * `maxDriveOnFsDb` in `CASUS1_V2_GATES`. Spread into every casus-1 report so
+ * the guards, the recorder, the generator and the live reproductions cannot
+ * disagree about whether the ceiling was armed.
+ */
+export const CASUS1_EXCURSION = casus1ExcursionSettings();
 
 export const CASUS1_V2_GATES: { ampMinLoadOhm?: number; maxDriveOnFsDb?: number } = {
   ...(CASUS1_AMP_MIN_LOAD_OHM !== null ? { ampMinLoadOhm: CASUS1_AMP_MIN_LOAD_OHM } : {}),
@@ -365,6 +380,17 @@ export function casus1V2Declaration(
        * against a seed while a stated requirement judges the result. */
       ...(CASUS1_MAX_DRIVE_ON_FS_DB !== null
         ? { driveOnFsLimitDb: CASUS1_MAX_DRIVE_ON_FS_DB }
+        : {}),
+      /* V49 — and whether an excursion ceiling exists for this casus: with the
+       * cards, the peak and the margin all stated the report derives one per
+       * driver, and that is an absolute rule too. Read from the same manifest
+       * block; on casus 1 the stated figure already derives 'stated', so this
+       * changes nothing today and keeps the declaration honest the day the
+       * figure is dropped. */
+      ...(CASUS1_EXCURSION.driverCardByDriver !== undefined &&
+      CASUS1_EXCURSION.amplifierPeakPowerW !== undefined &&
+      CASUS1_EXCURSION.xmaxMarginFraction !== undefined
+        ? { driveCeilingDerived: true }
         : {}),
       /* V48 — the design's stated LF budget, so the candidate can declare
        * WHICH NETWORK the series-inductance ceiling describes. The budget

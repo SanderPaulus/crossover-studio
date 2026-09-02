@@ -183,6 +183,22 @@ export interface MeasurementFactsPayload {
    * nothing and says so.
    */
   gapAnchorModel?: string;
+  /**
+   * V49 (M-C v2.0) — THE EXCURSION-DERIVED CEILING per model, dB relative to
+   * the amplifier's peak input voltage (`driveExcursion.ts`).
+   *
+   * Derived ONCE by the report from the driver card, the measured sweep (f_s,
+   * Z_max, Q_ms) and the stated amplifier peak, and consumed by the worker as
+   * a gate setting beside the stated `maxDriveOnFsDb` — the stricter of the
+   * two applies (`effectiveDriveLimit`). It crosses as a FACT for the reason
+   * this module exists: the worker holds neither the driver card nor the
+   * ingest pass's classification, and a second derivation here would be the
+   * F4b leak with a new name.
+   *
+   * Absent per model = no ceiling for that way (card, peak or resonance
+   * missing), and then the stated figure alone judges it, visibly.
+   */
+  driveCeilingDbByModel?: Record<string, number>;
 }
 
 /**
@@ -277,8 +293,16 @@ export function measurementFactsKey(v2: MeasurementFactsPayload): Record<string,
     gapBudget[model] = Number(v2.gapBudgetDbByModel![model].toPrecision(9));
   }
   const gapAnchor = v2.gapAnchorModel ?? null;
+  /* V49 — the eighth fact. A run judged against an excursion-derived ceiling
+   * and a run judged against the stated figure alone can deliver the same
+   * network from the same seed and mean two different things about which
+   * requirement bit, so the ceilings ride in the fingerprint. */
+  const driveCeiling: Record<string, unknown> = {};
+  for (const model of Object.keys(v2.driveCeilingDbByModel ?? {}).sort()) {
+    driveCeiling[model] = Number(v2.driveCeilingDbByModel![model].toPrecision(9));
+  }
   return {
-    re, valid, fundamental, nearField, impedance, silentFloorDb, gapBudget, gapAnchor,
+    re, valid, fundamental, nearField, impedance, silentFloorDb, gapBudget, gapAnchor, driveCeiling,
   };
 }
 
@@ -322,6 +346,17 @@ export function factsForWorker(
   const nearFieldByModel: NonNullable<MeasurementFactsPayload['nearFieldByModel']> = {};
   const impedanceByModel: NonNullable<MeasurementFactsPayload['impedanceByModel']> = {};
   const gapBudgetDbByModel: Record<string, number> = {};
+  const driveCeilingDbByModel: Record<string, number> = {};
+
+  /* V49 — the excursion-derived ceilings, keyed the way the worker needs them.
+   * Only the drivers the report could derive one for contribute; a driver
+   * whose card or resonance was missing contributes nothing and the stated
+   * figure alone judges it, which the worker's notes say. */
+  for (const r of report.metrics.driveExcursion) {
+    const model = modelByDriverId[r.driver];
+    if (model === undefined || !Number.isFinite(r.ceiling.ceilingDbReInput)) continue;
+    driveCeilingDbByModel[model] = r.ceiling.ceilingDbReInput;
+  }
 
   for (const d of report.ingest.drivers) {
     const model = modelByDriverId[d.driver];
@@ -397,5 +432,6 @@ export function factsForWorker(
     ...(Object.keys(impedanceByModel).length > 0 ? { impedanceByModel } : {}),
     ...(Object.keys(gapBudgetDbByModel).length > 0 ? { gapBudgetDbByModel } : {}),
     ...(gapAnchorModel !== undefined ? { gapAnchorModel } : {}),
+    ...(Object.keys(driveCeilingDbByModel).length > 0 ? { driveCeilingDbByModel } : {}),
   };
 }

@@ -48,6 +48,13 @@
     referentie:** `threeWayChain` alléén kostte in diezelfde run 361 s tegen de 289 s van V43, dus
     wat er beweegt is de machine en niet de laag. Het overgeslagen BESTAND is nieuw en klopt: de
     verhuisde verwerpingsrun is een bestand dat volledig uit `[live]` bestaat.
+    **Ná V49 (03-09-2026) gemeten op 284 s (eerste run, met vier rode claims die gerepareerd zijn)
+    en daarna groen — 142 geslaagd + 1 overgeslagen bestand, 1596 geslaagd + 2 overgeslagen**
+    (+2 bestanden: `metrics/driveExcursion.test.ts` 15 claims en `optimizer/driveCeiling.test.ts`
+    13 claims; +13 claims elders: zes V49-blokken in `frozenNetlistGates`, vier in `goldenCasus1`
+    (één `it.each` over drie drivers), één feiten-variant in `determinism`). GEEN nieuwe
+    referentie: de V43-waarde van 289 s blijft staan. **LET OP: de tweede snelle run liep NAAST
+    een vite-dev-server** (de browsercontrole van het paneel) en is daarom niet als tijd genoteerd.
     **Ná UI-2 (02-09-2026) gemeten op 279 s — 140 geslaagd + 1 overgeslagen bestand,
     1555 geslaagd + 2 overgeslagen** (+2 bestanden: `lib/chartView.test.ts` 6 claims en
     `lib/networkReadiness.test.ts` 26 claims, waarvan achttien de mutatietabel als `it.each`).
@@ -137,8 +144,17 @@
   onveranderd naast staat — van 285,8 naar 517,4 s. De totale CPU-tijd steeg van 3615 naar
   4306 s. Wandkloktijd is dus gekocht met rekentijd; een voorspelling op `max(1120, 638)` ≈ 950 s
   was te optimistisch en de gemeten 1254 s is wat er staat.
-- `npx vitest run` — volledige testsuite. **GEMETEN 02-09-2026 (V47b): 141 bestanden, 1559 tests,
-  1341 s (22 min), niets overgeslagen, alleen gedraaid op een lege machine.** De telling is
+- `npx vitest run` — volledige testsuite. **GEMETEN 03-09-2026 (V49): 143 bestanden, 1598 tests,
+  1352 s (22 min 32), niets overgeslagen, alleen gedraaid op een lege machine — losgekoppeld
+  met `nohup`, want de Bash-tool kapt een achtergrondopdracht op tien minuten af en een volle
+  run duurt er twintig.** De telling is +2 bestanden sinds V47b (de twee V49-testbestanden) en
+  +39 tests (28 in die twee bestanden, 11 elders: zes V49-blokken in `frozenNetlistGates`, vier
+  in `goldenCasus1`, één in `determinism`). Het cijfer beweegt niet met het corpus, want het
+  corpus is bij V49 NIET geregenereerd: de twee live ketenruns treffen dezelfde kandidaten als
+  bij V47b en de byte-reproductie slaagde — dat is het bewijs dat het afgeleide plafond de
+  zoektocht op casus 1 nergens raakte.
+  (De stand ervoor: **02-09-2026 (V47b): 141 bestanden, 1559 tests,
+  1341 s (22 min), niets overgeslagen, alleen gedraaid op een lege machine.**) De telling is
   +2 bestanden sinds V48 (de twee UI-2-bestanden, `lib/chartView.test.ts` en
   `lib/networkReadiness.test.ts`, die de UI-2-regel bij `test:fast` al noemt) en +34 tests: 32 uit
   die twee bestanden en **TWEE uit de `it.each` van `casus1V2Candidates.test.ts`, die over het
@@ -584,6 +600,24 @@
   buitenaf is een geweigerd netwerk principieel onmeetbaar — dezelfde muur waar
   `measure-v47-rejections.ts` tegenaan liep, en een eerlijke lege kolom is beter dan een
   verzonnen meting.
+- **M-C v2.0 gemeten: x/V op de resonantie, het plafond en de afgeleide grens (V49)**:
+  `npx vite-node scripts/measure-v49-excursion.ts [SLEUTEL ...]` — seconden, geen ketenrun en
+  geen enkele tune; zonder argumenten élke netlist die het casusboek noemt. Drie tabellen. (1) Per
+  DRIVER, klasse A: f₀, Z_max en Small's Q_ms uit de sweep, Bl en M_ms van de driverkaart, x/V
+  via route 1, de toegestane spanning op f₀ en het plafond in dB t.o.v. de piekingangsspanning
+  √(2·P_piek·R_nom); route 2 ernaast of de reden dat zij uit staat. (2) Per
+  HOOGDOORLAATBESCHERMDE WEG per netlist, klasse B: het doorlaatbandgemiddelde |H|, de AFGELEIDE
+  M-C-grens (plafond minus dat gemiddelde), naast −20 (gesteld), −25 (V47) en de 18-dB-regel,
+  welke van de twee de poort las, en M-C met zijn oordeel; met eronder hoeveel wegen de afgeleide
+  grens alleen zou weigeren en waar zij strenger is dan de gestelde. (3) De ZWAKSTE SCHAKEL: de weg
+  zonder hoogdoorlaat bij de piekingang. **Gemeten 02-09-2026 (V49): op het levende corpus en de referentiefilters is de afgeleide grens
+  op ÉLKE weg ruimer dan de gestelde −20 (tweeter −3,9 tot −1,1 dB, mid −14,5 tot −10,8 dB), dus
+  de effectieve poort bewoog niet en het corpus is NIET geregenereerd; over het hele casusboek is
+  zij op zeven V28-mids 0,05–0,59 dB strenger (doorlaatband bóven de ingang) en op twee V28-mids
+  bóven nul (doorlaatband 23–25 dB eronder); de wooferexcursie bij de NAD-piek leest 14–21 mm
+  tegen 6,84 mm limiet.** Route 2 staat op casus 1 UIT: de FF-meetspanning
+  is niet gedocumenteerd (`driverkaart.ff_meetspanning_V` is null, met de bevinding erbij), en
+  er is bewust geen 2,83 V aangenomen.
 - **De vloer als zoekdoel meten (V30)**: `npx vite-node scripts/measure-v30-floor-goal.ts` —
   dertig ketenruns (vijftien kandidaten × twee armen), gemeten 45–70 s per stuk, ~30 min.
   Schrijft `test-fixtures/casus1_v30_vloer_vergelijking.json` en drukt de vóór/ná-tabel af.
@@ -1690,6 +1724,75 @@ grotere ingreep — hij raakt élk commando in dit project — en is deze sessie
   werd onder −25 op −16,2 geweigerd en onder −20 op −29,86 geleverd. Wie een grens verplaatst en
   het veld als monotone functie van die grens leest, leest het verkeerd — de zoektocht loopt onder
   elke grens een ander pad.
+
+### V49-guards (M-C excursie-gedragen: de grens is een eigenschap van de driver)
+- `src/lib/engine2/metrics/driveExcursion.ts` + `driveExcursion.test.ts` — **M-C v2.0 als zuivere
+  functies, en elke bouwsteen is een handberekening.** `x/V = Bl·Q_ms/(Z_max·N·M_ms·ω₀²)` (route 1),
+  `x/V = p·2π·r/(ρ₀·S_d·N·ω₀²·V_meet)` (route 2, rondgang op een kolvenformule), `V_piek =
+  √(2·P·R_nom)`, het plafond als ratio, de passband-relatieve grens als één aftrekking
+  (`derivedDriveLimitDb`, de ENE regel die de eis aan de F1-conventie knoopt — poort en rapport
+  roepen hem aan). De vier testsoorten van de metriek-skill: handberekening met ronde getallen
+  (ω₀ = 1000 rad/s, x/V = 0,05 mm/V), de uit-toestanden met het ontbrekende veld bij naam (P4),
+  nieuwe meting (f₀ ×2 ⇒ ÷4, Z_max ×2 ⇒ ÷2, Q_ms ×2 ⇒ ×2 — drie wetten, geen getal onder drie
+  namen, V23), en het één-resonatormodel dat óp f₀ exact de resonantieformule reproduceert en
+  eronder stijfheidsgestuurd is. Versiestring `drive-excursion/2.0`: een MAJOR, want de
+  GROOTHEID waaruit de grens volgt veranderde. Geen X_max, marge, vermogen, last of meetspanning
+  in dit bestand; de twee nieuwe constanten zijn ρ₀ (physical) en 20 µPa (norm).
+- `src/lib/engine2/ingest/impedance.ts` — **`z-resonance` 1.0 → 1.1: elke motionele piek draagt
+  Small's Q_ms en Q_es** (halfvermogen op √r0·R_e, dezelfde constructie die `SealedDiagnosis` al
+  voor het sealed fundamenteel deed). De vorm groeide, geen getal bewoog; de cache vervalt
+  (A5e.5). Op de mid IS `qms` van de fundamentele piek `sealed.qmc` — één constructie, twee
+  lezers, en `goldenCasus1` assert het.
+- `src/lib/engine2/optimizer/driveCeiling.test.ts` — **wat er met het getal gebeurt ná de
+  metriek.** `effectiveDriveLimit` (gates.ts): gesteld, afgeleid, of de STRENGSTE — in beide
+  richtingen getest, met `limit_source` op het oordeel; niets gesteld = M-C uit en élke andere
+  poort byte-identiek (P2); een plafond alleen wapent M-C; een plafond voor een ándere driver
+  oordeelt deze niet; zonder doorlaatbandgemiddelde kan de afgeleide helft niet gevormd worden en
+  oordeelt het gestelde getal alleen, gezegd. De `drive-series-c`-voorbound leest DEZELFDE regel
+  (24 dB vereist bij een plafond van −30 re ingang op een doorlaatband van −6). De vingerafdruk
+  beweegt met het plafond (`gateSettingsKey`, per driver, afgerond op negen cijfers) en met het
+  ACHTSTE feit (`measurementFactsKey`); de kandidaatverklaring leidt `protectionRule: 'stated'`
+  óók af uit een afgeleid plafond.
+- `src/lib/engine2/optimizer/determinism.test.ts` — de feiten-dekkingsassert dwong het achtste
+  feit af (`driveCeilingDbByModel`), precies zoals hij V45's twee velden had moeten afdwingen.
+- `src/lib/engine2/frozenNetlistGates.test.ts` — zes V49-blokken over het HELE casusboek, en de
+  dragende is een BEVINDING MET EEN TEGENPROEF: op élke weg van het LEVENDE corpus en de drie
+  referentiefilters is de afgeleide grens RUIMER dan de gestelde −20, dus het gestelde getal bijt
+  daar overal en de effectieve poort is niet bewogen; over het hele boek bijt het plafond WÉL
+  ergens — op zeven mids van het V28-corpus, met doorlaatbanden bóven de ingang, 0,05–0,59 dB —
+  en die verzameling moet exact de verzameling zijn die `v49_excursie` noemt. **De eerste vorm van
+  deze claim zei "op élke weg van élke netlist" en viel om op `V28_KAND_4/mid` (−20,054): de
+  V47-assert "de gestelde grens bereikt élk oordeel" las `limit` en leest sinds V49
+  `stated_limit_dB`, want de limit is de STRENGSTE van twee.** Verder: het plafond is klasse A
+  (identiek op alle drie de referentiefilters); de afgeleide mid-grens ligt op élke netlist van
+  het beoordeelde veld ÓNDER −7,3 dB (V47b's mid-weigering was gevaarlijk, niet conservatief; de
+  twee V28-mids die 23–25 dB onder de ingang staan lezen een grens bóven nul en zijn de reden dat
+  de claim over het beoordeelde veld gaat); het opgeschreven `v49_excursie`-blok reproduceert per
+  weg en per zwakste-schakel-rij — **op de R_e-LEZING die het blok noemt** (Small's Q_ms leest het
+  niveau √(Z_max·R_e), dus de woofer beweegt 0,2 mm tussen meterlezing en fit;
+  `_excursie_parameters.R_e_lezing`); route 2 staat UIT met de meetspanning bij naam; en P2:
+  zonder de excursie-invoer is het rapport wat het was, met dezelfde M-C-WAARDE en alleen het
+  gestelde getal als grens.
+- **De V47-guard is bij V49 van vorm veranderd zonder van claim te veranderen:** "M-C is ARMED on
+  every protected way" pinde `verdict.limit === −20`; de limit is sinds V49 `min(gesteld,
+  afgeleid)`, dus de guard pint nu dat het gestelde getal élk oordeel BEREIKT (`stated_limit_dB`)
+  en dat de gelezen limit nooit ruimer is dan het gestelde getal.
+- `src/lib/engine2/goldenCasus1.test.ts` — de klasse-A-referenties per driver
+  (`afgeleide_parameters.<driver>.excursie_*`, met `_excursie_parameters` als V15-blok):
+  x/V, de toegestane spanning en het plafond reproduceren op alle drie de referentiefilters, en
+  `excursie_route_verhouding` is `null` en geen 0 (F0).
+- **Elke casus-1-meetplek spreidt `casus1ExcursionSettings(golden)`** — `frozenNetlistGates`,
+  `goldenCasus1`, de recorder, de generator, de meetbank (`casus1Corpora.fixture.ts`), beide live
+  reproducties en `measure-v47-drive.ts` — zodat zij niet kunnen verschillen over de vraag of het
+  plafond gewapend was (dezelfde V42-les als `CASUS1_V2_GATES`). De invoer zelf woont in
+  `manifest_en_geometrie.driverkaart` en `.gestelde_eisen` (piekvermogen, nominale last, marge)
+  en nergens anders (P6).
+- **Het corpus is bij V49 NIET geregenereerd en NIET bevroren, en dat is een meting:** de
+  afgeleide grens kan op de mid pas strenger worden dan −20 bij een doorlaatbandgemiddelde boven
+  +2,3 dB en op de tweeter boven +11,4 dB, wat een passief netwerk niet levert, dus de zoektocht
+  ziet onder `min(−20, afgeleid)` dezelfde poortbeslissingen als onder V47b; de live
+  byte-reproductie in `casus1V2Candidates` bewijst het. `casus1_v2_herkomst.json` draagt daarom
+  nog de V47b-vingerafdruk (`facts=` en `estimators=` bewegen pas bij de volgende regeneratie).
 
 ### V48-guards (welk netwerk het seriespoel-plafond beschrijft)
 - `src/lib/engine2/optimizer/bounds.ts` — **`seriesInductanceCeilingTracker` is dezelfde inversie,

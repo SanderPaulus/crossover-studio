@@ -82,6 +82,13 @@ import type {
   NetworkAnalysis,
   ProjectSettings,
 } from './metrics/types.ts';
+import {
+  driveExcursion,
+  splAtPowerRe1m,
+  weakestLink,
+  type DriveExcursionResult,
+  type WeakestLinkResult,
+} from './metrics/driveExcursion.ts';
 import { ctcKey } from './metrics/types.ts';
 import {
   anchoredGaps,
@@ -282,6 +289,28 @@ export interface EngineV2Report {
     lfBump: { driver: string; result: LfBumpResult }[];
     thevenin: TheveninResult[];
     /**
+     * V49 (M-C v2.0) — the excursion-derived drive ceiling per driver, both
+     * routes, with the acoustic route's ratio when it could be read. Empty
+     * where the driver card, the amplifier peak or the resonance is missing;
+     * `driveExcursionOff` says which, per driver.
+     */
+    driveExcursion: DriveExcursionResult[];
+    driveExcursionOff: string[];
+    /**
+     * V49 — the WEAKEST-LINK reading for every way that is NOT high-pass
+     * protected: how far its cone moves on the resonance at the amplifier's
+     * peak input, and where the single-resonator model reaches the limit.
+     * Reporting only; no requirement is stated on an unprotected way.
+     */
+    weakestLink: ({ driver: string } & WeakestLinkResult)[];
+    /**
+     * V49 — the SPL the measured sensitivity implies at 1 m, at the stated
+     * continuous power and at the peak, per driver. Needs a documented drive
+     * voltage and mic distance; empty without them, with the reason in
+     * `driveExcursionOff`.
+     */
+    splAtPower: { driver: string; continuousDb: number | null; peakDb: number; powerW: number | null; peakPowerW: number }[];
+    /**
      * M-F-interim's four λ fractions per adjacent pair (V20). Reading matter:
      * nothing in the engine may hang a verdict on one of them.
      */
@@ -480,6 +509,10 @@ export function buildReport(input: EngineV2ReportInput): EngineV2Report {
     dissipation: null,
     epdr: null,
     driveVoltage: [],
+    driveExcursion: [],
+    driveExcursionOff: [],
+    weakestLink: [],
+    splAtPower: [],
     lfBump: [],
     thevenin: [],
     lobingLambdas: [],
@@ -544,6 +577,103 @@ export function buildReport(input: EngineV2ReportInput): EngineV2Report {
         : null;
       const r = thevenin(analysis, driver, fs, re);
       if (r) metrics.thevenin.push(r);
+    }
+  }
+
+  /* ---------------- V49: M-C v2.0, the excursion-derived ceiling ---------- *
+   * Per driver, from the ingest pass's classification (f0, Z_max, Small's
+   * Q_ms) and the stated card and amplifier peak. Independent of the loaded
+   * filter — class A on a casus — which is why it runs whether or not there
+   * is a network; the WEAKEST-LINK reading below needs the network and is
+   * taken only with one. */
+  const amp =
+    (input.settings.amplifierPeakPowerW ?? 0) > 0 && (input.settings.amplifierNominalLoadOhm ?? 0) > 0
+      ? { peakPowerW: input.settings.amplifierPeakPowerW!, nominalLoadOhm: input.settings.amplifierNominalLoadOhm! }
+      : null;
+  const margin = input.settings.xmaxMarginFraction;
+  for (const driver of order) {
+    const d = ingest.drivers.find((x) => x.driver === driver);
+    if (!d) continue;
+    if (!isActive(capability, 'M-C-excursion', driver)) {
+      const cell = capability.cells.find((c) => c.metric === 'M-C-excursion' && c.subject === driver);
+      metrics.driveExcursionOff.push(
+        `M-C v2.0 is OFF for ${driver}: ${cell?.reasons.join('; ') ?? 'a declared input is missing'}`,
+      );
+      continue;
+    }
+    const card = input.settings.driverCardByDriver![driver];
+    const cls = d.impedance!;
+    const f0 = cls.fundamentalHz!;
+    /* Q_ms and Z_max at the FUNDAMENTAL: Small's construction on the sealed
+     * fundamental, or on the vented upper peak — an approximation there, and
+     * named as one. Read off the peak the classification called fundamental,
+     * never off "the tallest peak" (V8b). */
+    const peak = cls.motionalPeaks.find((pk) => pk.fHz === f0) ?? null;
+    const qms =
+      peak && peak.qms !== null
+        ? {
+            value: peak.qms,
+            source:
+              cls.type === 'sealed'
+                ? 'Small\'s Q_mc of the sealed fundamental (half-power at √r0·R_e), measured in situ'
+                : cls.type === 'reflex'
+                  ? 'Small\'s construction on the UPPER peak of the vented pair — an approximation: ' +
+                    'a vented box is a two-degree system and this reads it as one'
+                  : 'Small\'s construction on the fundamental, measured in situ',
+          }
+        : null;
+    const drive = input.settings.responseDriveByDriver?.[driver];
+    const splAtF0 =
+      drive && d.onAxis && f0 >= d.onAxis.bandHz[0] && f0 <= d.onAxis.bandHz[1]
+        ? interpLog(d.onAxis.grid, d.onAxis.db, f0)
+        : null;
+    const r = driveExcursion({
+      driver,
+      f0Hz: f0,
+      card,
+      amplifier: amp!,
+      marginFraction: margin!,
+      zMaxOhm: peak?.ohm ?? null,
+      qms,
+      acoustic:
+        drive && splAtF0 !== null
+          ? { splDbAtF0: splAtF0, driveVoltageV: drive.driveVoltageV, micDistanceMm: drive.micDistanceMm, source: drive.source ?? 'documented response drive' }
+          : null,
+      acousticOff: !drive
+        ? 'the drive voltage and mic distance of the on-axis response are not documented'
+        : !d.onAxis
+          ? 'no on-axis far-field response for this driver'
+          : `the resonance (${f0.toFixed(1)} Hz) lies outside the far-field validity band ` +
+            `(${d.onAxis.bandHz[0].toFixed(0)}-${d.onAxis.bandHz[1].toFixed(0)} Hz), so no SPL there may be believed`,
+    });
+    if ('off' in r) {
+      metrics.driveExcursionOff.push(r.off);
+      continue;
+    }
+    metrics.driveExcursion.push(r);
+    if (drive && d.onAxis && d.level) {
+      metrics.splAtPower.push({
+        driver,
+        powerW: input.settings.amplifierPowerW ?? null,
+        continuousDb:
+          input.settings.amplifierPowerW !== undefined
+            ? splAtPowerRe1m({
+                splDb: d.level.db,
+                driveVoltageV: drive.driveVoltageV,
+                micDistanceMm: drive.micDistanceMm,
+                powerW: input.settings.amplifierPowerW,
+                nominalLoadOhm: amp!.nominalLoadOhm,
+              })
+            : null,
+        peakPowerW: amp!.peakPowerW,
+        peakDb: splAtPowerRe1m({
+          splDb: d.level.db,
+          driveVoltageV: drive.driveVoltageV,
+          micDistanceMm: drive.micDistanceMm,
+          powerW: amp!.peakPowerW,
+          nominalLoadOhm: amp!.nominalLoadOhm,
+        }),
+      });
     }
   }
 
@@ -849,9 +979,45 @@ export function buildReport(input: EngineV2ReportInput): EngineV2Report {
       fsHz: r.fsHz,
       passbandHz: r.passbandHz,
       bandSource: 'derived from this filter\'s own crossings',
+      passbandMeanDb: r.passbandMeanDb,
     });
   }
-  const verdicts = gateVerdicts(input.settings, {
+  /* V49 — the ceilings this report derived become the gate's second M-C limit
+   * beside the stated figure, through the SAME setting the worker reads
+   * (`driveCeilingDbByDriver`), so the panel and the search judge on one rule.
+   * Only for ways M-C actually judges: an unprotected way gets no ceiling and
+   * the weakest-link reading instead. */
+  const ceilingByDriver: Record<string, number> = {};
+  for (const r of metrics.driveExcursion) {
+    if (highPassProtected.includes(r.driver)) ceilingByDriver[r.driver] = r.ceiling.ceilingDbReInput;
+  }
+  const gateSettings: GateSettings = {
+    ...input.settings,
+    ...(Object.keys(ceilingByDriver).length > 0
+      ? { driveCeilingDbByDriver: { ...(input.settings.driveCeilingDbByDriver ?? {}), ...ceilingByDriver } }
+      : {}),
+  };
+  for (const r of metrics.driveExcursion) {
+    if (highPassProtected.includes(r.driver) || !analysis || !grid || !r.electromechanical) continue;
+    const h = analysis.transferByModel[r.driver];
+    const z = analysis.driverZ[r.driver];
+    if (!h || !z) continue;
+    const above = crossings.find((c) => c.lower === r.driver && Number.isFinite(c.fHz));
+    metrics.weakestLink.push({
+      driver: r.driver,
+      ...weakestLink({
+        grid,
+        hAbs: h.map((v) => cabs(v)),
+        zAbs: z.map((v) => cabs(v)),
+        em: r.electromechanical,
+        f0Hz: r.f0Hz,
+        xLimitMm: r.ceiling.xLimitMm,
+        peakInputVolts: r.peakInputVolts,
+        ...(above ? { belowHz: above.fHz } : {}),
+      }),
+    });
+  }
+  const verdicts = gateVerdicts(gateSettings, {
     dissipationFraction: metrics.dissipation?.totalFraction ?? null,
     ...(metrics.dissipation ? { dissipationBandHz: metrics.dissipation.bandHz } : {}),
     epdrMinOhm: metrics.epdr?.minOhm ?? null,
@@ -890,6 +1056,7 @@ export function buildReport(input: EngineV2ReportInput): EngineV2Report {
       reSource: d.re?.sourceText ?? 'no impedance measurement, so no R_e',
       zPassbandMedianOhm: raw ? passbandImpedanceMedian(raw.freq, raw.magnitude, pass) : null,
       passbandHz: pass,
+      passbandMeanDb: metrics.driveVoltage.find((v) => v.driver === driver)?.passbandMeanDb ?? null,
       fsHz: d.impedance?.fundamentalHz ?? null,
       fPeakHz: d.impedance?.fundamentalHz ?? null,
       gapBudgetDb: gapWay ? gapWay.budgetDb : null,
@@ -922,7 +1089,7 @@ export function buildReport(input: EngineV2ReportInput): EngineV2Report {
     });
   }
   const inverted = anyBudgetActive(input.settings)
-    ? invertBudgets(budgetWays, input.settings, input.settings)
+    ? invertBudgets(budgetWays, input.settings, gateSettings)
     : { bounds: [], notes: [] };
 
   /* ---------------- F4b/V45 — the damping margin says what it does -------- *

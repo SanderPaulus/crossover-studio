@@ -37,6 +37,33 @@ const hasResonance = (): DataNeed => ({
       driverOf(ctx, subject)?.impedance?.fundamentalHz !== undefined),
 });
 
+/* V49 — the driver card, for M-C v2.0: X_max at least, and Bl+M_ms OR the
+ * acoustic route's documented drive voltage. Route 2 without S_d is nothing. */
+const hasExcursionCard: DataNeed = {
+  key: 'driverCard',
+  describe:
+    'no complete driver card for this driver — X_max, plus either Bl and M_ms (electromechanical ' +
+    'route) or S_d with a documented drive voltage and mic distance (acoustic route)',
+  met: (ctx, subject) => {
+    if (!subject) return false;
+    const c = ctx.settings.driverCardByDriver?.[subject];
+    if (!c || !(c.xMaxMm !== undefined && c.xMaxMm > 0)) return false;
+    const em = c.blTm !== undefined && c.blTm > 0 && c.mmsG !== undefined && c.mmsG > 0;
+    const drive = ctx.settings.responseDriveByDriver?.[subject];
+    const ac = !!drive && drive.driveVoltageV > 0 && drive.micDistanceMm > 0 && c.sdCm2 !== undefined && c.sdCm2 > 0;
+    return em || ac;
+  },
+};
+
+const hasAmplifierPeak: DataNeed = {
+  key: 'amplifierPeak',
+  describe: 'no amplifier peak power with its nominal load, and no X_max margin, are stated',
+  met: (ctx) =>
+    (ctx.settings.amplifierPeakPowerW ?? 0) > 0 &&
+    (ctx.settings.amplifierNominalLoadOhm ?? 0) > 0 &&
+    (ctx.settings.xmaxMarginFraction ?? 0) > 0,
+};
+
 const hasNearField = (): DataNeed => ({
   key: 'nearField',
   describe: 'no near-field measurement is tagged for this driver',
@@ -159,6 +186,21 @@ export const METRIC_DECLARATIONS: readonly MetricDeclaration[] = [
     scope: 'driver',
     needs: [hasFilter, hasImpedance(), hasResonance(), hasCrossingForDriver],
     specRef: 'A4 M-C',
+  },
+  {
+    id: 'M-C-excursion',
+    title: 'Drive limit on the resonance, from excursion',
+    quantity:
+      'The ceiling on the driver voltage at f_s that keeps the cone within X_max·margin at the ' +
+      'amplifier\'s peak input — the LIMIT M-C is judged against, derived instead of stated (V49)',
+    formula:
+      'x/V = Bl·Q_ms/(Z_max·M_ms·ω0²) (electromechanical, from the measured sweep and the driver ' +
+      'card); counter-proof x/V = p·2π·r/(ρ0·S_d·ω0²·V_meas) (acoustic, from the measured SPL at a ' +
+      'documented voltage); V_allow = X_max·margin/(x/V); ceiling = 20·log10(V_allow/√(2·P·R_nom))',
+    role: 'gate',
+    scope: 'driver',
+    needs: [hasImpedance(), hasResonance(), hasExcursionCard, hasAmplifierPeak],
+    specRef: 'A4 M-C v2.0 / Deel B V49',
   },
   {
     id: 'M-D',

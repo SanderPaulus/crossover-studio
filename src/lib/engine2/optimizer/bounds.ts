@@ -37,6 +37,7 @@
 import type { VxpPart } from '../../parsers/vxp.ts';
 import type { Complex } from '../../complex.ts';
 import { busTopology } from '../../netOptimizer.ts';
+import { effectiveDriveLimit } from './gates.ts';
 import {
   BOUND_BRACKET_DOUBLINGS,
   BOUND_CEILING_PATH_R_GRAIN_OHM,
@@ -673,6 +674,14 @@ export interface BudgetWay {
   pathROhm: number;
   /** The way's assumed acoustic order, for the topology-aware pre-bound. */
   order?: number;
+  /**
+   * V49 — the dB-mean of the way's branch transfer over its passband ON THE
+   * NETWORK THE INVERSION IS SOLVED FOR (the seed, on the worker route; the
+   * loaded filter, on the report). What turns an excursion ceiling stated re
+   * the amplifier input into the passband-relative attenuation the series-C
+   * pre-bound needs. Absent = the pre-bound can only read the stated figure.
+   */
+  passbandMeanDb?: number | null;
   /** The crossing above this way, when there is one. */
   crossingAboveHz?: number;
   nearField?: { grid: readonly number[]; db: readonly number[]; validHz: [number, number] };
@@ -691,7 +700,7 @@ export interface BudgetWay {
 export function invertBudgets(
   ways: readonly BudgetWay[],
   budgets: BudgetSettings,
-  gates: { maxDriveOnFsDb?: number } = {},
+  gates: { maxDriveOnFsDb?: number; driveCeilingDbByDriver?: Record<string, number> } = {},
 ): {
   bounds: InvertedBound[];
   notes: string[];
@@ -857,11 +866,16 @@ export function invertBudgets(
     }
   }
 
-  /* ---- The topology-aware pre-bound (SLACK, gate is the authority) ----- */
-  if (gates.maxDriveOnFsDb !== undefined) {
+  /* ---- The topology-aware pre-bound (SLACK, gate is the authority) ----- *
+   * V49 — the required attenuation is the STRICTER of the stated figure and
+   * the excursion-derived ceiling, through the one rule the gate uses
+   * (`effectiveDriveLimit`), so the box and the verdict cannot disagree. */
+  if (gates.maxDriveOnFsDb !== undefined || Object.keys(gates.driveCeilingDbByDriver ?? {}).length > 0) {
     for (const w of ways) {
       if (!w.highPassProtected || w.fsHz === null || w.zPassbandMedianOhm === null) continue;
-      const required = -gates.maxDriveOnFsDb;
+      const eff = effectiveDriveLimit(gates, w.driver, w.passbandMeanDb ?? undefined);
+      if (!eff) continue;
+      const required = -eff.limitDb;
       const max = preBoundSeriesCapacitance(
         w.zPassbandMedianOhm,
         w.fsHz,
@@ -878,7 +892,10 @@ export function invertBudgets(
         slack: true,
         parameters: {
           formula: 'single-section inversion of M-C, widened per order above the first',
-          required_attenuation_dB: required,
+          required_attenuation_dB: Number(required.toFixed(3)),
+          limit_source: eff.source === 'stated' ? 'stated dB figure' : 'excursion-derived ceiling (V49)',
+          ...(eff.statedDb !== undefined ? { stated_limit_dB: eff.statedDb } : {}),
+          ...(eff.derivedDb !== undefined ? { derived_limit_dB: Number(eff.derivedDb.toFixed(3)) } : {}),
           Z_passband_median_ohm: Number(w.zPassbandMedianOhm.toFixed(4)),
           f_s_hz: Number(w.fsHz.toFixed(2)),
           order: w.order ?? 1,

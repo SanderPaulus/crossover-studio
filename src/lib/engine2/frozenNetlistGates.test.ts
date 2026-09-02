@@ -60,6 +60,7 @@ import {
   CASUS1_WOOFER_DC_OHM,
   casus1AmpMinLoadOhm,
   casus1LfResonantBudgetDb,
+  casus1ExcursionSettings,
   casus1Files,
   casus1Filter,
   casus1Geometry,
@@ -98,6 +99,7 @@ import { buildAnalysis } from './metrics/analysis.ts';
 import { epdr } from './metrics/electrical.ts';
 import { LF_BUMP_VERSION } from './metrics/acoustic.ts';
 import { RESISTIVE_EQUIVALENT_VERSION } from './metrics/resistiveEquivalent.ts';
+import { DRIVE_EXCURSION_VERSION } from './metrics/driveExcursion.ts';
 import { busTopology, systemMinImpedanceOhm } from '../netOptimizer.ts';
 import {
   sourceProbeIndex,
@@ -172,6 +174,11 @@ const BASE: ReportSettings = {
    * niet meekrijgt drukt `no limit set` af naast een netlist die er wél aan
    * gehouden is. */
   ...(STATED_DRIVE_MAX_DB !== null ? { maxDriveOnFsDb: STATED_DRIVE_MAX_DB } : {}),
+  /* V49 — the driver cards, the amplifier peak and the X_max margin, spread for
+   * the same reason: with them the report derives an excursion ceiling per
+   * driver and M-C is judged on the STRICTER of that and the stated figure.
+   * Read from the manifest; a casus without them derives nothing. */
+  ...casus1ExcursionSettings(golden),
 };
 
 /**
@@ -2347,10 +2354,22 @@ describe('V47 — the stated drive limit on a driver\'s own resonance', () => {
 
   it('M-C is ARMED on every protected way of every frozen netlist', () => {
     expect(DRIVE.length).toBeGreaterThan(0);
+    /* SINCE V49 THE LIMIT ON A VERDICT IS THE STRICTER OF THE STATED FIGURE AND
+     * THE EXCURSION-DERIVED CEILING, so what this block pins is that the stated
+     * figure REACHED every verdict (`stated_limit_dB`) and that the limit
+     * judged is never looser than it. Which of the two bit, per way, is the
+     * V49 block's claim. */
+    const stated = FIELD.flatMap((f) =>
+      f.verdicts
+        .filter((v) => v.gate === 'M-C' && v.value !== null)
+        .map((v) => ({ key: f.key, driver: v.subject, stated: v.parameters?.stated_limit_dB })),
+    );
+    for (const d of stated) {
+      expect(d.stated, `${d.key}/${d.driver}: the stated limit did not reach the gate`).toBe(CEILING_DB);
+    }
     for (const d of DRIVE) {
-      expect(d.limit, `${d.key}/${d.driver}: the stated limit did not reach the gate`).toBe(
-        CEILING_DB,
-      );
+      expect(d.limit, `${d.key}/${d.driver}: no limit on the verdict`).not.toBeNull();
+      expect(d.limit!).toBeLessThanOrEqual(CEILING_DB!);
     }
     /* And it really is per WAY rather than per netlist: on this casus the mid
      * is high-pass protected as well, so the requirement — derived from a
@@ -2528,6 +2547,163 @@ describe('V47 — the stated drive limit on a driver\'s own resonance', () => {
         d.db,
         `${d.key}/${d.driver} was delivered above the stated limit — the gate did not judge it`,
       ).toBeLessThanOrEqual(CEILING_DB!);
+    }
+  });
+});
+
+describe('V49 — M-C v2.0: the excursion-derived ceiling beside the stated figure', () => {
+  const EXC = casus1ExcursionSettings(golden);
+  const RECORD = (golden.manifest_en_geometrie as unknown as {
+    v49_excursie?: {
+      schatter: string;
+      gestelde_grens_dB: number | null;
+      per_weg: {
+        netlist: string;
+        weg: string;
+        doorlaatband_gem_dB: number | null;
+        afgeleide_grens_dB: number | null;
+        effectieve_grens_dB: number | null;
+        bron: string;
+        M_C_dB: number | null;
+        haalt_de_eis: boolean | null;
+      }[];
+      zwakste_schakel: { netlist: string; weg: string; x_op_f0_mm: number | null; fractie_van_limiet: number | null }[];
+    };
+  }).v49_excursie;
+  const TOL_DB_V49 = (golden as unknown as { toleranties: { dB: number } }).toleranties.dB;
+  const CEILING_BY_DRIVER: Record<string, number> = {};
+  for (const x of report('HUIDIG').metrics.driveExcursion) CEILING_BY_DRIVER[x.driver] = x.ceiling.ceilingDbReInput;
+  /** Every M-C verdict with the halves the derived limit is made of. */
+  const DRIVE = FIELD.flatMap((f) =>
+    f.verdicts
+      .filter((v) => v.gate === 'M-C' && v.value !== null)
+      .map((v) => ({
+        key: f.key,
+        driver: v.subject,
+        db: v.value as number,
+        limit: v.limit,
+        source: String(v.parameters?.limit_source ?? ''),
+        derived: v.parameters?.derived_limit_dB as number | undefined,
+        stated: v.parameters?.stated_limit_dB as number | undefined,
+      })),
+  );
+
+  it('the inputs come from the case book and arm the derivation on every high-passed driver', () => {
+    expect(EXC.driverCardByDriver, 'casus 1 states no driver cards').toBeDefined();
+    expect(EXC.amplifierPeakPowerW).toBeGreaterThan(0);
+    expect(EXC.xmaxMarginFraction).toBeGreaterThan(0);
+    expect(Object.keys(CEILING_BY_DRIVER).length).toBeGreaterThan(1);
+    // ...and the ceiling is a PROPERTY OF THE DRIVER: identical on all three reference filters (class A).
+    for (const key of ['KAND_A', 'KAND_B']) {
+      for (const x of report(key).metrics.driveExcursion) {
+        expect(x.ceiling.ceilingDbReInput).toBeCloseTo(CEILING_BY_DRIVER[x.driver], 9);
+      }
+    }
+  });
+
+  it('every M-C verdict carries BOTH halves and judged on the stricter — on the LIVE corpus and the reference filters that is the stated figure, everywhere', () => {
+    expect(DRIVE.length).toBeGreaterThan(0);
+    for (const d of DRIVE) {
+      expect(d.derived, `${d.key}/${d.driver}: no derived limit on the verdict`).toBeTypeOf('number');
+      expect(d.stated, `${d.key}/${d.driver}: no stated limit on the verdict`).toBe(STATED_DRIVE_MAX_DB);
+      // The parameters are rounded to two decimals for a reader; the limit is not.
+      expect(d.limit!).toBeCloseTo(Math.min(d.stated!, d.derived!), 2);
+    }
+    /* THE FINDING OF V49 ON THIS CASUS: on the live corpus and on the three
+     * reference filters the excursion-derived limit is LOOSER than the stated
+     * −20 on every way, so the stated figure bites and the effective gate did
+     * not move — which is why the corpus did not have to be regenerated. If a
+     * LIVE netlist ever appears where the derived limit is the stricter one,
+     * that is a design whose passband sits so high that the amplifier's peak
+     * reaches X_max on f_s, and it is a finding to write up rather than a
+     * green to keep. */
+    const judgedField = DRIVE.filter((d) => /^KAND_V2_\d+$/.test(d.key) || V1_BASELINES.includes(d.key));
+    expect(judgedField.length).toBeGreaterThan(0);
+    for (const d of judgedField) {
+      expect(d.derived!, `${d.key}/${d.driver}: the derived limit is stricter than the stated one`).toBeGreaterThan(d.stated!);
+      expect(d.source).toMatch(/^stated dB figure \(stricter/);
+    }
+    /* AND OVER THE WHOLE CASEBOOK IT IS NOT VACUOUS: the derived ceiling IS the
+     * stricter one somewhere — measured at V49 on seven mids of the V28 corpus,
+     * whose passbands sit ABOVE the input (a resonant lift the pre-floor search
+     * bought), by 0.05 to 0.6 dB. Named in the recorded block, and the fresh
+     * set has to be exactly that set: a ceiling that never bites anywhere
+     * would be indistinguishable from one that was never read. */
+    const fresh = DRIVE.filter((d) => d.source.startsWith('excursion-derived')).map((d) => `${d.key}/${d.driver}`).sort();
+    expect(fresh.length, 'the derived ceiling bites nowhere in the casebook — untestable').toBeGreaterThan(0);
+    const recorded = ((RECORD as unknown as {
+      casusboek_wegen_waar_de_afgeleide_grens_strenger_is?: { netlist: string; weg: string }[];
+    })?.casusboek_wegen_waar_de_afgeleide_grens_strenger_is ?? []).map((r) => `${r.netlist}/${r.weg}`).sort();
+    expect(fresh).toEqual(recorded);
+  });
+
+  it('the derived limit sits BELOW the V47b mid refusal: −7.3 dB on the mid was dangerous, not conservative', () => {
+    /* The question V47b left open, answered per netlist: on the mid the
+     * derived limit lies between roughly −11 and −14.5 dB on this casus, so the
+     * candidate V47b refused at −7.3 dB on the mid would have exceeded 0.8·X_max
+     * at the amplifier's peak. Asserted as a property of the whole field rather
+     * than as one number: every mid limit is stricter than that refusal. */
+    const V47B_MID_REFUSAL_DB = -7.3;
+    /* On the field V47b judged: the live corpus and the reference filters. Two
+     * dated V28 mids sit 23–25 dB BELOW the input (a mid padded to near
+     * silence) and read a derived limit above zero — a mid that quiet may take
+     * the full peak on f_s — so the claim is about the judged field, not the
+     * whole book. */
+    const midWay = report('HUIDIG').driversLowToHigh[1];
+    const mids = DRIVE.filter((d) => d.driver === midWay && d.derived !== undefined)
+      .filter((d) => /^KAND_V2_\d+$/.test(d.key) || V1_BASELINES.includes(d.key));
+    expect(mids.length).toBeGreaterThan(0);
+    for (const d of mids) expect(d.derived!, `${d.key}/${d.driver}`).toBeLessThan(V47B_MID_REFUSAL_DB);
+  });
+
+  it('the recorded block reproduces from a fresh measurement, per way', () => {
+    expect(RECORD, 'the recorder wrote no v49_excursie block').toBeDefined();
+    expect(RECORD!.schatter).toBe(DRIVE_EXCURSION_VERSION);
+    expect(RECORD!.gestelde_grens_dB).toBe(STATED_DRIVE_MAX_DB);
+    expect(RECORD!.per_weg.length).toBe(DRIVE.length);
+    for (const row of RECORD!.per_weg) {
+      const d = DRIVE.find((x) => x.key === row.netlist && x.driver === row.weg);
+      expect(d, `${row.netlist}/${row.weg} is recorded but not in the field`).toBeDefined();
+      expect(Math.abs(row.M_C_dB! - d!.db)).toBeLessThanOrEqual(TOL_DB_V49);
+      expect(Math.abs(row.afgeleide_grens_dB! - d!.derived!)).toBeLessThanOrEqual(TOL_DB_V49);
+      expect(row.effectieve_grens_dB).toBe(d!.limit);
+      expect(row.haalt_de_eis).toBe(d!.db <= d!.limit!);
+    }
+    /* And the weakest-link rows: every netlist with an unprotected way carries
+     * one, and its reading reproduces — ON THE R_e READING THE RECORD NAMES.
+     * Small's Q_ms reads the half-power level at √(Z_max·R_e), so the woofer's
+     * x/V moves with which R_e the pass resolved (V16): the recorder uses the
+     * entered meter reading of the pair, this file's BASE lets the fit stand,
+     * and the two differ by 0.2 mm on f0. The reference says which
+     * (`_excursie_parameters.R_e_lezing`), so this reads the same one. */
+    for (const row of RECORD!.zwakste_schakel) {
+      const w = report(row.netlist, { ...BASE, reOhmByDriver: { woofer: CASUS1_WOOFER_DC_OHM } })
+        .metrics.weakestLink.find((x) => x.driver === row.weg);
+      expect(w, `${row.netlist}/${row.weg}: no weakest-link reading`).toBeDefined();
+      expect(Math.abs(w!.xAtF0Mm - row.x_op_f0_mm!)).toBeLessThanOrEqual(0.01);
+    }
+  });
+
+  it('the acoustic route is OFF on this casus with the missing input NAMED — never an assumed voltage', () => {
+    for (const x of report('HUIDIG').metrics.driveExcursion) {
+      expect('off' in x.acoustic).toBe(true);
+      if ('off' in x.acoustic) expect(x.acoustic.off).toMatch(/drive voltage/);
+      expect(x.route).toBe('electromechanical');
+    }
+  });
+
+  it('P2: without the excursion inputs the report is what it was — the stated figure alone judges', () => {
+    const { driverCardByDriver: _c, amplifierPeakPowerW: _p, amplifierNominalLoadOhm: _r, xmaxMarginFraction: _m, ...rest } = BASE;
+    void _c; void _p; void _r; void _m;
+    const bare = report('HUIDIG', rest);
+    expect(bare.metrics.driveExcursion).toHaveLength(0);
+    expect(bare.metrics.driveExcursionOff.length).toBeGreaterThan(0);
+    for (const v of bare.gates.verdicts.filter((x) => x.gate === 'M-C')) {
+      expect(v.limit).toBe(STATED_DRIVE_MAX_DB);
+      expect(String(v.parameters?.limit_source)).toMatch(/no excursion-derived ceiling/);
+      // The VALUE is untouched: the same number under both settings.
+      const withCeiling = report('HUIDIG').gates.verdicts.find((x) => x.gate === 'M-C' && x.subject === v.subject)!;
+      expect(withCeiling.value).toBe(v.value);
     }
   });
 });

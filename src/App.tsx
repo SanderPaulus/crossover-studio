@@ -920,6 +920,12 @@ interface V2MeasurementMeta {
   floorHz: string;
   /** Where the designer got these numbers. Travels with the provenance. */
   windowNote: string;
+  /** V49 — force factor Bl, T·m, from the datasheet. '' = absent. */
+  blTm: string;
+  /** V49 — moving mass M_ms, g, from the datasheet. '' = absent. */
+  mmsG: string;
+  /** V49 — the drive voltage (V rms) the on-axis far field was taken at. '' = not documented. */
+  driveVoltageV: string;
 }
 
 const emptyV2Meas = (): V2MeasurementMeta => ({
@@ -930,6 +936,9 @@ const emptyV2Meas = (): V2MeasurementMeta => ({
   rightWindowMs: '',
   floorHz: '',
   windowNote: '',
+  blTm: '',
+  mmsG: '',
+  driveVoltageV: '',
 });
 
 /** Cabinet geometry + measurement context, as typed (strings so a field can be
@@ -1723,6 +1732,11 @@ export default function App() {
     splWindowPlusMinusDb: string;
     maxPhaseTrackingDeg: string;
     shortlistSize: string;
+    /** V49 — the amplifier's brief peak, the load it is specified into, and
+     *  the X_max fraction: what turns M-C's limit into a derived one. */
+    amplifierPeakPowerW: string;
+    amplifierNominalLoadOhm: string;
+    xmaxMarginFraction: string;
   }>({
     verticalWindowDeg: '',
     amplifierPowerW: '',
@@ -1737,6 +1751,9 @@ export default function App() {
     splWindowPlusMinusDb: '',
     maxPhaseTrackingDeg: '',
     shortlistSize: '',
+    amplifierPeakPowerW: '',
+    amplifierNominalLoadOhm: '',
+    xmaxMarginFraction: '',
   });
   /**
    * A5a — PER-MEASUREMENT-SESSION METADATA THE ENGINE NEEDS AND NOBODY COULD
@@ -3277,6 +3294,13 @@ export default function App() {
       splWindowPlusMinusDb: stated(engineV2Settings.splWindowPlusMinusDb),
       maxPhaseTrackingDeg: stated(engineV2Settings.maxPhaseTrackingDeg),
       shortlistSize: stated(engineV2Settings.shortlistSize),
+      /* V49 — M-C v2.0's three stated inputs. They reach the REPORT as
+       * settings (the ceiling is derived there) and never the scan payload
+       * directly: what crosses to the worker is the derived ceiling, as a
+       * measured fact (`factsForWorker`). */
+      amplifierPeakPowerW: stated(engineV2Settings.amplifierPeakPowerW),
+      amplifierNominalLoadOhm: stated(engineV2Settings.amplifierNominalLoadOhm),
+      xmaxMarginFraction: stated(engineV2Settings.xmaxMarginFraction),
     };
   }, [engineV2Settings]);
 
@@ -3371,6 +3395,25 @@ export default function App() {
         if (!loaded && !z && !nf) continue;
         const re = stated(v2Meas[role].reOhm);
         const mw = manualWindowFor(role);
+        /* V49 — the DRIVER CARD: Sd and Xmax from the Setup tab (driver facts
+         * the app already holds), Bl and M_ms from the v2 measurement block,
+         * the parallel count from the cabinet form. Every field absent stays
+         * absent; a card with nothing on it is not sent at all. */
+        const xmax = stated(xmaxMm[role]);
+        const sd = stated(sdCm2[role]);
+        const bl = stated(v2Meas[role].blTm);
+        const mms = stated(v2Meas[role].mmsG);
+        const count = Number(cabinet.drivers[role]?.count ?? '');
+        const card = {
+          ...(xmax !== undefined && xmax > 0 ? { xMaxMm: xmax } : {}),
+          ...(sd !== undefined && sd > 0 ? { sdCm2: sd } : {}),
+          ...(bl !== undefined && bl > 0 ? { blTm: bl } : {}),
+          ...(mms !== undefined && mms > 0 ? { mmsG: mms } : {}),
+          ...(Number.isFinite(count) && count > 1 ? { parallelCount: count } : {}),
+          source: 'Setup tab (Sd, Xmax) and the Engine v2 measurement block (Bl, M_ms)',
+        };
+        const driveV = stated(v2Meas[role].driveVoltageV);
+        const micMm = Number(cabinet.micDistanceMm);
         branches.push({
           role,
           onAxis: loaded ? asResponse(loaded.name, loaded.frd) : null,
@@ -3380,6 +3423,16 @@ export default function App() {
           diameterInch: sizeInch(role),
           ...(re !== undefined && re > 0 ? { measuredReOhm: re } : {}),
           ...(mw ? { manualWindow: mw } : {}),
+          ...(Object.keys(card).length > 1 ? { driverCard: card } : {}),
+          ...(driveV !== undefined && driveV > 0 && Number.isFinite(micMm) && micMm > 0
+            ? {
+                responseDrive: {
+                  driveVoltageV: driveV,
+                  micDistanceMm: micMm,
+                  source: 'Engine v2 measurement block (drive voltage) and the cabinet form (mic distance)',
+                },
+              }
+            : {}),
         });
       }
       if (branches.length === 0) return null;
@@ -6287,6 +6340,9 @@ export default function App() {
       splWindowPlusMinusDb: d.engineV2?.splWindowPlusMinusDb ?? '',
       maxPhaseTrackingDeg: d.engineV2?.maxPhaseTrackingDeg ?? '',
       shortlistSize: d.engineV2?.shortlistSize ?? '',
+      amplifierPeakPowerW: d.engineV2?.amplifierPeakPowerW ?? '',
+      amplifierNominalLoadOhm: d.engineV2?.amplifierNominalLoadOhm ?? '',
+      xmaxMarginFraction: d.engineV2?.xmaxMarginFraction ?? '',
     });
     // A5a metadata (F3b). Additive: a project from before F3b has no block and
     // every field falls back to '', which is what "not stated" means (P4).
@@ -6987,6 +7043,14 @@ export default function App() {
            * reads. Absent leaves the historic seed comparison in force (P4). */
           ...(engineV2Gates.maxDriveOnFsDb !== undefined
             ? { driveOnFsLimitDb: engineV2Gates.maxDriveOnFsDb }
+            : {}),
+          /* V49 — and whether the report derived an EXCURSION ceiling for any
+           * way (M-C v2.0). That is an absolute requirement too, so the
+           * candidate declares `protectionRule: 'stated'` on it even without a
+           * stated dB figure. The ceilings themselves cross as a measured fact
+           * in `v2Facts`, never through the declaration. */
+          ...((engineV2Report?.report?.metrics.driveExcursion.length ?? 0) > 0
+            ? { driveCeilingDerived: true }
             : {}),
           /* V48 — the design's stated LF-lift budget, so the candidate can
            * declare WHICH NETWORK the series-inductance ceiling describes. The
@@ -11088,6 +11152,59 @@ export default function App() {
                                   style={{ width: '4.5rem' }}
                                 />
                                 {' Ω'}
+                              </span>{' '}
+                              {/* V49 — the two datasheet numbers M-C v2.0 needs
+                                  beside the Sd/Xmax above: with them, the measured
+                                  resonance (f_s, Z_max, Q_ms from the sweep) and the
+                                  amplifier peak, the drive limit on the resonance is
+                                  DERIVED from excursion instead of stated. */}
+                              <span
+                                className="inline-num"
+                                title={t("Force factor Bl from the datasheet, T·m. With M_ms, the measured Z_max, f_s and Q_ms of the sweep this gives the cone displacement per volt on the resonance (M-C v2.0, electromechanical route). Blank = that route is off for this driver and the stated dB figure alone judges it.")}
+                              >
+                                {t('Bl') + ' '}
+                                <input
+                                  type="number"
+                                  min={0}
+                                  step={0.1}
+                                  placeholder="—"
+                                  value={v2Meas[role].blTm}
+                                  onChange={(e) => setV2MeasField(role, 'blTm', e.target.value)}
+                                  style={{ width: '4rem' }}
+                                />
+                                {' T·m'}
+                              </span>{' '}
+                              <span
+                                className="inline-num"
+                                title={t("Moving mass M_ms from the datasheet, g. See Bl.")}
+                              >
+                                {t('M_ms') + ' '}
+                                <input
+                                  type="number"
+                                  min={0}
+                                  step={0.01}
+                                  placeholder="—"
+                                  value={v2Meas[role].mmsG}
+                                  onChange={(e) => setV2MeasField(role, 'mmsG', e.target.value)}
+                                  style={{ width: '4rem' }}
+                                />
+                                {' g'}
+                              </span>{' '}
+                              <span
+                                className="inline-num"
+                                title={t("The drive voltage (V rms) the on-axis far field was measured at, when you documented it. A header cannot say it. With the mic distance on the cabinet form and Sd it arms the ACOUSTIC counter-proof of M-C v2.0 — a second reading of the displacement per volt from the measured SPL, which overestimates under any loading (waveguide, cabinet front) and whose ratio to the electromechanical route is the mounting's own loading, measured. Blank = that route is off, with the reason shown.")}
+                              >
+                                {t('measured at') + ' '}
+                                <input
+                                  type="number"
+                                  min={0}
+                                  step={0.01}
+                                  placeholder="—"
+                                  value={v2Meas[role].driveVoltageV}
+                                  onChange={(e) => setV2MeasField(role, 'driveVoltageV', e.target.value)}
+                                  style={{ width: '4rem' }}
+                                />
+                                {' V'}
                               </span>
                             </span>
                             <span className="cd-label">{t('Window (no header)')}</span>
@@ -15637,6 +15754,56 @@ export default function App() {
                           setEngineV2Settings((v) => ({ ...v, maxDriveOnFsDb: e.target.value }))
                         }
                         style={{ width: '5rem' }}
+                      />
+                    </label>
+                    {/* ---- V49: M-C v2.0 — the limit DERIVED from excursion ----
+                      * Three stated numbers, none defaulted. With all three
+                      * and a driver card (Sd/Xmax on the Setup tab, Bl/M_ms in
+                      * the per-branch measurement block) the report derives a
+                      * ceiling per way from the measured resonance, and the
+                      * STRICTER of that ceiling and the stated dB figure
+                      * judges. The ghosts below are what is customary, never
+                      * a value. */}
+                    <label title={t('M-C v2.0 — the amplifier\'s brief PEAK power (e.g. its IHF dynamic rating), W. With the nominal load beside it this sets the peak input voltage √2·√(P·R) the excursion requirement is judged at: on that voltage every high-passed way must keep its cone within X_max × margin on its own resonance. Empty = no derived limit; the stated dB figure alone judges.')}>
+                      {t('Amplifier peak power W')}
+                      <input
+                        type="number"
+                        min={0}
+                        value={engineV2Settings.amplifierPeakPowerW}
+                        placeholder="160"
+                        onChange={(e) =>
+                          setEngineV2Settings((v) => ({ ...v, amplifierPeakPowerW: e.target.value }))
+                        }
+                        style={{ width: '5rem' }}
+                      />
+                    </label>
+                    <label title={t('M-C v2.0 — the load the peak power is specified into, Ω. Together with the peak power it gives the peak input voltage. Empty = no derived limit.')}>
+                      {t('Nominal load Ω')}
+                      <input
+                        type="number"
+                        min={0}
+                        step={1}
+                        value={engineV2Settings.amplifierNominalLoadOhm}
+                        placeholder="8"
+                        onChange={(e) =>
+                          setEngineV2Settings((v) => ({ ...v, amplifierNominalLoadOhm: e.target.value }))
+                        }
+                        style={{ width: '4rem' }}
+                      />
+                    </label>
+                    <label title={t('M-C v2.0 — the fraction of X_max a design may use on the resonance. X_max is a geometric figure (coil overhang); distortion rises quickly above it, and manufacturers define it differently, so a fraction below 1 is customary. Empty = no derived limit.')}>
+                      {t('X_max margin')}
+                      <input
+                        type="number"
+                        min={0}
+                        max={1}
+                        step={0.05}
+                        value={engineV2Settings.xmaxMarginFraction}
+                        placeholder="0.8"
+                        onChange={(e) =>
+                          setEngineV2Settings((v) => ({ ...v, xmaxMarginFraction: e.target.value }))
+                        }
+                        style={{ width: '4rem' }}
                       />
                     </label>
 
