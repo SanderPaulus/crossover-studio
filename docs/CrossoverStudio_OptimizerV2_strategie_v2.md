@@ -3616,6 +3616,219 @@ niet gemeten, en pas de moeite waard als een shortlist ooit veel langer wordt da
 `hold-current` blijven ongebouwd (A5e.2); de besturing biedt ze niet aan, wat beter is dan ze
 aanbieden en weigeren.
 
+### V48 — het opslingeringsplafond volgt de tune (02-09-2026, **BREAKING, alleen v2-runs**)
+
+**AANLEIDING.** De A5d.6-inversie `bump-series-l` keert het LF-budget om naar een plafond op de
+seriespoel van de laagste weg **bij een gegeven padweerstand**. Dat plafond werd één keer opgelost,
+bij het zaad, en stond daarna vast voor de hele tune — terwijl de tune diezelfde padweerstand
+verplaatst. V45 schreef dat op als open punt en beredeneerde het als veilig: meer serieweerstand
+dempt de resonante helft, dus een plafond opgelost bij een lágere padweerstand is hoogstens te
+streng. **Die redenering klopt in één richting en laat de andere weg.** Een tune die de
+padweerstand VERLAAGT loopt onder een plafond dat voor een beter gedempt netwerk is opgelost, en
+dat plafond is toegeeflijk. Sanders browserrun van 01-09 is de meting: twee van negen kandidaten
+leverden **2,29 en 1,61 dB** opslingering tegen een gesteld budget van 1,4, en de
+geleverde-netwerk-toets van V45 ving ze allebei. Terecht — maar vangen is verliezen. Dat waren
+legitieme kandidaten die met een plafond over hun eigen netwerk gestuurd hadden kunnen worden in
+plaats van aan het eind weggegooid.
+
+**DE INVENTARISATIE, want de vormkeuze hangt eraan.** Het plafond wordt opgelost in
+`invertBudgets` (`bounds.ts`), met `pathROhm: seriesPathResistance(seedParts, model)` uit
+`worker.ts` — het ZAAD. De actuele padweerstand is in de tuner al leesbaar en al in gebruik:
+`seriesPathIds` + `dcSeriesR` sommeren R en spoel-DCR over een vooraf opgeloste id-verzameling voor
+de bronweerstandsgrens, een opzoeking en een optelling per evaluatie. En `projectSums` — de
+projectie die de somplafonds handhaaft — draait al BÍNNEN de doelfunctie, dus plafonds worden al
+per evaluatie gelezen; alleen `maxSI` stond stil.
+
+**DE KOSTENMETING, en zij beslist tussen de twee vormen. Eén inversie kost 13 ms**: zestig
+bisectiestappen, elk een volle `lfBump` over de gemeten NF en sweep. Een casus-1-kandidaat doet in
+de orde van 100 000 objectief-evaluaties, dus de inversie per evaluatie aanroepen is **1296 s
+rekenwerk voor één grens** — eenentwintig minuten per kandidaat, voor een bound. Vorm B
+(*plafond als functie*) is daarmee onbetaalbaar zoals zij daar staat, en Vorm A (*herbereken bij
+acceptatie*) zou het plafond binnen een pas achter laten lopen.
+
+**GEKOZEN: VORM B, GEMÉMOÏSEERD OP EEN NAAR BENEDEN AFGERONDE KORREL.** De padweerstand wordt
+gekwantiseerd naar `BOUND_CEILING_PATH_R_GRAIN_OHM` (0,05 Ω) en elke cel wordt één keer opgelost; een
+tune bezoekt enkele tientallen cellen in plaats van honderdduizend punten. Daarmee is het plafond
+per constructie een functie van het netwerk dat geëvalueerd wordt, en niet van het netwerk waarmee
+de zoektocht begon.
+
+**NAAR BENEDEN AFRONDEN IS WAT DE BENADERING VEILIG MAAKT IN PLAATS VAN ALLEEN KLEIN.** Het plafond
+STIJGT met de padweerstand, dus de onderrand van de cel geeft een plafond dat op of onder het exacte
+plafond bij het geëvalueerde punt ligt. Het volgende plafond kan dus alleen te STRENG zijn, nooit
+toegeeflijk — dezelfde richting die de geleverde-netwerk-toets één laag verderop garandeert. Die
+monotonie is **gemeten en niet aangenomen**: `lfBumpBorder.test.ts` loopt het hele bereik dat het
+casusboek noteert af op de korrel zelf, en toetst de tracker daarnaast op punten die met opzet
+NIET op de korrel vallen (het derde en het zevende tiende van een cel) — daar mag hij nooit boven
+het exacte plafond lezen, en de prijs van die veiligheid blijft onder een procent van het plafond.
+Dat past bij hoe `maxSeriesInductanceFromBump` zelf al met monotonie omgaat: hij laat zijn bracket
+GROEIEN in plaats van monotonie in L aan te nemen.
+
+**WAT ER NIET VERANDERD IS.** De inversieformule niet, het gestelde budget niet (1,4 dB blijft), en
+de geleverde-netwerk-toets van V45 niet. Die laatste is ongewijzigd en **van betekenis veranderd
+zonder van code te veranderen**: zij was het vangnet onder een bekend gat, en zij is nu de bewaking
+dat het gat dicht is. Vuurt zij nog op een run waarvan het plafond meeliep, dan is de reparatie
+onvolledig en niet de kandidaat verkeerd — en de weigering zegt dat sinds V48 met zoveel woorden,
+in plaats van de oude uitleg af te drukken die dan niet meer waar zou zijn.
+
+**DE SLEUTEL, EN WAAROM HIJ EEN KEUZE IS.** `seriesInductanceCeilingSource` (`'seed'` | `'tuned'`)
+bepaalt WELKE GROOTHEID de zoekdoos begrenst, en dat is de A3j-test voor een keuze. Afwezig is
+`'seed'`, dus elke v1-run en elke aanroeper die niets stelt zoekt het veld dat hij altijd zocht;
+`f4cRegression` en `workerRouteRegression` reproduceren hun byte-baselines onaangeroerd. Hij is de
+TWEEDE sleutel na V47's `protectionRule` die zonder polish-tweelingzus komt, en om dezelfde vorm van
+reden: de gemeten NF en sweep die de inversie herleest reizen al mee binnen `valueSumCeilings`, dat
+sinds F2 polish is precies omdat het data is die de run al vasthoudt. Sleuteltelling 49 → 50,
+verdeling 34/5/11.
+
+**HOE HET DE GRENS OVERSTEEKT.** Als een CLOSURE binnen de somgroep — dezelfde vorm die
+`gateViolation` sinds F2 draagt — en nooit binnen `InvertedBound`, want die reist in het antwoord
+van de worker en een functie overleeft geen `postMessage`. `invertBudgets` levert de trackers
+daarom NAAST de bounds af. `runV2Optimization` krijgt er geen: die route neemt reeds opgeloste
+bounds aan en heeft de metingen niet, dus een kandidaat die daar `'tuned'` stelt krijgt het
+zaadplafond en geen verzonnen vervanging (P4).
+
+---
+
+**DE VÓÓR/NÁ, IN TWEE ARMEN OP ÉÉN BUILD.** `measure-v48-ceiling-tracking.ts` draait het hele veld
+van vijftien kandidaten twee keer, met `seriesInductanceCeilingSource` als enige verschil. Dertig
+ketenruns. De vier rijen die iets leveren staan hieronder; de overige elf kandidaten worden in
+BEIDE armen door dezelfde poort geweigerd (M-C, en op de lage kruisingen ook de versterkervloer) en
+het plafond verandert daar niets aan — wat klopt, want zij falen geen budget.
+
+| kandidaat | arm | zaad-R | zaadplafond | eind-R | geleverde spoel | plafond bij eind-R | opsling. |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| 396,7 · 1981,2 | seed | 1,560 Ω | 2,822 mH | 4,270 Ω | **2,822 mH** | 4,091 mH | 0,738 dB |
+| 396,7 · 1981,2 | tuned | 1,560 Ω | 2,822 mH | 4,270 Ω | 3,982 mH | 4,091 mH | 1,337 dB |
+| 396,7 · 2283,5 | seed | 1,310 Ω | 2,695 mH | 3,240 Ω | **2,696 mH** | 3,613 mH | 0,833 dB |
+| 396,7 · 2283,5 | tuned | 1,310 Ω | 2,695 mH | 4,270 Ω | 4,044 mH | 4,091 mH | 1,373 dB |
+| 466,5 · 2283,5 | seed | 2,399 Ω | 3,236 mH | 3,294 Ω | **3,236 mH** | 3,637 mH | 1,140 dB |
+| 466,5 · 2283,5 | tuned | 2,399 Ω | 3,236 mH | 3,650 Ω | 3,801 mH | 3,801 mH | 1,400 dB |
+| 548,5 · 1981,2 | seed | 2,918 Ω | 3,467 mH | — | — | — | — (poort) |
+| 548,5 · 1981,2 | tuned | 2,918 Ω | 3,467 mH | **2,560 Ω** | 2,811 mH | 3,307 mH | 1,043 dB |
+| 548,5 · 2283,5 | seed | 3,148 Ω | 3,571 mH | 4,121 Ω | 2,282 mH | 4,021 mH | 0,523 dB |
+| 548,5 · 2283,5 | tuned | 3,148 Ω | 3,571 mH | 4,019 Ω | 2,834 mH | 3,973 mH | 0,779 dB |
+
+**HET ZAADPLAFOND WAS BINDEND, EN OP DRIE VAN DE VIJF WAS HET TE STRENG.** De vetgedrukte
+seed-cellen zitten tot op de geschreven decimaal op hun eigen zaadplafond — 2,822 tegen 2,822;
+2,696 tegen 2,695; 3,236 tegen 3,236 — terwijl de tune de padweerstand had opgevoerd van 1,3–2,4 Ω
+naar 3,2–4,3 Ω, waar het werkelijke plafond 3,6–4,1 mH is. **De zoekdoos hield die ontwerpen dus
+een derde tot de helft onder de spoel waar zij recht op hadden**, en met een plafond dat hun eigen
+netwerk beschrijft blijven zij netjes binnen het budget (1,337 / 1,373 / 1,400 tegen 1,4).
+
+**EN DE TOEGEEFLIJKE RICHTING STAAT ER ÉÉN RIJ ONDER.** Op `548,5 · 1981,2` gaat de padweerstand in
+de `tuned`-arm juist OMLAAG (2,918 → 2,560 Ω). Daar staat het zaadplafond van 3,467 mH BOVEN het
+werkelijke plafond van 3,307 mH bij het geleverde netwerk: de oude zoekdoos vergunde daar een spoel
+die het budget verbiedt. Dat is precies het mechanisme van Sanders twee gevallen — en deze kandidaat
+levert in de `tuned`-arm een netwerk (1,043 dB) waar de `seed`-arm hem in zijn geheel aan een poort
+verloor.
+
+**WAT DE TWEE ARMEN OPLEVERDEN: 4 van 15 geleverd tegen 5 van 15**, en nul budget-weigeringen aan
+beide kanten. Die nul aan de `seed`-kant is een eerlijke uitkomst en geen bevestiging: op DIT veld
+kostte de veroudering ontwerpruimte in de strenge richting, terwijl Sanders negen-kandidaatveld in
+de app haar in de toegeeflijke richting trof. **De twee gevallen van 01-09 zijn dus niet
+gereproduceerd** — dat veld komt uit de eigen pre-design van de app en is niet uit de repo te
+herbouwen — en wat hier gemeten is, is het spiegelbeeld ervan plus één rij die het mechanisme zelf
+laat zien. Beide staan hier als meting; geen van beide als afleiding.
+
+**DE KOLOM `opsling` IS NIET DE TOETS, en dat verschil hoort erbij.** Zij is de opslingering van het
+SERIE-R+L-MODEL waarop de inversie is opgelost — de grootheid waarop het plafond gedefinieerd is —
+terwijl de geleverde-netwerk-toets het ECHTE netwerk oplost, shunts en vallen inbegrepen. De 1,400
+op `466,5 · 2283,5` is daarom geen overschrijding maar het plafond dat tot op de laatste geschreven
+decimaal bijt: de geleverde spoel is 3,8014 mH tegen een plafond van 3,80097, vier tienduizendsten
+mH eroverheen, en dat is de afronding op vier significante cijfers waarmee de tuner elke waarde
+wegschrijft. De eerste versie van dit script vlagde die rij als overschrijding; een bewaker die op
+de laatste geschreven decimaal alarm slaat meldt afronding als bevinding, dus hij rekent nu met
+diezelfde marge. **Gezag heeft de toets en niet deze kolom** — en die heeft in geen van beide armen
+één kandidaat geweigerd.
+
+---
+
+**DE REGENERATIE, EN WAT ZIJ MET HET VELD DEED.** Het corpus gaat van **vier naar vijf** netlists.
+Er is er geen uit de shortlist gevallen; de nieuwkomer is `548,5 · 1981,2` — precies de kandidaat
+die in de `seed`-arm van de meting hierboven aan een poort verloren ging. Dat is de voorspelling
+van de opdracht ("verwacht dat het veld iets groter wordt") en zij is uitgekomen om de
+voorspelde reden.
+
+**DE GEPAARDE DELTA'S, want een corpusgemiddelde is geen delta (V47-nazorg).** Vier kandidaten
+staan in beide corpora; hun ná-gemiddelde is per constructie het corpusgemiddelde ná, want er is
+niets vertrokken. De ingreep leest dus rechtstreeks:
+
+| grootheid (4 paren) | V47 | V48 |
+| --- | --- | --- |
+| totale serie-L laagste weg | 2,76 mH | **3,66 mH** (+33 %) |
+| opslingering (waar het budget op staat) | −1,10 dB | −0,91 dB |
+| LF-bult totaal | 3,55 dB | 3,99 dB |
+| resistieve lift | 4,65 dB | 4,90 dB |
+| W-M fase (M-K) | 13,06° | **5,15°** |
+| M-T fase (M-K) | 3,87° | 4,53° |
+| dissipatie (M-A) | 62,23 % | **58,23 %** |
+| M-C slechtst beschermde weg | −28,53 dB | −28,87 dB |
+
+**Een derde meer seriespoel is precies wat de reparatie moest opleveren**, en het is de grootheid
+waarop het plafond staat: de zoekdoos hield die spoel eerder tegen op grond van een netwerk dat de
+tune verlaten had. Alles wat daarnaast beweegt, beweegt de goede kant op zonder dat er een eis is
+opgerekt: **0 van 4 boven het budget vóór, 0 van 5 ná**, elke netlist haalt de versterkervloer, en
+M-C blijft op elke weg ruim binnen de gestelde −25 dB. De correctiegroepen worden bovendien
+eenvoudiger — gepaard verdwijnen zes gedempte vallen en drie shunt-pads, en er komt één
+shunt-shelf bij — wat de dissipatiewinst verklaart: een correctiegroep is een shunt en kost
+dissipatie.
+
+**DE ENIGE KOLOM DIE DE ANDERE KANT OP WIJST is de M-T-fase (3,87° → 4,53°),** en zij staat hier
+omdat zij bestaat en niet omdat zij iets aantoont: het is een halve graad op een handover die geen
+eis draagt, terwijl de W-M-fase — waar het spoelplafond woont — meer dan halveert. Wie de
+corpusregels leest in plaats van de gepaarde krijgt trouwens een ander verhaal (M-K W-M 13,1° →
+7,1°, dissipatie 62,2 → 57,5 %), en dat is de V47-nazorg-leesregel in werking: het veld veranderde
+van samenstelling én de ontwerpen bewogen, en alleen de gepaarde kolom scheidt die twee.
+
+
+---
+
+**EEN BEWAKER HEEFT GEWERKT, EN HET WAS DE V37-VAL VOOR DE VIERDE KEER — nu lag het aan de
+ANKERING zelf.** De volle suite viel op één test: `frozenNetlistGates.test.ts`, het blok dat pint
+dat de dissipatieterm op de PIEKHOOGTE de uitdagingsdrempel van 1 % nooit haalde en op R_e wel.
+
+De val is bekend en staat in dat bestand uitgeschreven: de term wordt gedeeld door het OBJECTIEF
+van de netlist, en dat objectief krimpt naarmate het veld vlakker wordt — dus de assert beweegt mee
+met de kwaliteit van het veld en niet met de term. V41 was de eerste keer, V47 de derde. V47
+repareerde hem door de strikte claim te ANKEREN op de netlists waarop V36 en V37 hem gedaan hadden
+— maar ankerde met een COMPLEMENT: *"alles wat niet `KAND_V2_n` heet"*. **Dat is geen anker maar
+een verzameling die met elk corpus meegroeit.** De netlist die hem bij V47 brak (`KAND_V2_1`, RMS
+0,48, 1,053 %) is bij V48 bevroren als `V47_KAND_1`, en daarmee stapte precies het uitgesloten
+geval weer naar binnen — met hetzelfde getal.
+
+**Dat was geen ongeluk maar een zekerheid.** Elke sessie bevriest het levende corpus vóór zij
+regenereert; een complementfilter op "levend" laat het uitgesloten geval er bij de eerstvolgende
+regeneratie dus altijd weer in. Het anker noemt sindsdien zijn VERZAMELING: de tien families die
+bestonden toen V36 en V37 gemeten werden, uitgeschreven, met een tegenproef ernaast dat die
+verzameling aantoonbaar KLEINER is dan "alles wat niet levend is" — zodat het anker niet stil weer
+een complement kan worden. De drempel is opnieuw niet opgerekt.
+
+---
+
+**WAT ER NIET GEBOUWD IS.** Geen wijziging aan de inversieformule, geen wijziging aan het gestelde
+budget (1,4 dB), geen wijziging aan de geleverde-netwerk-toets behalve dat hij blijft — en geen
+v2-standaard die een casus-1-getal is: `'tuned'` noemt geen weerstand, geen spoel en geen
+frequentie. Het PER-ONDERDEEL-plafond dat naast het somplafond staat volgt de tune NIET: het is de
+noodzakelijke voorwaarde ("geen enkele spoel meer dan de hele keten mag") en de projectie op de SOM
+is wat werkelijk handhaaft, dus het meelaten lopen zou een tweede mechanisme zijn voor één regel.
+`runV2Optimization` krijgt geen tracker (zie hierboven). En de korrel is niet gekalibreerd op wat
+casus 1 toevallig nodig heeft — hij is een resolutie, met een gemeten bovengrens op wat hij kost.
+
+**WAT ER GEMETEN IS EN NIET AANGENOMEN.** De prijs van één inversie (13 ms) en daarmee de
+vormkeuze. De monotonie waarop de kwantisering rust, over het hele bereik dat het casusboek noteert.
+Dat de tracker op punten tussen de korrels nooit boven het exacte plafond leest. Dat het geleverde
+netwerk van de tweewegfixture op het plafond van zijn EIGEN padweerstand staat. De twee armen over
+het hele veld. Dat de byte-baselines van `f4cRegression` en `workerRouteRegression` onaangeroerd
+reproduceren met de sleutel afwezig.
+
+**OPENSTAAND.** (1) De twee gevallen van Sanders browserrun zijn niet reproduceerbaar uit de repo,
+omdat het veld van de app uit haar eigen pre-design komt; de toegeeflijke richting is hier op één
+kandidaat aangetoond en niet op die twee. (2) De kolom `opsling` in het meetscript is het
+serie-R+L-model en niet het geleverde netwerk — wie het echte getal per arm wil, moet de geleverde
+onderdelenlijst in de shard bewaren, en dat kost een nieuwe run van dertig ketenruns. (3) Het
+`gap-pad-r`-plafond en het `qes-series-r`-plafond hangen NIET van de padweerstand af en zijn dus
+niet door dit gat geraakt — nagegaan, niet aangenomen; als er ooit een inversie bij komt die er wél
+van afhangt, is dit de plek waar zij dezelfde behandeling hoort te krijgen.
+
 ## Casus S1 — synthetische grondwaarheid voor de R_e-schatter (F3b, 26-08-2026)
 
 *De eerste casus in dit boek die geen luidspreker is. A7 noemt synthetische grondwaarheid als

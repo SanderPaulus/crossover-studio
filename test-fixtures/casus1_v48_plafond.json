@@ -1,0 +1,504 @@
+{
+  "budget_dB": 1.4,
+  "armen": [
+    "seed",
+    "tuned"
+  ],
+  "rijen": [
+    {
+      "n": 1,
+      "arm": "seed",
+      "label": "woofer→mid 396.7 LR4 · mid→tweeter 1294 LR4",
+      "seconds": 2328.935,
+      "zaadPadROhm": 1.03,
+      "zaadPlafondMH": 2.5584561715595426,
+      "verwerping": {
+        "regels": [
+          "gate"
+        ],
+        "reden": "M-B/|Z|: 2.52 Ω falls below the stated floor of 2.60 Ω; M-C (tweeter): -11.9 dB exceeds the stated ceiling of -25.0 dB"
+      },
+      "eindPadROhm": null,
+      "eindSpoelMH": null,
+      "plafondBijEindMH": null,
+      "opslingeringDb": null
+    },
+    {
+      "n": 2,
+      "arm": "tuned",
+      "label": "woofer→mid 396.7 LR4 · mid→tweeter 1294 LR4",
+      "seconds": 2179.415,
+      "zaadPadROhm": 1.03,
+      "zaadPlafondMH": 2.5584561715595426,
+      "verwerping": {
+        "regels": [
+          "gate"
+        ],
+        "reden": "M-C (tweeter): -14.3 dB exceeds the stated ceiling of -25.0 dB"
+      },
+      "eindPadROhm": null,
+      "eindSpoelMH": null,
+      "plafondBijEindMH": null,
+      "opslingeringDb": null
+    },
+    {
+      "n": 3,
+      "arm": "seed",
+      "label": "woofer→mid 396.7 LR4 · mid→tweeter 1491.4 LR4",
+      "seconds": 32791.292,
+      "zaadPadROhm": 1.02,
+      "zaadPlafondMH": 2.5536543914417393,
+      "verwerping": {
+        "regels": [
+          "gate"
+        ],
+        "reden": "M-C (tweeter): -16.5 dB exceeds the stated ceiling of -25.0 dB"
+      },
+      "eindPadROhm": null,
+      "eindSpoelMH": null,
+      "plafondBijEindMH": null,
+      "opslingeringDb": null
+    },
+    {
+      "n": 4,
+      "arm": "tuned",
+      "label": "woofer→mid 396.7 LR4 · mid→tweeter 1491.4 LR4",
+      "seconds": 32808.79,
+      "zaadPadROhm": 1.02,
+      "zaadPlafondMH": 2.5536543914417393,
+      "verwerping": {
+        "regels": [
+          "gate"
+        ],
+        "reden": "M-C (tweeter): -16.2 dB exceeds the stated ceiling of -25.0 dB"
+      },
+      "eindPadROhm": null,
+      "eindSpoelMH": null,
+      "plafondBijEindMH": null,
+      "opslingeringDb": null
+    },
+    {
+      "n": 5,
+      "arm": "seed",
+      "label": "woofer→mid 396.7 LR4 · mid→tweeter 1719 LR4",
+      "seconds": 32266.795,
+      "zaadPadROhm": 1.06,
+      "zaadPlafondMH": 2.5728980947857765,
+      "verwerping": {
+        "regels": [
+          "gate"
+        ],
+        "reden": "M-C (tweeter): -23.5 dB exceeds the stated ceiling of -25.0 dB"
+      },
+      "eindPadROhm": null,
+      "eindSpoelMH": null,
+      "plafondBijEindMH": null,
+      "opslingeringDb": null
+    },
+    {
+      "n": 6,
+      "arm": "tuned",
+      "label": "woofer→mid 396.7 LR4 · mid→tweeter 1719 LR4",
+      "seconds": 32487.863,
+      "zaadPadROhm": 1.06,
+      "zaadPlafondMH": 2.5728980947857765,
+      "verwerping": {
+        "regels": [
+          "gate"
+        ],
+        "reden": "M-C (tweeter): -22.5 dB exceeds the stated ceiling of -25.0 dB"
+      },
+      "eindPadROhm": null,
+      "eindSpoelMH": null,
+      "plafondBijEindMH": null,
+      "opslingeringDb": null
+    },
+    {
+      "n": 7,
+      "arm": "seed",
+      "label": "woofer→mid 396.7 LR4 · mid→tweeter 1981.2 LR4",
+      "seconds": 32339.838,
+      "zaadPadROhm": 1.56,
+      "zaadPlafondMH": 2.8216005184851713,
+      "verwerping": null,
+      "eindPadROhm": 4.27,
+      "eindSpoelMH": 2.8219999999999996,
+      "plafondBijEindMH": 4.0907084008143615,
+      "opslingeringDb": 0.7381262891839011
+    },
+    {
+      "n": 8,
+      "arm": "tuned",
+      "label": "woofer→mid 396.7 LR4 · mid→tweeter 1981.2 LR4",
+      "seconds": 32790.568,
+      "zaadPadROhm": 1.56,
+      "zaadPlafondMH": 2.8216005184851713,
+      "verwerping": null,
+      "eindPadROhm": 4.27,
+      "eindSpoelMH": 3.982,
+      "plafondBijEindMH": 4.0907084008143615,
+      "opslingeringDb": 1.3374322865043808
+    },
+    {
+      "n": 9,
+      "arm": "seed",
+      "label": "woofer→mid 396.7 LR4 · mid→tweeter 2283.5 LR4",
+      "seconds": 32573.875,
+      "zaadPadROhm": 1.31,
+      "zaadPlafondMH": 2.6953710376996414,
+      "verwerping": null,
+      "eindPadROhm": 3.24,
+      "eindSpoelMH": 2.696,
+      "plafondBijEindMH": 3.6128566146484182,
+      "opslingeringDb": 0.8329250201659351
+    },
+    {
+      "n": 10,
+      "arm": "tuned",
+      "label": "woofer→mid 396.7 LR4 · mid→tweeter 2283.5 LR4",
+      "seconds": 32904.98,
+      "zaadPadROhm": 1.31,
+      "zaadPlafondMH": 2.6953710376996414,
+      "verwerping": null,
+      "eindPadROhm": 4.27,
+      "eindSpoelMH": 4.044,
+      "plafondBijEindMH": 4.0907084008143615,
+      "opslingeringDb": 1.3730002702855746
+    },
+    {
+      "n": 11,
+      "arm": "seed",
+      "label": "woofer→mid 466.5 LR4 · mid→tweeter 1294 LR4",
+      "seconds": 32823.868,
+      "zaadPadROhm": 2.009,
+      "zaadPlafondMH": 3.057567031657649,
+      "verwerping": {
+        "regels": [
+          "gate"
+        ],
+        "reden": "M-B/|Z|: 1.94 Ω falls below the stated floor of 2.60 Ω; M-C (tweeter): -17.1 dB exceeds the stated ceiling of -25.0 dB"
+      },
+      "eindPadROhm": null,
+      "eindSpoelMH": null,
+      "plafondBijEindMH": null,
+      "opslingeringDb": null
+    },
+    {
+      "n": 12,
+      "arm": "tuned",
+      "label": "woofer→mid 466.5 LR4 · mid→tweeter 1294 LR4",
+      "seconds": 32855.876,
+      "zaadPadROhm": 2.009,
+      "zaadPlafondMH": 3.057567031657649,
+      "verwerping": {
+        "regels": [
+          "gate"
+        ],
+        "reden": "M-B/|Z|: 2.21 Ω falls below the stated floor of 2.60 Ω; M-C (mid): 6.9 dB exceeds the stated ceiling of -25.0 dB; M-C (tweeter): -12.2 dB exceeds the stated ceiling of -25.0 dB"
+      },
+      "eindPadROhm": null,
+      "eindSpoelMH": null,
+      "plafondBijEindMH": null,
+      "opslingeringDb": null
+    },
+    {
+      "n": 13,
+      "arm": "seed",
+      "label": "woofer→mid 466.5 LR4 · mid→tweeter 1491.4 LR4",
+      "seconds": 32721.656,
+      "zaadPadROhm": 1.729,
+      "zaadPlafondMH": 2.9090327003828644,
+      "verwerping": {
+        "regels": [
+          "gate"
+        ],
+        "reden": "M-C (mid): 4.5 dB exceeds the stated ceiling of -25.0 dB; M-C (tweeter): -16.2 dB exceeds the stated ceiling of -25.0 dB"
+      },
+      "eindPadROhm": null,
+      "eindSpoelMH": null,
+      "plafondBijEindMH": null,
+      "opslingeringDb": null
+    },
+    {
+      "n": 14,
+      "arm": "tuned",
+      "label": "woofer→mid 466.5 LR4 · mid→tweeter 1491.4 LR4",
+      "seconds": 32581.362,
+      "zaadPadROhm": 1.729,
+      "zaadPlafondMH": 2.9090327003828644,
+      "verwerping": {
+        "regels": [
+          "gate"
+        ],
+        "reden": "M-C (mid): -9.0 dB exceeds the stated ceiling of -25.0 dB; M-C (tweeter): -11.6 dB exceeds the stated ceiling of -25.0 dB"
+      },
+      "eindPadROhm": null,
+      "eindSpoelMH": null,
+      "plafondBijEindMH": null,
+      "opslingeringDb": null
+    },
+    {
+      "n": 15,
+      "arm": "seed",
+      "label": "woofer→mid 466.5 LR4 · mid→tweeter 1719 LR4",
+      "seconds": 32629.732,
+      "zaadPadROhm": 1.7590000000000001,
+      "zaadPlafondMH": 2.9247287277965635,
+      "verwerping": {
+        "regels": [
+          "gate"
+        ],
+        "reden": "M-C (mid): 0.5 dB exceeds the stated ceiling of -25.0 dB; M-C (tweeter): -15.4 dB exceeds the stated ceiling of -25.0 dB"
+      },
+      "eindPadROhm": null,
+      "eindSpoelMH": null,
+      "plafondBijEindMH": null,
+      "opslingeringDb": null
+    },
+    {
+      "n": 16,
+      "arm": "tuned",
+      "label": "woofer→mid 466.5 LR4 · mid→tweeter 1719 LR4",
+      "seconds": 32621.513,
+      "zaadPadROhm": 1.7590000000000001,
+      "zaadPlafondMH": 2.9247287277965635,
+      "verwerping": {
+        "regels": [
+          "gate"
+        ],
+        "reden": "M-C (mid): -2.6 dB exceeds the stated ceiling of -25.0 dB; M-C (tweeter): -13.9 dB exceeds the stated ceiling of -25.0 dB"
+      },
+      "eindPadROhm": null,
+      "eindSpoelMH": null,
+      "plafondBijEindMH": null,
+      "opslingeringDb": null
+    },
+    {
+      "n": 17,
+      "arm": "seed",
+      "label": "woofer→mid 466.5 LR4 · mid→tweeter 1981.2 LR4",
+      "seconds": 2318.2,
+      "zaadPadROhm": 2.469,
+      "zaadPlafondMH": 3.2666087514651547,
+      "verwerping": {
+        "regels": [
+          "gate"
+        ],
+        "reden": "M-C (tweeter): -22.6 dB exceeds the stated ceiling of -25.0 dB"
+      },
+      "eindPadROhm": null,
+      "eindSpoelMH": null,
+      "plafondBijEindMH": null,
+      "opslingeringDb": null
+    },
+    {
+      "n": 18,
+      "arm": "tuned",
+      "label": "woofer→mid 466.5 LR4 · mid→tweeter 1981.2 LR4",
+      "seconds": 31859.807,
+      "zaadPadROhm": 2.469,
+      "zaadPlafondMH": 3.2666087514651547,
+      "verwerping": {
+        "regels": [
+          "gate"
+        ],
+        "reden": "M-C (tweeter): -24.6 dB exceeds the stated ceiling of -25.0 dB"
+      },
+      "eindPadROhm": null,
+      "eindSpoelMH": null,
+      "plafondBijEindMH": null,
+      "opslingeringDb": null
+    },
+    {
+      "n": 19,
+      "arm": "seed",
+      "label": "woofer→mid 466.5 LR4 · mid→tweeter 2283.5 LR4",
+      "seconds": 31771.115,
+      "zaadPadROhm": 2.399,
+      "zaadPlafondMH": 3.2356533300906603,
+      "verwerping": null,
+      "eindPadROhm": 3.294,
+      "eindSpoelMH": 3.2356999999999996,
+      "plafondBijEindMH": 3.6374739439331285,
+      "opslingeringDb": 1.1403104195251537
+    },
+    {
+      "n": 20,
+      "arm": "tuned",
+      "label": "woofer→mid 466.5 LR4 · mid→tweeter 2283.5 LR4",
+      "seconds": 31623.672,
+      "zaadPadROhm": 2.399,
+      "zaadPlafondMH": 3.2356533300906603,
+      "verwerping": null,
+      "eindPadROhm": 3.65,
+      "eindSpoelMH": 3.8013999999999997,
+      "plafondBijEindMH": 3.8009722301378943,
+      "opslingeringDb": 1.4002710372195732
+    },
+    {
+      "n": 21,
+      "arm": "seed",
+      "label": "woofer→mid 548.5 LR4 · mid→tweeter 1294 LR4",
+      "seconds": 1609.064,
+      "zaadPadROhm": 1.929,
+      "zaadPlafondMH": 3.014664578731906,
+      "verwerping": {
+        "regels": [
+          "gate"
+        ],
+        "reden": "M-B/|Z|: 2.06 Ω falls below the stated floor of 2.60 Ω; M-C (mid): -1.7 dB exceeds the stated ceiling of -25.0 dB; M-C (tweeter): -12.1 dB exceeds the stated ceiling of -25.0 dB"
+      },
+      "eindPadROhm": null,
+      "eindSpoelMH": null,
+      "plafondBijEindMH": null,
+      "opslingeringDb": null
+    },
+    {
+      "n": 22,
+      "arm": "tuned",
+      "label": "woofer→mid 548.5 LR4 · mid→tweeter 1294 LR4",
+      "seconds": 1556.384,
+      "zaadPadROhm": 1.929,
+      "zaadPlafondMH": 3.014664578731906,
+      "verwerping": {
+        "regels": [
+          "gate"
+        ],
+        "reden": "M-B/|Z|: 2.24 Ω falls below the stated floor of 2.60 Ω; M-C (tweeter): -17.1 dB exceeds the stated ceiling of -25.0 dB"
+      },
+      "eindPadROhm": null,
+      "eindSpoelMH": null,
+      "plafondBijEindMH": null,
+      "opslingeringDb": null
+    },
+    {
+      "n": 23,
+      "arm": "seed",
+      "label": "woofer→mid 548.5 LR4 · mid→tweeter 1491.4 LR4",
+      "seconds": 1758.276,
+      "zaadPadROhm": 2.458,
+      "zaadPlafondMH": 3.2617390726571043,
+      "verwerping": {
+        "regels": [
+          "gate"
+        ],
+        "reden": "M-B/|Z|: 0.02 Ω falls below the stated floor of 2.60 Ω; M-C (tweeter): -19.0 dB exceeds the stated ceiling of -25.0 dB"
+      },
+      "eindPadROhm": null,
+      "eindSpoelMH": null,
+      "plafondBijEindMH": null,
+      "opslingeringDb": null
+    },
+    {
+      "n": 24,
+      "arm": "tuned",
+      "label": "woofer→mid 548.5 LR4 · mid→tweeter 1491.4 LR4",
+      "seconds": 1831.674,
+      "zaadPadROhm": 2.458,
+      "zaadPlafondMH": 3.2617390726571043,
+      "verwerping": {
+        "regels": [
+          "gate"
+        ],
+        "reden": "M-B/|Z|: 0.02 Ω falls below the stated floor of 2.60 Ω; M-C (tweeter): -17.9 dB exceeds the stated ceiling of -25.0 dB"
+      },
+      "eindPadROhm": null,
+      "eindSpoelMH": null,
+      "plafondBijEindMH": null,
+      "opslingeringDb": null
+    },
+    {
+      "n": 25,
+      "arm": "seed",
+      "label": "woofer→mid 548.5 LR4 · mid→tweeter 1719 LR4",
+      "seconds": 1694.091,
+      "zaadPadROhm": 2.798,
+      "zaadPlafondMH": 3.41316677098568,
+      "verwerping": {
+        "regels": [
+          "gate"
+        ],
+        "reden": "M-C (mid): -5.3 dB exceeds the stated ceiling of -25.0 dB; M-C (tweeter): -21.8 dB exceeds the stated ceiling of -25.0 dB"
+      },
+      "eindPadROhm": null,
+      "eindSpoelMH": null,
+      "plafondBijEindMH": null,
+      "opslingeringDb": null
+    },
+    {
+      "n": 26,
+      "arm": "tuned",
+      "label": "woofer→mid 548.5 LR4 · mid→tweeter 1719 LR4",
+      "seconds": 1629.528,
+      "zaadPadROhm": 2.798,
+      "zaadPlafondMH": 3.41316677098568,
+      "verwerping": {
+        "regels": [
+          "gate"
+        ],
+        "reden": "M-C (mid): -5.3 dB exceeds the stated ceiling of -25.0 dB; M-C (tweeter): -21.8 dB exceeds the stated ceiling of -25.0 dB"
+      },
+      "eindPadROhm": null,
+      "eindSpoelMH": null,
+      "plafondBijEindMH": null,
+      "opslingeringDb": null
+    },
+    {
+      "n": 27,
+      "arm": "seed",
+      "label": "woofer→mid 548.5 LR4 · mid→tweeter 1981.2 LR4",
+      "seconds": 1233.624,
+      "zaadPadROhm": 2.918,
+      "zaadPlafondMH": 3.4670632410377134,
+      "verwerping": {
+        "regels": [
+          "gate"
+        ],
+        "reden": "M-C (tweeter): -23.4 dB exceeds the stated ceiling of -25.0 dB"
+      },
+      "eindPadROhm": null,
+      "eindSpoelMH": null,
+      "plafondBijEindMH": null,
+      "opslingeringDb": null
+    },
+    {
+      "n": 28,
+      "arm": "tuned",
+      "label": "woofer→mid 548.5 LR4 · mid→tweeter 1981.2 LR4",
+      "seconds": 1064.225,
+      "zaadPadROhm": 2.918,
+      "zaadPlafondMH": 3.4670632410377134,
+      "verwerping": null,
+      "eindPadROhm": 2.56,
+      "eindSpoelMH": 2.8108,
+      "plafondBijEindMH": 3.306969601230423,
+      "opslingeringDb": 1.0434287214186861
+    },
+    {
+      "n": 29,
+      "arm": "seed",
+      "label": "woofer→mid 548.5 LR4 · mid→tweeter 2283.5 LR4",
+      "seconds": 1379.478,
+      "zaadPadROhm": 3.148,
+      "zaadPlafondMH": 3.5710268957481506,
+      "verwerping": null,
+      "eindPadROhm": 4.121,
+      "eindSpoelMH": 2.282,
+      "plafondBijEindMH": 4.020501335333931,
+      "opslingeringDb": 0.5234317425375146
+    },
+    {
+      "n": 30,
+      "arm": "tuned",
+      "label": "woofer→mid 548.5 LR4 · mid→tweeter 2283.5 LR4",
+      "seconds": 1512.528,
+      "zaadPadROhm": 3.148,
+      "zaadPlafondMH": 3.5710268957481506,
+      "verwerping": null,
+      "eindPadROhm": 4.019,
+      "eindSpoelMH": 2.834,
+      "plafondBijEindMH": 3.9726501092652065,
+      "opslingeringDb": 0.7794671164988856
+    }
+  ]
+}

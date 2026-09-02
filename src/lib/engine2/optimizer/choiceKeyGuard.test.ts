@@ -148,9 +148,16 @@ describe('F4c — every tuner option has a class', () => {
     // by the same gate machinery the shortlist reads. Adding a second copy
     // beside it would be the very thing every other pair here avoids. Split
     // becomes 33/5/11.
-    expect(keys.length).toBe(49);
-    expect(CHOICE_KEYS.length + GREY_KEYS.length + POLISH_KEYS.length).toBe(49);
-    expect([CHOICE_KEYS.length, GREY_KEYS.length, POLISH_KEYS.length]).toEqual([33, 5, 11]);
+    // 50 since V48 added `seriesInductanceCeilingSource` (choice — WHICH
+    // NETWORK the A5d.6 series-inductance ceiling describes: the one the
+    // search started from, or the one it is building). The SECOND to arrive
+    // without a polish companion, and for the same kind of reason as V47's:
+    // the measured near field and sweep the inversion re-reads travel inside
+    // `valueSumCeilings`, which has been polish since F2 precisely because it
+    // is data the run already holds. Split becomes 34/5/11.
+    expect(keys.length).toBe(50);
+    expect(CHOICE_KEYS.length + GREY_KEYS.length + POLISH_KEYS.length).toBe(50);
+    expect([CHOICE_KEYS.length, GREY_KEYS.length, POLISH_KEYS.length]).toEqual([34, 5, 11]);
     for (const k of CHAIN_CHOICE_KEYS) {
       expect(classified as readonly string[], `${k} is a chain key, not a tuner option`).not.toContain(k);
     }
@@ -275,9 +282,32 @@ describe('F4c — every tuner option has a class', () => {
      * compares against. Folding them together would make "watch the full band
      * against a stated requirement" unsayable. */
     expect(CHOICE_KEYS).toContain('safety');
-    expect(CHOICE_KEYS.length).toBe(33);
+    expect(CHOICE_KEYS.length).toBe(34);
     expect(GREY_KEYS.length).toBe(5);
     expect(POLISH_KEYS.length).toBe(11);
+  });
+
+  /* V48 — WHICH NETWORK THE SERIES-INDUCTANCE CEILING DESCRIBES, and it may
+   * never migrate.
+   *
+   * A choice by the same test the six before it pass: it decides which
+   * QUANTITY bounds the search. `bump-series-l` inverts the LF budget into a
+   * ceiling on the lowest way's series inductance AT A GIVEN PATH RESISTANCE,
+   * and a value tune moves that resistance — so `'seed'` and `'tuned'` are
+   * bounds on two different networks, not a coarse and a fine reading of one.
+   *
+   * IT IS INDEPENDENT OF `valueSumCeilings`, which is polish and stays polish.
+   * That key carries the group and its measured inputs — data the run already
+   * holds, which is the F2 argument for filing it there. This one says which
+   * network the number in that group is supposed to describe. Folding them
+   * together would make "hand over the measurements but keep the seed's
+   * ceiling" unsayable, and that is exactly the arm V48's before/after needs. */
+  it('V48 — the ceiling source is a choice, and its data stays polish', () => {
+    expect(CHOICE_KEYS).toContain('seriesInductanceCeilingSource');
+    expect(POLISH_KEYS as readonly string[]).not.toContain('seriesInductanceCeilingSource');
+    expect(GREY_KEYS as readonly string[]).not.toContain('seriesInductanceCeilingSource');
+    expect(POLISH_KEYS).toContain('valueSumCeilings');
+    expect(CHOICE_KEYS as readonly string[]).not.toContain('valueSumCeilings');
   });
 });
 
@@ -758,6 +788,56 @@ describe('F4d — a generated candidate declares every choice key', () => {
      * nothing else. A candidate that also carried the decibels would be a
      * second copy of a stated requirement. */
     expect(Object.keys(limited.stated)).not.toContain('maxDriveOnFsDb');
+  });
+
+  it('V48 — the candidate states WHICH NETWORK the series-inductance ceiling describes', () => {
+    /* DERIVED, like V45's `amplitudeReference` and V47's `protectionRule`, and
+     * from the same finding one rule along: a bound solved for a network the
+     * search has already left stops describing what it bounds.
+     *
+     * (a) A design that states an LF budget arms the tracking ceiling. */
+    const budgeted = declareCandidateChoices({
+      cages: [[400, 500], [1500, 2000]],
+      windowFloorsHz: [397, 1294],
+      multiWay: true,
+      stated: {},
+      lfBumpBudgetDb: 1.4,
+    });
+    expect(budgeted.stated.seriesInductanceCeilingSource).toBe('tuned');
+    expect(budgeted.absent.some((a) => a.key === 'seriesInductanceCeilingSource')).toBe(false);
+
+    /* (b) No budget ⇒ ABSENT with the P4 reason, and NEVER a stated 'seed'.
+     * With nothing stated there is no inversion, no ceiling and nothing for a
+     * tune to move underneath — so naming the seed reading would claim somebody
+     * chose which network the ceiling should describe. */
+    expect(bare().stated.seriesInductanceCeilingSource).toBeUndefined();
+    const why = bare().absent.find((a) => a.key === 'seriesInductanceCeilingSource')?.why ?? '';
+    expect(why).toMatch(/P4/);
+    expect(why).toContain('LF-lift budget');
+
+    /* An explicit value still wins, so V48's before/after is a run someone can
+     * ask for — and on this key that property is not a courtesy but the whole
+     * measurement: the two arms of `measure-v48-ceiling-tracking.ts` differ in
+     * this one word and in nothing else. */
+    const forced = declareCandidateChoices({
+      cages: [[400, 500], [1500, 2000]],
+      windowFloorsHz: [397, 1294],
+      multiWay: true,
+      stated: { seriesInductanceCeilingSource: 'seed' },
+      lfBumpBudgetDb: 1.4,
+    });
+    expect(forced.stated.seriesInductanceCeilingSource).toBe('seed');
+    expect(forced.absent.some((a) => a.key === 'seriesInductanceCeilingSource')).toBe(false);
+
+    // ...and it moves the fingerprint, or the choice would be a label.
+    expect(JSON.stringify(declarationKey(budgeted, {}))).not.toBe(
+      JSON.stringify(declarationKey(forced, {})),
+    );
+
+    /* THE BUDGET ITSELF DOES NOT TRAVEL AS A TUNER OPTION, the same shape V47
+     * has: the decibels are `v2.budgets.lfBumpBudgetDb`, inverted by
+     * `invertBudgets`, and the declaration names the RULE and nothing else. */
+    expect(Object.keys(budgeted.stated)).not.toContain('lfBumpBudgetDb');
   });
 
   it('V34 — an unstated source-resistance limit is ABSENT, and the worker makes the chain honour it', () => {

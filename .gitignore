@@ -8,3 +8,11 @@ dist-ssr
 
 # build info
 *.tsbuildinfo
+
+# Shard-mappen van de parallelle meetscripts. Zij bestaan alleen tijdens een run
+# — de generator ruimt de zijne op, en het V48-meetscript laat de zijne staan als
+# bewijsmateriaal van de laatste run. Geen van beide hoort in de repo: wat bewaard
+# moet blijven is de SAMENVOEGING (`casus1_v2_herkomst.json`,
+# `casus1_v48_plafond.json`), niet de tussenbestanden.
+test-fixtures/.casus1-v2-shards/
+test-fixtures/.casus1-v48-shards/

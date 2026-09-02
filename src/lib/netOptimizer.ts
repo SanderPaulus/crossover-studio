@@ -731,7 +731,44 @@ export interface NetOptimizeOptions {
     maxSI: number;
     fixedSI?: number;
     label: string;
+    /* ---- V48: the ceiling as a function of what the tune is building ------
+     *
+     * `maxSI` above is solved ONCE, at the path resistance of the seed, and a
+     * budget inversion that depends on the path resistance then describes a
+     * network the search has already left. These three fields let the group
+     * re-read its own ceiling at the point being evaluated. All three absent =
+     * `maxSI` stands, which is every run before V48 and every run that states
+     * `seriesInductanceCeilingSource: 'seed'`. */
+    /** Free series resistors of this way: the moving part of its path R. */
+    resistanceIds?: readonly string[];
+    /** The rest of that path resistance — locked resistors and coil DCR, which
+     *  a VALUE tune does not move. Ohms. */
+    pathRBaseOhm?: number;
+    /** The inversion, asked at a path resistance. `null` = the metric had
+     *  nothing to answer with, and then `maxSI` stands (P4: a solve with no
+     *  data is not a ceiling of zero). */
+    ceilingAt?: (pathROhm: number) => number | null;
   }[];
+  /**
+   * V48 — WHICH NETWORK THE SERIES-INDUCTANCE CEILING DESCRIBES.
+   *
+   * `'seed'` (and absent, which is every v1 run and every v2 run before V48):
+   * the sum ceiling is the number `valueSumCeilings[].maxSI` carries, solved
+   * once before the tune began.
+   *
+   * `'tuned'`: the group re-reads its ceiling at the path resistance of the
+   * network CURRENTLY being evaluated, through the `ceilingAt` the same group
+   * carries. Inert without that function — a run that states this and hands
+   * over no tracker gets the seed ceiling and no fallback of its own
+   * invention (P4).
+   *
+   * WHY IT IS A CHOICE AND NOT POLISH. It decides which QUANTITY bounds the
+   * search — the ceiling for the network the tune started from, or the ceiling
+   * for the network it is building. On casus 1 that is the difference between
+   * a candidate that delivers and one the delivered-network check throws away
+   * at the end (casebook V48).
+   */
+  seriesInductanceCeilingSource?: 'seed' | 'tuned';
 }
 
 /**
@@ -3204,15 +3241,48 @@ export function optimizeNetworkValues(
      * this tuner cannot move — a locked resistor, a coil's DCR — and it comes
      * off the top, so an already-spent budget leaves nothing rather than
      * quietly allowing more. */
+    /* V48 — A CEILING THAT FOLLOWS THE TUNE, when the run asks for one.
+     *
+     * `maxSI` is solved before the tune, at the path resistance of the SEED,
+     * and the LF-lift inversion depends on that resistance: more series R
+     * damps the resonant half, so more inductance fits the same budget. A tune
+     * that RAISES the path resistance therefore carries a ceiling that is
+     * merely too strict; one that LOWERS it carries a ceiling that is
+     * PERMISSIVE, and that is the case a delivered-network check has to catch
+     * at the end instead of the search avoiding at the start (casebook V48).
+     *
+     * The path resistance is a lookup and a sum — the same quantity, and the
+     * same shape, as `dcSeriesR` above — so re-reading the ceiling costs the
+     * search nothing it can feel; what it costs is inside `ceilingAt`, which
+     * memoises. Absent function or absent choice = `maxSI` stands and every
+     * line below runs exactly as it did.
+     *
+     * `null` FROM THE FUNCTION IS NOT ZERO. It means the metric had no answer
+     * on the measurements handed over, and then the seed's ceiling stands
+     * rather than the group collapsing to its floor (P4). */
+    const tracking = opts.seriesInductanceCeilingSource === 'tuned';
     const sumGroups = (opts.valueSumCeilings ?? [])
       .map((g) => ({
         ...g,
         idx: free.map((e, i) => (g.ids.includes(e.id) ? i : -1)).filter((i) => i >= 0),
+        rIdx:
+          tracking && g.ceilingAt && g.resistanceIds
+            ? free
+                .map((e, i) => (g.resistanceIds!.includes(e.id) ? i : -1))
+                .filter((i) => i >= 0)
+            : [],
       }))
       .filter((g) => g.idx.length > 0);
     const projectSums = (): void => {
       for (const g of sumGroups) {
-        const room = g.maxSI - (g.fixedSI ?? 0);
+        let maxSI = g.maxSI;
+        if (tracking && g.ceilingAt) {
+          let pathR = g.pathRBaseOhm ?? 0;
+          for (const i of g.rIdx) pathR += free[i].value;
+          const solved = g.ceilingAt(pathR);
+          if (solved !== null && solved > 0) maxSI = solved;
+        }
+        const room = maxSI - (g.fixedSI ?? 0);
         let total = 0;
         for (const i of g.idx) total += free[i].value;
         if (room <= 0) {

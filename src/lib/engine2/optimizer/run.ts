@@ -246,6 +246,16 @@ export function runV2Optimization(input: V2OptimizeInput): V2OptimizeResult {
   const notes: string[] = [];
 
   /* ---- the search box (A5d.6) ------------------------------------------ */
+  /* V48 — NO CEILING TRACKERS ON THIS ROUTE, and that is a property of the
+   * route rather than an omission. This function takes bounds that have
+   * ALREADY been solved (`input.bounds`); the measured near field and sweep an
+   * inversion would have to re-read never reach it, so there is nothing to
+   * build a tracker from. A caller that states `seriesInductanceCeilingSource:
+   * 'tuned'` here therefore gets the seed ceiling and no invented substitute
+   * (P4), exactly as a run with no tracker does anywhere else. The route the
+   * app takes is `handleV2Request`, which holds the measurements and hands
+   * them over — see the erratum in audit §2.2 for why these two are different
+   * routes at all. */
   const searchBox = searchBoxFor(input.seedParts, input.bounds ?? []);
   notes.push(...searchBox.notes);
 

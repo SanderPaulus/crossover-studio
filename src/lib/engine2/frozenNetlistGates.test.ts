@@ -1295,15 +1295,45 @@ describe('V36 — de dissipatie van élke bevroren netlist, en de noemer van de 
      * DE DREMPEL WORDT NIET OPGEREKT, want dan zou zij precies zo ver
      * meebewegen als nodig is om groen te blijven, en dat is geen bewaker meer.
      * In plaats daarvan wordt de strikte claim geANKERD op de netlists waarop
-     * V36 en V37 hem deden — de gedateerde corpora, waar hij ONVERANDERD staat
-     * (grootste piek-aandeel 0,736 %) — en het levende veld krijgt de claim die
-     * V37 werkelijk draagt en die hieronder los geassert wordt: de twee noemers
-     * liggen een orde van grootte uit elkaar. Dezelfde herankering die V43 op
-     * `v42_bult_bevinding` toepaste, en om dezelfde reden: een bevinding die het
-     * LEVENDE corpus noemt wordt onwaar zodra dat corpus opnieuw wordt opgewekt,
-     * zonder dat er iets aan de bevinding mankeert. */
-    const dated = shares.filter((x) => !/^KAND_V2_\d+$/.test(x.netlist));
+     * V36 en V37 hem deden, waar hij ONVERANDERD staat (grootste piek-aandeel
+     * 0,736 %), en het levende veld krijgt de claim die V37 werkelijk draagt en
+     * die hieronder los geassert wordt: de twee noemers liggen een orde van
+     * grootte uit elkaar.
+     *
+     * DE VIERDE KEER, BIJ V48, EN NU LAG HET AAN DE ANKERING ZELF. V47 ankerde
+     * met een COMPLEMENT — "alles wat niet `KAND_V2_n` heet" — en dat is geen
+     * anker maar een verzameling die met elk corpus meegroeit. De netlist die
+     * hem bij V47 brak (`KAND_V2_1`, RMS 0,48, 1,053 %) is bij V48 BEVROREN als
+     * `V47_KAND_1`, en daarmee stapte precies het geval dat uitgesloten was
+     * weer binnen. Dat was geen ongeluk maar een zekerheid: élke sessie
+     * bevriest het levende corpus vóór zij regenereert, dus een complementfilter
+     * op "levend" laat het uitgesloten geval er bij de eerstvolgende
+     * regeneratie weer in.
+     *
+     * EEN ANKER NOEMT ZIJN VERZAMELING. Hieronder staan de families die
+     * BESTONDEN toen V36 en V37 gemeten werden, uitgeschreven, en die lijst kan
+     * per definitie niet groeien — een corpus dat later bevroren wordt hoort er
+     * niet bij, want V36 en V37 hebben het nooit gezien. Dezelfde herankering
+     * die V43 op `v42_bult_bevinding` toepaste, nu in de vorm die haar eigen
+     * groei overleeft. */
+    const V36_V37_FAMILIES = [
+      'HUIDIG',
+      'KAND_A',
+      'KAND_B',
+      'V28_KAND_',
+      'V30_KAND_',
+      'V32_KAND_',
+      'V33_KAND_',
+      'V33_SWEEP_KAND_',
+      'V34_KAND_',
+      'V37_KAND_',
+    ];
+    const dated = shares.filter((x) => V36_V37_FAMILIES.some((f) => x.netlist.startsWith(f)));
     expect(dated.length, 'geen enkel gedateerd corpus draagt deze meting meer').toBeGreaterThan(50);
+    /* En de verzameling is aantoonbaar KLEINER dan "alles wat niet levend is" —
+     * zonder deze tegenproef zou het anker stil weer een complement kunnen
+     * worden zodra iemand de lijst aanvult met wat er toevallig bestaat. */
+    expect(dated.length).toBeLessThan(shares.filter((x) => !/^KAND_V2_\d+$/.test(x.netlist)).length);
     const worstPeakShare = Math.max(...dated.map((x) => x.peak));
     const worstPeakAt = dated.find((x) => x.peak === worstPeakShare)!.netlist;
     expect(

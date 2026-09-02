@@ -106,6 +106,7 @@ export const DATED_CORPORA: Record<string, { block: string; name: string }> = {
   v43: { block: 'v43_corpus', name: 'V43' },
   v44: { block: 'v44_corpus', name: 'V44' },
   v45: { block: 'v45_corpus', name: 'V45' },
+  v47: { block: 'v47_corpus', name: 'V47' },
 };
 
 interface Herkomst {

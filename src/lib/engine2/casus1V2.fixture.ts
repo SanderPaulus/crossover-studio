@@ -366,6 +366,14 @@ export function casus1V2Declaration(
       ...(CASUS1_MAX_DRIVE_ON_FS_DB !== null
         ? { driveOnFsLimitDb: CASUS1_MAX_DRIVE_ON_FS_DB }
         : {}),
+      /* V48 — the design's stated LF budget, so the candidate can declare
+       * WHICH NETWORK the series-inductance ceiling describes. The budget
+       * itself crosses as `v2.budgets.lfBumpBudgetDb`; this is only what lets
+       * the declaration derive `seriesInductanceCeilingSource` instead of
+       * leaving the search bounded by a ceiling solved for its seed. */
+      ...(CASUS1_V2_BUDGETS.lfBumpBudgetDb !== undefined
+        ? { lfBumpBudgetDb: CASUS1_V2_BUDGETS.lfBumpBudgetDb }
+        : {}),
     }),
     /* V41 — the two settings the DESIGN and SYNTHESIS steps read, which run
      * before the tuner exists. Nothing is stated here, so the derivation

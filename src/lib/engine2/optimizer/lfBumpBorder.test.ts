@@ -33,6 +33,7 @@ import {
   invertBudgets,
   lfBumpForSeriesRL,
   maxSeriesInductanceFromBump,
+  seriesInductanceCeilingTracker,
   searchBoxFor,
   type BudgetWay,
 } from './bounds.ts';
@@ -41,7 +42,7 @@ import { factsForWorker, measurementFactsKey } from './measurementFacts.ts';
 import { handleV2Request, type V2ChainOnePayload, type V2Response } from './worker.ts';
 import { v2DriverZ, v2Responses, V2_GRID } from './v2.fixture.ts';
 import { defaultHpLp } from '../../filters.ts';
-import { H_PER_MH } from '../constants.ts';
+import { BOUND_CEILING_PATH_R_GRAIN_OHM, H_PER_MH } from '../constants.ts';
 import { logspace, resampleImpedance } from '../../dsp.ts';
 import {
   casus1Files,
@@ -654,5 +655,123 @@ describe('V43 — the recorded inversion finding, re-measured', () => {
     // And the reason the middle column is so far out: at this path resistance
     // the resistive half already spends a third of the old budget.
     expect(r.lift_bij_L0_dB / FINDING!.budget_op_de_som_dB).toBeGreaterThan(0.25);
+  });
+
+  /* ================================================================== *
+   * V48 — het plafond als FUNCTIE van de padweerstand
+   * ================================================================== */
+
+  /**
+   * DE TWEE AANNAMES ONDER V48, ALS MÉTING.
+   *
+   * `seriesInductanceCeilingTracker` doet twee dingen die `maxSeriesInductance-
+   * FromBump` niet doet, en beide rusten op iets wat waar moet ZIJN in plaats
+   * van waar te lijken:
+   *
+   *  (1) hij KWANTISEERT de padweerstand naar beneden. Dat is alleen veilig als
+   *      het plafond met de padweerstand STIJGT — dan is de aflezing bij de
+   *      onderrand van de cel hoogstens te streng en nooit toegeeflijk. Die
+   *      monotonie is natuurkunde (meer serieweerstand dempt de resonante
+   *      helft), maar `maxSeriesInductanceFromBump` neemt zelfs de monotonie in
+   *      L niet aan — hij laat zijn bracket groeien — en die houding wordt hier
+   *      doorgetrokken: gemeten op de metingen van deze casus, niet aangenomen.
+   *
+   *  (2) hij MEMOÏSEERT. Dat mag alleen als het antwoord uitsluitend van de
+   *      cel afhangt, want anders is de tweede aflezing van dezelfde cel een
+   *      andere waarde en is A5e.4 weg.
+   *
+   * De korrel wordt uit de constante gelezen en nergens ingetypt, en het bereik
+   * waarover gemeten wordt komt uit de tabel die het casusboek zelf draagt —
+   * dezelfde padweerstanden waar de drie kolommen hierboven op staan.
+   */
+  describe('V48 — de tracker', () => {
+    const GRAIN = BOUND_CEILING_PATH_R_GRAIN_OHM;
+    const track = seriesInductanceCeilingTracker(
+      (() => {
+        const { pathROhm: _drop, ...rest } = inputAt(0);
+        void _drop;
+        return rest;
+      })(),
+      BUDGET_DB,
+    );
+
+    it('het plafond STIJGT monotoon met de padweerstand — de aanname onder de kwantisering', () => {
+      /* Over het hele bereik dat het casusboek noteert, op de korrel zelf, want
+       * dat is de resolutie waarop de tracker beslissingen neemt. Een enkele
+       * omkering hier maakt "naar beneden afronden is conservatief" onwaar, en
+       * dan is de korrel geen benadering meer maar een fout. */
+      const top = Math.max(...FINDING!.per_pad_R.map((r) => r.pad_R_ohm));
+      let prev = -Infinity;
+      for (let r = 0; r <= top + GRAIN; r += GRAIN) {
+        const solved = maxSeriesInductanceFromBump(inputAt(r), BUDGET_DB);
+        expect(solved, `${r.toFixed(2)} Ω levert geen plafond`).not.toBeNull();
+        expect(
+          solved!.maxHenry,
+          `het plafond daalt tussen ${(r - GRAIN).toFixed(2)} en ${r.toFixed(2)} Ω`,
+        ).toBeGreaterThan(prev);
+        prev = solved!.maxHenry;
+      }
+    });
+
+    it('de tracker is CONSERVATIEF: nooit boven het exacte plafond bij dat punt', () => {
+      /* De eigenschap die V48 veilig maakt, en zij is de enige die telt: een
+       * te streng plafond kost ontwerpruimte, een te toegeeflijk plafond levert
+       * een netwerk dat de geleverde-netwerk-toets aan het eind weggooit — het
+       * defect waar deze sessie mee begon.
+       *
+       * Gemeten op punten die met opzet NIET op de korrel vallen (het derde en
+       * het zevende tiende van een cel), want precies daar is de kwantisering
+       * zichtbaar; op een korrelpunt zou de tracker per constructie exact zijn
+       * en zou de test niets meten. */
+      const top = Math.max(...FINDING!.per_pad_R.map((r) => r.pad_R_ohm));
+      let worst = 0;
+      for (let cell = 0; cell * GRAIN <= top; cell++) {
+        for (const frac of [0.3, 0.7]) {
+          const r = (cell + frac) * GRAIN;
+          const exact = maxSeriesInductanceFromBump(inputAt(r), BUDGET_DB)!.maxHenry;
+          const got = track(r)!;
+          expect(got, `${r.toFixed(3)} Ω: de tracker leest ${got} boven het exacte ${exact}`)
+            .toBeLessThanOrEqual(exact);
+          worst = Math.max(worst, (exact - got) / exact);
+        }
+      }
+      /* En de prijs van die veiligheid is klein genoeg om geen ontwerp te
+       * kosten: de strengheid die de korrel oplegt blijft ruim onder een
+       * procent van het plafond. Gemeten, met de grens ernaast, zodat een
+       * grovere korrel hier zichtbaar wordt in plaats van stil door te gaan. */
+      expect(worst, `de korrel kost ${(worst * 100).toFixed(3)} % van het plafond`)
+        .toBeLessThan(0.01);
+    });
+
+    it('A5e.4 — dezelfde cel geeft hetzelfde getal, en twee trackers geven hetzelfde', () => {
+      /* Een memo mag geen geheugen met gevolgen zijn. Twee aflezingen binnen
+       * één cel, in willekeurige volgorde, moeten bit-identiek zijn — en een
+       * VERSE tracker moet dezelfde reeks teruggeven, anders draagt de cache
+       * toestand die het antwoord verandert. */
+      const fresh = seriesInductanceCeilingTracker(
+        (() => {
+          const { pathROhm: _drop, ...rest } = inputAt(0);
+          void _drop;
+          return rest;
+        })(),
+        BUDGET_DB,
+      );
+      /* De punten worden UIT DE CEL opgebouwd en niet als losse ohms getypt:
+       * `1.2 / 0.05` is in binaire drijvende komma niet exact 24, dus een
+       * "duidelijk midden in dezelfde cel" dat als decimaal getal geschreven is
+       * kan er net naast vallen — en dan meet de test de afronding in plaats
+       * van de memo. */
+      const at = (cell: number, frac: number): number => (cell + frac) * GRAIN;
+      const probes = [at(24, 0.2), at(8, 0.5), at(24, 0.9), at(8, 0.1), at(24, 0.2)];
+      const a = probes.map((r) => track(r));
+      const b = probes.map((r) => fresh(r));
+      expect(a).toEqual(b);
+      expect(a[0]).toBe(a[4]);
+      // ...en twee punten in ÉÉN cel zijn hetzelfde getal, wat de cel definieert.
+      expect(fresh(at(24, 0.2))).toBe(fresh(at(24, 0.9)));
+      // ...terwijl een punt in de VOLGENDE cel dat aantoonbaar niet is; zonder
+      // deze tegenproef zou een tracker die overal hetzelfde teruggeeft slagen.
+      expect(fresh(at(25, 0.2))).not.toBe(fresh(at(24, 0.2)));
+    });
   });
 });

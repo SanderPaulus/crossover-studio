@@ -6874,6 +6874,14 @@ export default function App() {
           ...(engineV2Gates.maxDriveOnFsDb !== undefined
             ? { driveOnFsLimitDb: engineV2Gates.maxDriveOnFsDb }
             : {}),
+          /* V48 — the design's stated LF-lift budget, so the candidate can
+           * declare WHICH NETWORK the series-inductance ceiling describes. The
+           * budget itself does not travel here: it crosses as
+           * `v2.budgets.lfBumpBudgetDb` and is what `invertBudgets` inverts.
+           * Absent leaves the ceiling solved at the seed (P4). */
+          ...(engineV2Gates.lfBumpBudgetDb !== undefined
+            ? { lfBumpBudgetDb: engineV2Gates.lfBumpBudgetDb }
+            : {}),
         }),
         chainDeclaration: chainDecl,
         provenance: cand.provenance,

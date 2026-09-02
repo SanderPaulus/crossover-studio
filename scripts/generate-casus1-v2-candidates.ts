@@ -837,6 +837,29 @@ const meetopstelling = {
       : 'De zaadvergelijking van de volle-band-veiligheidspoort staat — de historische regel, en ' +
         'wat elke v1-run leest. Zonder gestelde grens is er niets absoluuts om naar te wijken, ' +
         'en een vergelijking met het zaad is dan beter dan geen vergelijking (P4).',
+  /* V48 — WELK NETWERK HET SERIESPOEL-PLAFOND BESCHRIJFT. Het NEGENDE besluit
+   * in dit blok, naast V30/V33, V34, V37, V38-fix, het V41-paar, V44, V45 en
+   * V47 — en het eerste dat over een BOUND gaat in plaats van over een term,
+   * een poort of een raster. */
+  plafond_bron:
+    lastPayload.candidate?.declaration.stated.seriesInductanceCeilingSource ?? null,
+  plafond_bron_waarom:
+    (lastPayload.candidate?.declaration.stated.seriesInductanceCeilingSource ?? null) === 'tuned'
+      ? 'HET A5d.6-PLAFOND OP DE SERIESPOEL WORDT AFGELEZEN BIJ HET NETWERK DAT GEËVALUEERD ' +
+        'WORDT, niet bij het zaad. `bump-series-l` keert het LF-budget om naar een plafond BIJ ' +
+        'EEN GEGEVEN PADWEERSTAND, en de tune verplaatst die padweerstand — dus tot V48 begrensde ' +
+        'de zoekdoos een netwerk dat de zoektocht al verlaten had. V45 schreef dat op als open ' +
+        'punt en beredeneerde het als veilig, en in ÉÉN richting klopt dat: een tune die de ' +
+        'padweerstand VERHOOGT loopt onder een te streng plafond, want meer serieweerstand dempt ' +
+        'de resonante helft. De andere richting is het defect. Gemeten op Sanders browserrun van ' +
+        '01-09-2026: twee van negen kandidaten leverden 2,29 en 1,61 dB opslingering tegen een ' +
+        'gestelde 1,4, en de geleverde-netwerk-toets van V45 ving ze allebei — terecht, maar ' +
+        'vangen is verliezen. De inversie wordt daarvoor niet aangeraakt en het budget niet ' +
+        'verplaatst; wat verandert is bij WELKE padweerstand hij gesteld wordt, gememoïseerd op ' +
+        'een naar beneden afgeronde korrel zodat een te streng plafond de enige fout blijft die ' +
+        'hij kan maken (V48).'
+      : 'Het plafond is één keer opgelost, bij de padweerstand van het zaad, en staat voor de ' +
+        'hele tune — de vóór-arm van V48, en de default die elke v1-run leest.',
   doelcurve: describeTargetCurve(CASUS1_TARGET_CURVE),
   doelcurve_herkomst:
     'De DIEPTE is gesteld (`gestelde_eisen.basplateau_offset_dB`) en de OVERGANG is afgeleid ' +

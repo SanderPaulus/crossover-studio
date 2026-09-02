@@ -45,7 +45,7 @@ import type { VxpPart } from '../../parsers/vxp.ts';
 import type { VxpCrossover } from '../../parsers/vxp.ts';
 import { crossoverToNetlist } from '../../vxpNetwork.ts';
 import { classifyImpedance, estimateRe } from '../ingest/impedance.ts';
-import { DEG_PER_HALF_TURN } from '../constants.ts';
+import { DEG_PER_HALF_TURN, H_PER_MH } from '../constants.ts';
 import {
   evaluateGates,
   freezeGateReference,
@@ -795,7 +795,14 @@ function tuneOptionsFor(
             'budget for the margin to sit on.'),
     );
   }
-  const box = searchBoxFor(seedParts, inverted.bounds);
+  /* V48 — the ceilings that can follow the tune travel BESIDE the bounds.
+   *
+   * `inverted.bounds` is pure data and goes out in this worker's response;
+   * `inverted.ceilingTrackers` is a closure per subject and never leaves the
+   * process. Handing them in ARMS the group without deciding anything: whether
+   * a run reads them is `seriesInductanceCeilingSource`, one layer along, and
+   * with that key absent the box behaves exactly as it did (P2/V30). */
+  const box = searchBoxFor(seedParts, inverted.bounds, inverted.ceilingTrackers);
   collect.notes.push(...box.notes);
 
   /* ---- F4c: the choices and the weights, STATED ------------------------- *
@@ -827,6 +834,32 @@ function tuneOptionsFor(
         ampMinLoadOhm: network.choices.ampMinLoadOhm,
         rSourceDisqualifyOhm: network.choices.rSourceDisqualifyOhm,
       });
+  /* ---- V48: WHICH NETWORK THE SERIES-INDUCTANCE CEILING DESCRIBES ------
+   *
+   * The same duty V33, V34 and V37 each discharge one rule along: a bound is
+   * only readable beside the network it was solved for. Absent on every run
+   * that states no LF budget, which is every v1 run and every casus that
+   * states nothing. */
+  const bumpBound = collect.bounds.find((b) => b.rule === 'bump-series-l');
+  if (bumpBound) {
+    const tracked =
+      stated.seriesInductanceCeilingSource === 'tuned' &&
+      box.valueSumCeilings.some((g) => g.ceilingAt !== undefined);
+    collect.notes.push(
+      tracked
+        ? `The LF-lift ceiling on ${bumpBound.subject}'s series inductance is RE-SOLVED at the ` +
+            'path resistance of the network being evaluated, not held at the ' +
+            `${(bumpBound.parameters.path_R_ohm as number).toFixed(2)} Ω the seed carried. The ` +
+            `${(bumpBound.maxSI / H_PER_MH).toFixed(2)} mH above is therefore the ceiling at the ` +
+            'START of the search and not the one it ended under (V48).'
+        : `The LF-lift ceiling on ${bumpBound.subject}'s series inductance was solved once, at ` +
+            `the SEED's path resistance of ${(bumpBound.parameters.path_R_ohm as number).toFixed(2)} Ω, ` +
+            'and stands for the whole tune. A tune that lowers that resistance is bounded by a ' +
+            'ceiling meant for a better-damped network, and only the delivered-network check ' +
+            'catches it (V45, V48).',
+    );
+  }
+
   const weights: Partial<GreyWeights> = pruneUndefinedValues({
     phasePriority: network.weights.phasePriority,
     directivityWeight: network.weights.directivityWeight,
@@ -1442,17 +1475,25 @@ function dissipationColumnOf(
  *
  * THE HOLE V43 LEFT OPEN, in one sentence: `bump-series-l` solves its ceiling
  * at the path resistance OF THE SEED and then that ceiling stands for the whole
- * run, while the search is free to raise the path resistance underneath it —
- * and more series R DAMPS the resonant half, so a ceiling solved at 0.5 Ω is
- * conservative at 3 Ω rather than wrong. Conservative is not the same as safe,
- * though, and nothing measured which of the two it was on a delivered network.
+ * run, while the search is free to move the path resistance underneath it. V45
+ * argued that this was conservative — more series R DAMPS the resonant half, so
+ * a ceiling solved at 0.5 Ω is merely too strict at 3 Ω — and that half of the
+ * argument is right. THE OTHER HALF WAS WRONG, and V48 is where it was
+ * measured: a tune that LOWERS the path resistance is bounded by a ceiling
+ * solved for a better-damped network, and that ceiling is PERMISSIVE. Two of
+ * nine candidates on Sander's browser run of 01-09-2026 delivered 2.29 and
+ * 1.61 dB of resonant lift against a stated 1.4, and this check is what caught
+ * them.
  *
- * So the delivered network is measured, once, against the same stated budget:
+ * SO THIS CHECK IS UNCHANGED AND ITS MEANING IS NOT. It was the net under a
+ * known hole; since V48 — where `seriesInductanceCeilingSource: 'tuned'` makes
+ * the ceiling follow the tune — it is the GUARD that the hole is shut. It
+ * still measures the delivered network, once, against the same stated budget:
  *
- *   · the ceiling can now only ever be TOO STRICT, never permissive. If the
- *     stale ceiling let something through, this catches it.
- *   · and if it never catches anything, that is the measurement that says the
- *     staleness costs nothing — which is a result, not an absence.
+ *   · on a run whose ceiling tracked, it should never fire. If it does, the
+ *     repair is incomplete and the candidate is not what is wrong.
+ *   · on a run that states `'seed'` (and on every route that hands over no
+ *     tracker) it is the same net it always was.
  *
  * IT RE-IMPLEMENTS NOTHING. `lfBump` is the F1 metric, solved on the SAME grid
  * and the SAME measured impedances the gate reference judges on and the report
@@ -1589,13 +1630,20 @@ function runCandidate<I, R extends { parts: VxpPart[]; net: { gateRefusals?: str
    * did (A3g: the categories are values, and they have to be true).
    *
    * WHY IT IS HERE AND NOT IN THE TUNER. A budget bounds the SEARCH BOX — that
-   * is what an A5d.6 inversion is — and `bump-series-l` does exactly that. What
-   * it cannot do is follow the search: the ceiling is solved at the SEED's path
-   * resistance and then stands, while the tune is free to move that resistance.
-   * Teaching the tuner to re-solve the inversion every evaluation is a session
-   * of its own and may never be needed; measuring the delivered network against
-   * the requirement is cheap, exact, and closes the direction that matters —
-   * the stale ceiling can now only be too strict, never permissive.
+   * is what an A5d.6 inversion is — and `bump-series-l` does exactly that. Two
+   * things are then true and they are different: the box has to describe the
+   * network being searched (V48 made it, through
+   * `seriesInductanceCeilingSource`), and the network that is actually OFFERED
+   * has to meet the requirement. A box is shaping and a requirement is a
+   * verdict, and A5d.6 is explicit that the second is the authority.
+   *
+   * V45's own reasoning for putting it here — "teaching the tuner to re-solve
+   * the inversion every evaluation is a session of its own" — turned out to be
+   * exactly right about the cost: one inversion is 13 ms and a candidate takes
+   * ~100 000 evaluations, so V48 had to memoise on a quantised path resistance
+   * before it was affordable. What V45 got wrong is that this check closed the
+   * direction that matters; it closed the direction that could be MEASURED
+   * from here, which is not the same thing.
    *
    * ONLY WHEN THE TUNER DID NOT ALREADY REFUSE. A candidate that was thrown out
    * by a gate delivers nothing to test, and reporting a second reason for one
@@ -1618,11 +1666,25 @@ function runCandidate<I, R extends { parts: VxpPart[]; net: { gateRefusals?: str
         : {}),
     });
     if (got !== null && got > v2.budgets.lfBumpBudgetDb) {
+      /* WHICH CEILING ACTUALLY BOUNDED THIS SEARCH, and the two answers mean
+       * opposite things to whoever reads this. On a `'seed'` run the ceiling
+       * described the network the search started from and this refusal is the
+       * expected consequence (V45). On a `'tuned'` run the ceiling followed the
+       * search, so this refusal should be unreachable — and saying so is the
+       * point: it turns the message from an explanation into a report that
+       * something is wrong with the repair rather than with the candidate. */
+      const tracked = network.declaration?.stated.seriesInductanceCeilingSource === 'tuned';
       collect.notes.push(
         `The delivered network was tested against the stated LF budget on M-D's RESONANT half ` +
           `(V43) and exceeded it: ${got.toFixed(3)} dB against ${v2.budgets.lfBumpBudgetDb} dB on ` +
-          `${model}. The A5d.6 ceiling that bounded the search was solved at the SEED's path ` +
-          'resistance and could not follow the tune (V45, open point).',
+          `${model}. ` +
+          (tracked
+            ? 'The A5d.6 ceiling FOLLOWED the tune on this run (V48), so this should not have ' +
+              'been reachable — the ceiling and the delivered network disagree, and that is a ' +
+              'finding about the repair rather than about this candidate.'
+            : "The A5d.6 ceiling that bounded the search was solved at the SEED's path " +
+              'resistance and could not follow the tune (V45; stating ' +
+              "`seriesInductanceCeilingSource: 'tuned'` makes it follow — V48)."),
       );
       refused = {
         by: 'stated-budget',
@@ -1631,13 +1693,17 @@ function runCandidate<I, R extends { parts: VxpPart[]; net: { gateRefusals?: str
           `the delivered network amplifies ${model}'s reflex peak by ${got.toFixed(2)} dB of ` +
           `resonant lift, against a stated budget of ${v2.budgets.lfBumpBudgetDb} dB (A4 M-D, ` +
           'the resonant half — casebook V43)',
-        note:
-          'The search box bounded this way\'s series inductance at a ceiling solved on the ' +
-          'SEED\'s path resistance, and the tune moved that resistance underneath it. The ' +
-          'ceiling therefore described a different network than the one delivered. It can only ' +
-          'ever err towards being too strict — more series resistance damps the resonant half — ' +
-          'so this check exists to make sure the other direction is impossible, and here it ' +
-          'fired.',
+        note: tracked
+          ? 'The search box re-read this way\'s series-inductance ceiling at the path resistance ' +
+            'of each network it evaluated (V48), so the ceiling described the network being ' +
+            'built. That this check still fired means the two disagree — the quantised ceiling ' +
+            'is meant to err only towards being too STRICT, so a delivered network above the ' +
+            'budget is a defect in the tracking and not a candidate that slipped through.'
+          : 'The search box bounded this way\'s series inductance at a ceiling solved on the ' +
+            'SEED\'s path resistance, and the tune moved that resistance underneath it. The ' +
+            'ceiling therefore described a different network than the one delivered — too ' +
+            'strict where the tune RAISED that resistance, and permissive where it lowered it, ' +
+            'which is the case this check exists to catch (V45, measured at V48).',
         fields: {
           ...(delivered.net as WholesaleRejectionFields),
           rejectedParts: [...delivered.parts],

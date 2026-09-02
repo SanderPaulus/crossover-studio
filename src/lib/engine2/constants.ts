@@ -471,6 +471,34 @@ export const BOUND_INVERSION_STEPS = 60;
 export const BOUND_BRACKET_DOUBLINGS = 20;
 
 /**
+ * V48 — the GRAIN at which a path-resistance-tracking series-inductance
+ * ceiling is re-solved, in ohms.
+ *
+ * A RESOLUTION CHOICE ON A SOLVE, in the same family as the two constants
+ * above and not a component limit: `bump-series-l` inverts to a ceiling that
+ * depends on the way's path resistance, the tune moves that resistance, and
+ * re-solving the inversion at every objective evaluation costs 13 ms a time —
+ * measured, and at the ~100 000 evaluations a casus-1 candidate takes that is
+ * twenty minutes of arithmetic for a bound. So the path resistance is
+ * quantised and the solve is memoised per cell: a tune visits a few dozen
+ * cells, not a hundred thousand points.
+ *
+ * QUANTISED DOWNWARDS, which is what makes the approximation safe rather than
+ * merely small. The ceiling RISES with path resistance — more series R damps
+ * the resonant half, so more inductance fits the same budget — so solving at
+ * the cell's lower edge yields a ceiling at or below the true one at the
+ * point being evaluated. The tracking ceiling can therefore only ever be too
+ * strict, never permissive, which is the same direction the delivered-network
+ * check (V45) guarantees one layer along. That monotonicity is MEASURED on
+ * the frozen corpus rather than assumed — see `lfBumpBorder.test.ts`.
+ *
+ * The induced strictness at this grain is a fraction of a percent of the
+ * ceiling on casus 1 and is asserted against the metric's own tolerance
+ * rather than eyeballed. @p6 rule
+ */
+export const BOUND_CEILING_PATH_R_GRAIN_OHM = 0.05;
+
+/**
  * A5d.6 — the SLACK on a topology-aware pre-bound, per filter order above the
  * first.
  *

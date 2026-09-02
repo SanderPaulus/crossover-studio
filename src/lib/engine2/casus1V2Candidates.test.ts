@@ -155,6 +155,10 @@ const HERKOMST = JSON.parse(
      *  vergelijking met het zaad, of de gestelde absolute eis. */
     beschermingsregel: string | null;
     beschermingsregel_waarom: string;
+    /** V48 — WELK NETWERK het A5d.6-plafond op de seriespoel beschrijft: dat
+     *  waarmee de zoektocht begon, of dat wat zij aan het bouwen is. */
+    plafond_bron: string | null;
+    plafond_bron_waarom: string;
     /** V44 — WELKE PUNTEN het fase-oordeel dragen. Niet hoe fase gewogen wordt
      *  (dat is `fasemaat`) maar over welke punten het gemiddelde gaat. */
     fase_toelating: string | null;
@@ -396,6 +400,21 @@ describe('the frozen v2 candidates are files, and the file says where they came 
     expect(m.lean_drempel_waarom).toMatch(/V41|synthesize/);
     // En de afleiding is aantoonbaar NIET het stopdoel dat de keten gebruikte.
     expect(m.lean_drempel_db).not.toBe(CASUS1_V2_SETTINGS.targets.rippleDb);
+    /* V48 — het negende besluit, en het eerste dat over een BOUND gaat in
+     * plaats van over een term, een poort of een raster. De inversie zelf is
+     * niet aangeraakt en het budget niet verplaatst; wat gesteld wordt is bij
+     * WELKE padweerstand zij gevraagd wordt. Twee dingen worden hier geassert
+     * en zij horen bij elkaar: de sleutel staat op `'tuned'` ÉN het budget dat
+     * hem afleidt is werkelijk gewapend — een gestelde bron zonder gesteld
+     * budget zou een keuze zijn over een plafond dat niet bestaat (P4). */
+    expect(m.beschermingen_via_kandidaat).toContain('seriesInductanceCeilingSource');
+    expect(m.plafond_bron).toBe(
+      CASUS1_V2_BUDGETS.lfBumpBudgetDb !== undefined ? 'tuned' : null,
+    );
+    expect(m.plafond_bron_waarom).toMatch(/V48|zaad/);
+    if (CASUS1_V2_BUDGETS.lfBumpBudgetDb !== undefined) {
+      expect(m.v2_budgetten_gewapend).toContain('lfBumpBudgetDb');
+    }
   });
 
   it('the candidate metrics are CLASS B, and the reference file says so', () => {

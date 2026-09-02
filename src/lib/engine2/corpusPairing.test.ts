@@ -40,12 +40,20 @@
  * verschillen" niet te onderscheiden zijn van "de gepaarde lezing is een
  * andere manier om hetzelfde te zeggen".
  *
- * HERANKERING. De "ná"-helft van de eerste vergelijking is het LEVENDE corpus,
- * en de eerstvolgende regeneratie verandert die getallen — dan hoort dat blok
- * op het dan bevroren V47-corpus te worden herankerd, precies zoals V43 dat
- * met `v42_bult_bevinding` deed. Een falende test is daar de bedoeling: het
- * alternatief is een tabel in het casusboek die stil onwaar wordt. Het
- * V30 → V32-blok heeft die zorg niet.
+ * HERANKERD BIJ V48 (02-09-2026), EN PRECIES ZOALS VOORSPELD. De "ná"-helft van
+ * de eerste vergelijking was het LEVENDE corpus, met de aantekening dat de
+ * eerstvolgende regeneratie die getallen zou veranderen en dat het blok dan op
+ * het dan bevroren V47-corpus herankerd hoorde te worden. V48 regenereert, dus
+ * dat is gebeurd: `v45 → v47` in plaats van `v45 → live`, met dezelfde getallen
+ * — het V47-corpus IS byte voor byte het veld dat hier "levend" heette, alleen
+ * onder een naam die de volgende regeneratie niet overschrijft. Dezelfde
+ * herankering die V43 op `v42_bult_bevinding` toepaste, en om dezelfde reden:
+ * een bevinding die naar "het levende corpus" wijst wordt stil onwaar.
+ *
+ * BEIDE VERGELIJKINGEN ZIJN NU VOLLEDIG GEDATEERD en kunnen dus niet meer
+ * verouderen. Dat is winst en geen verlies: wat deze test bewijst is een
+ * eigenschap van de LEESREGEL — dat een corpusgemiddelde en een gepaarde delta
+ * tegengesteld kunnen wijzen — en die eigenschap heeft geen levend veld nodig.
  */
 
 import { describe, expect, it } from 'vitest';
@@ -129,7 +137,7 @@ function compare(beforeId: string, afterId: string) {
   };
 }
 
-const v47 = compare('v45', 'live');
+const v47 = compare('v45', 'v47');
 const v32 = compare('v30', 'v32');
 
 describe('de gepaarde delta naast het corpusgemiddelde (V47-nazorg)', () => {

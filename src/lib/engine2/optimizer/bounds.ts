@@ -39,6 +39,7 @@ import type { Complex } from '../../complex.ts';
 import { busTopology } from '../../netOptimizer.ts';
 import {
   BOUND_BRACKET_DOUBLINGS,
+  BOUND_CEILING_PATH_R_GRAIN_OHM,
   BOUND_INVERSION_STEPS,
   DB_PER_DECADE_AMPLITUDE,
   DB_PER_DECADE_POWER,
@@ -277,6 +278,72 @@ export function maxSeriesInductanceFromBump(
 }
 
 /**
+ * V48 — THE CEILING AS A FUNCTION OF THE PATH RESISTANCE, MEMOISED.
+ *
+ * WHAT WAS WRONG. `maxSeriesInductanceFromBump` is solved once, at the path
+ * resistance OF THE SEED, and the number it returns then stands for the whole
+ * tune — while the tune is free to move that resistance underneath it. V45
+ * wrote that down as an open point and argued it was safe: more series R damps
+ * the resonant half, so a ceiling solved at 0.5 Ω is conservative at 3 Ω. The
+ * argument is sound and the direction is right; what it left out is the other
+ * direction. A tune that LOWERS the path resistance — spending less on a pad,
+ * or moving level work out of the series path — gets a ceiling solved for a
+ * better-damped network than the one it is building, and that ceiling is
+ * PERMISSIVE. Sander's browser run of 01-09-2026 is the measurement: two of
+ * nine candidates delivered 2.29 and 1.61 dB of resonant lift against a stated
+ * 1.4, and the delivered-network check caught both. Catching is losing, though
+ * — those were legitimate candidates that a correct ceiling would have steered
+ * to a buildable network instead of throwing away at the end.
+ *
+ * WHAT THIS IS. The same inversion, exposed as a function of the path
+ * resistance rather than as a number solved at one. The tuner holds the
+ * current path resistance of the way at every evaluation (it is a lookup and a
+ * sum over the free series resistors, exactly as `dcSeriesR` already does for
+ * the source-resistance limit), so the ceiling can follow the tune instead of
+ * describing the network the tune started from.
+ *
+ * WHY IT IS MEMOISED AND NOT SIMPLY CALLED. Measured on casus 1: one inversion
+ * is 13 ms — sixty bisection steps, each a full `lfBump` over the measured
+ * near field and sweep. A casus-1 candidate takes on the order of 100 000
+ * objective evaluations, so calling this per evaluation is twenty minutes of
+ * arithmetic for one bound. The path resistance is therefore quantised to
+ * `BOUND_CEILING_PATH_R_GRAIN_OHM` and each cell is solved once; a tune visits
+ * a few dozen cells. The quantisation is DOWNWARD, which is what makes it safe
+ * rather than merely small — see the constant, and the monotonicity it rests
+ * on is measured on the frozen corpus rather than assumed.
+ *
+ * IT RE-IMPLEMENTS NOTHING. It closes over the same `BumpInversionInput` the
+ * one-shot solve takes, minus the path resistance, and calls the one-shot
+ * solve. One inversion, two ways of asking it.
+ *
+ * DETERMINISM (A5e.4). The memo is a pure cache: the value returned for a
+ * given quantised path resistance does not depend on what was asked before it,
+ * so two runs that visit the same points return the same numbers in the same
+ * order. Nothing here is shared between candidates — the closure is built per
+ * bound, per run.
+ */
+export type SeriesInductanceCeiling = (pathROhm: number) => number | null;
+
+export function seriesInductanceCeilingTracker(
+  input: Omit<BumpInversionInput, 'pathROhm'>,
+  budgetDb: number,
+): SeriesInductanceCeiling {
+  const memo = new Map<number, number | null>();
+  return (pathROhm: number): number | null => {
+    if (!Number.isFinite(pathROhm) || pathROhm < 0) return null;
+    const cell = Math.floor(pathROhm / BOUND_CEILING_PATH_R_GRAIN_OHM);
+    if (memo.has(cell)) return memo.get(cell)!;
+    const solved = maxSeriesInductanceFromBump(
+      { ...input, pathROhm: cell * BOUND_CEILING_PATH_R_GRAIN_OHM },
+      budgetDb,
+    );
+    const v = solved === null ? null : solved.maxHenry;
+    memo.set(cell, v);
+    return v;
+  };
+}
+
+/**
  * A5d.6 — the TOPOLOGY-AWARE PRE-BOUND on a series capacitor, from the f_s
  * drive budget (M-C).
  *
@@ -335,7 +402,33 @@ export interface InvertedBound {
 /** The box a run hands the tuner: per-part ceilings plus per-path sum ceilings. */
 export interface SearchBox {
   valueCeilings: Record<string, number>;
-  valueSumCeilings: { ids: string[]; maxSI: number; fixedSI: number; label: string }[];
+  valueSumCeilings: {
+    ids: string[];
+    maxSI: number;
+    fixedSI: number;
+    label: string;
+    /* ---- V48: what this group needs to let its ceiling follow the tune ----
+     *
+     * All three are absent unless a tracker was handed in, and with them
+     * absent the group is byte-identical to the one F2 has been filing since
+     * the beginning: a static `maxSI` solved at the seed.
+     *
+     * THEY ARE NOT SERIALISABLE, and that is deliberate rather than
+     * overlooked. `ceilingAt` is a closure over the measured near field and
+     * sweep, the same shape `gateViolation` has carried since F2, and it never
+     * crosses a `postMessage`: `InvertedBound` — which DOES travel in the
+     * worker's response — stays pure data, and the trackers come back from
+     * `invertBudgets` beside it rather than inside it. */
+    /** Free series RESISTORS of this way, whose values are the moving part of
+     *  its path resistance. */
+    resistanceIds?: string[];
+    /** The rest of that path resistance: locked resistors plus every coil's
+     *  DCR, none of which a VALUE tune moves (`netOptimizer.ts`: "DCR/ESR
+     *  params ride along unchanged"). Ohms. */
+    pathRBaseOhm?: number;
+    /** The inversion, as a function of the path resistance. */
+    ceilingAt?: SeriesInductanceCeiling;
+  }[];
   /** What was bounded and why — the report shows this, never a bare number. */
   bounds: InvertedBound[];
   notes: string[];
@@ -372,6 +465,10 @@ const valueSI = (p: VxpPart): number | null => {
 export function searchBoxFor(
   parts: readonly VxpPart[],
   bounds: readonly InvertedBound[],
+  /* V48 — the path-resistance-tracking form of a bound, by subject. Absent for
+   * every bound and every caller that does not hand one in, and then this
+   * function builds exactly the box it always built. */
+  trackers: Readonly<Record<string, SeriesInductanceCeiling>> = {},
 ): SearchBox {
   const bus = busTopology(parts);
   const valueCeilings: Record<string, number> = {};
@@ -453,11 +550,39 @@ export function searchBoxFor(
             `${(b.maxSI / H_PER_MH).toFixed(2)} mH, but this way has no free series coil.`,
         );
       } else {
+        /* V48 — WHAT THE GROUP CARRIES SO ITS CEILING CAN FOLLOW THE TUNE.
+         *
+         * The path resistance splits in two the same way the inductance
+         * budget does one line up: the part the value tune MOVES (free series
+         * resistors) and the part it cannot (locked resistors, and every
+         * coil's DCR — a value tune changes neither). The moving part goes
+         * over as IDS so the tuner reads its own current values; the rest goes
+         * over as a number, resolved here from the seed.
+         *
+         * A missing id is safe in the direction that matters. If the tuner
+         * does not hold one of these as free, its contribution is left out of
+         * the sum, the path resistance reads LOW, and a low path resistance
+         * yields a STRICTER ceiling — never a permissive one. */
+        const seriesR = seriesOf(b.subject, 'R');
+        const freeR = seriesR.filter((p) => !p.locked);
+        const pathRBaseOhm =
+          seriesR
+            .filter((p) => p.locked)
+            .reduce((sum, p) => sum + (valueSI(p) ?? 0), 0) +
+          all.reduce((sum, p) => sum + (p.params.find((q) => q.name === 'DCR')?.value ?? 0), 0);
+        const tracker = trackers[b.subject];
         valueSumCeilings.push({
           ids: coils.map((p) => p.partId!),
           maxSI: b.maxSI,
           fixedSI,
           label: `${b.subject} ${b.quantity}`,
+          ...(tracker
+            ? {
+                resistanceIds: freeR.map((p) => p.partId!),
+                pathRBaseOhm,
+                ceilingAt: tracker,
+              }
+            : {}),
         });
         const room = Math.max(b.maxSI - fixedSI, 0);
         for (const p of coils) {
@@ -567,9 +692,21 @@ export function invertBudgets(
   ways: readonly BudgetWay[],
   budgets: BudgetSettings,
   gates: { maxDriveOnFsDb?: number } = {},
-): { bounds: InvertedBound[]; notes: string[] } {
+): {
+  bounds: InvertedBound[];
+  notes: string[];
+  /* V48 — the same `bump-series-l` inversion, per subject, as a FUNCTION of
+   * the path resistance instead of a number solved at the seed's.
+   *
+   * BESIDE THE BOUNDS AND NOT INSIDE THEM. `InvertedBound` travels in the
+   * worker's response and a closure cannot cross a `postMessage`; keeping the
+   * bounds pure data is what lets both exist. A caller that only destructures
+   * `{ bounds, notes }` — every caller before V48 — is unaffected. */
+  ceilingTrackers: Record<string, SeriesInductanceCeiling>;
+} {
   const bounds: InvertedBound[] = [];
   const notes: string[] = [];
+  const ceilingTrackers: Record<string, SeriesInductanceCeiling> = {};
 
   for (const w of ways) {
     /* ---- Q_es budget -> max TOTAL series R in the lowest path ---------- */
@@ -616,17 +753,22 @@ export function invertBudgets(
             'so no series-inductance bound was applied.',
         );
       } else {
+        /* The inversion's measured inputs, WITHOUT the path resistance — which
+         * is the one input V48 stopped treating as a constant. The one-shot
+         * solve below fills in the seed's value; the tracker beside it leaves
+         * the slot open so the tuner can fill in its own (V48). One input
+         * object, two ways of asking the same inversion. */
+        const bumpInput = {
+          nfGrid: w.nearField.grid,
+          nfDb: w.nearField.db,
+          zGrid: w.impedance.grid,
+          z: w.impedance.z,
+          fPeakHz: w.fPeakHz,
+          nfValidHz: w.nearField.validHz,
+          ...(w.crossingAboveHz !== undefined ? { belowHz: w.crossingAboveHz } : {}),
+        };
         const solved = maxSeriesInductanceFromBump(
-          {
-            nfGrid: w.nearField.grid,
-            nfDb: w.nearField.db,
-            zGrid: w.impedance.grid,
-            z: w.impedance.z,
-            fPeakHz: w.fPeakHz,
-            nfValidHz: w.nearField.validHz,
-            ...(w.crossingAboveHz !== undefined ? { belowHz: w.crossingAboveHz } : {}),
-            pathROhm: w.pathROhm,
-          },
+          { ...bumpInput, pathROhm: w.pathROhm },
           budgets.lfBumpBudgetDb,
         );
         if (solved === null) {
@@ -664,6 +806,15 @@ export function invertBudgets(
                 'not bounded here — it is level work, and A5e.2 owns it.',
             ],
           });
+          /* V48 — and the same inversion as a function, for the run that wants
+           * its ceiling to follow the tune. Built whenever the one-shot solve
+           * succeeded, because the two rest on exactly the same inputs; whether
+           * it is READ is a choice one layer along (`searchBoxFor`, and the
+           * tuner's own `seriesInductanceCeilingSource`). */
+          ceilingTrackers[w.driver] = seriesInductanceCeilingTracker(
+            bumpInput,
+            budgets.lfBumpBudgetDb,
+          );
         }
       }
     }
@@ -742,7 +893,7 @@ export function invertBudgets(
     }
   }
 
-  return { bounds, notes };
+  return { bounds, notes, ceilingTrackers };
 }
 
 /** Median |Z| over a band of a measured sweep — the pad inversion's reference. */

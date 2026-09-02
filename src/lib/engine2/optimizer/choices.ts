@@ -194,6 +194,24 @@ export const CHOICE_KEYS = [
    * only come from the candidate, and it may never migrate back — that is what
    * `choiceKeyGuard.test.ts` pins. */
   'errorSmoothOct',
+  /**
+   * V48 — WHICH NETWORK THE SERIES-INDUCTANCE CEILING DESCRIBES.
+   *
+   * A choice by the same test the four pairs before it pass: it decides which
+   * QUANTITY bounds the search, not how well the search is polished. The
+   * A5d.6 inversion `bump-series-l` turns the LF budget into a ceiling on the
+   * lowest way's series inductance at a given path resistance — and the tune
+   * moves that resistance. `'seed'` bounds the search by the ceiling of the
+   * network it STARTED from; `'tuned'` by the ceiling of the network it is
+   * building. On casus 1 that is the difference between a candidate that
+   * delivers and one the delivered-network check throws away at the end.
+   *
+   * ITS DATA IS ALREADY FILED. Unlike V33, V34, V37, V44 and V45 this key has
+   * no POLISH twin: the measured near field and sweep the inversion reads
+   * travel inside `valueSumCeilings`, which has been polish since F2 for
+   * exactly the stated reason — it is a measurement the run already holds.
+   */
+  'seriesInductanceCeilingSource',
   'breakupGuard',
   'safety',
   'audit',

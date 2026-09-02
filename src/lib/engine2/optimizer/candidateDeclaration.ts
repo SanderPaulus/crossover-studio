@@ -7,7 +7,8 @@
  * `dissipationReferenceSource`, thirty since V38-fix RECLASSIFIED
  * `errorSmoothOct` out of polish, thirty-one since V44 added
  * `phaseAdmission`, thirty-two since V45 added `amplitudeReference` and
- * thirty-three since V47 added `protectionRule`. The number
+ * thirty-three since V47 added `protectionRule` and thirty-four since V48
+ * added `seriesInductanceCeilingSource`. The number
  * is not repeated in prose anywhere it could go stale: `declarationCoverage`
  * compares against `CHOICE_KEYS` itself, so a key added upstream lands in no
  * state and fails the build.
@@ -86,6 +87,7 @@ export type StatedByDesigner = Partial<
     | 'phaseAdmission'
     | 'amplitudeReference'
     | 'protectionRule'
+    | 'seriesInductanceCeilingSource'
   >
 >;
 
@@ -129,6 +131,17 @@ export interface CandidateDeclarationInput {
    * full-band safety gate applies.
    */
   driveOnFsLimitDb?: number;
+  /**
+   * V48 — the project's stated LF-lift budget, dB, when it states one.
+   *
+   * The NUMBER rather than a boolean for the same reason `driveOnFsLimitDb` is
+   * one: the absent case has to be able to say what was missing. It is never
+   * passed on as a tuner option — the budget travels as
+   * `v2.budgets.lfBumpBudgetDb` and is what `invertBudgets` inverts. All this
+   * input decides is whether the ceiling that inversion produces follows the
+   * tune or describes the seed.
+   */
+  lfBumpBudgetDb?: number;
 }
 
 /** A key the designer left empty, filed with the P4 reason. */
@@ -487,6 +500,52 @@ export function declareCandidateChoices(input: CandidateDeclarationInput): Choic
         'rule — the comparison against the seed — which is the pre-V47 behaviour, stated as ' +
         'absent rather than inherited in silence (P4). A stated \'seed\' would claim somebody ' +
         'chose that rule, and with nothing stated nobody chose anything',
+    });
+  }
+
+  /* ---- V48: WHICH NETWORK THE SERIES-INDUCTANCE CEILING DESCRIBES ------
+   *
+   * DERIVED, like V45's `amplitudeReference` and V47's `protectionRule`, and
+   * from the same shape of fact one rule along: a bound solved for a network
+   * the search has already left is a bound that stops describing what it
+   * bounds. `bump-series-l` inverts the LF budget into a ceiling on the lowest
+   * way's series inductance AT A GIVEN PATH RESISTANCE, and that resistance is
+   * one of the things the tune moves.
+   *
+   * V45 wrote the gap down and argued it was safe in one direction, correctly:
+   * more series R damps the resonant half, so a ceiling solved at a LOWER path
+   * resistance than the tune ends at is merely too strict. What that argument
+   * leaves out is a tune that lowers the resistance — and then the ceiling is
+   * PERMISSIVE. Measured on Sander's browser run of 01-09-2026: two of nine
+   * candidates delivered 2.29 and 1.61 dB of resonant lift against a stated
+   * 1.4. The delivered-network check caught both, which is what it is for, but
+   * catching is losing — those were legitimate candidates that a ceiling
+   * describing their own network would have steered instead of discarded.
+   *
+   * 'TUNED' IS NOT A CASUS-1 NUMBER. It states no resistance, no inductance
+   * and no frequency: it says the inversion is asked at the point being
+   * evaluated rather than at the point the search started from. The measured
+   * inputs it is asked on travel as POLISH inside the sum group, for the same
+   * reason the phase-admission facts do — they are the run's measurements, not
+   * the candidate's opinion.
+   *
+   * ABSENT AND NEVER `'seed'` (P4), the same rule V45 applies to `'flat'` and
+   * V47 to `'seed'`: with no budget stated there is no inversion, no ceiling
+   * and nothing to track, so naming the seed reading would claim somebody
+   * chose it. An explicit value still wins, so V48's before/after is a run
+   * somebody can ask for rather than a build that has to be patched. */
+  if (s.seriesInductanceCeilingSource !== undefined) {
+    stated.seriesInductanceCeilingSource = s.seriesInductanceCeilingSource;
+  } else if (input.lfBumpBudgetDb !== undefined) {
+    stated.seriesInductanceCeilingSource = 'tuned';
+  } else {
+    absent.push({
+      key: 'seriesInductanceCeilingSource',
+      why:
+        'this design states no LF-lift budget, so nothing inverts to a series-inductance ceiling ' +
+        'and there is no ceiling for the tune to move underneath. Absent rather than a stated ' +
+        '\'seed\' (P4): naming the seed reading would claim somebody chose which network the ' +
+        'ceiling should describe, and with no budget stated nobody chose anything',
     });
   }
 

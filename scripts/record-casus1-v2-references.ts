@@ -237,6 +237,19 @@ const CHAIN_GRID_LO_HZ = CASUS1_V2_GRID[0];
  * rather than a plausible-sounding reason that belongs to a different corpus.
  */
 const DATED_REASON: Record<string, string> = {
+  V47:
+    'HET GEDATEERDE V47-CORPUS. Bevroren toen het A5d.6-plafond op de seriespoel van de laagste ' +
+    'weg nog EENMALIG werd opgelost, bij de padweerstand van het ZAAD, en daarna vaststond voor ' +
+    'de hele tune — terwijl de tune diezelfde padweerstand verplaatst. V45 schreef dat op als ' +
+    'open punt en beredeneerde het als veilig: meer serieweerstand dempt de resonante helft, dus ' +
+    'een plafond opgelost bij een LAGERE padweerstand is hoogstens te streng. Wat dat argument ' +
+    'weglaat is de tune die de padweerstand VERLAAGT, en daar is het plafond TOEGEEFLIJK. ' +
+    'Gemeten op Sanders browserrun van 01-09-2026: twee van negen kandidaten leverden 2,29 en ' +
+    '1,61 dB opslingering tegen een gesteld budget van 1,4, en de geleverde-netwerk-toets van ' +
+    'V45 ving ze allebei. Vangen is verliezen — dat waren legitieme kandidaten die met een ' +
+    'plafond over hun EIGEN netwerk gestuurd hadden kunnen worden in plaats van aan het eind ' +
+    'weggegooid. Zij blijven staan als de "vóór"-helft van de V48-vergelijking. Meetobject, ' +
+    'GEEN ontwerp: mag niet gebouwd worden.',
   V45:
     'HET GEDATEERDE V45-CORPUS. Bevroren toen de TWEETERBESCHERMING nog uitsluitend RELATIEF ' +
     'bewaakt werd: de volle-band-veiligheidspoort van de tuner legde het beschermingstekort van ' +

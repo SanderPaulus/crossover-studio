@@ -48,18 +48,26 @@
     referentie:** `threeWayChain` alléén kostte in diezelfde run 361 s tegen de 289 s van V43, dus
     wat er beweegt is de machine en niet de laag. Het overgeslagen BESTAND is nieuw en klopt: de
     verhuisde verwerpingsrun is een bestand dat volledig uit `[live]` bestaat.
+    **Ná V48 (02-09-2026) gemeten op 285 s — 138 geslaagd + 1 overgeslagen bestand,
+    1523 geslaagd + 2 overgeslagen**, apart gedraaid op een lege machine ná de volle run en
+    NOOIT ernaast (zie de geheugenles daar). GEEN nieuwe referentie: de V43-waarde van 289 s
+    blijft staan, dit is dezelfde laag op dezelfde machine en vier seconden is ruis.
     **Ná de V47-nazorg (01-09-2026) gemeten op 276 s — 137 geslaagd + 1 overgeslagen bestand,
     1510 tests + 2 overgeslagen** (+1 bestand, `engine2/corpusPairing.test.ts`, 7 claims).
-    **Twee dingen daarbij, en het tweede is een onopgeloste telling.** (i) 276 s is GEEN nieuwe
+    **Twee dingen daarbij.** (i) 276 s is GEEN nieuwe
     referentie: de V43-waarde van 289 s blijft staan, dit is dezelfde laag op dezelfde machine en
-    het verschil is ruis. (ii) Deze stand mínus dit ene bestand is 136 geslaagd + 1 overgeslagen
-    bestand en 1503 geslaagde tests — en dat is NIET wat de post-splitsingsregel hierboven noteert
-    (135 + 1, 1495). `find src -name '*.test.ts*'` telt op deze stand 138 bestanden en op de commit
-    ervoor 137, wat met de meting klopt en niet met die regel. Een splitsing voegt een bestand toe
-    en verplaatst tests; zij kan geen bestand en geen acht tests laten verdwijnen, dus één van de
-    twee tellingen is verkeerd overgenomen. **Niet blind rechtgezet:** welke van de twee valt
-    alleen te bepalen door de commit ervóór opnieuw te meten, en dat is een volle snelle run die
-    deze sessie niet gedaan heeft.
+    het verschil is ruis. (ii) **DE TELLING SLUIT WEL, EN DE V47-NAZORG LAS DE VERKEERDE REGEL —
+    rechtgezet bij V48 (02-09-2026), zonder te hermeten, want `git ls-tree` beantwoordt de vraag
+    exact.** Zij noteerde dat 137 + 1 mínus dit ene bestand niet op de post-splitsingsregel
+    uitkwam (135 + 1, 1495) en liet het als onopgelost staan. De regel die zij had moeten lezen
+    staat érbóven: de UI-1-regel, 136 + 1 en 1503 tests — en 1503 + 7 = 1510 klopt precies. Het
+    aantal testbestanden per commit, geteld met
+    `git ls-tree -r --name-only <commit> src | grep -cE '\.test\.tsx?$'`: V47 `fb8f211` 135,
+    de splitsing `9b16f8e` 136, UI-1 `047b452` 137, de nazorg `a30b6ee` 138 — één erbij per
+    oplevering, precies zoals elke regel het zegt. **Waar het ontspoorde is de VOLGORDE binnen deze
+    alinea: de UI-1-zin staat vóór de splitsingszin terwijl UI-1 de látere commit is, dus wie de
+    dichtstbijzijnde voorgaande ZIN pakt voor de dichtstbijzijnde voorgaande COMMIT pakt er één
+    te ver terug.** Er is dus geen verkeerd overgenomen telling en er is niets weggeraakt.
   - `npm test` / `npx vitest run` — **de volle run, en hij is VERPLICHT** bij elke wijziging aan
     het corpus en vóór elke commit die de zoektocht raakt. Precies dát is wat de twee live
     gevallen toetsen: dat de route nog steeds de bevroren netlist levert.
@@ -125,8 +133,28 @@
   onveranderd naast staat — van 285,8 naar 517,4 s. De totale CPU-tijd steeg van 3615 naar
   4306 s. Wandkloktijd is dus gekocht met rekentijd; een voorspelling op `max(1120, 638)` ≈ 950 s
   was te optimistisch en de gemeten 1254 s is wat er staat.
-- `npx vitest run` — volledige testsuite. **GEMETEN 01-09-2026 (ná de splitsing hierboven):
-  136 bestanden, 1497 tests, 1254 s (21 min), niets overgeslagen.** Het extra bestand is de
+- `npx vitest run` — volledige testsuite. **GEMETEN 02-09-2026 (V48): 139 bestanden, 1525 tests,
+  1116 s (19 min), niets overgeslagen.**
+  **DRAAI DE LAGEN NA ELKAAR EN NOOIT NAAST ELKAAR — deze sessie liep op een GEHEUGENLIMIET
+  en gooide er een halve volle run mee weg.** De volle suite spant een worker per kern op en
+  twee daarvan dragen een live ketenrun; een tweede vitest-pool ernaast (hier: de snelle
+  laag, per ongeluk gelijktijdig gestart) telt niet op maar vermenigvuldigt. De machine
+  brak de run af nadat 137 van de 139 bestanden groen waren. Dezelfde les als bij `V2_JOBS`
+  hieronder, één laag verderop: kies naar GEHEUGEN en niet naar kernen. De 1119 s hierboven
+  is de HERHALING daarna, alleen gedraaid en compleet. De telling is +1 bestand sinds de V47-nazorg
+  (`optimizer/ceilingTracking.test.ts`) en **+13 tests, en de dertiende is geen nieuwe claim**:
+  7 in dat nieuwe bestand, 3 in `lfBumpBorder.test.ts` (de V48-tracker), 2 in
+  `choiceKeyGuard.test.ts` — samen twaalf, geteld met
+  `git show a30b6ee:<pad> | grep -c '^\s\+it('` tegen dezelfde telling nu — plus ÉÉN uit de
+  `it.each` van `casus1V2Candidates.test.ts`, die over het LEVENDE corpus loopt en dus meegroeit
+  toen dat van vier naar vijf netlists ging. Dezelfde beweging die CLAUDE.md al noteerde toen dat
+  corpus van tien naar acht kromp en er twee tests verdwenen: **een testtelling van dit project is
+  deels een corpusgrootte, en wie hem als claimtelling leest komt er één tekort.** **Het cijfer is LAGER dan de 1254 s van
+  01-09 terwijl er tests bij zijn gekomen, en dat is opnieuw het CORPUS en niet de suite:** het
+  levende veld ging van vier naar vijf netlists, maar de twee live ketenruns treffen een andere
+  kandidaat — dezelfde les die V42/V43/V44/V47 al noteerden.
+  (De stand ervoor, ter vergelijking: **01-09-2026, ná de splitsing:
+  136 bestanden, 1497 tests, 1254 s (21 min), niets overgeslagen.**) Het extra bestand is de
   verhuisde verwerpingsrun; de extra test is de live-inventaris in `ciLayer.test.ts`. De
   V47-meting eronder is de "vóór"-helft van die vergelijking en blijft staan.
   **GEMETEN 31-08-2026 (V47, ná de regeneratie):
@@ -227,7 +255,16 @@
 - **De v2-kandidaatfixtures opnieuw opwekken** (alleen nodig als de generator of het veld verandert):
   `npx vite-node scripts/generate-casus1-v2-candidates.ts` — vijftien ketenruns.
   **SINDS V47 DRAAIT HIJ PARALLEL EN KOST HIJ MINUTEN IN PLAATS VAN UREN: gemeten 1624 s
-  (27 min) op achttien kernen, tegen 21 357 s (5 u 56) sequentieel bij V45.** Het script roept
+  (27 min) op achttien kernen, tegen 21 357 s (5 u 56) sequentieel bij V45.**
+  **BIJ V48 GEMETEN OP 2402 s (40 min) MET `V2_JOBS=8`, en die acht is een LES en geen
+  toeval: `V2_JOBS` default op ÁLLE kernen zetten is te veel voor het geheugen van deze
+  machine.** In dezelfde sessie draaide `measure-v48-ceiling-tracking.ts` dertig ketenruns
+  met achttien tegelijk en kostte **34 241 s (9 u 30)** — twintig keer de prijs per run,
+  terwijl de `seed`- en de `tuned`-arm onderling nauwelijks verschilden (32 791 tegen
+  32 809 s), dus het zat niet in de gemeten ingreep maar in de gelijktijdigheid. Een
+  ketenrun houdt grote rasters vast; achttien daarvan naast elkaar zwiept de machine het
+  geheugen uit. **Kies `V2_JOBS`/`V48_JOBS` naar GEHEUGEN en niet naar kernen** — acht
+  tegelijk was hier de goede orde. Het script roept
   zichzelf aan met `V2_ONLY=<n>`, één proces per kandidaat, `V2_JOBS` tegelijk (default: alle
   kernen), en voegt de shards samen in KANDIDAATVOLGORDE — nooit in de volgorde waarin zij klaar
   kwamen, want dan zou de shortlist van de planning afhangen. `V2_SEQUENTIAL=1` draait de oude weg
@@ -507,6 +544,24 @@
   het resultaat de worker verlaat (V31), dus van buitenaf is een geweigerd netwerk principieel
   onmeetbaar. De eerste versie van dit script probeerde het van buitenaf en kreeg een lege kolom
   terug — wat als "geen resonantie" leest terwijl het "geen onderdelen" betekende.
+- **Wat het volgende spoelplafond oplevert, in twee armen (V48)**:
+  `V48_JOBS=<n> npx vite-node scripts/measure-v48-ceiling-tracking.ts` — DERTIG KETENRUNS
+  (vijftien kandidaten × twee armen), parallel over de kernen; `V48_ONLY=<n>` draait één shard,
+  wat het script met zichzelf doet. **DE TWEE ARMEN VERSCHILLEN IN ÉÉN WOORD:**
+  `seriesInductanceCeilingSource` staat op `'seed'` in de ene en op `'tuned'` in de andere, en
+  alles daaromheen — eisen, budgetten, zaad, raster, seed — is hetzelfde object. Precies dáárvoor
+  is die sleutel een CHOICE met een expliciete waarde die wint: zonder hem zou deze vergelijking
+  twee commits nodig hebben in plaats van twee runs, en dan zou zij ook het verschil tussen die
+  commits meten. Drukt per (kandidaat, arm) de zaad-padweerstand, het zaadplafond, de
+  eind-padweerstand, de geleverde spoel, het plafond BIJ die eind-padweerstand en de geleverde
+  opslingering af; schrijft `test-fixtures/casus1_v48_plafond.json`. **De kolom die de sessie
+  draagt is `verwerping = budget`** — de geleverde-netwerk-toets van V45. In de `seed`-arm zijn
+  dat de slachtoffers van het verouderde plafond; in de `tuned`-arm horen het er nul te zijn.
+  **De rij van een GEWEIGERDE kandidaat is met opzet leeg op alles behalve zijn grond:**
+  `runCandidate` wist `rejectedParts` voordat het resultaat de worker verlaat (V31), dus van
+  buitenaf is een geweigerd netwerk principieel onmeetbaar — dezelfde muur waar
+  `measure-v47-rejections.ts` tegenaan liep, en een eerlijke lege kolom is beter dan een
+  verzonnen meting.
 - **De vloer als zoekdoel meten (V30)**: `npx vite-node scripts/measure-v30-floor-goal.ts` —
   dertig ketenruns (vijftien kandidaten × twee armen), gemeten 45–70 s per stuk, ~30 min.
   Schrijft `test-fixtures/casus1_v30_vloer_vergelijking.json` en drukt de vóór/ná-tabel af.
@@ -1113,6 +1168,15 @@ grotere ingreep — hij raakt élk commando in dit project — en is deze sessie
   netwerk dat hij evalueert. Elke netlist wordt nu tegen zijn EIGEN objectief gelegd — grootste
   piek-aandeel 0,74 %, grootste R_e-aandeel 29,5 % — met een assert op het aantal deelnemers, en
   nagemeten dat hij kán falen (de piek-term van `KAND_V2_3` maal 1,5 geeft 1,10 % en rood).
+  **BIJ V48 SLOEG ZIJ VOOR DE VIERDE KEER TOE, en toen lag het aan de ANKERING zelf.** V47 ankerde
+  met een COMPLEMENT — "alles wat niet `KAND_V2_n` heet" — en dat is geen anker maar een
+  verzameling die met elk corpus meegroeit. De netlist die hem bij V47 brak (`KAND_V2_1`, RMS 0,48,
+  1,053 %) is bij V48 BEVROREN als `V47_KAND_1` en stapte daarmee precies het uitgesloten geval
+  weer binnen, met hetzelfde getal. Dat was geen ongeluk maar een zekerheid: élke sessie bevriest
+  het levende corpus vóór zij regenereert. **Een anker noemt sindsdien zijn VERZAMELING** — de tien
+  families die bestonden toen V36 en V37 gemeten werden, uitgeschreven, met een tegenproef ernaast
+  dat die verzameling aantoonbaar KLEINER is dan "alles wat niet levend is". Wie hier ooit een
+  familie bij zet, zet er een corpus bij dat V36 en V37 nooit gezien hebben.
   **BIJ V47 SLOEG DEZELFDE VAL VOOR DE DERDE KEER TOE, en de vorm is nu veranderd in plaats van de
   drempel.** De assert viel om op `KAND_V2_1` met 1,053 %, en opnieuw niet doordat de term groeide
   maar doordat de NOEMER kromp: hij deelt door het objectief van de netlist zelf, en de gewapende
@@ -1523,6 +1587,62 @@ grotere ingreep — hij raakt élk commando in dit project — en is deze sessie
   regeneratie HERANKERD te worden op het dan bevroren V47-corpus** — dezelfde herankering die V43 op
   `v42_bult_bevinding` toepaste; een falende test is daar de bedoeling.
 
+### V48-guards (welk netwerk het seriespoel-plafond beschrijft)
+- `src/lib/engine2/optimizer/bounds.ts` — **`seriesInductanceCeilingTracker` is dezelfde inversie,
+  als FUNCTIE van de padweerstand.** `maxSeriesInductanceFromBump` lost op bij ÉÉN padweerstand;
+  tot V48 was dat die van het ZAAD, en het antwoord stond daarna vast terwijl de tune diezelfde
+  padweerstand verplaatst. V45 schreef dat op als open punt en beredeneerde het als veilig — meer
+  serieweerstand dempt de resonante helft, dus een plafond opgelost bij een LAGERE padweerstand is
+  hoogstens te streng — en dat klopt in één richting. **De andere richting is het defect:** een
+  tune die de padweerstand VERLAAGT loopt onder een plafond dat voor een beter gedempt netwerk is
+  opgelost, en dat plafond is toegeeflijk. De inversieformule is NIET aangeraakt en het budget is
+  NIET verplaatst (1,4 blijft); wat verandert is bij welke padweerstand zij gevraagd wordt.
+- **GEMÉMOÏSEERD OP EEN NAAR BENEDEN AFGERONDE KORREL, en beide helften daarvan zijn gemeten.**
+  Eén inversie kost **13 ms** (zestig bisectiestappen, elk een volle `lfBump` over de gemeten NF en
+  sweep) en een casus-1-kandidaat doet ~100 000 objectief-evaluaties — 21 minuten rekenwerk voor
+  één grens. De padweerstand wordt daarom gekwantiseerd naar `BOUND_CEILING_PATH_R_GRAIN_OHM` en
+  per cel één keer opgelost; een tune bezoekt enkele tientallen cellen. **Naar BENEDEN afronden is
+  wat de benadering veilig maakt in plaats van alleen klein:** het plafond stijgt met de
+  padweerstand, dus de onderrand van de cel geeft een plafond dat hoogstens te streng is — dezelfde
+  richting die de geleverde-netwerk-toets van V45 één laag verderop garandeert.
+- `src/lib/engine2/optimizer/lfBumpBorder.test.ts` — de drie claims onder die kwantisering, en zij
+  zijn METINGEN en geen aannames. (1) Het plafond stijgt MONOTOON met de padweerstand, op de korrel
+  zelf, over het hele bereik dat het casusboek noteert — één omkering maakt "naar beneden afronden
+  is conservatief" onwaar. (2) De tracker leest op punten die met OPZET niet op de korrel vallen
+  (het derde en het zevende tiende van een cel) nooit boven het exacte plafond, en de prijs van die
+  veiligheid blijft onder een procent — met de grens ernaast, zodat een grovere korrel zichtbaar
+  wordt in plaats van stil door te gaan. (3) A5e.4: dezelfde cel geeft hetzelfde getal, een VERSE
+  tracker geeft dezelfde reeks, en een punt in de volgende cel geeft aantoonbaar iets anders —
+  zonder die tegenproef zou een tracker die overal hetzelfde teruggeeft slagen.
+- `src/lib/engine2/optimizer/ceilingTracking.test.ts` — de tuner-helft, op een SYNTHETISCH plafond
+  en dat is een keuze: de vraag is of de tuner het plafond op het juiste moment en bij de juiste
+  padweerstand afleest, niet of de inversie klopt. Zes claims. Afwezig en `'seed'` zijn
+  byte-identieke runs **ook met de tracker in de groep** (P2 — het wapenen zelf kost niets, en zou
+  dat falen dan was de vóór/ná van V48 geen vergelijking meer); `'tuned'` zonder tracker verandert
+  niets (P4); een tracker die `null` teruggeeft laat het ZAADPLAFOND staan en nooit nul (een
+  plafond van nul zou een ontwerpuitspraak op een dataprobleem zijn); het plafond wordt
+  aantoonbaar afgelezen bij padweerstanden die het zaad NIET had; **het GELEVERDE netwerk staat
+  onder het plafond van zijn EIGEN padweerstand en er ook tegenaan** (gemeten: 0,9122 mH geleverd
+  tegen 0,9124 mH bij een geleverde padweerstand van 1,551 Ω, waar het zaadplafond 0,800 stond);
+  en het bereikt de zoektocht (V23). **DE RICHTING OP DIE FIXTURE IS DE CONSERVATIEVE en dat staat
+  er met zoveel woorden:** de tune loopt daar naar een HOGERE padweerstand, dus het zaadplafond was
+  te streng. De toegeeflijke richting is geen eigenschap die je op een tweewegfixture kunt
+  bestellen; zij is gemeten op het echte veld.
+- `src/lib/engine2/optimizer/choiceKeyGuard.test.ts` — `seriesInductanceCeilingSource` is CHOICE en
+  mag nooit naar POLISH of GREY migreren: hij bepaalt welke GROOTHEID de zoekdoos begrenst. Het is
+  de TWEEDE sleutel na V47's `protectionRule` die ZONDER polish-tweelingzus komt, en de reden is
+  dezelfde vorm: de gemeten NF en sweep die de inversie herleest reizen binnen
+  `valueSumCeilings`, dat sinds F2 polish is precies omdat het data is die de run al vasthoudt.
+  Sleuteltelling 49 → 50, verdeling 33/5/11 → 34/5/11. Plus de kandidaatverklaring: een gesteld
+  LF-budget leidt `'tuned'` af, geen budget geeft ABSENT met de P4-reden en NOOIT een gesteld
+  `'seed'` (dezelfde regel die V45 op `'flat'` en V47 op `'seed'` toepast), een expliciete waarde
+  wint, en de bron beweegt de vingerafdruk. **Dat laatste is hier geen hoffelijkheid maar de hele
+  meting:** de twee armen van `measure-v48-ceiling-tracking.ts` verschillen in dat ene woord.
+- **DE GELEVERDE-NETWERK-TOETS VAN V45 BLIJFT STAAN, ONGEWIJZIGD, en is sinds V48 van betekenis
+  veranderd zonder van code te veranderen.** Zij was de vangnet onder een bekend gat; zij is nu de
+  BEWAKING dat het gat dicht is. Vuurt zij nog op een kandidaat die het volgende plafond gevolgd
+  heeft, dan is de reparatie onvolledig en niet de kandidaat verkeerd.
+
 ### V41-guards (wat de ontwerp- en synthesestap mochten bouwen)
 - `src/lib/engine2/optimizer/chainChoices.ts` — **een TWEEDE classificatielijst, en de smalheid is de
   claim.** `CHOICE_KEYS`/`GREY_KEYS`/`POLISH_KEYS` dekken de 44 sleutels van `NetOptimizeOptions`
@@ -1620,7 +1740,7 @@ grotere ingreep — hij raakt élk commando in dit project — en is deze sessie
 ### De casus-1-fixtures die een SCRIPT opwekt (F4d)
 `test-fixtures/casus1/KAND-V2-*.adsfilter.json` zijn de v2-kandidaten die de shortlist haalden —
 negen bij F4d, tien vanaf V28, acht sinds V41, vier bij V42, zeven sinds V43, zeven na de V44- en
-de V45-regeneratie, **en VIER sinds V47** — bevroren als bestanden
+de V45-regeneratie, vier bij V47, **en VIJF sinds V48** — bevroren als bestanden
 op precies dezelfde voet als de drie v1-kandidaten — want F4a stelde vast dat casus 1 géén klasse-C-
 referenties heeft, en "laat de suite de scan draaien en assert op wat eruit komt" zou de eerste maken.
 Twee scripts, twee kosten:
@@ -1683,7 +1803,7 @@ te tunen. **Deze twee runs zijn samen het leeuwendeel van de suite** — en zij 
 `casus1V2Refusal.test.ts` de verwerping), zodat zij naast elkaar draaien in plaats van na elkaar.
 Gemeten in de volle run van 01-09-2026: 1244,3 s en 924,2 s, bij een wandklok van 1254,4 s.
 
-**Sinds V47 zijn het er VEERTIEN corpora, en dat is opzet.** `KAND_V2_*` is het levende corpus.
+**Sinds V48 zijn het er VIJFTIEN corpora, en dat is opzet.** `KAND_V2_*` is het levende corpus.
 `V28_KAND_*` is bevroren vóór de vloer een ZOEKDOEL was (V30); `V30_KAND_*` toen de poort nog blind
 was onder de verre-veldbodem (V32); `V32_KAND_*` toen de BARRIÈRE nog het evaluatieraster las terwijl
 de poort de sweep handhaafde (V33); `V33_SWEEP_KAND_*` is V33's dure referentiearm, met de barrière
@@ -1720,8 +1840,16 @@ geleverde netwerk naast dat van het ZAAD en casus 1 stelde niets op M-C. Wat dat
 aan BEIDE kanten gemeten en de twee kanten wijzen tegengesteld: alle vier de kandidaten die zij weigerde
 meten absoluut −3,43 tot −12,29 dB, dus zij ving daar echte schendingen — maar hetzelfde veld
 LEVERDE twee netlists op −14,38 en −15,10 dB, omdat hún zaad even slecht was. Een regel die aan
-het zaad hangt bewaakt het toeval en niet de driver (V47).
-Alle dertien de gedateerde corpora zijn byte-identieke bestanden onder een andere naam, met hun
+het zaad hangt bewaakt het toeval en niet de driver (V47); `V47_KAND_*` toen het A5d.6-PLAFOND op
+de seriespoel van de laagste weg nog EENMALIG werd opgelost, bij de padweerstand van het ZAAD, en
+daarna vaststond voor de hele tune — terwijl de tune diezelfde padweerstand verplaatst. V45 schreef
+dat op als open punt en beredeneerde het als veilig, en in één richting klopt dat: meer
+serieweerstand dempt de resonante helft, dus een plafond opgelost bij een LAGERE padweerstand is
+hoogstens te streng. Wat dat argument weglaat is de tune die de padweerstand VERLAAGT, en daar is
+het plafond TOEGEEFLIJK — gemeten op Sanders browserrun van 01-09-2026: twee van negen kandidaten
+leverden 2,29 en 1,61 dB opslingering tegen een gestelde 1,4, en de geleverde-netwerk-toets ving ze
+allebei. Vangen is verliezen (V48).
+Alle veertien de gedateerde corpora zijn byte-identieke bestanden onder een andere naam, met hun
 klasse-B-blokken mee, bewaard als de "vóór"-helften van hun vergelijkingen. Wie
 een script schrijft dat het levende corpus opruimt gebruikt `^KAND_V2_\d+$` en nooit
 `startsWith('KAND_V2')`: die tweede slikt de gedateerde corpora mee en gooit het bewijsmateriaal weg.
@@ -1731,7 +1859,7 @@ genoemde netlist die geen v1-baseline is een geclassificeerd blok moet hebben, o
 familielijst die er stond bij V32 vergeten is. De koppeling bestandsnaam ↔ kandidaat staat in
 `manifest_en_geometrie.v30_corpus`, `.v32_corpus`, `.v33_sweep_corpus`, `.v33_corpus`,
 `.v34_corpus`, `.v37_corpus`, `.v38fix_corpus`, `.v41_corpus`, `.v42_corpus`, `.v43_corpus`,
-`.v44_corpus` en `.v45_corpus`, want zij
+`.v44_corpus`, `.v45_corpus` en `.v47_corpus`, want zij
 stond alleen in `casus1_v2_herkomst.json` en dat bestand wordt door de volgende regeneratie
 overschreven. **Bevriezen doe je sinds V34 met `scripts/freeze-live-corpus.ts`** en niet met de
 hand: het zijn vijf bewerkingen die allemaal moeten landen.
