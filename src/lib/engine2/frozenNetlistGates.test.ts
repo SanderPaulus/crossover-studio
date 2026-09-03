@@ -91,6 +91,9 @@ import {
   CASUS1_V2_GRID,
   casus1ChainInput,
   casus1V2Facts,
+  CASUS1_LEVEL_WORK_SETTINGS,
+  CASUS1_THERMAL_DESIGN_POWER_W,
+  CASUS1_LOWEST_WAY_LEVEL_WORK_FORBIDDEN,
 } from './casus1V2.fixture.ts';
 import { smoothDbGaussian } from '../bandMetrics.ts';
 import { applyTransfer, combineN, type GriddedResponse } from '../dsp.ts';
@@ -105,6 +108,8 @@ import { LF_BUMP_VERSION } from './metrics/acoustic.ts';
 import { RESISTIVE_EQUIVALENT_VERSION } from './metrics/resistiveEquivalent.ts';
 import { DRIVE_EXCURSION_VERSION } from './metrics/driveExcursion.ts';
 import { BUILDABILITY_VERSION } from './metrics/buildability.ts';
+import { LEVEL_WORK_VERSION, levelWorkOnNetlist, seriesInductanceByWay } from '../levelWork.ts';
+import type { LevelWorkAnalysis } from './report.ts';
 import { busTopology, systemMinImpedanceOhm } from '../netOptimizer.ts';
 import {
   sourceProbeIndex,
@@ -193,6 +198,10 @@ const BASE: ReportSettings = {
   /* V50 — the resistor class and margin, spread for the same reason: the
    * REPORT judges every frozen netlist with them, whatever the search does. */
   ...BUILDABILITY,
+  /* V51 — the wiring per way and the level-work requirement, spread for the
+   * same reason: the report's level-work block reads them, and the guards
+   * below assert what it says. */
+  ...CASUS1_LEVEL_WORK_SETTINGS,
   /* V49 — the driver cards, the amplifier peak and the X_max margin, spread for
    * the same reason: with them the report derives an excursion ceiling per
    * driver and M-C is judged on the STRICTER of that and the stated figure.
@@ -297,16 +306,27 @@ const FIELD: {
     rejected: { validity: number; silence: number; level: number };
     grounds: { validity: boolean; silence: boolean; level: boolean };
   }[];
+  /** V51 — the level-work block of the same report, and the series L per way off the file. */
+  levelWork: LevelWorkAnalysis | null;
+  seriesLByWay: Record<string, number>;
+  /** V51 — the watts of the resistor M-A/part judged, at the CONTINUOUS rating
+   *  (the M-A column), beside the judged value in `verdicts`. The V50 reading. */
+  hottestAtRatingW: number | null;
 }[] = NETLIST_KEYS.map((key) => {
   const r = report(key);
   const d = r.metrics.dissipation;
   const largest = d?.elements.find((e) => !e.parasitic) ?? null;
+  const judgedR = r.gates.verdicts.find((v) => v.gate === 'M-A/part');
+  const judgedEl = d?.elements.find((e) => !e.parasitic && e.id === judgedR?.parameters?.element) ?? null;
   return {
     key,
     verdicts: r.gates.verdicts,
     anyActive: r.gates.anyActive,
     dissipationPct: d ? d.totalFraction * 100 : null,
     largestResistorW: largest?.watts ?? null,
+    levelWork: r.predesign.levelWork,
+    seriesLByWay: seriesInductanceByWay(casus1Parts(key)),
+    hottestAtRatingW: judgedEl?.watts ?? null,
     lfBumpDb: r.metrics.lfBump[0]?.result.extraDb ?? null,
     lfLiftDb: r.metrics.lfBump[0]?.result.liftDb ?? null,
     lfResonantDb: r.metrics.lfBump[0]?.result.resonantDb ?? null,
@@ -2889,28 +2909,51 @@ describe('V50 — buildability: the watts in every resistor and the current thro
     }
   });
 
-  it('THE FINDING: at the stated class no reference filter and no live netlist clears M-A/part — HUIDIG by a factor five', () => {
-    /* This is the sanity the session was told to take BEFORE regenerating, and
-     * it is asserted so the day it stops being true is visible: the woofer
-     * pays 4.6–8.5 dB of attenuation to the anchor (V45), and at 100 W
-     * continuous that attenuation IS tens of watts in a series resistor. Not
-     * a reason to relax the requirement (the number is the physics of a
-     * 10 W part at 100 W); a reason for the decision the manifest records. */
-    const judged = ROWS.filter((x) => /^KAND_V2_\d+$/.test(x.key) || V1_BASELINES.includes(x.key));
+  it('THE V50 FINDING, at the CONTINUOUS rating: no reference filter and no V50-era netlist clears M-A/part — HUIDIG by a factor five', () => {
+    /* This is the sanity V50 took BEFORE regenerating, and it is asserted so
+     * the day it stops being true is visible: the woofer pays 4.6–8.5 dB of
+     * attenuation to the anchor (V45), and at 100 W continuous that
+     * attenuation IS tens of watts in a series resistor.
+     *
+     * RE-ANCHORED AT V51 ON TWO POINTS, without changing the claim. (1) The
+     * gate now JUDGES at the stated thermal design power (10 W), so the V50
+     * reading is taken off the M-A column at the continuous rating
+     * (`hottestAtRatingW`, the same element the gate judged) rather than off
+     * the verdict. (2) The live corpus is the V51 field, generated WITHOUT a
+     * woofer pad, so "no live netlist clears it" is no longer the claim; the
+     * V50 field lives on as the dated `V50_KAND_*` corpus and the claim is
+     * made there — the same re-anchoring V43 applied to `v42_bult_bevinding`. */
+    const judged = FIELD.filter((x) => /^V50_KAND_\d+$/.test(x.key) || V1_BASELINES.includes(x.key));
     expect(judged.length).toBeGreaterThan(3);
-    for (const { key, r } of judged) {
-      expect(r.value, `${key}: no watts`).not.toBeNull();
-      expect(r.pass, `${key}: clears ${ALLOWED_W} W — the finding no longer holds, remeasure V50`).toBe(false);
-      expect(r.reason).toMatch(/exceeds the stated ceiling/);
-      expect(String(r.parameters?.remedy)).toMatch(/generator does not make/);
+    for (const f of judged) {
+      expect(f.hottestAtRatingW, `${f.key}: no watts at the rating`).not.toBeNull();
+      expect(f.hottestAtRatingW!, `${f.key}: clears ${ALLOWED_W} W at the rating — the V50 finding no longer holds`).toBeGreaterThan(ALLOWED_W);
     }
     const huidig = ROWS.find((x) => x.key === 'HUIDIG')!.r;
     expect(huidig.parameters?.element).toBe('R8');
-    expect(huidig.value! / ALLOWED_W).toBeGreaterThan(4);
+    expect(FIELD.find((f) => f.key === 'HUIDIG')!.hottestAtRatingW! / ALLOWED_W).toBeGreaterThan(4);
     // ...and the requirement is not unreachable in PRINCIPLE: the casebook holds at least one netlist that clears it
-    // (a network with no discrete resistor is not judged and does not count).
-    const clears = ROWS.filter((x) => x.r.value !== null && x.r.pass);
-    expect(clears.length, 'no netlist in the whole casebook clears the class — then the class describes nothing buildable').toBeGreaterThan(0);
+    // at the rating (a network with no discrete resistor is not judged and does not count).
+    const clears = FIELD.filter((x) => x.hottestAtRatingW !== null && x.hottestAtRatingW <= ALLOWED_W);
+    expect(clears.length, 'no netlist in the whole casebook clears the class at the rating — then the class describes nothing buildable').toBeGreaterThan(0);
+  });
+
+  it('V51 — judged at the THERMAL design power the same reference filters clear the class, and the verdict says which power it read', () => {
+    /* The hinge of V50's pending decision: thermal load is a mean over the
+     * listening time, and at the stated 10 W HUIDIG's R8 sits at a tenth of
+     * its 100 W reading. Both numbers are on the verdict — the judged watts
+     * and the power they were judged at — so a reader cannot take a 2.6 W
+     * verdict for a 100 W claim. */
+    expect(CASUS1_THERMAL_DESIGN_POWER_W, 'casus 1 no longer states a thermal design power').not.toBeNull();
+    for (const key of V1_BASELINES) {
+      const f = FIELD.find((x) => x.key === key)!;
+      const r = f.verdicts.find((v) => v.gate === 'M-A/part')!;
+      expect(r.parameters?.judged_at_W).toBe(CASUS1_THERMAL_DESIGN_POWER_W);
+      expect(String(r.parameters?.judged_at_source)).toMatch(/thermal design power/);
+      expect(r.pass, `${key}: fails the class at ${CASUS1_THERMAL_DESIGN_POWER_W} W thermal`).toBe(true);
+      // The judged watts are the rating watts scaled by the power ratio — a scalar on M-A's fraction, nothing else.
+      expect(r.value!).toBeCloseTo((f.hottestAtRatingW! * CASUS1_THERMAL_DESIGN_POWER_W!) / CONTINUOUS_POWER_W!, 6);
+    }
   });
 
   it('the recorded block reproduces from a fresh measurement, per netlist', () => {
@@ -2930,7 +2973,13 @@ describe('V50 — buildability: the watts in every resistor and the current thro
         expect(x!.r.value).toBeNull();
       } else {
         expect(row.heetste_R).toBe(x!.r.parameters?.element);
-        expect((Math.abs(row.heetste_R_W - x!.r.value!) / x!.r.value!) * PERCENT_V50).toBeLessThanOrEqual(TOL_W_PCT);
+        /* V51 — judged at 10 W the small values round to hundredths, and a
+         * 2 % class on 0.05 W is smaller than the recorder's own rounding; the
+         * half-unit of that rounding is the floor of the comparison. */
+        const RECORD_ROUNDING_W = 0.005;
+        expect(Math.abs(row.heetste_R_W - x!.r.value!)).toBeLessThanOrEqual(
+          Math.max(RECORD_ROUNDING_W, (x!.r.value! * TOL_W_PCT) / PERCENT_V50),
+        );
         expect(row.haalt_de_eis).toBe(x!.r.pass);
       }
       expect(row.drukste_spoel).toBe(x!.l.parameters?.element);
@@ -2970,6 +3019,179 @@ describe('V50 — buildability: the watts in every resistor and the current thro
     // And the per-way figure travels to the run exactly as the report reads it.
     expect(CASUS1_V2_GATES.maxDriveOnFsDbByDriver).toEqual(STATED_DRIVE_BY_WAY);
     expect(CASUS1_V2_GATES.maxDriveOnFsDb).toBeUndefined();
+  });
+});
+
+/* ================================================================== *
+ * V51 — level work on the lowest way, over the whole casebook
+ * ================================================================== */
+
+describe('V51 — no level work on the lowest way: what the configuration asks, and what every frozen netlist carries', () => {
+  const RECORD = (golden.manifest_en_geometrie as unknown as {
+    v51_niveauwerk?: {
+      schatter: string;
+      eis: string | null;
+      laagste_weg: string | null;
+      anker: string | null;
+      gevraagd_X_dB: number | null;
+      serie_zou_leveren_dB: number | null;
+      baffle_step_hz: number | null;
+      thermisch_ontwerpvermogen_W: number | null;
+      plateau: { beoordeeld: boolean; octaven_onder_overgang: number | null } | null;
+      levend_corpus_netlists: number;
+      levend_corpus_met_niveauwerk_op_laagste_weg: number;
+      referentiefilters_met_niveauwerk_op_laagste_weg: number;
+      per_netlist: {
+        netlist: string;
+        serie_R: { id: string; ohm: number }[] | null;
+        shunt_pad: { id: string; ohm: number }[] | null;
+        geen_niveauwerk: boolean | null;
+        serie_L_mH_per_weg: Record<string, number>;
+      }[];
+    };
+  }).v51_niveauwerk;
+  const STATED = (golden.manifest_en_geometrie as unknown as {
+    gestelde_eisen: {
+      geen_niveauwerk_op_laagste_weg: boolean;
+      geen_niveauwerk_motivering: string;
+      thermisch_ontwerpvermogen_W: number;
+      thermisch_ontwerpvermogen_motivering: string;
+      bouwbaarheid_op_de_zoektocht: { gewapend: boolean };
+    };
+    driverkaart: Record<string, { schakeling?: { aantal: number; gemeten: string; gewenst: string } }>;
+    geometrie: { baffle_mm: { breedte: number } };
+  });
+  const TOL_DB_V51 = (golden as unknown as { toleranties: { dB: number } }).toleranties.dB;
+  /* The three reference filters WITH the design's target curve: X is the gap
+   * after the voicing (A5d.4a via A5e.2), and `BASE` carries no curve — the
+   * V45 blocks build their own for the same reason. The inventory and the
+   * wiring do not depend on it, so `FIELD` serves everything else. */
+  const CURVE_V51 = casus1TargetCurve(golden);
+  const REF = V1_BASELINES.map((k) => {
+    const f = FIELD.find((x) => x.key === k)!;
+    const r = report(k, { ...BASE, targetCurve: CURVE_V51 });
+    return { ...f, verdicts: r.gates.verdicts, levelWork: r.predesign.levelWork };
+  });
+
+  it('the requirement, the thermal design power and the wiring come from the case book, with their reasons', () => {
+    expect(STATED.gestelde_eisen.geen_niveauwerk_op_laagste_weg).toBe(true);
+    expect(CASUS1_LOWEST_WAY_LEVEL_WORK_FORBIDDEN).toBe(true);
+    expect(STATED.gestelde_eisen.geen_niveauwerk_motivering.length).toBeGreaterThan(200);
+    expect(STATED.gestelde_eisen.geen_niveauwerk_motivering).toMatch(/vuistregel/i);
+    expect(STATED.gestelde_eisen.thermisch_ontwerpvermogen_W).toBe(CASUS1_THERMAL_DESIGN_POWER_W);
+    expect(STATED.gestelde_eisen.thermisch_ontwerpvermogen_motivering).toMatch(/luister/i);
+    // V50's pending decision is taken: the resistor requirement is ARMED on the search.
+    expect(STATED.gestelde_eisen.bouwbaarheid_op_de_zoektocht.gewapend).toBe(true);
+    // The wiring block of the lowest way names two drivers, measured AND wanted in parallel.
+    const lowest = REF[0].levelWork!.lowestWay;
+    const w = STATED.driverkaart[lowest]?.schakeling;
+    expect(w, `${lowest} has no wiring block`).toBeDefined();
+    expect(w!.aantal).toBe(2);
+    expect(w!.gemeten).toBe('parallel');
+    expect(w!.gewenst).toBe('parallel');
+  });
+
+  it('X — what the configuration asks — is CLASS A: the same on all three reference filters, above zero, and the anchor is not the lowest way', () => {
+    for (const f of REF) {
+      expect(f.levelWork, `${f.key}: no level-work block`).not.toBeNull();
+      expect(f.levelWork!.requirement).toBe('none');
+      expect(f.levelWork!.aboveAnchorDb).not.toBeNull();
+    }
+    const xs = REF.map((f) => f.levelWork!.aboveAnchorDb!);
+    expect(Math.max(...xs) - Math.min(...xs)).toBeLessThanOrEqual(TOL_DB_V51);
+    /* The casus-1 fact V51 is about: the anchor is NOT the lowest way, so the
+     * configuration asks level work on the lowest way, and the amount is the
+     * A5d.4 gap after the target curve — the same number
+     * `verankerde_gaps_dB.woofer_tov_mid` records. */
+    expect(REF[0].levelWork!.anchor).not.toBe(REF[0].levelWork!.lowestWay);
+    expect(xs[0]).toBeGreaterThan(0);
+    const gaps = (golden as unknown as { verankerde_gaps_dB: { woofer_tov_mid: number } }).verankerde_gaps_dB;
+    expect(Math.abs(xs[0] - gaps.woofer_tov_mid)).toBeLessThanOrEqual(TOL_DB_V51);
+    // Two equal drivers in series would deliver 20·log10(2) of it; the baffle step is the target curve's transition.
+    expect(REF[0].levelWork!.seriesWouldDeliverDb).toBeCloseTo(20 * Math.log10(2), 6);
+    expect(REF[0].levelWork!.stepHz).toBeCloseTo(baffleStepHz(STATED.geometrie.baffle_mm.breedte)!, 6);
+  });
+
+  it('the plateau is NOT judged on this measurement set, and the block says so from its own numbers', () => {
+    /* Item 4 of V51: the judged band starts at the lowest way's validity floor,
+     * a fraction of an octave below the cabinet's baffle step, so the stated
+     * plateau lies outside it. Asserted from the report's own reading — no
+     * frequency is written here. */
+    const p = REF[0].levelWork!.plateau!;
+    expect(p.applicable).toBe(true);
+    expect(p.judged).toBe(false);
+    expect(p.octavesBelowStep!).toBeGreaterThan(0);
+    expect(p.octavesBelowStep!).toBeLessThan(1);
+    expect(p.note).toMatch(/NOT/);
+    expect(p.note).toMatch(/no assumption/);
+  });
+
+  it('THE COUNTER-PROOF: the reference filters and every V50-era netlist carry level work on the lowest way', () => {
+    /* Without this, "the live corpus carries none" would be equally true of a
+     * casus where nothing ever padded the woofer. HUIDIG pads it with R8; the
+     * V50 corpus paid 13.6–34.9 W in one resistor there. */
+    for (const f of [...REF, ...FIELD.filter((x) => /^V50_KAND_\d+$/.test(x.key))]) {
+      const inv = f.levelWork!.delivered!;
+      expect(inv.reachable, `${f.key}: lowest way unreachable`).toBe(true);
+      expect(inv.none, `${f.key}: carries no level work on ${f.levelWork!.lowestWay}`).toBe(false);
+    }
+    expect(REF[0].levelWork!.delivered!.seriesResistors.map((r) => r.id)).toContain('R8');
+  });
+
+  it('THE LIVE CORPUS carries NO level work on the lowest way — the requirement reached the search', () => {
+    const live = FIELD.filter((x) => /^KAND_V2_\d+$/.test(x.key));
+    /* An empty live corpus is a FINDING (every candidate refused with X), and
+     * then this claim has no subject; the recorded block says how many there
+     * are, and the case book says why. The claim is made on whatever survived. */
+    expect(RECORD?.levend_corpus_netlists).toBe(live.length);
+    for (const f of live) {
+      const inv = f.levelWork!.delivered!;
+      expect(inv.reachable, `${f.key}: lowest way unreachable`).toBe(true);
+      expect(inv.none, `${f.key}: the search placed level work on ${f.levelWork!.lowestWay} — ${JSON.stringify(inv.seriesResistors)} ${JSON.stringify(inv.shuntPads)}`).toBe(true);
+      // ...and what carries the way's tilt instead is its series coil, which exists.
+      expect(f.seriesLByWay[f.levelWork!.lowestWay] ?? 0).toBeGreaterThan(0);
+    }
+  });
+
+  it('the recorded block reproduces from a fresh measurement, per netlist', () => {
+    expect(RECORD, 'the recorder wrote no v51_niveauwerk block').toBeDefined();
+    expect(RECORD!.schatter).toBe(LEVEL_WORK_VERSION);
+    expect(RECORD!.eis).toBe('none');
+    expect(RECORD!.laagste_weg).toBe(REF[0].levelWork!.lowestWay);
+    expect(RECORD!.anker).toBe(REF[0].levelWork!.anchor);
+    expect(Math.abs(RECORD!.gevraagd_X_dB! - REF[0].levelWork!.aboveAnchorDb!)).toBeLessThanOrEqual(TOL_DB_V51);
+    expect(RECORD!.thermisch_ontwerpvermogen_W).toBe(CASUS1_THERMAL_DESIGN_POWER_W);
+    expect(RECORD!.plateau?.beoordeeld).toBe(false);
+    expect(RECORD!.per_netlist.length).toBe(FIELD.length);
+    expect(RECORD!.referentiefilters_met_niveauwerk_op_laagste_weg).toBe(V1_BASELINES.length);
+    for (const row of RECORD!.per_netlist) {
+      const f = FIELD.find((x) => x.key === row.netlist);
+      expect(f, `${row.netlist} is recorded but not in the field`).toBeDefined();
+      const inv = f!.levelWork!.delivered!;
+      expect(row.geen_niveauwerk).toBe(inv.none);
+      expect((row.serie_R ?? []).map((r) => r.id)).toEqual(inv.seriesResistors.map((r) => r.id));
+      expect((row.shunt_pad ?? []).map((r) => r.id)).toEqual(inv.shuntPads.map((r) => r.id));
+      for (const [way, mH] of Object.entries(row.serie_L_mH_per_weg)) {
+        expect(Math.abs(mH - (f!.seriesLByWay[way] ?? 0) * 1e3)).toBeLessThanOrEqual(0.01);
+      }
+    }
+  });
+
+  it('P2 — without the requirement and the wiring the report is what it was, and the block reads "not stated"', () => {
+    const { lowestWayLevelWork: _l, wiringByDriver: _w, ...rest } = BASE;
+    void _l; void _w;
+    const bare = report('HUIDIG', rest);
+    const armed = FIELD.find((f) => f.key === 'HUIDIG')!;
+    expect(JSON.stringify(bare.gates.verdicts)).toBe(JSON.stringify(armed.verdicts));
+    expect(bare.predesign.levelWork!.requirement).toBeNull();
+    expect(bare.predesign.levelWork!.wiring.every((w) => !w.stated)).toBe(true);
+    expect(bare.predesign.levelWork!.seriesWouldDeliverDb).toBeNull();
+    // The inventory does not depend on the requirement: it is what the file carries.
+    expect(bare.predesign.levelWork!.delivered!.seriesResistors).toEqual(armed.levelWork!.delivered!.seriesResistors);
+    expect(bare.predesign.levelWork!.aboveAnchorDb).toBe(armed.levelWork!.aboveAnchorDb);
+    // And the inventory is the same reader the guards call directly.
+    const direct = levelWorkOnNetlist(casus1Filter('HUIDIG', manifest, files, golden).netlist, armed.levelWork!.lowestWay);
+    expect(direct.seriesResistors).toEqual(armed.levelWork!.delivered!.seriesResistors);
   });
 });
 

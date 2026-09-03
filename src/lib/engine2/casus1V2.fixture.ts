@@ -44,13 +44,17 @@ import {
   casus1ContinuousPowerW,
   casus1ExcursionSettings,
   casus1LfResonantBudgetDb,
+  casus1LowestWayLevelWorkForbidden,
   casus1MaxDriveOnFsDb,
   casus1MaxDriveOnFsDbByDriver,
   casus1QesMultiplierMax,
   casus1TargetCurve,
+  casus1ThermalDesignPowerW,
+  casus1WiringByDriver,
   loadGolden,
   type GoldenRefs,
 } from './casus1.fixture.ts';
+import type { WayWiring } from './ingest/wiring.ts';
 import { peakInputVolts } from './metrics/driveExcursion.ts';
 import type { TargetCurve } from './requirements/targetCurve.ts';
 import {
@@ -215,6 +219,44 @@ export const CASUS1_CONTINUOUS_POWER_W: number | null = casus1ContinuousPowerW()
  */
 export const CASUS1_BUILDABILITY = casus1BuildabilitySettings();
 export const CASUS1_BUILDABILITY_ON_SEARCH: boolean = casus1BuildabilityOnSearch();
+
+/**
+ * V51 — the THERMAL DESIGN POWER the resistor gate judges at (10 W on casus 1,
+ * stated as the average listening power), read from its one home. It travels
+ * inside `CASUS1_BUILDABILITY` as `resistorThermalPowerW`, so every report
+ * and every armed run judges M-A/part at it; the continuous rating stays what
+ * the watt column prints at.
+ */
+export const CASUS1_THERMAL_DESIGN_POWER_W: number | null = casus1ThermalDesignPowerW();
+
+/**
+ * V51 — whether casus 1 FORBIDS level work on its lowest way
+ * (`gestelde_eisen.geen_niveauwerk_op_laagste_weg`). It reaches the chain as
+ * the third chain-level choice key (`lowestWayLevelWork: 'none'`) through the
+ * candidate's chain declaration, and the report as `lowestWayLevelWork`.
+ */
+export const CASUS1_LOWEST_WAY_LEVEL_WORK_FORBIDDEN: boolean = casus1LowestWayLevelWorkForbidden();
+
+/**
+ * V51 — the wiring per way from the driver card (the woofer pair: two,
+ * measured parallel, wanted parallel). REPORT input only: the transform in
+ * `ingest/wiring.ts` is the identity on this casus and is not applied.
+ */
+export const CASUS1_WIRING: Record<string, WayWiring> = casus1WiringByDriver();
+
+/**
+ * V51 — the report settings the level-work block reads, spread into every
+ * casus-1 report for the same reason `casus1ExcursionSettings` is: the guards,
+ * the recorder, the generator and the live reproductions must not disagree
+ * about what the project stated.
+ */
+export const CASUS1_LEVEL_WORK_SETTINGS: {
+  wiringByDriver?: Record<string, WayWiring>;
+  lowestWayLevelWork?: 'none';
+} = {
+  ...(Object.keys(CASUS1_WIRING).length > 0 ? { wiringByDriver: { ...CASUS1_WIRING } } : {}),
+  ...(CASUS1_LOWEST_WAY_LEVEL_WORK_FORBIDDEN ? { lowestWayLevelWork: 'none' as const } : {}),
+};
 
 /** V50 — the peak input voltage the coil gate reads currents at (V49's amplifier peak). */
 export const CASUS1_PEAK_INPUT_VOLTS: number | null =
@@ -455,8 +497,16 @@ export function casus1V2Declaration(
      * before the tuner exists. Nothing is stated here, so the derivation
      * applies: the app's own EQ budget and `synthesize`'s own lean threshold.
      * Stating them here instead would put two more app defaults in a fixture,
-     * which is the pattern V34 removed for the source-resistance tiers. */
-    chainDeclaration: declareCandidateChainChoices({ stated: {} }),
+     * which is the pattern V34 removed for the source-resistance tiers.
+     *
+     * V51 — and the THIRD chain key, derived from the project's stated
+     * requirement: with `geen_niveauwerk_op_laagste_weg` stated the candidate
+     * declares `lowestWayLevelWork: 'none'`; unstated it is ABSENT (P4). Read
+     * from the manifest, never written here. */
+    chainDeclaration: declareCandidateChainChoices({
+      stated: {},
+      ...(CASUS1_LOWEST_WAY_LEVEL_WORK_FORBIDDEN ? { lowestWayLevelWorkForbidden: true } : {}),
+    }),
     provenance: c.provenance,
     orderByModel: { mid: c.crossings[0].order, tweeter: c.crossings[1].order },
   };

@@ -61,6 +61,24 @@ export const CHAIN_CHOICE_KEYS = [
   'eqBands',
   /* --- how easily the synthesis step declines to BUILD one --- */
   'leanTargetDb',
+  /* --- V51: whether the LOWEST way may carry LEVEL WORK at all ---
+   *
+   * The third key, and the first with an ABSENT state. A choice by the same
+   * test as the two above — it decides what the TOPOLOGY may be: with `'none'`
+   * the design step trims the lowest way by nothing and proposes no shelf pad
+   * on it, and its synthesis places no L-pad, no top-octave hold and no shelf
+   * pad. A value tune moves numbers between the parts those two steps chose
+   * and never creates a resistor, so the decision is made before the tuner
+   * exists — which is exactly why it lives in THIS list and not in
+   * `choices.ts`.
+   *
+   * MEASURED AT V50 ON CASUS 1, which is why it is a key and not a remark: the
+   * anchor is the mid, the woofer pair sits above it, and every delivered
+   * design paid that surplus in a series resistor — 14 to 35 W in one part at
+   * 100 W continuous, the axis no other requirement reaches. Whether that
+   * surplus is paid in a resistor or left in the sum is a different
+   * loudspeaker, not a different amount of polish. */
+  'lowestWayLevelWork',
 ] as const;
 
 export type ChainChoiceKey = (typeof CHAIN_CHOICE_KEYS)[number];

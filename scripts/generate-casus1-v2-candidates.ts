@@ -50,7 +50,7 @@ import { gateSettingsKey } from '../src/lib/engine2/optimizer/gates.ts';
 import { budgetSettingsKey } from '../src/lib/engine2/optimizer/bounds.ts';
 import { measurementFactsKey } from '../src/lib/engine2/optimizer/measurementFacts.ts';
 import { buildShortlist, type ShortlistInput } from '../src/lib/engine2/optimizer/shortlist.ts';
-import { handleV2Request, type V2Chain3Payload, type V2Response } from '../src/lib/engine2/optimizer/worker.ts';
+import { handleV2Request, type V2Chain3Payload, type V2LevelWorkColumn, type V2Response } from '../src/lib/engine2/optimizer/worker.ts';
 import type { Chain3Input, Chain3Result } from '../src/lib/threeWayChain.ts';
 import type { GriddedResponse } from '../src/lib/dsp.ts';
 import { serializeFilter } from '../src/lib/filterFile.ts';
@@ -75,6 +75,10 @@ import {
   CASUS1_MAX_DRIVE_ON_FS_DB_BY_DRIVER,
   CASUS1_QES_MULTIPLIER_MAX,
   CASUS1_TARGET_CURVE,
+  CASUS1_LOWEST_WAY_LEVEL_WORK_FORBIDDEN,
+  CASUS1_LEVEL_WORK_SETTINGS,
+  CASUS1_THERMAL_DESIGN_POWER_W,
+  CASUS1_WIRING,
 } from '../src/lib/engine2/casus1V2.fixture.ts';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
@@ -98,6 +102,10 @@ const report = buildReport({
       ? { maxDriveOnFsDbByDriver: { ...CASUS1_MAX_DRIVE_ON_FS_DB_BY_DRIVER } }
       : {}),
     ...CASUS1_BUILDABILITY,
+    /* V51 — the wiring per way and the level-work requirement, for the report's
+     * own block; the requirement reaches the SEARCH through the candidate's
+     * chain declaration and not through here. */
+    ...CASUS1_LEVEL_WORK_SETTINGS,
     orderByPair: { [ctcKey('woofer', 'mid')]: 4, [ctcKey('mid', 'tweeter')]: 4 },
     reOhmByDriver: { woofer: CASUS1_WOOFER_DC_OHM },
     targetCurve: CASUS1_TARGET_CURVE,
@@ -146,6 +154,8 @@ type DoneData = {
   topology: ShortlistInput<Chain3Result>['topology'];
   gates: ShortlistInput<Chain3Result>['gates'];
   rejection: ShortlistInput<Chain3Result>['rejection'];
+  /** V51 — the level-work column: requirement, X, delivered inventory, plateau. */
+  levelWork: V2LevelWorkColumn;
   notes: string[];
 };
 
@@ -211,6 +221,21 @@ const outcomes: {
     reden: string;
     geweigerde_tune: Record<string, number | null> | null;
   } | null;
+  /* V51 — het NIVEAUWERK op de laagste weg: de eis waaronder deze kandidaat
+   * liep, hoeveel de configuratie VRAAGT (X, de A5d.4-gap tot het anker met
+   * het plateau erin), en wat het geleverde — of geweigerde — netwerk daar
+   * werkelijk draagt. X is het getal van de sessie, ook op een verwerping. */
+  niveauwerk: {
+    eis: 'none' | 'allowed' | null;
+    laagste_weg: string | null;
+    anker: string | null;
+    gevraagd_X_dB: number | null;
+    geleverd_serie_R: { id: string; ohm: number }[] | null;
+    geleverd_shunt_pad: { id: string; ohm: number }[] | null;
+    geleverd_geen: boolean | null;
+    plateau_beoordeeld: boolean;
+    plateau_toelichting: string;
+  };
 }[] = [];
 /* ------------------------------------------------------------------ *
  * V47 — DE VIJFTIEN KETENRUNS OVER DE CORES, IN PLAATS VAN ACHTER ELKAAR
@@ -420,6 +445,17 @@ function runCandidate(c: (typeof field.field.candidates)[number], n: number): Sh
           > | null,
         }
       : null,
+    niveauwerk: {
+      eis: done.levelWork.requirement,
+      laagste_weg: done.levelWork.lowestWay,
+      anker: done.levelWork.anchor,
+      gevraagd_X_dB: done.levelWork.askedDb === null ? null : Number(done.levelWork.askedDb.toFixed(3)),
+      geleverd_serie_R: done.levelWork.delivered?.seriesResistors.map((r) => ({ id: r.id, ohm: Number(r.ohm.toFixed(3)) })) ?? null,
+      geleverd_shunt_pad: done.levelWork.delivered?.shuntPads.map((r) => ({ id: r.id, ohm: Number(r.ohm.toFixed(3)) })) ?? null,
+      geleverd_geen: done.levelWork.delivered?.none ?? null,
+      plateau_beoordeeld: done.levelWork.plateau.judged,
+      plateau_toelichting: done.levelWork.plateau.note,
+    },
   };
   console.log(
     `  [${n}/${field.field.candidates.length}] ${c.label} → ` +
@@ -631,6 +667,30 @@ const meetopstelling = {
           },
         }
       : {}),
+    ...(CASUS1_BUILDABILITY_ON_SEARCH && CASUS1_BUILDABILITY.resistorClassW !== undefined
+      ? {
+          'M-A/part': {
+            sleutel: 'resistorClassW × resistorPowerMargin bij resistorThermalPowerW',
+            bron: 'gesteld (V50), gewapend op de zoektocht sinds V51',
+            klasse_W: CASUS1_BUILDABILITY.resistorClassW,
+            marge: CASUS1_BUILDABILITY.resistorPowerMargin ?? null,
+            toegestaan_W:
+              CASUS1_BUILDABILITY.resistorPowerMargin !== undefined
+                ? CASUS1_BUILDABILITY.resistorClassW * CASUS1_BUILDABILITY.resistorPowerMargin
+                : null,
+            oordeelt_bij_W: CASUS1_THERMAL_DESIGN_POWER_W ?? CASUS1_CONTINUOUS_POWER_W,
+            waar:
+              'manifest_en_geometrie.gestelde_eisen.weerstandsklasse_W, .weerstandsmarge, ' +
+              '.thermisch_ontwerpvermogen_W (V51: het gemiddelde luistervermogen waarbij de watt per ' +
+              'weerstand geoordeeld wordt; het continue vermogen blijft de wattkolom) en ' +
+              '.bouwbaarheid_op_de_zoektocht.gewapend.',
+            regel:
+              'resistorLoads (metrics/buildability.ts) op M-A\'s eigen elementen bij het thermisch ' +
+              'ontwerpvermogen; het element met de MINSTE marge tegen klasse × marge (gates.ts, ' +
+              'resistorVerdict).',
+          },
+        }
+      : {}),
     ...(CASUS1_AMP_MIN_LOAD_OHM !== null
       ? {
           'M-B/|Z|': {
@@ -659,8 +719,9 @@ const meetopstelling = {
         'excursiegrens van V49 alleen geoordeeld. '
       : 'M-C draagt geen gesteld getal: alleen een afgeleid plafond (V49) oordeelt, waar het er is. ') +
     (CASUS1_BUILDABILITY_ON_SEARCH
-      ? `M-A/part is GEWAPEND op de zoektocht (V50): klasse ${CASUS1_BUILDABILITY.resistorClassW} W × marge ` +
-        `${CASUS1_BUILDABILITY.resistorPowerMargin} bij ${CASUS1_CONTINUOUS_POWER_W} W continu. `
+      ? `M-A/part is GEWAPEND op de zoektocht (V51): klasse ${CASUS1_BUILDABILITY.resistorClassW} W × marge ` +
+        `${CASUS1_BUILDABILITY.resistorPowerMargin} bij ${CASUS1_THERMAL_DESIGN_POWER_W ?? CASUS1_CONTINUOUS_POWER_W} W ` +
+        (CASUS1_THERMAL_DESIGN_POWER_W !== null ? 'thermisch ontwerpvermogen (het continue vermogen blijft de wattkolom). ' : 'continu. ')
       : 'M-A/part is NIET gewapend op de zoektocht (V50, gestelde_eisen.bouwbaarheid_op_de_zoektocht): ' +
         'de weerstandseis is gesteld en het rapport oordeelt ermee op elke bevroren netlist, maar ' +
         'de generator wapent haar pas als Sander dat besluit — zie de sanity op HUIDIG daar. ') +
@@ -674,10 +735,48 @@ const meetopstelling = {
     weerstandsmarge: CASUS1_BUILDABILITY.resistorPowerMargin ?? null,
     spoelklasse_A: CASUS1_BUILDABILITY.coilClassA ?? null,
     continu_vermogen_W: CASUS1_CONTINUOUS_POWER_W,
+    /* V51 — het vermogen waarbij M-A/part OORDEELT: het thermisch
+     * ontwerpvermogen als het gesteld is, anders het continue (V50). */
+    thermisch_ontwerpvermogen_W: CASUS1_THERMAL_DESIGN_POWER_W,
+    oordeelt_bij_W: lastPayload.v2.gates.resistorThermalPowerW ?? lastPayload.v2.gates.amplifierPowerW ?? CASUS1_CONTINUOUS_POWER_W,
     piekingang_V: lastPayload.v2.gates.peakInputVolts ?? null,
     gewapend_op_de_zoektocht: CASUS1_BUILDABILITY_ON_SEARCH,
-    waar: 'manifest_en_geometrie.gestelde_eisen.weerstandsklasse_*, .spoelklasse_*, .versterker_continu_vermogen_W, .bouwbaarheid_op_de_zoektocht',
+    waar: 'manifest_en_geometrie.gestelde_eisen.weerstandsklasse_*, .spoelklasse_*, .versterker_continu_vermogen_W, .thermisch_ontwerpvermogen_W, .bouwbaarheid_op_de_zoektocht',
   },
+  /* ---- V51: MAG DE LAAGSTE WEG NIVEAUWERK DRAGEN ------------------------
+   *
+   * Het TIENDE besluit in dit blok, en het derde op ketenniveau naast het
+   * V41-paar: gelezen vóórdat de tuner bestaat, want de trim van de laagste
+   * weg wordt in de ONTWERPstap gezet en het pad in de SYNTHESEstap gelegd.
+   * Afgelezen van de ketenverklaring, want het is een keuze-sleutel. */
+  niveauwerk_laagste_weg: lastPayload.candidate?.chainDeclaration.stated.lowestWayLevelWork ?? null,
+  niveauwerk_laagste_weg_waarom:
+    (lastPayload.candidate?.chainDeclaration.stated.lowestWayLevelWork ?? null) === 'none'
+      ? 'DE LAAGSTE WEG DRAAGT GEEN NIVEAUWERK: geen weerstand in haar serie-pad en geen weerstand ' +
+        'die alleen van dat pad naar massa hangt (levelWork.ts). De ontwerpstap trimt haar met 0 dB ' +
+        'en stelt er geen shelf-pad op voor; haar synthese legt geen L-pad, geen top-octaaf-hold en ' +
+        'geen shelf-pad; de tuner maakt nooit een weerstand aan. Wat het niveau dan nog regelt is ' +
+        'de baffle step en de tilt van de laagdoorlaatspoel. Kan een kandidaat zijn rimpeldoel ' +
+        'daardoor niet halen, dan komt hij terug als V31-verwerping met X: hoeveel dB niveauwerk ' +
+        'deze configuratie op de laagste weg VRAAGT (de A5d.4-gap tot het anker, plateau ' +
+        'meegerekend). De vuistregel erachter: nooit een pad op de woofer (warmte, impedantie, ' +
+        'demping); pad de mid of de tweeter. GESTELD in ' +
+        'manifest_en_geometrie.gestelde_eisen.geen_niveauwerk_op_laagste_weg (V51).'
+      : 'Niet gesteld: de laagste weg wordt tot de stilste weg getrimd en gepad om dat te ' +
+        'realiseren — de vóór-arm van V51, en wat elke v1-run leest (P4: absent, nooit een ' +
+        'gesteld "allowed").',
+  niveauwerk_laagste_weg_herkomst:
+    CASUS1_LOWEST_WAY_LEVEL_WORK_FORBIDDEN
+      ? 'GESTELD door de ontwerper, gelezen uit `manifest_en_geometrie.gestelde_eisen` — niet ' +
+        'afgeleid en nergens als default in `src/lib/engine2/` (P6). Motivering en meetgeometrie ' +
+        'staan bij `geen_niveauwerk_motivering` en `driverkaart.woofer.schakeling`.'
+      : 'NIET GESTELD.',
+  schakeling_per_weg: CASUS1_WIRING,
+  schakeling_waarom:
+    'Per weg het aantal gelijke drivers en de schakeling zoals GEMETEN en zoals GEWENST ' +
+    '(driverkaart.<weg>.schakeling). Rapportage en geen oordeel: de afleiding parallel<->serie ' +
+    '(SPL -/+20 log N, fase gelijk, Z x/: N^2, ingest/wiring.ts) is op deze casus de identiteit ' +
+    'en wordt niet toegepast — het wooferpaar is parallel gemeten en parallel gewenst.',
   v2_budgetten_gewapend: Object.keys(lastPayload.v2.budgets ?? {}).sort(),
   v2_budgetten_waarom:
     CASUS1_LF_RESONANT_BUDGET_DB !== null

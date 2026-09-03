@@ -105,10 +105,20 @@ import {
   type WayLevel,
 } from './predesign/gaps.ts';
 import { judgeResponse, type ResponseJudgement } from './requirements/response.ts';
-import { FLAT_TARGET, targetOffsetsDb, type TargetCurve } from './requirements/targetCurve.ts';
+import {
+  FLAT_TARGET,
+  plateauCoverage,
+  targetOffsetsDb,
+  type PlateauCoverage,
+  type TargetCurve,
+} from './requirements/targetCurve.ts';
+import { parallelGainDb, type WayWiring } from './ingest/wiring.ts';
+import { DB_PER_DECADE_AMPLITUDE } from './constants.ts';
+import { levelWorkOnNetlist, type LevelWorkOnWay } from '../levelWork.ts';
 import {
   gateVerdicts,
   isHighPassProtected,
+  resistorJudgementPowerW,
   violationText,
   type GateSettings,
   type GateVerdict,
@@ -281,6 +291,53 @@ export interface SystemSummary {
   phaseCoupling: { driver: string; atCrossingHz: number; degPerOctave: number }[];
 }
 
+/**
+ * V51 — LEVEL WORK ON THE LOWEST WAY: what the configuration asks, and what a
+ * loaded netlist actually carries there.
+ *
+ * REPORTING, NOT A VERDICT. The requirement (`lowestWayLevelWork: 'none'`) is a
+ * statement about the SEARCH — the chain's design and synthesis steps honour it
+ * — and this block is what lets a reader see the configuration fact behind it:
+ * how far the lowest way sits above the anchor after the target curve, what
+ * wiring the same drivers in series would deliver of that without a resistor,
+ * and what the cabinet's baffle step delivers below its transition by itself.
+ * Every number here is derived from the anchored gaps (A5d.4), the stated
+ * wiring and the target curve; nothing is a limit.
+ */
+export interface LevelWorkAnalysis {
+  /** The lowest way, by driver id. */
+  lowestWay: string;
+  /** The anchor of the A5d.4 analysis, or null when it was not computed. */
+  anchor: string | null;
+  /**
+   * How far the lowest way sits ABOVE the anchor after the target curve, dB —
+   * the level work the configuration asks on it. 0 when it IS the anchor; null
+   * when the anchored gaps are blocked or absent.
+   */
+  aboveAnchorDb: number | null;
+  /** The stated wiring per way, in low-to-high order; `stated: false` where none was. */
+  wiring: { driver: string; stated: boolean; count: number; measured: WayWiring['measured'] | null; desired: WayWiring['desired'] | null }[];
+  /**
+   * What wiring the lowest way's N equal drivers in SERIES would deliver of
+   * that surplus without a resistor: 20·log10(N) dB. Null for a single driver
+   * or an unstated wiring.
+   */
+  seriesWouldDeliverDb: number | null;
+  /** The target curve's transition frequency (the baffle step), or null. */
+  stepHz: number | null;
+  /** What a baffle step delivers below its transition by itself: 20·log10(2) dB. */
+  baffleStepFullDb: number;
+  /** What the LOADED netlist carries on the lowest way; null without a network. */
+  delivered: LevelWorkOnWay | null;
+  /** The project's stated requirement, or null when none is stated (P4). */
+  requirement: 'none' | 'allowed' | null;
+  /** V51 item 4 — whether the stated plateau lies inside the judged band at all. */
+  plateau: PlateauCoverage | null;
+  /** One paragraph a reader can act on. */
+  sentence: string;
+  notes: string[];
+}
+
 export interface EngineV2Report {
   engine: { label: string; version: string; mark: string };
   ingest: IngestResult;
@@ -374,6 +431,8 @@ export interface EngineV2Report {
      */
     bounds: InvertedBound[];
     boundNotes: string[];
+    /** V51 — see `LevelWorkAnalysis`. Null with fewer than one way. */
+    levelWork: LevelWorkAnalysis | null;
   };
   /**
    * The GATES on the loaded filter (Deliverable 2).
@@ -563,7 +622,14 @@ export function buildReport(input: EngineV2ReportInput): EngineV2Report {
   if (analysis && metrics.dissipation) {
     metrics.buildability = {
       resistorLoads: resistorLoads(metrics.dissipation, {
-        ...(input.settings.amplifierPowerW !== undefined ? { continuousPowerW: input.settings.amplifierPowerW } : {}),
+        /* V51 — formed at the power M-A/part JUDGES at: the stated thermal
+         * design power, else the continuous rating (V50). The M-A watt column
+         * above stays at the rating; `resistorJudgementPowerW` is the one rule
+         * the gate reads too. */
+        ...((): { continuousPowerW?: number } => {
+          const w = resistorJudgementPowerW(input.settings);
+          return w !== undefined ? { continuousPowerW: w } : {};
+        })(),
         ...(input.settings.resistorClassW !== undefined ? { resistorClassW: input.settings.resistorClassW } : {}),
         ...(input.settings.resistorPowerMargin !== undefined
           ? { marginFraction: input.settings.resistorPowerMargin }
@@ -1004,6 +1070,90 @@ export function buildReport(input: EngineV2ReportInput): EngineV2Report {
    * disagree about why there is no table. */
   const gapsBlocked = anchorFloorBlock(levels);
 
+  /* ---------------- V51: level work on the lowest way ---------------- *
+   * Derived from the anchored gaps above (plateau included, because the gaps
+   * are), the stated wiring per way, the target curve's transition and the
+   * loaded netlist. Nothing here is a limit; see `LevelWorkAnalysis`. */
+  const levelWork = ((): LevelWorkAnalysis | null => {
+    if (order.length === 0) return null;
+    const lowest = order[0];
+    const notes: string[] = [];
+    const wiringStated = input.settings.wiringByDriver ?? {};
+    const wiring = order.map((driver) => {
+      const w = wiringStated[driver];
+      return w
+        ? { driver, stated: true, count: Math.max(1, Math.floor(w.count)), measured: w.measured, desired: w.desired }
+        : { driver, stated: false, count: 1, measured: null, desired: null };
+    });
+    let aboveAnchorDb: number | null = null;
+    let anchor: string | null = null;
+    if (gaps) {
+      anchor = gaps.anchor;
+      aboveAnchorDb = gaps.anchor === lowest ? 0 : (gaps.ways.find((w) => w.driver === lowest)?.gapToAnchorDb ?? null);
+    } else {
+      notes.push(
+        gapsBlocked
+          ? 'The anchored gaps are blocked (a level rests on an unknown window), so how far the ' +
+            'lowest way sits above the anchor is not known here.'
+          : 'No anchored gap analysis: fewer than two ways with a usable band.',
+      );
+    }
+    const lw = wiring[0];
+    const seriesWouldDeliverDb =
+      lw.stated && lw.count > 1 && lw.desired === 'parallel' ? parallelGainDb(lw.count) : null;
+    const curve = input.settings.targetCurve ?? FLAT_TARGET;
+    const stepHz = curve.type === 'bass-plateau' && curve.stepHz !== undefined && curve.stepHz > 0 ? curve.stepHz : null;
+    const baffleStepFullDb = DB_PER_DECADE_AMPLITUDE * Math.log10(2);
+    const delivered = input.filter ? levelWorkOnNetlist(input.filter.netlist, lowest) : null;
+    const requirement = input.settings.lowestWayLevelWork ?? null;
+    const judgedBand = commonBand(ingest);
+    const plateau = judgedBand ? plateauCoverage(curve, judgedBand) : null;
+    if (lw.stated && lw.measured !== lw.desired) {
+      notes.push(
+        `${lowest} is measured ${lw.measured} and wanted ${lw.desired}: the derived response of the ` +
+          'desired wiring is NOT applied to the measurements here (the levels above are as measured); ' +
+          'see ingest/wiring.ts for the transform and its equal-drivers assumption.',
+      );
+    }
+    const sentence =
+      (aboveAnchorDb === null
+        ? `How far ${lowest} sits above the anchor is not known (see the notes). `
+        : aboveAnchorDb <= 0
+          ? `${lowest} is the anchor: the configuration asks no level work on it. `
+          : `${lowest} sits ${aboveAnchorDb.toFixed(2)} dB above the anchor (${anchor}) in the handover ` +
+            'region, after the target curve — that is the level work this configuration asks on it. ') +
+      (seriesWouldDeliverDb !== null
+        ? `${lw.count} equal drivers in series would deliver ${seriesWouldDeliverDb.toFixed(2)} dB of that ` +
+          'without a resistor (20·log10(N); phase unchanged, impedance ×N²). '
+        : lw.stated
+          ? 'A single driver: wiring offers no level work. '
+          : 'No wiring is stated for the lowest way, so what series wiring would deliver is not computed. ') +
+      (stepHz !== null
+        ? `The baffle step at ${stepHz.toFixed(0)} Hz delivers up to ${baffleStepFullDb.toFixed(1)} dB below it by ` +
+          'itself; a handover placed low uses that. '
+        : 'No bass-plateau target curve is stated, so no transition frequency is known here. ') +
+      (requirement === 'none'
+        ? 'The project states that the lowest way may carry NO level work (no series resistor, no shunt pad).'
+        : requirement === 'allowed'
+          ? 'The project states that level work on the lowest way is allowed.'
+          : 'The project states no requirement about level work on the lowest way (P4): what a netlist ' +
+            'carries there is shown and nothing judges it.');
+    return {
+      lowestWay: lowest,
+      anchor,
+      aboveAnchorDb,
+      wiring,
+      seriesWouldDeliverDb,
+      stepHz,
+      baffleStepFullDb,
+      delivered,
+      requirement,
+      plateau,
+      sentence,
+      notes,
+    };
+  })();
+
   /* ---------------- F2: the gates on the loaded filter ------------------ *
    * Built from the numbers the metric section above ALREADY produced. No
    * second solve, and no second opinion: the verdict assembly is the one the
@@ -1201,7 +1351,7 @@ export function buildReport(input: EngineV2ReportInput): EngineV2Report {
     driversLowToHigh: order,
     analysisGrid: grid,
     metrics,
-    predesign: { gaps, gapsBlocked, windows, windowInputs, bounds: inverted.bounds, boundNotes },
+    predesign: { gaps, gapsBlocked, windows, windowInputs, bounds: inverted.bounds, boundNotes, levelWork },
     gates: {
       verdicts,
       violation: violationText(verdicts),

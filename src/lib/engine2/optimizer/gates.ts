@@ -172,6 +172,18 @@ export interface GateSettings {
    */
   amplifierPowerW?: number;
   /**
+   * V51 — M-A/part: the THERMAL DESIGN POWER the per-resistor watts are judged
+   * at, W — the average listening power the designer states, as distinct from
+   * the amplifier's continuous rating above. V50 judged at the rating and
+   * measured that no known design on casus 1 survives 100 W continuous in a
+   * 10 W class; the rating is what the amplifier CAN deliver, this is what the
+   * design is built to run at, and the two are different statements. Absent =
+   * the gate judges at `amplifierPowerW` exactly as V50 did (a stated value
+   * wins over the rating, the V41 shape). The watt COLUMN (M-A, V36) keeps
+   * printing at the continuous rating either way.
+   */
+  resistorThermalPowerW?: number;
+  /**
    * V50 — M-A/part: the resistor CLASS the project builds with, W continuous
    * (the manufacturer's rating of the series the designer buys). Used for
    * every resistor the catalogue snap did not rate. Absent = only catalogue
@@ -610,7 +622,10 @@ function resistorVerdict(settings: GateSettings, values: GateMetricValues): Gate
       ? settings.resistorClassW * margin!
       : undefined;
   const limitW = marginOk && anyRating && worst !== null && worst.allowedW !== null ? worst.allowedW : classAllowance;
-  const noPower = settings.amplifierPowerW === undefined || !(settings.amplifierPowerW > 0);
+  /* V51 — the power the watts were formed at: the stated thermal design power
+   * when there is one, else the continuous rating (V50). */
+  const judgedAtW = resistorJudgementPowerW(settings);
+  const noPower = judgedAtW === undefined;
   const whyNull =
     !loads
       ? (values.electricalUnavailable ??
@@ -618,7 +633,9 @@ function resistorVerdict(settings: GateSettings, values: GateMetricValues): Gate
       : loads.length === 0
         ? 'this network carries no discrete resistor — nothing to rate (a zero here would read as a measurement)'
         : noPower
-          ? 'no continuous amplifier power is stated, so M-A\'s fractions cannot be turned into watts'
+          ? /* The V50 sentence, verbatim: a run without a thermal design power
+             * is a V50 run and its verdict is byte-pinned (`f4cRegression`). */
+            'no continuous amplifier power is stated, so M-A\'s fractions cannot be turned into watts'
           : 'no resistor power could be read';
   const parameters: Record<string, number | string> = {
     ...(worst
@@ -627,6 +644,13 @@ function resistorVerdict(settings: GateSettings, values: GateMetricValues): Gate
           ohm: Number(worst.ohm.toFixed(3)),
           share_of_amplifier_power: `${(worst.fraction * PERCENT).toFixed(1)} %`,
           ...(settings.amplifierPowerW !== undefined ? { continuous_power_W: settings.amplifierPowerW } : {}),
+          /* V51 — at which power the watts above were judged. ONLY when a
+           * thermal design power is stated: a run that states none is a V50
+           * run and its verdict stays byte-identical (P2 — `f4cRegression`
+           * pins the V50 verdict block). */
+          ...(settings.resistorThermalPowerW !== undefined && settings.resistorThermalPowerW > 0 && judgedAtW !== undefined
+            ? { judged_at_W: judgedAtW, judged_at_source: 'stated thermal design power (V51)' }
+            : {}),
           ...(worst.ratingW !== null ? { rating_W: worst.ratingW, rating_source: worst.ratingSource ?? '' } : {}),
           ...(marginOk ? { margin_fraction: margin } : {}),
         }
@@ -1054,9 +1078,13 @@ export function evaluateGates(
       })
     : null;
   metrics.dissipation = diss;
+  /* V51 — the per-resistor watts the GATE judges are formed at the thermal
+   * design power when one is stated; the M-A column above stays at the
+   * continuous rating. */
+  const judgedAtW = resistorJudgementPowerW(settings);
   const rLoads = diss
     ? resistorLoads(diss, {
-        ...(settings.amplifierPowerW !== undefined ? { continuousPowerW: settings.amplifierPowerW } : {}),
+        ...(judgedAtW !== undefined ? { continuousPowerW: judgedAtW } : {}),
         ...(settings.resistorClassW !== undefined ? { resistorClassW: settings.resistorClassW } : {}),
         ...(settings.resistorPowerMargin !== undefined ? { marginFraction: settings.resistorPowerMargin } : {}),
         ...(ratings ? { ratings } : {}),
@@ -1169,6 +1197,16 @@ export function resistorGateArmed(s: GateSettings): boolean {
   );
 }
 
+/**
+ * V51 — the power M-A/part turns fractions into watts at: the stated thermal
+ * design power, else the continuous rating, else nothing (F0).
+ */
+export function resistorJudgementPowerW(s: GateSettings): number | undefined {
+  if (s.resistorThermalPowerW !== undefined && s.resistorThermalPowerW > 0) return s.resistorThermalPowerW;
+  if (s.amplifierPowerW !== undefined && s.amplifierPowerW > 0) return s.amplifierPowerW;
+  return undefined;
+}
+
 /** Stable serialisation of the ACTIVE limits, for the run fingerprint. */
 export function gateSettingsKey(s: GateSettings): Record<string, number | Record<string, number>> {
   const out: Record<string, number | Record<string, number>> = {};
@@ -1202,6 +1240,9 @@ export function gateSettingsKey(s: GateSettings): Record<string, number | Record
     out.resistorClassW = s.resistorClassW!;
     out.resistorPowerMargin = s.resistorPowerMargin!;
     if (s.amplifierPowerW !== undefined) out.amplifierPowerW = s.amplifierPowerW;
+    /* V51 — the thermal design power is a search input for exactly as long as
+     * the gate that reads it is armed, like the continuous rating beside it. */
+    if (s.resistorThermalPowerW !== undefined) out.resistorThermalPowerW = s.resistorThermalPowerW;
   }
   if (s.coilClassA !== undefined && s.coilClassA > 0) {
     out.coilClassA = s.coilClassA;

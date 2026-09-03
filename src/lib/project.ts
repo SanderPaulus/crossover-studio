@@ -334,6 +334,14 @@ export interface ProjectDesign {
     resistorClassW?: string;
     resistorPowerMargin?: string;
     coilClassA?: string;
+    /**
+     * V51 — the THERMAL DESIGN POWER (average listening power, W) M-A/part
+     * judges the per-resistor watts at; empty = at the continuous amplifier
+     * power (V50). And the LEVEL-WORK requirement on the lowest way: '' (not
+     * stated) or 'none'. Empty = absent, never a stated "allowed" (P4).
+     */
+    resistorThermalPowerW?: string;
+    lowestWayLevelWork?: string;
   };
   /**
    * A5a (F3b) — per-branch MEASUREMENT metadata for the v2 layer, keyed by
@@ -372,6 +380,11 @@ export interface ProjectDesign {
         /** V50 — the stated M-C figure for this way, dB re its passband;
          *  overrides the single `engineV2.maxDriveOnFsDb`. Empty = none per way. */
         driveOnFsMaxDb?: string;
+        /** V51 — how the way's identical drivers (count on the cabinet form)
+         *  were wired when measured and how the design intends to wire them:
+         *  '', 'parallel' or 'series'. Empty = not stated. */
+        wiringMeasured?: string;
+        wiringDesired?: string;
       }
     >
   >;

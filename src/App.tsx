@@ -30,6 +30,7 @@ import { crossoverToNetlist } from './lib/vxpNetwork.ts';
 import { assessNetwork, type NetworkReadiness } from './lib/networkReadiness.ts';
 import { solveNetwork, type Netlist } from './lib/network.ts';
 import { peakInputVolts } from './lib/engine2/metrics/driveExcursion.ts';
+import type { WayWiring } from './lib/engine2/ingest/wiring.ts';
 import {
   canonicalModelForRole,
   isTweeterModel,
@@ -931,6 +932,11 @@ interface V2MeasurementMeta {
    *  per way; the single field decides, and blank there = the derived ceiling
    *  alone (or nothing). */
   driveOnFsMaxDb: string;
+  /** V51 — how the way's N identical drivers (count on the cabinet form) were
+   *  wired when MEASURED: '', 'parallel' or 'series'. '' = not stated. */
+  wiringMeasured: string;
+  /** V51 — how the design intends to wire them. '' = not stated. */
+  wiringDesired: string;
 }
 
 const emptyV2Meas = (): V2MeasurementMeta => ({
@@ -945,6 +951,8 @@ const emptyV2Meas = (): V2MeasurementMeta => ({
   mmsG: '',
   driveVoltageV: '',
   driveOnFsMaxDb: '',
+  wiringMeasured: '',
+  wiringDesired: '',
 });
 
 /** Cabinet geometry + measurement context, as typed (strings so a field can be
@@ -1748,6 +1756,13 @@ export default function App() {
     resistorClassW: string;
     resistorPowerMargin: string;
     coilClassA: string;
+    /** V51 — the THERMAL DESIGN POWER (average listening power, W) M-A/part
+     *  judges at; blank = at the continuous amplifier power (V50). */
+    resistorThermalPowerW: string;
+    /** V51 — '' (not stated) or 'none': the lowest way may carry no level
+     *  work (no series resistor, no shunt pad). A topology requirement on the
+     *  search, and a chain-level choice key. */
+    lowestWayLevelWork: string;
   }>({
     verticalWindowDeg: '',
     amplifierPowerW: '',
@@ -1768,6 +1783,8 @@ export default function App() {
     resistorClassW: '',
     resistorPowerMargin: '',
     coilClassA: '',
+    resistorThermalPowerW: '',
+    lowestWayLevelWork: '',
   });
   /**
    * A5a — PER-MEASUREMENT-SESSION METADATA THE ENGINE NEEDS AND NOBODY COULD
@@ -3321,6 +3338,12 @@ export default function App() {
       resistorClassW: stated(engineV2Settings.resistorClassW),
       resistorPowerMargin: stated(engineV2Settings.resistorPowerMargin),
       coilClassA: stated(engineV2Settings.coilClassA),
+      /* V51 — the thermal design power M-A/part judges at (blank = at the
+       * continuous rating), and the level-work requirement on the lowest way.
+       * The second is a CHOICE and not a number: '' is absent (P4) and never a
+       * stated "allowed"; only 'none' reaches the engine. */
+      resistorThermalPowerW: stated(engineV2Settings.resistorThermalPowerW),
+      lowestWayLevelWork: engineV2Settings.lowestWayLevelWork === 'none' ? ('none' as const) : undefined,
     };
   }, [engineV2Settings]);
 
@@ -3463,6 +3486,17 @@ export default function App() {
           /* V50 — the stated M-C figure for this way, re-keyed to the driver
            * id by the adapter like R_e and the card. */
           ...(driveOnFsMaxDbByRole[role] !== undefined ? { driveOnFsMaxDb: driveOnFsMaxDbByRole[role] } : {}),
+          /* V51 — the way's wiring: the count from the cabinet form, the two
+           * wirings from the measurement block. Only complete statements
+           * travel; a half-stated wiring is absent. */
+          ...((): { wiring?: WayWiring } => {
+            const meas = v2Meas[role].wiringMeasured;
+            const want = v2Meas[role].wiringDesired;
+            const ok = (v: string): v is 'parallel' | 'series' => v === 'parallel' || v === 'series';
+            if (!ok(meas) || !ok(want)) return {};
+            const n = Number.isFinite(count) && count >= 1 ? Math.floor(count) : 1;
+            return { wiring: { count: n, measured: meas, desired: want, source: 'cabinet form (count) and the Engine v2 measurement block (wiring)' } };
+          })(),
           ...(driveV !== undefined && driveV > 0 && Number.isFinite(micMm) && micMm > 0
             ? {
                 responseDrive: {
@@ -6385,6 +6419,8 @@ export default function App() {
       resistorClassW: d.engineV2?.resistorClassW ?? '',
       resistorPowerMargin: d.engineV2?.resistorPowerMargin ?? '',
       coilClassA: d.engineV2?.coilClassA ?? '',
+      resistorThermalPowerW: d.engineV2?.resistorThermalPowerW ?? '',
+      lowestWayLevelWork: d.engineV2?.lowestWayLevelWork ?? '',
     });
     // A5a metadata (F3b). Additive: a project from before F3b has no block and
     // every field falls back to '', which is what "not stated" means (P4).
@@ -7053,6 +7089,10 @@ export default function App() {
        * `synthesize`'s own default rather than the staged pass's stop goal. */
       const chainDecl = declareCandidateChainChoices({
         stated: { eqBands: settings.eqBands },
+        /* V51 — the third chain key, derived from the stated requirement:
+         * 'none' when the designer forbids level work on the lowest way,
+         * ABSENT otherwise (never a stated 'allowed' — P4). */
+        ...(engineV2Gates.lowestWayLevelWork === 'none' ? { lowestWayLevelWorkForbidden: true } : {}),
       });
       /** The A5d declaration that travels beside one generated candidate. */
       const declarationFor = (cand: GeneratedCandidate, input: Chain3Input) => ({
@@ -7269,6 +7309,11 @@ export default function App() {
                 ? { resistorPowerMargin: engineV2Gates.resistorPowerMargin }
                 : {}),
               ...(engineV2Gates.coilClassA !== undefined ? { coilClassA: engineV2Gates.coilClassA } : {}),
+              /* V51 — the thermal design power the resistor gate judges at on
+               * the search, when stated. */
+              ...(engineV2Gates.resistorThermalPowerW !== undefined
+                ? { resistorThermalPowerW: engineV2Gates.resistorThermalPowerW }
+                : {}),
               ...(engineV2Gates.amplifierPeakPowerW !== undefined &&
               engineV2Gates.amplifierPeakPowerW > 0 &&
               engineV2Gates.amplifierNominalLoadOhm !== undefined &&
@@ -11317,6 +11362,41 @@ export default function App() {
                                   style={{ width: '4.5rem' }}
                                 />
                                 {' dB'}
+                              </span>{' '}
+                              {/* V51 — the WIRING of the way: how its N identical
+                                  drivers (the count on the cabinet form) were
+                                  connected when measured, and how the design
+                                  intends to connect them. Reported per way; the
+                                  parallel↔series derivation (SPL ±20·log N, Z
+                                  ×/÷N²) exists and is applied only when the two
+                                  differ — and it assumes equal drivers. */}
+                              <span
+                                className="inline-num"
+                                title={t("How this way's identical drivers were wired when MEASURED (V51). With the count on the cabinet form and the intended wiring beside it the report says what series wiring would deliver of the way's surplus over the anchor without a resistor (20·log N dB). Not stated = the report says so and derives nothing.")}
+                              >
+                                {t('measured wiring') + ' '}
+                                <select
+                                  value={v2Meas[role].wiringMeasured}
+                                  onChange={(e) => setV2MeasField(role, 'wiringMeasured', e.target.value)}
+                                >
+                                  <option value="">{t('not stated')}</option>
+                                  <option value="parallel">{t('parallel')}</option>
+                                  <option value="series">{t('series')}</option>
+                                </select>
+                              </span>{' '}
+                              <span
+                                className="inline-num"
+                                title={t("How the design INTENDS to wire this way's identical drivers (V51). Differs from the measured wiring = the measured response describes a build nobody intends; the engine reports the derived difference (equal drivers assumed) rather than applying it silently.")}
+                              >
+                                {t('intended wiring') + ' '}
+                                <select
+                                  value={v2Meas[role].wiringDesired}
+                                  onChange={(e) => setV2MeasField(role, 'wiringDesired', e.target.value)}
+                                >
+                                  <option value="">{t('not stated')}</option>
+                                  <option value="parallel">{t('parallel')}</option>
+                                  <option value="series">{t('series')}</option>
+                                </select>
                               </span>
                             </span>
                             <span className="cd-label">{t('Window (no header)')}</span>
@@ -15967,6 +16047,42 @@ export default function App() {
                         }
                         style={{ width: '4rem' }}
                       />
+                    </label>
+                    {/* V51 — the THERMAL DESIGN POWER: thermal load is a mean
+                      * over the listening time, and the amplifier's continuous
+                      * rating above is what it CAN deliver, not what the
+                      * design runs at. Blank = the gate judges at the rating
+                      * (V50); the watt column keeps printing at the rating. */}
+                    <label title={t('M-A/part (V51) — the average listening power, W, the per-resistor watts are JUDGED at. Blank = judged at the amplifier power above (V50). The watts shown in the M-A column stay at the amplifier power either way; the gate row says which power it read.')}>
+                      {t('Thermal design power W')}
+                      <input
+                        type="number"
+                        min={0}
+                        value={engineV2Settings.resistorThermalPowerW}
+                        placeholder="10"
+                        onChange={(e) =>
+                          setEngineV2Settings((v) => ({ ...v, resistorThermalPowerW: e.target.value }))
+                        }
+                        style={{ width: '4rem' }}
+                      />
+                    </label>
+                    {/* V51 — the TOPOLOGY requirement on the lowest way. A
+                      * choice, not a limit: it reaches the design and synthesis
+                      * steps, which then place no pad there; a candidate that
+                      * cannot reach its ripple goal without one comes back as a
+                      * refusal naming how much level work the configuration
+                      * asks (the A5d.4 gap to the anchor). */}
+                    <label title={t("V51 — 'none': the LOWEST way may carry no level work — no resistor in its series path and no shunt pad on it; what remains is the coil's DCR. The rule of thumb: never pad the woofer (heat, impedance, damping), pad the mid or tweeter instead. The report shows how far the lowest way sits above the anchor (that is the level work the configuration asks), what series wiring would deliver of it and what the baffle step does by itself. Not stated = the search keeps its own behaviour (the lowest way is trimmed down to the quietest way with a pad).")}>
+                      {t('Level work on lowest way')}
+                      <select
+                        value={engineV2Settings.lowestWayLevelWork}
+                        onChange={(e) =>
+                          setEngineV2Settings((v) => ({ ...v, lowestWayLevelWork: e.target.value }))
+                        }
+                      >
+                        <option value="">{t('not stated')}</option>
+                        <option value="none">{t('none (no series R, no shunt pad)')}</option>
+                      </select>
                     </label>
 
                     {/* ---- F2: the SEARCH-SPACE BUDGETS (spec A5d.6) ----

@@ -33,6 +33,7 @@ import {
   gateSettingsKey,
   gateVerdicts,
   resistorGateArmed,
+  resistorJudgementPowerW,
   statedDriveLimitDb,
   type GateMetricValues,
   type GateSettings,
@@ -259,5 +260,49 @@ describe('V50 — partRatingsOf reads the snap\'s attribution and nothing else',
     expect(r.L1).toEqual({ maxCurrentA: 2, source: 'catalogue L-CORE-4A+L-CORE-2A' });
     expect(r.L2).toBeUndefined();
     expect(r.L3).toBeUndefined();
+  });
+});
+
+/* ================================================================== *
+ * V51 — the thermal design power the resistor gate judges at
+ * ================================================================== */
+
+describe('V51 — M-A/part judges at the thermal design power when one is stated', () => {
+  it('the watts are formed at the thermal power, the M-A column stays at the continuous rating', () => {
+    const rating = evaluateGates(netlist, { resistorClassW: 10, resistorPowerMargin: 0.5, amplifierPowerW: 100 }, reference, 'frozen');
+    const thermal = evaluateGates(
+      netlist,
+      { resistorClassW: 10, resistorPowerMargin: 0.5, amplifierPowerW: 100, resistorThermalPowerW: 10 },
+      reference,
+      'frozen',
+    );
+    const rW = rating.verdicts.find((v) => v.gate === 'M-A/part')!;
+    const tW = thermal.verdicts.find((v) => v.gate === 'M-A/part')!;
+    expect(rW.value).toBeGreaterThan(0);
+    // Ten times less power is ten times fewer watts in the same resistor — a scalar on M-A's fraction.
+    expect(tW.value! * 10).toBeCloseTo(rW.value!, 9);
+    expect(tW.parameters?.judged_at_W).toBe(10);
+    expect(tW.parameters?.judged_at_source).toMatch(/thermal design power/);
+    // A run that states no thermal power is a V50 run: its verdict carries no V51 parameter at all (P2).
+    expect(rW.parameters?.judged_at_W).toBeUndefined();
+    expect(rW.parameters?.judged_at_source).toBeUndefined();
+    // The dissipation column itself does not move: it is printed at the continuous rating either way.
+    expect(thermal.metrics.dissipation!.elements.map((e) => e.watts)).toEqual(rating.metrics.dissipation!.elements.map((e) => e.watts));
+    // And a thermal power ALONE, with no continuous rating, still forms watts (F0: a stated number is a number).
+    const alone = evaluateGates(netlist, { resistorClassW: 10, resistorPowerMargin: 0.5, resistorThermalPowerW: 10 }, reference, 'frozen');
+    expect(alone.verdicts.find((v) => v.gate === 'M-A/part')!.value).toBeCloseTo(tW.value!, 9);
+    expect(resistorJudgementPowerW({ amplifierPowerW: 100 })).toBe(100);
+    expect(resistorJudgementPowerW({ amplifierPowerW: 100, resistorThermalPowerW: 10 })).toBe(10);
+    expect(resistorJudgementPowerW({})).toBeUndefined();
+  });
+
+  it('P2 — without a thermal power every verdict is byte-identical to V50, and the fingerprint moves with it only while armed', () => {
+    const a = evaluateGates(netlist, { resistorClassW: 10, resistorPowerMargin: 0.5, amplifierPowerW: 100 }, reference, 'frozen');
+    const b = evaluateGates(netlist, { resistorClassW: 10, resistorPowerMargin: 0.5, amplifierPowerW: 100, resistorThermalPowerW: undefined }, reference, 'frozen');
+    expect(JSON.stringify(a.verdicts)).toBe(JSON.stringify(b.verdicts));
+    const k = (s: GateSettings) => JSON.stringify(gateSettingsKey(s));
+    expect(k({ amplifierPowerW: 100, resistorThermalPowerW: 10 })).toBe(k({}));
+    const armed = k({ amplifierPowerW: 100, resistorClassW: 10, resistorPowerMargin: 0.5 });
+    expect(k({ amplifierPowerW: 100, resistorClassW: 10, resistorPowerMargin: 0.5, resistorThermalPowerW: 10 })).not.toBe(armed);
   });
 });

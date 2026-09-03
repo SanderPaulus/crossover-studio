@@ -119,6 +119,18 @@ export interface Design3Input {
   diAnchorHz?: { low?: number | null; high?: number | null };
   /** Weight of the DI-distance term. Default 0.3. */
   diWeight?: number;
+  /**
+   * V51 — whether the LOWEST way may be attenuated at all.
+   *
+   * `'none'`: the woofer branch trims by 0 dB whatever the level medians say
+   * (the other ways still trim down to the quietest), and the EQ stage never
+   * proposes a shelf cut on it — a shelf cut is a pad with a bypass. Peak cuts
+   * stay: an LCR notch is an impedance correction, not level work. Absent or
+   * `'allowed'` is the historical behaviour, byte-identical. The v2 route states
+   * this from the project requirement (`chainChoices.ts`); every v1 caller
+   * leaves it absent.
+   */
+  lowestWayLevelWork?: 'allowed' | 'none';
 }
 
 export interface Design3Result {
@@ -181,6 +193,8 @@ function branchMedian(g: GriddedResponse, lo: number, hi: number): number | null
  */
 export function designThreeWay(input: Design3Input): Design3Result {
   const { w, m, t, tAdjust, midAdjust, band, hpFloorHz } = input;
+  /* V51 — absent = allowed, exactly what every v1 caller reads. */
+  const noLowestLevelWork = input.lowestWayLevelWork === 'none';
   // Priority envelope — the same 0.1 + 0.8p the other engines use, so the
   // slider means the same thing everywhere.
   const pw = 0.1 + 0.8 * Math.min(Math.max(input.phasePriority, 0), 1);
@@ -202,9 +216,15 @@ export function designThreeWay(input: Design3Input): Design3Result {
     ];
     const present = med.filter((v): v is number => v !== null);
     const floor = present.length > 0 ? Math.min(...present) : 0;
-    return med.map((own) =>
+    const trims = med.map((own) =>
       own === null ? 0 : Math.min(0, Math.round((floor - own) * 10) / 10),
     ) as [number, number, number];
+    /* V51 — the lowest way is NOT trimmed when the design forbids level work
+     * on it. Its surplus over the quietest way then stays in the sum, which is
+     * what the requirement asks the rest of the chain to deal with (the LP
+     * coil's tilt, the baffle step) or to refuse. */
+    if (noLowestLevelWork) trims[0] = 0;
+    return trims;
   };
 
   const specsFor = (
@@ -661,7 +681,10 @@ export function designThreeWay(input: Design3Input): Design3Result {
           });
         }
       } else if (tilt < -1) {
-        if (specs.woofer.eq.filter((x) => x.enabled).length < eqBudget) {
+        /* V51 — a low-shelf cut on the woofer is a series pad with a bypass,
+         * and a design that forbids level work on its lowest way may not have
+         * one proposed there. The peak cut above stays available to it. */
+        if (!noLowestLevelWork && specs.woofer.eq.filter((x) => x.enabled).length < eqBudget) {
           cands.push({
             branch: 'woofer',
             band: {

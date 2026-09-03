@@ -226,8 +226,9 @@ describe('V41 — the chain-level choice keys', () => {
     expect(cover.duplicated).toEqual([]);
     expect(cover.complete).toBe(true);
     // The list itself, so a key that is added without a case fails here rather
-    // than in a run nobody reads.
-    expect([...CHAIN_CHOICE_KEYS].sort()).toEqual(['eqBands', 'leanTargetDb']);
+    // than in a run nobody reads. V51 added the third (`lowestWayLevelWork`),
+    // with the ABSENT state this file's derivation always kept room for.
+    expect([...CHAIN_CHOICE_KEYS].sort()).toEqual(['eqBands', 'leanTargetDb', 'lowestWayLevelWork']);
   });
 
   it('derives the two ENGINE defaults, and an explicit value wins', () => {
@@ -252,6 +253,9 @@ describe('V41 — the chain-level choice keys', () => {
     // A declaration that states nothing is the identity too: absent means "this
     // design has no opinion", not "set it to nothing".
     expect(withDeclaredChainChoices(input, { stated: {}, absent: [] })).toBe(input);
+    /* V51 — the third key is ABSENT on a declaration that states nothing, and
+     * an absent key leaves the settings alone: `lowestWayLevelWork` is not
+     * written, so the chain reads its own default. */
     expect(
       withDeclaredChainChoices(input, declareCandidateChainChoices({ stated: {} })).settings,
     ).toEqual({ eqBands: DEFAULT_EQ_BANDS_PER_DRIVER, leanTargetDb: SYNTHESIS_LEAN_DEFAULT_DB });

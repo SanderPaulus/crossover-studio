@@ -1299,13 +1299,42 @@ export function busTopology(parts: readonly VxpPart[]): {
   positionOf: (partId: string) => 'series' | 'shunt';
   /** Driver models this element sits in the series path of (empty = shunt or unknown). */
   driversOf: (partId: string) => string[];
+  /**
+   * V51 — the bus nodes on ONE driver's source→driver path, generator node
+   * included; empty when the driver is unreachable. Exposed so a reader that
+   * has to attribute a SHUNT element to a way (a pad leg hangs off a bus node
+   * of exactly one path) can do so with this walk instead of a second one.
+   * Additive: nothing that existed reads it, and the walk is unchanged.
+   */
+  busNodesOf: (model: string) => number[];
+  /** V51 — the netlist node pair of an element, by part id; undefined when unknown. */
+  nodesOf: (partId: string) => [number, number] | undefined;
+} {
+  try {
+    return busTopologyOfNetlist(crossoverToNetlist({ name: 'pos', parts: [...parts] }).netlist);
+  } catch {
+    // Position stays unknown → every part is treated as shunt (wide bounds).
+    return busTopologyOfNetlist({ nodeCount: 0, elements: [] });
+  }
+}
+
+/**
+ * V51 — the same walk on a NETLIST, so a reader that holds a solved netlist
+ * rather than a part list (the v2 report) can ask the same questions of the
+ * same walk instead of carrying a second one. `busTopology` above is now a
+ * thin wrapper over this; nothing about the walk changed.
+ */
+export function busTopologyOfNetlist(netlist: { nodeCount: number; elements: readonly NetElement[] }): {
+  positionOf: (partId: string) => 'series' | 'shunt';
+  driversOf: (partId: string) => string[];
+  busNodesOf: (model: string) => number[];
+  nodesOf: (partId: string) => [number, number] | undefined;
 } {
   const busNodes = new Set<number>();
   const elNodes = new Map<string, [number, number]>();
   /** driver model → the set of bus nodes on ITS path */
   const perDriver = new Map<string, Set<number>>();
-  try {
-    const { netlist } = crossoverToNetlist({ name: 'pos', parts: [...parts] });
+  {
     const els = netlist.elements;
     for (const e of els) elNodes.set(e.id, [e.nodes[0], e.nodes[1]]);
     const src = els.find((e) => e.kind === 'source');
@@ -1353,8 +1382,6 @@ export function busTopology(parts: readonly VxpPart[]): {
         }
       }
     }
-  } catch {
-    // Position stays unknown → every part is treated as shunt (wide bounds).
   }
   const positionOf = (partId: string): 'series' | 'shunt' => {
     const nodes = elNodes.get(partId);
@@ -1372,6 +1399,8 @@ export function busTopology(parts: readonly VxpPart[]): {
       }
       return out;
     },
+    busNodesOf: (model) => [...(perDriver.get(model) ?? [])],
+    nodesOf: (partId) => elNodes.get(partId),
   };
 }
 

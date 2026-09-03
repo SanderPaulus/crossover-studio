@@ -92,6 +92,10 @@ import {
   CASUS1_QES_MULTIPLIER_MAX,
   CASUS1_TARGET_CURVE,
   CASUS1_EXCURSION,
+  CASUS1_LEVEL_WORK_SETTINGS,
+  CASUS1_LOWEST_WAY_LEVEL_WORK_FORBIDDEN,
+  CASUS1_THERMAL_DESIGN_POWER_W,
+  CASUS1_WIRING,
 } from './casus1V2.fixture.ts';
 import { buildReport, type EngineV2Report } from './report.ts';
 import { ctcKey } from './metrics/types.ts';
@@ -164,6 +168,18 @@ const HERKOMST = JSON.parse(
      *  waarmee de zoektocht begon, of dat wat zij aan het bouwen is. */
     plafond_bron: string | null;
     plafond_bron_waarom: string;
+    /** V51 — MAG DE LAAGSTE WEG NIVEAUWERK DRAGEN: de derde ketensleutel,
+     *  plus de schakeling per weg en het thermisch ontwerpvermogen. */
+    niveauwerk_laagste_weg: string | null;
+    niveauwerk_laagste_weg_waarom: string;
+    niveauwerk_laagste_weg_herkomst: string;
+    schakeling_per_weg: Record<string, { count: number; measured: string; desired: string }>;
+    schakeling_waarom: string;
+    bouwbaarheid: {
+      gewapend_op_de_zoektocht: boolean;
+      thermisch_ontwerpvermogen_W: number | null;
+      oordeelt_bij_W: number | null;
+    };
     /** V44 — WELKE PUNTEN het fase-oordeel dragen. Niet hoe fase gewogen wordt
      *  (dat is `fasemaat`) maar over welke punten het gemiddelde gaat. */
     fase_toelating: string | null;
@@ -215,6 +231,8 @@ const report = (key: string): EngineV2Report =>
         ? { maxDriveOnFsDbByDriver: { ...CASUS1_MAX_DRIVE_ON_FS_DB_BY_DRIVER } }
         : {}),
       ...CASUS1_BUILDABILITY,
+      /* V51 — the wiring and the level-work requirement, for the same reason. */
+      ...CASUS1_LEVEL_WORK_SETTINGS,
       orderByPair: { [ctcKey('woofer', 'mid')]: 4, [ctcKey('mid', 'tweeter')]: 4 },
       reOhmByDriver: { woofer: CASUS1_WOOFER_DC_OHM },
       targetCurve: CASUS1_TARGET_CURVE,
@@ -400,9 +418,34 @@ describe('the frozen v2 candidates are files, and the file says where they came 
     /* V50 — en of de bouwbaarheid op de ZOEKTOCHT gewapend was, want een
      * levend corpus dat de weerstandseis mist is alleen te lezen naast dat
      * besluit. */
-    const b = (m as unknown as { bouwbaarheid?: { gewapend_op_de_zoektocht: boolean } }).bouwbaarheid;
+    const b = m.bouwbaarheid;
     expect(b, 'de meetopstelling zegt niet of de bouwbaarheid gewapend was').toBeDefined();
-    expect(b!.gewapend_op_de_zoektocht).toBe(CASUS1_BUILDABILITY_ON_SEARCH);
+    expect(b.gewapend_op_de_zoektocht).toBe(CASUS1_BUILDABILITY_ON_SEARCH);
+    /* V51 — en bij WELK vermogen de poort oordeelt: het thermisch
+     * ontwerpvermogen als het gesteld is, anders het continue. Twee getallen
+     * en twee uitspraken; een verslag dat alleen het continue noemde zou
+     * suggereren dat de eis bij 100 W gewapend was. */
+    expect(b.thermisch_ontwerpvermogen_W).toBe(CASUS1_THERMAL_DESIGN_POWER_W);
+    expect(b.oordeelt_bij_W).toBe(CASUS1_THERMAL_DESIGN_POWER_W ?? CASUS1_CONTINUOUS_POWER_W);
+    if (CASUS1_BUILDABILITY_ON_SEARCH) {
+      expect(m.v2_poorten_gewapend).toContain('resistorClassW');
+      expect(m.v2_poorten_gewapend).toContain('resistorPowerMargin');
+      if (CASUS1_THERMAL_DESIGN_POWER_W !== null) expect(m.v2_poorten_gewapend).toContain('resistorThermalPowerW');
+      expect(JSON.stringify(m.v2_poorten_bron)).toContain('M-A/part');
+    }
+    /* V51 — het TIENDE besluit, en het derde op ketenniveau: mag de laagste
+     * weg niveauwerk dragen. Afgelezen van de ketenverklaring; gesteld in het
+     * manifest en nergens anders. Twee regels: de sleutel, en de schakeling
+     * per weg waarvan de rapportregel "N in serie zou 20·log N leveren"
+     * afhangt. */
+    expect(m.niveauwerk_laagste_weg).toBe(CASUS1_LOWEST_WAY_LEVEL_WORK_FORBIDDEN ? 'none' : null);
+    expect(m.niveauwerk_laagste_weg_waarom).toMatch(/V51|niveauwerk/i);
+    if (CASUS1_LOWEST_WAY_LEVEL_WORK_FORBIDDEN) {
+      expect(m.niveauwerk_laagste_weg_waarom).toMatch(/GEEN NIVEAUWERK/);
+      expect(m.niveauwerk_laagste_weg_herkomst).toMatch(/P6/);
+    }
+    expect(m.schakeling_per_weg).toEqual(CASUS1_WIRING);
+    expect(m.schakeling_waarom).toMatch(/identiteit/);
     /* V44 — het zevende besluit, en het corrigeert een aanname die er al stond:
      * `fasemaat` (`phaseMetric`) leek de sleutel die de fasemaat stelt, en hij
      * stelt alleen de WEGING. Beide waarden ervan middelen over het

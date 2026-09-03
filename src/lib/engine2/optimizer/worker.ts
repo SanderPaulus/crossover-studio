@@ -92,7 +92,14 @@ import { applyTransfer, combineN, type GriddedResponse } from '../../dsp.ts';
 import { solveNetwork } from '../../network.ts';
 import { pickSlotsN } from '../../driverSlots.ts';
 import { judgeResponse, type ResponseJudgement } from '../requirements/response.ts';
-import { FLAT_TARGET, targetLevelCurveFor, type TargetCurve } from '../requirements/targetCurve.ts';
+import {
+  FLAT_TARGET,
+  plateauCoverage,
+  targetLevelCurveFor,
+  type PlateauCoverage,
+  type TargetCurve,
+} from '../requirements/targetCurve.ts';
+import { describeLevelWork, levelWorkOnWay, type LevelWorkOnWay } from '../../levelWork.ts';
 import type { CandidateMeasurements } from '../requirements/requirements.ts';
 import type { TopologyDescriptor } from './diversity.ts';
 
@@ -325,7 +332,29 @@ export interface V2CandidateResult<R> {
    * empty and `measurements` is the unjudged state. Nothing here is a netlist.
    */
   rejection: CandidateRejection | null;
+  /**
+   * V51 — level work on the LOWEST way: the requirement this candidate ran
+   * under, how much the configuration asks (X), what the delivered network
+   * carries there, and whether the stated plateau lies inside the judged band.
+   * Filled for every candidate, refused or not — the refusal quotes X, and a
+   * delivered design shows that it honoured the rule.
+   */
+  levelWork: V2LevelWorkColumn;
   notes: string[];
+}
+
+/** V51 — see `V2CandidateResult.levelWork`. */
+export interface V2LevelWorkColumn {
+  /** The chain-level choice this candidate declared, or null when none was. */
+  requirement: 'none' | 'allowed' | null;
+  lowestWay: string | null;
+  anchor: string | null;
+  /** The A5d.4 gap of the lowest way to the anchor, dB (target curve
+   *  included); 0 when it is the anchor; null when no gap crossed. */
+  askedDb: number | null;
+  /** The inventory of the DELIVERED network (the refused one, on a refusal). */
+  delivered: LevelWorkOnWay | null;
+  plateau: PlateauCoverage;
 }
 
 export type V2Request = { id: number; catalog?: V2CatalogPayload | null } & (
@@ -1853,6 +1882,94 @@ function runCandidate<I, R extends { parts: VxpPart[]; net: { gateRefusals?: str
     }
   }
 
+  /* ---- V51: NO LEVEL WORK ON THE LOWEST WAY, tested on what is OFFERED --
+   *
+   * The requirement itself is honoured upstream (the design step trims the
+   * lowest way by nothing, its synthesis places no pad, the tuner never
+   * creates a resistor). What is decided HERE is what a candidate that could
+   * not live with it comes back as: a V31 refusal with the NUMBER behind it —
+   * how much level work this configuration asks on the lowest way, which is
+   * the A5d.4 gap of that way to the anchor after the target curve (X), and
+   * which crossed as a measured fact. The refusal fires only when all three
+   * hold: the requirement is stated, X is above zero (a way that IS the anchor
+   * asks nothing, and a miss is then not "because of" the requirement), and
+   * the delivered network misses the staged pass's own ripple goal — the
+   * tuner's definition of "targets met", and a CHOICE the candidate states.
+   *
+   * WHY THE RIPPLE GOAL AND NOT THE SPL WINDOW. The window is an A5e.1 taste
+   * requirement that the relaxation ladder may widen, and a level step of X dB
+   * at the low handover is not taste: it is a configuration fact. Letting the
+   * ladder absorb it would publish a padless design under a relaxed window and
+   * say nothing about why. The ripple goal is what the tuner itself aimed for
+   * and could not reach, and the refusal names the number it could not reach
+   * it without. The inventory of what the delivered network carries on the
+   * lowest way travels with EVERY candidate (`levelWork`), refused or not. */
+  const levelWorkRule = network.chainDeclaration?.stated.lowestWayLevelWork;
+  const lowestForLevel = collect.lowestModel;
+  const levelWorkDelivered = lowestForLevel !== null ? levelWorkOnWay(delivered.parts, lowestForLevel) : null;
+  const askedDb: number | null =
+    lowestForLevel === null
+      ? null
+      : facts.gapAnchorModel === lowestForLevel
+        ? 0
+        : (facts.gapBudgetDb[lowestForLevel] ?? null);
+  const plateau = plateauCoverage(v2.targetCurve ?? FLAT_TARGET, judgeBandOf(v2, facts.grid));
+  const levelWork: V2LevelWorkColumn = {
+    requirement: levelWorkRule ?? null,
+    lowestWay: lowestForLevel,
+    anchor: facts.gapAnchorModel ?? null,
+    askedDb,
+    delivered: levelWorkDelivered,
+    plateau,
+  };
+  if (levelWorkRule === 'none' && lowestForLevel !== null) {
+    collect.notes.push(
+      `Level work on the lowest way (${lowestForLevel}) is FORBIDDEN by the project (V51): ` +
+        (askedDb === null
+          ? 'how much this configuration asks is not known here (no anchored gap for it crossed). '
+          : askedDb <= 0
+            ? `${lowestForLevel} is the anchor, so the configuration asks none. `
+            : `this configuration asks ${askedDb.toFixed(2)} dB of it (A5d.4 gap to the anchor ` +
+              `${facts.gapAnchorModel ?? '?'}, target curve included). `) +
+        (levelWorkDelivered ? `Delivered: ${describeLevelWork(levelWorkDelivered)}.` : ''),
+    );
+    if (levelWorkDelivered && !levelWorkDelivered.none && levelWorkDelivered.reachable) {
+      collect.notes.push(
+        `DEFECT: the requirement forbids level work on ${lowestForLevel} and the delivered network ` +
+          'carries some — the design or synthesis step placed a resistor it was told not to. This ' +
+          'is a finding about the repair, not about the candidate.',
+      );
+    }
+  }
+  collect.notes.push(`Plateau: ${plateau.note}.`);
+  if (!refused && levelWorkRule === 'none' && lowestForLevel !== null && askedDb !== null && askedDb > 0) {
+    const goal = network.declaration?.stated.staged?.rippleDb;
+    const after = delivered.net as { after?: { ripplePeakDb?: number; rippleDb?: number } };
+    const peak = after.after?.ripplePeakDb ?? after.after?.rippleDb ?? null;
+    if (goal !== undefined && peak !== null && peak > goal) {
+      refused = {
+        by: 'stated-topology',
+        kinds: ['topology'],
+        reason:
+          `this configuration asks ${askedDb.toFixed(2)} dB of level work on the lowest way ` +
+          `(${lowestForLevel} sits that far above the anchor ${facts.gapAnchorModel ?? '?'} after the ` +
+          `target curve, A5d.4) and the project forbids level work there; without it the delivered ` +
+          `network misses the ripple goal: ${peak.toFixed(2)} dB peak deviation against ${goal} dB`,
+        note:
+          'The tune COMPLETED with no pad on the lowest way, as required, and the surplus of that way ' +
+          'over the anchor stayed in the sum. What the coil\'s tilt and the baffle step could not ' +
+          'absorb shows up as the ripple the staged pass could not reach. The number in `reason` is ' +
+          'the configuration\'s, not the filter\'s: it is the same whichever candidate is tried, and ' +
+          'it is what a series wiring, a different driver pair or an active low branch would have ' +
+          'to deliver instead (casebook V51).',
+        fields: {
+          ...(delivered.net as WholesaleRejectionFields),
+          rejectedParts: [...delivered.parts],
+        },
+      };
+    }
+  }
+
   let rejection: CandidateRejection | null = null;
   let result = delivered;
   if (refused) {
@@ -1898,11 +2015,11 @@ function runCandidate<I, R extends { parts: VxpPart[]; net: { gateRefusals?: str
             }
           : null,
       note:
-        (refused.by === 'stated-budget'
+        (refused.by === 'stated-budget' || refused.by === 'stated-topology'
           ? 'The tune COMPLETED and the network it produced fails a requirement this project ' +
             'stated, so this candidate delivers nothing. What is withdrawn here is a real tuned ' +
             'design rather than a seed — it is withdrawn because it may not be built, not ' +
-            'because nobody judged it (casebook V31 for the shape, V45 for this rule). '
+            'because nobody judged it (casebook V31 for the shape, V45 and V51 for the rules). '
           : 'The whole tune was refused, so this candidate delivers no network. What the tuner ' +
             'returned is its SEED — a design nobody judged against anything this candidate asked ' +
             'for — and it is withdrawn here rather than offered (F0: an empty field is not a ' +
@@ -1992,6 +2109,7 @@ function runCandidate<I, R extends { parts: VxpPart[]; net: { gateRefusals?: str
     topology: judged.topology,
     dissipation,
     rejection,
+    levelWork,
     notes: collect.notes,
   };
 }

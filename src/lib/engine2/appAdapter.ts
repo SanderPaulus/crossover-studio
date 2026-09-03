@@ -24,6 +24,7 @@ import { pickSlotsN, type BranchRole } from '../driverSlots.ts';
 import type { Netlist } from '../network.ts';
 import { parseArtaHeader, type Manifest, type ManifestEntry } from './ingest/manifest.ts';
 import type { MeasurementFile } from './ingest/derive.ts';
+import type { WayWiring } from './ingest/wiring.ts';
 import type { FilterInput, EngineV2ReportInput, ReportSettings } from './report.ts';
 import {
   ctcKey,
@@ -103,6 +104,13 @@ export interface AdapterBranch {
    * exactly as R_e and the driver card are. Absent = none per way.
    */
   driveOnFsMaxDb?: number;
+  /**
+   * V51 — the WIRING of this way: how many identical drivers, as measured and
+   * as intended (`ingest/wiring.ts`). Re-keyed from role to driver id into
+   * `ReportSettings.wiringByDriver`, exactly as the driver card is. Absent =
+   * not stated, and the level-work block says so.
+   */
+  wiring?: WayWiring;
 }
 
 /** Cabinet geometry, already parsed to numbers by the caller. */
@@ -349,8 +357,15 @@ export function buildEngineV2Input(args: AdapterInput): AdapterResult {
     if (b.driveOnFsMaxDb === undefined || !Number.isFinite(b.driveOnFsMaxDb)) continue;
     driveByDriver[ids[b.role] ?? b.role] = b.driveOnFsMaxDb;
   }
+  /* V51 — the wiring per way, re-keyed like the rest. */
+  const wiringByDriver: Record<string, WayWiring> = { ...(args.settings.wiringByDriver ?? {}) };
+  for (const b of args.branches) {
+    if (!b.wiring) continue;
+    wiringByDriver[ids[b.role] ?? b.role] = b.wiring;
+  }
   const settings: ReportSettings = {
     ...args.settings,
+    ...(Object.keys(wiringByDriver).length > 0 ? { wiringByDriver } : {}),
     ...(Object.keys(driveByDriver).length > 0 ? { maxDriveOnFsDbByDriver: driveByDriver } : {}),
     ...(Object.keys(reByDriver).length > 0 ? { reOhmByDriver: reByDriver } : {}),
     ...(Object.keys(cards).length > 0 ? { driverCardByDriver: cards } : {}),

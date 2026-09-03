@@ -26,6 +26,7 @@ import {
   TargetCurveNotImplementedError,
   describeTargetCurve,
   isImplemented,
+  plateauCoverage,
   targetLevelCurveFor,
   targetOffsetsDb,
   type TargetCurve,
@@ -184,5 +185,47 @@ describe('V45 — reading a sampled target curve at a frequency', () => {
     const dense = targetLevelAt(curve, full);
     const every4 = full.filter((_, i) => i % 4 === 0);
     expect(targetLevelAt(curve, every4)).toEqual(dense.filter((_, i) => i % 4 === 0));
+  });
+});
+
+/* ================================================================== *
+ * V51 — is the plateau inside the judged band at all?
+ * ================================================================== */
+
+describe('V51 — plateau coverage of a judged band', () => {
+  const curve: TargetCurve = { type: 'bass-plateau', plateauDepthDb: DEPTH_DB, stepHz: STEP_HZ };
+
+  it('a band that reaches an octave below the transition judges the plateau; one that starts at the transition does not', () => {
+    const deep = plateauCoverage(curve, [STEP_HZ / 2, 18_000]);
+    expect(deep.applicable).toBe(true);
+    expect(deep.judged).toBe(true);
+    expect(deep.octavesBelowStep).toBeCloseTo(1, 12);
+    // One octave below a first-order shelf sits at two thirds of its depth: -6/(1+0.5) = -4.
+    expect(deep.targetAtFloorDb).toBeCloseTo(-4, 12);
+    expect(deep.note).toMatch(/plateau is judged/);
+
+    const shallow = plateauCoverage(curve, [STEP_HZ * 0.9, 18_000]);
+    expect(shallow.applicable).toBe(true);
+    expect(shallow.judged).toBe(false);
+    expect(shallow.octavesBelowStep).toBeGreaterThan(0);
+    expect(shallow.octavesBelowStep).toBeLessThan(1);
+    expect(shallow.note).toMatch(/NOT/);
+    expect(shallow.note).toMatch(/no assumption/);
+  });
+
+  it('a band that starts ABOVE the transition is not judged either, and says how far above', () => {
+    const above = plateauCoverage(curve, [STEP_HZ * 2, 18_000]);
+    expect(above.judged).toBe(false);
+    expect(above.octavesBelowStep).toBeCloseTo(-1, 12);
+  });
+
+  it('flat and a plateau missing its inputs are not applicable, with the reason', () => {
+    const flat = plateauCoverage(FLAT_TARGET, [100, 10_000]);
+    expect(flat.applicable).toBe(false);
+    expect(flat.judged).toBe(false);
+    expect(flat.note).toMatch(/flat/);
+    const missing = plateauCoverage({ type: 'bass-plateau', plateauDepthDb: DEPTH_DB }, [100, 10_000]);
+    expect(missing.applicable).toBe(false);
+    expect(missing.note).toMatch(/missing/);
   });
 });

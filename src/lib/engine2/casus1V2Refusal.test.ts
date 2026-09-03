@@ -62,6 +62,7 @@ import {
   CASUS1_BUILDABILITY,
   CASUS1_CONTINUOUS_POWER_W,
   CASUS1_MAX_DRIVE_ON_FS_DB_BY_DRIVER,
+  CASUS1_LEVEL_WORK_SETTINGS,
 } from './casus1V2.fixture.ts';
 import { buildReport, type EngineV2Report } from './report.ts';
 import { ctcKey } from './metrics/types.ts';
@@ -100,6 +101,8 @@ const report = (key: string): EngineV2Report =>
         ? { maxDriveOnFsDbByDriver: { ...CASUS1_MAX_DRIVE_ON_FS_DB_BY_DRIVER } }
         : {}),
       ...CASUS1_BUILDABILITY,
+      /* V51 — the wiring and the level-work requirement, for the same reason. */
+      ...CASUS1_LEVEL_WORK_SETTINGS,
       orderByPair: { [ctcKey('woofer', 'mid')]: 4, [ctcKey('mid', 'tweeter')]: 4 },
       reOhmByDriver: { woofer: CASUS1_WOOFER_DC_OHM },
       targetCurve: CASUS1_TARGET_CURVE,
@@ -211,7 +214,9 @@ describe('[live] a wholesale refusal comes back as a refusal', () => {
      * an active gate refusing the value tune — and the shortlist deliberately
      * does not distinguish them, so this asserts the vocabulary rather than one
      * member of it. A category outside the set means someone invented one. */
-    const KINDS = ['crossing', 'valley', 'protection', 'load', 'gate'];
+    /* V45 added `budget` (a stated budget on the offered network) and V51
+     * `topology` (level work forbidden on the lowest way, with the gap quoted). */
+    const KINDS = ['crossing', 'valley', 'protection', 'load', 'gate', 'budget', 'topology'];
     for (const k of done.rejection!.kinds) {
       expect(KINDS, `unknown refusal category "${k}"`).toContain(k);
     }

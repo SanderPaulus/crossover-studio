@@ -957,7 +957,9 @@ describe('F4d — a generated candidate declares every choice key', () => {
       absent: [],
     });
     expect(holed.complete).toBe(false);
-    expect(holed.missing).toEqual(['leanTargetDb']);
+    /* V51 — the third key is missing here as well; a key with an ABSENT state
+     * still has to be declared in one. */
+    expect(holed.missing).toEqual(['leanTargetDb', 'lowestWayLevelWork']);
   });
 
   it('V41 — neither chain key may migrate into the tuner\'s own classification', () => {
@@ -972,8 +974,10 @@ describe('F4d — a generated candidate declares every choice key', () => {
       expect(GREY_KEYS as readonly string[]).not.toContain(k);
       expect(POLISH_KEYS as readonly string[]).not.toContain(k);
     }
-    // And the pair is exactly the pair: a third key is a decision somebody has
-    // to write down, not something that arrives with a rename.
-    expect([...CHAIN_CHOICE_KEYS].sort()).toEqual(['eqBands', 'leanTargetDb']);
+    // And the list is exactly the list: a fourth key is a decision somebody has
+    // to write down, not something that arrives with a rename. V51 wrote the
+    // third down (`lowestWayLevelWork`): whether the LOWEST way may carry level
+    // work, decided before the tuner exists and therefore a chain key.
+    expect([...CHAIN_CHOICE_KEYS].sort()).toEqual(['eqBands', 'leanTargetDb', 'lowestWayLevelWork']);
   });
 });

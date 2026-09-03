@@ -95,6 +95,21 @@ export interface Chain3Settings {
    *  all three; a key that only the synthesis reading consults moves exactly
    *  the one V38 found (V41). */
   leanTargetDb?: number;
+  /**
+   * V51 — whether the LOWEST way may carry level work at all: a resistor in
+   * its series path or a resistor hanging alone from that path to ground
+   * (`levelWork.ts`). `'none'` reaches two steps — the design step trims the
+   * lowest way by 0 dB and proposes no shelf cut on it, and its synthesis
+   * places no L-pad, no top-octave hold and no shelf pad. The assembled tune
+   * never creates a resistor, so what synthesis does not place cannot appear.
+   *
+   * ABSENT = `'allowed'` = the historical behaviour, byte-identical for every
+   * v1 caller. On the v2 route the CANDIDATE states it (`chainChoices.ts`,
+   * derived from the project's stated requirement), so a run can say whether
+   * the woofer's surplus over the anchor went into a resistor or stayed in the
+   * sum — which is the whole question V51 asks.
+   */
+  lowestWayLevelWork?: 'allowed' | 'none';
   breakupGuard?: boolean;
   /** In-room weight for the assembled tune (0..1): blends energy-average
    *  flatness into the amplitude term — the 2-way recipe, now three-branch.
@@ -318,6 +333,9 @@ export function runThreeWayChain(
     eqBandsPerBranch: s.eqBands,
     diAnchorHz: s.diAnchorHz,
     diWeight: s.diWeight,
+    /* V51 — spread rather than assigned: unstated is the identity for every
+     * v1 caller (the design step reads absent as allowed). */
+    ...(s.lowestWayLevelWork !== undefined ? { lowestWayLevelWork: s.lowestWayLevelWork } : {}),
   });
   const specs = design.specs;
   // The chosen polarities become the branch adjustments everything downstream
@@ -331,6 +349,8 @@ export function runThreeWayChain(
     spec: DriverFilterSpec,
     resp: GriddedResponse,
     zKey: string,
+    /** V51 — true on the LOWEST way when the design forbids level work there. */
+    noLevelWork = false,
   ): SynthesisResult => {
     const idxs: number[] = [];
     for (let i = 0; i < grid.length; i++) if (resp.spl[i] > ALIVE_DB) idxs.push(i);
@@ -349,9 +369,16 @@ export function runThreeWayChain(
       label: zKey,
       snapPrefs: s.snapPrefs?.profile === 'position' ? { ...s.snapPrefs, profile: 'premium' as const } : s.snapPrefs,
       ...(s.synthMode === 'acoustic' ? { driverSplDb: idxs.map((i) => resp.spl[i]) } : {}),
+      /* V51 — spread, so an unstated requirement leaves the key absent and the
+       * synthesis reads exactly what it always read. */
+      ...(noLevelWork ? { noLevelWork: true } : {}),
     });
   };
-  const synthWoofer = synthOne(specs.woofer, w, 'woofer');
+  /* V51 — the woofer slot IS the lowest way of this three-way chain, by the
+   * chain's own construction (its LP flank meets the mid's HP flank at the low
+   * handover). The requirement names "the lowest way" and this is where that
+   * way is synthesised. */
+  const synthWoofer = synthOne(specs.woofer, w, 'woofer', s.lowestWayLevelWork === 'none');
   const synthMid = synthOne(specs.mid, m, 'mid');
   const synthTweeter = synthOne(specs.tweeter, t, 'tweeter');
   /* Degenerate-load refusal (see synthesis.ts): a branch that offers the

@@ -48,6 +48,17 @@
     referentie:** `threeWayChain` alléén kostte in diezelfde run 361 s tegen de 289 s van V43, dus
     wat er beweegt is de machine en niet de laag. Het overgeslagen BESTAND is nieuw en klopt: de
     verhuisde verwerpingsrun is een bestand dat volledig uit `[live]` bestaat.
+    **Ná V51 (03-09-2026) gemeten op 292 s — 145 geslaagd + 2 rode + 1 overgeslagen bestand,
+    1636 geslaagd + 5 rode + 2 overgeslagen tests, op een lege machine ná de regeneratie**
+    (+3 bestanden: `levelWork.test.ts` 3 claims, `engine2/ingest/wiring.test.ts` 4,
+    `optimizer/lowestWayLevelWork.test.ts` 4 — die laatste kost 145 s aan ketenruns op de kleine
+    fixture; +3 in `targetCurve.test.ts`, +2 in `buildabilityGate.test.ts`, +7 in
+    `frozenNetlistGates`; en de `it.each` over het levende corpus ging van zeven naar ÉÉN, dus
+    −6 — de corpusgrootte in de testtelling, opnieuw). De vijf rode claims waren drie V51-guards
+    die de doelcurve niet meekregen, de V50-opnameregel die op 0,05 W tegen een 2 %-klasse aanliep,
+    en het byte-gepinde V50-oordelenblok dat twee nieuwe parameters zag; alle vijf gerepareerd en de
+    bestanden apart groen (frozenNetlistGates 168 s, f4cRegression 50 s). GEEN nieuwe referentie: de
+    V43-waarde van 289 s blijft staan.
     **Ná V50 (03-09-2026) gemeten op 283 s — 143 geslaagd + 1 overgeslagen bestand en één rood
     bestand (`f4cRegression`, twee claims die het V50-oordelenblok kregen), 1619 + 2 overgeslagen
     tests; +2 bestanden (`metrics/buildability.test.ts` 7 claims, `optimizer/buildabilityGate.test.ts`
@@ -150,7 +161,20 @@
   onveranderd naast staat — van 285,8 naar 517,4 s. De totale CPU-tijd steeg van 3615 naar
   4306 s. Wandkloktijd is dus gekocht met rekentijd; een voorspelling op `max(1120, 638)` ≈ 950 s
   was te optimistisch en de gemeten 1254 s is wat er staat.
-- `npx vitest run` — volledige testsuite. **GEMETEN 03-09-2026 (V50): 145 bestanden, 1625 tests,
+- `npx vitest run` — volledige testsuite. **GEMETEN 03-09-2026 (V51): 148 bestanden, 1643 tests,
+  1530 s (25 min 30), niets overgeslagen, alleen gedraaid op een lege machine met `nohup`.** De
+  telling is +3 bestanden sinds V50 (`levelWork.test.ts`, `ingest/wiring.test.ts`,
+  `optimizer/lowestWayLevelWork.test.ts`) en +18 tests: 11 in die drie, 3 in `targetCurve`, 2 in
+  `buildabilityGate`, 7 V51-blokken plus 1 herankerd V50-blok in `frozenNetlistGates`, MIN 6 uit de
+  `it.each` van `casus1V2Candidates` — het levende corpus ging van zeven naar ÉÉN netlist, en dat is
+  opnieuw een corpusgrootte in de testtelling. Het corpus is bij V51 GEREGENEERD (2417 s, `V2_JOBS=8`)
+  met de eis "geen niveauwerk op de laagste weg" en de weerstandspoort bij 10 W thermisch gewapend;
+  veertien van vijftien kandidaten verworpen (dertien op de vloer, één op de mid-excursiegrens). De
+  wandkloktijd ligt boven V50 om de reden die V42–V47 al noteerden: de byte-reproductie treft een
+  ANDERE kandidaat — `466,5 · 1719` kostte in de generator 1745 s en in de volle run 1527 s, tegen
+  768 s voor de verwerpingsrun ernaast. Eerste volle run direct groen; de snelle laag ervóór had vijf
+  rode claims die vóór deze run gerepareerd zijn (zie de `test:fast`-regel).
+  (De stand ervoor: **03-09-2026 (V50): 145 bestanden, 1625 tests,
   1362 s (22 min 42), niets overgeslagen, alleen gedraaid op een lege machine met `nohup`.** De
   telling is +2 bestanden sinds V49 (de twee bouwbaarheidstests, 19 claims) en +27 tests (19 daar,
   2 in `f4cRegression` voor het V50-oordelenblok, 6 V50-blokken in `frozenNetlistGates`). Het
@@ -351,8 +375,14 @@
   netlists byte-identiek terug, op het `savedAt`-stempel van de serialisatie na.**
 - **De vóór/ná-tabel tussen twee corpora**: `npx vite-node scripts/compare-corpora.ts [vóór] [ná]` —
   seconden, geen ketenrun. Corpora: `v30`, `v32`, `v33sweep`, `v33`, `v34`, `v37`, `v38fix`,
-  `v41`, `v42`, `v43`, `v44`, `v45`, `v47`, `v48`, `v49`, `live`; default `v49 live`, wat de
-  V50-tabel is (`v48 v49` is de V47b-tabel, `v47 v48` de V48-tabel). **Sinds V50 twee kolommen
+  `v41`, `v42`, `v43`, `v44`, `v45`, `v47`, `v48`, `v49`, `v50`, `live`; default `v50 live`, wat de
+  V51-tabel is (`v49 live` was de V50-tabel — de identiteit; `v48 v49` is de V47b-tabel, `v47 v48`
+  de V48-tabel). **Sinds V51 twee kolommen erbij:** `serie-L per weg` (de totale seriespoel PER WEG
+  in mH, `seriesInductanceByWay` uit `levelWork.ts` — de tilt die het pad vervangt zodra dat
+  verboden is, en de grootheid waarop het opslingeringsbudget bijt) en `niveauwerk laagste weg` (de
+  inventaris van `levelWork.ts`: serie-R's en shunt-pads bij naam en ohm, of "geen"), met een
+  corpusregel eronder die X ernaast zet (hoeveel niveauwerk de configuratie op de laagste weg VRAAGT,
+  klasse A) en per verwerping X en of de geweigerde tune niveauwerk droeg. **Sinds V50 twee kolommen
   erbij:** `toegestaan W` (klasse × marge, uit het M-A/part-oordeel gelezen) en `spoel piek A`
   (M-L, de drukste spoel bij de piekingang), met een corpusregel op de weerstandseis eronder; de
   M-C-corpusregel telt sinds V50 per weg tegen zijn EIGEN grens (gesteld op de tweeter, afgeleid
@@ -652,7 +682,29 @@
   10 W. Achttien gedateerde netlists (V28–V38-fix, zonder wooferpad) halen de eis wel, met
   0,5–1,4 W in een tweeterpad — dat is de eis die haalbaar is zodra de woofer NIET resistief
   verzwakt wordt, en precies wat de anker-verzwakking van V45 uitsluit.** Dit is het
-  bewijsmateriaal onder de hangende beslissing in `gestelde_eisen.bouwbaarheid_op_de_zoektocht`.
+  bewijsmateriaal onder de hangende beslissing in `gestelde_eisen.bouwbaarheid_op_de_zoektocht`
+  — **genomen bij V51:** gewapend, bij een gesteld THERMISCH ONTWERPVERMOGEN van 10 W
+  (`thermisch_ontwerpvermogen_W`) en niet bij de 100 W van de versterkerklasse; de poort zegt
+  bij elk oordeel bij welk vermogen hij las (`judged_at_W`, `judged_at_source`) en de wattkolom
+  van M-A blijft bij het continue vermogen.
+- **Niveauwerk op de laagste weg gemeten vóór er iets verboden wordt (V51)**:
+  `npx vite-node scripts/measure-v51-level-work.ts [SLEUTEL ...]` — seconden, geen ketenrun en
+  geen enkele tune; zonder argumenten élke netlist die het casusboek noemt. Drie tabellen. (1) De
+  CONFIGURATIE (klasse A, afgedrukt op elk referentiefilter): het anker, hoe ver de laagste weg
+  erboven staat na de doelcurve — X, wat deze configuratie aan niveauwerk op die weg VRAAGT —,
+  wat N gelijke drivers in serie daarvan zonder weerstand zouden leveren (20·log N), de baffle
+  step, en of het gestelde plateau binnen de beoordeelde band ligt. (2) Per netlist wat de laagste
+  weg WERKELIJK draagt (serie-R en shunt-pad bij naam, `levelWork.ts`), de seriespoel per weg, de
+  opslingering, M-E, en M-A/part bij het thermisch ontwerpvermogen én bij het continue vermogen.
+  (3) De SANITY op de referentiefilters (V42-les): HUIDIG draagt R8 in het wooferpad, dus de eis
+  sluit het referentiefilter uit — en dat is de bevinding en geen reden om haar te versoepelen.
+  **Gemeten 03-09-2026 (V51): X = 1,33 dB (anker mid, na de doelcurve; `verankerde_gaps_dB.
+  woofer_tov_mid`), twee woofers in serie zouden 6,02 dB leveren, de baffle step ligt op 442 Hz en
+  de beoordeelde band begint 0,16 octaaf eronder (doel op de bandvloer −1,32 van de gestelde −2,5
+  dB): het plateau wordt op deze meetset NIET beoordeeld. HUIDIG R8 3,30 Ω, KAND_A R8 4,00 Ω,
+  KAND_B R8 1,61 Ω; het V50-corpus 1,61–3,70 Ω serie plus op KAND_V2_1 een shunt-pad van 9,09 Ω.
+  Bij 10 W thermisch halen alle drie de referentiefilters M-A/part (2,55 / 3,09 / 1,96 W tegen
+  5 W); bij 100 W continu geen van drie (factor 5,1 / 6,2 / 3,9).**
 - **De vloer als zoekdoel meten (V30)**: `npx vite-node scripts/measure-v30-floor-goal.ts` —
   dertig ketenruns (vijftien kandidaten × twee armen), gemeten 45–70 s per stuk, ~30 min.
   Schrijft `test-fixtures/casus1_v30_vloer_vergelijking.json` en drukt de vóór/ná-tabel af.
@@ -1845,6 +1897,97 @@ grotere ingreep — hij raakt élk commando in dit project — en is deze sessie
   byte-reproductie in `casus1V2Candidates` bewijst het. `casus1_v2_herkomst.json` draagt daarom
   nog de V47b-vingerafdruk (`facts=` en `estimators=` bewegen pas bij de volgende regeneratie).
 
+### V51-guards (geen niveauwerk op de laagste weg; schakeling per weg; het thermisch ontwerpvermogen)
+- `src/lib/levelWork.ts` + `levelWork.test.ts` — **"niveauwerk op een weg" heeft één huis, met
+  drie lezers** (de worker, het rapport, de guards), in de vorm van `impedanceFloor.ts`: een
+  weerstand OP de bus bron→driver van de weg (een pad, de R van een L-pad, een shelf-pad, een
+  top-octaaf-hold — met of zonder bypass), of een weerstand die ALLEEN van een busknoop van die
+  weg naar massa hangt (de L-pad-poot). NIET: de R in een shunt-KETEN (Zobel, gedempte val) en de
+  DCR van een spoel. De bus-walk is die van de tuner zelf — `busTopology` is bij V51 een wrapper
+  over `busTopologyOfNetlist` geworden en exporteert `busNodesOf`/`nodesOf`, zodat een lezer met
+  een netlist (het rapport) dezelfde walk vraagt als een lezer met een partslijst (de keten).
+  `seriesInductanceByWay` ernaast: de totale seriespoel per weg. De test loopt op HUIDIG (R8 in
+  het wooferpad, bij naam), op een GEDATEERD corpusbestand (nooit het levende, UI-2-les) en op een
+  papieren netwerk waarin de vier onderscheidingen elk één onderdeel zijn; een onbereikbare driver
+  is `reachable: false` en NIET `none`.
+- `src/lib/engine2/ingest/wiring.ts` + `wiring.test.ts` — **de schakeling van een weg** (aantal
+  gelijke drivers, gemeten en gewenst) en de afleiding parallel↔serie: SPL ∓20·log N, fase gelijk,
+  Z ×N² / ÷N², met de AANNAME "gelijke drivers" in elke afgeleide noot. Op casus 1 de identiteit
+  (gemeten = gewenst = parallel) en NIET toegepast; de rapportregel "N in serie zou 20·log N
+  leveren" leest `parallelGainDb`. Handberekening op N = 2, 3, 4; P2 (N = 1 of gelijke schakeling
+  = verbatim); versiestring `way-wiring/1.0`.
+- `src/lib/engine2/optimizer/chainChoices.ts` — **de DERDE ketensleutel, `lowestWayLevelWork`, en
+  de eerste met een ABSENT-toestand.** Gelezen vóórdat de tuner bestaat: de ontwerpstap trimt de
+  laagste weg met 0 dB en stelt er geen shelf-pad op voor (`threeWayDesign.ts`,
+  `lowestWayLevelWork`), haar synthese legt geen L-pad, geen top-octaaf-hold en geen shelf-pad
+  (`synthesis.ts`, `noLevelWork`), en de tuner maakt nooit een weerstand aan (nagegaan: geen enkele
+  pas construeert een `Resistor`; de escalatie voegt alleen een bypass-C toe). `declareCandidate-
+  ChainChoices` leidt `'none'` af uit `lowestWayLevelWorkForbidden` (het gestelde
+  `geen_niveauwerk_op_laagste_weg`), en NIETS uit niets — absent met P4, nooit een gesteld
+  `'allowed'` (de V45-regel voor `'flat'`); een expliciete waarde wint. `chainChoices.test.ts` en
+  `choiceKeyGuard.test.ts` pinnen de lijst op drie en het gat op twee.
+- `src/lib/engine2/optimizer/lowestWayLevelWork.test.ts` — **de zes claims van de sleutel, door de
+  echte route** (`handleV2Request`, payload door `structuredClone`), op de kleine fixture van
+  `chainChoices.test.ts` met de WOOFER 6 dB opgetild zodat de historische regel hem werkelijk
+  padt: afleiding en absent; de vingerafdruk beweegt; P2 (absent en een gesteld `'allowed'`
+  byte-identiek); `'none'` BEREIKT de ontwerp- en synthesestap — de `'allowed'`-arm draagt
+  niveauwerk op de laagste weg en de `'none'`-arm niet, en de netwerken verschillen (V23); en de
+  WEIGERING: met de eis gesteld, X > 0 op de laagste weg (`gapBudgetDbByModel`) en een rimpeldoel
+  dat het padloze ontwerp mist komt de kandidaat terug als V31-verwerping `kinds: ['topology']`
+  met X in de zin, met de tegenproef dat dezelfde run met de laagste weg ALS anker (X = 0) en met
+  een gehaald doel niet op deze regel weigert. Elke uitkomst draagt de kolom `levelWork`
+  (eis, X, geleverde inventaris, plateau). Gemeten 145 s.
+- `src/lib/engine2/optimizer/worker.ts` — **de weigering, `by: 'stated-topology'`**, in de V45-vorm
+  en op dezelfde plek (ná de budgettoets, alleen als de tuner niet al weigerde): drie voorwaarden
+  tegelijk — de eis gesteld, X > 0, en het geleverde netwerk mist het rimpeldoel van de trapmethode
+  (`staged.rippleDb`, de eigen definitie van "doel gehaald" van de tuner en een keuze-sleutel).
+  Waarom het rimpeldoel en niet het SPL-venster: het venster is een A5e.1-smaakeis die de ladder
+  mag verruimen, en een niveaustap van X dB is geen smaak maar een configuratiefeit. X komt van
+  `facts.gapBudgetDb[laagste]` (de A5d.4-gap, doelcurve erin, als meetfeit overgestoken) of is 0
+  als de laagste weg het anker is; de geweigerde tune reist mee als rapportage. Plus per kandidaat
+  een notitie met X, de geleverde inventaris (en een DEFECT-regel als die niet leeg is terwijl de
+  eis dat vraagt) en de plateau-toets.
+- `src/lib/engine2/requirements/targetCurve.ts` — **`plateauCoverage`**: ligt het gestelde
+  plateau binnen de beoordeelde band? Beoordeeld zodra de bandvloer minstens
+  `PLATEAU_JUDGED_OCTAVES_BELOW_STEP` (1, @p6 rule) onder de overgang ligt — een eerste-orde
+  shelf staat dáár op twee derde van zijn diepte; anders "het niveau bij de overname is
+  beoordeeld; het laag niet — geen aanname". Getest op een octaaf eronder (doel −4 van −6),
+  vlak eronder, erboven, flat en een plateau zonder invoer.
+- `src/lib/engine2/report.ts` — **`predesign.levelWork`**, rapportage en geen oordeel: de laagste
+  weg, het anker, X (`aboveAnchorDb` uit de verankerde gaps, 0 als de laagste weg het anker is,
+  null als de gaps geblokkeerd zijn), de schakeling per weg, wat serie zou leveren, de baffle step
+  uit de doelcurve, de inventaris van de geladen netlist, de gestelde eis en de plateau-toets — in
+  één zin die het paneel afdrukt (sectie "Pre-design — level work on the lowest way"). Invoer:
+  `ReportSettings.wiringByDriver` en `.lowestWayLevelWork` (via `ProjectSettings`), door de
+  adapter uit `AdapterBranch.wiring` en de gates-memo van de app gevuld.
+- `src/lib/engine2/optimizer/gates.ts` — **`resistorThermalPowerW`**: het vermogen waarbij M-A/part
+  oordeelt; absent = het continue vermogen (V50). `resistorJudgementPowerW` is de ENE regel, met
+  twee lezers (de poort en `report.ts`, dat `resistorLoads` ermee vormt); het oordeel draagt
+  `judged_at_W` en `judged_at_source`; in de vingerafdruk zolang de poort gewapend is.
+  `buildabilityGate.test.ts`: tien keer minder vermogen is tien keer minder watt in dezelfde
+  weerstand, de M-A-kolom beweegt niet, een thermisch vermogen alleen vormt óók watt (F0), en
+  P2 zonder het veld.
+- `src/lib/engine2/frozenNetlistGates.test.ts` — **zeven V51-blokken over het hele casusboek, plus
+  het V50-bevindingsblok HERANKERD** (op het continue vermogen én op het gedateerde
+  `V50_KAND_*`-corpus — de poort oordeelt sinds V51 bij 10 W, dus de V50-lezing komt van de
+  M-A-kolom bij 100 W, en het levende corpus is het V51-veld zonder wooferpad). De dragende
+  V51-claims: X is klasse A (hetzelfde op alle drie de referentiefilters, boven nul, en het anker
+  is NIET de laagste weg — het casus-1-feit; gelijk aan `verankerde_gaps_dB.woofer_tov_mid`);
+  het plateau wordt NIET beoordeeld, uit de eigen getallen van het blok; de TEGENPROEF dat de
+  referentiefilters en élke V50-netlist niveauwerk op de laagste weg dragen; het LEVENDE corpus
+  draagt er géén (en de seriespoel van die weg bestaat); het opgeschreven `v51_niveauwerk`-blok
+  reproduceert per netlist; P2 zonder de eis en de schakeling. `FIELD` draagt daarvoor
+  `levelWork`, `seriesLByWay` en `hottestAtRatingW` (de heetste weerstand bij het continue
+  vermogen, van de M-A-kolom en zonder tweede rapport).
+- `src/lib/engine2/casus1V2Candidates.test.ts` / `casus1V2Refusal.test.ts` — de meetopstelling
+  noemt het TIENDE besluit (`niveauwerk_laagste_weg`, met herkomst), de schakeling per weg, het
+  thermisch ontwerpvermogen en bij welk vermogen de poort oordeelt (`bouwbaarheid.oordeelt_bij_W`),
+  en de gewapende M-A/part-bron; de weigerings-vocabulaire kent sinds V51 `budget` (V45) en
+  `topology`.
+- **Het corpus is bij V51 GEREGENEREERD** (`V2_JOBS=8`) met de eis gewapend en de weerstandseis op
+  10 W thermisch, het V50-corpus vooraf bevroren als `V50-KAND-*` (`v50_corpus`). Wat het veld
+  deed staat in de V51-entry en in `compare-corpora.ts v50 live`.
+
 ### V50-guards (bouwbaarheid als gestelde eis; de M-C-grens per weg)
 - `src/lib/engine2/metrics/buildability.ts` + `buildability.test.ts` — **twee grootheden, allebei al
   in de oplossing, nu met een toegestane waarde per element.** `resistorLoads` LEEST M-A's eigen
@@ -2064,7 +2207,9 @@ grotere ingreep — hij raakt élk commando in dit project — en is deze sessie
 ### De casus-1-fixtures die een SCRIPT opwekt (F4d)
 `test-fixtures/casus1/KAND-V2-*.adsfilter.json` zijn de v2-kandidaten die de shortlist haalden —
 negen bij F4d, tien vanaf V28, acht sinds V41, vier bij V42, zeven sinds V43, zeven na de V44- en
-de V45-regeneratie, vier bij V47, vijf bij V48, **en ZEVEN sinds V47b** — bevroren als bestanden
+de V45-regeneratie, vier bij V47, vijf bij V48, zeven bij V47b en V50, **en ÉÉN sinds V51** (veertien van
+vijftien verworpen: dertien op de versterkervloer, één op de mid-excursiegrens — zonder wooferpad
+ontbreekt de serieweerstand die de impedantiebodem optilde) — bevroren als bestanden
 op precies dezelfde voet als de drie v1-kandidaten — want F4a stelde vast dat casus 1 géén klasse-C-
 referenties heeft, en "laat de suite de scan draaien en assert op wat eruit komt" zou de eerste maken.
 Twee scripts, twee kosten:
@@ -2127,7 +2272,7 @@ te tunen. **Deze twee runs zijn samen het leeuwendeel van de suite** — en zij 
 `casus1V2Refusal.test.ts` de verwerping), zodat zij naast elkaar draaien in plaats van na elkaar.
 Gemeten in de volle run van 01-09-2026: 1244,3 s en 924,2 s, bij een wandklok van 1254,4 s.
 
-**Sinds V47b zijn het er ZESTIEN corpora, en dat is opzet.** `KAND_V2_*` is het levende corpus.
+**Sinds V51 zijn het er ZEVENTIEN corpora, en dat is opzet.** `KAND_V2_*` is het levende corpus.
 `V28_KAND_*` is bevroren vóór de vloer een ZOEKDOEL was (V30); `V30_KAND_*` toen de poort nog blind
 was onder de verre-veldbodem (V32); `V32_KAND_*` toen de BARRIÈRE nog het evaluatieraster las terwijl
 de poort de sweep handhaafde (V33); `V33_SWEEP_KAND_*` is V33's dure referentiearm, met de barrière
@@ -2177,8 +2322,15 @@ stond — de toevallige waarde van HUIDIG op één decimaal (−25,084), met 0,0
 hermeting van het eigen referentiefilter na inspelen de eis kon laten omslaan, en zodat vier
 V47-weigeringen tussen −21,8 en −23,5 dB, die de 18-dB-industrieregel op f_s ruim halen, als
 kandidaat geweigerd werden. Bij V47b staat de eis VOORLOPIG op −20,0 (18 dB + 2 dB marge voor
-f_s-drift), tot M-C excursie-gedragen is (V49); een gekozen dB-getal is geen generieke eis (V47b).
-Alle vijftien de gedateerde corpora zijn byte-identieke bestanden onder een andere naam, met hun
+f_s-drift), tot M-C excursie-gedragen is (V49); een gekozen dB-getal is geen generieke eis (V47b);
+`V49_KAND_*` toen de M-C-grens nog ÉÉN getal voor elke hoogdoorlaatbeschermde weg was en
+bouwbaarheid nergens een poort (V50); `V50_KAND_*` toen de LAAGSTE weg nog niveauwerk mocht dragen
+— het anker is de mid, het wooferpaar staat er 1,33 dB boven (A5d.4, na de doelcurve), en élke
+geleverde netlist betaalde dat in een serieweerstand in het wooferpad, 13,6–34,9 W bij 100 W
+continu; V51 verbiedt dat pad (`geen_niveauwerk_op_laagste_weg`), wapent de weerstandseis op de
+zoektocht bij 10 W thermisch ontwerpvermogen en wekt het veld opnieuw op — onderdeel-voor-onderdeel
+identiek aan het V49-corpus, want V50 bewoog het veld niet (V51).
+Alle zestien de gedateerde corpora zijn byte-identieke bestanden onder een andere naam, met hun
 klasse-B-blokken mee, bewaard als de "vóór"-helften van hun vergelijkingen. Wie
 een script schrijft dat het levende corpus opruimt gebruikt `^KAND_V2_\d+$` en nooit
 `startsWith('KAND_V2')`: die tweede slikt de gedateerde corpora mee en gooit het bewijsmateriaal weg.
@@ -2188,7 +2340,7 @@ genoemde netlist die geen v1-baseline is een geclassificeerd blok moet hebben, o
 familielijst die er stond bij V32 vergeten is. De koppeling bestandsnaam ↔ kandidaat staat in
 `manifest_en_geometrie.v30_corpus`, `.v32_corpus`, `.v33_sweep_corpus`, `.v33_corpus`,
 `.v34_corpus`, `.v37_corpus`, `.v38fix_corpus`, `.v41_corpus`, `.v42_corpus`, `.v43_corpus`,
-`.v44_corpus`, `.v45_corpus`, `.v47_corpus` en `.v48_corpus`, want zij
+`.v44_corpus`, `.v45_corpus`, `.v47_corpus`, `.v48_corpus`, `.v49_corpus` en `.v50_corpus`, want zij
 stond alleen in `casus1_v2_herkomst.json` en dat bestand wordt door de volgende regeneratie
 overschreven. **Bevriezen doe je sinds V34 met `scripts/freeze-live-corpus.ts`** en niet met de
 hand: het zijn vijf bewerkingen die allemaal moeten landen.

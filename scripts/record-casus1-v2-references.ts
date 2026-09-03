@@ -54,6 +54,9 @@ import { RESISTIVE_EQUIVALENT_VERSION } from '../src/lib/engine2/metrics/resisti
 import { PHASE_INTEGRATION_VERSION } from '../src/lib/engine2/metrics/phaseIntegration.ts';
 import { PHASE_ADMISSION_VERSION } from '../src/lib/phaseAdmission.ts';
 import { BUILDABILITY_VERSION } from '../src/lib/engine2/metrics/buildability.ts';
+import { LEVEL_WORK_VERSION, levelWorkOnNetlist, seriesInductanceByWay } from '../src/lib/levelWork.ts';
+import { casus1ThermalDesignPowerW } from '../src/lib/engine2/casus1.fixture.ts';
+import { CASUS1_LEVEL_WORK_SETTINGS } from '../src/lib/engine2/casus1V2.fixture.ts';
 import { DRIVE_EXCURSION_VERSION, derivedDriveLimitDb } from '../src/lib/engine2/metrics/driveExcursion.ts';
 import { compareDesigns } from '../src/lib/engine2/predesign/comparison.ts';
 import { ampFloorSlackOhm, meetsAmpFloor } from '../src/lib/impedanceFloor.ts';
@@ -109,6 +112,9 @@ const report = (key: string) =>
       ...POWER,
       ...DRIVE_PER_WAY,
       ...BUILDABILITY,
+      /* V51 — the wiring per way and the level-work requirement, so the report's
+       * level-work block is recorded with the same inputs the guards read. */
+      ...CASUS1_LEVEL_WORK_SETTINGS,
       orderByPair: { [ctcKey('woofer', 'mid')]: 4, [ctcKey('mid', 'tweeter')]: 4 },
       reOhmByDriver: { woofer: CASUS1_WOOFER_DC_OHM },
       targetCurve: CASUS1_TARGET_CURVE,
@@ -260,6 +266,18 @@ const CHAIN_GRID_LO_HZ = CASUS1_V2_GRID[0];
  * rather than a plausible-sounding reason that belongs to a different corpus.
  */
 const DATED_REASON: Record<string, string> = {
+  V50:
+    'HET GEDATEERDE V50-CORPUS. Bevroren vóór V51, toen de LAAGSTE weg nog niveauwerk mocht dragen: ' +
+    'het anker is de mid, het wooferpaar staat er in het overnamegebied 3-5 dB boven, en élke ' +
+    'geleverde netlist betaalde dat verschil in een serieweerstand in het wooferpad - 13,6 tot ' +
+    '34,9 W in een enkele weerstand bij 100 W continu (V50), zoals HUIDIG met R8 (25,5 W). Bij V51 ' +
+    'stelt Sander dat de laagste weg GEEN niveauwerk draagt (geen serie-R, geen shunt-pad; de ' +
+    'vuistregel: nooit een pad op de woofer), wapent de weerstandseis op de zoektocht bij een ' +
+    'thermisch ontwerpvermogen van 10 W, en laat het veld opnieuw opwekken - een kandidaat die ' +
+    'zijn rimpeldoel zonder wooferpad niet haalt komt dan terug als verwerping met het getal X ' +
+    'erbij (hoeveel niveauwerk de configuratie vraagt). Onderdeel-voor-onderdeel identiek aan het ' +
+    'V49-corpus (V50 wekte opnieuw op en het veld bewoog niet), en bewaard als de "vóór"-helft van ' +
+    'de V51-vergelijking. Meetobject, GEEN ontwerp: mag niet gebouwd worden.',
   V49:
     'HET GEDATEERDE V49-CORPUS. Bevroren vóór V50, toen de gestelde M-C-grens nog EEN getal voor ' +
     'elke hoogdoorlaatbeschermde weg was (-20,0 dB, V47b): de mid werd op een dome-conventie ' +
@@ -1184,13 +1202,20 @@ raw.manifest_en_geometrie.v47_bescherming = driveRecord;
     const rep = report(key);
     const r = rep.gates.verdicts.find((v) => v.gate === 'M-A/part');
     const l = rep.gates.verdicts.find((v) => v.gate === 'M-L');
+    /* V51 — the same element's watts at the CONTINUOUS rating, off the M-A
+     * column the report already carries (no second report): the V50 reading
+     * beside the judged one, so the block keeps saying what V50 measured. */
+    const el = rep.metrics.dissipation?.elements.find((e) => !e.parasitic && e.id === r?.parameters?.element);
     rows.push({
       netlist: key,
       heetste_R: r?.parameters?.element ?? null,
       heetste_R_ohm: typeof r?.parameters?.ohm === 'number' ? r.parameters.ohm : null,
       heetste_R_W: r2(r?.value ?? null),
+      heetste_R_W_bij_continu: r2(el?.watts ?? null),
       toegestaan_W: r?.limit ?? null,
       haalt_de_eis: r && r.value !== null && r.limit !== null ? r.value <= r.limit : null,
+      haalt_de_eis_bij_continu:
+        el?.watts !== undefined && el.watts !== null && r?.limit !== null && r?.limit !== undefined ? el.watts <= r.limit : null,
       drukste_spoel: l?.parameters?.element ?? null,
       drukste_spoel_piek_A: r2(l?.value ?? null),
       drukste_spoel_bij_hz: r0(Number(String(l?.parameters?.at ?? '').replace(/[^0-9.]/g, '')) || null),
@@ -1216,13 +1241,113 @@ raw.manifest_en_geometrie.v47_bescherming = driveRecord;
         ? BUILDABILITY.resistorClassW * BUILDABILITY.resistorPowerMargin
         : null,
     continu_vermogen_W: CONTINUOUS_POWER_W,
+    /* V51 — the power the verdict `heetste_R_W` / `haalt_de_eis` was JUDGED at:
+     * the stated thermal design power when there is one, else the continuous
+     * rating (V50). `heetste_R_W_bij_continu` / `haalt_de_eis_bij_continu` keep
+     * the V50 reading beside it. */
+    thermisch_ontwerpvermogen_W: casus1ThermalDesignPowerW(golden),
+    oordeel_bij_W: casus1ThermalDesignPowerW(golden) ?? CONTINUOUS_POWER_W,
     spoelklasse_A: BUILDABILITY.coilClassA ?? null,
     V_piek_V: vPeak === null ? null : r2(vPeak),
     gewapend_op_de_zoektocht: casus1BuildabilityOnSearch(golden),
     levend_corpus_netlists: live.length,
     levend_corpus_eroverheen: live.filter((r) => r.haalt_de_eis === false).length,
     referentiefilters_eroverheen: refs.filter((r) => r.haalt_de_eis === false).length,
+    levend_corpus_eroverheen_bij_continu: live.filter((r) => r.haalt_de_eis_bij_continu === false).length,
+    referentiefilters_eroverheen_bij_continu: refs.filter((r) => r.haalt_de_eis_bij_continu === false).length,
     casusboek_netlists_die_de_eis_halen: rows.filter((r) => r.haalt_de_eis === true).map((r) => r.netlist),
+    per_netlist: rows,
+  };
+}
+
+/* ------------------------------------------------------------------ *
+ * V51 — NIVEAUWERK OP DE LAAGSTE WEG: wat de configuratie vraagt (X), en wat
+ * élke bevroren netlist daar werkelijk draagt
+ * ------------------------------------------------------------------ */
+
+/**
+ * Dezelfde vorm en dezelfde reden als `v36_dissipatie` en `v50_bouwbaarheid`:
+ * afgeleid, over het hele casusboek, door `frozenNetlistGates.test.ts`
+ * herrekend. X komt uit het rapport (de A5d.4-gap van de laagste weg tot het
+ * anker, doelcurve erin) en is klasse A — hetzelfde getal op élk
+ * referentiefilter; de INVENTARIS per netlist (serie-R en shunt-pad op de
+ * laagste weg, `levelWork.ts`) en de seriespoel per weg zijn klasse B. Het
+ * blok schrijft óók de eis mee, zodat een lezer ziet onder welke regel het
+ * levende corpus is opgewekt.
+ */
+{
+  const rows: Record<string, unknown>[] = [];
+  let X: number | null = null;
+  let anchor: string | null = null;
+  let lowest: string | null = null;
+  let plateau: Record<string, unknown> | null = null;
+  let seriesWould: number | null = null;
+  let stepHz: number | null = null;
+  const thermalW = casus1ThermalDesignPowerW(golden);
+  for (const key of Object.keys(netlists)) {
+    const rep = report(key);
+    const lw = rep.predesign.levelWork;
+    if (lw) {
+      if (X === null) X = lw.aboveAnchorDb;
+      anchor = lw.anchor;
+      lowest = lw.lowestWay;
+      seriesWould = lw.seriesWouldDeliverDb;
+      stepHz = lw.stepHz;
+      if (lw.plateau && plateau === null) {
+        plateau = {
+          beoordeeld: lw.plateau.judged,
+          overgang_hz: lw.plateau.stepHz,
+          diepte_dB: lw.plateau.depthDb,
+          bandvloer_hz: r2(lw.plateau.bandFloorHz),
+          octaven_onder_overgang: r2(lw.plateau.octavesBelowStep),
+          doel_op_bandvloer_dB: r2(lw.plateau.targetAtFloorDb),
+          toelichting: lw.plateau.note,
+        };
+      }
+    }
+    const filter = casus1Filter(key, manifest, files, golden);
+    const inv = lowest !== null ? levelWorkOnNetlist(filter.netlist, lowest) : null;
+    const parts = deserializeFilter(readFileSync(join(CASUS1_DIR, netlists[key]), 'utf-8')).parts;
+    const lByWay = seriesInductanceByWay(parts);
+    const r = rep.gates.verdicts.find((v) => v.gate === 'M-A/part');
+    const thev = [...rep.metrics.thevenin].sort((a, b) => (a.atHz ?? Infinity) - (b.atHz ?? Infinity))[0];
+    rows.push({
+      netlist: key,
+      serie_R: inv?.seriesResistors.map((x) => ({ id: x.id, ohm: r2(x.ohm) })) ?? null,
+      shunt_pad: inv?.shuntPads.map((x) => ({ id: x.id, ohm: r2(x.ohm) })) ?? null,
+      geen_niveauwerk: inv?.none ?? null,
+      serie_R_ohm: r2(inv?.seriesOhm ?? null),
+      serie_L_mH_per_weg: Object.fromEntries(Object.entries(lByWay).map(([k, h]) => [k, r2(h * 1e3)])),
+      opslingering_dB: r2(rep.metrics.lfBump[0]?.result.resonantDb ?? null),
+      Qes_mult: r2(thev?.qMultiplier ?? null),
+      heetste_R_W_bij_oordeelvermogen: r2(r?.value ?? null),
+      haalt_M_A_part: r && r.value !== null && r.limit !== null ? r.value <= r.limit : null,
+    });
+  }
+  const live = rows.filter((r) => /^KAND_V2_\d+$/.test(String(r.netlist)));
+  const refs = rows.filter((r) => ['HUIDIG', 'KAND_A', 'KAND_B'].includes(String(r.netlist)));
+  raw.manifest_en_geometrie.v51_niveauwerk = {
+    _:
+      'V51 — NIVEAUWERK OP DE LAAGSTE WEG, op élke bevroren netlist. X is hoeveel dB niveauwerk deze ' +
+      'CONFIGURATIE op de laagste weg vraagt: de A5d.4-gap van die weg tot het anker na de doelcurve ' +
+      '(klasse A: een eigenschap van de meetset en de voicing, niet van een filter). De inventaris per ' +
+      'netlist is wat het bestand daar werkelijk draagt (levelWork.ts: weerstanden in het serie-pad, ' +
+      'weerstanden alleen van dat pad naar massa), naast de seriespoel per weg (de tilt die het pad ' +
+      'vervangt), de opslingering en M-E. Afgeleid; frozenNetlistGates.test.ts herrekent het. Zie ' +
+      'gestelde_eisen.geen_niveauwerk_* voor de eis en driverkaart.woofer.schakeling voor de meetgeometrie.',
+    schatter: LEVEL_WORK_VERSION,
+    eis: CASUS1_LEVEL_WORK_SETTINGS.lowestWayLevelWork ?? null,
+    laagste_weg: lowest,
+    anker: anchor,
+    gevraagd_X_dB: r2(X),
+    serie_zou_leveren_dB: r2(seriesWould),
+    baffle_step_hz: r2(stepHz),
+    thermisch_ontwerpvermogen_W: thermalW,
+    plateau,
+    levend_corpus_netlists: live.length,
+    levend_corpus_met_niveauwerk_op_laagste_weg: live.filter((r) => r.geen_niveauwerk === false).length,
+    referentiefilters_met_niveauwerk_op_laagste_weg: refs.filter((r) => r.geen_niveauwerk === false).length,
+    casusboek_netlists_zonder_niveauwerk_op_laagste_weg: rows.filter((r) => r.geen_niveauwerk === true).map((r) => r.netlist),
     per_netlist: rows,
   };
 }

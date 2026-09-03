@@ -151,6 +151,15 @@ interface ZInfo {
   topHold?: { droopDb: number; kneeHz: number } | null;
   /** False suppresses the Zobel candidate (lean first pass). Default true. */
   zobelOk?: boolean;
+  /**
+   * V51 — TRUE forbids every LEVEL-WORK element on this branch: the L-pad
+   * (series R + shunt R), the top-octave hold (series R bypassed by C) and the
+   * shelf cuts (series R bypassed by C or L). Peak cuts (LCR across or beside
+   * the driver), the Zobel and the Fs trap are impedance corrections and stay.
+   * Default false, which is byte-identical to every caller that never states
+   * it. See `levelWork.ts` for the definition this honours.
+   */
+  noLevelWork?: boolean;
 }
 
 /**
@@ -239,7 +248,13 @@ function deriveTopology(
     }
   }
 
-  if (spec.gainDb < -0.5) {
+  /* V51 — a branch that may carry no level work gets NO pad however much
+   * attenuation the spec asks for. In acoustic mode the fit is level-free, so
+   * the branch simply lands where the driver puts it and the assembled tune
+   * sees the step; that step is the finding, not something to hide in a
+   * resistor the requirement forbids. */
+  const levelWorkOk = zInfo.noLevelWork !== true;
+  if (levelWorkOk && spec.gainDb < -0.5) {
     // L-pad sized for the requested attenuation into R_nom.
     const R = zAt(spec.hp.enabled ? spec.hp.freq * 2 : 1000);
     const a = 10 ** (spec.gainDb / 20);
@@ -255,7 +270,7 @@ function deriveTopology(
   // knee down to the level the driver can still deliver up top. This is the
   // deliberate "lower the ceiling" move; without it the level-free fit just
   // spreads the unreachable top as error across the band.
-  if (zInfo.topHold) {
+  if (levelWorkOk && zInfo.topHold) {
     const f0 = zInfo.topHold.kneeHz;
     const a = 10 ** (-zInfo.topHold.droopDb / 20);
     const Zd = zAt(f0);
@@ -275,6 +290,10 @@ function deriveTopology(
 
     const type = band.type ?? 'peak';
     if (type !== 'peak') {
+      /* V51 — a shelf cut IS a pad with a bypass, so on a branch that may
+       * carry no level work it is skipped; the band stays in the spec and the
+       * design step is told not to propose one there in the first place. */
+      if (!levelWorkOk) continue;
       // Shelf cut → series R with a frequency-dependent bypass: a capacitor
       // lets the highs around the pad (lowShelf cut), an inductor lets the
       // lows around it (highShelf cut). THE passive way to "pull everything
@@ -502,6 +521,11 @@ export interface SynthesizeOptions {
    * parts becomes visible instead of silently assumed away. Default false.
    */
   catalogSnap?: boolean;
+  /**
+   * V51 — no level-work element on this branch: no L-pad, no top-octave hold,
+   * no shelf pad. See `ZInfo.noLevelWork`. Default false = byte-identical.
+   */
+  noLevelWork?: boolean;
 }
 
 export function synthesize(
@@ -597,7 +621,12 @@ export function synthesize(
     }
   }
 
-  const topo = deriveTopology(spec, zAt, inverted, { fsPeak, topHold, zobelOk: allowCorr });
+  const topo = deriveTopology(spec, zAt, inverted, {
+    fsPeak,
+    topHold,
+    zobelOk: allowCorr,
+    ...(opts.noLevelWork === true ? { noLevelWork: true } : {}),
+  });
   // Acoustic mode: the target is the ideal crossover SHAPE (HP/LP/gain) only.
   // EQ bands stay in the TOPOLOGY as free tools — the optimiser may move and
   // retune them to pull driver bumps toward the target — but they must not

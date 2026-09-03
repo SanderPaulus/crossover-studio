@@ -103,6 +103,7 @@ import { deserializeFilter } from '../src/lib/filterFile.ts';
 import { CASUS1_DIR } from '../src/lib/engine2/casus1.fixture.ts';
 import type { VxpPart } from '../src/lib/parsers/vxp.ts';
 import { decompose } from './v38-groups.ts';
+import { describeLevelWork, seriesInductanceByWay } from '../src/lib/levelWork.ts';
 
 /* DE CORPUSKAART, HET INSTELLINGENBLOK EN DE STATISTIEK WONEN SINDS DE
  * V47-NAZORG IN `casus1Corpora.fixture.ts` — dit script is er de ene lezer van
@@ -114,7 +115,7 @@ const golden = loadGolden();
 const bank = corpusBank(golden);
 const { manifest, files, settings: SETTINGS, floorOhm: FLOOR } = bank;
 
-const [beforeId = 'v49', afterId = 'live'] = process.argv.slice(2);
+const [beforeId = 'v50', afterId = 'live'] = process.argv.slice(2);
 const before = corpusOf(beforeId, golden);
 const after = corpusOf(afterId, golden);
 
@@ -261,6 +262,22 @@ interface Row {
    */
   liftDb: number | null;
   opslingeringDb: number | null;
+  /**
+   * V51 — NIVEAUWERK OP DE LAAGSTE WEG, en de spoel die het vervangt.
+   *
+   * `levelWork` is de inventaris van `levelWork.ts` op de laagste weg van het
+   * rapport (serie-R's en shunt-pads bij naam en ohm); `seriesLByWay` de totale
+   * seriespoel PER WEG in mH — de tilt van het bovenste octaaf die het pad
+   * vervangt zodra dat verboden is, en de grootheid waarop het
+   * opslingeringsbudget bijt (de V42/V43-spanning). `askedDb` is X: hoeveel de
+   * configuratie op de laagste weg vraagt, uit het rapport, hetzelfde getal
+   * voor élke netlist (klasse A) en hier één keer per rij afgedrukt zodat de
+   * corpusregel eronder het naast de verwerpingen kan zetten.
+   */
+  levelWork: string;
+  levelWorkNone: boolean | null;
+  seriesLByWay: Record<string, number>;
+  askedDb: number | null;
 }
 
 /* De afronding zelf woont sinds de V47-nazorg in `casus1Corpora.fixture.ts`:
@@ -442,8 +459,24 @@ function measure(key: string): Row {
     seriesLmH: r2(seriesInductanceMH(key, rep.metrics.lfBump[0]?.driver ?? null)),
     liftDb: r2(rep.metrics.lfBump[0]?.result.liftDb ?? null),
     opslingeringDb: r2(rep.metrics.lfBump[0]?.result.resonantDb ?? null),
+    ...(() => {
+      const lw = rep.predesign.levelWork;
+      const name = (golden.manifest_en_geometrie as { netlists: Record<string, string> }).netlists[key];
+      const parts: VxpPart[] = deserializeFilter(readFileSync(join(CASUS1_DIR, name), 'utf-8')).parts;
+      const byWay = seriesInductanceByWay(parts);
+      return {
+        levelWork: lw?.delivered ? describeLevelWork(lw.delivered).replace(/^(no )?level work on \S+:? ?/, (m) => (m.startsWith('no') ? 'geen' : '')) : '—',
+        levelWorkNone: lw?.delivered?.none ?? null,
+        seriesLByWay: Object.fromEntries(Object.entries(byWay).map(([w, h]) => [w, r2(h * 1e3)!])),
+        askedDb: r2(lw?.aboveAnchorDb ?? null),
+      };
+    })(),
   };
 }
+
+/** De seriespoel per weg als één cel: `woofer 2,32 / mid 0,41 / tweeter —`. */
+const lByWayCell = (m: Record<string, number> | undefined, ways: string[]): string =>
+  !m ? '—' : ways.map((w) => `${w} ${m[w] === undefined ? '—' : m[w].toFixed(2)}`).join(' / ');
 
 const outcomeByCandidate = new Map((after.outcomes ?? []).map((o) => [o.label, o]));
 
@@ -473,11 +506,13 @@ console.log(
     'Q_es× vóór → ná | M-C dB vóór → ná | M-C per weg vóór → ná | protSq dB² (ctl) vóór → ná | ' +
     'M-F-eind dB vóór → ná | smalste piek ná (dB @ Hz) | correctiegroepen vóór → ná | ' +
     'LF-bult dB vóór → ná | lift dB vóór → ná | opslingering dB vóór → ná | ' +
-    'serie-L mH vóór → ná |',
+    'serie-L mH vóór → ná | serie-L per weg mH vóór → ná (V51) | niveauwerk laagste weg vóór → ná (V51) |',
 );
 console.log(
-  '|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|',
+  '|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|',
 );
+/** De wegen in rapportvolgorde, voor de serie-L-cel — afgeleid, niet benoemd. */
+const WAYS: string[] = bank.report('HUIDIG').driversLowToHigh;
 
 let beforeClears = 0;
 let afterClears = 0;
@@ -533,7 +568,9 @@ for (const label of labels) {
       `${num(b?.bultDb ?? null)} → ${afterCell(a?.bultDb ?? null)} | ` +
       `${num(b?.liftDb ?? null)} → ${afterCell(a?.liftDb ?? null)} | ` +
       `${num(b?.opslingeringDb ?? null)} → ${afterCell(a?.opslingeringDb ?? null)} | ` +
-      `${num(b?.seriesLmH ?? null)} → ${afterCell(a?.seriesLmH ?? null)} |`,
+      `${num(b?.seriesLmH ?? null)} → ${afterCell(a?.seriesLmH ?? null)} | ` +
+      `${lByWayCell(b?.seriesLByWay, WAYS)} → ${a ? lByWayCell(a.seriesLByWay, WAYS) : afterCell(null)} | ` +
+      `${b ? b.levelWork : '—'} → ${a ? a.levelWork : outcome?.verwerping ? '**verworpen**' : 'geen netlist'} |`,
   );
 }
 
@@ -603,8 +640,10 @@ console.log(
   console.log(
     allowed === null
       ? 'M-A/part (V50): geen weerstandsklasse met marge gesteld, dus de watt hierboven is een kolom en geen eis (P4).'
-      : `M-A/part (V50): toegestaan ${allowed.toFixed(1)} W per weerstand (klasse × marge, bij ` +
-        `${SETTINGS.amplifierPowerW} W continu): ${over(measuredBefore)} van ${judged(measuredBefore)} eroverheen vóór, ` +
+      : `M-A/part (V50): toegestaan ${allowed.toFixed(1)} W per weerstand (klasse × marge, geoordeeld bij ` +
+        `${SETTINGS.resistorThermalPowerW ?? SETTINGS.amplifierPowerW} W ` +
+        `${SETTINGS.resistorThermalPowerW !== undefined ? 'thermisch ontwerpvermogen (V51); de wattkolom hierboven staat bij het continue vermogen' : 'continu'}): ` +
+        `${over(measuredBefore)} van ${judged(measuredBefore)} eroverheen vóór, ` +
         `${over(measuredAfter)} van ${judged(measuredAfter)} ná. Een POORT in het rapport; of zij ook de ZOEKTOCHT ` +
         'wapent staat in gestelde_eisen.bouwbaarheid_op_de_zoektocht.',
   );
@@ -772,6 +811,26 @@ const roleTotals = (rows: Row[]) => {
       `${off(measuredAfter)} netlists. Een kolom, geen oordeel: casus 1 stelt geen lobinggrens (P4).`,
   );
 }
+/* V51 — niveauwerk op de laagste weg als corpusregel: hoeveel netlists dragen
+ * er iets, vóór en ná, met X (wat de configuratie vraagt) ernaast en de
+ * seriespoel per weg als gepaarde lezing. De eis wordt uit het manifest
+ * GELEZEN (het rapport draagt haar) en nooit hier geschreven (P6). */
+{
+  const withPad = (rows: Row[]) => rows.filter((r) => r.levelWorkNone === false).length;
+  const judged = (rows: Row[]) => rows.filter((r) => r.levelWorkNone !== null).length;
+  const X = [...measuredAfter, ...measuredBefore].find((r) => r.askedDb !== null)?.askedDb ?? null;
+  const rule = bank.report('HUIDIG').predesign.levelWork?.requirement ?? null;
+  const lOf = (w: string) => (r: Row) => r.seriesLByWay[w] ?? null;
+  console.log(
+    `niveauwerk op de laagste weg (V51): ${withPad(measuredBefore)} van ${judged(measuredBefore)} netlists ` +
+      `dragen er iets vóór, ${withPad(measuredAfter)} van ${judged(measuredAfter)} ná. ` +
+      (X === null ? 'X (wat de configuratie vraagt) is niet bekend. ' : `De configuratie VRAAGT X = ${X.toFixed(2)} dB (A5d.4-gap van de laagste weg tot het anker, plateau erin). `) +
+      (rule === 'none'
+        ? 'Eis GESTELD: geen niveauwerk op de laagste weg (gestelde_eisen.geen_niveauwerk_op_laagste_weg); een kandidaat die zijn rimpeldoel daardoor mist is een verwerping met X. '
+        : 'Geen eis gesteld, dus dit is een kolom en geen oordeel (P4). ') +
+      `Seriespoel per weg gepaard: ${WAYS.map((w) => `${w} ${paired(lOf(w), ' mH')}`).join(', ')}.`,
+  );
+}
 console.log(`uit de shortlist gevallen: ${gone.length}${gone.length ? ` — ${gone.map(short).join('; ')}` : ''}`);
 console.log(`nieuw in de shortlist: ${arrived.length}${arrived.length ? ` — ${arrived.map(short).join('; ')}` : ''}`);
 
@@ -791,6 +850,13 @@ if (after.outcomes) {
         `±${t?.windowPlusMinusDb?.toFixed(2) ?? '—'} dB / RMS ${t?.rmsDeviationDb?.toFixed(2) ?? '—'} dB`,
     );
     console.log(`      reden: ${o.verwerping!.reden}`);
+    const nw = (o as { niveauwerk?: { gevraagd_X_dB: number | null; geleverd_geen: boolean | null } }).niveauwerk;
+    if (nw) {
+      console.log(
+        `      niveauwerk (V51): X = ${nw.gevraagd_X_dB === null ? '—' : `${nw.gevraagd_X_dB.toFixed(2)} dB`}; ` +
+          `de geweigerde tune droeg ${nw.geleverd_geen === true ? 'GEEN' : nw.geleverd_geen === false ? 'WEL' : '?'} niveauwerk op de laagste weg`,
+      );
+    }
   }
   const gateRefused = after.outcomes.filter(
     (o) => o.verwerping === null && o.geweigerd_door.length > 0,

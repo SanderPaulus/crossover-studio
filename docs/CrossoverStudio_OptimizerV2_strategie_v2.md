@@ -184,6 +184,8 @@ Formaat per metriek: *grootheid → formule → afgeleide parameters → databeh
 
 **M-I · Gevoeligheid/robuustheid.** Monte-Carlo over componenttoleranties (instelbaar per componenttype) als eindrapport; worst-case over de parasietband als poortcontrole in de laatste fase. Promotie naar in-de-lus-straf pas na profilering.
 
+**Schakeling per weg en niveauwerk op de laagste weg** *(toegevoegd 03-09-2026, V51; algemeen geformuleerd).* Per weg is het aantal gelijke drivers en hun schakeling — zoals GEMETEN en zoals GEWENST — projectinvoer naast de driverkaart. Voor N gelijke drivers bestaat de afleiding parallel↔serie (SPL ∓20·log N, fase gelijk, Z ×N² / ÷N²) in de ingest, met de aanname "gelijke drivers" in de noot; zij wordt alleen toegepast waar gemeten en gewenst verschillen. De rapportregel die eruit volgt is generiek en oordeelt niets: *de laagste weg ligt X dB boven het anker in het overnamegebied (A5d.4, na de doelcurve); N gelijke drivers in serie zouden 20·log N daarvan zonder weerstand leveren; de baffle step (f_step uit de geometrie) levert onder f_step tot 6 dB vanzelf.* Daarnaast, als GESTELDE TOPOLOGIE-EIS en keuze-sleutel op ketenniveau (A3j): *geen niveauwerk op de laagste weg* — geen weerstand in haar serie-pad, geen weerstand die alleen van dat pad naar massa hangt; wat overblijft is spoel-DCR. De ontwerp- en synthesestap plaatsen daar dan geen niveauwerk; kan een kandidaat zijn rimpeldoel daardoor niet halen, dan komt hij terug als verwerping (V31-vorm) met X erbij: het getal is de uitkomst, ook als het veld leeg blijft. De vuistregel erachter: nooit een pad op de onderste weg (warmte, impedantie, demping), pad de bovenste wegen. Wat de eis níet doet: de pad-topologie van de overige wegen wijzigen, of een van de andere eisen verplaatsen.
+
 ### Categorische catalogusregels (geen metriek)
 
 - Kernverzadiging: spoelfamilies dragen een vlag met stroomgrens; serie-elementen in hoogstroompaden vereisen lucht of gedocumenteerde verzadigingsstroom. (Getalsmatige onderbouwing: bij vol vermogen liggen RMS-stromen in het bereik waar ferrietkernen op bastransiënten niet-lineair worden.)
@@ -4552,6 +4554,221 @@ parallelle/serie-weerstand als topologie-element van de synthesestap, met de gem
 getal wordt en M-L oordeelt; de piekstromen staan al in het blok. (4) `qesMultiplierMax` per weg
 (V45). (5) De weerstandseis in de zoektocht laten sturen zodra zij gewapend is (nu: alleen een
 poort).
+
+### V51 — geen niveauwerk op de laagste weg als gestelde topologie-eis, de schakeling per weg als invoer, en het casus-1-veld als beslissingsmeting (03-09-2026, **BREAKING, alleen v2-runs**)
+
+**AANLEIDING.** Het anker is de mid. Het parallelle wooferpaar staat er in het overnamegebied boven —
+op het oog 3–5 dB in de kale krommen (de complexe som van woofer_up + woofer_down ~136,6 dB tegen
+133,5 dB in 397–550 Hz, daarboven 4–5 dB), en gemeten zoals A5d.4 het meet — het energiegemiddelde
+over de EIGEN band van elke weg, na de doelcurve — **1,33 dB** (`verankerde_gaps_dB.woofer_tov_mid`;
+0,89 dB op de kale niveaus). HUIDIG lost dat verschil op met R8 (3,3 Ω in het wooferpad, 25,5 W bij
+100 W continu), en het hele V49/V50-corpus deed hetzelfde: 13,6–34,9 W in één weerstand, allemaal in
+het wooferpad (V50). De vuistregel uit de vakpraktijk zegt het omgekeerde: nooit een pad op de woofer
+(warmte, impedantie, demping van de driver); de mid en de tweeter pad je, dat is goedkoop. Sanders
+besluit: **parallel, geen pad.** Wat dan overblijft om het niveau te regelen is de baffle step (onder
+~442 Hz zakt de woofer vanzelf weg — laag kruisen gebruikt dat) en de laagdoorlaatspoel (de tilt van
+het bovenste octaaf). Dat is geen filterfout meer maar een configuratiefeit, en V51 is de sessie die
+het als zodanig laat meten.
+
+**DE INVOER (de gebruiker stelt; de casus-1-waarden staan alleen in het testmanifest).** (1) Per weg
+het aantal gelijke drivers N en de schakeling — zoals GEMETEN en zoals GEWENST — in het A5a-meetblok
+naast de driverkaart (`driverkaart.<weg>.schakeling`; in de app twee selecties per weg op de
+Drivers-tab, het aantal komt van het kastformulier). Casus 1: wooferweg N = 2, gemeten parallel als
+twee losse bestanden die de opnamepas complex sommeert (V13), gewenst parallel; mid en tweeter N = 1.
+(2) De projecteis `geen_niveauwerk_op_laagste_weg: true` (in de app "Level work on lowest way: none"),
+met de vuistregel en de V50-meting als motivering. (3) Het THERMISCH ONTWERPVERMOGEN
+`thermisch_ontwerpvermogen_W: 10` — V50's hangende besluit, genomen: de weerstandseis is sinds V51
+GEWAPEND op de zoektocht (`bouwbaarheid_op_de_zoektocht.gewapend: true`), geoordeeld bij 10 W
+gemiddeld luistervermogen (klasse 10 W × marge 0,5 = 5 W toegestaan) en niet bij de 100 W van de
+versterkerklasse waarbij V50 haar mat. Thermiek is een gemiddelde over de luistertijd; de wattkolom
+van M-A blijft bij het continue vermogen, de poort vormt zijn watt bij het thermische
+(`resistorThermalPowerW`, één regel `resistorJudgementPowerW` met twee lezers: poort en rapport) en
+noemt dat bij elk oordeel (`judged_at_W`, `judged_at_source`) — alléén als er een thermisch vermogen
+gesteld is, want een run zonder is een V50-run en die blijft byte-identiek (`f4cRegression` pint het
+V50-oordelenblok, en ving de eerste versie die het veld altijd schreef). Bij 10 W halen alle drie de
+referentiefilters de eis (HUIDIG R8 2,55 W, KAND_A 3,09, KAND_B 1,96 tegen 5 W) en het V50-corpus ook
+(1,36–3,49 W); bij 100 W geen van alle (V50 stond dat al op, en staat er nog: herankerd op het continue
+vermogen en op het gedateerde `V50_KAND_*`-corpus).
+
+**DE RAPPORTREGEL (generiek, geen oordeel).** `predesign.levelWork` in het rapport en een sectie in
+het paneel ("Pre-design — level work on the lowest way"): per weg de schakeling, en de zin *"de
+laagste weg ligt X dB boven het anker in het overnamegebied (A5d.4, na de doelcurve); N gelijke
+drivers in serie zouden 20·log N daarvan zonder weerstand leveren; de baffle step (f_step uit de
+geometrie) levert onder f_step tot 6 dB vanzelf"* — op casus 1: **woofer 1,33 dB boven het anker mid;
+twee in serie zouden 6,02 dB leveren; de baffle step op 442 Hz levert tot 6,0 dB.** De afleiding
+parallel↔serie voor N gelijke drivers (SPL ∓20·log N, fase gelijk, Z ×N² / ÷N²) bestaat als functie in
+de ingest (`ingest/wiring.ts`, `way-wiring/1.0`) mét de aanname "gelijke drivers" in elke afgeleide
+noot, en wordt op casus 1 NIET toegepast: gemeten = gewenst = parallel, de identiteit. Het blok noemt
+óók wat de geladen netlist op de laagste weg werkelijk draagt (`levelWork.ts`: HUIDIG R8 3,30 Ω, KAND_A
+R8 4,00 Ω, KAND_B R8 1,61 Ω — alle drie uitgesloten onder de eis, en dat is de bevinding en geen reden
+om haar te versoepelen: het niveauwerk op de woofer ís de configuratie). In de draaiende app
+gecontroleerd op de demobundel: de zes schakelingsselecties en de twee instellingsvelden renderen, de
+sectie leest "low sits 0.89 dB above the anchor (mid)" (de demo stelt geen doelcurve, dus de kale
+gap) en na het stellen van 2 × parallel "2 equal drivers in series would deliver 6.02 dB"; console
+schoon.
+
+**DE TOPOLOGIE-EIS ALS KEUZE-SLEUTEL (A3j, F4c), en zij is de DERDE op ketenniveau.**
+`lowestWayLevelWork: 'none'` naast `eqBands` en `leanTargetDb` (`chainChoices.ts`), gelezen vóórdat de
+tuner bestaat, want daar wordt het niveau van de laagste weg gezet: de ONTWERPstap trimt haar met
+0 dB (de andere wegen trimmen nog steeds naar de stilste) en stelt er geen shelf-pad op voor; haar
+SYNTHESE legt geen L-pad, geen top-octaaf-hold en geen shelf-pad (`SynthesizeOptions.noLevelWork`);
+de tuner maakt nooit een weerstand aan (nagegaan, niet aangenomen: geen enkele pas construeert een
+`Resistor`, de escalatie voegt alleen een bypass-C toe). Wat "niveauwerk" IS heeft één huis met drie
+lezers (`src/lib/levelWork.ts`: de worker, het rapport, de guards): een weerstand op de bus
+bron→driver van de weg, of een weerstand die alleen van een busknoop van die weg naar massa hangt;
+NIET de R in een Zobel of een gedempte val, en niet de DCR van een spoel. De bus-walk is die van de
+tuner zelf (`busTopology` is nu een wrapper over `busTopologyOfNetlist`, met `busNodesOf`). De
+verklaring leidt `'none'` af uit de gestelde eis en NIETS uit niets — absent met P4, nooit een gesteld
+`'allowed'` (de V45-regel voor `'flat'`) — de eerste absent-toestand van deze lijst, en precies de
+toestand waar `declareCandidateChainChoices` sinds V41 ruimte voor hield. De sleutel beweegt de
+vingerafdruk. M-E, dissipatie en de gap-analyse zien op die weg dan alleen nog spoel-DCR — en op deze
+route, zonder catalogus-snap, is een spoel ideaal: `Q_es×` leest op de geleverde netlist 1,01.
+
+**DE WEIGERING MET HET GETAL.** Kan een kandidaat zijn doel daardoor niet halen, dan komt hij terug
+als V31-verwerping, `by: 'stated-topology'`, `kinds: ['topology']`: *"deze configuratie vraagt X dB
+niveauwerk op de laagste weg"*, met X uit de A5d.4-gap in de doelconfiguratie (plateau meegerekend) —
+als meetfeit overgestoken (`gapBudgetDbByModel`), of 0 als de laagste weg het anker is. Drie
+voorwaarden tegelijk: de eis gesteld, X > 0, en het geleverde netwerk mist het RIMPELDOEL van de
+trapmethode (`staged.rippleDb`, de eigen definitie van "doel gehaald" van de tuner en een
+keuze-sleutel). Het rimpeldoel en niet het SPL-venster, met reden: het venster is een A5e.1-smaakeis
+die de relaxatieladder mag verruimen, en een niveaustap van X dB is geen smaak maar een
+configuratiefeit — een ladder die haar wegwerkt publiceert een padloos ontwerp onder een verruimd
+venster en zegt niet waarom. De geweigerde tune reist mee als rapportage (V31), en élke kandidaat —
+geweigerd of niet — draagt de kolom `levelWork` (eis, X, geleverde inventaris, plateau-toets). Op de
+kleine fixture is die weigering gemeten (`lowestWayLevelWork.test.ts`: `['topology']`, X in de zin,
+en niet als de laagste weg het anker is); **op casus 1 heeft zij niet één keer gevuurd, want de
+vloerpoort was er steeds eerder** — zie de regeneratie. X staat wél in élke uitkomst: 1,33 dB, vijftien
+keer.
+
+**DE PLATEAU-TOETS (item 4).** Onder de vloer van 397 Hz is niets beoordeeld, dus het gestelde plateau
+(−2,5 dB) is op deze meetset niet te toetsen. `plateauCoverage` zegt dat per kandidaat uit de eigen
+getallen: de beoordeelde band begint 0,16 octaaf onder de overgang van 442 Hz, waar de doelcurve
+−1,32 dB van de gestelde −2,5 dB leest; beoordeeld heet een plateau pas als de band minstens één
+octaaf onder de overgang reikt (`PLATEAU_JUDGED_OCTAVES_BELOW_STEP`, @p6 rule — daar staat een
+eerste-orde shelf op twee derde van zijn diepte). Het rapport en élke kandidaatnotitie zeggen dus
+*"het niveau bij de overname is beoordeeld; het laag niet — plateau niet gemeten op deze meetset"*,
+en er staat geen aanname onder.
+
+**MEETGEOMETRIE-NOOT (item 5).** woofer_down meet op deze mic-positie 4–5 dB zachter dan woofer_up
+(afstand en hoek: mic op tweeterhoogte op korte afstand); op luisterafstand telt hij vrijwel volledig
+mee, dus het gemeten paar onderschat het werkelijke paar vermoedelijk met 1–3 dB. Niet gecorrigeerd
+(geen meting), wel gemeld als onzekerheid op X — X kan dus 1–3 dB HOGER liggen dan de 1,33 die de
+meetset geeft — en als reden voor de hermeting op afstand of groundplane
+(`driverkaart.woofer.schakeling.meetgeometrie`).
+
+**DE REGENERATIE (2417 s = 40 min op 18 kernen, `V2_JOBS=8`; het V50-corpus vooraf bevroren als
+`V50-KAND-*`, `v50_corpus`), en het veld ging van zeven naar ÉÉN.** Dezelfde vijftien kandidaten,
+dezelfde gates en budgets, plus de eis en de weerstandspoort op 10 W. Veertien leverden niets:
+dertien geweigerd door **M-B/|Z|** — de geweigerde tunes staan op 2,05–2,49 Ω tegen de gestelde 2,60,
+en de reparatiepas van de tuner meldt bij elk "REFUSED — het zou 0,0–1,2 → 0,1–2,5 Ω hebben opgetild
+ten koste van responskwaliteit" of "dips to 0,0–1,0 Ω, could not be repaired" — en één (466,5 · 1491,4)
+door **M-C op de mid**: −11,4 dB tegen de afgeleide −11,8. Elke geweigerde tune droeg GEEN niveauwerk
+op de woofer: de eis is gehonoreerd, en wat dat kostte is de impedantiebodem. **Dat is de bevinding van
+V51 en zij stond niet in de verwachting:** de serieweerstand in het wooferpad was op dit veld óók
+de weerstand die de systeemimpedantie boven de vloer hield. V50's corpus droeg 1,02–4,27 Ω in dat pad
+en haalde de vloer op 7 van 7 (min |Z| 2,58–4,17 Ω); zonder dat pad ligt de bodem — het parallelle
+wooferpaar met R_e 3,05 Ω, op de vloerfrequentie parallel met wat de mid- en tweetertak nog trekken —
+0,1–0,5 Ω onder de 2,60 die de NAD vraagt. De vloer is geen smaak en de V31-vorm gooit zo'n tune in
+zijn geheel weg; de topologie-weigering (die X quoteert) komt daarná en kwam dus nergens aan bod.
+
+De ene overlevende, **466,5 · 1719 (LR4/LR4), `KAND_V2_1`:** rimpel 2,00 dB piek / 13,7° (doel 2,5 /
+15 gehaald), RMS 0,88 dB, venster ±2,17 dB, min |Z| 2,57 Ω — de vloer gehaald BINNEN de
+meettolerantie van `meetsAmpFloor` (2,57 tegen 2,60; de poort zegt `withinToleranceOnly`), M-K
+13,1° / 13,7°, M-C tweeter −25,6 dB (mid −61,8), opslingering −0,17 dB, lift 0,00, `Q_es×` 1,01,
+dissipatie 35,0 % met de heetste weerstand B·R9 (5,26 Ω, de MID-pad): 19,8 W bij 100 W en **1,98 W
+bij 10 W tegen 5 W toegestaan — de weerstandseis, nu gewapend, bijt niet.** Het wooferpad is leeg:
+L1 2,13 mH, C2 103 µF, C4 58,6 µF, plus een gedempte val L5 16,6 mH · C4 · R7 4,86 Ω naar massa — een
+correctie, geen niveauwerk, en een spoel van 16,6 mH is een aankoop die de BOM-kolom een keer moet
+noemen. Mid: B·C1 40 µF, B·L2 1,48 mH, B·C3 60,8 µF, B·L5 1,36 mH, B·C6 12,5 µF, B·R9 5,26 Ω, B·L11
+1,24 mH; tweeter: C·C1 5,4 µF, C·L2 0,32 mH, C·C3 13,3 µF, C·L4 0,60 mH, C·R5 1,0 Ω, C·L10 0,13 mH,
+C·C11 15 µF, C·R12 6,65 Ω. De pads verhuisden naar de mid en de tweeter, precies wat de vuistregel
+zegt (correctiegroepen over het corpus: series-pad 20 → 2, shunt-pad 6 → 0).
+
+  | kandidaat (W-M · M-T) | V50: min \|Z\| / RMS / diss % / grootste R W / Q_es× / opsl. dB / serie-L woofer mH | V51: uitkomst | geweigerde tune: min \|Z\| / RMS / rimpelpiek / fase / M-C slechtste |
+  | --- | --- | --- | --- |
+  | 396,7 · 1294 | — (verworpen bij V50: tweeter −12,1) | verworpen: \|Z\| 2,10 + tweeter −14,6 | 2,10 / 1,70 / 3,51 / 31,0° / −14,6 |
+  | 396,7 · 1491,4 | 2,59 / 1,56 / 49,8 / 26,7 / 1,34 / −0,90 / 2,54 | verworpen: \|Z\| 2,16 + tweeter −15,8 | 2,16 / 1,51 / 3,06 / 31,6° / −15,8 |
+  | 396,7 · 1719 | 2,58 / 2,51 / 32,6 / 13,6 / 1,36 / −0,81 / 2,57 | verworpen: \|Z\| 2,21 | 2,22 / 2,15 / 4,03 / 26,5° / −23,9 |
+  | 396,7 · 1981,2 | 2,98 / 0,67 / 54,1 / 33,6 / 2,40 / −1,10 / 3,98 | verworpen: \|Z\| 2,29 | 2,29 / 1,47 / 2,95 / 26,1° / −25,2 |
+  | 396,7 · 2283,5 | 2,70 / 0,72 / 53,2 / 32,1 / 2,39 / −1,41 / 4,08 | verworpen: \|Z\| 2,13 | 2,13 / 1,80 / 4,27 / 16,7° / −30,1 |
+  | 466,5 · 1294 | — (verworpen bij V50: vloer 1,99) | verworpen: \|Z\| 2,41 + mid −9,0 + tweeter −14,1 | 2,41 / 2,28 / 4,65 / 46,2° / −9,0 |
+  | 466,5 · 1491,4 | — (verworpen bij V50: vloer 2,49) | verworpen: **mid −11,4 tegen −11,8** + tweeter −13,3 | 2,57 / 1,61 / 3,79 / 24,8° / −11,4 |
+  | **466,5 · 1719** | — (verworpen bij V50: mid +5,6) | **GELEVERD** (`KAND_V2_1`): 2,57 / 0,88 / 35,0 / 19,8 / 1,01 / −0,17 / 2,13 | — |
+  | 466,5 · 1981,2 | 2,66 / 1,73 / 45,2 / 16,2 / 1,86 / −0,19 / 3,30 | verworpen: \|Z\| 2,41 | 2,42 / 1,79 / 4,21 / 54,2° / −13,2 |
+  | 466,5 · 2283,5 | 3,63 / 0,55 / 57,0 / 28,3 / 2,21 / −0,55 / 3,82 | verworpen: \|Z\| 2,37 | 2,37 / 1,10 / 2,56 / 20,2° / −28,8 |
+  | 548,5 · 1294 | — (verworpen bij V50: vloer 0,02) | verworpen: \|Z\| 2,05 + mid +2,6 + tweeter −17,7 | 2,23 / 2,24 / 4,31 / 41,1° / +2,6 |
+  | 548,5 · 1491,4 | — (verworpen bij V50: vloer 1,11) | verworpen: \|Z\| 2,36 + tweeter −17,9 | 2,37 / 1,34 / 2,87 / 37,2° / −17,9 |
+  | 548,5 · 1719 | — (verworpen bij V50: tweeter −17,3) | verworpen: \|Z\| 2,42 | 2,42 / 1,60 / 3,25 / 20,4° / −28,6 |
+  | 548,5 · 1981,2 | — (verworpen bij V50: mid −7,3) | verworpen: \|Z\| 2,41 | 2,41 / 1,38 / 3,13 / 20,8° / −26,9 |
+  | 548,5 · 2283,5 | 4,17 / 0,51 / 66,9 / 34,9 / 1,84 / −0,14 / 3,71 | verworpen: \|Z\| 2,49 | 2,49 / 1,39 / 2,66 / 9,7° / −29,9 |
+
+**DE CORPUSREGELS (`compare-corpora.ts v50 live`), en de leesregel gaat vóór: er is GEEN ENKEL
+PAAR.** De overlevende zat niet in het V50-corpus (daar was 466,5 · 1719 een mid-weigering), dus élk
+corpusgemiddelde hieronder is compositie en geen delta: dissipatie 51,3 → 35,0 %, grootste weerstand
+26,5 → 19,8 W (bij 100 W), min |Z| 7 van 7 → 1 van 1 halen de vloer, M-K 12,4° → 13,1° (W-M) en 8,0° →
+13,7° (M-T), LF-bult 2,9 → −0,2 dB — ontleed in lift 3,7 → 0,0 (er is geen serieweerstand meer om te
+liften) en opslingering −0,7 → −0,2 —, totale seriespoel van de laagste weg 3,4 → 2,1 mH, M-C op de
+slechtste weg −27,3 → −25,7 dB, lobing −2,8 → −3,1 dB, M-A/part 0 van 7 → 0 van 1 eroverheen (bij
+10 W), M-C-poort 0 → 0 falend. Wat de V42/V43-spanning betreft — "welke kandidaten hun tilt nu met de
+spoel doen" — is het antwoord op deze casus: **niet één, en de spoel werd kleiner.** Zonder pad is de
+impedantie van de wooferweg lager, dus dezelfde hoek vraagt minder inductie (L = R/ω): 2,13 mH tegen
+2,54–4,08 in het V50-corpus, opslingering −0,17 tegen een budget van 1,4, en de resistieve lift is
+exact nul omdat er niets resistiefs meer in het pad staat. Het opslingeringsbudget beet dus nergens
+(0 van 1), en de geweigerde tunes zijn op die grootheid onmeetbaar (hun onderdelen zijn gewist, V31).
+Waar de spoel wél iets kostte is in de mid: de woofer die niet omlaag mag maakt de MID de weg die het
+niveau moet volgen, en de mid-M-C-weigering op 466,5 · 1491,4 (−11,4 tegen −11,8) is de andere kant
+van dezelfde beweging — de mid werd zachter gepad en zwaarder aangedreven.
+
+**DE BALANS.** Van het veld van vijftien overleeft zonder niveauwerk op de wooferweg ÉÉN kandidaat,
+en die haalt de vloer alleen binnen de meettolerantie. Wat de configuratie op de laagste weg VRAAGT
+is 1,33 dB (met een onzekerheid van 1–3 dB naar boven uit de meetgeometrie), en dat getal is nu geen
+filterfout maar een eigenschap van drivers, kast en voicing die het rapport per ontwerp afdrukt. Het
+argument "warmte in het wooferpad" (V50: 14–35 W) is daarmee een configuratiefeit met een getal
+geworden — en de meting van V51 zegt er iets bij dat V50 niet kon zien: op dit wooferpaar doet
+diezelfde weerstand óók het werk van de impedantiebodem. Passief zonder wooferpad kan (het bestaat:
+`KAND_V2_1`, met de pads op mid en tweeter en 1,98 W in de heetste weerstand bij 10 W), maar het veld
+is smal en de vloer is de as waarop het smal is: een lagere gestelde vloer of een versterker die 2,3 Ω
+draagt, een serieschakeling van het wooferpaar (6,02 dB niveau erbij en een impedantie maal vier —
+dan is het anker weer de woofer en de vloer geen vraag meer), of de hybride route met een actieve
+LF-tak zijn de drie configuraties die het veld openen, en geen daarvan is een filterkeuze. De
+weerstandseis bij 10 W thermisch bijt op geen enkel bekend ontwerp: V50's factor vijf was een uitspraak
+over 100 W continu, en die staat nog.
+
+**WAT ER NIET GEBOUWD IS.** Geen serie-afleiding toegepast op casus 1; geen wijziging aan de
+pad-topologie van mid of tweeter (die blijven toegestaan, en de pads staan er); niets aan vloer,
+opslingeringsbudget, Q_es-budget, plateau of M-C; geen v2-default die een casus-1-getal is (de eis,
+het thermisch vermogen en de schakeling staan in het manifest en nergens anders; `'none'` en één
+octaaf zijn geen getallen van deze casus). Geen tweede bus-walk: het rapport vraagt dezelfde walk als
+de keten. En de topologie-weigering is NIET verruimd tot de vloerweigering: dat de vloer de eerste is
+die vuurt, is de meting, en een weigering die X quoteert waar de vloer sprak zou de verkeerde regel
+laten spreken.
+
+**TESTS.** `levelWork.test.ts` (3: HUIDIG en een gedateerd corpusbestand, het papieren netwerk met de
+vier onderscheidingen, onbereikbaar ≠ geen), `ingest/wiring.test.ts` (4),
+`optimizer/lowestWayLevelWork.test.ts` (4, zes claims door de echte route op de kleine fixture met de
+woofer 6 dB opgetild; 145 s), `requirements/targetCurve.test.ts` (+3 plateau),
+`optimizer/buildabilityGate.test.ts` (+2 thermisch vermogen), `choiceKeyGuard`/`chainChoices` (de
+lijst op drie), `casus1V2Candidates`/`casus1V2Refusal` (het tiende besluit in de meetopstelling, de
+weigerings-vocabulaire met `budget` en `topology`), `frozenNetlistGates` (zeven V51-blokken; het
+V50-bevindingsblok herankerd op het continue vermogen en op `V50_KAND_*`; de V50-opnameregel met een
+vloer van 0,005 W onder de 2 %-klasse, want bij 10 W rondt de recorder 0,05 W af), `goldenClassification`
+(V50-corpus), `corpusPairing` (volledig gedateerd, geen herankering nodig — de opdracht voorzag haar,
+maar beide vergelijkingen stonden sinds V48 al op gedateerde corpora), `ciLayer`, `p6Lint`,
+`noWeights`, `toggleRegression`. **Snelle laag (03-09-2026, ná de regeneratie, op een lege machine):
+291,6 s, 145 geslaagd + 2 rode + 1 overgeslagen bestand, 1636 + 5 rode + 2 overgeslagen tests** — de
+vijf rode claims (drie V51-guards die de doelcurve niet meekregen, de V50-opnameregel op 0,05 W, en
+het byte-gepinde V50-oordelenblok dat mijn twee nieuwe parameters en één herschreven zin zag) zijn
+gerepareerd en de vier bestanden apart groen gedraaid (192 s + 50 s). GEEN nieuwe referentie: de
+V43-waarde van 289 s blijft staan. **Volle run 03-09-2026: 148 bestanden, 1643 tests, 1530 s (25 min 30), niets overgeslagen, in één keer groen** — de byte-reproductie van `KAND_V2_1` kostte 1527 s (in de generator 1745 s) en de verwerpingsrun ernaast 768 s; de telling is +3 bestanden en +18 tests sinds V50, waarvan −6 uit de `it.each` over het levende corpus dat van zeven naar één ging. `tsc -b` groen (ook `scripts/`); productiebuild groen.
+
+**OPENSTAAND.** (1) De hermeting van het wooferpaar op afstand of groundplane, die X van een schatting
+met 1–3 dB onzekerheid een meting maakt. (2) De vloer als de as van dit veld: wat een gestelde vloer
+van 2,3 Ω (wat de geweigerde tunes halen) of de serieschakeling van het paar met het veld doet, is één
+regeneratie per arm. (3) De serie-afleiding toepassen zodra een project gemeten ≠ gewenst stelt
+(bestaat, ongebruikt). (4) `qesMultiplierMax` per weg (V45). (5) De parallelle/serie-weerstand als
+topologie-element voor de wegen waar niveauwerk WEL mag (V50). (6) De 16,6 mH-shuntspoel in de
+gedempte val van `KAND_V2_1`: een correctie die de BOM-kolom moet wegen (M-A/part en M-L oordelen er
+niet over; de catalogus-snap staat op deze route uit).
 
 ## Casus S1 — synthetische grondwaarheid voor de R_e-schatter (F3b, 26-08-2026)
 

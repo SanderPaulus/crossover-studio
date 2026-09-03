@@ -47,6 +47,7 @@ import {
   CASUS1_BUILDABILITY,
   CASUS1_CONTINUOUS_POWER_W,
   CASUS1_EXCURSION,
+  CASUS1_LEVEL_WORK_SETTINGS,
   CASUS1_MAX_DRIVE_ON_FS_DB_BY_DRIVER,
   CASUS1_TARGET_CURVE,
 } from './casus1V2.fixture.ts';
@@ -132,6 +133,7 @@ export const DATED_CORPORA: Record<string, { block: string; name: string }> = {
   v47: { block: 'v47_corpus', name: 'V47' },
   v48: { block: 'v48_corpus', name: 'V48' },
   v49: { block: 'v49_corpus', name: 'V49' },
+  v50: { block: 'v50_corpus', name: 'V50' },
 };
 
 interface Herkomst {
@@ -227,6 +229,11 @@ export function corpusBank(golden: GoldenRefs = loadGolden()): CorpusBank {
       ? { maxDriveOnFsDbByDriver: { ...CASUS1_MAX_DRIVE_ON_FS_DB_BY_DRIVER } }
       : {}),
     ...CASUS1_BUILDABILITY,
+    /* V51 — the wiring per way and the level-work requirement, so the
+     * level-work column of a corpus comparison reads the rule the corpus was
+     * generated under. Phase and dissipation do not read them (measured:
+     * `corpusPairing.test.ts` is unchanged). */
+    ...CASUS1_LEVEL_WORK_SETTINGS,
   };
   return {
     golden,

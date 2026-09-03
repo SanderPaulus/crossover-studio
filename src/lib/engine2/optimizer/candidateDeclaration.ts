@@ -637,10 +637,22 @@ export function declareCandidateChoices(input: CandidateDeclarationInput): Choic
  * `declareCandidateChainChoices` for what happens then, which is not the same
  * thing for both.
  */
-export type StatedByDesignerChain = Partial<Pick<Chain3Settings, 'eqBands' | 'leanTargetDb'>>;
+export type StatedByDesignerChain = Partial<
+  Pick<Chain3Settings, 'eqBands' | 'leanTargetDb' | 'lowestWayLevelWork'>
+>;
 
 export interface ChainDeclarationInput {
   stated: StatedByDesignerChain;
+  /**
+   * V51 — TRUE when the project STATES that its lowest way may carry no level
+   * work (`gestelde_eisen.geen_niveauwerk_op_laagste_weg` on casus 1; the
+   * "no level work on the lowest way" field in the app). A boolean rather than
+   * the key's value on purpose: the derivation below turns a stated requirement
+   * into `'none'` and turns NOTHING into an ABSENT declaration — never into a
+   * stated `'allowed'`, which would claim somebody decided the woofer may be
+   * padded (P4, the same rule V45 applies to `'flat'`).
+   */
+  lowestWayLevelWorkForbidden?: boolean;
 }
 
 /**
@@ -686,11 +698,50 @@ export function declareCandidateChainChoices(
 ): ChainChoiceDeclaration {
   const s = input.stated;
   const stated: Partial<Pick<Chain3Settings, ChainChoiceKey>> = {};
-  /* Always empty today, and kept as a state rather than dropped: the shape is
-   * what `chainDeclarationCoverage` checks, and a third key that DOES have an
-   * absent case must have somewhere to go without changing this signature. */
+  /* Empty until V51, and kept as a state for exactly the third key that now
+   * uses it: `lowestWayLevelWork` has an honest absent case, the two above do
+   * not. */
   const absent: { key: ChainChoiceKey; why: string }[] = [];
   stated.eqBands = s.eqBands ?? DEFAULT_EQ_BANDS_PER_DRIVER;
   stated.leanTargetDb = s.leanTargetDb ?? SYNTHESIS_LEAN_DEFAULT_DB;
+
+  /* ---- V51: MAY THE LOWEST WAY CARRY LEVEL WORK -------------------------
+   *
+   * DERIVED, like V30's `zFloorBarrier`, V45's `amplitudeReference` and V47's
+   * `protectionRule`, and from the same shape of fact: a requirement that is
+   * stated and does not reach the step that could honour it is a requirement
+   * that decides nothing. The level of the lowest way against the anchor is
+   * settled in the DESIGN step (its trim) and realised in the SYNTHESIS step
+   * (its pad) — both before the tuner exists — so a project that forbids level
+   * work there has to say so at this layer or the woofer is padded before any
+   * gate can see it.
+   *
+   * MEASURED ON CASUS 1 AT V50: every delivered design paid the woofer's
+   * surplus over the mid in a series resistor, 14–35 W in one part at 100 W
+   * continuous, and the resistor requirement then condemned all of them. That
+   * is not a filter fault but a configuration fact, and this key is what lets
+   * the configuration be stated instead of discovered in a watt column.
+   *
+   * ABSENT AND NEVER `'allowed'` (P4), the same rule V45 applies to `'flat'`
+   * and V47 to `'seed'`: a stated `'allowed'` would read as "somebody decided
+   * the lowest way may be padded", and with no requirement stated nobody
+   * decided anything. The chain then reads its own default, which IS allowed —
+   * named as absent rather than inherited in silence. An explicit value still
+   * wins, so V51's before/after is a run somebody can ask for. */
+  if (s.lowestWayLevelWork !== undefined) {
+    stated.lowestWayLevelWork = s.lowestWayLevelWork;
+  } else if (input.lowestWayLevelWorkForbidden === true) {
+    stated.lowestWayLevelWork = 'none';
+  } else {
+    absent.push({
+      key: 'lowestWayLevelWork',
+      why:
+        'this project states no requirement about level work on its lowest way, so the design ' +
+        'and synthesis steps keep their own behaviour — the lowest way is trimmed down to the ' +
+        'quietest way and padded to realise it. Absent rather than a stated \'allowed\' (P4): ' +
+        'naming it here would claim somebody decided the lowest way may be padded, and with ' +
+        'nothing stated nobody decided anything',
+    });
+  }
   return { stated, absent };
 }

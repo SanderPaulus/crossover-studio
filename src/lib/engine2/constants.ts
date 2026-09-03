@@ -491,6 +491,18 @@ export const BOUND_INVERSION_STEPS = 60;
 export const BOUND_BRACKET_DOUBLINGS = 20;
 
 /**
+ * V51 — how far BELOW the target curve's transition frequency the judged band
+ * has to reach before the bass PLATEAU counts as judged at all.
+ *
+ * A first-order shelf sits at half its depth ON the transition and reaches
+ * four fifths of it one octave below; a band whose floor lies above that
+ * point judges the transition's upper edge and not the plateau. A rule factor
+ * in octaves, dimensionless: the transition frequency itself is measured from
+ * the cabinet (`baffleStepHz`), never written here. @p6 rule
+ */
+export const PLATEAU_JUDGED_OCTAVES_BELOW_STEP = 1;
+
+/**
  * V48 — the GRAIN at which a path-resistance-tracking series-inductance
  * ceiling is re-solved, in ohms.
  *

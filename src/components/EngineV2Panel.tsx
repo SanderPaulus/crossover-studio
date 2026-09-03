@@ -579,7 +579,14 @@ export function EngineV2Panel({ report, ambiguous, floors = [] }: EngineV2PanelP
                 .join(' · ')}
             </div>
             <div className="v2-muted">
-              Resistor watts are IEC-weighted means at the continuous power (thermal); coil currents are peak amplitudes at the
+              Resistor watts are IEC-weighted means at{' '}
+              {(() => {
+                const r = gates.verdicts.find((v) => v.gate === 'M-A/part');
+                const w = r?.parameters?.judged_at_W;
+                const src = r?.parameters?.judged_at_source;
+                return typeof w === 'number' ? `${w} W (${src ?? 'the judged power'})` : 'the judged power';
+              })()}
+              ; the M-A column above prints at the continuous rating. Coil currents are peak amplitudes at the
               amplifier&rsquo;s peak input (saturation is a one-cycle event). A resistor over its allowance needs a higher class
               or a series/parallel bank — a topology choice the generator does not make.
             </div>
@@ -949,6 +956,56 @@ export function EngineV2Panel({ report, ambiguous, floors = [] }: EngineV2PanelP
           </>
         )}
       </Section>
+
+      {/* V51 — level work on the lowest way: the configuration fact behind
+          the pad. Reporting, never a verdict: the requirement itself acts on
+          the search, and this says what it asks and what the loaded netlist
+          carries there. */}
+      {predesign.levelWork && (
+        <Section title="Pre-design — level work on the lowest way" spec="A5d.4 / V51">
+          <p>{predesign.levelWork.sentence}</p>
+          <table className="v2-table">
+            <thead>
+              <tr>
+                <th>Way</th>
+                <th>Drivers</th>
+                <th>Wired (measured)</th>
+                <th>Wired (intended)</th>
+              </tr>
+            </thead>
+            <tbody>
+              {predesign.levelWork.wiring.map((w) => (
+                <tr key={w.driver}>
+                  <th scope="row">{w.driver}</th>
+                  <td>{w.stated ? w.count : '—'}</td>
+                  <td>{w.stated ? w.measured : 'not stated'}</td>
+                  <td>{w.stated ? w.desired : 'not stated'}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          {predesign.levelWork.delivered && (
+            <p className={predesign.levelWork.requirement === 'none' && !predesign.levelWork.delivered.none ? 'v2-warn' : 'v2-muted'}>
+              {predesign.levelWork.delivered.none
+                ? `This network carries no level work on ${predesign.levelWork.lowestWay} — no series resistor, no shunt pad.`
+                : `This network carries level work on ${predesign.levelWork.lowestWay}: ` +
+                  [
+                    ...predesign.levelWork.delivered.seriesResistors.map((r) => `${r.id} ${r.ohm.toFixed(2)} Ω in series`),
+                    ...predesign.levelWork.delivered.shuntPads.map((r) => `${r.id} ${r.ohm.toFixed(2)} Ω to ground`),
+                  ].join(', ') +
+                  '.'}
+            </p>
+          )}
+          {predesign.levelWork.plateau && (
+            <p className="v2-muted">Plateau: {predesign.levelWork.plateau.note}.</p>
+          )}
+          {predesign.levelWork.notes.map((n, i) => (
+            <div className="v2-muted" key={i}>
+              {n}
+            </div>
+          ))}
+        </Section>
+      )}
 
       <Section title="Pre-design — feasible crossover windows" spec="A5d.3">
         {predesign.windows.length === 0 ? (

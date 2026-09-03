@@ -27,6 +27,7 @@ import type { DriverCard, Geometry } from './metrics/types.ts';
 import { baffleStepHz } from '../cabinet.ts';
 import { FLAT_TARGET, type TargetCurve } from './requirements/targetCurve.ts';
 import { ctcKey } from './metrics/types.ts';
+import type { WayWiring, WiringKind } from './ingest/wiring.ts';
 
 export const CASUS1_DIR = join(
   dirname(fileURLToPath(import.meta.url)),
@@ -680,20 +681,79 @@ export function casus1BuildabilitySettings(golden: GoldenRefs = loadGolden()): {
   resistorClassW?: number;
   resistorPowerMargin?: number;
   coilClassA?: number;
+  /** V51 — the thermal design power M-A/part judges at, when stated. */
+  resistorThermalPowerW?: number;
 } {
   const e = (golden.manifest_en_geometrie as unknown as {
-    gestelde_eisen?: { weerstandsklasse_W?: unknown; weerstandsmarge?: unknown; spoelklasse_A?: unknown };
+    gestelde_eisen?: {
+      weerstandsklasse_W?: unknown;
+      weerstandsmarge?: unknown;
+      spoelklasse_A?: unknown;
+      thermisch_ontwerpvermogen_W?: unknown;
+    };
   }).gestelde_eisen;
   const num = (v: unknown): number | undefined =>
     typeof v === 'number' && Number.isFinite(v) && v > 0 ? v : undefined;
   const cls = num(e?.weerstandsklasse_W);
   const margin = num(e?.weerstandsmarge);
   const coil = num(e?.spoelklasse_A);
+  const thermal = num(e?.thermisch_ontwerpvermogen_W);
   return {
     ...(cls !== undefined ? { resistorClassW: cls } : {}),
     ...(margin !== undefined ? { resistorPowerMargin: margin } : {}),
     ...(coil !== undefined ? { coilClassA: coil } : {}),
+    ...(thermal !== undefined ? { resistorThermalPowerW: thermal } : {}),
   };
+}
+
+/**
+ * V51 — the THERMAL DESIGN POWER (`gestelde_eisen.thermisch_ontwerpvermogen_W`):
+ * the average listening power the designer states, at which M-A/part judges
+ * the watts per resistor. Distinct from the amplifier's continuous rating,
+ * which stays the power the watt column prints at. Null = not stated, and the
+ * gate then judges at the rating (V50).
+ */
+export function casus1ThermalDesignPowerW(golden: GoldenRefs = loadGolden()): number | null {
+  const e = (golden.manifest_en_geometrie as unknown as {
+    gestelde_eisen?: { thermisch_ontwerpvermogen_W?: unknown };
+  }).gestelde_eisen;
+  const v = e?.thermisch_ontwerpvermogen_W;
+  return typeof v === 'number' && Number.isFinite(v) && v > 0 ? v : null;
+}
+
+/**
+ * V51 — whether the project FORBIDS level work on its lowest way
+ * (`gestelde_eisen.geen_niveauwerk_op_laagste_weg`). True = stated; false =
+ * not stated, which is P4's absent and never a stated "allowed".
+ */
+export function casus1LowestWayLevelWorkForbidden(golden: GoldenRefs = loadGolden()): boolean {
+  const e = (golden.manifest_en_geometrie as unknown as {
+    gestelde_eisen?: { geen_niveauwerk_op_laagste_weg?: unknown };
+  }).gestelde_eisen;
+  return e?.geen_niveauwerk_op_laagste_weg === true;
+}
+
+/**
+ * V51 — the WIRING per way (`driverkaart.<driver>.schakeling`): how many
+ * identical drivers, as measured and as wanted. A way without the block
+ * contributes nothing (a single driver, wiring irrelevant).
+ */
+export function casus1WiringByDriver(golden: GoldenRefs = loadGolden()): Record<string, WayWiring> {
+  const block = (golden.manifest_en_geometrie as unknown as {
+    driverkaart?: Record<string, { schakeling?: { aantal?: unknown; gemeten?: unknown; gewenst?: unknown } } | unknown>;
+  }).driverkaart;
+  const out: Record<string, WayWiring> = {};
+  const kind = (v: unknown): WiringKind | null => (v === 'parallel' || v === 'series' ? v : null);
+  for (const [driver, card] of Object.entries(block ?? {})) {
+    const s = (card as { schakeling?: { aantal?: unknown; gemeten?: unknown; gewenst?: unknown } } | null)?.schakeling;
+    if (!s) continue;
+    const n = typeof s.aantal === 'number' && s.aantal >= 1 ? Math.floor(s.aantal) : null;
+    const measured = kind(s.gemeten);
+    const desired = kind(s.gewenst);
+    if (n === null || measured === null || desired === null) continue;
+    out[driver] = { count: n, measured, desired, source: 'manifest_en_geometrie.driverkaart.schakeling' };
+  }
+  return out;
 }
 
 /**

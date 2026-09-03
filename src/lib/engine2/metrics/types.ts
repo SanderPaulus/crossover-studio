@@ -31,6 +31,7 @@ import type { Coverage } from '../ingest/validity.ts';
 import type { DerivedDriver, IngestResult } from '../ingest/derive.ts';
 import type { EstimatorStamp } from '../version.ts';
 import type { DriverCard } from './driveExcursion.ts';
+import type { WayWiring } from '../ingest/wiring.ts';
 
 export type { DriverCard };
 
@@ -210,6 +211,21 @@ export interface ProjectSettings {
    * M-C v2.0 needs and what a header cannot say. Absent = that route is off.
    */
   responseDriveByDriver?: Record<string, { driveVoltageV: number; micDistanceMm: number; source?: string }>;
+  /* ---- V51: the wiring of each way, and the level-work requirement ------ */
+  /**
+   * How many IDENTICAL drivers each way has and how they are wired — as
+   * measured and as intended (`ingest/wiring.ts`). Stated per driver id.
+   * Absent for a way = a single driver, wiring irrelevant, and the report says
+   * "not stated" rather than assuming one.
+   */
+  wiringByDriver?: Record<string, WayWiring>;
+  /**
+   * The project's stated requirement about level work on its LOWEST way:
+   * `'none'` = no resistor in its series path and no shunt pad on it. Absent =
+   * not stated (P4): the report describes what a netlist carries there and
+   * judges nothing; the search keeps its own behaviour.
+   */
+  lowestWayLevelWork?: 'none' | 'allowed';
 }
 
 /**

@@ -54,6 +54,79 @@
 
 import { baffleStepShelfDb } from '../../nearField.ts';
 import type { TargetLevelCurve } from '../../targetLevel.ts';
+import { PLATEAU_JUDGED_OCTAVES_BELOW_STEP } from '../constants.ts';
+
+/**
+ * V51 — IS THE STATED PLATEAU INSIDE THE JUDGED BAND AT ALL?
+ *
+ * A `bass-plateau` curve says where the bass may sit BELOW the transition. A
+ * judged band that starts above or just under that transition — casus 1's
+ * starts at the lowest way's validity floor, a sixth of an octave under the
+ * cabinet's baffle step — judges the transition's upper edge and nothing of
+ * the plateau. The window and the RMS then say nothing about the stated depth,
+ * and a report that prints "plateau −2.5 dB, met" would be publishing a
+ * judgement on data nobody measured (F0). This says which it is, per band, so
+ * every candidate can carry the sentence.
+ */
+export interface PlateauCoverage {
+  /** True when the curve has a plateau to judge (bass-plateau with both inputs). */
+  applicable: boolean;
+  /** True when the band reaches far enough below the transition to judge it. */
+  judged: boolean;
+  stepHz: number | null;
+  depthDb: number | null;
+  bandFloorHz: number;
+  /** How far the band floor lies below the transition, octaves (negative = above). */
+  octavesBelowStep: number | null;
+  /** What the target reads AT the band floor, dB — the depth actually judged. */
+  targetAtFloorDb: number | null;
+  note: string;
+}
+
+export function plateauCoverage(curve: TargetCurve, judgeBandHz: readonly [number, number]): PlateauCoverage {
+  const floor = judgeBandHz[0];
+  const off = (n: string): PlateauCoverage => ({
+    applicable: false,
+    judged: false,
+    stepHz: null,
+    depthDb: null,
+    bandFloorHz: floor,
+    octavesBelowStep: null,
+    targetAtFloorDb: null,
+    note: n,
+  });
+  if (curve.type !== 'bass-plateau') {
+    return off(
+      curve.type === 'flat'
+        ? 'the design states the flat target: there is no plateau to judge'
+        : `the "${curve.type}" target states no plateau`,
+    );
+  }
+  if (!(curve.stepHz !== undefined && curve.stepHz > 0) || !(curve.plateauDepthDb !== undefined && curve.plateauDepthDb > 0)) {
+    return off('the bass-plateau target is missing its depth or its transition frequency, so nothing can be judged');
+  }
+  const octaves = Math.log2(curve.stepHz / floor);
+  const at = baffleStepShelfDb([floor], curve.stepHz, curve.plateauDepthDb)[0];
+  const judged = octaves >= PLATEAU_JUDGED_OCTAVES_BELOW_STEP;
+  return {
+    applicable: true,
+    judged,
+    stepHz: curve.stepHz,
+    depthDb: curve.plateauDepthDb,
+    bandFloorHz: floor,
+    octavesBelowStep: octaves,
+    targetAtFloorDb: at,
+    note: judged
+      ? `the judged band reaches ${octaves.toFixed(2)} octaves below the ${curve.stepHz.toFixed(0)} Hz ` +
+        `transition, where the target is already ${at.toFixed(2)} dB of the stated −${curve.plateauDepthDb} dB: ` +
+        'the plateau is judged'
+      : `the level at the handover is judged; the bass is NOT — the judged band starts at ` +
+        `${floor.toFixed(0)} Hz, only ${octaves.toFixed(2)} octaves below the ${curve.stepHz.toFixed(0)} Hz ` +
+        `transition, where the target reads ${at.toFixed(2)} dB of the stated −${curve.plateauDepthDb} dB. ` +
+        'The plateau itself lies below the measurement set\'s validity floor and is not measured here; ' +
+        'no assumption stands in for it',
+  };
+}
 
 /** The shapes the vocabulary knows. `flat` and `bass-plateau` are implemented. */
 export type TargetCurveType = 'flat' | 'bass-plateau' | 'tilt' | 'hold-current';
