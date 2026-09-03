@@ -7,7 +7,7 @@
     <title>Crossover Studio — from driver measurements to a filter you can build</title>
     <meta
       name="description"
-      content="A free, browser-based crossover design tool for DIY speaker builders. Load your driver measurements and it works out the crossover, the filter shapes and the parts to order."
+      content="A free, browser-based crossover design tool for DIY speaker builders. Load your driver measurements, state what the design must respect, and it works out the crossover, the filter shapes and the parts to order."
     />
     <meta name="color-scheme" content="dark" />
     <meta property="og:title" content="Crossover Studio" />
@@ -54,7 +54,8 @@
           <p class="lede">
             Crossover Studio turns driver measurements into a passive crossover: the crossover
             points, the filter shapes, the component values, and a parts list you can actually
-            order. Built for people who can measure a driver but have never designed a filter.
+            order. You say what the design must respect; it shows you every design that does.
+            Built for people who can measure a driver but have never designed a filter.
           </p>
           <div class="cta">
             <a class="btn btn-primary" href="./app/">Open the studio</a>
@@ -68,7 +69,7 @@
           <figure class="shot hero-shot reveal">
             <img
               src="./shots/design.jpg"
-              alt="The studio showing a combined SPL response, with the summed curve coloured by how well the two drivers' phase lines up."
+              alt="The studio showing a combined SPL response of a three-way design, with the summed curve coloured by how well the drivers' phase lines up."
               width="2240"
               height="1260"
               loading="eager"
@@ -85,7 +86,7 @@
             <p>
               I am in the middle of building my next pair of speakers. The cabinet design is in its
               final stages — which is exactly where a build stops being woodwork and becomes a
-              decision: go active with an FA253, or filter it passively.
+              decision: go active with an FA253 or an FA251, or filter it passively.
             </p>
             <p>
               A friend was going to help me with the passive network, but he ran out of time — and
@@ -127,9 +128,10 @@
           <p class="reveal">
             This is a bridge over that wall. It does not expect you to already know which
             alignment your tweeter wants or what order the filter should be. You bring the
-            measurements;
-            it decides, builds, simulates — and then tells you what it decided and why, so you can
-            disagree with it once you know enough to.
+            measurements and say what the design must respect; it works out where the drivers can
+            hand over, builds and simulates every candidate, and then tells you which ones meet
+            your requirements and why the others don't — so you can disagree with it once you know
+            enough to.
           </p>
         </div>
       </section>
@@ -171,16 +173,16 @@
                 <span class="num">2</span>
                 <h3>Load what you measured</h3>
                 <p>
-                  A frequency response and an impedance sweep per driver, plus any angled
-                  measurements you took. One, two or three ways. No measurements yet? There is a
-                  complete real measurement set built in, so you can see the whole thing work
-                  before you own a microphone.
+                  A frequency response and an impedance sweep per driver, plus any angled and
+                  near-field measurements you took. One, two or three ways. No measurements yet?
+                  There is a complete real measurement set built in — the three-way this tool was
+                  developed on — so you can see the whole thing work before you own a microphone.
                 </p>
               </div>
               <figure class="shot">
                 <img
                   src="./shots/import.jpg"
-                  alt="The import step, with a card per driver showing which files are loaded and what is still missing."
+                  alt="The project step, with a card per driver showing which files are loaded, the near-field splice and what is still missing."
                   width="1600"
                   height="900"
                   loading="lazy"
@@ -191,22 +193,25 @@
             <li class="step reveal">
               <div class="step-text">
                 <span class="num">3</span>
-                <h3>Let it design</h3>
+                <h3>Say what it must respect, then let it design</h3>
                 <p>
-                  One button. It works out where the drivers should hand over to each other, picks
-                  the filter shape for each one, builds the result as a real passive network, tunes
-                  every component value against your measurements and keeps the best of nine
-                  complete designs.
+                  You state requirements — the lowest load your amplifier may see, how hard a driver
+                  may be driven on its own resonance, how much the bass may ring — and press one
+                  button. It works out where the drivers can hand over to each other, picks the
+                  filter shape for each one, builds every candidate as a real passive network and
+                  tunes every component value against your measurements.
                 </p>
                 <p class="aside">
-                  You can watch each candidate come in, and stop it at any time. Nothing is
-                  hidden behind the button: every choice it made is written out afterwards.
+                  What comes back is not "the best one". It is every design that meets every
+                  requirement you set, side by side — and, underneath, the ones that were refused,
+                  each with the rule that refused it. You can watch the candidates come in, and stop
+                  at any time.
                 </p>
               </div>
               <figure class="shot">
                 <img
                   src="./shots/scan.jpg"
-                  alt="The optimizer running, with a row per candidate design showing its stage and its measured result."
+                  alt="The optimizer running, with a row per candidate design showing its handover points and the stage it is in."
                   width="1600"
                   height="900"
                   loading="lazy"
@@ -263,8 +268,10 @@
             <li class="card reveal" style="--tint: var(--viz-mid)">
               <h3>Where two drivers start cancelling</h3>
               <p>
-                Pure geometry: once they sit further apart than half a wavelength, a null exists
-                off-axis. This is the real reason three-ways cross low.
+                Pure geometry: drivers that sit far apart in wavelengths put a null off-axis. The
+                app reports the spacing of each pair in wavelengths, but it only judges the thing
+                you would hear — the summed response over a vertical window of angles, built from
+                the acoustic centres you entered.
               </p>
             </li>
             <li class="card reveal" style="--tint: var(--viz-null)">
@@ -275,10 +282,13 @@
               </p>
             </li>
             <li class="card reveal" style="--tint: var(--viz-tweeter)">
-              <h3>How low it can play at your level</h3>
+              <h3>How hard a driver may be driven on its resonance</h3>
               <p>
-                From cone area and excursion: the same one-inch dome that survives 587&nbsp;Hz at
-                90&nbsp;dB needs 829&nbsp;Hz at 96&nbsp;dB.
+                From your amplifier's peak power, the driver's excursion limit, its motor strength
+                and moving mass, and the resonance read from your impedance sweep — not from a
+                listening level you have to guess. Excursion is one failure mode; for a dome the
+                binding limit is usually a stated convention, and the app shows both side by side
+                and applies the stricter one.
               </p>
             </li>
           </ul>
@@ -291,8 +301,123 @@
         </div>
       </section>
 
-      <!-- ────────────────────── the core idea ─────────────────────── -->
+      <!-- ─────────────────── it tells you what it will not judge ────────────── -->
       <section class="band">
+        <div class="wrap">
+          <div class="split">
+            <div class="reveal">
+              <h2>It tells you what it will not judge</h2>
+              <p>
+                Every requirement is yours to state: the lowest impedance your amplifier may see,
+                the dissipation you accept in the filter, how hard a driver may be driven on its
+                resonance, how much the bass may ring around the port resonance, how far the filter
+                may raise the woofer's Q, how deep the bass plateau sits below the rest.
+              </p>
+              <p>
+                What you do not state is not judged — and the app says so, in the report and next
+                to every gate: <em>off</em> when no limit is set, <em>not judged</em> when it could
+                not look, <em>inside</em> or <em>exceeded</em> when it did. There are no hidden
+                defaults that quietly take part. The suggestions in the empty fields are ghost text;
+                they never reach the engine.
+              </p>
+              <p>
+                That also means a run with nothing stated is a run with nothing enforced. The
+                report still shows every number, because a value you cannot see is a value you
+                cannot judge.
+              </p>
+            </div>
+            <figure class="shot reveal">
+              <img
+                src="./shots/gates.jpg"
+                alt="The engine report's gate table: each requirement with the value it read, the limit stated, and a status of off, not judged, inside or exceeded."
+                width="1600"
+                height="900"
+                loading="lazy"
+              />
+            </figure>
+          </div>
+        </div>
+      </section>
+
+      <!-- ────────────────────────── the shortlist ─────────────────────────── -->
+      <section class="band alt">
+        <div class="wrap">
+          <div class="split">
+            <figure class="shot reveal">
+              <img
+                src="./shots/shortlist.jpg"
+                alt="The shortlist after a run: the designs that meet every requirement, one row each with their measured numbers, and below them the candidates that were refused with the rule that refused each."
+                width="1600"
+                height="900"
+                loading="lazy"
+              />
+            </figure>
+            <div class="reveal">
+              <h2>The shortlist</h2>
+              <p>
+                A run ends in a list, not a winner. Every row is a complete design that meets every
+                requirement and every gate you set — a different topology, tuned, priced. The list
+                is ordered by how flat the result is against your target curve, and you can sort it
+                on any column; sorting changes nothing about which designs are on it. A view, not a
+                verdict. The choice is yours.
+              </p>
+              <p>
+                Underneath are the candidates that delivered nothing: their tune was refused as a
+                whole by a protection rule, and the row says which one. They are not near-misses
+                and they cannot be loaded — nobody looked at a design there, and the app will not
+                pretend otherwise.
+              </p>
+              <p>
+                Click a row and that design lands in the working tab and in every chart. Click
+                another and compare.
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ───────────────── it knows where the measurement stops ───────────── -->
+      <section class="band">
+        <div class="wrap">
+          <div class="split">
+            <div class="reveal">
+              <h2>It knows where the measurement stops</h2>
+              <p>
+                A gated measurement is only valid above the frequency its own window allows, and
+                that number is in the file's header. The app reads it and derives the crossover
+                window from it: the floor is the higher of where both measurements can still be
+                believed and where the upper driver's resonance sits, the ceiling is where the
+                lower driver breaks up or starts beaming — and it names which one binds. Nothing
+                is proposed below the floor, ever.
+              </p>
+              <p>
+                The older physics floor — resonance, the near-field splice — is shown next to it as
+                a second opinion, with its source. The two answer different questions, and the app
+                does not silently pick one because it came first in the pipeline. Before a run it
+                counts how many candidates would fall outside the window and says so; it never
+                clamps your range.
+              </p>
+              <p>
+                And if a measurement file has lost its gate header, the app will not trust its own
+                level anchor: it says which input is missing and waits for you to supply the window
+                time, rather than computing a confident number on a band it cannot vouch for.
+              </p>
+            </div>
+            <figure class="shot reveal">
+              <img
+                src="./shots/window.jpg"
+                alt="The feasible crossover window per driver pair, with the binding floor and ceiling named and the older physics floor shown beside it as a counter-judgement."
+                width="1600"
+                height="900"
+                loading="lazy"
+              />
+            </figure>
+          </div>
+        </div>
+      </section>
+
+      <!-- ────────────────────── the core idea ─────────────────────── -->
+      <section class="band alt">
         <div class="wrap">
           <div class="split">
             <div class="reveal">
@@ -304,7 +429,7 @@
               </p>
               <p>
                 This tool designs on the phase you actually measured, that real time difference
-                included. It checks first whether your two sweeps even share a clock, and says so
+                included. It checks first whether your sweeps even share a clock, and says so
                 plainly if they don't, because that single mistake silently ruins every phase
                 number downstream.
               </p>
@@ -318,13 +443,39 @@
             <figure class="shot reveal">
               <img
                 src="./shots/phase.jpg"
-                alt="The phase panel, showing the relative phase between the two drivers across the crossover region."
+                alt="The phase panel, showing the relative phase between the drivers of each pair across the crossover region."
                 width="1600"
                 height="900"
                 loading="lazy"
               />
             </figure>
           </div>
+        </div>
+      </section>
+
+      <!-- ───────────────── tested against a real speaker ────────────── -->
+      <section class="band">
+        <div class="wrap narrow">
+          <h2 class="reveal">It was tested against a real speaker</h2>
+          <p class="reveal">
+            This was built on one real three-way project with real measurements: two woofers, a
+            mid, a tweeter, measured on the finished cabinet. Every claim the engine makes about
+            those measurements — every derived resonance, every window, every gate value — is
+            pinned to a reference and checked by a test suite of over 1,500 tests, part of which
+            runs on a different machine and operating system with every deploy. When a number
+            moves, the suite says so.
+          </p>
+          <p class="reveal">
+            On that speaker, given the same topology as the filter I designed by hand, the
+            optimizer reaches the flatness of that hand-made filter. And the hand-made filter is
+            held to the same requirements as everything the engine proposes; it passes them, which
+            is how I know the requirements are achievable rather than decorative.
+          </p>
+          <p class="reveal">
+            It is one speaker. Whether that design gets built passively or as a hybrid with active
+            bass is not decided yet — the app exists to make that decision with numbers instead of
+            hope, and that is how I use it.
+          </p>
         </div>
       </section>
 
@@ -335,16 +486,34 @@
           <ul class="plain reveal">
             <li>
               <b>You do need measurements.</b> This turns measurements into a crossover; it can't
-              conjure them. A measurement microphone and REW will get you there, and the guide in
-              the app walks through the rig.
+              conjure them. A measurement microphone and REW or ARTA will get you there, and the
+              guide in the app walks through the rig.
+            </li>
+            <li>
+              <b>Your measurement files need their gate header.</b> The window the measurement was
+              taken with is what tells the app where the data stops being valid. Export with the
+              header intact, or type the window times in by hand; without either, the app will
+              refuse to anchor levels rather than guess.
+            </li>
+            <li>
+              <b>A full run takes a while.</b> One candidate is minutes of tuning; a whole field can
+              take up to an hour in the browser. You can watch it, and you can stop it.
+            </li>
+            <li>
+              <b>The excursion limit needs your datasheet.</b> Deriving how hard a driver may be
+              driven takes its excursion limit, motor strength and moving mass, plus your
+              amplifier's peak power. Leave them out and that derivation is simply off — the
+              report says so — and the stated limit alone judges. A second, acoustic check of the
+              same number needs the voltage your response was measured at; if that was never
+              written down, that route stays off, with the reason shown.
             </li>
             <li>
               <b>It is a test version, and it is being worked on.</b> Things move. If something
               looks wrong, it probably is, and I'd like to hear about it.
             </li>
             <li>
-              <b>The written manual is currently in Dutch</b>, even though the app itself is in
-              English. Translation is on the list.
+              <b>The manual is in English and Dutch</b>, and follows the language you pick in the
+              app.
             </li>
             <li>
               <b>Nothing leaves your browser.</b> No account, no upload, no server. Your work is

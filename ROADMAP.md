@@ -4,6 +4,75 @@ Voertaal: Nederlands (zoals alle projectdocumentatie voor Sander & Stefan).
 Volgorde binnen een blok = aanbevolen prioriteit. Inschattingen zijn grof:
 **S** = uurtje(s), **M** = dagdeel–dag, **L** = meerdere dagen/gefaseerd.
 
+## Stand ná V49 (3 sep 2026) — engine v2
+
+De regels hieronder vatten samen wat F4 tot en met V49 hebben opgeleverd; het
+bewijs per stap staat in het casusboek (`docs/CrossoverStudio_OptimizerV2_strategie_v2.md`,
+Deel B) en de suite-meting in `CLAUDE.md`. Alles wat hier staat is gemeten op
+casus 1 (Koan 2951) en geldt alleen met de v2-toggle aan; met de toggle uit is
+de app byte-identiek aan vóór F1.
+
+**Af.**
+
+- **Kandidaatgeneratie in v2** (F4d, V27/V28): het veld komt uit de
+  A5d.3-vensters — spreiding in octaven, aantal afgeleid uit de
+  vensterbreedte, elke orde een eigen kandidaat, niets buiten de
+  meetgeldigheid. Op de v2-route wordt niets meer geklemd; de v1-fysicavloer
+  staat als tegenoordeel naast de meetgeldigheidsvloer met zijn herkomst.
+- **Gestelde eisen, geen defaults** (V30–V34, V42–V45, V47, V47b, V49): de
+  versterkervloer is een zoekdoel én een poort, elke elektrische poort oordeelt
+  op de gemeten sweep, de bronweerstandsprobe leest waar de grootheid woont,
+  het opslingeringsbudget staat op de resonante component en het plafond volgt
+  de tune (V48), de Q_es-vermenigvuldiging is een gestelde grens, het
+  niveau-anker en de doelcurve (basplateau) zijn A5e.2 en sturen ook de
+  zoektocht, en de aandrijving op de eigen resonantie is een gestelde eis
+  (−20 dB, voorlopig) náást een uit excursie afgeleid plafond — de strengste
+  oordeelt. Leeg veld = geen oordeel, en het paneel zegt `off` / `not judged` /
+  `inside`.
+- **Verwerpingen zijn zichtbaar** (V31/V33, UI-1): een kandidaat waarvan de
+  tune in zijn geheel geweigerd is levert geen netwerk maar een verwerping met
+  de regel; de shortlist is de bron van de Working-tab en de v1-ranglijst staat
+  gedegradeerd eronder.
+- **Eén fasemaat** (V44, M-K): toegelaten punten binnen de meetgeldigheid van
+  beide takken, boven de stille-geestvloer en binnen het overlapvenster; de
+  twee oude maten zijn controlekolommen.
+- **De zoekmaat gladt niet meer vóór de sommatie** (V38-fix) en de kandidaat
+  draagt de twee ketensleutels die de ontwerp- en synthesestap lezen (V41).
+- **UI**: elke bewerking herrekent of zegt waarom niet, de grafiek-view is van
+  de gebruiker (UI-2); `anchoredGaps` weigert zonder gate-header; de demo is
+  casus 1 met herstelde ARTA-headers; A5e.2 heeft een veld.
+- **Suite en CI** (V46): drie lagen — `test:fast`, de volle run met twee live
+  ketenruns, en `test:ci` zonder de machinegebonden byte-vergelijkingen.
+
+**Open (gemeten, niet gebouwd).**
+
+1. **Componenten-eisen** — A5e.3, het catalogus-schema: optimalisatiegrenzen
+   uit de catalogus-spanwijdte in plaats van uit vaste componentgrenzen.
+2. **Bescherming per weg** — de M-C-grens is één getal voor elke
+   hoogdoorlaatbeschermde weg; V47b/V49 laten zien dat −20 dB op een
+   88,8 Hz-mid-resonantie iets anders betekent dan op 924 Hz, en dat de
+   tweetergrens thermisch/vervorming is en geen excursie (V49). Ook
+   `qesMultiplierMax` per weg staat open (V45).
+3. **Hermeting met gedocumenteerde meetspanning** — route 2 van de
+   excursie-afleiding (de akoestische tegenproef) staat uit omdat de
+   FF-meetspanning van casus 1 niet gedocumenteerd is; bij de eerstvolgende
+   meetsessie noteren, dan wordt de waveguide-verhouding een getal. Zelfde
+   sessie: groundplane- of NF/FF-gemergede meting, zodat de gestelde
+   plateaudiepte gemeten kan worden (V45).
+4. **M-K-validatie** — de drie VituixCAD-projecten in
+   `test-fixtures/casus1/v40_vituix/` staan klaar; de vraag is "reproduceert
+   M-K?" en niet meer welke van twee maten.
+5. **Tweewegroute op v2** — de 2-weg-scan draait nog op v1 en de app zegt dat
+   onder de tabel (TODO(F2c) bij de façade).
+6. **Tweede casus** — alles hierboven is op één luidspreker gemeten; een
+   tweede volledige meetset (liefst een tweeweg) is wat de doctrine van "één
+   ontwerp" naar "een regel" brengt. Zie ook `.claude/skills/casus-toevoegen`.
+7. Kleiner en genoteerd in Deel A/B: V28 (mag een uitsnijding het veld
+   vormen), V29 (bijna-kortsluiting zonder gestelde vloer), V35 (`audit.fbHz`
+   en het reflexdal), V39 (`Chain3Settings` is voor dertig sleutels niet
+   geclassificeerd), `tilt`/`hold-current` als doelcurve, en de
+   `−20 dB`-tweetergrens die voorlopig is.
+
 ## Onlangs afgerond (jul–aug 2026, ter referentie)
 
 - **F3b — het scanvenster gekoppeld, en R_e opnieuw gemeten** (26 aug 2026).
