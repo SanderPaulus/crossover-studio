@@ -48,6 +48,12 @@
     referentie:** `threeWayChain` alléén kostte in diezelfde run 361 s tegen de 289 s van V43, dus
     wat er beweegt is de machine en niet de laag. Het overgeslagen BESTAND is nieuw en klopt: de
     verhuisde verwerpingsrun is een bestand dat volledig uit `[live]` bestaat.
+    **Ná V50 (03-09-2026) gemeten op 283 s — 143 geslaagd + 1 overgeslagen bestand en één rood
+    bestand (`f4cRegression`, twee claims die het V50-oordelenblok kregen), 1619 + 2 overgeslagen
+    tests; +2 bestanden (`metrics/buildability.test.ts` 7 claims, `optimizer/buildabilityGate.test.ts`
+    12 claims) en +6 claims in `frozenNetlistGates`; ná de reparatie +2 in `f4cRegression`.** GEEN
+    nieuwe referentie: de V43-waarde van 289 s blijft staan. De regeneratie liep ERNAAST niet:
+    de snelle laag is gedraaid nadat de generator klaar was.
     **Ná V49 (03-09-2026) gemeten op 284 s (eerste run, met vier rode claims die gerepareerd zijn)
     en daarna groen — 142 geslaagd + 1 overgeslagen bestand, 1596 geslaagd + 2 overgeslagen**
     (+2 bestanden: `metrics/driveExcursion.test.ts` 15 claims en `optimizer/driveCeiling.test.ts`
@@ -144,7 +150,17 @@
   onveranderd naast staat — van 285,8 naar 517,4 s. De totale CPU-tijd steeg van 3615 naar
   4306 s. Wandkloktijd is dus gekocht met rekentijd; een voorspelling op `max(1120, 638)` ≈ 950 s
   was te optimistisch en de gemeten 1254 s is wat er staat.
-- `npx vitest run` — volledige testsuite. **GEMETEN 03-09-2026 (V49): 143 bestanden, 1598 tests,
+- `npx vitest run` — volledige testsuite. **GEMETEN 03-09-2026 (V50): 145 bestanden, 1625 tests,
+  1362 s (22 min 42), niets overgeslagen, alleen gedraaid op een lege machine met `nohup`.** De
+  telling is +2 bestanden sinds V49 (de twee bouwbaarheidstests, 19 claims) en +27 tests (19 daar,
+  2 in `f4cRegression` voor het V50-oordelenblok, 6 V50-blokken in `frozenNetlistGates`). Het
+  corpus is bij V50 GEREGENEREERD (2673 s, `V2_JOBS=8`) en kwam onderdeel-voor-onderdeel identiek
+  terug — dezelfde zeven kandidaten, dezelfde acht weigeringen — dus de twee live ketenruns treffen
+  dezelfde netlists en de wandkloktijd ligt op die van V49. **De EERSTE volle run van V50 (1356 s)
+  viel op de byte-inventaris van `ciLayer` om** (het V50-oordelenblok van `f4cRegression` draagt
+  `[bytes]`: zes namen, tien tests) en is na die reparatie in zijn geheel herhaald, want een run
+  met één rood bestand is geen acceptatie (V47b-les).
+  (De stand ervoor: **03-09-2026 (V49): 143 bestanden, 1598 tests,
   1352 s (22 min 32), niets overgeslagen, alleen gedraaid op een lege machine — losgekoppeld
   met `nohup`, want de Bash-tool kapt een achtergrondopdracht op tien minuten af en een volle
   run duurt er twintig.** De telling is +2 bestanden sinds V47b (de twee V49-testbestanden) en
@@ -335,8 +351,12 @@
   netlists byte-identiek terug, op het `savedAt`-stempel van de serialisatie na.**
 - **De vóór/ná-tabel tussen twee corpora**: `npx vite-node scripts/compare-corpora.ts [vóór] [ná]` —
   seconden, geen ketenrun. Corpora: `v30`, `v32`, `v33sweep`, `v33`, `v34`, `v37`, `v38fix`,
-  `v41`, `v42`, `v43`, `v44`, `v45`, `v47`, `v48`, `live`; default `v47 live`, wat de V48-tabel is
-  (`v48 live` is de V47b-tabel). **Sinds V47b twee kolommen erbij:** M-C PER WEG naast het
+  `v41`, `v42`, `v43`, `v44`, `v45`, `v47`, `v48`, `v49`, `live`; default `v49 live`, wat de
+  V50-tabel is (`v48 v49` is de V47b-tabel, `v47 v48` de V48-tabel). **Sinds V50 twee kolommen
+  erbij:** `toegestaan W` (klasse × marge, uit het M-A/part-oordeel gelezen) en `spoel piek A`
+  (M-L, de drukste spoel bij de piekingang), met een corpusregel op de weerstandseis eronder; de
+  M-C-corpusregel telt sinds V50 per weg tegen zijn EIGEN grens (gesteld op de tweeter, afgeleid
+  op de mid) en niet meer tegen één getal. **Sinds V47b twee kolommen erbij:** M-C PER WEG naast het
   maximum (op KAND_B raakt de eis de mid en niet de tweeter, en het maximum zegt dat niet) en de
   VERTICALE LOBING-SYNTHESE (M-F-eind, diepste dip in het kruisgebied over het ±15°-venster dat
   de klasse-B-referentie `lobing_eind_dip_15gr` draagt — daarvoor kreeg de meetbank in
@@ -618,6 +638,21 @@
   tegen 6,84 mm limiet.** Route 2 staat op casus 1 UIT: de FF-meetspanning
   is niet gedocumenteerd (`driverkaart.ff_meetspanning_V` is null, met de bevinding erbij), en
   er is bewust geen 2,83 V aangenomen.
+- **Bouwbaarheid gemeten vóór er iets gewapend wordt (V50)**:
+  `npx vite-node scripts/measure-v50-buildability.ts [SLEUTEL ...]` — seconden, geen ketenrun en
+  geen enkele tune; zonder argumenten élke netlist die het casusboek noemt. Drie tabellen. (1) Per
+  netlist het vermogen in ELKE discrete weerstand bij het gestelde continue vermogen (M-A,
+  IEC-gewogen), de heetste met naam, de toegestane waarde klasse × marge en het oordeel van
+  M-A/part. (2) Per netlist de piekstroom door elke spoel bij de piekingang √(2·P_piek·R_nom)
+  (M-L, ongewogen), de drukste met frequentie. (3) De SANITY op de referentiefilters: haalt HUIDIG
+  de weerstandseis, en welke klasse of welk continu vermogen zou hem nog net toelaten. **Gemeten
+  03-09-2026 (V50): HUIDIG verstookt 25,6 W in R8 (3,3 Ω, het wooferpad) tegen 5 W toegestaan
+  (10 W × 0,5 bij 100 W continu) — factor 5,1; KAND_A 30,9 W (6,2×), KAND_B 19,6 W (3,9×); het
+  V49-corpus 13,6–34,9 W. Nog net toelaatbaar: klasse ≥ 51 W bij 100 W, óf ≤ 19,6 W continu bij
+  10 W. Achttien gedateerde netlists (V28–V38-fix, zonder wooferpad) halen de eis wel, met
+  0,5–1,4 W in een tweeterpad — dat is de eis die haalbaar is zodra de woofer NIET resistief
+  verzwakt wordt, en precies wat de anker-verzwakking van V45 uitsluit.** Dit is het
+  bewijsmateriaal onder de hangende beslissing in `gestelde_eisen.bouwbaarheid_op_de_zoektocht`.
 - **De vloer als zoekdoel meten (V30)**: `npx vite-node scripts/measure-v30-floor-goal.ts` —
   dertig ketenruns (vijftien kandidaten × twee armen), gemeten 45–70 s per stuk, ~30 min.
   Schrijft `test-fixtures/casus1_v30_vloer_vergelijking.json` en drukt de vóór/ná-tabel af.
@@ -674,7 +709,11 @@ grotere ingreep — hij raakt élk commando in dit project — en is deze sessie
   tag daar zou CI leegmaken terwijl de deploy groen blijft, de stilste manier waarop dit ongedaan
   gaat. (3) De byte-inventaris is precies vijf bronnamen (acht gedraaide tests: drie zijn
   `it.each` over twee zaden), voluit opgeschreven zodat wie er een tagt hier langskomt en moet
-  opschrijven wat hij uit CI haalt. (4) **SINDS 01-09-2026 een LIVE-inventaris ernaast, in dezelfde
+  opschrijven wat hij uit CI haalt. **Sinds V50 ZES namen en TIEN tests:** het tweede
+  oordelenblok van `f4cRegression` (`verdicts_sinds_V50`, `it.each` over twee zaden) draagt de
+  tag om dezelfde reden als de andere vijf, en de eerste volle run van V50 viel precies op deze
+  inventaris om — de bewaker deed wat hij moet doen. Het aantal overgeslagen tests in `test:ci`
+  is daarmee 2 `[live]` + 10 `[bytes]` − 1 die beide draagt = ELF. (4) **SINDS 01-09-2026 een LIVE-inventaris ernaast, in dezelfde
   vorm en om dezelfde reden: precies TWEE blokken, met naam.** De splitsing van de twee live
   ketenruns bracht het tagtal van één naar twee, en precies zo'n verhoging is wat stil kan
   doorgroeien. (5) De scan loopt echt — zonder die tegenproef is "niets
@@ -889,6 +928,13 @@ grotere ingreep — hij raakt élk commando in dit project — en is deze sessie
   op 200 wordt gelegd. Nagemeten dat hij kán falen: 0,001 dB in het bestand verschuiven zet beide
   seed-asserts op rood. De vingerafdruk beweegt wél, en de test zegt dat dat correct is —
   `choices` is een nieuw ingrediënt.
+- **Sinds V50 draagt `f4b2_v2_baseline.json` een TWEEDE oordelenblok, `verdicts_sinds_V50`**, naast
+  `verdicts_sinds_V32` — twee gedateerde blokken en geen herschreven blok, om de reden die V32 gaf
+  toen het de netwerk-helft van de oordeel-helft scheidde. V50 zette twee poorten (`M-A/part`,
+  `M-L`) op élke oordelenlijst; het V32-blok blijft zijn VIER poort-id's pinnen (de test filtert
+  de verse oordelen op de id's die het blok zelf draagt, met `gateIdsIn`) en het V50-blok pint
+  alle zes. `npx vite-node scripts/record-f4b2-v50-verdicts.ts` (seconden, twee korte
+  tuner-runs) schrijft het; de netwerk-helft (`runs`) raakt hij niet aan.
 - `src/lib/engine2/optimizer/workerRouteRegression.test.ts` + `test-fixtures/f4b2_v2_worker_baseline.json`
   — dezelfde acceptatie op de route die de app **wél** neemt: `handleV2Request` → `runThreeWayChain`,
   payload door `structuredClone`. De eerste fixture pint `runV2Optimization`, en dat pad roept
@@ -1798,6 +1844,72 @@ grotere ingreep — hij raakt élk commando in dit project — en is deze sessie
   ziet onder `min(−20, afgeleid)` dezelfde poortbeslissingen als onder V47b; de live
   byte-reproductie in `casus1V2Candidates` bewijst het. `casus1_v2_herkomst.json` draagt daarom
   nog de V47b-vingerafdruk (`facts=` en `estimators=` bewegen pas bij de volgende regeneratie).
+
+### V50-guards (bouwbaarheid als gestelde eis; de M-C-grens per weg)
+- `src/lib/engine2/metrics/buildability.ts` + `buildability.test.ts` — **twee grootheden, allebei al
+  in de oplossing, nu met een toegestane waarde per element.** `resistorLoads` LEEST M-A's eigen
+  elementen (geen tweede integraal) en zet er de toelating naast: de opgave van het gesnapte
+  catalogusonderdeel, anders de gestelde klasse, maal de gestelde marge; `coilLoads` leest de
+  piekstroom per spoel als `|I_L(f)|·V_piek/E_g`, ONGEWOGEN en met de frequentie erbij — verzadiging
+  is een gebeurtenis van een halve periode. `worstResistor`/`worstCoil` kiezen het element met de
+  MINSTE MARGE en niet het heetste (een gemeten test: 2 W op 1 W is erger dan 20 W op 100 W), en een
+  element mét toelating gaat altijd vóór een element zonder. Versie `buildability/1.0`. De vier
+  testsoorten: handberekening op een papieren netwerk (Rg 1 mΩ, want de solver deelt de geleverde
+  stroom door Rg — dat kostte de eerste versie van de test vier NaN's), uit-toestanden met het veld
+  bij naam, nieuwe meting (piekingang ×2 ⇒ stroom ×2; vermogen ×2 ⇒ watt ×2, fractie staat), en de
+  opgave-boven-klasse-regel met de SKU bij naam.
+- `src/lib/engine2/optimizer/gates.ts` — **twee poort-id's erbij: `M-A/part` en `M-L`**, beide
+  `subject: 'system'` met het element in de parameters. De limiet bestaat zodra klasse × marge
+  gevormd kan worden, ook op een netlist zónder weerstand (dan ACTIEF en NIET GEOORDEELD, `value`
+  null met de reden "no discrete resistor" — een nul zou als meting lezen, F0). `GateSettings`
+  draagt sinds V50 `maxDriveOnFsDbByDriver`, `amplifierPowerW`, `resistorClassW`,
+  `resistorPowerMargin`, `coilClassA` en `peakInputVolts`; `statedDriveLimitDb` is de ENE regel
+  voor "per-weg eerst, dan het ene veld" en `effectiveDriveLimit` leest hem. `gateSettingsKey`
+  neemt het continue vermogen en de piekingang ALLEEN mee zolang de poort die ze leest gewapend
+  is — V36's "de wattkolom is geen vingerafdruk-ingrediënt" blijft staan voor elke run zonder
+  toelating. `evaluateGates` heeft een vijfde argument `ratings` (`partRatings.ts`: wat de
+  catalogus over de GESNAPTE onderdelen zegt, gelezen uit `VxpPart.catalog`; een stapel kernspoelen
+  is zo sterk als haar zwakste lid, een stapel met één ongewaardeerd lid is ongewaardeerd).
+- `src/lib/engine2/optimizer/buildabilityGate.test.ts` — de poortregel: absent is absent (P2 op de
+  tweewegfixture: zonder de velden zijn alle andere oordelen byte-identiek, en de M-A-fractie is
+  hetzelfde getal met en zonder vermogen), klasse zonder marge wapent niets en noemt het veld, de
+  minste-marge-keuze, de drie null-toestanden met hun reden, de vingerafdruk (klasse, marge,
+  vermogen alleen bij toelating), de per-weg-resolutie (dezelfde −15 dB is binnen op de mid zonder
+  gesteld getal en eroverheen op de tweeter met −20), en `partRatingsOf`.
+- `src/lib/engine2/frozenNetlistGates.test.ts` — **zes V50-blokken over het hele casusboek, en de
+  dragende is een BEVINDING:** aan de gestelde klasse haalt géén referentiefilter en géén levende
+  netlist M-A/part — HUIDIG's R8 met een factor > 4 — terwijl het casusboek wél netlists draagt die
+  haar halen (achttien gedateerde, zonder wooferpad), dus de klasse beschrijft iets bouwbaars en de
+  eis is niet vacuüm. Verder: elke bevroren netlist draagt beide oordelen (M-A/part gewapend op
+  klasse × marge, M-L uit met de stroom zichtbaar en de "air-cored"-reden); het opgeschreven
+  `v50_bouwbaarheid`-blok reproduceert per netlist; P2 zonder klasse en marge (zelfde watt, andere
+  oordelen byte-identiek); de spoelstromen schalen met de piekingang (een kwart van het
+  piekvermogen is de helft van de stroom, zelfde spoel, zelfde frequentie); en de run-fixture volgt
+  de manifestbeslissing `bouwbaarheid_op_de_zoektocht.gewapend`. **Het V47- en het V49-blok zijn
+  van vorm veranderd zonder van claim te veranderen:** "het gestelde getal bereikt élk oordeel"
+  geldt sinds V50 voor de wegen die er een STELLEN (de tweeter), en een weg zonder gesteld getal
+  moet `limit_source` "no stated dB figure" dragen; "de afgeleide grens bijt ergens" wordt gemeten
+  tegen de CONVENTIE (−20) op elke weg, of die weg haar nu stelt of niet, want anders is de claim op
+  een mid zonder gesteld getal leeg. Eén literal (`1e3` voor mH) ving p6Lint; hij leest nu
+  `H_PER_MH`.
+- **De gate-id-dekkingstest laat `M-A/part` null toe op een netlist zonder discrete weerstand**
+  (`V28_KAND_1`), en eist dan de reden in de zin; `gates.test.ts`' "absent is off"-geval stelt
+  sinds V50 een continu vermogen en een piekingang — dat zijn geen grenzen maar wat de twee poorten
+  nodig hebben om überhaupt een getal te LEZEN, en `anyGateActive` blijft er false op.
+- **De catalogus kent sinds V50 `maxCurrentA`** (`CatalogPart`, `CatalogSeries`, en in
+  `catalogFile.ts` de spellingen `maxCurrentA` / `max_current_a` / `saturationA`). Inventaris van
+  de v8-catalogus: 108 van 108 weerstanden dragen `powerW` (10 W: Jantzen MOX 53, Superes 40,
+  Duelund CAST 7; 20 W: Mundorf MResist Supreme 8); 0 van 2116 spoelen dragen een stroomopgave
+  (1482 Air Core, 611 P-Core, 9 Wax, 7 Aronit, 7 Zero-Ohm). De Jantzen C-Coil-documentatie noemt
+  géén verzadigingsstroom ("getest met 1000 W, 700 W gedurende 48 uur") — daarom is de
+  spoelklasse van casus 1 LEEG met die bevinding, en oordeelt M-L niets.
+- **De bouwbaarheid is op de casus-1-ZOEKTOCHT nog niet gewapend, en dat is een gesteld besluit:**
+  `gestelde_eisen.bouwbaarheid_op_de_zoektocht.gewapend` (false, met de reden) wordt door
+  `casus1BuildabilityOnSearch` gelezen en `CASUS1_V2_GATES` volgt het; het rapport en de guards
+  oordelen wél. Zet het op true en regenereer om haar te wapenen — en lees eerst de sanity: aan
+  10 W × 0,5 bij 100 W haalt geen enkel bekend ontwerp de eis, dus dat levert vijftien verwerpingen
+  en een leeg corpus, wat de suite niet draagt (V42: geen uitzonderingslijst ter grootte van het
+  corpus).
 
 ### V48-guards (welk netwerk het seriespoel-plafond beschrijft)
 - `src/lib/engine2/optimizer/bounds.ts` — **`seriesInductanceCeilingTracker` is dezelfde inversie,

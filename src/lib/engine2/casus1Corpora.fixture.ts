@@ -43,7 +43,13 @@ import {
   loadGolden,
   type GoldenRefs,
 } from './casus1.fixture.ts';
-import { CASUS1_EXCURSION, CASUS1_TARGET_CURVE } from './casus1V2.fixture.ts';
+import {
+  CASUS1_BUILDABILITY,
+  CASUS1_CONTINUOUS_POWER_W,
+  CASUS1_EXCURSION,
+  CASUS1_MAX_DRIVE_ON_FS_DB_BY_DRIVER,
+  CASUS1_TARGET_CURVE,
+} from './casus1V2.fixture.ts';
 import { buildReport, type EngineV2Report, type ReportSettings } from './report.ts';
 import type { Manifest } from './ingest/manifest.ts';
 import type { MeasurementFile } from './ingest/derive.ts';
@@ -51,7 +57,13 @@ import { ctcKey, type Geometry } from './metrics/types.ts';
 
 /** Het vermogen waarbij M-A's wattkolom wordt afgelezen — een aanname van de
  *  vergelijking en geen projectgetal: de fractie zelf is schaalvrij. */
-const CORPUS_POWER_W = 100;
+/* V50 — from its one home in the manifest; the literal 100 is gone. A corpus
+ * comparison without a stated continuous power prints no watts at all (F0). */
+const CORPUS_POWER_W: number = (() => {
+  const w = CASUS1_CONTINUOUS_POWER_W;
+  if (w === null) throw new Error('casus 1 states no continuous amplifier power (gestelde_eisen.versterker_continu_vermogen_W)');
+  return w;
+})();
 
 /** De orde per paar waarmee élke corpusmeting haar rapport bouwt. Casus 1 is
  *  door de hele reeks LR4/LR4 getuned; hij staat hier zodat beide helften van
@@ -119,6 +131,7 @@ export const DATED_CORPORA: Record<string, { block: string; name: string }> = {
   v45: { block: 'v45_corpus', name: 'V45' },
   v47: { block: 'v47_corpus', name: 'V47' },
   v48: { block: 'v48_corpus', name: 'V48' },
+  v49: { block: 'v49_corpus', name: 'V49' },
 };
 
 interface Herkomst {
@@ -208,6 +221,12 @@ export function corpusBank(golden: GoldenRefs = loadGolden()): CorpusBank {
     /* V49 — the excursion inputs, so the M-C column of a corpus comparison
      * reads the limit the gate actually judged on. */
     ...CASUS1_EXCURSION,
+    /* V50 — the per-way M-C figure and the buildability inputs, for the same
+     * reason: the columns read what the gate read. */
+    ...(Object.keys(CASUS1_MAX_DRIVE_ON_FS_DB_BY_DRIVER).length > 0
+      ? { maxDriveOnFsDbByDriver: { ...CASUS1_MAX_DRIVE_ON_FS_DB_BY_DRIVER } }
+      : {}),
+    ...CASUS1_BUILDABILITY,
   };
   return {
     golden,

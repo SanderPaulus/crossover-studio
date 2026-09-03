@@ -35,6 +35,8 @@ import {
   casus1Geometry,
   casus1Manifest,
   casus1MaxDriveOnFsDb,
+  casus1MaxDriveOnFsDbByDriver,
+  casus1ContinuousPowerW,
   casus1AmpMinLoadOhm,
   loadGolden,
 } from '../src/lib/engine2/casus1.fixture.ts';
@@ -57,12 +59,17 @@ const CONTEXT_V47_DB = -25;
 const CONTEXT_RULE_DB = -18;
 
 const BASE: ReportSettings = {
-  amplifierPowerW: 100,
+  /* V50 — from its one home in the manifest. */
+  ...(casus1ContinuousPowerW(golden) !== null ? { amplifierPowerW: casus1ContinuousPowerW(golden)! } : {}),
   orderByPair: { [ctcKey('woofer', 'mid')]: 4, [ctcKey('mid', 'tweeter')]: 4 },
   reOhmByDriver: { woofer: CASUS1_WOOFER_DC_OHM },
   targetCurve: CASUS1_TARGET_CURVE,
   ...(FLOOR !== null ? { ampMinLoadOhm: FLOOR } : {}),
-  ...(STATED !== null ? { maxDriveOnFsDb: STATED } : {}),
+  /* V50 — PER WAY: the tweeter carries the convention, the mid none. The
+   * single figure `STATED` stays as the number the tables compare with. */
+  ...(Object.keys(casus1MaxDriveOnFsDbByDriver(golden)).length > 0
+    ? { maxDriveOnFsDbByDriver: casus1MaxDriveOnFsDbByDriver(golden) }
+    : {}),
   ...casus1ExcursionSettings(golden),
 };
 

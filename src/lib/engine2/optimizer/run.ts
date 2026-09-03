@@ -334,7 +334,7 @@ export function runV2Optimization(input: V2OptimizeInput): V2OptimizeResult {
      * Judged on the DELIVERED parts, twice: on the frozen passbands the
      * search was held to, and on the passbands this candidate's own
      * crossings imply. A candidate is delivered only when both agree. */
-    let frozen: GateEvaluation = { verdicts: [], failures: [], violation: null, metrics: { dissipation: null, epdr: null, driveVoltage: [] }, crossings: [] };
+    let frozen: GateEvaluation = { verdicts: [], failures: [], violation: null, metrics: { dissipation: null, epdr: null, driveVoltage: [], resistorLoads: null, coilLoads: null }, crossings: [] };
     let derived = frozen;
     try {
       const netlist = netlistOf(net.parts);

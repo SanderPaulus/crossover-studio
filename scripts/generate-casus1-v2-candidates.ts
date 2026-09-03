@@ -67,8 +67,12 @@ import {
   casus1Field,
   casus1V2Declaration,
   casus1V2Facts,
+  CASUS1_BUILDABILITY,
+  CASUS1_BUILDABILITY_ON_SEARCH,
+  CASUS1_CONTINUOUS_POWER_W,
   CASUS1_EXCURSION,
   CASUS1_MAX_DRIVE_ON_FS_DB,
+  CASUS1_MAX_DRIVE_ON_FS_DB_BY_DRIVER,
   CASUS1_QES_MULTIPLIER_MAX,
   CASUS1_TARGET_CURVE,
 } from '../src/lib/engine2/casus1V2.fixture.ts';
@@ -86,7 +90,14 @@ const report = buildReport({
   filter: casus1Filter('HUIDIG', manifest, files, golden),
   geometry,
   settings: {
-    amplifierPowerW: 100,
+    /* V50 — the continuous power from its one home (the literal 100 is gone),
+     * the per-way M-C figure, and the buildability inputs the report judges
+     * with whatever the search arms. */
+    ...(CASUS1_CONTINUOUS_POWER_W !== null ? { amplifierPowerW: CASUS1_CONTINUOUS_POWER_W } : {}),
+    ...(Object.keys(CASUS1_MAX_DRIVE_ON_FS_DB_BY_DRIVER).length > 0
+      ? { maxDriveOnFsDbByDriver: { ...CASUS1_MAX_DRIVE_ON_FS_DB_BY_DRIVER } }
+      : {}),
+    ...CASUS1_BUILDABILITY,
     orderByPair: { [ctcKey('woofer', 'mid')]: 4, [ctcKey('mid', 'tweeter')]: 4 },
     reOhmByDriver: { woofer: CASUS1_WOOFER_DC_OHM },
     targetCurve: CASUS1_TARGET_CURVE,
@@ -311,6 +322,10 @@ function payloadFor(c: (typeof field.field.candidates)[number]): V2Chain3Payload
       determinism: { seed: CASUS1_V2_SEED },
       targetCurve: CASUS1_TARGET_CURVE,
       judgeBandHz: CASUS1_V2_BAND_HZ,
+      /* V50 — the continuous power on the wire: the shortlist's watt column
+       * (V36) and, when the resistor class is armed on the search, the power
+       * M-A/part judges at. */
+      ...(CASUS1_CONTINUOUS_POWER_W !== null ? { amplifierPowerW: CASUS1_CONTINUOUS_POWER_W } : {}),
     },
     candidate: casus1V2Declaration(c, gridded.safety),
   };
@@ -586,18 +601,20 @@ const meetopstelling = {
     "5,2 dB op 'acoustic' (V27); een fixture die niet de synthese van de app draait, meet de app niet.",
   v2_poorten_gewapend: Object.keys(lastPayload.v2.gates ?? {}).sort(),
   v2_poorten_bron: {
-    ...(CASUS1_MAX_DRIVE_ON_FS_DB !== null
+    ...(Object.keys(CASUS1_MAX_DRIVE_ON_FS_DB_BY_DRIVER).length > 0
       ? {
           'M-C': {
-            sleutel: 'maxDriveOnFsDb',
-            bron: 'gesteld',
+            sleutel: 'maxDriveOnFsDbByDriver',
+            bron: 'gesteld, PER WEG (V50)',
+            waarde_dB_per_weg: { ...CASUS1_MAX_DRIVE_ON_FS_DB_BY_DRIVER },
             waarde_dB: CASUS1_MAX_DRIVE_ON_FS_DB,
             waar:
-              'manifest_en_geometrie.gestelde_eisen.tweeter_drive_op_fs_max_dB — het ENIGE ' +
-              'voorkomen van dit getal. Het reist langs het A5a-pad van de app: ' +
-              'v2.gates.maxDriveOnFsDb voor het oordeel, en dezelfde gestelde grens laat de ' +
-              'kandidaat `protectionRule: stated` verklaren, waarmee de zaadvergelijking van de ' +
-              'volle-band-veiligheidspoort vervalt (V47).',
+              'manifest_en_geometrie.gestelde_eisen.drive_op_fs_max_dB_per_weg (V50) — de tweeter ' +
+              'draagt de −20-conventie van tweeter_drive_op_fs_max_dB, de mid draagt GEEN gesteld ' +
+              'getal en wordt op de afgeleide excursiegrens alleen geoordeeld. Het reist langs het ' +
+              'A5a-pad van de app: v2.gates.maxDriveOnFsDbByDriver voor het oordeel, en de gestelde ' +
+              'grens laat de kandidaat `protectionRule: stated` verklaren, waarmee de zaadvergelijking ' +
+              'van de volle-band-veiligheidspoort vervalt (V47).',
             regel:
               'driveVoltageOnResonance (src/lib/engine2/metrics/electrical.ts) op de gemeten ' +
               'sweep (V32), per hoogdoorlaatbeschermde weg, met de doorlaatband uit de eigen ' +
@@ -636,14 +653,31 @@ const meetopstelling = {
     (CASUS1_AMP_MIN_LOAD_OHM !== null
       ? 'M-B/|Z| is GEWAPEND op de gestelde versterkervloer; zie `v2_poorten_bron`. '
       : 'Geen versterkervloer gesteld, dus M-B/|Z| oordeelt niet. ') +
-    (CASUS1_MAX_DRIVE_ON_FS_DB !== null
-      ? 'M-C is GEWAPEND op de gestelde aandrijfgrens (V47), en hij oordeelt ÉLKE ' +
-        'hoogdoorlaatbeschermde weg — op casus 1 de mid én de tweeter, terwijl het getal van een ' +
-        'tweetermeting is afgeleid. '
-      : 'M-C blijft ONGEWAPEND: casus 1 stelt geen aandrijfgrens. ') +
+    (Object.keys(CASUS1_MAX_DRIVE_ON_FS_DB_BY_DRIVER).length > 0
+      ? `M-C is GEWAPEND PER WEG (V50): een gesteld getal op ${Object.keys(CASUS1_MAX_DRIVE_ON_FS_DB_BY_DRIVER).join(', ')}; ` +
+        'elke andere hoogdoorlaatbeschermde weg (op casus 1 de mid) wordt op de afgeleide ' +
+        'excursiegrens van V49 alleen geoordeeld. '
+      : 'M-C draagt geen gesteld getal: alleen een afgeleid plafond (V49) oordeelt, waar het er is. ') +
+    (CASUS1_BUILDABILITY_ON_SEARCH
+      ? `M-A/part is GEWAPEND op de zoektocht (V50): klasse ${CASUS1_BUILDABILITY.resistorClassW} W × marge ` +
+        `${CASUS1_BUILDABILITY.resistorPowerMargin} bij ${CASUS1_CONTINUOUS_POWER_W} W continu. `
+      : 'M-A/part is NIET gewapend op de zoektocht (V50, gestelde_eisen.bouwbaarheid_op_de_zoektocht): ' +
+        'de weerstandseis is gesteld en het rapport oordeelt ermee op elke bevroren netlist, maar ' +
+        'de generator wapent haar pas als Sander dat besluit — zie de sanity op HUIDIG daar. ') +
+    'M-L rapporteert de piekstroom per spoel bij de piekingang en oordeelt niets: casus 1 stelt ' +
+    'geen spoelklasse (de C-Coil-documentatie noemt geen verzadigingsstroom, V50). ' +
     'M-A (dissipatiefractie) en M-B/EPDR blijven ONGEWAPEND: casus 1 stelt daar niets ' +
     'voor, en leeg veld = geen oordeel (P4). Een afwezige grens is geen poort die altijd ' +
     'slaagt — hij rapporteert zijn waarde en oordeelt niets.',
+  bouwbaarheid: {
+    weerstandsklasse_W: CASUS1_BUILDABILITY.resistorClassW ?? null,
+    weerstandsmarge: CASUS1_BUILDABILITY.resistorPowerMargin ?? null,
+    spoelklasse_A: CASUS1_BUILDABILITY.coilClassA ?? null,
+    continu_vermogen_W: CASUS1_CONTINUOUS_POWER_W,
+    piekingang_V: lastPayload.v2.gates.peakInputVolts ?? null,
+    gewapend_op_de_zoektocht: CASUS1_BUILDABILITY_ON_SEARCH,
+    waar: 'manifest_en_geometrie.gestelde_eisen.weerstandsklasse_*, .spoelklasse_*, .versterker_continu_vermogen_W, .bouwbaarheid_op_de_zoektocht',
+  },
   v2_budgetten_gewapend: Object.keys(lastPayload.v2.budgets ?? {}).sort(),
   v2_budgetten_waarom:
     CASUS1_LF_RESONANT_BUDGET_DB !== null

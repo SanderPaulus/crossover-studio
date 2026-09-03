@@ -34,7 +34,12 @@ const find = (s: GateSettings, gate: string, subject = 'system') =>
 
 describe('Deliverable 2 - gate configuration', () => {
   it('every limit is absent by default, and an absent limit is OFF but still reported', () => {
-    const e = evaluateGates(netlist, {}, reference, 'frozen');
+    /* V50 — a continuous power and a peak input are NOT limits: they are what
+     * the two buildability gates need to READ a figure (watts, amperes) at
+     * all. Stated here so those two report a value like every other gate;
+     * `anyGateActive` still says nothing judges. */
+    const e = evaluateGates(netlist, { amplifierPowerW: 100, peakInputVolts: 50 }, reference, 'frozen');
+    expect(anyGateActive({ amplifierPowerW: 100, peakInputVolts: 50 })).toBe(false);
     expect(anyGateActive({})).toBe(false);
     expect(e.failures).toEqual([]);
     expect(e.violation).toBeNull();

@@ -167,6 +167,10 @@ export const METRIC_DECLARATIONS: readonly MetricDeclaration[] = [
     needs: [hasFilter],
     specRef: 'A4 M-A',
   },
+  /* V50 — M-A's per-part form shares M-A's row: same integral, same data
+   * need (a solved network); what is new is the ALLOWANCE per element, which
+   * is a project input (resistor class + margin, or a rated catalogue part)
+   * and therefore a gate setting rather than a data need. */
   {
     id: 'M-B',
     title: 'EPDR',
@@ -201,6 +205,18 @@ export const METRIC_DECLARATIONS: readonly MetricDeclaration[] = [
     scope: 'driver',
     needs: [hasImpedance(), hasResonance(), hasExcursionCard, hasAmplifierPeak],
     specRef: 'A4 M-C v2.0 / Deel B V49',
+  },
+  {
+    id: 'M-L',
+    title: 'Peak current per coil',
+    quantity:
+      'The largest current amplitude through each coil at the amplifier\'s peak input — the figure ' +
+      'a cored coil\'s saturation rating is compared with (V50)',
+    formula: 'I_L,peak = max_f |I_L(f)/E_g| · √(2·P_peak·R_nom), unweighted (saturation is a one-cycle event)',
+    role: 'gate',
+    scope: 'system',
+    needs: [hasFilter, hasAmplifierPeak],
+    specRef: 'A4 M-L / Deel B V50',
   },
   {
     id: 'M-D',

@@ -77,6 +77,10 @@ import {
   CASUS1_V2_BUDGETS,
   CASUS1_MAX_DRIVE_ON_FS_DB,
   CASUS1_V2_GATES,
+  CASUS1_BUILDABILITY,
+  CASUS1_BUILDABILITY_ON_SEARCH,
+  CASUS1_CONTINUOUS_POWER_W,
+  CASUS1_MAX_DRIVE_ON_FS_DB_BY_DRIVER,
   CASUS1_V2_BAND_HZ,
   CASUS1_V2_GRID,
   CASUS1_V2_SEED,
@@ -203,7 +207,14 @@ const report = (key: string): EngineV2Report =>
     filter: casus1Filter(key, manifest, files, golden),
     geometry,
     settings: {
-      amplifierPowerW: 100,
+      /* V50 — the continuous power from its one home, the per-way M-C figure
+       * and the buildability inputs: the SAME report settings the generator
+       * builds its facts from. */
+      ...(CASUS1_CONTINUOUS_POWER_W !== null ? { amplifierPowerW: CASUS1_CONTINUOUS_POWER_W } : {}),
+      ...(Object.keys(CASUS1_MAX_DRIVE_ON_FS_DB_BY_DRIVER).length > 0
+        ? { maxDriveOnFsDbByDriver: { ...CASUS1_MAX_DRIVE_ON_FS_DB_BY_DRIVER } }
+        : {}),
+      ...CASUS1_BUILDABILITY,
       orderByPair: { [ctcKey('woofer', 'mid')]: 4, [ctcKey('mid', 'tweeter')]: 4 },
       reOhmByDriver: { woofer: CASUS1_WOOFER_DC_OHM },
       targetCurve: CASUS1_TARGET_CURVE,
@@ -371,15 +382,27 @@ describe('the frozen v2 candidates are files, and the file says where they came 
      * volle-band-veiligheidspoort laat vervallen). Een verslag dat alleen het
      * eerste noteerde zou niet laten zien dat er ook iets IS WEGGEHAALD. */
     expect(m.beschermingen_via_kandidaat).toContain('protectionRule');
-    expect(m.beschermingsregel).toBe(CASUS1_MAX_DRIVE_ON_FS_DB !== null ? 'stated' : null);
+    const perWay = Object.keys(CASUS1_MAX_DRIVE_ON_FS_DB_BY_DRIVER).length > 0;
+    expect(m.beschermingsregel).toBe(perWay || CASUS1_MAX_DRIVE_ON_FS_DB !== null ? 'stated' : null);
     expect(m.beschermingsregel_waarom).toMatch(/V47|zaadvergelijking/);
-    if (CASUS1_MAX_DRIVE_ON_FS_DB !== null) {
-      expect(m.v2_poorten_gewapend).toContain('maxDriveOnFsDb');
-      /* En de eis staat met naam en waarde in `v2_poorten_bron`, net als de
-       * vloer: een gewapende poortnaam zonder zijn getal laat de lezer raden
-       * waar de grens lag. */
-      expect(JSON.stringify(m.v2_poorten_bron)).toContain('maxDriveOnFsDb');
+    if (perWay) {
+      /* V50 — PER WEG: de sleutel is `maxDriveOnFsDbByDriver` en het ene
+       * `maxDriveOnFsDb` reist NIET meer mee — anders zou het de mid alsnog
+       * op de tweeterconventie oordelen. */
+      expect(m.v2_poorten_gewapend).toContain('maxDriveOnFsDbByDriver');
+      expect(m.v2_poorten_gewapend).not.toContain('maxDriveOnFsDb');
+      /* En de eis staat met naam en waarde PER WEG in `v2_poorten_bron`, net
+       * als de vloer: een gewapende poortnaam zonder zijn getal laat de lezer
+       * raden waar de grens lag. */
+      expect(JSON.stringify(m.v2_poorten_bron)).toContain('maxDriveOnFsDbByDriver');
+      expect(JSON.stringify(m.v2_poorten_bron)).toContain('waarde_dB_per_weg');
     }
+    /* V50 — en of de bouwbaarheid op de ZOEKTOCHT gewapend was, want een
+     * levend corpus dat de weerstandseis mist is alleen te lezen naast dat
+     * besluit. */
+    const b = (m as unknown as { bouwbaarheid?: { gewapend_op_de_zoektocht: boolean } }).bouwbaarheid;
+    expect(b, 'de meetopstelling zegt niet of de bouwbaarheid gewapend was').toBeDefined();
+    expect(b!.gewapend_op_de_zoektocht).toBe(CASUS1_BUILDABILITY_ON_SEARCH);
     /* V44 — het zevende besluit, en het corrigeert een aanname die er al stond:
      * `fasemaat` (`phaseMetric`) leek de sleutel die de fasemaat stelt, en hij
      * stelt alleen de WEGING. Beide waarden ervan middelen over het

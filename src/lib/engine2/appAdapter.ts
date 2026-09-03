@@ -97,6 +97,12 @@ export interface AdapterBranch {
    * of M-C v2.0 needs both; a header cannot supply either.
    */
   responseDrive?: { driveVoltageV: number; micDistanceMm: number; source?: string };
+  /**
+   * V50 — the stated M-C figure for THIS way, dB re its passband. Re-keyed
+   * from role to driver id here, into `ReportSettings.maxDriveOnFsDbByDriver`,
+   * exactly as R_e and the driver card are. Absent = none per way.
+   */
+  driveOnFsMaxDb?: number;
 }
 
 /** Cabinet geometry, already parsed to numbers by the caller. */
@@ -337,8 +343,15 @@ export function buildEngineV2Input(args: AdapterInput): AdapterResult {
       drives[id] = b.responseDrive;
     }
   }
+  /* V50 — the per-way stated M-C figures, re-keyed like the rest. */
+  const driveByDriver: Record<string, number> = { ...(args.settings.maxDriveOnFsDbByDriver ?? {}) };
+  for (const b of args.branches) {
+    if (b.driveOnFsMaxDb === undefined || !Number.isFinite(b.driveOnFsMaxDb)) continue;
+    driveByDriver[ids[b.role] ?? b.role] = b.driveOnFsMaxDb;
+  }
   const settings: ReportSettings = {
     ...args.settings,
+    ...(Object.keys(driveByDriver).length > 0 ? { maxDriveOnFsDbByDriver: driveByDriver } : {}),
     ...(Object.keys(reByDriver).length > 0 ? { reOhmByDriver: reByDriver } : {}),
     ...(Object.keys(cards).length > 0 ? { driverCardByDriver: cards } : {}),
     ...(Object.keys(drives).length > 0 ? { responseDriveByDriver: drives } : {}),

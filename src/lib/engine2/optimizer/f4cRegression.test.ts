@@ -106,6 +106,13 @@ interface Baseline {
   runs: Record<string, unknown>;
   /** V32 — the verdict half, recorded beside the untouched F4b2 network half. */
   verdicts_sinds_V32?: { stand: string; runs: Record<string, unknown> };
+  /**
+   * V50 — the verdict half again, now with the two buildability gates on every
+   * list. The V32 block is NOT re-recorded: it still pins the four gate ids it
+   * was recorded on, and this block pins all six. Two dated blocks rather than
+   * one overwritten, for the reason V32 gave when it split the file.
+   */
+  verdicts_sinds_V50?: { stand: string; runs: Record<string, unknown> };
 }
 
 const BASELINE = JSON.parse(readFileSync(BASELINE_PATH, 'utf-8')) as Baseline;
@@ -191,15 +198,36 @@ const delivered = (r: V2OptimizeResult): string =>
   });
 
 /** The verdict half — V32's own block, pinned separately. */
-const verdictsOf = (r: V2OptimizeResult): string =>
+/**
+ * The verdicts, optionally restricted to a set of gate ids — the ids a dated
+ * block was RECORDED on. A block from before V50 knows four gates; comparing
+ * it against six would fail on the two it never saw rather than on a change
+ * to the four it pins.
+ */
+const verdictsOf = (r: V2OptimizeResult, gateIds?: ReadonlySet<string>): string =>
   stableJson(
     r.candidates.map((c) => ({
       label: c.label,
       start: c.start,
-      gatesFrozen: c.gatesFrozen,
-      gatesDerived: c.gatesDerived,
+      gatesFrozen: gateIds ? c.gatesFrozen.filter((v) => gateIds.has(v.gate)) : c.gatesFrozen,
+      gatesDerived: gateIds ? c.gatesDerived.filter((v) => gateIds.has(v.gate)) : c.gatesDerived,
     })),
   );
+
+/** The gate ids a stored verdict block was recorded on — read off the block itself. */
+const gateIdsIn = (block: unknown): Set<string> => {
+  const ids = new Set<string>();
+  const walk = (x: unknown): void => {
+    if (Array.isArray(x)) x.forEach(walk);
+    else if (x && typeof x === 'object') {
+      const o = x as Record<string, unknown>;
+      if (typeof o.gate === 'string' && typeof o.metric === 'string') ids.add(o.gate);
+      Object.values(o).forEach(walk);
+    }
+  };
+  walk(block);
+  return ids;
+};
 
 /** The stored F4b2 network for one seed, serialised the same way. */
 const storedFor = (seed: number): string => {
@@ -221,6 +249,13 @@ const storedVerdictsFor = (seed: number): string => {
   return stableJson(v);
 };
 
+/** The stored V50 verdicts for one seed — all six gates. */
+const storedV50VerdictsFor = (seed: number): string => {
+  const v = BASELINE.verdicts_sinds_V50?.runs?.[String(seed)];
+  expect(v, `the baseline holds no V50 verdicts for seed ${seed}`).toBeTruthy();
+  return stableJson(v);
+};
+
 describe('F4c — naming the choices changed no network', () => {
   const seeds = [4242, 99] as const;
 
@@ -235,6 +270,16 @@ describe('F4c — naming the choices changed no network', () => {
     expect(BASELINE.verdicts_sinds_V32?.stand).toBe('V32');
     expect(Object.keys(BASELINE.verdicts_sinds_V32?.runs ?? {}).sort()).toEqual(
       [...seeds].map(String).sort(),
+    );
+    expect(BASELINE.verdicts_sinds_V50?.stand).toBe('V50');
+    expect(Object.keys(BASELINE.verdicts_sinds_V50?.runs ?? {}).sort()).toEqual(
+      [...seeds].map(String).sort(),
+    );
+    // The V32 block knows four gates, the V50 block six — and that is the
+    // difference between them, not a re-recording.
+    expect([...gateIdsIn(BASELINE.verdicts_sinds_V32)].sort()).toEqual(['M-A', 'M-B/EPDR', 'M-B/|Z|', 'M-C']);
+    expect([...gateIdsIn(BASELINE.verdicts_sinds_V50)].sort()).toEqual(
+      ['M-A', 'M-A/part', 'M-B/EPDR', 'M-B/|Z|', 'M-C', 'M-L'],
     );
   });
 
@@ -263,7 +308,14 @@ describe('F4c — naming the choices changed no network', () => {
      * separate assertion from the network above on purpose: "the design is
      * unchanged" and "the report about it is unchanged" are two claims, and
      * V32 is the delivery that made them come apart. */
-    expect(verdictsOf(newShape(seed))).toBe(storedVerdictsFor(seed));
+    expect(verdictsOf(newShape(seed), gateIdsIn(BASELINE.verdicts_sinds_V32))).toBe(storedVerdictsFor(seed));
+  });
+
+  it.each(seeds)('[bytes] seed %i: and ALL SIX verdicts reproduce the V50 block', (seed) => {
+    /* V50 added two gates to every verdict list. The V32 block above still
+     * pins its four; this pins the two new ones beside them, unarmed on this
+     * fixture (no class, no power, no peak) and saying so. */
+    expect(verdictsOf(newShape(seed))).toBe(storedV50VerdictsFor(seed));
   });
 
   it('the verdicts are taken on the MEASURED SWEEP, not on this fixture grid', () => {

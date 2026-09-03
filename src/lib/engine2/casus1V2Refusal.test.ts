@@ -59,6 +59,9 @@ import {
   casus1V2Facts,
   CASUS1_TARGET_CURVE,
   CASUS1_EXCURSION,
+  CASUS1_BUILDABILITY,
+  CASUS1_CONTINUOUS_POWER_W,
+  CASUS1_MAX_DRIVE_ON_FS_DB_BY_DRIVER,
 } from './casus1V2.fixture.ts';
 import { buildReport, type EngineV2Report } from './report.ts';
 import { ctcKey } from './metrics/types.ts';
@@ -91,7 +94,12 @@ const report = (key: string): EngineV2Report =>
     filter: casus1Filter(key, manifest, files, golden),
     geometry,
     settings: {
-      amplifierPowerW: 100,
+      /* V50 — the same report settings the generator builds its facts from. */
+      ...(CASUS1_CONTINUOUS_POWER_W !== null ? { amplifierPowerW: CASUS1_CONTINUOUS_POWER_W } : {}),
+      ...(Object.keys(CASUS1_MAX_DRIVE_ON_FS_DB_BY_DRIVER).length > 0
+        ? { maxDriveOnFsDbByDriver: { ...CASUS1_MAX_DRIVE_ON_FS_DB_BY_DRIVER } }
+        : {}),
+      ...CASUS1_BUILDABILITY,
       orderByPair: { [ctcKey('woofer', 'mid')]: 4, [ctcKey('mid', 'tweeter')]: 4 },
       reOhmByDriver: { woofer: CASUS1_WOOFER_DC_OHM },
       targetCurve: CASUS1_TARGET_CURVE,

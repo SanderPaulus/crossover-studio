@@ -66,6 +66,9 @@ import {
   casus1Geometry,
   casus1Manifest,
   casus1MaxDriveOnFsDb,
+  casus1MaxDriveOnFsDbByDriver,
+  casus1BuildabilitySettings,
+  casus1ContinuousPowerW,
   casus1QesMultiplierMax,
   casus1TargetCurve,
   loadGolden,
@@ -84,6 +87,7 @@ import {
 } from './optimizer/gates.ts';
 import {
   CASUS1_V2_BAND_HZ,
+  CASUS1_V2_GATES,
   CASUS1_V2_GRID,
   casus1ChainInput,
   casus1V2Facts,
@@ -100,6 +104,7 @@ import { epdr } from './metrics/electrical.ts';
 import { LF_BUMP_VERSION } from './metrics/acoustic.ts';
 import { RESISTIVE_EQUIVALENT_VERSION } from './metrics/resistiveEquivalent.ts';
 import { DRIVE_EXCURSION_VERSION } from './metrics/driveExcursion.ts';
+import { BUILDABILITY_VERSION } from './metrics/buildability.ts';
 import { busTopology, systemMinImpedanceOhm } from '../netOptimizer.ts';
 import {
   sourceProbeIndex,
@@ -122,6 +127,8 @@ const NET_OPTIMIZER = join(HERE, '..', 'netOptimizer.ts');
 const ELECTRICAL = join(HERE, 'metrics', 'electrical.ts');
 
 const golden = loadGolden();
+/** Percent, for the watt tolerance class (a unit conversion, whitelisted). */
+const PERCENT_V50 = 100;
 const manifest = casus1Manifest(golden);
 const files = casus1Files(manifest);
 const geometry = casus1Geometry(golden);
@@ -163,9 +170,15 @@ const EXCEPTIONS: { netlist: string; minZ_ohm: number | null; gestelde_vloer_ohm
  * floor was stated, and what this file is still able to describe.
  */
 const STATED_DRIVE_MAX_DB = casus1MaxDriveOnFsDb(golden);
+/** V50 — the stated figure PER WAY; on casus 1 the tweeter only. */
+const STATED_DRIVE_BY_WAY = casus1MaxDriveOnFsDbByDriver(golden);
+/** V50 — the continuous power, from its one home; the literal 100 is gone. */
+const CONTINUOUS_POWER_W = casus1ContinuousPowerW(golden);
+/** V50 — the buildability inputs the manifest states (class, margin; no coil class). */
+const BUILDABILITY = casus1BuildabilitySettings(golden);
 
 const BASE: ReportSettings = {
-  amplifierPowerW: 100,
+  ...(CONTINUOUS_POWER_W !== null ? { amplifierPowerW: CONTINUOUS_POWER_W } : {}),
   orderByPair: { [ctcKey('woofer', 'mid')]: 4, [ctcKey('mid', 'tweeter')]: 4 },
   ...(STATED_FLOOR_OHM !== null ? { ampMinLoadOhm: STATED_FLOOR_OHM } : {}),
   /* V47 — SPREAD, om precies dezelfde reden als de vloer erboven: een casus die
@@ -173,7 +186,13 @@ const BASE: ReportSettings = {
    * want dit blok is wat het RAPPORT stelt, en een rapport dat de gestelde eis
    * niet meekrijgt drukt `no limit set` af naast een netlist die er wél aan
    * gehouden is. */
-  ...(STATED_DRIVE_MAX_DB !== null ? { maxDriveOnFsDb: STATED_DRIVE_MAX_DB } : {}),
+  /* V50 — PER WAY since V50: the tweeter carries the −20 dB convention, the
+   * mid carries no stated figure and is judged on the derived ceiling alone.
+   * The single `maxDriveOnFsDb` is no longer stated on this casus. */
+  ...(Object.keys(STATED_DRIVE_BY_WAY).length > 0 ? { maxDriveOnFsDbByDriver: { ...STATED_DRIVE_BY_WAY } } : {}),
+  /* V50 — the resistor class and margin, spread for the same reason: the
+   * REPORT judges every frozen netlist with them, whatever the search does. */
+  ...BUILDABILITY,
   /* V49 — the driver cards, the amplifier peak and the X_max margin, spread for
    * the same reason: with them the report derives an excursion ceiling per
    * driver and M-C is judged on the STRICTER of that and the stated figure.
@@ -340,6 +359,13 @@ describe('every gate runs on every frozen netlist', () => {
   it('every gate produces a VALUE on every frozen netlist — the metric is evaluable', () => {
     for (const { key, verdicts } of FIELD) {
       for (const v of verdicts) {
+        /* V50 — M-A/part on a netlist with NO discrete resistor has nothing to
+         * rate, and says so; a zero there would read as a measurement (F0).
+         * `V28_KAND_1` is that netlist. */
+        if (v.gate === 'M-A/part' && v.value === null) {
+          expect(v.reason, `${key}: M-A/part is null without saying why`).toMatch(/no discrete resistor/);
+          continue;
+        }
         expect(v.value, `${key}: ${v.gate} on ${v.subject} produced no value`).not.toBeNull();
       }
     }
@@ -355,7 +381,9 @@ describe('every gate runs on every frozen netlist', () => {
         // V47 — en sinds V47 stelt casus 1 er twee. M-A en M-B/EPDR blijven
         // over, en dat is nog steeds een echte claim: zij rapporteren hun
         // waarde en oordelen niets.
-        if (v.gate === 'M-C' && STATED_DRIVE_MAX_DB !== null) continue;
+        if (v.gate === 'M-C' && (STATED_DRIVE_MAX_DB !== null || Object.keys(STATED_DRIVE_BY_WAY).length > 0)) continue;
+        // V50 — and a third: the resistor class with its margin arms M-A/part.
+        if (v.gate === 'M-A/part' && BUILDABILITY.resistorClassW !== undefined && BUILDABILITY.resistorPowerMargin !== undefined) continue;
         expect(v.active, `${key}: ${v.gate} is armed and casus 1 states no limit for it`).toBe(
           false,
         );
@@ -981,7 +1009,14 @@ describe('a stated limit DOES judge these files — the counter-proof', () => {
 
     const judged = NETLIST_KEYS.map((key) => ({
       key,
-      verdict: report(key, { ...BASE, maxDriveOnFsDb: quietest.value }).gates.verdicts.find(
+      /* V50 — the per-way map is CLEARED so the single figure judges every
+       * way here, as the counter-proof always read it; with the map in place
+       * the tweeter's own entry would outrank the figure under test. */
+      verdict: report(key, {
+        ...BASE,
+        maxDriveOnFsDbByDriver: {},
+        maxDriveOnFsDb: quietest.value,
+      }).gates.verdicts.find(
         (v) => v.gate === 'M-C' && v.subject === 'tweeter',
       )!,
     })).filter((j) => j.verdict !== undefined);
@@ -2316,6 +2351,11 @@ describe('V45 — the delivered network is tested against the stated LF budget',
 
 describe('V47 — the stated drive limit on a driver\'s own resonance', () => {
   const CEILING_DB = STATED_DRIVE_MAX_DB;
+  /* V50 — the ways that carry a STATED figure, by name, and the figure. On
+   * casus 1 that is the tweeter at the −20 dB convention; the mid carries
+   * none and is the V50 block's business. */
+  const STATED_WAYS = Object.keys(STATED_DRIVE_BY_WAY);
+  const statedOf = (driver: string): number | undefined => STATED_DRIVE_BY_WAY[driver];
   const TOL_DB_V47 = (golden as unknown as { toleranties: { dB: number } }).toleranties.dB;
 
   const RECORD = (golden.manifest_en_geometrie as unknown as {
@@ -2345,11 +2385,21 @@ describe('V47 — the stated drive limit on a driver\'s own resonance', () => {
       gestelde_eisen: {
         tweeter_drive_op_fs_max_dB: number;
         tweeter_drive_op_fs_max_motivering: string;
+        drive_op_fs_max_dB_per_weg: Record<string, number | null>;
+        drive_op_fs_max_per_weg_motivering: string;
       };
     }).gestelde_eisen;
     expect(CEILING_DB).toBe(stated.tweeter_drive_op_fs_max_dB);
     // A stated number without its reason is V15 one layer up.
     expect(stated.tweeter_drive_op_fs_max_motivering.length).toBeGreaterThan(40);
+    /* V50 — and the per-way block: the tweeter carries THAT figure, the mid
+     * is listed with `null` — deliberately without one — and the reason is
+     * written down. A way absent from the map is a way with no stated half. */
+    expect(STATED_WAYS.length).toBeGreaterThan(0);
+    expect(stated.drive_op_fs_max_dB_per_weg.tweeter).toBe(CEILING_DB);
+    expect(stated.drive_op_fs_max_dB_per_weg.mid).toBeNull();
+    expect(STATED_DRIVE_BY_WAY.mid).toBeUndefined();
+    expect(stated.drive_op_fs_max_per_weg_motivering.length).toBeGreaterThan(80);
   });
 
   it('M-C is ARMED on every protected way of every frozen netlist', () => {
@@ -2364,13 +2414,23 @@ describe('V47 — the stated drive limit on a driver\'s own resonance', () => {
         .filter((v) => v.gate === 'M-C' && v.value !== null)
         .map((v) => ({ key: f.key, driver: v.subject, stated: v.parameters?.stated_limit_dB })),
     );
+    /* V50 — PER WAY: the stated figure reaches every verdict of a way that
+     * HAS one, and no verdict of a way that has none. */
     for (const d of stated) {
-      expect(d.stated, `${d.key}/${d.driver}: the stated limit did not reach the gate`).toBe(CEILING_DB);
+      const want = statedOf(d.driver);
+      if (want !== undefined) {
+        expect(d.stated, `${d.key}/${d.driver}: the stated limit did not reach the gate`).toBe(want);
+      } else {
+        expect(d.stated, `${d.key}/${d.driver}: a stated figure reached a way that states none`).toBeUndefined();
+      }
     }
     for (const d of DRIVE) {
       expect(d.limit, `${d.key}/${d.driver}: no limit on the verdict`).not.toBeNull();
-      expect(d.limit!).toBeLessThanOrEqual(CEILING_DB!);
+      const want = statedOf(d.driver);
+      if (want !== undefined) expect(d.limit!).toBeLessThanOrEqual(want);
     }
+    // Every way the casus states a figure for is judged somewhere in the field.
+    for (const w of STATED_WAYS) expect(DRIVE.some((d) => d.driver === w), `${w}: stated but never judged`).toBe(true);
     /* And it really is per WAY rather than per netlist: on this casus the mid
      * is high-pass protected as well, so the requirement — derived from a
      * tweeter measurement — judges a second driver. A block that only looked at
@@ -2387,9 +2447,8 @@ describe('V47 — the stated drive limit on a driver\'s own resonance', () => {
       const rows = DRIVE.filter((d) => d.key === key);
       expect(rows.length, `${key} has no M-C verdict at all`).toBeGreaterThan(0);
       for (const d of rows) {
-        expect(d.db, `${key}/${d.driver} exceeds the stated limit`).toBeLessThanOrEqual(
-          CEILING_DB!,
-        );
+        // V50 — each way against ITS limit (stated where stated, derived elsewhere).
+        expect(d.db, `${key}/${d.driver} exceeds its limit`).toBeLessThanOrEqual(d.limit!);
       }
     }
     /* HUIDIG IS NO LONGER THE MEASURE (V47b). Until V47b the limit was HUIDIG's
@@ -2405,7 +2464,10 @@ describe('V47 — the stated drive limit on a driver\'s own resonance', () => {
      * step. If it ever sits within a dB of it, either the number has quietly
      * become HUIDIG's again (the V47 form) or HUIDIG has drifted onto the
      * rule, and both are findings rather than green. */
-    const huidig = Math.max(...DRIVE.filter((d) => d.key === 'HUIDIG').map((d) => d.db));
+    /* V50 — on the ways that carry the stated figure (the tweeter). */
+    const huidig = Math.max(
+      ...DRIVE.filter((d) => d.key === 'HUIDIG' && statedOf(d.driver) !== undefined).map((d) => d.db),
+    );
     expect(huidig).toBeLessThanOrEqual(CEILING_DB!);
     expect(
       CEILING_DB! - huidig,
@@ -2417,7 +2479,7 @@ describe('V47 — the stated drive limit on a driver\'s own resonance', () => {
     /* A requirement nothing can fail describes rather than binds. The dated
      * corpora were frozen before it existed and are exactly where the evidence
      * lives — the same role they play for the floor and the LF budget. */
-    const over = DRIVE.filter((d) => d.db > CEILING_DB!);
+    const over = DRIVE.filter((d) => statedOf(d.driver) !== undefined && d.db > statedOf(d.driver)!);
     expect(over.length, 'no frozen netlist exceeds the limit — it is untestable').toBeGreaterThan(0);
   });
 
@@ -2434,7 +2496,8 @@ describe('V47 — the stated drive limit on a driver\'s own resonance', () => {
         Math.abs(row.M_C_dB! - d!.db),
         `${row.netlist}/${row.weg}: recorded ${row.M_C_dB} against a fresh ${d!.db}`,
       ).toBeLessThanOrEqual(TOL_DB_V47);
-      expect(row.haalt_de_eis).toBe(d!.db <= CEILING_DB!);
+      // V50 — judged against the way's OWN limit (the recorder reads the verdict).
+      expect(row.haalt_de_eis).toBe(d!.db <= d!.limit!);
       // A band without its parameters is not a measurement (V15).
       expect(row.doorlaatband_hz, `${row.netlist}/${row.weg}: no passband recorded`).toBeTruthy();
     }
@@ -2455,7 +2518,9 @@ describe('V47 — the stated drive limit on a driver\'s own resonance', () => {
     expect(flagged.length, 'the dated V45 block names no drive exception').toBeGreaterThan(0);
     for (const f of flagged) {
       expect(f.gestelde_grens_dB).toBe(CEILING_DB);
-      const rows = DRIVE.filter((d) => d.key === f.netlist);
+      /* V50 — the flags are about the TWEETER (the way the convention belongs
+       * to); on the mid the stated figure no longer exists. */
+      const rows = DRIVE.filter((d) => d.key === f.netlist && statedOf(d.driver) !== undefined);
       expect(rows.length, `${f.netlist} is flagged but carries no M-C verdict`).toBeGreaterThan(0);
       const worst = Math.max(...rows.map((d) => d.db));
       expect(
@@ -2471,7 +2536,9 @@ describe('V47 — the stated drive limit on a driver\'s own resonance', () => {
      * so demanding one there would be a waiver list the size of the casebook —
      * the very thing this project refuses. What must hold is that the corpus
      * this requirement was measured AGAINST accounts for its own failures. */
-    const v45Missing = DRIVE.filter((d) => /^V45_KAND_\d+$/.test(d.key) && d.db > CEILING_DB!);
+    const v45Missing = DRIVE.filter(
+      (d) => /^V45_KAND_\d+$/.test(d.key) && statedOf(d.driver) !== undefined && d.db > statedOf(d.driver)!,
+    );
     for (const d of v45Missing) {
       expect(
         flagged.map((f) => f.netlist),
@@ -2545,14 +2612,16 @@ describe('V47 — the stated drive limit on a driver\'s own resonance', () => {
     for (const d of live) {
       expect(
         d.db,
-        `${d.key}/${d.driver} was delivered above the stated limit — the gate did not judge it`,
-      ).toBeLessThanOrEqual(CEILING_DB!);
+        `${d.key}/${d.driver} was delivered above its limit — the gate did not judge it`,
+      ).toBeLessThanOrEqual(d.limit!);
     }
   });
 });
 
 describe('V49 — M-C v2.0: the excursion-derived ceiling beside the stated figure', () => {
   const EXC = casus1ExcursionSettings(golden);
+  /** The −20 dB convention itself, whichever ways state it (V50). */
+  const CEILING_DB_V49 = STATED_DRIVE_MAX_DB;
   const RECORD = (golden.manifest_en_geometrie as unknown as {
     v49_excursie?: {
       schatter: string;
@@ -2605,9 +2674,12 @@ describe('V49 — M-C v2.0: the excursion-derived ceiling beside the stated figu
     expect(DRIVE.length).toBeGreaterThan(0);
     for (const d of DRIVE) {
       expect(d.derived, `${d.key}/${d.driver}: no derived limit on the verdict`).toBeTypeOf('number');
-      expect(d.stated, `${d.key}/${d.driver}: no stated limit on the verdict`).toBe(STATED_DRIVE_MAX_DB);
+      /* V50 — the stated half exists on the ways that state one and on no
+       * other; the limit is the stricter of the two, or the derived one alone. */
+      const want = STATED_DRIVE_BY_WAY[d.driver];
+      expect(d.stated, `${d.key}/${d.driver}: stated half`).toBe(want);
       // The parameters are rounded to two decimals for a reader; the limit is not.
-      expect(d.limit!).toBeCloseTo(Math.min(d.stated!, d.derived!), 2);
+      expect(d.limit!).toBeCloseTo(want === undefined ? d.derived! : Math.min(want, d.derived!), 2);
     }
     /* THE FINDING OF V49 ON THIS CASUS: on the live corpus and on the three
      * reference filters the excursion-derived limit is LOOSER than the stated
@@ -2620,6 +2692,11 @@ describe('V49 — M-C v2.0: the excursion-derived ceiling beside the stated figu
     const judgedField = DRIVE.filter((d) => /^KAND_V2_\d+$/.test(d.key) || V1_BASELINES.includes(d.key));
     expect(judgedField.length).toBeGreaterThan(0);
     for (const d of judgedField) {
+      if (d.stated === undefined) {
+        // V50 — a way with no stated figure: the derived ceiling judges ALONE, and says so.
+        expect(d.source).toMatch(/^excursion-derived ceiling \(no stated dB figure/);
+        continue;
+      }
       expect(d.derived!, `${d.key}/${d.driver}: the derived limit is stricter than the stated one`).toBeGreaterThan(d.stated!);
       expect(d.source).toMatch(/^stated dB figure \(stricter/);
     }
@@ -2629,7 +2706,16 @@ describe('V49 — M-C v2.0: the excursion-derived ceiling beside the stated figu
      * bought), by 0.05 to 0.6 dB. Named in the recorded block, and the fresh
      * set has to be exactly that set: a ceiling that never bites anywhere
      * would be indistinguishable from one that was never read. */
-    const fresh = DRIVE.filter((d) => d.source.startsWith('excursion-derived')).map((d) => `${d.key}/${d.driver}`).sort();
+    /* V50 — "the derived ceiling is the STRICTER one" now means: stricter than
+     * a stated figure that EXISTS. A way with no stated half reads the derived
+     * ceiling alone, which is not the ceiling biting but the only limit there
+     * is; those are counted in the V50 block. */
+    /* So the non-vacuity is measured against the CONVENTION (the −20 dB
+     * figure) on every way, whether or not that way states it: where the
+     * derived ceiling is stricter than −20, a single figure for all ways
+     * would have been the looser rule. Seven V28 mids at V49; the recorder
+     * writes the same set. */
+    const fresh = DRIVE.filter((d) => d.derived! < CEILING_DB_V49!).map((d) => `${d.key}/${d.driver}`).sort();
     expect(fresh.length, 'the derived ceiling bites nowhere in the casebook — untestable').toBeGreaterThan(0);
     const recorded = ((RECORD as unknown as {
       casusboek_wegen_waar_de_afgeleide_grens_strenger_is?: { netlist: string; weg: string }[];
@@ -2659,7 +2745,9 @@ describe('V49 — M-C v2.0: the excursion-derived ceiling beside the stated figu
   it('the recorded block reproduces from a fresh measurement, per way', () => {
     expect(RECORD, 'the recorder wrote no v49_excursie block').toBeDefined();
     expect(RECORD!.schatter).toBe(DRIVE_EXCURSION_VERSION);
+    // V50 — the recorded block carries the figure per WAY; the tweeter's is the convention.
     expect(RECORD!.gestelde_grens_dB).toBe(STATED_DRIVE_MAX_DB);
+    expect((RECORD as unknown as { gestelde_grens_dB_per_weg?: Record<string, number | null> }).gestelde_grens_dB_per_weg?.tweeter).toBe(STATED_DRIVE_MAX_DB);
     expect(RECORD!.per_weg.length).toBe(DRIVE.length);
     for (const row of RECORD!.per_weg) {
       const d = DRIVE.find((x) => x.key === row.netlist && x.driver === row.weg);
@@ -2703,12 +2791,185 @@ describe('V49 — M-C v2.0: the excursion-derived ceiling beside the stated figu
     expect(bare.metrics.driveExcursion).toHaveLength(0);
     expect(bare.metrics.driveExcursionOff.length).toBeGreaterThan(0);
     for (const v of bare.gates.verdicts.filter((x) => x.gate === 'M-C')) {
-      expect(v.limit).toBe(STATED_DRIVE_MAX_DB);
-      expect(String(v.parameters?.limit_source)).toMatch(/no excursion-derived ceiling/);
+      /* V50 — the stated figure alone where one is stated; NOTHING where none
+       * is, and the gate is then off for that way with the value shown. */
+      const want = STATED_DRIVE_BY_WAY[v.subject];
+      if (want === undefined) {
+        expect(v.active).toBe(false);
+        expect(v.reason).toContain('no limit set');
+      } else {
+        expect(v.limit).toBe(want);
+        expect(String(v.parameters?.limit_source)).toMatch(/no excursion-derived ceiling/);
+      }
       // The VALUE is untouched: the same number under both settings.
       const withCeiling = report('HUIDIG').gates.verdicts.find((x) => x.gate === 'M-C' && x.subject === v.subject)!;
       expect(withCeiling.value).toBe(v.value);
     }
+  });
+});
+
+describe('V50 — buildability: the watts in every resistor and the current through every coil', () => {
+  const RECORD = (golden.manifest_en_geometrie as unknown as {
+    v50_bouwbaarheid?: {
+      schatter: string;
+      weerstandsklasse_W: number | null;
+      weerstandsmarge: number | null;
+      toegestaan_W: number | null;
+      continu_vermogen_W: number | null;
+      spoelklasse_A: number | null;
+      V_piek_V: number | null;
+      gewapend_op_de_zoektocht: boolean;
+      per_netlist: {
+        netlist: string;
+        heetste_R: string | null;
+        heetste_R_ohm: number | null;
+        heetste_R_W: number | null;
+        toegestaan_W: number | null;
+        haalt_de_eis: boolean | null;
+        drukste_spoel: string | null;
+        drukste_spoel_piek_A: number | null;
+        drukste_spoel_bij_hz: number | null;
+      }[];
+    };
+  }).v50_bouwbaarheid;
+  const STATED = (golden.manifest_en_geometrie as unknown as {
+    gestelde_eisen: {
+      weerstandsklasse_W: number;
+      weerstandsmarge: number;
+      weerstandsklasse_motivering: string;
+      weerstandsklasse_sanity_HUIDIG: string;
+      spoelklasse_A: number | null;
+      spoelklasse_motivering: string;
+      versterker_continu_vermogen_W: number;
+      bouwbaarheid_op_de_zoektocht: { gewapend: boolean; waarom: string };
+    };
+  }).gestelde_eisen;
+  const TOL_W_PCT = (golden as unknown as { toleranties: { watt_pct: number } }).toleranties.watt_pct;
+  const ALLOWED_W = STATED.weerstandsklasse_W * STATED.weerstandsmarge;
+
+  /** Every M-A/part and M-L verdict on the whole casebook, one row per netlist. */
+  const ROWS = FIELD.map((f) => ({
+    key: f.key,
+    r: f.verdicts.find((v) => v.gate === 'M-A/part')!,
+    l: f.verdicts.find((v) => v.gate === 'M-L')!,
+  }));
+
+  it('the inputs come from the case book, with the reason and the sanity beside them', () => {
+    expect(BUILDABILITY.resistorClassW).toBe(STATED.weerstandsklasse_W);
+    expect(BUILDABILITY.resistorPowerMargin).toBe(STATED.weerstandsmarge);
+    expect(CONTINUOUS_POWER_W).toBe(STATED.versterker_continu_vermogen_W);
+    expect(STATED.weerstandsklasse_motivering.length).toBeGreaterThan(80);
+    expect(STATED.weerstandsklasse_sanity_HUIDIG).toMatch(/HUIDIG/);
+    /* The coil class is EMPTY, and the manifest says why: the C-Coil
+     * documentation publishes no saturation current. A stated null with a
+     * reason, not a missing field. */
+    expect(STATED.spoelklasse_A).toBeNull();
+    expect(BUILDABILITY.coilClassA).toBeUndefined();
+    expect(STATED.spoelklasse_motivering).toMatch(/verzadigingsstroom/);
+    /* And the DECISION whether the requirement arms the SEARCH is recorded
+     * with its reason; the run fixture follows it, this file does not. */
+    expect(typeof STATED.bouwbaarheid_op_de_zoektocht.gewapend).toBe('boolean');
+    expect(STATED.bouwbaarheid_op_de_zoektocht.waarom.length).toBeGreaterThan(80);
+  });
+
+  it('every frozen netlist carries both verdicts: M-A/part ARMED at class × margin, M-L OFF with the current shown', () => {
+    for (const { key, r, l } of ROWS) {
+      expect(r, `${key}: no M-A/part verdict`).toBeDefined();
+      expect(l, `${key}: no M-L verdict`).toBeDefined();
+      expect(r.active, `${key}: M-A/part is not armed`).toBe(true);
+      expect(r.limit).toBe(ALLOWED_W);
+      // The value is the watts in the hottest resistor, or null on the one netlist without any.
+      if (r.value !== null) expect(r.value).toBeGreaterThan(0);
+      else expect(r.reason).toMatch(/no discrete resistor/);
+      // M-L: no class stated → off, but a current in amperes at the stated peak (P4's visible half).
+      expect(l.active, `${key}: M-L armed without a coil class`).toBe(false);
+      expect(l.value, `${key}: M-L reports no current`).toBeGreaterThan(0);
+      expect(l.reason).toContain('no limit set');
+      expect(String(l.parameters?.rating)).toMatch(/air-cored/);
+    }
+  });
+
+  it('THE FINDING: at the stated class no reference filter and no live netlist clears M-A/part — HUIDIG by a factor five', () => {
+    /* This is the sanity the session was told to take BEFORE regenerating, and
+     * it is asserted so the day it stops being true is visible: the woofer
+     * pays 4.6–8.5 dB of attenuation to the anchor (V45), and at 100 W
+     * continuous that attenuation IS tens of watts in a series resistor. Not
+     * a reason to relax the requirement (the number is the physics of a
+     * 10 W part at 100 W); a reason for the decision the manifest records. */
+    const judged = ROWS.filter((x) => /^KAND_V2_\d+$/.test(x.key) || V1_BASELINES.includes(x.key));
+    expect(judged.length).toBeGreaterThan(3);
+    for (const { key, r } of judged) {
+      expect(r.value, `${key}: no watts`).not.toBeNull();
+      expect(r.pass, `${key}: clears ${ALLOWED_W} W — the finding no longer holds, remeasure V50`).toBe(false);
+      expect(r.reason).toMatch(/exceeds the stated ceiling/);
+      expect(String(r.parameters?.remedy)).toMatch(/generator does not make/);
+    }
+    const huidig = ROWS.find((x) => x.key === 'HUIDIG')!.r;
+    expect(huidig.parameters?.element).toBe('R8');
+    expect(huidig.value! / ALLOWED_W).toBeGreaterThan(4);
+    // ...and the requirement is not unreachable in PRINCIPLE: the casebook holds at least one netlist that clears it
+    // (a network with no discrete resistor is not judged and does not count).
+    const clears = ROWS.filter((x) => x.r.value !== null && x.r.pass);
+    expect(clears.length, 'no netlist in the whole casebook clears the class — then the class describes nothing buildable').toBeGreaterThan(0);
+  });
+
+  it('the recorded block reproduces from a fresh measurement, per netlist', () => {
+    expect(RECORD, 'the recorder wrote no v50_bouwbaarheid block').toBeDefined();
+    expect(RECORD!.schatter).toBe(BUILDABILITY_VERSION);
+    expect(RECORD!.weerstandsklasse_W).toBe(STATED.weerstandsklasse_W);
+    expect(RECORD!.weerstandsmarge).toBe(STATED.weerstandsmarge);
+    expect(RECORD!.toegestaan_W).toBe(ALLOWED_W);
+    expect(RECORD!.continu_vermogen_W).toBe(CONTINUOUS_POWER_W);
+    expect(RECORD!.spoelklasse_A).toBeNull();
+    expect(RECORD!.gewapend_op_de_zoektocht).toBe(STATED.bouwbaarheid_op_de_zoektocht.gewapend);
+    expect(RECORD!.per_netlist.length).toBe(ROWS.length);
+    for (const row of RECORD!.per_netlist) {
+      const x = ROWS.find((y) => y.key === row.netlist);
+      expect(x, `${row.netlist} is recorded but not in the field`).toBeDefined();
+      if (row.heetste_R_W === null) {
+        expect(x!.r.value).toBeNull();
+      } else {
+        expect(row.heetste_R).toBe(x!.r.parameters?.element);
+        expect((Math.abs(row.heetste_R_W - x!.r.value!) / x!.r.value!) * PERCENT_V50).toBeLessThanOrEqual(TOL_W_PCT);
+        expect(row.haalt_de_eis).toBe(x!.r.pass);
+      }
+      expect(row.drukste_spoel).toBe(x!.l.parameters?.element);
+      expect(Math.abs(row.drukste_spoel_piek_A! - x!.l.value!)).toBeLessThanOrEqual(0.01);
+    }
+  });
+
+  it('P2: without the class and the margin M-A/part is OFF with the SAME watts, and every other verdict is byte-identical', () => {
+    const { resistorClassW: _c, resistorPowerMargin: _m, ...rest } = BASE;
+    void _c; void _m;
+    const bare = report('HUIDIG', rest);
+    const armed = ROWS.find((x) => x.key === 'HUIDIG')!;
+    const r = bare.gates.verdicts.find((v) => v.gate === 'M-A/part')!;
+    expect(r.active).toBe(false);
+    expect(r.value).toBe(armed.r.value);
+    expect(r.reason).toContain('no limit set');
+    const others = (vs: GateVerdict[]) => JSON.stringify(vs.filter((v) => v.gate !== 'M-A/part'));
+    expect(others(bare.gates.verdicts)).toBe(others(FIELD.find((f) => f.key === 'HUIDIG')!.verdicts));
+  });
+
+  it('the coil currents are PEAK amplitudes at the stated peak input, and scale with it', () => {
+    const half = report('HUIDIG', { ...BASE, amplifierPeakPowerW: BASE.amplifierPeakPowerW! / 4 });
+    const l1 = ROWS.find((x) => x.key === 'HUIDIG')!.l;
+    const l2 = half.gates.verdicts.find((v) => v.gate === 'M-L')!;
+    // A quarter of the peak POWER is half the peak VOLTAGE, so half the current — same coil, same frequency.
+    expect(l2.value!).toBeCloseTo(l1.value! / 2, 6);
+    expect(l2.parameters?.element).toBe(l1.parameters?.element);
+    expect(l2.parameters?.at).toBe(l1.parameters?.at);
+  });
+
+  it('the run fixture follows the manifest\'s decision: armed on the search only when it says so', () => {
+    const armedOnSearch = STATED.bouwbaarheid_op_de_zoektocht.gewapend;
+    expect(CASUS1_V2_GATES.resistorClassW !== undefined).toBe(armedOnSearch);
+    expect(CASUS1_V2_GATES.resistorPowerMargin !== undefined).toBe(armedOnSearch);
+    // Whatever the decision, the peak input reaches the run so M-L can read a current.
+    expect(CASUS1_V2_GATES.peakInputVolts).toBeGreaterThan(0);
+    // And the per-way figure travels to the run exactly as the report reads it.
+    expect(CASUS1_V2_GATES.maxDriveOnFsDbByDriver).toEqual(STATED_DRIVE_BY_WAY);
+    expect(CASUS1_V2_GATES.maxDriveOnFsDb).toBeUndefined();
   });
 });
 

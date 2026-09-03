@@ -102,6 +102,8 @@ function CapabilityGrid({ cells, subjects, metrics }: {
 /** A gate limit, rendered in the unit the gate speaks. */
 function fmt(limit: number, gate: string): string {
   if (gate === 'M-A') return `${(limit * 100).toFixed(1)} %`;
+  if (gate === 'M-A/part') return `${limit.toFixed(1)} W`;
+  if (gate === 'M-L') return `${limit.toFixed(2)} A`;
   if (gate === 'M-C') return `${limit.toFixed(1)} dB`;
   return `${limit.toFixed(2)} Ω`;
 }
@@ -537,6 +539,50 @@ export function EngineV2Panel({ report, ambiguous, floors = [] }: EngineV2PanelP
               text={metrics.dissipation.coverage.describe}
               flagged={metrics.dissipation.coverage.flagged}
             />
+          </div>
+        )}
+
+        {/* V50 — BUILDABILITY: every resistor against its allowance, every
+            coil against its saturation figure. Shown whether or not a class
+            is stated (P4's visible half); the two gate rows above judge. */}
+        {metrics.buildability && (
+          <div className="v2-metric">
+            <div className="v2-metric-head">
+              <span className="v2-id">M-A/part · M-L</span> Buildability
+              <b>
+                {(() => {
+                  const r = metrics.buildability.resistorLoads.filter((l) => l.watts !== null);
+                  const hottest = r.length ? r.reduce((a, l) => (l.watts! > a.watts! ? l : a)) : null;
+                  const c = metrics.buildability.coilLoads.filter((l) => l.peakA !== null);
+                  const busiest = c.length ? c.reduce((a, l) => (l.peakA! > a.peakA! ? l : a)) : null;
+                  return (
+                    (hottest
+                      ? `hottest resistor ${hottest.id} ${hottest.watts!.toFixed(1)} W` +
+                        (hottest.allowedW !== null ? ` of ${hottest.allowedW.toFixed(1)} W allowed` : ' (no allowance stated)')
+                      : 'no resistor watts (no continuous power stated)') +
+                    ' · ' +
+                    (busiest
+                      ? `busiest coil ${busiest.id} ${busiest.peakA!.toFixed(2)} A peak` +
+                        (busiest.allowedA !== null ? ` of ${busiest.allowedA.toFixed(2)} A` : ' (no rating stated)')
+                      : 'no coil current (no amplifier peak stated)')
+                  );
+                })()}
+              </b>
+            </div>
+            <div className="v2-muted">
+              {metrics.buildability.resistorLoads
+                .map((l) => `${l.id} ${l.watts === null ? '?' : l.watts.toFixed(1)} W` + (l.allowedW !== null ? ` / ${l.allowedW.toFixed(1)}` : ''))
+                .join(' · ')}
+              {metrics.buildability.resistorLoads.length > 0 && metrics.buildability.coilLoads.length > 0 ? ' — ' : ''}
+              {metrics.buildability.coilLoads
+                .map((l) => `${l.id} ${l.peakA === null ? '?' : l.peakA.toFixed(2)} A` + (l.atHz !== null ? ` @ ${l.atHz.toFixed(0)} Hz` : '') + (l.allowedA !== null ? ` / ${l.allowedA.toFixed(2)}` : ''))
+                .join(' · ')}
+            </div>
+            <div className="v2-muted">
+              Resistor watts are IEC-weighted means at the continuous power (thermal); coil currents are peak amplitudes at the
+              amplifier&rsquo;s peak input (saturation is a one-cycle event). A resistor over its allowance needs a higher class
+              or a series/parallel bank — a topology choice the generator does not make.
+            </div>
           </div>
         )}
 

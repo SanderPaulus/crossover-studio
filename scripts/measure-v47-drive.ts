@@ -31,6 +31,7 @@
 
 import {
   casus1ExcursionSettings,
+  casus1MaxDriveOnFsDbByDriver,
   casus1Files,
   casus1Filter,
   casus1Geometry,
@@ -53,6 +54,10 @@ const BASE: ReportSettings = {
   /* V49 — de excursie-invoer, zodat de M-C-kolom hier dezelfde grens leest als
    * de poort (gesteld of afgeleid, de strengste). */
   ...casus1ExcursionSettings(golden),
+  /* V50 — de gestelde grens PER WEG, zodat de kolom leest wat de poort leest. */
+  ...(Object.keys(casus1MaxDriveOnFsDbByDriver(golden)).length > 0
+    ? { maxDriveOnFsDbByDriver: casus1MaxDriveOnFsDbByDriver(golden) }
+    : {}),
 };
 
 const only = process.argv.slice(2);

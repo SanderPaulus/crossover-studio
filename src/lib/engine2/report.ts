@@ -89,6 +89,13 @@ import {
   type DriveExcursionResult,
   type WeakestLinkResult,
 } from './metrics/driveExcursion.ts';
+import { peakInputVolts } from './metrics/driveExcursion.ts';
+import {
+  coilLoads,
+  resistorLoads,
+  type CoilLoad,
+  type ResistorLoad,
+} from './metrics/buildability.ts';
 import { ctcKey } from './metrics/types.ts';
 import {
   anchoredGaps,
@@ -296,6 +303,13 @@ export interface EngineV2Report {
      */
     driveExcursion: DriveExcursionResult[];
     driveExcursionOff: string[];
+    /**
+     * V50 — BUILDABILITY: the watts in every discrete resistor and the peak
+     * current through every coil, each beside what the chosen or stated part
+     * may carry. Null without a solved network. The two gates `M-A/part` and
+     * `M-L` are made from exactly these lists.
+     */
+    buildability: { resistorLoads: ResistorLoad[]; coilLoads: CoilLoad[] } | null;
     /**
      * V49 — the WEAKEST-LINK reading for every way that is NOT high-pass
      * protected: how far its cone moves on the resonance at the amplifier's
@@ -511,6 +525,7 @@ export function buildReport(input: EngineV2ReportInput): EngineV2Report {
     driveVoltage: [],
     driveExcursion: [],
     driveExcursionOff: [],
+    buildability: null,
     weakestLink: [],
     splAtPower: [],
     lfBump: [],
@@ -531,6 +546,34 @@ export function buildReport(input: EngineV2ReportInput): EngineV2Report {
   }
   if (analysis && isActive(capability, 'M-B', 'system')) {
     metrics.epdr = epdr(analysis);
+  }
+  /* ---------------- V50: buildability, on the same solved network --------- *
+   * The resistor watts come from M-A's own elements (no second integral); the
+   * coil currents are read off the element currents at the amplifier's peak
+   * input. Both lists exist whenever the network is solved — a report with no
+   * stated class still shows the figures, because P4's visible half is what
+   * lets a designer decide which class to state. */
+  const peakV = (() => {
+    const p = input.settings.amplifierPeakPowerW;
+    const r = input.settings.amplifierNominalLoadOhm;
+    return p !== undefined && p > 0 && r !== undefined && r > 0
+      ? peakInputVolts({ peakPowerW: p, nominalLoadOhm: r })
+      : undefined;
+  })();
+  if (analysis && metrics.dissipation) {
+    metrics.buildability = {
+      resistorLoads: resistorLoads(metrics.dissipation, {
+        ...(input.settings.amplifierPowerW !== undefined ? { continuousPowerW: input.settings.amplifierPowerW } : {}),
+        ...(input.settings.resistorClassW !== undefined ? { resistorClassW: input.settings.resistorClassW } : {}),
+        ...(input.settings.resistorPowerMargin !== undefined
+          ? { marginFraction: input.settings.resistorPowerMargin }
+          : {}),
+      }),
+      coilLoads: coilLoads(analysis, {
+        ...(peakV !== undefined ? { peakInputVolts: peakV } : {}),
+        ...(input.settings.coilClassA !== undefined ? { coilClassA: input.settings.coilClassA } : {}),
+      }),
+    };
   }
 
   for (const driver of order) {
@@ -996,6 +1039,10 @@ export function buildReport(input: EngineV2ReportInput): EngineV2Report {
     ...(Object.keys(ceilingByDriver).length > 0
       ? { driveCeilingDbByDriver: { ...(input.settings.driveCeilingDbByDriver ?? {}), ...ceilingByDriver } }
       : {}),
+    /* V50 — the peak input the coil gate reads currents at, derived once here
+     * from the V49 amplifier fields; the worker receives the same number on
+     * the wire (`v2.gates.peakInputVolts`), set by the same caller. */
+    ...(peakV !== undefined ? { peakInputVolts: peakV } : {}),
   };
   for (const r of metrics.driveExcursion) {
     if (highPassProtected.includes(r.driver) || !analysis || !grid || !r.electromechanical) continue;
@@ -1035,6 +1082,9 @@ export function buildReport(input: EngineV2ReportInput): EngineV2Report {
         }
       : {}),
     driveVoltage: drive,
+    ...(metrics.buildability
+      ? { resistorLoads: metrics.buildability.resistorLoads, coilLoads: metrics.buildability.coilLoads }
+      : {}),
   });
 
   /* ---------------- F2: the budget inversions (A5d.6) ------------------- */

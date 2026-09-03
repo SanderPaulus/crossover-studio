@@ -50,7 +50,11 @@ export type MetricId =
   | 'M-G'
   | 'M-H'
   | 'M-J'
-  | 'M-K';
+  | 'M-K'
+  /* V50 — the peak current through a coil against what the part may carry.
+   * A row of its own: it reads the solved network like M-A but needs the
+   * amplifier's PEAK (V49) rather than its continuous power, and a rating. */
+  | 'M-L';
 
 /** The role A4 assigns each metric in the FINISHED engine (F2/F3), not in F1. */
 export type MetricRole = 'gate' | 'soft' | 'report';

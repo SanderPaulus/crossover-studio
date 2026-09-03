@@ -33,6 +33,10 @@ import {
   CASUS1_WOOFER_DC_OHM,
   casus1AmpMinLoadOhm,
   casus1ExcursionSettings,
+  casus1BuildabilityOnSearch,
+  casus1BuildabilitySettings,
+  casus1ContinuousPowerW,
+  casus1MaxDriveOnFsDbByDriver,
   casus1Files,
   casus1Filter,
   casus1Geometry,
@@ -49,6 +53,7 @@ import { LF_BUMP_VERSION } from '../src/lib/engine2/metrics/acoustic.ts';
 import { RESISTIVE_EQUIVALENT_VERSION } from '../src/lib/engine2/metrics/resistiveEquivalent.ts';
 import { PHASE_INTEGRATION_VERSION } from '../src/lib/engine2/metrics/phaseIntegration.ts';
 import { PHASE_ADMISSION_VERSION } from '../src/lib/phaseAdmission.ts';
+import { BUILDABILITY_VERSION } from '../src/lib/engine2/metrics/buildability.ts';
 import { DRIVE_EXCURSION_VERSION, derivedDriveLimitDb } from '../src/lib/engine2/metrics/driveExcursion.ts';
 import { compareDesigns } from '../src/lib/engine2/predesign/comparison.ts';
 import { ampFloorSlackOhm, meetsAmpFloor } from '../src/lib/impedanceFloor.ts';
@@ -85,6 +90,15 @@ const herkomst = JSON.parse(
   meetopstelling: Record<string, unknown>;
 };
 
+/* V50 — the continuous power from its one home; the literal 100 is gone. */
+const CONTINUOUS_POWER_W = casus1ContinuousPowerW(golden);
+const POWER = CONTINUOUS_POWER_W !== null ? { amplifierPowerW: CONTINUOUS_POWER_W } : {};
+/* V50 — the stated M-C figure per way (tweeter only on casus 1). */
+const DRIVE_BY_WAY = casus1MaxDriveOnFsDbByDriver(golden);
+const DRIVE_PER_WAY = Object.keys(DRIVE_BY_WAY).length > 0 ? { maxDriveOnFsDbByDriver: { ...DRIVE_BY_WAY } } : {};
+/* V50 — the buildability inputs, spread into every report so M-A/part judges. */
+const BUILDABILITY = casus1BuildabilitySettings(golden);
+
 const report = (key: string) =>
   buildReport({
     manifest,
@@ -92,7 +106,9 @@ const report = (key: string) =>
     filter: casus1Filter(key, manifest, files, golden),
     geometry,
     settings: {
-      amplifierPowerW: 100,
+      ...POWER,
+      ...DRIVE_PER_WAY,
+      ...BUILDABILITY,
       orderByPair: { [ctcKey('woofer', 'mid')]: 4, [ctcKey('mid', 'tweeter')]: 4 },
       reOhmByDriver: { woofer: CASUS1_WOOFER_DC_OHM },
       targetCurve: CASUS1_TARGET_CURVE,
@@ -244,6 +260,20 @@ const CHAIN_GRID_LO_HZ = CASUS1_V2_GRID[0];
  * rather than a plausible-sounding reason that belongs to a different corpus.
  */
 const DATED_REASON: Record<string, string> = {
+  V49:
+    'HET GEDATEERDE V49-CORPUS. Bevroren vóór V50, toen de gestelde M-C-grens nog EEN getal voor ' +
+    'elke hoogdoorlaatbeschermde weg was (-20,0 dB, V47b): de mid werd op een dome-conventie ' +
+    'geoordeeld (thermiek en vervorming rond f_s, wat M-C v2.0 niet modelleert) terwijl haar ' +
+    'faalmechanisme excursie is en die sinds V49 AFGELEID wordt - op dit veld -14,5 tot -10,8 dB. ' +
+    'Drie van acht V47b-kandidaten met de mid rond -15 dB werden zo geweigerd terwijl de excursie ' +
+    'ze toeliet. V49 heeft dit corpus NIET opnieuw opgewekt (de afgeleide grens beet nergens), dus ' +
+    'dit is het V47b-veld onder de V49-vingerafdruk. Bovendien was BOUWBAARHEID nog nergens een ' +
+    'poort: het vermogen per weerstand (13,6-34,9 W in een enkele weerstand bij 100 W continu) en ' +
+    'de piekstroom per spoel stonden als kolom en oordeelden niets. Bij V50 wordt de tweetereis ' +
+    'per weg gesteld (mid leeg: alleen afgeleid), M-A/part en M-L komen als poorten, en de ' +
+    'weerstandseis blijkt op deze casus door geen enkel bekend ontwerp gehaald te worden (HUIDIG ' +
+    'factor vijf). Zij blijven staan als de "voor"-helft van de V50-vergelijking. Meetobject, ' +
+    'GEEN ontwerp: mag niet gebouwd worden.',
   V48:
     'HET GEDATEERDE V48-CORPUS. Bevroren toen de tweeteraandrijfgrens nog op -25,0 dB stond: de ' +
     'toevallige waarde van HUIDIG op een decimaal (-25,084), met 0,084 dB marge. Dat maakte het ' +
@@ -697,7 +727,7 @@ const dissipationRecord = (() => {
       'Afgeleid uit de bestanden en uit de probe waarop de tuner leest; geen acceptatiewaarde ' +
       'op zichzelf — de acceptatie zit in kandidaten.*.dissipatie_pct en ' +
       '.grootste_R_W_bij_100W, en in frozenNetlistGates.test.ts.',
-    aangenomen_vermogen_W: 100,
+    aangenomen_vermogen_W: CONTINUOUS_POWER_W,
     dissipationWeight: dissW,
     dissipationWeight_herkomst:
       'GRIJS (A3j). Overgenomen uit v1 en expliciet gesteld door de kandidaat — nooit stil ' +
@@ -938,8 +968,9 @@ const driveRecord = (() => {
         f_s_hz: r0(Number(String(v.parameters?.f_s ?? '').replace(/[^0-9.]/g, ''))),
         doorlaatband_hz: v.parameters?.passband ? String(v.parameters.passband) : null,
         M_C_dB: r2(v.value),
-        haalt_de_eis:
-          v.value === null || driveCeilingDb === null ? null : v.value <= driveCeilingDb,
+        /* V50 — against the way's OWN limit (stated where stated, derived
+         * elsewhere): the recorder reads the verdict and judges nothing itself. */
+        haalt_de_eis: v.value === null || v.limit === null ? null : v.value <= v.limit,
       });
     }
   }
@@ -952,6 +983,10 @@ const driveRecord = (() => {
       'kruispunten die dit filter zelf oplevert (F1-conventie) en staat erbij, want een M-C ' +
       'zonder zijn band is geen getal (V15). Zie gestelde_eisen.tweeter_drive_op_fs_max_dB.',
     gestelde_grens_dB: driveCeilingDb,
+    gestelde_grens_dB_per_weg: Object.fromEntries(
+      Object.keys((raw.manifest_en_geometrie.gestelde_eisen as { drive_op_fs_max_dB_per_weg?: Record<string, number | null> }).drive_op_fs_max_dB_per_weg ?? {})
+        .map((w) => [w, DRIVE_BY_WAY[w] ?? null]),
+    ),
     grootheid: 'driveVoltageOnResonance().db, poort-id M-C',
     levend_corpus_wegen: live.length,
     levend_corpus_eroverheen: live.filter((r) => r.haalt_de_eis === false).length,
@@ -992,11 +1027,13 @@ raw.manifest_en_geometrie.v47_bescherming = driveRecord;
       filter: casus1Filter(key, manifest, files, golden),
       geometry,
       settings: {
-        amplifierPowerW: 100,
+        ...POWER,
         orderByPair: { [ctcKey('woofer', 'mid')]: 4, [ctcKey('mid', 'tweeter')]: 4 },
         reOhmByDriver: { woofer: CASUS1_WOOFER_DC_OHM },
         targetCurve: CASUS1_TARGET_CURVE,
-        ...(driveCeilingDb !== null ? { maxDriveOnFsDb: driveCeilingDb } : {}),
+        /* V50 — per way: the tweeter's convention, nothing on the mid. */
+        ...DRIVE_PER_WAY,
+        ...BUILDABILITY,
         ...CASUS1_EXCURSION,
       },
     });
@@ -1067,7 +1104,8 @@ raw.manifest_en_geometrie.v47_bescherming = driveRecord;
         weg: v.subject,
         doorlaatband_gem_dB: r2(dv?.passbandMeanDb ?? null),
         afgeleide_grens_dB: r2(derived),
-        gestelde_grens_dB: driveCeilingDb,
+        /* V50 — the figure stated for THIS way, or null when the way states none. */
+        gestelde_grens_dB: DRIVE_BY_WAY[v.subject] ?? null,
         effectieve_grens_dB: v.limit,
         bron: String(v.parameters?.limit_source ?? ''),
         M_C_dB: r2(v.value),
@@ -1087,7 +1125,12 @@ raw.manifest_en_geometrie.v47_bescherming = driveRecord;
     }
   }
   const live = perWeg.filter((r) => /^KAND_V2_\d+$/.test(String(r.netlist)));
-  const derivedStricter = perWeg.filter((r) => String(r.bron).startsWith('excursion-derived'));
+  /* V50 — "stricter" is measured against the CONVENTION (−20) on every way,
+   * whether the way states it or not: where the derived ceiling is below it,
+   * one figure for all ways would have been the looser rule. */
+  const derivedStricter = perWeg.filter(
+    (r) => driveCeilingDb !== null && typeof r.afgeleide_grens_dB === 'number' && r.afgeleide_grens_dB < driveCeilingDb,
+  );
   raw.manifest_en_geometrie.v49_excursie = {
     _:
       'V49 — M-C v2.0: de AFGELEIDE M-C-grens per hoogdoorlaatbeschermde weg van élke bevroren ' +
@@ -1097,11 +1140,16 @@ raw.manifest_en_geometrie.v47_bescherming = driveRecord;
       'hoogdoorlaat bij de piekingang, rapportage en geen eis.',
     schatter: DRIVE_EXCURSION_VERSION,
     gestelde_grens_dB: driveCeilingDb,
+    gestelde_grens_dB_per_weg: Object.fromEntries(
+      Object.keys((raw.manifest_en_geometrie.gestelde_eisen as { drive_op_fs_max_dB_per_weg?: Record<string, number | null> }).drive_op_fs_max_dB_per_weg ?? {})
+        .map((w) => [w, DRIVE_BY_WAY[w] ?? null]),
+    ),
     context_dB: { V47: -25, regel_18dB: -18 },
     levend_corpus_wegen: live.length,
     levend_corpus_eroverheen_op_de_effectieve_grens: live.filter((r) => r.haalt_de_eis === false).length,
     levend_corpus_wegen_waar_de_afgeleide_grens_strenger_is:
-      live.filter((r) => String(r.bron).startsWith('excursion-derived')).length,
+      live.filter((r) => driveCeilingDb !== null && typeof r.afgeleide_grens_dB === 'number' && r.afgeleide_grens_dB < driveCeilingDb).length,
+    levend_corpus_wegen_zonder_gesteld_getal: live.filter((r) => r.gestelde_grens_dB === null).length,
     /* Over het HELE casusboek: waar las de poort het afgeleide plafond in plaats
      * van het gestelde getal — met naam, want dat is de bevinding en niet een
      * telling. Bij V49: zeven mids van het V28-corpus, alle binnen 0,6 dB. */
@@ -1112,6 +1160,70 @@ raw.manifest_en_geometrie.v47_bescherming = driveRecord;
     })),
     per_weg: perWeg,
     zwakste_schakel: zwakste,
+  };
+}
+
+/* ------------------------------------------------------------------ *
+ * V50 — BOUWBAARHEID: het vermogen in de heetste weerstand en de piekstroom
+ * door de drukste spoel, op élke bevroren netlist
+ * ------------------------------------------------------------------ */
+
+/**
+ * Dezelfde vorm en dezelfde reden als `v36_dissipatie` en `v49_excursie`:
+ * afgeleid, over het hele casusboek, door `frozenNetlistGates.test.ts`
+ * herrekend. De WATT komt uit M-A's eigen elementen (geen tweede integraal),
+ * de STROOM uit de elementstromen bij de piekingang (V49). De toegestane
+ * waarde is klasse × marge; de klasse is de gestelde (de snap staat uit op
+ * deze route). Het blok schrijft óók de BESLISSING mee of de eis op de
+ * zoektocht gewapend is — een lezer van dit blok moet kunnen zien dat een
+ * levend corpus dat de eis mist, gegenereerd is ZONDER haar.
+ */
+{
+  const rows: Record<string, unknown>[] = [];
+  for (const key of Object.keys(netlists)) {
+    const rep = report(key);
+    const r = rep.gates.verdicts.find((v) => v.gate === 'M-A/part');
+    const l = rep.gates.verdicts.find((v) => v.gate === 'M-L');
+    rows.push({
+      netlist: key,
+      heetste_R: r?.parameters?.element ?? null,
+      heetste_R_ohm: typeof r?.parameters?.ohm === 'number' ? r.parameters.ohm : null,
+      heetste_R_W: r2(r?.value ?? null),
+      toegestaan_W: r?.limit ?? null,
+      haalt_de_eis: r && r.value !== null && r.limit !== null ? r.value <= r.limit : null,
+      drukste_spoel: l?.parameters?.element ?? null,
+      drukste_spoel_piek_A: r2(l?.value ?? null),
+      drukste_spoel_bij_hz: r0(Number(String(l?.parameters?.at ?? '').replace(/[^0-9.]/g, '')) || null),
+      spoel_grens_A: l?.limit ?? null,
+    });
+  }
+  const live = rows.filter((r) => /^KAND_V2_\d+$/.test(String(r.netlist)));
+  const refs = rows.filter((r) => ['HUIDIG', 'KAND_A', 'KAND_B'].includes(String(r.netlist)));
+  const first = report('HUIDIG');
+  const vPeak = (first.gates.verdicts.find((v) => v.gate === 'M-L')?.parameters?.peak_input_V ?? null) as number | null;
+  raw.manifest_en_geometrie.v50_bouwbaarheid = {
+    _:
+      'V50 — BOUWBAARHEID op élke bevroren netlist: het vermogen in de HEETSTE discrete weerstand ' +
+      '(M-A, IEC-gewogen bij het continue vermogen; de weerstand met de minste marge tegen zijn ' +
+      'toegestane waarde) tegen klasse × marge (poort M-A/part), en de PIEKSTROOM door de drukste spoel ' +
+      'bij de piekingang (poort M-L, ongewogen). Afgeleid; frozenNetlistGates.test.ts herrekent het. ' +
+      'Zie gestelde_eisen.weerstandsklasse_* en .spoelklasse_* voor de eisen en de bevindingen erbij.',
+    schatter: BUILDABILITY_VERSION,
+    weerstandsklasse_W: BUILDABILITY.resistorClassW ?? null,
+    weerstandsmarge: BUILDABILITY.resistorPowerMargin ?? null,
+    toegestaan_W:
+      BUILDABILITY.resistorClassW !== undefined && BUILDABILITY.resistorPowerMargin !== undefined
+        ? BUILDABILITY.resistorClassW * BUILDABILITY.resistorPowerMargin
+        : null,
+    continu_vermogen_W: CONTINUOUS_POWER_W,
+    spoelklasse_A: BUILDABILITY.coilClassA ?? null,
+    V_piek_V: vPeak === null ? null : r2(vPeak),
+    gewapend_op_de_zoektocht: casus1BuildabilityOnSearch(golden),
+    levend_corpus_netlists: live.length,
+    levend_corpus_eroverheen: live.filter((r) => r.haalt_de_eis === false).length,
+    referentiefilters_eroverheen: refs.filter((r) => r.haalt_de_eis === false).length,
+    casusboek_netlists_die_de_eis_halen: rows.filter((r) => r.haalt_de_eis === true).map((r) => r.netlist),
+    per_netlist: rows,
   };
 }
 

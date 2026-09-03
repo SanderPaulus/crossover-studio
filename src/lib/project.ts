@@ -325,6 +325,15 @@ export interface ProjectDesign {
     amplifierPeakPowerW?: string;
     amplifierNominalLoadOhm?: string;
     xmaxMarginFraction?: string;
+    /**
+     * V50 — BUILDABILITY: the resistor class (W continuous) the project
+     * builds with and the fraction of it a resistor may run at (M-A/part),
+     * and the saturation current class of its cored coils (M-L). Empty =
+     * absent: the figures are still reported, nothing judges them.
+     */
+    resistorClassW?: string;
+    resistorPowerMargin?: string;
+    coilClassA?: string;
   };
   /**
    * A5a (F3b) — per-branch MEASUREMENT metadata for the v2 layer, keyed by
@@ -360,6 +369,9 @@ export interface ProjectDesign {
          *  when documented. With the mic distance on the cabinet form it arms
          *  the ACOUSTIC counter-proof of M-C v2.0. */
         driveVoltageV?: string;
+        /** V50 — the stated M-C figure for this way, dB re its passband;
+         *  overrides the single `engineV2.maxDriveOnFsDb`. Empty = none per way. */
+        driveOnFsMaxDb?: string;
       }
     >
   >;

@@ -14,9 +14,9 @@
  * default is the newest comparison.
  *
  *   corpora: `v30` · `v32` · `v33sweep` · `v33` · `v34` · `v37` · `v38fix` · `v41` ·
- *            `v42` · `v43` · `v44` · `v45` · `v47` · `live`   (de kaart staat in
- *            `casus1Corpora.fixture.ts`; deze regel is de leesbare kopie ervan)
- *   default: `v47` → `live`   (casebook V48)
+ *            `v42` · `v43` · `v44` · `v45` · `v47` · `v48` · `v49` · `live`   (de kaart
+ *            staat in `casus1Corpora.fixture.ts`; deze regel is de leesbare kopie ervan)
+ *   default: `v49` → `live`   (casebook V50; `v48 live` was de V47b-tabel, `v47 v48` de V48-tabel)
  *   V32's own table: `npx vite-node scripts/compare-corpora.ts v30 v32`
  *   V33's own table: `npx vite-node scripts/compare-corpora.ts v32 v33`
  *   V33's two arms:  `npx vite-node scripts/compare-corpora.ts v33sweep v33`
@@ -114,7 +114,7 @@ const golden = loadGolden();
 const bank = corpusBank(golden);
 const { manifest, files, settings: SETTINGS, floorOhm: FLOOR } = bank;
 
-const [beforeId = 'v47', afterId = 'live'] = process.argv.slice(2);
+const [beforeId = 'v49', afterId = 'live'] = process.argv.slice(2);
 const before = corpusOf(beforeId, golden);
 const after = corpusOf(afterId, golden);
 
@@ -153,6 +153,19 @@ interface Row {
    *  script ranks nothing and no threshold anywhere compares against it. */
   dissPct: number | null;
   largestRw: number | null;
+  /**
+   * V50 — BOUWBAARHEID. `hottestAllowedW` is wat de heetste weerstand MAG
+   * verstoken (klasse × marge) en `resistorOver` of hij eroverheen gaat —
+   * gelezen uit het M-A/part-oordeel en nooit hier vergeleken. `coilPeakA` is
+   * de piekstroom door de drukste spoel bij de piekingang (M-L), met de spoel
+   * bij naam; casus 1 stelt geen spoelklasse, dus dat is een kolom.
+   */
+  hottestAllowedW: number | null;
+  resistorOver: boolean | null;
+  coilPeakA: number | null;
+  coilId: string | null;
+  /** V50 — of ÉÉN M-C-oordeel van dit rapport (per weg, tegen zijn EIGEN grens) faalde. */
+  driveOver: boolean | null;
   /** V38-fix — de rest van de vector waarmee V38 zijn armen vergeleek, zodat
    *  deze tabel en het casusboek in dezelfde eenheden staan: EPDR (M-B), de
    *  Q_es-vermenigvuldiging van de laagste weg (M-E) en de grootste smalle
@@ -382,6 +395,18 @@ function measure(key: string): Row {
     clearsFloor: z === null || FLOOR === null ? null : meetsAmpFloor(z, FLOOR),
     dissPct: r2((rep.metrics.dissipation?.totalFraction ?? NaN) * 100),
     largestRw: r2(rep.metrics.dissipation?.elements.find((e) => !e.parasitic)?.watts ?? null),
+    ...(() => {
+      const r = rep.gates.verdicts.find((x) => x.gate === 'M-A/part');
+      const l = rep.gates.verdicts.find((x) => x.gate === 'M-L');
+      const mc = rep.gates.verdicts.filter((x) => x.gate === 'M-C' && x.active && x.value !== null);
+      return {
+        hottestAllowedW: r?.limit ?? null,
+        resistorOver: r && r.active && r.value !== null ? !r.pass : null,
+        coilPeakA: r2(l?.value ?? null),
+        coilId: (l?.parameters?.element as string | undefined) ?? null,
+        driveOver: mc.length > 0 ? mc.some((x) => !x.pass) : null,
+      };
+    })(),
     epdr: r2(rep.metrics.epdr?.minOhm),
     /* M-E van de LAAGSTE weg: de Thévenin-rij waarvan de doorlaatband het
      * laagst begint. Afgeleid, niet bij naam gezocht — nergens in dit project
@@ -444,14 +469,14 @@ console.log(
     'SPL ± vóór → ná | W-M fase M-K vóór → ná | W-M fase octaaf (ctl) vóór → ná | ' +
     'W-M fase overlap (ctl) vóór → ná | M-T fase M-K vóór → ná | ' +
     'M-T fase octaaf (ctl) vóór → ná | M-T fase overlap (ctl) vóór → ná | RMS vóór → ná | ' +
-    'dissipatie % vóór → ná | grootste R (W) vóór → ná | EPDR vóór → ná | ' +
+    'dissipatie % vóór → ná | grootste R (W) vóór → ná | toegestaan W (V50) | spoel piek A vóór → ná | EPDR vóór → ná | ' +
     'Q_es× vóór → ná | M-C dB vóór → ná | M-C per weg vóór → ná | protSq dB² (ctl) vóór → ná | ' +
     'M-F-eind dB vóór → ná | smalste piek ná (dB @ Hz) | correctiegroepen vóór → ná | ' +
     'LF-bult dB vóór → ná | lift dB vóór → ná | opslingering dB vóór → ná | ' +
     'serie-L mH vóór → ná |',
 );
 console.log(
-  '|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|',
+  '|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|',
 );
 
 let beforeClears = 0;
@@ -495,6 +520,8 @@ for (const label of labels) {
       `${num(b?.rms ?? null)} → ${afterCell(a?.rms ?? null)} | ` +
       `${num(b?.dissPct ?? null)} → ${afterCell(a?.dissPct ?? null)} | ` +
       `${num(b?.largestRw ?? null)} → ${afterCell(a?.largestRw ?? null)} | ` +
+      `${num(a?.hottestAllowedW ?? b?.hottestAllowedW ?? null)} | ` +
+      `${num(b?.coilPeakA ?? null)} → ${afterCell(a?.coilPeakA ?? null)} | ` +
       `${num(b?.epdr ?? null)} → ${afterCell(a?.epdr ?? null)} | ` +
       `${num(b?.qesMult ?? null)} → ${afterCell(a?.qesMult ?? null)} | ` +
       `${num(b?.driveDb ?? null)} → ${afterCell(a?.driveDb ?? null)} | ` +
@@ -564,8 +591,29 @@ console.log(
     `${fmt(avg(measuredBefore.map((r) => r.largestRw)))} W → ` +
     `${fmt(avg(measuredAfter.map((r) => r.largestRw)))} W bij ${SETTINGS.amplifierPowerW} W. ` +
     `Gepaard: ${paired((r) => r.dissPct, ' %')} en ${paired((r) => r.largestRw, ' W')}. ` +
-    'Een kolom, geen oordeel: casus 1 stelt geen dissipatiegrens (P4).',
+    'De fractie is een kolom en geen oordeel: casus 1 stelt geen dissipatiegrens (P4).',
 );
+/* V50 — de weerstandseis als corpusregel (M-A/part): de heetste weerstand tegen
+ * klasse × marge, en de piekstroom per spoel als kolom (M-L, geen klasse
+ * gesteld). De grens wordt uit het OORDEEL gelezen en nooit hier vergeleken. */
+{
+  const allowed = [...measuredAfter, ...measuredBefore].find((r) => r.hottestAllowedW !== null)?.hottestAllowedW ?? null;
+  const over = (rows: Row[]) => rows.filter((r) => r.resistorOver === true).length;
+  const judged = (rows: Row[]) => rows.filter((r) => r.resistorOver !== null).length;
+  console.log(
+    allowed === null
+      ? 'M-A/part (V50): geen weerstandsklasse met marge gesteld, dus de watt hierboven is een kolom en geen eis (P4).'
+      : `M-A/part (V50): toegestaan ${allowed.toFixed(1)} W per weerstand (klasse × marge, bij ` +
+        `${SETTINGS.amplifierPowerW} W continu): ${over(measuredBefore)} van ${judged(measuredBefore)} eroverheen vóór, ` +
+        `${over(measuredAfter)} van ${judged(measuredAfter)} ná. Een POORT in het rapport; of zij ook de ZOEKTOCHT ` +
+        'wapent staat in gestelde_eisen.bouwbaarheid_op_de_zoektocht.',
+  );
+  console.log(
+    `M-L (V50): piekstroom door de drukste spoel gemiddeld ${fmt(avg(measuredBefore.map((r) => r.coilPeakA)))} A vóór → ` +
+      `${fmt(avg(measuredAfter.map((r) => r.coilPeakA)))} A ná bij de piekingang. Gepaard: ${paired((r) => r.coilPeakA, ' A')}. ` +
+      'Een kolom, geen oordeel: casus 1 stelt geen spoelklasse (de C-Coil-documentatie noemt geen verzadigingsstroom).',
+  );
+}
 /* V44 — DRIE fasematen als corpusgemiddelde, met naam en in volgorde: de maat
  * eerst, de twee die zij vervangt erachter. Zij oordelen niets meer — geen
  * poort, geen eis, geen sorteersleutel leest ze — maar zij blijven staan omdat
@@ -661,18 +709,21 @@ const roleTotals = (rows: Row[]) => {
  * het manifest en nooit hier geschreven (P6). */
 {
   const ceiling = casus1MaxDriveOnFsDb(golden);
+  /* V50 — PER WEG tegen zijn EIGEN grens (gesteld op de tweeter, afgeleid op
+   * de mid): gelezen uit de oordelen, niet hier tegen één getal gelegd. */
   const overCount = (rows: Row[]) =>
     ceiling === null
       ? null
-      : rows.filter((r) => r.driveDb !== null && r.driveDb > ceiling).length;
+      : rows.filter((r) => r.driveOver === true).length;
   console.log(
     `M-C op de slechtst beschermde weg gemiddeld: ${fmt(avg(measuredBefore.map((r) => r.driveDb)))} dB ` +
       `vóór → ${fmt(avg(measuredAfter.map((r) => r.driveDb)))} dB ná. ` +
       `Gepaard: ${paired((r) => r.driveDb, ' dB')}. ` +
       (ceiling === null
         ? 'Geen grens gesteld, dus dit is een kolom en geen eis (P4).'
-        : `Gestelde grens ${ceiling} dB (V47): ${overCount(measuredBefore)} van ` +
-          `${measuredBefore.length} eroverheen vóór, ${overCount(measuredAfter)} van ` +
+        : `Gestelde grens ${ceiling} dB op de tweeter (V47, sinds V50 PER WEG; de mid oordeelt op de ` +
+          `afgeleide excursiegrens alleen): ${overCount(measuredBefore)} van ` +
+          `${measuredBefore.length} netlists met een falend M-C-oordeel vóór, ${overCount(measuredAfter)} van ` +
           `${measuredAfter.length} ná. Anders dan het LF-budget is dit een POORT: hij begrenst ` +
           'niet alleen de zoektocht maar veroordeelt ook een geleverd netwerk, en op de v2-route ' +
           'vervangt hij de zaadvergelijking van de volle-band-veiligheidspoort.'),

@@ -28,6 +28,18 @@ export interface CatalogImport {
 
 export class CatalogFileError extends Error {}
 
+/**
+ * V50 — the saturation / maximum current of a cored coil, A, under the
+ * spellings an external generator or a datasheet transcription uses. Absent
+ * (or not a positive number) = the part carries none, which is the honest
+ * state of every air-cored coil and of every cored coil whose manufacturer
+ * publishes no figure.
+ */
+function currentOf(o: Record<string, unknown>): number | undefined {
+  const raw = o['maxCurrentA'] ?? o['max_current_a'] ?? o['saturationA'] ?? o['saturation_a'];
+  return typeof raw === 'number' && Number.isFinite(raw) && raw > 0 ? raw : undefined;
+}
+
 export function serializeCatalog(
   series: readonly CatalogSeries[],
   components: readonly CatalogPart[] = [],
@@ -41,7 +53,7 @@ export function serializeCatalog(
         'Edit or add series and import this file. kind: L (coil, henry) | C (cap, farad) | ' +
         'R (resistor, ohm). range = [min, max] in SI units. Coils: gauges (wire mm, DCR is ' +
         'estimated per gauge; dcrFactor scales it — ~0.35 for iron cores). Caps: esr (ohm). ' +
-        'Resistors: powerW. Optional per series: eSeries/series_type (E12|E24 value grid), ' +
+        'Resistors: powerW. Cored coils: maxCurrentA (saturation, A; V50). Optional per series: eSeries/series_type (E12|E24 value grid), ' +
         'tier (budget|standard|premium), basePrice/base_price + costFactor/cost_factor ' +
         '(priceEur = base + factor·value). A series with a built-in id OVERRIDES the built-in.',
       series,
@@ -135,6 +147,7 @@ export function deserializeCatalog(text: string): CatalogImport {
       ...(gauges !== undefined ? { gauges: gauges as number[] } : {}),
       ...(typeof s['esr'] === 'number' && s['esr'] >= 0 ? { esr: s['esr'] } : {}),
       ...(typeof s['powerW'] === 'number' && s['powerW'] > 0 ? { powerW: s['powerW'] } : {}),
+      ...(currentOf(s) !== undefined ? { maxCurrentA: currentOf(s) } : {}),
       ...(eSeriesRaw !== undefined ? { eSeries: eSeriesRaw as 'E12' | 'E24' } : {}),
       ...(tier !== undefined ? { tier: tier as CatalogTier } : {}),
       ...(basePrice !== undefined ? { basePrice: basePrice as number } : {}),
@@ -194,6 +207,7 @@ export function deserializeCatalog(text: string): CatalogImport {
       seriesR: Number(seriesR.toPrecision(3)),
       ...(num(gauge) !== undefined ? { wireMm: num(gauge) } : {}),
       ...(num(powerW) !== undefined && num(powerW)! > 0 ? { powerW: num(powerW) } : {}),
+      ...(currentOf(c) !== undefined ? { maxCurrentA: currentOf(c) } : {}),
       ...(num(price) !== undefined ? { priceEur: num(price) } : {}),
       ...(tier !== undefined ? { tier: tier as CatalogTier } : {}),
     });

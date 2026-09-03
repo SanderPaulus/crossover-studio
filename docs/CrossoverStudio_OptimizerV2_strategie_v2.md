@@ -102,11 +102,15 @@ Formaat per metriek: *grootheid → formule → afgeleide parameters → databeh
 
 **M-A · Dissipatie per weerstand.** `P_R = ∫ S(f)·|I_R(f)/E_g|²·R df`, met S(f) een programmaruis-weging (IEC 60268-1: roze met 1e-orde HP/LP op de normranden), genormeerd zodat het totaal in de luidspreker opgenomen vermogen gelijk is aan de opgave. Rapportage als **fractie van het versterkervermogen** (schaalvrij) én in watt bij door de gebruiker gekozen vermogen. Databehoefte: geen — elementstromen volgen uit de MNA-oplossing. Valkuil (gedocumenteerd in casus 1): normeren op E_g².
 
+**M-A/part · Vermogen per weerstand tegen zijn opgave (V50, 03-09-2026).** Dezelfde integraal, per element: `P_R` van ÉLKE discrete weerstand bij het gestelde CONTINUE versterkervermogen (thermiek is een gemiddelde, geen piek — het veld naast P_piek van V49), tegen een TOEGESTANE waarde per element. *Toegestaan:* de opgave van het GEKOZEN catalogusonderdeel (`CatalogPart.powerW`, wanneer de snap er een op het element zette) en anders de gestelde weerstandsklasse van het project (W continu), maal de gestelde marge (fractie; een filterweerstand in een gesloten kast zonder koeling loopt op de helft van zijn opgave al heet — de marge is een projectbesluit, geen getal van de engine). *Afgeleide parameters:* per element watt en toegestaan; het oordeel leest het element met de MINSTE marge (watt/toegestaan) en noemt het. *Databehoefte:* een opgelost netwerk (als M-A) plus een continu vermogen; zonder klasse én zonder opgave op enig element is de poort UIT en zegt zij welk veld ontbreekt (P4); zonder marge evenzo. *Rol:* poort (`M-A/part` in `GATE_IDS`), verwerping in de V31-vorm. *Wat de poort NIET doet:* een weerstand splitsen — serie/parallel-banken zijn een topologiekeuze die de generator niet maakt; het oordeel noemt dat als remedie. *Validatiecasus:* casus 1, Deel B V50.
+
+**M-L · Piekstroom per spoel tegen zijn verzadigingsopgave (V50, 03-09-2026).** `I_L,piek = max_f |I_L(f)/E_g| · V_piek` met `V_piek = √(2·P_piek·R_nom)` (de piekingang van V49), ONGEWOGEN — verzadiging van een kern is een gebeurtenis van een halve periode en geen gemiddelde, dus hier geen IEC-weging; de frequentie van het maximum wordt gemeld, want een verzadigingsopgave zonder frequentie is niet tegen een datasheet te leggen. *Toegestaan:* de verzadigings-/maximumstroom van het gekozen catalogusonderdeel (`CatalogPart.maxCurrentA`, schema sinds V50; een stapel spoelen in serie is zo sterk als haar zwakste lid) en anders de gestelde spoelklasse (A). Luchtspoelen hebben geen verzadiging (alleen thermisch, buiten scope) en worden nooit geoordeeld. *Databehoefte:* een opgelost netwerk plus de versterkerpiek (P_piek, R_nom); zonder piek geen stroom in ampère en de poort zegt het; zonder klasse én zonder opgave is zij UIT. *Rol:* poort (`M-L`), verwerping in de V31-vorm. *Validatiecasus:* casus 1, Deel B V50 — waar de klasse LEEG is met de bevinding dat de C-Coil-documentatie geen verzadigingsstroom noemt.
+
 **M-B · EPDR.** `EPDR(f) = |Z_in|/(2·cos²φ)`; poort op het minimum over de band. Vervangt de kale |Z|-ondergrens; die blijft beschikbaar als eenvoudige modus. Databehoefte: geen.
 
 **M-C · Spanning op driverresonantie.** `20·log10(|V_drv(f_s)| / V̄_passband)`, met f_s automatisch uit de piek(en) van het geladen impedantiebestand en V̄_passband het gemiddelde over de doorlaatband van die weg, **afgeleid uit de gevonden kruispunten** (P6). Vangt de vuistregels "kruis ≥ 2×Fs" en "−18 dB op Fs" in één berekenbare grootheid. Databehoefte: geen. Grens instelbaar per project.
 
-**M-C v2.0 · De grens excursie-gedragen (V49, 02-09-2026).** De GROOTHEID blijft M-C; wat verandert is waar de grens vandaan komt. *Formule:* `x/V|f₀ = Bl·Q_ms / (Z_max·N·M_ms·ω₀²)` (route 1, elektromechanisch, ladingsonafhankelijk; Z_max, f₀ en Q_ms uit de GEMETEN sweep in situ — z-resonance 1.1 draagt Small's Q_ms per motionele piek —, Bl en M_ms van de driverkaart, N het aantal parallelle drivers achter de gemeten impedantie); tegenproef `x/V = p·2π·r / (ρ₀·S_d·N·ω₀²·V_meet)` (route 2, akoestisch, uit de gemeten SPL bij een GEDOCUMENTEERDE meetspanning en micafstand; veronderstelt vrije halfruimte-straling en overschat x onder elke akoestische belasting — waveguide, hoorn, kastfront —, dus altijd conservatief; de verhouding route 2/route 1 is een gemeten eigenschap van de inbouw en wordt zo gemeld, zonder geometrie-specifieke tak). *Van uitslag naar eis:* `V_toegestaan = X_max·marge / (x/V)`, `plafond = 20·log10(V_toegestaan / V_piek)` met `V_piek = √2·√(P_piek·R_nom)`; de afgeleide M-C-grens per ontwerp is `plafond − V̄_passband[dB]`, en de poort leest de **strengste** van die grens en een eventueel gesteld dB-getal, met vermelding welke. *Monotoniciteit:* onder f₀ stijfheidsgestuurd (x/V ≈ constant), erboven 1/f²; onder een monotoon dalende hoogdoorlaat is f₀ het maximum van uitslag-per-volt, dus één punt volstaat (V47) — de `protSqDb`-controlekolom bewaakt de aanname. *Afgeleide parameters:* x/V, V_toegestaan, plafond (klasse A per driver); afgeleide grens (klasse B per netlist). *Databehoefte:* driverkaart (X_max, en Bl+M_ms óf S_d met gedocumenteerde meetspanning en -afstand), versterkerpiek (P_piek, R_nom), X_max-marge; ontbreekt er één, dan staat de afleiding UIT met het veld genoemd en oordeelt het gestelde dB-getal alleen. *Rol:* poort (dezelfde M-C-poort), plus de `drive-series-c`-voorbound leest dezelfde effectieve grens. *Wat de grens NIET dekt:* thermische belasting (de V36-wattkolom blijft de zichtbaarheid) en vervorming rond de resonantie (de fabrikantsondergrens is context). De weg zónder hoogdoorlaat krijgt geen eis maar de zwakste-schakel-rapportage: uitslag op f₀ bij V_piek tegen X_max·marge, en waar het één-resonatormodel de grens haalt. *Validatiecasus:* casus 1, Deel B V49.
+**M-C v2.0 · De grens excursie-gedragen (V49, 02-09-2026).** De GROOTHEID blijft M-C; wat verandert is waar de grens vandaan komt. *Formule:* `x/V|f₀ = Bl·Q_ms / (Z_max·N·M_ms·ω₀²)` (route 1, elektromechanisch, ladingsonafhankelijk; Z_max, f₀ en Q_ms uit de GEMETEN sweep in situ — z-resonance 1.1 draagt Small's Q_ms per motionele piek —, Bl en M_ms van de driverkaart, N het aantal parallelle drivers achter de gemeten impedantie); tegenproef `x/V = p·2π·r / (ρ₀·S_d·N·ω₀²·V_meet)` (route 2, akoestisch, uit de gemeten SPL bij een GEDOCUMENTEERDE meetspanning en micafstand; veronderstelt vrije halfruimte-straling en overschat x onder elke akoestische belasting — waveguide, hoorn, kastfront —, dus altijd conservatief; de verhouding route 2/route 1 is een gemeten eigenschap van de inbouw en wordt zo gemeld, zonder geometrie-specifieke tak). *Van uitslag naar eis:* `V_toegestaan = X_max·marge / (x/V)`, `plafond = 20·log10(V_toegestaan / V_piek)` met `V_piek = √2·√(P_piek·R_nom)`; de afgeleide M-C-grens per ontwerp is `plafond − V̄_passband[dB]`, en de poort leest de **strengste** van die grens en een eventueel gesteld dB-getal, met vermelding welke. *Monotoniciteit:* onder f₀ stijfheidsgestuurd (x/V ≈ constant), erboven 1/f²; onder een monotoon dalende hoogdoorlaat is f₀ het maximum van uitslag-per-volt, dus één punt volstaat (V47) — de `protSqDb`-controlekolom bewaakt de aanname. *Afgeleide parameters:* x/V, V_toegestaan, plafond (klasse A per driver); afgeleide grens (klasse B per netlist). *Databehoefte:* driverkaart (X_max, en Bl+M_ms óf S_d met gedocumenteerde meetspanning en -afstand), versterkerpiek (P_piek, R_nom), X_max-marge; ontbreekt er één, dan staat de afleiding UIT met het veld genoemd en oordeelt het gestelde dB-getal alleen. *Rol:* poort (dezelfde M-C-poort), plus de `drive-series-c`-voorbound leest dezelfde effectieve grens. *Wat de grens NIET dekt:* thermische belasting (de V36-wattkolom blijft de zichtbaarheid) en vervorming rond de resonantie (de fabrikantsondergrens is context). De weg zónder hoogdoorlaat krijgt geen eis maar de zwakste-schakel-rapportage: uitslag op f₀ bij V_piek tegen X_max·marge, en waar het één-resonatormodel de grens haalt. *Validatiecasus:* casus 1, Deel B V49. **Sinds V50 is het gestelde dB-getal PER WEG** (`maxDriveOnFsDbByDriver`, met het ene veld als terugval): de 18-dB-conventie is een dome-regel en hoort bij de weg waarvoor zij bedacht is; een weg zonder gesteld getal wordt op de afgeleide excursiegrens alleen geoordeeld, en `limit_source` zegt dat. Casus 1: tweeter −20,0, mid leeg (Deel B V50).
 
 ### Zachte doelen
 
@@ -4378,6 +4382,176 @@ vervormingsgrens voor de tweeter, zodat −20 een afleiding kan worden in plaats
 conventie. (3) De woofer-zwakste-schakel op een tweegraads-reflexmodel, met de gemeten f_b.
 (4) "Design for … dB" als P4-kandidaat. (5) `casus1_v2_herkomst.json` draagt de V47b-
 vingerafdruk; bij de eerstvolgende regeneratie schrijft de generator het achtste feit mee.
+
+### V50 — bouwbaarheid als gestelde eis, en de M-C-grens per weg (03-09-2026, **BREAKING, alleen v2-runs**)
+
+**AANLEIDING.** Dissipatie was de laatste onbewaakte as: het levende corpus zat rond 60 % van het
+versterkervermogen in weerstanden met tot 35 W in één onderdeel (de V36-kolommen zichtbaar, niets
+weigerde), en elke grens die sinds V30 dichtging duwde kosten hierheen. Daarnaast liet V49 zien dat
+de gestelde −20 dB een dome-conventie is (vervorming en thermiek rond f_s, wat M-C v2.0 niet
+modelleert) die óók de mid trof, terwijl de excursie-afleiding voor de mid −14,5 tot −10,8 dB zegt:
+drie van acht V47b-kandidaten met de mid rond −15 dB waren veilig en werden toch geweigerd.
+
+**DEEL A — BESCHERMING PER WEG.** `maxDriveOnFsDbByDriver` naast het ene `maxDriveOnFsDb`, met
+één regel voor de volgorde (`statedDriveLimitDb`: per weg eerst, dan het ene veld, dan niets) en
+`effectiveDriveLimit` (V49) erbovenop: per weg de strengste van gesteld en afgeleid, en met een leeg
+gesteld getal de afgeleide grens alleen — `limit_source` zegt "no stated dB figure". Casus 1 stelt
+sinds V50 `drive_op_fs_max_dB_per_weg: { tweeter: −20, mid: null }` en GEEN ene veld meer; het
+manifest draagt de motivering (de 18-dB-regel is een dome-regel; voor een conus met ±3 mm is
+excursie het faalmechanisme en die is afgeleid). In de app: een veld "max drive on f_s" per tak in
+het Engine v2-meetblok, dat het ene veld voor die tak overschrijft; de flank-orde-afleiding
+(A5d.3(ii)) leest per paar het getal van de BOVENSTE weg in dezelfde volgorde. Op de
+referentiefilters leest de mid nu −11,9 / −11,0 / −11,1 dB als effectieve grens (was −20) en de
+tweeter blijft op −20 (afgeleid −1,7 / −1,1 / −1,1, dus de conventie bijt daar nog overal).
+
+**DEEL B — BOUWBAARHEID.** Twee grootheden, allebei al in de oplossing, nu met een toegestane
+waarde per element (`metrics/buildability.ts`, `buildability/1.0`; registerrijen M-A/part en M-L
+in A4). (1) **Vermogen per weerstand:** M-A's eigen elementen (geen tweede integraal) bij het
+CONTINUE versterkervermogen — een nieuw manifestveld `versterker_continu_vermogen_W` (100 W, NAD
+M10 V2) naast P_piek van V49, want thermiek is een gemiddelde en geen piek; tot V50 stond dat getal
+als literal 100 in elk testbestand en script en heeft het nu zijn ene huis (P6). Toegestaan: de
+opgave van het GEKOZEN catalogusonderdeel (met de snap aan; `partRatings.ts` leest
+`VxpPart.catalog`) en anders de gestelde klasse (`weerstandsklasse_W`, 10 W — MOX/Superes), maal de
+gestelde marge (`weerstandsmarge`, 0,5 — een filterweerstand in een gesloten kast zonder koeling
+loopt op de helft van zijn opgave al heet). Het oordeel leest het element met de MINSTE marge, niet
+het heetste. (2) **Stroom per spoel:** `|I_L(f)|·V_piek/E_g` uit de elementstromen, ONGEWOGEN (een
+kern verzadigt in een halve periode) op de frequentie van het maximum, tegen de verzadigingsopgave
+van het gekozen onderdeel (`CatalogPart.maxCurrentA`, schema sinds V50; een stapel is zo sterk als
+haar zwakste lid) of de gestelde spoelklasse. Luchtspoelen hebben geen verzadiging en worden nooit
+geoordeeld. Beide zijn POORTEN (`M-A/part`, `M-L` in `GATE_IDS`, verwerping in de V31-vorm), alleen
+gewapend als de velden gesteld zijn (P4), in de vingerafdruk — het continue vermogen en de
+piekingang ALLEEN zolang de poort die ze leest gewapend is, zodat V36's "de wattkolom is geen
+vingerafdruk-ingrediënt" blijft staan. Ze staan in het paneel (blok "Buildability", twee poortrijen)
+en in de shortlist-kolom (`largestResistorAllowedW`, `worstCoil`). Wat de poort NIET doet: een
+weerstand splitsen — het oordeel noemt de serie/parallel-bank als remedie en de generator bouwt
+hem niet.
+
+**DE CATALOGUS-INVENTARIS.** Het schema kent sinds V50 `maxCurrentA` (`maxCurrentA` /
+`max_current_a` / `saturationA`). In de v8-catalogus dragen **108 van 108 weerstanden** een
+vermogensopgave (10 W: Jantzen MOX 53, Superes 40, Duelund CAST 7; 20 W: Mundorf MResist Supreme
+8) en **0 van 2116 spoelen** een stroomopgave (1482 Air Core, 611 P-Core, 9 Wax, 7 Aronit, 7
+Zero-Ohm). De Jantzen C-Coil-documentatie — de kernspoelen die dit ontwerp gebruikt — is gelezen en
+noemt géén verzadigingsstroom, alleen "getest met 1000 W, 700 W gedurende 48 uur continu": een
+vermogensopgave zonder last, waaruit een stroom afleiden een aanname over de last zou zijn. Daarom
+is `spoelklasse_A` van casus 1 LEEG met die bevinding, oordeelt M-L niets en rapporteert hij de
+piekstroom per spoel (levend corpus: 13,5–33,2 A piek bij 50,6 V, de drukste in L1 of B·L2 tussen
+274 en 508 Hz).
+
+**HUIDIG ALS SANITY, GEMETEN VÓÓR DE REGENERATIE (`scripts/measure-v50-buildability.ts`).**
+
+  | netlist | weerstanden (W bij 100 W continu) | heetste | W | toegestaan | oordeel |
+  | --- | --- | --- | --- | --- | --- |
+  | HUIDIG | R8 25,5 · B·R9 19,8 · C·R15 0,4 · B·R16 0,0 | R8 (3,3 Ω) | 25,5 | 5,0 | EROVERHEEN ×5,1 |
+  | KAND_A | R8 30,9 · B·R9 20,0 · C·R15 1,5 | R8 (4,0 Ω) | 30,9 | 5,0 | EROVERHEEN ×6,2 |
+  | KAND_B | B·R9 19,6 · R8 18,7 · C·R15 0,3 | B·R9 (6,5 Ω) | 19,6 | 5,0 | EROVERHEEN ×3,9 |
+  | V49_KAND_1…7 (het V47b-veld) | — | R5 / R7 / B·R9 | 13,6–34,9 | 5,0 | 7 van 7 EROVERHEEN |
+
+**Nog net toelaatbaar:** HUIDIG bij klasse ≥ 51 W (bij 100 W en marge 0,5), óf bij ≤ 19,6 W
+continu (bij klasse 10 W). Achttien gedateerde netlists (V28–V38-fix) HALEN de eis wel, met
+0,5–1,4 W in een tweeterpad (C·R6) en géén wooferpad — dat is de eis die haalbaar is zodra de
+woofer niet resistief verzwakt wordt, en precies wat de anker-verzwakking van V45 (de woofer betaalt
+4,6–8,5 dB tegen het anker) uitsluit. **Dat is de bevinding over HUIDIG én over deze casus, en geen
+reden om de eis te versoepelen:** de eis is de fysica van een 10 W-weerstand bij 100 W continu.
+`frozenNetlistGates` assert haar ("géén referentiefilter en géén levende netlist haalt M-A/part;
+HUIDIG met een factor > 4; het casusboek draagt wél netlists die haar halen").
+
+**DE BESLISSING DIE HIERUIT VOLGT IS SANDERS, EN ZIJ STAAT IN HET MANIFEST
+(`gestelde_eisen.bouwbaarheid_op_de_zoektocht`, `gewapend: false`).** De weerstandseis is GESTELD
+en het rapport oordeelt ermee op élke bevroren netlist; op de v2-ZOEKTOCHT van casus 1 is zij nog
+niet gewapend, want een regeneratie met de eis gewapend levert — de sanity zegt het vooraf —
+vijftien verwerpingen en een leeg corpus, wat de suite niet draagt (V42: geen uitzonderingslijst ter
+grootte van het corpus) en niets meet dat de tabel hierboven niet al zegt. Vier uitwegen, geen
+daarvan is de mijne: (a) de klasse, de marge of het continue vermogen anders stellen (20 W continu
+is nog steeds ver boven gemiddeld luisterniveau; 51 W-weerstanden bestaan); (b) de serie/parallel-
+bank als TOPOLOGIE-ELEMENT — de gemeten reden staat hier, de generator bouwt het niet (open entry);
+(c) de anker-verzwakking niet in weerstand maar in een actieve LF-tak: de hybride route; (d) de eis
+als rapporteis laten staan. `casus1BuildabilityOnSearch` leest het veld, `CASUS1_V2_GATES` volgt het,
+en `casus1V2Candidates` assert dat de meetopstelling het besluit noemt.
+
+**DE REGENERATIE (V2_JOBS=8, 2673 s = 44,5 min op 18 kernen; het V49-corpus vooraf bevroren als
+`V49-KAND-*`, `v49_corpus`), en het veld BEWOOG NIET.** Dezelfde zeven kandidaten halen de
+shortlist en alle zeven netlists zijn onderdeel-voor-onderdeel identiek aan het bevroren
+V49-corpus (= het V47b-veld; V49 wekte niet opnieuw op). De vóór/ná-tabel
+(`compare-corpora.ts v49 live`) is daarmee de identiteit: 7 paren, elke gepaarde delta exact nul,
+dissipatie 51,26 %, grootste weerstand 26,47 W, spoelpiek 21,80 A, M-K 12,36° / 8,04°, min |Z|
+3,04 Ω, opslingering −0,73 dB, lobing −2,79 dB. De vingerafdruk beweegt wél (`gates=` met de
+per-weg-map en de piekingang, `facts=`/`estimators=` die V49 al had aangekondigd), dus
+`casus1_v2_herkomst.json` is herschreven en de byte-reproductie in `casus1V2Candidates` bewijst
+dat het dezelfde route is.
+
+**WAAROM DE MID-WEIGERINGEN NIET TERUGKEERDEN — de verwachting vooraf was verkeerd, en de meting
+zegt waarom.** V47b telde de mid in drie van de acht weigeringen; V50 verving de −20 op de mid door
+de afgeleide excursiegrens (−11,2 tot −14,4 dB op dit veld). Dezelfde acht kandidaten leveren
+niets, en de twee mid-weigeringen staan er nog: `466,5 · 1719` met de mid op **+5,6 dB** tegen
+−13,6 afgeleid, `548,5 · 1981,2` met **−7,3 dB** tegen −11,2 afgeleid. Dat zijn geen
+"−15 dB-mids die veilig zijn" — die bestonden in dit veld niet; wat de conventie op de mid
+weigerde lag 4 tot 19 dB bóven wat de excursie toelaat, precies de V49-bevinding ("−7,3 op de mid
+was gevaarlijk, niet conservatief"). De derde mid-vermelding van V47b (`548,5 · 1491,4`, mid
+−11,1) valt onder V50 alleen nog op de vloer en de tweeter: de mid haalt daar de afgeleide grens.
+Deel A heeft dus WEL het oordeel veranderd (de mid wordt op haar eigen faalmechanisme geoordeeld
+en zegt het: `limit_source` "excursion-derived ceiling (no stated dB figure)") maar op dit veld
+geen enkele beslissing — en dat is een meting, geen aanname: de byte-identieke netlists zijn het
+bewijs dat de losser geworden serie-C-voorbound op de mid nergens bond.
+
+  | kandidaat (W-M · M-T) | V47b weigergrond | V50 weigergrond |
+  | --- | --- | --- |
+  | 396,7 · 1294 | tweeter −12,1 | tweeter −12,1 (gesteld −20) |
+  | 466,5 · 1294 | tweeter −11,9 · vloer 1,99 Ω | vloer 1,99 Ω · tweeter −11,9 |
+  | 466,5 · 1491,4 | tweeter −16,6 · vloer 2,49 Ω | vloer 2,49 Ω · tweeter −16,6 |
+  | 466,5 · 1719 | tweeter −17,0 · **mid +5,6** | **mid +5,6 tegen −13,6 (afgeleid)** · tweeter −17,0 |
+  | 548,5 · 1294 | tweeter −13,2 · vloer 0,02 Ω | vloer 0,02 Ω · tweeter −13,2 |
+  | 548,5 · 1491,4 | tweeter −17,5 · mid −11,1 · vloer 1,11 Ω | vloer 1,11 Ω · tweeter −17,5 (mid haalt de afgeleide grens) |
+  | 548,5 · 1719 | tweeter −17,3 | tweeter −17,3 |
+  | 548,5 · 1981,2 | **mid −7,3** | **mid −7,3 tegen −11,2 (afgeleid)** |
+
+**DE BALANS, EN ZIJ IS EXPLICIET DE VRAAG WAAROP DE PASSIEF-OF-HYBRIDE-BESLISSING RUST.** Met
+álle eisen gewapend — vloer 2,6 Ω, opslingering 1,4 dB, Q_es× 2,4, basplateau −2,5 dB, M-C per weg
+(tweeter −20 conventie, mid afgeleid −11…−14), en nu ook vermogen per weerstand en stroom per
+spoel — is dit het veld: zeven passieve ontwerpen die vloer, opslingering, Q_es, plateau en
+bescherming halen, en die ALLE ZEVEN 13,6–34,9 W in één weerstand verstoken bij 100 W continu
+tegen 5 W die een 10 W-klasse met 50 % marge toelaat. Het spoelvermogen is geen probleem
+(13,5–33 A piek zonder verzadigingsopgave om ze aan te houden; de C-Coil-documentatie zwijgt).
+Wat overblijft is één as: de anker-verzwakking van de woofer (4,6–8,5 dB, V45) is bij 100 W
+continu 14 tot 35 W in het serie-pad, en dat is niet met een enkele 10 W-weerstand te bouwen.
+**Het argument voor een hybride is daarmee tweeledig gemeten:** displacement-headroom in het laag
+(V49: 14–21 mm tegen 6,84 mm bij de NAD-piek) én de resistieve niveauverzwakking van de woofer
+die een passief netwerk in warmte moet omzetten. Passief blijft mogelijk op drie manieren die alle
+drie Sanders keuze zijn — een 50 W-klasse, een bank van weerstanden (topologie-element), of een
+lager gesteld continu vermogen (≤ 19,6 W voor HUIDIG) — en op geen daarvan hoeft de engine iets te
+verzinnen: de getallen staan in `v50_bouwbaarheid` per netlist.
+
+**WAT ER NIET GEBOUWD IS.** Geen default voor klasse, marge of continu vermogen; geen
+fabrikantsnaam in engine-code (de catalogus is data; `partRatings.ts` leest wat `catalogParts()`
+draagt); geen thermisch model van de driver; geen splitsing van weerstanden door de generator; niets
+aan vloer, Q_es, opslingering, plateau of de excursie-afleiding. De vloer (V30) blijft een
+zoekdoel; de weerstandseis is dat niet — zij is een poort, en of zij de zoektocht ook STUURT (een
+term, een grens op de padweerstand) is een aparte vraag zodra zij gewapend is.
+
+**TESTS.** `metrics/buildability.test.ts` (7: handberekening op een papieren netwerk — Rg 1 mΩ,
+want de solver deelt de geleverde stroom door Rg en de eerste versie kreeg vier NaN's —,
+uit-toestanden met het veld bij naam, opgave-boven-klasse met de SKU, nieuwe meting op twee
+wetten, de minste-marge-keuze), `optimizer/buildabilityGate.test.ts` (12: absent is absent en
+P2 op de tweewegfixture, klasse zonder marge, minste marge, drie null-toestanden, vingerafdruk
+met het vermogen alleen bij toelating, de per-weg-resolutie waarin dezelfde −15 dB binnen is op
+de mid en eroverheen op de tweeter, `partRatingsOf`), `frozenNetlistGates` (zes V50-blokken,
+V47/V49 van vorm veranderd zonder van claim te veranderen, de gate-id-dekking laat M-A/part null
+toe op de ene netlist zonder weerstand), `gates.test.ts` (het absent-geval stelt vermogen en
+piek: geen grenzen, wel wat de twee poorten nodig hebben om te lezen), `gateReport` (idem),
+`f4cRegression` (een tweede gedateerd oordelenblok `verdicts_sinds_V50` naast het V32-blok, dat
+zijn vier id's blijft pinnen; `scripts/record-f4b2-v50-verdicts.ts`), `casus1V2Candidates` /
+`casus1V2Refusal` (de meetopstelling noemt `maxDriveOnFsDbByDriver` en niet meer het ene veld, en
+het bouwbaarheidsbesluit), `goldenClassification`, `corpusPairing` (volledig gedateerd, geen
+herankering nodig), `p6Lint` (ving `1e3` voor mH; nu `H_PER_MH`). Snelle laag (03-09-2026, vóór de f4c-toevoeging, naast niets): 283 s, 143 + 1 overgeslagen bestand, 1619 + 2 overgeslagen tests, met twee rode f4c-claims die het V50-oordelenblok kregen. **Volle run 03-09-2026: 145 bestanden, 1625 tests, 1362 s (22 min 42), niets overgeslagen, groen** — de eerste volle run (1356 s) viel op de byte-inventaris van `ciLayer` om (zes namen, tien tests sinds V50) en is na die reparatie in zijn geheel herhaald, want een run met één rood bestand is geen acceptatie. De telling is +2 bestanden sinds V49 (de twee bouwbaarheidstests, 19 claims) en +27 tests (19 daar, 2 in `f4cRegression`, 6 in `frozenNetlistGates`); het corpus bewoog niet, dus de `it.each` over het levende veld telt nog zeven. `tsc -b` groen; p6Lint, noWeights, toggleRegression, choiceKeyGuard, goldenClassification, corpusPairing en ciLayer groen. In de draaiende
+app gecontroleerd: de drie bouwbaarheidsvelden en het per-tak-veld "max drive on f_s" renderen
+(drie taken), de twee poortrijen staan in het paneel ("not evaluated" zonder netwerk), console
+schoon; productiebuild groen.
+
+**OPENSTAAND.** (1) Sanders beslissing over de weerstandseis op de zoektocht (zie boven). (2) De
+parallelle/serie-weerstand als topologie-element van de synthesestap, met de gemeten reden hier.
+(3) Een verzadigingsstroom voor de C-Coil — van Jantzen, of gemeten — waarmee `spoelklasse_A` een
+getal wordt en M-L oordeelt; de piekstromen staan al in het blok. (4) `qesMultiplierMax` per weg
+(V45). (5) De weerstandseis in de zoektocht laten sturen zodra zij gewapend is (nu: alleen een
+poort).
 
 ## Casus S1 — synthetische grondwaarheid voor de R_e-schatter (F3b, 26-08-2026)
 

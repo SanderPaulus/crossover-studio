@@ -74,7 +74,7 @@
 import { AMP_FLOOR_TOLERANCE, meetsAmpFloor } from '../../impedanceFloor.ts';
 import type { Complex } from '../../complex.ts';
 import type { Netlist } from '../../network.ts';
-import { HP_PROTECTION_MIN_RISE_DB, HP_PROTECTION_PROBE_OCTAVES, PERCENT } from '../constants.ts';
+import { H_PER_MH, HP_PROTECTION_MIN_RISE_DB, HP_PROTECTION_PROBE_OCTAVES, PERCENT } from '../constants.ts';
 import { cabs, dbAmp } from '../util.ts';
 import { buildAnalysis, deriveCrossings, orderDriversLowToHigh, passbandOf } from '../metrics/analysis.ts';
 import {
@@ -92,6 +92,15 @@ import {
   type EpdrResult,
 } from '../metrics/electrical.ts';
 import { derivedDriveLimitDb } from '../metrics/driveExcursion.ts';
+import {
+  coilLoads,
+  resistorLoads,
+  worstCoil,
+  worstResistor,
+  type CoilLoad,
+  type PartRatings,
+  type ResistorLoad,
+} from '../metrics/buildability.ts';
 import type { Crossing, NetworkAnalysis } from '../metrics/types.ts';
 
 /* ================================================================== *
@@ -138,6 +147,57 @@ export interface GateSettings {
    * which one bit.
    */
   driveCeilingDbByDriver?: Record<string, number>;
+  /**
+   * V50 — M-C's STATED figure PER WAY, keyed by driver model, beside the
+   * single `maxDriveOnFsDb` above.
+   *
+   * V49 measured why one number for every way is the wrong shape: the 18-dB
+   * rule is a dome convention (thermal load and distortion around f_s, which
+   * M-C v2.0 does not model) while a cone's failure mode on its resonance is
+   * excursion, which V49 DERIVES. So a project states the convention for the
+   * way it belongs to and leaves the other ways to the derived ceiling alone.
+   * Resolution per way: this map first, the single figure as the fallback,
+   * nothing = no stated half (`effectiveDriveLimit`). An empty entry is NOT
+   * "zero dB"; a way that should carry no stated figure is left out.
+   */
+  maxDriveOnFsDbByDriver?: Record<string, number>;
+  /**
+   * V50 — M-A/part: the CONTINUOUS power the per-resistor watts are judged
+   * at, W. The same project field as `ProjectSettings.amplifierPowerW`
+   * (the report spreads one object into both); it is declared here because a
+   * gate that reads it makes it a search input, and a search input belongs in
+   * the fingerprint (`gateSettingsKey`) — but only while a resistor allowance
+   * is stated, so V36's "reporting only, not a fingerprint ingredient" still
+   * holds for every run that states none.
+   */
+  amplifierPowerW?: number;
+  /**
+   * V50 — M-A/part: the resistor CLASS the project builds with, W continuous
+   * (the manufacturer's rating of the series the designer buys). Used for
+   * every resistor the catalogue snap did not rate. Absent = only catalogue
+   * ratings judge, and without those the gate is OFF.
+   */
+  resistorClassW?: number;
+  /**
+   * V50 — M-A/part: the fraction of a resistor's rating it may run at. Stated
+   * and never defaulted: a filter resistor in a closed cabinet without airflow
+   * runs hot at half its rating, and how much of that a builder accepts is a
+   * project decision. Absent = no allowance at all, gate OFF, said so.
+   */
+  resistorPowerMargin?: number;
+  /**
+   * V50 — M-L: the coil CLASS, A — the saturation / maximum current of the
+   * cored coils the project builds with. Absent = only catalogue ratings
+   * judge; an air-cored coil has no saturation current and is never judged.
+   */
+  coilClassA?: number;
+  /**
+   * V50 — M-L: the amplifier's peak input voltage, V (√2·√(P_peak·R_nom)),
+   * derived ONCE by the caller from the V49 amplifier fields (`peakInputVolts`)
+   * and carried here so the coil current is a figure in amperes rather than a
+   * per-volt ratio. Absent = no peak stated, M-L reports no value.
+   */
+  peakInputVolts?: number;
 }
 
 /**
@@ -149,11 +209,11 @@ export interface GateSettings {
  * the verdict cannot disagree about which requirement bites.
  */
 export function effectiveDriveLimit(
-  settings: Pick<GateSettings, 'maxDriveOnFsDb' | 'driveCeilingDbByDriver'>,
+  settings: Pick<GateSettings, 'maxDriveOnFsDb' | 'maxDriveOnFsDbByDriver' | 'driveCeilingDbByDriver'>,
   driver: string,
   passbandMeanDb: number | undefined,
 ): { limitDb: number; source: 'stated' | 'derived'; statedDb?: number; derivedDb?: number } | undefined {
-  const stated = settings.maxDriveOnFsDb;
+  const stated = statedDriveLimitDb(settings, driver);
   const ceiling = settings.driveCeilingDbByDriver?.[driver];
   const derived =
     ceiling !== undefined && passbandMeanDb !== undefined && Number.isFinite(passbandMeanDb)
@@ -167,14 +227,36 @@ export function effectiveDriveLimit(
     : { limitDb: derived, source: 'derived', statedDb: stated, derivedDb: derived };
 }
 
-export const GATE_IDS = ['M-A', 'M-B/EPDR', 'M-B/|Z|', 'M-C'] as const;
+/**
+ * V50 — the STATED M-C figure for one way: the per-way map first, the single
+ * figure as the fallback, `undefined` when the project states neither for it.
+ * One function, three readers (the gate, the pre-bound, the flank-order rule),
+ * so nobody re-derives the fallback order.
+ */
+export function statedDriveLimitDb(
+  settings: Pick<GateSettings, 'maxDriveOnFsDb' | 'maxDriveOnFsDbByDriver'>,
+  driver: string,
+): number | undefined {
+  const perWay = settings.maxDriveOnFsDbByDriver?.[driver];
+  if (perWay !== undefined && Number.isFinite(perWay)) return perWay;
+  return settings.maxDriveOnFsDb;
+}
+
+/**
+ * V50 — two gate ids more. `M-A/part` is M-A's per-element form (the watts in
+ * ONE resistor against what that part may dissipate); `M-L` is the peak
+ * current through one coil against what that part may carry. Both are
+ * buildability: a design the amplifier can drive and the drivers survive is
+ * still not a design if the parts on the schematic cannot be bought.
+ */
+export const GATE_IDS = ['M-A', 'M-B/EPDR', 'M-B/|Z|', 'M-C', 'M-A/part', 'M-L'] as const;
 export type GateId = (typeof GATE_IDS)[number];
 
 /** One gate's verdict about one subject. */
 export interface GateVerdict {
   gate: GateId;
   /** The A4 metric this gate is built on. */
-  metric: 'M-A' | 'M-B' | 'M-C';
+  metric: 'M-A' | 'M-B' | 'M-C' | 'M-L';
   title: string;
   /** 'system', or a driver id. */
   subject: string;
@@ -363,6 +445,15 @@ export interface GateMetricValues {
      *  excursion ceiling can be judged in M-C's passband-relative form. */
     passbandMeanDb?: number;
   }[];
+  /**
+   * V50 — the discrete resistors with their watts and allowance, from
+   * `buildability.ts`. Absent = the caller could not produce them (no solved
+   * network); an empty list = a network with no discrete resistor, which the
+   * verdict says in words rather than as a zero (F0).
+   */
+  resistorLoads?: readonly ResistorLoad[];
+  /** V50 — the coils with their peak current and allowance, likewise. */
+  coilLoads?: readonly CoilLoad[];
 }
 
 /** Every gate verdict for one design, in the order A4 declares the metrics. */
@@ -485,7 +576,158 @@ export function gateVerdicts(
       }),
     );
   }
+  out.push(resistorVerdict(settings, values), coilVerdict(settings, values));
   return out;
+}
+
+/* ------------------------------------------------------------------ *
+ * V50 — the two buildability verdicts
+ * ------------------------------------------------------------------ */
+
+/**
+ * M-A/part — the watts in the resistor with the least headroom, against what
+ * THAT part may dissipate.
+ *
+ * Armed only when an allowance exists for at least one resistor: a stated
+ * class (with the margin) or a rated catalogue part (with the margin). The
+ * margin alone arms nothing, a class without margin arms nothing, and each of
+ * those states is said in the reason so a designer can see which field is
+ * missing (P4's visible half).
+ */
+function resistorVerdict(settings: GateSettings, values: GateMetricValues): GateVerdict {
+  const loads = values.resistorLoads;
+  const worst = loads ? worstResistor(loads) : null;
+  const margin = settings.resistorPowerMargin;
+  const marginOk = margin !== undefined && margin > 0;
+  const anyRating =
+    (settings.resistorClassW !== undefined && settings.resistorClassW > 0) ||
+    (loads?.some((l) => l.ratingW !== null) ?? false);
+  /* Armed when an allowance can be formed. With a stated class the limit
+   * exists even for a network with no resistor to hold against it — the gate
+   * is then ACTIVE and NOT JUDGED (value null), never silently off. */
+  const classAllowance =
+    marginOk && settings.resistorClassW !== undefined && settings.resistorClassW > 0
+      ? settings.resistorClassW * margin!
+      : undefined;
+  const limitW = marginOk && anyRating && worst !== null && worst.allowedW !== null ? worst.allowedW : classAllowance;
+  const noPower = settings.amplifierPowerW === undefined || !(settings.amplifierPowerW > 0);
+  const whyNull =
+    !loads
+      ? (values.electricalUnavailable ??
+        'the network was not solved on the measured sweep, so no resistor power was read')
+      : loads.length === 0
+        ? 'this network carries no discrete resistor — nothing to rate (a zero here would read as a measurement)'
+        : noPower
+          ? 'no continuous amplifier power is stated, so M-A\'s fractions cannot be turned into watts'
+          : 'no resistor power could be read';
+  const parameters: Record<string, number | string> = {
+    ...(worst
+      ? {
+          element: worst.id,
+          ohm: Number(worst.ohm.toFixed(3)),
+          share_of_amplifier_power: `${(worst.fraction * PERCENT).toFixed(1)} %`,
+          ...(settings.amplifierPowerW !== undefined ? { continuous_power_W: settings.amplifierPowerW } : {}),
+          ...(worst.ratingW !== null ? { rating_W: worst.ratingW, rating_source: worst.ratingSource ?? '' } : {}),
+          ...(marginOk ? { margin_fraction: margin } : {}),
+        }
+      : {}),
+    ...(loads && loads.length > 0
+      ? {
+          resistors: loads
+            .map((l) => `${l.id} ${l.watts === null ? '?' : l.watts.toFixed(1)} W` +
+              (l.allowedW !== null ? ` / ${l.allowedW.toFixed(1)} W allowed` : ''))
+            .join('; '),
+        }
+      : {}),
+    ...(!marginOk ? { margin: 'no margin fraction stated — the gate cannot form an allowance (P4)' } : {}),
+    ...(marginOk && !anyRating
+      ? { rating: 'no resistor class stated and no rated catalogue part on any resistor — nothing to judge on (P4)' }
+      : {}),
+    remedy:
+      'a resistor above its allowance needs a higher class or a series/parallel bank — a topology ' +
+      'choice the generator does not make (casebook V50)',
+    weighting: 'IEC 60268-1 programme noise, continuous (thermal — a mean, not a peak)',
+    ...(values.electricalSpan ? { judged_on: values.electricalSpan } : {}),
+  };
+  return judge({
+    gate: 'M-A/part',
+    metric: 'M-A',
+    title: 'Power in the hottest filter resistor against its rating',
+    subject: 'system',
+    value: worst?.watts ?? null,
+    unit: 'W',
+    limit: limitW,
+    direction: 'max',
+    specRef: 'A4 M-A (per part, V50)',
+    show: (v) => `${v.toFixed(1)} W${worst ? ` in ${worst.id}` : ''}`,
+    ...(worst?.watts === null || worst === null ? { whyNull } : {}),
+    parameters,
+  });
+}
+
+/**
+ * M-L — the peak current through the coil with the least headroom, against
+ * what THAT part may carry. Armed only when a class is stated or a rated
+ * catalogue part sits on at least one coil; air-cored coils carry no
+ * saturation figure and are reported, never judged.
+ */
+function coilVerdict(settings: GateSettings, values: GateMetricValues): GateVerdict {
+  const loads = values.coilLoads;
+  const worst = loads ? worstCoil(loads) : null;
+  const anyRating =
+    (settings.coilClassA !== undefined && settings.coilClassA > 0) ||
+    (loads?.some((l) => l.allowedA !== null) ?? false);
+  const classAllowance = settings.coilClassA !== undefined && settings.coilClassA > 0 ? settings.coilClassA : undefined;
+  const limitA = anyRating && worst !== null && worst.allowedA !== null ? worst.allowedA : classAllowance;
+  const noPeak = settings.peakInputVolts === undefined || !(settings.peakInputVolts > 0);
+  const whyNull =
+    !loads
+      ? (values.electricalUnavailable ??
+        'the network was not solved on the measured sweep, so no coil current was read')
+      : loads.length === 0
+        ? 'this network carries no coil'
+        : noPeak
+          ? 'no amplifier peak (peak power and nominal load, V49) is stated, so the current at the peak input cannot be formed'
+          : 'no coil current could be read';
+  const parameters: Record<string, number | string> = {
+    ...(worst
+      ? {
+          element: worst.id,
+          mH: Number((worst.henry / H_PER_MH).toFixed(3)),
+          ...(worst.atHz !== null ? { at: `${worst.atHz.toFixed(0)} Hz` } : {}),
+          ...(settings.peakInputVolts !== undefined ? { peak_input_V: Number(settings.peakInputVolts.toFixed(2)) } : {}),
+          ...(worst.allowedA !== null ? { rating_A: worst.allowedA, rating_source: worst.ratingSource ?? '' } : {}),
+        }
+      : {}),
+    ...(loads && loads.length > 0
+      ? {
+          coils: loads
+            .map((l) => `${l.id} ${l.peakA === null ? '?' : l.peakA.toFixed(2)} A` +
+              (l.atHz !== null ? ` @ ${l.atHz.toFixed(0)} Hz` : '') +
+              (l.allowedA !== null ? ` / ${l.allowedA.toFixed(2)} A allowed` : ''))
+            .join('; '),
+        }
+      : {}),
+    ...(!anyRating
+      ? { rating: 'no coil class stated and no rated catalogue part on any coil — air-cored coils have no saturation current and are never judged (P4)' }
+      : {}),
+    reading: 'peak current amplitude at the amplifier\'s peak input voltage, unweighted — saturation is a one-cycle event',
+    ...(values.electricalSpan ? { judged_on: values.electricalSpan } : {}),
+  };
+  return judge({
+    gate: 'M-L',
+    metric: 'M-L',
+    title: 'Peak current through the most loaded coil against its rating',
+    subject: 'system',
+    value: worst?.peakA ?? null,
+    unit: 'A',
+    limit: limitA,
+    direction: 'max',
+    specRef: 'A4 M-L (V50)',
+    show: (v) => `${v.toFixed(2)} A${worst ? ` through ${worst.id}` : ''}`,
+    ...(worst?.peakA === null || worst === null ? { whyNull } : {}),
+    parameters,
+  });
 }
 
 /** Null when nothing failed; otherwise one sentence naming every failure. */
@@ -600,6 +842,9 @@ export interface GateEvaluation {
       /** V49 — the passband mean the dB is relative to, for the pre-bound. */
       passbandMeanDb: number;
     }[];
+    /** V50 — the per-element loads the two buildability verdicts were made from. */
+    resistorLoads: ResistorLoad[] | null;
+    coilLoads: CoilLoad[] | null;
   };
   /** The crossings this evaluation derived, when it derived any. */
   crossings: Crossing[];
@@ -751,12 +996,20 @@ export function evaluateGates(
   settings: GateSettings,
   ref: GateReference,
   passbands: 'frozen' | 'derived' = 'frozen',
+  /**
+   * V50 — what the catalogue rates the CHOSEN parts for, keyed by element id.
+   * Resolved by the caller that holds the parts (`partRatings.ts`); absent =
+   * only the stated classes can form an allowance.
+   */
+  ratings?: PartRatings,
 ): GateEvaluation {
   const verdicts: GateVerdict[] = [];
   const metrics: GateEvaluation['metrics'] = {
     dissipation: null,
     epdr: null,
     driveVoltage: [],
+    resistorLoads: null,
+    coilLoads: null,
   };
   let crossings: Crossing[] = [];
 
@@ -792,8 +1045,32 @@ export function evaluateGates(
           'requirement was judged.');
   const electricalSpan = electrical !== null ? ref.impedance?.span : undefined;
 
-  const diss = electrical ? dissipation(electrical) : null;
+  /* V50 — the watts per resistor come from the SAME dissipation call, with the
+   * stated continuous power handed in: the fraction is untouched, and passing
+   * the power only fills the per-element watts M-A has carried since V36. */
+  const diss = electrical
+    ? dissipation(electrical, {
+        ...(settings.amplifierPowerW !== undefined ? { amplifierPowerW: settings.amplifierPowerW } : {}),
+      })
+    : null;
   metrics.dissipation = diss;
+  const rLoads = diss
+    ? resistorLoads(diss, {
+        ...(settings.amplifierPowerW !== undefined ? { continuousPowerW: settings.amplifierPowerW } : {}),
+        ...(settings.resistorClassW !== undefined ? { resistorClassW: settings.resistorClassW } : {}),
+        ...(settings.resistorPowerMargin !== undefined ? { marginFraction: settings.resistorPowerMargin } : {}),
+        ...(ratings ? { ratings } : {}),
+      })
+    : undefined;
+  const lLoads = electrical
+    ? coilLoads(electrical, {
+        ...(settings.peakInputVolts !== undefined ? { peakInputVolts: settings.peakInputVolts } : {}),
+        ...(settings.coilClassA !== undefined ? { coilClassA: settings.coilClassA } : {}),
+        ...(ratings ? { ratings } : {}),
+      })
+    : undefined;
+  metrics.resistorLoads = rLoads ?? null;
+  metrics.coilLoads = lLoads ?? null;
   const e = electrical ? epdr(electrical) : null;
   metrics.epdr = e;
 
@@ -852,6 +1129,8 @@ export function evaluateGates(
       ...(electricalSpan ? { electricalSpan } : {}),
       ...(electricalUnavailable ? { electricalUnavailable } : {}),
       driveVoltage: drive,
+      ...(rLoads ? { resistorLoads: rLoads } : {}),
+      ...(lLoads ? { coilLoads: lLoads } : {}),
     }),
   );
 
@@ -871,7 +1150,22 @@ export function anyGateActive(s: GateSettings): boolean {
     s.minEpdrOhm !== undefined ||
     s.ampMinLoadOhm !== undefined ||
     s.maxDriveOnFsDb !== undefined ||
-    Object.keys(s.driveCeilingDbByDriver ?? {}).length > 0
+    Object.keys(s.maxDriveOnFsDbByDriver ?? {}).length > 0 ||
+    Object.keys(s.driveCeilingDbByDriver ?? {}).length > 0 ||
+    resistorGateArmed(s) ||
+    (s.coilClassA !== undefined && s.coilClassA > 0)
+  );
+}
+
+/**
+ * V50 — whether M-A/part can judge on the STATED inputs alone: a class and a
+ * margin. A catalogue rating can arm it as well, but that is data on the parts
+ * and not a setting, so it is not this function's to know.
+ */
+export function resistorGateArmed(s: GateSettings): boolean {
+  return (
+    s.resistorClassW !== undefined && s.resistorClassW > 0 &&
+    s.resistorPowerMargin !== undefined && s.resistorPowerMargin > 0
   );
 }
 
@@ -891,6 +1185,27 @@ export function gateSettingsKey(s: GateSettings): Record<string, number | Record
     const c: Record<string, number> = {};
     for (const k of keys) c[k] = Number(ceilings[k].toPrecision(9));
     out.driveCeilingDbByDriver = c;
+  }
+  /* V50 — the per-way stated figures, same rule. */
+  const perWay = s.maxDriveOnFsDbByDriver ?? {};
+  const wayKeys = Object.keys(perWay).sort();
+  if (wayKeys.length > 0) {
+    const c: Record<string, number> = {};
+    for (const k of wayKeys) c[k] = Number(perWay[k].toPrecision(9));
+    out.maxDriveOnFsDbByDriver = c;
+  }
+  /* V50 — the buildability inputs. The continuous power and the peak input
+   * are search inputs ONLY while the gate that reads them is armed; a run
+   * that states a power for its watt column and no allowance still stamps as
+   * it did (V36's rule, kept). */
+  if (resistorGateArmed(s)) {
+    out.resistorClassW = s.resistorClassW!;
+    out.resistorPowerMargin = s.resistorPowerMargin!;
+    if (s.amplifierPowerW !== undefined) out.amplifierPowerW = s.amplifierPowerW;
+  }
+  if (s.coilClassA !== undefined && s.coilClassA > 0) {
+    out.coilClassA = s.coilClassA;
+    if (s.peakInputVolts !== undefined) out.peakInputVolts = Number(s.peakInputVolts.toPrecision(9));
   }
   return out;
 }

@@ -32,6 +32,14 @@ export interface CatalogPart {
   wireMm?: number;
   /** Power rating, W (resistors). */
   powerW?: number;
+  /**
+   * V50 — saturation / maximum current, A (CORED coils). Absent on every
+   * air-cored coil, which has no saturation current, and absent on a cored
+   * coil whose manufacturer publishes none — the buildability gate then
+   * judges that part on the stated coil class or on nothing, and says so.
+   * Never estimated here: a saturation figure is datasheet data.
+   */
+  maxCurrentA?: number;
   /** EUR list price — absent until real prices are entered. */
   priceEur?: number;
   /** This is an EXACT market SKU from an imported database, not an entry
@@ -57,6 +65,9 @@ export interface CatalogSeries {
   esr?: number;
   /** Power rating (resistors), W. */
   powerW?: number;
+  /** V50 — saturation / maximum current (cored coils), A, when the series
+   *  publishes one figure for the whole series. */
+  maxCurrentA?: number;
   /** Value grid the series is stocked in. Default: E12 for coils, E24 for
    *  caps/resistors (practice). */
   eSeries?: 'E12' | 'E24';
@@ -140,6 +151,7 @@ function buildCatalog(): CatalogPart[] {
                   : 0,
             ...(gauge !== undefined ? { wireMm: gauge } : {}),
             ...(s.powerW !== undefined ? { powerW: s.powerW } : {}),
+            ...(s.maxCurrentA !== undefined ? { maxCurrentA: s.maxCurrentA } : {}),
             ...(s.basePrice !== undefined
               ? { priceEur: Number((s.basePrice + (s.costFactor ?? 0) * value).toPrecision(3)) }
               : {}),
@@ -240,6 +252,7 @@ function partSeries(): CatalogSeries[] {
         range: [p.value, p.value],
         ...(p.wireMm !== undefined ? { gauges: [p.wireMm] } : {}),
         ...(p.powerW !== undefined ? { powerW: p.powerW } : {}),
+        ...(p.maxCurrentA !== undefined ? { maxCurrentA: p.maxCurrentA } : {}),
         ...(p.tier !== undefined ? { tier: p.tier } : {}),
       });
     } else {

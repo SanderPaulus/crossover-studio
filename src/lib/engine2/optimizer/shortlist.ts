@@ -106,6 +106,14 @@ export interface DissipationColumn {
   /** The power those watts are at, or null. Quoted beside them, because
    *  "20 W" without it is half a sentence. */
   powerW: number | null;
+  /**
+   * V50 — what that hottest resistor MAY dissipate (rating × margin), or null
+   * when no allowance exists; and the coil carrying the highest peak current
+   * at the amplifier's peak input, with its allowance. Columns, read from the
+   * gate evaluation; the verdicts beside them are what judges.
+   */
+  largestResistorAllowedW?: number | null;
+  worstCoil?: { id: string; peakA: number; atHz: number | null; allowedA: number | null } | null;
 }
 
 /** One candidate offered to the selection. */

@@ -4,9 +4,9 @@ Voertaal: Nederlands (zoals alle projectdocumentatie voor Sander & Stefan).
 Volgorde binnen een blok = aanbevolen prioriteit. Inschattingen zijn grof:
 **S** = uurtje(s), **M** = dagdeel–dag, **L** = meerdere dagen/gefaseerd.
 
-## Stand ná V49 (3 sep 2026) — engine v2
+## Stand ná V50 (3 sep 2026) — engine v2
 
-De regels hieronder vatten samen wat F4 tot en met V49 hebben opgeleverd; het
+De regels hieronder vatten samen wat F4 tot en met V50 hebben opgeleverd; het
 bewijs per stap staat in het casusboek (`docs/CrossoverStudio_OptimizerV2_strategie_v2.md`,
 Deel B) en de suite-meting in `CLAUDE.md`. Alles wat hier staat is gemeten op
 casus 1 (Koan 2951) en geldt alleen met de v2-toggle aan; met de toggle uit is
@@ -27,8 +27,21 @@ de app byte-identiek aan vóór F1.
   niveau-anker en de doelcurve (basplateau) zijn A5e.2 en sturen ook de
   zoektocht, en de aandrijving op de eigen resonantie is een gestelde eis
   (−20 dB, voorlopig) náást een uit excursie afgeleid plafond — de strengste
-  oordeelt. Leeg veld = geen oordeel, en het paneel zegt `off` / `not judged` /
+  oordeelt. Sinds V50 is dat gestelde getal PER WEG: casus 1 stelt het voor de
+  tweeter (dome-conventie) en laat de mid aan de afgeleide excursiegrens.
+  Leeg veld = geen oordeel, en het paneel zegt `off` / `not judged` /
   `inside`.
+- **Bouwbaarheid als eis** (V50): het vermogen in elke weerstand (M-A/part,
+  IEC-gewogen bij het continue vermogen, tegen klasse × marge of de opgave van
+  het gesnapte onderdeel) en de piekstroom door elke spoel (M-L, bij de
+  piekingang, tegen de verzadigingsopgave) zijn poorten. Het catalogusschema
+  kent `maxCurrentA`; de v8-catalogus draagt op 108 van 108 weerstanden een
+  vermogensopgave en op 0 van 2116 spoelen een stroomopgave. Op casus 1 is de
+  weerstandseis gesteld (10 W × 0,5 bij 100 W) en oordeelt het rapport ermee op
+  elke bevroren netlist; op de ZOEKTOCHT is zij nog niet gewapend, want geen
+  enkel bekend ontwerp op deze casus haalt haar (HUIDIG factor vijf: de
+  anker-verzwakking van de woofer ís vermogen in een serieweerstand). Dat
+  besluit staat in het manifest (`bouwbaarheid_op_de_zoektocht`).
 - **Verwerpingen zijn zichtbaar** (V31/V33, UI-1): een kandidaat waarvan de
   tune in zijn geheel geweigerd is levert geen netwerk maar een verwerping met
   de regel; de shortlist is de bron van de Working-tab en de v1-ranglijst staat
@@ -47,12 +60,16 @@ de app byte-identiek aan vóór F1.
 **Open (gemeten, niet gebouwd).**
 
 1. **Componenten-eisen** — A5e.3, het catalogus-schema: optimalisatiegrenzen
-   uit de catalogus-spanwijdte in plaats van uit vaste componentgrenzen.
-2. **Bescherming per weg** — de M-C-grens is één getal voor elke
-   hoogdoorlaatbeschermde weg; V47b/V49 laten zien dat −20 dB op een
-   88,8 Hz-mid-resonantie iets anders betekent dan op 924 Hz, en dat de
-   tweetergrens thermisch/vervorming is en geen excursie (V49). Ook
-   `qesMultiplierMax` per weg staat open (V45).
+   uit de catalogus-spanwijdte in plaats van uit vaste componentgrenzen. V50
+   bracht de opgave PER ONDERDEEL (vermogen, verzadigingsstroom) in de poort;
+   de spanwijdte als zoekgrens staat nog open.
+2. **De weerstandseis op de zoektocht, en de parallelle weerstand als
+   topologie-element** — V50 mat dat bij 100 W continu geen enkel bekend passief
+   ontwerp op casus 1 onder 5 W per weerstand blijft (HUIDIG 25,6 W in R8),
+   omdat de woofer 4,6–8,5 dB anker-verzwakking betaalt. Sanders beslissing:
+   klasse, marge of continu vermogen anders stellen, banken als
+   topologie-element (de generator splitst nu niets), of de hybride route.
+   `qesMultiplierMax` per weg staat nog open (V45).
 3. **Hermeting met gedocumenteerde meetspanning** — route 2 van de
    excursie-afleiding (de akoestische tegenproef) staat uit omdat de
    FF-meetspanning van casus 1 niet gedocumenteerd is; bij de eerstvolgende

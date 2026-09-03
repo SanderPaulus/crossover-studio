@@ -132,6 +132,12 @@ export interface CandidateDeclarationInput {
    */
   driveOnFsLimitDb?: number;
   /**
+   * V50 — the same figure stated PER WAY (keyed by driver model), beside the
+   * single figure above. Any way with a stated figure is an absolute
+   * requirement the safety gate can defer to, exactly like the single one.
+   */
+  driveOnFsLimitDbByDriver?: Record<string, number>;
+  /**
    * V49 — TRUE when the report derived an excursion ceiling for at least one
    * way (M-C v2.0). An absolute requirement exists then even with no stated dB
    * figure, so the safety gate's seed comparison has something to defer to
@@ -498,7 +504,11 @@ export function declareCandidateChoices(input: CandidateDeclarationInput): Choic
    * run somebody can ask for rather than a build that has to be patched. */
   if (s.protectionRule !== undefined) {
     stated.protectionRule = s.protectionRule;
-  } else if (input.driveOnFsLimitDb !== undefined || input.driveCeilingDerived === true) {
+  } else if (
+    input.driveOnFsLimitDb !== undefined ||
+    Object.keys(input.driveOnFsLimitDbByDriver ?? {}).length > 0 ||
+    input.driveCeilingDerived === true
+  ) {
     stated.protectionRule = 'stated';
   } else {
     absent.push({

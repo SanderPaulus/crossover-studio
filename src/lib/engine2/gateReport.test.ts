@@ -26,6 +26,10 @@ const geometry = casus1Geometry(golden);
 const BASE: ReportSettings = {
   amplifierPowerW: 100,
   orderByPair: { [ctcKey('woofer', 'mid')]: 4, [ctcKey('mid', 'tweeter')]: 4 },
+  /* V50 — the amplifier peak, so M-L can read a current (in amperes) to
+   * report; it states no LIMIT, which is what this file is about. */
+  amplifierPeakPowerW: 160,
+  amplifierNominalLoadOhm: 8,
 };
 
 const report = (settings: ReportSettings) =>

@@ -136,15 +136,22 @@ describe('V45 — de CI-laag bewaakt de natuurkunde, de lokale suite de bytes', 
     }
   });
 
-  it('de byte-inventaris is precies deze VIJF bronnamen — acht gedraaide tests', () => {
+  it('de byte-inventaris is precies deze ZES bronnamen — tien gedraaide tests', () => {
     /* De namen staan hier voluit zodat een toevoeging een BEWUSTE daad is: wie
      * er een tagt, komt hier langs en moet opschrijven wat hij uit CI haalt.
      *
-     * VIJF namen en ACHT tests, en dat is geen tegenspraak: drie ervan zijn
+     * ZES namen en TIEN tests, en dat is geen tegenspraak: vier ervan zijn
      * `it.each(seeds)` over twee zaden. De scan leest de BRON, dus zij staan
-     * hier met hun `%i` er nog in — de gedraaide namen zijn 3x2 + 1 + 1. */
+     * hier met hun `%i` er nog in — de gedraaide namen zijn 4x2 + 1 + 1.
+     *
+     * V50 voegde de zesde toe: het oordelenblok `verdicts_sinds_V50` van
+     * `f4cRegression`, dat de twee nieuwe poorten (M-A/part, M-L) op elke
+     * oordelenlijst pint. Uit CI om dezelfde reden als de andere vijf: het is
+     * een byte-vergelijking van een tuner-run tegen een fixture die op
+     * darwin/arm64 is opgenomen. */
     expect(taggedNames(BYTES_TAG)).toEqual([
       `${BYTES_TAG} one candidate, live through handleV2Request, byte for byte`,
+      `${BYTES_TAG} seed %i: and ALL SIX verdicts reproduce the V50 block`,
       `${BYTES_TAG} seed %i: so does the F4b2 shape — the fixture pins both`,
       `${BYTES_TAG} seed %i: the F4c shape reproduces the STORED F4b2 network`,
       `${BYTES_TAG} seed %i: the VERDICTS reproduce their own V32 block`,

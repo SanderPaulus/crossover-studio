@@ -1,6 +1,6 @@
 {
  "_": "F4d — DOCUMENTATIE, geen acceptatiewaarde. Zie scripts/generate-casus1-v2-candidates.ts.",
- "gegenereerd_op_commit": "17d071eed3227875f2a797c83bbb71916d106547",
+ "gegenereerd_op_commit": "11cfe31a0d1ffb77feaaba669d402b678256379a",
  "gegenereerd_op_commit_betekenis": "De HEAD van de boom waarin dit script DRAAIDE — dus de commit vóór de commit waarin deze fixtures landen. Dat kan niet anders: het script schrijft de bestanden en de commit legt ze vast, in die volgorde. Wie wil reproduceren moet dus deze commit uitchecken PLUS de bronwijzigingen van de eerstvolgende, of eenvoudiger: de commit nemen waarin de fixtures staan. Bij de F4d-nazorg stond hier 40bdf23 (de V20-commit) terwijl de fixtures bij d70c67b lagen, en dat leek een fout tot het opnieuw draaien de netlists byte-identiek teruggaf.",
  "seed": 20260827,
  "opgenomen_op": {
@@ -10,7 +10,7 @@
   "v8": "14.6.202.33-node.19",
   "_": "A5e.4 is byte-identiek PER (machine, runtime); over machines heen geldt equivalentie binnen de tolerantieklassen. Reproduceert dit corpus elders niet byte-voor-byte, dan is dat geen regressie — regenereren daar levert een eigen, even geldig corpus. Wat wél overal moet reproduceren zijn de klasse-A/B-referenties: dat is rekenwerk op bevroren netlists en dat is de laag die CI draait (casusboek V46)."
  },
- "run_vingerafdruk": "engine=2.0.0-F1 estimators=6087f58a seed=20260827 budget=tuner starts=1 status=completed design=a7ccf830 measurements=e97d1bdc gates=c1a08532 bounds=5465b825 tuning=9e0c0524 facts=dc57fb2c choices=1cfaa800",
+ "run_vingerafdruk": "engine=2.0.0-F1 estimators=05c599f3 seed=20260827 budget=tuner starts=1 status=completed design=a7ccf830 measurements=e97d1bdc gates=3f1db805 bounds=5465b825 tuning=9e0c0524 facts=a8c4a40a choices=1cfaa800",
  "grid": {
   "van_hz": 200,
   "tot_hz": 20000,
@@ -54,15 +54,25 @@
   "synthMode_waarom": "de eigen standaard van de app. Op 'filter' leverde dezelfde keten 31,4 dB rimpel tegen 5,2 dB op 'acoustic' (V27); een fixture die niet de synthese van de app draait, meet de app niet.",
   "v2_poorten_gewapend": [
    "ampMinLoadOhm",
-   "maxDriveOnFsDb"
+   "maxDriveOnFsDbByDriver",
+   "peakInputVolts"
   ],
   "v2_poorten_bron": {
    "M-C": {
-    "sleutel": "maxDriveOnFsDb",
-    "bron": "gesteld",
+    "sleutel": "maxDriveOnFsDbByDriver",
+    "bron": "gesteld, PER WEG (V50)",
+    "waarde_dB_per_weg": {
+     "tweeter": -20
+    },
     "waarde_dB": -20,
-    "waar": "manifest_en_geometrie.gestelde_eisen.tweeter_drive_op_fs_max_dB — het ENIGE voorkomen van dit getal. Het reist langs het A5a-pad van de app: v2.gates.maxDriveOnFsDb voor het oordeel, en dezelfde gestelde grens laat de kandidaat `protectionRule: stated` verklaren, waarmee de zaadvergelijking van de volle-band-veiligheidspoort vervalt (V47).",
-    "regel": "driveVoltageOnResonance (src/lib/engine2/metrics/electrical.ts) op de gemeten sweep (V32), per hoogdoorlaatbeschermde weg, met de doorlaatband uit de eigen kruispunten (F1-conventie)."
+    "waar": "manifest_en_geometrie.gestelde_eisen.drive_op_fs_max_dB_per_weg (V50) — de tweeter draagt de −20-conventie van tweeter_drive_op_fs_max_dB, de mid draagt GEEN gesteld getal en wordt op de afgeleide excursiegrens alleen geoordeeld. Het reist langs het A5a-pad van de app: v2.gates.maxDriveOnFsDbByDriver voor het oordeel, en de gestelde grens laat de kandidaat `protectionRule: stated` verklaren, waarmee de zaadvergelijking van de volle-band-veiligheidspoort vervalt (V47).",
+    "regel": "driveVoltageOnResonance (src/lib/engine2/metrics/electrical.ts) op de gemeten sweep (V32), per hoogdoorlaatbeschermde weg, met de doorlaatband uit de eigen kruispunten (F1-conventie).",
+    "excursie_plafond_re_ingang_dB": {
+     "woofer": -9.829452302716332,
+     "mid": -17.67207875065817,
+     "tweeter": -8.577789359751495
+    },
+    "excursie_regel": "M-C v2.0 (V49): plafond = 20·log10(V_toegestaan/V_piek) per driver uit driverkaart + versterkerpiek + gemeten sweep (metrics/driveExcursion.ts); de poort leest per weg de STRENGSTE van dit plafond (passband-relatief gemaakt) en het gestelde dB-getal (effectiveDriveLimit)."
    },
    "M-B/|Z|": {
     "sleutel": "ampMinLoadOhm",
@@ -72,7 +82,16 @@
     "regel": "meetsAmpFloor (src/lib/impedanceFloor.ts), inclusief haar meettolerantie — een projectconventie, geen eigenschap van de versterker."
    }
   },
-  "v2_poorten_waarom": "M-B/|Z| is GEWAPEND op de gestelde versterkervloer; zie `v2_poorten_bron`. M-C is GEWAPEND op de gestelde aandrijfgrens (V47), en hij oordeelt ÉLKE hoogdoorlaatbeschermde weg — op casus 1 de mid én de tweeter, terwijl het getal van een tweetermeting is afgeleid. M-A (dissipatiefractie) en M-B/EPDR blijven ONGEWAPEND: casus 1 stelt daar niets voor, en leeg veld = geen oordeel (P4). Een afwezige grens is geen poort die altijd slaagt — hij rapporteert zijn waarde en oordeelt niets.",
+  "v2_poorten_waarom": "M-B/|Z| is GEWAPEND op de gestelde versterkervloer; zie `v2_poorten_bron`. M-C is GEWAPEND PER WEG (V50): een gesteld getal op tweeter; elke andere hoogdoorlaatbeschermde weg (op casus 1 de mid) wordt op de afgeleide excursiegrens van V49 alleen geoordeeld. M-A/part is NIET gewapend op de zoektocht (V50, gestelde_eisen.bouwbaarheid_op_de_zoektocht): de weerstandseis is gesteld en het rapport oordeelt ermee op elke bevroren netlist, maar de generator wapent haar pas als Sander dat besluit — zie de sanity op HUIDIG daar. M-L rapporteert de piekstroom per spoel bij de piekingang en oordeelt niets: casus 1 stelt geen spoelklasse (de C-Coil-documentatie noemt geen verzadigingsstroom, V50). M-A (dissipatiefractie) en M-B/EPDR blijven ONGEWAPEND: casus 1 stelt daar niets voor, en leeg veld = geen oordeel (P4). Een afwezige grens is geen poort die altijd slaagt — hij rapporteert zijn waarde en oordeelt niets.",
+  "bouwbaarheid": {
+   "weerstandsklasse_W": 10,
+   "weerstandsmarge": 0.5,
+   "spoelklasse_A": null,
+   "continu_vermogen_W": 100,
+   "piekingang_V": 50.59644256269407,
+   "gewapend_op_de_zoektocht": false,
+   "waar": "manifest_en_geometrie.gestelde_eisen.weerstandsklasse_*, .spoelklasse_*, .versterker_continu_vermogen_W, .bouwbaarheid_op_de_zoektocht"
+  },
   "v2_budgetten_gewapend": [
    "lfBumpBudgetDb",
    "qesMultiplierMax"
@@ -215,7 +234,7 @@
    "kinds": [
     "gate"
    ],
-   "reason": "M-C (mid): 5.6 dB exceeds the stated ceiling of -20.0 dB; M-C (tweeter): -17.0 dB exceeds the stated ceiling of -20.0 dB",
+   "reason": "M-C (mid): 5.6 dB exceeds the stated ceiling of -13.6 dB; M-C (tweeter): -17.0 dB exceeds the stated ceiling of -20.0 dB",
    "rejectedTune": {
     "minZOhm": 2.598543174371101,
     "windowPlusMinusDb": 73.1489501353104,
@@ -245,7 +264,7 @@
    "kinds": [
     "gate"
    ],
-   "reason": "M-B/|Z|: 1.11 Ω falls below the stated floor of 2.60 Ω; M-C (mid): -11.1 dB exceeds the stated ceiling of -20.0 dB; M-C (tweeter): -17.5 dB exceeds the stated ceiling of -20.0 dB",
+   "reason": "M-B/|Z|: 1.11 Ω falls below the stated floor of 2.60 Ω; M-C (tweeter): -17.5 dB exceeds the stated ceiling of -20.0 dB",
    "rejectedTune": {
     "minZOhm": 1.1701707017060698,
     "windowPlusMinusDb": 73.02882762164394,
@@ -275,7 +294,7 @@
    "kinds": [
     "gate"
    ],
-   "reason": "M-C (mid): -7.3 dB exceeds the stated ceiling of -20.0 dB",
+   "reason": "M-C (mid): -7.3 dB exceeds the stated ceiling of -11.2 dB",
    "rejectedTune": {
     "minZOhm": 2.5988708509357377,
     "windowPlusMinusDb": 73.58763998194074,
@@ -358,7 +377,7 @@
      "gewapend": true,
      "geslaagd": true,
      "waarde": -60.605,
-     "grens": -20
+     "grens": -11.44699988941068
     },
     {
      "poort": "M-C",
@@ -367,6 +386,22 @@
      "geslaagd": true,
      "waarde": -29.725,
      "grens": -20
+    },
+    {
+     "poort": "M-A/part",
+     "onderwerp": "system",
+     "gewapend": false,
+     "geslaagd": true,
+     "waarde": 26.67,
+     "grens": null
+    },
+    {
+     "poort": "M-L",
+     "onderwerp": "system",
+     "gewapend": false,
+     "geslaagd": true,
+     "waarde": 33.186,
+     "grens": null
     }
    ],
    "geweigerd_door": [],
@@ -422,7 +457,7 @@
      "gewapend": true,
      "geslaagd": true,
      "waarde": -40.062,
-     "grens": -20
+     "grens": -13.615496508773838
     },
     {
      "poort": "M-C",
@@ -431,6 +466,22 @@
      "geslaagd": true,
      "waarde": -22.165,
      "grens": -20
+    },
+    {
+     "poort": "M-A/part",
+     "onderwerp": "system",
+     "gewapend": false,
+     "geslaagd": true,
+     "waarde": 13.631,
+     "grens": null
+    },
+    {
+     "poort": "M-L",
+     "onderwerp": "system",
+     "gewapend": false,
+     "geslaagd": true,
+     "waarde": 28.316,
+     "grens": null
     }
    ],
    "geweigerd_door": [],
@@ -486,7 +537,7 @@
      "gewapend": true,
      "geslaagd": true,
      "waarde": -58.682,
-     "grens": -20
+     "grens": -11.513301244330195
     },
     {
      "poort": "M-C",
@@ -495,6 +546,22 @@
      "geslaagd": true,
      "waarde": -27.907,
      "grens": -20
+    },
+    {
+     "poort": "M-A/part",
+     "onderwerp": "system",
+     "gewapend": false,
+     "geslaagd": true,
+     "waarde": 33.545,
+     "grens": null
+    },
+    {
+     "poort": "M-L",
+     "onderwerp": "system",
+     "gewapend": false,
+     "geslaagd": true,
+     "waarde": 18.056,
+     "grens": null
     }
    ],
    "geweigerd_door": [],
@@ -550,7 +617,7 @@
      "gewapend": true,
      "geslaagd": true,
      "waarde": -30.991,
-     "grens": -20
+     "grens": -12.671309509418556
     },
     {
      "poort": "M-C",
@@ -559,6 +626,22 @@
      "geslaagd": true,
      "waarde": -29.536,
      "grens": -20
+    },
+    {
+     "poort": "M-A/part",
+     "onderwerp": "system",
+     "gewapend": false,
+     "geslaagd": true,
+     "waarde": 32.103,
+     "grens": null
+    },
+    {
+     "poort": "M-L",
+     "onderwerp": "system",
+     "gewapend": false,
+     "geslaagd": true,
+     "waarde": 19.771,
+     "grens": null
     }
    ],
    "geweigerd_door": [],
@@ -676,7 +759,7 @@
     "regels": [
      "gate"
     ],
-    "reden": "M-C (mid): 5.6 dB exceeds the stated ceiling of -20.0 dB; M-C (tweeter): -17.0 dB exceeds the stated ceiling of -20.0 dB",
+    "reden": "M-C (mid): 5.6 dB exceeds the stated ceiling of -13.6 dB; M-C (tweeter): -17.0 dB exceeds the stated ceiling of -20.0 dB",
     "geweigerde_tune": {
      "minZOhm": 2.598543174371101,
      "windowPlusMinusDb": 73.1489501353104,
@@ -722,7 +805,7 @@
      "gewapend": true,
      "geslaagd": true,
      "waarde": -35.759,
-     "grens": -20
+     "grens": -14.379053544655441
     },
     {
      "poort": "M-C",
@@ -731,6 +814,22 @@
      "geslaagd": true,
      "waarde": -24.224,
      "grens": -20
+    },
+    {
+     "poort": "M-A/part",
+     "onderwerp": "system",
+     "gewapend": false,
+     "geslaagd": true,
+     "waarde": 16.168,
+     "grens": null
+    },
+    {
+     "poort": "M-L",
+     "onderwerp": "system",
+     "gewapend": false,
+     "geslaagd": true,
+     "waarde": 25.975,
+     "grens": null
     }
    ],
    "geweigerd_door": [],
@@ -786,7 +885,7 @@
      "gewapend": true,
      "geslaagd": true,
      "waarde": -51.938,
-     "grens": -20
+     "grens": -11.422412129925812
     },
     {
      "poort": "M-C",
@@ -795,6 +894,22 @@
      "geslaagd": true,
      "waarde": -29.008,
      "grens": -20
+    },
+    {
+     "poort": "M-A/part",
+     "onderwerp": "system",
+     "gewapend": false,
+     "geslaagd": true,
+     "waarde": 28.293,
+     "grens": null
+    },
+    {
+     "poort": "M-L",
+     "onderwerp": "system",
+     "gewapend": false,
+     "geslaagd": true,
+     "waarde": 13.802,
+     "grens": null
     }
    ],
    "geweigerd_door": [],
@@ -876,7 +991,7 @@
     "regels": [
      "gate"
     ],
-    "reden": "M-B/|Z|: 1.11 Ω falls below the stated floor of 2.60 Ω; M-C (mid): -11.1 dB exceeds the stated ceiling of -20.0 dB; M-C (tweeter): -17.5 dB exceeds the stated ceiling of -20.0 dB",
+    "reden": "M-B/|Z|: 1.11 Ω falls below the stated floor of 2.60 Ω; M-C (tweeter): -17.5 dB exceeds the stated ceiling of -20.0 dB",
     "geweigerde_tune": {
      "minZOhm": 1.1701707017060698,
      "windowPlusMinusDb": 73.02882762164394,
@@ -948,7 +1063,7 @@
     "regels": [
      "gate"
     ],
-    "reden": "M-C (mid): -7.3 dB exceeds the stated ceiling of -20.0 dB",
+    "reden": "M-C (mid): -7.3 dB exceeds the stated ceiling of -11.2 dB",
     "geweigerde_tune": {
      "minZOhm": 2.5988708509357377,
      "windowPlusMinusDb": 73.58763998194074,
@@ -994,7 +1109,7 @@
      "gewapend": true,
      "geslaagd": true,
      "waarde": -33.74,
-     "grens": -20
+     "grens": -11.165679970637616
     },
     {
      "poort": "M-C",
@@ -1003,6 +1118,22 @@
      "geslaagd": true,
      "waarde": -27.732,
      "grens": -20
+    },
+    {
+     "poort": "M-A/part",
+     "onderwerp": "system",
+     "gewapend": false,
+     "geslaagd": true,
+     "waarde": 34.889,
+     "grens": null
+    },
+    {
+     "poort": "M-L",
+     "onderwerp": "system",
+     "gewapend": false,
+     "geslaagd": true,
+     "waarde": 13.49,
+     "grens": null
     }
    ],
    "geweigerd_door": [],

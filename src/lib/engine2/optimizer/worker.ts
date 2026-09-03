@@ -56,6 +56,8 @@ import {
   type MeasuredSweep,
 } from './gates.ts';
 import type { DissipationResult } from '../metrics/electrical.ts';
+import type { CoilLoad, ResistorLoad } from '../metrics/buildability.ts';
+import { partRatingsOf } from './partRatings.ts';
 import { lfBump } from '../metrics/acoustic.ts';
 import { buildAnalysis } from '../metrics/analysis.ts';
 import type { DissipationColumn } from './shortlist.ts';
@@ -1027,6 +1029,31 @@ function tuneOptionsFor(
     }
   }
 
+  /* ---- V50: BUILDABILITY, said out loud on every v2 run ----------------- */
+  {
+    const g = v2.gates;
+    const rArmed = g.resistorClassW !== undefined && g.resistorClassW > 0 &&
+      g.resistorPowerMargin !== undefined && g.resistorPowerMargin > 0;
+    const snap = network.choices.catalogSnap === true;
+    collect.notes.push(
+      rArmed
+        ? `M-A/part (V50) judges every discrete resistor against ${(g.resistorClassW! * g.resistorPowerMargin!).toFixed(1)} W ` +
+          `(class ${g.resistorClassW} W × margin ${g.resistorPowerMargin})` +
+          (g.amplifierPowerW !== undefined ? ` at ${g.amplifierPowerW} W continuous` : ', but NO continuous power is stated so no watts exist to judge') +
+          (snap ? '; a snapped part with a catalogue rating is judged on that rating instead.' : '.')
+        : 'M-A/part (V50) judges nothing: no resistor class with a margin is stated' +
+          (snap ? ' (a snapped part with a catalogue rating would still be judged on it).' : ', and the snap is off so no catalogue rating exists either.'),
+    );
+    collect.notes.push(
+      g.coilClassA !== undefined && g.coilClassA > 0
+        ? `M-L (V50) judges every coil against ${g.coilClassA} A peak` +
+          (g.peakInputVolts !== undefined ? ` at a peak input of ${g.peakInputVolts.toFixed(1)} V.` : ', but NO amplifier peak is stated so no current exists to judge.')
+        : 'M-L (V50) judges nothing: no coil class is stated' +
+          (snap ? ' (a snapped cored coil with a catalogue rating would still be judged on it).' : ', and the snap is off so no catalogue rating exists either.') +
+          (g.peakInputVolts !== undefined ? ` The peak current per coil is still reported at ${g.peakInputVolts.toFixed(1)} V.` : ''),
+    );
+  }
+
   /* ---- V47: WHICH OF THE TWO PROTECTION RULES IS ACTUALLY IN FORCE ------
    *
    * Said out loud on every v2 run, because the two rules do not order the same
@@ -1048,7 +1075,18 @@ function tuneOptionsFor(
    * happen in the app the moment somebody clears the M-C field while a
    * candidate that was generated with it is still in flight. */
   const wantsStatedProtection = stated.protectionRule === 'stated';
-  const driveGateArmed = v2.gates.maxDriveOnFsDb !== undefined || ceilingModels.length > 0;
+  const perWayStated = Object.keys(v2.gates.maxDriveOnFsDbByDriver ?? {}).sort();
+  const driveGateArmed =
+    v2.gates.maxDriveOnFsDb !== undefined || perWayStated.length > 0 || ceilingModels.length > 0;
+  if (perWayStated.length > 0) {
+    collect.notes.push(
+      'M-C (V50): a stated dB figure exists PER WAY for ' +
+        perWayStated.map((m) => `${m} (${v2.gates.maxDriveOnFsDbByDriver![m]} dB)`).join(', ') +
+        (v2.gates.maxDriveOnFsDb !== undefined
+          ? `; every other protected way reads the single figure ${v2.gates.maxDriveOnFsDb} dB.`
+          : '; every other protected way carries NO stated figure and is judged on the excursion-derived ceiling alone (or on nothing).'),
+    );
+  }
   if (wantsStatedProtection && driveGateArmed) {
     collect.notes.push(
       'Upper-driver protection is judged by the STATED requirement — M-C at most ' +
@@ -1248,7 +1286,10 @@ function tuneOptionsFor(
             } catch {
               return null;
             }
-            return evaluateGates(netlist, v2.gates, reference, 'frozen').violation;
+            /* V50 — what the catalogue rates the CHOSEN parts for, read off
+             * the `catalog` attribution the snap wrote. Only with the snap ON:
+             * an unsnapped part has no SKU and the stated class judges it. */
+            return evaluateGates(netlist, v2.gates, reference, 'frozen', ratingsFor(parts, network)).violation;
           },
         }
       : {}),
@@ -1274,14 +1315,31 @@ function tuneOptionsFor(
  */
 function withDerivedDriveCeiling(v2: V2RunSettings): V2RunSettings {
   const c = v2.driveCeilingDbByModel;
-  if (!c || Object.keys(c).length === 0) return v2;
+  /* V50 — the continuous power M-A/part turns fractions into watts with is
+   * the SAME field the shortlist column prints at (`v2.amplifierPowerW`), so
+   * it is folded into the gate object here rather than sent twice. A payload
+   * that states neither a ceiling nor a power is returned untouched. */
+  const power = v2.amplifierPowerW !== undefined && v2.amplifierPowerW > 0 ? v2.amplifierPowerW : undefined;
+  if ((!c || Object.keys(c).length === 0) && power === undefined) return v2;
   return {
     ...v2,
     gates: {
       ...v2.gates,
-      driveCeilingDbByDriver: { ...(v2.gates.driveCeilingDbByDriver ?? {}), ...c },
+      ...(c && Object.keys(c).length > 0
+        ? { driveCeilingDbByDriver: { ...(v2.gates.driveCeilingDbByDriver ?? {}), ...c } }
+        : {}),
+      ...(power !== undefined && v2.gates.amplifierPowerW === undefined ? { amplifierPowerW: power } : {}),
     },
   };
+}
+
+/**
+ * V50 — the catalogue ratings of a part list, or nothing when the run does
+ * not snap (no `catalog` attribution exists then, and resolving would be a
+ * lookup of nothing).
+ */
+function ratingsFor(parts: readonly VxpPart[], network: NetworkFacts) {
+  return network.choices.catalogSnap ? partRatingsOf(parts) : undefined;
 }
 
 /** Drop the keys whose value is undefined — absent means absent, never zero. */
@@ -1526,15 +1584,30 @@ export function withDeclaredSourceLimit<
 function dissipationColumnOf(
   diss: DissipationResult | null,
   powerW: number | undefined,
+  resistors: readonly ResistorLoad[] | null = null,
+  coils: readonly CoilLoad[] | null = null,
 ): DissipationColumn | null {
   if (!diss) return null;
   const largest = diss.elements.find((e) => !e.parasitic) ?? null;
   const power = powerW !== undefined && powerW > 0 ? powerW : null;
+  /* V50 — the coil with the highest peak current, and the allowance of the
+   * hottest resistor when one exists. Read from the gate evaluation's own
+   * lists, never recomputed (A3g). */
+  const worstCoil = (coils ?? []).reduce<CoilLoad | null>(
+    (a, l) => (l.peakA !== null && (a === null || a.peakA === null || l.peakA > a.peakA) ? l : a),
+    null,
+  );
+  const hottest = largest ? (resistors ?? []).find((l) => l.id === largest.id) ?? null : null;
   return {
     totalFraction: diss.totalFraction,
     largestResistor: largest ? { id: largest.id, ohm: largest.ohm, fraction: largest.fraction } : null,
     largestResistorWatts: largest && power !== null ? largest.fraction * power : null,
     powerW: power,
+    largestResistorAllowedW: hottest?.allowedW ?? null,
+    worstCoil:
+      worstCoil && worstCoil.peakA !== null
+        ? { id: worstCoil.id, peakA: worstCoil.peakA, atHz: worstCoil.atHz, allowedA: worstCoil.allowedA }
+        : null,
   };
 }
 
@@ -1869,8 +1942,9 @@ function runCandidate<I, R extends { parts: VxpPart[]; net: { gateRefusals?: str
   if (!rejection && collect.reference) {
     try {
       const netlist = netlistOf(result.parts);
-      const frozen = evaluateGates(netlist, v2.gates, collect.reference, 'frozen');
-      const derived = evaluateGates(netlist, v2.gates, collect.reference, 'derived');
+      const ratings = ratingsFor(result.parts, network);
+      const frozen = evaluateGates(netlist, v2.gates, collect.reference, 'frozen', ratings);
+      const derived = evaluateGates(netlist, v2.gates, collect.reference, 'derived', ratings);
       gates = frozen.verdicts;
       gatesDerived = derived.verdicts;
       /* V36 — the column, from the evaluation that already measured it. The
@@ -1882,7 +1956,12 @@ function runCandidate<I, R extends { parts: VxpPart[]; net: { gateRefusals?: str
        * with `amplifierPowerW` passed in: that would solve the network again to
        * multiply by a scalar, and two solves of one question is how the two
        * answers start to differ (A3g). */
-      dissipation = dissipationColumnOf(frozen.metrics.dissipation, v2.amplifierPowerW);
+      dissipation = dissipationColumnOf(
+        frozen.metrics.dissipation,
+        v2.amplifierPowerW,
+        frozen.metrics.resistorLoads,
+        frozen.metrics.coilLoads,
+      );
       // Judged on BOTH conventions, and a failure on either is a failure —
       // see the note at the top of `gates.ts` about a reference that moves.
       violation =

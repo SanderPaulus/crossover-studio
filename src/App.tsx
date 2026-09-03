@@ -29,6 +29,7 @@ import { computeIntegration } from './lib/integration.ts';
 import { crossoverToNetlist } from './lib/vxpNetwork.ts';
 import { assessNetwork, type NetworkReadiness } from './lib/networkReadiness.ts';
 import { solveNetwork, type Netlist } from './lib/network.ts';
+import { peakInputVolts } from './lib/engine2/metrics/driveExcursion.ts';
 import {
   canonicalModelForRole,
   isTweeterModel,
@@ -926,6 +927,10 @@ interface V2MeasurementMeta {
   mmsG: string;
   /** V49 — the drive voltage (V rms) the on-axis far field was taken at. '' = not documented. */
   driveVoltageV: string;
+  /** V50 — the stated M-C figure for THIS way, dB re its passband. '' = none
+   *  per way; the single field decides, and blank there = the derived ceiling
+   *  alone (or nothing). */
+  driveOnFsMaxDb: string;
 }
 
 const emptyV2Meas = (): V2MeasurementMeta => ({
@@ -939,6 +944,7 @@ const emptyV2Meas = (): V2MeasurementMeta => ({
   blTm: '',
   mmsG: '',
   driveVoltageV: '',
+  driveOnFsMaxDb: '',
 });
 
 /** Cabinet geometry + measurement context, as typed (strings so a field can be
@@ -1737,6 +1743,11 @@ export default function App() {
     amplifierPeakPowerW: string;
     amplifierNominalLoadOhm: string;
     xmaxMarginFraction: string;
+    /** V50 — buildability: the resistor class (W), the fraction of it a
+     *  resistor may run at, and the cored-coil current class (A). */
+    resistorClassW: string;
+    resistorPowerMargin: string;
+    coilClassA: string;
   }>({
     verticalWindowDeg: '',
     amplifierPowerW: '',
@@ -1754,6 +1765,9 @@ export default function App() {
     amplifierPeakPowerW: '',
     amplifierNominalLoadOhm: '',
     xmaxMarginFraction: '',
+    resistorClassW: '',
+    resistorPowerMargin: '',
+    coilClassA: '',
   });
   /**
    * A5a — PER-MEASUREMENT-SESSION METADATA THE ENGINE NEEDS AND NOBODY COULD
@@ -3301,8 +3315,30 @@ export default function App() {
       amplifierPeakPowerW: stated(engineV2Settings.amplifierPeakPowerW),
       amplifierNominalLoadOhm: stated(engineV2Settings.amplifierNominalLoadOhm),
       xmaxMarginFraction: stated(engineV2Settings.xmaxMarginFraction),
+      /* V50 — buildability. Gate settings, read by the report AND by the
+       * scan; the continuous power they judge at is `amplifierPowerW`, which
+       * already reaches both. */
+      resistorClassW: stated(engineV2Settings.resistorClassW),
+      resistorPowerMargin: stated(engineV2Settings.resistorPowerMargin),
+      coilClassA: stated(engineV2Settings.coilClassA),
     };
   }, [engineV2Settings]);
+
+  /**
+   * V50 — the STATED M-C figure per way, keyed by ROLE; re-keyed to driver ids
+   * by the adapter (report) and to models by the scan. Empty = none per way,
+   * and the single `maxDriveOnFsDb` field then judges every protected way.
+   */
+  const driveOnFsMaxDbByRole = useMemo(() => {
+    const out: Partial<Record<BranchRole, number>> = {};
+    for (const role of ['low', 'mid', 'high'] as const) {
+      const raw = v2Meas[role].driveOnFsMaxDb;
+      if (raw.trim() === '') continue;
+      const v = Number(raw);
+      if (Number.isFinite(v)) out[role] = v;
+    }
+    return out;
+  }, [v2Meas]);
 
   /**
    * UI-1 — THE v2 REPORT AS A FUNCTION OF A NETWORK, not of the active tab.
@@ -3424,6 +3460,9 @@ export default function App() {
           ...(re !== undefined && re > 0 ? { measuredReOhm: re } : {}),
           ...(mw ? { manualWindow: mw } : {}),
           ...(Object.keys(card).length > 1 ? { driverCard: card } : {}),
+          /* V50 — the stated M-C figure for this way, re-keyed to the driver
+           * id by the adapter like R_e and the card. */
+          ...(driveOnFsMaxDbByRole[role] !== undefined ? { driveOnFsMaxDb: driveOnFsMaxDbByRole[role] } : {}),
           ...(driveV !== undefined && driveV > 0 && Number.isFinite(micMm) && micMm > 0
             ? {
                 responseDrive: {
@@ -6343,6 +6382,9 @@ export default function App() {
       amplifierPeakPowerW: d.engineV2?.amplifierPeakPowerW ?? '',
       amplifierNominalLoadOhm: d.engineV2?.amplifierNominalLoadOhm ?? '',
       xmaxMarginFraction: d.engineV2?.xmaxMarginFraction ?? '',
+      resistorClassW: d.engineV2?.resistorClassW ?? '',
+      resistorPowerMargin: d.engineV2?.resistorPowerMargin ?? '',
+      coilClassA: d.engineV2?.coilClassA ?? '',
     });
     // A5a metadata (F3b). Additive: a project from before F3b has no block and
     // every field falls back to '', which is what "not stated" means (P4).
@@ -6789,8 +6831,16 @@ export default function App() {
              * question. `NaN` is what the window treats as "not stated". */
             statedOrder: Number.isFinite(wi.order) ? wi.order : null,
             // M-C's stated limit arms A5d.3(ii). Absent = not armed (P4);
-            // nothing here invents a protection budget.
-            maxDriveOnFsDb: engineV2Gates.maxDriveOnFsDb ?? null,
+            // nothing here invents a protection budget. V50: the UPPER way's
+            // own figure first, the single field as the fallback — the same
+            // order the gate reads (`statedDriveLimitDb`).
+            maxDriveOnFsDb: (() => {
+              const role = (['low', 'mid', 'high'] as const).find(
+                (r) => engineV2Report?.driverIds?.[r] === wi.upper,
+              );
+              const perWay = role ? driveOnFsMaxDbByRole[role] : undefined;
+              return perWay ?? engineV2Gates.maxDriveOnFsDb ?? null;
+            })(),
             lowerTargetSlopeDbPerOct:
               (i === 0 && wis.length > 1 ? slopes?.low?.lower : slopes?.mid) ?? null,
             upperTargetSlopeDbPerOct:
@@ -7044,6 +7094,17 @@ export default function App() {
           ...(engineV2Gates.maxDriveOnFsDb !== undefined
             ? { driveOnFsLimitDb: engineV2Gates.maxDriveOnFsDb }
             : {}),
+          /* V50 — and the per-way figures, keyed by model like the gate. */
+          ...(Object.keys(driveOnFsMaxDbByRole).length > 0
+            ? {
+                driveOnFsLimitDbByDriver: Object.fromEntries(
+                  (Object.entries(driveOnFsMaxDbByRole) as [BranchRole, number][]).map(([r, v]) => [
+                    canonicalModelForRole(r, threeWay),
+                    v,
+                  ]),
+                ),
+              }
+            : {}),
           /* V49 — and whether the report derived an EXCURSION ceiling for any
            * way (M-C v2.0). That is an absolute requirement too, so the
            * candidate declares `protectionRule: 'stated'` on it even without a
@@ -7188,6 +7249,36 @@ export default function App() {
               ...(engineV2Gates.minEpdrOhm !== undefined ? { minEpdrOhm: engineV2Gates.minEpdrOhm } : {}),
               ...(engineV2Gates.maxDriveOnFsDb !== undefined
                 ? { maxDriveOnFsDb: engineV2Gates.maxDriveOnFsDb }
+                : {}),
+              /* V50 — the per-way figures, keyed by MODEL (what the worker's
+               * `driverZ` is keyed by), and the buildability inputs. The peak
+               * input the coil gate reads at is derived here from the same two
+               * V49 fields the report derives it from. */
+              ...(Object.keys(driveOnFsMaxDbByRole).length > 0
+                ? {
+                    maxDriveOnFsDbByDriver: Object.fromEntries(
+                      (Object.entries(driveOnFsMaxDbByRole) as [BranchRole, number][]).map(([r, v]) => [
+                        canonicalModelForRole(r, threeWay),
+                        v,
+                      ]),
+                    ),
+                  }
+                : {}),
+              ...(engineV2Gates.resistorClassW !== undefined ? { resistorClassW: engineV2Gates.resistorClassW } : {}),
+              ...(engineV2Gates.resistorPowerMargin !== undefined
+                ? { resistorPowerMargin: engineV2Gates.resistorPowerMargin }
+                : {}),
+              ...(engineV2Gates.coilClassA !== undefined ? { coilClassA: engineV2Gates.coilClassA } : {}),
+              ...(engineV2Gates.amplifierPeakPowerW !== undefined &&
+              engineV2Gates.amplifierPeakPowerW > 0 &&
+              engineV2Gates.amplifierNominalLoadOhm !== undefined &&
+              engineV2Gates.amplifierNominalLoadOhm > 0
+                ? {
+                    peakInputVolts: peakInputVolts({
+                      peakPowerW: engineV2Gates.amplifierPeakPowerW,
+                      nominalLoadOhm: engineV2Gates.amplifierNominalLoadOhm,
+                    }),
+                  }
                 : {}),
               ...(ampMinLoadOhm !== null ? { ampMinLoadOhm } : {}),
             },
@@ -11205,6 +11296,27 @@ export default function App() {
                                   style={{ width: '4rem' }}
                                 />
                                 {' V'}
+                              </span>{' '}
+                              {/* V50 — the stated M-C figure PER WAY. The 18-dB
+                                  convention is a dome rule (thermal, distortion);
+                                  a cone's limit on its resonance is excursion,
+                                  which V49 derives — so state the convention for
+                                  the way it belongs to and leave the others to the
+                                  derived ceiling. */}
+                              <span
+                                className="inline-num"
+                                title={t("Max drive on f_s for THIS way, dB relative to its passband (M-C, V50). Overrides the single 'Max drive on f_s dB' field for this way. Blank here AND blank there = no stated figure: the excursion-derived ceiling alone judges this way (or nothing, when no ceiling could be derived).")}
+                              >
+                                {t('max drive on f_s') + ' '}
+                                <input
+                                  type="number"
+                                  max={0}
+                                  placeholder="—"
+                                  value={v2Meas[role].driveOnFsMaxDb}
+                                  onChange={(e) => setV2MeasField(role, 'driveOnFsMaxDb', e.target.value)}
+                                  style={{ width: '4.5rem' }}
+                                />
+                                {' dB'}
                               </span>
                             </span>
                             <span className="cd-label">{t('Window (no header)')}</span>
@@ -15802,6 +15914,56 @@ export default function App() {
                         placeholder="0.8"
                         onChange={(e) =>
                           setEngineV2Settings((v) => ({ ...v, xmaxMarginFraction: e.target.value }))
+                        }
+                        style={{ width: '4rem' }}
+                      />
+                    </label>
+
+                    {/* ---- V50: BUILDABILITY — the parts on the schematic have
+                      * to be buyable. Two gates: the watts in each resistor
+                      * against the class it is built with (times the margin),
+                      * and the peak current through each cored coil against
+                      * its saturation figure. With the catalogue snap ON a
+                      * rated SKU is judged on its own rating instead. Blank =
+                      * the figures are still shown, nothing judges. */}
+                    <label title={t('M-A/part (V50) — the power rating of the resistor series you build with, W continuous (e.g. 10 W for MOX/Superes, 20 W for MResist Supreme). Every discrete resistor is judged against this class × the margin, at the continuous amplifier power above; a resistor snapped to a rated catalogue part is judged on that part\'s rating instead. Blank = no allowance, nothing judged, watts still shown.')}>
+                      {t('Resistor class W')}
+                      <input
+                        type="number"
+                        min={0}
+                        value={engineV2Settings.resistorClassW}
+                        placeholder="10"
+                        onChange={(e) =>
+                          setEngineV2Settings((v) => ({ ...v, resistorClassW: e.target.value }))
+                        }
+                        style={{ width: '4rem' }}
+                      />
+                    </label>
+                    <label title={t('M-A/part (V50) — the fraction of its rating a filter resistor may run at. A resistor inside a closed cabinet without airflow runs hot at half its rating; how much of that you accept is your decision, so there is no default. Blank = no allowance, nothing judged.')}>
+                      {t('Resistor margin')}
+                      <input
+                        type="number"
+                        min={0}
+                        max={1}
+                        step={0.05}
+                        value={engineV2Settings.resistorPowerMargin}
+                        placeholder="0.5"
+                        onChange={(e) =>
+                          setEngineV2Settings((v) => ({ ...v, resistorPowerMargin: e.target.value }))
+                        }
+                        style={{ width: '4rem' }}
+                      />
+                    </label>
+                    <label title={t('M-L (V50) — the saturation / maximum current of the CORED coils you build with, A. The peak current through every coil at the amplifier\'s peak input (peak power × nominal load, above) is judged against it; a coil snapped to a rated catalogue part is judged on that rating instead. Air-cored coils have no saturation current and are never judged. Blank = nothing judged, the currents are still shown.')}>
+                      {t('Coil current class A')}
+                      <input
+                        type="number"
+                        min={0}
+                        step={0.1}
+                        value={engineV2Settings.coilClassA}
+                        placeholder="—"
+                        onChange={(e) =>
+                          setEngineV2Settings((v) => ({ ...v, coilClassA: e.target.value }))
                         }
                         style={{ width: '4rem' }}
                       />

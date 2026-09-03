@@ -39,14 +39,19 @@ import type { GeneratedCandidate } from './predesign/candidates.ts';
 import { AUTO_STRUCTS } from '../threeWayDesign.ts';
 import {
   casus1AmpMinLoadOhm,
+  casus1BuildabilityOnSearch,
+  casus1BuildabilitySettings,
+  casus1ContinuousPowerW,
   casus1ExcursionSettings,
   casus1LfResonantBudgetDb,
   casus1MaxDriveOnFsDb,
+  casus1MaxDriveOnFsDbByDriver,
   casus1QesMultiplierMax,
   casus1TargetCurve,
   loadGolden,
   type GoldenRefs,
 } from './casus1.fixture.ts';
+import { peakInputVolts } from './metrics/driveExcursion.ts';
 import type { TargetCurve } from './requirements/targetCurve.ts';
 import {
   factsForWorker,
@@ -185,11 +190,56 @@ export const CASUS1_MAX_DRIVE_ON_FS_DB: number | null = casus1MaxDriveOnFsDb();
  */
 export const CASUS1_EXCURSION = casus1ExcursionSettings();
 
-export const CASUS1_V2_GATES: { ampMinLoadOhm?: number; maxDriveOnFsDb?: number } = {
+/**
+ * V50 — the stated M-C figure PER WAY, read from the manifest. Casus 1 states
+ * the −20 dB convention for the tweeter only and leaves the mid to the
+ * excursion-derived ceiling; the single figure (`CASUS1_MAX_DRIVE_ON_FS_DB`)
+ * stays as the number that convention refers to, but it no longer travels as
+ * `maxDriveOnFsDb` — that key would judge every protected way with it (V47),
+ * which is what V50 ends.
+ */
+export const CASUS1_MAX_DRIVE_ON_FS_DB_BY_DRIVER: Record<string, number> = casus1MaxDriveOnFsDbByDriver();
+
+/**
+ * V50 — the CONTINUOUS amplifier power, from its one home in the manifest. It
+ * reaches the run as `v2.amplifierPowerW` (the column, V36) and the worker
+ * folds it into the gate object for M-A/part.
+ */
+export const CASUS1_CONTINUOUS_POWER_W: number | null = casus1ContinuousPowerW();
+
+/**
+ * V50 — the buildability inputs (resistor class + margin, coil class), and
+ * whether they are ARMED ON THE SEARCH. The report and the guards judge with
+ * them on every frozen netlist regardless; the run arms them only when the
+ * manifest's decision field says so — see `casus1BuildabilityOnSearch`.
+ */
+export const CASUS1_BUILDABILITY = casus1BuildabilitySettings();
+export const CASUS1_BUILDABILITY_ON_SEARCH: boolean = casus1BuildabilityOnSearch();
+
+/** V50 — the peak input voltage the coil gate reads currents at (V49's amplifier peak). */
+export const CASUS1_PEAK_INPUT_VOLTS: number | null =
+  CASUS1_EXCURSION.amplifierPeakPowerW !== undefined && CASUS1_EXCURSION.amplifierNominalLoadOhm !== undefined
+    ? peakInputVolts({
+        peakPowerW: CASUS1_EXCURSION.amplifierPeakPowerW,
+        nominalLoadOhm: CASUS1_EXCURSION.amplifierNominalLoadOhm,
+      })
+    : null;
+
+export const CASUS1_V2_GATES: {
+  ampMinLoadOhm?: number;
+  maxDriveOnFsDb?: number;
+  maxDriveOnFsDbByDriver?: Record<string, number>;
+  peakInputVolts?: number;
+  resistorClassW?: number;
+  resistorPowerMargin?: number;
+  coilClassA?: number;
+} = {
   ...(CASUS1_AMP_MIN_LOAD_OHM !== null ? { ampMinLoadOhm: CASUS1_AMP_MIN_LOAD_OHM } : {}),
-  ...(CASUS1_MAX_DRIVE_ON_FS_DB !== null
-    ? { maxDriveOnFsDb: CASUS1_MAX_DRIVE_ON_FS_DB }
+  ...(Object.keys(CASUS1_MAX_DRIVE_ON_FS_DB_BY_DRIVER).length > 0
+    ? { maxDriveOnFsDbByDriver: { ...CASUS1_MAX_DRIVE_ON_FS_DB_BY_DRIVER } }
     : {}),
+  ...(CASUS1_PEAK_INPUT_VOLTS !== null ? { peakInputVolts: CASUS1_PEAK_INPUT_VOLTS } : {}),
+  ...(CASUS1_BUILDABILITY_ON_SEARCH ? { ...CASUS1_BUILDABILITY } : {}),
 };
 
 /**
@@ -378,8 +428,8 @@ export function casus1V2Declaration(
        * `v2.gates.maxDriveOnFsDb`. This is only what lets the declaration
        * derive `protectionRule` instead of leaving the safety gate comparing
        * against a seed while a stated requirement judges the result. */
-      ...(CASUS1_MAX_DRIVE_ON_FS_DB !== null
-        ? { driveOnFsLimitDb: CASUS1_MAX_DRIVE_ON_FS_DB }
+      ...(Object.keys(CASUS1_MAX_DRIVE_ON_FS_DB_BY_DRIVER).length > 0
+        ? { driveOnFsLimitDbByDriver: { ...CASUS1_MAX_DRIVE_ON_FS_DB_BY_DRIVER } }
         : {}),
       /* V49 — and whether an excursion ceiling exists for this casus: with the
        * cards, the peak and the margin all stated the report derives one per

@@ -639,6 +639,80 @@ export function casus1ExcursionSettings(golden: GoldenRefs = loadGolden()): {
 }
 
 /**
+ * V50 — the stated M-C figure PER WAY (`gestelde_eisen.drive_op_fs_max_dB_per_weg`),
+ * keyed by driver id. A way listed with `null` is deliberately WITHOUT a stated
+ * figure — the excursion-derived ceiling alone judges it — and contributes no
+ * entry; a way not listed at all likewise. Empty map = nothing stated per way.
+ */
+export function casus1MaxDriveOnFsDbByDriver(golden: GoldenRefs = loadGolden()): Record<string, number> {
+  const e = (golden.manifest_en_geometrie as unknown as {
+    gestelde_eisen?: { drive_op_fs_max_dB_per_weg?: Record<string, unknown> };
+  }).gestelde_eisen;
+  const out: Record<string, number> = {};
+  for (const [driver, v] of Object.entries(e?.drive_op_fs_max_dB_per_weg ?? {})) {
+    if (typeof v === 'number' && Number.isFinite(v)) out[driver] = v;
+  }
+  return out;
+}
+
+/**
+ * V50 — the CONTINUOUS amplifier power (`gestelde_eisen.versterker_continu_vermogen_W`):
+ * what M-A prints its watts at and what M-A/part judges them at. Null = not
+ * stated, and then there are no watts at all (F0). It stood as a literal 100
+ * in every test and script until V50; this is its one home (P6).
+ */
+export function casus1ContinuousPowerW(golden: GoldenRefs = loadGolden()): number | null {
+  const e = (golden.manifest_en_geometrie as unknown as {
+    gestelde_eisen?: { versterker_continu_vermogen_W?: unknown };
+  }).gestelde_eisen;
+  const v = e?.versterker_continu_vermogen_W;
+  return typeof v === 'number' && Number.isFinite(v) && v > 0 ? v : null;
+}
+
+/**
+ * V50 — the BUILDABILITY inputs the project states: the resistor class (W)
+ * with its margin (fraction) and the coil class (A). Each absent when the
+ * manifest states none — casus 1 states no coil class, with the finding in
+ * the manifest (the C-Coil documentation publishes no saturation current).
+ * Read into `ReportSettings`/`GateSettings` by spreading.
+ */
+export function casus1BuildabilitySettings(golden: GoldenRefs = loadGolden()): {
+  resistorClassW?: number;
+  resistorPowerMargin?: number;
+  coilClassA?: number;
+} {
+  const e = (golden.manifest_en_geometrie as unknown as {
+    gestelde_eisen?: { weerstandsklasse_W?: unknown; weerstandsmarge?: unknown; spoelklasse_A?: unknown };
+  }).gestelde_eisen;
+  const num = (v: unknown): number | undefined =>
+    typeof v === 'number' && Number.isFinite(v) && v > 0 ? v : undefined;
+  const cls = num(e?.weerstandsklasse_W);
+  const margin = num(e?.weerstandsmarge);
+  const coil = num(e?.spoelklasse_A);
+  return {
+    ...(cls !== undefined ? { resistorClassW: cls } : {}),
+    ...(margin !== undefined ? { resistorPowerMargin: margin } : {}),
+    ...(coil !== undefined ? { coilClassA: coil } : {}),
+  };
+}
+
+/**
+ * V50 — whether the buildability requirement is ARMED ON THE SEARCH of the
+ * casus-1 v2 route (`gestelde_eisen.bouwbaarheid_op_de_zoektocht.gewapend`).
+ *
+ * A stated DECISION, not a default: the requirement is stated and the report
+ * judges every frozen netlist with it regardless; whether the generator arms
+ * it as a gate on the search — which on this casus empties the field, see the
+ * manifest — is the designer's call, recorded there with its reason.
+ */
+export function casus1BuildabilityOnSearch(golden: GoldenRefs = loadGolden()): boolean {
+  const e = (golden.manifest_en_geometrie as unknown as {
+    gestelde_eisen?: { bouwbaarheid_op_de_zoektocht?: { gewapend?: unknown } };
+  }).gestelde_eisen;
+  return e?.bouwbaarheid_op_de_zoektocht?.gewapend === true;
+}
+
+/**
  * One of the frozen candidate netlists, with the measured driver impedances.
  *
  * The key is any entry of `manifest_en_geometrie.netlists`, which since F4d
