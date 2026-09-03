@@ -40,7 +40,8 @@ import { applyCatalogPayload, type CatalogPart, type CatalogSeries } from '../..
 import type { Complex } from '../../complex.ts';
 import { runDesignChain, type ChainInput, type ChainResult, type ChainStageProgress } from '../../designChain.ts';
 import { runThreeWayChain, type Chain3Input, type Chain3Result } from '../../threeWayChain.ts';
-import { busTopology, type NetOptimizeOptions } from '../../netOptimizer.ts';
+import { busTopology, busTopologyOfNetlist, type NetOptimizeOptions } from '../../netOptimizer.ts';
+import type { NetElement, Netlist } from '../../network.ts';
 import type { VxpPart } from '../../parsers/vxp.ts';
 import type { VxpCrossover } from '../../parsers/vxp.ts';
 import { crossoverToNetlist } from '../../vxpNetwork.ts';
@@ -99,7 +100,17 @@ import {
   type PlateauCoverage,
   type TargetCurve,
 } from '../requirements/targetCurve.ts';
-import { describeLevelWork, levelWorkOnWay, type LevelWorkOnWay } from '../../levelWork.ts';
+import {
+  describeLevelWork,
+  describeLevelWorkRule,
+  describeSeriesResistance,
+  levelWorkOnWay,
+  levelWorkVerdict,
+  seriesRMaxOhmOf,
+  type LevelWorkOnWay,
+  type LevelWorkVerdict,
+  type LowestWayLevelWork,
+} from '../../levelWork.ts';
 import type { CandidateMeasurements } from '../requirements/requirements.ts';
 import type { TopologyDescriptor } from './diversity.ts';
 
@@ -346,7 +357,7 @@ export interface V2CandidateResult<R> {
 /** V51 — see `V2CandidateResult.levelWork`. */
 export interface V2LevelWorkColumn {
   /** The chain-level choice this candidate declared, or null when none was. */
-  requirement: 'none' | 'allowed' | null;
+  requirement: LowestWayLevelWork | null;
   lowestWay: string | null;
   anchor: string | null;
   /** The A5d.4 gap of the lowest way to the anchor, dB (target curve
@@ -355,6 +366,23 @@ export interface V2LevelWorkColumn {
   /** The inventory of the DELIVERED network (the refused one, on a refusal). */
   delivered: LevelWorkOnWay | null;
   plateau: PlateauCoverage;
+  /* ---- V51b ---- */
+  /** The stated maximum total series resistance on the lowest way, Ω; null unless the rule states one. */
+  maxSeriesOhm: number | null;
+  /** Does the delivered inventory honour the rule (`levelWorkVerdict`); null without a rule or a network. */
+  verdict: LevelWorkVerdict | null;
+  /**
+   * Y — the TOTAL series resistance (discrete plus DCR) the lowest way would
+   * need for the impedance-floor gate to pass, on the network this candidate
+   * produced (the refused one, on a refusal): the delivered total when it
+   * already passes, the bisected total when it does not, and null when no
+   * floor is stated, no network exists, or no series resistance within the
+   * probe's range reaches the floor. Reported beside `maxSeriesOhm` so the
+   * refusal can say "asks Y against a maximum of M".
+   */
+  floorNeedsSeriesOhm: number | null;
+  /** The stated floor Y was solved against, Ω; null when none. */
+  floorOhm: number | null;
 }
 
 export type V2Request = { id: number; catalog?: V2CatalogPayload | null } & (
@@ -815,6 +843,38 @@ function tuneOptionsFor(
   const inverted = invertBudgets(ways, v2.budgets, v2.gates);
   collect.bounds = inverted.bounds;
   collect.notes.push(...inverted.notes);
+  /* ---- V51b: the STATED maximum on the lowest way's series resistance ----
+   *
+   * Not an inversion — a project figure, filed in the box in the shape
+   * `qes-series-r` has carried since F2, because it bounds the same sum: the
+   * way's total series resistance, coil DCR charged first, the free resistors
+   * sharing what is left (`searchBoxFor`). Filed BEFORE the box is built so the
+   * tuner searches inside it rather than being refused at the end; the
+   * delivered-network check below still reads the total, because a box on the
+   * seed's resistors cannot see a DCR the catalogue snap adds later. Absent on
+   * every run that states another rule or none (P2). */
+  const statedSeriesRMax = seriesRMaxOhmOf(network.chainDeclaration?.stated.lowestWayLevelWork);
+  if (statedSeriesRMax !== null && collect.lowestModel !== null) {
+    const lowest = collect.lowestModel;
+    inverted.bounds.push({
+      rule: 'stated-series-r',
+      subject: lowest,
+      quantity: 'total series resistance (stated maximum, coil DCR included)',
+      maxSI: statedSeriesRMax,
+      unit: 'Ω',
+      slack: false,
+      parameters: {
+        stated_max_ohm: statedSeriesRMax,
+        seed_path_R_ohm: seriesPathResistance(seedParts, lowest),
+        source: "lowestWayLevelWork: { kind: 'series-r-max' } — a stated requirement, not an inversion (V51b)",
+      },
+      notes: [
+        `The project allows series resistance on ${lowest} up to ${statedSeriesRMax.toFixed(2)} Ω in TOTAL ` +
+          '(discrete resistors plus every series coil\'s DCR) and no pad. An air-core coil with that DCR is, ' +
+          'physically, that resistor: which of the two carries it is a build choice, not a decision of this run.',
+      ],
+    });
+  }
   /* V45 — the damping margin says what it DID, per way.
    *
    * Until V45 this block said the margin was stated and not applied, because it
@@ -1399,6 +1459,132 @@ function declaredHpOrder(spec: { hp?: { enabled: boolean; order: number } } | un
   return spec?.hp?.enabled ? spec.hp.order : undefined;
 }
 
+/**
+ * V51b — the RANGE the floor probe searches, Ω. A probe bound and not a
+ * design figure: series resistance beyond this in front of a driver is no
+ * longer a crossover but a heater, and a floor that needs it is reported as
+ * unreachable rather than met. P6-OK: a search-range constant, not a project
+ * number.
+ */
+const SERIES_R_PROBE_MAX_OHM = 20; // P6-OK: probe range, not a limit
+/** Bisection depth of the floor probe — 2^-20 of the range is far below any ohm anyone reads. */
+const SERIES_R_PROBE_STEPS = 24; // P6-OK: iteration count
+
+/**
+ * V51b — the same netlist with `extraOhm` of series resistance INSERTED at the
+ * HEAD of one way: a new node between the generator's hot node and the way's
+ * first series element — the one that touches the hot node, lies on this way's
+ * bus and feeds this way only. That is where a discrete series resistor and
+ * the first coil's DCR physically sit.
+ *
+ * NOT IN FRONT OF THE DRIVER, and that was measured before it was written down:
+ * the first probe put the resistor between the last bus node and the driver,
+ * behind the low-pass's shunt capacitor, and on every casus-1 netlist under the
+ * floor the system minimum FELL (V30_KAND_1: 2.447 → 1.102 Ω with 20 Ω "in
+ * front") — a ladder whose termination is made resistive resonates into its
+ * own shunt C. A resistor at the head raises the whole way's impedance instead.
+ * Falls back to the driver's hot terminal only when no series element is
+ * exclusive to the way (a shared head is not "on the lowest way"). Null when
+ * the driver is on no bus.
+ */
+export function withSeriesResistanceInFront(netlist: Netlist, model: string, extraOhm: number): Netlist | null {
+  const bus = busTopologyOfNetlist(netlist);
+  const busNodes = new Set(bus.busNodesOf(model));
+  const drv = netlist.elements.find((e) => e.kind === 'driver' && e.model === model);
+  const src = netlist.elements.find((e) => e.kind === 'source');
+  if (!drv || !src || busNodes.size === 0) return null;
+  const hot = src.nodes[0] === 0 ? src.nodes[1] : src.nodes[0];
+  const n = netlist.nodeCount;
+  /* The way's own first series element: on the bus, touching the hot node,
+   * feeding this way alone. */
+  const head = netlist.elements.find(
+    (e) =>
+      (e.kind === 'R' || e.kind === 'L' || e.kind === 'C') &&
+      (e.nodes[0] === hot || e.nodes[1] === hot) &&
+      busNodes.has(e.nodes[0]) &&
+      busNodes.has(e.nodes[1]) &&
+      bus.driversOf(e.id).length === 1 &&
+      bus.driversOf(e.id)[0] === model,
+  );
+  const moveNode = (e: NetElement, from: number): NetElement =>
+    ({ ...e, nodes: [e.nodes[0] === from ? n : e.nodes[0], e.nodes[1] === from ? n : e.nodes[1]] as [number, number] }) as NetElement;
+  let elements: NetElement[];
+  let anchor: number;
+  if (head) {
+    elements = netlist.elements.map((e) => (e === head ? moveNode(e, hot) : e));
+    anchor = hot;
+  } else {
+    const drvHot = busNodes.has(drv.nodes[0]) ? drv.nodes[0] : busNodes.has(drv.nodes[1]) ? drv.nodes[1] : null;
+    if (drvHot === null) return null;
+    elements = netlist.elements.map((e) => (e === drv ? moveNode(e, drvHot) : e));
+    anchor = drvHot;
+  }
+  elements.push({ kind: 'R', id: '__v51b-floor-probe', nodes: [anchor, n], value: extraOhm });
+  return { ...netlist, nodeCount: n + 1, elements } as Netlist;
+}
+
+/**
+ * V51b — Y: how much MORE series resistance in front of the lowest way's
+ * driver the stated impedance floor asks, on this network, judged by the same
+ * gate that refuses it (`M-B/|Z|`, tolerance included). 0 when it already
+ * passes; a bisected extra otherwise; null WITH THE REASON when even the
+ * probe's range does not reach the floor (the minimum then sits in another
+ * way) or the network cannot be solved. The gate is read as a VERDICT and
+ * never re-derived here (A3g). Exported, with `withSeriesResistanceInFront`,
+ * for the hand-calculated claim in `lowestWayLevelWork.test.ts`; the worker is
+ * its only production caller.
+ */
+export function seriesResistanceForFloor(
+  parts: readonly VxpPart[],
+  model: string,
+  gates: GateSettings,
+  reference: GateReference,
+  /** What the catalogue rates the parts for; undefined = the stated classes only. */
+  ratings?: ReturnType<typeof ratingsFor>,
+): { extraOhm: number; why: null } | { extraOhm: null; why: string } {
+  let base: Netlist;
+  try {
+    base = netlistOf(parts);
+  } catch (e) {
+    return { extraOhm: null, why: `the network could not be built: ${(e as Error).message}` };
+  }
+  /** The gate's verdict with `extraOhm` at the head of the way, and the value it read. */
+  const floorAt = (extraOhm: number): { pass: boolean; minZ: number } | { error: string } => {
+    try {
+      const nl = extraOhm === 0 ? base : withSeriesResistanceInFront(base, model, extraOhm);
+      if (!nl) return { error: `${model} is on no bus of this network` };
+      const v = evaluateGates(nl, gates, reference, 'frozen', ratings).verdicts.find((x) => x.gate === 'M-B/|Z|');
+      if (!v || v.value === null) return { error: v?.reason ?? 'the floor gate produced no value' };
+      return { pass: v.pass, minZ: v.value };
+    } catch (e) {
+      return { error: (e as Error).message };
+    }
+  };
+  const at0 = floorAt(0);
+  if ('error' in at0) return { extraOhm: null, why: at0.error };
+  if (at0.pass) return { extraOhm: 0, why: null };
+  const atMax = floorAt(SERIES_R_PROBE_MAX_OHM);
+  if ('error' in atMax) return { extraOhm: null, why: atMax.error };
+  if (!atMax.pass) {
+    return {
+      extraOhm: null,
+      why:
+        `even ${SERIES_R_PROBE_MAX_OHM} Ω at the head of ${model} leaves the system at ${atMax.minZ.toFixed(3)} Ω ` +
+        `(from ${at0.minZ.toFixed(3)} Ω) — the minimum then sits in another way and no series resistance on this one reaches the floor`,
+    };
+  }
+  let lo = 0;
+  let hi = SERIES_R_PROBE_MAX_OHM;
+  for (let i = 0; i < SERIES_R_PROBE_STEPS; i++) {
+    const mid = (lo + hi) / 2;
+    const p = floorAt(mid);
+    if ('error' in p) return { extraOhm: null, why: p.error };
+    if (p.pass) hi = mid;
+    else lo = mid;
+  }
+  return { extraOhm: hi, why: null };
+}
+
 /** Series resistance already sitting in one way's path (coil DCR included). */
 function seriesPathResistance(parts: readonly VxpPart[], model: string): number {
   // The app's own bus walk, not a second opinion about what "series" means.
@@ -1906,7 +2092,12 @@ function runCandidate<I, R extends { parts: VxpPart[]; net: { gateRefusals?: str
    * lowest way travels with EVERY candidate (`levelWork`), refused or not. */
   const levelWorkRule = network.chainDeclaration?.stated.lowestWayLevelWork;
   const lowestForLevel = collect.lowestModel;
-  const levelWorkDelivered = lowestForLevel !== null ? levelWorkOnWay(delivered.parts, lowestForLevel) : null;
+  /* V51b — on a refusal the inventory is of the network that was REFUSED (the
+   * tuner's `rejectedParts`), because `delivered.parts` is then the seed and a
+   * seed carries whatever the synthesis placed, tuned by nobody. */
+  const partsForLevel: readonly VxpPart[] =
+    refused?.fields.rejectedParts && refused.fields.rejectedParts.length > 0 ? refused.fields.rejectedParts : delivered.parts;
+  const levelWorkDelivered = lowestForLevel !== null ? levelWorkOnWay(partsForLevel, lowestForLevel) : null;
   const askedDb: number | null =
     lowestForLevel === null
       ? null
@@ -1914,6 +2105,8 @@ function runCandidate<I, R extends { parts: VxpPart[]; net: { gateRefusals?: str
         ? 0
         : (facts.gapBudgetDb[lowestForLevel] ?? null);
   const plateau = plateauCoverage(v2.targetCurve ?? FLAT_TARGET, judgeBandOf(v2, facts.grid));
+  const maxSeriesOhm = seriesRMaxOhmOf(levelWorkRule);
+  const verdict = levelWorkDelivered && levelWorkRule !== undefined ? levelWorkVerdict(levelWorkDelivered, levelWorkRule) : null;
   const levelWork: V2LevelWorkColumn = {
     requirement: levelWorkRule ?? null,
     lowestWay: lowestForLevel,
@@ -1921,16 +2114,22 @@ function runCandidate<I, R extends { parts: VxpPart[]; net: { gateRefusals?: str
     askedDb,
     delivered: levelWorkDelivered,
     plateau,
+    maxSeriesOhm,
+    verdict,
+    floorNeedsSeriesOhm: null,
+    floorOhm: v2.gates.ampMinLoadOhm ?? null,
   };
+  const askedSentence =
+    askedDb === null
+      ? 'how much this configuration asks is not known here (no anchored gap for it crossed). '
+      : askedDb <= 0
+        ? `${lowestForLevel} is the anchor, so the configuration asks none. `
+        : `this configuration asks ${askedDb.toFixed(2)} dB of it (A5d.4 gap to the anchor ` +
+          `${facts.gapAnchorModel ?? '?'}, target curve included). `;
   if (levelWorkRule === 'none' && lowestForLevel !== null) {
     collect.notes.push(
       `Level work on the lowest way (${lowestForLevel}) is FORBIDDEN by the project (V51): ` +
-        (askedDb === null
-          ? 'how much this configuration asks is not known here (no anchored gap for it crossed). '
-          : askedDb <= 0
-            ? `${lowestForLevel} is the anchor, so the configuration asks none. `
-            : `this configuration asks ${askedDb.toFixed(2)} dB of it (A5d.4 gap to the anchor ` +
-              `${facts.gapAnchorModel ?? '?'}, target curve included). `) +
+        askedSentence +
         (levelWorkDelivered ? `Delivered: ${describeLevelWork(levelWorkDelivered)}.` : ''),
     );
     if (levelWorkDelivered && !levelWorkDelivered.none && levelWorkDelivered.reachable) {
@@ -1940,9 +2139,56 @@ function runCandidate<I, R extends { parts: VxpPart[]; net: { gateRefusals?: str
           'is a finding about the repair, not about the candidate.',
       );
     }
+  } else if (maxSeriesOhm !== null && lowestForLevel !== null) {
+    /* V51b — the capped rule: what the network carries, split, and the
+     * build-choice sentence. */
+    collect.notes.push(
+      `Level work on the lowest way (${lowestForLevel}) is LIMITED by the project to ` +
+        `${describeLevelWorkRule(levelWorkRule)} (V51b): ` +
+        askedSentence +
+        (levelWorkDelivered
+          ? `Delivered on ${lowestForLevel}: ${describeSeriesResistance(levelWorkDelivered)}` +
+            (levelWorkDelivered.shuntPads.length > 0
+              ? `, plus a shunt pad the rule forbids (${levelWorkDelivered.shuntPads.map((r) => r.id).join(', ')})`
+              : '') +
+            '. An air-core coil whose DCR is this resistance does the same as the discrete resistor — ' +
+            'which of the two carries it is a build choice for the designer, not a decision of this run.'
+          : ''),
+    );
   }
   collect.notes.push(`Plateau: ${plateau.note}.`);
-  if (!refused && levelWorkRule === 'none' && lowestForLevel !== null && askedDb !== null && askedDb > 0) {
+  /* ---- V51b: the delivered network EXCEEDS the stated rule ---------------
+   *
+   * The tuner's box holds the seed's free resistors under the maximum, but a
+   * total is what the rule bounds and the catalogue snap can add DCR the box
+   * never saw; and a pad the synthesis was told not to place is a defect either
+   * way. Tested on what is offered, in the V45/V51 shape, and only when nothing
+   * else already refused. */
+  if (!refused && verdict && verdict.ok === false && maxSeriesOhm !== null && lowestForLevel !== null && levelWorkDelivered) {
+    refused = {
+      by: 'stated-topology',
+      kinds: ['topology'],
+      reason: `${verdict.why} (lowestWayLevelWork: series-r-max, V51b)`,
+      note:
+        'The tune COMPLETED and what it delivered carries more on the lowest way than the stated rule ' +
+        'allows. The search box capped the seed\'s discrete resistors at the maximum with the coils\' ' +
+        'DCR charged first, so a total above it means either a DCR the box did not see (a catalogue ' +
+        'snap after the box was built) or a pad the synthesis was told not to place — a finding about ' +
+        'the repair rather than about the candidate (casebook V51b).',
+      fields: {
+        ...(delivered.net as WholesaleRejectionFields),
+        rejectedParts: [...delivered.parts],
+      },
+    };
+  }
+  /* ---- V51 / V51b: the ripple goal missed BECAUSE of the rule ------------
+   *
+   * Under `'none'` the rule forbade the pad outright (V51). Under a stated
+   * maximum the same refusal fires only when the delivered network sits AT the
+   * cap: a miss with room left under it is the tuner's, not the rule's. */
+  const atCap =
+    maxSeriesOhm !== null && levelWorkDelivered !== null && levelWorkDelivered.reachable && levelWorkDelivered.totalSeriesOhm >= maxSeriesOhm - 1e-6;
+  if (!refused && (levelWorkRule === 'none' || atCap) && lowestForLevel !== null && askedDb !== null && askedDb > 0) {
     const goal = network.declaration?.stated.staged?.rippleDb;
     const after = delivered.net as { after?: { ripplePeakDb?: number; rippleDb?: number } };
     const peak = after.after?.ripplePeakDb ?? after.after?.rippleDb ?? null;
@@ -1953,20 +2199,86 @@ function runCandidate<I, R extends { parts: VxpPart[]; net: { gateRefusals?: str
         reason:
           `this configuration asks ${askedDb.toFixed(2)} dB of level work on the lowest way ` +
           `(${lowestForLevel} sits that far above the anchor ${facts.gapAnchorModel ?? '?'} after the ` +
-          `target curve, A5d.4) and the project forbids level work there; without it the delivered ` +
-          `network misses the ripple goal: ${peak.toFixed(2)} dB peak deviation against ${goal} dB`,
+          `target curve, A5d.4) and the project ` +
+          (levelWorkRule === 'none'
+            ? 'forbids level work there'
+            : `limits it to ${maxSeriesOhm!.toFixed(2)} Ω of series resistance, which the delivered network is at ` +
+              `(${levelWorkDelivered!.totalSeriesOhm.toFixed(3)} Ω)`) +
+          `; without more the delivered network misses the ripple goal: ${peak.toFixed(2)} dB peak deviation against ${goal} dB`,
         note:
-          'The tune COMPLETED with no pad on the lowest way, as required, and the surplus of that way ' +
-          'over the anchor stayed in the sum. What the coil\'s tilt and the baffle step could not ' +
+          (levelWorkRule === 'none'
+            ? 'The tune COMPLETED with no pad on the lowest way, as required, and the surplus of that way ' +
+              'over the anchor stayed in the sum. '
+            : 'The tune COMPLETED with the series resistance of the lowest way at the stated maximum, and ' +
+              'the rest of that way\'s surplus over the anchor stayed in the sum. ') +
+          'What the coil\'s tilt and the baffle step could not ' +
           'absorb shows up as the ripple the staged pass could not reach. The number in `reason` is ' +
           'the configuration\'s, not the filter\'s: it is the same whichever candidate is tried, and ' +
           'it is what a series wiring, a different driver pair or an active low branch would have ' +
-          'to deliver instead (casebook V51).',
+          'to deliver instead (casebook V51, V51b).',
         fields: {
           ...(delivered.net as WholesaleRejectionFields),
           rejectedParts: [...delivered.parts],
         },
       };
+    }
+  }
+  /* ---- V51b: Y — what the FLOOR asks of the lowest way's series resistance --
+   *
+   * Solved on the network this candidate produced (the refused one, on a
+   * refusal), against the same gate that judges it (`M-B/|Z|` through
+   * `evaluateGates`, tolerance included): the total series resistance in front
+   * of the driver at which the gate passes (inserted at the HEAD of the way,
+   * where a series resistor and the first coil's DCR sit). On casus 1 at V51 the resistor in
+   * the woofer path turned out to be doing the floor's work as well as the
+   * level's, and this number is what makes that visible per candidate rather
+   * than as a corpus count. Only where a floor is stated and a rule about the
+   * lowest way is; every other run skips the solves (P2). */
+  if (lowestForLevel !== null && levelWorkRule !== undefined && v2.gates.ampMinLoadOhm !== undefined && collect.reference) {
+    const probeParts: readonly VxpPart[] = refused?.fields.rejectedParts && refused.fields.rejectedParts.length > 0 ? refused.fields.rejectedParts : delivered.parts;
+    if (probeParts.length > 0 && levelWorkDelivered && levelWorkDelivered.reachable) {
+      const need = seriesResistanceForFloor(probeParts, lowestForLevel, v2.gates, collect.reference, ratingsFor(probeParts, network));
+      if (need.extraOhm !== null) {
+        levelWork.floorNeedsSeriesOhm = levelWorkDelivered.totalSeriesOhm + need.extraOhm;
+        collect.notes.push(
+          need.extraOhm === 0
+            ? `The stated floor of ${v2.gates.ampMinLoadOhm} Ω is met by this network with ${levelWorkDelivered.totalSeriesOhm.toFixed(3)} Ω ` +
+              `of series resistance on ${lowestForLevel} (V51b, Y).`
+            : `The stated floor of ${v2.gates.ampMinLoadOhm} Ω asks ${(levelWorkDelivered.totalSeriesOhm + need.extraOhm).toFixed(3)} Ω of ` +
+              `total series resistance on ${lowestForLevel} (${levelWorkDelivered.totalSeriesOhm.toFixed(3)} Ω delivered + ` +
+              `${need.extraOhm.toFixed(3)} Ω more at the head of the way; V51b, Y)` +
+              (maxSeriesOhm !== null
+                ? levelWorkDelivered.totalSeriesOhm + need.extraOhm > maxSeriesOhm
+                  ? `, against a stated maximum of ${maxSeriesOhm.toFixed(2)} Ω — the rule is what stands between this candidate and the floor.`
+                  : `, within the stated maximum of ${maxSeriesOhm.toFixed(2)} Ω.`
+                : levelWorkRule === 'none'
+                  ? ', and the project allows none (V51).'
+                  : '.'),
+        );
+        /* The refusal names the number when the cap is what kept the tune
+         * from the floor: the gate refused, and this is why it could not be
+         * answered. Two rules were involved, and `kinds` says so. */
+        if (refused && refused.by === 'active-gate' && need.extraOhm > 0) {
+          const y = levelWorkDelivered.totalSeriesOhm + need.extraOhm;
+          const capped = maxSeriesOhm !== null ? y > maxSeriesOhm : levelWorkRule === 'none';
+          if (capped) {
+            refused = {
+              ...refused,
+              kinds: refused.kinds.includes('topology') ? refused.kinds : [...refused.kinds, 'topology'],
+              reason:
+                `${refused.reason} — this candidate asks ${y.toFixed(2)} Ω of series resistance on the lowest way ` +
+                `(${lowestForLevel}) for the floor, against ` +
+                (maxSeriesOhm !== null ? `a stated maximum of ${maxSeriesOhm.toFixed(2)} Ω` : 'a project that allows none') +
+                ' (V51b, Y)',
+            };
+          }
+        }
+      } else {
+        collect.notes.push(
+          `Y (V51b) could not be solved for ${lowestForLevel} against the stated floor of ${v2.gates.ampMinLoadOhm} Ω: ${need.why}. ` +
+            'Reported as unknown, not as zero.',
+        );
+      }
     }
   }
 

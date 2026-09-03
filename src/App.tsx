@@ -148,6 +148,7 @@ import {
   declareCandidateChainChoices,
   declareCandidateChoices,
 } from './lib/engine2/optimizer/candidateDeclaration.ts';
+import { seriesRMaxOhmOf, type LowestWayLevelWork } from './lib/levelWork.ts';
 import { chainDeclarationKey } from './lib/engine2/optimizer/chainChoices.ts';
 import { AUTO_STRUCTS } from './lib/threeWayDesign.ts';
 import { DEFAULT_RUN_SEED, SEARCH_SMOOTHING_OCTAVES } from './lib/engine2/constants.ts';
@@ -1759,10 +1760,14 @@ export default function App() {
     /** V51 — the THERMAL DESIGN POWER (average listening power, W) M-A/part
      *  judges at; blank = at the continuous amplifier power (V50). */
     resistorThermalPowerW: string;
-    /** V51 — '' (not stated) or 'none': the lowest way may carry no level
-     *  work (no series resistor, no shunt pad). A topology requirement on the
-     *  search, and a chain-level choice key. */
+    /** V51 — '' (not stated), 'none': the lowest way may carry no level
+     *  work (no series resistor, no shunt pad), or 'series-r-max' (V51b):
+     *  series resistance up to the maximum below, no pad. A topology
+     *  requirement on the search, and a chain-level choice key. */
     lowestWayLevelWork: string;
+    /** V51b — the maximum total series resistance (Ω, discrete R plus coil
+     *  DCR) on the lowest way; read only with 'series-r-max'. */
+    lowestWaySeriesRMaxOhm: string;
   }>({
     verticalWindowDeg: '',
     amplifierPowerW: '',
@@ -1785,6 +1790,7 @@ export default function App() {
     coilClassA: '',
     resistorThermalPowerW: '',
     lowestWayLevelWork: '',
+    lowestWaySeriesRMaxOhm: '',
   });
   /**
    * A5a — PER-MEASUREMENT-SESSION METADATA THE ENGINE NEEDS AND NOBODY COULD
@@ -3343,7 +3349,17 @@ export default function App() {
        * The second is a CHOICE and not a number: '' is absent (P4) and never a
        * stated "allowed"; only 'none' reaches the engine. */
       resistorThermalPowerW: stated(engineV2Settings.resistorThermalPowerW),
-      lowestWayLevelWork: engineV2Settings.lowestWayLevelWork === 'none' ? ('none' as const) : undefined,
+      /* V51b — 'series-r-max' needs its number: without one the state cannot
+       * be stated (a maximum without a figure binds nothing) and it reads as
+       * absent, which the form flags. One type, one home (`levelWork.ts`). */
+      lowestWayLevelWork: ((): LowestWayLevelWork | undefined => {
+        if (engineV2Settings.lowestWayLevelWork === 'none') return 'none';
+        if (engineV2Settings.lowestWayLevelWork === 'series-r-max') {
+          const max = stated(engineV2Settings.lowestWaySeriesRMaxOhm);
+          return max !== undefined && max >= 0 ? { kind: 'series-r-max', maxOhm: max } : undefined;
+        }
+        return undefined;
+      })(),
     };
   }, [engineV2Settings]);
 
@@ -6421,6 +6437,7 @@ export default function App() {
       coilClassA: d.engineV2?.coilClassA ?? '',
       resistorThermalPowerW: d.engineV2?.resistorThermalPowerW ?? '',
       lowestWayLevelWork: d.engineV2?.lowestWayLevelWork ?? '',
+      lowestWaySeriesRMaxOhm: d.engineV2?.lowestWaySeriesRMaxOhm ?? '',
     });
     // A5a metadata (F3b). Additive: a project from before F3b has no block and
     // every field falls back to '', which is what "not stated" means (P4).
@@ -7091,8 +7108,12 @@ export default function App() {
         stated: { eqBands: settings.eqBands },
         /* V51 — the third chain key, derived from the stated requirement:
          * 'none' when the designer forbids level work on the lowest way,
-         * ABSENT otherwise (never a stated 'allowed' — P4). */
+         * ABSENT otherwise (never a stated 'allowed' — P4). V51b — a stated
+         * maximum derives the capped state instead. */
         ...(engineV2Gates.lowestWayLevelWork === 'none' ? { lowestWayLevelWorkForbidden: true } : {}),
+        ...(seriesRMaxOhmOf(engineV2Gates.lowestWayLevelWork) !== null
+          ? { lowestWaySeriesRMaxOhm: seriesRMaxOhmOf(engineV2Gates.lowestWayLevelWork)! }
+          : {}),
       });
       /** The A5d declaration that travels beside one generated candidate. */
       const declarationFor = (cand: GeneratedCandidate, input: Chain3Input) => ({
@@ -16082,8 +16103,32 @@ export default function App() {
                       >
                         <option value="">{t('not stated')}</option>
                         <option value="none">{t('none (no series R, no shunt pad)')}</option>
+                        <option value="series-r-max">{t('series R up to a maximum, no pad')}</option>
                       </select>
                     </label>
+                    {/* V51b — the maximum that makes 'series-r-max' a statement:
+                      * the TOTAL series resistance the lowest way's driver may
+                      * see in its path, discrete resistors plus coil DCR. An
+                      * air-core coil with that DCR is that resistor. */}
+                    {engineV2Settings.lowestWayLevelWork === 'series-r-max' && (
+                      <label title={t("V51b — the maximum TOTAL series resistance on the lowest way, Ω: discrete resistors plus every series coil's DCR. The search may place and value one plain series resistor up to it (no L-pad, no shunt pad, no bypassed pad); a candidate whose impedance floor asks more comes back as a refusal naming how much. An air-core coil whose DCR is this value does the same as the resistor — a build choice, not an engine decision. Empty = the state cannot be stated and reads as not stated.")}>
+                        {t('Max series R on lowest way (Ω)')}
+                        <input
+                          type="number"
+                          step="0.1"
+                          min={0}
+                          value={engineV2Settings.lowestWaySeriesRMaxOhm}
+                          placeholder="—"
+                          onChange={(e) =>
+                            setEngineV2Settings((v) => ({ ...v, lowestWaySeriesRMaxOhm: e.target.value }))
+                          }
+                          style={{ width: '4rem' }}
+                        />
+                        {engineV2Gates.lowestWayLevelWork === undefined && (
+                          <span className="v2-warn"> {t('no maximum — reads as not stated')}</span>
+                        )}
+                      </label>
+                    )}
 
                     {/* ---- F2: the SEARCH-SPACE BUDGETS (spec A5d.6) ----
                       * These do not judge a design; they are inverted through

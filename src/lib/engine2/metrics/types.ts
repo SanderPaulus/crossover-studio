@@ -32,6 +32,7 @@ import type { DerivedDriver, IngestResult } from '../ingest/derive.ts';
 import type { EstimatorStamp } from '../version.ts';
 import type { DriverCard } from './driveExcursion.ts';
 import type { WayWiring } from '../ingest/wiring.ts';
+import type { LowestWayLevelWork } from '../../levelWork.ts';
 
 export type { DriverCard };
 
@@ -221,11 +222,14 @@ export interface ProjectSettings {
   wiringByDriver?: Record<string, WayWiring>;
   /**
    * The project's stated requirement about level work on its LOWEST way:
-   * `'none'` = no resistor in its series path and no shunt pad on it. Absent =
-   * not stated (P4): the report describes what a netlist carries there and
-   * judges nothing; the search keeps its own behaviour.
+   * `'none'` = no resistor in its series path and no shunt pad on it (V51);
+   * `{ kind: 'series-r-max', maxOhm }` = series resistance up to a stated
+   * total (discrete R plus coil DCR) and no pad (V51b). Absent = not stated
+   * (P4): the report describes what a netlist carries there and judges
+   * nothing; the search keeps its own behaviour. One type, one home
+   * (`levelWork.ts`).
    */
-  lowestWayLevelWork?: 'none' | 'allowed';
+  lowestWayLevelWork?: LowestWayLevelWork;
 }
 
 /**

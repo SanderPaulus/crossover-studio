@@ -985,7 +985,7 @@ export function EngineV2Panel({ report, ambiguous, floors = [] }: EngineV2PanelP
             </tbody>
           </table>
           {predesign.levelWork.delivered && (
-            <p className={predesign.levelWork.requirement === 'none' && !predesign.levelWork.delivered.none ? 'v2-warn' : 'v2-muted'}>
+            <p className={predesign.levelWork.verdict?.ok === false ? 'v2-warn' : 'v2-muted'}>
               {predesign.levelWork.delivered.none
                 ? `This network carries no level work on ${predesign.levelWork.lowestWay} — no series resistor, no shunt pad.`
                 : `This network carries level work on ${predesign.levelWork.lowestWay}: ` +
@@ -994,6 +994,12 @@ export function EngineV2Panel({ report, ambiguous, floors = [] }: EngineV2PanelP
                     ...predesign.levelWork.delivered.shuntPads.map((r) => `${r.id} ${r.ohm.toFixed(2)} Ω to ground`),
                   ].join(', ') +
                   '.'}
+              {/* V51b — the series resistance the driver sees, split, because the
+                  split is the build choice (a fatter coil or a resistor beside it). */}
+              {` Series resistance in its path: ${predesign.levelWork.delivered.seriesOhm.toFixed(2)} Ω discrete + ` +
+                `${predesign.levelWork.delivered.dcrOhm.toFixed(2)} Ω coil DCR = ${predesign.levelWork.delivered.totalSeriesOhm.toFixed(2)} Ω` +
+                (predesign.levelWork.maxSeriesOhm !== null ? ` against a stated maximum of ${predesign.levelWork.maxSeriesOhm.toFixed(2)} Ω.` : '.')}
+              {predesign.levelWork.verdict?.ok === false ? ` FLAG (no gate): ${predesign.levelWork.verdict.why}.` : ''}
             </p>
           )}
           {predesign.levelWork.plateau && (

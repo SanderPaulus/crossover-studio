@@ -139,6 +139,13 @@ function compare(beforeId: string, afterId: string) {
 
 const v47 = compare('v45', 'v47');
 const v32 = compare('v30', 'v32');
+/* V51b — het UITERSTE van de leesregel, volledig gedateerd: het V51-corpus is
+ * één netlist en het V50-corpus draagt haar niet, dus V50 → V51 heeft GEEN
+ * ENKEL PAAR. Elk corpusgemiddelde over die stap is dan compositie en niets
+ * anders, en de gepaarde lezing hoort dat te ZEGGEN (n = 0, geen getal) in
+ * plaats van een gemiddelde over niets af te drukken. Herankerd bij V51b op
+ * twee gedateerde corpora, zoals V43 op `v42_bult_bevinding` deed. */
+const v51 = compare('v50', 'v51');
 
 describe('de gepaarde delta naast het corpusgemiddelde (V47-nazorg)', () => {
   it('koppelt op KANDIDAAT, en het V47-veld is een deelverzameling van het V45-veld', () => {
@@ -230,6 +237,23 @@ describe('de gepaarde delta naast het corpusgemiddelde (V47-nazorg)', () => {
     expect(v32.corpus(DISS).after).toBeCloseTo(26.97, 1);
     expect(v32.corpus(PHASE).before).toBeCloseTo(17.34, 1);
     expect(v32.corpus(PHASE).after).toBeCloseTo(20.39, 1);
+  });
+
+  it('V50 → V51: geen enkel paar, dus de gepaarde lezing zegt n = 0 en drukt GEEN delta af', () => {
+    expect(v51.before.byCandidate.size).toBe(7);
+    expect(v51.after.byCandidate.size).toBe(1);
+    expect(pairedCandidates(v51.before, v51.after)).toHaveLength(0);
+    expect(v51.pairs).toHaveLength(0);
+    for (const pick of [PHASE, DISS]) {
+      const d = v51.paired(pick);
+      expect(d.n).toBe(0);
+      expect(d.before).toBeNull();
+      expect(d.after).toBeNull();
+      // ...terwijl het corpusgemiddelde er aan beide kanten wél staat: dat IS het compositie-effect zonder één paar eronder.
+      const c = v51.corpus(pick);
+      expect(c.before).not.toBeNull();
+      expect(c.after).not.toBeNull();
+    }
   });
 
   it('een paar waarvan één helft niets meet telt aan GEEN van beide kanten mee', () => {

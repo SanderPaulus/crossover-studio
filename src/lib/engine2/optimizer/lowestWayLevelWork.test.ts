@@ -38,6 +38,7 @@ import { parseFrd } from '../../parsers/frd.ts';
 import { parseZma } from '../../parsers/zma.ts';
 import { AUTO_STRUCTS } from '../../threeWayDesign.ts';
 import type { Chain3Input, Chain3Result } from '../../threeWayChain.ts';
+import type { VxpPart } from '../../parsers/vxp.ts';
 import { levelWorkOnWay } from '../../levelWork.ts';
 import { stableJson } from './determinism.ts';
 import { declareCandidateChainChoices, declareCandidateChoices } from './candidateDeclaration.ts';
@@ -156,11 +157,17 @@ type Done = V2CandidateResult<Chain3Result>;
 function through(
   c: GeneratedCandidate,
   chainDeclaration: ChainChoiceDeclaration,
-  opts: { facts?: Partial<MeasurementFactsPayload>; staged?: { rippleDb: number; phaseDeg: number }; settingsExtra?: object } = {},
+  opts: {
+    facts?: Partial<MeasurementFactsPayload>;
+    staged?: { rippleDb: number; phaseDeg: number };
+    settingsExtra?: object;
+    /** V51b — armed gates, for the floor claims. */
+    gates?: V2Chain3Payload['v2']['gates'];
+  } = {},
 ): Done {
   const payload: V2Chain3Payload = {
     input: chainInput(c, opts.settingsExtra ?? {}),
-    v2: { gates: {}, budgets: {}, determinism: { seed: 51, budgetEvaluations: 80 }, ...(opts.facts ?? {}) },
+    v2: { gates: opts.gates ?? {}, budgets: {}, determinism: { seed: 51, budgetEvaluations: 80 }, ...(opts.facts ?? {}) },
     candidate: {
       declaration: tunerDeclaration(c, opts.staged),
       chainDeclaration,
@@ -270,4 +277,269 @@ describe('V51 — may the lowest way carry level work', () => {
     expect(loose.rejection?.kinds ?? []).not.toContain('topology');
     expect(loose.result.parts.length).toBeGreaterThan(0);
   }, 300_000);
+});
+
+/* ================================================================== *
+ * V51b — series resistance up to a stated maximum, no pad
+ * ================================================================== */
+
+/**
+ * V51b — THE SECOND STATED STATE OF THE SAME KEY.
+ *
+ *  1. THE DERIVATION. A stated maximum declares `{ kind: 'series-r-max',
+ *     maxOhm }`; it WINS over the blanket prohibition (the narrower statement);
+ *     an explicit value still wins over both; nothing is derived from nothing.
+ *     The value moves the fingerprint, and so does the number inside it.
+ *  2. THE BOX. A `stated-series-r` bound takes the `qes-series-r` shape: the
+ *     coils' DCR is charged against the maximum first and the free resistors
+ *     share what is left; a way without a free series resistor gets the note.
+ *  3. IT REACHES THE SYNTHESIS (V23). On the lifted-woofer fixture the capped
+ *     arm delivers ONE plain series resistor on the lowest way, no shunt pad,
+ *     with the total (discrete + DCR) inside the maximum — and its network
+ *     differs from both the `'none'` and the `'allowed'` arm. The column
+ *     carries the maximum and a passing verdict; the bound is reported.
+ *  4. Y AND THE REFUSAL. With the driver sweeps handed over and a floor the
+ *     capped network cannot reach, the gate refuses; the worker then solves
+ *     what the floor ASKS of the lowest way's series resistance (Y) on the
+ *     refused network, and when Y exceeds the maximum the refusal names it and
+ *     `kinds` carries `topology` beside `gate`. With a floor the network meets,
+ *     nothing is refused and Y is the delivered total.
+ */
+
+import { searchBoxFor, type InvertedBound } from './bounds.ts';
+import { freezeGateReference, type MeasuredSweep } from './gates.ts';
+import { seriesResistanceForFloor, withSeriesResistanceInFront } from './worker.ts';
+import { crossoverToNetlist } from '../../vxpNetwork.ts';
+import type { VxpCrossover } from '../../parsers/vxp.ts';
+import { AMP_FLOOR_TOLERANCE } from '../../impedanceFloor.ts';
+
+const MAX_OHM = 1.0;
+const CAPPED = declareCandidateChainChoices({ stated: {}, lowestWaySeriesRMaxOhm: MAX_OHM });
+
+/** A paper part: one primitive between two grid points (the `levelWork.test.ts` helpers). */
+let paperN = 0;
+const paper = (type: 'Resistor' | 'Capacitor' | 'Inductor', value: number, a: [number, number], b: [number, number], extra: { name: string; value: number }[] = []): VxpPart => {
+  const name = type === 'Resistor' ? 'R' : type === 'Capacitor' ? 'C' : 'L';
+  paperN++;
+  return {
+    type,
+    partId: `${name}${paperN}`,
+    params: [{ name, value }, ...extra],
+    wires: [{ x: a[0], y: a[1] }, { x: b[0], y: b[1] }],
+  } as unknown as VxpPart;
+};
+const paperSource = (): VxpPart =>
+  ({ type: 'Generator', partId: 'G1', params: [{ name: 'Rg', value: 0.01 }], wires: [{ x: 0, y: 0 }, { x: 0, y: 10 }] }) as unknown as VxpPart;
+const paperGround = (): VxpPart => ({ type: 'Ground', partId: 'GND', params: [], wires: [{ x: 0, y: 10 }] }) as unknown as VxpPart;
+const paperDriver = (model: string, a: [number, number], b: [number, number]): VxpPart =>
+  ({ type: 'Driver', partId: `D-${model}`, model, params: [], wires: [{ x: a[0], y: a[1] }, { x: b[0], y: b[1] }] }) as unknown as VxpPart;
+const paperRail = (xs: number[]): VxpPart =>
+  ({ type: 'Wire', partId: 'W1', params: [], wires: xs.map((x) => ({ x, y: 10 })) }) as unknown as VxpPart;
+
+/** The fixture's driver sweeps as the facts payload carries them (F4b2 shape). */
+function sweepFacts(): Pick<MeasurementFactsPayload, 'impedanceByModel'> {
+  const of = (raw: string) => {
+    const z = parseZma(raw);
+    return { grid: [...z.freq], magnitude: [...z.magnitude], phaseDeg: [...z.phase], validHz: [z.freq[0], z.freq[z.freq.length - 1]] as [number, number] };
+  };
+  const mid = of(load('mid_Backwavecone_sheep75gram.ZMA'));
+  return { impedanceByModel: { woofer: mid, mid: of(load('mid_Backwavecone_sheep75gram.ZMA')), tweeter: of(load('tweeter.ZMA')) } };
+}
+
+describe('V51b — series resistance on the lowest way up to a stated maximum, no pad', () => {
+  it('derives series-r-max from a stated maximum, which wins over the prohibition; an explicit value wins; the number moves the fingerprint', () => {
+    expect(CAPPED.stated.lowestWayLevelWork).toEqual({ kind: 'series-r-max', maxOhm: MAX_OHM });
+    // The narrower statement wins over the blanket prohibition.
+    expect(
+      declareCandidateChainChoices({ stated: {}, lowestWayLevelWorkForbidden: true, lowestWaySeriesRMaxOhm: MAX_OHM }).stated.lowestWayLevelWork,
+    ).toEqual({ kind: 'series-r-max', maxOhm: MAX_OHM });
+    // An explicit value wins over both.
+    expect(
+      declareCandidateChainChoices({ stated: { lowestWayLevelWork: 'none' }, lowestWaySeriesRMaxOhm: MAX_OHM }).stated.lowestWayLevelWork,
+    ).toBe('none');
+    // Nothing from nothing: a non-number is not a maximum.
+    expect(declareCandidateChainChoices({ stated: {}, lowestWaySeriesRMaxOhm: Number.NaN }).stated.lowestWayLevelWork).toBeUndefined();
+    for (const d of [CAPPED]) expect(chainDeclarationCoverage(d).complete).toBe(true);
+    const k = (d: ChainChoiceDeclaration) => JSON.stringify(chainDeclarationKey(d));
+    expect(k(CAPPED)).not.toBe(k(NONE));
+    expect(k(CAPPED)).not.toBe(k(ABSENT));
+    expect(k(CAPPED)).not.toBe(k(ALLOWED));
+    // The NUMBER is part of the identity, not only the mode.
+    expect(k(CAPPED)).not.toBe(k(declareCandidateChainChoices({ stated: {}, lowestWaySeriesRMaxOhm: MAX_OHM * 2 })));
+    expect(k(CAPPED)).toBe(k(declareCandidateChainChoices({ stated: {}, lowestWaySeriesRMaxOhm: MAX_OHM })));
+  });
+
+  it('the box: a stated-series-r bound charges the coil DCR first and caps the free resistors with what is left', () => {
+    /* Paper network: (0,0) —L1 (DCR 0.3)— (10,0) —R2 0.5— (20,0) —D-woofer— gnd;
+     *                (0,0) —C3— (30,0) —D-tweeter— gnd.  Maximum 1.0 Ω on woofer. */
+    paperN = 0;
+    const parts: VxpPart[] = [
+      paperSource(),
+      paperGround(),
+      paper('Inductor', 1, [0, 0], [10, 0], [{ name: 'DCR', value: 0.3 }]),
+      paper('Resistor', 0.5, [10, 0], [20, 0]),
+      paperDriver('woofer', [20, 0], [20, 10]),
+      paper('Capacitor', 4, [0, 0], [30, 0]),
+      paperDriver('tweeter', [30, 0], [30, 10]),
+      paperRail([0, 20, 30]),
+    ];
+    const bound: InvertedBound = {
+      rule: 'stated-series-r',
+      subject: 'woofer',
+      quantity: 'total series resistance (stated maximum, coil DCR included)',
+      maxSI: MAX_OHM,
+      unit: 'Ω',
+      slack: false,
+      parameters: { stated_max_ohm: MAX_OHM },
+      notes: [],
+    };
+    const box = searchBoxFor(parts, [bound]);
+    expect(box.valueSumCeilings).toHaveLength(1);
+    expect(box.valueSumCeilings[0].ids).toEqual(['R2']);
+    expect(box.valueSumCeilings[0].maxSI).toBe(MAX_OHM);
+    expect(box.valueSumCeilings[0].fixedSI).toBeCloseTo(0.3, 9);
+    // The per-part ceiling is what the DCR leaves: 1.0 − 0.3.
+    expect(box.valueCeilings.R2).toBeCloseTo(0.7, 9);
+    // A way with NO free series resistor gets the note and no group: the coil alone feeds the woofer.
+    paperN = 0;
+    const noR: VxpPart[] = [
+      paperSource(),
+      paperGround(),
+      paper('Inductor', 1, [0, 0], [20, 0], [{ name: 'DCR', value: 0.3 }]),
+      paperDriver('woofer', [20, 0], [20, 10]),
+      paper('Capacitor', 4, [0, 0], [30, 0]),
+      paperDriver('tweeter', [30, 0], [30, 10]),
+      paperRail([0, 20, 30]),
+    ];
+    const box2 = searchBoxFor(noR, [bound]);
+    expect(box2.valueSumCeilings).toHaveLength(0);
+    expect(box2.notes.some((n) => /no free series resistor/.test(n))).toBe(true);
+  });
+
+  it('reaches the synthesis: ONE plain series R on the lowest way within the maximum, no pad — and a different network from none and allowed', () => {
+    const c = oneCandidate();
+    const capped = through(c, CAPPED);
+    const inv = levelWorkOnWay(capped.result.parts, 'woofer');
+    expect(inv.reachable).toBe(true);
+    expect(inv.shuntPads).toEqual([]);
+    expect(inv.seriesResistors.length, 'the capped arm did not place a series resistor on the lowest way').toBe(1);
+    expect(inv.totalSeriesOhm).toBeGreaterThan(0);
+    expect(inv.totalSeriesOhm).toBeLessThanOrEqual(MAX_OHM + 1e-9);
+    // Not the same network as either V51 arm.
+    const none = through(c, NONE);
+    const allowed = through(c, ALLOWED);
+    expect(netOf(capped.result)).not.toBe(netOf(none.result));
+    expect(netOf(capped.result)).not.toBe(netOf(allowed.result));
+    // The column and the bound.
+    expect(capped.levelWork.requirement).toEqual({ kind: 'series-r-max', maxOhm: MAX_OHM });
+    expect(capped.levelWork.maxSeriesOhm).toBe(MAX_OHM);
+    expect(capped.levelWork.verdict?.ok).toBe(true);
+    expect(capped.levelWork.delivered?.totalSeriesOhm).toBeCloseTo(inv.totalSeriesOhm, 9);
+    expect(capped.rejection).toBeNull();
+    const bound = capped.bounds.find((b) => b.rule === 'stated-series-r');
+    expect(bound, 'the stated maximum was not filed in the box').toBeDefined();
+    expect(bound!.subject).toBe('woofer');
+    expect(bound!.maxSI).toBe(MAX_OHM);
+    expect(capped.notes.some((n) => /LIMITED by the project/.test(n) && /build choice/.test(n))).toBe(true);
+    // No floor stated on this run: Y is not solved (P2 — no extra solves).
+    expect(capped.levelWork.floorNeedsSeriesOhm).toBeNull();
+    expect(capped.levelWork.floorOhm).toBeNull();
+  }, 400_000);
+
+  it('Y by hand: on a network whose minimum IS the lowest way, the probe finds the extra series resistance the floor asks — and 0 where the floor is met', () => {
+    /* Paper network with FLAT, RESISTIVE drivers so the answer is one line of
+     * algebra. Woofer 4 Ω behind a 1 mH coil, tweeter 8 Ω behind a 10 µF cap:
+     * at the low end the tweeter branch is open and the system is the woofer's
+     * 4 Ω; at the high end the woofer branch is open and the system is the
+     * tweeter's 8 Ω; in between the two branches in parallel sit above both
+     * (at 1592 Hz: (4+10j)‖(8−10j) ≈ 11.5 Ω). The minimum is therefore the
+     * woofer's 4 Ω, and R extra in front of it lifts that end to 4 + R. A
+     * floor of 6 Ω passes at 0.98 × 6 = 5.88 Ω (the gate's own tolerance,
+     * `meetsAmpFloor`), so the probe should land on R ≈ 1.88 Ω. */
+    paperN = 0;
+    const parts: VxpPart[] = [
+      paperSource(),
+      paperGround(),
+      paper('Inductor', 1, [0, 0], [10, 0]),
+      paperDriver('woofer', [10, 0], [10, 10]),
+      paper('Capacitor', 10, [0, 0], [20, 0]),
+      paperDriver('tweeter', [20, 0], [20, 10]),
+      paperRail([0, 10, 20]),
+    ];
+    const grid = logspace(100, 10000, 48);
+    const sweepGrid = logspace(20, 20000, 60);
+    const flatZ = (ohm: number, n: number) => Array.from({ length: n }, () => fromPolar(ohm, 0));
+    const flatSweep = (ohm: number): MeasuredSweep => ({
+      grid: [...sweepGrid],
+      magnitude: sweepGrid.map(() => ohm),
+      phaseDeg: sweepGrid.map(() => 0),
+      validHz: [sweepGrid[0], sweepGrid[sweepGrid.length - 1]],
+    });
+    const netlist = crossoverToNetlist({ name: 'y-by-hand', parts: [...parts] } as VxpCrossover).netlist;
+    const reference = freezeGateReference({
+      netlist,
+      grid: [...grid],
+      driverZ: { woofer: flatZ(4, grid.length), tweeter: flatZ(8, grid.length) },
+      branchDb: { woofer: grid.map(() => 90), tweeter: grid.map(() => 90) },
+      fsHz: { woofer: 50, tweeter: 1500 },
+      validHz: { woofer: [grid[0], grid[grid.length - 1]], tweeter: [grid[0], grid[grid.length - 1]] },
+      sweeps: { woofer: flatSweep(4), tweeter: flatSweep(8) },
+    });
+    expect(reference.impedanceAbsent).toBeNull();
+    const asks = seriesResistanceForFloor(parts, 'woofer', { ampMinLoadOhm: 6 }, reference);
+    expect(asks.extraOhm, asks.why ?? '').not.toBeNull();
+    expect(asks.extraOhm!).toBeCloseTo(6 * (1 - AMP_FLOOR_TOLERANCE) - 4, 2);
+    // A floor the bare network meets asks nothing more.
+    expect(seriesResistanceForFloor(parts, 'woofer', { ampMinLoadOhm: 3.5 }, reference)).toEqual({ extraOhm: 0, why: null });
+    // A floor no series resistance on THIS way can reach (the tweeter's 8 Ω caps the high end) says so, and why.
+    const beyond = seriesResistanceForFloor(parts, 'woofer', { ampMinLoadOhm: 9 }, reference);
+    expect(beyond.extraOhm).toBeNull();
+    expect(beyond.why).toMatch(/another way/);
+    // The insertion itself: one node more, the driver moved behind the probe resistor, nothing else touched.
+    const probed = withSeriesResistanceInFront(netlist, 'woofer', 2)!;
+    expect(probed.nodeCount).toBe(netlist.nodeCount + 1);
+    expect(probed.elements.length).toBe(netlist.elements.length + 1);
+    expect(withSeriesResistanceInFront(netlist, 'no-such-way', 2)).toBeNull();
+  });
+
+  it('Y on the route: a floor the capped network cannot reach refuses through the gate, and the column says what the probe found — here that the minimum sits in another way', () => {
+    const c = oneCandidate();
+    const facts = sweepFacts();
+    /* First the capped network judged WITHOUT a floor, to read its own minimum
+     * |Z| off the gate (inactive with a value, P4) — no number is typed here. */
+    const judged = through(c, CAPPED, { facts });
+    const zRow = judged.gates.find((v) => v.gate === 'M-B/|Z|');
+    expect(zRow?.value, 'the floor gate reported no value with the sweeps handed over').not.toBeNull();
+    const minZ = zRow!.value as number;
+    const floor = Number((minZ * 1.5).toFixed(2));
+    const refused = through(c, CAPPED, { facts, gates: { ampMinLoadOhm: floor } });
+    expect(refused.rejection, 'the capped candidate was not refused on the floor').toBeTruthy();
+    expect(refused.rejection!.kinds).toContain('gate');
+    expect(refused.levelWork.floorOhm).toBe(floor);
+    // The refused tune stayed inside the box: no pad, total within the maximum.
+    expect(refused.levelWork.delivered?.shuntPads).toEqual([]);
+    expect(refused.levelWork.delivered!.totalSeriesOhm).toBeLessThanOrEqual(MAX_OHM + 1e-9);
+    /* On THIS fixture the woofer and the mid are the same driver file, and the
+     * system minimum is not the woofer's: the probe reports that rather than a
+     * number, the column stays null, and — because the cap is then NOT what
+     * stands between this candidate and the floor — `topology` is not added
+     * to the refusal. The hand-calculated claim above is where Y is a number. */
+    const yNote = refused.notes.find((n) => /^Y \(V51b\)/.test(n));
+    expect(yNote, refused.notes.filter((n) => /V51b/.test(n)).join(' | ')).toBeDefined();
+    if (refused.levelWork.floorNeedsSeriesOhm === null) {
+      expect(yNote).toMatch(/another way/);
+      expect(refused.rejection!.kinds).not.toContain('topology');
+    } else {
+      expect(refused.levelWork.floorNeedsSeriesOhm).toBeGreaterThan(MAX_OHM);
+      expect(refused.rejection!.kinds).toContain('topology');
+      expect(refused.rejection!.reason).toMatch(/asks .* Ω of series resistance on the lowest way/);
+    }
+    // V31 shape: nothing buildable leaves.
+    expect(refused.result.parts).toEqual([]);
+    /* The counter-proof: a floor the network meets refuses nothing, and Y is
+     * then the delivered total — the floor asks no more. */
+    const met = through(c, CAPPED, { facts, gates: { ampMinLoadOhm: Number((minZ * 0.5).toFixed(2)) } });
+    expect(met.rejection).toBeNull();
+    expect(met.levelWork.floorNeedsSeriesOhm).toBeCloseTo(met.levelWork.delivered!.totalSeriesOhm, 9);
+  }, 600_000);
 });

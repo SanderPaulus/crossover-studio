@@ -127,6 +127,9 @@ interface Slot {
    * "the" textbook value, so the fit starts from both and keeps what wins.
    */
   altInitial?: number;
+  /** V51b — a HARD upper bound on the delivered value (SI), set only by a
+   *  stated rule (the series pad R under `seriesRMaxOhm`). Undefined = none. */
+  maxValue?: number;
 }
 
 interface Topology {
@@ -160,7 +163,20 @@ interface ZInfo {
    * it. See `levelWork.ts` for the definition this honours.
    */
   noLevelWork?: boolean;
+  /**
+   * V51b — a stated MAXIMUM on the total series resistance of this branch,
+   * ohms. Every pad is forbidden as under `noLevelWork` (L-pad, top-octave
+   * hold, shelf cut), and in place of the L-pad ONE plain series resistor is
+   * proposed when the spec asks attenuation: sized for it into the driver's
+   * |Z| (`R_s = Z·(1/a − 1)`, the series-only attenuation `a = Z/(Z+R_s)`) and
+   * capped at the maximum. No shunt leg — the impedance the amplifier sees may
+   * only go UP. Undefined = not stated, byte-identical.
+   */
+  seriesRMaxOhm?: number;
 }
+
+/** Floor of a proposed series pad resistor, Ω — the same floor the L-pad's series R has always had. */
+const SERIES_PAD_R_FLOOR_OHM = 0.1;
 
 /**
  * Derive topology + textbook initial values from the target spec.
@@ -253,7 +269,37 @@ function deriveTopology(
    * the branch simply lands where the driver puts it and the assembled tune
    * sees the step; that step is the finding, not something to hide in a
    * resistor the requirement forbids. */
-  const levelWorkOk = zInfo.noLevelWork !== true;
+  const seriesRMax = zInfo.seriesRMaxOhm;
+  const levelWorkOk = zInfo.noLevelWork !== true && seriesRMax === undefined;
+  if (seriesRMax !== undefined && zInfo.noLevelWork !== true) {
+    /* V51b — a PLAIN series resistor instead of the L-pad, capped, and
+     * PROPOSED WHENEVER THE RULE ALLOWS ONE — not only when the trim asks
+     * more than the L-pad's half-decibel threshold. The rule exists because
+     * the resistor does two jobs on the lowest way (V51: the level AND the
+     * impedance floor), and a tune can only value a resistor the topology
+     * carries; measured on casus 1's first V51b field, the five candidates
+     * whose trim stayed above −0.5 dB got no resistor and every one of them
+     * was refused on the floor with nothing to lift it. A resistor the tune
+     * does not need is pruned by the tuner's own audit (series → shorted).
+     *
+     * The attenuation a series R alone delivers into |Z| is a = Z/(Z + R_s),
+     * so R_s = Z·(1/a − 1) for the requested a, floored at the pad minimum;
+     * what the cap leaves of the trim stays in the sum for the assembled tune
+     * to see (V51's finding, with a bounded remedy beside it). The cap is a
+     * hard clamp on the SEED; the tuner's box holds the total — coil DCR
+     * included — under the same number (`bounds.ts`, the `qes-series-r`
+     * shape). */
+    const R = zAt(spec.hp.enabled ? spec.hp.freq * 2 : 1000);
+    const a = 10 ** (Math.min(spec.gainDb, 0) / 20);
+    const rSeries = Math.min(R * (1 / a - 1), Math.max(seriesRMax, SERIES_PAD_R_FLOOR_OHM));
+    slots.push({
+      kind: 'R',
+      role: `series pad R (max ${seriesRMax.toFixed(2)} Ω total)`,
+      initial: Math.max(rSeries, SERIES_PAD_R_FLOOR_OHM),
+      maxValue: Math.max(seriesRMax, SERIES_PAD_R_FLOOR_OHM),
+    });
+    rungs.push({ type: 'series', slot: slots.length - 1 });
+  }
   if (levelWorkOk && spec.gainDb < -0.5) {
     // L-pad sized for the requested attenuation into R_nom.
     const R = zAt(spec.hp.enabled ? spec.hp.freq * 2 : 1000);
@@ -526,6 +572,12 @@ export interface SynthesizeOptions {
    * no shelf pad. See `ZInfo.noLevelWork`. Default false = byte-identical.
    */
   noLevelWork?: boolean;
+  /**
+   * V51b — series resistance on this branch allowed up to a stated total, no
+   * pad: one plain series R is proposed in the L-pad's place and clamped at
+   * the maximum. See `ZInfo.seriesRMaxOhm`. Undefined = byte-identical.
+   */
+  seriesRMaxOhm?: number;
 }
 
 export function synthesize(
@@ -626,6 +678,7 @@ export function synthesize(
     topHold,
     zobelOk: allowCorr,
     ...(opts.noLevelWork === true ? { noLevelWork: true } : {}),
+    ...(opts.seriesRMaxOhm !== undefined ? { seriesRMaxOhm: opts.seriesRMaxOhm } : {}),
   });
   // Acoustic mode: the target is the ideal crossover SHAPE (HP/LP/gain) only.
   // EQ bands stay in the TOPOLOGY as free tools — the optimiser may move and
@@ -976,6 +1029,11 @@ export function synthesize(
   const stationary = best >= before * 0.97;
 
   let values = fit.x.map((v) => 10 ** v);
+  /* V51b — the stated maximum is a HARD cap on the seed the branch hands over,
+   * not the soft buildability penalty above: a fit that drifted the series pad
+   * R past it would hand the tuner a seed outside the box the same rule sets
+   * there. Only the slot the rule created carries one. */
+  values = values.map((v, i) => (topo.slots[i].maxValue !== undefined ? Math.min(v, topo.slots[i].maxValue!) : v));
   let seriesRsFinal: (number | undefined)[] | undefined;
   let chosen: (CatalogPick | null)[] | null = null;
 

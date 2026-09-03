@@ -28,6 +28,7 @@ import { baffleStepHz } from '../cabinet.ts';
 import { FLAT_TARGET, type TargetCurve } from './requirements/targetCurve.ts';
 import { ctcKey } from './metrics/types.ts';
 import type { WayWiring, WiringKind } from './ingest/wiring.ts';
+import type { LowestWayLevelWork } from '../levelWork.ts';
 
 export const CASUS1_DIR = join(
   dirname(fileURLToPath(import.meta.url)),
@@ -731,6 +732,32 @@ export function casus1LowestWayLevelWorkForbidden(golden: GoldenRefs = loadGolde
     gestelde_eisen?: { geen_niveauwerk_op_laagste_weg?: unknown };
   }).gestelde_eisen;
   return e?.geen_niveauwerk_op_laagste_weg === true;
+}
+
+/**
+ * V51b — the stated MAXIMUM total series resistance on the lowest way
+ * (`gestelde_eisen.max_serie_R_laagste_weg_ohm`, Ω, discrete R plus coil DCR).
+ * Null = not stated. A stated maximum narrows V51's prohibition to "no pad,
+ * series resistance up to this" — see `casus1LowestWayLevelWorkRule`.
+ */
+export function casus1LowestWaySeriesRMaxOhm(golden: GoldenRefs = loadGolden()): number | null {
+  const e = (golden.manifest_en_geometrie as unknown as {
+    gestelde_eisen?: { max_serie_R_laagste_weg_ohm?: unknown };
+  }).gestelde_eisen;
+  const v = e?.max_serie_R_laagste_weg_ohm;
+  return typeof v === 'number' && Number.isFinite(v) && v >= 0 ? v : null;
+}
+
+/**
+ * V51b — THE RULE casus 1 states about level work on its lowest way, in the
+ * one vocabulary every reader shares (`levelWork.ts`): a stated maximum wins
+ * (it is the narrower statement), else the prohibition, else undefined =
+ * nothing stated (P4). Read from the manifest, never written anywhere else.
+ */
+export function casus1LowestWayLevelWorkRule(golden: GoldenRefs = loadGolden()): LowestWayLevelWork | undefined {
+  const max = casus1LowestWaySeriesRMaxOhm(golden);
+  if (max !== null) return { kind: 'series-r-max', maxOhm: max };
+  return casus1LowestWayLevelWorkForbidden(golden) ? 'none' : undefined;
 }
 
 /**

@@ -342,6 +342,13 @@ export interface ProjectDesign {
      */
     resistorThermalPowerW?: string;
     lowestWayLevelWork?: string;
+    /**
+     * V51b — the stated MAXIMUM total series resistance on the lowest way
+     * (Ω, discrete R plus coil DCR), read only when `lowestWayLevelWork` is
+     * 'series-r-max'. Empty = that state cannot be stated (a maximum without
+     * a number binds nothing) and the form says so.
+     */
+    lowestWaySeriesRMaxOhm?: string;
   };
   /**
    * A5a (F3b) — per-branch MEASUREMENT metadata for the v2 layer, keyed by

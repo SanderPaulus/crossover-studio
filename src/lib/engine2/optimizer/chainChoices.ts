@@ -77,7 +77,21 @@ export const CHAIN_CHOICE_KEYS = [
    * design paid that surplus in a series resistor — 14 to 35 W in one part at
    * 100 W continuous, the axis no other requirement reaches. Whether that
    * surplus is paid in a resistor or left in the sum is a different
-   * loudspeaker, not a different amount of polish. */
+   * loudspeaker, not a different amount of polish.
+   *
+   * V51b — THE SAME KEY CARRIES A SECOND STATED STATE, `{ kind: 'series-r-max',
+   * maxOhm }`: series resistance on the lowest way up to a stated TOTAL
+   * (discrete R plus coil DCR) and no pad. The number travels inside the value
+   * and not as a fourth key, on purpose: a mode without its maximum and a
+   * maximum without its mode each mean nothing, and two keys that must agree
+   * are a pair that can disagree. The list therefore stays at three. What the
+   * state does: the design step trims as before, the synthesis proposes one
+   * PLAIN series R capped at the maximum (`synthesis.ts`), the tuner's box
+   * holds the way's total — DCR first — under the same number (`bounds.ts`,
+   * the `qes-series-r` shape), and the worker refuses what exceeds it
+   * (`levelWork.ts`, `levelWorkVerdict`). Measured at V51 on casus 1: without
+   * the resistor the impedance floor refused thirteen of fifteen candidates —
+   * the pad was doing the floor's work as well as the level's. */
   'lowestWayLevelWork',
 ] as const;
 

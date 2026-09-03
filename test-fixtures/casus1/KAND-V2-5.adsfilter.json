@@ -1,8 +1,8 @@
 {
  "format": "acoustic-design-studio-filter",
  "version": 1,
- "savedAt": "2026-09-03T17:20:04.750Z",
- "name": "KAND-V2-1",
+ "savedAt": "2026-09-03T17:20:04.753Z",
+ "name": "KAND-V2-5",
  "parts": [
   {
    "type": "Generator",
@@ -41,7 +41,7 @@
    "params": [
     {
      "name": "L",
-     "value": 2.3,
+     "value": 2.147,
      "unit": "mH"
     }
    ],
@@ -62,7 +62,7 @@
    "params": [
     {
      "name": "C",
-     "value": 152,
+     "value": 154,
      "unit": "uF"
     }
    ],
@@ -93,7 +93,7 @@
    "params": [
     {
      "name": "L",
-     "value": 0.2199,
+     "value": 0.3262,
      "unit": "mH"
     }
    ],
@@ -109,12 +109,43 @@
    ]
   },
   {
+   "type": "Capacitor",
+   "partId": "C4",
+   "params": [
+    {
+     "name": "C",
+     "value": 10.49,
+     "unit": "uF"
+    }
+   ],
+   "wires": [
+    {
+     "x": 17,
+     "y": 6
+    },
+    {
+     "x": 17,
+     "y": 13
+    }
+   ]
+  },
+  {
+   "type": "Ground",
+   "params": [],
+   "wires": [
+    {
+     "x": 17,
+     "y": 13
+    }
+   ]
+  },
+  {
    "type": "Resistor",
    "partId": "R5",
    "params": [
     {
      "name": "R",
-     "value": 0.9997,
+     "value": 0.874,
      "unit": "Ω"
     }
    ],
@@ -176,7 +207,7 @@
    "params": [
     {
      "name": "C",
-     "value": 39.72,
+     "value": 55.31,
      "unit": "uF"
     }
    ],
@@ -197,7 +228,7 @@
    "params": [
     {
      "name": "L",
-     "value": 1.447,
+     "value": 1.05,
      "unit": "mH"
     }
    ],
@@ -228,7 +259,7 @@
    "params": [
     {
      "name": "C",
-     "value": 38.42,
+     "value": 49.16,
      "unit": "uF"
     }
    ],
@@ -241,8 +272,7 @@
      "x": 17,
      "y": 22
     }
-   ],
-   "locked": false
+   ]
   },
   {
    "type": "Inductor",
@@ -250,7 +280,7 @@
    "params": [
     {
      "name": "L",
-     "value": 4.628,
+     "value": 10.76,
      "unit": "mH"
     }
    ],
@@ -281,7 +311,7 @@
    "params": [
     {
      "name": "L",
-     "value": 1.301,
+     "value": 0.8988,
      "unit": "mH"
     }
    ],
@@ -302,7 +332,7 @@
    "params": [
     {
      "name": "C",
-     "value": 6.617,
+     "value": 12.79,
      "unit": "uF"
     }
    ],
@@ -315,8 +345,7 @@
      "x": 24,
      "y": 29
     }
-   ],
-   "locked": false
+   ]
   },
   {
    "type": "Ground",
@@ -334,7 +363,7 @@
    "params": [
     {
      "name": "L",
-     "value": 0.3596,
+     "value": 0.262,
      "unit": "mH"
     }
    ],
@@ -350,12 +379,43 @@
    ]
   },
   {
+   "type": "Capacitor",
+   "partId": "B·C8",
+   "params": [
+    {
+     "name": "C",
+     "value": 2.271,
+     "unit": "uF"
+    }
+   ],
+   "wires": [
+    {
+     "x": 31,
+     "y": 22
+    },
+    {
+     "x": 31,
+     "y": 29
+    }
+   ]
+  },
+  {
+   "type": "Ground",
+   "params": [],
+   "wires": [
+    {
+     "x": 31,
+     "y": 29
+    }
+   ]
+  },
+  {
    "type": "Resistor",
    "partId": "B·R9",
    "params": [
     {
      "name": "R",
-     "value": 7.677,
+     "value": 3.387,
      "unit": "Ω"
     }
    ],
@@ -371,8 +431,15 @@
    ]
   },
   {
-   "type": "Wire",
-   "params": [],
+   "type": "Inductor",
+   "partId": "B·L11",
+   "params": [
+    {
+     "name": "L",
+     "value": 1.084,
+     "unit": "mH"
+    }
+   ],
    "wires": [
     {
      "x": 38,
@@ -390,7 +457,7 @@
    "params": [
     {
      "name": "C",
-     "value": 4.7,
+     "value": 34.42,
      "unit": "uF"
     }
    ],
@@ -403,8 +470,7 @@
      "x": 38,
      "y": 32
     }
-   ],
-   "locked": false
+   ]
   },
   {
    "type": "Resistor",
@@ -412,7 +478,7 @@
    "params": [
     {
      "name": "R",
-     "value": 4.934,
+     "value": 7.036,
      "unit": "Ω"
     }
    ],
@@ -506,7 +572,7 @@
    "params": [
     {
      "name": "C",
-     "value": 3,
+     "value": 7.462,
      "unit": "uF"
     }
    ],
@@ -519,8 +585,7 @@
      "x": 10,
      "y": 42
     }
-   ],
-   "locked": false
+   ]
   },
   {
    "type": "Inductor",
@@ -528,7 +593,7 @@
    "params": [
     {
      "name": "L",
-     "value": 0.3061,
+     "value": 0.2138,
      "unit": "mH"
     }
    ],
@@ -559,7 +624,7 @@
    "params": [
     {
      "name": "C",
-     "value": 14.38,
+     "value": 23.57,
      "unit": "uF"
     }
    ],
@@ -580,7 +645,7 @@
    "params": [
     {
      "name": "L",
-     "value": 0.7823,
+     "value": 0.779,
      "unit": "mH"
     }
    ],
@@ -606,8 +671,15 @@
    ]
   },
   {
-   "type": "Wire",
-   "params": [],
+   "type": "Resistor",
+   "partId": "C·R5",
+   "params": [
+    {
+     "name": "R",
+     "value": 1.213,
+     "unit": "Ω"
+    }
+   ],
    "wires": [
     {
      "x": 17,
@@ -625,7 +697,7 @@
    "params": [
     {
      "name": "R",
-     "value": 46.78,
+     "value": 49.55,
      "unit": "Ω"
     }
    ],
@@ -665,6 +737,79 @@
    ]
   },
   {
+   "type": "Inductor",
+   "partId": "C·L7",
+   "params": [
+    {
+     "name": "L",
+     "value": 0.08553,
+     "unit": "mH"
+    }
+   ],
+   "wires": [
+    {
+     "x": 30,
+     "y": 42
+    },
+    {
+     "x": 30,
+     "y": 47
+    }
+   ]
+  },
+  {
+   "type": "Capacitor",
+   "partId": "C·C8",
+   "params": [
+    {
+     "name": "C",
+     "value": 14.37,
+     "unit": "uF"
+    }
+   ],
+   "wires": [
+    {
+     "x": 30,
+     "y": 47
+    },
+    {
+     "x": 30,
+     "y": 52
+    }
+   ]
+  },
+  {
+   "type": "Resistor",
+   "partId": "C·R9",
+   "params": [
+    {
+     "name": "R",
+     "value": 3.812,
+     "unit": "Ω"
+    }
+   ],
+   "wires": [
+    {
+     "x": 30,
+     "y": 52
+    },
+    {
+     "x": 30,
+     "y": 57
+    }
+   ]
+  },
+  {
+   "type": "Ground",
+   "params": [],
+   "wires": [
+    {
+     "x": 30,
+     "y": 57
+    }
+   ]
+  },
+  {
    "type": "Wire",
    "params": [],
    "wires": [
@@ -684,7 +829,7 @@
    "params": [
     {
      "name": "L",
-     "value": 0.3707,
+     "value": 0.1818,
      "unit": "mH"
     }
    ],
@@ -700,8 +845,15 @@
    ]
   },
   {
-   "type": "Wire",
-   "params": [],
+   "type": "Capacitor",
+   "partId": "C·C11",
+   "params": [
+    {
+     "name": "C",
+     "value": 105.4,
+     "unit": "uF"
+    }
+   ],
    "wires": [
     {
      "x": 36,
@@ -719,7 +871,7 @@
    "params": [
     {
      "name": "R",
-     "value": 11.31,
+     "value": 1.235,
      "unit": "Ω"
     }
    ],

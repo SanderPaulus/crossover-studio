@@ -93,7 +93,9 @@ import {
   casus1V2Facts,
   CASUS1_LEVEL_WORK_SETTINGS,
   CASUS1_THERMAL_DESIGN_POWER_W,
+  CASUS1_LOWEST_WAY_LEVEL_WORK,
   CASUS1_LOWEST_WAY_LEVEL_WORK_FORBIDDEN,
+  CASUS1_LOWEST_WAY_SERIES_R_MAX_OHM,
 } from './casus1V2.fixture.ts';
 import { smoothDbGaussian } from '../bandMetrics.ts';
 import { applyTransfer, combineN, type GriddedResponse } from '../dsp.ts';
@@ -108,7 +110,7 @@ import { LF_BUMP_VERSION } from './metrics/acoustic.ts';
 import { RESISTIVE_EQUIVALENT_VERSION } from './metrics/resistiveEquivalent.ts';
 import { DRIVE_EXCURSION_VERSION } from './metrics/driveExcursion.ts';
 import { BUILDABILITY_VERSION } from './metrics/buildability.ts';
-import { LEVEL_WORK_VERSION, levelWorkOnNetlist, seriesInductanceByWay } from '../levelWork.ts';
+import { LEVEL_WORK_VERSION, levelWorkOnNetlist, seriesInductanceByWay, seriesRMaxOhmOf } from '../levelWork.ts';
 import type { LevelWorkAnalysis } from './report.ts';
 import { busTopology, systemMinImpedanceOhm } from '../netOptimizer.ts';
 import {
@@ -3030,7 +3032,11 @@ describe('V51 — no level work on the lowest way: what the configuration asks, 
   const RECORD = (golden.manifest_en_geometrie as unknown as {
     v51_niveauwerk?: {
       schatter: string;
-      eis: string | null;
+      eis: unknown;
+      max_serie_R_ohm: number | null;
+      levend_corpus_binnen_eis: number;
+      levend_corpus_buiten_eis: number;
+      referentiefilters_buiten_eis: string[];
       laagste_weg: string | null;
       anker: string | null;
       gevraagd_X_dB: number | null;
@@ -3046,6 +3052,10 @@ describe('V51 — no level work on the lowest way: what the configuration asks, 
         serie_R: { id: string; ohm: number }[] | null;
         shunt_pad: { id: string; ohm: number }[] | null;
         geen_niveauwerk: boolean | null;
+        serie_R_ohm: number | null;
+        spoel_DCR_ohm: number | null;
+        serie_R_totaal_ohm: number | null;
+        binnen_eis: boolean | null;
         serie_L_mH_per_weg: Record<string, number>;
       }[];
     };
@@ -3054,6 +3064,8 @@ describe('V51 — no level work on the lowest way: what the configuration asks, 
     gestelde_eisen: {
       geen_niveauwerk_op_laagste_weg: boolean;
       geen_niveauwerk_motivering: string;
+      max_serie_R_laagste_weg_ohm?: number;
+      max_serie_R_laagste_weg_motivering?: string;
       thermisch_ontwerpvermogen_W: number;
       thermisch_ontwerpvermogen_motivering: string;
       bouwbaarheid_op_de_zoektocht: { gewapend: boolean };
@@ -3078,6 +3090,18 @@ describe('V51 — no level work on the lowest way: what the configuration asks, 
     expect(CASUS1_LOWEST_WAY_LEVEL_WORK_FORBIDDEN).toBe(true);
     expect(STATED.gestelde_eisen.geen_niveauwerk_motivering.length).toBeGreaterThan(200);
     expect(STATED.gestelde_eisen.geen_niveauwerk_motivering).toMatch(/vuistregel/i);
+    /* V51b — the stated MAXIMUM beside the prohibition, with its reason, and
+     * the rule the two produce: the maximum is the narrower statement and wins.
+     * Read through the same helper every measuring surface reads. */
+    expect(STATED.gestelde_eisen.max_serie_R_laagste_weg_ohm).toBe(CASUS1_LOWEST_WAY_SERIES_R_MAX_OHM ?? undefined);
+    if (CASUS1_LOWEST_WAY_SERIES_R_MAX_OHM !== null) {
+      expect(CASUS1_LOWEST_WAY_SERIES_R_MAX_OHM).toBeGreaterThan(0);
+      expect(STATED.gestelde_eisen.max_serie_R_laagste_weg_motivering ?? '').toMatch(/DCR/);
+      expect(STATED.gestelde_eisen.max_serie_R_laagste_weg_motivering ?? '').toMatch(/bouwkeuze/i);
+      expect(CASUS1_LOWEST_WAY_LEVEL_WORK).toEqual({ kind: 'series-r-max', maxOhm: CASUS1_LOWEST_WAY_SERIES_R_MAX_OHM });
+    } else {
+      expect(CASUS1_LOWEST_WAY_LEVEL_WORK).toBe('none');
+    }
     expect(STATED.gestelde_eisen.thermisch_ontwerpvermogen_W).toBe(CASUS1_THERMAL_DESIGN_POWER_W);
     expect(STATED.gestelde_eisen.thermisch_ontwerpvermogen_motivering).toMatch(/luister/i);
     // V50's pending decision is taken: the resistor requirement is ARMED on the search.
@@ -3094,7 +3118,8 @@ describe('V51 — no level work on the lowest way: what the configuration asks, 
   it('X — what the configuration asks — is CLASS A: the same on all three reference filters, above zero, and the anchor is not the lowest way', () => {
     for (const f of REF) {
       expect(f.levelWork, `${f.key}: no level-work block`).not.toBeNull();
-      expect(f.levelWork!.requirement).toBe('none');
+      expect(f.levelWork!.requirement).toEqual(CASUS1_LOWEST_WAY_LEVEL_WORK);
+      expect(f.levelWork!.maxSeriesOhm).toBe(seriesRMaxOhmOf(CASUS1_LOWEST_WAY_LEVEL_WORK));
       expect(f.levelWork!.aboveAnchorDb).not.toBeNull();
     }
     const xs = REF.map((f) => f.levelWork!.aboveAnchorDb!);
@@ -3138,25 +3163,62 @@ describe('V51 — no level work on the lowest way: what the configuration asks, 
     expect(REF[0].levelWork!.delivered!.seriesResistors.map((r) => r.id)).toContain('R8');
   });
 
+  it('V51b — THE SANITY: HUIDIG carries more series resistance on the lowest way than the stated maximum, and is FLAGGED, not gated', () => {
+    /* HUIDIG is the parallel reference WITH a pad (R8, 3.3 Ω): under a maximum
+     * on DCR scale it falls outside the rule, and that is intended — the rule
+     * is not loosened to admit the reference filter (the V42 lesson). The
+     * report says so as a flag; no gate verdict moves (the P2 block below
+     * compares the verdicts with and without the rule). */
+    const max = seriesRMaxOhmOf(CASUS1_LOWEST_WAY_LEVEL_WORK);
+    if (max === null) return;
+    for (const f of REF) {
+      const inv = f.levelWork!.delivered!;
+      expect(inv.totalSeriesOhm, `${f.key}: total series R on the lowest way`).toBeGreaterThan(max);
+      expect(f.levelWork!.verdict?.ok, `${f.key}: verdict`).toBe(false);
+      expect(f.levelWork!.verdict!.overOhm!).toBeGreaterThan(0);
+      expect(f.levelWork!.notes.some((n) => /FLAG \(no gate\)/.test(n))).toBe(true);
+      // The split is reported, and the reference files carry coil DCR (HUIDIG: R8 3.30 + 0.46 Ω of copper — V45's 3.756 Ω path resistance).
+      expect(inv.dcrOhm).toBeGreaterThan(0);
+      expect(inv.totalSeriesOhm).toBeCloseTo(inv.seriesOhm + inv.dcrOhm, 9);
+    }
+    expect(REF[0].levelWork!.sentence).toMatch(/build choice/);
+    // And the flag reaches the recorded block.
+    expect(RECORD!.referentiefilters_buiten_eis.sort()).toEqual([...V1_BASELINES].sort());
+  });
+
   it('THE LIVE CORPUS carries NO level work on the lowest way — the requirement reached the search', () => {
     const live = FIELD.filter((x) => /^KAND_V2_\d+$/.test(x.key));
     /* An empty live corpus is a FINDING (every candidate refused with X), and
      * then this claim has no subject; the recorded block says how many there
      * are, and the case book says why. The claim is made on whatever survived. */
     expect(RECORD?.levend_corpus_netlists).toBe(live.length);
+    const max = seriesRMaxOhmOf(CASUS1_LOWEST_WAY_LEVEL_WORK);
     for (const f of live) {
       const inv = f.levelWork!.delivered!;
       expect(inv.reachable, `${f.key}: lowest way unreachable`).toBe(true);
-      expect(inv.none, `${f.key}: the search placed level work on ${f.levelWork!.lowestWay} — ${JSON.stringify(inv.seriesResistors)} ${JSON.stringify(inv.shuntPads)}`).toBe(true);
-      // ...and what carries the way's tilt instead is its series coil, which exists.
+      if (max === null) {
+        expect(inv.none, `${f.key}: the search placed level work on ${f.levelWork!.lowestWay} — ${JSON.stringify(inv.seriesResistors)} ${JSON.stringify(inv.shuntPads)}`).toBe(true);
+      } else {
+        /* V51b — under the capped rule: no pad, and the TOTAL (discrete + DCR)
+         * within the stated maximum; the verdict is the one reader. */
+        expect(inv.shuntPads, `${f.key}: a shunt pad on the lowest way`).toEqual([]);
+        expect(inv.totalSeriesOhm, `${f.key}: total series R ${inv.totalSeriesOhm} against ${max}`).toBeLessThanOrEqual(max + 1e-9);
+        expect(f.levelWork!.verdict?.ok, `${f.key}: ${f.levelWork!.verdict?.why}`).toBe(true);
+      }
+      // ...and what carries the way's tilt is its series coil, which exists.
       expect(f.seriesLByWay[f.levelWork!.lowestWay] ?? 0).toBeGreaterThan(0);
+    }
+    if (max !== null) {
+      expect(RECORD!.levend_corpus_binnen_eis).toBe(live.length);
+      expect(RECORD!.levend_corpus_buiten_eis).toBe(0);
     }
   });
 
   it('the recorded block reproduces from a fresh measurement, per netlist', () => {
     expect(RECORD, 'the recorder wrote no v51_niveauwerk block').toBeDefined();
     expect(RECORD!.schatter).toBe(LEVEL_WORK_VERSION);
-    expect(RECORD!.eis).toBe('none');
+    expect(RECORD!.eis).toEqual(CASUS1_LOWEST_WAY_LEVEL_WORK ?? null);
+    expect(RECORD!.max_serie_R_ohm).toBe(seriesRMaxOhmOf(CASUS1_LOWEST_WAY_LEVEL_WORK));
     expect(RECORD!.laagste_weg).toBe(REF[0].levelWork!.lowestWay);
     expect(RECORD!.anker).toBe(REF[0].levelWork!.anchor);
     expect(Math.abs(RECORD!.gevraagd_X_dB! - REF[0].levelWork!.aboveAnchorDb!)).toBeLessThanOrEqual(TOL_DB_V51);
@@ -3169,6 +3231,11 @@ describe('V51 — no level work on the lowest way: what the configuration asks, 
       expect(f, `${row.netlist} is recorded but not in the field`).toBeDefined();
       const inv = f!.levelWork!.delivered!;
       expect(row.geen_niveauwerk).toBe(inv.none);
+      // V51b — the split and the verdict reproduce as well.
+      // Recorded on two decimals: half a unit of the last decimal, with float slack.
+      expect(Math.abs((row.serie_R_totaal_ohm ?? 0) - inv.totalSeriesOhm)).toBeLessThanOrEqual(0.005 + 1e-9);
+      expect(Math.abs((row.spoel_DCR_ohm ?? 0) - inv.dcrOhm)).toBeLessThanOrEqual(0.005 + 1e-9);
+      expect(row.binnen_eis).toBe(f!.levelWork!.verdict?.ok ?? null);
       expect((row.serie_R ?? []).map((r) => r.id)).toEqual(inv.seriesResistors.map((r) => r.id));
       expect((row.shunt_pad ?? []).map((r) => r.id)).toEqual(inv.shuntPads.map((r) => r.id));
       for (const [way, mH] of Object.entries(row.serie_L_mH_per_weg)) {

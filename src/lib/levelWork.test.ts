@@ -15,6 +15,11 @@
  *    resistor in ANOTHER way's path does not count for this one.
  *  · UNREACHABLE IS NOT NONE. A driver with no path from the generator yields
  *    an empty inventory with `reachable: false`, and `none` is false there.
+ *  · V51b — COIL DCR IS COUNTED, SEPARATELY, AND THE CAPPED RULE READS THE
+ *    TOTAL. A 0.5 Ω resistor behind a coil with 0.6 Ω of DCR is 1.1 Ω of
+ *    series resistance in front of the driver, and a maximum of 1.0 Ω is
+ *    exceeded — although the discrete part alone would pass. Under `'none'`
+ *    the same DCR remains and is not level work.
  */
 
 import { describe, expect, it } from 'vitest';
@@ -22,7 +27,15 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { deserializeFilter } from './filterFile.ts';
 import { CASUS1_DIR, loadGolden } from './engine2/casus1.fixture.ts';
-import { describeLevelWork, levelWorkOnWay } from './levelWork.ts';
+import {
+  LEVEL_WORK_VERSION,
+  describeLevelWork,
+  describeSeriesResistance,
+  forbidsPads,
+  levelWorkOnWay,
+  levelWorkVerdict,
+  seriesRMaxOhmOf,
+} from './levelWork.ts';
 import type { VxpPart } from './parsers/vxp.ts';
 
 const golden = loadGolden();
@@ -107,6 +120,64 @@ describe('V51 — level work on one way', () => {
     expect(c.seriesResistors).toEqual([]);
     expect(c.shuntPads).toEqual([]);
     expect(describeLevelWork(c)).toMatch(/no level work on woofer/);
+  });
+
+  it('V51b — coil DCR is counted separately and the verdict reads the TOTAL against a stated maximum', () => {
+    /* Paper network: (0,0) —L1 (DCR 0.6)— (10,0) —R2 0.5— (20,0) —D-woofer— (20,10) gnd.
+     * Discrete 0.5 Ω, DCR 0.6 Ω, total 1.1 Ω: under a maximum of 1.0 Ω the total
+     * is over by 0.1 although the discrete part alone would pass — which is
+     * exactly why the rule is stated on the total. */
+    n = 0;
+    const coil = part('Inductor', 1e-3, [0, 0], [10, 0]);
+    (coil as unknown as { params: { name: string; value: number }[] }).params.push({ name: 'DCR', value: 0.6 });
+    const parts: VxpPart[] = [
+      source([0, 0], [0, 10]),
+      ground([0, 10]),
+      coil,
+      part('Resistor', 0.5, [10, 0], [20, 0]),
+      driver('woofer', [20, 0], [20, 10]),
+      ({ type: 'Wire', partId: 'W1', params: [], wires: [{ x: 0, y: 10 }, { x: 20, y: 10 }] }) as unknown as VxpPart,
+    ];
+    const w = levelWorkOnWay(parts, 'woofer');
+    expect(w.seriesResistors.map((r) => r.id)).toEqual(['R2']);
+    expect(w.seriesCoils).toEqual([{ id: 'L1', dcrOhm: 0.6 }]);
+    expect(w.seriesOhm).toBeCloseTo(0.5, 9);
+    expect(w.dcrOhm).toBeCloseTo(0.6, 9);
+    expect(w.totalSeriesOhm).toBeCloseTo(1.1, 9);
+    expect(w.none).toBe(false);
+    // The verdict, under each rule.
+    const over = levelWorkVerdict(w, { kind: 'series-r-max', maxOhm: 1.0 });
+    expect(over.ok).toBe(false);
+    expect(over.overOhm).toBeCloseTo(0.1, 9);
+    expect(over.why).toMatch(/1\.100 Ω/);
+    expect(over.why).toMatch(/coil DCR/);
+    const ok = levelWorkVerdict(w, { kind: 'series-r-max', maxOhm: 1.2 });
+    expect(ok.ok).toBe(true);
+    expect(ok.overOhm).toBe(0);
+    expect(levelWorkVerdict(w, 'none').ok).toBe(false);
+    expect(levelWorkVerdict(w, 'allowed').ok).toBe(true);
+    expect(levelWorkVerdict(w, null).ok).toBeNull();
+    // A shunt pad fails the capped rule whatever the total.
+    const padded = levelWorkOnWay([...parts, part('Resistor', 8, [10, 0], [20, 10])], 'woofer');
+    const pad = levelWorkVerdict(padded, { kind: 'series-r-max', maxOhm: 5 });
+    expect(pad.ok).toBe(false);
+    expect(pad.why).toMatch(/shunt pad/);
+    // Under 'none' the DCR REMAINS and is not level work: the same coil alone is none.
+    const bareCoil = part('Inductor', 1e-3, [0, 0], [20, 0]);
+    (bareCoil as unknown as { params: { name: string; value: number }[] }).params.push({ name: 'DCR', value: 0.6 });
+    const bare = levelWorkOnWay([...parts.filter((p) => p.partId !== 'R2' && p.partId !== 'L1'), bareCoil], 'woofer');
+    expect(bare.none).toBe(true);
+    expect(bare.dcrOhm).toBeCloseTo(0.6, 9);
+    expect(levelWorkVerdict(bare, 'none').ok).toBe(true);
+    // The rule helpers, from the one home.
+    expect(seriesRMaxOhmOf({ kind: 'series-r-max', maxOhm: 1 })).toBe(1);
+    expect(seriesRMaxOhmOf('none')).toBeNull();
+    expect(forbidsPads('none')).toBe(true);
+    expect(forbidsPads({ kind: 'series-r-max', maxOhm: 1 })).toBe(true);
+    expect(forbidsPads('allowed')).toBe(false);
+    expect(forbidsPads(undefined)).toBe(false);
+    expect(describeSeriesResistance(w)).toBe('R2 0.50 + DCR 0.60 = 1.10 Ω');
+    expect(LEVEL_WORK_VERSION).toBe('level-work/1.1');
   });
 
   it('an unreachable driver is not "none" — nothing could be walked', () => {

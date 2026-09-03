@@ -114,7 +114,14 @@ import {
 } from './requirements/targetCurve.ts';
 import { parallelGainDb, type WayWiring } from './ingest/wiring.ts';
 import { DB_PER_DECADE_AMPLITUDE } from './constants.ts';
-import { levelWorkOnNetlist, type LevelWorkOnWay } from '../levelWork.ts';
+import {
+  levelWorkOnNetlist,
+  levelWorkVerdict,
+  seriesRMaxOhmOf,
+  type LevelWorkOnWay,
+  type LevelWorkVerdict,
+  type LowestWayLevelWork,
+} from '../levelWork.ts';
 import {
   gateVerdicts,
   isHighPassProtected,
@@ -330,7 +337,11 @@ export interface LevelWorkAnalysis {
   /** What the LOADED netlist carries on the lowest way; null without a network. */
   delivered: LevelWorkOnWay | null;
   /** The project's stated requirement, or null when none is stated (P4). */
-  requirement: 'none' | 'allowed' | null;
+  requirement: LowestWayLevelWork | null;
+  /** V51b — the stated maximum total series resistance, Ω; null unless the rule states one. */
+  maxSeriesOhm: number | null;
+  /** V51b — does the loaded netlist honour the rule (`levelWorkVerdict`); null without a rule or a network. A FLAG, not a gate. */
+  verdict: LevelWorkVerdict | null;
   /** V51 item 4 — whether the stated plateau lies inside the judged band at all. */
   plateau: PlateauCoverage | null;
   /** One paragraph a reader can act on. */
@@ -1106,6 +1117,9 @@ export function buildReport(input: EngineV2ReportInput): EngineV2Report {
     const baffleStepFullDb = DB_PER_DECADE_AMPLITUDE * Math.log10(2);
     const delivered = input.filter ? levelWorkOnNetlist(input.filter.netlist, lowest) : null;
     const requirement = input.settings.lowestWayLevelWork ?? null;
+    /* V51b — the maximum and the flag, from the one rule (`levelWork.ts`). */
+    const maxSeriesOhm = seriesRMaxOhmOf(requirement);
+    const verdict = delivered && requirement !== null ? levelWorkVerdict(delivered, requirement) : null;
     const judgedBand = commonBand(ingest);
     const plateau = judgedBand ? plateauCoverage(curve, judgedBand) : null;
     if (lw.stated && lw.measured !== lw.desired) {
@@ -1136,8 +1150,15 @@ export function buildReport(input: EngineV2ReportInput): EngineV2Report {
         ? 'The project states that the lowest way may carry NO level work (no series resistor, no shunt pad).'
         : requirement === 'allowed'
           ? 'The project states that level work on the lowest way is allowed.'
-          : 'The project states no requirement about level work on the lowest way (P4): what a netlist ' +
-            'carries there is shown and nothing judges it.');
+          : maxSeriesOhm !== null
+            ? `The project allows series resistance on the lowest way up to ${maxSeriesOhm.toFixed(2)} Ω in total ` +
+              '(discrete resistors plus coil DCR) and no pad (V51b). An air-core coil whose DCR is that resistance ' +
+              'does the same as a discrete resistor beside it: which carries it is a build choice, not a decision of this report.'
+            : 'The project states no requirement about level work on the lowest way (P4): what a netlist ' +
+              'carries there is shown and nothing judges it.');
+    if (verdict && verdict.ok === false) {
+      notes.push(`FLAG (no gate): the loaded netlist does not honour the stated rule — ${verdict.why}.`);
+    }
     return {
       lowestWay: lowest,
       anchor,
@@ -1148,6 +1169,8 @@ export function buildReport(input: EngineV2ReportInput): EngineV2Report {
       baffleStepFullDb,
       delivered,
       requirement,
+      maxSeriesOhm,
+      verdict,
       plateau,
       sentence,
       notes,

@@ -93,11 +93,13 @@ import {
   CASUS1_TARGET_CURVE,
   CASUS1_EXCURSION,
   CASUS1_LEVEL_WORK_SETTINGS,
+  CASUS1_LOWEST_WAY_LEVEL_WORK,
   CASUS1_LOWEST_WAY_LEVEL_WORK_FORBIDDEN,
   CASUS1_THERMAL_DESIGN_POWER_W,
   CASUS1_WIRING,
 } from './casus1V2.fixture.ts';
 import { buildReport, type EngineV2Report } from './report.ts';
+import { seriesRMaxOhmOf } from '../levelWork.ts';
 import { ctcKey } from './metrics/types.ts';
 import { SEARCH_SMOOTHING_OCTAVES } from './constants.ts';
 import { SYNTHESIS_LEAN_DEFAULT_DB } from '../synthesis.ts';
@@ -170,7 +172,7 @@ const HERKOMST = JSON.parse(
     plafond_bron_waarom: string;
     /** V51 — MAG DE LAAGSTE WEG NIVEAUWERK DRAGEN: de derde ketensleutel,
      *  plus de schakeling per weg en het thermisch ontwerpvermogen. */
-    niveauwerk_laagste_weg: string | null;
+    niveauwerk_laagste_weg: unknown;
     niveauwerk_laagste_weg_waarom: string;
     niveauwerk_laagste_weg_herkomst: string;
     schakeling_per_weg: Record<string, { count: number; measured: string; desired: string }>;
@@ -438,9 +440,19 @@ describe('the frozen v2 candidates are files, and the file says where they came 
      * manifest en nergens anders. Twee regels: de sleutel, en de schakeling
      * per weg waarvan de rapportregel "N in serie zou 20·log N leveren"
      * afhangt. */
-    expect(m.niveauwerk_laagste_weg).toBe(CASUS1_LOWEST_WAY_LEVEL_WORK_FORBIDDEN ? 'none' : null);
+    /* V51b — de sleutel draagt sinds V51b de REGEL zelf (een string of het
+     * object `{ kind: 'series-r-max', maxOhm }`), afgelezen van de verklaring;
+     * het gestelde maximum is de smallere uitspraak en wint van het verbod. */
+    expect(m.niveauwerk_laagste_weg).toEqual(CASUS1_LOWEST_WAY_LEVEL_WORK ?? null);
     expect(m.niveauwerk_laagste_weg_waarom).toMatch(/V51|niveauwerk/i);
-    if (CASUS1_LOWEST_WAY_LEVEL_WORK_FORBIDDEN) {
+    if (seriesRMaxOhmOf(CASUS1_LOWEST_WAY_LEVEL_WORK) !== null) {
+      expect(m.niveauwerk_laagste_weg_waarom).toMatch(/SERIEWEERSTAND DRAGEN TOT/);
+      expect(m.niveauwerk_laagste_weg_waarom).toMatch(/DCR/);
+      expect(m.niveauwerk_laagste_weg_waarom).toContain(seriesRMaxOhmOf(CASUS1_LOWEST_WAY_LEVEL_WORK)!.toFixed(2));
+      expect(m.niveauwerk_laagste_weg_herkomst).toMatch(/P6/);
+      // The blanket prohibition still stands beside it: the pads stay forbidden.
+      expect(CASUS1_LOWEST_WAY_LEVEL_WORK_FORBIDDEN).toBe(true);
+    } else if (CASUS1_LOWEST_WAY_LEVEL_WORK_FORBIDDEN) {
       expect(m.niveauwerk_laagste_weg_waarom).toMatch(/GEEN NIVEAUWERK/);
       expect(m.niveauwerk_laagste_weg_herkomst).toMatch(/P6/);
     }

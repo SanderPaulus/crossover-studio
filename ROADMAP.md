@@ -4,9 +4,9 @@ Voertaal: Nederlands (zoals alle projectdocumentatie voor Sander & Stefan).
 Volgorde binnen een blok = aanbevolen prioriteit. Inschattingen zijn grof:
 **S** = uurtje(s), **M** = dagdeel–dag, **L** = meerdere dagen/gefaseerd.
 
-## Stand ná V51 (3 sep 2026) — engine v2
+## Stand ná V51b (3 sep 2026) — engine v2
 
-De regels hieronder vatten samen wat F4 tot en met V51 hebben opgeleverd; het
+De regels hieronder vatten samen wat F4 tot en met V51b hebben opgeleverd; het
 bewijs per stap staat in het casusboek (`docs/CrossoverStudio_OptimizerV2_strategie_v2.md`,
 Deel B) en de suite-meting in `CLAUDE.md`. Alles wat hier staat is gemeten op
 casus 1 (Koan 2951) en geldt alleen met de v2-toggle aan; met de toggle uit is
@@ -62,6 +62,24 @@ de app byte-identiek aan vóór F1.
   10 W). Het plateau (−2,5 dB) is op deze meetset niet te toetsen: de
   beoordeelde band begint 0,16 octaaf onder de baffle step, en het rapport
   zegt dat per kandidaat in plaats van er iets onder aan te nemen.
+- **Serieweerstand op de laagste weg tot een gesteld maximum** (V51b): de
+  gestelde variant van dezelfde sleutel — `series-r-max` met een maximum op
+  het TOTAAL (discrete R plus spoel-DCR; een luchtspoel met 1 Ω DCR ís die
+  weerstand, de splitsing is een bouwkeuze), geen L-pad, geen shunt-pad. De
+  synthese stelt één kale serie-R voor, de tuner houdt de som onder het
+  maximum, de worker weigert wat eroverheen gaat en noemt bij elke
+  vloerweigering Y: wat de vloer op die weg VRAAGT (weerstand aan de kop van
+  de weg, gebisecteerd tot de M-B/|Z|-poort slaagt). Casus 1 stelt 1,0 Ω.
+  Gemeten: van vijftien kandidaten worden er ZES geleverd (V51: één); van de
+  dertien V51-vloerweigeringen komen er negen boven de vloer met ≤ 1,0 Ω (zes
+  geleverd, drie daarna op M-C geweigerd), vier niet — hun minimum zit in de
+  mid- en tweetertak (20 Ω op de woofer laat 1,80–2,30 Ω staan), dus daar
+  helpt geen serieweerstand op de woofer en ook geen hybride LF-tak. Prijs,
+  gepaard tegen V50 (vijf paren): RMS 0,84 → 1,01 dB, M-K 9,5 → 12,6° (W-M)
+  en 5,1 → 7,0° (M-T), lift 4,4 → 1,7 dB, opslingering onveranderd (−0,68),
+  dissipatie 55 → 38 %, heetste weerstand 2,9 → 1,9 W bij 10 W; vier van de
+  zes staan op de cap. Geen besluit: de drie routes (serie / DCR-schaal /
+  hybride) staan naast elkaar in casusboek V51b.
 - **Verwerpingen zijn zichtbaar** (V31/V33, UI-1): een kandidaat waarvan de
   tune in zijn geheel geweigerd is levert geen netwerk maar een verwerping met
   de regel; de shortlist is de bron van de Working-tab en de v1-ranglijst staat
@@ -83,13 +101,16 @@ de app byte-identiek aan vóór F1.
    uit de catalogus-spanwijdte in plaats van uit vaste componentgrenzen. V50
    bracht de opgave PER ONDERDEEL (vermogen, verzadigingsstroom) in de poort;
    de spanwijdte als zoekgrens staat nog open.
-2. **De vloer als de as van het V51-veld, en de configuraties die het
-   openen** — zonder wooferpad haalt op casus 1 één kandidaat van vijftien de
-   gestelde 2,6 Ω, en de geweigerde tunes staan op 2,05–2,49 Ω. Drie
-   configuraties, geen daarvan een filterkeuze: een lagere gestelde vloer (of
-   een versterker die 2,3 Ω draagt), de serieschakeling van het wooferpaar
-   (+6,02 dB niveau, impedantie ×4 — dan is de woofer weer het anker), of de
-   hybride route met een actieve LF-tak. Elk is één regeneratie per arm. De
+2. **De vloer als de as van het veld, en de configuraties die het openen** —
+   zonder wooferpad haalde op casus 1 één kandidaat van vijftien de gestelde
+   2,6 Ω (V51); met 1,0 Ω serieweerstand op DCR-schaal zes (V51b), en vier
+   kandidaten halen haar ook met 20 Ω niet omdat hun minimum in de mid- en
+   tweetertak zit. Drie configuraties, geen daarvan een filterkeuze: een
+   lagere gestelde vloer (of een versterker die 2,3 Ω draagt), de
+   serieschakeling van het wooferpaar (+6,02 dB niveau, impedantie ×4 — dan is
+   de woofer weer het anker), of de hybride route met een actieve LF-tak (die
+   op die vier kandidaten de vloer óók niet oplost). Sander kiest tussen
+   passief-met-DCR-schaal, serie en hybride; elk is één regeneratie per arm. De
    hermeting van het wooferpaar op afstand of groundplane maakt X (1,33 dB,
    1–3 dB onzeker naar boven) een meting. De parallelle/serie-weerstand als
    topologie-element blijft open voor de wegen waar niveauwerk WEL mag;

@@ -54,6 +54,7 @@ import { handleV2Request, type V2Chain3Payload, type V2LevelWorkColumn, type V2R
 import type { Chain3Input, Chain3Result } from '../src/lib/threeWayChain.ts';
 import type { GriddedResponse } from '../src/lib/dsp.ts';
 import { serializeFilter } from '../src/lib/filterFile.ts';
+import { seriesRMaxOhmOf } from '../src/lib/levelWork.ts';
 import {
   CASUS1_AMP_MIN_LOAD_OHM,
   CASUS1_LF_RESONANT_BUDGET_DB,
@@ -75,7 +76,7 @@ import {
   CASUS1_MAX_DRIVE_ON_FS_DB_BY_DRIVER,
   CASUS1_QES_MULTIPLIER_MAX,
   CASUS1_TARGET_CURVE,
-  CASUS1_LOWEST_WAY_LEVEL_WORK_FORBIDDEN,
+  CASUS1_LOWEST_WAY_LEVEL_WORK,
   CASUS1_LEVEL_WORK_SETTINGS,
   CASUS1_THERMAL_DESIGN_POWER_W,
   CASUS1_WIRING,
@@ -453,6 +454,20 @@ function runCandidate(c: (typeof field.field.candidates)[number], n: number): Sh
       geleverd_serie_R: done.levelWork.delivered?.seriesResistors.map((r) => ({ id: r.id, ohm: Number(r.ohm.toFixed(3)) })) ?? null,
       geleverd_shunt_pad: done.levelWork.delivered?.shuntPads.map((r) => ({ id: r.id, ohm: Number(r.ohm.toFixed(3)) })) ?? null,
       geleverd_geen: done.levelWork.delivered?.none ?? null,
+      /* V51b — the series resistance the driver sees, split (discrete + DCR =
+       * total), the stated maximum, the verdict on the rule, and Y: what the
+       * floor asks of that resistance on THIS network (the refused one, on a
+       * refusal). The four numbers the V51b table is about. */
+      geleverd_serie_R_ohm: done.levelWork.delivered ? Number(done.levelWork.delivered.seriesOhm.toFixed(3)) : null,
+      geleverd_spoel_DCR_ohm: done.levelWork.delivered ? Number(done.levelWork.delivered.dcrOhm.toFixed(3)) : null,
+      geleverd_serie_R_totaal_ohm: done.levelWork.delivered ? Number(done.levelWork.delivered.totalSeriesOhm.toFixed(3)) : null,
+      max_serie_R_ohm: done.levelWork.maxSeriesOhm,
+      binnen_eis: done.levelWork.verdict?.ok ?? null,
+      vloer_ohm: done.levelWork.floorOhm,
+      vloer_vraagt_serie_R_ohm: done.levelWork.floorNeedsSeriesOhm === null ? null : Number(done.levelWork.floorNeedsSeriesOhm.toFixed(3)),
+      /* The probe's own account — the number, or WHY there is none. A null
+       * without its reason cost the first V51b field a diagnosis. */
+      vloer_vraagt_toelichting: done.notes.find((n) => /^(The stated floor|Y \(V51b\))/.test(n)) ?? null,
       plateau_beoordeeld: done.levelWork.plateau.judged,
       plateau_toelichting: done.levelWork.plateau.note,
     },
@@ -462,7 +477,8 @@ function runCandidate(c: (typeof field.field.candidates)[number], n: number): Sh
       (done.rejection
         ? `NO NETWORK — refused by ${done.rejection.kinds.join(', ') || 'a wholesale gate'}; the ` +
           `refused tune was at ${done.rejection.rejectedTune?.minZOhm?.toFixed(2) ?? '—'} Ω / ` +
-          `±${done.rejection.rejectedTune?.windowPlusMinusDb?.toFixed(2) ?? '—'} dB`
+          `±${done.rejection.rejectedTune?.windowPlusMinusDb?.toFixed(2) ?? '—'} dB; series R on the lowest way ` +
+          `${done.levelWork.delivered?.totalSeriesOhm.toFixed(3) ?? '—'} Ω, Y ${done.levelWork.floorNeedsSeriesOhm?.toFixed(3) ?? 'null'}`
         : `${done.result.net.after.rippleDb.toFixed(2)} dB / ${done.result.net.after.phaseDeg.toFixed(1)}°` +
           `  min|Z| ${(done.gates.find((v) => v.gate === 'M-B/|Z|')?.value ?? NaN).toFixed(2)} Ω` +
           `  ${failed.length ? `REFUSED by ${failed.map((v) => v.gate).join(', ')}` : 'gates ok'}`) +
@@ -751,7 +767,18 @@ const meetopstelling = {
    * Afgelezen van de ketenverklaring, want het is een keuze-sleutel. */
   niveauwerk_laagste_weg: lastPayload.candidate?.chainDeclaration.stated.lowestWayLevelWork ?? null,
   niveauwerk_laagste_weg_waarom:
-    (lastPayload.candidate?.chainDeclaration.stated.lowestWayLevelWork ?? null) === 'none'
+    seriesRMaxOhmOf(lastPayload.candidate?.chainDeclaration.stated.lowestWayLevelWork) !== null
+      ? `DE LAAGSTE WEG MAG SERIEWEERSTAND DRAGEN TOT ${seriesRMaxOhmOf(lastPayload.candidate?.chainDeclaration.stated.lowestWayLevelWork)!.toFixed(2)} OHM TOTAAL ` +
+        '(discrete weerstanden plus de DCR van alle seriespoelen in haar pad), en GEEN pad (geen L-pad, geen ' +
+        'shunt-pad, geen gebypasste pad) - de gestelde variant van V51b (levelWork.ts, series-r-max). De ' +
+        'ontwerpstap trimt zoals altijd maar stelt geen shelf-pad voor; haar synthese stelt EEN kale serie-R ' +
+        'voor, gemaatvoerd op de trim en afgekapt op het maximum; de tuner houdt de SOM (DCR eerst) onder het ' +
+        'maximum als somplafond in de qes-series-r-vorm (bounds.ts, stated-series-r); de worker weigert wat ' +
+        'eroverheen gaat (V31-vorm, kinds topology) en noemt bij elke vloerweigering Y: hoeveel serieweerstand ' +
+        'de vloer op de laagste weg VRAAGT. Een luchtspoel met deze DCR doet hetzelfde als de component - een ' +
+        'bouwkeuze voor de gebruiker, geen engine-besluit. GESTELD in ' +
+        'manifest_en_geometrie.gestelde_eisen.max_serie_R_laagste_weg_ohm (V51b), naast geen_niveauwerk_op_laagste_weg (V51).'
+      : (lastPayload.candidate?.chainDeclaration.stated.lowestWayLevelWork ?? null) === 'none'
       ? 'DE LAAGSTE WEG DRAAGT GEEN NIVEAUWERK: geen weerstand in haar serie-pad en geen weerstand ' +
         'die alleen van dat pad naar massa hangt (levelWork.ts). De ontwerpstap trimt haar met 0 dB ' +
         'en stelt er geen shelf-pad op voor; haar synthese legt geen L-pad, geen top-octaaf-hold en ' +
@@ -766,7 +793,7 @@ const meetopstelling = {
         'realiseren — de vóór-arm van V51, en wat elke v1-run leest (P4: absent, nooit een ' +
         'gesteld "allowed").',
   niveauwerk_laagste_weg_herkomst:
-    CASUS1_LOWEST_WAY_LEVEL_WORK_FORBIDDEN
+    CASUS1_LOWEST_WAY_LEVEL_WORK !== undefined
       ? 'GESTELD door de ontwerper, gelezen uit `manifest_en_geometrie.gestelde_eisen` — niet ' +
         'afgeleid en nergens als default in `src/lib/engine2/` (P6). Motivering en meetgeometrie ' +
         'staan bij `geen_niveauwerk_motivering` en `driverkaart.woofer.schakeling`.'

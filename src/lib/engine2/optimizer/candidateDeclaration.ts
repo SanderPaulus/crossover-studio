@@ -653,6 +653,16 @@ export interface ChainDeclarationInput {
    * padded (P4, the same rule V45 applies to `'flat'`).
    */
   lowestWayLevelWorkForbidden?: boolean;
+  /**
+   * V51b — the stated MAXIMUM series resistance on the lowest way, ohms
+   * (`gestelde_eisen.max_serie_R_laagste_weg_ohm` on casus 1; the "max series R
+   * on lowest way" field in the app). A stated maximum is the NARROWER
+   * statement — it says which part of "no level work" is relaxed and by how
+   * much — so it wins over `lowestWayLevelWorkForbidden` when both are given,
+   * and the derivation then declares `{ kind: 'series-r-max', maxOhm }`. Never
+   * derived from nothing (P4).
+   */
+  lowestWaySeriesRMaxOhm?: number;
 }
 
 /**
@@ -730,6 +740,14 @@ export function declareCandidateChainChoices(
    * wins, so V51's before/after is a run somebody can ask for. */
   if (s.lowestWayLevelWork !== undefined) {
     stated.lowestWayLevelWork = s.lowestWayLevelWork;
+  } else if (
+    typeof input.lowestWaySeriesRMaxOhm === 'number' &&
+    Number.isFinite(input.lowestWaySeriesRMaxOhm) &&
+    input.lowestWaySeriesRMaxOhm >= 0
+  ) {
+    /* V51b — the stated maximum: series resistance up to this total, no pad.
+     * The narrower statement, so it goes before the blanket prohibition. */
+    stated.lowestWayLevelWork = { kind: 'series-r-max', maxOhm: input.lowestWaySeriesRMaxOhm };
   } else if (input.lowestWayLevelWorkForbidden === true) {
     stated.lowestWayLevelWork = 'none';
   } else {

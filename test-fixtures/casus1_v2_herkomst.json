@@ -1,6 +1,6 @@
 {
  "_": "F4d — DOCUMENTATIE, geen acceptatiewaarde. Zie scripts/generate-casus1-v2-candidates.ts.",
- "gegenereerd_op_commit": "bf531a29c862eb3a6e4af31adf36c499c227dfb8",
+ "gegenereerd_op_commit": "0e5a9f0444da06a3d6f7b78d1a4697684617c88d",
  "gegenereerd_op_commit_betekenis": "De HEAD van de boom waarin dit script DRAAIDE — dus de commit vóór de commit waarin deze fixtures landen. Dat kan niet anders: het script schrijft de bestanden en de commit legt ze vast, in die volgorde. Wie wil reproduceren moet dus deze commit uitchecken PLUS de bronwijzigingen van de eerstvolgende, of eenvoudiger: de commit nemen waarin de fixtures staan. Bij de F4d-nazorg stond hier 40bdf23 (de V20-commit) terwijl de fixtures bij d70c67b lagen, en dat leek een fout tot het opnieuw draaien de netlists byte-identiek teruggaf.",
  "seed": 20260827,
  "opgenomen_op": {
@@ -107,8 +107,11 @@
    "gewapend_op_de_zoektocht": true,
    "waar": "manifest_en_geometrie.gestelde_eisen.weerstandsklasse_*, .spoelklasse_*, .versterker_continu_vermogen_W, .thermisch_ontwerpvermogen_W, .bouwbaarheid_op_de_zoektocht"
   },
-  "niveauwerk_laagste_weg": "none",
-  "niveauwerk_laagste_weg_waarom": "DE LAAGSTE WEG DRAAGT GEEN NIVEAUWERK: geen weerstand in haar serie-pad en geen weerstand die alleen van dat pad naar massa hangt (levelWork.ts). De ontwerpstap trimt haar met 0 dB en stelt er geen shelf-pad op voor; haar synthese legt geen L-pad, geen top-octaaf-hold en geen shelf-pad; de tuner maakt nooit een weerstand aan. Wat het niveau dan nog regelt is de baffle step en de tilt van de laagdoorlaatspoel. Kan een kandidaat zijn rimpeldoel daardoor niet halen, dan komt hij terug als V31-verwerping met X: hoeveel dB niveauwerk deze configuratie op de laagste weg VRAAGT (de A5d.4-gap tot het anker, plateau meegerekend). De vuistregel erachter: nooit een pad op de woofer (warmte, impedantie, demping); pad de mid of de tweeter. GESTELD in manifest_en_geometrie.gestelde_eisen.geen_niveauwerk_op_laagste_weg (V51).",
+  "niveauwerk_laagste_weg": {
+   "kind": "series-r-max",
+   "maxOhm": 1
+  },
+  "niveauwerk_laagste_weg_waarom": "DE LAAGSTE WEG MAG SERIEWEERSTAND DRAGEN TOT 1.00 OHM TOTAAL (discrete weerstanden plus de DCR van alle seriespoelen in haar pad), en GEEN pad (geen L-pad, geen shunt-pad, geen gebypasste pad) - de gestelde variant van V51b (levelWork.ts, series-r-max). De ontwerpstap trimt zoals altijd maar stelt geen shelf-pad voor; haar synthese stelt EEN kale serie-R voor, gemaatvoerd op de trim en afgekapt op het maximum; de tuner houdt de SOM (DCR eerst) onder het maximum als somplafond in de qes-series-r-vorm (bounds.ts, stated-series-r); de worker weigert wat eroverheen gaat (V31-vorm, kinds topology) en noemt bij elke vloerweigering Y: hoeveel serieweerstand de vloer op de laagste weg VRAAGT. Een luchtspoel met deze DCR doet hetzelfde als de component - een bouwkeuze voor de gebruiker, geen engine-besluit. GESTELD in manifest_en_geometrie.gestelde_eisen.max_serie_R_laagste_weg_ohm (V51b), naast geen_niveauwerk_op_laagste_weg (V51).",
   "niveauwerk_laagste_weg_herkomst": "GESTELD door de ontwerper, gelezen uit `manifest_en_geometrie.gestelde_eisen` — niet afgeleid en nergens als default in `src/lib/engine2/` (P6). Motivering en meetgeometrie staan bij `geen_niveauwerk_motivering` en `driverkaart.woofer.schakeling`.",
   "schakeling_per_weg": {
    "tweeter": {
@@ -218,8 +221,8 @@
  "shortlist": {
   "overwogen": 15,
   "geweigerd_door_een_poort": 0,
-  "leverde_geen_netwerk": 14,
-  "bevroren": 1,
+  "leverde_geen_netwerk": 9,
+  "bevroren": 6,
   "_": "Zie `buildShortlist`: toelaatbaar gebied plus spreiding, en een poortweigering is een van de twee manieren om buiten het toelaatbaar gebied te vallen (de andere is een gestelde eis). Rangschikt niets (A5e.1). `bevroren` kan lager zijn dan `overwogen − geweigerd_door_een_poort`: de spreiding kiest daarna nog."
  },
  "verwerpingen": [
@@ -228,14 +231,14 @@
    "kinds": [
     "gate"
    ],
-   "reason": "M-B/|Z|: 2.10 Ω falls below the stated floor of 2.60 Ω; M-C (tweeter): -14.6 dB exceeds the stated ceiling of -20.0 dB",
+   "reason": "M-C (tweeter): -13.2 dB exceeds the stated ceiling of -20.0 dB",
    "rejectedTune": {
-    "minZOhm": 2.097356555418644,
-    "windowPlusMinusDb": 73.35805103846694,
-    "rmsDeviationDb": 1.698532957927467,
-    "rippleDb": 3.5139315908553215,
-    "phaseDeg": 30.99927279694183,
-    "driveOnFsDb": -14.63737756989767
+    "minZOhm": 2.584005983195005,
+    "windowPlusMinusDb": 72.14755284861407,
+    "rmsDeviationDb": 1.266333492216217,
+    "rippleDb": 2.750975587492448,
+    "phaseDeg": 32.42822107893477,
+    "driveOnFsDb": -13.243046434167432
    }
   },
   {
@@ -243,14 +246,14 @@
    "kinds": [
     "gate"
    ],
-   "reason": "M-B/|Z|: 2.16 Ω falls below the stated floor of 2.60 Ω; M-C (tweeter): -15.8 dB exceeds the stated ceiling of -20.0 dB",
+   "reason": "M-C (tweeter): -13.1 dB exceeds the stated ceiling of -20.0 dB",
    "rejectedTune": {
-    "minZOhm": 2.1598777596999112,
-    "windowPlusMinusDb": 72.86564014507084,
-    "rmsDeviationDb": 1.5075822229087867,
-    "rippleDb": 3.0589633886001764,
-    "phaseDeg": 31.603999452894357,
-    "driveOnFsDb": -15.78707963956281
+    "minZOhm": 2.5739793724106437,
+    "windowPlusMinusDb": 71.63621233502492,
+    "rmsDeviationDb": 0.9878782362070793,
+    "rippleDb": 1.9473339767087339,
+    "phaseDeg": 35.39649973058212,
+    "driveOnFsDb": -13.090226437166727
    }
   },
   {
@@ -258,44 +261,14 @@
    "kinds": [
     "gate"
    ],
-   "reason": "M-B/|Z|: 2.21 Ω falls below the stated floor of 2.60 Ω",
+   "reason": "M-B/|Z|: 2.45 Ω falls below the stated floor of 2.60 Ω",
    "rejectedTune": {
-    "minZOhm": 2.2189800794023737,
-    "windowPlusMinusDb": 73.76180613988633,
-    "rmsDeviationDb": 2.1455974631268924,
-    "rippleDb": 4.030070000304363,
-    "phaseDeg": 26.455447236616777,
-    "driveOnFsDb": -23.930140134053246
-   }
-  },
-  {
-   "label": "woofer→mid 396.7 LR4 · mid→tweeter 1981.2 LR4",
-   "kinds": [
-    "gate"
-   ],
-   "reason": "M-B/|Z|: 2.29 Ω falls below the stated floor of 2.60 Ω",
-   "rejectedTune": {
-    "minZOhm": 2.293769055433388,
-    "windowPlusMinusDb": 72.58458428900613,
-    "rmsDeviationDb": 1.4685078066510933,
-    "rippleDb": 2.949920698814509,
-    "phaseDeg": 26.108746699636587,
-    "driveOnFsDb": -25.22782754817998
-   }
-  },
-  {
-   "label": "woofer→mid 396.7 LR4 · mid→tweeter 2283.5 LR4",
-   "kinds": [
-    "gate"
-   ],
-   "reason": "M-B/|Z|: 2.13 Ω falls below the stated floor of 2.60 Ω",
-   "rejectedTune": {
-    "minZOhm": 2.1308295111610946,
-    "windowPlusMinusDb": 73.41203462562135,
-    "rmsDeviationDb": 1.7982357161007685,
-    "rippleDb": 4.2720757901821855,
-    "phaseDeg": 16.685150945810843,
-    "driveOnFsDb": -30.137768511895104
+    "minZOhm": 2.5105414048592056,
+    "windowPlusMinusDb": 73.51374298819742,
+    "rmsDeviationDb": 1.9495305473468036,
+    "rippleDb": 4.010364372936337,
+    "phaseDeg": 25.0884048438991,
+    "driveOnFsDb": -21.197444681737235
    }
   },
   {
@@ -303,14 +276,14 @@
    "kinds": [
     "gate"
    ],
-   "reason": "M-B/|Z|: 2.41 Ω falls below the stated floor of 2.60 Ω; M-C (mid): -9.0 dB exceeds the stated ceiling of -12.0 dB; M-C (tweeter): -14.1 dB exceeds the stated ceiling of -20.0 dB",
+   "reason": "M-B/|Z|: 1.94 Ω falls below the stated floor of 2.60 Ω; M-C (mid): -10.7 dB exceeds the stated ceiling of -14.1 dB; M-C (tweeter): -8.7 dB exceeds the stated ceiling of -20.0 dB",
    "rejectedTune": {
-    "minZOhm": 2.412355054388404,
-    "windowPlusMinusDb": 74.1665978751821,
-    "rmsDeviationDb": 2.28484824560335,
-    "rippleDb": 4.652841567325595,
-    "phaseDeg": 46.187275736378936,
-    "driveOnFsDb": -8.95296169713594
+    "minZOhm": 2.1585930687177353,
+    "windowPlusMinusDb": 74.19978543279204,
+    "rmsDeviationDb": 2.496689365788224,
+    "rippleDb": 4.52148738342845,
+    "phaseDeg": 71.46827082423727,
+    "driveOnFsDb": -8.741716298785246
    }
   },
   {
@@ -318,59 +291,45 @@
    "kinds": [
     "gate"
    ],
-   "reason": "M-C (mid): -11.4 dB exceeds the stated ceiling of -11.8 dB; M-C (tweeter): -13.3 dB exceeds the stated ceiling of -20.0 dB",
+   "reason": "M-B/|Z|: 2.49 Ω falls below the stated floor of 2.60 Ω; M-C (tweeter): -19.5 dB exceeds the stated ceiling of -20.0 dB",
    "rejectedTune": {
-    "minZOhm": 2.5651104569874845,
-    "windowPlusMinusDb": 73.33591382072964,
-    "rmsDeviationDb": 1.6140697127904022,
-    "rippleDb": 3.7909951084836706,
-    "phaseDeg": 24.811799499677473,
-    "driveOnFsDb": -11.40014575087044
+    "minZOhm": 2.5047086668045395,
+    "windowPlusMinusDb": 73.88671113654382,
+    "rmsDeviationDb": 2.5014314999661713,
+    "rippleDb": 5.257085530348732,
+    "phaseDeg": 24.702421537498005,
+    "driveOnFsDb": -19.457559887916986
    }
   },
   {
-   "label": "woofer→mid 466.5 LR4 · mid→tweeter 1981.2 LR4",
+   "label": "woofer→mid 466.5 LR4 · mid→tweeter 1719 LR4",
    "kinds": [
     "gate"
    ],
-   "reason": "M-B/|Z|: 2.41 Ω falls below the stated floor of 2.60 Ω",
+   "reason": "M-C (mid): -3.7 dB exceeds the stated ceiling of -12.1 dB",
    "rejectedTune": {
-    "minZOhm": 2.4176310746883454,
-    "windowPlusMinusDb": 73.42086673367308,
-    "rmsDeviationDb": 1.7882178844178465,
-    "rippleDb": 4.211164053012226,
-    "phaseDeg": 54.215010714118165,
-    "driveOnFsDb": -13.247904375114736
-   }
-  },
-  {
-   "label": "woofer→mid 466.5 LR4 · mid→tweeter 2283.5 LR4",
-   "kinds": [
-    "gate"
-   ],
-   "reason": "M-B/|Z|: 2.37 Ω falls below the stated floor of 2.60 Ω",
-   "rejectedTune": {
-    "minZOhm": 2.3690747263102643,
-    "windowPlusMinusDb": 71.90176484694099,
-    "rmsDeviationDb": 1.0979669304402249,
-    "rippleDb": 2.5563582220179057,
-    "phaseDeg": 20.22791206459104,
-    "driveOnFsDb": -28.812313937123623
+    "minZOhm": 2.586329210239394,
+    "windowPlusMinusDb": 73.37618171836948,
+    "rmsDeviationDb": 1.8725108235155752,
+    "rippleDb": 3.7296029538018587,
+    "phaseDeg": 22.06753143066226,
+    "driveOnFsDb": -3.696768992444108
    }
   },
   {
    "label": "woofer→mid 548.5 LR4 · mid→tweeter 1294 LR4",
    "kinds": [
-    "gate"
+    "gate",
+    "topology"
    ],
-   "reason": "M-B/|Z|: 2.05 Ω falls below the stated floor of 2.60 Ω; M-C (mid): 2.6 dB exceeds the stated ceiling of -11.5 dB; M-C (tweeter): -17.7 dB exceeds the stated ceiling of -20.0 dB",
+   "reason": "M-B/|Z|: 2.53 Ω falls below the stated floor of 2.60 Ω; M-C (mid): 0.5 dB exceeds the stated ceiling of -12.0 dB; M-C (tweeter): -10.6 dB exceeds the stated ceiling of -20.0 dB — this candidate asks 1.03 Ω of series resistance on the lowest way (woofer) for the floor, against a stated maximum of 1.00 Ω (V51b, Y)",
    "rejectedTune": {
-    "minZOhm": 2.2254195729200883,
-    "windowPlusMinusDb": 73.55900832743461,
-    "rmsDeviationDb": 2.238874095888618,
-    "rippleDb": 4.314252413725896,
-    "phaseDeg": 41.093391213993755,
-    "driveOnFsDb": 2.6027150767928906
+    "minZOhm": 2.5868761551552986,
+    "windowPlusMinusDb": 73.66505914975616,
+    "rmsDeviationDb": 1.9142079115864512,
+    "rippleDb": 4.115039190049032,
+    "phaseDeg": 26.782364260740263,
+    "driveOnFsDb": 0.5034499965228303
    }
   },
   {
@@ -378,29 +337,14 @@
    "kinds": [
     "gate"
    ],
-   "reason": "M-B/|Z|: 2.36 Ω falls below the stated floor of 2.60 Ω; M-C (tweeter): -17.9 dB exceeds the stated ceiling of -20.0 dB",
+   "reason": "M-B/|Z|: 2.06 Ω falls below the stated floor of 2.60 Ω; M-C (mid): -1.9 dB exceeds the stated ceiling of -10.6 dB; M-C (tweeter): -15.1 dB exceeds the stated ceiling of -20.0 dB",
    "rejectedTune": {
-    "minZOhm": 2.3656296902799756,
-    "windowPlusMinusDb": 72.11420389429176,
-    "rmsDeviationDb": 1.3351284552662708,
-    "rippleDb": 2.868213037700059,
-    "phaseDeg": 37.196306597212484,
-    "driveOnFsDb": -17.85383464532849
-   }
-  },
-  {
-   "label": "woofer→mid 548.5 LR4 · mid→tweeter 1719 LR4",
-   "kinds": [
-    "gate"
-   ],
-   "reason": "M-B/|Z|: 2.42 Ω falls below the stated floor of 2.60 Ω",
-   "rejectedTune": {
-    "minZOhm": 2.4249585335539825,
-    "windowPlusMinusDb": 72.7678044449066,
-    "rmsDeviationDb": 1.5967491013349608,
-    "rippleDb": 3.2547852838533515,
-    "phaseDeg": 20.438890109654253,
-    "driveOnFsDb": -28.604741811232977
+    "minZOhm": 2.367485577439661,
+    "windowPlusMinusDb": 74.90707214379401,
+    "rmsDeviationDb": 2.541379534554507,
+    "rippleDb": 5.36262408107153,
+    "phaseDeg": 37.45495417475139,
+    "driveOnFsDb": -1.9405155174496347
    }
   },
   {
@@ -408,123 +352,140 @@
    "kinds": [
     "gate"
    ],
-   "reason": "M-B/|Z|: 2.41 Ω falls below the stated floor of 2.60 Ω",
+   "reason": "M-C (mid): 1.5 dB exceeds the stated ceiling of -12.6 dB",
    "rejectedTune": {
-    "minZOhm": 2.409347778671482,
-    "windowPlusMinusDb": 72.50746488487003,
-    "rmsDeviationDb": 1.3786551376012222,
-    "rippleDb": 3.1257814600245553,
-    "phaseDeg": 20.79038381156106,
-    "driveOnFsDb": -26.935295357324378
-   }
-  },
-  {
-   "label": "woofer→mid 548.5 LR4 · mid→tweeter 2283.5 LR4",
-   "kinds": [
-    "gate"
-   ],
-   "reason": "M-B/|Z|: 2.49 Ω falls below the stated floor of 2.60 Ω",
-   "rejectedTune": {
-    "minZOhm": 2.491180285466438,
-    "windowPlusMinusDb": 72.39451619374783,
-    "rmsDeviationDb": 1.385739853034262,
-    "rippleDb": 2.6554990038348194,
-    "phaseDeg": 9.746134388019025,
-    "driveOnFsDb": -29.894896836582497
+    "minZOhm": 2.593006320353938,
+    "windowPlusMinusDb": 73.61220946445394,
+    "rmsDeviationDb": 1.78824312535345,
+    "rippleDb": 4.201251542966645,
+    "phaseDeg": 20.909897389698845,
+    "driveOnFsDb": 1.5357633866287488
    }
   }
  ],
  "kandidaat_uitkomst": [
   {
    "label": "woofer→mid 396.7 LR4 · mid→tweeter 1294 LR4",
-   "rimpel_dB": 3.41,
-   "fase_graden": 13.8,
+   "rimpel_dB": 3.16,
+   "fase_graden": 14.9,
    "poorten": [],
    "geweigerd_door": [],
    "door_de_ketenzelf_gediskwalificeerd": [],
    "pas": {
     "tuned": 0,
-    "evaluaties": 152536,
+    "evaluaties": 171253,
     "safetyNote": null,
     "safetyKinds": null,
-    "ampFloorNote": "the rejected tune — amp-load floor: repair REFUSED — it would have lifted 0.9 → 1.8 Ω at the cost of the source-resistance limit",
+    "ampFloorNote": "the rejected tune — amp-load floor: repair REFUSED — it would have lifted 0.9 → 2.0 Ω at the cost of the source-resistance limit",
     "ampFloorRepair": null,
     "vroege_terugkeer": true,
     "vloerbron": "The amp-load barrier aimed at the |Z| minimum over 21-20000 Hz, 240 points — the tuner's own full-band safety grid, the one every other amp-floor reader has always used, through the same reader the M-B/|Z| gate takes its own minimum through. Goal and limit are therefore one question rather than two; where they can still differ is the grid, and that difference is measured against the floor slack rather than assumed away (V33)."
    },
    "lf_bult_plafond": [
-    "woofer: the LF-lift bound of 2.13 mH is applied to the SUM of 2 free series coils, which is the quantity the metric sees. Each one is also capped at the total on its own — a necessary condition, not a second bound (V42).",
-    "The LF-lift ceiling on woofer's series inductance is RE-SOLVED at the path resistance of the network being evaluated, not held at the 0.00 Ω the seed carried. The 2.13 mH above is therefore the ceiling at the START of the search and not the one it ended under (V48)."
+    "woofer: the LF-lift bound of 2.51 mH is applied to the SUM of 2 free series coils, which is the quantity the metric sees. Each one is also capped at the total on its own — a necessary condition, not a second bound (V42).",
+    "The LF-lift ceiling on woofer's series inductance is RE-SOLVED at the path resistance of the network being evaluated, not held at the 0.93 Ω the seed carried. The 2.51 mH above is therefore the ceiling at the START of the search and not the one it ended under (V48)."
    ],
    "verwerping": {
     "regels": [
      "gate"
     ],
-    "reden": "M-B/|Z|: 2.10 Ω falls below the stated floor of 2.60 Ω; M-C (tweeter): -14.6 dB exceeds the stated ceiling of -20.0 dB",
+    "reden": "M-C (tweeter): -13.2 dB exceeds the stated ceiling of -20.0 dB",
     "geweigerde_tune": {
-     "minZOhm": 2.097356555418644,
-     "windowPlusMinusDb": 73.35805103846694,
-     "rmsDeviationDb": 1.698532957927467,
-     "rippleDb": 3.5139315908553215,
-     "phaseDeg": 30.99927279694183,
-     "driveOnFsDb": -14.63737756989767
+     "minZOhm": 2.584005983195005,
+     "windowPlusMinusDb": 72.14755284861407,
+     "rmsDeviationDb": 1.266333492216217,
+     "rippleDb": 2.750975587492448,
+     "phaseDeg": 32.42822107893477,
+     "driveOnFsDb": -13.243046434167432
     }
    },
    "niveauwerk": {
-    "eis": "none",
+    "eis": {
+     "kind": "series-r-max",
+     "maxOhm": 1
+    },
     "laagste_weg": "woofer",
     "anker": "mid",
     "gevraagd_X_dB": 1.328,
-    "geleverd_serie_R": [],
+    "geleverd_serie_R": [
+     {
+      "id": "R5",
+      "ohm": 1
+     }
+    ],
     "geleverd_shunt_pad": [],
-    "geleverd_geen": true,
+    "geleverd_geen": false,
+    "geleverd_serie_R_ohm": 1,
+    "geleverd_spoel_DCR_ohm": 0,
+    "geleverd_serie_R_totaal_ohm": 1,
+    "max_serie_R_ohm": 1,
+    "binnen_eis": true,
+    "vloer_ohm": 2.6,
+    "vloer_vraagt_serie_R_ohm": 1,
+    "vloer_vraagt_toelichting": "The stated floor of 2.6 Ω is met by this network with 1.000 Ω of series resistance on woofer (V51b, Y).",
     "plateau_beoordeeld": false,
     "plateau_toelichting": "the level at the handover is judged; the bass is NOT — the judged band starts at 397 Hz, only 0.16 octaves below the 442 Hz transition, where the target reads -1.32 dB of the stated −2.5 dB. The plateau itself lies below the measurement set's validity floor and is not measured here; no assumption stands in for it"
    }
   },
   {
    "label": "woofer→mid 396.7 LR4 · mid→tweeter 1491.4 LR4",
-   "rimpel_dB": 5.08,
-   "fase_graden": 12.1,
+   "rimpel_dB": 4.83,
+   "fase_graden": 11.6,
    "poorten": [],
    "geweigerd_door": [],
    "door_de_ketenzelf_gediskwalificeerd": [],
    "pas": {
     "tuned": 0,
-    "evaluaties": 160407,
+    "evaluaties": 182013,
     "safetyNote": null,
     "safetyKinds": null,
-    "ampFloorNote": "the rejected tune — amp-load floor: repair REFUSED — it would have lifted 0.6 → 1.7 Ω at the cost of the source-resistance limit",
+    "ampFloorNote": "the rejected tune — amp-load floor: repair REFUSED — it would have lifted 0.6 → 2.3 Ω at the cost of the source-resistance limit",
     "ampFloorRepair": null,
     "vroege_terugkeer": true,
     "vloerbron": "The amp-load barrier aimed at the |Z| minimum over 21-20000 Hz, 240 points — the tuner's own full-band safety grid, the one every other amp-floor reader has always used, through the same reader the M-B/|Z| gate takes its own minimum through. Goal and limit are therefore one question rather than two; where they can still differ is the grid, and that difference is measured against the floor slack rather than assumed away (V33)."
    },
    "lf_bult_plafond": [
-    "woofer: the LF-lift bound of 2.13 mH is applied to the SUM of 2 free series coils, which is the quantity the metric sees. Each one is also capped at the total on its own — a necessary condition, not a second bound (V42).",
-    "The LF-lift ceiling on woofer's series inductance is RE-SOLVED at the path resistance of the network being evaluated, not held at the 0.00 Ω the seed carried. The 2.13 mH above is therefore the ceiling at the START of the search and not the one it ended under (V48)."
+    "woofer: the LF-lift bound of 2.39 mH is applied to the SUM of 2 free series coils, which is the quantity the metric sees. Each one is also capped at the total on its own — a necessary condition, not a second bound (V42).",
+    "The LF-lift ceiling on woofer's series inductance is RE-SOLVED at the path resistance of the network being evaluated, not held at the 0.67 Ω the seed carried. The 2.39 mH above is therefore the ceiling at the START of the search and not the one it ended under (V48)."
    ],
    "verwerping": {
     "regels": [
      "gate"
     ],
-    "reden": "M-B/|Z|: 2.16 Ω falls below the stated floor of 2.60 Ω; M-C (tweeter): -15.8 dB exceeds the stated ceiling of -20.0 dB",
+    "reden": "M-C (tweeter): -13.1 dB exceeds the stated ceiling of -20.0 dB",
     "geweigerde_tune": {
-     "minZOhm": 2.1598777596999112,
-     "windowPlusMinusDb": 72.86564014507084,
-     "rmsDeviationDb": 1.5075822229087867,
-     "rippleDb": 3.0589633886001764,
-     "phaseDeg": 31.603999452894357,
-     "driveOnFsDb": -15.78707963956281
+     "minZOhm": 2.5739793724106437,
+     "windowPlusMinusDb": 71.63621233502492,
+     "rmsDeviationDb": 0.9878782362070793,
+     "rippleDb": 1.9473339767087339,
+     "phaseDeg": 35.39649973058212,
+     "driveOnFsDb": -13.090226437166727
     }
    },
    "niveauwerk": {
-    "eis": "none",
+    "eis": {
+     "kind": "series-r-max",
+     "maxOhm": 1
+    },
     "laagste_weg": "woofer",
     "anker": "mid",
     "gevraagd_X_dB": 1.328,
-    "geleverd_serie_R": [],
+    "geleverd_serie_R": [
+     {
+      "id": "R5",
+      "ohm": 0.977
+     }
+    ],
     "geleverd_shunt_pad": [],
-    "geleverd_geen": true,
+    "geleverd_geen": false,
+    "geleverd_serie_R_ohm": 0.977,
+    "geleverd_spoel_DCR_ohm": 0,
+    "geleverd_serie_R_totaal_ohm": 0.977,
+    "max_serie_R_ohm": 1,
+    "binnen_eis": true,
+    "vloer_ohm": 2.6,
+    "vloer_vraagt_serie_R_ohm": 0.977,
+    "vloer_vraagt_toelichting": "The stated floor of 2.6 Ω is met by this network with 0.977 Ω of series resistance on woofer (V51b, Y).",
     "plateau_beoordeeld": false,
     "plateau_toelichting": "the level at the handover is judged; the bass is NOT — the judged band starts at 397 Hz, only 0.16 octaves below the 442 Hz transition, where the target reads -1.32 dB of the stated −2.5 dB. The plateau itself lies below the measurement set's validity floor and is not measured here; no assumption stands in for it"
    }
@@ -532,251 +493,79 @@
   {
    "label": "woofer→mid 396.7 LR4 · mid→tweeter 1719 LR4",
    "rimpel_dB": 7.94,
-   "fase_graden": 13.8,
+   "fase_graden": 13.7,
    "poorten": [],
    "geweigerd_door": [],
    "door_de_ketenzelf_gediskwalificeerd": [
-    "W-M delivered 376 Hz under its physics floor 397 Hz (-5 %)"
+    "W-M delivered 358 Hz under its physics floor 397 Hz (-10 %)"
    ],
    "pas": {
     "tuned": 0,
-    "evaluaties": 155669,
+    "evaluaties": 162972,
     "safetyNote": null,
     "safetyKinds": null,
-    "ampFloorNote": "the rejected tune — amp-load floor: repair REFUSED — it would have lifted 1.2 → 1.5 Ω at the cost of the source-resistance limit",
+    "ampFloorNote": "the rejected tune — amp-load floor: repair REFUSED — it would have lifted 1.2 → 1.7 Ω at the cost of the source-resistance limit",
     "ampFloorRepair": null,
     "vroege_terugkeer": true,
     "vloerbron": "The amp-load barrier aimed at the |Z| minimum over 21-20000 Hz, 240 points — the tuner's own full-band safety grid, the one every other amp-floor reader has always used, through the same reader the M-B/|Z| gate takes its own minimum through. Goal and limit are therefore one question rather than two; where they can still differ is the grid, and that difference is measured against the floor slack rather than assumed away (V33)."
    },
    "lf_bult_plafond": [
-    "woofer: the LF-lift bound of 2.13 mH is applied to the SUM of 2 free series coils, which is the quantity the metric sees. Each one is also capped at the total on its own — a necessary condition, not a second bound (V42).",
-    "The LF-lift ceiling on woofer's series inductance is RE-SOLVED at the path resistance of the network being evaluated, not held at the 0.00 Ω the seed carried. The 2.13 mH above is therefore the ceiling at the START of the search and not the one it ended under (V48)."
+    "woofer: the LF-lift bound of 2.39 mH is applied to the SUM of 2 free series coils, which is the quantity the metric sees. Each one is also capped at the total on its own — a necessary condition, not a second bound (V42).",
+    "The LF-lift ceiling on woofer's series inductance is RE-SOLVED at the path resistance of the network being evaluated, not held at the 0.67 Ω the seed carried. The 2.39 mH above is therefore the ceiling at the START of the search and not the one it ended under (V48)."
    ],
    "verwerping": {
     "regels": [
      "gate"
     ],
-    "reden": "M-B/|Z|: 2.21 Ω falls below the stated floor of 2.60 Ω",
+    "reden": "M-B/|Z|: 2.45 Ω falls below the stated floor of 2.60 Ω",
     "geweigerde_tune": {
-     "minZOhm": 2.2189800794023737,
-     "windowPlusMinusDb": 73.76180613988633,
-     "rmsDeviationDb": 2.1455974631268924,
-     "rippleDb": 4.030070000304363,
-     "phaseDeg": 26.455447236616777,
-     "driveOnFsDb": -23.930140134053246
+     "minZOhm": 2.5105414048592056,
+     "windowPlusMinusDb": 73.51374298819742,
+     "rmsDeviationDb": 1.9495305473468036,
+     "rippleDb": 4.010364372936337,
+     "phaseDeg": 25.0884048438991,
+     "driveOnFsDb": -21.197444681737235
     }
    },
    "niveauwerk": {
-    "eis": "none",
+    "eis": {
+     "kind": "series-r-max",
+     "maxOhm": 1
+    },
     "laagste_weg": "woofer",
     "anker": "mid",
     "gevraagd_X_dB": 1.328,
-    "geleverd_serie_R": [],
+    "geleverd_serie_R": [
+     {
+      "id": "R5",
+      "ohm": 0.627
+     }
+    ],
     "geleverd_shunt_pad": [],
-    "geleverd_geen": true,
+    "geleverd_geen": false,
+    "geleverd_serie_R_ohm": 0.627,
+    "geleverd_spoel_DCR_ohm": 0,
+    "geleverd_serie_R_totaal_ohm": 0.627,
+    "max_serie_R_ohm": 1,
+    "binnen_eis": true,
+    "vloer_ohm": 2.6,
+    "vloer_vraagt_serie_R_ohm": null,
+    "vloer_vraagt_toelichting": "Y (V51b) could not be solved for woofer against the stated floor of 2.6 Ω: even 20 Ω at the head of woofer leaves the system at 2.303 Ω (from 2.449 Ω) — the minimum then sits in another way and no series resistance on this one reaches the floor. Reported as unknown, not as zero.",
     "plateau_beoordeeld": false,
     "plateau_toelichting": "the level at the handover is judged; the bass is NOT — the judged band starts at 397 Hz, only 0.16 octaves below the 442 Hz transition, where the target reads -1.32 dB of the stated −2.5 dB. The plateau itself lies below the measurement set's validity floor and is not measured here; no assumption stands in for it"
    }
   },
   {
    "label": "woofer→mid 396.7 LR4 · mid→tweeter 1981.2 LR4",
-   "rimpel_dB": 2.36,
-   "fase_graden": 15.4,
-   "poorten": [],
-   "geweigerd_door": [],
-   "door_de_ketenzelf_gediskwalificeerd": [],
-   "pas": {
-    "tuned": 0,
-    "evaluaties": 140731,
-    "safetyNote": null,
-    "safetyKinds": null,
-    "ampFloorNote": "the rejected tune — amp-load floor: system impedance dips to 0.5 Ω (your amplifier's rated minimum load, 2.6 Ω) and could not be repaired without losing response quality — check the Impedance panel",
-    "ampFloorRepair": null,
-    "vroege_terugkeer": true,
-    "vloerbron": "The amp-load barrier aimed at the |Z| minimum over 21-20000 Hz, 240 points — the tuner's own full-band safety grid, the one every other amp-floor reader has always used, through the same reader the M-B/|Z| gate takes its own minimum through. Goal and limit are therefore one question rather than two; where they can still differ is the grid, and that difference is measured against the floor slack rather than assumed away (V33)."
-   },
-   "lf_bult_plafond": [
-    "woofer: the LF-lift bound of 2.13 mH is applied to the SUM of 2 free series coils, which is the quantity the metric sees. Each one is also capped at the total on its own — a necessary condition, not a second bound (V42).",
-    "The LF-lift ceiling on woofer's series inductance is RE-SOLVED at the path resistance of the network being evaluated, not held at the 0.00 Ω the seed carried. The 2.13 mH above is therefore the ceiling at the START of the search and not the one it ended under (V48)."
-   ],
-   "verwerping": {
-    "regels": [
-     "gate"
-    ],
-    "reden": "M-B/|Z|: 2.29 Ω falls below the stated floor of 2.60 Ω",
-    "geweigerde_tune": {
-     "minZOhm": 2.293769055433388,
-     "windowPlusMinusDb": 72.58458428900613,
-     "rmsDeviationDb": 1.4685078066510933,
-     "rippleDb": 2.949920698814509,
-     "phaseDeg": 26.108746699636587,
-     "driveOnFsDb": -25.22782754817998
-    }
-   },
-   "niveauwerk": {
-    "eis": "none",
-    "laagste_weg": "woofer",
-    "anker": "mid",
-    "gevraagd_X_dB": 1.328,
-    "geleverd_serie_R": [],
-    "geleverd_shunt_pad": [],
-    "geleverd_geen": true,
-    "plateau_beoordeeld": false,
-    "plateau_toelichting": "the level at the handover is judged; the bass is NOT — the judged band starts at 397 Hz, only 0.16 octaves below the 442 Hz transition, where the target reads -1.32 dB of the stated −2.5 dB. The plateau itself lies below the measurement set's validity floor and is not measured here; no assumption stands in for it"
-   }
-  },
-  {
-   "label": "woofer→mid 396.7 LR4 · mid→tweeter 2283.5 LR4",
-   "rimpel_dB": 3.86,
-   "fase_graden": 20.7,
-   "poorten": [],
-   "geweigerd_door": [],
-   "door_de_ketenzelf_gediskwalificeerd": [],
-   "pas": {
-    "tuned": 0,
-    "evaluaties": 174632,
-    "safetyNote": null,
-    "safetyKinds": null,
-    "ampFloorNote": "the rejected tune — amp-load floor: repair REFUSED — it would have lifted 0.6 → 1.9 Ω at the cost of the source-resistance limit",
-    "ampFloorRepair": null,
-    "vroege_terugkeer": true,
-    "vloerbron": "The amp-load barrier aimed at the |Z| minimum over 21-20000 Hz, 240 points — the tuner's own full-band safety grid, the one every other amp-floor reader has always used, through the same reader the M-B/|Z| gate takes its own minimum through. Goal and limit are therefore one question rather than two; where they can still differ is the grid, and that difference is measured against the floor slack rather than assumed away (V33)."
-   },
-   "lf_bult_plafond": [
-    "woofer: the LF-lift bound of 2.13 mH is applied to the SUM of 2 free series coils, which is the quantity the metric sees. Each one is also capped at the total on its own — a necessary condition, not a second bound (V42).",
-    "The LF-lift ceiling on woofer's series inductance is RE-SOLVED at the path resistance of the network being evaluated, not held at the 0.00 Ω the seed carried. The 2.13 mH above is therefore the ceiling at the START of the search and not the one it ended under (V48)."
-   ],
-   "verwerping": {
-    "regels": [
-     "gate"
-    ],
-    "reden": "M-B/|Z|: 2.13 Ω falls below the stated floor of 2.60 Ω",
-    "geweigerde_tune": {
-     "minZOhm": 2.1308295111610946,
-     "windowPlusMinusDb": 73.41203462562135,
-     "rmsDeviationDb": 1.7982357161007685,
-     "rippleDb": 4.2720757901821855,
-     "phaseDeg": 16.685150945810843,
-     "driveOnFsDb": -30.137768511895104
-    }
-   },
-   "niveauwerk": {
-    "eis": "none",
-    "laagste_weg": "woofer",
-    "anker": "mid",
-    "gevraagd_X_dB": 1.328,
-    "geleverd_serie_R": [],
-    "geleverd_shunt_pad": [],
-    "geleverd_geen": true,
-    "plateau_beoordeeld": false,
-    "plateau_toelichting": "the level at the handover is judged; the bass is NOT — the judged band starts at 397 Hz, only 0.16 octaves below the 442 Hz transition, where the target reads -1.32 dB of the stated −2.5 dB. The plateau itself lies below the measurement set's validity floor and is not measured here; no assumption stands in for it"
-   }
-  },
-  {
-   "label": "woofer→mid 466.5 LR4 · mid→tweeter 1294 LR4",
-   "rimpel_dB": 4.74,
-   "fase_graden": 15.5,
-   "poorten": [],
-   "geweigerd_door": [],
-   "door_de_ketenzelf_gediskwalificeerd": [],
-   "pas": {
-    "tuned": 0,
-    "evaluaties": 130790,
-    "safetyNote": null,
-    "safetyKinds": null,
-    "ampFloorNote": "the rejected tune — amp-load floor: repair REFUSED — it would have lifted 0.0 → 0.1 Ω at the cost of the source-resistance limit",
-    "ampFloorRepair": null,
-    "vroege_terugkeer": true,
-    "vloerbron": "The amp-load barrier aimed at the |Z| minimum over 21-20000 Hz, 240 points — the tuner's own full-band safety grid, the one every other amp-floor reader has always used, through the same reader the M-B/|Z| gate takes its own minimum through. Goal and limit are therefore one question rather than two; where they can still differ is the grid, and that difference is measured against the floor slack rather than assumed away (V33)."
-   },
-   "lf_bult_plafond": [
-    "woofer: the LF-lift bound of 2.13 mH is applied to the SUM of 2 free series coils, which is the quantity the metric sees. Each one is also capped at the total on its own — a necessary condition, not a second bound (V42).",
-    "The LF-lift ceiling on woofer's series inductance is RE-SOLVED at the path resistance of the network being evaluated, not held at the 0.00 Ω the seed carried. The 2.13 mH above is therefore the ceiling at the START of the search and not the one it ended under (V48)."
-   ],
-   "verwerping": {
-    "regels": [
-     "gate"
-    ],
-    "reden": "M-B/|Z|: 2.41 Ω falls below the stated floor of 2.60 Ω; M-C (mid): -9.0 dB exceeds the stated ceiling of -12.0 dB; M-C (tweeter): -14.1 dB exceeds the stated ceiling of -20.0 dB",
-    "geweigerde_tune": {
-     "minZOhm": 2.412355054388404,
-     "windowPlusMinusDb": 74.1665978751821,
-     "rmsDeviationDb": 2.28484824560335,
-     "rippleDb": 4.652841567325595,
-     "phaseDeg": 46.187275736378936,
-     "driveOnFsDb": -8.95296169713594
-    }
-   },
-   "niveauwerk": {
-    "eis": "none",
-    "laagste_weg": "woofer",
-    "anker": "mid",
-    "gevraagd_X_dB": 1.328,
-    "geleverd_serie_R": [],
-    "geleverd_shunt_pad": [],
-    "geleverd_geen": true,
-    "plateau_beoordeeld": false,
-    "plateau_toelichting": "the level at the handover is judged; the bass is NOT — the judged band starts at 397 Hz, only 0.16 octaves below the 442 Hz transition, where the target reads -1.32 dB of the stated −2.5 dB. The plateau itself lies below the measurement set's validity floor and is not measured here; no assumption stands in for it"
-   }
-  },
-  {
-   "label": "woofer→mid 466.5 LR4 · mid→tweeter 1491.4 LR4",
-   "rimpel_dB": 7.84,
-   "fase_graden": 14,
-   "poorten": [],
-   "geweigerd_door": [],
-   "door_de_ketenzelf_gediskwalificeerd": [],
-   "pas": {
-    "tuned": 0,
-    "evaluaties": 151922,
-    "safetyNote": null,
-    "safetyKinds": null,
-    "ampFloorNote": "the rejected tune — amp-load floor: system impedance dips to 0.1 Ω (your amplifier's rated minimum load, 2.6 Ω) and could not be repaired without losing response quality — check the Impedance panel",
-    "ampFloorRepair": null,
-    "vroege_terugkeer": true,
-    "vloerbron": "The amp-load barrier aimed at the |Z| minimum over 21-20000 Hz, 240 points — the tuner's own full-band safety grid, the one every other amp-floor reader has always used, through the same reader the M-B/|Z| gate takes its own minimum through. Goal and limit are therefore one question rather than two; where they can still differ is the grid, and that difference is measured against the floor slack rather than assumed away (V33)."
-   },
-   "lf_bult_plafond": [
-    "woofer: the LF-lift bound of 2.13 mH is applied to the SUM of 2 free series coils, which is the quantity the metric sees. Each one is also capped at the total on its own — a necessary condition, not a second bound (V42).",
-    "The LF-lift ceiling on woofer's series inductance is RE-SOLVED at the path resistance of the network being evaluated, not held at the 0.00 Ω the seed carried. The 2.13 mH above is therefore the ceiling at the START of the search and not the one it ended under (V48)."
-   ],
-   "verwerping": {
-    "regels": [
-     "gate"
-    ],
-    "reden": "M-C (mid): -11.4 dB exceeds the stated ceiling of -11.8 dB; M-C (tweeter): -13.3 dB exceeds the stated ceiling of -20.0 dB",
-    "geweigerde_tune": {
-     "minZOhm": 2.5651104569874845,
-     "windowPlusMinusDb": 73.33591382072964,
-     "rmsDeviationDb": 1.6140697127904022,
-     "rippleDb": 3.7909951084836706,
-     "phaseDeg": 24.811799499677473,
-     "driveOnFsDb": -11.40014575087044
-    }
-   },
-   "niveauwerk": {
-    "eis": "none",
-    "laagste_weg": "woofer",
-    "anker": "mid",
-    "gevraagd_X_dB": 1.328,
-    "geleverd_serie_R": [],
-    "geleverd_shunt_pad": [],
-    "geleverd_geen": true,
-    "plateau_beoordeeld": false,
-    "plateau_toelichting": "the level at the handover is judged; the bass is NOT — the judged band starts at 397 Hz, only 0.16 octaves below the 442 Hz transition, where the target reads -1.32 dB of the stated −2.5 dB. The plateau itself lies below the measurement set's validity floor and is not measured here; no assumption stands in for it"
-   }
-  },
-  {
-   "label": "woofer→mid 466.5 LR4 · mid→tweeter 1719 LR4",
-   "rimpel_dB": 2,
-   "fase_graden": 13.7,
+   "rimpel_dB": 2.31,
+   "fase_graden": 9.3,
    "poorten": [
     {
      "poort": "M-A",
      "onderwerp": "system",
      "gewapend": false,
      "geslaagd": true,
-     "waarde": 0.351,
+     "waarde": 0.446,
      "grens": null
     },
     {
@@ -784,7 +573,7 @@
      "onderwerp": "system",
      "gewapend": false,
      "geslaagd": true,
-     "waarde": 1.296,
+     "waarde": 1.309,
      "grens": null
     },
     {
@@ -792,7 +581,7 @@
      "onderwerp": "system",
      "gewapend": true,
      "geslaagd": true,
-     "waarde": 2.572,
+     "waarde": 2.591,
      "grens": 2.6
     },
     {
@@ -800,15 +589,15 @@
      "onderwerp": "mid",
      "gewapend": true,
      "geslaagd": true,
-     "waarde": -61.786,
-     "grens": -12.803569411563657
+     "waarde": -43.688,
+     "grens": -13.28115879282349
     },
     {
      "poort": "M-C",
      "onderwerp": "tweeter",
      "gewapend": true,
      "geslaagd": true,
-     "waarde": -25.582,
+     "waarde": -32.766,
      "grens": -20
     },
     {
@@ -816,7 +605,7 @@
      "onderwerp": "system",
      "gewapend": true,
      "geslaagd": true,
-     "waarde": 1.98,
+     "waarde": 2.119,
      "grens": 5
     },
     {
@@ -824,15 +613,122 @@
      "onderwerp": "system",
      "gewapend": false,
      "geslaagd": true,
-     "waarde": 19.932,
+     "waarde": 22.987,
      "grens": null
     }
    ],
    "geweigerd_door": [],
    "door_de_ketenzelf_gediskwalificeerd": [],
    "pas": {
-    "tuned": 20,
-    "evaluaties": 496674,
+    "tuned": 0,
+    "evaluaties": 156610,
+    "safetyNote": null,
+    "safetyKinds": null,
+    "ampFloorNote": "amp-load floor: system impedance minimum lifted 0.5 → 2.6 Ω (your amplifier's rated minimum load, 2.6 Ω)",
+    "ampFloorRepair": "lifted",
+    "vroege_terugkeer": false,
+    "vloerbron": "The amp-load barrier aimed at the |Z| minimum over 21-20000 Hz, 240 points — the tuner's own full-band safety grid, the one every other amp-floor reader has always used, through the same reader the M-B/|Z| gate takes its own minimum through. Goal and limit are therefore one question rather than two; where they can still differ is the grid, and that difference is measured against the floor slack rather than assumed away (V33)."
+   },
+   "lf_bult_plafond": [
+    "woofer: the LF-lift bound of 2.39 mH is applied to the SUM of 2 free series coils, which is the quantity the metric sees. Each one is also capped at the total on its own — a necessary condition, not a second bound (V42).",
+    "The LF-lift ceiling on woofer's series inductance is RE-SOLVED at the path resistance of the network being evaluated, not held at the 0.67 Ω the seed carried. The 2.39 mH above is therefore the ceiling at the START of the search and not the one it ended under (V48)."
+   ],
+   "verwerping": null,
+   "niveauwerk": {
+    "eis": {
+     "kind": "series-r-max",
+     "maxOhm": 1
+    },
+    "laagste_weg": "woofer",
+    "anker": "mid",
+    "gevraagd_X_dB": 1.328,
+    "geleverd_serie_R": [
+     {
+      "id": "R5",
+      "ohm": 0.874
+     }
+    ],
+    "geleverd_shunt_pad": [],
+    "geleverd_geen": false,
+    "geleverd_serie_R_ohm": 0.874,
+    "geleverd_spoel_DCR_ohm": 0,
+    "geleverd_serie_R_totaal_ohm": 0.874,
+    "max_serie_R_ohm": 1,
+    "binnen_eis": true,
+    "vloer_ohm": 2.6,
+    "vloer_vraagt_serie_R_ohm": 0.874,
+    "vloer_vraagt_toelichting": "The stated floor of 2.6 Ω is met by this network with 0.874 Ω of series resistance on woofer (V51b, Y).",
+    "plateau_beoordeeld": false,
+    "plateau_toelichting": "the level at the handover is judged; the bass is NOT — the judged band starts at 397 Hz, only 0.16 octaves below the 442 Hz transition, where the target reads -1.32 dB of the stated −2.5 dB. The plateau itself lies below the measurement set's validity floor and is not measured here; no assumption stands in for it"
+   }
+  },
+  {
+   "label": "woofer→mid 396.7 LR4 · mid→tweeter 2283.5 LR4",
+   "rimpel_dB": 1.62,
+   "fase_graden": 10.4,
+   "poorten": [
+    {
+     "poort": "M-A",
+     "onderwerp": "system",
+     "gewapend": false,
+     "geslaagd": true,
+     "waarde": 0.477,
+     "grens": null
+    },
+    {
+     "poort": "M-B/EPDR",
+     "onderwerp": "system",
+     "gewapend": false,
+     "geslaagd": true,
+     "waarde": 1.318,
+     "grens": null
+    },
+    {
+     "poort": "M-B/|Z|",
+     "onderwerp": "system",
+     "gewapend": true,
+     "geslaagd": true,
+     "waarde": 2.592,
+     "grens": 2.6
+    },
+    {
+     "poort": "M-C",
+     "onderwerp": "mid",
+     "gewapend": true,
+     "geslaagd": true,
+     "waarde": -55.573,
+     "grens": -13.395761199987076
+    },
+    {
+     "poort": "M-C",
+     "onderwerp": "tweeter",
+     "gewapend": true,
+     "geslaagd": true,
+     "waarde": -28.381,
+     "grens": -20
+    },
+    {
+     "poort": "M-A/part",
+     "onderwerp": "system",
+     "gewapend": true,
+     "geslaagd": true,
+     "waarde": 2.338,
+     "grens": 5
+    },
+    {
+     "poort": "M-L",
+     "onderwerp": "system",
+     "gewapend": false,
+     "geslaagd": true,
+     "waarde": 20.197,
+     "grens": null
+    }
+   ],
+   "geweigerd_door": [],
+   "door_de_ketenzelf_gediskwalificeerd": [],
+   "pas": {
+    "tuned": 39,
+    "evaluaties": 216221,
     "safetyNote": null,
     "safetyKinds": null,
     "ampFloorNote": null,
@@ -841,126 +737,48 @@
     "vloerbron": "The amp-load barrier aimed at the |Z| minimum over 21-20000 Hz, 240 points — the tuner's own full-band safety grid, the one every other amp-floor reader has always used, through the same reader the M-B/|Z| gate takes its own minimum through. Goal and limit are therefore one question rather than two; where they can still differ is the grid, and that difference is measured against the floor slack rather than assumed away (V33)."
    },
    "lf_bult_plafond": [
-    "woofer: the LF-lift bound of 2.13 mH is applied to the SUM of 2 free series coils, which is the quantity the metric sees. Each one is also capped at the total on its own — a necessary condition, not a second bound (V42).",
-    "The LF-lift ceiling on woofer's series inductance is RE-SOLVED at the path resistance of the network being evaluated, not held at the 0.00 Ω the seed carried. The 2.13 mH above is therefore the ceiling at the START of the search and not the one it ended under (V48)."
+    "woofer: the LF-lift bound of 2.39 mH is applied to the SUM of 2 free series coils, which is the quantity the metric sees. Each one is also capped at the total on its own — a necessary condition, not a second bound (V42).",
+    "The LF-lift ceiling on woofer's series inductance is RE-SOLVED at the path resistance of the network being evaluated, not held at the 0.67 Ω the seed carried. The 2.39 mH above is therefore the ceiling at the START of the search and not the one it ended under (V48)."
    ],
    "verwerping": null,
    "niveauwerk": {
-    "eis": "none",
+    "eis": {
+     "kind": "series-r-max",
+     "maxOhm": 1
+    },
     "laagste_weg": "woofer",
     "anker": "mid",
     "gevraagd_X_dB": 1.328,
-    "geleverd_serie_R": [],
-    "geleverd_shunt_pad": [],
-    "geleverd_geen": true,
-    "plateau_beoordeeld": false,
-    "plateau_toelichting": "the level at the handover is judged; the bass is NOT — the judged band starts at 397 Hz, only 0.16 octaves below the 442 Hz transition, where the target reads -1.32 dB of the stated −2.5 dB. The plateau itself lies below the measurement set's validity floor and is not measured here; no assumption stands in for it"
-   }
-  },
-  {
-   "label": "woofer→mid 466.5 LR4 · mid→tweeter 1981.2 LR4",
-   "rimpel_dB": 4.04,
-   "fase_graden": 19,
-   "poorten": [],
-   "geweigerd_door": [],
-   "door_de_ketenzelf_gediskwalificeerd": [],
-   "pas": {
-    "tuned": 0,
-    "evaluaties": 129630,
-    "safetyNote": null,
-    "safetyKinds": null,
-    "ampFloorNote": "the rejected tune — amp-load floor: system impedance dips to 0.0 Ω (your amplifier's rated minimum load, 2.6 Ω) and could not be repaired without losing response quality — check the Impedance panel",
-    "ampFloorRepair": null,
-    "vroege_terugkeer": true,
-    "vloerbron": "The amp-load barrier aimed at the |Z| minimum over 21-20000 Hz, 240 points — the tuner's own full-band safety grid, the one every other amp-floor reader has always used, through the same reader the M-B/|Z| gate takes its own minimum through. Goal and limit are therefore one question rather than two; where they can still differ is the grid, and that difference is measured against the floor slack rather than assumed away (V33)."
-   },
-   "lf_bult_plafond": [
-    "woofer: the LF-lift bound of 2.13 mH is applied to the SUM of 2 free series coils, which is the quantity the metric sees. Each one is also capped at the total on its own — a necessary condition, not a second bound (V42).",
-    "The LF-lift ceiling on woofer's series inductance is RE-SOLVED at the path resistance of the network being evaluated, not held at the 0.00 Ω the seed carried. The 2.13 mH above is therefore the ceiling at the START of the search and not the one it ended under (V48)."
-   ],
-   "verwerping": {
-    "regels": [
-     "gate"
+    "geleverd_serie_R": [
+     {
+      "id": "R5",
+      "ohm": 1
+     }
     ],
-    "reden": "M-B/|Z|: 2.41 Ω falls below the stated floor of 2.60 Ω",
-    "geweigerde_tune": {
-     "minZOhm": 2.4176310746883454,
-     "windowPlusMinusDb": 73.42086673367308,
-     "rmsDeviationDb": 1.7882178844178465,
-     "rippleDb": 4.211164053012226,
-     "phaseDeg": 54.215010714118165,
-     "driveOnFsDb": -13.247904375114736
-    }
-   },
-   "niveauwerk": {
-    "eis": "none",
-    "laagste_weg": "woofer",
-    "anker": "mid",
-    "gevraagd_X_dB": 1.328,
-    "geleverd_serie_R": [],
     "geleverd_shunt_pad": [],
-    "geleverd_geen": true,
+    "geleverd_geen": false,
+    "geleverd_serie_R_ohm": 1,
+    "geleverd_spoel_DCR_ohm": 0,
+    "geleverd_serie_R_totaal_ohm": 1,
+    "max_serie_R_ohm": 1,
+    "binnen_eis": true,
+    "vloer_ohm": 2.6,
+    "vloer_vraagt_serie_R_ohm": 1,
+    "vloer_vraagt_toelichting": "The stated floor of 2.6 Ω is met by this network with 1.000 Ω of series resistance on woofer (V51b, Y).",
     "plateau_beoordeeld": false,
     "plateau_toelichting": "the level at the handover is judged; the bass is NOT — the judged band starts at 397 Hz, only 0.16 octaves below the 442 Hz transition, where the target reads -1.32 dB of the stated −2.5 dB. The plateau itself lies below the measurement set's validity floor and is not measured here; no assumption stands in for it"
    }
   },
   {
-   "label": "woofer→mid 466.5 LR4 · mid→tweeter 2283.5 LR4",
-   "rimpel_dB": 2.46,
-   "fase_graden": 24.2,
+   "label": "woofer→mid 466.5 LR4 · mid→tweeter 1294 LR4",
+   "rimpel_dB": 6.58,
+   "fase_graden": 17.1,
    "poorten": [],
    "geweigerd_door": [],
    "door_de_ketenzelf_gediskwalificeerd": [],
    "pas": {
     "tuned": 0,
-    "evaluaties": 163994,
-    "safetyNote": null,
-    "safetyKinds": null,
-    "ampFloorNote": "the rejected tune — amp-load floor: repair REFUSED — it would have lifted 0.4 → 1.7 Ω at the cost of the source-resistance limit",
-    "ampFloorRepair": null,
-    "vroege_terugkeer": true,
-    "vloerbron": "The amp-load barrier aimed at the |Z| minimum over 21-20000 Hz, 240 points — the tuner's own full-band safety grid, the one every other amp-floor reader has always used, through the same reader the M-B/|Z| gate takes its own minimum through. Goal and limit are therefore one question rather than two; where they can still differ is the grid, and that difference is measured against the floor slack rather than assumed away (V33)."
-   },
-   "lf_bult_plafond": [
-    "woofer: the LF-lift bound of 2.13 mH is applied to the SUM of 2 free series coils, which is the quantity the metric sees. Each one is also capped at the total on its own — a necessary condition, not a second bound (V42).",
-    "The LF-lift ceiling on woofer's series inductance is RE-SOLVED at the path resistance of the network being evaluated, not held at the 0.00 Ω the seed carried. The 2.13 mH above is therefore the ceiling at the START of the search and not the one it ended under (V48)."
-   ],
-   "verwerping": {
-    "regels": [
-     "gate"
-    ],
-    "reden": "M-B/|Z|: 2.37 Ω falls below the stated floor of 2.60 Ω",
-    "geweigerde_tune": {
-     "minZOhm": 2.3690747263102643,
-     "windowPlusMinusDb": 71.90176484694099,
-     "rmsDeviationDb": 1.0979669304402249,
-     "rippleDb": 2.5563582220179057,
-     "phaseDeg": 20.22791206459104,
-     "driveOnFsDb": -28.812313937123623
-    }
-   },
-   "niveauwerk": {
-    "eis": "none",
-    "laagste_weg": "woofer",
-    "anker": "mid",
-    "gevraagd_X_dB": 1.328,
-    "geleverd_serie_R": [],
-    "geleverd_shunt_pad": [],
-    "geleverd_geen": true,
-    "plateau_beoordeeld": false,
-    "plateau_toelichting": "the level at the handover is judged; the bass is NOT — the judged band starts at 397 Hz, only 0.16 octaves below the 442 Hz transition, where the target reads -1.32 dB of the stated −2.5 dB. The plateau itself lies below the measurement set's validity floor and is not measured here; no assumption stands in for it"
-   }
-  },
-  {
-   "label": "woofer→mid 548.5 LR4 · mid→tweeter 1294 LR4",
-   "rimpel_dB": 7.24,
-   "fase_graden": 18.7,
-   "poorten": [],
-   "geweigerd_door": [],
-   "door_de_ketenzelf_gediskwalificeerd": [],
-   "pas": {
-    "tuned": 0,
-    "evaluaties": 164732,
+    "evaluaties": 173633,
     "safetyNote": null,
     "safetyKinds": null,
     "ampFloorNote": "the rejected tune — amp-load floor: system impedance dips to 0.1 Ω (your amplifier's rated minimum load, 2.6 Ω) and could not be repaired without losing response quality — check the Impedance panel",
@@ -969,219 +787,791 @@
     "vloerbron": "The amp-load barrier aimed at the |Z| minimum over 21-20000 Hz, 240 points — the tuner's own full-band safety grid, the one every other amp-floor reader has always used, through the same reader the M-B/|Z| gate takes its own minimum through. Goal and limit are therefore one question rather than two; where they can still differ is the grid, and that difference is measured against the floor slack rather than assumed away (V33)."
    },
    "lf_bult_plafond": [
-    "woofer: the LF-lift bound of 2.13 mH is applied to the SUM of 2 free series coils, which is the quantity the metric sees. Each one is also capped at the total on its own — a necessary condition, not a second bound (V42).",
-    "The LF-lift ceiling on woofer's series inductance is RE-SOLVED at the path resistance of the network being evaluated, not held at the 0.00 Ω the seed carried. The 2.13 mH above is therefore the ceiling at the START of the search and not the one it ended under (V48)."
+    "woofer: the LF-lift bound of 2.54 mH is applied to the SUM of 2 free series coils, which is the quantity the metric sees. Each one is also capped at the total on its own — a necessary condition, not a second bound (V42).",
+    "The LF-lift ceiling on woofer's series inductance is RE-SOLVED at the path resistance of the network being evaluated, not held at the 1.00 Ω the seed carried. The 2.54 mH above is therefore the ceiling at the START of the search and not the one it ended under (V48)."
    ],
    "verwerping": {
     "regels": [
      "gate"
     ],
-    "reden": "M-B/|Z|: 2.05 Ω falls below the stated floor of 2.60 Ω; M-C (mid): 2.6 dB exceeds the stated ceiling of -11.5 dB; M-C (tweeter): -17.7 dB exceeds the stated ceiling of -20.0 dB",
+    "reden": "M-B/|Z|: 1.94 Ω falls below the stated floor of 2.60 Ω; M-C (mid): -10.7 dB exceeds the stated ceiling of -14.1 dB; M-C (tweeter): -8.7 dB exceeds the stated ceiling of -20.0 dB",
     "geweigerde_tune": {
-     "minZOhm": 2.2254195729200883,
-     "windowPlusMinusDb": 73.55900832743461,
-     "rmsDeviationDb": 2.238874095888618,
-     "rippleDb": 4.314252413725896,
-     "phaseDeg": 41.093391213993755,
-     "driveOnFsDb": 2.6027150767928906
+     "minZOhm": 2.1585930687177353,
+     "windowPlusMinusDb": 74.19978543279204,
+     "rmsDeviationDb": 2.496689365788224,
+     "rippleDb": 4.52148738342845,
+     "phaseDeg": 71.46827082423727,
+     "driveOnFsDb": -8.741716298785246
     }
    },
    "niveauwerk": {
-    "eis": "none",
+    "eis": {
+     "kind": "series-r-max",
+     "maxOhm": 1
+    },
     "laagste_weg": "woofer",
     "anker": "mid",
     "gevraagd_X_dB": 1.328,
-    "geleverd_serie_R": [],
+    "geleverd_serie_R": [
+     {
+      "id": "R5",
+      "ohm": 1
+     }
+    ],
     "geleverd_shunt_pad": [],
-    "geleverd_geen": true,
+    "geleverd_geen": false,
+    "geleverd_serie_R_ohm": 1,
+    "geleverd_spoel_DCR_ohm": 0,
+    "geleverd_serie_R_totaal_ohm": 1,
+    "max_serie_R_ohm": 1,
+    "binnen_eis": true,
+    "vloer_ohm": 2.6,
+    "vloer_vraagt_serie_R_ohm": null,
+    "vloer_vraagt_toelichting": "Y (V51b) could not be solved for woofer against the stated floor of 2.6 Ω: even 20 Ω at the head of woofer leaves the system at 1.802 Ω (from 1.940 Ω) — the minimum then sits in another way and no series resistance on this one reaches the floor. Reported as unknown, not as zero.",
+    "plateau_beoordeeld": false,
+    "plateau_toelichting": "the level at the handover is judged; the bass is NOT — the judged band starts at 397 Hz, only 0.16 octaves below the 442 Hz transition, where the target reads -1.32 dB of the stated −2.5 dB. The plateau itself lies below the measurement set's validity floor and is not measured here; no assumption stands in for it"
+   }
+  },
+  {
+   "label": "woofer→mid 466.5 LR4 · mid→tweeter 1491.4 LR4",
+   "rimpel_dB": 4.59,
+   "fase_graden": 15.5,
+   "poorten": [],
+   "geweigerd_door": [],
+   "door_de_ketenzelf_gediskwalificeerd": [],
+   "pas": {
+    "tuned": 0,
+    "evaluaties": 162603,
+    "safetyNote": null,
+    "safetyKinds": null,
+    "ampFloorNote": "the rejected tune — amp-load floor: system impedance dips to 0.0 Ω (your amplifier's rated minimum load, 2.6 Ω) and could not be repaired without losing response quality — check the Impedance panel",
+    "ampFloorRepair": null,
+    "vroege_terugkeer": true,
+    "vloerbron": "The amp-load barrier aimed at the |Z| minimum over 21-20000 Hz, 240 points — the tuner's own full-band safety grid, the one every other amp-floor reader has always used, through the same reader the M-B/|Z| gate takes its own minimum through. Goal and limit are therefore one question rather than two; where they can still differ is the grid, and that difference is measured against the floor slack rather than assumed away (V33)."
+   },
+   "lf_bult_plafond": [
+    "woofer: the LF-lift bound of 2.54 mH is applied to the SUM of 2 free series coils, which is the quantity the metric sees. Each one is also capped at the total on its own — a necessary condition, not a second bound (V42).",
+    "The LF-lift ceiling on woofer's series inductance is RE-SOLVED at the path resistance of the network being evaluated, not held at the 1.00 Ω the seed carried. The 2.54 mH above is therefore the ceiling at the START of the search and not the one it ended under (V48)."
+   ],
+   "verwerping": {
+    "regels": [
+     "gate"
+    ],
+    "reden": "M-B/|Z|: 2.49 Ω falls below the stated floor of 2.60 Ω; M-C (tweeter): -19.5 dB exceeds the stated ceiling of -20.0 dB",
+    "geweigerde_tune": {
+     "minZOhm": 2.5047086668045395,
+     "windowPlusMinusDb": 73.88671113654382,
+     "rmsDeviationDb": 2.5014314999661713,
+     "rippleDb": 5.257085530348732,
+     "phaseDeg": 24.702421537498005,
+     "driveOnFsDb": -19.457559887916986
+    }
+   },
+   "niveauwerk": {
+    "eis": {
+     "kind": "series-r-max",
+     "maxOhm": 1
+    },
+    "laagste_weg": "woofer",
+    "anker": "mid",
+    "gevraagd_X_dB": 1.328,
+    "geleverd_serie_R": [
+     {
+      "id": "R5",
+      "ohm": 1
+     }
+    ],
+    "geleverd_shunt_pad": [],
+    "geleverd_geen": false,
+    "geleverd_serie_R_ohm": 1,
+    "geleverd_spoel_DCR_ohm": 0,
+    "geleverd_serie_R_totaal_ohm": 1,
+    "max_serie_R_ohm": 1,
+    "binnen_eis": true,
+    "vloer_ohm": 2.6,
+    "vloer_vraagt_serie_R_ohm": null,
+    "vloer_vraagt_toelichting": "Y (V51b) could not be solved for woofer against the stated floor of 2.6 Ω: even 20 Ω at the head of woofer leaves the system at 2.260 Ω (from 2.493 Ω) — the minimum then sits in another way and no series resistance on this one reaches the floor. Reported as unknown, not as zero.",
+    "plateau_beoordeeld": false,
+    "plateau_toelichting": "the level at the handover is judged; the bass is NOT — the judged band starts at 397 Hz, only 0.16 octaves below the 442 Hz transition, where the target reads -1.32 dB of the stated −2.5 dB. The plateau itself lies below the measurement set's validity floor and is not measured here; no assumption stands in for it"
+   }
+  },
+  {
+   "label": "woofer→mid 466.5 LR4 · mid→tweeter 1719 LR4",
+   "rimpel_dB": 4.63,
+   "fase_graden": 14.4,
+   "poorten": [],
+   "geweigerd_door": [],
+   "door_de_ketenzelf_gediskwalificeerd": [],
+   "pas": {
+    "tuned": 0,
+    "evaluaties": 162781,
+    "safetyNote": null,
+    "safetyKinds": null,
+    "ampFloorNote": "the rejected tune — amp-load floor: system impedance dips to 0.0 Ω (your amplifier's rated minimum load, 2.6 Ω) and could not be repaired without losing response quality — check the Impedance panel",
+    "ampFloorRepair": null,
+    "vroege_terugkeer": true,
+    "vloerbron": "The amp-load barrier aimed at the |Z| minimum over 21-20000 Hz, 240 points — the tuner's own full-band safety grid, the one every other amp-floor reader has always used, through the same reader the M-B/|Z| gate takes its own minimum through. Goal and limit are therefore one question rather than two; where they can still differ is the grid, and that difference is measured against the floor slack rather than assumed away (V33)."
+   },
+   "lf_bult_plafond": [
+    "woofer: the LF-lift bound of 2.54 mH is applied to the SUM of 2 free series coils, which is the quantity the metric sees. Each one is also capped at the total on its own — a necessary condition, not a second bound (V42).",
+    "The LF-lift ceiling on woofer's series inductance is RE-SOLVED at the path resistance of the network being evaluated, not held at the 1.00 Ω the seed carried. The 2.54 mH above is therefore the ceiling at the START of the search and not the one it ended under (V48)."
+   ],
+   "verwerping": {
+    "regels": [
+     "gate"
+    ],
+    "reden": "M-C (mid): -3.7 dB exceeds the stated ceiling of -12.1 dB",
+    "geweigerde_tune": {
+     "minZOhm": 2.586329210239394,
+     "windowPlusMinusDb": 73.37618171836948,
+     "rmsDeviationDb": 1.8725108235155752,
+     "rippleDb": 3.7296029538018587,
+     "phaseDeg": 22.06753143066226,
+     "driveOnFsDb": -3.696768992444108
+    }
+   },
+   "niveauwerk": {
+    "eis": {
+     "kind": "series-r-max",
+     "maxOhm": 1
+    },
+    "laagste_weg": "woofer",
+    "anker": "mid",
+    "gevraagd_X_dB": 1.328,
+    "geleverd_serie_R": [
+     {
+      "id": "R5",
+      "ohm": 0.855
+     }
+    ],
+    "geleverd_shunt_pad": [],
+    "geleverd_geen": false,
+    "geleverd_serie_R_ohm": 0.855,
+    "geleverd_spoel_DCR_ohm": 0,
+    "geleverd_serie_R_totaal_ohm": 0.855,
+    "max_serie_R_ohm": 1,
+    "binnen_eis": true,
+    "vloer_ohm": 2.6,
+    "vloer_vraagt_serie_R_ohm": 0.855,
+    "vloer_vraagt_toelichting": "The stated floor of 2.6 Ω is met by this network with 0.855 Ω of series resistance on woofer (V51b, Y).",
+    "plateau_beoordeeld": false,
+    "plateau_toelichting": "the level at the handover is judged; the bass is NOT — the judged band starts at 397 Hz, only 0.16 octaves below the 442 Hz transition, where the target reads -1.32 dB of the stated −2.5 dB. The plateau itself lies below the measurement set's validity floor and is not measured here; no assumption stands in for it"
+   }
+  },
+  {
+   "label": "woofer→mid 466.5 LR4 · mid→tweeter 1981.2 LR4",
+   "rimpel_dB": 3.78,
+   "fase_graden": 16.3,
+   "poorten": [
+    {
+     "poort": "M-A",
+     "onderwerp": "system",
+     "gewapend": false,
+     "geslaagd": true,
+     "waarde": 0.251,
+     "grens": null
+    },
+    {
+     "poort": "M-B/EPDR",
+     "onderwerp": "system",
+     "gewapend": false,
+     "geslaagd": true,
+     "waarde": 1.306,
+     "grens": null
+    },
+    {
+     "poort": "M-B/|Z|",
+     "onderwerp": "system",
+     "gewapend": true,
+     "geslaagd": true,
+     "waarde": 2.586,
+     "grens": 2.6
+    },
+    {
+     "poort": "M-C",
+     "onderwerp": "mid",
+     "gewapend": true,
+     "geslaagd": true,
+     "waarde": -44.449,
+     "grens": -15.459343294979895
+    },
+    {
+     "poort": "M-C",
+     "onderwerp": "tweeter",
+     "gewapend": true,
+     "geslaagd": true,
+     "waarde": -23.309,
+     "grens": -20
+    },
+    {
+     "poort": "M-A/part",
+     "onderwerp": "system",
+     "gewapend": true,
+     "geslaagd": true,
+     "waarde": 1.196,
+     "grens": 5
+    },
+    {
+     "poort": "M-L",
+     "onderwerp": "system",
+     "gewapend": false,
+     "geslaagd": true,
+     "waarde": 20.968,
+     "grens": null
+    }
+   ],
+   "geweigerd_door": [],
+   "door_de_ketenzelf_gediskwalificeerd": [],
+   "pas": {
+    "tuned": 28,
+    "evaluaties": 114761,
+    "safetyNote": null,
+    "safetyKinds": null,
+    "ampFloorNote": null,
+    "ampFloorRepair": "none",
+    "vroege_terugkeer": false,
+    "vloerbron": "The amp-load barrier aimed at the |Z| minimum over 21-20000 Hz, 240 points — the tuner's own full-band safety grid, the one every other amp-floor reader has always used, through the same reader the M-B/|Z| gate takes its own minimum through. Goal and limit are therefore one question rather than two; where they can still differ is the grid, and that difference is measured against the floor slack rather than assumed away (V33)."
+   },
+   "lf_bult_plafond": [
+    "woofer: the LF-lift bound of 2.54 mH is applied to the SUM of 2 free series coils, which is the quantity the metric sees. Each one is also capped at the total on its own — a necessary condition, not a second bound (V42).",
+    "The LF-lift ceiling on woofer's series inductance is RE-SOLVED at the path resistance of the network being evaluated, not held at the 1.00 Ω the seed carried. The 2.54 mH above is therefore the ceiling at the START of the search and not the one it ended under (V48)."
+   ],
+   "verwerping": null,
+   "niveauwerk": {
+    "eis": {
+     "kind": "series-r-max",
+     "maxOhm": 1
+    },
+    "laagste_weg": "woofer",
+    "anker": "mid",
+    "gevraagd_X_dB": 1.328,
+    "geleverd_serie_R": [
+     {
+      "id": "R5",
+      "ohm": 0.871
+     }
+    ],
+    "geleverd_shunt_pad": [],
+    "geleverd_geen": false,
+    "geleverd_serie_R_ohm": 0.871,
+    "geleverd_spoel_DCR_ohm": 0,
+    "geleverd_serie_R_totaal_ohm": 0.871,
+    "max_serie_R_ohm": 1,
+    "binnen_eis": true,
+    "vloer_ohm": 2.6,
+    "vloer_vraagt_serie_R_ohm": 0.871,
+    "vloer_vraagt_toelichting": "The stated floor of 2.6 Ω is met by this network with 0.871 Ω of series resistance on woofer (V51b, Y).",
+    "plateau_beoordeeld": false,
+    "plateau_toelichting": "the level at the handover is judged; the bass is NOT — the judged band starts at 397 Hz, only 0.16 octaves below the 442 Hz transition, where the target reads -1.32 dB of the stated −2.5 dB. The plateau itself lies below the measurement set's validity floor and is not measured here; no assumption stands in for it"
+   }
+  },
+  {
+   "label": "woofer→mid 466.5 LR4 · mid→tweeter 2283.5 LR4",
+   "rimpel_dB": 1.27,
+   "fase_graden": 4.8,
+   "poorten": [
+    {
+     "poort": "M-A",
+     "onderwerp": "system",
+     "gewapend": false,
+     "geslaagd": true,
+     "waarde": 0.387,
+     "grens": null
+    },
+    {
+     "poort": "M-B/EPDR",
+     "onderwerp": "system",
+     "gewapend": false,
+     "geslaagd": true,
+     "waarde": 1.382,
+     "grens": null
+    },
+    {
+     "poort": "M-B/|Z|",
+     "onderwerp": "system",
+     "gewapend": true,
+     "geslaagd": true,
+     "waarde": 2.735,
+     "grens": 2.6
+    },
+    {
+     "poort": "M-C",
+     "onderwerp": "mid",
+     "gewapend": true,
+     "geslaagd": true,
+     "waarde": -55.157,
+     "grens": -12.158982513230221
+    },
+    {
+     "poort": "M-C",
+     "onderwerp": "tweeter",
+     "gewapend": true,
+     "geslaagd": true,
+     "waarde": -30.526,
+     "grens": -20
+    },
+    {
+     "poort": "M-A/part",
+     "onderwerp": "system",
+     "gewapend": true,
+     "geslaagd": true,
+     "waarde": 2.35,
+     "grens": 5
+    },
+    {
+     "poort": "M-L",
+     "onderwerp": "system",
+     "gewapend": false,
+     "geslaagd": true,
+     "waarde": 19.095,
+     "grens": null
+    }
+   ],
+   "geweigerd_door": [],
+   "door_de_ketenzelf_gediskwalificeerd": [],
+   "pas": {
+    "tuned": 21,
+    "evaluaties": 321548,
+    "safetyNote": null,
+    "safetyKinds": null,
+    "ampFloorNote": null,
+    "ampFloorRepair": "none",
+    "vroege_terugkeer": false,
+    "vloerbron": "The amp-load barrier aimed at the |Z| minimum over 21-20000 Hz, 240 points — the tuner's own full-band safety grid, the one every other amp-floor reader has always used, through the same reader the M-B/|Z| gate takes its own minimum through. Goal and limit are therefore one question rather than two; where they can still differ is the grid, and that difference is measured against the floor slack rather than assumed away (V33)."
+   },
+   "lf_bult_plafond": [
+    "woofer: the LF-lift bound of 2.54 mH is applied to the SUM of 2 free series coils, which is the quantity the metric sees. Each one is also capped at the total on its own — a necessary condition, not a second bound (V42).",
+    "The LF-lift ceiling on woofer's series inductance is RE-SOLVED at the path resistance of the network being evaluated, not held at the 1.00 Ω the seed carried. The 2.54 mH above is therefore the ceiling at the START of the search and not the one it ended under (V48)."
+   ],
+   "verwerping": null,
+   "niveauwerk": {
+    "eis": {
+     "kind": "series-r-max",
+     "maxOhm": 1
+    },
+    "laagste_weg": "woofer",
+    "anker": "mid",
+    "gevraagd_X_dB": 1.328,
+    "geleverd_serie_R": [
+     {
+      "id": "R5",
+      "ohm": 1
+     }
+    ],
+    "geleverd_shunt_pad": [],
+    "geleverd_geen": false,
+    "geleverd_serie_R_ohm": 1,
+    "geleverd_spoel_DCR_ohm": 0,
+    "geleverd_serie_R_totaal_ohm": 1,
+    "max_serie_R_ohm": 1,
+    "binnen_eis": true,
+    "vloer_ohm": 2.6,
+    "vloer_vraagt_serie_R_ohm": 1,
+    "vloer_vraagt_toelichting": "The stated floor of 2.6 Ω is met by this network with 1.000 Ω of series resistance on woofer (V51b, Y).",
+    "plateau_beoordeeld": false,
+    "plateau_toelichting": "the level at the handover is judged; the bass is NOT — the judged band starts at 397 Hz, only 0.16 octaves below the 442 Hz transition, where the target reads -1.32 dB of the stated −2.5 dB. The plateau itself lies below the measurement set's validity floor and is not measured here; no assumption stands in for it"
+   }
+  },
+  {
+   "label": "woofer→mid 548.5 LR4 · mid→tweeter 1294 LR4",
+   "rimpel_dB": 4.79,
+   "fase_graden": 16.9,
+   "poorten": [],
+   "geweigerd_door": [],
+   "door_de_ketenzelf_gediskwalificeerd": [],
+   "pas": {
+    "tuned": 0,
+    "evaluaties": 133654,
+    "safetyNote": null,
+    "safetyKinds": null,
+    "ampFloorNote": "the rejected tune — amp-load floor: system impedance dips to 0.0 Ω (your amplifier's rated minimum load, 2.6 Ω) and could not be repaired without losing response quality — check the Impedance panel",
+    "ampFloorRepair": null,
+    "vroege_terugkeer": true,
+    "vloerbron": "The amp-load barrier aimed at the |Z| minimum over 21-20000 Hz, 240 points — the tuner's own full-band safety grid, the one every other amp-floor reader has always used, through the same reader the M-B/|Z| gate takes its own minimum through. Goal and limit are therefore one question rather than two; where they can still differ is the grid, and that difference is measured against the floor slack rather than assumed away (V33)."
+   },
+   "lf_bult_plafond": [
+    "woofer: the LF-lift bound of 2.54 mH is applied to the SUM of 2 free series coils, which is the quantity the metric sees. Each one is also capped at the total on its own — a necessary condition, not a second bound (V42).",
+    "The LF-lift ceiling on woofer's series inductance is RE-SOLVED at the path resistance of the network being evaluated, not held at the 1.00 Ω the seed carried. The 2.54 mH above is therefore the ceiling at the START of the search and not the one it ended under (V48)."
+   ],
+   "verwerping": {
+    "regels": [
+     "gate",
+     "topology"
+    ],
+    "reden": "M-B/|Z|: 2.53 Ω falls below the stated floor of 2.60 Ω; M-C (mid): 0.5 dB exceeds the stated ceiling of -12.0 dB; M-C (tweeter): -10.6 dB exceeds the stated ceiling of -20.0 dB — this candidate asks 1.03 Ω of series resistance on the lowest way (woofer) for the floor, against a stated maximum of 1.00 Ω (V51b, Y)",
+    "geweigerde_tune": {
+     "minZOhm": 2.5868761551552986,
+     "windowPlusMinusDb": 73.66505914975616,
+     "rmsDeviationDb": 1.9142079115864512,
+     "rippleDb": 4.115039190049032,
+     "phaseDeg": 26.782364260740263,
+     "driveOnFsDb": 0.5034499965228303
+    }
+   },
+   "niveauwerk": {
+    "eis": {
+     "kind": "series-r-max",
+     "maxOhm": 1
+    },
+    "laagste_weg": "woofer",
+    "anker": "mid",
+    "gevraagd_X_dB": 1.328,
+    "geleverd_serie_R": [
+     {
+      "id": "R5",
+      "ohm": 1
+     }
+    ],
+    "geleverd_shunt_pad": [],
+    "geleverd_geen": false,
+    "geleverd_serie_R_ohm": 1,
+    "geleverd_spoel_DCR_ohm": 0,
+    "geleverd_serie_R_totaal_ohm": 1,
+    "max_serie_R_ohm": 1,
+    "binnen_eis": true,
+    "vloer_ohm": 2.6,
+    "vloer_vraagt_serie_R_ohm": 1.028,
+    "vloer_vraagt_toelichting": "The stated floor of 2.6 Ω asks 1.028 Ω of total series resistance on woofer (1.000 Ω delivered + 0.028 Ω more at the head of the way; V51b, Y), against a stated maximum of 1.00 Ω — the rule is what stands between this candidate and the floor.",
     "plateau_beoordeeld": false,
     "plateau_toelichting": "the level at the handover is judged; the bass is NOT — the judged band starts at 397 Hz, only 0.16 octaves below the 442 Hz transition, where the target reads -1.32 dB of the stated −2.5 dB. The plateau itself lies below the measurement set's validity floor and is not measured here; no assumption stands in for it"
    }
   },
   {
    "label": "woofer→mid 548.5 LR4 · mid→tweeter 1491.4 LR4",
-   "rimpel_dB": 3.33,
-   "fase_graden": 11.7,
+   "rimpel_dB": 6.53,
+   "fase_graden": 15.6,
    "poorten": [],
    "geweigerd_door": [],
    "door_de_ketenzelf_gediskwalificeerd": [],
    "pas": {
     "tuned": 0,
-    "evaluaties": 153592,
+    "evaluaties": 158486,
     "safetyNote": null,
     "safetyKinds": null,
-    "ampFloorNote": "the rejected tune — amp-load floor: system impedance dips to 0.3 Ω (your amplifier's rated minimum load, 2.6 Ω) and could not be repaired without losing response quality — check the Impedance panel",
+    "ampFloorNote": "the rejected tune — amp-load floor: system impedance dips to 0.1 Ω (your amplifier's rated minimum load, 2.6 Ω) and could not be repaired without losing response quality — check the Impedance panel",
     "ampFloorRepair": null,
     "vroege_terugkeer": true,
     "vloerbron": "The amp-load barrier aimed at the |Z| minimum over 21-20000 Hz, 240 points — the tuner's own full-band safety grid, the one every other amp-floor reader has always used, through the same reader the M-B/|Z| gate takes its own minimum through. Goal and limit are therefore one question rather than two; where they can still differ is the grid, and that difference is measured against the floor slack rather than assumed away (V33)."
    },
    "lf_bult_plafond": [
-    "woofer: the LF-lift bound of 2.13 mH is applied to the SUM of 2 free series coils, which is the quantity the metric sees. Each one is also capped at the total on its own — a necessary condition, not a second bound (V42).",
-    "The LF-lift ceiling on woofer's series inductance is RE-SOLVED at the path resistance of the network being evaluated, not held at the 0.00 Ω the seed carried. The 2.13 mH above is therefore the ceiling at the START of the search and not the one it ended under (V48)."
+    "woofer: the LF-lift bound of 2.54 mH is applied to the SUM of 2 free series coils, which is the quantity the metric sees. Each one is also capped at the total on its own — a necessary condition, not a second bound (V42).",
+    "The LF-lift ceiling on woofer's series inductance is RE-SOLVED at the path resistance of the network being evaluated, not held at the 1.00 Ω the seed carried. The 2.54 mH above is therefore the ceiling at the START of the search and not the one it ended under (V48)."
    ],
    "verwerping": {
     "regels": [
      "gate"
     ],
-    "reden": "M-B/|Z|: 2.36 Ω falls below the stated floor of 2.60 Ω; M-C (tweeter): -17.9 dB exceeds the stated ceiling of -20.0 dB",
+    "reden": "M-B/|Z|: 2.06 Ω falls below the stated floor of 2.60 Ω; M-C (mid): -1.9 dB exceeds the stated ceiling of -10.6 dB; M-C (tweeter): -15.1 dB exceeds the stated ceiling of -20.0 dB",
     "geweigerde_tune": {
-     "minZOhm": 2.3656296902799756,
-     "windowPlusMinusDb": 72.11420389429176,
-     "rmsDeviationDb": 1.3351284552662708,
-     "rippleDb": 2.868213037700059,
-     "phaseDeg": 37.196306597212484,
-     "driveOnFsDb": -17.85383464532849
+     "minZOhm": 2.367485577439661,
+     "windowPlusMinusDb": 74.90707214379401,
+     "rmsDeviationDb": 2.541379534554507,
+     "rippleDb": 5.36262408107153,
+     "phaseDeg": 37.45495417475139,
+     "driveOnFsDb": -1.9405155174496347
     }
    },
    "niveauwerk": {
-    "eis": "none",
+    "eis": {
+     "kind": "series-r-max",
+     "maxOhm": 1
+    },
     "laagste_weg": "woofer",
     "anker": "mid",
     "gevraagd_X_dB": 1.328,
-    "geleverd_serie_R": [],
+    "geleverd_serie_R": [
+     {
+      "id": "R5",
+      "ohm": 1
+     }
+    ],
     "geleverd_shunt_pad": [],
-    "geleverd_geen": true,
+    "geleverd_geen": false,
+    "geleverd_serie_R_ohm": 1,
+    "geleverd_spoel_DCR_ohm": 0,
+    "geleverd_serie_R_totaal_ohm": 1,
+    "max_serie_R_ohm": 1,
+    "binnen_eis": true,
+    "vloer_ohm": 2.6,
+    "vloer_vraagt_serie_R_ohm": null,
+    "vloer_vraagt_toelichting": "Y (V51b) could not be solved for woofer against the stated floor of 2.6 Ω: even 20 Ω at the head of woofer leaves the system at 2.053 Ω (from 2.057 Ω) — the minimum then sits in another way and no series resistance on this one reaches the floor. Reported as unknown, not as zero.",
     "plateau_beoordeeld": false,
     "plateau_toelichting": "the level at the handover is judged; the bass is NOT — the judged band starts at 397 Hz, only 0.16 octaves below the 442 Hz transition, where the target reads -1.32 dB of the stated −2.5 dB. The plateau itself lies below the measurement set's validity floor and is not measured here; no assumption stands in for it"
    }
   },
   {
    "label": "woofer→mid 548.5 LR4 · mid→tweeter 1719 LR4",
-   "rimpel_dB": 5.7,
-   "fase_graden": 13.7,
-   "poorten": [],
+   "rimpel_dB": 1.37,
+   "fase_graden": 8.9,
+   "poorten": [
+    {
+     "poort": "M-A",
+     "onderwerp": "system",
+     "gewapend": false,
+     "geslaagd": true,
+     "waarde": 0.35,
+     "grens": null
+    },
+    {
+     "poort": "M-B/EPDR",
+     "onderwerp": "system",
+     "gewapend": false,
+     "geslaagd": true,
+     "waarde": 1.457,
+     "grens": null
+    },
+    {
+     "poort": "M-B/|Z|",
+     "onderwerp": "system",
+     "gewapend": true,
+     "geslaagd": true,
+     "waarde": 2.868,
+     "grens": 2.6
+    },
+    {
+     "poort": "M-C",
+     "onderwerp": "mid",
+     "gewapend": true,
+     "geslaagd": true,
+     "waarde": -35.517,
+     "grens": -12.242601123273172
+    },
+    {
+     "poort": "M-C",
+     "onderwerp": "tweeter",
+     "gewapend": true,
+     "geslaagd": true,
+     "waarde": -23.816,
+     "grens": -20
+    },
+    {
+     "poort": "M-A/part",
+     "onderwerp": "system",
+     "gewapend": true,
+     "geslaagd": true,
+     "waarde": 1.944,
+     "grens": 5
+    },
+    {
+     "poort": "M-L",
+     "onderwerp": "system",
+     "gewapend": false,
+     "geslaagd": true,
+     "waarde": 18.452,
+     "grens": null
+    }
+   ],
    "geweigerd_door": [],
    "door_de_ketenzelf_gediskwalificeerd": [],
    "pas": {
-    "tuned": 0,
-    "evaluaties": 170063,
+    "tuned": 17,
+    "evaluaties": 268149,
     "safetyNote": null,
     "safetyKinds": null,
-    "ampFloorNote": "the rejected tune — amp-load floor: repair REFUSED — it would have lifted 1.1 → 2.3 Ω at the cost of the source-resistance limit",
-    "ampFloorRepair": null,
-    "vroege_terugkeer": true,
+    "ampFloorNote": null,
+    "ampFloorRepair": "none",
+    "vroege_terugkeer": false,
     "vloerbron": "The amp-load barrier aimed at the |Z| minimum over 21-20000 Hz, 240 points — the tuner's own full-band safety grid, the one every other amp-floor reader has always used, through the same reader the M-B/|Z| gate takes its own minimum through. Goal and limit are therefore one question rather than two; where they can still differ is the grid, and that difference is measured against the floor slack rather than assumed away (V33)."
    },
    "lf_bult_plafond": [
-    "woofer: the LF-lift bound of 2.13 mH is applied to the SUM of 2 free series coils, which is the quantity the metric sees. Each one is also capped at the total on its own — a necessary condition, not a second bound (V42).",
-    "The LF-lift ceiling on woofer's series inductance is RE-SOLVED at the path resistance of the network being evaluated, not held at the 0.00 Ω the seed carried. The 2.13 mH above is therefore the ceiling at the START of the search and not the one it ended under (V48)."
+    "woofer: the LF-lift bound of 2.54 mH is applied to the SUM of 2 free series coils, which is the quantity the metric sees. Each one is also capped at the total on its own — a necessary condition, not a second bound (V42).",
+    "The LF-lift ceiling on woofer's series inductance is RE-SOLVED at the path resistance of the network being evaluated, not held at the 1.00 Ω the seed carried. The 2.54 mH above is therefore the ceiling at the START of the search and not the one it ended under (V48)."
    ],
-   "verwerping": {
-    "regels": [
-     "gate"
-    ],
-    "reden": "M-B/|Z|: 2.42 Ω falls below the stated floor of 2.60 Ω",
-    "geweigerde_tune": {
-     "minZOhm": 2.4249585335539825,
-     "windowPlusMinusDb": 72.7678044449066,
-     "rmsDeviationDb": 1.5967491013349608,
-     "rippleDb": 3.2547852838533515,
-     "phaseDeg": 20.438890109654253,
-     "driveOnFsDb": -28.604741811232977
-    }
-   },
+   "verwerping": null,
    "niveauwerk": {
-    "eis": "none",
+    "eis": {
+     "kind": "series-r-max",
+     "maxOhm": 1
+    },
     "laagste_weg": "woofer",
     "anker": "mid",
     "gevraagd_X_dB": 1.328,
-    "geleverd_serie_R": [],
+    "geleverd_serie_R": [
+     {
+      "id": "R5",
+      "ohm": 0.968
+     }
+    ],
     "geleverd_shunt_pad": [],
-    "geleverd_geen": true,
+    "geleverd_geen": false,
+    "geleverd_serie_R_ohm": 0.968,
+    "geleverd_spoel_DCR_ohm": 0,
+    "geleverd_serie_R_totaal_ohm": 0.968,
+    "max_serie_R_ohm": 1,
+    "binnen_eis": true,
+    "vloer_ohm": 2.6,
+    "vloer_vraagt_serie_R_ohm": 0.968,
+    "vloer_vraagt_toelichting": "The stated floor of 2.6 Ω is met by this network with 0.968 Ω of series resistance on woofer (V51b, Y).",
     "plateau_beoordeeld": false,
     "plateau_toelichting": "the level at the handover is judged; the bass is NOT — the judged band starts at 397 Hz, only 0.16 octaves below the 442 Hz transition, where the target reads -1.32 dB of the stated −2.5 dB. The plateau itself lies below the measurement set's validity floor and is not measured here; no assumption stands in for it"
    }
   },
   {
    "label": "woofer→mid 548.5 LR4 · mid→tweeter 1981.2 LR4",
-   "rimpel_dB": 2.27,
-   "fase_graden": 14.6,
+   "rimpel_dB": 4.4,
+   "fase_graden": 17,
    "poorten": [],
    "geweigerd_door": [],
    "door_de_ketenzelf_gediskwalificeerd": [],
    "pas": {
     "tuned": 0,
-    "evaluaties": 274741,
+    "evaluaties": 138817,
     "safetyNote": null,
     "safetyKinds": null,
-    "ampFloorNote": "the rejected tune — amp-load floor: system impedance dips to 1.0 Ω (your amplifier's rated minimum load, 2.6 Ω) and could not be repaired without losing response quality — check the Impedance panel",
+    "ampFloorNote": "the rejected tune — amp-load floor: system impedance dips to 0.0 Ω (your amplifier's rated minimum load, 2.6 Ω) and could not be repaired without losing response quality — check the Impedance panel",
     "ampFloorRepair": null,
     "vroege_terugkeer": true,
     "vloerbron": "The amp-load barrier aimed at the |Z| minimum over 21-20000 Hz, 240 points — the tuner's own full-band safety grid, the one every other amp-floor reader has always used, through the same reader the M-B/|Z| gate takes its own minimum through. Goal and limit are therefore one question rather than two; where they can still differ is the grid, and that difference is measured against the floor slack rather than assumed away (V33)."
    },
    "lf_bult_plafond": [
-    "woofer: the LF-lift bound of 2.13 mH is applied to the SUM of 2 free series coils, which is the quantity the metric sees. Each one is also capped at the total on its own — a necessary condition, not a second bound (V42).",
-    "The LF-lift ceiling on woofer's series inductance is RE-SOLVED at the path resistance of the network being evaluated, not held at the 0.00 Ω the seed carried. The 2.13 mH above is therefore the ceiling at the START of the search and not the one it ended under (V48)."
+    "woofer: the LF-lift bound of 2.54 mH is applied to the SUM of 2 free series coils, which is the quantity the metric sees. Each one is also capped at the total on its own — a necessary condition, not a second bound (V42).",
+    "The LF-lift ceiling on woofer's series inductance is RE-SOLVED at the path resistance of the network being evaluated, not held at the 1.00 Ω the seed carried. The 2.54 mH above is therefore the ceiling at the START of the search and not the one it ended under (V48)."
    ],
    "verwerping": {
     "regels": [
      "gate"
     ],
-    "reden": "M-B/|Z|: 2.41 Ω falls below the stated floor of 2.60 Ω",
+    "reden": "M-C (mid): 1.5 dB exceeds the stated ceiling of -12.6 dB",
     "geweigerde_tune": {
-     "minZOhm": 2.409347778671482,
-     "windowPlusMinusDb": 72.50746488487003,
-     "rmsDeviationDb": 1.3786551376012222,
-     "rippleDb": 3.1257814600245553,
-     "phaseDeg": 20.79038381156106,
-     "driveOnFsDb": -26.935295357324378
+     "minZOhm": 2.593006320353938,
+     "windowPlusMinusDb": 73.61220946445394,
+     "rmsDeviationDb": 1.78824312535345,
+     "rippleDb": 4.201251542966645,
+     "phaseDeg": 20.909897389698845,
+     "driveOnFsDb": 1.5357633866287488
     }
    },
    "niveauwerk": {
-    "eis": "none",
+    "eis": {
+     "kind": "series-r-max",
+     "maxOhm": 1
+    },
     "laagste_weg": "woofer",
     "anker": "mid",
     "gevraagd_X_dB": 1.328,
-    "geleverd_serie_R": [],
+    "geleverd_serie_R": [
+     {
+      "id": "R5",
+      "ohm": 0.979
+     }
+    ],
     "geleverd_shunt_pad": [],
-    "geleverd_geen": true,
+    "geleverd_geen": false,
+    "geleverd_serie_R_ohm": 0.979,
+    "geleverd_spoel_DCR_ohm": 0,
+    "geleverd_serie_R_totaal_ohm": 0.979,
+    "max_serie_R_ohm": 1,
+    "binnen_eis": true,
+    "vloer_ohm": 2.6,
+    "vloer_vraagt_serie_R_ohm": 0.979,
+    "vloer_vraagt_toelichting": "The stated floor of 2.6 Ω is met by this network with 0.979 Ω of series resistance on woofer (V51b, Y).",
     "plateau_beoordeeld": false,
     "plateau_toelichting": "the level at the handover is judged; the bass is NOT — the judged band starts at 397 Hz, only 0.16 octaves below the 442 Hz transition, where the target reads -1.32 dB of the stated −2.5 dB. The plateau itself lies below the measurement set's validity floor and is not measured here; no assumption stands in for it"
    }
   },
   {
    "label": "woofer→mid 548.5 LR4 · mid→tweeter 2283.5 LR4",
-   "rimpel_dB": 2.52,
-   "fase_graden": 21.8,
-   "poorten": [],
+   "rimpel_dB": 1.31,
+   "fase_graden": 5.2,
+   "poorten": [
+    {
+     "poort": "M-A",
+     "onderwerp": "system",
+     "gewapend": false,
+     "geslaagd": true,
+     "waarde": 0.329,
+     "grens": null
+    },
+    {
+     "poort": "M-B/EPDR",
+     "onderwerp": "system",
+     "gewapend": false,
+     "geslaagd": true,
+     "waarde": 1.458,
+     "grens": null
+    },
+    {
+     "poort": "M-B/|Z|",
+     "onderwerp": "system",
+     "gewapend": true,
+     "geslaagd": true,
+     "waarde": 2.887,
+     "grens": 2.6
+    },
+    {
+     "poort": "M-C",
+     "onderwerp": "mid",
+     "gewapend": true,
+     "geslaagd": true,
+     "waarde": -34.88,
+     "grens": -11.992336729191345
+    },
+    {
+     "poort": "M-C",
+     "onderwerp": "tweeter",
+     "gewapend": true,
+     "geslaagd": true,
+     "waarde": -31.333,
+     "grens": -20
+    },
+    {
+     "poort": "M-A/part",
+     "onderwerp": "system",
+     "gewapend": true,
+     "geslaagd": true,
+     "waarde": 1.707,
+     "grens": 5
+    },
+    {
+     "poort": "M-L",
+     "onderwerp": "system",
+     "gewapend": false,
+     "geslaagd": true,
+     "waarde": 18.036,
+     "grens": null
+    }
+   ],
    "geweigerd_door": [],
    "door_de_ketenzelf_gediskwalificeerd": [],
    "pas": {
-    "tuned": 0,
-    "evaluaties": 138592,
+    "tuned": 17,
+    "evaluaties": 299208,
     "safetyNote": null,
     "safetyKinds": null,
-    "ampFloorNote": "the rejected tune — amp-load floor: repair REFUSED — it would have lifted 0.9 → 2.5 Ω at the cost of the source-resistance limit",
-    "ampFloorRepair": null,
-    "vroege_terugkeer": true,
+    "ampFloorNote": null,
+    "ampFloorRepair": "none",
+    "vroege_terugkeer": false,
     "vloerbron": "The amp-load barrier aimed at the |Z| minimum over 21-20000 Hz, 240 points — the tuner's own full-band safety grid, the one every other amp-floor reader has always used, through the same reader the M-B/|Z| gate takes its own minimum through. Goal and limit are therefore one question rather than two; where they can still differ is the grid, and that difference is measured against the floor slack rather than assumed away (V33)."
    },
    "lf_bult_plafond": [
-    "woofer: the LF-lift bound of 2.13 mH is applied to the SUM of 2 free series coils, which is the quantity the metric sees. Each one is also capped at the total on its own — a necessary condition, not a second bound (V42).",
-    "The LF-lift ceiling on woofer's series inductance is RE-SOLVED at the path resistance of the network being evaluated, not held at the 0.00 Ω the seed carried. The 2.13 mH above is therefore the ceiling at the START of the search and not the one it ended under (V48)."
+    "woofer: the LF-lift bound of 2.54 mH is applied to the SUM of 2 free series coils, which is the quantity the metric sees. Each one is also capped at the total on its own — a necessary condition, not a second bound (V42).",
+    "The LF-lift ceiling on woofer's series inductance is RE-SOLVED at the path resistance of the network being evaluated, not held at the 1.00 Ω the seed carried. The 2.54 mH above is therefore the ceiling at the START of the search and not the one it ended under (V48)."
    ],
-   "verwerping": {
-    "regels": [
-     "gate"
-    ],
-    "reden": "M-B/|Z|: 2.49 Ω falls below the stated floor of 2.60 Ω",
-    "geweigerde_tune": {
-     "minZOhm": 2.491180285466438,
-     "windowPlusMinusDb": 72.39451619374783,
-     "rmsDeviationDb": 1.385739853034262,
-     "rippleDb": 2.6554990038348194,
-     "phaseDeg": 9.746134388019025,
-     "driveOnFsDb": -29.894896836582497
-    }
-   },
+   "verwerping": null,
    "niveauwerk": {
-    "eis": "none",
+    "eis": {
+     "kind": "series-r-max",
+     "maxOhm": 1
+    },
     "laagste_weg": "woofer",
     "anker": "mid",
     "gevraagd_X_dB": 1.328,
-    "geleverd_serie_R": [],
+    "geleverd_serie_R": [
+     {
+      "id": "R5",
+      "ohm": 1
+     }
+    ],
     "geleverd_shunt_pad": [],
-    "geleverd_geen": true,
+    "geleverd_geen": false,
+    "geleverd_serie_R_ohm": 1,
+    "geleverd_spoel_DCR_ohm": 0,
+    "geleverd_serie_R_totaal_ohm": 1,
+    "max_serie_R_ohm": 1,
+    "binnen_eis": true,
+    "vloer_ohm": 2.6,
+    "vloer_vraagt_serie_R_ohm": 1,
+    "vloer_vraagt_toelichting": "The stated floor of 2.6 Ω is met by this network with 1.000 Ω of series resistance on woofer (V51b, Y).",
     "plateau_beoordeeld": false,
     "plateau_toelichting": "the level at the handover is judged; the bass is NOT — the judged band starts at 397 Hz, only 0.16 octaves below the 442 Hz transition, where the target reads -1.32 dB of the stated −2.5 dB. The plateau itself lies below the measurement set's validity floor and is not measured here; no assumption stands in for it"
    }
@@ -1214,7 +1604,27 @@
  "bestanden": [
   {
    "name": "KAND-V2-1",
-   "label": "woofer→mid 466.5 LR4 · mid→tweeter 1719 LR4"
+   "label": "woofer→mid 466.5 LR4 · mid→tweeter 2283.5 LR4"
+  },
+  {
+   "name": "KAND-V2-2",
+   "label": "woofer→mid 548.5 LR4 · mid→tweeter 1719 LR4"
+  },
+  {
+   "name": "KAND-V2-3",
+   "label": "woofer→mid 548.5 LR4 · mid→tweeter 2283.5 LR4"
+  },
+  {
+   "name": "KAND-V2-4",
+   "label": "woofer→mid 396.7 LR4 · mid→tweeter 2283.5 LR4"
+  },
+  {
+   "name": "KAND-V2-5",
+   "label": "woofer→mid 396.7 LR4 · mid→tweeter 1981.2 LR4"
+  },
+  {
+   "name": "KAND-V2-6",
+   "label": "woofer→mid 466.5 LR4 · mid→tweeter 1981.2 LR4"
   }
  ],
  "kandidaat_herkomst": {

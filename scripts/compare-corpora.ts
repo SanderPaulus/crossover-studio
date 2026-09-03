@@ -103,7 +103,7 @@ import { deserializeFilter } from '../src/lib/filterFile.ts';
 import { CASUS1_DIR } from '../src/lib/engine2/casus1.fixture.ts';
 import type { VxpPart } from '../src/lib/parsers/vxp.ts';
 import { decompose } from './v38-groups.ts';
-import { describeLevelWork, seriesInductanceByWay } from '../src/lib/levelWork.ts';
+import { describeLevelWork, describeSeriesResistance, seriesInductanceByWay, seriesRMaxOhmOf } from '../src/lib/levelWork.ts';
 
 /* DE CORPUSKAART, HET INSTELLINGENBLOK EN DE STATISTIEK WONEN SINDS DE
  * V47-NAZORG IN `casus1Corpora.fixture.ts` — dit script is er de ene lezer van
@@ -115,7 +115,7 @@ const golden = loadGolden();
 const bank = corpusBank(golden);
 const { manifest, files, settings: SETTINGS, floorOhm: FLOOR } = bank;
 
-const [beforeId = 'v50', afterId = 'live'] = process.argv.slice(2);
+const [beforeId = 'v51', afterId = 'live'] = process.argv.slice(2);
 const before = corpusOf(beforeId, golden);
 const after = corpusOf(afterId, golden);
 
@@ -278,6 +278,21 @@ interface Row {
   levelWorkNone: boolean | null;
   seriesLByWay: Record<string, number>;
   askedDb: number | null;
+  /**
+   * V51b — DE SERIEWEERSTAND DIE DE DRIVER VAN DE LAAGSTE WEG IN ZIJN PAD ZIET,
+   * gesplitst: discrete R plus spoel-DCR is het totaal (`describeSeriesResistance`),
+   * want de gestelde variant `series-r-max` oordeelt op de SOM en de splitsing is
+   * de bouwkeuze (een dikkere spoel of een weerstand ernaast). `levelWorkOk` is
+   * het oordeel van `levelWorkVerdict` onder de eis die het casusboek vandaag
+   * stelt (null zonder eis); `hottestThermalW` de watt in de heetste weerstand
+   * bij het vermogen waarbij M-A/part OORDEELT (10 W thermisch sinds V51; de
+   * kolom `grootste R (W)` staat bij het continue vermogen).
+   */
+  seriesRCell: string;
+  seriesRTotalOhm: number | null;
+  seriesRDcrOhm: number | null;
+  levelWorkOk: boolean | null;
+  hottestThermalW: number | null;
 }
 
 /* De afronding zelf woont sinds de V47-nazorg in `casus1Corpora.fixture.ts`:
@@ -418,6 +433,7 @@ function measure(key: string): Row {
       const mc = rep.gates.verdicts.filter((x) => x.gate === 'M-C' && x.active && x.value !== null);
       return {
         hottestAllowedW: r?.limit ?? null,
+        hottestThermalW: r2(r?.value ?? null),
         resistorOver: r && r.active && r.value !== null ? !r.pass : null,
         coilPeakA: r2(l?.value ?? null),
         coilId: (l?.parameters?.element as string | undefined) ?? null,
@@ -469,6 +485,10 @@ function measure(key: string): Row {
         levelWorkNone: lw?.delivered?.none ?? null,
         seriesLByWay: Object.fromEntries(Object.entries(byWay).map(([w, h]) => [w, r2(h * 1e3)!])),
         askedDb: r2(lw?.aboveAnchorDb ?? null),
+        seriesRCell: lw?.delivered ? describeSeriesResistance(lw.delivered) : '—',
+        seriesRTotalOhm: r2(lw?.delivered?.totalSeriesOhm ?? null),
+        seriesRDcrOhm: r2(lw?.delivered?.dcrOhm ?? null),
+        levelWorkOk: lw?.verdict?.ok ?? null,
       };
     })(),
   };
@@ -506,10 +526,11 @@ console.log(
     'Q_es× vóór → ná | M-C dB vóór → ná | M-C per weg vóór → ná | protSq dB² (ctl) vóór → ná | ' +
     'M-F-eind dB vóór → ná | smalste piek ná (dB @ Hz) | correctiegroepen vóór → ná | ' +
     'LF-bult dB vóór → ná | lift dB vóór → ná | opslingering dB vóór → ná | ' +
-    'serie-L mH vóór → ná | serie-L per weg mH vóór → ná (V51) | niveauwerk laagste weg vóór → ná (V51) |',
+    'serie-L mH vóór → ná | serie-L per weg mH vóór → ná (V51) | niveauwerk laagste weg vóór → ná (V51) | ' +
+    'serie-R laagste weg Ω (R + DCR = totaal) vóór → ná (V51b) | heetste R W bij oordeelvermogen vóór → ná (V51b) |',
 );
 console.log(
-  '|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|',
+  '|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|',
 );
 /** De wegen in rapportvolgorde, voor de serie-L-cel — afgeleid, niet benoemd. */
 const WAYS: string[] = bank.report('HUIDIG').driversLowToHigh;
@@ -570,7 +591,9 @@ for (const label of labels) {
       `${num(b?.opslingeringDb ?? null)} → ${afterCell(a?.opslingeringDb ?? null)} | ` +
       `${num(b?.seriesLmH ?? null)} → ${afterCell(a?.seriesLmH ?? null)} | ` +
       `${lByWayCell(b?.seriesLByWay, WAYS)} → ${a ? lByWayCell(a.seriesLByWay, WAYS) : afterCell(null)} | ` +
-      `${b ? b.levelWork : '—'} → ${a ? a.levelWork : outcome?.verwerping ? '**verworpen**' : 'geen netlist'} |`,
+      `${b ? b.levelWork : '—'} → ${a ? a.levelWork : outcome?.verwerping ? '**verworpen**' : 'geen netlist'} | ` +
+      `${b ? b.seriesRCell : '—'} → ${a ? a.seriesRCell : afterCell(null)} | ` +
+      `${num(b?.hottestThermalW ?? null)} → ${afterCell(a?.hottestThermalW ?? null)} |`,
   );
 }
 
@@ -827,8 +850,31 @@ const roleTotals = (rows: Row[]) => {
       (X === null ? 'X (wat de configuratie vraagt) is niet bekend. ' : `De configuratie VRAAGT X = ${X.toFixed(2)} dB (A5d.4-gap van de laagste weg tot het anker, plateau erin). `) +
       (rule === 'none'
         ? 'Eis GESTELD: geen niveauwerk op de laagste weg (gestelde_eisen.geen_niveauwerk_op_laagste_weg); een kandidaat die zijn rimpeldoel daardoor mist is een verwerping met X. '
-        : 'Geen eis gesteld, dus dit is een kolom en geen oordeel (P4). ') +
+        : seriesRMaxOhmOf(rule) !== null
+          ? `Eis GESTELD (V51b): serieweerstand tot ${seriesRMaxOhmOf(rule)!.toFixed(2)} Ω totaal en geen pad — "draagt er iets" is hier dus toegestaan zolang het een kale serie-R binnen het maximum is; de regel eronder telt tegen de eis. `
+          : 'Geen eis gesteld, dus dit is een kolom en geen oordeel (P4). ') +
       `Seriespoel per weg gepaard: ${WAYS.map((w) => `${w} ${paired(lOf(w), ' mH')}`).join(', ')}.`,
+  );
+  /* V51b — de gestelde variant als corpusregel: serieweerstand op de laagste
+   * weg (R + DCR) tegen het gestelde maximum, hoeveel netlists er binnen
+   * vallen, en de heetste weerstand bij het OORDEELvermogen. Het maximum wordt
+   * uit de eis in het rapport GELEZEN (P6). */
+  const maxOhm = seriesRMaxOhmOf(rule);
+  const within = (rows: Row[]) => rows.filter((r) => r.levelWorkOk === true).length;
+  const judgedRule = (rows: Row[]) => rows.filter((r) => r.levelWorkOk !== null).length;
+  console.log(
+    `serie-R op de laagste weg (V51b, R + DCR): gemiddeld ${fmt(avg(measuredBefore.map((r) => r.seriesRTotalOhm)))} Ω vóór → ` +
+      `${fmt(avg(measuredAfter.map((r) => r.seriesRTotalOhm)))} Ω ná (waarvan DCR ${fmt(avg(measuredBefore.map((r) => r.seriesRDcrOhm)))} → ` +
+      `${fmt(avg(measuredAfter.map((r) => r.seriesRDcrOhm)))} Ω); gepaard ${paired((r) => r.seriesRTotalOhm, ' Ω')}. ` +
+      (maxOhm !== null
+        ? `Eis GESTELD: hoogstens ${maxOhm.toFixed(2)} Ω totaal en geen pad (gestelde_eisen.max_serie_R_laagste_weg_ohm): ` +
+          `${within(measuredBefore)} van ${judgedRule(measuredBefore)} binnen de eis vóór, ${within(measuredAfter)} van ${judgedRule(measuredAfter)} ná. `
+        : rule === 'none'
+          ? 'Eis GESTELD: geen serieweerstand (V51). '
+          : 'Geen eis gesteld (P4). ') +
+      `Heetste weerstand bij het oordeelvermogen (${SETTINGS.resistorThermalPowerW ?? SETTINGS.amplifierPowerW} W) gemiddeld ` +
+      `${fmt(avg(measuredBefore.map((r) => r.hottestThermalW)))} W vóór → ${fmt(avg(measuredAfter.map((r) => r.hottestThermalW)))} W ná; ` +
+      `gepaard ${paired((r) => r.hottestThermalW, ' W')}.`,
   );
 }
 console.log(`uit de shortlist gevallen: ${gone.length}${gone.length ? ` — ${gone.map(short).join('; ')}` : ''}`);
@@ -850,12 +896,41 @@ if (after.outcomes) {
         `±${t?.windowPlusMinusDb?.toFixed(2) ?? '—'} dB / RMS ${t?.rmsDeviationDb?.toFixed(2) ?? '—'} dB`,
     );
     console.log(`      reden: ${o.verwerping!.reden}`);
-    const nw = (o as { niveauwerk?: { gevraagd_X_dB: number | null; geleverd_geen: boolean | null } }).niveauwerk;
+    const nw = (o as {
+      niveauwerk?: {
+        gevraagd_X_dB: number | null;
+        geleverd_geen: boolean | null;
+        geleverd_serie_R_ohm?: number | null;
+        geleverd_spoel_DCR_ohm?: number | null;
+        geleverd_serie_R_totaal_ohm?: number | null;
+        max_serie_R_ohm?: number | null;
+        vloer_vraagt_serie_R_ohm?: number | null;
+        vloer_vraagt_toelichting?: string | null;
+        vloer_ohm?: number | null;
+      };
+    }).niveauwerk;
     if (nw) {
       console.log(
         `      niveauwerk (V51): X = ${nw.gevraagd_X_dB === null ? '—' : `${nw.gevraagd_X_dB.toFixed(2)} dB`}; ` +
           `de geweigerde tune droeg ${nw.geleverd_geen === true ? 'GEEN' : nw.geleverd_geen === false ? 'WEL' : '?'} niveauwerk op de laagste weg`,
       );
+      /* V51b — wat de geweigerde tune op de laagste weg droeg (R + DCR = totaal)
+       * en Y: wat de vloer op die weg VRAAGT, tegen het gestelde maximum. */
+      if (nw.geleverd_serie_R_totaal_ohm !== undefined) {
+        const f = (v: number | null | undefined) => (v === null || v === undefined ? '—' : v.toFixed(3));
+        console.log(
+          `      serie-R laagste weg (V51b): ${f(nw.geleverd_serie_R_ohm)} + DCR ${f(nw.geleverd_spoel_DCR_ohm)} = ${f(nw.geleverd_serie_R_totaal_ohm)} Ω` +
+            (nw.max_serie_R_ohm !== null && nw.max_serie_R_ohm !== undefined ? ` tegen max ${nw.max_serie_R_ohm.toFixed(2)} Ω` : '') +
+            `; de vloer (${f(nw.vloer_ohm)} Ω) VRAAGT ${f(nw.vloer_vraagt_serie_R_ohm)} Ω totaal (Y)` +
+            (nw.vloer_vraagt_serie_R_ohm !== null && nw.vloer_vraagt_serie_R_ohm !== undefined && nw.max_serie_R_ohm !== null && nw.max_serie_R_ohm !== undefined
+              ? nw.vloer_vraagt_serie_R_ohm > nw.max_serie_R_ohm
+                ? ' — BOVEN het maximum'
+                : ' — binnen het maximum'
+              : nw.vloer_vraagt_serie_R_ohm === null && nw.vloer_vraagt_toelichting
+                ? ` — NIET met serieweerstand op deze weg: ${nw.vloer_vraagt_toelichting.replace(/^Y \(V51b\) could not be solved for \S+ against the stated floor of [\d.]+ Ω: /, '').replace(/ Reported as unknown, not as zero\.$/, '')}`
+                : ''),
+        );
+      }
     }
   }
   const gateRefused = after.outcomes.filter(

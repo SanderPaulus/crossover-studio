@@ -45,6 +45,8 @@ import {
   casus1ExcursionSettings,
   casus1LfResonantBudgetDb,
   casus1LowestWayLevelWorkForbidden,
+  casus1LowestWaySeriesRMaxOhm,
+  casus1LowestWayLevelWorkRule,
   casus1MaxDriveOnFsDb,
   casus1MaxDriveOnFsDbByDriver,
   casus1QesMultiplierMax,
@@ -55,6 +57,7 @@ import {
   type GoldenRefs,
 } from './casus1.fixture.ts';
 import type { WayWiring } from './ingest/wiring.ts';
+import type { LowestWayLevelWork } from '../levelWork.ts';
 import { peakInputVolts } from './metrics/driveExcursion.ts';
 import type { TargetCurve } from './requirements/targetCurve.ts';
 import {
@@ -238,6 +241,18 @@ export const CASUS1_THERMAL_DESIGN_POWER_W: number | null = casus1ThermalDesignP
 export const CASUS1_LOWEST_WAY_LEVEL_WORK_FORBIDDEN: boolean = casus1LowestWayLevelWorkForbidden();
 
 /**
+ * V51b — the stated MAXIMUM total series resistance on the lowest way
+ * (`gestelde_eisen.max_serie_R_laagste_weg_ohm`), and THE RULE the two produce
+ * together: a stated maximum narrows the prohibition to "no pad, series
+ * resistance up to this" (`{ kind: 'series-r-max', maxOhm }`); without one the
+ * prohibition stands (`'none'`); with neither, undefined (P4). Every casus-1
+ * measuring surface spreads `CASUS1_LOWEST_WAY_LEVEL_WORK` so none of them can
+ * disagree about which rule the corpus was generated under.
+ */
+export const CASUS1_LOWEST_WAY_SERIES_R_MAX_OHM: number | null = casus1LowestWaySeriesRMaxOhm();
+export const CASUS1_LOWEST_WAY_LEVEL_WORK: LowestWayLevelWork | undefined = casus1LowestWayLevelWorkRule();
+
+/**
  * V51 — the wiring per way from the driver card (the woofer pair: two,
  * measured parallel, wanted parallel). REPORT input only: the transform in
  * `ingest/wiring.ts` is the identity on this casus and is not applied.
@@ -252,10 +267,10 @@ export const CASUS1_WIRING: Record<string, WayWiring> = casus1WiringByDriver();
  */
 export const CASUS1_LEVEL_WORK_SETTINGS: {
   wiringByDriver?: Record<string, WayWiring>;
-  lowestWayLevelWork?: 'none';
+  lowestWayLevelWork?: LowestWayLevelWork;
 } = {
   ...(Object.keys(CASUS1_WIRING).length > 0 ? { wiringByDriver: { ...CASUS1_WIRING } } : {}),
-  ...(CASUS1_LOWEST_WAY_LEVEL_WORK_FORBIDDEN ? { lowestWayLevelWork: 'none' as const } : {}),
+  ...(CASUS1_LOWEST_WAY_LEVEL_WORK !== undefined ? { lowestWayLevelWork: CASUS1_LOWEST_WAY_LEVEL_WORK } : {}),
 };
 
 /** V50 — the peak input voltage the coil gate reads currents at (V49's amplifier peak). */
@@ -502,10 +517,15 @@ export function casus1V2Declaration(
      * V51 — and the THIRD chain key, derived from the project's stated
      * requirement: with `geen_niveauwerk_op_laagste_weg` stated the candidate
      * declares `lowestWayLevelWork: 'none'`; unstated it is ABSENT (P4). Read
-     * from the manifest, never written here. */
+     * from the manifest, never written here.
+     *
+     * V51b — with `max_serie_R_laagste_weg_ohm` stated as well, the derivation
+     * declares `{ kind: 'series-r-max', maxOhm }` instead: the narrower
+     * statement wins (`declareCandidateChainChoices`). */
     chainDeclaration: declareCandidateChainChoices({
       stated: {},
       ...(CASUS1_LOWEST_WAY_LEVEL_WORK_FORBIDDEN ? { lowestWayLevelWorkForbidden: true } : {}),
+      ...(CASUS1_LOWEST_WAY_SERIES_R_MAX_OHM !== null ? { lowestWaySeriesRMaxOhm: CASUS1_LOWEST_WAY_SERIES_R_MAX_OHM } : {}),
     }),
     provenance: c.provenance,
     orderByModel: { mid: c.crossings[0].order, tweeter: c.crossings[1].order },

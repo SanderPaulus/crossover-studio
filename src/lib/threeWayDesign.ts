@@ -17,6 +17,7 @@ import {
 } from './dsp.ts';
 import { computeIntegration } from './integration.ts';
 import { bandStats } from './bandMetrics.ts';
+import { forbidsPads, type LowestWayLevelWork } from './levelWork.ts';
 
 /**
  * Three-way VIRTUAL design step — the structure searcher the 3-way chain was
@@ -129,8 +130,14 @@ export interface Design3Input {
    * `'allowed'` is the historical behaviour, byte-identical. The v2 route states
    * this from the project requirement (`chainChoices.ts`); every v1 caller
    * leaves it absent.
+   *
+   * V51b — `{ kind: 'series-r-max', maxOhm }`: the way may carry series
+   * resistance up to a stated total and no pad. The design step then TRIMS as
+   * it always did (the surplus is still to be paid, and what a capped plain
+   * series R delivers of it is the synthesis step's business), but proposes
+   * no shelf cut on it — a shelf cut is a pad with a bypass.
    */
-  lowestWayLevelWork?: 'allowed' | 'none';
+  lowestWayLevelWork?: LowestWayLevelWork;
 }
 
 export interface Design3Result {
@@ -193,8 +200,11 @@ function branchMedian(g: GriddedResponse, lo: number, hi: number): number | null
  */
 export function designThreeWay(input: Design3Input): Design3Result {
   const { w, m, t, tAdjust, midAdjust, band, hpFloorHz } = input;
-  /* V51 — absent = allowed, exactly what every v1 caller reads. */
+  /* V51 — absent = allowed, exactly what every v1 caller reads. The trim goes
+   * to nothing only under `'none'`; V51b's capped series R keeps the trim and
+   * forbids the pads (`forbidsPads`), so the two flags are read apart. */
   const noLowestLevelWork = input.lowestWayLevelWork === 'none';
+  const noLowestPads = forbidsPads(input.lowestWayLevelWork);
   // Priority envelope — the same 0.1 + 0.8p the other engines use, so the
   // slider means the same thing everywhere.
   const pw = 0.1 + 0.8 * Math.min(Math.max(input.phasePriority, 0), 1);
@@ -682,9 +692,10 @@ export function designThreeWay(input: Design3Input): Design3Result {
         }
       } else if (tilt < -1) {
         /* V51 — a low-shelf cut on the woofer is a series pad with a bypass,
-         * and a design that forbids level work on its lowest way may not have
-         * one proposed there. The peak cut above stays available to it. */
-        if (!noLowestLevelWork && specs.woofer.eq.filter((x) => x.enabled).length < eqBudget) {
+         * and a design that forbids pads on its lowest way (V51: everything;
+         * V51b: everything but a plain series R) may not have one proposed
+         * there. The peak cut above stays available to it. */
+        if (!noLowestPads && specs.woofer.eq.filter((x) => x.enabled).length < eqBudget) {
           cands.push({
             branch: 'woofer',
             band: {

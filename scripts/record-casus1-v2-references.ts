@@ -54,7 +54,7 @@ import { RESISTIVE_EQUIVALENT_VERSION } from '../src/lib/engine2/metrics/resisti
 import { PHASE_INTEGRATION_VERSION } from '../src/lib/engine2/metrics/phaseIntegration.ts';
 import { PHASE_ADMISSION_VERSION } from '../src/lib/phaseAdmission.ts';
 import { BUILDABILITY_VERSION } from '../src/lib/engine2/metrics/buildability.ts';
-import { LEVEL_WORK_VERSION, levelWorkOnNetlist, seriesInductanceByWay } from '../src/lib/levelWork.ts';
+import { LEVEL_WORK_VERSION, levelWorkOnNetlist, levelWorkVerdict, seriesInductanceByWay, seriesRMaxOhmOf } from '../src/lib/levelWork.ts';
 import { casus1ThermalDesignPowerW } from '../src/lib/engine2/casus1.fixture.ts';
 import { CASUS1_LEVEL_WORK_SETTINGS } from '../src/lib/engine2/casus1V2.fixture.ts';
 import { DRIVE_EXCURSION_VERSION, derivedDriveLimitDb } from '../src/lib/engine2/metrics/driveExcursion.ts';
@@ -266,6 +266,16 @@ const CHAIN_GRID_LO_HZ = CASUS1_V2_GRID[0];
  * rather than a plausible-sounding reason that belongs to a different corpus.
  */
 const DATED_REASON: Record<string, string> = {
+  V51:
+    'HET GEDATEERDE V51-CORPUS. Bevroren vóór V51b, toen de LAAGSTE weg GEEN niveauwerk mocht dragen ' +
+    '(geen serie-R, geen shunt-pad; alleen spoel-DCR bleef): van vijftien kandidaten overleefde er EEN ' +
+    '(466,5 · 1719, min |Z| 2,57 Ohm binnen de meettolerantie), dertien strandden op de versterkervloer ' +
+    '(geweigerde tunes 2,05-2,49 Ohm tegen 2,60) en een op de mid-excursiegrens - zonder wooferpad ontbrak ' +
+    'de serieweerstand die de impedantiebodem boven de vloer hield, want in het overnamegebied geleiden ' +
+    'woofer- en midtak tegelijk. Bij V51b stelt Sander de gestelde variant: serieweerstand op de laagste ' +
+    'weg toegestaan tot 1,0 Ohm TOTAAL (discrete R plus spoel-DCR, DCR-schaal), geen L-pad en geen ' +
+    'shunt-pad, en laat het veld opnieuw opwekken. Bewaard als de "vóór"-helft van de V51b-vergelijking. ' +
+    'Meetobject, GEEN ontwerp: mag niet gebouwd worden.',
   V50:
     'HET GEDATEERDE V50-CORPUS. Bevroren vóór V51, toen de LAAGSTE weg nog niveauwerk mocht dragen: ' +
     'het anker is de mid, het wooferpaar staat er in het overnamegebied 3-5 dB boven, en élke ' +
@@ -1311,12 +1321,20 @@ raw.manifest_en_geometrie.v47_bescherming = driveRecord;
     const lByWay = seriesInductanceByWay(parts);
     const r = rep.gates.verdicts.find((v) => v.gate === 'M-A/part');
     const thev = [...rep.metrics.thevenin].sort((a, b) => (a.atHz ?? Infinity) - (b.atHz ?? Infinity))[0];
+    /* V51b — the verdict on the RULE the case book states today, from the
+     * one comparison every reader shares (`levelWorkVerdict`), never a second
+     * reading of the maximum here. */
+    const verdict = inv && CASUS1_LEVEL_WORK_SETTINGS.lowestWayLevelWork !== undefined ? levelWorkVerdict(inv, CASUS1_LEVEL_WORK_SETTINGS.lowestWayLevelWork) : null;
     rows.push({
       netlist: key,
       serie_R: inv?.seriesResistors.map((x) => ({ id: x.id, ohm: r2(x.ohm) })) ?? null,
       shunt_pad: inv?.shuntPads.map((x) => ({ id: x.id, ohm: r2(x.ohm) })) ?? null,
       geen_niveauwerk: inv?.none ?? null,
       serie_R_ohm: r2(inv?.seriesOhm ?? null),
+      /* V51b — the split the rule is stated on: discrete + DCR = total. */
+      spoel_DCR_ohm: r2(inv?.dcrOhm ?? null),
+      serie_R_totaal_ohm: r2(inv?.totalSeriesOhm ?? null),
+      binnen_eis: verdict?.ok ?? null,
       serie_L_mH_per_weg: Object.fromEntries(Object.entries(lByWay).map(([k, h]) => [k, r2(h * 1e3)])),
       opslingering_dB: r2(rep.metrics.lfBump[0]?.result.resonantDb ?? null),
       Qes_mult: r2(thev?.qMultiplier ?? null),
@@ -1334,9 +1352,13 @@ raw.manifest_en_geometrie.v47_bescherming = driveRecord;
       'netlist is wat het bestand daar werkelijk draagt (levelWork.ts: weerstanden in het serie-pad, ' +
       'weerstanden alleen van dat pad naar massa), naast de seriespoel per weg (de tilt die het pad ' +
       'vervangt), de opslingering en M-E. Afgeleid; frozenNetlistGates.test.ts herrekent het. Zie ' +
-      'gestelde_eisen.geen_niveauwerk_* voor de eis en driverkaart.woofer.schakeling voor de meetgeometrie.',
+      'gestelde_eisen.geen_niveauwerk_* voor de eis en driverkaart.woofer.schakeling voor de meetgeometrie. ' +
+      'SINDS V51b (level-work/1.1) per netlist ook de DCR van de seriespoelen en het TOTAAL (discrete R plus ' +
+      'DCR), want de gestelde variant series-r-max (gestelde_eisen.max_serie_R_laagste_weg_ohm) oordeelt op ' +
+      'die som; binnen_eis is het oordeel van levelWorkVerdict onder de eis die het casusboek vandaag stelt.',
     schatter: LEVEL_WORK_VERSION,
     eis: CASUS1_LEVEL_WORK_SETTINGS.lowestWayLevelWork ?? null,
+    max_serie_R_ohm: seriesRMaxOhmOf(CASUS1_LEVEL_WORK_SETTINGS.lowestWayLevelWork),
     laagste_weg: lowest,
     anker: anchor,
     gevraagd_X_dB: r2(X),
@@ -1348,6 +1370,10 @@ raw.manifest_en_geometrie.v47_bescherming = driveRecord;
     levend_corpus_met_niveauwerk_op_laagste_weg: live.filter((r) => r.geen_niveauwerk === false).length,
     referentiefilters_met_niveauwerk_op_laagste_weg: refs.filter((r) => r.geen_niveauwerk === false).length,
     casusboek_netlists_zonder_niveauwerk_op_laagste_weg: rows.filter((r) => r.geen_niveauwerk === true).map((r) => r.netlist),
+    /* V51b — the counts under the rule stated today. */
+    levend_corpus_binnen_eis: live.filter((r) => r.binnen_eis === true).length,
+    levend_corpus_buiten_eis: live.filter((r) => r.binnen_eis === false).length,
+    referentiefilters_buiten_eis: refs.filter((r) => r.binnen_eis === false).map((r) => r.netlist),
     per_netlist: rows,
   };
 }

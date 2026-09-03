@@ -11,6 +11,7 @@ import {
 import { computeIntegration } from './integration.ts';
 import { designThreeWay, type Struct3Choice } from './threeWayDesign.ts';
 import { synthesize, type SynthesisResult } from './synthesis.ts';
+import { seriesRMaxOhmOf, type LowestWayLevelWork } from './levelWork.ts';
 import { mergeSynthesizedSchematics } from './schematicEdit.ts';
 import {
   optimizeNetworkValues,
@@ -108,8 +109,13 @@ export interface Chain3Settings {
    * derived from the project's stated requirement), so a run can say whether
    * the woofer's surplus over the anchor went into a resistor or stayed in the
    * sum — which is the whole question V51 asks.
+   *
+   * V51b — `{ kind: 'series-r-max', maxOhm }`: the way may carry a PLAIN series
+   * resistor (and its coils' DCR) up to a stated total, no pad. The synthesis
+   * then proposes one series R sized for the trim and capped at the maximum,
+   * and the tuner's box holds the total there (`levelWork.ts`).
    */
-  lowestWayLevelWork?: 'allowed' | 'none';
+  lowestWayLevelWork?: LowestWayLevelWork;
   breakupGuard?: boolean;
   /** In-room weight for the assembled tune (0..1): blends energy-average
    *  flatness into the amplitude term — the 2-way recipe, now three-branch.
@@ -349,9 +355,12 @@ export function runThreeWayChain(
     spec: DriverFilterSpec,
     resp: GriddedResponse,
     zKey: string,
-    /** V51 — true on the LOWEST way when the design forbids level work there. */
-    noLevelWork = false,
+    /** V51 — the rule for the LOWEST way; undefined on every other way and on
+     *  every run that states none. */
+    lowestRule: LowestWayLevelWork | undefined = undefined,
   ): SynthesisResult => {
+    const noLevelWork = lowestRule === 'none';
+    const seriesRMaxOhm = seriesRMaxOhmOf(lowestRule);
     const idxs: number[] = [];
     for (let i = 0; i < grid.length; i++) if (resp.spl[i] > ALIVE_DB) idxs.push(i);
     const sub = idxs.map((i) => grid[i]);
@@ -372,13 +381,15 @@ export function runThreeWayChain(
       /* V51 — spread, so an unstated requirement leaves the key absent and the
        * synthesis reads exactly what it always read. */
       ...(noLevelWork ? { noLevelWork: true } : {}),
+      /* V51b — the capped plain series R, the same way. */
+      ...(seriesRMaxOhm !== null ? { seriesRMaxOhm } : {}),
     });
   };
   /* V51 — the woofer slot IS the lowest way of this three-way chain, by the
    * chain's own construction (its LP flank meets the mid's HP flank at the low
    * handover). The requirement names "the lowest way" and this is where that
    * way is synthesised. */
-  const synthWoofer = synthOne(specs.woofer, w, 'woofer', s.lowestWayLevelWork === 'none');
+  const synthWoofer = synthOne(specs.woofer, w, 'woofer', s.lowestWayLevelWork);
   const synthMid = synthOne(specs.mid, m, 'mid');
   const synthTweeter = synthOne(specs.tweeter, t, 'tweeter');
   /* Degenerate-load refusal (see synthesis.ts): a branch that offers the

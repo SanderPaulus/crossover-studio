@@ -384,8 +384,14 @@ export function preBoundSeriesCapacitance(
 
 /** One inverted bound, with everything a reader needs to check it. */
 export interface InvertedBound {
-  /** Which A5d.6 inversion produced it. */
-  rule: 'qes-series-r' | 'bump-series-l' | 'gap-pad-r' | 'drive-series-c';
+  /**
+   * Which A5d.6 inversion produced it — or, for `'stated-series-r'` (V51b),
+   * which STATED requirement was filed in the box in an inversion's shape: the
+   * maximum total series resistance of the lowest way is a project figure and
+   * inverts nothing, but it bounds the same sum `qes-series-r` bounds and is
+   * filed the same way (coil DCR charged first, free resistors capped).
+   */
+  rule: 'qes-series-r' | 'bump-series-l' | 'gap-pad-r' | 'drive-series-c' | 'stated-series-r';
   /** The way it constrains. */
   subject: string;
   /** What is bounded, in words. */
@@ -488,7 +494,12 @@ export function searchBoxFor(
     );
 
   for (const b of bounds) {
-    if (b.rule === 'qes-series-r' || b.rule === 'gap-pad-r') {
+    /* V51b — `'stated-series-r'` takes the `qes-series-r` shape verbatim: the
+     * stated maximum is a bound on the way's TOTAL series resistance, so the
+     * coils' DCR comes off the top and the free resistors share what is left.
+     * A way with no free series resistor gets the note, and the worker's
+     * delivered-network check (`levelWorkVerdict`) still judges the total. */
+    if (b.rule === 'qes-series-r' || b.rule === 'gap-pad-r' || b.rule === 'stated-series-r') {
       const rs = seriesOf(b.subject, 'R');
       const coils = seriesOf(b.subject, 'L');
       // A coil's DCR is series resistance the driver sees just as surely as a
