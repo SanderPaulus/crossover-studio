@@ -4,9 +4,9 @@ Voertaal: Nederlands (zoals alle projectdocumentatie voor Sander & Stefan).
 Volgorde binnen een blok = aanbevolen prioriteit. Inschattingen zijn grof:
 **S** = uurtje(s), **M** = dagdeel–dag, **L** = meerdere dagen/gefaseerd.
 
-## Stand ná M-1 (4 sep 2026) — engine v2
+## Stand ná A5e.3-veld (4 sep 2026) — engine v2
 
-De regels hieronder vatten samen wat F4 tot en met M-1 hebben opgeleverd; het
+De regels hieronder vatten samen wat F4 tot en met A5e.3-veld hebben opgeleverd; het
 bewijs per stap staat in het casusboek (`docs/CrossoverStudio_OptimizerV2_strategie_v2.md`,
 Deel B) en de suite-meting in `CLAUDE.md`. Alles wat hier staat is gemeten op
 casus 1 (Koan 2951) en geldt alleen met de v2-toggle aan; met de toggle uit is
@@ -100,6 +100,29 @@ de app byte-identiek aan vóór F1.
   (52 van 115 op de woofer geweigerd); gerepareerd — filteroverdracht in een
   resistieve last, drempel één orde over de probe — zonder dat één weg van het
   casusboek anders classificeert.
+- **De spoelfamilies gesteld, en het veld op het echte doel** (A5e.3-veld,
+  04-09-2026): Sander stelt het koper per weg (woofer lucht 1,4 mm, mid en
+  tweeter lucht 1,0 mm — in de HP-ladders zijn de spoelen de shunts waarvan het
+  koper de demping is) en de v2-route wapent het DCR-model op elke run. Het
+  W-M-venster staat sindsdien op de AANDRIJFVLOER van de mid — A5d.3(ii)
+  omgekeerd met het excursieplafond van V49, `f_s · 2^(|plafond|/(6·orde))`,
+  148 Hz in plaats van 1,4·f_s = 124 (waar een LR4 de mid 11,6 dB verzwakt
+  tegen een plafond van 17,7, en M-1 vier van vijf op M-C weigerde); de M-T-as
+  beweegt niet (tweeter-aandrijfvloer 1184 < 1294). Orde 4 gesteld, LR alleen,
+  budget 24 → 20 kandidaten. Uitkomst: ZEVEN geleverd (229,1 · 1727/2304;
+  354,9 · 1495/1995; 549,7 · 1495/1727/1995), alle zeven op de vloer én de
+  tweeter met 0,88–1,18 Ω puur koper op de woofer en geen R of pad — wat M-1 op
+  0 van 115 haalde en V51b alleen met 1,0 Ω discrete R. De laagste positie
+  (148 Hz) en elke 1294-positie zijn weg. Prijs tegen V51b (dichtstbijzijnde
+  kruispunt, geen corpusdelta): dissipatie 9–24 % tegen 33–48, heetste R
+  0,3–2,0 W bij 10 W tegen 1,2–2,35, RMS vanaf 397 Hz 0,66–1,18 tegen
+  0,68–1,91, en op de volle band 0,85–1,20 tegen 1,81–2,15 (V51b is nooit op het
+  laag beoordeeld). Drie bevindingen uit de guards: een geleverd pad onder
+  `'none'` werd alleen gevlagd (gerepareerd: de worker weigert nu ook onder het
+  verbod; het pad was een wees van de onderdelenaudit), het minimum van één
+  netlist ligt op 10 Hz waar de barrière niet kijkt (geboekt, open), en een
+  rangclaim was een corpusgrootte (geankerd). De NAD-arm (vloer 4,0 Ω op de
+  beste drie) staat in casusboek A5e.3-veld.
 - **Verwerpingen zijn zichtbaar** (V31/V33, UI-1): een kandidaat waarvan de
   tune in zijn geheel geweigerd is levert geen netwerk maar een verwerping met
   de regel; de shortlist is de bron van de Working-tab en de v1-ranglijst staat
@@ -132,11 +155,15 @@ de app byte-identiek aan vóór F1.
    `m1+dcr` (dezelfde kandidaat als M-1's weigering op 1,23 Ω, plus het model)
    LEVERT: 2,62 Ω, rimpel 2,36 dB, M-K 14/13°, M-C −35/−38 dB, geen R en geen
    pad op de woofer — de gedempte shunt-pool van de diagnose is daar overbodig,
-   het koper van de shunt-spoel doet het.** De families
-   staan als VOORSTEL in het manifest (woofer 1,4 mm, mid/tweeter 1,0 mm lucht);
-   Sander stelt ze, dan regenereren. Buiten het enkel-onderdeel-bereik wordt de
-   machtswet voortgezet en gevlagd (stapels), niet begrensd — de spanwijdte als
-   zoekgrens blijft dus open, met reden (casusboek A5e.3).**
+   het koper van de shunt-spoel doet het.** **GESTELD op 04-09-2026
+   (A5e.3-veld):** woofer lucht 1,4 mm, mid en tweeter lucht 1,0 mm —
+   seriecomponenten hoge kwaliteit, parallelle eenvoudig, en in de HP-ladders
+   zijn de spoelen de shunts waarvan het koper de demping is; geen
+   gedempte-shunt-element (op de arm overbodig gebleken). Het veld is ermee
+   opnieuw opgewekt; wat het leverde staat in casusboek A5e.3-veld. Buiten het
+   enkel-onderdeel-bereik wordt de machtswet voortgezet en gevlagd (stapels),
+   niet begrensd — de spanwijdte als zoekgrens blijft dus open, met reden
+   (casusboek A5e.3).**
 2. **De vloer als de as van het veld, en de configuraties die het openen** —
    SINDS M-1 scherper: op de gemergede set haalt niets de vloer én de tweeter
    tegelijk; het minimum zit bij M-T ≥ 1727 Hz in de mid- en tweetertak (84 van

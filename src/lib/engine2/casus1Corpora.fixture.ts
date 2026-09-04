@@ -51,6 +51,7 @@ import {
   CASUS1_LEVEL_WORK_SETTINGS,
   CASUS1_MAX_DRIVE_ON_FS_DB_BY_DRIVER,
   CASUS1_TARGET_CURVE,
+  CASUS1_COIL_DCR_SETTINGS,
 } from './casus1V2.fixture.ts';
 import { buildReport, type EngineV2Report, type ReportSettings } from './report.ts';
 import type { Manifest } from './ingest/manifest.ts';
@@ -137,6 +138,25 @@ export const DATED_CORPORA: Record<string, { block: string; name: string }> = {
   v50: { block: 'v50_corpus', name: 'V50' },
   v51: { block: 'v51_corpus', name: 'V51' },
   v51b: { block: 'v51b_corpus', name: 'V51b' },
+  /* A5e.3-veld — the delivered network of the arm `m1+dcr`, registered as a
+   * dated corpus of ONE netlist because M-1's live corpus was empty and there
+   * was nothing to freeze (`scripts/register-a5e3-arm.ts`). */
+  a5e3arm: { block: 'a5e3_arm_corpus', name: 'A5e.3-arm' },
+};
+
+/**
+ * A5e.3-veld — DATED HERKOMST FILES: a regeneration whose field delivered NO
+ * netlist leaves no files to freeze, only the generator's own record of every
+ * candidate's outcome. M-1 is that case (115 of 115 refused). Its record is
+ * kept beside the live one under a dated name, so the M-1 claim of
+ * `corpusPairing.test.ts` — an empty after-half with every candidate refused —
+ * can be re-anchored on evidence the next regeneration does not overwrite
+ * (the V43/V48 re-anchoring, one layer further: a corpus of outcomes and no
+ * files). Such a corpus has an `order` and `outcomes` and an EMPTY
+ * `byCandidate`: nothing in it can be measured, which is the finding.
+ */
+export const DATED_HERKOMST: Record<string, { file: string; name: string }> = {
+  m1: { file: 'casus1_m1_herkomst.json', name: 'M-1' },
 };
 
 interface Herkomst {
@@ -176,12 +196,27 @@ function liveCorpus(): Corpus {
   };
 }
 
+function datedHerkomstCorpus(file: string, name: string): Corpus {
+  const herkomst = JSON.parse(readFileSync(join(CASUS1_DIR, '..', file), 'utf-8')) as Herkomst;
+  /* The files such a record names would be the LIVE files of its own time,
+   * overwritten since; a dated herkomst therefore carries no netlist at all,
+   * whatever its `bestanden` says. */
+  return {
+    name,
+    byCandidate: new Map(),
+    outcomes: herkomst.kandidaat_uitkomst,
+    order: herkomst.kandidaat_uitkomst.map((o) => o.label),
+  };
+}
+
 export function corpusOf(id: string, golden: GoldenRefs = loadGolden()): Corpus {
   if (id === 'live') return liveCorpus();
   const d = DATED_CORPORA[id];
   if (d) return datedCorpus(d.block, d.name, golden);
+  const h = DATED_HERKOMST[id];
+  if (h) return datedHerkomstCorpus(h.file, h.name);
   throw new Error(
-    `unknown corpus "${id}" — use ${[...Object.keys(DATED_CORPORA), 'live'].join(', ')}`,
+    `unknown corpus "${id}" — use ${[...Object.keys(DATED_CORPORA), ...Object.keys(DATED_HERKOMST), 'live'].join(', ')}`,
   );
 }
 
@@ -246,6 +281,9 @@ export function corpusBank(golden: GoldenRefs = loadGolden(), set: Casus1Measure
      * generated under. Phase and dissipation do not read them (measured:
      * `corpusPairing.test.ts` is unchanged). */
     ...CASUS1_LEVEL_WORK_SETTINGS,
+    /* A5e.3-veld — the stated coil families, so the coil-DCR block of a corpus
+     * comparison reads the model the corpus was generated under. */
+    ...CASUS1_COIL_DCR_SETTINGS,
   };
   return {
     golden,

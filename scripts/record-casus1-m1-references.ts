@@ -143,13 +143,23 @@ void midG;
  * 2. kruisvensters — per order on the merged set, with the gated bridge
  * ---------------------------------------------------------------- */
 const kv = raw.kruisvensters as Record<string, Record<string, unknown>>;
-const windowAt = (r: EngineV2Report, lower: string, order: number) =>
-  crossoverWindow({ ...r.predesign.windowInputs.find((wi) => wi.lower === lower)!, order });
-const winBlock = (r: EngineV2Report, lower: string, order: number) => {
-  const x = windowAt(r, lower, order);
+/* A5e.3-veld — `kFsOnly` reproduces the window WITHOUT the drive floor: what
+ * every window read from F4a to A5e.3 (k·f_s of the upper driver as the only
+ * resonance floor). It is the BRIDGE of V15's form, so a reader can tell the
+ * redefinition of the floor from a regression of the numbers. */
+const windowAt = (r: EngineV2Report, lower: string, order: number, kFsOnly = false) =>
+  crossoverWindow({
+    ...r.predesign.windowInputs.find((wi) => wi.lower === lower)!,
+    order,
+    ...(kFsOnly ? { upperDriveCeilingDb: null } : {}),
+  });
+const floorName = (rule: string | undefined | null): string | null =>
+  rule === 'validity' ? 'meetgeldigheid' : rule === 'fs' ? 'fs' : rule === 'drive' ? 'aandrijving_excursie' : (rule ?? null);
+const winBlock = (r: EngineV2Report, lower: string, order: number, kFsOnly = false) => {
+  const x = windowAt(r, lower, order, kFsOnly);
   return {
     venster: [r0(x.floorHz), r0(x.ceilingHz)] as [number | null, number | null],
-    vloer_bindend: x.floorBy?.rule === 'validity' ? 'meetgeldigheid' : x.floorBy?.rule === 'fs' ? 'fs' : (x.floorBy?.rule ?? null),
+    vloer_bindend: floorName(x.floorBy?.rule),
     plafond_bindend: x.ceilingBy?.rule === 'breakup' ? 'breakup_ernst' : (x.ceilingBy?.rule ?? null),
   };
 };
@@ -158,15 +168,36 @@ const wm2 = winBlock(M, 'woofer', 2);
 const mt4 = winBlock(M, 'mid', 4);
 const wm4g = winBlock(G, 'woofer', 4);
 const mt4g = winBlock(G, 'mid', 4);
+const wm4k = winBlock(M, 'woofer', 4, true);
+const wm2k = winBlock(M, 'woofer', 2, true);
+const mt4k = winBlock(M, 'mid', 4, true);
+/* The drive floor's own numbers, for the parameters block: the mid's ceiling and the octaves it costs at order 4. */
+const wmInput = M.predesign.windowInputs.find((wi) => wi.lower === 'woofer')!;
+const mtInput = M.predesign.windowInputs.find((wi) => wi.lower === 'mid')!;
+const driveFloor = windowAt(M, 'woofer', 4).limits.find((l) => l.rule === 'drive');
+const driveFloorMt = windowAt(M, 'mid', 4).limits.find((l) => l.rule === 'drive');
 kv.woofer_mid_orde4 = {
   klasse: 'A',
   afhankelijkheid: 'meting',
   klasse_toelichting:
-    'Een A5d.3-venster is PRE-design: het staat op meetgeldigheid, f_s, breakup-ernst en c-t-c, en op geen ' +
-    'enkel filter. Nagemeten: de drie kandidaatrapporten leveren identieke vensters. SINDS M-1 op de GEMERGEDE ' +
-    'set: de woofer is geldig vanaf 20,5 Hz en de mid vanaf 60 Hz, dus de meetgeldigheidsvloer van 396,7 Hz ' +
-    'valt weg en de vloer is k maal f_s van de mid (1,4 x 88,8 Hz bij orde 4). PLACEHOLDER tot groundplane.',
+    'Een A5d.3-venster is PRE-design: het staat op meetgeldigheid, f_s, breakup-ernst, c-t-c en (sinds A5e.3-veld) ' +
+    'het excursieplafond van de bovenliggende driver, en op geen enkel filter. Nagemeten: de drie kandidaatrapporten ' +
+    'leveren identieke vensters. SINDS M-1 op de GEMERGEDE set: de woofer is geldig vanaf 20,5 Hz en de mid vanaf 60 Hz, ' +
+    'dus de meetgeldigheidsvloer van 396,7 Hz valt weg. SINDS A5e.3-veld (04-09-2026) is de vloer de AANDRIJFVLOER: het ' +
+    'laagste kruispunt waarop een filter van orde 4 de aandrijving van de mid op haar eigen resonantie onder het ' +
+    'excursieplafond van M-C v2.0 houdt (A5d.3(ii) omgekeerd, doorlaatband op de ingang; kruisvensters.parameters.' +
+    'aandrijfvloer). Die ligt boven k maal f_s (1,4 x 88,8 = 124 Hz), dat als brug _k_fs_tot_A5e3veld blijft staan. ' +
+    'PLACEHOLDER tot groundplane.',
   ...wm4,
+  _k_fs_tot_A5e3veld: {
+    _:
+      'Hetzelfde venster ZONDER de aandrijfvloer (de stand van M-1): de vloer is k maal f_s van de mid. Brug, ' +
+      'reproduceerbaar met upperDriveCeilingDb: null. Waarom 124 Hz nooit een zinnige positie was: een LR4 op 124 Hz ' +
+      'verzwakt de aandrijving van de mid op 88,8 Hz asymptotisch 24 x log2(124/88,8) = 11,6 dB tegen een plafond van ' +
+      '17,7 dB - de mid kan daar M-C alleen halen met een pad op de ankerweg, en M-1 weigerde vier van de vijf ' +
+      'kandidaten op die positie op M-C (mid).',
+    ...wm4k,
+  },
   _gepoort_tot_M1: {
     _: 'Hetzelfde venster op de GEPOORTE set (de stand van F4a tot V51b): de vloer was de header-gate van 396,7 Hz. Brug, reproduceerbaar met set "gated".',
     ...wm4g,
@@ -178,18 +209,46 @@ kv.woofer_mid_orde2 = {
   klasse_toelichting:
     'M-1: het W-M-venster bij ORDE 2 (LR2), dat op de gemergede set voor het eerst een eigen vloer heeft ' +
     `(k = ${XO_FS_FACTOR_BY_ORDER[2]} bij orde 2, A5d.3) in plaats van dezelfde meetgeldigheidsvloer als orde 4. ` +
-    'Het M-1-veld loopt op deze as over beide vensters (LR2 en LR4).',
+    'Het M-1-veld liep op deze as over beide vensters (LR2 en LR4); sinds A5e.3-veld stelt de ontwerper orde 4 en ' +
+    'is dit venster documentatie. SINDS A5e.3-veld met de aandrijfvloer: bij orde 2 kost dezelfde verzwakking twee keer ' +
+    'zoveel octaven, dus de vloer ligt hoger dan bij orde 4 (k maal f_s als brug in _k_fs_tot_A5e3veld).',
   ...wm2,
+  _k_fs_tot_A5e3veld: { _: 'Zonder de aandrijfvloer (de stand van M-1). Brug.', ...wm2k },
 };
 kv.mid_tweeter_orde4 = {
   klasse: 'A',
   afhankelijkheid: 'meting',
   ...mt4,
   spanning: 'lobing-goed boven breakup-plafond',
+  vloer_toelichting:
+    'De aandrijfvloer van de tweeter (excursieplafond ' +
+    `${r1(mtInput.upperDriveCeilingDb ?? NaN)} dB re ingang, ${r0(driveFloorMt?.hz ?? NaN)} Hz bij orde 4) ligt ONDER ` +
+    'k maal f_s, dus hier bindt de conventie nog (A5e.3-veld: de M-T-as beweegt niet). Het GESTELDE tweetergetal ' +
+    '(-20 dB, passband-relatief) wordt met opzet niet als vensterinvoer gelezen; zie kruisvensters.parameters.aandrijfvloer.',
+  _k_fs_tot_A5e3veld: { _: 'Zonder de aandrijfvloer: identiek, want k maal f_s bindt. Brug.', ...mt4k },
   _gepoort_tot_M1: {
     _: 'Hetzelfde venster op de GEPOORTE set: de vloer is dezelfde (k x f_s van de tweeter), het plafond bewoog met de breakup-scan van de mid mee (de scanband begint op 60 in plaats van 397 Hz, de trend verschuift). Brug.',
     venster: mt4g.venster,
   },
+};
+/* The parameters block: the new floor rule beside the k·f_s convention (V15). */
+(kv.parameters as Record<string, unknown>).aandrijfvloer = {
+  _:
+    'A5e.3-veld (04-09-2026) - DE AANDRIJFVLOER: A5d.3(ii) omgekeerd. Regel (ii) van de orde-afleiding deelt de ' +
+    'verzwakking die M-C op de resonantie van de bovenliggende driver vraagt door de octaafafstand tot het kruispunt ' +
+    'en antwoordt met een ORDE; bij een GEGEVEN orde antwoordt dezelfde regel met een frequentie: ' +
+    'f_vloer = f_s x 2^(|plafond| / (6 dB/oct x orde)). Asymptotische helling, doorlaatband op de ingang (de ' +
+    'niet-verzwakte weg - de strengste eerlijke lezing: een pad maakt de eis makkelijker en een vloer die een pad ' +
+    'aanneemt neemt een ontwerp aan). k maal f_s blijft ernaast staan als conventie; de HOOGSTE vloer bindt.',
+  invoer: 'het excursieplafond van M-C v2.0 per driver (V49): driverkaart + versterkerpiek + gemeten sweep, klasse A',
+  invoer_niet: 'het GESTELDE M-C-getal (tweeter -20 dB): passband-relatief, een projectconventie en geen drivereigenschap; de orde-afleiding leest het al als eis op het referentiekruispunt',
+  plafond_re_ingang_dB: { mid: r2(wmInput.upperDriveCeilingDb ?? NaN), tweeter: r2(mtInput.upperDriveCeilingDb ?? NaN) },
+  octaven_bij_orde_4: { woofer_mid: r2(driveFloor ? Math.log2(driveFloor.hz / (wmInput.upperFsHz ?? NaN)) : NaN), mid_tweeter: r2(driveFloorMt ? Math.log2(driveFloorMt.hz / (mtInput.upperFsHz ?? NaN)) : NaN) },
+  vloer_hz_bij_orde_4: { woofer_mid: r0(driveFloor?.hz ?? NaN), mid_tweeter: r0(driveFloorMt?.hz ?? NaN) },
+  bindt: { woofer_mid: wm4.vloer_bindend, mid_tweeter: mt4.vloer_bindend },
+  dB_per_octaaf_per_orde: 6,
+  klasse: 'A',
+  afhankelijkheid: 'meting',
 };
 
 /* ---------------------------------------------------------------- *

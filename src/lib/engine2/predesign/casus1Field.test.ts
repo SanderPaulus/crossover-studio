@@ -27,6 +27,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   CASUS1_WOOFER_DC_OHM,
+  casus1ExcursionSettings,
   casus1Files,
   casus1Filter,
   casus1Geometry,
@@ -36,7 +37,7 @@ import {
 import { buildReport, type EngineV2Report } from '../report.ts';
 import { ctcKey } from '../metrics/types.ts';
 import { FLAT_TARGET } from '../requirements/targetCurve.ts';
-import { casus1Field } from '../casus1V2.fixture.ts';
+import { CASUS1_FIELD_CHAIN_BUDGET, CASUS1_FIELD_STATED_ORDER, casus1Field } from '../casus1V2.fixture.ts';
 import { candidateFieldKey } from './candidateField.ts';
 import { candidatesOutsideWindows } from './xoRangeAdvice.ts';
 import { recommendedBand } from './recommendedBand.ts';
@@ -61,16 +62,22 @@ const report = (candidate: 'HUIDIG' | 'KAND_A' | 'KAND_B'): EngineV2Report =>
       orderByPair: { [ctcKey('woofer', 'mid')]: 4, [ctcKey('mid', 'tweeter')]: 4 },
       reOhmByDriver: { woofer: CASUS1_WOOFER_DC_OHM },
       targetCurve: FLAT_TARGET,
+      /* A5e.3-veld — the excursion inputs: the woofer→mid window stands on the
+       * mid's excursion ceiling (V49) since A5e.3-veld, and a report without
+       * the inputs derives no ceiling and builds M-1's field. Read, never
+       * written here (P6). */
+      ...casus1ExcursionSettings(golden),
     },
   });
 
 const REPORTS = { HUIDIG: report('HUIDIG'), KAND_A: report('KAND_A'), KAND_B: report('KAND_B') };
 
-/* M-1 — THE FIELD IS THE FIXTURE'S (`casus1Field`): the woofer→mid axis
- * abstains on the order and runs LR2 and LR4 (Sander's ask), the mid→tweeter
- * axis keeps the stated order 4. Until M-1 this file built its own field with
- * the stated order on both axes; a second definition of the field is a second
- * opinion about what the corpus was generated from. */
+/* M-1 — THE FIELD IS THE FIXTURE'S (`casus1Field`). Until M-1 this file built
+ * its own field with the stated order on both axes; a second definition of the
+ * field is a second opinion about what the corpus was generated from. M-1 let
+ * the woofer→mid axis abstain (LR2 and LR4); A5e.3-veld states order 4 on both
+ * axes again, bounds the woofer→mid window below by the mid's excursion ceiling
+ * and thins the field to a stated chain budget — see the fixture. */
 const fieldFor = (r: EngineV2Report) => casus1Field(r);
 
 const FIELD = fieldFor(REPORTS.HUIDIG);
@@ -83,9 +90,8 @@ describe('the field casus 1 implies', () => {
     expect(axes[1].pairLabel).toBe('mid→tweeter');
     // The windows are the casebook's own (`kruisvensters`), to the hertz the
     // reference file rounds to.
-    const wm = golden.kruisvensters.woofer_mid_orde4 as unknown as { venster: [number, number] };
-    const wm2 = golden.kruisvensters.woofer_mid_orde2 as unknown as { venster: [number, number] };
-    const mt = golden.kruisvensters.mid_tweeter_orde4 as unknown as { venster: [number, number] };
+    const wm = golden.kruisvensters.woofer_mid_orde4 as unknown as { venster: [number, number]; vloer_bindend: string; _k_fs_tot_A5e3veld: { venster: [number, number] } };
+    const mt = golden.kruisvensters.mid_tweeter_orde4 as unknown as { venster: [number, number]; vloer_bindend: string };
     const win = (i: number, order: string) => axes[i].window[order];
     // Within the reference file's own frequency tolerance class — a window edge
     // is a reference, and a test that carried its own tolerance could quietly
@@ -94,54 +100,58 @@ describe('the field casus 1 implies', () => {
     const near = (got: number, want: number) => Math.abs(got / want - 1) <= pct;
     expect(near(win(0, '4').floorHz!, wm.venster[0])).toBe(true);
     expect(near(win(0, '4').ceilingHz!, wm.venster[1])).toBe(true);
-    // M-1 — the second-order window on the same axis has its OWN floor (k·f_s at order 2).
-    expect(near(win(0, '2').floorHz!, wm2.venster[0])).toBe(true);
-    expect(near(win(0, '2').ceilingHz!, wm2.venster[1])).toBe(true);
-    expect(win(0, '2').floorHz!).toBeGreaterThan(win(0, '4').floorHz!);
+    /* A5e.3-veld — the lower axis stands on the DRIVE floor (the mid's excursion
+     * ceiling, A5d.3(ii) inverted) and that lies ABOVE M-1's k·f_s floor, which
+     * the reference keeps as its bridge. The upper axis still stands on k·f_s:
+     * the tweeter's drive floor lies under it. */
+    expect(win(0, '4').floorBy!.rule).toBe('drive');
+    expect(wm.vloer_bindend).toBe('aandrijving_excursie');
+    expect(win(0, '4').floorHz!).toBeGreaterThan(wm._k_fs_tot_A5e3veld.venster[0]);
     expect(near(win(1, '4').floorHz!, mt.venster[0])).toBe(true);
     expect(near(win(1, '4').ceilingHz!, mt.venster[1])).toBe(true);
+    expect(win(1, '4').floorBy!.rule).toBe('fs');
+    expect(mt.vloer_bindend).toBe('fs');
+    // Order 4 is STATED on both axes since A5e.3-veld: no second-order window is built.
+    expect(axes[0].window['2']).toBeUndefined();
     expect(axes[1].window['2']).toBeUndefined();
   });
 
-  it('places thirteen LR4 and ten LR2 positions on the lower axis and five on the upper, and says why', () => {
+  it('places four LR4 positions on the lower axis and five on the upper under a budget of 24, and says why', () => {
     /* The count is derived: `1 + floor(span / smoothing)`, over the A5d.3
-     * WINDOW, per order. Until M-1 the W-M window spanned 0.47 octaves (397–549
-     * Hz, the gate floor) ⇒ three positions at the stated order 4. On the
-     * merged set the floor is k·f_s of the mid: 124–550 Hz at order 4 (2.15
-     * octaves ⇒ thirteen) and 178–550 Hz at order 2 (1.63 ⇒ ten), and the axis
-     * ABSTAINS on the order so both are built (LR2 and LR4). M-T spans 0.83
-     * octaves at the stated order 4 ⇒ five. 23 × 5 = 115 candidates.
-     *
-     * It read three and three until the F4d follow-up, because the upper axis
-     * was laid across the RECOMMENDED band (0.33 octaves, the window minus the
-     * worst lobing zone) instead of the window. The excision is suspended
-     * pending V28, so the upper axis gets the count its window implies. */
+     * WINDOW, per order. On the merged set with the drive floor the W-M window
+     * spans ~148–550 Hz (1.89 octaves ⇒ twelve at the acceptance smoothing);
+     * M-T spans 0.83 octaves at the stated order 4 ⇒ five. 12 × 5 = 60 offered,
+     * and the STATED budget of 24 thins POSITIONS on the widest axis one at a
+     * time: 5 × 5 = 25 still exceeds it, so the lower axis goes to four and
+     * the field is 4 × 5 = 20. Orders are never thinned (there is one). */
     const wm = FIELD.field.axes[0].positionsByOrder;
     const mt = FIELD.field.axes[1].positionsByOrder;
-    expect(FIELD.field.axes[0].orders).toEqual([2, 4]);
-    expect(FIELD.field.axes[1].orders).toEqual([4]);
-    expect(wm).toHaveLength(2);
+    expect(FIELD.field.axes[0].orders).toEqual([CASUS1_FIELD_STATED_ORDER]);
+    expect(FIELD.field.axes[1].orders).toEqual([CASUS1_FIELD_STATED_ORDER]);
+    expect(wm).toHaveLength(1);
     expect(mt).toHaveLength(1);
-    const o2 = wm.find((p) => p.order === 2)!;
-    const o4 = wm.find((p) => p.order === 4)!;
-    expect(o4.count).toBe(13);
-    expect(o4.derivedCount).toBe(13);
-    expect(o2.count).toBe(10);
-    expect(o2.derivedCount).toBe(10);
-    expect(mt[0].count).toBe(5);
+    expect(wm[0].derivedCount).toBe(12);
+    expect(wm[0].count).toBe(4);
     expect(mt[0].derivedCount).toBe(5);
-    expect(FIELD.field.candidates).toHaveLength((o2.count + o4.count) * mt[0].count);
-    expect(FIELD.field.candidates).toHaveLength(115);
-    // Sander's two positions of interest lie on both orders: ~350 and ~400 Hz.
-    for (const p of [o2, o4]) {
-      expect(p.hz.some((h) => h > 320 && h < 380)).toBe(true);
-      expect(p.hz.some((h) => h > 380 && h < 440)).toBe(true);
-    }
-    // The abstention is said out loud, and the upper axis says it was stated.
-    expect(FIELD.orders[0].why.join(' ')).toContain('every buildable order is its own candidate');
+    expect(mt[0].count).toBe(5);
+    expect(FIELD.field.parameters.chainBudget).toBe(CASUS1_FIELD_CHAIN_BUDGET);
+    expect(FIELD.field.parameters.derivedSize).toBe(60);
+    expect(FIELD.field.parameters.deliveredSize).toBe(wm[0].count * mt[0].count);
+    expect(FIELD.field.candidates).toHaveLength(20);
+    expect(FIELD.field.candidates.length).toBeLessThanOrEqual(CASUS1_FIELD_CHAIN_BUDGET);
+    // The thinning is said out loud, with both numbers.
+    expect(FIELD.notes.join(' ')).toContain('offered 60 candidates and the stated budget is 24');
+    expect(FIELD.notes.join(' ')).toContain('20 are delivered');
+    // The lowest position is the drive floor itself, and no position lies under it.
+    for (const h of wm[0].hz) expect(h).toBeGreaterThanOrEqual(FIELD.field.axes[0].window['4'].floorHz! - 0.5);
+    // The stated order is said out loud on both axes.
+    expect(FIELD.orders[0].why.join(' ')).toContain('the designer stated');
     expect(FIELD.orders[1].why.join(' ')).toContain('the designer stated');
-    // Every candidate names LR on both axes — the library was LR-only.
-    for (const c of FIELD.field.candidates) for (const x of c.crossings) expect(x.alignment.kind).toBe('LR');
+    // Every candidate names LR4 on both axes — the library was LR-only and the order stated.
+    for (const c of FIELD.field.candidates) for (const x of c.crossings) {
+      expect(x.alignment.kind).toBe('LR');
+      expect(x.order).toBe(CASUS1_FIELD_STATED_ORDER);
+    }
   });
 
   it('does NOT cut the worst lobing zone out of the upper axis, and says whose zone it was', () => {
@@ -194,7 +204,7 @@ describe('the pre-start estimate on the v2 route: 0 of N', () => {
       FIELD.field.candidates.map((c) => ({ label: c.label, hz: c.crossings.map((x) => x.hz) })),
       windows,
     );
-    expect(estimate.total).toBe(115);
+    expect(estimate.total).toBe(FIELD.field.candidates.length);
     expect(estimate.outside).toBe(0);
     for (const axis of estimate.perAxis) expect(axis.outside).toBe(0);
   });

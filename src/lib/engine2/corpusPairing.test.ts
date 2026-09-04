@@ -264,19 +264,26 @@ describe('de gepaarde delta naast het corpusgemiddelde (V47-nazorg)', () => {
     }
   });
 
-  it('M-1: V51b → levend heeft GEEN enkel paar én een lege ná-helft — het veld leverde niets', () => {
+  it('M-1: V51b → M-1 heeft GEEN enkel paar én een lege ná-helft — het veld leverde niets (herankerd op de gedateerde herkomst)', () => {
     /* De M-1-regeneratie (gemergede meetset, plateau 0 dB, geen niveauwerk op
      * de laagste weg, W-M-as met LR2 én LR4 over 124–550 Hz) leverde 0 van 115:
      * elke kandidaat viel op de vloer, op M-C (mid of tweeter), op de
-     * topologie-eis of op het budget. Het levende corpus is dus LEEG, en de
+     * topologie-eis of op het budget. Het corpus van M-1 is dus LEEG, en de
      * gepaarde lezing tegen V51b zegt n = 0 en drukt geen enkel getal af —
      * niet omdat de vensters verschoven (dat ook: geen enkele V51b-kandidaat
      * bestaat in het M-1-veld) maar omdat er niets ná is. Het corpusgemiddelde
      * ná is dan óók leeg: een lege verzameling heeft geen gemiddelde, en een
-     * tabel die er een afdrukt liegt. Gelezen uit de corpusboekhouding en niet
-     * gemeten, want er valt aan de ná-kant niets te meten. */
+     * tabel die er een afdrukt liegt.
+     *
+     * HERANKERD BIJ A5e.3-veld (04-09-2026): tot dan las deze claim het LEVENDE
+     * corpus, en de A5e.3-veld-regeneratie overschrijft dat. Een corpus dat
+     * niets leverde laat geen bestanden achter om te bevriezen, alleen de
+     * boekhouding van de generator; die staat sindsdien als gedateerd
+     * herkomstbestand (`casus1_m1_herkomst.json`, corpus-id `m1`) en dít is
+     * wat de claim leest. Gelezen uit de corpusboekhouding en niet gemeten,
+     * want er valt aan de ná-kant niets te meten. */
     const before = corpusOf('v51b');
-    const after = corpusOf('live');
+    const after = corpusOf('m1');
     expect(before.byCandidate.size).toBe(6);
     expect(after.byCandidate.size).toBe(0);
     expect(pairedCandidates(before, after)).toHaveLength(0);
@@ -286,6 +293,26 @@ describe('de gepaarde delta naast het corpusgemiddelde (V47-nazorg)', () => {
     // ...and no V51b candidate exists in the M-1 field at all: the window moved.
     for (const label of before.order) expect(after.order).not.toContain(label);
     expect(mean([])).toBeNull();
+  });
+
+  it('A5e.3-veld: V51b → levend heeft GEEN enkel paar op LABEL — de posities zijn verschoven — en de tabel paart daarom op het dichtstbijzijnde kruispunt, met naam', () => {
+    /* De A5e.3-veld-regeneratie loopt op een ander veld (orde 4 gesteld, de
+     * W-M-vloer op de aandrijfvloer van de mid, positiebudget 24), dus geen
+     * enkele V51b-kandidaat bestaat er letterlijk in; de gepaarde lezing op
+     * label is n = 0 en drukt niets af. Wat `scripts/measure-a5e3-field.ts` als
+     * "gepaard tegen V51b" afdrukt is daarom een paar op het DICHTSTBIJZIJNDE
+     * kruispunt, met beide labels erbij — een anekdote per rij, en zo
+     * gelabeld; de corpusregel blijft de leesregel van dit bestand. */
+    const before = corpusOf('v51b');
+    const after = corpusOf('live');
+    expect(before.byCandidate.size).toBe(6);
+    expect(pairedCandidates(before, after)).toHaveLength(0);
+    for (const label of before.order) expect(after.order).not.toContain(label);
+    for (const pick of [PHASE, DISS]) {
+      const d = pairedDelta([], pick);
+      expect(d.n).toBe(0);
+      expect(d.before).toBeNull();
+    }
   });
 
   it('een paar waarvan één helft niets meet telt aan GEEN van beide kanten mee', () => {

@@ -48,6 +48,8 @@ import {
   type GoldenRefs,
 } from '../src/lib/engine2/casus1.fixture.ts';
 import { buildReport } from '../src/lib/engine2/report.ts';
+import { COIL_DCR_FIT_VERSION, coilDcrInventory, describeCoilDcrModel, roundDcr } from '../src/lib/coilDcr.ts';
+import { casus1CoilFamilyByDriver } from '../src/lib/engine2/casus1.fixture.ts';
 import { ctcKey } from '../src/lib/engine2/metrics/types.ts';
 import { LF_BUMP_VERSION } from '../src/lib/engine2/metrics/acoustic.ts';
 import { RESISTIVE_EQUIVALENT_VERSION } from '../src/lib/engine2/metrics/resistiveEquivalent.ts';
@@ -56,10 +58,16 @@ import { PHASE_ADMISSION_VERSION } from '../src/lib/phaseAdmission.ts';
 import { BUILDABILITY_VERSION } from '../src/lib/engine2/metrics/buildability.ts';
 import { LEVEL_WORK_VERSION, levelWorkOnNetlist, levelWorkVerdict, seriesInductanceByWay, seriesRMaxOhmOf } from '../src/lib/levelWork.ts';
 import { casus1ThermalDesignPowerW } from '../src/lib/engine2/casus1.fixture.ts';
-import { CASUS1_LEVEL_WORK_SETTINGS } from '../src/lib/engine2/casus1V2.fixture.ts';
+import {
+  CASUS1_LEVEL_WORK_SETTINGS,
+  CASUS1_COIL_DCR,
+  CASUS1_COIL_DCR_SETTINGS,
+  CASUS1_COIL_FAMILY_BY_DRIVER,
+} from '../src/lib/engine2/casus1V2.fixture.ts';
 import { DRIVE_EXCURSION_VERSION, derivedDriveLimitDb } from '../src/lib/engine2/metrics/driveExcursion.ts';
 import { compareDesigns } from '../src/lib/engine2/predesign/comparison.ts';
-import { ampFloorSlackOhm, meetsAmpFloor } from '../src/lib/impedanceFloor.ts';
+import { ampFloorSlackOhm, meetsAmpFloor, minImpedanceAt } from '../src/lib/impedanceFloor.ts';
+import { solveNetwork } from '../src/lib/network.ts';
 import { busTopology, systemMinImpedanceOhm } from '../src/lib/netOptimizer.ts';
 import { impedanceReferenceFrom } from '../src/lib/engine2/optimizer/impedanceReference.ts';
 import { sourceProbeIndex, sourceResistanceOhm } from '../src/lib/partAudit.ts';
@@ -122,6 +130,9 @@ const report = (key: string) =>
        * limit the report actually judged on (stated or derived, whichever is
        * stricter). Same manifest, same reader as the guards. */
       ...CASUS1_EXCURSION,
+      /* A5e.3-veld — the stated coil families and fits, so the coil-DCR block
+       * below reads every netlist against the model the corpus ran under. */
+      ...CASUS1_COIL_DCR_SETTINGS,
     },
   });
 
@@ -197,7 +208,10 @@ const keys = Object.keys(netlists).filter((k) => LIVE_V2.test(k));
  * (below), which cannot be derived and whose absence is reported rather than
  * silently skipped.
  */
-const DATED_KAND = /^V\d+[A-Z0-9_]*_KAND_\d+$/;
+/* A5e.3-veld — a dated corpus need not be a `V<n>` freeze: `A5E3ARM_KAND_1` is
+ * the registered arm (`register-a5e3-arm.ts`). Anchored on both ends, so the
+ * live `KAND_V2_n` and the three baselines can never match. */
+const DATED_KAND = /^[A-Z][A-Z0-9]*_KAND_\d+$/;
 const datedKeys = Object.keys(netlists).filter((k) => DATED_KAND.test(k));
 /** Grouped by their corpus prefix, in the order the manifest lists them. */
 const datedByCorpus = new Map<string, string[]>();
@@ -266,6 +280,13 @@ const CHAIN_GRID_LO_HZ = CASUS1_V2_GRID[0];
  * rather than a plausible-sounding reason that belongs to a different corpus.
  */
 const DATED_REASON: Record<string, string> = {
+  A5E3ARM:
+    'HET GEDATEERDE A5E3ARM-CORPUS: het GELEVERDE netwerk van de A5e.3-arm m1+dcr (kandidaat 429,1 LR4 · ' +
+    '1994,6 LR4 uit het M-1-veld, M-1\'s instellingen plus het DCR-model op het toen VOORGESTELDE familieblok, ' +
+    'dezelfde families die bij A5e.3-veld gesteld zijn). Geregistreerd omdat het M-1-corpus leeg was en er niets ' +
+    'te bevriezen viel; het haalt de vloer (2,62 ohm) zonder R of pad op de woofer. Bewaard als de "voor"-helft ' +
+    'van de A5e.3-veld-vergelijking (M-1-veld: k maal f_s als vloer, LR2 en LR4, geen budget). Meetobject, GEEN ' +
+    'ontwerp: mag niet gebouwd worden.',
   V51B:
     'HET GEDATEERDE V51B-CORPUS. Bevroren voor M-1, toen de v2-route nog op de GEPOORTE meetset van ' +
     '22-08-2026 liep: ver-veldvloer 396,7 Hz uit de 2,5 ms-gate op woofers en mid, W-M-venster 397-549 Hz, ' +
@@ -511,17 +532,21 @@ const exceptionReason = (key: string, atHz: number | null): string => {
 };
 
 let leaves = 0;
-for (const key of keys) {
+/**
+ * The class-B block of one frozen netlist — the live corpus's blocks, and
+ * (since A5e.3-veld) the block of a DATED netlist that never lived: a dated
+ * corpus normally carries the live block over when it is frozen, but the
+ * registered arm `A5E3ARM_KAND_1` was never a live candidate, so its block
+ * is computed here on the same seventeen metrics and the same report path.
+ * One builder, two callers (V21).
+ */
+const classBBlock = (key: string, toelichting: string): Record<string, unknown> => {
   const rep = report(key);
   const pt = rep.system.phaseTracking;
-  const block: Record<string, unknown> = {
+  return {
     klasse: 'B',
     afhankelijkheid: 'meting+netlist',
-    klasse_toelichting:
-      `Metrieken op de VASTE netlist manifest_en_geometrie.netlists.${key}, een BESTAND in ` +
-      'test-fixtures/casus1/. Het netwerk komt uit een v2-run (zie manifest_en_geometrie.' +
-      'v2_herkomst), maar de referentie hangt aan het bestand en niet aan die run — precies ' +
-      'zoals de drie v1-kandidaten. Daarom klasse B en geen klasse C.',
+    klasse_toelichting: toelichting,
     minZ: r2(rep.metrics.epdr?.minZOhm),
     minEPDR: r2(rep.metrics.epdr?.minOhm),
     dissipatie_pct: r0((rep.metrics.dissipation?.totalFraction ?? NaN) * 100),
@@ -571,9 +596,37 @@ for (const key of keys) {
       pt.find((p) => p.lower === 'mid')?.control.overlapWindow.meanAbsDeg ?? null,
     ),
   };
+};
+for (const key of keys) {
+  const block = classBBlock(
+    key,
+    `Metrieken op de VASTE netlist manifest_en_geometrie.netlists.${key}, een BESTAND in ` +
+      'test-fixtures/casus1/. Het netwerk komt uit een v2-run (zie manifest_en_geometrie.' +
+      'v2_herkomst), maar de referentie hangt aan het bestand en niet aan die run — precies ' +
+      'zoals de drie v1-kandidaten. Daarom klasse B en geen klasse C.',
+  );
   leaves += Object.keys(block).length - 3; // klasse, afhankelijkheid, toelichting are bookkeeping
   (raw.kandidaten as Record<string, unknown>)[key] = block;
-
+}
+/* A5e.3-veld — the dated netlists WITHOUT a block: written once, on the same
+ * path, and never overwritten afterwards (a dated block is evidence). */
+for (const key of datedKeys) {
+  if ((raw.kandidaten as Record<string, unknown>)[key] !== undefined) continue;
+  const prefix = key.replace(/_KAND_\d+$/, '');
+  const corpusBlock = Object.entries(raw.manifest_en_geometrie).find(
+    ([, v]) => v && typeof v === 'object' && Array.isArray((v as { bestanden?: unknown }).bestanden) &&
+      ((v as { bestanden: { naam: string }[] }).bestanden).some((b) => b.naam === key),
+  )?.[0];
+  (raw.kandidaten as Record<string, unknown>)[key] = classBBlock(
+    key,
+    `HET GEDATEERDE ${prefix}-CORPUS. Metrieken op de VASTE netlist manifest_en_geometrie.netlists.${key}, ` +
+      'een BESTAND in test-fixtures/casus1/, geregistreerd zonder ooit een levende kandidaat te zijn geweest ' +
+      '(scripts/register-a5e3-arm.ts) en daarom hier op hetzelfde pad als het levende corpus geschreven. De ' +
+      'referentie hangt aan het bestand en niet aan de run die het opleverde — daarom klasse B en geen klasse C. ' +
+      `Waaróm dit corpus bewaard is staat in manifest_en_geometrie.${corpusBlock ?? '<corpusblok>'}.reden. ` +
+      'Meetobject, GEEN ontwerp: mag niet gebouwd worden.',
+  );
+  console.log(`wrote the class-B block of the dated netlist ${key} (it never lived)`);
 }
 
 /* The floor walk, over EVERY netlist the manifest names — see the note above. */
@@ -620,22 +673,42 @@ const barrierGrids = (() => {
     ),
   );
   if (!ref) return null;
+  /* A5e.3-veld — WAAR het minimum ligt, naast hoe laag het is. De twee rasters
+   * delen niet dezelfde UITGESTREKTHEID: de sweep begint waar de impedantie
+   * gemeten is (10 Hz), het veiligheidsraster waar de responsen geldig zijn
+   * (20,5 Hz op de gemergede set). Een minimum ónder de barrièrebodem is voor
+   * de barrière onzichtbaar, en dat is een andere bevinding dan een
+   * resolutieverschil — de guard houdt beide uit elkaar. */
+  const barrierFloorHz = gridded.safety.freqs[0];
   const rows = Object.keys(netlists).map((key) => {
     const netlist = casus1Filter(key, manifest, files, golden).netlist;
     const onSweep = systemMinImpedanceOhm(netlist, ref.grid, ref.driverZ);
     const onSafety = systemMinImpedanceOhm(netlist, gridded.safety.freqs, gridded.safety.z);
+    const sweepAt = (() => {
+      try {
+        const m = minImpedanceAt(solveNetwork(netlist, ref.grid, ref.driverZ).inputZ);
+        return m ? ref.grid[m.index] : null;
+      } catch {
+        return null;
+      }
+    })();
     return {
       netlist: key,
       poortraster_ohm: r4(onSweep),
+      poortraster_min_bij_hz: sweepAt === null ? null : Number(sweepAt.toFixed(2)),
       barriereraster_ohm: r4(onSafety),
+      binnen_barriere_uitgestrektheid: sweepAt === null ? null : sweepAt >= barrierFloorHz,
       verschil_ohm: onSweep === null || onSafety === null ? null : r4(Math.abs(onSweep - onSafety)),
       zelfde_oordeel:
         meetsAmpFloor(onSweep, statedFloorOhm) === meetsAmpFloor(onSafety, statedFloorOhm),
     };
   });
   const live = rows.filter((r) => LIVE_V2.test(r.netlist) || ['HUIDIG', 'KAND_A', 'KAND_B'].includes(r.netlist));
-  const worstLive = live.reduce((a, b) => ((b.verschil_ohm ?? 0) > (a.verschil_ohm ?? 0) ? b : a), live[0]);
-  const worstAll = rows.reduce((a, b) => ((b.verschil_ohm ?? 0) > (a.verschil_ohm ?? 0) ? b : a), rows[0]);
+  const inside = (r: (typeof rows)[number]) => r.binnen_barriere_uitgestrektheid !== false;
+  const worstLive = live.filter(inside).reduce((a, b) => ((b.verschil_ohm ?? 0) > (a.verschil_ohm ?? 0) ? b : a), live.filter(inside)[0]);
+  const worstAll = rows.filter(inside).reduce((a, b) => ((b.verschil_ohm ?? 0) > (a.verschil_ohm ?? 0) ? b : a), rows.filter(inside)[0]);
+  /* De netlists waarvan het sweep-minimum ÓNDER de barrièrebodem ligt: boekhouding, geen vrijstelling. */
+  const outside = rows.filter((r) => r.binnen_barriere_uitgestrektheid === false);
   return {
     _:
       'DOCUMENTATIE (V33). De barrièreterm mikt op het VEILIGHEIDSRASTER van de tuner, de poort ' +
@@ -653,8 +726,23 @@ const barrierGrids = (() => {
       tot_hz: Number(ref.grid[ref.grid.length - 1].toFixed(0)),
     },
     vloerspeling_ohm: r4(ampFloorSlackOhm(statedFloorOhm)),
+    barrierebodem_hz: Number(barrierFloorHz.toFixed(2)),
     grootste_verschil_levend: worstLive ?? null,
     grootste_verschil_hele_casusboek: worstAll ?? null,
+    grootste_verschil_regel:
+      'gemeten over de netlists waarvan het sweep-minimum BINNEN de uitgestrektheid van het barrièreraster ligt; ' +
+      'een minimum eronder is geen resolutieverschil maar een blinde vlek, en staat apart in ' +
+      'minimum_buiten_barriere_uitgestrektheid (A5e.3-veld).',
+    minimum_buiten_barriere_uitgestrektheid: outside,
+    minimum_buiten_barriere_regel:
+      'A5e.3-veld: op de gemergede set begint het veiligheidsraster van de barrière op de geldigheidsvloer ' +
+      'van de responsen (20,5 Hz) en de sweep waarop M-B/|Z| oordeelt op 10 Hz. Een netlist waarvan het ' +
+      'systeemminimum daartussen ligt wordt door de poort geoordeeld waar de barrière niet kijkt. Gemeten ' +
+      'aanleiding: KAND_V2_2 (229,1 · 1994,6 -> 229,1 · 1727), minimum 2,55 Ohm op 10,07 Hz in de woofertak - een ' +
+      'shunt L+R naar massa (L5+R7), het overblijfsel van een gedempte val waarvan de audit de C verwijderde - ' +
+      'terwijl het veiligheidsraster 2,85 Ohm op 25,8 Hz leest. De poort liet hem door binnen de tolerantie ' +
+      '(2,5499 >= 2,548). frozenNetlistGates.test.ts eist dat elke rij hier ook in de guard geregistreerd ' +
+      'staat en dat beide rasters hetzelfde OORDEEL vellen; de uitgestrektheid van de barrière is een open punt.',
     oordeel_wijkt_af_op: rows.filter((r) => !r.zelfde_oordeel).map((r) => r.netlist),
     regel:
       'Elke LEVENDE netlist leest op beide rasters binnen de vloerspeling, en op ELKE bevroren ' +
@@ -1433,6 +1521,82 @@ const budgetRecord = (() => {
 
 raw.manifest_en_geometrie.v43_budget_bevinding = budgetRecord;
 
+/* ---- A5e.3-veld: WAT ELKE SPOEL DRAAGT, TEGEN HET GESTELDE MODEL ---------
+ *
+ * Afgeleid over het LEVENDE corpus, de geregistreerde arm en de drie
+ * referentiefilters, en `frozenNetlistGates.test.ts` legt het naast een verse
+ * meting. Per netlist: het totaal aan gedragen DCR, per spoel de weg, L, de
+ * gedragen `DCR`-param, de fit van de gestelde familie en of één onderdeel de
+ * waarde dekt — en of het netwerk "als gemodelleerd" is: élke spoel draagt
+ * precies de fit-DCR van haar geschreven inductie (de tuner schrijft hem
+ * terug, V32-vorm) en geen enkele weg is zonder familie. De referentiefilters
+ * staan ernaast om te laten zien wat zij dragen: HUIDIG zijn eigen catalogus-
+ * DCR (0,28–0,52 Ω, een andere familie), de gedateerde v2-corpora niets. */
+const coilRecord = (() => {
+  const model = CASUS1_COIL_DCR.model;
+  const famBlock = (raw.manifest_en_geometrie as { driverkaart?: { spoelfamilie?: { gesteld_door?: unknown } } }).driverkaart?.spoelfamilie;
+  const live = Object.keys(netlists).filter((k) => /^KAND_V2_\d+$/.test(k));
+  const dated = datedKeys.filter((k) => /^A5E3ARM_/.test(k));
+  const refs = ['HUIDIG', 'KAND_A', 'KAND_B'];
+  const rowOf = (key: string) => {
+    const parts = deserializeFilter(readFileSync(join(CASUS1_DIR, netlists[key]), 'utf-8')).parts;
+    const inv = coilDcrInventory(parts, model);
+    const asModelled =
+      model !== null &&
+      inv.waysWithoutFamily.length === 0 &&
+      inv.coils.length > 0 &&
+      inv.coils.every((c) => c.fitOhm !== null && Math.abs(c.carriedOhm - roundDcr(c.fitOhm)) <= 1e-9);
+    return {
+      netlist: key,
+      totaal_DCR_ohm: r4(inv.carriedTotalOhm),
+      als_gemodelleerd: asModelled,
+      draagt_DCR: inv.carriedTotalOhm > 0,
+      wegen_zonder_familie: inv.waysWithoutFamily,
+      buiten_bereik: inv.outOfRange,
+      spoelen: inv.coils.map((c) => ({
+        id: c.id,
+        weg: c.ways.join('+'),
+        mH: r4(c.henry * 1e3),
+        DCR_ohm: r4(c.carriedOhm),
+        fit_ohm: r4(c.fitOhm),
+        binnen_bereik: c.inRange,
+        gesnapt: c.snapped,
+      })),
+    };
+  };
+  const liveRows = live.map(rowOf);
+  const datedRows = dated.map(rowOf);
+  const refRows = refs.map(rowOf);
+  return {
+    _:
+      'A5e.3-veld (04-09-2026) — WAT ELKE SPOEL DRAAGT tegen het GESTELDE DCR-model: per spoel de weg, L, de ' +
+      'gedragen DCR-param, de fit van de familie en of een enkel onderdeel de waarde dekt; per netlist of zij ' +
+      '"als gemodelleerd" is (elke spoel draagt exact de fit-DCR van haar geschreven inductie en geen weg is ' +
+      'zonder familie). Afgeleid over het levende corpus, de geregistreerde arm en de referentiefilters; ' +
+      'frozenNetlistGates.test.ts herrekent het.',
+    schatter: COIL_DCR_FIT_VERSION,
+    gesteld: CASUS1_COIL_DCR.stated,
+    gesteld_door: typeof famBlock?.gesteld_door === 'string' ? famBlock.gesteld_door : null,
+    families_per_weg: { ...CASUS1_COIL_FAMILY_BY_DRIVER },
+    model: model ? describeCoilDcrModel(model) : null,
+    fits: model
+      ? Object.fromEntries(
+          Object.entries(model.fits).map(([id, f]) => [
+            id,
+            { k: r4(f.k), ohm_bij_1mH: r4(f.ohmAt1mH), bereik_mH: [r4(f.rangeH[0] * 1e3), r4(f.rangeH[1] * 1e3)], n: f.n, rms_pct: r2(f.rmsPct), max_pct: r2(f.maxPct) },
+          ]),
+        )
+      : null,
+    levend_corpus_netlists: liveRows.length,
+    levend_corpus_als_gemodelleerd: liveRows.filter((r) => r.als_gemodelleerd).length,
+    levend_corpus_totaal_DCR_ohm: liveRows.map((r) => r.totaal_DCR_ohm),
+    per_netlist: [...liveRows, ...datedRows],
+    referentiefilters: refRows,
+  };
+})();
+raw.manifest_en_geometrie.a5e3_spoel_dcr = coilRecord;
+void casus1CoilFamilyByDriver;
+
 raw.manifest_en_geometrie.v2_herkomst = {
   _:
     'DOCUMENTATIE, geen acceptatiewaarde. Waar de KAND-V2-netlists vandaan komen, zodat een ' +
@@ -1484,6 +1648,13 @@ const datedSummary = [...datedByCorpus.entries()]
   .sort()
   .map(([prefix, ks]) => `${ks.length}x \`${prefix}_KAND_*\``)
   .join(', ');
+telling.sinds_A5e3veld =
+  'A5e.3-veld (04-09-2026): het KAND-V2-corpus is opnieuw opgewekt met de GESTELDE spoelfamilies (woofer ' +
+  '1,4 mm, mid en tweeter 1,0 mm lucht; coilDcrModel op elke run), orde 4 gesteld op beide overnames, de ' +
+  'W-M-vloer op de aandrijfvloer van de mid (A5d.3(ii) omgekeerd met het excursieplafond van V49) en een ' +
+  'positiebudget van 24 (20 geleverd). M-1 leverde nul netlists en liet dus niets te bevriezen; het geleverde ' +
+  'netwerk van de arm m1+dcr staat als gedateerd blok `A5E3ARM_KAND_1` (klasse B, hier geschreven). ' +
+  `Gedateerde corpora nu: ${datedSummary}. Nog steeds NUL klasse C.`;
 telling.sinds_V37 =
   'V37 (28-08-2026): het KAND-V2-corpus is opnieuw opgewekt nadat de DISSIPATIETERM door de ' +
   'opgeloste R_e ging delen in plaats van door de piekhoogte. De term heet (R_source/R_e)^2 en ' +

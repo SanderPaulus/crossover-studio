@@ -94,10 +94,11 @@ import {
   CASUS1_V2_SEED,
   CASUS1_V2_SETTINGS,
   CASUS1_LOWEST_WAY_LEVEL_WORK,
+  CASUS1_FIELD_ALIGNMENTS,
   casus1ChainInput,
-  casus1Field,
   casus1V2Facts,
 } from '../src/lib/engine2/casus1V2.fixture.ts';
+import { buildCandidateField } from '../src/lib/engine2/predesign/candidateField.ts';
 
 /* ------------------------------------------------------------------ *
  * Wat V51b was — gedateerde runparameters, met bron
@@ -275,12 +276,28 @@ function setup(set: Casus1MeasurementSet, grid: readonly number[]) {
     },
   });
   const facts = casus1V2Facts(report, manifest, files);
-  const field = casus1Field(report);
+  /* Het M-1-veld, expliciet (zie `m1Candidate`): de payload leest er de venstervloeren van. */
+  const field = buildCandidateField({
+    windowInputs: report.predesign.windowInputs.map((wi) => ({ ...wi, upperDriveCeilingDb: null })),
+    perPair: report.predesign.windowInputs.map((_, i) => (i === 0 ? {} : { statedOrder: 4 })),
+    alignments: CASUS1_FIELD_ALIGNMENTS,
+  });
   const gridded = casus1ChainInput(manifest, files, golden, grid);
   return { golden, manifest, files, report, facts, field, gridded };
 }
 
-/** De kandidaat uit het M-1-veld (gemergde set) — positie, kooi, orde. */
+/**
+ * De kandidaat uit het M-1-VELD (gemergde set) — positie, kooi, orde.
+ *
+ * A5e.3-veld (04-09-2026): `casus1Field` bouwt sindsdien het A5e.3-veld (orde
+ * 4 gesteld op beide assen, de aandrijfvloer op de mid, budget 24), dus het
+ * M-1-veld waarop deze armen zijn gedraaid wordt hier EXPLICIET herbouwd —
+ * dezelfde vensterinvoer van het rapport, de aandrijfvloer weggelaten
+ * (`upperDriveCeilingDb: null`, de stand van M-1), de W-M-as onthoudt zich op
+ * de orde (LR2 én LR4), de M-T-as orde 4 gesteld, geen budget. Zo blijven de
+ * armbestanden in `test-fixtures/casus1_m1_diagnose/` reproduceerbaar en zegt
+ * `M1_DRY=1` nog steeds wat er gedraaid is.
+ */
 function m1Candidate(label: string): GeneratedCandidate {
   const { field } = setup('merged', CASUS1_V2_GRID);
   const c = field.field.candidates.find((x) => x.label === label);

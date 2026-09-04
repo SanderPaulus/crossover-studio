@@ -5750,6 +5750,298 @@ model vlagt buiten bereik maar begrenst niet, met opzet (stapels). (4) De gedemp
 is met DCR op de shuntspoel misschien overbodig — de arm zegt het. (5) 549,7·2304 haalt de vloer ook met koper
 niet (2,34 Ω, woofer tussen de reflexpieken): dat blijft de pad-vraag van de diagnose, punt (3) daar.
 
+### A5e.3-veld — de spoelfamilies gesteld, het veld op het echte doel: de aandrijfvloer, LR4 alleen, budget 24 (04-09-2026, **BREAKING, alleen v2-runs**)
+
+**AANLEIDING.** A5e.3 bouwde het DCR-model en liet de families een VOORSTEL; de arm `m1+dcr` leverde op de
+kandidaat die M-1 verliesvrij op 1,23 Ω weigerde, met 2,62 Ω, zonder R of pad op de woofer. Sander stelt de
+families en de reden: **seriecomponenten van hoge kwaliteit (de wooferspoel; de seriecondensatoren van mid en
+tweeter, buiten dit model), parallelle componenten mogen eenvoudig zijn — en in de HP-ladders van mid en tweeter
+zijn de spoelen de SHUNTS: hun koper is precies de demping die de ladderresonantie en de opslingering nodig hebben
+(1,32 → 2,62 Ω zonder R). Dikker draad in de shunts zou die demping weghalen.** Wooferweg lucht 1,4 mm, mid en
+tweeter lucht 1,0 mm (`driverkaart.spoelfamilie.gesteld_door: "Sander Somers, 04-09-2026"`,
+`gesteld_motivering`). Geen gedempte-shunt-element: met deze families is hij op de arm overbodig gebleken; de
+aanbeveling van de M-1-diagnose blijft genoteerd als optie voor wie lage-DCR-shunts kiest
+(`gedempte_shunt_pool`). Daarna het veld opnieuw, op het echte doel, met drie gestelde veranderingen ten opzichte
+van M-1 en verder niets: LR4 alleen (LR2 in M-1 weerlegd: dezelfde weigeringen, 1–2 dB slechtere RMS), het
+W-M-venster onderaan begrensd op de M-C-excursiegrens van de mid in plaats van 1,4·f_s, en een positiebudget van
+24. Plateau 0, `lowestWayLevelWork: 'none'`, gemergede meetset, volle oordeelband vanaf f_p, vloer 2,6, M-C −20 op
+de tweeter en afgeleid op de mid, weerstandspoort 10 W thermisch: ongewijzigd.
+
+**STAP 1 — DE AANDRIJFVLOER, EN WAAROM 124 Hz NOOIT EEN ZINNIGE POSITIE WAS.** Het W-M-venster stond sinds M-1 op
+k·f_s van de mid (1,4 × 88,8 = 124 Hz bij orde 4), een conventie zonder gestelde invoer eronder. Het M-1-veld zei
+wat die conventie waard was: op de positie 124,3 Hz werden vier van de vijf kandidaten op M-C (mid) geweigerd
+(−2,5 tot −10,2 dB tegen een afgeleide grens van ~−13), en de mid viel over het hele veld negen keer op LR4 en
+dertien keer op LR2, alle dertien onder 300 Hz. De reden is arithmetiek en geen tuner: een LR4 op 124 Hz verzwakt
+de aandrijving van de mid op haar eigen resonantie asymptotisch 24 · log2(124/88,8) = **11,6 dB**, tegen een
+excursieplafond van **17,7 dB** re ingang (V49: X_max 3 mm, marge, Bl, M_ms, de NAD-piek van 50,6 V). Een filter
+van orde 4 haalt dat pas 0,74 octaaf boven f_s. De orde-afleiding KENT die regel — A5d.3(ii): de verzwakking die
+M-C op de resonantie van de bovenliggende driver vraagt, gedeeld door de octaafafstand tot het kruispunt,
+antwoordt met een ORDE — en bij een gegeven orde antwoordt dezelfde regel met een FREQUENTIE:
+
+    f_vloer = f_s · 2^( |plafond| / (DB_PER_OCTAVE_PER_ORDER · orde) )
+
+Dat is de AANDRIJFVLOER (`xoWindow.ts`, rule `'drive'`; `XoWindowInput.upperDriveCeilingDb`, door `report.ts`
+gevuld uit `metrics.driveExcursion` — het plafond dat de M-C-poort zelf oordeelt). Vier keuzes erin, elk gesteld.
+(a) De INVOER is het EXCURSIEPLAFOND van V49 en niet het gestelde M-C-getal: het plafond is een eigenschap van
+de DRIVER (driverkaart, versterkerpiek, gemeten sweep — klasse A), het gestelde getal is passband-relatief en een
+projectconventie, en de orde-afleiding leest dat getal al als eis op het referentiekruispunt. (b) De doorlaatband
+op de INGANG (0 dB re ingang): de niet-verzwakte weg, de strengste eerlijke lezing — een pad op de mid maakt de
+eis makkelijker en een vloer die een pad aanneemt neemt een ontwerp aan. (c) k·f_s blijft ernaast staan als de
+conventie die het is, en de HOOGSTE vloer bindt, zoals elke vloer hier gecombineerd wordt. (d) Absent = geen
+vloer (P4): een casus zonder excursie-invoer leest wat zij las, en geen synthetische venstertest is bewogen.
+Gemeten op casus 1 (`kruisvensters.parameters.aandrijfvloer`): mid −17,67 dB re ingang → 0,74 octaaf bij orde 4 →
+**W-M 148–550 Hz** (k·f_s 124 als brug `_k_fs_tot_A5e3veld`; bij orde 2 zou het 246 Hz zijn tegen 178); tweeter
+−8,58 dB → 0,36 octaaf → 1184 Hz, ÓNDER k·f_s = 1294, dus **de M-T-as beweegt niet** en de conventie bindt daar
+nog. Een bijvangst die een lezer verteld moet worden: het GESTELDE tweetergetal (−20 dB) zou, op dezelfde regel,
+de M-T-vloer op 924 · 2^(20/24) ≈ **1650 Hz** leggen — precies waar M-1 de tweeter op 1294 en 1495 Hz 46 van 46
+keer weigerde. Dat is met opzet niet gedaan (keuze (a), en de opdracht liet de M-T-as staan); het staat als
+openstaand punt.
+
+**STAP 2 — HET VELD.** Orde 4 GESTELD op beide overnames (`CASUS1_FIELD_STATED_ORDER`; de bibliotheek blijft
+LR-only), de aandrijfvloer op W-M, en een positiebudget van 24 (`CASUS1_FIELD_CHAIN_BUDGET`, een runparameter
+naast de seed). De afleiding biedt 12 × 5 = 60 (148–550 Hz is 1,89 octaaf op de 1/6-octaaf-gladding, M-T 5 zoals
+altijd); het budget dunt POSITIES op de breedste as één voor één en nooit orden (`candidates.ts`, ongewijzigd):
+5 × 5 = 25 zit er nog boven, dus **4 × 5 = 20 geleverd** — W-M op **147,9 / 229,1 / 354,9 / 549,7 Hz** (kooien
+148–184, 184–285, 285–442, 442–550) × M-T 1294 / 1495 / 1727 / 1995 / 2304. `casus1Field.test.ts` pint het.
+**Bijvangst op de klasse-A-referenties:** het meetkundig midden van het geopende W-M-venster verschuift van 261
+naar 285 Hz, dus de band waarover de woofer voor A5d.4 gemiddeld wordt (20,5 Hz tot dat midden) groeit en
+`verankerde_gaps_dB.woofer_tov_mid` gaat van 0,896 naar **0,85 dB** (tweeter 3,544 → 3,516) — X op de laagste weg
+is nu 0,85 dB; de bruggen op de gepoorte set staan.
+
+**STAP 3 — DE ARM ALS GEDATEERD BLOK, EN DE M-1-HERKOMST.** M-1 leverde niets, dus `freeze-live-corpus.ts` had
+niets te bevriezen. Twee dingen zijn daarom anders bewaard. (1) Het geleverde netwerk van `m1+dcr` staat als
+gedateerd corpus van één netlist — `A5E3ARM-KAND-1.adsfilter.json`, `manifest_en_geometrie.a5e3_arm_corpus`,
+klasse-B-blok `kandidaten.A5E3ARM_KAND_1` (`scripts/register-a5e3-arm.ts`; de recorder schrijft sinds deze sessie
+ook het blok van een gedateerde netlist die nooit geleefd heeft, `DATED_KAND` is verruimd tot
+`^[A-Z][A-Z0-9]*_KAND_\d+$`). (2) De boekhouding van M-1 (115 uitkomsten, geen bestanden) staat als
+`casus1_m1_herkomst.json` (corpus-id `m1`, `DATED_HERKOMST` in `casus1Corpora.fixture.ts`), en de M-1-claim van
+`corpusPairing` is erop herankerd — dezelfde herankering die V43 en V48 deden, één laag verder: een corpus van
+uitkomsten zonder bestanden.
+
+**STAP 4 — DE REGENERATIE: 20 kandidaten, `V2_JOBS=8`, 7795 s (2 u 10), ACHT geleverd — ZEVEN na de reparatie van stap 5.** De eerste golf van acht
+was na 20 min leesbaar (de V51b-les): elke spoel droeg exact de fit-DCR van haar geschreven inductie, twee spoelen
+van 26–27 mH op één zaad lagen buiten het enkel-onderdeel-bereik en werden gevlagd en doorgezet, de vloer werd
+op koper alleen gehaald (woofer 1,17–1,27 Ω, Y = het geleverde totaal), en de weigering was de tweeter op 1294 en
+1495 Hz — geen gebrek, dus geen herstart. De uitkomst per positie (`kandidaat_uitkomst`):
+
+| W-M \ M-T | 1294 | 1495 | 1727 | 1995 | 2304 |
+| --- | --- | --- | --- | --- | --- |
+| 147,9 | tweeter −12,9 | tweeter −12,5 | vloer 2,52 (Y —) | tweeter −19,7 | vloer 2,51 (Y —) |
+| 229,1 | tweeter −11,7 | tweeter −17,0 | **GELEVERD** | GEWEIGERD op topologie (R10, zie stap 5) | **GELEVERD** |
+| 354,9 | mid −8,8 + tweeter −12,8 | **GELEVERD** | vloer 2,48 (Y —) | **GELEVERD** | topologie (X = 0,85, rimpel gemist) |
+| 549,7 | tweeter −13,2 | **GELEVERD** (zaad na reparatiepas) | **GELEVERD** | **GELEVERD** | vloer 2,54 (Y —) |
+
+Drie dingen vallen op vóór er een tabel bij komt. (1) **De laagste W-M-positie is compleet weg** — drie keer de
+tweeter, twee keer de vloer met het minimum in een andere weg dan de woofer (Y onoplosbaar): 148 Hz is de
+aandrijfvloer van de mid, maar een LR4 op 148 Hz laat de mid tot ver onder haar doorlaatband meelopen en de
+tweeter-eis (−20) wordt er op vier van vijf M-T-posities gemist, 147,9 · 1994,6 met 0,3 dB. (2) **Elke
+1294-positie is geweigerd op de tweeter** (−11,7 tot −13,2 dB), zoals in M-1 (46 van 46 op 1294/1495): dat is het
+gestelde tweetergetal en niet het veld, en de aandrijfvloer op de M-T-as zou het zeggen (stap 1). (3) **De vloer
+wordt zonder R of pad op de woofer gehaald op negen van de twintig tunes** — precies wat M-1 op 0 van 115 haalde
+mét de tweeter — en waar zij gemist wordt (2,48–2,54) zit het minimum in de mid- of tweetertak of in de W-M-overlap,
+onoplosbaar met 20 Ω op de woofer. Het koper is de demping die de M-1-diagnose zocht: van de 84 "onoplosbare"
+M-1-kandidaten naar vier op twintig. `354,9 · 2304` is de ene weigering op de V51-regel (X = 0,85 dB, rimpel
+gemist zonder pad).
+
+**STAP 5 — DRIE BEVINDINGEN UIT DE GUARDS, EN WAT ERMEE GEDAAN IS.** De snelle laag was groen op het nieuwe
+corpus behalve drie claims in `frozenNetlistGates`, en alle drie zijn echt.
+
+*(A) Een geleverd pad onder `'none'` — een gat in de handhaving, gerepareerd.* `229,1 · 1994,6` werd GELEVERD met
+`R10` 3,51 Ω van de wooferbus naar massa: `levelWork.ts` leest het als shunt-pad, `levelWorkVerdict` zei
+`ok: false`, de worker schreef "DEFECT" in zijn notities — en leverde, want de V51b-weigering (a) vuurde alleen
+onder de gecapte regel (`maxSeriesOhm !== null`) en de V51-weigering alleen als het rimpeldoel gemist wordt
+(2,30 dB: gehaald). Het verbod vertrouwde erop dat de synthese geen pad legt en de tuner geen weerstand maakt;
+allebei waar, en toch stond er een: **R10 is een wees van de onderdelenaudit** — de R van een gedempte val
+(L+C+R) waarvan de audit L en C verwijderde, alleen achtergebleven naar massa, electrisch een L-pad-been (2,0 W
+bij 10 W, 20 W bij 100 W). Een verbod dat alleen vlagt is geen verbod (V31): sinds deze sessie vuurt (a) ook
+onder `'none'` (`worker.ts`, één voorwaarde; de notitie noemt de wees). De reparatie raakt aantoonbaar één
+kandidaat van de twintig (de zeven andere geleverde dragen `binnen_eis: true`, de twaalf geweigerde waren al
+geweigerd vóór (a) leest); die ene is opnieuw gedraaid (`V2_ONLY=9`) en de shards zijn samengevoegd
+(`V2_MERGE=1`, nieuw: A5e.4 zegt dat de negentien andere byte-identiek zouden terugkomen, en zij zíjn de
+run). Het corpus is daarmee ZEVEN netlists.
+
+*(B) Het minimum onder de barrièrebodem — een blinde vlek, geboekt.* `229,1 · 1727` (KAND_V2_2) heeft zijn
+systeemminimum op **10,07 Hz, de bodem van de impedantiesweep**: 2,55 Ω, waar het veiligheidsraster van de
+barrière (vanaf 20,5 Hz, de geldigheidsvloer van de responsen) 2,85 Ω op 25,8 Hz leest — 0,30 Ω uiteen tegen
+een speling van 0,052, en de V33-guard viel. Geen resolutieverschil maar een UITGESTREKTHEIDSverschil: de sweep
+begint waar de impedantie gemeten is, het veiligheidsraster waar de responsen geldig zijn, en daartussen kijkt
+de barrière niet. De oorzaak is dezelfde wees als bij (A): `L5+R7` (5,39 mH + 1,10 Ω naar massa, `decompose`:
+shunt-shelf) is een gedempte val waarvan de audit de C verwijderde; bij 10 Hz is de spoel 0,34 Ω reactantie en
+de tak trekt de woofer van 4,62 Ω kaal naar 2,54. De poort liet hem door binnen de tolerantie (2,5499 ≥ 2,548).
+Geen regel is versoepeld: de guard maakt sindsdien onderscheid tussen resolutie (de gap-claim, over de netlists
+waarvan het sweep-minimum BINNEN de barrière-uitgestrektheid ligt) en uitgestrektheid (elke netlist eronder
+staat bij naam in `v33_barriere_raster.minimum_buiten_barriere_uitgestrektheid`, geschreven door de recorder met
+de frequentie erbij, en beide rasters moeten hetzelfde oordeel vellen). Boekhouding, geen vrijstelling; de
+uitgestrektheid van de barrière en de wezen van de audit staan als open punten.
+
+*(C) De V38-fix-rangclaim was een corpusgrootte.* "Het slechtst beoordeelde ontwerp landt op de zoekmaat in de
+betere helft" schoof van rang 75 naar 77 op 159 doordat er acht netlists bij kwamen, zonder dat de zoekmaat
+bewoog. Geankerd op de gedateerde verzameling (alles wat niet levend is en niet de arm) — de V47/V48-les.
+
+**STAP 6 — DE TABEL PER KANDIDAAT** (`scripts/measure-a5e3-field.ts`, één meetbank voor élke rij; de volle
+vector, DCR per spoel en het dichtstbijzijnde V51b-kruispunt staan in `casus1_a5e3_veld_tabel.json`):
+
+| corpus | kandidaat | kruispunten Hz | min \|Z\| Ω @ Hz, tak | RMS volle band / ±venster | RMS vanaf 397 / ±venster | M-K W-M / M-T ° | M-C per weg dB (grens) | opslingering / lift dB | Q_es× | dissipatie % | heetste R W bij 10 W (toegestaan) [bij 100 W] | M-L A | EPDR Ω | lobing dip dB | serie-R woofer R + DCR = totaal Ω | DCR totaal Ω (spoelen) |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| A5e.3-veld | 229.1 · 1726.7 | 358 · 1558 | 2.85 @ 25 in woofer ✓ | 0.90 / ±2.03 | 0.68 / ±1.54 | 3.0 / 6.8 | mid -19.7 (-13.6) / tweeter -21.3 (-20.0) | -0.49 / 1.29 | 1.26 | 24 | 1.06 (5.0) [10.6] B·R9 | 20.1 | 1.38 | -1.6 | 0.00 + 1.06 = 1.06 | 11.71 (12) |
+| A5e.3-veld | 229.1 · 2304 | 339 · 2049 | 2.59 @ 311 in woofer ✓ | 0.97 / ±2.09 | 0.66 / ±1.44 | 7.6 / 3.5 | mid -31.7 (-14.3) / tweeter -24.6 (-20.0) | -0.64 / 2.06 | 1.34 | 22 | 1.18 (5.0) [11.8] B·R9 | 19.2 | 1.29 | -2.6 | 0.00 + 1.18 = 1.18 | 13.01 (13) |
+| A5e.3-veld | 354.9 · 1494.8 | 429 · 1594 | 2.60 @ 13989 in tweeter ✓ | 1.20 / ±2.34 | 1.08 / ±2.14 | 5.2 / 12.7 | mid -39.2 (-14.4) / tweeter -20.4 (-20.0) | -0.61 / 1.67 | 1.47 | 10 | 0.43 (5.0) [4.3] C·R9 | 20.4 | 1.32 | -1.8 | 0.00 + 0.95 = 0.95 | 10.69 (11) |
+| A5e.3-veld | 354.9 · 1994.6 | 479 · 1974 | 2.70 @ 53 in woofer ✓ | 1.03 / ±2.50 | 0.85 / ±2.11 | 3.8 / 5.8 | mid -30.3 (-13.9) / tweeter -24.0 (-20.0) | -0.93 / 1.70 | 1.46 | 14 | 1.16 (5.0) [11.6] B·R9 | 18.8 | 1.35 | -2.4 | 0.00 + 0.94 = 0.94 | 5.71 (9) |
+| A5e.3-veld | 549.7 · 1494.8 | 409 · 2303 | 2.81 @ 322 in woofer ✓ | 0.85 / ±2.33 | 0.84 / ±2.02 | 13.4 / 5.8 | tweeter -21.2 (-20.0) | -1.32 / 1.86 | 1.49 | 9 | 0.31 (5.0) [3.1] C·R9 | 15.6 | 1.45 | -3.2 | 0.00 + 1.06 = 1.06 | 10.05 (11) |
+| A5e.3-veld | 549.7 · 1726.7 | 526 · 1942 | 2.66 @ 53 in woofer ✓ | 1.17 / ±2.29 | 1.18 / ±2.15 | 22.0 / 11.3 | mid -27.1 (-14.3) / tweeter -25.0 (-20.0) | -1.90 / 1.65 | 1.37 | 12 | 0.57 (5.0) [5.7] R7 | 19.0 | 1.33 | -2.0 | 0.00 + 0.90 = 0.90 | 9.81 (11) |
+| A5e.3-veld | 549.7 · 1994.6 | 553 · 1785 | 2.60 @ 975 in mid ✓ | 0.97 / ±2.47 | 0.77 / ±1.88 | 5.2 / 4.0 | mid -46.3 (-13.4) / tweeter -24.5 (-20.0) | -1.11 / 1.61 | 1.40 | 24 | 1.93 (5.0) [19.3] B·R9 | 18.7 | 1.31 | -2.0 | 0.00 + 0.88 = 0.88 | 10.10 (12) |
+| A5e.3-arm (M-1-veld) | 429.1 · 1994.6 | 476 · 2248 | 2.62 @ 1159 in mid ✓ | 1.19 / ±2.39 | 1.23 / ±2.23 | 14.7 / 12.4 | mid -37.9 (-13.2) / tweeter -34.7 (-20.0) | -1.73 / 1.70 | 1.38 | 23 | 1.34 (5.0) [13.4] B·R9 | 20.1 | 1.35 | -3.2 | 0.00 + 0.94 = 0.94 | 9.87 (11) |
+| V51b (gepoort, series-r-max 1,0) | 466.5 · 2283.5 | 515 · 2257 | 2.73 @ 136 in woofer ✓ | 2.15 / ±4.12 | 0.68 / ±1.41 | 9.2 / 3.6 | mid -54.9 (-11.9) / tweeter -30.9 (-20.0) | -0.69 / 1.79 | 1.33 | 39 | 2.35 (5.0) [23.5] B·R9 | 19.1 | 1.38 | -3.0 | 1.00 + 0.00 = 1.00 | 0.00 (9) |
+| V51b (gepoort, series-r-max 1,0) | 548.5 · 1719 | 551 · 1858 | 2.87 @ 136 in woofer ✓ | 2.00 / ±4.00 | 0.68 / ±1.62 | 10.2 / 9.2 | mid -35.2 (-12.0) / tweeter -24.0 (-20.0) | -0.49 / 1.74 | 1.32 | 35 | 1.94 (5.0) [19.4] B·R9 | 18.5 | 1.46 | -2.7 | 0.97 + 0.00 = 0.97 | 0.00 (7) |
+| V51b (gepoort, series-r-max 1,0) | 548.5 · 2283.5 | 551 · 2258 | 2.89 @ 136 in woofer ✓ | 2.11 / ±4.08 | 0.73 / ±1.50 | 7.7 / 4.9 | mid -34.7 (-11.8) / tweeter -31.7 (-20.0) | -0.48 / 1.79 | 1.33 | 33 | 1.71 (5.0) [17.1] B·R9 | 18.0 | 1.46 | -3.2 | 1.00 + 0.00 = 1.00 | 0.00 (8) |
+| V51b (gepoort, series-r-max 1,0) | 396.7 · 2283.5 | 428 · 2261 | 2.59 @ 134 in woofer ✓ | 1.81 / ±4.10 | 0.82 / ±2.25 | 19.7 / 3.6 | mid -55.6 (-13.4) / tweeter -28.3 (-20.0) | -0.85 / 1.79 | 1.33 | 48 | 2.34 (5.0) [23.4] B·R9 | 20.2 | 1.32 | -3.1 | 1.00 + 0.00 = 1.00 | 0.00 (13) |
+| V51b (gepoort, series-r-max 1,0) | 396.7 · 1981.2 | 477 · 2362 | 2.59 @ 1069 in mid ✓ | 2.09 / ±4.62 | 1.07 / ±2.46 | 17.7 / 4.5 | mid -43.5 (-13.1) / tweeter -33.7 (-20.0) | -0.76 / 1.60 | 1.29 | 45 | 2.12 (5.0) [21.2] B·R9 | 23.0 | 1.31 | -3.5 | 0.87 + 0.00 = 0.87 | 0.00 (11) |
+| V51b (gepoort, series-r-max 1,0) | 466.5 · 1981.2 | 478 · 1957 | 2.59 @ 256 in woofer ✓ | 1.93 / ±4.27 | 1.91 / ±3.72 | 15.1 / 18.7 | mid -44.6 (-15.6) / tweeter -23.2 (-20.0) | -0.61 / 1.60 | 1.29 | 25 | 1.20 (5.0) [12.0] R5 | 21.0 | 1.31 | -3.2 | 0.87 + 0.00 = 0.87 | 0.00 (10) |
+| HUIDIG (met pad) | HUIDIG | 360 · 2250 | 3.46 @ 218 in woofer ✓ | 1.42 / ±3.66 | 0.58 / ±1.17 | 21.0 / 7.0 | mid -42.5 (-11.8) / tweeter -25.1 (-20.0) | -0.94 / 4.69 | 2.31 | 46 | 2.55 (5.0) [25.5] R8 | 15.4 | 1.73 | -2.9 | 3.30 + 0.46 = 3.76 | 3.78 (10) |
+
+  Gepaard op het dichtstbijzijnde V51b-kruispunt (per rij: V51b → A5e.3-veld, met het verschil; een anekdote per rij, geen corpusdelta):
+
+| A5e.3-veld | dichtstbijzijnde V51b | min \|Z\| Ω | RMS vanaf 397 dB | M-K W-M / M-T ° | M-C tweeter dB | opslingering dB | dissipatie % | heetste R W bij 10 W | lobing dip dB |
+|---|---|---|---|---|---|---|---|---|---|
+| 229.1 · 1726.7 | 396.7 · 1981.2 | 2.59 → 2.85 (+0.26) | 1.07 → 0.68 (-0.39) | 17.67 → 3.00 (-14.67) / 4.48 → 6.80 (+2.32) | -33.67 → -21.29 (+12.39) | -0.76 → -0.49 (+0.27) | 44.58 → 23.81 (-20.77) | 2.12 → 1.06 (-1.06) | -3.51 → -1.57 (+1.94) |
+| 229.1 · 2304 | 396.7 · 2283.5 | 2.59 → 2.59 (-0.00) | 0.82 → 0.66 (-0.16) | 19.73 → 7.59 (-12.14) / 3.62 → 3.52 (-0.10) | -28.28 → -24.55 (+3.73) | -0.85 → -0.64 (+0.21) | 47.66 → 21.56 (-26.10) | 2.34 → 1.18 (-1.16) | -3.05 → -2.60 (+0.45) |
+| 354.9 · 1494.8 | 396.7 · 1981.2 | 2.59 → 2.60 (+0.01) | 1.07 → 1.08 (+0.01) | 17.67 → 5.19 (-12.49) / 4.48 → 12.71 (+8.23) | -33.67 → -20.37 (+13.31) | -0.76 → -0.61 (+0.15) | 44.58 → 9.51 (-35.07) | 2.12 → 0.43 (-1.69) | -3.51 → -1.83 (+1.68) |
+| 354.9 · 1994.6 | 396.7 · 1981.2 | 2.59 → 2.70 (+0.10) | 1.07 → 0.85 (-0.22) | 17.67 → 3.84 (-13.84) / 4.48 → 5.83 (+1.35) | -33.67 → -23.97 (+9.70) | -0.76 → -0.93 (-0.17) | 44.58 → 13.80 (-30.77) | 2.12 → 1.16 (-0.96) | -3.51 → -2.42 (+1.10) |
+| 549.7 · 1494.8 | 548.5 · 1719 | 2.87 → 2.81 (-0.06) | 0.68 → 0.84 (+0.16) | 10.24 → 13.44 (+3.20) / 9.21 → 5.80 (-3.41) | -24.02 → -21.25 (+2.77) | -0.49 → -1.32 (-0.83) | 35.00 → 9.06 (-25.93) | 1.94 → 0.31 (-1.63) | -2.69 → -3.18 (-0.49) |
+| 549.7 · 1726.7 | 548.5 · 1719 | 2.87 → 2.66 (-0.20) | 0.68 → 1.18 (+0.49) | 10.24 → 21.96 (+11.72) / 9.21 → 11.34 (+2.13) | -24.02 → -25.03 (-1.01) | -0.49 → -1.90 (-1.41) | 35.00 → 11.87 (-23.13) | 1.94 → 0.57 (-1.38) | -2.69 → -2.04 (+0.65) |
+| 549.7 · 1994.6 | 548.5 · 2283.5 | 2.89 → 2.60 (-0.29) | 0.73 → 0.77 (+0.04) | 7.65 → 5.23 (-2.42) / 4.86 → 3.97 (-0.89) | -31.69 → -24.47 (+7.22) | -0.48 → -1.11 (-0.63) | 32.94 → 23.63 (-9.31) | 1.71 → 1.93 (+0.22) | -3.18 → -2.00 (+1.18) |
+
+  De DCR per spoel van de zeven levende netlists en de arm (weg, L, gedragen DCR — elke waarde is de fit van de gestelde familie bij de geschreven inductie; `casus1_a5e3_veld_tabel.json` draagt ook de volle netlist per kandidaat):
+
+- A5e.3-veld · 229.1 · 1726.7: L1 (woofer) 3.02 mH → 0.583 Ω; L3 (woofer) 2.17 mH → 0.482 Ω; L5 (woofer) 5.39 mH → 0.816 Ω; B·L2 (mid) 2.38 mH → 0.871 Ω; B·L4 (mid) 15.41 mH → 2.617 Ω; B·L5 (mid) 1.43 mH → 0.644 Ω; B·L7 (mid) 0.50 mH → 0.348 Ω; B·L11 (mid) 7.94 mH → 1.771 Ω; B·L14 (mid) 13.05 mH → 2.373 Ω; C·L4 (tweeter) 0.57 mH → 0.374 Ω; C·L7 (tweeter) 1.68 mH → 0.709 Ω; C·L10 (tweeter) 0.08 mH → 0.119 Ω
+- A5e.3-veld · 229.1 · 2304: L1 (woofer) 3.10 mH → 0.592 Ω; L3 (woofer) 3.10 mH → 0.592 Ω; L5 (woofer) 21.95 mH → 1.845 Ω; L8 (woofer) 17.39 mH → 1.611 Ω; B·L2 (mid) 1.58 mH → 0.684 Ω; B·L4 (mid) 15.07 mH → 2.583 Ω; B·L5 (mid) 0.98 mH → 0.518 Ω; B·L7 (mid) 0.31 mH → 0.264 Ω; B·L11 (mid) 2.00 mH → 0.785 Ω; B·L14 (mid) 15.33 mH → 2.609 Ω; C·L2 (tweeter) 0.33 mH → 0.271 Ω; C·L4 (tweeter) 0.97 mH → 0.512 Ω; C·L9 (tweeter) 0.11 mH → 0.146 Ω
+- A5e.3-veld · 354.9 · 1494.8: L1 (woofer) 2.88 mH → 0.568 Ω; L3 (woofer) 1.43 mH → 0.378 Ω; L5 (woofer) 35.61 mH → 2.443 Ω BUITEN BEREIK; L8 (woofer) 16.74 mH → 1.576 Ω; B·L2 (mid) 1.95 mH → 0.774 Ω; B·L4 (mid) 17.57 mH → 2.827 Ω; B·L5 (mid) 2.11 mH → 0.811 Ω; B·L7 (mid) 0.51 mH → 0.350 Ω; C·L4 (tweeter) 0.79 mH → 0.454 Ω; C·L7 (tweeter) 0.06 mH → 0.101 Ω; C·L10 (tweeter) 0.67 mH → 0.413 Ω
+- A5e.3-veld · 354.9 · 1994.6: L1 (woofer) 2.82 mH → 0.560 Ω; L3 (woofer) 1.43 mH → 0.377 Ω; L5 (woofer) 27.85 mH → 2.118 Ω BUITEN BEREIK; B·L2 (mid) 1.41 mH → 0.641 Ω; B·L5 (mid) 1.32 mH → 0.616 Ω; B·L7 (mid) 0.33 mH → 0.271 Ω; C·L2 (tweeter) 0.36 mH → 0.287 Ω; C·L7 (tweeter) 1.60 mH → 0.689 Ω; C·L10 (tweeter) 0.12 mH → 0.153 Ω
+- A5e.3-veld · 549.7 · 1494.8: L1 (woofer) 2.72 mH → 0.548 Ω; L3 (woofer) 2.45 mH → 0.516 Ω; L5 (woofer) 22.63 mH → 1.878 Ω BUITEN BEREIK; L8 (woofer) 15.12 mH → 1.486 Ω; B·L2 (mid) 3.58 mH → 1.109 Ω; B·L4 (mid) 15.19 mH → 2.595 Ω; B·L5 (mid) 0.71 mH → 0.428 Ω; B·L7 (mid) 0.23 mH → 0.219 Ω; C·L4 (tweeter) 2.55 mH → 0.908 Ω; C·L7 (tweeter) 0.12 mH → 0.146 Ω; C·L10 (tweeter) 0.23 mH → 0.219 Ω
+- A5e.3-veld · 549.7 · 1726.7: L1 (woofer) 2.31 mH → 0.499 Ω; L3 (woofer) 1.60 mH → 0.403 Ω; L5 (woofer) 9.65 mH → 1.145 Ω; B·L2 (mid) 7.58 mH → 1.723 Ω; B·L4 (mid) 9.28 mH → 1.942 Ω; B·L5 (mid) 1.13 mH → 0.561 Ω; B·L7 (mid) 0.28 mH → 0.250 Ω; C·L2 (tweeter) 3.77 mH → 1.142 Ω; C·L4 (tweeter) 7.95 mH → 1.772 Ω; C·L7 (tweeter) 0.11 mH → 0.143 Ω; C·L10 (tweeter) 0.25 mH → 0.233 Ω
+- A5e.3-veld · 549.7 · 1994.6: L1 (woofer) 2.72 mH → 0.548 Ω; L3 (woofer) 1.14 mH → 0.331 Ω; L5 (woofer) 24.01 mH → 1.943 Ω BUITEN BEREIK; B·L2 (mid) 1.15 mH → 0.569 Ω; B·L4 (mid) 6.16 mH → 1.524 Ω; B·L5 (mid) 1.43 mH → 0.646 Ω; B·L7 (mid) 0.52 mH → 0.354 Ω; B·L11 (mid) 12.75 mH → 2.341 Ω; C·L2 (tweeter) 0.45 mH → 0.328 Ω; C·L4 (tweeter) 1.89 mH → 0.761 Ω; C·L7 (tweeter) 0.08 mH → 0.118 Ω; C·L10 (tweeter) 1.41 mH → 0.640 Ω
+- A5e.3-arm (M-1-veld) · 429.1 · 1994.6: L1 (woofer) 2.80 mH → 0.558 Ω; L3 (woofer) 1.45 mH → 0.381 Ω; L5 (woofer) 15.50 mH → 1.507 Ω; B·L2 (mid) 1.33 mH → 0.619 Ω; B·L4 (mid) 16.88 mH → 2.761 Ω; B·L5 (mid) 1.17 mH → 0.575 Ω; B·L7 (mid) 0.23 mH → 0.221 Ω; B·L11 (mid) 12.65 mH → 2.330 Ω; C·L2 (tweeter) 0.77 mH → 0.448 Ω; C·L4 (tweeter) 0.38 mH → 0.296 Ω; C·L12 (tweeter) 0.16 mH → 0.180 Ω
+- A5e.3-veld · 229.1 · 1726.7: G 2.83 V, L1 3.018 mH, C2 203 uF, L3 2.173 mH, L5 5.387 mH, R7 1.097 Ω, C9 78.9 uF, R10 1.199 Ω, D, B·C1 72.62 uF, B·L2 2.378 mH, B·C3 105.9 uF, B·L4 15.41 mH, B·L5 1.426 mH, B·C6 23.79 uF, B·L7 0.5002 mH, B·C8 5.884 uF, B·R9 1.919 Ω, B·L11 7.94 mH, B·C12 1.599 uF, B·R13 27.66 Ω, B·L14 13.05 mH, B·C15 31.46 uF, B·R16 4.035 Ω, B·D, C·C1 8.642 uF, C·C3 14.52 uF, C·L4 0.5674 mH, C·R5 0.4013 Ω, C·R6 49.82 Ω, C·L7 1.679 mH, C·C8 23.33 uF, C·L10 0.08085 mH, C·C11 6.459 uF, C·R12 6.359 Ω, C·D
+- A5e.3-veld · 229.1 · 2304: G 2.83 V, L1 3.096 mH, C2 173.8 uF, L3 3.096 mH, L5 21.95 mH, C6 516 uF, R7 0.9994 Ω, L8 17.39 mH, C9 13.13 uF, R10 2.128 Ω, D, B·C1 78.23 uF, B·L2 1.577 mH, B·C3 110.8 uF, B·L4 15.07 mH, B·L5 0.9839 mH, B·C6 14.2 uF, B·L7 0.3125 mH, B·C8 1.836 uF, B·R9 2.092 Ω, B·C10 17.83 uF, B·L11 1.996 mH, B·C12 1.14 uF, B·R13 11.51 Ω, B·L14 15.33 mH, B·D, C·C1 7.127 uF, C·L2 0.3272 mH, C·C3 17.48 uF, C·L4 0.9662 mH, C·R5 0.2953 Ω, C·R6 46.81 Ω, C·R7 2.523 Ω, C·C8 12.17 uF, C·L9 0.1142 mH, C·C10 61.72 uF, C·R11 4.11 Ω, C·D, C10 91.18 uF
+- A5e.3-veld · 354.9 · 1494.8: G 2.83 V, L1 2.885 mH, C2 151.1 uF, L3 1.432 mH, C4 33.84 uF, L5 35.61 mH, C6 220.7 uF, L8 16.74 mH, R10 28.18 Ω, D, B·C1 52.32 uF, B·L2 1.949 mH, B·C3 28.51 uF, B·L4 17.57 mH, B·L5 2.108 mH, B·C6 22.44 uF, B·L7 0.5051 mH, B·C8 3.578 uF, B·D, C·C1 10.15 uF, C·C3 22.13 uF, C·L4 0.7875 mH, C·R5 0.9993 Ω, C·R6 49.3 Ω, C·L7 0.06121 mH, C·C8 6.8 uF, C·R9 4.257 Ω, C·L10 0.669 mH, C·C11 80.86 uF, C·R12 0.2169 Ω, C·D, C10 75.01 uF
+- A5e.3-veld · 354.9 · 1994.6: G 2.83 V, L1 2.82 mH, C2 132.1 uF, L3 1.427 mH, L5 27.85 mH, C6 279.9 uF, D, B·C1 51.01 uF, B·L2 1.413 mH, B·C3 45.18 uF, B·L5 1.321 mH, B·C6 12.86 uF, B·L7 0.3274 mH, B·R9 2.391 Ω, B·D, C·C1 4.166 uF, C·L2 0.3622 mH, C·C3 16.01 uF, C·L7 1.596 mH, C·L10 0.1242 mH, C·R12 9.654 Ω, C·D
+- A5e.3-veld · 549.7 · 1494.8: G 2.83 V, L1 2.717 mH, C2 166.5 uF, L3 2.449 mH, C4 69.4 uF, L5 22.63 mH, C6 342 uF, R7 1.259 Ω, L8 15.12 mH, R10 48.6 Ω, D, B·C1 98.63 uF, B·L2 3.585 mH, B·C3 101 uF, B·L4 15.19 mH, B·L5 0.7135 mH, B·C6 23.74 uF, B·L7 0.2289 mH, B·C8 7.003 uF, B·D, C·C1 7.824 uF, C·C3 31.4 uF, C·L4 2.553 mH, C·R5 0.1982 Ω, C·R6 49.76 Ω, C·L7 0.1151 mH, C·C8 6.975 uF, C·R9 4.76 Ω, C·L10 0.2279 mH, C·C11 59.01 uF, C·R12 0.2106 Ω, C·D
+- A5e.3-veld · 549.7 · 1726.7: G 2.83 V, L1 2.313 mH, C2 153.5 uF, L3 1.599 mH, C4 43.57 uF, L5 9.649 mH, C6 733 uF, R7 0.9386 Ω, D, B·C1 46.21 uF, B·L2 7.582 mH, B·C3 53.76 uF, B·L4 9.283 mH, B·L5 1.128 mH, B·C6 25.25 uF, B·L7 0.2849 mH, B·C8 6.664 uF, B·D, C·C1 7.318 uF, C·L2 3.769 mH, C·C3 34.2 uF, C·L4 7.949 mH, C·R5 0.6749 Ω, C·R6 50.08 Ω, C·L7 0.1109 mH, C·C8 9.171 uF, C·R9 4.212 Ω, C·L10 0.2543 mH, C·C11 199.1 uF, C·R12 0.1871 Ω, C·D, C10 10.81 uF
+- A5e.3-veld · 549.7 · 1994.6: G 2.83 V, L1 2.716 mH, C2 104.8 uF, L3 1.137 mH, C4 13.91 uF, L5 24.01 mH, C6 327.7 uF, R7 0.2302 Ω, C9 7.796 uF, D, B·C1 57.98 uF, B·L2 1.153 mH, B·C3 50.8 uF, B·L4 6.156 mH, B·L5 1.434 mH, B·C6 12.42 uF, B·L7 0.5163 mH, B·C8 3.02 uF, B·R9 5.586 Ω, B·C10 1.652 uF, B·L11 12.75 mH, B·C12 12.21 uF, B·D, C·C1 5.481 uF, C·L2 0.453 mH, C·C3 32.6 uF, C·L4 1.894 mH, C·R6 47.37 Ω, C·L7 0.08047 mH, C·R9 8.634 Ω, C·L10 1.409 mH, C·C11 15 uF, C·R12 2.679 Ω, C·D, C10 38.68 uF
+- A5e.3-arm (M-1-veld) · 429.1 · 1994.6: G 2.83 V, L1 2.799 mH, C2 139.4 uF, L3 1.45 mH, C4 13.37 uF, L5 15.5 mH, C6 512.8 uF, R7 1.006 Ω, D, B·C1 60.71 uF, B·L2 1.331 mH, B·C3 37.54 uF, B·L4 16.88 mH, B·L5 1.174 mH, B·C6 12.05 uF, B·L7 0.2308 mH, B·R9 3.187 Ω, B·C10 10.57 uF, B·L11 12.65 mH, B·C12 8.2 uF, B·R13 13.14 Ω, B·D, C·C1 8.922 uF, C·L2 0.7704 mH, C·C3 11.93 uF, C·L4 0.381 mH, C·R5 1.56 Ω, C·R6 9.307 Ω, C·R7 48.99 Ω, C·C8 23.93 uF, C·C10 0.1436 uF, C·L12 0.1636 mH, C·C13 140.3 uF, C·R14 0.6063 Ω, C·D, C10 100.5 uF
+
+**WAT DE TABEL ZEGT, tegen V51b en HUIDIG.** *Twee RMS-kolommen, en zij zeggen twee verschillende dingen.* Op
+de band vanaf 397 Hz (waarop V51b gezocht is) leest het A5e.3-veld 0,66–1,18 dB tegen V51b 0,68–1,91 en HUIDIG
+0,58; op de VOLLE oordeelband (vanaf f_p, 52 Hz) leest het veld 0,85–1,20 tegen V51b **1,81–2,15** en HUIDIG
+1,42 — V51b is nooit op het laag beoordeeld (gepoorte set, plateau −2,5) en betaalt dat nu op de gemergede set
+met 1,1–1,5 dB; de A5e.3-netlists zijn de eerste die op beide banden vlak zijn. *De vloer en de tweeter tegelijk*:
+zeven netlists halen 2,55–2,81 Ω (twee binnen de tolerantie, 2,55 en 2,59) mét M-C tweeter −20,4 tot −25,0 en
+mid −19,7 tot −46,3 — wat op M-1 niets haalde en V51b alleen met 0,87–1,00 Ω discrete serie-R op de woofer. *Het
+koper in plaats van de weerstand*: 5,7–13,0 Ω DCR per netlist waarvan 0,88–1,18 Ω op de wooferweg, tegen V51b's
+0,87–1,00 Ω discreet plus 0 koper; Q_es× 1,26–1,49 (V51b 1,29–1,33, HUIDIG 2,31), lift 1,3–2,1 dB (V51b 1,6–1,8),
+opslingering −0,5 tot −1,9 dB (allemaal binnen het budget van 1,4). *Dissipatie en de heetste weerstand*: 9–24 %
+tegen V51b 25–48 % en HUIDIG 46 %; heetste R 0,31–2,00 W bij 10 W (V51b 1,2–2,35, HUIDIG 2,55) — het
+mid-pad B·R9 blijft de heetste in vier van zeven, twee netlists (549,7 · 1495 en 354,9 · 1495) dragen hem op de
+tweeter (0,31–0,43 W). *Fase*: M-K W-M 3,0–22,0°, M-T 3,5–12,7° (V51b 7,7–19,7 / 3,6–18,7; HUIDIG 21,0 / 7,0);
+de laagste W-M-positie die leverde (229,1) draagt de laagste W-M-fase (3,0°, 229,1 · 1727). *Lobing-synthese*:
+−1,6 tot −3,2 dB (V51b −2,7 tot −3,5, HUIDIG −2,9). *Gepaard op het dichtstbijzijnde kruispunt* (geen enkel
+label is gelijk, `corpusPairing` zegt n = 0; de tabel in het JSON noemt per rij de V51b-buur): de drie
+549,7-netlists tegen V51b's 548,5 · 1719/2283,5 — min |Z| 2,60–2,81 tegen 2,87–2,89 (−0,1..−0,3, de woofer-R weg),
+RMS vanaf 397 0,77–1,18 tegen 0,68–0,73 (+0,1..+0,5), dissipatie 9–24 % tegen 33–35 % (−10..−25 punten), heetste R
+0,31–1,93 tegen 1,71–1,94 W. **HUIDIG, met pad, op zijn eigen 360 Hz**: 3,46 Ω, 0,58 dB vanaf 397 (het vlakste van
+allemaal) maar 1,42 op de volle band, 21° W-M-fase, 46 % dissipatie, 2,55 W in R8 — het referentiefilter haalt
+alles behalve de V51-eis, en betaalt dat in R8 en in de mid-pad.
+
+**WAT ER GEBOUWD IS.**
+1. **De aandrijfvloer** (`xoWindow.ts`, rule `'drive'`; `XoWindowInput.upperDriveCeilingDb` + bron; `report.ts` vult hem
+   uit `metrics.driveExcursion`): de inversie van A5d.3(ii) op het V49-plafond, k·f_s ernaast, de hoogste bindt;
+   absent = geen vloer. `kruisvensters.parameters.aandrijfvloer` (klasse A) draagt de getallen, elk venster de brug
+   `_k_fs_tot_A5e3veld`; `record-casus1-m1-references.ts` schrijft ze.
+2. **Het veld** (`casus1V2.fixture.ts`): `CASUS1_FIELD_STATED_ORDER = 4` op beide overnames, `CASUS1_FIELD_CHAIN_BUDGET
+   = 24` (een runparameter naast de seed), de bibliotheek LR-only. `casus1Field.test.ts` pint 4 × 5 = 20 uit 60.
+3. **De families gesteld** (manifest `driverkaart.spoelfamilie`: `gesteld_door`, `gesteld_motivering`,
+   `gedempte_shunt_pool`); `casus1V2Declaration` wapent `coilDcrModel` op elke run; élke casus-1-meetplek
+   (`frozenNetlistGates`, de meetbank, de recorder, de generator, beide live reproducties) spreidt
+   `CASUS1_COIL_DCR_SETTINGS`. De generator schrijft het ELFDE besluit (`spoel_dcr_gesteld`, `spoel_dcr_families`,
+   `spoel_dcr_beschrijving`, `spoel_dcr_herkomst`) en per kandidaat de spoelinventaris (`spoel_dcr`: weg, L, gedragen
+   DCR, fit, bereik); zijn samenvattingsregel drukt de DCR-som af.
+4. **De worker weigert een geleverd pad onder `'none'`** (bevinding A); de notitie noemt de wees van de audit.
+5. **Het gedateerde armblok** (`register-a5e3-arm.ts`, `A5E3ARM_KAND_1`, `a5e3_arm_corpus`), de gedateerde
+   M-1-herkomst (`casus1_m1_herkomst.json`, corpus-id `m1`, `DATED_HERKOMST`), de recorder die het blok van een
+   gedateerde netlist zonder verleden schrijft (`classBBlock`, `DATED_KAND` verruimd) en `a5e3_spoel_dcr` afleidt,
+   `v33_barriere_raster` met de minimum-frequentie en de uitgestrektheidslijst, `V2_MERGE=1` op de generator.
+6. **De scripts** `measure-a5e3-field.ts` (de tabel) en `measure-a5e3-nad-floor.ts` (de NAD-arm, met
+   `gestelde_eisen.versterker_nad_min_last_ohm` als het ene huis van de 4,0 Ω).
+7. **`measure-m1-diagnose-arms.ts` herbouwt het M-1-veld expliciet** (vensterinvoer zonder aandrijfvloer, W-M
+   onthoudt zich, geen budget), zodat de elf armbestanden reproduceerbaar blijven.
+
+**TESTS.** Nieuw of veranderd: `goldenCasus1` (W-M op `'drive'`, de inversie op de metriek nagerekend, de k·f_s-brug,
+M-T met de aandrijfvloer als limiet ÓNDER k·f_s), `casus1Field` (excursie-instellingen, 4 × 5 = 20 onder budget 24
+met de thinning-zin, orde 4 op beide assen, de laagste positie op de vloer), `frozenNetlistGates` (+6 A5e.3-veld-
+blokken: families gesteld en elke weg lost op; élke levende netlist en de arm dragen DCR als gemodelleerd met het
+rapportblok als tweede lezer; de tegenproef HUIDIG eigen DCR / V51b geen; het opgeschreven blok reproduceert; P2
+zonder spoelinstellingen byte-identieke oordelen; geen levende positie onder de aandrijfvloer; plus de V33-guard op
+uitgestrektheid en de V38-fix-rangclaim geankerd), `corpusPairing` (M-1 herankerd op `m1`; A5e.3-veld: n = 0 op
+label), `casus1V2Candidates` (het elfde besluit; de `it.each` over het levende corpus loopt weer, ZEVEN netlists;
+de byte-reproductie op KAND-V2-1 = 549,7 · 1495), `casus1V2Refusal` (de verwerping van 147,9 · 1294),
+`goldenClassification` (het armblok, `a5e3_spoel_dcr` gedekt via `manifest_en_geometrie`), `ciLayer`/`choiceKeyGuard`
+ongewijzigd groen. Met de toggle uit is de app byte-identiek (`toggleRegression`); `p6Lint`, `noWeights`,
+`browserSafe` groen; `tsc -b` (ook `scripts/`) en de productiebuild groen. **Volle run 04-09-2026, alleen gedraaid
+ná de regeneratie en de NAD-arm: 151 bestanden, 1692 tests, 1360 s (22 min 40), niets overgeslagen — 150 groen en
+ÉÉN rode claim, en die was geen byte-verschil:** de V34-assert in de `[bytes]`-reproductie ("de probe landt ONDER
+het ketenraster") was het bewijs op het 200 Hz-raster en is sinds M-1 (raster vanaf 20,5 Hz, f_p een binnenpunt)
+onwaar zonder dat iemand het zag, want tussen M-1 en A5e.3-veld draaide die claim nooit — het corpus was leeg en de
+test keerde in 24 ms terug. Zij zegt nu wat zij sinds M-1 is (de probe landt binnen één veiligheidsrasterstap van
+f_p, en bóven de rasterbodem); het bestand is apart opnieuw gedraaid (zie CLAUDE.md voor de meting). De byte-
+reproductie zelf treft KAND-V2-1 (549,7 · 1495, 674 s live) en reproduceert.
+
+**WAT ER NIET VERANDERD IS.** Geen metriek, geen poortregel behalve de reparatie van (a) onder `'none'` (V31: een
+verbod dat alleen vlagt is geen verbod), geen inversieformule; de M-T-as, de vloer (2,6), het opslingeringsbudget
+(1,4), de Q_es-grens (2,4), M-C −20 op de tweeter en afgeleid op de mid, de weerstandspoort bij 10 W, plateau 0,
+`'none'`, de gemergede meetset: onaangeraakt. Het gestelde tweetergetal is met opzet NIET als vensterinvoer
+gelezen.
+
+**OPENSTAAND.** (1) **De wezen van de onderdelenaudit:** een audit die één lid van een shunt-keten verwijdert
+(de C van een gedempte val) laat een element achter dat iets anders doet — een shunt-pad (R alleen, A) of een
+LF-belasting (L+R, B) — en beide zijn hier gemeten op de laagste weg. Of de audit een keten als geheel hoort te
+verwijderen, of het gate-hook een wees hoort te weigeren, is de vraag; de worker vangt sinds deze sessie de
+pad-vorm, niet de L+R-vorm. (2) **De uitgestrektheid van de barrière:** het veiligheidsraster begint op de
+geldigheidsvloer van de responsen (20,5 Hz), de poortsweep op 10 Hz; een minimum daartussen ziet de barrière
+niet. Uitbreiden tot de sweepbodem is een fixture-besluit (V26 rij 31, de veiligheidsset) én een regeneratie.
+(3) **Het gestelde tweetergetal als vensterinvoer** zou de M-T-vloer op ~1650 Hz leggen — consistent met 46 van 46
+M-1-weigeringen op 1294/1495 en met 4 van 4 hier op 1294; niet gedaan (keuze (a) van stap 1), het is een
+besluit over de M-T-as. (4) De laagste W-M-positie (148 Hz) leverde niets: de aandrijfvloer is de grens waar de
+mid haar eigen plafond nog haalt, niet waar de tweeter de zijne haalt — de twee assen zijn gekoppeld via de
+tuner, en het veld laat zien dat 229 Hz de laagste positie is die op deze tweeter iets oplevert. (5) V51b's punt
+(1), de HP-ladder van de mid: vijf van de zeven minima zitten nog in de mid- of woofertak onder 60 Hz of in de
+W-M-overlap (975 Hz), maar nu bóven de vloer.
+
+**STAP 7 — DE NAD-ARM: DEZELFDE INSTELLINGEN MET DE VLOER OP DE FABRIEKSOPGAVE (4,0 Ω), OP DE BESTE DRIE.**
+`scripts/measure-a5e3-nad-floor.ts`, drie ketenruns naast elkaar (787–1652 s); "de beste drie" is de gestelde
+selectie van deze arm — de laagste RMS op de volle oordeelband, gemeten door de meetbank op de bevroren
+bestanden: 549,7 · 1495 (0,85), 229,1 · 1727 (0,90), 229,1 · 2304 (0,97) — geen rangschikking van de shortlist.
+De vloer reist op de drie plaatsen tegelijk (settings, gates, verklaring); het getal woont in
+`gestelde_eisen.versterker_nad_min_last_ohm` (de aanvulling van V49, nu met een huis).
+
+| kandidaat | vloer | uitkomst | zaad → beste tune min \|Z\| | tekort tegen 4,0 (met tolerantie 3,92) | Y op de woofer | wat er nog meer viel |
+| --- | --- | --- | --- | --- | --- | --- |
+| 549,7 · 1495 | 4,0 | GEWEIGERD op M-C (tweeter) −19,9 | 0,96 → **3,93** (waardetune) | **0,07 Ω — haalt de vloer binnen de tolerantie**, maar élke pas die hem haalt verliest de tweeter met 0,1 dB; basin 2,86, barrier-tune 3,55 | 0,96 (= het koper) | audit-verwijderingen C6 en C·R12 geweigerd op de vloer (0,96) |
+| 229,1 · 1727 | 4,0 | GEWEIGERD op de vloer 3,90 + mid −10,6 (−12,1) + tweeter −18,0 | 1,08 → **3,90** | **0,10 Ω**; basin 2,88 | — onoplosbaar (20 Ω op de woofer laat het minimum in een andere weg) | vier audit-verwijderingen van de wooferval L8+C9+R10 geweigerd (1,07) |
+| 229,1 · 2304 | 4,0 | GEWEIGERD op de vloer 3,34 | 1,51 → **3,35** | **0,65 Ω**; basin 1,27, barrier-tune 1,72, escalatie 1,46, geleverd 1,51 | — onoplosbaar | — |
+
+**De meting van het laatste hybride-argument, in drie zinnen.** (1) Het passieve veld komt op twee van de drie
+beste kandidaten tot 0,07–0,10 Ω van de fabrieksopgave — en op de eerste haalt het hem zelfs, binnen dezelfde
+2 %-conventie die de gestelde vloer gebruikt; wat dan valt is de tweeter, met 0,1 dB tegen een getal dat sinds
+V47b "voorlopig" heet. (2) Waar de vloer op 4,0 gemist wordt, is Y op twee van drie ONOPLOSBAAR: 20 Ω aan de kop
+van de woofer laat het minimum in de mid- of tweetertak staan — precies de M-1-bevinding, en precies de reden dat
+een actieve LF-tak (het hybride argument) daar níets aan verandert: hij haalt de woofer uit de passieve som, maar
+het minimum zit niet in de woofer. (3) De balans is dus geen "hybride of passief" maar "4,0 of 2,6": tegen de
+gestelde 2,6 Ω levert het passieve veld zeven ontwerpen die de vloer én de tweeter halen zonder R of pad;
+tegen de fabrieksopgave levert het er nul, en wat er nog tussen zit is 0,07–0,65 Ω in de mid- en tweetertak
+plus 0,1 dB op de tweeter — een ANDERE tweeter-eis of een tweeter die lager mag kruisen (open punt 3) doet daar
+meer dan een actieve woofer. Alle drie de arm-uitkomsten dragen `verdict.ok: true` op het niveauwerk, dus de
+worker-reparatie van stap 5 zou ze niet anders hebben geoordeeld. Bewijsmateriaal: `test-fixtures/casus1_a5e3_nad/`.
+
 ## Casus S1 — synthetische grondwaarheid voor de R_e-schatter (F3b, 26-08-2026)
 
 *De eerste casus in dit boek die geen luidspreker is. A7 noemt synthetische grondwaarheid als

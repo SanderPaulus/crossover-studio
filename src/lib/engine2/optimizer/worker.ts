@@ -2199,30 +2199,47 @@ function runCandidate<I, R extends { parts: VxpPart[]; net: { gateRefusals?: str
     );
   }
   collect.notes.push(`Plateau: ${plateau.note}.`);
-  /* ---- V51b: the delivered network EXCEEDS the stated rule ---------------
+  /* ---- V51b / A5e.3-veld: the delivered network EXCEEDS the stated rule ----
    *
    * The tuner's box holds the seed's free resistors under the maximum, but a
    * total is what the rule bounds and the catalogue snap can add DCR the box
    * never saw; and a pad the synthesis was told not to place is a defect either
    * way. Tested on what is offered, in the V45/V51 shape, and only when nothing
-   * else already refused. */
-  if (!refused && verdict && verdict.ok === false && maxSeriesOhm !== null && lowestForLevel !== null && levelWorkDelivered) {
+   * else already refused.
+   *
+   * UNDER `'none'` TOO, SINCE A5e.3-veld. Until then this fired only under the
+   * capped rule and the prohibition relied on the synthesis never placing a
+   * pad — which held on the V51 field. On the A5e.3-veld field the parts audit
+   * removed the L and C of a correction group on the lowest way and left its
+   * resistor standing alone from the bus to ground: electrically a shunt pad
+   * (3.51 Ω, 2 W at 10 W), read as one by `levelWork.ts`, judged `ok: false`,
+   * flagged DEFECT in the notes — and DELIVERED, because the ripple goal was
+   * met. A stated prohibition that only flags is not a prohibition (V31): the
+   * verdict is the one reader, and it refuses under either rule. */
+  if (!refused && verdict && verdict.ok === false && (maxSeriesOhm !== null || levelWorkRule === 'none') && lowestForLevel !== null && levelWorkDelivered) {
     refused = {
       by: 'stated-topology',
       kinds: ['topology'],
-      reason: `${verdict.why} (lowestWayLevelWork: series-r-max, V51b)`,
+      reason: `${verdict.why} (lowestWayLevelWork: ${maxSeriesOhm !== null ? 'series-r-max, V51b' : 'none, V51 — refused since A5e.3-veld'})`,
       note:
-        'The tune COMPLETED and what it delivered carries more on the lowest way than the stated rule ' +
-        'allows. The search box capped the seed\'s discrete resistors at the maximum with the coils\' ' +
-        'DCR charged first, so a total above it means either a DCR the box did not see (a catalogue ' +
-        'snap after the box was built) or a pad the synthesis was told not to place — a finding about ' +
-        'the repair rather than about the candidate (casebook V51b)' +
-        (network.declaration?.stated.coilDcrModel
-          ? ' — or, with a coil DCR model stated (A5e.3), coil copper that by itself reaches the maximum: the ' +
-            'model makes the DCR follow the inductance, the box holds only the discrete resistors, and a ' +
-            'maximum the stated family fills with copper alone is a finding about the maximum against ' +
-            'that family, not about the candidate.'
-          : '.'),
+        maxSeriesOhm !== null
+          ? 'The tune COMPLETED and what it delivered carries more on the lowest way than the stated rule ' +
+            'allows. The search box capped the seed\'s discrete resistors at the maximum with the coils\' ' +
+            'DCR charged first, so a total above it means either a DCR the box did not see (a catalogue ' +
+            'snap after the box was built) or a pad the synthesis was told not to place — a finding about ' +
+            'the repair rather than about the candidate (casebook V51b)' +
+            (network.declaration?.stated.coilDcrModel
+              ? ' — or, with a coil DCR model stated (A5e.3), coil copper that by itself reaches the maximum: the ' +
+                'model makes the DCR follow the inductance, the box holds only the discrete resistors, and a ' +
+                'maximum the stated family fills with copper alone is a finding about the maximum against ' +
+                'that family, not about the candidate.'
+              : '.')
+          : 'The tune COMPLETED and what it delivered carries level work on the lowest way although the ' +
+            'project forbids any (V51). The design and synthesis steps place none there, and the tuner ' +
+            'never creates a resistor; what remains is a resistor the parts audit left standing alone ' +
+            'when it removed the rest of its correction group (measured on the A5e.3-veld field: R10 of ' +
+            '229.1 · 1994.6, 3.51 Ω from the woofer bus to ground). A finding about the audit rather ' +
+            'than about the candidate — and a refusal, because a prohibition that only flags is none.',
       fields: {
         ...(delivered.net as WholesaleRejectionFields),
         rejectedParts: [...delivered.parts],

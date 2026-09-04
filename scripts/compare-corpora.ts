@@ -14,10 +14,13 @@
  * default is the newest comparison.
  *
  *   corpora: `v30` · `v32` · `v33sweep` · `v33` · `v34` · `v37` · `v38fix` · `v41` ·
- *            `v42` · `v43` · `v44` · `v45` · `v47` · `v48` · `v49` · `live`   (de kaart
- *            staat in `casus1Corpora.fixture.ts`; deze regel is de leesbare kopie ervan)
- *   default: `v51b` → `live`   (casebook M-1; `v51 v51b` is de V51b-tabel, `v50 v51` de V51-tabel,
- *            `v49 v50` de V50-tabel, `v48 v49` de V47b-tabel, `v47 v48` de V48-tabel).
+ *            `v42` · `v43` · `v44` · `v45` · `v47` · `v48` · `v49` · `v50` · `v51` · `v51b` ·
+ *            `a5e3arm` (één netlist: de geregistreerde arm m1+dcr) · `m1` (alleen uitkomsten,
+ *            geen bestanden: het lege M-1-corpus) · `live`   (de kaart staat in
+ *            `casus1Corpora.fixture.ts`; deze regel is de leesbare kopie ervan)
+ *   default: `v51b` → `live`   (casebook A5e.3-veld; `v51b m1` is de M-1-tabel — een lege ná-helft —,
+ *            `v51 v51b` de V51b-tabel, `v50 v51` de V51-tabel, `v49 v50` de V50-tabel,
+ *            `v48 v49` de V47b-tabel, `v47 v48` de V48-tabel).
  *   SINDS M-1 meet de bank op de GEMERGEDE set (casus1Corpora.fixture.ts, corpusBank(golden, 'merged')):
  *   beide helften door hetzelfde pad, ook een gedateerd corpus dat op de gepoorte set is opgewekt.
  *   V32's own table: `npx vite-node scripts/compare-corpora.ts v30 v32`

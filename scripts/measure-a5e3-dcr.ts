@@ -246,4 +246,4 @@ for (const pc of perCoil) {
   }
 }
 console.log('');
-console.log('(dit script stelt niets en wijzigt niets: de families zijn het A5e.3-voorstel, gelezen uit driverkaart.spoelfamilie)');
+console.log(`(dit script stelt niets en wijzigt niets: de families zijn ${stated ? 'GESTELD' : 'het A5e.3-VOORSTEL'}, gelezen uit driverkaart.spoelfamilie)`);

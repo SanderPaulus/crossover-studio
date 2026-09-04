@@ -1,0 +1,4727 @@
+{
+ "_": "A5e.3-veld — de tabel per kandidaat (scripts/measure-a5e3-field.ts), één meetbank voor elke rij. Documentatie, geen acceptatiewaarde.",
+ "band_volle_hz": [
+  52.3681640625,
+  19500
+ ],
+ "band_rapport_hz": [
+  396.66798889329635,
+  19999.51
+ ],
+ "vloer_ohm": 2.6,
+ "rijen": [
+  {
+   "key": "KAND_V2_2",
+   "corpus": "A5e.3-veld",
+   "label": "woofer→mid 229.1 LR4 · mid→tweeter 1726.7 LR4",
+   "crossingsHz": [
+    357.8035984493515,
+    1558.1928913264642
+   ],
+   "minZ": {
+    "ohm": 2.851241461359627,
+    "hz": 25.480344051480035,
+    "branch": "woofer",
+    "perBranch": {
+     "woofer": 2.82,
+     "mid": 85.65,
+     "tweeter": 1152.86
+    }
+   },
+   "floorOk": true,
+   "gateMinZ": 2.549920047019243,
+   "rmsFull": 0.9002703302144842,
+   "windowFull": 2.02845418024843,
+   "rms397": 0.6818775220641896,
+   "window397": 1.536259473583392,
+   "band397": [
+    396.66798889329635,
+    19999.51
+   ],
+   "mk": [
+    {
+     "pair": "woofer→mid",
+     "deg": 3.00081696351492
+    },
+    {
+     "pair": "mid→tweeter",
+     "deg": 6.797634787826378
+    }
+   ],
+   "mc": [
+    {
+     "way": "mid",
+     "db": -19.664187381776973,
+     "limit": -13.62558618430381,
+     "pass": true
+    },
+    {
+     "way": "tweeter",
+     "db": -21.285108926505757,
+     "limit": -20,
+     "pass": true
+    }
+   ],
+   "resonantDb": -0.4881470769099696,
+   "liftDb": 1.2933356693583802,
+   "qesMult": 1.255643957093944,
+   "dissPct": 23.805750716472467,
+   "hottestThermalW": 1.0627506566611127,
+   "hottestAllowedW": 5,
+   "hottestId": "B·R9",
+   "hottestContinuousW": 10.627506566611126,
+   "coilPeakA": 20.051889227583754,
+   "epdr": 1.3837137288325017,
+   "lobingDipDb": -1.5742225322774175,
+   "levelWork": {
+    "seriesOhm": 0,
+    "dcrOhm": 1.0646,
+    "totalSeriesOhm": 1.0646,
+    "none": true
+   },
+   "askedDb": 0.8499986917885849,
+   "dcrTotalOhm": 11.706900000000001,
+   "coils": [
+    {
+     "id": "L1",
+     "way": "woofer",
+     "mH": 3.018,
+     "dcrOhm": 0.5829,
+     "fitOhm": 0.582869891322716,
+     "inRange": true
+    },
+    {
+     "id": "L3",
+     "way": "woofer",
+     "mH": 2.173,
+     "dcrOhm": 0.4817,
+     "fitOhm": 0.4816591258850726,
+     "inRange": true
+    },
+    {
+     "id": "L5",
+     "way": "woofer",
+     "mH": 5.387,
+     "dcrOhm": 0.816,
+     "fitOhm": 0.8159682223214562,
+     "inRange": true
+    },
+    {
+     "id": "B·L2",
+     "way": "mid",
+     "mH": 2.3780000000000006,
+     "dcrOhm": 0.8707,
+     "fitOhm": 0.8706694306530793,
+     "inRange": true
+    },
+    {
+     "id": "B·L4",
+     "way": "mid",
+     "mH": 15.41,
+     "dcrOhm": 2.617,
+     "fitOhm": 2.616818774362807,
+     "inRange": true
+    },
+    {
+     "id": "B·L5",
+     "way": "mid",
+     "mH": 1.426,
+     "dcrOhm": 0.6443,
+     "fitOhm": 0.6442732426491922,
+     "inRange": true
+    },
+    {
+     "id": "B·L7",
+     "way": "mid",
+     "mH": 0.5002,
+     "dcrOhm": 0.3477,
+     "fitOhm": 0.34765549606363094,
+     "inRange": true
+    },
+    {
+     "id": "B·L11",
+     "way": "mid",
+     "mH": 7.940000000000001,
+     "dcrOhm": 1.771,
+     "fitOhm": 1.7708835461727181,
+     "inRange": true
+    },
+    {
+     "id": "B·L14",
+     "way": "mid",
+     "mH": 13.05,
+     "dcrOhm": 2.373,
+     "fitOhm": 2.372804561061725,
+     "inRange": true
+    },
+    {
+     "id": "C·L4",
+     "way": "tweeter",
+     "mH": 0.5674,
+     "dcrOhm": 0.3744,
+     "fitOhm": 0.37444418590713546,
+     "inRange": true
+    },
+    {
+     "id": "C·L7",
+     "way": "tweeter",
+     "mH": 1.679,
+     "dcrOhm": 0.7093,
+     "fitOhm": 0.7093151498894115,
+     "inRange": true
+    },
+    {
+     "id": "C·L10",
+     "way": "tweeter",
+     "mH": 0.08085000000000002,
+     "dcrOhm": 0.1189,
+     "fitOhm": 0.11887238647744872,
+     "inRange": true
+    }
+   ],
+   "parts": [
+    {
+     "id": "G",
+     "type": "Generator",
+     "value": "2.83 V"
+    },
+    {
+     "id": "L1",
+     "type": "Inductor",
+     "value": "3.018 mH"
+    },
+    {
+     "id": "C2",
+     "type": "Capacitor",
+     "value": "203 uF"
+    },
+    {
+     "id": "L3",
+     "type": "Inductor",
+     "value": "2.173 mH"
+    },
+    {
+     "id": "L5",
+     "type": "Inductor",
+     "value": "5.387 mH"
+    },
+    {
+     "id": "R7",
+     "type": "Resistor",
+     "value": "1.097 Ω"
+    },
+    {
+     "id": "C9",
+     "type": "Capacitor",
+     "value": "78.9 uF"
+    },
+    {
+     "id": "R10",
+     "type": "Resistor",
+     "value": "1.199 Ω"
+    },
+    {
+     "id": "D",
+     "type": "Driver",
+     "value": ""
+    },
+    {
+     "id": "B·C1",
+     "type": "Capacitor",
+     "value": "72.62 uF"
+    },
+    {
+     "id": "B·L2",
+     "type": "Inductor",
+     "value": "2.378 mH"
+    },
+    {
+     "id": "B·C3",
+     "type": "Capacitor",
+     "value": "105.9 uF"
+    },
+    {
+     "id": "B·L4",
+     "type": "Inductor",
+     "value": "15.41 mH"
+    },
+    {
+     "id": "B·L5",
+     "type": "Inductor",
+     "value": "1.426 mH"
+    },
+    {
+     "id": "B·C6",
+     "type": "Capacitor",
+     "value": "23.79 uF"
+    },
+    {
+     "id": "B·L7",
+     "type": "Inductor",
+     "value": "0.5002 mH"
+    },
+    {
+     "id": "B·C8",
+     "type": "Capacitor",
+     "value": "5.884 uF"
+    },
+    {
+     "id": "B·R9",
+     "type": "Resistor",
+     "value": "1.919 Ω"
+    },
+    {
+     "id": "B·L11",
+     "type": "Inductor",
+     "value": "7.94 mH"
+    },
+    {
+     "id": "B·C12",
+     "type": "Capacitor",
+     "value": "1.599 uF"
+    },
+    {
+     "id": "B·R13",
+     "type": "Resistor",
+     "value": "27.66 Ω"
+    },
+    {
+     "id": "B·L14",
+     "type": "Inductor",
+     "value": "13.05 mH"
+    },
+    {
+     "id": "B·C15",
+     "type": "Capacitor",
+     "value": "31.46 uF"
+    },
+    {
+     "id": "B·R16",
+     "type": "Resistor",
+     "value": "4.035 Ω"
+    },
+    {
+     "id": "B·D",
+     "type": "Driver",
+     "value": ""
+    },
+    {
+     "id": "C·C1",
+     "type": "Capacitor",
+     "value": "8.642 uF"
+    },
+    {
+     "id": "C·C3",
+     "type": "Capacitor",
+     "value": "14.52 uF"
+    },
+    {
+     "id": "C·L4",
+     "type": "Inductor",
+     "value": "0.5674 mH"
+    },
+    {
+     "id": "C·R5",
+     "type": "Resistor",
+     "value": "0.4013 Ω"
+    },
+    {
+     "id": "C·R6",
+     "type": "Resistor",
+     "value": "49.82 Ω"
+    },
+    {
+     "id": "C·L7",
+     "type": "Inductor",
+     "value": "1.679 mH"
+    },
+    {
+     "id": "C·C8",
+     "type": "Capacitor",
+     "value": "23.33 uF"
+    },
+    {
+     "id": "C·L10",
+     "type": "Inductor",
+     "value": "0.08085 mH"
+    },
+    {
+     "id": "C·C11",
+     "type": "Capacitor",
+     "value": "6.459 uF"
+    },
+    {
+     "id": "C·R12",
+     "type": "Resistor",
+     "value": "6.359 Ω"
+    },
+    {
+     "id": "C·D",
+     "type": "Driver",
+     "value": ""
+    }
+   ],
+   "dichtstbijzijnde_v51b": "woofer→mid 396.7 LR4 · mid→tweeter 1981.2 LR4"
+  },
+  {
+   "key": "KAND_V2_3",
+   "corpus": "A5e.3-veld",
+   "label": "woofer→mid 229.1 LR4 · mid→tweeter 2304 LR4",
+   "crossingsHz": [
+    339.16184994570534,
+    2049.113880799627
+   ],
+   "minZ": {
+    "ohm": 2.58887581154882,
+    "hz": 311.18355653622655,
+    "branch": "woofer",
+    "perBranch": {
+     "woofer": 2.79,
+     "mid": 4.63,
+     "tweeter": 71.11
+    }
+   },
+   "floorOk": true,
+   "gateMinZ": 2.5882731436838964,
+   "rmsFull": 0.9652625506965523,
+   "windowFull": 2.086729679473226,
+   "rms397": 0.6572951747125215,
+   "window397": 1.43637766291856,
+   "band397": [
+    396.66798889329635,
+    19999.51
+   ],
+   "mk": [
+    {
+     "pair": "woofer→mid",
+     "deg": 7.594407452282605
+    },
+    {
+     "pair": "mid→tweeter",
+     "deg": 3.516796034246553
+    }
+   ],
+   "mc": [
+    {
+     "way": "mid",
+     "db": -31.7359252301735,
+     "limit": -14.28189482470879,
+     "pass": true
+    },
+    {
+     "way": "tweeter",
+     "db": -24.551025811609655,
+     "limit": -20,
+     "pass": true
+    }
+   ],
+   "resonantDb": -0.6356142583356972,
+   "liftDb": 2.0600287068428766,
+   "qesMult": 1.3401412052219792,
+   "dissPct": 21.56188942023316,
+   "hottestThermalW": 1.1786793105563684,
+   "hottestAllowedW": 5,
+   "hottestId": "B·R9",
+   "hottestContinuousW": 11.786793105563685,
+   "coilPeakA": 19.215796270673955,
+   "epdr": 1.2946668693091667,
+   "lobingDipDb": -2.600366273223841,
+   "levelWork": {
+    "seriesOhm": 0,
+    "dcrOhm": 1.1832,
+    "totalSeriesOhm": 1.1832,
+    "none": true
+   },
+   "askedDb": 0.8499986917885849,
+   "dcrTotalOhm": 13.010299999999999,
+   "coils": [
+    {
+     "id": "L1",
+     "way": "woofer",
+     "mH": 3.096,
+     "dcrOhm": 0.5916,
+     "fitOhm": 0.5915697462909039,
+     "inRange": true
+    },
+    {
+     "id": "L3",
+     "way": "woofer",
+     "mH": 3.096,
+     "dcrOhm": 0.5916,
+     "fitOhm": 0.5915697462909039,
+     "inRange": true
+    },
+    {
+     "id": "L5",
+     "way": "woofer",
+     "mH": 21.95,
+     "dcrOhm": 1.845,
+     "fitOhm": 1.8446160199755945,
+     "inRange": true
+    },
+    {
+     "id": "L8",
+     "way": "woofer",
+     "mH": 17.39,
+     "dcrOhm": 1.611,
+     "fitOhm": 1.611329628140019,
+     "inRange": true
+    },
+    {
+     "id": "B·L2",
+     "way": "mid",
+     "mH": 1.577,
+     "dcrOhm": 0.6836,
+     "fitOhm": 0.6836137967418834,
+     "inRange": true
+    },
+    {
+     "id": "B·L4",
+     "way": "mid",
+     "mH": 15.07,
+     "dcrOhm": 2.583,
+     "fitOhm": 2.582663776590865,
+     "inRange": true
+    },
+    {
+     "id": "B·L5",
+     "way": "mid",
+     "mH": 0.9839,
+     "dcrOhm": 0.5178,
+     "fitOhm": 0.517801118272387,
+     "inRange": true
+    },
+    {
+     "id": "B·L7",
+     "way": "mid",
+     "mH": 0.3125,
+     "dcrOhm": 0.2635,
+     "fitOhm": 0.2635402598408087,
+     "inRange": true
+    },
+    {
+     "id": "B·L11",
+     "way": "mid",
+     "mH": 1.996,
+     "dcrOhm": 0.7854,
+     "fitOhm": 0.7853605179075112,
+     "inRange": true
+    },
+    {
+     "id": "B·L14",
+     "way": "mid",
+     "mH": 15.33,
+     "dcrOhm": 2.609,
+     "fitOhm": 2.6088104110492023,
+     "inRange": true
+    },
+    {
+     "id": "C·L2",
+     "way": "tweeter",
+     "mH": 0.3272,
+     "dcrOhm": 0.2708,
+     "fitOhm": 0.2707713530089231,
+     "inRange": true
+    },
+    {
+     "id": "C·L4",
+     "way": "tweeter",
+     "mH": 0.9662,
+     "dcrOhm": 0.5123,
+     "fitOhm": 0.5122953177346191,
+     "inRange": true
+    },
+    {
+     "id": "C·L9",
+     "way": "tweeter",
+     "mH": 0.1142,
+     "dcrOhm": 0.1457,
+     "fitOhm": 0.14568105501734768,
+     "inRange": true
+    }
+   ],
+   "parts": [
+    {
+     "id": "G",
+     "type": "Generator",
+     "value": "2.83 V"
+    },
+    {
+     "id": "L1",
+     "type": "Inductor",
+     "value": "3.096 mH"
+    },
+    {
+     "id": "C2",
+     "type": "Capacitor",
+     "value": "173.8 uF"
+    },
+    {
+     "id": "L3",
+     "type": "Inductor",
+     "value": "3.096 mH"
+    },
+    {
+     "id": "L5",
+     "type": "Inductor",
+     "value": "21.95 mH"
+    },
+    {
+     "id": "C6",
+     "type": "Capacitor",
+     "value": "516 uF"
+    },
+    {
+     "id": "R7",
+     "type": "Resistor",
+     "value": "0.9994 Ω"
+    },
+    {
+     "id": "L8",
+     "type": "Inductor",
+     "value": "17.39 mH"
+    },
+    {
+     "id": "C9",
+     "type": "Capacitor",
+     "value": "13.13 uF"
+    },
+    {
+     "id": "R10",
+     "type": "Resistor",
+     "value": "2.128 Ω"
+    },
+    {
+     "id": "D",
+     "type": "Driver",
+     "value": ""
+    },
+    {
+     "id": "B·C1",
+     "type": "Capacitor",
+     "value": "78.23 uF"
+    },
+    {
+     "id": "B·L2",
+     "type": "Inductor",
+     "value": "1.577 mH"
+    },
+    {
+     "id": "B·C3",
+     "type": "Capacitor",
+     "value": "110.8 uF"
+    },
+    {
+     "id": "B·L4",
+     "type": "Inductor",
+     "value": "15.07 mH"
+    },
+    {
+     "id": "B·L5",
+     "type": "Inductor",
+     "value": "0.9839 mH"
+    },
+    {
+     "id": "B·C6",
+     "type": "Capacitor",
+     "value": "14.2 uF"
+    },
+    {
+     "id": "B·L7",
+     "type": "Inductor",
+     "value": "0.3125 mH"
+    },
+    {
+     "id": "B·C8",
+     "type": "Capacitor",
+     "value": "1.836 uF"
+    },
+    {
+     "id": "B·R9",
+     "type": "Resistor",
+     "value": "2.092 Ω"
+    },
+    {
+     "id": "B·C10",
+     "type": "Capacitor",
+     "value": "17.83 uF"
+    },
+    {
+     "id": "B·L11",
+     "type": "Inductor",
+     "value": "1.996 mH"
+    },
+    {
+     "id": "B·C12",
+     "type": "Capacitor",
+     "value": "1.14 uF"
+    },
+    {
+     "id": "B·R13",
+     "type": "Resistor",
+     "value": "11.51 Ω"
+    },
+    {
+     "id": "B·L14",
+     "type": "Inductor",
+     "value": "15.33 mH"
+    },
+    {
+     "id": "B·D",
+     "type": "Driver",
+     "value": ""
+    },
+    {
+     "id": "C·C1",
+     "type": "Capacitor",
+     "value": "7.127 uF"
+    },
+    {
+     "id": "C·L2",
+     "type": "Inductor",
+     "value": "0.3272 mH"
+    },
+    {
+     "id": "C·C3",
+     "type": "Capacitor",
+     "value": "17.48 uF"
+    },
+    {
+     "id": "C·L4",
+     "type": "Inductor",
+     "value": "0.9662 mH"
+    },
+    {
+     "id": "C·R5",
+     "type": "Resistor",
+     "value": "0.2953 Ω"
+    },
+    {
+     "id": "C·R6",
+     "type": "Resistor",
+     "value": "46.81 Ω"
+    },
+    {
+     "id": "C·R7",
+     "type": "Resistor",
+     "value": "2.523 Ω"
+    },
+    {
+     "id": "C·C8",
+     "type": "Capacitor",
+     "value": "12.17 uF"
+    },
+    {
+     "id": "C·L9",
+     "type": "Inductor",
+     "value": "0.1142 mH"
+    },
+    {
+     "id": "C·C10",
+     "type": "Capacitor",
+     "value": "61.72 uF"
+    },
+    {
+     "id": "C·R11",
+     "type": "Resistor",
+     "value": "4.11 Ω"
+    },
+    {
+     "id": "C·D",
+     "type": "Driver",
+     "value": ""
+    },
+    {
+     "id": "C10",
+     "type": "Capacitor",
+     "value": "91.18 uF"
+    }
+   ],
+   "dichtstbijzijnde_v51b": "woofer→mid 396.7 LR4 · mid→tweeter 2283.5 LR4"
+  },
+  {
+   "key": "KAND_V2_7",
+   "corpus": "A5e.3-veld",
+   "label": "woofer→mid 354.9 LR4 · mid→tweeter 1494.8 LR4",
+   "crossingsHz": [
+    429.0018111281772,
+    1594.34145382154
+   ],
+   "minZ": {
+    "ohm": 2.6000757681515614,
+    "hz": 13988.502701531577,
+    "branch": "tweeter",
+    "perBranch": {
+     "woofer": 253.49,
+     "mid": 83.73,
+     "tweeter": 2.58
+    }
+   },
+   "floorOk": true,
+   "gateMinZ": 2.6000465288374808,
+   "rmsFull": 1.1982222161861813,
+   "windowFull": 2.344393845462537,
+   "rms397": 1.0847559858982911,
+   "window397": 2.139044917734102,
+   "band397": [
+    396.66798889329635,
+    19999.51
+   ],
+   "mk": [
+    {
+     "pair": "woofer→mid",
+     "deg": 5.186493896078535
+    },
+    {
+     "pair": "mid→tweeter",
+     "deg": 12.709693606397186
+    }
+   ],
+   "mc": [
+    {
+     "way": "mid",
+     "db": -39.24908833027743,
+     "limit": -14.438855231755124,
+     "pass": true
+    },
+    {
+     "way": "tweeter",
+     "db": -20.36551893041559,
+     "limit": -20,
+     "pass": true
+    }
+   ],
+   "resonantDb": -0.6100497399325988,
+   "liftDb": 1.6671485315989738,
+   "qesMult": 1.4650999337018806,
+   "dissPct": 9.506647331448395,
+   "hottestThermalW": 0.431226585549527,
+   "hottestAllowedW": 5,
+   "hottestId": "C·R9",
+   "hottestContinuousW": 4.312265855495269,
+   "coilPeakA": 20.37037533317822,
+   "epdr": 1.3165142383516497,
+   "lobingDipDb": -1.8318634756931544,
+   "levelWork": {
+    "seriesOhm": 0,
+    "dcrOhm": 0.9459,
+    "totalSeriesOhm": 0.9459,
+    "none": true
+   },
+   "askedDb": 0.8499986917885849,
+   "dcrTotalOhm": 10.6947,
+   "coils": [
+    {
+     "id": "L1",
+     "way": "woofer",
+     "mH": 2.885,
+     "dcrOhm": 0.5678,
+     "fitOhm": 0.5678149010718556,
+     "inRange": true
+    },
+    {
+     "id": "L3",
+     "way": "woofer",
+     "mH": 1.432,
+     "dcrOhm": 0.3781,
+     "fitOhm": 0.37807565413257205,
+     "inRange": true
+    },
+    {
+     "id": "L5",
+     "way": "woofer",
+     "mH": 35.61,
+     "dcrOhm": 2.443,
+     "fitOhm": 2.442965058693258,
+     "inRange": false
+    },
+    {
+     "id": "L8",
+     "way": "woofer",
+     "mH": 16.74,
+     "dcrOhm": 1.576,
+     "fitOhm": 1.5760806627968942,
+     "inRange": true
+    },
+    {
+     "id": "B·L2",
+     "way": "mid",
+     "mH": 1.9490000000000003,
+     "dcrOhm": 0.7744,
+     "fitOhm": 0.7744172904746666,
+     "inRange": true
+    },
+    {
+     "id": "B·L4",
+     "way": "mid",
+     "mH": 17.570000000000004,
+     "dcrOhm": 2.827,
+     "fitOhm": 2.826968542763772,
+     "inRange": true
+    },
+    {
+     "id": "B·L5",
+     "way": "mid",
+     "mH": 2.108,
+     "dcrOhm": 0.811,
+     "fitOhm": 0.8110192833630813,
+     "inRange": true
+    },
+    {
+     "id": "B·L7",
+     "way": "mid",
+     "mH": 0.5051,
+     "dcrOhm": 0.3497,
+     "fitOhm": 0.3496569632934731,
+     "inRange": true
+    },
+    {
+     "id": "C·L4",
+     "way": "tweeter",
+     "mH": 0.7875,
+     "dcrOhm": 0.4542,
+     "fitOhm": 0.4541707424987908,
+     "inRange": true
+    },
+    {
+     "id": "C·L7",
+     "way": "tweeter",
+     "mH": 0.06121000000000001,
+     "dcrOhm": 0.1009,
+     "fitOhm": 0.10090477231409382,
+     "inRange": true
+    },
+    {
+     "id": "C·L10",
+     "way": "tweeter",
+     "mH": 0.6690000000000002,
+     "dcrOhm": 0.4126,
+     "fitOhm": 0.41258445450292547,
+     "inRange": true
+    }
+   ],
+   "parts": [
+    {
+     "id": "G",
+     "type": "Generator",
+     "value": "2.83 V"
+    },
+    {
+     "id": "L1",
+     "type": "Inductor",
+     "value": "2.885 mH"
+    },
+    {
+     "id": "C2",
+     "type": "Capacitor",
+     "value": "151.1 uF"
+    },
+    {
+     "id": "L3",
+     "type": "Inductor",
+     "value": "1.432 mH"
+    },
+    {
+     "id": "C4",
+     "type": "Capacitor",
+     "value": "33.84 uF"
+    },
+    {
+     "id": "L5",
+     "type": "Inductor",
+     "value": "35.61 mH"
+    },
+    {
+     "id": "C6",
+     "type": "Capacitor",
+     "value": "220.7 uF"
+    },
+    {
+     "id": "L8",
+     "type": "Inductor",
+     "value": "16.74 mH"
+    },
+    {
+     "id": "R10",
+     "type": "Resistor",
+     "value": "28.18 Ω"
+    },
+    {
+     "id": "D",
+     "type": "Driver",
+     "value": ""
+    },
+    {
+     "id": "B·C1",
+     "type": "Capacitor",
+     "value": "52.32 uF"
+    },
+    {
+     "id": "B·L2",
+     "type": "Inductor",
+     "value": "1.949 mH"
+    },
+    {
+     "id": "B·C3",
+     "type": "Capacitor",
+     "value": "28.51 uF"
+    },
+    {
+     "id": "B·L4",
+     "type": "Inductor",
+     "value": "17.57 mH"
+    },
+    {
+     "id": "B·L5",
+     "type": "Inductor",
+     "value": "2.108 mH"
+    },
+    {
+     "id": "B·C6",
+     "type": "Capacitor",
+     "value": "22.44 uF"
+    },
+    {
+     "id": "B·L7",
+     "type": "Inductor",
+     "value": "0.5051 mH"
+    },
+    {
+     "id": "B·C8",
+     "type": "Capacitor",
+     "value": "3.578 uF"
+    },
+    {
+     "id": "B·D",
+     "type": "Driver",
+     "value": ""
+    },
+    {
+     "id": "C·C1",
+     "type": "Capacitor",
+     "value": "10.15 uF"
+    },
+    {
+     "id": "C·C3",
+     "type": "Capacitor",
+     "value": "22.13 uF"
+    },
+    {
+     "id": "C·L4",
+     "type": "Inductor",
+     "value": "0.7875 mH"
+    },
+    {
+     "id": "C·R5",
+     "type": "Resistor",
+     "value": "0.9993 Ω"
+    },
+    {
+     "id": "C·R6",
+     "type": "Resistor",
+     "value": "49.3 Ω"
+    },
+    {
+     "id": "C·L7",
+     "type": "Inductor",
+     "value": "0.06121 mH"
+    },
+    {
+     "id": "C·C8",
+     "type": "Capacitor",
+     "value": "6.8 uF"
+    },
+    {
+     "id": "C·R9",
+     "type": "Resistor",
+     "value": "4.257 Ω"
+    },
+    {
+     "id": "C·L10",
+     "type": "Inductor",
+     "value": "0.669 mH"
+    },
+    {
+     "id": "C·C11",
+     "type": "Capacitor",
+     "value": "80.86 uF"
+    },
+    {
+     "id": "C·R12",
+     "type": "Resistor",
+     "value": "0.2169 Ω"
+    },
+    {
+     "id": "C·D",
+     "type": "Driver",
+     "value": ""
+    },
+    {
+     "id": "C10",
+     "type": "Capacitor",
+     "value": "75.01 uF"
+    }
+   ],
+   "dichtstbijzijnde_v51b": "woofer→mid 396.7 LR4 · mid→tweeter 1981.2 LR4"
+  },
+  {
+   "key": "KAND_V2_5",
+   "corpus": "A5e.3-veld",
+   "label": "woofer→mid 354.9 LR4 · mid→tweeter 1994.6 LR4",
+   "crossingsHz": [
+    478.7819795637668,
+    1974.0056163997979
+   ],
+   "minZ": {
+    "ohm": 2.695461286562023,
+    "hz": 53.30150987961939,
+    "branch": "woofer",
+    "perBranch": {
+     "woofer": 2.7,
+     "mid": 58.07,
+     "tweeter": 716.62
+    }
+   },
+   "floorOk": true,
+   "gateMinZ": 2.694128270202783,
+   "rmsFull": 1.0291401402948404,
+   "windowFull": 2.5024341400263888,
+   "rms397": 0.8497574837404489,
+   "window397": 2.106242925291438,
+   "band397": [
+    396.66798889329635,
+    19999.51
+   ],
+   "mk": [
+    {
+     "pair": "woofer→mid",
+     "deg": 3.8363493813744642
+    },
+    {
+     "pair": "mid→tweeter",
+     "deg": 5.826893359607152
+    }
+   ],
+   "mc": [
+    {
+     "way": "mid",
+     "db": -30.3059220399136,
+     "limit": -13.86181170720422,
+     "pass": true
+    },
+    {
+     "way": "tweeter",
+     "db": -23.97340616503477,
+     "limit": -20,
+     "pass": true
+    }
+   ],
+   "resonantDb": -0.9271214614688841,
+   "liftDb": 1.6993777208346366,
+   "qesMult": 1.4617302291803491,
+   "dissPct": 13.804368076170077,
+   "hottestThermalW": 1.1587009203481462,
+   "hottestAllowedW": 5,
+   "hottestId": "B·R9",
+   "hottestContinuousW": 11.587009203481463,
+   "coilPeakA": 18.763150783989566,
+   "epdr": 1.3479888710984145,
+   "lobingDipDb": -2.4161344432986027,
+   "levelWork": {
+    "seriesOhm": 0,
+    "dcrOhm": 0.9377,
+    "totalSeriesOhm": 0.9377,
+    "none": true
+   },
+   "askedDb": 0.8499986917885849,
+   "dcrTotalOhm": 5.712400000000001,
+   "coils": [
+    {
+     "id": "L1",
+     "way": "woofer",
+     "mH": 2.82,
+     "dcrOhm": 0.5604,
+     "fitOhm": 0.5603514475683756,
+     "inRange": true
+    },
+    {
+     "id": "L3",
+     "way": "woofer",
+     "mH": 1.427,
+     "dcrOhm": 0.3773,
+     "fitOhm": 0.3773086095611047,
+     "inRange": true
+    },
+    {
+     "id": "L5",
+     "way": "woofer",
+     "mH": 27.850000000000005,
+     "dcrOhm": 2.118,
+     "fitOhm": 2.118055307420012,
+     "inRange": false
+    },
+    {
+     "id": "B·L2",
+     "way": "mid",
+     "mH": 1.413,
+     "dcrOhm": 0.6408,
+     "fitOhm": 0.6408080374734936,
+     "inRange": true
+    },
+    {
+     "id": "B·L5",
+     "way": "mid",
+     "mH": 1.321,
+     "dcrOhm": 0.6159,
+     "fitOhm": 0.6158994523949782,
+     "inRange": true
+    },
+    {
+     "id": "B·L7",
+     "way": "mid",
+     "mH": 0.3274,
+     "dcrOhm": 0.2709,
+     "fitOhm": 0.27086880332965496,
+     "inRange": true
+    },
+    {
+     "id": "C·L2",
+     "way": "tweeter",
+     "mH": 0.3622,
+     "dcrOhm": 0.2875,
+     "fitOhm": 0.28746999450971766,
+     "inRange": true
+    },
+    {
+     "id": "C·L7",
+     "way": "tweeter",
+     "mH": 1.596,
+     "dcrOhm": 0.6885,
+     "fitOhm": 0.6884519571017431,
+     "inRange": true
+    },
+    {
+     "id": "C·L10",
+     "way": "tweeter",
+     "mH": 0.1242,
+     "dcrOhm": 0.1531,
+     "fitOhm": 0.1530631241103009,
+     "inRange": true
+    }
+   ],
+   "parts": [
+    {
+     "id": "G",
+     "type": "Generator",
+     "value": "2.83 V"
+    },
+    {
+     "id": "L1",
+     "type": "Inductor",
+     "value": "2.82 mH"
+    },
+    {
+     "id": "C2",
+     "type": "Capacitor",
+     "value": "132.1 uF"
+    },
+    {
+     "id": "L3",
+     "type": "Inductor",
+     "value": "1.427 mH"
+    },
+    {
+     "id": "L5",
+     "type": "Inductor",
+     "value": "27.85 mH"
+    },
+    {
+     "id": "C6",
+     "type": "Capacitor",
+     "value": "279.9 uF"
+    },
+    {
+     "id": "D",
+     "type": "Driver",
+     "value": ""
+    },
+    {
+     "id": "B·C1",
+     "type": "Capacitor",
+     "value": "51.01 uF"
+    },
+    {
+     "id": "B·L2",
+     "type": "Inductor",
+     "value": "1.413 mH"
+    },
+    {
+     "id": "B·C3",
+     "type": "Capacitor",
+     "value": "45.18 uF"
+    },
+    {
+     "id": "B·L5",
+     "type": "Inductor",
+     "value": "1.321 mH"
+    },
+    {
+     "id": "B·C6",
+     "type": "Capacitor",
+     "value": "12.86 uF"
+    },
+    {
+     "id": "B·L7",
+     "type": "Inductor",
+     "value": "0.3274 mH"
+    },
+    {
+     "id": "B·R9",
+     "type": "Resistor",
+     "value": "2.391 Ω"
+    },
+    {
+     "id": "B·D",
+     "type": "Driver",
+     "value": ""
+    },
+    {
+     "id": "C·C1",
+     "type": "Capacitor",
+     "value": "4.166 uF"
+    },
+    {
+     "id": "C·L2",
+     "type": "Inductor",
+     "value": "0.3622 mH"
+    },
+    {
+     "id": "C·C3",
+     "type": "Capacitor",
+     "value": "16.01 uF"
+    },
+    {
+     "id": "C·L7",
+     "type": "Inductor",
+     "value": "1.596 mH"
+    },
+    {
+     "id": "C·L10",
+     "type": "Inductor",
+     "value": "0.1242 mH"
+    },
+    {
+     "id": "C·R12",
+     "type": "Resistor",
+     "value": "9.654 Ω"
+    },
+    {
+     "id": "C·D",
+     "type": "Driver",
+     "value": ""
+    }
+   ],
+   "dichtstbijzijnde_v51b": "woofer→mid 396.7 LR4 · mid→tweeter 1981.2 LR4"
+  },
+  {
+   "key": "KAND_V2_1",
+   "corpus": "A5e.3-veld",
+   "label": "woofer→mid 549.7 LR4 · mid→tweeter 1494.8 LR4",
+   "crossingsHz": [
+    408.7234607628764,
+    2302.8461283283345
+   ],
+   "minZ": {
+    "ohm": 2.8063741763080676,
+    "hz": 322.13779511234463,
+    "branch": "woofer",
+    "perBranch": {
+     "woofer": 3.35,
+     "mid": 9.12,
+     "tweeter": 76.71
+    }
+   },
+   "floorOk": true,
+   "gateMinZ": 2.806296162860119,
+   "rmsFull": 0.8539078335349001,
+   "windowFull": 2.3303263535513503,
+   "rms397": 0.8407011273559546,
+   "window397": 2.01777009709407,
+   "band397": [
+    396.66798889329635,
+    19999.51
+   ],
+   "mk": [
+    {
+     "pair": "woofer→mid",
+     "deg": 13.444080690071932
+    },
+    {
+     "pair": "mid→tweeter",
+     "deg": 5.801053231779886
+    }
+   ],
+   "mc": [
+    {
+     "way": "tweeter",
+     "db": -21.246830457721757,
+     "limit": -20,
+     "pass": true
+    }
+   ],
+   "resonantDb": -1.3226901431144977,
+   "liftDb": 1.8568792343870406,
+   "qesMult": 1.4865812887554242,
+   "dissPct": 9.062034519292878,
+   "hottestThermalW": 0.3101052316558555,
+   "hottestAllowedW": 5,
+   "hottestId": "C·R9",
+   "hottestContinuousW": 3.1010523165585555,
+   "coilPeakA": 15.59341665020515,
+   "epdr": 1.4512014659027594,
+   "lobingDipDb": -3.175474742305113,
+   "levelWork": {
+    "seriesOhm": 0,
+    "dcrOhm": 1.0647,
+    "totalSeriesOhm": 1.0647,
+    "none": true
+   },
+   "askedDb": 0.8499986917885849,
+   "dcrTotalOhm": 10.0536,
+   "coils": [
+    {
+     "id": "L1",
+     "way": "woofer",
+     "mH": 2.717,
+     "dcrOhm": 0.5484,
+     "fitOhm": 0.5483753048415057,
+     "inRange": true
+    },
+    {
+     "id": "L3",
+     "way": "woofer",
+     "mH": 2.449,
+     "dcrOhm": 0.5163,
+     "fitOhm": 0.5162869623185399,
+     "inRange": true
+    },
+    {
+     "id": "L5",
+     "way": "woofer",
+     "mH": 22.630000000000003,
+     "dcrOhm": 1.878,
+     "fitOhm": 1.8775836225002136,
+     "inRange": false
+    },
+    {
+     "id": "L8",
+     "way": "woofer",
+     "mH": 15.12,
+     "dcrOhm": 1.486,
+     "fitOhm": 1.4856367782266344,
+     "inRange": true
+    },
+    {
+     "id": "B·L2",
+     "way": "mid",
+     "mH": 3.585,
+     "dcrOhm": 1.109,
+     "fitOhm": 1.108754027876562,
+     "inRange": true
+    },
+    {
+     "id": "B·L4",
+     "way": "mid",
+     "mH": 15.19,
+     "dcrOhm": 2.595,
+     "fitOhm": 2.5947543099756007,
+     "inRange": true
+    },
+    {
+     "id": "B·L5",
+     "way": "mid",
+     "mH": 0.7135,
+     "dcrOhm": 0.4285,
+     "fitOhm": 0.4285310110081631,
+     "inRange": true
+    },
+    {
+     "id": "B·L7",
+     "way": "mid",
+     "mH": 0.22890000000000002,
+     "dcrOhm": 0.2194,
+     "fitOhm": 0.21939637194785155,
+     "inRange": true
+    },
+    {
+     "id": "C·L4",
+     "way": "tweeter",
+     "mH": 2.553,
+     "dcrOhm": 0.9078,
+     "fitOhm": 0.9078485309752655,
+     "inRange": true
+    },
+    {
+     "id": "C·L7",
+     "way": "tweeter",
+     "mH": 0.1151,
+     "dcrOhm": 0.1464,
+     "fitOhm": 0.1463560434820778,
+     "inRange": true
+    },
+    {
+     "id": "C·L10",
+     "way": "tweeter",
+     "mH": 0.2279,
+     "dcrOhm": 0.2188,
+     "fitOhm": 0.2188314444515944,
+     "inRange": true
+    }
+   ],
+   "parts": [
+    {
+     "id": "G",
+     "type": "Generator",
+     "value": "2.83 V"
+    },
+    {
+     "id": "L1",
+     "type": "Inductor",
+     "value": "2.717 mH"
+    },
+    {
+     "id": "C2",
+     "type": "Capacitor",
+     "value": "166.5 uF"
+    },
+    {
+     "id": "L3",
+     "type": "Inductor",
+     "value": "2.449 mH"
+    },
+    {
+     "id": "C4",
+     "type": "Capacitor",
+     "value": "69.4 uF"
+    },
+    {
+     "id": "L5",
+     "type": "Inductor",
+     "value": "22.63 mH"
+    },
+    {
+     "id": "C6",
+     "type": "Capacitor",
+     "value": "342 uF"
+    },
+    {
+     "id": "R7",
+     "type": "Resistor",
+     "value": "1.259 Ω"
+    },
+    {
+     "id": "L8",
+     "type": "Inductor",
+     "value": "15.12 mH"
+    },
+    {
+     "id": "R10",
+     "type": "Resistor",
+     "value": "48.6 Ω"
+    },
+    {
+     "id": "D",
+     "type": "Driver",
+     "value": ""
+    },
+    {
+     "id": "B·C1",
+     "type": "Capacitor",
+     "value": "98.63 uF"
+    },
+    {
+     "id": "B·L2",
+     "type": "Inductor",
+     "value": "3.585 mH"
+    },
+    {
+     "id": "B·C3",
+     "type": "Capacitor",
+     "value": "101 uF"
+    },
+    {
+     "id": "B·L4",
+     "type": "Inductor",
+     "value": "15.19 mH"
+    },
+    {
+     "id": "B·L5",
+     "type": "Inductor",
+     "value": "0.7135 mH"
+    },
+    {
+     "id": "B·C6",
+     "type": "Capacitor",
+     "value": "23.74 uF"
+    },
+    {
+     "id": "B·L7",
+     "type": "Inductor",
+     "value": "0.2289 mH"
+    },
+    {
+     "id": "B·C8",
+     "type": "Capacitor",
+     "value": "7.003 uF"
+    },
+    {
+     "id": "B·D",
+     "type": "Driver",
+     "value": ""
+    },
+    {
+     "id": "C·C1",
+     "type": "Capacitor",
+     "value": "7.824 uF"
+    },
+    {
+     "id": "C·C3",
+     "type": "Capacitor",
+     "value": "31.4 uF"
+    },
+    {
+     "id": "C·L4",
+     "type": "Inductor",
+     "value": "2.553 mH"
+    },
+    {
+     "id": "C·R5",
+     "type": "Resistor",
+     "value": "0.1982 Ω"
+    },
+    {
+     "id": "C·R6",
+     "type": "Resistor",
+     "value": "49.76 Ω"
+    },
+    {
+     "id": "C·L7",
+     "type": "Inductor",
+     "value": "0.1151 mH"
+    },
+    {
+     "id": "C·C8",
+     "type": "Capacitor",
+     "value": "6.975 uF"
+    },
+    {
+     "id": "C·R9",
+     "type": "Resistor",
+     "value": "4.76 Ω"
+    },
+    {
+     "id": "C·L10",
+     "type": "Inductor",
+     "value": "0.2279 mH"
+    },
+    {
+     "id": "C·C11",
+     "type": "Capacitor",
+     "value": "59.01 uF"
+    },
+    {
+     "id": "C·R12",
+     "type": "Resistor",
+     "value": "0.2106 Ω"
+    },
+    {
+     "id": "C·D",
+     "type": "Driver",
+     "value": ""
+    }
+   ],
+   "dichtstbijzijnde_v51b": "woofer→mid 548.5 LR4 · mid→tweeter 1719 LR4"
+  },
+  {
+   "key": "KAND_V2_6",
+   "corpus": "A5e.3-veld",
+   "label": "woofer→mid 549.7 LR4 · mid→tweeter 1726.7 LR4",
+   "crossingsHz": [
+    525.7668063831144,
+    1941.9948709351702
+   ],
+   "minZ": {
+    "ohm": 2.6641201668070753,
+    "hz": 52.690359810141494,
+    "branch": "woofer",
+    "perBranch": {
+     "woofer": 2.66,
+     "mid": 62.83,
+     "tweeter": 411.51
+    }
+   },
+   "floorOk": true,
+   "gateMinZ": 2.6640495139627567,
+   "rmsFull": 1.165463376802746,
+   "windowFull": 2.2919606046788514,
+   "rms397": 1.1767022425782592,
+   "window397": 2.148730706304714,
+   "band397": [
+    396.66798889329635,
+    19999.51
+   ],
+   "mk": [
+    {
+     "pair": "woofer→mid",
+     "deg": 21.964867521089577
+    },
+    {
+     "pair": "mid→tweeter",
+     "deg": 11.336540670030045
+    }
+   ],
+   "mc": [
+    {
+     "way": "mid",
+     "db": -27.1231695216344,
+     "limit": -14.312958665565848,
+     "pass": true
+    },
+    {
+     "way": "tweeter",
+     "db": -25.027517691692758,
+     "limit": -20,
+     "pass": true
+    }
+   ],
+   "resonantDb": -1.8984130274865536,
+   "liftDb": 1.645235144330309,
+   "qesMult": 1.3728524852343842,
+   "dissPct": 11.867084626406903,
+   "hottestThermalW": 0.5680451285174297,
+   "hottestAllowedW": 5,
+   "hottestId": "R7",
+   "hottestContinuousW": 5.680451285174297,
+   "coilPeakA": 19.02644629270396,
+   "epdr": 1.3332294111021337,
+   "lobingDipDb": -2.0412869575528987,
+   "levelWork": {
+    "seriesOhm": 0,
+    "dcrOhm": 0.9025000000000001,
+    "totalSeriesOhm": 0.9025000000000001,
+    "none": true
+   },
+   "askedDb": 0.8499986917885849,
+   "dcrTotalOhm": 9.8139,
+   "coils": [
+    {
+     "id": "L1",
+     "way": "woofer",
+     "mH": 2.313,
+     "dcrOhm": 0.4994,
+     "fitOhm": 0.49944077419087174,
+     "inRange": true
+    },
+    {
+     "id": "L3",
+     "way": "woofer",
+     "mH": 1.599,
+     "dcrOhm": 0.4031,
+     "fitOhm": 0.40308242484906615,
+     "inRange": true
+    },
+    {
+     "id": "L5",
+     "way": "woofer",
+     "mH": 9.649,
+     "dcrOhm": 1.145,
+     "fitOhm": 1.1445907073182506,
+     "inRange": true
+    },
+    {
+     "id": "B·L2",
+     "way": "mid",
+     "mH": 7.582,
+     "dcrOhm": 1.723,
+     "fitOhm": 1.7234195124549465,
+     "inRange": true
+    },
+    {
+     "id": "B·L4",
+     "way": "mid",
+     "mH": 9.283,
+     "dcrOhm": 1.942,
+     "fitOhm": 1.941579818096474,
+     "inRange": true
+    },
+    {
+     "id": "B·L5",
+     "way": "mid",
+     "mH": 1.128,
+     "dcrOhm": 0.5612,
+     "fitOhm": 0.5611993116649453,
+     "inRange": true
+    },
+    {
+     "id": "B·L7",
+     "way": "mid",
+     "mH": 0.2849,
+     "dcrOhm": 0.2496,
+     "fitOhm": 0.24957405502392072,
+     "inRange": true
+    },
+    {
+     "id": "C·L2",
+     "way": "tweeter",
+     "mH": 3.769,
+     "dcrOhm": 1.142,
+     "fitOhm": 1.1419193561190424,
+     "inRange": true
+    },
+    {
+     "id": "C·L4",
+     "way": "tweeter",
+     "mH": 7.949,
+     "dcrOhm": 1.772,
+     "fitOhm": 1.7720653061346119,
+     "inRange": true
+    },
+    {
+     "id": "C·L7",
+     "way": "tweeter",
+     "mH": 0.1109,
+     "dcrOhm": 0.1432,
+     "fitOhm": 0.14318716697298547,
+     "inRange": true
+    },
+    {
+     "id": "C·L10",
+     "way": "tweeter",
+     "mH": 0.2543000000000001,
+     "dcrOhm": 0.2334,
+     "fitOhm": 0.23342161624676913,
+     "inRange": true
+    }
+   ],
+   "parts": [
+    {
+     "id": "G",
+     "type": "Generator",
+     "value": "2.83 V"
+    },
+    {
+     "id": "L1",
+     "type": "Inductor",
+     "value": "2.313 mH"
+    },
+    {
+     "id": "C2",
+     "type": "Capacitor",
+     "value": "153.5 uF"
+    },
+    {
+     "id": "L3",
+     "type": "Inductor",
+     "value": "1.599 mH"
+    },
+    {
+     "id": "C4",
+     "type": "Capacitor",
+     "value": "43.57 uF"
+    },
+    {
+     "id": "L5",
+     "type": "Inductor",
+     "value": "9.649 mH"
+    },
+    {
+     "id": "C6",
+     "type": "Capacitor",
+     "value": "733 uF"
+    },
+    {
+     "id": "R7",
+     "type": "Resistor",
+     "value": "0.9386 Ω"
+    },
+    {
+     "id": "D",
+     "type": "Driver",
+     "value": ""
+    },
+    {
+     "id": "B·C1",
+     "type": "Capacitor",
+     "value": "46.21 uF"
+    },
+    {
+     "id": "B·L2",
+     "type": "Inductor",
+     "value": "7.582 mH"
+    },
+    {
+     "id": "B·C3",
+     "type": "Capacitor",
+     "value": "53.76 uF"
+    },
+    {
+     "id": "B·L4",
+     "type": "Inductor",
+     "value": "9.283 mH"
+    },
+    {
+     "id": "B·L5",
+     "type": "Inductor",
+     "value": "1.128 mH"
+    },
+    {
+     "id": "B·C6",
+     "type": "Capacitor",
+     "value": "25.25 uF"
+    },
+    {
+     "id": "B·L7",
+     "type": "Inductor",
+     "value": "0.2849 mH"
+    },
+    {
+     "id": "B·C8",
+     "type": "Capacitor",
+     "value": "6.664 uF"
+    },
+    {
+     "id": "B·D",
+     "type": "Driver",
+     "value": ""
+    },
+    {
+     "id": "C·C1",
+     "type": "Capacitor",
+     "value": "7.318 uF"
+    },
+    {
+     "id": "C·L2",
+     "type": "Inductor",
+     "value": "3.769 mH"
+    },
+    {
+     "id": "C·C3",
+     "type": "Capacitor",
+     "value": "34.2 uF"
+    },
+    {
+     "id": "C·L4",
+     "type": "Inductor",
+     "value": "7.949 mH"
+    },
+    {
+     "id": "C·R5",
+     "type": "Resistor",
+     "value": "0.6749 Ω"
+    },
+    {
+     "id": "C·R6",
+     "type": "Resistor",
+     "value": "50.08 Ω"
+    },
+    {
+     "id": "C·L7",
+     "type": "Inductor",
+     "value": "0.1109 mH"
+    },
+    {
+     "id": "C·C8",
+     "type": "Capacitor",
+     "value": "9.171 uF"
+    },
+    {
+     "id": "C·R9",
+     "type": "Resistor",
+     "value": "4.212 Ω"
+    },
+    {
+     "id": "C·L10",
+     "type": "Inductor",
+     "value": "0.2543 mH"
+    },
+    {
+     "id": "C·C11",
+     "type": "Capacitor",
+     "value": "199.1 uF"
+    },
+    {
+     "id": "C·R12",
+     "type": "Resistor",
+     "value": "0.1871 Ω"
+    },
+    {
+     "id": "C·D",
+     "type": "Driver",
+     "value": ""
+    },
+    {
+     "id": "C10",
+     "type": "Capacitor",
+     "value": "10.81 uF"
+    }
+   ],
+   "dichtstbijzijnde_v51b": "woofer→mid 548.5 LR4 · mid→tweeter 1719 LR4"
+  },
+  {
+   "key": "KAND_V2_4",
+   "corpus": "A5e.3-veld",
+   "label": "woofer→mid 549.7 LR4 · mid→tweeter 1994.6 LR4",
+   "crossingsHz": [
+    553.0268119113516,
+    1785.096456312655
+   ],
+   "minZ": {
+    "ohm": 2.6005111227549658,
+    "hz": 974.6372759259704,
+    "branch": "mid",
+    "perBranch": {
+     "woofer": 14.82,
+     "mid": 2.67,
+     "tweeter": 26.57
+    }
+   },
+   "floorOk": true,
+   "gateMinZ": 2.6004855158955738,
+   "rmsFull": 0.9668875108993501,
+   "windowFull": 2.4651641094495282,
+   "rms397": 0.7707353102896922,
+   "window397": 1.8785179579818416,
+   "band397": [
+    396.66798889329635,
+    19999.51
+   ],
+   "mk": [
+    {
+     "pair": "woofer→mid",
+     "deg": 5.233125487786126
+    },
+    {
+     "pair": "mid→tweeter",
+     "deg": 3.9653857652494433
+    }
+   ],
+   "mc": [
+    {
+     "way": "mid",
+     "db": -46.310051372702105,
+     "limit": -13.409080464775124,
+     "pass": true
+    },
+    {
+     "way": "tweeter",
+     "db": -24.470639811460106,
+     "limit": -20,
+     "pass": true
+    }
+   ],
+   "resonantDb": -1.1134571291246531,
+   "liftDb": 1.6087325928185443,
+   "qesMult": 1.3987270065292046,
+   "dissPct": 23.627628754546848,
+   "hottestThermalW": 1.9294604037754515,
+   "hottestAllowedW": 5,
+   "hottestId": "B·R9",
+   "hottestContinuousW": 19.294604037754514,
+   "coilPeakA": 18.741503829307387,
+   "epdr": 1.3100772841958666,
+   "lobingDipDb": -1.998275054268447,
+   "levelWork": {
+    "seriesOhm": 0,
+    "dcrOhm": 0.879,
+    "totalSeriesOhm": 0.879,
+    "none": true
+   },
+   "askedDb": 0.8499986917885849,
+   "dcrTotalOhm": 10.103699999999998,
+   "coils": [
+    {
+     "id": "L1",
+     "way": "woofer",
+     "mH": 2.716,
+     "dcrOhm": 0.5483,
+     "fitOhm": 0.5482581073551747,
+     "inRange": true
+    },
+    {
+     "id": "L3",
+     "way": "woofer",
+     "mH": 1.137,
+     "dcrOhm": 0.3307,
+     "fitOhm": 0.3306816614065011,
+     "inRange": true
+    },
+    {
+     "id": "L5",
+     "way": "woofer",
+     "mH": 24.010000000000005,
+     "dcrOhm": 1.943,
+     "fitOhm": 1.9432371049878296,
+     "inRange": false
+    },
+    {
+     "id": "B·L2",
+     "way": "mid",
+     "mH": 1.153,
+     "dcrOhm": 0.5685,
+     "fitOhm": 0.5684905911385398,
+     "inRange": true
+    },
+    {
+     "id": "B·L4",
+     "way": "mid",
+     "mH": 6.156,
+     "dcrOhm": 1.524,
+     "fitOhm": 1.5244287431834522,
+     "inRange": true
+    },
+    {
+     "id": "B·L5",
+     "way": "mid",
+     "mH": 1.434,
+     "dcrOhm": 0.6464,
+     "fitOhm": 0.6463992225451322,
+     "inRange": true
+    },
+    {
+     "id": "B·L7",
+     "way": "mid",
+     "mH": 0.5163,
+     "dcrOhm": 0.3542,
+     "fitOhm": 0.3542020021600052,
+     "inRange": true
+    },
+    {
+     "id": "B·L11",
+     "way": "mid",
+     "mH": 12.750000000000002,
+     "dcrOhm": 2.341,
+     "fitOhm": 2.3405299503079395,
+     "inRange": true
+    },
+    {
+     "id": "C·L2",
+     "way": "tweeter",
+     "mH": 0.453,
+     "dcrOhm": 0.3279,
+     "fitOhm": 0.32794496220731184,
+     "inRange": true
+    },
+    {
+     "id": "C·L4",
+     "way": "tweeter",
+     "mH": 1.894,
+     "dcrOhm": 0.7615,
+     "fitOhm": 0.7614726442812797,
+     "inRange": true
+    },
+    {
+     "id": "C·L7",
+     "way": "tweeter",
+     "mH": 0.08047000000000001,
+     "dcrOhm": 0.1185,
+     "fitOhm": 0.11854306254070944,
+     "inRange": true
+    },
+    {
+     "id": "C·L10",
+     "way": "tweeter",
+     "mH": 1.409,
+     "dcrOhm": 0.6397,
+     "fitOhm": 0.6397391864304018,
+     "inRange": true
+    }
+   ],
+   "parts": [
+    {
+     "id": "G",
+     "type": "Generator",
+     "value": "2.83 V"
+    },
+    {
+     "id": "L1",
+     "type": "Inductor",
+     "value": "2.716 mH"
+    },
+    {
+     "id": "C2",
+     "type": "Capacitor",
+     "value": "104.8 uF"
+    },
+    {
+     "id": "L3",
+     "type": "Inductor",
+     "value": "1.137 mH"
+    },
+    {
+     "id": "C4",
+     "type": "Capacitor",
+     "value": "13.91 uF"
+    },
+    {
+     "id": "L5",
+     "type": "Inductor",
+     "value": "24.01 mH"
+    },
+    {
+     "id": "C6",
+     "type": "Capacitor",
+     "value": "327.7 uF"
+    },
+    {
+     "id": "R7",
+     "type": "Resistor",
+     "value": "0.2302 Ω"
+    },
+    {
+     "id": "C9",
+     "type": "Capacitor",
+     "value": "7.796 uF"
+    },
+    {
+     "id": "D",
+     "type": "Driver",
+     "value": ""
+    },
+    {
+     "id": "B·C1",
+     "type": "Capacitor",
+     "value": "57.98 uF"
+    },
+    {
+     "id": "B·L2",
+     "type": "Inductor",
+     "value": "1.153 mH"
+    },
+    {
+     "id": "B·C3",
+     "type": "Capacitor",
+     "value": "50.8 uF"
+    },
+    {
+     "id": "B·L4",
+     "type": "Inductor",
+     "value": "6.156 mH"
+    },
+    {
+     "id": "B·L5",
+     "type": "Inductor",
+     "value": "1.434 mH"
+    },
+    {
+     "id": "B·C6",
+     "type": "Capacitor",
+     "value": "12.42 uF"
+    },
+    {
+     "id": "B·L7",
+     "type": "Inductor",
+     "value": "0.5163 mH"
+    },
+    {
+     "id": "B·C8",
+     "type": "Capacitor",
+     "value": "3.02 uF"
+    },
+    {
+     "id": "B·R9",
+     "type": "Resistor",
+     "value": "5.586 Ω"
+    },
+    {
+     "id": "B·C10",
+     "type": "Capacitor",
+     "value": "1.652 uF"
+    },
+    {
+     "id": "B·L11",
+     "type": "Inductor",
+     "value": "12.75 mH"
+    },
+    {
+     "id": "B·C12",
+     "type": "Capacitor",
+     "value": "12.21 uF"
+    },
+    {
+     "id": "B·D",
+     "type": "Driver",
+     "value": ""
+    },
+    {
+     "id": "C·C1",
+     "type": "Capacitor",
+     "value": "5.481 uF"
+    },
+    {
+     "id": "C·L2",
+     "type": "Inductor",
+     "value": "0.453 mH"
+    },
+    {
+     "id": "C·C3",
+     "type": "Capacitor",
+     "value": "32.6 uF"
+    },
+    {
+     "id": "C·L4",
+     "type": "Inductor",
+     "value": "1.894 mH"
+    },
+    {
+     "id": "C·R6",
+     "type": "Resistor",
+     "value": "47.37 Ω"
+    },
+    {
+     "id": "C·L7",
+     "type": "Inductor",
+     "value": "0.08047 mH"
+    },
+    {
+     "id": "C·R9",
+     "type": "Resistor",
+     "value": "8.634 Ω"
+    },
+    {
+     "id": "C·L10",
+     "type": "Inductor",
+     "value": "1.409 mH"
+    },
+    {
+     "id": "C·C11",
+     "type": "Capacitor",
+     "value": "15 uF"
+    },
+    {
+     "id": "C·R12",
+     "type": "Resistor",
+     "value": "2.679 Ω"
+    },
+    {
+     "id": "C·D",
+     "type": "Driver",
+     "value": ""
+    },
+    {
+     "id": "C10",
+     "type": "Capacitor",
+     "value": "38.68 uF"
+    }
+   ],
+   "dichtstbijzijnde_v51b": "woofer→mid 548.5 LR4 · mid→tweeter 2283.5 LR4"
+  },
+  {
+   "key": "A5E3ARM_KAND_1",
+   "corpus": "A5e.3-arm (M-1-veld)",
+   "label": "woofer→mid 429.1 LR4 · mid→tweeter 1994.6 LR4",
+   "crossingsHz": [
+    475.5168525763883,
+    2248.4153699316266
+   ],
+   "minZ": {
+    "ohm": 2.6174468895806235,
+    "hz": 1158.6925805228414,
+    "branch": "mid",
+    "perBranch": {
+     "woofer": 19.32,
+     "mid": 3.46,
+     "tweeter": 8.21
+    }
+   },
+   "floorOk": true,
+   "gateMinZ": 2.616379981429054,
+   "rmsFull": 1.1852731826889003,
+   "windowFull": 2.388556256770704,
+   "rms397": 1.2339309553935858,
+   "window397": 2.2346360198799218,
+   "band397": [
+    396.66798889329635,
+    19999.51
+   ],
+   "mk": [
+    {
+     "pair": "woofer→mid",
+     "deg": 14.674200834079716
+    },
+    {
+     "pair": "mid→tweeter",
+     "deg": 12.37181965810445
+    }
+   ],
+   "mc": [
+    {
+     "way": "mid",
+     "db": -37.927230405344105,
+     "limit": -13.218330950843502,
+     "pass": true
+    },
+    {
+     "way": "tweeter",
+     "db": -34.6714118391434,
+     "limit": -20,
+     "pass": true
+    }
+   ],
+   "resonantDb": -1.7259036280381146,
+   "liftDb": 1.7009066032477005,
+   "qesMult": 1.379097188192227,
+   "dissPct": 23.103115665390746,
+   "hottestThermalW": 1.3357990122929873,
+   "hottestAllowedW": 5,
+   "hottestId": "B·R9",
+   "hottestContinuousW": 13.357990122929872,
+   "coilPeakA": 20.14786710758656,
+   "epdr": 1.348951046150453,
+   "lobingDipDb": -3.2474154126809935,
+   "levelWork": {
+    "seriesOhm": 0,
+    "dcrOhm": 0.9387,
+    "totalSeriesOhm": 0.9387,
+    "none": true
+   },
+   "askedDb": 0.8499986917885849,
+   "dcrTotalOhm": 9.874900000000002,
+   "coils": [
+    {
+     "id": "L1",
+     "way": "woofer",
+     "mH": 2.799,
+     "dcrOhm": 0.5579,
+     "fitOhm": 0.5579247970907512,
+     "inRange": true
+    },
+    {
+     "id": "L3",
+     "way": "woofer",
+     "mH": 1.45,
+     "dcrOhm": 0.3808,
+     "fitOhm": 0.3808277610637971,
+     "inRange": true
+    },
+    {
+     "id": "L5",
+     "way": "woofer",
+     "mH": 15.5,
+     "dcrOhm": 1.507,
+     "fitOhm": 1.5072029557719275,
+     "inRange": true
+    },
+    {
+     "id": "B·L2",
+     "way": "mid",
+     "mH": 1.331,
+     "dcrOhm": 0.6186,
+     "fitOhm": 0.618640720203381,
+     "inRange": true
+    },
+    {
+     "id": "B·L4",
+     "way": "mid",
+     "mH": 16.88,
+     "dcrOhm": 2.761,
+     "fitOhm": 2.7610550311212068,
+     "inRange": true
+    },
+    {
+     "id": "B·L5",
+     "way": "mid",
+     "mH": 1.174,
+     "dcrOhm": 0.5746,
+     "fitOhm": 0.5745651737980041,
+     "inRange": true
+    },
+    {
+     "id": "B·L7",
+     "way": "mid",
+     "mH": 0.2308,
+     "dcrOhm": 0.2205,
+     "fitOhm": 0.22046694639533532,
+     "inRange": true
+    },
+    {
+     "id": "B·L11",
+     "way": "mid",
+     "mH": 12.65,
+     "dcrOhm": 2.33,
+     "fitOhm": 2.329702538265667,
+     "inRange": true
+    },
+    {
+     "id": "C·L2",
+     "way": "tweeter",
+     "mH": 0.7704,
+     "dcrOhm": 0.4483,
+     "fitOhm": 0.44833713316703017,
+     "inRange": true
+    },
+    {
+     "id": "C·L4",
+     "way": "tweeter",
+     "mH": 0.381,
+     "dcrOhm": 0.2962,
+     "fitOhm": 0.2961650518509434,
+     "inRange": true
+    },
+    {
+     "id": "C·L12",
+     "way": "tweeter",
+     "mH": 0.1636,
+     "dcrOhm": 0.18,
+     "fitOhm": 0.18002615085172013,
+     "inRange": true
+    }
+   ],
+   "parts": [
+    {
+     "id": "G",
+     "type": "Generator",
+     "value": "2.83 V"
+    },
+    {
+     "id": "L1",
+     "type": "Inductor",
+     "value": "2.799 mH"
+    },
+    {
+     "id": "C2",
+     "type": "Capacitor",
+     "value": "139.4 uF"
+    },
+    {
+     "id": "L3",
+     "type": "Inductor",
+     "value": "1.45 mH"
+    },
+    {
+     "id": "C4",
+     "type": "Capacitor",
+     "value": "13.37 uF"
+    },
+    {
+     "id": "L5",
+     "type": "Inductor",
+     "value": "15.5 mH"
+    },
+    {
+     "id": "C6",
+     "type": "Capacitor",
+     "value": "512.8 uF"
+    },
+    {
+     "id": "R7",
+     "type": "Resistor",
+     "value": "1.006 Ω"
+    },
+    {
+     "id": "D",
+     "type": "Driver",
+     "value": ""
+    },
+    {
+     "id": "B·C1",
+     "type": "Capacitor",
+     "value": "60.71 uF"
+    },
+    {
+     "id": "B·L2",
+     "type": "Inductor",
+     "value": "1.331 mH"
+    },
+    {
+     "id": "B·C3",
+     "type": "Capacitor",
+     "value": "37.54 uF"
+    },
+    {
+     "id": "B·L4",
+     "type": "Inductor",
+     "value": "16.88 mH"
+    },
+    {
+     "id": "B·L5",
+     "type": "Inductor",
+     "value": "1.174 mH"
+    },
+    {
+     "id": "B·C6",
+     "type": "Capacitor",
+     "value": "12.05 uF"
+    },
+    {
+     "id": "B·L7",
+     "type": "Inductor",
+     "value": "0.2308 mH"
+    },
+    {
+     "id": "B·R9",
+     "type": "Resistor",
+     "value": "3.187 Ω"
+    },
+    {
+     "id": "B·C10",
+     "type": "Capacitor",
+     "value": "10.57 uF"
+    },
+    {
+     "id": "B·L11",
+     "type": "Inductor",
+     "value": "12.65 mH"
+    },
+    {
+     "id": "B·C12",
+     "type": "Capacitor",
+     "value": "8.2 uF"
+    },
+    {
+     "id": "B·R13",
+     "type": "Resistor",
+     "value": "13.14 Ω"
+    },
+    {
+     "id": "B·D",
+     "type": "Driver",
+     "value": ""
+    },
+    {
+     "id": "C·C1",
+     "type": "Capacitor",
+     "value": "8.922 uF"
+    },
+    {
+     "id": "C·L2",
+     "type": "Inductor",
+     "value": "0.7704 mH"
+    },
+    {
+     "id": "C·C3",
+     "type": "Capacitor",
+     "value": "11.93 uF"
+    },
+    {
+     "id": "C·L4",
+     "type": "Inductor",
+     "value": "0.381 mH"
+    },
+    {
+     "id": "C·R5",
+     "type": "Resistor",
+     "value": "1.56 Ω"
+    },
+    {
+     "id": "C·R6",
+     "type": "Resistor",
+     "value": "9.307 Ω"
+    },
+    {
+     "id": "C·R7",
+     "type": "Resistor",
+     "value": "48.99 Ω"
+    },
+    {
+     "id": "C·C8",
+     "type": "Capacitor",
+     "value": "23.93 uF"
+    },
+    {
+     "id": "C·C10",
+     "type": "Capacitor",
+     "value": "0.1436 uF"
+    },
+    {
+     "id": "C·L12",
+     "type": "Inductor",
+     "value": "0.1636 mH"
+    },
+    {
+     "id": "C·C13",
+     "type": "Capacitor",
+     "value": "140.3 uF"
+    },
+    {
+     "id": "C·R14",
+     "type": "Resistor",
+     "value": "0.6063 Ω"
+    },
+    {
+     "id": "C·D",
+     "type": "Driver",
+     "value": ""
+    },
+    {
+     "id": "C10",
+     "type": "Capacitor",
+     "value": "100.5 uF"
+    }
+   ],
+   "dichtstbijzijnde_v51b": "woofer→mid 396.7 LR4 · mid→tweeter 1981.2 LR4"
+  },
+  {
+   "key": "V51B_KAND_1",
+   "corpus": "V51b (gepoort, series-r-max 1,0)",
+   "label": "woofer→mid 466.5 LR4 · mid→tweeter 2283.5 LR4",
+   "crossingsHz": [
+    515.184331059352,
+    2257.1135061717137
+   ],
+   "minZ": {
+    "ohm": 2.7349695170586332,
+    "hz": 135.64870074327902,
+    "branch": "woofer",
+    "perBranch": {
+     "woofer": 2.76,
+     "mid": 28.25,
+     "tweeter": 390.83
+    }
+   },
+   "floorOk": true,
+   "gateMinZ": 2.7347523238606266,
+   "rmsFull": 2.1498998434999868,
+   "windowFull": 4.124492314853788,
+   "rms397": 0.6751684079288341,
+   "window397": 1.4073124423626506,
+   "band397": [
+    396.66798889329635,
+    19999.51
+   ],
+   "mk": [
+    {
+     "pair": "woofer→mid",
+     "deg": 9.202133857610043
+    },
+    {
+     "pair": "mid→tweeter",
+     "deg": 3.5810962658858254
+    }
+   ],
+   "mc": [
+    {
+     "way": "mid",
+     "db": -54.937342918270936,
+     "limit": -11.939170634922645,
+     "pass": true
+    },
+    {
+     "way": "tweeter",
+     "db": -30.897256018635577,
+     "limit": -20,
+     "pass": true
+    }
+   ],
+   "resonantDb": -0.6919023539106277,
+   "liftDb": 1.7932159948979454,
+   "qesMult": 1.328124549713366,
+   "dissPct": 38.65609975736851,
+   "hottestThermalW": 2.350230704504708,
+   "hottestAllowedW": 5,
+   "hottestId": "B·R9",
+   "hottestContinuousW": 23.502307045047083,
+   "coilPeakA": 19.094633806717983,
+   "epdr": 1.3819596762953024,
+   "lobingDipDb": -2.9926626288450677,
+   "levelWork": {
+    "seriesOhm": 0.9997,
+    "dcrOhm": 0,
+    "totalSeriesOhm": 0.9997,
+    "none": false
+   },
+   "askedDb": 0.8499986917885849,
+   "dcrTotalOhm": 0,
+   "coils": [
+    {
+     "id": "L1",
+     "way": "woofer",
+     "mH": 2.3,
+     "dcrOhm": 0,
+     "fitOhm": 0.49780899598027034,
+     "inRange": true
+    },
+    {
+     "id": "L3",
+     "way": "woofer",
+     "mH": 0.2199,
+     "dcrOhm": 0,
+     "fitOhm": 0.12738343560317122,
+     "inRange": true
+    },
+    {
+     "id": "B·L2",
+     "way": "mid",
+     "mH": 1.447,
+     "dcrOhm": 0,
+     "fitOhm": 0.6498435686750723,
+     "inRange": true
+    },
+    {
+     "id": "B·L4",
+     "way": "mid",
+     "mH": 4.628,
+     "dcrOhm": 0,
+     "fitOhm": 1.2886744214468597,
+     "inRange": true
+    },
+    {
+     "id": "B·L5",
+     "way": "mid",
+     "mH": 1.301,
+     "dcrOhm": 0,
+     "fitOhm": 0.6103911897616202,
+     "inRange": true
+    },
+    {
+     "id": "B·L7",
+     "way": "mid",
+     "mH": 0.3596,
+     "dcrOhm": 0,
+     "fitOhm": 0.28625302866365415,
+     "inRange": true
+    },
+    {
+     "id": "C·L2",
+     "way": "tweeter",
+     "mH": 0.30610000000000004,
+     "dcrOhm": 0,
+     "fitOhm": 0.2603484454331527,
+     "inRange": true
+    },
+    {
+     "id": "C·L4",
+     "way": "tweeter",
+     "mH": 0.7823,
+     "dcrOhm": 0,
+     "fitOhm": 0.4524023393041161,
+     "inRange": true
+    },
+    {
+     "id": "C·L10",
+     "way": "tweeter",
+     "mH": 0.3707,
+     "dcrOhm": 0,
+     "fitOhm": 0.29142369855432915,
+     "inRange": true
+    }
+   ],
+   "parts": [
+    {
+     "id": "G",
+     "type": "Generator",
+     "value": "2.83 V"
+    },
+    {
+     "id": "L1",
+     "type": "Inductor",
+     "value": "2.3 mH"
+    },
+    {
+     "id": "C2",
+     "type": "Capacitor",
+     "value": "152 uF"
+    },
+    {
+     "id": "L3",
+     "type": "Inductor",
+     "value": "0.2199 mH"
+    },
+    {
+     "id": "R5",
+     "type": "Resistor",
+     "value": "0.9997 Ω"
+    },
+    {
+     "id": "D",
+     "type": "Driver",
+     "value": ""
+    },
+    {
+     "id": "B·C1",
+     "type": "Capacitor",
+     "value": "39.72 uF"
+    },
+    {
+     "id": "B·L2",
+     "type": "Inductor",
+     "value": "1.447 mH"
+    },
+    {
+     "id": "B·C3",
+     "type": "Capacitor",
+     "value": "38.42 uF"
+    },
+    {
+     "id": "B·L4",
+     "type": "Inductor",
+     "value": "4.628 mH"
+    },
+    {
+     "id": "B·L5",
+     "type": "Inductor",
+     "value": "1.301 mH"
+    },
+    {
+     "id": "B·C6",
+     "type": "Capacitor",
+     "value": "6.617 uF"
+    },
+    {
+     "id": "B·L7",
+     "type": "Inductor",
+     "value": "0.3596 mH"
+    },
+    {
+     "id": "B·R9",
+     "type": "Resistor",
+     "value": "7.677 Ω"
+    },
+    {
+     "id": "B·C12",
+     "type": "Capacitor",
+     "value": "4.7 uF"
+    },
+    {
+     "id": "B·R13",
+     "type": "Resistor",
+     "value": "4.934 Ω"
+    },
+    {
+     "id": "B·D",
+     "type": "Driver",
+     "value": ""
+    },
+    {
+     "id": "C·C1",
+     "type": "Capacitor",
+     "value": "3 uF"
+    },
+    {
+     "id": "C·L2",
+     "type": "Inductor",
+     "value": "0.3061 mH"
+    },
+    {
+     "id": "C·C3",
+     "type": "Capacitor",
+     "value": "14.38 uF"
+    },
+    {
+     "id": "C·L4",
+     "type": "Inductor",
+     "value": "0.7823 mH"
+    },
+    {
+     "id": "C·R6",
+     "type": "Resistor",
+     "value": "46.78 Ω"
+    },
+    {
+     "id": "C·L10",
+     "type": "Inductor",
+     "value": "0.3707 mH"
+    },
+    {
+     "id": "C·R12",
+     "type": "Resistor",
+     "value": "11.31 Ω"
+    },
+    {
+     "id": "C·D",
+     "type": "Driver",
+     "value": ""
+    }
+   ],
+   "dichtstbijzijnde_v51b": "woofer→mid 466.5 LR4 · mid→tweeter 2283.5 LR4"
+  },
+  {
+   "key": "V51B_KAND_2",
+   "corpus": "V51b (gepoort, series-r-max 1,0)",
+   "label": "woofer→mid 548.5 LR4 · mid→tweeter 1719 LR4",
+   "crossingsHz": [
+    551.1450910797187,
+    1858.3221756656458
+   ],
+   "minZ": {
+    "ohm": 2.8682543831351133,
+    "hz": 135.64870074327902,
+    "branch": "woofer",
+    "perBranch": {
+     "woofer": 2.89,
+     "mid": 35.49,
+     "tweeter": 366.96
+    }
+   },
+   "floorOk": true,
+   "gateMinZ": 2.8680726818901343,
+   "rmsFull": 1.9995556023257262,
+   "windowFull": 4.002703002716292,
+   "rms397": 0.6821673467724078,
+   "window397": 1.6202511068029866,
+   "band397": [
+    396.66798889329635,
+    19999.51
+   ],
+   "mk": [
+    {
+     "pair": "woofer→mid",
+     "deg": 10.241078258986443
+    },
+    {
+     "pair": "mid→tweeter",
+     "deg": 9.210793090859104
+    }
+   ],
+   "mc": [
+    {
+     "way": "mid",
+     "db": -35.24912227710882,
+     "limit": -11.97447416004955,
+     "pass": true
+    },
+    {
+     "way": "tweeter",
+     "db": -24.017554997049906,
+     "limit": -20,
+     "pass": true
+    }
+   ],
+   "resonantDb": -0.4890824682019872,
+   "liftDb": 1.7448725808059002,
+   "qesMult": 1.3175965726098224,
+   "dissPct": 34.996898693887175,
+   "hottestThermalW": 1.9439726426354769,
+   "hottestAllowedW": 5,
+   "hottestId": "B·R9",
+   "hottestContinuousW": 19.43972642635477,
+   "coilPeakA": 18.452399523575856,
+   "epdr": 1.456882833302843,
+   "lobingDipDb": -2.6863856164785034,
+   "levelWork": {
+    "seriesOhm": 0.9676,
+    "dcrOhm": 0,
+    "totalSeriesOhm": 0.9676,
+    "none": false
+   },
+   "askedDb": 0.8499986917885849,
+   "dcrTotalOhm": 0,
+   "coils": [
+    {
+     "id": "L1",
+     "way": "woofer",
+     "mH": 2.09,
+     "dcrOhm": 0,
+     "fitOhm": 0.4708899363694553,
+     "inRange": true
+    },
+    {
+     "id": "L3",
+     "way": "woofer",
+     "mH": 0.4301,
+     "dcrOhm": 0,
+     "fitOhm": 0.18805072008838766,
+     "inRange": true
+    },
+    {
+     "id": "B·L2",
+     "way": "mid",
+     "mH": 1.557,
+     "dcrOhm": 0,
+     "fitOhm": 0.6784950330881621,
+     "inRange": true
+    },
+    {
+     "id": "B·L5",
+     "way": "mid",
+     "mH": 1.7720000000000002,
+     "dcrOhm": 0,
+     "fitOhm": 0.7321944447392391,
+     "inRange": true
+    },
+    {
+     "id": "C·L2",
+     "way": "tweeter",
+     "mH": 0.4478,
+     "dcrOhm": 0,
+     "fitOhm": 0.32572291299151096,
+     "inRange": true
+    },
+    {
+     "id": "C·L7",
+     "way": "tweeter",
+     "mH": 0.9199,
+     "dcrOhm": 0,
+     "fitOhm": 0.4976934559069177,
+     "inRange": true
+    },
+    {
+     "id": "C·L10",
+     "way": "tweeter",
+     "mH": 0.3002,
+     "dcrOhm": 0,
+     "fitOhm": 0.2573815982254715,
+     "inRange": true
+    }
+   ],
+   "parts": [
+    {
+     "id": "G",
+     "type": "Generator",
+     "value": "2.83 V"
+    },
+    {
+     "id": "L1",
+     "type": "Inductor",
+     "value": "2.09 mH"
+    },
+    {
+     "id": "C2",
+     "type": "Capacitor",
+     "value": "146.7 uF"
+    },
+    {
+     "id": "L3",
+     "type": "Inductor",
+     "value": "0.4301 mH"
+    },
+    {
+     "id": "R5",
+     "type": "Resistor",
+     "value": "0.9676 Ω"
+    },
+    {
+     "id": "D",
+     "type": "Driver",
+     "value": ""
+    },
+    {
+     "id": "B·C1",
+     "type": "Capacitor",
+     "value": "31.83 uF"
+    },
+    {
+     "id": "B·L2",
+     "type": "Inductor",
+     "value": "1.557 mH"
+    },
+    {
+     "id": "B·C3",
+     "type": "Capacitor",
+     "value": "37.24 uF"
+    },
+    {
+     "id": "B·L5",
+     "type": "Inductor",
+     "value": "1.772 mH"
+    },
+    {
+     "id": "B·C6",
+     "type": "Capacitor",
+     "value": "5.642 uF"
+    },
+    {
+     "id": "B·R9",
+     "type": "Resistor",
+     "value": "7.348 Ω"
+    },
+    {
+     "id": "B·C12",
+     "type": "Capacitor",
+     "value": "10 uF"
+    },
+    {
+     "id": "B·D",
+     "type": "Driver",
+     "value": ""
+    },
+    {
+     "id": "C·C1",
+     "type": "Capacitor",
+     "value": "3.194 uF"
+    },
+    {
+     "id": "C·L2",
+     "type": "Inductor",
+     "value": "0.4478 mH"
+    },
+    {
+     "id": "C·C3",
+     "type": "Capacitor",
+     "value": "13.6 uF"
+    },
+    {
+     "id": "C·L7",
+     "type": "Inductor",
+     "value": "0.9199 mH"
+    },
+    {
+     "id": "C·L10",
+     "type": "Inductor",
+     "value": "0.3002 mH"
+    },
+    {
+     "id": "C·R12",
+     "type": "Resistor",
+     "value": "15.98 Ω"
+    },
+    {
+     "id": "C·D",
+     "type": "Driver",
+     "value": ""
+    }
+   ],
+   "dichtstbijzijnde_v51b": "woofer→mid 548.5 LR4 · mid→tweeter 1719 LR4"
+  },
+  {
+   "key": "V51B_KAND_3",
+   "corpus": "V51b (gepoort, series-r-max 1,0)",
+   "label": "woofer→mid 548.5 LR4 · mid→tweeter 2283.5 LR4",
+   "crossingsHz": [
+    550.8819616772137,
+    2257.5957634336523
+   ],
+   "minZ": {
+    "ohm": 2.8874816175854376,
+    "hz": 135.64870074327902,
+    "branch": "woofer",
+    "perBranch": {
+     "woofer": 2.9,
+     "mid": 40.22,
+     "tweeter": 442.29
+    }
+   },
+   "floorOk": true,
+   "gateMinZ": 2.8871962211134212,
+   "rmsFull": 2.114576006922023,
+   "windowFull": 4.076705404411976,
+   "rms397": 0.7327552825166859,
+   "window397": 1.5010110231658849,
+   "band397": [
+    396.66798889329635,
+    19999.51
+   ],
+   "mk": [
+    {
+     "pair": "woofer→mid",
+     "deg": 7.654350401878044
+    },
+    {
+     "pair": "mid→tweeter",
+     "deg": 4.857047862271256
+    }
+   ],
+   "mc": [
+    {
+     "way": "mid",
+     "db": -34.67595146991468,
+     "limit": -11.787905645866333,
+     "pass": true
+    },
+    {
+     "way": "tweeter",
+     "db": -31.689893025987207,
+     "limit": -20,
+     "pass": true
+    }
+   ],
+   "resonantDb": -0.48486320661316995,
+   "liftDb": 1.7936653899797088,
+   "qesMult": 1.328220065951917,
+   "dissPct": 32.93676742694508,
+   "hottestThermalW": 1.7065364669571705,
+   "hottestAllowedW": 5,
+   "hottestId": "B·R9",
+   "hottestContinuousW": 17.065364669571707,
+   "coilPeakA": 18.0364122606946,
+   "epdr": 1.4579458616082308,
+   "lobingDipDb": -3.1805954988058147,
+   "levelWork": {
+    "seriesOhm": 1,
+    "dcrOhm": 0,
+    "totalSeriesOhm": 1,
+    "none": false
+   },
+   "askedDb": 0.8499986917885849,
+   "dcrTotalOhm": 0,
+   "coils": [
+    {
+     "id": "L1",
+     "way": "woofer",
+     "mH": 2.191,
+     "dcrOhm": 0,
+     "fitOhm": 0.48397170737567186,
+     "inRange": true
+    },
+    {
+     "id": "L3",
+     "way": "woofer",
+     "mH": 0.3532,
+     "dcrOhm": 0,
+     "fitOhm": 0.16772707308430065,
+     "inRange": true
+    },
+    {
+     "id": "B·L2",
+     "way": "mid",
+     "mH": 1.7,
+     "dcrOhm": 0,
+     "fitOhm": 0.7145260738126916,
+     "inRange": true
+    },
+    {
+     "id": "B·L5",
+     "way": "mid",
+     "mH": 1.501,
+     "dcrOhm": 0,
+     "fitOhm": 0.6640166933023262,
+     "inRange": true
+    },
+    {
+     "id": "B·L7",
+     "way": "mid",
+     "mH": 0.4183,
+     "dcrOhm": 0,
+     "fitOhm": 0.31291041749081727,
+     "inRange": true
+    },
+    {
+     "id": "C·L2",
+     "way": "tweeter",
+     "mH": 0.342,
+     "dcrOhm": 0,
+     "fitOhm": 0.277917910990104,
+     "inRange": true
+    },
+    {
+     "id": "C·L4",
+     "way": "tweeter",
+     "mH": 0.8861,
+     "dcrOhm": 0,
+     "fitOhm": 0.48684215206979614,
+     "inRange": true
+    },
+    {
+     "id": "C·L7",
+     "way": "tweeter",
+     "mH": 0.4474,
+     "dcrOhm": 0,
+     "fitOhm": 0.32555154788340496,
+     "inRange": true
+    }
+   ],
+   "parts": [
+    {
+     "id": "G",
+     "type": "Generator",
+     "value": "2.83 V"
+    },
+    {
+     "id": "L1",
+     "type": "Inductor",
+     "value": "2.191 mH"
+    },
+    {
+     "id": "C2",
+     "type": "Capacitor",
+     "value": "143.1 uF"
+    },
+    {
+     "id": "L3",
+     "type": "Inductor",
+     "value": "0.3532 mH"
+    },
+    {
+     "id": "R5",
+     "type": "Resistor",
+     "value": "1 Ω"
+    },
+    {
+     "id": "D",
+     "type": "Driver",
+     "value": ""
+    },
+    {
+     "id": "B·C1",
+     "type": "Capacitor",
+     "value": "28.12 uF"
+    },
+    {
+     "id": "B·L2",
+     "type": "Inductor",
+     "value": "1.7 mH"
+    },
+    {
+     "id": "B·C3",
+     "type": "Capacitor",
+     "value": "35.12 uF"
+    },
+    {
+     "id": "B·L5",
+     "type": "Inductor",
+     "value": "1.501 mH"
+    },
+    {
+     "id": "B·C6",
+     "type": "Capacitor",
+     "value": "6.8 uF"
+    },
+    {
+     "id": "B·L7",
+     "type": "Inductor",
+     "value": "0.4183 mH"
+    },
+    {
+     "id": "B·R9",
+     "type": "Resistor",
+     "value": "5.735 Ω"
+    },
+    {
+     "id": "B·D",
+     "type": "Driver",
+     "value": ""
+    },
+    {
+     "id": "C·C1",
+     "type": "Capacitor",
+     "value": "2.651 uF"
+    },
+    {
+     "id": "C·L2",
+     "type": "Inductor",
+     "value": "0.342 mH"
+    },
+    {
+     "id": "C·C3",
+     "type": "Capacitor",
+     "value": "12.33 uF"
+    },
+    {
+     "id": "C·L4",
+     "type": "Inductor",
+     "value": "0.8861 mH"
+    },
+    {
+     "id": "C·L7",
+     "type": "Inductor",
+     "value": "0.4474 mH"
+    },
+    {
+     "id": "C·R9",
+     "type": "Resistor",
+     "value": "10.81 Ω"
+    },
+    {
+     "id": "C·D",
+     "type": "Driver",
+     "value": ""
+    }
+   ],
+   "dichtstbijzijnde_v51b": "woofer→mid 548.5 LR4 · mid→tweeter 2283.5 LR4"
+  },
+  {
+   "key": "V51B_KAND_4",
+   "corpus": "V51b (gepoort, series-r-max 1,0)",
+   "label": "woofer→mid 396.7 LR4 · mid→tweeter 2283.5 LR4",
+   "crossingsHz": [
+    427.88684989607566,
+    2260.580495174595
+   ],
+   "minZ": {
+    "ohm": 2.5921690530913355,
+    "hz": 134.09336557414267,
+    "branch": "woofer",
+    "perBranch": {
+     "woofer": 2.65,
+     "mid": 17.96,
+     "tweeter": 133.47
+    }
+   },
+   "floorOk": true,
+   "gateMinZ": 2.5920680320437017,
+   "rmsFull": 1.8128489004822481,
+   "windowFull": 4.098767335770937,
+   "rms397": 0.8219065397632165,
+   "window397": 2.245479877152044,
+   "band397": [
+    396.66798889329635,
+    19999.51
+   ],
+   "mk": [
+    {
+     "pair": "woofer→mid",
+     "deg": 19.73228342474271
+    },
+    {
+     "pair": "mid→tweeter",
+     "deg": 3.618706027880001
+    }
+   ],
+   "mc": [
+    {
+     "way": "mid",
+     "db": -55.58988638411276,
+     "limit": -13.412201004852754,
+     "pass": true
+    },
+    {
+     "way": "tweeter",
+     "db": -28.283299523209095,
+     "limit": -20,
+     "pass": true
+    }
+   ],
+   "resonantDb": -0.8477213595120574,
+   "liftDb": 1.7936653899797088,
+   "qesMult": 1.3282254757561827,
+   "dissPct": 47.66192269417522,
+   "hottestThermalW": 2.337767279520233,
+   "hottestAllowedW": 5,
+   "hottestId": "B·R9",
+   "hottestContinuousW": 23.37767279520233,
+   "coilPeakA": 20.196560676114416,
+   "epdr": 1.318209584901571,
+   "lobingDipDb": -3.0530131345153393,
+   "levelWork": {
+    "seriesOhm": 1,
+    "dcrOhm": 0,
+    "totalSeriesOhm": 1,
+    "none": false
+   },
+   "askedDb": 0.8499986917885849,
+   "dcrTotalOhm": 0,
+   "coils": [
+    {
+     "id": "L1",
+     "way": "woofer",
+     "mH": 2.299,
+     "dcrOhm": 0,
+     "fitOhm": 0.49768331457451737,
+     "inRange": true
+    },
+    {
+     "id": "L3",
+     "way": "woofer",
+     "mH": 0.2454,
+     "dcrOhm": 0,
+     "fitOhm": 0.13576236664126998,
+     "inRange": true
+    },
+    {
+     "id": "B·L2",
+     "way": "mid",
+     "mH": 1.096,
+     "dcrOhm": 0,
+     "fitOhm": 0.5517687859231839,
+     "inRange": true
+    },
+    {
+     "id": "B·L4",
+     "way": "mid",
+     "mH": 2.603,
+     "dcrOhm": 0,
+     "fitOhm": 0.9182768666011772,
+     "inRange": true
+    },
+    {
+     "id": "B·L5",
+     "way": "mid",
+     "mH": 0.6864,
+     "dcrOhm": 0,
+     "fitOhm": 0.4188701641666207,
+     "inRange": true
+    },
+    {
+     "id": "B·L7",
+     "way": "mid",
+     "mH": 0.2848,
+     "dcrOhm": 0,
+     "fitOhm": 0.2495224660677474,
+     "inRange": true
+    },
+    {
+     "id": "B·L11",
+     "way": "mid",
+     "mH": 0.12290000000000001,
+     "dcrOhm": 0,
+     "fitOhm": 0.15211765180565195,
+     "inRange": true
+    },
+    {
+     "id": "B·L14",
+     "way": "mid",
+     "mH": 1.373,
+     "dcrOhm": 0,
+     "fitOhm": 0.6300627463975578,
+     "inRange": true
+    },
+    {
+     "id": "C·L2",
+     "way": "tweeter",
+     "mH": 0.1708,
+     "dcrOhm": 0,
+     "fitOhm": 0.18465034717807605,
+     "inRange": true
+    },
+    {
+     "id": "C·L4",
+     "way": "tweeter",
+     "mH": 0.4577,
+     "dcrOhm": 0,
+     "fitOhm": 0.32994434653443744,
+     "inRange": true
+    },
+    {
+     "id": "C·L9",
+     "way": "tweeter",
+     "mH": 0.06751,
+     "dcrOhm": 0,
+     "fitOhm": 0.1068970084135224,
+     "inRange": true
+    },
+    {
+     "id": "C·L12",
+     "way": "tweeter",
+     "mH": 0.9797,
+     "dcrOhm": 0,
+     "fitOhm": 0.5164983672496178,
+     "inRange": true
+    },
+    {
+     "id": "C·L15",
+     "way": "tweeter",
+     "mH": 1.6340000000000001,
+     "dcrOhm": 0,
+     "fitOhm": 0.6980578006379601,
+     "inRange": true
+    }
+   ],
+   "parts": [
+    {
+     "id": "G",
+     "type": "Generator",
+     "value": "2.83 V"
+    },
+    {
+     "id": "L1",
+     "type": "Inductor",
+     "value": "2.299 mH"
+    },
+    {
+     "id": "C2",
+     "type": "Capacitor",
+     "value": "154.3 uF"
+    },
+    {
+     "id": "L3",
+     "type": "Inductor",
+     "value": "0.2454 mH"
+    },
+    {
+     "id": "C4",
+     "type": "Capacitor",
+     "value": "10.66 uF"
+    },
+    {
+     "id": "R5",
+     "type": "Resistor",
+     "value": "1 Ω"
+    },
+    {
+     "id": "D",
+     "type": "Driver",
+     "value": ""
+    },
+    {
+     "id": "B·C1",
+     "type": "Capacitor",
+     "value": "62.68 uF"
+    },
+    {
+     "id": "B·L2",
+     "type": "Inductor",
+     "value": "1.096 mH"
+    },
+    {
+     "id": "B·C3",
+     "type": "Capacitor",
+     "value": "57.33 uF"
+    },
+    {
+     "id": "B·L4",
+     "type": "Inductor",
+     "value": "2.603 mH"
+    },
+    {
+     "id": "B·L5",
+     "type": "Inductor",
+     "value": "0.6864 mH"
+    },
+    {
+     "id": "B·C6",
+     "type": "Capacitor",
+     "value": "11.62 uF"
+    },
+    {
+     "id": "B·L7",
+     "type": "Inductor",
+     "value": "0.2848 mH"
+    },
+    {
+     "id": "B·C8",
+     "type": "Capacitor",
+     "value": "0.3834 uF"
+    },
+    {
+     "id": "B·R9",
+     "type": "Resistor",
+     "value": "3.763 Ω"
+    },
+    {
+     "id": "B·L11",
+     "type": "Inductor",
+     "value": "0.1229 mH"
+    },
+    {
+     "id": "B·C12",
+     "type": "Capacitor",
+     "value": "19.77 uF"
+    },
+    {
+     "id": "B·R13",
+     "type": "Resistor",
+     "value": "3.841 Ω"
+    },
+    {
+     "id": "B·L14",
+     "type": "Inductor",
+     "value": "1.373 mH"
+    },
+    {
+     "id": "B·C15",
+     "type": "Capacitor",
+     "value": "0.7041 uF"
+    },
+    {
+     "id": "B·D",
+     "type": "Driver",
+     "value": ""
+    },
+    {
+     "id": "C·C1",
+     "type": "Capacitor",
+     "value": "8.883 uF"
+    },
+    {
+     "id": "C·L2",
+     "type": "Inductor",
+     "value": "0.1708 mH"
+    },
+    {
+     "id": "C·C3",
+     "type": "Capacitor",
+     "value": "21.56 uF"
+    },
+    {
+     "id": "C·L4",
+     "type": "Inductor",
+     "value": "0.4577 mH"
+    },
+    {
+     "id": "C·R5",
+     "type": "Resistor",
+     "value": "1.01 Ω"
+    },
+    {
+     "id": "C·R6",
+     "type": "Resistor",
+     "value": "43.93 Ω"
+    },
+    {
+     "id": "C·R7",
+     "type": "Resistor",
+     "value": "0.5863 Ω"
+    },
+    {
+     "id": "C·C8",
+     "type": "Capacitor",
+     "value": "7.988 uF"
+    },
+    {
+     "id": "C·L9",
+     "type": "Inductor",
+     "value": "0.06751 mH"
+    },
+    {
+     "id": "C·C10",
+     "type": "Capacitor",
+     "value": "47.96 uF"
+    },
+    {
+     "id": "C·R11",
+     "type": "Resistor",
+     "value": "2.747 Ω"
+    },
+    {
+     "id": "C·L12",
+     "type": "Inductor",
+     "value": "0.9797 mH"
+    },
+    {
+     "id": "C·C13",
+     "type": "Capacitor",
+     "value": "1.124 uF"
+    },
+    {
+     "id": "C·R14",
+     "type": "Resistor",
+     "value": "15.82 Ω"
+    },
+    {
+     "id": "C·L15",
+     "type": "Inductor",
+     "value": "1.634 mH"
+    },
+    {
+     "id": "C·D",
+     "type": "Driver",
+     "value": ""
+    },
+    {
+     "id": "C5",
+     "type": "Capacitor",
+     "value": "11.31 uF"
+    }
+   ],
+   "dichtstbijzijnde_v51b": "woofer→mid 396.7 LR4 · mid→tweeter 2283.5 LR4"
+  },
+  {
+   "key": "V51B_KAND_5",
+   "corpus": "V51b (gepoort, series-r-max 1,0)",
+   "label": "woofer→mid 396.7 LR4 · mid→tweeter 1981.2 LR4",
+   "crossingsHz": [
+    476.51490455663435,
+    2361.5936845243473
+   ],
+   "minZ": {
+    "ohm": 2.590876136390487,
+    "hz": 1068.8328553831386,
+    "branch": "mid",
+    "perBranch": {
+     "woofer": 13.41,
+     "mid": 2.61,
+     "tweeter": 18.13
+    }
+   },
+   "floorOk": true,
+   "gateMinZ": 2.5909026738554437,
+   "rmsFull": 2.0860584318894406,
+   "windowFull": 4.617170326890251,
+   "rms397": 1.0706781150726736,
+   "window397": 2.4645697382091467,
+   "band397": [
+    396.66798889329635,
+    19999.51
+   ],
+   "mk": [
+    {
+     "pair": "woofer→mid",
+     "deg": 17.674965922008276
+    },
+    {
+     "pair": "mid→tweeter",
+     "deg": 4.480700682849854
+    }
+   ],
+   "mc": [
+    {
+     "way": "mid",
+     "db": -43.544633071202625,
+     "limit": -13.137784356602813,
+     "pass": true
+    },
+    {
+     "way": "tweeter",
+     "db": -33.671963647423496,
+     "limit": -20,
+     "pass": true
+    }
+   ],
+   "resonantDb": -0.7552993730833029,
+   "liftDb": 1.6009289141061798,
+   "qesMult": 1.2869119798581565,
+   "dissPct": 44.577259761804925,
+   "hottestThermalW": 2.119278047681439,
+   "hottestAllowedW": 5,
+   "hottestId": "B·R9",
+   "hottestContinuousW": 21.192780476814388,
+   "coilPeakA": 22.986937547771905,
+   "epdr": 1.3089088956360089,
+   "lobingDipDb": -3.513305626540472,
+   "levelWork": {
+    "seriesOhm": 0.874,
+    "dcrOhm": 0,
+    "totalSeriesOhm": 0.874,
+    "none": false
+   },
+   "askedDb": 0.8499986917885849,
+   "dcrTotalOhm": 0,
+   "coils": [
+    {
+     "id": "L1",
+     "way": "woofer",
+     "mH": 2.1470000000000002,
+     "dcrOhm": 0,
+     "fitOhm": 0.47830449780051987,
+     "inRange": true
+    },
+    {
+     "id": "L3",
+     "way": "woofer",
+     "mH": 0.3262,
+     "dcrOhm": 0,
+     "fitOhm": 0.1601585905237621,
+     "inRange": true
+    },
+    {
+     "id": "B·L2",
+     "way": "mid",
+     "mH": 1.05,
+     "dcrOhm": 0,
+     "fitOhm": 0.5380116198357776,
+     "inRange": true
+    },
+    {
+     "id": "B·L4",
+     "way": "mid",
+     "mH": 10.76,
+     "dcrOhm": 0,
+     "fitOhm": 2.117950540700885,
+     "inRange": true
+    },
+    {
+     "id": "B·L5",
+     "way": "mid",
+     "mH": 0.8988,
+     "dcrOhm": 0,
+     "fitOhm": 0.49093904595595855,
+     "inRange": true
+    },
+    {
+     "id": "B·L7",
+     "way": "mid",
+     "mH": 0.262,
+     "dcrOhm": 0,
+     "fitOhm": 0.23755808972301842,
+     "inRange": true
+    },
+    {
+     "id": "B·L11",
+     "way": "mid",
+     "mH": 1.084,
+     "dcrOhm": 0,
+     "fitOhm": 0.5482032265917661,
+     "inRange": true
+    },
+    {
+     "id": "C·L2",
+     "way": "tweeter",
+     "mH": 0.2138,
+     "dcrOhm": 0,
+     "fitOhm": 0.21075432669127794,
+     "inRange": true
+    },
+    {
+     "id": "C·L4",
+     "way": "tweeter",
+     "mH": 0.779,
+     "dcrOhm": 0,
+     "fitOhm": 0.45127757623721565,
+     "inRange": true
+    },
+    {
+     "id": "C·L7",
+     "way": "tweeter",
+     "mH": 0.08553000000000001,
+     "dcrOhm": 0,
+     "fitOhm": 0.12287740095176593,
+     "inRange": true
+    },
+    {
+     "id": "C·L10",
+     "way": "tweeter",
+     "mH": 0.1818,
+     "dcrOhm": 0,
+     "fitOhm": 0.19156316720727073,
+     "inRange": true
+    }
+   ],
+   "parts": [
+    {
+     "id": "G",
+     "type": "Generator",
+     "value": "2.83 V"
+    },
+    {
+     "id": "L1",
+     "type": "Inductor",
+     "value": "2.147 mH"
+    },
+    {
+     "id": "C2",
+     "type": "Capacitor",
+     "value": "154 uF"
+    },
+    {
+     "id": "L3",
+     "type": "Inductor",
+     "value": "0.3262 mH"
+    },
+    {
+     "id": "C4",
+     "type": "Capacitor",
+     "value": "10.49 uF"
+    },
+    {
+     "id": "R5",
+     "type": "Resistor",
+     "value": "0.874 Ω"
+    },
+    {
+     "id": "D",
+     "type": "Driver",
+     "value": ""
+    },
+    {
+     "id": "B·C1",
+     "type": "Capacitor",
+     "value": "55.31 uF"
+    },
+    {
+     "id": "B·L2",
+     "type": "Inductor",
+     "value": "1.05 mH"
+    },
+    {
+     "id": "B·C3",
+     "type": "Capacitor",
+     "value": "49.16 uF"
+    },
+    {
+     "id": "B·L4",
+     "type": "Inductor",
+     "value": "10.76 mH"
+    },
+    {
+     "id": "B·L5",
+     "type": "Inductor",
+     "value": "0.8988 mH"
+    },
+    {
+     "id": "B·C6",
+     "type": "Capacitor",
+     "value": "12.79 uF"
+    },
+    {
+     "id": "B·L7",
+     "type": "Inductor",
+     "value": "0.262 mH"
+    },
+    {
+     "id": "B·C8",
+     "type": "Capacitor",
+     "value": "2.271 uF"
+    },
+    {
+     "id": "B·R9",
+     "type": "Resistor",
+     "value": "3.387 Ω"
+    },
+    {
+     "id": "B·L11",
+     "type": "Inductor",
+     "value": "1.084 mH"
+    },
+    {
+     "id": "B·C12",
+     "type": "Capacitor",
+     "value": "34.42 uF"
+    },
+    {
+     "id": "B·R13",
+     "type": "Resistor",
+     "value": "7.036 Ω"
+    },
+    {
+     "id": "B·D",
+     "type": "Driver",
+     "value": ""
+    },
+    {
+     "id": "C·C1",
+     "type": "Capacitor",
+     "value": "7.462 uF"
+    },
+    {
+     "id": "C·L2",
+     "type": "Inductor",
+     "value": "0.2138 mH"
+    },
+    {
+     "id": "C·C3",
+     "type": "Capacitor",
+     "value": "23.57 uF"
+    },
+    {
+     "id": "C·L4",
+     "type": "Inductor",
+     "value": "0.779 mH"
+    },
+    {
+     "id": "C·R5",
+     "type": "Resistor",
+     "value": "1.213 Ω"
+    },
+    {
+     "id": "C·R6",
+     "type": "Resistor",
+     "value": "49.55 Ω"
+    },
+    {
+     "id": "C·L7",
+     "type": "Inductor",
+     "value": "0.08553 mH"
+    },
+    {
+     "id": "C·C8",
+     "type": "Capacitor",
+     "value": "14.37 uF"
+    },
+    {
+     "id": "C·R9",
+     "type": "Resistor",
+     "value": "3.812 Ω"
+    },
+    {
+     "id": "C·L10",
+     "type": "Inductor",
+     "value": "0.1818 mH"
+    },
+    {
+     "id": "C·C11",
+     "type": "Capacitor",
+     "value": "105.4 uF"
+    },
+    {
+     "id": "C·R12",
+     "type": "Resistor",
+     "value": "1.235 Ω"
+    },
+    {
+     "id": "C·D",
+     "type": "Driver",
+     "value": ""
+    }
+   ],
+   "dichtstbijzijnde_v51b": "woofer→mid 396.7 LR4 · mid→tweeter 1981.2 LR4"
+  },
+  {
+   "key": "V51B_KAND_6",
+   "corpus": "V51b (gepoort, series-r-max 1,0)",
+   "label": "woofer→mid 466.5 LR4 · mid→tweeter 1981.2 LR4",
+   "crossingsHz": [
+    477.74341934537955,
+    1956.8814863481182
+   ],
+   "minZ": {
+    "ohm": 2.5856199706053014,
+    "hz": 255.78480230851525,
+    "branch": "woofer",
+    "perBranch": {
+     "woofer": 2.46,
+     "mid": 15.79,
+     "tweeter": 60.85
+    }
+   },
+   "floorOk": true,
+   "gateMinZ": 2.5856204901212565,
+   "rmsFull": 1.933971220419184,
+   "windowFull": 4.274611701621591,
+   "rms397": 1.9058827986120777,
+   "window397": 3.7192878867099486,
+   "band397": [
+    396.66798889329635,
+    19999.51
+   ],
+   "mk": [
+    {
+     "pair": "woofer→mid",
+     "deg": 15.081858496804921
+    },
+    {
+     "pair": "mid→tweeter",
+     "deg": 18.653879858044935
+    }
+   ],
+   "mc": [
+    {
+     "way": "mid",
+     "db": -44.55234774083527,
+     "limit": -15.563164886870489,
+     "pass": true
+    },
+    {
+     "way": "tweeter",
+     "db": -23.23661152218573,
+     "limit": -20,
+     "pass": true
+    }
+   ],
+   "resonantDb": -0.6132271274574528,
+   "liftDb": 1.5963967728266137,
+   "qesMult": 1.2859578627846968,
+   "dissPct": 25.11443609769736,
+   "hottestThermalW": 1.1963114119220764,
+   "hottestAllowedW": 5,
+   "hottestId": "R5",
+   "hottestContinuousW": 11.963114119220764,
+   "coilPeakA": 20.967574653564668,
+   "epdr": 1.306201301793904,
+   "lobingDipDb": -3.2152812716626045,
+   "levelWork": {
+    "seriesOhm": 0.8711,
+    "dcrOhm": 0,
+    "totalSeriesOhm": 0.8711,
+    "none": false
+   },
+   "askedDb": 0.8499986917885849,
+   "dcrTotalOhm": 0,
+   "coils": [
+    {
+     "id": "L1",
+     "way": "woofer",
+     "mH": 1.823,
+     "dcrOhm": 0,
+     "fitOhm": 0.4349643548377196,
+     "inRange": true
+    },
+    {
+     "id": "L3",
+     "way": "woofer",
+     "mH": 0.6498,
+     "dcrOhm": 0,
+     "fitOhm": 0.23896216851289379,
+     "inRange": true
+    },
+    {
+     "id": "B·L2",
+     "way": "mid",
+     "mH": 1.6430000000000002,
+     "dcrOhm": 0,
+     "fitOhm": 0.7003193679608907,
+     "inRange": true
+    },
+    {
+     "id": "B·L4",
+     "way": "mid",
+     "mH": 19.5,
+     "dcrOhm": 0,
+     "fitOhm": 3.0059022117464873,
+     "inRange": true
+    },
+    {
+     "id": "B·L5",
+     "way": "mid",
+     "mH": 1.41,
+     "dcrOhm": 0,
+     "fitOhm": 0.6400065160192013,
+     "inRange": true
+    },
+    {
+     "id": "B·L7",
+     "way": "mid",
+     "mH": 0.4613,
+     "dcrOhm": 0,
+     "fitOhm": 0.3314700865010102,
+     "inRange": true
+    },
+    {
+     "id": "B·L9",
+     "way": "mid",
+     "mH": 3.513,
+     "dcrOhm": 0,
+     "fitOhm": 1.095586527561001,
+     "inRange": true
+    },
+    {
+     "id": "C·L2",
+     "way": "tweeter",
+     "mH": 0.2765000000000001,
+     "dcrOhm": 0,
+     "fitOhm": 0.24521426170631372,
+     "inRange": true
+    },
+    {
+     "id": "C·L7",
+     "way": "tweeter",
+     "mH": 0.0531,
+     "dcrOhm": 0,
+     "fitOhm": 0.09280301967607635,
+     "inRange": true
+    },
+    {
+     "id": "C·L10",
+     "way": "tweeter",
+     "mH": 1.468,
+     "dcrOhm": 0,
+     "fitOhm": 0.6553807560116953,
+     "inRange": true
+    }
+   ],
+   "parts": [
+    {
+     "id": "G",
+     "type": "Generator",
+     "value": "2.83 V"
+    },
+    {
+     "id": "L1",
+     "type": "Inductor",
+     "value": "1.823 mH"
+    },
+    {
+     "id": "C2",
+     "type": "Capacitor",
+     "value": "158.1 uF"
+    },
+    {
+     "id": "L3",
+     "type": "Inductor",
+     "value": "0.6498 mH"
+    },
+    {
+     "id": "C4",
+     "type": "Capacitor",
+     "value": "10.8 uF"
+    },
+    {
+     "id": "R5",
+     "type": "Resistor",
+     "value": "0.8711 Ω"
+    },
+    {
+     "id": "D",
+     "type": "Driver",
+     "value": ""
+    },
+    {
+     "id": "B·C1",
+     "type": "Capacitor",
+     "value": "32.97 uF"
+    },
+    {
+     "id": "B·L2",
+     "type": "Inductor",
+     "value": "1.643 mH"
+    },
+    {
+     "id": "B·C3",
+     "type": "Capacitor",
+     "value": "33.04 uF"
+    },
+    {
+     "id": "B·L4",
+     "type": "Inductor",
+     "value": "19.5 mH"
+    },
+    {
+     "id": "B·L5",
+     "type": "Inductor",
+     "value": "1.41 mH"
+    },
+    {
+     "id": "B·C6",
+     "type": "Capacitor",
+     "value": "20.18 uF"
+    },
+    {
+     "id": "B·L7",
+     "type": "Inductor",
+     "value": "0.4613 mH"
+    },
+    {
+     "id": "B·L9",
+     "type": "Inductor",
+     "value": "3.513 mH"
+    },
+    {
+     "id": "B·C10",
+     "type": "Capacitor",
+     "value": "2.334 uF"
+    },
+    {
+     "id": "B·R11",
+     "type": "Resistor",
+     "value": "14.14 Ω"
+    },
+    {
+     "id": "B·D",
+     "type": "Driver",
+     "value": ""
+    },
+    {
+     "id": "C·C1",
+     "type": "Capacitor",
+     "value": "10.15 uF"
+    },
+    {
+     "id": "C·L2",
+     "type": "Inductor",
+     "value": "0.2765 mH"
+    },
+    {
+     "id": "C·C3",
+     "type": "Capacitor",
+     "value": "30.9 uF"
+    },
+    {
+     "id": "C·R5",
+     "type": "Resistor",
+     "value": "0.6052 Ω"
+    },
+    {
+     "id": "C·R6",
+     "type": "Resistor",
+     "value": "65.71 Ω"
+    },
+    {
+     "id": "C·L7",
+     "type": "Inductor",
+     "value": "0.0531 mH"
+    },
+    {
+     "id": "C·C8",
+     "type": "Capacitor",
+     "value": "69.34 uF"
+    },
+    {
+     "id": "C·R9",
+     "type": "Resistor",
+     "value": "3.126 Ω"
+    },
+    {
+     "id": "C·L10",
+     "type": "Inductor",
+     "value": "1.468 mH"
+    },
+    {
+     "id": "C·C11",
+     "type": "Capacitor",
+     "value": "10.02 uF"
+    },
+    {
+     "id": "C·R12",
+     "type": "Resistor",
+     "value": "2.582 Ω"
+    },
+    {
+     "id": "C·D",
+     "type": "Driver",
+     "value": ""
+    }
+   ],
+   "dichtstbijzijnde_v51b": "woofer→mid 466.5 LR4 · mid→tweeter 1981.2 LR4"
+  },
+  {
+   "key": "HUIDIG",
+   "corpus": "HUIDIG (met pad)",
+   "label": "HUIDIG",
+   "crossingsHz": [
+    359.79953107756666,
+    2250.235137915152
+   ],
+   "minZ": {
+    "ohm": 3.463882437169469,
+    "hz": 217.64960106396043,
+    "branch": "woofer",
+    "perBranch": {
+     "woofer": 3.34,
+     "mid": 11.59,
+     "tweeter": 331.84
+    }
+   },
+   "floorOk": true,
+   "gateMinZ": 3.4638521503536346,
+   "rmsFull": 1.4207172835463509,
+   "windowFull": 3.6594144572957537,
+   "rms397": 0.5832420556060105,
+   "window397": 1.1734462215718888,
+   "band397": [
+    396.66798889329635,
+    19999.51
+   ],
+   "mk": [
+    {
+     "pair": "woofer→mid",
+     "deg": 21.034108972198975
+    },
+    {
+     "pair": "mid→tweeter",
+     "deg": 7.040567389029537
+    }
+   ],
+   "mc": [
+    {
+     "way": "mid",
+     "db": -42.4995333246006,
+     "limit": -11.811003824274854,
+     "pass": true
+    },
+    {
+     "way": "tweeter",
+     "db": -25.08361027056437,
+     "limit": -20,
+     "pass": true
+    }
+   ],
+   "resonantDb": -0.9389733550106119,
+   "liftDb": 4.688230164890495,
+   "qesMult": 2.306481072193219,
+   "dissPct": 45.80963382299754,
+   "hottestThermalW": 2.554824896447731,
+   "hottestAllowedW": 5,
+   "hottestId": "R8",
+   "hottestContinuousW": 25.54824896447731,
+   "coilPeakA": 15.422088261223015,
+   "epdr": 1.732365009406538,
+   "lobingDipDb": -2.866205152590993,
+   "levelWork": {
+    "seriesOhm": 3.3,
+    "dcrOhm": 0.456,
+    "totalSeriesOhm": 3.756,
+    "none": false
+   },
+   "askedDb": 0.8499986917885849,
+   "dcrTotalOhm": 3.777,
+   "coils": [
+    {
+     "id": "L1",
+     "way": "woofer",
+     "mH": 3,
+     "dcrOhm": 0.456,
+     "fitOhm": 0.5808488939447088,
+     "inRange": true
+    },
+    {
+     "id": "L10",
+     "way": "woofer",
+     "mH": 0.15,
+     "dcrOhm": 0.28,
+     "fitOhm": 0.10201199597761294,
+     "inRange": true
+    },
+    {
+     "id": "B·L2",
+     "way": "mid",
+     "mH": 1.8000000000000003,
+     "dcrOhm": 0.341,
+     "fitOhm": 0.7389854895987633,
+     "inRange": true
+    },
+    {
+     "id": "B·L4",
+     "way": "mid",
+     "mH": 10,
+     "dcrOhm": 0.52,
+     "fitOhm": 2.028535281564759,
+     "inRange": true
+    },
+    {
+     "id": "B·L5",
+     "way": "mid",
+     "mH": 1.47,
+     "dcrOhm": 0.44,
+     "fitOhm": 0.6559064033516588,
+     "inRange": true
+    },
+    {
+     "id": "B·L7",
+     "way": "mid",
+     "mH": 0.33,
+     "dcrOhm": 0.28,
+     "fitOhm": 0.2721334382340621,
+     "inRange": true
+    },
+    {
+     "id": "B·L14",
+     "way": "mid",
+     "mH": 0.82,
+     "dcrOhm": 0.22,
+     "fitOhm": 0.4651163690097382,
+     "inRange": true
+    },
+    {
+     "id": "C·L2",
+     "way": "tweeter",
+     "mH": 0.39000000000000007,
+     "dcrOhm": 0.14,
+     "fitOhm": 0.30026500556729424,
+     "inRange": true
+    },
+    {
+     "id": "C·L10",
+     "way": "tweeter",
+     "mH": 1,
+     "dcrOhm": 0.51,
+     "fitOhm": 0.5227739545298477,
+     "inRange": true
+    },
+    {
+     "id": "C·L13",
+     "way": "tweeter",
+     "mH": 0.47,
+     "dcrOhm": 0.59,
+     "fitOhm": 0.3351372171658516,
+     "inRange": true
+    }
+   ],
+   "parts": [
+    {
+     "id": "G",
+     "type": "Generator",
+     "value": "2.83 V"
+    },
+    {
+     "id": "L1",
+     "type": "Inductor",
+     "value": "3 mH"
+    },
+    {
+     "id": "C2",
+     "type": "Capacitor",
+     "value": "75 uF"
+    },
+    {
+     "id": "C4",
+     "type": "Capacitor",
+     "value": "33 uF"
+    },
+    {
+     "id": "R8",
+     "type": "Resistor",
+     "value": "3.3 Ω"
+    },
+    {
+     "id": "L10",
+     "type": "Inductor",
+     "value": "0.15 mH"
+    },
+    {
+     "id": "C11",
+     "type": "Capacitor",
+     "value": "100 uF"
+    },
+    {
+     "id": "D",
+     "type": "Driver",
+     "value": ""
+    },
+    {
+     "id": "B·C1",
+     "type": "Capacitor",
+     "value": "51 uF"
+    },
+    {
+     "id": "B·L2",
+     "type": "Inductor",
+     "value": "1.8 mH"
+    },
+    {
+     "id": "B·C3",
+     "type": "Capacitor",
+     "value": "38.6 uF"
+    },
+    {
+     "id": "B·L4",
+     "type": "Inductor",
+     "value": "10 mH"
+    },
+    {
+     "id": "B·L5",
+     "type": "Inductor",
+     "value": "1.47 mH"
+    },
+    {
+     "id": "B·C6",
+     "type": "Capacitor",
+     "value": "8.2 uF"
+    },
+    {
+     "id": "B·L7",
+     "type": "Inductor",
+     "value": "0.33 mH"
+    },
+    {
+     "id": "B·R9",
+     "type": "Resistor",
+     "value": "4.7 Ω"
+    },
+    {
+     "id": "B·L14",
+     "type": "Inductor",
+     "value": "0.82 mH"
+    },
+    {
+     "id": "B·C15",
+     "type": "Capacitor",
+     "value": "1.5 uF"
+    },
+    {
+     "id": "B·R16",
+     "type": "Resistor",
+     "value": "2.2 Ω"
+    },
+    {
+     "id": "B·D",
+     "type": "Driver",
+     "value": ""
+    },
+    {
+     "id": "C·C1",
+     "type": "Capacitor",
+     "value": "2.2 uF"
+    },
+    {
+     "id": "C·L2",
+     "type": "Inductor",
+     "value": "0.39 mH"
+    },
+    {
+     "id": "C·C3",
+     "type": "Capacitor",
+     "value": "15 uF"
+    },
+    {
+     "id": "C·L10",
+     "type": "Inductor",
+     "value": "1 mH"
+    },
+    {
+     "id": "C·L13",
+     "type": "Inductor",
+     "value": "0.47 mH"
+    },
+    {
+     "id": "C·R15",
+     "type": "Resistor",
+     "value": "27 Ω"
+    },
+    {
+     "id": "C·D",
+     "type": "Driver",
+     "value": ""
+    }
+   ],
+   "dichtstbijzijnde_v51b": null
+  }
+ ]
+}

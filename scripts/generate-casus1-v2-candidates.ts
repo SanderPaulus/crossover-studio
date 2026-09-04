@@ -82,7 +82,14 @@ import {
   CASUS1_WIRING,
   CASUS1_V2_BAND_SOURCE,
   CASUS1_FIELD_ALIGNMENTS,
+  CASUS1_FIELD_CHAIN_BUDGET,
+  CASUS1_FIELD_STATED_ORDER,
+  CASUS1_COIL_DCR,
+  CASUS1_COIL_DCR_SETTINGS,
+  CASUS1_COIL_FAMILY_BY_DRIVER,
 } from '../src/lib/engine2/casus1V2.fixture.ts';
+import { describeCoilDcrModel } from '../src/lib/coilDcr.ts';
+import type { V2CoilDcrColumn } from '../src/lib/engine2/optimizer/worker.ts';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const OUT_MANIFEST = join(HERE, '..', 'test-fixtures', 'casus1_v2_herkomst.json');
@@ -116,8 +123,14 @@ const report = buildReport({
      * them and `casus1V2Facts` carries it to the worker as a measured fact, so
      * every candidate is judged on the STRICTER of that ceiling and the stated
      * figure. Left out, the run would judge on the stated figure alone — a
-     * different route than the app's. */
+     * different route than the app's. A5e.3-veld: the same ceiling is what the
+     * woofer→mid window now stands on (the drive floor), so a report without
+     * these inputs would build a different FIELD as well. */
     ...CASUS1_EXCURSION,
+    /* A5e.3-veld — the stated coil families and the catalogue's fits, for the
+     * report's coil-DCR block; the MODEL reaches the search through the
+     * candidate's declaration (`casus1V2Declaration`), not through here. */
+    ...CASUS1_COIL_DCR_SETTINGS,
   },
 });
 
@@ -159,6 +172,8 @@ type DoneData = {
   rejection: ShortlistInput<Chain3Result>['rejection'];
   /** V51 — the level-work column: requirement, X, delivered inventory, plateau. */
   levelWork: V2LevelWorkColumn;
+  /** A5e.3 — what the coils carry as DCR against the declared model (null without a network). */
+  coilDcr: V2CoilDcrColumn | null;
   notes: string[];
 };
 
@@ -239,6 +254,17 @@ const outcomes: {
     plateau_beoordeeld: boolean;
     plateau_toelichting: string;
   };
+  /* A5e.3-veld — WAT DE SPOELEN DRAGEN: per spoel de weg, L, de gedragen DCR
+   * (de `DCR`-param die de tuner schreef), de familie en of één onderdeel van
+   * die familie de waarde dekt; het totaal; en de wegen zonder familie. Op een
+   * verwerping is dit het GEWEIGERDE netwerk. `null` = geen netwerk. */
+  spoel_dcr: {
+    model: string | null;
+    totaal_ohm: number;
+    per_spoel: { id: string; weg: string; mH: number; dcr_ohm: number; familie: string | null; fit_ohm: number | null; binnen_bereik: boolean | null }[];
+    wegen_zonder_familie: string[];
+    buiten_bereik: string[];
+  } | null;
 }[] = [];
 /* ------------------------------------------------------------------ *
  * V47 — DE VIJFTIEN KETENRUNS OVER DE CORES, IN PLAATS VAN ACHTER ELKAAR
@@ -473,6 +499,23 @@ function runCandidate(c: (typeof field.field.candidates)[number], n: number): Sh
       plateau_beoordeeld: done.levelWork.plateau.judged,
       plateau_toelichting: done.levelWork.plateau.note,
     },
+    spoel_dcr: done.coilDcr
+      ? {
+          model: done.coilDcr.model ? describeCoilDcrModel(done.coilDcr.model) : null,
+          totaal_ohm: Number(done.coilDcr.inventory.carriedTotalOhm.toFixed(3)),
+          per_spoel: done.coilDcr.inventory.coils.map((c) => ({
+            id: c.id,
+            weg: c.ways.join('+'),
+            mH: Number((c.henry * 1e3).toFixed(3)),
+            dcr_ohm: Number(c.carriedOhm.toFixed(4)),
+            familie: c.family,
+            fit_ohm: c.fitOhm === null ? null : Number(c.fitOhm.toFixed(4)),
+            binnen_bereik: c.inRange,
+          })),
+          wegen_zonder_familie: [...done.coilDcr.inventory.waysWithoutFamily],
+          buiten_bereik: [...done.coilDcr.inventory.outOfRange],
+        }
+      : null,
   };
   console.log(
     `  [${n}/${field.field.candidates.length}] ${c.label} → ` +
@@ -484,6 +527,7 @@ function runCandidate(c: (typeof field.field.candidates)[number], n: number): Sh
         : `${done.result.net.after.rippleDb.toFixed(2)} dB / ${done.result.net.after.phaseDeg.toFixed(1)}°` +
           `  min|Z| ${(done.gates.find((v) => v.gate === 'M-B/|Z|')?.value ?? NaN).toFixed(2)} Ω` +
           `  ${failed.length ? `REFUSED by ${failed.map((v) => v.gate).join(', ')}` : 'gates ok'}`) +
+      `  DCR ${done.coilDcr ? done.coilDcr.inventory.carriedTotalOhm.toFixed(2) : '—'} Ω` +
       `  (${((Date.now() - t0) / 1000).toFixed(0)} s)`,
   );
   return {
@@ -529,13 +573,25 @@ if (process.env.V2_SEQUENTIAL === '1') {
 } else {
 /* ---- parent mode: de kandidaten over de kernen, dan samenvoegen --------- */
   const count = field.field.candidates.length;
-  console.log(`parallel: ${count} kandidaten, ${JOBS} tegelijk op ${cpus().length} kernen`);
-  rmSync(SHARD_DIR, { recursive: true, force: true });
+  /* A5e.3-veld — `V2_MERGE=1`: voeg BESTAANDE shards samen zonder te draaien.
+   *
+   * Voor de reparatie van ÉÉN kandidaat: A5e.4 zegt dat een kind op dezelfde
+   * machine en runtime byte-identiek reproduceert, dus wie één kandidaat
+   * opnieuw draait (`V2_ONLY=<n>`) na een engine-wijziging die aantoonbaar
+   * alleen díé kandidaat raakt, hoeft de negentien andere niet te herhalen —
+   * de shards ZIJN wat een herhaling zou opleveren. Elke shard moet er zijn;
+   * een ontbrekende is een fout en geen stille gat. Gemeten aanleiding: de
+   * worker weigert sinds A5e.3-veld een geleverd pad ook onder `'none'`, wat
+   * precies één van de twintig kandidaten raakte (229,1 · 1994,6, R10). Wie
+   * ÉLKE kandidaat opnieuw wil zien draait zonder deze vlag. */
+  const mergeOnly = process.env.V2_MERGE === '1';
+  console.log(mergeOnly ? `V2_MERGE=1: ${count} bestaande shards samenvoegen, niets draaien` : `parallel: ${count} kandidaten, ${JOBS} tegelijk op ${cpus().length} kernen`);
+  if (!mergeOnly) rmSync(SHARD_DIR, { recursive: true, force: true });
   mkdirSync(SHARD_DIR, { recursive: true });
   const t0 = Date.now();
   let next = 0;
   let finished = 0;
-  await new Promise<void>((resolve, reject) => {
+    if (!mergeOnly) await new Promise<void>((resolve, reject) => {
     const start = () => {
       if (next >= count) {
         if (finished === count) resolve();
@@ -780,6 +836,19 @@ const meetopstelling = {
       : 'VERLIESVRIJE SPOELEN: geen gestelde spoelfamilie per weg (driverkaart.spoelfamilie is een voorstel of ' +
         'ontbreekt), dus de zoektocht en elke poort oordelen op spoelen zonder koper — wat geen gebouwde ' +
         'luidspreker heeft (A5e.3, M-1-diagnose). Absent met de P4-reden, nooit een default-familie (P6).',
+  /* A5e.3-veld — de families zoals het manifest ze STELT (naast wat de
+   * verklaring ervan maakte), of de blok GESTELD is, en het model in één zin;
+   * zodat een lezer van dit blok ziet dat het veld op gestelde en niet op
+   * voorgestelde families is opgewekt. */
+  spoel_dcr_gesteld: CASUS1_COIL_DCR.stated,
+  spoel_dcr_families: Object.keys(CASUS1_COIL_FAMILY_BY_DRIVER).length > 0 ? { ...CASUS1_COIL_FAMILY_BY_DRIVER } : null,
+  spoel_dcr_beschrijving: (() => {
+    const m = (lastPayload.candidate?.declaration.stated as { coilDcrModel?: Parameters<typeof describeCoilDcrModel>[0] }).coilDcrModel;
+    return m ? describeCoilDcrModel(m) : null;
+  })(),
+  spoel_dcr_herkomst:
+    'manifest_en_geometrie.driverkaart.spoelfamilie (gesteld_door, per_weg, catalogus) — het ENIGE huis van de ' +
+    'families (P6); de fits komen uit de catalogus die dat blok noemt, opnieuw gefit bij elke lezing (coil-dcr-fit).',
   /* ---- V51: MAG DE LAAGSTE WEG NIVEAUWERK DRAGEN ------------------------
    *
    * Het TIENDE besluit in dit blok, en het derde op ketenniveau naast het
@@ -1195,10 +1264,14 @@ writeFileSync(
       veld_uitlijningen: {
         bibliotheek: CASUS1_FIELD_ALIGNMENTS.map((a) => `${a.kind}${a.order}`),
         per_as: field.field.axes.map((a) => ({ paar: a.pairLabel, orden: a.orders, posities_per_orde: a.positionsByOrder.map((p) => ({ orde: p.order, aantal: p.count, hz: p.hz })) })),
+        gestelde_orde: CASUS1_FIELD_STATED_ORDER,
+        positiebudget: CASUS1_FIELD_CHAIN_BUDGET,
         _:
-          'M-1: op de W-M-as onthoudt de orde-afleiding zich (geen gestelde orde, geen gewapende regel) en is elke ' +
-          'bouwbare orde een eigen kandidaat; de bibliotheek is tot de twee LR-uitlijningen beperkt (Sanders vraag: ' +
-          'LR4 en LR2). Op de M-T-as blijft orde 4 gesteld.',
+          'A5e.3-veld: orde 4 GESTELD op beide overnames (M-1 liet de W-M-as zich onthouden en draaide LR2 naast ' +
+          'LR4; LR2 gaf dezelfde weigeringen met 1-2 dB slechtere RMS en is ingetrokken), de bibliotheek blijft tot ' +
+          'de LR-uitlijningen beperkt, de W-M-vloer is de AANDRIJFVLOER van de mid (A5d.3(ii) omgekeerd met het ' +
+          'excursieplafond van V49, kruisvensters.parameters.aandrijfvloer) en het veld is tot het gestelde ' +
+          'positiebudget gedund (generator_parameters: aangeboden tegen geleverd; posities gedund, nooit orden).',
       },
       settings: CASUS1_V2_SETTINGS,
       meetopstelling,

@@ -509,37 +509,52 @@ export const CASUS1_V2_SETTINGS = {
 const SAFETY_GRID_POINTS = 240;
 
 /**
- * The candidate field for casus 1.
+ * THE CANDIDATE FIELD FOR CASUS 1 — A5e.3-veld (04-09-2026).
  *
- * The designer's stated order is 4 on both handovers — the same order the
- * casebook's own window references carry (`kruisvensters.*_orde4`) and the same
- * one every other casus-1 test states. Stating it keeps the field to positions
- * only; with 'auto' the derivation abstains and every buildable order becomes
- * its own candidate, which is correct and is 63 chains.
- */
-/**
- * M-1 — THE FIELD: LR4 AND LR2 ON THE WOOFER→MID AXIS, LR4 ON MID→TWEETER.
+ * Three stated decisions, each Sander's and each recorded in `v2_herkomst`:
  *
- * Sander asked to see the LR2 variant beside LR4 on the lower handover: with
- * the plateau flat and the woofer valid from 20.5 Hz the window opens down to
- * k·f_s of the mid (124 Hz at order 4, 178 Hz at order 2), and whether a
- * second-order handover there clears the amplifier floor without series
- * resistance is the question of the session. So on that axis the derivation
- * is left to ABSTAIN — no order stated, no rule armed — and A5d.3's own rule
- * for that state applies: every buildable order is its own candidate. The
- * library handed in is the app's two LR alignments only (`AUTO_STRUCTS`
- * filtered), which is a DESIGNER'S restriction and recorded as one: the
- * Butterworth-3 and Bessel-4 entries were not asked for, and A5d.3 prefers
- * symmetric LR flanks anyway. The upper handover keeps the stated order 4 the
- * casebook's window references carry.
+ *  · ORDER 4 ON BOTH HANDOVERS, LR only. M-1 ran the woofer→mid axis with the
+ *    derivation abstaining (LR2 and LR4 as separate candidates, Sander's ask)
+ *    and the field answered: LR2 met the same refusals as LR4 with 1–2 dB worse
+ *    RMS (M-1, 04-09-2026), so the second order is withdrawn and the designer
+ *    STATES order 4 — the same order the casebook's window references carry
+ *    (`kruisvensters.*_orde4`) and every other casus-1 test states. The library
+ *    handed in is still the app's two LR alignments only (`AUTO_STRUCTS`
+ *    filtered): with order 4 stated only LR4 is built, and the restriction is
+ *    a designer's and recorded as one (A5d.3 prefers symmetric LR flanks).
+ *
+ *  · THE WOOFER→MID FLOOR IS THE MID'S EXCURSION CEILING, not 1.4·f_s. The
+ *    report feeds every window the upper driver's M-C v2.0 ceiling (V49) and
+ *    `crossoverWindow` inverts A5d.3(ii) with it — see the note there. On the
+ *    merged set that moves the lower edge from 124 Hz (k·f_s) to ~148 Hz: at
+ *    124 Hz an LR4 attenuates the mid's drive at 88.8 Hz by 11.6 dB against a
+ *    ceiling of 17.7, and M-1 refused four of the five candidates on that
+ *    position on M-C (mid). The mid→tweeter floor does not move: the tweeter's
+ *    ceiling (−8.6 dB re input) puts its drive floor at ~1180 Hz, under the
+ *    1.4·f_s convention at 1294 Hz, so k·f_s still binds there.
+ *
+ *  · A POSITION BUDGET OF 24 CHAINS. The generator thins POSITIONS and never
+ *    orders, widest axis first, one position at a time (`candidates.ts`): the
+ *    derivation offers 12 × 5 = 60 at the acceptance smoothing, and the budget
+ *    delivers 4 × 5 = 20 — 5 × 5 = 25 would be the first product under the
+ *    thinning that still exceeds 24, so the woofer→mid axis loses one more.
+ *    The number is a RUN parameter of this field, stated here beside the seed
+ *    for the same reason the seed is (A5e.4 / P4: stated and recorded, never
+ *    defaulted); it is not an engine number and `candidates.ts` knows no
+ *    budget of its own.
  */
 export const CASUS1_FIELD_ALIGNMENTS = AUTO_STRUCTS.filter((a) => a.kind === 'LR');
+/** The order the designer states on every handover of casus 1 (A5e.3-veld; M-1 abstained on the lower axis). */
+export const CASUS1_FIELD_STATED_ORDER = 4;
+/** The chain budget of the casus-1 field — Sander, 04-09-2026 (A5e.3-veld). A run parameter, like the seed. */
+export const CASUS1_FIELD_CHAIN_BUDGET = 24;
 
 export function casus1Field(report: EngineV2Report): CandidateFieldResult {
   return buildCandidateField({
     windowInputs: report.predesign.windowInputs,
-    perPair: report.predesign.windowInputs.map((_, i) => (i === 0 ? {} : { statedOrder: 4 })),
+    perPair: report.predesign.windowInputs.map(() => ({ statedOrder: CASUS1_FIELD_STATED_ORDER })),
     alignments: CASUS1_FIELD_ALIGNMENTS,
+    chainBudget: CASUS1_FIELD_CHAIN_BUDGET,
   });
 }
 

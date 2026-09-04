@@ -63,6 +63,7 @@ import {
   CASUS1_CONTINUOUS_POWER_W,
   CASUS1_MAX_DRIVE_ON_FS_DB_BY_DRIVER,
   CASUS1_LEVEL_WORK_SETTINGS,
+  CASUS1_COIL_DCR_SETTINGS,
 } from './casus1V2.fixture.ts';
 import { buildReport, type EngineV2Report } from './report.ts';
 import { ctcKey } from './metrics/types.ts';
@@ -110,6 +111,8 @@ const report = (key: string): EngineV2Report =>
        * the same derived ceilings the generator sent (V32's rule: the facts
        * must be the facts the generator sent). */
       ...CASUS1_EXCURSION,
+      /* A5e.3-veld — the stated coil families and fits (the report's coil block). */
+      ...CASUS1_COIL_DCR_SETTINGS,
     },
   });
 

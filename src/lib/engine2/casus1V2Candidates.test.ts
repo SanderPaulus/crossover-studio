@@ -83,6 +83,7 @@ import {
   CASUS1_MAX_DRIVE_ON_FS_DB_BY_DRIVER,
   CASUS1_V2_BAND_HZ,
   CASUS1_V2_GRID,
+  CASUS1_V2_BAND_SOURCE,
   CASUS1_V2_SEED,
   CASUS1_V2_SETTINGS,
   casus1ChainInput,
@@ -97,6 +98,9 @@ import {
   CASUS1_LOWEST_WAY_LEVEL_WORK_FORBIDDEN,
   CASUS1_THERMAL_DESIGN_POWER_W,
   CASUS1_WIRING,
+  CASUS1_COIL_DCR,
+  CASUS1_COIL_DCR_SETTINGS,
+  CASUS1_COIL_FAMILY_BY_DRIVER,
 } from './casus1V2.fixture.ts';
 import { buildReport, type EngineV2Report } from './report.ts';
 import { seriesRMaxOhmOf } from '../levelWork.ts';
@@ -205,6 +209,14 @@ const HERKOMST = JSON.parse(
     qes_grens_waarom: string;
     dissipatiegewicht: number;
     dissipatiegewicht_waarom: string;
+    /** A5e.3 — OP WELKE FYSICA de spoelen beoordeeld zijn: verliesvrij (absent,
+     *  P4) of de DCR van de gestelde familie per weg uit de catalogusfit. */
+    spoel_dcr_model: { families_per_weg: Record<string, string>; fit: string; catalogus: string | null } | null;
+    spoel_dcr_waarom: string;
+    spoel_dcr_gesteld: boolean;
+    spoel_dcr_families: Record<string, string> | null;
+    spoel_dcr_beschrijving: string | null;
+    spoel_dcr_herkomst: string;
     seed: number;
   };
 };
@@ -242,6 +254,8 @@ const report = (key: string): EngineV2Report =>
        * the same derived ceilings the generator sent (V32's rule: the facts
        * must be the facts the generator sent). */
       ...CASUS1_EXCURSION,
+      /* A5e.3-veld — the stated coil families and fits (the report's coil block). */
+      ...CASUS1_COIL_DCR_SETTINGS,
     },
   });
 
@@ -521,6 +535,30 @@ describe('the frozen v2 candidates are files, and the file says where they came 
     if (CASUS1_V2_BUDGETS.lfBumpBudgetDb !== undefined) {
       expect(m.v2_budgetten_gewapend).toContain('lfBumpBudgetDb');
     }
+    /* A5e.3-veld — het ELFDE besluit, en het eerste over de FYSICA van de
+     * onderdelen: op welk koper elke continue spoel geoordeeld is. De families
+     * staan in het manifest en nergens anders (P6); gesteld door Sander op
+     * 04-09-2026, en het veld is er DAARNA mee opgewekt. Twee regels: de
+     * sleutel is verklaard (een keuze-sleutel, 35/5/11) én het blok zegt dat
+     * de families GESTELD waren en niet voorgesteld — een run op het voorstel
+     * zou hetzelfde model dragen en een andere bewering doen. */
+    expect(m.spoel_dcr_gesteld).toBe(CASUS1_COIL_DCR.stated);
+    expect(m.spoel_dcr_families).toEqual(Object.keys(CASUS1_COIL_FAMILY_BY_DRIVER).length > 0 ? CASUS1_COIL_FAMILY_BY_DRIVER : null);
+    expect(m.spoel_dcr_herkomst).toMatch(/P6/);
+    if (CASUS1_COIL_DCR.stated) {
+      expect(m.beschermingen_via_kandidaat).toContain('coilDcrModel');
+      expect(m.spoel_dcr_model).not.toBeNull();
+      expect(m.spoel_dcr_model!.families_per_weg).toEqual(CASUS1_COIL_FAMILY_BY_DRIVER);
+      expect(m.spoel_dcr_model!.fit).toBe(CASUS1_COIL_DCR.model!.fitVersion);
+      expect(m.spoel_dcr_waarom).toMatch(/GESTELD/);
+      expect(m.spoel_dcr_beschrijving).toMatch(/woofer → /);
+      // Every way of the manifest resolves on the catalogue: no family is missing.
+      expect(CASUS1_COIL_DCR.missing).toEqual([]);
+    } else {
+      expect(m.beschermingen_via_kandidaat).not.toContain('coilDcrModel');
+      expect(m.spoel_dcr_model).toBeNull();
+      expect(m.spoel_dcr_waarom).toMatch(/P4/);
+    }
   });
 
   it('the candidate metrics are CLASS B, and the reference file says so', () => {
@@ -766,10 +804,25 @@ describe('[live] the run still delivers the frozen netlist', () => {
     expect(noteText).toContain('The source-resistance probe read over');
     expect(noteText).toContain('safety grid');
     expect(noteText).toMatch(/probed \S+ at [\d.]+ Hz/);
-    // ...and it landed BELOW the chain grid, which is the whole point of the
-    // move — read off the note rather than restated.
+    /* ...and it landed on the woofer's OWN RESONANCE, read off the note rather
+     * than restated. Until M-1 this asserted "below the chain grid": the chain
+     * grid began at 200 Hz and a probe reading under it could only have come
+     * from the safety grid, which was the whole point of V34's move. Since M-1
+     * the chain grid starts at the validity floor (20.5 Hz), f_p is an INNER
+     * point of it (frozenNetlistGates, the M-1 reading beside the V34 finding),
+     * and "below the chain grid" is no longer the mark of the safety grid — it
+     * would be a probe below 20 Hz, which is nowhere. What still says the probe
+     * read a MEASURED peak and not the top of its own search window (V34's
+     * 640.2 Hz) is where it landed: within one safety-grid step of the upper
+     * reflex peak the band floor is derived from. This claim never ran between
+     * M-1 and A5e.3-veld — the live corpus was empty — which is why it could go
+     * stale unseen (A5e.3-veld). */
     const at = Number(/probed \S+ at ([\d.]+) Hz/.exec(noteText)?.[1] ?? NaN);
-    expect(at).toBeLessThan(CASUS1_V2_GRID[0]);
+    const fp = CASUS1_V2_BAND_SOURCE.fpHz;
+    expect(fp).not.toBeNull();
+    const stepOct = Math.log2(gridded.safety.freqs[1] / gridded.safety.freqs[0]);
+    expect(Math.abs(Math.log2(at / fp!)), `the probe read at ${at} Hz, the woofer's f_p is ${fp} Hz`).toBeLessThanOrEqual(stepOct + 1e-9);
+    expect(at).toBeGreaterThan(CASUS1_V2_GRID[0]);
 
     const stored = JSON.parse(
       readFileSync(join(CASUS1_DIR, `${target.name}.adsfilter.json`), 'utf-8'),

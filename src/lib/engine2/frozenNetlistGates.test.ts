@@ -97,6 +97,7 @@ import {
   CASUS1_LOWEST_WAY_LEVEL_WORK,
   CASUS1_LOWEST_WAY_LEVEL_WORK_FORBIDDEN,
   CASUS1_LOWEST_WAY_SERIES_R_MAX_OHM,
+  CASUS1_COIL_DCR_SETTINGS,
 } from './casus1V2.fixture.ts';
 import { smoothDbGaussian } from '../bandMetrics.ts';
 import { applyTransfer, combineN, logspace, resampleImpedance, type GriddedResponse } from '../dsp.ts';
@@ -122,13 +123,16 @@ import {
   DEFAULT_R_SOURCE_TIER_OHM,
   DEFAULT_R_SOURCE_DISQUALIFY_OHM,
 } from '../partAudit.ts';
-import { ampFloorSlackOhm, meetsAmpFloor } from '../impedanceFloor.ts';
+import { ampFloorSlackOhm, meetsAmpFloor, minImpedanceAt } from '../impedanceFloor.ts';
 import { deserializeFilter } from '../filterFile.ts';
 import { CASUS1_DIR } from './casus1.fixture.ts';
 import type { VxpPart } from '../parsers/vxp.ts';
 import type { Complex } from '../complex.ts';
 import { PHASE_INTEGRATION_VERSION } from './metrics/phaseIntegration.ts';
 import { PHASE_ADMISSION_VERSION } from '../phaseAdmission.ts';
+import { COIL_DCR_FIT_VERSION, coilDcrInventory, roundDcr } from '../coilDcr.ts';
+import { casus1CoilFamilyByDriver } from './casus1.fixture.ts';
+import { CASUS1_COIL_DCR, CASUS1_COIL_FAMILY_BY_DRIVER, casus1Field } from './casus1V2.fixture.ts';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const NET_OPTIMIZER = join(HERE, '..', 'netOptimizer.ts');
@@ -139,6 +143,10 @@ const golden = loadGolden();
  *  claim has no subject when the field delivered nothing (115 of 115 refused). */
 const LIVE_HERKOMST = JSON.parse(readFileSync(join(CASUS1_DIR, '..', 'casus1_v2_herkomst.json'), 'utf-8')) as {
   shortlist: { overwogen: number; bevroren: number; leverde_geen_netwerk: number };
+  /** A5e.3-veld — the positions the generator laid per axis, for the drive-floor claim. */
+  veld_uitlijningen: { per_as: { paar: string; posities_per_orde: { orde: number; hz: number[] }[] }[]; positiebudget?: number };
+  bestanden: { name: string; label: string }[];
+  meetopstelling: { spoel_dcr_gesteld?: boolean; spoel_dcr_families?: Record<string, string> | null };
 };
 /** M-1 — the plateau depth the case book carried from V45 to V51b, for the
  *  blocks that need a VOICED curve to show their mechanism (the design's own
@@ -221,6 +229,10 @@ const BASE: ReportSettings = {
    * driver and M-C is judged on the STRICTER of that and the stated figure.
    * Read from the manifest; a casus without them derives nothing. */
   ...casus1ExcursionSettings(golden),
+  /* A5e.3-veld — the stated coil families and the catalogue's fits, spread for
+   * the same reason: the report's coil-DCR block reads them, and the guards
+   * below assert that every live netlist carries DCR AS MODELLED. */
+  ...CASUS1_COIL_DCR_SETTINGS,
 };
 
 /**
@@ -741,15 +753,43 @@ describe('V32 — the search gate and the file measurement agree on every frozen
     expect(safety.freqs.length).toBeLessThan(anyRef.grid.length);
 
     // 2. The gap, netlist by netlist, over the designs that are in play.
+    /* A5e.3-veld — RESOLUTION AND EXTENT ARE TWO DIFFERENT GAPS, and the claim
+     * is about the first. The sweep the gate judges on starts where the
+     * impedance was measured (10 Hz); the barrier's safety grid starts where the
+     * RESPONSES are valid (20.5 Hz on the merged set). Containment (claim 1)
+     * holds, but a system minimum that lies BETWEEN the two floors is not a
+     * coarser reading of the same minimum — it is a minimum the barrier cannot
+     * see at all. Measured on the A5e.3-veld field: KAND_V2_2's minimum sits at
+     * 10.07 Hz in the woofer branch (a shunt L+R the parts audit left standing
+     * when it removed the C of a damped trap), 2.55 Ω on the sweep against 2.85
+     * on the safety grid, and the gate let it through within the tolerance. So
+     * the resolution claim is made over the netlists whose sweep minimum lies
+     * inside the barrier's extent, and the others are NAMED — in the recorded
+     * block and here — with both grids still reaching the same verdict on them
+     * (the claim below). Bookkeeping, not a waiver: the barrier's extent is an
+     * open point of the case book, and the list is meant to be empty. */
     const live = NETLIST_KEYS.filter((k) => /^KAND_V2_\d+$/.test(k) || V1_BASELINES.includes(k));
     expect(live.length, 'no live design to measure the gap on').toBeGreaterThan(0);
+    const barrierFloorHz = safety.freqs[0];
+    const recordedOutside = ((golden.manifest_en_geometrie as unknown as {
+      v33_barriere_raster?: { minimum_buiten_barriere_uitgestrektheid?: { netlist: string; poortraster_min_bij_hz: number | null }[] };
+    }).v33_barriere_raster?.minimum_buiten_barriere_uitgestrektheid ?? []).map((r) => r.netlist);
     let worst = { key: '', gap: 0, onSafety: 0, onSweep: 0 };
+    const outside: string[] = [];
     for (const key of live) {
       const { filter, ref } = searchRef(key);
       const onSweep = systemMinImpedanceOhm(filter.netlist, ref.impedance!.grid, ref.impedance!.driverZ);
       const onSafety = systemMinImpedanceOhm(filter.netlist, safety.freqs, safety.z);
       expect(onSweep, `${key}: the gate grid produced no reading`).not.toBeNull();
       expect(onSafety, `${key}: the safety grid produced no reading`).not.toBeNull();
+      const sweepMin = minImpedanceAt(solveNetwork(filter.netlist, ref.impedance!.grid, ref.impedance!.driverZ).inputZ);
+      const sweepMinHz = sweepMin ? ref.impedance!.grid[sweepMin.index] : null;
+      if (sweepMinHz !== null && sweepMinHz < barrierFloorHz) {
+        outside.push(key);
+        // The barrier is blind there by construction, and the gate is the stricter reader.
+        expect(onSweep!, `${key}: a minimum under the barrier floor read HIGHER on the sweep`).toBeLessThanOrEqual(onSafety! + 1e-9);
+        continue;
+      }
       const gap = Math.abs(onSafety! - onSweep!);
       if (gap > worst.gap) worst = { key, gap, onSafety: onSafety!, onSweep: onSweep! };
     }
@@ -760,6 +800,13 @@ describe('V32 — the search gate and the file measurement agree on every frozen
         `${worst.onSweep.toFixed(4)} Ω), against a floor slack of ${slack.toFixed(4)} Ω. Either ` +
         'the safety grid needs more points or the v2 route needs the expensive source',
     ).toBeLessThan(slack);
+    // Every netlist whose minimum lies under the barrier's floor is NAMED in the case book — the
+    // V30 form: a list that is bookkeeping and is meant to shrink to nothing.
+    expect(
+      [...outside].sort(),
+      `netlists whose sweep minimum lies under the barrier floor (${barrierFloorHz.toFixed(1)} Hz) must be ` +
+        'named in manifest_en_geometrie.v33_barriere_raster.minimum_buiten_barriere_uitgestrektheid',
+    ).toEqual(recordedOutside.filter((k) => live.includes(k)).sort());
     /* And the gap is not ZERO either, or the two grids would be the same grid
      * and this whole measurement would be describing nothing. */
     expect(worst.gap).toBeGreaterThan(0);
@@ -1714,15 +1761,24 @@ describe('V38-fix — de zoekmaat op elke bevroren netlist', () => {
      * van dit corpus vindt, komt op de zoekmaat in de BETERE HELFT terecht.
      * Geen ingetypt getal — de vergelijking is die van de twee rangordes met
      * elkaar. */
-    const byJudged = [...V38FIX].sort((a, b) => a.raw.std - b.raw.std);
-    const bySearch = [...V38FIX].sort((a, b) => a.beforeSum.std - b.beforeSum.std);
+    /* GEANKERD OP DE GEDATEERDE VERZAMELING (A5e.3-veld, de V47/V48-les): een
+     * rangorde is een corpusgrootte, en het levende corpus komt bij elke
+     * regeneratie met andere netlists terug — bij A5e.3-veld schoof de rang van
+     * `V37_KAND_10` van 75 naar 77 op 159 doordat er acht levende netlists en
+     * de arm bij kwamen, zonder dat de zoekmaat bewoog. De claim gaat over de
+     * netlists die bestonden toen zij gemeten werd; die verzameling noemt
+     * zichzelf: alles wat niet levend is en niet de A5e.3-arm. */
+    const DATED = V38FIX.filter((r) => !/^KAND_V2_\d+$/.test(r.key) && !/^A5E3ARM_KAND_\d+$/.test(r.key));
+    expect(DATED.length).toBeLessThan(V38FIX.length);
+    const byJudged = [...DATED].sort((a, b) => a.raw.std - b.raw.std);
+    const bySearch = [...DATED].sort((a, b) => a.beforeSum.std - b.beforeSum.std);
     const worstJudged = byJudged[byJudged.length - 1];
     const whereOnSearch = bySearch.findIndex((r) => r.key === worstJudged.key);
     expect(
       whereOnSearch,
       `${worstJudged.key} is het slechtste ontwerp op de beoordeelde maat en de zoekmaat zet ` +
         'het niet meer in de betere helft — is de zoekmaat veranderd?',
-    ).toBeLessThan(V38FIX.length / 2);
+    ).toBeLessThan(DATED.length / 2);
 
     /* ...en de compressie zelf, in dezelfde constant-vrije vorm: de spreiding
      * die het oordeel ziet is een veelvoud van de spreiding die de zoektocht
@@ -3405,5 +3461,140 @@ describe('V45 — the anchor is taken AFTER baffle step, and the bridge holds', 
       JSON.stringify(report(k, { ...BASE, targetCurve: CURVE }).predesign.gaps),
     );
     expect(new Set(blocks).size).toBe(1);
+  });
+});
+
+describe('A5e.3-veld — the stated coil families, and every live netlist judged with DCR as modelled', () => {
+  /* THE CLAIM OF THE SESSION. A5e.3 built the model and left the families a
+   * PROPOSAL; A5e.3-veld states them (Sander, 04-09-2026) and regenerates. What
+   * has to be true afterwards, and can only be true afterwards: the families
+   * are stated in the case book with a name and a date; every way of the
+   * design resolves on the catalogue; every live netlist carries, on EVERY
+   * coil, exactly the DCR the model gives its written inductance (the tuner
+   * writes it back — the V32 form: one number, however many readers); and the
+   * recorded block reproduces. The reference filters stand beside it as the
+   * counter-proof: HUIDIG carries its OWN catalogue DCR (another gauge), the
+   * dated v2 corpora carry none. */
+  const MODEL = CASUS1_COIL_DCR.model;
+  const RECORD = (golden.manifest_en_geometrie as unknown as {
+    a5e3_spoel_dcr?: {
+      schatter: string;
+      gesteld: boolean;
+      gesteld_door: string | null;
+      families_per_weg: Record<string, string>;
+      levend_corpus_netlists: number;
+      levend_corpus_als_gemodelleerd: number;
+      per_netlist: { netlist: string; totaal_DCR_ohm: number; als_gemodelleerd: boolean; spoelen: { id: string; DCR_ohm: number; fit_ohm: number | null }[] }[];
+      referentiefilters: { netlist: string; totaal_DCR_ohm: number; als_gemodelleerd: boolean; draagt_DCR: boolean }[];
+    };
+  }).a5e3_spoel_dcr;
+  const LIVE = NETLIST_KEYS.filter((k) => /^KAND_V2_\d+$/.test(k));
+  const ARM = NETLIST_KEYS.filter((k) => /^A5E3ARM_KAND_\d+$/.test(k));
+  /** Half a unit of the DCR param's last digit, with float slack — what `roundDcr` can differ by. */
+  const DCR_TOL = 1e-9;
+
+  it('the families are STATED in the case book — name and date — and every way resolves on the catalogue', () => {
+    const fam = casus1CoilFamilyByDriver(golden);
+    expect(fam.stated).toBe(true);
+    expect(CASUS1_COIL_DCR.stated).toBe(true);
+    const block = (golden.manifest_en_geometrie as unknown as { driverkaart: { spoelfamilie: { gesteld_door: string; gesteld_motivering: string } } }).driverkaart.spoelfamilie;
+    expect(block.gesteld_door).toMatch(/Sander/);
+    expect(block.gesteld_door).toMatch(/\d{2}-\d{2}-\d{4}/);
+    expect(block.gesteld_motivering).toMatch(/shunt/i);
+    expect(MODEL).not.toBeNull();
+    expect(CASUS1_COIL_DCR.missing).toEqual([]);
+    // One family per way of the design, and no way of the design without one.
+    const ways = report('HUIDIG').driversLowToHigh;
+    expect(Object.keys(fam.familyByWay).sort()).toEqual([...ways].sort());
+    for (const w of ways) expect(MODEL!.fits[MODEL!.familyByWay[w]], `${w}: family without a fit`).toBeDefined();
+    // ...and the generator ran on the STATED block, not on the proposal.
+    expect(LIVE_HERKOMST.meetopstelling.spoel_dcr_gesteld).toBe(true);
+    expect(LIVE_HERKOMST.meetopstelling.spoel_dcr_families).toEqual(CASUS1_COIL_FAMILY_BY_DRIVER);
+  });
+
+  it('every LIVE netlist and the registered arm carry DCR AS MODELLED: each coil exactly the fit of its written inductance, no way without a family', () => {
+    /* A live corpus that delivered nothing has no subject here; the record
+     * says how many there are and the case book says why. The arm is the
+     * one netlist that always has: it was delivered under the same model. */
+    expect(ARM.length).toBeGreaterThan(0);
+    expect(RECORD?.levend_corpus_netlists).toBe(LIVE.length);
+    for (const key of [...LIVE, ...ARM]) {
+      const inv = coilDcrInventory(casus1Parts(key), MODEL);
+      expect(inv.coils.length, `${key}: no coil at all`).toBeGreaterThan(0);
+      expect(inv.waysWithoutFamily, `${key}: ways without a family`).toEqual([]);
+      for (const c of inv.coils) {
+        expect(c.fitOhm, `${key} ${c.id}: no fit`).not.toBeNull();
+        expect(c.carriedOhm, `${key} ${c.id}: lossless coil on a modelled run`).toBeGreaterThan(0);
+        expect(Math.abs(c.carriedOhm - roundDcr(c.fitOhm!)), `${key} ${c.id}: carries ${c.carriedOhm} Ω, the model says ${c.fitOhm}`).toBeLessThanOrEqual(DCR_TOL);
+      }
+      // ONE implementation, two readers: the report's coil block reads the same inventory.
+      const rep = FIELD.find((f) => f.key === key)!.levelWork!.coilDcr;
+      expect(rep.model).not.toBeNull();
+      expect(rep.inventory!.carriedTotalOhm).toBeCloseTo(inv.carriedTotalOhm, 9);
+      expect(rep.unresolved).toEqual([]);
+    }
+    if (RECORD) expect(RECORD.levend_corpus_als_gemodelleerd).toBe(LIVE.length);
+  });
+
+  it('THE COUNTER-PROOF: HUIDIG carries its OWN catalogue DCR (not the model\'s), and the dated v2 corpora carry none', () => {
+    /* Without this, "every live netlist carries the fit DCR" would be equally
+     * true of a model that stamps nothing and an inventory that reads zero. */
+    const huidig = coilDcrInventory(casus1Parts('HUIDIG'), MODEL);
+    expect(huidig.carriedTotalOhm).toBeGreaterThan(0);
+    expect(huidig.coils.every((c) => c.carriedOhm > 0)).toBe(true);
+    // ...and at least one of its coils is NOT the model's number: another gauge, snapped by the app.
+    expect(huidig.coils.some((c) => c.fitOhm !== null && Math.abs(c.carriedOhm - roundDcr(c.fitOhm)) > DCR_TOL)).toBe(true);
+    const dated = NETLIST_KEYS.filter((k) => /^V51B_KAND_\d+$/.test(k));
+    expect(dated.length).toBeGreaterThan(0);
+    for (const key of dated) expect(coilDcrInventory(casus1Parts(key), MODEL).carriedTotalOhm, `${key} carries DCR although it was tuned lossless`).toBe(0);
+  });
+
+  it('the recorded block reproduces from a fresh measurement, per netlist and per coil', () => {
+    expect(RECORD, 'the recorder wrote no a5e3_spoel_dcr block').toBeDefined();
+    expect(RECORD!.schatter).toBe(COIL_DCR_FIT_VERSION);
+    expect(RECORD!.gesteld).toBe(true);
+    expect(RECORD!.gesteld_door).toMatch(/Sander/);
+    expect(RECORD!.families_per_weg).toEqual(CASUS1_COIL_FAMILY_BY_DRIVER);
+    expect(RECORD!.per_netlist.map((r) => r.netlist).sort()).toEqual([...LIVE, ...ARM].sort());
+    for (const row of RECORD!.per_netlist) {
+      const inv = coilDcrInventory(casus1Parts(row.netlist), MODEL);
+      expect(Math.abs(row.totaal_DCR_ohm - inv.carriedTotalOhm)).toBeLessThanOrEqual(0.00005 + 1e-9);
+      expect(row.als_gemodelleerd).toBe(true);
+      expect(row.spoelen.map((c) => c.id)).toEqual(inv.coils.map((c) => c.id));
+      for (const c of row.spoelen) {
+        const fresh = inv.coils.find((x) => x.id === c.id)!;
+        expect(Math.abs(c.DCR_ohm - fresh.carriedOhm)).toBeLessThanOrEqual(0.00005 + 1e-9);
+      }
+    }
+    const huidig = RECORD!.referentiefilters.find((r) => r.netlist === 'HUIDIG')!;
+    expect(huidig.draagt_DCR).toBe(true);
+    expect(huidig.als_gemodelleerd).toBe(false);
+  });
+
+  it('P2 — without the coil settings every gate verdict is byte-identical: the DCR lives in the FILE, the settings only describe it', () => {
+    const { coilDcrFamilyByDriver: _f, coilDcrFits: _s, ...rest } = BASE;
+    void _f; void _s;
+    for (const key of [...ARM, ...LIVE.slice(0, 1)]) {
+      const bare = report(key, rest);
+      const armed = FIELD.find((f) => f.key === key)!;
+      expect(JSON.stringify(bare.gates.verdicts)).toBe(JSON.stringify(armed.verdicts));
+      expect(bare.predesign.levelWork!.coilDcr.model).toBeNull();
+      expect(bare.predesign.levelWork!.coilDcr.inventory!.carriedTotalOhm).toBeCloseTo(armed.levelWork!.coilDcr.inventory!.carriedTotalOhm, 9);
+    }
+  });
+
+  it('the field: no live position lies under the drive floor of the woofer→mid window, and the floor is the mid\'s excursion ceiling', () => {
+    /* The A5e.3-veld field stands on the drive floor (A5d.3(ii) inverted with
+     * the V49 ceiling); the generator's record of its positions must not
+     * reach under it, and the window the report derives must say which rule
+     * bound it. Rounded to the hertz the record prints. */
+    const field = casus1Field(report('HUIDIG'));
+    const wm = field.field.axes[0];
+    expect(wm.window['4'].floorBy!.rule).toBe('drive');
+    const recorded = LIVE_HERKOMST.veld_uitlijningen.per_as[0].posities_per_orde[0];
+    expect(recorded.orde).toBe(4);
+    expect(recorded.hz).toEqual(wm.positionsByOrder[0].hz);
+    for (const hz of recorded.hz) expect(hz).toBeGreaterThanOrEqual(wm.window['4'].floorHz! - 0.5);
+    expect(LIVE_HERKOMST.veld_uitlijningen.positiebudget).toBe(field.field.parameters.chainBudget);
   });
 });

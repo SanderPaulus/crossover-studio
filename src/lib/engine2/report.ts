@@ -1006,6 +1006,13 @@ export function buildReport(input: EngineV2ReportInput): EngineV2Report {
         validityFloorHz: worst?.hz ?? null,
         validityFloorSource: worst?.src ?? 'unknown',
         upperFsHz: dUpper?.impedance?.fundamentalHz ?? null,
+        /* A5e.3-veld — the excursion ceiling of the UPPER driver (V49), derived
+         * above for every driver with a card, a peak and a sweep. A driver
+         * property, so a window floor may stand on it; absent = no such floor. */
+        upperDriveCeilingDb: metrics.driveExcursion.find((r) => r.driver === upper)?.ceiling.ceilingDbReInput ?? null,
+        upperDriveCeilingSource:
+          'driver card, amplifier peak and measured sweep - metrics/driveExcursion.ts, V49; ' +
+          'the ceiling the M-C gate judges the way against',
         lowerBreakups: dLower?.breakups?.peaks.map((p) => ({ fHz: p.fHz, dB: p.dB })) ?? [],
         significantBreakupDb: input.settings.significantBreakupDb,
         lowerMinus6Hz: dir?.minus6Hz ?? null,

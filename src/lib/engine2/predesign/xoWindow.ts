@@ -24,6 +24,7 @@
 import {
   BREAKUP_DIV_MILD,
   BREAKUP_DIV_SEVERE,
+  DB_PER_OCTAVE_PER_ORDER,
   MM_PER_M,
   SPEED_OF_SOUND_M_S,
   XO_FS_FACTOR_BY_ORDER,
@@ -48,7 +49,7 @@ export interface XoLimit {
   side: 'floor' | 'ceiling';
   hz: number;
   /** Short machine-readable tag, for tests and for the UI to group on. */
-  rule: 'validity' | 'fs' | 'breakup' | 'directivity';
+  rule: 'validity' | 'fs' | 'breakup' | 'directivity' | 'drive';
   /** Human sentence — always shown next to the number. */
   source: string;
   /** Set when this limit carries an uncalibrated component. */
@@ -128,6 +129,23 @@ export interface XoWindowInput {
   validityFloorSource: string;
   /** Resonance of the UPPER driver, from its impedance sweep. */
   upperFsHz: number | null;
+  /**
+   * A5e.3-veld — THE EXCURSION CEILING OF THE UPPER DRIVER (M-C v2.0, V49):
+   * how far below the filter input its drive voltage must sit at its own
+   * resonance, dB (negative), `DriveExcursionResult.ceiling.ceilingDbReInput`.
+   * A property of the DRIVER — driver card, amplifier peak and measured
+   * sweep, class A — and therefore admissible as a pre-design floor: the
+   * handover below which a filter of the candidate's order cannot hold that
+   * drive under the ceiling (the inversion of A5d.3(ii), see `crossoverWindow`).
+   *
+   * Absent or null = no such floor; k·f_s alone (P4). The STATED M-C figure is
+   * deliberately NOT fed here: it is passband-relative, it is a project
+   * convention rather than a driver property, and the order derivation
+   * already reads it as a demand at the reference crossing (A5d.3(ii)).
+   */
+  upperDriveCeilingDb?: number | null;
+  /** Where that ceiling came from — attribution, exactly as every limit has. */
+  upperDriveCeilingSource?: string;
   /** Breakups of the LOWER driver, ascending, with their height over trend. */
   lowerBreakups: readonly { fHz: number; dB: number }[];
   /** -6 dB@theta point of the LOWER driver, when it was measured off axis. */
@@ -177,6 +195,42 @@ export function crossoverWindow(input: XoWindowInput): XoWindowResult {
       source:
         `${k}x f_s of ${input.upper} (${input.upperFsHz.toFixed(0)} Hz) at order ${input.order} - ` +
         'a steeper flank may sit closer to the resonance',
+    });
+  }
+
+  /* A5e.3-veld — THE DRIVE FLOOR: the inversion of A5d.3(ii).
+   *
+   * Rule (ii) of the order derivation reads "the attenuation M-C asks for at
+   * the upper driver's resonance, divided by the octave distance from that
+   * resonance up to the handover" and answers with an ORDER. Read the other
+   * way, at a GIVEN order, the same rule answers with a frequency: the lowest
+   * handover at which a filter of that order still attenuates the drive at
+   * f_s by what the ceiling asks —
+   *
+   *     f_floor = f_s · 2^( |ceiling| / (DB_PER_OCTAVE_PER_ORDER · order) ).
+   *
+   * Asymptotic slope, passband taken at the input (0 dB re input — the way
+   * that is NOT attenuated, which is the strictest honest reading: a pad on
+   * the way lowers its passband and makes the requirement easier, and a floor
+   * that assumed a pad would assume a design). k·f_s stays beside it as the
+   * convention it is; the HIGHER of the two floors binds, exactly as every
+   * floor here is combined. Measured on casus 1 (M-1, 04-09-2026): at k·f_s =
+   * 124 Hz an LR4 attenuates the mid's drive at 88.8 Hz by 11.6 dB against a
+   * ceiling of 17.7, and four of the five candidates on that position were
+   * refused on M-C (mid); this floor puts the position at 148 Hz. */
+  const ceiling = input.upperDriveCeilingDb ?? null;
+  if (input.upperFsHz !== null && ceiling !== null && Number.isFinite(input.order) && input.order > 0) {
+    const needDb = Math.abs(ceiling);
+    const octaves = needDb / (DB_PER_OCTAVE_PER_ORDER * input.order);
+    limits.push({
+      side: 'floor',
+      hz: input.upperFsHz * 2 ** octaves,
+      rule: 'drive',
+      source:
+        `${needDb.toFixed(1)} dB of attenuation at ${input.upper}'s resonance (${input.upperFsHz.toFixed(0)} Hz) ` +
+        `takes ${octaves.toFixed(2)} octaves at order ${input.order} (${DB_PER_OCTAVE_PER_ORDER} dB/oct per order) - ` +
+        `the excursion ceiling of M-C v2.0 (${input.upperDriveCeilingSource ?? 'source not stated'}), read as ` +
+        'A5d.3(ii) inverted, with the passband at the input',
     });
   }
 

@@ -25,6 +25,7 @@
 
 import { describe, expect, it } from 'vitest';
 import { runIngest } from './ingest/derive.ts';
+import { DB_PER_OCTAVE_PER_ORDER } from './constants.ts';
 import { crossoverWindow } from './predesign/xoWindow.ts';
 import { baffleStepHz } from '../cabinet.ts';
 import {
@@ -624,11 +625,24 @@ describe('golden references - casus 1 (Koan 2951)', () => {
       const w = r.predesign.windows.find((x) => x.lower === 'woofer')!;
       expect(pct(w.floorHz!, ref.venster[0])).toBeLessThanOrEqual(TOL.frequenties_pct);
       expect(pct(w.ceilingHz!, ref.venster[1])).toBeLessThanOrEqual(TOL.frequenties_pct);
-      /* M-1 — the floor is k·f_s of the MID now ("vloer_bindend": "fs"): the
-       * merged woofer and mid are valid far below it, so the measurement
-       * validity that bound this edge until M-1 no longer does. The gated
-       * reading stays as the bridge and reproduces on the gated set. */
-      expect(w.floorBy!.rule).toBe('fs');
+      /* A5e.3-veld — the floor is the mid's DRIVE FLOOR now ("vloer_bindend":
+       * "aandrijving_excursie"): A5d.3(ii) inverted with the excursion ceiling
+       * of M-C v2.0 (V49), which lies ABOVE k·f_s of the mid. The k·f_s reading
+       * (M-1's floor) stays as the bridge and reproduces with the ceiling
+       * withheld; the gated reading stays as the older bridge. */
+      expect(w.floorBy!.rule).toBe('drive');
+      expect(w.floorBy!.source).toContain('A5d.3(ii) inverted');
+      const kfs = w.limits.find((l) => l.rule === 'fs')!;
+      expect(w.floorHz!).toBeGreaterThan(kfs.hz);
+      const bridgeK = (golden.kruisvensters.woofer_mid_orde4 as { _k_fs_tot_A5e3veld: { venster: [number, number]; vloer_bindend: string } })._k_fs_tot_A5e3veld;
+      const wk = crossoverWindow({ ...r.predesign.windowInputs.find((x) => x.lower === 'woofer')!, order: 4, upperDriveCeilingDb: null });
+      expect(pct(wk.floorHz!, bridgeK.venster[0])).toBeLessThanOrEqual(TOL.frequenties_pct);
+      expect(wk.floorBy!.rule).toBe('fs');
+      expect(bridgeK.vloer_bindend).toBe('fs');
+      // ...and the drive floor is the inversion it says it is: at that handover a filter of the
+      // stated order attenuates by exactly the ceiling (asymptotic slope), never less.
+      const wi = r.predesign.windowInputs.find((x) => x.lower === 'woofer')!;
+      expect(DB_PER_OCTAVE_PER_ORDER * 4 * Math.log2(w.floorHz! / wi.upperFsHz!)).toBeCloseTo(Math.abs(wi.upperDriveCeilingDb!), 9);
       expect(w.ceilingBy!.rule).toBe('breakup'); // "plafond_bindend": "breakup_ernst"
       expect(w.ceilingBy!.uncalibrated).toContain('uncalibrated');
       expect(w.empty).toBe(false);
@@ -658,7 +672,13 @@ describe('golden references - casus 1 (Koan 2951)', () => {
       const w = r.predesign.windows.find((x) => x.lower === 'mid')!;
       expect(pct(w.floorHz!, ref.venster[0])).toBeLessThanOrEqual(TOL.frequenties_pct);
       expect(pct(w.ceilingHz!, ref.venster[1])).toBeLessThanOrEqual(TOL.frequenties_pct);
+      /* A5e.3-veld — k·f_s STILL binds here: the tweeter's drive floor (its
+       * excursion ceiling is −8.6 dB re input) lies under the convention, so
+       * the M-T axis does not move. Both limits are present; the higher wins. */
       expect(w.floorBy!.rule).toBe('fs');
+      const drive = w.limits.find((l) => l.rule === 'drive');
+      expect(drive, 'the tweeter carries no drive floor although its ceiling is derived').toBeDefined();
+      expect(drive!.hz).toBeLessThan(w.floorHz!);
       expect(w.ceilingBy!.rule).toBe('breakup');
       // "spanning": "lobing-goed boven breakup-plafond"
       expect(w.tensions.join(' ')).toContain('ABOVE the ceiling');
