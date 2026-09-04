@@ -67,8 +67,51 @@ export interface ArtaHeader {
    * was only observed for the difference.
    */
   effectiveWindowMs?: number;
+  /**
+   * M-1 — validity THE FILE ITSELF STATES (`Valid from = … Hz`, `Valid to =
+   * … Hz`). Read for every file, HONOURED only on a declared merge (see
+   * `merge`): on a gated far field the header window is the floor and
+   * A5b.1(i) says nothing may relax it, so a stated number there is kept as
+   * data and never becomes a floor.
+   */
+  statedValidity?: { fromHz?: number; toHz?: number };
+  /**
+   * M-1 — THE MERGE BLOCK of an NF/FF-merged response file. Present when the
+   * header carries `Merge = …`; the fields beside it say what the file was
+   * made of, so a reader can trace every number under the splice to the
+   * near field and the step model it came from. A file that carries this
+   * block is NOT a gated measurement below its splice, and `validity.ts`
+   * takes a different path for it.
+   */
+  merge?: MergeBlock;
   /** Every header line, verbatim — the audit trail. */
   raw: string[];
+}
+
+/**
+ * What an NF/FF-merged file says about itself (M-1). Every field except `kind`
+ * is optional: a merge made by another tool may state only its validity, and
+ * the right response to a missing field is a note, not a guess.
+ */
+export interface MergeBlock {
+  /** `NF/FF` — the only kind so far; kept as a string so a later merge kind is data. */
+  kind: string;
+  nfSource?: string;
+  ffSource?: string;
+  /** The ARTA window of the FAR-FIELD half, above the splice: fine structure there from 2/T. */
+  ffWindow?: { referenceTimeMs?: number; rightWindowMs?: number; effectiveWindowMs?: number };
+  /** The band the splice was fitted and crossfaded in, Hz. */
+  spliceBandHz?: [number, number];
+  /** The level the near-field half was shifted by to meet the far field, dB. */
+  spliceGainDb?: number;
+  /** The pure delay fitted and removed from the near-field half, ms. */
+  spliceDelayMs?: number;
+  stepModel?: string;
+  portModel?: string;
+  prediction?: string;
+  floorReason?: string;
+  /** e.g. "PLACEHOLDER tot groundplane" — travels into every note downstream. */
+  status?: string;
 }
 
 /** One tagged measurement file. */
@@ -165,6 +208,7 @@ const FIELD = /^([A-Za-z][A-Za-z .]*?)\s*=\s*(.+)$/;
  */
 export function parseArtaHeader(comments: readonly string[]): ArtaHeader {
   const h: ArtaHeader = { raw: [...comments] };
+  const merge: Partial<MergeBlock> = {};
   for (const line of comments) {
     const m = line.match(FIELD);
     if (!m) continue;
@@ -209,10 +253,73 @@ export function parseArtaHeader(comments: readonly string[]): ArtaHeader {
       case 'scale type':
         h.scaleType = value;
         break;
+      /* ---- M-1: the stated validity and the merge block ---------------- *
+       * Field names, not prose (UI-1): `Valid from = 20.5 Hz` is read, "geldig
+       * vanaf 20,5 Hz" in a comment is not. The merge fields are collected
+       * whether or not `Merge = …` itself has been seen yet — the block may
+       * come in any order — and only kept when it has. */
+      case 'valid from':
+        h.statedValidity = { ...(h.statedValidity ?? {}), fromHz: parseLooseNumber(value) };
+        break;
+      case 'valid to':
+        h.statedValidity = { ...(h.statedValidity ?? {}), toHz: parseLooseNumber(value) };
+        break;
+      case 'merge':
+        merge.kind = value;
+        break;
+      case 'merge nf source':
+        merge.nfSource = value;
+        break;
+      case 'merge ff source':
+        merge.ffSource = value;
+        break;
+      case 'merge ff window': {
+        const ref = value.match(/reference\s*(-?\d+(?:[.,]\d+)?)/i);
+        const right = value.match(/right\s*(-?\d+(?:[.,]\d+)?)/i);
+        const referenceTimeMs = ref ? parseLooseNumber(ref[1]) : undefined;
+        const rightWindowMs = right ? parseLooseNumber(right[1]) : undefined;
+        const t =
+          referenceTimeMs !== undefined && rightWindowMs !== undefined ? rightWindowMs - referenceTimeMs : undefined;
+        merge.ffWindow = {
+          ...(referenceTimeMs !== undefined ? { referenceTimeMs } : {}),
+          ...(rightWindowMs !== undefined ? { rightWindowMs } : {}),
+          ...(t !== undefined && t > 0 ? { effectiveWindowMs: t } : {}),
+        };
+        break;
+      }
+      case 'merge splice band': {
+        // Unsigned on purpose: "500-800 Hz" is a band, and its dash is not a minus.
+        const nums = value.match(/\d+(?:[.,]\d+)?/g)?.map((s) => Number(s.replace(',', '.'))) ?? [];
+        if (nums.length >= 2 && nums[0] > 0 && nums[1] > nums[0]) merge.spliceBandHz = [nums[0], nums[1]];
+        break;
+      }
+      case 'merge splice fit': {
+        const gain = value.match(/gain\s*(-?\d+(?:[.,]\d+)?)/i);
+        const delay = value.match(/delay\s*(-?\d+(?:[.,]\d+)?)/i);
+        if (gain) merge.spliceGainDb = parseLooseNumber(gain[1]);
+        if (delay) merge.spliceDelayMs = parseLooseNumber(delay[1]);
+        break;
+      }
+      case 'merge step model':
+        merge.stepModel = value;
+        break;
+      case 'merge port model':
+        merge.portModel = value;
+        break;
+      case 'merge prediction':
+        merge.prediction = value;
+        break;
+      case 'merge floor reason':
+        merge.floorReason = value;
+        break;
+      case 'merge status':
+        merge.status = value;
+        break;
       default:
         break;
     }
   }
+  if (merge.kind !== undefined) h.merge = merge as MergeBlock;
   if (h.rightWindowMs !== undefined && h.referenceTimeMs !== undefined) {
     const t = h.rightWindowMs - h.referenceTimeMs;
     if (t > 0) h.effectiveWindowMs = t;

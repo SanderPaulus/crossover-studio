@@ -80,6 +80,8 @@ import {
   CASUS1_LEVEL_WORK_SETTINGS,
   CASUS1_THERMAL_DESIGN_POWER_W,
   CASUS1_WIRING,
+  CASUS1_V2_BAND_SOURCE,
+  CASUS1_FIELD_ALIGNMENTS,
 } from '../src/lib/engine2/casus1V2.fixture.ts';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
@@ -1153,6 +1155,32 @@ writeFileSync(
       run_vingerafdruk: stamp.fingerprint,
       grid: { van_hz: CASUS1_V2_GRID[0], tot_hz: CASUS1_V2_GRID[CASUS1_V2_GRID.length - 1], punten: CASUS1_V2_GRID.length },
       oordeelband_hz: CASUS1_V2_BAND_HZ,
+      /* M-1 — WHERE THE BAND FLOOR AND THE GRID START CAME FROM, and on which
+       * measurement set. Both are derived from the merged set (the lowest way's
+       * f_p above its merge floor) and would read differently on the gated one;
+       * a record that only carried the numbers would not say why they moved. */
+      oordeelband_bron: {
+        ...CASUS1_V2_BAND_SOURCE,
+        _:
+          'de vloer is de hoogste van de geldigheidsvloer van de laagste weg en haar f_p (de bovenste ' +
+          'reflexpiek — waar het casusboek de onderkant van het basplateau al legt); het ketenraster begint ' +
+          'daar en houdt de resolutie van het precedent (96 punten over 200–20 000 Hz).',
+      },
+      meetset: {
+        set: 'merged',
+        bestanden: Object.fromEntries(manifest.entries.map((e) => [e.file, { driver: e.driver, kind: e.kind, hoek: e.angleDeg ?? null }])),
+        _:
+          'M-1: de gemergede set (manifest_en_geometrie.gemergde_set) — de on-axis ver velden van woofers en mid ' +
+          'zijn NF/FF-merges met een geldigheidsblok; status PLACEHOLDER tot groundplane/hermeting.',
+      },
+      veld_uitlijningen: {
+        bibliotheek: CASUS1_FIELD_ALIGNMENTS.map((a) => `${a.kind}${a.order}`),
+        per_as: field.field.axes.map((a) => ({ paar: a.pairLabel, orden: a.orders, posities_per_orde: a.positionsByOrder.map((p) => ({ orde: p.order, aantal: p.count, hz: p.hz })) })),
+        _:
+          'M-1: op de W-M-as onthoudt de orde-afleiding zich (geen gestelde orde, geen gewapende regel) en is elke ' +
+          'bouwbare orde een eigen kandidaat; de bibliotheek is tot de twee LR-uitlijningen beperkt (Sanders vraag: ' +
+          'LR4 en LR2). Op de M-T-as blijft orde 4 gesteld.',
+      },
       settings: CASUS1_V2_SETTINGS,
       meetopstelling,
       generator_parameters: field.field.parameters,

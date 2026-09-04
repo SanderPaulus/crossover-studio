@@ -48,6 +48,17 @@
     referentie:** `threeWayChain` alléén kostte in diezelfde run 361 s tegen de 289 s van V43, dus
     wat er beweegt is de machine en niet de laag. Het overgeslagen BESTAND is nieuw en klopt: de
     verhuisde verwerpingsrun is een bestand dat volledig uit `[live]` bestaat.
+    **Ná M-1 (04-09-2026) gemeten op 348 s — 148 geslaagd + 1 overgeslagen bestand, 1662 geslaagd +
+    2 overgeslagen tests, in één keer groen, alleen gedraaid op een lege machine ná de volle run en
+    NOOIT ernaast.** +1 bestand (`ingest/mergeBlock.test.ts`, 11 claims) en netto +8 tests (zie de
+    regel bij `npx vitest run`: 11 + 1 + 1 + 1 − 6 uit de `it.each` over het levende corpus, dat van
+    ZES naar NUL ging). Het langste bestand is sinds V51 `lowestWayLevelWork` (348 s, vier ketenruns op
+    de kleine fixture) en niet meer `threeWayChain` (298 s); de laag IS dus dat ene bestand. GEEN nieuwe
+    referentie: de V43-waarde van 289 s blijft staan, dit is dezelfde laag op dezelfde machine.
+    **De CI-laag (`npm run test:ci`) in dezelfde sessie, direct erna: 348 s — 148 geslaagd +
+    1 overgeslagen bestand, 1653 geslaagd + 11 overgeslagen tests.** Die elf zijn 2 `[live]` +
+    10 `[bytes]` − 1 die beide tags draagt, precies wat `ciLayer.test.ts` sinds V50 bewaakt; M-1
+    hernoemde twee `[bytes]`-namen (het M-1-oordelenblok van `f4cRegression`) en voegde er geen toe.
     **Ná V51b (03-09-2026) gemeten op 398 s — 147 geslaagd + 1 overgeslagen bestand, 1654 geslaagd +
     2 overgeslagen tests, in één keer groen, alleen gedraaid, direct ná de regeneratie van 41 min.**
     Geen nieuw bestand; +13 tests: 1 in `levelWork.test.ts`, 5 in `optimizer/lowestWayLevelWork.test.ts`
@@ -171,7 +182,18 @@
   onveranderd naast staat — van 285,8 naar 517,4 s. De totale CPU-tijd steeg van 3615 naar
   4306 s. Wandkloktijd is dus gekocht met rekentijd; een voorspelling op `max(1120, 638)` ≈ 950 s
   was te optimistisch en de gemeten 1254 s is wat er staat.
-- `npx vitest run` — volledige testsuite. **GEMETEN 03-09-2026 (V51b): 148 bestanden, 1656 tests,
+- `npx vitest run` — volledige testsuite. **GEMETEN 04-09-2026 (M-1): 149 bestanden, 1664 tests,
+  1187 s (19 min 47), niets overgeslagen, in één keer groen, alleen gedraaid op een lege machine met
+  `nohup`.** +1 bestand (`ingest/mergeBlock.test.ts`, 11 claims) en netto +8 tests: 11 daar, 1 in
+  `gates.test.ts` (de reflexvormige tegenproef op de beschermingsregel), 1 in `corpusPairing` (V51b → M-1,
+  nul paren), 1 in `casus1V2Candidates` (de lege-corpus-bewaker), en **MIN 6 uit de `it.each` over het
+  levende corpus, dat van ZES naar NUL ging** — de corpusgrootte in de testtelling, nu naar nul. **De
+  wandkloktijd is die van de VERWERPINGSRUN alleen (1154 s op kandidaat 1, `177,6 LR2 · 1294 LR4`):**
+  de byte-reproductie in `casus1V2Candidates` heeft sinds M-1 geen netlist om te reproduceren en keert
+  meteen terug (24 ms voor het hele bestand), dus van de twee live ketenruns draait er nog één. Het corpus
+  is bij M-1 GEREGENEREERD op de gemergede meetset (22 713 s, `V2_JOBS=8`, derde run — zie de
+  generatorregel); nul van 115 geleverd.
+  (De stand ervoor: **03-09-2026 (V51b): 148 bestanden, 1656 tests,
   1182 s (19 min 42), niets overgeslagen, in één keer groen, alleen gedraaid op een lege machine met
   `nohup`.** Geen nieuw bestand sinds V51; +13 tests (zie de `test:fast`-regel: 8 nieuwe claims en +5 uit
   de `it.each` over het levende corpus, dat van ÉÉN naar ZES ging). Het corpus is bij V51b GEREGENEREERD
@@ -179,7 +201,7 @@
   weg toegestaan; zes van vijftien geleverd. De wandkloktijd ligt ONDER V51 hoewel het corpus zesmaal zo
   groot is, om de reden die V42–V51 al noteerden: de byte-reproductie treft een ANDERE kandidaat —
   `466,5 · 2283,5` kostte 1177 s in de volle run (in de generator 1261 s), de verwerpingsrun ernaast
-  1067 s.
+  1067 s.)
   (De stand ervoor: **03-09-2026 (V51): 148 bestanden, 1643 tests,
   1530 s (25 min 30), niets overgeslagen, alleen gedraaid op een lege machine met `nohup`.** De
   telling is +3 bestanden sinds V50 (`levelWork.test.ts`, `ingest/wiring.test.ts`,
@@ -346,6 +368,17 @@
   `npx vite-node scripts/generate-casus1-v2-candidates.ts` — vijftien ketenruns.
   **SINDS V47 DRAAIT HIJ PARALLEL EN KOST HIJ MINUTEN IN PLAATS VAN UREN: gemeten 1624 s
   (27 min) op achttien kernen, tegen 21 357 s (5 u 56) sequentieel bij V45.**
+  **BIJ M-1 GEMETEN OP 22 713 s (6 u 19) MET `V2_JOBS=8` VOOR 115 KANDIDATEN (mediaan 1455 s per
+  kandidaat, 48,8 CPU-uur), en dat was de DERDE run.** Het veld is sinds M-1 115 in plaats van vijftien:
+  de W-M-as onthoudt zich van een orde (LR2 én LR4, 10 + 13 posities) en de M-T-as houdt orde 4 (5
+  posities). De eerste run is na acht kandidaten afgebroken en de tweede (115, 6 u 13) is in zijn geheel
+  weggegooid, allebei om dezelfde reden: de woofer werd op de gemergede set als HOOGDOORLAATBESCHERMD
+  geclassificeerd en M-C weigerde hem (8 van 8, daarna 52 van 115) — de beschermingsregel probete een halve
+  octaaf onder de bandvloer in de reflexpieken van de gemeten impedantie. Dat is de ENE poortwijziging van
+  M-1 (zie de M-1-guards), en de shards van beide weggegooide runs staan als bewijsmateriaal in de scratch
+  van die sessie. **Een run van zes uur is een run waarvan je de eerste golf leest** (de V51b-les hieronder,
+  nu op 115): acht shards zijn na ~25 min klaar, en wat daar aan classificatie of weigeringsreden niet klopt
+  kost dan een half uur in plaats van een werkdag.
   **BIJ V51b GEMETEN OP 2487 s (41 min) MET `V2_JOBS=8`, en dat was de TWEEDE run: de eerste is na
   acht kandidaten (~25 min) afgebroken omdat de shards twee gebreken lieten zien — de vijf
   396,7-kandidaten kregen géén serie-R (de synthese stelde hem alleen voor bij een trim onder
@@ -401,11 +434,45 @@
   `npx vite-node scripts/record-casus1-v2-references.ts` (drie seconden) voor de klasse-B-blokken én
   de vergelijkingstabel voor het casusboek. **Nagemeten bij de nazorg: twee opeenvolgende runs leveren de
   netlists byte-identiek terug, op het `savedAt`-stempel van de serialisatie na.**
+- **DE GEMERGEDE MEETSET (M-1, 04-09-2026) — wat de v2-route sinds M-1 leest, en hoe zij is gemaakt.**
+  De fixture kent TWEE meetsets: `casus1Manifest(golden)` = `casus1Manifest(golden, 'merged')` is de
+  STANDAARD (de on-axis ver velden van woofers en mid zijn NF/FF-merges met een geldigheidsblok:
+  woofer geldig vanaf 20,5 Hz, mid vanaf 60 Hz; `manifest_en_geometrie.gemergde_set`), en
+  `casus1Manifest(golden, 'gated')` is de sessie van 22-08-2026 zoals gemeten (gate-vloer 396,7 Hz op
+  alles). **Een test die de HEADER-VLOER zelf toetst (1/T, 2/T, de adviserende FF/NF-detector, het
+  handmatige venster, de V38-fix-demonstratie, de gedateerde corpusPairing-claims) leest `'gated'` en
+  zegt dat bij de aanroep; al het andere leest de standaard.** `corpusBank(golden, set)` idem.
+  - `npx vite-node scripts/annotate-casus1-merge.ts <bron.frd> <doel.frd> <woofer_up|woofer_down>` —
+    seconden. Zet het gestructureerde merge-/geldigheidsblok (`Merge = NF/FF`, `Valid from = … Hz`,
+    `Merge … = …`) op Sanders gemergede wooferbestand; kopieert de datarijen LETTERLIJK en telt ze na.
+    De proza-kop van Sander blijft erboven staan. Geen proza-parser: `parseArtaHeader` leest veldnamen
+    (UI-1-les). `Valid to` is het einde van de sweep en NIET Sanders "geldigheidsplafond 550 Hz" — dat
+    is het kruisplafond (breakup / 3) dat de engine zelf afleidt en dat verdwijnt als het bestand op
+    550 Hz ophoudt geldig te zijn; het staat als `Merge usable ceiling` in het blok (documentatie).
+  - `npx vite-node scripts/merge-casus1-mid.ts` — seconden. Merget de mid met dezelfde stappen als
+    Sanders woofer-merge (NF op het FF-raster, shelf 6 dB @ 440 Hz als MINIMUM-FASE op het NF-deel,
+    geen poort, splice gefit in 500–800 Hz door `mergeNearFar` van de app), schrijft
+    `test-fixtures/casus1/Koan_M_merged.frd` mét blok (geldig vanaf 60 Hz, uit de pod) en drukt de
+    DRIE CONTROLES af: splice-band-residu, stap-vorm tegen die van de woofers in 150–400 Hz, sweep
+    ongewijzigd. **Gemeten 04-09-2026:** splice mediaan 0,40 dB / p95 1,37 (dezelfde orde als Sanders
+    "rest −1,57..+1,77"), stap-vorm gemiddeld +0,4 dB ondieper dan de shelf met 0,6 dB spreiding (de
+    fijne NF-rimpel die zijn merge ongegladd overneemt), `mid.lim` onaangeraakt. NIET binnen ±0,5 dB
+    per punt, en niet gecorrigeerd: 6 dB @ 440 Hz is Sanders gestelde model.
+  - `npx vite-node scripts/record-casus1-merge-set.ts` — seconden. Schrijft
+    `manifest_en_geometrie.gemergde_set` (welk bestand welk gepoort bestand vervangt) en het
+    V15-parameterblok `merge_parameters` UIT DE BESTANDSKOPPEN (via `parseArtaHeader`), nooit overgetypt.
+  - `npx vite-node scripts/record-casus1-m1-references.ts` — seconden, geen tune. Schrijft de
+    klasse-A-referenties van de gemergede set (merge-vloeren, breakup-scans, `kruisvensters` per orde,
+    `verankerde_gaps_dB` met vlak plateau) en de responsafhankelijke klasse-B-velden van de drie
+    referentiefilters (W-M-fase, lobing-fracties, F3-venster/RMS), elk met de GEPOORTE lezing als brug
+    (`_gepoort_tot_M1`, reproduceerbaar met set `'gated'`). De corpora schrijft de gewone recorder.
 - **De vóór/ná-tabel tussen twee corpora**: `npx vite-node scripts/compare-corpora.ts [vóór] [ná]` —
   seconden, geen ketenrun. Corpora: `v30`, `v32`, `v33sweep`, `v33`, `v34`, `v37`, `v38fix`,
-  `v41`, `v42`, `v43`, `v44`, `v45`, `v47`, `v48`, `v49`, `v50`, `v51`, `live`; default `v51 live`, wat de
-  V51b-tabel is (`v50 v51` is de V51-tabel; `v49 v50` was de V50-tabel — de identiteit; `v48 v49` is
-  de V47b-tabel, `v47 v48` de V48-tabel). **Sinds V51b twee kolommen erbij:** `serie-R laagste weg Ω
+  `v41`, `v42`, `v43`, `v44`, `v45`, `v47`, `v48`, `v49`, `v50`, `v51`, `v51b`, `live`; default `v51b live`, wat
+  de M-1-tabel is (`v51 v51b` is de V51b-tabel; `v50 v51` de V51-tabel; `v49 v50` was de V50-tabel — de
+  identiteit; `v48 v49` is de V47b-tabel, `v47 v48` de V48-tabel). **SINDS M-1 meet de bank op de
+  GEMERGEDE set** — beide helften door hetzelfde pad, óók een gedateerd corpus dat op de gepoorte set is
+  opgewekt; de gedateerde claims van `corpusPairing.test.ts` lezen daarom expliciet `'gated'`. **Sinds V51b twee kolommen erbij:** `serie-R laagste weg Ω
   (R + DCR = totaal)` — de serieweerstand die de driver van de laagste weg in zijn pad ziet, GESPLITST
   in discrete R en spoel-DCR (`describeSeriesResistance`), want de gestelde variant `series-r-max`
   oordeelt op de SOM en de splitsing is de bouwkeuze — en `heetste R W bij oordeelvermogen` (de watt
@@ -1934,6 +2001,81 @@ grotere ingreep — hij raakt élk commando in dit project — en is deze sessie
   byte-reproductie in `casus1V2Candidates` bewijst het. `casus1_v2_herkomst.json` draagt daarom
   nog de V47b-vingerafdruk (`facts=` en `estimators=` bewegen pas bij de volgende regeneratie).
 
+### M-1-guards (de gemergede meetset, het plateau op 0 dB, het veld met LR4 én LR2)
+- `src/lib/engine2/ingest/manifest.ts` — **`parseArtaHeader` leest sinds M-1 het merge-/geldigheidsblok**
+  (`Merge = NF/FF`, `Valid from/to = … Hz`, `Merge NF source`, `Merge FF source`, `Merge FF window`,
+  `Merge splice band`, `Merge splice fit`, `Merge step model`, `Merge port model`, `Merge prediction`,
+  `Merge floor reason`, `Merge status`) op VELDNAAM, in dezelfde `Naam = waarde`-vorm als een ARTA-header
+  (`ArtaHeader.merge`, `.statedValidity`, type `MergeBlock`). Geen proza-parser (UI-1-les). Het FF-venster
+  reist als MERGE-veld en niet als `Reference time`/`Right window`, anders zou de gate-vloer van de FF-helft
+  over de hele merge gelden.
+- `src/lib/engine2/ingest/validity.ts` — **een verklaarde merge neemt een eigen pad** (`mergedValidity`):
+  de vloer is de gestelde `Valid from`, provenance `merge-block` (een vierde regel in de rangorde van A5b.1:
+  bindend zoals een header-vloer, niets versoepelt hem, een gesteld plafond vernauwt alleen); de adviserende
+  FF/NF-detector ONTHOUDT ZICH (het bestand IS de merge — een fit van het recept tegen zijn ingrediënten);
+  fijnstructuur vanaf 2/T van de FF-helft; `Valid from` op een GEPOORT bestand blijft data (A5b.1(i) niet
+  via de achterdeur); een merge zonder `Valid from` heeft een ONBEKENDE vloer. `validity-header` 1.0 → 1.1.
+  `ingest/mergeBlock.test.ts` draagt de claims (parser, vloer, onthouding mét de tegenproef dat dezelfde fit
+  op een gepoort bestand de vloer WEL optilt, `Valid to` vernauwt alleen, de twee meetsets op de echte
+  bestanden). Geen metriek, poort of inversie is aangeraakt.
+- `src/lib/engine2/casus1.fixture.ts` — **twee meetsets**, `casus1Manifest(golden, 'merged' | 'gated')`,
+  standaard `'merged'`; de gemergede bestanden nemen de PLAATS in van de gepoorte on-axis bestanden die zij
+  vervangen (`gemergde_set.bestanden[*].vervangt`). **Een gestelde plateau-diepte van 0 is de vlakke
+  referentie** (`casus1BassPlateauDb` accepteert 0; `casus1TargetCurve` → `FLAT_TARGET`);
+  `casus1TargetCurveAt(depth)` bouwt de gedateerde curve voor de bruggen. `max_serie_R_laagste_weg_ohm` is
+  `null` (ingetrokken bij M-1, met reden) → de regel is weer `'none'`.
+- `src/lib/engine2/casus1V2.fixture.ts` — **oordeelband en ketenraster zijn AFGELEID**: de vloer is de hoogste
+  van de geldigheidsvloer van de laagste weg en haar f_p (52,4 Hz; `CASUS1_V2_BAND_SOURCE` zegt welke), het
+  raster begint op de GELDIGHEIDSVLOER (20,5 Hz) met de resolutie van het precedent (143 punten over
+  20,5–20 000 Hz). **Het raster begint bewust ONDER de band, en dat is gemeten:** met het raster vanaf f_p
+  las `isHighPassProtected` de WOOFER als hoogdoorlaatbeschermd — de regel prikt een halve octaaf onder de
+  doorlaatbandvloer, dat is dan het reflexdal, en de eigen impedantie van de driver trekt de overdracht
+  daar 2,5–3,9 dB omlaag tegen een drempel van 1,0 dB — waarop M-C de woofer op f_p oordeelde (+2,9 dB tegen
+  afgeleid −7,6) en de eerste M-1-regeneratie acht van acht kandidaten weigerde. Met het raster op de
+  geldigheidsvloer landt de probe op 10–14 Hz (−0,2..−1,2 dB) en is de woofer op de bevroren netlists wat
+  V49 zegt: geen hoogdoorlaat, geen eis — maar het ZAAD van een LR2-kandidaat op 201 Hz las nog +3,2 dB in
+  20–29 Hz (de laagdoorlaatspoel resoneert met de onderste motionele piek van de woofer op 16,5 Hz) en werd
+  alsnog geweigerd, en met de last resistief gemaakt nog steeds 52 van 115 (het zaad van een LR2 op 259 Hz
+  piekt +1,6 dB in 20–29 Hz in een resistieve last: zijn LC-ladder van 12,5 + 16,7 + 26,2 mH tegen 687 en
+  214 µF resoneert in de twintig hertz). **Daarom is de regel bij M-1 gecorrigeerd — de ENE poortwijziging
+  van deze sessie, en een reparatie, geen herdefinitie — in twee helften:** (1) `isHighPassProtected` leest
+  de overdracht van het FILTER in een RESISTIEVE last (de doorlaatband-mediaan van |Z| van de weg, via
+  `resolveWithLoad`) in plaats van in de gemeten impedantie, zodat de eigen resonanties van de driver niet
+  als hoogdoorlaat kunnen lezen; (2) de drempel is AFGELEID en niet getypt: één filterorde over de
+  probe-afstand (`HP_PROTECTION_MIN_RISE_DB = DB_PER_OCTAVE_PER_ORDER × HP_PROTECTION_PROBE_OCTAVES` = 3 dB)
+  in plaats van 1,0 dB — een resonantiebult haalt dat niet, elke hoogdoorlaat en elke shelf van een paar dB
+  wél. Een derde vorm (de verzwakking moet een halve octaaf lager DOORGAAN) is geprobeerd en ingetrokken: zij
+  ontnam zeventien casusboek-mids met een −12 dB-shelf onder hun doorlaatband hun M-C-oordeel, en een shelf
+  van twaalf dB is bescherming die M-C moet blijven oordelen. **Gemeten over het hele casusboek (149 netlists,
+  447 wegen): de nieuwe regel classificeert GEEN ENKELE weg anders dan het V47-blok** — de reparatie raakt
+  precies de LC-bult van een woofer met een lage overname en niets anders. Byte-baselines (`f4cRegression`,
+  `workerRouteRegression`) reproduceren; `gates.test.ts` draagt de tegenproef (een impedantie in de vorm van
+  een reflexwoofer — dal onder, piek in de doorlaatbandvloer — op de laagste weg van het tweewegfixture: de
+  oude lezing stijgt, de regel zegt nee, de echte hoogdoorlaat van de tweeter blijft ja);
+  `casus1ChainInput(…, chainGrid?)` voor een gedateerd raster. **Het veld** (`casus1Field`): de W-M-as
+  onthoudt zich op de orde (geen gestelde orde, geen gewapende regel → elke bouwbare orde een eigen
+  kandidaat) met de bibliotheek beperkt tot de twee LR-uitlijningen (`CASUS1_FIELD_ALIGNMENTS`, Sanders vraag:
+  LR4 en LR2); de M-T-as houdt orde 4. 13 + 10 posities × 5 = 115 kandidaten. `casus1Field.test.ts` pint dat.
+- `src/lib/engine2/goldenCasus1.test.ts` — de klasse-A-referenties op de gemergede set mét brug: `FF_vloer_merge`
+  (merge-block) naast `FF_vloer_header` (reproduceert op `'gated'`); `kruisvensters.woofer_mid_orde4` (124–550,
+  vloer `fs`) en `_orde2` (178–550) met `_gepoort_tot_M1` (397–548, `validity`); `verankerde_gaps_dB` met vlak
+  plateau (0,896 / 3,544) en DRIE bruggen in `_waarden_gepoort_tot_M1` — gepoort + plateau 2,5 (1,328 / 2,818),
+  gepoort vlak (0,895 / 3,444), gemergd + plateau 2,5 (1,980 / 2,754: de tegenproef dat een doelcurve de gaps
+  nog beweegt al stelt M-1 er geen); de doelcurve-parameters zijn `flat`/0 en de gedateerde curve leidt haar
+  overgang nog uit de kast af.
+- `src/lib/engine2/frozenNetlistGates.test.ts` — de V45-blokken lopen op de GEDATEERDE curve
+  (`casus1TargetCurveAt(2.5)`, want een curve van diepte 0 kan haar mechanisme niet tonen); het V51-plateaublok
+  zegt "flat: niets te oordelen" en meet ernaast dat de gedateerde curve in het RAPPORT nog steeds niet
+  beoordeeld wordt (gezamenlijke band 397+, de tweeter draagt de gate) en op de ZOEKBAND wél (3,08 octaaf onder
+  de overgang); de V34-probe houdt de V34-bevinding op het V34-raster (200–20 000/96) en assert de M-1-lezing
+  ernaast (f_p is een binnenpunt van het M-1-raster: beide randregels accepteren, en de lezing is een meting die
+  binnen een rasterstap met het veiligheidsraster overeenkomt); de V38-fix-demonstratie
+  loopt op haar eigen raster, band én meetset (`'gated'`) — op de gemergede set landt het slechtst beoordeelde
+  ontwerp in het MIDDEN van de zoekmaat-rangorde en niet in de betere helft, en een claim over een gladdingskern
+  aan een bandrand wordt niet scherper door hem te hermeten op een set waarvan die rand verschoof.
+- `coverage`, `manualWindowAndLobing`, `versionAndCapability` (de stempel), `borderFacts` (lek 2),
+  `newMeasurement`, `corpusPairing` (de gedateerde claims) — lezen `'gated'`, met de reden bij de aanroep.
+
 ### V51b-guards (serieweerstand op de laagste weg tot een gesteld maximum, geen pad)
 - `src/lib/levelWork.ts` — **het ene huis draagt sinds V51b de EIS als type** (`LowestWayLevelWork`:
   `'allowed' | 'none' | { kind: 'series-r-max', maxOhm }`) en de inventaris telt de DCR van de
@@ -2331,7 +2473,11 @@ grotere ingreep — hij raakt élk commando in dit project — en is deze sessie
   Zie casusboek V19 en `.claude/skills/casus-toevoegen/SKILL.md`.
 
 ### De casus-1-fixtures die een SCRIPT opwekt (F4d)
-`test-fixtures/casus1/KAND-V2-*.adsfilter.json` zijn de v2-kandidaten die de shortlist haalden —
+`test-fixtures/casus1/KAND-V2-*.adsfilter.json` zijn de v2-kandidaten die de shortlist haalden — **NUL sinds M-1
+(04-09-2026): het veld van 115 leverde niets, het levende corpus is LEEG, de recorder snoeide de blokken en
+de zes V51b-bestanden zijn met de hand verwijderd (byte-identiek aan `V51B-KAND-*`, nagemeten met `cmp`); de
+suite eist dat manifest, schijf en herkomst het daarover eens zijn en de live byte-reproductie stopt met
+de bevinding in plaats van op een ontbrekend bestand** —
 negen bij F4d, tien vanaf V28, acht sinds V41, vier bij V42, zeven sinds V43, zeven na de V44- en
 de V45-regeneratie, vier bij V47, vijf bij V48, zeven bij V47b en V50, ÉÉN bij V51 (veertien van
 vijftien verworpen: dertien op de versterkervloer, één op de mid-excursiegrens — zonder wooferpad
@@ -2401,7 +2547,7 @@ te tunen. **Deze twee runs zijn samen het leeuwendeel van de suite** — en zij 
 `casus1V2Refusal.test.ts` de verwerping), zodat zij naast elkaar draaien in plaats van na elkaar.
 Gemeten in de volle run van 01-09-2026: 1244,3 s en 924,2 s, bij een wandklok van 1254,4 s.
 
-**Sinds V51b zijn het er ACHTTIEN corpora, en dat is opzet.** `KAND_V2_*` is het levende corpus.
+**Sinds M-1 zijn het er NEGENTIEN corpora, en dat is opzet.** `KAND_V2_*` is het levende corpus.
 `V28_KAND_*` is bevroren vóór de vloer een ZOEKDOEL was (V30); `V30_KAND_*` toen de poort nog blind
 was onder de verre-veldbodem (V32); `V32_KAND_*` toen de BARRIÈRE nog het evaluatieraster las terwijl
 de poort de sweep handhaafde (V33); `V33_SWEEP_KAND_*` is V33's dure referentiearm, met de barrière
@@ -2463,7 +2609,13 @@ laagste weg GEEN serieweerstand mocht dragen — van vijftien kandidaten overlee
 strandden op de versterkervloer (2,05–2,49 Ω tegen 2,60) en een op de mid-excursie, want zonder
 wooferpad ontbrak de serieweerstand die de impedantiebodem boven de vloer hield; V51b stelt de
 variant `max_serie_R_laagste_weg_ohm: 1,0` (serieweerstand tot 1,0 Ω TOTAAL, discrete R plus
-spoel-DCR, geen pad — DCR-schaal, geen verzwakking) en wekt het veld opnieuw op (V51b).
+spoel-DCR, geen pad — DCR-schaal, geen verzwakking) en wekt het veld opnieuw op (V51b); `V51B_KAND_*`
+(ZES netlists) toen de v2-route nog op de GEPOORTE meetset van 22-08-2026 liep — gate-vloer 396,7 Hz op
+woofers, mid en tweeter tegelijk, W-M-venster 397–549 Hz op meetgeldigheid, orde 4 gesteld op beide
+overnames, basplateau −2,5 dB gesteld omdat het niet te meten was, en de laagste weg mocht serieweerstand
+tot 1,0 Ω dragen; M-1 leest Sanders NF/FF-gemergede woofers (20,5 Hz) en de op dezelfde manier gemergede
+mid (60 Hz), zet het plateau op 0 dB, trekt het serie-R-maximum in en laat het W-M-veld over het geopende
+venster (124–550 Hz) lopen met LR4 én LR2 (M-1).
 Alle zeventien de gedateerde corpora zijn byte-identieke bestanden onder een andere naam, met hun
 klasse-B-blokken mee, bewaard als de "vóór"-helften van hun vergelijkingen. Wie
 een script schrijft dat het levende corpus opruimt gebruikt `^KAND_V2_\d+$` en nooit
@@ -2474,8 +2626,8 @@ genoemde netlist die geen v1-baseline is een geclassificeerd blok moet hebben, o
 familielijst die er stond bij V32 vergeten is. De koppeling bestandsnaam ↔ kandidaat staat in
 `manifest_en_geometrie.v30_corpus`, `.v32_corpus`, `.v33_sweep_corpus`, `.v33_corpus`,
 `.v34_corpus`, `.v37_corpus`, `.v38fix_corpus`, `.v41_corpus`, `.v42_corpus`, `.v43_corpus`,
-`.v44_corpus`, `.v45_corpus`, `.v47_corpus`, `.v48_corpus`, `.v49_corpus`, `.v50_corpus` en
-`.v51_corpus`, want zij
+`.v44_corpus`, `.v45_corpus`, `.v47_corpus`, `.v48_corpus`, `.v49_corpus`, `.v50_corpus`, `.v51_corpus`
+en `.v51b_corpus`, want zij
 stond alleen in `casus1_v2_herkomst.json` en dat bestand wordt door de volgende regeneratie
 overschreven. **Bevriezen doe je sinds V34 met `scripts/freeze-live-corpus.ts`** en niet met de
 hand: het zijn vijf bewerkingen die allemaal moeten landen.

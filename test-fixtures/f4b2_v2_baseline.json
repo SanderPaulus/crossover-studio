@@ -3486,5 +3486,1009 @@
     }
    ]
   }
+ },
+ "verdicts_sinds_M1": {
+  "_": "M-1 — the verdict half after the repair of the high-pass-protection rule (filter transfer into a resistive load, threshold one order over the probe): the derived lists no longer carry M-C on the lowest way of this fixture, which has no high pass. All six gates, unarmed here. Recorded beside verdicts_sinds_V32 and verdicts_sinds_V50, which keep pinning what they pinned minus that one row. The network half (runs) is untouched.",
+  "stand": "M-1",
+  "runs": {
+   "99": [
+    {
+     "gatesDerived": [
+      {
+       "active": false,
+       "direction": "max",
+       "gate": "M-A",
+       "limit": null,
+       "metric": "M-A",
+       "parameters": {
+        "band": "20-20317 Hz",
+        "judged_on": "20-20317 Hz, the drivers' own measured impedance sweeps (an impedance measurement has no gate)",
+        "weighting": "IEC 60268-1 programme noise"
+       },
+       "pass": true,
+       "reason": "0.0 % — no limit set",
+       "specRef": "A4 M-A",
+       "subject": "system",
+       "title": "Dissipation in the filter resistors",
+       "unit": "of amplifier power",
+       "value": 0,
+       "withinToleranceOnly": false
+      },
+      {
+       "active": false,
+       "direction": "min",
+       "gate": "M-B/EPDR",
+       "limit": null,
+       "metric": "M-B",
+       "parameters": {
+        "at": "290 Hz",
+        "judged_on": "20-20317 Hz, the drivers' own measured impedance sweeps (an impedance measurement has no gate)"
+       },
+       "pass": true,
+       "reason": "0.68 Ω — no limit set",
+       "specRef": "A4 M-B",
+       "subject": "system",
+       "title": "EPDR of the amplifier load",
+       "unit": "Ω",
+       "value": 0.6761737323326092,
+       "withinToleranceOnly": false
+      },
+      {
+       "active": false,
+       "direction": "min",
+       "gate": "M-B/|Z|",
+       "limit": null,
+       "metric": "M-B",
+       "parameters": {
+        "at": "304 Hz",
+        "judged_on": "20-20317 Hz, the drivers' own measured impedance sweeps (an impedance measurement has no gate)"
+       },
+       "pass": true,
+       "reason": "1.35 Ω — no limit set",
+       "specRef": "A4 M-B (simple mode)",
+       "subject": "system",
+       "title": "Minimum |Z| the amplifier sees (simple mode)",
+       "unit": "Ω",
+       "value": 1.3461979669490334,
+       "withinToleranceOnly": false
+      },
+      {
+       "active": false,
+       "direction": "max",
+       "gate": "M-C",
+       "limit": null,
+       "metric": "M-C",
+       "parameters": {
+        "f_s": "901 Hz",
+        "judged_on": "20-20317 Hz, the drivers' own measured impedance sweeps (an impedance measurement has no gate)",
+        "passband": "614-19000 Hz (derived)"
+       },
+       "pass": true,
+       "reason": "-0.0 dB — no limit set",
+       "specRef": "A4 M-C",
+       "subject": "tweeter",
+       "title": "Drive voltage on the driver resonance",
+       "unit": "dB",
+       "value": -0.04302135903168014,
+       "withinToleranceOnly": false
+      },
+      {
+       "active": false,
+       "direction": "max",
+       "gate": "M-A/part",
+       "limit": null,
+       "metric": "M-A",
+       "parameters": {
+        "judged_on": "20-20317 Hz, the drivers' own measured impedance sweeps (an impedance measurement has no gate)",
+        "margin": "no margin fraction stated — the gate cannot form an allowance (P4)",
+        "remedy": "a resistor above its allowance needs a higher class or a series/parallel bank — a topology choice the generator does not make (casebook V50)",
+        "weighting": "IEC 60268-1 programme noise, continuous (thermal — a mean, not a peak)"
+       },
+       "pass": true,
+       "reason": "not evaluated — this network carries no discrete resistor — nothing to rate (a zero here would read as a measurement), and no limit set",
+       "specRef": "A4 M-A (per part, V50)",
+       "subject": "system",
+       "title": "Power in the hottest filter resistor against its rating",
+       "unit": "W",
+       "value": null,
+       "withinToleranceOnly": false
+      },
+      {
+       "active": false,
+       "direction": "max",
+       "gate": "M-L",
+       "limit": null,
+       "metric": "M-L",
+       "parameters": {
+        "coils": "L1 ? A; L2 ? A",
+        "judged_on": "20-20317 Hz, the drivers' own measured impedance sweeps (an impedance measurement has no gate)",
+        "rating": "no coil class stated and no rated catalogue part on any coil — air-cored coils have no saturation current and are never judged (P4)",
+        "reading": "peak current amplitude at the amplifier's peak input voltage, unweighted — saturation is a one-cycle event"
+       },
+       "pass": true,
+       "reason": "not evaluated — no amplifier peak (peak power and nominal load, V49) is stated, so the current at the peak input cannot be formed, and no limit set",
+       "specRef": "A4 M-L (V50)",
+       "subject": "system",
+       "title": "Peak current through the most loaded coil against its rating",
+       "unit": "A",
+       "value": null,
+       "withinToleranceOnly": false
+      }
+     ],
+     "gatesFrozen": [
+      {
+       "active": false,
+       "direction": "max",
+       "gate": "M-A",
+       "limit": null,
+       "metric": "M-A",
+       "parameters": {
+        "band": "20-20317 Hz",
+        "judged_on": "20-20317 Hz, the drivers' own measured impedance sweeps (an impedance measurement has no gate)",
+        "weighting": "IEC 60268-1 programme noise"
+       },
+       "pass": true,
+       "reason": "0.0 % — no limit set",
+       "specRef": "A4 M-A",
+       "subject": "system",
+       "title": "Dissipation in the filter resistors",
+       "unit": "of amplifier power",
+       "value": 0,
+       "withinToleranceOnly": false
+      },
+      {
+       "active": false,
+       "direction": "min",
+       "gate": "M-B/EPDR",
+       "limit": null,
+       "metric": "M-B",
+       "parameters": {
+        "at": "290 Hz",
+        "judged_on": "20-20317 Hz, the drivers' own measured impedance sweeps (an impedance measurement has no gate)"
+       },
+       "pass": true,
+       "reason": "0.68 Ω — no limit set",
+       "specRef": "A4 M-B",
+       "subject": "system",
+       "title": "EPDR of the amplifier load",
+       "unit": "Ω",
+       "value": 0.6761737323326092,
+       "withinToleranceOnly": false
+      },
+      {
+       "active": false,
+       "direction": "min",
+       "gate": "M-B/|Z|",
+       "limit": null,
+       "metric": "M-B",
+       "parameters": {
+        "at": "304 Hz",
+        "judged_on": "20-20317 Hz, the drivers' own measured impedance sweeps (an impedance measurement has no gate)"
+       },
+       "pass": true,
+       "reason": "1.35 Ω — no limit set",
+       "specRef": "A4 M-B (simple mode)",
+       "subject": "system",
+       "title": "Minimum |Z| the amplifier sees (simple mode)",
+       "unit": "Ω",
+       "value": 1.3461979669490334,
+       "withinToleranceOnly": false
+      },
+      {
+       "active": false,
+       "direction": "max",
+       "gate": "M-C",
+       "limit": null,
+       "metric": "M-C",
+       "parameters": {
+        "f_s": "901 Hz",
+        "judged_on": "20-20317 Hz, the drivers' own measured impedance sweeps (an impedance measurement has no gate)",
+        "passband": "5733-19000 Hz (frozen)"
+       },
+       "pass": true,
+       "reason": "-1.4 dB — no limit set",
+       "specRef": "A4 M-C",
+       "subject": "tweeter",
+       "title": "Drive voltage on the driver resonance",
+       "unit": "dB",
+       "value": -1.3502298152846233,
+       "withinToleranceOnly": false
+      },
+      {
+       "active": false,
+       "direction": "max",
+       "gate": "M-A/part",
+       "limit": null,
+       "metric": "M-A",
+       "parameters": {
+        "judged_on": "20-20317 Hz, the drivers' own measured impedance sweeps (an impedance measurement has no gate)",
+        "margin": "no margin fraction stated — the gate cannot form an allowance (P4)",
+        "remedy": "a resistor above its allowance needs a higher class or a series/parallel bank — a topology choice the generator does not make (casebook V50)",
+        "weighting": "IEC 60268-1 programme noise, continuous (thermal — a mean, not a peak)"
+       },
+       "pass": true,
+       "reason": "not evaluated — this network carries no discrete resistor — nothing to rate (a zero here would read as a measurement), and no limit set",
+       "specRef": "A4 M-A (per part, V50)",
+       "subject": "system",
+       "title": "Power in the hottest filter resistor against its rating",
+       "unit": "W",
+       "value": null,
+       "withinToleranceOnly": false
+      },
+      {
+       "active": false,
+       "direction": "max",
+       "gate": "M-L",
+       "limit": null,
+       "metric": "M-L",
+       "parameters": {
+        "coils": "L1 ? A; L2 ? A",
+        "judged_on": "20-20317 Hz, the drivers' own measured impedance sweeps (an impedance measurement has no gate)",
+        "rating": "no coil class stated and no rated catalogue part on any coil — air-cored coils have no saturation current and are never judged (P4)",
+        "reading": "peak current amplitude at the amplifier's peak input voltage, unweighted — saturation is a one-cycle event"
+       },
+       "pass": true,
+       "reason": "not evaluated — no amplifier peak (peak power and nominal load, V49) is stated, so the current at the peak input cannot be formed, and no limit set",
+       "specRef": "A4 M-L (V50)",
+       "subject": "system",
+       "title": "Peak current through the most loaded coil against its rating",
+       "unit": "A",
+       "value": null,
+       "withinToleranceOnly": false
+      }
+     ],
+     "label": "seed",
+     "start": 0
+    },
+    {
+     "gatesDerived": [
+      {
+       "active": false,
+       "direction": "max",
+       "gate": "M-A",
+       "limit": null,
+       "metric": "M-A",
+       "parameters": {
+        "band": "20-20317 Hz",
+        "judged_on": "20-20317 Hz, the drivers' own measured impedance sweeps (an impedance measurement has no gate)",
+        "weighting": "IEC 60268-1 programme noise"
+       },
+       "pass": true,
+       "reason": "0.0 % — no limit set",
+       "specRef": "A4 M-A",
+       "subject": "system",
+       "title": "Dissipation in the filter resistors",
+       "unit": "of amplifier power",
+       "value": 0,
+       "withinToleranceOnly": false
+      },
+      {
+       "active": false,
+       "direction": "min",
+       "gate": "M-B/EPDR",
+       "limit": null,
+       "metric": "M-B",
+       "parameters": {
+        "at": "280 Hz",
+        "judged_on": "20-20317 Hz, the drivers' own measured impedance sweeps (an impedance measurement has no gate)"
+       },
+       "pass": true,
+       "reason": "0.78 Ω — no limit set",
+       "specRef": "A4 M-B",
+       "subject": "system",
+       "title": "EPDR of the amplifier load",
+       "unit": "Ω",
+       "value": 0.7815545119908048,
+       "withinToleranceOnly": false
+      },
+      {
+       "active": false,
+       "direction": "min",
+       "gate": "M-B/|Z|",
+       "limit": null,
+       "metric": "M-B",
+       "parameters": {
+        "at": "290 Hz",
+        "judged_on": "20-20317 Hz, the drivers' own measured impedance sweeps (an impedance measurement has no gate)"
+       },
+       "pass": true,
+       "reason": "1.56 Ω — no limit set",
+       "specRef": "A4 M-B (simple mode)",
+       "subject": "system",
+       "title": "Minimum |Z| the amplifier sees (simple mode)",
+       "unit": "Ω",
+       "value": 1.5576193990352885,
+       "withinToleranceOnly": false
+      },
+      {
+       "active": false,
+       "direction": "max",
+       "gate": "M-C",
+       "limit": null,
+       "metric": "M-C",
+       "parameters": {
+        "f_s": "901 Hz",
+        "judged_on": "20-20317 Hz, the drivers' own measured impedance sweeps (an impedance measurement has no gate)",
+        "passband": "609-19000 Hz (derived)"
+       },
+       "pass": true,
+       "reason": "0.0 dB — no limit set",
+       "specRef": "A4 M-C",
+       "subject": "tweeter",
+       "title": "Drive voltage on the driver resonance",
+       "unit": "dB",
+       "value": 0.014612024277967706,
+       "withinToleranceOnly": false
+      },
+      {
+       "active": false,
+       "direction": "max",
+       "gate": "M-A/part",
+       "limit": null,
+       "metric": "M-A",
+       "parameters": {
+        "judged_on": "20-20317 Hz, the drivers' own measured impedance sweeps (an impedance measurement has no gate)",
+        "margin": "no margin fraction stated — the gate cannot form an allowance (P4)",
+        "remedy": "a resistor above its allowance needs a higher class or a series/parallel bank — a topology choice the generator does not make (casebook V50)",
+        "weighting": "IEC 60268-1 programme noise, continuous (thermal — a mean, not a peak)"
+       },
+       "pass": true,
+       "reason": "not evaluated — this network carries no discrete resistor — nothing to rate (a zero here would read as a measurement), and no limit set",
+       "specRef": "A4 M-A (per part, V50)",
+       "subject": "system",
+       "title": "Power in the hottest filter resistor against its rating",
+       "unit": "W",
+       "value": null,
+       "withinToleranceOnly": false
+      },
+      {
+       "active": false,
+       "direction": "max",
+       "gate": "M-L",
+       "limit": null,
+       "metric": "M-L",
+       "parameters": {
+        "coils": "L1 ? A; L2 ? A",
+        "judged_on": "20-20317 Hz, the drivers' own measured impedance sweeps (an impedance measurement has no gate)",
+        "rating": "no coil class stated and no rated catalogue part on any coil — air-cored coils have no saturation current and are never judged (P4)",
+        "reading": "peak current amplitude at the amplifier's peak input voltage, unweighted — saturation is a one-cycle event"
+       },
+       "pass": true,
+       "reason": "not evaluated — no amplifier peak (peak power and nominal load, V49) is stated, so the current at the peak input cannot be formed, and no limit set",
+       "specRef": "A4 M-L (V50)",
+       "subject": "system",
+       "title": "Peak current through the most loaded coil against its rating",
+       "unit": "A",
+       "value": null,
+       "withinToleranceOnly": false
+      }
+     ],
+     "gatesFrozen": [
+      {
+       "active": false,
+       "direction": "max",
+       "gate": "M-A",
+       "limit": null,
+       "metric": "M-A",
+       "parameters": {
+        "band": "20-20317 Hz",
+        "judged_on": "20-20317 Hz, the drivers' own measured impedance sweeps (an impedance measurement has no gate)",
+        "weighting": "IEC 60268-1 programme noise"
+       },
+       "pass": true,
+       "reason": "0.0 % — no limit set",
+       "specRef": "A4 M-A",
+       "subject": "system",
+       "title": "Dissipation in the filter resistors",
+       "unit": "of amplifier power",
+       "value": 0,
+       "withinToleranceOnly": false
+      },
+      {
+       "active": false,
+       "direction": "min",
+       "gate": "M-B/EPDR",
+       "limit": null,
+       "metric": "M-B",
+       "parameters": {
+        "at": "280 Hz",
+        "judged_on": "20-20317 Hz, the drivers' own measured impedance sweeps (an impedance measurement has no gate)"
+       },
+       "pass": true,
+       "reason": "0.78 Ω — no limit set",
+       "specRef": "A4 M-B",
+       "subject": "system",
+       "title": "EPDR of the amplifier load",
+       "unit": "Ω",
+       "value": 0.7815545119908048,
+       "withinToleranceOnly": false
+      },
+      {
+       "active": false,
+       "direction": "min",
+       "gate": "M-B/|Z|",
+       "limit": null,
+       "metric": "M-B",
+       "parameters": {
+        "at": "290 Hz",
+        "judged_on": "20-20317 Hz, the drivers' own measured impedance sweeps (an impedance measurement has no gate)"
+       },
+       "pass": true,
+       "reason": "1.56 Ω — no limit set",
+       "specRef": "A4 M-B (simple mode)",
+       "subject": "system",
+       "title": "Minimum |Z| the amplifier sees (simple mode)",
+       "unit": "Ω",
+       "value": 1.5576193990352885,
+       "withinToleranceOnly": false
+      },
+      {
+       "active": false,
+       "direction": "max",
+       "gate": "M-C",
+       "limit": null,
+       "metric": "M-C",
+       "parameters": {
+        "f_s": "901 Hz",
+        "judged_on": "20-20317 Hz, the drivers' own measured impedance sweeps (an impedance measurement has no gate)",
+        "passband": "5733-19000 Hz (frozen)"
+       },
+       "pass": true,
+       "reason": "-1.2 dB — no limit set",
+       "specRef": "A4 M-C",
+       "subject": "tweeter",
+       "title": "Drive voltage on the driver resonance",
+       "unit": "dB",
+       "value": -1.1735315444965524,
+       "withinToleranceOnly": false
+      },
+      {
+       "active": false,
+       "direction": "max",
+       "gate": "M-A/part",
+       "limit": null,
+       "metric": "M-A",
+       "parameters": {
+        "judged_on": "20-20317 Hz, the drivers' own measured impedance sweeps (an impedance measurement has no gate)",
+        "margin": "no margin fraction stated — the gate cannot form an allowance (P4)",
+        "remedy": "a resistor above its allowance needs a higher class or a series/parallel bank — a topology choice the generator does not make (casebook V50)",
+        "weighting": "IEC 60268-1 programme noise, continuous (thermal — a mean, not a peak)"
+       },
+       "pass": true,
+       "reason": "not evaluated — this network carries no discrete resistor — nothing to rate (a zero here would read as a measurement), and no limit set",
+       "specRef": "A4 M-A (per part, V50)",
+       "subject": "system",
+       "title": "Power in the hottest filter resistor against its rating",
+       "unit": "W",
+       "value": null,
+       "withinToleranceOnly": false
+      },
+      {
+       "active": false,
+       "direction": "max",
+       "gate": "M-L",
+       "limit": null,
+       "metric": "M-L",
+       "parameters": {
+        "coils": "L1 ? A; L2 ? A",
+        "judged_on": "20-20317 Hz, the drivers' own measured impedance sweeps (an impedance measurement has no gate)",
+        "rating": "no coil class stated and no rated catalogue part on any coil — air-cored coils have no saturation current and are never judged (P4)",
+        "reading": "peak current amplitude at the amplifier's peak input voltage, unweighted — saturation is a one-cycle event"
+       },
+       "pass": true,
+       "reason": "not evaluated — no amplifier peak (peak power and nominal load, V49) is stated, so the current at the peak input cannot be formed, and no limit set",
+       "specRef": "A4 M-L (V50)",
+       "subject": "system",
+       "title": "Peak current through the most loaded coil against its rating",
+       "unit": "A",
+       "value": null,
+       "withinToleranceOnly": false
+      }
+     ],
+     "label": "start 1",
+     "start": 1
+    }
+   ],
+   "4242": [
+    {
+     "gatesDerived": [
+      {
+       "active": false,
+       "direction": "max",
+       "gate": "M-A",
+       "limit": null,
+       "metric": "M-A",
+       "parameters": {
+        "band": "20-20317 Hz",
+        "judged_on": "20-20317 Hz, the drivers' own measured impedance sweeps (an impedance measurement has no gate)",
+        "weighting": "IEC 60268-1 programme noise"
+       },
+       "pass": true,
+       "reason": "92.1 % — no limit set",
+       "specRef": "A4 M-A",
+       "subject": "system",
+       "title": "Dissipation in the filter resistors",
+       "unit": "of amplifier power",
+       "value": 0.9211345019328179,
+       "withinToleranceOnly": false
+      },
+      {
+       "active": false,
+       "direction": "min",
+       "gate": "M-B/EPDR",
+       "limit": null,
+       "metric": "M-B",
+       "parameters": {
+        "at": "1254 Hz",
+        "judged_on": "20-20317 Hz, the drivers' own measured impedance sweeps (an impedance measurement has no gate)"
+       },
+       "pass": true,
+       "reason": "21.84 Ω — no limit set",
+       "specRef": "A4 M-B",
+       "subject": "system",
+       "title": "EPDR of the amplifier load",
+       "unit": "Ω",
+       "value": 21.836083039149095,
+       "withinToleranceOnly": false
+      },
+      {
+       "active": false,
+       "direction": "min",
+       "gate": "M-B/|Z|",
+       "limit": null,
+       "metric": "M-B",
+       "parameters": {
+        "at": "1619 Hz",
+        "judged_on": "20-20317 Hz, the drivers' own measured impedance sweeps (an impedance measurement has no gate)"
+       },
+       "pass": true,
+       "reason": "38.59 Ω — no limit set",
+       "specRef": "A4 M-B (simple mode)",
+       "subject": "system",
+       "title": "Minimum |Z| the amplifier sees (simple mode)",
+       "unit": "Ω",
+       "value": 38.5893569496826,
+       "withinToleranceOnly": false
+      },
+      {
+       "active": false,
+       "direction": "max",
+       "gate": "M-C",
+       "limit": null,
+       "metric": "M-C",
+       "parameters": {
+        "f_s": "901 Hz",
+        "judged_on": "20-20317 Hz, the drivers' own measured impedance sweeps (an impedance measurement has no gate)",
+        "passband": "3665-19000 Hz (derived)"
+       },
+       "pass": true,
+       "reason": "-10.2 dB — no limit set",
+       "specRef": "A4 M-C",
+       "subject": "tweeter",
+       "title": "Drive voltage on the driver resonance",
+       "unit": "dB",
+       "value": -10.184766365954054,
+       "withinToleranceOnly": false
+      },
+      {
+       "active": false,
+       "direction": "max",
+       "gate": "M-A/part",
+       "limit": null,
+       "metric": "M-A",
+       "parameters": {
+        "judged_on": "20-20317 Hz, the drivers' own measured impedance sweeps (an impedance measurement has no gate)",
+        "margin": "no margin fraction stated — the gate cannot form an allowance (P4)",
+        "remedy": "a resistor above its allowance needs a higher class or a series/parallel bank — a topology choice the generator does not make (casebook V50)",
+        "resistors": "R1 ? W",
+        "weighting": "IEC 60268-1 programme noise, continuous (thermal — a mean, not a peak)"
+       },
+       "pass": true,
+       "reason": "not evaluated — no continuous amplifier power is stated, so M-A's fractions cannot be turned into watts, and no limit set",
+       "specRef": "A4 M-A (per part, V50)",
+       "subject": "system",
+       "title": "Power in the hottest filter resistor against its rating",
+       "unit": "W",
+       "value": null,
+       "withinToleranceOnly": false
+      },
+      {
+       "active": false,
+       "direction": "max",
+       "gate": "M-L",
+       "limit": null,
+       "metric": "M-L",
+       "parameters": {
+        "coils": "L1 ? A; L2 ? A",
+        "judged_on": "20-20317 Hz, the drivers' own measured impedance sweeps (an impedance measurement has no gate)",
+        "rating": "no coil class stated and no rated catalogue part on any coil — air-cored coils have no saturation current and are never judged (P4)",
+        "reading": "peak current amplitude at the amplifier's peak input voltage, unweighted — saturation is a one-cycle event"
+       },
+       "pass": true,
+       "reason": "not evaluated — no amplifier peak (peak power and nominal load, V49) is stated, so the current at the peak input cannot be formed, and no limit set",
+       "specRef": "A4 M-L (V50)",
+       "subject": "system",
+       "title": "Peak current through the most loaded coil against its rating",
+       "unit": "A",
+       "value": null,
+       "withinToleranceOnly": false
+      }
+     ],
+     "gatesFrozen": [
+      {
+       "active": false,
+       "direction": "max",
+       "gate": "M-A",
+       "limit": null,
+       "metric": "M-A",
+       "parameters": {
+        "band": "20-20317 Hz",
+        "judged_on": "20-20317 Hz, the drivers' own measured impedance sweeps (an impedance measurement has no gate)",
+        "weighting": "IEC 60268-1 programme noise"
+       },
+       "pass": true,
+       "reason": "92.1 % — no limit set",
+       "specRef": "A4 M-A",
+       "subject": "system",
+       "title": "Dissipation in the filter resistors",
+       "unit": "of amplifier power",
+       "value": 0.9211345019328179,
+       "withinToleranceOnly": false
+      },
+      {
+       "active": false,
+       "direction": "min",
+       "gate": "M-B/EPDR",
+       "limit": null,
+       "metric": "M-B",
+       "parameters": {
+        "at": "1254 Hz",
+        "judged_on": "20-20317 Hz, the drivers' own measured impedance sweeps (an impedance measurement has no gate)"
+       },
+       "pass": true,
+       "reason": "21.84 Ω — no limit set",
+       "specRef": "A4 M-B",
+       "subject": "system",
+       "title": "EPDR of the amplifier load",
+       "unit": "Ω",
+       "value": 21.836083039149095,
+       "withinToleranceOnly": false
+      },
+      {
+       "active": false,
+       "direction": "min",
+       "gate": "M-B/|Z|",
+       "limit": null,
+       "metric": "M-B",
+       "parameters": {
+        "at": "1619 Hz",
+        "judged_on": "20-20317 Hz, the drivers' own measured impedance sweeps (an impedance measurement has no gate)"
+       },
+       "pass": true,
+       "reason": "38.59 Ω — no limit set",
+       "specRef": "A4 M-B (simple mode)",
+       "subject": "system",
+       "title": "Minimum |Z| the amplifier sees (simple mode)",
+       "unit": "Ω",
+       "value": 38.5893569496826,
+       "withinToleranceOnly": false
+      },
+      {
+       "active": false,
+       "direction": "max",
+       "gate": "M-C",
+       "limit": null,
+       "metric": "M-C",
+       "parameters": {
+        "f_s": "901 Hz",
+        "judged_on": "20-20317 Hz, the drivers' own measured impedance sweeps (an impedance measurement has no gate)",
+        "passband": "5733-19000 Hz (frozen)"
+       },
+       "pass": true,
+       "reason": "-12.1 dB — no limit set",
+       "specRef": "A4 M-C",
+       "subject": "tweeter",
+       "title": "Drive voltage on the driver resonance",
+       "unit": "dB",
+       "value": -12.10870629135595,
+       "withinToleranceOnly": false
+      },
+      {
+       "active": false,
+       "direction": "max",
+       "gate": "M-A/part",
+       "limit": null,
+       "metric": "M-A",
+       "parameters": {
+        "judged_on": "20-20317 Hz, the drivers' own measured impedance sweeps (an impedance measurement has no gate)",
+        "margin": "no margin fraction stated — the gate cannot form an allowance (P4)",
+        "remedy": "a resistor above its allowance needs a higher class or a series/parallel bank — a topology choice the generator does not make (casebook V50)",
+        "resistors": "R1 ? W",
+        "weighting": "IEC 60268-1 programme noise, continuous (thermal — a mean, not a peak)"
+       },
+       "pass": true,
+       "reason": "not evaluated — no continuous amplifier power is stated, so M-A's fractions cannot be turned into watts, and no limit set",
+       "specRef": "A4 M-A (per part, V50)",
+       "subject": "system",
+       "title": "Power in the hottest filter resistor against its rating",
+       "unit": "W",
+       "value": null,
+       "withinToleranceOnly": false
+      },
+      {
+       "active": false,
+       "direction": "max",
+       "gate": "M-L",
+       "limit": null,
+       "metric": "M-L",
+       "parameters": {
+        "coils": "L1 ? A; L2 ? A",
+        "judged_on": "20-20317 Hz, the drivers' own measured impedance sweeps (an impedance measurement has no gate)",
+        "rating": "no coil class stated and no rated catalogue part on any coil — air-cored coils have no saturation current and are never judged (P4)",
+        "reading": "peak current amplitude at the amplifier's peak input voltage, unweighted — saturation is a one-cycle event"
+       },
+       "pass": true,
+       "reason": "not evaluated — no amplifier peak (peak power and nominal load, V49) is stated, so the current at the peak input cannot be formed, and no limit set",
+       "specRef": "A4 M-L (V50)",
+       "subject": "system",
+       "title": "Peak current through the most loaded coil against its rating",
+       "unit": "A",
+       "value": null,
+       "withinToleranceOnly": false
+      }
+     ],
+     "label": "start 1",
+     "start": 1
+    },
+    {
+     "gatesDerived": [
+      {
+       "active": false,
+       "direction": "max",
+       "gate": "M-A",
+       "limit": null,
+       "metric": "M-A",
+       "parameters": {
+        "band": "20-20317 Hz",
+        "judged_on": "20-20317 Hz, the drivers' own measured impedance sweeps (an impedance measurement has no gate)",
+        "weighting": "IEC 60268-1 programme noise"
+       },
+       "pass": true,
+       "reason": "0.0 % — no limit set",
+       "specRef": "A4 M-A",
+       "subject": "system",
+       "title": "Dissipation in the filter resistors",
+       "unit": "of amplifier power",
+       "value": 0,
+       "withinToleranceOnly": false
+      },
+      {
+       "active": false,
+       "direction": "min",
+       "gate": "M-B/EPDR",
+       "limit": null,
+       "metric": "M-B",
+       "parameters": {
+        "at": "290 Hz",
+        "judged_on": "20-20317 Hz, the drivers' own measured impedance sweeps (an impedance measurement has no gate)"
+       },
+       "pass": true,
+       "reason": "0.68 Ω — no limit set",
+       "specRef": "A4 M-B",
+       "subject": "system",
+       "title": "EPDR of the amplifier load",
+       "unit": "Ω",
+       "value": 0.6761737323326092,
+       "withinToleranceOnly": false
+      },
+      {
+       "active": false,
+       "direction": "min",
+       "gate": "M-B/|Z|",
+       "limit": null,
+       "metric": "M-B",
+       "parameters": {
+        "at": "304 Hz",
+        "judged_on": "20-20317 Hz, the drivers' own measured impedance sweeps (an impedance measurement has no gate)"
+       },
+       "pass": true,
+       "reason": "1.35 Ω — no limit set",
+       "specRef": "A4 M-B (simple mode)",
+       "subject": "system",
+       "title": "Minimum |Z| the amplifier sees (simple mode)",
+       "unit": "Ω",
+       "value": 1.3461979669490334,
+       "withinToleranceOnly": false
+      },
+      {
+       "active": false,
+       "direction": "max",
+       "gate": "M-C",
+       "limit": null,
+       "metric": "M-C",
+       "parameters": {
+        "f_s": "901 Hz",
+        "judged_on": "20-20317 Hz, the drivers' own measured impedance sweeps (an impedance measurement has no gate)",
+        "passband": "614-19000 Hz (derived)"
+       },
+       "pass": true,
+       "reason": "-0.0 dB — no limit set",
+       "specRef": "A4 M-C",
+       "subject": "tweeter",
+       "title": "Drive voltage on the driver resonance",
+       "unit": "dB",
+       "value": -0.04302135903168014,
+       "withinToleranceOnly": false
+      },
+      {
+       "active": false,
+       "direction": "max",
+       "gate": "M-A/part",
+       "limit": null,
+       "metric": "M-A",
+       "parameters": {
+        "judged_on": "20-20317 Hz, the drivers' own measured impedance sweeps (an impedance measurement has no gate)",
+        "margin": "no margin fraction stated — the gate cannot form an allowance (P4)",
+        "remedy": "a resistor above its allowance needs a higher class or a series/parallel bank — a topology choice the generator does not make (casebook V50)",
+        "weighting": "IEC 60268-1 programme noise, continuous (thermal — a mean, not a peak)"
+       },
+       "pass": true,
+       "reason": "not evaluated — this network carries no discrete resistor — nothing to rate (a zero here would read as a measurement), and no limit set",
+       "specRef": "A4 M-A (per part, V50)",
+       "subject": "system",
+       "title": "Power in the hottest filter resistor against its rating",
+       "unit": "W",
+       "value": null,
+       "withinToleranceOnly": false
+      },
+      {
+       "active": false,
+       "direction": "max",
+       "gate": "M-L",
+       "limit": null,
+       "metric": "M-L",
+       "parameters": {
+        "coils": "L1 ? A; L2 ? A",
+        "judged_on": "20-20317 Hz, the drivers' own measured impedance sweeps (an impedance measurement has no gate)",
+        "rating": "no coil class stated and no rated catalogue part on any coil — air-cored coils have no saturation current and are never judged (P4)",
+        "reading": "peak current amplitude at the amplifier's peak input voltage, unweighted — saturation is a one-cycle event"
+       },
+       "pass": true,
+       "reason": "not evaluated — no amplifier peak (peak power and nominal load, V49) is stated, so the current at the peak input cannot be formed, and no limit set",
+       "specRef": "A4 M-L (V50)",
+       "subject": "system",
+       "title": "Peak current through the most loaded coil against its rating",
+       "unit": "A",
+       "value": null,
+       "withinToleranceOnly": false
+      }
+     ],
+     "gatesFrozen": [
+      {
+       "active": false,
+       "direction": "max",
+       "gate": "M-A",
+       "limit": null,
+       "metric": "M-A",
+       "parameters": {
+        "band": "20-20317 Hz",
+        "judged_on": "20-20317 Hz, the drivers' own measured impedance sweeps (an impedance measurement has no gate)",
+        "weighting": "IEC 60268-1 programme noise"
+       },
+       "pass": true,
+       "reason": "0.0 % — no limit set",
+       "specRef": "A4 M-A",
+       "subject": "system",
+       "title": "Dissipation in the filter resistors",
+       "unit": "of amplifier power",
+       "value": 0,
+       "withinToleranceOnly": false
+      },
+      {
+       "active": false,
+       "direction": "min",
+       "gate": "M-B/EPDR",
+       "limit": null,
+       "metric": "M-B",
+       "parameters": {
+        "at": "290 Hz",
+        "judged_on": "20-20317 Hz, the drivers' own measured impedance sweeps (an impedance measurement has no gate)"
+       },
+       "pass": true,
+       "reason": "0.68 Ω — no limit set",
+       "specRef": "A4 M-B",
+       "subject": "system",
+       "title": "EPDR of the amplifier load",
+       "unit": "Ω",
+       "value": 0.6761737323326092,
+       "withinToleranceOnly": false
+      },
+      {
+       "active": false,
+       "direction": "min",
+       "gate": "M-B/|Z|",
+       "limit": null,
+       "metric": "M-B",
+       "parameters": {
+        "at": "304 Hz",
+        "judged_on": "20-20317 Hz, the drivers' own measured impedance sweeps (an impedance measurement has no gate)"
+       },
+       "pass": true,
+       "reason": "1.35 Ω — no limit set",
+       "specRef": "A4 M-B (simple mode)",
+       "subject": "system",
+       "title": "Minimum |Z| the amplifier sees (simple mode)",
+       "unit": "Ω",
+       "value": 1.3461979669490334,
+       "withinToleranceOnly": false
+      },
+      {
+       "active": false,
+       "direction": "max",
+       "gate": "M-C",
+       "limit": null,
+       "metric": "M-C",
+       "parameters": {
+        "f_s": "901 Hz",
+        "judged_on": "20-20317 Hz, the drivers' own measured impedance sweeps (an impedance measurement has no gate)",
+        "passband": "5733-19000 Hz (frozen)"
+       },
+       "pass": true,
+       "reason": "-1.4 dB — no limit set",
+       "specRef": "A4 M-C",
+       "subject": "tweeter",
+       "title": "Drive voltage on the driver resonance",
+       "unit": "dB",
+       "value": -1.3502298152846233,
+       "withinToleranceOnly": false
+      },
+      {
+       "active": false,
+       "direction": "max",
+       "gate": "M-A/part",
+       "limit": null,
+       "metric": "M-A",
+       "parameters": {
+        "judged_on": "20-20317 Hz, the drivers' own measured impedance sweeps (an impedance measurement has no gate)",
+        "margin": "no margin fraction stated — the gate cannot form an allowance (P4)",
+        "remedy": "a resistor above its allowance needs a higher class or a series/parallel bank — a topology choice the generator does not make (casebook V50)",
+        "weighting": "IEC 60268-1 programme noise, continuous (thermal — a mean, not a peak)"
+       },
+       "pass": true,
+       "reason": "not evaluated — this network carries no discrete resistor — nothing to rate (a zero here would read as a measurement), and no limit set",
+       "specRef": "A4 M-A (per part, V50)",
+       "subject": "system",
+       "title": "Power in the hottest filter resistor against its rating",
+       "unit": "W",
+       "value": null,
+       "withinToleranceOnly": false
+      },
+      {
+       "active": false,
+       "direction": "max",
+       "gate": "M-L",
+       "limit": null,
+       "metric": "M-L",
+       "parameters": {
+        "coils": "L1 ? A; L2 ? A",
+        "judged_on": "20-20317 Hz, the drivers' own measured impedance sweeps (an impedance measurement has no gate)",
+        "rating": "no coil class stated and no rated catalogue part on any coil — air-cored coils have no saturation current and are never judged (P4)",
+        "reading": "peak current amplitude at the amplifier's peak input voltage, unweighted — saturation is a one-cycle event"
+       },
+       "pass": true,
+       "reason": "not evaluated — no amplifier peak (peak power and nominal load, V49) is stated, so the current at the peak input cannot be formed, and no limit set",
+       "specRef": "A4 M-L (V50)",
+       "subject": "system",
+       "title": "Peak current through the most loaded coil against its rating",
+       "unit": "A",
+       "value": null,
+       "withinToleranceOnly": false
+      }
+     ],
+     "label": "seed",
+     "start": 0
+    }
+   ]
+  }
  }
 }

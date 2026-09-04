@@ -31,7 +31,12 @@ import { buildReport } from './report.ts';
 import { ctcKey } from './metrics/types.ts';
 
 const golden = loadGolden();
-const manifest = casus1Manifest(golden);
+/* M-1 — THE GATED SET, deliberately: the synthetic changes below are injected
+ * into gated far-field files and the claims are about the gate floor (a peak
+ * below it is not detected, the f_s floor only binds above it). The default
+ * set's woofer and mid are NF/FF merges with a merge-block floor, on which
+ * those claims do not apply — `mergeBlock.test.ts` covers that set. */
+const manifest = casus1Manifest(golden, 'gated');
 const baseFiles = casus1Files(manifest);
 const geometry = casus1Geometry(golden);
 

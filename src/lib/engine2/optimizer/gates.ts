@@ -773,12 +773,45 @@ export function violationText(verdicts: readonly GateVerdict[]): string | null {
  * to it (Deliverable 2: "geldend voor elke weg met een hoogdoorlaatbeschermde
  * driver").
  *
- * Derived from the branch's own electrical transfer: half an octave below the
- * passband floor the transfer must sit measurably LOWER than inside the
- * passband. That is what a high pass is, and it catches the cases a
+ * Derived from the branch's own electrical transfer: below the passband floor
+ * the transfer must sit measurably LOWER than inside the passband, and KEEP
+ * FALLING. That is what a high pass is, and it catches the cases a
  * way-counting rule would miss in both directions — a woofer carrying a
  * subsonic capacitor IS protected, and a midrange whose "high pass" turned
  * out to be a wire is NOT, whatever the schematic was meant to be.
+ *
+ * TWO CORRECTIONS AT M-1, both measured on casus 1's merged set (woofer valid
+ * from 20.5 Hz, so the probe lands at 10–29 Hz instead of at 280 Hz):
+ *
+ *  1. INTO A RESISTIVE LOAD. Read on the transfer into the driver's MEASURED
+ *     impedance the answer also carries the driver's own resonances, and near
+ *     a reflex woofer's motional peaks those are not small: the seed of a
+ *     201 Hz LR2 read +3.2 dB at 20–29 Hz (the series coil resonating with the
+ *     woofer's lower impedance peak at 16.5 Hz) against −0.5 dB at 10–14 Hz —
+ *     a 3.7 dB "rise into the passband" from a branch with no high pass in it.
+ *     So the branch is re-solved with THIS driver replaced by a flat resistance
+ *     (the median |Z| over its passband, the same reference the
+ *     passband-relative M-C reads) and the probe is taken on that transfer:
+ *     what the filter does, with the driver's resonances out of the reading.
+ *  2. BY AT LEAST ONE FILTER ORDER. Into that resistive load the seed of a
+ *     259 Hz LR2 still read +1.6 dB at 20–29 Hz against +0.4 dB at 10–14 Hz:
+ *     its low-pass ladder (12.5 + 16.7 + 26.2 mH against 687 and 214 µF)
+ *     resonates in the twenties, and a 1.2 dB peak cleared the typed 1.0 dB
+ *     threshold of the day. The threshold is now DERIVED: one order's worth of
+ *     attenuation over the probe distance (`HP_PROTECTION_MIN_RISE_DB`, 6 dB
+ *     per octave per order × half an octave = 3 dB). A resonance bump or
+ *     ripple does not reach that; any high pass — and a shelf of a few dB
+ *     that genuinely protects a driver below its passband — does. (A rule
+ *     that also demanded the attenuation to CONTINUE a further half-octave
+ *     down was tried and withdrawn: it exempted seventeen casebook mids whose
+ *     branch is a −12 dB shelf below the passband, and a shelf of twelve dB
+ *     is protection M-C must keep judging.)
+ *
+ * Both were found because the woofer — which per V49 carries no high pass and
+ * gets no requirement — was being judged by M-C at its own f_p, failed by
+ * definition, and took eight of eight, then 52 of 115 candidates with it
+ * (casebook M-1). A network the analysis cannot re-solve for this model falls
+ * back to the measured transfer, which is what this function read until M-1.
  *
  * Never "the driver is not the lowest way": that counts ways, which the
  * N-way rule forbids, and it would answer a question about the schematic by
@@ -789,9 +822,10 @@ export function isHighPassProtected(
   driver: string,
   passbandHz: [number, number],
 ): boolean {
-  const h = analysis.transferByModel[driver];
-  if (!h) return false;
+  const measured = analysis.transferByModel[driver];
+  if (!measured) return false;
   const { grid } = analysis;
+  const h = filterTransferIntoResistiveLoad(analysis, driver, passbandHz) ?? measured;
   const probe = passbandHz[0] / 2 ** HP_PROTECTION_PROBE_OCTAVES;
   const level = (lo: number, hi: number): number | null => {
     const vals: number[] = [];
@@ -806,6 +840,36 @@ export function isHighPassProtected(
   const inside = level(passbandHz[0], passbandHz[0] * 2 ** HP_PROTECTION_PROBE_OCTAVES);
   if (below === null || inside === null) return false;
   return inside - below >= HP_PROTECTION_MIN_RISE_DB;
+}
+
+/**
+ * M-1 — the branch transfer with THIS driver replaced by a flat resistance
+ * equal to the median |Z| over its passband: the filter's own attenuation,
+ * with the driver's resonances out of it. Null when the analysis holds no
+ * impedance for the driver or the passband holds no grid point, so the caller
+ * can fall back to the measured transfer rather than to a guess.
+ */
+function filterTransferIntoResistiveLoad(
+  analysis: NetworkAnalysis,
+  driver: string,
+  passbandHz: [number, number],
+): readonly Complex[] | null {
+  const z = analysis.driverZ[driver];
+  if (!z || z.length !== analysis.grid.length) return null;
+  const mags: number[] = [];
+  for (let i = 0; i < analysis.grid.length; i++) {
+    const f = analysis.grid[i];
+    if (f >= passbandHz[0] && f <= passbandHz[1]) mags.push(cabs(z[i]));
+  }
+  if (mags.length === 0) return null;
+  mags.sort((a, b) => a - b);
+  const flat = mags[Math.floor(mags.length / 2)];
+  if (!(flat > 0)) return null;
+  try {
+    return analysis.resolveWithLoad(driver, analysis.grid.map(() => ({ re: flat, im: 0 }))).transfer;
+  } catch {
+    return null;
+  }
 }
 
 /* ================================================================== *

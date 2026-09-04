@@ -456,17 +456,7 @@ export const DEFAULT_RUN_STARTS = 1;
  */
 export const RUN_START_JITTER_DECADES = 0.35;
 
-/**
- * A branch counts as HIGH-PASS PROTECTED (A4 M-C's scope) when its own
- * electrical transfer sits at least this many dB LOWER half an octave below
- * its passband floor than inside the passband.
- *
- * Any rise at all is in principle a high pass; a measured curve ripples, so
- * the test asks for a rise that is not ripple. Derived from the network in
- * every case — never "the driver is not the lowest way", which would count
- * ways, and never a driver name. @p6 rule
- */
-export const HP_PROTECTION_MIN_RISE_DB = 1.0;
+/* HP_PROTECTION_MIN_RISE_DB moved below DB_PER_OCTAVE_PER_ORDER (M-1): it is derived from it. */
 
 /** How far below the passband floor that rise is measured, in octaves. @p6 rule */
 export const HP_PROTECTION_PROBE_OCTAVES = 0.5;
@@ -659,6 +649,24 @@ export const ANALYSIS_GRID_POINTS = 1600;
  * "how many orders does that take over this octave distance". @p6 rule
  */
 export const DB_PER_OCTAVE_PER_ORDER = 6;
+
+/**
+ * A5d / F2 — a branch counts as HIGH-PASS PROTECTED when its own electrical
+ * transfer (into a resistive load — M-1) sits at least this much LOWER half an
+ * octave below its passband floor than inside the passband.
+ *
+ * ONE FILTER ORDER OVER THE PROBE DISTANCE, derived: 6 dB per octave per order
+ * times the half octave the probe sits below the floor = 3 dB. Until M-1 this
+ * was a typed 1.0 dB — "a rise that is not ripple" — and on casus 1's merged
+ * set that let an LC-ladder resonance in a WOOFER's low pass (+1.2 dB at
+ * 20–29 Hz into a resistive load, +1.6 in another seed) pass for a high pass:
+ * M-C then judged the woofer at its own f_p, which no low pass can pass, and
+ * 52 of 115 candidates were refused on it. A high pass attenuates at least
+ * one order over that distance; a resonance bump or ripple does not. Derived
+ * from the network in every case — never "the driver is not the lowest way",
+ * which would count ways, and never a driver name. @p6 rule
+ */
+export const HP_PROTECTION_MIN_RISE_DB = DB_PER_OCTAVE_PER_ORDER * HP_PROTECTION_PROBE_OCTAVES;
 
 /**
  * Half-width, in octaves, of the stretch a NATURAL flank slope is fitted over.

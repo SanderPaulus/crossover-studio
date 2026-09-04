@@ -272,6 +272,18 @@ describe('the frozen v2 candidates are files, and the file says where they came 
      * that is what a dated name is FOR. */
     const named = new Set(Object.values(golden.manifest_en_geometrie.netlists));
     const onDisk = readdirSync(CASUS1_DIR).filter((f) => /^KAND-V2-\d+\.adsfilter\.json$/.test(f));
+    /* M-1 — AN EMPTY LIVE CORPUS IS A FINDING, and then there must be NO file:
+     * the M-1 field delivered none of its 115 candidates (every one refused
+     * on the floor, on M-C or on the topology rule), the recorder pruned the
+     * manifest, and the six V51b files that had lived under these names were
+     * deleted by hand after `cmp` showed them byte-identical to `V51B-KAND-*`.
+     * A directory that still held them would be the orphan hole exactly. */
+    if (HERKOMST.shortlist.bevroren === 0) {
+      expect(HERKOMST.shortlist.leverde_geen_netwerk).toBe(HERKOMST.shortlist.overwogen);
+      expect(onDisk, 'the live corpus is empty but KAND-V2 files are still on disk').toEqual([]);
+      expect(V2_KEYS).toEqual([]);
+      return;
+    }
     expect(onDisk.length, 'no KAND-V2 files on disk at all').toBeGreaterThan(0);
     for (const f of onDisk) {
       expect(named, `${f} is on disk but no manifest entry names it — delete it or name it`)
@@ -366,10 +378,21 @@ describe('the frozen v2 candidates are files, and the file says where they came 
      * de amplitudeterm vlak is. `doelcurve` is de POLISH ernaast — de voicing
      * van het ontwerp zelf, met beide helften van haar herkomst, want een
      * curve zonder haar diepte én haar overgang is geen curve (V15). */
-    expect(m.beschermingen_via_kandidaat).toContain('amplitudeReference');
-    expect(m.amplitude_referentie).toBe('target');
-    expect(m.amplitude_referentie_waarom).toMatch(/V45/);
-    expect(m.doelcurve).toContain('bass-plateau');
+    /* M-1 — the design's curve is FLAT (a stated plateau of 0 dB), and a flat
+     * curve is the identity: the candidate does not state `amplitudeReference`
+     * (V45: a mechanism that can move nothing must not be declared as if it
+     * did), the record says the search flattens toward horizontal, and the
+     * curve reads "flat". The V45 branch stays for a design that states one. */
+    if (CASUS1_TARGET_CURVE.type === 'flat') {
+      expect(m.beschermingen_via_kandidaat).not.toContain('amplitudeReference');
+      expect(m.amplitude_referentie).toBeNull();
+      expect(m.doelcurve).toContain('flat');
+    } else {
+      expect(m.beschermingen_via_kandidaat).toContain('amplitudeReference');
+      expect(m.amplitude_referentie).toBe('target');
+      expect(m.amplitude_referentie_waarom).toMatch(/V45/);
+      expect(m.doelcurve).toContain('bass-plateau');
+    }
     // De twee helften komen uit twee soorten bron, en de tekst zegt welke.
     expect(m.doelcurve_herkomst).toMatch(/GESTELD|gesteld/);
     expect(m.doelcurve_herkomst).toMatch(/AFGELEID|afgeleid/);
@@ -512,6 +535,15 @@ describe('the frozen v2 candidates are files, and the file says where they came 
 
 describe('the metrics on the frozen netlists reproduce', () => {
   const REF = golden.kandidaten as unknown as Record<string, Record<string, number>>;
+  /* M-1 — an EMPTY live corpus leaves `it.each` with nothing to run, and vitest
+   * treats a suite without tests as a failure. The empty corpus is the M-1
+   * finding (115 of 115 refused) and not a hole, so this is the one claim the
+   * suite makes on it: the reference file names no live netlist either. */
+  it('an empty live corpus names no live reference block — the finding is recorded, not lost', () => {
+    const liveRefs = Object.keys(REF).filter((k) => /^KAND_V2_\d+$/.test(k));
+    expect(liveRefs.sort()).toEqual([...V2_KEYS].sort());
+    if (V2_KEYS.length === 0) expect(HERKOMST.shortlist.bevroren).toBe(0);
+  });
   it.each(V2_KEYS)('%s', (key) => {
     const r = report(key);
     const ref = REF[key];
@@ -619,6 +651,18 @@ describe('the comparison block on casus 1', () => {
  */
 describe('[live] the run still delivers the frozen netlist', () => {
   it('[bytes] one candidate, live through handleV2Request, byte for byte', () => {
+    /* M-1 — NOTHING TO REPRODUCE, and that is the finding and not a gap: the
+     * M-1 field delivered none of its 115 candidates. The live reproduction of
+     * the route is then the REFUSAL run (`casus1V2Refusal.test.ts`), which
+     * reproduces one of the 115 recorded refusals byte for byte; this test
+     * asserts the record is consistent with an empty corpus and stops. It
+     * comes back to life the moment a regeneration delivers a netlist. */
+    if (HERKOMST.bestanden.length === 0) {
+      expect(HERKOMST.shortlist.bevroren).toBe(0);
+      expect(HERKOMST.shortlist.leverde_geen_netwerk).toBe(HERKOMST.shortlist.overwogen);
+      expect(HERKOMST.verwerpingen.length).toBe(HERKOMST.shortlist.overwogen);
+      return;
+    }
     const rep = report('HUIDIG');
     const field = casus1Field(rep);
     const gridded = casus1ChainInput(manifest, files, golden);

@@ -263,9 +263,55 @@ export function loadMeasurement(entry: ManifestEntry): MeasurementFile {
  * near-field diameters, which the manifest carries as tags and which Keele's
  * ceiling is derived from.
  */
-export function casus1Manifest(golden: GoldenRefs = loadGolden()): Manifest {
+/**
+ * WHICH MEASUREMENT SET (M-1).
+ *
+ * `'merged'` — THE v2 SET since M-1 (04-09-2026): the on-axis far fields of the
+ * woofers and the mid are replaced by their NF/FF MERGES
+ * (`manifest_en_geometrie.gemergde_set`), each carrying a merge block the
+ * parser reads (`Merge = NF/FF`, `Valid from = …`), so the woofer is valid from
+ * 20.5 Hz and the mid from 60 Hz instead of from the 2.5 ms gate at 397 Hz.
+ * Everything else — impedances, near fields, the 30° mid, the tweeter — is the
+ * 22-08-2026 session unchanged. This is the DEFAULT: what the v2 route, the
+ * corpus and every class-A/B reference read.
+ *
+ * `'gated'` — the 22-08-2026 session as measured, gated far fields and all.
+ * Kept for the v1 route (byte-identical, it never reads engine2) and for the
+ * tests that exercise the HEADER-FLOOR machinery itself (1/T, the advisory
+ * FF/NF detector, the manual window): those claims are about a gated file and
+ * have to be made on one. A test that reads it says so at the call.
+ */
+export type Casus1MeasurementSet = 'merged' | 'gated';
+
+/** The merged files, keyed by name, with the gated file each one REPLACES. */
+export interface MergedSetEntry {
+  drv: string;
+  typ: string;
+  hoek?: number;
+  vervangt: string;
+}
+
+export function casus1MergedSet(golden: GoldenRefs = loadGolden()): Record<string, MergedSetEntry> {
+  const block = (golden.manifest_en_geometrie as unknown as {
+    gemergde_set?: { bestanden?: Record<string, MergedSetEntry> };
+  }).gemergde_set;
+  return block?.bestanden ?? {};
+}
+
+export function casus1Manifest(
+  golden: GoldenRefs = loadGolden(),
+  set: Casus1MeasurementSet = 'merged',
+): Manifest {
   const g = golden.manifest_en_geometrie;
-  const entries: ManifestEntry[] = Object.entries(g.bestanden).map(([file, tag]) => {
+  const merged = set === 'merged' ? casus1MergedSet(golden) : {};
+  const replacedBy = new Map<string, [string, MergedSetEntry]>();
+  for (const [file, tag] of Object.entries(merged)) replacedBy.set(tag.vervangt, [file, tag]);
+  const entries: ManifestEntry[] = Object.entries(g.bestanden).map(([gatedFile, gatedTag]) => {
+    /* The merged file takes the gated file's PLACE — same driver, same kind,
+     * same angle, same position in the list — so the manifest reads as one
+     * session with three files swapped and not as a second session. */
+    const swap = replacedBy.get(gatedFile);
+    const [file, tag] = swap ?? [gatedFile, gatedTag];
     const kind = tag.typ as MeasurementKind;
     const entry: ManifestEntry = { file, driver: tag.drv, kind };
     if (tag.hoek !== undefined) entry.angleDeg = tag.hoek;
@@ -275,7 +321,14 @@ export function casus1Manifest(golden: GoldenRefs = loadGolden()): Manifest {
     }
     return entry;
   });
-  return { sessionId: 'koan2951-2026-08-22', entries };
+  if (set === 'merged') {
+    for (const [file, tag] of Object.entries(merged)) {
+      if (!(tag.vervangt in g.bestanden)) {
+        throw new Error(`gemergde_set: ${file} replaces ${tag.vervangt}, which the 22-08 manifest does not list`);
+      }
+    }
+  }
+  return { sessionId: set === 'merged' ? 'koan2951-2026-08-22-M1-merge' : 'koan2951-2026-08-22', entries };
 }
 
 export function casus1Files(manifest: Manifest): MeasurementFile[] {
@@ -449,7 +502,13 @@ export function casus1BassPlateauDb(golden: GoldenRefs = loadGolden()): number |
     gestelde_eisen?: { basplateau_offset_dB?: unknown };
   }).gestelde_eisen;
   const v = stated?.basplateau_offset_dB;
-  return typeof v === 'number' && Number.isFinite(v) && v > 0 ? v : null;
+  /* ZERO IS A STATEMENT (M-1, 04-09-2026): Sander states the plateau at 0.0 dB
+   * — the filter is designed on a flat anechoic plateau, woofers and tweeter
+   * on the mid's level, and the in-room shape comes from the room and the wall
+   * placement, not from the filter. A stated 0 is therefore returned as 0 and
+   * `casus1TargetCurve` turns it into the flat reference; only an absent or
+   * negative field reads as "not stated" (P4). */
+  return typeof v === 'number' && Number.isFinite(v) && v >= 0 ? v : null;
 }
 
 /**
@@ -472,7 +531,24 @@ export function casus1TargetCurve(golden: GoldenRefs = loadGolden()): TargetCurv
   const width = golden.manifest_en_geometrie.geometrie.baffle_mm?.breedte;
   const step = width !== undefined ? baffleStepHz(width) : null;
   if (depth === null || step === null) return FLAT_TARGET;
+  /* A STATED plateau of 0 dB IS the flat reference (M-1): a `bass-plateau`
+   * with depth 0 would be a shelf of no depth, which the vocabulary refuses
+   * (P4 — a shape whose parameter is missing), and the flat curve says the
+   * same thing in the word the report already prints for it. */
+  if (depth === 0) return FLAT_TARGET;
   return { type: 'bass-plateau', plateauDepthDb: depth, stepHz: step };
+}
+
+/**
+ * M-1 — the target curve of a DATED plateau depth, for the bridges: the same
+ * derivation as `casus1TargetCurve` with the depth handed in instead of read,
+ * so a test can reproduce what an earlier voicing gave on the same data.
+ */
+export function casus1TargetCurveAt(depthDb: number, golden: GoldenRefs = loadGolden()): TargetCurve {
+  const width = golden.manifest_en_geometrie.geometrie.baffle_mm?.breedte;
+  const step = width !== undefined ? baffleStepHz(width) : null;
+  if (step === null || !(depthDb > 0)) return FLAT_TARGET;
+  return { type: 'bass-plateau', plateauDepthDb: depthDb, stepHz: step };
 }
 
 /**

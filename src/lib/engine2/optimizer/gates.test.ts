@@ -125,6 +125,54 @@ describe('Deliverable 2 - gate configuration', () => {
     expect(String(mc.parameters!.passband)).toContain('frozen');
   });
 
+  it('M-1 — protection is a property of the FILTER: a resonance in the driver\'s own impedance cannot make a low pass read as a high pass', () => {
+    /* THE TRAP, MEASURED ON CASUS 1 (casebook M-1): with the woofer valid from
+     * 20.5 Hz the probe lands at 10–29 Hz, where a reflex woofer's motional
+     * peak and a series coil resonate; the seed of a 201 Hz LR2 read +3.2 dB
+     * "inside" against −0.5 dB "below" and the low pass was classified as a
+     * high pass — M-C then judged the woofer at f_p and refused every
+     * candidate. Reproduced here on the two-way fixture: the LOW driver's
+     * impedance gets a synthetic 6× peak just above its passband floor. The
+     * transfer into the MEASURED impedance rises by more than the rule's
+     * threshold (the old reading would have said "protected"); the rule reads
+     * the filter's transfer into a resistive load and says it is not. The
+     * tweeter's real high pass is unaffected either way. */
+    const low = Object.keys(reference.frozenPassbandHz).find((d) => !reference.frozenHighPassProtected.includes(d))!;
+    /* A passband floor one octave up the grid, so the probe has room below it
+     * (the fixture's grid starts at the frozen floor). The driver's impedance
+     * gets the SHAPE of a reflex woofer around that floor: a dip below it
+     * (×0.25, the port minimum) and a peak inside it (×4, the upper motional
+     * peak) — with a series coil in front, that alone lifts the transfer into
+     * the passband. */
+    const pass: [number, number] = [V2_GRID[0] * 2, reference.frozenPassbandHz[low][1]];
+    const base = v2DriverZ();
+    const boosted = {
+      ...base,
+      [low]: base[low].map((z, i) => {
+        const f = V2_GRID[i];
+        const k = f >= pass[0] && f <= pass[0] * 2 ** 0.5 ? 4 : f < pass[0] / 2 ** 0.5 ? 0.25 : 1;
+        return { re: z.re * k, im: z.im * k };
+      }),
+    };
+    const a2 = buildAnalysis(netlist, V2_GRID, boosted);
+    // The old reading, on the measured transfer: a rise the threshold would have taken for a high pass.
+    const median = (h: readonly { re: number; im: number }[], lo: number, hi: number) => {
+      const v = V2_GRID.map((f, i) => (f >= lo && f <= hi ? 20 * Math.log10(Math.hypot(h[i].re, h[i].im)) : null))
+        .filter((x): x is number => x !== null)
+        .sort((x, y) => x - y);
+      return v.length ? v[v.length >> 1] : null;
+    };
+    const probe = pass[0] / 2 ** 0.5;
+    const below = median(a2.transferByModel[low], probe / 2 ** 0.5, probe);
+    const inside = median(a2.transferByModel[low], pass[0], pass[0] * 2 ** 0.5);
+    expect(below).not.toBeNull();
+    expect(inside! - below!).toBeGreaterThanOrEqual(1);
+    // ...and the rule, since M-1, is not fooled by it.
+    expect(isHighPassProtected(a2, low, pass)).toBe(false);
+    expect(isHighPassProtected(analysis, low, pass)).toBe(false);
+    expect(isHighPassProtected(a2, 'tweeter', reference.frozenPassbandHz['tweeter'])).toBe(true);
+  });
+
   it('a gate that cannot be evaluated says so; it does not condemn', () => {
     // "We could not look" and "it failed" are different claims, and only one
     // of them is true when a driver has no resonance to read.

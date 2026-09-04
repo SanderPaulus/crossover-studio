@@ -29,7 +29,7 @@ import type { Complex } from '../complex.ts';
 import { runIngest } from './ingest/derive.ts';
 import type { Manifest } from './ingest/manifest.ts';
 import type { MeasurementFile } from './ingest/derive.ts';
-import type { EngineV2Report } from './report.ts';
+import { buildReport, type EngineV2Report } from './report.ts';
 import { buildCandidateField, type CandidateFieldResult } from './predesign/candidateField.ts';
 import {
   declareCandidateChainChoices,
@@ -53,6 +53,11 @@ import {
   casus1TargetCurve,
   casus1ThermalDesignPowerW,
   casus1WiringByDriver,
+  casus1Files,
+  casus1Filter,
+  casus1Geometry,
+  casus1Manifest,
+  CASUS1_WOOFER_DC_OHM,
   loadGolden,
   type GoldenRefs,
 } from './casus1.fixture.ts';
@@ -76,25 +81,95 @@ import {
 export const SILENT_GHOST_DB = -400;
 
 /**
- * The analysis grid the chain runs on.
+ * The analysis grid the chain runs on — a RESOLUTION choice, not a band (the
+ * same reasoning `ANALYSIS_GRID_POINTS` carries); 96 points over 200–20 000 Hz
+ * is the precedent `f4b2_v2_worker_baseline.json` set, and it is stated so a
+ * baseline made on 96 can never be compared against a run on 200.
  *
- * A RESOLUTION choice, not a band — the same reasoning `ANALYSIS_GRID_POINTS`
- * carries. The ends are the app's own: 200 Hz is where the far-field span
- * begins on this measurement set (see the note on the chain-grid floor in
- * casebook V27) and 20 kHz is the top of the audio band. 96 points is the
- * precedent `f4b2_v2_worker_baseline.json` set, and it is stated so a baseline
- * made on 96 can never be compared against a run on 200.
+ * M-1 — THE JUDGED BAND AND THE CHAIN GRID ARE DERIVED FROM THE MERGED SET.
+ *
+ * Until M-1 the grid read `logspace(200, 20000, 96)` and the band `[397, 19500]`:
+ * 397 Hz was the woofer's gate floor and 200 Hz where the far-field span began,
+ * both properties of the GATED session. On the merged set the woofer is valid
+ * from 20.5 Hz, and a candidate may now hand over at 124 Hz — below a 200 Hz
+ * grid the tuner would not even see its own crossing. So both are derived:
+ *
+ *   · THE FLOOR of the judged band is the higher of the lowest way's validity
+ *     floor and its f_p — the upper reflex peak, which is where the case book
+ *     already puts the bottom of the bass plateau
+ *     (`gestelde_eisen._basplateau_2_5_tot_M1`: "de band [f_p, W-M-overname]").
+ *     Below f_p a reflex system rolls off on its own and no crossover can
+ *     flatten that; judging it would make every candidate pay for the box.
+ *   · THE CEILING stays where it was (the highest way's ceiling, inside the
+ *     grid).
+ *   · THE GRID starts at the lowest way's VALIDITY floor (not at f_p) and keeps
+ *     the RESOLUTION the precedent set (96 points over 200–20 000 Hz), so a run
+ *     on it is a run at the same points per octave and not a coarser one.
+ *
+ * WHY THE GRID STARTS BELOW THE BAND, and it was measured before it was
+ * written: the gate evaluator reads the lowest way's PASSBAND floor off the
+ * grid floor (`passbandOf` clamps to the validity band the facts carry, and the
+ * facts are clipped to the grid), and `isHighPassProtected` probes the branch
+ * transfer half an octave UNDER that floor. With the grid starting AT f_p — the
+ * upper reflex peak — that probe lands in the reflex impedance DIP, where the
+ * driver's own impedance pulls the transfer down 2.5–3.9 dB against a rule
+ * threshold of 1.0 dB, and the woofer reads as "high-pass protected": M-C then
+ * judges it at f_p (+2.9 dB against a derived −7.6) and refuses every candidate
+ * of the field (the first M-1 regeneration: eight of eight refused on the
+ * woofer). With the grid at the validity floor the same probe lands at
+ * 10–14 Hz, reads −0.2..−1.2 dB, and the woofer is what V49 says it is: no
+ * high pass, no requirement — for the FROZEN netlists. The SEED of a 201 Hz
+ * LR2 candidate still read +3.2 dB at 20–29 Hz (the series coil resonating
+ * with the woofer's lower motional peak at 16.5 Hz), so the rule itself was
+ * corrected at M-1: `isHighPassProtected` reads the filter's transfer into a
+ * RESISTIVE load (the passband-median |Z| of the way), where the driver's own
+ * resonances cannot masquerade as a high pass, and its threshold is one
+ * filter order over the probe distance instead of a typed 1 dB, which an
+ * LC-ladder resonance in a low pass could clear. The grid still starts at the
+ * validity floor: that is where the facts say the way is valid, and the probe
+ * of the rule needs the room.
+ *
+ * Read once at module load from the HUIDIG report — the band is class A (a
+ * property of the measurement set), any netlist gives the same one.
  */
-export const CASUS1_V2_GRID: number[] = logspace(200, 20000, 96);
+const PRECEDENT_GRID_POINTS = 96;
+const PRECEDENT_GRID_HZ: [number, number] = [200, 20000]; // P6-OK: the resolution precedent, not a band
+const GRID_TOP_HZ = 20000; // P6-OK: the top of the audio band, as before
+const JUDGE_TOP_HZ = 19500; // P6-OK: the highest way's ceiling inside the grid, as before
+const BAND_SOURCE = (() => {
+  const golden = loadGolden();
+  const manifest = casus1Manifest(golden);
+  const files = casus1Files(manifest);
+  const report = buildReport({
+    manifest,
+    files,
+    filter: casus1Filter('HUIDIG', manifest, files, golden),
+    geometry: casus1Geometry(golden),
+    settings: { reOhmByDriver: { woofer: CASUS1_WOOFER_DC_OHM } },
+  });
+  const lowest = report.driversLowToHigh[0];
+  const d = report.ingest.drivers.find((x) => x.driver === lowest);
+  if (!d?.onAxis) throw new Error(`casus 1: the lowest way (${lowest}) has no on-axis band`);
+  const validityFloorHz = d.onAxis.bandHz[0];
+  const fpHz = d.impedance?.fundamentalHz ?? null;
+  const floorHz = fpHz !== null ? Math.max(validityFloorHz, fpHz) : validityFloorHz;
+  return { lowest, validityFloorHz, fpHz, floorHz, provenance: d.onAxis.bandFloorProvenance };
+})();
+const pointsPerOctave = PRECEDENT_GRID_POINTS / Math.log2(PRECEDENT_GRID_HZ[1] / PRECEDENT_GRID_HZ[0]);
+export const CASUS1_V2_GRID: number[] = logspace(
+  BAND_SOURCE.validityFloorHz,
+  GRID_TOP_HZ,
+  Math.round(pointsPerOctave * Math.log2(GRID_TOP_HZ / BAND_SOURCE.validityFloorHz)),
+);
 
 /**
- * The band the SPL window and the RMS deviation are judged on.
- *
- * The lowest way's validity floor to the highest way's validity ceiling — what
- * "this system is valid over" means when the ways are measured separately.
- * Clipped to the grid, because a band wider than the data is not a band.
+ * The band the SPL window and the RMS deviation are judged on — see the block
+ * above: from the lowest way's f_p (or its validity floor, whichever is
+ * higher) to the highest way's ceiling, clipped to the grid.
  */
-export const CASUS1_V2_BAND_HZ: [number, number] = [397, 19500];
+export const CASUS1_V2_BAND_HZ: [number, number] = [BAND_SOURCE.floorHz, JUDGE_TOP_HZ];
+/** Where the floor came from, for the record the generator writes. */
+export const CASUS1_V2_BAND_SOURCE = BAND_SOURCE;
 
 /** The run seed. Stated rather than defaulted, and recorded (A5e.4, P4 amendment). */
 export const CASUS1_V2_SEED = 20260827;
@@ -419,11 +494,29 @@ const SAFETY_GRID_POINTS = 240;
  * only; with 'auto' the derivation abstains and every buildable order becomes
  * its own candidate, which is correct and is 63 chains.
  */
+/**
+ * M-1 — THE FIELD: LR4 AND LR2 ON THE WOOFER→MID AXIS, LR4 ON MID→TWEETER.
+ *
+ * Sander asked to see the LR2 variant beside LR4 on the lower handover: with
+ * the plateau flat and the woofer valid from 20.5 Hz the window opens down to
+ * k·f_s of the mid (124 Hz at order 4, 178 Hz at order 2), and whether a
+ * second-order handover there clears the amplifier floor without series
+ * resistance is the question of the session. So on that axis the derivation
+ * is left to ABSTAIN — no order stated, no rule armed — and A5d.3's own rule
+ * for that state applies: every buildable order is its own candidate. The
+ * library handed in is the app's two LR alignments only (`AUTO_STRUCTS`
+ * filtered), which is a DESIGNER'S restriction and recorded as one: the
+ * Butterworth-3 and Bessel-4 entries were not asked for, and A5d.3 prefers
+ * symmetric LR flanks anyway. The upper handover keeps the stated order 4 the
+ * casebook's window references carry.
+ */
+export const CASUS1_FIELD_ALIGNMENTS = AUTO_STRUCTS.filter((a) => a.kind === 'LR');
+
 export function casus1Field(report: EngineV2Report): CandidateFieldResult {
   return buildCandidateField({
     windowInputs: report.predesign.windowInputs,
-    perPair: report.predesign.windowInputs.map(() => ({ statedOrder: 4 })),
-    alignments: AUTO_STRUCTS,
+    perPair: report.predesign.windowInputs.map((_, i) => (i === 0 ? {} : { statedOrder: 4 })),
+    alignments: CASUS1_FIELD_ALIGNMENTS,
   });
 }
 
@@ -617,6 +710,12 @@ export function casus1ChainInput(
   manifest: Manifest,
   files: readonly MeasurementFile[],
   golden: GoldenRefs = loadGolden(),
+  /**
+   * M-1 — the chain grid, when a caller needs one other than the fixture's:
+   * `frozenNetlistGates.test.ts` keeps the V38-fix finding on the chain it was
+   * measured on (200–20 000 Hz, 96 points). Default: `CASUS1_V2_GRID`.
+   */
+  chainGrid: readonly number[] = CASUS1_V2_GRID,
 ): {
   grid: readonly number[];
   w: GriddedResponse;
@@ -633,7 +732,7 @@ export function casus1ChainInput(
 } {
   void golden;
   const ingest = runIngest(manifest, files);
-  const grid = CASUS1_V2_GRID;
+  const grid = chainGrid;
   const curve = (driver: string): GriddedResponse => {
     const d = ingest.drivers.find((x) => x.driver === driver);
     const full = d?.onAxisFull;

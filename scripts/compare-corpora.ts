@@ -16,7 +16,10 @@
  *   corpora: `v30` · `v32` · `v33sweep` · `v33` · `v34` · `v37` · `v38fix` · `v41` ·
  *            `v42` · `v43` · `v44` · `v45` · `v47` · `v48` · `v49` · `live`   (de kaart
  *            staat in `casus1Corpora.fixture.ts`; deze regel is de leesbare kopie ervan)
- *   default: `v49` → `live`   (casebook V50; `v48 live` was de V47b-tabel, `v47 v48` de V48-tabel)
+ *   default: `v51b` → `live`   (casebook M-1; `v51 v51b` is de V51b-tabel, `v50 v51` de V51-tabel,
+ *            `v49 v50` de V50-tabel, `v48 v49` de V47b-tabel, `v47 v48` de V48-tabel).
+ *   SINDS M-1 meet de bank op de GEMERGEDE set (casus1Corpora.fixture.ts, corpusBank(golden, 'merged')):
+ *   beide helften door hetzelfde pad, ook een gedateerd corpus dat op de gepoorte set is opgewekt.
  *   V32's own table: `npx vite-node scripts/compare-corpora.ts v30 v32`
  *   V33's own table: `npx vite-node scripts/compare-corpora.ts v32 v33`
  *   V33's two arms:  `npx vite-node scripts/compare-corpora.ts v33sweep v33`
@@ -115,7 +118,7 @@ const golden = loadGolden();
 const bank = corpusBank(golden);
 const { manifest, files, settings: SETTINGS, floorOhm: FLOOR } = bank;
 
-const [beforeId = 'v51', afterId = 'live'] = process.argv.slice(2);
+const [beforeId = 'v51b', afterId = 'live'] = process.argv.slice(2);
 const before = corpusOf(beforeId, golden);
 const after = corpusOf(afterId, golden);
 

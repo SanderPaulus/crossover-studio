@@ -49,6 +49,7 @@ import {
   casus1Geometry,
   casus1Manifest,
   loadGolden,
+  CASUS1_DIR,
 } from './casus1.fixture.ts';
 import { buildReport } from './report.ts';
 import { ctcKey } from './metrics/types.ts';
@@ -217,8 +218,14 @@ describe('F4a — every golden reference says what it is a function of', () => {
      * Without this the structural rule above could quietly stop matching
      * anything — a manifest holding only baselines would pass every assertion
      * in this test. */
-    expect(FROZEN_NETLIST_KEYS.some((k) => /^KAND_V2_\d+$/.test(k)), 'no live v2 corpus').toBe(
-      true,
+    /* M-1 — an EMPTY live corpus is a legitimate outcome (the M-1 field
+     * delivered none of 115), and then it has to be empty in the manifest as
+     * well: the generator's own bookkeeping says whether it delivered. */
+    const herkomst = JSON.parse(readFileSync(join(CASUS1_DIR, '..', 'casus1_v2_herkomst.json'), 'utf-8')) as {
+      shortlist: { bevroren: number };
+    };
+    expect(FROZEN_NETLIST_KEYS.some((k) => /^KAND_V2_\d+$/.test(k)), 'live v2 corpus vs the generator\'s record').toBe(
+      herkomst.shortlist.bevroren > 0,
     );
     expect(
       FROZEN_NETLIST_KEYS.some((k) => /^V\d+_KAND_\d+$/.test(k)),

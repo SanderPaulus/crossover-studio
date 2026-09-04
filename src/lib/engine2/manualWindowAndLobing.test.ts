@@ -30,7 +30,10 @@ import { anchoredGaps, type WayLevel } from './predesign/gaps.ts';
 import { passbandLevel } from './ingest/spl.ts';
 
 const golden = loadGolden();
-const manifest = casus1Manifest(golden);
+/* M-1 — THE GATED SET, deliberately: (h) is about a HEADER window being stripped
+ * and typed back, and the merged woofer of the default set carries no header
+ * window at all — its floor is the merge block's (`mergeBlock.test.ts`). */
+const manifest = casus1Manifest(golden, 'gated');
 const files = casus1Files(manifest);
 const geometry = casus1Geometry(golden);
 

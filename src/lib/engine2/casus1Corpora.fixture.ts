@@ -41,6 +41,7 @@ import {
   casus1Geometry,
   casus1Manifest,
   loadGolden,
+  type Casus1MeasurementSet,
   type GoldenRefs,
 } from './casus1.fixture.ts';
 import {
@@ -135,6 +136,7 @@ export const DATED_CORPORA: Record<string, { block: string; name: string }> = {
   v49: { block: 'v49_corpus', name: 'V49' },
   v50: { block: 'v50_corpus', name: 'V50' },
   v51: { block: 'v51_corpus', name: 'V51' },
+  v51b: { block: 'v51b_corpus', name: 'V51b' },
 };
 
 interface Herkomst {
@@ -206,8 +208,17 @@ export interface CorpusBank {
   report(key: string): EngineV2Report;
 }
 
-export function corpusBank(golden: GoldenRefs = loadGolden()): CorpusBank {
-  const manifest = casus1Manifest(golden);
+/**
+ * M-1 — WHICH MEASUREMENT SET THE BANK MEASURES ON. Default `'merged'`: the
+ * v2 set since M-1, what every comparison from M-1 on reads (both halves
+ * through the same path). `'gated'` is for the DATED claims of
+ * `corpusPairing.test.ts`: the V45→V47 and V30→V32 readings that demonstrate
+ * the reading rule were measured on the gated set and are pinned as numbers;
+ * re-measuring them on the merged set would move the numbers without moving
+ * the rule. A comparison that mixes the two sets is not a comparison.
+ */
+export function corpusBank(golden: GoldenRefs = loadGolden(), set: Casus1MeasurementSet = 'merged'): CorpusBank {
+  const manifest = casus1Manifest(golden, set);
   const files = casus1Files(manifest);
   const geometry = casus1Geometry(golden);
   const floorOhm = casus1AmpMinLoadOhm(golden);

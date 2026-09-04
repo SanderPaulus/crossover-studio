@@ -71,10 +71,11 @@ import {
   casus1ContinuousPowerW,
   casus1QesMultiplierMax,
   casus1TargetCurve,
+  casus1TargetCurveAt,
   loadGolden,
 } from './casus1.fixture.ts';
 import { baffleStepHz } from '../cabinet.ts';
-import { isImplemented as isImplementedCurve } from './requirements/targetCurve.ts';
+import { isImplemented as isImplementedCurve, plateauCoverage } from './requirements/targetCurve.ts';
 import { deliveredResonantDb } from './optimizer/worker.ts';
 import { buildReport, type ReportSettings } from './report.ts';
 import { ctcKey } from './metrics/types.ts';
@@ -98,7 +99,7 @@ import {
   CASUS1_LOWEST_WAY_SERIES_R_MAX_OHM,
 } from './casus1V2.fixture.ts';
 import { smoothDbGaussian } from '../bandMetrics.ts';
-import { applyTransfer, combineN, type GriddedResponse } from '../dsp.ts';
+import { applyTransfer, combineN, logspace, resampleImpedance, type GriddedResponse } from '../dsp.ts';
 import { solveNetwork } from '../network.ts';
 import { crossoverToNetlist } from '../vxpNetwork.ts';
 import type { VxpCrossover } from '../parsers/vxp.ts';
@@ -134,6 +135,17 @@ const NET_OPTIMIZER = join(HERE, '..', 'netOptimizer.ts');
 const ELECTRICAL = join(HERE, 'metrics', 'electrical.ts');
 
 const golden = loadGolden();
+/** M-1 — the generator's own record of the live corpus, for the blocks whose
+ *  claim has no subject when the field delivered nothing (115 of 115 refused). */
+const LIVE_HERKOMST = JSON.parse(readFileSync(join(CASUS1_DIR, '..', 'casus1_v2_herkomst.json'), 'utf-8')) as {
+  shortlist: { overwogen: number; bevroren: number; leverde_geen_netwerk: number };
+};
+/** M-1 — the plateau depth the case book carried from V45 to V51b, for the
+ *  blocks that need a VOICED curve to show their mechanism (the design's own
+ *  curve is flat since M-1). Read from the bridge block, never typed. */
+const PLATEAU_TOT_M1_DB = (golden.manifest_en_geometrie as unknown as {
+  gestelde_eisen: { _basplateau_2_5_tot_M1: { basplateau_offset_dB: number } };
+}).gestelde_eisen._basplateau_2_5_tot_M1.basplateau_offset_dB;
 /** Percent, for the watt tolerance class (a unit conversion, whitelisted). */
 const PERCENT_V50 = 100;
 const manifest = casus1Manifest(golden);
@@ -827,27 +839,50 @@ describe('V32 — the search gate and the file measurement agree on every frozen
      * a number finally taken where the physics is, would throw away the
      * designer's own reference design. */
     const safety = gridded.safety;
-    const lowZ = gridded.driverZ.woofer;
-    const chain = sourceProbeIndex(gridded.grid, lowZ, undefined, 'first');
+    /* M-1 — THE V34 CHAIN GRID, kept as the grid the finding was made on: the
+     * chain started at 200 Hz then (the far-field span of the gated set). The
+     * M-1 chain starts at the woofer's VALIDITY floor (20.5 Hz), so the upper
+     * reflex peak (f_p, 52 Hz) is an INTERIOR point of it: the probe lands
+     * there under both rules and reads a measurement instead of the DC limit —
+     * the chain grid and the safety grid now answer the same question, and
+     * that agreement is asserted below beside the V34 claim. */
+    const V34_CHAIN_GRID = logspace(200, 20000, 96);
+    const sweep = files.find((f) => f.entry.driver === 'woofer' && f.impedance)!.impedance!;
+    const lowZ = resampleImpedance(sweep.freq, sweep.magnitude, sweep.phaseDeg, V34_CHAIN_GRID).z;
+    const chain = sourceProbeIndex(V34_CHAIN_GRID, lowZ, undefined, 'first');
     expect(chain, 'the chain grid produced no probe at all').not.toBeNull();
     // The landing IS the window top — measured, and the whole reason V34 exists.
     expect(chain!.inBand, 'the historical rule accepted this landing').toBe(true);
-    expect(sourceProbeIndex(gridded.grid, lowZ, undefined, 'both')!.inBand).toBe(false);
-    expect(gridded.grid[chain!.idx]).toBeGreaterThan(SOURCE_PROBE_WINDOW_TOP_HZ);
+    expect(sourceProbeIndex(V34_CHAIN_GRID, lowZ, undefined, 'both')!.inBand).toBe(false);
+    expect(V34_CHAIN_GRID[chain!.idx]).toBeGreaterThan(SOURCE_PROBE_WINDOW_TOP_HZ);
+    // On the M-1 chain the peak is an interior point under BOTH rules, within a grid step of the safety grid's landing.
+    const m1 = sourceProbeIndex(gridded.grid, gridded.driverZ.woofer, undefined, 'both');
+    expect(m1!.idx).toBeGreaterThan(0);
+    expect(m1!.inBand).toBe(true);
+    expect(gridded.grid[m1!.idx]).toBeLessThan(SOURCE_PROBE_WINDOW_TOP_HZ);
 
     const onSafety = sourceProbeIndex(safety.freqs, safety.z.woofer, undefined, 'both');
     expect(onSafety!.inBand, 'the safety grid cannot probe the low driver either').toBe(true);
-    expect(safety.freqs[onSafety!.idx]).toBeLessThan(gridded.grid[0]);
+    expect(safety.freqs[onSafety!.idx]).toBeLessThan(V34_CHAIN_GRID[0]);
+    // ...and the M-1 chain grid, which reaches the validity floor, lands where the safety grid lands.
+    expect(Math.abs(Math.log2(gridded.grid[m1!.idx] / safety.freqs[onSafety!.idx]))).toBeLessThan(0.15);
 
     const rows: string[] = [];
     for (const key of NETLIST_KEYS) {
       const parts = casus1Parts(key);
       const dc = seriesPathResistanceOhm(parts);
       const onGrid = sourceResistanceOhm(parts, {
+        grid: V34_CHAIN_GRID,
+        driverZ: { ...gridded.driverZ, woofer: lowZ },
+        edgeRule: 'both',
+      });
+      const onM1Grid = sourceResistanceOhm(parts, {
         grid: gridded.grid,
         driverZ: gridded.driverZ,
         edgeRule: 'both',
       });
+      expect(onM1Grid, `${key}: the M-1 chain grid produced no reading`).not.toBeNull();
+      expect(onM1Grid, `${key}: the M-1 chain grid fell back to the DC limit`).not.toBe(dc);
       const measured = sourceResistanceOhm(parts, {
         grid: safety.freqs,
         driverZ: safety.z,
@@ -855,6 +890,10 @@ describe('V32 — the search gate and the file measurement agree on every frozen
       });
       expect(onGrid, `${key}: the chain grid answered something other than the DC limit`).toBe(dc);
       expect(measured, `${key}: the safety grid produced no reading`).not.toBeNull();
+      // M-1: two grids, one interior peak, one Thevenin reading — within a coarse-grid step of each other.
+      expect(Math.abs(onM1Grid! - measured!), `${key}: chain grid ${onM1Grid} vs safety grid ${measured}`).toBeLessThanOrEqual(
+        Math.max(ampFloorSlackOhm(STATED_FLOOR_OHM!), 0.1 * measured!),
+      );
       rows.push(`${key}: DC ${dc?.toFixed(3)} Ω, measured ${measured!.toFixed(3)} Ω`);
     }
     // ...and the two are not the same number everywhere, or "measured" would be
@@ -1486,9 +1525,27 @@ describe('V36 — de dissipatie van élke bevroren netlist, en de noemer van de 
 const LEGACY_SMOOTH_OCT = 1 / 12;
 
 /** De band waarop de v2-route casus 1 beoordeelt — uit de fixture, niet hier. */
-const JUDGED_BAND = CASUS1_V2_BAND_HZ;
-
-const v38fixChain = casus1ChainInput(manifest, files, golden);
+/* M-1 — THE V38-FIX CHAIN AND BAND, kept as the ones the finding was measured
+ * on: the chain of 200–20 000 Hz in 96 points and the judged band from the
+ * gated set's gate floor (397 Hz) to 19 500 Hz. The M-1 chain starts at the
+ * woofer's f_p and its band runs from there; on it the ranking claim below
+ * reads DIFFERENTLY (measured: the design the judgement finds worst lands last
+ * on the search measure as well), because the bass band the search now sees
+ * carries the reflex hump and the roll-off of every netlist alike. The
+ * mechanism V38-fix repaired is a property of the smoothing kernel at a band
+ * edge, and it is demonstrated on the band it was found on. */
+const V38_ERA_GRID = logspace(200, 20000, 96);
+const JUDGED_BAND: [number, number] = [397, 19500];
+void CASUS1_V2_BAND_HZ;
+/* ...and the GATED measurement set, for the same reason: the demonstration is
+ * reproduced on the data it was made on. On the merged set (woofer and mid
+ * NF/FF-merged below the splice) the worst-judged design lands in the MIDDLE of
+ * the search-measure ranking rather than in its better half — the sum below
+ * 800 Hz is a different sum — and a claim about a smoothing kernel at a band
+ * edge is not made sharper by re-measuring it on a set whose band edge moved. */
+const v38Manifest = casus1Manifest(golden, 'gated');
+const v38Files = casus1Files(v38Manifest);
+const v38fixChain = casus1ChainInput(v38Manifest, v38Files, golden, V38_ERA_GRID);
 
 /** De takken zoals de keten ze aan de tuner geeft. */
 const V38FIX_BRANCHES: { model: string; response: GriddedResponse }[] = [
@@ -2359,7 +2416,13 @@ describe('V45 — the delivered network is tested against the stated LF budget',
      * nothing on this casus today (V45, open point) — and the moment it stops
      * being true, this assertion is where it shows. */
     const live = FIELD.filter((f) => /^KAND_V2_\d+$/.test(f.key));
-    expect(live.length).toBeGreaterThan(0);
+    /* M-1 — an empty live corpus (115 of 115 refused) has no delivered network
+     * to test the budget on; the claim then rests on the generator's record. */
+    if (live.length === 0) {
+      expect(LIVE_HERKOMST.shortlist.bevroren).toBe(0);
+      expect(LIVE_HERKOMST.shortlist.leverde_geen_netwerk).toBe(LIVE_HERKOMST.shortlist.overwogen);
+      return;
+    }
     for (const f of live) {
       expect(f.lfResonantDb, `${f.key}: no resonant figure`).not.toBeNull();
       expect(
@@ -2630,7 +2693,11 @@ describe('V47 — the stated drive limit on a driver\'s own resonance', () => {
      * here would mean a netlist reached the shortlist that the gate should have
      * refused, which is a defect in the route rather than in the corpus. */
     const live = DRIVE.filter((d) => /^KAND_V2_\d+$/.test(d.key));
-    expect(live.length).toBeGreaterThan(0);
+    /* M-1 — see the V45 block: an empty live corpus has nothing to clear. */
+    if (live.length === 0) {
+      expect(LIVE_HERKOMST.shortlist.bevroren).toBe(0);
+      return;
+    }
     for (const d of live) {
       expect(
         d.db,
@@ -3093,7 +3160,13 @@ describe('V51 — no level work on the lowest way: what the configuration asks, 
     /* V51b — the stated MAXIMUM beside the prohibition, with its reason, and
      * the rule the two produce: the maximum is the narrower statement and wins.
      * Read through the same helper every measuring surface reads. */
-    expect(STATED.gestelde_eisen.max_serie_R_laagste_weg_ohm).toBe(CASUS1_LOWEST_WAY_SERIES_R_MAX_OHM ?? undefined);
+    /* M-1 — the maximum is WITHDRAWN (null, with the reason beside it): Sander's
+     * hypothesis is that a flat plateau on the merged set needs no level work on
+     * the lowest way, so the effective rule is V51's prohibition again. */
+    expect(STATED.gestelde_eisen.max_serie_R_laagste_weg_ohm ?? null).toBe(CASUS1_LOWEST_WAY_SERIES_R_MAX_OHM);
+    if (CASUS1_LOWEST_WAY_SERIES_R_MAX_OHM === null) {
+      expect(String((STATED.gestelde_eisen as { max_serie_R_laagste_weg_ingetrokken_bij?: string }).max_serie_R_laagste_weg_ingetrokken_bij ?? '')).toMatch(/M-1/);
+    }
     if (CASUS1_LOWEST_WAY_SERIES_R_MAX_OHM !== null) {
       expect(CASUS1_LOWEST_WAY_SERIES_R_MAX_OHM).toBeGreaterThan(0);
       expect(STATED.gestelde_eisen.max_serie_R_laagste_weg_motivering ?? '').toMatch(/DCR/);
@@ -3132,23 +3205,43 @@ describe('V51 — no level work on the lowest way: what the configuration asks, 
     expect(xs[0]).toBeGreaterThan(0);
     const gaps = (golden as unknown as { verankerde_gaps_dB: { woofer_tov_mid: number } }).verankerde_gaps_dB;
     expect(Math.abs(xs[0] - gaps.woofer_tov_mid)).toBeLessThanOrEqual(TOL_DB_V51);
-    // Two equal drivers in series would deliver 20·log10(2) of it; the baffle step is the target curve's transition.
+    // Two equal drivers in series would deliver 20·log10(2) of it.
     expect(REF[0].levelWork!.seriesWouldDeliverDb).toBeCloseTo(20 * Math.log10(2), 6);
-    expect(REF[0].levelWork!.stepHz).toBeCloseTo(baffleStepHz(STATED.geometrie.baffle_mm.breedte)!, 6);
+    /* M-1 — the design states a FLAT plateau (0 dB), so the block carries no
+     * transition frequency and says so; with the dated V45–V51b curve on the
+     * same set the transition is the cabinet's, derived and nothing else. */
+    expect(REF[0].levelWork!.stepHz).toBeNull();
+    expect(REF[0].levelWork!.sentence).toMatch(/No bass-plateau target curve is stated/);
+    const dated = report('HUIDIG', { ...BASE, targetCurve: casus1TargetCurveAt(PLATEAU_TOT_M1_DB, golden) }).predesign.levelWork!;
+    expect(dated.stepHz).toBeCloseTo(baffleStepHz(STATED.geometrie.baffle_mm.breedte)!, 6);
   });
 
-  it('the plateau is NOT judged on this measurement set, and the block says so from its own numbers', () => {
-    /* Item 4 of V51: the judged band starts at the lowest way's validity floor,
-     * a fraction of an octave below the cabinet's baffle step, so the stated
-     * plateau lies outside it. Asserted from the report's own reading — no
-     * frequency is written here. */
+  it('the plateau: flat since M-1 (nothing to judge), and the dated curve shows WHICH band reaches it', () => {
+    /* Item 4 of V51 read: the judged band starts at the lowest way's validity
+     * floor, a fraction of an octave below the baffle step, so the stated
+     * plateau lay outside it. M-1 changes both halves. (a) The design states a
+     * FLAT plateau, so the block has no plateau to judge and says so. (b) With
+     * the dated V45–V51b curve the REPORT's common band still starts at the
+     * TWEETER's gate (the tweeter is not merged), a fraction of an octave under
+     * the step, and the report still cannot judge it — while the SEARCH's band
+     * (`CASUS1_V2_BAND_HZ`, from the lowest way's f_p on the merged set)
+     * reaches three octaves below the step and would. Asserted from the
+     * readings themselves — no frequency is written here. */
     const p = REF[0].levelWork!.plateau!;
-    expect(p.applicable).toBe(true);
+    expect(p.applicable).toBe(false);
     expect(p.judged).toBe(false);
-    expect(p.octavesBelowStep!).toBeGreaterThan(0);
-    expect(p.octavesBelowStep!).toBeLessThan(1);
-    expect(p.note).toMatch(/NOT/);
-    expect(p.note).toMatch(/no assumption/);
+    expect(p.note).toMatch(/flat target/);
+    const dated = casus1TargetCurveAt(PLATEAU_TOT_M1_DB, golden);
+    const inReport = report('HUIDIG', { ...BASE, targetCurve: dated }).predesign.levelWork!.plateau!;
+    expect(inReport.applicable).toBe(true);
+    expect(inReport.judged).toBe(false);
+    expect(inReport.octavesBelowStep!).toBeGreaterThan(0);
+    expect(inReport.octavesBelowStep!).toBeLessThan(1);
+    expect(inReport.note).toMatch(/no assumption/);
+    const inSearch = plateauCoverage(dated, CASUS1_V2_BAND_HZ);
+    expect(inSearch.applicable).toBe(true);
+    expect(inSearch.judged).toBe(true);
+    expect(inSearch.octavesBelowStep!).toBeGreaterThan(inReport.octavesBelowStep! + 1);
   });
 
   it('THE COUNTER-PROOF: the reference filters and every V50-era netlist carry level work on the lowest way', () => {
@@ -3263,7 +3356,11 @@ describe('V51 — no level work on the lowest way: what the configuration asks, 
 });
 
 describe('V45 — the anchor is taken AFTER baffle step, and the bridge holds', () => {
-  const CURVE = casus1TargetCurve(golden);
+  /* M-1 — the design's OWN curve is flat now (a stated plateau of 0 dB), so
+   * these claims are made on the DATED V45–V51b curve: the mechanism A5e.2
+   * closed has to keep working whether or not a design chooses to use it, and
+   * a curve of depth 0 cannot show that it does. */
+  const CURVE = casus1TargetCurveAt(PLATEAU_TOT_M1_DB, golden);
 
   it('the target curve is evaluable, and its step frequency is DERIVED', () => {
     /* P6, as a test. The depth is stated and the frequency is not: it is
@@ -3273,11 +3370,13 @@ describe('V45 — the anchor is taken AFTER baffle step, and the bridge holds', 
     expect(isImplementedCurve(CURVE)).toBe(true);
     const width = golden.manifest_en_geometrie.geometrie.baffle_mm!.breedte;
     expect(CURVE.stepHz).toBeCloseTo(baffleStepHz(width)!, 12);
-    expect(CURVE.plateauDepthDb).toBe(
-      (golden.manifest_en_geometrie as unknown as {
-        gestelde_eisen: { basplateau_offset_dB: number };
-      }).gestelde_eisen.basplateau_offset_dB,
-    );
+    expect(CURVE.plateauDepthDb).toBe(PLATEAU_TOT_M1_DB);
+    // ...and the design's own stated plateau is 0 = flat (M-1).
+    expect(casus1TargetCurve(golden).type).toBe('flat');
+    expect(
+      (golden.manifest_en_geometrie as unknown as { gestelde_eisen: { basplateau_offset_dB: number } }).gestelde_eisen
+        .basplateau_offset_dB,
+    ).toBe(0);
   });
 
   it('it moves the anchored gaps, and it moves them in OPPOSITE directions', () => {

@@ -66,7 +66,7 @@ export interface ValidityInterval {
    * consumers must be able to tell them apart — which is also what the
    * anchored-gap block needs in order to flag a level computed on such a band.
    */
-  floorProvenance: WindowProvenance | 'ffnf' | 'not-gated' | 'none';
+  floorProvenance: WindowProvenance | 'ffnf' | 'not-gated' | 'none' | 'merge-block';
   /** Which detector set the top edge. */
   toReason: string;
   /**
@@ -371,6 +371,9 @@ export function validityOf(input: ValidityInput): ValidityInterval {
     return v;
   }
 
+  // A declared NF/FF MERGE (M-1): not a gated measurement below its splice.
+  if (entry.header?.merge) return mergedValidity(entry, extent, entry.header.merge, input.ffnf);
+
   // FF / GP — the gated cases.
   const hf = headerFloor(entry);
   const estimators: EstimatorStamp[] = [];
@@ -449,6 +452,110 @@ export function validityOf(input: ValidityInput): ValidityInterval {
     fineDetailFromHz,
     notes,
     estimators,
+  };
+}
+
+/**
+ * M-1 — THE VALIDITY OF A FILE THAT DECLARES ITSELF AN NF/FF MERGE.
+ *
+ * Below its splice such a file is the near field with a step model on it,
+ * and above it the gated far field: neither half is what the gate branch
+ * above assumes, so the rank order of A5b.1 gets a fourth line for it —
+ *
+ *   (0) A DECLARED MERGE states its own floor (`Valid from`), and that floor
+ *       is BINDING the way a header floor is: it came with the file, from
+ *       whoever made the merge, and nothing here may relax it (a stated
+ *       ceiling likewise only narrows). Provenance `merge-block`, so every
+ *       reader downstream can see that the bottom edge is a statement about
+ *       a merge and not a window somebody measured.
+ *
+ * The advisory FF/NF detector ABSTAINS on a merge, and that is load-bearing:
+ * the file's low end was BUILT from the near field it would be compared
+ * against, so the residual it would fit is the merge's own step model plus
+ * whatever port term was summed in — a fit of the recipe against its own
+ * ingredients, which can raise a floor for no measurement reason at all.
+ *
+ * Fine structure: the far-field half keeps the far field's 2/T, read from the
+ * `Merge FF window` field when the block carries it; below the splice the
+ * near field is not windowed, but ONE number has to stand for the file and
+ * the conservative one is the far field's. A block without that field yields
+ * no fine-detail floor rather than a guessed one.
+ *
+ * A merge that declares itself but states NO `Valid from` has an UNKNOWN
+ * floor — reported as such, exactly as a gated file without window fields is.
+ */
+function mergedValidity(
+  entry: ManifestEntry,
+  extent: [number, number],
+  merge: NonNullable<ManifestEntry['header']>['merge'] & object,
+  ffnf: BaffleStepFit | null | undefined,
+): ValidityInterval {
+  const notes: string[] = [];
+  const stated = entry.header?.statedValidity;
+  const from = stated?.fromHz;
+  const to = stated?.toHz;
+  const recipe =
+    `${merge.nfSource ?? 'a near field'} below the splice` +
+    (merge.spliceBandHz ? ` (${merge.spliceBandHz[0]}–${merge.spliceBandHz[1]} Hz)` : '') +
+    `, ${merge.ffSource ?? 'the gated far field'} above it` +
+    (merge.stepModel ? `; step model ${merge.stepModel}` : '') +
+    (merge.portModel ? `; port ${merge.portModel}` : '');
+  let fromHz: number | null = null;
+  let fromReason: string;
+  let floorProvenance: ValidityInterval['floorProvenance'] = 'none';
+  if (from !== undefined && from > 0) {
+    fromHz = Math.max(extent[0], from);
+    floorProvenance = 'merge-block';
+    fromReason =
+      `declared ${merge.kind} merge, valid from ${from.toFixed(1)} Hz as its merge block states — ${recipe}` +
+      (merge.floorReason ? `. Floor reason: ${merge.floorReason}` : '');
+  } else {
+    fromReason =
+      `declared ${merge.kind} merge WITHOUT a stated "Valid from" — the floor is UNKNOWN, not absent; ` +
+      'everything that needs it stays off';
+    notes.push(
+      'This file declares itself an NF/FF merge but states no validity floor. A merge carries no gate ' +
+        'to derive one from, so no metric may use it below an unknown limit — add "Valid from = … Hz" ' +
+        'to its merge block.',
+    );
+  }
+  const toHz = to !== undefined && to > 0 ? Math.min(extent[1], to) : extent[1];
+  const toReason =
+    to !== undefined && to > 0 && to < extent[1]
+      ? `valid to ${to.toFixed(0)} Hz as the merge block states`
+      : 'end of sweep (the far-field half above the splice runs to the top of the file)';
+  const t = merge.ffWindow?.effectiveWindowMs;
+  const fineDetailFromHz = t !== undefined && t > 0 ? HEADER_FLOOR_TRUSTED_OVER_T / (t / MS_PER_S) : null;
+  if (fineDetailFromHz === null) {
+    notes.push(
+      'The merge block does not carry the far-field window of its upper half ("Merge FF window"), ' +
+        'so no fine-detail floor can be derived for it.',
+    );
+  } else {
+    notes.push(
+      `Fine structure is trusted from ${fineDetailFromHz.toFixed(0)} Hz (${HEADER_FLOOR_TRUSTED_OVER_T}/T of ` +
+        `the far-field half's window, ${t!.toFixed(3)} ms); below the splice the near field is not ` +
+        'windowed, but one number stands for the file and the conservative one is the far field\'s.',
+    );
+  }
+  if (ffnf) {
+    notes.push(
+      'The advisory FF/NF baffle-step detector (A5b.1ii) is NOT applied: this file is itself an NF/FF ' +
+        'merge, so the residual it would fit is the merge\'s own step model against the near field it ' +
+        'was built from. Its floor is the merge block\'s and stands on its own.',
+    );
+  }
+  if (merge.status) notes.push(`Merge status: ${merge.status}.`);
+  if (merge.prediction) notes.push(`Merge prediction: ${merge.prediction}.`);
+  return {
+    fromHz,
+    toHz,
+    fromReason,
+    floorProvenance,
+    toReason,
+    fineDetailFromHz,
+    notes,
+    estimators: [stamp(EXTRACTOR_HEADER)],
   };
 }
 

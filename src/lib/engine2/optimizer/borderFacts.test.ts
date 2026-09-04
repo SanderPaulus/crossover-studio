@@ -399,7 +399,9 @@ describe('F4b leak 2 — a bound does not judge outside the A5b.1 interval', () 
 
 describe('F4b leak 2 on casus 1 — the A5b.1 intervals cross intact', () => {
   const golden = loadGolden();
-  const manifest = casus1Manifest(golden);
+  /* M-1 — the GATED set: the claim is that the HEADER gate floor the reference
+   * records crosses the border; the default set's woofer floor is a merge block's. */
+  const manifest = casus1Manifest(golden, 'gated');
   const files = casus1Files(manifest);
   const report = buildReport({
     manifest,

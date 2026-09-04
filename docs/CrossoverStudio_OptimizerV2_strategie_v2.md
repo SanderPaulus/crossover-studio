@@ -208,7 +208,7 @@ Prototype-demonstratie op casus 1 (alle parameters louter uit bestanden + manife
 
 Alle extractoren leiden hun banden en grenzen af uit de data zelf (P6):
 
-1. **Geldigheidsgrenzen — drie detectoren, in rangorde.** (i) *Header-vloer (hard, automatisch):* effectieve venstertijd T = rechter venster − referentietijd uit de bestandsheader; f ≥ 1/T is een absoluut minimum, fijnstructuur pas vertrouwd vanaf ~2/T. (ii) *FF/NF-modeltest (adviserend):* het FF−NF-verschil moet passen op een fysisch baffle-step-model (shelf, diepte ≤ ~7 dB, begrensde exponent), gefit uitsluitend binnen de Keele-geldige NF-band; blijvend residu markeert de kapotte zone. Let op: het model kan gate-afval deels absorberen — nooit boven de header-vloer laten versoepelen. (iii) *Detail-instorting (zwak adviserend):* vereist een SNR-wacht en kan fysiek gladde responsies niet van gate-gladde onderscheiden. Eindoordeel per meting: **max(header-vloer, modeldetector)**. Nabij-veld: Keele-grens 4311/D_inch en mic-afstandseis 0,11×straal. Alle overige metrieken clippen hun banden op deze grenzen; elke nieuwe of vervangende meting brengt zijn eigen grenzen mee via zijn eigen headers — de banden bewegen automatisch mee, in beide richtingen.
+1. **Geldigheidsgrenzen — drie detectoren, in rangorde.** (i) *Header-vloer (hard, automatisch):* effectieve venstertijd T = rechter venster − referentietijd uit de bestandsheader; f ≥ 1/T is een absoluut minimum, fijnstructuur pas vertrouwd vanaf ~2/T. (ii) *FF/NF-modeltest (adviserend):* het FF−NF-verschil moet passen op een fysisch baffle-step-model (shelf, diepte ≤ ~7 dB, begrensde exponent), gefit uitsluitend binnen de Keele-geldige NF-band; blijvend residu markeert de kapotte zone. Let op: het model kan gate-afval deels absorberen — nooit boven de header-vloer laten versoepelen. (iii) *Detail-instorting (zwak adviserend):* vereist een SNR-wacht en kan fysiek gladde responsies niet van gate-gladde onderscheiden. Eindoordeel per meting: **max(header-vloer, modeldetector)**. Nabij-veld: Keele-grens 4311/D_inch en mic-afstandseis 0,11×straal. Alle overige metrieken clippen hun banden op deze grenzen; elke nieuwe of vervangende meting brengt zijn eigen grenzen mee via zijn eigen headers — de banden bewegen automatisch mee, in beide richtingen. **Verklaarde NF/FF-merge (M-1, 04-09-2026):** een responsbestand dat zichzelf in zijn kop als merge verklaart (`Merge = NF/FF`, `Valid from = … Hz`, plus de mergevelden: NF- en FF-bron, het venster van de FF-helft, splice-band en -fit, stapmodel, poortmodel, predictie, status — veldnamen in ARTA-vorm, nooit proza) is onder zijn splice geen gepoorte meting maar nabij veld met een stapmodel, en krijgt daarom een eigen regel in de rangorde: (0) *de gestelde vloer van de merge is bindend* zoals een header-vloer bindend is (niets versoepelt hem; een gesteld plafond vernauwt alleen), met herkomst `merge-block` zichtbaar op elke afgeleide; de FF/NF-modeltest ONTHOUDT zich op zo'n bestand (het residu dat hij zou fitten is het eigen stapmodel tegen het nabije veld waaruit het gebouwd is); fijnstructuur vanaf 2/T van de FF-helft. `Valid from` op een gepoort bestand zonder `Merge =` zet geen vloer — A5b.1(i) blijft ook langs die weg hard. Een merge die geen vloer stelt heeft een ONBEKENDE vloer, geen geraden.
 2. **Breakup-scan.** Afwijking t.o.v. fractionele-octaaf-trend (breedte instelbaar); piekdetectie met Q-schatting via de −3 dB-punten van de rimpel. Voedt M-H.
 3. **Diffractie-rimpel.** RMS-rimpel t.o.v. trend over de doorlaatband + FFT-periodiciteit → dominante omweglengtes in mm, te toetsen aan kastgeometrie.
 4. **Directiviteit uit 0°/θ-paren.** Voedt M-G; toont waar het gedrag van kolbentheorie afwijkt (waveguides, pods). Levert bovendien de **effectieve stralerdiameter** per frequentie (kolbenmodel-fit op D(f)): voedt de Keele-grens datagedreven i.p.v. via handinvoer, en markeert conus-ontkoppeling (waar het kolbenmodel — en daarmee elke symmetrie-aanname — ophoudt te gelden).
@@ -4935,6 +4935,411 @@ getal is — Sander stelt; de tabel geeft per kandidaat Y. (3) Y als zoekgrens i
 de tuner leest nu het maximum als box en de vloer als barrière, en een kandidaat die 1,03 nodig heeft
 verliest op 0,03 Ω. (4) De V51-openstaande punten (hermeting van het wooferpaar, `qesMultiplierMax` per weg,
 de parallelle/serie-weerstand als topologie-element voor de wegen waar niveauwerk WEL mag) staan er nog.
+
+### M-1 — de gemergede meetset, het plateau op 0 dB en het veld met LR4 én LR2 op de W-M-as (04-09-2026, **BREAKING, alleen v2-runs**)
+
+**AANLEIDING.** Van F1 tot V51b liep de v2-route op de GEPOORTE meetset van 22-08-2026: vijf ver-veldbestanden
+met dezelfde 2,5 ms-gate, dus een geldigheidsvloer van 396,7 Hz op woofers, mid en tweeter tegelijk. Daaruit
+volgde alles wat het casusboek over het laag zei: een W-M-venster van 397–549 Hz dat op MEETGELDIGHEID sloot
+en niet op f_s van de mid, een basplateau dat GESTELD moest worden (−2,5 dB, V45) omdat het niet te meten was,
+en een X (hoeveel de woofer boven het anker staat) die alleen in het overnamegebied gemeten kon worden (1,33 dB,
+V51). Sander heeft de woofers in augustus zelf NF/FF-gemerged — eigen nabij veld plus ½ poort (g 0,41),
+baffle-step-MODEL shelf 6 dB @ 440 Hz met diffractie-kruiscontrole ≤ 0,6 dB, splice gefit in 500–800 Hz, met een
+milde inspeel-PREDICTIE (Cms +5,2 %, Δ ≤ 0,07 dB, nul boven 150 Hz) — en stelt drie dingen tegelijk: de v2-route
+leest die merges en een op dezelfde manier gemergede mid; het plateau gaat naar **0,0 dB** (het filter ontwerpt op
+een vlak anechoïsch plateau, de in-room Harman-vorm komt uit kamer en wandplaatsing en niet uit het filter — de
+−2,5 was de klassieke deels-gecompenseerde baffle step en vervalt); en zijn hypothese is dat er met een vlak plateau
+en de bredere meetband **geen niveauwerk op de laagste weg** nodig is (`lowestWayLevelWork: 'none'`; het V51b-maximum
+van 1,0 Ω is ingetrokken). Het veld loopt over het geopende venster, op de W-M-as met LR4 én LR2.
+
+**STAP 1 — GELDIGHEID LEESBAAR GEMAAKT: EEN BLOK, GEEN PROZA-PARSER (de UI-1-les).** Sanders bestandskoppen zijn
+proza met asterisken ("splice: gain -7.92 dB, delay 0.5433 ms (fit 500-800 …)") en `parseArtaHeader` leest
+VELDNAMEN. Een parser die proza leest zou betekenen dat een willekeurige commentaarregel een geldigheidsvloer
+kan zetten, en die vloer is A5b.1(i). Elk gemerged bestand draagt daarom een gestructureerd blok in dezelfde
+`Naam = waarde`-vorm als een ARTA-header (`scripts/annotate-casus1-merge.ts`, dat de data letterlijk kopieert en
+natelt — byte-identiek, nagemeten met `diff`): `Merge = NF/FF`, `Valid from = 20.5 Hz`, `Valid to = 20000 Hz`,
+`Merge NF source`, `Merge FF source`, `Merge FF window = reference 2.5 ms, right 5.021 ms, Tukey 0.25`,
+`Merge splice band = 500-800 Hz`, `Merge splice fit = gain −7.92 dB, delay 0.5433 ms`, `Merge step model`,
+`Merge port model`, `Merge prediction`, `Merge floor reason`, `Merge status = PLACEHOLDER tot groundplane`.
+Sanders proza blijft erboven staan, woordelijk. **Twee keuzes daarin, en beide zijn bewust.** (a) `Valid to`
+is het einde van de sweep en NIET Sanders "geldigheidsplafond 550 Hz": dat getal is het KRUISPLAFOND van de
+woofer (eerste breakup / 3 — de engine leidt het zelf af, 549,7 Hz) en geen meetgeldigheid; had het bestand op
+550 Hz opgehouden geldig te zijn, dan had de breakup-scan de piek van 1396 Hz nooit gezien en was juist dat plafond
+verdwenen. Het staat als `Merge usable ceiling` in het blok: documentatie, geen grens. (b) Het venster van de
+ver-veldhelft reist als MERGE-veld en niet als `Reference time`/`Right window`, want dan zou de gate-vloer van de
+FF-helft (1/T = 396,7 Hz) over de hele merge gelden; wat ervan overblijft is de fijnstructuurvloer 2/T = 793 Hz,
+conservatief op het hele bestand toegepast.
+
+**DE ENGINE-WIJZIGING — het lezen van het blok, en niets anders.** `parseArtaHeader` kent de veldnamen
+(`ArtaHeader.merge`, `.statedValidity`; `MergeBlock` als type), en `validityOf` neemt voor een bestand dat
+`Merge = …` draagt een eigen pad (`mergedValidity`): de vloer is de gestelde `Valid from`, provenance
+**`merge-block`** (een vierde regel in de rangorde van A5b.1: een verklaarde merge stelt zijn eigen vloer en die is
+bindend zoals een header-vloer bindend is — niets versoepelt hem, een gesteld plafond vernauwt alleen); de
+adviserende FF/NF-detector ONTHOUDT ZICH (het bestand IS de merge; het residu dat hij zou fitten is het eigen
+stapmodel tegen het nabije veld waaruit het gebouwd is — een fit van het recept tegen zijn ingrediënten, die om
+geen enkele meetreden een vloer kan optillen); `Valid from` op een GEPOORT bestand (zonder `Merge =`) blijft data
+en zet geen vloer (A5b.1(i) niet via de achterdeur); een merge zonder `Valid from` heeft een ONBEKENDE vloer, geen
+geraden. `validity-header` 1.0 → 1.1 (MINOR: de getallen van een gemerged bestand bewegen, de vorm groeide).
+Geen metriek, geen poort en geen inversie is aangeraakt; `mergeBlock.test.ts` draagt de claims, met de tegenproef
+dat dezelfde fit op een gepoort bestand de vloer WEL optilt.
+
+**STAP 2 — DE MID GEMERGED, met dezelfde stappen (`scripts/merge-casus1-mid.ts`).** `mid_near.txt` op het
+raster van `mid_hor_0.txt` (log-f-interpolatie, fase uitgevouwen, `resample`); het stapmodel op het NF-deel:
+**shelf 6 dB @ 440 Hz** (Sanders getal; de kastafleiding geeft 442,3 Hz, 0,008 octaaf verderop) in de vorm die
+de app zelf tekent (`baffleStepShelfDb`, A5e.2) en als **minimum-fase** (cepstrum op 2^20 punten tot fs/2 = 24 kHz)
+— een shelf zonder fase zou de mid tot ~20° uit de fase van de woofers zetten, die een complexe modelstap
+dragen, precies rond de W-M-overname; GEEN poort (gesloten pod, niets verzonnen); de splice gefit in 500–800 Hz
+door `mergeNearFar`, de eigen merge van de app (niveau als mediaan, zuivere vertraging plus constante offset
+als kleinste kwadraten op het faseverschil, raised-cosine-crossfade in het complexe domein), met de shelf al op
+het NF-deel gezet en `baffleStepHz: 0`. Geldig VANAF **60 Hz**, uit de pod: f_c = 88,8 Hz, op 60 Hz zit de mid
+−7,0 dB onder zijn doorlaatband op de tweede-orde flank (−2,1 dB op f_c) en de 1/12-octaaf-raggedness van het
+nabije veld loopt eronder op van 0,12 dB (boven 120 Hz) via 0,15 (60 Hz) naar 0,42 dB (30 Hz) — dáár houdt het
+NF op te dragen. Geldig TOT het einde van de sweep (boven de splice is het bestand het gepoorte ver veld; FF-vloer
+396,7 Hz, Keele-grens 1078 Hz voor 4″ — Sanders ~770 Hz is conservatiever, en 500–800 ligt binnen beide).
+**Merge-parameters:** niveau −13,68 dB, vertraging 0,5819 ms, offset −87,0°, fase-residu 2,45° rms.
+**Die offset is een bevinding:** de FF/NF-faserelatie van de mid in 500–800 Hz is GEEN zuivere vertraging — een
+fit met alleen een vertraging laat 9° rms over (offset+helling: 2,5°), en dat is de gepoorte ver-veldfase vlak
+boven haar eigen vloer (−13° rond 750 Hz t.o.v. de rechte lijn). `mergeNearFar` past de offset toe zoals hij
+het altijd al doet; het staat in het blok.
+
+**DE DRIE CONTROLES (afgedrukt, niet aangenomen).** (1) *Splice-band* |FF − (NF·shelf + niveau)| over 500–800 Hz:
+mediaan 0,40 dB, p95 1,37, max 1,58 (bereik −1,58..+0,70 dB) — **NIET binnen ±0,5 dB op p95**, en dat is dezelfde
+orde als Sanders eigen woofer-merges ("rest −1,57..+1,77 dB"): het is de diffractierimpel van het gepoorte ver
+veld vlak boven zijn vloer, niet een fout van de fit (de mediaan zit wél binnen). (2) *Stap-vorm gelijk aan die
+van de woofers in 150–400 Hz*: de EMPIRISCHE stap van elk woofer-mergebestand (merged − NF − splice-gain uit zijn
+eigen kop, 1/6 octaaf gegladd) naast de shelf die de mid kreeg:
+
+  | f Hz | shelf mid | woofer_up | woofer_down |
+  | --- | --- | --- | --- |
+  | 150 | −4,47 | −3,88 | −3,99 |
+  | 200 | −4,13 | −3,04 | −3,17 |
+  | 250 | −3,83 | −3,36 | −3,22 |
+  | 300 | −3,57 | −4,46 | −4,35 |
+  | 350 | −3,34 | −3,39 | −3,43 |
+  | 400 | −3,14 | −2,12 | −2,12 |
+
+  Gemiddeld +0,42 / +0,40 dB (de woofer-stap is 0,4 dB ONDIEPER dan een 6 dB-shelf), spreiding 0,64 / 0,59 dB,
+  max |verschil| 1,08 / 1,02 dB — **NIET binnen ±0,5 dB per punt**, wél in helling (beide ~1,3 dB over
+  150–400). De 0,4 dB is Sanders pipeline zelf (het poortmodel en zijn nabije veld dragen bij die niet in de repo
+  staan; zijn shelf-vorm is niet één op één de eerste-orde dB-shelf van de app), de spreiding is de fijne rimpel
+  van het nabije veld die zijn merge ongegladd overneemt (correlatie 0,87 met de rimpel van het rauwe NF). Niet
+  gecorrigeerd: Sander stelde 6 dB @ 440 Hz, en een shelf die op de empirie van zijn woofers gefit wordt zou de
+  stap-diepte als meting presenteren (wat de opdracht verbiedt). (3) *De sweep ongewijzigd*: `mid.lim` is niet
+  aangeraakt (git-status schoon). Het blok van de mid noemt geen predictie ("none") en geen poort.
+
+**STAP 3 — MANIFEST EN EISEN.** `basplateau_offset_dB: 2,5 → 0,0` (Sander, 04-09-2026; de vorige toestand met haar
+"waarom niet te meten" staat als brug in `_basplateau_2_5_tot_M1`). Een gestelde 0 is in de fixture de VLAKKE
+referentie (`casus1BassPlateauDb` accepteert 0; `casus1TargetCurve` → `FLAT_TARGET`, want een `bass-plateau` van
+diepte 0 is een shelf zonder diepte en het vocabulaire weigert die — P4), het rapport zegt "flat", en de
+verankerde gaps vergelijken de kale gemeten niveaus, wat bij een vlak plateau precies de bedoeling is.
+`max_serie_R_laagste_weg_ohm: 1,0 → null` (met `max_serie_R_laagste_weg_ingetrokken_bij`), dus
+`casus1LowestWayLevelWorkRule` levert weer V51's `'none'`; de variant `series-r-max` blijft in engine en
+formulier bestaan. Vloer 2,6, opslingering 1,4, Q_es 2,4, M-C tweeter −20 / mid afgeleid, weerstandspoort 10 W
+thermisch: ongewijzigd. **De fixture kent sinds M-1 TWEE meetsets** (`casus1Manifest(golden, set)`):
+`'merged'` — de standaard, wat de v2-route, het corpus en elke klasse-A/B-referentie leest; de gemergede
+bestanden nemen de PLAATS in van de gepoorte on-axis bestanden die zij vervangen
+(`manifest_en_geometrie.gemergde_set`, één sessie met drie bestanden gewisseld, geen tweede sessie) — en
+`'gated'`: de sessie van 22-08-2026 zoals gemeten, voor v1 (byte-identiek: v1 leest engine2 nooit) en voor de
+tests die de HEADER-VLOER zelf toetsen (`coverage`, `manualWindowAndLobing`, `versionAndCapability` (de stempel),
+`borderFacts` (lek 2), `newMeasurement`, de V38-fix-demonstratie en de gedateerde `corpusPairing`-claims): die
+claims gaan over een gepoort bestand en worden op een gepoort bestand gemaakt. `record-casus1-merge-set.ts`
+schrijft het merge-parameterblok (V15) uit de bestandskoppen zelf, nooit overgetypt.
+
+**WAT ER MET DE BEOORDEELDE BAND EN HET KETENRASTER GEBEURDE, en waarom (`casus1V2.fixture.ts`).** Tot M-1 stond
+`CASUS1_V2_BAND_HZ = [397, 19500]` en het ketenraster op `logspace(200, 20000, 96)`: de gate-vloer en het begin
+van de ver-veldspan, allebei eigenschappen van de gepoorte sessie. Op de gemergede set is een kandidaat op 124 Hz
+mogelijk, en onder een raster dat op 200 Hz begint zou de tuner zijn eigen kruispunt niet zien. Beide zijn nu
+AFGELEID: de vloer van de oordeelband is de hoogste van de geldigheidsvloer van de laagste weg (20,5 Hz) en haar
+**f_p** (52,4 Hz, de bovenste reflexpiek — waar het casusboek de onderkant van het basplateau al legde: "de band
+[f_p, W-M-overname]"); daaronder rolt een reflexsysteem uit zichzelf af en kan geen kruisfilter dat vlakmaken —
+elke kandidaat zou dan voor de kast betalen. Het raster begint op de GELDIGHEIDSVLOER (20,5 Hz) en houdt de
+resolutie van het precedent (96 punten over 200–20 000 Hz → **143 punten over 20,5–20 000 Hz**). **Dat het raster
+onder de band begint is geen slordigheid maar een meting, en zij kostte een halve regeneratie.** De eerste
+M-1-run liep met het raster vanaf f_p, en acht van acht kandidaten kwamen terug als weigering op
+**M-C (woofer): +2,9 dB tegen een afgeleid plafond van −7,6 dB** — de woofer, die per V49 geen hoogdoorlaat
+draagt en geen eis krijgt. De oorzaak, nagemeten op HUIDIG en `V51B_KAND_1`: `isHighPassProtected` leest de
+takoverdracht een halve octaaf ONDER de doorlaatbandvloer, en die vloer is voor de laagste weg de rasterbodem
+(`passbandOf` klemt op de geldigheid die de feiten dragen, geclipt op het raster). Met de bodem op f_p prikt de
+regel in het reflexdal (26–37 Hz), waar de eigen impedantie van de driver de overdracht 2,5–3,9 dB omlaagtrekt
+tegen een drempel van 1,0 dB: de reflexpiek leest als een hoogdoorlaat. Met de bodem op 20,5 Hz prikt hij op
+10–14 Hz, leest −0,2..−1,2 dB, en de woofer is op de bevroren netlists onbeschermd zoals hij hoort. Maar de
+tweede rookproef (kandidaat 6, LR2 op 201 Hz) werd óók met dat raster geweigerd op "M-C (woofer): 0,1 dB
+tegen −10,2", en de diagnostische print liet zien waarom: het ZAAD van die kandidaat leest +3,2 dB in 20–29 Hz
+(de laagdoorlaatspoel resoneert met de onderste motionele piek van de woofer op 16,5 Hz) tegen −0,5 dB op
+10–14 Hz — 3,7 dB "stijging de doorlaatband in" uit een tak zonder enige hoogdoorlaat. **De regel leest de
+impedantie van de DRIVER waar zij de overdracht van het FILTER bedoelt.** Dat is bij M-1 gerepareerd, en het
+is de ENE poortwijziging van deze sessie — een reparatie van een misclassificatie, geen herdefinitie van een
+eis — en zij heeft TWEE helften, want de eerste alleen was niet genoeg. (1) `isHighPassProtected` leest
+sindsdien de overdracht van het filter in een RESISTIEVE last (de doorlaatband-mediaan van |Z| van de weg, via
+de bestaande `resolveWithLoad`), waar de resonanties van de driver niet als hoogdoorlaat kunnen lezen. Dat
+loste kandidaat 6 op — en de volledige tweede run (115 kandidaten, 6 u 13, `V2_JOBS=8`) weigerde er nog
+steeds 52 op de woofer: het zaad van een LR2 op 259 Hz leest in een resistieve last +1,6 dB in 20–29 Hz tegen
++0,4 op 10–14 Hz, want zijn LC-ladder (12,5 + 16,7 + 26,2 mH tegen 687 en 214 µF) resoneert in de twintig
+hertz, en een bult van 1,2 dB haalde de getypte drempel van 1,0 dB. (2) De drempel is daarom AFGELEID: één
+filterorde over de probe-afstand (`HP_PROTECTION_MIN_RISE_DB = DB_PER_OCTAVE_PER_ORDER ×
+HP_PROTECTION_PROBE_OCTAVES` = 3 dB). Een resonantiebult of rimpel haalt dat niet; elke hoogdoorlaat, en ook
+een shelf van een paar dB die een driver werkelijk beschermt, wél. Een derde vorm — de verzwakking moet een
+halve octaaf lager DOORGAAN — is geprobeerd en ingetrokken: zij ontnam zeventien casusboek-mids met een −12 dB-
+shelf onder hun doorlaatband hun M-C-oordeel, en twaalf dB shelf is bescherming die M-C moet blijven
+oordelen. **Nagemeten over het hele casusboek (149 netlists, 447 wegen): de gerepareerde regel classificeert
+geen enkele weg anders dan het V47-blok** — zij raakt precies de LC-bult van een woofer met een lage overname.
+De byte-baselines (`f4cRegression`, `workerRouteRegression`) reproduceren onveranderd, en `gates.test.ts`
+draagt de tegenproef (een impedantie in de vorm van een reflexwoofer — dal onder, piek in de doorlaatbandvloer
+— op de laagste weg van het tweewegfixture: de oude lezing stijgt, de regel zegt nee, de tweeter blijft ja).
+De 8 en de 115 geweigerde shards van de twee eerste runs staan als bewijsmateriaal in de scratch van deze
+sessie. Gevolg voor de V34-probe: f_p is
+nu een BINNENPUNT van het ketenraster, beide randregels accepteren de landing en de lezing is een meting die
+binnen een rasterstap met het veiligheidsraster overeenkomt (de guard houdt de V34-bevinding op het V34-raster
+en assert de M-1-lezing ernaast). **Eén asymmetrie die een lezer verteld moet worden:** de gezamenlijke band van het RAPPORT
+(`commonBand`, de doorsnede van de drie on-axis geldigheden) begint nog steeds op 396,7 Hz, want de TWEETER is
+niet gemerged en draagt de gate; het rapport oordeelt venster, RMS en plateau-dekking dus nog op 397+ (klasse B
+`rms_vlakheid_dB`/`spl_venster_pm_dB` staan op die band), terwijl de ZOEKTOCHT en de shortlist op de afgeleide
+band vanaf f_p oordelen. Geen metriek is daarvoor aangeraakt (opdracht); het staat als bevinding in
+`_F3_respons_oordeel.band_herkomst` en in `frozenNetlistGates` (de plateau-dekking: in het rapport 0,16 octaaf
+onder de overgang — niet beoordeeld; op de zoekband 3,08 octaaf — wél).
+
+**STAP 4 — HET VENSTER EN X OP DE VOLLE BAND (klasse A op de gemergede set, `kruisvensters`,
+`verankerde_gaps_dB`, elk met de gepoorte lezing als brug `_gepoort_tot_M1`).** Woofer geldig 20,5–20 000 Hz
+(`merge-block`, fijnstructuur vanaf 793 Hz), mid 60–20 000, tweeter 396,7–20 000 (header). De 397 Hz-vloer valt
+weg; de volgende begrenzing is k·f_s van de mid (88,8 Hz): **W-M 124,3–549,7 Hz bij orde 4** (k = 1,4),
+**177,6–549,7 bij orde 2** (k = 2,0), 142,1–549,7 bij orde 3 — plafond ongewijzigd de breakup van 1396 Hz / 3
+(op de gepoorte set 1394 Hz: de scanband begint op 20,5 in plaats van 397 Hz, de trend verschuift, V8c).
+M-T 1294–2304 Hz (was 1294–2283: de mid-breakups verschuiven een fractie met hun scanband; 5688/+2,8 tegen
+5690/+3,0 dB, en de scan noemt er nu zeven — de twee boven 17 kHz stonden ook op de gepoorte set maar de
+F1-referentie stopte bij de vijf van 25-08). **Anker mid, X = 0,90 dB** (`woofer_tov_mid` 0,896, tweeter 3,544)
+— de woofer gemiddeld over 20,5–261 Hz (zijn merge-vloer tot het meetkundig midden van het geopende venster),
+tegen het VLAKKE plateau. De brug: op de gepoorte set met −2,5 dB leest dezelfde meting 1,328 / 2,818 (V45–V51b),
+zonder voicing 0,895 / 3,444 (F3b), en de gemergede set MET dat oude plateau 1,980 / 2,754 — de tegenproef dat een
+doelcurve de gaps nog steeds beweegt al stelt M-1 er geen (V45's mechanisme staat; alle drie reproduceren in
+`goldenCasus1`). **Sanders verwachting nagemeten** (woofer-niveau per band tegen het mid-niveau over zijn eigen
+band, energiegemiddeld): 100–200 Hz +1,53 dB, 100–400 +1,42, 200–400 +1,31, 400–500 +2,95, 400–550 +2,76,
+20,5–100 +0,48 (de reflexafval onder 40 Hz trekt dat bandgemiddelde omlaag), 52–261 +2,06. Zijn "+0,8 tot +1,3 in
+100–400, +2,7 bij 400–500" is dus **bevestigd in vorm en iets hoger in getal** (+1,3..1,5 tegen 0,8..1,3; +2,95
+tegen 2,7); de X van 0,90 op de volle band is lager dan V51's 1,33 omdat de bandmiddeling nu de octaven onder
+100 Hz meeneemt en het plateau vlak is (met −2,5 dB zou hij op de gemergede set 1,98 zijn).
+
+**HUIDIG'S PLATEAU TEGEN 0 dB (`scripts/measure-a5e2-anchor.ts`, tabel 1 — voor het eerst een meting en geen
+sliver).** Het energiegemiddelde niveau van de SOM over [f_p, overname] = 52–261 Hz minus dat van dezelfde som over
+de ankerband (mid, 261–1727 Hz): **HUIDIG +2,07 dB, KAND_A +2,17, KAND_B +4,37** (tegen de oordeelband: 2,18 /
+2,00 / 4,24). HUIDIG legt zijn bas dus ruim 2 dB BOVEN het midden — niet eronder, zoals de −2,5 dB-hypothese van
+V45 aannam op basis van een ongeclipte lezing (−2,04). De verklaring staat in tabel 4 van hetzelfde script: HUIDIG
+verzwakt de MID (R_tot 5,42 Ω, 7,56 dB gerealiseerd) harder dan de woofer (3,76 Ω, 5,89 dB), dus het "pad op de
+woofer" van V51 is bij HUIDIG kleiner dan het pad op de mid, en de baffle-step-shelf van de merge (−4..−5 dB op
+100–200 Hz) haalt de bas niet ver genoeg terug. Tegen een gesteld plateau van 0 dB is dat +2 dB niveauwerk aan
+de verkeerde kant. De script-kop is sinds M-1 BEREKEND en niet vast: op de gepoorte set drukt hij de V45-zin af
+(vloer ~3 octaven boven f_p), op de gemergede set zegt hij dat de vloer 1,35 octaaf ónder f_p ligt en de basband
+2,3 octaaf breed is.
+
+**STAP 5 — HET VELD: 115 KANDIDATEN, LR4 ÉN LR2 OP DE W-M-AS, EN NUL GELEVERD.** Het V51b-corpus vooraf
+bevroren als `V51B-KAND-1..6` (`v51b_corpus`, zes netlists); de regeneratie op `'safety'` met `V2_JOBS=8`
+(de vierde keer gedraaid, zie boven: de eerste twee runs vielen op de woofer-classificatie, de derde is deze):
+**22 713 s (6 u 19), 115 kandidaten, mediaan 1455 s per kandidaat, 48,8 CPU-uur.** Het veld: op de W-M-as
+tien LR2-posities (177,6–549,7 Hz) en dertien LR4-posities (124,3–549,7 Hz), elk gecombineerd met de vijf
+M-T-posities (1294, 1495, 1727, 1995, 2304 Hz, LR4); ~350 en ~400 Hz zitten er op beide orden in (332,7 /
+377,2 / 427,6 LR2 en 334,9 / 379,1 / 429,1 LR4). De uitkomst: **0 van 115 geleverd; 115 verwerpingen** —
+`vloer + tweeter` 42, alleen `vloer` 31, alleen `tweeter` 13, `vloer + mid + tweeter` 11, `vloer + mid` 9,
+topologie (X = 0,90 dB, rimpeldoel gemist) 4, budget (opslingering) 2, `mid + tweeter` 1, alleen `mid` 1, en
+één die de keten zelf verwierp (`valley`). Het levende corpus is daarmee LEEG; de recorder heeft de
+`KAND_V2_*`-blokken gesnoeid, de zes oude bestanden zijn met de hand verwijderd (nagemeten byte-identiek
+aan `V51B-KAND-*`), en de suite eist dat manifest, schijf en herkomst het daarover eens zijn. **Dat is de
+tabel die Sander vroeg, alleen zonder een enkele rij die gebouwd mag worden**; per kandidaat staan de
+geweigerde tune (min |Z| op het veiligheidsraster, RMS en fase op de oordeelband vanaf f_p, M-C van de
+slechtst beschermde weg), de grond en Y in `casus1_v2_herkomst.json` (`kandidaat_uitkomst`), en hieronder.
+
+**HET ANTWOORD OP DE IMPEDANTIEVRAAG — en het is precies wat Sander vooraf als tweede uitkomst formuleerde.**
+Achttien van de 115 tunes halen de gestelde vloer ZONDER serieweerstand (min |Z| 2,56–2,71 Ω, binnen de
+2 %-tolerantie): veertien LR2 en vier LR4. Op de W-M-as ligt dat gebied waar Sander het verwachtte —
+**LR2 op 377 Hz haalt de vloer op drie van vijf M-T-posities, op 428 Hz eveneens drie van vijf, op 333 en
+485 Hz twee van vijf; LR4 op 379 en 429 Hz één van vijf** (204 · 1727 en 231 · 1995 zijn de andere twee). Maar
+geen van de achttien is geleverd, want zij halen de vloer uitsluitend in combinatie met de LAGE M-T-
+kruispunten (1294 en 1495 Hz: dertien van de achttien) en daar valt de TWEETER op M-C: op 1294 Hz leest de
+tweeter −6,2 tot −17,3 dB tegen −20 (23 van 23 kandidaten), op 1495 Hz −10,6 tot −19,3 (23 van 23), en op
+1727 Hz nog −15,9 tot −19,7 op twaalf van 23. Met M-T op 1727 Hz en hoger zakt het systeemminimum onder de
+vloer (1,0–2,5 Ω) — en dáár zegt Y wat V51b al vond: op 84 van de 115 is Y **onoplosbaar**, zelfs 20 Ω aan
+de kop van de woofer laat het systeem op 1,8–2,5 Ω staan omdat het minimum in de mid- en tweetertak zit;
+waar Y wél een getal geeft is het óf klein (0,64 Ω bij 296 · 1495; 1,29 Ω bij 159 · 1727) óf absurd (4–16 Ω).
+**Sanders hypothese — "met een vlak plateau en de bredere meetband is er geen niveauwerk op de laagste weg
+nodig" — is voor het niveauwerk zelf BEVESTIGD en voor de vloer WEERLEGD.** Bevestigd: de topologie-eis
+vuurde op maar vier van 115 kandidaten (het rimpeldoel werd zonder pad gehaald op de 111 andere), en X is op
+de volle band 0,90 dB in plaats van 1,33. Weerlegd: de vloer wordt zonder serieweerstand alleen gehaald waar
+de tweeter zijn eis niet haalt, en waar de tweeter zijn eis wél haalt (M-T ≥ 1727 Hz) zit het minimum in de
+mid- en tweetertak en helpt geen serieweerstand op de woofer. **De ≤ 1 Ω DCR-route van V51b is dus niet de
+uitweg** — zij tilt alleen de woofertak op, en de achttien vloer-gehaalde tunes bewijzen dat de woofertak
+het probleem niet is bij 330–490 Hz. Wat overblijft is de vraag die V51b als openstaand punt (1) noteerde:
+de HP-ladder van de mid en de tweetertak op 1,7–2,3 kHz, waar het minimum sinds V32 gemeten zit. LR2 tegen
+LR4 op fase en lobing valt daarmee niet uit deze tabel te kiezen — er is geen geleverde rij — maar de
+geweigerde tunes zeggen wel iets: LR2 op 330–430 Hz leest RMS 2,9–6,2 dB en fase 36–64°, LR4 op 335–430 Hz
+RMS 1,8–3,2 dB en fase 19–70°; de LR4-tunes zijn vlakker en de LR2-tunes halen vaker de vloer. **Verwachting
+"LR2 verslechtert het impedantieminimum" is NIET wat het veld laat zien:** per W-M-positie ligt het LR2-
+minimum niet onder het LR4-minimum (377 LR2: 2,55–2,60 tegen 379 LR4: 1,54–2,56), omdat het minimum niet
+in de W-M-overlap zit maar in de mid-/tweetertak. Verwachting "LR2 vraagt bij de mid meer van M-C" klopt
+wél: de mid valt op LR2 dertien keer en op LR4 negen keer, alle dertien LR2-gevallen onder 300 Hz.
+
+  De volledige tabel (geweigerde tune; Y = wat de vloer op de woofer vraagt, "—" = onoplosbaar met de rest
+  van het systeem tussen haakjes; M-C = slechtst beschermde weg; s = ketenrun):
+
+| W-M | M-T | geweigerd op | min \|Z\| Ω | Y (wat de vloer vraagt) | RMS dB | fase ° | M-C slechtste dB | s |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| 177.6 LR2 | 1294 LR4 | \|Z\| 2.39 + mid -11.5 + tweeter -11.9 | 2.39 | 11.24 | 3.81 | 31.0 | -11.5 | 1343 |
+| 177.6 LR2 | 1494.8 LR4 | \|Z\| 2.08 + mid -10.3 + tweeter -12.9 | 2.08 | — (20 Ω laat 2.187 Ω) | 3.58 | 33.3 | -10.3 | 1493 |
+| 177.6 LR2 | 1726.7 LR4 | \|Z\| 1.86 + mid -11.6 | 1.86 | — (20 Ω laat 1.800 Ω) | 3.16 | 20.6 | -11.6 | 1342 |
+| 177.6 LR2 | 1994.6 LR4 | \|Z\| 2.20 + tweeter -18.0 | 2.20 | — (20 Ω laat 2.179 Ω) | 2.48 | 24.1 | -15.4 | 1298 |
+| 177.6 LR2 | 2304 LR4 | \|Z\| 2.14 + tweeter -16.9 | 2.14 | 15.83 | 3.02 | 24.3 | -12.8 | 1738 |
+| 201.4 LR2 | 1294 LR4 | \|Z\| 2.23 + mid -14.1 + tweeter -12.6 | 2.53 | — (20 Ω laat 2.314 Ω) | 5.34 | 37.5 | -12.6 | 1003 |
+| 201.4 LR2 | 1494.8 LR4 | \|Z\| 2.40 + mid -11.5 + tweeter -13.5 | 2.40 | — (20 Ω laat 2.317 Ω) | 3.58 | 24.9 | -11.5 | 1489 |
+| 201.4 LR2 | 1726.7 LR4 | \|Z\| 2.29 + mid -6.8 + tweeter -16.6 | 2.34 | — (20 Ω laat 2.077 Ω) | 2.64 | 29.5 | -6.8 | 1463 |
+| 201.4 LR2 | 1994.6 LR4 | \|Z\| 2.22 + tweeter -18.6 | 2.22 | — (20 Ω laat 2.217 Ω) | 2.76 | 22.4 | -14.4 | 1383 |
+| 201.4 LR2 | 2304 LR4 | \|Z\| 2.17 | 2.17 | — (20 Ω laat 2.126 Ω) | 3.02 | 18.2 | -17.2 | 1706 |
+| 228.3 LR2 | 1294 LR4 | \|Z\| 0.83 + tweeter -16.4 | 2.45 | — (20 Ω laat 1.141 Ω) | 3.59 | 35.0 | -16.4 | 997 |
+| 228.3 LR2 | 1494.8 LR4 | \|Z\| 2.52 + tweeter -13.0 | 2.52 | 3.99 | 6.18 | 27.8 | -13.0 | 1291 |
+| 228.3 LR2 | 1726.7 LR4 | topologie (X = 0,90 dB, rimpeldoel gemist) | — | 0 (vloer gehaald) | 4.73 | — | -14.0 | 1133 |
+| 228.3 LR2 | 1994.6 LR4 | \|Z\| 1.95 + mid -7.4 | 1.95 | — (20 Ω laat 1.802 Ω) | 3.44 | 27.9 | -7.4 | 1372 |
+| 228.3 LR2 | 2304 LR4 | \|Z\| 2.05 | 2.06 | — (20 Ω laat 1.975 Ω) | 5.30 | 34.0 | -18.4 | 1482 |
+| 258.8 LR2 | 1294 LR4 | mid -11.7 + tweeter -13.1 | 2.60 | 0 (vloer gehaald) | 4.21 | 63.8 | -11.7 | 1307 |
+| 258.8 LR2 | 1494.8 LR4 | tweeter -15.8 | 2.59 | 0 (vloer gehaald) | 5.23 | 46.9 | -15.3 | 1478 |
+| 258.8 LR2 | 1726.7 LR4 | budget (opslingering) | — | 0 (vloer gehaald) | 5.74 | — | -19.5 | 1169 |
+| 258.8 LR2 | 1994.6 LR4 | \|Z\| 2.54 | 2.54 | — (20 Ω laat 2.376 Ω) | 4.93 | 14.6 | -18.8 | 1344 |
+| 258.8 LR2 | 2304 LR4 | \|Z\| 2.28 + mid -12.8 | 2.28 | — (20 Ω laat 2.275 Ω) | 4.46 | 28.2 | -12.8 | 1660 |
+| 293.4 LR2 | 1294 LR4 | tweeter -11.2 | 2.59 | 0 (vloer gehaald) | 4.90 | 35.9 | -11.2 | 1305 |
+| 293.4 LR2 | 1494.8 LR4 | \|Z\| 2.43 + tweeter -17.0 | 2.48 | — (20 Ω laat 2.398 Ω) | 4.17 | 49.7 | -13.6 | 1290 |
+| 293.4 LR2 | 1726.7 LR4 | topologie (X = 0,90 dB, rimpeldoel gemist) | — | 0 (vloer gehaald) | 6.36 | — | -16.6 | 1148 |
+| 293.4 LR2 | 1994.6 LR4 | \|Z\| 2.50 + tweeter -17.4 | 2.51 | — (20 Ω laat 2.503 Ω) | 3.59 | 48.8 | -17.4 | 1888 |
+| 293.4 LR2 | 2304 LR4 | \|Z\| 1.56 | 1.66 | — (20 Ω laat 1.453 Ω) | 7.11 | 46.9 | -19.2 | 1478 |
+| 332.7 LR2 | 1294 LR4 | tweeter -13.4 | 2.59 | 0 (vloer gehaald) | 3.85 | 36.4 | -13.4 | 1282 |
+| 332.7 LR2 | 1494.8 LR4 | \|Z\| 2.53 + tweeter -14.3 | 2.53 | — (20 Ω laat 2.284 Ω) | 2.88 | 39.7 | -14.3 | 1455 |
+| 332.7 LR2 | 1726.7 LR4 | \|Z\| 1.56 | 1.57 | — (20 Ω laat 1.621 Ω) | 4.87 | 60.5 | -14.0 | 1117 |
+| 332.7 LR2 | 1994.6 LR4 | tweeter -19.2 | 2.60 | 0 (vloer gehaald) | 5.80 | 43.5 | -17.2 | 1819 |
+| 332.7 LR2 | 2304 LR4 | \|Z\| 1.86 | 1.92 | — (20 Ω laat 1.944 Ω) | 5.56 | 39.8 | -18.2 | 1160 |
+| 377.2 LR2 | 1294 LR4 | tweeter -16.6 | 2.57 | 0 (vloer gehaald) | 6.05 | 63.8 | -14.5 | 997 |
+| 377.2 LR2 | 1494.8 LR4 | tweeter -15.0 | 2.60 | 0 (vloer gehaald) | 4.63 | 52.3 | -12.7 | 993 |
+| 377.2 LR2 | 1726.7 LR4 | \|Z\| 2.40 | 2.55 | — (20 Ω laat 2.402 Ω) | 5.72 | 44.4 | -19.7 | 1165 |
+| 377.2 LR2 | 1994.6 LR4 | budget (opslingering) | — | 0 (vloer gehaald) | 5.20 | — | -17.3 | 1483 |
+| 377.2 LR2 | 2304 LR4 | \|Z\| 2.54 | 2.56 | — (20 Ω laat 2.395 Ω) | 5.00 | 38.5 | -21.0 | 1862 |
+| 427.6 LR2 | 1294 LR4 | tweeter -15.1 | 2.58 | 0 (vloer gehaald) | 6.10 | 38.4 | -11.5 | 1169 |
+| 427.6 LR2 | 1494.8 LR4 | tweeter -13.6 | 2.59 | 0 (vloer gehaald) | 7.21 | 52.7 | -13.6 | 1170 |
+| 427.6 LR2 | 1726.7 LR4 | mid -4.1 | 2.59 | 0 (vloer gehaald) | 6.00 | 41.0 | -4.1 | 1174 |
+| 427.6 LR2 | 1994.6 LR4 | \|Z\| 1.72 + mid -6.9 | 1.77 | — (20 Ω laat 1.627 Ω) | 4.76 | 37.4 | -6.9 | 1195 |
+| 427.6 LR2 | 2304 LR4 | \|Z\| 0.87 | 0.98 | — (20 Ω laat 0.868 Ω) | 6.18 | 38.6 | -21.6 | 1178 |
+| 484.8 LR2 | 1294 LR4 | tweeter -17.3 | 2.71 | 0 (vloer gehaald) | 5.31 | 48.8 | -17.3 | 950 |
+| 484.8 LR2 | 1494.8 LR4 | tweeter -14.8 | 2.59 | 0 (vloer gehaald) | 4.46 | 37.4 | -14.8 | 1143 |
+| 484.8 LR2 | 1726.7 LR4 | \|Z\| 0.89 | 1.96 | — (20 Ω laat 1.734 Ω) | 2.79 | 37.7 | -16.0 | 1169 |
+| 484.8 LR2 | 1994.6 LR4 | \|Z\| 1.25 | 2.40 | — (20 Ω laat 2.485 Ω) | 4.34 | 39.6 | -16.0 | 1177 |
+| 484.8 LR2 | 2304 LR4 | \|Z\| 1.19 | 1.19 | — (20 Ω laat 1.281 Ω) | 3.78 | 35.0 | -20.9 | 1171 |
+| 549.7 LR2 | 1294 LR4 | \|Z\| 1.01 + tweeter -15.6 | 1.02 | — (20 Ω laat 1.802 Ω) | 5.91 | 41.5 | -15.6 | 1004 |
+| 549.7 LR2 | 1494.8 LR4 | tweeter -17.5 | 2.57 | 0 (vloer gehaald) | 3.41 | 45.3 | -17.5 | 663 |
+| 549.7 LR2 | 1726.7 LR4 | \|Z\| 1.80 + mid -6.3 | 1.88 | — (20 Ω laat 2.292 Ω) | 5.36 | 42.4 | -6.3 | 1174 |
+| 549.7 LR2 | 1994.6 LR4 | \|Z\| 1.18 + mid -10.2 | 1.28 | — (20 Ω laat 1.475 Ω) | 5.44 | 30.9 | -10.2 | 1186 |
+| 549.7 LR2 | 2304 LR4 | \|Z\| 1.04 + tweeter -17.8 | 1.04 | — (20 Ω laat 1.047 Ω) | 3.77 | 29.0 | -17.8 | 1165 |
+| 124.3 LR4 | 1294 LR4 | \|Z\| 2.29 + mid -10.2 + tweeter -14.2 | 2.29 | 6.94 | 3.48 | 57.9 | -10.2 | 1646 |
+| 124.3 LR4 | 1494.8 LR4 | \|Z\| 2.51 + mid -2.5 + tweeter -10.6 | 2.52 | — (20 Ω laat 2.486 Ω) | 4.40 | 49.6 | -2.5 | 2190 |
+| 124.3 LR4 | 1726.7 LR4 | \|Z\| 2.50 + mid -4.3 + tweeter -15.9 | 2.50 | 11.15 | 3.84 | 52.6 | -4.3 | 1607 |
+| 124.3 LR4 | 1994.6 LR4 | \|Z\| 1.98 | 1.98 | — (20 Ω laat 1.982 Ω) | 4.84 | 46.6 | -11.4 | 2217 |
+| 124.3 LR4 | 2304 LR4 | \|Z\| 1.86 + mid -10.2 | 1.86 | — (20 Ω laat 1.858 Ω) | 4.51 | 42.9 | -10.2 | 2723 |
+| 140.7 LR4 | 1294 LR4 | \|Z\| 2.22 + tweeter -14.4 | 2.28 | — (20 Ω laat 2.108 Ω) | 3.99 | 51.6 | -13.8 | 2441 |
+| 140.7 LR4 | 1494.8 LR4 | \|Z\| 2.51 + tweeter -18.3 | 2.51 | — (20 Ω laat 2.431 Ω) | 3.41 | 50.0 | -14.1 | 1581 |
+| 140.7 LR4 | 1726.7 LR4 | \|Z\| 2.09 + tweeter -18.5 | 2.11 | — (20 Ω laat 2.213 Ω) | 4.07 | 53.9 | -10.2 | 2166 |
+| 140.7 LR4 | 1994.6 LR4 | \|Z\| 2.12 | 2.12 | — (20 Ω laat 2.062 Ω) | 4.37 | 51.8 | -14.4 | 2961 |
+| 140.7 LR4 | 2304 LR4 | \|Z\| 2.29 | 2.30 | — (20 Ω laat 2.201 Ω) | 4.65 | 53.9 | -14.0 | 2411 |
+| 159.3 LR4 | 1294 LR4 | \|Z\| 2.34 + mid -9.9 + tweeter -15.2 | 2.34 | — (20 Ω laat 2.359 Ω) | 3.00 | 51.4 | -9.9 | 1345 |
+| 159.3 LR4 | 1494.8 LR4 | \|Z\| 2.47 + tweeter -16.1 | 2.47 | 13.54 | 2.73 | 60.4 | -13.7 | 1713 |
+| 159.3 LR4 | 1726.7 LR4 | \|Z\| 2.29 + tweeter -19.6 | 2.29 | 1.29 | 4.04 | 50.7 | -19.1 | 2996 |
+| 159.3 LR4 | 1994.6 LR4 | \|Z\| 2.25 + tweeter -17.4 | 2.26 | — (20 Ω laat 2.272 Ω) | 3.20 | 48.8 | -17.4 | 3007 |
+| 159.3 LR4 | 2304 LR4 | \|Z\| 2.19 | 2.19 | — (20 Ω laat 2.045 Ω) | 2.65 | 43.0 | -18.9 | 1499 |
+| 180.3 LR4 | 1294 LR4 | \|Z\| 2.12 + tweeter -6.2 | 2.12 | — (20 Ω laat 2.055 Ω) | 2.67 | 48.6 | -6.2 | 1685 |
+| 180.3 LR4 | 1494.8 LR4 | \|Z\| 2.50 + tweeter -13.2 | 2.50 | — (20 Ω laat 2.479 Ω) | 3.05 | 58.1 | -13.2 | 1713 |
+| 180.3 LR4 | 1726.7 LR4 | \|Z\| 2.37 + tweeter -17.3 | 2.37 | — (20 Ω laat 2.255 Ω) | 2.77 | 54.9 | -13.9 | 1573 |
+| 180.3 LR4 | 1994.6 LR4 | \|Z\| 2.09 | 2.22 | — (20 Ω laat 2.081 Ω) | 2.61 | 51.8 | -19.3 | 2204 |
+| 180.3 LR4 | 2304 LR4 | \|Z\| 2.18 + mid -10.5 | 2.19 | — (20 Ω laat 2.178 Ω) | 3.67 | 48.9 | -10.5 | 2775 |
+| 204 LR4 | 1294 LR4 | \|Z\| 1.54 + tweeter -14.7 | 1.54 | — (20 Ω laat 1.386 Ω) | 2.84 | 53.3 | -14.7 | 1731 |
+| 204 LR4 | 1494.8 LR4 | \|Z\| 2.37 + tweeter -14.4 | 2.38 | — (20 Ω laat 2.496 Ω) | 2.61 | 53.8 | -14.4 | 1715 |
+| 204 LR4 | 1726.7 LR4 | tweeter -19.7 | 2.58 | 0 (vloer gehaald) | 3.75 | 54.3 | -19.7 | 1726 |
+| 204 LR4 | 1994.6 LR4 | \|Z\| 2.53 + mid -11.1 | 2.53 | — (20 Ω laat 2.524 Ω) | 3.22 | 51.6 | -11.1 | 2186 |
+| 204 LR4 | 2304 LR4 | \|Z\| 2.42 | 2.42 | 5.76 | 3.79 | 58.3 | -11.9 | 2252 |
+| 230.9 LR4 | 1294 LR4 | \|Z\| 2.41 + tweeter -16.4 | 2.42 | — (20 Ω laat 2.339 Ω) | 2.91 | 63.8 | -16.4 | 1757 |
+| 230.9 LR4 | 1494.8 LR4 | \|Z\| 2.45 + tweeter -11.6 | 2.45 | — (20 Ω laat 2.428 Ω) | 2.25 | 47.9 | -11.6 | 1697 |
+| 230.9 LR4 | 1726.7 LR4 | \|Z\| 2.10 | 2.41 | — (20 Ω laat 2.006 Ω) | 2.34 | 50.2 | -21.6 | 1691 |
+| 230.9 LR4 | 1994.6 LR4 | keten: `valley` | 2.56 | 0 (vloer gehaald) | 2.53 | 50.1 | -45.5 | 1367 |
+| 230.9 LR4 | 2304 LR4 | \|Z\| 2.23 | 2.23 | — (20 Ω laat 2.281 Ω) | 2.59 | 33.3 | -33.7 | 1794 |
+| 261.4 LR4 | 1294 LR4 | \|Z\| 1.79 + tweeter -14.5 | 2.46 | — (20 Ω laat 2.351 Ω) | 2.21 | 38.0 | -14.5 | 1753 |
+| 261.4 LR4 | 1494.8 LR4 | \|Z\| 2.40 + tweeter -13.5 | 2.40 | — (20 Ω laat 2.345 Ω) | 2.18 | 57.3 | -13.5 | 1734 |
+| 261.4 LR4 | 1726.7 LR4 | \|Z\| 2.39 + tweeter -18.4 | 2.39 | — (20 Ω laat 2.283 Ω) | 2.22 | 49.1 | -18.4 | 1739 |
+| 261.4 LR4 | 1994.6 LR4 | \|Z\| 2.38 + mid -9.8 + tweeter -16.8 | 2.38 | — (20 Ω laat 2.341 Ω) | 1.86 | 47.5 | -9.8 | 1717 |
+| 261.4 LR4 | 2304 LR4 | \|Z\| 2.52 | 2.52 | — (20 Ω laat 2.513 Ω) | 3.42 | 43.6 | -32.9 | 2422 |
+| 295.9 LR4 | 1294 LR4 | \|Z\| 2.48 + tweeter -12.6 | 2.48 | — (20 Ω laat 2.458 Ω) | 2.13 | 57.5 | -12.6 | 1262 |
+| 295.9 LR4 | 1494.8 LR4 | \|Z\| 2.50 + tweeter -19.3 | 2.50 | 0.64 | 3.19 | 74.7 | -19.3 | 1264 |
+| 295.9 LR4 | 1726.7 LR4 | \|Z\| 2.51 | 2.51 | — (20 Ω laat 2.151 Ω) | 3.05 | 58.9 | -21.4 | 2219 |
+| 295.9 LR4 | 1994.6 LR4 | \|Z\| 2.47 | 2.48 | — (20 Ω laat 2.383 Ω) | 1.87 | 30.6 | -33.3 | 1599 |
+| 295.9 LR4 | 2304 LR4 | \|Z\| 2.44 | 2.45 | — (20 Ω laat 2.275 Ω) | 2.34 | 27.0 | -38.8 | 1507 |
+| 334.9 LR4 | 1294 LR4 | \|Z\| 0.26 + tweeter -16.1 | 2.18 | — (20 Ω laat 0.288 Ω) | 2.21 | 25.6 | -16.1 | 915 |
+| 334.9 LR4 | 1494.8 LR4 | \|Z\| 1.76 + tweeter -18.0 | 1.76 | — (20 Ω laat 1.565 Ω) | 3.21 | 47.3 | -18.0 | 2450 |
+| 334.9 LR4 | 1726.7 LR4 | \|Z\| 2.41 + tweeter -17.7 | 2.42 | — (20 Ω laat 2.253 Ω) | 3.09 | 40.1 | -17.7 | 2403 |
+| 334.9 LR4 | 1994.6 LR4 | \|Z\| 2.53 | 2.53 | — (20 Ω laat 2.331 Ω) | 2.35 | 39.6 | -21.8 | 1798 |
+| 334.9 LR4 | 2304 LR4 | \|Z\| 1.91 | 1.92 | — (20 Ω laat 1.908 Ω) | 3.82 | 57.6 | -31.5 | 1936 |
+| 379.1 LR4 | 1294 LR4 | \|Z\| 2.28 + tweeter -14.7 | 2.28 | — (20 Ω laat 2.208 Ω) | 2.32 | 69.6 | -14.7 | 939 |
+| 379.1 LR4 | 1494.8 LR4 | \|Z\| 2.54 + tweeter -11.1 | 2.54 | — (20 Ω laat 2.395 Ω) | 2.19 | 37.5 | -11.1 | 1389 |
+| 379.1 LR4 | 1726.7 LR4 | \|Z\| 1.50 + tweeter -19.3 | 2.56 | — (20 Ω laat 2.383 Ω) | 2.42 | 58.5 | -19.3 | 984 |
+| 379.1 LR4 | 1994.6 LR4 | \|Z\| 1.42 | 1.54 | — (20 Ω laat 2.071 Ω) | 2.37 | 29.3 | -31.9 | 1396 |
+| 379.1 LR4 | 2304 LR4 | \|Z\| 1.89 | 1.90 | — (20 Ω laat 1.886 Ω) | 4.09 | 49.5 | -31.8 | 1528 |
+| 429.1 LR4 | 1294 LR4 | \|Z\| 1.50 + tweeter -13.7 | 1.51 | — (20 Ω laat 1.438 Ω) | 2.24 | 26.2 | -13.7 | 1385 |
+| 429.1 LR4 | 1494.8 LR4 | \|Z\| 1.32 + tweeter -15.7 | 1.72 | — (20 Ω laat 1.604 Ω) | 1.81 | 30.4 | -15.7 | 1087 |
+| 429.1 LR4 | 1726.7 LR4 | \|Z\| 0.55 + tweeter -19.0 | 2.36 | — (20 Ω laat 0.504 Ω) | 2.25 | 39.2 | -19.0 | 910 |
+| 429.1 LR4 | 1994.6 LR4 | \|Z\| 1.23 | 1.59 | — (20 Ω laat 1.375 Ω) | 2.00 | 18.6 | -34.9 | 1522 |
+| 429.1 LR4 | 2304 LR4 | tweeter -18.6 | 2.57 | 0 (vloer gehaald) | 2.47 | 19.2 | -18.6 | 1949 |
+| 485.6 LR4 | 1294 LR4 | \|Z\| 2.39 + tweeter -8.7 | 2.41 | — (20 Ω laat 2.170 Ω) | 2.80 | 25.7 | -8.7 | 1097 |
+| 485.6 LR4 | 1494.8 LR4 | \|Z\| 0.64 + tweeter -15.1 | 2.35 | — (20 Ω laat 2.139 Ω) | 2.04 | 50.4 | -15.1 | 866 |
+| 485.6 LR4 | 1726.7 LR4 | \|Z\| 2.54 + tweeter -19.0 | 2.54 | — (20 Ω laat 2.279 Ω) | 2.34 | 35.1 | -19.0 | 923 |
+| 485.6 LR4 | 1994.6 LR4 | \|Z\| 2.29 | 2.29 | — (20 Ω laat 2.089 Ω) | 4.16 | 26.2 | -22.2 | 1070 |
+| 485.6 LR4 | 2304 LR4 | topologie (X = 0,90 dB, rimpeldoel gemist) | — | 0 (vloer gehaald) | 1.74 | — | -33.9 | 1049 |
+| 549.7 LR4 | 1294 LR4 | \|Z\| 1.63 + tweeter -16.3 | 1.68 | — (20 Ω laat 1.695 Ω) | 2.19 | 22.4 | -16.3 | 1833 |
+| 549.7 LR4 | 1494.8 LR4 | \|Z\| 2.49 + tweeter -13.9 | 2.49 | — (20 Ω laat 2.253 Ω) | 2.10 | 33.8 | -13.9 | 908 |
+| 549.7 LR4 | 1726.7 LR4 | \|Z\| 2.53 + mid -10.6 + tweeter -19.6 | 2.53 | — (20 Ω laat 2.348 Ω) | 1.85 | 32.8 | -10.6 | 898 |
+| 549.7 LR4 | 1994.6 LR4 | topologie (X = 0,90 dB, rimpeldoel gemist) | — | 0 (vloer gehaald) | 2.08 | — | -23.5 | 983 |
+| 549.7 LR4 | 2304 LR4 | \|Z\| 2.31 | 2.31 | — (20 Ω laat 2.086 Ω) | 2.64 | 26.4 | -22.7 | 1366 |
+
+**HET V51B-CORPUS OP DE GEMERGEDE SET (`compare-corpora.ts v51b live` — de "vóór"-helft, want de ná-helft is
+leeg en de tabel drukt dan geen gemiddelde af).** Gemeten door dezelfde bank: min |Z| 2,59–2,89 Ω, EPDR
+1,31–1,46, dissipatie 25–48 %, heetste weerstand 12,0–23,5 W bij 100 W, W-M-fase M-K 7,7–19,7° (op de gepoorte
+set 9,2–12,6: de toegelaten band reikt nu tot 60 Hz), lift 1,1–1,6 dB, opslingering 0,85–1,31 dB, Q_es× 1,29–
+1,33 — geen enkele van die zes bestaat in het M-1-veld (andere vensters, andere posities), dus nul paren en
+geen gepaarde delta; `corpusPairing.test.ts` pint dat als de M-1-claim. En de drie referentiefilters op
+dezelfde set: HUIDIG min |Z| 3,46, dissipatie 46 %, W-M-fase 21,0°; KAND_A 3,32 / 52 % / 4,6°; KAND_B 3,44 /
+39 % / 3,4° — met pad, buiten de V51-eis, en het enige dat op deze casus de vloer én de tweeter tegelijk haalt.
+
+**WAT ER NIET VERANDERD IS.** Vloer 2,6, opslingeringsbudget 1,4, Q_es-grens 2,4, M-C −20 op de tweeter en
+afgeleid op de mid, weerstandspoort 10 W thermisch: onaangeraakt. Geen metriek is gewijzigd; de ENE
+poortwijziging is de reparatie van `isHighPassProtected` hierboven, en zij classificeert op het hele
+casusboek geen weg anders. De gepoorte set blijft in de repo (v1 leest haar, byte-identiek), de merge-
+bestanden dragen PLACEHOLDER tot groundplane/hermeting, en elke klasse-A-referentie op de gemergede set
+noemt dat in haar parameterblok (`gemergde_set.status`).
+
+**TESTS.** `ingest/mergeBlock.test.ts` (nieuw, 11 claims: parser op veldnaam, de vloer van een verklaarde
+merge met provenance `merge-block`, de FF/NF-detector onthoudt zich mét de tegenproef op een gepoort bestand,
+`Valid to` vernauwt alleen, `Valid from` op een gepoort bestand zet geen vloer, een merge zonder vloer is
+ONBEKEND, en de twee meetsets op de echte bestanden), `gates.test.ts` (+1: de reflex-vormige impedantie op de
+laagste weg van het tweewegfixture), `goldenCasus1` (merge-vloer en gate-brug, vensters per orde met brug,
+gaps met drie bruggen, doelcurve vlak), `casus1Field` (13 + 10 × 5 = 115, LR-only, ~350 en ~400 op beide
+orden), `frozenNetlistGates` (V34/V38-fix op hun gedateerde raster en set, V45 op de gedateerde curve, V51-
+plateau vlak met de zoekband-tegenproef, lege-corpus-guards), `casus1V2Candidates` (leeg corpus = bevinding,
+in manifest, schijf en herkomst tegelijk; vlakke curve = geen `amplitudeReference`), `corpusPairing`
+(gedateerde claims op `'gated'`, +1 M-1-claim), `f4cRegression` (derde gedateerd oordeelblok
+`verdicts_sinds_M1`; de V32- en V50-blokken pinnen minus de ene verwijderde rij, en de test noemt die rij),
+`ciLayer` (twee hernoemde `[bytes]`-namen), `coverage`/`manualWindowAndLobing`/`versionAndCapability`/
+`borderFacts`/`newMeasurement` op `'gated'`. `tsc -b` groen (ook `scripts/`), `p6Lint` groen. Meettijden van
+de lagen: zie CLAUDE.md (M-1-regel).
+
+**OPENSTAAND.** (1) Het minimum in de mid- en tweetertak bij M-T ≥ 1727 Hz — V51b's punt (1), nu op 84 van 115
+kandidaten gemeten; dat is een vraag over de HP-ladder van de mid en de tweetertak, en geen enkele
+niveauwerk-route raakt haar. (2) De tweetereis van −20 dB (voorlopig, V47b) sluit alle lage M-T-kruispunten
+uit (1294 en 1495 Hz: 46 van 46); wie de tweeter lager wil kruisen stelt een ander getal of een andere
+tweeter. (3) Sanders keuze LR2/LR4 op fase en lobing kan pas op een geleverde rij; de geweigerde tunes
+suggereren LR4 voor vlakheid. (4) De mid-M-C op LR2 onder 300 Hz (dertien van vijftig): een lager W-M-kruispunt
+op orde 2 laat de mid tot 90 Hz meelopen. (5) De gemergede set is een PLACEHOLDER tot groundplane/hermeting na
+inspelen; de mid-merge past de offset van `mergeNearFar` toe (−87°), en dat is een eigenschap van de gepoorte
+FF-fase vlak boven haar vloer die een hermeting op afstand oplost. (6) `commonBand` van het rapport begint op
+397 Hz zolang de tweeter niet gemerged is; het plateau wordt in het rapport dus nog niet beoordeeld en op de
+zoekband wel — geen wijziging aan de metriek in deze sessie. (7) Het geleverde `windowPlusMinusDb` van de
+geweigerde tunes leest ±74 dB: een null in de som binnen de oordeelband vanaf f_p, niet onderzocht omdat er
+geen geleverd netwerk is.
 
 ## Casus S1 — synthetische grondwaarheid voor de R_e-schatter (F3b, 26-08-2026)
 

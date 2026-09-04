@@ -24,7 +24,11 @@ import { buildReport } from './report.ts';
 import { ctcKey } from './metrics/types.ts';
 
 const golden = loadGolden();
-const manifest = casus1Manifest(golden);
+/* M-1 — THE GATED SET, deliberately: every claim in this file is about the HEADER
+ * floor (1/T, 2/T, the advisory FF/NF detector on a gated far field), and since
+ * M-1 the default set carries NF/FF merges whose floor is the merge block's. A
+ * merged file has no gate to move. */
+const manifest = casus1Manifest(golden, 'gated');
 const baseFiles = casus1Files(manifest);
 const geometry = casus1Geometry(golden);
 const settings = {

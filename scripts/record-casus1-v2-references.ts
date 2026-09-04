@@ -266,6 +266,17 @@ const CHAIN_GRID_LO_HZ = CASUS1_V2_GRID[0];
  * rather than a plausible-sounding reason that belongs to a different corpus.
  */
 const DATED_REASON: Record<string, string> = {
+  V51B:
+    'HET GEDATEERDE V51B-CORPUS. Bevroren voor M-1, toen de v2-route nog op de GEPOORTE meetset van ' +
+    '22-08-2026 liep: ver-veldvloer 396,7 Hz uit de 2,5 ms-gate op woofers en mid, W-M-venster 397-549 Hz, ' +
+    'orde 4 gesteld op beide overnames, basplateau -2,5 dB gesteld (niet meetbaar op die set) en de laagste ' +
+    'weg mocht serieweerstand tot 1,0 ohm dragen (series-r-max): zes van vijftien kandidaten geleverd, vier ' +
+    'op de cap. Bij M-1 leest de v2-route Sanders NF/FF-gemergede woofers (geldig vanaf 20,5 Hz) en de op ' +
+    'dezelfde manier gemergede mid (60 Hz), staat het plateau op 0 dB, vervalt het serie-R-maximum ' +
+    '(lowestWayLevelWork: none) en loopt het W-M-veld over het geopende venster (124-550 Hz) met LR4 en ' +
+    'LR2. Zij blijven staan als de "voor"-helft van de M-1-vergelijking - gemeten op de GEMERGEDE set, ' +
+    'zoals beide helften van elke vergelijking door hetzelfde pad gaan. Meetobject, GEEN ontwerp: mag niet ' +
+    'gebouwd worden.',
   V51:
     'HET GEDATEERDE V51-CORPUS. Bevroren vóór V51b, toen de LAAGSTE weg GEEN niveauwerk mocht dragen ' +
     '(geen serie-R, geen shunt-pad; alleen spoel-DCR bleef): van vijftien kandidaten overleefde er EEN ' +

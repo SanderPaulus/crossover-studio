@@ -24,6 +24,9 @@
  */
 
 import { describe, expect, it } from 'vitest';
+import { runIngest } from './ingest/derive.ts';
+import { crossoverWindow } from './predesign/xoWindow.ts';
+import { baffleStepHz } from '../cabinet.ts';
 import {
   CASUS1_WOOFER_DC_OHM,
   casus1ExcursionSettings,
@@ -32,6 +35,8 @@ import {
   casus1Geometry,
   casus1Manifest,
   casus1TargetCurve,
+  casus1TargetCurveAt,
+  casus1BassPlateauDb,
   loadGolden,
 } from './casus1.fixture.ts';
 import { buildReport, type EngineV2Report } from './report.ts';
@@ -309,21 +314,34 @@ describe('golden references - casus 1 (Koan 2951)', () => {
       expect(pct(w.semiInductance!.n, ref.semi_inductantie_n)).toBeLessThanOrEqual(TOL.exponent_pct);
     });
 
-    it('woofer: the near-field ceiling and the header gate floor', () => {
+    it('woofer: the near-field ceiling, the MERGE floor (M-1), and the gate floor as the bridge', () => {
       const w = driver(r, 'woofer');
       const ref = golden.afgeleide_parameters.woofer as Record<string, number>;
       expect(pct(w.nearFieldCeilingHz!, ref.NF_fmax)).toBeLessThanOrEqual(TOL.frequenties_pct);
-      expect(pct(w.onAxis!.bandHz[0], ref.FF_vloer_header)).toBeLessThanOrEqual(TOL.frequenties_pct);
-      expect(w.onAxis!.bandReason.low).toContain('hor_0');
-      // 2/T sits an octave above 1/T, by construction.
-      expect(w.onAxis!.fineDetailFromHz! / w.onAxis!.bandHz[0]).toBeCloseTo(2, 6);
+      /* M-1 — on the merged set the woofer's on-axis floor is the MERGE
+       * BLOCK's (`Valid from`), not a gate: the file below its splice is the
+       * near field with the port summed in. The gate floor the reference
+       * carried until M-1 stays as `FF_vloer_header` and is the bridge — it
+       * reproduces on the GATED set, with its 2/T an octave above it. */
+      expect(pct(w.onAxis!.bandHz[0], ref.FF_vloer_merge)).toBeLessThanOrEqual(TOL.frequenties_pct);
+      expect(w.onAxis!.bandFloorProvenance).toBe('merge-block');
+      expect(w.onAxis!.bandReason.low).toContain('merged');
+      const gm = casus1Manifest(golden, 'gated');
+      const gw = runIngest(gm, casus1Files(gm)).drivers.find((d) => d.driver === 'woofer')!;
+      expect(pct(gw.onAxis!.bandHz[0], ref.FF_vloer_header)).toBeLessThanOrEqual(TOL.frequenties_pct);
+      expect(gw.onAxis!.bandReason.low).toContain('hor_0');
+      expect(gw.onAxis!.fineDetailFromHz! / gw.onAxis!.bandHz[0]).toBeCloseTo(2, 6);
+      // On the merge the fine-detail floor is the FAR-FIELD HALF's 2/T — the
+      // same number as on the gated file, now above a much lower floor.
+      expect(w.onAxis!.fineDetailFromHz).toBeCloseTo(gw.onAxis!.fineDetailFromHz!, 6);
+      expect(w.onAxis!.bandHz[0]).toBeLessThan(gw.onAxis!.bandHz[0] / 8);
     });
 
     it('woofer: the breakup the crossover ceiling hangs on', () => {
       const w = driver(r, 'woofer');
       const ref = golden.afgeleide_parameters.woofer.breakup as { f: number; dB: number; Q: number };
       const peak = w.breakups!.peaks.find((p) => pct(p.fHz, ref.f) <= TOL.frequenties_pct);
-      expect(peak, 'the woofer breakup at ~1395 Hz').toBeTruthy();
+      expect(peak, 'the woofer breakup at ~1396 Hz').toBeTruthy();
       expect(Math.abs(peak!.dB - ref.dB)).toBeLessThanOrEqual(TOL.dB);
       expect(pct(peak!.q!, ref.Q)).toBeLessThanOrEqual(TOL.Q_pct);
       // It is only found at all because the two woofers are summed first.
@@ -361,8 +379,11 @@ describe('golden references - casus 1 (Koan 2951)', () => {
       const refs = golden.afgeleide_parameters.mid.breakups as [number, number][];
       const pers = golden.afgeleide_parameters.mid.persistentie_30gr as [number, number][];
       // Five, not four: what the 25-08 analysis recorded as one peak at
-      // 14434 Hz is two, and the reference file now says so.
-      expect(refs).toHaveLength(5);
+      // 14434 Hz is two, and the reference file now says so. SEVEN since
+      // M-1: on the merged set the scan lists the two peaks above 17 kHz as
+      // well (they were on the gated set too — 17637 and 19843 Hz — but the
+      // F1 reference stopped at the five the 25-08 analysis named).
+      expect(refs).toHaveLength(7);
       for (const [f, db] of refs) {
         const p = m.breakups!.peaks.find((q) => pct(q.fHz, f) <= TOL.frequenties_pct);
         expect(p, `mid breakup at ${f} Hz`).toBeTruthy();
@@ -603,10 +624,33 @@ describe('golden references - casus 1 (Koan 2951)', () => {
       const w = r.predesign.windows.find((x) => x.lower === 'woofer')!;
       expect(pct(w.floorHz!, ref.venster[0])).toBeLessThanOrEqual(TOL.frequenties_pct);
       expect(pct(w.ceilingHz!, ref.venster[1])).toBeLessThanOrEqual(TOL.frequenties_pct);
-      expect(w.floorBy!.rule).toBe('validity'); // "vloer_bindend": "meetgeldigheid"
+      /* M-1 — the floor is k·f_s of the MID now ("vloer_bindend": "fs"): the
+       * merged woofer and mid are valid far below it, so the measurement
+       * validity that bound this edge until M-1 no longer does. The gated
+       * reading stays as the bridge and reproduces on the gated set. */
+      expect(w.floorBy!.rule).toBe('fs');
       expect(w.ceilingBy!.rule).toBe('breakup'); // "plafond_bindend": "breakup_ernst"
       expect(w.ceilingBy!.uncalibrated).toContain('uncalibrated');
       expect(w.empty).toBe(false);
+      const bridge = (golden.kruisvensters.woofer_mid_orde4 as { _gepoort_tot_M1: { venster: [number, number] } })._gepoort_tot_M1;
+      const gm = casus1Manifest(golden, 'gated');
+      const gf = casus1Files(gm);
+      const gw = buildReport({
+        manifest: gm,
+        files: gf,
+        filter: casus1Filter('HUIDIG', gm, gf, golden),
+        geometry,
+        settings,
+      }).predesign.windows.find((x) => x.lower === 'woofer')!;
+      expect(pct(gw.floorHz!, bridge.venster[0])).toBeLessThanOrEqual(TOL.frequenties_pct);
+      expect(pct(gw.ceilingHz!, bridge.venster[1])).toBeLessThanOrEqual(TOL.frequenties_pct);
+      expect(gw.floorBy!.rule).toBe('validity');
+      // ...and the second-order window the M-1 field runs on has its own floor.
+      const o2 = golden.kruisvensters.woofer_mid_orde2 as { venster: [number, number] };
+      const w2 = crossoverWindow({ ...r.predesign.windowInputs.find((x) => x.lower === 'woofer')!, order: 2 });
+      expect(pct(w2.floorHz!, o2.venster[0])).toBeLessThanOrEqual(TOL.frequenties_pct);
+      expect(pct(w2.ceilingHz!, o2.venster[1])).toBeLessThanOrEqual(TOL.frequenties_pct);
+      expect(w2.floorHz!).toBeGreaterThan(w.floorHz!);
     });
 
     it('A5d.3: the mid-tweeter window, and the tension it exposes', () => {
@@ -651,29 +695,53 @@ describe('golden references - casus 1 (Koan 2951)', () => {
        * the reference file rather than typed here — a value in a test is the
        * second home P6 forbids, one level up. */
       expect(String(golden.verankerde_gaps_dB.status)).toContain('GESLOTEN BIJ V45');
+      expect(String(golden.verankerde_gaps_dB.status)).toContain('M-1');
       const w = g.ways.find((x) => x.driver === 'woofer')!;
       const t = g.ways.find((x) => x.driver === 'tweeter')!;
       expect(w.gapToAnchorDb).toBeCloseTo(golden.verankerde_gaps_dB.woofer_tov_mid, 2);
       expect(t.gapToAnchorDb).toBeCloseTo(golden.verankerde_gaps_dB.tweeter_tov_mid, 2);
-      /* THE BRIDGE, and it is what makes the movement readable as a
-       * redefinition instead of a regression (V15): with the voicing taken OFF
-       * the very same measurement reproduces the values this block carried
-       * before, to the decimal it recorded them at. */
-      const bare = buildReport({
-        manifest,
-        files,
-        filter: casus1Filter('HUIDIG', manifest, files, golden),
-        geometry,
-        settings: { ...settings, targetCurve: FLAT_TARGET },
-      }).predesign.gaps!;
-      const bridge = golden.verankerde_gaps_dB._waarden_voor_A5e2.engine_op_kale_niveaus;
-      expect(bare.ways.find((x) => x.driver === 'woofer')!.gapToAnchorDb)
-        .toBeCloseTo(bridge.woofer_tov_mid, 2);
-      expect(bare.ways.find((x) => x.driver === 'tweeter')!.gapToAnchorDb)
-        .toBeCloseTo(bridge.tweeter_tov_mid, 2);
-      // ...and they really are different numbers, so the bridge is not the
-      // same assertion written twice.
-      expect(w.gapToAnchorDb).not.toBeCloseTo(bridge.woofer_tov_mid, 2);
+      /* M-1 — X IS MEASURED ON THE WHOLE WOOFER BAND for the first time: the
+       * woofer's level runs from its merge floor to the centre of the opened
+       * window, and the plateau is FLAT (stated 0 dB), so the levels are
+       * compared as measured and the note says so. */
+      expect(g.notes.join(' ')).toContain('flat reference');
+      expect(w.gapToAnchorDb).toBeGreaterThan(0);
+      /* THE BRIDGES, and they are what make the movement readable as a
+       * redefinition instead of a regression (V15). (a) The GATED set with the
+       * V45–V51b plateau reproduces the values this block carried until M-1;
+       * (b) the gated set without a voicing reproduces the F3b bare reading;
+       * (c) the MERGED set WITH that old plateau is the counter-proof that a
+       * target curve still moves these numbers even though M-1 states none. */
+      const bridge = golden.verankerde_gaps_dB._waarden_gepoort_tot_M1 as unknown as {
+        gepoort_plateau_2_5: { woofer_tov_mid: number; tweeter_tov_mid: number; plateau_diepte_dB: number };
+        gepoort_flat: { woofer_tov_mid: number; tweeter_tov_mid: number };
+        gemergd_plateau_2_5: { woofer_tov_mid: number; tweeter_tov_mid: number };
+      };
+      const gm = casus1Manifest(golden, 'gated');
+      const gf = casus1Files(gm);
+      const gapsOn = (m: typeof gm, f: typeof gf, curve: ReturnType<typeof casus1TargetCurveAt>) =>
+        buildReport({
+          manifest: m,
+          files: f,
+          filter: casus1Filter('HUIDIG', m, f, golden),
+          geometry,
+          settings: { ...settings, targetCurve: curve },
+        }).predesign.gaps!;
+      const gap = (x: ReturnType<typeof gapsOn>, d: string) => x.ways.find((y) => y.driver === d)!.gapToAnchorDb;
+      const old = gapsOn(gm, gf, casus1TargetCurveAt(bridge.gepoort_plateau_2_5.plateau_diepte_dB, golden));
+      expect(gap(old, 'woofer')).toBeCloseTo(bridge.gepoort_plateau_2_5.woofer_tov_mid, 2);
+      expect(gap(old, 'tweeter')).toBeCloseTo(bridge.gepoort_plateau_2_5.tweeter_tov_mid, 2);
+      const oldFlat = gapsOn(gm, gf, FLAT_TARGET);
+      expect(gap(oldFlat, 'woofer')).toBeCloseTo(bridge.gepoort_flat.woofer_tov_mid, 2);
+      expect(gap(oldFlat, 'tweeter')).toBeCloseTo(bridge.gepoort_flat.tweeter_tov_mid, 2);
+      const voiced = gapsOn(manifest, files, casus1TargetCurveAt(bridge.gepoort_plateau_2_5.plateau_diepte_dB, golden));
+      expect(gap(voiced, 'woofer')).toBeCloseTo(bridge.gemergd_plateau_2_5.woofer_tov_mid, 2);
+      expect(gap(voiced, 'tweeter')).toBeCloseTo(bridge.gemergd_plateau_2_5.tweeter_tov_mid, 2);
+      // ...and the four readings really are different numbers, so no bridge is
+      // the same assertion written twice.
+      expect(w.gapToAnchorDb).not.toBeCloseTo(gap(old, 'woofer'), 2);
+      expect(w.gapToAnchorDb).not.toBeCloseTo(gap(voiced, 'woofer'), 2);
+      expect(gap(voiced, 'woofer')).toBeGreaterThan(w.gapToAnchorDb);
       expect(g.notes.join(' ')).toContain('A5e.2');
       // The chain is the sum of the steps, which is what A5d.4 specifies.
       expect(t.budgetDb).toBeCloseTo(t.gapToAnchorDb, 6);
@@ -687,20 +755,23 @@ describe('golden references - casus 1 (Koan 2951)', () => {
        * shifts are the interesting ones: they are what turns 0.89 into 1.33. */
       const dc = golden.verankerde_gaps_dB.parameters.doelcurve;
       const curve = casus1TargetCurve(golden);
-      expect(dc.type).toBe(curve.type);
-      expect(dc.plateau_diepte_dB).toBe(curve.plateauDepthDb);
-      expect(dc.overgang_hz).toBeCloseTo(curve.stepHz!, 1);
-      // The engine prints the shift it applied, per way, in the block's notes.
-      const note = r.predesign.gaps!.notes.find((n) => n.includes('AFTER the target curve'))!;
-      expect(note).toBeDefined();
-      for (const [way, dB] of Object.entries(dc.verschuiving_per_weg_dB)) {
-        expect(note, `${way} is recorded at ${dB} dB but the engine did not apply that`)
-          .toContain(`${way} ${dB > 0 ? '+' : ''}${dB.toFixed(2)} dB`);
-      }
-      // ...and the ways it names are ALL of them, so a shift cannot be quietly
-      // recorded for two of three.
+      /* M-1 — the design states a plateau of 0 dB, and a stated zero IS the
+       * flat reference: the recorded curve is `flat`, the recorded depth is 0,
+       * the engine applied no shift, and the note says the levels were
+       * compared as measured. The V45–V51b curve is the bridge one test up. */
+      expect(dc.type).toBe('flat');
+      expect(curve.type).toBe('flat');
+      expect(dc.plateau_diepte_dB).toBe(0);
+      expect(casus1BassPlateauDb(golden)).toBe(0);
+      expect(r.predesign.gaps!.notes.some((n) => n.includes('AFTER the target curve'))).toBe(false);
+      expect(r.predesign.gaps!.notes.some((n) => n.includes('flat reference'))).toBe(true);
+      for (const [, dB] of Object.entries(dc.verschuiving_per_weg_dB)) expect(dB).toBe(0);
       expect(Object.keys(dc.verschuiving_per_weg_dB).sort())
         .toEqual([...r.driversLowToHigh].sort());
+      // The dated curve still derives its transition from the cabinet and from nothing else.
+      const dated = casus1TargetCurveAt(2.5, golden);
+      expect(dated.type).toBe('bass-plateau');
+      expect(dated.stepHz).toBeCloseTo(baffleStepHz(golden.manifest_en_geometrie.geometrie.baffle_mm!.breedte)!, 6);
     });
   });
 

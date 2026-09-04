@@ -86,7 +86,11 @@ machine en runtime (alleen de Node-versie wisselen verplaatst een zoektocht al
 naar een ander lokaal optimum) — CI bewaakt de natuurkunde op de bevroren
 netlists, de lokale suite bewaakt de bytes. Draai de lagen na elkaar, nooit
 naast elkaar. Details, meettijden en de regeneratiescripts voor het
-casus-1-corpus staan in `CLAUDE.md`.
+casus-1-corpus staan in `CLAUDE.md`. Sinds M-1 (sep 2026) leest de v2-route de
+NF/FF-gemergede meetset van casus 1 (woofers vanaf 20,5 Hz, mid vanaf 60 Hz, elk
+bestand met een geldigheidsblok dat de parser leest); de gepoorte sessie van
+22-08-2026 blijft ernaast bestaan voor v1 en voor de tests die de gate-vloer zelf
+toetsen.
 
 Twee pagina's uit één Vite-build (`build.rollupOptions.input`): `index.html` is de
 landing page (statisch, eigen CSS/JS in `landing/`, screenshots in `public/shots/`),

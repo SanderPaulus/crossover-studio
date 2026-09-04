@@ -41,8 +41,16 @@ export const ENGINE_V2_LABEL = 'Engine v2';
  * and its version and the registry test asserts they match this table.
  */
 export const ESTIMATOR_VERSIONS = {
-  /** Header-derived validity bounds (1/T, 2/T) — A5b.1(i). */
-  'validity-header': '1.0',
+  /**
+   * Header-derived validity bounds (1/T, 2/T) — A5b.1(i).
+   *
+   * 1.1: M-1 — a file whose header declares itself an NF/FF MERGE
+   *      (`Merge = NF/FF`, `Valid from = …`) takes its floor from that block
+   *      instead of from a gate it does not carry, and the advisory FF/NF
+   *      detector abstains on it. MINOR: the numbers move (a merged file's
+   *      floor is the merge's), nothing was removed from the shape.
+   */
+  'validity-header': '1.1',
   /** Keele near-field ceiling and mic-distance check — A5b.1. */
   'validity-nearfield': '1.0',
   /** FF/NF baffle-step model test — A5b.1(ii), advisory. */

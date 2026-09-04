@@ -113,6 +113,14 @@ interface Baseline {
    * one overwritten, for the reason V32 gave when it split the file.
    */
   verdicts_sinds_V50?: { stand: string; runs: Record<string, unknown> };
+  /**
+   * M-1 — the verdict half after the repair of the high-pass-protection rule:
+   * the lowest way of this fixture, which carries no high pass, is no longer
+   * an M-C subject on the derived lists. The V32 and V50 blocks keep pinning
+   * what they pinned on the subjects they carry (minus that one row, which is
+   * asserted to be the ONLY difference); this block pins the corrected set.
+   */
+  verdicts_sinds_M1?: { stand: string; runs: Record<string, unknown> };
 }
 
 const BASELINE = JSON.parse(readFileSync(BASELINE_PATH, 'utf-8')) as Baseline;
@@ -214,6 +222,67 @@ const verdictsOf = (r: V2OptimizeResult, gateIds?: ReadonlySet<string>): string 
     })),
   );
 
+/** `gate/subject` of one verdict — the identity of a row. */
+const rowKey = (v: { gate: string; subject: string }): string => `${v.gate}/${v.subject}`;
+
+/**
+ * M-1 — a stored verdict block with the rows in `dropped` removed, and the set
+ * of rows that WERE removed, so the test can assert that a dated block differs
+ * from today's reading by exactly the row M-1's repair took out and nothing
+ * else.
+ */
+const storedWithout = (
+  block: unknown,
+  dropped: ReadonlySet<string>,
+): { json: string; removed: Set<string> } => {
+  const removed = new Set<string>();
+  const strip = (x: unknown): unknown => {
+    if (Array.isArray(x)) {
+      return x
+        .filter((v) => {
+          const o = v as { gate?: unknown; subject?: unknown };
+          const isRow = typeof o?.gate === 'string' && typeof o?.subject === 'string';
+          if (isRow && dropped.has(rowKey(o as { gate: string; subject: string }))) {
+            removed.add(rowKey(o as { gate: string; subject: string }));
+            return false;
+          }
+          return true;
+        })
+        .map(strip);
+    }
+    if (x && typeof x === 'object') {
+      return Object.fromEntries(Object.entries(x as Record<string, unknown>).map(([k, v]) => [k, strip(v)]));
+    }
+    return x;
+  };
+  return { json: stableJson(strip(block)), removed };
+};
+
+/**
+ * M-1 — the row the repair of `isHighPassProtected` removed from this
+ * fixture's DERIVED lists: M-C on the way that carries no high pass. Read off
+ * the M-1 block against the V50 block rather than typed, so the test says
+ * which row it is instead of assuming one.
+ */
+const rowsDroppedAtM1 = (seed: number): Set<string> => {
+  const keys = (block: unknown): Set<string> => {
+    const out = new Set<string>();
+    const walk = (x: unknown): void => {
+      if (Array.isArray(x)) x.forEach(walk);
+      else if (x && typeof x === 'object') {
+        const o = x as { gate?: unknown; subject?: unknown };
+        if (typeof o.gate === 'string' && typeof o.subject === 'string') out.add(rowKey(o as { gate: string; subject: string }));
+        Object.values(o).forEach(walk);
+      }
+    };
+    walk(block);
+    return out;
+  };
+  const before = keys(BASELINE.verdicts_sinds_V50?.runs?.[String(seed)]);
+  const after = keys(BASELINE.verdicts_sinds_M1?.runs?.[String(seed)]);
+  return new Set([...before].filter((k) => !after.has(k)));
+};
+
 /** The gate ids a stored verdict block was recorded on — read off the block itself. */
 const gateIdsIn = (block: unknown): Set<string> => {
   const ids = new Set<string>();
@@ -242,17 +311,10 @@ const storedFor = (seed: number): string => {
   });
 };
 
-/** The stored V32 verdicts for one seed. */
-const storedVerdictsFor = (seed: number): string => {
-  const v = BASELINE.verdicts_sinds_V32?.runs?.[String(seed)];
-  expect(v, `the baseline holds no V32 verdicts for seed ${seed}`).toBeTruthy();
-  return stableJson(v);
-};
-
-/** The stored V50 verdicts for one seed — all six gates. */
-const storedV50VerdictsFor = (seed: number): string => {
-  const v = BASELINE.verdicts_sinds_V50?.runs?.[String(seed)];
-  expect(v, `the baseline holds no V50 verdicts for seed ${seed}`).toBeTruthy();
+/** The stored M-1 verdicts for one seed — all six gates, corrected subjects. */
+const storedM1VerdictsFor = (seed: number): string => {
+  const v = BASELINE.verdicts_sinds_M1?.runs?.[String(seed)];
+  expect(v, `the baseline holds no M-1 verdicts for seed ${seed}`).toBeTruthy();
   return stableJson(v);
 };
 
@@ -274,6 +336,13 @@ describe('F4c — naming the choices changed no network', () => {
     expect(BASELINE.verdicts_sinds_V50?.stand).toBe('V50');
     expect(Object.keys(BASELINE.verdicts_sinds_V50?.runs ?? {}).sort()).toEqual(
       [...seeds].map(String).sort(),
+    );
+    expect(BASELINE.verdicts_sinds_M1?.stand).toBe('M-1');
+    expect(Object.keys(BASELINE.verdicts_sinds_M1?.runs ?? {}).sort()).toEqual(
+      [...seeds].map(String).sort(),
+    );
+    expect([...gateIdsIn(BASELINE.verdicts_sinds_M1)].sort()).toEqual(
+      ['M-A', 'M-A/part', 'M-B/EPDR', 'M-B/|Z|', 'M-C', 'M-L'],
     );
     // The V32 block knows four gates, the V50 block six — and that is the
     // difference between them, not a re-recording.
@@ -303,19 +372,39 @@ describe('F4c — naming the choices changed no network', () => {
     expect(delivered(oldShape(seed))).toBe(storedFor(seed));
   });
 
-  it.each(seeds)('[bytes] seed %i: the VERDICTS reproduce their own V32 block', (seed) => {
+  it.each(seeds)('[bytes] seed %i: the VERDICTS reproduce their own V32 block, minus the ONE row M-1 removed', (seed) => {
     /* The half V32 moved, pinned so it cannot move again unnoticed. It is a
      * separate assertion from the network above on purpose: "the design is
      * unchanged" and "the report about it is unchanged" are two claims, and
-     * V32 is the delivery that made them come apart. */
-    expect(verdictsOf(newShape(seed), gateIdsIn(BASELINE.verdicts_sinds_V32))).toBe(storedVerdictsFor(seed));
+     * V32 is the delivery that made them come apart.
+     *
+     * M-1 — the block is compared WITHOUT the row the repair of the
+     * high-pass-protection rule took out (M-C on this fixture's lowest way,
+     * which carries no high pass: the driver's own impedance peak had passed
+     * for one), and the test asserts that row is the only thing removed. A
+     * dated block that could not reproduce at all would pin nothing; one that
+     * is quietly re-recorded pins whatever the code does today. This keeps the
+     * V32 claim on every row V32 was right about. */
+    const dropped = rowsDroppedAtM1(seed);
+    const { json, removed } = storedWithout(BASELINE.verdicts_sinds_V32?.runs?.[String(seed)], dropped);
+    expect(verdictsOf(newShape(seed), gateIdsIn(BASELINE.verdicts_sinds_V32))).toBe(json);
+    expect([...removed]).toEqual([...dropped]);
   });
 
-  it.each(seeds)('[bytes] seed %i: and ALL SIX verdicts reproduce the V50 block', (seed) => {
-    /* V50 added two gates to every verdict list. The V32 block above still
-     * pins its four; this pins the two new ones beside them, unarmed on this
-     * fixture (no class, no power, no peak) and saying so. */
-    expect(verdictsOf(newShape(seed))).toBe(storedV50VerdictsFor(seed));
+  it.each(seeds)('[bytes] seed %i: ALL SIX verdicts reproduce the V50 block minus that row, and the M-1 block in full', (seed) => {
+    /* V50 added two gates to every verdict list; M-1 removed one SUBJECT from
+     * one of them. The V50 block pins the six gates on the subjects it carries
+     * minus that row; the M-1 block pins the corrected set in full. */
+    const dropped = rowsDroppedAtM1(seed);
+    expect(dropped.size).toBe(1);
+    const [row] = [...dropped];
+    expect(row.startsWith('M-C/')).toBe(true);
+    // ...and the way it names is the one with no high pass in the frozen reference.
+    expect(reference.frozenHighPassProtected).not.toContain(row.slice('M-C/'.length));
+    const { json, removed } = storedWithout(BASELINE.verdicts_sinds_V50?.runs?.[String(seed)], dropped);
+    expect(verdictsOf(newShape(seed))).toBe(json);
+    expect([...removed]).toEqual([...dropped]);
+    expect(verdictsOf(newShape(seed))).toBe(storedM1VerdictsFor(seed));
   });
 
   it('the verdicts are taken on the MEASURED SWEEP, not on this fixture grid', () => {

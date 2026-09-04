@@ -70,7 +70,8 @@ describe('estimator versioning (A5e.5)', () => {
   });
 
   it('a derived result carries the stamp of the extractor that made it', () => {
-    const manifest = casus1Manifest();
+    // M-1: the GATED set — the claim is about the header extractor's stamp on a gated far field.
+    const manifest = casus1Manifest(undefined, 'gated');
     const ingest = runIngest(manifest, casus1Files(manifest));
     const w = ingest.drivers.find((d) => d.driver === 'woofer')!;
     expect(w.re!.estimator.id).toBe(EXTRACTOR_RE);

@@ -226,13 +226,22 @@ if (first) {
       `${first.validLoHz.toFixed(1)} Hz · anker = ${first.anchor} over ` +
       `${first.anchorBandHz[0].toFixed(0)}–${first.anchorBandHz[1].toFixed(0)} Hz`,
   );
+  /* M-1 — the paragraph is COMPUTED, not fixed: on the gated set the validity
+   * floor sat almost three octaves above f_p (the V45 finding); on the merged
+   * set it lies below f_p and the clipped band IS the plateau. */
+  const octavesAboveFp = Math.log2(first.validLoHz / first.fpHz);
   console.log(
-    '  LET OP — DIT IS DE BEVINDING EN NIET EEN VOETNOOT. De geldigheidsvloer ligt bijna drie\n' +
-      '  octaven BOVEN f_p, dus de geclipte basband is geen plateau maar een SLIVER van een\n' +
-      '  kwart octaaf, vlak onder de overname en BOVEN de baffle step. Waar het kruispunt van\n' +
-      '  de netlist zelf onder die vloer valt is de geclipte band zelfs LEEG (—). De ongeclipte\n' +
-      '  kolommen lezen ver-velddata waarvan A5b.1 zegt dat zij er niet is; zij staan er als\n' +
-      '  context, nooit als meting waaruit een eis gesteld mag worden.',
+    octavesAboveFp > 0
+      ? `  LET OP — DIT IS DE BEVINDING EN NIET EEN VOETNOOT. De geldigheidsvloer ligt ${octavesAboveFp.toFixed(1)}\n` +
+          '  octaven BOVEN f_p, dus de geclipte basband is geen plateau maar een SLIVER, vlak onder\n' +
+          '  de overname en BOVEN de baffle step. Waar het kruispunt van de netlist zelf onder die\n' +
+          '  vloer valt is de geclipte band zelfs LEEG (—). De ongeclipte kolommen lezen ver-velddata\n' +
+          '  waarvan A5b.1 zegt dat zij er niet is; zij staan er als context, nooit als meting\n' +
+          '  waaruit een eis gesteld mag worden.'
+      : `  SINDS M-1 ligt de geldigheidsvloer ${(-octavesAboveFp).toFixed(1)} octaaf ONDER f_p (de gemergede set),\n` +
+          `  dus de geclipte en de ongeclipte kolom vallen samen en de basband [f_p, overname] is een\n` +
+          `  plateau van ${Math.log2(first.windowHandoverHz / first.fpHz).toFixed(2)} octaaf. Dit is de eerste meting van het plateau;\n` +
+          '  de bestanden dragen een inspeel-predictie (PLACEHOLDER tot groundplane/hermeting).',
   );
 }
 console.log(

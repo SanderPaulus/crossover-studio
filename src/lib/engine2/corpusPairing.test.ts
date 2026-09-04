@@ -95,7 +95,15 @@ interface Row {
 const PHASE = (r: Row) => r.wmPhase;
 const DISS = (r: Row) => r.dissPct;
 
-const bank = corpusBank();
+/* M-1 — THE GATED SET, deliberately, for the dated claims below: V45→V47,
+ * V30→V32 and V50→V51 were measured on the 22-08-2026 gated set and their
+ * numbers are pinned here as the demonstration of the reading rule. Since M-1
+ * the default set is the NF/FF-merged one, on which the same netlists read
+ * differently (the W-M phase admits points down to 60 Hz); the RULE is the
+ * claim, the numbers are its evidence, and evidence is reproduced on the set
+ * it was gathered on. The M-1 comparison itself (V51b → live) runs on the
+ * merged bank at the end of this file. */
+const bank = corpusBank(undefined, 'gated');
 
 function measure(key: string): Row {
   const rep = bank.report(key);
@@ -254,6 +262,30 @@ describe('de gepaarde delta naast het corpusgemiddelde (V47-nazorg)', () => {
       expect(c.before).not.toBeNull();
       expect(c.after).not.toBeNull();
     }
+  });
+
+  it('M-1: V51b → levend heeft GEEN enkel paar én een lege ná-helft — het veld leverde niets', () => {
+    /* De M-1-regeneratie (gemergede meetset, plateau 0 dB, geen niveauwerk op
+     * de laagste weg, W-M-as met LR2 én LR4 over 124–550 Hz) leverde 0 van 115:
+     * elke kandidaat viel op de vloer, op M-C (mid of tweeter), op de
+     * topologie-eis of op het budget. Het levende corpus is dus LEEG, en de
+     * gepaarde lezing tegen V51b zegt n = 0 en drukt geen enkel getal af —
+     * niet omdat de vensters verschoven (dat ook: geen enkele V51b-kandidaat
+     * bestaat in het M-1-veld) maar omdat er niets ná is. Het corpusgemiddelde
+     * ná is dan óók leeg: een lege verzameling heeft geen gemiddelde, en een
+     * tabel die er een afdrukt liegt. Gelezen uit de corpusboekhouding en niet
+     * gemeten, want er valt aan de ná-kant niets te meten. */
+    const before = corpusOf('v51b');
+    const after = corpusOf('live');
+    expect(before.byCandidate.size).toBe(6);
+    expect(after.byCandidate.size).toBe(0);
+    expect(pairedCandidates(before, after)).toHaveLength(0);
+    expect(after.outcomes).not.toBeNull();
+    expect(after.outcomes!.length).toBe(115);
+    expect(after.outcomes!.every((o) => o.verwerping !== null)).toBe(true);
+    // ...and no V51b candidate exists in the M-1 field at all: the window moved.
+    for (const label of before.order) expect(after.order).not.toContain(label);
+    expect(mean([])).toBeNull();
   });
 
   it('een paar waarvan één helft niets meet telt aan GEEN van beide kanten mee', () => {

@@ -4,9 +4,9 @@ Voertaal: Nederlands (zoals alle projectdocumentatie voor Sander & Stefan).
 Volgorde binnen een blok = aanbevolen prioriteit. Inschattingen zijn grof:
 **S** = uurtje(s), **M** = dagdeel–dag, **L** = meerdere dagen/gefaseerd.
 
-## Stand ná V51b (3 sep 2026) — engine v2
+## Stand ná M-1 (4 sep 2026) — engine v2
 
-De regels hieronder vatten samen wat F4 tot en met V51b hebben opgeleverd; het
+De regels hieronder vatten samen wat F4 tot en met M-1 hebben opgeleverd; het
 bewijs per stap staat in het casusboek (`docs/CrossoverStudio_OptimizerV2_strategie_v2.md`,
 Deel B) en de suite-meting in `CLAUDE.md`. Alles wat hier staat is gemeten op
 casus 1 (Koan 2951) en geldt alleen met de v2-toggle aan; met de toggle uit is
@@ -80,6 +80,26 @@ de app byte-identiek aan vóór F1.
   dissipatie 55 → 38 %, heetste weerstand 2,9 → 1,9 W bij 10 W; vier van de
   zes staan op de cap. Geen besluit: de drie routes (serie / DCR-schaal /
   hybride) staan naast elkaar in casusboek V51b.
+- **De gemergede meetset, het plateau op 0 dB en het veld met LR4 én LR2** (M-1,
+  04-09-2026): de v2-route leest Sanders NF/FF-gemergede woofers (geldig vanaf
+  20,5 Hz) en een op dezelfde manier gemergede mid (60 Hz), elk met een
+  gestructureerd merge-/geldigheidsblok dat de parser op veldnaam leest (geen
+  proza-parser); de gepoorte sessie blijft ernaast voor v1 en voor de tests die
+  de gate-vloer zelf toetsen. Het W-M-venster opent tot k·f_s van de mid
+  (124–550 Hz bij LR4, 178–550 bij LR2), X is voor het eerst op de volle
+  wooferband gemeten (0,90 dB tegen een vlak plateau; +1,3..1,5 dB in 100–400
+  Hz, +2,95 bij 400–500), HUIDIG legt zijn bas +2,1 dB boven het midden. Het
+  veld van 115 kandidaten (13 LR4 + 10 LR2 × 5) leverde NIETS: achttien tunes
+  halen de vloer zonder serieweerstand (LR2 op 333–485 Hz, LR4 op 379/429),
+  maar alleen met de tweeter op 1294–1495 Hz, waar de tweeter zijn −20 dB niet
+  haalt; daarboven zit het minimum in de mid- en tweetertak en helpt geen
+  serieweerstand op de woofer (Y onoplosbaar op 84 van 115). Sanders hypothese
+  is voor het niveauwerk bevestigd (de topologie-eis vuurde 4 van 115 keer) en
+  voor de vloer weerlegd; de ≤ 1 Ω DCR-route is niet de uitweg. Bijvangst: de
+  beschermingsregel las de impedantiepiek van een reflexwoofer als hoogdoorlaat
+  (52 van 115 op de woofer geweigerd); gerepareerd — filteroverdracht in een
+  resistieve last, drempel één orde over de probe — zonder dat één weg van het
+  casusboek anders classificeert.
 - **Verwerpingen zijn zichtbaar** (V31/V33, UI-1): een kandidaat waarvan de
   tune in zijn geheel geweigerd is levert geen netwerk maar een verwerping met
   de regel; de shortlist is de bron van de Working-tab en de v1-ranglijst staat
@@ -102,6 +122,11 @@ de app byte-identiek aan vóór F1.
    bracht de opgave PER ONDERDEEL (vermogen, verzadigingsstroom) in de poort;
    de spanwijdte als zoekgrens staat nog open.
 2. **De vloer als de as van het veld, en de configuraties die het openen** —
+   SINDS M-1 scherper: op de gemergede set haalt niets de vloer én de tweeter
+   tegelijk; het minimum zit bij M-T ≥ 1727 Hz in de mid- en tweetertak (84 van
+   115 onoplosbaar met 20 Ω op de woofer). De vraag is dus de HP-ladder van de
+   mid en de tweetertak, en de tweetereis van −20 dB op 1294–1495 Hz — niet het
+   wooferpad. Oorspronkelijke formulering (V51b):
    zonder wooferpad haalde op casus 1 één kandidaat van vijftien de gestelde
    2,6 Ω (V51); met 1,0 Ω serieweerstand op DCR-schaal zes (V51b), en vier
    kandidaten halen haar ook met 20 Ω niet omdat hun minimum in de mid- en

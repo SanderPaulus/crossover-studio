@@ -148,13 +148,19 @@ describe('V45 — de CI-laag bewaakt de natuurkunde, de lokale suite de bytes', 
      * `f4cRegression`, dat de twee nieuwe poorten (M-A/part, M-L) op elke
      * oordelenlijst pint. Uit CI om dezelfde reden als de andere vijf: het is
      * een byte-vergelijking van een tuner-run tegen een fixture die op
-     * darwin/arm64 is opgenomen. */
+     * darwin/arm64 is opgenomen.
+     *
+     * M-1 hernoemde twee van de zes: de oordelenblokken worden sindsdien
+     * vergeleken MINUS de ene rij die de reparatie van de beschermingsregel
+     * wegnam (M-C op de laagste weg van het tweewegfixture), en het derde
+     * gedateerde blok `verdicts_sinds_M1` pint de gecorrigeerde verzameling
+     * in dezelfde test. Nog steeds zes namen en tien gedraaide tests. */
     expect(taggedNames(BYTES_TAG)).toEqual([
       `${BYTES_TAG} one candidate, live through handleV2Request, byte for byte`,
-      `${BYTES_TAG} seed %i: and ALL SIX verdicts reproduce the V50 block`,
+      `${BYTES_TAG} seed %i: ALL SIX verdicts reproduce the V50 block minus that row, and the M-1 block in full`,
       `${BYTES_TAG} seed %i: so does the F4b2 shape — the fixture pins both`,
       `${BYTES_TAG} seed %i: the F4c shape reproduces the STORED F4b2 network`,
-      `${BYTES_TAG} seed %i: the VERDICTS reproduce their own V32 block`,
+      `${BYTES_TAG} seed %i: the VERDICTS reproduce their own V32 block, minus the ONE row M-1 removed`,
       `${BYTES_TAG} today the real route still reproduces the stored network`,
     ]);
   });
